@@ -9,7 +9,7 @@
 use std::fs;
 
 const FRAME: &str = "src/render_loop/mod.rs";
-const PANEL: &str = "src/sculpt3d/panel.rs";
+const PANEL: &str = "../../crates/ph2d-app-sculpt3d/src/panel.rs";
 
 /// O corpo do bloco que cumpre o pedido, do `mem::replace` do flag até o fim.
 fn fulfilment(src: &str) -> String {

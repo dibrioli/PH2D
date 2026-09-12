@@ -11,8 +11,8 @@
 use std::fs;
 
 const FRAME: &str = "src/render_loop/mod.rs";
-const BRIDGE: &str = "src/render_loop/sculpt3d_panel_bridge.rs";
-const MODE: &str = "src/sculpt3d/mode.rs";
+const BRIDGE: &str = "../../crates/ph2d-app-sculpt3d/src/panel_bridge.rs";
+const MODE: &str = "../../crates/ph2d-app-sculpt3d/src/mode.rs";
 
 /// **O pill EXISTE, é registrado, e o clique chega ao barramento** — três das quatro condições de
 /// UI numa asserção (a quarta, *a sequência leva a algum lugar*, é dos gates ao lado da cena).
@@ -143,7 +143,7 @@ fn the_scene_never_takes_a_click_that_belongs_to_the_chrome() {
     // tecto de LOC, e a varredura de um ficheiro só passou a ler o vazio.
     // *Um gate que nomeia um FICHEIRO envelhece com o primeiro corte* — e este
     // sabia-o, porque a mensagem do controlo positivo já o dizia.
-    let src: String = ["src/sculpt3d/input_down.rs", "src/sculpt3d/input.rs"]
+    let src: String = ["../../crates/ph2d-app-sculpt3d/src/input_down.rs", "../../crates/ph2d-app-sculpt3d/src/input.rs"]
         .iter()
         .map(|f| fs::read_to_string(f).expect("o módulo do gesto existe"))
         .collect::<Vec<_>>()

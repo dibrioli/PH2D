@@ -39,7 +39,7 @@ fn o_knob_da_curvatura_abre_no_valor_medido() {
 
 #[test]
 fn o_botao_nao_guarda_uma_segunda_copia_dos_defaults() {
-    let src = include_str!("../../src/sculpt3d/birth.rs");
+    let src = include_str!("../../../../crates/ph2d-app-sculpt3d/src/birth.rs");
     for campo in ["quad_detail", "quad_adapt"] {
         let derivado =
             format!("{campo}: ph2d_panel_sculpt3d::state::Sculpt3dUi::default().{campo}");

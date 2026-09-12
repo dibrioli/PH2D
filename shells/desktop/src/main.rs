@@ -438,8 +438,16 @@ mod scroll_smoke;
 /// [`sculpt3d::keys_view`]. ⇒ o corte da Fase B é mover UMA pasta.
 /// ⭐ **Onde a shell ATENDE a família da escultura** — os quinze invólucros que desmontam o
 /// `AppGfx`. A família mora em [`ph2d_app_sculpt3d`] desde a W2/L3.
+/// **O GESTO INTEIRO do bake, num device de verdade** — `#[ignore]`, precisa de adapter.
+#[cfg(all(test, feature = "sculpt3d"))]
+#[path = "sculpt3d_bake_gesture_tests.rs"]
+mod sculpt3d_bake_gesture_tests;
 #[cfg(feature = "sculpt3d")]
 mod sculpt3d_host;
+/// ⭐ **O gémeo NEUTRO do acima** — as três respostas que o resto do app espera quando a família
+/// não foi compilada. Ver o cabeçalho dele: gatear os chamadores era a cura errada.
+#[cfg(not(feature = "sculpt3d"))]
+mod sculpt3d_absent;
 mod shape_build;
 mod shape_build_gesture;
 /// O BAKE da folha — as peças passam a ser N janelas para UMA textura (plano §7.3, W5.2).

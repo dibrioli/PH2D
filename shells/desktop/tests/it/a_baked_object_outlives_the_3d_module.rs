@@ -26,7 +26,7 @@ use sculpt_source::{function_body, project_family_fn, source};
 #[test]
 fn the_relight_is_not_behind_the_sculpt_feature() {
     let body = function_body(&source("render_loop/mod.rs"), "run_render_frame");
-    let call = "crate::baked_form::relight_stale(";
+    let call = "ph2d_form_donation::baked_form::relight_stale(";
     let at = body
         .find(call)
         .expect("o frame precisa CHAMAR a re-acendida — sem ela um objeto reaberto nunca acende");

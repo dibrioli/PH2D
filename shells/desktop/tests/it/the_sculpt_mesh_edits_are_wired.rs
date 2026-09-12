@@ -619,7 +619,7 @@ fn the_remesh_refuses_with_the_stack_built_instead_of_flattening_it() {
     // ⚠️ **O enum MUDOU DE FICHEIRO em 2026-08-21** (o pai estourou a HR-18), e
     // este gate reprovou por isso — que é o gate a funcionar: ele afirma sobre o
     // fonte, e o fonte mudou de sítio.
-    let enum_src = std::fs::read_to_string("src/sculpt3d/remesh_refusal.rs")
+    let enum_src = std::fs::read_to_string("../../crates/ph2d-app-sculpt3d/src/remesh_refusal.rs")
         .expect("o enum das recusas é legível a partir do pacote");
     let body = enum_src
         .split("pub(in crate::sculpt3d) enum RemeshRefusal {")

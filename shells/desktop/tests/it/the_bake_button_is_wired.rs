@@ -16,7 +16,7 @@
 //! armarem o **mesmo** campo.
 
 use crate::sculpt_source;
-use sculpt_source::{arm_with, braced_block, function_body, sculpt_src, source};
+use sculpt_source::{arm_with, braced_block, family, function_body, sculpt_src, source};
 
 /// **O botão e o atalho armam o MESMO pedido.**
 ///
@@ -79,7 +79,7 @@ fn the_bake_intent_leaves_the_scene_untouched_and_travels_up() {
 /// nenhum, e o artista descobriria a condição pelo toast, depois do clique.
 #[test]
 fn the_panel_learns_about_the_selection_from_the_bridge() {
-    let bridge = source("render_loop/sculpt3d_panel_bridge.rs");
+    let bridge = family("panel_bridge.rs");
     let dispatch = function_body(&bridge, "dispatch");
     assert!(
         dispatch.contains("hero.gizmo.iter_selected()"),

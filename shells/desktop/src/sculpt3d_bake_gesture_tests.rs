@@ -5,8 +5,13 @@
 //! **desta shell** com 41 e 20 consumidores de famílias diferentes.
 //!
 //! ⛔ **Montar o sprite à mão para o manter na crate está recusado, e a recusa é do próprio
-//! autor dele**, três linhas abaixo: *«uma fixture que montasse o sprite à mão testaria um
-//! objeto que o produto não produz»*. ⇒ o teste vai para onde as duas metades se encontram.
+//! autor dele**, mais abaixo: *«uma fixture que montasse o sprite à mão testaria um objeto que
+//! o produto não produz»*. ⇒ o teste vai para onde as duas metades se encontram.
+//!
+//! ⚠️⚠️ **E ele mora em `src/`, não em `tests/it/`, porque a `shells/desktop` é um BINÁRIO.**
+//! A suíte de integração dela não pode chamar função nenhuma da shell — é por isso que os ~16
+//! gates da escultura que lá vivem são todos **censos de FONTE**. Um teste que precisa de
+//! *correr* o produto da shell só tem um sítio: um `#[cfg(test)]` dentro dela.
 //! **O GESTO DE ASSAR, ponta a ponta, num device de verdade.**
 //!
 //! Módulo irmão do [`super`] (`#[path]`, `cfg(test)`), ao lado do
@@ -49,7 +54,7 @@ use ph2d_ecs::{BakedForm as BakedFormId, Entity, SimWorld};
 use ph2d_mesh::shapes::uv_sphere;
 use ph2d_render::{GameRt, SpriteRenderer, TextureAtlas};
 
-use super::super::Sculpt3dScene;
+use ph2d_app_sculpt3d::Sculpt3dScene;
 
 /// O lado da tela que o gate assa.
 ///
@@ -86,7 +91,7 @@ fn the_bake_gesture_lights_the_selected_sprite() {
     // A MESMA porta que a cena de smoke usa para pôr a tela na mesa — uma
     // fixture que montasse o sprite à mão testaria um objeto que o produto não
     // produz.
-    let (_, bits) = ph2d_host_desktop::image_import::spawn_blank_canvas(
+    let (_, bits) = crate::image_import::spawn_blank_canvas(
         &mut sim,
         &mut renderer,
         &asset_db,
@@ -118,7 +123,7 @@ fn the_bake_gesture_lights_the_selected_sprite() {
         &mut renderer,
         false,
         &mut |sim: &mut SimWorld, renderer: &mut SpriteRenderer| {
-            ph2d_host_desktop::hero_intents::texture_edit::read_sprite_source(
+            crate::hero_intents::texture_edit::read_sprite_source(
                 ph2d_ecs::Entity::from_bits(bits),
                 sim,
                 renderer,

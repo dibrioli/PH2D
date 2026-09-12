@@ -17,7 +17,7 @@ use super::donation::FormRole;
 use super::{DEFAULT_RADIUS_PX, ObjectId, SceneObject, Sculpt3dScene, dyntopo, scenes};
 
 impl Sculpt3dScene {
-    pub(crate) fn new(device: &wgpu::Device, mesh: Mesh, aspect: f32) -> Self {
+    pub fn new(device: &wgpu::Device, mesh: Mesh, aspect: f32) -> Self {
         let mut camera = Camera3d {
             yaw: 0.6,
             pitch: 0.35,

@@ -591,6 +591,9 @@ ph2d-node-motion-bezier-warp = { path = "../../crates/ph2d-node-motion-bezier-wa
 # W2 — os auxiliares de gate da família (`forget_*`, `sync_scene`, …) vivem atrás da feature
 # `test-support`: um `#[cfg(test)]` da família é invisível para um teste da shell.
 ph2d-app-field3d = { path = "../../crates/ph2d-app-field3d", features = ["test-support"] }
+# E o mesmo para a escultura (W2/L3-B): o `encode_doc` que as fixtures de `project_tests`
+# consomem era `#[cfg(test)]` da família, e um `cfg(test)` não atravessa uma crate.
+ph2d-app-sculpt3d = { path = "../../crates/ph2d-app-sculpt3d", features = ["test-support"] }
 # O harness headless de painel (`MockPanelHost`) — a shell precisa dele para medir a
 # GEOMETRIA que um painel de fato registra. O censo de linhas (doc 88 B3) mede quantas
 # linhas um nó produz; a metade que faltava é se elas CABEM na altura do dock, e a única

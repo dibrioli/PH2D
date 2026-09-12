@@ -154,9 +154,6 @@ mod painter_preview_undo_tests;
 #[cfg(test)]
 mod push_look_probe;
 pub(crate) mod record_fit;
-/// O painel da cena 3D (ADR-0150 W12) — irmão do `physics_panel_bridge` e do
-/// `tokens_bridge`: um painel de MUNDO, publicado e drenado na mesma fase.
-#[cfg(feature = "sculpt3d")]
 pub(crate) mod timeline_bridge;
 /// **A AUTORIA de uma chave** — irmão do `timeline_bridge` por teto de LOC (HR-18).
 mod timeline_bridge_keys;

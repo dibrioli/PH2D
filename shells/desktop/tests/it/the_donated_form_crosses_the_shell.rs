@@ -16,17 +16,17 @@
 
 const BRIDGE: &str = include_str!("../../src/render_loop/painter_bridge.rs");
 const LOOP: &str = include_str!("../../src/render_loop/mod.rs");
-const SCENE: &str = include_str!("../../src/sculpt3d/mod.rs");
+const SCENE: &str = include_str!("../../../../crates/ph2d-app-sculpt3d/src/lib.rs");
 /// ⚠️ **O GESTO mora num arquivo irmão** (`sculpt3d/input.rs`), e as portas que
 /// este gate interroga moram lá. A separação é de responsabilidade — *o que a
 /// cena É* contra *o que a mão FAZ* — e ela nasceu de um teto de LOC, então pode
 /// se mover de novo: por isso as buscas usam [`scene_and_gesture`] em vez de
 /// nomear o arquivo de cada função.
-const INPUT: &str = include_str!("../../src/sculpt3d/input.rs");
+const INPUT: &str = include_str!("../../../../crates/ph2d-app-sculpt3d/src/input.rs");
 /// ⚠️ **A outra metade do despacho** — o pen-down mudou-se para um irmão em
 /// 2026-09-08, pelo tecto de LOC. *A família é lida INTEIRA, senão o primeiro
 /// corte transforma este gate num «não achei» silencioso.*
-const INPUT_DOWN: &str = include_str!("../../src/sculpt3d/input_down.rs");
+const INPUT_DOWN: &str = include_str!("../../../../crates/ph2d-app-sculpt3d/src/input_down.rs");
 
 /// ⚠️ **E o DESENHO mora num terceiro** (`sculpt3d/view.rs`), pelo mesmo motivo e
 /// pelo mesmo gatilho: um canal de sombreamento novo (o AO de tela) cruzou o teto
@@ -35,7 +35,7 @@ const INPUT_DOWN: &str = include_str!("../../src/sculpt3d/input_down.rs");
 /// classe de defeito que este repo já pagou três vezes. A cura é a que o
 /// comentário acima já prescrevia: nomear o arquivo UMA vez, na concatenação, e
 /// afirmar a PROPRIEDADE sobre a família.
-const VIEW: &str = include_str!("../../src/sculpt3d/view.rs");
+const VIEW: &str = include_str!("../../../../crates/ph2d-app-sculpt3d/src/view.rs");
 
 /// A cena, o gesto e o desenho como um só texto — ver [`INPUT`] e [`VIEW`].
 fn scene_and_gesture() -> String {
@@ -50,7 +50,7 @@ fn scene_and_gesture() -> String {
     );
     all
 }
-const DONATION: &str = include_str!("../../src/sculpt3d/donation.rs");
+const DONATION: &str = include_str!("../../../../crates/ph2d-app-sculpt3d/src/donation.rs");
 
 /// **As DUAS metades do canal existem no bridge.**
 ///

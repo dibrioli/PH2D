@@ -30,7 +30,7 @@
 
 use std::fs;
 
-const KEYS: &str = "src/sculpt3d/keys.rs";
+const KEYS: &str = "../../crates/ph2d-app-sculpt3d/src/keys.rs";
 
 fn keys_src() -> String {
     fs::read_to_string(KEYS).unwrap_or_else(|e| panic!("não consegui ler {KEYS}: {e}"))
@@ -182,7 +182,7 @@ fn the_hoisted_role_key_does_not_swallow_shift_d() {
         src[hoisted..despacho].contains("cycle_role()"),
         "o `D` hoistado não é o do ciclo de papel"
     );
-    let filho = std::fs::read_to_string("src/sculpt3d/keys_scene.rs")
+    let filho = std::fs::read_to_string("../../crates/ph2d-app-sculpt3d/src/keys_scene.rs")
         .expect("os verbos da LISTA vivem no irmão desde 2026-09-10");
     assert!(
         filho.contains("if code == K::KeyD") && filho.contains("scene.duplicate_active()"),

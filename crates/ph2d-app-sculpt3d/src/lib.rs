@@ -257,7 +257,12 @@ pub use doc::{LoadedPiece, decode as decode_doc};
 // `project_tests` precisam de um documento de escultura VÁLIDO, e montá-lo à mão
 // lá seria um segundo escritor — que concordaria com este exatamente onde ele
 // erra. O `cfg(test)` é o que diz que a superfície é isso e nada mais.
-#[cfg(test)]
+// ⚠️⚠️ **`any(test, feature = "test-support")` desde 2026-09-11 (W2/L3-B), e é a armadilha
+// §2.5 do HOWTO à letra:** um `#[cfg(test)]` é **invisível do outro lado de uma crate**. O
+// `project_sculpt_tests` da shell consome este escritor, e enquanto a família vivia lá dentro
+// o `cfg(test)` dele bastava. ⛔ A cura NÃO é publicá-lo sem cerca — a superfície é exactamente
+// isto e nada mais, e a feature é o que o diz.
+#[cfg(any(test, feature = "test-support"))]
 pub use doc::encode as encode_doc;
 
 /// **UM OBJETO da cena** — a pilha de níveis dele e onde ele está.

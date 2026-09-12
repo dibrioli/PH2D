@@ -16,7 +16,7 @@
 
 use std::fs;
 
-const SHADING: &str = "src/sculpt3d/scenes_shading.rs";
+const SHADING: &str = "../../crates/ph2d-app-sculpt3d/src/scenes_shading.rs";
 
 /// As cenas que o módulo de sombreamento declara, pelo literal que cada uma compara.
 fn scenes(src: &str) -> Vec<String> {
@@ -95,7 +95,7 @@ fn the_primary_mesh_door_is_actually_asked_before_the_fallback() {
     // ⚠️ **A `smoke_mesh` mudou de ficheiro em 2026-09-07** (corte de LOC do
     // roteador de cenas) — ver o irmão no `sculpt3d/scenes_tests.rs`.
     let src =
-        fs::read_to_string("src/sculpt3d/scenes_mesh.rs").expect("o escolhedor de malha existe");
+        fs::read_to_string("../../crates/ph2d-app-sculpt3d/src/scenes_mesh.rs").expect("o escolhedor de malha existe");
     let at = src
         .find("pub(crate) fn smoke_mesh(")
         .expect("controle: a porta da peca primaria existe");
@@ -167,7 +167,7 @@ fn the_scene_rig_reaches_the_session() {
         .filter_map(Result::ok)
         .map(|e| e.file_name().to_string_lossy().into_owned())
         .filter(|n| n.ends_with(".rs") && !n.ends_with("_tests.rs"))
-        .filter_map(|n| fs::read_to_string(format!("src/sculpt3d/{n}")).ok())
+        .filter_map(|n| fs::read_to_string(format!("../../crates/ph2d-app-sculpt3d/src/{n}")).ok())
         .filter(|c| c.contains("fn new(device: &wgpu::Device"))
         .collect();
     // **Controle positivo:** o construtor tem de existir e ser UM. Zero é a

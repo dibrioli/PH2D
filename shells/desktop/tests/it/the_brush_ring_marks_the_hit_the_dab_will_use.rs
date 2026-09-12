@@ -23,7 +23,7 @@
 
 use std::fs;
 
-const CURSOR: &str = "src/sculpt3d/cursor.rs";
+const CURSOR: &str = "../../crates/ph2d-app-sculpt3d/src/cursor.rs";
 
 fn source(path: &str) -> String {
     fs::read_to_string(path).unwrap_or_else(|e| panic!("não consegui ler {path}: {e}"))

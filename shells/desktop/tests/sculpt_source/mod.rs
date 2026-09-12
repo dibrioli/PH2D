@@ -22,6 +22,31 @@ use std::fs;
 /// explica *por que* ele não usa `refresh_region` — a explicação continha a
 /// palavra que a asserção proibia. Um gate que dispara em documentação ensina a
 /// não documentar.
+/// **A FONTE DA FAMÍLIA**, do outro lado da fronteira — irmã da [`source`], que lê a shell.
+///
+/// ⚠️⚠️ **Nasceu em 2026-09-11 (W2/L3-B), quando a família saiu para `ph2d-app-sculpt3d`.**
+/// Estes gates medem código da FAMÍLIA e vivem na suíte da SHELL, e isso é deliberado: é o
+/// precedente que o piloto (`field3d`) estabeleceu no mesmo dia — vários deles medem os DOIS
+/// lados de uma costura, e parti-los em duas suítes perderia exactamente a propriedade que
+/// eles afirmam. ⇒ a travessia acontece num sítio só, aqui, e não em dezasseis caminhos
+/// relativos escritos à mão.
+///
+/// Ela descarta a prosa como a irmã — ver o doc de [`source`] (§2.12).
+pub fn family(name: &str) -> String {
+    let raw = fs::read_to_string(format!(
+        "{}/../../crates/ph2d-app-sculpt3d/src/{name}",
+        env!("CARGO_MANIFEST_DIR")
+    ))
+    .unwrap_or_else(|e| panic!("não consegui ler a fonte da família {name}: {e}"));
+    raw.lines()
+        .map(|l| match l.find("//") {
+            Some(at) => &l[..at],
+            None => l,
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
 pub fn source(name: &str) -> String {
     let raw = fs::read_to_string(format!("{}/src/{name}", env!("CARGO_MANIFEST_DIR")))
         .unwrap_or_else(|e| panic!("não consegui ler src/{name}: {e}"));
@@ -315,9 +340,12 @@ pub fn match_arm(src: &str, anchor: &str) -> String {
 /// `src/` o filtro `starts_with("sculpt3d")` só casaria com o DIRECTÓRIO (que não acaba em `.rs`),
 /// e a função devolveria a string vazia: todo gate que a consome ficaria verde sobre o VÁCUO.
 pub fn sculpt_src() -> String {
-    let dir = format!("{}/src/sculpt3d", env!("CARGO_MANIFEST_DIR"));
+    let dir = format!(
+        "{}/../../crates/ph2d-app-sculpt3d/src",
+        env!("CARGO_MANIFEST_DIR")
+    );
     let mut names: Vec<String> = fs::read_dir(&dir)
-        .expect("src/sculpt3d/")
+        .expect("o `src/` da crate da família")
         .filter_map(|e| e.ok().map(|e| e.file_name().to_string_lossy().into_owned()))
         // ⚠️ **Os `_tests.rs` do cluster ficam de FORA**, e não é higiene: um
         // arch-gate que afirma AUSÊNCIA (*"esta fiação não chama X"*) passaria a

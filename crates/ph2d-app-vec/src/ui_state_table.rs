@@ -28,11 +28,7 @@ use ph2d_vec_scene::VecPathId;
 /// `retain_hosts` deixa cair a tabela inteira do hospedeiro no mesmo quadro.
 ///
 /// Devolve `true` se alguma pose saiu.
-pub fn forget_object_in_all_states(
-    states: &mut StateSets,
-    host: VecPathId,
-    id: VecPathId,
-) -> bool {
+pub fn forget_object_in_all_states(states: &mut StateSets, host: VecPathId, id: VecPathId) -> bool {
     let mut dropped = false;
     for role in StateRole::ALL {
         let Some(mut st) = states.role(host, role).cloned() else {
@@ -161,11 +157,7 @@ pub fn replace_morph_shape_in_all_states(
 /// seja um GRUPO puro nunca teve o problema (o `members` não o inclui — ele não tem forma), e é
 /// por isso que o defeito só aparece depois de o artista gravar um estado que move a própria
 /// forma-hospedeiro.
-pub fn shift_host_in_all_states(
-    states: &mut StateSets,
-    host: VecPathId,
-    delta: [f64; 2],
-) -> bool {
+pub fn shift_host_in_all_states(states: &mut StateSets, host: VecPathId, delta: [f64; 2]) -> bool {
     if delta == [0.0, 0.0] {
         return false;
     }

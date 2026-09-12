@@ -44,12 +44,7 @@ pub type UiMachines = BTreeMap<VecPathId, Machine>;
 /// ⚠️ A máquina nasce parada no primeiro estado gravado, e é por isso que a construção lê a
 /// tabela inteira: partir de um estado inventado faria a primeira transição vir de uma pose que
 /// ninguém autorou.
-pub fn request(
-    machines: &mut UiMachines,
-    states: &StateSets,
-    host: VecPathId,
-    role: StateRole,
-) {
+pub fn request(machines: &mut UiMachines, states: &StateSets, host: VecPathId, role: StateRole) {
     // ⚠️ **A porta é UMA:** `spring(host)` decide qual motor corre, e o painel pinta a partir da
     // MESMA resposta. Duas perguntas — uma no painel, outra aqui — seriam duas chances de o
     // artista ver linhas de mola e a cena andar por curva.

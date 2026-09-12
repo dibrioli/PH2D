@@ -48,10 +48,7 @@ pub fn kind_for_id(id: ph2d_editor::NodeId) -> Option<StrokePaintKind> {
 /// para *"tem traço?"* (`Some(false)`) e **nenhuma** para *"que tinta?"*. É por isso que a caixa é
 /// pintada e a fileira de tipo não.
 #[must_use]
-pub fn selected_stroke_paint_kind(
-    scene: &VecScene,
-    pen: &PenTool,
-) -> Option<StrokePaintKind> {
+pub fn selected_stroke_paint_kind(scene: &VecScene, pen: &PenTool) -> Option<StrokePaintKind> {
     let [id] = pen.selected_paths() else {
         return None;
     };
@@ -214,12 +211,7 @@ pub enum BrushCmd {
 ///
 /// ⚠️ **O `if` de igualdade no fim é o que impede um passo espúrio** quando o slider re-publica o
 /// valor que já lá estava — a mesma disciplina da porta do padrão.
-pub fn apply(
-    scene: &mut VecScene,
-    history: &mut History,
-    pen: &PenTool,
-    cmd: BrushCmd,
-) -> bool {
+pub fn apply(scene: &mut VecScene, history: &mut History, pen: &PenTool, cmd: BrushCmd) -> bool {
     let Some(sel) = pen.selected() else {
         return false;
     };

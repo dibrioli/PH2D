@@ -139,10 +139,13 @@ fn the_allowlist_only_names_files_that_still_downcast() {
         let tem = conteudo.lines().any(|l| {
             let t = l.trim_start();
             !t.starts_with("//")
-                && (l.contains("downcast_mut::<ph2d_tool_") || l.contains("downcast_ref::<ph2d_tool_"))
+                && (l.contains("downcast_mut::<ph2d_tool_")
+                    || l.contains("downcast_ref::<ph2d_tool_"))
         });
         if !tem {
-            podres.push(format!("{entrada}: existe, mas JA' NAO tem downcast nenhum"));
+            podres.push(format!(
+                "{entrada}: existe, mas JA' NAO tem downcast nenhum"
+            ));
         }
     }
     assert!(

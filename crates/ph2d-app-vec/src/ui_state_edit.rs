@@ -131,12 +131,7 @@ pub fn members(
 /// coisa que o **Rec** captura — *o que a cena mostra agora* —, e uma segunda leitura ao lado
 /// seria a que esquece um canal no dia em que a pose ganhar um. Uma porta, dois consumidores.
 #[must_use]
-pub fn capture(
-    sim: &SimWorld,
-    scene: &VecScene,
-    map: &VecEntityMap,
-    id: VecPathId,
-) -> ObjectPose {
+pub fn capture(sim: &SimWorld, scene: &VecScene, map: &VecEntityMap, id: VecPathId) -> ObjectPose {
     let mut pose = ObjectPose::new(id);
     // ⭐ **A forma deste objecto é DERIVADA?** Um conjunto de Morph States não tem geometria
     // autorada: o `morph_live::recook` reescreve-a em todo quadro a partir do par e do `t`. Ver o
@@ -243,12 +238,7 @@ pub fn capture(
 /// realizados, então re-cozinhá-la seria aplicá-los duas vezes. Na CHEGADA volta a autorada, com
 /// as alças de quina e a pilha intactas — a passagem pelo documento é transitória e cura-se
 /// sozinha, e é o preço de o Show ter de deixar a cena *editável no estado que mostra*.
-pub fn install(
-    sim: &mut SimWorld,
-    scene: &mut VecScene,
-    map: &VecEntityMap,
-    pose: &ObjectPose,
-) {
+pub fn install(sim: &mut SimWorld, scene: &mut VecScene, map: &VecEntityMap, pose: &ObjectPose) {
     if let Some(e) = entity_of(map, pose.id) {
         if let Some(mut t) = sim.world_mut().get_mut::<Transform>(e) {
             #[allow(clippy::cast_possible_truncation)]

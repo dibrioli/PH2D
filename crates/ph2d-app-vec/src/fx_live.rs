@@ -493,12 +493,7 @@ pub fn set_filter(
 ///
 /// Se a edição esvaziar a pilha, o componente é REMOVIDO (a mesma lei do `set_filter`, perguntada
 /// no mesmo lugar: quem remove a última linha não deixa um componente inerte para trás).
-pub fn edit(
-    sim: &mut SimWorld,
-    map: &VecEntityMap,
-    ids: &[VecPathId],
-    f: impl Fn(&mut VecFilter),
-) {
+pub fn edit(sim: &mut SimWorld, map: &VecEntityMap, ids: &[VecPathId], f: impl Fn(&mut VecFilter)) {
     for id in ids {
         let Some(&bits) = map.get(id) else { continue };
         let e = Entity::from_bits(bits);

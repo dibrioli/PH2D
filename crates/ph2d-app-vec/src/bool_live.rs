@@ -376,11 +376,7 @@ fn input_of(
 /// ⚠️ **O mais PRÓXIMO vence**, e é a mesma lei do `plan_containing`: com grupos aninhados, uma
 /// forma pertence ao grupo dela — quem consome o resultado desse grupo é outra pergunta.
 #[must_use]
-pub fn group_above(
-    sim: &SimWorld,
-    map: &VecEntityMap,
-    id: VecPathId,
-) -> Option<(Entity, u8)> {
+pub fn group_above(sim: &SimWorld, map: &VecEntityMap, id: VecPathId) -> Option<(Entity, u8)> {
     let w = sim.world();
     let mut cur = Entity::from_bits(*map.get(&id)?);
     for _ in 0..MAX_DEPTH {

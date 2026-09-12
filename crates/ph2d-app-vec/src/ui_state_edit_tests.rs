@@ -9,8 +9,7 @@ use ph2d_vec_scene::{VecScene, rectangle};
 /// ⚠️ A fixture tem **filho de propósito**: um botão não é uma forma, e um estado que só gravasse
 /// o hospedeiro deixaria de fora justamente o que se move num hover. Sem o filho, a lei
 /// *"o estado é da SUB-ÁRVORE"* seria verde por vácuo.
-pub fn scene_with_host_and_child() -> (SimWorld, VecScene, VecEntityMap, VecPathId, VecPathId)
-{
+pub fn scene_with_host_and_child() -> (SimWorld, VecScene, VecEntityMap, VecPathId, VecPathId) {
     let mut sim = SimWorld::new();
     let mut scene = VecScene::default();
 

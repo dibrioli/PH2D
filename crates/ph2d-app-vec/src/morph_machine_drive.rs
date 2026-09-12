@@ -463,9 +463,8 @@ fn repair_states(
         // ⚠️ **Uma de cada vez, e em sequência**: a escolha prefere uma forma que nenhum outro
         // estado nomeie, então a segunda substituição tem de ver o que a primeira escolheu.
         for s in gone_shapes {
-            let to = crate::ui_state_edit::replace_morph_shape_in_all_states(
-                states, k, h, s, shapes,
-            );
+            let to =
+                crate::ui_state_edit::replace_morph_shape_in_all_states(states, k, h, s, shapes);
             if log_on() {
                 eprintln!("[morph] REPARO tabela={k} substituiu forma {s} por {to:?}");
             }

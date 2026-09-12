@@ -264,11 +264,11 @@ pub(crate) mod ui_preview;
 // `vec_ui_state_edit`, que foi com ela. ⛔ **O LAÇO e os CAMPOS ficam**: o `app_state` guarda as
 // `UiMachines` e o `Cooked`, e é este módulo que decide quando `request`/`dispatch` correm.
 // *O que sai são os CORPOS; o que decide a ordem do quadro fica* (HOWTO §4).
-pub(crate) use ph2d_app_vec::ui_state_bridge;
 /// O NÚMERO do smart guide — a ficha de distância; veja os docs do módulo.
 // ⭐ W2/L4: foi para `crates/ph2d-app-vec`. Re-exportado para `render_loop::vec_snap_labels`
 // continuar a resolver nos chamadores deste módulo.
 use ph2d_app_vec::snap_labels as vec_snap_labels;
+pub(crate) use ph2d_app_vec::ui_state_bridge;
 // ⭐ **A ponte documento ⇄ cena vectorial mudou-se para [`ph2d_app_vec::vector_bridge`]**
 // (W2 Fase D): os seis ficheiros dela são PUROS, e o que os prendia aqui era uma FACHADA —
 // `crate::vec_snap::VecSnapSettings` é `pub(crate) use ph2d_app_vec::snap::{…}`, um tipo da

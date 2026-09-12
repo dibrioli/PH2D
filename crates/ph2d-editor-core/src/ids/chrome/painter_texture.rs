@@ -4,8 +4,8 @@
 //! source). Split from `painter.rs` to keep that file under the workspace LOC cap;
 //! the option-id factories reuse the FNV runtime-hash twin in `painter.rs`.
 
-use ph2d_tool_registry::hash_node_id_runtime;
 use super::{NodeId, hash_node_id};
+use ph2d_tool_registry::hash_node_id_runtime;
 
 /// Brush texture **kind** picker chip (None/Noise/Checker/Voronoi/Stripes — the
 /// thumbnail picker). `SelectOption` → `set_brush_texture_kind`. Options via

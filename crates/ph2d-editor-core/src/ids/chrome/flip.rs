@@ -448,8 +448,14 @@ mod tests {
     fn runtime_hasher_matches_const_hash_node_id() {
         // The runtime twin must agree with the const hasher for a static string,
         // so runtime-derived ids live in the same space as the fixed consts.
-        assert_eq!(ph2d_tool_registry::hash_node_id_runtime("flip.panel"), FLIP_PANEL);
-        assert_eq!(ph2d_tool_registry::hash_node_id_runtime("flip.mode.draw"), FLIP_MODE_DRAW);
+        assert_eq!(
+            ph2d_tool_registry::hash_node_id_runtime("flip.panel"),
+            FLIP_PANEL
+        );
+        assert_eq!(
+            ph2d_tool_registry::hash_node_id_runtime("flip.mode.draw"),
+            FLIP_MODE_DRAW
+        );
     }
 
     #[test]

@@ -21,8 +21,8 @@
 
 use ph2d_a11y::NodeId;
 
-use ph2d_tool_registry::hash_node_id_runtime;
 use crate::ids::hash_node_id;
+use ph2d_tool_registry::hash_node_id_runtime;
 
 /// O retângulo externo do painel (z-order + barreira de hit + roteamento da roda).
 pub const TOKENS_PANEL: NodeId = hash_node_id("tokens.panel");

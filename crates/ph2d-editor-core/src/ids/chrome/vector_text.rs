@@ -5,8 +5,8 @@
 //! tracking, o refluxo) — e no pai fica *o que uma forma É*. `VECTOR_MODE_TEXT` **não** vem
 //! junto de propósito: ele é um MODO, e mora com os outros três.
 
-use ph2d_tool_registry::hash_node_id_runtime;
 use super::{NodeId, hash_node_id};
+use ph2d_tool_registry::hash_node_id_runtime;
 
 /// Text "Size" slider (world units) — shown only in Text mode; drives the glyph
 /// size of the active session + the size a new session starts at.

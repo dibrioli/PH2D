@@ -5,8 +5,8 @@
 //! the frozen `PanelEvent` channel to `PainterTool::set_brush_shape_*` / `set_brush_grain_depth`.
 //! Split from `painter.rs` / `painter_texture.rs` to keep those under the workspace LOC cap.
 
-use ph2d_tool_registry::hash_node_id_runtime;
 use super::{NodeId, hash_node_id};
+use ph2d_tool_registry::hash_node_id_runtime;
 
 /// **Grain Depth** slider (`0..1` track; `1` = full bite, default). `SetValue` → `set_brush_grain_depth`.
 /// Lives in the Grain section (the renamed Texture section).

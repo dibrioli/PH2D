@@ -304,7 +304,8 @@ fn varrer() -> Censo {
             || ((com.contains("hash_node_id") || tem_primo_fnv(cod))
                 && is_declared_under_cfg_test(abs));
         let regioes = regioes_de_teste(cod);
-        let produto = |off: usize| !ficheiro_de_teste && !regioes.iter().any(|&(a, e)| off >= a && off < e);
+        let produto =
+            |off: usize| !ficheiro_de_teste && !regioes.iter().any(|&(a, e)| off >= a && off < e);
 
         for (off, nome) in chamadas(cod, "hash_node_id") {
             debug_assert_eq!(nome, "hash_node_id");
@@ -487,7 +488,9 @@ fn limpar(src: &str) -> (String, String) {
                     let mut fim = n;
                     let mut t = k + 1;
                     while t < n {
-                        if b[t] == b'"' && b[t + 1..].iter().take(h).filter(|&&x| x == b'#').count() == h {
+                        if b[t] == b'"'
+                            && b[t + 1..].iter().take(h).filter(|&&x| x == b'#').count() == h
+                        {
                             fim = t;
                             break;
                         }
@@ -641,13 +644,19 @@ fn argumento(com: &str, off: usize) -> Arg {
     };
     let mut s = depois[p + 1..].trim_start();
     if let Some(r) = s.strip_prefix('"') {
-        return r.split('"').next().map_or(Arg::Expressao, |x| Arg::Literal(x.to_owned()));
+        return r
+            .split('"')
+            .next()
+            .map_or(Arg::Expressao, |x| Arg::Literal(x.to_owned()));
     }
     s = s.strip_prefix('&').unwrap_or(s).trim_start();
     if let Some(r) = s.strip_prefix("format!") {
         let r = r.trim_start().strip_prefix('(').unwrap_or(r).trim_start();
         if let Some(r) = r.strip_prefix('"') {
-            return r.split('"').next().map_or(Arg::Expressao, |x| Arg::Molde(x.to_owned()));
+            return r
+                .split('"')
+                .next()
+                .map_or(Arg::Expressao, |x| Arg::Molde(x.to_owned()));
         }
     }
     Arg::Expressao
@@ -821,7 +830,11 @@ fn exemplar(molde: &str, v: &str) -> String {
 #[test]
 fn chrome_node_ids_are_pairwise_unique() {
     // Controlo positivo do agrupador: sem ele, uma função que nunca agrupasse deixava isto verde.
-    assert_eq!(colisoes(["a", "a", "b"]).len(), 0, "o mesmo slug duas vezes não é colisão de hash");
+    assert_eq!(
+        colisoes(["a", "a", "b"]).len(),
+        0,
+        "o mesmo slug duas vezes não é colisão de hash"
+    );
     let c = censo();
     let achadas = colisoes(c.literais.iter().map(|l| l.slug.as_str()));
     assert!(
@@ -838,7 +851,10 @@ fn chrome_node_ids_are_pairwise_unique() {
     let hashes: BTreeSet<u64> = c.literais.iter().map(|l| h(&l.slug)).collect();
     let mut vistos: BTreeMap<u64, &str> = BTreeMap::new();
     for (nome, v, file) in &c.numericos {
-        assert!(!hashes.contains(v), "`{nome}` ({file}) = NodeId({v}) colide com um slug hasheado");
+        assert!(
+            !hashes.contains(v),
+            "`{nome}` ({file}) = NodeId({v}) colide com um slug hasheado"
+        );
         if let Some(outro) = vistos.insert(*v, nome) {
             assert_eq!(outro, nome, "`{nome}` e `{outro}` são o mesmo NodeId({v})");
         }
@@ -857,8 +873,10 @@ fn no_slug_is_declared_in_two_places() {
             .or_default()
             .push(format!("{}:{}", l.file, l.line));
     }
-    let tolerados: BTreeMap<&str, usize> =
-        SLUGS_REPETIDOS_TOLERADOS.iter().map(|(s, n, _)| (*s, *n)).collect();
+    let tolerados: BTreeMap<&str, usize> = SLUGS_REPETIDOS_TOLERADOS
+        .iter()
+        .map(|(s, n, _)| (*s, *n))
+        .collect();
     let repetidos: Vec<String> = sitios
         .iter()
         .filter(|(s, v)| v.len() > 1 && tolerados.get(*s).is_none_or(|n| v.len() > *n))
@@ -879,7 +897,11 @@ fn the_repeated_slug_ratchet_still_describes_the_tree() {
     let c = censo();
     for (slug, n, porque) in SLUGS_REPETIDOS_TOLERADOS {
         assert!(!porque.trim().is_empty(), "{slug:?} tolerado sem motivo");
-        let agora = c.literais.iter().filter(|l| l.produto && l.slug == *slug).count();
+        let agora = c
+            .literais
+            .iter()
+            .filter(|l| l.produto && l.slug == *slug)
+            .count();
         assert_eq!(
             agora, *n,
             "{slug:?} está tolerado com {n} sítios e a árvore tem {agora} — a entrada já não descreve \
@@ -894,14 +916,20 @@ fn the_census_sees_the_whole_workspace() {
     let c = censo();
     // Um slug da fundação, um de uma crate de ferramenta, um molde da família vectorial: três
     // directórios diferentes, e nenhum deles se apaga numa limpeza de rotina.
-    for slug in ["insp_blender_picker", "panel.color_equalization", "flip.panel"] {
+    for slug in [
+        "insp_blender_picker",
+        "panel.color_equalization",
+        "flip.panel",
+    ] {
         assert!(
             c.literais.iter().any(|l| l.slug == slug && l.produto),
             "controlo: o slug de produto {slug:?} não foi achado — o varrimento cegou para o sítio dele"
         );
     }
     assert!(
-        c.moldes.iter().any(|m| m.molde == "vector.texpat.{slot}.{knob:?}"),
+        c.moldes
+            .iter()
+            .any(|m| m.molde == "vector.texpat.{slot}.{knob:?}"),
         "controlo: o molde `vector.texpat.{{slot}}.{{knob:?}}` não foi achado — o leitor de moldes cegou"
     );
     assert!(
@@ -909,13 +937,17 @@ fn the_census_sees_the_whole_workspace() {
         "controlo: nenhum literal de TESTE — a separação produto/teste não está a separar"
     );
     assert!(
-        c.numericos.iter().any(|(n, v, _)| n == "HIER_PLAYER" && *v == 400),
+        c.numericos
+            .iter()
+            .any(|(n, v, _)| n == "HIER_PLAYER" && *v == 400),
         "controlo: o `HIER_PLAYER = NodeId(400)` não foi achado — o leitor de numéricos cegou"
     );
     assert!(
         c.formas
             .iter()
-            .any(|(f, func, e)| f.ends_with("screens/hero/live.rs") && func == "fold_track" && *e == Especie::FnvAMao),
+            .any(|(f, func, e)| f.ends_with("screens/hero/live.rs")
+                && func == "fold_track"
+                && *e == Especie::FnvAMao),
         "controlo: a FNV à mão do `fold_track` não foi achada — o leitor de formas cegou"
     );
 }
@@ -926,7 +958,14 @@ fn the_census_sees_the_whole_workspace() {
 fn no_chrome_id_is_root() {
     let c = censo();
     for l in c.literais.iter().filter(|l| l.produto) {
-        assert_ne!(h(&l.slug), NodeId::ROOT.0, "{:?} ({}:{}) é o NodeId::ROOT", l.slug, l.file, l.line);
+        assert_ne!(
+            h(&l.slug),
+            NodeId::ROOT.0,
+            "{:?} ({}:{}) é o NodeId::ROOT",
+            l.slug,
+            l.file,
+            l.line
+        );
     }
     for (nome, v, file) in &c.numericos {
         assert_ne!(*v, NodeId::ROOT.0, "`{nome}` ({file}) é o NodeId::ROOT");
@@ -970,10 +1009,16 @@ fn a_runtime_template_never_spells_a_literal_slug() {
     // Controlos do casador.
     assert!(casa("vector.fx.{r}.remove", "vector.fx.3.remove"));
     assert!(casa("vector.fx.{r}.remove", "vector.fx.42.remove"));
-    assert!(!casa("vector.fx.{r}.remove", "vector.fx..remove"), "um marcador soletra >= 1 dígito");
+    assert!(
+        !casa("vector.fx.{r}.remove", "vector.fx..remove"),
+        "um marcador soletra >= 1 dígito"
+    );
     assert!(!casa("vector.fx.{r}.remove", "vector.fx.3.up"));
     assert!(casa("a.{i}", "a.7") && !casa("a.{i}", "b.7") && !casa("a.{i}", "a.7.num"));
-    assert!(!casa("vector.shape.{index}", "vector.shape.group_dd"), "um índice não soletra texto");
+    assert!(
+        !casa("vector.shape.{index}", "vector.shape.group_dd"),
+        "um índice não soletra texto"
+    );
 
     let c = censo();
     let mut soletrados = Vec::new();
@@ -990,7 +1035,8 @@ fn a_runtime_template_never_spells_a_literal_slug() {
     for (i, a) in c.moldes.iter().enumerate() {
         for b in c.moldes.iter().skip(i + 1) {
             for v in ["0", "17"] {
-                if casa(&b.molde, &exemplar(&a.molde, v)) || casa(&a.molde, &exemplar(&b.molde, v)) {
+                if casa(&b.molde, &exemplar(&a.molde, v)) || casa(&a.molde, &exemplar(&b.molde, v))
+                {
                     soletrados.push(format!(
                         "os moldes {:?} ({} :: {}) e {:?} ({} :: {}) soletram a mesma string",
                         a.molde, a.file, a.func, b.molde, b.file, b.func
@@ -1011,7 +1057,10 @@ fn every_non_literal_hash_is_named() {
     let nomeadas: BTreeSet<(String, String, Especie)> = FORMAS_NAO_LITERAIS
         .iter()
         .map(|(f, func, e, porque)| {
-            assert!(!porque.trim().is_empty(), "{f} :: {func} nomeada sem motivo");
+            assert!(
+                !porque.trim().is_empty(),
+                "{f} :: {func} nomeada sem motivo"
+            );
             ((*f).to_owned(), (*func).to_owned(), *e)
         })
         .collect();

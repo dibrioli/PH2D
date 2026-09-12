@@ -1,6 +1,6 @@
 //! Vector module chrome NodeIds (VGRAPH_* geometry-graph + VECTOR_INSPECTOR_*).
-use ph2d_tool_registry::hash_node_id_runtime;
 use super::{NodeId, hash_node_id};
+use ph2d_tool_registry::hash_node_id_runtime;
 
 /// Vector Geometry-Graph panel (W3 T3.1) — docked panel that places the
 /// `vector.source` node + drives its 8 params (sliders) and renders the cooked

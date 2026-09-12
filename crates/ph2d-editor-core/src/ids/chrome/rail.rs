@@ -1,6 +1,6 @@
 //! Left rail + transform tool NodeIds (HIERARCHY_ADD, TOOL_*, RAIL_*).
-use ph2d_tool_registry::hash_node_id_runtime;
 use super::{NodeId, hash_node_id};
+use ph2d_tool_registry::hash_node_id_runtime;
 
 pub const HIERARCHY_ADD: NodeId = hash_node_id("hierarchy_add");
 

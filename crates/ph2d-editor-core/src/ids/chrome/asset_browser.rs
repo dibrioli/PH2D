@@ -175,8 +175,14 @@ mod tests {
     /// noutro espaço e o hit-test nunca os resolve.
     #[test]
     fn the_runtime_hasher_agrees_with_the_const_one() {
-        assert_eq!(ph2d_tool_registry::hash_node_id_runtime("asset_browser.panel"), ASSET_PANEL);
-        assert_eq!(ph2d_tool_registry::hash_node_id_runtime("asset_browser.search"), ASSET_SEARCH);
+        assert_eq!(
+            ph2d_tool_registry::hash_node_id_runtime("asset_browser.panel"),
+            ASSET_PANEL
+        );
+        assert_eq!(
+            ph2d_tool_registry::hash_node_id_runtime("asset_browser.search"),
+            ASSET_SEARCH
+        );
     }
 
     /// ⭐⭐ **A escada lê-se nos dois sentidos, e os dois sentidos concordam.**

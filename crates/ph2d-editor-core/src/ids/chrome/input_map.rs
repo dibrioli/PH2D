@@ -7,8 +7,8 @@
 //! cada acção criada — o mesmo par que o painel de tokens já usa, e pela mesma razão: um id fixo
 //! por linha limitaria a lista ao número de constantes que alguém escreveu.
 
-use ph2d_tool_registry::hash_node_id_runtime;
 use super::{NodeId, hash_node_id};
+use ph2d_tool_registry::hash_node_id_runtime;
 
 /// A faixa do título — **a alça de arrasto**. Um Down aqui começa a mover a janela, e ela **não**
 /// pode fechar durante o movimento (a cicatriz que o `fill_modal` já registou).

@@ -34,7 +34,7 @@ pub(super) fn draw_line_overlay(
                 sim.world().get::<ph2d_render::Sprite>(entity),
             )
         {
-            let base_affine = super::bgremoval_preview::sprite_image_to_screen_affine(
+            let base_affine = ph2d_sprite_screen::sprite_image_to_screen_affine(
                 iw,
                 ih,
                 tr,

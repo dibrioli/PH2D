@@ -5871,6 +5871,7 @@ dependencies = [
  "ph2d-skeleton-ecs",
  "ph2d-skeleton-live",
  "ph2d-skeleton-render",
+ "ph2d-sprite-screen",
  "ph2d-sprite-sheet",
  "ph2d-table",
  "ph2d-text",
@@ -8224,6 +8225,16 @@ name = "ph2d-spring"
 version = "0.0.0"
 dependencies = [
  "serde",
+]
+
+[[package]]
+name = "ph2d-sprite-screen"
+version = "0.0.0"
+dependencies = [
+ "ph2d-ecs",
+ "ph2d-host",
+ "ph2d-render",
+ "ph2d-vector",
 ]
 
 [[package]]

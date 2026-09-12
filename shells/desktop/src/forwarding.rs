@@ -276,7 +276,7 @@ fn painter_eyedropper_sample(
     // Screen → image-px via the FULL sprite affine (size · scale · rotation · anchor · camera) — the
     // same geometry the brush uses, so the eyedropper tracks the sprite under any resize, AR change OR
     // rotation. `u`/`v` is the image fraction; not clamped (a Repeat-Image neighbour lands outside `[0,1]`).
-    let affine = crate::render_loop::bgremoval_preview::sprite_image_to_screen_affine(
+    let affine = ph2d_sprite_screen::sprite_image_to_screen_affine(
         iw,
         ih,
         tr,

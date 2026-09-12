@@ -73,6 +73,9 @@ ph2d-panel-authored = { path = "../../crates/ph2d-panel-authored" }
 ph2d-panel-sculpt3d = { path = "../../crates/ph2d-panel-sculpt3d" }
 ph2d-panel-wet-tuning = { path = "../../crates/ph2d-panel-wet-tuning" }
 ph2d-render = { path = "../../crates/ph2d-render" }
+# ⭐ A folha do afim `imagem-px → ecrã-px`: quatro assuntos da shell partilhavam esta lei, e duas
+# famílias que partilham código partilham uma FOLHA, nunca uma delas à outra (HOWTO §1.2).
+ph2d-sprite-screen = { path = "../../crates/ph2d-sprite-screen" }
 # ADR-0166: o descritor de componente. A shell é a ÚNICA que vê os cinco registradores, e
 # por isso é aqui que mora o censo de dois lados do catálogo
 # (`tests/every_registered_component_is_described.rs`) — um censo dentro de qualquer crate

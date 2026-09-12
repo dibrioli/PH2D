@@ -1,0 +1,19 @@
+[package]
+name = "ph2d-sprite-screen"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+[dependencies]
+ph2d-ecs = { path = "../ph2d-ecs" }
+# `WindowSize` — o rectângulo em que se projecta.
+ph2d-host = { path = "../ph2d-host" }
+# `Sprite` + `Camera2d` — o quad e a projecção.
+ph2d-render = { path = "../ph2d-render" }
+# `Affine` — o tipo que esta folha devolve.
+ph2d-vector = { path = "../ph2d-vector" }

@@ -37,6 +37,8 @@ use ph2d_editor::ToolRegistry;
 use ph2d_editor::toast::{Toast, ToastQueue};
 use ph2d_host::WindowSize;
 use ph2d_render::{Camera2d, Sprite, SpriteRenderer};
+// ⭐ O afim saiu para uma FOLHA porque quatro assuntos o partilhavam (HOWTO §1.2).
+use ph2d_sprite_screen::sprite_image_to_screen_affine;
 use ph2d_tokens::{ColorToken, StrokeToken};
 use ph2d_vector::{Affine, Brush, Circle, Color, ImageQuality, Stroke, VectorScene};
 use std::collections::BTreeMap;
@@ -419,71 +421,6 @@ fn release_preview_texture(
     }
 }
 
-/// Build the affine that maps image-local pixel coords (0..image_w,
-/// 0..image_h, Y-down) to screen pixels (Y-down). Chains:
-///   image-px → unit → sprite-local meters (Y-flip, size scale) →
-///   transform.scale → transform.rotation → anchor offset →
-///   translation (pivot) → camera projection.
-///
-/// Reused by every overlay layer (preview RGBA, protect tint) so they
-/// share the EXACT same destination geometry — no per-layer drift.
-/// ⚠️ **O `world_tr` é a pose de MUNDO, e o tipo diz isso de propósito.**
-///
-/// Ele era `&ph2d_ecs::Transform` e recebia a pose **LOCAL** — enquanto o comentário abaixo (que
-/// já lá estava) prometia *"sprite-local meters → world"*. Numa sprite de RAIZ as duas coincidem,
-/// e por isso a mentira sobreviveu 21 chamadores; numa sprite **filha** falta a cadeia do pai, o
-/// afim mapeia o ponteiro para o sítio errado, e a guarda de pegada do Painter recusa cada
-/// pincelada — *"se a sprite é filha de outra, não consigo pintá-la"* (Enio, 2026-08-19).
-///
-/// ⚠️ **Passa por VALOR e não por referência, e essa é a metade que impede a recaída:** todo
-/// chamador antigo passava um `&Transform` emprestado do mundo, e trocar o tipo faz cada um deles
-/// **deixar de compilar** até resolver a pose com [`ph2d_ecs::world_transform`]. *Uma convenção
-/// nova sobre a mesma assinatura teria sido esquecida no 22º sítio; um tipo diferente não pode.*
-pub(crate) fn sprite_image_to_screen_affine(
-    image_w: u32,
-    image_h: u32,
-    world_tr: ph2d_ecs::Transform,
-    sprite: &Sprite,
-    // A grelha da sprite; ausente = uma célula (ADR-0164 F1 passo 6).
-    grid: Option<ph2d_ecs::SpriteGrid>,
-    camera: &Camera2d,
-    window_size: WindowSize,
-) -> Affine {
-    let tr = &world_tr;
-    let image_w = image_w as f64;
-    let image_h = image_h as f64;
-    // ⚠️ **NUMA FOLHA, O QUAD DESDOBRA-SE** (Enio, 2026-08-23). O contrato desta função é *«mapeia
-    // esta imagem INTEIRA sobre o quad deste sprite»*, e num sprite com grelha a imagem inteira é a
-    // folha toda — pô-la sobre uma célula esmaga-a, que é o que o report mostra.
-    //
-    // ⚠️ **A MESMA função que o extract usa** (`sim_extract_sheet::unfolded_quad`), e não uma cópia:
-    // o render e o ponteiro leem daqui, e uma segunda conta faria pintar num sítio e ver noutro.
-    // *É a lei que a caixa «Playing» pagou neste mesmo dia, noutra superfície.*
-    let unfolded_size = grid
-        .and_then(|g| crate::render_loop::sim_extract_sheet::unfolded_quad(sprite, g))
-        .unwrap_or(sprite.size);
-    let size_w = unfolded_size[0] as f64;
-    let size_h = unfolded_size[1] as f64;
-    // image-px → centered, with Y flipped (image-Y is down, world-Y up):
-    //   (px, py) ↦ ((px/w - 0.5) * size_w, (0.5 - py/h) * size_h)
-    let img_to_local = Affine::scale_non_uniform(size_w / image_w, -size_h / image_h)
-        * Affine::translate((-image_w * 0.5, -image_h * 0.5));
-    // Sprite-local meters → world. Mirror of the sprite renderer's
-    // composite: scale → rotate → anchor offset → translation pivot.
-    let local_to_world = Affine::translate((tr.translation.x as f64, tr.translation.y as f64))
-        * Affine::rotate(tr.rotation as f64)
-        * Affine::translate((sprite.anchor[0] as f64, sprite.anchor[1] as f64))
-        * Affine::scale_non_uniform(tr.scale.x as f64, tr.scale.y as f64);
-    // World → screen. Y flips (world-Y up, screen-Y down). Uniform
-    // scale `k = window.height / camera.height_world` (square pixels).
-    let k = (window_size.height as f64) / (camera.height_world as f64).max(1e-6);
-    let world_to_screen = Affine::translate((
-        window_size.width as f64 * 0.5,
-        window_size.height as f64 * 0.5,
-    )) * Affine::scale_non_uniform(k, -k)
-        * Affine::translate((-camera.center[0] as f64, -camera.center[1] as f64));
-    world_to_screen * local_to_world * img_to_local
-}
 
 /// Build a capped-resolution RGBA tint image from a source-resolution
 /// protection mask: protected pixels get `rgb` at [`TINT_ALPHA`], the

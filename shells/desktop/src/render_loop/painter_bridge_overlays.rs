@@ -178,7 +178,7 @@ pub(super) fn refresh_shape_grab_tol(
     // A grelha desta sprite (ADR-0164 F1 passo 6) — ausente = uma célula, e aí o quad do
     // afim é o de sempre, byte-idêntico.
     let sprite_grid = sim.world().get::<ph2d_ecs::SpriteGrid>(entity).copied();
-    let affine = super::bgremoval_preview::sprite_image_to_screen_affine(
+    let affine = ph2d_sprite_screen::sprite_image_to_screen_affine(
         iw,
         ih,
         tr,
@@ -226,7 +226,7 @@ fn draw_symmetry_overlay(
     // A grelha desta sprite (ADR-0164 F1 passo 6) — ausente = uma célula, e aí o quad do
     // afim é o de sempre, byte-idêntico.
     let sprite_grid = sim.world().get::<ph2d_ecs::SpriteGrid>(entity).copied();
-    let affine = super::bgremoval_preview::sprite_image_to_screen_affine(
+    let affine = ph2d_sprite_screen::sprite_image_to_screen_affine(
         iw,
         ih,
         tr,
@@ -307,7 +307,7 @@ pub(super) fn draw_repeat_image(
     let sprite_grid = sim.world().get::<ph2d_ecs::SpriteGrid>(entity).copied();
     // image-px → screen for the centre sprite; each neighbour prepends a screen-space translation of
     // the world offset (a pure translation maps through the world→screen scale `k`, Y flipped).
-    let base = super::bgremoval_preview::sprite_image_to_screen_affine(
+    let base = ph2d_sprite_screen::sprite_image_to_screen_affine(
         preview.width,
         preview.height,
         tr,
@@ -371,7 +371,7 @@ fn draw_ellipse_overlay(
             )
         {
             // image-px → screen via the FULL sprite affine, so the handles ride scale / AR / rotation.
-            let base_affine = super::bgremoval_preview::sprite_image_to_screen_affine(
+            let base_affine = ph2d_sprite_screen::sprite_image_to_screen_affine(
                 iw,
                 ih,
                 tr,
@@ -449,7 +449,7 @@ fn draw_polygon_overlay(
             )
         {
             // image-px → screen via the FULL sprite affine, so the handles ride scale / AR / rotation.
-            let base_affine = super::bgremoval_preview::sprite_image_to_screen_affine(
+            let base_affine = ph2d_sprite_screen::sprite_image_to_screen_affine(
                 iw,
                 ih,
                 tr,
@@ -530,7 +530,7 @@ fn draw_stencil_overlay(
             )
         {
             // image-px → screen via the FULL sprite affine, so the handles ride scale / AR / rotation.
-            let affine = super::bgremoval_preview::sprite_image_to_screen_affine(
+            let affine = ph2d_sprite_screen::sprite_image_to_screen_affine(
                 iw,
                 ih,
                 tr,

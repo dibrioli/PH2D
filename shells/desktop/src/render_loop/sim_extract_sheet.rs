@@ -32,6 +32,11 @@
 //! obrigaria ou a um cap inventado ou a alocar por quadro — HR-3.
 
 use ph2d_render::{RenderInstance, Sprite};
+// ⭐ **RE-EXPORTADAS, e a re-exportação é o ponto:** as duas saíram para a folha
+// [`ph2d_sprite_screen`] (o afim do Painter chama-as, e uma segunda conta faria pintar num
+// sítio e ver noutro — HOWTO §1.2). Re-exportá-las daqui mantém `super::unfolded_quad` e
+// `sim_extract_sheet::cell_count` byte a byte iguais nos quatro chamadores da Sprite.
+pub(crate) use ph2d_sprite_screen::{cell_count, unfolded_quad};
 
 /// **A entidade cuja folha está aberta** — a pergunta, respondida num sítio só.
 ///
@@ -103,15 +108,6 @@ pub(super) fn should_open(
     cell_count(grid?)
 }
 
-/// Quantas células a grelha deste sprite tem — `None` quando ele **não é uma folha**.
-///
-/// ⚠️ `1×1` devolve `None`, e não `Some(1)`: abrir uma folha de uma célula desenharia zero
-/// fantasmas e um interruptor que não faz nada. *A ausência de grelha é uma resposta, não um caso
-/// degenerado a tratar mais à frente.*
-pub(super) fn cell_count(grid: ph2d_ecs::SpriteGrid) -> Option<u32> {
-    let n = grid.hframes.max(1).saturating_mul(grid.vframes.max(1));
-    (n > 1).then_some(n)
-}
 
 /// A célula `index` posta no lugar dela: `(sub-UV, deslocamento do CENTRO em metros LOCAIS)`.
 ///
@@ -151,38 +147,6 @@ pub(super) fn cell(
     Some((uv, [dx, dy]))
 }
 
-/// **O QUAD DESDOBRADO** — o tamanho que faz a folha INTEIRA caber no sítio do sprite.
-///
-/// # ⚠️ O defeito que ele cura (Enio, 2026-08-23, com foto)
-///
-/// Enquanto uma ferramenta pré-visualiza um sprite, o extract troca o `atlas_uv` pelo rect
-/// **inteiro** da textura transitória — e essa textura é o bake da imagem TODA. Num sprite com
-/// grelha isso põe as oito células dentro do quad de **uma**: a tira sai esmagada 8:1, e é o que a
-/// segunda foto do report mostra.
-///
-/// ⚠️ **E o caminho do PONTEIRO fazia a mesma conta**, o que os deixava consistentes um com o outro
-/// e errados com o artista: o `sprite_image_to_screen_affine` mapeia a imagem inteira sobre o
-/// `Sprite::size`, que é uma célula. Por isso os dois chamam **esta** função — pintar-se-ia num
-/// sítio e ver-se-ia noutro.
-///
-/// # ⚠️ Ele NÃO se ancora na célula viva, e a razão é o relógio
-///
-/// A primeira versão punha a folha à volta da célula viva, para a arte não saltar ao pegar no
-/// pincel. **Media errado o preço:** o `Sprite::frame` continua a andar enquanto se pinta (o tique
-/// é independente), então o desvio mudaria a cada quadro e a folha **deslizaria debaixo do
-/// pincel** — inutilizável. Aqui a folha fica **centrada no pivô do sprite**, sem depender do
-/// frame; o que salta é uma vez, ao abrir, e lê-se como *«a folha abriu»*.
-///
-/// ⚠️ A pré-visualização da grelha (`Show sheet on canvas`) faz o **contrário**, e também está
-/// certa: ali a célula viva **é** o quad real do sprite, então a folha tem de se dispor à volta
-/// dela. *Dois modos, duas âncoras — e a diferença é qual dos dois desenha a célula viva.*
-///
-/// `None` quando não há grelha — e aí o quad é o de sempre, byte-idêntico.
-pub(crate) fn unfolded_quad(spr: &Sprite, grid: ph2d_ecs::SpriteGrid) -> Option<[f32; 2]> {
-    cell_count(grid)?;
-    let (hf, vf) = (grid.hframes.max(1), grid.vframes.max(1));
-    Some([spr.size[0] * hf as f32, spr.size[1] * vf as f32])
-}
 
 /// **A PRÉ-VISUALIZAÇÃO ANIMADA que acompanha a pintura** (Enio, 2026-08-23) — a sub-UV da célula
 /// que está a tocar e onde pôr o quad dela, em metros locais relativos ao pivô.

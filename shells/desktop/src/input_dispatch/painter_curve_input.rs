@@ -55,7 +55,7 @@ impl App {
         if iw == 0 || ih == 0 {
             return false;
         }
-        let affine = crate::render_loop::bgremoval_preview::sprite_image_to_screen_affine(
+        let affine = ph2d_sprite_screen::sprite_image_to_screen_affine(
             iw,
             ih,
             tr,

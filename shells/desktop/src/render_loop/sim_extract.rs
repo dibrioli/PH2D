@@ -524,7 +524,7 @@ pub(super) fn run(
                     // saíam esmagadas 8:1 dentro dela.
                     //
                     // ⚠️ O caminho do PONTEIRO faz a mesma conta
-                    // (`bgremoval_preview::sprite_image_to_screen_affine`), e é por isso que ele
+                    // (`ph2d_sprite_screen::sprite_image_to_screen_affine`), e é por isso que ele
                     // chama a MESMA função: pintar-se-ia num sítio e ver-se-ia noutro.
                     // A grelha (ausente = uma célula), lida uma vez para os três consumidores
                     // do quad desdobrado abaixo.

@@ -45,7 +45,7 @@ pub(super) fn draw_curve_overlay(
             // "Beyond the sprite" only holds while the Repeat Image tiles draw BEFORE this chrome in
             // `painter_bridge::dispatch` — the tiles are opaque full-canvas blits (z-order gate:
             // `repeat_image_tiles_draw_under_the_editing_chrome`).
-            let affine = super::bgremoval_preview::sprite_image_to_screen_affine(
+            let affine = ph2d_sprite_screen::sprite_image_to_screen_affine(
                 iw,
                 ih,
                 tr,

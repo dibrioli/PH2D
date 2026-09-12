@@ -5,7 +5,7 @@
 //!
 //! Mirrors the bgremoval protection-brush plumbing (`protect_brush.rs`): gate on
 //! the painter being active + a selected sprite, then map screen → image px with
-//! the FULL sprite affine (`bgremoval_preview::sprite_image_to_screen_affine` —
+//! the FULL sprite affine (`ph2d_sprite_screen::sprite_image_to_screen_affine` —
 //! size · scale · rotation · anchor · camera), so the brush tracks the sprite
 //! under any transform. The concrete downcast to [`PainterTool`] is the documented
 //! ADR-0040 §3 exception (same shape as protect_brush / eyedropper), here used to
@@ -227,7 +227,7 @@ impl App {
         if iw == 0 || ih == 0 {
             return;
         }
-        let affine = crate::render_loop::bgremoval_preview::sprite_image_to_screen_affine(
+        let affine = ph2d_sprite_screen::sprite_image_to_screen_affine(
             iw,
             ih,
             tr,
@@ -336,7 +336,7 @@ impl App {
         // the same geometry the renderer + bgremoval use, so the brush tracks the sprite under any
         // resize, AR change OR rotation. `u`/`v` is the image fraction, NOT clamped (a Repeat-Image
         // neighbour tile lands outside `[0, 1]`).
-        let affine = crate::render_loop::bgremoval_preview::sprite_image_to_screen_affine(
+        let affine = ph2d_sprite_screen::sprite_image_to_screen_affine(
             iw,
             ih,
             tr,

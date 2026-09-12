@@ -34,7 +34,7 @@ const SRC: &str = include_str!("../../src/render_loop/mod.rs");
 /// Os argumentos da chamada de PRODUÇÃO ao `bake_selection`.
 fn production_call() -> &'static str {
     let at = SRC
-        .find("physics_bake::bake_selection(")
+        .find("crate::physics::bake::bake_selection(")
         .expect("o laço de render tem de chamar o bake_selection");
     let rest = &SRC[at..];
     let end = rest.find(");").expect("a chamada fecha");

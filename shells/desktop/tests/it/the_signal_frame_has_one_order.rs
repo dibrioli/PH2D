@@ -28,7 +28,7 @@ const ORDER: &[(&str, &str)] = &[
         "a TIMELINE publica o que o play cruzou",
     ),
     (
-        "physics_bridge::dispatch(",
+        "crate::physics::bridge::dispatch(",
         "o mundo anda -- é ele que produz os contatos",
     ),
     (

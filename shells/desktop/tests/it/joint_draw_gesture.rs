@@ -92,11 +92,11 @@ fn the_gesture_is_modal_and_precedes_the_generic_picking() {
 fn the_band_is_drawn_even_with_the_outline_off() {
     let call = fs::read_to_string("src/render_loop/mod.rs").expect("render_loop/mod.rs");
     assert!(
-        call.contains("joint_draw::band(self.physics.joint_draw)"),
+        call.contains("crate::physics::joint_draw::band(self.physics.joint_draw)"),
         "o `physics_overlay::draw` não recebe mais a banda do gesto"
     );
-    let overlay =
-        fs::read_to_string("src/render_loop/physics_overlay.rs").expect("physics_overlay.rs");
+    let overlay = fs::read_to_string("../../crates/ph2d-app-physics/src/overlay/outline.rs")
+        .expect("physics_overlay.rs");
     let band_at = overlay
         .find("draw_band(join_band")
         .expect("o overlay não desenha mais a banda");
@@ -287,7 +287,7 @@ fn the_draw_button_toggles_through_the_single_door() {
         .expect("the JoinDraw arm vanished from the render loop");
     let block = &src[arm..arm + 400];
     assert!(
-        block.contains("joint_draw::toggle("),
+        block.contains("crate::physics::joint_draw::toggle("),
         "o aperto do botão tem de passar por `joint_draw::toggle` (que desarma E \
          derruba a banda), nunca escrever `joint_draw_armed` direto: {block}"
     );

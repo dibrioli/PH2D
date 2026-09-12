@@ -104,7 +104,7 @@ fn taking_hold_suppresses_the_gizmo_drag() {
 fn the_release_runs_before_any_early_return() {
     let body = on_mouse_input_body(&dispatch_src());
     let release = body
-        .find("self.release_body_grab();")
+        .find("ph2d_app_physics::body_grab::release_body_grab(")
         .expect("o release tem de estar no on_mouse_input");
     let first_return = body.find("return").expect("o handler tem early-returns");
     assert!(
@@ -133,7 +133,7 @@ fn the_move_advances_the_hand() {
         .find("pub(crate) fn on_mouse_wheel(")
         .expect("o próximo fn delimita o corpo");
     assert!(
-        body[..end].contains("self.advance_body_grab();"),
+        body[..end].contains("ph2d_app_physics::body_grab::advance_body_grab("),
         "sem isto a mão não segue o cursor — ela pega e fica onde estava"
     );
 }
@@ -145,7 +145,7 @@ fn the_move_advances_the_hand() {
 fn the_overlay_reads_the_marks_from_the_bridge() {
     let src = fs::read_to_string("src/render_loop/mod.rs").expect("render_loop/mod.rs");
     let i = src
-        .find("physics_overlay::draw(")
+        .find("ph2d_app_physics::overlay::outline::draw(")
         .expect("o overlay é despachado");
     let call = &src[i..i + src[i..]
         .find("\n            );")
@@ -244,7 +244,7 @@ fn the_poke_press_asks_the_door_with_the_clock_and_the_transport() {
 fn the_overlay_is_handed_the_tool_marks() {
     let src = fs::read_to_string("src/render_loop/mod.rs").expect("render_loop/mod.rs");
     let i = src
-        .find("physics_overlay::draw(")
+        .find("ph2d_app_physics::overlay::outline::draw(")
         .expect("a chamada do overlay existe");
     // ⚠️ **A janela acaba onde a CHAMADA acaba, nunca a 3000 bytes dela.** Um
     // limite em bytes é um proxy que expira: bastou um comentário novo entre os

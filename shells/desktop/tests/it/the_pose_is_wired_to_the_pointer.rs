@@ -178,7 +178,10 @@ fn taking_a_pose_suppresses_the_gizmo_drag() {
 fn the_pose_release_runs_before_any_early_return() {
     let body = on_mouse_input_body(&dispatch_src());
     let first_return = body.find("return").expect("o handler tem early-returns");
-    for needle in ["self.release_body_pose();", "self.release_body_fk();"] {
+    for needle in [
+        "ph2d_app_physics::body_pose::release_body_pose(",
+        "ph2d_app_physics::body_fk::release_body_fk(",
+    ] {
         let release = body
             .find(needle)
             .unwrap_or_else(|| panic!("`{needle}` tem de estar no on_mouse_input"));
@@ -200,7 +203,10 @@ fn the_move_advances_both_poses() {
     let end = body
         .find("pub(crate) fn on_mouse_wheel(")
         .expect("o próximo fn delimita o corpo");
-    for needle in ["self.advance_body_pose();", "self.advance_body_fk();"] {
+    for needle in [
+        "ph2d_app_physics::body_pose::advance_body_pose(",
+        "ph2d_app_physics::body_fk::advance_body_fk(",
+    ] {
         assert!(
             body[..end].contains(needle),
             "sem `{needle}` o gesto pega e a cadeia fica onde estava"

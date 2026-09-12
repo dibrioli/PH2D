@@ -25,22 +25,22 @@ use std::fs;
 /// e o gate nasceu VERMELHO nomeando os seis componentes de área — o corte moveu os
 /// escritores para fora da lista. Foi a falha ALTA que a lista existe para produzir.
 const WRITERS: [&str; 9] = [
-    "src/render_loop/inspector_physics_apply.rs",
-    "src/render_loop/inspector_physics_area.rs",
+    "src/physics/physics_apply.rs",
+    "src/physics/physics_area.rs",
     // ⚠️ **O nono chegou pelo mesmo caminho do quarto** (W-Surface): o cap de
     // 600 LOC do shell obrigou a separar *de que esta SUPERFÍCIE é feita* do
     // resto, e o gate nasceu VERMELHO nomeando o `WalkSurface` no instante do
     // corte — o escritor tinha saído da lista sem sair do produto. A falha alta
     // funcionando pela segunda vez.
-    "src/render_loop/inspector_physics_surface.rs",
-    "src/render_loop/inspector_physics_markers.rs",
-    "src/render_loop/inspector_joint.rs",
+    "src/physics/physics_surface.rs",
+    "src/physics/physics_markers.rs",
+    "src/physics/joint.rs",
     // ⚠️ **Nem todo caminho de autoria é uma ROW.** A roldana (W-Pulley W1) é
     // criada por um botão que SPAWNA um objeto e dimensionada por uma ALÇA de
     // canvas — dois gestos que não passam por `apply_physics_edit`, e é por isso
     // que os dois arquivos entram na lista. Um componente cuja única UI é uma
     // alça continua sendo alcançável no produto, que é o que este gate mede.
-    "src/render_loop/inspector_joint_wheel.rs",
+    "src/physics/joint_wheel.rs",
     "src/physics/joint_anchor_drag.rs",
     // ⚠️ **E nem todo caminho de autoria é um NÚMERO.** O nome do sinal (W-Signal)
     // é uma STRING, então ele não passa pelo `PhysicsFieldEdit` — vai pelo mesmo
@@ -54,7 +54,7 @@ const WRITERS: [&str; 9] = [
     // ANTECIPOU a wave de autoria. É a falha alta funcionando: o componente
     // rodava em toda cena de smoke (que constrói com código) e era inalcançável
     // no produto.
-    "src/render_loop/inspector_player.rs",
+    "../../crates/ph2d-app-physics/src/inspector/player.rs",
 ];
 
 #[test]

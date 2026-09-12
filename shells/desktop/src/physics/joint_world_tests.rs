@@ -136,7 +136,7 @@ fn the_canvas_release_on_empty_routes_to_the_world_pin() {
     ))
     .expect("physics/joint_draw.rs");
     assert!(
-        src.contains("inspector_joint_world::create_world_pin_at"),
+        src.contains("joint_world::create_world_pin_at"),
         "o release do canvas não chama a porta do pino de mundo — soltar no vazio \
          continua sendo uma recusa"
     );

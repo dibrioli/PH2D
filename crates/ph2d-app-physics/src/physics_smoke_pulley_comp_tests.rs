@@ -210,7 +210,10 @@ fn the_scene_fits_the_frame_it_sets() {
 fn the_scene_that_asks_for_handles_starts_paused() {
     let src = std::fs::read_to_string(concat!(
         env!("CARGO_MANIFEST_DIR"),
-        "/src/physics/physics_smoke.rs"
+        // ⚠️ O ROTEADOR ficou na shell (ele e' um `impl App`): daqui sobe-se
+        // dois niveis. Se um dia ele vier para a crate, este caminho deixa de
+        // compilar o teste -- que e' o modo de falha bom.
+        "/../../shells/desktop/src/physics/physics_smoke.rs"
     ))
     .expect("physics_smoke.rs");
     let start = src.find("const PAUSED_SCENES").expect("a lista sumiu");

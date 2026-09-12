@@ -48,7 +48,7 @@ fn the_marks_come_from_the_bridge() {
 /// lista vazia todo quadro e não desenha um pixel, com tudo verde.
 #[test]
 fn the_marks_are_handed_to_the_draw() {
-    let call = at("physics_overlay::draw(");
+    let call = at("ph2d_app_physics::overlay::outline::draw(");
     let end = SRC[call..].find("\n            );").unwrap_or_else(|| {
         panic!("nao achei o fim da chamada de `physics_overlay::draw` — atualize este gate")
     }) + call;
@@ -69,7 +69,7 @@ fn the_marks_are_handed_to_the_draw() {
 #[test]
 fn the_file_this_gate_reads_is_the_one_that_draws() {
     assert!(
-        SRC.contains("physics_overlay::draw("),
+        SRC.contains("ph2d_app_physics::overlay::outline::draw("),
         "este gate lê o arquivo errado"
     );
     assert!(

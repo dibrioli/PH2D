@@ -8693,7 +8693,9 @@ name = "ph2d-vec-art-live"
 version = "0.0.0"
 dependencies = [
  "ph2d-asset",
+ "ph2d-ecs",
  "ph2d-panel-vector",
+ "ph2d-vec-entities",
  "ph2d-vec-pattern",
  "ph2d-vec-render",
  "ph2d-vec-scene",

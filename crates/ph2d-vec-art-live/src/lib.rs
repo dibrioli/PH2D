@@ -39,3 +39,12 @@
 
 pub mod brush;
 pub mod pattern;
+
+/// SONDA `--ignored`: quanto custa o [`brush::resolve`] por quadro.
+///
+/// ⛔⛔ **Ela esteve FORA DO BUILD desde que chegou aqui (`fe7d9b93a`, 12/09) até à integração da
+/// Fase D:** na shell chamava-se `brush_live_cost_probe` e era declarada no `main.rs`; o ficheiro
+/// mudou de casa e a declaração não veio. 583 linhas no disco, no git e no diff — e fora do
+/// compilador. Achada pelo censo de órfãos que lê os `.d` do compilador.
+#[cfg(test)]
+mod brush_cost_probe;

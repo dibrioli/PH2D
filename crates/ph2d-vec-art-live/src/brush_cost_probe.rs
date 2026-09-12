@@ -242,7 +242,7 @@ fn pct(ms: f64) -> f64 {
 // ---------------------------------------------------------------------------------------------
 
 #[test]
-#[ignore = "sonda: rode com --release --bins -- --ignored --nocapture"]
+#[ignore = "sonda: rode com -p ph2d-vec-art-live --release --lib -- --ignored --nocapture"]
 fn brush_live_cost_m3_cooked() {
     println!("\n== M3 — o `cooked()` sozinho (o dominante?) ==");
     let barato = poligono(7, 0.0, 0.0);
@@ -391,13 +391,13 @@ fn varre(vivo: bool) {
 }
 
 #[test]
-#[ignore = "sonda: rode com --release --bins -- --ignored --nocapture"]
+#[ignore = "sonda: rode com -p ph2d-vec-art-live --release --lib -- --ignored --nocapture"]
 fn brush_live_cost_m1_simples() {
     varre(false);
 }
 
 #[test]
-#[ignore = "sonda: rode com --release --bins -- --ignored --nocapture"]
+#[ignore = "sonda: rode com -p ph2d-vec-art-live --release --lib -- --ignored --nocapture"]
 fn brush_live_cost_m1_viva() {
     varre(true);
 }
@@ -407,7 +407,7 @@ fn brush_live_cost_m1_viva() {
 // ---------------------------------------------------------------------------------------------
 
 #[test]
-#[ignore = "sonda: rode com --release --bins -- --ignored --nocapture"]
+#[ignore = "sonda: rode com -p ph2d-vec-art-live --release --lib -- --ignored --nocapture"]
 fn brush_live_cost_m4_baseline() {
     println!("\n== M4 — G=1: a rota NOVA contra a ANTIGA reimplementada (nao o binario antigo) ==");
     println!(
@@ -471,7 +471,7 @@ fn brush_live_cost_m4_baseline() {
 /// Se a acusação estivesse certa, dobrar S não mexeria no relógio. Se a leitura estiver certa,
 /// o relógio dobra com S.
 #[test]
-#[ignore = "sonda: rode com --release --bins -- --ignored --nocapture"]
+#[ignore = "sonda: rode com -p ph2d-vec-art-live --release --lib -- --ignored --nocapture"]
 fn brush_live_cost_m5_escala_com_a_cena() {
     println!("\n== M5 — `resolve` contra o TAMANHO DA CENA (P=10, G=4 parados) ==");
     println!(
@@ -537,7 +537,7 @@ fn brush_live_cost_m5_escala_com_a_cena() {
 /// `verts`/`corner_radius`/`effects`, então uma chave sem eles congelaria a arte). Esta sonda
 /// mede o `PartialEq` dessa chave contra o cozimento que ela evita.
 #[test]
-#[ignore = "sonda: rode com --release --bins -- --ignored --nocapture"]
+#[ignore = "sonda: rode com -p ph2d-vec-art-live --release --lib -- --ignored --nocapture"]
 fn brush_live_cost_m6_o_memo_paga_se() {
     println!("\n== M6 — o preco da CHAVE contra o preco do cozimento (arte VIVA) ==");
     println!(

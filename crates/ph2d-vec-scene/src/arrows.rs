@@ -218,3 +218,13 @@ pub fn chevron(a: [f64; 2], b: [f64; 2], point: f64, notch: f64) -> VecPath {
         ],
     )
 }
+
+// ⛔⛔ **ESTA DECLARAÇÃO ESTEVE AUSENTE de `ea2817b73` («remove a seta circular») até 2026-09-12.**
+//    Ao remover a `arrow_curved`, o commit apagou a declaração do FICHEIRO de testes inteiro em vez
+//    de só a entrada da seta removida — e um `.rs` que nenhum `mod` declara **não é compilado**.
+//    ⇒ os OITO testes das setas que continuam no produto (bloco, dupla, dobrada, chevron, a caixa
+//    do gesto, os bytes estáveis, os extremos) deixaram de correr, com a suíte da crate VERDE.
+//    Achado pelo censo de ficheiros órfãos da integração da W2 Fase D, lendo os `.d` do compilador.
+#[cfg(test)]
+#[path = "arrows_tests.rs"]
+mod tests;

@@ -28,3 +28,7 @@ ph2d-panel-vector = { path = "../ph2d-panel-vector" }
 # ⚠️ HOWTO §1.3 — INVISÍVEL dentro da shell: o gate de ida-e-volta do `art_state` serializa a cena,
 # e ali o `postcard` já era dependência do binário sem que este ficheiro o declarasse.
 postcard = { version = "1", features = ["use-std"] }
+# ⚠️ HOWTO §1.3 — a sonda `brush_cost_probe` monta uma cena real (mundo + mapa de entidades), e na
+# shell, onde ela viveu até 12/09, estas duas já eram dependência do binário sem ninguém as declarar.
+ph2d-ecs = { path = "../ph2d-ecs" }
+ph2d-vec-entities = { path = "../ph2d-vec-entities" }

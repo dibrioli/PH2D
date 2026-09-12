@@ -38,41 +38,6 @@ fn curve_bbox(p: &VecPath) -> ([f64; 2], [f64; 2]) {
     (lo, hi)
 }
 
-/// O afim DIAGONAL que o [`fit`] aplicou, recuperado comparando a forma crua com a
-/// publicada (`x' = ax·x + bx`). O `fit` é escala + translação por eixo — nunca
-/// rotaciona —, então dois vértices bastam. É o que permite ao teste **desfazer** o
-/// ajuste e medir o arco onde ele é um CÍRCULO de verdade, sem copiar uma linha da
-/// implementação.
-fn recover_fit(raw: &VecPath, out: &VecPath) -> [[f64; 2]; 2] {
-    let axis = |k: usize| -> [f64; 2] {
-        let r0 = raw.verts[0].anchor[k];
-        let i = (0..raw.verts.len())
-            .max_by(|&x, &y| {
-                (raw.verts[x].anchor[k] - r0)
-                    .abs()
-                    .total_cmp(&(raw.verts[y].anchor[k] - r0).abs())
-            })
-            .expect("a seta tem vertices");
-        let dr = raw.verts[i].anchor[k] - r0;
-        assert!(
-            dr.abs() > 1e-6,
-            "eixo degenerado: nao da para recuperar o fit"
-        );
-        let scale = (out.verts[i].anchor[k] - out.verts[0].anchor[k]) / dr;
-        [scale, out.verts[0].anchor[k] - scale * r0]
-    };
-    [axis(0), axis(1)]
-}
-
-/// Mundo (publicado) → espaço de autoria: desfaz o `fit` e depois o `Unit::p`.
-fn to_unit(p: [f64; 2], m: [[f64; 2]; 2]) -> Uv {
-    let (cx, cy) = ((A[0] + B[0]) * 0.5, (A[1] + B[1]) * 0.5);
-    let (hw, hh) = ((B[0] - A[0]).abs() * 0.5, (B[1] - A[1]).abs() * 0.5);
-    let x = (p[0] - m[0][1]) / m[0][0];
-    let y = (p[1] - m[1][1]) / m[1][0];
-    (((x - cx) / hw + 1.0) * 0.5, (1.0 - (y - cy) / hh) * 0.5)
-}
-
 /// A seta reta APONTA: a ponta é o único vértice no extremo +X, e ela fica na linha do
 /// meio. É o que distingue uma seta de um retângulo com um entalhe.
 #[test]
@@ -195,7 +160,6 @@ fn every_arrow_fits_inside_the_gesture_box() {
         ("double", arrow_double(A, B, 0.4, 0.3, 1.0)),
         ("bent", arrow_bent(A, B, 0.25, 0.3, 0.6, 0.35)),
         ("chevron", chevron(A, B, 0.3, 0.2)),
-        ("curved", curved_default()),
     ];
     for (name, p) in shapes {
         let (lo, hi) = curve_bbox(&p);

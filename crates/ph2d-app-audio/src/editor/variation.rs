@@ -270,7 +270,7 @@ fn decode_file(path: &Path) -> Option<SampleData> {
             return None;
         }
     };
-    match crate::decode_any::decode(&bytes) {
+    match ph2d_audio_decode::decode_any::decode(&bytes) {
         Ok(d) => Some(d),
         Err(e) => {
             eprintln!("audio: variation decode failed for {}: {e}", path.display());
@@ -285,5 +285,5 @@ fn is_audio_path(path: &Path) -> bool {
     path.extension()
         .and_then(|e| e.to_str())
         .map(|e| e.to_ascii_lowercase())
-        .is_some_and(|e| crate::decode_any::AUDIO_IMPORT_EXTS.contains(&e.as_str()))
+        .is_some_and(|e| ph2d_audio_decode::decode_any::AUDIO_IMPORT_EXTS.contains(&e.as_str()))
 }

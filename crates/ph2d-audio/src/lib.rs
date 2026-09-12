@@ -45,6 +45,9 @@ mod stream;
 mod voice;
 
 pub mod dsp;
+/// Geradores de sinal de teste (`AudioFormat -> SampleData`), puros — desceram da crate do áudio da
+/// shell na auditoria de arquitectura A1 (2026-09-12): a cena de áudio dos Componentes usa-os.
+pub mod signals;
 
 pub use buffer::{BufferVersion, SampleData};
 pub use bus::{BusId, SUB_BUS_COUNT};

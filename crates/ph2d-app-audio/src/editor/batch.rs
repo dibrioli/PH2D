@@ -10,7 +10,7 @@ use super::AudioSystem;
 
 /// Audio file extensions the batch walks — the SAME list the Load picker uses, so a format the
 /// editor can open is a format the batch will find (Opus was missing from both).
-use crate::decode_any::AUDIO_IMPORT_EXTS as AUDIO_EXTS;
+use ph2d_audio_decode::decode_any::AUDIO_IMPORT_EXTS as AUDIO_EXTS;
 
 impl AudioSystem {
     /// Normalise every audio file directly inside `folder` to `target_lufs`. Thin
@@ -65,7 +65,7 @@ pub fn batch_lufs_dir(folder: &Path, target_lufs: f32) -> (usize, usize) {
 /// `out_dir` (same stem, `.wav` extension).
 fn normalize_one(path: &Path, out_dir: &Path, target_lufs: f32) -> Result<(), String> {
     let bytes = std::fs::read(path).map_err(|e| e.to_string())?;
-    let data = crate::decode_any::decode(&bytes).map_err(|e| e.to_string())?;
+    let data = ph2d_audio_decode::decode_any::decode(&bytes).map_err(|e| e.to_string())?;
     let normalized = ph2d_audio_edit::normalize_lufs(&data, target_lufs);
     let stem = path.file_stem().and_then(|s| s.to_str()).unwrap_or("clip");
     let out = out_dir.join(format!("{stem}.wav"));

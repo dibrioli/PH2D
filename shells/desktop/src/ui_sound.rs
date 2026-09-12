@@ -26,7 +26,7 @@
 //! confirmação já dá — e cada som a mais é uma chance a mais de o artista desligar o conjunto.
 //!
 //! ⚠️ **Sintetizados, sem ficheiro nenhum**: o motor já traz os geradores
-//! ([`ph2d_audio_desktop::signals`]), e um asset de UI seria mais um binário a versionar, a licenciar e
+//! ([`ph2d_audio::signals`]), e um asset de UI seria mais um binário a versionar, a licenciar e
 //! a manter afinado com o tema.
 //!
 //! # ⛔⛔ O QUINTO ELO da cadeia mora FORA do processo — e foi ele que partiu primeiro
@@ -65,10 +65,10 @@
 //! canal de saída atravessa processos, e a suíte inteira deste repo cobre apenas o nosso lado
 //! dele. *Um gate verde sobre um canal mudo continua verde.*
 
-// ⭐ **O enum e a `voice()` mudaram-se para a `ph2d-audio-desktop`** — o motor é que os lê, e um
+// ⭐ **O enum e a `voice()` mudaram-se para a `ph2d-audio-desktop`** (hoje `ph2d-app-audio`) — o motor é que os lê, e um
 // tipo que o motor lê não pode ficar do lado de cá de uma fronteira que ele não atravessa. O
 // re-export mantém os chamadores (`crate::ui_sound::UiSound`) byte a byte como estavam.
-pub(crate) use ph2d_audio_desktop::ui_sound::UiSound;
+pub(crate) use ph2d_app_audio::ui_sound::UiSound;
 
 impl crate::App {
     /// **TOCA `what`**, se o artista tiver ligado o som — e não faz mais nada.

@@ -195,7 +195,7 @@ impl SceneAudio {
         }
         let out = std::fs::read(path)
             .ok()
-            .and_then(|bytes| super::decode_any::decode(&bytes).ok());
+            .and_then(|bytes| ph2d_audio_decode::decode_any::decode(&bytes).ok());
         if out.is_none() {
             eprintln!("audio: a fonte de cena nao conseguiu abrir `{path}`");
         }

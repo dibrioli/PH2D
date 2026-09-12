@@ -13,6 +13,8 @@ authors.workspace = true
 # separate from `ph2d-audio` so Symphonia's dep tree never reaches the RT mixer.
 [dependencies]
 ph2d-audio = { path = "../ph2d-audio" }
+# A porta ÚNICA `decode_any` roteia o Opus (que o app escreve, ADR-0116) para a crate que o lê.
+ph2d-audio-opus = { path = "../ph2d-audio-opus" }
 # Symphonia — royalty-free / patent-expired codecs ONLY (HR-1 FFI criterion #6):
 # WAV (PCM/ADPCM), AIFF, FLAC, Ogg Vorbis, MP3 (patents expired 2017). AAC / ALAC
 # / MP4 (isomp4) are deliberately excluded — they are patent-encumbered.
@@ -27,6 +29,10 @@ symphonia = { version = "0.6", default-features = false, features = [
     "mp3",
 ] }
 thiserror = "2"
+
+[dev-dependencies]
+# Os gates da `decode_any` provam o ida-e-volta: o que o app ESCREVE, o app lê.
+ph2d-audio-encode = { path = "../ph2d-audio-encode" }
 
 [lints]
 workspace = true

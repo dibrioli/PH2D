@@ -25,7 +25,7 @@ use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Radius, Spacing, Theme, TypeToken};
 use ph2d_vector::VectorScene;
 
-use ph2d_audio_desktop::AudioSystem;
+use ph2d_app_audio::AudioSystem;
 
 const MIN_W: f32 = 260.0; // LITERAL-PX-OK: overlay default minimum width (chrome)
 const DEFAULT_H: f32 = 260.0; // LITERAL-PX-OK: overlay default height (chrome)
@@ -47,11 +47,11 @@ pub(super) fn draw_audio_overlay(
 ) {
     if !hero.is_panel_visible("audio_editor") {
         hero.store.clear_panel_rect(ids::AUDIO_OVERLAY_PANEL);
-        ph2d_audio_desktop::set_wave_view(None);
+        ph2d_app_audio::set_wave_view(None);
         return;
     }
     let Some(frames) = audio.editor_clip().map(|c| c.frame_count()) else {
-        ph2d_audio_desktop::set_wave_view(None);
+        ph2d_app_audio::set_wave_view(None);
         return;
     };
     let theme = hero.theme;
@@ -160,7 +160,7 @@ pub(super) fn draw_audio_overlay(
         frames as u64,
         &audio.editor_markers(),
     );
-    ph2d_audio_desktop::set_wave_view(Some(ph2d_audio_desktop::WaveView {
+    ph2d_app_audio::set_wave_view(Some(ph2d_app_audio::WaveView {
         rect: wave,
         ruler,
         frames: frames as u64,

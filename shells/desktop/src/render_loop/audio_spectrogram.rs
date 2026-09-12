@@ -18,7 +18,7 @@ use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, Theme};
 use ph2d_vector::{ImageQuality, VectorScene};
 
-use ph2d_audio_desktop::AudioSystem;
+use ph2d_app_audio::AudioSystem;
 
 /// Draw the spectrogram into `area`. Falls back to painting nothing if the picture is not
 /// ready (no clip) — the caller has already drawn the panel surface under it.

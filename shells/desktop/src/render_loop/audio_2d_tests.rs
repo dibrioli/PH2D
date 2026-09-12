@@ -13,7 +13,7 @@ use ph2d_ecs::{
 };
 
 use super::{play_target_with, stop_target_with, update_with};
-use ph2d_audio_desktop::scene::SceneAudio;
+use ph2d_app_audio::scene::SceneAudio;
 
 /// Um motor sem dispositivo — o `AudioEngine::new` devolve o par controlo/renderer sem tocar no
 /// `cpal`.

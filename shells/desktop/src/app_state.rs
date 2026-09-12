@@ -888,7 +888,7 @@ pub(crate) struct App {
     /// Audio subsystem (Phase 2.1). `None` if no output device / unsupported
     /// format — the editor runs silent (degrade-gracefully, like `gilrs`).
     /// Holds the control-side `AudioEngine` + the live cpal output stream.
-    pub(crate) audio: Option<ph2d_audio_desktop::AudioSystem>,
+    pub(crate) audio: Option<ph2d_app_audio::AudioSystem>,
     /// Audio Editor selection drag: the anchor while the primary button is held over the
     /// overlay (`None` = not selecting) — the anchor **frame**, and the anchor **frequency**
     /// as a fraction of Nyquist.

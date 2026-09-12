@@ -1,5 +1,9 @@
 //! **One door for every audio file the app opens.**
 //!
+//! ⭐ Morava na crate do áudio da shell e desceu para aqui na auditoria de arquitectura de 2026-09-12
+//! (A1): o Motion abre ficheiros de áudio por esta porta, e para a ter dependia da família do áudio
+//! inteira. A porta é de DESCODIFICAR, e esta é a crate que descodifica.
+//!
 //! Symphonia reads what Symphonia reads — WAV, FLAC, Ogg Vorbis, MP3, AIFF. It does **not** read
 //! Opus (its `all-codecs` is aac/adpcm/alac/flac/mp1-3/pcm/vorbis), and as of ADR-0116 this app
 //! *writes* Opus. Which means that without this module, the editor would export a format it
@@ -30,7 +34,7 @@ pub fn decode(bytes: &[u8]) -> Result<SampleData, String> {
     if ph2d_audio_opus::is_opus(bytes) {
         return ph2d_audio_opus::decode_opus(bytes).map_err(|e| e.to_string());
     }
-    ph2d_audio_decode::decode(bytes).map_err(|e| e.to_string())
+    crate::decode(bytes).map_err(|e| e.to_string())
 }
 
 #[cfg(test)]

@@ -12,7 +12,7 @@
 //!
 //! # ⚠️⚠️ Re-anchored on the LAW on 2026-09-12 — the old pin read a DEAD line
 //!
-//! When the audio code left the shell for `ph2d-audio-desktop` (`line/shell-folhas`, 12/09), the
+//! When the audio code left the shell for `ph2d-audio-desktop` (`line/shell-folhas`, 12/09 — today the family `ph2d-app-audio`), the
 //! optional `ph2d-audio-ml` dependency moved with it — and the shell kept a copy of the line that
 //! nothing compiled against. This gate was its **only reader**: pin 1 asked *«does the SHELL declare
 //! `ph2d-audio-ml` as optional?»*. The `cargo machete` of the W2 Phase-D integration removed the dead

@@ -509,7 +509,7 @@ crates de família. A origem é simétrica e as duas metades foram confirmadas n
 
 - ⛔⛔ **e um GATE TEXTUAL pode ser a única coisa a manter viva uma dependência morta.** O
   `audio_ml_is_off_by_default` (ADR-0123 A1) exigia que a **shell** declarasse `ph2d-audio-ml` como
-  opcional. Quando o áudio saiu para a `ph2d-audio-desktop`, a dependência opcional mudou-se com ele —
+  opcional. Quando o áudio saiu para a `ph2d-audio-desktop` (hoje a família `ph2d-app-audio`), a dependência opcional mudou-se com ele —
   e a shell guardou uma cópia **morta** da linha, cujo único leitor era o gate. O machete apagou-a, o
   gate reprovou **alto**, e a lei continuava verdadeira (o `cargo tree` por omissão: 1 052 pacotes e
   nenhum `tract`). ⛔ **Repor a linha para calar o gate seria vigiar um engodo.** A cura foi

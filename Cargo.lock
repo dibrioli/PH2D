@@ -4764,13 +4764,31 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-app-audio"
+version = "0.0.0"
+dependencies = [
+ "cpal",
+ "ph2d-app-host",
+ "ph2d-audio",
+ "ph2d-audio-decode",
+ "ph2d-audio-edit",
+ "ph2d-audio-encode",
+ "ph2d-audio-ml",
+ "ph2d-audio-opus",
+ "ph2d-audio-spectral",
+ "ph2d-ecs",
+ "ph2d-editor-core",
+ "ph2d-panel-audio-editor",
+ "ph2d-tokens",
+]
+
+[[package]]
 name = "ph2d-app-components"
 version = "0.0.0"
 dependencies = [
  "bevy_ecs",
  "ph2d-app-host",
  "ph2d-audio",
- "ph2d-audio-desktop",
  "ph2d-audio-encode",
  "ph2d-component-desc",
  "ph2d-core",
@@ -4870,7 +4888,7 @@ dependencies = [
  "ph2d-app-host",
  "ph2d-asset",
  "ph2d-audio",
- "ph2d-audio-desktop",
+ "ph2d-audio-decode",
  "ph2d-audio-spectral",
  "ph2d-color",
  "ph2d-core",
@@ -5000,6 +5018,7 @@ dependencies = [
 name = "ph2d-app-registry-init"
 version = "0.0.0"
 dependencies = [
+ "ph2d-app-audio",
  "ph2d-app-components",
  "ph2d-app-field3d",
  "ph2d-app-flip",
@@ -5217,26 +5236,10 @@ name = "ph2d-audio-decode"
 version = "0.0.0"
 dependencies = [
  "ph2d-audio",
+ "ph2d-audio-encode",
+ "ph2d-audio-opus",
  "symphonia",
  "thiserror 2.0.20",
-]
-
-[[package]]
-name = "ph2d-audio-desktop"
-version = "0.0.0"
-dependencies = [
- "cpal",
- "ph2d-audio",
- "ph2d-audio-decode",
- "ph2d-audio-edit",
- "ph2d-audio-encode",
- "ph2d-audio-ml",
- "ph2d-audio-opus",
- "ph2d-audio-spectral",
- "ph2d-ecs",
- "ph2d-editor-core",
- "ph2d-panel-audio-editor",
- "ph2d-tokens",
 ]
 
 [[package]]
@@ -5750,6 +5753,7 @@ dependencies = [
  "libm",
  "miniz_oxide 0.8.9",
  "ph2d-anim",
+ "ph2d-app-audio",
  "ph2d-app-components",
  "ph2d-app-field3d",
  "ph2d-app-flip",
@@ -5765,7 +5769,7 @@ dependencies = [
  "ph2d-asset-index",
  "ph2d-asset-ktx2",
  "ph2d-audio",
- "ph2d-audio-desktop",
+ "ph2d-audio-decode",
  "ph2d-audio-edit",
  "ph2d-audio-encode",
  "ph2d-color",

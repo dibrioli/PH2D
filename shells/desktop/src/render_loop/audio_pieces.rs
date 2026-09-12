@@ -14,8 +14,8 @@ use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, Theme};
 use ph2d_vector::{Color, VectorScene};
 
-use ph2d_audio_desktop::AudioSystem;
-use ph2d_audio_desktop::editor::pieces::PieceDrag;
+use ph2d_app_audio::AudioSystem;
+use ph2d_app_audio::editor::pieces::PieceDrag;
 
 /// A shell canvas overlay may use literal colours (the `no_literal_color` gate scans panels +
 /// editor-core, not the shell) — this mirrors the selection band and the markers, which do the same.

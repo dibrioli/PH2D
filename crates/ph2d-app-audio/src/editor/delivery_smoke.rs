@@ -211,7 +211,7 @@ mod tests {
              editor would load nothing"
         );
         // Route through the SAME door `editor_load` uses, not `ph2d_audio_decode::decode` direct.
-        let decoded = crate::decode_any::decode(&bytes)
+        let decoded = ph2d_audio_decode::decode_any::decode(&bytes)
             .expect("the editor's own door must read the file the editor wrote");
         let after_ogg = rms(&decoded);
 

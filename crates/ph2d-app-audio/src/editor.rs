@@ -121,7 +121,7 @@ impl AudioSystem {
                 return;
             }
         };
-        let data = match crate::decode_any::decode(&bytes) {
+        let data = match ph2d_audio_decode::decode_any::decode(&bytes) {
             Ok(d) => d,
             Err(e) => {
                 eprintln!("audio: decode failed for {}: {e}", path.display());

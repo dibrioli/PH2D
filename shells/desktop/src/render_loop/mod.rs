@@ -497,7 +497,7 @@ impl crate::App {
                 use ph2d_panel_audio_editor as ed;
                 if ed::take_load()
                     && let Some(path) = rfd::FileDialog::new()
-                        .add_filter("audio", ph2d_audio_desktop::decode_any::AUDIO_IMPORT_EXTS)
+                        .add_filter("audio", ph2d_audio_decode::decode_any::AUDIO_IMPORT_EXTS)
                         .pick_file()
                 {
                     audio.editor_load(&path);
@@ -615,7 +615,7 @@ impl crate::App {
                 // normals, so the panel can seed a fresh stage transparent) BEFORE
                 // reading the chain — `fx_chain()` materializes its first stage from
                 // exactly those defaults.
-                use ph2d_audio_desktop::{fx_params, fx_presets};
+                use ph2d_app_audio::{fx_params, fx_presets};
                 ed::set_fx_kind_names(&fx_params::kind_names());
                 ed::set_fx_kind_defaults(&fx_params::all_default_norms());
                 let (kind, norms) = ed::fx_sel_stage();
@@ -625,7 +625,7 @@ impl crate::App {
                 // ABOUT the effect, not a knob on it. Then drain the request.
                 ed::set_fx_ir(
                     fx_params::needs_ir(kind),
-                    &ph2d_audio_desktop::editor::ir::readout(),
+                    &ph2d_app_audio::editor::ir::readout(),
                 );
                 if ed::take_load_ir()
                     && let Some(path) = rfd::FileDialog::new()
@@ -637,7 +637,7 @@ impl crate::App {
                         )
                         .pick_file()
                 {
-                    ph2d_audio_desktop::editor::ir::load(&path);
+                    ph2d_app_audio::editor::ir::load(&path);
                 }
 
                 // Chain presets. Publish the factory names for the selector, then
@@ -726,7 +726,7 @@ impl crate::App {
                 // labels + strategy name + count back each frame.
                 if ed::take_add_variation()
                     && let Some(path) = rfd::FileDialog::new()
-                        .add_filter("audio", ph2d_audio_desktop::decode_any::AUDIO_IMPORT_EXTS)
+                        .add_filter("audio", ph2d_audio_decode::decode_any::AUDIO_IMPORT_EXTS)
                         .pick_file()
                 {
                     audio.editor_add_variation(&path);
@@ -12611,7 +12611,7 @@ impl crate::App {
                         // defeito que o diálogo de importação já pagou — o `.ase` esteve invisível
                         // lá durante meses.
                         if let Some(p) = rfd::FileDialog::new()
-                            .add_filter("audio", ph2d_audio_desktop::decode_any::AUDIO_IMPORT_EXTS)
+                            .add_filter("audio", ph2d_audio_decode::decode_any::AUDIO_IMPORT_EXTS)
                             .pick_file()
                         {
                             let edit = ph2d_editor_core::AudioFieldEdit::Sound(

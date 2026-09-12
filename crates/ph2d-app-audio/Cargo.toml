@@ -1,5 +1,5 @@
 [package]
-name = "ph2d-audio-desktop"
+name = "ph2d-app-audio"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -12,8 +12,15 @@ authors.workspace = true
 # ⛔ **O `cpal` está CONFINADO aqui** — é a razão de existir desta crate, e era a lei que o módulo
 # já declarava dentro da shell (HR-1: o mixer `ph2d-audio` fica agnóstico à plataforma). Ela passa
 # de promessa num doc-comment a fronteira de compilação.
+# ⭐⭐ **É a FAMÍLIA do áudio** (auditoria de arquitectura 2026-09-12, A1): nasceu como
+# `ph2d-audio-desktop`, uma folha partilhada, e guardava o runtime INTEIRO do Audio Editor (o painel,
+# a entrega, o espectral, o denoise) — código de família com nome de folha. As duas portas que
+# outras famílias usavam desceram para as crates-motor (`decode_any` → `ph2d-audio-decode`,
+# `signals` → `ph2d-audio`), e o que ficou só a shell consome.
 [dependencies]
 cpal = "0.18"
+# A INTERFACE da shell (`AppFamily`) — os roteadores de smoke do áudio declaram-se ao registo.
+ph2d-app-host = { path = "../ph2d-app-host" }
 ph2d-audio = { path = "../ph2d-audio" }
 ph2d-audio-decode = { path = "../ph2d-audio-decode" }
 ph2d-audio-edit = { path = "../ph2d-audio-edit", optional = true }

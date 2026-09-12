@@ -3,7 +3,7 @@
 //! keep it under the HR-18 600-LOC shell cap. Ungated (part of the always-on
 //! audio system, exercised by the panel's Play Test button).
 
-use ph2d_audio::{AudioFormat, SampleData};
+use crate::{AudioFormat, SampleData};
 
 /// A mono sine tone with a short raised-linear fade in/out (so it never clicks).
 pub fn sine_tone(format: AudioFormat, freq_hz: f32, secs: f32, gain: f32) -> SampleData {

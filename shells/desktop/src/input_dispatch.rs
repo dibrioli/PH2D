@@ -2938,15 +2938,11 @@ impl App {
     /// outside the waveform area.
     #[cfg(feature = "panel-audio-editor")]
     fn audio_wave_frame_at(&self, x: f32, y: f32) -> Option<(u64, f32)> {
-        let view = ph2d_audio_desktop::wave_view()?;
+        let view = ph2d_app_audio::wave_view()?;
         self.audio.as_ref()?.editor_clip()?;
         let r = view.rect;
-        (x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h).then(|| {
-            (
-                ph2d_audio_desktop::frame_at_x(&view, x),
-                freq_at_y(&view, y),
-            )
-        })
+        (x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h)
+            .then(|| (ph2d_app_audio::frame_at_x(&view, x), freq_at_y(&view, y)))
     }
 
     /// Extend the active selection to the cursor. Returns `true` if a selection drag is
@@ -2968,8 +2964,8 @@ impl App {
             return false;
         };
         let spectral = ph2d_panel_audio_editor::spectral_state::view();
-        if let Some(view) = ph2d_audio_desktop::wave_view() {
-            let cur = ph2d_audio_desktop::frame_at_x(&view, x);
+        if let Some(view) = ph2d_app_audio::wave_view() {
+            let cur = ph2d_app_audio::frame_at_x(&view, x);
             let cur_hz = freq_at_y(&view, y);
             if let Some(a) = self.audio.as_mut() {
                 a.editor_set_selection(anchor, cur);
@@ -2991,10 +2987,10 @@ impl App {
     /// thing to attempt sixty times a second.
     #[cfg(feature = "panel-audio-editor")]
     fn audio_piece_drag_move(&mut self, x: f32) -> bool {
-        let Some(view) = ph2d_audio_desktop::wave_view() else {
+        let Some(view) = ph2d_app_audio::wave_view() else {
             return false;
         };
-        let frame = ph2d_audio_desktop::frame_at_x(&view, x) as usize;
+        let frame = ph2d_app_audio::frame_at_x(&view, x) as usize;
         self.audio
             .as_mut()
             .is_some_and(|a| a.editor_piece_drag_to(frame))
@@ -3005,11 +3001,11 @@ impl App {
     /// dragging it scrubs, while the wave body above it makes a selection.
     #[cfg(feature = "panel-audio-editor")]
     fn audio_ruler_frame_at(&self, x: f32, y: f32) -> Option<u64> {
-        let view = ph2d_audio_desktop::wave_view()?;
+        let view = ph2d_app_audio::wave_view()?;
         self.audio.as_ref()?.editor_clip()?;
         let r = view.ruler;
         (x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h)
-            .then(|| ph2d_audio_desktop::frame_at_x(&view, x))
+            .then(|| ph2d_app_audio::frame_at_x(&view, x))
     }
 
     /// Seek the preview to the cursor `x` while a scrub is live. Returns `true` if
@@ -3019,8 +3015,8 @@ impl App {
         if !self.audio_scrub_drag {
             return false;
         }
-        if let Some(view) = ph2d_audio_desktop::wave_view() {
-            let frame = ph2d_audio_desktop::frame_at_x(&view, x);
+        if let Some(view) = ph2d_app_audio::wave_view() {
+            let frame = ph2d_app_audio::frame_at_x(&view, x);
             if let Some(a) = self.audio.as_mut() {
                 a.editor_scrub_to_frame(frame);
             }
@@ -7201,7 +7197,7 @@ mod cursor_tests {
 /// inversion wrong would select a band and repair its mirror image: a fix that removes the
 /// wrong sound and swears it did what you asked.
 #[cfg(feature = "panel-audio-editor")]
-fn freq_at_y(view: &ph2d_audio_desktop::WaveView, y: f32) -> f32 {
+fn freq_at_y(view: &ph2d_app_audio::WaveView, y: f32) -> f32 {
     let r = view.rect;
     (1.0 - (y - r.y) / r.h.max(1.0)).clamp(0.0, 1.0)
 }
@@ -7209,7 +7205,7 @@ fn freq_at_y(view: &ph2d_audio_desktop::WaveView, y: f32) -> f32 {
 #[cfg(all(test, feature = "panel-audio-editor"))]
 mod spectral_axis_tests {
     use super::freq_at_y;
-    use ph2d_audio_desktop::WaveView;
+    use ph2d_app_audio::WaveView;
     use ph2d_editor_core::zones::Rect;
 
     fn view() -> WaveView {

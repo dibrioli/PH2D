@@ -9,13 +9,10 @@
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use ph2d_audio::{AudioEngine, AudioFormat, BusId, PlayParams, SUB_BUS_COUNT, VoiceId};
 
-// HR-18 (600-LOC shell cap) split: the Audio Editor runtime and the test-signal
-// generators live in descendant submodules (they still reach `AudioSystem`'s
-// private fields). `editor` is gated on the panel feature; `signals` is not.
-// ⚠️ **Sem `cfg`, e a razao esta no `Cargo.toml`:** o `audio.bands` do Motion abre
-// arquivos de audio, e esta e a UNICA porta que decide como. Gatea-la na feature do
-// painel deixaria aquele no registrado e mudo num build sem o editor.
-pub mod decode_any;
+// ⭐ O Audio Editor (o runtime do painel) vive em `editor`, atrás da feature do painel. As duas
+// portas que outras famílias usavam — ABRIR ficheiros de áudio (`decode_any`) e os geradores de sinal
+// de teste (`signals`) — desceram para `ph2d-audio-decode` e `ph2d-audio` na auditoria de arquitectura
+// de 2026-09-12 (A1): uma família não depende de outra, e esta crate É a família do áudio.
 #[cfg(feature = "panel-audio-editor")]
 pub mod editor;
 #[cfg(feature = "panel-audio-editor")]
@@ -38,10 +35,6 @@ use editor::AudioEditorRuntime;
 mod device;
 /// ⭐⭐⭐ **O SOM DA CENA** (TOP-20 #4) — o livro das vozes que os objectos tem a soar.
 pub mod scene;
-/// Os geradores de tom — ⚠️ `pub(crate)` porque o smoke do SOM DE CENA escreve o `.wav` que
-/// vai tocar a partir deles: *um smoke que precisa de um ficheiro que o dono tenha de
-/// arranjar e um smoke que nao corre.*
-pub mod signals;
 /// AS DUAS CENAS DE SMOKE DO DISPOSITIVO — irmao por assunto e pelo teto de 600 LOC.
 mod smoke;
 /// A taxonomia do som de UI — o que aconteceu, e a voz de cada um.
@@ -49,7 +42,7 @@ pub mod ui_sound;
 /// A VOZ DO SOM DE UI (D1) — irmão por assunto e pelo teto de 600 LOC.
 mod ui_voice;
 use device::{build_stream, pick_writable_config, supported_by_us};
-use signals::{blip_loop, pluck_loop, swell_loop};
+use ph2d_audio::signals::{self, blip_loop, pluck_loop, swell_loop};
 
 /// The desktop audio system: the control handle + the live output stream.
 /// Dropping it closes the stream and stops audio.
@@ -578,3 +571,10 @@ mod tests {
         assert!(s.iter().any(|&x| x.abs() > 0.2), "tone has real amplitude");
     }
 }
+
+/// ⭐ **O que a família do ÁUDIO declara à shell** — os roteadores de smoke, lidos DENTRO desta crate
+/// ([`smoke::ROUTERS`]), como nas outras famílias (auditoria de arquitectura A1, 2026-09-12).
+pub const FAMILY: ph2d_app_host::AppFamily = ph2d_app_host::AppFamily {
+    key: "audio",
+    routers: smoke::ROUTERS,
+};

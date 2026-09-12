@@ -74,13 +74,13 @@ pub fn audio_2d_smoke(cx: &mut crate::scene_ctx::SceneCtx) {
     // metralhadora, e um tom longo disparado por sinal empilharia vozes.
     let Some(zumbido) = escrever(
         "ph2d_smoke_sino.wav",
-        ph2d_audio_desktop::signals::sine_tone(fmt, 220.0, 2.0, 0.35),
+        ph2d_audio::signals::sine_tone(fmt, 220.0, 2.0, 0.35),
     ) else {
         return;
     };
     let Some(blip) = escrever(
         "ph2d_smoke_sirene.wav",
-        ph2d_audio_desktop::signals::sine_tone(fmt, 880.0, 0.25, 0.5),
+        ph2d_audio::signals::sine_tone(fmt, 880.0, 0.25, 0.5),
     ) else {
         return;
     };

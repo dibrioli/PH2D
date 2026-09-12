@@ -7,6 +7,7 @@
 //! (PCM/ADPCM), AIFF, FLAC, Ogg Vorbis, MP3 (patents expired 2017). AAC / ALAC /
 //! MP4 are deliberately NOT enabled.
 
+pub mod decode_any;
 mod reader;
 pub use reader::Reader;
 

@@ -567,7 +567,7 @@ fn the_census_reaches_every_hard_case() {
         ),
         (
             "`foo.rs` + `foo/` — os filhos vivem numa subpasta",
-            "crates/ph2d-audio-desktop/src/editor/batch.rs",
+            "crates/ph2d-app-audio/src/editor/batch.rs",
         ),
         (
             "submódulo de `tests/it/main.rs` — e é este próprio gate",

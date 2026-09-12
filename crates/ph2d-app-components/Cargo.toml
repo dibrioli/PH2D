@@ -32,7 +32,6 @@ ph2d-ecs = { path = "../ph2d-ecs" }
 # Fase D (12/09): o texto anterior dizia 21 irmãs e zero externas, e o `cargo machete`
 # tirou 2 irmãs que nenhum ficheiro usava (`ph2d-asset`, `ph2d-editor-core`).
 ph2d-audio = { path = "../ph2d-audio" }
-ph2d-audio-desktop = { path = "../ph2d-audio-desktop" }
 ph2d-audio-encode = { path = "../ph2d-audio-encode" }
 ph2d-component-desc = { path = "../ph2d-component-desc" }
 ph2d-editor-core = { path = "../ph2d-editor-core" }

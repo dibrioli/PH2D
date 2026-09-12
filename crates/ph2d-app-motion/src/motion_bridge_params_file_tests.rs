@@ -47,7 +47,7 @@ fn every_file_kind_the_registry_declares_has_a_filter() {
 #[test]
 fn the_audio_filter_is_the_apps_own_import_list() {
     let (_, exts) = file_filter(FileKind::Audio);
-    assert_eq!(exts, ph2d_audio_desktop::decode_any::AUDIO_IMPORT_EXTS);
+    assert_eq!(exts, ph2d_audio_decode::decode_any::AUDIO_IMPORT_EXTS);
 }
 
 /// **O `audio.bands` pede um ficheiro, e a shell sabe qual** — a costura completa entre o

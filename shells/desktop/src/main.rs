@@ -77,7 +77,7 @@ mod asset_index_build;
 /// auditoria da etapa B nomeou: nenhum gate do painel aperta o botão de verdade.
 mod asset_menu_smoke;
 mod atlas_loader;
-// ⛔ **O BACKEND DE ÁUDIO mudou-se para a `ph2d-audio-desktop`** (`line/shell-folhas`, 12/09):
+// ⛔ **O BACKEND DE ÁUDIO mudou-se para a `ph2d-audio-desktop`** (`line/shell-folhas`, 12/09 — hoje a FAMÍLIA `ph2d-app-audio`, auditoria A1):
 // 8 544 linhas e o `cpal` inteiro saíram desta unidade de compilação. A shell continua a ler as
 // sete `PH2D_AUDIO_*` — o ROTEADOR é composição e fica aqui; o que saiu foi o motor.
 /// **O OBJETO ASSADO** (`docs/3D/02.2`, rota A) — os canais que uma malha doou a um sprite e a luz
@@ -725,50 +725,12 @@ impl App {
                 None
             }
         };
-        // Phase 2.1/2.2: open the audio device (None = run silent). Env smokes:
-        // `PH2D_AUDIO_SMOKE` plays a 440 Hz beep; `PH2D_AUDIO_FILE=<path>`
-        // decodes + loop-plays a real audio file.
-        let mut audio = ph2d_audio_desktop::AudioSystem::new();
+        // Phase 2.1/2.2: open the audio device (None = run silent). As cenas de smoke do áudio são
+        // lidas DENTRO da família (`ph2d_app_audio::smoke`, auditoria de arquitectura A1): o `FAMILY`
+        // dela declara-as ao registo, e é a crate que as lê.
+        let mut audio = ph2d_app_audio::AudioSystem::new();
         if let Some(a) = audio.as_mut() {
-            if std::env::var_os("PH2D_AUDIO_SMOKE").is_some() {
-                a.play_test_tone();
-            }
-            if let Some(path) = std::env::var_os("PH2D_AUDIO_FILE") {
-                a.play_file(std::path::Path::new(&path));
-            }
-            // Stage a ready-to-audition loop in the editor (open the Audio Editor pill
-            // to see it) — the W6 loop-points smoke, no file picking needed.
-            if std::env::var_os("PH2D_AUDIO_LOOP_SMOKE").is_some() {
-                a.editor_loop_smoke();
-            }
-            // Stage the Multiband A/B: the clip that exposes it (a kick over steady
-            // highs) plus a two-stage rack, Multiband vs Compress at the same Ratio.
-            if std::env::var_os("PH2D_AUDIO_MULTIBAND_SMOKE").is_some() {
-                a.editor_multiband_smoke();
-            }
-            // Stage the W4 voice family: synthesised speech + a rack holding the Vocoder at
-            // both ends of its Breath knob (robot / whisper) and the Granular.
-            if std::env::var_os("PH2D_AUDIO_VOICE_SMOKE").is_some() {
-                a.editor_voice_smoke();
-            }
-            // Stage the W6 shipping targets: a clip whose 15 kHz shimmer a 24 kHz variant
-            // physically cannot carry, plus a loop + markers only the lossless target keeps.
-            if std::env::var_os("PH2D_AUDIO_DELIVERY_SMOKE").is_some() {
-                a.editor_delivery_smoke();
-            }
-            // Stage the ADR-0120 knob drag: a 3-minute clip (where the whole-clip copy hurts), a
-            // selection, and a ONE-stage rack. Drag Ratio; each frame prints its cost. Re-run with
-            // PH2D_AUDIO_SLOW_PREVIEW=1 for the old path -- the feature is byte-identical, so the
-            // A/B is the only thing a human can actually check.
-            if std::env::var_os("PH2D_AUDIO_KNOB_SMOKE").is_some() {
-                a.editor_knob_smoke();
-            }
-            // Stage the W7 AI Denoise smoke: a voiced tone buried under broadband hiss at ~0 dB
-            // SNR. Play, click AI Denoise (needs `--features audio-ml`), play again -- the hiss
-            // falls away. The hand on the door for the +12 dB the parity gate already proved.
-            if std::env::var_os("PH2D_AUDIO_ML_SMOKE").is_some() {
-                a.editor_ml_smoke();
-            }
+            a.stage_armed_smokes();
         }
         Self {
             dock_seam_drag: None,

@@ -4,7 +4,7 @@
 //! ## O que este gate protege
 //!
 //! O painel da tira é stateless: ele pinta o `FlipStripSnapshot` que o shell publicou
-//! (`flip_bridge::publish`). O arrasto, por outro lado, só vira pedido no pen-up, e o
+//! (`bridge::publish`). O arrasto, por outro lado, só vira pedido no pen-up, e o
 //! pedido é consumido no frame SEGUINTE (o paint que o enfileirou já tinha passado).
 //!
 //! Se o drain rodasse **depois** do publish, o snapshot deste frame descreveria a tira de
@@ -37,11 +37,11 @@ fn at(needle: &str) -> usize {
 
 #[test]
 fn the_strip_drag_is_applied_before_the_strip_snapshot_is_published() {
-    let drain = at("flip::strip_drag::apply_strip_intents(");
-    let publish = at("flip_bridge::publish(");
+    let drain = at("strip_drag::apply_strip_intents(");
+    let publish = at("bridge::publish(");
     assert!(
         drain < publish,
-        "o drain do arrasto da tira (byte {drain}) tem de rodar ANTES de `flip_bridge::publish` \
+        "o drain do arrasto da tira (byte {drain}) tem de rodar ANTES de `bridge::publish` \
          (byte {publish}) — senão o snapshot deste frame descreve a tira de antes do gesto e a \
          célula pisca de volta por um frame"
     );

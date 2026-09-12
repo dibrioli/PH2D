@@ -21,19 +21,27 @@
 
 const SRC: &str = include_str!("../../../../crates/ph2d-app-flip/src/colorize.rs");
 
-/// O corpo do `flip_colorize_apply`, do `pub(crate) fn` até o fecho da função seguinte.
+/// O corpo do APPLY do Colorize — a lei, não o invólucro.
+///
+/// ⚠️ **W2/L5 2.ª volta (HOWTO §2.13):** ele era `pub(crate) fn flip_colorize_apply(&mut
+/// self)` num `impl crate::App`; hoje é `pub fn apply(state, f, toasts, w2l)` na crate. A
+/// agulha ancora na LEI (*o apply do Colorize*) e **não** no modificador nem no prefixo de
+/// módulo — os dois mudam quando uma fronteira nasce, sem que a lei mude uma linha.
 fn apply_body() -> &'static str {
     let start = SRC
-        .find("pub(crate) fn flip_colorize_apply(&mut self)")
-        .expect(
-            "o `flip_colorize_apply` foi renomeado — este gate aponta para nada e tem de ser \
-         re-mirado",
-        );
+        .find("pub fn apply(")
+        .expect("o apply do Colorize sumiu de `colorize.rs` — re-mire este gate");
     let rest = &SRC[start..];
-    let end = rest
-        .find("\n    /// **Trap/Bleed em tempo real")
-        .unwrap_or(rest.len());
-    &rest[..end]
+    // Até a PRÓXIMA função de topo (ou o fim).
+    let end = rest[1..].find("\npub fn ").map_or(rest.len(), |o| o + 1);
+    let body = &rest[..end];
+    assert!(
+        body.len() > 1500,
+        "o recorte do apply deu {} bytes — perdeu o sujeito, e um `contains` sobre quase nada \
+         aprova por vacuidade",
+        body.len()
+    );
+    body
 }
 
 /// A sessão viva mora num irmão (`flip_colorize_live.rs`) pelo teto de LOC do shell.
@@ -41,16 +49,22 @@ const LIVE: &str = include_str!("../../../../crates/ph2d-app-flip/src/colorize_l
 
 fn live_body() -> &'static str {
     let start = LIVE
-        .find("pub(crate) fn flip_colorize_live_adjust(&mut self)")
-        .expect("o `flip_colorize_live_adjust` foi renomeado — re-mire o gate");
-    &LIVE[start..]
+        .find("pub fn adjust(")
+        .expect("o ajuste ao vivo sumiu de `colorize_live.rs` — re-mire o gate");
+    let body = &LIVE[start..];
+    assert!(
+        body.len() > 1000,
+        "o recorte do ajuste ao vivo deu {} bytes — perdeu o sujeito",
+        body.len()
+    );
+    body
 }
 
 #[test]
 fn the_apply_asks_the_strip_which_frames_the_gesture_writes() {
     let body = apply_body();
     assert!(
-        body.contains("ph2d_app_flip::multiframe::targets"),
+        body.contains("multiframe::targets"),
         "o Apply tem de perguntar os alvos ao multiframe — sem isso o rabisco colore só o \
          quadro ativo e a fatia C3 não existe no produto"
     );
@@ -200,7 +214,7 @@ fn the_live_cut_runs_off_the_ui_thread_one_at_a_time() {
     );
     // O worker leva CÓPIA da geometria. Se ele tocasse o documento, não haveria porta.
     assert!(
-        body.contains("f.lines.clone()") && body.contains("live.seeds.clone()"),
+        body.contains("fr.lines.clone()") && body.contains("live.seeds.clone()"),
         "o worker recebe geometria CLONADA — ele não pode ver o `FlipDoc`"
     );
     // ⚠️ E os parâmetros voltam COM o resultado: lê-los do painel na chegada marcaria como

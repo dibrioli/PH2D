@@ -58,7 +58,6 @@ mod image_edit;
 mod inspector_commits;
 #[cfg(test)]
 mod inspector_commits_tests;
-pub(crate) mod inspector_ordering;
 /// W-PartFace: o que o §11 responde sobre uma PEÇA (um filho com `Collider` e
 /// sem `RigidBody`) — a volta que a W-Compound não deu.
 #[cfg(test)]
@@ -5474,7 +5473,7 @@ impl crate::App {
                         // `transport::apply` is unit-tested headless. NOTE:
                         // physics scrub-back — the ball flying back up — is
                         // W1.5; here Reset only returns the clock to 0.
-                        crate::transport::apply(cmd, &mut self.playhead);
+                        ph2d_transport::apply(cmd, &mut self.playhead);
                     }
                     // (Bgremoval bake leftover handled inside the
                     // `OneShotImageOp` arm above — defers to the

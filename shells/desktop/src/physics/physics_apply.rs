@@ -12,7 +12,7 @@ use ph2d_editor::PhysicsFieldEdit;
 
 use crate::physics::physics_area::apply_area_edit;
 use crate::physics::physics_surface::apply_surface_edit;
-use crate::render_loop::inspector_ordering::{queue_remove, queue_set};
+use ph2d_inspector_ordering::{queue_remove, queue_set};
 // A caixa que casa com o desenho — a porta vive no irmão `_seed`, com quem a semeia.
 use crate::physics::physics_seed::sprite_half_extents;
 

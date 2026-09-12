@@ -22,7 +22,7 @@ use ph2d_ecs::{
 };
 use ph2d_editor::{ActionFieldEdit, InspectorActionInfo, InspectorActionRow, Toast};
 
-use super::inspector_ordering::queue_set;
+use ph2d_inspector_ordering::queue_set;
 
 const ACTIONS: &str = "ph2d::ecs::SignalActions";
 

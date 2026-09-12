@@ -1,0 +1,16 @@
+[package]
+name = "ph2d-transport"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# ⛔ A porta ÚNICA entre o comando de transporte e o relógio: o botão e um atalho de teclado não
+# podem divergir, e é por isso que ela existe como porta e não como dois `match`.
+[dependencies]
+ph2d-core = { path = "../ph2d-core" }
+ph2d-editor = { path = "../ph2d-editor" }

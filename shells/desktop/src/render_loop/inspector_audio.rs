@@ -28,7 +28,7 @@ use ph2d_ecs::{
 };
 use ph2d_editor::{AudioFieldEdit, InspectorAudioInfo, InspectorAudioSource, Toast};
 
-use super::inspector_ordering::queue_set;
+use ph2d_inspector_ordering::queue_set;
 
 const SOURCE: &str = "ph2d::ecs::AudioSource2D";
 

@@ -16,7 +16,7 @@ use ph2d_ecs::Entity;
 use ph2d_ecs::scene::{ComponentRegistry, EditorCommandQueue};
 use ph2d_editor::PhysicsFieldEdit;
 
-use crate::render_loop::inspector_ordering::{queue_remove, queue_set};
+use ph2d_inspector_ordering::{queue_remove, queue_set};
 
 /// O nome canônico — a MESMA string que o `queue_set` precisa para achar o
 /// `type_id`.

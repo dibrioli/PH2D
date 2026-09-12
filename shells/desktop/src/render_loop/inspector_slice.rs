@@ -18,7 +18,7 @@ use ph2d_ecs::scene::{ComponentRegistry, EditorCommandQueue};
 use ph2d_ecs::{Entity, SimWorld, SliceNine, World};
 use ph2d_editor::{InspectorSliceInfo, InspectorSliceMixed, SliceFieldEdit};
 
-use super::inspector_ordering::queue_set;
+use ph2d_inspector_ordering::queue_set;
 
 /// Nome canónico do componente no `ComponentRegistry`. ⚠️ Uma string errada aqui não falha a
 /// compilação: o comando é descartado em silêncio e a edição não acontece. É o mesmo nome que

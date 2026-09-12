@@ -12,7 +12,7 @@ use ph2d_core::Playhead;
 use ph2d_editor::action_bus::TransportCmd;
 
 /// Drive the clock from a transport command.
-pub(crate) fn apply(cmd: TransportCmd, playhead: &mut Playhead) {
+pub fn apply(cmd: TransportCmd, playhead: &mut Playhead) {
     match cmd {
         TransportCmd::Play => playhead.play(),
         TransportCmd::Pause => playhead.pause(),

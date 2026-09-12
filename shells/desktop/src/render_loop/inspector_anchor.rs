@@ -19,7 +19,7 @@ use ph2d_ecs::scene::{ComponentRegistry, EditorCommandQueue};
 use ph2d_ecs::{Entity, NamedAnchor, NamedAnchorList, SimWorld, World};
 use ph2d_editor::{AnchorFieldEdit, InspectorAnchorInfo, InspectorAnchorRow, Toast};
 
-use super::inspector_ordering::queue_set;
+use ph2d_inspector_ordering::queue_set;
 
 const NAMED_ANCHOR_LIST: &str = "ph2d::ecs::NamedAnchorList";
 const ANCHOR_MOUNT: &str = "ph2d::ecs::AnchorMount";

@@ -12,7 +12,7 @@ use ph2d_ecs::{Entity, Name, SimWorld};
 use ph2d_editor::{InspectorJointInfo, JointFieldEdit};
 use ph2d_physics_ecs::{JointKind, MotorMode, PhysicsJoint};
 
-use crate::render_loop::inspector_ordering::queue_set;
+use ph2d_inspector_ordering::queue_set;
 
 /// O gesto que CRIA um joint mora no irmão `inspector_joint_create` (extraído
 /// no cap de 600 LOC do shell) e é re-exportado aqui, para que todo chamador

@@ -35,7 +35,7 @@ use ph2d_editor::{
     InspectorGameCamera,
 };
 
-use super::inspector_ordering::queue_set;
+use ph2d_inspector_ordering::queue_set;
 
 const CAMERA: &str = "ph2d::ecs::GameCamera";
 const FOLLOW: &str = "ph2d::ecs::CameraFollow";

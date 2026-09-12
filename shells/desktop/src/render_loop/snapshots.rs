@@ -1038,13 +1038,13 @@ pub(super) fn publish(
     });
     let sel = &inspector_selection; // W3 §7/§9 snapshots (§7 sibling module)
     let inspector_ordering = hero.gizmo.selection.and_then(|b| {
-        super::inspector_ordering::build_ordering_info(sim.world(), b, sel, selected_count)
+        ph2d_inspector_ordering::build_ordering_info(sim.world(), b, sel, selected_count)
     });
     let inspector_sampling = hero.gizmo.selection.and_then(|b| {
-        super::inspector_ordering::build_sampling_info(sim.world(), b, sel, selected_count)
+        ph2d_inspector_ordering::build_sampling_info(sim.world(), b, sel, selected_count)
     });
     let inspector_blend = hero.gizmo.selection.and_then(|b| {
-        super::inspector_ordering::build_blend_info(sim.world(), b, sel, selected_count)
+        ph2d_inspector_ordering::build_blend_info(sim.world(), b, sel, selected_count)
     });
     // §5 9-Slice. ⚠️ Publicado para TODA entidade digna de Inspector, com ou sem o componente:
     // é o snapshot que diz `present: false`, e é isso que faz a seção mostrar o «+ Add 9-Slice».

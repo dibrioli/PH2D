@@ -79,14 +79,14 @@ fn ordering_fields(world: &World, entity: Entity, default_layer: u8) -> Ordering
 /// Inspector de um objeto vazio mostrava doze seções de zeros. *Ausência de autoria não é
 /// «zeros»* — e a §7 é a excepção porque ali a ausência **não é ausência de facto**, é o facto a
 /// vir da árvore.
-pub(super) fn has_any_sampling(world: &World, entity: Entity) -> bool {
+pub fn has_any_sampling(world: &World, entity: Entity) -> bool {
     world.get::<TextureFilter>(entity).is_some()
         || world.get::<TextureRepeat>(entity).is_some()
         || world.get::<UvTransform>(entity).is_some()
 }
 
 /// Ver [`has_any_sampling`] — a §10 Material & Blend tem **um** componente só.
-pub(super) fn has_any_blend(world: &World, entity: Entity) -> bool {
+pub fn has_any_blend(world: &World, entity: Entity) -> bool {
     world.get::<ph2d_ecs::BlendMode>(entity).is_some()
 }
 
@@ -130,14 +130,14 @@ fn ordering_mixed(
 /// `ZIndexOverride` significa não é *«este objeto não tem Z»* — é *«o Z dele vem da árvore»*, e é
 /// exactamente isso que o campo mostra com um `—`.
 ///
-/// ⛔ É a mesma categoria da caixa **«Visible»**, que o [`crate::inspector_presence_tests`] já
+/// ⛔ É a mesma categoria da caixa **«Visible»**, que o `inspector_presence_tests` da shell já
 /// declara fora da tabela pela mesma razão: *vale para todo objeto*. A diferença entre as duas
 /// famílias não é «opcional contra obrigatório» — é **componente ANEXADO contra propriedade
 /// INTRÍNSECA**.
 ///
 /// ⚠️ [`has_any_ordering`] fica: ele deixou de gatear a seção e continua a responder *«este objeto
 /// tem autoria de ordenação?»*, que é outra pergunta (a que os gates de presença fazem).
-pub(super) fn build_ordering_info(
+pub fn build_ordering_info(
     world: &World,
     entity_bits: u64,
     selected: &[u64],
@@ -176,7 +176,7 @@ pub(super) fn build_ordering_info(
 /// `canonical_name` on `entity_bits`. A no-op if the name isn't
 /// registered or the value won't encode (neither happens for the W3
 /// components — registration + serde are gate-asserted).
-pub(crate) fn queue_set<T: Serialize>(
+pub fn queue_set<T: Serialize>(
     queue: &EditorCommandQueue,
     registry: &ComponentRegistry,
     entity_bits: u64,
@@ -196,7 +196,7 @@ pub(crate) fn queue_set<T: Serialize>(
 
 /// Queue a `RemoveComponent` (detach) for the registered component
 /// `canonical_name` on `entity_bits`. Idempotent at apply time.
-pub(crate) fn queue_remove(
+pub fn queue_remove(
     queue: &EditorCommandQueue,
     registry: &ComponentRegistry,
     entity_bits: u64,
@@ -214,7 +214,7 @@ pub(crate) fn queue_remove(
 /// `SetComponent` / `RemoveComponent` against the optional sorting
 /// component it maps to. The commands are applied by the caller's
 /// `apply_editor_commands` pass.
-pub(super) fn apply_ordering_edit(
+pub fn apply_ordering_edit(
     sim: &SimWorld,
     entity_bits: u64,
     edit: OrderingFieldEdit,
@@ -339,7 +339,7 @@ fn sampling_fields(world: &World, entity: Entity) -> (u8, u8) {
 /// Build the §9 sampling snapshot, or `None` when the entity has no
 /// `Transform` (not Inspector-worthy).
 #[allow(clippy::float_cmp)] // exact compare: same stored UvTransform = not mixed
-pub(super) fn build_sampling_info(
+pub fn build_sampling_info(
     world: &World,
     entity_bits: u64,
     selected: &[u64],
@@ -381,7 +381,7 @@ pub(super) fn build_sampling_info(
 /// Apply one [`SamplingFieldEdit`] (§9): a concrete filter/repeat tag
 /// attaches the optional component, tag `0` (`Inherit`) detaches it; UV
 /// scale/offset read-modify-write the optional `UvTransform`.
-pub(super) fn apply_sampling_edit(
+pub fn apply_sampling_edit(
     sim: &SimWorld,
     entity_bits: u64,
     edit: SamplingFieldEdit,
@@ -443,7 +443,7 @@ pub(super) fn apply_sampling_edit(
 /// §10 Material & Blend snapshot: the optional `BlendMode` tag (absent =
 /// `Mix` = tag 0). Gated on a `Transform`-bearing (Inspector-worthy)
 /// entity like the other section builders.
-pub(super) fn build_blend_info(
+pub fn build_blend_info(
     world: &World,
     entity_bits: u64,
     selected: &[u64],
@@ -477,7 +477,7 @@ pub(super) fn build_blend_info(
 /// Apply one [`BlendFieldEdit`] (§10): a concrete blend tag attaches the
 /// optional `BlendMode` component; tag `0` (`Mix`, the default) detaches
 /// it (zero-regression — absent renders as Mix).
-pub(super) fn apply_blend_edit(
+pub fn apply_blend_edit(
     _sim: &SimWorld,
     entity_bits: u64,
     edit: BlendFieldEdit,

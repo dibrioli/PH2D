@@ -19,7 +19,7 @@ use ph2d_ecs::Entity;
 use ph2d_ecs::scene::{ComponentRegistry, EditorCommandQueue};
 use ph2d_editor::PhysicsFieldEdit;
 
-use crate::render_loop::inspector_ordering::{queue_remove, queue_set};
+use ph2d_inspector_ordering::{queue_remove, queue_set};
 
 /// Aplica um edit de ZONA, ou devolve `false` se este edit não é de zona — e então o irmão
 /// segue com ele. O booleano é o mesmo `return` que os braços de lá fazem, atravessando a

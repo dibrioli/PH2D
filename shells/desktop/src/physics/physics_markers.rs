@@ -16,7 +16,7 @@ use ph2d_ecs::scene::{ComponentRegistry, EditorCommandQueue};
 use ph2d_editor::PhysicsFieldEdit;
 use serde::Serialize;
 
-use crate::render_loop::inspector_ordering::{queue_remove, queue_set};
+use ph2d_inspector_ordering::{queue_remove, queue_set};
 
 /// Attach the marker or detach it — the presence-override idiom, so a project file
 /// never carries an off-flag (and a body that never touched the control carries no

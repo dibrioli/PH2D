@@ -201,7 +201,7 @@ pub(super) fn dispatch(
     // and we apply per edit so a read-modify-write field (YSort /
     // SortingGroup) re-reads the just-written component next iteration.
     for &(entity_bits, edit) in ordering_edits {
-        super::inspector_ordering::apply_ordering_edit(
+        ph2d_inspector_ordering::apply_ordering_edit(
             sim,
             entity_bits,
             edit,
@@ -215,7 +215,7 @@ pub(super) fn dispatch(
     }
     // W3 §9 sampling edits (TextureFilter/Repeat optional components).
     for &(entity_bits, edit) in sampling_edits {
-        super::inspector_ordering::apply_sampling_edit(
+        ph2d_inspector_ordering::apply_sampling_edit(
             sim,
             entity_bits,
             edit,
@@ -318,7 +318,7 @@ pub(super) fn dispatch(
     }
     // §10 Material & Blend edits (BlendMode optional component).
     for &(entity_bits, edit) in blend_edits {
-        super::inspector_ordering::apply_blend_edit(
+        ph2d_inspector_ordering::apply_blend_edit(
             sim,
             entity_bits,
             edit,

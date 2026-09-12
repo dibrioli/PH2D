@@ -15,7 +15,7 @@ use ph2d_ecs::{
 };
 use ph2d_editor::{AnimFieldEdit, InspectorAnimInfo, InspectorAnimRow, Toast};
 
-use super::inspector_ordering::queue_set;
+use ph2d_inspector_ordering::queue_set;
 
 const ANIMATIONS: &str = "ph2d::ecs::SpriteAnimations";
 const ANIMATOR: &str = "ph2d::ecs::SpriteAnimator";

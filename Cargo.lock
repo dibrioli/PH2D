@@ -5600,6 +5600,7 @@ dependencies = [
  "ph2d-imageio",
  "ph2d-imageio-registry-init",
  "ph2d-input",
+ "ph2d-inspector-ordering",
  "ph2d-light",
  "ph2d-mesh",
  "ph2d-mesh-render",
@@ -5706,6 +5707,7 @@ dependencies = [
  "ph2d-tool-upscale",
  "ph2d-tool-vector",
  "ph2d-trace",
+ "ph2d-transport",
  "ph2d-ui-codegen",
  "ph2d-ui-state",
  "ph2d-ui-testkit",
@@ -5940,6 +5942,17 @@ name = "ph2d-input"
 version = "0.0.0"
 dependencies = [
  "criterion",
+ "serde",
+]
+
+[[package]]
+name = "ph2d-inspector-ordering"
+version = "0.0.0"
+dependencies = [
+ "ph2d-core",
+ "ph2d-ecs",
+ "ph2d-editor",
+ "postcard",
  "serde",
 ]
 
@@ -8329,6 +8342,14 @@ dependencies = [
  "ph2d-mesh",
  "ph2d-quantize",
  "ph2d-remesh-iso",
+]
+
+[[package]]
+name = "ph2d-transport"
+version = "0.0.0"
+dependencies = [
+ "ph2d-core",
+ "ph2d-editor",
 ]
 
 [[package]]

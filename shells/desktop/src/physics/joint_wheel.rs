@@ -7,7 +7,7 @@
 //! entidade, e a próxima wave da polia (motor por roda, ruptura no centro) chega
 //! aqui.
 
-use crate::render_loop::inspector_ordering::queue_set;
+use ph2d_inspector_ordering::queue_set;
 use ph2d_ecs::scene::{ComponentRegistry, EditorCommandQueue};
 use ph2d_ecs::{Entity, Name, SimWorld, Transform};
 use ph2d_editor::{InspectorWheelInfo, WheelFieldEdit};
@@ -217,7 +217,7 @@ pub(crate) fn apply_wheel_edit(
                 &ph2d_physics_ecs::WestonAxle,
             );
         } else {
-            crate::render_loop::inspector_ordering::queue_remove(
+            ph2d_inspector_ordering::queue_remove(
                 queue,
                 registry,
                 entity_bits,

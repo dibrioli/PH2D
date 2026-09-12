@@ -26,7 +26,7 @@ use ph2d_ecs::scene::{ComponentRegistry, EditorCommandQueue};
 use ph2d_ecs::{Entity, SimWorld, TIMER_MAX_US, TIMERS_MAX, Timer, Timers, World};
 use ph2d_editor::{InspectorTimerInfo, InspectorTimerRow, TimerFieldEdit, Toast};
 
-use super::inspector_ordering::queue_set;
+use ph2d_inspector_ordering::queue_set;
 
 const TIMERS: &str = "ph2d::ecs::Timers";
 

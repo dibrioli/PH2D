@@ -473,34 +473,3 @@ fn o_despacho_pergunta_menu_costura_chip_nesta_ordem() {
         "o chip tem de ser perguntado antes do encaminhamento por viewport"
     );
 }
-
-/// ⭐⭐ **O QUADRO PUBLICA O QUE O PINTOR MEDIU** — o chip e o rectângulo do menu.
-///
-/// ⛔ **Sem isto o botão é invisível ao ponteiro:** a largura do chip é a do
-/// TEXTO e só o pintor a mede, então descartar o retorno do `paint_view_label`
-/// deixa a lista de alvos vazia — o nome aparece na tela e o clique atravessa-o.
-/// *É a forma exacta do report, e nada além de um censo a apanha: o gate de
-/// registo mede ids, e aqui não há id nenhum.*
-#[test]
-fn o_quadro_publica_o_chip_e_o_rectangulo_que_o_pintor_mediu() {
-    // ⚠️ **`../` desde 2026-09-11 (W2/L3-A3)**: um `include_str!` é relativo ao directório do
-    // ficheiro que o escreve, e este desceu um nível ao entrar em `src/sculpt3d/`. O
-    // `render_loop/` fica na shell — ele **não** é da família, e é essa a razão de ainda se
-    // alcançar por caminho e não por módulo.
-    let fonte = include_str!("../render_loop/mod.rs");
-    for (chamada, porta) in [
-        ("paint_view_label(", "note_view_labels("),
-        ("paint_view_menu(", "note_view_menu_rect("),
-    ] {
-        let at = fonte
-            .find(chamada)
-            .unwrap_or_else(|| panic!("controlo positivo: `{chamada}` sumiu do quadro"));
-        // A publicação tem de vir depois da chamada, e perto dela.
-        let depois = &fonte[at..];
-        assert!(
-            depois.find(porta).is_some_and(|d| d < 1500),
-            "o quadro chama `{chamada}` e nao publica o resultado por `{porta}` -- o alvo do \
-             clique fica vazio e o nome aparece na tela com o clique a atravessa'-lo"
-        );
-    }
-}

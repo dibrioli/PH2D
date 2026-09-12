@@ -153,7 +153,11 @@ use donation::FormStamp;
 /// **AS CENAS DO SMOKE** — a fixture de cada uma. Filho pelo motivo
 /// dos outros três: o corte é de responsabilidade, e a lista de cenas cresce uma
 /// entrada por wave.
-mod scenes;
+pub mod scenes;
+
+#[cfg(test)]
+#[path = "scenes_router_tests.rs"]
+mod scenes_router_tests;
 
 /// O QUE A CENA DIZ ao artista — ver o módulo.
 #[path = "announce.rs"]
@@ -254,7 +258,7 @@ pub use doc::{LoadedPiece, decode as decode_doc};
 // lá seria um segundo escritor — que concordaria com este exatamente onde ele
 // erra. O `cfg(test)` é o que diz que a superfície é isso e nada mais.
 #[cfg(test)]
-pub(crate) use doc::encode as encode_doc;
+pub use doc::encode as encode_doc;
 
 /// **UM OBJETO da cena** — a pilha de níveis dele e onde ele está.
 ///

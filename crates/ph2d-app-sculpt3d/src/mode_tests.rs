@@ -148,12 +148,23 @@ fn with_no_scene_the_pill_is_the_invitation_to_enter() {
 /// do clique, e sem nada na tela explicando por quê.
 #[test]
 fn a_request_with_no_gpu_is_spent_not_stored() {
-    let mut app = crate::app_state::App::new();
-    app.sculpt3d_req.toggle_request = true;
-    app.sculpt3d_apply_toggle();
+    // ⭐ **Sem `App` desde 2026-09-11 (W2/L3-B), e o gate ficou MAIS FORTE.** Ele construía uma
+    // `App` inteira para exercitar uma lei de três linhas — hoje a ausência de GPU é um
+    // parâmetro (`None`), e o que se afirma é a lei, não um passeio pela shell. *Uma fixture
+    // que precisa do mundo inteiro esconde de que a lei depende.*
+    let mut req = crate::Sculpt3dRequests {
+        toggle_request: true,
+        ..Default::default()
+    };
+    let mut slot = None;
+    crate::mode::apply_toggle(&mut slot, &mut req, None);
     assert!(
-        !app.sculpt3d_req.toggle_request,
+        !req.toggle_request,
         "o pedido sobreviveu ao frame: a cena nasceria sozinha quando a janela aparecesse"
+    );
+    assert!(
+        slot.is_none(),
+        "controlo positivo: sem device não pode ter nascido cena nenhuma"
     );
 }
 

@@ -118,7 +118,7 @@ mod tests {
     /// lida lá. ⚠️ **O que destravou foi uma decisão, não um refactor:** os três últimos braços
     /// autoram uma track de timeline, e a família passou a poder depender da `ph2d-timeline` —
     /// *uma crate-motor irmã não é a shell* (ADR-0075). As outras três continuam aqui.
-    const FAMILIAS_COM_O_ROTEADOR_AINDA_NA_SHELL: &[&str] = &["motion", "sculpt3d", "vec"];
+    const FAMILIAS_COM_O_ROTEADOR_AINDA_NA_SHELL: &[&str] = &["motion", "vec"];
 
     /// ⚠️ **Uma família registada tem de declarar pelo menos um roteador, e todo roteador tem de ter
     /// nível.** Sem esta metade, uma família que se registasse com `routers: &[]` passaria no gate

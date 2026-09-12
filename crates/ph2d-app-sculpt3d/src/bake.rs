@@ -242,9 +242,6 @@ mod light_measure;
 
 /// **O GESTO INTEIRO, num device de verdade** — ver o módulo. Irmão do
 /// `light_measure` pela mesma razão: tudo o que mora nele precisa de um adapter.
-#[cfg(test)]
-#[path = "bake_gesture_tests.rs"]
-mod gesture;
 
 #[cfg(test)]
 mod tests {

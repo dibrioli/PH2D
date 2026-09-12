@@ -28,6 +28,34 @@ use super::fixtures::{
 /// degradação visível e honesta, contra uma tela preta que se lê como crash. E a
 /// lista de cenas pode crescer para sempre sem ninguém ter de lembrar deste
 /// arquivo.
+/// **O TECTO DO ROTEADOR** — o maior nível por que esta família responde.
+///
+/// ⚠️⚠️ **CONTADO, nunca escrito de memória** (CLAUDE.md §5.0: *«o número da próxima cena de
+/// smoke CONTA-SE lendo o roteador»*). Aqui o roteador é **disperso** — cada cena tem o
+/// próprio predicado, no próprio ficheiro —, então quem o conta é o gate
+/// [`o_tecto_declarado_e_o_maior_nivel_reclamado`](crate::scenes_router_tests), que varre
+/// **todo** `.rs` desta crate à procura da forma `== Some("N")`.
+///
+/// ⛔⛔ **E o censo NÃO varre por prefixo de nome**, que seria o óbvio (`scenes_*.rs`): essa é a
+/// armadilha §2.7 do HOWTO, cujo modo de falha é MUDO — renomeie um ficheiro e a varredura passa
+/// a ver zero, com `bad.is_empty()` trivialmente verdadeiro. Ele varre a crate inteira e tem
+/// **piso de população** nas duas grandezas.
+///
+/// ⛔ **E uma TABELA central aqui está medida e recusada** — ver o doc do [`smoke_armed`]: a
+/// enumeração que aqui viveu apodreceu no dia previsível, e a cena `=14` abriu com o canvas em
+/// branco porque ninguém lhe acrescentou o `"14"`. *O censo mede os predicados; ele não pede a
+/// ninguém que se lembre de uma lista.*
+pub const CENAS: u32 = 39;
+
+/// **A env do roteador, lida DENTRO da crate.**
+///
+/// ⭐ É a condição que faz o [`crate::FAMILY`] dizer a verdade: declarar `PH2D_SCULPT3D_SMOKE` e
+/// não a ler seria o registo a afirmar um alcance que a família não tem — e o gate do registo
+/// conta ROTEADORES, não leituras.
+pub fn armed_scene() -> Option<String> {
+    std::env::var("PH2D_SCULPT3D_SMOKE").ok()
+}
+
 pub(crate) fn smoke_armed() -> bool {
     std::env::var("PH2D_SCULPT3D_SMOKE")
         .ok()

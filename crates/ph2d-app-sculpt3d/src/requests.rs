@@ -120,17 +120,24 @@ mod tests {
 
 /// **O que esta família declara à shell** (`ph2d-app-registry-init`).
 ///
-/// ⚠️⚠️ **`routers: &[]` é a verdade MEDIDA da Fase A** — `"sculpt3d"` está na catraca
-/// `FAMILIAS_COM_O_ROTEADOR_AINDA_NA_SHELL` do registo, que é o único sítio onde *«ainda não
-/// saiu»* se distingue de *«alguém esqueceu»*.
+/// ⭐⭐ **A Fase B trouxe o roteador, e `"sculpt3d"` SAIU da catraca**
+/// `FAMILIAS_COM_O_ROTEADOR_AINDA_NA_SHELL` (2026-09-11). As ~15 cenas `scenes_*.rs`
+/// atravessaram com os outros 111 ficheiros, e com elas os 37 `env::var` que escolhem o nível:
+/// a família lê hoje a env que declara.
 ///
-/// ⭐ **O grosso do trabalho desta linha foi de ENDEREÇO, não de fronteira:** os ~180 ficheiros
-/// `src/sculpt3d_*.rs` da shell viraram a pasta `src/sculpt3d/`, que é o que torna o corte da Fase
-/// B mecânico. O `PH2D_SCULPT3D_SMOKE` é lido em `sculpt3d/scenes_*.rs` — ainda na shell, porque
-/// as cenas tocam a `App`.
+/// ⚠️⚠️ **O `max_level` é [`crate::scenes::CENAS`], CONTADO** — ver o doc dele e o gate que o
+/// mede. ⛔ Escrever aqui o número seria a terceira cópia de uma grandeza que já tem duas.
 ///
-/// ⇒ a entrada sai da catraca no dia em que a Fase B trouxer esse roteador para cá.
+/// ⚠️⚠️ **UM roteador, e não trinta e dois.** Esta família lê ~32 variáveis `PH2D_*`, e a
+/// esmagadora maioria é **DIAGNÓSTICO de retopologia** (`PH2D_RETOPO_*`, `PH2D_DUMP*`,
+/// `PH2D_BENCH_*`, `PH2D_TIP_ALIGN`, `PH2D_ISO_*`, `PH2D_GRIDMAP_*`) — interruptores de
+/// bissecção que ninguém do lado do dono alcança e que não roteiam cena nenhuma. Só a forma
+/// `PH2D_*_SMOKE` entra aqui, e o gate do registo afirma-o pela forma do nome. *Declarar um
+/// `PH2D_RETOPO_LEGACY` como roteador diria ao dono que ele tem uma cena para ver.*
 pub const FAMILY: ph2d_app_host::AppFamily = ph2d_app_host::AppFamily {
     key: "sculpt3d",
-    routers: &[],
+    routers: &[ph2d_app_host::SmokeRouter {
+        env: "PH2D_SCULPT3D_SMOKE",
+        max_level: crate::scenes::CENAS,
+    }],
 };

@@ -1,3 +1,12 @@
+//! ⚠️⚠️ **Este teste MUDOU-SE da crate para a shell em 2026-09-11 (W2/L3-B)**, e a razão é a
+//! armadilha §2.5 do HOWTO: ele exercita o gesto INTEIRO, e as duas metades dele deixaram de
+//! viver do mesmo lado. O `drain` é da [`ph2d_app_sculpt3d`]; a tela branca sai do
+//! `image_import` e os pixels do sprite saem do `hero_intents::texture_edit`, que são folhas
+//! **desta shell** com 41 e 20 consumidores de famílias diferentes.
+//!
+//! ⛔ **Montar o sprite à mão para o manter na crate está recusado, e a recusa é do próprio
+//! autor dele**, três linhas abaixo: *«uma fixture que montasse o sprite à mão testaria um
+//! objeto que o produto não produz»*. ⇒ o teste vai para onde as duas metades se encontram.
 //! **O GESTO DE ASSAR, ponta a ponta, num device de verdade.**
 //!
 //! Módulo irmão do [`super`] (`#[path]`, `cfg(test)`), ao lado do
@@ -77,7 +86,7 @@ fn the_bake_gesture_lights_the_selected_sprite() {
     // A MESMA porta que a cena de smoke usa para pôr a tela na mesa — uma
     // fixture que montasse o sprite à mão testaria um objeto que o produto não
     // produz.
-    let (_, bits) = crate::image_import::spawn_blank_canvas(
+    let (_, bits) = ph2d_host_desktop::image_import::spawn_blank_canvas(
         &mut sim,
         &mut renderer,
         &asset_db,
@@ -97,7 +106,7 @@ fn the_bake_gesture_lights_the_selected_sprite() {
     let mut forms = BTreeMap::new();
     let mut pass = None;
     let mut next_id = 0u32;
-    let line = super::drain(
+    let line = ph2d_app_sculpt3d::bake::drain(
         &mut scene,
         &mut forms,
         &mut pass,
@@ -107,8 +116,17 @@ fn the_bake_gesture_lights_the_selected_sprite() {
         Some(bits),
         &mut sim,
         &mut renderer,
-        &asset_db,
-        &atlas_map,
+        false,
+        &mut |sim: &mut SimWorld, renderer: &mut SpriteRenderer| {
+            ph2d_host_desktop::hero_intents::texture_edit::read_sprite_source(
+                ph2d_ecs::Entity::from_bits(bits),
+                sim,
+                renderer,
+                &asset_db,
+                &atlas_map,
+            )
+            .map(|s| s.image)
+        },
     )
     .expect("o gesto foi pedido, entao ele responde alguma coisa");
     assert!(line.contains("ASSADO"), "o gesto recusou o bake: {line}");

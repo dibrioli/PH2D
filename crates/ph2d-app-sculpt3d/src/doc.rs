@@ -132,7 +132,7 @@ pub fn decode(bytes: &[u8]) -> Result<(Vec<LoadedPiece>, usize), SculptDocError>
 /// dirigível **sem janela**, e o método fica sendo o que ele de fato é: a
 /// coleta. O arch-gate `the_writer_goes_through_the_one_encoder` impede que
 /// ele volte a montar o `SculptDoc` por conta própria.
-pub(crate) fn encode(pieces: &[(StackData, PoseData)], active: usize) -> Vec<u8> {
+pub fn encode(pieces: &[(StackData, PoseData)], active: usize) -> Vec<u8> {
     let doc = SculptDoc {
         version: SCULPT_DOC_VERSION,
         objects: pieces

@@ -10,6 +10,10 @@
 //! explícito e desfazível), e o **consumidor** ignora um passo cuja ponta não é estado — porque o ⊘
 //! não é a única rota para uma forma sair (arrastar na Hierarquia também tira).
 
+// ⚠️ **Do sítio onde a lei de facto vive.** O `crate::render_loop::{ui_state,vector}_bridge` é
+// hoje uma FACHADA — um `pub(crate) use ph2d_app_vec::…` de uma linha que o `render_loop/mod.rs`
+// mantém para os sítios de chamada ficarem byte a byte iguais. ⛔ Mas ela faz este ficheiro
+// *parecer* preso ao LAÇO da shell, quando o que ele usa é uma crate.
 use super::super::world;
 use ph2d_ecs::{Entity, VecMorph};
 use ph2d_vec_entities::morph_set::{create, upkeep};
@@ -259,15 +263,15 @@ fn after_removing_thin_the_hover_still_morphs_to_tall() {
     crate::morph_machine_drive::reconcile(&mut machines, &mut sim, &scene, &map, &mut states);
 
     // ⭐ E agora o quadro dos STATES: pedir o Hover e andar.
-    let mut ui = crate::render_loop::ui_state_bridge::UiMachines::new();
-    let mut cooked = crate::render_loop::ui_state_bridge::Cooked::default();
-    crate::render_loop::ui_state_bridge::request(
+    let mut ui = ph2d_app_vec::ui_state_bridge::UiMachines::new();
+    let mut cooked = ph2d_app_vec::ui_state_bridge::Cooked::default();
+    ph2d_app_vec::ui_state_bridge::request(
         &mut ui,
         &states,
         host_id,
         ph2d_ui_state::StateRole::Hover,
     );
-    crate::render_loop::ui_state_bridge::dispatch(
+    ph2d_app_vec::ui_state_bridge::dispatch(
         &mut ui,
         &mut states,
         &mut sim,

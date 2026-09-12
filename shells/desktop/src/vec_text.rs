@@ -11,6 +11,10 @@
 //! - [`crate::vec_text_object`] — o lado OBJETO: `VecShape::Text`, o alvo do painel,
 //!   a edição da seleção e o "Convert to Curves" (re-exportado abaixo).
 
+// ⚠️ **Do sítio onde a lei de facto vive.** O `crate::render_loop::{ui_state,vector}_bridge` é
+// hoje uma FACHADA — um `pub(crate) use ph2d_app_vec::…` de uma linha que o `render_loop/mod.rs`
+// mantém para os sítios de chamada ficarem byte a byte iguais. ⛔ Mas ela faz este ficheiro
+// *parecer* preso ao LAÇO da shell, quando o que ele usa é uma crate.
 use ph2d_tool_vector::TextAlign;
 use ph2d_vec_scene::{Paint, StrokeSpec, VecPathId};
 
@@ -84,7 +88,7 @@ impl crate::app_state::App {
     /// Espelha na hora para o mesmo frame já rotear certo.
     pub(crate) fn vec_set_draw_mode(&mut self, mode: ph2d_tool_vector::DrawMode) {
         if let Some(gfx) = self.gfx.as_mut() {
-            crate::render_loop::vector_bridge::set_mode(&mut gfx.tools, mode);
+            ph2d_app_vec::vector_bridge::set_mode(&mut gfx.tools, mode);
         }
         self.vec_draw_config.mode = mode;
     }

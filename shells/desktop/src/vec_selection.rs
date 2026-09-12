@@ -7,6 +7,10 @@
 //!
 //! A ponte de identidade (path ⟺ entidade) é o módulo irmão [`ph2d_vec_entities::entities`].
 
+// ⚠️ **Do sítio onde a lei de facto vive.** O `crate::render_loop::{ui_state,vector}_bridge` é
+// hoje uma FACHADA — um `pub(crate) use ph2d_app_vec::…` de uma linha que o `render_loop/mod.rs`
+// mantém para os sítios de chamada ficarem byte a byte iguais. ⛔ Mas ela faz este ficheiro
+// *parecer* preso ao LAÇO da shell, quando o que ele usa é uma crate.
 use ph2d_ecs::{ChildOf, Entity, SimWorld, VecPathRef};
 use ph2d_editor::screens::hero::GizmoStateGroup;
 use ph2d_vec_entities::entities::{VecEntityMap, selection_paths, subtree_paths};
@@ -266,7 +270,7 @@ mod tests {
     /// comprimento que o gate quisesse, e ficaria verde sobre o bug.
     #[test]
     fn restyling_a_parent_shape_leaves_its_children_alone() {
-        use crate::render_loop::vector_bridge::restyle_selected_strokes;
+        use ph2d_app_vec::vector_bridge::restyle_selected_strokes;
         use ph2d_vec_scene::{Rgba8, StrokeSpec, rectangle};
 
         let (mut sim, mut scene, mut map) = setup();
@@ -295,7 +299,7 @@ mod tests {
         sync_selection(&mut gizmo, &sim, &scene, &map, &mut pen, &mut state, false);
 
         let green = Rgba8::new(0, 255, 0, 255);
-        let style = crate::render_loop::vector_bridge::StrokeStyle {
+        let style = ph2d_app_vec::vector_bridge::StrokeStyle {
             color: green,
             cap: ph2d_vec_scene::LineCap::Butt,
             join: ph2d_vec_scene::LineJoin::Miter,

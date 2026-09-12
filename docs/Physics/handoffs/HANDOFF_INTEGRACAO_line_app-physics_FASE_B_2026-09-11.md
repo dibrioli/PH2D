@@ -11,31 +11,38 @@
 
 | grandeza | antes (`b374411a1`) | depois | Δ |
 |---|---:|---:|---:|
-| `shells/desktop` (o que a catraca mede) | 465 105 linhas / 1 801 ficheiros | **453 755 / 1 763** | **−11 350 (−2,44 %)** |
-| `crates/ph2d-app-physics` | 22 465 / 110 | **33 923 / 157** | +11 458 / +47 |
-| `shells/desktop/src/physics/` (o que FICOU) | — | 18 275 / 66 | — |
+| `shells/desktop` (o que a catraca mede) | 465 105 linhas / 1 801 ficheiros | **451 079 / 1 757** | **−14 026 (−3,02 %)** |
+| `crates/ph2d-app-physics` | 22 465 / 110 | **36 594 / 167** | +14 129 / +57 |
+| `shells/desktop/src/physics/` (o que FICOU) | — | 15 630 / 60 | — |
 
 **Prova do §3 (nada se perdeu):** `cargo nextest list --workspace --cargo-profile ci-test`
 → `scripts/nextest-list-diff.py`:
 
 ```
-antes: 22655 testes (22031 chaves) | depois: 22655 (22031)
-MOVED (mesma chave, outro pacote/binário): 121
+antes: 22655 testes (22031 chaves) | depois: 22659 (22035)
+MOVED (mesma chave, outro pacote/binário): 130
 ONLY-A (perdidos): 0
-ONLY-B (novos): 0
+ONLY-B (novos): 4
+   + o_tecto_declarado_e_o_maior_braco_do_match
+   + nenhum_nivel_e_reclamado_duas_vezes
+   + a_env_do_roteador_e_lida_aqui
+   + o_registo_declara_o_tecto_do_roteador
 ```
 
-⭐ **Exacto nos dois sentidos** — nem um teste perdido, nem um inventado. Os 121 `MOVED`
-são `ph2d-host-desktop::bin/…` → `ph2d-app-physics`, que é a extracção a aparecer.
+⭐ **`ONLY-A: 0`** — nem um teste perdido. Os 130 `MOVED` são
+`ph2d-host-desktop::bin/…` → `ph2d-app-physics`, que é a extracção a aparecer; e os
+**4** `ONLY-B` são os gates NOVOS do roteador (§4), escritos nesta fase porque o
+`CENAS` nasceria sem ninguém a medi-lo.
 
-**Portão de fecho:** `nextest-impacted.sh` (BASE=`b374411a1`) → **5 237 testes, 5 237 passam** ·
+**Portão de fecho:** `nextest-impacted.sh` (BASE=`b374411a1`) → **5 241 testes, 5 241 passam** ·
 `clippy --all-targets` nas duas crates → **0 avisos** (o CI corre `-D warnings`) ·
 `cargo fmt --all --check` limpo · **0 órfãos e 0 duplicados** nas duas árvores ·
 `cargo test -p ph2d-app-registry-init` verde.
 
-**A catraca `the_shell_only_shrinks`: VERDE**, com **15 350** linhas de folga.
-⚠️ **Para o integrador:** o censo de obsolescência dela dispara quando a folga passa de
-**20 000** — faltam **4 650 linhas**. *Se as outras quatro linhas removerem isso somado
+**A catraca `the_shell_only_shrinks`: VERDE**, com **18 026** linhas de folga.
+⚠️⚠️ **Para o integrador, e agora é apertado:** o censo de obsolescência dela dispara
+quando a folga passa de **20 000** — faltam **1 974 linhas**, e as outras quatro linhas
+da W2 Fase B vão passar disso na primeira que aterrar. *Se as outras quatro linhas removerem isso somado
 (e vão), o `TETO_LOC` tem de ser reescrito com a medição da ÁRVORE COMBINADA.* ⛔ Esta
 linha **não** lhe tocou, de propósito: é a grandeza que soma entre linhas.
 
@@ -87,45 +94,51 @@ linha deve às outras quatro (§2).
 
 ---
 
-## §4 · ⛔ O FIM DA LINHA **NÃO** FOI ALCANÇADO — e a lista exacta do que falta
-
-Das quatro condições gateadas do briefing, **uma** está cumprida:
+## §4 · ✅ O FIM DA LINHA, ALCANÇADO — as quatro condições
 
 | condição | estado |
 |---|---|
-| `PH2D_PHYSICS_SMOKE` lido **dentro** da crate | ⛔ **NÃO** — o roteador é um `impl crate::App` na shell |
-| `const FAMILY` declara o roteador com `max_level` contado do `match` | ⛔ **NÃO** — `routers: &[]` |
-| `"physics"` sai de `FAMILIAS_COM_O_ROTEADOR_AINDA_NA_SHELL` | ⛔ **NÃO** — continua lá |
-| `cargo test -p ph2d-app-registry-init` verde | ✅ **SIM** (verde *porque a excepção está declarada*) |
+| `PH2D_PHYSICS_SMOKE` lido **dentro** da crate | ✅ [`smoke::armed_scene`](../../../crates/ph2d-app-physics/src/smoke.rs) |
+| `const FAMILY` declara o roteador com `max_level` CONTADO do `match` | ✅ `max_level: smoke::CENAS` (**119**) |
+| `"physics"` sai de `FAMILIAS_COM_O_ROTEADOR_AINDA_NA_SHELL` | ✅ saiu — **só ela**; `motion`, `sculpt3d` e `vec` ficam |
+| `cargo test -p ph2d-app-registry-init` verde | ✅ |
 
-⭐ **Mas o roteador está a 16 braços de sair, e o número é medido:**
+### ⭐ O que destravou não foi um refactor, foi a DECISÃO
 
-```
-arms no match: 117
-  cena da CRATE (via run_physics_scene): 101   ← já não tocam a App
-  metodo da SHELL:                        16
-```
+Os três últimos braços (`joint_anim`, `jump`, `walk`) autoram uma **track de timeline**.
+Enquanto a família não podia depender da `ph2d-timeline`, eles eram inexprimíveis fora da
+shell — e era esse o bloqueador nomeado no fecho anterior. Com a decisão do integrador
+(*a `ph2d-timeline` não depende de nenhuma `ph2d-app-*` nem da shell; **uma crate-motor
+irmã não é a shell***), o `SceneCtx` passou a levar o `&mut TimelineDoc` e os três saíram
+como os outros catorze.
 
-Os 16 são: `physics_smoke_pile` · `_author` · `_world` · `_layers` · `_joints` · `_bake` ·
-`_parented` · `_weld` · `_bake_range` · `_joint_anim` · `_float` · `_walk` ·
-`_author_player` · `_jump` · `_reaction` · `_out`.
+⚠️ **A dependência já estava declarada desde a Fase A** — o que faltava era a autorização
+para a usar deste lado. *O bloqueador era de política, e eu tinha-o medido como técnico.*
 
-E eles partem em **duas classes de preço muito diferente**:
+### ⚠️ O que NÃO veio para a crate, e é deliberado
 
-- **Baratos (a maioria):** só tocam `self.gfx` — o `AppGfx` (sim + ponte + câmera). São o
-  mesmo caso dos `body_*` do §2: viram funções livres sobre os tipos que já viajam.
-- **⛔ O bloqueador NOMEADO:** `physics_smoke_walk` (e irmãos do player) autoram uma **track
-  de timeline** (`author_platform_track(&mut self.timeline.doc, …)`). É exactamente o item
-  *«timeline»* que o §6 do handoff da Fase A já nomeava como *«o que só o substrato resolve»*.
-  ⛔ **Não o invente:** ou o substrato ganha a porta, ou aquelas cenas ficam na shell e o
-  roteador passa a ter duas metades — que é decisão de desenho, não de implementação.
+O **prólogo** fica na shell: rebobinar, armar o toggle de física, abrir a timeline e
+decidir play/pause. Ele mexe no `Playhead`, nas `flags` da timeline e no `HeroScreen` —
+três coisas que são da **composição**, não da família. *O que sai são os CORPOS; o que
+decide a ordem do quadro fica.* O `PAUSED_SCENES` veio (é uma propriedade das cenas), e a
+shell lê-o do roteador.
 
-⚠️ **E há uma terceira coisa que a próxima janela tem de decidir antes de mover o `match`:**
-com 16 braços na shell, um roteador *inteiramente* na crate não pode chamá-los (a crate não
-vê a shell). Ou os 16 saem primeiro, ou o roteador parte em dois — e um roteador partido
-**não satisfaz a condição do briefing**, que pede o `env::var` lido dentro da crate.
+### ⛔⛔ E o `CENAS` nasceria SEM GATE — o defeito que o §5.0 nomeia
 
----
+Declarar `max_level: 119` ao registo é uma **afirmação sobre o `match`**, e o gate do
+registo **conta roteadores, não cenas**: uma família que declarasse `max_level: 4` com 118
+cenas passava por ele, e o dono que escrevesse `=63` recebia a cena 1 **em silêncio**.
+⇒ [`smoke_tests.rs`](../../../crates/ph2d-app-physics/src/smoke_tests.rs), quatro gates:
+o tecto é **contado** do `match` irmão (com **piso de população**, senão um parser que
+varre zero fica verde por vacuidade), nenhum nível é reclamado duas vezes, a env é lida
+aqui, e o registo declara o mesmo número.
+**Provado por mutação:** `CENAS = 118` sangra · `armed_scene` a devolver `None` sangra.
+
+⚠️ E os **dois parsers de braços** dos gates da shell aprenderam a **terceira** forma de
+um braço (`crate::<mod>::<fn>(ctx)`; antes `self.<fn>()` e `self.run_physics_scene(…)`).
+Eles liam `self.` e passaram a devolver **zero** — *e um conjunto vazio lê-se como «está
+tudo bem»*. Foi o controlo positivo deles (`the_needles_can_match_something`, um piso de
+população) que os obrigou a falhar em vez de branquear.
 
 ## §5 · As armadilhas que esta fase PAGOU (o que a próxima linha não deve repagar)
 
@@ -179,11 +192,23 @@ directório — é o módulo que o inclui (185 ficheiros do `render_loop` são a
 os dois — o caminho e o nome. **Re-ancorar, nunca afrouxar.** ⚠️ E **dois deles vivem em `src/`,
 não em `tests/it/`**: uma varredura que só olha a segunda pasta deixa-os vermelhos.
 
-### 5.7 ⛔ O `cargo clippy --fix` foi TENTADO e REVERTIDO
+### 5.7-bis ⛔⛔ Uma cura escrita para N ficheiros tem de dizer QUAIS
+A conversão das 17 cenas abriu um parêntese que não fechou (`Some(15.0;`). A correcção
+que escrevi a seguir varreu **todos** os `physics_smoke_*.rs` da crate — e as **101** que
+já estavam certas levaram um `)` a mais. *Um regex de reparo é tão perigoso quanto o que
+reparou*: restaurados do `HEAD`, um a um, e a cura passou a nomear os cinco ficheiros.
+
+### 5.7-ter ⚠️ Um teste que chama um helper que atravessa, ATRAVESSA
+Dos seis gates do `joint_anim`, a varredura que procura o símbolo da shell **no corpo do
+teste** leu `1`. Os outros três não nomeiam o `TimelineScene` — eles chamam um helper
+(`play`) que o usa. ⇒ *a régua da fronteira é o FECHO sobre os helpers, não o texto do
+teste* — exactamente a mesma lição do §5.1, um nível abaixo.
+
+### 5.8 ⛔ O `cargo clippy --fix` foi TENTADO e REVERTIDO
 Ele partiu a build (35 erros) ao apagar imports que **outra configuração de `cfg`** usava.
 Numa árvore com muito `#[cfg(test)]` e `#[path]`, o `--fix` não é seguro.
 
-### 5.8 ⚠️ O teste que ATRAVESSA a fronteira é uma espécie própria
+### 5.9 ⚠️ O teste que ATRAVESSA a fronteira é uma espécie própria
 7 gates de 28 (e os 29 da §14 do inspector) têm o **sujeito na crate** e exercitam um **gesto da
 shell**. Um `#[cfg(test)]` é invisível do outro lado da fronteira, então eles não podem ficar com
 o sujeito. ⇒ **o corte é por quem o teste EXERCITA, não por quem ele nomeia.**
@@ -196,8 +221,12 @@ passaram a `pub`.
 
 ## §6 · Ficheiros de atenção para o integrador
 
-- `crates/ph2d-app-physics/src/lib.rs` — `const FAMILY` continua com `routers: &[]` (§4).
-- `crates/ph2d-app-registry-init/src/lib.rs` — `"physics"` continua na catraca. ⛔ **não apague.**
+- `crates/ph2d-app-physics/src/lib.rs` — `const FAMILY` **declara** `PH2D_PHYSICS_SMOKE`
+  com `max_level: smoke::CENAS`.
+- `crates/ph2d-app-registry-init/src/lib.rs` — **`"physics"` SAIU** da catraca. ⚠️ As
+  outras quatro linhas abrem agora e as delas **ficam**: `motion`, `sculpt3d` e `vec`
+  continuam lá, e a catraca só encolhe.
+- `crates/ph2d-app-physics/src/smoke.rs` + `smoke_tests.rs` — o roteador e os gates dele.
 - `crates/ph2d-editor-core/tests/it/architecture_the_shell_only_shrinks.rs` — `TETO_LOC` **não
   tocado**; ver a nota da §1 sobre os 4 650.
 - `shells/desktop/src/render_loop/point_gizmo.rs` — `joint_anchor_handles` passou de
@@ -210,7 +239,14 @@ passaram a `pub`.
 
 ## §7 · Smoke
 
-O binário fica **compilado** (2ª build: `Finished` em **0,22 s**, zero `Compiling`).
+O binário fica **compilado**. A 2ª corrida, colada:
+
+```
+$ cargo build -p ph2d-host-desktop --profile smoke
+    Finished `smoke` profile [optimized] target(s) in 0.21s
+```
+
+(zero `Compiling` — a 1ª custou 12,37 s.)
 
 ```
 cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-app-physics && env PH2D_PHYSICS_SMOKE=63 cargo run -p ph2d-host-desktop --profile smoke

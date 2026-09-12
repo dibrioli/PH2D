@@ -311,7 +311,7 @@ pub fn advance_joint_anchor_drag(
         // exists here. The anchor's nine collider points do not answer
         // either question.
         Grab::Angle(off) => {
-            let (anchor_a, angle_a) = anchor_of(&ctx.bridge, entity);
+            let (anchor_a, angle_a) = anchor_of(ctx.bridge, entity);
             let raw = bearing(anchor_a, cursor) + off - angle_a;
             write_limit(ctx.sim, entity, drag.kind, raw);
             None
@@ -325,7 +325,7 @@ pub fn advance_joint_anchor_drag(
             if drag.kind.is_wheel_radius() {
                 wheel::resize_wheel(ctx.sim, entity, drag.kind, cursor, off);
             } else {
-                let (anchor_a, _) = anchor_of(&ctx.bridge, entity);
+                let (anchor_a, _) = anchor_of(ctx.bridge, entity);
                 let len = distance(anchor_a, cursor) + off;
                 write_length(ctx.sim, entity, len);
             }

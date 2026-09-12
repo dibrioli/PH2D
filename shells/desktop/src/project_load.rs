@@ -229,7 +229,7 @@ impl crate::App {
         // …e o Motion re-ENTRA. O auto-play dele é edge-triggered na entrada na tool, e um load
         // não muda a tool — muda o DOCUMENTO. Sem isto, quem estivesse com o Motion aberto abriria
         // um projeto e veria o grafo congelado em t=0 até apertar Space (o `pause` acima é novo).
-        crate::render_loop::motion_bridge::forget_tool_transition();
+        ph2d_app_motion::motion_bridge::forget_tool_transition();
         self.undo = ProjectUndo::default(); // documento novo, histórico novo
         // O mundo rígido é DERIVADO das components (ADR-0131 D2), então o do
         // documento anterior morre aqui — o `reconcile` do próximo frame o

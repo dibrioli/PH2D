@@ -135,8 +135,8 @@ mod tests {
     /// mensagem que afirma uma AUSÊNCIA.
     #[test]
     fn the_message_promises_the_numbers_the_panel_paints() {
-        use crate::motion::motion_state::MotionState;
-        use crate::render_loop::motion_bridge::params::build_params_snapshot;
+        use ph2d_app_motion::motion_bridge::params::build_params_snapshot;
+        use ph2d_app_motion::motion_state::MotionState;
         use ph2d_editor::ProjectSettings;
         use ph2d_panel_motion_params::ParamRow;
 

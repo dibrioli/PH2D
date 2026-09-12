@@ -86,7 +86,8 @@ fn the_frame_drains_the_global_palette_pick() {
 /// *Mutação que sangra:* voltar qualquer um dos dois a `take_command_pick()`.
 #[test]
 fn both_pick_consumers_take_conditionally() {
-    const MOTION: &str = include_str!("../../src/render_loop/motion_bridge_library.rs");
+    const MOTION: &str =
+        include_str!("../../../../crates/ph2d-app-motion/src/motion_bridge_library.rs");
     for (name, src) in [
         ("global_palette_input.rs", GLUE),
         ("motion_bridge_library.rs", MOTION),

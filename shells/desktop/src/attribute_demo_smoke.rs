@@ -366,7 +366,7 @@ mod tests {
     /// in the graph, dead on the screen — and this gate is what catches it.
     #[test]
     fn the_age_to_size_example_actually_drives_size_end_to_end() {
-        use crate::motion::motion_state::MotionState;
+        use ph2d_app_motion::motion_state::MotionState;
         use ph2d_nodegraph::attr::Column;
         use ph2d_nodegraph::cook::Cook;
 

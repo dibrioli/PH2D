@@ -33,6 +33,113 @@
 /// media. O unico modulo da familia que ja' era FECHADO: zero `crate::`, zero `App`, zero `gfx`.
 pub mod motion_leaf_images;
 
+// ─── a raiz da família (era `shells/desktop/src/motion.rs`) ───────────────────────
+/// A auditoria do grupo do ciclo 2 (doc 105) — `#[cfg(test)]`, não entra no bin.
+#[cfg(test)]
+pub mod motion_animadores_probe;
+pub mod motion_autofix_smoke;
+pub mod motion_autofix_smoke_appropriate;
+pub mod motion_autofix_smoke_dead_branch;
+/// A auditoria do grupo do ciclo 4 (os CAMPOS) — `#[cfg(test)]`, não entra no bin.
+#[cfg(test)]
+pub mod motion_campos_probe;
+/// A outra metade dele — **o PREÇO** (relógio, contagem, dispositivo). Irmão pelo tecto de
+/// LOC, cortado por responsabilidade: o que um nó DECLARA fica ali, o que ele CUSTA aqui.
+#[cfg(test)]
+pub mod motion_ciclo_preco;
+/// ⭐ **O INSTRUMENTO DE UM CICLO**, para qualquer grupo — retrato, params, cartão,
+/// nomes e vocabulário. Nasceu ao abrir o ciclo 4, quando ia ser copiado do 3.
+#[cfg(test)]
+pub mod motion_ciclo_probe;
+/// O PREÇO do mesmo grupo — irmão do acima pelo tecto de LOC, cortado por
+/// responsabilidade: retratos ali, relógio e dispositivo aqui.
+#[cfg(test)]
+pub mod motion_deformadores_preco;
+/// A auditoria do grupo do ciclo 3 (doc 106) — `#[cfg(test)]`, não entra no bin.
+#[cfg(test)]
+pub mod motion_deformadores_probe;
+pub mod motion_delay_smoke;
+/// **A legenda de uma cena de smoke, no canvas** (Enio 2026-08-23) — o rótulo pousa
+/// em cima do caso que ele explica, em vez de num terminal atrás da janela.
+pub mod motion_demo_legend;
+pub mod motion_flip_bake;
+pub mod motion_fx_smoke;
+pub mod motion_node_path_smoke;
+pub mod motion_object_bake;
+/// Irmão do acima por RESPONSABILIDADE: ele produz pixels (GPU), este diz quantos (CPU).
+pub mod motion_object_bake_dims;
+pub mod motion_object_smoke;
+/// Irmã das duas acima: reduz um assado ao cartão do painel.
+pub mod motion_object_thumb;
+pub mod motion_path_smoke;
+/// O estado de shell da familia — os quatro campos que saíram da `App` na W2/L1 (A2b).
+/// O que uma CENA pede à shell, no vocabulário da família (W2 Fase C).
+pub mod motion_scene_ctx;
+/// O tile de uma forma PARAMÉTRICA (`source.shape`) — irmão do `motion_object_bake`,
+/// e a metade que faz o glow alcançar as formas (bug do Enio, 2026-08-20).
+pub mod motion_shape_bake;
+pub mod motion_shape_smoke;
+pub mod motion_shape_smoke_knobs;
+pub mod motion_shell_state;
+/// A auditoria do grupo do ciclo 5 (a SIMULAÇÃO) — `#[cfg(test)]`, não entra no bin.
+#[cfg(test)]
+pub mod motion_sim_probe;
+/// A sonda do custo do carimbo (report do Enio, 2026-09-06) — `#[cfg(test)]`, não entra no bin.
+#[cfg(test)]
+pub mod motion_stamp_cost_probe;
+pub mod motion_state;
+
+// ─── as duas âncoras que eram módulos de TOPO da shell e são código desta família ─────
+/// ⭐ **O gizmo dos CAMPOS na tela.** Ele lê `MotionState` e `motion_bridge::params`, logo nunca
+/// foi uma folha partilhada: era código do Motion com morada errada.
+pub mod field_gizmo;
+/// A cena mínima que julga o picker de colunas do `value.attribute` — **só a motion a consome**.
+pub mod picker_smoke;
+
+// ─── os 17 que eram filhos DIRECTOS do `render_loop/mod.rs` ──────────────────────
+// ⚠️ O LAÇO ficou na shell (ele garante a ordem dos 48 símbolos); o que saiu foram os
+// CORPOS, e a shell chama-os por `ph2d_app_motion::<mod>::<fn>` no ponto certo.
+/// doc 89 folha 14: a metade do shell do `source.text` — o bloco vira uma
+/// instância POR CARACTERE, com a geometria de cada glifo internada no MESMO
+/// store das formas (um `geometry_id` é um `geometry_id`, venha de onde vier).
+pub mod motion_audio_gen;
+pub mod motion_bridge;
+pub mod motion_externals;
+/// **A MÁSCARA DE SUJIDADE do halo**, resolvida contra a cena (doc 89 folha 11) — o nó guarda
+/// um NOME, o passe de tela quer uma `TextureView`, e este é o único sítio onde a cena, o atlas
+/// e as duas lojas de textura estão em mão ao mesmo tempo.
+pub mod motion_glow_dirt;
+/// **A CAMADA que o glow bright-passa** (bug do Enio, 2026-08-20): a lista de
+/// instâncias do passe de isolamento, que é a camada MOTION inteira e não só o
+/// passe de sprites — a metade vetorial viva entra pelo tile assado.
+pub mod motion_glow_layer;
+/// ADR-0154: the shell half of `source.shape` — build each shape's `VecPath` from
+/// its node params, publish it into the cook, and draw the cooked instances as
+/// live GPU vector into the shared vector scene.
+pub mod motion_lsystem_gen;
+pub mod motion_lsystem_leaves;
+pub mod motion_lsystem_rows;
+#[cfg(test)]
+#[path = "motion_lsystem_testkit.rs"]
+pub mod motion_lsystem_testkit;
+/// A trajetória do objeto selecionado no canvas (ADR-0141, Fatia 3).
+pub mod motion_path_overlay;
+pub mod motion_shape_gen;
+pub mod motion_table_gen;
+pub mod motion_text_gen;
+/// O gizmo de canvas dos deformadores de quadrilátero (Corner Pin + Bezier Warp).
+pub mod warp_gizmo;
+/// As FIXTURAS do gizmo de warp — montadas e **não marchadas**; ver o cabeçalho delas.
+/// ⚠️ `pub` porque o portão da costura vive dentro do `motion_bridge::gpu`.
+#[cfg(all(test, feature = "panel-motion-graph"))]
+pub mod warp_gizmo_fixtures;
+/// A sonda que diz POR QUE o gizmo do warp nao existe — ver o cabecalho dela.
+#[cfg(all(test, feature = "panel-motion-graph"))]
+#[path = "warp_gizmo_probe.rs"]
+pub mod warp_gizmo_probe;
+/// O DESENHO desse gizmo — o contorno, os braços e as alças.
+pub mod warp_overlay;
+
 /// **O que esta família declara à shell** (`ph2d-app-registry-init`).
 ///
 /// ⚠️⚠️ **`routers: &[]` é a verdade MEDIDA da Fase A** — `"motion"` está na catraca

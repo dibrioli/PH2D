@@ -1,7 +1,7 @@
 //! **A costura do gizmo dos deformadores de quadrilátero com o PONTEIRO** — a ponta que
 //! faz as alças deixarem de ser decoração.
 //!
-//! A geometria vive em [`crate::render_loop::warp_gizmo`], pura e testada; o desenho no
+//! A geometria vive em [`ph2d_app_motion::warp_gizmo`], pura e testada; o desenho no
 //! `warp_overlay`. Aqui mora só o que precisa do mundo: onde está o cursor, que alça ele
 //! agarrou, e por que porta a edição sai.
 //!
@@ -17,7 +17,7 @@
 //! inteiro fecha num passo. É a mesma lei do arrasto da âncora, e a razão de este ficheiro
 //! não ter máquina de transacção nenhuma.
 
-use crate::render_loop::warp_gizmo::{self, WarpGizmoView, WarpHandle};
+use ph2d_app_motion::warp_gizmo::{self, WarpGizmoView, WarpHandle};
 
 /// O arrasto em curso: o retrato congelado no `Down`, a alça agarrada, e de onde ela
 /// partiu.
@@ -45,7 +45,7 @@ impl crate::App {
         let hero = gfx.hero_screen.as_ref()?;
         // ⚠️ **A MESMA porta que a tinta usa** — ver `warp_gizmo::scene_window`, que
         // carrega o relato do defeito em que as duas discordaram.
-        Some(crate::render_loop::warp_gizmo::scene_window(
+        Some(ph2d_app_motion::warp_gizmo::scene_window(
             hero.view.center_split,
             gfx.surface.size(),
         ))

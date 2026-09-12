@@ -26,7 +26,7 @@ pub(super) struct FxGear<'a> {
     pub window_size: WindowSize,
     pub scene_viewport: Option<[f32; 4]>,
     pub sim: &'a mut ph2d_ecs::SimWorld,
-    pub motion: &'a crate::motion::motion_state::MotionState,
+    pub motion: &'a ph2d_app_motion::motion_state::MotionState,
     pub motion_active: bool,
     pub present: &'a mut ph2d_ecs::PresentWorld,
     /// O scratch das instâncias emissivas — vive no `App` porque é lixo de quadro, e re-alocá-lo
@@ -93,19 +93,19 @@ pub(super) fn run(gpu: &ph2d_gpu::GpuContext, g: FxGear<'_>) {
     // ⚠️ **A LISTA DO GLOW É A CAMADA MOTION, e não o passe de sprites**
     // (bug do Enio, 2026-08-20: *"Glow não funciona com shape"*, e a
     // ordem dele depois: *"tudo deve brilhar"*). Ver
-    // [`super::motion_glow_layer`] — a metade vetorial viva entra aqui
+    // [`ph2d_app_motion::motion_glow_layer`] — a metade vetorial viva entra aqui
     // pelo TILE assado, porque um halo é imediatamente reduzido por seis
     // níveis de mip e nunca precisou de nitidez de tela.
-    let glow_layer = super::motion_glow_layer::layer_instances(
+    let glow_layer = ph2d_app_motion::motion_glow_layer::layer_instances(
         &g.motion.pump.instances,
         &g.motion.pump.vector_instances,
         &g.motion.object_bake,
         &g.motion.shape_bake,
     );
     // ⚠️ **`PH2D_GLOW_DIAG=1`** — de que é feita a camada, quando ela muda.
-    // Ver o doc de [`super::motion_glow_layer::diag`]: «o halo não
+    // Ver o doc de [`ph2d_app_motion::motion_glow_layer::diag`]: «o halo não
     // aparece» tem cinco causas indistinguíveis a olho.
-    super::motion_glow_layer::diag(
+    ph2d_app_motion::motion_glow_layer::diag(
         &g.motion.pump.instances,
         &g.motion.pump.vector_instances,
         &g.motion.object_bake,
@@ -138,9 +138,9 @@ pub(super) fn run(gpu: &ph2d_gpu::GpuContext, g: FxGear<'_>) {
         // é o custo que o caminho de sempre não pode pagar.
         let dirt_cooked = |id| g.renderer.cooked_texture_id(id);
         let dirt = ph2d_node_fx_glow::dirt::source(&g.motion.doc.graph).and_then(|n| {
-            super::motion_glow_dirt::resolve(
+            ph2d_app_motion::motion_glow_dirt::resolve(
                 g.sim,
-                super::motion_bridge::Appearance {
+                ph2d_app_motion::motion_bridge::Appearance {
                     atlas: g.renderer.atlas(),
                     cooked: &dirt_cooked,
                 },
@@ -152,11 +152,11 @@ pub(super) fn run(gpu: &ph2d_gpu::GpuContext, g: FxGear<'_>) {
                 // documenta cinco). Ele é legítimo — um nome pode ser escrito antes
                 // de a sprite existir —, então não é erro; mas ficar mudo é o que
                 // torna *"escrevi o nome e não aconteceu nada"* indiagnosticável.
-                super::motion_glow_dirt::diag_unresolved(&n);
+                ph2d_app_motion::motion_glow_dirt::diag_unresolved(&n);
                 None
             })
         });
-        let dirt = dirt.and_then(|r| super::motion_glow_dirt::mask(r, g.renderer));
+        let dirt = dirt.and_then(|r| ph2d_app_motion::motion_glow_dirt::mask(r, g.renderer));
         g.motion_fx.bloom_over(
             gpu,
             g.game_rt.view(),

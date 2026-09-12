@@ -363,7 +363,8 @@ pub(super) fn publish(
     // projetava a janela CHEIA — as linhas não pousavam sobre os sprites/instâncias do
     // Motion. A grade usa as MESMAS dims da cena (a porta única); fora do split é a janela
     // cheia, byte-idêntico.
-    let (grid_w, grid_h) = crate::field_gizmo::scene_window_wh(hero.view.center_split, window_size);
+    let (grid_w, grid_h) =
+        ph2d_app_motion::field_gizmo::scene_window_wh(hero.view.center_split, window_size);
     hero.set_grid_view(Some(ph2d_editor::GridView {
         camera_center: camera.center,
         camera_height_world: camera.height_world,

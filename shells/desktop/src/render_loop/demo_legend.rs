@@ -1,5 +1,5 @@
 //! **AS FICHAS DA CENA DE SMOKE** — o passe que desenha a legenda publicada por
-//! [`crate::motion::motion_demo_legend`].
+//! [`ph2d_app_motion::motion_demo_legend`].
 //!
 //! É chrome, pela mesma razão da decoração da folha ao lado: ela diz o que aquilo É, não como se
 //! parece, e não pode entrar em bake nenhum. A ficha é a mesma do readout da casa
@@ -13,7 +13,7 @@ use ph2d_text::TextSystem;
 use ph2d_tokens::Theme;
 use ph2d_vector::{Affine, Point, VectorScene};
 
-use crate::motion::motion_demo_legend::Caption;
+use ph2d_app_motion::motion_demo_legend::Caption;
 
 /// A ficha da legenda cresce com o texto — não há largura herdada a preservar.
 const NO_MIN_W_PX: f32 = 0.0;

@@ -82,9 +82,6 @@ mod inspector_visibility;
 /// MEASUREMENT scaffold: onde as fases PANEL e CHROME do `painter_bridge::dispatch` gastam um frame.
 #[cfg(test)]
 mod measure_bridge_phases;
-pub(crate) mod motion_bridge;
-/// A trajetória do objeto selecionado no canvas (ADR-0141, Fatia 3).
-pub(crate) mod motion_path_overlay;
 mod padding_bridge;
 /// `PH2D_PAINT_PERF` aggregation (one summary line per window, not per frame).
 ///
@@ -208,31 +205,6 @@ pub(crate) fn master_editing_mark_for_tests(
 ) -> bool {
     master_editing::mark(sim, selection, &mut None).touched
 }
-/// doc 89 folha 14: a metade do shell do `source.text` — o bloco vira uma
-/// instância POR CARACTERE, com a geometria de cada glifo internada no MESMO
-/// store das formas (um `geometry_id` é um `geometry_id`, venha de onde vier).
-pub(crate) mod motion_audio_gen;
-pub(crate) mod motion_externals;
-/// **A MÁSCARA DE SUJIDADE do halo**, resolvida contra a cena (doc 89 folha 11) — o nó guarda
-/// um NOME, o passe de tela quer uma `TextureView`, e este é o único sítio onde a cena, o atlas
-/// e as duas lojas de textura estão em mão ao mesmo tempo.
-pub(crate) mod motion_glow_dirt;
-/// **A CAMADA que o glow bright-passa** (bug do Enio, 2026-08-20): a lista de
-/// instâncias do passe de isolamento, que é a camada MOTION inteira e não só o
-/// passe de sprites — a metade vetorial viva entra pelo tile assado.
-pub(crate) mod motion_glow_layer;
-/// ADR-0154: the shell half of `source.shape` — build each shape's `VecPath` from
-/// its node params, publish it into the cook, and draw the cooked instances as
-/// live GPU vector into the shared vector scene.
-pub(crate) mod motion_lsystem_gen;
-pub(crate) mod motion_lsystem_leaves;
-pub(crate) mod motion_lsystem_rows;
-#[cfg(test)]
-#[path = "motion_lsystem_testkit.rs"]
-pub(crate) mod motion_lsystem_testkit;
-pub(crate) mod motion_shape_gen;
-pub(crate) mod motion_table_gen;
-pub(crate) mod motion_text_gen;
 /// A pergunta *«esta entidade está na cena?»* que o extract faz — ver o módulo.
 /// O `OnScreenEnabler` a decidir alguma coisa: *«só corre/aparece quando está no ecrã»*.
 /// The Deform Transform gizmo (whole-region bounding box), split from `painter_bridge_overlays` (Wave 2).
@@ -275,20 +247,7 @@ mod snapshots;
 /// devolve as instâncias que emitem. ⚠️ Irmão do `sim_extract` de propósito: ele está no tecto de LOC.
 pub(crate) mod sprite_emissive;
 mod upscale_bridge;
-/// O gizmo de canvas dos deformadores de quadrilátero (Corner Pin + Bezier Warp).
-pub(crate) mod warp_gizmo;
-/// O DESENHO desse gizmo — o contorno, os braços e as alças.
-mod warp_overlay;
 
-/// As FIXTURAS do gizmo de warp — montadas e **não marchadas**; ver o cabeçalho delas.
-/// ⚠️ `pub(crate)` porque o portão da costura vive dentro do `motion_bridge::gpu`.
-#[cfg(all(test, feature = "panel-motion-graph"))]
-pub(crate) mod warp_gizmo_fixtures;
-
-/// A sonda que diz POR QUE o gizmo do warp nao existe — ver o cabecalho dela.
-#[cfg(all(test, feature = "panel-motion-graph"))]
-#[path = "warp_gizmo_probe.rs"]
-mod warp_gizmo_probe;
 // ADR-0108 cutover: the single Vector-tool bridge (style sync + recolour).
 // Rendering of `AppGfx.vec_scene` stays inline below (ph2d_vec_render).
 // pub(crate): `set_mode` é chamado do `vec_text` (o `T` troca o modo pela allowlist
@@ -911,7 +870,7 @@ impl crate::App {
         self.build_smoke();
         self.field3d_undo_probe();
         self.stack_smoke();
-        self.with_motion_scene(crate::motion::motion_path_smoke::motion_path_smoke);
+        self.with_motion_scene(ph2d_app_motion::motion_path_smoke::motion_path_smoke);
         self.harmony_smoke();
         self.timeline_onion_smoke();
         self.signal_smoke();
@@ -991,15 +950,15 @@ impl crate::App {
         self.flip_selection_smoke();
         self.flip_segment_smoke();
         self.blend_smoke();
-        self.with_motion_scene(crate::motion::motion_node_path_smoke::motion_node_path_smoke);
-        self.with_motion_scene(crate::motion::motion_object_smoke::motion_object_smoke);
-        self.with_motion_scene(crate::motion::motion_shape_smoke::motion_shape_smoke);
-        self.with_motion_scene(crate::motion::motion_autofix_smoke::motion_autofix_smoke);
-        self.with_motion_scene(crate::motion::motion_delay_smoke::motion_delay_smoke);
-        self.with_motion_scene(crate::motion::motion_fx_smoke::motion_fx_smoke);
+        self.with_motion_scene(ph2d_app_motion::motion_node_path_smoke::motion_node_path_smoke);
+        self.with_motion_scene(ph2d_app_motion::motion_object_smoke::motion_object_smoke);
+        self.with_motion_scene(ph2d_app_motion::motion_shape_smoke::motion_shape_smoke);
+        self.with_motion_scene(ph2d_app_motion::motion_autofix_smoke::motion_autofix_smoke);
+        self.with_motion_scene(ph2d_app_motion::motion_delay_smoke::motion_delay_smoke);
+        self.with_motion_scene(ph2d_app_motion::motion_fx_smoke::motion_fx_smoke);
         self.adapter_smoke();
         self.attribute_demo_smoke();
-        self.picker_smoke();
+        self.with_motion_scene(ph2d_app_motion::picker_smoke::picker_smoke);
         self.value_curve_smoke();
         self.gradient_smoke();
         self.osc_ruler_smoke();
@@ -1588,8 +1547,9 @@ impl crate::App {
         // **A FAMÍLIA `PH2D_GPU_COOK_DEMO` PRECISA DA FERRAMENTA MOTION** — ver
         // `motion_state_demo_router::demo_wants_the_motion_tool`, onde está a medição que o
         // expôs. Sem isto a cena monta, a legenda imprime, e a tela fica VAZIA.
-        if crate::motion::motion_state::demo_router::demo_wants_the_motion_tool(motion.sinks.len())
-            && !std::mem::replace(&mut self.demo_tool_forced, true)
+        if ph2d_app_motion::motion_state::demo_router::demo_wants_the_motion_tool(
+            motion.sinks.len(),
+        ) && !std::mem::replace(&mut self.demo_tool_forced, true)
         {
             // ⚠️ **O resultado é GUARDADO e o latch só queima se a troca deu certo.** O
             // `set_active` devolve `false` quando o id não está registado, e um `let _ =` com o
@@ -3274,10 +3234,10 @@ impl crate::App {
             // (present.rs). É o fix do drift crônico: sob o split a cena renderiza na banda
             // e o chrome projetava a janela cheia. Fora do split = janela cheia (no-op).
             let (scene_w, scene_h) =
-                crate::field_gizmo::scene_window_wh(hero.view.center_split, window_size);
+                ph2d_app_motion::field_gizmo::scene_window_wh(hero.view.center_split, window_size);
             hero.gizmo.field_view = motion_tool_active
                 .then(|| {
-                    crate::field_gizmo::field_view(
+                    ph2d_app_motion::field_gizmo::field_view(
                         motion,
                         camera,
                         scene_w,
@@ -3290,7 +3250,10 @@ impl crate::App {
             // publicado no mesmo sítio e pela mesma modalidade do field: só com a tool
             // Motion activa. ⚠️ Publicar de novo SUBSTITUI, então largar a selecção limpa
             // as alças em vez de as deixar a pairar.
-            warp_gizmo::publish(warp_gizmo::resolve(motion, motion_tool_active));
+            ph2d_app_motion::warp_gizmo::publish(ph2d_app_motion::warp_gizmo::resolve(
+                motion,
+                motion_tool_active,
+            ));
             // ─────────────────────────────────────────────────────────
             // Wave 2.5 PR 11.8 closeout — consolidated bus drain.
             // ─────────────────────────────────────────────────────────
@@ -8407,7 +8370,7 @@ impl crate::App {
             // becomes an external the graph can walk (`motion.path`). Here, because this is the
             // one place the document, the world, the entity map and the transforms are all in
             // hand at once.
-            motion_bridge::publish_shapes(
+            ph2d_app_motion::motion_bridge::publish_shapes(
                 motion,
                 sim,
                 vec_scene,
@@ -8426,10 +8389,10 @@ impl crate::App {
             // KTX2 assado era fonte INVISÍVEL só porque quem o resolvia não estava em mão
             // aqui dentro, e ele está: é o mesmo `renderer` de onde sai o atlas.
             let cooked = |id| renderer.cooked_texture_id(id);
-            motion_bridge::publish_objects(
+            ph2d_app_motion::motion_bridge::publish_objects(
                 motion,
                 sim,
-                motion_bridge::Appearance {
+                ph2d_app_motion::motion_bridge::Appearance {
                     atlas: renderer.atlas(),
                     cooked: &cooked,
                 },
@@ -8443,14 +8406,14 @@ impl crate::App {
             // without the node learning what a window or a camera is. Last, because
             // `publish_shapes` CLEARS and the objects append; and in the reserved `$`
             // namespace, which the artist-name publishes above refuse.
-            motion_bridge::publish_cursor(
+            ph2d_app_motion::motion_bridge::publish_cursor(
                 motion,
                 camera,
                 self.last_cursor,
                 hero.view.center_split,
                 surface.size(),
             );
-            motion_bridge::dispatch(
+            ph2d_app_motion::motion_bridge::dispatch(
                 hero,
                 tools,
                 motion,
@@ -8480,7 +8443,7 @@ impl crate::App {
             // grafo e não pode gritar — um sinal é travessia de play para a frente.
             if clock_forward::clock_is_playing_forward(&self.playhead, self.timeline_signals.jumped)
             {
-                motion_bridge::signals::collect_signals(motion);
+                ph2d_app_motion::motion_bridge::signals::collect_signals(motion);
             }
             for sig in motion.signals_out.drain(..) {
                 self.signals.publish(ph2d_runtime::Signal::from_motion(
@@ -8868,7 +8831,7 @@ impl crate::App {
             // (`keys_mode`) decide se há alça a oferecer. Um `true` literal aqui deixaria
             // todo gate do overlay verde com a alça fantasma de volta na tela — daí o
             // arch-gate `the_motion_path_is_offered_only_on_the_keys_tab`.
-            motion_path_overlay::draw(
+            ph2d_app_motion::motion_path_overlay::draw(
                 self.timeline.keys_mode,
                 &self.timeline.doc,
                 hero.gizmo.iter_selected().next(),
@@ -8967,9 +8930,9 @@ impl crate::App {
                 // não são sombreados, e o retrato é publicado **uma vez só** (não é um `take`).
                 // ⇒ *uma mudança de sítio sem uma medição do que o sítio garante é um palpite*,
                 // e quem a repetir começa por instrumentar o quadro, não por mover a linha.
-                if let Some(v) = warp_gizmo::view() {
-                    let port = warp_gizmo::param_port(motion, v.node);
-                    warp_overlay::draw_warp_gizmo(
+                if let Some(v) = ph2d_app_motion::warp_gizmo::view() {
+                    let port = ph2d_app_motion::warp_gizmo::param_port(motion, v.node);
+                    ph2d_app_motion::warp_overlay::draw_warp_gizmo(
                         true,
                         &v,
                         &port,
@@ -8983,7 +8946,9 @@ impl crate::App {
                     // esta linha, um `PH2D_WARP_DIAG=1` que não imprime nada lê-se como *«a sonda
                     // não está a correr»* — que é exactamente a ambiguidade que fez duas curas
                     // seguidas serem palpites.
-                    warp_overlay::diag("nao ha' retrato publicado (`view()` = None)");
+                    ph2d_app_motion::warp_overlay::diag(
+                        "nao ha' retrato publicado (`view()` = None)",
+                    );
                 }
                 anchor_overlay::draw_anchor_marks(
                     !hero
@@ -10122,9 +10087,11 @@ impl crate::App {
             // andava numa cópia da curva deslocada+encolhida (o report do Enio: "objetos afastados
             // do path, com drift em relação ao canvas"). Projetá-las com as MESMAS dims casa a
             // curva desenhada com os walkers. Fora do split = janela cheia, byte-idêntico.
-            let cam_affine = camera.world_to_screen_affine(
-                crate::field_gizmo::scene_camera_window(hero.view.center_split, window_size),
-            );
+            let cam_affine =
+                camera.world_to_screen_affine(ph2d_app_motion::field_gizmo::scene_camera_window(
+                    hero.view.center_split,
+                    window_size,
+                ));
             // A SONDA (`PH2D_PAN_DIAG=1`): a cena do Vello é construída AQUI, com o
             // mundo→tela já aplicado na CPU; as sprites recebem a câmera noutro ponto do
             // quadro. Guardar o centro daqui é o que permite comparar os dois instantes.
@@ -10824,7 +10791,7 @@ impl crate::App {
                 )
             };
             let mut bake_shape = |id| {
-                crate::motion::motion_object_bake::bake_rgba_many(
+                ph2d_app_motion::motion_object_bake::bake_rgba_many(
                     &mut self.texture_pattern_scratch,
                     vec_scene,
                     &vec_xf,
@@ -10868,7 +10835,7 @@ impl crate::App {
             // the FX stack bakes — the same handles (renderer, gpu, scene,
             // transforms, live geometry) are in hand. Cached by content ⇒ a
             // static scene bakes once; the membrane publishes the tiles next frame.
-            motion_bridge::bake_objects(
+            ph2d_app_motion::motion_bridge::bake_objects(
                 motion,
                 vec_scene,
                 &self.vec_entities,
@@ -10893,7 +10860,7 @@ impl crate::App {
                 // lê — e o readback é a metade lenta deste assador, como o doc dele diz.
                 let glows = ph2d_node_fx_glow::from_graph(&motion.doc.graph)
                     .is_some_and(|g| g.intensity > 0.0);
-                let crate::motion::motion_state::MotionState {
+                let ph2d_app_motion::motion_state::MotionState {
                     shape_bake,
                     shape_store,
                     object_bake,
@@ -10949,7 +10916,7 @@ impl crate::App {
             // vector bake. The Flip doc is destructured above (`flip`); the entity
             // map + playhead are disjoint `self` fields. Composes each object's
             // layers at the current frame through a scratch Flip raster + compositor.
-            motion_bridge::bake_flip_objects(
+            ph2d_app_motion::motion_bridge::bake_flip_objects(
                 motion,
                 flip,
                 &self.flip_state.entities,
@@ -11159,7 +11126,7 @@ impl crate::App {
                 // atlas — esquecer a sincronização é erro de compilação (§2.5).
                 let mut cache = self.motion_shell.leaf_images.synced(atlas.epoch());
                 let mut art = |tex: u32, uv: [f32; 4]| cache.art(gpu, atlas, individual, tex, uv);
-                motion_shape_gen::encode(
+                ph2d_app_motion::motion_shape_gen::encode(
                     &motion.pump.vector_instances,
                     &motion.shape_store,
                     &mut art,
@@ -11600,8 +11567,10 @@ impl crate::App {
                 // projeta nas dims da cena, e o chrome dos painéis é pintado DEPOIS, por cima.
                 // Pedir o canvas aqui obrigaria a shell a espelhar a aritmética de layout que
                 // o `paint_hero_screen` já faz — a segunda porta exata que a régua evita.
-                let (sw, sh) =
-                    crate::field_gizmo::scene_window_wh(hero.view.center_split, window_size);
+                let (sw, sh) = ph2d_app_motion::field_gizmo::scene_window_wh(
+                    hero.view.center_split,
+                    window_size,
+                );
                 ph2d_vec_render::draw_document_guides(
                     &doc_guides.iter().copied().collect::<Vec<_>>(),
                     [0.0, 0.0, f64::from(sw), f64::from(sh)],
@@ -11667,7 +11636,7 @@ impl crate::App {
                 // smoke"*) — o rótulo pousa em cima do caso que ele explica. No-op quando
                 // nenhuma cena publicou, que é todo arranque normal do editor.
                 super::render_loop::demo_legend::draw(
-                    &crate::motion::motion_demo_legend::captions(),
+                    &ph2d_app_motion::motion_demo_legend::captions(),
                     cam_affine,
                     hero.theme,
                     paint_ctx.text,
@@ -11697,8 +11666,10 @@ impl crate::App {
                     ));
                 }
                 if !axes.is_empty() {
-                    let (sw, sh) =
-                        crate::field_gizmo::scene_window_wh(hero.view.center_split, window_size);
+                    let (sw, sh) = ph2d_app_motion::field_gizmo::scene_window_wh(
+                        hero.view.center_split,
+                        window_size,
+                    );
                     ph2d_vec_render::draw_symmetry_axes(
                         &axes,
                         [0.0, 0.0, f64::from(sw), f64::from(sh)],

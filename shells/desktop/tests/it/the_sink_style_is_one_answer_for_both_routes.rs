@@ -22,7 +22,8 @@
 //! ⚠️ As asserções afirmam uma RELAÇÃO ou um CONTEÚDO, nunca uma distância em
 //! bytes: esta casa já teve arch-gates apodrecerem por medirem bytes.
 
-const GPU_BRIDGE: &str = include_str!("../../src/render_loop/motion_bridge_gpu.rs");
+const GPU_BRIDGE: &str =
+    include_str!("../../../../crates/ph2d-app-motion/src/motion_bridge_gpu.rs");
 
 /// **As duas folhas nomeiam o MESMO param.** O nó o declara, o substrato o
 /// procura, e ninguém pode depender do outro para descobrir isso.

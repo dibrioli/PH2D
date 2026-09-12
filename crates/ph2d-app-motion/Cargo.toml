@@ -9,17 +9,102 @@ authors.workspace = true
 
 [lib]
 
-# ⛔ **ESTA CRATE NAO DEPENDE DA SHELL, e nao pode** — a shell e' um `bin`, logo depender dela
-# e' inexprimivel em Cargo. E' essa impossibilidade que torna o corte VERIFICAVEL em vez de
-# prometido: o que aqui entra provou que so' precisa de crates de MODULO (W2/L1, 2026-09-11).
+# ⚠️⚠️ **HOWTO §1.3 — esta lista é o CUSTO REAL da família, e ele só se lê aqui.** Dentro da
+# shell todas estas já eram dependência do binário e NENHUM destes 421 ficheiros as declarava.
+# O piloto (`field3d`, 90 ficheiros) descobriu **quatro** invisíveis; esta família tem **56**.
 [dependencies]
-# ⚠️ A INTERFACE da shell (`AppFamily`), não o agregador — importar de
-# `ph2d-app-registry-init` fecharia o ciclo `registry → família → registry`.
+ph2d-anim = { path = "../ph2d-anim" }
+ph2d-app-flip = { path = "../ph2d-app-flip" }
+ph2d-asset = { path = "../ph2d-asset" }
+ph2d-audio = { path = "../ph2d-audio" }
+ph2d-audio-desktop = { path = "../ph2d-audio-desktop" }
+ph2d-audio-spectral = { path = "../ph2d-audio-spectral" }
+ph2d-color = { path = "../ph2d-color" }
+ph2d-core = { path = "../ph2d-core" }
+ph2d-curve = { path = "../ph2d-curve" }
+ph2d-ecs = { path = "../ph2d-ecs" }
+ph2d-editor = { path = "../ph2d-editor" }
+ph2d-eval-motion = { path = "../ph2d-eval-motion" }
+ph2d-flip = { path = "../ph2d-flip" }
+ph2d-flip-render = { path = "../ph2d-flip-render" }
+ph2d-gpu-cook = { path = "../ph2d-gpu-cook" }
+ph2d-host = { path = "../ph2d-host" }
+ph2d-motion-diagnose = { path = "../ph2d-motion-diagnose" }
+ph2d-motion-region = { path = "../ph2d-motion-region" }
+ph2d-node-audio-bands = { path = "../ph2d-node-audio-bands" }
+ph2d-node-force-attractor = { path = "../ph2d-node-force-attractor" }
+ph2d-node-force-buoyancy = { path = "../ph2d-node-force-buoyancy" }
+ph2d-node-force-vortex = { path = "../ph2d-node-force-vortex" }
+ph2d-node-force-wind = { path = "../ph2d-node-force-wind" }
+ph2d-node-motion-bezier-warp = { path = "../ph2d-node-motion-bezier-warp" }
+ph2d-node-motion-clone = { path = "../ph2d-node-motion-clone" }
+ph2d-node-motion-distribute-poisson = { path = "../ph2d-node-motion-distribute-poisson" }
+ph2d-node-motion-emitter = { path = "../ph2d-node-motion-emitter" }
+ph2d-node-motion-shape = { path = "../ph2d-node-motion-shape" }
+ph2d-node-motion-strobe = { path = "../ph2d-node-motion-strobe" }
+ph2d-node-motion-sub-uv = { path = "../ph2d-node-motion-sub-uv" }
+ph2d-node-motion-time-remap = { path = "../ph2d-node-motion-time-remap" }
+ph2d-node-motion-trail = { path = "../ph2d-node-motion-trail" }
+ph2d-node-motion-voronoi = { path = "../ph2d-node-motion-voronoi" }
+ph2d-node-pulse-signal = { path = "../ph2d-node-pulse-signal" }# A fonte de objeto, para a MEMBRANA. Aqui a dep não é de gate: o shell tem de
+ph2d-node-registry-init = { path = "../ph2d-node-registry-init" }
+ph2d-node-source-lsystem = { path = "../ph2d-node-source-lsystem" }
+ph2d-node-source-object = { path = "../ph2d-node-source-object" }
+ph2d-node-source-table = { path = "../ph2d-node-source-table" }
+ph2d-node-source-text = { path = "../ph2d-node-source-text" }
+ph2d-node-value-attribute = { path = "../ph2d-node-value-attribute" }
+ph2d-node-value-pattern = { path = "../ph2d-node-value-pattern" }
+ph2d-node-value-switch = { path = "../ph2d-node-value-switch" }
+ph2d-node-value-table = { path = "../ph2d-node-value-table" }
+ph2d-pan-diag = { path = "../ph2d-pan-diag" }
+ph2d-table = { path = "../ph2d-table" }
+ph2d-thumbnail = { path = "../ph2d-thumbnail" }
+ph2d-timeline = { path = "../ph2d-timeline", features = ["render", "physics"] }
+ph2d-tool-vector = { path = "../ph2d-tool-vector" }
+ph2d-vec-art-live = { path = "../ph2d-vec-art-live" }
+ph2d-vec-entities = { path = "../ph2d-vec-entities" }
+ph2d-vector = { path = "../ph2d-vector" }
+ph2d-vector-font = { path = "../ph2d-vector-font" }
+rfd = "0.17"
+wgpu = "29.0.4"
+
 ph2d-app-host = { path = "../ph2d-app-host" }
 ph2d-gpu = { path = "../ph2d-gpu" }
 ph2d-motion-doc = { path = "../ph2d-motion-doc" }
 ph2d-node-registry = { path = "../ph2d-node-registry" }
 ph2d-nodegraph = { path = "../ph2d-nodegraph" }
 ph2d-render = { path = "../ph2d-render" }
+ph2d-tool-registry = { path = "../ph2d-tool-registry" }
 ph2d-vec-render = { path = "../ph2d-vec-render" }
 ph2d-vec-scene = { path = "../ph2d-vec-scene" }
+ph2d-node-util-reroute = { path = "../ph2d-node-util-reroute" }
+ph2d-app-vec = { path = "../ph2d-app-vec" }
+# ⛔⛔ **HOWTO §2.4 — AS FEATURES NÃO VIAJAM COM O CÓDIGO, e esta é a armadilha muda.**
+# `109` sítios desta família estão atrás destas duas. Numa crate que não as DECLARA o `cfg` é
+# falso **por construção**: o `motion_bridge` perderia o `mod surfaces` (o que a ferramenta
+# ABRE e FECHA) e compilaria verde com o painel lateral morto.
+# ⭐ Aqui ela falhou ALTO, e só por acidente: o `pub(crate) use surfaces::painel_lateral;` ao
+# lado do `mod` não está sob `cfg`, então o compilador leu `surfaces` como uma CRATE que não
+# existe. *Sem essa linha, o corte tinha passado em silêncio.*
+[features]
+default = ["panel-motion-graph", "panel-motion-params"]
+panel-motion-graph = ["dep:ph2d-panel-motion-graph"]
+panel-motion-params = ["dep:ph2d-panel-motion-params"]
+# ⚠️ HOWTO §2.5 — do tamanho do que ATRAVESSA: **1** item.
+test-support = []
+
+[dependencies.ph2d-panel-motion-graph]
+path = "../ph2d-panel-motion-graph"
+optional = true
+
+[dependencies.ph2d-panel-motion-params]
+path = "../ph2d-panel-motion-params"
+optional = true
+
+[dev-dependencies]
+# ⚠️ HOWTO §1.3 — invisíveis dentro da shell, onde já eram dependência do binário.
+ph2d-tokens = { path = "../ph2d-tokens" }
+ph2d-ui-testkit = { path = "../ph2d-ui-testkit" }
+bytemuck = { version = "1", features = ["extern_crate_alloc"] }
+ph2d-node-fx-glow = { path = "../ph2d-node-fx-glow" }
+ph2d-panel-timeline = { path = "../ph2d-panel-timeline" }

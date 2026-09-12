@@ -169,7 +169,7 @@ pub(crate) fn default_placement(
 /// geometria em CPU, e o assado já a calculava e deitava fora. *Uma ausência afirmada sem olhar a
 /// API é um palpite com cara de medição.*
 ///
-/// ⚠️ **Pela MESMA porta que ASSA** ([`crate::motion::motion_object_bake_dims::bake_dims`]) e com a **MESMA
+/// ⚠️ **Pela MESMA porta que ASSA** ([`ph2d_app_motion::motion_object_bake_dims::bake_dims`]) e com a **MESMA
 /// expansão de objecto** que o memo usa: uma segunda conta daria um aspecto ao ladrilho e outro à
 /// colocação, e a arte sairia esticada por uma razão que nenhuma das duas fórmulas mostra sozinha.
 #[must_use]
@@ -197,7 +197,7 @@ pub(crate) fn art_dims(
             if membros.is_empty() {
                 return None;
             }
-            crate::motion::motion_object_bake_dims::bake_dims(scene, xforms, live, &membros)
+            ph2d_app_motion::motion_object_bake_dims::bake_dims(scene, xforms, live, &membros)
         }
         // Sem arte escolhida não há tamanho a medir — e o quadrado do `default_placement` é o
         // marcador certo: ele é substituído quando a arte chega (`TexPatCmd::Source`/`set_source`).

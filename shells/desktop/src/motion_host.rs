@@ -14,7 +14,7 @@
 //! propriedade — ele empresta a `App` INTEIRA, e os cinco campos seguintes deixariam de estar
 //! disponíveis. *É a mesma razão pela qual o `AppHost` não devolve handles.*
 
-use crate::motion::motion_scene_ctx::MotionSceneCtx;
+use ph2d_app_motion::motion_scene_ctx::MotionSceneCtx;
 
 impl crate::App {
     /// Corre `f` com o contexto das cenas de Motion montado. **Sem `gfx` é no-op** — devolve

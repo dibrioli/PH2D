@@ -11,7 +11,7 @@
 //! reconciliar sete linhas dispersas com o que outras cinco linhas escreveram no
 //! mesmo ficheiro.
 //!
-//! ⚠️ **O molde é o [`crate::motion_state::MotionState`]**, que já faz isto para o
+//! ⚠️ **O molde é o [`ph2d_app_motion::motion_state::MotionState`]**, que já faz isto para o
 //! Motion (e cujo doc diz, por sua vez, que espelha o `AppGfx.vec_scene`) — é o
 //! padrão da casa, não um desenho novo. A diferença é **onde** ele é segurado: o
 //! `MotionState` mora no `AppGfx`, que só existe depois do `resumed`; estes sete

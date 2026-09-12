@@ -19,7 +19,7 @@
 //! alguém acrescenta uma linha no meio, e o produto continua certo.
 
 const LOOP: &str = include_str!("../../src/render_loop/mod.rs");
-const MOTION: &str = include_str!("../../src/render_loop/motion_bridge.rs");
+const MOTION: &str = include_str!("../../../../crates/ph2d-app-motion/src/motion_bridge.rs");
 const TIMELINE: &str = include_str!("../../src/render_loop/timeline_bridge.rs");
 
 /// **Controle positivo.** Um `include_str!` apontando para um arquivo que um corte de LOC

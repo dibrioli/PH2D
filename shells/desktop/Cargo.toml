@@ -621,6 +621,8 @@ ph2d-vec-entities = { path = "../../crates/ph2d-vec-entities" }
 ph2d-audio-desktop = { path = "../../crates/ph2d-audio-desktop" }
 
 [dev-dependencies]
+# ⚠️ §2.5 — a feature que torna o `driven_value_for_probe` visível ao `driven_row_smoke`.
+ph2d-app-motion = { path = "../../crates/ph2d-app-motion", features = ["test-support"] }
 # W2 — os auxiliares de gate da família (`forget_*`, `sync_scene`, …) vivem atrás da feature
 # `test-support`: um `#[cfg(test)]` da família é invisível para um teste da shell.
 ph2d-app-field3d = { path = "../../crates/ph2d-app-field3d", features = ["test-support"] }

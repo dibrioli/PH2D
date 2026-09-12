@@ -1,0 +1,249 @@
+//! `PH2D_PATH_SMOKE=1|2` — as cenas PRONTAS PARA VER do **motion path** ([ADR-0141]).
+//!
+//! # `=1` — a trajetória e a leitura de tempo
+//!
+//! O que se olha, e a ordem:
+//!
+//! 1. Abra a timeline (`L`). O objeto está **selecionado**, então a trajetória
+//!    aparece no canvas: um fio âmbar fraco (a FORMA) coberto de losangos (o TEMPO).
+//! 2. ⚠️ **Olhe o ESPAÇAMENTO dos losangos.** Ele *é* a velocidade. Nas pontas do
+//!    percurso eles se aglomeram (o ease) e no meio se esparramam. É a leitura do AE,
+//!    e é a coisa inteira que a figura existe para dizer.
+//! 3. Dê **Play**. O objeto segue o fio, e passa por cima de cada losango exatamente
+//!    no quadro que aquele losango marca.
+//! 4. O gráfico da timeline mostra **uma track só** — o valor dela é *distância
+//!    percorrida*, não X nem Y. A inclinação que você vê ali É a velocidade na tela.
+//! 5. Clique noutro objeto: a trajetória **some**. Ela é do que está na mão.
+//! 6. **Arraste um dos QUADRADOS** (as âncoras): a curva responde, os losangos se
+//!    reacomodam, e o objeto passa a fazer o caminho novo — no MESMO compasso, porque
+//!    puxar a curva é uma edição espacial. Um Ctrl+Z desfaz o arrasto inteiro.
+//! 7. Com o objeto selecionado, **K** acrescenta uma âncora onde ele está.
+//!
+//! # `=2` — o auto-orient, e a recusa
+//!
+//! 1. A seta LARANJA tem auto-orient ligado: ela **encara para onde vai**, e vira ao
+//!    longo da curva sem nenhuma key de rotação.
+//! 2. A seta AZUL tem a mesma trajetória, o mesmo pedido de auto-orient — e uma track
+//!    de **Rotation**. Ela NÃO gira com o caminho: o auto-orient está **recusado**,
+//!    porque dois autores do mesmo ângulo é o que ninguém quer descobrir por acidente.
+//!    ⚠️ Apague a track de Rotation dela (botão direito na label da row → *Delete
+//!    Track*) e ela passa a girar: o pedido sobreviveu à recusa.
+//! 3. O botão direito na label de uma track de **trajetória** tem uma linha que as
+//!    outras não têm — *Auto-Orient*. Desligue-a na laranja e ela para de virar.
+//!
+//! **Os números que esta cena afirma são MEDIDOS**, não escolhidos — a sonda headless
+//! roda em `motion_path_smoke_tests.rs` e imprime os mesmos que o prólogo anuncia.
+//!
+//! [ADR-0141]: ../../docs/architecture/decisions/0141-timeline-position-is-one-2d-channel-and-separate-axes-are-a-mode.md
+
+use ph2d_anim::{AnimValue, Interp, RationalTime};
+use ph2d_core::Vec2;
+use ph2d_ecs::{Name, Transform};
+use ph2d_render::Sprite;
+use ph2d_timeline::{MotionPath, PropKind, TimelineDoc};
+
+/// A trajetória da cena: um **S** deitado, feito de quatro âncoras suaves. Uma curva
+/// com duas inflexões, e não um arco: numa curva de curvatura constante o fio e os
+/// pontos contam a mesma história, e a diferença entre *forma* e *tempo* — que é o que
+/// se está demonstrando — não aparece.
+pub fn demo_path() -> MotionPath {
+    let pts = [[-6.0_f32, -2.0], [-2.0, 2.0], [2.0, -2.0], [6.0, 2.0]];
+    MotionPath::new(
+        (0..pts.len())
+            .map(|i| {
+                MotionPath::auto_smooth(
+                    (i > 0).then(|| pts[i - 1]),
+                    pts[i],
+                    (i + 1 < pts.len()).then(|| pts[i + 1]),
+                )
+            })
+            .collect(),
+    )
+}
+
+/// Autora a track: **um keyframe por âncora** (as âncoras SÃO as keys — o modelo do
+/// After Effects, [`ph2d_timeline::MotionPath`]), parte em repouso, acelera, e freia no
+/// fim — o ease que faz o espaçamento dos pontos DIZER alguma coisa.
+///
+/// ⚠️ **Pela porta ÚNICA** (`key_the_path`), a MESMA do K e da conversão Separate->Path.
+/// O smoke ANTIGO cravava 2 keys sobre um caminho de 4 âncoras, e o
+/// `rewrite_path_key_values` casa âncora `i` com key `i` por `zip`: com a track mais
+/// curta que o caminho, o primeiro arrasto colapsava a key de CHEGADA de `total` para a
+/// distância até a 2ª âncora, e o percurso do objeto encolhia para o primeiro trecho.
+/// Era exatamente o *"se tentar arrastar qualquer ponto a curva quebra"* do smoke.
+pub fn author(doc: &mut TimelineDoc, bits: u64, path: &MotionPath) {
+    // Uma key por âncora, distribuídas nos 3 s — a autoria cresce a trajetória âncora a
+    // âncora, re-suavizando, exatamente como o K faz. A track e o caminho nunca divergem.
+    let pts: Vec<[f32; 2]> = path.anchors().iter().map(|a| a.anchor).collect();
+    let n = pts.len().max(2);
+    for (i, p) in pts.iter().enumerate() {
+        let t = RationalTime::from_seconds(3.0 * i as f64 / (n - 1) as f64);
+        doc.key_the_path(bits, t, *p);
+    }
+
+    // O ease mora nos EXTREMOS (o ease é por segmento de SAÍDA): a 1ª key sai devagar do
+    // começo, a penúltima chega devagar ao fim, o meio é constante. Os pontos se juntam
+    // nas pontas e se esparramam no meio — a leitura inteira da figura. Uma track linear
+    // desenharia pontos igualmente espaçados, que é correto e não demonstra nada.
+    let Some(target) = doc.binding_for(bits, PropKind::Position).map(|b| b.target) else {
+        return;
+    };
+    let ids: Vec<_> = doc
+        .active_clip()
+        .track(target)
+        .map(|t| t.ids().to_vec())
+        .unwrap_or_default();
+    if ids.len() >= 2 {
+        let (first, penult) = (ids[0], ids[ids.len() - 2]);
+        if let Some(tr) = doc.active_clip_mut().track_mut(target) {
+            // Slow start / slow end (o "Easy Ease" do AE, nos dois extremos).
+            tr.set_interp(
+                first,
+                Interp::Bezier {
+                    x1: 0.85,
+                    y1: 0.0,
+                    x2: 1.0,
+                    y2: 1.0,
+                },
+            );
+            tr.set_interp(
+                penult,
+                Interp::Bezier {
+                    x1: 0.0,
+                    y1: 0.0,
+                    x2: 0.15,
+                    y2: 1.0,
+                },
+            );
+        }
+    }
+}
+
+/// No prólogo do frame, uma vez. No-op sem a env.
+pub fn motion_path_smoke(cx: &mut crate::motion_scene_ctx::MotionSceneCtx<'_>) {
+    if cx.motion_shell.path_smoke_done {
+        return;
+    }
+    if std::env::var_os("PH2D_PATH_SMOKE").is_none() {
+        return;
+    }
+    cx.motion_shell.path_smoke_done = true;
+    if std::env::var_os("PH2D_PATH_SMOKE").is_some_and(|v| v == "2") {
+        path_scene_orient(cx);
+        return;
+    }
+
+    let bits = {
+        cx.sim
+            .world_mut()
+            .spawn((
+                Transform::from_translation(Vec2::new(-6.0, -2.0)),
+                Sprite::atlas(0, [0.8, 0.8], [1.0, 0.55, 0.15, 1.0]),
+                Name::new("Traveller"),
+            ))
+            .id()
+            .to_bits()
+    };
+    // Um SEGUNDO objeto, parado: é ele que prova o item 5 (clicar nele apaga a
+    // trajetória). Sem um vizinho, "só o selecionado" não é demonstrável.
+    {
+        cx.sim.world_mut().spawn((
+            Transform::from_translation(Vec2::new(0.0, 4.0)),
+            Sprite::atlas(0, [0.8, 0.8], [0.35, 0.45, 0.6, 1.0]),
+            Name::new("Bystander"),
+        ));
+    }
+
+    let path = demo_path();
+    author(&mut cx.timeline.doc, bits, &path);
+
+    // A trajetória só é desenhada para o SELECIONADO — então a cena o seleciona,
+    // senão o smoke abre sem mostrar a própria feature.
+    if let Some(hero) = cx.hero.as_deref_mut() {
+        hero.gizmo.replace_selection(Some(bits));
+    }
+
+    let dots = (3.0 * cx.timeline.doc.fps_display).round() as usize;
+    let keys = cx
+        .timeline
+        .doc
+        .binding_for(bits, PropKind::Position)
+        .and_then(|b| cx.timeline.doc.active_clip().track(b.target))
+        .map_or(0, |t| t.keys().len());
+    eprintln!(
+        "[path-smoke] trajetoria em S: {} ancoras = {keys} keyframes (uma por ponto, \
+         como no After Effects), {:.2} unidades de percurso, {dots} pontos de tempo \
+         em 3 s.",
+        path.len(),
+        path.length()
+    );
+    eprintln!(
+        "[path-smoke] abra a timeline (L) e olhe o ESPACAMENTO dos losangos: \
+         juntos nas pontas (ease), esparramados no meio. Play para conferir."
+    );
+    eprintln!(
+        "[path-smoke] ARRASTE um QUADRADO (a ancora): a curva segue e NAO quebra \
+         (as alcas Auto Bezier re-suavizam). ARRASTE um CIRCULO (a ponta da alca): \
+         a curva se MOLDA a mao. As alcas so aparecem nas ancoras curvas do meio."
+    );
+    eprintln!(
+        "[path-smoke] E A PERGUNTA DA WAVE (Enio, 2026-07-30): crie um CLIP NOVO no \
+         dropdown. Ele tem de abrir em BRANCO -- nenhuma curva, nenhum quadrado, \
+         nenhum circulo, e nada agarravel onde a trajetoria do outro clip passava. \
+         Ponha o objeto onde quiser e aperte K: a ancora nasce ONDE VOCE CLICOU, e o \
+         clip 1 nao se mexe um pixel quando voce volta a ele."
+    );
+}
+
+/// Cena `=2`: **o auto-orient, e a recusa ao lado dele.**
+///
+/// Duas setas na MESMA trajetória, com o MESMO pedido — e uma delas tem uma track
+/// de Rotation. Sem o par, "recusado" seria uma palavra num doc; com ele, é a
+/// diferença entre duas coisas na tela.
+fn path_scene_orient(cx: &mut crate::motion_scene_ctx::MotionSceneCtx<'_>) {
+    let path = demo_path();
+    let mut spawn = |y: f32, tint: [f32; 4], name: &str| -> u64 {
+        cx.sim
+            .world_mut()
+            .spawn((
+                Transform::from_translation(Vec2::new(-6.0, -2.0 + y)),
+                // Fina e comprida: um quadrado girando é indistinguível de um
+                // quadrado parado, e o que esta cena mostra é EXATAMENTE o giro.
+                Sprite::atlas(0, [1.4, 0.35], tint),
+                Name::new(name),
+            ))
+            .id()
+            .to_bits()
+    };
+    let follower = spawn(0.0, [1.0, 0.55, 0.15, 1.0], "Follower");
+    let blocked = spawn(5.0, [0.35, 0.55, 1.0, 1.0], "Blocked");
+
+    let doc = &mut cx.timeline.doc;
+    for bits in [follower, blocked] {
+        author(doc, bits, &path);
+        doc.set_auto_orient(bits, true);
+    }
+    // A track que RECUSA — um único key, que já basta: o conflito é sobre quem
+    // possui o campo, não sobre quanto ele se move.
+    doc.insert_key(
+        blocked,
+        PropKind::Rotation,
+        RationalTime::from_seconds(0.0),
+        AnimValue::Float(0.0),
+        Interp::Hold,
+    );
+
+    let (a, b) = (doc.auto_orient(follower), doc.auto_orient(blocked));
+    if let Some(hero) = cx.hero.as_deref_mut() {
+        hero.gizmo.replace_selection(Some(follower));
+    }
+    eprintln!("[path-smoke] laranja {a:?} | azul {b:?}");
+    eprintln!(
+        "[path-smoke] Play: a LARANJA encara para onde vai; a AZUL nao gira \
+         (tem track de Rotation, e o auto-orient dela esta RECUSADO)."
+    );
+}
+
+#[cfg(test)]
+#[path = "motion_path_smoke_tests.rs"]
+mod tests;

@@ -227,7 +227,7 @@ pub(crate) struct AppGfx {
     /// `Cook` + node registry + reused instance buffer. Cooked per frame by
     /// `render_loop::motion_bridge` while the `motion` tool is active. Mirror of
     /// `vec_scene` — document ≠ tool (ADR-0040).
-    pub(crate) motion: crate::motion::motion_state::MotionState,
+    pub(crate) motion: ph2d_app_motion::motion_state::MotionState,
     /// Global rigid-body physics (ADR-0131 W1). Owns the transient rapier
     /// world + entity↔handle map, driven at the `Playhead` tick by
     /// `render_loop::physics_bridge`. Derived from `RigidBody`/`Collider`
@@ -1213,9 +1213,9 @@ pub(crate) struct App {
     /// que ele ressuscite uma corrida velha.
     pub(crate) discarded_run: ph2d_physics_ecs::InputTape,
     /// Motion Nodes: o arrasto do gizmo de canvas de um field espacial em curso (ver
-    /// [`crate::field_gizmo`]). `None` = nenhum. Espelho do `flip_selection_drag`, mas o
+    /// [`ph2d_app_motion::field_gizmo`]). `None` = nenhum. Espelho do `flip_selection_drag`, mas o
     /// apply escreve os params do NÓ (via `Graph::set_param`), nunca um `Transform`.
-    pub(crate) field_gizmo_drag: Option<crate::field_gizmo::FieldGizmoDrag>,
+    pub(crate) field_gizmo_drag: Option<ph2d_app_motion::field_gizmo::FieldGizmoDrag>,
     /// O arrasto de uma alça do gizmo dos DEFORMADORES DE QUADRILÁTERO (Corner Pin +
     /// Bezier Warp), se houver. ⚠️ Slot próprio, e não o do field: os dois nós são de
     /// famílias diferentes e nunca coexistem numa selecção — partilhar o slot faria um
@@ -1708,8 +1708,8 @@ pub(crate) struct App {
     /// terceira média (ver [`ph2d_app_motion::motion_leaf_images`]). Vive aqui porque toda leitura PARA a
     /// GPU, e ela tem de sobreviver ao quadro.
     /// ⭐ **O estado de shell da familia MOTION** — quatro campos que eram soltos aqui e
-    /// que so' esta familia le' (W2/L1). Ver [`crate::motion::motion_shell_state`].
-    pub(crate) motion_shell: crate::motion::motion_shell_state::MotionShellState,
+    /// que so' esta familia le' (W2/L1). Ver [`ph2d_app_motion::motion_shell_state`].
+    pub(crate) motion_shell: ph2d_app_motion::motion_shell_state::MotionShellState,
     // ⭐ **Os três que viviam aqui — `sculpt3d_rows`, `sculpt3d_dup`, `sculpt3d_sel` — mudaram-se
     // para o `sculpt3d: Sculpt3dShellState` lá em cima** (W2/L3-A2), com a `sculpt3d_pending`.
     // A prosa de cada um viajou com ele; ver `sculpt3d/shell_state.rs`.

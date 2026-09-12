@@ -2137,7 +2137,7 @@ impl App {
             .hero_screen
             .as_ref()
             .and_then(|h| h.gizmo.iter_selected().next());
-        let Some(hit) = crate::render_loop::motion_path_overlay::motion_path_hit(
+        let Some(hit) = ph2d_app_motion::motion_path_overlay::motion_path_hit(
             self.timeline.keys_mode,
             &self.timeline.doc,
             selected,
@@ -2164,7 +2164,7 @@ impl App {
     /// âncora de caminho não tem seleção persistente que o shell possa recuperar depois — o
     /// chrome a lê de volta do `last_context_menu` e o drain (`render_loop`) a converte.
     fn motion_path_open_anchor_menu(&mut self, x: f32, y: f32) -> bool {
-        use crate::render_loop::motion_path_overlay::{MotionPathGrab, motion_path_hit};
+        use ph2d_app_motion::motion_path_overlay::{MotionPathGrab, motion_path_hit};
         let Some(gfx) = self.gfx.as_ref() else {
             return false;
         };
@@ -2233,7 +2233,7 @@ impl App {
             .hero_screen
             .as_ref()
             .and_then(|h| h.gizmo.iter_selected().next());
-        let Some((target, d)) = crate::render_loop::motion_path_overlay::motion_path_curve_hit(
+        let Some((target, d)) = ph2d_app_motion::motion_path_overlay::motion_path_curve_hit(
             self.timeline.keys_mode,
             &self.timeline.doc,
             selected,
@@ -2258,7 +2258,7 @@ impl App {
     /// re-suaviza as âncoras `auto`, senão a curva quebra), `move_path_tangent` a molda.
     /// As duas reescrevem as distâncias que as keys guardam na MESMA operação.
     fn motion_path_anchor_move(&mut self, x: f32, y: f32) -> bool {
-        use crate::render_loop::motion_path_overlay::MotionPathGrab;
+        use ph2d_app_motion::motion_path_overlay::MotionPathGrab;
         let Some(grab) = self.motion_shell.path_drag else {
             return false;
         };
@@ -3319,7 +3319,7 @@ impl App {
                 .map_or(ph2d_editor::screens::layout::CenterSplit::None, |h| {
                     h.view.center_split
                 });
-            crate::field_gizmo::pan_scene_camera(&mut gfx.camera, split, size, dx, dy);
+            ph2d_app_motion::field_gizmo::pan_scene_camera(&mut gfx.camera, split, size, dx, dy);
             self.pan_anchor = Some(self.last_pointer);
             let _ = prev; // silence unused warning when feature shifts
         }

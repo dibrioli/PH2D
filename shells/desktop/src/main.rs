@@ -200,7 +200,6 @@ mod field3d_undo_probe;
 /// ADR-0161 W109 — o cabeçalho CLICÁVEL de cada vista: o menu que troca a câmera daquele quadrante.
 /// Motion Nodes: o gizmo de canvas de um field espacial (`field.box`, …). Espelho do
 /// `flip_selection_gizmo` — `GizmoTarget::MotionField`, apply nos params do NÓ.
-mod field_gizmo;
 mod flip;
 mod forwarding;
 /// A cena de smoke da MOLDURA (`PH2D_BUILD_SMOKE=49`) — irmã de `build_smoke`, teto de LOC.
@@ -336,6 +335,8 @@ mod morph_live;
 mod morph_machine_drive;
 // A LEI mudou-se para a folha `ph2d-vec-entities`; a CADEIA de gates dela fica, porque
 // atravessa o `morph_live`, o `vec_convert`, o `vec_ui_state_edit` e o `render_loop`.
+/// A metade do gizmo de campo que fala com a `App` — o prólogo que FICA (W2 Fase C).
+mod field_gizmo_host;
 #[cfg(test)]
 #[path = "morph_set_tests.rs"]
 mod morph_set_tests;
@@ -343,7 +344,6 @@ mod morph_states_smoke;
 /// ⭐ **A familia MOTION** — 269 ficheiros que viviam soltos em `src/`, agrupados em
 /// `src/motion/` pela W2/L1 (2026-09-11). As 27 raizes (e a `#[cfg(test)]` de oito
 /// delas) mudaram-se para [`crate::motion`], que e' o unico `mod` que fica aqui.
-mod motion;
 /// A shell preenche o contexto das cenas de Motion — a metade que FICA (W2 Fase C).
 mod motion_host;
 mod mount_smoke;
@@ -383,7 +383,6 @@ mod physics;
 /// **Um contêiner não rouba o clique dos próprios filhos** — a lei que faz um filho de moldura
 /// (ou de folha) ser agarrável no canvas. Pura, e por isso testada.
 mod pick_order;
-mod picker_smoke;
 /// As fronteiras da folha — confinar uma peça, e contar o que está mal.
 /// **A conversão de precisão dos pixels de uma sprite** — o que os botões `RGBA8 / RGBA16` do
 /// Inspector fazem (plano `docs/Sprite_projeto/18` W5).

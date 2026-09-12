@@ -9,7 +9,8 @@
 //! deixaria a seta a reverter curvas e gradientes e a não reverter sliders — ou o inverso —,
 //! e o modo de falha é uma seta que às vezes não faz nada.
 
-const SRC: &str = include_str!("../../src/render_loop/motion_bridge_params_edit.rs");
+const SRC: &str =
+    include_str!("../../../../crates/ph2d-app-motion/src/motion_bridge_params_edit.rs");
 
 /// O corpo do braço `MotionParamIntent::ResetParam` do `match` de intents.
 fn reset_arm() -> &'static str {

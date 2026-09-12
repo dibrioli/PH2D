@@ -122,7 +122,7 @@ impl LeafImages {
         art
     }
 
-    fn resolve(
+    pub fn resolve(
         &mut self,
         gpu: &ph2d_gpu::GpuContext,
         atlas: &ph2d_render::TextureAtlas,

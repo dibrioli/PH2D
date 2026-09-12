@@ -89,7 +89,10 @@ pub mod fx_atlas;
 pub mod fx_bridge;
 pub mod fx_bridge_dispatch;
 pub mod fx_dump;
+pub mod fx_live;
 pub mod fx_live_hit;
+pub mod fx_live_memo;
+pub mod fx_silhouette;
 pub mod fx_live_resolve;
 pub mod guide;
 pub mod marquee;
@@ -138,6 +141,7 @@ pub mod snap;
 pub mod snap_labels;
 pub mod snap_sprites;
 pub mod state;
+pub mod stroke_paint;
 pub mod stroke_present;
 pub mod weld;
 

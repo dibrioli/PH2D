@@ -79,7 +79,7 @@ struct PathFx {
 /// O cozimento de todos os FX raster da cena, GPU-resident. Runtime-only: o documento guarda a
 /// RELAÇÃO (o `VecFilter` na entidade), e isto é o desenho derivado dela.
 #[derive(Default)]
-pub(crate) struct FxLive {
+pub struct FxLive {
     live: FxImages,
     /// Renderer dedicado que rasteriza a forma ISOLADA (separado do principal para não pisar no
     /// intermediate da UI). Criado sob demanda no 1º FX da sessão.
@@ -99,7 +99,7 @@ pub(crate) struct FxLive {
 impl FxLive {
     /// As imagens de FX deste frame — o que o [`ph2d_vec_render::dispatch`] injeta no z das formas.
     /// Vazio = nenhum FX na cena (o desenho é o de sempre, byte-idêntico ao mundo pré-FX).
-    pub(crate) fn images(&self) -> &FxImages {
+    pub fn images(&self) -> &FxImages {
         &self.live
     }
 
@@ -116,7 +116,7 @@ impl FxLive {
     /// multiplicava (medido: 32 formas = 4,0 ms só de raster, contra 0,39 ms para a MESMA área
     /// numa passagem).
     #[allow(clippy::too_many_arguments)]
-    pub(crate) fn recook(
+    pub fn recook(
         &mut self,
         scene: &VecScene,
         sim: &SimWorld,
@@ -455,7 +455,7 @@ impl FxLive {
     /// Esquece tudo — o load de projeto e o restore de undo trocam a cena inteira, e os `VecPathId`
     /// são reciclados. Os handles vão para a fila de desregistro (o próximo recook os solta do
     /// atlas, pois é lá que há `vello_pass`).
-    pub(crate) fn forget(&mut self) {
+    pub fn forget(&mut self) {
         self.live.clear();
         for (_, pfx) in std::mem::take(&mut self.paths) {
             self.pending_unregister.push(pfx.image);
@@ -464,7 +464,7 @@ impl FxLive {
 }
 
 /// A pilha de `id`, se houver. Porta única: o cozimento e o publish para o painel perguntam AQUI.
-pub(crate) fn spec_of(sim: &SimWorld, map: &VecEntityMap, id: VecPathId) -> Option<VecFilter> {
+pub fn spec_of(sim: &SimWorld, map: &VecEntityMap, id: VecPathId) -> Option<VecFilter> {
     let &bits = map.get(&id)?;
     sim.world()
         .get::<VecFilter>(Entity::from_bits(bits))
@@ -479,7 +479,7 @@ pub(crate) fn spec_of(sim: &SimWorld, map: &VecEntityMap, id: VecPathId) -> Opti
 /// pura sobre o `SimWorld` e era chamada por 11 ficheiros, entre eles a cena `vec_fade_smoke` —
 /// um dos quatro roteadores da família `vec`, que não podia sair da shell enquanto ela aqui
 /// estivesse. ⛔ **Esta porta FICA** para os 11 sítios de chamada não se moverem.
-pub(crate) fn set_filter(
+pub fn set_filter(
     sim: &mut SimWorld,
     map: &VecEntityMap,
     ids: &[VecPathId],
@@ -493,7 +493,7 @@ pub(crate) fn set_filter(
 ///
 /// Se a edição esvaziar a pilha, o componente é REMOVIDO (a mesma lei do `set_filter`, perguntada
 /// no mesmo lugar: quem remove a última linha não deixa um componente inerte para trás).
-pub(crate) fn edit(
+pub fn edit(
     sim: &mut SimWorld,
     map: &VecEntityMap,
     ids: &[VecPathId],
@@ -516,14 +516,14 @@ pub(crate) fn edit(
     }
 }
 
-pub(crate) use crate::fx_live_hit::{
+pub use crate::fx_live_hit::{
     FilterHit, add_stop, apply_picked_colour, colour_bytes, colour_target, hit_of, ramp_preview,
     remove_stop,
 };
 /// A tradução id→controle mora no irmão [`crate::fx_live_hit`] (teto de LOC), e é re-exportada
 /// aqui porque `fx_live::hit_of` é a porta que a ponte chama: mover a função não pode mover o
 /// caminho de quem a usa.
-pub(crate) use crate::fx_live_resolve::resolve_ops;
+pub use crate::fx_live_resolve::resolve_ops;
 
 #[cfg(test)]
 #[path = "fx_live_tests.rs"]

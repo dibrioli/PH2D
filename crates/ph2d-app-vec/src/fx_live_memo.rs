@@ -53,7 +53,7 @@ use ph2d_vec_entities::entities::VecEntityMap;
 
 /// O maior lado de scratch/saída que pedimos à GPU — o `maxTextureDimension2D` baseline do WebGPU
 /// (8192). Limite de RECURSO (a dimensão de textura garantida), não de gosto.
-pub(crate) const MAX_FX_SIDE: u32 = 8192;
+pub const MAX_FX_SIDE: u32 = 8192;
 
 /// **O que é DESENHADO na célula desta forma.** Um superconjunto conservador do que os dois
 /// consumidores leem: a geometria derivada (se algum produtor vivo a substituiu), a silhueta (se
@@ -64,7 +64,7 @@ pub(crate) const MAX_FX_SIDE: u32 = 8192;
 /// dela de qualquer modo. Superconjunto conservador vale mais que mínimo exacto aqui: o modo de
 /// falha de um vão é **pixels velhos que ninguém vê que são velhos**.
 #[derive(Clone, PartialEq)]
-pub(crate) struct FxDrawn {
+pub struct FxDrawn {
     /// A silhueta derivada desta forma (o produtor de silhueta), se houver.
     sil: Option<Vec<VecPath>>,
     /// A geometria derivada desta forma (offset/contour/pattern/blend…), se houver.
@@ -94,12 +94,12 @@ pub(crate) struct FxDrawn {
 
 /// **A chave do memo.** Igual ⇒ os pixels que estão na textura servem para este frame.
 #[derive(Clone, PartialEq)]
-pub(crate) struct FxKey {
+pub struct FxKey {
     /// A pilha JÁ RESOLVIDA em pixels — guardá-la resolvida (e não o componente) é o que faz o
     /// zoom invalidar sozinho: a mesma pilha noutro zoom é outra lista.
-    pub(crate) ops: Vec<FxOpGpu>,
-    pub(crate) w: u32,
-    pub(crate) h: u32,
+    pub ops: Vec<FxOpGpu>,
+    pub w: u32,
+    pub h: u32,
     drawn: FxDrawn,
 }
 
@@ -108,9 +108,9 @@ pub(crate) struct FxKey {
 /// Existe porque a decisão do ATLAS é sobre a CENA: só depois de conhecer o tamanho de todas as
 /// formas que erraram o memo é que se sabe em quantos renders elas cabem. Sem isto o laço teria de
 /// resolver cada forma duas vezes — e a 2ª resposta é a que poderia divergir.
-pub(crate) struct Job {
-    pub(crate) id: VecPathId,
-    pub(crate) key: FxKey,
+pub struct Job {
+    pub id: VecPathId,
+    pub key: FxKey,
     /// ⭐⭐⭐ **O estilo resolvido com que esta forma é DESENHADA** — o mesmo que entrou na chave,
     /// guardado aqui para que o rasterizador o receba (report do Enio, 2026-09-04: *"a da direita
     /// não ficou transparente"*).
@@ -119,11 +119,11 @@ pub(crate) struct Job {
     /// *"estes pixels servem"* comparando a forma PINTADA, e o desenho tem de pintar com o MESMO
     /// estilo, senão o memo afirma sobre uma arte e a textura recebe outra. Uma segunda consulta
     /// ao `VecViewState` seria a segunda porta pela qual eles divergem.
-    pub(crate) bound: Option<ph2d_vec_scene::BoundStyle>,
+    pub bound: Option<ph2d_vec_scene::BoundStyle>,
     /// O canto do scratch desta forma, em pixels de tela (a caixa dela mais a margem da pilha).
     /// **Fora da chave**: ver o doc do módulo (a translação não muda a arte dentro da célula).
-    pub(crate) ex0: f64,
-    pub(crate) ey0: f64,
+    pub ex0: f64,
+    pub ey0: f64,
 }
 
 /// A resolução por-forma da 1ª varredura: a pilha em pixels, a caixa, o tamanho, e o que é
@@ -140,7 +140,7 @@ pub(crate) struct Job {
 // wave W0.1 curou — **quem esquecer de passar uma delas volta a ter o defeito**, e a assinatura é
 // o que torna esquecer visível. (Mesmo veredito que o `body_desc` da linha de física tomou.)
 #[allow(clippy::too_many_arguments)]
-pub(crate) fn job_for(
+pub fn job_for(
     scene: &VecScene,
     sim: &SimWorld,
     map: &VecEntityMap,

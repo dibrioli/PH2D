@@ -33,8 +33,32 @@ fn conta_em_codigo(fonte: &str, agulha: &str) -> usize {
 
 #[test]
 fn fx_live_marks_every_recook_dirty() {
-    let fx = Path::new(env!("CARGO_MANIFEST_DIR")).join("src/fx_live.rs");
-    let fonte = std::fs::read_to_string(&fx).expect("ler fx_live.rs");
+    // ⛔⛔ **O GÉMEO EM RUNTIME da §2.6, e ele mordeu aqui** (W2 Fase D): a lei mudou-se para
+    // `ph2d-app-vec` e este `read_to_string` de caminho fixo **não parte a compilação** — o gate
+    // compilou e explodiu só ao correr. ⚠️ E um `#[ignore]` ou um filtro e ele nunca corre: quem o
+    // apanhou foi a suíte `cargo test -p ph2d-host-desktop --test it` corrida **À PARTE**, porque o
+    // `nextest-impacted` do portão da linha não alcança `shells/desktop/tests/it/`.
+    //
+    // ⭐ **A cura resolve as DUAS árvores em vez de emendar o caminho** — assim ela sobrevive ao
+    // próximo movimento —, e o `panic` nomeia as duas, senão uma ausência lê-se como um caminho mal
+    // escrito.
+    let raiz = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let tentativas = [
+        raiz.join("src/fx_live.rs"),
+        raiz.join("../../crates/ph2d-app-vec/src/fx_live.rs"),
+    ];
+    let fonte = tentativas
+        .iter()
+        .find_map(|p| std::fs::read_to_string(p).ok())
+        .unwrap_or_else(|| {
+            panic!(
+                "o `fx_live.rs` nao esta' em nenhuma das arvores varridas: {:?}",
+                tentativas
+                    .iter()
+                    .map(|p| p.display().to_string())
+                    .collect::<Vec<_>>()
+            )
+        });
 
     let recozeduras = conta_em_codigo(&fonte, "stack.run_from(");
     let avisos = conta_em_codigo(&fonte, "mark_texture_dirty(");

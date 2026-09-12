@@ -76,7 +76,7 @@ fn the_panel_and_the_engine_agree_on_the_ceilings() {
 #[test]
 fn each_colour_slot_gets_the_picked_colour_and_only_it() {
     // ⚠️ `ColourSlot` vem do módulo que o DEFINE, não do re-export: o produto recebe um valor dele
-    // (do `colour_target`) e o passa adiante sem nunca nomear o tipo, então um `pub(crate) use` só
+    // (do `colour_target`) e o passa adiante sem nunca nomear o tipo, então um `pub use` só
     // para o teste seria um import que o build sem testes reporta como morto.
     use crate::fx_live::apply_picked_colour;
     use crate::fx_live_hit::ColourSlot;

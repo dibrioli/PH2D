@@ -200,22 +200,17 @@ mod forwarding;
 /// A cena de smoke da MOLDURA (`PH2D_BUILD_SMOKE=49`) — irmã de `build_smoke`, teto de LOC.
 mod frame_smoke;
 mod fx_adjust_smoke;
-pub(crate) use ph2d_app_vec::fx_atlas;
 mod fx_blend_smoke;
 pub(crate) use ph2d_app_vec::fx_bridge;
 pub(crate) use ph2d_app_vec::fx_bridge_dispatch;
 /// **FX raster VIVO** — o cozimento do `ph2d_ecs::VecFilter` (Blur/Glow/Drop Shadow, plano 24):
 /// isola a forma, borra/tinge, e injeta a imagem no z dela via `ph2d_vec_render::FxImages`.
-pub(crate) use ph2d_app_vec::fx_dump;
 mod fx_duotone_smoke;
 mod fx_gradient_map_smoke;
-mod fx_live;
-pub(crate) use ph2d_app_vec::fx_live_hit;
-mod fx_live_memo;
-pub(crate) use ph2d_app_vec::fx_live_resolve;
+pub(crate) use ph2d_app_vec::fx_live;
 mod fx_morphology_smoke;
 mod fx_raster_smoke;
-mod fx_silhouette;
+pub(crate) use ph2d_app_vec::fx_silhouette;
 mod fx_smoke;
 mod fx_turbulence_smoke;
 mod fx_undo_smoke;
@@ -627,7 +622,7 @@ mod vec_snap;
 /// Os alvos de snap vindos do RASTER (irmão de `vec_snap`, teto de LOC).
 mod vec_snap_sprites;
 mod vec_stack_smoke;
-mod vec_stroke_paint;
+pub(crate) use ph2d_app_vec::stroke_paint as vec_stroke_paint;
 pub(crate) use ph2d_app_vec::stroke_present as vec_stroke_present;
 mod vec_svg_export;
 mod vec_text;

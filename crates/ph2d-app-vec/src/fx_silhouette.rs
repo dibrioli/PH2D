@@ -52,7 +52,7 @@ struct Memo {
 
 /// A silhueta resolvida de cada forma TRAÇADA que carrega um filtro, com memo por caminho.
 #[derive(Default)]
-pub(crate) struct FxSilhouette {
+pub struct FxSilhouette {
     memo: BTreeMap<VecPathId, Memo>,
     live: LiveGeometry,
     /// Quantas vezes a booleana foi de facto chamada desde o começo — o instrumento do gate de
@@ -69,21 +69,21 @@ pub(crate) struct FxSilhouette {
 impl FxSilhouette {
     /// As regiões resolvidas deste frame, em espaço de MUNDO. Vazio = nenhuma forma traçada com
     /// filtro na cena, e o campo se comporta exatamente como antes deste módulo existir.
-    pub(crate) fn live(&self) -> &LiveGeometry {
+    pub fn live(&self) -> &LiveGeometry {
         &self.live
     }
 
     /// Quantas uniões foram cozidas até agora. Cresce só num MISS de memo — é a diferença entre
     /// pagar por edição e pagar por frame.
     #[cfg(test)]
-    pub(crate) fn cooks(&self) -> u64 {
+    pub fn cooks(&self) -> u64 {
         self.cooks
     }
 
     /// Re-resolve o que mudou. Chamado uma vez por frame, DEPOIS dos cozimentos de geometria
     /// derivada (o campo tem de descrever o que o `dispatch` de facto desenha) e ANTES do
     /// `fx_live::recook`, que a consome.
-    pub(crate) fn recook(
+    pub fn recook(
         &mut self,
         scene: &VecScene,
         sim: &SimWorld,
@@ -140,7 +140,7 @@ impl FxSilhouette {
 
     /// Esquece tudo — o load de projeto e o restore de undo trocam a cena inteira debaixo do memo,
     /// e os `VecPathId` são reciclados entre documentos.
-    pub(crate) fn forget(&mut self) {
+    pub fn forget(&mut self) {
         self.memo.clear();
         self.live.clear();
     }

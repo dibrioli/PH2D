@@ -1,7 +1,7 @@
 //! ⭐⭐ **COM QUE TINTA O TRAÇO DESENHA** — a porta única da fileira *Type* da secção *Stroke*
 //! (plano 35, wave D).
 //!
-//! # Por que é um módulo próprio, e irmão do [`crate::vec_stroke_present`]
+//! # Por que é um módulo próprio, e irmão do [`crate::stroke_present`]
 //!
 //! Aquele responde *"esta forma TEM traço?"*; este, *"com que tinta ele desenha?"*. São duas
 //! perguntas sobre o mesmo objecto, e a resposta de uma **pressupõe** a da outra — sem traço não há
@@ -25,7 +25,7 @@ use ph2d_vec_scene::{PatternFill, PatternSource, StrokePaint, VecScene};
 /// ⚠️ **Uma porta, e não dois `if` no despacho** — a mesma forma do `vec_fill_kind_for_id`: quem
 /// acrescentar uma variante ao `StrokePaint` acrescenta-a aqui e o despacho não muda uma linha.
 #[must_use]
-pub(crate) fn kind_for_id(id: ph2d_editor::NodeId) -> Option<StrokePaintKind> {
+pub fn kind_for_id(id: ph2d_editor::NodeId) -> Option<StrokePaintKind> {
     if id == ph2d_editor::ids::VECTOR_STROKE_KIND_SOLID {
         Some(StrokePaintKind::Solid)
     } else if id == ph2d_editor::ids::VECTOR_STROKE_KIND_PATTERN {
@@ -48,7 +48,7 @@ pub(crate) fn kind_for_id(id: ph2d_editor::NodeId) -> Option<StrokePaintKind> {
 /// para *"tem traço?"* (`Some(false)`) e **nenhuma** para *"que tinta?"*. É por isso que a caixa é
 /// pintada e a fileira de tipo não.
 #[must_use]
-pub(crate) fn selected_stroke_paint_kind(
+pub fn selected_stroke_paint_kind(
     scene: &VecScene,
     pen: &PenTool,
 ) -> Option<StrokePaintKind> {
@@ -77,7 +77,7 @@ pub(crate) fn selected_stroke_paint_kind(
 ///
 /// ⚠️ **A fonte vem RESOLVIDA de fora** porque escolhê-la pode abrir um diálogo de ficheiro, que
 /// congela o laço — isso é da shell (`ph2d_app_host::modal`), nunca desta função de documento.
-pub(crate) fn set_kind(
+pub fn set_kind(
     scene: &mut VecScene,
     history: &mut History,
     pen: &PenTool,
@@ -163,7 +163,7 @@ pub(crate) fn set_kind(
 /// porta e não nas outras. ⇒ as três leem a MESMA função.
 ///
 /// `true` se o documento mudou (um passo de undo).
-pub(crate) fn set_art(
+pub fn set_art(
     scene: &mut VecScene,
     history: &mut History,
     host: ph2d_vec_scene::VecPathId,
@@ -196,7 +196,7 @@ pub(crate) fn set_art(
 
 /// **O que a secção *Brush* pede ao documento** (plano 36, W4).
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub(crate) enum BrushCmd {
+pub enum BrushCmd {
     /// Multiplica a altura derivada da largura do traço.
     Scale(f64),
     /// Multiplica a largura do motivo para dar o avanço.
@@ -214,7 +214,7 @@ pub(crate) enum BrushCmd {
 ///
 /// ⚠️ **O `if` de igualdade no fim é o que impede um passo espúrio** quando o slider re-publica o
 /// valor que já lá estava — a mesma disciplina da porta do padrão.
-pub(crate) fn apply(
+pub fn apply(
     scene: &mut VecScene,
     history: &mut History,
     pen: &PenTool,
@@ -252,14 +252,14 @@ pub(crate) fn apply(
 
 /// O comando que este `NodeId` nomeia (`None` se não é um clique da secção *Brush*).
 #[must_use]
-pub(crate) fn cmd_for_id(id: ph2d_editor::NodeId) -> Option<BrushCmd> {
+pub fn cmd_for_id(id: ph2d_editor::NodeId) -> Option<BrushCmd> {
     (id == ph2d_editor::ids::VECTOR_BRUSH_FLIP).then_some(BrushCmd::Flip)
 }
 
 /// O comando de um SLIDER da secção *Brush* (`None` se não é dela). ⚠️ O `event.rs` do painel já
 /// converteu o track para o domínio do documento — aqui `v` é valor.
 #[must_use]
-pub(crate) fn slider_cmd_for_id(id: ph2d_editor::NodeId, v: f64) -> Option<BrushCmd> {
+pub fn slider_cmd_for_id(id: ph2d_editor::NodeId, v: f64) -> Option<BrushCmd> {
     use ph2d_editor::ids as i;
     if id == i::VECTOR_BRUSH_SCALE {
         Some(BrushCmd::Scale(v))
@@ -469,5 +469,5 @@ mod brush_kind_gates {
 }
 
 #[cfg(test)]
-#[path = "vec_stroke_paint_tests.rs"]
+#[path = "stroke_paint_tests.rs"]
 mod tests;

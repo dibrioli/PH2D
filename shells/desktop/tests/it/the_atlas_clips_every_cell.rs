@@ -16,7 +16,12 @@
 //! dela, com a cor dela — nada estoura, nada avisa, e a paridade de GPU continua verde porque ela
 //! mede UMA célula por vez.
 
-const SRC: &str = include_str!("../../src/fx_live.rs");
+// ⚠️ **A lei mudou de CRATE** (W2 Fase D): o `cook_batch` vive em `ph2d-app-vec` desde que a
+// `line/app-motion` levou a arte viva para a folha `ph2d-vec-art-live` e libertou este cluster.
+// ⭐ Este `include_str!` **falhou em tempo de COMPILAÇÃO** quando o ficheiro se mudou — a metade
+// BOA da §2.6 do HOWTO. ⛔ O sujeito continua a ser a LEI (o lote recorta cada célula), e por isso
+// a agulha segue-a para a crate: *pergunta-se para onde foi o SUJEITO, não o ficheiro.*
+const SRC: &str = include_str!("../../../../crates/ph2d-app-vec/src/fx_live.rs");
 
 /// A janela do fonte que monta a cena partilhada do lote.
 fn batch_scene_block() -> &'static str {

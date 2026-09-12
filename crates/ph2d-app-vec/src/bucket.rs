@@ -464,9 +464,7 @@ pub fn deposit(
         fill: Some(ph2d_vec_scene::Paint::solid(tinta)),
         ..hit.face.clone()
     };
-    let id = scene.insert_path(0, nova);
-
-    id
+    scene.insert_path(0, nova)
 }
 
 #[cfg(test)]

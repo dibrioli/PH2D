@@ -43,7 +43,12 @@ use ph2d_skeleton_ecs::IkGoal;
 
 use ph2d_preview_drive::{Driven, PreviewDrive};
 
-/// O nome que uma âncora nova recebe. ⚠️ Em inglês, como toda a UI da casa.
+// ⛔ **Um doc-comment ÓRFÃO, e ele é resto de um movimento anterior desta linha.** A const que ele
+// descrevia (`ANCHOR_NAME`) mudou-se para [`ph2d_skeleton_live::goal`] na 2.ª volta da Fase B, e a
+// linha ficou aqui pendurada sobre o item SEGUINTE — *um comentário separado do seu item muda de
+// dono* (CLAUDE.md §5). ⚠️ Dentro da shell ninguém a via; a crate nova, com os lints dela, acusou-a
+// no primeiro clippy. O doc a sério (com o aviso de que o valor foi LIDO do ficheiro e não escrito
+// de memória) vive ao lado da const.
 
 /// **O índice `StableId → entidade` de TUDO** — o alvo de uma âncora é um objecto qualquer, não um
 /// osso, então este índice é mais largo que o [`ph2d_skeleton_live::skin_live`]'s.

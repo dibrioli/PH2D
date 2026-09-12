@@ -90,7 +90,7 @@ fn leaving_the_painter_clears_the_shells_memo_even_with_nothing_to_bake() {
         .expect("não achei o fim do bloco de desativação");
     let block = &tail[..end];
     let bake_at = block
-        .find("(painter as &mut dyn ph2d_editor::tool::RasterEditTool).deactivate();")
+        .find("(painter as &mut dyn ph2d_editor_core::tool::RasterEditTool).deactivate();")
         .expect("o teardown diferido sumiu do ramo de desativação");
     // ⚠️ **Fecho de BLOCO, não posição.** A 1ª versão deste gate só pedia que a limpeza viesse
     // DEPOIS do teardown — e a mutação (pôr a limpeza de volta na linha seguinte, ainda dentro do

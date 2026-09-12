@@ -46,7 +46,7 @@
 //! que a conversão pertence. Sem ela o desenho do artista chega ao botão **de cabeça para baixo**
 //! (report do Enio, 2026-08-09) — e chegava nas DUAS metades, porque as duas passam por aqui.
 //!
-//! [`paint_icon_path`]: ph2d_editor::paint::paint_icon_path
+//! [`paint_icon_path`]: ph2d_editor_core::paint::paint_icon_path
 
 use ph2d_vec_render::build_bezpath;
 use ph2d_vec_scene::VecPath;

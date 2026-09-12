@@ -234,12 +234,12 @@ pub(crate) fn slide_entity_world(sim: &mut SimWorld, bits: u64, delta: [f64; 2])
     }
     let entity = Entity::from_bits(bits);
     let pw = ph2d_ecs::parent_world_transform(sim.world(), entity);
-    let parent = ph2d_editor::TransformSnapshot {
+    let parent = ph2d_editor_core::TransformSnapshot {
         translation: [pw.translation.x, pw.translation.y],
         rotation: pw.rotation,
         scale: [pw.scale.x, pw.scale.y],
     };
-    let [dx, dy] = ph2d_editor::world_delta_to_local(parent, delta[0] as f32, delta[1] as f32);
+    let [dx, dy] = ph2d_editor_core::world_delta_to_local(parent, delta[0] as f32, delta[1] as f32);
     if let Some(mut t) = sim.world_mut().get_mut::<Transform>(entity) {
         t.translation.x += dx;
         t.translation.y += dy;

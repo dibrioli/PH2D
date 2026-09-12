@@ -37,8 +37,8 @@
 //! artista autorou. Persistir a POSIÇÃO de um controle é a W4b/W8a, não esta.
 
 use ph2d_ecs::{Entity, SimWorld, VecWidget, VecWidgetBind};
-use ph2d_editor::interaction::{InteractiveState, WidgetStore};
-use ph2d_editor::widget::{CheckboxValue, WidgetKind};
+use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
+use ph2d_editor_core::widget::{CheckboxValue, WidgetKind};
 use ph2d_vec_scene::{BoundStyle, VecPathId, VecViewState};
 
 use ph2d_vec_entities::entities::VecEntityMap;
@@ -114,7 +114,7 @@ pub fn resolve(sim: &SimWorld, map: &VecEntityMap, store: &WidgetStore) -> Vec<(
         let Some(name) = w.get::<ph2d_ecs::Name>(e) else {
             continue;
         };
-        let row = ph2d_editor::ids::authored_row_id(&crate::ui_panel_spec::key_of(&name.0));
+        let row = ph2d_editor_core::ids::authored_row_id(&crate::ui_panel_spec::key_of(&name.0));
         // Um widget cuja row não está no painel COMMITADO ainda não tem valor vivo — o vínculo
         // fica dormente em vez de inventar um default e mexer na arte sem ninguém ter tocado nada.
         let Some(drive) = store.get(row).and_then(drive_of) else {

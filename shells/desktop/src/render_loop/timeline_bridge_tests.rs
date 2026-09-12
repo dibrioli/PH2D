@@ -4,7 +4,7 @@
 //! lines of tests sharing its file, and the cap was measuring the sum.
 
 use super::*;
-use ph2d_editor::ids;
+use ph2d_editor_core::ids;
 
 #[test]
 fn transport_ids_map_to_intents() {

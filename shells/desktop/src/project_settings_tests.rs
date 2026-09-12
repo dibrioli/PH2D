@@ -94,19 +94,19 @@ fn the_project_scale_and_unit_survive_the_project_file() {
 
     // Um projeto de pixel art: nada aqui é alcançável por acidente a partir do
     // default (100 px/m, Pixels, Smooth).
-    let authored = ph2d_editor::project::ProjectSettings {
+    let authored = ph2d_editor_core::project::ProjectSettings {
         pixels_per_meter: 32.0,
         snap_move_meters: 0.16,
         snap_rotate_deg: 15.0,
-        display_unit: ph2d_editor::project::DisplayUnit::Meters,
-        image_filter: ph2d_editor::project::ImageFilterMode::PixelArt,
+        display_unit: ph2d_editor_core::project::DisplayUnit::Meters,
+        image_filter: ph2d_editor_core::project::ImageFilterMode::PixelArt,
         // ⚠️ `Radians` porque o default é `Degrees` — este teste atravessa o ARQUIVO INTEIRO
         // (não só o espelho), e um valor de fábrica passaria mesmo que o campo se perdesse.
-        display_angle: ph2d_editor::project::DisplayAngle::Radians,
+        display_angle: ph2d_editor_core::project::DisplayAngle::Radians,
     };
     assert_ne!(
         authored,
-        ph2d_editor::project::ProjectSettings::default(),
+        ph2d_editor_core::project::ProjectSettings::default(),
         "uma fixture igual ao default nao prova travessia nenhuma"
     );
     let file = ProjectFile {
@@ -132,7 +132,7 @@ fn the_project_scale_and_unit_survive_the_project_file() {
     let (ver, back): (u32, ProjectFile) =
         postcard::from_bytes(&std::fs::read(&path).unwrap()).unwrap();
     assert_eq!(ver, PROJECT_SCHEMA);
-    let mut loaded = ph2d_editor::project::ProjectSettings::default();
+    let mut loaded = ph2d_editor_core::project::ProjectSettings::default();
     crate::project_settings::install(&mut loaded, &back.settings);
     assert_eq!(
         loaded, authored,

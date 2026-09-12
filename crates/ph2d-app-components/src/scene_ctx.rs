@@ -39,7 +39,7 @@ pub struct SceneCtx<'a> {
     ///
     /// ⚠️ `Option` porque no arranque ele ainda não existe, e uma cena que precise dele di-lo com
     /// um `if let` em vez de entrar em pânico.
-    pub hero_screen: Option<&'a mut ph2d_editor::HeroScreen>,
+    pub hero_screen: Option<&'a mut ph2d_editor_core::HeroScreen>,
     /// O relógio, que as cenas de instância rebobinam e põem a andar.
     ///
     /// ⚠️ **`&mut`, e de propósito:** *uma cena de smoke não é um observador — ela ENCENA, e

@@ -95,7 +95,7 @@ fn verb(app: &mut crate::App, v: ph2d_app_components::instance_verbs::Verb, name
     let Some(gfx) = app.gfx.as_mut() else { return };
     let registry = crate::init::build_component_registry();
     let mut echo = ph2d_app_components::instance_sync::MasterEcho::default();
-    let mut toasts = ph2d_editor::ToastQueue::default();
+    let mut toasts = ph2d_editor_core::ToastQueue::default();
     let mut select_out = None;
     let mut docs = ph2d_app_components::instance_docs::OwnedDocs {
         vec_scene: &mut gfx.vec_scene,

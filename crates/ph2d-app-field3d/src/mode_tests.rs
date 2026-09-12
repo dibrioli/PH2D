@@ -1,7 +1,7 @@
 //! Os gates de **quem é dono do canvas** (W40).
 
 use super::{Owner, forget_owner, model_takes_the_canvas, note_owner, took_the_canvas};
-use ph2d_editor::ToolId;
+use ph2d_editor_core::ToolId;
 
 fn tool(name: &str) -> Owner {
     Owner {

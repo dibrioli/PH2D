@@ -105,7 +105,7 @@ fn a_cuboid_offers_the_same_nine_points_the_pivot_handle_does() {
         half_x: 2.0,
         half_y: 1.0,
     });
-    // Same order as `ph2d_editor::pivot_snap_candidates`: centre, TL, TR, BL, BR,
+    // Same order as `ph2d_editor_core::pivot_snap_candidates`: centre, TL, TR, BL, BR,
     // T, R, B, L.
     assert_eq!(
         pts,

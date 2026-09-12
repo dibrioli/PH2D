@@ -13,7 +13,7 @@
 
 use std::path::Path;
 
-use ph2d_editor::{Toast, ToastQueue};
+use ph2d_editor_core::{Toast, ToastQueue};
 use ph2d_tokens::Theme;
 use ph2d_tokens::num_overrides::{num_overrides, set_num_overrides};
 use ph2d_tokens::overrides::{color_overrides, set_color_overrides};

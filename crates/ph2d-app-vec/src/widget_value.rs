@@ -29,8 +29,8 @@
 use std::collections::BTreeMap;
 
 use ph2d_ecs::{Entity, SimWorld, VecWidget, VecWidgetValue};
-use ph2d_editor::interaction::{InteractiveState, WidgetStore};
-use ph2d_editor::widget::{CheckboxValue, SliderOrientation, WidgetKind};
+use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
+use ph2d_editor_core::widget::{CheckboxValue, SliderOrientation, WidgetKind};
 use ph2d_vec_scene::VecPathId;
 
 use ph2d_vec_entities::entities::VecEntityMap;
@@ -65,16 +65,16 @@ pub fn seed_state(kind: WidgetKind, value: f32) -> Option<InteractiveState> {
     let on = value >= 0.5;
     match kind {
         WidgetKind::Slider => Some(InteractiveState::Slider {
-            state: ph2d_editor::widget::SliderState::default(),
+            state: ph2d_editor_core::widget::SliderState::default(),
             value: value.clamp(0.0, 1.0),
             orientation: SliderOrientation::Horizontal,
         }),
         WidgetKind::Toggle => Some(InteractiveState::Toggle {
-            state: ph2d_editor::widget::ToggleState::default(),
+            state: ph2d_editor_core::widget::ToggleState::default(),
             on,
         }),
         WidgetKind::Checkbox => Some(InteractiveState::Checkbox {
-            state: ph2d_editor::widget::CheckboxState::default(),
+            state: ph2d_editor_core::widget::CheckboxState::default(),
             value: if on {
                 CheckboxValue::Checked
             } else {
@@ -114,7 +114,7 @@ pub fn reconcile(
         else {
             continue;
         };
-        let row = ph2d_editor::ids::authored_row_id(&crate::ui_panel_spec::key_of(&name));
+        let row = ph2d_editor_core::ids::authored_row_id(&crate::ui_panel_spec::key_of(&name));
         // Um controle que o painel COMMITADO ainda não carrega não tem posição viva — semear o
         // mundo a partir do nada escreveria uma edição que ninguém fez.
         let Some(live) = store.get(row).and_then(value_of) else {

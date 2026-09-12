@@ -15,7 +15,7 @@
 use ph2d_app_physics::physics_tests::{apply, sprite_scene};
 use ph2d_core::Vec2;
 use ph2d_ecs::{SimWorld, Transform};
-use ph2d_editor::PhysicsFieldEdit;
+use ph2d_editor_core::PhysicsFieldEdit;
 use ph2d_physics_ecs::{BodyKind, Collider, ColliderShape, PhysicsBridge, RigidBody};
 
 use ph2d_app_physics::inspector::body::build_physics_info;
@@ -43,7 +43,7 @@ pub(super) fn attach(sim: &mut ph2d_ecs::SimWorld, e: ph2d_ecs::Entity, name: &s
 pub(super) fn snapshot(
     sim: &ph2d_ecs::SimWorld,
     e: ph2d_ecs::Entity,
-) -> ph2d_editor::InspectorPhysicsInfo {
+) -> ph2d_editor_core::InspectorPhysicsInfo {
     build_physics_info(sim.world(), e.to_bits(), 0, 0, 0, false, 0, (0.0, 5.0), 0)
         .expect("§11 aparece para qualquer entidade com Transform")
 }

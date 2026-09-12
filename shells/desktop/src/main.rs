@@ -670,9 +670,9 @@ use winit_host::LoggingHandler;
 use ph2d_core::{FixedStep, Playhead, Vec2, install_panic_hook, panic};
 use ph2d_ecs::scene::build_hierarchy_snapshot;
 use ph2d_ecs::{Component, SimComponent, SimWorld, Transform};
-use ph2d_editor::paint::Paint;
+use ph2d_editor_core::paint::Paint;
 // NodeId surfaces in our `dragging` field; re-exported by ph2d-editor.
-use ph2d_editor::NodeId;
+use ph2d_editor_core::NodeId;
 use ph2d_host::{HostHandler, Lifecycle, Modifiers, PlatformHost};
 use ph2d_input::InputState;
 use ph2d_render::SpriteRenderer;
@@ -838,7 +838,7 @@ impl App {
             prefab_cancel: None,
             prefab_cancel_pending: false,
             pending_ui_sound: None,
-            ui_burst: ph2d_editor::motion_burst::BurstField::default(),
+            ui_burst: ph2d_editor_core::motion_burst::BurstField::default(),
             hover_outline: Vec::new(),
             dragging: None,
             title_dirty: true,

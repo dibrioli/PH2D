@@ -27,7 +27,7 @@
 
 use std::path::PathBuf;
 
-use ph2d_editor::{Toast, ToastQueue};
+use ph2d_editor_core::{Toast, ToastQueue};
 use ph2d_sprite_sheet::AuthoredSheet;
 
 /// O nome do ficheiro a partir do nome da folha — só o que qualquer sistema de ficheiros aceita.

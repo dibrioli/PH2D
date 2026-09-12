@@ -104,7 +104,9 @@ pub fn motion_autofix_smoke_appropriate(
         out
     };
     cx.motion.sinks.push(out);
-    let _ = cx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
+    let _ = cx
+        .tools
+        .set_active(&ph2d_editor_core::ToolId::new("motion"));
     let warnings = ph2d_motion_diagnose::diagnose(&cx.motion.doc.graph, &cx.motion.registry).len();
     eprintln!(
         "[autofix smoke =7] montei a FORMA APROPRIADA (a cena da foto): `The Shape \

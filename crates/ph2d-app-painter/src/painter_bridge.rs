@@ -47,9 +47,9 @@ use crate::painter_bridge_assets::{load_brush_shape_image, load_brush_texture_im
 use crate::painter_gpu_preview::{self, PainterGpuPreview};
 use ph2d_asset::{AssetDb, AssetId};
 use ph2d_ecs::SimWorld;
-use ph2d_editor::HeroScreen;
-use ph2d_editor::ToolRegistry;
-use ph2d_editor::toast::ToastQueue;
+use ph2d_editor_core::HeroScreen;
+use ph2d_editor_core::ToolRegistry;
+use ph2d_editor_core::toast::ToastQueue;
 use ph2d_host::WindowSize;
 use ph2d_preview_slot::PreviewGpu as PainterPreviewGpu;
 use ph2d_render::{Camera2d, SpriteRenderer};
@@ -141,7 +141,7 @@ pub fn dispatch(
 
     let painter_is_active = tools
         .active()
-        .map(|t| t.id() == ph2d_editor::ToolId::new("painter"))
+        .map(|t| t.id() == ph2d_editor_core::ToolId::new("painter"))
         .unwrap_or(false);
 
     // W2.T2.5: consume the Cmd/Ctrl+Enter commit flag (set in
@@ -386,7 +386,7 @@ pub fn dispatch(
         #[cfg(not(feature = "panel-painter-layers"))]
         let m_p = perf_t0.map(|_| std::time::Instant::now());
         apply_selection = ph2d_tool_runtime::drive_pending_commit(
-            painter as &mut dyn ph2d_editor::tool::RasterEditTool,
+            painter as &mut dyn ph2d_editor_core::tool::RasterEditTool,
             hero.gizmo.iter_selected(),
         );
         ph_panel_sub[0] = elapsed_ms(m_p);
@@ -455,7 +455,8 @@ pub fn dispatch(
                 use std::sync::atomic::{AtomicBool, Ordering};
                 static TUNING_WAS_OPEN: AtomicBool = AtomicBool::new(false);
                 if !TUNING_WAS_OPEN.swap(tuning_open, Ordering::Relaxed) && tuning_open {
-                    hero.store.bump_panel_z(ph2d_editor::ids::WET_TUNING_PANEL);
+                    hero.store
+                        .bump_panel_z(ph2d_editor_core::ids::WET_TUNING_PANEL);
                 }
             }
             // (Tool rail) The rail radio FOLLOWS the painter's mode rather than remembering which button
@@ -463,7 +464,7 @@ pub fn dispatch(
             // "Chisel" there enters Sculpt), and a rail that only learned about its own clicks would go
             // on highlighting "Brush" while the artist sculpts — two answers to "which tool am I
             // holding?", with the wrong one on screen. Self-gating: writes only when it actually moved.
-            ph2d_editor::screens::hero::chrome::sync_painter_rail_to_mode(
+            ph2d_editor_core::screens::hero::chrome::sync_painter_rail_to_mode(
                 &mut hero.store,
                 painter.active_paint_mode_id(),
             );
@@ -476,7 +477,7 @@ pub fn dispatch(
                 static PREV_EYEDROPPER_ARMED: AtomicBool = AtomicBool::new(false);
                 let armed = painter.eyedropper_armed();
                 if PREV_EYEDROPPER_ARMED.swap(armed, Ordering::Relaxed) && !armed {
-                    ph2d_editor::screens::hero::chrome::reset_painter_rail_to_brush(
+                    ph2d_editor_core::screens::hero::chrome::reset_painter_rail_to_brush(
                         &mut hero.store,
                     );
                 }
@@ -490,7 +491,7 @@ pub fn dispatch(
                 static PREV_STROKE_METHOD: AtomicU8 = AtomicU8::new(u8::MAX);
                 if PREV_STROKE_METHOD.swap(stroke_method_u8, Ordering::Relaxed) != stroke_method_u8
                 {
-                    ph2d_editor::screens::hero::chrome::sync_painter_rail_to_stroke_method(
+                    ph2d_editor_core::screens::hero::chrome::sync_painter_rail_to_stroke_method(
                         &mut hero.store,
                         stroke_method_u8,
                     );

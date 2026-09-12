@@ -40,7 +40,7 @@ use ph2d_ecs::SimWorld;
 /// Floor for `pixels_per_meter` used inside the import math; below
 /// this a single sprite would span kilometers and break camera math.
 /// The UI clamps to a higher floor (`MIN_PIXELS_PER_METER = 1.0` in
-/// `ph2d_editor::project`) but defense-in-depth here keeps the shell
+/// `ph2d_editor_core::project`) but defense-in-depth here keeps the shell
 /// safe even if a future config path skips that clamp.
 pub const EPS_PIXELS_PER_METER: f32 = 0.01;
 

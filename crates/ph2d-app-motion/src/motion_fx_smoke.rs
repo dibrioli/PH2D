@@ -103,5 +103,7 @@ pub fn motion_fx_smoke(cx: &mut crate::motion_scene_ctx::MotionSceneCtx<'_>) {
     }
     let out = sparks(&mut cx.motion.doc.graph);
     cx.motion.sinks.extend(out);
-    let _ = cx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
+    let _ = cx
+        .tools
+        .set_active(&ph2d_editor_core::ToolId::new("motion"));
 }

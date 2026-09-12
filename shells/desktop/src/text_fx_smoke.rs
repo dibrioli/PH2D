@@ -55,7 +55,9 @@ fn build(app: &mut crate::App) {
     let Some(gfx) = app.gfx.as_mut() else {
         return;
     };
-    let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("vector"));
+    let _ = gfx
+        .tools
+        .set_active(&ph2d_editor_core::ToolId::new("vector"));
 
     // Uma sessão de texto montada à mão e cozida UMA vez — o mesmo caminho que a ferramenta de
     // texto usa, então o objeto que nasce aqui é indistinguível de um digitado.

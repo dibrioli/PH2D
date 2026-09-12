@@ -6,7 +6,7 @@
 //! which is a question three kinds now share.
 
 use ph2d_ecs::{Name, SimWorld, Transform};
-use ph2d_editor::JointFieldEdit;
+use ph2d_editor_core::JointFieldEdit;
 use ph2d_physics_ecs::{JointKind, MotorMode, PhysicsJoint};
 
 use crate::joint::{build_joint_info, joint_with_edit, kind_of};
@@ -42,13 +42,13 @@ fn a_motor_number_round_trips_in_its_kinds_own_unit() {
             (
                 JointFieldEdit::MotorSpeed(typed),
                 (|j: &PhysicsJoint| j.motor_speed) as fn(&PhysicsJoint) -> f32,
-                (|i: &ph2d_editor::InspectorJointInfo| i.motor_speed_ui)
-                    as fn(&ph2d_editor::InspectorJointInfo) -> f32,
+                (|i: &ph2d_editor_core::InspectorJointInfo| i.motor_speed_ui)
+                    as fn(&ph2d_editor_core::InspectorJointInfo) -> f32,
             ),
             (
                 JointFieldEdit::MotorTarget(typed),
                 |j: &PhysicsJoint| j.motor_target,
-                |i: &ph2d_editor::InspectorJointInfo| i.motor_target_ui,
+                |i: &ph2d_editor_core::InspectorJointInfo| i.motor_target_ui,
             ),
         ] {
             let after = joint_with_edit(base, edit).expect("a motor edit lands");

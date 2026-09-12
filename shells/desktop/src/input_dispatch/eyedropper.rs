@@ -39,7 +39,7 @@ impl App {
         let bgremoval_active = gfx
             .tools
             .active()
-            .map(|t| t.id() == ph2d_editor::ToolId::new("bgremoval"))
+            .map(|t| t.id() == ph2d_editor_core::ToolId::new("bgremoval"))
             .unwrap_or(false);
         if !bgremoval_active {
             return false;
@@ -118,7 +118,7 @@ impl App {
         let bgremoval_active = gfx
             .tools
             .active()
-            .map(|t| t.id() == ph2d_editor::ToolId::new("bgremoval"))
+            .map(|t| t.id() == ph2d_editor_core::ToolId::new("bgremoval"))
             .unwrap_or(false);
         if !bgremoval_active {
             return false;
@@ -129,7 +129,7 @@ impl App {
         let Some(hit_id) = hero.hit_index.hit(px, py) else {
             return false;
         };
-        let Some(idx) = ph2d_editor::ids::bgr_swatch_index(hit_id) else {
+        let Some(idx) = ph2d_editor_core::ids::bgr_swatch_index(hit_id) else {
             return false;
         };
         let Some(tool) = gfx.tools.active_mut() else {

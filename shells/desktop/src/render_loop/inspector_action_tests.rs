@@ -59,7 +59,7 @@ fn the_verb_labels_come_from_the_engines_own_list() {
     assert_eq!(i.verb_labels, esperado, "os rotulos divergiram da fonte");
     assert_eq!(
         i.verb_labels.len(),
-        ph2d_editor::ids::INSP_ACTION_VERB.len(),
+        ph2d_editor_core::ids::INSP_ACTION_VERB.len(),
         "o seletor oferece um numero de entradas diferente do de verbos — uma delas seria muda, \
          ou um verbo seria inalcancavel"
     );
@@ -164,7 +164,7 @@ fn an_edit_on_a_vanished_index_is_a_no_op() {
 #[test]
 fn the_action_row_ids_cover_the_model_cap() {
     assert_eq!(
-        ph2d_editor::ids::INSP_ACTION_ROW.len(),
+        ph2d_editor_core::ids::INSP_ACTION_ROW.len(),
         SIGNAL_ACTIONS_MAX,
         "o painel desenha um numero de linhas diferente do cap do modelo — as accoes a mais \
          seriam inalcancaveis"

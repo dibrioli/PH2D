@@ -14,7 +14,7 @@
 
 use ph2d_ecs::Entity;
 use ph2d_ecs::scene::{ComponentRegistry, EditorCommandQueue};
-use ph2d_editor::PhysicsFieldEdit;
+use ph2d_editor_core::PhysicsFieldEdit;
 
 use ph2d_inspector_ordering::{queue_remove, queue_set};
 

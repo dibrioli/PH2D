@@ -21,7 +21,7 @@ use ph2d_asset::{AssetDb, LogicalTextureMap};
 use ph2d_ecs::scene::{ComponentRegistry, register_ecs_components, stable_type_id};
 use ph2d_ecs::scene::{EditorCommandQueue, HierarchySnapshot, HierarchyWalkState};
 use ph2d_ecs::{PresentWorld, SimWorld, TransformPropagationState, WorklistBuf};
-use ph2d_editor::{
+use ph2d_editor_core::{
     HeroScreen, JobQueue, Layout as EditorLayout, NodeId, Toast, ToastQueue, ToolRegistry, ZenMode,
 };
 use ph2d_gpu::{GpuContext, SurfaceContext};
@@ -378,7 +378,7 @@ pub(crate) fn build_initial_state(
     // `install_registry` returns true on first install; subsequent
     // calls from re-init paths in tests get false and silently drop
     // the second registry (safe — the manifests are identical).
-    ph2d_editor::install_registry(registry);
+    ph2d_editor_core::install_registry(registry);
     println!(
         "[{:>6}ms] PR 8: tool registry built ({} manifests, installed in editor)",
         handler.elapsed_ms(),
@@ -393,18 +393,20 @@ pub(crate) fn build_initial_state(
         if !saved.is_empty() {
             let palettes = saved
                 .into_iter()
-                .map(|(name, colors)| ph2d_editor::interaction::NamedPalette {
-                    name,
-                    swatches: colors
-                        .iter()
-                        .map(|c| ph2d_tokens::ColorValue::from_rgba8(c[0], c[1], c[2], c[3]))
-                        .collect(),
-                })
+                .map(
+                    |(name, colors)| ph2d_editor_core::interaction::NamedPalette {
+                        name,
+                        swatches: colors
+                            .iter()
+                            .map(|c| ph2d_tokens::ColorValue::from_rgba8(c[0], c[1], c[2], c[3]))
+                            .collect(),
+                    },
+                )
                 .collect();
             hero.store
-                .blender_set_palettes(ph2d_editor::ids::INSP_BLENDER_PICKER, palettes);
+                .blender_set_palettes(ph2d_editor_core::ids::INSP_BLENDER_PICKER, palettes);
             hero.store
-                .sync_blender_palette_name_buffer(ph2d_editor::ids::INSP_BLENDER_PICKER);
+                .sync_blender_palette_name_buffer(ph2d_editor_core::ids::INSP_BLENDER_PICKER);
         }
         // Preferências de utilizador (`~/.ph2d/prefs.txt`): o carácter da UI viva + o reduced
         // motion, escolhidos no pill Settings → Motion. ⚠️ Instaladas ANTES do primeiro quadro —

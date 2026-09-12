@@ -27,10 +27,10 @@
 //! Cada passo diz o que TINHA de acontecer. ⛔ Uma linha com `NÃO` é um defeito, mesmo que o app
 //! não estoure — foi assim que os quatro achados da auditoria da etapa A se leram.
 
-use ph2d_editor::NodeId;
+use ph2d_editor_core::NodeId;
 // A visibilidade de um painel é uma capacidade do HOST, não do `HeroScreen` — o trait tem de
 // estar em escopo para o roteiro a poder usar.
-use ph2d_editor::panel::PanelHostInternal;
+use ph2d_editor_core::panel::PanelHostInternal;
 
 // A entidade da receita e o sítio do cartão, guardados entre quadros para os passos a jusante
 // os poderem conferir.
@@ -61,14 +61,14 @@ pub(crate) fn frame(app: &mut crate::App, f: u32) {
         // nada — que é um falso NEGATIVO deste instrumento, não um defeito do produto.
         39 => click_menu_row(
             app,
-            ph2d_editor::ids::CTX_MENU_ASSET_SELECT_USERS,
+            ph2d_editor_core::ids::CTX_MENU_ASSET_SELECT_USERS,
             "Select users",
         ),
         42 => report_selection(app),
         46 => right_click_card(app),
         49 => click_menu_row(
             app,
-            ph2d_editor::ids::CTX_MENU_ASSET_REMOVE,
+            ph2d_editor_core::ids::CTX_MENU_ASSET_REMOVE,
             "Remove from Library",
         ),
         52 => report_removed(app),
@@ -97,13 +97,17 @@ pub(crate) fn frame(app: &mut crate::App, f: u32) {
         // Um quadro entre abrir o menu e apertar o item: o overlay só regista o que pintou.
         77 => click_menu_row(
             app,
-            ph2d_editor::ids::CTX_MENU_CATALOG_RENAME,
+            ph2d_editor_core::ids::CTX_MENU_CATALOG_RENAME,
             "Rename\u{2026}",
         ),
         79 => type_new_name(app),
         82 => report_catalogs(app, "depois de renomear"),
         85 => right_click_catalog_row(app),
-        88 => click_menu_row(app, ph2d_editor::ids::CTX_MENU_CATALOG_DELETE, "Delete"),
+        88 => click_menu_row(
+            app,
+            ph2d_editor_core::ids::CTX_MENU_CATALOG_DELETE,
+            "Delete",
+        ),
         91 => report_catalogs(app, "depois de apagar"),
         // ⭐⭐⭐ **E o Ctrl+Z devolve a gaveta** (Enio, 2026-08-30). ⚠️ Um quadro entre apagar e
         // desfazer: o passo de undo nasce do DIFF do quadro seguinte, e desfazer no mesmo quadro
@@ -158,7 +162,7 @@ fn build(app: &mut crate::App) {
 
 /// Abre o painel **pelo pill**, com o ponteiro — não por `set_panel_visible`.
 fn open_panel(app: &mut crate::App) {
-    if let Some((x, y)) = app.smoke_find_widget(ph2d_editor::ids::TOPBAR_RIGHT_ASSETS) {
+    if let Some((x, y)) = app.smoke_find_widget(ph2d_editor_core::ids::TOPBAR_RIGHT_ASSETS) {
         app.smoke_pointer_down(x, y);
         app.smoke_pointer_up();
         eprintln!("[asset-menu] f=20 pill `Assets` apertado em ({x}, {y}) — pelo PONTEIRO");
@@ -239,7 +243,7 @@ fn report_library(_app: &mut crate::App) {
 /// sejam os outros assets da biblioteca.
 fn click_kind_chip(app: &mut crate::App) {
     // O chip `1` é o `AssetKind::ALL[0]` = Prefab (o `0` é o «All»).
-    let id = ph2d_editor::ids::ASSET_KIND[1];
+    let id = ph2d_editor_core::ids::ASSET_KIND[1];
     match app.smoke_find_widget(id) {
         Some((x, y)) => {
             app.smoke_pointer_down(x, y);
@@ -252,7 +256,7 @@ fn click_kind_chip(app: &mut crate::App) {
 
 /// Onde está o primeiro cartão. ⚠️ **Pelo hit-index**, que é a única prova de que ele é agarrável.
 fn find_card(app: &mut crate::App) {
-    let id = ph2d_editor::ids::asset_cell_id(0);
+    let id = ph2d_editor_core::ids::asset_cell_id(0);
     match app.smoke_find_widget(id) {
         Some((x, y)) => {
             CARD_AT.with(|c| c.set((x, y)));
@@ -399,9 +403,11 @@ fn remove_the_unused_image(app: &mut crate::App) {
     };
     if let Some(hero) = app.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
         hero.bus
-            .push(ph2d_editor::action_bus::EditorAction::AssetCardVerb {
-                asset: ph2d_editor::interaction::drag_payload::DragPayload::Image { asset: id },
-                verb: ph2d_editor::action_bus::AssetCardAction::RemoveFromLibrary,
+            .push(ph2d_editor_core::action_bus::EditorAction::AssetCardVerb {
+                asset: ph2d_editor_core::interaction::drag_payload::DragPayload::Image {
+                    asset: id,
+                },
+                verb: ph2d_editor_core::action_bus::AssetCardAction::RemoveFromLibrary,
             });
         eprintln!("[repro] `Remove from Library` pedido para a imagem sem utilizadores");
     }
@@ -409,7 +415,7 @@ fn remove_the_unused_image(app: &mut crate::App) {
 
 /// Volta o filtro de família a `All` — ver a nota no roteador.
 fn click_all_chip(app: &mut crate::App) {
-    if let Some((x, y)) = app.smoke_find_widget(ph2d_editor::ids::ASSET_KIND[0]) {
+    if let Some((x, y)) = app.smoke_find_widget(ph2d_editor_core::ids::ASSET_KIND[0]) {
         app.smoke_pointer_down(x, y);
         app.smoke_pointer_up();
         eprintln!("[catalog] f=53 chip `All` apertado");
@@ -418,7 +424,7 @@ fn click_all_chip(app: &mut crate::App) {
 
 /// ⭐ Cria um catálogo pelo botão `+ Catalog` da coluna — pelo PONTEIRO.
 fn new_catalog(app: &mut crate::App) {
-    match app.smoke_find_widget(ph2d_editor::ids::ASSET_CATALOG_NEW) {
+    match app.smoke_find_widget(ph2d_editor_core::ids::ASSET_CATALOG_NEW) {
         Some((x, y)) => {
             app.smoke_pointer_down(x, y);
             app.smoke_pointer_up();
@@ -437,11 +443,11 @@ fn new_catalog(app: &mut crate::App) {
 /// passar o limiar, e um roteiro que saltasse o `Move` mediria um clique.
 fn drag_card_into_catalog(app: &mut crate::App) {
     // A linha `2` é o primeiro catálogo (a `0` é *All*, a `1` é *Unassigned*).
-    let Some((rx, ry)) = app.smoke_find_widget(ph2d_editor::ids::catalog_row_id(2)) else {
+    let Some((rx, ry)) = app.smoke_find_widget(ph2d_editor_core::ids::catalog_row_id(2)) else {
         eprintln!("[catalog] f=57 ⚠️ a linha do catálogo novo NÃO está no hit-index");
         return;
     };
-    let Some((cx, cy)) = app.smoke_find_widget(ph2d_editor::ids::asset_cell_id(0)) else {
+    let Some((cx, cy)) = app.smoke_find_widget(ph2d_editor_core::ids::asset_cell_id(0)) else {
         eprintln!("[catalog] f=57 ⚠️ não há cartão para arrastar");
         return;
     };
@@ -455,7 +461,7 @@ fn drag_card_into_catalog(app: &mut crate::App) {
 
 /// Escolhe o catálogo — a grade tem de passar a mostrar só o que está lá dentro.
 fn pick_catalog(app: &mut crate::App) {
-    match app.smoke_find_widget(ph2d_editor::ids::catalog_row_id(2)) {
+    match app.smoke_find_widget(ph2d_editor_core::ids::catalog_row_id(2)) {
         Some((x, y)) => {
             app.smoke_pointer_down(x, y);
             app.smoke_pointer_up();
@@ -469,7 +475,7 @@ fn pick_catalog(app: &mut crate::App) {
 fn report_grid(app: &mut crate::App) {
     let n = (0..8)
         .filter(|i| {
-            app.smoke_find_widget(ph2d_editor::ids::asset_cell_id(*i))
+            app.smoke_find_widget(ph2d_editor_core::ids::asset_cell_id(*i))
                 .is_some()
         })
         .count();
@@ -486,7 +492,7 @@ pub(crate) fn repro_after(_app: &mut crate::App) {
 
 /// Botão direito na linha do catálogo — o gesto que abre o menu de DUAS entradas.
 fn right_click_catalog_row(app: &mut crate::App) {
-    match app.smoke_find_widget(ph2d_editor::ids::catalog_row_id(2)) {
+    match app.smoke_find_widget(ph2d_editor_core::ids::catalog_row_id(2)) {
         Some((x, y)) => {
             app.smoke_secondary_click(x, y);
             eprintln!("[catalog] botão direito na linha do catálogo em ({x}, {y})");
@@ -505,7 +511,7 @@ fn type_new_name(app: &mut crate::App) {
         .gfx
         .as_ref()
         .and_then(|g| g.hero_screen.as_ref())
-        .map(|h| h.store().focus_id() == Some(ph2d_editor::ids::ASSET_CATALOG_RENAME))
+        .map(|h| h.store().focus_id() == Some(ph2d_editor_core::ids::ASSET_CATALOG_RENAME))
         .unwrap_or(false);
     eprintln!("[catalog] f=79 o campo de renomear tem o foco: {focused}");
     // ⭐⭐ **E a costura de que o doc do id se gaba**: com um campo focado, o shell suprime os

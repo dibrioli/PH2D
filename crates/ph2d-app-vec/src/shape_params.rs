@@ -23,8 +23,8 @@
 //!    `SetValue` de um campo muta o `VecShape` e RE-COZINHA a geometria in-place.
 
 use ph2d_ecs::{Entity, SimWorld, VecShape};
-use ph2d_editor::NodeId;
-use ph2d_editor::interaction::WidgetStore;
+use ph2d_editor_core::NodeId;
+use ph2d_editor_core::interaction::WidgetStore;
 use ph2d_tool_vector::params::DrawMode;
 use ph2d_tool_vector::shapes;
 use ph2d_vec_scene::{MAX_SHAPE_FIELDS, ShapeKind, ShapeValues, VecPathId, VecScene};
@@ -104,7 +104,7 @@ pub fn is_shape_field_id(id: NodeId) -> bool {
 /// O índice do parâmetro cujo id de campo é `id`.
 #[must_use]
 pub fn shape_field_index(id: NodeId) -> Option<usize> {
-    (0..MAX_SHAPE_FIELDS).find(|&i| ph2d_editor::ids::vector_shape_field_id(i) == id)
+    (0..MAX_SHAPE_FIELDS).find(|&i| ph2d_editor_core::ids::vector_shape_field_id(i) == id)
 }
 
 /// Aplica a edição de um campo do painel no parâmetro correspondente da forma.
@@ -180,7 +180,7 @@ pub fn shape_seed_focus(
 pub fn seed_shape_fields(store: &mut WidgetStore, kind: ShapeKind, ui: &ShapeValues) {
     let d = shapes::desc(kind);
     for (i, v) in ui.iter().enumerate().take(MAX_SHAPE_FIELDS) {
-        let id = ph2d_editor::ids::vector_shape_field_id(i);
+        let id = ph2d_editor_core::ids::vector_shape_field_id(i);
         match d.fields.get(i) {
             Some(f) => {
                 store.set_number_range(id, f.min, f.max, f.step);

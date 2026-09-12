@@ -2,7 +2,7 @@
 //!
 //! O Enio pediu girar/escalar uma instância. A pose já é um afim ([`Pose`], Fase 1); o
 //! que falta é o GESTO — e a decisão central deste módulo é **não reescrever a
-//! matemática do gizmo**: o [`ph2d_editor::compute_gizmo_transform`] (testado, com
+//! matemática do gizmo**: o [`ph2d_editor_core::compute_gizmo_transform`] (testado, com
 //! modifiers/snap/contador de voltas) já resolve translate/rotate/scale para um TRS.
 //! Então a pose é **reparametrizada como um TRS ancorado no CENTRO da arte**:
 //!
@@ -30,7 +30,7 @@
 
 use ph2d_core::{Playhead, Vec2};
 use ph2d_ecs::SimWorld;
-use ph2d_editor::{GizmoCamera, GizmoModifiers, GizmoSnap, GizmoView, TransformSnapshot};
+use ph2d_editor_core::{GizmoCamera, GizmoModifiers, GizmoSnap, GizmoView, TransformSnapshot};
 use ph2d_flip::{FlipDoc, FlipDrawing, FlipObjectId, Frame, LayerId, Pose};
 use ph2d_host::WindowSize;
 use ph2d_render::Camera2d;
@@ -44,7 +44,7 @@ use ph2d_vec_entities::transform::world_transform;
 /// derivem do MESMO centro.
 #[derive(Clone, Copy, Debug)]
 pub struct FlipPoseDrag {
-    pub(crate) drag: ph2d_editor::GizmoDragState,
+    pub(crate) drag: ph2d_editor_core::GizmoDragState,
     pub(crate) oid: FlipObjectId,
     pub(crate) lid: LayerId,
     pub(crate) key: Frame,
@@ -109,17 +109,17 @@ pub(crate) fn trs_to_pose(s: TransformSnapshot, c_local: [f32; 2]) -> Pose {
 }
 
 /// Um passo do arrasto, PURO: o TRS novo sai do motor canônico do gizmo
-/// ([`ph2d_editor::compute_gizmo_transform`] — a mesma conta do sprite, com
+/// ([`ph2d_editor_core::compute_gizmo_transform`] — a mesma conta do sprite, com
 /// modifiers e snap) e volta a ser pose pelo MESMO `c_local` do Down.
 #[must_use]
 pub(crate) fn pose_after_drag(
-    drag: &ph2d_editor::GizmoDragState,
+    drag: &ph2d_editor_core::GizmoDragState,
     cam: &GizmoCamera,
     mods: GizmoModifiers,
     snap: GizmoSnap,
     c_local: [f32; 2],
 ) -> Pose {
-    let new_t = ph2d_editor::compute_gizmo_transform(drag, cam, mods, snap, None);
+    let new_t = ph2d_editor_core::compute_gizmo_transform(drag, cam, mods, snap, None);
     trs_to_pose(new_t, c_local)
 }
 
@@ -200,7 +200,7 @@ pub fn pose_view(
         .filter(|e| sim.world().get_entity(*e).is_ok())?;
     let parent = snapshot_of(world_transform(sim, e));
     let start = pose_trs(t.pose, t.c_local);
-    let world = ph2d_editor::compose_snapshot(parent, start);
+    let world = ph2d_editor_core::compose_snapshot(parent, start);
     let half = [
         (t.h_local[0] * world.scale[0]).abs(),
         (t.h_local[1] * world.scale[1]).abs(),
@@ -216,7 +216,7 @@ pub fn pose_view(
         camera_height_world: camera.height_world,
         window_w: window_size.width as f32,
         window_h: window_size.height as f32,
-        canvas: ph2d_editor::zones::Rect::new(
+        canvas: ph2d_editor_core::zones::Rect::new(
             0.0,
             0.0,
             window_size.width as f32,
@@ -247,7 +247,7 @@ pub fn gizmo_down(
     state: &mut FlipState,
     f: &FlipFrame<'_>,
     sim: &ph2d_ecs::SimWorld,
-    hero: &ph2d_editor::HeroScreen,
+    hero: &ph2d_editor_core::HeroScreen,
     wants_edit: bool,
     ctrl: bool,
     cursor: (f32, f32),
@@ -266,7 +266,7 @@ pub fn gizmo_down(
     let Some(hit) = hero.gizmo.gizmo_hit_map.get(&hit_id).copied() else {
         return false;
     };
-    if hit.target != ph2d_editor::GizmoTarget::FlipPose {
+    if hit.target != ph2d_editor_core::GizmoTarget::FlipPose {
         return false;
     }
     let Some(t) = pose_target(f.flip, f.playhead, active_layer) else {
@@ -282,14 +282,15 @@ pub fn gizmo_down(
     };
     let parent = snapshot_of(world_transform(sim, e));
     let start = pose_trs(t.pose, t.c_local);
-    let world_snap = ph2d_editor::compose_snapshot(parent, start);
+    let world_snap = ph2d_editor_core::compose_snapshot(parent, start);
     let world_pos = f.to_world(x, y);
     // Rotate pivota no centro da arte (= a translação do TRS); scale, no canto/borda OPOSTOS
     // (ou no centro com Ctrl) — a mesma política do sprite. O `anchor` é `[0, 0]` porque o
     // `start` já É o centro da caixa (`pose_trs` põe o `c_local` na translação).
-    let pivot = ph2d_editor::anchor_pivot_world(hit.kind, [0.0, 0.0], t.h_local, world_snap, ctrl);
+    let pivot =
+        ph2d_editor_core::anchor_pivot_world(hit.kind, [0.0, 0.0], t.h_local, world_snap, ctrl);
     state.pose_drag = Some(FlipPoseDrag {
-        drag: ph2d_editor::GizmoDragState {
+        drag: ph2d_editor_core::GizmoDragState {
             kind: hit.kind,
             entity_bits: e.to_bits(),
             start_screen: (x, y),
@@ -299,7 +300,7 @@ pub fn gizmo_down(
             start_cursor_world: world_pos,
             sprite_half_intrinsic: t.h_local,
             anchor_is_center: ctrl,
-            target: ph2d_editor::GizmoTarget::FlipPose,
+            target: ph2d_editor_core::GizmoTarget::FlipPose,
             parent_world: parent,
             turns: 0,
         },

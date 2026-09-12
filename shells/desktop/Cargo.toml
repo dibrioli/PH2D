@@ -236,7 +236,7 @@ ph2d-asset-ktx2 = { path = "../../crates/ph2d-asset-ktx2" }
 ph2d-asset-index = { path = "../../crates/ph2d-asset-index" }
 ph2d-script = { path = "../../crates/ph2d-script" }
 ph2d-input = { path = "../../crates/ph2d-input" }
-ph2d-editor = { path = "../../crates/ph2d-editor" }
+ph2d-editor-core = { path = "../../crates/ph2d-editor-core" }
 # ADR-0029 Phase C.1: direct dep on the panel-inspector crate so the
 # host can publish per-frame snapshots via the typed thread-local
 # setters that replace the pre-C.1 `hero.inspector.<field> = ...`

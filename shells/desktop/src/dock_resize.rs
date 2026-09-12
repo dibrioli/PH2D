@@ -5,7 +5,7 @@
 //! inteira serve para redimensionar»*.
 //!
 //! ⭐ **Uma pergunta, dois consumidores.** O cursor e o arrasto chamam a MESMA função
-//! ([`ph2d_editor::screens::layout::HeroLayout::dock_seam_at`]) — a seta a aparecer um pixel ao
+//! ([`ph2d_editor_core::screens::layout::HeroLayout::dock_seam_at`]) — a seta a aparecer um pixel ao
 //! lado de onde o gesto agarra lê-se como *«às vezes não pega»*, e é o defeito que o irmão desta
 //! costura no canvas 3D (`ph2d_viewport3d::layout::seam_cursor`) já pagou.
 //!
@@ -19,14 +19,14 @@
 //! # ⭐⭐⭐ O que este ficheiro deixou de decidir (2026-09-07)
 //!
 //! *Quais painéis uma coluna leva consigo* **não mora aqui**. Ela é a
-//! [`ph2d_editor::screens::hero::dock_columns`], no `ph2d-editor-core` — e mudou de sítio por uma
+//! [`ph2d_editor_core::screens::hero::dock_columns`], no `ph2d-editor-core` — e mudou de sítio por uma
 //! razão medida: enquanto foi uma `fn` privada de um `impl App` do **binário**, nenhum teste a
 //! alcançava, e o gate que a cobria lia o **fonte** com `contains()`. ⛔ *Ele leu a linha do
 //! defeito e chamou-lhe correcta.* Aqui fica só o **gesto**: onde o dedo está, o que ele arma, e
 //! quando ele solta.
 
-use ph2d_editor::screens::hero::dock_columns;
-use ph2d_editor::screens::layout::DockSide;
+use ph2d_editor_core::screens::hero::dock_columns;
+use ph2d_editor_core::screens::layout::DockSide;
 
 /// O estado do arrasto de uma costura de coluna.
 ///
@@ -43,7 +43,7 @@ pub(crate) struct SeamDrag {
 
 impl crate::App {
     /// O layout que o último quadro resolveu, se já houve um.
-    fn hero_layout(&self) -> Option<ph2d_editor::screens::layout::HeroLayout> {
+    fn hero_layout(&self) -> Option<ph2d_editor_core::screens::layout::HeroLayout> {
         self.gfx
             .as_ref()
             .and_then(|g| g.hero_screen.as_ref())
@@ -97,7 +97,7 @@ impl crate::App {
 
     /// Move: escreve a largura nova. `true` enquanto o arrasto vive.
     ///
-    /// ⚠️ A largura sai de [`ph2d_editor::screens::layout::HeroLayout::dock_width_for`] — a conta é
+    /// ⚠️ A largura sai de [`ph2d_editor_core::screens::layout::HeroLayout::dock_width_for`] — a conta é
     /// **do lado** (à esquerda a coluna cresce com o `x`, à direita decresce), e é a inversão que
     /// se escreve ao contrário sem o compilador reclamar. O clamp mora na porta do store.
     pub(crate) fn dock_seam_move(&mut self, x: f32) -> bool {

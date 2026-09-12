@@ -240,7 +240,7 @@ fn a_primary_that_is_not_an_operand_offers_nothing() {
 /// conjuntos convivem na mesma seção, e partilhar um id faria um clique significar as duas.
 #[test]
 fn the_click_seam_maps_each_chip_to_its_verb() {
-    use ph2d_editor::ids as i;
+    use ph2d_editor_core::ids as i;
     for (id, want) in [
         (i::VECTOR_BOOL_SHAPE_UNION, 0u8),
         (i::VECTOR_BOOL_SHAPE_SUBTRACT, 1),

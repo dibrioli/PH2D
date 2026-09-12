@@ -52,7 +52,7 @@ fn place_with_step(
     sim: &mut SimWorld,
     r: &ph2d_ecs::scene::ComponentRegistry,
     echo: &mut MasterEcho,
-    toasts: &mut ph2d_editor::ToastQueue,
+    toasts: &mut ph2d_editor_core::ToastQueue,
     entity: Entity,
     step: [f32; 2],
 ) -> Option<Entity> {
@@ -105,7 +105,7 @@ fn no_two_copies_of_a_recipe_ever_land_on_each_other() {
     let mut sim = SimWorld::new();
     let r = reg();
     let mut echo = MasterEcho::default();
-    let mut toasts = ph2d_editor::ToastQueue::new();
+    let mut toasts = ph2d_editor_core::ToastQueue::new();
     let rig = plain_rig(&mut sim);
     let (master, first) = make(&mut sim, &r, rig).expect("o gesto");
 
@@ -152,7 +152,7 @@ fn the_step_of_one_recipe_does_not_count_the_copies_of_another() {
     let mut sim = SimWorld::new();
     let r = reg();
     let mut echo = MasterEcho::default();
-    let mut toasts = ph2d_editor::ToastQueue::new();
+    let mut toasts = ph2d_editor_core::ToastQueue::new();
 
     let rig_a = plain_rig(&mut sim);
     let (a_master, a_first) = make(&mut sim, &r, rig_a).expect("receita A");

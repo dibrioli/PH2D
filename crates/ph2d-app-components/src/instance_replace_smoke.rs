@@ -162,10 +162,10 @@ pub(crate) fn spawn_replace_scene(
 /// ⚠️ **Nenhum destes nomes é escrito à mão nos passos.** Uma cena que copia o rótulo passa a
 /// ensinar o nome velho no dia em que alguém renomear o item — e o report que isso produz
 /// (*«não achei esse botão»*) é indistinguível de uma feature ausente. *A fonte é a tabela.*
-fn item(id: ph2d_editor::NodeId) -> &'static str {
-    use ph2d_editor::interaction::ContextMenuKind;
-    ph2d_editor::screens::hero::menu_rows::menu_rows(ContextMenuKind::AssetCard {
-        cell: ph2d_editor::NodeId(1),
+fn item(id: ph2d_editor_core::NodeId) -> &'static str {
+    use ph2d_editor_core::interaction::ContextMenuKind;
+    ph2d_editor_core::screens::hero::menu_rows::menu_rows(ContextMenuKind::AssetCard {
+        cell: ph2d_editor_core::NodeId(1),
     })
     .iter()
     .find(|(row, _, _)| *row == id)
@@ -194,7 +194,7 @@ pub fn instance_smoke_replace(cx: &mut crate::scene_ctx::SceneCtx) {
     println!("[instance smoke 4] PASSO 2: menu 'Window' > 'Assets' abre a biblioteca");
     println!(
         "[instance smoke 4] PASSO 3: botao direito no cartao 'Truck' > '{}'",
-        item(ph2d_editor::ids::CTX_MENU_ASSET_REPLACE_BY_NAME)
+        item(ph2d_editor_core::ids::CTX_MENU_ASSET_REPLACE_BY_NAME)
     );
     println!(
         "[instance smoke 4] => o carro da esquerda vira CAMIAO e a barra VERDE dele fica no \
@@ -204,7 +204,7 @@ pub fn instance_smoke_replace(cx: &mut crate::scene_ctx::SceneCtx) {
     println!(
         "[instance smoke 4] PASSO 4: Ctrl+Z ate' voltar, arraste a barra azul outra vez, e \
          escolha '{}'",
-        item(ph2d_editor::ids::CTX_MENU_ASSET_REPLACE_BY_TREE)
+        item(ph2d_editor_core::ids::CTX_MENU_ASSET_REPLACE_BY_TREE)
     );
     println!(
         "[instance smoke 4] => desta vez quem sobe e' a RODA: no Camiao ela e' a peca que \
@@ -213,7 +213,7 @@ pub fn instance_smoke_replace(cx: &mut crate::scene_ctx::SceneCtx) {
     println!(
         "[instance smoke 4] PASSO 5: Ctrl+Z, repita, e escolha '{}' (a linha sozinha, sem a \
          segunda parte)",
-        item(ph2d_editor::ids::CTX_MENU_ASSET_REPLACE)
+        item(ph2d_editor_core::ids::CTX_MENU_ASSET_REPLACE)
     );
     println!(
         "[instance smoke 4] => nada do que voce mexeu e' levado, e o cartao do Inspector \

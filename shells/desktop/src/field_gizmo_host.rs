@@ -10,8 +10,8 @@
 //! ele começa num pen-down, sobrevive entre quadros e acaba num pen-up.
 
 use ph2d_app_motion::field_gizmo::*;
-use ph2d_editor::screens::layout::CenterSplit;
-use ph2d_editor::{
+use ph2d_editor_core::screens::layout::CenterSplit;
+use ph2d_editor_core::{
     GizmoCamera, GizmoDragState, GizmoModifiers, GizmoSnap, GizmoTarget, TransformSnapshot,
 };
 use ph2d_host::WindowSize;
@@ -87,8 +87,13 @@ impl crate::App {
             // field não tem pai, e o param JÁ é de mundo, então o `world_snap` é o `start`.
             // `anchor = [0, 0]`: o `start` de um field É o centro dele — a caixa está
             // centrada no próprio pivô, e o termo reduz literalmente ao de antes.
-            let pivot =
-                ph2d_editor::anchor_pivot_world(hit.kind, [0.0, 0.0], intrinsic_half, start, ctrl);
+            let pivot = ph2d_editor_core::anchor_pivot_world(
+                hit.kind,
+                [0.0, 0.0],
+                intrinsic_half,
+                start,
+                ctrl,
+            );
             FieldGizmoDrag {
                 drag: GizmoDragState {
                     kind: hit.kind,

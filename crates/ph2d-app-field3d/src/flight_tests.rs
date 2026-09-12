@@ -163,10 +163,10 @@ fn angle(a: [f32; 4], b: [f32; 4]) -> f32 {
 /// volta para `Surface` (ou para qualquer papel que o *reduced* mate) reprova aqui.
 #[test]
 fn the_trip_survives_reduced_motion() {
-    use ph2d_editor::motion::UiMotion;
+    use ph2d_editor_core::motion::UiMotion;
     for character in [
-        ph2d_editor::motion::UiCharacter::Discrete,
-        ph2d_editor::motion::UiCharacter::Expressive,
+        ph2d_editor_core::motion::UiCharacter::Discrete,
+        ph2d_editor_core::motion::UiCharacter::Expressive,
     ] {
         let mut motion = UiMotion::default();
         motion.set_character(character);
@@ -179,7 +179,7 @@ fn the_trip_survives_reduced_motion() {
 
         // …e o controle: um percurso comum continua a morrer, que é para o que a preferência serve.
         assert!(
-            motion.law(ph2d_editor::motion::Role::Travel).is_none(),
+            motion.law(ph2d_editor_core::motion::Role::Travel).is_none(),
             "{character:?}: o reduced motion deixou de matar um percurso comum — a excepção do \
              ponto de vista virou uma porta para tudo"
         );
@@ -193,14 +193,14 @@ fn the_trip_survives_reduced_motion() {
 /// rigidez dela em vez de cunhar uma.
 #[test]
 fn the_trip_never_overshoots_its_destination() {
-    use ph2d_editor::motion::{UiCharacter, UiMotion};
+    use ph2d_editor_core::motion::{UiCharacter, UiMotion};
     for character in [UiCharacter::Discrete, UiCharacter::Expressive] {
         for reduced in [false, true] {
             let mut motion = UiMotion::default();
             motion.set_character(character);
             motion.set_reduced_motion(reduced);
             let spring = motion.law(super::ROLE).expect("a viagem tem lei sempre");
-            let id = ph2d_editor::screens::hero::ids::model3d_view_travel(0);
+            let id = ph2d_editor_core::screens::hero::ids::model3d_view_travel(0);
             motion.animate(id, 0.0, super::ROLE);
             motion.animate(id, 1.0, super::ROLE);
             let mut worst = 0.0_f32;

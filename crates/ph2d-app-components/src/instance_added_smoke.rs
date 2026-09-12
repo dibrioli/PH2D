@@ -23,7 +23,7 @@
 //! um smoke que promete uma frase que o painel já não pinta manda o dono procurar um botão que não
 //! existe — e há gate a proibir o literal neste ficheiro.
 
-use ph2d_editor::screens::hero::AddedRow;
+use ph2d_editor_core::screens::hero::AddedRow;
 
 /// Cena 6 — ver o cabeçalho do módulo.
 ///

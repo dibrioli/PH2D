@@ -10,7 +10,7 @@
 //! agem no `Down`; esta é a única cuja SOLTURA significa alguma coisa, e é a soltura que faz o
 //! gesto ser um gesto só — chamar, apontar e escolher sem largar nada pelo caminho.
 
-use ph2d_editor::screens::hero::radial;
+use ph2d_editor_core::screens::hero::radial;
 
 impl crate::App {
     /// **O ponteiro mexeu-se com o menu aberto** — acende o sector da direcção.
@@ -44,7 +44,7 @@ impl crate::App {
         if more {
             crate::global_palette_input::open_global_palette(hero);
         } else {
-            ph2d_editor::screens::hero::global_palette::route_global_pick(hero, item.id);
+            ph2d_editor_core::screens::hero::global_palette::route_global_pick(hero, item.id);
         }
         // ⭐ O som vem DEPOIS do verbo: ele confirma o que aconteceu, não anuncia o que vai.
         self.pending_ui_sound = Some(crate::ui_sound::UiSound::Click);

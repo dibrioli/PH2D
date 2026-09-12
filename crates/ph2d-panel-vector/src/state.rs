@@ -327,7 +327,7 @@ pub(crate) fn current_vertex_type() -> Option<VertexSel> {
 /// esta coisa?* — e antes desta wave este painel era o único que respondia em metros de mundo:
 /// com os defaults (100 px/m, Pixels) os três diziam `150` e este dizia `1.5`.
 ///
-/// A conversão vive inteira na fronteira da shell (`ph2d_editor::LengthDisplay`), nos dois
+/// A conversão vive inteira na fronteira da shell (`ph2d_editor_core::LengthDisplay`), nos dois
 /// sentidos: o número sai UMA vez na face do artista e volta pela mesma porta.
 pub fn set_current_transform(bbox: Option<[f64; 4]>) {
     CURRENT_TRANSFORM.with(|c| c.set(bbox));

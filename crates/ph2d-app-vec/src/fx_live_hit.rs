@@ -56,8 +56,8 @@ pub enum FilterHit {
 }
 
 /// Decodifica um id de painel para o controle da pilha que ele endereça.
-pub fn hit_of(id: ph2d_editor::NodeId) -> Option<FilterHit> {
-    use ph2d_editor::ids as vid;
+pub fn hit_of(id: ph2d_editor_core::NodeId) -> Option<FilterHit> {
+    use ph2d_editor_core::ids as vid;
     for k in 0..vid::MAX_FILTER_KINDS {
         if id == vid::filter_add_id(k) {
             #[allow(clippy::cast_possible_truncation)]
@@ -145,7 +145,7 @@ pub fn colour_bytes(c: [f32; 4]) -> [u8; 4] {
 /// Porta única do readback do picker, e ela existe porque o picker é o ÚNICO consumidor que precisa
 /// distinguir as duas swatches: para todo o resto (o dispatch, a varredura de seam) as duas são o
 /// mesmo tipo de controle. Escrita aqui, a shell não repete a enumeração dos dois variants.
-pub fn colour_target(id: ph2d_editor::NodeId) -> Option<(usize, ColourSlot)> {
+pub fn colour_target(id: ph2d_editor_core::NodeId) -> Option<(usize, ColourSlot)> {
     match hit_of(id)? {
         FilterHit::Color(r) => Some((r, ColourSlot::First)),
         FilterHit::ColorB(r) => Some((r, ColourSlot::Second)),

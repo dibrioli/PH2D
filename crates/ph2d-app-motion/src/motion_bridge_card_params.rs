@@ -70,7 +70,7 @@ fn publish_card_texts(motion: &MotionState, snap: &ph2d_panel_motion_graph::Grap
 
 pub fn stamp_card_params(
     motion: &MotionState,
-    project: ph2d_editor::ProjectSettings,
+    project: ph2d_editor_core::ProjectSettings,
     snap: &mut ph2d_panel_motion_graph::GraphViewSnapshot,
 ) {
     for node in &mut snap.nodes {

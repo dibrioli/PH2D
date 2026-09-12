@@ -1,6 +1,6 @@
 //! Wave 2 PR 11.4 contract test. Validates two invariants between
 //! the runtime tool [`Registry`] and the hand-allocated chrome NodeId
-//! consts in `ph2d_editor::screens::hero::ids`:
+//! consts in `ph2d_editor_core::screens::hero::ids`:
 //!
 //! 1. **Slug parity.** Each chrome const that names a registry-derived
 //!    pill must hash the SAME string slug as the matching manifest's
@@ -44,7 +44,7 @@ fn build_full_registry() -> Registry {
 /// `ids::IMAGE_ACTION_*`) agree on the NodeId.
 #[test]
 fn chrome_const_hashes_match_manifest_id() {
-    use ph2d_editor::screens::hero::ids;
+    use ph2d_editor_core::screens::hero::ids;
 
     let cases: &[(&str, ph2d_a11y::NodeId)] = &[
         ("trim_transparency", ids::IMAGE_ACTION_TRIM),
@@ -90,7 +90,7 @@ fn image_tools_cluster_contains_all_three_action_pills_in_paint_order() {
 /// regression.
 #[test]
 fn every_chrome_image_action_const_has_a_manifest_entry() {
-    use ph2d_editor::screens::hero::ids;
+    use ph2d_editor_core::screens::hero::ids;
     let reg = build_full_registry();
     let cluster = reg.cluster("image_tools");
     let pill_node_ids: std::collections::BTreeSet<u64> =

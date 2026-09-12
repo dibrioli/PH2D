@@ -2,7 +2,7 @@
 
 use super::users_of;
 use ph2d_ecs::{ChildOf, MasterRoot, Name, SimWorld, SpritePixels, StableId, Transform};
-use ph2d_editor::interaction::drag_payload::DragPayload;
+use ph2d_editor_core::interaction::drag_payload::DragPayload;
 use std::collections::BTreeMap;
 
 /// ⭐⭐⭐ **Uma PEÇA DE RECEITA não é um utilizador** (auditoria de 2026-08-30, achado nº 1).
@@ -156,8 +156,8 @@ fn editing_a_prefab_from_the_library_selects_the_recipe() {
     let mut sim = SimWorld::new();
     let r = crate::init::build_component_registry();
     let mut echo = ph2d_app_components::instance_sync::MasterEcho::default();
-    let mut gizmo = ph2d_editor::screens::hero::GizmoStateGroup::default();
-    let mut toasts = ph2d_editor::ToastQueue::default();
+    let mut gizmo = ph2d_editor_core::screens::hero::GizmoStateGroup::default();
+    let mut toasts = ph2d_editor_core::ToastQueue::default();
     let (mut sc, mut mp) = ph2d_app_components::instance_docs::empty_docs();
     let mut docs = ph2d_app_components::instance_docs::OwnedDocs {
         vec_scene: &mut sc,
@@ -174,7 +174,7 @@ fn editing_a_prefab_from_the_library_selects_the_recipe() {
     let mut select_out = None;
     let acted = super::drain(
         DragPayload::Prefab { stable_id },
-        ph2d_editor::action_bus::AssetCardAction::EditPrefab,
+        ph2d_editor_core::action_bus::AssetCardAction::EditPrefab,
         &mut sim,
         &r,
         &mut echo,
@@ -206,8 +206,8 @@ fn the_library_card_places_both_kinds_of_copy() {
     let mut sim = SimWorld::new();
     let r = crate::init::build_component_registry();
     let mut echo = ph2d_app_components::instance_sync::MasterEcho::default();
-    let mut gizmo = ph2d_editor::screens::hero::GizmoStateGroup::default();
-    let mut toasts = ph2d_editor::ToastQueue::default();
+    let mut gizmo = ph2d_editor_core::screens::hero::GizmoStateGroup::default();
+    let mut toasts = ph2d_editor_core::ToastQueue::default();
     let (mut sc, mut mp) = ph2d_app_components::instance_docs::empty_docs();
     let mut docs = ph2d_app_components::instance_docs::OwnedDocs {
         vec_scene: &mut sc,
@@ -249,12 +249,12 @@ fn the_library_card_places_both_kinds_of_copy() {
             ph2d_ecs::Entity::from_bits(out.expect("a copia nova"))
         };
     let plain = put(
-        ph2d_editor::action_bus::AssetCardAction::Instantiate,
+        ph2d_editor_core::action_bus::AssetCardAction::Instantiate,
         &mut sim,
         &mut docs,
     );
     let linked = put(
-        ph2d_editor::action_bus::AssetCardAction::InstantiateLinked,
+        ph2d_editor_core::action_bus::AssetCardAction::InstantiateLinked,
         &mut sim,
         &mut docs,
     );
@@ -277,8 +277,8 @@ fn editing_an_image_is_refused_out_loud() {
     let mut sim = SimWorld::new();
     let r = crate::init::build_component_registry();
     let mut echo = ph2d_app_components::instance_sync::MasterEcho::default();
-    let mut gizmo = ph2d_editor::screens::hero::GizmoStateGroup::default();
-    let mut toasts = ph2d_editor::ToastQueue::default();
+    let mut gizmo = ph2d_editor_core::screens::hero::GizmoStateGroup::default();
+    let mut toasts = ph2d_editor_core::ToastQueue::default();
     let (mut sc, mut mp) = ph2d_app_components::instance_docs::empty_docs();
     let mut docs = ph2d_app_components::instance_docs::OwnedDocs {
         vec_scene: &mut sc,
@@ -288,7 +288,7 @@ fn editing_an_image_is_refused_out_loud() {
     let mut select_out = None;
     let acted = super::drain(
         DragPayload::Image { asset: [7; 32] },
-        ph2d_editor::action_bus::AssetCardAction::EditPrefab,
+        ph2d_editor_core::action_bus::AssetCardAction::EditPrefab,
         &mut sim,
         &r,
         &mut echo,

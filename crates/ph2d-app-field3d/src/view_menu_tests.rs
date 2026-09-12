@@ -12,7 +12,7 @@
 
 use super::{ROW_H_PX, chip, menu_rect, row_at};
 use crate::views::{Standard, named_view};
-use ph2d_editor::zones::Rect;
+use ph2d_editor_core::zones::Rect;
 
 const CANVAS: Rect = Rect {
     x: 40.0,

@@ -17,7 +17,7 @@
 //! consegue ver (quantas linhas há) em vez de um que ele vê (quão perto elas estão).
 
 use ph2d_ecs::SimWorld;
-use ph2d_editor::HeroScreen;
+use ph2d_editor_core::HeroScreen;
 use ph2d_host::WindowSize;
 use ph2d_render::Camera2d;
 use ph2d_tool_painter::PainterTool;

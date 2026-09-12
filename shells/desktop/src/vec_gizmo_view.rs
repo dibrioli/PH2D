@@ -34,7 +34,7 @@
 //! "Use Preview Bounds" é preferência **desligada**.
 
 use ph2d_ecs::{Entity, SimWorld, VecPathRef};
-use ph2d_editor::GizmoView;
+use ph2d_editor_core::GizmoView;
 use ph2d_host::WindowSize;
 use ph2d_render::Camera2d;
 use ph2d_vec_render::LiveGeometry;
@@ -197,7 +197,7 @@ pub(crate) fn gizmo_view_from(
         camera_height_world: camera.height_world,
         window_w: window_size.width as f32,
         window_h: window_size.height as f32,
-        canvas: ph2d_editor::zones::Rect::new(
+        canvas: ph2d_editor_core::zones::Rect::new(
             0.0,
             0.0,
             window_size.width as f32,

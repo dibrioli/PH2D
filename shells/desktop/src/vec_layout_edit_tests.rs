@@ -447,8 +447,8 @@ fn typing_a_gap_detaches_that_axis_token_and_only_that_one() {
 // ============================================================================
 
 /// A régua do artista por default: 100 px por metro, lendo em PIXELS.
-fn px_display() -> ph2d_editor::LengthDisplay {
-    ph2d_editor::LengthDisplay::of(&ph2d_editor::project::ProjectSettings::default())
+fn px_display() -> ph2d_editor_core::LengthDisplay {
+    ph2d_editor_core::LengthDisplay::of(&ph2d_editor_core::project::ProjectSettings::default())
 }
 
 /// Um fluxo com valor DISTINTO em cada número — um campo trocado por outro é visível.
@@ -532,8 +532,8 @@ fn the_flow_crosses_its_ten_lengths_and_leaves_the_count_alone() {
 /// pixels; e como a conversão é a identidade nessa unidade, a comparação pode ser EXATA.
 #[test]
 fn reading_the_flow_in_metres_leaves_it_untouched() {
-    let d = ph2d_editor::LengthDisplay {
-        unit: ph2d_editor::project::DisplayUnit::Meters,
+    let d = ph2d_editor_core::LengthDisplay {
+        unit: ph2d_editor_core::project::DisplayUnit::Meters,
         pixels_per_meter: 100.0,
     };
     assert_eq!(flow_in_display(distinct_flow(), d), distinct_flow());

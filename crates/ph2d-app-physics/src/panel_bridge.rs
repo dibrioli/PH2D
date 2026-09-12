@@ -16,7 +16,7 @@
 //! Inspector slot on a panel the artist opened deliberately would take away the
 //! thing they were probably looking at.
 
-use ph2d_editor::screens::hero::HeroScreen;
+use ph2d_editor_core::screens::hero::HeroScreen;
 use ph2d_panel_physics::{PhysicsIntent, PhysicsSnapshot};
 use ph2d_physics_ecs::{InputTape, InteractionSettings, PhysicsBridge};
 

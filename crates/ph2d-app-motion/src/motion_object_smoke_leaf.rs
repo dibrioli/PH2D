@@ -82,7 +82,9 @@ pub(super) fn run(cx: &mut crate::motion_scene_ctx::MotionSceneCtx<'_>) {
         return;
     }
     cx.motion.sinks.push(out);
-    let _ = cx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
+    let _ = cx
+        .tools
+        .set_active(&ph2d_editor_core::ToolId::new("motion"));
     eprintln!(
         "[motion.obj smoke =12] UMA ARVORE COM FOLHAS QUE SAO IMAGENS.
 

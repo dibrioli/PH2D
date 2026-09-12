@@ -9,7 +9,7 @@
 //! moves every time-based subsystem at once.
 
 use ph2d_core::Playhead;
-use ph2d_editor::action_bus::TransportCmd;
+use ph2d_editor_core::action_bus::TransportCmd;
 
 /// Drive the clock from a transport command.
 pub fn apply(cmd: TransportCmd, playhead: &mut Playhead) {

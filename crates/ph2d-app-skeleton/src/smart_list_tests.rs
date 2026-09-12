@@ -23,7 +23,7 @@ use ph2d_timeline::PropKind;
 #[test]
 fn the_action_picker_reaches_every_clip_the_document_can_hold() {
     assert_eq!(
-        ph2d_editor::ids::MAX_SMART_CLIPS,
+        ph2d_editor_core::ids::MAX_SMART_CLIPS,
         ph2d_timeline::MAX_CLIPS,
         "o pool de ids do selector e o tecto de clips do documento discordam — ou há acção sem \
          opção (inalcançável) ou opção sem acção (morta)"

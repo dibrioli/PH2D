@@ -1,5 +1,5 @@
 //! **Quem são as molduras, e como se chamam** — a lista que a shell publica para o
-//! [`ph2d_editor::frame_label`] desenhar.
+//! [`ph2d_editor_core::frame_label`] desenhar.
 //!
 //! Irmão do [`crate::frame_spans`] (que responde *que INTERVALO da pilha de z cada moldura
 //! ocupa*), e as duas perguntas partilham o mesmo sujeito de propósito: uma moldura é uma entidade
@@ -10,7 +10,7 @@
 //! um deles fosse renomeado a tela e a árvore discordariam.
 
 use ph2d_ecs::{Entity, Name, SimWorld, VecFrame};
-use ph2d_editor::frame_label::FrameLabel;
+use ph2d_editor_core::frame_label::FrameLabel;
 use ph2d_vec_scene::{VecPathId, VecScene, VecXforms};
 
 use ph2d_vec_entities::entities::VecEntityMap;

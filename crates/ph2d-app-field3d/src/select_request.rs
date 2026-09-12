@@ -14,7 +14,7 @@
 /// `toggle_in_selection` no `render_loop` — que é **exactamente** o defeito reportado — ficava
 /// verde. *É a terceira vez nesta linha que a metade que falta é a de quem executa: duas cópias de
 /// uma lei é uma lei que gate nenhum defende.*
-pub fn apply(gizmo: &mut ph2d_editor::screens::hero::GizmoStateGroup, req: SelectRequest) {
+pub fn apply(gizmo: &mut ph2d_editor_core::screens::hero::GizmoStateGroup, req: SelectRequest) {
     match req {
         SelectRequest::Entity(bits) => gizmo.replace_selection(Some(bits)),
         SelectRequest::Clear => gizmo.clear_all_selection(),

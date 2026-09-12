@@ -11,7 +11,7 @@
 //! node the artist can see, tune and delete.
 
 use super::{MotionState, reconcile};
-use ph2d_editor::{Toast, ToastQueue};
+use ph2d_editor_core::{Toast, ToastQueue};
 use ph2d_nodegraph::cook::OpResolver;
 use ph2d_nodegraph::graph::{Edge, NodeId, Pos};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
@@ -187,8 +187,8 @@ mod tests {
         apply_graph_intents(
             m,
             &mut ph2d_core::Playhead::default(),
-            &mut ph2d_editor::ToastQueue::default(),
-            &mut ph2d_editor::screens::layout::CenterSplit::None,
+            &mut ph2d_editor_core::ToastQueue::default(),
+            &mut ph2d_editor_core::screens::layout::CenterSplit::None,
         );
     }
 

@@ -30,7 +30,7 @@
 use ph2d_asset::{AssetDb, AssetId};
 use ph2d_color::Precision;
 use ph2d_ecs::{Entity, SimWorld, SpritePixels};
-use ph2d_editor::{Toast, ToastQueue};
+use ph2d_editor_core::{Toast, ToastQueue};
 use ph2d_render::{Sprite, SpriteRenderer, SpriteSource};
 use std::collections::BTreeMap;
 

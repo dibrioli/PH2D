@@ -20,7 +20,7 @@
 //! [ADR-0110]: ../../../../docs/architecture/decisions/0110-vector-nodes-are-ecs-entities-one-hierarchy.md
 
 use ph2d_ecs::SimWorld;
-use ph2d_editor::screens::hero::GizmoStateGroup;
+use ph2d_editor_core::screens::hero::GizmoStateGroup;
 
 /// A entidade ainda existe no `SimWorld`.
 pub(super) fn entity_alive(sim: &SimWorld, bits: u64) -> bool {

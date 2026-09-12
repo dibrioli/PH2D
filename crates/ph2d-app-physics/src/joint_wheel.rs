@@ -9,7 +9,7 @@
 
 use ph2d_ecs::scene::{ComponentRegistry, EditorCommandQueue};
 use ph2d_ecs::{Entity, Name, SimWorld, Transform};
-use ph2d_editor::{InspectorWheelInfo, WheelFieldEdit};
+use ph2d_editor_core::{InspectorWheelInfo, WheelFieldEdit};
 use ph2d_inspector_ordering::queue_set;
 use ph2d_physics_ecs::PhysicsBridge;
 

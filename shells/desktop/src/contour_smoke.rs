@@ -40,7 +40,9 @@ impl crate::App {
     /// Monta a cena (frame 3): a estrela pelada + o hexágono que ganha contour no frame seguinte.
     pub(crate) fn smoke_contour_build(&mut self) {
         let gfx = self.gfx.as_mut().expect("gfx");
-        let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("vector"));
+        let _ = gfx
+            .tools
+            .set_active(&ph2d_editor_core::ToolId::new("vector"));
         let scene = &mut gfx.vec_scene;
         scene.push_path(shape(
             ShapeKind::Star,

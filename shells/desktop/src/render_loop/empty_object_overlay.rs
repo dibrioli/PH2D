@@ -58,7 +58,7 @@ pub(super) fn draw_empty_object_marks(
     vector_scene: &mut VectorScene,
 ) {
     let ppm = pixels_per_meter.max(crate::EPS_PIXELS_PER_METER);
-    let color = ph2d_editor::paint::resolve(ColorToken::Selection, theme);
+    let color = ph2d_editor_core::paint::resolve(ColorToken::Selection, theme);
     for entity in crate::group_gizmo_view::empty_objects(sim) {
         let c = ph2d_vec_entities::transform::world_transform(sim, entity).translation;
         let r_world = crate::group_gizmo_view::marker_world_radius(sim, entity, ppm);

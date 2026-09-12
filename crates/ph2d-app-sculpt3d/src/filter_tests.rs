@@ -41,7 +41,7 @@ const DRAG_PX: f32 = 400.0;
 /// Uma cena com uma esfera e o verbo pedido em mãos.
 fn scene(device: &wgpu::Device, verb: Verb) -> Sculpt3dScene {
     let mut s = Sculpt3dScene::new(device, uv_sphere(24, 36, 1.0), 1.0);
-    s.note_canvas(ph2d_editor::zones::Rect::new(0.0, 0.0, 900.0, 700.0));
+    s.note_canvas(ph2d_editor_core::zones::Rect::new(0.0, 0.0, 900.0, 700.0));
     s.brush.verb = verb;
     s
 }

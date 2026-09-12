@@ -49,7 +49,7 @@ const RAISED_BY_A_BRIDGE: &[(&str, &str)] = &[(
     // ⚠️ Ele **não** está no fallback de propósito: o painel de camadas só faz sentido com a tool
     // acordada, e a ponte é quem sabe disso.
     "painter_layers",
-    "bump_panel_z(ph2d_editor::ids::PAINTER_LAYERS_PANEL)",
+    "bump_panel_z(ph2d_editor_core::ids::PAINTER_LAYERS_PANEL)",
 )];
 
 fn repo_root() -> PathBuf {

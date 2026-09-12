@@ -16,7 +16,7 @@ const REGISTRY_NOT_INSTALLED_MSG: &str = "\
 PANEL_REGISTRY not installed. Host must call \
 `ph2d_panel_registry_init::register_all_panels()` (or build a \
 `PanelRegistry` manually) before the first `HeroScreen::new`. \
-Tests should call `ph2d_editor::test_support::ensure_panel_registry()`.";
+Tests should call `ph2d_editor_core::test_support::ensure_panel_registry()`.";
 
 /// Append-only registry built once at boot.
 pub struct PanelRegistry {

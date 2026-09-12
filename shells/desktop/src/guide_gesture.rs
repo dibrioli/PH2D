@@ -23,7 +23,7 @@
 //! travado ficar invisível.
 
 use crate::app_state::App;
-use ph2d_editor::ruler::{self, RulerAxis};
+use ph2d_editor_core::ruler::{self, RulerAxis};
 use ph2d_guides::{Guide, GuideAxis};
 
 /// Tolerância para AGARRAR uma guia já posta, em pixels de tela. O mesmo alcance do ímã de
@@ -60,7 +60,7 @@ pub(crate) enum GuidePress {
 /// agarrável (as guias seguem visíveis e magnéticas — é o *lock*).
 #[must_use]
 pub(crate) fn press_plan(
-    view: &ph2d_editor::GridView,
+    view: &ph2d_editor_core::GridView,
     guides: &ph2d_guides::GuideSet,
     rulers: bool,
     p: (f32, f32),
@@ -79,7 +79,7 @@ pub(crate) fn press_plan(
     // limpar guias em lado nenhum: irrecuperável. O alcance do agarrar é restaurado ao que
     // sempre foi (a janela), e ele já é estreito por outro motivo — só dispara com uma guia a
     // menos de `GRAB_PX`.
-    let window = ph2d_editor::zones::Rect::new(0.0, 0.0, view.window_w, view.window_h);
+    let window = ph2d_editor_core::zones::Rect::new(0.0, 0.0, view.window_w, view.window_h);
     if !contains(window, p) {
         return GuidePress::Pass;
     }
@@ -105,7 +105,7 @@ pub(crate) fn press_plan(
 /// esquerda é um gesto que ninguém faz por engano, e recusá-lo obrigaria o artista a
 /// descobrir que a lixeira tem lado.
 #[must_use]
-pub(crate) fn release_deletes(view: &ph2d_editor::GridView, p: (f32, f32)) -> bool {
+pub(crate) fn release_deletes(view: &ph2d_editor_core::GridView, p: (f32, f32)) -> bool {
     ruler::hit(view.canvas, p).is_some()
 }
 
@@ -116,7 +116,11 @@ pub(crate) fn release_deletes(view: &ph2d_editor::GridView, p: (f32, f32)) -> bo
 /// `y` vem da posição VERTICAL do cursor, que se lê pela régua da ESQUERDA. Perguntar pela
 /// régua de origem daria a coordenada ao longo da linha, que é justamente a que ela não fixa.
 #[must_use]
-pub(crate) fn guide_pos_under(view: &ph2d_editor::GridView, r: RulerAxis, p: (f32, f32)) -> f64 {
+pub(crate) fn guide_pos_under(
+    view: &ph2d_editor_core::GridView,
+    r: RulerAxis,
+    p: (f32, f32),
+) -> f64 {
     match r {
         RulerAxis::Top => ruler::world_at(view, p.1, RulerAxis::Left),
         RulerAxis::Left => ruler::world_at(view, p.0, RulerAxis::Top),
@@ -129,10 +133,10 @@ impl App {
     /// ⚠️ O `hero.grid.view` carrega um canvas de fachada (`0,0,0,0`) porque quem o resolve é o
     /// layout, dentro do paint. Ler aquele valor daria faixas de régua num retângulo vazio e o
     /// gesto nunca dispararia; espelhar a aritmética do layout aqui seria a segunda porta.
-    fn ruler_view(&self) -> Option<ph2d_editor::GridView> {
+    fn ruler_view(&self) -> Option<ph2d_editor_core::GridView> {
         let hero = self.gfx.as_ref()?.hero_screen.as_ref()?;
         let view = hero.grid.view?;
-        Some(ph2d_editor::GridView {
+        Some(ph2d_editor_core::GridView {
             canvas: hero.last_canvas,
             ..view
         })
@@ -144,7 +148,7 @@ impl App {
         self.gfx
             .as_ref()
             .and_then(|g| g.hero_screen.as_ref())
-            .is_some_and(ph2d_editor::HeroScreen::rulers_live)
+            .is_some_and(ph2d_editor_core::HeroScreen::rulers_live)
     }
 
     /// Pen-down: começa um arrasto de guia, se houver um a começar. Devolve `true` quando
@@ -212,7 +216,7 @@ fn ruler_for(axis: GuideAxis) -> RulerAxis {
     }
 }
 
-fn contains(r: ph2d_editor::zones::Rect, p: (f32, f32)) -> bool {
+fn contains(r: ph2d_editor_core::zones::Rect, p: (f32, f32)) -> bool {
     p.0 >= r.x && p.0 < r.x + r.w && p.1 >= r.y && p.1 < r.y + r.h
 }
 

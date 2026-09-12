@@ -131,7 +131,7 @@ pub fn draw_warp_gizmo(
     v: &warp_gizmo::WarpGizmoView,
     param: &dyn Fn(&str) -> f32,
     camera: &Camera2d,
-    center_split: ph2d_editor::screens::layout::CenterSplit,
+    center_split: ph2d_editor_core::screens::layout::CenterSplit,
     full_window: WindowSize,
     vector_scene: &mut VectorScene,
 ) {

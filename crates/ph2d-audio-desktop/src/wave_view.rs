@@ -13,10 +13,10 @@
 /// for the selection drag.
 #[derive(Clone, Copy)]
 pub struct WaveView {
-    pub rect: ph2d_editor::zones::Rect,
+    pub rect: ph2d_editor_core::zones::Rect,
     /// The time-ruler strip above the wave — the playhead scrub hit-region (the body below
     /// it is the selection region). Same x/width as `rect`.
-    pub ruler: ph2d_editor::zones::Rect,
+    pub ruler: ph2d_editor_core::zones::Rect,
     pub frames: u64,
 }
 

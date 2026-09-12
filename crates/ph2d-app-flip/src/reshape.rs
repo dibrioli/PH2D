@@ -221,7 +221,7 @@ fn local_at(f: &FlipFrame<'_>, w2l: &Xform, x: f32, y: f32) -> (Vec2, f32) {
 pub fn canvas_down(
     state: &mut FlipState,
     f: &mut FlipFrame<'_>,
-    toasts: &mut ph2d_editor::ToastQueue,
+    toasts: &mut ph2d_editor_core::ToastQueue,
     w2l: &Xform,
     invert: bool,
     x: f32,
@@ -254,7 +254,7 @@ pub fn canvas_down(
     ) else {
         // Camada travada, ou sem chave com o AutoKey desligado. Uma ferramenta que consome o
         // clique e não faz NADA parece quebrada — ela tem de DIZER.
-        toasts.push(ph2d_editor::Toast::warning(
+        toasts.push(ph2d_editor_core::Toast::warning(
             "Sculpt: the layer is locked, or has no drawing on this frame",
         ));
         return (true, true);

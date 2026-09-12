@@ -16,7 +16,7 @@
 //! A §5 nasce com o gate no mesmo commit da seção, e não dois meses depois.
 
 use ph2d_ecs::{SliceDrawMode, SliceRegion, SliceTileMode, TileRegionMode};
-use ph2d_editor::ids;
+use ph2d_editor_core::ids;
 
 /// **(1) Um botão por variante — nos três enums com escolha na UI.**
 ///

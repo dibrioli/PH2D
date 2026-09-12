@@ -58,7 +58,9 @@ fn build(app: &mut crate::App) {
     let Some(gfx) = app.gfx.as_mut() else {
         return;
     };
-    let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("vector"));
+    let _ = gfx
+        .tools
+        .set_active(&ph2d_editor_core::ToolId::new("vector"));
     let scene = &mut gfx.vec_scene;
     // DOIS arcos iguais: um para apagar o nó, outro de CONTROLE. Sem controle, "a curva ficou" e
     // "ela sempre foi assim" são indistinguíveis numa screenshot.

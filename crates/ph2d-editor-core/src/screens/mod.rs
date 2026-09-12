@@ -2,9 +2,9 @@
 //!
 //! ADR-0029 Phase B.2 moved `HeroScreen` + chrome + fixture from
 //! `ph2d-editor::screens` into `ph2d-editor-core::screens`. The
-//! `screens` module name (plural) is preserved so existing
-//! `ph2d_editor::screens::*` imports continue to resolve through
-//! the `ph2d-editor` shim re-export.
+//! `screens` module name (plural) was preserved from that old
+//! `ph2d_editor::screens::*` path. The `ph2d-editor` shim that kept it
+//! resolving was DELETED on 2026-09-12 (architecture audit A4).
 //!
 //! Each module here paints one of the canonical mockups at
 //! `docs/design/screens/`. Screens compose the widget primitives

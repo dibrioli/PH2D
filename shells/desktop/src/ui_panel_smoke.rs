@@ -34,7 +34,7 @@
 //! quebrado — então o roteiro diz na cara, e o gate de staleness é quem garante que os dois estão
 //! sincronizados no `main`.
 
-use ph2d_editor::widget::WidgetKind;
+use ph2d_editor_core::widget::WidgetKind;
 use ph2d_vec_scene::{Paint, Rgba8, VecPath, VecPathId, rectangle, star};
 
 /// A moldura, e os filhos que ela contém: `(caixa, nome, o que ele veste)`.

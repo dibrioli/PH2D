@@ -152,7 +152,9 @@ pub fn motion_object_smoke(cx: &mut crate::motion_scene_ctx::MotionSceneCtx<'_>)
             spawn_sprite(cx.sim);
             let out = build_stamp_graph(&mut cx.motion.doc.graph, OBJECT);
             cx.motion.sinks.push(out);
-            let _ = cx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
+            let _ = cx
+                .tools
+                .set_active(&ph2d_editor_core::ToolId::new("motion"));
             eprintln!(
                 "[motion.obj smoke =1] O SPRITE 'Object' (tile colorido) esta carimbado numa \
                  grade 4x4 = 16 copias. A arte de CADA copia e a do sprite. Renomeie o sprite \
@@ -214,7 +216,9 @@ pub fn motion_object_smoke(cx: &mut crate::motion_scene_ctx::MotionSceneCtx<'_>)
                 let out = build_stamp_graph(&mut cx.motion.doc.graph, OBJECT);
                 cx.motion.sinks.push(out);
             }
-            let _ = cx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
+            let _ = cx
+                .tools
+                .set_active(&ph2d_editor_core::ToolId::new("motion"));
             // ⚠️ **Esta mensagem dizia «ASSADA numa tile pela membrana» e estava VELHA
             // desde o ADR-0154** — o modo `=5`, três braços abaixo, já dizia o
             // contrário no mesmo ficheiro. Ela custou uma cena inteira (a `=9` nasceu
@@ -238,7 +242,9 @@ pub fn motion_object_smoke(cx: &mut crate::motion_scene_ctx::MotionSceneCtx<'_>)
         3 if f == 6 => {
             let out = build_stamp_graph(&mut cx.motion.doc.graph, OBJECT);
             cx.motion.sinks.push(out);
-            let _ = cx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
+            let _ = cx
+                .tools
+                .set_active(&ph2d_editor_core::ToolId::new("motion"));
             eprintln!(
                 "[motion.obj smoke =3] O OBJETO Flip 'Object' (BG azul + FG laranja, 2 camadas) \
                  foi COMPOSTO no frame atual e ASSADO numa tile pela membrana, carimbado numa \
@@ -299,7 +305,9 @@ pub fn motion_object_smoke(cx: &mut crate::motion_scene_ctx::MotionSceneCtx<'_>)
         4 if f == 9 => {
             let out = build_stamp_graph(&mut cx.motion.doc.graph, OBJECT);
             cx.motion.sinks.push(out);
-            let _ = cx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
+            let _ = cx
+                .tools
+                .set_active(&ph2d_editor_core::ToolId::new("motion"));
             eprintln!(
                 "[motion.obj smoke =4] O GRUPO 'Object' (sprite SEM NOME + estrela vetor SEM \
                  NOME + objeto Flip 'GFlip', MIDIA MISTA) esta carimbado numa grade 4x4 = 16 \
@@ -316,7 +324,9 @@ pub fn motion_object_smoke(cx: &mut crate::motion_scene_ctx::MotionSceneCtx<'_>)
         7 if f == 6 => {
             let outs = build_two_times_graph(&mut cx.motion.doc.graph, OBJECT);
             cx.motion.sinks.extend(outs);
-            let _ = cx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
+            let _ = cx
+                .tools
+                .set_active(&ph2d_editor_core::ToolId::new("motion"));
             // O relógio ANDA: um offset de tempo só é visível numa animação que
             // corre. Uma cena parada mostraria dois desenhos diferentes e não
             // diria se a diferença é de FASE.

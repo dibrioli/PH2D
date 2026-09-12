@@ -46,7 +46,7 @@ ph2d-flip-reshape = { path = "../ph2d-flip-reshape" }
 ph2d-tool-flip = { path = "../ph2d-tool-flip" }
 # ⚠️ Só pelo `Job` (o worker do Gap Closure) e pelos ids/acções que uma cena de smoke arma.
 # NÃO é a shell: o `ph2d-editor` é a crate de widgets, e a shell também depende dela.
-ph2d-editor = { path = "../ph2d-editor" }
+ph2d-editor-core = { path = "../ph2d-editor-core" }
 # ⚠️ INVISÍVEL até a crate existir (HOWTO §1.3): o `pass_stage` escreve `bytemuck::cast_slice`
 # para a impressão digital do buffer de GPU, e dentro da shell isto era dependência do binário.
 bytemuck = "1"

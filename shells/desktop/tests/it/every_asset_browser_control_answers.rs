@@ -20,9 +20,9 @@
 //! uma lista escrita à mão. *A população vem do paint; uma lista aqui envelheceria no primeiro
 //! controlo novo.*
 
-use ph2d_editor::interaction::WidgetEvent;
-use ph2d_editor::panel::{EventOutcome, PanelHostInternal};
-use ph2d_editor::zones::Rect;
+use ph2d_editor_core::interaction::WidgetEvent;
+use ph2d_editor_core::panel::{EventOutcome, PanelHostInternal};
+use ph2d_editor_core::zones::Rect;
 use ph2d_panel_asset_browser::state::AssetBrowserState;
 use ph2d_panel_asset_browser::{AssetBrowserPanel, PANEL_ID, ids};
 use ph2d_ui_testkit::MockPanelHost;
@@ -33,7 +33,7 @@ use ph2d_ui_testkit::MockPanelHost;
 /// nomeia obriga quem o lê a redescobrir a tabela — e a maioria desiste e apaga o gate.* A lista
 /// vem dos `const` do painel, e o que ela não conhece sai como hash **com o aviso de que é
 /// desconhecido**, que é a única forma honesta de não mentir sobre o que se sabe.
-fn name_of(id: ph2d_editor::NodeId) -> String {
+fn name_of(id: ph2d_editor_core::NodeId) -> String {
     for (n, k) in [
         ("ASSET_PANEL", ids::ASSET_PANEL),
         ("ASSET_SEARCH", ids::ASSET_SEARCH),
@@ -48,7 +48,10 @@ fn name_of(id: ph2d_editor::NodeId) -> String {
         ("ASSET_CATALOG_COL", ids::ASSET_CATALOG_COL),
         ("ASSET_CATALOG_RENAME", ids::ASSET_CATALOG_RENAME),
         ("ASSET_RELATED_CLEAR", ids::ASSET_RELATED_CLEAR),
-        ("SCROLLBAR", ph2d_editor::widget::ASSET_BROWSER_SCROLLBAR_ID),
+        (
+            "SCROLLBAR",
+            ph2d_editor_core::widget::ASSET_BROWSER_SCROLLBAR_ID,
+        ),
     ] {
         if id == k {
             return n.to_string();
@@ -78,7 +81,7 @@ fn name_of(id: ph2d_editor::NodeId) -> String {
 fn painted() -> (
     MockPanelHost,
     AssetBrowserState,
-    Vec<(ph2d_editor::NodeId, Rect)>,
+    Vec<(ph2d_editor_core::NodeId, Rect)>,
 ) {
     let mut ix = ph2d_asset_index::AssetIndex::new();
     let tex = ph2d_asset_index::AssetRef::Texture { asset: [1; 32] };
@@ -224,11 +227,11 @@ fn every_painted_control_that_takes_a_click_is_routed() {
     let (_probe, _st0, rects) = painted();
     // ⚠️ **As excepções são NOMEADAS uma a uma, com o gesto que cada uma de facto tem** — uma
     // varredura sem excepções seria abandonada, e uma com uma excepção genérica não mede nada.
-    let not_a_click = |id: ph2d_editor::NodeId| {
+    let not_a_click = |id: ph2d_editor_core::NodeId| {
         // A faixa de arrasto e a alça: `BlenderHit`, lidos no `pointer_down` (nunca `Click`).
         id == ids::ASSET_DRAG_HANDLE
             || id == ids::ASSET_RESIZE_HANDLE_BL
-            || id == ph2d_editor::widget::ASSET_BROWSER_SCROLLBAR_ID
+            || id == ph2d_editor_core::widget::ASSET_BROWSER_SCROLLBAR_ID
             // Um campo de texto responde ao FOCO e às teclas; um `Click` nele é a entrada, não o verbo.
             || id == ids::ASSET_SEARCH
             // Um slider responde a `ValueChanged`; `Click` não é o gesto dele.
@@ -244,7 +247,7 @@ fn every_painted_control_that_takes_a_click_is_routed() {
     // uma omissão diferente, e uma lista escrita à mão passaria a dispensar o controlo errado — em
     // silêncio, que é como um censo deixa de medir. Só o escolhido sai; os outros membros de cada
     // fileira continuam medidos, logo uma fileira inteiramente morta ainda é apanhada.
-    let already_chosen = |id: ph2d_editor::NodeId, st: &AssetBrowserState| {
+    let already_chosen = |id: ph2d_editor_core::NodeId, st: &AssetBrowserState| {
         if let Some(i) = ids::ASSET_KIND.iter().position(|k| *k == id) {
             return AssetBrowserState::kind_for_chip(i) == st.kind;
         }
@@ -294,7 +297,7 @@ fn every_painted_control_that_takes_a_click_is_routed() {
 #[test]
 fn the_store_can_say_no() {
     let (host, _st, _rects) = painted();
-    let stranger = ph2d_editor::NodeId(0xDEAD_BEEF);
+    let stranger = ph2d_editor_core::NodeId(0xDEAD_BEEF);
     assert!(
         host.store().get(stranger).is_none(),
         "o store devolve estado para um id que ninguem registou — o 1.º gate mede nada"

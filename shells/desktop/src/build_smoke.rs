@@ -129,7 +129,9 @@ impl crate::App {
             // 10) — é o caso em que a correspondência importa.
             3 if level == 7 => {
                 let gfx = self.gfx.as_mut().expect("gfx");
-                let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("vector"));
+                let _ = gfx
+                    .tools
+                    .set_active(&ph2d_editor_core::ToolId::new("vector"));
                 let scene = &mut gfx.vec_scene;
                 scene.push_path(shape(
                     ShapeKind::Rectangle,
@@ -151,7 +153,9 @@ impl crate::App {
             // ser um clique só — o Enio não deve ter de montar nada.
             3 if level == 10 => {
                 let gfx = self.gfx.as_mut().expect("gfx");
-                let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("vector"));
+                let _ = gfx
+                    .tools
+                    .set_active(&ph2d_editor_core::ToolId::new("vector"));
                 let scene = &mut gfx.vec_scene;
                 scene.push_path(shape(
                     ShapeKind::Rectangle,
@@ -189,7 +193,9 @@ impl crate::App {
             // por coordenada acerta). Só o modo Node mostra a seção Vertex + as alças de quina.
             3 if level == 15 => {
                 let gfx = self.gfx.as_mut().expect("gfx");
-                let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("vector"));
+                let _ = gfx
+                    .tools
+                    .set_active(&ph2d_editor_core::ToolId::new("vector"));
                 let scene = &mut gfx.vec_scene;
                 let id = scene.push_path(shape(
                     ShapeKind::Rectangle,
@@ -251,7 +257,9 @@ impl crate::App {
             // que o defeito aparecia (as intermediárias rodavam 45° e voltavam).
             3 if level == 8 => {
                 let gfx = self.gfx.as_mut().expect("gfx");
-                let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("vector"));
+                let _ = gfx
+                    .tools
+                    .set_active(&ph2d_editor_core::ToolId::new("vector"));
                 let scene = &mut gfx.vec_scene;
                 scene.push_path(shape(
                     ShapeKind::Rectangle,
@@ -273,7 +281,9 @@ impl crate::App {
             // torcer. Rotate/Reverse Match foram removidos; o ajuste é editar as formas.
             3 if level == 9 => {
                 let gfx = self.gfx.as_mut().expect("gfx");
-                let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("vector"));
+                let _ = gfx
+                    .tools
+                    .set_active(&ph2d_editor_core::ToolId::new("vector"));
                 let scene = &mut gfx.vec_scene;
                 scene.push_path(shape(
                     ShapeKind::Star,
@@ -292,7 +302,9 @@ impl crate::App {
             }
             3 => {
                 let gfx = self.gfx.as_mut().expect("gfx");
-                let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("vector"));
+                let _ = gfx
+                    .tools
+                    .set_active(&ph2d_editor_core::ToolId::new("vector"));
                 let scene = &mut gfx.vec_scene;
                 scene.push_path(shape(
                     ShapeKind::RoundRect,
@@ -494,9 +506,9 @@ impl crate::App {
             // **Nível 5 — os BOTÕES da barra**, clicados com o mouse de verdade: o ponteiro
             // acha o chip no hit-index, o widget emite o Click, o chrome despacha, o bus é
             // drenado e o shell desfaz. É o caminho inteiro, sem atalho nenhum.
-            14 if level == 5 => self.smoke_rail_click(ph2d_editor::ids::TOOL_UNDO, "Undo"),
+            14 if level == 5 => self.smoke_rail_click(ph2d_editor_core::ids::TOOL_UNDO, "Undo"),
             15 if level == 5 => self.smoke_state("depois do BOTÃO Undo"),
-            16 if level == 5 => self.smoke_rail_click(ph2d_editor::ids::TOOL_REDO, "Redo"),
+            16 if level == 5 => self.smoke_rail_click(ph2d_editor_core::ids::TOOL_REDO, "Redo"),
             17 if level == 5 => self.smoke_state("depois do BOTÃO Redo"),
             // **Nível 6 — o bug do Enio: "undo só faz uma etapa".** Duas ações, depois três
             // Ctrl+Z, com o DOWN e o UP em frames SEPARADOS (é o que o winit entrega).

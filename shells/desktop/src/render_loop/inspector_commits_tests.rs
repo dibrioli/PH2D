@@ -5,7 +5,7 @@
 mod tests {
     use crate::render_loop::inspector_commits_sprite::{SpriteEditables, apply_sprite_field};
     use ph2d_ecs::{SpriteCornerTint, SpriteGrid};
-    use ph2d_editor::SpriteFieldEdit;
+    use ph2d_editor_core::SpriteFieldEdit;
     use ph2d_render::Sprite;
 
     const RED: [f32; 4] = [1.0, 0.0, 0.0, 1.0];

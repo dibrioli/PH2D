@@ -150,7 +150,7 @@ impl crate::App {
 
     /// Acha um chip do rail no hit-index e o clica **com o ponteiro** (é o caminho do
     /// usuário: pixel → hit → widget → chrome → bus → shell).
-    pub(crate) fn smoke_rail_click(&mut self, id: ph2d_editor::NodeId, label: &str) {
+    pub(crate) fn smoke_rail_click(&mut self, id: ph2d_editor_core::NodeId, label: &str) {
         let Some(hero) = self.gfx.as_ref().and_then(|g| g.hero_screen.as_ref()) else {
             return;
         };
@@ -183,7 +183,7 @@ impl crate::App {
     }
 
     /// Onde um widget está na TELA — varre o hit-index inteiro. `None` = não pintado/clicável.
-    pub(crate) fn smoke_find_widget(&self, id: ph2d_editor::NodeId) -> Option<(f32, f32)> {
+    pub(crate) fn smoke_find_widget(&self, id: ph2d_editor_core::NodeId) -> Option<(f32, f32)> {
         let hero = self.gfx.as_ref().and_then(|g| g.hero_screen.as_ref())?;
         let win = self.gfx.as_ref().map(|g| g.surface.size())?;
         for y in (0..win.height).step_by(3) {

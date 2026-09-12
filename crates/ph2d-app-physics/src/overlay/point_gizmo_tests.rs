@@ -203,10 +203,10 @@ fn a_hit_id_resolves_to_its_joint_and_side() {
     let handles = joint_anchor_handles(&sim, &bridge, true);
     let mut map = std::collections::BTreeMap::new();
     for h in &handles {
-        map.insert(ph2d_editor::gizmo::point_handle_id(h.key, h.kind), *h);
+        map.insert(ph2d_editor_core::gizmo::point_handle_id(h.key, h.kind), *h);
     }
     for h in &handles {
-        let id = ph2d_editor::gizmo::point_handle_id(h.key, h.kind);
+        let id = ph2d_editor_core::gizmo::point_handle_id(h.key, h.kind);
         let (e, kind) = resolve_anchor_hit(&map, id).expect("a painted handle resolves");
         assert_eq!(e, j);
         assert_eq!(kind, h.kind, "the resolved kind must be the one painted");
@@ -216,7 +216,7 @@ fn a_hit_id_resolves_to_its_joint_and_side() {
             "an anchor kind must map back to its side"
         );
     }
-    assert!(resolve_anchor_hit(&map, ph2d_editor::NodeId(7)).is_none());
+    assert!(resolve_anchor_hit(&map, ph2d_editor_core::NodeId(7)).is_none());
 }
 
 // ── W-J3: the parameter grips ────────────────────────────────────────────────
@@ -418,7 +418,7 @@ fn a_rails_stroke_grips_sit_on_the_rail_not_on_an_arc() {
 /// então o sétimo tipo nasce coberto.
 #[test]
 fn every_kind_with_a_length_offers_the_ring_to_grab() {
-    for tag in 0..u8::try_from(ph2d_editor::ids::INSP_JOINT_KIND.len()).expect("cabe") {
+    for tag in 0..u8::try_from(ph2d_editor_core::ids::INSP_JOINT_KIND.len()).expect("cabe") {
         let kind = crate::joint::kind_of(tag);
         if kind.length_field().is_none() {
             continue;

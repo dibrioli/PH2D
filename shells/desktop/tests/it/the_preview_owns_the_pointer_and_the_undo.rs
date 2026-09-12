@@ -121,7 +121,7 @@ fn the_gizmo_is_not_published_while_the_preview_runs() {
     let src = read("src/render_loop/mod.rs");
     let flat: String = src.chars().filter(|c| !c.is_whitespace()).collect();
     assert!(
-        flat.contains("==ph2d_editor::ToolId::new(\"vector\"))||self.vec_draw_config.mode==ph2d_tool_vector::DrawMode::Select)&&!self.ui_preview.is_on()"),
+        flat.contains("==ph2d_editor_core::ToolId::new(\"vector\"))||self.vec_draw_config.mode==ph2d_tool_vector::DrawMode::Select)&&!self.ui_preview.is_on()"),
         "o `vec_gizmo_on` deixou de excluir a preview — a caixa fica sobre a pose autorada \
          enquanto a forma anima para longe dela, e as alcas dela roubam o clique da apresentacao"
     );

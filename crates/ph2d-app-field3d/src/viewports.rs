@@ -16,7 +16,7 @@ pub fn viewport_at(s: &Smoke, pos: (f32, f32)) -> Option<usize> {
     crate::layout::hit(
         s.vps.iter().map(|v| {
             v.area
-                .unwrap_or(ph2d_editor::zones::Rect::new(0.0, 0.0, 0.0, 0.0))
+                .unwrap_or(ph2d_editor_core::zones::Rect::new(0.0, 0.0, 0.0, 0.0))
         }),
         [pos.0, pos.1],
     )
@@ -27,7 +27,7 @@ pub fn viewport_at(s: &Smoke, pos: (f32, f32)) -> Option<usize> {
 /// ⚠️ **É derivado e não guardado**, e os retângulos ladrilham a área exactamente (há gate), então a
 /// união é a área. *Guardá-lo seria uma segunda resposta a «onde está o canvas?», e a que
 /// envelheceria seria a guardada.* `None` enquanto nenhuma vista tiver desenhado.
-pub fn canvas_area(s: &Smoke) -> Option<ph2d_editor::zones::Rect> {
+pub fn canvas_area(s: &Smoke) -> Option<ph2d_editor_core::zones::Rect> {
     let mut it = s.vps.iter().filter_map(|v| v.area);
     let first = it.next()?;
     let (mut x0, mut y0) = (first.x, first.y);
@@ -38,7 +38,7 @@ pub fn canvas_area(s: &Smoke) -> Option<ph2d_editor::zones::Rect> {
         x1 = x1.max(r.x + r.w);
         y1 = y1.max(r.y + r.h);
     }
-    Some(ph2d_editor::zones::Rect::new(x0, y0, x1 - x0, y1 - y0))
+    Some(ph2d_editor_core::zones::Rect::new(x0, y0, x1 - x0, y1 - y0))
 }
 
 /// ⭐⭐ **O cursor que este ponto da janela pede**, ou `None` (W93).

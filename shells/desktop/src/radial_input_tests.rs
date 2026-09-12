@@ -3,10 +3,10 @@
 //! ⚠️ O que se prova aqui é o que a lei pura não alcança: *abrir com o que o modo oferece · acender
 //! pela direcção · soltar escolher · a zona morta cancelar · o transbordo abrir a outra vista*.
 
-use ph2d_editor::HeroScreen;
-use ph2d_editor::NodeId;
-use ph2d_editor::screens::hero::radial;
-use ph2d_editor::widget::{RadialItem, radial_dead_zone_px, radial_item_offset};
+use ph2d_editor_core::HeroScreen;
+use ph2d_editor_core::NodeId;
+use ph2d_editor_core::screens::hero::radial;
+use ph2d_editor_core::widget::{RadialItem, radial_dead_zone_px, radial_item_offset};
 
 const C: [f32; 2] = [400.0, 300.0];
 

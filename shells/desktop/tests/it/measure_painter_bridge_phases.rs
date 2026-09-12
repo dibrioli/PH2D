@@ -5,7 +5,7 @@
 //!
 //! Run: `cargo test -p ph2d-host-desktop --release --test measure_painter_bridge_phases -- --ignored --nocapture`
 
-use ph2d_editor::tool::RasterEditTool;
+use ph2d_editor_core::tool::RasterEditTool;
 use ph2d_tool_painter::PainterTool;
 
 fn tool(size: u32) -> PainterTool {

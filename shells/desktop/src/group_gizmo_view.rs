@@ -32,7 +32,7 @@
 //! spine de um Blend não publicam gizmo* (ver o cabeçalho de [`crate::vec_gizmo_view`]).
 
 use ph2d_ecs::{Entity, SimWorld, Transform, Visibility};
-use ph2d_editor::GizmoView;
+use ph2d_editor_core::GizmoView;
 use ph2d_host::WindowSize;
 use ph2d_render::Camera2d;
 
@@ -41,7 +41,7 @@ use ph2d_vec_entities::transform::world_transform;
 /// **Meia-extensão do marcador de um objeto VAZIO, em pixels de arte.**
 ///
 /// ⚠️ **O número é DERIVADO da alça, e o recurso é ela**: a caixa carrega oito
-/// (`ph2d_editor::HANDLE_SIZE_PX`, hoje `12`) — quatro quinas e quatro meios de aresta. Com
+/// (`ph2d_editor_core::HANDLE_SIZE_PX`, hoje `12`) — quatro quinas e quatro meios de aresta. Com
 /// meia-extensão de **duas** alças a caixa tem quatro de largura, que é a menor em que a quina e o
 /// meio da aresta não se sobrepõem. Abaixo disso o gizmo existe e **não se consegue usar**, que é o
 /// «colapsado» do report; o gate [`tests::the_empty_marker_is_wider_than_the_handles_it_carries`]
@@ -50,7 +50,7 @@ use ph2d_vec_entities::transform::world_transform;
 /// ⚠️ **Pixels de ARTE, não de tela** — convertidos por `pixels_per_meter`, como toda medida
 /// geométrica do canvas. Em px de tela o marcador não escalaria com o zoom e a caixa de um objeto
 /// vazio seria a única do app que muda de tamanho de mundo quando ninguém lhe toca.
-pub(crate) const EMPTY_HALF_PX: f32 = 2.0 * ph2d_editor::HANDLE_SIZE_PX;
+pub(crate) const EMPTY_HALF_PX: f32 = 2.0 * ph2d_editor_core::HANDLE_SIZE_PX;
 
 /// ⛔ **Quem já tem gizmo próprio** — ver o cabeçalho.
 ///

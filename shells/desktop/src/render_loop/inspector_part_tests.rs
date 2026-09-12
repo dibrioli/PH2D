@@ -73,7 +73,7 @@ fn ell() -> (SimWorld, Entity, Entity) {
 
 /// O snapshot que o painel leria, com `part_count` resolvido como a shell o
 /// resolve: contando os candidatos (collider sem corpo) cujo dono é `e`.
-fn info(sim: &mut SimWorld, e: Entity) -> ph2d_editor::InspectorPhysicsInfo {
+fn info(sim: &mut SimWorld, e: Entity) -> ph2d_editor_core::InspectorPhysicsInfo {
     let mut q = sim.world_mut().query_filtered::<Entity, (
         bevy_ecs::query::With<Collider>,
         bevy_ecs::query::Without<RigidBody>,
@@ -235,7 +235,11 @@ fn a_body_reports_how_many_parts_hang_from_it() {
 #[test]
 fn the_add_shape_apply_still_overwrites_and_that_is_why_the_panel_refuses_it() {
     let (mut sim, _arm, leg) = ell();
-    ph2d_app_physics::physics_tests::apply(&mut sim, leg, ph2d_editor::PhysicsFieldEdit::AddShape);
+    ph2d_app_physics::physics_tests::apply(
+        &mut sim,
+        leg,
+        ph2d_editor_core::PhysicsFieldEdit::AddShape,
+    );
     let col = sim.world().get::<Collider>(leg).copied().expect("collider");
     let ColliderShape::Cuboid { half_x, half_y } = col.shape else {
         panic!("a forma virou outra coisa");
@@ -259,7 +263,11 @@ fn the_add_shape_apply_still_overwrites_and_that_is_why_the_panel_refuses_it() {
 #[test]
 fn removing_a_part_leaves_a_plain_drawing() {
     let (mut sim, arm, leg) = ell();
-    ph2d_app_physics::physics_tests::apply(&mut sim, leg, ph2d_editor::PhysicsFieldEdit::Remove);
+    ph2d_app_physics::physics_tests::apply(
+        &mut sim,
+        leg,
+        ph2d_editor_core::PhysicsFieldEdit::Remove,
+    );
     assert!(
         sim.world().get::<Collider>(leg).is_none(),
         "a forma continua lá — a peça era porta de mão única"
@@ -366,7 +374,7 @@ fn the_mass_seed_of_a_compound_body_counts_its_parts() {
     ph2d_app_physics::physics_tests::apply(
         &mut sim,
         body,
-        ph2d_editor::PhysicsFieldEdit::MassMode(true),
+        ph2d_editor_core::PhysicsFieldEdit::MassMode(true),
     );
     let seeded = sim
         .world()
@@ -413,7 +421,7 @@ fn the_mass_seed_of_a_plain_body_is_its_own_shape() {
     ph2d_app_physics::physics_tests::apply(
         &mut sim,
         body,
-        ph2d_editor::PhysicsFieldEdit::MassMode(true),
+        ph2d_editor_core::PhysicsFieldEdit::MassMode(true),
     );
     let seeded = sim
         .world()

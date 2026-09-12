@@ -30,7 +30,7 @@
 //! fazer calado algo diferente do que o rótulo promete.
 
 use ph2d_ecs::{ChildOf, Entity, Name, SimWorld, SpriteSheetFrame, Transform, VecShape};
-use ph2d_editor::{Toast, ToastQueue};
+use ph2d_editor_core::{Toast, ToastQueue};
 use ph2d_render::Sprite;
 use ph2d_sprite_sheet::{Layout, LayoutItem, PackError, PackOptions};
 use ph2d_vec_scene::{ShapeKind, VecScene};
@@ -104,7 +104,7 @@ pub(crate) fn suggested_size(
     let needed = plan_for(&pieces, &cfg, SHEET_MAX_SIDE)
         .map(|p| p.size)
         .unwrap_or(SHEET_MAX_SIDE);
-    let offered = ph2d_editor::ids::CTX_MENU_SHEET_SIZES;
+    let offered = ph2d_editor_core::ids::CTX_MENU_SHEET_SIZES;
     Some(
         offered
             .iter()

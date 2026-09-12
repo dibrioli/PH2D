@@ -17,7 +17,7 @@
 //! por ser a QUARTA superfície a responder *onde está esta coisa?*): todo comprimento sai
 //! UMA vez pela `LengthDisplay`, e a TAXA de arrasto cruza a mesma porta que o valor.
 
-use ph2d_editor::HeroScreen;
+use ph2d_editor_core::HeroScreen;
 use ph2d_vec_edit::PenTool;
 use ph2d_vec_render::GradHandle;
 use ph2d_vec_scene::VecScene;
@@ -62,7 +62,7 @@ pub fn publish(
     // ── 5. Sync swatch colours (seeds the picker on open) + Opacity sliders
     //    (so a picker alpha shows on the panel) + publish. ──────────────────
     hero.store
-        .set_widget_color(ph2d_editor::ids::VECTOR_STROKE_SWATCH, stroke);
+        .set_widget_color(ph2d_editor_core::ids::VECTOR_STROKE_SWATCH, stroke);
     // The Fill swatch shows the selected gradient point's colour (so the picker
     // opens seeded on it) when a MultiPoint point is selected, else the tool fill.
     let fill_swatch_col = active_handle
@@ -75,17 +75,17 @@ pub fn publish(
         })
         .unwrap_or(fill);
     hero.store
-        .set_widget_color(ph2d_editor::ids::VECTOR_FILL_SWATCH, fill_swatch_col);
+        .set_widget_color(ph2d_editor_core::ids::VECTOR_FILL_SWATCH, fill_swatch_col);
     // Push the tool's alpha onto the Opacity sliders (unless being dragged) so
     // an alpha set in the colour picker reflects on the panel, and vice-versa.
     sync_opacity_slider(
         &mut hero.store,
-        ph2d_editor::ids::VECTOR_STROKE_OPACITY,
+        ph2d_editor_core::ids::VECTOR_STROKE_OPACITY,
         stroke[3],
     );
     sync_opacity_slider(
         &mut hero.store,
-        ph2d_editor::ids::VECTOR_FILL_OPACITY,
+        ph2d_editor_core::ids::VECTOR_FILL_OPACITY,
         fill[3],
     );
     // Publish the selected vertex's type so the panel shows the Vertex section
@@ -103,7 +103,7 @@ pub fn publish(
     // pixels seria a quinta superfície a discordar.
     #[cfg(feature = "panel-vector")]
     ph2d_panel_vector::set_current_vertex_pos(if vector_active {
-        let d = ph2d_editor::LengthDisplay::of(&hero.project);
+        let d = ph2d_editor_core::LengthDisplay::of(&hero.project);
         pen.selected_anchor_world(scene)
             .map(|p| [d.value(p[0]), d.value(p[1])])
     } else {
@@ -150,7 +150,7 @@ pub fn publish(
     // deslocamento) — `x` e `w` não precisam de leis diferentes.
     #[cfg(feature = "panel-vector")]
     {
-        let display = ph2d_editor::LengthDisplay::of(&hero.project);
+        let display = ph2d_editor_core::LengthDisplay::of(&hero.project);
         ph2d_panel_vector::set_length_suffix(display.suffix());
         ph2d_panel_vector::set_current_transform(if vector_active {
             pen.selected()
@@ -371,19 +371,21 @@ pub fn publish(
     // display e a taxa em metros de mundo, arrastar um chip um pixel moveria o número em `0,01`
     // enquanto ele mostra centenas: o chip pareceria travado. Uma porta, os dois lados.
     if vector_active {
-        let px_to_world = ph2d_editor::LengthDisplay::of(&hero.project).value(px_to_world);
+        let px_to_world = ph2d_editor_core::LengthDisplay::of(&hero.project).value(px_to_world);
         for id in [
-            ph2d_editor::ids::VECTOR_TRANSFORM_X,
-            ph2d_editor::ids::VECTOR_TRANSFORM_Y,
-            ph2d_editor::ids::VECTOR_TRANSFORM_W,
-            ph2d_editor::ids::VECTOR_TRANSFORM_H,
+            ph2d_editor_core::ids::VECTOR_TRANSFORM_X,
+            ph2d_editor_core::ids::VECTOR_TRANSFORM_Y,
+            ph2d_editor_core::ids::VECTOR_TRANSFORM_W,
+            ph2d_editor_core::ids::VECTOR_TRANSFORM_H,
         ] {
             hero.store.set_number_drag_rate(id, px_to_world);
         }
         // The Angle (R) field is in DEGREES, not world units — a fixed, gentle
         // scrub (a full drag across the screen ≈ a couple turns), zoom-independent.
         const ROT_DRAG_DEG_PER_PX: f64 = 0.5;
-        hero.store
-            .set_number_drag_rate(ph2d_editor::ids::VECTOR_TRANSFORM_R, ROT_DRAG_DEG_PER_PX);
+        hero.store.set_number_drag_rate(
+            ph2d_editor_core::ids::VECTOR_TRANSFORM_R,
+            ROT_DRAG_DEG_PER_PX,
+        );
     }
 }

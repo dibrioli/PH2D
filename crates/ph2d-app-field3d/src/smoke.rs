@@ -31,7 +31,7 @@
 use std::sync::Arc;
 use std::sync::mpsc::{TryRecvError, channel};
 
-use ph2d_editor::zones::Rect as EditorRect;
+use ph2d_editor_core::zones::Rect as EditorRect;
 use ph2d_field::{Blend, FieldDoc, Node, NodeId, NodeKind, Op, Primitive, Profile, Xform};
 use ph2d_field_render::{Matcap, Orbit, shade};
 use ph2d_vec_scene::{VecPath, VecVertex};

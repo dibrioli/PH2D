@@ -105,9 +105,11 @@ fn the_missing_mark_tells_the_truth_about_all_three_cases() {
     ph2d_panel_motion_graph::set_graph_selection(vec![n.0]);
 
     let missing_of = |state: &MotionState| {
-        let snap =
-            super::super::build_params_snapshot(state, ph2d_editor::ProjectSettings::default())
-                .expect("o no selecionado tem params");
+        let snap = super::super::build_params_snapshot(
+            state,
+            ph2d_editor_core::ProjectSettings::default(),
+        )
+        .expect("o no selecionado tem params");
         snap.rows
             .iter()
             .find_map(|r| match r {
@@ -152,9 +154,11 @@ fn the_file_row_carries_the_path_not_only_whether_it_is_missing() {
     ph2d_panel_motion_graph::set_graph_selection(vec![n.0]);
 
     let value_of = |state: &MotionState| {
-        let snap =
-            super::super::build_params_snapshot(state, ph2d_editor::ProjectSettings::default())
-                .expect("o no selecionado tem params");
+        let snap = super::super::build_params_snapshot(
+            state,
+            ph2d_editor_core::ProjectSettings::default(),
+        )
+        .expect("o no selecionado tem params");
         snap.rows
             .iter()
             .find_map(|r| match r {

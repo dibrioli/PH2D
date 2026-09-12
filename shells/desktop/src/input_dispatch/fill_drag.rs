@@ -9,8 +9,8 @@
 
 use std::cell::Cell;
 
-use ph2d_editor::ids;
-use ph2d_editor::tool::{PointerPhase, Tool};
+use ph2d_editor_core::ids;
+use ph2d_editor_core::tool::{PointerPhase, Tool};
 use ph2d_tool_painter::PainterTool;
 
 use crate::App;

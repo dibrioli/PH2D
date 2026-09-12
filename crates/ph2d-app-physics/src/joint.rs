@@ -9,7 +9,7 @@
 use bevy_ecs::world::World;
 use ph2d_ecs::scene::{ComponentRegistry, EditorCommandQueue};
 use ph2d_ecs::{Entity, Name, SimWorld};
-use ph2d_editor::{InspectorJointInfo, JointFieldEdit};
+use ph2d_editor_core::{InspectorJointInfo, JointFieldEdit};
 use ph2d_physics_ecs::{JointKind, MotorMode, PhysicsJoint};
 
 use ph2d_inspector_ordering::queue_set;

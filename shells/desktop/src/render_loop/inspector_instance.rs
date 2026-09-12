@@ -12,7 +12,7 @@
 //! *Um nome escrito aqui divergiria do nome do botão que anexa aquele componente.*
 
 use ph2d_ecs::{Entity, SimWorld};
-use ph2d_editor::screens::hero::InspectorInstanceInfo;
+use ph2d_editor_core::screens::hero::InspectorInstanceInfo;
 
 /// O que se escreve quando o `type_id` de uma excepção sem alvo já não existe neste build.
 ///
@@ -85,10 +85,10 @@ pub(super) fn build_instance_info(
     // mapa INTEIRO, então uma entrada saltada aqui daria um número no botão maior do que as linhas
     // mostradas: *o artista veria «Clear 3» sobre duas linhas*. Um tipo que este build já não
     // conhece continua a ser uma linha, com o nome que houver.
-    let orphan_rows: Vec<ph2d_editor::screens::hero::OrphanRow> = inst
+    let orphan_rows: Vec<ph2d_editor_core::screens::hero::OrphanRow> = inst
         .orphans
         .iter()
-        .map(|(k, o)| ph2d_editor::screens::hero::OrphanRow {
+        .map(|(k, o)| ph2d_editor_core::screens::hero::OrphanRow {
             component: registry.get_by_id(k.type_id).map_or_else(
                 || UNKNOWN_COMPONENT.to_string(),
                 |e| {
@@ -118,12 +118,12 @@ pub(super) fn build_instance_info(
     // órfãos, e há gate).
     //
     // ⭐ **O nome vem da RECEITA, agora** — a peça está viva lá, então não há nada a guardar.
-    let removed_rows: Vec<ph2d_editor::screens::hero::RemovedRow> = inst
+    let removed_rows: Vec<ph2d_editor_core::screens::hero::RemovedRow> = inst
         .removed
         .iter()
         .filter_map(|&piece_id| {
             let e = ph2d_app_components::instance_verbs::entity_for_stable_id(sim, piece_id)?;
-            Some(ph2d_editor::screens::hero::RemovedRow {
+            Some(ph2d_editor_core::screens::hero::RemovedRow {
                 piece_id,
                 name: sim
                     .world()
@@ -146,10 +146,10 @@ pub(super) fn build_instance_info(
     // ⛔ **Sem `take` aqui**, ao contrário da escada: o tecto é da TABELA DE IDS, e quem o conta é
     // o pintor — cortar a lista no shell faria a linha *«+N more»* nunca aparecer, que é o corte
     // silencioso que esta casa proíbe.
-    let added_rows: Vec<ph2d_editor::screens::hero::AddedRow> =
+    let added_rows: Vec<ph2d_editor_core::screens::hero::AddedRow> =
         ph2d_app_components::instance_added::added_pieces(sim, root)
             .into_iter()
-            .map(|a| ph2d_editor::screens::hero::AddedRow {
+            .map(|a| ph2d_editor_core::screens::hero::AddedRow {
                 piece_id: a.piece_id,
                 name: a.name,
                 master_name: a.master_name,
@@ -163,12 +163,12 @@ pub(super) fn build_instance_info(
     let all_levels = ph2d_app_components::instance_apply_deep::apply_levels(sim, entity);
     let apply_levels_beyond = all_levels
         .len()
-        .saturating_sub(ph2d_editor::ids::MAX_INSTANCE_APPLY_LEVELS);
-    let apply_levels: Vec<ph2d_editor::screens::hero::ApplyChoice> = all_levels
+        .saturating_sub(ph2d_editor_core::ids::MAX_INSTANCE_APPLY_LEVELS);
+    let apply_levels: Vec<ph2d_editor_core::screens::hero::ApplyChoice> = all_levels
         .iter()
-        .take(ph2d_editor::ids::MAX_INSTANCE_APPLY_LEVELS)
+        .take(ph2d_editor_core::ids::MAX_INSTANCE_APPLY_LEVELS)
         .enumerate()
-        .map(|(i, l)| ph2d_editor::screens::hero::ApplyChoice {
+        .map(|(i, l)| ph2d_editor_core::screens::hero::ApplyChoice {
             master: l.master,
             name: l.name.clone(),
             // ⚠️ **O mais interno é o ÚLTIMO da escada INTEIRA**, e não o último dos que couberam:
@@ -206,7 +206,7 @@ pub(super) fn build_instance_info(
 pub(crate) fn family_members(
     sim: &mut SimWorld,
     current: u64,
-) -> Vec<ph2d_editor::screens::hero::variant_axes::VariantMember> {
+) -> Vec<ph2d_editor_core::screens::hero::variant_axes::VariantMember> {
     // Ordenado por `StableId` — a ordem de autoria, e a única que é a mesma em toda máquina.
     let masters: Vec<u64> = {
         let mut q = sim
@@ -216,17 +216,19 @@ pub(crate) fn family_members(
         v.sort_unstable();
         v
     };
-    let mut members: Vec<ph2d_editor::screens::hero::variant_axes::VariantMember> = Vec::new();
+    let mut members: Vec<ph2d_editor_core::screens::hero::variant_axes::VariantMember> = Vec::new();
     for id in masters {
         if id != current
             && ph2d_app_components::instance_variant::piece_map(sim, current, id).is_none()
         {
             continue;
         }
-        members.push(ph2d_editor::screens::hero::variant_axes::VariantMember {
-            master: id,
-            name: master_named(sim, id).unwrap_or_else(|| "prefab".to_string()),
-        });
+        members.push(
+            ph2d_editor_core::screens::hero::variant_axes::VariantMember {
+                master: id,
+                name: master_named(sim, id).unwrap_or_else(|| "prefab".to_string()),
+            },
+        );
     }
     // ⭐⭐ **A ESTRUTURA sai daqui e a LEI sai de lá.** O shell responde *«quem é da família»*
     // (os elos no mundo) e o `variant_axes` responde *«o que ela oferece»*. ⚠️ Separá-las é o

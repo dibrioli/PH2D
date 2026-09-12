@@ -53,7 +53,7 @@ pub fn draw(
         let layout = crate::layout::rects(area, smoke.split);
         // ⚠️ **Copiados para a pilha antes do laço**: o passe mexe em `smoke`, e um empréstimo do
         // layout vivo lá dentro seria um empréstimo de `smoke` também.
-        let mut quadros = [ph2d_editor::zones::Rect::new(0.0, 0.0, 0.0, 0.0); 4];
+        let mut quadros = [ph2d_editor_core::zones::Rect::new(0.0, 0.0, 0.0, 0.0); 4];
         let n = layout.as_slice().len();
         quadros[..n].copy_from_slice(layout.as_slice());
         crate::smoke::ensure_viewports(smoke, n);
@@ -227,7 +227,7 @@ pub fn draw(
 fn viewport_pass(
     smoke: &mut crate::smoke::Smoke,
     i: usize,
-    area: ph2d_editor::zones::Rect,
+    area: ph2d_editor_core::zones::Rect,
     doc: &FieldDoc,
     scene_out: &mut VectorScene,
 ) {

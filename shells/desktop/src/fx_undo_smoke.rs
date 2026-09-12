@@ -46,7 +46,7 @@ thread_local! {
 
 /// O Down num ícone do cabeçalho de uma linha da pilha. `None` no hit-index é reportado em vez
 /// de silenciado — um roteiro que não clica nada e não diz nada leria como "passou".
-fn click_row_icon(app: &mut crate::App, id: ph2d_editor::NodeId, name: &str) {
+fn click_row_icon(app: &mut crate::App, id: ph2d_editor_core::NodeId, name: &str) {
     match app.smoke_find_widget(id) {
         Some((x, y)) => {
             eprintln!("[fx-undo] DOWN no {name} da linha 0 em ({x}, {y})");
@@ -208,10 +208,10 @@ pub(crate) fn frame(app: &mut crate::App, f: u32) {
         5 => app.any_input_this_frame = true,
         // A seção Effects pode nascer fora da vista: rola o painel até o botão entrar no
         // hit-index (o mesmo gesto do roteiro do Expand).
-        6..=11 => scroll_until_reachable(app, ph2d_editor::ids::vector_fx_add_id(0)),
+        6..=11 => scroll_until_reachable(app, ph2d_editor_core::ids::vector_fx_add_id(0)),
         // Depois do 2º Add o card voltou e empurrou o Apply para fora — re-rola até ele.
-        82..=87 => scroll_until_reachable(app, ph2d_editor::ids::VECTOR_FX_APPLY),
-        ADD_DOWN => match app.smoke_find_widget(ph2d_editor::ids::vector_fx_add_id(0)) {
+        82..=87 => scroll_until_reachable(app, ph2d_editor_core::ids::VECTOR_FX_APPLY),
+        ADD_DOWN => match app.smoke_find_widget(ph2d_editor_core::ids::vector_fx_add_id(0)) {
             Some((x, y)) => {
                 eprintln!("[fx-undo] DOWN no botão Add (kind 0) em ({x}, {y})");
                 app.smoke_pointer_down(x, y);
@@ -226,15 +226,18 @@ pub(crate) fn frame(app: &mut crate::App, f: u32) {
             app.smoke_pointer_up();
         }
         // O ARRASTO do parâmetro: agarra o slider da linha 0 e leva-o para a direita.
-        PARAM_DOWN => match app.smoke_find_widget(ph2d_editor::ids::vector_fx_param_id(0, 0)) {
-            Some((x, y)) => {
-                GRAB.with(|c| c.set((x, y)));
-                eprintln!("[fx-undo] DOWN no slider do parâmetro 0 em ({x}, {y})");
-                app.smoke_pointer_down(x, y);
+        PARAM_DOWN => {
+            match app.smoke_find_widget(ph2d_editor_core::ids::vector_fx_param_id(0, 0)) {
+                Some((x, y)) => {
+                    GRAB.with(|c| c.set((x, y)));
+                    eprintln!("[fx-undo] DOWN no slider do parâmetro 0 em ({x}, {y})");
+                    app.smoke_pointer_down(x, y);
+                }
+                None => eprintln!("[fx-undo] ⚠️ slider do parâmetro fora do hit-index"),
             }
-            None => eprintln!("[fx-undo] ⚠️ slider do parâmetro fora do hit-index"),
-        },
-        PARAM2_DOWN => match app.smoke_find_widget(ph2d_editor::ids::vector_fx_param_id(0, 0)) {
+        }
+        PARAM2_DOWN => match app.smoke_find_widget(ph2d_editor_core::ids::vector_fx_param_id(0, 0))
+        {
             Some((x, y)) => {
                 GRAB.with(|c| c.set((x, y)));
                 eprintln!("[fx-undo] DOWN no slider do parâmetro 0 (2o) em ({x}, {y})");
@@ -259,10 +262,10 @@ pub(crate) fn frame(app: &mut crate::App, f: u32) {
             eprintln!("[fx-undo] UP do arrasto — UM passo para o gesto inteiro");
             app.smoke_pointer_up();
         }
-        HIDE_DOWN => click_row_icon(app, ph2d_editor::ids::vector_fx_hide_id(0), "HIDE"),
-        REMOVE_DOWN => click_row_icon(app, ph2d_editor::ids::vector_fx_remove_id(0), "REMOVE"),
-        ADD2_DOWN => click_row_icon(app, ph2d_editor::ids::vector_fx_add_id(0), "ADD (2o)"),
-        APPLY_DOWN => click_row_icon(app, ph2d_editor::ids::VECTOR_FX_APPLY, "APPLY"),
+        HIDE_DOWN => click_row_icon(app, ph2d_editor_core::ids::vector_fx_hide_id(0), "HIDE"),
+        REMOVE_DOWN => click_row_icon(app, ph2d_editor_core::ids::vector_fx_remove_id(0), "REMOVE"),
+        ADD2_DOWN => click_row_icon(app, ph2d_editor_core::ids::vector_fx_add_id(0), "ADD (2o)"),
+        APPLY_DOWN => click_row_icon(app, ph2d_editor_core::ids::VECTOR_FX_APPLY, "APPLY"),
         HIDE_UP | REMOVE_UP | ADD2_UP | APPLY_UP => app.smoke_pointer_up(),
         _ => {}
     }
@@ -307,7 +310,7 @@ fn telemetry(app: &crate::App, f: u32) {
 /// resto da seção para baixo, e o botão que a fase seguinte quer clicar sai da vista — foi o que
 /// aconteceu com o **Apply Effects** na 1ª corrida (`⚠️ NÃO está no hit-index`), e a leitura
 /// ingênua disso seria *"o Apply está morto"*. Um widget fora da janela não é um widget morto.
-fn scroll_until_reachable(app: &mut crate::App, id: ph2d_editor::NodeId) {
+fn scroll_until_reachable(app: &mut crate::App, id: ph2d_editor_core::NodeId) {
     if app.smoke_find_widget(id).is_some() {
         return;
     }
@@ -325,7 +328,9 @@ fn build(app: &mut crate::App) {
     let Some(gfx) = app.gfx.as_mut() else {
         return;
     };
-    let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("vector"));
+    let _ = gfx
+        .tools
+        .set_active(&ph2d_editor_core::ToolId::new("vector"));
     gfx.vec_scene.push_path(shape(
         ShapeKind::Ellipse,
         [-1.6, -1.6],

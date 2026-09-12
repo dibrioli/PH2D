@@ -41,7 +41,7 @@
 use std::collections::BTreeMap;
 use std::fs;
 
-use ph2d_editor::screens::task_layout::TaskLayout;
+use ph2d_editor_core::screens::task_layout::TaskLayout;
 
 /// Onde as pontes vivem. ⚠️ Uma ponte nova fora desta pasta escapa ao censo — e o piso abaixo é o
 /// que torna essa fuga visível quando ela levar painéis com ela.
@@ -224,7 +224,7 @@ fn no_layout_opens_a_panel_that_a_tool_bridge_owns() {
 /// nomear, senão ele fecha e não há quem o reabra.
 #[test]
 fn a_layout_names_the_inspector_exactly_when_its_canvas_owner_does_not_take_it_over() {
-    use ph2d_editor::screens::task_layout::CanvasOwner;
+    use ph2d_editor_core::screens::task_layout::CanvasOwner;
     let takeover = tools_that_take_over_the_inspector();
     // ⭐⭐⭐ **A LISTA ESTÁ VAZIA DESDE 2026-09-09, e isso é o PRODUTO, não a varredura partida.**
     //
@@ -295,7 +295,7 @@ fn a_layout_names_the_inspector_exactly_when_its_canvas_owner_does_not_take_it_o
     //    do `motion`, em 2026-09-07, e a lição voltou dois dias depois com duas ferramentas.
 
     let mut named = 0usize;
-    for l in ph2d_editor::screens::task_layout::TaskLayout::ALL {
+    for l in ph2d_editor_core::screens::task_layout::TaskLayout::ALL {
         let names = l.spec().open.contains(&"inspector");
         let taken = match l.spec().canvas {
             CanvasOwner::Tool(id) => takeover.iter().any(|t| t == id),

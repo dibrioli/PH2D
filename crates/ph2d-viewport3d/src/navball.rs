@@ -37,7 +37,7 @@
 //! [US 8.314.789]: https://patents.google.com/patent/US8314789B2/en
 //! [US 9.021.400]: https://patents.google.com/patent/US9021400
 
-use ph2d_editor::zones::Rect as EditorRect;
+use ph2d_editor_core::zones::Rect as EditorRect;
 use ph2d_field_render::Orbit;
 
 use crate::views::Standard;

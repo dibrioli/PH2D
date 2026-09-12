@@ -102,7 +102,7 @@ fn a_vertex_handle_lands_where_the_point_is() {
 fn a_vertex_wins_the_pixel_it_is_painted_on() {
     crate::smoke::set_armed_by_panel(true);
     crate::smoke::with_smoke(|s| {
-        s.vp_mut().area = Some(ph2d_editor::zones::Rect {
+        s.vp_mut().area = Some(ph2d_editor_core::zones::Rect {
             x: 0.0,
             y: 0.0,
             w: f32::from(u16::try_from(AREA_W).expect("cabe")),

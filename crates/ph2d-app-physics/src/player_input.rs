@@ -61,7 +61,7 @@ use ph2d_input::{
 #[must_use]
 pub fn resolve_player_input(
     actions: &mut ActionState,
-    hero: Option<&ph2d_editor::HeroScreen>,
+    hero: Option<&ph2d_editor_core::HeroScreen>,
     device: &ph2d_input::InputState,
 ) -> ph2d_physics_ecs::PlayerInput {
     let Some(hero) = hero else {

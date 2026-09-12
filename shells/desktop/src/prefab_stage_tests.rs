@@ -7,7 +7,7 @@
 
 use super::delta_to_centre;
 use ph2d_ecs::{SimWorld, Transform};
-use ph2d_editor::zones::Rect;
+use ph2d_editor_core::zones::Rect;
 use ph2d_host::WindowSize;
 use ph2d_preview_drive::{Driven, PreviewDrive};
 use ph2d_render::Camera2d;

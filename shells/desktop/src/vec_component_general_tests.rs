@@ -41,7 +41,7 @@ pub(super) fn run(
     sim: &mut SimWorld,
     r: &ph2d_ecs::scene::ComponentRegistry,
     subject: Entity,
-    toasts: &mut ph2d_editor::ToastQueue,
+    toasts: &mut ph2d_editor_core::ToastQueue,
 ) -> (bool, Option<u64>) {
     run_full(verb, sim, r, subject, toasts).0
 }
@@ -53,7 +53,7 @@ pub(super) fn run_full(
     sim: &mut SimWorld,
     r: &ph2d_ecs::scene::ComponentRegistry,
     subject: Entity,
-    toasts: &mut ph2d_editor::ToastQueue,
+    toasts: &mut ph2d_editor_core::ToastQueue,
 ) -> ((bool, Option<u64>), bool) {
     let (mut sc, mut mp) = ph2d_app_components::instance_docs::empty_docs();
     let mut echo = ph2d_app_components::instance_sync::MasterEcho::default();
@@ -163,7 +163,7 @@ fn promoting_a_group_gives_a_copy_with_the_pieces_inside() {
         ));
     }
     ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
-    let mut toasts = ph2d_editor::ToastQueue::default();
+    let mut toasts = ph2d_editor_core::ToastQueue::default();
 
     let (changed, out) = run(ComponentEdit::Create, &mut sim, &r, group, &mut toasts);
 
@@ -187,7 +187,7 @@ fn promoting_a_group_gives_a_copy_with_the_pieces_inside() {
 #[test]
 fn create_through_the_panel_makes_a_real_prefab_and_leaves_a_copy() {
     let (mut sim, r, _map, _id, e) = scene();
-    let mut toasts = ph2d_editor::ToastQueue::default();
+    let mut toasts = ph2d_editor_core::ToastQueue::default();
     let (changed, select_out) = run(ComponentEdit::Create, &mut sim, &r, e, &mut toasts);
     assert!(changed, "o Create pelo painel nao mudou nada");
     assert!(
@@ -208,7 +208,7 @@ fn create_through_the_panel_makes_a_real_prefab_and_leaves_a_copy() {
 #[test]
 fn after_create_the_section_offers_place() {
     let (mut sim, r, map, id, e) = scene();
-    let mut toasts = ph2d_editor::ToastQueue::default();
+    let mut toasts = ph2d_editor_core::ToastQueue::default();
     run(ComponentEdit::Create, &mut sim, &r, e, &mut toasts);
     let s = state_of(&mut sim, &map, &[id], None, false).expect("a seccao existe");
     assert!(s.is_main, "a receita nao se anuncia como mestre");
@@ -230,7 +230,7 @@ fn after_create_the_section_offers_place() {
 #[test]
 fn the_section_still_offers_place_where_the_selection_landed() {
     let (mut sim, r, mut map, _id, e) = scene();
-    let mut toasts = ph2d_editor::ToastQueue::default();
+    let mut toasts = ph2d_editor_core::ToastQueue::default();
     let (_, select_out) = run(ComponentEdit::Create, &mut sim, &r, e, &mut toasts);
     let copy = select_out
         .map(Entity::from_bits)
@@ -258,7 +258,7 @@ fn the_section_still_offers_place_where_the_selection_landed() {
 #[test]
 fn instantiating_from_the_copy_adds_another_copy() {
     let (mut sim, r, _map, _id, e) = scene();
-    let mut toasts = ph2d_editor::ToastQueue::default();
+    let mut toasts = ph2d_editor_core::ToastQueue::default();
     let (_, select_out) = run(ComponentEdit::Create, &mut sim, &r, e, &mut toasts);
     let copy = select_out.map(Entity::from_bits).expect("a copia");
     let before = copies_of(&mut sim, e);
@@ -285,7 +285,7 @@ fn instantiating_from_the_copy_adds_another_copy() {
 #[test]
 fn the_section_offers_making_a_variant_out_of_a_copy() {
     let (mut sim, r, mut map, id, e) = scene();
-    let mut toasts = ph2d_editor::ToastQueue::default();
+    let mut toasts = ph2d_editor_core::ToastQueue::default();
     assert!(
         !state_of(&mut sim, &map, &[id], None, false)
             .expect("a seccao existe")
@@ -325,7 +325,7 @@ fn the_linked_twin_shares_the_art_and_the_plain_one_does_not() {
         ph2d_ecs::ChildOf(e),
     ));
     ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
-    let mut toasts = ph2d_editor::ToastQueue::default();
+    let mut toasts = ph2d_editor_core::ToastQueue::default();
     run(ComponentEdit::Create, &mut sim, &r, e, &mut toasts);
 
     let (plain_changed, plain_out) = run(ComponentEdit::Place, &mut sim, &r, e, &mut toasts);
@@ -364,7 +364,7 @@ fn the_linked_twin_shares_the_art_and_the_plain_one_does_not() {
 #[test]
 fn the_section_offers_opening_the_prefab_of_a_copy() {
     let (mut sim, r, mut map, id, e) = scene();
-    let mut toasts = ph2d_editor::ToastQueue::default();
+    let mut toasts = ph2d_editor_core::ToastQueue::default();
     assert!(
         !state_of(&mut sim, &map, &[id], None, false)
             .expect("a seccao existe")
@@ -394,7 +394,7 @@ fn the_section_offers_opening_the_prefab_of_a_copy() {
 #[test]
 fn opening_the_prefab_selects_the_recipe_and_is_not_an_edit() {
     let (mut sim, r, _map, _id, e) = scene();
-    let mut toasts = ph2d_editor::ToastQueue::default();
+    let mut toasts = ph2d_editor_core::ToastQueue::default();
     let (_, out) = run(ComponentEdit::Create, &mut sim, &r, e, &mut toasts);
     let copy = out.map(Entity::from_bits).expect("a copia");
 
@@ -416,7 +416,7 @@ fn opening_the_prefab_selects_the_recipe_and_is_not_an_edit() {
 #[test]
 fn opening_the_prefab_of_a_plain_shape_refuses_out_loud() {
     let (mut sim, r, _map, _id, e) = scene();
-    let mut toasts = ph2d_editor::ToastQueue::default();
+    let mut toasts = ph2d_editor_core::ToastQueue::default();
     let (changed, out) = run(ComponentEdit::Edit, &mut sim, &r, e, &mut toasts);
     assert!(!changed);
     assert!(out.is_none(), "seleccionou alguma coisa sem haver receita");
@@ -433,7 +433,7 @@ fn opening_the_prefab_of_a_plain_shape_refuses_out_loud() {
 #[test]
 fn promoting_a_copy_gives_a_variant_that_still_follows_its_base() {
     let (mut sim, r, _map, _id, e) = scene();
-    let mut toasts = ph2d_editor::ToastQueue::default();
+    let mut toasts = ph2d_editor_core::ToastQueue::default();
     let (_, out) = run(ComponentEdit::Create, &mut sim, &r, e, &mut toasts);
     let copy = out.map(Entity::from_bits).expect("a copia");
     let base = master_id(&mut sim, copy).expect("o elo da copia");
@@ -474,7 +474,7 @@ fn promoting_a_copy_gives_a_variant_that_still_follows_its_base() {
 #[test]
 fn a_copy_instantiated_from_a_copy_does_not_land_on_top_of_it() {
     let (mut sim, r, _map, _id, e) = scene();
-    let mut toasts = ph2d_editor::ToastQueue::default();
+    let mut toasts = ph2d_editor_core::ToastQueue::default();
     let (_, out) = run(ComponentEdit::Create, &mut sim, &r, e, &mut toasts);
     let first = out.map(Entity::from_bits).expect("a 1a copia");
     let (_, out) = run(ComponentEdit::Place, &mut sim, &r, first, &mut toasts);
@@ -507,7 +507,7 @@ fn place_through_the_panel_adds_a_second_real_copy() {
         ph2d_ecs::ChildOf(e),
     ));
     ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
-    let mut toasts = ph2d_editor::ToastQueue::default();
+    let mut toasts = ph2d_editor_core::ToastQueue::default();
     run(ComponentEdit::Create, &mut sim, &r, e, &mut toasts);
     let before = copies_of(&mut sim, e);
     let (changed, _) = run(ComponentEdit::Place, &mut sim, &r, e, &mut toasts);

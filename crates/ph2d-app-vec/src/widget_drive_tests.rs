@@ -1,7 +1,7 @@
 //! Gates da **ROW QUE DIRIGE** — arquivo irmão de `vec_widget_drive.rs` (plano UI/UX W8b.3).
 
 use super::*;
-use ph2d_editor::widget::{SliderOrientation, SliderState, ToggleState};
+use ph2d_editor_core::widget::{SliderOrientation, SliderState, ToggleState};
 
 /// Uma cena com um WIDGET (nomeado, vestido, opcionalmente vinculado) e uma FORMA alvo.
 fn scene(kind: WidgetKind, name: &str, bound: bool) -> (SimWorld, VecEntityMap, VecPathId) {
@@ -34,7 +34,7 @@ fn scene(kind: WidgetKind, name: &str, bound: bool) -> (SimWorld, VecEntityMap, 
 fn store_with(name: &str, st: InteractiveState) -> WidgetStore {
     let mut s = WidgetStore::with_capacity(8);
     s.register(
-        ph2d_editor::ids::authored_row_id(&crate::ui_panel_spec::key_of(name)),
+        ph2d_editor_core::ids::authored_row_id(&crate::ui_panel_spec::key_of(name)),
         st,
     );
     s

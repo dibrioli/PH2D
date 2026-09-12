@@ -45,12 +45,12 @@ fn the_card_shows_and_drags_the_same_numbers_the_panel_does() {
         let id = m.doc.graph.add_node(nome.clone());
         open_every_section(&mut m, id);
         ph2d_panel_motion_graph::set_graph_selection(vec![id.0]);
-        let Some(painel) = build_params_snapshot(&m, ph2d_editor::ProjectSettings::default())
+        let Some(painel) = build_params_snapshot(&m, ph2d_editor_core::ProjectSettings::default())
         else {
             continue;
         };
         let mut snap = ph2d_panel_motion_graph::snapshot_from(&m.doc.graph, &m.registry);
-        stamp_card_params(&m, ph2d_editor::ProjectSettings::default(), &mut snap);
+        stamp_card_params(&m, ph2d_editor_core::ProjectSettings::default(), &mut snap);
         let Some(view) = snap.nodes.iter().find(|v| v.id == id.0) else {
             continue;
         };
@@ -125,7 +125,7 @@ fn how_many_params_wear_a_face() {
         let id = m.doc.graph.add_node(nome.clone());
         open_every_section(&mut m, id);
         ph2d_panel_motion_graph::set_graph_selection(vec![id.0]);
-        let Some(painel) = build_params_snapshot(&m, ph2d_editor::ProjectSettings::default())
+        let Some(painel) = build_params_snapshot(&m, ph2d_editor_core::ProjectSettings::default())
         else {
             continue;
         };

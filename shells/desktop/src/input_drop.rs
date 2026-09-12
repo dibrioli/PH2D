@@ -9,7 +9,7 @@
 use crate::App;
 use crate::cursor_pos::live_cursor_in_window;
 use crate::image_import::ImportItemResult;
-use ph2d_editor::Toast;
+use ph2d_editor_core::Toast;
 
 impl App {
     /// Imports each dropped path that resolves to an image, anchoring

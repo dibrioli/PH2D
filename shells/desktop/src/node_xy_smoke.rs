@@ -84,8 +84,8 @@ fn announce(app: &crate::App) {
     let display = gfx
         .hero_screen
         .as_ref()
-        .map_or_else(ph2d_editor::LengthDisplay::default, |h| {
-            ph2d_editor::LengthDisplay::of(&h.project)
+        .map_or_else(ph2d_editor_core::LengthDisplay::default, |h| {
+            ph2d_editor_core::LengthDisplay::of(&h.project)
         });
     let unit = display.suffix();
     // O que o painel vai dizer, pela MESMA porta que o desenha.

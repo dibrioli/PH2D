@@ -40,7 +40,7 @@ macro_rules! gpu_or_skip {
 /// Uma cena com a esfera amassada — a fixtura mais próxima de uma escultura.
 fn wrinkled(device: &wgpu::Device) -> Sculpt3dScene {
     let mut s = Sculpt3dScene::new(device, crate::fixtures::wrinkled_sphere(), 1.0);
-    s.note_canvas(ph2d_editor::zones::Rect::new(0.0, 0.0, 900.0, 700.0));
+    s.note_canvas(ph2d_editor_core::zones::Rect::new(0.0, 0.0, 900.0, 700.0));
     s
 }
 
@@ -78,7 +78,7 @@ pub(super) fn open_edges(mesh: &ph2d_mesh::Mesh) -> usize {
 fn the_button_delivers_the_global_chain() {
     let gpu = gpu_or_skip!();
     let mut s = Sculpt3dScene::new(&gpu.device, crate::fixtures::wrinkled_sphere(), 1.0);
-    s.note_canvas(ph2d_editor::zones::Rect::new(0.0, 0.0, 900.0, 700.0));
+    s.note_canvas(ph2d_editor_core::zones::Rect::new(0.0, 0.0, 900.0, 700.0));
     let before: Vec<[f32; 3]> = s.mesh().positions().to_vec();
 
     let r = s
@@ -397,13 +397,13 @@ fn the_two_backends_measured_on_the_same_piece() {
             };
             let mut a = {
                 let mut s = Sculpt3dScene::new(&gpu.device, mesh(), 1.0);
-                s.note_canvas(ph2d_editor::zones::Rect::new(0.0, 0.0, 900.0, 700.0));
+                s.note_canvas(ph2d_editor_core::zones::Rect::new(0.0, 0.0, 900.0, 700.0));
                 s
             };
             let g = a.quad_remesh_global(detail, 0.0);
             let mut b = {
                 let mut s = Sculpt3dScene::new(&gpu.device, mesh(), 1.0);
-                s.note_canvas(ph2d_editor::zones::Rect::new(0.0, 0.0, 900.0, 700.0));
+                s.note_canvas(ph2d_editor_core::zones::Rect::new(0.0, 0.0, 900.0, 700.0));
                 s
             };
             let l = b.quad_remesh(detail, 0.0);

@@ -128,10 +128,10 @@ fn the_first_observation_of_a_session_never_writes() {
 #[test]
 fn a_saved_arrangement_comes_back_but_a_forbidden_slot_does_not() {
     let _ = ph2d_panel_registry_init::register_all_panels();
-    let mut hero = ph2d_editor::HeroScreen::new(ph2d_editor::NodeId(1));
+    let mut hero = ph2d_editor_core::HeroScreen::new(ph2d_editor_core::NodeId(1));
 
     let node_of = |id: &str| {
-        ph2d_editor::panel::with_registry_ref(|reg| {
+        ph2d_editor_core::panel::with_registry_ref(|reg| {
             reg.panels()
                 .iter()
                 .find(|p| p.manifest.id == id)
@@ -172,13 +172,13 @@ fn a_saved_arrangement_comes_back_but_a_forbidden_slot_does_not() {
     );
     assert_eq!(
         hero.store
-            .dock_width_choice(ph2d_editor::screens::layout::DockSide::Left),
+            .dock_width_choice(ph2d_editor_core::screens::layout::DockSide::Left),
         Some(281.0),
         "a largura da coluna não voltou"
     );
     assert_eq!(
         hero.store
-            .dock_width_choice(ph2d_editor::screens::layout::DockSide::Right),
+            .dock_width_choice(ph2d_editor_core::screens::layout::DockSide::Right),
         None,
         "uma largura ausente do ficheiro virou uma escolha"
     );
@@ -188,7 +188,7 @@ fn a_saved_arrangement_comes_back_but_a_forbidden_slot_does_not() {
 #[test]
 fn what_is_installed_is_what_gets_written_back() {
     let _ = ph2d_panel_registry_init::register_all_panels();
-    let mut hero = ph2d_editor::HeroScreen::new(ph2d_editor::NodeId(2));
+    let mut hero = ph2d_editor_core::HeroScreen::new(ph2d_editor_core::NodeId(2));
     assert_eq!(
         current(&hero),
         Layout::default(),
@@ -218,7 +218,7 @@ fn what_is_installed_is_what_gets_written_back() {
 #[test]
 fn which_panels_were_open_comes_back_too() {
     let _ = ph2d_panel_registry_init::register_all_panels();
-    let mut hero = ph2d_editor::HeroScreen::new(ph2d_editor::NodeId(3));
+    let mut hero = ph2d_editor_core::HeroScreen::new(ph2d_editor_core::NodeId(3));
     assert!(
         !hero.is_panel_visible("audio_mixer"),
         "controlo: o mixer já nasce aberto e o gate mediria o default"
@@ -250,7 +250,7 @@ fn which_panels_were_open_comes_back_too() {
 #[test]
 fn the_projection_writes_only_the_difference_from_what_each_panel_declares() {
     let _ = ph2d_panel_registry_init::register_all_panels();
-    let mut hero = ph2d_editor::HeroScreen::new(ph2d_editor::NodeId(4));
+    let mut hero = ph2d_editor_core::HeroScreen::new(ph2d_editor_core::NodeId(4));
     assert_eq!(
         current(&hero).open,
         Vec::<String>::new(),
@@ -286,7 +286,7 @@ fn the_open_list_and_the_slot_list_do_not_collide_in_the_hash() {
 /// ⭐⭐ **O ficheiro inteiro: o layout activo e uma arrumação POR layout.**
 #[test]
 fn the_whole_file_survives_the_round_trip_with_one_arrangement_per_layout() {
-    use ph2d_editor::screens::task_layout::TaskLayout;
+    use ph2d_editor_core::screens::task_layout::TaskLayout;
     let mut v = Saved {
         active: Some(TaskLayout::Vector),
         ..Saved::default()
@@ -355,7 +355,7 @@ fn an_unknown_active_layout_falls_back_without_poisoning_the_file() {
 /// *Vector*, muda para o *Animate*, e perde o que fez no primeiro.
 #[test]
 fn composing_keeps_what_the_other_layouts_had() {
-    use ph2d_editor::screens::task_layout::TaskLayout;
+    use ph2d_editor_core::screens::task_layout::TaskLayout;
     let mut saved = Saved::default();
     saved.per_layout.insert(
         "vector".into(),

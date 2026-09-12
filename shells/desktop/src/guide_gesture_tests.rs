@@ -2,8 +2,8 @@
 //! consegue dirigir.
 
 use super::*;
-use ph2d_editor::GridView;
-use ph2d_editor::zones::Rect;
+use ph2d_editor_core::GridView;
+use ph2d_editor_core::zones::Rect;
 use ph2d_guides::GuideSet;
 
 /// Canvas de 800×600 no canto, câmera na origem, 10 unidades de altura.
@@ -42,7 +42,7 @@ fn a_press_on_the_top_ruler_spawns_a_horizontal_guide_at_the_cursors_height() {
         "andar 400 px na horizontal moveu a guia horizontal de {pos} para {pos2}"
     );
     // E o valor é o mundo sob a ALTURA do cursor, pela porta da régua da esquerda.
-    let expected = ph2d_editor::ruler::world_at(&v, 10.0, RulerAxis::Left);
+    let expected = ph2d_editor_core::ruler::world_at(&v, 10.0, RulerAxis::Left);
     assert!((pos - expected).abs() < 1e-9);
 }
 
@@ -56,7 +56,7 @@ fn a_press_on_the_left_ruler_spawns_a_vertical_guide_at_the_cursors_x() {
     };
     assert_eq!(r, RulerAxis::Left);
     assert_eq!(r.spawns(), ph2d_guides::GuideAxis::Vertical);
-    let expected = ph2d_editor::ruler::world_at(&v, 10.0, RulerAxis::Top);
+    let expected = ph2d_editor_core::ruler::world_at(&v, 10.0, RulerAxis::Top);
     assert!((pos - expected).abs() < 1e-9);
 }
 

@@ -51,7 +51,7 @@ pub mod modal;
 
 pub use family::{AppFamily, AppFamilyRegistry, SmokeRouter};
 
-use ph2d_editor::zones::Rect;
+use ph2d_editor_core::zones::Rect;
 
 /// **Os modificadores do teclado, no vocabulário desta fronteira.**
 ///

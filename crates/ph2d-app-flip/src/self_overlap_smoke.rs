@@ -85,7 +85,7 @@ pub fn stage(obj: &mut ph2d_flip::FlipObject) -> (f32, f32) {
 /// Roda no prólogo do frame (ao lado dos outros smokes). No-op sem a env.
 pub fn arm(
     flip: &mut ph2d_flip::FlipDoc,
-    tools: &mut ph2d_editor::ToolRegistry,
+    tools: &mut ph2d_editor_core::ToolRegistry,
     playhead: &mut ph2d_core::Playhead,
 ) {
     if !enabled() {
@@ -94,7 +94,7 @@ pub fn arm(
     if FRAME.fetch_add(1, Ordering::Relaxed) != 3 {
         return;
     }
-    let tool_ok = tools.set_active(&ph2d_editor::ToolId::new("flip"));
+    let tool_ok = tools.set_active(&ph2d_editor_core::ToolId::new("flip"));
 
     let oid = flip.push_object("Self Overlap Smoke");
     let obj = flip.object_mut(oid).expect("objeto recem-criado");

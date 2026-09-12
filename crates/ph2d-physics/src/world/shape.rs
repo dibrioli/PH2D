@@ -121,7 +121,7 @@ impl ShapeDesc {
     /// picture would put the dot where the physics is not.
     ///
     /// The vocabulary is deliberately the same one the pivot handle already
-    /// snaps to (`ph2d_editor::pivot_snap_candidates`: centre / corners / edge
+    /// snaps to (`ph2d_editor_core::pivot_snap_candidates`: centre / corners / edge
     /// mids) — a second answer to *"what can I snap a point to?"* is how two
     /// handles in the same editor come to feel like different programs. What
     /// differs is that a round shape has no corners, and inventing some would

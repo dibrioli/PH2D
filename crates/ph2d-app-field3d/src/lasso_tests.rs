@@ -12,7 +12,7 @@ pub(super) use crate::input::begin;
 use crate::scene::SelectRequest;
 use crate::smoke::Drag;
 
-pub const AREA: ph2d_editor::zones::Rect = ph2d_editor::zones::Rect {
+pub const AREA: ph2d_editor_core::zones::Rect = ph2d_editor_core::zones::Rect {
     x: 100.0,
     y: 50.0,
     w: 400.0,
@@ -260,7 +260,7 @@ fn the_modifier_turns_a_click_into_a_toggle() {
         // ⭐⭐ **E aplicar DUAS vezes tira-a** — a assimetria com o laço, medida sobre estado
         // prévio. ⛔ Sem esta metade o gate lia só o *pedido*, e uma mutação que trocava o verbo do
         // consumidor (`toggle` → `add`) sobrevivia: o pedido continuava a dizer `Toggle`.
-        let mut gizmo = ph2d_editor::screens::hero::GizmoStateGroup::default();
+        let mut gizmo = ph2d_editor_core::screens::hero::GizmoStateGroup::default();
         crate::scene::apply(&mut gizmo, req.expect("o pedido"));
         assert_eq!(
             gizmo.selected_len(),
@@ -375,7 +375,7 @@ fn a_lasso_over_many_asks_for_all_of_them() {
 #[test]
 fn the_consumer_puts_all_of_them_in_the_selection() {
     for n in [2usize, 3, 4, 5, 6] {
-        let mut gizmo = ph2d_editor::screens::hero::GizmoStateGroup::default();
+        let mut gizmo = ph2d_editor_core::screens::hero::GizmoStateGroup::default();
         // A MESMA lei que o `render_loop` corre sobre `SelectRequest::AddMany`.
         for bits in 1..=n as u64 {
             gizmo.toggle_in_selection(bits);
@@ -398,7 +398,7 @@ fn the_consumer_puts_all_of_them_in_the_selection() {
 fn the_lasso_selection_survives_the_next_frames() {
     for n in [2usize, 3, 4, 5] {
         armed_with(&balls(n), |sim| {
-            let mut gizmo = ph2d_editor::screens::hero::GizmoStateGroup::default();
+            let mut gizmo = ph2d_editor_core::screens::hero::GizmoStateGroup::default();
             let (a, b) = ([4.0f32, 4.0], [396.0f32, 296.0]);
             crate::smoke::with_smoke(|s| {
                 begin(

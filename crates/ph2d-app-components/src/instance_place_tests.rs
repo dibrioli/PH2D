@@ -20,7 +20,7 @@ fn drain(
     sim: &mut SimWorld,
     r: &ph2d_ecs::scene::ComponentRegistry,
     echo: &mut MasterEcho,
-    toasts: &mut ph2d_editor::ToastQueue,
+    toasts: &mut ph2d_editor_core::ToastQueue,
     entity: Entity,
     step: [f32; 2],
 ) -> bool {
@@ -68,7 +68,7 @@ fn a_placed_instance_never_lands_on_top_of_what_it_came_from() {
     let mut sim = SimWorld::new();
     let r = reg();
     let mut echo = MasterEcho::default();
-    let mut toasts = ph2d_editor::ToastQueue::default();
+    let mut toasts = ph2d_editor_core::ToastQueue::default();
     let at = ph2d_core::Vec2::new(2.0, -1.0);
     let src = sim
         .world_mut()
@@ -164,7 +164,7 @@ fn a_placed_instance_lands_where_a_nested_recipe_lives() {
     let mut sim = SimWorld::new();
     let r = reg();
     let mut echo = MasterEcho::default();
-    let mut toasts = ph2d_editor::ToastQueue::default();
+    let mut toasts = ph2d_editor_core::ToastQueue::default();
     let group = sim
         .world_mut()
         .spawn((
@@ -224,7 +224,7 @@ fn a_placed_instance_of_a_root_recipe_stays_at_the_root() {
     let mut sim = SimWorld::new();
     let r = reg();
     let mut echo = MasterEcho::default();
-    let mut toasts = ph2d_editor::ToastQueue::default();
+    let mut toasts = ph2d_editor_core::ToastQueue::default();
     let master = spawn_master(&mut sim);
     assert!(drain(
         super::Verb::Place,

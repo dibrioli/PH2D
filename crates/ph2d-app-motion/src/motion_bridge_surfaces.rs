@@ -27,7 +27,7 @@ pub(super) fn open_and_close(
 ) {
     // ── 1. Panel visibility (mirror of the Vector dock takeover) ──────────
     hero.panel_visibility.insert(
-        ph2d_editor::screens::hero::PANEL_MOTION_GRAPH,
+        ph2d_editor_core::screens::hero::PANEL_MOTION_GRAPH,
         motion_active,
     );
     // ⭐⭐⭐ **O PAINEL LATERAL DE PARAMS SAIU** (doc 103, ordem do Enio de 2026-09-05: *«como no
@@ -53,10 +53,10 @@ pub(super) fn open_and_close(
     let over_graph = motion_active
         && hero
             .store
-            .panel_rect(ph2d_editor::ids::MOTION_GRAPH_PANEL)
+            .panel_rect(ph2d_editor_core::ids::MOTION_GRAPH_PANEL)
             .is_some_and(|r| r.contains(cursor.0, cursor.1));
     hero.store
-        .set_graph_focused(over_graph.then_some(ph2d_editor::ids::MOTION_GRAPH_PANEL));
+        .set_graph_focused(over_graph.then_some(ph2d_editor_core::ids::MOTION_GRAPH_PANEL));
 
     // ── 2. Center split + Inspector takeover — edge-triggered on activation ──
     {
@@ -101,7 +101,7 @@ pub(super) fn open_and_close(
                 // Leaving the tool does NOT hide it again: it is the GLOBAL timeline, and taking
                 // away a panel the artist can see is not ours to do. `L` still toggles it.
                 hero.panel_visibility
-                    .insert(ph2d_editor::screens::hero::PANEL_TIMELINE, true);
+                    .insert(ph2d_editor_core::screens::hero::PANEL_TIMELINE, true);
             } else {
                 hero.view.center_split = CenterSplit::None;
             }

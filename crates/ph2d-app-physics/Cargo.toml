@@ -30,7 +30,7 @@ ph2d-render = { path = "../ph2d-render" }
 # declarasse. ⚠️ A `ph2d-timeline` era um dos SETE prendedores do §6 do handoff da Fase A — e a
 # resposta é que ela é uma crate IRMÃ, não a shell: a família pode depender dela.
 ph2d-anim = { path = "../ph2d-anim" }
-ph2d-editor = { path = "../ph2d-editor" }
+ph2d-editor-core = { path = "../ph2d-editor-core" }
 ph2d-host = { path = "../ph2d-host" }
 ph2d-input = { path = "../ph2d-input" }
 ph2d-panel-physics = { path = "../ph2d-panel-physics" }

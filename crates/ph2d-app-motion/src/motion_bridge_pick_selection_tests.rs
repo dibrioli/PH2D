@@ -13,18 +13,18 @@ use crate::motion_state::{FormaEscolhida, MotionState};
 use ph2d_panel_motion_graph::{GraphIntent, drain_intents, push_intent};
 
 /// Empurra o clique do botão pelo funil real.
-fn clicar(m: &mut MotionState, node: u32) -> ph2d_editor::ToastQueue {
+fn clicar(m: &mut MotionState, node: u32) -> ph2d_editor_core::ToastQueue {
     let _ = drain_intents();
     push_intent(GraphIntent::PickSelection {
         node,
         param: "path",
     });
-    let mut toasts = ph2d_editor::ToastQueue::default();
+    let mut toasts = ph2d_editor_core::ToastQueue::default();
     apply_graph_intents(
         m,
         &mut ph2d_core::Playhead::default(),
         &mut toasts,
-        &mut ph2d_editor::screens::layout::CenterSplit::None,
+        &mut ph2d_editor_core::screens::layout::CenterSplit::None,
     );
     toasts
 }

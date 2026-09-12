@@ -197,11 +197,11 @@ fn draw_entity_marks(
         // **O NOME, ao lado da cruz.** Sem ele, cinco âncoras são cinco cruzes coloridas e o
         // artista tem de contar linhas no painel para saber qual é qual — a cor sozinha diz que
         // são diferentes, não QUAIS são.
-        ph2d_editor::paint::paint_text_centered(
+        ph2d_editor_core::paint::paint_text_centered(
             text_system,
             vector_scene,
             &a.name,
-            ph2d_editor::zones::Rect::new(
+            ph2d_editor_core::zones::Rect::new(
                 c.x as f32 + CROSS_PX as f32,
                 c.y as f32 - CROSS_PX as f32 - LABEL_BOX_H_PX,
                 LABEL_BOX_W_PX,

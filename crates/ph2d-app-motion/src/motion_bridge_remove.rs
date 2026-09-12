@@ -37,7 +37,7 @@ pub(super) fn output_nodes(
 #[cfg(feature = "panel-motion-graph")]
 pub(super) fn apply_disconnect(
     motion: &mut super::MotionState,
-    toasts: &mut ph2d_editor::ToastQueue,
+    toasts: &mut ph2d_editor_core::ToastQueue,
     to_node: u32,
     to_port: u16,
 ) {
@@ -48,7 +48,7 @@ pub(super) fn apply_disconnect(
         NodeId(to_node),
         to_port,
     ) {
-        toasts.push(ph2d_editor::Toast::info(
+        toasts.push(ph2d_editor_core::Toast::info(
             "State wiring is automatic - disconnect the chain from the forces port instead",
         ));
         return;
@@ -73,7 +73,7 @@ pub(super) fn apply_disconnect(
 pub(super) fn apply_delete_selection(
     motion: &mut super::MotionState,
     nodes: Vec<u32>,
-    toasts: &mut ph2d_editor::ToastQueue,
+    toasts: &mut ph2d_editor_core::ToastQueue,
 ) {
     let pre = motion.doc.clone();
     let mut changed = false;
@@ -94,7 +94,7 @@ pub(super) fn apply_delete_selection(
             )
     });
     if !foreign.is_empty() {
-        toasts.push(ph2d_editor::Toast::info(
+        toasts.push(ph2d_editor_core::Toast::info(
             "That node lives outside this group - leave the group to delete it",
         ));
     }

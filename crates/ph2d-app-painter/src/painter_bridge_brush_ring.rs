@@ -3,7 +3,7 @@
 //! Selection mode (which shows a crosshair cursor instead — see `painter_bridge_selection_overlay`).
 
 use ph2d_ecs::SimWorld;
-use ph2d_editor::HeroScreen;
+use ph2d_editor_core::HeroScreen;
 use ph2d_host::WindowSize;
 use ph2d_render::Camera2d;
 use ph2d_tool_painter::{DAB_FLATTEN_MAX, PainterTool};

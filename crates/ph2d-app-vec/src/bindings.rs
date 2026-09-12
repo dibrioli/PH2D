@@ -58,7 +58,7 @@ impl TokenCtx {
     pub fn factory() -> Self {
         Self {
             theme: Theme::default(),
-            pixels_per_meter: ph2d_editor::project::DEFAULT_PIXELS_PER_METER,
+            pixels_per_meter: ph2d_editor_core::project::DEFAULT_PIXELS_PER_METER,
         }
     }
 }
@@ -153,16 +153,16 @@ pub fn resolve(sim: &SimWorld, map: &VecEntityMap, tok: TokenCtx) -> Vec<BoundSt
 /// se inverte. É o mesmo desenho do `frames::device_preset`, e o custo é 162 comparações num
 /// clique — não num frame.
 #[must_use]
-pub fn token_choice(id: ph2d_editor::NodeId) -> Option<(BoundProp, Option<&'static str>)> {
-    for slot in ph2d_editor::ids::TOKEN_SLOTS {
+pub fn token_choice(id: ph2d_editor_core::NodeId) -> Option<(BoundProp, Option<&'static str>)> {
+    for slot in ph2d_editor_core::ids::TOKEN_SLOTS {
         // ⚠️ O alvo vem do CÓDIGO da tabela pela porta do modelo, e não de um `match` escrito aqui:
         // um slot novo nasce ligado, em vez de virar uma linha de picker que não faz nada.
         let prop = BoundProp::from_code(slot.code)?;
-        if id == ph2d_editor::ids::vector_token_option_id(slot.code, 0) {
+        if id == ph2d_editor_core::ids::vector_token_option_id(slot.code, 0) {
             return Some((prop, None));
         }
         for i in 0..slot.table.len() {
-            if id == ph2d_editor::ids::vector_token_option_id(slot.code, i + 1) {
+            if id == ph2d_editor_core::ids::vector_token_option_id(slot.code, i + 1) {
                 return Some((prop, slot.table.key(i)));
             }
         }

@@ -8,9 +8,9 @@
 //! e o estado do picker é semeável no store. Um arch-gate sobre o fonte teria sido a resposta
 //! preguiçosa a *"isto exige janela"* — e a janela não é exigida.
 
-use ph2d_editor::interaction::InteractiveState;
-use ph2d_editor::screens::hero::HeroScreen;
-use ph2d_editor::widget::{ChannelMode, Harmony, InterpolationMode};
+use ph2d_editor_core::interaction::InteractiveState;
+use ph2d_editor_core::screens::hero::HeroScreen;
+use ph2d_editor_core::widget::{ChannelMode, Harmony, InterpolationMode};
 use ph2d_tokens::color::{Color, ColorValue};
 use ph2d_tokens::overrides::{
     TokenValue, clear_color_overrides, color_overrides, set_color_override,
@@ -21,8 +21,8 @@ use super::dispatch;
 
 /// Uma fila de toasts descartável — estes gates medem a CAMADA, e a recusa de laço tem gate
 /// próprio (`a_loop_is_refused_at_the_door_and_writes_nothing`, na `ph2d-tokens`).
-fn toasts() -> ph2d_editor::ToastQueue {
-    ph2d_editor::ToastQueue::default()
+fn toasts() -> ph2d_editor_core::ToastQueue {
+    ph2d_editor_core::ToastQueue::default()
 }
 
 /// Escrever um LITERAL — o `expect` documenta a propriedade: um literal TERMINA uma cadeia de
@@ -34,9 +34,9 @@ fn put(theme: Theme, token: ColorToken, colour: Option<Color>) {
 
 /// Uma tela com o picker aberto sobre a swatch da linha `row`, com a cor `rgba` escolhida.
 fn hero_with_picker_on(row: usize, rgba: [u8; 4]) -> HeroScreen {
-    let mut hero = HeroScreen::new(ph2d_editor::NodeId(1));
+    let mut hero = HeroScreen::new(ph2d_editor_core::NodeId(1));
     hero.store.register(
-        ph2d_editor::ids::INSP_BLENDER_PICKER,
+        ph2d_editor_core::ids::INSP_BLENDER_PICKER,
         InteractiveState::BlenderPicker {
             value: ColorValue::from_rgba8(rgba[0], rgba[1], rgba[2], rgba[3]),
             channel_mode: ChannelMode::Rgb,
@@ -48,7 +48,7 @@ fn hero_with_picker_on(row: usize, rgba: [u8; 4]) -> HeroScreen {
         },
     );
     hero.store
-        .set_picker_target(Some(ph2d_editor::ids::tokens_swatch_id(row)));
+        .set_picker_target(Some(ph2d_editor_core::ids::tokens_swatch_id(row)));
     hero
 }
 
@@ -107,7 +107,7 @@ fn resetting_the_mode_leaves_the_other_modes_alone() {
         b: 3,
         a: 255,
     };
-    let mut hero = HeroScreen::new(ph2d_editor::NodeId(1));
+    let mut hero = HeroScreen::new(ph2d_editor_core::NodeId(1));
     let here = hero.theme;
     let other = if here == Theme::Sunstone {
         Theme::Forge
@@ -136,7 +136,7 @@ fn resetting_a_row_releases_that_token_only() {
         b: 3,
         a: 255,
     };
-    let mut hero = HeroScreen::new(ph2d_editor::NodeId(1));
+    let mut hero = HeroScreen::new(ph2d_editor_core::NodeId(1));
     let theme = hero.theme;
     put(theme, ColorToken::ALL[0], Some(c));
     put(theme, ColorToken::ALL[3], Some(c));
@@ -154,7 +154,7 @@ fn resetting_a_row_releases_that_token_only() {
 #[test]
 fn the_link_intent_reaches_the_layer() {
     clear_color_overrides();
-    let mut hero = HeroScreen::new(ph2d_editor::NodeId(1));
+    let mut hero = HeroScreen::new(ph2d_editor_core::NodeId(1));
     let theme = hero.theme;
     let (a, b) = (0usize, 3usize);
     ph2d_panel_tokens::state::push_intent_for_tests(ph2d_panel_tokens::TokensIntent::Link {
@@ -181,7 +181,7 @@ fn the_link_intent_reaches_the_layer() {
 #[test]
 fn a_refused_loop_says_so_and_writes_nothing() {
     clear_color_overrides();
-    let mut hero = HeroScreen::new(ph2d_editor::NodeId(1));
+    let mut hero = HeroScreen::new(ph2d_editor_core::NodeId(1));
     let mut q = toasts();
     // a -> b passa.
     ph2d_panel_tokens::state::push_intent_for_tests(ph2d_panel_tokens::TokensIntent::Link {
@@ -214,7 +214,7 @@ fn a_refused_loop_says_so_and_writes_nothing() {
 #[test]
 fn picking_a_colour_on_a_linked_row_breaks_the_link() {
     clear_color_overrides();
-    let mut hero = HeroScreen::new(ph2d_editor::NodeId(1));
+    let mut hero = HeroScreen::new(ph2d_editor_core::NodeId(1));
     let theme = hero.theme;
     let (a, b) = (0usize, 3usize);
     set_color_override(
@@ -260,7 +260,7 @@ fn fresh_both() {
 
 /// Uma tela sem picker nenhum — os intents numéricos não passam por ele.
 fn plain_hero() -> HeroScreen {
-    HeroScreen::new(ph2d_editor::NodeId(1))
+    HeroScreen::new(ph2d_editor_core::NodeId(1))
 }
 
 /// **Um número digitado chega à camada.**

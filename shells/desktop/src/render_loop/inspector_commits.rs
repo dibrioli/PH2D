@@ -24,7 +24,7 @@ use ph2d_ecs::scene::{
     ComponentRegistry, EditorCommand, EditorCommandQueue, apply_editor_commands,
 };
 use ph2d_ecs::{SimWorld, Transform, Visibility};
-use ph2d_editor::{
+use ph2d_editor_core::{
     BlendFieldEdit, HeroScreen, InspectorNameInfo, InspectorTransformInfo, OrderingFieldEdit,
     PhysicsFieldEdit, SamplingFieldEdit, SpriteFieldEdit, Toast, ToastQueue, VisibilityFieldEdit,
 };
@@ -45,11 +45,11 @@ pub(super) fn dispatch(
     ordering_edits: &[(u64, OrderingFieldEdit)],
     sampling_edits: &[(u64, SamplingFieldEdit)],
     blend_edits: &[(u64, BlendFieldEdit)],
-    slice_edits: &[(u64, ph2d_editor::SliceFieldEdit)],
-    anchor_edits: &[(u64, ph2d_editor::AnchorFieldEdit)],
-    anim_edits: &[(u64, ph2d_editor::AnimFieldEdit)],
-    timer_edits: &[(u64, ph2d_editor::TimerFieldEdit)],
-    action_edits: &[(u64, ph2d_editor::ActionFieldEdit)],
+    slice_edits: &[(u64, ph2d_editor_core::SliceFieldEdit)],
+    anchor_edits: &[(u64, ph2d_editor_core::AnchorFieldEdit)],
+    anim_edits: &[(u64, ph2d_editor_core::AnimFieldEdit)],
+    timer_edits: &[(u64, ph2d_editor_core::TimerFieldEdit)],
+    action_edits: &[(u64, ph2d_editor_core::ActionFieldEdit)],
     physics_edits: &[(u64, PhysicsFieldEdit)],
     visibility_section_edits: &[(u64, VisibilityFieldEdit)],
     hero: &mut HeroScreen,
@@ -453,7 +453,7 @@ mod sprite_field_tests {
         SpriteEditTarget, SpriteEditables, apply_sprite_field, clamp_frame,
     };
     use ph2d_ecs::{SpriteCornerTint, SpriteGrid};
-    use ph2d_editor::SpriteFieldEdit;
+    use ph2d_editor_core::SpriteFieldEdit;
     use ph2d_render::Sprite;
 
     /// Os quatro editáveis no estado neutro — o que uma sprite sem nenhum dos três componentes

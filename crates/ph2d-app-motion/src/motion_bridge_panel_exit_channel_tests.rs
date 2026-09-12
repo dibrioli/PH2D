@@ -36,8 +36,8 @@ fn the_card_walks_the_channel_list_and_writes_both_halves() {
             crate::motion_bridge::apply_graph_intents(
                 m,
                 &mut ph2d_core::Playhead::default(),
-                &mut ph2d_editor::ToastQueue::default(),
-                &mut ph2d_editor::screens::layout::CenterSplit::None,
+                &mut ph2d_editor_core::ToastQueue::default(),
+                &mut ph2d_editor_core::screens::layout::CenterSplit::None,
             );
             let saiu = ph2d_panel_motion_params::drain_param_intents();
             let coluna = saiu.iter().find_map(|i| match i {
@@ -98,7 +98,7 @@ fn the_card_walks_the_same_channel_order_the_panel_paints() {
     ph2d_panel_motion_graph::set_graph_selection(vec![id.0]);
     let painel = crate::motion_bridge::params::build_params_snapshot(
         &m,
-        ph2d_editor::ProjectSettings::default(),
+        ph2d_editor_core::ProjectSettings::default(),
     )
     .expect("o no' selecionado tem painel");
     ph2d_panel_motion_graph::set_graph_selection(Vec::new());
@@ -147,7 +147,7 @@ fn the_card_names_a_channel_the_way_the_panel_names_it() {
         let mut snap = ph2d_panel_motion_graph::snapshot_from(&m.doc.graph, &m.registry);
         crate::motion_bridge::params::card::stamp_card_params(
             &m,
-            ph2d_editor::ProjectSettings::default(),
+            ph2d_editor_core::ProjectSettings::default(),
             &mut snap,
         );
         snap.nodes
@@ -207,8 +207,8 @@ fn the_line_the_list_shows_is_the_line_the_pick_writes() {
         crate::motion_bridge::apply_graph_intents(
             &mut m,
             &mut ph2d_core::Playhead::default(),
-            &mut ph2d_editor::ToastQueue::default(),
-            &mut ph2d_editor::screens::layout::CenterSplit::None,
+            &mut ph2d_editor_core::ToastQueue::default(),
+            &mut ph2d_editor_core::screens::layout::CenterSplit::None,
         );
         let saiu = ph2d_panel_motion_params::drain_param_intents();
         let coluna = saiu.iter().find_map(|i| match i {
@@ -247,8 +247,8 @@ fn an_index_past_the_end_of_a_live_list_writes_nothing() {
     crate::motion_bridge::apply_graph_intents(
         &mut m,
         &mut ph2d_core::Playhead::default(),
-        &mut ph2d_editor::ToastQueue::default(),
-        &mut ph2d_editor::screens::layout::CenterSplit::None,
+        &mut ph2d_editor_core::ToastQueue::default(),
+        &mut ph2d_editor_core::screens::layout::CenterSplit::None,
     );
     let saiu = ph2d_panel_motion_params::drain_param_intents();
     assert!(saiu.is_empty(), "um indice fora da lista e' mudo: {saiu:?}");
@@ -368,8 +368,8 @@ fn the_live_columns_the_stream_cooked_are_in_the_list_and_pickable() {
     crate::motion_bridge::apply_graph_intents(
         &mut m,
         &mut ph2d_core::Playhead::default(),
-        &mut ph2d_editor::ToastQueue::default(),
-        &mut ph2d_editor::screens::layout::CenterSplit::None,
+        &mut ph2d_editor_core::ToastQueue::default(),
+        &mut ph2d_editor_core::screens::layout::CenterSplit::None,
     );
     let saiu = ph2d_panel_motion_params::drain_param_intents();
     assert!(
@@ -405,13 +405,13 @@ fn with_the_side_panel_out_the_card_still_writes() {
             value: f64::from(antes) + 3.0,
         },
     );
-    let mut store = ph2d_editor::interaction::WidgetStore::default();
+    let mut store = ph2d_editor_core::interaction::WidgetStore::default();
     crate::motion_bridge::params::publish_for_tests(
         &mut m,
         &mut store,
         true,
-        ph2d_editor::ProjectSettings::default(),
-        &mut ph2d_editor::ToastQueue::default(),
+        ph2d_editor_core::ProjectSettings::default(),
+        &mut ph2d_editor_core::ToastQueue::default(),
     );
     assert!(
         ph2d_panel_motion_params::current_params().is_none(),

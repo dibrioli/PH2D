@@ -15,7 +15,7 @@ fn the_ui_sound_is_born_off() {
     // antes disso (e com `$HOME` por definir, quando a semente é o próprio default) quem responde
     // é o vivo. *Dois defaults para o mesmo facto é um deles a divergir em silêncio.*
     assert!(
-        !ph2d_editor::HeroScreen::new(ph2d_editor::NodeId(1)).ui_sound,
+        !ph2d_editor_core::HeroScreen::new(ph2d_editor_core::NodeId(1)).ui_sound,
         "o portador VIVO nasceu ligado"
     );
     // E um ficheiro que não o menciona deixa-o desligado — a tolerância que dispensa a versão.

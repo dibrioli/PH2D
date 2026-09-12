@@ -6,7 +6,7 @@ use crate::painter_bridge_upload::{UploadPlan, plan_upload};
 use crate::painter_preview_pipeline_tests::{
     ENTITY, assert_screen_equals, cp, impasto_tool, screen_truth,
 };
-use ph2d_editor::tool::{CanvasPaintTool, PointerPhase};
+use ph2d_editor_core::tool::{CanvasPaintTool, PointerPhase};
 use ph2d_painter_effects::adjustments::AdjustmentKind;
 use ph2d_preview_slot::PreviewGpu as PainterPreviewGpu;
 use ph2d_tool_painter::PainterTool;
@@ -24,7 +24,7 @@ pub(super) fn app_frame(
     session: &mut Option<crate::painter_gpu_preview::PainterGpuPreview>,
     preview: &mut Option<PainterPreview>,
     preview_gpu: &mut Option<PainterPreviewGpu>,
-    toasts: &mut ph2d_editor::toast::ToastQueue,
+    toasts: &mut ph2d_editor_core::toast::ToastQueue,
 ) -> bool {
     let gpu_owns = crate::painter_gpu_preview::try_drive(
         session,
@@ -112,7 +112,7 @@ fn the_screen_survives_the_gpu_to_cpu_producer_handoff() {
     let mut session = None;
     let mut preview = None;
     let mut preview_gpu: Option<PainterPreviewGpu> = None;
-    let mut toasts = ph2d_editor::toast::ToastQueue::default();
+    let mut toasts = ph2d_editor_core::toast::ToastQueue::default();
     let counter = std::cell::Cell::new(0u32);
     let frame = |t: &mut PainterTool,
                  renderer: &mut ph2d_render::SpriteRenderer,
@@ -378,7 +378,7 @@ fn the_gpu_producer_shows_what_the_cpu_producer_shows() {
     );
     let mut t = impasto_tool(size);
     let (mut session, mut preview, mut toasts) =
-        (None, None, ph2d_editor::toast::ToastQueue::default());
+        (None, None, ph2d_editor_core::toast::ToastQueue::default());
     let mut preview_gpu: Option<PainterPreviewGpu> = None;
 
     // Sculpt: a curved stroke, so the relief carries slopes in every direction. A straight one would
@@ -476,7 +476,7 @@ fn the_paper_alone_survives_the_gpu_producer() {
     let mut t = crate::painter_preview_pipeline_tests::impasto_tool(size);
     t.set_substrate_depth(1.0);
     let (mut session, mut preview, mut toasts) =
-        (None, None, ph2d_editor::toast::ToastQueue::default());
+        (None, None, ph2d_editor_core::toast::ToastQueue::default());
     let mut preview_gpu: Option<PainterPreviewGpu> = None;
 
     let mut gpu_owns = false;

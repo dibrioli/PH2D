@@ -32,7 +32,7 @@
 
 use ph2d_core::Vec2;
 use ph2d_ecs::{NamedAnchor, Transform};
-use ph2d_editor::AnchorFieldEdit;
+use ph2d_editor_core::AnchorFieldEdit;
 
 use super::anchor_overlay::anchor_world_point;
 

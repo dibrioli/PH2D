@@ -433,7 +433,7 @@ impl crate::App {
             // `WidgetStore` com os widgets das linhas do documento ANTERIOR: as linhas novas eram
             // pintadas e ficavam **mortas sob o ponteiro**.
             let map = hero.input_map.clone();
-            ph2d_editor::screens::hero::chrome::sync_input_map_rows(&mut hero.store, &map);
+            ph2d_editor_core::screens::hero::chrome::sync_input_map_rows(&mut hero.store, &map);
             // ⛔ **E a ESCUTA morre com o documento.** O `ActionId` é um contador POR-MAPA: uma
             // escuta armada em `jump` do projecto anterior re-aponta, no mapa novo, para **outra
             // acção** com o mesmo número — e a próxima tecla ligar-se-ia a ela, em silêncio.

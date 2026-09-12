@@ -25,7 +25,7 @@
 #[must_use]
 pub(crate) fn intern_active_tool(live: Option<&str>) -> Option<&'static str> {
     let live = live?;
-    ph2d_editor::installed_registry()?
+    ph2d_editor_core::installed_registry()?
         .manifests()
         .iter()
         .find(|m| m.id == live)

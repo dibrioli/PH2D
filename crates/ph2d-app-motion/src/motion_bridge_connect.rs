@@ -8,7 +8,7 @@
 //! compatibility preview is a courtesy; this is the authority.
 
 use super::{MotionState, plumbing};
-use ph2d_editor::ToastQueue;
+use ph2d_editor_core::ToastQueue;
 
 pub(super) fn apply_connect(
     motion: &mut MotionState,
@@ -18,7 +18,7 @@ pub(super) fn apply_connect(
     to_node: u32,
     to_port: u16,
 ) {
-    use ph2d_editor::Toast;
+    use ph2d_editor_core::Toast;
     use ph2d_nodegraph::graph::{Edge, EdgeError, NodeId};
     // The target may be a PARAM's socket (doc 58) — a wire dropped straight onto one
     // re-drives that param from a new source. It is not an edge and `connect` would not know

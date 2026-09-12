@@ -166,7 +166,7 @@ pub(super) fn display_face(
     unit: ParamUnit,
     channel: Option<i32>,
     wire: Option<ParamUnit>,
-    project: ph2d_editor::ProjectSettings,
+    project: ph2d_editor_core::ProjectSettings,
 ) -> RowDisplay {
     let unit = match unit {
         ParamUnit::FromChannel => channel.map(channel_unit).unwrap_or_default(),

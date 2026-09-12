@@ -7,7 +7,7 @@
 //! ecrã, e o que sobrava era inalcançável.
 
 use ph2d_component_desc::ObjectKind;
-use ph2d_editor::zones::Rect;
+use ph2d_editor_core::zones::Rect;
 
 /// A viewport do report — o ecrã do Enio, arredondado.
 const VIEWPORT: Rect = Rect {
@@ -17,7 +17,10 @@ const VIEWPORT: Rect = Rect {
     h: 953.0,
 };
 
-fn model(kind: ObjectKind, show_all: bool) -> ph2d_editor::widget::command_palette::PaletteModel {
+fn model(
+    kind: ObjectKind,
+    show_all: bool,
+) -> ph2d_editor_core::widget::command_palette::PaletteModel {
     let reg = crate::component_registry_for_tests::registo();
     let can_build = |n: &str| {
         reg.get_by_id(ph2d_ecs::scene::stable_type_id(n))
@@ -45,7 +48,7 @@ fn measure_palette() {
     ] {
         let m = model(kind, all);
         let n = m.item_count();
-        let over = ph2d_editor::widget::command_palette::max_scroll(&mut ts, &m, "", VIEWPORT);
+        let over = ph2d_editor_core::widget::command_palette::max_scroll(&mut ts, &m, "", VIEWPORT);
         println!("  │ {label:<26} │ {n:>6} │ {over:>9.0} px │");
     }
     println!("  └────────────────────────────┴────────┴──────────────┘");

@@ -308,7 +308,7 @@ fn the_two_instantiate_verbs_differ_only_in_which_art_law_the_copy_follows() {
     let mut sim = SimWorld::new();
     let r = reg();
     let mut echo = MasterEcho::default();
-    let mut toasts = ph2d_editor::ToastQueue::default();
+    let mut toasts = ph2d_editor_core::ToastQueue::default();
     let master = spawn_master(&mut sim);
     let mut place = |sim: &mut SimWorld, echo: &mut MasterEcho, verb: super::Verb| {
         let (mut sc, mut mp) = crate::instance_docs::empty_docs();
@@ -410,7 +410,7 @@ fn making_a_component_leaves_the_selection_on_the_copy_not_on_the_recipe() {
     let r = reg();
     let rig = plain_rig(&mut sim);
     let mut echo = MasterEcho::default();
-    let mut toasts = ph2d_editor::ToastQueue::default();
+    let mut toasts = ph2d_editor_core::ToastQueue::default();
     let mut select = None;
     let (mut sc, mut mp) = crate::instance_docs::empty_docs();
     let ok = super::drain(
@@ -463,7 +463,7 @@ fn instantiate_on_a_copy_places_another_copy_of_its_master() {
     let mut sim = SimWorld::new();
     let r = reg();
     let mut echo = MasterEcho::default();
-    let mut toasts = ph2d_editor::ToastQueue::default();
+    let mut toasts = ph2d_editor_core::ToastQueue::default();
     let master = spawn_master(&mut sim);
     ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
     ph2d_ecs::assign_master_pieces(sim.world_mut());
@@ -515,7 +515,7 @@ fn instantiate_on_a_stranger_still_refuses() {
     let mut sim = SimWorld::new();
     let r = reg();
     let mut echo = MasterEcho::default();
-    let mut toasts = ph2d_editor::ToastQueue::default();
+    let mut toasts = ph2d_editor_core::ToastQueue::default();
     let _master = spawn_master(&mut sim);
     let stranger = sim
         .world_mut()
@@ -543,7 +543,7 @@ fn place(
     sim: &mut SimWorld,
     r: &ph2d_ecs::scene::ComponentRegistry,
     echo: &mut MasterEcho,
-    toasts: &mut ph2d_editor::ToastQueue,
+    toasts: &mut ph2d_editor_core::ToastQueue,
     entity: Entity,
     select_out: &mut Option<u64>,
 ) -> bool {

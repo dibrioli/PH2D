@@ -15,7 +15,7 @@ use crate::input::{advance, begin, hot_handle};
 use crate::smoke::{Drag, set_armed_by_panel, with_smoke};
 use ph2d_field_render::Screen;
 
-const AREA: ph2d_editor::zones::Rect = ph2d_editor::zones::Rect {
+const AREA: ph2d_editor_core::zones::Rect = ph2d_editor_core::zones::Rect {
     x: 40.0,
     y: 24.0,
     w: 800.0,
@@ -402,7 +402,7 @@ fn the_published_safe_rect_moves_the_gizmo() {
     });
 
     // Um painel de 300 px encostado à direita, como o MODEL aberto — pela **porta do módulo**.
-    let panel = ph2d_editor::zones::Rect::new(AREA.x + AREA.w - 300.0, AREA.y, 300.0, AREA.h);
+    let panel = ph2d_editor_core::zones::Rect::new(AREA.x + AREA.w - 300.0, AREA.y, 300.0, AREA.h);
     crate::smoke::note_safe(crate::navball::safe_corner(AREA, &[panel]));
 
     armed(|s| {

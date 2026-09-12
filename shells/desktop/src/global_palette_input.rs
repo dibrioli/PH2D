@@ -1,6 +1,6 @@
 //! **A paleta de comandos GLOBAL, do lado da shell** — o `Ctrl+K` e o dreno do pick.
 //!
-//! O modelo e a execução vivem os dois em `ph2d_editor::screens::hero::global_palette` (o mesmo
+//! O modelo e a execução vivem os dois em `ph2d_editor_core::screens::hero::global_palette` (o mesmo
 //! módulo emite e executa, que é o que torna um comando morto estruturalmente impossível). Aqui
 //! ficam só as duas pontas que a shell possui: a TECLA e o DRENO.
 //!
@@ -17,8 +17,8 @@
 //! resto onde está.
 
 use crate::App;
-use ph2d_editor::HeroScreen;
-use ph2d_editor::screens::hero::global_palette;
+use ph2d_editor_core::HeroScreen;
+use ph2d_editor_core::screens::hero::global_palette;
 
 /// `Ctrl+K` — abre a paleta sobre o que o app oferece AGORA.
 ///

@@ -32,7 +32,7 @@ ph2d-viewport3d = { path = "../ph2d-viewport3d" }
 ph2d-core = { path = "../ph2d-core" }
 ph2d-crossfield = { path = "../ph2d-crossfield" }
 ph2d-ecs = { path = "../ph2d-ecs" }
-ph2d-editor = { path = "../ph2d-editor" }
+ph2d-editor-core = { path = "../ph2d-editor-core" }
 ph2d-gpu = { path = "../ph2d-gpu" }
 ph2d-gridmap = { path = "../ph2d-gridmap" }
 ph2d-i18n = { path = "../ph2d-i18n" }

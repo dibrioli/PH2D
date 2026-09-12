@@ -293,7 +293,7 @@ pub fn sink_of(graph: &Graph, node: NodeId) -> Option<NodeId> {
 /// o mesmo mundo, elas têm de dividir a MESMA porta* — e é por isso que esta função
 /// existe em vez de o chamador escolher.
 pub fn scene_window(
-    center_split: ph2d_editor::screens::layout::CenterSplit,
+    center_split: ph2d_editor_core::screens::layout::CenterSplit,
     full: ph2d_host::WindowSize,
 ) -> ph2d_host::WindowSize {
     crate::field_gizmo::scene_camera_window(center_split, full)

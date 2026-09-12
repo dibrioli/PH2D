@@ -9,7 +9,7 @@ use ph2d_render::SinkStyle;
 
 use super::{VecPathStore, build_shape_path, encode};
 use crate::motion_state::MotionState;
-use ph2d_editor::ProjectSettings;
+use ph2d_editor_core::ProjectSettings;
 use ph2d_node_motion_shape::{ShapeKind, ShapeParams, shape_key};
 use ph2d_nodegraph::attr::{Column, Stream};
 

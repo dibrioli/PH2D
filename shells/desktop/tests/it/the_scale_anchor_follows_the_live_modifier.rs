@@ -1,7 +1,7 @@
 //! **A âncora de escala é do FRAME, não do pen-down** — arch-gate sobre a costura que nenhum
 //! unit test alcança (irmão de `a_frames_handle_resizes_it_and_does_not_scale_it`).
 //!
-//! A LEI é gateada onde ela mora: `ph2d_editor::live_anchor` é pura e tem os seus gates de
+//! A LEI é gateada onde ela mora: `ph2d_editor_core::live_anchor` é pura e tem os seus gates de
 //! kernel (o centro é a translação de mundo da partida · soltar devolve o canto · premir e largar
 //! não acumula · Translate/Rotate/MovePivot passam · Global troca a regra e não o ponto). O que
 //! eles **não podem tocar** é a fiação: `advance_gizmo_drag` e o abridor de arrasto precisam de
@@ -37,7 +37,7 @@ fn open_src() -> String {
 fn the_drag_asks_for_this_frames_anchor() {
     let src = drag_src();
     assert!(
-        src.contains("ph2d_editor::live_anchor("),
+        src.contains("ph2d_editor_core::live_anchor("),
         "o avanco do arrasto nao chama `live_anchor` — a ancora volta a ser decidida no pen-down \
          e congelada, e o Ctrl deixa de ser vivo enquanto o Shift continua a ser"
     );
@@ -54,7 +54,7 @@ fn the_derived_anchor_is_never_written_back_over_the_authored_one() {
         .find("hero.gizmo.drag = Some(drag);")
         .expect("o avanco do arrasto nao guarda o estado do gesto");
     let derive = src
-        .find("ph2d_editor::live_anchor(")
+        .find("ph2d_editor_core::live_anchor(")
         .expect("o avanco do arrasto nao deriva a ancora deste frame");
     assert!(
         store < derive,
@@ -79,7 +79,7 @@ fn the_derived_anchor_is_never_written_back_over_the_authored_one() {
 fn the_pen_down_stores_the_corner_so_the_key_has_something_to_give_back() {
     let src = open_src();
     let i = src
-        .find("ph2d_editor::anchor_pivot_world(")
+        .find("ph2d_editor_core::anchor_pivot_world(")
         .expect("o abridor de arrasto nao calcula o pivo");
     let call_end = src[i..].find(')').map_or(src.len(), |e| i + e);
     let call = &src[i..call_end];

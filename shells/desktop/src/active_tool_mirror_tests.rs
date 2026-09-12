@@ -9,7 +9,7 @@ fn boot_registry() {
         let mut reg = ph2d_tool_registry::Registry::default();
         ph2d_tool_registry_init::register_all(&mut reg);
         reg.build().expect("o registry do boot constrói");
-        ph2d_editor::install_registry(reg);
+        ph2d_editor_core::install_registry(reg);
     });
 }
 
@@ -18,7 +18,7 @@ fn boot_registry() {
 #[test]
 fn every_registered_tool_mirrors_not_only_the_painter() {
     boot_registry();
-    let reg = ph2d_editor::installed_registry().expect("instalado");
+    let reg = ph2d_editor_core::installed_registry().expect("instalado");
     let mut blind = Vec::new();
     for m in reg.manifests() {
         if intern_active_tool(Some(m.id)) != Some(m.id) {

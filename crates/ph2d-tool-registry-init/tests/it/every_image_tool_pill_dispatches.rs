@@ -32,9 +32,9 @@
 //! em que se regista, sem ninguém se lembrar — que é exatamente o que faltou. *Um gate que precisa
 //! de ser atualizado para cobrir o caso novo não teria apanhado este.*
 
-use ph2d_editor::action_bus::EditorAction;
-use ph2d_editor::interaction::WidgetEvent;
-use ph2d_editor::screens::hero::HeroScreen;
+use ph2d_editor_core::action_bus::EditorAction;
+use ph2d_editor_core::interaction::WidgetEvent;
+use ph2d_editor_core::screens::hero::HeroScreen;
 use ph2d_tool_registry::{Registry, hash_node_id};
 
 /// Instala o registry do boot — `register_all`, o mesmo que
@@ -46,8 +46,8 @@ fn install_boot_registry() -> &'static Registry {
     let mut reg = Registry::default();
     ph2d_tool_registry_init::register_all(&mut reg);
     reg.build().expect("o registry do boot tem de construir");
-    ph2d_editor::install_registry(reg);
-    ph2d_editor::installed_registry().expect("acabou de ser instalado")
+    ph2d_editor_core::install_registry(reg);
+    ph2d_editor_core::installed_registry().expect("acabou de ser instalado")
 }
 
 /// Cada pill da fila `image_tools` **despacha o seu próprio manifesto**.
@@ -63,7 +63,7 @@ fn install_boot_registry() -> &'static Registry {
 /// recusa é **nenhuma**.
 #[test]
 fn every_image_tool_pill_dispatches_its_own_manifest() {
-    ph2d_editor::test_support::ensure_panel_registry();
+    ph2d_editor_core::test_support::ensure_panel_registry();
     let reg = install_boot_registry();
 
     let mut hero = HeroScreen::new(ph2d_a11y::NodeId(1));
@@ -110,7 +110,7 @@ fn every_image_tool_pill_dispatches_its_own_manifest() {
 /// tem const `TOPBAR_`**. Este pergunta ao store, que é onde a resposta vive.
 #[test]
 fn every_image_tool_pill_is_registered_and_therefore_focusable() {
-    ph2d_editor::test_support::ensure_panel_registry();
+    ph2d_editor_core::test_support::ensure_panel_registry();
     let reg = install_boot_registry();
 
     let hero = HeroScreen::new(ph2d_a11y::NodeId(1));

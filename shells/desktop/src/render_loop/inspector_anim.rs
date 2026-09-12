@@ -13,7 +13,7 @@ use ph2d_ecs::{
     AnimDirection, AnimationTag, Entity, SPEED_MAX_Q16, SPEED_ONE_Q16, SimWorld, SpriteAnimations,
     SpriteAnimator, World,
 };
-use ph2d_editor::{AnimFieldEdit, InspectorAnimInfo, InspectorAnimRow, Toast};
+use ph2d_editor_core::{AnimFieldEdit, InspectorAnimInfo, InspectorAnimRow, Toast};
 
 use ph2d_inspector_ordering::queue_set;
 

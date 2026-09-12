@@ -72,7 +72,9 @@ pub fn units_smoke(cx: &mut crate::motion_scene_ctx::MotionSceneCtx<'_>) {
     let (sink, heroes) = chain(&mut cx.motion.doc.graph);
     crate::smoke_layout::arrange_and_mark(&mut cx.motion.doc, &heroes);
     cx.motion.sinks.push(sink);
-    let _ = cx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
+    let _ = cx
+        .tools
+        .set_active(&ph2d_editor_core::ToolId::new("motion"));
     // O emitter já selecionado: as três faces (px / s / nu) na tela no 1º frame.
     ph2d_panel_motion_graph::request_graph_selection(vec![heroes[0].0]);
     // ⚠️ A escala do projeto é IMPRESSA, não assumida: ela viaja no arquivo desde
@@ -133,7 +135,7 @@ mod tests {
     fn the_message_promises_the_numbers_the_panel_paints() {
         use crate::motion_bridge::params::build_params_snapshot;
         use crate::motion_state::MotionState;
-        use ph2d_editor::ProjectSettings;
+        use ph2d_editor_core::ProjectSettings;
         use ph2d_panel_motion_params::ParamRow;
 
         let mut motion = MotionState::new();

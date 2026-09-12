@@ -13,9 +13,9 @@ use crate::HeroLive;
 use crate::hero_intents;
 use ph2d_ecs::PresentWorld;
 use ph2d_ecs::{Name, SimWorld, Transform};
-use ph2d_editor::action_bus::SelectModifier;
-use ph2d_editor::screens::hero::HierReparentIntent;
-use ph2d_editor::{HeroScreen, NodeId, Toast, ToastQueue, ViewFocusKind};
+use ph2d_editor_core::action_bus::SelectModifier;
+use ph2d_editor_core::screens::hero::HierReparentIntent;
+use ph2d_editor_core::{HeroScreen, NodeId, Toast, ToastQueue, ViewFocusKind};
 use ph2d_host::WindowSize;
 use ph2d_render::Camera2d;
 
@@ -70,8 +70,8 @@ pub(super) fn dispatch(
     // aqui, junto dos outros verbos, porque é aqui que o `sim`, a voz e o gizmo estão os três
     // emprestados ao mesmo tempo; a decisão e as recusas vivem no `asset_card_verbs`.
     asset_card_verb: Option<(
-        ph2d_editor::interaction::drag_payload::DragPayload,
-        ph2d_editor::action_bus::AssetCardAction,
+        ph2d_editor_core::interaction::drag_payload::DragPayload,
+        ph2d_editor_core::action_bus::AssetCardAction,
     )>,
     // ⭐ `célula do átlas → AssetId`, para o *Select users* achar uma imagem importada.
     atlas_assets: &std::collections::BTreeMap<u32, ph2d_asset::AssetId>,

@@ -6,7 +6,7 @@
 //!
 //! A casa tem um sistema de movimento por **mola**, com carácter (`Discrete`/`Expressive`), com
 //! *reduced motion*, e com papéis que dizem o que uma coisa **é**
-//! ([`ph2d_editor::motion::Role`]). Inventar aqui uma duração e uma curva seria uma segunda ideia de
+//! ([`ph2d_editor_core::motion::Role`]). Inventar aqui uma duração e uma curva seria uma segunda ideia de
 //! *como as coisas se mexem neste app* — a doença que este módulo já nomeou meia dúzia de vezes.
 //!
 //! ⭐ **O papel é [`Role::Surface`]**, e o doc dele descreve este caso à letra: *"viaja (o reduced
@@ -41,7 +41,7 @@ use ph2d_field_render::Orbit;
 ///
 /// ⭐ O [`Role::Viewpoint`] existe por causa disto, e o critério dele é estreito: *o que substitui
 /// esta animação é um CORTE que desorienta mais do que ela*. Ver o doc do papel.
-pub const ROLE: ph2d_editor::motion::Role = ph2d_editor::motion::Role::Viewpoint;
+pub const ROLE: ph2d_editor_core::motion::Role = ph2d_editor_core::motion::Role::Viewpoint;
 
 /// **Uma viagem em curso**: de onde, para onde.
 ///

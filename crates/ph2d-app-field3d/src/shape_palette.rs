@@ -30,8 +30,10 @@
 //! e não faz nada; esta responde.*
 
 use crate::shapes::{Family, Make, SHAPES, Shape};
-use ph2d_editor::NodeId;
-use ph2d_editor::widget::command_palette::{PaletteGroup, PaletteItem, PaletteModel, PaletteSub};
+use ph2d_editor_core::NodeId;
+use ph2d_editor_core::widget::command_palette::{
+    PaletteGroup, PaletteItem, PaletteModel, PaletteSub,
+};
 
 /// O id de item de uma forma — o hash da **chave i18n** dela.
 ///

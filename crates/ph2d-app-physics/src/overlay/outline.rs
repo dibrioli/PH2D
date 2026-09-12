@@ -535,13 +535,13 @@ pub fn draw(
     ) {
         // Centrado numa caixa larga o bastante para o rótulo mais longo
         // (`1234 / 1234 N.m`) e alta o bastante para uma linha.
-        let rect = ph2d_editor::zones::Rect::new(
+        let rect = ph2d_editor_core::zones::Rect::new(
             r.at.x as f32 - READOUT_BOX_W_PX * 0.5,
             r.at.y as f32 - READOUT_BOX_H_PX * 0.5,
             READOUT_BOX_W_PX,
             READOUT_BOX_H_PX,
         );
-        ph2d_editor::paint::paint_text_centered(
+        ph2d_editor_core::paint::paint_text_centered(
             text_system,
             vector_scene,
             &r.text,

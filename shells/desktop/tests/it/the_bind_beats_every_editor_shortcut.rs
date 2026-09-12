@@ -65,7 +65,7 @@ fn the_shell_and_the_editor_call_one_law() {
         "o `key_input` tem de chamar a guarda"
     );
     assert!(
-        bind_capture().contains("ph2d_editor::interaction::capture_if_listening("),
+        bind_capture().contains("ph2d_editor_core::interaction::capture_if_listening("),
         "o irmao da guarda tem de chamar a LEI, e nao uma copia dela"
     );
     let editor =

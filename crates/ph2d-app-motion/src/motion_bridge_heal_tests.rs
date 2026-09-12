@@ -13,7 +13,7 @@ fn run(m: &mut MotionState) {
         m,
         &mut ph2d_core::Playhead::default(),
         &mut ToastQueue::default(),
-        &mut ph2d_editor::screens::layout::CenterSplit::None,
+        &mut ph2d_editor_core::screens::layout::CenterSplit::None,
     );
 }
 

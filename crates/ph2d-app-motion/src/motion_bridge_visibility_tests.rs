@@ -13,7 +13,7 @@
 
 use super::params::build_params_snapshot;
 use crate::motion_state::MotionState;
-use ph2d_editor::ProjectSettings;
+use ph2d_editor_core::ProjectSettings;
 
 /// **Os oito sliders de polígono de controle somem quando o artista escolhe a
 /// forma que desenhou** (`ParamGateText`, smoke de 2026-08-12).

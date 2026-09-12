@@ -49,7 +49,9 @@ fn build(app: &mut crate::App) {
     let Some(gfx) = app.gfx.as_mut() else {
         return;
     };
-    let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("vector"));
+    let _ = gfx
+        .tools
+        .set_active(&ph2d_editor_core::ToolId::new("vector"));
     for (i, r) in std::iter::once(&MENU_BOX).chain(ITEMS.iter()).enumerate() {
         let id = gfx
             .vec_scene

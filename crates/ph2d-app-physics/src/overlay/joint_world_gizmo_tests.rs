@@ -59,8 +59,8 @@ fn a_world_pin_is_offered_two_handles_that_start_on_the_same_point() {
     );
     let kinds: Vec<_> = handles.iter().map(|h| h.kind).collect();
     assert!(
-        kinds.contains(&ph2d_editor::gizmo::PointHandleKind::AnchorA)
-            && kinds.contains(&ph2d_editor::gizmo::PointHandleKind::AnchorB),
+        kinds.contains(&ph2d_editor_core::gizmo::PointHandleKind::AnchorA)
+            && kinds.contains(&ph2d_editor_core::gizmo::PointHandleKind::AnchorB),
         "faltou um dos dois lados: {kinds:?}"
     );
     let (p, q) = (handles[0].world, handles[1].world);

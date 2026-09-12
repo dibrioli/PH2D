@@ -114,7 +114,7 @@ fn renaming_changes_the_label_and_nothing_else() {
     }
     let after = super::build_properties_info(&mut sim, Some(copy.to_bits())).expect("depois");
 
-    let ids_and_current = |i: &ph2d_editor::screens::hero::InspectorPropertiesInfo| {
+    let ids_and_current = |i: &ph2d_editor_core::screens::hero::InspectorPropertiesInfo| {
         i.rows
             .iter()
             .map(|r| {

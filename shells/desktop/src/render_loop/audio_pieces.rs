@@ -9,8 +9,8 @@
 //! (`audio/editor/pieces.rs`), so what the user sees while dragging is where the piece *would* go —
 //! an insertion caret at the seam it would drop onto, or a ghost edge at the length it would become.
 
-use ph2d_editor::paint::fill_rounded_rect;
-use ph2d_editor::zones::Rect;
+use ph2d_editor_core::paint::fill_rounded_rect;
+use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, Theme};
 use ph2d_vector::{Color, VectorScene};
 
@@ -75,7 +75,7 @@ pub(super) fn draw_piece_drag(
         return;
     }
     let x_of = |f: usize| wave.x + (f as f32 / total as f32).clamp(0.0, 1.0) * wave.w;
-    let accent = ph2d_editor::paint::resolve(ColorToken::Accent, theme);
+    let accent = ph2d_editor_core::paint::resolve(ColorToken::Accent, theme);
 
     match drag {
         PieceDrag::Move { to, .. } => {

@@ -44,7 +44,7 @@ use crate::app_state::ColorEqualizationPreview;
 use crate::hero_intents::texture_edit;
 use ph2d_asset::{AssetDb, AssetId};
 use ph2d_ecs::{Entity, SimWorld};
-use ph2d_editor::{HeroScreen, Toast, ToastQueue, ToolRegistry};
+use ph2d_editor_core::{HeroScreen, Toast, ToastQueue, ToolRegistry};
 use ph2d_host::WindowSize;
 use ph2d_render::{AlphaMode, Camera2d, SpriteImage, SpriteRenderer};
 use ph2d_vector::VectorScene;
@@ -101,7 +101,7 @@ pub(super) fn dispatch(
 
     let active = tools
         .active()
-        .map(|t| t.id() == ph2d_editor::ToolId::new("color_equalization"))
+        .map(|t| t.id() == ph2d_editor_core::ToolId::new("color_equalization"))
         .unwrap_or(false);
     hero.panel_visibility.insert("color_equalization", active);
 
@@ -185,7 +185,7 @@ pub(super) fn dispatch(
     }
 
     if needs_panel_reset {
-        ph2d_editor::panel::with_registry_opt(|reg| {
+        ph2d_editor_core::panel::with_registry_opt(|reg| {
             if let Some(idx) =
                 reg.find_by_panel_node_id(ph2d_tool_color_equalization::ids::CEQ_PANEL)
             {
@@ -291,7 +291,7 @@ fn ensure_cached(
 /// available. The writeback happens outside this function so the tool
 /// borrow ends before `sim`/`renderer` are mutated.
 fn collect_live_bakes(tools: &mut ToolRegistry, selected: &[u64]) -> Vec<DrainTuple> {
-    use ph2d_editor::tool::RasterEditTool;
+    use ph2d_editor_core::tool::RasterEditTool;
     let Some(tool) = tools.active_mut() else {
         return Vec::new();
     };
@@ -418,7 +418,8 @@ fn apply_dropdown_close(slot: u8, hero: &mut HeroScreen) {
         4 => ph2d_tool_color_equalization::ids::CEQ_QUANTIZE_DROPDOWN,
         _ => return,
     };
-    if let Some(ph2d_editor::InteractiveState::Dropdown { open, .. }) = hero.store.get_mut(chip_id)
+    if let Some(ph2d_editor_core::InteractiveState::Dropdown { open, .. }) =
+        hero.store.get_mut(chip_id)
     {
         *open = false;
     }
@@ -427,9 +428,9 @@ fn apply_dropdown_close(slot: u8, hero: &mut HeroScreen) {
 /// `true` iff `id` is a CEQ slider/chip whose drag should pause
 /// pipeline rebuilds (Quantize / Posterize are heavy enough that
 /// running them per frame stalls the slider visibly).
-fn is_ceq_drag_widget(id: ph2d_editor::NodeId) -> bool {
+fn is_ceq_drag_widget(id: ph2d_editor_core::NodeId) -> bool {
     use ph2d_tool_color_equalization::ids as cids;
-    let sliders_and_chips: [ph2d_editor::NodeId; 26] = [
+    let sliders_and_chips: [ph2d_editor_core::NodeId; 26] = [
         cids::CEQ_CLIP_LIMIT,
         cids::CEQ_CLIP_LIMIT_NUM,
         cids::CEQ_TILE_GRID,

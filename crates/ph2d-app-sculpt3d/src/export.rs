@@ -42,7 +42,7 @@ impl Sculpt3dScene {
 ///
 /// ⚠️ Sem cena não há o que exportar, e o silêncio seria indistinguível de
 /// um diálogo que falhou — o toast diz.
-pub fn export(scene: Option<&Sculpt3dScene>, toasts: &mut ph2d_editor::ToastQueue) {
+pub fn export(scene: Option<&Sculpt3dScene>, toasts: &mut ph2d_editor_core::ToastQueue) {
     // ⚠️ **A ausência de JANELA fica do lado da shell, e a de CENA fica aqui** — os dois casos
     // eram o mesmo `let ... else` e não são a mesma coisa: sem GPU não há gesto nenhum a
     // reportar, sem escultura há um artista que carregou num botão e merece a razão.

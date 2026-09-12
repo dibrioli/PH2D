@@ -69,7 +69,9 @@ fn build(app: &mut crate::App) {
     let Some(gfx) = app.gfx.as_mut() else {
         return;
     };
-    let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("vector"));
+    let _ = gfx
+        .tools
+        .set_active(&ph2d_editor_core::ToolId::new("vector"));
     // Um pixel de tela vale ~0,0045 de mundo na câmera default (4 unidades de altura em ~900 px);
     // o valor exato não importa para a cena, mas ele TEM de ser o mesmo nos dois traços, senão o
     // par comparado teria duas variáveis.

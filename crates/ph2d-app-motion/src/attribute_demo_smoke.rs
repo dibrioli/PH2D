@@ -281,7 +281,9 @@ pub fn attribute_demo_smoke(cx: &mut crate::motion_scene_ctx::MotionSceneCtx<'_>
     // A ponte recomputa os sinks a partir dos nós `motion.output` do documento;
     // limpar aqui é higiene (o boot doc pode ter deixado outros).
     cx.motion.sinks.clear();
-    let _ = cx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
+    let _ = cx
+        .tools
+        .set_active(&ph2d_editor_core::ToolId::new("motion"));
     eprintln!(
         "[attribute smoke] TRES exemplos de `value.attribute` numa cena so, da esquerda para a direita:"
     );

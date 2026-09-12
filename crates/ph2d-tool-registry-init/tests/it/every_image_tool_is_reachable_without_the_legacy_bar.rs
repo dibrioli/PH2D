@@ -26,8 +26,8 @@
 //! de ferramentas** (`installed_registry`), que esta crate instala. Lá, `image_action_pills()`
 //! cai no fallback legado de três pills e o Painter nem aparece.
 
-use ph2d_editor::screens::hero::HeroScreen;
-use ph2d_editor::zones::Rect;
+use ph2d_editor_core::screens::hero::HeroScreen;
+use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
 use ph2d_tool_registry::{Registry, hash_node_id};
 
@@ -35,12 +35,12 @@ fn install_boot_registry() -> &'static Registry {
     let mut reg = Registry::default();
     ph2d_tool_registry_init::register_all(&mut reg);
     reg.build().expect("o registry do boot tem de construir");
-    ph2d_editor::install_registry(reg);
-    ph2d_editor::installed_registry().expect("acabou de ser instalado")
+    ph2d_editor_core::install_registry(reg);
+    ph2d_editor_core::installed_registry().expect("acabou de ser instalado")
 }
 
 fn painted(mode_on: bool) -> (HeroScreen, &'static Registry) {
-    ph2d_editor::test_support::ensure_panel_registry();
+    ph2d_editor_core::test_support::ensure_panel_registry();
     let reg = install_boot_registry();
     let mut hero = HeroScreen::new(ph2d_a11y::NodeId(1));
     hero.image_edit.mode_on = mode_on;
@@ -50,7 +50,7 @@ fn painted(mode_on: bool) -> (HeroScreen, &'static Registry) {
     );
     let mut scene = ph2d_vector::VectorScene::new();
     let mut text = TextSystem::without_system_fonts();
-    ph2d_editor::screens::hero::paint_hero_screen(
+    ph2d_editor_core::screens::hero::paint_hero_screen(
         &mut hero,
         Rect::new(0.0, 0.0, 1366.0, 1024.0),
         &mut scene,

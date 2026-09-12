@@ -171,7 +171,7 @@ pub fn any_open(sim: &mut SimWorld) -> bool {
 /// ⛔ `None` sem receita aberta, e aí o quadro não paga a varredura das cópias.
 pub fn open_view(
     sim: &mut SimWorld,
-) -> Option<ph2d_editor::screens::hero::prefab_bar::PrefabEditView> {
+) -> Option<ph2d_editor_core::screens::hero::prefab_bar::PrefabEditView> {
     let root = {
         let mut q = sim
             .world_mut()
@@ -188,7 +188,7 @@ pub fn open_view(
         q.iter(sim.world()).filter(|i| i.master == id).count()
     };
     let name = crate::instance_verbs::master_named(sim, id)?;
-    Some(ph2d_editor::screens::hero::prefab_bar::PrefabEditView { name, copies })
+    Some(ph2d_editor_core::screens::hero::prefab_bar::PrefabEditView { name, copies })
 }
 
 /// A sub-árvore de `root`, ela incluída.

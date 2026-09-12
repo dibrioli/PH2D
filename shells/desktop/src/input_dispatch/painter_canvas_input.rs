@@ -26,7 +26,7 @@
 
 use std::cell::Cell;
 
-use ph2d_editor::tool::{CanvasPaintTool, CanvasPointer, PointerPhase};
+use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PointerPhase};
 use ph2d_tool_painter::PainterTool;
 
 use crate::App;
@@ -187,7 +187,7 @@ impl App {
         if !gfx
             .tools
             .active()
-            .is_some_and(|t| t.id() == ph2d_editor::ToolId::new("painter"))
+            .is_some_and(|t| t.id() == ph2d_editor_core::ToolId::new("painter"))
         {
             return;
         }
@@ -288,7 +288,7 @@ impl App {
         let painter_active = gfx
             .tools
             .active()
-            .map(|t| t.id() == ph2d_editor::ToolId::new("painter"))
+            .map(|t| t.id() == ph2d_editor_core::ToolId::new("painter"))
             .unwrap_or(false);
         if !painter_active {
             return false;

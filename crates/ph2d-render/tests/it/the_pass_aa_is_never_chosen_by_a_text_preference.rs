@@ -4,7 +4,7 @@
 //! (`shells/desktop/src/render_loop/present.rs`):
 //!
 //! ```ignore
-//! let prefer_msaa = ph2d_editor::paint::text_rendering().params().prefer_msaa;
+//! let prefer_msaa = ph2d_editor_core::paint::text_rendering().params().prefer_msaa;
 //! vello_pass.render_to_intermediate(gpu, scene, size, TRANSPARENT, prefer_msaa)?;
 //! ```
 //!

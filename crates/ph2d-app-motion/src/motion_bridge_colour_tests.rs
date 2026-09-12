@@ -11,7 +11,7 @@
 use super::color::{apply_color_to_node, channel_values, linear_rgba_to_srgb8};
 use super::params::build_params_snapshot;
 use crate::motion_state::MotionState;
-use ph2d_editor::ProjectSettings;
+use ph2d_editor_core::ProjectSettings;
 
 /// The reported-bug + colour-authoring seam, end to end and headless: a
 /// selected `motion.tint` node resolves to a named Mode selector + colour

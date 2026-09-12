@@ -52,7 +52,7 @@ impl App {
         // (lazy — first CTRL-held move triggers the readback) and cache
         // it on `self`. Done in its own borrow so the readback doesn't
         // alias the mutable pass below.
-        if matches!(drag.kind, ph2d_editor::GizmoDragKind::MovePivot)
+        if matches!(drag.kind, ph2d_editor_core::GizmoDragKind::MovePivot)
             && ctrl
             && self.pivot_content_center.is_none()
         {
@@ -65,8 +65,8 @@ impl App {
         // translate. Recolhe os alvos + cfg agora, fora do borrow mutável de gfx.
         let is_scale_drag = matches!(
             drag.kind,
-            ph2d_editor::GizmoDragKind::ScaleCorner { .. }
-                | ph2d_editor::GizmoDragKind::ScaleEdge { .. }
+            ph2d_editor_core::GizmoDragKind::ScaleCorner { .. }
+                | ph2d_editor_core::GizmoDragKind::ScaleEdge { .. }
         );
         // **A moldura fotografa-se na primeira movida do arrasto** (corolário do W3).
         //
@@ -122,7 +122,7 @@ impl App {
                 hero.view.center_split,
                 gfx.surface.size(),
             );
-            let cam = ph2d_editor::GizmoCamera {
+            let cam = ph2d_editor_core::GizmoCamera {
                 center: gfx.camera.center,
                 height_world: gfx.camera.height_world,
                 window_w: size.width as f32,
@@ -144,8 +144,8 @@ impl App {
             // Guardar o derivado por cima dele apagaria o canto no primeiro frame com a tecla
             // premida, e soltá-la deixaria de devolver coisa nenhuma: o modificador seria vivo
             // só na ida.
-            let drag = ph2d_editor::live_anchor(drag, ctrl);
-            if matches!(drag.kind, ph2d_editor::GizmoDragKind::MovePivot) {
+            let drag = ph2d_editor_core::live_anchor(drag, ctrl);
+            if matches!(drag.kind, ph2d_editor_core::GizmoDragKind::MovePivot) {
                 // TOOL_PIVOT: relocate the pivot to the cursor while the
                 // sprite's quad stays world-fixed (compensating anchor).
                 // CTRL snaps to the quad center / corners / edge mids +
@@ -165,7 +165,7 @@ impl App {
                             ]
                         })
                         .unwrap_or([0.0, 0.0]);
-                    let cands = ph2d_editor::pivot_snap_candidates(
+                    let cands = ph2d_editor_core::pivot_snap_candidates(
                         drag.pivot_world,
                         drag.start_transform.rotation,
                         half_world,
@@ -194,7 +194,7 @@ impl App {
                 } else {
                     raw_world
                 };
-                let (new_translation, new_anchor) = ph2d_editor::move_pivot_transform(
+                let (new_translation, new_anchor) = ph2d_editor_core::move_pivot_transform(
                     drag.start_transform,
                     drag.pivot_world,
                     target,
@@ -211,7 +211,7 @@ impl App {
                     hero.view.center_split,
                     gfx.surface.size(),
                 );
-                let cam = ph2d_editor::GizmoCamera {
+                let cam = ph2d_editor_core::GizmoCamera {
                     center: gfx.camera.center,
                     height_world: gfx.camera.height_world,
                     window_w: window_size.width as f32,
@@ -221,12 +221,12 @@ impl App {
                 // on ModifiersChanged). Shift / Ctrl / Alt feed AR lock +
                 // snap + mirror-anchor. On macOS we treat Cmd as Ctrl
                 // (industry convention for snap-to-grid).
-                let mods = ph2d_editor::GizmoModifiers {
+                let mods = ph2d_editor_core::GizmoModifiers {
                     shift: self.modifiers.shift_key(),
                     ctrl: self.modifiers.control_key() || self.modifiers.super_key(),
                     alt: self.modifiers.alt_key(),
                 };
-                let snap = ph2d_editor::GizmoSnap {
+                let snap = ph2d_editor_core::GizmoSnap {
                     move_meters: hero.project.snap_move_meters,
                     rotate_deg: hero.project.snap_rotate_deg,
                 };
@@ -263,7 +263,7 @@ impl App {
                 // projection happens in WORLD coords, then restore
                 // the primary's actual start rotation when applying
                 // the new transform.
-                let is_global_drag = matches!(drag.target, ph2d_editor::GizmoTarget::Global);
+                let is_global_drag = matches!(drag.target, ph2d_editor_core::GizmoTarget::Global);
                 let drag_for_math = if is_global_drag {
                     let mut d = drag;
                     d.start_transform.rotation = 0.0;
@@ -289,7 +289,7 @@ impl App {
                             let s = r.apply(p);
                             [s[0] as f32, s[1] as f32]
                         };
-                        ph2d_editor::compute_gizmo_transform(
+                        ph2d_editor_core::compute_gizmo_transform(
                             &drag_for_math,
                             &cam,
                             mods,
@@ -304,7 +304,7 @@ impl App {
                     let mut snap_closure = |w: [f32; 2]| -> [f32; 2] {
                         snap_state.snap_world(w, sprite_half_rendered)
                     };
-                    ph2d_editor::compute_gizmo_transform(
+                    ph2d_editor_core::compute_gizmo_transform(
                         &drag_for_math,
                         &cam,
                         mods,
@@ -312,7 +312,13 @@ impl App {
                         Some(&mut snap_closure),
                     )
                 } else {
-                    ph2d_editor::compute_gizmo_transform(&drag_for_math, &cam, mods, snap, None)
+                    ph2d_editor_core::compute_gizmo_transform(
+                        &drag_for_math,
+                        &cam,
+                        mods,
+                        snap,
+                        None,
+                    )
                 };
                 // Restore the primary's actual rotation: in Global
                 // drags `compute_gizmo_transform` returned a rotation
@@ -320,7 +326,7 @@ impl App {
                 // back by the primary's original start rotation. For
                 // non-Global drags this is a no-op.
                 let new_t = if is_global_drag {
-                    ph2d_editor::TransformSnapshot {
+                    ph2d_editor_core::TransformSnapshot {
                         rotation: drag.start_transform.rotation
                             + (new_t.rotation - drag_for_math.start_transform.rotation),
                         ..new_t
@@ -383,8 +389,8 @@ impl App {
                 let new_t = if !self.group_drag_starts.is_empty()
                     && matches!(
                         drag.kind,
-                        ph2d_editor::GizmoDragKind::ScaleCorner { .. }
-                            | ph2d_editor::GizmoDragKind::ScaleEdge { .. }
+                        ph2d_editor_core::GizmoDragKind::ScaleCorner { .. }
+                            | ph2d_editor_core::GizmoDragKind::ScaleEdge { .. }
                     )
                     && (drag.start_transform.rotation != 0.0
                         || self
@@ -409,7 +415,7 @@ impl App {
                     } else {
                         fy
                     };
-                    ph2d_editor::TransformSnapshot {
+                    ph2d_editor_core::TransformSnapshot {
                         scale: [ss[0] * uniform, ss[1] * uniform],
                         ..new_t
                     }
@@ -442,7 +448,7 @@ impl App {
                 // per-frame cursor delta is small, so this accumulates smoothly
                 // across unlimited turns. Applies to single- AND multi-select,
                 // local AND global (delta_rot below flows from here).
-                let new_t = if matches!(drag.kind, ph2d_editor::GizmoDragKind::Rotate) {
+                let new_t = if matches!(drag.kind, ph2d_editor_core::GizmoDragKind::Rotate) {
                     let current = gfx
                         .sim
                         .world()
@@ -456,7 +462,7 @@ impl App {
                     while r - current < -std::f32::consts::PI {
                         r += std::f32::consts::TAU;
                     }
-                    ph2d_editor::TransformSnapshot {
+                    ph2d_editor_core::TransformSnapshot {
                         rotation: r,
                         ..new_t
                     }
@@ -466,9 +472,9 @@ impl App {
                 let delta_rot = new_t.rotation - drag.start_transform.rotation;
                 let is_rot_or_scale = matches!(
                     drag.kind,
-                    ph2d_editor::GizmoDragKind::Rotate
-                        | ph2d_editor::GizmoDragKind::ScaleCorner { .. }
-                        | ph2d_editor::GizmoDragKind::ScaleEdge { .. }
+                    ph2d_editor_core::GizmoDragKind::Rotate
+                        | ph2d_editor_core::GizmoDragKind::ScaleCorner { .. }
+                        | ph2d_editor_core::GizmoDragKind::ScaleEdge { .. }
                 );
                 // ─── Multi-selection rotate / scale: ONE flat world-space
                 // group transform for the dragged sprite AND every extra
@@ -496,7 +502,7 @@ impl App {
                 // parent's rotation flows through inheritance exactly once —
                 // the group transforms "como se não tivessem pais".
                 if !self.group_drag_starts.is_empty() && is_rot_or_scale {
-                    let is_global = matches!(drag.target, ph2d_editor::GizmoTarget::Global);
+                    let is_global = matches!(drag.target, ph2d_editor_core::GizmoTarget::Global);
                     let pivot = drag.pivot_world;
                     // T1.3.5 cross-OS bit-identical.
                     let (sin_d, cos_d) = libm::sincosf(delta_rot);
@@ -524,8 +530,8 @@ impl App {
                     let mut members: Vec<(
                         u64,
                         u32,
-                        ph2d_editor::TransformSnapshot,
-                        ph2d_editor::TransformSnapshot,
+                        ph2d_editor_core::TransformSnapshot,
+                        ph2d_editor_core::TransformSnapshot,
                     )> = Vec::with_capacity(self.group_drag_starts.len() + 1);
                     members.push((
                         drag.entity_bits,
@@ -545,7 +551,8 @@ impl App {
                     for (bits, _depth, start_local, start_parent) in members {
                         let member = ph2d_ecs::Entity::from_bits(bits);
                         // START world = start_parent ∘ start_local.
-                        let start_world = ph2d_editor::compose_snapshot(start_parent, start_local);
+                        let start_world =
+                            ph2d_editor_core::compose_snapshot(start_parent, start_local);
                         let target_rotation = start_world.rotation + delta_rot;
                         let target_scale = [
                             start_world.scale[0] * factor_x,
@@ -571,12 +578,12 @@ impl App {
                         // against the parent's CURRENT world (reflects any
                         // selected ancestor already written this frame).
                         let live_parent = ph2d_ecs::parent_world_transform(gfx.sim.world(), member);
-                        let live_parent = ph2d_editor::TransformSnapshot {
+                        let live_parent = ph2d_editor_core::TransformSnapshot {
                             translation: [live_parent.translation.x, live_parent.translation.y],
                             rotation: live_parent.rotation,
                             scale: [live_parent.scale.x, live_parent.scale.y],
                         };
-                        let new_translation = ph2d_editor::world_translation_to_local(
+                        let new_translation = ph2d_editor_core::world_translation_to_local(
                             live_parent,
                             target_translation,
                         );
@@ -632,7 +639,7 @@ impl App {
                         fx,
                         fy,
                     );
-                } else if matches!(drag.kind, ph2d_editor::GizmoDragKind::Translate)
+                } else if matches!(drag.kind, ph2d_editor_core::GizmoDragKind::Translate)
                     && crate::layout_reorder::flow_parent(&gfx.sim, entity).is_some()
                 {
                     // **DENTRO de um fluxo, arrastar é REORDENAR** (ADR-0153, corolário).
@@ -683,7 +690,7 @@ impl App {
                     // unified branch above); MovePivot stays primary-only (its
                     // own branch writes Sprite.anchor).
                     if !self.group_drag_starts.is_empty()
-                        && matches!(drag.kind, ph2d_editor::GizmoDragKind::Translate)
+                        && matches!(drag.kind, ph2d_editor_core::GizmoDragKind::Translate)
                     {
                         let dx = new_t.translation[0] - drag.start_transform.translation[0];
                         let dy = new_t.translation[1] - drag.start_transform.translation[1];
@@ -691,7 +698,7 @@ impl App {
                             let extra_entity = ph2d_ecs::Entity::from_bits(snap.entity_bits);
                             let st = snap.start_transform;
                             let [dx_l, dy_l] =
-                                ph2d_editor::world_delta_to_local(snap.parent_world, dx, dy);
+                                ph2d_editor_core::world_delta_to_local(snap.parent_world, dx, dy);
                             if let Some(mut t) =
                                 gfx.sim.world_mut().get_mut::<Transform>(extra_entity)
                             {
@@ -748,7 +755,7 @@ impl App {
     /// image rows run top-down while world Y is up.
     fn compute_pivot_content_center(
         &mut self,
-        drag: &ph2d_editor::GizmoDragState,
+        drag: &ph2d_editor_core::GizmoDragState,
     ) -> Option<[f32; 2]> {
         let gfx = self.gfx.as_mut()?;
         let entity = ph2d_ecs::Entity::from_bits(drag.entity_bits);

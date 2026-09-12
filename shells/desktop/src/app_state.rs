@@ -26,7 +26,7 @@ use ph2d_ecs::scene::{
     ComponentRegistry, EditorCommandQueue, HierarchySnapshot, HierarchyWalkState,
 };
 use ph2d_ecs::{PresentWorld, SimWorld, TransformPropagationState, WorklistBuf};
-use ph2d_editor::{
+use ph2d_editor_core::{
     HeroScreen, JobQueue, Layout as EditorLayout, NodeId, ToastQueue, ToolRegistry, ZenMode,
 };
 use ph2d_gpu::SurfaceContext;
@@ -699,10 +699,10 @@ pub(crate) struct App {
     /// ninguém deu — e a `Option` torna isso inexprimível.
     pub(crate) pending_ui_sound: Option<crate::ui_sound::UiSound>,
     /// ⭐ **A poeira de impacto do chrome** (estudo de UI viva, D2) — a lei vive na crate-folha
-    /// [`ph2d_editor::motion_burst`]; aqui só o estado do quadro.
+    /// [`ph2d_editor_core::motion_burst`]; aqui só o estado do quadro.
     ///
     /// ⚠️ A cerca **não** está aqui: ela é a do `Role::Decoration`, e mora na porta que emite.
-    pub(crate) ui_burst: ph2d_editor::motion_burst::BurstField,
+    pub(crate) ui_burst: ph2d_editor_core::motion_burst::BurstField,
     /// **O que o contorno de proveniência desenha neste quadro**, em MUNDO — resolvido no mesmo
     /// instante que o [`Self::hovered_object`], e vazio quando nada é apontado.
     ///
@@ -1758,10 +1758,10 @@ pub(crate) struct App {
     /// / Rotate (target = Global) applies around the shared global
     /// pivot. Cleared on PointerUp (and on every drag-open that opens
     /// a single-sprite drag).
-    pub(crate) group_drag_starts: Vec<ph2d_editor::GroupDragSnapshot>,
+    pub(crate) group_drag_starts: Vec<ph2d_editor_core::GroupDragSnapshot>,
 }
 
-// ⭐ `GroupDragSnapshot` mudou-se para [`ph2d_editor::GroupDragSnapshot`] (W2/L2 Fase C,
+// ⭐ `GroupDragSnapshot` mudou-se para [`ph2d_editor_core::GroupDragSnapshot`] (W2/L2 Fase C,
 // 2026-09-12): ele é dados puros sobre dois `TransformSnapshot`, que já viviam lá, e era a
 // **única âncora de PRODUTO** que prendia a autoria de juntas da física dentro da shell.
 // ⚠️ O TIPO saiu; o CAMPO `group_drag_starts` acima fica — a shell é quem possui o arrasto.
@@ -1848,15 +1848,15 @@ pub(crate) type UpscalePreview = ph2d_tool_runtime::PreviewCache;
 /// `installed_registry()` is `Some` in the real editor (installed at
 /// boot); the `None` fallback (pre-registry boot / isolated tests)
 /// reports `false`, matching the legacy "no gating" behavior there.
-pub(crate) fn is_image_edit_tool(id: &ph2d_editor::ToolId) -> bool {
+pub(crate) fn is_image_edit_tool(id: &ph2d_editor_core::ToolId) -> bool {
     // `m.id` is the manifest's `&'static str` id; `id` is the editor's
     // `ToolId` newtype (what `Tool::id()` returns). Bridge the two via
     // `ToolId::new`.
-    ph2d_editor::installed_registry()
+    ph2d_editor_core::installed_registry()
         .map(|reg| {
             reg.cluster("image_tools")
                 .iter()
-                .any(|m| ph2d_editor::ToolId::new(m.id) == *id)
+                .any(|m| ph2d_editor_core::ToolId::new(m.id) == *id)
         })
         .unwrap_or(false)
 }
@@ -1868,7 +1868,7 @@ pub(crate) fn is_image_edit_tool(id: &ph2d_editor::ToolId) -> bool {
 /// Tools off ⟹ image tools inaccessible". Paint AND hit-test must both
 /// map palette slots through this so their indices can't drift.
 pub(crate) fn palette_visible_tool_indices(
-    tools: &ph2d_editor::ToolRegistry,
+    tools: &ph2d_editor_core::ToolRegistry,
     image_tools_mode_on: bool,
 ) -> Vec<usize> {
     tools

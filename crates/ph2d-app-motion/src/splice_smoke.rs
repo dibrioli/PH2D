@@ -117,7 +117,9 @@ pub fn splice_smoke(cx: &mut crate::motion_scene_ctx::MotionSceneCtx<'_>) {
     // Arruma o layout (sem marcar nó nenhum — o gesto é sobre um FIO, não um nó).
     crate::smoke_layout::arrange_and_mark(&mut cx.motion.doc, &[]);
     cx.motion.sinks.push(sink);
-    let _ = cx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
+    let _ = cx
+        .tools
+        .set_active(&ph2d_editor_core::ToolId::new("motion"));
     eprintln!(
         "[splice smoke] Uma cadeia grid -> scale -> output, a ferramenta Motion ativa (o \
          grafo a vista).\n  \

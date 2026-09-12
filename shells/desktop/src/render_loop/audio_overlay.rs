@@ -11,16 +11,16 @@
 //! and applies the stored `blender_picker_offset` + `panel_resize_delta`) —
 //! exactly the Inspector dock's move/resize recipe under a different id.
 
-use ph2d_editor::ids;
-use ph2d_editor::paint::{fill_rounded_rect, paint_text_centered, resolve};
-use ph2d_editor::screens::HeroScreen;
-use ph2d_editor::screens::layout::{EDGE_PAD, HIERARCHY_W, INSPECTOR_W, rail_w};
-use ph2d_editor::widget::panel_chrome::{
+use ph2d_editor_core::ids;
+use ph2d_editor_core::paint::{fill_rounded_rect, paint_text_centered, resolve};
+use ph2d_editor_core::screens::HeroScreen;
+use ph2d_editor_core::screens::layout::{EDGE_PAD, HIERARCHY_W, INSPECTOR_W, rail_w};
+use ph2d_editor_core::widget::panel_chrome::{
     PANEL_HEADER_CLOSE_RESERVE, PANEL_HEADER_H_DEFAULT, clamp_panel_rect, paint_panel_corner_dot,
     paint_panel_corner_dot_bl, panel_drag_handle_rect, panel_resize_handle_rect,
     panel_resize_handle_rect_bl,
 };
-use ph2d_editor::zones::Rect;
+use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Radius, Spacing, Theme, TypeToken};
 use ph2d_vector::VectorScene;
@@ -81,7 +81,7 @@ pub(super) fn draw_audio_overlay(
         Radius::Sm.px(),
         resolve(ColorToken::BgElev, theme),
     );
-    ph2d_editor::widget::panel_chrome::paint_panel_surface_floating(rect, scene, theme);
+    ph2d_editor_core::widget::panel_chrome::paint_panel_surface_floating(rect, scene, theme);
     paint_panel_corner_dot(rect, scene, theme);
     paint_panel_corner_dot_bl(rect, scene, theme);
 

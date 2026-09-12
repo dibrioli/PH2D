@@ -123,13 +123,16 @@ impl Sculpt3dScene {
 /// Painter evita derivando do modo publicado.
 ///
 /// Sem cena o pill fica solto (`Normal`): não há barro na tela, e é o estado honesto de *entrar*.
-pub fn sync_pill(hero: &mut ph2d_editor::screens::hero::HeroScreen, scene: Option<&Sculpt3dScene>) {
-    use ph2d_editor::interaction::InteractiveState;
-    use ph2d_editor::widget::ButtonState;
+pub fn sync_pill(
+    hero: &mut ph2d_editor_core::screens::hero::HeroScreen,
+    scene: Option<&Sculpt3dScene>,
+) {
+    use ph2d_editor_core::interaction::InteractiveState;
+    use ph2d_editor_core::widget::ButtonState;
     let on = scene.is_some_and(Sculpt3dScene::clay_on_screen);
     if let Some(InteractiveState::Button { state }) = hero
         .store
-        .get_mut(ph2d_editor::screens::hero::ids::TOPBAR_SCULPT3D)
+        .get_mut(ph2d_editor_core::screens::hero::ids::TOPBAR_SCULPT3D)
     {
         *state = if on {
             ButtonState::Pressed

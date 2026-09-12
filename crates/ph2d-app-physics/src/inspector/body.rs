@@ -6,7 +6,7 @@
 
 use bevy_ecs::world::World;
 use ph2d_ecs::Entity;
-use ph2d_editor::InspectorPhysicsInfo;
+use ph2d_editor_core::InspectorPhysicsInfo;
 
 /// The WRITE half, in the sibling module. Re-exported so callers are unchanged.
 pub use crate::physics_apply::apply_physics_edit;

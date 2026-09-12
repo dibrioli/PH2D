@@ -109,13 +109,13 @@ fn every_text_on_path_id_is_read_by_the_render_loop() {
 /// vácuo — que é a doença que ele foi curar.
 #[test]
 fn the_id_does_not_match_inside_a_longer_id() {
-    let alive = "} else if *id == ph2d_editor::ids::VECTOR_TEXTPATH_FLIP {\n\
-                 } else if *id == ph2d_editor::ids::VECTOR_TEXTPATH_FLIP_OFF {";
+    let alive = "} else if *id == ph2d_editor_core::ids::VECTOR_TEXTPATH_FLIP {\n\
+                 } else if *id == ph2d_editor_core::ids::VECTOR_TEXTPATH_FLIP_OFF {";
     assert!(consumes(alive, "VECTOR_TEXTPATH_FLIP"));
     assert!(consumes(alive, "VECTOR_TEXTPATH_FLIP_OFF"));
 
     // A mutação: o ramo do `FLIP` apagado, o do `_OFF` intacto. O `contains` cru lia VERDE.
-    let orphaned = "} else if *id == ph2d_editor::ids::VECTOR_TEXTPATH_FLIP_OFF {";
+    let orphaned = "} else if *id == ph2d_editor_core::ids::VECTOR_TEXTPATH_FLIP_OFF {";
     assert!(
         !consumes(orphaned, "VECTOR_TEXTPATH_FLIP"),
         "o botao «Other side» orfao tem de ler-se como AUSENTE"
@@ -123,6 +123,6 @@ fn the_id_does_not_match_inside_a_longer_id() {
     assert!(consumes(orphaned, "VECTOR_TEXTPATH_FLIP_OFF"));
 
     // O gêmeo latente: o slider e o campo numérico dele.
-    let only_num = "*id == ph2d_editor::ids::VECTOR_TEXTPATH_OFFSET_NUM";
+    let only_num = "*id == ph2d_editor_core::ids::VECTOR_TEXTPATH_OFFSET_NUM";
     assert!(!consumes(only_num, "VECTOR_TEXTPATH_OFFSET"));
 }

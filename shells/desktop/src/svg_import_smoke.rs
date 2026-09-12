@@ -17,7 +17,7 @@ impl crate::App {
         let ppm = gfx
             .hero_screen
             .as_ref()
-            .map_or(ph2d_editor::DEFAULT_PIXELS_PER_METER, |h| {
+            .map_or(ph2d_editor_core::DEFAULT_PIXELS_PER_METER, |h| {
                 h.project.pixels_per_meter
             });
         ph2d_app_vec::smoke_svg::build(

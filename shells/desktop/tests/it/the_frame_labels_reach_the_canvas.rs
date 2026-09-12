@@ -1,7 +1,7 @@
 //! **Arch-gate: a shell PUBLICA as etiquetas de moldura todo frame.**
 //!
 //! Enio, 2026-08-01: *"precisamos de uma pequena label no topo esquerdo dos frames"*. O produtor
-//! (`vec_frame_labels`) e o pintor (`ph2d_editor::frame_label`) têm gates próprios; **nenhum dos
+//! (`vec_frame_labels`) e o pintor (`ph2d_editor_core::frame_label`) têm gates próprios; **nenhum dos
 //! dois vê a ponte entre eles**, que mora no `render_loop` e exige `gfx` (janela + GPU). Sem esta
 //! asserção os dois lados ficam verdes e a tela fica sem etiqueta nenhuma.
 

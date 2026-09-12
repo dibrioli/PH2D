@@ -21,7 +21,7 @@
 //! overlay (`render_loop/flip_gap_overlay.rs`) — barato, e é o que os mantém colados no
 //! desenho enquanto o resultado novo não chega.
 
-use ph2d_editor::Job;
+use ph2d_editor_core::Job;
 use ph2d_flip::FlipDrawing;
 use ph2d_flip_fill::{GapHelper, preview_closures};
 use ph2d_tool_flip::{FillMode, FlipMode, FlipStyleSnapshot};

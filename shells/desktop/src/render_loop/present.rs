@@ -96,7 +96,7 @@ impl crate::App {
         let window_size = surface.size();
         let motion_active = tools
             .active()
-            .is_some_and(|t| t.id() == ph2d_editor::ToolId::new("motion"));
+            .is_some_and(|t| t.id() == ph2d_editor_core::ToolId::new("motion"));
 
         // Motion Nodes M0.T13 — Fase B: when the center is split (Motion mode),
         // frame the scene into its sub-rect (top for a horizontal Cavalry split,

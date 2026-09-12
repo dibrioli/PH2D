@@ -69,7 +69,7 @@ fn the_same_lasso_asks_to_remove_when_the_mode_says_subtract() {
 /// que apanhasse um vizinho não seleccionado podia limpar a selecção inteira.
 #[test]
 fn removing_from_the_selection_promotes_an_extra_and_ignores_a_stranger() {
-    let mut g = ph2d_editor::screens::hero::GizmoStateGroup::default();
+    let mut g = ph2d_editor_core::screens::hero::GizmoStateGroup::default();
     g.replace_selection(Some(1));
     g.add_to_selection(2);
     g.add_to_selection(3);

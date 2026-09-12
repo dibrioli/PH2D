@@ -92,14 +92,14 @@ impl Frame {
         map: &mut VecEntityMap,
         drag: Option<(
             &crate::HeroLive,
-            ph2d_editor::screens::hero::HierReparentIntent,
+            ph2d_editor_core::screens::hero::HierReparentIntent,
         )>,
     ) {
         sync(sim, scene, map);
         ph2d_vec_entities::transform::settle_origins(sim, scene, map, &[]);
         ph2d_ecs::assign_missing_root_order(sim.world_mut());
         if let Some((live, intent)) = drag {
-            let mut toasts = ph2d_editor::ToastQueue::new();
+            let mut toasts = ph2d_editor_core::ToastQueue::new();
             crate::hero_intents::drain_reparent(intent, live, sim, &mut toasts);
         }
         build_hierarchy_snapshot(
@@ -514,7 +514,7 @@ fn a_hierarchy_drag_leaves_the_capture_a_fixed_point() {
     };
 
     // O GESTO: arrastar a última forma para ANTES da primeira.
-    let intent = ph2d_editor::screens::hero::HierReparentIntent {
+    let intent = ph2d_editor_core::screens::hero::HierReparentIntent {
         dragged: node_of(c),
         new_parent: None,
         before: Some(node_of(a)),

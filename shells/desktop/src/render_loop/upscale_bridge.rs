@@ -26,8 +26,8 @@ use crate::app_state::UpscalePreview;
 use ph2d_asset::AssetDb;
 use ph2d_asset::AssetId;
 use ph2d_ecs::SimWorld;
-use ph2d_editor::HeroScreen;
-use ph2d_editor::ToolRegistry;
+use ph2d_editor_core::HeroScreen;
+use ph2d_editor_core::ToolRegistry;
 use ph2d_host::WindowSize;
 use ph2d_render::{Camera2d, Sprite, SpriteRenderer};
 use ph2d_vector::VectorScene;
@@ -50,7 +50,7 @@ pub(super) fn dispatch(
 ) -> Option<Vec<u64>> {
     let active = tools
         .active()
-        .map(|t| t.id() == ph2d_editor::ToolId::new("upscale"))
+        .map(|t| t.id() == ph2d_editor_core::ToolId::new("upscale"))
         .unwrap_or(false);
     hero.panel_visibility.insert("upscale", active);
     // Image tools dock into the Inspector slot — hide Inspector while
@@ -159,7 +159,7 @@ pub(super) fn dispatch(
     // Reset just fired — re-populate panel store (post-borrow because
     // hero.store aliases tools.active_mut() above).
     if needs_panel_reset {
-        ph2d_editor::panel::with_registry_opt(|reg| {
+        ph2d_editor_core::panel::with_registry_opt(|reg| {
             if let Some(idx) = reg.find_by_panel_node_id(ph2d_panel_upscale::ids::UPS_PANEL) {
                 reg.panels_mut()[idx].populate(&mut hero.store);
             }
@@ -192,7 +192,7 @@ pub(super) fn dispatch(
             let (sw, sh) = (sprite.size[0], sprite.size[1]);
             let (x0, y0) = camera.world_to_screen([cx - sw * 0.5, cy + sh * 0.5], window_size);
             let (x1, y1) = camera.world_to_screen([cx + sw * 0.5, cy - sh * 0.5], window_size);
-            let quality = ph2d_editor::image_quality_for(hero.project.image_filter);
+            let quality = ph2d_editor_core::image_quality_for(hero.project.image_filter);
             vector_scene.draw_image_rgba(
                 &preview.rgba,
                 preview.width,

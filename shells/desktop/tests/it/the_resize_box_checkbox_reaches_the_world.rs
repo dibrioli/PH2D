@@ -28,7 +28,7 @@ fn source() -> String {
 fn the_click_is_routed_to_the_one_door() {
     let src = source();
     assert!(
-        src.contains("ph2d_editor::ids::VECTOR_TRANSFORM_RESIZE_BOX"),
+        src.contains("ph2d_editor_core::ids::VECTOR_TRANSFORM_RESIZE_BOX"),
         "o Click do checkbox nao e' reconhecido no roteador — ele acende sob o rato, chega ao \
          barramento e morre no `_ => {{}}`"
     );

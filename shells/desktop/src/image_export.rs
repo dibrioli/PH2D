@@ -37,7 +37,7 @@ use std::path::{Path, PathBuf};
 
 use ph2d_asset::{AssetDb, AssetId};
 use ph2d_ecs::{Entity, SimWorld};
-use ph2d_editor::{Toast, ToastQueue};
+use ph2d_editor_core::{Toast, ToastQueue};
 use ph2d_imageio::{DecodedImage, ExportFormat, ExportOpts, ExporterRegistry, ImageBuffer};
 use ph2d_render::SpriteRenderer;
 use std::collections::BTreeMap;

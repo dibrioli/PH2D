@@ -6,7 +6,7 @@
 //! arte de um ciclo.
 
 use super::*;
-use ph2d_editor::tool::PanelEvent;
+use ph2d_editor_core::tool::PanelEvent;
 use ph2d_flip::{DrawingId, FlipObjectId, Hold, KeyKind};
 
 /// Um doc com UM objeto, UMA camada e a chave 0 (com desenho próprio), playhead em 0.
@@ -25,7 +25,7 @@ fn did_at(doc: &FlipDoc, oid: FlipObjectId, lid: LayerId, f: Frame) -> Option<Dr
 
 /// Clica um botão da barra pelo caminho REAL (o `PanelEvent` que o painel empurra).
 pub(super) fn click(
-    id: ph2d_editor::NodeId,
+    id: ph2d_editor_core::NodeId,
     doc: &mut FlipDoc,
     lid: LayerId,
     playhead: &mut Playhead,
@@ -56,7 +56,7 @@ fn the_instance_button_makes_two_keys_share_one_drawing() {
     let d0 = did_at(&doc, oid, lid, 0).expect("a chave 0 tem desenho");
 
     assert!(click(
-        ph2d_editor::ids::FLIP_KEY_INSTANCE,
+        ph2d_editor_core::ids::FLIP_KEY_INSTANCE,
         &mut doc,
         lid,
         &mut ph,
@@ -86,7 +86,7 @@ fn editing_an_instanced_drawing_shows_up_in_the_other_key() {
     let (mut doc, oid, lid, mut ph) = doc_with_key0();
     let mut strip = FlipStrip::default();
     click(
-        ph2d_editor::ids::FLIP_KEY_INSTANCE,
+        ph2d_editor_core::ids::FLIP_KEY_INSTANCE,
         &mut doc,
         lid,
         &mut ph,
@@ -122,7 +122,7 @@ fn the_dup_button_still_makes_an_independent_copy() {
     let d0 = did_at(&doc, oid, lid, 0).unwrap();
 
     assert!(click(
-        ph2d_editor::ids::FLIP_KEY_DUP,
+        ph2d_editor_core::ids::FLIP_KEY_DUP,
         &mut doc,
         lid,
         &mut ph,
@@ -147,7 +147,7 @@ fn deleting_one_of_two_instanced_keys_keeps_the_art_alive() {
     let (mut doc, oid, lid, mut ph) = doc_with_key0();
     let mut strip = FlipStrip::default();
     click(
-        ph2d_editor::ids::FLIP_KEY_INSTANCE,
+        ph2d_editor_core::ids::FLIP_KEY_INSTANCE,
         &mut doc,
         lid,
         &mut ph,
@@ -171,7 +171,7 @@ fn deleting_one_of_two_instanced_keys_keeps_the_art_alive() {
     // O botão de apagar age na chave que o playhead vê — que é a 1 (o click do Instance
     // seekou para lá). Apaga-a.
     assert!(click(
-        ph2d_editor::ids::FLIP_KEY_DELETE,
+        ph2d_editor_core::ids::FLIP_KEY_DELETE,
         &mut doc,
         lid,
         &mut ph,
@@ -210,7 +210,7 @@ fn a_new_key_is_inserted_in_the_middle_not_only_at_the_end() {
     let mut strip = FlipStrip::default(); // playhead em 0 -> a chave 0 (não é a última)
 
     assert!(click(
-        ph2d_editor::ids::FLIP_KEY_DUP,
+        ph2d_editor_core::ids::FLIP_KEY_DUP,
         &mut doc,
         lid,
         &mut ph,
@@ -242,7 +242,7 @@ fn unlink_ends_the_multi_selection() {
     let mut strip = FlipStrip::default();
     // Instancia a chave 0 (o playhead vai para a chave nova).
     click(
-        ph2d_editor::ids::FLIP_KEY_INSTANCE,
+        ph2d_editor_core::ids::FLIP_KEY_INSTANCE,
         &mut doc,
         lid,
         &mut ph,
@@ -253,7 +253,7 @@ fn unlink_ends_the_multi_selection() {
 
     // Desvincula a chave sob o playhead (a instância).
     assert!(click(
-        ph2d_editor::ids::FLIP_KEY_UNLINK,
+        ph2d_editor_core::ids::FLIP_KEY_UNLINK,
         &mut doc,
         lid,
         &mut ph,
@@ -296,7 +296,7 @@ fn the_scrub_lane_moves_the_playhead_without_touching_the_selection() {
     };
 
     let edited = apply_panel_event(
-        &PanelEvent::SetValue(ph2d_editor::ids::FLIP_SCRUB, 4.0),
+        &PanelEvent::SetValue(ph2d_editor_core::ids::FLIP_SCRUB, 4.0),
         &mut doc,
         Some(lid),
         &mut ph,
@@ -339,7 +339,10 @@ fn the_easing_chip_reaches_the_tween_options() {
         (3, EasingMode::InOut),
     ] {
         apply_panel_event(
-            &PanelEvent::SelectOption(ph2d_editor::ids::FLIP_TWEEN_EASE_DD, preset.to_string()),
+            &PanelEvent::SelectOption(
+                ph2d_editor_core::ids::FLIP_TWEEN_EASE_DD,
+                preset.to_string(),
+            ),
             &mut doc,
             Some(lid),
             &mut playhead,
@@ -357,7 +360,7 @@ fn the_easing_chip_reaches_the_tween_options() {
     }
     // E volta ao uniforme.
     apply_panel_event(
-        &PanelEvent::SelectOption(ph2d_editor::ids::FLIP_TWEEN_EASE_DD, "0".into()),
+        &PanelEvent::SelectOption(ph2d_editor_core::ids::FLIP_TWEEN_EASE_DD, "0".into()),
         &mut doc,
         Some(lid),
         &mut playhead,
@@ -378,7 +381,7 @@ fn the_fade_toggle_reaches_the_tween_options() {
         "por default um traço sem par é cópia estática (não pisca, não some)"
     );
     click(
-        ph2d_editor::ids::FLIP_TWEEN_FADE,
+        ph2d_editor_core::ids::FLIP_TWEEN_FADE,
         &mut doc,
         lid,
         &mut playhead,
@@ -386,7 +389,7 @@ fn the_fade_toggle_reaches_the_tween_options() {
     );
     assert!(strip.tween_options().fade_orphans, "o Fade não armou");
     click(
-        ph2d_editor::ids::FLIP_TWEEN_FADE,
+        ph2d_editor_core::ids::FLIP_TWEEN_FADE,
         &mut doc,
         lid,
         &mut playhead,
@@ -419,7 +422,7 @@ fn the_add_button_generates_with_the_easing_the_bar_selected() {
 
     // Ease In (acelera do repouso): o inbetween do MEIO fica ATRÁS da metade do caminho.
     apply_panel_event(
-        &PanelEvent::SelectOption(ph2d_editor::ids::FLIP_TWEEN_EASE_DD, "1".into()),
+        &PanelEvent::SelectOption(ph2d_editor_core::ids::FLIP_TWEEN_EASE_DD, "1".into()),
         &mut doc,
         Some(lid),
         &mut playhead,
@@ -429,7 +432,7 @@ fn the_add_button_generates_with_the_easing_the_bar_selected() {
     strip.tween_count = 1;
     playhead.seek(0.0);
     click(
-        ph2d_editor::ids::FLIP_TWEEN_ADD,
+        ph2d_editor_core::ids::FLIP_TWEEN_ADD,
         &mut doc,
         lid,
         &mut playhead,
@@ -481,7 +484,7 @@ fn the_pairs_toggle_opens_and_closes_the_session() {
     let mut strip = FlipStrip::default();
     ph.seek(0.0);
     click(
-        ph2d_editor::ids::FLIP_TWEEN_PAIRS,
+        ph2d_editor_core::ids::FLIP_TWEEN_PAIRS,
         &mut doc,
         lid,
         &mut ph,
@@ -497,7 +500,7 @@ fn the_pairs_toggle_opens_and_closes_the_session() {
     assert_eq!(tc.b.strokes.len(), 2, "clonou B");
     // Clicar de novo fecha.
     click(
-        ph2d_editor::ids::FLIP_TWEEN_PAIRS,
+        ph2d_editor_core::ids::FLIP_TWEEN_PAIRS,
         &mut doc,
         lid,
         &mut ph,
@@ -514,7 +517,7 @@ fn the_pairs_toggle_does_not_open_without_an_interval() {
     let mut strip = FlipStrip::default();
     ph.seek(0.0);
     click(
-        ph2d_editor::ids::FLIP_TWEEN_PAIRS,
+        ph2d_editor_core::ids::FLIP_TWEEN_PAIRS,
         &mut doc,
         lid,
         &mut ph,
@@ -542,7 +545,7 @@ fn the_add_button_uses_the_corrected_pairing() {
     ph.seek(0.0);
     // Abre Pairs.
     click(
-        ph2d_editor::ids::FLIP_TWEEN_PAIRS,
+        ph2d_editor_core::ids::FLIP_TWEEN_PAIRS,
         &mut doc,
         lid,
         &mut ph,
@@ -569,7 +572,7 @@ fn the_add_button_uses_the_corrected_pairing() {
     }
     // Add.
     click(
-        ph2d_editor::ids::FLIP_TWEEN_ADD,
+        ph2d_editor_core::ids::FLIP_TWEEN_ADD,
         &mut doc,
         lid,
         &mut ph,

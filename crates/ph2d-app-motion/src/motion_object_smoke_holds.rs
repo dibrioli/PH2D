@@ -139,7 +139,9 @@ pub fn build_holds_graph(g: &mut Graph) -> Vec<NodeId> {
 pub fn run(cx: &mut crate::motion_scene_ctx::MotionSceneCtx<'_>) {
     let sinks = build_holds_graph(&mut cx.motion.doc.graph);
     cx.motion.sinks.extend(sinks);
-    let _ = cx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
+    let _ = cx
+        .tools
+        .set_active(&ph2d_editor_core::ToolId::new("motion"));
     eprintln!(
         "[cena 11] O RITMO. ⚠️ ESTA CENA MEXE -- de' Play.
 

@@ -28,10 +28,12 @@ impl crate::App {
                 let ppm = gfx
                     .hero_screen
                     .as_ref()
-                    .map_or(ph2d_editor::DEFAULT_PIXELS_PER_METER, |h| {
+                    .map_or(ph2d_editor_core::DEFAULT_PIXELS_PER_METER, |h| {
                         h.project.pixels_per_meter.max(crate::EPS_PIXELS_PER_METER)
                     });
-                let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("vector"));
+                let _ = gfx
+                    .tools
+                    .set_active(&ph2d_editor_core::ToolId::new("vector"));
                 ph2d_app_vec::smoke_bone::build(
                     &mut gfx.vec_scene,
                     &mut gfx.sim,

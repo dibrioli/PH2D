@@ -249,11 +249,11 @@ pub(crate) fn warn_precision_loss(
     entity: Entity,
     sim: &SimWorld,
     renderer: &SpriteRenderer,
-    toasts: &mut ph2d_editor::ToastQueue,
+    toasts: &mut ph2d_editor_core::ToastQueue,
     because: &str,
 ) {
     if holds_sixteen_bit(entity, sim, renderer) {
-        toasts.push(ph2d_editor::Toast::info(format!(
+        toasts.push(ph2d_editor_core::Toast::info(format!(
             "Converted to RGBA8 — {because}"
         )));
     }
@@ -266,7 +266,7 @@ pub(crate) fn commit_edited_texture(
     asset_db: &AssetDb,
     img: &SpriteImage,
     new_size_world: [f32; 2],
-    toasts: &mut ph2d_editor::ToastQueue,
+    toasts: &mut ph2d_editor_core::ToastQueue,
 ) -> Result<u32, String> {
     // **A PERDA DE PRECISÃO tem de ser dita** (plano `docs/Sprite_projeto/18` W4).
     //
@@ -313,7 +313,7 @@ pub(crate) fn commit_geometric_edit(
     edited: &SpriteImage,
     halves: Option<&[u16]>,
     new_size_world: [f32; 2],
-    toasts: &mut ph2d_editor::ToastQueue,
+    toasts: &mut ph2d_editor_core::ToastQueue,
 ) -> Result<u32, String> {
     match halves {
         Some(h) => commit_edited_texture_16(

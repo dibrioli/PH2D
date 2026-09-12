@@ -168,7 +168,9 @@ pub fn motion_shape_smoke(cx: &mut crate::motion_scene_ctx::MotionSceneCtx<'_>) 
             let (src, out) = build_shape_graph(&mut cx.motion.doc.graph, STAR);
             cx.motion.sinks.push(out);
             SHAPE_NODE.store(src.0, Ordering::Relaxed);
-            let _ = cx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
+            let _ = cx
+                .tools
+                .set_active(&ph2d_editor_core::ToolId::new("motion"));
             eprintln!(
                 "[shape smoke =1] source.shape (STAR) carimbada numa grade 4x4 = 16 COPIAS \
                  nitidas (vetor VIVO na GPU, nao uma tile assada). O no nasce SELECIONADO: o \
@@ -195,7 +197,9 @@ pub fn motion_shape_smoke(cx: &mut crate::motion_scene_ctx::MotionSceneCtx<'_>) 
             let (rot, out) = build_rotated_shape_graph(&mut cx.motion.doc.graph, 25.0);
             cx.motion.sinks.push(out);
             SHAPE_NODE.store(rot.0, Ordering::Relaxed);
-            let _ = cx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
+            let _ = cx
+                .tools
+                .set_active(&ph2d_editor_core::ToolId::new("motion"));
             eprintln!(
                 "[shape smoke =2] `source.shape (STAR) -> duplicator <- grid -> motion.rotate \
                  -> output`, GPU cook LIGADO (o default). ANTES: no instante em que o rotate \

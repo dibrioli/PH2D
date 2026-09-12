@@ -126,8 +126,8 @@ fn open_library_intent_stashes_the_spawn_and_wire_context() {
     super::apply_graph_intents(
         &mut m,
         &mut ph2d_core::Playhead::default(),
-        &mut ph2d_editor::ToastQueue::default(),
-        &mut ph2d_editor::screens::layout::CenterSplit::None,
+        &mut ph2d_editor_core::ToastQueue::default(),
+        &mut ph2d_editor_core::screens::layout::CenterSplit::None,
     );
 
     assert_eq!(

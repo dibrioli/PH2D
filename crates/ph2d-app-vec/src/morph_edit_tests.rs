@@ -58,7 +58,7 @@ fn key_at(sim: &SimWorld, map: &VecEntityMap, host: Entity, row: usize) -> Strin
 /// da segunda ficariam **mortas sob o ponteiro**, e só a de cima funcionaria.
 #[test]
 fn every_arrow_row_resolves_to_its_own_command() {
-    use ph2d_editor::ids as i;
+    use ph2d_editor_core::ids as i;
     // ⭐ O botão que FAZ o conjunto (W8) — ele é o único controlo da seção sem máquina nenhuma.
     assert_eq!(
         morph_cmd_for_id(i::VECTOR_MORPH_STATES_MAKE),
@@ -73,7 +73,10 @@ fn every_arrow_row_resolves_to_its_own_command() {
     }
     // O CONTROLE: um id que não é da seção tem de devolver `None`, senão a tabela engoliria
     // cliques alheios.
-    assert_eq!(morph_cmd_for_id(ph2d_editor::ids::VECTOR_BOOL_UNION), None);
+    assert_eq!(
+        morph_cmd_for_id(ph2d_editor_core::ids::VECTOR_BOOL_UNION),
+        None
+    );
 }
 
 /// ⭐ **A CONDIÇÃO é escolhida pelo ÍNDICE do menu, e o `0` é o «—».**
@@ -138,7 +141,7 @@ fn an_index_beyond_the_published_list_refuses() {
 /// alcançável sangraria aqui.
 #[test]
 fn no_id_in_the_section_asks_to_destroy_a_state() {
-    use ph2d_editor::ids as i;
+    use ph2d_editor_core::ids as i;
     let mut seen = 0usize;
     for row in 0..i::MAX_MORPH_STATES {
         for a in 0..i::MAX_MORPH_ACTIONS {

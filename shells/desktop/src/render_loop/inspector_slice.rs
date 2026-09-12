@@ -16,7 +16,7 @@
 
 use ph2d_ecs::scene::{ComponentRegistry, EditorCommandQueue};
 use ph2d_ecs::{Entity, SimWorld, SliceNine, World};
-use ph2d_editor::{InspectorSliceInfo, InspectorSliceMixed, SliceFieldEdit};
+use ph2d_editor_core::{InspectorSliceInfo, InspectorSliceMixed, SliceFieldEdit};
 
 use ph2d_inspector_ordering::queue_set;
 

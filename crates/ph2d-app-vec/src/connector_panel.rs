@@ -24,7 +24,7 @@
 //! importam: aqui, para exibir; o `connector_live`, para cozinhar.
 
 use ph2d_ecs::{Entity, RouteKind, SimWorld, VecConnector};
-use ph2d_editor::NodeId;
+use ph2d_editor_core::NodeId;
 use ph2d_tool_vector::connector;
 use ph2d_vec_scene::{VecPathId, VecScene, VecXforms};
 
@@ -144,11 +144,11 @@ pub fn publish(
 /// novo entra AQUI e no [`apply_field`] — fora daqui ele pinta e está morto.
 #[must_use]
 pub fn is_connector_field_id(id: NodeId) -> bool {
-    id == ph2d_editor::ids::VECTOR_CONNECTOR_ROUTE
-        || id == ph2d_editor::ids::VECTOR_CONNECTOR_JETTY
-        || id == ph2d_editor::ids::VECTOR_CONNECTOR_SPREAD
-        || id == ph2d_editor::ids::VECTOR_CONNECTOR_CORNER
-        || id == ph2d_editor::ids::VECTOR_CONNECTOR_CURVE
+    id == ph2d_editor_core::ids::VECTOR_CONNECTOR_ROUTE
+        || id == ph2d_editor_core::ids::VECTOR_CONNECTOR_JETTY
+        || id == ph2d_editor_core::ids::VECTOR_CONNECTOR_SPREAD
+        || id == ph2d_editor_core::ids::VECTOR_CONNECTOR_CORNER
+        || id == ph2d_editor_core::ids::VECTOR_CONNECTOR_CURVE
 }
 
 /// Aplica a edição de um campo no componente. **Editar FIXA** — `None` vira `Some(v)`, e o
@@ -158,19 +158,19 @@ fn apply_field(conn: &mut VecConnector, id: NodeId, v: f64) -> bool {
         clippy::cast_possible_truncation,
         reason = "o campo do painel e f64; o componente guarda f32 (o save e postcard)"
     )]
-    if id == ph2d_editor::ids::VECTOR_CONNECTOR_JETTY {
+    if id == ph2d_editor_core::ids::VECTOR_CONNECTOR_JETTY {
         conn.jetty = Some(connector::clamp_to(&connector::JETTY, v) as f32);
-    } else if id == ph2d_editor::ids::VECTOR_CONNECTOR_SPREAD {
+    } else if id == ph2d_editor_core::ids::VECTOR_CONNECTOR_SPREAD {
         conn.spread = Some(connector::clamp_to(&connector::SPREAD, v) as f32);
-    } else if id == ph2d_editor::ids::VECTOR_CONNECTOR_CORNER {
+    } else if id == ph2d_editor_core::ids::VECTOR_CONNECTOR_CORNER {
         // O raio das quinas do PERCURSO. Não é `Option` (não há automático que faça sentido):
         // o campo é a única verdade, e `0` = quina afiada.
         conn.corner_radius = connector::clamp_to(&connector::CORNER, v) as f32;
-    } else if id == ph2d_editor::ids::VECTOR_CONNECTOR_CURVE {
+    } else if id == ph2d_editor_core::ids::VECTOR_CONNECTOR_CURVE {
         // O braço dos handles da curva. Como o Corner, não é `Option`: o campo é a única
         // verdade, e o default (1/3) é o spline que passa pelos pontos sem escapar deles.
         conn.curve_arm = connector::clamp_to(&connector::CURVE, v) as f32;
-    } else if id == ph2d_editor::ids::VECTOR_CONNECTOR_ROUTE {
+    } else if id == ph2d_editor_core::ids::VECTOR_CONNECTOR_ROUTE {
         // O botão cicla e emite o PRÓXIMO discriminante; um valor fora da tabela (não pode
         // acontecer) cai na rota default em vez de entrar em pânico.
         conn.route = match v.round() as i64 {

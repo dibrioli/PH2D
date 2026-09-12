@@ -8,7 +8,7 @@
 //! deixa o componente na cena.
 
 use ph2d_ecs::{SimWorld, Transform};
-use ph2d_editor::{HeroScreen, NodeId};
+use ph2d_editor_core::{HeroScreen, NodeId};
 
 fn registry() -> ph2d_ecs::scene::ComponentRegistry {
     crate::component_registry_for_tests::registo()

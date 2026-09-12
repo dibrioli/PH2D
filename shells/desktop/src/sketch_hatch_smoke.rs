@@ -74,7 +74,9 @@ fn build(app: &mut crate::App, level: u32) {
     let Some(gfx) = app.gfx.as_mut() else {
         return;
     };
-    let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("vector"));
+    let _ = gfx
+        .tools
+        .set_active(&ph2d_editor_core::ToolId::new("vector"));
     let scene = &mut gfx.vec_scene;
     if level == 31 {
         // Sketch: limpo | 2 passadas 4% | 3 passadas 7% (seed 3).

@@ -18,7 +18,7 @@ use ph2d_ecs::{
     SortingGroup, SortingLayer, TextureFilter, TextureRepeat, TopLevel, UvTransform, World, YSort,
     ZAsRelative, ZIndexOverride,
 };
-use ph2d_editor::{
+use ph2d_editor_core::{
     BlendFieldEdit, InspectorBlendInfo, InspectorBlendMixed, InspectorOrderingInfo,
     InspectorOrderingMixed, InspectorSamplingInfo, InspectorSamplingMixed, OrderingFieldEdit,
     SamplingFieldEdit,

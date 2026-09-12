@@ -173,12 +173,12 @@ pub fn begin(
 }
 
 /// ⚠️ **A que distância um clique deixa de ser um clique** — e o número é o da CASA
-/// ([`ph2d_editor::interaction::NUMBER_INPUT_DRAG_THRESHOLD_PX`]).
+/// ([`ph2d_editor_core::interaction::NUMBER_INPUT_DRAG_THRESHOLD_PX`]).
 ///
 /// Ele tem o nome do campo numérico porque foi lá que a casa o mediu primeiro, mas a grandeza é a
 /// mesma pergunta física: *quanto a mão treme entre carregar e soltar*. Um quarto número para a
 /// mesma pergunta seria a quarta resposta a envelhecer — já há três no shell.
-const CLICK_SLOP_PX: f32 = ph2d_editor::interaction::NUMBER_INPUT_DRAG_THRESHOLD_PX;
+const CLICK_SLOP_PX: f32 = ph2d_editor_core::interaction::NUMBER_INPUT_DRAG_THRESHOLD_PX;
 
 /// O ponteiro moveu. Devolve `true` só quando o gesto é desta janela.
 /// ⭐ **O que uma tecla numérica FAZ**, sobre o estado do smoke e nada mais — o irmão do [`advance`],
@@ -551,6 +551,6 @@ pub fn hot_handle(s: &Smoke) -> Option<Handle> {
 ///
 /// ⚠️ **Meio-aberto em cima e à esquerda, aberto em baixo e à direita** — a mesma convenção do
 /// [`crate::layout::hit`], para que dois rectângulos encostados não reclamem o mesmo pixel.
-fn dentro_de(r: ph2d_editor::zones::Rect, p: (f32, f32)) -> bool {
+fn dentro_de(r: ph2d_editor_core::zones::Rect, p: (f32, f32)) -> bool {
     p.0 >= r.x && p.1 >= r.y && p.0 < r.x + r.w && p.1 < r.y + r.h
 }

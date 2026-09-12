@@ -484,7 +484,9 @@ pub fn motion_node_path_smoke(cx: &mut crate::motion_scene_ctx::MotionSceneCtx<'
             } else if let Some(out) = name_and_wire(cx.sim, &map, &mut cx.motion.doc.graph) {
                 cx.motion.sinks.push(out);
             }
-            let _ = cx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
+            let _ = cx
+                .tools
+                .set_active(&ph2d_editor_core::ToolId::new("motion"));
         }
         _ => {}
     }

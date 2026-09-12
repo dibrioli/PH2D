@@ -17,7 +17,7 @@
 //! como o rabisco SEMEIA pela cápsula, o anel mostra o quanto ele vai pegar). Em **Select** e
 //! **Fill** não há anel: não há raio nenhum em jogo, e um anel ali seria uma mentira.
 
-use ph2d_editor::HeroScreen;
+use ph2d_editor_core::HeroScreen;
 use ph2d_tool_flip::{FlipMode, FlipStyleSnapshot};
 use ph2d_vector::VectorScene;
 

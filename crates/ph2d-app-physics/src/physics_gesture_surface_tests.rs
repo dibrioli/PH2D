@@ -6,7 +6,7 @@
 
 use ph2d_core::Vec2;
 use ph2d_ecs::{SimWorld, Transform};
-use ph2d_editor::PhysicsFieldEdit;
+use ph2d_editor_core::PhysicsFieldEdit;
 use ph2d_physics_ecs::{BodyKind, Collider, ColliderShape, PhysicsBridge, RigidBody};
 
 /// **A SEQUÊNCIA da superfície leva a algum lugar** (`W-Surface`) — a quarta

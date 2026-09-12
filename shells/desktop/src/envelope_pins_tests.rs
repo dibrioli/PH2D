@@ -291,7 +291,7 @@ fn the_pins_survive_an_undo() {
 
     // A seleção como o produto a tem: o pen com os FILHOS, o gizmo com o container.
     let mut pen = pen_with(&ids);
-    let mut gizmo = ph2d_editor::screens::hero::GizmoStateGroup::default();
+    let mut gizmo = ph2d_editor_core::screens::hero::GizmoStateGroup::default();
     let mut sel = crate::vec_selection::VecSelSync::default();
     crate::vec_selection::sync_selection(&mut gizmo, &sim, &scene, &map, &mut pen, &mut sel, true);
     assert_eq!(

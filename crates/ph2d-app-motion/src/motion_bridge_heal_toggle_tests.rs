@@ -9,7 +9,7 @@
 
 use super::super::{heal_one, heal_setup, inert_reaching_output};
 use super::*;
-use ph2d_editor::ToastQueue;
+use ph2d_editor_core::ToastQueue;
 
 /// **Node help OFF paints no ⚠ badges.** With the system off, the badge set is empty even
 /// for a completed inert setup that badges when it is on — the artist's freedom, and the

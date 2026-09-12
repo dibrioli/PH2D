@@ -1,6 +1,6 @@
 //! Onion settings modal — the shell half (ADR-0142 W3b).
 //!
-//! The card itself is hero chrome (`ph2d_editor::…::chrome::onion_modal`): it paints from and writes
+//! The card itself is hero chrome (`ph2d_editor_core::…::chrome::onion_modal`): it paints from and writes
 //! its widget values into the [`WidgetStore`]. This module is the glue the shell owns:
 //!
 //! * [`read_into`] — each frame the card is open, read its slider/swatch values back into
@@ -18,8 +18,8 @@
 
 use std::cell::Cell;
 
-use ph2d_editor::ids;
-use ph2d_editor::interaction::WidgetStore;
+use ph2d_editor_core::ids;
+use ph2d_editor_core::interaction::WidgetStore;
 use ph2d_timeline::OnionSettings;
 
 use crate::App;
@@ -27,7 +27,7 @@ use crate::App;
 /// The ghost-count↔slider mapping. Defined in editor-core next to the modal's painter (the one that
 /// displays the count) so there is ONE copy; re-exported here so `crate::onion_modal::…` and the
 /// read-back below keep resolving.
-pub use ph2d_editor::screens::hero::chrome::{count_to_frac, frac_to_count};
+pub use ph2d_editor_core::screens::hero::chrome::{count_to_frac, frac_to_count};
 
 /// `OnionSettings` RGB (`[f32; 3]`, linear-ish 0..1) → an `[u8; 4]` swatch seed (opaque).
 #[must_use]

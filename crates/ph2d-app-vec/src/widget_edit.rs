@@ -6,8 +6,8 @@
 //! é dos tokens.
 
 use ph2d_ecs::{Entity, SimWorld, VecWidget, VecWidgetIcon};
-use ph2d_editor::icons::IconId;
-use ph2d_editor::widget::WidgetKind;
+use ph2d_editor_core::icons::IconId;
+use ph2d_editor_core::widget::WidgetKind;
 use ph2d_vec_scene::VecPathId;
 
 use ph2d_vec_entities::entities::VecEntityMap;
@@ -44,18 +44,18 @@ pub enum WidgetEdit {
 /// regista. As duas pontas leem a MESMA constante: um teto que o roteador conhecesse e o registro
 /// não deixaria os últimos chips mortos sob o rato.
 #[must_use]
-pub fn widget_edit_for_id(id: ph2d_editor::NodeId) -> Option<WidgetEdit> {
+pub fn widget_edit_for_id(id: ph2d_editor_core::NodeId) -> Option<WidgetEdit> {
     match id {
-        _ if id == ph2d_editor::ids::VECTOR_WIDGET_WEAR => Some(WidgetEdit::Wear),
-        _ if id == ph2d_editor::ids::VECTOR_WIDGET_REMOVE => Some(WidgetEdit::Remove),
-        _ if id == ph2d_editor::ids::VECTOR_WIDGET_BIND => Some(WidgetEdit::Bind),
-        _ if id == ph2d_editor::ids::VECTOR_WIDGET_UNBIND => Some(WidgetEdit::Unbind),
-        _ => (0..ph2d_editor::ids::MAX_WIDGET_KINDS)
-            .find(|&i| ph2d_editor::ids::vector_widget_kind_id(i) == id)
+        _ if id == ph2d_editor_core::ids::VECTOR_WIDGET_WEAR => Some(WidgetEdit::Wear),
+        _ if id == ph2d_editor_core::ids::VECTOR_WIDGET_REMOVE => Some(WidgetEdit::Remove),
+        _ if id == ph2d_editor_core::ids::VECTOR_WIDGET_BIND => Some(WidgetEdit::Bind),
+        _ if id == ph2d_editor_core::ids::VECTOR_WIDGET_UNBIND => Some(WidgetEdit::Unbind),
+        _ => (0..ph2d_editor_core::ids::MAX_WIDGET_KINDS)
+            .find(|&i| ph2d_editor_core::ids::vector_widget_kind_id(i) == id)
             .map(WidgetEdit::Kind)
             .or_else(|| {
                 (0..=IconId::all().len())
-                    .find(|&i| ph2d_editor::ids::vector_widget_icon_option_id(i) == id)
+                    .find(|&i| ph2d_editor_core::ids::vector_widget_icon_option_id(i) == id)
                     .map(WidgetEdit::Icon)
             }),
     }
@@ -178,7 +178,7 @@ pub fn publish(
     let e = subject(sim, map, selected)?;
     let worn = sim.world().get::<VecWidget>(e).copied();
     let known = worn.and_then(|w| WidgetKind::from_code(w.kind));
-    let cap = ph2d_editor::ids::MAX_WIDGET_KINDS;
+    let cap = ph2d_editor_core::ids::MAX_WIDGET_KINDS;
     let kinds: Vec<String> = WidgetKind::ALL
         .iter()
         .take(cap)

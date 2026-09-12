@@ -1,7 +1,7 @@
 //! Gates do [`super`] — o `clear` da camada de sprites é DERIVADO do fundo do canvas.
 
 use super::canvas_clear_rgb;
-use ph2d_editor::screens::hero::canvas_backdrop;
+use ph2d_editor_core::screens::hero::canvas_backdrop;
 use ph2d_tokens::overrides::{TokenValue, set_color_override};
 use ph2d_tokens::{Color, ColorToken, Theme};
 

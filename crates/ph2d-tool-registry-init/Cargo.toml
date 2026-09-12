@@ -82,7 +82,7 @@ ph2d-a11y = { path = "../ph2d-a11y" }
 # into runtime, which violates the dep direction. Dev-dep is safe
 # because the editor doesn't depend (directly or transitively) on
 # registry-init.
-ph2d-editor = { path = "../ph2d-editor" }
+ph2d-editor-core = { path = "../ph2d-editor-core" }
 # Wave 2 PR 11.5 design-sync test reads `docs/design/tools/*.toml`
 # and compares each entry field-by-field against the matching
 # registered `ToolManifest`. Dev-only — no runtime dep on serde.

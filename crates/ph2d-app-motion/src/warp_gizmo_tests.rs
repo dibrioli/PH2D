@@ -558,7 +558,7 @@ fn the_gizmo_paints_geometry_and_paints_none_when_inactive() {
         width: 1200,
         height: 800,
     };
-    let split = ph2d_editor::screens::layout::CenterSplit::None;
+    let split = ph2d_editor_core::screens::layout::CenterSplit::None;
 
     let segmentos = |ativo: bool| -> u32 {
         let mut cena = VectorScene::new();

@@ -38,7 +38,7 @@ ph2d-core = { path = "../ph2d-core" }
 ph2d-tool-vector = { path = "../ph2d-tool-vector" }
 ph2d-vec-blend = { path = "../ph2d-vec-blend" }
 ph2d-vec-fill = { path = "../ph2d-vec-fill" }
-ph2d-editor = { path = "../ph2d-editor" }
+ph2d-editor-core = { path = "../ph2d-editor-core" }
 ph2d-text = { path = "../ph2d-text" }
 ph2d-tokens = { path = "../ph2d-tokens" }
 ph2d-vec-edit = { path = "../ph2d-vec-edit" }

@@ -8,7 +8,7 @@
 
 use super::params::build_params_snapshot;
 use crate::motion_state::MotionState;
-use ph2d_editor::ProjectSettings;
+use ph2d_editor_core::ProjectSettings;
 
 /// **The picker offers what the ARTIST named, never the editor's own values.**
 ///

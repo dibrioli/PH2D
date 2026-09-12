@@ -29,15 +29,15 @@
 //!   (rewriting `Transform.scale` in PresentWorld per frame) is a
 //!   future iteration not in scope.
 
-use ph2d_editor::HeroScreen;
-use ph2d_editor::ToolRegistry;
+use ph2d_editor_core::HeroScreen;
+use ph2d_editor_core::ToolRegistry;
 use ph2d_tool_equalize_sizes::params::EqualizeSizesUiEdit;
 
 /// Returns `Some(entity_bits_list)` iff Apply fired this frame.
 pub(super) fn dispatch(hero: &mut HeroScreen, tools: &mut ToolRegistry) -> Option<Vec<u64>> {
     let active = tools
         .active()
-        .map(|t| t.id() == ph2d_editor::ToolId::new("equalize_sizes"))
+        .map(|t| t.id() == ph2d_editor_core::ToolId::new("equalize_sizes"))
         .unwrap_or(false);
     hero.panel_visibility.insert("equalize_sizes", active);
     // Image tools dock into the Inspector slot — hide Inspector while
@@ -96,7 +96,7 @@ pub(super) fn dispatch(hero: &mut HeroScreen, tools: &mut ToolRegistry) -> Optio
         ph2d_panel_equalize_sizes::set_current_equalize_sizes_snapshot(Some(eqs.ui_snapshot()));
     }
     if needs_panel_reset {
-        ph2d_editor::panel::with_registry_opt(|reg| {
+        ph2d_editor_core::panel::with_registry_opt(|reg| {
             if let Some(idx) = reg.find_by_panel_node_id(ph2d_tool_equalize_sizes::ids::EQS_PANEL) {
                 reg.panels_mut()[idx].populate(&mut hero.store);
             }

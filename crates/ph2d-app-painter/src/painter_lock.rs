@@ -24,7 +24,7 @@
 //! ⚠️ **Limpar a seleção NÃO é selecionar outra**, e por isso é permitido: recusar um clique no
 //! vazio faria o `Esc` e o canvas parecerem partidos, e o pedido é sobre *trocar de imagem*.
 
-use ph2d_editor::screens::hero::HeroScreen;
+use ph2d_editor_core::screens::hero::HeroScreen;
 
 /// O id do tool, tal como o registry e a chrome o escrevem.
 const PAINTER: &str = "painter";
@@ -66,9 +66,12 @@ pub fn decide(locked: Option<u64>, target: Option<u64>, additive: bool) -> Decis
 pub const REFUSAL: &str = "Leave the Painter to select another sprite";
 
 /// A sprite que o Painter tem aberta, ou `None` quando ele não está ativo.
-pub fn locked_entity(tools: &ph2d_editor::tool::ToolRegistry, hero: &HeroScreen) -> Option<u64> {
+pub fn locked_entity(
+    tools: &ph2d_editor_core::tool::ToolRegistry,
+    hero: &HeroScreen,
+) -> Option<u64> {
     let active = tools.active()?;
-    if active.id() != ph2d_editor::ToolId::new(PAINTER) {
+    if active.id() != ph2d_editor_core::ToolId::new(PAINTER) {
         return None;
     }
     hero.gizmo.selection
@@ -127,8 +130,8 @@ mod tests {
     }
 
     fn hero_with(primary: u64, extras: &[u64]) -> HeroScreen {
-        ph2d_editor::test_support::ensure_panel_registry();
-        let mut hero = HeroScreen::new(ph2d_editor::NodeId(1));
+        ph2d_editor_core::test_support::ensure_panel_registry();
+        let mut hero = HeroScreen::new(ph2d_editor_core::NodeId(1));
         hero.gizmo.replace_selection(Some(primary));
         for e in extras {
             hero.gizmo.add_to_selection(*e);

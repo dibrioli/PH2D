@@ -10,7 +10,7 @@
 
 use crate::HeroLive;
 use ph2d_ecs::{Name, SimWorld};
-use ph2d_editor::{HeroScreen, NodeId, Toast, ToastQueue};
+use ph2d_editor_core::{HeroScreen, NodeId, Toast, ToastQueue};
 
 /// Devolve `true` quando o título da janela ficou por refazer.
 pub(super) fn drain(
@@ -32,14 +32,14 @@ pub(super) fn drain(
             .get::<Name>(entity)
             .map(|n| n.as_str().to_owned())
             .unwrap_or_default();
-        if let Some(ph2d_editor::interaction::InteractiveState::TextInput {
+        if let Some(ph2d_editor_core::interaction::InteractiveState::TextInput {
             text,
             caret,
             selection_anchor,
             ..
         }) = hero
             .store
-            .get_mut(ph2d_editor::screens::hero::ids::HIER_RENAME_INPUT)
+            .get_mut(ph2d_editor_core::screens::hero::ids::HIER_RENAME_INPUT)
         {
             let len = value.len();
             *text = value;
@@ -76,14 +76,14 @@ pub(super) fn drain(
         // criação de variações»*). Aqui havia a lei que lia as chaves do nome e trocava o elo —
         // pôr uma operação estrutural no caminho de renomear foi o que custou seis reports.
         // Clear the rename TextInput buffer for next session.
-        if let Some(ph2d_editor::interaction::InteractiveState::TextInput {
+        if let Some(ph2d_editor_core::interaction::InteractiveState::TextInput {
             text,
             caret,
             selection_anchor,
             ..
         }) = hero
             .store
-            .get_mut(ph2d_editor::screens::hero::ids::HIER_RENAME_INPUT)
+            .get_mut(ph2d_editor_core::screens::hero::ids::HIER_RENAME_INPUT)
         {
             text.clear();
             *caret = 0;

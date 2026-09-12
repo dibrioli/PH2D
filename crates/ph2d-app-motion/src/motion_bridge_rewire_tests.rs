@@ -2,7 +2,7 @@
 
 use super::*;
 use crate::motion_state::MotionState;
-use ph2d_editor::ToastQueue;
+use ph2d_editor_core::ToastQueue;
 use ph2d_nodegraph::graph::{Edge, Graph, NodeId};
 
 /// `grid -> move -> output`. The wire under test lands on `move`'s input (node 1, port 0).

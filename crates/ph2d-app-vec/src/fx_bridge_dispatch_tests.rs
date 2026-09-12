@@ -4,7 +4,7 @@
 //! classifica vira um botão pintado e inerte, e nenhum teste de unidade do motor o vê.
 
 use super::*;
-use ph2d_editor::ids as i;
+use ph2d_editor_core::ids as i;
 use ph2d_vec_scene::effect::PathEffect;
 use ph2d_vec_scene::{VecPath, VecVertex};
 

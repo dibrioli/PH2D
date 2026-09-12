@@ -367,7 +367,7 @@ pub struct FillOutcome {
 pub fn canvas_down(
     state: &mut FlipState,
     f: &mut FlipFrame<'_>,
-    toasts: &mut ph2d_editor::ToastQueue,
+    toasts: &mut ph2d_editor_core::ToastQueue,
     w2l: &Xform,
     x: f32,
     y: f32,
@@ -399,7 +399,7 @@ pub fn canvas_down(
         // Sem desenho-alvo — camada TRAVADA, ou sem chave com o AutoKey desligado. Também
         // aqui o balde tem de DIZER: consumir o clique e não fazer nada é exatamente o que
         // faz uma ferramenta parecer quebrada.
-        toasts.push(ph2d_editor::Toast::warning(
+        toasts.push(ph2d_editor_core::Toast::warning(
             "Fill: the layer is locked, or has no drawing on this frame",
         ));
         return FillOutcome {
@@ -451,7 +451,7 @@ pub fn canvas_down(
             // lugar, entao a saida e BAIXAR o Trap.
             FillError::BallTooFat => "Fill: Trap is wider than this area — lower it",
         };
-        toasts.push(ph2d_editor::Toast::warning(msg));
+        toasts.push(ph2d_editor_core::Toast::warning(msg));
         warned = true;
     }
     FillOutcome {

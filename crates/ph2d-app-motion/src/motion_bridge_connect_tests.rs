@@ -4,7 +4,7 @@
 
 use super::connect;
 use crate::motion_state::MotionState;
-use ph2d_editor::ToastQueue;
+use ph2d_editor_core::ToastQueue;
 use ph2d_nodegraph::graph::{Edge, Graph, NodeId};
 
 /// `a → move.0`, plus a free second source `b`. Both are `motion.grid`, so both feed a

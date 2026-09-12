@@ -11,7 +11,7 @@
 
 use super::*;
 use crate::motion_state::MotionState;
-use ph2d_editor::ToastQueue;
+use ph2d_editor_core::ToastQueue;
 use ph2d_nodegraph::graph::Edge;
 
 /// ⛔⛔⛔ **O REPORT DO ENIO, 2026-09-01** — *«o simples facto de tentar colocar um duplicator

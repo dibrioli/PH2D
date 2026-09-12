@@ -100,7 +100,9 @@ fn build(app: &mut crate::App) {
     let Some(gfx) = app.gfx.as_mut() else {
         return;
     };
-    let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("vector"));
+    let _ = gfx
+        .tools
+        .set_active(&ph2d_editor_core::ToolId::new("vector"));
     for (pts, closed, rgb) in PIECES {
         gfx.vec_scene.push_path(poly(pts, *closed, *rgb));
     }

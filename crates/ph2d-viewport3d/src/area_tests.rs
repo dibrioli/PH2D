@@ -7,7 +7,7 @@
 //! ela era aplicada.
 
 use super::{Split, rects};
-use ph2d_editor::zones::Rect as EditorRect;
+use ph2d_editor_core::zones::Rect as EditorRect;
 
 /// ⭐⭐⭐ **A ÁREA DO MÓDULO É A QUE SOBRA DEPOIS DAS RÉGUAS** — e o produto lê-a de lá.
 ///
@@ -28,13 +28,14 @@ use ph2d_editor::zones::Rect as EditorRect;
 #[test]
 fn the_module_lives_inside_the_rulers_and_the_four_pieces_stay_there() {
     let viewport = EditorRect::new(0.0, 0.0, 1366.0, 1024.0);
-    let mut hero =
-        ph2d_editor::screens::hero::HeroScreen::new(ph2d_editor::screens::hero::ids::NodeId(1));
+    let mut hero = ph2d_editor_core::screens::hero::HeroScreen::new(
+        ph2d_editor_core::screens::hero::ids::NodeId(1),
+    );
 
     // A área de desenho que um quadro real resolve, e o que sobra dela depois das réguas — pela
     // MESMA porta que o produto usa (`ruler::content`), nunca por um `- 20.0` escrito aqui.
-    let drawing = ph2d_editor::zones::Rect::new(308.0, 88.0, 754.0, 900.0);
-    let inner = ph2d_editor::ruler::content(drawing, true);
+    let drawing = ph2d_editor_core::zones::Rect::new(308.0, 88.0, 754.0, 900.0);
+    let inner = ph2d_editor_core::ruler::content(drawing, true);
     hero.last_canvas = drawing;
     hero.last_content = inner;
 
@@ -47,7 +48,7 @@ fn the_module_lives_inside_the_rulers_and_the_four_pieces_stay_there() {
     );
 
     // As duas faixas que ele não pode tocar, lidas da porta delas.
-    let (top, left) = ph2d_editor::ruler::live_bands(drawing).expect("a area comporta reguas");
+    let (top, left) = ph2d_editor_core::ruler::live_bands(drawing).expect("a area comporta reguas");
     // ⭐ **Com a divisão ABERTA**, que é o caso do report — e em várias posições da costura, porque
     // é ao arrastar que um quadrante escaparia da área.
     for (tx, ty) in [(0.5f32, 0.5f32), (0.25, 0.75), (0.75, 0.25)] {
@@ -76,8 +77,8 @@ fn the_module_lives_inside_the_rulers_and_the_four_pieces_stay_there() {
 /// existe seria uma faixa morta.
 #[test]
 fn with_the_rulers_off_the_module_takes_the_whole_drawing_area() {
-    let drawing = ph2d_editor::zones::Rect::new(308.0, 88.0, 754.0, 900.0);
-    let off = ph2d_editor::ruler::content(drawing, false);
+    let drawing = ph2d_editor_core::zones::Rect::new(308.0, 88.0, 754.0, 900.0);
+    let off = ph2d_editor_core::ruler::content(drawing, false);
     assert_eq!(
         (off.x, off.y, off.w, off.h),
         (drawing.x, drawing.y, drawing.w, drawing.h),
@@ -85,6 +86,6 @@ fn with_the_rulers_off_the_module_takes_the_whole_drawing_area() {
     );
 }
 
-fn overlaps(a: EditorRect, b: ph2d_editor::zones::Rect) -> bool {
+fn overlaps(a: EditorRect, b: ph2d_editor_core::zones::Rect) -> bool {
     a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y
 }

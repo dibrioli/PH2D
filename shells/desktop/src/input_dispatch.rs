@@ -35,7 +35,7 @@ use winit::dpi::PhysicalPosition;
 use winit::event::{ElementState, MouseButton, MouseScrollDelta};
 use winit::event_loop::ActiveEventLoop;
 
-use ph2d_editor::Toast;
+use ph2d_editor_core::Toast;
 use ph2d_host::{
     CloseAction, HostHandler, Lifecycle, PlatformHost, PointerEvent, PointerKind, PointerSource,
     WindowSize,
@@ -247,9 +247,9 @@ pub(crate) fn apply_vec_fill_rule(
 /// id). Pure — unit-tested; called from the render_loop drain to turn a
 /// `ToolPanelEvent::Click` into a document boolean.
 pub(crate) fn vec_bool_op_for_id(
-    id: ph2d_editor::NodeId,
+    id: ph2d_editor_core::NodeId,
 ) -> Option<ph2d_vec_boolean::PathfinderOp> {
-    use ph2d_editor::ids as i;
+    use ph2d_editor_core::ids as i;
     use ph2d_vec_boolean::PathfinderOp as P;
     // Uma TABELA, e não uma cadeia de `else if`: o 9º comando entra numa linha, e quem esquecer a
     // linha vê o botão morto no gate de seam — em vez de o ver a cair no `None` em silêncio.
@@ -309,14 +309,14 @@ pub(crate) fn apply_vec_delete_vertex(
 /// Map a Vector-panel Vertex-type button `NodeId` to its `VertexKind` (`None` for
 /// any other id). Pure — unit-tested; called from the render_loop drain.
 pub(crate) fn vec_vertex_kind_for_id(
-    id: ph2d_editor::NodeId,
+    id: ph2d_editor_core::NodeId,
 ) -> Option<ph2d_vec_scene::VertexKind> {
     use ph2d_vec_scene::VertexKind;
-    if id == ph2d_editor::ids::VECTOR_VERT_CORNER {
+    if id == ph2d_editor_core::ids::VECTOR_VERT_CORNER {
         Some(VertexKind::Corner)
-    } else if id == ph2d_editor::ids::VECTOR_VERT_SMOOTH {
+    } else if id == ph2d_editor_core::ids::VECTOR_VERT_SMOOTH {
         Some(VertexKind::Smooth)
-    } else if id == ph2d_editor::ids::VECTOR_VERT_SYMMETRIC {
+    } else if id == ph2d_editor_core::ids::VECTOR_VERT_SYMMETRIC {
         Some(VertexKind::Symmetric)
     } else {
         None
@@ -396,15 +396,15 @@ pub(crate) fn duplicate_vec_paths(
 /// Map a Vector-panel Arrange z-order button `NodeId` to its [`ph2d_vec_scene::ZOrder`]
 /// (`None` for any other id, incl. Duplicate). Pure — unit-tested; called from
 /// the render_loop drain.
-pub(crate) fn vec_reorder_for_id(id: ph2d_editor::NodeId) -> Option<ph2d_vec_scene::ZOrder> {
+pub(crate) fn vec_reorder_for_id(id: ph2d_editor_core::NodeId) -> Option<ph2d_vec_scene::ZOrder> {
     use ph2d_vec_scene::ZOrder;
-    if id == ph2d_editor::ids::VECTOR_ARRANGE_TO_BACK {
+    if id == ph2d_editor_core::ids::VECTOR_ARRANGE_TO_BACK {
         Some(ZOrder::ToBack)
-    } else if id == ph2d_editor::ids::VECTOR_ARRANGE_BACKWARD {
+    } else if id == ph2d_editor_core::ids::VECTOR_ARRANGE_BACKWARD {
         Some(ZOrder::Lower)
-    } else if id == ph2d_editor::ids::VECTOR_ARRANGE_FORWARD {
+    } else if id == ph2d_editor_core::ids::VECTOR_ARRANGE_FORWARD {
         Some(ZOrder::Raise)
-    } else if id == ph2d_editor::ids::VECTOR_ARRANGE_TO_FRONT {
+    } else if id == ph2d_editor_core::ids::VECTOR_ARRANGE_TO_FRONT {
         Some(ZOrder::ToFront)
     } else {
         None
@@ -431,11 +431,11 @@ pub(crate) fn apply_vec_flip(
 
 /// Map a Vector-panel Arrange Flip button `NodeId` to its [`ph2d_vec_scene::FlipAxis`]
 /// (`None` for any other id). Pure — unit-tested; called from the render_loop drain.
-pub(crate) fn vec_flip_for_id(id: ph2d_editor::NodeId) -> Option<ph2d_vec_scene::FlipAxis> {
+pub(crate) fn vec_flip_for_id(id: ph2d_editor_core::NodeId) -> Option<ph2d_vec_scene::FlipAxis> {
     use ph2d_vec_scene::FlipAxis;
-    if id == ph2d_editor::ids::VECTOR_ARRANGE_FLIP_H {
+    if id == ph2d_editor_core::ids::VECTOR_ARRANGE_FLIP_H {
         Some(FlipAxis::Horizontal)
-    } else if id == ph2d_editor::ids::VECTOR_ARRANGE_FLIP_V {
+    } else if id == ph2d_editor_core::ids::VECTOR_ARRANGE_FLIP_V {
         Some(FlipAxis::Vertical)
     } else {
         None
@@ -462,11 +462,11 @@ pub(crate) fn apply_vec_rotate(
 
 /// Map a Vector-panel Arrange Rotate button `NodeId` to its [`ph2d_vec_scene::Rotate90`]
 /// (`None` for any other id). Pure — unit-tested; called from the render_loop drain.
-pub(crate) fn vec_rotate_for_id(id: ph2d_editor::NodeId) -> Option<ph2d_vec_scene::Rotate90> {
+pub(crate) fn vec_rotate_for_id(id: ph2d_editor_core::NodeId) -> Option<ph2d_vec_scene::Rotate90> {
     use ph2d_vec_scene::Rotate90;
-    if id == ph2d_editor::ids::VECTOR_ARRANGE_ROTATE_CW {
+    if id == ph2d_editor_core::ids::VECTOR_ARRANGE_ROTATE_CW {
         Some(Rotate90::Cw)
-    } else if id == ph2d_editor::ids::VECTOR_ARRANGE_ROTATE_CCW {
+    } else if id == ph2d_editor_core::ids::VECTOR_ARRANGE_ROTATE_CCW {
         Some(Rotate90::Ccw)
     } else {
         None
@@ -528,16 +528,16 @@ pub(crate) enum VecFillKind {
 }
 
 /// Map a Fill-type button `NodeId` to its [`VecFillKind`] (`None` otherwise).
-pub(crate) fn vec_fill_kind_for_id(id: ph2d_editor::NodeId) -> Option<VecFillKind> {
-    if id == ph2d_editor::ids::VECTOR_FILL_KIND_SOLID {
+pub(crate) fn vec_fill_kind_for_id(id: ph2d_editor_core::NodeId) -> Option<VecFillKind> {
+    if id == ph2d_editor_core::ids::VECTOR_FILL_KIND_SOLID {
         Some(VecFillKind::Solid)
-    } else if id == ph2d_editor::ids::VECTOR_FILL_KIND_LINEAR {
+    } else if id == ph2d_editor_core::ids::VECTOR_FILL_KIND_LINEAR {
         Some(VecFillKind::Linear)
-    } else if id == ph2d_editor::ids::VECTOR_FILL_KIND_RADIAL {
+    } else if id == ph2d_editor_core::ids::VECTOR_FILL_KIND_RADIAL {
         Some(VecFillKind::Radial)
-    } else if id == ph2d_editor::ids::VECTOR_FILL_KIND_MULTI {
+    } else if id == ph2d_editor_core::ids::VECTOR_FILL_KIND_MULTI {
         Some(VecFillKind::MultiPoint)
-    } else if id == ph2d_editor::ids::VECTOR_FILL_KIND_PATTERN {
+    } else if id == ph2d_editor_core::ids::VECTOR_FILL_KIND_PATTERN {
         Some(VecFillKind::Pattern)
     } else {
         None
@@ -964,8 +964,8 @@ pub(crate) enum VecAlign {
 }
 
 /// Map an Align button `NodeId` to its [`VecAlign`] (`None` otherwise).
-pub(crate) fn vec_align_for_id(id: ph2d_editor::NodeId) -> Option<VecAlign> {
-    use ph2d_editor::ids as i;
+pub(crate) fn vec_align_for_id(id: ph2d_editor_core::NodeId) -> Option<VecAlign> {
+    use ph2d_editor_core::ids as i;
     Some(match id {
         x if x == i::VECTOR_ALIGN_LEFT => VecAlign::Left,
         x if x == i::VECTOR_ALIGN_HCENTER => VecAlign::HCenter,
@@ -985,10 +985,10 @@ pub(crate) enum VecDistribute {
 }
 
 /// Map a Distribute button `NodeId` to its [`VecDistribute`] (`None` otherwise).
-pub(crate) fn vec_distribute_for_id(id: ph2d_editor::NodeId) -> Option<VecDistribute> {
-    if id == ph2d_editor::ids::VECTOR_DISTRIBUTE_H {
+pub(crate) fn vec_distribute_for_id(id: ph2d_editor_core::NodeId) -> Option<VecDistribute> {
+    if id == ph2d_editor_core::ids::VECTOR_DISTRIBUTE_H {
         Some(VecDistribute::Horizontal)
-    } else if id == ph2d_editor::ids::VECTOR_DISTRIBUTE_V {
+    } else if id == ph2d_editor_core::ids::VECTOR_DISTRIBUTE_V {
         Some(VecDistribute::Vertical)
     } else {
         None
@@ -1163,14 +1163,14 @@ pub(crate) fn apply_vec_path_shape(
 
 /// Map a Vector-panel Path button `NodeId` to its [`VecPathShapeOp`] (`None`
 /// otherwise). Pure — unit-tested; called from the render_loop drain.
-pub(crate) fn vec_path_shape_for_id(id: ph2d_editor::NodeId) -> Option<VecPathShapeOp> {
-    if id == ph2d_editor::ids::VECTOR_PATH_SMOOTH {
+pub(crate) fn vec_path_shape_for_id(id: ph2d_editor_core::NodeId) -> Option<VecPathShapeOp> {
+    if id == ph2d_editor_core::ids::VECTOR_PATH_SMOOTH {
         Some(VecPathShapeOp::Smooth)
-    } else if id == ph2d_editor::ids::VECTOR_PATH_SHARPEN {
+    } else if id == ph2d_editor_core::ids::VECTOR_PATH_SHARPEN {
         Some(VecPathShapeOp::Sharpen)
-    } else if id == ph2d_editor::ids::VECTOR_PATH_SIMPLIFY {
+    } else if id == ph2d_editor_core::ids::VECTOR_PATH_SIMPLIFY {
         Some(VecPathShapeOp::Simplify)
-    } else if id == ph2d_editor::ids::VECTOR_PATH_SUBDIVIDE {
+    } else if id == ph2d_editor_core::ids::VECTOR_PATH_SUBDIVIDE {
         Some(VecPathShapeOp::Subdivide)
     } else {
         None
@@ -1189,14 +1189,16 @@ pub(crate) enum VecTransformField {
 
 /// Map a Vector-panel Transform field `NodeId` to its [`VecTransformField`]
 /// (`None` for any other id). Pure — unit-tested; called from the render_loop drain.
-pub(crate) fn vec_transform_field_for_id(id: ph2d_editor::NodeId) -> Option<VecTransformField> {
-    if id == ph2d_editor::ids::VECTOR_TRANSFORM_X {
+pub(crate) fn vec_transform_field_for_id(
+    id: ph2d_editor_core::NodeId,
+) -> Option<VecTransformField> {
+    if id == ph2d_editor_core::ids::VECTOR_TRANSFORM_X {
         Some(VecTransformField::X)
-    } else if id == ph2d_editor::ids::VECTOR_TRANSFORM_Y {
+    } else if id == ph2d_editor_core::ids::VECTOR_TRANSFORM_Y {
         Some(VecTransformField::Y)
-    } else if id == ph2d_editor::ids::VECTOR_TRANSFORM_W {
+    } else if id == ph2d_editor_core::ids::VECTOR_TRANSFORM_W {
         Some(VecTransformField::W)
-    } else if id == ph2d_editor::ids::VECTOR_TRANSFORM_H {
+    } else if id == ph2d_editor_core::ids::VECTOR_TRANSFORM_H {
         Some(VecTransformField::H)
     } else {
         None
@@ -1612,9 +1614,9 @@ impl App {
     /// agree on where the band is (mirror of `over_motion_split_divider`).
     fn timeline_resize_cursor(
         &self,
-        hero: &ph2d_editor::HeroScreen,
+        hero: &ph2d_editor_core::HeroScreen,
     ) -> Option<winit::window::CursorIcon> {
-        use ph2d_editor::interaction::TimelineHitKind;
+        use ph2d_editor_core::interaction::TimelineHitKind;
         use winit::window::CursorIcon;
         let (x, y) = self.last_pointer;
         let (_, kind) = hero
@@ -1637,13 +1639,16 @@ impl App {
     /// the last-pointer position through the hit index to a `GraphSurface` hit
     /// and checks its kind — the same channel the divider drag uses, so the
     /// cursor and the gesture agree on the grab band.
-    fn over_motion_split_divider(&self, hero: &ph2d_editor::HeroScreen) -> bool {
+    fn over_motion_split_divider(&self, hero: &ph2d_editor_core::HeroScreen) -> bool {
         let (x, y) = self.last_pointer;
         hero.hit_index
             .hit(x, y)
             .and_then(|id| hero.store.graph_surface_at_id(id))
             .is_some_and(|(_, kind)| {
-                matches!(kind, ph2d_editor::interaction::GraphHitKind::SplitDivider)
+                matches!(
+                    kind,
+                    ph2d_editor_core::interaction::GraphHitKind::SplitDivider
+                )
             })
     }
 
@@ -1736,9 +1741,9 @@ impl App {
         matches!(
             h.store.get(id),
             Some(
-                ph2d_editor::InteractiveState::TextInput { .. }
-                    | ph2d_editor::InteractiveState::NumberInput { .. }
-                    | ph2d_editor::InteractiveState::Combobox { .. }
+                ph2d_editor_core::InteractiveState::TextInput { .. }
+                    | ph2d_editor_core::InteractiveState::NumberInput { .. }
+                    | ph2d_editor_core::InteractiveState::Combobox { .. }
             )
         )
     }
@@ -1824,12 +1829,12 @@ impl App {
         if group {
             let name = format!("Group {}", sel.len());
             if ph2d_vec_entities::entities::group_entities(sim, &sel, name).is_none() {
-                gfx.toasts.push(ph2d_editor::Toast::warning(
+                gfx.toasts.push(ph2d_editor_core::Toast::warning(
                     "Select two or more objects to group",
                 ));
             }
         } else if ph2d_vec_entities::entities::ungroup_entities(sim, &sel) == 0 {
-            gfx.toasts.push(ph2d_editor::Toast::warning(
+            gfx.toasts.push(ph2d_editor_core::Toast::warning(
                 "That selection is not inside a group",
             ));
         }
@@ -1907,7 +1912,7 @@ impl App {
         self.gfx.as_ref().is_some_and(|g| {
             g.tools
                 .active()
-                .is_some_and(|t| t.id() == ph2d_editor::ToolId::new("vector"))
+                .is_some_and(|t| t.id() == ph2d_editor_core::ToolId::new("vector"))
         })
     }
 
@@ -2003,7 +2008,7 @@ impl App {
         self.gfx.as_ref().is_some_and(|g| {
             g.tools
                 .active()
-                .is_some_and(|t| t.id() == ph2d_editor::ToolId::new("motion"))
+                .is_some_and(|t| t.id() == ph2d_editor_core::ToolId::new("motion"))
         })
     }
 
@@ -2189,10 +2194,10 @@ impl App {
             return false;
         };
         hero.store
-            .open_context_menu(ph2d_editor::interaction::ContextMenuRequest {
+            .open_context_menu(ph2d_editor_core::interaction::ContextMenuRequest {
                 x,
                 y,
-                kind: ph2d_editor::interaction::ContextMenuKind::MotionPathAnchor {
+                kind: ph2d_editor_core::interaction::ContextMenuKind::MotionPathAnchor {
                     target: target.get(),
                     i: i as u32,
                 },
@@ -2502,8 +2507,9 @@ impl App {
             if hit > 0
                 && let Some(gfx) = self.gfx.as_mut()
             {
-                gfx.toasts
-                    .push(ph2d_editor::Toast::info(format!("Blast: {hit} bodies")));
+                gfx.toasts.push(ph2d_editor_core::Toast::info(format!(
+                    "Blast: {hit} bodies"
+                )));
             }
         }
         true
@@ -2812,7 +2818,10 @@ impl App {
         self.gfx
             .as_ref()
             .and_then(|g| g.hero_screen.as_ref())
-            .and_then(|h| h.store.panel_rect(ph2d_editor::ids::MOTION_GRAPH_PANEL))
+            .and_then(|h| {
+                h.store
+                    .panel_rect(ph2d_editor_core::ids::MOTION_GRAPH_PANEL)
+            })
             .is_some_and(|r| r.contains(self.last_pointer.0, self.last_pointer.1))
     }
 
@@ -2824,7 +2833,7 @@ impl App {
         self.gfx
             .as_ref()
             .and_then(|g| g.hero_screen.as_ref())
-            .and_then(|h| h.store.panel_rect(ph2d_editor::ids::TIMELINE_PANEL))
+            .and_then(|h| h.store.panel_rect(ph2d_editor_core::ids::TIMELINE_PANEL))
             .is_some_and(|r| r.contains(self.last_pointer.0, self.last_pointer.1))
     }
     /// ADR-0108 Fase 1: while a shape drag is live, resize it to the cursor.
@@ -3316,7 +3325,7 @@ impl App {
             let split = gfx
                 .hero_screen
                 .as_ref()
-                .map_or(ph2d_editor::screens::layout::CenterSplit::None, |h| {
+                .map_or(ph2d_editor_core::screens::layout::CenterSplit::None, |h| {
                     h.view.center_split
                 });
             ph2d_app_motion::field_gizmo::pan_scene_camera(&mut gfx.camera, split, size, dx, dy);
@@ -3446,10 +3455,13 @@ impl App {
                 // artista vê — sem isto ele pinta o valor velho por cima do novo) e o
                 // `SetValue` pro tool (o valor autorado, clampado pelo MESMO braço).
                 hero.store
-                    .set_slider_value(ph2d_editor::ids::FLIP_GAP, track as f32);
+                    .set_slider_value(ph2d_editor_core::ids::FLIP_GAP, track as f32);
                 hero.bus
-                    .push(ph2d_editor::action_bus::EditorAction::ToolPanelEvent(
-                        ph2d_editor::tool::PanelEvent::SetValue(ph2d_editor::ids::FLIP_GAP, track),
+                    .push(ph2d_editor_core::action_bus::EditorAction::ToolPanelEvent(
+                        ph2d_editor_core::tool::PanelEvent::SetValue(
+                            ph2d_editor_core::ids::FLIP_GAP,
+                            track,
+                        ),
                     ));
                 self.any_input_this_frame = true;
             }
@@ -5568,7 +5580,7 @@ impl App {
                             let primary = hero.gizmo.selection;
                             if let Some(entry) = resolve_live_entry(gfx.hero_live.as_ref(), primary)
                             {
-                                hero.selection = Some(ph2d_editor::HeroSelection {
+                                hero.selection = Some(ph2d_editor_core::HeroSelection {
                                     label: entry.name.clone(),
                                     kind: entry.badge.clone().unwrap_or_else(|| "ENT".to_string()),
                                     world_pos: (0.0, 0.0),
@@ -5584,24 +5596,24 @@ impl App {
                         // open an additive rubber-band.
                     }
                     let hit_id = hero.hit_index.hit(evt.x, evt.y);
-                    let gizmo_kind = hit_id.and_then(ph2d_editor::gizmo_kind_for_id);
+                    let gizmo_kind = hit_id.and_then(ph2d_editor_core::gizmo_kind_for_id);
                     // Onda 2C: hit_map fills in for handles whose ids
                     // aren't canonical — extras + global. The primary
                     // keeps canonical IDs (matches the legacy
                     // `gizmo_kind_for_id` lookup above so the primary
                     // path runs unchanged when it's the only sprite
                     // selected).
-                    let hit_map_entry: Option<ph2d_editor::GizmoHit> =
+                    let hit_map_entry: Option<ph2d_editor_core::GizmoHit> =
                         hit_id.and_then(|id| hero.gizmo.gizmo_hit_map.get(&id).copied());
                     let effective_target = hit_map_entry
                         .map(|h| h.target)
-                        .unwrap_or(ph2d_editor::GizmoTarget::PrimaryIndividual);
+                        .unwrap_or(ph2d_editor_core::GizmoTarget::PrimaryIndividual);
                     let effective_kind = hit_map_entry.map(|h| h.kind).or(gizmo_kind);
                     let is_specific_handle = matches!(
                         effective_kind,
-                        Some(ph2d_editor::GizmoDragKind::ScaleCorner { .. })
-                            | Some(ph2d_editor::GizmoDragKind::ScaleEdge { .. })
-                            | Some(ph2d_editor::GizmoDragKind::Rotate)
+                        Some(ph2d_editor_core::GizmoDragKind::ScaleCorner { .. })
+                            | Some(ph2d_editor_core::GizmoDragKind::ScaleEdge { .. })
+                            | Some(ph2d_editor_core::GizmoDragKind::Rotate)
                     );
                     // Enio 2026-07-10: uma forma vetorial ABERTA (linha/arco/pen aberto)
                     // tem bbox FINA — o interior "Translate" do gizmo de sprite colapsa
@@ -5673,14 +5685,15 @@ impl App {
                     // via `pick_sprites_at_world` and opens a group
                     // translate drag.
                     let is_keyed_translate = hit_map_entry
-                        .map(|h| matches!(h.kind, ph2d_editor::GizmoDragKind::Translate))
+                        .map(|h| matches!(h.kind, ph2d_editor_core::GizmoDragKind::Translate))
                         .unwrap_or(false);
                     // TOOL_PIVOT begin: when the Pivot transform tool is
                     // the active radio selection and the click lands on
                     // the selected sprite (or its pivot dot), open a
                     // MovePivot drag instead of the pick / scale path.
-                    let pivot_tool_active = hero.store.button_state(ph2d_editor::ids::TOOL_PIVOT)
-                        == Some(ph2d_editor::widget::ButtonState::Pressed);
+                    let pivot_tool_active =
+                        hero.store.button_state(ph2d_editor_core::ids::TOOL_PIVOT)
+                            == Some(ph2d_editor_core::widget::ButtonState::Pressed);
                     let mut began_pivot = false;
                     if pivot_tool_active
                         && hero.store.panel_at(evt.x, evt.y).is_none()
@@ -5690,7 +5703,8 @@ impl App {
                         let entity = ph2d_ecs::Entity::from_bits(entity_bits);
                         let window_size = gfx.surface.size();
                         let world_pos = gfx.camera.screen_to_world((evt.x, evt.y), window_size);
-                        let on_pivot_dot = hit_id == Some(ph2d_editor::gizmo::ids::GIZMO_PIVOT);
+                        let on_pivot_dot =
+                            hit_id == Some(ph2d_editor_core::gizmo::ids::GIZMO_PIVOT);
                         // ADR-0111: uma forma vetorial ou um objeto Flip também é
                         // agarrável pela arte (não só pelo dot do pivô).
                         let on_object =
@@ -5719,13 +5733,13 @@ impl App {
                             && !ph2d_ecs::is_locked_for_edit(gfx.sim.world(), entity)
                             && let Some(t) = gfx.sim.world().get::<Transform>(entity)
                         {
-                            let snap_t = ph2d_editor::TransformSnapshot {
+                            let snap_t = ph2d_editor_core::TransformSnapshot {
                                 translation: [t.translation.x, t.translation.y],
                                 rotation: t.rotation,
                                 scale: [t.scale.x, t.scale.y],
                             };
                             let pw = ph2d_ecs::parent_world_transform(gfx.sim.world(), entity);
-                            let parent_world = ph2d_editor::TransformSnapshot {
+                            let parent_world = ph2d_editor_core::TransformSnapshot {
                                 translation: [pw.translation.x, pw.translation.y],
                                 rotation: pw.rotation,
                                 scale: [pw.scale.x, pw.scale.y],
@@ -5741,8 +5755,8 @@ impl App {
                                 snap_t.translation[0] + ax * cos_r - ay * sin_r,
                                 snap_t.translation[1] + ax * sin_r + ay * cos_r,
                             ];
-                            hero.gizmo.drag = Some(ph2d_editor::GizmoDragState {
-                                kind: ph2d_editor::GizmoDragKind::MovePivot,
+                            hero.gizmo.drag = Some(ph2d_editor_core::GizmoDragState {
+                                kind: ph2d_editor_core::GizmoDragKind::MovePivot,
                                 entity_bits,
                                 start_screen: (evt.x, evt.y),
                                 cursor_screen: (evt.x, evt.y),
@@ -5751,7 +5765,7 @@ impl App {
                                 start_cursor_world: world_pos,
                                 sprite_half_intrinsic: half,
                                 anchor_is_center: false,
-                                target: ph2d_editor::GizmoTarget::PrimaryIndividual,
+                                target: ph2d_editor_core::GizmoTarget::PrimaryIndividual,
                                 parent_world,
                                 turns: 0,
                             });
@@ -5834,7 +5848,7 @@ impl App {
                         && !over_flip_art
                         && let Some(gkind) = effective_kind
                         && let Some(entity_bits) = match effective_target {
-                            ph2d_editor::GizmoTarget::ExtraIndividual(bits) => Some(bits),
+                            ph2d_editor_core::GizmoTarget::ExtraIndividual(bits) => Some(bits),
                             _ => hero.gizmo.selection,
                         }
                     {
@@ -5852,7 +5866,7 @@ impl App {
                         // há grupo a semear, daí o sinalizador.
                         let mut opened_drag = false;
                         if let Some(t) = gfx.sim.world().get::<Transform>(entity) {
-                            let snap = ph2d_editor::TransformSnapshot {
+                            let snap = ph2d_editor_core::TransformSnapshot {
                                 translation: [t.translation.x, t.translation.y],
                                 rotation: t.rotation,
                                 scale: [t.scale.x, t.scale.y],
@@ -5862,7 +5876,7 @@ impl App {
                             // unrotate/unscale the delta before writing
                             // back to the entity's LOCAL Transform.
                             let pw = ph2d_ecs::parent_world_transform(gfx.sim.world(), entity);
-                            let parent_world = ph2d_editor::TransformSnapshot {
+                            let parent_world = ph2d_editor_core::TransformSnapshot {
                                 translation: [pw.translation.x, pw.translation.y],
                                 rotation: pw.rotation,
                                 scale: [pw.scale.x, pw.scale.y],
@@ -5884,7 +5898,8 @@ impl App {
                             // Global overrides pivot to the global bbox
                             // center so group transforms rotate/scale every
                             // sprite around a single shared point.
-                            let pivot = if let ph2d_editor::GizmoTarget::Global = effective_target
+                            let pivot = if let ph2d_editor_core::GizmoTarget::Global =
+                                effective_target
                                 && let Some(gv) = hero.gizmo.global_view.as_ref()
                             {
                                 [
@@ -5897,10 +5912,11 @@ impl App {
                                 // rotacionado/escalonado (Enio 2026-05-26
                                 // fix: child de pai rotacionado tinha
                                 // pivot calculado como root).
-                                let world_snap = ph2d_editor::compose_snapshot(parent_world, snap);
+                                let world_snap =
+                                    ph2d_editor_core::compose_snapshot(parent_world, snap);
                                 // ⚠️ **O CANTO oposto, sempre — mesmo com Ctrl premido agora.**
                                 //
-                                // A âncora deste gizmo é VIVA (`ph2d_editor::live_anchor`, chamada
+                                // A âncora deste gizmo é VIVA (`ph2d_editor_core::live_anchor`, chamada
                                 // a cada movimento): o Ctrl deste frame é que decide se o ponto
                                 // fixo é o canto ou o centro. O centro é derivável da pose de
                                 // partida a qualquer momento; o CANTO não é derivável de nada
@@ -5908,7 +5924,7 @@ impl App {
                                 // Guardar o centro aqui tornaria soltar o Ctrl no meio do arrasto
                                 // uma operação sem volta — e o modificador deixaria de ser vivo
                                 // justamente na direção em que o artista o larga.
-                                ph2d_editor::anchor_pivot_world(
+                                ph2d_editor_core::anchor_pivot_world(
                                     gkind,
                                     sprite_anchor_intrinsic,
                                     sprite_half_intrinsic,
@@ -5924,12 +5940,12 @@ impl App {
                             // axis-aligned union of rotated sprites,
                             // which grows during rotation instead of
                             // rotating).
-                            if matches!(effective_target, ph2d_editor::GizmoTarget::Global) {
+                            if matches!(effective_target, ph2d_editor_core::GizmoTarget::Global) {
                                 hero.gizmo.global_view_start = hero.gizmo.global_view;
                             } else {
                                 hero.gizmo.global_view_start = None;
                             }
-                            hero.gizmo.drag = Some(ph2d_editor::GizmoDragState {
+                            hero.gizmo.drag = Some(ph2d_editor_core::GizmoDragState {
                                 kind: gkind,
                                 entity_bits,
                                 start_screen: (evt.x, evt.y),
@@ -5965,7 +5981,7 @@ impl App {
                             // carregar a corrente e arrastar pelo corpo, não.
                             let selected: Vec<u64> = hero.gizmo.iter_selected().collect();
                             let carry_reach =
-                                if matches!(gkind, ph2d_editor::GizmoDragKind::Translate)
+                                if matches!(gkind, ph2d_editor_core::GizmoDragKind::Translate)
                                     && !self.playhead.is_playing()
                                 {
                                     self.physics
@@ -5986,8 +6002,11 @@ impl App {
                     } else if hero.store.panel_at(evt.x, evt.y).is_none()
                         && !menu_open_before
                         && (hit_id.is_none()
-                            || matches!(gizmo_kind, Some(ph2d_editor::GizmoDragKind::Translate))
-                            || hit_id == Some(ph2d_editor::gizmo::ids::GIZMO_PIVOT)
+                            || matches!(
+                                gizmo_kind,
+                                Some(ph2d_editor_core::GizmoDragKind::Translate)
+                            )
+                            || hit_id == Some(ph2d_editor_core::gizmo::ids::GIZMO_PIVOT)
                             || is_keyed_translate
                             || over_open_vec_stroke
                             || over_flip_art)
@@ -6037,7 +6056,10 @@ impl App {
                         // arrasto, como num sprite. Sem nada sob o cursor, cai na
                         // seleção atual (Enio 2026-07-09).
                         if hits.is_empty()
-                            && matches!(gizmo_kind, Some(ph2d_editor::GizmoDragKind::Translate))
+                            && matches!(
+                                gizmo_kind,
+                                Some(ph2d_editor_core::GizmoDragKind::Translate)
+                            )
                             && let Some(sel) = hero.gizmo.selection
                         {
                             hits.push(sel);
@@ -6057,7 +6079,10 @@ impl App {
                             crate::pick_order::start_on_selection(
                                 &mut hits,
                                 hero.gizmo.selection,
-                                matches!(gizmo_kind, Some(ph2d_editor::GizmoDragKind::Translate)),
+                                matches!(
+                                    gizmo_kind,
+                                    Some(ph2d_editor_core::GizmoDragKind::Translate)
+                                ),
                             )
                         } else {
                             0
@@ -6241,20 +6266,20 @@ impl App {
                                 && !locked
                                 && let Some(t) = gfx.sim.world().get::<Transform>(entity)
                             {
-                                let snap_t = ph2d_editor::TransformSnapshot {
+                                let snap_t = ph2d_editor_core::TransformSnapshot {
                                     translation: [t.translation.x, t.translation.y],
                                     rotation: t.rotation,
                                     scale: [t.scale.x, t.scale.y],
                                 };
                                 let pw = ph2d_ecs::parent_world_transform(gfx.sim.world(), entity);
-                                let parent_world = ph2d_editor::TransformSnapshot {
+                                let parent_world = ph2d_editor_core::TransformSnapshot {
                                     translation: [pw.translation.x, pw.translation.y],
                                     rotation: pw.rotation,
                                     scale: [pw.scale.x, pw.scale.y],
                                 };
                                 let pivot = [t.translation.x, t.translation.y];
-                                hero.gizmo.drag = Some(ph2d_editor::GizmoDragState {
-                                    kind: ph2d_editor::GizmoDragKind::Translate,
+                                hero.gizmo.drag = Some(ph2d_editor_core::GizmoDragState {
+                                    kind: ph2d_editor_core::GizmoDragKind::Translate,
                                     entity_bits: bits,
                                     start_screen: (evt.x, evt.y),
                                     cursor_screen: (evt.x, evt.y),
@@ -6263,7 +6288,7 @@ impl App {
                                     start_cursor_world: world_pos,
                                     sprite_half_intrinsic: [0.0, 0.0],
                                     anchor_is_center: false,
-                                    target: ph2d_editor::GizmoTarget::PrimaryIndividual,
+                                    target: ph2d_editor_core::GizmoTarget::PrimaryIndividual,
                                     parent_world,
                                     turns: 0,
                                 });
@@ -6311,7 +6336,7 @@ impl App {
                         // O ciclo corrente fica atado a ESTA seleção — ver `cycle_pick_selection`.
                         self.cycle_pick_selection = primary;
                         if let Some(entry) = resolve_live_entry(gfx.hero_live.as_ref(), primary) {
-                            hero.selection = Some(ph2d_editor::HeroSelection {
+                            hero.selection = Some(ph2d_editor_core::HeroSelection {
                                 label: entry.name.clone(),
                                 kind: entry.badge.clone().unwrap_or_else(|| "ENT".to_string()),
                                 world_pos: (0.0, 0.0),
@@ -6399,7 +6424,7 @@ impl App {
                             let primary = hero.gizmo.selection;
                             if let Some(entry) = resolve_live_entry(gfx.hero_live.as_ref(), primary)
                             {
-                                hero.selection = Some(ph2d_editor::HeroSelection {
+                                hero.selection = Some(ph2d_editor_core::HeroSelection {
                                     label: entry.name.clone(),
                                     kind: entry.badge.clone().unwrap_or_else(|| "ENT".to_string()),
                                     world_pos: (0.0, 0.0),
@@ -6439,7 +6464,7 @@ impl App {
                             if let Some(entry) =
                                 resolve_live_entry(gfx.hero_live.as_ref(), Some(bits))
                             {
-                                hero.selection = Some(ph2d_editor::HeroSelection {
+                                hero.selection = Some(ph2d_editor_core::HeroSelection {
                                     label: entry.name.clone(),
                                     kind: entry.badge.clone().unwrap_or_else(|| "ENT".to_string()),
                                     world_pos: (0.0, 0.0),
@@ -6461,9 +6486,9 @@ impl App {
                     // aproxime as pontas deve soldar — só o MovePivot (que mexe no pivô,
                     // não na forma) fica de fora. O `rigid_snap_delta` só desliza para o
                     // encaixe, então serve de ajuste fino pós-scale/rotate também.
-                    if ended_drag
-                        .is_some_and(|d| !matches!(d.kind, ph2d_editor::GizmoDragKind::MovePivot))
-                    {
+                    if ended_drag.is_some_and(|d| {
+                        !matches!(d.kind, ph2d_editor_core::GizmoDragKind::MovePivot)
+                    }) {
                         let mut moved_bits = vec![ended_drag.unwrap().entity_bits];
                         moved_bits.extend(self.group_drag_starts.iter().map(|s| s.entity_bits));
                         let moved_ids: Vec<_> = moved_bits
@@ -6646,19 +6671,19 @@ mod tests {
     #[test]
     fn vertex_button_ids_map_to_their_kinds() {
         assert_eq!(
-            vec_vertex_kind_for_id(ph2d_editor::ids::VECTOR_VERT_CORNER),
+            vec_vertex_kind_for_id(ph2d_editor_core::ids::VECTOR_VERT_CORNER),
             Some(VertexKind::Corner)
         );
         assert_eq!(
-            vec_vertex_kind_for_id(ph2d_editor::ids::VECTOR_VERT_SMOOTH),
+            vec_vertex_kind_for_id(ph2d_editor_core::ids::VECTOR_VERT_SMOOTH),
             Some(VertexKind::Smooth)
         );
         assert_eq!(
-            vec_vertex_kind_for_id(ph2d_editor::ids::VECTOR_VERT_SYMMETRIC),
+            vec_vertex_kind_for_id(ph2d_editor_core::ids::VECTOR_VERT_SYMMETRIC),
             Some(VertexKind::Symmetric)
         );
         assert_eq!(
-            vec_vertex_kind_for_id(ph2d_editor::ids::VECTOR_BOOL_UNION),
+            vec_vertex_kind_for_id(ph2d_editor_core::ids::VECTOR_BOOL_UNION),
             None
         );
     }
@@ -6666,28 +6691,28 @@ mod tests {
     #[test]
     fn arrange_button_ids_map_to_their_zorder() {
         assert_eq!(
-            vec_reorder_for_id(ph2d_editor::ids::VECTOR_ARRANGE_TO_BACK),
+            vec_reorder_for_id(ph2d_editor_core::ids::VECTOR_ARRANGE_TO_BACK),
             Some(ZOrder::ToBack)
         );
         assert_eq!(
-            vec_reorder_for_id(ph2d_editor::ids::VECTOR_ARRANGE_BACKWARD),
+            vec_reorder_for_id(ph2d_editor_core::ids::VECTOR_ARRANGE_BACKWARD),
             Some(ZOrder::Lower)
         );
         assert_eq!(
-            vec_reorder_for_id(ph2d_editor::ids::VECTOR_ARRANGE_FORWARD),
+            vec_reorder_for_id(ph2d_editor_core::ids::VECTOR_ARRANGE_FORWARD),
             Some(ZOrder::Raise)
         );
         assert_eq!(
-            vec_reorder_for_id(ph2d_editor::ids::VECTOR_ARRANGE_TO_FRONT),
+            vec_reorder_for_id(ph2d_editor_core::ids::VECTOR_ARRANGE_TO_FRONT),
             Some(ZOrder::ToFront)
         );
         // Duplicate is NOT a reorder (handled separately), nor any non-Arrange id.
         assert_eq!(
-            vec_reorder_for_id(ph2d_editor::ids::VECTOR_ARRANGE_DUPLICATE),
+            vec_reorder_for_id(ph2d_editor_core::ids::VECTOR_ARRANGE_DUPLICATE),
             None
         );
         assert_eq!(
-            vec_reorder_for_id(ph2d_editor::ids::VECTOR_BOOL_UNION),
+            vec_reorder_for_id(ph2d_editor_core::ids::VECTOR_BOOL_UNION),
             None
         );
     }
@@ -6695,20 +6720,20 @@ mod tests {
     #[test]
     fn flip_button_ids_map_to_their_axis() {
         assert_eq!(
-            vec_flip_for_id(ph2d_editor::ids::VECTOR_ARRANGE_FLIP_H),
+            vec_flip_for_id(ph2d_editor_core::ids::VECTOR_ARRANGE_FLIP_H),
             Some(FlipAxis::Horizontal)
         );
         assert_eq!(
-            vec_flip_for_id(ph2d_editor::ids::VECTOR_ARRANGE_FLIP_V),
+            vec_flip_for_id(ph2d_editor_core::ids::VECTOR_ARRANGE_FLIP_V),
             Some(FlipAxis::Vertical)
         );
         // Flip is NOT a reorder and vice-versa.
         assert_eq!(
-            vec_flip_for_id(ph2d_editor::ids::VECTOR_ARRANGE_TO_BACK),
+            vec_flip_for_id(ph2d_editor_core::ids::VECTOR_ARRANGE_TO_BACK),
             None
         );
         assert_eq!(
-            vec_reorder_for_id(ph2d_editor::ids::VECTOR_ARRANGE_FLIP_H),
+            vec_reorder_for_id(ph2d_editor_core::ids::VECTOR_ARRANGE_FLIP_H),
             None
         );
     }
@@ -6716,19 +6741,19 @@ mod tests {
     #[test]
     fn rotate_button_ids_map_to_their_direction() {
         assert_eq!(
-            vec_rotate_for_id(ph2d_editor::ids::VECTOR_ARRANGE_ROTATE_CW),
+            vec_rotate_for_id(ph2d_editor_core::ids::VECTOR_ARRANGE_ROTATE_CW),
             Some(Rotate90::Cw)
         );
         assert_eq!(
-            vec_rotate_for_id(ph2d_editor::ids::VECTOR_ARRANGE_ROTATE_CCW),
+            vec_rotate_for_id(ph2d_editor_core::ids::VECTOR_ARRANGE_ROTATE_CCW),
             Some(Rotate90::Ccw)
         );
         assert_eq!(
-            vec_rotate_for_id(ph2d_editor::ids::VECTOR_ARRANGE_FLIP_H),
+            vec_rotate_for_id(ph2d_editor_core::ids::VECTOR_ARRANGE_FLIP_H),
             None
         );
         assert_eq!(
-            vec_flip_for_id(ph2d_editor::ids::VECTOR_ARRANGE_ROTATE_CW),
+            vec_flip_for_id(ph2d_editor_core::ids::VECTOR_ARRANGE_ROTATE_CW),
             None
         );
     }
@@ -6737,15 +6762,15 @@ mod tests {
     fn transform_fields_map_and_apply_translates_and_scales() {
         use ph2d_vec_scene::{VecScene, rectangle};
         assert_eq!(
-            vec_transform_field_for_id(ph2d_editor::ids::VECTOR_TRANSFORM_X),
+            vec_transform_field_for_id(ph2d_editor_core::ids::VECTOR_TRANSFORM_X),
             Some(VecTransformField::X)
         );
         assert_eq!(
-            vec_transform_field_for_id(ph2d_editor::ids::VECTOR_TRANSFORM_H),
+            vec_transform_field_for_id(ph2d_editor_core::ids::VECTOR_TRANSFORM_H),
             Some(VecTransformField::H)
         );
         assert_eq!(
-            vec_transform_field_for_id(ph2d_editor::ids::VECTOR_ARRANGE_FLIP_H),
+            vec_transform_field_for_id(ph2d_editor_core::ids::VECTOR_ARRANGE_FLIP_H),
             None
         );
 
@@ -6789,23 +6814,23 @@ mod tests {
     fn path_shape_ids_map_and_apply_smooths_then_sharpens() {
         use ph2d_vec_scene::{VertexKind, regular_polygon};
         assert_eq!(
-            vec_path_shape_for_id(ph2d_editor::ids::VECTOR_PATH_SMOOTH),
+            vec_path_shape_for_id(ph2d_editor_core::ids::VECTOR_PATH_SMOOTH),
             Some(VecPathShapeOp::Smooth)
         );
         assert_eq!(
-            vec_path_shape_for_id(ph2d_editor::ids::VECTOR_PATH_SHARPEN),
+            vec_path_shape_for_id(ph2d_editor_core::ids::VECTOR_PATH_SHARPEN),
             Some(VecPathShapeOp::Sharpen)
         );
         assert_eq!(
-            vec_path_shape_for_id(ph2d_editor::ids::VECTOR_PATH_SIMPLIFY),
+            vec_path_shape_for_id(ph2d_editor_core::ids::VECTOR_PATH_SIMPLIFY),
             Some(VecPathShapeOp::Simplify)
         );
         assert_eq!(
-            vec_path_shape_for_id(ph2d_editor::ids::VECTOR_PATH_SUBDIVIDE),
+            vec_path_shape_for_id(ph2d_editor_core::ids::VECTOR_PATH_SUBDIVIDE),
             Some(VecPathShapeOp::Subdivide)
         );
         assert_eq!(
-            vec_path_shape_for_id(ph2d_editor::ids::VECTOR_ARRANGE_FLIP_H),
+            vec_path_shape_for_id(ph2d_editor_core::ids::VECTOR_ARRANGE_FLIP_H),
             None
         );
 
@@ -6933,19 +6958,22 @@ mod tests {
     fn pathfinder_button_ids_map_to_their_ops() {
         use ph2d_vec_boolean::PathfinderOp as P;
         for (id, want) in [
-            (ph2d_editor::ids::VECTOR_BOOL_UNION, P::Union),
-            (ph2d_editor::ids::VECTOR_BOOL_SUBTRACT, P::Subtract),
-            (ph2d_editor::ids::VECTOR_BOOL_INTERSECT, P::Intersect),
-            (ph2d_editor::ids::VECTOR_BOOL_EXCLUDE, P::Exclude),
-            (ph2d_editor::ids::VECTOR_BOOL_MINUS_BACK, P::MinusBack),
-            (ph2d_editor::ids::VECTOR_BOOL_TRIM, P::Trim),
-            (ph2d_editor::ids::VECTOR_BOOL_CROP, P::Crop),
-            (ph2d_editor::ids::VECTOR_BOOL_MERGE, P::Merge),
+            (ph2d_editor_core::ids::VECTOR_BOOL_UNION, P::Union),
+            (ph2d_editor_core::ids::VECTOR_BOOL_SUBTRACT, P::Subtract),
+            (ph2d_editor_core::ids::VECTOR_BOOL_INTERSECT, P::Intersect),
+            (ph2d_editor_core::ids::VECTOR_BOOL_EXCLUDE, P::Exclude),
+            (ph2d_editor_core::ids::VECTOR_BOOL_MINUS_BACK, P::MinusBack),
+            (ph2d_editor_core::ids::VECTOR_BOOL_TRIM, P::Trim),
+            (ph2d_editor_core::ids::VECTOR_BOOL_CROP, P::Crop),
+            (ph2d_editor_core::ids::VECTOR_BOOL_MERGE, P::Merge),
         ] {
             assert_eq!(vec_bool_op_for_id(id), Some(want), "{want:?}");
         }
         // A non-boolean id (a mode button) is not a boolean op.
-        assert_eq!(vec_bool_op_for_id(ph2d_editor::ids::VECTOR_MODE_PEN), None);
+        assert_eq!(
+            vec_bool_op_for_id(ph2d_editor_core::ids::VECTOR_MODE_PEN),
+            None
+        );
     }
 
     /// O gesto de canvas só desenha no modo **Shape**, e o que ele desenha é a forma
@@ -7104,7 +7132,7 @@ mod tests {
 /// (`TIMELINE_EDGE_*`; a corner sets two bits). Corners point along their own
 /// diagonal: the top-left / bottom-right pair is `Nwse` (↖↘), the other `Nesw`.
 fn resize_cursor_for_edges(edges: u8) -> winit::window::CursorIcon {
-    use ph2d_editor::interaction::{
+    use ph2d_editor_core::interaction::{
         TIMELINE_EDGE_B, TIMELINE_EDGE_L, TIMELINE_EDGE_R, TIMELINE_EDGE_T,
     };
     use winit::window::CursorIcon;
@@ -7121,7 +7149,7 @@ fn resize_cursor_for_edges(edges: u8) -> winit::window::CursorIcon {
 #[cfg(test)]
 mod cursor_tests {
     use super::resize_cursor_for_edges;
-    use ph2d_editor::interaction::{
+    use ph2d_editor_core::interaction::{
         TIMELINE_EDGE_B, TIMELINE_EDGE_L, TIMELINE_EDGE_R, TIMELINE_EDGE_T,
     };
     use winit::window::CursorIcon;
@@ -7182,7 +7210,7 @@ fn freq_at_y(view: &ph2d_audio_desktop::WaveView, y: f32) -> f32 {
 mod spectral_axis_tests {
     use super::freq_at_y;
     use ph2d_audio_desktop::WaveView;
-    use ph2d_editor::zones::Rect;
+    use ph2d_editor_core::zones::Rect;
 
     fn view() -> WaveView {
         WaveView {
@@ -7251,7 +7279,7 @@ fn select_wheel_at(
     physics: &ph2d_physics_ecs::PhysicsBridge,
     camera: &ph2d_render::Camera2d,
     win: ph2d_host::WindowSize,
-    hero: &mut ph2d_editor::HeroScreen,
+    hero: &mut ph2d_editor_core::HeroScreen,
     at: (f32, f32),
 ) -> bool {
     let w = camera.screen_to_world(at, win);

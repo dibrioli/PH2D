@@ -20,7 +20,7 @@
 //! that actually moves the points.
 
 use super::{MotionState, reconcile};
-use ph2d_editor::{Toast, ToastQueue};
+use ph2d_editor_core::{Toast, ToastQueue};
 use ph2d_motion_diagnose::{Deficit, Diagnostic, Fix, diagnose};
 use ph2d_nodegraph::graph::{Edge, Graph, NodeId, Pos};
 use ph2d_nodegraph::node::NodeTypeId;

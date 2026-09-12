@@ -135,8 +135,8 @@ fn a_card_hides_the_ports_no_wire_reaches_and_the_menu_can_reach_them() {
     apply_graph_intents(
         &mut m,
         &mut ph2d_core::Playhead::default(),
-        &mut ph2d_editor::ToastQueue::default(),
-        &mut ph2d_editor::screens::layout::CenterSplit::None,
+        &mut ph2d_editor_core::ToastQueue::default(),
+        &mut ph2d_editor_core::screens::layout::CenterSplit::None,
     );
     assert_eq!(
         super::subgraph::card_ports(&m, sid).outputs,
@@ -227,8 +227,8 @@ fn a_wire_dropped_on_a_node_drives_one_of_its_params_and_the_socket_appears() {
     apply_graph_intents(
         &mut m,
         &mut ph2d_core::Playhead::default(),
-        &mut ph2d_editor::ToastQueue::default(),
-        &mut ph2d_editor::screens::layout::CenterSplit::None,
+        &mut ph2d_editor_core::ToastQueue::default(),
+        &mut ph2d_editor_core::screens::layout::CenterSplit::None,
     );
     assert_eq!(
         m.doc
@@ -274,8 +274,8 @@ fn a_wire_dropped_on_a_node_drives_one_of_its_params_and_the_socket_appears() {
     apply_graph_intents(
         &mut m,
         &mut ph2d_core::Playhead::default(),
-        &mut ph2d_editor::ToastQueue::default(),
-        &mut ph2d_editor::screens::layout::CenterSplit::None,
+        &mut ph2d_editor_core::ToastQueue::default(),
+        &mut ph2d_editor_core::screens::layout::CenterSplit::None,
     );
     assert!(m.doc.graph.param_sources(wind).is_none(), "un-driven");
     let snap = ph2d_panel_motion_graph::snapshot_from(&m.doc.graph, &m.registry);

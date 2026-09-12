@@ -43,7 +43,7 @@ fn typing_an_out_radius_turns_a_plain_wheel_into_a_drum() {
             .expect("o tambor existe");
         let next = crate::joint_wheel::wheel_with_edit(
             current,
-            ph2d_editor::WheelFieldEdit::RadiusOut(out),
+            ph2d_editor_core::WheelFieldEdit::RadiusOut(out),
         )
         .expect("editar o raio de saída é uma escrita de componente");
         *sim.world_mut()

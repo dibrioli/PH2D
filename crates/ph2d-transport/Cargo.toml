@@ -13,4 +13,4 @@ authors.workspace = true
 # podem divergir, e é por isso que ela existe como porta e não como dois `match`.
 [dependencies]
 ph2d-core = { path = "../ph2d-core" }
-ph2d-editor = { path = "../ph2d-editor" }
+ph2d-editor-core = { path = "../ph2d-editor-core" }

@@ -5,7 +5,7 @@
 //! Each shape gets a DISTINCT fluorescent accent. Reuses the shared [`super::painter_bridge_gizmo`] helpers.
 
 use ph2d_ecs::SimWorld;
-use ph2d_editor::HeroScreen;
+use ph2d_editor_core::HeroScreen;
 use ph2d_host::WindowSize;
 use ph2d_render::{Camera2d, Sprite};
 use ph2d_tool_painter::PainterTool;

@@ -1,4 +1,4 @@
-//! Hierarchy drag-reparent drain (`EditorAction::Hierarchy(ph2d_editor::action_bus::HierRequest::Reparent)`).
+//! Hierarchy drag-reparent drain (`EditorAction::Hierarchy(ph2d_editor_core::action_bus::HierRequest::Reparent)`).
 //!
 //! Wave 3.1 stage A — extracted from `hero_intents.rs` as part of
 //! the HR-18 closeout split. Behavior-preserving lift.
@@ -20,10 +20,10 @@ use ph2d_ecs::SimWorld;
 /// desapareceu»* — e o artista não tem como saber que aquela linha era uma biblioteca. ⇒ **essa**
 /// fala. *Um reparent silencioso está certo enquanto o resultado for visível.*
 pub(crate) fn drain_reparent(
-    intent: ph2d_editor::screens::hero::HierReparentIntent,
+    intent: ph2d_editor_core::screens::hero::HierReparentIntent,
     live: &crate::HeroLive,
     sim: &mut SimWorld,
-    toasts: &mut ph2d_editor::ToastQueue,
+    toasts: &mut ph2d_editor_core::ToastQueue,
 ) -> bool {
     use ph2d_ecs::Transform;
     // ⭐⭐⭐ **O QUE O ARRASTO PEDIU** (report do Enio, 2026-09-07: *«reordenei objectos na
@@ -110,7 +110,7 @@ pub(crate) fn drain_reparent(
     // que recebe o `HeroLive`, e por isso nenhum teste a monta — **não havia como medir qual dos
     // dois gestos ela apanha.* Agora há.
     if ph2d_app_components::instance_verbs_walk::refuses_reparent(sim, dragged, new_parent_entity) {
-        toasts.push(ph2d_editor::Toast::warning(
+        toasts.push(ph2d_editor_core::Toast::warning(
             "That piece's place comes from the prefab \u{2014} open it with \u{201c}Edit \
              Prefab\u{201d} to move it there",
         ));
@@ -268,12 +268,12 @@ pub(crate) fn drain_reparent(
     let sim_w = sim.world_mut();
     if let Some(old_world) = old_world {
         let new_parent = ph2d_ecs::parent_world_transform(sim_w, dragged);
-        let np = ph2d_editor::TransformSnapshot {
+        let np = ph2d_editor_core::TransformSnapshot {
             translation: [new_parent.translation.x, new_parent.translation.y],
             rotation: new_parent.rotation,
             scale: [new_parent.scale.x, new_parent.scale.y],
         };
-        let local_t = ph2d_editor::world_translation_to_local(
+        let local_t = ph2d_editor_core::world_translation_to_local(
             np,
             [old_world.translation.x, old_world.translation.y],
         );
@@ -315,7 +315,7 @@ pub(crate) fn drain_reparent(
     crate::sheet_bounds::confine(sim, dragged);
     // ⭐ A única fala deste dreno — ver o doc: sem ela o objecto sai da cena em silêncio.
     if into_a_recipe {
-        toasts.push(ph2d_editor::Toast::warning(
+        toasts.push(ph2d_editor_core::Toast::warning(
             "Moved into a prefab — it shows while the prefab row is selected",
         ));
     }

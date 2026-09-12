@@ -276,8 +276,8 @@ pub struct CanvasCtx<'a> {
     pub sim: &'a mut ph2d_ecs::SimWorld,
     pub bridge: &'a ph2d_physics_ecs::PhysicsBridge,
     pub present: &'a mut ph2d_ecs::PresentWorld,
-    pub toasts: &'a mut ph2d_editor::ToastQueue,
-    pub hero: Option<&'a mut ph2d_editor::HeroScreen>,
+    pub toasts: &'a mut ph2d_editor_core::ToastQueue,
+    pub hero: Option<&'a mut ph2d_editor_core::HeroScreen>,
 }
 
 impl CanvasCtx<'_> {

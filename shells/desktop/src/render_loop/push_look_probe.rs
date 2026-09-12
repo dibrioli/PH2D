@@ -2,7 +2,7 @@
 //! looking, not from theory). Writes lit PNGs of deposit-Push strokes — plus the plain Scrape
 //! reference whose drawing Enio approved — to `PH2D_PUSH_LOOK_DIR`. Diagnostic, `#[ignore]`d.
 
-use ph2d_editor::tool::{CanvasPaintTool, CanvasPointer, PointerPhase, RasterEditTool};
+use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PointerPhase, RasterEditTool};
 use ph2d_tool_painter::{FilterScope, PainterTool};
 
 fn cp(pos: [f32; 2], phase: PointerPhase) -> CanvasPointer {

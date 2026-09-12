@@ -198,7 +198,7 @@ fn report_axes(_app: &mut crate::App, when: &str) {
 
 /// Carrega no chip `(eixo, valor)` — **pelo ponteiro**, no rect que o cartão registou.
 fn click_axis_chip(app: &mut crate::App, axis: usize, value: usize, what: &str) {
-    let Some(&id) = ph2d_editor::ids::INSP_INSTANCE_AXIS_OPTION
+    let Some(&id) = ph2d_editor_core::ids::INSP_INSTANCE_AXIS_OPTION
         .get(axis)
         .and_then(|row| row.get(value))
     else {

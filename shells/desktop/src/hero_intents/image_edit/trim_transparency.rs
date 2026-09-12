@@ -5,7 +5,7 @@ use std::collections::BTreeMap;
 
 use ph2d_asset::{AssetDb, AssetId};
 use ph2d_ecs::SimWorld;
-use ph2d_editor::{Toast, ToastQueue};
+use ph2d_editor_core::{Toast, ToastQueue};
 use ph2d_render::SpriteRenderer;
 
 use crate::hero_intents::texture_edit;
@@ -21,7 +21,7 @@ use crate::{EPS_PIXELS_PER_METER, ImageEditSnapshot};
 ///
 /// World-position preservation: after the crop, the entity's
 /// `Transform.translation` is shifted by
-/// `ph2d_editor::image_edit::recenter_after_crop` so the *visual* center of the
+/// `ph2d_editor_core::image_edit::recenter_after_crop` so the *visual* center of the
 /// surviving opaque content stays put even when it lived off-center
 /// inside the original frame.
 ///
@@ -65,11 +65,11 @@ pub(crate) fn drain_trim_transparency(
         result.width as f32 / px_per_m,
         result.height as f32 / px_per_m,
     ];
-    let new_translation = ph2d_editor::image_edit::recenter_after_crop(
+    let new_translation = ph2d_editor_core::image_edit::recenter_after_crop(
         src.old_translation,
         src.old_size_world,
         [src.image.width, src.image.height],
-        ph2d_editor::image_edit::PixelBounds {
+        ph2d_editor_core::image_edit::PixelBounds {
             x: result.bounds.x,
             y: result.bounds.y,
             width: result.bounds.width,

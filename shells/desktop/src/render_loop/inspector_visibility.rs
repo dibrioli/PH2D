@@ -14,7 +14,9 @@ use ph2d_ecs::{
     ClipChildren, ClipMode, Entity, Mask2D, MaskInteraction, MaskMode, OnScreenEnabler, SimWorld,
     VisibilityLayer, World,
 };
-use ph2d_editor::{InspectorVisibilityMixed, InspectorVisibilitySectionInfo, VisibilityFieldEdit};
+use ph2d_editor_core::{
+    InspectorVisibilityMixed, InspectorVisibilitySectionInfo, VisibilityFieldEdit,
+};
 
 use ph2d_inspector_ordering::{queue_remove, queue_set};
 

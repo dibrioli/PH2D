@@ -15,7 +15,7 @@
 //!    sai, para cada variante construída à mão.
 
 use super::{choice_name, signal_name};
-use ph2d_editor::widget::WidgetKind;
+use ph2d_editor_core::widget::WidgetKind;
 use ph2d_panel_authored::AuthoredIntent;
 use ph2d_panel_authored::rows::{Row, set_live_rows};
 
@@ -228,7 +228,7 @@ fn row_of(kind: WidgetKind) -> Row {
         kind,
         label: "X".to_owned(),
         key: "x".to_owned(),
-        id: ph2d_editor::ids::authored_row_id("x"),
+        id: ph2d_editor_core::ids::authored_row_id("x"),
         rgba: None,
         icon: None,
         icon_id: None,
@@ -328,7 +328,7 @@ fn publish_blend_row() {
         kind: WidgetKind::Tabs,
         label: "Blend".to_owned(),
         key: "blend".to_owned(),
-        id: ph2d_editor::ids::authored_row_id("blend"),
+        id: ph2d_editor_core::ids::authored_row_id("blend"),
         rgba: None,
         icon: None,
         icon_id: None,

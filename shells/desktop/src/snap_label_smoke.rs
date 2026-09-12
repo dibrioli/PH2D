@@ -79,8 +79,8 @@ fn announce(app: &crate::App) {
     let display = gfx
         .hero_screen
         .as_ref()
-        .map_or_else(ph2d_editor::LengthDisplay::default, |h| {
-            ph2d_editor::LengthDisplay::of(&h.project)
+        .map_or_else(ph2d_editor_core::LengthDisplay::default, |h| {
+            ph2d_editor_core::LengthDisplay::of(&h.project)
         });
     // O que a ficha vai dizer, pela MESMA porta que a desenha.
     let expect = format!("{} {}", display.text(GAP_Y, 0.1), display.suffix());

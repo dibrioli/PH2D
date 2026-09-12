@@ -30,7 +30,7 @@ use ph2d_ecs::{
     CAMERA_MAX_HEIGHT_WORLD, CAMERA_MIN_HEIGHT_WORLD, CameraFollow, CameraLimits, Entity,
     GameCamera, SimWorld, World,
 };
-use ph2d_editor::{
+use ph2d_editor_core::{
     CameraFieldEdit, InspectorCameraFollow, InspectorCameraInfo, InspectorCameraLimits,
     InspectorGameCamera,
 };

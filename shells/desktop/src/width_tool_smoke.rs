@@ -40,7 +40,9 @@ fn build(app: &mut crate::App) {
     let Some(gfx) = app.gfx.as_mut() else {
         return;
     };
-    let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("vector"));
+    let _ = gfx
+        .tools
+        .set_active(&ph2d_editor_core::ToolId::new("vector"));
     // (1) Uma RETA: a normal é constante, e é onde a alça se lê sem esforço.
     let line = stroked(
         [[-3.0, 1.6], [3.0, 1.6]].map(VecVertex::corner).to_vec(),

@@ -77,7 +77,7 @@ fn aspect() -> f32 {
 fn scene(device: &wgpu::Device) -> Sculpt3dScene {
     let mut s = Sculpt3dScene::new(device, uv_sphere(48, 72, 1.0), aspect());
     // O `render` é quem publica o viewport no produto; isto aqui não desenha.
-    s.note_canvas(ph2d_editor::zones::Rect::new(
+    s.note_canvas(ph2d_editor_core::zones::Rect::new(
         0.0,
         0.0,
         f32::from(VW as u16),

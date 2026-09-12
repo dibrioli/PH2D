@@ -449,7 +449,7 @@ pub fn bake_selection(
         crate::inspector::body::apply_physics_edit(
             sim,
             bits,
-            ph2d_editor::PhysicsFieldEdit::Kind(kinematic_tag()),
+            ph2d_editor_core::PhysicsFieldEdit::Kind(kinematic_tag()),
             queue,
             registry,
         );

@@ -37,7 +37,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use ph2d_anim::{AnimValue, RationalTime};
 use ph2d_core::Playhead;
 use ph2d_ecs::World;
-use ph2d_editor::HeroScreen;
+use ph2d_editor_core::HeroScreen;
 use ph2d_timeline::{PoseSample, PropKind, TimelineState, autokey_props};
 
 use super::record_fit::{REC_SIMPLIFY_REL, REC_SMOOTH_PASSES, RecSpan, simplify_recorded};
@@ -93,7 +93,7 @@ pub(crate) fn run(
     timeline: &mut TimelineState,
     playhead: &Playhead,
     ak: &mut AutokeyState,
-    toasts: &mut ph2d_editor::ToastQueue,
+    toasts: &mut ph2d_editor_core::ToastQueue,
     hero: &HeroScreen,
     world: &World,
     preview: &ph2d_preview_drive::PreviewDrive,
@@ -140,7 +140,7 @@ pub(crate) fn apply_samples(
     armed: bool,
     performing: bool,
     ak: &mut AutokeyState,
-    toasts: &mut ph2d_editor::ToastQueue,
+    toasts: &mut ph2d_editor_core::ToastQueue,
 ) {
     // **Which scene the diff believes in** — the same split the manual K has
     // (`key_authoring_solo` vs `key_value_for`): in the KEYS view the apply solos
@@ -405,7 +405,7 @@ pub(crate) fn apply_samples(
     // frame, and sixty identical toasts a second is not information.
     if refused_now != ak.refusal {
         if let Some(r) = refused_now {
-            toasts.push(ph2d_editor::Toast::warning(r.message()));
+            toasts.push(ph2d_editor_core::Toast::warning(r.message()));
         }
         ak.refusal = refused_now;
     }

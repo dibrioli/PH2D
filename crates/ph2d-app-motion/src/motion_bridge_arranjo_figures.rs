@@ -236,7 +236,7 @@ fn does_the_tutorial_table_still_match_the_card() {
         ph2d_panel_motion_graph::set_graph_selection(vec![id.0]);
         let Some(painel) = crate::motion_bridge::params::build_params_snapshot(
             &m,
-            ph2d_editor::ProjectSettings::default(),
+            ph2d_editor_core::ProjectSettings::default(),
         ) else {
             continue;
         };

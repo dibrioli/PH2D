@@ -6,8 +6,8 @@
 
 use super::*;
 use crate::motion_state::MotionState;
-use ph2d_editor::screens::layout::CenterSplit;
-use ph2d_editor::{
+use ph2d_editor_core::screens::layout::CenterSplit;
+use ph2d_editor_core::{
     GizmoCamera, GizmoDragKind, GizmoDragState, GizmoModifiers, GizmoSnap, GizmoTarget,
     TransformSnapshot,
 };
@@ -457,7 +457,8 @@ fn a_radial_field_drag_scales_the_radius() {
     let intrinsic_half = spec.size.half(|n: &str| radius_of(&motion, sid, n)); // [5, 5]
     let start = seed_start(0.0, 0.0, 0.0);
     let start_screen = w2s(&cam, [intrinsic_half[0], -intrinsic_half[1]]);
-    let pivot = ph2d_editor::anchor_pivot_world(kind, [0.0, 0.0], intrinsic_half, start, false);
+    let pivot =
+        ph2d_editor_core::anchor_pivot_world(kind, [0.0, 0.0], intrinsic_half, start, false);
     let mut fgd = make_drag(
         sid,
         spec,
@@ -510,7 +511,7 @@ fn a_radial_field_drag_scales_the_radius() {
 /// que só medisse o caso dividido não distinguiria a cura de «o pan parou de funcionar».
 #[test]
 fn a_drag_pixel_moves_the_world_by_what_a_scene_pixel_is_worth() {
-    use ph2d_editor::screens::layout::CenterSplit;
+    use ph2d_editor_core::screens::layout::CenterSplit;
     use ph2d_host::WindowSize;
     use ph2d_render::Camera2d;
 

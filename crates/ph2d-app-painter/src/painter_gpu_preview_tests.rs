@@ -1,5 +1,5 @@
 use super::*;
-use ph2d_editor::tool::RasterEditTool;
+use ph2d_editor_core::tool::RasterEditTool;
 
 fn sourced_tool() -> PainterTool {
     let mut t = PainterTool::default();
@@ -11,7 +11,7 @@ fn sourced_tool() -> PainterTool {
 /// relief — a 4x4 canvas would leave `heights` empty and every gate below would pass by doing
 /// nothing.
 fn sculpted_tool() -> PainterTool {
-    use ph2d_editor::tool::{CanvasPaintTool, CanvasPointer, PointerPhase};
+    use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PointerPhase};
     let cp = |pos: [f32; 2], phase: PointerPhase| CanvasPointer {
         pos,
         pressure: 1.0,
@@ -81,15 +81,15 @@ fn repeat_image_keeps_the_cpu_producer() {
 /// **Mutação que deve sangrar:** apagar o `mask_scratch_active` do `gpu_eligible`.
 #[test]
 fn a_live_protection_keeps_the_cpu_producer() {
-    use ph2d_editor::tool::{CanvasPaintTool, CanvasPointer, PointerPhase, Tool as _};
+    use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PointerPhase, Tool as _};
     let mut t = sculpted_tool();
     assert!(
         gpu_eligible(&t).is_some(),
         "precondition: o documento esculpido é elegível SEM proteção"
     );
     // A proteção pela porta do artista: modo Mask + um traço no scratch.
-    t.handle_panel_event(ph2d_editor::tool::PanelEvent::SelectOption(
-        ph2d_editor::ids::PAINTER_PAINT_MODE,
+    t.handle_panel_event(ph2d_editor_core::tool::PanelEvent::SelectOption(
+        ph2d_editor_core::ids::PAINTER_PAINT_MODE,
         "mask".to_string(),
     ));
     let cp = |pos: [f32; 2], phase: PointerPhase| CanvasPointer {

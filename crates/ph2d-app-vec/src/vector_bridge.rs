@@ -21,7 +21,7 @@
 //! `architecture_no_downcast_to_concrete_tool_in_shell`), so the central render
 //! loop stays downcast-free — mirror of `painter_bridge`.
 
-use ph2d_editor::{HeroScreen, ToolId, ToolRegistry};
+use ph2d_editor_core::{HeroScreen, ToolId, ToolRegistry};
 use ph2d_tool_vector::VectorDrawConfig;
 use ph2d_vec_edit::{History, PenStyle, PenTool, ShapeTool};
 use ph2d_vec_render::GradHandle;
@@ -214,12 +214,12 @@ pub fn dispatch(
 
     // ── 2. Picker read-back: which swatch is the picker targeting? ────────
     let target = hero.store.picker_target();
-    let stroke_open = target == Some(ph2d_editor::ids::VECTOR_STROKE_SWATCH);
-    let fill_open = target == Some(ph2d_editor::ids::VECTOR_FILL_SWATCH);
+    let stroke_open = target == Some(ph2d_editor_core::ids::VECTOR_STROKE_SWATCH);
+    let fill_open = target == Some(ph2d_editor_core::ids::VECTOR_FILL_SWATCH);
     if (stroke_open || fill_open)
         && let Some((value, _, _, _)) = hero
             .store
-            .blender_picker(ph2d_editor::ids::INSP_BLENDER_PICKER)
+            .blender_picker(ph2d_editor_core::ids::INSP_BLENDER_PICKER)
     {
         // The picker owns RGB **and alpha**: its alpha flows into the tool's
         // stroke/fill alpha, and the bridge pushes that back onto the Opacity
@@ -308,8 +308,8 @@ pub fn dispatch(
     // enquanto as duas partilhavam `width_dragging` digitar um número mudava o tool e **não mudava
     // a forma selecionada** (Enio 2026-08-01). Quem sabe a segunda é o TOOL, que recebeu o evento.
     let width_dragging = matches!(
-        hero.store.slider(ph2d_editor::ids::VECTOR_WIDTH),
-        Some((ph2d_editor::widget::SliderState::Dragging, _))
+        hero.store.slider(ph2d_editor_core::ids::VECTOR_WIDTH),
+        Some((ph2d_editor_core::widget::SliderState::Dragging, _))
     );
     let width_authored = tool.take_width_authored();
     // **Digitar uma espessura SOLTA o token dela** (W4c.4) — a mesma lei da cor, pelo mesmo canal.

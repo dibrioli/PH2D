@@ -95,7 +95,9 @@ pub(super) fn run(cx: &mut crate::motion_scene_ctx::MotionSceneCtx<'_>) {
         place_stamp_row(&mut cx.motion.doc.graph, out, k, pose);
         cx.motion.sinks.push(out);
     }
-    let _ = cx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
+    let _ = cx
+        .tools
+        .set_active(&ph2d_editor_core::ToolId::new("motion"));
     eprintln!(
         "[motion.obj smoke =8] O objeto 'Object' esta' GIRADO e ACHATADO na cena.
   As duas grades carimbam o MESMO objeto.

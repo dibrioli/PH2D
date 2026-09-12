@@ -31,7 +31,7 @@
 //! literalmente o que o report descreve: *«na hierarquia»*.
 
 use super::App;
-use ph2d_editor::action_bus;
+use ph2d_editor_core::action_bus;
 use winit::event::ElementState;
 use winit::keyboard::{KeyCode, PhysicalKey};
 
@@ -41,7 +41,7 @@ impl App {
         self.gfx
             .as_ref()
             .and_then(|g| g.hero_screen.as_ref())
-            .and_then(|h| h.store.panel_rect(ph2d_editor::ids::HIER_PANEL))
+            .and_then(|h| h.store.panel_rect(ph2d_editor_core::ids::HIER_PANEL))
             .is_some_and(|r| r.contains(self.last_pointer.0, self.last_pointer.1))
     }
 
@@ -49,7 +49,7 @@ impl App {
     ///
     /// ⚠️ `None` quando não há selecção **ou** quando a ponte ainda não viu aquela entidade — e as
     /// duas respondem a mesma coisa a quem chama: *não há a quem aplicar o verbo*.
-    fn selected_hierarchy_row(&self) -> Option<ph2d_editor::NodeId> {
+    fn selected_hierarchy_row(&self) -> Option<ph2d_editor_core::NodeId> {
         let gfx = self.gfx.as_ref()?;
         let bits = gfx.hero_screen.as_ref()?.gizmo.selection?;
         gfx.hero_live.as_ref()?.bridge.node_for(bits)
@@ -58,7 +58,7 @@ impl App {
     /// Empurra uma acção de linha para o barramento do editor — a MESMA que o menu empurra.
     fn push_hier_action(
         &mut self,
-        make: fn(ph2d_editor::NodeId) -> action_bus::EditorAction,
+        make: fn(ph2d_editor_core::NodeId) -> action_bus::EditorAction,
     ) -> bool {
         let Some(row) = self.selected_hierarchy_row() else {
             return false;

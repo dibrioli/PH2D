@@ -138,15 +138,15 @@ fn toggle_key(sel: &mut Vec<Frame>, k: Frame) {
 /// Aplica um evento do painel da tira. Devolve `true` se MUDOU O DOCUMENTO (o
 /// caller marca a edição; transporte e seleção não são passos de undo).
 pub fn apply_panel_event(
-    ev: &ph2d_editor::tool::PanelEvent,
+    ev: &ph2d_editor_core::tool::PanelEvent,
     flip: &mut FlipDoc,
     active_layer: Option<LayerId>,
     playhead: &mut Playhead,
     strip: &mut FlipStrip,
     add: bool,
 ) -> bool {
-    use ph2d_editor::ids;
-    use ph2d_editor::tool::PanelEvent;
+    use ph2d_editor_core::ids;
+    use ph2d_editor_core::tool::PanelEvent;
 
     let Some((oid, lid)) = target(flip, active_layer) else {
         return false;
@@ -473,7 +473,7 @@ pub fn apply_panel_event(
                 .map(|l| l.cells())
                 .unwrap_or_default();
             for (i, (k, _, _)) in cells.iter().enumerate() {
-                if ph2d_editor::ids::flip_cell_id(i) == *id {
+                if ph2d_editor_core::ids::flip_cell_id(i) == *id {
                     if add {
                         toggle_key(&mut strip.selection, *k);
                     } else {

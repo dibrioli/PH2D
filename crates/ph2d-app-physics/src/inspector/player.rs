@@ -6,7 +6,7 @@
 //! ele tem?"*.
 
 use ph2d_ecs::{Entity, SimWorld};
-use ph2d_editor::{InspectorPlayerInfo, PlayerFieldEdit};
+use ph2d_editor_core::{InspectorPlayerInfo, PlayerFieldEdit};
 use ph2d_physics_ecs::{
     BodyKind, Collider, ColliderShape, PlatformPlayer, PlayerMode, RideConfig, RigidBody,
     WalkConfig,
@@ -165,7 +165,7 @@ pub fn build_player_info(
         reaction_push: p.reaction_push,
         recorded_run_seconds,
         discarded_run_seconds,
-        live: live.map(|v| ph2d_editor::screens::hero::PlayerLive {
+        live: live.map(|v| ph2d_editor_core::screens::hero::PlayerLive {
             // ⚠️ A tradução variante→número é a do `FootingKind::tag`, e só ela.
             footing_tag: v.footing.tag(),
             facing: v.facing,

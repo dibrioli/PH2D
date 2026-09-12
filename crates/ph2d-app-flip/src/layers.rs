@@ -7,13 +7,16 @@
 //! the active-layer pointer. Runtime ids are decoded via the shared
 //! `flip_layer_widget_id` (the same twin the panel paints with).
 
-use ph2d_editor::ids::{self, FlipLayerWidget};
-use ph2d_editor::tool::PanelEvent;
+use ph2d_editor_core::ids::{self, FlipLayerWidget};
+use ph2d_editor_core::tool::PanelEvent;
 use ph2d_flip::{BlendMode, FlipDoc, LayerId};
 
 /// Decode a runtime per-row id → `(LayerId, kind)` via the active object's
 /// layers (brute-force over rows × kinds — a handful of layers).
-fn decode_widget(flip: &FlipDoc, id: ph2d_editor::NodeId) -> Option<(LayerId, FlipLayerWidget)> {
+fn decode_widget(
+    flip: &FlipDoc,
+    id: ph2d_editor_core::NodeId,
+) -> Option<(LayerId, FlipLayerWidget)> {
     let obj = flip.objects().first()?;
     for l in obj.layers() {
         for kind in FlipLayerWidget::ALL {
@@ -232,7 +235,7 @@ mod tests {
         (doc, a, b)
     }
 
-    fn wid(layer: LayerId, kind: FlipLayerWidget) -> ph2d_editor::NodeId {
+    fn wid(layer: LayerId, kind: FlipLayerWidget) -> ph2d_editor_core::NodeId {
         ids::flip_layer_widget_id(u64::from(layer.0), kind)
     }
 

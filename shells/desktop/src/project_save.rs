@@ -163,7 +163,7 @@ impl crate::App {
     /// mecanismo de aviso divergiria no estilo e no tempo de vida da mensagem.
     pub(crate) fn toast(&mut self, msg: String) {
         if let Some(gfx) = self.gfx.as_mut() {
-            gfx.toasts.push(ph2d_editor::Toast::info(msg));
+            gfx.toasts.push(ph2d_editor_core::Toast::info(msg));
         }
     }
 }

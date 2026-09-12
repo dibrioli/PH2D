@@ -3,7 +3,7 @@
 //! `timeline_presets_tests.rs`).
 
 use super::*;
-use ph2d_editor::ids as c;
+use ph2d_editor_core::ids as c;
 
 /// Every row the overlay paints must resolve — the anti-dead-menu gate.
 ///
@@ -25,7 +25,7 @@ fn every_published_menu_row_resolves_to_a_preset() {
             continue;
         }
         assert!(
-            preset_for(id, ph2d_editor::interaction::TL_NO_EASE_MODE).is_some(),
+            preset_for(id, ph2d_editor_core::interaction::TL_NO_EASE_MODE).is_some(),
             "top-level row {label:?} paints but resolves to nothing"
         );
     }
@@ -51,7 +51,7 @@ fn a_family_row_without_a_mode_resolves_to_nothing() {
     assert_eq!(
         preset_for(
             c::CTX_MENU_TL_FAM_BOUNCE,
-            ph2d_editor::interaction::TL_NO_EASE_MODE
+            ph2d_editor_core::interaction::TL_NO_EASE_MODE
         ),
         None
     );
@@ -65,7 +65,7 @@ fn the_three_cascade_rows_are_not_leaves() {
         c::CTX_MENU_TL_EASE_INOUT,
     ] {
         assert_eq!(
-            preset_for(id, ph2d_editor::interaction::TL_NO_EASE_MODE),
+            preset_for(id, ph2d_editor_core::interaction::TL_NO_EASE_MODE),
             None,
             "a cascade row must open a submenu, never set an interp"
         );
@@ -144,7 +144,7 @@ fn the_rove_row_resolves_and_toggles_by_current_state() {
     assert_eq!(
         preset_for(
             c::CTX_MENU_TL_ROVE,
-            ph2d_editor::interaction::TL_NO_EASE_MODE
+            ph2d_editor_core::interaction::TL_NO_EASE_MODE
         ),
         Some(Preset::Rove)
     );

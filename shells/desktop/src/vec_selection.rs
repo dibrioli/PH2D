@@ -12,7 +12,7 @@
 // mantém para os sítios de chamada ficarem byte a byte iguais. ⛔ Mas ela faz este ficheiro
 // *parecer* preso ao LAÇO da shell, quando o que ele usa é uma crate.
 use ph2d_ecs::{ChildOf, Entity, SimWorld, VecPathRef};
-use ph2d_editor::screens::hero::GizmoStateGroup;
+use ph2d_editor_core::screens::hero::GizmoStateGroup;
 use ph2d_vec_entities::entities::{VecEntityMap, selection_paths, subtree_paths};
 use ph2d_vec_scene::{VecPathId, VecScene};
 

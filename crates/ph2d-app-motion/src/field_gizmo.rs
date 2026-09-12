@@ -10,9 +10,9 @@
 //!
 //! O Flip já resolveu "um drag de gizmo de sprite que escreve num sink que **não é** um
 //! `Transform` de entidade": a pose de uma chave (`FlipPose`) e a geometria de uma
-//! seleção (`FlipSelection`) são [`ph2d_editor::GizmoTarget`]s próprios, com espaço de id
+//! seleção (`FlipSelection`) são [`ph2d_editor_core::GizmoTarget`]s próprios, com espaço de id
 //! keyed, reconhecidos ANTES do caminho genérico de gizmo. Este módulo é mais um:
-//! [`ph2d_editor::GizmoTarget::MotionField`], cujo apply escreve os **params do NÓ**
+//! [`ph2d_editor_core::GizmoTarget::MotionField`], cujo apply escreve os **params do NÓ**
 //! (`center_x`/`center_y`/`rotation`/`width`/`height` via `Graph::set_param`).
 //!
 //! **Isolamento por construção — a resposta ao *"não vai atrapalhar os sprites?"*:** um
@@ -30,8 +30,8 @@
 //! ([`seed_start`]) — um round-trip sob transform identidade devolve os mesmos params (a
 //! lição recorrente `feedback_derived_coordinate_seed_must_match_sample`).
 
-use ph2d_editor::screens::layout::CenterSplit;
-use ph2d_editor::{
+use ph2d_editor_core::screens::layout::CenterSplit;
+use ph2d_editor_core::{
     GizmoCamera, GizmoDragState, GizmoModifiers, GizmoSnap, GizmoView, TransformSnapshot,
 };
 use ph2d_host::WindowSize;
@@ -166,7 +166,7 @@ pub struct FieldGizmoSpec {
     /// hoje.** O `force.vortex` e o `force.attractor` põem-se no mundo e **não têm** param de
     /// ângulo (girar um vórtice em torno do próprio centro não move um texel), então uma spec
     /// deles teria de o pôr a `None` — e o artista arrastaria a argola de rodar sem nada
-    /// acontecer. A cura certa é a [`GizmoView`](ph2d_editor::GizmoView) saber **suprimir** a
+    /// acontecer. A cura certa é a [`GizmoView`](ph2d_editor_core::GizmoView) saber **suprimir** a
     /// argola, e o preço está MEDIDO: **28 sítios de construção** dela, em crates de outras
     /// linhas. ⇒ nomeado, não contrabandeado ([doc 108](../../../docs/Motion%20Nodes/108_ciclo_5_simulacao.md) §2).
     pub rotation: Option<&'static str>,
@@ -214,7 +214,7 @@ const RADIAL_SWEEP_SPEC: FieldGizmoSpec = FieldGizmoSpec {
 /// cujo efeito espera pelo modo*. O param é real e guardado — num `Circle` ele não move um
 /// texel (o campo é isotrópico) e passa a valer no instante em que a forma vira `Rect` ou
 /// `Linear`. ⛔ A terceira saída — suprimir a alça — pedia um campo novo na
-/// [`GizmoView`](ph2d_editor::GizmoView), que é partilhada por **todos** os gizmos do app.
+/// [`GizmoView`](ph2d_editor_core::GizmoView), que é partilhada por **todos** os gizmos do app.
 const FALLOFF_SPEC: FieldGizmoSpec = FieldGizmoSpec {
     center_x: "center_x",
     center_y: "center_y",
@@ -321,7 +321,7 @@ fn view_from_params(
         camera_height_world: camera.height_world,
         window_w: win_w,
         window_h: win_h,
-        canvas: ph2d_editor::zones::Rect::new(0.0, 0.0, win_w, win_h),
+        canvas: ph2d_editor_core::zones::Rect::new(0.0, 0.0, win_w, win_h),
         cursor_screen: Some(last_pointer),
     }
 }
@@ -405,7 +405,7 @@ pub fn apply_field_drag(
     snap: GizmoSnap,
 ) -> TransformSnapshot {
     fgd.drag.advance_cursor(cursor, cam);
-    let new_t = ph2d_editor::compute_gizmo_transform(&fgd.drag, cam, mods, snap, None);
+    let new_t = ph2d_editor_core::compute_gizmo_transform(&fgd.drag, cam, mods, snap, None);
     let g = &mut motion.doc.graph;
     g.set_param(fgd.node, fgd.spec.center_x, new_t.translation[0]);
     g.set_param(fgd.node, fgd.spec.center_y, new_t.translation[1]);

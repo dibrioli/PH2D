@@ -220,7 +220,7 @@ pub fn paint_lasso(
 /// desenhada uma vez, e uma divisão nova (duas vistas, três) entra aqui sem uma linha.
 pub fn paint_split(
     scene: &mut VectorScene,
-    rects: &[ph2d_editor::zones::Rect],
+    rects: &[ph2d_editor_core::zones::Rect],
     active: usize,
     theme: Theme,
 ) {
@@ -286,10 +286,10 @@ pub fn paint_split(
 pub fn paint_view_label(
     scene: &mut VectorScene,
     text: &mut ph2d_text::TextSystem,
-    rect: ph2d_editor::zones::Rect,
+    rect: ph2d_editor_core::zones::Rect,
     key: &str,
     theme: Theme,
-) -> Option<ph2d_editor::zones::Rect> {
+) -> Option<ph2d_editor_core::zones::Rect> {
     let line = ph2d_i18n::tr(key);
     if line.is_empty() {
         return None;
@@ -298,13 +298,13 @@ pub fn paint_view_label(
     let chip = crate::view_menu::chip(rect, LABEL_INSET_PX, text.prefix_width(line, font), font);
     // ⭐ **O chip pinta-se por baixo do texto**, discreto: ele existe para dizer *«isto agarra-se»*,
     // e um fundo com o peso de um botão competiria com a peça o tempo todo.
-    ph2d_editor::paint::fill_rounded_rect(
+    ph2d_editor_core::paint::fill_rounded_rect(
         scene,
         chip,
         ph2d_tokens::Radius::Sm.px(),
-        ph2d_editor::paint::resolve(ColorToken::BgElev, theme),
+        ph2d_editor_core::paint::resolve(ColorToken::BgElev, theme),
     );
-    ph2d_editor::paint::paint_text_block(
+    ph2d_editor_core::paint::paint_text_block(
         text,
         scene,
         line,
@@ -314,7 +314,7 @@ pub fn paint_view_label(
         rect.w,
         // ⚠️ **Text2 e não Text1**: ele acompanha a peça o tempo todo, e um rótulo com o mesmo peso
         // do número de um gesto competiria com o que o artista está a fazer.
-        ph2d_editor::paint::resolve(ColorToken::Text2, theme),
+        ph2d_editor_core::paint::resolve(ColorToken::Text2, theme),
     );
     Some(chip)
 }
@@ -326,14 +326,14 @@ pub fn paint_view_label(
 pub fn paint_view_menu(
     scene: &mut VectorScene,
     text: &mut ph2d_text::TextSystem,
-    chip: ph2d_editor::zones::Rect,
-    canvas: ph2d_editor::zones::Rect,
+    chip: ph2d_editor_core::zones::Rect,
+    canvas: ph2d_editor_core::zones::Rect,
     theme: Theme,
-) -> ph2d_editor::zones::Rect {
+) -> ph2d_editor_core::zones::Rect {
     let font = ph2d_tokens::TypeToken::Sm.px();
     let widest = crate::view_menu::widest_row(text, font);
     let rect = crate::view_menu::menu_rect(chip, canvas, widest);
-    ph2d_editor::widget::paint_context_menu(
+    ph2d_editor_core::widget::paint_context_menu(
         &crate::view_menu::model(),
         rect,
         scene,
@@ -444,7 +444,7 @@ pub fn paint_readout_text(
     // Acima e à direita do centro, fora da folga onde as alças vivem: por cima delas a ficha taparia
     // o que ela descreve.
     let (x, y) = (at[0] + READOUT_OFFSET_PX, at[1] - READOUT_OFFSET_PX);
-    ph2d_editor::paint::paint_text_block(
+    ph2d_editor_core::paint::paint_text_block(
         text,
         scene,
         line,
@@ -453,7 +453,7 @@ pub fn paint_readout_text(
         font,
         READOUT_MAX_W_PX,
         // A mesma porta que todo widget usa para levar um token à cor do vello.
-        ph2d_editor::paint::resolve(ColorToken::Text1, theme),
+        ph2d_editor_core::paint::resolve(ColorToken::Text1, theme),
     );
 }
 

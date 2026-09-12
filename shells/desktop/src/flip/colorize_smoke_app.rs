@@ -23,11 +23,11 @@ impl crate::App {
             return;
         }
         let gfx = self.gfx.as_mut().expect("gfx");
-        let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("flip"));
+        let _ = gfx.tools.set_active(&ph2d_editor_core::ToolId::new("flip"));
         // Entra no modo Colorize já montado.
         if let Some(tool) = gfx
             .tools
-            .tool_by_id_mut(&ph2d_editor::ToolId::new("flip"))
+            .tool_by_id_mut(&ph2d_editor_core::ToolId::new("flip"))
             .and_then(|t| t.as_any_mut().downcast_mut::<FlipTool>())
         {
             tool.set_mode(FlipMode::Colorize);

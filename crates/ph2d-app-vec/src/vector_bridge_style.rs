@@ -319,12 +319,12 @@ pub fn set_selected_grad_color(fill: &mut Paint, handle: GradHandle, c: Rgba8) -
 /// drag baseline stays correct. The linked chip's display is driven from the
 /// slider track in `paint`, so it follows without a separate push.
 pub fn sync_opacity_slider(
-    store: &mut ph2d_editor::interaction::WidgetStore,
-    id: ph2d_editor::NodeId,
+    store: &mut ph2d_editor_core::interaction::WidgetStore,
+    id: ph2d_editor_core::NodeId,
     alpha: u8,
 ) {
-    use ph2d_editor::InteractiveState;
-    use ph2d_editor::widget::SliderState;
+    use ph2d_editor_core::InteractiveState;
+    use ph2d_editor_core::widget::SliderState;
     if let Some(InteractiveState::Slider { state, value, .. }) = store.get_mut(id)
         && !matches!(*state, SliderState::Dragging)
     {
@@ -370,7 +370,7 @@ thread_local! {
 /// Style da tool fica onde estava (o default do próximo traço).
 pub fn seed_style_from_selection(
     tool: &mut ph2d_tool_vector::VectorTool,
-    store: &mut ph2d_editor::interaction::WidgetStore,
+    store: &mut ph2d_editor_core::interaction::WidgetStore,
     pen: &PenTool,
     scene: &VecScene,
     world_to_px: f64,
@@ -401,42 +401,43 @@ pub fn seed_style_from_selection(
 /// As rows que pintam do STORE — sem isto o painel mostra o valor velho mesmo com a tool já
 /// adotada. Espelho exato do `seed_shape_fields`, e pela mesma razão.
 fn reseed_style_sliders(
-    store: &mut ph2d_editor::interaction::WidgetStore,
+    store: &mut ph2d_editor_core::interaction::WidgetStore,
     tool: &ph2d_tool_vector::VectorTool,
 ) {
     use ph2d_tool_vector::params;
-    let set = |store: &mut ph2d_editor::interaction::WidgetStore, id, track: f32| {
+    let set = |store: &mut ph2d_editor_core::interaction::WidgetStore, id, track: f32| {
         // ⚠️ Nunca sobre um slider em ARRASTO: a semente brigaria com o dedo do artista, a
         // mesma armadilha que o `seed_shape_fields` documenta.
-        if let Some(ph2d_editor::InteractiveState::Slider { state, value, .. }) = store.get_mut(id)
-            && !matches!(*state, ph2d_editor::widget::SliderState::Dragging)
+        if let Some(ph2d_editor_core::InteractiveState::Slider { state, value, .. }) =
+            store.get_mut(id)
+            && !matches!(*state, ph2d_editor_core::widget::SliderState::Dragging)
         {
             *value = track.clamp(0.0, 1.0);
         }
     };
     set(
         store,
-        ph2d_editor::ids::VECTOR_WIDTH,
+        ph2d_editor_core::ids::VECTOR_WIDTH,
         params::px_to_slider(tool.stroke_width_px()),
     );
     set(
         store,
-        ph2d_editor::ids::VECTOR_DASH,
+        ph2d_editor_core::ids::VECTOR_DASH,
         params::dash_to_slider(tool.dash()),
     );
     set(
         store,
-        ph2d_editor::ids::VECTOR_GAP,
+        ph2d_editor_core::ids::VECTOR_GAP,
         params::gap_to_slider(tool.gap()),
     );
     sync_opacity_slider(
         store,
-        ph2d_editor::ids::VECTOR_STROKE_OPACITY,
+        ph2d_editor_core::ids::VECTOR_STROKE_OPACITY,
         tool.stroke_rgba()[3],
     );
     sync_opacity_slider(
         store,
-        ph2d_editor::ids::VECTOR_FILL_OPACITY,
+        ph2d_editor_core::ids::VECTOR_FILL_OPACITY,
         tool.fill_rgba()[3],
     );
 }

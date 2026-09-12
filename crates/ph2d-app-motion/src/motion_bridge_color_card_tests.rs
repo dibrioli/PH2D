@@ -7,8 +7,8 @@
 //! duas coisas, aqui, é a leitura de volta do selector, que vive na shell.
 
 use crate::motion_state::MotionState;
-use ph2d_editor::interaction::{InteractiveState, WidgetStore};
-use ph2d_editor::widget::{ChannelMode, Harmony, InterpolationMode};
+use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
+use ph2d_editor_core::widget::{ChannelMode, Harmony, InterpolationMode};
 use ph2d_panel_motion_graph::card_editor_swatch_id;
 use ph2d_tokens::ColorValue;
 
@@ -16,7 +16,7 @@ use ph2d_tokens::ColorValue;
 fn picker_on(node: u32, param: &str, i: usize, rgba: [u8; 4]) -> WidgetStore {
     let mut store = WidgetStore::default();
     store.register(
-        ph2d_editor::ids::INSP_BLENDER_PICKER,
+        ph2d_editor_core::ids::INSP_BLENDER_PICKER,
         InteractiveState::BlenderPicker {
             value: ColorValue::from_rgba8(rgba[0], rgba[1], rgba[2], rgba[3]),
             channel_mode: ChannelMode::Rgb,
@@ -136,7 +136,7 @@ fn a_picker_open_on_something_else_writes_no_gradient() {
         .graph
         .set_text_param(id, "ramp", "g1 2 0:1,0,0 1:0,0,1".to_string());
     let mut store = picker_on(id.0, "ramp", 0, [0, 255, 0, 255]);
-    store.set_picker_target(Some(ph2d_editor::ids::PAINTER_COLOR_THUMB));
+    store.set_picker_target(Some(ph2d_editor_core::ids::PAINTER_COLOR_THUMB));
     super::apply_picker_readback(&mut m, None, &[], &[], &[], &store);
     assert_eq!(
         texto(&m, id, "ramp"),

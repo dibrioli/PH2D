@@ -25,8 +25,8 @@ use ph2d_tokens::num_overrides::{
 use ph2d_tokens::overrides::{TokenValue, color_override, set_color_override, set_color_overrides};
 use ph2d_tokens::{ColorToken, NumToken};
 
-use ph2d_editor::screens::hero::HeroScreen;
-use ph2d_editor::{Toast, ToastQueue};
+use ph2d_editor_core::screens::hero::HeroScreen;
+use ph2d_editor_core::{Toast, ToastQueue};
 
 /// Escreve um LITERAL. ⚠️ O `expect` documenta a propriedade no sítio: um literal TERMINA uma
 /// cadeia de aliases, nunca a alonga, então a porta não tem como o recusar.
@@ -48,11 +48,11 @@ pub(crate) fn dispatch(hero: &mut HeroScreen, toasts: &mut ToastQueue) -> bool {
     // regista. Um teto que só um dos dois conhecesse deixaria as últimas linhas com o picker a
     // abrir e a cor a não chegar a lado nenhum.
     if let Some(target) = hero.store.picker_target()
-        && let Some(row) =
-            (0..ColorToken::ALL.len()).find(|&r| ph2d_editor::ids::tokens_swatch_id(r) == target)
+        && let Some(row) = (0..ColorToken::ALL.len())
+            .find(|&r| ph2d_editor_core::ids::tokens_swatch_id(r) == target)
         && let Some((value, _, _, _)) = hero
             .store
-            .blender_picker(ph2d_editor::ids::INSP_BLENDER_PICKER)
+            .blender_picker(ph2d_editor_core::ids::INSP_BLENDER_PICKER)
     {
         let [r, g, b, a] = value.rgba;
         let picked = Color { r, g, b, a };

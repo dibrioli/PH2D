@@ -6,7 +6,7 @@
 //! isto está, e como eles se tratam*; lá *o que a restrição faz*.
 
 use ph2d_ecs::{Name, SimWorld, Transform};
-use ph2d_editor::JointFieldEdit;
+use ph2d_editor_core::JointFieldEdit;
 use ph2d_physics_ecs::{JointKind, PhysicsJoint};
 
 use crate::joint::{build_joint_info, create_joint, joint_with_edit};

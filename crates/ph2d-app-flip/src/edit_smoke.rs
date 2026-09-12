@@ -50,8 +50,8 @@ pub fn wave(n: usize) -> FlipStroke {
 /// Roda no prólogo do frame (ao lado dos outros smokes). No-op sem a env.
 pub fn arm(
     flip: &mut ph2d_flip::FlipDoc,
-    tools: &mut ph2d_editor::ToolRegistry,
-    hero: Option<&mut ph2d_editor::HeroScreen>,
+    tools: &mut ph2d_editor_core::ToolRegistry,
+    hero: Option<&mut ph2d_editor_core::HeroScreen>,
     playhead: &mut ph2d_core::Playhead,
 ) -> bool {
     let mut armou = false;
@@ -60,7 +60,7 @@ pub fn arm(
     }
     match FRAME.fetch_add(1, Ordering::Relaxed) {
         3 => {
-            let _ = tools.set_active(&ph2d_editor::ToolId::new("flip"));
+            let _ = tools.set_active(&ph2d_editor_core::ToolId::new("flip"));
             let oid = flip.push_object("Edit Smoke");
             let obj = flip.object_mut(oid).expect("objeto recém-criado");
             obj.fps = 12.0;
@@ -98,12 +98,12 @@ pub fn arm(
         8 => {
             if let Some(hero) = hero {
                 for id in [
-                    ph2d_editor::ids::FLIP_MODE_EDIT,
-                    ph2d_editor::ids::FLIP_EDIT_DOM_POINT,
+                    ph2d_editor_core::ids::FLIP_MODE_EDIT,
+                    ph2d_editor_core::ids::FLIP_EDIT_DOM_POINT,
                 ] {
                     hero.bus
-                        .push(ph2d_editor::action_bus::EditorAction::ToolPanelEvent(
-                            ph2d_editor::tool::PanelEvent::Click(id),
+                        .push(ph2d_editor_core::action_bus::EditorAction::ToolPanelEvent(
+                            ph2d_editor_core::tool::PanelEvent::Click(id),
                         ));
                 }
             }

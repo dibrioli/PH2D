@@ -241,8 +241,8 @@ fn a_rotate_drag_spins_the_pose_about_the_posed_art_center() {
     // sobe 90° (CCW) em dois passos.
     let pivot = start.translation;
     let start_cursor = [pivot[0] + 10.0, pivot[1]];
-    let mut drag = ph2d_editor::GizmoDragState {
-        kind: ph2d_editor::GizmoDragKind::Rotate,
+    let mut drag = ph2d_editor_core::GizmoDragState {
+        kind: ph2d_editor_core::GizmoDragKind::Rotate,
         entity_bits: 1,
         start_screen: to_screen(start_cursor),
         cursor_screen: to_screen(start_cursor),
@@ -251,7 +251,7 @@ fn a_rotate_drag_spins_the_pose_about_the_posed_art_center() {
         start_cursor_world: start_cursor,
         sprite_half_intrinsic: [10.0, 10.0],
         anchor_is_center: false,
-        target: ph2d_editor::GizmoTarget::FlipPose,
+        target: ph2d_editor_core::GizmoTarget::FlipPose,
         parent_world: TransformSnapshot::IDENTITY,
         turns: 0,
     };
@@ -304,14 +304,14 @@ fn a_corner_scale_drag_anchors_the_opposite_corner() {
     };
     // Arrasta o canto TR (30,40); o pivô é o canto oposto BL (10,20) — o mesmo
     // `anchor_pivot_world` do down real.
-    let kind = ph2d_editor::GizmoDragKind::ScaleCorner {
+    let kind = ph2d_editor_core::GizmoDragKind::ScaleCorner {
         dx_sign: 1.0,
         dy_sign: 1.0,
     };
-    let pivot = ph2d_editor::anchor_pivot_world(kind, [0.0, 0.0], h, start, false);
+    let pivot = ph2d_editor_core::anchor_pivot_world(kind, [0.0, 0.0], h, start, false);
     assert_eq!(pivot, [10.0, 20.0]);
     let start_cursor = [30.0, 40.0];
-    let mut drag = ph2d_editor::GizmoDragState {
+    let mut drag = ph2d_editor_core::GizmoDragState {
         kind,
         entity_bits: 1,
         start_screen: to_screen(start_cursor),
@@ -321,7 +321,7 @@ fn a_corner_scale_drag_anchors_the_opposite_corner() {
         start_cursor_world: start_cursor,
         sprite_half_intrinsic: h,
         anchor_is_center: false,
-        target: ph2d_editor::GizmoTarget::FlipPose,
+        target: ph2d_editor_core::GizmoTarget::FlipPose,
         parent_world: TransformSnapshot::IDENTITY,
         turns: 0,
     };

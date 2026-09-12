@@ -132,7 +132,7 @@ fn inside_a_container_the_loop_toggles_write_the_containers_own_loop() {
     let c = step.container;
     st.edit_path = vec![step];
     let ph = Playhead::new(1.0 / 60.0);
-    let ev = |on| PanelEvent::Toggle(ph2d_editor::ids::TIMELINE_LOOP, on);
+    let ev = |on| PanelEvent::Toggle(ph2d_editor_core::ids::TIMELINE_LOOP, on);
     // O container tem 2 s de interior (a strip [0,2) dentro dele).
     let len = 2.0;
 
@@ -154,7 +154,7 @@ fn inside_a_container_the_loop_toggles_write_the_containers_own_loop() {
     );
     assert_eq!(
         intent_for_transport(
-            &PanelEvent::Toggle(ph2d_editor::ids::TIMELINE_PINGPONG, true),
+            &PanelEvent::Toggle(ph2d_editor_core::ids::TIMELINE_PINGPONG, true),
             &st,
             &ph
         ),
@@ -166,7 +166,7 @@ fn inside_a_container_the_loop_toggles_write_the_containers_own_loop() {
     );
     assert_eq!(
         intent_for_transport(
-            &PanelEvent::Click(ph2d_editor::ids::TIMELINE_GO_START),
+            &PanelEvent::Click(ph2d_editor_core::ids::TIMELINE_GO_START),
             &st,
             &ph
         ),
@@ -175,7 +175,7 @@ fn inside_a_container_the_loop_toggles_write_the_containers_own_loop() {
     );
     assert_eq!(
         intent_for_transport(
-            &PanelEvent::Click(ph2d_editor::ids::TIMELINE_GO_END),
+            &PanelEvent::Click(ph2d_editor_core::ids::TIMELINE_GO_END),
             &st,
             &ph
         ),
@@ -435,7 +435,7 @@ fn a_loop_toggled_inside_a_container_does_not_touch_the_arrange_loop() {
     st.edit_path = vec![step];
     let mut container_ph = Playhead::new(1.0 / 60.0);
     let intent = intent_for_transport(
-        &PanelEvent::Toggle(ph2d_editor::ids::TIMELINE_LOOP, true),
+        &PanelEvent::Toggle(ph2d_editor_core::ids::TIMELINE_LOOP, true),
         &st,
         &container_ph,
     )

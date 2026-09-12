@@ -47,9 +47,9 @@ pub(crate) enum Preset {
 /// A gate below walks BOTH published tables through this function: a row painted
 /// into the menu but forgotten here would be an item that silently does nothing,
 /// which is the classic way a context menu ships dead.
-pub(crate) fn preset_for(item: ph2d_editor::NodeId, mode: u8) -> Option<Preset> {
+pub(crate) fn preset_for(item: ph2d_editor_core::NodeId, mode: u8) -> Option<Preset> {
     use ph2d_anim::{Easing, EasingFamily as F, EasingMode as M};
-    use ph2d_editor::ids as c;
+    use ph2d_editor_core::ids as c;
     if item == c::CTX_MENU_TL_HOLD {
         return Some(Preset::Hold);
     }
@@ -106,9 +106,9 @@ pub(crate) fn preset_for(item: ph2d_editor::NodeId, mode: u8) -> Option<Preset> 
 /// afterwards, and why no third code path was needed.
 pub(crate) fn intents_for_pick(
     state: &TimelineState,
-    pick: ph2d_editor::interaction::TimelineInterpPick,
+    pick: ph2d_editor_core::interaction::TimelineInterpPick,
 ) -> Vec<TimelineIntent> {
-    use ph2d_editor::interaction::TimelineInterpScope as S;
+    use ph2d_editor_core::interaction::TimelineInterpScope as S;
     let Some(preset) = preset_for(pick.item, pick.mode) else {
         return Vec::new();
     };

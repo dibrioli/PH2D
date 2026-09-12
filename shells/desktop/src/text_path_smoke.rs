@@ -85,7 +85,9 @@ pub(crate) fn frame(app: &mut crate::App, f: u32) {
     let Some(gfx) = app.gfx.as_mut() else {
         return;
     };
-    let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("vector"));
+    let _ = gfx
+        .tools
+        .set_active(&ph2d_editor_core::ToolId::new("vector"));
     let scene = &mut gfx.vec_scene;
 
     let mut names = Vec::new();

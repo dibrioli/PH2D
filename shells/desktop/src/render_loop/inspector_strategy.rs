@@ -30,8 +30,8 @@ use ph2d_ecs::scene::{
     ComponentRegistry, EditorCommand, EditorCommandQueue, apply_editor_commands,
 };
 use ph2d_ecs::{SimWorld, SpritePixels};
-use ph2d_editor::screens::hero::HeroScreen;
-use ph2d_editor::{RequestedSpriteStrategy, Toast, ToastQueue};
+use ph2d_editor_core::screens::hero::HeroScreen;
+use ph2d_editor_core::{RequestedSpriteStrategy, Toast, ToastQueue};
 use ph2d_render::{Sprite, SpriteRenderer, SpriteSource};
 use std::collections::BTreeMap;
 
@@ -451,17 +451,17 @@ fn release_texture_if_unused(texture_id: u32, sim: &mut SimWorld, renderer: &mut
 fn reject_visual_reset(hero: &mut HeroScreen, clicked: RequestedSpriteStrategy) {
     let id = match clicked {
         RequestedSpriteStrategy::Atlas => {
-            ph2d_editor::screens::hero::ids::INSP_RENDER_STRATEGY_ATLAS
+            ph2d_editor_core::screens::hero::ids::INSP_RENDER_STRATEGY_ATLAS
         }
         RequestedSpriteStrategy::Individual => {
-            ph2d_editor::screens::hero::ids::INSP_RENDER_STRATEGY_INDIVIDUAL
+            ph2d_editor_core::screens::hero::ids::INSP_RENDER_STRATEGY_INDIVIDUAL
         }
         RequestedSpriteStrategy::HandPacked => {
-            ph2d_editor::screens::hero::ids::INSP_RENDER_STRATEGY_HANDPACKED
+            ph2d_editor_core::screens::hero::ids::INSP_RENDER_STRATEGY_HANDPACKED
         }
     };
-    if let Some(ph2d_editor::InteractiveState::Button { state }) = hero.store.get_mut(id) {
-        *state = ph2d_editor::widget::ButtonState::Normal;
+    if let Some(ph2d_editor_core::InteractiveState::Button { state }) = hero.store.get_mut(id) {
+        *state = ph2d_editor_core::widget::ButtonState::Normal;
     }
 }
 

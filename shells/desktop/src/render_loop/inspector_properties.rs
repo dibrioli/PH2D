@@ -8,7 +8,7 @@
 //! faria uma cópia renomeada pelo artista («Bob») perder a família a que ela pertence.*
 
 use ph2d_ecs::{Entity, SimWorld};
-use ph2d_editor::screens::hero::InspectorPropertiesInfo;
+use ph2d_editor_core::screens::hero::InspectorPropertiesInfo;
 
 /// Lê as propriedades da entidade selecionada. `None` = ela não declara nenhuma **e** não pertence
 /// a família nenhuma — e aí o cartão não existe (a lei da F3: o Inspector mostra o que o objeto TEM).
@@ -33,7 +33,7 @@ pub(super) fn build_properties_info(
     let members = subject.map_or_else(Vec::new, |id| {
         super::inspector_instance::family_members(sim, id)
     });
-    let (rows, beyond) = ph2d_editor::screens::hero::variant_axes::axes_for(
+    let (rows, beyond) = ph2d_editor_core::screens::hero::variant_axes::axes_for(
         &members,
         root_master.or(subject).unwrap_or_default(),
     );

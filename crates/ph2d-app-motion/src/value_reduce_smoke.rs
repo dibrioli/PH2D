@@ -110,5 +110,7 @@ pub fn value_reduce_smoke(cx: &mut crate::motion_scene_ctx::MotionSceneCtx<'_>) 
     }
     crate::smoke_layout::arrange_and_mark(&mut cx.motion.doc, &heroes);
     cx.motion.sinks.extend(sinks);
-    let _ = cx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
+    let _ = cx
+        .tools
+        .set_active(&ph2d_editor_core::ToolId::new("motion"));
 }

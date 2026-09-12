@@ -11,7 +11,7 @@ pub use ph2d_viewport3d::navball::*;
 #[cfg(test)]
 #[allow(unused_imports)]
 pub use {
-    ph2d_editor::zones::Rect as EditorRect, ph2d_field_render::Orbit,
+    ph2d_editor_core::zones::Rect as EditorRect, ph2d_field_render::Orbit,
     ph2d_viewport3d::views::Standard,
 };
 

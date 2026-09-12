@@ -35,7 +35,7 @@ impl crate::App {
         };
         if hero
             .store
-            .is_collapsed(ph2d_editor::ids::INSP_LIVE_ANCHOR_SECTION)
+            .is_collapsed(ph2d_editor_core::ids::INSP_LIVE_ANCHOR_SECTION)
         {
             return false;
         }
@@ -122,11 +122,12 @@ impl crate::App {
             return;
         };
         for e in edits.into_iter().flatten() {
-            hero.bus
-                .push(ph2d_editor::action_bus::EditorAction::InspectorAnchorEdit {
+            hero.bus.push(
+                ph2d_editor_core::action_bus::EditorAction::InspectorAnchorEdit {
                     entity_bits: drag.entity,
                     edit: e,
-                });
+                },
+            );
         }
         self.any_input_this_frame = true;
     }

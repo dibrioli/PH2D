@@ -381,7 +381,7 @@ fn view() -> Option<(ph2d_field_render::Orbit, ph2d_field_render::Screen)> {
         let a = s
             .vp()
             .area
-            .unwrap_or(ph2d_editor::zones::Rect::new(0.0, 0.0, 1.0, 1.0));
+            .unwrap_or(ph2d_editor_core::zones::Rect::new(0.0, 0.0, 1.0, 1.0));
         (
             s.vp().cam,
             ph2d_field_render::Screen::new(

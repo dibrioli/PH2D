@@ -7,7 +7,7 @@
 //! que substitui o número de versão. Quem cobre a fiação é o arch-gate do `forwarding.rs`.
 
 use super::{Prefs, parse, serialize};
-use ph2d_editor::motion::UiCharacter;
+use ph2d_editor_core::motion::UiCharacter;
 
 /// As QUATRO combinações, e é por isso que são quatro e não duas: o ficheiro tem de conseguir
 /// dizer **Expressivo + reduced**, a combinação que um selector de três posições tornaria

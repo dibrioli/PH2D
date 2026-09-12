@@ -7,7 +7,7 @@
 //! `hierarchy_duplicate_routing_tests.rs`.
 
 use ph2d_ecs::SimWorld;
-use ph2d_editor::{Toast, ToastQueue, screens::hero::HeroScreen};
+use ph2d_editor_core::{Toast, ToastQueue, screens::hero::HeroScreen};
 use ph2d_host::WindowSize;
 use ph2d_render::Camera2d;
 

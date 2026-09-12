@@ -44,10 +44,13 @@ pub(crate) use ph2d_sprite_screen::{cell_count, unfolded_quad};
 /// células) e pelo OVERLAY (que desenha as linhas por cima delas); com uma cópia em cada, um
 /// quadro em que discordassem daria linhas sobre células que não existem — e a divergência só
 /// apareceria no ecrã. É a mesma lei que a caixa «Playing» pagou neste módulo em 2026-08-23.
-pub(crate) fn previewed(hero: &ph2d_editor::screens::hero::HeroScreen) -> Option<ph2d_ecs::Entity> {
+pub(crate) fn previewed(
+    hero: &ph2d_editor_core::screens::hero::HeroScreen,
+) -> Option<ph2d_ecs::Entity> {
     matches!(
-        hero.store.checkbox(ph2d_editor::ids::INSP_SHEET_PREVIEW),
-        Some((_, ph2d_editor::widget::CheckboxValue::Checked))
+        hero.store
+            .checkbox(ph2d_editor_core::ids::INSP_SHEET_PREVIEW),
+        Some((_, ph2d_editor_core::widget::CheckboxValue::Checked))
     )
     .then(|| hero.gizmo.selection)
     .flatten()

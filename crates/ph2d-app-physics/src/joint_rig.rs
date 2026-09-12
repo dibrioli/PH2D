@@ -141,7 +141,7 @@ pub fn apply(
             crate::inspector::body::apply_physics_edit(
                 sim,
                 e.to_bits(),
-                ph2d_editor::PhysicsFieldEdit::Add,
+                ph2d_editor_core::PhysicsFieldEdit::Add,
                 queue,
                 registry,
             );

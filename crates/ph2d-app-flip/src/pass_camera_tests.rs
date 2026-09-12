@@ -32,7 +32,7 @@ fn target() -> WindowSize {
 }
 
 /// O sub-retângulo horizontal (a cena em cima, o grafo em baixo) — a mesma conta de
-/// [`ph2d_editor::screens::layout::CenterSplit::scene_viewport`], escrita aqui à mão de
+/// [`ph2d_editor_core::screens::layout::CenterSplit::scene_viewport`], escrita aqui à mão de
 /// propósito: se aquela porta mudar, este gate tem de reprovar, não de acompanhar.
 fn horizontal_subrect() -> [f32; 4] {
     [0.0, 0.0, TW as f32, (TH as f32 * SPLIT_T).floor()]

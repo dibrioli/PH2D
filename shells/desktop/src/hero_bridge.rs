@@ -44,9 +44,9 @@
 //! capacity stays bounded by entity count.
 
 use ph2d_ecs::scene::HierarchySnapshot;
-use ph2d_editor::NodeId;
-use ph2d_editor::icons::IconId;
-use ph2d_editor::screens::hero::fixture::HierarchyEntity;
+use ph2d_editor_core::NodeId;
+use ph2d_editor_core::icons::IconId;
+use ph2d_editor_core::screens::hero::fixture::HierarchyEntity;
 use std::collections::BTreeMap;
 
 /// Bi-directional `Entity::to_bits() ↔ NodeId` map.
@@ -121,7 +121,7 @@ impl EntityNodeMap {
     }
 
     /// Translate a [`HierarchySnapshot`] into the pair the editor's
-    /// [`ph2d_editor::HeroScreen::sync_from_hierarchy`] expects:
+    /// [`ph2d_editor_core::HeroScreen::sync_from_hierarchy`] expects:
     ///
     /// - `Vec<NodeId>` in the snapshot's DFS visit order (matches
     ///   the hierarchy panel's natural top-to-bottom display).

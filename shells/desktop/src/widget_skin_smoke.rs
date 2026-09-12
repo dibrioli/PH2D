@@ -97,7 +97,7 @@ fn dress(app: &mut crate::App) {
         };
         ent.insert(ph2d_ecs::Name::new(*name));
         if let Some(k) = kind
-            && let Some(kind) = ph2d_editor::widget::WidgetKind::ALL
+            && let Some(kind) = ph2d_editor_core::widget::WidgetKind::ALL
                 .iter()
                 .find(|w| ph2d_i18n::tr(w.i18n_key()) == *k)
         {
@@ -114,7 +114,7 @@ fn announce(app: &mut crate::App) {
         "[widget-skin] {} formas na cena, {} tipos no catalogo. As quatro primeiras VESTEM um \
          widget; a ultima e' o CONTROLE.",
         gfx.vec_scene.paths().len(),
-        ph2d_editor::widget::WidgetKind::ALL.len()
+        ph2d_editor_core::widget::WidgetKind::ALL.len()
     );
     eprintln!("[widget-skin] o roteiro:");
     eprintln!("  1. ⚠️ **A PROVA DA WAVE**: as quatro primeiras formas nao sao retangulos — sao");
@@ -199,7 +199,7 @@ mod tests {
         for (_, name, kind) in ART {
             let Some(k) = kind else { continue };
             assert!(
-                ph2d_editor::widget::WidgetKind::ALL
+                ph2d_editor_core::widget::WidgetKind::ALL
                     .iter()
                     .any(|w| ph2d_i18n::tr(w.i18n_key()) == k),
                 "a cena veste '{name}' com um tipo '{k}' que o catalogo nao tem"

@@ -12,7 +12,7 @@
 
 use crate::painter_preview_handoff_tests::app_frame;
 use crate::painter_preview_pipeline_tests::{assert_screen_equals, cp, impasto_tool, screen_truth};
-use ph2d_editor::tool::{CanvasPaintTool, PointerPhase};
+use ph2d_editor_core::tool::{CanvasPaintTool, PointerPhase};
 use ph2d_preview_slot::PreviewGpu as PainterPreviewGpu;
 use ph2d_tool_painter::PainterTool;
 use ph2d_tool_runtime::PreviewCache as PainterPreview;
@@ -50,7 +50,7 @@ fn the_screen_after_an_undo_is_what_the_other_producer_would_draw() {
     );
     let mut t = impasto_tool(size);
     let (mut session, mut preview, mut toasts) =
-        (None, None, ph2d_editor::toast::ToastQueue::default());
+        (None, None, ph2d_editor_core::toast::ToastQueue::default());
     let mut preview_gpu: Option<PainterPreviewGpu> = None;
     let run =
         |t: &mut PainterTool,
@@ -186,7 +186,7 @@ fn the_planes_are_current_when_the_gpu_lane_takes_the_frame_back() {
     );
     let mut t = impasto_tool(size);
     let (mut session, mut preview, mut toasts) =
-        (None, None, ph2d_editor::toast::ToastQueue::default());
+        (None, None, ph2d_editor_core::toast::ToastQueue::default());
     let mut preview_gpu: Option<PainterPreviewGpu> = None;
     let stroke = |t: &mut PainterTool,
                   renderer: &mut ph2d_render::SpriteRenderer,

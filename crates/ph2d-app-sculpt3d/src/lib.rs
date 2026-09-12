@@ -130,7 +130,7 @@ pub use panel::Sculpt3dFrameRequest;
 /// ⭐ **A FASE da ponte do painel** — o 112.º ficheiro a sair da shell (W2/L3-B).
 ///
 /// ⚠️ Ele vivia no `render_loop/` e não na pasta da família, e por isso não estava no alvo de
-/// 111 medido em 11/09. Ele atravessa porque o que ele toca — o [`ph2d_editor::screens::hero::HeroScreen`]
+/// 111 medido em 11/09. Ele atravessa porque o que ele toca — o [`ph2d_editor_core::screens::hero::HeroScreen`]
 /// — é de uma crate-MÓDULO, não da shell: *o que decide se um ficheiro sai não é a pasta em que
 /// ele estava, é o fecho de compilação dele.*
 pub mod panel_bridge;

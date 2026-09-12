@@ -3,7 +3,7 @@
 //!
 //! É chrome, pela mesma razão da decoração da folha ao lado: ela diz o que aquilo É, não como se
 //! parece, e não pode entrar em bake nenhum. A ficha é a mesma do readout da casa
-//! ([`ph2d_editor::readout::paint_chip`]) — corpo, altura, raio e cores saem de lá, e não daqui.
+//! ([`ph2d_editor_core::readout::paint_chip`]) — corpo, altura, raio e cores saem de lá, e não daqui.
 //!
 //! ⚠️ **Em pixels de TELA, e não em metros.** Uma legenda tem de ser igualmente legível com o
 //! canvas perto ou longe; um rótulo em unidades de mundo encolheria justamente quando o artista
@@ -32,7 +32,7 @@ pub(crate) fn draw(
 ) {
     for c in captions {
         let p = cam * Point::new(f64::from(c.world[0]), f64::from(c.world[1]));
-        ph2d_editor::readout::paint_chip(
+        ph2d_editor_core::readout::paint_chip(
             text_system,
             scene,
             &c.text,

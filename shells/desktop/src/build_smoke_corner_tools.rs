@@ -9,7 +9,9 @@ impl crate::App {
     /// Frame 3: um retângulo de quinas RETAS + uma elipse de âncoras SUAVES, no modo Fillet.
     pub(crate) fn smoke_corner_tools_build(&mut self) {
         let gfx = self.gfx.as_mut().expect("gfx");
-        let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("vector"));
+        let _ = gfx
+            .tools
+            .set_active(&ph2d_editor_core::ToolId::new("vector"));
         let scene = &mut gfx.vec_scene;
         // Retângulo de quinas AFIADAS (radius 0) à esquerda.
         scene.push_path(shape(

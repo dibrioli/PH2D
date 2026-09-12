@@ -92,7 +92,7 @@ impl crate::App {
             // ⚠️ **O pill PRIMEIRO** — medido: sem o modo Osso a secção SKELETON nem sequer é
             // pintada (o pill está no índice, os controlos dela não). *O roteiro tem de ser o
             // caminho do artista, incluindo o passo que ele nem repara que dá.*
-            35 => self.probe_click(ph2d_editor::ids::VECTOR_MODE_BONE, "o pill Bone"),
+            35 => self.probe_click(ph2d_editor_core::ids::VECTOR_MODE_BONE, "o pill Bone"),
             40 => self.probe_pick_a_bone_without_anchor(),
             // ⚠️ **ROLAR o painel é parte do caminho do artista.** Medido: a secção SKELETON fica
             // ABAIXO da dobra (a STROKE está em `y=258` e a FILL em `y=678`), e o índice de acerto
@@ -102,13 +102,16 @@ impl crate::App {
             // ⚠️⚠️ **E o verbo TRANSFORMAR** — sem ele o `press` sobre uma alça apenas SELECCIONA
             // (é a lei do modo *Criar*), e o arrasto da âncora nunca acontece. *Uma sonda que não
             // escolhe o verbo mede o outro gesto.*
-            48 => self.probe_click(ph2d_editor::ids::VECTOR_BONE_ACT_TRANSFORM, "Transform"),
+            48 => self.probe_click(
+                ph2d_editor_core::ids::VECTOR_BONE_ACT_TRANSFORM,
+                "Transform",
+            ),
             49 => self.probe_what_is_reachable(),
             // ⚠️⚠️ **O Down e o Up em QUADROS DIFERENTES** — é o que uma mão humana faz, e é a
             // ÚNICA diferença que sobrava contra o roteiro que passou. Dois dos cinco motivos de
             // supressão (`held_button`, `any_input_this_frame`) vivem exactamente nessa janela:
             // um `Down`+`Up` no mesmo quadro nunca vê o `held_button` preso.
-            50 => self.probe_press(ph2d_editor::ids::VECTOR_BONE_IK_ADD, "Add IK"),
+            50 => self.probe_press(ph2d_editor_core::ids::VECTOR_BONE_IK_ADD, "Add IK"),
             53 => {
                 eprintln!("[probe-ik-undo] --- Up (3 quadros depois do Down) ---");
                 self.smoke_pointer_up();
@@ -130,9 +133,9 @@ impl crate::App {
             }
             // E o outro verbo: criar de novo e REMOVER pelo botão.
             100 => self.probe_pick_a_bone_without_anchor(),
-            103 => self.probe_press(ph2d_editor::ids::VECTOR_BONE_IK_ADD, "Add IK"),
+            103 => self.probe_press(ph2d_editor_core::ids::VECTOR_BONE_IK_ADD, "Add IK"),
             105 => self.smoke_pointer_up(),
-            112 => self.probe_press(ph2d_editor::ids::VECTOR_BONE_IK_REMOVE, "Remove IK"),
+            112 => self.probe_press(ph2d_editor_core::ids::VECTOR_BONE_IK_REMOVE, "Remove IK"),
             114 => self.smoke_pointer_up(),
             // ⭐⭐⭐ **QUANTOS PASSOS N ACÇÕES PRODUZEM** (report do dono, 2026-09-07: *«undo tem
             // poucos passos»*). Quatro arrastos SEPARADOS da mesma âncora, com quadros parados
@@ -289,11 +292,14 @@ impl crate::App {
     /// no meio mede outra coisa.
     fn bone_undo_steps_probe(&mut self, f: u32) {
         match f {
-            35 => self.probe_click(ph2d_editor::ids::VECTOR_MODE_BONE, "o pill Bone"),
+            35 => self.probe_click(ph2d_editor_core::ids::VECTOR_MODE_BONE, "o pill Bone"),
             42..=47 => self.probe_scroll_panel(),
-            48 => self.probe_click(ph2d_editor::ids::VECTOR_BONE_ACT_TRANSFORM, "Transform"),
+            48 => self.probe_click(
+                ph2d_editor_core::ids::VECTOR_BONE_ACT_TRANSFORM,
+                "Transform",
+            ),
             50 => self.probe_pick_a_bone_without_anchor(),
-            53 => self.probe_press(ph2d_editor::ids::VECTOR_BONE_IK_ADD, "Add IK"),
+            53 => self.probe_press(ph2d_editor_core::ids::VECTOR_BONE_IK_ADD, "Add IK"),
             55 => self.smoke_pointer_up(),
             60 => self.probe_marker("--- comecam os 5 arrastos ---"),
             62 | 70 | 78 | 86 | 94 => self.probe_drag_the_anchor(),
@@ -354,13 +360,19 @@ impl crate::App {
     /// resposta muda tudo o que se investiga a seguir.
     fn probe_what_is_reachable(&mut self) {
         for (id, nome) in [
-            (ph2d_editor::ids::VECTOR_SECTION_BONE, "a seccao SKELETON"),
-            (ph2d_editor::ids::VECTOR_BONE_BIND, "Bind"),
-            (ph2d_editor::ids::VECTOR_BONE_LENGTH, "Length"),
-            (ph2d_editor::ids::VECTOR_BONE_IK_ADD, "Add IK"),
-            (ph2d_editor::ids::VECTOR_MODE_BONE, "o pill Bone"),
-            (ph2d_editor::ids::VECTOR_SECTION_STROKE, "a seccao STROKE"),
-            (ph2d_editor::ids::VECTOR_SECTION_FILL, "a seccao FILL"),
+            (
+                ph2d_editor_core::ids::VECTOR_SECTION_BONE,
+                "a seccao SKELETON",
+            ),
+            (ph2d_editor_core::ids::VECTOR_BONE_BIND, "Bind"),
+            (ph2d_editor_core::ids::VECTOR_BONE_LENGTH, "Length"),
+            (ph2d_editor_core::ids::VECTOR_BONE_IK_ADD, "Add IK"),
+            (ph2d_editor_core::ids::VECTOR_MODE_BONE, "o pill Bone"),
+            (
+                ph2d_editor_core::ids::VECTOR_SECTION_STROKE,
+                "a seccao STROKE",
+            ),
+            (ph2d_editor_core::ids::VECTOR_SECTION_FILL, "a seccao FILL"),
         ] {
             eprintln!(
                 "[probe-ik-undo] alcancavel? {nome}: {:?}",
@@ -370,7 +382,7 @@ impl crate::App {
     }
 
     /// Só o **Down** sobre um widget — o `Up` vem noutro quadro, como na mão de uma pessoa.
-    fn probe_press(&mut self, id: ph2d_editor::NodeId, nome: &str) {
+    fn probe_press(&mut self, id: ph2d_editor_core::NodeId, nome: &str) {
         let Some((x, y)) = self.smoke_find_widget(id) else {
             eprintln!("[probe-ik-undo] ⛔ o botao {nome} NAO esta' no hit-index");
             return;
@@ -380,7 +392,7 @@ impl crate::App {
     }
 
     /// Carrega num widget do painel **com o ponteiro**, pelo caminho do artista.
-    fn probe_click(&mut self, id: ph2d_editor::NodeId, nome: &str) {
+    fn probe_click(&mut self, id: ph2d_editor_core::NodeId, nome: &str) {
         let Some((x, y)) = self.smoke_find_widget(id) else {
             eprintln!("[probe-ik-undo] ⛔ o botao {nome} NAO esta' no hit-index (nao e' clicavel)");
             return;

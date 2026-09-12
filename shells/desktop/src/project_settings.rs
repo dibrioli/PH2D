@@ -31,7 +31,7 @@
 //! `ProjectSettings` INTEIROS por `PartialEq`: um campo novo que o espelho não
 //! carregue faz o teste falhar, em vez de deixar de persistir em silêncio.
 
-use ph2d_editor::project::{DisplayAngle, DisplayUnit, ImageFilterMode, ProjectSettings};
+use ph2d_editor_core::project::{DisplayAngle, DisplayUnit, ImageFilterMode, ProjectSettings};
 
 /// As settings do projeto, na forma que o arquivo guarda.
 ///

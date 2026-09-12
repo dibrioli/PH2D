@@ -6,7 +6,7 @@
 //! *que ela é a perguntada*.
 
 use super::{CANVAS_ZOOM, CanvasZoom};
-use ph2d_editor::motion::UiMotion;
+use ph2d_editor_core::motion::UiMotion;
 use ph2d_render::Camera2d;
 
 /// Um entalhe de roda para dentro, na régua do `on_mouse_wheel` (`0,9^(dy/16)` com `dy = 16`).

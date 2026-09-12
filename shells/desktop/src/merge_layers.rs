@@ -37,7 +37,7 @@
 //! daria um documento que compõe diferente do que a sprite mostra — e ninguém saberia qual dos dois
 //! está certo.
 
-use ph2d_editor::{Toast, ToastQueue, ToolRegistry};
+use ph2d_editor_core::{Toast, ToastQueue, ToolRegistry};
 use ph2d_tool_painter::PainterTool;
 
 use crate::hero_intents::MergedLayers;
@@ -49,7 +49,7 @@ use crate::hero_intents::MergedLayers;
 /// `bind_document` guarda-o na cache por sprite, e abrir o Painter nessa sprite devolve-o.
 pub(crate) fn install(tools: &mut ToolRegistry, doc: &MergedLayers, toasts: &mut ToastQueue) {
     let Some(painter) = tools
-        .tool_by_id_mut(&ph2d_editor::ToolId::new("painter"))
+        .tool_by_id_mut(&ph2d_editor_core::ToolId::new("painter"))
         .and_then(|t| t.as_any_mut().downcast_mut::<PainterTool>())
     else {
         // ⚠️ Diz-se, e não se cala: a sprite fundida existe e desenha certo, mas a metade que o

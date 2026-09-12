@@ -17,7 +17,7 @@ authors.workspace = true
 # nomeada no doc do `lib.rs`: o vocabulário 3D devia ser uma folha própria.
 [dependencies]
 ph2d-app-host     = { path = "../ph2d-app-host" }
-ph2d-editor       = { path = "../ph2d-editor" }
+ph2d-editor-core  = { path = "../ph2d-editor-core" }
 ph2d-field        = { path = "../ph2d-field" }
 ph2d-field-render = { path = "../ph2d-field-render" }
 ph2d-tokens       = { path = "../ph2d-tokens" }

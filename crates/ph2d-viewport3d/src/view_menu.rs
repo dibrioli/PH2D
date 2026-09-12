@@ -14,7 +14,7 @@
 //!
 //! # ⭐ Ele não é um `ContextMenuKind`
 //!
-//! O [`ph2d_editor::widget::paint_context_menu`] é **autónomo**: recebe um modelo e um
+//! O [`ph2d_editor_core::widget::paint_context_menu`] é **autónomo**: recebe um modelo e um
 //! rectângulo. Registar uma variante no `ContextMenuKind` foundational obrigaria a tocar o `enum`, a
 //! lista de amostras, a tabela de rows e o ficheiro de ids — quatro sítios de outra crate, com
 //! colisão textual garantida — para um menu que vive **dentro** do canvas 3D e que este módulo já
@@ -24,15 +24,15 @@
 //!
 //! O chip do rótulo depende da largura do texto, e o menu da largura da linha mais comprida. A casa
 //! já tem a lei: *«quem empilha texto de comprimento variável tem de perguntar ao pintor quanto ele
-//! gastou, não estimar»* ([`ph2d_editor::paint::paint_text_block`]). ⇒ o pintor mede
+//! gastou, não estimar»* ([`ph2d_editor_core::paint::paint_text_block`]). ⇒ o pintor mede
 //! ([`ph2d_text::TextSystem::prefix_width`]) e guarda — `Viewport::label` e `Smoke::view_menu_rect`
 //! —, exactamente como o `Viewport::area` já responde *«este clique é meu?»*. Enquanto nada foi
 //! pintado os dois são `None`, e *«ainda não desenhei» e «o ponto não é meu» são a mesma resposta*.
 
 use crate::views::Standard;
-use ph2d_editor::NodeId;
-use ph2d_editor::widget::{ContextMenu, ContextMenuEntry, ListItem};
-use ph2d_editor::zones::Rect;
+use ph2d_editor_core::NodeId;
+use ph2d_editor_core::widget::{ContextMenu, ContextMenuEntry, ListItem};
+use ph2d_editor_core::zones::Rect;
 
 /// A altura de uma linha do menu — a mesma que o resto do chrome usa.
 pub const ROW_H_PX: f32 = 26.0; // LITERAL-PX-OK: overlay metric (menu row height)

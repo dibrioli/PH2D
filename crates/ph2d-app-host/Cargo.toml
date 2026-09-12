@@ -21,5 +21,5 @@ authors.workspace = true
 # - `rfd`: o diálogo de ficheiro do sistema. Já está no `Cargo.lock` (0.17.2, STACK_VERSOES)
 #   e não é pacote novo — ⚠️ ele é quem SEGURA o `pollster` (`stack-audit.sh --tetos`).
 [dependencies]
-ph2d-editor = { path = "../ph2d-editor" }
+ph2d-editor-core = { path = "../ph2d-editor-core" }
 rfd = "0.17"

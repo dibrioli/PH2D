@@ -200,20 +200,23 @@ fn a_multiple_selection_has_no_answer() {
 #[test]
 fn the_two_chips_map_to_the_two_kinds_and_nothing_else_does() {
     assert_eq!(
-        kind_for_id(ph2d_editor::ids::VECTOR_STROKE_KIND_SOLID),
+        kind_for_id(ph2d_editor_core::ids::VECTOR_STROKE_KIND_SOLID),
         Some(StrokePaintKind::Solid)
     );
     assert_eq!(
-        kind_for_id(ph2d_editor::ids::VECTOR_STROKE_KIND_PATTERN),
+        kind_for_id(ph2d_editor_core::ids::VECTOR_STROKE_KIND_PATTERN),
         Some(StrokePaintKind::Pattern)
     );
     // ⛔ O chip do PREENCHIMENTO não pode cair aqui: seria a fileira do traço a consumir o clique
     // do vizinho, e o preenchimento deixaria de mudar sem uma mensagem sequer.
     assert_eq!(
-        kind_for_id(ph2d_editor::ids::VECTOR_FILL_KIND_PATTERN),
+        kind_for_id(ph2d_editor_core::ids::VECTOR_FILL_KIND_PATTERN),
         None
     );
-    assert_eq!(kind_for_id(ph2d_editor::ids::VECTOR_STROKE_PRESENT), None);
+    assert_eq!(
+        kind_for_id(ph2d_editor_core::ids::VECTOR_STROKE_PRESENT),
+        None
+    );
 }
 
 /// ⚠️ **A OPACIDADE atravessa a troca de tinta, nos DOIS sentidos.**
@@ -387,7 +390,7 @@ fn every_brush_knob_writes_its_own_field_and_only_its_own() {
 /// **Os controlos da secção são alcançáveis pelo `NodeId`, e mais nenhum id os reclama.**
 #[test]
 fn the_brush_controls_map_to_their_commands_and_nothing_else_does() {
-    use ph2d_editor::ids as i;
+    use ph2d_editor_core::ids as i;
     assert_eq!(cmd_for_id(i::VECTOR_BRUSH_FLIP), Some(BrushCmd::Flip));
     assert_eq!(cmd_for_id(i::VECTOR_STROKE_KIND_BRUSH), None);
     assert_eq!(

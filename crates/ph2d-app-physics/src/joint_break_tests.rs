@@ -6,7 +6,7 @@
 //! cut by subject.
 
 use ph2d_ecs::{Name, SimWorld, Transform};
-use ph2d_editor::JointFieldEdit;
+use ph2d_editor_core::JointFieldEdit;
 use ph2d_physics_ecs::{JointKind, PhysicsJoint};
 
 use crate::joint::{build_joint_info, joint_with_edit, kind_of};
@@ -33,13 +33,13 @@ fn a_break_threshold_is_carried_verbatim_in_newtons() {
             (
                 JointFieldEdit::BreakForce(250.0),
                 (|j: &PhysicsJoint| j.break_force) as fn(&PhysicsJoint) -> f32,
-                (|i: &ph2d_editor::InspectorJointInfo| i.break_force)
-                    as fn(&ph2d_editor::InspectorJointInfo) -> f32,
+                (|i: &ph2d_editor_core::InspectorJointInfo| i.break_force)
+                    as fn(&ph2d_editor_core::InspectorJointInfo) -> f32,
             ),
             (
                 JointFieldEdit::BreakTorque(12.5),
                 |j: &PhysicsJoint| j.break_torque,
-                |i: &ph2d_editor::InspectorJointInfo| i.break_torque,
+                |i: &ph2d_editor_core::InspectorJointInfo| i.break_torque,
             ),
         ] {
             let typed = match edit {

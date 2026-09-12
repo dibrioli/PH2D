@@ -34,6 +34,6 @@ pub fn resolve_theme(name: Option<&str>, look: UiLook) -> Theme {
 pub fn parse_theme_env() -> Theme {
     resolve_theme(
         std::env::var("PH2D_THEME").ok().as_deref(),
-        ph2d_editor::screens::hero::ui_look_from_env(),
+        ph2d_editor_core::screens::hero::ui_look_from_env(),
     )
 }

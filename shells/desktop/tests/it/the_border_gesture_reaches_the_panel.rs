@@ -18,7 +18,7 @@
 //!
 //! ⚠️ **A lição não é «gates textuais são maus»** — é que um gate textual só pode afirmar sobre
 //! **quem chama quem**, nunca sobre *o que a chamada faz*. A conduta mudou de sítio
-//! ([`ph2d_editor::screens::hero::dock_columns`]) precisamente para poder ter régua a sério, e ela
+//! ([`ph2d_editor_core::screens::hero::dock_columns`]) precisamente para poder ter régua a sério, e ela
 //! está em `crates/ph2d-panel-registry-init/tests/it/a_column_gives_back_exactly_what_it_took.rs`,
 //! que constrói um `HeroScreen` com o registo real, pinta o quadro e **conta os painéis**.
 //!
@@ -102,7 +102,7 @@ fn the_shell_does_not_keep_a_second_copy_of_which_panels_a_column_takes() {
     assert!(
         !s.contains("panel_visibility"),
         "a shell voltou a decidir quais paineis uma coluna leva. Essa lei vive na \
-         `ph2d_editor::screens::hero::dock_columns`, onde ela TEM regua (o gate \
+         `ph2d_editor_core::screens::hero::dock_columns`, onde ela TEM regua (o gate \
          `a_column_gives_back_exactly_what_it_took` conta os paineis sobre o registo real); aqui \
          ela seria inalcancavel de qualquer teste"
     );

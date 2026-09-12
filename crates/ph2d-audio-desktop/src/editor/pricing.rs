@@ -41,7 +41,7 @@
 //! number left on screen after the audio changed would be a *wrong* number presented as a right
 //! one, and that is worse than the 1.5 s stall this file exists to delete.
 
-use ph2d_editor::Job;
+use ph2d_editor_core::Job;
 use std::time::{Duration, Instant};
 
 /// How still the clip must be before a thread is spent pricing it.

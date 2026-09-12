@@ -1,7 +1,7 @@
 //! **The joint-anchor point gizmo reaches the canvas and the bus** — arch-gates
 //! over the window-gated seams a unit test cannot drive.
 //!
-//! The gizmo itself is behavioural-gated where it can be: `ph2d_editor`'s
+//! The gizmo itself is behavioural-gated where it can be: `ph2d_editor_core`'s
 //! `gizmo::point` proves both dots are drawn AND register hits at their anchors,
 //! the crate's `ph2d_app_physics::overlay::point_gizmo` proves the publish rule (a joint at
 //! rest, and nothing else, gets handles), and `ph2d-physics-ecs`'s

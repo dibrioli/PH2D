@@ -207,7 +207,7 @@ fn as_seis_teclas_de_vista_chegam_todas_a_uma_vista() {
 /// que é o gesto que a própria pesquisa da Autodesk mediu como o rápido.
 #[test]
 fn um_clique_na_bola_muda_a_camera_e_um_arrasto_nao() {
-    use ph2d_editor::zones::Rect;
+    use ph2d_editor_core::zones::Rect;
     use ph2d_mesh::shapes::uv_sphere;
 
     let gpu = match ph2d_gpu::GpuContext::new(ph2d_gpu::GpuContext::default_instance(), None) {

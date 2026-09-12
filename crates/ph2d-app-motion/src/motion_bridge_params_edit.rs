@@ -46,8 +46,8 @@ fn forget_table_if_it_is_one(
 
 pub(super) fn apply_param_edits(
     motion: &mut MotionState,
-    store: &ph2d_editor::interaction::WidgetStore,
-    toasts: &mut ph2d_editor::ToastQueue,
+    store: &ph2d_editor_core::interaction::WidgetStore,
+    toasts: &mut ph2d_editor_core::ToastQueue,
 ) {
     use ph2d_nodegraph::graph::NodeId;
     use ph2d_panel_motion_params::{MotionParamIntent, any_param_editing};
@@ -346,7 +346,7 @@ pub fn param_value(motion: &MotionState, nid: ph2d_nodegraph::graph::NodeId, nam
 fn drop_hidden_drivers(
     motion: &mut MotionState,
     nid: ph2d_nodegraph::graph::NodeId,
-    toasts: &mut ph2d_editor::ToastQueue,
+    toasts: &mut ph2d_editor_core::ToastQueue,
 ) {
     // Os nomes primeiro, com o `motion` emprestado só para leitura; a escrita vem depois.
     let hidden: Vec<String> = {
@@ -379,7 +379,7 @@ fn drop_hidden_drivers(
                 .map_or(name.as_str(), |h| h.label)
         })
         .collect();
-    toasts.push(ph2d_editor::Toast::info(if labels.len() == 1 {
+    toasts.push(ph2d_editor_core::Toast::info(if labels.len() == 1 {
         format!("Unlinked {} - this shape has no such control", labels[0])
     } else {
         format!(
@@ -411,7 +411,7 @@ fn drop_preset_drivers(
     motion: &mut MotionState,
     nid: ph2d_nodegraph::graph::NodeId,
     type_name: &str,
-    toasts: &mut ph2d_editor::ToastQueue,
+    toasts: &mut ph2d_editor_core::ToastQueue,
 ) {
     if type_name != ph2d_node_source_lsystem::MANIFEST.name {
         return;
@@ -443,7 +443,7 @@ fn drop_preset_drivers(
                 .map_or(name.as_str(), |h| h.label)
         })
         .collect();
-    toasts.push(ph2d_editor::Toast::info(format!(
+    toasts.push(ph2d_editor_core::Toast::info(format!(
         "Unlinked {} - the preset needs its own",
         labels.join(", ")
     )));

@@ -32,9 +32,9 @@
 use crate::app_state::{BgremovalPreview, BgremovalPreviewGpu};
 use ph2d_asset::{AssetDb, AssetId};
 use ph2d_ecs::SimWorld;
-use ph2d_editor::HeroScreen;
-use ph2d_editor::ToolRegistry;
-use ph2d_editor::toast::{Toast, ToastQueue};
+use ph2d_editor_core::HeroScreen;
+use ph2d_editor_core::ToolRegistry;
+use ph2d_editor_core::toast::{Toast, ToastQueue};
 use ph2d_host::WindowSize;
 use ph2d_render::{Camera2d, Sprite, SpriteRenderer};
 // ⭐ O afim saiu para uma FOLHA porque quatro assuntos o partilhavam (HOWTO §1.2).
@@ -76,7 +76,7 @@ pub(super) fn dispatch(
 ) -> bool {
     let bgremoval_is_active = tools
         .active()
-        .map(|t| t.id() == ph2d_editor::ToolId::new("bgremoval"))
+        .map(|t| t.id() == ph2d_editor_core::ToolId::new("bgremoval"))
         .unwrap_or(false);
 
     // ── (Generic) Source push when selection drifts ───────────────────────
@@ -233,8 +233,8 @@ pub(super) fn dispatch(
     // user dragged them (panel paints `store.slider(id)`, not the
     // snapshot).
     if needs_panel_reset {
-        ph2d_editor::panel::with_registry_opt(|reg| {
-            if let Some(idx) = reg.find_by_panel_node_id(ph2d_editor::ids::BGR_PANEL) {
+        ph2d_editor_core::panel::with_registry_opt(|reg| {
+            if let Some(idx) = reg.find_by_panel_node_id(ph2d_editor_core::ids::BGR_PANEL) {
                 reg.panels_mut()[idx].populate(&mut hero.store);
             }
         });
@@ -330,7 +330,7 @@ pub(super) fn dispatch(
     if !apply_selection.is_empty() {
         for bits in &apply_selection {
             hero.bus
-                .push(ph2d_editor::action_bus::EditorAction::OneShotImageOp {
+                .push(ph2d_editor_core::action_bus::EditorAction::OneShotImageOp {
                     tool_id: "bgremoval",
                     entity_bits: *bits,
                 });
@@ -357,8 +357,8 @@ pub(super) fn dispatch(
             // A grelha desta sprite (ADR-0164 F1 passo 6) — ausente = uma célula.
             let grid = sim.world().get::<ph2d_ecs::SpriteGrid>(entity).copied();
             let quality = match hero.project.image_filter {
-                ph2d_editor::ImageFilterMode::PixelArt => ImageQuality::Low,
-                ph2d_editor::ImageFilterMode::Smooth => ImageQuality::Medium,
+                ph2d_editor_core::ImageFilterMode::PixelArt => ImageQuality::Low,
+                ph2d_editor_core::ImageFilterMode::Smooth => ImageQuality::Medium,
             };
             // Protection-mask tint — same affine the suppressed
             // sprite would use, so the tint tracks the live preview

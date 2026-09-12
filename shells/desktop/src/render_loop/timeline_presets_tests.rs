@@ -5,8 +5,8 @@ use super::*;
 use crate::render_loop::timeline_bridge::default_interp;
 use ph2d_anim::{AnimTarget, AnimValue, Easing, EasingFamily, EasingMode, Interp, KeyId};
 use ph2d_core::Playhead;
-use ph2d_editor::ids as c;
-use ph2d_editor::interaction::{TL_NO_EASE_MODE, TimelineInterpPick, TimelineInterpScope};
+use ph2d_editor_core::ids as c;
+use ph2d_editor_core::interaction::{TL_NO_EASE_MODE, TimelineInterpPick, TimelineInterpScope};
 use ph2d_timeline::{PropKind, SelectedKey, apply_intent};
 
 fn add(st: &mut TimelineState, ph: &mut Playhead, prop: PropKind, t: f64) {
@@ -57,7 +57,12 @@ fn doc_two_tracks() -> TimelineState {
     st
 }
 
-fn pick(target: AnimTarget, key: KeyId, item: ph2d_editor::NodeId, mode: u8) -> TimelineInterpPick {
+fn pick(
+    target: AnimTarget,
+    key: KeyId,
+    item: ph2d_editor_core::NodeId,
+    mode: u8,
+) -> TimelineInterpPick {
     TimelineInterpPick {
         scope: TimelineInterpScope::Key {
             target: target.get(),
@@ -68,7 +73,7 @@ fn pick(target: AnimTarget, key: KeyId, item: ph2d_editor::NodeId, mode: u8) -> 
     }
 }
 
-fn column_pick(t: f64, item: ph2d_editor::NodeId) -> TimelineInterpPick {
+fn column_pick(t: f64, item: ph2d_editor_core::NodeId) -> TimelineInterpPick {
     TimelineInterpPick {
         scope: TimelineInterpScope::Column {
             t_bits: t.to_bits(),

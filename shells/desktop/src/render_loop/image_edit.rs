@@ -22,8 +22,8 @@ use crate::{
 };
 use ph2d_asset::{AssetDb, AssetId};
 use ph2d_ecs::SimWorld;
-use ph2d_editor::HeroScreen;
-use ph2d_editor::{Toast, ToastQueue, ToolRegistry};
+use ph2d_editor_core::HeroScreen;
+use ph2d_editor_core::{Toast, ToastQueue, ToolRegistry};
 use ph2d_render::{Camera2d, SpriteRenderer};
 use std::collections::BTreeMap;
 
@@ -74,7 +74,7 @@ pub(super) fn dispatch(
     //
     // World-position preservation: after the crop, the entity's
     // `Transform.translation` is shifted by
-    // `ph2d_editor::image_edit::recenter_after_crop` so the *visual*
+    // `ph2d_editor_core::image_edit::recenter_after_crop` so the *visual*
     // center of the surviving opaque content stays put even when it
     // lived off-center inside the original frame. The shift
     // happens in pure-CPU pixel math (Y-flip handled inside
@@ -199,7 +199,7 @@ pub(super) fn dispatch(
     // currently-active ColorEqualizationTool (its source snapshot is
     // re-pushed per-entity here to avoid stale RGBA between bakes).
     if let Some(bits_list) = color_equalization_apply {
-        let ceq_id = ph2d_editor::ToolId::new("color_equalization");
+        let ceq_id = ph2d_editor_core::ToolId::new("color_equalization");
         let ceq_active = tools.active().map(|t| t.id() == ceq_id).unwrap_or(false);
         if ceq_active {
             let mut pending: Vec<ImageEditSnapshot> = Vec::new();
@@ -235,7 +235,7 @@ pub(super) fn dispatch(
     // Apply; we downcast the active tool and forward to
     // `drain_equalize_sizes`.
     if let Some(bits_list) = equalize_sizes_apply {
-        let eqs_id = ph2d_editor::ToolId::new("equalize_sizes");
+        let eqs_id = ph2d_editor_core::ToolId::new("equalize_sizes");
         let eqs_active = tools.active().map(|t| t.id() == eqs_id).unwrap_or(false);
         if eqs_active
             && let Some(tool) = tools.active_mut()
@@ -270,7 +270,7 @@ pub(super) fn dispatch(
     // `drain_upscale` (which re-pushes the source per-entity to avoid
     // stale RGBA between bakes).
     if let Some(bits_list) = upscale_apply {
-        let ups_id = ph2d_editor::ToolId::new("upscale");
+        let ups_id = ph2d_editor_core::ToolId::new("upscale");
         let ups_active = tools.active().map(|t| t.id() == ups_id).unwrap_or(false);
         if ups_active {
             let mut pending: Vec<ImageEditSnapshot> = Vec::new();
@@ -326,18 +326,18 @@ pub(super) fn dispatch(
     // preserving the
     // 1-frame-no-defer contract from the pre-Wave-2.5
     // `pending_bgremoval` field.
-    let bgremoval_id = ph2d_editor::ToolId::new("bgremoval");
+    let bgremoval_id = ph2d_editor_core::ToolId::new("bgremoval");
     let bgremoval_active = tools
         .active()
         .map(|t| t.id() == bgremoval_id)
         .unwrap_or(false);
     let bgremoval_entity = {
         let mut found: Option<u64> = None;
-        let leftovers: Vec<ph2d_editor::action_bus::EditorAction> = hero
+        let leftovers: Vec<ph2d_editor_core::action_bus::EditorAction> = hero
             .bus
             .drain()
             .filter_map(|a| match a {
-                ph2d_editor::action_bus::EditorAction::OneShotImageOp {
+                ph2d_editor_core::action_bus::EditorAction::OneShotImageOp {
                     tool_id: "bgremoval",
                     entity_bits,
                 } if bgremoval_active && found.is_none() => {
@@ -389,18 +389,18 @@ pub(super) fn dispatch(
     // is either correct (active, bake the entity) or the request is
     // stale (tool switched mid-frame — drop, don't loop forever on the
     // bus).
-    let painter_id = ph2d_editor::ToolId::new("painter");
+    let painter_id = ph2d_editor_core::ToolId::new("painter");
     let painter_active = tools
         .active()
         .map(|t| t.id() == painter_id)
         .unwrap_or(false);
     let painter_entity = {
         let mut found: Option<u64> = None;
-        let leftovers: Vec<ph2d_editor::action_bus::EditorAction> = hero
+        let leftovers: Vec<ph2d_editor_core::action_bus::EditorAction> = hero
             .bus
             .drain()
             .filter_map(|a| match a {
-                ph2d_editor::action_bus::EditorAction::OneShotImageOp {
+                ph2d_editor_core::action_bus::EditorAction::OneShotImageOp {
                     tool_id: "painter",
                     entity_bits,
                 } => {

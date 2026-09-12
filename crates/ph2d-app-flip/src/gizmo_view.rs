@@ -17,7 +17,7 @@
 //! por proximidade de traço (não há "interior" como numa forma vetorial fechada).
 
 use ph2d_ecs::{Entity, FlipObjectRef, SimWorld};
-use ph2d_editor::GizmoView;
+use ph2d_editor_core::GizmoView;
 use ph2d_flip::{FlipDoc, FlipObjectId};
 use ph2d_host::WindowSize;
 use ph2d_render::Camera2d;
@@ -95,7 +95,7 @@ pub fn view(
         camera_height_world: camera.height_world,
         window_w: window_size.width as f32,
         window_h: window_size.height as f32,
-        canvas: ph2d_editor::zones::Rect::new(
+        canvas: ph2d_editor_core::zones::Rect::new(
             0.0,
             0.0,
             window_size.width as f32,

@@ -52,7 +52,7 @@ pub fn key(
     // tipo da `ph2d-editor`, uma crate-módulo, logo ele atravessa a fronteira sem que nada novo
     // seja inventado. Ele e a cena vivem os dois no `AppGfx`, e é a shell — a dona dele — quem os
     // desmonta e empresta os dois campos de uma vez.
-    hero: Option<&mut ph2d_editor::screens::hero::HeroScreen>,
+    hero: Option<&mut ph2d_editor_core::screens::hero::HeroScreen>,
     press: KeyPress,
     // ⚠️⚠️ **Os factos chegam COLHIDOS, e isso corrige um defeito latente:** o
     // `text_entry_focused` era perguntado **duas** vezes neste corpo (a guarda geral e o

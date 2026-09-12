@@ -1,7 +1,7 @@
 //! Gates da **POSIÇÃO AUTORADA de um controle** — irmão de `vec_widget_value.rs` (W8b.4).
 
 use super::*;
-use ph2d_editor::widget::{CheckboxState, SliderState, ToggleState};
+use ph2d_editor_core::widget::{CheckboxState, SliderState, ToggleState};
 
 fn scene(kind: WidgetKind, name: &str) -> (SimWorld, VecEntityMap, VecPathId) {
     let mut sim = SimWorld::default();
@@ -20,8 +20,8 @@ fn scene(kind: WidgetKind, name: &str) -> (SimWorld, VecEntityMap, VecPathId) {
     (sim, map, id)
 }
 
-fn row_id(name: &str) -> ph2d_editor::NodeId {
-    ph2d_editor::ids::authored_row_id(&crate::ui_panel_spec::key_of(name))
+fn row_id(name: &str) -> ph2d_editor_core::NodeId {
+    ph2d_editor_core::ids::authored_row_id(&crate::ui_panel_spec::key_of(name))
 }
 
 fn store_with(name: &str, st: InteractiveState) -> WidgetStore {

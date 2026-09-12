@@ -22,16 +22,16 @@
 //! passe estrutural faz o resto (sepultar as excepções, apagar a sub-árvore, nunca mais a
 //! materializar). *Despawnar aqui saltaria o sepultador.*
 
-use ph2d_editor::Toast;
-use ph2d_editor::screens::hero::HeroScreen;
+use ph2d_editor_core::Toast;
+use ph2d_editor_core::screens::hero::HeroScreen;
 
 /// Drena o pedido de apagar. Devolve `true` quando o documento mudou.
 pub(super) fn drain(
-    delete_row: Option<ph2d_editor::NodeId>,
+    delete_row: Option<ph2d_editor_core::NodeId>,
     hero: &mut HeroScreen,
     hero_live: Option<&super::HeroLive>,
     sim: &mut ph2d_ecs::SimWorld,
-    toasts: &mut ph2d_editor::ToastQueue,
+    toasts: &mut ph2d_editor_core::ToastQueue,
 ) -> bool {
     let mut title_dirty = false;
     if let Some(row) = delete_row

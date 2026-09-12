@@ -152,7 +152,7 @@ Versões verificadas em **2026-08-29** (pós-subida do stack; conferidas linha a
 | ECS | bevy_ecs (standalone) | `bevy_ecs` | `0.19` (lock `0.19.1`) | Sem o resto do Bevy. Plano de upgrade documentado em ADR-0003-rev2 (Accepted, escrito quando o pin era `0.18`) |
 | Math | glam | `glam` | `0.30.10` | SIMD habilitado. ⚠️ **Não é a única cópia na árvore:** o `rapier2d 0.35` traz um `glam 0.33.6` **transitivo** via `glamx 0.3` (linha dos rígidos) — os dois convivem de propósito, e um `Vec2` de um **não** é o do outro |
 | Janela / input desktop | winit | `winit` | `0.30` | **Apenas** em shell desktop; nunca no core. iOS/Android usam shells nativas |
-| UI layout | taffy / custom zones | `taffy` / [`ph2d-editor::zones`](crates/ph2d-editor-core/src/zones.rs) (M12) | `0.14` (wired) / 4-zone próprio (atual) | ✅ O `taffy` **deixou de ser planejado**: ele é o motor de **auto layout** do vetor ([ADR-0153](docs/architecture/decisions/0153-vector-auto-layout-is-taffy-behind-one-leaf-crate-and-the-pose-is-derived.md)), confinado à crate-folha [`ph2d-vec-layout`](crates/ph2d-vec-layout/) — a **única** porta dele na árvore (`default-features = false` + `std`/`taffy_tree`/`flexbox`/`grid`). O chrome do editor segue nas 4 zonas próprias (ADR-0023) |
+| UI layout | taffy / custom zones | `taffy` / [`ph2d-editor-core::zones`](crates/ph2d-editor-core/src/zones.rs) (M12) | `0.14` (wired) / 4-zone próprio (atual) | ✅ O `taffy` **deixou de ser planejado**: ele é o motor de **auto layout** do vetor ([ADR-0153](docs/architecture/decisions/0153-vector-auto-layout-is-taffy-behind-one-leaf-crate-and-the-pose-is-derived.md)), confinado à crate-folha [`ph2d-vec-layout`](crates/ph2d-vec-layout/) — a **única** porta dele na árvore (`default-features = false` + `std`/`taffy_tree`/`flexbox`/`grid`). O chrome do editor segue nas 4 zonas próprias (ADR-0023) |
 | Acessibilidade | AccessKit | `accesskit` | `0.24.1` | M12 wired em [`ph2d-a11y`](crates/ph2d-a11y/). Adapters por OS (`accesskit_macos`/`accesskit_windows`/`accesskit_unix`) ficam em shells. ⚠️ Teto: o `0.25.0` existe, seguro pelo `parley` |
 | Rígidos | Rapier 2D | `rapier2d` | `0.35` (`default-features = false` + `dim2`/`f32`/**`std`**/`enhanced-determinism`) | Determinístico em modo lockstep, fixed timestep. M10. ⚠️ **O `std` é obrigatório e não é decoração:** sem ele a crate compila e **186 gates desaparecem sem erro nenhum**. ⚠️ **A matemática do rapier deixou de ser `nalgebra`:** da 0.35 em diante ele calcula em **`glam` via `glamx 0.3`** (é daí que vem a 2ª cópia de `glam` na linha do Math) |
 | Soft body / cloth / rope | XPBD próprio em compute | `ph2d-physics-soft` (interno, **stub**) | — | Müller 2020. Modo determinístico via fallback CPU (ver §11.5). M13+ |
@@ -246,7 +246,7 @@ _PH2D_definitiva/
 │   ├── ph2d-net/                 # ⏳ stub — QUIC + WebTransport, rollback, lockstep (M13+)
 │   ├── ph2d-input/               # ✅ M8 — pure-data Event/InputState/Pencil (gilrs adapter na shell)
 │   ├── ph2d-tokens/              # ✅ M12 — design tokens semânticos (color/type/spacing) — ADR-0023
-│   ├── ph2d-editor/              # ✅ M12 — Layout 4-zonas + FloatingPanel + ZenMode + ToastQueue + ToolRegistry + paint trait + BrushTool + MoveTool — ADR-0023
+│   ├── ph2d-editor-core/         # ✅ M12 — Layout 4-zonas + FloatingPanel + ZenMode + ToastQueue + ToolRegistry + paint trait + BrushTool + MoveTool — ADR-0023
 │   ├── ph2d-mcp/                 # ✅ M9 — MCP server skeleton (JSON-RPC 2.0 dispatcher, tool registry)
 │   ├── ph2d-i18n/                # ⏳ stub — Fluent runtime (M13+)
 │   ├── ph2d-a11y/                # ✅ M12 — AccessKit 0.24 (Tree, NodeBuilder, Live) — ADR-0023
@@ -675,7 +675,7 @@ Três modos selecionáveis por projeto, **não combináveis dentro da mesma sess
 ### 11.9 Editor UI
 Retained-mode próprio em Vello + parley. Não egui no produto final (HR-7).
 
-**Estado em M13 (2026-05-10):** [`ph2d-editor`](crates/ph2d-editor/) implementa o esqueleto canvas-first 4-zonas (ADR-0023) + biblioteca completa de componentes UI:
+**Estado em M13 (2026-05-10):** [`ph2d-editor-core`](crates/ph2d-editor-core/) implementa o esqueleto canvas-first 4-zonas (ADR-0023) + biblioteca completa de componentes UI:
 - [`Layout`](crates/ph2d-editor-core/src/zones.rs) — 4 zonas (TopLeft EDIT / TopRight CREATE / Sidebar modulators / Center 100% canvas) + ZenMode toggle + sidebar mirror
 - [`FloatingPanel`](crates/ph2d-editor-core/src/floating_panel.rs) — Procreate-style draggable tool drawer com `PanelControl` enum (Slider/Toggle/RadioGroup/ColorSwatch/Action)
 - [`icons`](crates/ph2d-editor-core/src/icons.rs) — 89 IconId variants (Lucide-derived), 24×24 viewBox, parsed via `BezPath::from_svg` em `cmd_to_path`
@@ -701,7 +701,7 @@ Input passa pelo trait do `ph2d-input` que abstrai mouse/touch/Pencil pure-data.
 
 **Acessibilidade (M12 wired):** cada widget implementa `accesskit::Node` builder via [`ph2d-a11y`](crates/ph2d-a11y/) (HR-12). Editor sem acessibilidade não passa em CI. Adapters por OS (`accesskit_macos` / `accesskit_windows` / `accesskit_unix`) ficam nas shells.
 
-**i18n:** UI strings via Fluent (HR-15). Bundle padrão em `crates/ph2d-editor/locales/` quando i18n entrar (M13+; ph2d-i18n é stub atualmente).
+**i18n:** UI strings via Fluent (HR-15). Bundle padrão em `crates/ph2d-editor-core/locales/` quando i18n entrar (M13+; ph2d-i18n é stub atualmente).
 
 **Design system canônico (M13, entregue 2026-05-09):**
 Pacote oficial em [`docs/design/`](docs/design/), gerado pelo Claude Design a partir do brief em [`PROMPT_CLAUDE_DESIGN.md`](docs/design/PROMPT_CLAUDE_DESIGN.md). Conteúdo:
@@ -717,7 +717,7 @@ Pacote oficial em [`docs/design/`](docs/design/), gerado pelo Claude Design a pa
 **Implementação do design em Vello (M13):**
 1. ✅ Import do pacote em `docs/design/`.
 2. ✅ Codegen `ph2d-tokens` a partir de tokens.json (4 themes, OKLCH→sRGB, semantic slots).
-3. ✅ Port dos 89 SVGs para módulo `ph2d-editor::icons` (IconId enum + cmd_to_path).
+3. ✅ Port dos 89 SVGs para módulo `ph2d-editor-core::icons` (IconId enum + cmd_to_path).
 3.5. ✅ Biblioteca completa de componentes (27 widgets, 259 testes) — vide §11.9 lista por categoria.
 4. ✅ Tela 02-editor-main composta em `screens::hero` (4 primitivos novos + composer + fixture). Render via `PH2D_HERO_SCREEN=1` env var.
 5. ✅ Input pipeline ADR-0024 (`interaction` module + WidgetStore + dispatch + HR-3 zero-alloc bench). Hero responde a hover/click/drag/keyboard; clicar Hierarchy row muda Inspector title.

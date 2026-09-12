@@ -3,7 +3,7 @@
 //! (they need a window); here we gate the pure glue.
 
 use super::{count_to_frac, read_into, rgb_to_u8, u8_to_rgb};
-use ph2d_editor::interaction::WidgetStore;
+use ph2d_editor_core::interaction::WidgetStore;
 use ph2d_timeline::{OnionMode, OnionSettings};
 
 // The count↔slider mapping (`MAX_GHOSTS`/`count_to_frac`/`frac_to_count`) now lives in editor-core

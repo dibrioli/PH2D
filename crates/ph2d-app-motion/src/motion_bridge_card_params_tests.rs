@@ -47,7 +47,7 @@ fn one_node(
     let id = m.doc.graph.add_node(type_name.to_string());
     open_every_section(&mut m, id);
     let mut snap = ph2d_panel_motion_graph::snapshot_from(&m.doc.graph, &m.registry);
-    stamp_card_params(&m, ph2d_editor::ProjectSettings::default(), &mut snap);
+    stamp_card_params(&m, ph2d_editor_core::ProjectSettings::default(), &mut snap);
     let params = snap
         .nodes
         .iter()
@@ -168,7 +168,7 @@ fn the_card_and_the_panel_agree_on_which_params_are_visible() {
     for modo in [0.0_f32, 1.0] {
         m.doc.graph.set_param(id, "range_mode", modo);
         let mut snap = ph2d_panel_motion_graph::snapshot_from(&m.doc.graph, &m.registry);
-        stamp_card_params(&m, ph2d_editor::ProjectSettings::default(), &mut snap);
+        stamp_card_params(&m, ph2d_editor_core::ProjectSettings::default(), &mut snap);
         let no_cartao: Vec<&str> = snap
             .nodes
             .iter()
@@ -226,7 +226,7 @@ fn no_param_the_panel_offers_falls_off_the_card() {
         let id = m.doc.graph.add_node(nome.clone());
         open_every_section(&mut m, id);
         ph2d_panel_motion_graph::set_graph_selection(vec![id.0]);
-        let painel = build_params_snapshot(&m, ph2d_editor::ProjectSettings::default());
+        let painel = build_params_snapshot(&m, ph2d_editor_core::ProjectSettings::default());
         let no_painel: Vec<String> = painel
             .as_ref()
             .map(|s| {
@@ -242,7 +242,7 @@ fn no_param_the_panel_offers_falls_off_the_card() {
             })
             .unwrap_or_default();
         let mut snap = ph2d_panel_motion_graph::snapshot_from(&m.doc.graph, &m.registry);
-        stamp_card_params(&m, ph2d_editor::ProjectSettings::default(), &mut snap);
+        stamp_card_params(&m, ph2d_editor_core::ProjectSettings::default(), &mut snap);
         let no_cartao: Vec<&'static str> = snap
             .nodes
             .iter()
@@ -299,7 +299,7 @@ fn a_folded_section_hides_its_rows_and_counts_them() {
         "o l-system declara grupos dobrados por omissao — sem isso este gate seria vacuo"
     );
     let mut snap = ph2d_panel_motion_graph::snapshot_from(&m.doc.graph, &m.registry);
-    stamp_card_params(&m, ph2d_editor::ProjectSettings::default(), &mut snap);
+    stamp_card_params(&m, ph2d_editor_core::ProjectSettings::default(), &mut snap);
     let v = snap.nodes.iter().find(|v| v.id == id.0).expect("cartao");
     let fechadas: Vec<_> = v.sections.iter().filter(|s| !s.open).collect();
     assert!(
@@ -339,7 +339,7 @@ fn opening_a_section_brings_its_rows_back() {
     let mut m = MotionState::new();
     let id = m.doc.graph.add_node("source.lsystem".to_string());
     let mut snap = ph2d_panel_motion_graph::snapshot_from(&m.doc.graph, &m.registry);
-    stamp_card_params(&m, ph2d_editor::ProjectSettings::default(), &mut snap);
+    stamp_card_params(&m, ph2d_editor_core::ProjectSettings::default(), &mut snap);
     let antes = snap
         .nodes
         .iter()
@@ -347,7 +347,7 @@ fn opening_a_section_brings_its_rows_back() {
         .map_or(0, |v| v.params.len());
     open_every_section(&mut m, id);
     let mut snap = ph2d_panel_motion_graph::snapshot_from(&m.doc.graph, &m.registry);
-    stamp_card_params(&m, ph2d_editor::ProjectSettings::default(), &mut snap);
+    stamp_card_params(&m, ph2d_editor_core::ProjectSettings::default(), &mut snap);
     let depois = snap
         .nodes
         .iter()

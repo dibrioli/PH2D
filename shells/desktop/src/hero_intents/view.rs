@@ -4,7 +4,7 @@
 //! the HR-18 closeout split. Behavior-preserving lift.
 
 use ph2d_ecs::PresentWorld;
-use ph2d_editor::{Toast, ToastQueue, ViewFocusKind};
+use ph2d_editor_core::{Toast, ToastQueue, ViewFocusKind};
 use ph2d_host::WindowSize;
 use ph2d_render::Camera2d;
 

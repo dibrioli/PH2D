@@ -34,7 +34,7 @@ fn body() -> &'static str {
 fn the_switch_writes_the_panels_visibility() {
     let s = body();
     let arm = s
-        .find("ph2d_editor::ids::VECTOR_FRAME_PANEL_OFF")
+        .find("ph2d_editor_core::ids::VECTOR_FRAME_PANEL_OFF")
         .expect("o braco do chip Show as Panel sumiu do render_loop");
     // A janela é o braço do `else if` — o `insert` tem de estar DENTRO dele, não em qualquer
     // lugar do arquivo.
@@ -94,10 +94,10 @@ fn the_visibility_key_is_never_spelled_out() {
 /// em silêncio, que é a cicatriz do painel de física do W2b.
 #[test]
 fn the_ui_pill_writes_the_key_the_panel_answers() {
-    use ph2d_editor::interaction::WidgetEvent;
-    use ph2d_editor::screens::hero::{HeroScreen, chrome, ids};
+    use ph2d_editor_core::interaction::WidgetEvent;
+    use ph2d_editor_core::screens::hero::{HeroScreen, chrome, ids};
 
-    let mut hero = HeroScreen::new(ph2d_editor::NodeId(1));
+    let mut hero = HeroScreen::new(ph2d_editor_core::NodeId(1));
     let key = ph2d_panel_authored::visibility_key();
     assert!(!hero.is_panel_visible(key), "nasce fechado");
 

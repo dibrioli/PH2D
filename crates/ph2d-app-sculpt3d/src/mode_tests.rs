@@ -9,9 +9,9 @@
 //! cargo test -p ph2d-host-desktop --release --bins sculpt3d::mode::tests -- --ignored --nocapture
 //! ```
 
-use ph2d_editor::interaction::InteractiveState;
-use ph2d_editor::screens::hero::{HeroScreen, ids};
-use ph2d_editor::widget::ButtonState;
+use ph2d_editor_core::interaction::InteractiveState;
+use ph2d_editor_core::screens::hero::{HeroScreen, ids};
+use ph2d_editor_core::widget::ButtonState;
 use ph2d_mesh::shapes::uv_sphere;
 
 use super::super::Sculpt3dScene;
@@ -106,7 +106,7 @@ fn the_pill_follows_the_key_that_the_pill_never_sees() {
     let gpu = gpu_or_skip!();
     // ⚠️ `HeroScreen::new` já popula o store — ao contrário do `MockPanelHost::new`, que o pula e
     // que já deixou um gate verde sobre chips mortos sob o mouse.
-    let mut hero = HeroScreen::new(ph2d_editor::NodeId(1));
+    let mut hero = HeroScreen::new(ph2d_editor_core::NodeId(1));
     let mut scene = Sculpt3dScene::new(&gpu.device, uv_sphere(12, 24, 1.0), 1.0);
 
     super::sync_pill(&mut hero, Some(&scene));
@@ -133,7 +133,7 @@ fn the_pill_follows_the_key_that_the_pill_never_sees() {
 /// ANTES do early-return da ponte.
 #[test]
 fn with_no_scene_the_pill_is_the_invitation_to_enter() {
-    let mut hero = HeroScreen::new(ph2d_editor::NodeId(1));
+    let mut hero = HeroScreen::new(ph2d_editor_core::NodeId(1));
     super::sync_pill(&mut hero, None);
     assert_eq!(
         pill_state(&hero),

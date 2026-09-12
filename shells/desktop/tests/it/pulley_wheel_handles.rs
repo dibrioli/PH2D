@@ -1,7 +1,7 @@
 //! **As alças de uma RODLANA chegam ao barramento** (W-Pulley W6) — arch-gates
 //! sobre as costuras window-gated que um unit test não dirige.
 //!
-//! O que É testável por comportamento já está: `ph2d_editor::gizmo::point` prova
+//! O que É testável por comportamento já está: `ph2d_editor_core::gizmo::point` prova
 //! que as três alças desenham e registram hit, `ph2d_app_physics::overlay::point_gizmo` prova a
 //! regra de publicação (o aro de saída só existe quando há um segundo raio), e
 //! `ph2d-physics-ecs::pulley_mount` prova o que uma re-colocação de eixo FAZ. O

@@ -182,10 +182,10 @@ pub enum InputPhase {
 impl InputPhase {
     /// A fase de um evento de canvas. Mora AQUI, ao lado do enum que ela produz, e não no sítio de
     /// chamada — o `painter_canvas_input.rs` está no teto de 600 LOC, e o mapeamento é do balde.
-    pub const fn of(phase: ph2d_editor::tool::PointerPhase) -> Self {
+    pub const fn of(phase: ph2d_editor_core::tool::PointerPhase) -> Self {
         match phase {
-            ph2d_editor::tool::PointerPhase::Down => Self::Down,
-            ph2d_editor::tool::PointerPhase::Up => Self::Up,
+            ph2d_editor_core::tool::PointerPhase::Down => Self::Down,
+            ph2d_editor_core::tool::PointerPhase::Up => Self::Up,
             _ => Self::Move,
         }
     }

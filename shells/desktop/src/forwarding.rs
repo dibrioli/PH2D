@@ -8,8 +8,8 @@
 //! forwarder.
 
 use crate::AppGfx;
-use ph2d_editor::WidgetEvent;
-use ph2d_editor::interaction::PainterLayerDrop;
+use ph2d_editor_core::WidgetEvent;
+use ph2d_editor_core::interaction::PainterLayerDrop;
 use ph2d_host::{KeyEvent, PointerEvent};
 
 #[path = "forwarding_persist.rs"]
@@ -30,7 +30,7 @@ mod persist;
 pub fn forward_to_hero(
     gfx: Option<&mut AppGfx>,
     event: PointerEvent,
-) -> Option<(ph2d_editor::NodeId, PainterLayerDrop)> {
+) -> Option<(ph2d_editor_core::NodeId, PainterLayerDrop)> {
     let gfx = gfx?;
     let hero = gfx.hero_screen.as_mut()?;
     // Snapshot events before applying — apply_event may mutate hero,
@@ -112,7 +112,7 @@ pub fn forward_to_hero(
 /// `sculpt3d_key` recusa na primeira linha (`text_entry_focused`) e morrem, juntos, `Delete`,
 /// `Ctrl+Z`, `Ctrl+Shift+Z` e todo atalho da cena 3D.
 ///
-/// ⚠️ **A cura é chamar a MESMA lei, nunca repeti-la** — [`ph2d_editor::interaction::blur_focus`]
+/// ⚠️ **A cura é chamar a MESMA lei, nunca repeti-la** — [`ph2d_editor_core::interaction::blur_focus`]
 /// compromete o buffer numérico por confirmar, repõe o visual do widget e emite o `Blur`. Um
 /// `set_focus(None)` à mão aqui perderia o número que o artista digitou e deixaria o campo a
 /// desenhar o cursor de texto sem ter o teclado.
@@ -155,7 +155,7 @@ pub fn forward_blur_to_hero(gfx: Option<&mut AppGfx>) {
 fn expected_unhandled(e: &WidgetEvent) -> bool {
     match e {
         WidgetEvent::Focus(_) | WidgetEvent::Blur(_) => true,
-        WidgetEvent::ValueChanged(id) => *id == ph2d_editor::ids::INSP_BLENDER_PICKER,
+        WidgetEvent::ValueChanged(id) => *id == ph2d_editor_core::ids::INSP_BLENDER_PICKER,
         _ => false,
     }
 }
@@ -163,12 +163,12 @@ fn expected_unhandled(e: &WidgetEvent) -> bool {
 /// Service a pending palette import/export (opens an `rfd` file dialog, then applies via the
 /// `ph2d_color::palette` engine). Split out of [`forward_to_hero`] to keep that hot path readable.
 fn handle_palette_io(
-    hero: &mut ph2d_editor::HeroScreen,
-    parent: ph2d_editor::NodeId,
-    io_kind: ph2d_editor::interaction::PaletteIoKind,
+    hero: &mut ph2d_editor_core::HeroScreen,
+    parent: ph2d_editor_core::NodeId,
+    io_kind: ph2d_editor_core::interaction::PaletteIoKind,
 ) {
     use ph2d_color::palette::{self, PaletteData, PaletteFormat};
-    use ph2d_editor::interaction::PaletteIoKind;
+    use ph2d_editor_core::interaction::PaletteIoKind;
     let fmt_of = |path: &std::path::Path| {
         path.extension()
             .and_then(|e| e.to_str())
@@ -239,7 +239,7 @@ fn handle_palette_io(
 /// eyedropper; takes disjoint `AppGfx` fields by ref so it composes with the live `&mut hero_screen`.
 #[allow(clippy::too_many_arguments)]
 fn painter_eyedropper_sample(
-    tools: &mut ph2d_editor::ToolRegistry,
+    tools: &mut ph2d_editor_core::ToolRegistry,
     sim: &ph2d_ecs::SimWorld,
     camera: &ph2d_render::Camera2d,
     window: ph2d_host::WindowSize,
@@ -253,7 +253,7 @@ fn painter_eyedropper_sample(
     }
     let painter_active = tools
         .active()
-        .map(|t| t.id() == ph2d_editor::ToolId::new("painter"))
+        .map(|t| t.id() == ph2d_editor_core::ToolId::new("painter"))
         .unwrap_or(false);
     if !painter_active {
         return None;
@@ -337,7 +337,7 @@ pub fn forward_key_to_hero(gfx: Option<&mut AppGfx>, event: KeyEvent) {
             .and_then(|cb| cb.get_text().ok())
             .unwrap_or_default();
         if !text.is_empty()
-            && ph2d_editor::interaction::apply_clipboard_paste(&mut hero.store, target, &text)
+            && ph2d_editor_core::interaction::apply_clipboard_paste(&mut hero.store, target, &text)
         {
             // Mimic the TextChanged path so sliders/links update.
             let _ = hero.apply_event(WidgetEvent::TextChanged(target));
@@ -384,7 +384,7 @@ pub fn cursor_over_hero_panel(gfx: Option<&AppGfx>, x: f32, y: f32) -> bool {
     let Some(hero) = gfx.hero_screen.as_ref() else {
         return false;
     };
-    use ph2d_editor::screens::hero::ids::{
+    use ph2d_editor_core::screens::hero::ids::{
         AUDIO_EDITOR_PANEL, AUDIO_MIXER_PANEL, AUTHORED_PANEL, BGR_PANEL, CEQ_PANEL, EQS_PANEL,
         FLIP_PANEL, FLIP_STRIP_PANEL, GAL_PANEL, HIER_PANEL, INSP_PANEL, LAB_PANEL, MODEL3D_PANEL,
         MOTION_PARAMS_PANEL, PAD_PANEL, PAINTER_LAYERS_PANEL, PHYSICS_PANEL, SCULPT3D_PANEL,
@@ -417,11 +417,11 @@ pub fn cursor_over_hero_panel(gfx: Option<&AppGfx>, x: f32, y: f32) -> bool {
         // polegar de barra desde a etapa A e **não** interceptava a roda: rolar a grade dava ZOOM
         // na câmera por baixo. O gate `every_scrollable_panel_intercepts_the_wheel` vive em
         // `shells/desktop/tests/` e o portão desta linha corria `--bins`, que não lhe toca.
-        || inside(ph2d_editor::ids::ASSET_PANEL)
+        || inside(ph2d_editor_core::ids::ASSET_PANEL)
         || inside(MOTION_PARAMS_PANEL)
         || inside(HIER_PANEL)
         || inside(GAL_PANEL)
-        || inside(ph2d_editor::grid_snap::ids::GS_PANEL)
+        || inside(ph2d_editor_core::grid_snap::ids::GS_PANEL)
         || inside(BGR_PANEL)
         || inside(PAD_PANEL)
         || inside(CEQ_PANEL)
@@ -453,7 +453,7 @@ pub fn cursor_over_hero_panel(gfx: Option<&AppGfx>, x: f32, y: f32) -> bool {
         // Motion Nodes graph panel (M1) — the bottom half of the center split.
         // Without it, wheel-over-graph zooms the camera instead of the graph
         // (the anchored graph zoom the M0 dispatch routes via `set_graph_canvas`).
-        || inside(ph2d_editor::ids::MOTION_GRAPH_PANEL)
+        || inside(ph2d_editor_core::ids::MOTION_GRAPH_PANEL)
         // General timeline dock (W2.E6) — same reason as the graph: without it a
         // wheel over the dope-sheet zooms the CAMERA behind the panel instead of
         // the time axis (`set_timeline_canvas`), and the panel's zoom/pan is dead.
@@ -477,7 +477,7 @@ pub fn cursor_over_hero_panel(gfx: Option<&AppGfx>, x: f32, y: f32) -> bool {
         // coisa que separa as duas.
         || inside(SCULPT3D_PANEL)
         || inside(WET_TUNING_PANEL)
-        || inside(ph2d_editor::ids::TIMELINE_PANEL)
+        || inside(ph2d_editor_core::ids::TIMELINE_PANEL)
 }
 
 /// **Os fundos que a MOLDURA do app pinta** — os obstáculos que o gizmo de navegação contorna.
@@ -499,12 +499,12 @@ pub fn cursor_over_hero_panel(gfx: Option<&AppGfx>, x: f32, y: f32) -> bool {
 ///
 /// O que sobra aqui é outra pergunta: **que rectângulos o gizmo de navegação deve contornar**
 /// (`render_loop`, W50). O gate `every_chrome_backdrop_is_known_to_the_scene` guarda-a.
-pub const CHROME_BACKDROPS: [ph2d_editor::NodeId; 5] = [
-    ph2d_editor::screens::hero::ids::RAIL_BACKDROP,
-    ph2d_editor::ids::MENUBAR_BACKDROP,
-    ph2d_editor::screens::hero::ids::TOPBAR_LEFT_BACKDROP,
-    ph2d_editor::screens::hero::ids::TOPBAR_RIGHT_BACKDROP,
-    ph2d_editor::screens::hero::ids::TOPBAR_IMAGE_TOOLS_BACKDROP,
+pub const CHROME_BACKDROPS: [ph2d_editor_core::NodeId; 5] = [
+    ph2d_editor_core::screens::hero::ids::RAIL_BACKDROP,
+    ph2d_editor_core::ids::MENUBAR_BACKDROP,
+    ph2d_editor_core::screens::hero::ids::TOPBAR_LEFT_BACKDROP,
+    ph2d_editor_core::screens::hero::ids::TOPBAR_RIGHT_BACKDROP,
+    ph2d_editor_core::screens::hero::ids::TOPBAR_IMAGE_TOOLS_BACKDROP,
 ];
 
 /// ADR-0029 Phase C.2: resolve canvas-picked entity bits to a live
@@ -515,7 +515,7 @@ pub const CHROME_BACKDROPS: [ph2d_editor::NodeId; 5] = [
 pub(crate) fn resolve_live_entry(
     hero_live: Option<&crate::HeroLive>,
     picked: Option<u64>,
-) -> Option<ph2d_editor::screens::hero::fixture::HierarchyEntity> {
+) -> Option<ph2d_editor_core::screens::hero::fixture::HierarchyEntity> {
     let node = hero_live?.bridge.node_for(picked?)?;
     ph2d_panel_hierarchy::current_live_entries()?
         .get(&node)
@@ -525,7 +525,7 @@ pub(crate) fn resolve_live_entry(
 pub(crate) fn resolve_live_entry(
     _hero_live: Option<&crate::HeroLive>,
     _picked: Option<u64>,
-) -> Option<ph2d_editor::screens::hero::fixture::HierarchyEntity> {
+) -> Option<ph2d_editor_core::screens::hero::fixture::HierarchyEntity> {
     None
 }
 
@@ -540,14 +540,14 @@ mod tests {
     /// a classe de bug que ele existe para apanhar (um widget pintado, registado e MUDO).
     #[test]
     fn the_picker_is_exempt_but_every_other_value_changed_still_reports() {
-        let picker = WidgetEvent::ValueChanged(ph2d_editor::ids::INSP_BLENDER_PICKER);
+        let picker = WidgetEvent::ValueChanged(ph2d_editor_core::ids::INSP_BLENDER_PICKER);
         assert!(
             expected_unhandled(&picker),
             "o picker nao foi isento: o log volta a uma linha por frame de arrasto"
         );
 
         // Um id qualquer que NÃO é o picker — o controle.
-        let other = WidgetEvent::ValueChanged(ph2d_editor::ids::VECTOR_ARRANGE_DUPLICATE);
+        let other = WidgetEvent::ValueChanged(ph2d_editor_core::ids::VECTOR_ARRANGE_DUPLICATE);
         assert!(
             !expected_unhandled(&other),
             "a isencao alargou para o TIPO: o detector de seam morto ficou cego"
@@ -557,7 +557,7 @@ mod tests {
     /// **Focus/Blur seguem isentos** — a isenção que já existia não pode cair na reescrita.
     #[test]
     fn focus_and_blur_stay_exempt() {
-        let id = ph2d_editor::ids::INSP_BLENDER_PICKER;
+        let id = ph2d_editor_core::ids::INSP_BLENDER_PICKER;
         assert!(expected_unhandled(&WidgetEvent::Focus(id)));
         assert!(expected_unhandled(&WidgetEvent::Blur(id)));
     }

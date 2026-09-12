@@ -18,7 +18,7 @@
 
 use ph2d_app_components::test_support::{image, registo as registry};
 use ph2d_ecs::{SimWorld, Transform};
-use ph2d_editor::{HeroScreen, NodeId};
+use ph2d_editor_core::{HeroScreen, NodeId};
 
 /// ⭐ **E o pick deixa o componente na CENA** — a ponta final da sequência.
 ///
@@ -32,7 +32,7 @@ fn picking_an_item_leaves_the_component_in_the_scene() {
     let reg = registry();
     let mut hero = HeroScreen::new(NodeId(1));
     let mut target: Option<u64> = None;
-    let mut toasts = ph2d_editor::ToastQueue::default();
+    let mut toasts = ph2d_editor_core::ToastQueue::default();
     ph2d_app_components::component_attach::open_palette_if_asked(
         &mut hero,
         &sim,

@@ -9,7 +9,7 @@
 //! `route_palette_pick` (last frame's pick → the right graph edit).
 
 use crate::motion_state::MotionState;
-use ph2d_editor::HeroScreen;
+use ph2d_editor_core::HeroScreen;
 
 /// Route LAST frame's palette pick into a graph edit — mapping the picked id back to its canonical
 /// `type_name`, then turning it (WITH the gesture's wire context, drained from `library_open`) into the
@@ -100,8 +100,8 @@ pub(super) fn build_catalog(
 pub(super) fn build_palette_model(
     registry: &ph2d_node_registry::NodeRegistry,
     compatible: &[&'static str],
-) -> ph2d_editor::widget::command_palette::PaletteModel {
-    use ph2d_editor::widget::command_palette::{
+) -> ph2d_editor_core::widget::command_palette::PaletteModel {
+    use ph2d_editor_core::widget::command_palette::{
         PaletteGroup, PaletteItem, PaletteModel, PaletteSub,
     };
     use ph2d_node_registry::NodeUiCategory;

@@ -69,14 +69,14 @@ fn censo() -> Censo {
         let mut snap = ph2d_panel_motion_graph::snapshot_from(&m.doc.graph, &m.registry);
         crate::motion_bridge::params::card::stamp_card_params(
             &m,
-            ph2d_editor::ProjectSettings::default(),
+            ph2d_editor_core::ProjectSettings::default(),
             &mut snap,
         );
         // O MESMO nó no painel — para a linha dizer o que se perde, e não só que se perde.
         ph2d_panel_motion_graph::set_graph_selection(vec![id.0]);
         let painel = crate::motion_bridge::params::build_params_snapshot(
             &m,
-            ph2d_editor::ProjectSettings::default(),
+            ph2d_editor_core::ProjectSettings::default(),
         );
         ph2d_panel_motion_graph::set_graph_selection(Vec::new());
         let Some(cartao) = snap.nodes.iter().find(|v| v.id == id.0) else {
@@ -184,8 +184,8 @@ fn the_text_typed_on_a_card_reaches_the_panels_text_door() {
     crate::motion_bridge::apply_graph_intents(
         &mut m,
         &mut ph2d_core::Playhead::default(),
-        &mut ph2d_editor::ToastQueue::default(),
-        &mut ph2d_editor::screens::layout::CenterSplit::None,
+        &mut ph2d_editor_core::ToastQueue::default(),
+        &mut ph2d_editor_core::screens::layout::CenterSplit::None,
     );
     let saiu = ph2d_panel_motion_params::drain_param_intents();
     assert!(
@@ -225,8 +225,8 @@ fn the_cards_file_click_reaches_the_same_door_the_panel_row_uses() {
     crate::motion_bridge::apply_graph_intents(
         &mut m,
         &mut ph2d_core::Playhead::default(),
-        &mut ph2d_editor::ToastQueue::default(),
-        &mut ph2d_editor::screens::layout::CenterSplit::None,
+        &mut ph2d_editor_core::ToastQueue::default(),
+        &mut ph2d_editor_core::screens::layout::CenterSplit::None,
     );
     let saiu = ph2d_panel_motion_params::drain_param_intents();
     assert!(
@@ -269,7 +269,7 @@ fn two_cards_of_the_same_type_never_ask_for_the_same_colour_picker() {
     let tipo = m.doc.graph.node(a).expect("o no' existe").type_id();
     let grupos = super::super::color::color_groups(&m.registry, tipo);
     assert!(!grupos.is_empty(), "o `motion.tint` tem um grupo de cor");
-    let mut store = ph2d_editor::interaction::WidgetStore::default();
+    let mut store = ph2d_editor_core::interaction::WidgetStore::default();
     store.set_picker_target(Some(idb));
     let alvo = picker_target_of(&m, Some(a), &grupos, &store);
     assert_eq!(
@@ -301,7 +301,7 @@ fn the_card_reads_back_the_name_the_file_and_never_a_machine_string() {
         let mut snap = ph2d_panel_motion_graph::snapshot_from(&m.doc.graph, &m.registry);
         crate::motion_bridge::params::card::stamp_card_params(
             &m,
-            ph2d_editor::ProjectSettings::default(),
+            ph2d_editor_core::ProjectSettings::default(),
             &mut snap,
         );
         snap.nodes
@@ -353,8 +353,8 @@ fn the_card_walks_the_live_source_list_and_writes_nothing_when_it_is_empty() {
         crate::motion_bridge::apply_graph_intents(
             m,
             &mut ph2d_core::Playhead::default(),
-            &mut ph2d_editor::ToastQueue::default(),
-            &mut ph2d_editor::screens::layout::CenterSplit::None,
+            &mut ph2d_editor_core::ToastQueue::default(),
+            &mut ph2d_editor_core::screens::layout::CenterSplit::None,
         );
         ph2d_panel_motion_params::drain_param_intents()
             .into_iter()

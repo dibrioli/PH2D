@@ -21,7 +21,7 @@ impl crate::App {
         match FRAME.fetch_add(1, Ordering::Relaxed) {
             3 => {
                 let gfx = self.gfx.as_mut().expect("gfx");
-                let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("flip"));
+                let _ = gfx.tools.set_active(&ph2d_editor_core::ToolId::new("flip"));
                 let oid = gfx.flip.push_object("Segment Smoke");
                 let obj = gfx.flip.object_mut(oid).expect("objeto recém-criado");
                 obj.fps = 12.0;
@@ -108,12 +108,12 @@ impl crate::App {
             8 => {
                 if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
                     for id in [
-                        ph2d_editor::ids::FLIP_MODE_EDIT,
-                        ph2d_editor::ids::FLIP_EDIT_DOM_SEGMENT,
+                        ph2d_editor_core::ids::FLIP_MODE_EDIT,
+                        ph2d_editor_core::ids::FLIP_EDIT_DOM_SEGMENT,
                     ] {
                         hero.bus
-                            .push(ph2d_editor::action_bus::EditorAction::ToolPanelEvent(
-                                ph2d_editor::tool::PanelEvent::Click(id),
+                            .push(ph2d_editor_core::action_bus::EditorAction::ToolPanelEvent(
+                                ph2d_editor_core::tool::PanelEvent::Click(id),
                             ));
                     }
                 }

@@ -268,9 +268,9 @@ fn the_real_root_drag_changes_the_capture() {
         None,
     );
     // O GESTO: arrastar o C para ANTES do A.
-    let mut toasts = ph2d_editor::ToastQueue::new();
+    let mut toasts = ph2d_editor_core::ToastQueue::new();
     crate::hero_intents::drain_reparent(
-        ph2d_editor::screens::hero::HierReparentIntent {
+        ph2d_editor_core::screens::hero::HierReparentIntent {
             dragged: node_of(&live, ids[2]),
             new_parent: None,
             before: Some(node_of(&live, ids[0])),
@@ -356,9 +356,9 @@ fn the_real_sibling_drag_reorders_and_sticks() {
     let node_of = |live: &crate::HeroLive, e: ph2d_ecs::Entity| {
         live.bridge.node_for(e.to_bits()).expect("no na ponte")
     };
-    let mut toasts = ph2d_editor::ToastQueue::new();
+    let mut toasts = ph2d_editor_core::ToastQueue::new();
     crate::hero_intents::drain_reparent(
-        ph2d_editor::screens::hero::HierReparentIntent {
+        ph2d_editor_core::screens::hero::HierReparentIntent {
             dragged: node_of(&live, ids[2]),
             new_parent: None,
             before: Some(node_of(&live, ids[0])),

@@ -3,8 +3,8 @@
 //! SEPARATE `IndividualTextureStore` slot so brush opacity/blend remote-control edits show on it in real
 //! time. Reuses `painter_bridge::release_preview_texture` for slot teardown.
 
-use ph2d_editor::ToolRegistry;
-use ph2d_editor::toast::{Toast, ToastQueue};
+use ph2d_editor_core::ToolRegistry;
+use ph2d_editor_core::toast::{Toast, ToastQueue};
 use ph2d_render::{SpriteRenderer, premultiply_rgba8};
 
 use crate::painter_bridge_upload::release_preview_texture;
@@ -24,7 +24,7 @@ pub fn drive_shape_source_preview(
 ) {
     let painter_active = tools
         .active()
-        .map(|t| t.id() == ph2d_editor::ToolId::new("painter"))
+        .map(|t| t.id() == ph2d_editor_core::ToolId::new("painter"))
         .unwrap_or(false);
     let painter = painter_active
         .then(|| tools.active_mut())

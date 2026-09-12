@@ -243,7 +243,7 @@ pub fn publish_cursor(
     cook: &mut ph2d_nodegraph::cook::Cook,
     camera: &ph2d_render::Camera2d,
     cursor: (f32, f32),
-    split: ph2d_editor::screens::layout::CenterSplit,
+    split: ph2d_editor_core::screens::layout::CenterSplit,
     window: ph2d_host::WindowSize,
 ) {
     // ⚠️ The SCENE window, never the raw one — `scene_camera_window` is the porta única
@@ -305,7 +305,7 @@ mod tests {
     /// a literal world point would pin the camera's own arithmetic instead.
     #[test]
     fn the_cursor_is_mapped_through_the_scene_viewport_not_the_window() {
-        use ph2d_editor::screens::layout::CenterSplit;
+        use ph2d_editor_core::screens::layout::CenterSplit;
         use ph2d_host::WindowSize;
 
         let win = WindowSize::new(800, 600);

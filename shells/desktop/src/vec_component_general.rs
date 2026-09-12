@@ -211,7 +211,7 @@ pub(crate) fn dispatch(
     // dreno geral precisa **emprestado mutavelmente**. Resolver o sujeito aqui dentro pediria o
     // mapa duas vezes; quem o resolve é o chamador, **antes** de montar os documentos.
     subject: Entity,
-    toasts: &mut ph2d_editor::ToastQueue,
+    toasts: &mut ph2d_editor_core::ToastQueue,
     docs: &mut ph2d_app_components::instance_docs::OwnedDocs<'_>,
     place_step: [f32; 2],
     select_out: &mut Option<u64>,
@@ -223,12 +223,12 @@ pub(crate) fn dispatch(
     if verb == crate::vec_component_edit::ComponentEdit::Reset {
         let Some(r) = ph2d_app_components::instance_revert::revert_all_overrides(sim, echo, e)
         else {
-            toasts.push(ph2d_editor::Toast::warning(
+            toasts.push(ph2d_editor_core::Toast::warning(
                 "That is not a copy of a prefab",
             ));
             return false;
         };
-        toasts.push(ph2d_editor::Toast::success(format!(
+        toasts.push(ph2d_editor_core::Toast::success(format!(
             "Reverted {} override(s) to the prefab",
             r.count
         )));
@@ -278,12 +278,12 @@ pub(crate) fn dispatch(
 pub(crate) fn swap_by_pick(
     sim: &mut SimWorld,
     echo: &mut ph2d_app_components::instance_sync::MasterEcho,
-    toasts: &mut ph2d_editor::ToastQueue,
+    toasts: &mut ph2d_editor_core::ToastQueue,
     source: Entity,
     clicked: Entity,
 ) -> bool {
     let Some(root) = ph2d_app_components::instance_verbs::instance_root_of(sim, source) else {
-        toasts.push(ph2d_editor::Toast::warning(
+        toasts.push(ph2d_editor_core::Toast::warning(
             "That is not a copy of a prefab",
         ));
         return false;
@@ -297,7 +297,7 @@ pub(crate) fn swap_by_pick(
     else {
         // ⚠️ **A recusa NOMEIA o que fazer** — o artista clicou numa forma comum, e o gesto fica
         // armado de propósito (desarmar aqui faria um clique fora do alvo parecer uma troca).
-        toasts.push(ph2d_editor::Toast::warning(
+        toasts.push(ph2d_editor_core::Toast::warning(
             "That shape is not a copy of a prefab \u{2014} click one, or the open prefab",
         ));
         return false;
@@ -324,24 +324,24 @@ pub(crate) fn swap_by_pick(
                     r.dropped
                 ));
             }
-            toasts.push(ph2d_editor::Toast::success(say));
+            toasts.push(ph2d_editor_core::Toast::success(say));
             true
         }
         Err(ph2d_app_components::instance_variant::SwapRefusal::Already) => {
-            toasts.push(ph2d_editor::Toast::info(
+            toasts.push(ph2d_editor_core::Toast::info(
                 "It is already a copy of that prefab",
             ));
             false
         }
         Err(ph2d_app_components::instance_variant::SwapRefusal::Unrelated) => {
-            toasts.push(ph2d_editor::Toast::warning(
+            toasts.push(ph2d_editor_core::Toast::warning(
                 "Those two prefabs are unrelated \u{2014} use \u{201c}Replace selection with \
                  this\u{201d} in the library to choose how to match the pieces",
             ));
             false
         }
         Err(_) => {
-            toasts.push(ph2d_editor::Toast::warning(
+            toasts.push(ph2d_editor_core::Toast::warning(
                 "That copy cannot become this prefab",
             ));
             false

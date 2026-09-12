@@ -273,7 +273,7 @@ fn stroke(scene: &mut VectorScene, path: &BezPath, xf: Affine, color: Color, wid
 }
 
 fn resolve(token: ColorToken, theme: Theme) -> Color {
-    ph2d_editor::paint::token_to_vello(token.resolve(theme))
+    ph2d_editor_core::paint::token_to_vello(token.resolve(theme))
 }
 
 #[cfg(test)]

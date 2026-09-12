@@ -23,7 +23,7 @@ impl App {
         let painter_active = gfx
             .tools
             .active()
-            .map(|t| t.id() == ph2d_editor::ToolId::new("painter"))
+            .map(|t| t.id() == ph2d_editor_core::ToolId::new("painter"))
             .unwrap_or(false);
         if !painter_active {
             return false;
@@ -76,10 +76,10 @@ impl App {
         }
         if let Some(hero) = gfx.hero_screen.as_mut() {
             hero.store
-                .open_context_menu(ph2d_editor::interaction::ContextMenuRequest {
+                .open_context_menu(ph2d_editor_core::interaction::ContextMenuRequest {
                     x: px,
                     y: py,
-                    kind: ph2d_editor::interaction::ContextMenuKind::CurvePointHandle,
+                    kind: ph2d_editor_core::interaction::ContextMenuKind::CurvePointHandle,
                 });
         }
         true

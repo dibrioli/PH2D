@@ -33,14 +33,14 @@
 //! O primeiro clique arma e captura a régua.
 
 use ph2d_ecs::{Entity, SimWorld, VecAnchors};
-use ph2d_editor::ids;
+use ph2d_editor_core::ids;
 use ph2d_panel_vector::state::AnchorState;
 use ph2d_vec_scene::{VecPathId, VecScene};
 
 use ph2d_vec_entities::entities::VecEntityMap;
 
 /// Horizontal: `(chip, [min, max])` no eixo X. `0` = esquerda, `1` = direita.
-const H: &[(ph2d_editor::NodeId, [f64; 2])] = &[
+const H: &[(ph2d_editor_core::NodeId, [f64; 2])] = &[
     (ids::VECTOR_ANCHOR_H_START, [0.0, 0.0]),
     (ids::VECTOR_ANCHOR_H_CENTER, [0.5, 0.5]),
     (ids::VECTOR_ANCHOR_H_END, [1.0, 1.0]),
@@ -49,7 +49,7 @@ const H: &[(ph2d_editor::NodeId, [f64; 2])] = &[
 
 /// Vertical: `(chip, [min, max])` no eixo Y. ⚠️ **`Top` é `1`** — o documento é Y-up, e é aqui que
 /// a palavra do artista vira o número do motor.
-const V: &[(ph2d_editor::NodeId, [f64; 2])] = &[
+const V: &[(ph2d_editor_core::NodeId, [f64; 2])] = &[
     (ids::VECTOR_ANCHOR_V_START, [1.0, 1.0]),
     (ids::VECTOR_ANCHOR_V_CENTER, [0.5, 0.5]),
     (ids::VECTOR_ANCHOR_V_END, [0.0, 0.0]),
@@ -65,7 +65,7 @@ pub(crate) enum AnchorEdit {
 
 /// Este id é um chip de âncora? Porta única do roteador — a mesma varredura das duas tabelas.
 #[must_use]
-pub(crate) fn anchor_edit_for_id(id: ph2d_editor::NodeId) -> Option<AnchorEdit> {
+pub(crate) fn anchor_edit_for_id(id: ph2d_editor_core::NodeId) -> Option<AnchorEdit> {
     if let Some(&(_, p)) = H.iter().find(|(i, _)| *i == id) {
         return Some(AnchorEdit::H(p));
     }
@@ -80,9 +80,9 @@ pub(crate) fn anchor_edit_for_id(id: ph2d_editor::NodeId) -> Option<AnchorEdit> 
 /// UI não o oferece). **Nenhum chip aceso é a verdade** nesse caso, e é o precedente literal dos
 /// perfis de largura: *"aí nenhuma acende, que é a verdade"*.
 fn chip_of(
-    table: &[(ph2d_editor::NodeId, [f64; 2])],
+    table: &[(ph2d_editor_core::NodeId, [f64; 2])],
     pair: [f64; 2],
-) -> Option<ph2d_editor::NodeId> {
+) -> Option<ph2d_editor_core::NodeId> {
     table.iter().find(|(_, p)| *p == pair).map(|&(i, _)| i)
 }
 

@@ -1,7 +1,7 @@
 //! ⭐⭐ **O que os três itens do menu de um cartão FAZEM** (plano 07, etapa C).
 //!
 //! O painel transporta o par `(endereço, verbo)` e **não decide nada** — ele não tem `ToastQueue`
-//! (ver [`ph2d_editor::action_bus::EditorAction::AssetCardVerb`]). Quem decide e fala é este
+//! (ver [`ph2d_editor_core::action_bus::EditorAction::AssetCardVerb`]). Quem decide e fala é este
 //! módulo, que é o único lado com as três coisas na mão: o mundo (*quem usa isto?*), a voz e os
 //! verbos de instância.
 //!
@@ -22,9 +22,9 @@
 //! *É a mesma informação que o `Select users` entrega como gesto.*
 
 use ph2d_ecs::{Entity, InstanceOf, SimWorld, SpritePixels, StableId};
-use ph2d_editor::Toast;
-use ph2d_editor::action_bus::AssetCardAction;
-use ph2d_editor::interaction::drag_payload::DragPayload;
+use ph2d_editor_core::Toast;
+use ph2d_editor_core::action_bus::AssetCardAction;
+use ph2d_editor_core::interaction::drag_payload::DragPayload;
 
 /// **Quem usa este asset**, em bits de entidade, ordenado por `StableId`.
 ///
@@ -107,8 +107,8 @@ pub(crate) fn drain(
     sim: &mut SimWorld,
     registry: &ph2d_ecs::scene::ComponentRegistry,
     echo: &mut ph2d_app_components::instance_sync::MasterEcho,
-    gizmo: &mut ph2d_editor::screens::hero::GizmoStateGroup,
-    toasts: &mut ph2d_editor::ToastQueue,
+    gizmo: &mut ph2d_editor_core::screens::hero::GizmoStateGroup,
+    toasts: &mut ph2d_editor_core::ToastQueue,
     docs: &mut ph2d_app_components::instance_docs::OwnedDocs<'_>,
     place_step: [f32; 2],
     // ⭐ `célula do átlas → AssetId` — ver [`crate::asset_index_build::texture_of`].
@@ -323,8 +323,8 @@ fn replace_selection(
     stable_id: u64,
     sim: &mut SimWorld,
     echo: &mut ph2d_app_components::instance_sync::MasterEcho,
-    gizmo: &ph2d_editor::screens::hero::GizmoStateGroup,
-    toasts: &mut ph2d_editor::ToastQueue,
+    gizmo: &ph2d_editor_core::screens::hero::GizmoStateGroup,
+    toasts: &mut ph2d_editor_core::ToastQueue,
 ) -> bool {
     use ph2d_app_components::instance_swap_match::WhenUnrelated;
     let how = match verb {

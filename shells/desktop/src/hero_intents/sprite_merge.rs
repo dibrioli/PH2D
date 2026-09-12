@@ -34,7 +34,7 @@ use std::collections::BTreeMap;
 
 use ph2d_asset::{AssetDb, AssetId};
 use ph2d_ecs::{Entity, SimWorld, Transform};
-use ph2d_editor::{Toast, ToastQueue};
+use ph2d_editor_core::{Toast, ToastQueue};
 use ph2d_render::{Sprite, SpriteRenderer};
 
 use crate::EPS_PIXELS_PER_METER;
@@ -89,7 +89,7 @@ struct SrcRecord {
     world_max_y: f32,
 }
 
-/// Drain `EditorAction::Hierarchy(ph2d_editor::action_bus::HierRequest::MergeSprites)`. Returns `true` if the
+/// Drain `EditorAction::Hierarchy(ph2d_editor_core::action_bus::HierRequest::MergeSprites)`. Returns `true` if the
 /// caller should set `title_dirty` (a toast was pushed).
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn drain_merge_sprites(

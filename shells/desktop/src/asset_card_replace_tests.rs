@@ -14,7 +14,7 @@
 //! em `instance_swap_match_tests.rs`.
 
 use ph2d_ecs::{ChildOf, MasterRoot, Name, SimWorld, StableId, Transform};
-use ph2d_editor::interaction::drag_payload::DragPayload;
+use ph2d_editor_core::interaction::drag_payload::DragPayload;
 use std::collections::BTreeMap;
 
 // ── A TROCA por um componente sem parentesco (plano F5, o último critério) ───────────────────
@@ -70,14 +70,14 @@ fn two_recipes_and_a_copy(
 fn run_replace(
     sim: &mut SimWorld,
     r: &ph2d_ecs::scene::ComponentRegistry,
-    verb: ph2d_editor::action_bus::AssetCardAction,
+    verb: ph2d_editor_core::action_bus::AssetCardAction,
     asset: DragPayload,
     selected: Option<u64>,
 ) -> (bool, String) {
     let mut echo = ph2d_app_components::instance_sync::MasterEcho::default();
-    let mut gizmo = ph2d_editor::screens::hero::GizmoStateGroup::default();
+    let mut gizmo = ph2d_editor_core::screens::hero::GizmoStateGroup::default();
     gizmo.replace_selection(selected);
-    let mut toasts = ph2d_editor::ToastQueue::default();
+    let mut toasts = ph2d_editor_core::ToastQueue::default();
     let (mut sc, mut mp) = ph2d_app_components::instance_docs::empty_docs();
     let mut docs = ph2d_app_components::instance_docs::OwnedDocs {
         vec_scene: &mut sc,
@@ -130,7 +130,7 @@ fn replacing_the_selection_makes_the_copy_belong_to_the_other_component() {
     let (acted, spoke) = run_replace(
         &mut sim,
         &r,
-        ph2d_editor::action_bus::AssetCardAction::ReplaceSelectionByName,
+        ph2d_editor_core::action_bus::AssetCardAction::ReplaceSelectionByName,
         DragPayload::Prefab {
             stable_id: truck_id,
         },
@@ -173,7 +173,7 @@ fn picking_a_piece_inside_the_copy_replaces_the_whole_copy() {
     let (acted, _) = run_replace(
         &mut sim,
         &r,
-        ph2d_editor::action_bus::AssetCardAction::ReplaceSelection,
+        ph2d_editor_core::action_bus::AssetCardAction::ReplaceSelection,
         DragPayload::Prefab {
             stable_id: truck_id,
         },
@@ -197,7 +197,7 @@ fn replacing_with_nothing_picked_says_what_to_pick() {
     let (acted, spoke) = run_replace(
         &mut sim,
         &r,
-        ph2d_editor::action_bus::AssetCardAction::ReplaceSelection,
+        ph2d_editor_core::action_bus::AssetCardAction::ReplaceSelection,
         DragPayload::Prefab {
             stable_id: truck_id,
         },
@@ -220,7 +220,7 @@ fn an_image_cannot_replace_a_copy_and_it_says_so() {
     let (acted, spoke) = run_replace(
         &mut sim,
         &r,
-        ph2d_editor::action_bus::AssetCardAction::ReplaceSelectionByTree,
+        ph2d_editor_core::action_bus::AssetCardAction::ReplaceSelectionByTree,
         DragPayload::Image { asset: [3; 32] },
         Some(copy.to_bits()),
     );
@@ -242,7 +242,7 @@ fn an_image_cannot_replace_a_copy_and_it_says_so() {
 /// **Mutação que deve sangrar:** colapsar dois braços do `match verb`.
 #[test]
 fn the_three_replace_items_are_three_different_laws() {
-    use ph2d_editor::action_bus::AssetCardAction as A;
+    use ph2d_editor_core::action_bus::AssetCardAction as A;
 
     let kid = |sim: &SimWorld, root: ph2d_ecs::Entity, name: &str| -> u64 {
         let mut stack = vec![root];

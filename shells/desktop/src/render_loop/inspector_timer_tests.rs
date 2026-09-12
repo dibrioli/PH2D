@@ -283,11 +283,11 @@ fn the_panel_never_touches_the_live_clock() {
 #[test]
 fn the_timer_row_ids_cover_the_model_cap() {
     assert_eq!(
-        ph2d_editor::ids::INSP_TIMER_ROW.len(),
+        ph2d_editor_core::ids::INSP_TIMER_ROW.len(),
         TIMERS_MAX,
         "o painel desenha {} linhas para um modelo de {TIMERS_MAX} — os timers a mais seriam \
          inalcancaveis",
-        ph2d_editor::ids::INSP_TIMER_ROW.len(),
+        ph2d_editor_core::ids::INSP_TIMER_ROW.len(),
     );
 }
 

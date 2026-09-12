@@ -102,9 +102,9 @@ fn by_name_and_by_position_land_on_different_pieces_in_this_scene() {
 fn the_printed_steps_read_their_labels_from_the_menu_table() {
     let src = include_str!("instance_replace_smoke.rs");
     for id in [
-        ph2d_editor::ids::CTX_MENU_ASSET_REPLACE,
-        ph2d_editor::ids::CTX_MENU_ASSET_REPLACE_BY_NAME,
-        ph2d_editor::ids::CTX_MENU_ASSET_REPLACE_BY_TREE,
+        ph2d_editor_core::ids::CTX_MENU_ASSET_REPLACE,
+        ph2d_editor_core::ids::CTX_MENU_ASSET_REPLACE_BY_NAME,
+        ph2d_editor_core::ids::CTX_MENU_ASSET_REPLACE_BY_TREE,
     ] {
         let label = super::item(id);
         assert_ne!(

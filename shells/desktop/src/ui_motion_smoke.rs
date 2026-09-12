@@ -47,7 +47,7 @@
 //! medida no store (`collapsible_ids`) — nunca um literal aqui, que seria a segunda cópia de um
 //! número que o painel declara.
 
-use ph2d_editor::ids;
+use ph2d_editor_core::ids;
 
 /// A cena mais nova. ⚠️ **Bumpar isto é o único sítio a tocar quando uma cena entra** — e é ele
 /// que impede um `=4` de cair na demo mais recente.
@@ -188,7 +188,7 @@ impl crate::App {
             return;
         };
         hero.panel_visibility.insert(
-            <ph2d_panel_physics::PhysicsPanel as ph2d_editor::panel::Panel>::ID,
+            <ph2d_panel_physics::PhysicsPanel as ph2d_editor_core::panel::Panel>::ID,
             true,
         );
     }

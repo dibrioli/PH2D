@@ -3,7 +3,7 @@
 //! `#[path]` sibling, so `super` is `render_loop::motion_bridge`.
 
 use super::{MotionState, plumbing};
-use ph2d_editor::ToastQueue;
+use ph2d_editor_core::ToastQueue;
 use ph2d_nodegraph::graph::{Edge, NodeId, Pos};
 
 /// How far a duplicate lands from its original, in graph units — enough that the
@@ -348,7 +348,7 @@ pub(super) fn smart_connect(
         if trial.connect(edge).is_ok() && trial.validate(&motion.registry).is_ok() {
             motion.doc.graph = trial;
         } else {
-            toasts.push(ph2d_editor::Toast::info(
+            toasts.push(ph2d_editor_core::Toast::info(
                 "That wire cannot land there - the node was added unconnected",
             ));
         }
@@ -511,7 +511,7 @@ pub(super) fn cut_wires(
         }
     }
     if refused {
-        toasts.push(ph2d_editor::Toast::info(
+        toasts.push(ph2d_editor_core::Toast::info(
             "State wiring is automatic - disconnect the chain from the forces port instead",
         ));
     }

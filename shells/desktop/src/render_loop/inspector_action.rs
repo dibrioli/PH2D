@@ -20,7 +20,7 @@ use ph2d_ecs::scene::{ComponentRegistry, EditorCommandQueue};
 use ph2d_ecs::{
     Entity, SIGNAL_ACTIONS_MAX, SignalAction, SignalActions, SignalVerb, SimWorld, World,
 };
-use ph2d_editor::{ActionFieldEdit, InspectorActionInfo, InspectorActionRow, Toast};
+use ph2d_editor_core::{ActionFieldEdit, InspectorActionInfo, InspectorActionRow, Toast};
 
 use ph2d_inspector_ordering::queue_set;
 

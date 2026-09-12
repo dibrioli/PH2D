@@ -7,7 +7,7 @@
 
 use ph2d_ecs::scene::{EditorCommandQueue, apply_editor_commands};
 use ph2d_ecs::{Name, SimWorld, Transform, stable_name_id};
-use ph2d_editor::WheelFieldEdit;
+use ph2d_editor_core::WheelFieldEdit;
 use ph2d_physics_ecs::{JointKind, PhysicsJoint, PulleyWheel, WestonAxle, WrapSide};
 
 use crate::joint_tests::registry;

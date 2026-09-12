@@ -29,7 +29,7 @@ fn the_ui_burst_is_wired_at_all_four_ends() {
     for (ficheiro, agulha, o_que) in [
         (
             "app_state.rs",
-            "ui_burst: ph2d_editor::motion_burst::BurstField",
+            "ui_burst: ph2d_editor_core::motion_burst::BurstField",
             "o campo do quadro",
         ),
         (

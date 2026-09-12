@@ -20,7 +20,7 @@
 //!    passa a apontar para ele. Sem isto o sprite carregado referenciaria a textura morta do save.
 
 use ph2d_ecs::{Entity, PaintedDoc};
-use ph2d_editor::ToolId;
+use ph2d_editor_core::ToolId;
 use ph2d_render::{Sprite, SpriteSource};
 use ph2d_tool_painter::PainterTool;
 use ph2d_tool_painter::tool::persist::PaintedDocument;

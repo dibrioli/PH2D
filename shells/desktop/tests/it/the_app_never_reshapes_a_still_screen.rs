@@ -21,8 +21,8 @@
 //! não o tem, e a `ph2d-panel-registry-init` liga 22 dos 26 painéis (as features pobres do
 //! `CLAUDE.md` §2). Aqui os 26 existem.
 
-use ph2d_editor::screens::hero::{HeroScreen, paint_hero_screen};
-use ph2d_editor::zones::Rect;
+use ph2d_editor_core::screens::hero::{HeroScreen, paint_hero_screen};
+use ph2d_editor_core::zones::Rect;
 use ph2d_text::{LAYOUT_CACHE_CAP, TextSystem};
 
 const VIEWPORT: Rect = Rect {
@@ -35,8 +35,8 @@ const VIEWPORT: Rect = Rect {
 #[test]
 fn a_still_frame_with_every_panel_open_shapes_no_text() {
     let _ = ph2d_panel_registry_init::register_all_panels();
-    let mut h = HeroScreen::new(ph2d_editor::NodeId(1));
-    ph2d_editor::panel::with_registry_ref(|reg| {
+    let mut h = HeroScreen::new(ph2d_editor_core::NodeId(1));
+    ph2d_editor_core::panel::with_registry_ref(|reg| {
         for p in reg.panels() {
             h.panel_visibility.insert(p.manifest.id, true);
         }

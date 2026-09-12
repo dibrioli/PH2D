@@ -26,7 +26,7 @@ use ph2d_ecs::{
     AUDIO_MAX_DISTANCE_M, AUDIO_MAX_POLYPHONY, AudioBus, AudioListener2D, AudioSource2D, Entity,
     Name, SignalActions, SignalVerb, SimWorld, World,
 };
-use ph2d_editor::{AudioFieldEdit, InspectorAudioInfo, InspectorAudioSource, Toast};
+use ph2d_editor_core::{AudioFieldEdit, InspectorAudioInfo, InspectorAudioSource, Toast};
 
 use ph2d_inspector_ordering::queue_set;
 

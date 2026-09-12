@@ -12,7 +12,7 @@
 
 use crate::joint_anchor_drag::{Grab, distance};
 use ph2d_ecs::SimWorld;
-use ph2d_editor::gizmo::PointHandleKind;
+use ph2d_editor_core::gizmo::PointHandleKind;
 
 /// **Que raio esta alça mede** — a porta única do `open_drag` e do apply.
 ///

@@ -28,8 +28,10 @@
 //! cura é acrescentar tokens ao `ph2d-tokens`, não escrever hex aqui (HR-15).
 
 use ph2d_component_desc::{Attach, ComponentCategory as C, ComponentDesc, ObjectKind, ObjectKinds};
-use ph2d_editor::NodeId;
-use ph2d_editor::widget::command_palette::{PaletteGroup, PaletteItem, PaletteModel, PaletteSub};
+use ph2d_editor_core::NodeId;
+use ph2d_editor_core::widget::command_palette::{
+    PaletteGroup, PaletteItem, PaletteModel, PaletteSub,
+};
 use ph2d_tokens::ColorToken;
 
 /// O id de item de um componente na paleta — o hash do **nome canónico**.
@@ -215,7 +217,7 @@ pub(crate) fn build(
         // ⭐ **A caixa *Show all*** (ADR-0166 / F3) — o que revela o inaplicável, esmaecido e com a
         // razão. ⚠️ Ela é do MODELO e não do widget: o estado vive na shell (`AppGfx`), e um
         // clique nela reabre a paleta com o modelo reconstruído.
-        toggle: Some(ph2d_editor::widget::command_palette::PaletteToggle {
+        toggle: Some(ph2d_editor_core::widget::command_palette::PaletteToggle {
             label: "Show all".to_string(),
             on: show_all,
         }),

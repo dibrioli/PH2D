@@ -21,7 +21,7 @@ use crate::HeroLive;
 use ph2d_asset::AssetDb;
 use ph2d_asset::AssetId;
 use ph2d_ecs::{Name, PresentWorld, SimRef, SimWorld, Transform, Visibility};
-use ph2d_editor::HeroScreen;
+use ph2d_editor_core::HeroScreen;
 use ph2d_flip::FlipDoc;
 use ph2d_host::WindowSize;
 use ph2d_render::{Camera2d, Sprite};
@@ -44,8 +44,8 @@ fn compute_sprite_mixed(
     world: &ph2d_ecs::World,
     selected: &[u64],
     primary_bits: u64,
-) -> ph2d_editor::InspectorSpriteMixed {
-    let mut m = ph2d_editor::InspectorSpriteMixed::default();
+) -> ph2d_editor_core::InspectorSpriteMixed {
+    let mut m = ph2d_editor_core::InspectorSpriteMixed::default();
     let primary_entity = ph2d_ecs::Entity::from_bits(primary_bits);
     let Some(primary) = world.get::<Sprite>(primary_entity) else {
         return m;
@@ -228,7 +228,7 @@ pub(super) fn publish(
     // Built in `point_gizmo::joint_anchor_handles` (which owns the rest-only
     // rule) because `publish` does not take the bridge. `joint_anchor_snap` is
     // the candidate a live drag has caught, for the crosshair.
-    joint_anchor_handles: Vec<ph2d_editor::gizmo::PointHandle>,
+    joint_anchor_handles: Vec<ph2d_editor_core::gizmo::PointHandle>,
     joint_anchor_snap: Option<[f32; 2]>,
     // **O SELO de cada linha da hierarquia** por bits de entidade (2026-08-22): o papel
     // que aquela forma tem dentro da booleana viva que a consome. Resolvido pelo caller,
@@ -272,7 +272,7 @@ pub(super) fn publish(
         //
         // ⚠️ **A receita que está a ser EDITADA volta à lista** — senão a forma do mestre seria
         // impossível de mudar, que é a metade que o `is_unedited_recipe` protege.
-        let hidden_rows: std::collections::BTreeSet<ph2d_editor::NodeId> = ordered
+        let hidden_rows: std::collections::BTreeSet<ph2d_editor_core::NodeId> = ordered
             .iter()
             .copied()
             .filter(|id| {
@@ -284,7 +284,7 @@ pub(super) fn publish(
                 })
             })
             .collect();
-        let ordered: Vec<ph2d_editor::NodeId> = ordered
+        let ordered: Vec<ph2d_editor_core::NodeId> = ordered
             .into_iter()
             .filter(|id| !hidden_rows.contains(id))
             .collect();
@@ -345,7 +345,7 @@ pub(super) fn publish(
         }
         ph2d_panel_hierarchy::sync_from_hierarchy(&mut hero.store, &ordered, entries);
         if let Some((label, badge)) = primary_label {
-            hero.selection = Some(ph2d_editor::HeroSelection {
+            hero.selection = Some(ph2d_editor_core::HeroSelection {
                 label,
                 kind: badge.unwrap_or_else(|| "ENT".to_string()),
                 world_pos: (0.0, 0.0),
@@ -365,12 +365,12 @@ pub(super) fn publish(
     // cheia, byte-idêntico.
     let (grid_w, grid_h) =
         ph2d_app_motion::field_gizmo::scene_window_wh(hero.view.center_split, window_size);
-    hero.set_grid_view(Some(ph2d_editor::GridView {
+    hero.set_grid_view(Some(ph2d_editor_core::GridView {
         camera_center: camera.center,
         camera_height_world: camera.height_world,
         window_w: grid_w,
         window_h: grid_h,
-        canvas: ph2d_editor::zones::Rect::new(0.0, 0.0, 0.0, 0.0),
+        canvas: ph2d_editor_core::zones::Rect::new(0.0, 0.0, 0.0, 0.0),
     }));
     // ⭐⭐⭐ **A BARRA DO MODO DE RECEITA** (o *Edit Prefab*) — o nome do que se está a editar,
     // quantas cópias seguem, e a saída. ⚠️ Publicada como o `grid_view` e pela mesma razão: quem
@@ -409,7 +409,7 @@ pub(super) fn publish(
     // Diagnostics: wall-clock NOT in the CPU-encode window = present/vsync acquire stall PLUS any
     // between-frames input work — the gap that makes "Raw" rise while FPS falls (HANDOFF §1.R).
     let present_stall_ms = (frame_ms_ewma - frame_cpu_ms_ewma).max(0.0);
-    hero.stats = ph2d_editor::BottomHudStats {
+    hero.stats = ph2d_editor_core::BottomHudStats {
         fps,
         frame_ms: frame_ms_ewma,
         draws: 1,
@@ -460,8 +460,8 @@ pub(super) fn publish(
     // Whether the Pivot transform tool is the active radio selection —
     // captured as a Copy bool so the gizmo-view closure (which can't
     // re-borrow `hero`) can emphasize the pivot dot.
-    let pivot_tool_active = hero.store.button_state(ph2d_editor::ids::TOOL_PIVOT)
-        == Some(ph2d_editor::widget::ButtonState::Pressed);
+    let pivot_tool_active = hero.store.button_state(ph2d_editor_core::ids::TOOL_PIVOT)
+        == Some(ph2d_editor_core::widget::ButtonState::Pressed);
     // Captured Copy so the closure (which can't re-borrow `hero`) can
     // resolve the same effective anchor the extract stamps — keeping the
     // selection box aligned with the rendered quad under centered/offset.
@@ -480,7 +480,7 @@ pub(super) fn publish(
     let build_view = |bits: u64,
                       sim: &SimWorld,
                       present: &mut PresentWorld|
-     -> Option<ph2d_editor::GizmoView> {
+     -> Option<ph2d_editor_core::GizmoView> {
         let sim_entity = ph2d_ecs::Entity::from_bits(bits);
         if sim.world().get::<Sprite>(sim_entity).is_none() {
             // Não é sprite: uma forma vetorial ou um objeto Flip — cada um lê o
@@ -600,7 +600,7 @@ pub(super) fn publish(
         let (sin_r, cos_r) = libm::sincosf(rotation);
         let cx = p.x + ax * cos_r - ay * sin_r;
         let cy = p.y + ax * sin_r + ay * cos_r;
-        Some(ph2d_editor::GizmoView {
+        Some(ph2d_editor_core::GizmoView {
             bbox_min_world: [cx - half_w, cy - half_h],
             bbox_max_world: [cx + half_w, cy + half_h],
             pivot_world: [p.x, p.y],
@@ -610,7 +610,7 @@ pub(super) fn publish(
             camera_height_world: camera.height_world,
             window_w: window_size.width as f32,
             window_h: window_size.height as f32,
-            canvas: ph2d_editor::zones::Rect::new(
+            canvas: ph2d_editor_core::zones::Rect::new(
                 0.0,
                 0.0,
                 window_size.width as f32,
@@ -669,7 +669,7 @@ pub(super) fn publish(
     let global_from_drag = if let (Some(start), Some(drag)) = (
         hero.gizmo.global_view_start.as_ref().copied(),
         hero.gizmo.drag.as_ref().copied(),
-    ) && matches!(drag.target, ph2d_editor::GizmoTarget::Global)
+    ) && matches!(drag.target, ph2d_editor_core::GizmoTarget::Global)
     {
         let primary_entity = ph2d_ecs::Entity::from_bits(drag.entity_bits);
         let world = sim.world();
@@ -708,7 +708,7 @@ pub(super) fn publish(
         let new_cy = cy_s;
         let new_hw = hw_s * factor_x.abs();
         let new_hh = hh_s * factor_y.abs();
-        Some(ph2d_editor::GizmoView {
+        Some(ph2d_editor_core::GizmoView {
             bbox_min_world: [new_cx - new_hw, new_cy - new_hh],
             bbox_max_world: [new_cx + new_hw, new_cy + new_hh],
             pivot_world: [new_cx, new_cy],
@@ -756,7 +756,7 @@ pub(super) fn publish(
             }
             let pixel_to_world = first.camera_height_world / first.window_h.max(1.0);
             let offset_world = 32.0 * pixel_to_world;
-            ph2d_editor::GizmoView {
+            ph2d_editor_core::GizmoView {
                 bbox_min_world: [min_x - offset_world, min_y - offset_world],
                 bbox_max_world: [max_x + offset_world, max_y + offset_world],
                 pivot_world: [(min_x + max_x) * 0.5, (min_y + max_y) * 0.5],
@@ -812,7 +812,7 @@ pub(super) fn publish(
         let mut mixed = if inspector_selection.len() > 1 {
             compute_sprite_mixed(world, &inspector_selection, bits)
         } else {
-            ph2d_editor::InspectorSpriteMixed::default()
+            ph2d_editor_core::InspectorSpriteMixed::default()
         };
         if inspector_selection.len() > 1 {
             mixed.emissive = compute_emissive_mixed(world, &inspector_selection, emissive);
@@ -826,7 +826,7 @@ pub(super) fn publish(
                     .get(&key)
                     .and_then(|aid| asset_db.get(aid).and_then(|a| a.image_dimensions()));
                 (
-                    ph2d_editor::InspectorSpriteSource::Atlas { key },
+                    ph2d_editor_core::InspectorSpriteSource::Atlas { key },
                     dims,
                     dims.is_some(),
                 )
@@ -844,7 +844,7 @@ pub(super) fn publish(
                 // `SpriteSheetRef`, e por isso o painel pergunta ao componente, não ao `source`.
                 match world.get::<ph2d_ecs::SpriteSheetRef>(entity) {
                     Some(r) => (
-                        ph2d_editor::InspectorSpriteSource::HandPacked {
+                        ph2d_editor_core::InspectorSpriteSource::HandPacked {
                             sheet: r.sheet,
                             region: r.region,
                         },
@@ -852,7 +852,7 @@ pub(super) fn publish(
                         false,
                     ),
                     None => (
-                        ph2d_editor::InspectorSpriteSource::Individual { texture_id },
+                        ph2d_editor_core::InspectorSpriteSource::Individual { texture_id },
                         dims,
                         // Reimport recomputes world size from an Atlas asset's
                         // px/m; Individual bakes have no atlas asset to re-decode.
@@ -864,7 +864,7 @@ pub(super) fn publish(
             // come from the W2.T4 loader (logical_id → tier asset); unknown
             // here, so the Region UI shows no "Source W×H" and no reimport.
             ph2d_render::SpriteSource::CookedTexture { .. } => (
-                ph2d_editor::InspectorSpriteSource::CookedTexture,
+                ph2d_editor_core::InspectorSpriteSource::CookedTexture,
                 None,
                 false,
             ),
@@ -903,8 +903,8 @@ pub(super) fn publish(
         };
         let unbaked_sheet = if matches!(
             source_kind,
-            ph2d_editor::InspectorSpriteSource::Individual { .. }
-                | ph2d_editor::InspectorSpriteSource::Atlas { .. }
+            ph2d_editor_core::InspectorSpriteSource::Individual { .. }
+                | ph2d_editor_core::InspectorSpriteSource::Atlas { .. }
         ) {
             world
                 .get::<ph2d_ecs::ChildOf>(entity)
@@ -922,7 +922,7 @@ pub(super) fn publish(
         // O rótulo legível de uma origem hand-packed. Derivado AQUI (e não no painel) porque o
         // painel é chrome e não pode depender do documento de folhas sem inverter a seta.
         let baked_label = match source_kind {
-            ph2d_editor::InspectorSpriteSource::HandPacked { sheet, region } => {
+            ph2d_editor_core::InspectorSpriteSource::HandPacked { sheet, region } => {
                 sheets.get(&sheet).and_then(|s| {
                     s.region(region)
                         .map(|r| format!("{} \u{00b7} {}", s.name, r.name))
@@ -936,7 +936,7 @@ pub(super) fn publish(
             sprite.size[0] * transform.scale.x,
             sprite.size[1] * transform.scale.y,
         ];
-        Some(ph2d_editor::InspectorSpriteInfo {
+        Some(ph2d_editor_core::InspectorSpriteInfo {
             sheet_label,
             entity_bits: bits,
             world_size,
@@ -980,7 +980,7 @@ pub(super) fn publish(
     let inspector_transform = hero.gizmo.selection.and_then(|bits| {
         let entity = ph2d_ecs::Entity::from_bits(bits);
         let t = sim.world().get::<Transform>(entity)?;
-        Some(ph2d_editor::InspectorTransformInfo {
+        Some(ph2d_editor_core::InspectorTransformInfo {
             entity_bits: bits,
             translation: [t.translation.x, t.translation.y],
             rotation_rad: t.rotation,
@@ -1014,7 +1014,7 @@ pub(super) fn publish(
                 .unwrap_or(true)
                 != visible
         });
-        Some(ph2d_editor::InspectorVisibilityInfo {
+        Some(ph2d_editor_core::InspectorVisibilityInfo {
             entity_bits: bits,
             visible,
             mixed,
@@ -1032,7 +1032,7 @@ pub(super) fn publish(
             .get::<Name>(entity)
             .map(|n| n.0.clone())
             .unwrap_or_else(|| format!("Entity_{bits:x}"));
-        Some(ph2d_editor::InspectorNameInfo {
+        Some(ph2d_editor_core::InspectorNameInfo {
             entity_bits: bits,
             name,
         })
@@ -1324,13 +1324,13 @@ pub(super) fn publish(
 /// o que neste caso não pode acontecer. *Um número sem significado é aceitável enquanto for
 /// inalcançável; deixar de o ser é a regressão a vigiar.*
 fn sheet_authorship(
-    storage: ph2d_editor::InspectorSpriteSource,
+    storage: ph2d_editor_core::InspectorSpriteSource,
     unbaked_sheet: Option<&str>,
     baked_label: Option<String>,
-) -> (ph2d_editor::InspectorSpriteSource, Option<String>) {
+) -> (ph2d_editor_core::InspectorSpriteSource, Option<String>) {
     match unbaked_sheet {
         Some(name) => (
-            ph2d_editor::InspectorSpriteSource::HandPacked {
+            ph2d_editor_core::InspectorSpriteSource::HandPacked {
                 sheet: 0,
                 region: 0,
             },
@@ -1343,7 +1343,7 @@ fn sheet_authorship(
 #[cfg(test)]
 mod sheet_authorship_tests {
     use super::sheet_authorship;
-    use ph2d_editor::InspectorSpriteSource as S;
+    use ph2d_editor_core::InspectorSpriteSource as S;
 
     /// ⚠️ **O caso que o Enio relatou.** A peça está na folha e ainda não foi assada: o
     /// armazenamento é mesmo `Individual`, mas a AUTORIA já é da folha — e é a autoria que a linha

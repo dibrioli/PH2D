@@ -7,7 +7,7 @@
 
 use std::cell::Cell;
 
-use ph2d_editor::ids;
+use ph2d_editor_core::ids;
 
 thread_local! {
     /// O último ponto do cursor enquanto a janela está a ser arrastada. `None` = não há arrasto.
@@ -95,7 +95,7 @@ impl crate::App {
             }
         }
         let map = hero.input_map.clone();
-        ph2d_editor::screens::hero::chrome::sync_input_map_rows(&mut hero.store, &map);
+        ph2d_editor_core::screens::hero::chrome::sync_input_map_rows(&mut hero.store, &map);
     }
 
     /// **A haste empurrada a fundo** — a metade ANALÓGICA da escuta, e o que torna os dois números
@@ -169,7 +169,7 @@ impl crate::App {
         // lista transborda. O `last_viewport` é o mesmo que o pintor recebeu no quadro anterior.
         let vh = hero.last_viewport.h;
         let (ww, wh, max_scroll) =
-            ph2d_editor::screens::hero::chrome::input_map_window_size(&hero.input_map, vh);
+            ph2d_editor_core::screens::hero::chrome::input_map_window_size(&hero.input_map, vh);
         // ⚠️ E a POSIÇÃO também é clampada, pelo mesmo motivo: o pintor prende o canto à viewport,
         // e um cartão encostado à borda de baixo desenha acima de onde o store diz que ele está.
         let vx = hero.last_viewport.x;

@@ -35,8 +35,8 @@ pub enum MorphCmd {
 
 /// **O comando que um `NodeId` pede**, ou `None` se ele não é de uma seta.
 #[must_use]
-pub fn morph_cmd_for_id(id: ph2d_editor::NodeId) -> Option<MorphCmd> {
-    use ph2d_editor::ids as i;
+pub fn morph_cmd_for_id(id: ph2d_editor_core::NodeId) -> Option<MorphCmd> {
+    use ph2d_editor_core::ids as i;
     if id == i::VECTOR_MORPH_STATES_MAKE {
         return Some(MorphCmd::MakeSet);
     }

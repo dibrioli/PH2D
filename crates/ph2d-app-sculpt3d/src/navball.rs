@@ -32,7 +32,7 @@
 //! ao lado da tolerância dele.
 
 use super::{ORBIT_RAD_PER_PX, Sculpt3dScene};
-use ph2d_editor::zones::Rect as EditorRect;
+use ph2d_editor_core::zones::Rect as EditorRect;
 use ph2d_mesh_render::Camera3d;
 use ph2d_viewport3d::views::Standard;
 

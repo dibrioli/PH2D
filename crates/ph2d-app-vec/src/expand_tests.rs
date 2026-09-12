@@ -47,15 +47,18 @@ const MITER: Expand = Expand::Offset {
 #[test]
 fn the_button_ids_map_to_their_commands() {
     assert!(matches!(
-        expand_for_id(ph2d_editor::ids::VECTOR_EXPAND_OFFSET_PATH),
+        expand_for_id(ph2d_editor_core::ids::VECTOR_EXPAND_OFFSET_PATH),
         Some(Expand::Offset { .. })
     ));
     assert_eq!(
-        expand_for_id(ph2d_editor::ids::VECTOR_EXPAND_OUTLINE_STROKE),
+        expand_for_id(ph2d_editor_core::ids::VECTOR_EXPAND_OUTLINE_STROKE),
         Some(Expand::OutlineStroke)
     );
-    assert_eq!(expand_for_id(ph2d_editor::ids::VECTOR_BOOL_UNION), None);
-    assert_eq!(expand_for_id(ph2d_editor::ids::VECTOR_MODE_PEN), None);
+    assert_eq!(
+        expand_for_id(ph2d_editor_core::ids::VECTOR_BOOL_UNION),
+        None
+    );
+    assert_eq!(expand_for_id(ph2d_editor_core::ids::VECTOR_MODE_PEN), None);
 }
 
 /// **Offsetar N formas offseta as N** — por-path, não N-ário. Uma versão que fundisse a

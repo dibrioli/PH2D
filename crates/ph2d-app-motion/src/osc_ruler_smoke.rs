@@ -97,7 +97,9 @@ pub fn osc_ruler_smoke(cx: &mut crate::motion_scene_ctx::MotionSceneCtx<'_>) {
     let (sinks, heroes) = scene(&mut cx.motion.doc.graph);
     crate::smoke_layout::arrange_and_mark(&mut cx.motion.doc, &heroes);
     cx.motion.sinks.extend(sinks);
-    let _ = cx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
+    let _ = cx
+        .tools
+        .set_active(&ph2d_editor_core::ToolId::new("motion"));
     // A RÉGUA. As duas features desta cena são sobre TEMPO, e o roteiro manda parar o
     // playhead em 0,0 e depois em 3,0 -- sem a timeline o artista não tem onde fazer
     // isso. O `Espaco` toca sem painel nenhum; o que só a timeline oferece é a RÉGUA

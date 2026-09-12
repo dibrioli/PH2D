@@ -82,12 +82,15 @@ pub fn disarm_joint_draw(st: &mut PhysicsState) {
 /// **Esc cancela**, e só consome a tecla quando há o que cancelar — o formato
 /// da família de Escapes do shell (Build / Pen / shape do Painter), senão o
 /// Esc pararia de fazer blur de widget no resto do app.
-pub fn joint_draw_cancel_key(st: &mut PhysicsState, toasts: &mut ph2d_editor::ToastQueue) -> bool {
+pub fn joint_draw_cancel_key(
+    st: &mut PhysicsState,
+    toasts: &mut ph2d_editor_core::ToastQueue,
+) -> bool {
     if !st.joint_draw_armed {
         return false;
     }
     disarm_joint_draw(st);
-    toasts.push(ph2d_editor::Toast::info("Joint drawing cancelled"));
+    toasts.push(ph2d_editor_core::Toast::info("Joint drawing cancelled"));
     true
 }
 
@@ -146,7 +149,7 @@ pub fn joint_draw_release(st: &mut PhysicsState, ctx: &mut CanvasCtx<'_>, sx: f3
     if let (Some(a), Some(b)) = (d.body_a, target)
         && a == b
     {
-        ctx.toasts.push(ph2d_editor::Toast::info(
+        ctx.toasts.push(ph2d_editor_core::Toast::info(
             "A joint binds two DIFFERENT bodies",
         ));
         return; // segue armado: tente outra vez
@@ -177,7 +180,7 @@ pub fn joint_draw_release(st: &mut PhysicsState, ctx: &mut CanvasCtx<'_>, sx: f3
         (None, None) => None,
     };
     let Some(joint) = created else {
-        ctx.toasts.push(ph2d_editor::Toast::info(
+        ctx.toasts.push(ph2d_editor_core::Toast::info(
             match (d.body_a.is_some(), target.is_some()) {
                 (false, false) => "Start or end the joint ON a body",
                 (true, true) => "Those two bodies cannot be joined",

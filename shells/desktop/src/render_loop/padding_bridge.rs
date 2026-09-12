@@ -19,8 +19,8 @@
 //! 4. Returns the selection + spec + pivot mode to bake on Apply.
 
 use ph2d_ecs::SimWorld;
-use ph2d_editor::HeroScreen;
-use ph2d_editor::ToolRegistry;
+use ph2d_editor_core::HeroScreen;
+use ph2d_editor_core::ToolRegistry;
 use ph2d_host::WindowSize;
 use ph2d_render::{Camera2d, Sprite};
 use ph2d_tokens::ColorToken;
@@ -42,7 +42,7 @@ pub(super) fn dispatch(
 ) -> Option<(ph2d_tool_padding::PaddingSpec, bool, Vec<u64>)> {
     let padding_is_active = tools
         .active()
-        .map(|t| t.id() == ph2d_editor::ToolId::new("padding"))
+        .map(|t| t.id() == ph2d_editor_core::ToolId::new("padding"))
         .unwrap_or(false);
     // Visibility: shown iff padding is the active tool. Image tools
     // dock into the Inspector slot, so hide the Inspector while
@@ -101,8 +101,8 @@ pub(super) fn dispatch(
     }
     // Re-populate after `pad` borrow ends (aliases `hero.store`).
     if needs_panel_reset {
-        ph2d_editor::panel::with_registry_opt(|reg| {
-            if let Some(idx) = reg.find_by_panel_node_id(ph2d_editor::ids::PAD_PANEL) {
+        ph2d_editor_core::panel::with_registry_opt(|reg| {
+            if let Some(idx) = reg.find_by_panel_node_id(ph2d_editor_core::ids::PAD_PANEL) {
                 reg.panels_mut()[idx].populate(&mut hero.store);
             }
         });

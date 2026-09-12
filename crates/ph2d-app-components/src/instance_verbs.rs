@@ -354,7 +354,7 @@ pub fn drain(
     registry: &ComponentRegistry,
     echo: &mut crate::instance_sync::MasterEcho,
     entity_bits: u64,
-    toasts: &mut ph2d_editor::ToastQueue,
+    toasts: &mut ph2d_editor_core::ToastQueue,
     docs: &mut crate::instance_docs::OwnedDocs<'_>,
     // O passo da cascata, em unidades de MUNDO — ver [`cascade`].
     place_step: [f32; 2],
@@ -373,7 +373,7 @@ pub fn drain(
     // o Figma e a Unity fazem: criar o componente deixa-te a trabalhar na instância.
     select_out: &mut Option<u64>,
 ) -> bool {
-    use ph2d_editor::Toast;
+    use ph2d_editor_core::Toast;
     let entity = Entity::from_bits(entity_bits);
     match verb {
         Verb::Make => match make_master(sim, registry, entity, docs) {

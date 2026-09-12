@@ -10,7 +10,7 @@
 
 use super::params::{apply_channel_presets, build_params_snapshot, param_value};
 use crate::motion_state::MotionState;
-use ph2d_editor::ProjectSettings;
+use ph2d_editor_core::ProjectSettings;
 
 /// #10 consistency: switching a behaviour's channel resets its magnitude to a
 /// channel-sensible default. The Rotation channel writes the `rot` stream column,

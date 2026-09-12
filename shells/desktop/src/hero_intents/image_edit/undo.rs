@@ -3,7 +3,7 @@
 //! last one — §1 audit CRITICAL data-loss bug, was M14.x scope).
 
 use ph2d_ecs::SimWorld;
-use ph2d_editor::{Toast, ToastQueue};
+use ph2d_editor_core::{Toast, ToastQueue};
 use ph2d_render::{Sprite, SpriteRenderer};
 
 use crate::ImageEditTransaction;

@@ -29,7 +29,7 @@
 
 use ph2d_core::Playhead;
 use ph2d_ecs::SimWorld;
-use ph2d_editor::ToolRegistry;
+use ph2d_editor_core::ToolRegistry;
 
 /// **A fatia do mundo que uma cena de Motion pode tocar.**
 ///
@@ -69,5 +69,5 @@ pub struct MotionSceneCtx<'a> {
     /// se deixa de ler.*
     ///
     /// `Option` porque um smoke pode correr antes de haver ecrã.
-    pub hero: Option<&'a mut ph2d_editor::HeroScreen>,
+    pub hero: Option<&'a mut ph2d_editor_core::HeroScreen>,
 }

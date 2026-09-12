@@ -116,7 +116,7 @@ pub(super) fn unplug_in(
 /// because unlike grouping this really does change what the graph computes.
 pub(super) fn drive(
     motion: &mut MotionState,
-    toasts: &mut ph2d_editor::ToastQueue,
+    toasts: &mut ph2d_editor_core::ToastQueue,
     from: (NodeId, u16),
     to: NodeId,
     param: &str,
@@ -146,7 +146,7 @@ pub(super) fn drive(
         let cura = converter_from(motion, from).map_or_else(String::new, |ty| {
             format!(" — insert a `{ty}` to read one number from it")
         });
-        toasts.push(ph2d_editor::Toast::warning(format!(
+        toasts.push(ph2d_editor_core::Toast::warning(format!(
             "Can't drive: that output is a per-element stream, not a value{cura}"
         )));
         return;
@@ -160,7 +160,7 @@ pub(super) fn drive(
         // A outra recusa estrutural: fecharia um laço. (Um param não tem caso «já ligado» —
         // uma segunda fonte substitui a primeira, como re-plugar um socket de entrada.)
         Err(_) => {
-            toasts.push(ph2d_editor::Toast::warning(
+            toasts.push(ph2d_editor_core::Toast::warning(
                 "Can't drive: that would make a loop",
             ));
         }

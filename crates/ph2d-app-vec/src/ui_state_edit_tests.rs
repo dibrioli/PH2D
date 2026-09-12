@@ -187,21 +187,21 @@ fn show_asks_the_machine_instead_of_writing_the_pose() {
 fn the_router_reads_the_three_verbs_and_only_them() {
     for (i, &role) in StateRole::ALL.iter().enumerate() {
         assert_eq!(
-            ui_state_edit_for_id(ph2d_editor::ids::vector_state_record_id(i)),
+            ui_state_edit_for_id(ph2d_editor_core::ids::vector_state_record_id(i)),
             Some(UiStateEdit::Record(role))
         );
         assert_eq!(
-            ui_state_edit_for_id(ph2d_editor::ids::vector_state_clear_id(i)),
+            ui_state_edit_for_id(ph2d_editor_core::ids::vector_state_clear_id(i)),
             Some(UiStateEdit::Clear(role))
         );
         assert_eq!(
-            ui_state_edit_for_id(ph2d_editor::ids::vector_state_apply_id(i)),
+            ui_state_edit_for_id(ph2d_editor_core::ids::vector_state_apply_id(i)),
             Some(UiStateEdit::Apply(role))
         );
     }
     // CONTROLE POSITIVO: um id de outra seção não é um verbo de estado.
     assert_eq!(
-        ui_state_edit_for_id(ph2d_editor::ids::VECTOR_WIDGET_WEAR),
+        ui_state_edit_for_id(ph2d_editor_core::ids::VECTOR_WIDGET_WEAR),
         None
     );
 }
@@ -213,9 +213,9 @@ fn the_router_reads_the_three_verbs_and_only_them() {
 #[test]
 fn every_role_has_a_row_of_ids() {
     assert!(
-        ph2d_editor::ids::MAX_STATE_ROLES >= StateRole::ALL.len(),
+        ph2d_editor_core::ids::MAX_STATE_ROLES >= StateRole::ALL.len(),
         "um papel do catalogo ficou sem ids: {} < {}",
-        ph2d_editor::ids::MAX_STATE_ROLES,
+        ph2d_editor_core::ids::MAX_STATE_ROLES,
         StateRole::ALL.len()
     );
 }
@@ -430,7 +430,7 @@ fn every_curve_chip_resolves_and_nothing_else_does() {
     use ph2d_anim::{EasingFamily, EasingMode};
     for (i, f) in EasingFamily::ALL.iter().enumerate() {
         assert_eq!(
-            easing_pick_for_id(ph2d_editor::ids::vector_easing_family_id(i)),
+            easing_pick_for_id(ph2d_editor_core::ids::vector_easing_family_id(i)),
             Some(EasingPick::Family(*f)),
             "o chip da familia {} nao resolve",
             f.label()
@@ -438,14 +438,14 @@ fn every_curve_chip_resolves_and_nothing_else_does() {
     }
     for (i, m) in EasingMode::ALL.iter().enumerate() {
         assert_eq!(
-            easing_pick_for_id(ph2d_editor::ids::vector_easing_mode_id(i)),
+            easing_pick_for_id(ph2d_editor_core::ids::vector_easing_mode_id(i)),
             Some(EasingPick::Mode(*m)),
             "o chip da direcao {} nao resolve",
             m.label()
         );
     }
     assert_eq!(
-        easing_pick_for_id(ph2d_editor::ids::VECTOR_STATE_DURATION),
+        easing_pick_for_id(ph2d_editor_core::ids::VECTOR_STATE_DURATION),
         None,
         "um id que nao e' do seletor resolveu num pick"
     );

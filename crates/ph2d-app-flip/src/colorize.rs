@@ -16,7 +16,7 @@
 
 use crate::fill_dilate::{boundaries, fill_stroke};
 use ph2d_core::Vec2;
-use ph2d_editor::Job;
+use ph2d_editor_core::Job;
 use ph2d_flip::{DrawingId, FlipDrawing, FlipObjectId, FlipStroke, Point};
 use ph2d_flip_colorize::{ColorRegion, Scribble};
 use ph2d_flip_render::pack_drawing;
@@ -288,7 +288,7 @@ pub fn preview_data(state: &FlipState, w2l: &Xform) -> Option<ph2d_flip_render::
 pub fn apply(
     state: &mut FlipState,
     f: &mut FlipFrame<'_>,
-    toasts: &mut ph2d_editor::ToastQueue,
+    toasts: &mut ph2d_editor_core::ToastQueue,
     w2l: &Xform,
 ) -> bool {
     if state.colorize.scribbles.is_empty() {
@@ -340,7 +340,7 @@ pub fn apply(
         &mut state.strip,
         crate::autokey::FlipEdit::Modify,
     ) else {
-        toasts.push(ph2d_editor::Toast::warning(
+        toasts.push(ph2d_editor_core::Toast::warning(
             "Colorize: the layer is locked, or has no drawing on this frame",
         ));
         return true;
@@ -350,7 +350,7 @@ pub fn apply(
         return false;
     };
     if boundaries(drawing).is_empty() {
-        toasts.push(ph2d_editor::Toast::warning(
+        toasts.push(ph2d_editor_core::Toast::warning(
             "Colorize: draw the line-art first",
         ));
         return true;
@@ -377,7 +377,7 @@ pub fn apply(
     let produced = install_regions(drawing, &lines, &palette, regions);
     if produced == 0 {
         drawing.strokes = base; // nada saiu — devolve o desenho intocado
-        toasts.push(ph2d_editor::Toast::warning(
+        toasts.push(ph2d_editor_core::Toast::warning(
             "Colorize: no regions — scribble inside the closed shapes",
         ));
         return true;

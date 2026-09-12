@@ -14,7 +14,7 @@ use crate::motion_state::MotionState;
 /// the retry makes the connect refuse and this goes red.
 #[test]
 fn a_cycle_closing_connect_becomes_a_pre_edge() {
-    use ph2d_editor::ToastQueue;
+    use ph2d_editor_core::ToastQueue;
     use ph2d_nodegraph::graph::{Edge, Graph};
 
     let mut motion = MotionState::new();
@@ -98,7 +98,7 @@ fn add_node_template_wires_the_state_self_loop() {
 /// the wire is refused — the plumbing IS what makes the gesture land.
 #[test]
 fn wiring_a_chain_into_forces_replumbs_the_state_entry() {
-    use ph2d_editor::ToastQueue;
+    use ph2d_editor_core::ToastQueue;
     use ph2d_nodegraph::graph::{Edge, EdgeError, Graph};
 
     let mut motion = MotionState::new();
@@ -179,7 +179,7 @@ fn wiring_a_chain_into_forces_replumbs_the_state_entry() {
 /// `cook_scoped` errors on, and the graph it accepts cooks clean.
 #[test]
 fn a_wire_dragging_a_sequential_node_under_a_time_remap_is_refused() {
-    use ph2d_editor::ToastQueue;
+    use ph2d_editor_core::ToastQueue;
     use ph2d_nodegraph::cook::{Cook, CookError};
     use ph2d_nodegraph::graph::{Edge, Graph};
 
@@ -260,7 +260,7 @@ fn a_wire_dragging_a_sequential_node_under_a_time_remap_is_refused() {
 /// an EXPERT `pre` elsewhere still is.
 #[test]
 fn a_healed_mid_chain_force_delete_keeps_the_head_and_managed_pre_is_not_hand_deletable() {
-    use ph2d_editor::ToastQueue;
+    use ph2d_editor_core::ToastQueue;
     use ph2d_nodegraph::graph::{Edge, Graph};
 
     let mut motion = MotionState::new();
@@ -297,7 +297,7 @@ fn a_healed_mid_chain_force_delete_keeps_the_head_and_managed_pre_is_not_hand_de
     apply_delete_selection(
         &mut motion,
         vec![curl.0],
-        &mut ph2d_editor::ToastQueue::default(),
+        &mut ph2d_editor_core::ToastQueue::default(),
     );
     let edges = motion.doc.graph.edges();
     assert!(

@@ -4776,7 +4776,7 @@ dependencies = [
  "ph2d-component-desc",
  "ph2d-core",
  "ph2d-ecs",
- "ph2d-editor",
+ "ph2d-editor-core",
  "ph2d-entity-visibility",
  "ph2d-field-ecs",
  "ph2d-physics-ecs",
@@ -4799,7 +4799,7 @@ dependencies = [
  "half",
  "ph2d-app-host",
  "ph2d-ecs",
- "ph2d-editor",
+ "ph2d-editor-core",
  "ph2d-field",
  "ph2d-field-ecs",
  "ph2d-field-eval",
@@ -4833,7 +4833,7 @@ dependencies = [
  "ph2d-app-host",
  "ph2d-core",
  "ph2d-ecs",
- "ph2d-editor",
+ "ph2d-editor-core",
  "ph2d-flip",
  "ph2d-flip-colorize",
  "ph2d-flip-fill",
@@ -4858,7 +4858,7 @@ dependencies = [
 name = "ph2d-app-host"
 version = "0.0.0"
 dependencies = [
- "ph2d-editor",
+ "ph2d-editor-core",
  "rfd",
 ]
 
@@ -4879,7 +4879,7 @@ dependencies = [
  "ph2d-core",
  "ph2d-curve",
  "ph2d-ecs",
- "ph2d-editor",
+ "ph2d-editor-core",
  "ph2d-eval-motion",
  "ph2d-flip",
  "ph2d-flip-render",
@@ -4949,7 +4949,7 @@ dependencies = [
  "ph2d-asset",
  "ph2d-core",
  "ph2d-ecs",
- "ph2d-editor",
+ "ph2d-editor-core",
  "ph2d-form-donation",
  "ph2d-gpu",
  "ph2d-host",
@@ -4981,7 +4981,7 @@ dependencies = [
  "ph2d-app-host",
  "ph2d-core",
  "ph2d-ecs",
- "ph2d-editor",
+ "ph2d-editor-core",
  "ph2d-host",
  "ph2d-input",
  "ph2d-inspector-ordering",
@@ -5022,7 +5022,7 @@ dependencies = [
  "ph2d-core",
  "ph2d-crossfield",
  "ph2d-ecs",
- "ph2d-editor",
+ "ph2d-editor-core",
  "ph2d-form-donation",
  "ph2d-gpu",
  "ph2d-gridmap",
@@ -5062,7 +5062,7 @@ dependencies = [
  "ph2d-app-vec",
  "ph2d-core",
  "ph2d-ecs",
- "ph2d-editor",
+ "ph2d-editor-core",
  "ph2d-preview-drive",
  "ph2d-skeleton",
  "ph2d-skeleton-ecs",
@@ -5091,7 +5091,7 @@ dependencies = [
  "ph2d-color",
  "ph2d-core",
  "ph2d-ecs",
- "ph2d-editor",
+ "ph2d-editor-core",
  "ph2d-gpu",
  "ph2d-host",
  "ph2d-i18n",
@@ -5235,7 +5235,7 @@ dependencies = [
  "ph2d-audio-opus",
  "ph2d-audio-spectral",
  "ph2d-ecs",
- "ph2d-editor",
+ "ph2d-editor-core",
  "ph2d-panel-audio-editor",
  "ph2d-tokens",
 ]
@@ -5379,14 +5379,6 @@ dependencies = [
  "postcard",
  "serde",
  "smallvec 1.15.2",
-]
-
-[[package]]
-name = "ph2d-editor"
-version = "0.0.0"
-dependencies = [
- "dhat",
- "ph2d-editor-core",
 ]
 
 [[package]]
@@ -5767,7 +5759,7 @@ dependencies = [
  "ph2d-component-desc",
  "ph2d-core",
  "ph2d-ecs",
- "ph2d-editor",
+ "ph2d-editor-core",
  "ph2d-entity-visibility",
  "ph2d-eval-motion",
  "ph2d-field",
@@ -6110,7 +6102,7 @@ version = "0.0.0"
 dependencies = [
  "ph2d-core",
  "ph2d-ecs",
- "ph2d-editor",
+ "ph2d-editor-core",
  "postcard",
  "serde",
 ]
@@ -8475,7 +8467,6 @@ version = "0.0.0"
 dependencies = [
  "ph2d-a11y",
  "ph2d-core",
- "ph2d-editor",
  "ph2d-editor-core",
  "ph2d-text",
  "ph2d-tool-bgremoval",
@@ -8564,7 +8555,7 @@ name = "ph2d-transport"
 version = "0.0.0"
 dependencies = [
  "ph2d-core",
- "ph2d-editor",
+ "ph2d-editor-core",
 ]
 
 [[package]]
@@ -8798,7 +8789,7 @@ name = "ph2d-viewport3d"
 version = "0.0.0"
 dependencies = [
  "ph2d-app-host",
- "ph2d-editor",
+ "ph2d-editor-core",
  "ph2d-field",
  "ph2d-field-render",
  "ph2d-i18n",

@@ -6,7 +6,7 @@
 //! (texture) or **Shape** mask. Mirrors the M14.4c import path (rfd +
 //! `AssetDb` decode). Cancel or any failure reverts the kind to None.
 
-use ph2d_editor::toast::{Toast, ToastQueue};
+use ph2d_editor_core::toast::{Toast, ToastQueue};
 
 /// Pick an image file and decode it to row-major RGBA `(rgba, w, h)`. `Ok(None)` = the user
 /// cancelled the dialog; `Err` = a read/decode failure. Shared by the Grain + Shape importers.

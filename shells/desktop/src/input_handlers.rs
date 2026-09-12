@@ -6,9 +6,9 @@
 //! verbatim; behavior-preserving.
 
 use crate::App;
-use ph2d_editor::interaction::InteractiveState;
-use ph2d_editor::zones::Rect as EditorRect;
-use ph2d_editor::{PanelControl, PanelEvent, Toast};
+use ph2d_editor_core::interaction::InteractiveState;
+use ph2d_editor_core::zones::Rect as EditorRect;
+use ph2d_editor_core::{PanelControl, PanelEvent, Toast};
 use ph2d_render::Camera2d;
 use winit::keyboard::KeyCode;
 
@@ -99,8 +99,11 @@ impl App {
         // Ctrl+V. The verbs need not be idempotent for the double to be harmless.
         if over_motion_graph
             && let Some(kc) = crate::keymap::winit_to_editor_keycode(code)
-            && let Some(gk) =
-                ph2d_editor::interaction::graph_key_for(kc, cmd_chord, self.modifiers.alt_key())
+            && let Some(gk) = ph2d_editor_core::interaction::graph_key_for(
+                kc,
+                cmd_chord,
+                self.modifiers.alt_key(),
+            )
         {
             if let Some(hero) = gfx.hero_screen.as_mut() {
                 hero.store.push_graph_key(gk);
@@ -137,7 +140,7 @@ impl App {
             // `match`, e esta lei não o alcança.
             KeyCode::KeyP if !cmd_chord => {
                 if let Some(hero) = gfx.hero_screen.as_mut() {
-                    let items = ph2d_editor::screens::hero::radial::build_radial_model(hero);
+                    let items = ph2d_editor_core::screens::hero::radial::build_radial_model(hero);
                     let center = [self.last_pointer.0, self.last_pointer.1];
                     if !hero.store.open_radial(center, items) {
                         gfx.toasts.push(Toast::info("No tools to show here (P)"));
@@ -329,8 +332,8 @@ impl App {
                     // Wave 2.5 PR 11.8d: bus migration (was
                     // `hero.pending_view_focus = Some(...)`).
                     hero.bus
-                        .push(ph2d_editor::action_bus::EditorAction::SetViewFocus {
-                            kind: ph2d_editor::ViewFocusKind::Selected,
+                        .push(ph2d_editor_core::action_bus::EditorAction::SetViewFocus {
+                            kind: ph2d_editor_core::ViewFocusKind::Selected,
                         });
                 } else {
                     // No hero panel — fall back to legacy "reset

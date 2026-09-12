@@ -15,7 +15,7 @@
 //! a lei devolver. *Uma decisão dentro da fiação seria uma decisão sem gate.*
 
 use crate::asset_drop::{DropAction, DropOver, DropTarget};
-use ph2d_editor::interaction::drag_payload::{DragPayload, DragVerdict};
+use ph2d_editor_core::interaction::drag_payload::{DragPayload, DragVerdict};
 
 impl crate::App {
     /// **`Down`** — se o botão caiu num cartão do navegador, semeia o arrasto.
@@ -152,7 +152,7 @@ impl crate::App {
             DropTarget::InspectorTexture { entity_bits }
         } else if let Some(catalog) = catalog_row {
             DropTarget::CatalogRow { catalog }
-        } else if panel == Some(ph2d_editor::ids::ASSET_PANEL) {
+        } else if panel == Some(ph2d_editor_core::ids::ASSET_PANEL) {
             DropTarget::Source
         } else if !on_canvas {
             DropTarget::Chrome
@@ -221,7 +221,7 @@ impl crate::App {
                 // ⛔ **A recusa VÊ-SE** — largar num sítio que não sabe receber nunca é silêncio.
                 if let Some(gfx) = self.gfx.as_mut() {
                     gfx.toasts
-                        .push(ph2d_editor::Toast::warning(DropAction::refusal_line(
+                        .push(ph2d_editor_core::Toast::warning(DropAction::refusal_line(
                             payload,
                         )));
                 }
@@ -241,13 +241,14 @@ impl crate::App {
                 if let Some(gfx) = self.gfx.as_mut()
                     && let Some(hero) = gfx.hero_screen.as_mut()
                 {
-                    hero.bus
-                        .push(ph2d_editor::action_bus::EditorAction::AssetCatalogVerb(
-                            ph2d_editor::action_bus::CatalogVerb::Assign {
+                    hero.bus.push(
+                        ph2d_editor_core::action_bus::EditorAction::AssetCatalogVerb(
+                            ph2d_editor_core::action_bus::CatalogVerb::Assign {
                                 asset: payload,
                                 catalog,
                             },
-                        ));
+                        ),
+                    );
                 }
             }
         }

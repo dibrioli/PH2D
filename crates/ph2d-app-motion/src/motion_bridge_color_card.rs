@@ -35,7 +35,7 @@ pub(super) struct CardPick {
 /// escolha do artista evaporava.
 pub(super) fn card_editor_pick(
     motion: &MotionState,
-    store: &ph2d_editor::interaction::WidgetStore,
+    store: &ph2d_editor_core::interaction::WidgetStore,
 ) -> Option<CardPick> {
     use ph2d_node_registry::ParamWidget;
     let alvo = store.picker_target()?;

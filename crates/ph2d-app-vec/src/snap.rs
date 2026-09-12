@@ -22,7 +22,7 @@
 //! | `sprite_snap_points` · `vec_move_sources` | `crate::transform`, que **não pôde sair** (declara um `#[path]` de um teste que precisa de `crate::profile_live`) |
 
 use ph2d_ecs::{Entity, SimWorld, VecPathRef};
-use ph2d_editor::grid_snap::GridSnapState;
+use ph2d_editor_core::grid_snap::GridSnapState;
 use ph2d_vec_edit::snap::{SnapConfig, SnapResult, SnapSource};
 use ph2d_vec_render::{Guide, GuideKind};
 use ph2d_vec_scene::VecPathId;
@@ -145,8 +145,8 @@ pub enum DragSnap {
 
 /// Roteia o gesto do gizmo para a disposição de snap correspondente.
 #[must_use]
-pub fn drag_snap_kind(kind: ph2d_editor::GizmoDragKind) -> DragSnap {
-    use ph2d_editor::GizmoDragKind::{MovePivot, Rotate, ScaleCorner, ScaleEdge, Translate};
+pub fn drag_snap_kind(kind: ph2d_editor_core::GizmoDragKind) -> DragSnap {
+    use ph2d_editor_core::GizmoDragKind::{MovePivot, Rotate, ScaleCorner, ScaleEdge, Translate};
     match kind {
         Translate => DragSnap::SlideTranslate,
         ScaleCorner { .. } | ScaleEdge { .. } => DragSnap::GizmoOwnsGuides,
@@ -202,7 +202,7 @@ pub fn ids_of_bits(sim: &SimWorld, bits: &[u64]) -> Vec<VecPathId> {
 #[cfg(test)]
 mod tests {
     use super::{DragSnap, drag_snap_kind, guides_of};
-    use ph2d_editor::GizmoDragKind;
+    use ph2d_editor_core::GizmoDragKind;
     use ph2d_vec_edit::snap::{SnapAxis, SnapResult, SnapSource};
     use ph2d_vec_render::GuideKind;
 

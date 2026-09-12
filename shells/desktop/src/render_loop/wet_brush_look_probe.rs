@@ -9,7 +9,7 @@
 //!
 //! Escreve um PNG por raio em `PH2D_WET_LOOK_DIR`. Diagnóstico, `#[ignore]`d.
 
-use ph2d_editor::tool::{CanvasPaintTool, CanvasPointer, PointerPhase, RasterEditTool, Tool};
+use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PointerPhase, RasterEditTool, Tool};
 use ph2d_tool_painter::{PaintMedia, PainterTool};
 
 fn cp(pos: [f32; 2], phase: PointerPhase) -> CanvasPointer {

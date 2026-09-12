@@ -124,7 +124,9 @@ pub fn motion_autofix_smoke_dead_branch(
         (sw, out)
     };
     cx.motion.sinks.push(out);
-    let _ = cx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
+    let _ = cx
+        .tools
+        .set_active(&ph2d_editor_core::ToolId::new("motion"));
     ph2d_panel_motion_graph::request_graph_selection(vec![sw.0]);
 
     let dead = ph2d_motion_diagnose::diagnose(&cx.motion.doc.graph, &cx.motion.registry)

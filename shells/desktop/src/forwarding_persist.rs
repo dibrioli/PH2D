@@ -14,10 +14,10 @@
 //! 4. escrever é **best-effort**: falhar grava um log e nunca mata o frame.
 
 /// Save the picker's named palettes to `~/.ph2d/palettes.txt` when they changed since the last call.
-pub(super) fn palettes_if_changed(hero: &ph2d_editor::HeroScreen) {
+pub(super) fn palettes_if_changed(hero: &ph2d_editor_core::HeroScreen) {
     let Some(set) = hero
         .store
-        .blender_palette_set(ph2d_editor::ids::INSP_BLENDER_PICKER)
+        .blender_palette_set(ph2d_editor_core::ids::INSP_BLENDER_PICKER)
     else {
         return;
     };
@@ -45,7 +45,7 @@ pub(super) fn palettes_if_changed(hero: &ph2d_editor::HeroScreen) {
 ///
 /// ⚠️ **O espelho anda mesmo quando a escrita falha.** Andasse só no sucesso, um disco cheio faria
 /// disto uma tentativa de escrita por evento de ponteiro, para sempre.
-pub(super) fn prefs_if_changed(hero: &ph2d_editor::HeroScreen) {
+pub(super) fn prefs_if_changed(hero: &ph2d_editor_core::HeroScreen) {
     let now = crate::prefs::Prefs {
         character: hero.motion.character(),
         reduced_motion: hero.motion.reduced_motion(),

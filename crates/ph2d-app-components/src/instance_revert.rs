@@ -181,9 +181,9 @@ pub fn drain_revert_to_master(
     sim: &mut SimWorld,
     echo: &mut MasterEcho,
     entity_bits: u64,
-    toasts: &mut ph2d_editor::ToastQueue,
+    toasts: &mut ph2d_editor_core::ToastQueue,
 ) -> bool {
-    use ph2d_editor::Toast;
+    use ph2d_editor_core::Toast;
     match revert_all_overrides(sim, echo, Entity::from_bits(entity_bits)) {
         // ⚠️ *«Não pertence a instância nenhuma»* e *«pertence, e não havia excepção»* são coisas
         // diferentes, e a segunda não é um erro: o artista clicou no sítio certo.

@@ -13,9 +13,9 @@
 //! devolveria o primeiro e o botão pareceria morto.
 
 use ph2d_asset_index::{CatalogId, CatalogTree};
-use ph2d_editor::Toast;
-use ph2d_editor::action_bus::CatalogVerb;
-use ph2d_editor::interaction::drag_payload::DragPayload;
+use ph2d_editor_core::Toast;
+use ph2d_editor_core::action_bus::CatalogVerb;
+use ph2d_editor_core::interaction::drag_payload::DragPayload;
 
 /// O nome com que um catálogo nasce.
 const BASE: &str = "Catalog";
@@ -51,7 +51,7 @@ fn free_path(tree: &CatalogTree, parent: Option<CatalogId>) -> String {
 pub(crate) fn drain(
     verb: &CatalogVerb,
     tree: &mut CatalogTree,
-    toasts: &mut ph2d_editor::ToastQueue,
+    toasts: &mut ph2d_editor_core::ToastQueue,
 ) -> bool {
     match verb {
         CatalogVerb::New { parent } => {

@@ -9,7 +9,7 @@
 
 use crate::painter_preview_handoff_tests::app_frame;
 use crate::painter_preview_pipeline_tests::{cp, impasto_tool};
-use ph2d_editor::tool::{CanvasPaintTool, PointerPhase};
+use ph2d_editor_core::tool::{CanvasPaintTool, PointerPhase};
 use ph2d_preview_slot::PreviewGpu as PainterPreviewGpu;
 use ph2d_tool_painter::PainterTool;
 
@@ -56,7 +56,7 @@ fn measure_the_sculpted_stroke_on_both_producers() {
         );
         let mut t = impasto_tool(size);
         let (mut session, mut preview, mut toasts) =
-            (None, None, ph2d_editor::toast::ToastQueue::default());
+            (None, None, ph2d_editor_core::toast::ToastQueue::default());
         let mut preview_gpu: Option<PainterPreviewGpu> = None;
         let mid = (size / 2) as f32;
         t.on_canvas_pointer(cp([60.0, mid], PointerPhase::Down));
@@ -105,7 +105,7 @@ fn measure_the_masked_stroke_on_the_gpu_producer() {
         return;
     };
     fn per_move(gpu: &ph2d_gpu::GpuContext, size: u32) -> (f64, bool) {
-        use ph2d_editor::tool::RasterEditTool;
+        use ph2d_editor_core::tool::RasterEditTool;
         let mut renderer = ph2d_render::SpriteRenderer::new(
             gpu.clone(),
             ph2d_render::GameRt::FORMAT,
@@ -117,7 +117,7 @@ fn measure_the_masked_stroke_on_the_gpu_producer() {
         t.set_brush_size_px(16.0);
         t.add_mask_to_active().expect("a mask on the active layer");
         let (mut session, mut preview, mut toasts) =
-            (None, None, ph2d_editor::toast::ToastQueue::default());
+            (None, None, ph2d_editor_core::toast::ToastQueue::default());
         let mut preview_gpu: Option<PainterPreviewGpu> = None;
         let mid = (size / 2) as f32;
         t.on_canvas_pointer(cp([40.0, mid], PointerPhase::Down));

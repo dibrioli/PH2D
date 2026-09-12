@@ -21,7 +21,7 @@
 use std::cell::Cell;
 
 use crate::{App, Transform};
-use ph2d_editor::tool::RasterEditTool;
+use ph2d_editor_core::tool::RasterEditTool;
 
 thread_local! {
     /// Last cursor screen position while the protection brush is armed —
@@ -139,7 +139,7 @@ impl App {
         let bgremoval_active = gfx
             .tools
             .active()
-            .map(|t| t.id() == ph2d_editor::ToolId::new("bgremoval"))
+            .map(|t| t.id() == ph2d_editor_core::ToolId::new("bgremoval"))
             .unwrap_or(false);
         if !bgremoval_active {
             return false;
@@ -237,7 +237,7 @@ impl App {
         let bgremoval_active = gfx
             .tools
             .active()
-            .map(|t| t.id() == ph2d_editor::ToolId::new("bgremoval"))
+            .map(|t| t.id() == ph2d_editor_core::ToolId::new("bgremoval"))
             .unwrap_or(false);
         if !bgremoval_active {
             return false;

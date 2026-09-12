@@ -43,7 +43,7 @@
 //! ([`Sculpt3dScene::to_view`]).
 
 use super::Sculpt3dScene;
-use ph2d_editor::zones::Rect as EditorRect;
+use ph2d_editor_core::zones::Rect as EditorRect;
 use ph2d_mesh_render::{Camera3d, ScreenRect};
 use ph2d_viewport3d::layout::Split;
 use ph2d_viewport3d::views::Standard;
@@ -95,7 +95,7 @@ pub(crate) struct Janela {
     /// JANELA** — e por isso a peça era desenhada por baixo dos painéis e das
     /// réguas, o mesmo defeito que o Enio reportou ao módulo vizinho em 31/08.
     /// O tamanho da vista passa a ser DERIVADO ([`Sculpt3dScene::viewport`]).
-    pub(super) canvas: Option<ph2d_editor::zones::Rect>,
+    pub(super) canvas: Option<ph2d_editor_core::zones::Rect>,
     /// ⭐ **ONDE O GIZMO DE NAVEGAÇÃO MORA** — a área do canvas e a parte dela
     /// que a moldura do app não tapa, publicadas pelo desenho.
     ///
@@ -103,7 +103,7 @@ pub(crate) struct Janela {
     /// o ponteiro corre fora do quadro e não conhece nem o layout nem os
     /// painéis que estão abertos. `None` até o primeiro desenho, e aí o gizmo
     /// simplesmente não recebe gesto nenhum.
-    pub(super) nav_safe: Option<ph2d_editor::zones::Rect>,
+    pub(super) nav_safe: Option<ph2d_editor_core::zones::Rect>,
     /// A bola sob o cursor no último quadro — só realce.
     pub(super) nav_hot: Option<ph2d_viewport3d::views::Standard>,
     /// O arrasto em curso no gizmo de navegação, se houver.

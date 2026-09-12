@@ -70,7 +70,7 @@ fn the_chain_is_gated_on_the_pointer_being_over_the_panel() {
          o Delete do traco do Flip, do no' de curva, da figura do Painter e da key da timeline"
     );
     assert!(
-        CHAIN.contains("ph2d_editor::ids::HIER_PANEL"),
+        CHAIN.contains("ph2d_editor_core::ids::HIER_PANEL"),
         "a area deixou de ser a do painel da Hierarquia"
     );
     // ⚠️ E o campo de texto FOCADO fica com as teclas: o rename de uma linha vive dentro deste

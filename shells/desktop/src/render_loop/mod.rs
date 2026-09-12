@@ -209,10 +209,10 @@ pub(crate) use ph2d_app_vec::vector_bridge;
 
 use crate::*;
 
-use ph2d_editor::interaction::WidgetEvent;
-use ph2d_editor::paint::PaintCtx;
-use ph2d_editor::zones::Rect as EditorRect;
-use ph2d_editor::{Layout as EditorLayout, RequestedSpriteStrategy, Toast, paint_hero_screen};
+use ph2d_editor_core::interaction::WidgetEvent;
+use ph2d_editor_core::paint::PaintCtx;
+use ph2d_editor_core::zones::Rect as EditorRect;
+use ph2d_editor_core::{Layout as EditorLayout, RequestedSpriteStrategy, Toast, paint_hero_screen};
 use std::time::Instant;
 
 thread_local! {
@@ -1150,7 +1150,7 @@ impl crate::App {
         // pipeline drain below picks it up.
         if let Some(hero) = hero_screen.as_mut() {
             let tick_events: Vec<WidgetEvent> =
-                ph2d_editor::dispatch_tick(hero_arena, &mut hero.store, Self::timestamp_ns())
+                ph2d_editor_core::dispatch_tick(hero_arena, &mut hero.store, Self::timestamp_ns())
                     .to_vec();
             for e in tick_events {
                 let _ = hero.apply_event(e);
@@ -1178,8 +1178,8 @@ impl crate::App {
                 *next_import_cell = next_import_cell.saturating_add(1);
                 hero.gizmo.replace_selection(Some(bits));
                 hero.bus
-                    .push(ph2d_editor::action_bus::EditorAction::SetViewFocus {
-                        kind: ph2d_editor::ViewFocusKind::Selected,
+                    .push(ph2d_editor_core::action_bus::EditorAction::SetViewFocus {
+                        kind: ph2d_editor_core::ViewFocusKind::Selected,
                     });
                 toasts.push(Toast::success(
                     "Impasto smoke: pick the Painter tool and drag".to_string(),
@@ -1206,8 +1206,8 @@ impl crate::App {
                 *next_import_cell = next_import_cell.saturating_add(1);
                 hero.gizmo.replace_selection(Some(bits));
                 hero.bus
-                    .push(ph2d_editor::action_bus::EditorAction::SetViewFocus {
-                        kind: ph2d_editor::ViewFocusKind::Selected,
+                    .push(ph2d_editor_core::action_bus::EditorAction::SetViewFocus {
+                        kind: ph2d_editor_core::ViewFocusKind::Selected,
                     });
                 toasts.push(Toast::success(
                     "Substrate smoke: Painter -> secao Paper -> suba o Relief".to_string(),
@@ -1234,8 +1234,8 @@ impl crate::App {
                 *next_import_cell = next_import_cell.saturating_add(1);
                 hero.gizmo.replace_selection(Some(bits));
                 hero.bus
-                    .push(ph2d_editor::action_bus::EditorAction::SetViewFocus {
-                        kind: ph2d_editor::ViewFocusKind::Selected,
+                    .push(ph2d_editor_core::action_bus::EditorAction::SetViewFocus {
+                        kind: ph2d_editor_core::ViewFocusKind::Selected,
                     });
                 toasts.push(Toast::success(
                     "Line smoke: Painter -> card Line -> dropdown Type".to_string(),
@@ -1271,8 +1271,8 @@ impl crate::App {
                 *next_import_cell = next_import_cell.saturating_add(1);
                 hero.gizmo.replace_selection(Some(bits));
                 hero.bus
-                    .push(ph2d_editor::action_bus::EditorAction::SetViewFocus {
-                        kind: ph2d_editor::ViewFocusKind::Selected,
+                    .push(ph2d_editor_core::action_bus::EditorAction::SetViewFocus {
+                        kind: ph2d_editor_core::ViewFocusKind::Selected,
                     });
                 toasts.push(Toast::success(
                     "Sculpt3d: esculpa, aperte D ate ler LUZ, e pinte".to_string(),
@@ -1352,7 +1352,7 @@ impl crate::App {
                 // então o composite atravessa exato, sem um segundo cálculo de luminância.
                 let live = selected.and_then(|bits| {
                     let painter = tools
-                        .tool_by_id_mut(&ph2d_editor::ToolId::new("painter"))?
+                        .tool_by_id_mut(&ph2d_editor_core::ToolId::new("painter"))?
                         .as_any_mut()
                         .downcast_mut::<ph2d_tool_painter::PainterTool>()?;
                     if painter.needs_document_bind(bits) {
@@ -1454,8 +1454,8 @@ impl crate::App {
                 *next_import_cell = next_import_cell.saturating_add(1);
                 hero.gizmo.replace_selection(Some(bits));
                 hero.bus
-                    .push(ph2d_editor::action_bus::EditorAction::SetViewFocus {
-                        kind: ph2d_editor::ViewFocusKind::Selected,
+                    .push(ph2d_editor_core::action_bus::EditorAction::SetViewFocus {
+                        kind: ph2d_editor_core::ViewFocusKind::Selected,
                     });
                 toasts.push(Toast::success(
                     "Mask smoke: paint some art, then the MASK chip — and SCRUB".to_string(),
@@ -1487,8 +1487,8 @@ impl crate::App {
             ) {
                 hero.gizmo.replace_selection(Some(sheet));
                 hero.bus
-                    .push(ph2d_editor::action_bus::EditorAction::SetViewFocus {
-                        kind: ph2d_editor::ViewFocusKind::Selected,
+                    .push(ph2d_editor_core::action_bus::EditorAction::SetViewFocus {
+                        kind: ph2d_editor_core::ViewFocusKind::Selected,
                     });
                 toasts.push(Toast::success(format!(
                     "Sheet smoke: {n} pieces packed into one object — move it, resize it, hide it"
@@ -1508,7 +1508,7 @@ impl crate::App {
             // `set_active` devolve `false` quando o id não está registado, e um `let _ =` com o
             // latch já queimado seria uma falha silenciosa e DEFINITIVA na sessão. Os irmãos do
             // Flip já o guardavam (`flip_hardness_smoke.rs`); este não.
-            let ok = tools.set_active(&ph2d_editor::ToolId::new("motion"));
+            let ok = tools.set_active(&ph2d_editor_core::ToolId::new("motion"));
             if ok {
                 self.title_dirty = true;
             } else {
@@ -1534,7 +1534,7 @@ impl crate::App {
                 motion,
             )
         {
-            let _ = tools.set_active(&ph2d_editor::ToolId::new("motion"));
+            let _ = tools.set_active(&ph2d_editor_core::ToolId::new("motion"));
             self.title_dirty = true;
         }
 
@@ -1555,8 +1555,8 @@ impl crate::App {
         {
             hero.gizmo.replace_selection(Some(sliced));
             hero.bus
-                .push(ph2d_editor::action_bus::EditorAction::SetViewFocus {
-                    kind: ph2d_editor::ViewFocusKind::Selected,
+                .push(ph2d_editor_core::action_bus::EditorAction::SetViewFocus {
+                    kind: ph2d_editor_core::ViewFocusKind::Selected,
                 });
             toasts.push(Toast::success(
                 "9-Slice smoke: LEFT is plain (corners stretch), RIGHT is sliced — see the \
@@ -1583,8 +1583,8 @@ impl crate::App {
         {
             hero.gizmo.replace_selection(Some(bits));
             hero.bus
-                .push(ph2d_editor::action_bus::EditorAction::SetViewFocus {
-                    kind: ph2d_editor::ViewFocusKind::Selected,
+                .push(ph2d_editor_core::action_bus::EditorAction::SetViewFocus {
+                    kind: ph2d_editor_core::ViewFocusKind::Selected,
                 });
             toasts.push(Toast::success(
                 "Anchors smoke: open the Sockets / Anchors section to see the three marks"
@@ -1610,8 +1610,8 @@ impl crate::App {
         {
             hero.gizmo.replace_selection(Some(bits));
             hero.bus
-                .push(ph2d_editor::action_bus::EditorAction::SetViewFocus {
-                    kind: ph2d_editor::ViewFocusKind::Selected,
+                .push(ph2d_editor_core::action_bus::EditorAction::SetViewFocus {
+                    kind: ph2d_editor_core::ViewFocusKind::Selected,
                 });
             toasts.push(Toast::success(
                 "Mount smoke: open Sockets / Anchors, pick hand_r and drag it — the red square \
@@ -1638,8 +1638,8 @@ impl crate::App {
         {
             hero.gizmo.replace_selection(Some(bits));
             hero.bus
-                .push(ph2d_editor::action_bus::EditorAction::SetViewFocus {
-                    kind: ph2d_editor::ViewFocusKind::Selected,
+                .push(ph2d_editor_core::action_bus::EditorAction::SetViewFocus {
+                    kind: ph2d_editor_core::ViewFocusKind::Selected,
                 });
             toasts.push(Toast::success(
                 "Animation smoke: open the Animation section — it is playing walk (silent, even \
@@ -1670,8 +1670,8 @@ impl crate::App {
             if bits != 0 {
                 hero.gizmo.replace_selection(Some(bits));
                 hero.bus
-                    .push(ph2d_editor::action_bus::EditorAction::SetViewFocus {
-                        kind: ph2d_editor::ViewFocusKind::Selected,
+                    .push(ph2d_editor_core::action_bus::EditorAction::SetViewFocus {
+                        kind: ph2d_editor_core::ViewFocusKind::Selected,
                     });
             }
             for (i, line) in lines.into_iter().enumerate() {
@@ -1703,8 +1703,8 @@ impl crate::App {
             {
                 hero.gizmo.replace_selection(Some(bits));
                 hero.bus
-                    .push(ph2d_editor::action_bus::EditorAction::SetViewFocus {
-                        kind: ph2d_editor::ViewFocusKind::All,
+                    .push(ph2d_editor_core::action_bus::EditorAction::SetViewFocus {
+                        kind: ph2d_editor_core::ViewFocusKind::All,
                     });
                 toasts.push(Toast::success(
                     "Dither smoke: one gradient, two descents — the top half has bands, \
@@ -1728,8 +1728,8 @@ impl crate::App {
             {
                 hero.gizmo.replace_selection(Some(bits));
                 hero.bus
-                    .push(ph2d_editor::action_bus::EditorAction::SetViewFocus {
-                        kind: ph2d_editor::ViewFocusKind::All,
+                    .push(ph2d_editor_core::action_bus::EditorAction::SetViewFocus {
+                        kind: ph2d_editor_core::ViewFocusKind::All,
                     });
                 toasts.push(Toast::success(
                     "Emissive smoke: same lamp twice — only the right one emits. \
@@ -1760,8 +1760,8 @@ impl crate::App {
                 *next_import_cell = next_import_cell.saturating_add(1);
                 hero.gizmo.replace_selection(Some(bits));
                 hero.bus
-                    .push(ph2d_editor::action_bus::EditorAction::SetViewFocus {
-                        kind: ph2d_editor::ViewFocusKind::Selected,
+                    .push(ph2d_editor_core::action_bus::EditorAction::SetViewFocus {
+                        kind: ph2d_editor_core::ViewFocusKind::Selected,
                     });
                 toasts.push(Toast::success(
                     "Taper smoke: brush panel -> TAPER, under the Falloff".to_string(),
@@ -1788,8 +1788,8 @@ impl crate::App {
                 *next_import_cell = next_import_cell.saturating_add(1);
                 hero.gizmo.replace_selection(Some(bits));
                 hero.bus
-                    .push(ph2d_editor::action_bus::EditorAction::SetViewFocus {
-                        kind: ph2d_editor::ViewFocusKind::Selected,
+                    .push(ph2d_editor_core::action_bus::EditorAction::SetViewFocus {
+                        kind: ph2d_editor_core::ViewFocusKind::Selected,
                     });
                 toasts.push(Toast::success(
                     "Wet Paint smoke: pick the Painter tool and drag".to_string(),
@@ -1819,8 +1819,8 @@ impl crate::App {
                     *next_import_cell = next_import_cell.saturating_add(1);
                     hero.gizmo.replace_selection(Some(bits));
                     hero.bus
-                        .push(ph2d_editor::action_bus::EditorAction::SetViewFocus {
-                            kind: ph2d_editor::ViewFocusKind::Selected,
+                        .push(ph2d_editor_core::action_bus::EditorAction::SetViewFocus {
+                            kind: ph2d_editor_core::ViewFocusKind::Selected,
                         });
                     toasts.push(Toast::success(format!("New canvas · {label} ({size}²)")));
                 }
@@ -2201,7 +2201,7 @@ impl crate::App {
         let ppm = hero_screen
             .as_ref()
             .map(|h| h.project.pixels_per_meter)
-            .unwrap_or(ph2d_editor::project::DEFAULT_PIXELS_PER_METER);
+            .unwrap_or(ph2d_editor_core::project::DEFAULT_PIXELS_PER_METER);
         // W3.T3.11: project-default sampling for all-Inherit sprites, from the
         // project image filter (PixelArt → Nearest, Smooth → Linear); repeat
         // defaults to clamp (Disabled).
@@ -2957,7 +2957,7 @@ impl crate::App {
                 // nos modos de nó: uma caixa sobre a apresentação é um ladrão de cliques.
                 (!tools
                     .active()
-                    .is_some_and(|t| t.id() == ph2d_editor::ToolId::new("vector"))
+                    .is_some_and(|t| t.id() == ph2d_editor_core::ToolId::new("vector"))
                     || self.vec_draw_config.mode == ph2d_tool_vector::DrawMode::Select)
                     && !self.ui_preview.is_on(),
                 // As poses que o último desenho derivou — sem elas a caixa do gizmo de um filho
@@ -2968,7 +2968,7 @@ impl crate::App {
                 // dela — em Draw/Erase ele comeria o clique do canvas (ADR-0112 parity).
                 !tools
                     .active()
-                    .is_some_and(|t| t.id() == ph2d_editor::ToolId::new("flip"))
+                    .is_some_and(|t| t.id() == ph2d_editor_core::ToolId::new("flip"))
                     || matches!(
                         self.flip_state.style.map(|s| s.mode),
                         Some(ph2d_tool_flip::FlipMode::Select)
@@ -3116,7 +3116,7 @@ impl crate::App {
                 &mut self.prefab_stage_pending,
                 &mut self.prefab_stage,
                 hero,
-                ph2d_editor::zones::Rect::new(
+                ph2d_editor_core::zones::Rect::new(
                     0.0,
                     0.0,
                     window_size.width as f32,
@@ -3136,7 +3136,7 @@ impl crate::App {
             // seleção de traço do Edit continua dona do canvas.
             let flip_edit_mode = tools
                 .active()
-                .is_some_and(|t| t.id() == ph2d_editor::ToolId::new("flip"))
+                .is_some_and(|t| t.id() == ph2d_editor_core::ToolId::new("flip"))
                 && matches!(
                     self.flip_state.style.map(|s| s.mode),
                     Some(ph2d_tool_flip::FlipMode::Edit)
@@ -3181,7 +3181,7 @@ impl crate::App {
             // do `flip_edit_mode` acima.
             let motion_tool_active = tools
                 .active()
-                .is_some_and(|t| t.id() == ph2d_editor::ToolId::new("motion"));
+                .is_some_and(|t| t.id() == ph2d_editor_core::ToolId::new("motion"));
             // As dims da CENA (o sub-retângulo do split, `CenterSplit::scene_viewport`) — o
             // gizmo é pintado e arrastado com ELAS, casando com o `set_viewport` do render
             // (present.rs). É o fix do drift crônico: sob o split a cena renderiza na banda
@@ -3238,7 +3238,8 @@ impl crate::App {
             let mut visibility_toggle_row: Option<NodeId> = None;
             let mut lock_toggle_row: Option<NodeId> = None;
             let mut group_toggle_row: Option<NodeId> = None;
-            let mut reparent_intent: Option<ph2d_editor::screens::hero::HierReparentIntent> = None;
+            let mut reparent_intent: Option<ph2d_editor_core::screens::hero::HierReparentIntent> =
+                None;
             let mut duplicate_row: Option<NodeId> = None;
             // Set by `hierarchy::dispatch` to `(source_bits, new_bits)` when a sprite is duplicated, so
             // we can fork the copy onto its own texture (independent object) post-dispatch.
@@ -3272,10 +3273,10 @@ impl crate::App {
             // ⭐⭐ Os verbos de CATÁLOGO (wave A3). ⚠️ **Um `Vec`, e não um slot único**: ao
             // contrário dos verbos de instância, dois destes PODEM chegar no mesmo quadro sem
             // conflito (criar e escolher, por exemplo) — e eles não competem por um sujeito.
-            let mut catalog_verbs: Vec<ph2d_editor::action_bus::CatalogVerb> = Vec::new();
+            let mut catalog_verbs: Vec<ph2d_editor_core::action_bus::CatalogVerb> = Vec::new();
             let mut asset_card_verb: Option<(
-                ph2d_editor::interaction::drag_payload::DragPayload,
-                ph2d_editor::action_bus::AssetCardAction,
+                ph2d_editor_core::interaction::drag_payload::DragPayload,
+                ph2d_editor_core::action_bus::AssetCardAction,
             )> = None;
             let mut delete_row: Option<NodeId> = None;
             // Enio 2026-05-27: right-click → Merge Sprites in Hierarchy.
@@ -3309,7 +3310,7 @@ impl crate::App {
             let mut hierarchy_select_intent: Option<hierarchy::HierarchySelectIntent> = None;
             let mut rename_seed_row: Option<NodeId> = None;
             let mut rename_commit: Option<(NodeId, String)> = None;
-            let mut view_focus_kind: Option<ph2d_editor::ViewFocusKind> = None;
+            let mut view_focus_kind: Option<ph2d_editor_core::ViewFocusKind> = None;
             let mut reimport_entity: Option<u64> = None;
             // O pedido de troca de PRECISAO (plano `docs/Sprite_projeto/18` W5). `Option` e nao
             // `Vec`: o par so' existe com uma sprite selecionada.
@@ -3613,11 +3614,11 @@ impl crate::App {
             // Slider de parâmetro de forma (Sides/Points/Inner/Radius/Turns/Degrees):
             // `(id, track 0..1)`. A tool já o consome como default de desenho; aqui ele
             // também edita a forma VIVA selecionada (Live Shape).
-            let mut pending_vec_shape_param: Option<(ph2d_editor::NodeId, f64)> = None;
+            let mut pending_vec_shape_param: Option<(ph2d_editor_core::NodeId, f64)> = None;
             // Campo do CONECTOR (Route / Jetty / Spread): `(id, valor)`. Não é Style da tool
             // — é a RELAÇÃO, que mora no `VecConnector` de cada conector SELECIONADO (todos
             // eles: é assim que se calibra o diagrama inteiro de uma vez).
-            let mut pending_vec_connector: Option<(ph2d_editor::NodeId, f64)> = None;
+            let mut pending_vec_connector: Option<(ph2d_editor_core::NodeId, f64)> = None;
             // Text Size slider (world units) — updates the active session + the
             // size a new session starts at.
             let mut pending_vec_text_size: Option<f64> = None;
@@ -3642,29 +3643,29 @@ impl crate::App {
             let mut pending_vec_font_import = false;
             // "Convert to Curves" — bake the selected live shape(s) into raw paths.
             let mut pending_vec_convert = false;
-            let mut transform_edit: Option<ph2d_editor::InspectorTransformInfo> = None;
+            let mut transform_edit: Option<ph2d_editor_core::InspectorTransformInfo> = None;
             let mut visibility_edits: Vec<(u64, bool)> = Vec::new();
             let mut sprite_source_change: Option<(u64, RequestedSpriteStrategy)> = None;
             // Sprite field edits (flip/region/sheet/tint/…) — a Vec so a
             // bulk edit that touches several fields in one frame all apply.
-            let mut sprite_edits: Vec<(u64, ph2d_editor::SpriteFieldEdit)> = Vec::new();
+            let mut sprite_edits: Vec<(u64, ph2d_editor_core::SpriteFieldEdit)> = Vec::new();
             // §7 ordering edits (W3) — optional-component edits, fanned out
             // to the selection like sprite edits.
-            let mut ordering_edits: Vec<(u64, ph2d_editor::OrderingFieldEdit)> = Vec::new();
-            let mut sampling_edits: Vec<(u64, ph2d_editor::SamplingFieldEdit)> = Vec::new();
-            let mut blend_edits: Vec<(u64, ph2d_editor::BlendFieldEdit)> = Vec::new();
-            let mut slice_edits: Vec<(u64, ph2d_editor::SliceFieldEdit)> = Vec::new();
-            let mut anchor_edits: Vec<(u64, ph2d_editor::AnchorFieldEdit)> = Vec::new();
-            let mut anim_edits: Vec<(u64, ph2d_editor::AnimFieldEdit)> = Vec::new();
-            let mut timer_edits: Vec<(u64, ph2d_editor::TimerFieldEdit)> = Vec::new();
-            let mut audio_edits: Vec<(u64, ph2d_editor::AudioFieldEdit)> = Vec::new();
-            let mut camera_edits: Vec<(u64, ph2d_editor::CameraFieldEdit)> = Vec::new();
+            let mut ordering_edits: Vec<(u64, ph2d_editor_core::OrderingFieldEdit)> = Vec::new();
+            let mut sampling_edits: Vec<(u64, ph2d_editor_core::SamplingFieldEdit)> = Vec::new();
+            let mut blend_edits: Vec<(u64, ph2d_editor_core::BlendFieldEdit)> = Vec::new();
+            let mut slice_edits: Vec<(u64, ph2d_editor_core::SliceFieldEdit)> = Vec::new();
+            let mut anchor_edits: Vec<(u64, ph2d_editor_core::AnchorFieldEdit)> = Vec::new();
+            let mut anim_edits: Vec<(u64, ph2d_editor_core::AnimFieldEdit)> = Vec::new();
+            let mut timer_edits: Vec<(u64, ph2d_editor_core::TimerFieldEdit)> = Vec::new();
+            let mut audio_edits: Vec<(u64, ph2d_editor_core::AudioFieldEdit)> = Vec::new();
+            let mut camera_edits: Vec<(u64, ph2d_editor_core::CameraFieldEdit)> = Vec::new();
             // ⚠️ **`inspector_queue_dirty` e não `audio_commit`**: desde a secção CAMERA (TOP-20
             // #7) esta bandeira serve DUAS secções, e o nome antigo passou a descrever metade do
             // que ela significa. *Um nome que já não cobre a população dele mente na próxima
             // leitura.*
             let mut inspector_queue_dirty = false;
-            let mut action_edits: Vec<(u64, ph2d_editor::ActionFieldEdit)> = Vec::new();
+            let mut action_edits: Vec<(u64, ph2d_editor_core::ActionFieldEdit)> = Vec::new();
             // ⭐ O `+` do Inspector (F3): quem pediu a paleta neste quadro.
             let mut add_component_for: Option<u64> = None;
             // ⭐ A troca de variante pedida neste quadro: `(raiz da instância, StableId do mestre)`.
@@ -3678,16 +3679,16 @@ impl crate::App {
             let mut open_asset_browser = false;
             // ⭐ O pedido de renomear o VALOR de uma propriedade — `(receita, chave, valor)`.
             // ⭐ A entidade cujo campo de nome fechou neste quadro.
-            let mut physics_edits: Vec<(u64, ph2d_editor::PhysicsFieldEdit)> = Vec::new();
+            let mut physics_edits: Vec<(u64, ph2d_editor_core::PhysicsFieldEdit)> = Vec::new();
             // §12 joints (W3). Kept out of `inspector_commits::dispatch`: that
             // signature is already the length its own doc-comment warns about,
             // and these two are applied in one short block below.
-            let mut joint_edits: Vec<(u64, ph2d_editor::JointFieldEdit)> = Vec::new();
-            let mut wheel_edits: Vec<(u64, ph2d_editor::WheelFieldEdit)> = Vec::new();
+            let mut joint_edits: Vec<(u64, ph2d_editor_core::JointFieldEdit)> = Vec::new();
+            let mut wheel_edits: Vec<(u64, ph2d_editor_core::WheelFieldEdit)> = Vec::new();
             // §14 Platform Player (W5). Sem fan-out, e pela razão da §12/§13: a
             // seção descreve UM personagem, o selecionado — espalhar um `Add`
             // pela seleção criaria N players num clique que pediu um.
-            let mut player_edits: Vec<(u64, ph2d_editor::PlayerFieldEdit)> = Vec::new();
+            let mut player_edits: Vec<(u64, ph2d_editor_core::PlayerFieldEdit)> = Vec::new();
             // The pair to join, at most one per frame — it is a click, not a
             // per-entity edit.
             let mut bake_request: Option<Vec<u64>> = None;
@@ -3699,17 +3700,18 @@ impl crate::App {
             // W-Rig: um clique em *Rig* — booleano pelo mesmo motivo do
             // `join_chain`, porque a SELEÇÃO já diz sobre o que ele age.
             let mut rig_now = false;
-            let mut visibility_section_edits: Vec<(u64, ph2d_editor::VisibilityFieldEdit)> =
+            let mut visibility_section_edits: Vec<(u64, ph2d_editor_core::VisibilityFieldEdit)> =
                 Vec::new();
-            let mut name_edit: Option<ph2d_editor::InspectorNameInfo> = None;
-            let mut signal_edit: Option<ph2d_editor::InspectorNameInfo> = None;
-            let mut signal_leave_edit: Option<ph2d_editor::InspectorNameInfo> = None;
-            let mut bgremoval_leftover: Vec<ph2d_editor::action_bus::EditorAction> = Vec::new();
+            let mut name_edit: Option<ph2d_editor_core::InspectorNameInfo> = None;
+            let mut signal_edit: Option<ph2d_editor_core::InspectorNameInfo> = None;
+            let mut signal_leave_edit: Option<ph2d_editor_core::InspectorNameInfo> = None;
+            let mut bgremoval_leftover: Vec<ph2d_editor_core::action_bus::EditorAction> =
+                Vec::new();
             // Painter Apply leftover — same shape as bgremoval (drained
             // back into the bus so `image_edit::dispatch`'s
             // `painter_active` gate runs AFTER any same-frame
             // ActivateTool resolution). Day-7 ship.
-            let mut painter_leftover: Vec<ph2d_editor::action_bus::EditorAction> = Vec::new();
+            let mut painter_leftover: Vec<ph2d_editor_core::action_bus::EditorAction> = Vec::new();
             // BulkSelect (T2.0): the live selection (primary + extras),
             // captured before the drain so an Inspector sprite edit can
             // fan out to every selected sprite. Only allocated for a
@@ -3721,7 +3723,7 @@ impl crate::App {
                 Vec::new()
             };
             for action in hero.bus.drain() {
-                use ph2d_editor::action_bus::EditorAction;
+                use ph2d_editor_core::action_bus::EditorAction;
                 match action {
                     // ADR-0040 TG-A: generic activation. Per-tool flags
                     // preserve the existing mode_on gating / activation
@@ -3741,10 +3743,11 @@ impl crate::App {
                         // not Style edits — capture them (by ref, PanelEvent isn't
                         // Copy) to apply after the drain; still forward to the tool
                         // (which ignores those ids) so mode/width/etc. flow.
-                        if let ph2d_editor::tool::PanelEvent::Click(id) = &ev {
+                        if let ph2d_editor_core::tool::PanelEvent::Click(id) = &ev {
                             // ⭐ **A pergunta corre ANTES da cadeia** e é derivada das tabelas: um
                             // controlo novo da seção Skeleton entra aqui sem ninguém se lembrar.
-                            pending_bone_needs_focus |= ph2d_editor::ids::needs_focused_bone(*id);
+                            pending_bone_needs_focus |=
+                                ph2d_editor_core::ids::needs_focused_bone(*id);
                             if let Some(j) = crate::vec_paint_stack::join_code_for_id(*id) {
                                 // ⭐ A QUINA do offset de CAD (v22) — um clique, não um valor.
                                 pending_paint_join = Some(j);
@@ -3752,51 +3755,52 @@ impl crate::App {
                                 // ⭐ A PILHA DE APARÊNCIA: o resolvedor é PURO e vive ao lado dos
                                 // verbos, como o `vec_rotate_for_id` — aqui só se captura.
                                 pending_paint_verb = Some(v);
-                            } else if *id == ph2d_editor::ids::VECTOR_BLEND_RUN {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_BLEND_RUN {
                                 // ADR-0128: cria o Blend Object VIVO da seleção (não o destrutivo).
                                 pending_create_blend = true;
-                            } else if *id == ph2d_editor::ids::VECTOR_BLEND_RESET_SPINE {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_BLEND_RESET_SPINE {
                                 // ADR-0128 C2b: volta o spine editado ao automático.
                                 pending_reset_spine = true;
-                            } else if *id == ph2d_editor::ids::VECTOR_BLEND_EXPAND {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_BLEND_EXPAND {
                                 // ADR-0128 D: materializa os passos e descarta o objeto vivo.
                                 pending_expand_blend = true;
-                            } else if *id == ph2d_editor::ids::VECTOR_BLEND_RELEASE {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_BLEND_RELEASE {
                                 // ADR-0128 D: desfaz o blend; as fontes ficam.
                                 pending_release_blend = true;
-                            } else if *id == ph2d_editor::ids::VECTOR_MORPH_RUN {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_MORPH_RUN {
                                 // O irmão animável do blend: UMA forma, com o `t` keyável.
                                 pending_create_morph = true;
-                            } else if *id == ph2d_editor::ids::VECTOR_BONE_BIND {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_BONE_BIND {
                                 // ⭐⭐⭐ O ESQUELETO (estudo 42 item 5): prende a seleção aos ossos.
                                 pending_bone_bind = true;
-                            } else if *id == ph2d_editor::ids::VECTOR_BONE_IK_ADD {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_BONE_IK_ADD {
                                 // ⭐⭐⭐ A ÂNCORA: dá ao osso em foco um alvo que a corrente persegue.
                                 pending_ik_add = true;
-                            } else if *id == ph2d_editor::ids::VECTOR_BONE_IK_REMOVE {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_BONE_IK_REMOVE {
                                 pending_ik_remove = true;
-                            } else if *id == ph2d_editor::ids::VECTOR_BONE_LIMIT_ADD {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_BONE_LIMIT_ADD {
                                 // ⭐⭐⭐ O LIMITE DE ÂNGULO: até onde esta junta dobra.
                                 pending_limit_add = true;
-                            } else if *id == ph2d_editor::ids::VECTOR_BONE_LIMIT_REMOVE {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_BONE_LIMIT_REMOVE {
                                 pending_limit_remove = true;
-                            } else if *id == ph2d_editor::ids::VECTOR_BONE_SMART_ADD {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_BONE_SMART_ADD {
                                 // ⭐⭐⭐ O OSSO INTELIGENTE: anexa o controlo VAZIO — quem lhe dá acção é o painel.
                                 pending_smart_add = true;
-                            } else if *id == ph2d_editor::ids::VECTOR_BONE_SMART_REMOVE {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_BONE_SMART_REMOVE {
                                 pending_smart_remove = true;
-                            } else if *id == ph2d_editor::ids::VECTOR_BONE_SMART_PICK {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_BONE_SMART_PICK {
                                 // ⭐⭐⭐ Arma o gesto de duas mãos do ALVO: o clique seguinte, no
                                 // canvas OU na hierarquia, diz de que objecto este controlo trata.
                                 pending_smart_pick = true;
-                            } else if let Some(i) = ph2d_editor::ids::VECTOR_BONE_SMART_CLIP_IDS
-                                .iter()
-                                .position(|x| x == id)
+                            } else if let Some(i) =
+                                ph2d_editor_core::ids::VECTOR_BONE_SMART_CLIP_IDS
+                                    .iter()
+                                    .position(|x| x == id)
                             {
                                 // ⭐⭐⭐ **QUAL acção** — a posição na tabela É o índice do clip, e é
                                 // ela que impede a lista pintada e a lista honrada de divergirem.
                                 pending_smart_clip = Some(i);
-                            } else if let Some(i) = ph2d_editor::ids::VECTOR_BONE_BEND_IDS
+                            } else if let Some(i) = ph2d_editor_core::ids::VECTOR_BONE_BEND_IDS
                                 .iter()
                                 .position(|x| x == id)
                             {
@@ -3805,64 +3809,64 @@ impl crate::App {
                                 // `match` de três braços escritos à mão aqui seria a quinta lista
                                 // escrita à mão desta seção.
                                 pending_ik_bend = ph2d_skeleton::BendSide::ALL.get(i).copied();
-                            } else if *id == ph2d_editor::ids::VECTOR_BONE_EXPAND {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_BONE_EXPAND {
                                 // Solta e fica com a pose de AGORA (o Expand do envelope).
                                 pending_bone_release = Some(crate::skeleton_live::Keep::Deformed);
-                            } else if *id == ph2d_editor::ids::VECTOR_BONE_RELEASE {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_BONE_RELEASE {
                                 // Solta e devolve o que o artista DESENHOU.
                                 pending_bone_release = Some(crate::skeleton_live::Keep::Source);
-                            } else if *id == ph2d_editor::ids::VECTOR_ENVELOPE_RUN {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_ENVELOPE_RUN {
                                 // ADR-0129: envolve a seleção (1..N) num container com gaiola.
                                 pending_create_envelope = true;
-                            } else if *id == ph2d_editor::ids::VECTOR_ENVELOPE_EXPAND {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_ENVELOPE_EXPAND {
                                 // ADR-0129: a deformada vira o desenho; a gaiola morre.
                                 pending_expand_envelope = true;
-                            } else if *id == ph2d_editor::ids::VECTOR_ENVELOPE_RELEASE {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_ENVELOPE_RELEASE {
                                 // ADR-0129: a fonte autorada volta; a gaiola morre.
                                 pending_release_envelope = true;
-                            } else if *id == ph2d_editor::ids::VECTOR_ENVELOPE_PERSPECTIVE {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_ENVELOPE_PERSPECTIVE {
                                 // ADR-0129 Fatia D: a homografia -- lados RETOS.
                                 pending_envelope_kind = Some(ph2d_ecs::EnvelopeKind::Perspective);
-                            } else if *id == ph2d_editor::ids::VECTOR_ENVELOPE_MESH {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_ENVELOPE_MESH {
                                 // ADR-0129 Fatia D: o patch de Coons -- os lados DOBRAM.
                                 pending_envelope_kind = Some(ph2d_ecs::EnvelopeKind::Mesh);
-                            } else if *id == ph2d_editor::ids::VECTOR_ENVELOPE_PINS {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_ENVELOPE_PINS {
                                 // ADR-0129 Fatia E: o puppet warp (MLS-rigid).
                                 pending_envelope_kind = Some(ph2d_ecs::EnvelopeKind::Pins);
-                            } else if *id == ph2d_editor::ids::VECTOR_TEXTPATH_LINK {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_TEXTPATH_LINK {
                                 // Plano 22: prende o texto da seleção à outra forma dela.
                                 pending_textpath = Some(crate::vec_text_ride::TextPathCmd::Link);
-                            } else if *id == ph2d_editor::ids::VECTOR_TEXTPATH_PICK {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_TEXTPATH_PICK {
                                 // Picker: arma; a fonte (o texto em foco) é capturada no drain.
                                 pending_text_pick = true;
-                            } else if *id == ph2d_editor::ids::VECTOR_TEXTPATH_DETACH {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_TEXTPATH_DETACH {
                                 pending_textpath = Some(crate::vec_text_ride::TextPathCmd::Detach);
-                            } else if *id == ph2d_editor::ids::VECTOR_TEXTPATH_FLIP {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_TEXTPATH_FLIP {
                                 pending_textpath =
                                     Some(crate::vec_text_ride::TextPathCmd::Flip(true));
-                            } else if *id == ph2d_editor::ids::VECTOR_TEXTPATH_FLIP_OFF {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_TEXTPATH_FLIP_OFF {
                                 pending_textpath =
                                     Some(crate::vec_text_ride::TextPathCmd::Flip(false));
-                            } else if *id == ph2d_editor::ids::VECTOR_PATTERNPATH_LINK {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_PATTERNPATH_LINK {
                                 pending_patternpath =
                                     Some(crate::pattern_live::PatternPathCmd::Link);
-                            } else if *id == ph2d_editor::ids::VECTOR_PATTERNPATH_PICK {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_PATTERNPATH_PICK {
                                 // Picker: arma; a fonte (o motivo selecionado) é capturada no drain.
                                 pending_pp_pick = true;
-                            } else if *id == ph2d_editor::ids::VECTOR_PATTERNPATH_DETACH {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_PATTERNPATH_DETACH {
                                 pending_patternpath =
                                     Some(crate::pattern_live::PatternPathCmd::Detach);
-                            } else if *id == ph2d_editor::ids::VECTOR_PATTERNPATH_FLIP {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_PATTERNPATH_FLIP {
                                 pending_patternpath =
                                     Some(crate::pattern_live::PatternPathCmd::Flip(true));
-                            } else if *id == ph2d_editor::ids::VECTOR_PATTERNPATH_FLIP_OFF {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_PATTERNPATH_FLIP_OFF {
                                 pending_patternpath =
                                     Some(crate::pattern_live::PatternPathCmd::Flip(false));
-                            } else if *id == ph2d_editor::ids::VECTOR_CONTOUR_ADD {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_CONTOUR_ADD {
                                 pending_contour = Some(crate::contour_live::ContourCmd::Add);
-                            } else if *id == ph2d_editor::ids::VECTOR_CONTOUR_REMOVE {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_CONTOUR_REMOVE {
                                 pending_contour = Some(crate::contour_live::ContourCmd::Remove);
-                            } else if *id == ph2d_editor::ids::VECTOR_CONTOUR_EXPAND {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_CONTOUR_EXPAND {
                                 pending_contour = Some(crate::contour_live::ContourCmd::Expand);
                             } else if let Some(code) = crate::contour_live::join_code_of_id(*id) {
                                 pending_contour_join = Some(code);
@@ -3883,25 +3887,27 @@ impl crate::App {
                                         pending_fx_apply = true;
                                     }
                                 }
-                            } else if *id == ph2d_editor::ids::VECTOR_ENVELOPE_CLEAR_PINS {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_ENVELOPE_CLEAR_PINS {
                                 pending_clear_pins = true;
-                            } else if let Some(i) = (0..ph2d_editor::ids::MAX_ENVELOPE_PRESETS)
-                                .find(|&i| *id == ph2d_editor::ids::vector_envelope_preset_id(i))
+                            } else if let Some(i) = (0..ph2d_editor_core::ids::MAX_ENVELOPE_PRESETS)
+                                .find(|&i| {
+                                    *id == ph2d_editor_core::ids::vector_envelope_preset_id(i)
+                                })
                             {
                                 // ADR-0129 Fatia C: carimba o preset `i` na gaiola.
                                 pending_envelope_preset = Some(i);
-                            } else if let Some(i) = (0..ph2d_editor::ids::MAX_WIDTH_PRESETS)
-                                .find(|&i| *id == ph2d_editor::ids::vector_width_preset_id(i))
+                            } else if let Some(i) = (0..ph2d_editor_core::ids::MAX_WIDTH_PRESETS)
+                                .find(|&i| *id == ph2d_editor_core::ids::vector_width_preset_id(i))
                             {
                                 // W2b: escolhe a FORMA da largura (o catálogo de perfis).
                                 pending_width_preset = Some(i);
-                            } else if *id == ph2d_editor::ids::VECTOR_BOOL_LIVE_OFF
-                                || *id == ph2d_editor::ids::VECTOR_BOOL_LIVE_ON
+                            } else if *id == ph2d_editor_core::ids::VECTOR_BOOL_LIVE_OFF
+                                || *id == ph2d_editor_core::ids::VECTOR_BOOL_LIVE_ON
                             {
                                 // O MODO dos oito botões. Panel-local no valor, mas quem o lê no
                                 // clique de uma das oito é a shell — por isso ele passa por aqui.
                                 ph2d_panel_vector::state::set_bool_live_on(
-                                    *id == ph2d_editor::ids::VECTOR_BOOL_LIVE_ON,
+                                    *id == ph2d_editor_core::ids::VECTOR_BOOL_LIVE_ON,
                                 );
                             } else if let Some(code) = crate::vec_bool_shape::shape_op_for_id(*id) {
                                 // **O VERBO DESTA FORMA.** ⚠️ O mapeamento saiu daqui para uma
@@ -3910,8 +3916,8 @@ impl crate::App {
                                 // nenhum, e foi essa a causa-raiz de os quatro chips shiparem
                                 // sem um unico gate no caminho `id -> componente escrito`.
                                 pending_bool_shape_op = Some(code);
-                            } else if *id == ph2d_editor::ids::VECTOR_FRAME_PANEL_OFF
-                                || *id == ph2d_editor::ids::VECTOR_FRAME_PANEL_ON
+                            } else if *id == ph2d_editor_core::ids::VECTOR_FRAME_PANEL_OFF
+                                || *id == ph2d_editor_core::ids::VECTOR_FRAME_PANEL_ON
                             {
                                 // **O painel AUTORADO** (plano UI/UX W8b.2). ⚠️ Aplicado AQUI, e
                                 // nao por um `pending_*` como os vizinhos: os vizinhos escrevem no
@@ -3921,26 +3927,26 @@ impl crate::App {
                                 // hero para dizer a mesma coisa.
                                 hero.panel_visibility.insert(
                                     ph2d_panel_authored::visibility_key(),
-                                    *id == ph2d_editor::ids::VECTOR_FRAME_PANEL_ON,
+                                    *id == ph2d_editor_core::ids::VECTOR_FRAME_PANEL_ON,
                                 );
-                            } else if *id == ph2d_editor::ids::VECTOR_FRAME_CLIP_OFF
-                                || *id == ph2d_editor::ids::VECTOR_FRAME_CLIP_ON
+                            } else if *id == ph2d_editor_core::ids::VECTOR_FRAME_CLIP_OFF
+                                || *id == ph2d_editor_core::ids::VECTOR_FRAME_CLIP_ON
                             {
                                 // A MOLDURA recorta ou não. O valor mora no COMPONENTE (mundo),
                                 // então o clique é da shell — o painel só mostra.
                                 pending_frame_clip =
-                                    Some(*id == ph2d_editor::ids::VECTOR_FRAME_CLIP_ON);
+                                    Some(*id == ph2d_editor_core::ids::VECTOR_FRAME_CLIP_ON);
                             } else if let Some(e) = crate::vec_layout_edit::layout_edit_for_id(*id)
                             {
                                 // O AUTO LAYOUT (plano UI/UX W2): direção, alinhamento e
                                 // distribuição moram no COMPONENTE, então o clique e' da shell —
                                 // o painel so' mostra qual chip esta' aceso.
                                 pending_layout_edit = Some(e);
-                            } else if *id == ph2d_editor::ids::VECTOR_TRANSFORM_RESIZE_BOX {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_TRANSFORM_RESIZE_BOX {
                                 // **Resize Box** (plano UI/UX W3b): o override mora no COMPONENTE,
                                 // entao o clique e' da shell — o painel so' mostra o estado.
                                 pending_resize_box = true;
-                            } else if *id == ph2d_editor::ids::VECTOR_STROKE_PRESENT {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_STROKE_PRESENT {
                                 // **Stroke** (plano 34): dar ou tirar o traço mexe no DOCUMENTO,
                                 // então o clique e' da shell — o painel so' mostra o estado.
                                 pending_stroke_present = true;
@@ -3968,17 +3974,17 @@ impl crate::App {
                                 // (`HostStates.on_signal`), então os três gestos atravessam o
                                 // barramento como os verbos ao lado.
                                 pending_ui_signal_edit = Some(e);
-                            } else if *id == ph2d_editor::ids::VECTOR_STATE_SPRING {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_STATE_SPRING {
                                 // **A MOLA** (W7m): ela troca o MOTOR da transição, e o motor mora
                                 // na tabela do documento — então o checkbox atravessa o barramento
                                 // como os verbos ao lado.
                                 pending_ui_spring_toggle = true;
-                            } else if *id == ph2d_editor::ids::VECTOR_STATE_MOVE_ALL {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_STATE_MOVE_ALL {
                                 // **Mover o widget com TODOS os estados** (W7r): quem desloca é a
                                 // shell — só ela vê o `Transform` andar —, então o toggle
                                 // atravessa o barramento como o interruptor de preview ao lado.
                                 pending_ui_move_all_toggle = true;
-                            } else if *id == ph2d_editor::ids::VECTOR_STATE_PREVIEW {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_STATE_PREVIEW {
                                 // **O MODO DE PREVIEW** (W7r): ele NÃO é um verbo de estado — não
                                 // toca a tabela —, então tem rota própria em vez de um variant no
                                 // `UiStateEdit`, cujo assunto é *o que muda no documento*.
@@ -4003,7 +4009,7 @@ impl crate::App {
                                 // Um preset é uma 2ª forma de PEDIR a edição de W/H — ele cai na
                                 // MESMA porta que os campos numéricos do Transform.
                                 pending_frame_preset = Some(p);
-                            } else if *id == ph2d_editor::ids::VECTOR_MORPH_PREVIEW {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_MORPH_PREVIEW {
                                 // ⭐⭐ **O MODO em que o teclado é da máquina** (plano 32 W9). Ele
                                 // NÃO é um verbo de seta — não toca o grafo —, então tem rota
                                 // própria em vez de um variant no `MorphCmd`, cujo assunto é *o que
@@ -4014,7 +4020,7 @@ impl crate::App {
                                 // escolher a acção que dispara uma transição. As duas mexem no
                                 // MUNDO, então o clique é da shell — o painel só mostra.
                                 pending_morph_arrow = Some(cmd);
-                            } else if *id == ph2d_editor::ids::VECTOR_BOOL_APPLY {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_BOOL_APPLY {
                                 pending_bool_apply = true;
                             } else if let Some(op) = crate::input_dispatch::vec_bool_op_for_id(*id)
                             {
@@ -4025,31 +4031,31 @@ impl crate::App {
                                 crate::input_dispatch::vec_vertex_kind_for_id(*id)
                             {
                                 pending_vec_vertex_kind = Some(kind);
-                            } else if *id == ph2d_editor::ids::VECTOR_VERT_DELETE {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_VERT_DELETE {
                                 pending_vec_delete_vertex = true;
-                            } else if *id == ph2d_editor::ids::VECTOR_VERT_SEL_SUBPATH {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_VERT_SEL_SUBPATH {
                                 pending_vec_select_subpath = true;
-                            } else if *id == ph2d_editor::ids::VECTOR_VERT_SEL_SAME {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_VERT_SEL_SAME {
                                 pending_vec_select_same = true;
-                            } else if *id == ph2d_editor::ids::VECTOR_PATH_JOIN {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_PATH_JOIN {
                                 pending_vec_join = true;
-                            } else if *id == ph2d_editor::ids::VECTOR_PATH_WELD {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_PATH_WELD {
                                 pending_vec_weld = true;
-                            } else if *id == ph2d_editor::ids::VECTOR_PATH_REVERSE {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_PATH_REVERSE {
                                 pending_vec_reverse = true;
-                            } else if *id == ph2d_editor::ids::VECTOR_VERT_AVERAGE {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_VERT_AVERAGE {
                                 pending_vec_average = true;
-                            } else if *id == ph2d_editor::ids::VECTOR_CUT_APPLY {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_CUT_APPLY {
                                 pending_vec_cut = true;
-                            } else if *id == ph2d_editor::ids::VECTOR_SYM_APPLY {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_SYM_APPLY {
                                 pending_vec_symmetry_apply = true;
-                            } else if *id == ph2d_editor::ids::VECTOR_CUT_DISCARD {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_CUT_DISCARD {
                                 pending_vec_cut_discard = true;
                             } else if let Some(order) =
                                 crate::input_dispatch::vec_reorder_for_id(*id)
                             {
                                 pending_vec_reorder = Some(order);
-                            } else if *id == ph2d_editor::ids::VECTOR_ARRANGE_DUPLICATE {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_ARRANGE_DUPLICATE {
                                 pending_vec_duplicate = true;
                             } else if let Some(axis) = crate::input_dispatch::vec_flip_for_id(*id) {
                                 pending_vec_flip = Some(axis);
@@ -4060,14 +4066,14 @@ impl crate::App {
                                 crate::input_dispatch::vec_path_shape_for_id(*id)
                             {
                                 pending_vec_path_shape = Some(op);
-                            } else if *id == ph2d_editor::ids::VECTOR_PIVOT_EDIT {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_PIVOT_EDIT {
                                 pending_vec_pivot_edit = true;
-                            } else if *id == ph2d_editor::ids::VECTOR_PATH_CLOSE {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_PATH_CLOSE {
                                 pending_vec_toggle_closed = true;
                             } else if let Some(k) = crate::input_dispatch::vec_fill_kind_for_id(*id)
                             {
                                 pending_vec_fill_kind = Some(k);
-                            } else if *id == ph2d_editor::ids::VECTOR_BRUSH_PICK_SHAPE {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_BRUSH_PICK_SHAPE {
                                 // ⭐ Arma; a FONTE (a forma com o pincel) é capturada no drain,
                                 // porque o clique seguinte muda a seleção.
                                 pending_brush_pick = true;
@@ -4085,7 +4091,7 @@ impl crate::App {
                                 // das duas tintas escrever — e a preferência de sessão que a wave D
                                 // precisava (`texpat_target`) deixou de existir, com a classe
                                 // inteira de *"mexi num knob e mudou o outro sujeito"*.
-                                use ph2d_editor::ids::TexPatKnob as K;
+                                use ph2d_editor_core::ids::TexPatKnob as K;
                                 let slot = if slot == 1 {
                                     ph2d_vec_render::PatternSlot::Stroke
                                 } else {
@@ -4127,13 +4133,13 @@ impl crate::App {
                                     }
                                     _ => {}
                                 }
-                            } else if *id == ph2d_editor::ids::VECTOR_GRAD_ADD_POINT {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_GRAD_ADD_POINT {
                                 pending_vec_grad_add = true;
-                            } else if *id == ph2d_editor::ids::VECTOR_GRAD_REMOVE_POINT {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_GRAD_REMOVE_POINT {
                                 pending_vec_grad_remove = true;
-                            } else if *id == ph2d_editor::ids::VECTOR_GRAD_ADD_STOP {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_GRAD_ADD_STOP {
                                 pending_vec_grad_add_stop = true;
-                            } else if *id == ph2d_editor::ids::VECTOR_GRAD_REMOVE_STOP {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_GRAD_REMOVE_STOP {
                                 pending_vec_grad_remove_stop = true;
                             } else if let Some(a) = crate::input_dispatch::vec_align_for_id(*id) {
                                 pending_vec_align = Some(a);
@@ -4141,49 +4147,49 @@ impl crate::App {
                                 crate::input_dispatch::vec_distribute_for_id(*id)
                             {
                                 pending_vec_distribute = Some(d);
-                            } else if *id == ph2d_editor::ids::VECTOR_COMPOUND_MAKE {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_COMPOUND_MAKE {
                                 pending_vec_compound = Some(true);
-                            } else if *id == ph2d_editor::ids::VECTOR_COMPOUND_RELEASE {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_COMPOUND_RELEASE {
                                 pending_vec_compound = Some(false);
-                            } else if *id == ph2d_editor::ids::VECTOR_FILL_RULE_NONZERO {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_FILL_RULE_NONZERO {
                                 pending_vec_fill_rule = Some(false);
-                            } else if *id == ph2d_editor::ids::VECTOR_FILL_RULE_EVENODD {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_FILL_RULE_EVENODD {
                                 pending_vec_fill_rule = Some(true);
-                            } else if *id == ph2d_editor::ids::VECTOR_SNAP_OFF {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_SNAP_OFF {
                                 pending_vec_snap_on = Some(false);
-                            } else if *id == ph2d_editor::ids::VECTOR_SNAP_ON {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_SNAP_ON {
                                 pending_vec_snap_on = Some(true);
-                            } else if *id == ph2d_editor::ids::VECTOR_SNAP_PATH_OFF {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_SNAP_PATH_OFF {
                                 pending_vec_snap_path = Some(false);
-                            } else if *id == ph2d_editor::ids::VECTOR_SNAP_PATH_ON {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_SNAP_PATH_ON {
                                 pending_vec_snap_path = Some(true);
-                            } else if *id == ph2d_editor::ids::VECTOR_SNAP_CROSS_OFF {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_SNAP_CROSS_OFF {
                                 pending_vec_snap_cross = Some(false);
-                            } else if *id == ph2d_editor::ids::VECTOR_SNAP_CROSS_ON {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_SNAP_CROSS_ON {
                                 pending_vec_snap_cross = Some(true);
-                            } else if *id == ph2d_editor::ids::VECTOR_SNAP_GUIDES_OFF {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_SNAP_GUIDES_OFF {
                                 pending_vec_snap_guides = Some(false);
-                            } else if *id == ph2d_editor::ids::VECTOR_SNAP_GUIDES_ON {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_SNAP_GUIDES_ON {
                                 pending_vec_snap_guides = Some(true);
-                            } else if *id == ph2d_editor::ids::VECTOR_RULERS_OFF {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_RULERS_OFF {
                                 pending_rulers = Some(false);
-                            } else if *id == ph2d_editor::ids::VECTOR_RULERS_ON {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_RULERS_ON {
                                 pending_rulers = Some(true);
-                            } else if *id == ph2d_editor::ids::VECTOR_TEXT_FONT_PREV {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_TEXT_FONT_PREV {
                                 pending_vec_font_cycle = Some(-1);
-                            } else if *id == ph2d_editor::ids::VECTOR_TEXT_FONT_NEXT {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_TEXT_FONT_NEXT {
                                 pending_vec_font_cycle = Some(1);
-                            } else if *id == ph2d_editor::ids::VECTOR_TEXT_FONT_IMPORT {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_TEXT_FONT_IMPORT {
                                 pending_vec_font_import = true;
-                            } else if *id == ph2d_editor::ids::VECTOR_TEXT_ALIGN_LEFT {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_TEXT_ALIGN_LEFT {
                                 pending_vec_text_align = Some(ph2d_tool_vector::TextAlign::Left);
-                            } else if *id == ph2d_editor::ids::VECTOR_TEXT_ALIGN_CENTER {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_TEXT_ALIGN_CENTER {
                                 pending_vec_text_align = Some(ph2d_tool_vector::TextAlign::Center);
-                            } else if *id == ph2d_editor::ids::VECTOR_TEXT_ALIGN_RIGHT {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_TEXT_ALIGN_RIGHT {
                                 pending_vec_text_align = Some(ph2d_tool_vector::TextAlign::Right);
-                            } else if *id == ph2d_editor::ids::VECTOR_TEXT_WRAP_AUTO {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_TEXT_WRAP_AUTO {
                                 pending_vec_text_wrap = Some(None);
-                            } else if *id == ph2d_editor::ids::VECTOR_TEXT_WRAP_FIXED {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_TEXT_WRAP_FIXED {
                                 // ⚠️ **Fixed semeia com a largura que o texto JÁ mede**, e não com
                                 // um número de fábrica: clicar Fixed não pode mover um glifo — ele
                                 // só torna o número editável. Sem sessão viva não há texto a medir,
@@ -4192,131 +4198,132 @@ impl crate::App {
                                     crate::vec_text::seed_wrap_width(self.vec_text_edit.as_ref())
                                         .unwrap_or(ph2d_tool_vector::params::DEFAULT_TEXT_WRAP),
                                 ));
-                            } else if *id == ph2d_editor::ids::VECTOR_CONVERT_TO_CURVES {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_CONVERT_TO_CURVES {
                                 pending_vec_convert = true;
                             }
                         }
                         // Transform fields (X/Y/W/H) are numeric SetValue document
                         // commands (not tool Style) — capture; the tool ignores them.
-                        if let ph2d_editor::tool::PanelEvent::SetValue(id, v) = &ev {
+                        if let ph2d_editor_core::tool::PanelEvent::SetValue(id, v) = &ev {
                             // ⭐ **Os CAMPOS entram pela mesma porta derivada que os cliques** — sem
                             // isto, digitar num campo desta seção sem osso em foco continuava a ser
                             // um silêncio sem explicação, que é metade da população da secção.
-                            pending_bone_needs_focus |= ph2d_editor::ids::needs_focused_bone(*id);
+                            pending_bone_needs_focus |=
+                                ph2d_editor_core::ids::needs_focused_bone(*id);
                             if let Some(field) =
                                 crate::input_dispatch::vec_transform_field_for_id(*id)
                             {
                                 pending_vec_transform = Some((field, *v));
-                            } else if *id == ph2d_editor::ids::VECTOR_OBJ_OPACITY {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_OBJ_OPACITY {
                                 pending_vec_opacity = Some(*v);
-                            } else if *id == ph2d_editor::ids::VECTOR_OBJ_BLEND {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_OBJ_BLEND {
                                 // ⚠️ O valor é o CÓDIGO do modo (`BlendMode::to_u8`), e não a linha
                                 // do popover: a lista é derivada da tradução para o Vello, e
                                 // reconstruí-la aqui seria a segunda cópia dela.
                                 #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
                                 let code = v.clamp(0.0, f64::from(u8::MAX)) as u8;
                                 pending_vec_blend = Some(code);
-                            } else if *id == ph2d_editor::ids::VECTOR_PAINT_WIDTH {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_PAINT_WIDTH {
                                 pending_paint_width = Some(*v);
-                            } else if *id == ph2d_editor::ids::VECTOR_PAINT_DX {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_PAINT_DX {
                                 pending_paint_dx = Some(*v);
-                            } else if *id == ph2d_editor::ids::VECTOR_PAINT_DY {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_PAINT_DY {
                                 pending_paint_dy = Some(*v);
-                            } else if *id == ph2d_editor::ids::VECTOR_PAINT_DILATE {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_PAINT_DILATE {
                                 pending_paint_dilate = Some(*v);
-                            } else if *id == ph2d_editor::ids::VECTOR_PAINT_OPACITY {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_PAINT_OPACITY {
                                 pending_paint_opacity = Some(*v);
-                            } else if *id == ph2d_editor::ids::VECTOR_PAINT_BLEND {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_PAINT_BLEND {
                                 #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
                                 let code = v.clamp(0.0, f64::from(u8::MAX)) as u8;
                                 pending_paint_blend = Some(code);
-                            } else if *id == ph2d_editor::ids::VECTOR_BONE_LENGTH
-                                || *id == ph2d_editor::ids::VECTOR_BONE_STRENGTH
+                            } else if *id == ph2d_editor_core::ids::VECTOR_BONE_LENGTH
+                                || *id == ph2d_editor_core::ids::VECTOR_BONE_STRENGTH
                             {
                                 // ⭐ Os dois números do OSSO (estudo 42 item 5). Eles vivem num
                                 // componente da entidade, então quem escreve é a shell — a mesma
                                 // rota dos campos do Transform e do layout.
                                 pending_bone_knob =
-                                    Some((*id == ph2d_editor::ids::VECTOR_BONE_STRENGTH, *v));
-                            } else if *id == ph2d_editor::ids::VECTOR_BONE_IK_MIX {
+                                    Some((*id == ph2d_editor_core::ids::VECTOR_BONE_STRENGTH, *v));
+                            } else if *id == ph2d_editor_core::ids::VECTOR_BONE_IK_MIX {
                                 pending_ik_knob = Some((IkKnob::Mix, *v));
-                            } else if *id == ph2d_editor::ids::VECTOR_BONE_IK_SOFTNESS {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_BONE_IK_SOFTNESS {
                                 pending_ik_knob = Some((IkKnob::Softness, *v));
-                            } else if *id == ph2d_editor::ids::VECTOR_BONE_IK_CHAIN {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_BONE_IK_CHAIN {
                                 pending_ik_knob = Some((IkKnob::Chain, *v));
-                            } else if *id == ph2d_editor::ids::VECTOR_BONE_LIMIT_MIN
-                                || *id == ph2d_editor::ids::VECTOR_BONE_LIMIT_MAX
+                            } else if *id == ph2d_editor_core::ids::VECTOR_BONE_LIMIT_MIN
+                                || *id == ph2d_editor_core::ids::VECTOR_BONE_LIMIT_MAX
                             {
                                 pending_limit_knob =
-                                    Some((*id == ph2d_editor::ids::VECTOR_BONE_LIMIT_MAX, *v));
-                            } else if *id == ph2d_editor::ids::VECTOR_BONE_SMART_FROM
-                                || *id == ph2d_editor::ids::VECTOR_BONE_SMART_TO
+                                    Some((*id == ph2d_editor_core::ids::VECTOR_BONE_LIMIT_MAX, *v));
+                            } else if *id == ph2d_editor_core::ids::VECTOR_BONE_SMART_FROM
+                                || *id == ph2d_editor_core::ids::VECTOR_BONE_SMART_TO
                             {
                                 pending_smart_knob =
-                                    Some((*id == ph2d_editor::ids::VECTOR_BONE_SMART_TO, *v));
-                            } else if *id == ph2d_editor::ids::VECTOR_VERT_X {
+                                    Some((*id == ph2d_editor_core::ids::VECTOR_BONE_SMART_TO, *v));
+                            } else if *id == ph2d_editor_core::ids::VECTOR_VERT_X {
                                 pending_vec_vert = Some((false, *v));
-                            } else if *id == ph2d_editor::ids::VECTOR_VERT_Y {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_VERT_Y {
                                 pending_vec_vert = Some((true, *v));
-                            } else if *id == ph2d_editor::ids::VECTOR_STATE_DURATION {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_STATE_DURATION {
                                 // W7: o track `0..1` vira SEGUNDOS pela régua do modelo. A
                                 // conversão mora aqui e não no painel porque o número autorado é
                                 // do documento — o painel só o mostra.
                                 pending_ui_state_duration =
                                     Some(*v * ph2d_ui_state::MAX_DURATION_S);
-                            } else if *id == ph2d_editor::ids::VECTOR_STATE_STIFFNESS
-                                || *id == ph2d_editor::ids::VECTOR_STATE_DAMPING
+                            } else if *id == ph2d_editor_core::ids::VECTOR_STATE_STIFFNESS
+                                || *id == ph2d_editor_core::ids::VECTOR_STATE_DAMPING
                             {
                                 // W7m: o track `0..1` vira o número autorado pela régua AFIM do
                                 // modelo — as duas não começam em zero, então o offset é parte da
                                 // conversão. Ela mora aqui pela mesma razão da duração: o número
                                 // é do documento, e o painel só o mostra.
-                                let stiff = *id == ph2d_editor::ids::VECTOR_STATE_STIFFNESS;
+                                let stiff = *id == ph2d_editor_core::ids::VECTOR_STATE_STIFFNESS;
                                 let (lo, hi) = if stiff {
                                     (ph2d_ui_state::MIN_STIFFNESS, ph2d_ui_state::MAX_STIFFNESS)
                                 } else {
                                     (ph2d_ui_state::MIN_DAMPING, ph2d_ui_state::MAX_DAMPING)
                                 };
                                 pending_ui_spring_knob = Some((stiff, lo + *v * (hi - lo)));
-                            } else if *id == ph2d_editor::ids::VECTOR_ARRANGE_Z {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_ARRANGE_Z {
                                 pending_vec_z = Some(*v);
                             } else if let Some(f) = crate::vec_layout_edit::layout_field_for_id(*id)
                             {
                                 // Vao, recuo, Grow e Shrink — mesma rota dos campos do Transform:
                                 // o valor mora no componente, entao quem escreve e' a shell.
                                 pending_layout_field = Some((f, *v));
-                            } else if *id == ph2d_editor::ids::VECTOR_TRANSFORM_R {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_TRANSFORM_R {
                                 pending_vec_rotate_by = Some(*v);
-                            } else if *id == ph2d_editor::ids::VECTOR_GRAD_ANGLE {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_GRAD_ANGLE {
                                 // Slider carries the track 0..1 → 0..360°.
                                 pending_vec_grad_angle = Some(*v * 360.0);
-                            } else if *id == ph2d_editor::ids::VECTOR_GRAD_INFLUENCE {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_GRAD_INFLUENCE {
                                 // Track 0..1 → influence 0..4.
                                 pending_vec_grad_influence = Some(*v * 4.0);
-                            } else if *id == ph2d_editor::ids::VECTOR_GRAD_JITTER {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_GRAD_JITTER {
                                 // Track 0..1 → jitter 0..1 (already a fraction).
                                 pending_vec_grad_jitter = Some(*v);
-                            } else if *id == ph2d_editor::ids::VECTOR_TEXT_SIZE {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_TEXT_SIZE {
                                 // Track 0..1 → glyph size (world units); shared mapping.
                                 pending_vec_text_size =
                                     Some(ph2d_tool_vector::params::slider_to_text_size(*v as f32));
-                            } else if *id == ph2d_editor::ids::VECTOR_TEXT_WEIGHT {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_TEXT_WEIGHT {
                                 // Track 0..1 → font weight (wght); shared mapping.
                                 pending_vec_text_weight = Some(
                                     ph2d_tool_vector::params::slider_to_text_weight(*v as f32)
                                         as f32,
                                 );
-                            } else if *id == ph2d_editor::ids::VECTOR_TEXT_LINE_HEIGHT {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_TEXT_LINE_HEIGHT {
                                 // Track 0..1 → line height (× size); shared mapping.
                                 pending_vec_text_line_height = Some(
                                     ph2d_tool_vector::params::slider_to_text_line_height(*v as f32),
                                 );
-                            } else if *id == ph2d_editor::ids::VECTOR_TEXT_WRAP_W {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_TEXT_WRAP_W {
                                 // Track 0..1 -> largura de refluxo (mundo); shared mapping.
                                 pending_vec_text_wrap = Some(Some(
                                     ph2d_tool_vector::params::slider_to_text_wrap(*v as f32),
                                 ));
-                            } else if *id == ph2d_editor::ids::VECTOR_TEXT_TRACKING {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_TEXT_TRACKING {
                                 // Track 0..1 → tracking (em fraction); shared mapping.
                                 pending_vec_text_tracking = Some(
                                     ph2d_tool_vector::params::slider_to_text_tracking(*v as f32),
@@ -4331,11 +4338,11 @@ impl crate::App {
                                 // VIVA selecionada — o track cru vai junto, porque a
                                 // conversão depende da variante da forma.
                                 pending_vec_shape_param = Some((*id, *v));
-                            } else if *id == ph2d_editor::ids::VECTOR_BLEND_STEPS {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_BLEND_STEPS {
                                 // ADR-0128: arrastar Steps ajusta o blend selecionado AO VIVO.
                                 pending_blend_steps =
                                     Some(ph2d_tool_vector::params::blend_steps_from_track(*v));
-                            } else if *id == ph2d_editor::ids::VECTOR_TEXTPATH_OFFSET {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_TEXTPATH_OFFSET {
                                 // Plano 22: FRAÇÃO do comprimento do caminho, ja' no dominio do
                                 // documento (o painel nao converte -- track e valor coincidem).
                                 pending_textpath_offset = Some(*v);
@@ -4352,7 +4359,7 @@ impl crate::App {
                                 // seus sliders, então arrastar um deles já diz em QUAL das duas
                                 // tintas escrever. ⚠️ O `event.rs` do painel já converteu o track
                                 // para o domínio do documento — aqui `*v` é valor.
-                                use ph2d_editor::ids::TexPatKnob as K;
+                                use ph2d_editor_core::ids::TexPatKnob as K;
                                 let alvo = if slot == 1 {
                                     ph2d_vec_render::PatternSlot::Stroke
                                 } else {
@@ -4401,43 +4408,43 @@ impl crate::App {
                                     _ => None,
                                 };
                                 pending_texpat = cmd.map(|c| (alvo, c));
-                            } else if *id == ph2d_editor::ids::VECTOR_PATTERNPATH_SPACING {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_PATTERNPATH_SPACING {
                                 // Plano 23: ja' convertido pelo event.rs do painel para o dominio do
                                 // documento (multiplos da largura do motivo) -- aqui e' valor.
                                 pending_pp_spacing = Some(*v);
-                            } else if *id == ph2d_editor::ids::VECTOR_PATTERNPATH_START {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_PATTERNPATH_START {
                                 // FRAÇÃO do comprimento (track == valor, como o Offset do texto).
                                 pending_pp_start = Some(*v);
-                            } else if *id == ph2d_editor::ids::VECTOR_PATTERNPATH_END {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_PATTERNPATH_END {
                                 // FRAÇÃO do comprimento -- o fim do trecho `[Start, End]`.
                                 pending_pp_end = Some(*v);
-                            } else if *id == ph2d_editor::ids::VECTOR_PATTERNPATH_SLIDE {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_PATTERNPATH_SLIDE {
                                 // O CENTRO do trecho -- o drain re-centra a janela (move Start+End).
                                 pending_pp_slide = Some(*v);
-                            } else if *id == ph2d_editor::ids::VECTOR_PATTERNPATH_ROTATION {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_PATTERNPATH_ROTATION {
                                 // A ORIENTAÇÃO do motivo sobre a guia, em GRAUS -- o event.rs do painel
                                 // ja' converteu o track bipolar (`-180..180`); aqui e' valor.
                                 pending_pp_rotation = Some(*v);
-                            } else if *id == ph2d_editor::ids::VECTOR_PATTERNPATH_OFFSET {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_PATTERNPATH_OFFSET {
                                 // Desvio perpendicular (unidades de mundo), ja' bipolar (`-2..2`)
                                 // convertido pelo event.rs do painel -- aqui e' valor.
                                 pending_pp_offset = Some(*v);
-                            } else if *id == ph2d_editor::ids::VECTOR_CONTOUR_STEPS {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_CONTOUR_STEPS {
                                 // Quantos aneis -- o `event.rs` do painel ja arredondou ao inteiro.
                                 pending_contour_steps = Some(*v);
-                            } else if *id == ph2d_editor::ids::VECTOR_CONTOUR_OFFSET {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_CONTOUR_OFFSET {
                                 // A distancia POR PASSO, em FRACAO do tamanho da forma: o painel
                                 // fala fracao (um rotulo em unidades de mundo mentiria a cada troca
                                 // de selecao) e o componente guarda MUNDO. A conversao e' do `arm`
                                 // e do drain, com a MESMA `offset_scale` que o Offset usa.
                                 pending_contour_d = Some(*v);
-                            } else if *id == ph2d_editor::ids::VECTOR_CONTOUR_ACCEL {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_CONTOUR_ACCEL {
                                 // A aceleracao da progressao -- o painel ja aplicou o mapa
                                 // GEOMETRICO do trilho; aqui e' valor.
                                 pending_contour_accel = Some(*v);
                             } else if let Some(hit) = crate::fx_live::hit_of(*id) {
                                 pending_filter_val = Some((hit, *v));
-                            } else if *id == ph2d_editor::ids::VECTOR_ENVELOPE_BEND {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_ENVELOPE_BEND {
                                 // ADR-0129 Fatia C: o `event.rs` do painel ja converteu o track
                                 // bipolar para o dominio do documento (`-1..1`) -- aqui e' valor.
                                 pending_envelope_bend = Some(*v);
@@ -4447,7 +4454,7 @@ impl crate::App {
                                 // O painel entrega o TRACK normalizado; a faixa real e' do
                                 // efeito e a ponte a aplica.
                                 pending_fx_param = Some((r, prm, *v));
-                            } else if *id == ph2d_editor::ids::VECTOR_MORPH_T {
+                            } else if *id == ph2d_editor_core::ids::VECTOR_MORPH_T {
                                 // Arrastar o `t` move a forma pelo caminho AO VIVO — e é assim que
                                 // o artista a estaciona onde ela fica bem, antes do K.
                                 #[allow(clippy::cast_possible_truncation)]
@@ -4456,8 +4463,8 @@ impl crate::App {
                             } else {
                                 // Variation-axis field carries the axis VALUE directly
                                 // (not a 0..1 track): match the slot to its font axis.
-                                for i in 0..ph2d_editor::ids::MAX_TEXT_VARIATION_AXES {
-                                    if *id == ph2d_editor::ids::vector_text_axis_id(i) {
+                                for i in 0..ph2d_editor_core::ids::MAX_TEXT_VARIATION_AXES {
+                                    if *id == ph2d_editor_core::ids::vector_text_axis_id(i) {
                                         pending_vec_text_axis = Some((i, *v));
                                         break;
                                     }
@@ -4469,24 +4476,24 @@ impl crate::App {
                         // porque o `PanelEvent` é contrato CONGELADO — o `SelectOption` já é o
                         // canal string-valued deste app (o Painter carrega nele
                         // `"layer:channel:index:x:y"`, que não é opção de rádio nenhuma).
-                        if let ph2d_editor::tool::PanelEvent::SelectOption(id, val) = &ev
+                        if let ph2d_editor_core::tool::PanelEvent::SelectOption(id, val) = &ev
                             && let Some(row) = crate::vec_ui_state_edit::signal_name_row(*id)
                         {
                             pending_ui_signal_name = Some((row, val.clone()));
                         }
                         // Font dropdown pick: `SelectOption(chip, "<index>")` → the
                         // family index into `vec_font::pickable_families()`.
-                        if let ph2d_editor::tool::PanelEvent::SelectOption(id, val) = &ev
-                            && *id == ph2d_editor::ids::VECTOR_TEXT_FONT_DD
+                        if let ph2d_editor_core::tool::PanelEvent::SelectOption(id, val) = &ev
+                            && *id == ph2d_editor_core::ids::VECTOR_TEXT_FONT_DD
                         {
                             pending_vec_font_pick = val.parse::<usize>().ok();
                         }
                         // O punho de um stop da rampa: `SelectOption(trilho, "linha:idx:x")` — o
                         // dispatch de 2D já converteu o ponteiro contra a barra, então o `x` chega
                         // normalizado. O formato espelha o do editor de falloff do Painter.
-                        if let ph2d_editor::tool::PanelEvent::SelectOption(id, val) = &ev
-                            && (0..ph2d_editor::ids::MAX_FILTER_ROWS)
-                                .any(|r| *id == ph2d_editor::ids::filter_ramp_id(r))
+                        if let ph2d_editor_core::tool::PanelEvent::SelectOption(id, val) = &ev
+                            && (0..ph2d_editor_core::ids::MAX_FILTER_ROWS)
+                                .any(|r| *id == ph2d_editor_core::ids::filter_ramp_id(r))
                         {
                             let mut parts = val.split(':');
                             if let (Some(Ok(row)), Some(Ok(idx)), Some(Ok(x))) = (
@@ -4513,10 +4520,10 @@ impl crate::App {
                         // marca-se um pending no `self` (campo disjunto) e aplica-se no topo
                         // do PRÓXIMO frame, com `self` livre (latência de 1 frame, imperceptível
                         // num botão).
-                        if let ph2d_editor::tool::PanelEvent::Click(id) = &ev {
-                            if *id == ph2d_editor::ids::FLIP_COLORIZE_APPLY {
+                        if let ph2d_editor_core::tool::PanelEvent::Click(id) = &ev {
+                            if *id == ph2d_editor_core::ids::FLIP_COLORIZE_APPLY {
                                 self.flip_state.pending_colorize_apply = true;
-                            } else if *id == ph2d_editor::ids::FLIP_COLORIZE_CLEAR {
+                            } else if *id == ph2d_editor_core::ids::FLIP_COLORIZE_CLEAR {
                                 self.flip_state.pending_colorize_clear = true;
                             }
                         }
@@ -4578,15 +4585,15 @@ impl crate::App {
                     EditorAction::TimelinePanelEvent(ev) => {
                         // "+Track <prop>" binds the selected sprite's property
                         // (the panel doesn't know the selection; the shell does).
-                        if let ph2d_editor::tool::PanelEvent::Click(id) = &ev
+                        if let ph2d_editor_core::tool::PanelEvent::Click(id) = &ev
                             && let Some(prop) = timeline_bridge::prop_for_addprop_id(*id)
                         {
                             if let Some(entity) = hero.gizmo.iter_selected().next() {
                                 self.timeline_intents
                                     .push(ph2d_timeline::TimelineIntent::Bind { entity, prop });
                             }
-                        } else if let ph2d_editor::tool::PanelEvent::Toggle(id, on) = &ev
-                            && *id == ph2d_editor::ids::TIMELINE_MOTION_PATH
+                        } else if let ph2d_editor_core::tool::PanelEvent::Toggle(id, on) = &ev
+                            && *id == ph2d_editor_core::ids::TIMELINE_MOTION_PATH
                         {
                             // The Motion Path toggle is PER OBJECT (like +Track, the
                             // panel doesn't know the selection): convert THIS object's
@@ -4600,8 +4607,8 @@ impl crate::App {
                                     },
                                 );
                             }
-                        } else if let ph2d_editor::tool::PanelEvent::Click(id) = &ev
-                            && *id == ph2d_editor::ids::TIMELINE_ONION_SETTINGS
+                        } else if let ph2d_editor_core::tool::PanelEvent::Click(id) = &ev
+                            && *id == ph2d_editor_core::ids::TIMELINE_ONION_SETTINGS
                         {
                             // Open the onion settings card (hero chrome), seeded from the current
                             // onion. Shell-side because the card lives in `hero.store`, out of the
@@ -4670,75 +4677,75 @@ impl crate::App {
                     // precisa de `&mut self` e o `gfx` está emprestado aqui.
                     EditorAction::UndoStep { redo } => self.undo_button = Some(redo),
                     EditorAction::Hierarchy(
-                        ph2d_editor::action_bus::HierRequest::ToggleVisibility { row },
+                        ph2d_editor_core::action_bus::HierRequest::ToggleVisibility { row },
                     ) => {
                         visibility_toggle_row.get_or_insert(row);
                     }
-                    EditorAction::Hierarchy(ph2d_editor::action_bus::HierRequest::ToggleLock {
-                        row,
-                    }) => {
+                    EditorAction::Hierarchy(
+                        ph2d_editor_core::action_bus::HierRequest::ToggleLock { row },
+                    ) => {
                         lock_toggle_row.get_or_insert(row);
                     }
                     EditorAction::Hierarchy(
-                        ph2d_editor::action_bus::HierRequest::ToggleGroup { row },
+                        ph2d_editor_core::action_bus::HierRequest::ToggleGroup { row },
                     ) => {
                         group_toggle_row.get_or_insert(row);
                     }
-                    EditorAction::Hierarchy(ph2d_editor::action_bus::HierRequest::Reparent(
-                        intent,
-                    )) => {
+                    EditorAction::Hierarchy(
+                        ph2d_editor_core::action_bus::HierRequest::Reparent(intent),
+                    ) => {
                         reparent_intent.get_or_insert(intent);
                     }
-                    EditorAction::Hierarchy(ph2d_editor::action_bus::HierRequest::Duplicate {
-                        row,
-                    }) => {
+                    EditorAction::Hierarchy(
+                        ph2d_editor_core::action_bus::HierRequest::Duplicate { row },
+                    ) => {
                         duplicate_row.get_or_insert(row);
                     }
-                    EditorAction::Hierarchy(ph2d_editor::action_bus::HierRequest::AddChild {
-                        row,
-                    }) => {
+                    EditorAction::Hierarchy(
+                        ph2d_editor_core::action_bus::HierRequest::AddChild { row },
+                    ) => {
                         add_child_row.get_or_insert(row);
                     }
-                    EditorAction::Hierarchy(ph2d_editor::action_bus::HierRequest::Group {
+                    EditorAction::Hierarchy(ph2d_editor_core::action_bus::HierRequest::Group {
                         row,
                     }) => {
                         group_row.get_or_insert((row, true));
                     }
-                    EditorAction::Hierarchy(ph2d_editor::action_bus::HierRequest::Ungroup {
-                        row,
-                    }) => {
+                    EditorAction::Hierarchy(
+                        ph2d_editor_core::action_bus::HierRequest::Ungroup { row },
+                    ) => {
                         group_row.get_or_insert((row, false));
                     }
-                    EditorAction::Hierarchy(ph2d_editor::action_bus::HierRequest::AddRoot) => {
+                    EditorAction::Hierarchy(ph2d_editor_core::action_bus::HierRequest::AddRoot) => {
                         add_root = true;
                     }
                     EditorAction::Hierarchy(
-                        ph2d_editor::action_bus::HierRequest::ResetTransform { row },
+                        ph2d_editor_core::action_bus::HierRequest::ResetTransform { row },
                     ) => {
                         reset_transform_row.get_or_insert(row);
                     }
                     EditorAction::Hierarchy(
-                        ph2d_editor::action_bus::HierRequest::RevertToMaster { row },
+                        ph2d_editor_core::action_bus::HierRequest::RevertToMaster { row },
                     ) => {
                         revert_to_master_row.get_or_insert(row);
                     }
                     EditorAction::Hierarchy(
-                        ph2d_editor::action_bus::HierRequest::MakeComponent { row },
+                        ph2d_editor_core::action_bus::HierRequest::MakeComponent { row },
                     ) => {
                         instance_verb_row
                             .get_or_insert((row, ph2d_app_components::instance_verbs::Verb::Make));
                     }
                     EditorAction::Hierarchy(
-                        ph2d_editor::action_bus::HierRequest::Instantiate { row },
+                        ph2d_editor_core::action_bus::HierRequest::Instantiate { row },
                     ) => {
                         instance_verb_row
                             .get_or_insert((row, ph2d_app_components::instance_verbs::Verb::Place));
                     }
                     // ⭐⭐⭐ **ABRIR a receita desta cópia** — pelo MESMO dreno dos outros verbos,
                     // que é onde vivem a resolução do sujeito e a voz de cada recusa.
-                    EditorAction::Hierarchy(ph2d_editor::action_bus::HierRequest::EditPrefab {
-                        row,
-                    }) => {
+                    EditorAction::Hierarchy(
+                        ph2d_editor_core::action_bus::HierRequest::EditPrefab { row },
+                    ) => {
                         instance_verb_row
                             .get_or_insert((row, ph2d_app_components::instance_verbs::Verb::Edit));
                     }
@@ -4763,16 +4770,16 @@ impl crate::App {
                         catalog_verbs.push(v);
                     }
                     EditorAction::Hierarchy(
-                        ph2d_editor::action_bus::HierRequest::InstantiateLinked { row },
+                        ph2d_editor_core::action_bus::HierRequest::InstantiateLinked { row },
                     ) => {
                         instance_verb_row.get_or_insert((
                             row,
                             ph2d_app_components::instance_verbs::Verb::PlaceLinked,
                         ));
                     }
-                    EditorAction::Hierarchy(ph2d_editor::action_bus::HierRequest::Detach {
-                        row,
-                    }) => {
+                    EditorAction::Hierarchy(
+                        ph2d_editor_core::action_bus::HierRequest::Detach { row },
+                    ) => {
                         instance_verb_row.get_or_insert((
                             row,
                             ph2d_app_components::instance_verbs::Verb::Detach,
@@ -4782,7 +4789,7 @@ impl crate::App {
                     // com o outro sujeito. Ele resolve a receita a partir de uma cópia
                     // (`instance_unmake::recipe_root_of`), que é o que torna esta porta útil.
                     EditorAction::Hierarchy(
-                        ph2d_editor::action_bus::HierRequest::RemoveFromLibrary { row },
+                        ph2d_editor_core::action_bus::HierRequest::RemoveFromLibrary { row },
                     ) => {
                         instance_verb_row.get_or_insert((
                             row,
@@ -4790,79 +4797,79 @@ impl crate::App {
                         ));
                     }
                     EditorAction::Hierarchy(
-                        ph2d_editor::action_bus::HierRequest::ApplyToMaster { row },
+                        ph2d_editor_core::action_bus::HierRequest::ApplyToMaster { row },
                     ) => {
                         instance_verb_row
                             .get_or_insert((row, ph2d_app_components::instance_verbs::Verb::Apply));
                     }
-                    EditorAction::Hierarchy(ph2d_editor::action_bus::HierRequest::Delete {
-                        row,
-                    }) => {
+                    EditorAction::Hierarchy(
+                        ph2d_editor_core::action_bus::HierRequest::Delete { row },
+                    ) => {
                         delete_row.get_or_insert(row);
                     }
                     EditorAction::Hierarchy(
-                        ph2d_editor::action_bus::HierRequest::MergeSprites { row },
+                        ph2d_editor_core::action_bus::HierRequest::MergeSprites { row },
                     ) => {
                         merge_sprites_row.get_or_insert(row);
                     }
                     EditorAction::Hierarchy(
-                        ph2d_editor::action_bus::HierRequest::MergeToLayers { row },
+                        ph2d_editor_core::action_bus::HierRequest::MergeToLayers { row },
                     ) => {
                         merge_to_layers_row.get_or_insert(row);
                     }
-                    EditorAction::Hierarchy(ph2d_editor::action_bus::HierRequest::PackSheet {
-                        row,
-                    }) => {
+                    EditorAction::Hierarchy(
+                        ph2d_editor_core::action_bus::HierRequest::PackSheet { row },
+                    ) => {
                         pack_sheet_row.get_or_insert(row);
                     }
                     EditorAction::Hierarchy(
-                        ph2d_editor::action_bus::HierRequest::ArrangeSheet { row },
+                        ph2d_editor_core::action_bus::HierRequest::ArrangeSheet { row },
                     ) => {
                         arrange_sheet_row.get_or_insert(row);
                     }
-                    EditorAction::Hierarchy(ph2d_editor::action_bus::HierRequest::BakeSheet {
-                        row,
-                    }) => {
+                    EditorAction::Hierarchy(
+                        ph2d_editor_core::action_bus::HierRequest::BakeSheet { row },
+                    ) => {
                         bake_sheet_row.get_or_insert(row);
                     }
                     EditorAction::Hierarchy(
-                        ph2d_editor::action_bus::HierRequest::ExportSheet { row },
+                        ph2d_editor_core::action_bus::HierRequest::ExportSheet { row },
                     ) => {
                         export_sheet_row.get_or_insert(row);
                     }
                     EditorAction::Hierarchy(
-                        ph2d_editor::action_bus::HierRequest::ExportImage { row },
+                        ph2d_editor_core::action_bus::HierRequest::ExportImage { row },
                     ) => {
                         export_image_row.get_or_insert(row);
                     }
                     EditorAction::Hierarchy(
-                        ph2d_editor::action_bus::HierRequest::RemoveFromSheet { row },
+                        ph2d_editor_core::action_bus::HierRequest::RemoveFromSheet { row },
                     ) => {
                         remove_from_sheet_row.get_or_insert(row);
                     }
                     EditorAction::Hierarchy(
-                        ph2d_editor::action_bus::HierRequest::UseAsBrushTexture { row },
+                        ph2d_editor_core::action_bus::HierRequest::UseAsBrushTexture { row },
                     ) => {
                         use_as_brush_texture_row.get_or_insert(row);
                     }
                     EditorAction::Hierarchy(
-                        ph2d_editor::action_bus::HierRequest::UseAsBrushShape { row },
+                        ph2d_editor_core::action_bus::HierRequest::UseAsBrushShape { row },
                     ) => {
                         use_as_brush_shape_row.get_or_insert(row);
                     }
-                    EditorAction::Hierarchy(ph2d_editor::action_bus::HierRequest::UseAsPaper {
-                        row,
-                    }) => {
+                    EditorAction::Hierarchy(
+                        ph2d_editor_core::action_bus::HierRequest::UseAsPaper { row },
+                    ) => {
                         use_as_paper_row.get_or_insert(row);
                     }
                     EditorAction::Hierarchy(
-                        ph2d_editor::action_bus::HierRequest::UseAsGranulation { row },
+                        ph2d_editor_core::action_bus::HierRequest::UseAsGranulation { row },
                     ) => {
                         use_as_granulation_row.get_or_insert(row);
                     }
-                    EditorAction::Hierarchy(ph2d_editor::action_bus::HierRequest::RowClick {
-                        row,
-                    }) => {
+                    EditorAction::Hierarchy(
+                        ph2d_editor_core::action_bus::HierRequest::RowClick { row },
+                    ) => {
                         hierarchy_row_click.get_or_insert(row);
                     }
                     // Fase 0e: multi-select-aware hierarchy click +
@@ -4872,10 +4879,9 @@ impl crate::App {
                     // mutation. Range overrides Row when both arrive
                     // in the same frame (the user can only be in one
                     // selection-gesture at a time).
-                    EditorAction::Hierarchy(ph2d_editor::action_bus::HierRequest::SelectRow {
-                        row,
-                        modifier,
-                    }) if !matches!(
+                    EditorAction::Hierarchy(
+                        ph2d_editor_core::action_bus::HierRequest::SelectRow { row, modifier },
+                    ) if !matches!(
                         hierarchy_select_intent,
                         Some(hierarchy::HierarchySelectIntent::Range { .. })
                     ) =>
@@ -4884,7 +4890,7 @@ impl crate::App {
                             Some(hierarchy::HierarchySelectIntent::Row { row, modifier });
                     }
                     EditorAction::Hierarchy(
-                        ph2d_editor::action_bus::HierRequest::RangeSelect { row },
+                        ph2d_editor_core::action_bus::HierRequest::RangeSelect { row },
                     ) => {
                         hierarchy_select_intent =
                             Some(hierarchy::HierarchySelectIntent::Range { row });
@@ -4897,26 +4903,26 @@ impl crate::App {
                         entity_bits,
                         modifier,
                     } => match modifier {
-                        ph2d_editor::action_bus::SelectModifier::Replace => {
+                        ph2d_editor_core::action_bus::SelectModifier::Replace => {
                             hero.gizmo.replace_selection(Some(entity_bits));
                         }
-                        ph2d_editor::action_bus::SelectModifier::Add => {
+                        ph2d_editor_core::action_bus::SelectModifier::Add => {
                             hero.gizmo.add_to_selection(entity_bits);
                         }
-                        ph2d_editor::action_bus::SelectModifier::Toggle => {
+                        ph2d_editor_core::action_bus::SelectModifier::Toggle => {
                             hero.gizmo.toggle_in_selection(entity_bits);
                         }
                     },
                     EditorAction::ClearSelection => {
                         hero.gizmo.clear_all_selection();
                     }
-                    EditorAction::Hierarchy(ph2d_editor::action_bus::HierRequest::RenameSeed {
-                        row,
-                    }) => {
+                    EditorAction::Hierarchy(
+                        ph2d_editor_core::action_bus::HierRequest::RenameSeed { row },
+                    ) => {
                         rename_seed_row.get_or_insert(row);
                     }
                     EditorAction::Hierarchy(
-                        ph2d_editor::action_bus::HierRequest::RenameCommit { row, new_name },
+                        ph2d_editor_core::action_bus::HierRequest::RenameCommit { row, new_name },
                     ) if rename_commit.is_none() => {
                         rename_commit = Some((row, new_name));
                     }
@@ -5125,7 +5131,7 @@ impl crate::App {
                     EditorAction::InspectorClearUnusedOverrides { root_bits } => {
                         let n = inspector_instance::clear_orphans(sim, root_bits);
                         if n > 0 {
-                            toasts.push(ph2d_editor::Toast::success(format!(
+                            toasts.push(ph2d_editor_core::Toast::success(format!(
                                 "Cleared {n} unused override(s)"
                             )));
                         }
@@ -5140,7 +5146,7 @@ impl crate::App {
                         if ph2d_app_components::instance_structure::restore_piece(
                             sim, root_bits, piece,
                         ) {
-                            toasts.push(ph2d_editor::Toast::success(
+                            toasts.push(ph2d_editor_core::Toast::success(
                                 "Put the piece back \u{2014} it returns as the component has it",
                             ));
                         }
@@ -5151,7 +5157,9 @@ impl crate::App {
                         type_id,
                     } => {
                         if inspector_instance::drop_orphan(sim, root_bits, piece, type_id) {
-                            toasts.push(ph2d_editor::Toast::success("Dropped 1 unused override"));
+                            toasts.push(ph2d_editor_core::Toast::success(
+                                "Dropped 1 unused override",
+                            ));
                         }
                     }
                     // ⭐⭐⭐ **Trocar a VARIANTE** (ADR-0164 / F5, critério 2).
@@ -5197,7 +5205,7 @@ impl crate::App {
                         // create one joint per selected body, i.e. two joints
                         // between the same two objects, on the very click that
                         // is supposed to make one.
-                        if matches!(edit, ph2d_editor::PhysicsFieldEdit::Join) {
+                        if matches!(edit, ph2d_editor_core::PhysicsFieldEdit::Join) {
                             // ⚠️ **2 ou MAIS** (W-J4): três corpos marcados
                             // fazem uma CORRENTE de N−1 joints, na ordem da
                             // seleção. Não é fan-out (isso criaria um joint por
@@ -5207,7 +5215,7 @@ impl crate::App {
                             if inspector_selection.len() >= 2 {
                                 join_chain = true;
                             }
-                        } else if matches!(edit, ph2d_editor::PhysicsFieldEdit::Rig) {
+                        } else if matches!(edit, ph2d_editor_core::PhysicsFieldEdit::Rig) {
                             // ⚠️ **Nem o Rig faz fan-out** (W-Rig), e a razão é a
                             // do Bake mais que a do Join: cada corrida do gerador
                             // percorre a MESMA subárvore, então espalhado ele
@@ -5215,13 +5223,13 @@ impl crate::App {
                             // diante achariam tudo já ligado e não fariam nada,
                             // mas o toast contaria a 1ª N vezes.
                             rig_now = true;
-                        } else if matches!(edit, ph2d_editor::PhysicsFieldEdit::JoinDraw) {
+                        } else if matches!(edit, ph2d_editor_core::PhysicsFieldEdit::JoinDraw) {
                             // ARMA o gesto de canvas (sem operando, como os
                             // eyedroppers do §12): quem nomeia os dois corpos é
                             // o press e o release, não a seleção. Armado aqui e
                             // honrado no `input_dispatch`.
                             join_draw_arm = true;
-                        } else if matches!(edit, ph2d_editor::PhysicsFieldEdit::Bake) {
+                        } else if matches!(edit, ph2d_editor_core::PhysicsFieldEdit::Bake) {
                             // WARNING: **Bake does not fan out either**, and the
                             // cost of getting it wrong is bigger than Join's:
                             // ONE bake runs the whole simulation once and writes
@@ -5236,14 +5244,14 @@ impl crate::App {
                             } else {
                                 inspector_selection.clone()
                             });
-                        } else if let ph2d_editor::PhysicsFieldEdit::BakeChannels(tag) = edit {
+                        } else if let ph2d_editor_core::PhysicsFieldEdit::BakeChannels(tag) = edit {
                             // A GLOBAL bake option, not a per-body edit (like
                             // Bake itself): it says how the NEXT bake behaves.
                             // No fan-out, no Collider write — just the app state
                             // the Bake button reads.
                             self.bake_channels =
                                 ph2d_app_physics::bake::BakeChannels::from_tag(tag);
-                        } else if let ph2d_editor::PhysicsFieldEdit::JoinKind(tag) = edit {
+                        } else if let ph2d_editor_core::PhysicsFieldEdit::JoinKind(tag) = edit {
                             // The pending join KIND, the same class as BakeChannels:
                             // an app-state option the Join gesture reads, not a
                             // per-body edit. No fan-out, no Collider write.
@@ -5264,10 +5272,10 @@ impl crate::App {
                         // freely mutable, exactly like `Join` sets `join_request`.
                         // The next canvas click resolves it (`input_dispatch`).
                         match edit {
-                            ph2d_editor::JointFieldEdit::PickBodyA => {
+                            ph2d_editor_core::JointFieldEdit::PickBodyA => {
                                 self.joint_body_pick = Some((entity_bits, false));
                             }
-                            ph2d_editor::JointFieldEdit::PickBodyB => {
+                            ph2d_editor_core::JointFieldEdit::PickBodyB => {
                                 self.joint_body_pick = Some((entity_bits, true));
                             }
                             // ⚠️ **O ÚNICO fan-out da §12** (W-JointCopy). O
@@ -5278,7 +5286,7 @@ impl crate::App {
                             // cai no early-return de `paste_joint_properties`,
                             // do mesmo jeito que o fan-out do §11 atravessa
                             // entidades sem `Collider`.
-                            ph2d_editor::JointFieldEdit::PasteProperties
+                            ph2d_editor_core::JointFieldEdit::PasteProperties
                                 if !inspector_selection.is_empty() =>
                             {
                                 for &t in &inspector_selection {
@@ -5309,7 +5317,7 @@ impl crate::App {
                         // mesma corrida: duas cópias do `mem::take` fariam a
                         // mesma coisa hoje e divergiriam no dia em que o
                         // descarte ganhar um caso especial.
-                        if matches!(edit, ph2d_editor::PlayerFieldEdit::ClearRun) {
+                        if matches!(edit, ph2d_editor_core::PlayerFieldEdit::ClearRun) {
                             // ⚠️ **Descartar GUARDA** (W24): a corrida sai do
                             // documento e fica na sessão, porque o clique era
                             // irreversível — a fita não é `ProjectState`, então
@@ -5320,7 +5328,7 @@ impl crate::App {
                                 &mut self.player_tape,
                                 &mut self.discarded_run,
                             );
-                        } else if matches!(edit, ph2d_editor::PlayerFieldEdit::RestoreRun) {
+                        } else if matches!(edit, ph2d_editor_core::PlayerFieldEdit::RestoreRun) {
                             ph2d_app_physics::run_stash::apply(
                                 ph2d_app_physics::run_stash::RunVerb::Restore,
                                 &mut self.player_tape,
@@ -5334,9 +5342,9 @@ impl crate::App {
                         // W3: o eyedropper ARMA aqui (onde `self` é mutável), como
                         // o do joint e pela mesma razão — o pick é estado da
                         // shell, não uma escrita de componente.
-                        if matches!(edit, ph2d_editor::WheelFieldEdit::PickMountBody) {
+                        if matches!(edit, ph2d_editor_core::WheelFieldEdit::PickMountBody) {
                             self.wheel_body_pick = Some(entity_bits);
-                        } else if matches!(edit, ph2d_editor::WheelFieldEdit::PickRope) {
+                        } else if matches!(edit, ph2d_editor_core::WheelFieldEdit::PickRope) {
                             // W1: o mesmo lugar e a mesma razão — o pick é estado
                             // da shell. O alvo é a ROTA, resolvido no Down.
                             self.wheel_rope_pick = Some(entity_bits);
@@ -5448,8 +5456,8 @@ impl crate::App {
                 // accepts "vector_tools" (Pen tool ship). When a third
                 // cluster appears, add it here OR extract a generic
                 // `find_activatable_stateful_tool` helper.
-                let activating_cluster: Option<&'static str> = ph2d_editor::installed_registry()
-                    .and_then(|reg| {
+                let activating_cluster: Option<&'static str> =
+                    ph2d_editor_core::installed_registry().and_then(|reg| {
                         ["image_tools", "vector_tools", "motion_tools", "flip_tools"]
                             .into_iter()
                             .find(|&cluster_name| {
@@ -5475,8 +5483,8 @@ impl crate::App {
                 // forma vetorial voltar a se comportar como qualquer objeto — o
                 // gizmo de sprite a move, o clique a seleciona (ADR-0111). Os
                 // `image_tools` ficam de fora: quem manda neles é o toggle IMG.
-                let already_active = tools.active().map(ph2d_editor::Tool::id)
-                    == Some(ph2d_editor::ToolId::new(tool_id));
+                let already_active = tools.active().map(ph2d_editor_core::Tool::id)
+                    == Some(ph2d_editor_core::ToolId::new(tool_id));
                 let toggles_off = matches!(
                     activating_cluster,
                     Some("vector_tools" | "motion_tools" | "flip_tools")
@@ -5487,7 +5495,7 @@ impl crate::App {
                     if let Some(active) = tools.active() {
                         toasts.push(Toast::info(format!("Tool · {}", active.label())));
                     }
-                } else if gate_on && tools.set_active(&ph2d_editor::ToolId::new(tool_id)) {
+                } else if gate_on && tools.set_active(&ph2d_editor_core::ToolId::new(tool_id)) {
                     // **ENTRAR NO PAINTER COLAPSA A SELEÇÃO À ÚLTIMA** (Enio, 2026-08-19: *"se o
                     // usuário estiver com múltiplas imagens selecionadas e entrar no painter,
                     // selecione a última selecionada e desselecione as outras antes de entrar"*).
@@ -5580,7 +5588,7 @@ impl crate::App {
             // inherit the highlight wiring automatically.
             {
                 let active_id_string: Option<String> = tools.active().map(|t| t.id().0.clone());
-                if let Some(reg) = ph2d_editor::installed_registry() {
+                if let Some(reg) = ph2d_editor_core::installed_registry() {
                     // W1.T1.7 R3: iterate both image_tools (existing)
                     // AND vector_tools (Pen pill ship) so the Pressed-
                     // highlight reconcile picks up the Pen pill when
@@ -5593,10 +5601,10 @@ impl crate::App {
                         for manifest in reg.cluster(cluster_name) {
                             let pill_id = ph2d_tool_registry::hash_node_id(manifest.id);
                             let should_press = active_id_string.as_deref() == Some(manifest.id);
-                            if let Some(ph2d_editor::InteractiveState::Button { state }) =
+                            if let Some(ph2d_editor_core::InteractiveState::Button { state }) =
                                 hero.store.get_mut(pill_id)
                             {
-                                use ph2d_editor::widget::ButtonState;
+                                use ph2d_editor_core::widget::ButtonState;
                                 match (*state, should_press) {
                                     (ButtonState::Normal, true) => *state = ButtonState::Pressed,
                                     (ButtonState::Pressed, false) => *state = ButtonState::Normal,
@@ -5681,7 +5689,7 @@ impl crate::App {
             // Done HERE (not in the bridge) because the bake needs `&mut sim` and must run before the
             // bridge's source-push replaces the working canvas. ──
             {
-                let painter_id = ph2d_editor::ToolId::new("painter");
+                let painter_id = ph2d_editor_core::ToolId::new("painter");
                 let painter_active = tools.active().map(|t| t.id()) == Some(painter_id.clone());
                 if painter_active {
                     // Selection moved off the bound sprite (incl. deselect) → bake it now.
@@ -5722,7 +5730,7 @@ impl crate::App {
                             painter,
                             toasts,
                         );
-                        (painter as &mut dyn ph2d_editor::tool::RasterEditTool).deactivate();
+                        (painter as &mut dyn ph2d_editor_core::tool::RasterEditTool).deactivate();
                     }
                     // ⚠️ Cleared whether or not there was a bake to defer. The tool is not active, so
                     // nothing is bound — and this memo is read downstream as "the doc the painter is
@@ -5804,7 +5812,7 @@ impl crate::App {
             // Vector tool is active (mirror of how the pen input is gated).
             let vector_active = tools
                 .active()
-                .is_some_and(|t| t.id() == ph2d_editor::ToolId::new("vector"));
+                .is_some_and(|t| t.id() == ph2d_editor_core::ToolId::new("vector"));
             // World units per screen pixel (1px delta) — lets the bridge convert
             // the tool's px stroke width into the selected path's world width.
             let vw0 = camera.screen_to_world((0.0, 0.0), window_size);
@@ -5824,7 +5832,7 @@ impl crate::App {
                 // cópia no shell (uma cópia driftaria do que o artista está VENDO).
                 let steps = hero
                     .store
-                    .slider(ph2d_editor::ids::VECTOR_BLEND_STEPS)
+                    .slider(ph2d_editor_core::ids::VECTOR_BLEND_STEPS)
                     .map_or(ph2d_tool_vector::params::BLEND_STEPS_DEFAULT, |(_, v)| {
                         ph2d_tool_vector::params::blend_steps_from_track(f64::from(v))
                     });
@@ -6042,10 +6050,10 @@ impl crate::App {
                 // ECS e este é o bloco que tem `sim` e o mapa em mãos. A swatch é marcada como
                 // picker-swatch no `paint.rs` do painel; o Down abre o picker por dispatch
                 // genérico, e o que chega cá é só a escolha.
-                if hero.store.picker_target() == Some(ph2d_editor::ids::VECTOR_CONTOUR_TO)
+                if hero.store.picker_target() == Some(ph2d_editor_core::ids::VECTOR_CONTOUR_TO)
                     && let Some((value, _, _, _)) = hero
                         .store
-                        .blender_picker(ph2d_editor::ids::INSP_BLENDER_PICKER)
+                        .blender_picker(ph2d_editor_core::ids::INSP_BLENDER_PICKER)
                 {
                     let to = value.rgba;
                     crate::contour_live::edit(sim, &self.vec_entities, &sel, |c| c.to = to);
@@ -6260,7 +6268,7 @@ impl crate::App {
                     && let Some((row, slot)) = crate::fx_live::colour_target(target)
                     && let Some((value, _, _, _)) = hero
                         .store
-                        .blender_picker(ph2d_editor::ids::INSP_BLENDER_PICKER)
+                        .blender_picker(ph2d_editor_core::ids::INSP_BLENDER_PICKER)
                 {
                     let c = value.rgba;
                     let col = [
@@ -6558,7 +6566,7 @@ impl crate::App {
                     // a única que não corre, e nada na tela o dizia. ⚠️ A lei fica (um controlo não
                     // percorre o que o artista está a gravar — os dois escreveriam o mesmo objecto
                     // no mesmo quadro); o que não pode é ser **calada**.
-                    toasts.push(ph2d_editor::Toast::warning(format!(
+                    toasts.push(ph2d_editor_core::Toast::warning(format!(
                         "\"{nome}\" is open in the timeline, so you are EDITING it - the bone will \
                          not run it. Switch the timeline to another animation to see it play."
                     )));
@@ -6628,7 +6636,7 @@ impl crate::App {
                 // não pode é o app ficar **calado** sobre um controlo que ele sabe que vai nascer
                 // mudo.
                 if crate::skeleton_smart::governed_controls(sim).len() > mudos_antes {
-                    toasts.push(ph2d_editor::Toast::warning(
+                    toasts.push(ph2d_editor_core::Toast::warning(
                         "This bone is driven by an IK anchor, so its angle is derived - turning it \
                          will not run the action. Use a free bone, or Remove IK.",
                     ));
@@ -6848,7 +6856,7 @@ impl crate::App {
                                     ph2d_vec_entities::transform::build(sim, &self.vec_entities)
                                 });
                             hero.store.set_slider_value(
-                                ph2d_editor::ids::VECTOR_EXPAND_OFFSET,
+                                ph2d_editor_core::ids::VECTOR_EXPAND_OFFSET,
                                 ph2d_tool_vector::params::offset_frac_to_slider(spec.d / scale),
                             );
                             (spec.join, spec.side)
@@ -6860,7 +6868,7 @@ impl crate::App {
                 };
                 let offset_grabbed = matches!(
                     hero.store.active_id(),
-                    Some(id) if id == ph2d_editor::ids::VECTOR_EXPAND_OFFSET
+                    Some(id) if id == ph2d_editor_core::ids::VECTOR_EXPAND_OFFSET
                 );
                 // O slider fala FRAÇÃO do tamanho da forma (−100%..+100%); o `d` de mundo nasce
                 // de `fração × escala` (a porta única `vec_expand::offset_scale`, `ada45fac`).
@@ -6868,7 +6876,7 @@ impl crate::App {
                 // churnar a cena, então a bbox das FONTES não se move durante o arrasto.
                 let frac = hero
                     .store
-                    .slider(ph2d_editor::ids::VECTOR_EXPAND_OFFSET)
+                    .slider(ph2d_editor_core::ids::VECTOR_EXPAND_OFFSET)
                     .map_or(ph2d_tool_vector::params::OFFSET_DEFAULT_FRAC, |(_, v)| {
                         ph2d_tool_vector::params::slider_to_offset_frac(v)
                     });
@@ -6926,10 +6934,10 @@ impl crate::App {
                 }
                 let grabbed = matches!(
                     hero.store.active_id(),
-                    Some(id) if id == ph2d_editor::ids::VECTOR_EXPAND_W_START
-                        || id == ph2d_editor::ids::VECTOR_EXPAND_W_MID
-                        || id == ph2d_editor::ids::VECTOR_EXPAND_W_END
-                        || id == ph2d_editor::ids::VECTOR_EXPAND_W_POS
+                    Some(id) if id == ph2d_editor_core::ids::VECTOR_EXPAND_W_START
+                        || id == ph2d_editor_core::ids::VECTOR_EXPAND_W_MID
+                        || id == ph2d_editor_core::ids::VECTOR_EXPAND_W_END
+                        || id == ph2d_editor_core::ids::VECTOR_EXPAND_W_POS
                 );
                 if grabbed && !sel.is_empty() {
                     let stops = crate::profile_live::preset_from_store(&hero.store).to_stops();
@@ -7313,7 +7321,7 @@ impl crate::App {
                     // O slider volta ao zero: a forma nova não tem offset vivo, e um slider
                     // parado em +40% sobre ela mentiria sobre o que está na cena.
                     hero.store.set_slider_value(
-                        ph2d_editor::ids::VECTOR_EXPAND_OFFSET,
+                        ph2d_editor_core::ids::VECTOR_EXPAND_OFFSET,
                         ph2d_tool_vector::params::offset_frac_to_slider(0.0),
                     );
                 } else {
@@ -7321,7 +7329,7 @@ impl crate::App {
                     // a MESMA fonte que o chip mostra —, fração × escala da seleção atual.
                     let d = hero
                         .store
-                        .slider(ph2d_editor::ids::VECTOR_EXPAND_OFFSET)
+                        .slider(ph2d_editor_core::ids::VECTOR_EXPAND_OFFSET)
                         .map_or(ph2d_tool_vector::params::OFFSET_DEFAULT_FRAC, |(_, v)| {
                             ph2d_tool_vector::params::slider_to_offset_frac(v)
                         })
@@ -7351,7 +7359,7 @@ impl crate::App {
                     // recentra o slider — cada aplicação offseta pelo valor mostrado e zera.
                     if matches!(cmd, crate::vec_expand::Expand::Offset { .. }) {
                         hero.store.set_slider_value(
-                            ph2d_editor::ids::VECTOR_EXPAND_OFFSET,
+                            ph2d_editor_core::ids::VECTOR_EXPAND_OFFSET,
                             ph2d_tool_vector::params::offset_frac_to_slider(0.0),
                         );
                     }
@@ -7589,7 +7597,7 @@ impl crate::App {
                 if let Some(i) = crate::vec_paint_stack::layer_of_picker_target(&hero.store)
                     && let Some((value, _, _, _)) = hero
                         .store
-                        .blender_picker(ph2d_editor::ids::INSP_BLENDER_PICKER)
+                        .blender_picker(ph2d_editor_core::ids::INSP_BLENDER_PICKER)
                 {
                     // ⚠️ O picker já entrega bytes (`rgba`), como as swatches de base — converter
                     // aqui seria a segunda régua de *"que cor é esta?"*.
@@ -7638,7 +7646,7 @@ impl crate::App {
                 }
             }
             if let Some((field, target)) = pending_vec_transform {
-                let target = ph2d_editor::LengthDisplay::of(&hero.project).to_world(target);
+                let target = ph2d_editor_core::LengthDisplay::of(&hero.project).to_world(target);
                 crate::input_dispatch::apply_vec_transform(
                     sim,
                     &self.vec_entities,
@@ -7662,7 +7670,7 @@ impl crate::App {
             // ⚠️ E o número digitado atravessa a MESMA fronteira de display do Transform: ele sai
             // da face do artista e volta pela mesma porta.
             if let Some((is_y, target)) = pending_vec_vert {
-                let target = ph2d_editor::LengthDisplay::of(&hero.project).to_world(target);
+                let target = ph2d_editor_core::LengthDisplay::of(&hero.project).to_world(target);
                 if let Some(now) = self.vec_pen.selected_anchor_world(vec_scene) {
                     let (dx, dy) = if is_y {
                         (0.0, target - now[1])
@@ -8447,7 +8455,7 @@ impl crate::App {
             {
                 let now_active = tools
                     .active()
-                    .is_some_and(|t| t.id() == ph2d_editor::ToolId::new("flip"));
+                    .is_some_and(|t| t.id() == ph2d_editor_core::ToolId::new("flip"));
                 if now_active && !self.flip_state.active && flip.is_empty() {
                     let oid = flip.push_object("Flip");
                     if let Some(obj) = flip.object_mut(oid) {
@@ -8506,7 +8514,7 @@ impl crate::App {
                     }
                 };
                 let owner = ph2d_app_field3d::mode::Owner {
-                    tool: tools.active().map(ph2d_editor::Tool::id),
+                    tool: tools.active().map(ph2d_editor_core::Tool::id),
                     clay: clay_on,
                 };
                 if ph2d_app_field3d::mode::note_owner(owner.clone())
@@ -8514,7 +8522,7 @@ impl crate::App {
                 {
                     hero.panel_visibility
                         .insert(ph2d_panel_model3d::PANEL_ID, false);
-                    toasts.push(ph2d_editor::Toast::info(
+                    toasts.push(ph2d_editor_core::Toast::info(
                         "Modelling stepped aside for the other tool",
                     ));
                 }
@@ -8544,7 +8552,7 @@ impl crate::App {
                 {
                     tools.set_active(&neutral);
                     self.title_dirty = true;
-                    toasts.push(ph2d_editor::Toast::info("Modelling took the canvas"));
+                    toasts.push(ph2d_editor_core::Toast::info("Modelling took the canvas"));
                 }
                 // ⚠️ A saída do BARRO é a **porta do próprio módulo de escultura**
                 // (`toggle_clay`), nunca uma escrita aqui: ela conhece a ordem do ciclo (sair do
@@ -8788,7 +8796,7 @@ impl crate::App {
                 let (px, py) = self.last_pointer;
                 let over_panel = hero
                     .store
-                    .panel_rect(ph2d_editor::screens::hero::ids::SCULPT3D_PANEL)
+                    .panel_rect(ph2d_editor_core::screens::hero::ids::SCULPT3D_PANEL)
                     .is_some_and(|r| r.contains(px, py));
                 if !over_panel && let Some(mark) = scene.cursor_mark(px, py) {
                     use ph2d_vector::{Affine, Brush, Color, Stroke};
@@ -8939,7 +8947,7 @@ impl crate::App {
                 anchor_overlay::draw_anchor_marks(
                     !hero
                         .store
-                        .is_collapsed(ph2d_editor::ids::INSP_LIVE_ANCHOR_SECTION),
+                        .is_collapsed(ph2d_editor_core::ids::INSP_LIVE_ANCHOR_SECTION),
                     sim.world(),
                     hero.gizmo.selection,
                     // ⚠️ A linha ABERTA vem do PAINEL — é o canal que o gizmo estreou. Ela é o
@@ -9302,12 +9310,13 @@ impl crate::App {
                     // seleccionar o osso o painel de Bones é aberto e o botão Transform é
                     // seleccionado»*. As três metades saem da MESMA aresta, e é isso que as mantém
                     // de acordo: abrir sem armar deixaria a fileira apagada sobre um osso escolhido.
-                    <_ as ph2d_editor::panel::PanelHostInternal>::set_panel_visible(
+                    <_ as ph2d_editor_core::panel::PanelHostInternal>::set_panel_visible(
                         hero,
-                        <ph2d_panel_skeleton::SkeletonPanel as ph2d_editor::panel::Panel>::ID,
+                        <ph2d_panel_skeleton::SkeletonPanel as ph2d_editor_core::panel::Panel>::ID,
                         true,
                     );
-                    hero.store.bump_panel_z(ph2d_editor::ids::SKELETON_PANEL);
+                    hero.store
+                        .bump_panel_z(ph2d_editor_core::ids::SKELETON_PANEL);
                     // ⚠️ **A ferramenta arma-se no QUADRO SEGUINTE** (`bone_arm_pending`): aqui o
                     // `gfx` já está emprestado a `sim`/`hero`, e um segundo empréstimo dele não
                     // compila. O espelho da shell escreve-se **já**, para este quadro rotear certo
@@ -9480,20 +9489,20 @@ impl crate::App {
                         let accel = f64::from(c.accel);
                         for (slider, chip, track, value) in [
                             (
-                                ph2d_editor::ids::VECTOR_CONTOUR_STEPS,
-                                ph2d_editor::ids::VECTOR_CONTOUR_STEPS_NUM,
+                                ph2d_editor_core::ids::VECTOR_CONTOUR_STEPS,
+                                ph2d_editor_core::ids::VECTOR_CONTOUR_STEPS_NUM,
                                 ph2d_panel_vector::contour_steps_to_track(steps),
                                 steps,
                             ),
                             (
-                                ph2d_editor::ids::VECTOR_CONTOUR_OFFSET,
-                                ph2d_editor::ids::VECTOR_CONTOUR_OFFSET_NUM,
+                                ph2d_editor_core::ids::VECTOR_CONTOUR_OFFSET,
+                                ph2d_editor_core::ids::VECTOR_CONTOUR_OFFSET_NUM,
                                 ph2d_panel_vector::contour_d_to_track(frac),
                                 frac * 100.0, // LITERAL-PX-OK: fração -> percentual do readout
                             ),
                             (
-                                ph2d_editor::ids::VECTOR_CONTOUR_ACCEL,
-                                ph2d_editor::ids::VECTOR_CONTOUR_ACCEL_NUM,
+                                ph2d_editor_core::ids::VECTOR_CONTOUR_ACCEL,
+                                ph2d_editor_core::ids::VECTOR_CONTOUR_ACCEL_NUM,
                                 ph2d_panel_vector::contour_accel_to_track(accel),
                                 accel,
                             ),
@@ -10280,7 +10289,7 @@ impl crate::App {
                     // todos são `f64`. Quem responde é `LayoutField::is_length`, cujo `match` o
                     // compilador cobra quando uma variante nova entra.
                     let v = if f.is_length() {
-                        ph2d_editor::LengthDisplay::of(&hero.project).to_world(v)
+                        ph2d_editor_core::LengthDisplay::of(&hero.project).to_world(v)
                     } else {
                         v
                     };
@@ -10430,7 +10439,7 @@ impl crate::App {
                     crate::vec_layout_edit::selected_flow(sim, &self.vec_entities, &sel).map(|f| {
                         crate::vec_layout_edit::flow_in_display(
                             f,
-                            ph2d_editor::LengthDisplay::of(&hero.project),
+                            ph2d_editor_core::LengthDisplay::of(&hero.project),
                         )
                     }),
                 );
@@ -10513,7 +10522,7 @@ impl crate::App {
                         vec_scene,
                         &self.vec_entities,
                         &sel,
-                        ph2d_editor::ids::MAX_MORPH_STATES,
+                        ph2d_editor_core::ids::MAX_MORPH_STATES,
                     ) {
                         eprintln!(
                             "[ph2d-vec] morph states: {} formas, {} transicoes",
@@ -10798,7 +10807,7 @@ impl crate::App {
             self.texture_pattern_live.recook(
                 vec_scene,
                 asset_db,
-                ph2d_editor::image_quality_for(hero.project.image_filter),
+                ph2d_editor_core::image_quality_for(hero.project.image_filter),
                 &mut bake_shape,
                 &object_of,
                 &pose_of,
@@ -10927,7 +10936,7 @@ impl crate::App {
             // documento autorado tem de mostrar.
             let authored_frame = hero
                 .is_panel_visible(
-                    <ph2d_panel_authored::AuthoredPanel as ph2d_editor::panel::Panel>::ID,
+                    <ph2d_panel_authored::AuthoredPanel as ph2d_editor_core::panel::Panel>::ID,
                 )
                 .then(|| crate::ui_panel_spec::authored_frame(sim, vec_scene))
                 .flatten();
@@ -10947,7 +10956,7 @@ impl crate::App {
                     crate::ui_panel_spec::picker_shape(sim, vec_scene, frame, target)
                 && let Some((value, _, _, _)) = hero
                     .store
-                    .blender_picker(ph2d_editor::ids::INSP_BLENDER_PICKER)
+                    .blender_picker(ph2d_editor_core::ids::INSP_BLENDER_PICKER)
             {
                 // ⚠️ A porta RECUSA a cor igual, e é ela que impede a escrita ao ABRIR: o
                 // `pointer_down` semeia o picker no clique da swatch, então sem a recusa o gesto
@@ -11574,7 +11583,7 @@ impl crate::App {
                     &self.vec_snap_guides,
                     cam_affine,
                     px_per_world,
-                    ph2d_editor::LengthDisplay::of(&hero.project),
+                    ph2d_editor_core::LengthDisplay::of(&hero.project),
                     hero.theme,
                     paint_ctx.text,
                     vector_scene,
@@ -11858,16 +11867,16 @@ impl crate::App {
                     .active()
                     .map(|t| {
                         let id = t.id();
-                        id == ph2d_editor::ToolId::new("vector_direct")
-                            || id == ph2d_editor::ToolId::new("vector_pen")
-                            || id == ph2d_editor::ToolId::new("vector_pencil")
-                            || id == ph2d_editor::ToolId::new("vector_shape")
+                        id == ph2d_editor_core::ToolId::new("vector_direct")
+                            || id == ph2d_editor_core::ToolId::new("vector_pen")
+                            || id == ph2d_editor_core::ToolId::new("vector_pencil")
+                            || id == ph2d_editor_core::ToolId::new("vector_shape")
                             // Motion Nodes: a tool Motion é dona do canvas (o único gizmo é o
                             // do field, slot próprio `field_view`). Um sprite selecionado por
                             // acaso ao entrar mostraria seu gizmo de sprite projetado na
                             // janela CHEIA (deslocado da cena que renderiza na banda do split)
                             // — some junto com o resto do chrome de sprite.
-                            || id == ph2d_editor::ToolId::new("motion")
+                            || id == ph2d_editor_core::ToolId::new("motion")
                     })
                     .unwrap_or(false);
             if suppress_gizmo {
@@ -11902,7 +11911,7 @@ impl crate::App {
             // escrito no quadro em que ela de facto pintou). A **lei** de como eles empurram o
             // gizmo é pura e vive no módulo (`ph2d_viewport3d::navball::safe_corner`).
             {
-                let mut obstacles: Vec<ph2d_editor::zones::Rect> = Vec::new();
+                let mut obstacles: Vec<ph2d_editor_core::zones::Rect> = Vec::new();
                 for id in crate::forwarding::CHROME_BACKDROPS {
                     if let Some(r) = hero.hit_index.rect_for(id) {
                         obstacles.push(r);
@@ -11928,7 +11937,9 @@ impl crate::App {
                 // janela — que é o comportamento de sempre.
                 let area = ph2d_viewport3d::layout::area(
                     hero,
-                    ph2d_editor::zones::Rect::new(viewport.x, viewport.y, viewport.w, viewport.h),
+                    ph2d_editor_core::zones::Rect::new(
+                        viewport.x, viewport.y, viewport.w, viewport.h,
+                    ),
                 );
                 let safe = ph2d_viewport3d::navball::safe_corner(area, &obstacles);
                 ph2d_app_field3d::smoke::note_safe(safe);
@@ -11961,7 +11972,7 @@ impl crate::App {
             // `Viewpoint`, e o critério dele é que *o que substitui esta animação é um CORTE que
             // desorienta mais do que ela*. Ver `ph2d_app_field3d::flight::ROLE`.
             if let Some((generation, fresh)) = ph2d_app_field3d::smoke::flight_track() {
-                let id = ph2d_editor::screens::hero::ids::model3d_view_travel(generation);
+                let id = ph2d_editor_core::screens::hero::ids::model3d_view_travel(generation);
                 if fresh {
                     // Semear em 0: a primeira vez que um id é visto, o `animate` **chega** ao alvo
                     // (um widget que acaba de aparecer não tem de onde vir). Sem esta linha a
@@ -11984,7 +11995,9 @@ impl crate::App {
             ph2d_app_field3d::smoke::draw(
                 ph2d_viewport3d::layout::area(
                     hero,
-                    ph2d_editor::zones::Rect::new(viewport.x, viewport.y, viewport.w, viewport.h),
+                    ph2d_editor_core::zones::Rect::new(
+                        viewport.x, viewport.y, viewport.w, viewport.h,
+                    ),
                 ),
                 hero.theme,
                 paint_ctx.text,
@@ -12109,7 +12122,7 @@ impl crate::App {
             // ⚠️ Ela é drenada **aqui**, ao lado do pedido, pela lei das caixas de correio deste
             // módulo — *uma porta, vários pedintes*.
             if let Some(done) = ph2d_app_field3d::export_job::take_finished() {
-                toasts.push(ph2d_editor::Toast::info(done));
+                toasts.push(ph2d_editor_core::Toast::info(done));
             }
             // ⭐ **E o de IMPORTAR**, pela mesma porta e pelo mesmo motivo (ADR-0161 W22).
             if ph2d_app_field3d::smoke::take_import_request() {
@@ -12133,7 +12146,7 @@ impl crate::App {
                 ph2d_app_field3d::smoke::note_profile(closed.first().copied());
                 if let Some(which) = ph2d_app_field3d::smoke::take_profile_request() {
                     let msg = ph2d_app_field3d::profile::from_selection(vec_scene, &closed, which);
-                    toasts.push(ph2d_editor::Toast::info(msg));
+                    toasts.push(ph2d_editor_core::Toast::info(msg));
                 }
             }
             // ⭐ **E a escultura da CENA** (W39) — o vínculo que não passa pelo disco.
@@ -12154,7 +12167,7 @@ impl crate::App {
                         || "There is no sculpture in the scene to bring in".to_string(),
                         |m| ph2d_app_field3d::import::field3d_scene_sculpt(m.clone()),
                     );
-                    toasts.push(ph2d_editor::Toast::info(msg));
+                    toasts.push(ph2d_editor_core::Toast::info(msg));
                 }
             }
             // ⭐⭐⭐ **A PALETA DE FORMAS, as DUAS pontas** (W100) — abrir para quem pediu, e mandar
@@ -12188,7 +12201,7 @@ impl crate::App {
             // documento, e a fila de avisos é daqui. Sem esta linha as duas falham em silêncio — a
             // peça some da tela e nada explica porquê.
             for msg in ph2d_app_field3d::notice::drain() {
-                toasts.push(ph2d_editor::Toast::info(msg));
+                toasts.push(ph2d_editor_core::Toast::info(msg));
             }
             if ph2d_app_field3d::smoke::take_open_panel_request() {
                 // O ID vem do PAINEL, nunca de um literal: uma segunda cópia da chave de
@@ -12220,7 +12233,9 @@ impl crate::App {
                 audio_overlay::draw_audio_overlay(
                     hero,
                     audio,
-                    ph2d_editor::zones::Rect::new(viewport.x, viewport.y, viewport.w, viewport.h),
+                    ph2d_editor_core::zones::Rect::new(
+                        viewport.x, viewport.y, viewport.w, viewport.h,
+                    ),
                     vector_scene,
                     paint_ctx.text,
                 );
@@ -12272,7 +12287,10 @@ impl crate::App {
                 let (target, additive) = match intent {
                     hierarchy::HierarchySelectIntent::Row { row, modifier } => (
                         hero_live.as_ref().and_then(|l| l.bridge.entity_for(row)),
-                        !matches!(modifier, ph2d_editor::action_bus::SelectModifier::Replace),
+                        !matches!(
+                            modifier,
+                            ph2d_editor_core::action_bus::SelectModifier::Replace
+                        ),
                     ),
                     // Um intervalo é aditivo por definição.
                     hierarchy::HierarchySelectIntent::Range { .. } => (None, true),
@@ -12299,7 +12317,7 @@ impl crate::App {
             // correctamente as quatro.
             //
             if open_asset_browser {
-                <_ as ph2d_editor::panel::PanelHostInternal>::set_panel_visible(
+                <_ as ph2d_editor_core::panel::PanelHostInternal>::set_panel_visible(
                     hero,
                     ph2d_panel_asset_browser::PANEL_ID,
                     true,
@@ -12579,15 +12597,15 @@ impl crate::App {
             // nem a janela. *Duas naturezas, dois sítios; a fronteira é o que cada edição TOCA.*
             for (bits, edit) in &audio_edits {
                 match edit {
-                    ph2d_editor::AudioFieldEdit::Preview => {
+                    ph2d_editor_core::AudioFieldEdit::Preview => {
                         let e = ph2d_ecs::Entity::from_bits(*bits);
                         audio_2d::play_target(sim, self.audio.as_mut(), e);
                     }
-                    ph2d_editor::AudioFieldEdit::StopPreview => {
+                    ph2d_editor_core::AudioFieldEdit::StopPreview => {
                         let e = ph2d_ecs::Entity::from_bits(*bits);
                         audio_2d::stop_target(sim, self.audio.as_mut(), e);
                     }
-                    ph2d_editor::AudioFieldEdit::Browse => {
+                    ph2d_editor_core::AudioFieldEdit::Browse => {
                         // ⚠️ **A lista de extensões é a MESMA do resto do app** (`decode_any`), e
                         // não uma escrita à mão: uma segunda lista ao lado de um predicado é o
                         // defeito que o diálogo de importação já pagou — o `.ase` esteve invisível
@@ -12596,7 +12614,7 @@ impl crate::App {
                             .add_filter("audio", ph2d_audio_desktop::decode_any::AUDIO_IMPORT_EXTS)
                             .pick_file()
                         {
-                            let edit = ph2d_editor::AudioFieldEdit::Sound(
+                            let edit = ph2d_editor_core::AudioFieldEdit::Sound(
                                 p.to_string_lossy().into_owned(),
                             );
                             if inspector_audio::apply_audio_edit(
@@ -12631,7 +12649,7 @@ impl crate::App {
             // as edições são de DUAS naturezas. O `Preview` liga a VISTA (que só a `App` tem) e as
             // restantes escrevem um campo do documento. *Duas naturezas, um sítio que tem as duas.*
             for (bits, edit) in &camera_edits {
-                if let ph2d_editor::CameraFieldEdit::Preview(on) = edit {
+                if let ph2d_editor_core::CameraFieldEdit::Preview(on) = edit {
                     self.game_camera_preview = *on;
                     continue;
                 }
@@ -12651,7 +12669,7 @@ impl crate::App {
                     component_registry,
                 )
             {
-                toasts.push(ph2d_editor::Toast::error(format!(
+                toasts.push(ph2d_editor_core::Toast::error(format!(
                     "Audio commit failed: {e}"
                 )));
                 self.title_dirty = true;
@@ -12815,7 +12833,7 @@ impl crate::App {
                     .and_then(|e| crate::sheet_bounds::sheet_parent(sim, e));
                 if in_sheet.is_some() {
                     hero_intents::drain_reparent(
-                        ph2d_editor::screens::hero::HierReparentIntent {
+                        ph2d_editor_core::screens::hero::HierReparentIntent {
                             dragged: row,
                             new_parent: None,
                             before: None,
@@ -12991,10 +13009,10 @@ impl crate::App {
                 // `PickBodyA/B` never reach here — they arm a canvas pick in the
                 // action loop above (shell state, not a component edit). `Remove`
                 // despawns the joint object; everything else is a field edit.
-                if matches!(edit, ph2d_editor::JointFieldEdit::Remove) {
+                if matches!(edit, ph2d_editor_core::JointFieldEdit::Remove) {
                     let e = ph2d_ecs::Entity::from_bits(bits);
                     let _ = sim.world_mut().despawn(e);
-                } else if let ph2d_editor::JointFieldEdit::AnchorToWorld(on) = edit {
+                } else if let ph2d_editor_core::JointFieldEdit::AnchorToWorld(on) = edit {
                     // Estrutural como os dois irmãos: acrescenta/remove o
                     // MARCADOR `JointWorldAnchor` (W-JointWorld). Não há campo de
                     // `PhysicsJoint` a escrever, então ele não passa pelo funil.
@@ -13008,7 +13026,7 @@ impl crate::App {
                             .entity_mut(e)
                             .remove::<ph2d_physics_ecs::JointWorldAnchor>();
                     }
-                } else if matches!(edit, ph2d_editor::JointFieldEdit::CopyProperties) {
+                } else if matches!(edit, ph2d_editor_core::JointFieldEdit::CopyProperties) {
                     // ARMA a área de transferência — estado da shell, nenhum
                     // componente muda (por isso não passa pelo funil nem pela
                     // fila). Guarda o componente INTEIRO: quem decide o que é
@@ -13019,7 +13037,7 @@ impl crate::App {
                         .world()
                         .get::<ph2d_physics_ecs::PhysicsJoint>(e)
                         .copied();
-                } else if matches!(edit, ph2d_editor::JointFieldEdit::PasteProperties) {
+                } else if matches!(edit, ph2d_editor_core::JointFieldEdit::PasteProperties) {
                     // O fan-out já aconteceu no laço de ações: aqui é sempre UM
                     // joint. A fonte é a área de transferência; sem ela o botão
                     // nem foi pintado, e este ramo é um no-op honesto.
@@ -13042,12 +13060,12 @@ impl crate::App {
                             editor_queue,
                             component_registry,
                         ) {
-                            toasts.push(ph2d_editor::Toast::error(format!(
+                            toasts.push(ph2d_editor_core::Toast::error(format!(
                                 "Joint commit failed: {e}"
                             )));
                         }
                     }
-                } else if matches!(edit, ph2d_editor::JointFieldEdit::AddWheel) {
+                } else if matches!(edit, ph2d_editor_core::JointFieldEdit::AddWheel) {
                     // Estrutural como o `Remove`, do outro lado: SPAWNA um
                     // objeto. O undo global por-diff o captura como captura
                     // qualquer outro spawn, sem um passo próprio a inventar.
@@ -13076,7 +13094,7 @@ impl crate::App {
                         editor_queue,
                         component_registry,
                     ) {
-                        toasts.push(ph2d_editor::Toast::error(format!(
+                        toasts.push(ph2d_editor_core::Toast::error(format!(
                             "Joint commit failed: {e}"
                         )));
                     }
@@ -13108,7 +13126,7 @@ impl crate::App {
                     editor_queue,
                     component_registry,
                 ) {
-                    toasts.push(ph2d_editor::Toast::error(format!(
+                    toasts.push(ph2d_editor_core::Toast::error(format!(
                         "Wheel commit failed: {e}"
                     )));
                 }
@@ -13152,7 +13170,7 @@ impl crate::App {
                     hero.gizmo.extra_selection.clear();
                 }
                 if made > 1 {
-                    toasts.push(ph2d_editor::Toast::info(format!(
+                    toasts.push(ph2d_editor_core::Toast::info(format!(
                         "Chained {} bodies with {made} joints",
                         made + 1
                     )));
@@ -13177,7 +13195,9 @@ impl crate::App {
                 // emenda mede o `Collider` que a primeira metade acabou de
                 // enfileirar. Aqui fica só o deck de toasts, que é deste laço.
                 if let Some(e) = out.error {
-                    toasts.push(ph2d_editor::Toast::error(format!("Rig commit failed: {e}")));
+                    toasts.push(ph2d_editor_core::Toast::error(format!(
+                        "Rig commit failed: {e}"
+                    )));
                 }
                 let (bodies, joints, last) = (out.bodies, out.joints, out.last);
                 // Seleciona o ÚLTIMO joint, pelo motivo que o `join_chain`
@@ -13189,7 +13209,7 @@ impl crate::App {
                     hero.gizmo.extra_selection.clear();
                 }
                 if joints > 0 {
-                    toasts.push(ph2d_editor::Toast::info(format!(
+                    toasts.push(ph2d_editor_core::Toast::info(format!(
                         "Rigged {bodies} new bodies with {joints} joints"
                     )));
                 }
@@ -13219,19 +13239,21 @@ impl crate::App {
                     component_registry,
                 );
                 if outcome.unmappable {
-                    toasts.push(ph2d_editor::Toast::info(
+                    toasts.push(ph2d_editor_core::Toast::info(
                         "Cannot bake here: this clip does not play exactly once",
                     ));
                 } else if outcome.refused {
-                    toasts.push(ph2d_editor::Toast::info(
+                    toasts.push(ph2d_editor_core::Toast::info(
                         "Finish the current edit before baking",
                     ));
                 } else if outcome.already_baked {
-                    toasts.push(ph2d_editor::Toast::info(
+                    toasts.push(ph2d_editor_core::Toast::info(
                         "Already baked - the timeline drives these bodies now",
                     ));
                 } else if outcome.is_empty() {
-                    toasts.push(ph2d_editor::Toast::info("Nothing to bake: nothing moved"));
+                    toasts.push(ph2d_editor_core::Toast::info(
+                        "Nothing to bake: nothing moved",
+                    ));
                 } else {
                     // Back to the top, because that is where the animation the
                     // artist just made begins - and because the kind change only
@@ -13257,7 +13279,7 @@ impl crate::App {
                     } else {
                         format!("{end:.1}s")
                     };
-                    toasts.push(ph2d_editor::Toast::info(format!(
+                    toasts.push(ph2d_editor_core::Toast::info(format!(
                         "Baked {window} - {} bodies, {} tracks - now Kinematic",
                         outcome.bodies, outcome.tracks
                     )));
@@ -13347,7 +13369,7 @@ impl crate::App {
                 // "select 2+ first" — misleading. Steer them to the
                 // actual fix.
                 if !in_selection && selected_count >= 2 {
-                    toasts.push(ph2d_editor::Toast::warning(
+                    toasts.push(ph2d_editor_core::Toast::warning(
                         "Merge Sprites: right-click on one of the selected sprites",
                     ));
                     self.title_dirty = true;
@@ -13428,18 +13450,22 @@ impl crate::App {
                 let on_active_doc = self.last_painter_pushed_entity == Some(bits);
                 let mut handled = false;
                 if on_active_doc {
-                    tools.set_active(&ph2d_editor::ToolId::new("painter"));
+                    tools.set_active(&ph2d_editor_core::ToolId::new("painter"));
                     if let Some(painter) = tools.active_mut().and_then(|t| {
                         t.as_any_mut()
                             .downcast_mut::<ph2d_tool_painter::PainterTool>()
                     }) {
                         if as_shape {
                             painter.capture_layers_as_brush_shape();
-                            toasts.push(ph2d_editor::Toast::success("Brush shape set from layers"));
+                            toasts.push(ph2d_editor_core::Toast::success(
+                                "Brush shape set from layers",
+                            ));
                             handled = true;
                         } else if let Some((lum, w, h)) = painter.composite_to_lum() {
                             painter.set_brush_texture_image(lum, w, h);
-                            toasts.push(ph2d_editor::Toast::success("Brush grain set from sprite"));
+                            toasts.push(ph2d_editor_core::Toast::success(
+                                "Brush grain set from sprite",
+                            ));
                             handled = true;
                         }
                     }
@@ -13472,7 +13498,7 @@ impl crate::App {
                                 })
                                 .collect();
                             // Reach the painter only via the active tool → activate it first.
-                            tools.set_active(&ph2d_editor::ToolId::new("painter"));
+                            tools.set_active(&ph2d_editor_core::ToolId::new("painter"));
                             if let Some(painter) = tools.active_mut().and_then(|t| {
                                 t.as_any_mut()
                                     .downcast_mut::<ph2d_tool_painter::PainterTool>()
@@ -13490,12 +13516,12 @@ impl crate::App {
                                         h,
                                         Some(bits),
                                     );
-                                    toasts.push(ph2d_editor::Toast::success(
+                                    toasts.push(ph2d_editor_core::Toast::success(
                                         "Brush shape set from sprite",
                                     ));
                                 } else {
                                     painter.set_brush_texture_image(lum, w, h);
-                                    toasts.push(ph2d_editor::Toast::success(
+                                    toasts.push(ph2d_editor_core::Toast::success(
                                         "Brush grain set from sprite",
                                     ));
                                 }
@@ -13507,7 +13533,7 @@ impl crate::App {
                             } else {
                                 "Brush Grain"
                             };
-                            toasts.push(ph2d_editor::Toast::warning(format!(
+                            toasts.push(ph2d_editor_core::Toast::warning(format!(
                                 "Use as {what}: select an image sprite"
                             )));
                         }
@@ -13530,7 +13556,7 @@ impl crate::App {
                 // Luminance: the active painter doc composites its layers (a Group of textures folds in);
                 // a different flat sprite reads its baked texture (Rec.601, mirror of the file-load path).
                 let lum_wh: Option<(Vec<u8>, u32, u32)> = if on_active_doc {
-                    tools.set_active(&ph2d_editor::ToolId::new("painter"));
+                    tools.set_active(&ph2d_editor_core::ToolId::new("painter"));
                     tools
                         .active_mut()
                         .and_then(|t| {
@@ -13567,19 +13593,19 @@ impl crate::App {
                 };
                 match lum_wh {
                     Some((lum, w, h)) => {
-                        tools.set_active(&ph2d_editor::ToolId::new("painter"));
+                        tools.set_active(&ph2d_editor_core::ToolId::new("painter"));
                         if let Some(painter) = tools.active_mut().and_then(|t| {
                             t.as_any_mut()
                                 .downcast_mut::<ph2d_tool_painter::PainterTool>()
                         }) {
                             if as_granulation {
                                 painter.use_layers_as_granulation(lum, w, h);
-                                toasts.push(ph2d_editor::Toast::success(
+                                toasts.push(ph2d_editor_core::Toast::success(
                                     "Watercolor granulation set from layer",
                                 ));
                             } else {
                                 painter.use_layers_as_watercolor_paper(lum, w, h);
-                                toasts.push(ph2d_editor::Toast::success(
+                                toasts.push(ph2d_editor_core::Toast::success(
                                     "Watercolor paper set from layer",
                                 ));
                             }
@@ -13591,7 +13617,7 @@ impl crate::App {
                         } else {
                             "Watercolor Paper"
                         };
-                        toasts.push(ph2d_editor::Toast::warning(format!(
+                        toasts.push(ph2d_editor_core::Toast::warning(format!(
                             "Use as {what}: select an image sprite"
                         )));
                     }
@@ -13759,7 +13785,7 @@ impl crate::App {
                     (*r, tool.label(), is_active)
                 })
                 .collect();
-            ph2d_editor::paint_tool_palette_icons(
+            ph2d_editor_core::paint_tool_palette_icons(
                 paint_ctx.text,
                 vector_scene,
                 &palette_icons,

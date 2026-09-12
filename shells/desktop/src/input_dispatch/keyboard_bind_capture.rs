@@ -13,7 +13,7 @@
 //! `Tab`. Ele estava **certo e insuficiente**: media a posição dentro de um PEDAÇO da cadeia.
 //! *A ordem é a feature, e ela tem de estar no topo da cadeia REAL.*
 //!
-//! A LEI é uma só (`ph2d_editor::interaction::capture_if_listening`); aqui está o **primeiro**
+//! A LEI é uma só (`ph2d_editor_core::interaction::capture_if_listening`); aqui está o **primeiro**
 //! chamador dela, e o `dispatch_key` é o segundo — dois chamadores de uma porta, nunca duas leis.
 
 use ph2d_host::KeyKind;
@@ -45,7 +45,8 @@ impl crate::App {
         let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) else {
             return false;
         };
-        let Some(evt) = ph2d_editor::interaction::capture_if_listening(&mut hero.store, k) else {
+        let Some(evt) = ph2d_editor_core::interaction::capture_if_listening(&mut hero.store, k)
+        else {
             return false;
         };
         hero.apply_event(evt);

@@ -144,7 +144,9 @@ pub fn motion_shape_smoke_knobs(
     }
     let out = build_knob_row(&mut cx.motion.doc.graph);
     cx.motion.sinks.push(out);
-    let _ = cx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
+    let _ = cx
+        .tools
+        .set_active(&ph2d_editor_core::ToolId::new("motion"));
     eprintln!(
         "[shape smoke =3] SETE formas lado a lado, e nenhuma especie nova: (1) circulo \
          INTEIRO, o controle · (2) o MESMO circulo com Inner 0,55 = uma ROSQUINHA · (3) o \

@@ -41,15 +41,15 @@ pub enum UiStateEdit {
 
 /// Este id é um verbo de estado? **Porta única** do roteador.
 #[must_use]
-pub fn ui_state_edit_for_id(id: ph2d_editor::NodeId) -> Option<UiStateEdit> {
+pub fn ui_state_edit_for_id(id: ph2d_editor_core::NodeId) -> Option<UiStateEdit> {
     for (i, &role) in StateRole::ALL.iter().enumerate() {
-        if id == ph2d_editor::ids::vector_state_record_id(i) {
+        if id == ph2d_editor_core::ids::vector_state_record_id(i) {
             return Some(UiStateEdit::Record(role));
         }
-        if id == ph2d_editor::ids::vector_state_clear_id(i) {
+        if id == ph2d_editor_core::ids::vector_state_clear_id(i) {
             return Some(UiStateEdit::Clear(role));
         }
-        if id == ph2d_editor::ids::vector_state_apply_id(i) {
+        if id == ph2d_editor_core::ids::vector_state_apply_id(i) {
             return Some(UiStateEdit::Apply(role));
         }
     }
@@ -71,14 +71,14 @@ pub enum EasingPick {
 /// Este id é um chip do seletor de curva? **Porta única** do roteador — a irmã exata do
 /// [`ui_state_edit_for_id`], e percorrida pelo mesmo `ALL` que os pinta.
 #[must_use]
-pub fn easing_pick_for_id(id: ph2d_editor::NodeId) -> Option<EasingPick> {
+pub fn easing_pick_for_id(id: ph2d_editor_core::NodeId) -> Option<EasingPick> {
     for (i, &f) in ph2d_anim::EasingFamily::ALL.iter().enumerate() {
-        if id == ph2d_editor::ids::vector_easing_family_id(i) {
+        if id == ph2d_editor_core::ids::vector_easing_family_id(i) {
             return Some(EasingPick::Family(f));
         }
     }
     for (i, &m) in ph2d_anim::EasingMode::ALL.iter().enumerate() {
-        if id == ph2d_editor::ids::vector_easing_mode_id(i) {
+        if id == ph2d_editor_core::ids::vector_easing_mode_id(i) {
             return Some(EasingPick::Mode(m));
         }
     }
@@ -390,16 +390,16 @@ pub use table::{
 /// teto que o `populate` regista e o `paint` percorre. Uma segunda varredura escrita noutro
 /// arquivo é a que esquece o `MAX` quando ele se mover.
 #[must_use]
-pub fn signal_edit_for_id(id: ph2d_editor::NodeId) -> Option<SignalEdit> {
-    if id == ph2d_editor::ids::VECTOR_STATE_SIGNAL_ADD {
+pub fn signal_edit_for_id(id: ph2d_editor_core::NodeId) -> Option<SignalEdit> {
+    if id == ph2d_editor_core::ids::VECTOR_STATE_SIGNAL_ADD {
         return Some(SignalEdit::Add);
     }
-    for i in 0..ph2d_editor::ids::MAX_SIGNAL_BINDINGS {
-        if id == ph2d_editor::ids::vector_state_signal_remove_id(i) {
+    for i in 0..ph2d_editor_core::ids::MAX_SIGNAL_BINDINGS {
+        if id == ph2d_editor_core::ids::vector_state_signal_remove_id(i) {
             return Some(SignalEdit::Remove(i));
         }
         for (r, role) in StateRole::ALL.iter().enumerate() {
-            if id == ph2d_editor::ids::vector_state_signal_role_id(i, r) {
+            if id == ph2d_editor_core::ids::vector_state_signal_role_id(i, r) {
                 return Some(SignalEdit::Role(i, *role));
             }
         }
@@ -439,7 +439,7 @@ pub fn apply_signal_edit(
         // Sem esta, um clique que chegasse por outra rota cresceria a lista além do que a UI
         // sabe mostrar — e as linhas extra ficariam invisíveis no documento.
         SignalEdit::Add => {
-            if states.bindings(h).len() >= ph2d_editor::ids::MAX_SIGNAL_BINDINGS {
+            if states.bindings(h).len() >= ph2d_editor_core::ids::MAX_SIGNAL_BINDINGS {
                 return false;
             }
             states.push_binding(h);
@@ -452,9 +452,9 @@ pub fn apply_signal_edit(
 
 /// **O nome commitado num campo da tabela** — o índice da linha, se o id for de uma.
 #[must_use]
-pub fn signal_name_row(id: ph2d_editor::NodeId) -> Option<usize> {
-    (0..ph2d_editor::ids::MAX_SIGNAL_BINDINGS)
-        .find(|&i| ph2d_editor::ids::vector_state_signal_name_id(i) == id)
+pub fn signal_name_row(id: ph2d_editor_core::NodeId) -> Option<usize> {
+    (0..ph2d_editor_core::ids::MAX_SIGNAL_BINDINGS)
+        .find(|&i| ph2d_editor_core::ids::vector_state_signal_name_id(i) == id)
 }
 
 /// **O HOSPEDEIRO e a PROJEÇÃO** — irmão por LOC (HR-18), cortado por responsabilidade.

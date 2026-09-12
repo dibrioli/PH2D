@@ -22,9 +22,9 @@ const MODE: &str = "../../crates/ph2d-app-sculpt3d/src/mode.rs";
 /// nasce morto sob o mouse — com todo o resto verde.
 #[test]
 fn the_pill_is_painted_registered_and_reaches_the_bus() {
-    use ph2d_editor::action_bus::EditorAction;
-    use ph2d_editor::interaction::{InteractiveState, WidgetEvent};
-    use ph2d_editor::screens::hero::{HeroScreen, chrome, fixture, ids};
+    use ph2d_editor_core::action_bus::EditorAction;
+    use ph2d_editor_core::interaction::{InteractiveState, WidgetEvent};
+    use ph2d_editor_core::screens::hero::{HeroScreen, chrome, fixture, ids};
 
     assert!(
         fixture::topbar_clusters()
@@ -33,7 +33,7 @@ fn the_pill_is_painted_registered_and_reaches_the_bus() {
         "o pill não está entre os clusters que a topbar PINTA"
     );
 
-    let mut hero = HeroScreen::new(ph2d_editor::NodeId(1));
+    let mut hero = HeroScreen::new(ph2d_editor_core::NodeId(1));
     assert!(
         matches!(
             hero.store.get(ids::TOPBAR_SCULPT3D),

@@ -43,7 +43,7 @@ fn audit_the_animator_group() {
         let mut snap = ph2d_panel_motion_graph::snapshot_from(&m.doc.graph, &m.registry);
         crate::motion_bridge::params::card::stamp_card_params(
             &m,
-            ph2d_editor::ProjectSettings::default(),
+            ph2d_editor_core::ProjectSettings::default(),
             &mut snap,
         );
         let no_cartao = snap
@@ -159,7 +159,7 @@ fn census_of_hidden_params() -> (usize, usize, Vec<String>, Vec<String>) {
         let mut snap = ph2d_panel_motion_graph::snapshot_from(&m.doc.graph, &m.registry);
         crate::motion_bridge::params::card::stamp_card_params(
             &m,
-            ph2d_editor::ProjectSettings::default(),
+            ph2d_editor_core::ProjectSettings::default(),
             &mut snap,
         );
         let no_cartao: Vec<&str> = snap

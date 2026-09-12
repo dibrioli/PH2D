@@ -25,7 +25,7 @@
 //! que se arrasta e o que está debaixo do cursor, e devolve **o que fazer**. É isso que o torna
 //! gateável sem GPU — e é onde o defeito de *«o alvo adivinha»* moraria.
 
-use ph2d_editor::interaction::drag_payload::DragPayload;
+use ph2d_editor_core::interaction::drag_payload::DragPayload;
 
 /// Onde o cursor estava quando a mão largou.
 #[derive(Copy, Clone, Debug, PartialEq)]

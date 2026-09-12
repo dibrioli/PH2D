@@ -14,8 +14,8 @@ use super::{
     rewire, subgraph,
 };
 use crate::motion_state::FormaEscolhida;
-use ph2d_editor::ToastQueue;
-use ph2d_editor::screens::layout::CenterSplit;
+use ph2d_editor_core::ToastQueue;
+use ph2d_editor_core::screens::layout::CenterSplit;
 
 /// Apply the panel's queued [`GraphIntent`]s to the shell-owned document (M1.E10).
 ///
@@ -187,26 +187,28 @@ pub(super) fn apply_graph_intents(
                     FormaEscolhida::Nome(nome) => {
                         motion.doc.graph.set_text_param(n, param, nome.clone());
                         motion.pump.mark_dirty();
-                        toasts.push(ph2d_editor::Toast::info(format!("Path set to '{nome}'")));
+                        toasts.push(ph2d_editor_core::Toast::info(format!(
+                            "Path set to '{nome}'"
+                        )));
                     }
                     FormaEscolhida::Nada => {
-                        toasts.push(ph2d_editor::Toast::info(
+                        toasts.push(ph2d_editor_core::Toast::info(
                             "Select a drawing first — on the canvas or in the Hierarchy"
                                 .to_string(),
                         ));
                     }
                     FormaEscolhida::NaoEDesenho => {
-                        toasts.push(ph2d_editor::Toast::info(
+                        toasts.push(ph2d_editor_core::Toast::info(
                             "The selected object is not a drawing — pick a path".to_string(),
                         ));
                     }
                     FormaEscolhida::SemNome => {
-                        toasts.push(ph2d_editor::Toast::info(
+                        toasts.push(ph2d_editor_core::Toast::info(
                             "Give this drawing a name in the Hierarchy first".to_string(),
                         ));
                     }
                     FormaEscolhida::SemArco => {
-                        toasts.push(ph2d_editor::Toast::info(
+                        toasts.push(ph2d_editor_core::Toast::info(
                             "This drawing has fewer than two points — there is no curve to follow"
                                 .to_string(),
                         ));

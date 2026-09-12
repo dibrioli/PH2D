@@ -17,7 +17,7 @@
 
 use ph2d_ecs::scene::{ComponentRegistry, EditorCommandQueue};
 use ph2d_ecs::{Entity, NamedAnchor, NamedAnchorList, SimWorld, World};
-use ph2d_editor::{AnchorFieldEdit, InspectorAnchorInfo, InspectorAnchorRow, Toast};
+use ph2d_editor_core::{AnchorFieldEdit, InspectorAnchorInfo, InspectorAnchorRow, Toast};
 
 use ph2d_inspector_ordering::queue_set;
 

@@ -13,7 +13,7 @@
 
 use ph2d_core::Playhead;
 use ph2d_ecs::World;
-use ph2d_editor::tool::PanelEvent;
+use ph2d_editor_core::tool::PanelEvent;
 use ph2d_timeline::{
     PropKind, TimelineIntent, TimelineSignal, TimelineState, apply_intent, apply_scene,
 };
@@ -203,7 +203,7 @@ pub(crate) fn intent_for_transport(
     playhead: &Playhead,
 ) -> Option<TimelineIntent> {
     use TimelineIntent as I;
-    use ph2d_editor::ids;
+    use ph2d_editor_core::ids;
     let fps = timeline.doc.fps_display;
     // **"The end" is the end of what THIS VIEW shows** (`TimelineDoc::view_end_seconds`):
     // the active clip on Keys, the last strip on Arrange. Both go-to-end and a freshly
@@ -313,7 +313,7 @@ pub(crate) fn selection_jumps_to_keys(prev: Option<u64>, now: Option<u64>) -> bo
 /// Deliberately excludes the ruler scrub (its value is a fraction of the visible
 /// span, so it can never land off-screen) and the flag toggles.
 pub(crate) fn jumps_the_playhead(ev: &PanelEvent) -> bool {
-    use ph2d_editor::ids;
+    use ph2d_editor_core::ids;
     match *ev {
         PanelEvent::Click(id) => {
             id == ids::TIMELINE_GO_START
@@ -340,7 +340,7 @@ pub(crate) fn jumps_the_playhead(ev: &PanelEvent) -> bool {
 ///
 /// A tabela já pareia id ↔ `PropKind` porque o painel precisa do rótulo; usar o mesmo
 /// par aqui faz uma linha nova nascer roteada, e não roteável.
-pub(crate) fn prop_for_addprop_id(id: ph2d_editor::NodeId) -> Option<PropKind> {
+pub(crate) fn prop_for_addprop_id(id: ph2d_editor_core::NodeId) -> Option<PropKind> {
     ph2d_panel_timeline::ids::ADDPROP_BUTTONS
         .iter()
         .find(|(bid, _)| *bid == id)

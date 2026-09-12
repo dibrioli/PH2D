@@ -18,7 +18,7 @@
 //! `Transform`, not just sprites" — so the pivot is authorable in numbers on
 //! day one, with no new UI. A point-handle gizmo on canvas is a *different*
 //! thing (the three `GizmoView` publishers are all boxes with scale handles),
-//! and it landed later as `ph2d_editor::PointGizmoView` / `paint_point_gizmo`:
+//! and it landed later as `ph2d_editor_core::PointGizmoView` / `paint_point_gizmo`:
 //! a grabbable dot at the anchor that opens a plain `Translate` drag of this
 //! entity, so the pivot is draggable too, not only typeable.
 //!

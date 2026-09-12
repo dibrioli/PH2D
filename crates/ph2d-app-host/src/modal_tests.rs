@@ -9,10 +9,10 @@ use super::{chrome_dt, note_stall, take_stall, timed};
 /// diálogo**. Com o congelamento descontado, o que sobra é o tempo em que a tela de facto andou.
 #[test]
 fn a_frozen_loop_does_not_age_the_message_it_was_about_to_show() {
-    // ⚠️ **O TTL é lido do dono** (`ph2d_editor::Toast`), nunca escrito aqui: um `3.0` local viraria
+    // ⚠️ **O TTL é lido do dono** (`ph2d_editor_core::Toast`), nunca escrito aqui: um `3.0` local viraria
     // uma segunda verdade sobre quanto uma mensagem dura, e no dia em que o dono mudasse este gate
     // continuaria verde a medir um número que já não existe.
-    let ttl = f64::from(ph2d_editor::Toast::DEFAULT_TTL_S);
+    let ttl = f64::from(ph2d_editor_core::Toast::DEFAULT_TTL_S);
 
     // O quadro que abriu o diálogo: 20,016 s de parede, dos quais 20 s congelado.
     let wall = 20.016;

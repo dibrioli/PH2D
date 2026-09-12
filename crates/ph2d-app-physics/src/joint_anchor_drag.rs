@@ -27,13 +27,13 @@
 //! is one global step — the same way moving a sprite is.
 
 use ph2d_ecs::SimWorld;
-use ph2d_editor::gizmo::PointHandleKind;
+use ph2d_editor_core::gizmo::PointHandleKind;
 use ph2d_host::WindowSize;
 use ph2d_physics_ecs::{PhysicsBridge, ShapeDesc};
 use ph2d_render::Camera2d;
 
 use crate::{CanvasCtx, physics_state::PhysicsState};
-use ph2d_editor::screens::hero::JointFieldEdit;
+use ph2d_editor_core::screens::hero::JointFieldEdit;
 use ph2d_physics_ecs::PhysicsJoint;
 
 use crate::anchor_side::anchor_side;

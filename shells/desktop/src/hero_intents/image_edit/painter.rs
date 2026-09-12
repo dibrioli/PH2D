@@ -10,8 +10,8 @@ use std::collections::BTreeMap;
 
 use ph2d_asset::{AssetDb, AssetId};
 use ph2d_ecs::SimWorld;
-use ph2d_editor::tool::RasterEditTool;
-use ph2d_editor::{Toast, ToastQueue};
+use ph2d_editor_core::tool::RasterEditTool;
+use ph2d_editor_core::{Toast, ToastQueue};
 use ph2d_render::SpriteRenderer;
 use ph2d_tool_painter::PainterTool;
 
@@ -34,7 +34,7 @@ pub(crate) fn auto_commit_painter(
     // ⚠️ Esta rota "silenciosa" continua sem toast PRÓPRIO — mas o funil de commit precisa da fila
     // para avisar de uma perda de precisão (plano `docs/Sprite_projeto/18` W4). *Um bake automático
     // pode ser silencioso sobre TER acontecido; não pode ser silencioso sobre rebaixar a imagem.*
-    toasts: &mut ph2d_editor::ToastQueue,
+    toasts: &mut ph2d_editor_core::ToastQueue,
 ) -> bool {
     let entity = ph2d_ecs::Entity::from_bits(entity_bits);
     let Some(src) =

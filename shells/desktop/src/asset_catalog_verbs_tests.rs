@@ -1,11 +1,11 @@
 //! Os gates dos verbos de catálogo ([`super`]).
 
 use ph2d_asset_index::{AssetRef, CatalogId, CatalogTree};
-use ph2d_editor::action_bus::CatalogVerb;
-use ph2d_editor::interaction::drag_payload::DragPayload;
+use ph2d_editor_core::action_bus::CatalogVerb;
+use ph2d_editor_core::interaction::drag_payload::DragPayload;
 
-fn voz() -> ph2d_editor::ToastQueue {
-    ph2d_editor::ToastQueue::default()
+fn voz() -> ph2d_editor_core::ToastQueue {
+    ph2d_editor_core::ToastQueue::default()
 }
 
 /// ⭐⭐ **Dois `+` seguidos dão DOIS catálogos.**

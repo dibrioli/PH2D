@@ -10,21 +10,21 @@
 //! que o `sim`, a voz e o gizmo estão os três emprestados ao mesmo tempo.
 
 use ph2d_ecs::SimWorld;
-use ph2d_editor::HeroScreen;
+use ph2d_editor_core::HeroScreen;
 
 /// O dreno do menu do cartão. Devolve **para onde a selecção tem de ir**, se para algum lado, e
 /// levanta o `title_dirty` quando o documento mudou.
 #[allow(clippy::too_many_arguments)] // o slot, o mundo, o registo, o eco, o hero, a voz, os dois documentos, a câmera, a janela e o sinal de sujo
 pub(super) fn drain_card_verb(
     asset_card_verb: Option<(
-        ph2d_editor::interaction::drag_payload::DragPayload,
-        ph2d_editor::action_bus::AssetCardAction,
+        ph2d_editor_core::interaction::drag_payload::DragPayload,
+        ph2d_editor_core::action_bus::AssetCardAction,
     )>,
     sim: &mut SimWorld,
     registry: &ph2d_ecs::scene::ComponentRegistry,
     echo: &mut ph2d_app_components::instance_sync::MasterEcho,
     hero: &mut HeroScreen,
-    toasts: &mut ph2d_editor::ToastQueue,
+    toasts: &mut ph2d_editor_core::ToastQueue,
     vec_scene: &mut ph2d_vec_scene::VecScene,
     vec_entities: &mut ph2d_vec_entities::entities::VecEntityMap,
     camera: &ph2d_render::Camera2d,

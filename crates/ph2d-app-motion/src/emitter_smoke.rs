@@ -109,7 +109,9 @@ pub fn emitter_smoke(cx: &mut crate::motion_scene_ctx::MotionSceneCtx<'_>) {
     let (sink, heroes) = chain(&mut cx.motion.doc.graph);
     crate::smoke_layout::arrange_and_mark(&mut cx.motion.doc, &heroes);
     cx.motion.sinks.push(sink);
-    let _ = cx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
+    let _ = cx
+        .tools
+        .set_active(&ph2d_editor_core::ToolId::new("motion"));
     // O emitter já selecionado: `Rate` e `Max Particles` na tela no 1º frame.
     ph2d_panel_motion_graph::request_graph_selection(vec![heroes[0].0]);
 

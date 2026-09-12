@@ -5,7 +5,7 @@
 //! of which a unit test has, but the decision is a pure function of the sim
 //! world, the bridge and the clock.
 //!
-//! The point gizmo is `ph2d_editor::PointGizmoView` (editor-core): grabbable
+//! The point gizmo is `ph2d_editor_core::PointGizmoView` (editor-core): grabbable
 //! dots at world anchors, for entities that are POINTS rather than boxes. A
 //! physics joint is exactly that — it carries a `Transform` but no drawable
 //! geometry, so `snapshots::build_view` returns `None` for it and it would
@@ -30,7 +30,7 @@ use ph2d_host::WindowSize;
 use ph2d_physics_ecs::{JointSide, PhysicsBridge};
 use ph2d_render::Camera2d;
 
-use ph2d_editor::gizmo::{PointGizmoView, PointHandle, PointHandleKind};
+use ph2d_editor_core::gizmo::{PointGizmoView, PointHandle, PointHandleKind};
 
 use crate::overlay::joint_glyphs::{length_handle_world, limit_end_screen};
 
@@ -214,7 +214,7 @@ pub fn build_point_view(
         camera_height_world: camera.height_world,
         window_w: window_size.width as f32,
         window_h: window_size.height as f32,
-        canvas: ph2d_editor::zones::Rect::new(
+        canvas: ph2d_editor_core::zones::Rect::new(
             0.0,
             0.0,
             window_size.width as f32,
@@ -346,13 +346,13 @@ pub fn wheel_handles(
 /// The joint a hit id belongs to, and which end — read back from the map the
 /// painter filled while registering.
 ///
-/// The ids are keyed by entity bits (`ph2d_editor::gizmo::point_handle_id`), so
+/// The ids are keyed by entity bits (`ph2d_editor_core::gizmo::point_handle_id`), so
 /// no static table can classify them; this is the same shape as the box gizmo's
 /// `gizmo_hit_map` and for the same reason.
 #[must_use]
 pub fn resolve_anchor_hit(
-    hit_map: &std::collections::BTreeMap<ph2d_editor::NodeId, PointHandle>,
-    id: ph2d_editor::NodeId,
+    hit_map: &std::collections::BTreeMap<ph2d_editor_core::NodeId, PointHandle>,
+    id: ph2d_editor_core::NodeId,
 ) -> Option<(Entity, PointHandleKind)> {
     let h = hit_map.get(&id)?;
     Some((Entity::from_bits(h.key), h.kind))

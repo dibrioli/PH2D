@@ -14,7 +14,9 @@ impl crate::App {
         }
         self.vec_state.stack_smoke_done = true;
         let gfx = self.gfx.as_mut().expect("gfx");
-        let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("vector"));
+        let _ = gfx
+            .tools
+            .set_active(&ph2d_editor_core::ToolId::new("vector"));
         ph2d_app_vec::smoke_stack::build(&mut gfx.vec_scene);
     }
 }

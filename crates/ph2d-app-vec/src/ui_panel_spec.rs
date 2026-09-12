@@ -24,8 +24,8 @@
 //! seria gerar código para um widget que não existe.
 
 use ph2d_ecs::{Children, Entity, Name, SimWorld, VecPathRef, VecWidget, VecWidgetIcon};
-use ph2d_editor::icons::IconId;
-use ph2d_editor::widget::{IconGlyph, WidgetKind, icon_glyph};
+use ph2d_editor_core::icons::IconId;
+use ph2d_editor_core::widget::{IconGlyph, WidgetKind, icon_glyph};
 use ph2d_panel_authored::rows::Row as AuthoredRow;
 use ph2d_ui_codegen::{PanelSpec, RowSpec};
 use ph2d_vec_scene::{VecPathId, VecScene};
@@ -289,7 +289,7 @@ pub fn live_rows(sim: &SimWorld, scene: &VecScene, frame: Entity) -> Vec<Authore
         .into_iter()
         .map(|a| AuthoredRow {
             kind: a.kind,
-            id: ph2d_editor::ids::authored_row_id(&a.key),
+            id: ph2d_editor_core::ids::authored_row_id(&a.key),
             label: a.label,
             key: a.key,
             rgba: a.rgba,
@@ -316,12 +316,13 @@ pub fn picker_shape(
     sim: &SimWorld,
     scene: &VecScene,
     frame: Entity,
-    target: ph2d_editor::NodeId,
+    target: ph2d_editor_core::NodeId,
 ) -> Option<VecPathId> {
     authored(sim, scene, frame)
         .into_iter()
         .find(|a| {
-            a.kind == WidgetKind::ColorSwatch && ph2d_editor::ids::authored_row_id(&a.key) == target
+            a.kind == WidgetKind::ColorSwatch
+                && ph2d_editor_core::ids::authored_row_id(&a.key) == target
         })
         .and_then(|a| a.path)
 }

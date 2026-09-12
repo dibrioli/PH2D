@@ -85,7 +85,7 @@ pub(super) fn frame(
         drag_now,
         armed,
         ak,
-        &mut ph2d_editor::ToastQueue::new(),
+        &mut ph2d_editor_core::ToastQueue::new(),
     );
 }
 
@@ -106,7 +106,7 @@ pub(super) fn frame_perf(
         armed,
         true,
         ak,
-        &mut ph2d_editor::ToastQueue::new(),
+        &mut ph2d_editor_core::ToastQueue::new(),
     );
 }
 
@@ -128,7 +128,7 @@ pub(super) fn frame_toasts(
     drag_now: bool,
     armed: bool,
     ak: &mut AutokeyState,
-    toasts: &mut ph2d_editor::ToastQueue,
+    toasts: &mut ph2d_editor_core::ToastQueue,
 ) {
     apply_samples(st, ph, samples, drag_now, armed, false, ak, toasts);
 }

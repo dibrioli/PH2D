@@ -27,7 +27,7 @@ use ph2d_ecs::{Entity, Name, Transform};
 #[test]
 fn the_swap_button_arms_the_eyedropper_instead_of_acting() {
     let (mut sim, r, _map, _id, e) = scene();
-    let mut toasts = ph2d_editor::ToastQueue::default();
+    let mut toasts = ph2d_editor_core::ToastQueue::default();
     let ((changed, _), armed_pick) = run_full(ComponentEdit::Swap, &mut sim, &r, e, &mut toasts);
     assert!(!changed, "o Swap mudou o mundo no primeiro clique");
     assert!(
@@ -56,7 +56,7 @@ fn the_section_says_the_eyedropper_is_waiting() {
 #[test]
 fn the_second_click_makes_the_copy_a_copy_of_the_clicked_prefab() {
     let (mut sim, r, _map, _id, e) = scene();
-    let mut toasts = ph2d_editor::ToastQueue::default();
+    let mut toasts = ph2d_editor_core::ToastQueue::default();
     // A é a receita, `copy_a` é a cópia que fica no lugar.
     let (_, out) = run(ComponentEdit::Create, &mut sim, &r, e, &mut toasts);
     let copy_a = out.map(Entity::from_bits).expect("a copia de A");
@@ -87,7 +87,7 @@ fn the_second_click_makes_the_copy_a_copy_of_the_clicked_prefab() {
 #[test]
 fn clicking_a_plain_shape_with_the_eyedropper_refuses_out_loud() {
     let (mut sim, r, _map, _id, e) = scene();
-    let mut toasts = ph2d_editor::ToastQueue::default();
+    let mut toasts = ph2d_editor_core::ToastQueue::default();
     let (_, out) = run(ComponentEdit::Create, &mut sim, &r, e, &mut toasts);
     let copy = out.map(Entity::from_bits).expect("a copia");
     let plain = sim

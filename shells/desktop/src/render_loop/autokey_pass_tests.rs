@@ -508,7 +508,7 @@ fn scrubbing_an_animated_object_with_autokey_armed_creates_no_keys() {
             true,
             false,
             &mut ak,
-            &mut ph2d_editor::ToastQueue::new(),
+            &mut ph2d_editor_core::ToastQueue::new(),
         );
 
         assert_eq!(
@@ -546,7 +546,7 @@ fn a_real_pose_edit_while_scrubbed_off_grid_still_keys() {
         true,
         false,
         &mut ak,
-        &mut ph2d_editor::ToastQueue::new(),
+        &mut ph2d_editor_core::ToastQueue::new(),
     );
     assert_eq!(st.doc.active_clip().track(target).unwrap().len(), before);
 
@@ -559,7 +559,7 @@ fn a_real_pose_edit_while_scrubbed_off_grid_still_keys() {
         true,
         false,
         &mut ak,
-        &mut ph2d_editor::ToastQueue::new(),
+        &mut ph2d_editor_core::ToastQueue::new(),
     );
     assert_eq!(
         st.doc.active_clip().track(target).unwrap().len(),

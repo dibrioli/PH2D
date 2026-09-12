@@ -10,8 +10,8 @@ use crate::shapes::{Family, Make, SHAPES, Shape};
 /// acusou o toro de trazer uma razão que era do arco. *Uma régua de prefixo sobre nomes de produto
 /// parte no dia em que alguém acrescenta a variante.*
 fn label_of(
-    model: &ph2d_editor::widget::command_palette::PaletteModel,
-    id: ph2d_editor::NodeId,
+    model: &ph2d_editor_core::widget::command_palette::PaletteModel,
+    id: ph2d_editor_core::NodeId,
 ) -> Option<String> {
     model
         .groups

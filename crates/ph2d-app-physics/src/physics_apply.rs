@@ -8,7 +8,7 @@
 
 use ph2d_ecs::scene::{ComponentRegistry, EditorCommandQueue};
 use ph2d_ecs::{Entity, SimWorld};
-use ph2d_editor::PhysicsFieldEdit;
+use ph2d_editor_core::PhysicsFieldEdit;
 
 use crate::physics_area::apply_area_edit;
 use crate::physics_surface::apply_surface_edit;

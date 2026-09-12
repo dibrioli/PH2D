@@ -144,9 +144,10 @@ pub fn field3d_scene_sculpt(mesh: ph2d_mesh::Mesh) -> String {
 ///
 /// ⚠️ Ela devolve o nome (o caminho) por um canal e não cria o nó: quem tem o `&mut World` é a ponte
 /// com a cena, e quem pode abrir um diálogo é o app. É a mesma divisão da exportação.
-pub fn field3d_import(toasts: &mut ph2d_editor::ToastQueue) {
-    let say =
-        |toasts: &mut ph2d_editor::ToastQueue, m: String| toasts.push(ph2d_editor::Toast::info(m));
+pub fn field3d_import(toasts: &mut ph2d_editor_core::ToastQueue) {
+    let say = |toasts: &mut ph2d_editor_core::ToastQueue, m: String| {
+        toasts.push(ph2d_editor_core::Toast::info(m))
+    };
 
     let Some(path) = pick_mesh_file() else {
         return;
@@ -208,7 +209,7 @@ fn pick_mesh_file() -> Option<std::path::PathBuf> {
 /// a chave é o que o `ProjectFile` guarda e o que o `resolve_missing` vai ler na próxima abertura.
 /// ⇒ ela é **reescrita no nó**, o que também a torna um passo de undo — como tem de ser: é uma
 /// decisão do artista sobre o documento.
-pub fn field3d_relink(entity: u64, toasts: &mut ph2d_editor::ToastQueue) {
+pub fn field3d_relink(entity: u64, toasts: &mut ph2d_editor_core::ToastQueue) {
     let Some(path) = pick_mesh_file() else {
         return;
     };
@@ -220,7 +221,7 @@ pub fn field3d_relink(entity: u64, toasts: &mut ph2d_editor::ToastQueue) {
     let loaded = match field_from_file(&path) {
         Ok(l) => l,
         Err(e) => {
-            toasts.push(ph2d_editor::Toast::info(format!(
+            toasts.push(ph2d_editor_core::Toast::info(format!(
                 "Could not relink to {name}: {e}"
             )));
             return;
@@ -233,7 +234,7 @@ pub fn field3d_relink(entity: u64, toasts: &mut ph2d_editor::ToastQueue) {
     // ⚠️ **A ESCALA fica como está**, ao contrário da importação: a peça já tem a pose que o artista
     // lhe deu, e um arquivo novo que a re-enquadrasse desfazia esse trabalho. *Religar troca a
     // fonte, não a colocação.*
-    toasts.push(ph2d_editor::Toast::info(format!(
+    toasts.push(ph2d_editor_core::Toast::info(format!(
         "Relinked to {name}: {tris} tris -> field in {ms:.0} ms"
     )));
 }

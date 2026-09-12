@@ -12,8 +12,8 @@
 //! nova na lista de folgas. Cada função daqui é uma fase nomeada do quadro, com os argumentos
 //! escritos em TIPOS: nenhuma delas precisa da `App`, e nenhuma precisa do resto do `dispatch`.
 
-use ph2d_editor::HeroScreen;
-use ph2d_editor::ToolRegistry;
+use ph2d_editor_core::HeroScreen;
+use ph2d_editor_core::ToolRegistry;
 
 /// **A visibilidade dos docks que a ferramenta possui.**
 ///
@@ -42,7 +42,7 @@ pub(crate) fn dock_visibility(hero: &mut HeroScreen, painter_is_active: bool) {
             //    e com as abas ela é também o que o põe à FRENTE da fila ao abrir a ferramenta.
             if painter_is_active {
                 hero.store
-                    .bump_panel_z(ph2d_editor::ids::PAINTER_LAYERS_PANEL);
+                    .bump_panel_z(ph2d_editor_core::ids::PAINTER_LAYERS_PANEL);
             }
         }
     }
@@ -60,12 +60,12 @@ pub(crate) fn forward_picker_colour(hero: &mut HeroScreen, tools: &mut ToolRegis
     {
         use std::sync::atomic::{AtomicBool, Ordering};
         static PICKER_WAS_OPEN: AtomicBool = AtomicBool::new(false);
-        let open = hero.store.picker_target() == Some(ph2d_editor::ids::PAINTER_COLOR_THUMB);
+        let open = hero.store.picker_target() == Some(ph2d_editor_core::ids::PAINTER_COLOR_THUMB);
         let was_open = PICKER_WAS_OPEN.swap(open, Ordering::Relaxed);
         if (open || was_open)
             && let Some((value, _, _, _)) = hero
                 .store
-                .blender_picker(ph2d_editor::ids::INSP_BLENDER_PICKER)
+                .blender_picker(ph2d_editor_core::ids::INSP_BLENDER_PICKER)
             && let Some(painter) = tools.active_mut().and_then(|t| {
                 t.as_any_mut()
                     .downcast_mut::<ph2d_tool_painter::PainterTool>()
@@ -150,7 +150,7 @@ pub(crate) struct BindCtx<'a> {
     pub last_painter_pushed_entity: &'a mut Option<u64>,
     pub painter_preview_gpu: &'a mut Option<ph2d_preview_slot::PreviewGpu>,
     pub painter_gpu_preview: &'a mut Option<crate::painter_gpu_preview::PainterGpuPreview>,
-    pub toasts: &'a mut ph2d_editor::toast::ToastQueue,
+    pub toasts: &'a mut ph2d_editor_core::toast::ToastQueue,
 }
 
 pub(crate) fn bind_document(
@@ -267,7 +267,7 @@ pub(crate) fn settle_inactive_and_apply(
     }
     for bits in apply_selection {
         hero.bus
-            .push(ph2d_editor::action_bus::EditorAction::OneShotImageOp {
+            .push(ph2d_editor_core::action_bus::EditorAction::OneShotImageOp {
                 tool_id: "painter",
                 entity_bits: *bits,
             });

@@ -41,7 +41,9 @@ pub fn adapter_smoke(cx: &mut crate::motion_scene_ctx::MotionSceneCtx<'_>) {
     let gain = g.add_node("value.gain"); // value input
     g.set_pos(grid, Pos { x: 140.0, y: 220.0 });
     g.set_pos(gain, Pos { x: 560.0, y: 220.0 });
-    let _ = cx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
+    let _ = cx
+        .tools
+        .set_active(&ph2d_editor_core::ToolId::new("motion"));
     eprintln!(
         "[adapter smoke] dois nós no grafo: 'motion.grid' (saída = STREAM) à \
          esquerda, 'value.gain' (entrada = VALOR) à direita. Arraste da SAÍDA do \

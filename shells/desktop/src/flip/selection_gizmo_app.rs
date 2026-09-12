@@ -40,7 +40,7 @@ impl crate::App {
         if self.flip_state.selection_drag.is_none() {
             return false;
         }
-        let mods = ph2d_editor::GizmoModifiers {
+        let mods = ph2d_editor_core::GizmoModifiers {
             shift: self.modifiers.shift_key(),
             ctrl: self.modifiers.control_key() || self.modifiers.super_key(),
             alt: self.modifiers.alt_key(),
@@ -51,7 +51,7 @@ impl crate::App {
             return true;
         };
         let size = gfx.surface.size();
-        let cam = ph2d_editor::GizmoCamera {
+        let cam = ph2d_editor_core::GizmoCamera {
             center: gfx.camera.center,
             height_world: gfx.camera.height_world,
             window_w: size.width as f32,
@@ -60,7 +60,7 @@ impl crate::App {
         let snap = gfx
             .hero_screen
             .as_ref()
-            .map(|h| ph2d_editor::GizmoSnap {
+            .map(|h| ph2d_editor_core::GizmoSnap {
                 move_meters: h.project.snap_move_meters,
                 rotate_deg: h.project.snap_rotate_deg,
             })

@@ -23,7 +23,7 @@ ph2d-app-host      = { path = "../ph2d-app-host" }
 ph2d-viewport3d    = { path = "../ph2d-viewport3d" }
 bevy_ecs           = "0.19"
 ph2d-ecs           = { path = "../ph2d-ecs" }
-ph2d-editor        = { path = "../ph2d-editor" }
+ph2d-editor-core   = { path = "../ph2d-editor-core" }
 ph2d-field         = { path = "../ph2d-field" }
 ph2d-field-ecs     = { path = "../ph2d-field-ecs" }
 ph2d-field-eval    = { path = "../ph2d-field-eval" }

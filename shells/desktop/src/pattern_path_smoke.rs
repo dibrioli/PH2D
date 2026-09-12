@@ -46,7 +46,9 @@ static PENDING: std::sync::Mutex<Option<(VecPathId, VecPathId)>> = std::sync::Mu
 
 fn build(app: &mut crate::App) {
     let Some(gfx) = app.gfx.as_mut() else { return };
-    let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("vector"));
+    let _ = gfx
+        .tools
+        .set_active(&ph2d_editor_core::ToolId::new("vector"));
 
     // O motivo: uma seta assimétrica que aponta em +x, para a rotação por-cópia ser óbvia. Posta
     // de lado (o guia é que decide onde ela cai) — as cópias substituem este desenho.

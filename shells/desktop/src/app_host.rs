@@ -7,7 +7,7 @@
 //! problema que esta obra existe para resolver.
 
 use ph2d_app_host::{AppHost, HostMods};
-use ph2d_editor::zones::Rect;
+use ph2d_editor_core::zones::Rect;
 
 use crate::app_state::App;
 

@@ -7,7 +7,7 @@
 
 use super::*;
 
-use ph2d_editor::widget::WidgetKind;
+use ph2d_editor_core::widget::WidgetKind;
 
 /// Uma forma quadrada com pose, opcionalmente vestida e opcionalmente nomeada.
 fn scene_with(

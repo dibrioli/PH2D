@@ -215,7 +215,9 @@ fn build(app: &mut crate::App) {
     let Some(gfx) = app.gfx.as_mut() else {
         return;
     };
-    let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("vector"));
+    let _ = gfx
+        .tools
+        .set_active(&ph2d_editor_core::ToolId::new("vector"));
     // A arte entra pelo MESMO endereçamento que a autoria usa (`insert_image_rgba8`), senão o smoke
     // provaria um caminho que o produto não tem.
     let source = PatternSource::Image(gfx.asset_db.insert_image_rgba8(ART, ART, art_rgba()));

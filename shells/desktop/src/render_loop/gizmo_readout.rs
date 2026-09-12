@@ -1,7 +1,7 @@
 //! **Quem PUBLICA o número do arrasto de gizmo** (o estudo da UI viva, C3).
 //!
 //! A lei do número e o desenho da ficha vivem os dois em `ph2d-editor-core`
-//! ([`ph2d_editor::gizmo::gizmo_readout`] + [`ph2d_editor::readout`]), onde os gates os medem sem
+//! ([`ph2d_editor_core::gizmo::gizmo_readout`] + [`ph2d_editor_core::readout`]), onde os gates os medem sem
 //! janela. O que só a shell pode fazer é o meio: ler o `Transform` **VIVO** da entidade — o número
 //! que ela própria acabou de escrever — e entregá-lo já formatado.
 //!
@@ -22,8 +22,8 @@
 //! wave própria, porque cada um precisa que o seu dono publique o que aplicou.
 
 use ph2d_ecs::SimWorld;
-use ph2d_editor::HeroScreen;
-use ph2d_editor::gizmo::{GizmoTarget, TransformSnapshot, gizmo_readout};
+use ph2d_editor_core::HeroScreen;
+use ph2d_editor_core::gizmo::{GizmoTarget, TransformSnapshot, gizmo_readout};
 use ph2d_host::WindowSize;
 use ph2d_render::Camera2d;
 
@@ -71,5 +71,8 @@ fn readout_text(
     } else {
         1.0
     };
-    Some(r.text(ph2d_editor::LengthDisplay::of(&hero.project), px_per_world))
+    Some(r.text(
+        ph2d_editor_core::LengthDisplay::of(&hero.project),
+        px_per_world,
+    ))
 }

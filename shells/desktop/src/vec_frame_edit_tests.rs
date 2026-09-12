@@ -8,7 +8,7 @@
 use super::*;
 use crate::vec_selection::{VecSelSync, sync_selection};
 use ph2d_ecs::{Transform, VecClipContent, VecPathRef};
-use ph2d_editor::screens::hero::GizmoStateGroup;
+use ph2d_editor_core::screens::hero::GizmoStateGroup;
 use ph2d_vec_entities::entities::{VecEntityMap, sync};
 use ph2d_vec_scene::{VecScene, rectangle};
 use std::collections::BTreeMap;

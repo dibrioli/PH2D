@@ -22,7 +22,7 @@
 //!
 //! ⚠️ **O que mudou em 2026-09-02 foi só a FONTE, não a lei.** O literal `(0,047, 0,047, 0,055)`
 //! era uma cópia à mão do `Bg1` do Forge; hoje o valor vem da porta
-//! ([`ph2d_editor::screens::hero::canvas_backdrop`]), a mesma que o cartão do navegador de
+//! ([`ph2d_editor_core::screens::hero::canvas_backdrop`]), a mesma que o cartão do navegador de
 //! assets lê. Enquanto era cópia, *"mudar a cor do canvas"* (trocar de tema, ou autorar o token no
 //! painel de Tokens) movia tudo à volta e deixava o canvas onde estava — e nenhum gate o dizia,
 //! porque cada sítio estava certo sozinho.
@@ -38,7 +38,7 @@ const CHANNEL_STEPS: f64 = 255.0;
 /// O `clear` da camada de sprites, derivado do fundo do canvas deste tema.
 #[must_use]
 pub(crate) fn canvas_clear_rgb(theme: Theme) -> (f64, f64, f64) {
-    let c = ph2d_editor::screens::hero::canvas_backdrop(theme);
+    let c = ph2d_editor_core::screens::hero::canvas_backdrop(theme);
     (
         f64::from(c.r) / CHANNEL_STEPS,
         f64::from(c.g) / CHANNEL_STEPS,

@@ -49,7 +49,9 @@ fn build(app: &mut crate::App) {
     let Some(gfx) = app.gfx.as_mut() else {
         return;
     };
-    let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("vector"));
+    let _ = gfx
+        .tools
+        .set_active(&ph2d_editor_core::ToolId::new("vector"));
     let scene = &mut gfx.vec_scene;
     // Ordem de push = a ordem dos índices que o `arm` endereça: fileira a fileira, da esquerda.
     for i in 0..STARS {

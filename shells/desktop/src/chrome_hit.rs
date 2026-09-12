@@ -31,14 +31,14 @@ use crate::AppGfx;
 /// the gizmo is drawn **on the artwork**, around the very sprite being painted, and its handles sit on the
 /// sprite's own corners and edges. Refusing there would carve dead zones out of the picture exactly where
 /// the artist paints most. The gizmo answers for itself
-/// ([`ph2d_editor::gizmo::is_gizmo_id`]) — the module that owns the ids owns the classification.
+/// ([`ph2d_editor_core::gizmo::is_gizmo_id`]) — the module that owns the ids owns the classification.
 /// `on_artwork` is the caller's answer to *"is this id drawn ON the picture rather than beside it?"* —
 /// see [`pointer_over_chrome`], which knows where to ask.
 #[must_use]
 pub fn chrome_claims(
-    panel: Option<ph2d_editor::NodeId>,
-    widget: Option<ph2d_editor::NodeId>,
-    on_artwork: impl Fn(ph2d_editor::NodeId) -> bool,
+    panel: Option<ph2d_editor_core::NodeId>,
+    widget: Option<ph2d_editor_core::NodeId>,
+    on_artwork: impl Fn(ph2d_editor_core::NodeId) -> bool,
 ) -> bool {
     if panel.is_some() {
         return true;
@@ -73,7 +73,7 @@ pub fn pointer_over_chrome(gfx: Option<&AppGfx>, x: f32, y: f32) -> bool {
     };
     let hit = hero.hit_index.hit(x, y);
     let claimed = chrome_claims(hero.store.panel_at(x, y), hit, |id| {
-        ph2d_editor::gizmo::is_gizmo_id(id) || hero.gizmo.gizmo_hit_map.contains_key(&id)
+        ph2d_editor_core::gizmo::is_gizmo_id(id) || hero.gizmo.gizmo_hit_map.contains_key(&id)
     });
     if claimed && std::env::var("PH2D_CHROME_DIAG").is_ok() {
         eprintln!(
@@ -81,7 +81,7 @@ pub fn pointer_over_chrome(gfx: Option<&AppGfx>, x: f32, y: f32) -> bool {
              (gizmo_id={} keyed={})",
             hero.store.panel_at(x, y),
             hit,
-            hit.is_some_and(ph2d_editor::gizmo::is_gizmo_id),
+            hit.is_some_and(ph2d_editor_core::gizmo::is_gizmo_id),
             hit.is_some_and(|id| hero.gizmo.gizmo_hit_map.contains_key(&id)),
         );
     }
@@ -91,13 +91,13 @@ pub fn pointer_over_chrome(gfx: Option<&AppGfx>, x: f32, y: f32) -> bool {
 #[cfg(test)]
 mod chrome_claims_tests {
     use super::chrome_claims;
-    use ph2d_editor::NodeId;
-    use ph2d_editor::gizmo::ids as gz;
+    use ph2d_editor_core::NodeId;
+    use ph2d_editor_core::gizmo::ids as gz;
 
     /// The canonical half of "is this drawn on the artwork" — what the live door asks, minus the keyed
     /// gizmo map (which needs a painted hero). The keyed half has its own gate below.
     fn on_artwork(id: NodeId) -> bool {
-        ph2d_editor::gizmo::is_gizmo_id(id)
+        ph2d_editor_core::gizmo::is_gizmo_id(id)
     }
 
     /// A left-rail button: no panel rect (the rail is not a panel), but the hit index claims it.
@@ -105,7 +105,7 @@ mod chrome_claims_tests {
     /// the button.
     #[test]
     fn a_rail_button_is_chrome_even_though_it_is_in_no_panel() {
-        let rail_button = NodeId(ph2d_editor::ids::PAINTER_RAIL_FILL.0);
+        let rail_button = NodeId(ph2d_editor_core::ids::PAINTER_RAIL_FILL.0);
         assert!(
             chrome_claims(None, Some(rail_button), on_artwork),
             "a button that belongs to no panel is still the editor's UI — the left rail and the top \
@@ -164,12 +164,12 @@ mod chrome_claims_tests {
         // entity's bits. Nothing static can recognise it — only the map.
         let keyed = NodeId(gz::GIZMO_BBOX_INTERIOR.0 ^ 589u64.wrapping_mul(0x_9E37_79B9_7F4A_7C15));
         assert!(
-            !ph2d_editor::gizmo::is_gizmo_id(keyed),
+            !ph2d_editor_core::gizmo::is_gizmo_id(keyed),
             "fixture: this id IS in the canonical table, so it cannot show the gap it exists to show"
         );
         // The live door's classifier: the canonical table OR the map the gizmo filled in.
         let map: std::collections::BTreeMap<NodeId, ()> = [(keyed, ())].into_iter().collect();
-        let live = |id: NodeId| ph2d_editor::gizmo::is_gizmo_id(id) || map.contains_key(&id);
+        let live = |id: NodeId| ph2d_editor_core::gizmo::is_gizmo_id(id) || map.contains_key(&id);
         assert!(
             !chrome_claims(None, Some(keyed), live),
             "an extra sprite's gizmo handle was called chrome, so the Painter refuses the press and the \
@@ -228,7 +228,7 @@ mod chrome_claims_tests {
     /// **Mutação:** trocar o `widget.is_some_and(..)` de [`chrome_claims`] por `false` ⇒ RED.
     #[test]
     fn a_floating_windows_background_surface_reaches_its_consumer_without_ever_being_named() {
-        let surface = NodeId(ph2d_editor::ids::INPUT_MAP_SURFACE.0);
+        let surface = NodeId(ph2d_editor_core::ids::INPUT_MAP_SURFACE.0);
         assert!(
             !on_artwork(surface),
             "fixture: a superficie foi classificada como gizmo, e entao este gate nao mede a \

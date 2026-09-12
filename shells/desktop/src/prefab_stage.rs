@@ -36,7 +36,7 @@
 //! ver em contexto — e brigaria com o dedo dele ao arrastar as peças.
 
 use ph2d_ecs::{Entity, MasterEditing, SimWorld, Transform};
-use ph2d_editor::zones::Rect;
+use ph2d_editor_core::zones::Rect;
 use ph2d_host::WindowSize;
 use ph2d_render::Camera2d;
 
@@ -44,7 +44,7 @@ use ph2d_preview_drive::{Driven, PreviewDrive};
 
 /// ⭐ **Como a sessão acabou** — o alias do tipo que a barra publica, para a shell não ter de
 /// nomear a crate do chrome em cada sítio.
-pub(crate) use ph2d_editor::screens::hero::prefab_bar::PrefabExit as Exit;
+pub(crate) use ph2d_editor_core::screens::hero::prefab_bar::PrefabExit as Exit;
 
 /// Uma receita em cena: a identidade dela, a entidade viva, a pose de **bastidor** e o que o palco
 /// escreveu por último.
@@ -115,7 +115,7 @@ fn usable(area: Rect, window: WindowSize) -> Rect {
 pub(crate) fn run(
     pending: &mut Option<u64>,
     stage: &mut Option<Stage>,
-    hero: &ph2d_editor::screens::hero::HeroScreen,
+    hero: &ph2d_editor_core::screens::hero::HeroScreen,
     viewport: Rect,
     window: WindowSize,
     camera: &Camera2d,
@@ -185,7 +185,7 @@ pub(crate) fn hold(stage: &mut Option<Stage>, sim: &mut SimWorld, drive: &mut Pr
 fn raise(
     pending: &mut Option<u64>,
     stage: &mut Option<Stage>,
-    hero: &ph2d_editor::screens::hero::HeroScreen,
+    hero: &ph2d_editor_core::screens::hero::HeroScreen,
     viewport: Rect,
     window: WindowSize,
     camera: &Camera2d,

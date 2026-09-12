@@ -72,11 +72,12 @@ impl crate::App {
         match r {
             Ok(_) => {
                 gfx.toasts
-                    .push(ph2d_editor::Toast::success("Texture applied"));
+                    .push(ph2d_editor_core::Toast::success("Texture applied"));
             }
             Err(e) => {
-                gfx.toasts
-                    .push(ph2d_editor::Toast::warning(format!("Could not apply: {e}")));
+                gfx.toasts.push(ph2d_editor_core::Toast::warning(format!(
+                    "Could not apply: {e}"
+                )));
             }
         }
     }
@@ -104,7 +105,7 @@ impl crate::App {
         let ppm = gfx
             .hero_screen
             .as_ref()
-            .map_or(ph2d_editor::project::DEFAULT_PIXELS_PER_METER, |h| {
+            .map_or(ph2d_editor_core::project::DEFAULT_PIXELS_PER_METER, |h| {
                 h.project.pixels_per_meter
             })
             .max(crate::EPS_PIXELS_PER_METER);
@@ -125,7 +126,8 @@ impl crate::App {
         if let Some(hero) = gfx.hero_screen.as_mut() {
             hero.gizmo.replace_selection(Some(bits));
         }
-        gfx.toasts.push(ph2d_editor::Toast::success("Image placed"));
+        gfx.toasts
+            .push(ph2d_editor_core::Toast::success("Image placed"));
     }
 
     /// **Uma cópia do prefab nasce ONDE a mão largou.**
@@ -145,19 +147,21 @@ impl crate::App {
         if let Some(gfx) = self.gfx.as_mut()
             && let Some(hero) = gfx.hero_screen.as_mut()
         {
-            hero.bus
-                .push(ph2d_editor::action_bus::EditorAction::AssetInstantiate {
+            hero.bus.push(
+                ph2d_editor_core::action_bus::EditorAction::AssetInstantiate {
                     stable_id,
                     at: Some(world),
-                });
+                },
+            );
         }
     }
 
     /// ⛔ **Uma queda que não deu diz que não deu.** Silêncio faria o artista concluir que colocou.
     fn toast_drop_failed(&mut self) {
         if let Some(gfx) = self.gfx.as_mut() {
-            gfx.toasts
-                .push(ph2d_editor::Toast::warning("Could not place that asset"));
+            gfx.toasts.push(ph2d_editor_core::Toast::warning(
+                "Could not place that asset",
+            ));
         }
     }
 }

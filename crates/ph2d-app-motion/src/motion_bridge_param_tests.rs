@@ -16,7 +16,7 @@ use super::params::build_params_snapshot;
 use crate::motion_state::MotionState;
 // The display face a row is built in. `default()` is what the APP ships
 // (Pixels, 100 px/m), so a fixture reads the same numbers the artist does.
-use ph2d_editor::ProjectSettings;
+use ph2d_editor_core::ProjectSettings;
 
 /// A selected `motion.expression` resolves to a **Formula** text row that carries the
 /// graph's text-param value and sits FIRST (the formula is the node's primary control).

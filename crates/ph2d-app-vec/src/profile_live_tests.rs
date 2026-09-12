@@ -263,19 +263,19 @@ fn moving_the_shape_moves_the_ribbon() {
 /// facto os regista é o seam do `ph2d-panel-vector`; aqui isso é premissa, não asserção.
 #[test]
 fn the_preset_round_trips_through_the_sliders() {
-    let mut store = ph2d_editor::WidgetStore::default();
+    let mut store = ph2d_editor_core::WidgetStore::default();
     for id in [
-        ph2d_editor::ids::VECTOR_EXPAND_W_START,
-        ph2d_editor::ids::VECTOR_EXPAND_W_MID,
-        ph2d_editor::ids::VECTOR_EXPAND_W_END,
-        ph2d_editor::ids::VECTOR_EXPAND_W_POS,
+        ph2d_editor_core::ids::VECTOR_EXPAND_W_START,
+        ph2d_editor_core::ids::VECTOR_EXPAND_W_MID,
+        ph2d_editor_core::ids::VECTOR_EXPAND_W_END,
+        ph2d_editor_core::ids::VECTOR_EXPAND_W_POS,
     ] {
         store.register(
             id,
-            ph2d_editor::interaction::InteractiveState::Slider {
-                state: ph2d_editor::widget::SliderState::Normal,
+            ph2d_editor_core::interaction::InteractiveState::Slider {
+                state: ph2d_editor_core::widget::SliderState::Normal,
                 value: 0.0,
-                orientation: ph2d_editor::widget::SliderOrientation::Horizontal,
+                orientation: ph2d_editor_core::widget::SliderOrientation::Horizontal,
             },
         );
     }

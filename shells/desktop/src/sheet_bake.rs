@@ -30,7 +30,7 @@ use std::collections::BTreeMap;
 
 use ph2d_asset::AssetDb;
 use ph2d_ecs::{Entity, Name, SimWorld, SpriteSheetFrame, SpriteSheetRef};
-use ph2d_editor::{Toast, ToastQueue};
+use ph2d_editor_core::{Toast, ToastQueue};
 use ph2d_render::{Sprite, SpriteRenderer};
 use ph2d_sprite_sheet::{AuthoredSheet, PackInput};
 

@@ -26,8 +26,8 @@
 //! `motion_bridge_plumbing_tests.rs`), all split out for the HR-18 LOC cap.
 
 use crate::motion_state::MotionState;
-use ph2d_editor::screens::layout::CenterSplit;
-use ph2d_editor::{HeroScreen, ToastQueue, ToolId, ToolRegistry};
+use ph2d_editor_core::screens::layout::CenterSplit;
+use ph2d_editor_core::{HeroScreen, ToastQueue, ToolId, ToolRegistry};
 
 // GPU-resident cook routing (F1.1 fully-GPU + F1.2 hybrid). Unconditional — the
 // GPU path does not depend on the graph-panel feature.

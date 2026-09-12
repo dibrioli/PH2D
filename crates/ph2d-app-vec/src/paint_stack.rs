@@ -38,8 +38,8 @@ pub enum StackVerb {
 }
 
 /// Que verbo este id pede (`None` se ele não é da pilha).
-pub fn stack_verb_for_id(id: ph2d_editor::NodeId) -> Option<StackVerb> {
-    use ph2d_editor::ids;
+pub fn stack_verb_for_id(id: ph2d_editor_core::NodeId) -> Option<StackVerb> {
+    use ph2d_editor_core::ids;
     if id == ids::VECTOR_PAINT_ADD_FILL {
         return Some(StackVerb::AddFill);
     }
@@ -68,8 +68,8 @@ pub fn stack_verb_for_id(id: ph2d_editor::NodeId) -> Option<StackVerb> {
 /// ⚠️ Os códigos são os da casa (`0` Miter · `1` Round · `2` Bevel), resolvidos pela MESMA porta
 /// (`vec_expand::join_of_code`) que o Contour e o Expand usam — uma segunda tabela divergiria na
 /// primeira quina nova.
-pub fn join_code_for_id(id: ph2d_editor::NodeId) -> Option<u8> {
-    use ph2d_editor::ids;
+pub fn join_code_for_id(id: ph2d_editor_core::NodeId) -> Option<u8> {
+    use ph2d_editor_core::ids;
     match id {
         _ if id == ids::VECTOR_PAINT_JOIN_MITER => Some(0),
         _ if id == ids::VECTOR_PAINT_JOIN_ROUND => Some(1),
@@ -81,9 +81,9 @@ pub fn join_code_for_id(id: ph2d_editor::NodeId) -> Option<u8> {
 /// **De que CAMADA é a swatch que o picker está a editar** (`None` se ele não está numa).
 ///
 /// ⚠️ Varre o espaço FIXO de ids, como o [`stack_verb_for_id`] — e pela mesma razão.
-pub fn layer_of_picker_target(store: &ph2d_editor::interaction::WidgetStore) -> Option<usize> {
+pub fn layer_of_picker_target(store: &ph2d_editor_core::interaction::WidgetStore) -> Option<usize> {
     let alvo = store.picker_target()?;
-    (0..MAX_PAINT_LAYERS).find(|&i| ph2d_editor::ids::vector_paint_swatch_id(i) == alvo)
+    (0..MAX_PAINT_LAYERS).find(|&i| ph2d_editor_core::ids::vector_paint_swatch_id(i) == alvo)
 }
 
 /// **Aplica o verbo.** Devolve se o DOCUMENTO mudou (a vista não conta — ela não entra no undo).

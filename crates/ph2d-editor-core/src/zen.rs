@@ -2,7 +2,7 @@
 //! (ADR-0023 §2 "Modo Zen").
 //!
 //! When `active`, the layout system collapses every zone except the
-//! center (canvas), and `ph2d_editor::Layout::zen` flips true. UI
+//! center (canvas), and `ph2d_editor_core::Layout::zen` flips true. UI
 //! widgets check this and skip rendering. Only a discrete corner
 //! indicator remains (per Procreate behavior).
 //!

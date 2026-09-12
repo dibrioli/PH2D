@@ -26,7 +26,9 @@ pub(crate) fn frame(app: &mut crate::App, f: u32, level: u32) {
             let Some(gfx) = self_.gfx.as_mut() else {
                 return;
             };
-            let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("vector"));
+            let _ = gfx
+                .tools
+                .set_active(&ph2d_editor_core::ToolId::new("vector"));
             gfx.vec_scene.push_path(shape(
                 ShapeKind::Ellipse,
                 [-2.6, -1.6],
@@ -102,7 +104,9 @@ pub(crate) fn frame(app: &mut crate::App, f: u32, level: u32) {
             let Some(gfx) = self_.gfx.as_mut() else {
                 return;
             };
-            let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("vector"));
+            let _ = gfx
+                .tools
+                .set_active(&ph2d_editor_core::ToolId::new("vector"));
             gfx.vec_scene.push_path(shape(
                 ShapeKind::Ellipse,
                 [-4.0, -1.5],
@@ -177,7 +181,9 @@ pub(crate) fn frame(app: &mut crate::App, f: u32, level: u32) {
             let Some(gfx) = self_.gfx.as_mut() else {
                 return;
             };
-            let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("vector"));
+            let _ = gfx
+                .tools
+                .set_active(&ph2d_editor_core::ToolId::new("vector"));
             // A estrela EXATA do smoke do Contour (=25): 5 pontas, razão interna 0.45.
             gfx.vec_scene.push_path(shape(
                 ShapeKind::Star,

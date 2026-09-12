@@ -74,7 +74,7 @@
 
 use ph2d_ecs::{ChildOf, Entity, SimWorld, Transform};
 
-use ph2d_editor::GroupDragSnapshot;
+use ph2d_editor_core::GroupDragSnapshot;
 
 /// Preenche `out` (o `App::group_drag_starts`) para um gizmo drag que acabou de
 /// abrir: os OUTROS selecionados e, se `carry_rig`, o rig articulado do
@@ -142,7 +142,7 @@ pub fn seed_group_drag_starts(
 fn snapshot_of(sim: &SimWorld, bits: u64) -> Option<GroupDragSnapshot> {
     let e = Entity::from_bits(bits);
     let t = sim.world().get::<Transform>(e)?;
-    let start_transform = ph2d_editor::TransformSnapshot {
+    let start_transform = ph2d_editor_core::TransformSnapshot {
         translation: [t.translation.x, t.translation.y],
         rotation: t.rotation,
         scale: [t.scale.x, t.scale.y],
@@ -151,7 +151,7 @@ fn snapshot_of(sim: &SimWorld, bits: u64) -> Option<GroupDragSnapshot> {
     Some(GroupDragSnapshot {
         entity_bits: bits,
         start_transform,
-        parent_world: ph2d_editor::TransformSnapshot {
+        parent_world: ph2d_editor_core::TransformSnapshot {
             translation: [pw.translation.x, pw.translation.y],
             rotation: pw.rotation,
             scale: [pw.scale.x, pw.scale.y],

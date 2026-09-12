@@ -41,9 +41,9 @@
 //! mede um pixel"*.
 
 use ph2d_ecs::{Entity, Name, SimWorld, VecWidget, VecWidgetIcon};
-use ph2d_editor::icons::IconId;
-use ph2d_editor::widget::{SkinParam, WidgetKind, icon_glyph, paint_widget_skin};
-use ph2d_editor::zones::Rect;
+use ph2d_editor_core::icons::IconId;
+use ph2d_editor_core::widget::{SkinParam, WidgetKind, icon_glyph, paint_widget_skin};
+use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
 use ph2d_tokens::Theme;
 use ph2d_vec_render::{LiveGeometry, WidgetSkins};

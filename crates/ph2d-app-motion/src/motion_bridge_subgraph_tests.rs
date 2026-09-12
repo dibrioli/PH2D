@@ -99,8 +99,8 @@ fn grouping_never_changes_the_cook() {
     apply_graph_intents(
         &mut after,
         &mut ph2d_core::Playhead::default(),
-        &mut ph2d_editor::ToastQueue::default(),
-        &mut ph2d_editor::screens::layout::CenterSplit::None,
+        &mut ph2d_editor_core::ToastQueue::default(),
+        &mut ph2d_editor_core::screens::layout::CenterSplit::None,
     );
     assert_eq!(after.doc.subgraphs.len(), 1, "the group was created");
     let grouped_out = cook(&mut after, 40);
@@ -224,7 +224,7 @@ fn deleting_a_card_deletes_its_members_at_every_depth() {
     apply_delete_selection(
         &mut m,
         vec![super::subgraph::view_id(outer)],
-        &mut ph2d_editor::ToastQueue::default(),
+        &mut ph2d_editor_core::ToastQueue::default(),
     );
     assert!(m.doc.subgraphs.is_empty(), "both groups are gone");
     assert!(m.doc.members.is_empty(), "no membership outlived its group");
@@ -253,8 +253,8 @@ fn a_node_added_inside_a_group_is_a_member_of_it() {
     apply_graph_intents(
         &mut m,
         &mut ph2d_core::Playhead::default(),
-        &mut ph2d_editor::ToastQueue::default(),
-        &mut ph2d_editor::screens::layout::CenterSplit::None,
+        &mut ph2d_editor_core::ToastQueue::default(),
+        &mut ph2d_editor_core::screens::layout::CenterSplit::None,
     );
     let fresh = m
         .doc
@@ -318,8 +318,8 @@ fn probing_a_card_reads_what_it_emits_and_the_hud_hangs_off_the_card() {
     apply_graph_intents(
         &mut m,
         &mut ph2d_core::Playhead::default(),
-        &mut ph2d_editor::ToastQueue::default(),
-        &mut ph2d_editor::screens::layout::CenterSplit::None,
+        &mut ph2d_editor_core::ToastQueue::default(),
+        &mut ph2d_editor_core::screens::layout::CenterSplit::None,
     );
     assert_eq!(
         m.probe,
@@ -372,12 +372,12 @@ fn a_ghost_moves_but_cannot_be_deleted_from_inside_the_group() {
     });
     // DELETE: refused, and the node is still there.
     push_intent(GraphIntent::DeleteSelection { nodes: vec![ghost] });
-    let mut toasts = ph2d_editor::ToastQueue::default();
+    let mut toasts = ph2d_editor_core::ToastQueue::default();
     apply_graph_intents(
         &mut m,
         &mut ph2d_core::Playhead::default(),
         &mut toasts,
-        &mut ph2d_editor::screens::layout::CenterSplit::None,
+        &mut ph2d_editor_core::screens::layout::CenterSplit::None,
     );
 
     assert_eq!(
@@ -414,8 +414,8 @@ fn moving_a_card_carries_everything_inside_it() {
     apply_graph_intents(
         &mut m,
         &mut ph2d_core::Playhead::default(),
-        &mut ph2d_editor::ToastQueue::default(),
-        &mut ph2d_editor::screens::layout::CenterSplit::None,
+        &mut ph2d_editor_core::ToastQueue::default(),
+        &mut ph2d_editor_core::screens::layout::CenterSplit::None,
     );
 
     let s = &m.doc.subgraphs[0];

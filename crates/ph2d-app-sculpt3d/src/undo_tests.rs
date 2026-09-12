@@ -46,7 +46,7 @@ const CENTRE: (f32, f32) = (450.0, 350.0);
 /// Uma cena com uma esfera e o verbo pedido em mãos.
 fn scene(device: &wgpu::Device, verb: Verb) -> Sculpt3dScene {
     let mut s = Sculpt3dScene::new(device, uv_sphere(24, 36, 1.0), 1.0);
-    s.note_canvas(ph2d_editor::zones::Rect::new(0.0, 0.0, 900.0, 700.0));
+    s.note_canvas(ph2d_editor_core::zones::Rect::new(0.0, 0.0, 900.0, 700.0));
     s.brush.verb = verb;
     s
 }
@@ -280,7 +280,7 @@ fn every_point_of_the_detail_slider_returns_a_piece() {
         //    exatamente o defeito que o artista vê. *A fixtura só prova o que
         //    ela contém.*
         let mut s = Sculpt3dScene::new(&gpu.device, crate::fixtures::wrinkled_sphere(), 1.0);
-        s.note_canvas(ph2d_editor::zones::Rect::new(0.0, 0.0, 900.0, 700.0));
+        s.note_canvas(ph2d_editor_core::zones::Rect::new(0.0, 0.0, 900.0, 700.0));
         let r = s.quad_remesh(detail, adapt).unwrap_or_else(|e| {
             panic!("detail={detail:.2} adapt={adapt:.2}: a retopologia recusou ({e:?})")
         });
@@ -402,7 +402,7 @@ fn two_clicks_without_undo_still_return_a_piece() {
     use std::collections::BTreeMap;
     let gpu = gpu_or_skip!();
     let mut s = Sculpt3dScene::new(&gpu.device, crate::fixtures::wrinkled_sphere(), 1.0);
-    s.note_canvas(ph2d_editor::zones::Rect::new(0.0, 0.0, 900.0, 700.0));
+    s.note_canvas(ph2d_editor_core::zones::Rect::new(0.0, 0.0, 900.0, 700.0));
 
     for click in 1..=3u32 {
         let r = s

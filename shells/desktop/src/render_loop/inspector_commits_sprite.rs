@@ -6,7 +6,7 @@
 //! declarar exceção, e o que sai é o que não é roteamento.
 
 use ph2d_ecs::{SpriteCornerTint, SpriteGrid, SpriteRegion};
-use ph2d_editor::SpriteFieldEdit;
+use ph2d_editor_core::SpriteFieldEdit;
 use ph2d_render::Sprite;
 
 /// **Os quatro editáveis da §2**, lidos da entidade com o default benigno no lugar do que ela
@@ -226,15 +226,15 @@ const CORNER_TINT_TYPE: &str = "ph2d::ecs::SpriteCornerTint";
 /// editável É (o [`SpriteEditables`], os quatro componentes em que ela foi cortada na F1.6) — e
 /// porque aquele ficheiro estava no teto de 600 LOC. *O corte é por assunto.*
 pub(super) fn apply_sprite_edits(
-    sprite_edits: &[(u64, ph2d_editor::screens::hero::SpriteFieldEdit)],
+    sprite_edits: &[(u64, ph2d_editor_core::screens::hero::SpriteFieldEdit)],
     sim: &mut ph2d_ecs::SimWorld,
     editor_queue: &ph2d_ecs::scene::EditorCommandQueue,
     component_registry: &ph2d_ecs::scene::ComponentRegistry,
     sprite_type_id: u64,
-    toasts: &mut ph2d_editor::ToastQueue,
+    toasts: &mut ph2d_editor_core::ToastQueue,
 ) -> bool {
     use ph2d_ecs::scene::{EditorCommand, apply_editor_commands};
-    use ph2d_editor::Toast;
+    use ph2d_editor_core::Toast;
     use ph2d_render::Sprite;
     let mut dirty = false;
     // W2 Sprite Inspector v2: drain editable Sprite field edits (flip,

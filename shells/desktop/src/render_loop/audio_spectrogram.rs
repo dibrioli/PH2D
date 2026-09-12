@@ -13,8 +13,8 @@
 //!
 //! Split out of `audio_overlay` to keep that file under the shell's 600-LOC cap.
 
-use ph2d_editor::paint::{fill_rounded_rect, resolve, stroke_rect};
-use ph2d_editor::zones::Rect;
+use ph2d_editor_core::paint::{fill_rounded_rect, resolve, stroke_rect};
+use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, Theme};
 use ph2d_vector::{ImageQuality, VectorScene};
 

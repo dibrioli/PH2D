@@ -192,12 +192,12 @@ pub fn shape_row_of_selection(
 /// dos quatro chips é a dos quatro primeiros discriminantes, e uma tabela paralela divergiria dela
 /// no dia em que alguém reordenasse a fileira do painel.
 #[must_use]
-pub fn shape_op_for_id(id: ph2d_editor::ids::NodeId) -> Option<u8> {
+pub fn shape_op_for_id(id: ph2d_editor_core::ids::NodeId) -> Option<u8> {
     [
-        ph2d_editor::ids::VECTOR_BOOL_SHAPE_UNION,
-        ph2d_editor::ids::VECTOR_BOOL_SHAPE_SUBTRACT,
-        ph2d_editor::ids::VECTOR_BOOL_SHAPE_INTERSECT,
-        ph2d_editor::ids::VECTOR_BOOL_SHAPE_EXCLUDE,
+        ph2d_editor_core::ids::VECTOR_BOOL_SHAPE_UNION,
+        ph2d_editor_core::ids::VECTOR_BOOL_SHAPE_SUBTRACT,
+        ph2d_editor_core::ids::VECTOR_BOOL_SHAPE_INTERSECT,
+        ph2d_editor_core::ids::VECTOR_BOOL_SHAPE_EXCLUDE,
     ]
     .iter()
     .position(|chip| *chip == id)

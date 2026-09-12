@@ -5,7 +5,7 @@
 
 use super::EMPTY_HALF_PX;
 use ph2d_ecs::{ChildOf, Entity, Name, SimWorld, Transform, Visibility};
-use ph2d_editor::GizmoView;
+use ph2d_editor_core::GizmoView;
 use ph2d_host::WindowSize;
 use ph2d_render::Camera2d;
 
@@ -111,7 +111,7 @@ fn a_group_keeps_its_own_box_and_does_not_borrow_the_childrens() {
 #[test]
 fn the_empty_marker_is_wider_than_the_handles_it_carries() {
     let width_px = 2.0 * EMPTY_HALF_PX;
-    let handle = ph2d_editor::HANDLE_SIZE_PX;
+    let handle = ph2d_editor_core::HANDLE_SIZE_PX;
     assert!(
         width_px >= 4.0 * handle,
         "a caixa do vazio tem {width_px} px para alcas de {handle} px — a quina e o meio da \

@@ -85,7 +85,7 @@ pub fn ring(cx: f32, cy: f32, r: f32, n: usize) -> Vec<Vec2> {
 /// Roda no prólogo do frame (ao lado dos outros smokes). No-op sem a env.
 pub fn arm(
     flip: &mut ph2d_flip::FlipDoc,
-    tools: &mut ph2d_editor::ToolRegistry,
+    tools: &mut ph2d_editor_core::ToolRegistry,
     playhead: &mut ph2d_core::Playhead,
 ) {
     if !enabled() {
@@ -94,7 +94,7 @@ pub fn arm(
     if FRAME.fetch_add(1, Ordering::Relaxed) != 3 {
         return;
     }
-    let _ = tools.set_active(&ph2d_editor::ToolId::new("flip"));
+    let _ = tools.set_active(&ph2d_editor_core::ToolId::new("flip"));
     let oid = flip.push_object("Fill Smoke");
     let obj = flip.object_mut(oid).expect("objeto recém-criado");
     obj.fps = 12.0;

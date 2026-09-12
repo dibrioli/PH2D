@@ -95,8 +95,8 @@ fn switching_the_shape_drops_the_wire_the_new_shape_cannot_read() {
         .expect("o tamanho aceita fio em toda espécie");
 
     // O gesto: o painel escreve o `kind` pela fila de intenções.
-    let mut toasts = ph2d_editor::ToastQueue::default();
-    let store = ph2d_editor::interaction::WidgetStore::default();
+    let mut toasts = ph2d_editor_core::ToastQueue::default();
+    let store = ph2d_editor_core::interaction::WidgetStore::default();
     ph2d_panel_motion_params::push_param_intent(MotionParamIntent::SetParam {
         node: sh.0,
         param: "kind",
@@ -135,9 +135,9 @@ fn the_repair_says_nothing_the_second_time() {
         .drive_param(sh, "tooth_depth", (num, 0))
         .unwrap();
 
-    let mut toasts = ph2d_editor::ToastQueue::default();
-    let store = ph2d_editor::interaction::WidgetStore::default();
-    let fire = |m: &mut MotionState, toasts: &mut ph2d_editor::ToastQueue| {
+    let mut toasts = ph2d_editor_core::ToastQueue::default();
+    let store = ph2d_editor_core::interaction::WidgetStore::default();
+    let fire = |m: &mut MotionState, toasts: &mut ph2d_editor_core::ToastQueue| {
         ph2d_panel_motion_params::push_param_intent(MotionParamIntent::SetParam {
             node: sh.0,
             param: "kind",
@@ -190,8 +190,8 @@ fn sweeping_a_threshold_through_zero_keeps_the_wire() {
     );
 
     // E agora o gesto real: o slider a chegar a zero.
-    let mut toasts = ph2d_editor::ToastQueue::default();
-    let store = ph2d_editor::interaction::WidgetStore::default();
+    let mut toasts = ph2d_editor_core::ToastQueue::default();
+    let store = ph2d_editor_core::interaction::WidgetStore::default();
     ph2d_panel_motion_params::push_param_intent(MotionParamIntent::SetParam {
         node: sh.0,
         param: "stroke_width",

@@ -5,7 +5,7 @@
 //! snapshot + camera and writes guide geometry into the overlay `VectorScene`; mutates nothing.
 
 use ph2d_ecs::SimWorld;
-use ph2d_editor::HeroScreen;
+use ph2d_editor_core::HeroScreen;
 use ph2d_host::WindowSize;
 use ph2d_render::Camera2d;
 use ph2d_tool_painter::PainterTool;
@@ -181,13 +181,13 @@ pub(super) fn draw_line_overlay(
             }
             // Labels — AFTER the last `scene` use, so the VectorScene is free for text rendering (centre tile).
             for (text, center) in &dim_labels {
-                let r = ph2d_editor::zones::Rect::new(
+                let r = ph2d_editor_core::zones::Rect::new(
                     center.x as f32 - 40.0,
                     center.y as f32 - 8.0,
                     80.0,
                     16.0,
                 );
-                ph2d_editor::paint::paint_text_centered(
+                ph2d_editor_core::paint::paint_text_centered(
                     text_system,
                     vector_scene,
                     text,
@@ -197,13 +197,13 @@ pub(super) fn draw_line_overlay(
                 );
             }
             for (text, center) in &corner_labels {
-                let r = ph2d_editor::zones::Rect::new(
+                let r = ph2d_editor_core::zones::Rect::new(
                     center.x as f32 - 40.0,
                     center.y as f32 - 8.0,
                     80.0,
                     16.0,
                 );
-                ph2d_editor::paint::paint_text_centered(
+                ph2d_editor_core::paint::paint_text_centered(
                     text_system,
                     vector_scene,
                     text,

@@ -20,7 +20,7 @@ impl crate::App {
             return;
         }
         let gfx = self.gfx.as_mut().expect("gfx");
-        let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("flip"));
+        let _ = gfx.tools.set_active(&ph2d_editor_core::ToolId::new("flip"));
 
         let oid = gfx.flip.push_object("Pairs Smoke");
         let obj = gfx.flip.object_mut(oid).expect("objeto recém-criado");

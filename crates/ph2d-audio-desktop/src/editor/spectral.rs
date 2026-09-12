@@ -288,7 +288,7 @@ impl super::super::AudioSystem {
         // clip. (The engine may be sounding the very same buffer on the RT thread — it is
         // immutable, and that is exactly why this is safe to hand to a worker.)
         let data = clip.data().clone();
-        let job = ph2d_editor::Job::spawn("AI Denoise (Voice)", move |p| {
+        let job = ph2d_editor_core::Job::spawn("AI Denoise (Voice)", move |p| {
             // The bridge from this crate's `Progress` to the DSP crate's `&dyn Fn(f32)`. It is
             // one line, and it is the whole reason `ph2d-audio-ml` does not depend on the
             // editor: a DSP crate that must link a UI to report a percentage is a DSP crate
@@ -303,7 +303,7 @@ impl super::super::AudioSystem {
     /// Hand the bar of a just-started job to the app-wide queue. Called once per frame by the
     /// bridge; `None` on every frame but the one after a click.
     #[cfg(feature = "audio-ml")]
-    pub fn editor_take_started_job(&mut self) -> Option<ph2d_editor::Progress> {
+    pub fn editor_take_started_job(&mut self) -> Option<ph2d_editor_core::Progress> {
         self.started_job.take()
     }
 

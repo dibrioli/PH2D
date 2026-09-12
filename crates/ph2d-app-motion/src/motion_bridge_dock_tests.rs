@@ -11,9 +11,9 @@
 //!
 //! Declared by the parent as a `#[path]` sibling, so `super` is `render_loop::motion_bridge`.
 
-use ph2d_editor::screens::hero::{PANEL_MOTION_GRAPH, PANEL_TIMELINE};
-use ph2d_editor::screens::layout::{CenterSplit, HeroLayout, rail_w};
-use ph2d_editor::zones::Rect;
+use ph2d_editor_core::screens::hero::{PANEL_MOTION_GRAPH, PANEL_TIMELINE};
+use ph2d_editor_core::screens::layout::{CenterSplit, HeroLayout, rail_w};
+use ph2d_editor_core::zones::Rect;
 
 const VP: Rect = Rect {
     x: 0.0,
@@ -82,7 +82,7 @@ fn the_bridge_and_the_paint_agree_on_the_keys() {
     // this string could have drifted.
     assert_eq!(
         PANEL_TIMELINE,
-        <ph2d_panel_timeline::TimelinePanel as ph2d_editor::panel::Panel>::ID,
+        <ph2d_panel_timeline::TimelinePanel as ph2d_editor_core::panel::Panel>::ID,
         "the visibility key must be the panel's own id, or the toggle turns on a panel nobody has"
     );
 }

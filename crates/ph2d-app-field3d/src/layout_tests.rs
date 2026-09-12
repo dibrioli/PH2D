@@ -1,7 +1,7 @@
 //! Os gates da porta do layout — ver [`super`].
 
 use super::{Split, hit, rects};
-use ph2d_editor::zones::Rect as EditorRect;
+use ph2d_editor_core::zones::Rect as EditorRect;
 
 /// ⭐⭐⭐ **OS QUATRO PEDAÇOS LADRILHAM A ÁREA EXACTAMENTE** — sem folga e sem sobreposição.
 ///

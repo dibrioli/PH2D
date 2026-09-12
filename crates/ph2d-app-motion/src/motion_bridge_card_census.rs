@@ -25,7 +25,11 @@ fn what_each_card_carries() {
         let mut aux = MotionState::new();
         let id = aux.doc.graph.add_node(man.name.to_string());
         let mut snap = ph2d_panel_motion_graph::snapshot_from(&aux.doc.graph, &aux.registry);
-        stamp_card_params(&aux, ph2d_editor::ProjectSettings::default(), &mut snap);
+        stamp_card_params(
+            &aux,
+            ph2d_editor_core::ProjectSettings::default(),
+            &mut snap,
+        );
         let n = snap
             .nodes
             .iter()
@@ -62,7 +66,11 @@ fn what_each_card_carries() {
         let id = aux.doc.graph.add_node(alvo.to_string());
         let tid = aux.doc.graph.node(id).expect("no'").type_id();
         let mut snap = ph2d_panel_motion_graph::snapshot_from(&aux.doc.graph, &aux.registry);
-        stamp_card_params(&aux, ph2d_editor::ProjectSettings::default(), &mut snap);
+        stamp_card_params(
+            &aux,
+            ph2d_editor_core::ProjectSettings::default(),
+            &mut snap,
+        );
         let ps = snap
             .nodes
             .iter()
@@ -138,7 +146,7 @@ fn what_the_panel_offers_and_the_card_does_not() {
         let mut m = MotionState::new();
         let id = m.doc.graph.add_node(nome.clone());
         ph2d_panel_motion_graph::set_graph_selection(vec![id.0]);
-        let painel = build_params_snapshot(&m, ph2d_editor::ProjectSettings::default());
+        let painel = build_params_snapshot(&m, ph2d_editor_core::ProjectSettings::default());
         let no_painel: Vec<String> = painel
             .as_ref()
             .map(|s| {
@@ -154,7 +162,7 @@ fn what_the_panel_offers_and_the_card_does_not() {
             })
             .unwrap_or_default();
         let mut snap = ph2d_panel_motion_graph::snapshot_from(&m.doc.graph, &m.registry);
-        stamp_card_params(&m, ph2d_editor::ProjectSettings::default(), &mut snap);
+        stamp_card_params(&m, ph2d_editor_core::ProjectSettings::default(), &mut snap);
         let no_cartao: Vec<String> = snap
             .nodes
             .iter()
@@ -207,7 +215,7 @@ fn what_species_of_control_the_catalogue_has() {
         let id = m.doc.graph.add_node(nome.clone());
         open_every_section(&mut m, id);
         let mut snap = ph2d_panel_motion_graph::snapshot_from(&m.doc.graph, &m.registry);
-        stamp_card_params(&m, ph2d_editor::ProjectSettings::default(), &mut snap);
+        stamp_card_params(&m, ph2d_editor_core::ProjectSettings::default(), &mut snap);
         let Some(v) = snap.nodes.iter().find(|v| v.id == id.0) else {
             continue;
         };
@@ -282,7 +290,7 @@ fn what_the_open_cycle_group_needs() {
         let id = m.doc.graph.add_node(nome.to_string());
         open_every_section(&mut m, id);
         let mut snap = ph2d_panel_motion_graph::snapshot_from(&m.doc.graph, &m.registry);
-        stamp_card_params(&m, ph2d_editor::ProjectSettings::default(), &mut snap);
+        stamp_card_params(&m, ph2d_editor_core::ProjectSettings::default(), &mut snap);
         let Some(v) = snap.nodes.iter().find(|v| v.id == id.0) else {
             continue;
         };

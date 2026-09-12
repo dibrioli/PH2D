@@ -444,7 +444,7 @@ fn the_card_calls_a_variant_a_variant_and_a_copy_a_copy() {
 /// (Mutação: reintroduzir um corte por `{` ⇒ RED.)
 #[test]
 fn the_provenance_line_shows_the_name_verbatim() {
-    let info = ph2d_editor::screens::hero::InspectorInstanceInfo {
+    let info = ph2d_editor_core::screens::hero::InspectorInstanceInfo {
         master_name: "Canvas {Size=Small} Variant".into(),
         is_variant: false,
         ..Default::default()

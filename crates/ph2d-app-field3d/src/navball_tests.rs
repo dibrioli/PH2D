@@ -310,19 +310,19 @@ fn the_order_of_the_obstacles_does_not_matter() {
 #[test]
 fn a_docked_column_no_longer_pushes_the_gizmo() {
     // A geometria REAL do quadro, e não rectângulos inventados.
-    let viewport = ph2d_editor::zones::Rect::new(0.0, 0.0, 1366.0, 1024.0);
-    let layout = ph2d_editor::screens::layout::HeroLayout::for_viewport_bands(
+    let viewport = ph2d_editor_core::zones::Rect::new(0.0, 0.0, 1366.0, 1024.0);
+    let layout = ph2d_editor_core::screens::layout::HeroLayout::for_viewport_bands(
         viewport,
         false,
-        ph2d_editor::screens::layout::ChromeBands {
+        ph2d_editor_core::screens::layout::ChromeBands {
             rail_w: 0.0,
             top_bar_h: 28.0,
-            ..ph2d_editor::screens::layout::ChromeBands::DEFAULT
+            ..ph2d_editor_core::screens::layout::ChromeBands::DEFAULT
         },
-        ph2d_editor::screens::layout::CenterSplit::None,
-        ph2d_editor::screens::layout::DockSides::BOTH,
+        ph2d_editor_core::screens::layout::CenterSplit::None,
+        ph2d_editor_core::screens::layout::DockSides::BOTH,
     );
-    let to_editor = |r: ph2d_editor::zones::Rect| EditorRect::new(r.x, r.y, r.w, r.h);
+    let to_editor = |r: ph2d_editor_core::zones::Rect| EditorRect::new(r.x, r.y, r.w, r.h);
     let columns = [to_editor(layout.hierarchy), to_editor(layout.inspector)];
     let draw = to_editor(layout.draw_area);
 
@@ -365,11 +365,12 @@ fn a_floating_window_on_the_edge_still_pushes() {
 #[test]
 fn the_product_feeds_the_gizmo_the_drawing_area() {
     let viewport = EditorRect::new(0.0, 0.0, 1366.0, 1024.0);
-    let mut hero =
-        ph2d_editor::screens::hero::HeroScreen::new(ph2d_editor::screens::hero::ids::NodeId(1));
+    let mut hero = ph2d_editor_core::screens::hero::HeroScreen::new(
+        ph2d_editor_core::screens::hero::ids::NodeId(1),
+    );
 
     // (a) com um quadro publicado, a área é a DE DESENHO.
-    let drawing = ph2d_editor::zones::Rect::new(308.0, 28.0, 754.0, 996.0);
+    let drawing = ph2d_editor_core::zones::Rect::new(308.0, 28.0, 754.0, 996.0);
     hero.last_content = drawing;
     let got = crate::layout::area(&hero, viewport);
     assert_eq!(
@@ -379,7 +380,7 @@ fn the_product_feeds_the_gizmo_the_drawing_area() {
     );
 
     // (b) no PRIMEIRO quadro ainda não há área publicada, e aí vale a janela.
-    hero.last_content = ph2d_editor::zones::Rect::new(0.0, 0.0, 0.0, 0.0);
+    hero.last_content = ph2d_editor_core::zones::Rect::new(0.0, 0.0, 0.0, 0.0);
     let got = crate::layout::area(&hero, viewport);
     assert_eq!(
         (got.w, got.h),

@@ -64,7 +64,9 @@ impl crate::App {
             // no local 0 e põe a pose na entidade (ADR-0111/0112).
             3 if level == 1 => {
                 let gfx = self.gfx.as_mut().expect("gfx");
-                let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("vector"));
+                let _ = gfx
+                    .tools
+                    .set_active(&ph2d_editor_core::ToolId::new("vector"));
                 let scene = &mut gfx.vec_scene;
                 scene.push_path(shape(
                     ShapeKind::Star,
@@ -87,7 +89,9 @@ impl crate::App {
             // subir). No frame 8 o blend nasce com um spine CURVO e autorado.
             3 if level == 3 => {
                 let gfx = self.gfx.as_mut().expect("gfx");
-                let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("vector"));
+                let _ = gfx
+                    .tools
+                    .set_active(&ph2d_editor_core::ToolId::new("vector"));
                 let scene = &mut gfx.vec_scene;
                 scene.push_path(shape(
                     ShapeKind::Star,
@@ -108,7 +112,9 @@ impl crate::App {
             // artista entra no modo Pick (frame 8) e as clica na ordem que quiser.
             3 if level == 4 => {
                 let gfx = self.gfx.as_mut().expect("gfx");
-                let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("vector"));
+                let _ = gfx
+                    .tools
+                    .set_active(&ph2d_editor_core::ToolId::new("vector"));
                 let scene = &mut gfx.vec_scene;
                 scene.push_path(shape(
                     ShapeKind::Star,
@@ -134,7 +140,9 @@ impl crate::App {
             }
             3 => {
                 let gfx = self.gfx.as_mut().expect("gfx");
-                let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("vector"));
+                let _ = gfx
+                    .tools
+                    .set_active(&ph2d_editor_core::ToolId::new("vector"));
                 let scene = &mut gfx.vec_scene;
                 scene.push_path(shape(
                     ShapeKind::Rectangle,

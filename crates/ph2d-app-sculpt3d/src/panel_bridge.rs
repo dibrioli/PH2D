@@ -32,7 +32,7 @@
 //! justamente no modo LUZ — e ela sai da tela junto. Alcançá-la exige voltar ao
 //! barro. É o trade de o painel ser do MODO; o slot do inspector é o que o decide.
 
-use ph2d_editor::screens::hero::HeroScreen;
+use ph2d_editor_core::screens::hero::HeroScreen;
 
 use crate::Sculpt3dScene;
 

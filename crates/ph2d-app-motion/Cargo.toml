@@ -23,7 +23,7 @@ ph2d-color = { path = "../ph2d-color" }
 ph2d-core = { path = "../ph2d-core" }
 ph2d-curve = { path = "../ph2d-curve" }
 ph2d-ecs = { path = "../ph2d-ecs" }
-ph2d-editor = { path = "../ph2d-editor" }
+ph2d-editor-core = { path = "../ph2d-editor-core" }
 ph2d-eval-motion = { path = "../ph2d-eval-motion" }
 ph2d-flip = { path = "../ph2d-flip" }
 ph2d-flip-render = { path = "../ph2d-flip-render" }

@@ -9,7 +9,7 @@
 
 use super::subgraph;
 use super::{MotionState, plumbing};
-use ph2d_editor::ToastQueue;
+use ph2d_editor_core::ToastQueue;
 use ph2d_nodegraph::cook::OpResolver;
 use ph2d_nodegraph::graph::{Edge, Graph, NodeId, Pos};
 use ph2d_nodegraph::port::PortType;
@@ -109,7 +109,7 @@ fn splice_into_wire(
         && trial.validate(&motion.registry).is_ok();
 
     if !ok {
-        toasts.push(ph2d_editor::Toast::info(refuse_msg));
+        toasts.push(ph2d_editor_core::Toast::info(refuse_msg));
         return;
     }
     motion.doc.graph = trial;
@@ -135,7 +135,7 @@ pub(super) fn splice_reroute(
         return;
     };
     let Some(type_name) = reroute_for(ty) else {
-        toasts.push(ph2d_editor::Toast::info(
+        toasts.push(ph2d_editor_core::Toast::info(
             "No reroute exists for this kind of wire",
         ));
         return;
@@ -197,7 +197,7 @@ pub(super) fn move_wire_end(
 ) {
     let old = (NodeId(old_to_node), old_to_port);
     if plumbing::is_managed_pre(&motion.doc.graph, &motion.registry, old.0, old.1) {
-        toasts.push(ph2d_editor::Toast::info(
+        toasts.push(ph2d_editor_core::Toast::info(
             "State wiring is automatic - disconnect the chain from the forces port instead",
         ));
         return;
@@ -236,7 +236,7 @@ pub(super) fn move_wire_end(
                 .is_ok(),
         } && trial.validate(&motion.registry).is_ok();
         if !landed {
-            toasts.push(ph2d_editor::Toast::info(
+            toasts.push(ph2d_editor_core::Toast::info(
                 "Can't move the wire there - the original stays",
             ));
             return;

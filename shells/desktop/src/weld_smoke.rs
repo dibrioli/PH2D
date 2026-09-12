@@ -126,7 +126,9 @@ pub(crate) fn frame(app: &mut crate::App, f: u32) {
     // ⚠️ **A ferramenta VETOR tem de estar ACTIVA, e `set_mode` não a activa** — ele só escolhe o
     // modo DENTRO dela. Sem isto o painel do vetor pode nem estar em cena, e então a contagem de
     // selecção que ele publica é `0` e a seção Path (com o Weld) não é pintada.
-    let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("vector"));
+    let _ = gfx
+        .tools
+        .set_active(&ph2d_editor_core::ToolId::new("vector"));
     crate::render_loop::vector_bridge::set_mode(&mut gfx.tools, ph2d_tool_vector::DrawMode::Select);
     app.vec_pen.select_many(&primeiro_par);
     eprintln!(

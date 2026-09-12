@@ -25,9 +25,9 @@
 //! POBRES»*) aplicada a um censo. ⇒ **o controlo de população não é um número escrito à mão: é a
 //! contagem de `crates/ph2d-panel-*` no disco**, e um painel novo que ninguém ligue reprova aqui.
 
-use ph2d_editor::screens::hero::{HeroScreen, paint_hero_screen};
-use ph2d_editor::screens::slot::Slot;
-use ph2d_editor::zones::Rect;
+use ph2d_editor_core::screens::hero::{HeroScreen, paint_hero_screen};
+use ph2d_editor_core::screens::slot::Slot;
+use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
 use std::collections::BTreeMap;
 use std::path::PathBuf;
@@ -41,7 +41,7 @@ const VIEWPORT: Rect = Rect {
 
 struct P {
     id: &'static str,
-    node: ph2d_editor::NodeId,
+    node: ph2d_editor_core::NodeId,
     slot: Slot,
     icon: &'static str,
     /// Quantos comandos de desenho o glifo tem — `0` seria um ícone MUDO.
@@ -52,7 +52,7 @@ struct P {
 fn panels() -> Vec<P> {
     let _ = ph2d_panel_registry_init::register_all_panels();
     let mut v = Vec::new();
-    ph2d_editor::panel::with_registry_ref(|reg| {
+    ph2d_editor_core::panel::with_registry_ref(|reg| {
         for p in reg.panels() {
             let m = &p.manifest;
             v.push(P {
@@ -98,8 +98,8 @@ fn panel_crates_on_disk() -> Vec<String> {
 ///
 /// `width` é a largura da coluna; `None` deixa a de fábrica.
 fn publishes_alone_at(p: &P, width: Option<f32>) -> bool {
-    let mut h = HeroScreen::new(ph2d_editor::NodeId(1));
-    ph2d_editor::panel::with_registry_ref(|reg| {
+    let mut h = HeroScreen::new(ph2d_editor_core::NodeId(1));
+    ph2d_editor_core::panel::with_registry_ref(|reg| {
         for q in reg.panels() {
             h.panel_visibility
                 .insert(q.manifest.id, q.manifest.id == p.id);
@@ -240,7 +240,7 @@ fn narrowing_a_column_never_mutes_the_panel_in_it() {
     // ⚠️ **O piso é o MÍNIMO desde 2026-09-09** — o degrau do fecho deixou de ser alcançável pelo
     //    arrasto quando o dono retirou o fecho por arrasto. Pedir menos que o mínimo continua a
     //    ser um caso a medir: a porta tem de o CLAMPAR, e não de calar o painel.
-    let min = ph2d_editor::interaction::WidgetStore::DOCK_W_MIN;
+    let min = ph2d_editor_core::interaction::WidgetStore::DOCK_W_MIN;
     let widths = [
         340.0,
         280.0,

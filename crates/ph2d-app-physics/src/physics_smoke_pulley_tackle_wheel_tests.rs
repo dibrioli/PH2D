@@ -61,7 +61,7 @@ fn the_mount_gesture_leads_somewhere() {
 
     // E a lixeira desfaz — pela porta pura, que é a que o painel alcança.
     let unmounted =
-        crate::joint_wheel::wheel_with_edit(seeded, ph2d_editor::WheelFieldEdit::Unmount)
+        crate::joint_wheel::wheel_with_edit(seeded, ph2d_editor_core::WheelFieldEdit::Unmount)
             .expect("desmontar é uma escrita de componente");
     assert_eq!(unmounted.body, 0, "a lixeira tinha de voltar ao cenário");
     assert!(
@@ -77,7 +77,7 @@ fn the_mount_gesture_leads_somewhere() {
 fn arming_the_mount_pick_writes_nothing() {
     let wheel = ph2d_physics_ecs::PulleyWheel::default();
     assert!(
-        crate::joint_wheel::wheel_with_edit(wheel, ph2d_editor::WheelFieldEdit::PickMountBody,)
+        crate::joint_wheel::wheel_with_edit(wheel, ph2d_editor_core::WheelFieldEdit::PickMountBody,)
             .is_none(),
         "armar o pick não pode ser uma escrita de componente: o alvo vem do \
          próximo clique no canvas"

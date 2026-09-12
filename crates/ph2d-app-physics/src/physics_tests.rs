@@ -15,7 +15,7 @@ use ph2d_ecs::scene::{
     ComponentRegistry, EditorCommandQueue, apply_editor_commands, register_ecs_components,
 };
 use ph2d_ecs::{Entity, SimWorld, Transform};
-use ph2d_editor::PhysicsFieldEdit;
+use ph2d_editor_core::PhysicsFieldEdit;
 // ⚠️ **Só os `#[test]` deste ficheiro os usam**, e desde que ele compila também
 // sob `feature = "test-support"` (para os três gates que ficam na shell) há uma
 // build em que `cfg(test)` é falso e eles ficariam por usar. ⛔ Um `allow` seria

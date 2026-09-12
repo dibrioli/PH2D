@@ -133,7 +133,7 @@ impl crate::App {
         let painter_active = gfx
             .tools
             .active()
-            .is_some_and(|t| t.id() == ph2d_editor::ToolId::new("painter"));
+            .is_some_and(|t| t.id() == ph2d_editor_core::ToolId::new("painter"));
         let global_has = if redo {
             self.undo.can_redo()
         } else {
@@ -189,7 +189,7 @@ impl crate::App {
             UndoOwner::ImageEdit => {
                 if let Some(hero) = gfx.hero_screen.as_mut() {
                     hero.bus
-                        .push(ph2d_editor::action_bus::EditorAction::UndoImageEdit);
+                        .push(ph2d_editor_core::action_bus::EditorAction::UndoImageEdit);
                 }
             }
         }

@@ -10,9 +10,9 @@
 //!
 //! - **quais guias merecem número e onde ele pousa** — [`ph2d_vec_render::snap_labels`],
 //!   geometria pura, sem noção de unidade;
-//! - **que número, com que casas** — [`ph2d_editor::LengthDisplay`], a porta única
+//! - **que número, com que casas** — [`ph2d_editor_core::LengthDisplay`], a porta única
 //!   que a régua e o painel de Grid Snap também usam;
-//! - **como uma ficha é desenhada** — [`ph2d_editor::readout`], desde a C3 do estudo da UI viva.
+//! - **como uma ficha é desenhada** — [`ph2d_editor_core::readout`], desde a C3 do estudo da UI viva.
 //!
 //! ⚠️ O terceiro item dizia *«aqui, e só aqui»* até esta ficha ter deixado de ser a única: o corpo,
 //! a altura, o raio e as cores mudaram-se para a porta comum, e o que sobrou aqui é a largura
@@ -26,7 +26,7 @@
 //! vive, e esta ficha **paira sobre a arte** sem eixo nenhum ao lado que a
 //! explique. É também o que torna a unidade ativa visível sem abrir o menu.
 
-use ph2d_editor::LengthDisplay;
+use ph2d_editor_core::LengthDisplay;
 use ph2d_text::TextSystem;
 use ph2d_tokens::Theme;
 use ph2d_vector::{Affine, VectorScene};
@@ -37,7 +37,7 @@ use ph2d_vector::{Affine, VectorScene};
 /// e uma guia que a tela não mostra não recebe número. Com a tela em ~2000 px,
 /// dígitos antes + depois da vírgula ficam em ~4 mais o sinal e o ponto.
 ///
-/// ⚠️ Ela sobrevive à passagem para [`ph2d_editor::readout`] como **piso**, e é isso que torna a
+/// ⚠️ Ela sobrevive à passagem para [`ph2d_editor_core::readout`] como **piso**, e é isso que torna a
 /// migração byte-idêntica: o texto mais largo que esta ficha pode escrever mede menos que 60 px,
 /// então a ficha continua a ter exactamente a largura que tinha. Há gate que o MEDE.
 const CHIP_MIN_W_PX: f32 = 60.0; // LITERAL-PX-OK: ficha do rótulo (chrome)
@@ -68,7 +68,7 @@ pub fn draw(
             display.text_at_zoom(l.world_len, px_per_world),
             display.suffix()
         );
-        ph2d_editor::readout::paint_chip(
+        ph2d_editor_core::readout::paint_chip(
             text_system,
             scene,
             &text,

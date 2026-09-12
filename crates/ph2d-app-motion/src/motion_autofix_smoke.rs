@@ -102,7 +102,9 @@ pub fn motion_autofix_smoke(cx: &mut crate::motion_scene_ctx::MotionSceneCtx<'_>
             };
             let _ = grid;
             cx.motion.sinks.push(out);
-            let _ = cx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
+            let _ = cx
+                .tools
+                .set_active(&ph2d_editor_core::ToolId::new("motion"));
             // Nasce SELECIONADA a força, para o artista cair no card dela.
             ph2d_panel_motion_graph::request_graph_selection(vec![force.0]);
             // O GESTO ERRADO: liga a força direto ao output.
@@ -188,7 +190,9 @@ pub fn motion_autofix_smoke(cx: &mut crate::motion_scene_ctx::MotionSceneCtx<'_>
                 out
             };
             cx.motion.sinks.push(out);
-            let _ = cx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
+            let _ = cx
+                .tools
+                .set_active(&ph2d_editor_core::ToolId::new("motion"));
             // O GESTO: soltar a forca SOBRE o fio integrate -> output.
             ph2d_panel_motion_graph::push_intent(GraphIntent::SpliceNode {
                 to_node: out.0,
@@ -277,7 +281,9 @@ pub fn motion_autofix_smoke(cx: &mut crate::motion_scene_ctx::MotionSceneCtx<'_>
             };
             cx.motion.sinks.push(out_f);
             cx.motion.sinks.push(out_p);
-            let _ = cx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
+            let _ = cx
+                .tools
+                .set_active(&ph2d_editor_core::ToolId::new("motion"));
             let badges =
                 ph2d_motion_diagnose::diagnose(&cx.motion.doc.graph, &cx.motion.registry).len();
             eprintln!(
@@ -336,7 +342,9 @@ pub fn motion_autofix_smoke(cx: &mut crate::motion_scene_ctx::MotionSceneCtx<'_>
                 out
             };
             cx.motion.sinks.push(out);
-            let _ = cx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
+            let _ = cx
+                .tools
+                .set_active(&ph2d_editor_core::ToolId::new("motion"));
             let falloff = ph2d_motion_diagnose::diagnose(&cx.motion.doc.graph, &cx.motion.registry)
                 .iter()
                 .filter(|d| d.deficit == ph2d_motion_diagnose::Deficit::InertProducer("falloff"))
@@ -386,7 +394,9 @@ pub fn motion_autofix_smoke(cx: &mut crate::motion_scene_ctx::MotionSceneCtx<'_>
                 (bend, out)
             };
             cx.motion.sinks.push(out);
-            let _ = cx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
+            let _ = cx
+                .tools
+                .set_active(&ph2d_editor_core::ToolId::new("motion"));
             ph2d_panel_motion_graph::request_graph_selection(vec![bend.0]);
             let needy = ph2d_motion_diagnose::diagnose(&cx.motion.doc.graph, &cx.motion.registry)
                 .iter()
@@ -472,7 +482,9 @@ pub fn motion_autofix_smoke(cx: &mut crate::motion_scene_ctx::MotionSceneCtx<'_>
                 (dup, out)
             };
             cx.motion.sinks.push(out);
-            let _ = cx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
+            let _ = cx
+                .tools
+                .set_active(&ph2d_editor_core::ToolId::new("motion"));
             ph2d_panel_motion_graph::request_graph_selection(vec![dup.0]);
             let missing = ph2d_motion_diagnose::diagnose(&cx.motion.doc.graph, &cx.motion.registry)
                 .iter()

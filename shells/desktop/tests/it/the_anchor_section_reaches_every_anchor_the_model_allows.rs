@@ -12,7 +12,7 @@
 //! auditoria de 2026-08-21 mediu como a forma mais cara de dívida.
 
 use ph2d_ecs::{ANCHORS_MAX, AnchorKind, NamedAnchor, NamedAnchorList};
-use ph2d_editor::ids;
+use ph2d_editor_core::ids;
 
 /// **(1) Há uma linha clicável por âncora que o modelo aceita.**
 #[test]
@@ -74,7 +74,7 @@ fn the_panel_reads_the_same_shape_the_engine_does() {
             "o motor leu {bounds:?}/{center:?} mal"
         );
 
-        let row = ph2d_editor::InspectorAnchorRow {
+        let row = ph2d_editor_core::InspectorAnchorRow {
             name: "x".into(),
             pos: [0.0, 0.0],
             rot_deg: 0.0,
@@ -184,7 +184,7 @@ fn the_panel_reads_the_same_mount_state_the_engine_does() {
         let engine = mount_state_of(&w, child);
 
         // — o painel —
-        let info = ph2d_editor::InspectorAnchorInfo {
+        let info = ph2d_editor_core::InspectorAnchorInfo {
             entity_bits: 1,
             rows: Vec::new(),
             present: false,
@@ -273,7 +273,7 @@ fn the_panel_names_the_directions_the_engine_names() {
         // ⚠️ O rótulo do painel é curto (a coluna é estreita), mas tem de **começar** pelo do
         // motor: `Ping-Pong Rev` contra `Ping-Pong Rev`, `Forward` contra `Forward`.
         assert_eq!(
-            ph2d_editor::screens::hero::InspectorAnimRow {
+            ph2d_editor_core::screens::hero::InspectorAnimRow {
                 name: "x".into(),
                 from: 0,
                 to: 1,

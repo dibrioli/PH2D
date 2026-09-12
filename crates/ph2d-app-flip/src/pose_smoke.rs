@@ -56,8 +56,8 @@ pub fn square(a: Vec2, b: Vec2, color: Rgba) -> FlipStroke {
 /// Roda no prólogo do frame (ao lado do `build_smoke`). No-op sem a env.
 pub fn arm(
     flip: &mut ph2d_flip::FlipDoc,
-    tools: &mut ph2d_editor::ToolRegistry,
-    hero: Option<&mut ph2d_editor::HeroScreen>,
+    tools: &mut ph2d_editor_core::ToolRegistry,
+    hero: Option<&mut ph2d_editor_core::HeroScreen>,
     playhead: &mut ph2d_core::Playhead,
 ) -> bool {
     let mut armou = false;
@@ -67,7 +67,7 @@ pub fn arm(
     match FRAME.fetch_add(1, Ordering::Relaxed) {
         // A cena: 1 objeto, chave 0 = quadrado, chave 12 = INSTÂNCIA movida.
         3 => {
-            let _ = tools.set_active(&ph2d_editor::ToolId::new("flip"));
+            let _ = tools.set_active(&ph2d_editor_core::ToolId::new("flip"));
             let oid = flip.push_object("Pose Smoke");
             let obj = flip.object_mut(oid).expect("objeto recém-criado");
             obj.fps = 12.0;
@@ -94,8 +94,10 @@ pub fn arm(
                 // O MESMO evento que o pill Edit do painel emite — o modo troca
                 // pela porta real (`FlipTool::handle_panel_event`).
                 hero.bus
-                    .push(ph2d_editor::action_bus::EditorAction::ToolPanelEvent(
-                        ph2d_editor::tool::PanelEvent::Click(ph2d_editor::ids::FLIP_MODE_EDIT),
+                    .push(ph2d_editor_core::action_bus::EditorAction::ToolPanelEvent(
+                        ph2d_editor_core::tool::PanelEvent::Click(
+                            ph2d_editor_core::ids::FLIP_MODE_EDIT,
+                        ),
                     ));
             }
             eprintln!(

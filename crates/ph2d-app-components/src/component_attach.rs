@@ -7,7 +7,7 @@
 
 use ph2d_ecs::SimWorld;
 use ph2d_ecs::scene::ComponentRegistry;
-use ph2d_editor::{HeroScreen, Toast};
+use ph2d_editor_core::{HeroScreen, Toast};
 
 /// **Que TIPO de objeto é este** — lido por PRESENÇA de um marcador, nunca por um campo
 /// (ADR-0166 / o `ObjectKind` da F0).
@@ -81,7 +81,7 @@ fn model_for(
     registry: &ComponentRegistry,
     bits: u64,
     show_all: bool,
-) -> ph2d_editor::widget::command_palette::PaletteModel {
+) -> ph2d_editor_core::widget::command_palette::PaletteModel {
     let world = sim.world();
     let entity = ph2d_ecs::Entity::from_bits(bits);
     let kind = kind_of(world, entity);
@@ -153,7 +153,7 @@ pub fn attach_picked(
     picks: Option<&(u64, String)>,
     sim: &mut SimWorld,
     registry: &ComponentRegistry,
-    toasts: &mut ph2d_editor::ToastQueue,
+    toasts: &mut ph2d_editor_core::ToastQueue,
 ) {
     let Some((bits, name)) = picks else {
         return;
@@ -239,13 +239,13 @@ fn attach_one(
 pub fn palette_wheel(
     hero: &mut HeroScreen,
     text_system: &mut ph2d_text::TextSystem,
-    viewport: ph2d_editor::zones::Rect,
+    viewport: ph2d_editor_core::zones::Rect,
     dy: f32,
 ) -> bool {
     if !hero.store.command_palette_open() {
         return false;
     }
-    let max = ph2d_editor::screens::hero::chrome::command_palette_max_scroll(
+    let max = ph2d_editor_core::screens::hero::chrome::command_palette_max_scroll(
         text_system,
         &hero.store,
         viewport,

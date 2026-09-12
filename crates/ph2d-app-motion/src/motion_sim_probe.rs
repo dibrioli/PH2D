@@ -237,7 +237,7 @@ fn what_the_sim_scene_cards_show() {
     let mut snap = ph2d_panel_motion_graph::snapshot_from(&m.doc.graph, &m.registry);
     crate::motion_bridge::params::card::stamp_card_params(
         &m,
-        ph2d_editor::ProjectSettings::default(),
+        ph2d_editor_core::ProjectSettings::default(),
         &mut snap,
     );
     for v in &snap.nodes {
@@ -274,7 +274,7 @@ fn every_row_the_sim_tutorial_names_is_on_the_card() {
     let mut snap = ph2d_panel_motion_graph::snapshot_from(&m.doc.graph, &m.registry);
     crate::motion_bridge::params::card::stamp_card_params(
         &m,
-        ph2d_editor::ProjectSettings::default(),
+        ph2d_editor_core::ProjectSettings::default(),
         &mut snap,
     );
 

@@ -11,7 +11,7 @@
 
 use super::test_helpers::*;
 use super::*;
-use ph2d_editor::ToastQueue;
+use ph2d_editor_core::ToastQueue;
 use ph2d_timeline::{TimelineIntent as I, apply_intent};
 
 /// The pose the animator is dragging to, frame by frame — a live drag moves every

@@ -42,7 +42,7 @@ fn narrowing_the_part_lets_the_wide_key_through() {
     crate::physics_tests::apply(
         &mut sim,
         bit,
-        ph2d_editor::PhysicsFieldEdit::HalfX(BIT_HALF_X[1]),
+        ph2d_editor_core::PhysicsFieldEdit::HalfX(BIT_HALF_X[1]),
     );
     let mut bridge = PhysicsBridge::new();
     for t in 0..=300u64 {
@@ -64,7 +64,7 @@ fn removing_the_part_also_lets_the_wide_key_through() {
     build_keys(sim.world_mut());
     ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     let bit = entity(&mut sim, "Wide Bit");
-    crate::physics_tests::apply(&mut sim, bit, ph2d_editor::PhysicsFieldEdit::Remove);
+    crate::physics_tests::apply(&mut sim, bit, ph2d_editor_core::PhysicsFieldEdit::Remove);
     let mut bridge = PhysicsBridge::new();
     for t in 0..=300u64 {
         bridge.dispatch(&mut sim, true, t);

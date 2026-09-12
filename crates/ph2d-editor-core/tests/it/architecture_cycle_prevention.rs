@@ -10,6 +10,10 @@
 //!    Phase 2 (Stage 4 migration), defeating the panel-as-crate
 //!    isolation promise.
 //!
+//! ⚠️ **2026-09-12 (auditoria de arquitectura A4): o shim `ph2d-editor` foi APAGADO.** As duas
+//! metades que o nomeavam saíram com ele — uma dependência para um caminho que não existe já não
+//! resolve no `cargo`, que é um guarda mais forte do que qualquer asserção aqui.
+//!
 //! This test reads each crate's `Cargo.toml` and asserts the
 //! invariants. Dep-free — parses TOML as text since `serde` /
 //! `toml` aren't workspace dev-deps and the `[dependencies]` shape
@@ -91,7 +95,7 @@ fn panel_crate_tomls() -> Vec<PathBuf> {
 }
 
 #[test]
-fn editor_core_has_no_panel_or_editor_deps() {
+fn editor_core_has_no_panel_deps() {
     let toml = workspace_root()
         .join("crates")
         .join("ph2d-editor-core")
@@ -105,12 +109,6 @@ fn editor_core_has_no_panel_or_editor_deps() {
              depend on it, not the other way around. Move the shared \
              code DOWN into editor-core (or another shared crate) \
              instead of pulling a panel UP."
-        );
-        assert_ne!(
-            dep, "ph2d-editor",
-            "INVARIANT VIOLATED — `ph2d-editor-core` depends on `ph2d-editor`. \
-             That's a cycle: editor-core is the foundation, ph2d-editor \
-             builds on it."
         );
     }
 }
@@ -173,16 +171,9 @@ fn panel_crates_depend_only_on_editor_core() {
             .unwrap_or_else(|| toml.display().to_string());
         let deps = parse_deps(&toml);
         let has_core = deps.iter().any(|d| d == "ph2d-editor-core");
-        let has_editor = deps.iter().any(|d| d == "ph2d-editor");
         if !has_core {
             violations.push(format!(
                 "{panel} must declare `ph2d-editor-core` in [dependencies]"
-            ));
-        }
-        if has_editor {
-            violations.push(format!(
-                "{panel} depends on `ph2d-editor` — Stage 4 invariant requires \
-                 panel crates to consume `ph2d-editor-core` only"
             ));
         }
         // ADR-0040 TG-E: panel ↛ panel — siblings stay isolated. A

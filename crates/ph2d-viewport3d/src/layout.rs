@@ -18,7 +18,7 @@
 //! ⚠️ **O divisor NÃO é uma folga na geometria.** Insetar cada retângulo faria os quatro traçados
 //! perder pixels e o fundo aparecer por baixo; a linha é pintada **por cima**, no chrome.
 
-use ph2d_editor::zones::Rect as EditorRect;
+use ph2d_editor_core::zones::Rect as EditorRect;
 
 /// ⭐ **Como o canvas está dividido.**
 ///
@@ -61,12 +61,12 @@ impl Split {
 
     /// ⭐⭐ **As costuras noutro sítio, presas ao alcance legal.**
     ///
-    /// ⚠️ **A trava é a da casa, lida e não re-decidida:** [`ph2d_editor::screens::layout::CenterSplit`]
+    /// ⚠️ **A trava é a da casa, lida e não re-decidida:** [`ph2d_editor_core::screens::layout::CenterSplit`]
     /// (o divisor cena/grafo) fixa `T_MIN = 0,25` e `T_MAX = 0,75` com a razão *«a cena e o grafo
     /// guardam sempre um quarto»* — e ela é `NaN`-aware, que é o que impede um arrasto degenerado de
     /// envenenar o layout. *A lei é a mesma; escrevê-la outra vez seria ter duas.*
     pub fn with_t(self, tx: f32, ty: f32) -> Self {
-        use ph2d_editor::screens::layout::CenterSplit;
+        use ph2d_editor_core::screens::layout::CenterSplit;
         match self {
             Self::One => Self::One,
             Self::Quad { .. } => Self::Quad {
@@ -116,7 +116,10 @@ impl Split {
 /// Prefab* faz exactamente a mesma pergunta e não tem nada de 3D. ⇒ a lei mudou-se outra vez, para
 /// um módulo com o nome da PERGUNTA ([`ph2d_app_host::canvas_area::visible`]), e isto é o alias que os
 /// chamadores do 3D já tinham. *Um segundo cliente é o sinal de que o nome da porta estava errado.*
-pub fn area(hero: &ph2d_editor::screens::hero::HeroScreen, viewport: EditorRect) -> EditorRect {
+pub fn area(
+    hero: &ph2d_editor_core::screens::hero::HeroScreen,
+    viewport: EditorRect,
+) -> EditorRect {
     ph2d_app_host::canvas_area::visible(hero, viewport)
 }
 

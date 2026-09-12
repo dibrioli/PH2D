@@ -13,7 +13,7 @@ use std::cell::RefCell;
 use std::sync::Arc;
 use std::sync::mpsc::Receiver;
 
-use ph2d_editor::zones::Rect as EditorRect;
+use ph2d_editor_core::zones::Rect as EditorRect;
 use ph2d_field::FieldDoc;
 use ph2d_field_render::Orbit;
 

@@ -69,7 +69,9 @@ fn build(app: &mut crate::App) {
     let Some(gfx) = app.gfx.as_mut() else {
         return;
     };
-    let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("vector"));
+    let _ = gfx
+        .tools
+        .set_active(&ph2d_editor_core::ToolId::new("vector"));
     let mut made = Vec::new();
     // O de CIMA carrega a caixa; o de BAIXO é o controle. A ordem importa para o `arm`, que
     // seleciona o primeiro.

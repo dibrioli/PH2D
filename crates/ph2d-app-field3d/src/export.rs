@@ -291,9 +291,10 @@ pub fn cook(
 /// ⚠️ **Recebe os TOASTS, e não o `App`.** Ela é chamada de dentro do quadro, onde o `gfx` já está
 /// emprestado — e pedir `&mut self` ali é um empréstimo duplo. Pedir só o que se usa é o que a
 /// deixa chamável de onde ela precisa de ser chamada.
-pub fn field3d_export(level: ExportLevel, toasts: &mut ph2d_editor::ToastQueue) {
-    let say =
-        |toasts: &mut ph2d_editor::ToastQueue, m: String| toasts.push(ph2d_editor::Toast::info(m));
+pub fn field3d_export(level: ExportLevel, toasts: &mut ph2d_editor_core::ToastQueue) {
+    let say = |toasts: &mut ph2d_editor_core::ToastQueue, m: String| {
+        toasts.push(ph2d_editor_core::Toast::info(m))
+    };
     // ⚠️ **Uma de cada vez, e a recusa é EM ALTO** — ver [`crate::export_job`]. Recusar em
     // silêncio deixaria o artista a concluir que o botão está partido.
     if crate::export_job::is_running() {

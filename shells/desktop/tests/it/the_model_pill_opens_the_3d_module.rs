@@ -14,8 +14,8 @@
 //! divergência ali alterna um painel que ninguém pinta — em silêncio, porque uma chave desconhecida
 //! só lê como `false`.
 
-use ph2d_editor::interaction::{InteractiveState, WidgetEvent};
-use ph2d_editor::screens::hero::{HeroScreen, chrome, fixture, ids};
+use ph2d_editor_core::interaction::{InteractiveState, WidgetEvent};
+use ph2d_editor_core::screens::hero::{HeroScreen, chrome, fixture, ids};
 
 /// O pill **existe no top bar e está registado** — sem o registro ele desenha e nasce morto sob o
 /// mouse (a nota que `topbar/mod.rs` já carrega para os vizinhos).
@@ -27,7 +27,7 @@ fn the_pill_is_registered_in_the_top_bar() {
             .any(|(id, _)| *id == ids::TOPBAR_MODEL3D),
         "o pill não está entre os clusters que a topbar PINTA"
     );
-    let hero = HeroScreen::new(ph2d_editor::NodeId(1));
+    let hero = HeroScreen::new(ph2d_editor_core::NodeId(1));
     // ⚠️ A do meio é a que já matou um pill neste repo: pintado no fixture mas sem registro no
     // `populate`, ele não tem `InteractiveState`, o `Up` nunca emite `Click`, e o botão nasce morto
     // sob o mouse — com todo o resto verde.
@@ -44,13 +44,13 @@ fn the_pill_is_registered_in_the_top_bar() {
 #[test]
 fn the_model_pill_toggles_the_panel_the_shell_knows() {
     assert_eq!(
-        ph2d_editor::screens::hero::chrome::MODEL3D_PANEL_KEY,
+        ph2d_editor_core::screens::hero::chrome::MODEL3D_PANEL_KEY,
         ph2d_panel_model3d::PANEL_ID,
         "a chave do pill e a do painel divergiram — o pill passa a alternar um painel que ninguém \
          pinta, e nada avisa porque uma chave desconhecida lê como `false`"
     );
 
-    let mut hero = HeroScreen::new(ph2d_editor::NodeId(1));
+    let mut hero = HeroScreen::new(ph2d_editor_core::NodeId(1));
     let key = ph2d_panel_model3d::PANEL_ID;
     assert!(
         !hero.is_panel_visible(key),

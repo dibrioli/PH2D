@@ -158,10 +158,10 @@ fn two_collinear_points_never_overlap_their_handles() {
     let (_, h_pad) = padded_gizmo_box(&d, PX_TO_ART).expect("a caixa com folga");
     let half_px = [h_pad[0] / PX_TO_ART, h_pad[1] / PX_TO_ART];
     assert!(
-        half_px[1] >= ph2d_editor::HANDLE_SIZE_PX,
+        half_px[1] >= ph2d_editor_core::HANDLE_SIZE_PX,
         "canto e meio-da-borda a {} px: os handles de {} px se sobrepoem",
         half_px[1],
-        ph2d_editor::HANDLE_SIZE_PX
+        ph2d_editor_core::HANDLE_SIZE_PX
     );
     // E a caixa e MAIOR que a arte nos DOIS eixos (o "offset" que o Enio pediu).
     assert!(h_pad[0] > h_raw[0] && h_pad[1] > h_raw[1]);
@@ -371,8 +371,8 @@ fn a_rotate_drag_spins_the_selection_about_its_center() {
     };
     let pivot = start.translation; // = c_art (parent identity)
     let start_cursor = [pivot[0] + 1.0, pivot[1]];
-    let mut drag = ph2d_editor::GizmoDragState {
-        kind: ph2d_editor::GizmoDragKind::Rotate,
+    let mut drag = ph2d_editor_core::GizmoDragState {
+        kind: ph2d_editor_core::GizmoDragKind::Rotate,
         entity_bits: 1,
         start_screen: to_screen(start_cursor),
         cursor_screen: to_screen(start_cursor),
@@ -381,7 +381,7 @@ fn a_rotate_drag_spins_the_selection_about_its_center() {
         start_cursor_world: start_cursor,
         sprite_half_intrinsic: [1.0, 1.0],
         anchor_is_center: false,
-        target: ph2d_editor::GizmoTarget::FlipSelection,
+        target: ph2d_editor_core::GizmoTarget::FlipSelection,
         parent_world: TransformSnapshot::IDENTITY,
         turns: 0,
     };
@@ -391,7 +391,7 @@ fn a_rotate_drag_spins_the_selection_about_its_center() {
     ] {
         drag.advance_cursor(to_screen(w), &cam);
     }
-    let new_t = ph2d_editor::compute_gizmo_transform(
+    let new_t = ph2d_editor_core::compute_gizmo_transform(
         &drag,
         &cam,
         GizmoModifiers::default(),

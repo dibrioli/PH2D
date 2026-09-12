@@ -10,7 +10,7 @@
 
 use super::params::build_params_snapshot;
 use crate::motion_state::MotionState;
-use ph2d_editor::ProjectSettings;
+use ph2d_editor_core::ProjectSettings;
 
 /// Every node type in the registry, with its params — the sweep the older guards
 /// missed by filtering on `motion.`, which is precisely why the `sim.*` nodes shipped

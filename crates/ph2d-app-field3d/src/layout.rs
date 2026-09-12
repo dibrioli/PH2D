@@ -10,7 +10,7 @@ pub use ph2d_viewport3d::layout::*;
 
 #[cfg(test)]
 #[allow(unused_imports)]
-pub use ph2d_editor::zones::Rect as EditorRect;
+pub use ph2d_editor_core::zones::Rect as EditorRect;
 
 #[cfg(test)]
 #[path = "layout_tests.rs"]

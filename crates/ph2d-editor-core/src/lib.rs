@@ -91,7 +91,7 @@ pub mod zones;
 
 /// Re-export of `ph2d-tool-registry` under the path
 /// `ph2d_editor_core::registry` so existing callers
-/// (`ph2d_editor::registry::Registry`, etc.) keep working byte-for-byte
+/// (`ph2d_editor_core::registry::Registry`, etc.) keep working byte-for-byte
 /// after the ADR-0029 Phase B.2 absorption.
 pub use ph2d_tool_registry as registry;
 

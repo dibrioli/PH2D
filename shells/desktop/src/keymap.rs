@@ -11,7 +11,7 @@ use winit::keyboard::KeyCode;
 /// constants (the values `dispatch_key` matches against). Returns
 /// `None` for keys the editor pipeline doesn't currently consume.
 pub fn winit_to_editor_keycode(code: KeyCode) -> Option<u32> {
-    use ph2d_editor::interaction::{
+    use ph2d_editor_core::interaction::{
         KEY_ARROW_DOWN, KEY_ARROW_LEFT, KEY_ARROW_RIGHT, KEY_ARROW_UP, KEY_BACKSPACE, KEY_DELETE,
         KEY_ENTER, KEY_ESCAPE, KEY_F2, KEY_KEY_A, KEY_KEY_C, KEY_KEY_D, KEY_KEY_F, KEY_KEY_G,
         KEY_KEY_H, KEY_KEY_I, KEY_KEY_K, KEY_KEY_L, KEY_KEY_P, KEY_KEY_V, KEY_KEY_X, KEY_SPACE,
@@ -161,7 +161,7 @@ pub fn winit_to_input_keycode(code: KeyCode) -> Option<u32> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ph2d_editor::interaction::{GraphKey, graph_key_for};
+    use ph2d_editor_core::interaction::{GraphKey, graph_key_for};
 
     /// **Every verb the graph owns must survive the SHELL's normalizer.**
     ///

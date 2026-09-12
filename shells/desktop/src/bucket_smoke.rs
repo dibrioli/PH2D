@@ -77,7 +77,9 @@ pub(crate) fn frame(app: &mut crate::App, f: u32) {
     }
     // ⚠️ `set_mode` escolhe o modo DENTRO da ferramenta e **não a activa** — sem esta linha o
     // painel do vetor pode nem estar em cena.
-    let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("vector"));
+    let _ = gfx
+        .tools
+        .set_active(&ph2d_editor_core::ToolId::new("vector"));
     crate::render_loop::vector_bridge::set_mode(&mut gfx.tools, ph2d_tool_vector::DrawMode::Bucket);
     eprintln!(
         "[bucket-smoke] 3 grupos montados e o BALDE armado.\n\

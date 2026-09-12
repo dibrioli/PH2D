@@ -251,7 +251,7 @@ fn a_snapshot_belongs_to_the_drag_that_took_it() {
 /// *a porta que o honra*. E era exactamente aí que o defeito vivia (report do Enio, 2026-08-03:
 /// *"a borda do outro lado sofre um drift"*).
 ///
-/// O mecanismo, medido antes da cura: [`ph2d_editor::anchor_pivot_world`] derivava o ponto fixo
+/// O mecanismo, medido antes da cura: [`ph2d_editor_core::anchor_pivot_world`] derivava o ponto fixo
 /// do PIVÔ (`translation ± half ⊙ scale`), assumindo que a caixa está centrada nele — verdade
 /// para todo path comum (o `settle_origins` garante) e para uma Live Shape recém-nascida, e
 /// FALSA a partir do primeiro redimensionamento, que é justamente o que esta wave introduziu:
@@ -272,7 +272,7 @@ fn a_snapshot_belongs_to_the_drag_that_took_it() {
 #[test]
 fn the_border_the_gizmo_pinned_does_not_walk_across_drags() {
     let (mut sim, mut scene, map, id) = live_frame();
-    let kind = ph2d_editor::GizmoDragKind::ScaleEdge { axis: 0, sign: 1.0 };
+    let kind = ph2d_editor_core::GizmoDragKind::ScaleEdge { axis: 0, sign: 1.0 };
     let mut lefts = Vec::new();
     for _ in 0..3 {
         let (anchor, half) =
@@ -280,7 +280,7 @@ fn the_border_the_gizmo_pinned_does_not_walk_across_drags() {
                 .expect("a caixa");
         let snap = snapshot_of(&sim, &map, id);
         // O pivô que o produto captura no pen-down.
-        let pivot = ph2d_editor::anchor_pivot_world(kind, anchor, half, snap, false);
+        let pivot = ph2d_editor_core::anchor_pivot_world(kind, anchor, half, snap, false);
         let xf = ph2d_vec_entities::transform::build(&sim, &map);
         lefts.push(scene.path_world_curve_bbox(&xf, id).expect("mundo").0[0]);
         let st = begin(&scene, &xf, 1, id, None).expect("armou");
@@ -320,8 +320,8 @@ fn the_pinned_point_survives_a_rotated_frame() {
     }
     let (anchor, half) = crate::vec_gizmo_view::anchor_half(&sim, &scene, e).expect("a caixa");
     let snap = snapshot_of(&sim, &map, id);
-    let kind = ph2d_editor::GizmoDragKind::ScaleEdge { axis: 0, sign: 1.0 };
-    let pivot = ph2d_editor::anchor_pivot_world(kind, anchor, half, snap, false);
+    let kind = ph2d_editor_core::GizmoDragKind::ScaleEdge { axis: 0, sign: 1.0 };
+    let pivot = ph2d_editor_core::anchor_pivot_world(kind, anchor, half, snap, false);
     // O pivô tem de ser um ponto DA caixa: a distância dele ao centro é a meia-extensão.
     let (sin, cos) = (0.7_f32.sin(), 0.7_f32.cos());
     let cx = snap.translation[0] + (anchor[0] * cos - anchor[1] * sin);
@@ -363,12 +363,12 @@ fn snapshot_of(
     sim: &SimWorld,
     map: &VecEntityMap,
     id: VecPathId,
-) -> ph2d_editor::TransformSnapshot {
+) -> ph2d_editor_core::TransformSnapshot {
     let t = sim
         .world()
         .get::<ph2d_ecs::Transform>(entity_of(sim, map, id))
         .expect("pose");
-    ph2d_editor::TransformSnapshot {
+    ph2d_editor_core::TransformSnapshot {
         translation: [t.translation.x, t.translation.y],
         rotation: t.rotation,
         scale: [t.scale.x, t.scale.y],

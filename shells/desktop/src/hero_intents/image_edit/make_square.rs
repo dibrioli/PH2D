@@ -5,7 +5,7 @@ use std::collections::BTreeMap;
 
 use ph2d_asset::{AssetDb, AssetId};
 use ph2d_ecs::SimWorld;
-use ph2d_editor::{Toast, ToastQueue};
+use ph2d_editor_core::{Toast, ToastQueue};
 use ph2d_render::SpriteRenderer;
 
 use crate::hero_intents::texture_edit;
@@ -67,11 +67,11 @@ pub(crate) fn drain_make_square(
         return true;
     }
     let new_side = result.size as f32 / px_per_m;
-    let new_translation = ph2d_editor::image_edit::recenter_after_pad(
+    let new_translation = ph2d_editor_core::image_edit::recenter_after_pad(
         src.old_translation,
         [new_side, new_side],
         [result.size, result.size],
-        ph2d_editor::image_edit::PixelBounds {
+        ph2d_editor_core::image_edit::PixelBounds {
             x: result.offset_x,
             y: result.offset_y,
             width: src.image.width,

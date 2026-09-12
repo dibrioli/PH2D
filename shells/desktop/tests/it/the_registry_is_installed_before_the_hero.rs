@@ -73,7 +73,7 @@ fn the_tool_registry_is_installed_before_the_hero() {
 fn the_two_anchors_are_real_calls_not_comments() {
     let code = init_code();
     assert!(
-        code.contains("ph2d_editor::install_registry(registry)"),
+        code.contains("ph2d_editor_core::install_registry(registry)"),
         "a chamada de instalacao mudou de forma; reveja o gate irmao antes de o silenciar"
     );
     assert!(

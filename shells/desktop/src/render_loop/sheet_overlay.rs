@@ -306,7 +306,7 @@ fn draw_label(
 ) {
     let p = xf * Point::new(corner_local.0, corner_local.1);
     let size_px = TypeToken::Sm.px();
-    ph2d_editor::paint_text(
+    ph2d_editor_core::paint_text(
         text_system,
         scene,
         label,

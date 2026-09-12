@@ -1,4 +1,4 @@
-//! **DESENHAR a poeira de impacto** — a metade do chrome do [`ph2d_editor::motion_burst`].
+//! **DESENHAR a poeira de impacto** — a metade do chrome do [`ph2d_editor_core::motion_burst`].
 //!
 //! ⚠️ **Separada da lei de propósito**: a lei é aritmética pura e testa-se sem arnês nenhum; isto
 //! toca numa `VectorScene` e não é alcançável de um teste. *Misturá-las poria a lei fora do alcance
@@ -7,7 +7,7 @@
 //! ⛔ **Zero trabalho quando não há faísca** — o caminho comum sai na primeira linha, e é por isso
 //! que este módulo pode viver no fim de todo quadro.
 
-use ph2d_editor::motion_burst::BurstField;
+use ph2d_editor_core::motion_burst::BurstField;
 use ph2d_vector::{Affine, Brush, Circle, Color as VelloColor, Point, Shape as _, VectorScene};
 
 /// O raio de uma partícula, em pixels de ecrã.
@@ -23,7 +23,7 @@ pub(crate) fn paint(campo: &BurstField, scene: &mut VectorScene) {
         return;
     }
     for b in campo.live() {
-        for i in 0..ph2d_editor::motion_burst::SPARKS {
+        for i in 0..ph2d_editor_core::motion_burst::SPARKS {
             let Some((p, alfa)) = b.spark(i) else {
                 continue;
             };

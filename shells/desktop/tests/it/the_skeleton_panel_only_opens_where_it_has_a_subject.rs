@@ -61,7 +61,7 @@ fn nothing_writes_the_visibility_every_frame() {
     let escritas: Vec<usize> = linhas
         .iter()
         .enumerate()
-        .filter(|(_, l)| l.contains("SkeletonPanel as ph2d_editor::panel::Panel>::ID"))
+        .filter(|(_, l)| l.contains("SkeletonPanel as ph2d_editor_core::panel::Panel>::ID"))
         .map(|(i, _)| i)
         .collect();
     assert_eq!(
@@ -77,7 +77,8 @@ fn nothing_writes_the_visibility_every_frame() {
         .position(|l| l.contains("skeleton_reveal::on_focus("))
         .expect("a aresta do foco deixou de ser perguntada");
     assert!(
-        codigo_apos(&linhas, aresta, 8).contains("SkeletonPanel as ph2d_editor::panel::Panel>::ID"),
+        codigo_apos(&linhas, aresta, 8)
+            .contains("SkeletonPanel as ph2d_editor_core::panel::Panel>::ID"),
         "a escrita da visibilidade (linha {}) não está dentro da aresta do foco (linha {aresta}) — \
          fora dela ela corre em todo quadro",
         escritas[0]

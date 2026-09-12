@@ -57,7 +57,7 @@
 //! gesto de largar), então o modelador nunca mais abriria. A borda diz o que o Enio pediu (*"se eu
 //! entro noutro modo"*) sem tirar o caminho de volta.
 
-use ph2d_editor::ToolId;
+use ph2d_editor_core::ToolId;
 
 /// **Quem tem o canvas neste quadro.**
 #[derive(Clone, Debug, Default, PartialEq, Eq)]

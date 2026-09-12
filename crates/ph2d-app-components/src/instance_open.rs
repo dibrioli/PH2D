@@ -23,14 +23,14 @@
 //! *O verbo que faltava não era um modo nem uma janela: era um acesso.*
 
 use ph2d_ecs::{Entity, MasterRoot, SimWorld, StableId};
-use ph2d_editor::Toast;
+use ph2d_editor_core::Toast;
 
 /// **Abre a receita da cópia `entity`.** Devolve `true` quando o DOCUMENTO mudou — e ele nunca muda:
 /// ver o cabeçalho e a nota do `select_out` abaixo.
 pub fn open_prefab(
     sim: &mut SimWorld,
     entity: Entity,
-    toasts: &mut ph2d_editor::ToastQueue,
+    toasts: &mut ph2d_editor_core::ToastQueue,
     select_out: &mut Option<u64>,
 ) -> bool {
     // ⚠️ **O sujeito resolve-se pela MESMA porta dos outros verbos** (`master_subject`): clicar numa

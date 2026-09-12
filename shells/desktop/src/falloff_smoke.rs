@@ -52,7 +52,9 @@ fn build(app: &mut crate::App) {
     let Some(gfx) = app.gfx.as_mut() else {
         return;
     };
-    let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("vector"));
+    let _ = gfx
+        .tools
+        .set_active(&ph2d_editor_core::ToolId::new("vector"));
     let scene = &mut gfx.vec_scene;
 
     // ── Esquerda: Zig Zag UNIFORME (o controle) ──────────────────────────────

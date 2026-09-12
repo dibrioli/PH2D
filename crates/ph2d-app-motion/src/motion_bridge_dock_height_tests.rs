@@ -7,10 +7,10 @@
 
 use super::params::build_params_snapshot;
 use crate::motion_state::MotionState;
-use ph2d_editor::ProjectSettings;
+use ph2d_editor_core::ProjectSettings;
 /// A altura do dock do inspector, do dono dela — nunca um literal copiado.
-use ph2d_editor::screens::layout::INSPECTOR_MAX_H;
-use ph2d_editor::zones::Rect;
+use ph2d_editor_core::screens::layout::INSPECTOR_MAX_H;
+use ph2d_editor_core::zones::Rect;
 
 /// A altura do CORPO do inspector — a régua contra a qual «transborda?» se
 /// pergunta.
@@ -85,7 +85,7 @@ fn reach_census() -> Vec<(&'static str, f32, f32)> {
                 Rect {
                     x: 0.0,
                     y: 0.0,
-                    w: ph2d_editor::screens::layout::INSPECTOR_W,
+                    w: ph2d_editor_core::screens::layout::INSPECTOR_W,
                     h: INSPECTOR_MAX_H,
                 },
             );
@@ -94,11 +94,11 @@ fn reach_census() -> Vec<(&'static str, f32, f32)> {
             let bottom = rects.iter().map(|(_, r)| r.y + r.h).fold(0.0f32, f32::max);
             let content = host
                 .store()
-                .panel_content_h(ph2d_editor::ids::MOTION_PARAMS_PANEL)
+                .panel_content_h(ph2d_editor_core::ids::MOTION_PARAMS_PANEL)
                 .unwrap_or(0.0);
             let visible = host
                 .store()
-                .panel_visible_h(ph2d_editor::ids::MOTION_PARAMS_PANEL)
+                .panel_visible_h(ph2d_editor_core::ids::MOTION_PARAMS_PANEL)
                 .unwrap_or(0.0);
             BODY_H.with(|b| b.set(visible));
             (ty, bottom, content)
@@ -187,7 +187,7 @@ fn the_last_row_of_the_tallest_node_is_reachable_by_scrolling() {
     let dock = Rect {
         x: 0.0,
         y: 0.0,
-        w: ph2d_editor::screens::layout::INSPECTOR_W,
+        w: ph2d_editor_core::screens::layout::INSPECTOR_W,
         h: INSPECTOR_MAX_H,
     };
     let paint = |host: &mut ph2d_ui_testkit::MockPanelHost| -> f32 {
@@ -200,11 +200,11 @@ fn the_last_row_of_the_tallest_node_is_reachable_by_scrolling() {
     paint(&mut host);
     let content = host
         .store()
-        .panel_content_h(ph2d_editor::ids::MOTION_PARAMS_PANEL)
+        .panel_content_h(ph2d_editor_core::ids::MOTION_PARAMS_PANEL)
         .expect("o painel publica a altura do CONTEÚDO");
     let visible = host
         .store()
-        .panel_visible_h(ph2d_editor::ids::MOTION_PARAMS_PANEL)
+        .panel_visible_h(ph2d_editor_core::ids::MOTION_PARAMS_PANEL)
         .expect("...e a VISÍVEL, que é a régua do `dispatch_wheel`");
     // ⚠️ **A régua é `content` contra `visible`, e não o fundo do último hit-rect
     // contra a altura do dock.** Desde a blindagem do `HitIndex` aquele fundo
@@ -218,9 +218,9 @@ fn the_last_row_of_the_tallest_node_is_reachable_by_scrolling() {
     // O rolamento máximo que o `dispatch_wheel` deixa o artista pedir — derivado do painel,
     // nunca de uma segunda conta.
     let max_scroll = (content - visible).max(0.0);
-    use ph2d_editor::panel::PanelHostInternal as _;
+    use ph2d_editor_core::panel::PanelHostInternal as _;
     host.store_mut()
-        .set_panel_scroll(ph2d_editor::ids::MOTION_PARAMS_PANEL, max_scroll);
+        .set_panel_scroll(ph2d_editor_core::ids::MOTION_PARAMS_PANEL, max_scroll);
     let rolled = paint(&mut host);
     ph2d_panel_motion_params::set_current_params(None);
     ph2d_panel_motion_graph::set_graph_selection(Vec::new());
@@ -416,13 +416,13 @@ fn authored_height(ty: &str) -> f32 {
         Rect {
             x: 0.0,
             y: 0.0,
-            w: ph2d_editor::screens::layout::INSPECTOR_W,
+            w: ph2d_editor_core::screens::layout::INSPECTOR_W,
             h: INSPECTOR_MAX_H,
         },
     );
     let h = host
         .store()
-        .panel_content_h(ph2d_editor::ids::MOTION_PARAMS_PANEL)
+        .panel_content_h(ph2d_editor_core::ids::MOTION_PARAMS_PANEL)
         .unwrap_or(0.0);
     ph2d_panel_motion_params::set_current_params(None);
     ph2d_panel_motion_graph::set_graph_selection(Vec::new());
@@ -545,17 +545,17 @@ fn measure_the_wrap_with_a_shape() {
         Rect {
             x: 0.0,
             y: 0.0,
-            w: ph2d_editor::screens::layout::INSPECTOR_W,
+            w: ph2d_editor_core::screens::layout::INSPECTOR_W,
             h: INSPECTOR_MAX_H,
         },
     );
     let content = host
         .store()
-        .panel_content_h(ph2d_editor::ids::MOTION_PARAMS_PANEL)
+        .panel_content_h(ph2d_editor_core::ids::MOTION_PARAMS_PANEL)
         .unwrap_or(0.0);
     let visible = host
         .store()
-        .panel_visible_h(ph2d_editor::ids::MOTION_PARAMS_PANEL)
+        .panel_visible_h(ph2d_editor_core::ids::MOTION_PARAMS_PANEL)
         .unwrap_or(0.0);
     println!("spline_wrap COM forma: conteudo {content:.0} px · corpo {visible:.0} px");
     ph2d_panel_motion_params::set_current_params(None);

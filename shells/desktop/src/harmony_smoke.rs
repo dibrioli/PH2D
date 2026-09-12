@@ -30,7 +30,7 @@ impl crate::App {
         };
         self.harmony_smoke_done = true;
 
-        let id = ph2d_editor::ids::INSP_BLENDER_PICKER;
+        let id = ph2d_editor_core::ids::INSP_BLENDER_PICKER;
         // Abre o picker flutuante (ele pinta enquanto `picker_target()` é Some).
         hero.store.set_picker_target(Some(id));
         // Base laranja saturada (matiz ~30°) — um cinza não teria matiz para girar.
@@ -38,6 +38,6 @@ impl crate::App {
             .set_blender_value(id, ph2d_tokens::ColorValue::from_rgba8(230, 126, 23, 255));
         // Já entra na Triad para a tira de parceiras aparecer de cara.
         hero.store
-            .set_blender_harmony(id, ph2d_editor::widget::Harmony::Triad);
+            .set_blender_harmony(id, ph2d_editor_core::widget::Harmony::Triad);
     }
 }

@@ -27,8 +27,8 @@
 //! não pode ressuscitar um sítio onde ele deixou de caber. *A validação vive na leitura, não na
 //! escrita — o ficheiro pode ser mais velho que a regra.*
 
-use ph2d_editor::screens::slot::Slot;
-use ph2d_editor::screens::task_layout::TaskLayout;
+use ph2d_editor_core::screens::slot::Slot;
+use ph2d_editor_core::screens::task_layout::TaskLayout;
 use std::path::PathBuf;
 
 /// A arrumação que viaja: **quais painéis estão abertos**, as excepções de encaixe e as duas
@@ -336,15 +336,15 @@ pub fn should_save(previous: Option<u64>, now: u64) -> bool {
 /// ⚠️ **Só as EXCEPÇÕES.** Um painel que nunca foi movido não aparece, e por isso um painel que
 /// nasce amanhã vai para onde ele próprio declara sem uma linha de migração.
 #[must_use]
-pub fn current(hero: &ph2d_editor::HeroScreen) -> Layout {
-    use ph2d_editor::screens::layout::DockSide;
+pub fn current(hero: &ph2d_editor_core::HeroScreen) -> Layout {
+    use ph2d_editor_core::screens::layout::DockSide;
     let mut slots: Vec<(String, Slot)> = Vec::new();
     let mut open: Vec<String> = Vec::new();
     // ⚠️ `(posição na lista, Panel::ID)` — a varredura do registo NÃO está na ordem das abas, e a
     //    projecção é pelo `Panel::ID` e nunca pelo `NodeId`: o id é o nome estável entre builds, o
     //    nó é um hash que uma renomeação move.
     let mut tab_order: Vec<(usize, String)> = Vec::new();
-    ph2d_editor::panel::with_registry_opt(|reg| {
+    ph2d_editor_core::panel::with_registry_opt(|reg| {
         for p in reg.panels() {
             let m = &p.manifest;
             if let Some(s) = hero.store.panel_slot(m.panel_node_id) {
@@ -388,9 +388,9 @@ pub fn current(hero: &ph2d_editor::HeroScreen) -> Layout {
 ///
 /// ⚠️ **Pela ordem certa:** primeiro o layout (que arruma a tela de fábrica), depois a arrumação
 /// gravada por cima. Ao contrário, o layout apagaria o que o artista tinha feito.
-pub fn install_saved(hero: &mut ph2d_editor::HeroScreen, v: &Saved) {
+pub fn install_saved(hero: &mut ph2d_editor_core::HeroScreen, v: &Saved) {
     let active = v.active.unwrap_or_default();
-    ph2d_editor::screens::hero::layout_switch::apply(hero, active);
+    ph2d_editor_core::screens::hero::layout_switch::apply(hero, active);
     // ⭐ E o espelho arranca com o que está no disco, para o detector do quadro não reescrever o
     // ficheiro no arranque de toda sessão.
     SAVED.with(|c| *c.borrow_mut() = v.clone());
@@ -403,10 +403,10 @@ pub fn install_saved(hero: &mut ph2d_editor::HeroScreen, v: &Saved) {
 ///
 /// ⛔ Um encaixe que o painel já não permite é **saltado**, e o painel fica onde ele declara — ver
 /// o cabeçalho do módulo.
-pub fn install(hero: &mut ph2d_editor::HeroScreen, l: &Layout) {
-    use ph2d_editor::screens::layout::DockSide;
+pub fn install(hero: &mut ph2d_editor_core::HeroScreen, l: &Layout) {
+    use ph2d_editor_core::screens::layout::DockSide;
     let mut to_open: Vec<(&'static str, bool)> = Vec::new();
-    ph2d_editor::panel::with_registry_opt(|reg| {
+    ph2d_editor_core::panel::with_registry_opt(|reg| {
         // ⭐ **Quais painéis estavam abertos.** A lista guarda a DIFERENÇA, então uma entrada
         // inverte o que o painel declara — abre o que nasce fechado e fecha o que nasce aberto.
         for p in reg.panels() {
@@ -427,7 +427,7 @@ pub fn install(hero: &mut ph2d_editor::HeroScreen, l: &Layout) {
         //    encaixes. ⚠️ Um id REPETIDO no ficheiro entraria duas vezes e o `position()` do
         //    `slot_tabs::occupants` leria sempre a primeira: filtra-se aqui, na leitura, porque
         //    *o ficheiro pode ser mais velho que a regra*.
-        let mut order: Vec<ph2d_editor::NodeId> = Vec::new();
+        let mut order: Vec<ph2d_editor_core::NodeId> = Vec::new();
         for id in &l.tab_order {
             let Some(p) = reg.panels().iter().find(|p| p.manifest.id == id.as_str()) else {
                 continue;
@@ -462,7 +462,7 @@ pub fn install(hero: &mut ph2d_editor::HeroScreen, l: &Layout) {
 ///
 /// ⚠️ O custo é uma projecção por quadro: `n` consultas a um `BTreeMap` (só os painéis com
 /// excepção, que é **zero** enquanto o artista não arrumar nada) mais um FNV sobre ela.
-pub fn save_if_changed(hero: &ph2d_editor::HeroScreen) {
+pub fn save_if_changed(hero: &ph2d_editor_core::HeroScreen) {
     let active = hero.store.active_layout();
     let now = current(hero);
     // ⚠️ **A arrumação de fábrica não se grava.** Um layout que o artista não mexeu não tem secção,

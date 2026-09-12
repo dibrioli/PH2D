@@ -246,7 +246,7 @@ pub fn import_files(
     paths: &[std::path::PathBuf],
     slot: &mut Option<Sculpt3dScene>,
     gpu: (&std::sync::Arc<wgpu::Device>, (u32, u32)),
-    toasts: &mut ph2d_editor::ToastQueue,
+    toasts: &mut ph2d_editor_core::ToastQueue,
 ) {
     if paths.is_empty() {
         return;
@@ -304,7 +304,7 @@ pub fn import_files(
 pub fn pick_and_import(
     slot: &mut Option<Sculpt3dScene>,
     gpu: (&std::sync::Arc<wgpu::Device>, (u32, u32)),
-    toasts: &mut ph2d_editor::ToastQueue,
+    toasts: &mut ph2d_editor_core::ToastQueue,
 ) {
     let picked = rfd::FileDialog::new()
         .add_filter("Mesh", MESH_EXTS)
@@ -319,8 +319,8 @@ pub fn pick_and_import(
 /// ⚠️ `pub(super)` — o irmão [`super::export`] o usa pelo MESMO motivo (um
 /// gesto de arquivo que falha em silêncio é indistinguível de um app
 /// travado), e uma segunda função de toast daria duas vozes ao módulo.
-pub(crate) fn toast(toasts: &mut ph2d_editor::ToastQueue, msg: String) {
-    toasts.push(ph2d_editor::Toast::info(msg));
+pub(crate) fn toast(toasts: &mut ph2d_editor_core::ToastQueue, msg: String) {
+    toasts.push(ph2d_editor_core::Toast::info(msg));
 }
 
 #[cfg(test)]

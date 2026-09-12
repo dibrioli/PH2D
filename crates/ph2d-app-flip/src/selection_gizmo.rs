@@ -18,7 +18,7 @@
 //! [`crate::pose_gizmo::trs_to_pose`]): a seleção é um "sprite" cujo pivô é o
 //! **centro da bbox dos pontos selecionados** (`c_art`, em coords da ARTE), o
 //! `Transform` local é o TRS da pose ancorado nesse centro e o `parent_world` é o
-//! afim do OBJETO. Assim o motor canônico do gizmo ([`ph2d_editor::compute_gizmo_transform`],
+//! afim do OBJETO. Assim o motor canônico do gizmo ([`ph2d_editor_core::compute_gizmo_transform`],
 //! com modifiers/snap/contador de voltas) roda byte a byte.
 //!
 //! **O bake (o que difere da pose):** o gizmo produz um TRS novo em espaço de OBJETO;
@@ -52,7 +52,7 @@
 
 use ph2d_core::{Playhead, Vec2};
 use ph2d_ecs::SimWorld;
-use ph2d_editor::{GizmoCamera, GizmoModifiers, GizmoSnap, GizmoView, TransformSnapshot};
+use ph2d_editor_core::{GizmoCamera, GizmoModifiers, GizmoSnap, GizmoView, TransformSnapshot};
 use ph2d_flip::{DrawingId, FlipDoc, FlipDrawing, FlipObjectId, LayerId, Pose};
 use ph2d_host::WindowSize;
 use ph2d_render::Camera2d;
@@ -87,7 +87,7 @@ pub(crate) struct SelPoint {
 /// não-`Copy` (≠ `FlipPoseDrag`), então o `move` faz `take`-e-restaura.
 #[derive(Clone, Debug)]
 pub struct FlipSelectionDrag {
-    pub(crate) drag: ph2d_editor::GizmoDragState,
+    pub(crate) drag: ph2d_editor_core::GizmoDragState,
     pub(crate) oid: FlipObjectId,
     pub(crate) did: DrawingId,
     pub(crate) pose: Pose,
@@ -166,7 +166,7 @@ pub(crate) fn grabbable_selection_box(d: &FlipDrawing) -> Option<([f32; 2], [f32
 ///
 /// Derivada, não chutada: um `18.0` solto aqui apodreceria em silêncio no dia em que o
 /// `HANDLE_SIZE_PX` mudasse.
-const GIZMO_PAD_PX: f32 = ph2d_editor::HANDLE_SIZE_PX * 1.5;
+const GIZMO_PAD_PX: f32 = ph2d_editor_core::HANDLE_SIZE_PX * 1.5;
 
 /// **A caixa do gizmo, JÁ COM A FOLGA** — em coords da ARTE. `px_to_art` = quanto vale 1 px
 /// de TELA em unidades de arte (o MESMO degrau que o raio de pick usa,
@@ -326,7 +326,7 @@ pub fn selection_view(
         .filter(|e| sim.world().get_entity(*e).is_ok())?;
     let parent = snapshot_of(world_transform(sim, e));
     let start = pose_trs(t.pose, t.c_local);
-    let world = ph2d_editor::compose_snapshot(parent, start);
+    let world = ph2d_editor_core::compose_snapshot(parent, start);
     // A FOLGA sai pela MESMA porta que o hit usa (`padded_gizmo_box`) — desenhar uma caixa
     // e testar outra é o bug de sempre. Ela é chrome (px de TELA), então desce ao espaço da
     // arte pela escala COMPOSTA `objeto ∘ pose`; a média é a convenção que o raio de pick já
@@ -350,7 +350,7 @@ pub fn selection_view(
         camera_height_world: camera.height_world,
         window_w: window_size.width as f32,
         window_h: window_size.height as f32,
-        canvas: ph2d_editor::zones::Rect::new(
+        canvas: ph2d_editor_core::zones::Rect::new(
             0.0,
             0.0,
             window_size.width as f32,
@@ -375,7 +375,7 @@ pub fn gizmo_down(
     state: &mut FlipState,
     f: &FlipFrame<'_>,
     sim: &ph2d_ecs::SimWorld,
-    hero: &ph2d_editor::HeroScreen,
+    hero: &ph2d_editor_core::HeroScreen,
     wants_edit: bool,
     ctrl: bool,
     cursor: (f32, f32),
@@ -394,7 +394,7 @@ pub fn gizmo_down(
     let Some(hit) = hero.gizmo.gizmo_hit_map.get(&hit_id).copied() else {
         return false;
     };
-    if hit.target != ph2d_editor::GizmoTarget::FlipSelection {
+    if hit.target != ph2d_editor_core::GizmoTarget::FlipSelection {
         return false;
     }
     let Some(t) = selection_target(f.flip, f.playhead, active_layer) else {
@@ -414,14 +414,15 @@ pub fn gizmo_down(
     let points = snapshot_selected_points(drawing);
     let parent = snapshot_of(world_transform(sim, e));
     let start = pose_trs(t.pose, t.c_local);
-    let world_snap = ph2d_editor::compose_snapshot(parent, start);
+    let world_snap = ph2d_editor_core::compose_snapshot(parent, start);
     let world_pos = f.to_world(x, y);
     // Rotate pivota no centro da seleção; scale, no canto/borda OPOSTOS (ou no centro com
     // Ctrl) — a mesma política do sprite/pose. `anchor = [0, 0]`: o `start` já É o centro da
     // seleção (ver o irmão em `pose_gizmo`), então o termo reduz literalmente ao de antes.
-    let pivot = ph2d_editor::anchor_pivot_world(hit.kind, [0.0, 0.0], t.h_local, world_snap, ctrl);
+    let pivot =
+        ph2d_editor_core::anchor_pivot_world(hit.kind, [0.0, 0.0], t.h_local, world_snap, ctrl);
     state.selection_drag = Some(FlipSelectionDrag {
-        drag: ph2d_editor::GizmoDragState {
+        drag: ph2d_editor_core::GizmoDragState {
             kind: hit.kind,
             entity_bits: e.to_bits(),
             start_screen: (x, y),
@@ -431,7 +432,7 @@ pub fn gizmo_down(
             start_cursor_world: world_pos,
             sprite_half_intrinsic: t.h_local,
             anchor_is_center: ctrl,
-            target: ph2d_editor::GizmoTarget::FlipSelection,
+            target: ph2d_editor_core::GizmoTarget::FlipSelection,
             parent_world: parent,
             turns: 0,
         },
@@ -463,7 +464,7 @@ pub fn gizmo_move(
     };
     // O cursor avança ATRAVÉS do drag (o contador de voltas do Rotate mora aí).
     pd.drag.advance_cursor((x, y), &cam);
-    let new_t = ph2d_editor::compute_gizmo_transform(&pd.drag, &cam, mods, snap, None);
+    let new_t = ph2d_editor_core::compute_gizmo_transform(&pd.drag, &cam, mods, snap, None);
     let m = art_bake_xform(pd.pose, pd.start, new_t);
     if let Some(dr) = flip.object_mut(pd.oid).and_then(|o| o.drawing_mut(pd.did)) {
         for sp in &pd.points {

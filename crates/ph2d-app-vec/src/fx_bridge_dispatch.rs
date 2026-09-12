@@ -40,8 +40,8 @@ pub enum FxClick {
 /// A varredura é sobre os TETOS — os ids são hashes de NOME, então não há aritmética que os
 /// inverta. Barato, e é o padrão que os presets do Envelope já usam.
 #[must_use]
-pub fn classify_click(id: ph2d_editor::ids::NodeId) -> Option<FxClick> {
-    use ph2d_editor::ids as i;
+pub fn classify_click(id: ph2d_editor_core::ids::NodeId) -> Option<FxClick> {
+    use ph2d_editor_core::ids as i;
     if id == i::VECTOR_FX_APPLY {
         return Some(FxClick::Apply);
     }
@@ -77,8 +77,8 @@ pub fn classify_click(id: ph2d_editor::ids::NodeId) -> Option<FxClick> {
 
 /// A `(linha, parâmetro)` de um slider da pilha, ou `None`.
 #[must_use]
-pub fn classify_param(id: ph2d_editor::ids::NodeId) -> Option<(usize, usize)> {
-    use ph2d_editor::ids as i;
+pub fn classify_param(id: ph2d_editor_core::ids::NodeId) -> Option<(usize, usize)> {
+    use ph2d_editor_core::ids as i;
     (0..i::MAX_FX_ROWS).find_map(|r| {
         (0..i::MAX_FX_ROW_PARAMS)
             .find(|&p| id == i::vector_fx_param_id(r, p))

@@ -312,7 +312,7 @@ fn a_lasso_over_a_selected_and_an_unselected_keeps_both() {
                     .collect()
             };
             assert_eq!(leaves.len(), n, "a fixtura não tem as {n} folhas");
-            let mut gizmo = ph2d_editor::screens::hero::GizmoStateGroup::default();
+            let mut gizmo = ph2d_editor_core::screens::hero::GizmoStateGroup::default();
             gizmo.replace_selection(Some(leaves[0]));
 
             let (a, b) = ([4.0f32, 4.0], [AREA.w - 4.0, AREA.h - 4.0]);

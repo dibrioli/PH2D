@@ -89,7 +89,7 @@ pub(super) fn apply_color_to_node(
 /// (the OKLCH picker reads it on open + the swatch paints it). Keyed by the
 /// anchor channel — the same id the panel registers.
 pub(super) fn seed_color_swatches(
-    store: &mut ph2d_editor::interaction::WidgetStore,
+    store: &mut ph2d_editor_core::interaction::WidgetStore,
     snap: &ph2d_panel_motion_params::ParamsSnapshot,
 ) {
     use ph2d_panel_motion_params::{ParamRow, param_swatch_id};
@@ -117,7 +117,7 @@ pub(super) fn seed_color_swatches(
 /// continua a ser **uma** função — [`picker_target_of`] —, e estes ids são a entrada dela.
 ///
 /// ⚠️ Sem alocar: o `format!` deste id correria por cada row de cor de cada cartão, todo quadro.
-pub(super) fn card_swatch_id(node: u32, anchor: &str) -> ph2d_editor::NodeId {
+pub(super) fn card_swatch_id(node: u32, anchor: &str) -> ph2d_editor_core::NodeId {
     // FNV-1a, a convenção de id desta casa — cada crate tem a sua cópia (o painel dos params, o
     // do grafo), e esta é a da shell.
     let mut h: u64 = 0xcbf2_9ce4_8422_2325;
@@ -131,7 +131,7 @@ pub(super) fn card_swatch_id(node: u32, anchor: &str) -> ph2d_editor::NodeId {
     come(&node.to_le_bytes());
     come(b"/");
     come(anchor.as_bytes());
-    ph2d_editor::NodeId(h)
+    ph2d_editor_core::NodeId(h)
 }
 
 /// ⭐⭐ **QUE (NÓ, GRUPO DE CANAIS) O SELECTOR ABERTO ESTÁ A EDITAR** — a porta única.
@@ -146,7 +146,7 @@ pub(super) fn picker_target_of(
     motion: &MotionState,
     sel: Option<ph2d_nodegraph::graph::NodeId>,
     groups: &[[&'static str; 4]],
-    store: &ph2d_editor::interaction::WidgetStore,
+    store: &ph2d_editor_core::interaction::WidgetStore,
 ) -> Option<(ph2d_nodegraph::graph::NodeId, [&'static str; 4])> {
     use ph2d_node_registry::ParamWidget;
     use ph2d_panel_motion_params::param_swatch_id;
@@ -179,7 +179,7 @@ pub(super) fn picker_session(
     groups: &[[&'static str; 4]],
     grad_params: &[&'static str],
     pal_params: &[&'static str],
-    store: &ph2d_editor::interaction::WidgetStore,
+    store: &ph2d_editor_core::interaction::WidgetStore,
 ) -> bool {
     let color = picker_target_of(motion, sel, groups, store).is_some()
         // ⚠️ **A janela do cartão abre sessão como qualquer outra amostra**: sem isto, arrastar
@@ -233,9 +233,9 @@ pub(super) fn apply_picker_readback(
     groups: &[[&'static str; 4]],
     grad_params: &[&'static str],
     pal_params: &[&'static str],
-    store: &ph2d_editor::interaction::WidgetStore,
+    store: &ph2d_editor_core::interaction::WidgetStore,
 ) {
-    let pick = || store.blender_picker(ph2d_editor::ids::INSP_BLENDER_PICKER);
+    let pick = || store.blender_picker(ph2d_editor_core::ids::INSP_BLENDER_PICKER);
     // ⭐ A cor vai ao nó que o ID nomeia — que pode NÃO ser o seleccionado, quando o artista
     // clicou a amostra num cartão. As duas outras famílias abaixo continuam presas ao
     // seleccionado, porque os ids delas ainda não carregam o nó (gradiente e paleta).
@@ -344,7 +344,7 @@ pub(super) fn palette_picker_index(
     motion: &MotionState,
     nid: ph2d_nodegraph::graph::NodeId,
     param: &str,
-    store: &ph2d_editor::interaction::WidgetStore,
+    store: &ph2d_editor_core::interaction::WidgetStore,
 ) -> Option<usize> {
     let target = store.picker_target()?;
     let n = current_palette(motion, nid, param).len();
@@ -392,7 +392,7 @@ pub(super) fn gradient_picker_stop(
     motion: &MotionState,
     nid: ph2d_nodegraph::graph::NodeId,
     param: &str,
-    store: &ph2d_editor::interaction::WidgetStore,
+    store: &ph2d_editor_core::interaction::WidgetStore,
 ) -> Option<usize> {
     let target = store.picker_target()?;
     let ramp = current_gradient(motion, nid, param);
@@ -476,7 +476,7 @@ pub(super) fn linear_rgba_to_srgb8(lin: [f32; 4]) -> [u8; 4] {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ph2d_editor::interaction::WidgetStore;
+    use ph2d_editor_core::interaction::WidgetStore;
     use ph2d_panel_motion_params::param_grad_swatch_id;
 
     /// **The gradient read-back writes a stop's OKLCH pick back into the string** (doc 85).

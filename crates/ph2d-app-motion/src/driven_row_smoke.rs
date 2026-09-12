@@ -141,7 +141,9 @@ pub fn driven_row_smoke(cx: &mut crate::motion_scene_ctx::MotionSceneCtx<'_>) {
     let (sink, heroes) = scene(&mut cx.motion.doc.graph);
     crate::smoke_layout::arrange_and_mark(&mut cx.motion.doc, &heroes);
     cx.motion.sinks.push(sink);
-    let _ = cx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
+    let _ = cx
+        .tools
+        .set_active(&ph2d_editor_core::ToolId::new("motion"));
     // O oscilador já selecionado: o painel de params É o objeto do smoke.
     ph2d_panel_motion_graph::request_graph_selection(vec![heroes[0].0]);
     eprintln!(
@@ -167,7 +169,7 @@ mod tests {
     use super::*;
     use crate::motion_bridge::params::{build_params_snapshot, driven_value_for_probe};
     use crate::motion_state::MotionState;
-    use ph2d_editor::ProjectSettings;
+    use ph2d_editor_core::ProjectSettings;
     use ph2d_nodegraph::cook::Cook;
     use ph2d_panel_motion_params::ParamRow;
 

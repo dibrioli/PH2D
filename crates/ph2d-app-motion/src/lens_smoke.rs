@@ -110,7 +110,9 @@ pub fn lens_smoke(cx: &mut crate::motion_scene_ctx::MotionSceneCtx<'_>) {
     for s in sinks {
         cx.motion.sinks.push(s);
     }
-    let _ = cx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
+    let _ = cx
+        .tools
+        .set_active(&ph2d_editor_core::ToolId::new("motion"));
     // A lente DESLOCADA já selecionada: o param novo na tela no 1º frame.
     ph2d_panel_motion_graph::request_graph_selection(vec![lenses[1].0]);
     eprintln!(

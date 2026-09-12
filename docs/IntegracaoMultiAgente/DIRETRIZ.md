@@ -736,7 +736,7 @@ Violação = build vermelho. Não há "vou abrir exceção".
 | `mockup_tokens_exist` | `var(--X)` em mockup HTML não resolve em tokens.json |
 | `architecture_register_all_alphabetical` | `register_all*` / Cargo deps fora de ordem |
 | `staleness` (tool + node) | sync esquecido |
-| [`architecture_cycle_prevention`](../../crates/ph2d-editor-core/tests/it/architecture_cycle_prevention.rs) | `editor-core` ⊥ `panel-*`/`ph2d-editor`; `editor-core` ⊥ `tool-*` (exceto `ph2d-tool-registry`); `panel-*` ⊥ outro `panel-*` |
+| [`architecture_cycle_prevention`](../../crates/ph2d-editor-core/tests/it/architecture_cycle_prevention.rs) | `editor-core` ⊥ `panel-*`; `editor-core` ⊥ `tool-*` (exceto `ph2d-tool-registry`); `panel-*` ⊥ outro `panel-*` |
 | 🔒 `architecture_tool_contract_surface` | caps Tool/RasterEditTool/PanelEvent (§4) |
 | 🔒 `architecture_contract_surface` (nodegraph) | caps NodeOp/OpResolver/NodeManifest (§4) |
 | `tool_manifest_design_sync` | `docs/design/tools/<slug>.toml` divergente do MANIFEST |

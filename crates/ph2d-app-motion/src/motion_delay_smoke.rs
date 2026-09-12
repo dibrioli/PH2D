@@ -123,5 +123,7 @@ pub fn motion_delay_smoke(cx: &mut crate::motion_scene_ctx::MotionSceneCtx<'_>) 
     let raw = row(g, 1.4, false, -460.0);
     let eased = row(g, -0.2, true, -300.0);
     cx.motion.sinks.extend(raw.into_iter().chain(eased));
-    let _ = cx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
+    let _ = cx
+        .tools
+        .set_active(&ph2d_editor_core::ToolId::new("motion"));
 }

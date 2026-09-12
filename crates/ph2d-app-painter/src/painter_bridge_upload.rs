@@ -18,7 +18,7 @@
 //! viaja com ele.* A cura é a que o `CLAUDE.md` §5.0 manda — **corte por responsabilidade**, nunca
 //! uma entrada nova na lista de folgas.
 
-use ph2d_editor::toast::{Toast, ToastQueue};
+use ph2d_editor_core::toast::{Toast, ToastQueue};
 use ph2d_preview_slot::PreviewGpu as PainterPreviewGpu;
 use ph2d_render::{SpriteRenderer, premultiply_rgba8};
 use ph2d_tool_runtime::PreviewCache as PainterPreview;

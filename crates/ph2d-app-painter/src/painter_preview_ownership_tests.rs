@@ -8,7 +8,7 @@
 
 use crate::painter_bridge_upload::own_preview_buffer;
 use crate::painter_preview_pipeline_tests::ENTITY;
-use ph2d_editor::tool::{CanvasPaintTool, PointerPhase, RasterEditTool};
+use ph2d_editor_core::tool::{CanvasPaintTool, PointerPhase, RasterEditTool};
 use ph2d_tool_painter::PainterTool;
 use ph2d_tool_runtime::PreviewCache as PainterPreview;
 use std::sync::Arc;
@@ -83,7 +83,7 @@ fn the_shell_owns_its_preview_buffer_never_the_tools_canvas() {
 #[test]
 #[ignore = "perf measurement — run with --release --ignored"]
 fn a_plain_stroke_is_footprint_bound_when_the_shell_owns_its_buffer() {
-    use ph2d_editor::tool::CanvasPointer;
+    use ph2d_editor_core::tool::CanvasPointer;
     use std::time::Instant;
 
     fn cpt(pos: [f32; 2], phase: PointerPhase) -> CanvasPointer {

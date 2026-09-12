@@ -123,12 +123,12 @@ fn every_registry_panel_is_reachable_from_this_shell() {
 fn the_registry_this_binary_builds_contains_the_asset_browser() {
     let reg = ph2d_panel_registry_init::build_typed_registry();
     assert!(
-        reg.find_by_panel_node_id(ph2d_editor::ids::ASSET_PANEL)
+        reg.find_by_panel_node_id(ph2d_editor_core::ids::ASSET_PANEL)
             .is_some(),
         "o navegador de assets NAO esta' no registo deste binario — o pill abre e nao acontece nada"
     );
     assert!(
-        reg.find_by_panel_node_id(ph2d_editor::ids::INSP_PANEL)
+        reg.find_by_panel_node_id(ph2d_editor_core::ids::INSP_PANEL)
             .is_some(),
         "nem o Inspector esta' — a leitura do registo mudou de forma, re-leia este gate"
     );

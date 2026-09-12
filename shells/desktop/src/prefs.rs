@@ -1,7 +1,7 @@
 //! Preferências de UTILIZADOR — cross-session, `~/.ph2d/prefs.txt`.
 //!
 //! O que é do ARTISTA (como o app se mexe, como ele se parece) contra o que é do DOCUMENTO (o que
-//! o artista desenhou). Hoje: o **carácter** da UI viva (`ph2d_editor::motion::UiCharacter`) e o
+//! o artista desenhou). Hoje: o **carácter** da UI viva (`ph2d_editor_core::motion::UiCharacter`) e o
 //! **reduced motion**.
 //!
 //! ⚠️ **Isto NÃO entra nas `SavedSettings` do `ProjectFile` (v69), e a razão é o modo de falha:**
@@ -23,7 +23,7 @@
 
 use std::path::PathBuf;
 
-use ph2d_editor::motion::UiCharacter;
+use ph2d_editor_core::motion::UiCharacter;
 
 /// O par que viaja. Os dois eixos do plano: o GOSTO e a GARANTIA.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]

@@ -13,7 +13,7 @@
 use ph2d_app_physics::physics_tests::apply;
 use ph2d_core::Vec2;
 use ph2d_ecs::{Entity, SimWorld, Transform};
-use ph2d_editor::PhysicsFieldEdit;
+use ph2d_editor_core::PhysicsFieldEdit;
 use ph2d_physics_ecs::{
     BodyKind, Collider, ColliderShape, PhysicsBridge, PhysicsSettings, RigidBody,
 };

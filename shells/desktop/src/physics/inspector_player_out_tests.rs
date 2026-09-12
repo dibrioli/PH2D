@@ -13,7 +13,7 @@ use super::*;
 use ph2d_app_physics::inspector::player::{apply_player_edit, build_player_info};
 use ph2d_core::Vec2;
 use ph2d_ecs::{Name, SimWorld, Transform};
-use ph2d_editor::PlayerFieldEdit;
+use ph2d_editor_core::PlayerFieldEdit;
 use ph2d_physics_ecs::{BodyKind, Collider, ColliderShape, RigidBody};
 
 const SPRUNG: ph2d_physics_ecs::PlayerLiveness = ph2d_physics_ecs::PlayerLiveness::SPRING;

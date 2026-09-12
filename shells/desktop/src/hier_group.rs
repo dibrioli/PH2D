@@ -27,7 +27,7 @@
 //! ⛔ Inventar aqui uma terceira lei para a mesma pergunta seria a divergência que este repo paga
 //! sempre: *duas respostas à mesma pergunta, e a que o artista encontra é a que envelhece.*
 
-use ph2d_editor::Toast;
+use ph2d_editor_core::Toast;
 
 /// O que o verbo fez — ou porque não fez nada.
 ///

@@ -51,8 +51,8 @@
 //! ⚠️ E uma escrita ESTRANGEIRA no meio de um voo ganha: o tique compara a câmera com o que ele
 //! próprio publicou no quadro anterior — *enumerar os escritores apodrece, uma testemunha não*.
 
-use ph2d_editor::NodeId;
-use ph2d_editor::motion::{Role, UiMotion};
+use ph2d_editor_core::NodeId;
+use ph2d_editor_core::motion::{Role, UiMotion};
 use ph2d_render::Camera2d;
 
 /// O id do escalar no substrato. Hash de string ⇒ **nenhum contador de gate** se move.

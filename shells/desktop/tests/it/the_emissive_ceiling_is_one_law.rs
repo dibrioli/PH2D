@@ -4,7 +4,7 @@
 //! # Por que há duas cópias
 //!
 //! `ph2d_ecs::EMISSIVE_MAX` é a lei: o tecto da **representação** (o meio-float do `GameRt`).
-//! `ph2d_editor::EMISSIVE_MAX_UI` é a cópia que o slider do Inspector usa para mapear o seu
+//! `ph2d_editor_core::EMISSIVE_MAX_UI` é a cópia que o slider do Inspector usa para mapear o seu
 //! curso `0..1` na intensidade real.
 //!
 //! ⚠️ **A cópia não é descuido — é a seta de dependência.** O painel é *chrome* e **não** depende do
@@ -27,9 +27,9 @@
 fn the_emissive_ceiling_is_one_law() {
     assert_eq!(
         ph2d_ecs::EMISSIVE_MAX,
-        ph2d_editor::EMISSIVE_MAX_UI,
+        ph2d_editor_core::EMISSIVE_MAX_UI,
         "o teto da emissao divergiu entre o MODELO (`ph2d_ecs::EMISSIVE_MAX`) e a UI \
-         (`ph2d_editor::EMISSIVE_MAX_UI`).\n\n\
+         (`ph2d_editor_core::EMISSIVE_MAX_UI`).\n\n\
          O slider do Inspector guarda `0..1` e multiplica por este numero para chegar a \
          intensidade real. Com os dois em desacordo, o artista arrasta ate' ao fim, le' um numero \
          na chip, e a sprite emite outro -- sem erro nenhum.\n\n\

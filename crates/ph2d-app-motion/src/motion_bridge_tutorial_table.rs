@@ -42,7 +42,7 @@ pub fn derive(entradas: &[(&str, &str)]) -> String {
         ph2d_panel_motion_graph::set_graph_selection(vec![id.0]);
         let painel = crate::motion_bridge::params::build_params_snapshot(
             &aux,
-            ph2d_editor::ProjectSettings::default(),
+            ph2d_editor_core::ProjectSettings::default(),
         );
         ph2d_panel_motion_graph::set_graph_selection(Vec::new());
         let painel = painel.unwrap_or_else(|| panic!("o painel de `{node}` monta"));

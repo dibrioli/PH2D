@@ -78,7 +78,7 @@ fn scrubbing_beyond_an_authored_duration_mints_no_keys() {
             true,
             false,
             &mut ak,
-            &mut ph2d_editor::ToastQueue::new(),
+            &mut ph2d_editor_core::ToastQueue::new(),
         );
         assert_eq!(
             st.doc.active_clip().track(target).unwrap().len(),
@@ -119,7 +119,7 @@ fn the_keys_solo_diff_rides_the_cut_clock_too() {
             true,
             false,
             &mut ak,
-            &mut ph2d_editor::ToastQueue::new(),
+            &mut ph2d_editor_core::ToastQueue::new(),
         );
         assert_eq!(
             st.doc.active_clip().track(target).unwrap().len(),
@@ -158,7 +158,7 @@ fn a_deliberate_pose_edit_beyond_the_cut_keys_at_the_boundary() {
         true,
         false,
         &mut ak,
-        &mut ph2d_editor::ToastQueue::new(),
+        &mut ph2d_editor_core::ToastQueue::new(),
     );
     assert_eq!(st.doc.active_clip().track(target).unwrap().len(), before);
 
@@ -171,7 +171,7 @@ fn a_deliberate_pose_edit_beyond_the_cut_keys_at_the_boundary() {
         true,
         false,
         &mut ak,
-        &mut ph2d_editor::ToastQueue::new(),
+        &mut ph2d_editor_core::ToastQueue::new(),
     );
     let keys = st.doc.active_clip().track(target).unwrap().keys().to_vec();
     assert_eq!(

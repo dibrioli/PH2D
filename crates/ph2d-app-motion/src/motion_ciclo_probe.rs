@@ -60,7 +60,7 @@ pub fn retrato(grupo: &[&str]) {
         let mut snap = ph2d_panel_motion_graph::snapshot_from(&m.doc.graph, &m.registry);
         crate::motion_bridge::params::card::stamp_card_params(
             &m,
-            ph2d_editor::ProjectSettings::default(),
+            ph2d_editor_core::ProjectSettings::default(),
             &mut snap,
         );
         let no_cartao = snap
@@ -187,7 +187,7 @@ pub fn cartao(grupo: &[&str]) {
         let mut snap = ph2d_panel_motion_graph::snapshot_from(&m.doc.graph, &m.registry);
         crate::motion_bridge::params::card::stamp_card_params(
             &m,
-            ph2d_editor::ProjectSettings::default(),
+            ph2d_editor_core::ProjectSettings::default(),
             &mut snap,
         );
         let view = snap.nodes.iter().find(|v| v.id == id.0);

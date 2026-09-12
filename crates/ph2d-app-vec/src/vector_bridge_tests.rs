@@ -309,13 +309,13 @@ fn adopting_a_style_does_not_arm_the_restyle() {
 /// Este gate dirige a PORTA REAL (`seed_style_from_selection`), não o helper privado.
 #[test]
 fn selecting_a_path_reseeds_the_store_not_only_the_tool() {
-    use ph2d_editor::panel::Panel;
+    use ph2d_editor_core::panel::Panel;
     use ph2d_tool_vector::{VectorTool, params};
     use ph2d_vec_edit::PenTool;
     use ph2d_vec_scene::{StrokeSpec, VecPath, VecVertex};
 
     // O store REGISTRADO — o fluxo do produto; num vazio o `set` não alcança widget nenhum.
-    let mut store = ph2d_editor::interaction::WidgetStore::default();
+    let mut store = ph2d_editor_core::interaction::WidgetStore::default();
     <ph2d_panel_vector::VectorPanel as Panel>::populate(&mut store);
 
     // Um caminho com largura BEM diferente do default, para o número não passar por acidente.
@@ -343,7 +343,7 @@ fn selecting_a_path_reseeds_the_store_not_only_the_tool() {
         "a tool nao adotou a largura"
     );
     let track = store
-        .slider(ph2d_editor::ids::VECTOR_WIDTH)
+        .slider(ph2d_editor_core::ids::VECTOR_WIDTH)
         .map(|(_, v)| v)
         .expect("o slider de Width existe no store");
     assert!(

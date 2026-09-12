@@ -133,8 +133,8 @@ pub fn source_options_for_tests(motion: &MotionState) -> Vec<String> {
 #[cfg(test)]
 pub fn apply_param_edits_for_tests(
     motion: &mut MotionState,
-    store: &ph2d_editor::interaction::WidgetStore,
-    toasts: &mut ph2d_editor::ToastQueue,
+    store: &ph2d_editor_core::interaction::WidgetStore,
+    toasts: &mut ph2d_editor_core::ToastQueue,
 ) {
     apply_param_edits(motion, store, toasts);
 }
@@ -159,10 +159,10 @@ pub fn shown_params_for_tests(
 /// cap and the params logic sits together.
 pub(super) fn publish(
     motion: &mut MotionState,
-    store: &mut ph2d_editor::interaction::WidgetStore,
+    store: &mut ph2d_editor_core::interaction::WidgetStore,
     motion_active: bool,
-    project: ph2d_editor::ProjectSettings,
-    toasts: &mut ph2d_editor::ToastQueue,
+    project: ph2d_editor_core::ProjectSettings,
+    toasts: &mut ph2d_editor_core::ToastQueue,
 ) {
     if !motion_active {
         ph2d_panel_motion_params::set_current_params(None);
@@ -197,10 +197,10 @@ pub(super) fn publish(
 #[cfg(test)]
 pub fn publish_for_tests(
     motion: &mut MotionState,
-    store: &mut ph2d_editor::interaction::WidgetStore,
+    store: &mut ph2d_editor_core::interaction::WidgetStore,
     motion_active: bool,
-    project: ph2d_editor::ProjectSettings,
-    toasts: &mut ph2d_editor::ToastQueue,
+    project: ph2d_editor_core::ProjectSettings,
+    toasts: &mut ph2d_editor_core::ToastQueue,
 ) {
     publish(motion, store, motion_active, project, toasts);
 }
@@ -221,7 +221,7 @@ pub fn selected_motion_node() -> Option<u32> {
 /// node is selected and resolvable.
 pub fn build_params_snapshot(
     motion: &MotionState,
-    project: ph2d_editor::ProjectSettings,
+    project: ph2d_editor_core::ProjectSettings,
 ) -> Option<ph2d_panel_motion_params::ParamsSnapshot> {
     use ph2d_node_registry::ParamWidget;
     use ph2d_nodegraph::cook::OpResolver;

@@ -28,7 +28,7 @@ use ph2d_ecs::{
     ChildOf, Entity, LayoutAlign, LayoutDir, LayoutJustify, LayoutSize, SimWorld, VecFrame,
     VecLayout, VecLayoutAbsolute, VecLayoutItem, VecLayoutSize,
 };
-use ph2d_editor::ids;
+use ph2d_editor_core::ids;
 use ph2d_panel_vector::state::{LayoutFlow, LayoutItem};
 use ph2d_vec_scene::VecPathId;
 
@@ -36,21 +36,21 @@ use ph2d_vec_entities::entities::VecEntityMap;
 
 /// A direção ⟷ o chip. `Off` não está aqui: ele é a AUSÊNCIA do componente, e por isso não tem
 /// variante a que corresponder.
-const DIRS: &[(ph2d_editor::NodeId, LayoutDir)] = &[
+const DIRS: &[(ph2d_editor_core::NodeId, LayoutDir)] = &[
     (ids::VECTOR_LAYOUT_DIR_ROW, LayoutDir::Row),
     (ids::VECTOR_LAYOUT_DIR_COL, LayoutDir::Column),
     (ids::VECTOR_LAYOUT_DIR_WRAP, LayoutDir::RowWrap),
     (ids::VECTOR_LAYOUT_DIR_GRID, LayoutDir::Grid),
 ];
 
-const ALIGNS: &[(ph2d_editor::NodeId, LayoutAlign)] = &[
+const ALIGNS: &[(ph2d_editor_core::NodeId, LayoutAlign)] = &[
     (ids::VECTOR_LAYOUT_ALIGN_START, LayoutAlign::Start),
     (ids::VECTOR_LAYOUT_ALIGN_CENTER, LayoutAlign::Center),
     (ids::VECTOR_LAYOUT_ALIGN_END, LayoutAlign::End),
     (ids::VECTOR_LAYOUT_ALIGN_STRETCH, LayoutAlign::Stretch),
 ];
 
-const JUSTIFIES: &[(ph2d_editor::NodeId, LayoutJustify)] = &[
+const JUSTIFIES: &[(ph2d_editor_core::NodeId, LayoutJustify)] = &[
     (ids::VECTOR_LAYOUT_JUSTIFY_START, LayoutJustify::Start),
     (ids::VECTOR_LAYOUT_JUSTIFY_CENTER, LayoutJustify::Center),
     (ids::VECTOR_LAYOUT_JUSTIFY_END, LayoutJustify::End),
@@ -80,7 +80,7 @@ pub(crate) enum LayoutEdit {
 
 /// Este id é um chip do layout? Porta única do roteador — a mesma varredura das três tabelas.
 #[must_use]
-pub(crate) fn layout_edit_for_id(id: ph2d_editor::NodeId) -> Option<LayoutEdit> {
+pub(crate) fn layout_edit_for_id(id: ph2d_editor_core::NodeId) -> Option<LayoutEdit> {
     if id == ids::VECTOR_LAYOUT_DIR_OFF {
         return Some(LayoutEdit::Dir(None));
     }
@@ -105,8 +105,8 @@ pub(crate) fn layout_edit_for_id(id: ph2d_editor::NodeId) -> Option<LayoutEdit> 
 }
 
 /// Os quatro chips de tamanho, numa tabela — a mesma forma das outras três.
-fn size_edit_for_id(id: ph2d_editor::NodeId) -> Option<LayoutEdit> {
-    const SIZES: &[(ph2d_editor::NodeId, usize, bool)] = &[
+fn size_edit_for_id(id: ph2d_editor_core::NodeId) -> Option<LayoutEdit> {
+    const SIZES: &[(ph2d_editor_core::NodeId, usize, bool)] = &[
         (ids::VECTOR_LAYOUT_SIZE_W_FIXED, 0, false),
         (ids::VECTOR_LAYOUT_SIZE_W_HUG, 0, true),
         (ids::VECTOR_LAYOUT_SIZE_H_FIXED, 1, false),
@@ -169,7 +169,7 @@ impl LayoutField {
 /// os dez comprimentos — mapear o struct em bloco dividiria *"três colunas"* por cem e a grade
 /// nasceria com zero. Os chips (`NodeId`) e os modos de tamanho também não são números do artista.
 #[must_use]
-pub(crate) fn flow_in_display(flow: LayoutFlow, d: ph2d_editor::LengthDisplay) -> LayoutFlow {
+pub(crate) fn flow_in_display(flow: LayoutFlow, d: ph2d_editor_core::LengthDisplay) -> LayoutFlow {
     LayoutFlow {
         gap: flow.gap.map(|v| d.value(v)),
         pad: flow.pad.map(|v| d.value(v)),
@@ -181,7 +181,7 @@ pub(crate) fn flow_in_display(flow: LayoutFlow, d: ph2d_editor::LengthDisplay) -
 
 /// Porta única do roteador para os campos numéricos.
 #[must_use]
-pub(crate) fn layout_field_for_id(id: ph2d_editor::NodeId) -> Option<LayoutField> {
+pub(crate) fn layout_field_for_id(id: ph2d_editor_core::NodeId) -> Option<LayoutField> {
     let f = match id {
         _ if id == ids::VECTOR_LAYOUT_GAP_MAIN => LayoutField::Gap(0),
         _ if id == ids::VECTOR_LAYOUT_GAP_CROSS => LayoutField::Gap(1),
@@ -203,7 +203,10 @@ pub(crate) fn layout_field_for_id(id: ph2d_editor::NodeId) -> Option<LayoutField
 }
 
 /// O chip aceso para uma variante — a MESMA tabela, lida ao contrário.
-fn chip_of<T: PartialEq + Copy>(table: &[(ph2d_editor::NodeId, T)], v: T) -> ph2d_editor::NodeId {
+fn chip_of<T: PartialEq + Copy>(
+    table: &[(ph2d_editor_core::NodeId, T)],
+    v: T,
+) -> ph2d_editor_core::NodeId {
     // ⚠️ O `unwrap_or` cai no PRIMEIRO chip da tabela, e nunca dispara: as tabelas são
     // exaustivas sobre enums fechados, e um `match` no compilador não as cobre porque elas são
     // dados. É o gate `every_layout_variant_has_a_chip` que o prova — e é ele que sangra no dia
@@ -295,7 +298,7 @@ pub(crate) fn selected_item(
 
 /// O chip de tamanho ACESO num eixo — a mesma leitura que o `chip_of` faz para as outras três
 /// tabelas, e a ausência do componente lê `Fixed`, que é o mundo de antes desta feature.
-fn size_chip(sim: &SimWorld, e: Entity, axis: usize) -> ph2d_editor::NodeId {
+fn size_chip(sim: &SimWorld, e: Entity, axis: usize) -> ph2d_editor_core::NodeId {
     let hug = sim
         .world()
         .get::<VecLayoutSize>(e)

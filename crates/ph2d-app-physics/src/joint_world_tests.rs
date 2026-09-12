@@ -130,11 +130,12 @@ fn a_pulley_cannot_be_pinned_to_the_world() {
 /// recusando — que é exatamente o defeito que o smoke reportou.
 #[test]
 fn the_canvas_release_on_empty_routes_to_the_world_pin() {
-    let src = std::fs::read_to_string(concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/src/physics/joint_draw.rs"
-    ))
-    .expect("physics/joint_draw.rs");
+    // ⚠️⚠️ **Era um `read_to_string(CARGO_MANIFEST_DIR + "/src/physics/joint_draw.rs")`, e ele
+    // sobreviveu ao corte da W2/L2 Fase C a apontar para a SHELL** — compilava, e só reprovou
+    // quando o teste correu. É o gémeo MUDO do HOWTO §2.6, e a metade que ele próprio recomenda é
+    // esta: o `include_str!` falha em tempo de COMPILAÇÃO quando o ficheiro se move.
+    // ⭐ Os dois vivem na mesma pasta desde o corte, então o caminho é o nome e nada mais.
+    let src = include_str!("joint_draw.rs");
     assert!(
         src.contains("joint_world::create_world_pin_at"),
         "o release do canvas não chama a porta do pino de mundo — soltar no vazio \

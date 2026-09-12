@@ -499,7 +499,7 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   `press_point >= dead_zone` é **coagido na porta**. ⛔ **LEI Nº 1 honrada:** a `InputTape` grava a **acção resolvida**, nunca a
   tecla — remapear não reescreve o passado nem parte o `physics_ecs_c9`. ⚠️ **Faltam os âmbitos com prioridade** (o que o Unreal
   tem e o Godot não): **bloqueado** — só têm sentido com um modo de jogo, e o `shells/game`/R1 está adiado pelo Enio; a cura de
-  hoje é uma **lista negra à mão** no [`player_input.rs`](shells/desktop/src/physics/player_input.rs). ⏳ Falta também o *override*
+  hoje é uma **lista negra à mão** no [`player_input.rs`](crates/ph2d-app-physics/src/player_input.rs). ⏳ Falta também o *override*
   por-jogador em `~/.ph2d/` ·
   ✅ **(2) A MÁQUINA DE ESTADOS DO MORPH FECHOU** ([plano 32](docs/Vector%20Module/32_plano_maquina_de_estados_do_morph.md) W1–W11j,
   [handoff](docs/Vector%20Module/handoffs/HANDOFF_INTEGRACAO_line_Vector_morph_states_2026-08-26.md)) — um botão faz o conjunto,

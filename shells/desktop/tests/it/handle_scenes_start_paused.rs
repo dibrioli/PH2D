@@ -138,6 +138,20 @@ fn scene_arms(dispatch: &str) -> BTreeMap<String, String> {
                 .map(|(f, _)| f.trim().to_string())
                 .unwrap_or_default()
         };
+        // ⭐ **A TERCEIRA forma, desde a Fase B**: com o roteador dentro da crate o
+        // braço deixou de passar por um método e virou a chamada directa
+        // `crate::<mod>::<fn>(ctx)`. As duas leituras acima ficam porque o parser
+        // não sabe de que árvore o ficheiro veio — *um parser que só conhece a
+        // forma de hoje reprova o dia em que alguém bissecta com a de ontem.*
+        let nome = if nome.is_empty() {
+            // ⚠️ `(ctx` sem o parêntese de fecho: o recorte do braço acima corta em
+            // `"), "`, logo o `)` já foi consumido por ele.
+            arm.split_once("(ctx")
+                .map(|(a, _)| a.rsplit("::").next().unwrap_or("").trim().to_string())
+                .unwrap_or_default()
+        } else {
+            nome
+        };
         if !nome.is_empty() {
             out.insert(num.to_string(), nome);
         }
@@ -168,7 +182,8 @@ fn body_of<'a>(src: &'a str, f: &str) -> Option<&'a str> {
 /// portas que `wheel_handles` tem (`show_overlay && at_rest`), e uma classe
 /// derivada duas vezes é a que diverge quando o critério muda.
 fn handle_gesture_scenes() -> Vec<(String, String, String)> {
-    let dispatch = fs::read_to_string("src/physics/physics_smoke.rs").expect("physics_smoke.rs");
+    let dispatch =
+        fs::read_to_string("../../crates/ph2d-app-physics/src/smoke.rs").expect("physics_smoke.rs");
     let all = scene_sources();
     let arms = scene_arms(&dispatch);
     assert!(
@@ -211,7 +226,8 @@ fn handle_gesture_scenes() -> Vec<(String, String, String)> {
 /// **A cena que manda arrastar uma alça nasce pausada.**
 #[test]
 fn a_scene_that_asks_for_a_handle_gesture_starts_paused() {
-    let dispatch = fs::read_to_string("src/physics/physics_smoke.rs").expect("physics_smoke.rs");
+    let dispatch =
+        fs::read_to_string("../../crates/ph2d-app-physics/src/smoke.rs").expect("physics_smoke.rs");
     let start = dispatch
         .find("const PAUSED_SCENES")
         .expect("a lista de cenas pausadas sumiu");

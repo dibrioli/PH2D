@@ -84,10 +84,19 @@ fn scene_arms(dispatch: &str) -> BTreeMap<String, String> {
         let Some((num, tail)) = rest.split_once('"') else {
             continue;
         };
-        let Some(call) = tail.split("self.").nth(1) else {
-            continue;
-        };
-        let Some((f, _)) = call.split_once('(') else {
+        // ⭐ Desde a Fase B o braço é `crate::<mod>::<fn>(ctx)`; antes era um
+        // método (`self.<fn>(…)`). O parser aceita as duas formas de propósito.
+        let f = if let Some(call) = tail.split("self.").nth(1) {
+            match call.split_once('(') {
+                Some((f, _)) => f,
+                None => continue,
+            }
+        } else if let Some((antes, _)) = tail.split_once("(ctx)") {
+            match antes.rsplit("::").next() {
+                Some(f) => f.trim(),
+                None => continue,
+            }
+        } else {
             continue;
         };
         if num.chars().all(|c| c.is_ascii_digit()) {
@@ -110,7 +119,8 @@ fn body_of<'a>(src: &'a str, f: &str) -> Option<&'a str> {
 
 /// `(número, fn, corpo, mensagem)` de toda cena.
 fn scenes() -> Vec<(String, String, String, String)> {
-    let dispatch = fs::read_to_string("src/physics/physics_smoke.rs").expect("physics_smoke.rs");
+    let dispatch =
+        fs::read_to_string("../../crates/ph2d-app-physics/src/smoke.rs").expect("physics_smoke.rs");
     let all = scene_sources();
     let arms = scene_arms(&dispatch);
     assert!(
@@ -170,8 +180,12 @@ fn ruler_scenes() -> Vec<(String, String, String)> {
 /// falha então diz exatamente quantas cenas ficam mudando de assunto.
 #[test]
 fn every_physics_smoke_scene_has_a_ruler_because_the_prologue_opens_the_timeline() {
-    let dispatch = fs::read_to_string("src/physics/physics_smoke.rs").expect("physics_smoke.rs");
-    let prologue = body_of(&dispatch, "physics_smoke").expect("o prólogo do smoke sumiu");
+    // ⚠️ **DUAS árvores, e a divisão é a da Fase B**: os braços mudaram-se para a
+    // crate e o PRÓLOGO ficou na shell, porque ele mexe no `Playhead`, nas `flags`
+    // da timeline e no `HeroScreen` — composição, não família.
+    let prologo_src =
+        fs::read_to_string("src/physics/physics_smoke.rs").expect("o prólogo, na shell");
+    let prologue = body_of(&prologo_src, "physics_smoke").expect("o prólogo do smoke sumiu");
     let asking: Vec<String> = ruler_scenes()
         .into_iter()
         .filter(|(_, _, body)| !body.contains(OPENS_TIMELINE))

@@ -109,11 +109,16 @@ mod tests {
     /// deixou de existir.
     ///
     /// ⭐ **Medido em 2026-09-11, na integração das seis linhas da W2:** das cinco famílias da
-    /// Fase A, só a `flip` lê as próprias `PH2D_*_SMOKE` dentro da crate (15 delas); `vec`,
+    /// Fase A, só a `flip` lia as próprias `PH2D_*_SMOKE` dentro da crate (15 delas); `vec`,
     /// `motion`, `physics` e `sculpt3d` extraíram código e **não** o roteador — o `match` de cenas
-    /// toca a `App`, que é precisamente o que a Fase B ainda deve.
-    const FAMILIAS_COM_O_ROTEADOR_AINDA_NA_SHELL: &[&str] =
-        &["motion", "physics", "sculpt3d", "vec"];
+    /// tocava a `App`, que é precisamente o que a Fase B devia.
+    ///
+    /// ⭐⭐ **A `physics` SAIU em 2026-09-11 (W2/L2 Fase B)**: as 118 cenas viraram funções livres
+    /// sobre um `SceneCtx`, o `match` mudou-se para `ph2d_app_physics::smoke` e a env passou a ser
+    /// lida lá. ⚠️ **O que destravou foi uma decisão, não um refactor:** os três últimos braços
+    /// autoram uma track de timeline, e a família passou a poder depender da `ph2d-timeline` —
+    /// *uma crate-motor irmã não é a shell* (ADR-0075). As outras três continuam aqui.
+    const FAMILIAS_COM_O_ROTEADOR_AINDA_NA_SHELL: &[&str] = &["motion", "sculpt3d", "vec"];
 
     /// ⚠️ **Uma família registada tem de declarar pelo menos um roteador, e todo roteador tem de ter
     /// nível.** Sem esta metade, uma família que se registasse com `routers: &[]` passaria no gate

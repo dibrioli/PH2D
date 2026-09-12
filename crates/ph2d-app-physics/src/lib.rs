@@ -212,7 +212,13 @@ pub mod physics_smoke_zones;
 /// [`physics_smoke`]: https://github.com/dibrioli/PH2D/blob/main/shells/desktop/src/physics/physics_smoke.rs
 pub const FAMILY: ph2d_app_host::AppFamily = ph2d_app_host::AppFamily {
     key: "physics",
-    routers: &[],
+    routers: &[ph2d_app_host::SmokeRouter {
+        env: "PH2D_PHYSICS_SMOKE",
+        // ⚠️⚠️ **CONTADO no `match`, nunca escrito aqui** (CLAUDE.md §5.0). A fonte é
+        // [`smoke::CENAS`], que vive ao lado do roteador e tem gate nas duas pontas —
+        // *um tecto declarado longe do `match` é uma nota à espera de envelhecer*.
+        max_level: smoke::CENAS,
+    }],
 };
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -238,3 +244,4 @@ pub mod physics_smoke_joint_anim;
 pub mod physics_smoke_out;
 pub mod physics_smoke_player;
 pub mod physics_smoke_rigs;
+pub mod smoke;

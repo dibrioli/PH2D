@@ -5,8 +5,6 @@ use super::*;
 use ph2d_ecs::SimWorld;
 use ph2d_physics_ecs::PhysicsBridge;
 
-const DT: f64 = 1.0 / 60.0;
-
 /// Monta a cena E as tracks, e devolve o par que o produto usa.
 fn staged() -> (SimWorld, TimelineDoc, [Entity; 4], PhysicsBridge) {
     let mut sim = SimWorld::new();
@@ -25,15 +23,6 @@ fn named(sim: &mut SimWorld, name: &str) -> Entity {
         .map(|(e, _)| e)
         .unwrap_or_else(|| panic!("a cena 78 nao montou '{name}'"))
 }
-
-fn pose(sim: &mut SimWorld, name: &str) -> [f32; 3] {
-    let e = named(sim, name);
-    let t = sim.world().get::<Transform>(e).expect("transform");
-    [t.translation.x, t.translation.y, t.rotation]
-}
-
-/// Toca até `tick`, um tick por dispatch — o relógio real —, gravando a pose de
-/// `watch` em cada um.
 
 /// **A cena monta as cinco máquinas que a mensagem nomeia.**
 #[test]

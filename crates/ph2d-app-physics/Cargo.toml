@@ -31,14 +31,10 @@ ph2d-render = { path = "../ph2d-render" }
 # resposta é que ela é uma crate IRMÃ, não a shell: a família pode depender dela.
 ph2d-anim = { path = "../ph2d-anim" }
 ph2d-editor = { path = "../ph2d-editor" }
-ph2d-flip = { path = "../ph2d-flip" }
-ph2d-guides = { path = "../ph2d-guides" }
 ph2d-host = { path = "../ph2d-host" }
 ph2d-input = { path = "../ph2d-input" }
 ph2d-panel-physics = { path = "../ph2d-panel-physics" }
 ph2d-text = { path = "../ph2d-text" }
-ph2d-ui-state = { path = "../ph2d-ui-state" }
-ph2d-vec-scene = { path = "../ph2d-vec-scene" }
 ph2d-vector = { path = "../ph2d-vector" }
 # `libm`: HR-5, a trigonometria bit-idêntica entre OS que o overlay usa.
 libm = { version = "=0.2.16", default-features = false }
@@ -56,9 +52,6 @@ ph2d-preview-drive = { path = "../ph2d-preview-drive" }
 ph2d-unique-name = { path = "../ph2d-unique-name" }
 # O painel do Inspector: a §11 desenha as rows dele.
 ph2d-panel-inspector = { path = "../ph2d-panel-inspector" }
-# Transitivas pela `ph2d-physics-ecs` dentro da shell; aqui a família nomeia-as, que é o ponto.
-ph2d-physics = { path = "../ph2d-physics" }
-ph2d-platformer = { path = "../ph2d-platformer" }
 serde = { version = "1", features = ["rc"] }
 
 [features]

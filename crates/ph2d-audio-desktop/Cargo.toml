@@ -23,7 +23,6 @@ ph2d-audio-opus = { path = "../ph2d-audio-opus" }
 ph2d-audio-spectral = { path = "../ph2d-audio-spectral" }
 ph2d-ecs = { path = "../ph2d-ecs" }
 ph2d-editor = { path = "../ph2d-editor" }
-ph2d-editor-core = { path = "../ph2d-editor-core" }
 ph2d-panel-audio-editor = { path = "../ph2d-panel-audio-editor", optional = true }
 ph2d-tokens = { path = "../ph2d-tokens" }
 

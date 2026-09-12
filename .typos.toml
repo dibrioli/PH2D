@@ -224,6 +224,7 @@ extend-ignore-identifiers-re = [
     "^convincente$",
     "^recorre$",
     "^directos$",
+    "^DIRECTOS$",  # a mesma palavra em CAIXA ALTA de ênfase — a regex distingue maiúsculas (W2 Fase D, `ph2d-app-motion/src/lib.rs`)
     "^autorize$",
     "^cose$",
     # `pior_defice` — pt-PT «défice» (o «déficit» do pt-BR), numa sonda do `ph2d-field-eval`

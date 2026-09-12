@@ -12,10 +12,6 @@ name = "ph2d-host-desktop"
 path = "src/main.rs"
 
 [dependencies]
-# rayon: a lib de paralelismo sancionada da casa (SKILL_Stack §919). O botao de
-# retopologia corre a cadeia DUAS vezes e elas sao independentes -- ver
-# `sculpt3d_history_retopo_extract.rs`.
-rayon = "1"
 # A lei da máquina de estados do Morph (plano 32) — folha, partilhada com o runtime do jogo.
 ph2d-morph-machine = { path = "../../crates/ph2d-morph-machine" }
 # libm — HR-5 cross-OS bit-identical sincosf used in input_dispatch.rs
@@ -34,15 +30,9 @@ ph2d-viewport3d = { path = "../../crates/ph2d-viewport3d" }
 # ⭐ **A família `field3d` — os 15 207 LOC de produto e 16 990 de teste que viviam nesta crate.**
 # A shell continua a chamá-la pelo nome; a seta aponta da shell para a família, nunca ao contrário.
 ph2d-app-field3d = { path = "../../crates/ph2d-app-field3d" }
-# O ponto de extensão append-only por onde CADA família se regista (bloco gerado por
-# `cargo run -p ph2d-app-sync`). É ele que impede seis linhas de editarem este `[dependencies]`.
-ph2d-app-registry-init = { path = "../../crates/ph2d-app-registry-init" }
 ph2d-core = { path = "../../crates/ph2d-core" }
 ph2d-form-donation = { path = "../../crates/ph2d-form-donation" }
 ph2d-gpu = { path = "../../crates/ph2d-gpu" }
-# O carimbo de pigmento no device (doc 33). A ponte e' do shell: o tool publica dado simples e
-# `wgpu` nunca entra na `ph2d-tool-painter`.
-ph2d-paint-gpu = { path = "../../crates/ph2d-paint-gpu" }
 # GPU/M5 Fase 1 (ADR-0126): GPU-resident node cook (PH2D_GPU_COOK=1).
 ph2d-gpu-cook = { path = "../../crates/ph2d-gpu-cook" }
 ph2d-ecs = { path = "../../crates/ph2d-ecs" }
@@ -113,18 +103,8 @@ bytemuck = { version = "1", features = ["extern_crate_alloc"] }
 # the graph per frame and lowers its stream to `RenderInstance`s via
 # `ph2d-eval-motion`. (Replaced the retired PH2D_MOTION_SMOKE debug scene.)
 ph2d-nodegraph = { path = "../../crates/ph2d-nodegraph" }
-# A cena `=58` desenha a curva do relogio pela MESMA porta que o editor autora --
-# um segundo serializador divergiria do que o painel escreve no documento.
-ph2d-curve = { path = "../../crates/ph2d-curve" }
 ph2d-node-registry = { path = "../../crates/ph2d-node-registry" }
 ph2d-eval-motion = { path = "../../crates/ph2d-eval-motion" }
-# ADR-0155: the setup diagnoser — the shell runs `diagnose` after a constructive
-# gesture and heals an inert force chain through the integrator it forgot.
-ph2d-motion-diagnose = { path = "../../crates/ph2d-motion-diagnose" }
-# ADR-0154: `source.shape` — the shell builds each shape's `VecPath` from the
-# node's params (`ShapeParams::read`) under its content key (`shape_key`) and
-# publishes it into the cook, then draws it live (GPU vector, not a baked tile).
-ph2d-node-motion-shape = { path = "../../crates/ph2d-node-motion-shape" }
 # Motion Nodes module (docs/Motion Nodes/): document model + full node registry.
 # `MotionState` (motion_state.rs) holds the persistent `Cook`, the registry (all
 # registered node ops) and the transport; `motion_bridge` cooks it per frame
@@ -132,40 +112,8 @@ ph2d-node-motion-shape = { path = "../../crates/ph2d-node-motion-shape" }
 ph2d-motion-doc = { path = "../../crates/ph2d-motion-doc" }
 ph2d-app-motion = { path = "../../crates/ph2d-app-motion" }
 ph2d-node-registry-init = { path = "../../crates/ph2d-node-registry-init" }
-# The reroute node types the wire-splice gesture inserts (doc 45): the shell picks the one
-# that fits the wire, so it must name them.
-ph2d-node-util-reroute = { path = "../../crates/ph2d-node-util-reroute" }
 # doc 67: the shell reads the fx.glow node's params to drive the Motion glow pass.
 ph2d-node-fx-glow = { path = "../../crates/ph2d-node-fx-glow" }
-# Time scopes (M2.N1): the substrate keys scopes by NodeId and knows no node
-# types, so the shell asks the node crate that OWNS the semantic to translate
-# `motion.time_remap` params into `TimeMap`s before each cook (and to refuse a
-# wire that would drag a sequential node under a rewritten clock).
-ph2d-node-motion-time-remap = { path = "../../crates/ph2d-node-motion-time-remap" }
-# A porta `fired_rows`/`NAME_KEY` do `pulse.signal` — a soleira do disparo e a chave do
-# nome moram no NÓ, e a ponte pergunta em vez de re-derivar (o precedente do time-remap).
-ph2d-node-pulse-signal = { path = "../../crates/ph2d-node-pulse-signal" }# A fonte de objeto, para a MEMBRANA. Aqui a dep não é de gate: o shell tem de
-# varrer o documento atrás dos `time_offset` que os `source.object` pedem, e o
-# nome do tipo + o nome do param são do nó. Um literal `"source.object"` na
-# membrana seria a segunda cópia de uma string que o nó já declara, e o dia em
-# que uma delas mudasse a varredura ficaria VAZIA — em silêncio, com a cena
-# desenhando o quadro atual e nada reclamando.
-ph2d-node-source-object = { path = "../../crates/ph2d-node-source-object" }
-# doc 89 folha 14: a membrana do `source.text` autora os params pelo NOME que o nó
-# declara (o manifesto, a chave, o pivô) — um literal aqui seria uma segunda cópia
-# de números que o nó já é dono.
-ph2d-node-source-text = { path = "../../crates/ph2d-node-source-text" }
-# `value.attribute`, para a CENA da DIREÇÃO (`PH2D_GPU_COOK_DEMO=38`): ela autora o
-# `mode` do canal, e um LITERAL aqui seria a segunda cópia de um número que o nó
-# declara — no dia em que o degrau se movesse, a cena desenharia traços NÃO-alinhados
-# afirmando demonstrar alinhamento. Aresta interna de path, nenhum pacote novo.
-ph2d-node-value-attribute = { path = "../../crates/ph2d-node-value-attribute" }
-# Pelo MESMO motivo, um grupo adiante: a cena `=44` autora a TABELA do
-# `value.pattern` por TEXT PARAM, e a chave dela é do NÓ. Um literal `"table"`
-# aqui seria a segunda cópia de uma string que o nó já declara, e no dia em que
-# ela mudasse a cena semearia uma chave que ninguém lê — desenhando o caminho
-# LEGADO enquanto anuncia a tabela. Aresta interna de path, nenhum pacote novo.
-ph2d-node-value-pattern = { path = "../../crates/ph2d-node-value-pattern" }
 # General timeline data layer (M0): keyframe store + curves. Backs the
 # app-general TimelineDoc (authoring + sampling at the engine Playhead) and the
 # per-component SpriteAnimation apply path.
@@ -207,11 +155,6 @@ ph2d-tool-painter = { path = "../../crates/ph2d-tool-painter", features = [
 # Layer blend modes + adjustment effects — `painter_gpu_flatten.rs` reads
 # BlendMode + adjustment LUTs to drive the GPU LayerCompositor.
 ph2d-painter-effects = { path = "../../crates/ph2d-painter-effects" }
-# Vector — the single first-class Vector drawing tool (ADR-0108 cutover).
-# Shell downcasts to VectorTool for its Style config (stroke/fill/width) and
-# routes the pointer to the shell-held Pen over `AppGfx.vec_scene`
-# (vector_bridge.rs). Replaces the retired Pen/Pencil/Shape/Select/Direct tools.
-ph2d-vec-blend = { path = "../../crates/ph2d-vec-blend" }
 # ADR-0129: o motor do envelope/warp (deformação não-afim de geometria Bézier).
 ph2d-vec-envelope = { path = "../../crates/ph2d-vec-envelope" }
 # ⭐⭐⭐ **O MÓDULO DO ESQUELETO** (2026-09-06) — as duas metades, e a repartição é o ponto:
@@ -228,11 +171,7 @@ ph2d-skeleton-live = { path = "../../crates/ph2d-skeleton-live" }
 ph2d-image-import = { path = "../../crates/ph2d-image-import" }
 ph2d-skeleton-render = { path = "../../crates/ph2d-skeleton-render" }
 ph2d-skeleton-ecs = { path = "../../crates/ph2d-skeleton-ecs" }
-ph2d-vec-skin = { path = "../../crates/ph2d-vec-skin" }
 ph2d-tool-vector = { path = "../../crates/ph2d-tool-vector" }
-# O estabilizador do lápis (`lazy_mouse_step`) — a MESMA função que o pincel do Painter usa.
-# ⚠️ Aresta de custo ZERO, medido: a crate já vem transitivamente pela `ph2d-tool-painter`.
-ph2d-painter-brush = { path = "../../crates/ph2d-painter-brush" }
 # Flip drawing tool (ADR-0114 W2) — the shell's `flip_bridge` downcasts it for
 # the brush style + routes canvas pointer → world → `FlipDoc` stroke.
 ph2d-tool-flip = { path = "../../crates/ph2d-tool-flip" }
@@ -323,20 +262,6 @@ ph2d-panel-padding = { path = "../../crates/ph2d-panel-padding", optional = true
 # the snapshot via `ph2d_panel_vector::set_current_vector_style` (vector_bridge).
 ph2d-panel-vector = { path = "../../crates/ph2d-panel-vector", optional = true }
 ph2d-panel-skeleton = { path = "../../crates/ph2d-panel-skeleton", optional = true }
-# Flip Style panel (ADR-0114 W2) — typed panel with the `flip` tool's Mode /
-# Brush / Color / Layers controls. Right-docked (Inspector slot takeover) while
-# the `flip` tool is active. Shell publishes the style + layers snapshots via
-# `ph2d_panel_flip::set_current_flip_*` (flip_bridge).
-ph2d-panel-flip = { path = "../../crates/ph2d-panel-flip", optional = true }
-ph2d-panel-flip-frames = { path = "../../crates/ph2d-panel-flip-frames", optional = true }
-# Motion Nodes graph-editor panel — the shell's `motion_bridge` publishes the
-# graph view via `ph2d_panel_motion_graph::set_current_motion_graph` (M1.E10),
-# so the shell needs a direct optional dep beyond the registry-init feature.
-ph2d-panel-motion-graph = { path = "../../crates/ph2d-panel-motion-graph", optional = true }
-# Motion params panel — the bridge publishes the selected node's params
-# (`set_current_params`) + drains its edits (`drain_param_intents`) + reads its
-# widget states for the undo bracket (M1.P1), so a direct optional dep is needed.
-ph2d-panel-motion-params = { path = "../../crates/ph2d-panel-motion-params", optional = true }
 # Painter layers panel — typed panel listing the LayerStack (thumb + name +
 # visibility + opacity + blend) + adjustment-layer editors. Right-docked
 # (Inspector slot takeover) when the Painter (layers + effects) tool is active.
@@ -397,14 +322,6 @@ ph2d-ui-codegen = { path = "../../crates/ph2d-ui-codegen" }
 ph2d-vec-layout = { path = "../../crates/ph2d-vec-layout" }
 # ADR-0108 Fase 1: booleanas edit-time (union/intersect/subtract via linesweeper).
 ph2d-vec-boolean = { path = "../../crates/ph2d-vec-boolean" }
-# Conectores: o roteador (A*/OVG) da linha que gruda em duas formas e as segue. A
-# shell re-cozinha a rota a cada frame em `connector_live`.
-ph2d-vec-connect = { path = "../../crates/ph2d-vec-connect" }
-# ⭐ A tradução SVG ⇄ documento vectorial (estudo 42, item 3): o IMPORTADOR (um `.svg` largado na
-# janela vira formas editáveis) e a **lei dos eixos**, que o exportador desta shell também consome
-# — o SVG mede o Y para baixo e o mundo mede-o para cima, e antes desta crate cada lado escrevia a
-# própria conversão (o exportador não escrevia nenhuma, e saía espelhado).
-ph2d-vec-svg = { path = "../../crates/ph2d-vec-svg" }
 # ADR-0114: documento do Flip (animação quadro-a-quadro). W0 = dados + ponte ECS
 # (flip_entities) + undo/save; render e tool vêm nas waves seguintes.
 # ⭐ A metade de APLICAÇÃO do Flip (W2/L5): as leis do editor que não precisam da shell.
@@ -413,27 +330,9 @@ ph2d-app-flip = { path = "../../crates/ph2d-app-flip" }
 ph2d-flip = { path = "../../crates/ph2d-flip" }
 # ADR-0114 W1: pipeline wgpu dedicado do traço do Flip (passe no present.rs).
 ph2d-flip-render = { path = "../../crates/ph2d-flip-render" }
-# ADR-0161 — o tracador do modulo de modelagem 3D. E o caminho pelo qual o artista
-# ve a peca: medido na W0, o campo tracado da quina de navalha e filete liso,
-# enquanto a mesma cena extraida em malha serrilha. A malha fica para EXPORTAR.
-ph2d-field-render = { path = "../../crates/ph2d-field-render" }
 ph2d-field = { path = "../../crates/ph2d-field" }
 # ADR-0161 — a ponte ECS: e ela que faz um objeto de campo ser salvo e desfeito.
 ph2d-field-ecs = { path = "../../crates/ph2d-field-ecs" }
-# ADR-0161 W7 — o avaliador, para a SELECAO POR CLIQUE: depois de a marcha dizer ONDE a
-# superficie esta, pergunta-se a cada folha o valor do campo DELA naquele ponto, e ganha a
-# de menor modulo. A pergunta e do shell porque so ele tem as duas metades (a cena e o
-# tracador) na mao; a alternativa (um id-buffer na arvore de avaliacao) espalharia o custo
-# por cada pixel de cada quadro para responder a uma pergunta que so se faz num clique.
-ph2d-field-eval = { path = "../../crates/ph2d-field-eval" }
-ph2d-quadchain = { path = "../../crates/ph2d-quadchain" }
-# ADR-0161 W3 — a costura com o editor vetorial: um `VecPath` desenhado com a
-# caneta da casa vira o perfil de onde saem `Extrude` e `Revolve`.
-ph2d-field-profile = { path = "../../crates/ph2d-field-profile" }
-# `half`: SO para converter os texels f16 de um matcap da casa
-# (`ph2d-mesh-render::matcap::decode`) em f32 linear, no smoke do campo. Ja esta
-# no `Cargo.lock` — e aresta, nao pacote novo.
-half = "2"
 # ADR-0150 — a malha residente e o passe wgpu dela. `optional`: e o que torna a
 # feature `sculpt3d` uma promessa de remocao verificavel, e nao uma opiniao.
 ph2d-mesh = { path = "../../crates/ph2d-mesh", optional = true }
@@ -468,38 +367,11 @@ ph2d-sculpt3d = { path = "../../crates/ph2d-sculpt3d", optional = true }
 # quarta crate do modulo, e a promessa de removibilidade so e verificavel se
 # todas elas caírem com a feature.
 ph2d-sdf = { path = "../../crates/ph2d-sdf", optional = true }
-ph2d-quadflow = { path = "../../crates/ph2d-quadflow" }
-ph2d-remesh-iso = { path = "../../crates/ph2d-remesh-iso" }
-ph2d-crossfield = { path = "../../crates/ph2d-crossfield" }
-# As tres fases restantes da cadeia GLOBAL (ADR-0162): tracado dos patches,
-# quantizacao Bi-MDF e a quadrangulacao por patch. Nao sao `optional` pela mesma
-# razao das duas de cima: a `quad_remesh_global` e' um gesto do shell, e a
-# feature `sculpt3d` cobre a CENA, nao o algoritmo.
-ph2d-trace = { path = "../../crates/ph2d-trace" }
-ph2d-quantize = { path = "../../crates/ph2d-quantize" }
-ph2d-quadfill = { path = "../../crates/ph2d-quadfill" }
-# ⭐⭐ O MAPA DE GRADE INTEIRA (G1-G5) e a EXTRACCAO que o consome -- o caminho novo do
-# botao `Quad Retopology`, atras de `PH2D_RETOPO_EXTRACT=1`. ⛔ Ele shipa DESLIGADO:
-# com o interruptor em baixo o caminho antigo e' byte-identico, e ha' gate a prova'-lo.
-ph2d-gridmap = { path = "../../crates/ph2d-gridmap" }
-ph2d-quadextract = { path = "../../crates/ph2d-quadextract" }
 
-# A ponte da escultura para o campo implicito (ADR-0161 W5): uma malha vira campo
-# amostrado e entra na booleana. NAO e' opcional porque o smoke do campo (cena 6)
-# a usa, e o `field3d_*` ja depende do `sculpt3d` por outra via (`lost_by`).
-ph2d-field-mesh = { path = "../../crates/ph2d-field-mesh" }
-# O balde (ADR-0114 W4) — solver CPU puro; o shell é a fronteira modelo↔solver.
-ph2d-flip-fill = { path = "../../crates/ph2d-flip-fill" }
-ph2d-flip-colorize = { path = "../../crates/ph2d-flip-colorize" }
-# A escultura de traço (ADR-0114 W5) — idem: solver CPU puro, o shell traduz o gesto.
-ph2d-flip-reshape = { path = "../../crates/ph2d-flip-reshape" }
 # Texto vetorial (W1): glyph outlines (skrifa) → VecPath do motor novo. O crate é
 # foundational mas está FORA do gate congelado (que só escaneia -doc/-traits).
 ph2d-vector-font = { path = "../../crates/ph2d-vector-font" }
 ph2d-text = { path = "../../crates/ph2d-text" }
-# Enumeração de fontes do sistema (famílias + bytes) para a escolha de fonte do
-# texto vetorial. Mesma versão que o parley do ph2d-text já traz na árvore.
-fontique = "0.11.1"
 # bevy_ecs is required as a direct dep so `#[derive(Component)]` can
 # resolve its `::bevy_ecs::*` absolute paths. The shell is the
 # application layer and is the only place we tolerate this leak.
@@ -527,45 +399,10 @@ gilrs = "0.11"
 # backend lives in the shell, never in `ph2d-audio`); the core `AudioRenderer`
 # fills the callback buffer. cpal on Linux uses ALSA (`alsa-lib`).
 ph2d-audio = { path = "../../crates/ph2d-audio" }
-# Load-time decode of real audio files (PH2D_AUDIO_FILE smoke) → SampleData.
-ph2d-audio-decode = { path = "../../crates/ph2d-audio-decode" }
 # Audio Editor (docs/Audio/, W1) — offline EditClip (peak cache) + WAV export.
 # Optional, pulled in only by the `panel-audio-editor` feature.
 ph2d-audio-edit = { path = "../../crates/ph2d-audio-edit", optional = true }
 ph2d-audio-encode = { path = "../../crates/ph2d-audio-encode", optional = true }
-ph2d-node-audio-bands = { path = "../../crates/ph2d-node-audio-bands" }
-ph2d-table = { path = "../../crates/ph2d-table" }
-ph2d-node-source-table = { path = "../../crates/ph2d-node-source-table" }
-ph2d-node-value-table = { path = "../../crates/ph2d-node-value-table" }
-# ⚠️ **NAO e mais opcional, e a razao e um CONSUMIDOR novo:** o `audio.bands`
-# (doc 63 §3) le o espectro de um arquivo para dirigir geometria, e ele nao e do
-# editor de audio. Decodificar um arquivo e olhar o espectro dele deixaram de ser
-# capacidades PRIVADAS daquele painel no dia em que um no de Motion precisou das
-# duas — o mesmo argumento que o `decode_any` ja fazia por si ("uma porta para todo
-# arquivo de audio que o app abre"). A alternativa era gatear a membrana na feature
-# do painel, o que deixaria o no REGISTRADO e sempre em silencio num build sem ele:
-# um controle morto, que e o que esta casa recusa.
-ph2d-audio-spectral = { path = "../../crates/ph2d-audio-spectral" }
-# Idem: o `decode_any` roteia Opus por conteudo, e ele agora tem um consumidor fora
-# do painel de audio.
-ph2d-audio-opus = { path = "../../crates/ph2d-audio-opus" }
-# W7 ML denoise (ADR-0123). Optional, pulled ONLY by the `audio-ml` feature (OFF by default): a
-# default build never resolves `tract`, never compiles the inference stack, never embeds the
-# model. It carries the whole DeepFilterNet dependency; the RT mixer (`ph2d-audio`) must never
-# reach it (gate `no_ml_runtime_reaches_the_mixer`).
-ph2d-audio-ml = { path = "../../crates/ph2d-audio-ml", optional = true }
-# ⚠️ 0.18 (TRES majors) — a saida de audio real. Mudancas MEDIDAS nesta maquina,
-# mesmo codigo nas duas versoes:
-#   taxa por omissao      44 100 -> 48 000 Hz
-#   frames por callback   1881/4410 VARIAVEL -> 512 CONSTANTE
-#   perda de dispositivo  error_callback + continue (ciclo infinito)
-#                         -> `DeviceNotAvailable` + return (cala e sai)
-# ⭐ E ela CURA uma violacao do HR-3 que existia: com buffer variavel, o `scratch`
-# redimensionava 26 vezes em 32 callbacks e o comentario dizia "sized once, no
-# allocation in the warm hot path". Com 512 fixo, redimensiona 1 vez.
-# ⚠️ O orcamento por callback cai de ~85 ms para ~10,7 ms — 8x menos folga para o
-# jitter do mixer de 42 efeitos.
-cpal = "0.18"
 # arboard: system clipboard read/write for the Cmd+C/V/X handlers in
 # ph2d-editor's dispatch. Constructed once at startup; pasted text is
 # fed back to the store via `apply_clipboard_paste`.
@@ -588,39 +425,10 @@ bumpalo = "3"
 # fallback para o `zenity` cobre tambem "libdbus ausente", sem panico.
 rfd = "0.17"
 
-# core-graphics: macOS-only live cursor query. winit 0.30 does NOT
-# emit `CursorMoved` during external file drag operations, so the
-# cached cursor is stale by the time `DroppedFile` fires. We ask
-# CoreGraphics for the live cursor instead. Already a transitive
-# dep via winit/macos; promoting to a direct dep is free (no extra
-# compile unit) and keeps the crate `forbid(unsafe_code)`-clean
-# because all wrapping is inside the core-graphics crate itself.# ⚠️ Os dois entram por DOIS motivos, e o segundo é o que os torna obrigatórios aqui: a
-# cena `=77` autora o `Echo Operator`/`Flash Operator` pelo NOME do param (nunca por um
-# literal), e o arch-gate do operador por-linha pina o vocabulário deles contra o do sink —
-# um nó é uma folha e não importa do irmão, então a shell é o único sítio que vê os três.
-ph2d-node-motion-clone = { path = "../../crates/ph2d-node-motion-clone" }
-# O construtor do PLANO DE PREGUIÇA do `value.switch` (doc 89, folha 15) — o mesmo desenho
-# que traz o `time_fans` do `motion.clone` para aqui: a lei mora no crate do nó, e a shell é
-# quem a corre por quadro.
-ph2d-node-value-switch = { path = "../../crates/ph2d-node-value-switch" }
-ph2d-node-motion-emitter = { path = "../../crates/ph2d-node-motion-emitter" }
-ph2d-node-source-lsystem = { path = "../../crates/ph2d-node-source-lsystem" }
-ph2d-node-motion-sub-uv = { path = "../../crates/ph2d-node-motion-sub-uv" }
-ph2d-motion-region = { path = "../../crates/ph2d-motion-region" }
-ph2d-node-force-attractor = { path = "../../crates/ph2d-node-force-attractor" }
-ph2d-node-force-buoyancy = { path = "../../crates/ph2d-node-force-buoyancy" }
-ph2d-node-force-vortex = { path = "../../crates/ph2d-node-force-vortex" }
-ph2d-node-force-wind = { path = "../../crates/ph2d-node-force-wind" }
-ph2d-node-motion-distribute-poisson = { path = "../../crates/ph2d-node-motion-distribute-poisson" }
-ph2d-node-motion-voronoi = { path = "../../crates/ph2d-node-motion-voronoi" }
 ph2d-node-motion-trail = { path = "../../crates/ph2d-node-motion-trail" }
 ph2d-node-motion-strobe = { path = "../../crates/ph2d-node-motion-strobe" }
 # …e o TERCEIRO escritor da coluna (doc 89 folha 11): o `shadow_blend` do `fx.drop_shadow`.
 ph2d-node-fx-drop-shadow = { path = "../../crates/ph2d-node-fx-drop-shadow" }
-# O gizmo de canvas dos deformadores de quadrilátero DESENHA a fronteira chamando a
-# mesma função que o `eval` do nó chama — um overlay com a sua própria Bézier seria um
-# segundo motor sobre o mesmo estado.
-ph2d-node-motion-bezier-warp = { path = "../../crates/ph2d-node-motion-bezier-warp" }
 
 # ═══ AS FOLHAS PARTILHADAS (line/shell-folhas, 12/09) ═══
 # ⛔ Cada uma saiu daqui porque MAIS DE UMA família a consumia, e uma peça partilhada por duas
@@ -692,11 +500,6 @@ ph2d-node-motion-output = { path = "../../crates/ph2d-node-motion-output" }
 # sozinho quando o `winit 0.31` sair de beta; reconfira então.
 core-graphics = "0.23.2"
 
-[package.metadata.cargo-machete]
-# `bevy_ecs` is reached only through `#[derive(Component)]` expansion,
-# which machete can't see. See dep comment above.
-ignored = ["bevy_ecs"]
-
 # Wave 8 Phase 1 — host-level cargo features that proxy through to
 # `ph2d-panel-registry-init`. `default` re-enables all 4 panels for
 # the standard build; lite distributions and panel-isolated runs
@@ -764,8 +567,8 @@ panel-painter-layers = ["ph2d-panel-registry-init/panel-painter-layers", "dep:ph
 # entirely through `hero.panel_visibility` + the shared layout, with no
 # panel-side static channel (the document lives in `MotionState`, not the panel),
 # so the shell needs only the registry-init feature, not a direct crate dep.
-panel-motion-graph   = ["ph2d-panel-registry-init/panel-motion-graph", "dep:ph2d-panel-motion-graph"]
-panel-motion-params  = ["ph2d-panel-registry-init/panel-motion-params", "dep:ph2d-panel-motion-params"]
+panel-motion-graph   = ["ph2d-panel-registry-init/panel-motion-graph"]
+panel-motion-params  = ["ph2d-panel-registry-init/panel-motion-params"]
 # Vector Style panel + its render_loop bridge (`vector_bridge` publishes the
 # snapshot via `ph2d_panel_vector::set_current_vector_style` + reads the OKLCH
 # picker back into the tool), so the shell needs the direct dep too.
@@ -777,8 +580,8 @@ panel-skeleton       = ["ph2d-panel-registry-init/panel-skeleton", "dep:ph2d-pan
 # Flip Style panel + its render_loop bridge (`flip_bridge` publishes the style +
 # layers snapshots via `ph2d_panel_flip::set_current_flip_*` + reads the OKLCH
 # picker back into the tool), so the shell needs the direct dep too.
-panel-flip           = ["ph2d-panel-registry-init/panel-flip", "dep:ph2d-panel-flip", "ph2d-app-flip/panel-flip"]
-panel-flip-frames    = ["ph2d-panel-registry-init/panel-flip-frames", "dep:ph2d-panel-flip-frames", "ph2d-app-flip/panel-flip-frames"]
+panel-flip           = ["ph2d-panel-registry-init/panel-flip", "ph2d-app-flip/panel-flip"]
+panel-flip-frames    = ["ph2d-panel-registry-init/panel-flip-frames", "ph2d-app-flip/panel-flip-frames"]
 panel-grid-snap      = ["ph2d-panel-registry-init/panel-grid-snap"]
 # Direct dep too: the render_loop bridge publishes live levels via
 # `set_snapshot` + reads `master_muted` to drive the engine's master gain.
@@ -850,4 +653,4 @@ panel-audio-editor   = ["ph2d-panel-registry-init/panel-audio-editor", "dep:ph2d
 # W7 AI Denoise (ADR-0123), OFF by default — NOT in `default`. Turning it on pulls the native
 # DeepFilterNet stack (`ph2d-audio-ml` → `tract`) and lights the "AI Denoise" button in the audio
 # editor. It implies `panel-audio-editor`, which is where the button and its bridge live.
-audio-ml             = ["panel-audio-editor", "dep:ph2d-audio-ml", "ph2d-audio-desktop/audio-ml"]
+audio-ml             = ["panel-audio-editor", "ph2d-audio-desktop/audio-ml"]

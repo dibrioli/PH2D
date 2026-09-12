@@ -29,12 +29,10 @@ ph2d-app-host = { path = "../ph2d-app-host" }
 # alias `field3d_*` da shell poderem MORRER: os 46 usos desta família passam a nomeá-la.
 ph2d-viewport3d = { path = "../ph2d-viewport3d" }
 
-ph2d-asset = { path = "../ph2d-asset" }
 ph2d-core = { path = "../ph2d-core" }
 ph2d-crossfield = { path = "../ph2d-crossfield" }
 ph2d-ecs = { path = "../ph2d-ecs" }
 ph2d-editor = { path = "../ph2d-editor" }
-ph2d-field-render = { path = "../ph2d-field-render" }
 ph2d-gpu = { path = "../ph2d-gpu" }
 ph2d-gridmap = { path = "../ph2d-gridmap" }
 ph2d-i18n = { path = "../ph2d-i18n" }
@@ -52,7 +50,6 @@ ph2d-remesh-iso = { path = "../ph2d-remesh-iso" }
 ph2d-render = { path = "../ph2d-render" }
 ph2d-sculpt3d = { path = "../ph2d-sculpt3d" }
 ph2d-sdf = { path = "../ph2d-sdf" }
-ph2d-text = { path = "../ph2d-text" }
 ph2d-trace = { path = "../ph2d-trace" }
 ph2d-untangle = { path = "../ph2d-untangle" }
 ph2d-vector = { path = "../ph2d-vector" }

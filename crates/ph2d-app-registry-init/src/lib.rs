@@ -13,6 +13,16 @@
 //! não edita ficheiro central nenhum: ela cria `crates/ph2d-app-<fam>/`, corre
 //! `cargo run -p ph2d-app-sync`, e o bloco regenera-se em ordem determinística.
 //!
+//! ⚠️⚠️ **MEDIDO em 2026-09-12: a promessa acima NÃO se cumpre na árvore.** A shell depende das nove
+//! famílias **directamente** (`ph2d-app-field3d`, `-physics`, `-components`, `-painter`, `-motion`,
+//! `-vec`, `-flip`, `-sculpt3d`, `-skeleton`) e **não usa este registo** — o `cargo machete` do
+//! `ship.sh` acusou a dependência da shell nesta crate como morta, e ela foi removida. Por isso as
+//! integrações das Fases C e D resolveram conflitos exactamente no `[dependencies]` da shell, que é o
+//! que este registo existia para impedir.
+//! ⭐ **O que continua a valer** é o gate de colisão de roteadores abaixo: ele corre nos testes DESTA
+//! crate, sobre o bloco gerado, e não precisa de a shell o consumir. Religar a composição da shell a
+//! este registo é decisão de desenho, não de integração (`ESTADO_W2_2026-09-12.md` §6).
+//!
 //! # ⚠️ O que este registo NÃO faz (e a razão é medida)
 //!
 //! ⛔ **Ele não abstrai o laço de quadro.** O `render_loop` chama **48 símbolos** do piloto, em

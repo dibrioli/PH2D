@@ -24,7 +24,6 @@ ph2d-viewport3d    = { path = "../ph2d-viewport3d" }
 bevy_ecs           = "0.19"
 ph2d-ecs           = { path = "../ph2d-ecs" }
 ph2d-editor        = { path = "../ph2d-editor" }
-ph2d-editor-core   = { path = "../ph2d-editor-core" }
 ph2d-field         = { path = "../ph2d-field" }
 ph2d-field-ecs     = { path = "../ph2d-field-ecs" }
 ph2d-field-eval    = { path = "../ph2d-field-eval" }
@@ -40,14 +39,11 @@ ph2d-mesh-render   = { path = "../ph2d-mesh-render", optional = true }
 half               = { version = "2", optional = true }
 ph2d-remesh-iso    = { path = "../ph2d-remesh-iso" }
 ph2d-text          = { path = "../ph2d-text" }
-ph2d-timeline      = { path = "../ph2d-timeline" }
 ph2d-tokens        = { path = "../ph2d-tokens" }
 ph2d-tool-registry = { path = "../ph2d-tool-registry" }
 ph2d-vec-scene     = { path = "../ph2d-vec-scene" }
 ph2d-vector        = { path = "../ph2d-vector" }
-rayon  = "1"
 rfd    = "0.17"
-vello  = "0.10"
 winit  = "0.30"
 
 # ⛔⛔ **A FEATURE `sculpt3d` TINHA DE VIR JUNTO, e a ausência dela era MUDA.**

@@ -27,7 +27,6 @@ ph2d-tool-painter = { path = "../ph2d-tool-painter" }
 # `Affine` — a lei da tolerância de agarrar uma alça mede a escala do afim.
 ph2d-vector = { path = "../ph2d-vector" }
 ph2d-editor = { path = "../ph2d-editor" }
-ph2d-editor-core = { path = "../ph2d-editor-core" }
 # `RigStamp`/`DonatedForm` — o canal da doação de forma, nos dois sentidos.
 ph2d-form-donation = { path = "../ph2d-form-donation" }
 ph2d-gpu = { path = "../ph2d-gpu" }

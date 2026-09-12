@@ -67,7 +67,7 @@ fn build(app: &mut crate::App) {
         weight: 700.0,
         line_height: 1.2,
         tracking: 0.0,
-        align: ph2d_tool_vector::TextAlign::Left,
+        align: ph2d_vec_text::TextAlign::Left,
         extra_axes: Vec::new(),
         family: None,
         fill: Some(Paint::solid(Rgba8::new(90, 150, 220, 255))),

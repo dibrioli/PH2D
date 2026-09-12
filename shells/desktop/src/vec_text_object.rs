@@ -10,8 +10,8 @@
 //! Separado de `vec_text.rs` pelo teto de 600 LOC/arquivo (HR-18).
 
 use ph2d_ecs::{Entity, SimWorld, Transform, VecShape, VecTextParams};
-use ph2d_tool_vector::TextAlign;
 use ph2d_vec_scene::{VecPathId, VecScene};
+use ph2d_vec_text::TextAlign;
 use ph2d_vector_font::AxisTag;
 
 use crate::vec_glyph::{TextLayout, TextPlacement, text_to_compound_path, text_to_vec_paths};

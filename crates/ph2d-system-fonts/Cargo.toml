@@ -10,13 +10,15 @@ authors.workspace = true
 # W10 Coord: the REAL `ph2d_vector_font::PlatformHost`, backed by the OS font
 # collection. Replaces the MockHost so glyph fallback uses the actually-installed
 # families (CJK / Arabic / emoji render with a covering font instead of tofu).
-# Isolated satellite crate (testable without the heavy shell build); the shell
-# just instantiates `SystemFontHost` and hands it to the font resolver.
+# Isolated satellite crate (testable without the heavy shell build). ⚠️ Medido em 2026-09-12: nenhum
+# produto instancia o host ainda (ver o `lib.rs`); o que o produto consome é o módulo `library`.
 [lib]
 
 [dependencies]
 # The frozen font contract: PlatformHost + FontFamily + CoverageRanges + Locale.
 ph2d-vector-font = { path = "../ph2d-vector-font" }
+# A fonte EMBUTIDA (InterVariable) que a `library` devolve quando o artista não escolhe nenhuma.
+ph2d-text = { path = "../ph2d-text" }
 # Linebender system-font enumeration + script fallback — already in the tree via
 # parley 0.11 / vello 0.10. `default = ["system"]` → real installed fonts + OS cascade.
 fontique = "0.11.1"

@@ -211,8 +211,8 @@ mod tests {
     use super::*;
     use crate::vec_text::regen_into;
     use crate::vec_text_object::upsert_text_shape;
-    use ph2d_tool_vector::TextAlign;
     use ph2d_vec_scene::{Paint, Rgba8};
+    use ph2d_vec_text::TextAlign;
 
     fn black() -> Paint {
         Paint::solid(Rgba8::new(0, 0, 0, 255))

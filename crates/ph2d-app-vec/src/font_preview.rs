@@ -1,6 +1,6 @@
 //! Previews do dropdown de fonte: o **nome de cada família desenhado na própria
 //! fonte** (preview de estilo real, estilo Figma/Photoshop). Vive na shell porque é
-//! aqui que os [`VariableFont`] são resolvidos ([`crate::font`]); o painel só
+//! aqui que os [`VariableFont`] são resolvidos ([`ph2d_system_fonts::library`]); o painel só
 //! recebe o [`FontPreview`] pronto e o desenha.
 //!
 //! Construção **lazy**: só chamada quando o dropdown abre pela 1ª vez (o painel pede
@@ -18,14 +18,14 @@ use ph2d_vector_font::{GlyphOutline, PathCommand, VariableFont};
 const SPACE_ADVANCE_EM: f64 = 0.25;
 
 /// Uma preview por família selecionável, na ordem canônica de
-/// [`crate::font::pickable_families`] — o índice publicado casa com o que a
+/// [`ph2d_system_fonts::library::pickable_families`] — o índice publicado casa com o que a
 /// shell aplica ao escolher a opção.
 pub fn build_previews() -> Vec<FontPreview> {
-    crate::font::pickable_families()
+    ph2d_system_fonts::library::pickable_families()
         .into_iter()
         .map(|family| {
-            let font = crate::font::resolve(family.as_deref());
-            let display = crate::font::display_name(family.as_deref());
+            let font = ph2d_system_fonts::library::resolve(family.as_deref());
+            let display = ph2d_system_fonts::library::display_name(family.as_deref());
             let (outline, advance_em) = name_outline(&font, &display);
             FontPreview {
                 family,
@@ -84,7 +84,7 @@ mod tests {
     /// avanço acumulado — o que o dropdown desenha em cada linha.
     #[test]
     fn bundled_name_outline_has_geometry() {
-        let font = crate::font::resolve(None);
+        let font = ph2d_system_fonts::library::resolve(None);
         let (bp, advance_em) = name_outline(&font, "Inter");
         assert!(
             !bp.elements().is_empty(),
@@ -96,7 +96,7 @@ mod tests {
     /// Uma string vazia não gera geometria nem avanço (borda: sessão sem nome).
     #[test]
     fn empty_text_is_empty_outline() {
-        let font = crate::font::resolve(None);
+        let font = ph2d_system_fonts::library::resolve(None);
         let (bp, advance_em) = name_outline(&font, "");
         assert!(bp.elements().is_empty());
         assert_eq!(advance_em, 0.0);

@@ -10,7 +10,7 @@
 //!
 //! ## O layout não é feito aqui
 //!
-//! Ele vem de [`ph2d_app_vec::glyph::walk_glyphs`], a MESMA porta que o texto do
+//! Ele vem de [`ph2d_vec_text::glyph::walk_glyphs`], a MESMA porta que o texto do
 //! editor Vector usa. Um segundo laço aqui responderia *"onde cai cada letra?"*
 //! uma segunda vez, e as duas respostas divergiriam no dia em que alguém mexesse
 //! no alinhamento — com o texto do canvas e o texto do grafo a desenhar coisas
@@ -28,14 +28,14 @@ use ph2d_node_source_text::{
     FONT_KEY, MANIFEST, Pivot, TEXT_KEY, TextParams, font_of, text_key, text_of,
 };
 use ph2d_nodegraph::attr::{Column, Stream};
-use ph2d_tool_vector::TextAlign;
 use ph2d_vec_scene::VecPath;
 use ph2d_vec_scene::text_path::GlyphFrame;
+use ph2d_vec_text::TextAlign;
 use ph2d_vector_font::{AxisTag, GlyphId, VariableFont};
 
 use crate::motion_state::MotionState;
-use ph2d_app_vec::glyph::{TextLayout, TextPlacement, walk_glyphs};
-use ph2d_app_vec::glyph_build::glyph_to_vec_path;
+use ph2d_vec_text::glyph::{TextLayout, TextPlacement, walk_glyphs};
+use ph2d_vec_text::glyph_build::glyph_to_vec_path;
 
 /// O default do manifesto para um param — o fallback que o `ctx.param` do nó toma
 /// quando não há override. Ler pelo mesmo caminho dos dois lados é o que faz a
@@ -91,7 +91,7 @@ pub fn build_stream(
     font_name: &str,
     text: &str,
 ) -> Stream {
-    let font = ph2d_app_vec::font::resolve((!font_name.is_empty()).then_some(font_name));
+    let font = ph2d_system_fonts::library::resolve((!font_name.is_empty()).then_some(font_name));
     let axes = [(AxisTag::WEIGHT, p.weight)];
     let layout = TextLayout {
         size: f64::from(p.size),

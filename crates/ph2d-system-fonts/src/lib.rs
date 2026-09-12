@@ -4,15 +4,23 @@
 //! W10 Coord: replaces the `MockHost`. [`SystemFontHost::system_fonts`] enumerates
 //! the actually-installed families; [`SystemFontHost::fallback_chain`] returns the
 //! OS's script-appropriate cascade for a locale — so CJK / Arabic / emoji glyphs
-//! render with a *covering* installed font instead of tofu. The shell instantiates
-//! one and hands it to `resolve_glyph_font`; this crate stays platform-detail-free
-//! behind fontique.
+//! render with a *covering* installed font instead of tofu; this crate stays
+//! platform-detail-free behind fontique.
+//!
+//! ⚠️⚠️ **Medido em 2026-09-12 (auditoria de arquitectura A8): NENHUM chamador de produto instancia
+//! o [`SystemFontHost`].** O texto dizia *«the shell instantiates one»*, e `git log -S` mostra que
+//! nenhum `Cargo.toml` dependia desta crate desde que ela nasceu — o `resolve_glyph_font` só é
+//! chamado pelos testes daqui, logo **o fallback de glifo do texto vectorial não está ligado**.
+//! ⭐ O que a crate serve a produto é a [`library`]: a família de fonte que o artista escolhe, que
+//! morava na `ph2d-app-vec` e enumerava o `fontique` à parte deste host.
 //!
 //! **Coverage is COARSE by design** (one sample codepoint per major Unicode block):
 //! `CoverageRanges` is documented as "a coarse stand-in for a real cmap — enough to
 //! route fallback correctly without parsing fonts here", so a full per-font cmap
 //! scan (hundreds of fonts) is deliberately avoided — we ask each font's charmap
 //! whether it maps the block's representative codepoint.
+
+pub mod library;
 
 use std::sync::Mutex;
 

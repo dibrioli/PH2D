@@ -23,9 +23,9 @@
 //! - Nenhuma letra empilhada na ponta de um caminho.
 //! - Na onda, as letras seguem a inclinação da curva ponto a ponto (não o ângulo médio).
 
-use ph2d_tool_vector::TextAlign;
 use ph2d_vec_scene::arc_path::ArcPath;
 use ph2d_vec_scene::{Paint, Rgba8, StrokeSpec, VecPath, VecScene, VecVertex, VertexKind};
+use ph2d_vec_text::TextAlign;
 
 use crate::vec_glyph::{TextLayout, TextPlacement, text_to_compound_path};
 

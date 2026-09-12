@@ -53,7 +53,7 @@ fn edit(origin: [f64; 2], wrap: Option<f64>, rgb: [u8; 3]) -> VecTextEdit {
         weight: 500.0,
         line_height: 1.25,
         tracking: 0.0,
-        align: ph2d_tool_vector::TextAlign::Left,
+        align: ph2d_vec_text::TextAlign::Left,
         extra_axes: Vec::new(),
         family: None,
         fill: Some(Paint::solid(Rgba8::new(rgb[0], rgb[1], rgb[2], 255))),

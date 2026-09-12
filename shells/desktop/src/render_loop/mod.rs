@@ -3632,7 +3632,7 @@ impl crate::App {
             // *Auto ou esta largura?*. Colapsá-los faria "voltar para Auto" indistinguível de
             // "ninguém tocou", e o modo Auto seria inalcançável.
             let mut pending_vec_text_wrap: Option<Option<f64>> = None;
-            let mut pending_vec_text_align: Option<ph2d_tool_vector::TextAlign> = None;
+            let mut pending_vec_text_align: Option<ph2d_vec_text::TextAlign> = None;
             // Variation-axis field edit: (slot index into the font's non-wght axes, value).
             let mut pending_vec_text_axis: Option<(usize, f64)> = None;
             // Text font-family cycle (`<` = -1 / `>` = +1) from the panel picker.
@@ -4182,11 +4182,11 @@ impl crate::App {
                             } else if *id == ph2d_editor_core::ids::VECTOR_TEXT_FONT_IMPORT {
                                 pending_vec_font_import = true;
                             } else if *id == ph2d_editor_core::ids::VECTOR_TEXT_ALIGN_LEFT {
-                                pending_vec_text_align = Some(ph2d_tool_vector::TextAlign::Left);
+                                pending_vec_text_align = Some(ph2d_vec_text::TextAlign::Left);
                             } else if *id == ph2d_editor_core::ids::VECTOR_TEXT_ALIGN_CENTER {
-                                pending_vec_text_align = Some(ph2d_tool_vector::TextAlign::Center);
+                                pending_vec_text_align = Some(ph2d_vec_text::TextAlign::Center);
                             } else if *id == ph2d_editor_core::ids::VECTOR_TEXT_ALIGN_RIGHT {
-                                pending_vec_text_align = Some(ph2d_tool_vector::TextAlign::Right);
+                                pending_vec_text_align = Some(ph2d_vec_text::TextAlign::Right);
                             } else if *id == ph2d_editor_core::ids::VECTOR_TEXT_WRAP_AUTO {
                                 pending_vec_text_wrap = Some(None);
                             } else if *id == ph2d_editor_core::ids::VECTOR_TEXT_WRAP_FIXED {

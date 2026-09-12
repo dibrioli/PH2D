@@ -293,6 +293,8 @@ ph2d-vector = { path = "../../crates/ph2d-vector" }
 ph2d-vec-scene = { path = "../../crates/ph2d-vec-scene" }
 # ⭐ A metade-shell da família `vec`, extraída em W2/L4 — a shell chama-a, ela nunca chama a shell.
 ph2d-app-vec = { path = "../../crates/ph2d-app-vec" }
+ph2d-system-fonts = { path = "../../crates/ph2d-system-fonts" }
+ph2d-vec-text = { path = "../../crates/ph2d-vec-text" }
 # A lei de LADRILHO do Texture Pattern (plano 33): o `texture_pattern_live` assa a arte no
 # reticulado pedido antes de a entregar ao render. Folha ZERO-dep.
 ph2d-vec-pattern = { path = "../../crates/ph2d-vec-pattern" }

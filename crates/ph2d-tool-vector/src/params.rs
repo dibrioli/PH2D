@@ -118,17 +118,6 @@ pub fn px_to_slider(px: f64) -> f32 {
 mod pencil;
 pub use pencil::*;
 
-/// Horizontal text alignment for a text block (mirror of the panel's L / C / R row).
-/// `Left` = lines start at the click origin; `Center` = centred on it; `Right` = lines
-/// end at it. Lives in the tool crate (the panel deps this, not the shell).
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
-pub enum TextAlign {
-    #[default]
-    Left,
-    Center,
-    Right,
-}
-
 /// **O MODO de desenho** ([`DrawMode`]) — irmão pelo teto de 700 LOC. Re-exportado, então quem
 /// consome não percebe o corte.
 #[path = "params_mode.rs"]

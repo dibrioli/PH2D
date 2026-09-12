@@ -1600,7 +1600,7 @@ pub(crate) struct App {
     pub(crate) vec_text_tracking: f64,
     /// Alinhamento horizontal corrente do texto (L/C/R) — botões do painel; persiste
     /// entre sessões.
-    pub(crate) vec_text_align: ph2d_tool_vector::TextAlign,
+    pub(crate) vec_text_align: ph2d_vec_text::TextAlign,
     /// Valores correntes dos eixos de variação da fonte além do peso (opsz/wdth/…), na
     /// ordem de `vec_font::variation_axes`. Reseedado quando a família muda; a seção
     /// Axes do painel os edita e uma nova sessão herda estes defaults.

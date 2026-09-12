@@ -1,5 +1,9 @@
 //! Escolha de família de fonte para o texto vetorial (ADR-0108).
 //!
+//! ⭐ Morava na `ph2d-app-vec` (`font.rs`) e mudou-se para aqui na auditoria de arquitectura de
+//! 2026-09-12 (A1/A8): o Motion usa-a tanto quanto o Vector, e esta crate já era a das fontes do
+//! sistema — as duas enumeravam o `fontique` cada uma à sua maneira.
+//!
 //! Enumera as fontes do sistema (fontique, o mesmo backend que o parley do
 //! `ph2d-text` usa) e resolve uma família em um [`VariableFont`] do motor de texto
 //! vetorial. `None` = a fonte embutida (InterVariable), que NÃO toca o fontique —

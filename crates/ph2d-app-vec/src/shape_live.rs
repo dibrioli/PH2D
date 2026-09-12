@@ -29,7 +29,7 @@ const _: () = assert!(MAX_SHAPE_VALUES == MAX_SHAPE_FIELDS);
 
 /// A geometria (sem estilo) de uma forma viva, CENTRADA no local 0 — o pivô nasce no
 /// centro (ADR-0112) e o re-cook é idempotente (o `Transform` fica intacto). `None` para
-/// `Text` (que tem o cozimento dele, em [`crate::glyph`]) e para um `kind`
+/// `Text` (que tem o cozimento dele, em [`ph2d_vec_text::glyph`]) e para um `kind`
 /// desconhecido (save de uma versão futura: vira path cru, não pânico).
 #[must_use]
 pub fn recook_shape(shape: &VecShape) -> Option<VecPath> {

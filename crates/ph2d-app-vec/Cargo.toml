@@ -107,7 +107,8 @@ ph2d-render = { path = "../ph2d-render" }
 ph2d-vector = { path = "../ph2d-vector" }
 ph2d-vector-font = { path = "../ph2d-vector-font" }
 ph2d-panel-vector = { path = "../ph2d-panel-vector" }
-fontique = "0.11.1"
+# As fontes (a família que o artista escolhe) moram na folha `ph2d-system-fonts` (auditoria A1, 2026-09-12).
+ph2d-system-fonts = { path = "../ph2d-system-fonts" }
 
 # ⚠️ **A feature ESPELHA a da shell, e isso não é zelo — é o que o `mod` dizia.** O
 # `vec_font_preview` estava atrás de `#[cfg(feature = "panel-vector")]` no `main.rs`, logo a

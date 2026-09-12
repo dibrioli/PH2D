@@ -13,7 +13,7 @@ use super::{
     WANT_FONT_PREVIEWS,
 };
 use super::{FontPreview, TextAxisSlot};
-use ph2d_tool_vector::TextAlign;
+use ph2d_vec_text::TextAlign;
 use std::cell::Cell;
 
 /// Publica se a seção Text deve aparecer (modo Text OU objeto de texto selecionado).

@@ -9,8 +9,9 @@
 //! swatches), so the panel holds no authoritative state.
 
 use ph2d_tool_vector::shapes::ShapeGroup;
-use ph2d_tool_vector::{TextAlign, VectorStyleSnapshot, VertexSel};
+use ph2d_tool_vector::{VectorStyleSnapshot, VertexSel};
 use ph2d_vec_scene::ShapeKind;
+use ph2d_vec_text::TextAlign;
 use ph2d_vector::BezPath;
 use std::cell::{Cell, RefCell};
 

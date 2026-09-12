@@ -134,13 +134,10 @@ pub mod widget_value;
 // três famílias usam não pode viver na crate de uma delas (ADR-0075). O re-export mantém os 18
 // ficheiros desta família a escrever `ph2d_app_vec::entity_map::…`, byte a byte como antes.
 pub use ph2d_vec_entities::entity_map;
-pub mod font;
 /// ⚠️ **Atrás da mesma feature que a guardava na shell** — a pré-visualização de fonte
 /// usa `ph2d_panel_vector::FontPreview`, logo ela não existe num build sem painel vectorial.
 #[cfg(feature = "panel-vector")]
 pub mod font_preview;
-pub mod glyph;
-pub mod glyph_build;
 pub mod overlay;
 pub mod overlay_diag;
 pub mod paint_stack;

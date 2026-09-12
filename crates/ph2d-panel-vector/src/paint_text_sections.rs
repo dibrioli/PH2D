@@ -15,12 +15,12 @@ use ph2d_editor_core::widget::{
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
 use ph2d_tokens::{ColorToken, Spacing};
-use ph2d_tool_vector::TextAlign;
 use ph2d_tool_vector::params::{
     DEFAULT_TEXT_LINE_HEIGHT, DEFAULT_TEXT_SIZE, DEFAULT_TEXT_TRACKING, DEFAULT_TEXT_WEIGHT,
     text_line_height_to_slider, text_size_to_slider, text_tracking_to_slider,
     text_weight_to_slider, text_wrap_to_slider,
 };
+use ph2d_vec_text::TextAlign;
 
 use crate::state;
 

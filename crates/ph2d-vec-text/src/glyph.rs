@@ -3,7 +3,7 @@
 //! em `verts`, os furos (miolo do `o`, `e`, `a`…) em `subpaths`, com
 //! `FillRule::NonZero` — a canônica OT/SVG que resolve buracos. Assim um glyph é uma
 //! forma vetorial como qualquer outra: herda render, gizmo, snap, undo e Hierarquia.
-//! A sessão de edição que consome isto vive no módulo irmão [`crate::vec_text`].
+//! A sessão de edição que consome isto vive no módulo irmão `vec_text` (da shell).
 //!
 //! **Coordenadas.** Unidades de design são y-up e o world do editor TAMBÉM é y-up
 //! (quem inverte pra tela é a câmera, `world_to_screen_affine` com `scale(k, −k)`).
@@ -14,7 +14,7 @@
 //! não vetores-tangente. Quad `S–Q–E` sobe pra cúbica com controles absolutos
 //! `S + ⅔(Q−S)` e `E + ⅔(Q−E)`; a cúbica usa `c1`/`c2` diretos.
 
-use ph2d_tool_vector::TextAlign;
+use crate::TextAlign;
 use ph2d_vec_edit::PenStyle;
 use ph2d_vec_scene::arc_path::ArcPath;
 use ph2d_vec_scene::text_path::GlyphFrame;

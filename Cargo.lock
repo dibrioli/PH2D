@@ -4869,7 +4869,6 @@ dependencies = [
  "bytemuck",
  "ph2d-anim",
  "ph2d-app-host",
- "ph2d-app-vec",
  "ph2d-asset",
  "ph2d-audio",
  "ph2d-audio-desktop",
@@ -4923,17 +4922,18 @@ dependencies = [
  "ph2d-panel-motion-params",
  "ph2d-panel-timeline",
  "ph2d-render",
+ "ph2d-system-fonts",
  "ph2d-table",
  "ph2d-thumbnail",
  "ph2d-timeline",
  "ph2d-tokens",
  "ph2d-tool-registry",
- "ph2d-tool-vector",
  "ph2d-ui-testkit",
  "ph2d-vec-art-live",
  "ph2d-vec-entities",
  "ph2d-vec-render",
  "ph2d-vec-scene",
+ "ph2d-vec-text",
  "ph2d-vector",
  "ph2d-vector-font",
  "rfd",
@@ -5084,7 +5084,6 @@ version = "0.0.0"
 name = "ph2d-app-vec"
 version = "0.0.0"
 dependencies = [
- "fontique",
  "ph2d-anim",
  "ph2d-app-host",
  "ph2d-asset",
@@ -5108,6 +5107,7 @@ dependencies = [
  "ph2d-skeleton",
  "ph2d-skeleton-ecs",
  "ph2d-skeleton-live",
+ "ph2d-system-fonts",
  "ph2d-text",
  "ph2d-timeline",
  "ph2d-tokens",
@@ -5843,6 +5843,7 @@ dependencies = [
  "ph2d-skeleton-render",
  "ph2d-sprite-screen",
  "ph2d-sprite-sheet",
+ "ph2d-system-fonts",
  "ph2d-text",
  "ph2d-thumbnail",
  "ph2d-timeline",
@@ -5881,6 +5882,7 @@ dependencies = [
  "ph2d-vec-pattern",
  "ph2d-vec-render",
  "ph2d-vec-scene",
+ "ph2d-vec-text",
  "ph2d-vector",
  "ph2d-vector-font",
  "ph2d-viewport3d",
@@ -7884,6 +7886,7 @@ dependencies = [
  "ph2d-vec-pattern",
  "ph2d-vec-render",
  "ph2d-vec-scene",
+ "ph2d-vec-text",
  "ph2d-vector",
 ]
 
@@ -8224,6 +8227,7 @@ name = "ph2d-system-fonts"
 version = "0.0.0"
 dependencies = [
  "fontique",
+ "ph2d-text",
  "ph2d-vector-font",
 ]
 
@@ -8737,6 +8741,17 @@ dependencies = [
  "ph2d-blend-mode",
  "ph2d-vec-scene",
  "usvg",
+]
+
+[[package]]
+name = "ph2d-vec-text"
+version = "0.0.0"
+dependencies = [
+ "ph2d-core",
+ "ph2d-text",
+ "ph2d-vec-edit",
+ "ph2d-vec-scene",
+ "ph2d-vector-font",
 ]
 
 [[package]]

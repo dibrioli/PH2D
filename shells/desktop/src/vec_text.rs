@@ -15,8 +15,8 @@
 // hoje uma FACHADA — um `pub(crate) use ph2d_app_vec::…` de uma linha que o `render_loop/mod.rs`
 // mantém para os sítios de chamada ficarem byte a byte iguais. ⛔ Mas ela faz este ficheiro
 // *parecer* preso ao LAÇO da shell, quando o que ele usa é uma crate.
-use ph2d_tool_vector::TextAlign;
 use ph2d_vec_scene::{Paint, StrokeSpec, VecPathId};
+use ph2d_vec_text::TextAlign;
 
 use crate::vec_glyph::{
     TextLayout, TextPlacement, caret_frame, caret_x_offset, resolve_style, text_to_compound_path,

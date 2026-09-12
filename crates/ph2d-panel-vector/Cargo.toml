@@ -23,6 +23,8 @@ ph2d-editor-core = { path = "../ph2d-editor-core" }
 # slider↔chip mapping from there. Direction panel → tool does not cycle (tool
 # depends on editor-core, panel on both).
 ph2d-tool-vector = { path = "../ph2d-tool-vector" }
+# O alinhamento do texto mora com o layout que o lê (auditoria A1, 2026-09-12).
+ph2d-vec-text = { path = "../ph2d-vec-text" }
 # ⚠️ **O `ph2d-skeleton` SAIU na integração de 2026-09-10** (`cargo machete`). A razão escrita aqui
 # era verdadeira — *«o vocabulário do LADO DA DOBRA (`BendSide`), para a fileira de segmentos se
 # alinhar por ÍNDICE com `BendSide::ALL`»* — e **mudou de casa** quando a secção SKELETON saiu deste

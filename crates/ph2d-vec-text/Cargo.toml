@@ -1,0 +1,26 @@
+[package]
+name = "ph2d-vec-text"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+# ⭐ O TEXTO VECTORIAL — layout (linhas, alinhamento, refluxo, caret) e glifos → caminhos.
+# Nasceu na auditoria de arquitectura de 2026-09-12 (A1): o gerador de texto do Motion usa a
+# MESMA porta que o editor Vector, e por isso a família Motion dependia da família Vector inteira.
+# As dependências abaixo foram DERIVADAS dos caminhos que o código escreve, não copiadas.
+[lib]
+
+[dependencies]
+ph2d-vec-edit = { path = "../ph2d-vec-edit" }
+ph2d-vec-scene = { path = "../ph2d-vec-scene" }
+ph2d-vector-font = { path = "../ph2d-vector-font" }
+
+[dev-dependencies]
+ph2d-core = { path = "../ph2d-core" }
+ph2d-text = { path = "../ph2d-text" }
+
+[lints]
+workspace = true

@@ -60,7 +60,6 @@ ph2d-pan-diag = { path = "../ph2d-pan-diag" }
 ph2d-table = { path = "../ph2d-table" }
 ph2d-thumbnail = { path = "../ph2d-thumbnail" }
 ph2d-timeline = { path = "../ph2d-timeline", features = ["render", "physics"] }
-ph2d-tool-vector = { path = "../ph2d-tool-vector" }
 ph2d-vec-art-live = { path = "../ph2d-vec-art-live" }
 ph2d-vec-entities = { path = "../ph2d-vec-entities" }
 ph2d-vector = { path = "../ph2d-vector" }
@@ -78,7 +77,8 @@ ph2d-tool-registry = { path = "../ph2d-tool-registry" }
 ph2d-vec-render = { path = "../ph2d-vec-render" }
 ph2d-vec-scene = { path = "../ph2d-vec-scene" }
 ph2d-node-util-reroute = { path = "../ph2d-node-util-reroute" }
-ph2d-app-vec = { path = "../ph2d-app-vec" }
+ph2d-system-fonts = { path = "../ph2d-system-fonts" }
+ph2d-vec-text = { path = "../ph2d-vec-text" }
 ph2d-node-fx-glow = { path = "../ph2d-node-fx-glow" }
 # ⛔⛔ **HOWTO §2.4 — AS FEATURES NÃO VIAJAM COM O CÓDIGO, e esta é a armadilha muda.**
 # `109` sítios desta família estão atrás destas duas. Numa crate que não as DECLARA o `cfg` é

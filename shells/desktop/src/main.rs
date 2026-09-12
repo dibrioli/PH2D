@@ -577,19 +577,19 @@ mod vec_zorder_late_writers_tests;
 // ⭐ W2/L4: a família `vec` começou a sair para `crates/ph2d-app-vec`. A re-exportação mantém
 // `crate::vec_font::…` a resolver em todo o resto da shell — mover 8 ficheiros custou ZERO
 // alterações nos ~60 sítios que os chamam, e é o molde para a Fase B.
-pub(crate) use ph2d_app_vec::font as vec_font;
 #[cfg(feature = "panel-vector")]
 pub(crate) use ph2d_app_vec::font_preview as vec_font_preview;
+pub(crate) use ph2d_system_fonts::library as vec_font;
 /// A moldura da SELEÇÃO (plano UI/UX W0): o que o painel mostra, e o que o chip escreve.
 mod vec_frame_edit;
 pub(crate) use ph2d_app_vec::frame_labels as vec_frame_labels;
 mod vec_frame_resize;
 pub(crate) use ph2d_app_vec::frame_spans as vec_frame_spans;
 mod vec_gizmo_view;
-pub(crate) use ph2d_app_vec::glyph as vec_glyph;
+pub(crate) use ph2d_vec_text::glyph as vec_glyph;
 // ⚠️ O alias `vec_glyph_build` SAIU em 2026-09-12: o `motion_text_gen` era o último
 // consumidor dele na shell e mudou-se para `ph2d-app-motion`, onde escreve
-// `ph2d_app_vec::glyph_build` directamente. *Um alias existe pelos chamadores; quando
+// `ph2d_vec_text::glyph_build` directamente. *Um alias existe pelos chamadores; quando
 // o último sai, ele é ruído — e o compilador disse-o.*
 /// A porta única de "onde está o caminho-guia, e como se percorre por arco?" (texto E pattern).
 pub(crate) use ph2d_app_vec::guide as vec_guide;
@@ -1034,7 +1034,7 @@ impl App {
             // cresce com o que se digita (é o que todo editor faz num clique-e-digite). Uma
             // caixa nasce quando o artista a pede — e o gesto de ARRASTAR uma caixa ainda não
             // existe, então pedi-la é escolher `Fixed`.
-            vec_text_align: ph2d_tool_vector::TextAlign::Left,
+            vec_text_align: ph2d_vec_text::TextAlign::Left,
             vec_text_extra_axes: vec_font::seed_extra_axes(None),
             vec_text_family: None,
             vec_last_canvas_click: None,

@@ -466,6 +466,26 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   novo** (é raio de invalidação, e ⛔ `pad += 2·raio` **não** é a cura: vira canvas inteiro por quadro) · dois gates de
   razão de `plane_copy`/`undo_delta` vermelhos porque **a premissa da calibração dissolveu** (o serial deixou de ser
   fault-bound) — pede varredura por tamanho com alocação **fria**, ⛔ não baixar a barra.
+  ⭐⭐⭐ **E A METADE-SHELL SAIU** (12/09, W2 Fase D): a família vive em
+  [`ph2d-app-painter`](crates/ph2d-app-painter/) (48 f / 10 547 L) e a shell desce de **225 394 para
+  215 394** linhas, com `ONLY-A = 0`, `ONLY-B = 3` e 79 `MOVED`. ⭐ **Os 40 ficheiros estavam presos
+  por SEIS SÍMBOLOS**, e nenhum pediu porta nova no `AppHost`: duas âncoras eram **fachadas** (o
+  `image_import` de 6 linhas; o `PainterPreview`, que já era alias de uma crate), uma era a porta #5
+  que já existia, e três caíram escritas em TIPOS — um `bool`, um **fecho de leitura** (o idioma que
+  a `ph2d-tool-runtime` já declarava por escrito) e um contador. ⭐⭐ Duas folhas novas:
+  [`ph2d-sprite-screen`](crates/ph2d-sprite-screen/) (o afim `imagem-px → ecrã-px`, partilhado por
+  **quatro** assuntos) e [`ph2d-preview-slot`](crates/ph2d-preview-slot/) (a ranhura de GPU que o
+  `app_state.rs` guardava por inércia — ⛔ **não** foi para a `ph2d-tool-runtime`, onde o gémeo de
+  CPU vive, porque o teto de LOC dela se declara *«the discipline mechanism»* e os 17 de folga só
+  chegariam apagando prosa **medida**). ⛔⛔ **E mover um ficheiro TROCA O REGIME DE TETO que o
+  governa:** o `painter_bridge.rs` atravessou a fronteira a 1093 linhas com um `// ph2d-loc-cap:`
+  que é **inerte** em `crates/`, e partiu-se em três por responsabilidade (`1093 → 691`).
+  ⚠️⚠️ **E a régua do fecho tem um furo que erra A FAVOR — ela não resolve `super::`**: leu `2`
+  ficheiros onde havia `11` e perdeu uma âncora inteira. O que fica na shell são **961 L em 6
+  ficheiros** (os gestos de canvas e o Apply) — a costura, por desenho
+  ([handoff](docs/Painter/handoffs/HANDOFF_INTEGRACAO_line_app_painter_2026-09-12.md): o §5 tem as
+  **oito** armadilhas, entre elas cinco `#[cfg(test)]` órfãos que se colaram ao módulo vizinho **em
+  silêncio**, e o §6 as **cinco** premissas minhas que a medição derrubou).
   **Smokes:** `PH2D_IMPASTO_SMOKE=1|2` · `PH2D_WETPAINT_SMOKE` (+ `PH2D_FLUID_PROFILE=1`) · `PH2D_MASK_SMOKE` ·
   `PH2D_TAPER_SMOKE` · `PH2D_LINE_SMOKE` · `PH2D_SUBSTRATE_SMOKE`. Diagnóstico: `PH2D_PAINT_PERF=1` ·
   `PH2D_PREVIEW_DIAG` · `PH2D_PREVIEW_DUMP=<dir>`.

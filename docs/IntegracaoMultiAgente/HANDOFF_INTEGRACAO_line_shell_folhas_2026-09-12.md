@@ -276,13 +276,20 @@ pré-requisito da 7 (a `ph2d-vec-entities` depende das duas).
 nenhum** — é mudança de endereço. O risco real é (a) o som e (b) o painel do editor de áudio,
 porque a `ph2d-audio-desktop` é a única peça cujas **features** foram redeclaradas.
 
+⚠️ **O `cd` é o da WORKTREE desta linha, e não o do primário** — o binário quente está aqui, e
+entregar o caminho da outra árvore faria o Enio pagar a build inteira (§1.5.9 item 9):
+
 ```
-cd /home/enio/Documentos/Projetos/PH2D && cargo run -p ph2d-host-desktop --profile smoke
+cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-shell-folhas && cargo run -p ph2d-host-desktop --profile smoke
 ```
 1. Abrir o app. A janela tem de abrir normal.
 2. *Window → Audio Editor* — o painel tem de aparecer e os botões dele responder.
-3. `env PH2D_AUDIO_SMOKE=1 cargo run -p ph2d-host-desktop --profile smoke` — tem de **ouvir-se um
-   apito** de 440 Hz. Se for mudo: `bash scripts/audio-mudo.sh` (é o mixer do sistema, não o app).
+3. Fechar, e correr o do som (o mesmo binário, outra env):
+   ```
+   cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-shell-folhas && env PH2D_AUDIO_SMOKE=1 cargo run -p ph2d-host-desktop --profile smoke
+   ```
+   Tem de **ouvir-se um apito** curto, agudo, logo ao abrir. Se for mudo, o elo partido é o mixer
+   do sistema e não o app: `bash scripts/audio-mudo.sh` diz qual.
 4. Desenhar uma forma vetorial e arrastá-la; `Ctrl+Z` tem de a devolver.
 
 ---
@@ -292,6 +299,11 @@ cd /home/enio/Documentos/Projetos/PH2D && cargo run -p ph2d-host-desktop --profi
 * gate batched **1×** sobre o diff acumulado: `cargo clippy --workspace --all-targets` (só os 4
   avisos pré-existentes do §5) · `cargo nextest run --workspace --cargo-profile ci-test` ·
   `cargo nextest run -p ph2d-host-desktop --test it` **à parte** (816/816);
-* `target/*/incremental` reclamado;
-* smoke compilado na worktree, 2 corridas — a 2.ª colada abaixo;
+* `target/*/incremental` reclamado — **14 GB** devolvidos (o `target` de 26 GB para 13 antes do smoke);
+* smoke compilado **nesta worktree**, 2 corridas, a 2.ª a prova:
+  ```
+  $ cargo build -p ph2d-host-desktop --profile smoke
+      Finished `smoke` profile [optimized] target(s) in 0.23s      ← ZERO linhas "Compiling"
+  ```
+  (`target/smoke/ph2d-host-desktop`, 78 MB, 12/09 09:02);
 * ⛔ **esta linha NÃO integra e NÃO roda o `foundational-integrate.sh`.**

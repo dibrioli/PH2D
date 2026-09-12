@@ -60,7 +60,7 @@
 **O que muda com o plano, por onda:** ✅ W0 (só configuração, feita 10/09): o smoke do Enio passou de 161 s num
 núcleo para 3 s, a máquina voltou a ser usada por inteiro nos builds grandes, e todo teste tem tecto. ✅ W1
 (testes, feita 10/09): 1 446 binários → 127; check frio do workspace 93 → 51 s; gate após uma linha foundational
-93 → 60 s. W2 (arquitectura, por abrir): a shell deixa de ser a unidade de 34–45 s no fim de todo gate. Detalhe
+93 → 60 s. W2 (arquitectura, por abrir): a shell deixa de ser a unidade de 34–45 s no fim de todo gate. ✅ **Cumprido e medido em 12/09** com o comando da §3.1: a shell `bin (check-test)` foi de **36,2 s para 5,9 s** — ver [`ESTADO_W2_2026-09-12.md`](../IntegracaoMultiAgente/ESTADO_W2_2026-09-12.md) §1, com as ressalvas. Detalhe
 e preço em §6.
 
 ## §1 — Método e ressalvas

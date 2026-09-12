@@ -87,7 +87,7 @@ fn the_target_pick_consumes_the_press() {
 fn the_target_pick_guard_asks_no_tool_and_no_mode() {
     let src = code_only(DISPATCH);
     let at = src
-        .find("self.smart_pick.is_some()")
+        .find("self.skeleton.smart_pick.is_some()")
         .expect("a guarda modal do pick do alvo");
     // A janela é o bloco da guarda: dela até ao `return` que consome o press.
     let fim = src[at..].find("return;").expect("a guarda consome o press") + at;
@@ -135,7 +135,7 @@ fn the_bone_handle_arm_consumes_the_press() {
     let linhas: Vec<&str> = src.lines().collect();
     let i = linhas
         .iter()
-        .position(|l| l.contains("self.vec_bone_pose = Some((h.bone, h.part));"))
+        .position(|l| l.contains("self.skeleton.bone_pose = Some((h.bone, h.part));"))
         .expect("o arm das alças escreve o slot de arrasto");
     let seguinte = linhas[i + 1..]
         .iter()
@@ -160,7 +160,7 @@ fn the_bone_handle_arm_consumes_the_press() {
 fn the_bone_handle_is_released_in_every_mode_it_can_be_grabbed_in() {
     let src = code_only(DISPATCH);
     let solta = src
-        .find("self.vec_bone_pose = None;")
+        .find("self.skeleton.bone_pose = None;")
         .expect("o Up que liberta a alça vive neste ficheiro");
     let bloco = src
         .find("&& self.vec_draw_config.mode != ph2d_tool_vector::DrawMode::Select")

@@ -2451,7 +2451,7 @@ impl App {
     /// alvo: falhar a forma por três píxeis é comum, e um pick que se perde nisso faz o artista
     /// repetir o botão sem saber porquê. Quem desiste é o `Escape`.
     fn smart_pick_click(&mut self, sx: f32, sy: f32) {
-        let Some(bits_osso) = self.smart_pick else {
+        let Some(bits_osso) = self.skeleton.smart_pick else {
             return;
         };
         self.any_input_this_frame = true;
@@ -2488,7 +2488,7 @@ impl App {
                 ph2d_ecs::Entity::from_bits(alvo),
             )
         {
-            self.smart_pick = None;
+            self.skeleton.smart_pick = None;
         }
     }
 
@@ -2560,7 +2560,7 @@ impl App {
 
     /// Um quadro de POSE de osso — no-op sem osso agarrado.
     fn vec_bone_pose_move(&mut self) -> bool {
-        let Some((bits, parte)) = self.vec_bone_pose else {
+        let Some((bits, parte)) = self.skeleton.bone_pose else {
             return false;
         };
         let Some(world) = self.vec_world_at(self.last_pointer) else {
@@ -4013,7 +4013,7 @@ impl App {
         // ⇒ *um pick modal que não consome o press herda o gesto da ferramenta em que foi armado*, e
         // a ferramenta em que este é armado é a única que CRIA no clique. Precede as alças e o
         // picking/gizmo, como os irmãos.
-        if self.smart_pick.is_some()
+        if self.skeleton.smart_pick.is_some()
             && mapped_button == ph2d_host::PointerButton::Primary
             && kind == PointerKind::Down
             && !menu_open_before
@@ -4048,7 +4048,7 @@ impl App {
             && self.over_canvas_or_gizmo(evt.x, evt.y)
             && let Some(h) = self.bone_handle_at((evt.x, evt.y))
         {
-            self.vec_bone_pose = Some((h.bone, h.part));
+            self.skeleton.bone_pose = Some((h.bone, h.part));
             return;
         }
         // **O eyedropper de corpo do joint** (§12) — mesma classe de pick modal do
@@ -4213,11 +4213,11 @@ impl App {
         // era armado e **nunca** libertado: o osso seguia o rato para sempre, sem botão nenhum
         // apertado. *Um slot de arrasto tem de ser largado onde quer que possa ser agarrado* — e é
         // por isso que ele passou para esta família, que é a dos irmãos independentes de modo.
-        if self.vec_bone_pose.is_some()
+        if self.skeleton.bone_pose.is_some()
             && mapped_button == ph2d_host::PointerButton::Primary
             && kind == PointerKind::Up
         {
-            self.vec_bone_pose = None;
+            self.skeleton.bone_pose = None;
             return;
         }
         // O Up que fecha o arrasto de uma ficha do PATTERN (W4) — mesma vida da do texto.
@@ -4564,7 +4564,7 @@ impl App {
                                     // Agarrar o osso é o gesto de o POSAR (o gizmo de sprite não
                                     // serve — ver `bone_pose::pose`), e também o que o
                                     // selecciona: o pai do próximo osso é o que está aceso.
-                                    self.vec_bone_pose = Some((bone, part));
+                                    self.skeleton.bone_pose = Some((bone, part));
                                     if let Some(gfx) = self.gfx.as_mut()
                                         && let Some(hero) = gfx.hero_screen.as_mut()
                                     {
@@ -4583,7 +4583,7 @@ impl App {
                                 // todo.
                                 Some(crate::bone_gesture::BonePress::Pick { path: None }) => {}
                                 Some(crate::bone_gesture::BonePress::Start { birth, pick }) => {
-                                    self.vec_bone_drag = Some(birth);
+                                    self.skeleton.bone_drag = Some(birth);
                                     // ⚠️ **O clique que SELECCIONA e o arrasto que faz osso são o
                                     // MESMO press**, e é de propósito: um clique curto (< 12 px)
                                     // não faz osso nenhum, então apontar uma forma é só apontar —
@@ -4852,7 +4852,7 @@ impl App {
                     // ⚠️ **Consome SÓ com o gesto VIVO** (a origem marcada), pela lei que o
                     // `shape_up_consumes` documenta: soltar sobre um botão do painel neste modo não
                     // pode engolir o clique.
-                    if let Some(nascimento) = self.vec_bone_drag.take() {
+                    if let Some(nascimento) = self.skeleton.bone_drag.take() {
                         let px = self.vec_px_to_world();
                         let mut nasceu = None;
                         if let Some(solto) = self.vec_world_at(self.last_pointer) {
@@ -4916,7 +4916,10 @@ impl App {
                         // absorve-o AQUI, onde se sabe que ele nasceu de um arrasto e não de uma
                         // escolha. *A aresta continua a valer; o que mudou é quem a alimenta.*
                         if let Some(bits) = nasceu {
-                            crate::skeleton_reveal::on_birth(&mut self.osso_revelado, bits);
+                            crate::skeleton_reveal::on_birth(
+                                &mut self.skeleton.osso_revelado,
+                                bits,
+                            );
                         }
                         return;
                     }

@@ -6541,7 +6541,7 @@ impl crate::App {
                 // seguinte: aquele clique MUDA a selecção, então lê-lo então leria o alvo no lugar
                 // do sujeito. É a lei do `PathPick`, escrita no doc dele.
                 if pending_smart_pick {
-                    self.smart_pick = Some(osso.to_bits());
+                    self.skeleton.smart_pick = Some(osso.to_bits());
                 }
                 // ⭐⭐⭐ **TROCAR A ACÇÃO** pelo selector — tudo por UMA porta
                 // ([`crate::skeleton_smart::choose_action`]), que é onde a lei vive e onde ela é
@@ -8153,7 +8153,7 @@ impl crate::App {
             // ⛔⛔ Ordem do dono (2026-09-09): *«ao seleccionar o osso … o botão Transform é
             // seleccionado»*. Quem o pede é a aresta lá em baixo, que não pode tocar em `gfx.tools`
             // (ele está emprestado a `sim`/`hero`).
-            if let Some(acao) = self.bone_arm_pending.take() {
+            if let Some(acao) = self.skeleton.bone_arm_pending.take() {
                 vector_bridge::arm_bone(tools, acao);
             }
             let vec_cfg = vector_bridge::dispatch(
@@ -9136,22 +9136,22 @@ impl crate::App {
                 // esqueceria o quarto. O irmão `vec_path_pick` tem cinco limpezas escritas à mão, e
                 // o comentário de uma delas já escrevia a lei: *«não faz sentido: limpa, para não
                 // ficar armado e invisível»*.
-                if let Some(bits) = self.smart_pick
+                if let Some(bits) = self.skeleton.smart_pick
                     && ph2d_ecs::Entity::try_from_bits(bits).is_none_or(|e| {
                         sim.world().get::<ph2d_skeleton_ecs::SmartBone>(e).is_none()
                     })
                 {
-                    self.smart_pick = None;
+                    self.skeleton.smart_pick = None;
                 }
                 // ⚠️ **EXACTAMENTE UM seleccionado**, e não *«o primeiro que não é o osso»*: o
                 // estado normal do *Bind* é **forma + osso** escolhidos (é a razão de existir do
                 // `bone_gesture::selected_bone`), e ali a leitura antiga resolvia o pick **no mesmo
                 // quadro em que ele era armado**, sem o artista clicar em nada.
-                let alvo_do_pick = self.smart_pick.and_then(|bits_osso| {
+                let alvo_do_pick = self.skeleton.smart_pick.and_then(|bits_osso| {
                     let sel: Vec<u64> = hero.gizmo.iter_selected().collect();
                     (sel.len() == 1 && sel[0] != bits_osso).then(|| sel[0])
                 });
-                if let Some(bits_osso) = self.smart_pick
+                if let Some(bits_osso) = self.skeleton.smart_pick
                     && let Some(alvo) = alvo_do_pick
                     && crate::skeleton_smart::set_target(
                         sim,
@@ -9159,7 +9159,7 @@ impl crate::App {
                         ph2d_ecs::Entity::from_bits(alvo),
                     )
                 {
-                    self.smart_pick = None;
+                    self.skeleton.smart_pick = None;
                     hero.gizmo.replace_selection(Some(bits_osso));
                 }
                 let osso_em_foco =
@@ -9185,7 +9185,8 @@ impl crate::App {
                 //
                 // ⚠️ A ARESTA continua a ser a lei (`skeleton_reveal::on_focus`): pedi-lo em todo
                 // quadro prenderia a aba e o artista não conseguiria olhar para outra.
-                if crate::skeleton_reveal::on_focus(&mut self.osso_revelado, osso_em_foco) {
+                if crate::skeleton_reveal::on_focus(&mut self.skeleton.osso_revelado, osso_em_foco)
+                {
                     // ⭐⭐⭐ **ORDEM DO DONO (2026-09-09):** *«se já existe um osso no mundo, ao
                     // seleccionar o osso o painel de Bones é aberto e o botão Transform é
                     // seleccionado»*. As três metades saem da MESMA aresta, e é isso que as mantém
@@ -9201,7 +9202,7 @@ impl crate::App {
                     // `gfx` já está emprestado a `sim`/`hero`, e um segundo empréstimo dele não
                     // compila. O espelho da shell escreve-se **já**, para este quadro rotear certo
                     // e a fileira acender no mesmo instante em que o osso é escolhido.
-                    self.bone_arm_pending = Some(ph2d_tool_vector::BoneAction::Transform);
+                    self.skeleton.bone_arm_pending = Some(ph2d_tool_vector::BoneAction::Transform);
                     self.vec_draw_config.mode = ph2d_tool_vector::DrawMode::Bone;
                     self.vec_draw_config.bone_action = ph2d_tool_vector::BoneAction::Transform;
                 }
@@ -9261,7 +9262,7 @@ impl crate::App {
                         to: s.to.to_degrees(),
                         clip: s.clip.clone(),
                         target: s.target.clone(),
-                        picking: self.smart_pick == osso_em_foco,
+                        picking: self.skeleton.smart_pick == osso_em_foco,
                     }
                 }));
                 // ⭐⭐⭐ **A lista de ACÇÕES, filtrada pelo ALVO** — é ela que responde *«qual
@@ -11270,7 +11271,7 @@ impl crate::App {
             crate::skeleton_skin_image::draw_skinned_images(
                 sim,
                 asset_db,
-                &mut self.skin_image_cache,
+                &mut self.skeleton.skin_image_cache,
                 cam_affine,
                 vector_scene,
                 pele_suave,
@@ -11316,7 +11317,7 @@ impl crate::App {
                     ph2d_skeleton_render::draw_influence(
                         osso_focado.and_then(|b| crate::skeleton_live::influence_region(sim, b)),
                         matches!(
-                            self.bone_hover,
+                            self.skeleton.bone_hover,
                             Some(h) if h.part == ph2d_skeleton_render::BonePart::Influence
                         ),
                         cam_affine,
@@ -11346,7 +11347,7 @@ impl crate::App {
                                 )
                             })
                             .as_ref(),
-                        self.bone_hover.map(|h| h.part),
+                        self.skeleton.bone_hover.map(|h| h.part),
                         cam_affine,
                         hero.theme,
                         vector_scene,
@@ -11377,7 +11378,7 @@ impl crate::App {
                     ph2d_skeleton_render::draw_bones(
                         &ossos,
                         hero.gizmo.selection,
-                        self.bone_hover,
+                        self.skeleton.bone_hover,
                         &pontas,
                         cam_affine,
                         hero.theme,
@@ -11391,7 +11392,11 @@ impl crate::App {
                         // ⛔ **Em *Criar* o `Tip` quer dizer «daqui nasce um filho», não «arrasta a
                         // âncora»** — e o losango do alvo pode estar LONGE da ponta. Passar o realce
                         // acenderia, a metros do dedo, uma alça que aquele modo não executa.
-                        if criar { None } else { self.bone_hover },
+                        if criar {
+                            None
+                        } else {
+                            self.skeleton.bone_hover
+                        },
                         cam_affine,
                         hero.theme,
                         vector_scene,
@@ -11401,7 +11406,7 @@ impl crate::App {
                 // mouse down e crescer conforme o usuário arrasta»*). ⛔ Ele fica FORA do `if
                 // !ossos.is_empty()` de propósito: o PRIMEIRO osso de uma cena nasce quando não há
                 // osso nenhum, e era exactamente esse que o artista desenhava às cegas.
-                if let Some((origem, ponta, arma)) = self.bone_preview {
+                if let Some((origem, ponta, arma)) = self.skeleton.bone_preview {
                     ph2d_skeleton_render::draw_bone_preview(
                         origem,
                         ponta,

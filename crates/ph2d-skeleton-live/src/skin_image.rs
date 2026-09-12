@@ -214,7 +214,7 @@ mod tests;
 pub fn draw_skinned_images(
     sim: &SimWorld,
     asset_db: &ph2d_asset::AssetDb,
-    cache: &mut std::collections::BTreeMap<ph2d_asset::AssetId, (u32, u32, RgbaArc)>,
+    cache: &mut SkinImageCache,
     cam: ph2d_vector::Affine,
     scene: &mut ph2d_vector::VectorScene,
     smooth: Option<ph2d_poly2d::RefineOptions>,
@@ -312,7 +312,7 @@ pub fn draw_skinned_images(
 /// Os bytes de uma imagem, uma vez por `AssetId`.
 fn pixels(
     asset_db: &ph2d_asset::AssetDb,
-    cache: &mut std::collections::BTreeMap<ph2d_asset::AssetId, (u32, u32, RgbaArc)>,
+    cache: &mut SkinImageCache,
     id: ph2d_asset::AssetId,
 ) -> Option<(u32, u32, RgbaArc)> {
     if let Some(v) = cache.get(&id) {
@@ -339,6 +339,13 @@ pub fn mesh_of(sim: &SimWorld, e: Entity) -> Option<Mesh2d> {
 
 /// Os bytes de uma imagem, partilhados — o tipo que o desenho do Vello consome.
 pub type RgbaArc = std::sync::Arc<Vec<u8>>;
+
+/// **A cache dos pixels das imagens presas**, por CONTEÚDO — ver [`draw_skinned_images`].
+///
+/// ⚠️ Tem nome desde 2026-09-12 porque passou a ser um campo de uma struct de OUTRA crate
+/// (`ph2d_app_skeleton::state::SkeletonState`): escrita por extenso lá, a família precisaria de
+/// depender da `ph2d-asset` só para nomear a chave.
+pub type SkinImageCache = std::collections::BTreeMap<ph2d_asset::AssetId, (u32, u32, RgbaArc)>;
 
 fn affine_of(x: Xform) -> ph2d_vector::Affine {
     ph2d_vector::Affine::new(x.0)

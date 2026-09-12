@@ -71,8 +71,8 @@ impl crate::App {
         // o cursor sai do canvas e um osso fantasma fica desenhado na tela até ao gesto seguinte.
         // *Um par de slots resolvido no mesmo sítio esquece-se meio a meio.*
         let Some(world) = self.vec_world_at(pointer) else {
-            self.bone_hover = None;
-            self.bone_preview = None;
+            self.skeleton.bone_hover = None;
+            self.skeleton.bone_preview = None;
             return;
         };
         let px_to_world = self.vec_px_to_world();
@@ -90,7 +90,7 @@ impl crate::App {
         // ⭐⭐⭐ **O QUE O ARRASTO SIGNIFICA AGORA** — a porta ÚNICA que o release também lê
         // ([`ph2d_app_skeleton::bone_gesture::drag_now`]). ⛔ É ela que faz o que o artista VÊ ser o que ele
         // RECEBE: a emenda, a ponta encaixada e o limiar saem todos da mesma leitura.
-        let agora = self.vec_bone_drag.and_then(|n| {
+        let agora = self.skeleton.bone_drag.and_then(|n| {
             let gfx = self.gfx.as_ref()?;
             Some(crate::bone_gesture::drag_now(
                 &gfx.sim,
@@ -104,7 +104,7 @@ impl crate::App {
         // ⚠️ São perguntas diferentes — *o que um press aqui faria?* contra *o que este soltar vai
         // fazer?* — e durante um arrasto só a segunda tem sentido: o press já aconteceu. A bolinha
         // que acende é a que o osso novo vai agarrar.
-        self.bone_hover = match agora.and_then(|a| a.splice) {
+        self.skeleton.bone_hover = match agora.and_then(|a| a.splice) {
             Some((alvo, _)) => Some(ph2d_skeleton_render::BoneHover {
                 bone: alvo,
                 part: ph2d_skeleton_render::BonePart::Joint,
@@ -115,8 +115,9 @@ impl crate::App {
                 .and_then(|gfx| hover(&gfx.sim, world, px_to_world, foco, acao)),
         };
         // ⭐ E o osso que está a NASCER, da MESMA leitura.
-        self.bone_preview = self
-            .vec_bone_drag
+        self.skeleton.bone_preview = self
+            .skeleton
+            .bone_drag
             .zip(agora)
             .map(|(n, a)| (n.origin, a.tip, a.armed));
     }

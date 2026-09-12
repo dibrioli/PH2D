@@ -32,6 +32,35 @@ fn codigo_apos(linhas: &[&str], i: usize, n: usize) -> String {
         .join("\n")
 }
 
+/// **O corpo do bloco que abre a partir da linha `i`** — do primeiro `{` até ao `}` que o fecha,
+/// contando chavetas no fonte SEM comentários.
+///
+/// ⚠️ A aresta do foco media-se com [`codigo_apos`] (8 linhas de código), e a janela partiu-se em
+/// 2026-09-12 **sem uma linha de lei mudar**: o campo passou a `self.skeleton.osso_revelado`, a
+/// chamada deixou de caber numa linha, o `rustfmt` pôs a `{` sozinha — e a linha que ARMA o verbo
+/// ficou na 9.ª. *Uma janela medida em linhas é uma distância, e o `rustfmt` muda distâncias*; o que
+/// o gate afirma é uma relação — as três metades estão DENTRO do `if` da aresta.
+fn corpo_do_bloco(linhas: &[&str], i: usize) -> String {
+    let resto = linhas[i..].join("\n");
+    let Some(abre) = resto.find('{') else {
+        return String::new();
+    };
+    let mut fundo = 0i32;
+    for (k, c) in resto[abre..].char_indices() {
+        match c {
+            '{' => fundo += 1,
+            '}' => {
+                fundo -= 1;
+                if fundo == 0 {
+                    return resto[abre..=abre + k].to_string();
+                }
+            }
+            _ => {}
+        }
+    }
+    String::new()
+}
+
 /// **O fonte sem comentários** — sem isto, uma nota que cita a chamada conta como chamada.
 fn code_only(src: &str) -> String {
     src.lines()
@@ -102,7 +131,7 @@ fn the_focus_edge_opens_raises_and_arms() {
         .iter()
         .position(|l| l.contains("skeleton_reveal::on_focus("))
         .expect("a aresta do foco deixou de ser perguntada — o painel nunca vem à frente");
-    let corpo = codigo_apos(&linhas, i, 8);
+    let corpo = corpo_do_bloco(&linhas, i);
     for (agulha, o_que) in [
         ("set_panel_visible", "ABRIR o painel"),
         ("bump_panel_z", "trazer a ABA à frente"),
@@ -166,7 +195,7 @@ fn the_release_never_asks_the_selection_who_the_parent_is() {
     let linhas: Vec<&str> = src.lines().collect();
     let up = linhas
         .iter()
-        .position(|l| l.contains("self.vec_bone_drag.take()"))
+        .position(|l| l.contains("self.skeleton.bone_drag.take()"))
         .expect("o release do gesto de osso deixou de existir");
     let corpo = codigo_apos(&linhas, up, 30);
     assert!(
@@ -209,7 +238,7 @@ fn the_release_splices_through_the_same_door_the_preview_asked() {
     let linhas: Vec<&str> = src.lines().collect();
     let up = linhas
         .iter()
-        .position(|l| l.contains("self.vec_bone_drag.take()"))
+        .position(|l| l.contains("self.skeleton.bone_drag.take()"))
         .expect("o release do gesto de osso deixou de existir");
     let corpo = codigo_apos(&linhas, up, 40);
     for (agulha, o_que) in [

@@ -93,7 +93,7 @@ impl App {
         if state == ElementState::Pressed
             && !repeat
             && matches!(physical_key, PhysicalKey::Code(KeyCode::Escape))
-            && self.smart_pick.take().is_some()
+            && self.skeleton.smart_pick.take().is_some()
         {
             return true;
         }

@@ -42,6 +42,7 @@ pub mod bone_pose;
 pub mod goal;
 pub mod reveal;
 pub mod smart;
+pub mod state;
 
 /// **A família, para o registo gerado** ([`ph2d_app_host`]).
 ///

@@ -421,6 +421,41 @@ pub fn cook(kind: ShapeKind, a: [f64; 2], b: [f64; 2], v: &[f64]) -> VecPath {
     }
 }
 
+/// **O cozimento COM tinta** — [`cook`] mais um preenchimento opaco.
+///
+/// ⭐ **Por que isto vive aqui e não na shell.** Ela é uma folha partilhada no sentido do
+/// [HOWTO §1.2]: **22 ficheiros** de famílias diferentes (`fx_*`, `contour`, `falloff`, `twist`,
+/// `envelope`, `morph_fade`, `bone_gesture`, `skeleton_live`, os `build_smoke_*` e as quatro cenas
+/// de roteador da `vec`) montavam cena chamando um `build_smoke::shape` que vivia em
+/// `shells/desktop/src/build_smoke.rs`. Enquanto ela estava lá, **nenhuma das quatro cenas de
+/// roteador da família `vec` podia sair da shell** — e a catraca
+/// `FAMILIAS_COM_O_ROTEADOR_AINDA_NA_SHELL` é all-or-nothing por família, logo *uma* função de
+/// quatro linhas segurava o fim da linha inteiro.
+///
+/// ⚠️ **Duas famílias que partilham código partilham uma FOLHA, nunca uma delas à outra**
+/// (HOWTO §1.2). O sítio certo é ao lado do [`cook`], porque é dele que ela é o irmão tingido —
+/// e `Paint`/`Rgba8`/`ShapeKind`/`VecPath` já são todos desta crate, então a mudança não traz
+/// dependência nenhuma.
+///
+/// ⛔ **O `build_smoke::shape` da shell NÃO foi apagado:** ele passou a delegar para aqui numa
+/// linha, e os 22 sítios de chamada ficam **byte a byte iguais**. Apagá-lo obrigaria a reescrever
+/// 22 ficheiros de cinco famílias que não estão abertas — que é precisamente a wave que o §6 do
+/// handoff da Fase B recusou fazer.
+///
+/// [HOWTO §1.2]: ../../../docs/IntegracaoMultiAgente/HOWTO_partir_uma_familia_da_shell.md
+#[must_use]
+pub fn cook_tinted(
+    kind: ShapeKind,
+    a: [f64; 2],
+    b: [f64; 2],
+    v: &[f64],
+    rgb: [u8; 3],
+) -> crate::VecPath {
+    let mut p = cook(kind, a, b, v);
+    p.fill = Some(crate::Paint::solid(crate::Rgba8::new(rgb[0], rgb[1], rgb[2], 255)));
+    p
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

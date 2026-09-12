@@ -328,7 +328,7 @@ mod kind;
 pub use kind::{
     ALL_SHAPES, DEFAULT_ARC_DEGREES, DEFAULT_CORNER_RADIUS, DEFAULT_POLYGON_SIDES,
     DEFAULT_SPIRAL_TURNS, DEFAULT_STAR_INNER, DEFAULT_STAR_POINTS, MAX_SHAPE_FIELDS, ShapeKind,
-    ShapeValues, cook,
+    ShapeValues, cook, cook_tinted,
 };
 
 #[cfg(test)]

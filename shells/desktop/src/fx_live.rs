@@ -474,35 +474,18 @@ pub(crate) fn spec_of(sim: &SimWorld, map: &VecEntityMap, id: VecPathId) -> Opti
 /// **Escreve** (ou remove) a pilha de cada caminho de `ids`. Uma pilha VAZIA remove o componente —
 /// a lei do `VecOffset`: um documento não acumula relações inertes que não desenham nada. Devolve
 /// quantas entidades mudaram.
+///
+/// ⭐ Hoje uma **delegação de uma linha** para [`ph2d_vec_entities::filter::set_filter`]: a lei é
+/// pura sobre o `SimWorld` e era chamada por 11 ficheiros, entre eles a cena `vec_fade_smoke` —
+/// um dos quatro roteadores da família `vec`, que não podia sair da shell enquanto ela aqui
+/// estivesse. ⛔ **Esta porta FICA** para os 11 sítios de chamada não se moverem.
 pub(crate) fn set_filter(
     sim: &mut SimWorld,
     map: &VecEntityMap,
     ids: &[VecPathId],
     want: Option<VecFilter>,
 ) -> usize {
-    let want = want.filter(|f| !f.ops.is_empty());
-    let mut n = 0;
-    for id in ids {
-        let Some(&bits) = map.get(id) else { continue };
-        let e = Entity::from_bits(bits);
-        let cur = sim.world().get::<VecFilter>(e).cloned();
-        if cur == want {
-            continue;
-        }
-        let Ok(mut em) = sim.world_mut().get_entity_mut(e) else {
-            continue;
-        };
-        match &want {
-            Some(v) => {
-                em.insert(v.clone());
-            }
-            None => {
-                em.remove::<VecFilter>();
-            }
-        }
-        n += 1;
-    }
-    n
+    ph2d_vec_entities::filter::set_filter(sim, map, ids, want)
 }
 
 /// **Edita** a pilha de cada caminho de `ids` que JÁ tenha uma (read-modify-write) — o arrasto de

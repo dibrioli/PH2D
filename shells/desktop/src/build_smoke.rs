@@ -78,7 +78,7 @@
 
 // A MÃO dos roteiros (clique/tecla/estado pelo caminho real do input) mora no irmão
 // `build_smoke_drive.rs` (HR-18).
-use ph2d_vec_scene::{Paint, Rgba8, ShapeKind, VecPath, cook};
+use ph2d_vec_scene::{ShapeKind, VecPath};
 use std::sync::OnceLock;
 use std::sync::atomic::{AtomicU32, Ordering};
 
@@ -100,10 +100,14 @@ fn level() -> u32 {
     })
 }
 
+/// A forma tingida — hoje uma **delegação de uma linha** para [`ph2d_vec_scene::cook_tinted`].
+///
+/// ⭐ A lei mudou-se para a crate (folha partilhada, HOWTO §1.2): ela era chamada por **22
+/// ficheiros de cinco famílias** e, enquanto vivia aqui, prendia as quatro cenas de roteador da
+/// família `vec` dentro da shell. ⛔ **Esta porta FICA de propósito** — apagá-la obrigaria a
+/// reescrever os 22 sítios de chamada, e a delegação mantém-nos byte a byte iguais.
 pub(crate) fn shape(kind: ShapeKind, a: [f64; 2], b: [f64; 2], v: &[f64], rgb: [u8; 3]) -> VecPath {
-    let mut p = cook(kind, a, b, v);
-    p.fill = Some(Paint::solid(Rgba8::new(rgb[0], rgb[1], rgb[2], 255)));
-    p
+    ph2d_vec_scene::cook_tinted(kind, a, b, v, rgb)
 }
 
 impl crate::App {

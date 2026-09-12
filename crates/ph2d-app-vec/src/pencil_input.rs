@@ -99,6 +99,13 @@ impl PencilHand {
     }
 }
 
+// ⚠️ **O gate do QUADRO do lápis** — ele vivia solto no `main.rs` da shell (o subject dele é *«o
+// gesto contra a ordem REAL do quadro»*) e do lado de cá precisa de um pai: pende do módulo cuja
+// lei ele exercita.
+#[cfg(test)]
+#[path = "pencil_frame_tests.rs"]
+mod pencil_frame_tests;
+
 #[cfg(test)]
 #[path = "pencil_input_tests.rs"]
 mod tests;

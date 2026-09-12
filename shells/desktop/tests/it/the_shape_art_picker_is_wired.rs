@@ -15,9 +15,33 @@
 use std::fs;
 use std::path::Path;
 
+/// ⛔⛔ **DUAS árvores, e a razão é a espécie de falha deste gate.** O `texture_pattern_edit` mudou-se
+/// para `ph2d-app-vec` na W2 Fase C, e este resolvedor lê por **`read_to_string` de caminho fixo** —
+/// o gémeo em RUNTIME da §2.6 do HOWTO. Ao contrário do `include_str!`, mover o ficheiro **não**
+/// parte a compilação: o gate compila e explode só quando corre (e um `#[ignore]` ou um filtro e ele
+/// nunca corre). Foi a suíte `--test it` corrida À PARTE que o apanhou.
+///
+/// ⭐ Resolver as duas árvores, em vez de emendar cada caminho, é o que faz o gate **sobreviver ao
+/// próximo movimento** — e o `panic` nomeia as duas, senão uma ausência lê-se como um caminho mal
+/// escrito.
 fn src(rel: &str) -> String {
-    let p = Path::new(env!("CARGO_MANIFEST_DIR")).join("src").join(rel);
-    fs::read_to_string(&p).unwrap_or_else(|e| panic!("{}: {e}", p.display()))
+    let raiz = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let tentativas = [
+        raiz.join("src").join(rel),
+        raiz.join("../../crates/ph2d-app-vec/src").join(rel),
+    ];
+    for p in &tentativas {
+        if let Ok(s) = fs::read_to_string(p) {
+            return s;
+        }
+    }
+    panic!(
+        "`{rel}` nao esta' em nenhuma das arvores varridas: {:?}",
+        tentativas
+            .iter()
+            .map(|p| p.display().to_string())
+            .collect::<Vec<_>>()
+    )
 }
 
 /// ⚠️ **Comentários FORA**, e não é higiene: a prosa que explica a lei contém, por construção,
@@ -73,7 +97,12 @@ fn the_shape_art_picker_is_wired_from_the_button_to_the_link() {
     // ⚠️ E a porta por-ID tem de existir SEPARADA da que lê a seleção — é essa separação que impede
     // o padrão de apontar para a forma que o clique acabou de seleccionar.
     assert!(
-        code("texture_pattern_edit.rs").contains("pub(crate) fn set_source("),
+        // ⛔ **A agulha larga a VISIBILIDADE** (HOWTO §2.13): atravessar a fronteira obrigou
+        //    `pub(crate) fn` a virar `pub fn`, e uma agulha ancorada no modificador reprova **sem
+        //    que a lei mude uma linha** — ela mediria visibilidade, e visibilidade é exactamente o
+        //    que uma fronteira nova muda por construção. `fn set_source(` sobrevive ao próximo
+        //    movimento.
+        code("texture_pattern_edit.rs").contains("fn set_source("),
         "a porta por-ID sumiu; o picker voltaria a ler a selecao"
     );
     // ⚠️⚠️ **E o ARGUMENTO é o `host` CAPTURADO, nunca o `guide` clicado.**

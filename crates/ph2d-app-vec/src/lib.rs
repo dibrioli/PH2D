@@ -102,6 +102,7 @@ pub mod guide;
 pub mod marquee;
 pub mod morph_edit;
 pub mod pencil_input;
+pub mod texture_pattern_edit;
 pub mod resize_box_edit;
 pub mod shape_params;
 pub mod svg_export;

@@ -508,7 +508,7 @@ mod text_path_smoke;
 /// A cena de smoke do **REFLUXO** de texto (`PH2D_BUILD_SMOKE=63`) — irmã de `build_smoke`.
 mod text_wrap_smoke;
 /// **Autorar a lei de um padrão de textura** (plano 33, W5) — a porta da secção Pattern.
-mod texture_pattern_edit;
+pub(crate) use ph2d_app_vec::texture_pattern_edit;
 /// **A porta que o chip *Tile* abre** (plano 33, W4) — escolher a arte de um padrão.
 mod texture_pattern_pick;
 /// **A cena de smoke do Texture Pattern** (`PH2D_BUILD_SMOKE=76`, plano 33).
@@ -683,9 +683,6 @@ mod vec_text_reopen;
 mod vec_text_ride;
 // A pose das formas vetoriais mudou-se para a folha; fica o gate do quadro do LÁPIS, que
 // atravessa o `profile_live`.
-#[cfg(test)]
-#[path = "vec_pencil_frame_tests.rs"]
-mod vec_pencil_frame_tests;
 /// ⭐⭐⭐ **A RECONCILIAÇÃO ANTES DA CAPTURA** — a rede que apanha todo escritor TARDIO da árvore
 /// (apagar · duplicar · *Remove from Sheet*), medida em 2026-09-08.
 mod vec_tree_settle;

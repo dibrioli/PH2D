@@ -20,7 +20,7 @@ use ph2d_vec_scene::{Paint, PatternFill, PatternSource, StrokePaint, VecPathId, 
 /// defeito clássico desta wave: publicar a lei do traço e escrever no preenchimento. Duas escadas
 /// de `match` divergem no dia em que uma ganhar uma variante.
 #[must_use]
-pub(crate) fn pattern_at(
+pub fn pattern_at(
     scene: &VecScene,
     id: VecPathId,
     slot: PatternSlot,
@@ -66,7 +66,7 @@ fn write_pattern(
 
 /// O que a secção *Pattern* pede ao documento.
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub(crate) enum TexPatCmd {
+pub enum TexPatCmd {
     /// Trocar o reticulado (`0` Grid · `1` Brick · `2` Column · `3` Hex).
     Tile(u8),
     /// Trocar a lei de repetição (`0` Tile · `1` Mirror · `2` Clamp).
@@ -124,7 +124,7 @@ fn tile_of(i: u8) -> TileKind {
 
 /// O índice do painel para um reticulado — a gémea de [`tile_of`].
 #[must_use]
-pub(crate) fn tile_index(k: TileKind) -> u8 {
+pub fn tile_index(k: TileKind) -> u8 {
     match k {
         TileKind::Grid => 0,
         TileKind::BrickRow => 1,
@@ -143,7 +143,7 @@ fn mode_of(i: u8) -> PatternMode {
 
 /// O índice do painel para uma lei de repetição — a gémea de [`mode_of`].
 #[must_use]
-pub(crate) fn mode_index(m: PatternMode) -> u8 {
+pub fn mode_index(m: PatternMode) -> u8 {
     match m {
         PatternMode::Tile => 0,
         PatternMode::Mirror => 1,
@@ -157,7 +157,7 @@ pub(crate) fn mode_index(m: PatternMode) -> u8 {
 /// ⚠️ Existe ao lado do [`apply`] porque o alvo é **capturado no arm** do pick: o clique seguinte
 /// cai noutra forma, e ela passa a ser a selecionada. Ler a seleção aqui apontaria o padrão para a
 /// forma errada — exactamente o *"escolhendo a si mesmo"* que o Picker foi criado para eliminar.
-pub(crate) fn set_source(
+pub fn set_source(
     scene: &mut VecScene,
     history: &mut ph2d_vec_edit::History,
     host: ph2d_vec_scene::VecPathId,
@@ -190,7 +190,7 @@ pub(crate) fn set_source(
 
 /// Aplica `cmd` ao padrão da forma selecionada. No-op silencioso quando não há forma, quando ela
 /// não tem padrão, ou quando o valor já era esse.
-pub(crate) fn apply(
+pub fn apply(
     scene: &mut VecScene,
     history: &mut ph2d_vec_edit::History,
     pen: &ph2d_vec_edit::PenTool,
@@ -273,7 +273,7 @@ pub(crate) fn apply(
 /// ⚠️ A cura é do PAINEL e não do modelo — e é exactamente a que o gradiente linear já faz na mesma
 /// função de publicação.
 #[must_use]
-pub(crate) fn panel_angle_deg(radians: f64) -> f64 {
+pub fn panel_angle_deg(radians: f64) -> f64 {
     radians.to_degrees().rem_euclid(360.0)
 }
 
@@ -299,7 +299,7 @@ thread_local! {
 /// ⚠️ **Por EVENTO, nunca por quadro.** A primeira sonda desta casa foi devolvida com *"há milhares
 /// de logs"*; aqui o evento é o clique que muda a selecção, que é exactamente quando o artista quer
 /// saber o que tem em mãos.
-pub(crate) fn log_selection(scene: &VecScene, pen: &ph2d_vec_edit::PenTool) {
+pub fn log_selection(scene: &VecScene, pen: &ph2d_vec_edit::PenTool) {
     if !log_on() {
         return;
     }
@@ -328,7 +328,7 @@ fn log_on() -> bool {
 /// nas duas trocas, o `restyle_selected_strokes` nunca o apaga, e a rota de desenho encoda os dois
 /// caminhos. ⇒ *o que falta não é ler mais código, é um INSTRUMENTO* — foi assim que a máquina de
 /// estados do Morph fechou.
-pub(crate) fn log_shape(tag: &str, scene: &VecScene, pen: &ph2d_vec_edit::PenTool) {
+pub fn log_shape(tag: &str, scene: &VecScene, pen: &ph2d_vec_edit::PenTool) {
     if !log_on() {
         return;
     }

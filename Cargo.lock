@@ -5066,6 +5066,7 @@ dependencies = [
  "ph2d-vec-edit",
  "ph2d-vec-entities",
  "ph2d-vec-fill",
+ "ph2d-vec-pattern",
  "ph2d-vec-render",
  "ph2d-vec-scene",
  "ph2d-vec-svg",

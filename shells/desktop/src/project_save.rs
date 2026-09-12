@@ -25,7 +25,7 @@ impl crate::App {
         {
             return scene.to_doc_bytes();
         }
-        self.sculpt3d_req.doc.clone()
+        self.sculpt_doc.clone()
     }
 
     /// Serializa o projeto inteiro (mundo + geometria + pixels) para `path`.

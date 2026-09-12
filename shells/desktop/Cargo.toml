@@ -422,11 +422,22 @@ ph2d-light = { path = "../../crates/ph2d-light" }
 # A familia `sculpt3d` a sair da shell (W2/L3): por agora as reguas do gesto e o estado de
 # PEDIDO que a `App` guardava solto. Tem ZERO dependencias.
 # ⛔⛔ NAO e' `optional`, e a excepcao e' DELIBERADA -- ela e' a unica crate do modulo que nao
-# o e'. O motivo esta' escrito no campo que ela guarda: o `Sculpt3dRequests::doc` e' um
-# passa-adiante, e um binario construido SEM a feature `sculpt3d` tem de carregar os bytes de
-# uma escultura ja' gravada do load ao save sem os ler. Marca-la opcional apagaria o campo
-# nesse binario e o save seguinte descartaria a escultura do artista, em silencio.
-# ⇒ e' tambem por isso que ela nao pode ganhar dependencias: quem nunca esculpe paga-as.
+# ⚠️⚠️ **NÃO-OPCIONAL, como as outras CINCO famílias — e a razão que a prendia aqui DISSOLVEU-SE,
+# sem que a conclusão mudasse.** Ela foi nao-opcional a Fase A inteira porque o
+# `Sculpt3dRequests::doc` era um passa-adiante que um binario sem a feature tem de carregar; e a
+# mesma nota dizia, uma linha abaixo, *«e' tambem por isso que ela nao pode ganhar dependencias:
+# quem nunca esculpe paga-as»*. A Fase B deu-lhe vinte e oito. ⇒ o passa-adiante voltou a ser um
+# `Vec<u8>` na `App` (`App::sculpt_doc`), que e' onde esteve ate' a Fase A — *a cerca era sobre o
+# DOCUMENTO, nunca sobre a crate*.
+#
+# ⛔⛔ **E torna-la `optional` foi CONSTRUIDO, MEDIDO e REVERTIDO no mesmo dia (W2/L3-B):** ele
+# nao compra nada na arvore de dependencias, porque o `ph2d-app-registry-init` declara as SEIS
+# familias `optional` e liga-as TODAS no `default`, por decisao escrita (*«uma familia fora do
+# default … o gate e o CI deixariam de a compilar em silencio»*). Com a crate opcional na shell,
+# o registo continua a puxa-la — e a `ph2d-panel-sculpt3d` tambem. *Uma sonda de `cargo tree` nao
+# distingue os dois casos, e foi ela que quase me fez landar o desvio.*
+# ⇒ a promessa de removibilidade do `docs/3D/02.3` mede-se por **onde o codigo mora**, e o gate
+# que a mede (`a_baked_object_outlives_the_3d_module`) diz isso de si mesmo, no cabecalho.
 ph2d-app-sculpt3d = { path = "../../crates/ph2d-app-sculpt3d" }
 ph2d-sculpt3d = { path = "../../crates/ph2d-sculpt3d", optional = true }
 # O voxel remesh (W7). `optional` pelo mesmo motivo dos outros tres: e a

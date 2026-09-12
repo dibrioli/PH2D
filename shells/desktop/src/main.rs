@@ -911,6 +911,7 @@ impl App {
             // estado INERTE: sem ninguém pedir nada, o laço do quadro não tem trabalho de
             // escultura para fazer (gate na crate).
             sculpt3d_req: Default::default(),
+            sculpt_doc: Vec::new(),
             mask_smoke_done: false,
             sheet_smoke_done: false,
             demo_tool_forced: false,

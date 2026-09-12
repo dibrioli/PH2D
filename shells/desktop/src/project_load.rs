@@ -312,7 +312,7 @@ impl crate::App {
         // novo não tem escultura nenhuma: a lista nunca-vazia é o invariante que torna
         // `obj()` total, então "sem peças" se diz com a cena inteira fora, não com uma
         // cena vazia.
-        self.sculpt3d_req.doc = std::mem::take(&mut file.sculpt);
+        self.sculpt_doc = std::mem::take(&mut file.sculpt);
         #[cfg(feature = "sculpt3d")]
         {
             self.sculpt3d.pending = sculpt;

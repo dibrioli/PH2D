@@ -53,7 +53,7 @@ fn an_unreadable_sculpture_refuses_the_whole_load() {
         "…nem joga fora o histórico do documento que continua aberto"
     );
     assert!(
-        app.sculpt3d_req.doc.is_empty(),
+        app.sculpt_doc.is_empty(),
         "…nem adota os bytes recusados: o próximo save gravaria o lixo de volta"
     );
     assert!(
@@ -105,7 +105,7 @@ fn a_project_without_a_sculpture_leaves_nothing_pending() {
     let _ = std::fs::remove_file(&path);
 
     assert!(app.sculpt3d.pending.is_none());
-    assert!(app.sculpt3d_req.doc.is_empty());
+    assert!(app.sculpt_doc.is_empty());
 }
 
 /// **Um build que não constrói a escultura a PASSA ADIANTE** — ele não é um

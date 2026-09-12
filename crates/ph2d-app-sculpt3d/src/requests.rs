@@ -34,14 +34,6 @@ pub struct Sculpt3dRequests {
     /// a cena**, o que exige o `device` e o tamanho da superfície — os dois só existem depois
     /// de a janela nascer.
     pub toggle_request: bool,
-    /// **O documento de escultura como veio do arquivo**, em bytes opacos.
-    ///
-    /// ⛔⛔ **É ele que proíbe esta crate de ser uma dependência opcional.** Num binário
-    /// construído SEM a feature `sculpt3d` ninguém o lê — e é isso que o torna um
-    /// **passa-adiante**: os bytes de uma escultura gravada atravessam o load e voltam ao
-    /// save intactos, em vez de serem descartados em silêncio. Com o módulo ligado ele é a
-    /// fonte do save enquanto a cena não existir (projeto aberto antes de a GPU aparecer).
-    pub doc: Vec<u8>,
 }
 
 impl Sculpt3dRequests {
@@ -75,7 +67,6 @@ mod tests {
     fn nothing_is_requested_before_anyone_asks() {
         let r = Sculpt3dRequests::default();
         assert!(!r.canvas_done && !r.bake_request && !r.alpha_request && !r.toggle_request);
-        assert!(r.doc.is_empty());
     }
 
     /// **Um pedido cumpre-se UMA vez.** ⚠️ O controlo é a segunda leitura: um `take` que
@@ -96,26 +87,6 @@ mod tests {
         );
     }
 
-    /// ⛔⛔ **O passa-adiante**: os bytes de um documento atravessam quem não os lê.
-    ///
-    /// Este teste corre numa crate que **não conhece** o módulo 3D — é essa a prova. Ele não
-    /// mede uma função nossa; mede que o *lugar* onde o documento espera não depende da
-    /// feature. Se alguém tornar esta crate `optional` na shell, o campo desaparece do
-    /// binário sem escultura e uma escultura gravada é descartada no save seguinte.
-    #[test]
-    fn the_document_bytes_survive_a_build_that_never_reads_them() {
-        let bytes = vec![7u8, 3, 9, 1];
-        let mut r = Sculpt3dRequests {
-            doc: bytes.clone(),
-            ..Default::default()
-        };
-        // O ciclo de um binário sem escultura: nada lê o documento, tudo o resto é drenado.
-        let _ = (r.take_bake(), r.take_alpha(), r.take_toggle());
-        assert_eq!(
-            r.doc, bytes,
-            "os bytes da escultura não sobreviveram ao quadro"
-        );
-    }
 }
 
 /// **O que esta família declara à shell** (`ph2d-app-registry-init`).

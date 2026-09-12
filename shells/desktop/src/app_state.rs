@@ -757,10 +757,24 @@ pub(crate) struct App {
     /// o defeito que um `bool` público convida — ler o pedido sem o desarmar, que se cumpre a
     /// cada quadro e se lê como *«o botão assou sozinho»*.
     ///
-    /// ⚠️ **Continua SEM `cfg`, e agora a razão está na crate** (que é não-opcional de
-    /// propósito): o `doc` é um passa-adiante, e um binário sem a feature `sculpt3d` carrega os
-    /// bytes de uma escultura gravada do load ao save **sem os ler**.
+    /// ⚠️ **Sem `cfg`, como as cinco famílias irmãs** — a crate é dependência não-opcional da
+    /// shell (ver o `Cargo.toml`, que diz porquê e o que foi medido e revertido).
     pub(crate) sculpt3d_req: ph2d_app_sculpt3d::Sculpt3dRequests,
+    /// ⛔⛔ **O PASSA-ADIANTE, e o único campo desta família que NÃO tem `cfg`.**
+    ///
+    /// Os bytes de uma escultura gravada atravessam um binário construído **sem** a feature
+    /// `sculpt3d` — do load ao save, sem ninguém os ler. Sem este campo, abrir um projeto com
+    /// escultura nesse binário e gravá-lo descartaria a obra do artista **em silêncio**.
+    ///
+    /// ⭐⭐ **Ele já morou aqui, com este nome.** A Fase A (W2/L3-A2) absorveu-o para dentro do
+    /// `Sculpt3dRequests` e, para o manter alcançável, prendeu a crate inteira a
+    /// **não-opcional** — com a nota a dizer, ali mesmo, *«é também por isso que ela não pode
+    /// ganhar dependências»*. A Fase B deu-lhe vinte e oito, entre elas as quatro crates do
+    /// módulo 3D, que são `optional` precisamente para caírem juntas (`docs/3D/02.3`).
+    ///
+    /// ⇒ *a cerca era sobre o DOCUMENTO, nunca sobre a crate.* Com o `Vec<u8>` aqui, ela cai com
+    /// a feature e a promessa de removibilidade volta a ser verdade — medida, não afirmada.
+    pub(crate) sculpt_doc: Vec<u8>,
     /// ⭐ **O que a escultura guarda e SÓ existe com o módulo ligado** (W2/L3-A2).
     ///
     /// Eram **quatro** campos soltos (`sculpt3d_pending`, `sculpt3d_rows`, `sculpt3d_dup`,

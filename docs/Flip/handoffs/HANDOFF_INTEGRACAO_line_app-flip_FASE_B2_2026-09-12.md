@@ -185,6 +185,10 @@ linha, e o `ship.sh` corre com `-D warnings`.
 
 **Zero linhas `Compiling`.** Binário em `target/smoke/ph2d-host-desktop` (75 MB).
 
+⚠️ O `target/*/incremental` foi reclamado a seguir (DIRETRIZ §1.5.9 item 7): **14,5 GB**
+(12 de `debug` + 2,5 de `smoke`). O perfil `smoke` recria o dele na 1.ª corrida, que é a que
+acabou de correr — as duas coisas não se anulam.
+
 ## 6 — ⭐⭐ O que esta linha DESTRAVA para a próxima (o item que o briefing pediu)
 
 **O `undo.rs` deixou de ser preso pela família Flip.** Medido depois do corte, com os

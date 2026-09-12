@@ -64,6 +64,9 @@ use std::path::{Path, PathBuf};
 /// e o bake — 48 ficheiros, e o `impl App` era **assinatura**, zero portas novas). O tecto é o
 /// medido mais a [`FOLGA_DE_COMPOSICAO`].
 ///
+/// **FASE D** (a 4.ª rodada, 12/09) → **208 442** / 859 (a família das **INSTÂNCIAS** sai:
+/// `crates/ph2d-app-components`, 58 ficheiros).
+///
 /// ⭐⭐⭐ **Em dois dias a shell caiu de 526 809 para 225 394 — `−301 415`, `−57,2 %`**, e de 2 023
 /// ficheiros para 917. Mais de metade da unidade de compilação que era o tecto do relógio deste
 /// repo deixou de existir ali.
@@ -84,7 +87,7 @@ use std::path::{Path, PathBuf};
 /// ⛔ **Nenhuma LINHA lhe toca** — é um número que soma entre linhas, logo CONTA-SE, nunca se
 /// escolhe (`CLAUDE.md` §5.0): com cinco linhas a escrevê-lo o merge fica com um deles e nenhum
 /// está certo, em silêncio. Quem o reconta é o integrador, sobre a árvore combinada.
-const TETO_LOC: usize = 229_394;
+const TETO_LOC: usize = 212_442;
 
 /// Quanto a shell pode crescer acima do medido antes de o gate reprovar — a margem da raiz de
 /// composição, **não** espaço para um módulo.

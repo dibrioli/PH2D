@@ -11,17 +11,17 @@
 
 | grandeza | antes (merge-base) | depois | Δ |
 |---|---:|---:|---:|
-| `shells/desktop` — linhas de `.rs` | **451 084** | **418 866** | **−32 218** |
+| `shells/desktop` — linhas de `.rs` | **451 084** | **419 013** | **−32 071** |
 | `shells/desktop` — ficheiros `.rs` | 1 757 | 1 641 | −116 |
 | `src/sculpt3d/` | 111 ficheiros | **0** (a pasta não existe) | −111 |
 | `render_loop/sculpt3d_panel_bridge.rs` | 1 ficheiro | 0 | −1 |
 | alias `field3d_*` na shell | 5 | **0** | −5 |
 | `crates/ph2d-app-sculpt3d/src` | 2 ficheiros | 115 | +113 |
 | `crates/ph2d-form-donation/src` | — | 4 (crate NOVA) | +4 |
-| testes (`nextest list`, não-ignorados) | 22 659 | **22 668** | +9 |
+| testes (`nextest list`, não-ignorados) | 22 659 | **22 670** | +11 |
 
 ⚠️ **A catraca `the_shell_only_shrinks` REPROVA nesta árvore** — o tecto está em `455 084` e a
-shell mede `418 866`, logo é a metade *«a catraca está OBSOLETA»* a disparar. É o marcador de
+shell mede `419 013`, logo é a metade *«a catraca está OBSOLETA»* a disparar. É o marcador de
 progresso esperado. ⛔ **O número é CONTADO pelo integrador**, nunca escrito por uma linha.
 
 **Contadores partilhados: ZERO mexeram.** `PROJECT_SCHEMA` fica em `128`, o `FIELD_DOC_VERSION`
@@ -254,6 +254,44 @@ mudou para a shell, 2 o gate novo do passa-adiante — e **3 são benches de out
 
 **Roteadores idênticos:** `PH2D_SCULPT3D_SMOKE` responde por `1..39`, os mesmos níveis e os mesmos
 números de antes. Nenhuma cena foi podada nesta fase.
+
+---
+
+## §9-bis — ⛔⛔ O PORTÃO DE FECHO apanhou **105** gates partidos, e nenhum era o produto
+
+São as duas espécies do §5.0 (*«mover código parte gates em duas espécies, e só uma avisa»*) — aqui
+toda a espécie que **FALHA ALTO**. A maior causa era **UMA**: ~60 vinham de uma ajuda partilhada
+(`sculpt_source`) que montava `src/sculpt3d/<n>.rs`. *Uma travessia de fronteira escrita uma vez
+custa uma correcção; escrita em dezasseis caminhos relativos, custa dezasseis.*
+
+| espécie | nº | exemplo |
+|---|---:|---|
+| a **casa** da fonte | ~60 | a ajuda partilhada, curada num sítio só (porta `sculpt_source::family`) |
+| o **NOME** da função | 29 | o prefixo `sculpt3d_` era o namespace do módulo DENTRO da shell; na crate seria gaguejo |
+| a **RAIZ** de uma varredura | 5 gates | ⛔ dois varriam `src/` inteiro e **não davam erro**: liam centenas de ficheiros e achavam **cena nenhuma**. *O piso que os salvou é o das CENAS achadas, não o dos ficheiros lidos* |
+| a **FORMA** do código | ~12 | `self.sculpt3d_req.bake_request` → `req.…` · `claim_delete(&factos)` → `(factos)` · `if !keys_live()` → `if !keys_live` |
+| a **COLUNA** de um bloco | 1 | o `arm()` do `Delete` fatiava em `"\n        }"`, e o `impl App` desapareceu ⇒ o corpo subiu 4 espaços |
+
+⭐⭐ **E TRÊS mudaram de SUJEITO, com a propriedade a ficar MAIS FORTE:**
+
+1. **`every_3d_port_is_inert_without_a_scene`** — as três portas que guardavam em RUNTIME
+   (`sculpt3d_scene_mut()` … `return false`) passaram à lista das que guardam pelo **TIPO**, que o
+   gate já tinha escrita ao lado. *Uma guarda de runtime pode ser esquecida numa porta nova; um
+   parâmetro é erro de compilação.*
+2. **`the_crate_that_holds_the_channels_is_unconditional`** — era `mod baked_form;` sob censo de
+   atributos contíguos; hoje é uma **dependência sem `optional`**, e a mutação **nem compila**.
+3. **`the_sculpture_keys_require_the_clay_to_be_on_screen`** — media *o guarda vem antes do
+   EMPRÉSTIMO*; sem empréstimo, o sujeito passa a ser o que ele protege. ⛔ Medir `fn key(` seria
+   medir o começo da função, que está antes de tudo por construção.
+
+⭐ **E a PORTA DO CHROME ganhou a TERCEIRA agulha** (`host.pointer_over_chrome(`): o `field3d`
+guarda a cena num `thread_local` e pergunta pelo `self` de um trait; a escultura guarda-a no
+`AppGfx` e recebe o host por parâmetro. O gate já dizia por escrito que *«um censo com uma agulha
+só obriga os dois lados a falar a mesma língua, e depois da fronteira eles não falam»* — eram dois,
+são três.
+
+**Portão final: 22 670 testes, 1 reprovado** — a catraca `the_shell_only_shrinks`, na metade *«a
+catraca está OBSOLETA»* (folga de **36 071** linhas). ⛔ O `TETO_LOC` é do integrador.
 
 ---
 

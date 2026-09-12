@@ -155,7 +155,7 @@ saírem.** É a 3.ª rodada, não esta linha.
 | **(b) roteadores iguais** | **106 antes, 106 depois**, `diff` vazio |
 | **(c) a shell encolheu** | **417 195 → 412 208 LOC** · 1 518 → 1 498 ficheiros |
 | **(d) gate de fecho** | `fmt --check` ✓ · `clippy --all-targets --all-features` nas 2 crates ✓ · `typos` ✓ · `doc-index --check` ✓ (19) · **10** gates de teto de LOC ✓ · `ph2d-app-registry-init` **5/5** ✓ · **`nextest-impacted.sh`: 15 006 testes, 0 falhas** |
-| **(e) smoke do dono** | §10 |
+| **(e) smoke do dono** | binário **compilado e quente** — 1.ª corrida `27,55 s`, **2.ª corrida: `Finished` em `0,21 s`, ZERO linhas `Compiling`** (`target/smoke/ph2d-host-desktop`, 77,9 MB). `target/*/incremental` reclamado antes (10,4 GB) |
 
 ⚠️ **Sobre o relógio da alínea (c):** não entrego um `--timings` a frio. A razão é aritmética, não
 carga: **−1,2 %** da shell, sobre os `16,8 s` de front-end que a auditoria mediu, é **~0,2 s** —

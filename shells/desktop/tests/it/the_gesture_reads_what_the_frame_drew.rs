@@ -47,7 +47,7 @@ fn every_gesture_site_merges_the_derived_facts() {
         }
         checked += 1;
         assert_eq!(
-            src.matches("vec_entities::view_state(").count(),
+            src.matches("ph2d_vec_entities::entities::view_state(").count(),
             0,
             "{entry} APONTA (chama uma porta de pick) e monta o VecViewState do ZERO — os \
              intervalos das molduras e as poses do layout chegam VAZIOS, e o clique decide como \

@@ -162,7 +162,7 @@ fn the_photograph_reconciles_the_document_first() {
         .expect("o `capture_project` deixou de tirar a fotografia");
     let block = &block[..end];
     assert!(
-        block.contains("vec_entities::sync"),
+        block.contains("ph2d_vec_entities::entities::sync"),
         "a fotografia do undo (e do SAVE — e' a mesma porta) deixou de reconciliar o documento \
          com o mundo antes de fotografar. Um quadro que apaga uma forma vetorial termina \
          inconsistente, e repor esse instante cunha um objeto sem pai na origem.\n{block}"

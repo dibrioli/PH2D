@@ -51,8 +51,11 @@ const WORLD_GEOMETRY_MARK: &str = "Transform::IDENTITY;";
 
 #[test]
 fn settle_origins_skips_every_component_whose_geometry_is_derived() {
-    let src = fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/src/vec_transform.rs"))
-        .expect("vec_transform.rs");
+    let src = fs::read_to_string(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../crates/ph2d-vec-entities/src/transform.rs"
+    ))
+    .expect("transform.rs");
     let settle = src
         .split_once("fn settle_origins")
         .expect("settle_origins existe")

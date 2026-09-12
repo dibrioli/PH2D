@@ -159,7 +159,7 @@ fn the_cut_mode_draws_with_the_pen_and_owns_no_press_branch() {
 /// caminho já teria sido assentado como arte comum.
 #[test]
 fn the_cut_line_is_adopted_between_the_sync_and_the_settle() {
-    let sync = at(LOOP_SRC, "crate::vec_entities::sync(");
+    let sync = at(LOOP_SRC, "ph2d_vec_entities::entities::sync(");
     let adopt = at(LOOP_SRC, "crate::vec_cut_line::upkeep(");
     let settle = at(LOOP_SRC, "settle_origins(");
     assert!(

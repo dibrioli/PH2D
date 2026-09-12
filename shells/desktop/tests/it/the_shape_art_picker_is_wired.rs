@@ -126,11 +126,11 @@ fn the_shape_art_picker_is_wired_from_the_button_to_the_link() {
             "a arte nao e' MEDIDA - o padrao herda um quadrado",
         ),
         (
-            "crate::vec_entities::object_selection_for(",
+            "ph2d_vec_entities::entities::object_selection_for(",
             "a arte nao e' expandida como OBJECTO - um grupo colapsa no caminho clicado",
         ),
         (
-            "crate::vec_transform::build(",
+            "ph2d_vec_entities::transform::build(",
             "a arte e' medida SEM a pose - um grupo rodado ou escalado mede outra coisa",
         ),
         (

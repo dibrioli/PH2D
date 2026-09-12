@@ -58,7 +58,11 @@ fn the_extract_asks_whether_the_entity_is_on_the_canvas() {
     // ⚠️ **E a porta continua a fazer a pergunta desta lei.** Sem esta metade, um
     // `draws_this_frame` que tivesse perdido o termo do `is_off_canvas` passaria: a asserção acima
     // mede o CHAMADOR, e a lei vive no chamado.
-    let door = fs::read_to_string("src/render_loop/off_canvas.rs").expect("off_canvas.rs");
+    let door = fs::read_to_string(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../crates/ph2d-entity-visibility/src/off_canvas.rs"
+    ))
+    .expect("off_canvas.rs");
     assert!(
         door.contains("!is_off_canvas(sim, entity)"),
         "a porta `draws_this_frame` deixou de perguntar pelo olho/receita"

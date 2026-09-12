@@ -92,7 +92,7 @@ fn the_cooked_ribbon_reaches_the_dispatch() {
 /// desenho o frame pinta a resposta do frame anterior.
 #[test]
 fn the_profile_cook_runs_after_the_sync_and_before_the_draw() {
-    let sync = at("crate::vec_entities::sync(");
+    let sync = at("ph2d_vec_entities::entities::sync(");
     let cook = at("self.profile_live\n                .recook(");
     let draw = at("ph2d_vec_render::dispatch(");
     assert!(
@@ -139,7 +139,7 @@ fn the_apply_button_bakes_the_live_profile_not_the_sliders() {
 /// recém-nascida ainda não tem entidade e o componente não tem onde pousar.
 #[test]
 fn the_pencil_arms_its_profile_before_the_cook() {
-    let sync = at("crate::vec_entities::sync(");
+    let sync = at("ph2d_vec_entities::entities::sync(");
     let arm = at("crate::profile_live::arm(sim, &self.vec_entities, &[id], &stops)");
     let cook = at("self.profile_live\n                .recook(");
     assert!(

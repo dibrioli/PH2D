@@ -116,7 +116,7 @@ fn the_filled_shape_is_born_behind_the_lines() {
         corpo.contains("VecBucketFill::new(seed, ancoras)"),
         "a receita (as ancoras + a semente) nao e' presa a' entidade — o preenchimento nao seria vivo"
     );
-    let sync = at(LOOP, "crate::vec_entities::sync(", "o render_loop");
+    let sync = at(LOOP, "ph2d_vec_entities::entities::sync(", "o render_loop");
     let arma = at(LOOP, "crate::vec_bucket::arm_new_fills(", "o render_loop");
     assert!(
         sync < arma,

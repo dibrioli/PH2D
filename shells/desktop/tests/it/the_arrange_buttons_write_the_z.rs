@@ -22,6 +22,15 @@ fn src(name: &str) -> String {
         .unwrap_or_else(|e| panic!("{name}: {e}"))
 }
 
+/// O mesmo, para um ficheiro que já vive numa crate-folha (`line/shell-folhas`, 12/09).
+///
+/// ⚠️ **Ele falha ALTO se o caminho mentir**, e é essa a metade que importa: o irmão acima
+/// também falhava, mas só AO CORRER — um `cargo check` verde não diz nada sobre ele (HOWTO §2.6).
+fn crate_src(rel: &str) -> String {
+    fs::read_to_string(format!("{}/../../crates/{rel}", env!("CARGO_MANIFEST_DIR")))
+        .unwrap_or_else(|e| panic!("{rel}: {e}"))
+}
+
 /// O corpo de uma função — do `{` de abertura ao `}` que o fecha, **contando chaves**.
 ///
 /// ⚠️ Ancorar na função SEGUINTE é o proxy que expira, e esta suíte já pagou por isso: a janela
@@ -115,8 +124,12 @@ fn the_published_z_index_comes_from_the_same_module_as_the_write() {
 /// corpo do `reorder`, e não o arquivo.
 #[test]
 fn the_reorder_writes_the_z_and_never_the_tree() {
-    let s = src("vec_zorder.rs");
-    let body = body_of(&s, "pub(crate) fn reorder(");
+    let s = crate_src("ph2d-vec-entities/src/zorder.rs");
+    // ⚠️ **A agulha deixou de nomear a VISIBILIDADE** (`line/shell-folhas`, 12/09): ela dizia
+    // `pub(crate) fn reorder(` e o módulo mudou-se para uma crate-folha, onde a mesma função é
+    // `pub`. *Uma agulha que nomeia quem PODE chamar mede outra coisa que não a lei* — e esta
+    // reprovou sem que uma linha do `reorder` se mexesse. `fn reorder(` é único no ficheiro.
+    let body = body_of(&s, "fn reorder(");
     assert!(
         body.contains("set_authored_z("),
         "o `reorder` deixou de escrever o Z: os quatro botoes voltaram a nao fazer nada"
@@ -136,7 +149,7 @@ fn the_reorder_writes_the_z_and_never_the_tree() {
 /// botões teria duas funções plausíveis e uma delas proibida pela lei.
 #[test]
 fn the_sibling_writing_helpers_are_gone() {
-    let s = src("vec_zorder.rs");
+    let s = crate_src("ph2d-vec-entities/src/zorder.rs");
     for gone in ["fn sibling_move", "fn write_sibling_order", "fn siblings("] {
         assert!(
             !s.contains(gone),

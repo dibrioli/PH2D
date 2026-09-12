@@ -1061,7 +1061,7 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   tudo com bits novos, e bits **dentro dos bytes de um componente** envenenam o próprio undo.
   ⚠️ O undo de **PAINÉIS** é sistema separado e **não existe** (decisão do Enio).
   ✅ **O UNDO SEPARA PREVIEW DE DOCUMENTO** (Enio, 2026-08-23: *«corrigir o CtrlZ para ambas»* —
-  feito no mesmo dia, [`preview_drive.rs`](shells/desktop/src/preview_drive.rs)): *o documento é o
+  feito no mesmo dia, [`ph2d-preview-drive`](crates/ph2d-preview-drive/src/lib.rs)): *o documento é o
   valor **AUTORADO**; o que um motor escreve agora é pré-visualização — vê-se, não se guarda nem se
   desfaz.* O motor continua a escrever no mundo (um só sink); a **captura** é que repõe o autorado
   durante a fotografia. ⚠️ **O ledger entra na ASSINATURA da `ProjectState::capture`** — uma

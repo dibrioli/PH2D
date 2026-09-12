@@ -85,7 +85,7 @@ fn the_dispatch_is_handed_the_live_geometry() {
 /// do frame anterior.
 #[test]
 fn the_cook_runs_after_the_sync_and_before_the_draw() {
-    let sync = at("crate::vec_entities::sync(");
+    let sync = at("ph2d_vec_entities::entities::sync(");
     let cook = at("self.offset_live\n                .recook(");
     let draw = at("ph2d_vec_render::dispatch(");
     assert!(

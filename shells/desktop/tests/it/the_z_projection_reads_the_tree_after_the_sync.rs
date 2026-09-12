@@ -44,7 +44,7 @@ fn at(needle: &str) -> usize {
 
 #[test]
 fn the_z_projection_reads_the_tree_after_the_sync() {
-    let sync = at("vec_entities::sync(");
+    let sync = at("ph2d_vec_entities::entities::sync(");
     let root_order = at("assign_missing_root_order(");
     let snapshot = at("&mut live.z_snapshot,");
     let reorder = at("vec_scene.reorder_to(");

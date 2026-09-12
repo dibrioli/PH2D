@@ -67,7 +67,7 @@ fn code_only(src: &str) -> String {
 /// passo fantasma volta pela porta que este gate existe para fechar.
 const DRAINS: &[&str] = &[
     // Drena a fila que o Blend encheu — vazia em todo quadro sem aquele gesto.
-    "crate::vec_entities::restack",
+    "ph2d_vec_entities::entities::restack",
     // Drena o `HierReparentIntent` do arrasto da Hierarquia (F4.6c). ⚠️ O `take()` no sítio dele é
     // load-bearing: aplicá-lo duas vezes reordenaria duas.
     "hero_intents::drain_reparent",
@@ -76,7 +76,7 @@ const DRAINS: &[&str] = &[
 /// As funções chamadas na janela da reconciliação do passe do desenho.
 fn writers_in_the_drawing_pass() -> Vec<String> {
     let a = RENDER_LOOP
-        .find("crate::vec_transform::settle_origins(")
+        .find("ph2d_vec_entities::transform::settle_origins(")
         .expect("o assentamento do pivô vectorial sumiu do render_loop — a janela começa nele");
     let b = RENDER_LOOP[a..]
         .find("vec_scene.reorder_to(")

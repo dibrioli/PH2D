@@ -111,6 +111,42 @@ jornada curta e está medida aqui.
 
 ---
 
+## §4-bis — ⛔ DECISÃO DO INTEGRADOR (11/09): a linha de folhas NÃO abre agora
+
+> *«Os seus três maiores bloqueadores são território da `line/app-vec`, que está a movê-los NESTE
+> momento. Uma linha nova ali colidiria com o vec (54 ficheiros abertos) e com a sculpt3d (115).
+> PARE aqui. Não mova produto. Quando o vec e a sculpt3d integrarem, o integrador remede o seu fecho
+> e reabre-a.»*
+
+A fatia de 1,8 % fica **de fora**, pela razão do §4. A linha **pára com zero produto movido**.
+
+### ⚠️ Duas correcções para quem remedir (o §5 abaixo tinha-as por medir)
+
+1. **`vec_transform` NÃO é bloqueador desta família** — `0` referências em `motion/` e
+   `render_loop/motion_*`. Os três maiores desta família são **`vec_entities` (7 âncoras)**,
+   **`audio` (3)** e **`flip`/`field_gizmo`/`thumbnail` (2 cada)**; `vec_glyph` e `vec_glyph_build`
+   prendem **1** cada. ⇒ só **um** dos três maiores é território do vec.
+2. ⛔⛔ **A lista de 26 NÃO encolhe sozinha quando o vec integrar — encolhe `3`.** Medido:
+
+| | âncoras |
+|---|---:|
+| que o **vec** destranca sozinho (`vec_entities`, `vec_glyph*`) | **3** de 26 |
+| com bloqueador **não-vec** (o resíduo) | **23** |
+
+**O resíduo, por bloqueador:** `crate::App` **10** · `audio` 3 · `flip` 2 · `thumbnail` 2 ·
+`field_gizmo` 2 · `flip_pass` · `brush_live` · `pan_diag` · `modal` · `picker_smoke` ·
+`warp_gizmo` · `warp_gizmo_fixtures` (1 cada).
+
+⭐ **E os `10` do `crate::App` são MEUS, não da linha de folhas:** pela regra 2 eles são
+**assinatura** (as cenas pedem 5 tipos que o `AppGfx` segura), e curam-se dentro desta linha sem
+substrato nenhum. ⇒ **o resíduo que justifica a linha de folhas é ~`13` âncoras sobre ~8 módulos**,
+com o `audio` (3) à frente — e o `audio` **não** é território do vec, logo não cai com ele.
+
+⚠️ **Como continua a valer o tudo-ou-nada** (§2), curar `3 + 10` não move um ficheiro. O que a
+reabertura tem de medir é se o resíduo chegou a **zero**, não se encolheu.
+
+---
+
 ## §5 — O que destrava isto (uma linha, não cinco)
 
 Uma **linha das folhas partilhadas** que tire da shell, para crates-folha, os módulos **puros** que

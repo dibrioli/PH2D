@@ -78,7 +78,12 @@ fn writes() -> BTreeMap<String, Vec<String>> {
     //    [`BRIDGE_DIR_VEC`] e [`BRIDGE_DIR_PAINTER`]. ⛔ A `line/app-vec` e a
     //    `line/app-painter` acrescentaram **cada uma** o directório dela no MESMO dia, e o
     //    merge não ficou com nenhum dos dois lados: ficou com os DOIS (ESTADO §4 lei 8).
-    let mut files: Vec<_> = [BRIDGE_DIR, BRIDGE_DIR_FAM, BRIDGE_DIR_VEC, BRIDGE_DIR_PAINTER]
+    let mut files: Vec<_> = [
+        BRIDGE_DIR,
+        BRIDGE_DIR_FAM,
+        BRIDGE_DIR_VEC,
+        BRIDGE_DIR_PAINTER,
+    ]
     .iter()
     .flat_map(|d| {
         fs::read_dir(d)
@@ -310,15 +315,20 @@ fn tools_that_take_over_the_inspector() -> Vec<String> {
     //    *Uma varredura por directório mede a árvore de ontem no dia em que alguém move uma pasta*
     //    — e este censo não conflitou no merge, logo nada o teria acusado (acrescentado pelo
     //    integrador ao resolver o conflito do censo irmão, 20 linhas acima).
-    let mut files: Vec<_> = [BRIDGE_DIR, BRIDGE_DIR_FAM, BRIDGE_DIR_VEC, BRIDGE_DIR_PAINTER]
-        .iter()
-        .flat_map(|d| {
-            fs::read_dir(d)
-                .unwrap_or_else(|_| panic!("{d} existe"))
-                .filter_map(Result::ok)
-                .map(|e| e.path())
-        })
-        .collect();
+    let mut files: Vec<_> = [
+        BRIDGE_DIR,
+        BRIDGE_DIR_FAM,
+        BRIDGE_DIR_VEC,
+        BRIDGE_DIR_PAINTER,
+    ]
+    .iter()
+    .flat_map(|d| {
+        fs::read_dir(d)
+            .unwrap_or_else(|_| panic!("{d} existe"))
+            .filter_map(Result::ok)
+            .map(|e| e.path())
+    })
+    .collect();
     files.sort();
     for f in files {
         let Some(name) = f.file_stem().and_then(|s| s.to_str()) else {

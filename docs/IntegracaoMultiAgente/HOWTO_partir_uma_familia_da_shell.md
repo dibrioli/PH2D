@@ -343,6 +343,21 @@ a precisar da shell` e isso **respondeu à pergunta que a varredura de texto nã
 ⚠️ Ela chegou lá depois de *«oscilar ficheiros crate↔shell a cada erro novo»* — e a lição é dela:
 **medir o fecho em vez de reagir ao erro seguinte.**
 
+⛔⛔ **E a `line/app-motion` mediu o MESMO buraco por outro lado, com o erro a valer 30×** (11/09):
+a primeira medição dela disse *«dá para mover 46 757 linhas»* e a resposta certa era **1 573**. Dois
+furos na régua, **os dois a favor de um resultado bonito**:
+
+1. **tratou uma aresta entre ficheiros como de MÃO ÚNICA.** Ela é de mão dupla — `#[path]` e `mod`
+   prendem o pai ao filho *e* o filho ao pai (é a mesma armadilha da §2.2 do lado do `vec`);
+2. ⭐⭐ **não via o acoplamento que viaja por um CAMPO em vez de por um NOME.** As cenas do Motion
+   chegam ao estado da família por `app.gfx.motion` — *nenhuma varredura por nome de módulo o vê*,
+   porque não há nome de módulo nenhum na expressão.
+
+⇒ **Contar citações mede menos do que o fecho, sempre.** A pergunta que responde é *«a partir dos
+ficheiros que quero mover, que raízes da shell continuam alcançáveis?»* — e ela tem de seguir
+**campos**, não só caminhos de módulo. ⚠️ *Uma régua que erra a favor do resultado que se quer é a
+mais cara de todas: ela não atrasa o trabalho, ela autoriza-o.*
+
 
 ## §3 — A prova (as cinco, com os números do piloto)
 

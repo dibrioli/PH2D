@@ -300,10 +300,18 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   2026-09-02 eu li `measure_normals_parallel_speedup` como **`3 de 3 VERMELHO` sozinho** e quase
   o arquivei como defeito real; a máquina estava a **load 82** (a suíte de 20 316 ainda a
   esvaziar). Com `load 3,2`: **3 de 3 verde**. *Imprima o `/proc/loadavg` AO LADO de cada
-  corrida de confirmação, senão a régua que desmente a flake é a própria flake.* · e ⚠️ **as duas de ALOCAÇÃO**, espécie
-  própria: `apply_from_doc_is_zero_alloc_steady_state` (ph2d-timeline) e
-  `the_trusted_len_collect_allocates_once` (ph2d-audio-edit) — um contador de alocações parece
-  imune a carga e não é: sob fan-out o alocador global reutiliza arenas de outra maneira ·
+  corrida de confirmação, senão a régua que desmente a flake é a própria flake.* · e ⚠️ **as TRÊS de ALOCAÇÃO**, espécie
+  própria: `apply_from_doc_is_zero_alloc_steady_state` (ph2d-timeline) ·
+  `the_trusted_len_collect_allocates_once` (ph2d-audio-edit) · e
+  **`no_expression_allocates_no_link_frame`** (ph2d-timeline, promovido pela integração da W2 Fase C
+  em 2026-09-12 a pedido da `line/app-motion`) — um contador de alocações parece
+  imune a carga e não é: sob fan-out o alocador global reutiliza arenas de outra maneira.
+  ⭐⭐ **A terceira trouxe a assinatura mais limpa da família até hoje: ela PASSA a `load 38–48` e
+  reprova no meio de um fan-out de 16 245** ⇒ *o discriminador é o FAN-OUT, não o relógio* — o
+  mesmo achado que a nota do `flip_fit_cache` já registava, agora com o controlo do lado que passa.
+  ⚠️ E ela é **irmã de ficheiro** da primeira desta lista, que passou na mesma corrida: *duas
+  contagens de alocação na mesma crate, uma na lista e outra não, é exactamente como a lista
+  envelhece* ·
   `the_shape_match_is_linear_in_the_mesh`
   ([`ph2d-node-motion-soft-body`](crates/ph2d-node-motion-soft-body/) — confirmado 2026-09-01
   pelas TRÊS assinaturas: gate de razão · **zero linhas de diff** da linha acusada naquela crate ·

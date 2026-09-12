@@ -66,15 +66,15 @@ use std::path::{Path, PathBuf};
 ///
 /// **FASE D** (a 4.ª rodada, 12/09) → **208 442** / 859 (a família das **INSTÂNCIAS** sai:
 /// `crates/ph2d-app-components`, 58 ficheiros) → **196 612** / 821 (a `vec`: 38 f) →
-/// **186 629** / 778 (o **PAINTER**, a última família grande sem crate própria:
+/// **186 647** / 778 (o **PAINTER**, a última família grande sem crate própria:
 /// `crates/ph2d-app-painter`, 43 f).
 ///
-/// ⭐⭐⭐ **De 526 809 para 186 629 em dois dias — a shell tem 35 % do tamanho que tinha**, e a
+/// ⭐⭐⭐ **De 526 809 para 186 647 em dois dias — a shell tem 35 % do tamanho que tinha**, e a
 /// unidade de compilação que era o tecto do relógio deste repo deixou de o ser.
 ///
 /// ⚠️ **Medido DEPOIS do `cargo fmt --all`, e a ordem não é cerimónia:** a formatação das duas
-/// linhas que o integrador escreveu no censo das pontes moveu a contagem de `186 619` para
-/// `186 629`. *Dez linhas não mudam nada aqui; mudaram quando foram 32, e a regra é a mesma.*
+/// linhas que o integrador escreveu no censo das pontes moveu a contagem de `186 619` para `186 629`, e as notas que ele escreveu nos dois
+/// gates que a mudança de casa partiu levaram-na a `186 647`. *Dez linhas não mudam nada aqui; mudaram quando foram 32, e a regra é a mesma.*
 ///
 /// ⭐⭐⭐ **Em dois dias a shell caiu de 526 809 para 225 394 — `−301 415`, `−57,2 %`**, e de 2 023
 /// ficheiros para 917. Mais de metade da unidade de compilação que era o tecto do relógio deste

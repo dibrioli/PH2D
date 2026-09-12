@@ -244,19 +244,37 @@ fn a_layout_names_the_inspector_exactly_when_its_canvas_owner_does_not_take_it_o
     // exigir `>= 4` seria exigir para sempre uma tomada de conta que o produto apagou. O que tem de
     // continuar vivo é a varredura — ela lê a pasta das pontes, e uma pasta renomeada devolveria
     // zero pelo motivo errado.
-    let bridges = fs::read_dir(BRIDGE_DIR)
-        .expect("a pasta das pontes existe")
-        .filter_map(Result::ok)
-        .filter(|e| {
-            e.path()
-                .file_stem()
-                .and_then(|s| s.to_str())
-                .is_some_and(|n| n.ends_with("_bridge"))
-        })
-        .count();
+    // ⚠️⚠️ **E ele varre os QUATRO sítios, não só o `render_loop`** (integrador, Fase D 12/09).
+    //    Este controlo existe para afirmar que *a varredura continua a achar pontes*; enquanto
+    //    elas viviam todas na shell, ler uma pasta bastava. A `line/app-painter` levou **25**
+    //    ficheiros para a crate dela e o `render_loop` ficou com **7** — abaixo do piso —, então
+    //    o controlo reprovou dizendo *«a varredura perdeu o alvo»* quando o alvo é que se mudou.
+    //    ⛔ Baixar o piso de `8` para `7` seria a cura errada: ela deixa o controlo a descrever
+    //    uma população que encolhe a cada família que sai, e no dia em que ele chegar a zero já
+    //    ninguém sabe se foi a mudança ou a varredura. *Um controlo de instrumento mede o
+    //    INSTRUMENTO: ele tem de varrer onde as coisas estão.* Hoje: 7 + 1 + 3 + 1 = 12.
+    let bridges = [
+        BRIDGE_DIR,
+        BRIDGE_DIR_FAM,
+        BRIDGE_DIR_VEC,
+        BRIDGE_DIR_PAINTER,
+    ]
+    .iter()
+    .flat_map(|d| {
+        fs::read_dir(d)
+            .unwrap_or_else(|_| panic!("{d} existe"))
+            .filter_map(Result::ok)
+    })
+    .filter(|e| {
+        e.path()
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .is_some_and(|n| n.ends_with("_bridge"))
+    })
+    .count();
     assert!(
         bridges >= 8,
-        "controlo do instrumento: só {bridges} pontes varridas em {BRIDGE_DIR} — a varredura \
+        "controlo do instrumento: só {bridges} pontes varridas nos QUATRO sítios — a varredura \
          perdeu o alvo, e a lista vazia abaixo não significaria nada"
     );
     assert!(

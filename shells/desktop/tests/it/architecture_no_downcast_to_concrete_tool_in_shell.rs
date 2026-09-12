@@ -56,21 +56,21 @@ const DOWNCAST_ALLOWLIST: &[&str] = &[
     // EqualizeSizes bridge: tool is multi-sprite-required (DIRETRIZ
     // §3.8.3.1 exception), no RasterEditTool impl, must downcast.
     "src/render_loop/equalize_sizes_bridge.rs",
-    // Painter bridge: PainterTool is a stroke/vector tool with NO
-    // RasterEditTool impl (it doesn't bake an Individual texture via the
-    // raster lifecycle), so stroke-state queries (is_stroke_active,
-    // has_painted_since_source) + the Apply-path preview-cache management
-    // require the concrete downcast. Same exception class as
-    // padding_bridge / equalize_sizes_bridge. (Coord decision, 2026-05-29.)
-    "src/render_loop/painter_bridge.rs",
+    // ⚠️⚠️ **AS TRÊS ENTRADAS DO `painter_bridge` SAÍRAM DESTA LISTA em 2026-09-12** (W2 Fase D):
+    //    o `painter_bridge.rs`, o `painter_bridge_queries.rs` e o
+    //    `painter_bridge_shape_preview.rs` mudaram-se para `crates/ph2d-app-painter/src/`, e esta
+    //    lista é a das licenças **da SHELL** — o gate irmão varre `shells/desktop/src` e mais nada.
+    //    ⭐ Foi a metade de OBSOLESCÊNCIA deste ficheiro que as apanhou, pelo nome, em voz alta.
+    //    ⛔ Os comentários abaixo continuam a dizer *«same exception class as painter_bridge.rs»*:
+    //    a CLASSE da excepção é a mesma e a frase continua a explicar o porquê — mas o ficheiro que
+    //    ela cita vive hoje noutra crate. *Uma prosa que cita um endereço envelhece com a mudança
+    //    de casa, e é por isto que este parágrafo existe em vez de cinco edições.*
     // Painter bridge-queries: `painter_has_unflushed_strokes` + `apply_layer_
     // reparent` split out of painter_bridge.rs (HR-18 LOC cap); same downcast
     // exception class as painter_bridge.rs.
-    "src/render_loop/painter_bridge_queries.rs",
     // Painter shape-source preview: `drive_shape_source_preview` split out of
     // painter_bridge.rs (HR-18 LOC cap); same downcast exception class as
     // painter_bridge.rs. (Coord ship-fix, 2026-07-02.)
-    "src/render_loop/painter_bridge_shape_preview.rs",
     // image_edit drain: per-tool bake dispatch. Some downcasts retire
     // in later Etapas as OneShotImageOp routes via Registry kind.
     "src/render_loop/image_edit.rs",

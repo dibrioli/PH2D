@@ -79,7 +79,9 @@ mod asset_index_build;
 mod asset_menu_smoke;
 mod atlas_loader;
 mod attribute_demo_smoke;
-mod audio;
+// ⛔ **O BACKEND DE ÁUDIO mudou-se para a `ph2d-audio-desktop`** (`line/shell-folhas`, 12/09):
+// 8 544 linhas e o `cpal` inteiro saíram desta unidade de compilação. A shell continua a ler as
+// sete `PH2D_AUDIO_*` — o ROTEADOR é composição e fica aqui; o que saiu foi o motor.
 /// ⭐⭐⭐ A cena do `Timer` (`PH2D_TIMER_SMOKE=1`) — o primeiro produtor de sinal que não
 /// precisa de dois corpos a tocarem-se.
 /// ⭐⭐⭐ O smoke do SOM DE CENA (TOP-20 #4). ⚠️ Gateado no `panel-audio-editor` **pelo
@@ -814,7 +816,7 @@ impl App {
         // Phase 2.1/2.2: open the audio device (None = run silent). Env smokes:
         // `PH2D_AUDIO_SMOKE` plays a 440 Hz beep; `PH2D_AUDIO_FILE=<path>`
         // decodes + loop-plays a real audio file.
-        let mut audio = crate::audio::AudioSystem::new();
+        let mut audio = ph2d_audio_desktop::AudioSystem::new();
         if let Some(a) = audio.as_mut() {
             if std::env::var_os("PH2D_AUDIO_SMOKE").is_some() {
                 a.play_test_tone();

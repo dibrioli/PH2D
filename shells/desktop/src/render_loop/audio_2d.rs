@@ -4,7 +4,7 @@
 //!
 //! - A **lei** vive no [`ph2d_ecs::audio_2d`]: quem são as orelhas, quanto se ouve, de que lado.
 //!   Ela é pura e não conhece o dispositivo.
-//! - O **livro das vozes** vive no [`crate::audio::scene`]: o que está a soar agora, chaveado por
+//! - O **livro das vozes** vive no [`ph2d_audio_desktop::scene`]: o que está a soar agora, chaveado por
 //!   `StableId`, ao lado do `cpal`.
 //! - Este ficheiro é a **costura**: lê o mundo, chama a lei, e manda o livro tocar.
 //!
@@ -16,7 +16,7 @@
 //! É a lei que o `Timer` pagou com um report do dono (*«nada do smoke funciona»*): a condição do
 //! `autoplay` **não** pode ser *«não está a tocar»*, porque um som de uma vez só que acaba satisfaz
 //! isso e renasceria a cada quadro. A condição é *«este objecto não existia no livro»*, e quem a
-//! responde é o [`crate::audio::scene::SceneAudio::take_birth`].
+//! responde é o [`ph2d_audio_desktop::scene::SceneAudio::take_birth`].
 //!
 //! # ⚠️ O que este passe NÃO faz
 //!
@@ -31,8 +31,8 @@ use ph2d_ecs::{AudioSource2D, Entity, SimWorld, StableId};
 
 use ph2d_audio::AudioEngine;
 
-use crate::audio::AudioSystem;
-use crate::audio::scene::SceneAudio;
+use ph2d_audio_desktop::AudioSystem;
+use ph2d_audio_desktop::scene::SceneAudio;
 
 /// O que o quadro fez com o som — o que o smoke imprime.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]

@@ -135,7 +135,7 @@ impl BandCache {
         }
         let decoded = std::fs::read(path)
             .ok()
-            .and_then(|bytes| crate::audio::decode_any::decode(&bytes).ok())
+            .and_then(|bytes| ph2d_audio_desktop::decode_any::decode(&bytes).ok())
             .map(std::sync::Arc::new);
         self.clips.insert(path.to_string(), decoded.clone());
         decoded

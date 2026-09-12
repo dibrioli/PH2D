@@ -61,7 +61,7 @@ pub(crate) fn apply(
     sim: &mut SimWorld,
     effects: &[SignalEffect],
     drive: &mut PreviewDrive,
-    mut audio: Option<&mut crate::audio::AudioSystem>,
+    mut audio: Option<&mut ph2d_audio_desktop::AudioSystem>,
 ) -> ActionReport {
     let mut report = ActionReport::default();
     for fx in effects {

@@ -5045,6 +5045,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-audio-desktop"
+version = "0.0.0"
+dependencies = [
+ "cpal",
+ "ph2d-audio",
+ "ph2d-audio-decode",
+ "ph2d-audio-edit",
+ "ph2d-audio-encode",
+ "ph2d-audio-ml",
+ "ph2d-audio-opus",
+ "ph2d-audio-spectral",
+ "ph2d-ecs",
+ "ph2d-editor",
+ "ph2d-editor-core",
+ "ph2d-panel-audio-editor",
+ "ph2d-tokens",
+]
+
+[[package]]
 name = "ph2d-audio-edit"
 version = "0.0.0"
 dependencies = [
@@ -5566,6 +5585,7 @@ dependencies = [
  "ph2d-asset-ktx2",
  "ph2d-audio",
  "ph2d-audio-decode",
+ "ph2d-audio-desktop",
  "ph2d-audio-edit",
  "ph2d-audio-encode",
  "ph2d-audio-ml",

@@ -12,7 +12,7 @@
 //! respostas à mesma pergunta, e a que o artista vê é a que envelhece»*).
 //!
 //! ⇒ O nó declara uma [`FileKind`]; a shell — que possui os descodificadores — resolve-a
-//! para a **constante canónica** ([`AUDIO_IMPORT_EXTS`](crate::audio::decode_any)), a mesma
+//! para a **constante canónica** ([`AUDIO_IMPORT_EXTS`](ph2d_audio_desktop::decode_any)), a mesma
 //! que o importador de áudio do menu já usa.
 //!
 //! ## E o diálogo passa pela PORTA
@@ -33,7 +33,7 @@ use ph2d_node_registry::{FileKind, ParamWidget};
 #[must_use]
 pub(crate) fn file_filter(kind: FileKind) -> (&'static str, &'static [&'static str]) {
     match kind {
-        FileKind::Audio => ("Audio", crate::audio::decode_any::AUDIO_IMPORT_EXTS),
+        FileKind::Audio => ("Audio", ph2d_audio_desktop::decode_any::AUDIO_IMPORT_EXTS),
         // ⚠️ **As extensões são da SHELL, e o leitor é um só** (`ph2d_table::parse`): ele deteta
         // o separador, então `.csv` e `.tsv` são o MESMO caminho de código — a lista aqui diz o
         // que o diálogo oferece, nunca o que o leitor sabe.

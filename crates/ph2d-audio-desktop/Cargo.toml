@@ -1,0 +1,42 @@
+[package]
+name = "ph2d-audio-desktop"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# ⛔ **O `cpal` está CONFINADO aqui** — é a razão de existir desta crate, e era a lei que o módulo
+# já declarava dentro da shell (HR-1: o mixer `ph2d-audio` fica agnóstico à plataforma). Ela passa
+# de promessa num doc-comment a fronteira de compilação.
+[dependencies]
+cpal = "0.18"
+ph2d-audio = { path = "../ph2d-audio" }
+ph2d-audio-decode = { path = "../ph2d-audio-decode" }
+ph2d-audio-edit = { path = "../ph2d-audio-edit", optional = true }
+ph2d-audio-encode = { path = "../ph2d-audio-encode", optional = true }
+ph2d-audio-ml = { path = "../ph2d-audio-ml", optional = true }
+ph2d-audio-opus = { path = "../ph2d-audio-opus" }
+ph2d-audio-spectral = { path = "../ph2d-audio-spectral" }
+ph2d-ecs = { path = "../ph2d-ecs" }
+ph2d-editor = { path = "../ph2d-editor" }
+ph2d-editor-core = { path = "../ph2d-editor-core" }
+ph2d-panel-audio-editor = { path = "../ph2d-panel-audio-editor", optional = true }
+ph2d-tokens = { path = "../ph2d-tokens" }
+
+# ⚠️⚠️ **AS FEATURES NÃO VIAJAM COM O CÓDIGO** (HOWTO §2.4, a armadilha MUDA): 21 sítios deste
+# módulo vivem sob um `cfg(feature = …)`, e numa crate que não as declara o `cfg` é falso **por
+# construção** — ela compilaria VERDE com o editor de áudio e o denoise inteiros desligados, e o
+# único aviso seria um `unexpected cfg condition value` no meio da build.
+# ⚠️ A composição é a MESMA da shell, lida do manifesto dela e não de memória: o `audio-ml` IMPLICA
+# o painel (é onde o botão e a ponte dele vivem), e o painel arrasta o `-edit` e o `-encode`.
+[features]
+panel-audio-editor = ["dep:ph2d-panel-audio-editor", "dep:ph2d-audio-edit", "dep:ph2d-audio-encode"]
+audio-ml = ["panel-audio-editor", "dep:ph2d-audio-ml"]
+# ⚠️ HOWTO §2.5 — UM item atravessa a fronteira: o `SceneAudio::decoded_ok`, que um gate do
+# `render_loop` lê. Dentro da shell ele não precisava de feature; do outro lado de uma crate um
+# `cfg(test)` é falso. O tamanho da feature é o que ATRAVESSA, contado pelo compilador.
+test-support = []

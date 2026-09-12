@@ -608,6 +608,7 @@ ph2d-preview-drive = { path = "../../crates/ph2d-preview-drive" }
 ph2d-inspector-ordering = { path = "../../crates/ph2d-inspector-ordering" }
 ph2d-transport = { path = "../../crates/ph2d-transport" }
 ph2d-vec-entities = { path = "../../crates/ph2d-vec-entities" }
+ph2d-audio-desktop = { path = "../../crates/ph2d-audio-desktop" }
 
 [dev-dependencies]
 # W2 — os auxiliares de gate da família (`forget_*`, `sync_scene`, …) vivem atrás da feature
@@ -623,6 +624,8 @@ ph2d-preview-drive = { path = "../../crates/ph2d-preview-drive", features = ["te
 # E a fixtura da ponte do vetor (`setup`/`bits`): o irmão da selecção usa-a de dentro da crate e
 # o ficheiro de gates que ficou na shell de fora — uma porta só para as duas.
 ph2d-vec-entities = { path = "../../crates/ph2d-vec-entities", features = ["test-support"] }
+# E o livro das vozes da cena: o `decoded_ok` que o gate do `render_loop` lê era `#[cfg(test)]`.
+ph2d-audio-desktop = { path = "../../crates/ph2d-audio-desktop", features = ["test-support"] }
 # O harness headless de painel (`MockPanelHost`) — a shell precisa dele para medir a
 # GEOMETRIA que um painel de fato registra. O censo de linhas (doc 88 B3) mede quantas
 # linhas um nó produz; a metade que faltava é se elas CABEM na altura do dock, e a única
@@ -798,8 +801,8 @@ panel-sculpt3d       = ["ph2d-panel-registry-init/panel-sculpt3d"]
 panel-wet-tuning     = ["ph2d-panel-registry-init/panel-wet-tuning"]
 # Direct dep too: the render_loop editor bridge reads the transport intents +
 # drives the preview engine + publishes position back for the readout/playhead.
-panel-audio-editor   = ["ph2d-panel-registry-init/panel-audio-editor", "dep:ph2d-panel-audio-editor", "dep:ph2d-audio-edit", "dep:ph2d-audio-encode"]
+panel-audio-editor   = ["ph2d-panel-registry-init/panel-audio-editor", "dep:ph2d-panel-audio-editor", "dep:ph2d-audio-edit", "dep:ph2d-audio-encode", "ph2d-audio-desktop/panel-audio-editor"]
 # W7 AI Denoise (ADR-0123), OFF by default — NOT in `default`. Turning it on pulls the native
 # DeepFilterNet stack (`ph2d-audio-ml` → `tract`) and lights the "AI Denoise" button in the audio
 # editor. It implies `panel-audio-editor`, which is where the button and its bridge live.
-audio-ml             = ["panel-audio-editor", "dep:ph2d-audio-ml"]
+audio-ml             = ["panel-audio-editor", "dep:ph2d-audio-ml", "ph2d-audio-desktop/audio-ml"]

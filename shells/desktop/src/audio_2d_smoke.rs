@@ -86,13 +86,13 @@ impl crate::App {
         // metralhadora, e um tom longo disparado por sinal empilharia vozes.
         let Some(zumbido) = escrever(
             "ph2d_smoke_sino.wav",
-            crate::audio::signals::sine_tone(fmt, 220.0, 2.0, 0.35),
+            ph2d_audio_desktop::signals::sine_tone(fmt, 220.0, 2.0, 0.35),
         ) else {
             return;
         };
         let Some(blip) = escrever(
             "ph2d_smoke_sirene.wav",
-            crate::audio::signals::sine_tone(fmt, 880.0, 0.25, 0.5),
+            ph2d_audio_desktop::signals::sine_tone(fmt, 880.0, 0.25, 0.5),
         ) else {
             return;
         };

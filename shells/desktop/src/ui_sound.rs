@@ -26,7 +26,7 @@
 //! confirmação já dá — e cada som a mais é uma chance a mais de o artista desligar o conjunto.
 //!
 //! ⚠️ **Sintetizados, sem ficheiro nenhum**: o motor já traz os geradores
-//! ([`crate::audio::signals`]), e um asset de UI seria mais um binário a versionar, a licenciar e
+//! ([`ph2d_audio_desktop::signals`]), e um asset de UI seria mais um binário a versionar, a licenciar e
 //! a manter afinado com o tema.
 //!
 //! # ⛔⛔ O QUINTO ELO da cadeia mora FORA do processo — e foi ele que partiu primeiro
@@ -65,39 +65,10 @@
 //! canal de saída atravessa processos, e a suíte inteira deste repo cobre apenas o nosso lado
 //! dele. *Um gate verde sobre um canal mudo continua verde.*
 
-/// O que aconteceu — e cada um destes é uma coisa que **a mão fez**.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) enum UiSound {
-    /// Um botão/chip foi premido e solto sobre si próprio.
-    Click,
-    /// Um interruptor mudou de estado (o par do `Click`, meio tom acima ou abaixo).
-    Toggle,
-    /// Um gesto **consolidou** alguma coisa (Apply, commit, um Rec).
-    Commit,
-    /// O app **recusou** o gesto (a trava do Painter, um menu vazio, um contrato).
-    ///
-    /// ⚠️ Ele é o único que soa a *"não"*, e é o mais importante do quatro: uma recusa silenciosa
-    /// lê-se como um clique que não funcionou.
-    Refuse,
-}
-
-impl UiSound {
-    /// `(frequência em Hz, duração em segundos, ganho)` — a voz de cada um.
-    ///
-    /// ⚠️ **Curtos e graves.** Um som de UI que dure mais que o gesto chega DEPOIS dele, e um agudo
-    /// corta a música que o artista tem a tocar. Os quatro cabem em 90 ms.
-    pub(crate) const fn voice(self) -> (f32, f32, f32) {
-        match self {
-            UiSound::Click => (660.0, 0.035, 0.18),
-            // Um tom abaixo do clique: o ouvido lê a diferença sem ter de a aprender.
-            UiSound::Toggle => (550.0, 0.045, 0.18),
-            // Uma quinta acima do clique, e um bocadinho mais longo: "isto ficou feito".
-            UiSound::Commit => (880.0, 0.09, 0.16),
-            // Grave e curto — a única voz que desce.
-            UiSound::Refuse => (180.0, 0.08, 0.22),
-        }
-    }
-}
+// ⭐ **O enum e a `voice()` mudaram-se para a `ph2d-audio-desktop`** — o motor é que os lê, e um
+// tipo que o motor lê não pode ficar do lado de cá de uma fronteira que ele não atravessa. O
+// re-export mantém os chamadores (`crate::ui_sound::UiSound`) byte a byte como estavam.
+pub(crate) use ph2d_audio_desktop::ui_sound::UiSound;
 
 impl crate::App {
     /// **TOCA `what`**, se o artista tiver ligado o som — e não faz mais nada.

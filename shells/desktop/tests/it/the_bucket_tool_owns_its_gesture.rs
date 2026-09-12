@@ -20,7 +20,16 @@
 
 const DISPATCH: &str = include_str!("../../src/input_dispatch.rs");
 const LOOP: &str = include_str!("../../src/render_loop/mod.rs");
+// ⛔⛔ **DUAS fontes desde a Fase C (W2/L4), e a partição é por SUJEITO.** A lei do balde saiu para
+// `ph2d-app-vec` e a ponte `impl App` ficou — logo metade das agulhas deste gate mede um ficheiro e
+// metade mede o outro. *Uma agulha segue o sujeito, nunca o ficheiro* (HOWTO §2.9).
+//
+// ⚠️ **Apontar as duas para a ponte teria sido MUDO no pior sentido**: `include_str!` falha alto
+// quando o ficheiro some, mas aqui ele NÃO some — a ponte continua a existir com o mesmo nome, e o
+// que muda é o que está lá dentro. O gate compilaria e reprovaria a correr… ou pior, se a agulha
+// fosse uma AUSÊNCIA (`!contains`), ficaria **verde a medir nada**.
 const BUCKET: &str = include_str!("../../src/vec_bucket.rs");
+const LEI: &str = include_str!("../../../../crates/ph2d-app-vec/src/bucket.rs");
 
 fn at(src: &str, needle: &str, onde: &str) -> usize {
     src.find(needle).unwrap_or_else(|| {
@@ -38,7 +47,12 @@ fn the_scanner_finds_what_it_scans_for() {
     at(DISPATCH, "self.apply_bucket()", "o dispatch");
     at(LOOP, "self.refresh_bucket_hover(pointer);", "o render_loop");
     at(LOOP, "ph2d_vec_render::draw_bucket_face(", "o render_loop");
-    at(BUCKET, "fn refresh_bucket_hover(", "o vec_bucket");
+    at(BUCKET, "fn refresh_bucket_hover(", "a ponte do vec_bucket");
+    // ⭐ E a metade NOVA: sem esta linha, um `include_str!` a apontar para um ficheiro que existe
+    //    mas mudou de conteúdo deixaria as asserções de AUSÊNCIA verdes sobre nada.
+    at(LEI, "pub fn upkeep(", "a lei em ph2d-app-vec::bucket");
+    at(LEI, "pub fn hover(", "a lei em ph2d-app-vec::bucket");
+    at(LEI, "pub fn deposit(", "a lei em ph2d-app-vec::bucket");
 }
 
 /// **O press do Balde CONSOME o clique** — o `return` vem depois do bloco dele e antes da cadeia
@@ -81,7 +95,7 @@ fn the_press_is_consumed_so_it_never_falls_into_drawing() {
 /// **O clique usa a face do QUADRO** — `apply_bucket` lê `vec_bucket_face` e não recalcula.
 #[test]
 fn the_click_deposits_what_the_highlight_showed() {
-    let f = at(BUCKET, "fn apply_bucket(", "o vec_bucket");
+    let f = at(BUCKET, "fn apply_bucket(", "a ponte do vec_bucket");
     let corpo = &BUCKET[f..];
     let fim = corpo.find("\n    /// ").unwrap_or(corpo.len());
     let corpo = &corpo[..fim];
@@ -102,8 +116,8 @@ fn the_click_deposits_what_the_highlight_showed() {
 /// olho vê é o `RootOrder`, e o `vec_entities::sync` dá a toda entidade nova **o maior**.
 #[test]
 fn the_filled_shape_is_born_behind_the_lines() {
-    let f = at(BUCKET, "fn arm_new_fills(", "o vec_bucket");
-    let corpo = &BUCKET[f..];
+    let f = at(LEI, "fn arm_new_fills(", "a lei do bucket");
+    let corpo = &LEI[f..];
     assert!(
         corpo.contains("ZOrder::ToBack"),
         "a forma do Balde nao e' mandada para o fundo — ela taparia o desenho"
@@ -138,7 +152,7 @@ fn the_upkeep_runs_in_every_tool_not_only_in_the_bucket() {
         "o upkeep tem de correr ANTES do realce, que le a rede dele"
     );
     // A guarda de MODO vive no realce, nunca no upkeep.
-    let f = at(BUCKET, "fn bucket_upkeep(", "o vec_bucket");
+    let f = at(BUCKET, "fn bucket_upkeep(", "a ponte do vec_bucket");
     let fim = BUCKET[f..]
         .find("fn refresh_bucket_hover(")
         .unwrap_or(BUCKET.len() - f)
@@ -155,14 +169,18 @@ fn the_upkeep_runs_in_every_tool_not_only_in_the_bucket() {
     // quebram"*). ⛔ Um gate textual afirma sobre a REDACÇÃO, não sobre o comportamento: o que a
     // votação faz está medido em `vec_bucket_claim_tests`, e o que aqui se prova é só que o
     // `bucket_upkeep` **chama** a lei e **escreve** o que ela devolve.
+    // ⚠️ **A partir daqui o sujeito é a LEI**: o corpo do `upkeep` saiu para a crate, e a fatia
+    //    vai de `pub fn upkeep(` até `pub fn hover(` (a ordem dos três verbos lá dentro).
+    let l = at(LEI, "pub fn upkeep(", "a lei do bucket");
+    let lfim = LEI[l..].find("pub fn hover(").unwrap_or(LEI.len() - l) + l;
     assert!(
-        BUCKET[f..fim].contains("crate::vec_bucket_claim::donos("),
+        LEI[l..lfim].contains("crate::bucket_claim::donos("),
         "o upkeep nao pergunta de quem e' cada face — os preenchimentos nao sobreviveriam a uma \
          mudanca de topologia"
     );
     assert!(
-        BUCKET[f..fim].contains("p.verts = primeiro;")
-            && BUCKET[f..fim].contains("p.subpaths = subs;"),
+        LEI[l..lfim].contains("p.verts = primeiro;")
+            && LEI[l..lfim].contains("p.subpaths = subs;"),
         "o upkeep calcula a area nova e nao a ESCREVE inteira — uma regiao que partiu perderia \
          metade"
     );
@@ -170,7 +188,7 @@ fn the_upkeep_runs_in_every_tool_not_only_in_the_bucket() {
     // `VecPath` já assentado tem pose própria, e escrever mundo nele desloca-o pelo centro dele —
     // o report de 2026-09-01 (*"nascendo deslocado para fora do stroke"*).
     assert!(
-        BUCKET.contains("para_local(g, xfp)"),
+        LEI.contains("para_local(g, xfp)"),
         "a area re-cozida e' escrita em MUNDO num caminho que tem pose — ela sai deslocada"
     );
     // ⭐⭐⭐ **E o dono de cada face sai das ÂNCORAS, não de comparar com o quadro anterior.**
@@ -182,24 +200,24 @@ fn the_upkeep_runs_in_every_tool_not_only_in_the_bucket() {
     // `vec_bucket_claim_tests` e nos ficheiros que o Enio exportou; o que aqui se prova é só que o
     // `bucket_upkeep` **chama** a lei e **escreve** o que ela devolve.
     assert!(
-        BUCKET[f..fim].contains("crate::vec_bucket_claim::donos(&rede, &faces, &tags, &receitas)"),
+        LEI[l..lfim].contains("crate::bucket_claim::donos(&rede, &faces, &tags, &receitas)"),
         "o upkeep nao resolve as ancoras — a tinta voltaria a depender do quadro anterior"
     );
     assert!(
-        BUCKET[f..fim].contains("ancoras: &f.ancoras"),
+        LEI[l..lfim].contains("ancoras: &f.ancoras"),
         "as receitas nao levam as ancoras do proprio preenchimento"
     );
     // ⛔⛔ **E a semente NÃO se re-semeia.** Reescrevê-la a cada quadro é escrita derivada, e foi
     // essa escrita — generalizada para uma região inteira — que fez a tinta derivar e trocar de
     // área nos quatro reports. *O gate exige a AUSÊNCIA porque a presença é o defeito.*
     assert!(
-        !BUCKET[f..fim].contains("VecBucketFill::new("),
+        !LEI[l..lfim].contains("VecBucketFill::new("),
         "o upkeep reescreve a receita — a deriva volta por aqui"
     );
     // ⚠️ E a exclusão passa pela porta ÚNICA, com os DOIS termos: um fecho escrito à mão aqui foi
     // o que deixou a mutação `o-fill-entra-na-rede` sobreviver.
     assert!(
-        BUCKET[f..fim].contains("fora_da_rede(vista.is_hidden(id), so_fill.contains(&id))"),
+        LEI[l..lfim].contains("fora_da_rede(vista.is_hidden(id), so_fill.contains(&id))"),
         "a exclusao nao passa pela porta unica, ou perdeu um dos dois termos"
     );
 }
@@ -207,7 +225,7 @@ fn the_upkeep_runs_in_every_tool_not_only_in_the_bucket() {
 /// **O realce é LIMPO fora do modo**, e a rede guardada morre com ele.
 #[test]
 fn leaving_the_tool_clears_the_highlight_and_the_cache() {
-    let f = at(BUCKET, "fn refresh_bucket_hover(", "o vec_bucket");
+    let f = at(BUCKET, "fn refresh_bucket_hover(", "a ponte do vec_bucket");
     let guarda = at(
         &BUCKET[f..],
         "!= ph2d_tool_vector::DrawMode::Bucket",
@@ -221,9 +239,9 @@ fn leaving_the_tool_clears_the_highlight_and_the_cache() {
     );
     // ⚠️ A rede guardada NÃO morre aqui: ela serve os preenchimentos vivos em toda ferramenta. O
     // que a apaga é o upkeep, quando não há preenchimento nenhum **e** o balde não está na mão.
-    let up = at(BUCKET, "fn bucket_upkeep(", "o vec_bucket");
+    let up = at(LEI, "pub fn upkeep(", "a lei do bucket");
     assert!(
-        BUCKET[up..].contains("if fills.is_empty() && !armado {"),
+        LEI[up..].contains("if fills.is_empty() && !armado {"),
         "o upkeep nao sai de graca quando nao ha' nada a fazer — quem nao usa o balde pagaria"
     );
 }
@@ -233,18 +251,18 @@ fn leaving_the_tool_clears_the_highlight_and_the_cache() {
 #[test]
 fn the_network_is_cached_not_rebuilt_every_frame() {
     let chave = at(
-        BUCKET,
-        "if self.vec_bucket_cache.as_ref().is_some_and(|c| c.chave == k) {",
-        "o vec_bucket",
+        LEI,
+        "if cache.as_ref().is_some_and(|c| c.chave == k) {",
+        "a lei do bucket",
     );
-    let monta = at(BUCKET, "ph2d_vec_fill::rede(&contornos)", "o vec_bucket");
+    let monta = at(LEI, "ph2d_vec_fill::rede(&contornos)", "a lei do bucket");
     assert!(
         chave < monta,
         "a rede e' montada ANTES da comparacao de chave — isso e' montar por quadro, e custa \
          3,8 ms a 20 tracos"
     );
     assert_eq!(
-        BUCKET.matches("ph2d_vec_fill::rede(").count(),
+        LEI.matches("ph2d_vec_fill::rede(").count(),
         1,
         "ha' mais de um sitio a montar a rede — um deles nao passa pelo cache"
     );

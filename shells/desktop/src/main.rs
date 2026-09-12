@@ -590,7 +590,6 @@ mod vec_bool_reach_tests;
 mod vec_bool_shape;
 /// ⭐⭐⭐ **SOLDAR** (plano 39) — linhas cruzadas partem-se em arcos que partilham o nó.
 mod vec_bucket;
-pub(crate) use ph2d_app_vec::bucket_claim as vec_bucket_claim;
 // ⛔ **O `bucket_repro` NÃO é re-exportado, e a ausência é a cura** (W2/L4 Fase B): aquele módulo
 // abre com `#![cfg(test)]`, e **`cfg(test)` é falso numa crate que é DEPENDÊNCIA** (HOWTO §2.5) —
 // da shell ele simplesmente não existe. Ele é a sonda do report de 2026-09-02 e corre com os testes

@@ -267,7 +267,7 @@ fn forma_pintada(scene: &mut VecScene, x: f64, y: f64, l: f64) -> u64 {
 ///
 /// Report do Enio (2026-09-04). ⚠️⚠️ **Sem isto o defeito não era «não faz nada»:** a forma nova
 /// nascia por cima e no quadro seguinte as duas tinham âncoras na MESMA face; o empate de
-/// [`crate::vec_bucket_claim::donos`] desce ao índice do documento, logo **a velha ganhava** e a
+/// [`crate::bucket_claim::donos`] desce ao índice do documento, logo **a velha ganhava** e a
 /// nova ficava congelada e invisível.
 #[test]
 fn a_bucket_fill_already_under_the_click_is_deleted_not_stacked() {

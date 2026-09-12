@@ -71,6 +71,7 @@
 pub mod appearance;
 pub mod bindings;
 pub mod blend;
+pub mod bucket;
 pub mod bucket_claim;
 pub mod bucket_repro;
 pub mod component_edit;
@@ -84,6 +85,7 @@ pub mod morph_edit;
 pub mod pencil_input;
 pub mod resize_box_edit;
 pub mod shape_params;
+pub mod svg_export;
 pub mod svg_import;
 pub mod ui_panel_spec;
 pub mod widget_drive;

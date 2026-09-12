@@ -53,14 +53,22 @@ use std::path::{Path, PathBuf};
 /// e da `flip`, integradas na ordem do churn de costura; medido **depois** do `cargo fmt --all`,
 /// porque reformatar 46 ficheiros move a contagem) → **398 037** / 1 561 (12/09, a
 /// `line/shell-folhas`: as folhas partilhadas que prendiam TRÊS famílias saíram para sete crates
-/// nomeadas por assunto). O tecto é o medido mais a [`FOLGA_DE_COMPOSICAO`].
+/// nomeadas por assunto) → **381 328** / 1 521 (12/09, a **2.ª volta** da Fase B da `flip`: 53
+/// ficheiros, e com eles os CINCO que a `line/app-motion` tinha nomeado como bloqueadores dela) →
+/// **373 937** / 1 498 (12/09, a 2.ª volta da `vec`: 16 ficheiros, e `"vec"` sai da catraca das
+/// famílias sem roteador). O tecto é o medido mais a [`FOLGA_DE_COMPOSICAO`].
 ///
-/// ⭐ **Em dois dias a shell caiu de 526 809 para 398 037 — `−128 772`, `−24,4 %`.**
+/// ⭐ **Em dois dias a shell caiu de 526 809 para 373 937 — `−152 872`, `−29,0 %`.**
+///
+/// ⚠️ **Esta recontagem NÃO precisou de `cargo fmt --all`** — a árvore combinada das duas linhas
+/// chegou já formatada (`--check` limpo), e é por isso que este número é o mesmo antes e depois. A
+/// ordem do §5 do `ESTADO_W2` continua a valer: *integrar → formatar → medir → escrever*; o que
+/// muda quando o `fmt` tem trabalho para fazer é o **valor**, não o passo.
 ///
 /// ⛔ **Nenhuma LINHA lhe toca** — é um número que soma entre linhas, logo CONTA-SE, nunca se
 /// escolhe (`CLAUDE.md` §5.0): com cinco linhas a escrevê-lo o merge fica com um deles e nenhum
 /// está certo, em silêncio. Quem o reconta é o integrador, sobre a árvore combinada.
-const TETO_LOC: usize = 402_037;
+const TETO_LOC: usize = 377_937;
 
 /// Quanto a shell pode crescer acima do medido antes de o gate reprovar — a margem da raiz de
 /// composição, **não** espaço para um módulo.

@@ -40,7 +40,6 @@
 
 use std::collections::BTreeMap;
 use std::fs;
-use std::path::Path;
 
 use ph2d_editor::screens::task_layout::TaskLayout;
 

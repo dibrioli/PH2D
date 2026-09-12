@@ -10,7 +10,7 @@
 
 /// Lado máximo (px) de uma miniatura de cartão — grande o suficiente para se ler a forma, pequeno
 /// o suficiente para os bytes viajarem por quadro de graça (~37 KB a 96²).
-pub(crate) const THUMB_MAX: u32 = 96;
+pub const THUMB_MAX: u32 = 96;
 
 /// Reduz RGBA8 **reta** (`w`×`h`) a uma miniatura: no máximo [`THUMB_MAX`] no lado longo, aspecto
 /// preservado, **nunca amplia**.
@@ -41,7 +41,7 @@ pub(crate) const THUMB_MAX: u32 = 96;
 /// compraria era relógio numa passagem que já corre uma vez só.
 ///
 /// Devolve `(bytes, largura, altura)`.
-pub(crate) fn reduce(rgba: &[u8], w: u32, h: u32) -> (std::sync::Arc<Vec<u8>>, u32, u32) {
+pub fn reduce(rgba: &[u8], w: u32, h: u32) -> (std::sync::Arc<Vec<u8>>, u32, u32) {
     let (w, h) = (w.max(1), h.max(1));
     let long = w.max(h);
     let (tw, th) = if long <= THUMB_MAX {

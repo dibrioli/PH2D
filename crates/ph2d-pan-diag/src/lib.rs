@@ -39,7 +39,7 @@ use ph2d_host::WindowSize;
 use ph2d_render::Camera2d;
 
 /// `true` se `PH2D_PAN_DIAG` está ligada (lida uma vez).
-pub(crate) fn on() -> bool {
+pub fn on() -> bool {
     static ON: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
     *ON.get_or_init(|| std::env::var("PH2D_PAN_DIAG").is_ok_and(|v| v != "0"))
 }
@@ -83,7 +83,7 @@ fn flip_px(cam: &Camera2d, window: WindowSize, sub: Option<[f32; 4]>) -> (f64, f
 static VELLO_CENTER: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 
 /// Chamado onde o `cam_affine` do Vello é montado.
-pub(crate) fn note_vello_camera(center: [f32; 2]) {
+pub fn note_vello_camera(center: [f32; 2]) {
     if !on() {
         return;
     }
@@ -108,7 +108,7 @@ type Sample = ([f32; 2], [f32; 2], usize, usize);
 static SAMPLE: std::sync::Mutex<Option<Sample>> = std::sync::Mutex::new(None);
 
 /// Chamado depois do cozimento, com a 1.ª instância de cada rota.
-pub(crate) fn note_instances(sprites: &[ph2d_render::RenderInstance], vectors: &[[f32; 2]]) {
+pub fn note_instances(sprites: &[ph2d_render::RenderInstance], vectors: &[[f32; 2]]) {
     if !on() {
         return;
     }
@@ -122,7 +122,7 @@ pub(crate) fn note_instances(sprites: &[ph2d_render::RenderInstance], vectors: &
 /// Uma linha por quadro. ⚠️ **Chamada DEPOIS do passe de sprites**, senão o `aplicado` seria
 /// o do quadro anterior — e uma sonda um quadro atrasada sobre um defeito de um quadro é
 /// exatamente o erro que ela existe para não repetir.
-pub(crate) fn frame(
+pub fn frame(
     cam: &Camera2d,
     window: WindowSize,
     motion_active: bool,

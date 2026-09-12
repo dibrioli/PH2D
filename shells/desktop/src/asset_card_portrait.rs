@@ -33,7 +33,7 @@ use ph2d_ecs::{Entity, SimWorld, StableId, Transform};
 use ph2d_render::Sprite;
 
 /// O lado do retrato, em px. O mesmo tecto das miniaturas por textura — é o mesmo cartão.
-const SIDE: u32 = crate::thumbnail::THUMB_MAX;
+const SIDE: u32 = ph2d_thumbnail::THUMB_MAX;
 
 /// Uma peça pronta a compor: a miniatura dela, onde ela cai, e **que pedaço da imagem** ela mostra.
 struct Placed {

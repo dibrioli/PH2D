@@ -10128,7 +10128,7 @@ impl crate::App {
             // A SONDA (`PH2D_PAN_DIAG=1`): a cena do Vello é construída AQUI, com o
             // mundo→tela já aplicado na CPU; as sprites recebem a câmera noutro ponto do
             // quadro. Guardar o centro daqui é o que permite comparar os dois instantes.
-            crate::pan_diag::note_vello_camera(camera.center);
+            ph2d_pan_diag::note_vello_camera(camera.center);
             // A geometria DERIVADA deste frame — hoje, os offsets vivos. Cozida aqui (depois
             // do `sync`, senão uma forma recém-criada ainda não tem entidade e o componente
             // dela não seria encontrado) e desenhada pelo `dispatch` no z de cada forma.

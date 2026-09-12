@@ -1,0 +1,14 @@
+[package]
+name = "ph2d-thumbnail"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# ⭐ ZERO dependências — e é isso que a torna a folha mais barata do repo: a lei é aritmética
+# sobre um `&[u8]`. Ela já dizia de si mesma «uma lei, três consumidores».
+[dependencies]

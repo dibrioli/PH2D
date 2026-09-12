@@ -5690,6 +5690,7 @@ dependencies = [
  "ph2d-paint-gpu",
  "ph2d-painter-brush",
  "ph2d-painter-effects",
+ "ph2d-pan-diag",
  "ph2d-panel-asset-browser",
  "ph2d-panel-audio-editor",
  "ph2d-panel-audio-mixer",
@@ -5736,6 +5737,7 @@ dependencies = [
  "ph2d-sprite-sheet",
  "ph2d-table",
  "ph2d-text",
+ "ph2d-thumbnail",
  "ph2d-timeline",
  "ph2d-token-math",
  "ph2d-tokens",
@@ -7396,6 +7398,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-pan-diag"
+version = "0.0.0"
+dependencies = [
+ "ph2d-app-flip",
+ "ph2d-host",
+ "ph2d-render",
+]
+
+[[package]]
 name = "ph2d-panel-asset-browser"
 version = "0.0.0"
 dependencies = [
@@ -8126,6 +8137,10 @@ dependencies = [
  "parley",
  "ph2d-tokens",
 ]
+
+[[package]]
+name = "ph2d-thumbnail"
+version = "0.0.0"
 
 [[package]]
 name = "ph2d-timeline"

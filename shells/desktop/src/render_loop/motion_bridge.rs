@@ -455,14 +455,14 @@ pub(super) fn dispatch(
     );
     // A SONDA (`PH2D_PAN_DIAG=1`): o MUNDO de uma amostra de cada rota, depois do
     // cozimento e do LOD — o último sítio antes do desenho.
-    if crate::pan_diag::on() {
+    if ph2d_pan_diag::on() {
         let vecs: Vec<[f32; 2]> = motion
             .pump
             .vector_instances
             .iter()
             .map(|v| v.world_pos)
             .collect();
-        crate::pan_diag::note_instances(&motion.pump.instances, &vecs);
+        ph2d_pan_diag::note_instances(&motion.pump.instances, &vecs);
     }
 }
 

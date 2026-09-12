@@ -100,7 +100,7 @@ pub(crate) fn thumb_for(
     // aqui > 0), e depois dela o orçamento pode ficar a zero — que é exactamente o que se quer
     // quando uma só textura vale o quadro inteiro.
     *budget = budget.saturating_sub(u64::from(w) * u64::from(h));
-    let (rgba, tw, th) = crate::thumbnail::reduce(&pixels, w, h);
+    let (rgba, tw, th) = ph2d_thumbnail::reduce(&pixels, w, h);
     let thumb = Thumb { rgba, w: tw, h: th };
     cache.thumbs.insert(id, thumb.clone());
     Some(thumb)

@@ -361,7 +361,6 @@ mod paint_opacity_smoke;
 mod painter_lock;
 mod palette_persist;
 /// A SONDA do drift de pan (`PH2D_PAN_DIAG=1`) — report do Enio de 2026-08-25.
-mod pan_diag;
 /// **Pattern Along Path** — o cozimento vivo do `VecPatternPath` (plano 23), irmão do `offset_live`.
 mod pattern_live;
 mod pattern_path_smoke;
@@ -514,7 +513,6 @@ mod texture_pattern_smoke;
 mod theme;
 /// ⭐ **A REDUÇÃO a uma miniatura de cartão** — uma lei, três consumidores (os dois assadores do
 /// Motion e o navegador de assets). Sem vocabulário de painel, de propósito.
-mod thumbnail;
 mod timeline_onion_smoke;
 #[cfg(test)]
 #[path = "timeline_orphan_tests.rs"]

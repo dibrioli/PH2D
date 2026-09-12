@@ -560,7 +560,7 @@ pub(crate) fn bake_rgba_many(
     Some((rgba, wpx, hpx, size))
 }
 
-// ⚠️ **O `THUMB_MAX` e a REDUÇÃO mudaram-se para [`crate::thumbnail`]** quando a lei ganhou o
+// ⚠️ **O `THUMB_MAX` e a REDUÇÃO mudaram-se para [`ph2d_thumbnail`]** quando a lei ganhou o
 // terceiro consumidor (o navegador de assets, 2026-08-30); o embrulho que devolve o
 // `PreviewThumb` vive em [`crate::motion::motion_object_thumb`], que é quem este ficheiro chama.
 // ⛔ Nada é re-exportado daqui: uma re-exportação que só os testes usam é morta no binário.

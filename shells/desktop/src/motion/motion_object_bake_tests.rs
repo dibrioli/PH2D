@@ -5,7 +5,7 @@
 use super::*;
 // ⚠️ O tecto da miniatura mudou-se para a porta da lei quando ela ganhou o terceiro consumidor;
 // estes gates continuam a medi-lo, agora nomeando onde ele vive.
-use crate::thumbnail::THUMB_MAX;
+use ph2d_thumbnail::THUMB_MAX;
 
 fn star() -> VecPath {
     let mut p = ph2d_vec_scene::star([0.0, 0.0], 0.5, 0.5, 5, 0.45);

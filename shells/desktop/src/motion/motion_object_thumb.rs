@@ -10,6 +10,6 @@ use ph2d_panel_motion_graph::PreviewThumb;
 /// halo into the shrunk shape — the premul trap the overlay lesson names (ADR-0120
 /// neighbourhood). One pass per bake; the result is cached with the tile.
 pub(crate) fn thumbnail(rgba: &[u8], w: u32, h: u32) -> PreviewThumb {
-    let (rgba, w, h) = crate::thumbnail::reduce(rgba, w, h);
+    let (rgba, w, h) = ph2d_thumbnail::reduce(rgba, w, h);
     PreviewThumb { rgba, w, h }
 }

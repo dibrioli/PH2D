@@ -244,7 +244,7 @@ impl crate::App {
                 // DEPOIS do passe, de propósito: o que ela tem de imprimir é o sub-retângulo
                 // que ele APLICOU, e esse só existe depois de ele decidir (o `.filter` do
                 // clip/máscara é por conteúdo do quadro).
-                crate::pan_diag::frame(
+                ph2d_pan_diag::frame(
                     camera,
                     window_size,
                     motion_active,

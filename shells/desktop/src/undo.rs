@@ -107,7 +107,7 @@ impl ProjectState {
     #[allow(clippy::too_many_arguments)]
     #[must_use]
     pub(crate) fn capture(
-        drive: &crate::preview_drive::PreviewDrive,
+        drive: &ph2d_preview_drive::PreviewDrive,
         sim: &mut SimWorld,
         vec: &VecScene,
         flip: &FlipDoc,
@@ -144,7 +144,7 @@ impl ProjectState {
             registry,
             &mut world,
         );
-        crate::preview_drive::PreviewDrive::restore_live(sim, &live);
+        ph2d_preview_drive::PreviewDrive::restore_live(sim, &live);
         Self {
             world,
             vec: match prev {

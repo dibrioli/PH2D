@@ -180,7 +180,7 @@ impl Frame {
     pub(super) fn capture(&mut self, sim: &mut SimWorld, scene: &VecScene) -> ProjectState {
         ProjectState::capture(
             // Nada sob condução: estes gates são do ponto FIXO dos sistemas de vetor.
-            &crate::preview_drive::PreviewDrive::default(),
+            &ph2d_preview_drive::PreviewDrive::default(),
             sim,
             scene,
             &FlipDoc::new(),

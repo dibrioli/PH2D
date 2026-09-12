@@ -106,7 +106,7 @@ fn the_pose_the_constraint_writes_is_preview_not_document() {
         "a captura viu a pose CONDUZIDA - ela iria para o undo e para o save"
     );
     // …e devolve o vivo logo a seguir, senão o artista veria o braco saltar para tras.
-    crate::preview_drive::PreviewDrive::restore_live(&mut sim, &vivo);
+    ph2d_preview_drive::PreviewDrive::restore_live(&mut sim, &vivo);
     assert!(
         sim.world().get::<Transform>(ombro).expect("t").rotation != autorada.rotation,
         "o vivo nao voltou"

@@ -604,6 +604,7 @@ ph2d-node-motion-bezier-warp = { path = "../../crates/ph2d-node-motion-bezier-wa
 # append-only de propósito: uma linha nova acrescenta ao fim e não colide com ninguém.
 ph2d-unique-name = { path = "../../crates/ph2d-unique-name" }
 ph2d-entity-visibility = { path = "../../crates/ph2d-entity-visibility" }
+ph2d-preview-drive = { path = "../../crates/ph2d-preview-drive" }
 
 [dev-dependencies]
 # W2 — os auxiliares de gate da família (`forget_*`, `sync_scene`, …) vivem atrás da feature
@@ -612,6 +613,10 @@ ph2d-app-field3d = { path = "../../crates/ph2d-app-field3d", features = ["test-s
 # E o mesmo para a escultura (W2/L3-B): o `encode_doc` que as fixtures de `project_tests`
 # consomem era `#[cfg(test)]` da família, e um `cfg(test)` não atravessa uma crate.
 ph2d-app-sculpt3d = { path = "../../crates/ph2d-app-sculpt3d", features = ["test-support"] }
+# E o mesmo para a folha da pré-visualização (line/shell-folhas): os gates do `preview_drive`
+# ficaram na shell porque medem a CAPTURA dela, e dois auxiliares `#[cfg(test)]` do memo
+# (`is_empty`, `drivers_of`) passaram a atravessar uma fronteira de crate.
+ph2d-preview-drive = { path = "../../crates/ph2d-preview-drive", features = ["test-support"] }
 # O harness headless de painel (`MockPanelHost`) — a shell precisa dele para medir a
 # GEOMETRIA que um painel de fato registra. O censo de linhas (doc 88 B3) mede quantas
 # linhas um nó produz; a metade que faltava é se elas CABEM na altura do dock, e a única

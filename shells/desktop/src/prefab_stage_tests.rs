@@ -6,7 +6,7 @@
 //! *ver*.
 
 use super::delta_to_centre;
-use crate::preview_drive::{Driven, PreviewDrive};
+use ph2d_preview_drive::{Driven, PreviewDrive};
 use ph2d_ecs::{SimWorld, Transform};
 use ph2d_editor::zones::Rect;
 use ph2d_host::WindowSize;

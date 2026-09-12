@@ -102,7 +102,7 @@ pub(crate) fn run(
     solo: bool,
     container: Option<usize>,
     signals: &mut SignalEmitter,
-    drive: &mut crate::preview_drive::PreviewDrive,
+    drive: &mut ph2d_preview_drive::PreviewDrive,
 ) -> bool {
     // **The Containers list has no playback mode** (Enio, 2026-07-22). The two
     // refusal layers upstream (the play button paints dead + unhittable; the

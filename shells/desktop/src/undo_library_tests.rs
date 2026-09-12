@@ -23,7 +23,7 @@ fn capture_with_library(
     library: &crate::project_library::LibraryDoc,
 ) -> ProjectState {
     ProjectState::capture(
-        &crate::preview_drive::PreviewDrive::default(),
+        &ph2d_preview_drive::PreviewDrive::default(),
         sim,
         vec,
         &FlipDoc::new(),

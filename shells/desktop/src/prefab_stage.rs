@@ -40,7 +40,7 @@ use ph2d_editor::zones::Rect;
 use ph2d_host::WindowSize;
 use ph2d_render::Camera2d;
 
-use crate::preview_drive::{Driven, PreviewDrive};
+use ph2d_preview_drive::{Driven, PreviewDrive};
 
 /// ⭐ **Como a sessão acabou** — o alias do tipo que a barra publica, para a shell não ter de
 /// nomear a crate do chrome em cada sítio.

@@ -159,7 +159,7 @@ fn play_records_and_the_ui_transition_morphs_the_set() {
     let host = Entity::from_bits(map[&host_id]);
 
     let mut machines = crate::morph_machine_drive::MorphMachines::new();
-    let mut drive = crate::preview_drive::PreviewDrive::default();
+    let mut drive = ph2d_preview_drive::PreviewDrive::default();
     let input = ph2d_input::InputMap::new();
     let quiet = ph2d_input::ActionState::new();
     let morph_frame = |m: &mut _, s: &mut SimWorld, d: &mut _, on: bool| {

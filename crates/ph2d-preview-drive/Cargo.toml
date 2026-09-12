@@ -1,0 +1,29 @@
+[package]
+name = "ph2d-preview-drive"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# ⛔ Duas dependências, e são os DOIS componentes que os motores escrevem: a pose (`ph2d-ecs`) e a
+# sprite (`ph2d-render`). A crate não sabe o que é a captura nem o que é o undo — quem sabe é a
+# shell, e é por isso que os gates desta lei ficaram lá (HOWTO §1.2: o teste segue o SUJEITO).
+[dependencies]
+ph2d-ecs = { path = "../ph2d-ecs" }
+ph2d-render = { path = "../ph2d-render" }
+# ⚠️ **Invisível enquanto o módulo vivia na shell** (HOWTO §1.3): o `Driven::JointParams` guarda um
+# `PhysicsJoint`, e ali todas as crates eram dependência do binário. ⭐ É a crate dos COMPONENTES
+# da ponte, não a `ph2d-app-physics` -- depender de um componente não é depender de uma família.
+ph2d-physics-ecs = { path = "../ph2d-physics-ecs" }
+
+# ⚠️ **`test-support` tem o tamanho do que ATRAVESSA a fronteira, e nada mais** (HOWTO §2.5):
+# dos itens `#[cfg(test)]` deste módulo, EXACTAMENTE DOIS são lidos por gates da shell
+# (`is_empty` e `drivers_of`) -- medido pelo compilador, que acusou os dois e mais nenhum.
+# Dentro da shell eles não precisavam de feature: um `cfg(test)` é invisível do outro lado de
+# uma crate, e não era do outro lado de nada.
+[features]
+test-support = []

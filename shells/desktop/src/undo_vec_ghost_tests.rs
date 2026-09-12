@@ -65,7 +65,7 @@ fn take(
     r: &ph2d_ecs::scene::ComponentRegistry,
 ) -> crate::undo::ProjectState {
     crate::undo::ProjectState::capture(
-        &crate::preview_drive::PreviewDrive::default(),
+        &ph2d_preview_drive::PreviewDrive::default(),
         sim,
         scene,
         &ph2d_flip::FlipDoc::new(),

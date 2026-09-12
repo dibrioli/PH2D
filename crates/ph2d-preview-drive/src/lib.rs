@@ -7,7 +7,7 @@
 //!
 //! # O defeito, medido
 //!
-//! O [`crate::App::post_frame_undo`] regista por **diff**: num quadro com input, se o estado do
+//! O o `App::post_frame_undo` da shell regista por **diff**: num quadro com input, se o estado do
 //! projeto difere do baseline, o baseline vira um passo. Enquanto **alguma coisa se move sozinha**
 //! — uma animação de sprite a tocar, o solver a simular — o diff é não-vazio por razão nenhuma do
 //! artista, e o passo registado tem por conteúdo *só o relógio* ou *só a pose do solver*.
@@ -25,11 +25,11 @@
 //!
 //! O motor continua a escrever no mundo (um só sink, e o render continua a ler o mesmo campo que
 //! sempre leu — ⛔ *nada aqui cria uma segunda fonte de verdade para o que se pinta*). O que muda é
-//! a **captura**: [`crate::App::capture_project`] repõe o valor autorado durante a fotografia e
+//! a **captura**: o `App::capture_project` da shell repõe o valor autorado durante a fotografia e
 //! devolve o vivo logo a seguir, então o `ProjectState` — que é a unidade do undo **e** do save —
 //! descreve o documento, nunca o instante da corrida.
 //!
-//! ⚠️ **Undo e save partilham a captura de propósito** (é a lei do [`crate::undo`]), e isto vale
+//! ⚠️ **Undo e save partilham a captura de propósito** (é a lei do `undo` da shell), e isto vale
 //! para os dois: gravar a meio de uma reprodução guarda a célula que o artista escolheu, não onde
 //! o ciclo calhou estar. Para a física é a mesma frase com o nome que o
 //! [ADR-0131](../../../docs/architecture/decisions/0131-physics-global-runtime-truth-rapier-ecs-bridge.md)
@@ -73,7 +73,7 @@ use std::collections::BTreeMap;
 /// **Qual motor conduz.** Duas entradas para a MESMA entidade não colidem — um corpo rígido com
 /// sprite animada é o caso normal, não a excepção.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
-pub(crate) enum Driver {
+pub enum Driver {
     /// O relógio da §11 Animation e o índice de célula que ele produz.
     SpriteAnim,
     /// A pose que o solver escreve enquanto o mundo corre (ADR-0131) — e a que as curvas da
@@ -112,7 +112,7 @@ pub(crate) enum Driver {
 /// (`playing`/`speed_q16`/`current`/…). Repor o componente INTEIRO engoliria uma mexida na
 /// velocidade feita a meio da reprodução; repor os três campos do relógio deixa-a passar.
 #[derive(Clone, Copy, PartialEq, Debug)]
-pub(crate) enum Driven {
+pub enum Driven {
     /// Os três campos de relógio do `SpriteAnimator` + o índice de célula que ele escreve no
     /// `Sprite::frame`. ⚠️ O índice vem junto **de propósito**: ele é o único sink vivo da §11, e
     /// separá-lo daria uma captura em que o relógio é autorado e a célula não.
@@ -155,7 +155,7 @@ pub(crate) enum Driven {
 
 impl Driven {
     /// Qual motor é dono deste facto — a chave do ledger sai daqui, não de um argumento a mais.
-    pub(crate) fn driver(self) -> Driver {
+    pub fn driver(self) -> Driver {
         match self {
             Self::SpriteAnim { .. } => Driver::SpriteAnim,
             Self::SolverPose(_) => Driver::SolverPose,
@@ -171,7 +171,7 @@ impl Driven {
     /// Lê do mundo o facto que `driver` conduz em `entity`. `None` = a entidade não o tem (foi
     /// despawnada por um restore, ou nunca teve o componente).
     #[must_use]
-    pub(crate) fn read(driver: Driver, sim: &SimWorld, entity: Entity) -> Option<Self> {
+    pub fn read(driver: Driver, sim: &SimWorld, entity: Entity) -> Option<Self> {
         match driver {
             Driver::SpriteAnim => {
                 let a = sim.world().get::<ph2d_ecs::SpriteAnimator>(entity)?;
@@ -216,10 +216,10 @@ impl Driven {
     /// ⚠️ **`pub(crate)` desde 2026-09-07, e com uma obrigação colada:** quem escreve um facto de
     /// pré-visualização por aqui tem de o **declarar** ([`PreviewDrive::driven`]) no mesmo quadro,
     /// senão a `settle` esquece-o e o valor de pré-visualização vira documento. O primeiro
-    /// consumidor de fora é o palco do *Edit Prefab* ([`crate::prefab_stage`]), que escreve a pose
+    /// consumidor de fora é o palco do *Edit Prefab* (o `prefab_stage` da shell), que escreve a pose
     /// de palco e a repõe ao fechar — e usar esta porta é o que o impede de ter a sua própria
     /// versão da regra *«só quando muda»*.
-    pub(crate) fn write(self, sim: &mut SimWorld, entity: Entity) {
+    pub fn write(self, sim: &mut SimWorld, entity: Entity) {
         match self {
             Self::SpriteAnim {
                 elapsed_ticks,
@@ -312,11 +312,11 @@ struct Entry {
 
 /// **O ledger da condução** — quem está a ser escrito por um motor, e qual era o valor autorado.
 ///
-/// Vive no [`crate::App`], é declarado pelos motores e consumido por um sítio só (a captura).
+/// Vive no a `App` da shell, é declarado pelos motores e consumido por um sítio só (a captura).
 /// ⚠️ **`BTreeMap`, nunca `HashMap`** — a ordem da substituição atravessa a captura, que é a
 /// unidade do undo *e* do save; a espinha do determinismo desta casa não se quebra por conveniência.
 #[derive(Default)]
-pub(crate) struct PreviewDrive {
+pub struct PreviewDrive {
     memo: BTreeMap<(u64, Driver), Entry>,
 }
 
@@ -327,7 +327,7 @@ impl PreviewDrive {
     /// ⚠️ Chame **só quando o motor de facto escreveu** (`before != after`): declarar uma entidade
     /// que ninguém mexeu faz a substituição repor um valor idêntico — inofensivo — mas mantém viva
     /// uma condução que já acabou, e é a `settle` que precisa de a ver morrer.
-    pub(crate) fn driven(&mut self, entity: Entity, before: Driven, after: Driven) {
+    pub fn driven(&mut self, entity: Entity, before: Driven, after: Driven) {
         let key = (entity.to_bits(), after.driver());
         match self.memo.get_mut(&key) {
             None => {
@@ -378,7 +378,7 @@ impl PreviewDrive {
     ///
     /// ⛔ **Ela NUNCA cria uma entrada.** Sem entrada não há condução a manter: o motor está a
     /// escrever exactamente o que o documento já diz, e não há nada para devolver.
-    pub(crate) fn still_driving(&mut self, entity: Entity, driver: Driver) -> bool {
+    pub fn still_driving(&mut self, entity: Entity, driver: Driver) -> bool {
         match self.memo.get_mut(&(entity.to_bits(), driver)) {
             Some(e) => {
                 e.seen = true;
@@ -403,7 +403,7 @@ impl PreviewDrive {
     /// — remover a *constraint* devolve o osso à pose que o artista autorou.
     ///
     /// Devolve `true` se havia condução a devolver.
-    pub(crate) fn release_to_authored(
+    pub fn release_to_authored(
         &mut self,
         sim: &mut SimWorld,
         entity: Entity,
@@ -423,7 +423,7 @@ impl PreviewDrive {
     /// É isto que faz a corrida colapsar em **UM** passo: enquanto o motor conduz não há passo
     /// nenhum; quando ele larga, a captura seguinte vê o valor vivo, difere do baseline (que é o
     /// pré-corrida) e regista um — *«desfaz a corrida»*.
-    pub(crate) fn settle(&mut self) {
+    pub fn settle(&mut self) {
         self.memo.retain(|_, e| e.seen);
         for e in self.memo.values_mut() {
             e.seen = false;
@@ -451,22 +451,23 @@ impl PreviewDrive {
     /// existia em `cfg(test)`, e o produto não compilava. *Um item novo colado a um atributo rouba-o
     /// ao dono.*
     #[must_use]
-    pub(crate) fn drives(&self, entity: u64) -> bool {
+    pub fn drives(&self, entity: u64) -> bool {
         self.memo.keys().any(|(bits, _)| *bits == entity)
     }
 
     /// ⭐ **QUE MOTORES conduzem esta entidade agora** — a lista, para quem precisa de a **largar**
     /// e não só de saber que ela existe.
     ///
-    /// ⚠️ Ela é o oráculo do censo que ata [`crate::timeline_preview::DRIVERS`] ao que o
+    /// ⚠️ Ela é o oráculo do censo que ata o `timeline_preview::DRIVERS` da shell ao que o
     /// `declare_timeline_writes` de facto escreve: *uma lista escrita à mão ao lado de um produtor
     /// é a segunda resposta à mesma pergunta, e a que envelhece é a escrita à mão*.
     ///
-    /// ⚠️ `cfg(test)` pela razão do [`Self::is_empty`]: no produto quem percorre os motores é a
+    /// ⚠️ `cfg(any(test, feature = "test-support"))` pela razão do [`Self::is_empty`], mais a
+    /// fronteira de crate (HOWTO §2.5) — quem o lê é um gate da SHELL, e um `cfg(test)` não atravessa: no produto quem percorre os motores é a
     /// própria lista nomeada, e um método que só os gates usam é exactamente o que o clippy nomeia.
-    #[cfg(test)]
+    #[cfg(any(test, feature = "test-support"))]
     #[must_use]
-    pub(crate) fn drivers_of(&self, entity: u64) -> Vec<Driver> {
+    pub fn drivers_of(&self, entity: u64) -> Vec<Driver> {
         self.memo
             .keys()
             .filter(|(bits, _)| *bits == entity)
@@ -476,18 +477,20 @@ impl PreviewDrive {
 
     /// Nada sob condução? Então a captura não paga nada — nem uma varredura.
     ///
-    /// ⚠️ `cfg(test)`: no produto quem responde a esta pergunta é a própria
+    /// ⚠️ `cfg(any(test, feature = "test-support"))` — a feature porque os gates que a lêem vivem
+    /// na SHELL (um `cfg(test)` é falso numa dependência), e gateada porque no produto quem responde
+    /// a esta pergunta é a própria
     /// [`Self::substitute_authored`], que sai cedo. Deixá-la `pub(crate)` sem chamador daria um
     /// aviso do clippy — e um método que só os gates usam é exactamente o que o aviso nomeia.
-    #[cfg(test)]
+    #[cfg(any(test, feature = "test-support"))]
     #[must_use]
-    pub(crate) fn is_empty(&self) -> bool {
+    pub fn is_empty(&self) -> bool {
         self.memo.is_empty()
     }
 
     /// Quantas entidades estão sob condução (diagnóstico do `PH2D_UNDO_LOG`).
     #[must_use]
-    pub(crate) fn len(&self) -> usize {
+    pub fn len(&self) -> usize {
         self.memo.len()
     }
 
@@ -499,7 +502,7 @@ impl PreviewDrive {
     /// mexer nelas seria adivinhar qual linha é de quem. Aqui a chave é a entidade, que é o que
     /// temos.
     #[must_use]
-    pub(crate) fn substitute_authored(&self, sim: &mut SimWorld) -> Vec<((u64, Driver), Driven)> {
+    pub fn substitute_authored(&self, sim: &mut SimWorld) -> Vec<((u64, Driver), Driven)> {
         if self.memo.is_empty() {
             return Vec::new(); // o caso normal: nem uma varredura
         }
@@ -518,13 +521,14 @@ impl PreviewDrive {
     /// Devolve ao mundo o que a [`Self::substitute_authored`] deslocou. Ordem inversa não importa
     /// (uma entrada por entidade-e-motor), mas o par tem de correr **sempre**: sair a meio deixaria
     /// a cena a mostrar o autorado em vez do vivo, e o artista veria a animação saltar para trás.
-    pub(crate) fn restore_live(sim: &mut SimWorld, live: &[((u64, Driver), Driven)]) {
+    pub fn restore_live(sim: &mut SimWorld, live: &[((u64, Driver), Driven)]) {
         for &((bits, _), value) in live {
             value.write(sim, Entity::from_bits(bits));
         }
     }
 }
 
-#[cfg(test)]
-#[path = "preview_drive_tests.rs"]
-mod tests;
+// ⚠️ **Os gates desta lei NÃO vivem aqui, e a ausência é a decisão** (HOWTO §1.2): cada um deles
+// passa pela `ProjectState::capture` e pelo `tick_sprite_animations` da shell — eles medem *a
+// captura repõe o autorado*, que é um facto da shell, não do memo. Ficaram em
+// `shells/desktop/src/preview_drive_tests.rs`, declarados pelo `main.rs`.

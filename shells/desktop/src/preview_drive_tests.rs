@@ -1,4 +1,4 @@
-//! **Os gates de PRÉ-VISUALIZAÇÃO contra DOCUMENTO** ([`super`]).
+//! **Os gates de PRÉ-VISUALIZAÇÃO contra DOCUMENTO** (a crate `ph2d-preview-drive`).
 //!
 //! ⚠️ **Todos nasceram do mesmo pedido** (Enio, 2026-08-23: *«precisamos corrigir o CtrlZ para
 //! ambas»*), e a auditoria
@@ -9,7 +9,7 @@
 //! sozinho se nada tiver acontecido — por isso todos eles asseguram primeiro que o mundo VIVO de
 //! facto andou. *Um gate sem a metade que prova que havia fenómeno mede o instrumento.*
 
-use super::{Driven, Driver, PreviewDrive};
+use ph2d_preview_drive::{Driven, Driver, PreviewDrive};
 use crate::undo::ProjectState;
 use ph2d_ecs::scene::{ComponentRegistry, register_ecs_components};
 use ph2d_ecs::{AnimationTag, Entity, Name, SimWorld, SpriteAnimations, SpriteAnimator, Transform};

@@ -198,7 +198,7 @@ fn a_step_naming_a_non_member_is_ignored() {
     upkeep(&mut sim, &scene, &map, &mut pending);
     let host_id = scene.paths().last().unwrap().id;
     let host = Entity::from_bits(map[&host_id]);
-    let mut drive = crate::preview_drive::PreviewDrive::default();
+    let mut drive = ph2d_preview_drive::PreviewDrive::default();
 
     // O CONTROLE POSITIVO primeiro: com as duas pontas membros, ele escreve.
     let good = ph2d_ui_state::MorphStep {
@@ -289,7 +289,7 @@ fn after_removing_thin_the_hover_still_morphs_to_tall() {
     );
 
     // E o motor tem de o ACEITAR (a blindagem da W11h nao pode recusar um passo legitimo).
-    let mut drive = crate::preview_drive::PreviewDrive::default();
+    let mut drive = ph2d_preview_drive::PreviewDrive::default();
     assert_eq!(
         crate::morph_machine_drive::apply_ui_steps(&mut sim, &map, &cooked.morph_steps, &mut drive),
         1,

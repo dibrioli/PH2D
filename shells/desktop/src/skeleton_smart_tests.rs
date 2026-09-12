@@ -478,8 +478,8 @@ fn removing_one_control_does_not_release_what_another_engine_drives() {
     movida.translation.x = 99.0;
     pv.driven(
         alheio,
-        crate::preview_drive::Driven::SolverPose(repouso),
-        crate::preview_drive::Driven::SolverPose(movida),
+        ph2d_preview_drive::Driven::SolverPose(repouso),
+        ph2d_preview_drive::Driven::SolverPose(movida),
     );
     drive(&mut sim, &doc, &mut pv);
 

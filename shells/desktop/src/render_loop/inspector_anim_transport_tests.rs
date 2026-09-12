@@ -130,7 +130,7 @@ fn turning_playing_back_on_replays_an_animation_that_had_finished() {
             1,
             0.016,
             &[],
-            &mut crate::preview_drive::PreviewDrive::default(),
+            &mut ph2d_preview_drive::PreviewDrive::default(),
         );
     }
     assert!(!info(&sim, e).playing, "a de uma volta para-se sozinha");
@@ -149,7 +149,7 @@ fn turning_playing_back_on_replays_an_animation_that_had_finished() {
         1,
         0.016,
         &[],
-        &mut crate::preview_drive::PreviewDrive::default(),
+        &mut ph2d_preview_drive::PreviewDrive::default(),
     );
     let after = info(&sim, e);
     assert!(
@@ -222,7 +222,7 @@ fn choosing_another_animation_resumes_one_that_had_run_itself_out_but_not_a_paus
             1,
             0.016,
             &[],
-            &mut crate::preview_drive::PreviewDrive::default(),
+            &mut ph2d_preview_drive::PreviewDrive::default(),
         );
     }
     assert!(!info(&sim, e).playing, "a de uma volta esgotou-se");
@@ -240,7 +240,7 @@ fn choosing_another_animation_resumes_one_that_had_run_itself_out_but_not_a_paus
             1,
             0.016,
             &[],
-            &mut crate::preview_drive::PreviewDrive::default(),
+            &mut ph2d_preview_drive::PreviewDrive::default(),
         );
     }
     assert!(
@@ -310,7 +310,7 @@ fn dragging_the_frame_bar_sets_the_cell_pauses_and_stays_inside_the_range() {
             1,
             0.016,
             &[],
-            &mut crate::preview_drive::PreviewDrive::default(),
+            &mut ph2d_preview_drive::PreviewDrive::default(),
         );
     }
     assert_eq!(
@@ -366,7 +366,7 @@ fn a_sheet_under_a_tool_preview_plays_even_when_the_transport_is_paused() {
             1,
             0.016,
             &[],
-            &mut crate::preview_drive::PreviewDrive::default(),
+            &mut ph2d_preview_drive::PreviewDrive::default(),
         );
     }
     assert_eq!(
@@ -389,7 +389,7 @@ fn a_sheet_under_a_tool_preview_plays_even_when_the_transport_is_paused() {
             1,
             0.016,
             &painted,
-            &mut crate::preview_drive::PreviewDrive::default(),
+            &mut ph2d_preview_drive::PreviewDrive::default(),
         );
         seen.insert(info(&sim, e).frame);
     }
@@ -416,7 +416,7 @@ fn a_sheet_under_a_tool_preview_plays_even_when_the_transport_is_paused() {
             1,
             0.016,
             &other,
-            &mut crate::preview_drive::PreviewDrive::default(),
+            &mut ph2d_preview_drive::PreviewDrive::default(),
         );
         assert_eq!(
             info(&sim, e).frame,
@@ -551,7 +551,7 @@ fn writing_a_frames_duration_pauses_like_dragging_the_bar_does() {
         2,
         0.016,
         &[],
-        &mut crate::preview_drive::PreviewDrive::default(),
+        &mut ph2d_preview_drive::PreviewDrive::default(),
     );
     let elapsed = sim
         .world()

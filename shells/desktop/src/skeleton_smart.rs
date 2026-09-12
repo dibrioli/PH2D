@@ -28,7 +28,7 @@ use ph2d_ecs::{Entity, Name, SimWorld, StableId, Transform, World};
 use ph2d_skeleton_ecs::SmartBone;
 use ph2d_timeline::TimelineDoc;
 
-use crate::preview_drive::PreviewDrive;
+use ph2d_preview_drive::PreviewDrive;
 
 /// ⭐⭐⭐ **O PICK DO ALVO RESOLVEU** — escreve no controlo de `osso` o NOME de `alvo`.
 ///
@@ -191,7 +191,7 @@ pub(crate) fn governed_controls(sim: &SimWorld) -> Vec<Entity> {
 /// plenamente»* — noutro verbo, e contradiz a lei que este módulo escreveu: *o que um motor escreve
 /// vê-se, não se guarda*.
 ///
-/// ⚠️ **A [`crate::preview_drive::PreviewDrive::settle`] NÃO serve** (a mesma nota do
+/// ⚠️ **A [`ph2d_preview_drive::PreviewDrive::settle`] NÃO serve** (a mesma nota do
 /// [`crate::skeleton_goal::remove`]): ela é para um motor que **largou**, e aí o vivo *é* o
 /// documento; aqui o motor foi **desligado**, e o vivo é dele.
 ///

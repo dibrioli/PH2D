@@ -45,7 +45,7 @@ pub(crate) fn dispatch(
     simulate: bool,
     input: ph2d_physics_ecs::PlayerInput,
     tape: &mut InputTape,
-    drive: &mut crate::preview_drive::PreviewDrive,
+    drive: &mut ph2d_preview_drive::PreviewDrive,
 ) {
     // ⭐ **A marca de MESTRE tem de estar em dia ANTES da ponte** (ADR-0164 / F4.1).
     //
@@ -137,9 +137,9 @@ fn body_poses(sim: &SimWorld) -> Vec<(Entity, ph2d_ecs::Transform)> {
 fn declare_solver_writes(
     sim: &SimWorld,
     before: &[(Entity, ph2d_ecs::Transform)],
-    drive: &mut crate::preview_drive::PreviewDrive,
+    drive: &mut ph2d_preview_drive::PreviewDrive,
 ) {
-    use crate::preview_drive::Driven;
+    use ph2d_preview_drive::Driven;
     for &(entity, was) in before {
         let Some(now) = sim.world().get::<ph2d_ecs::Transform>(entity) else {
             continue; // o corpo saiu da cena neste quadro

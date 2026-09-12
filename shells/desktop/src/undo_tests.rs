@@ -35,7 +35,7 @@ fn capture(sim: &mut SimWorld, vec: &VecScene, reg: &ComponentRegistry) -> Proje
     ProjectState::capture(
         // Nada sob condução: estes gates são do diff e do restore, não do ledger
         // (`crate::preview_drive` tem os dele).
-        &crate::preview_drive::PreviewDrive::default(),
+        &ph2d_preview_drive::PreviewDrive::default(),
         sim,
         vec,
         &FlipDoc::new(),
@@ -205,7 +205,7 @@ fn flip_survives_capture_restore_and_rebuilds_bridge() {
 
     let snap = {
         ProjectState::capture(
-            &crate::preview_drive::PreviewDrive::default(),
+            &ph2d_preview_drive::PreviewDrive::default(),
             &mut sim,
             &vec,
             &flip,
@@ -229,7 +229,7 @@ fn flip_survives_capture_restore_and_rebuilds_bridge() {
 
     // Capturar o mesmo estado 2× = idêntico (sem passo espúrio de undo).
     let a = ProjectState::capture(
-        &crate::preview_drive::PreviewDrive::default(),
+        &ph2d_preview_drive::PreviewDrive::default(),
         &mut sim,
         &vec,
         &rflip,
@@ -241,7 +241,7 @@ fn flip_survives_capture_restore_and_rebuilds_bridge() {
         None,
     );
     let b = ProjectState::capture(
-        &crate::preview_drive::PreviewDrive::default(),
+        &ph2d_preview_drive::PreviewDrive::default(),
         &mut sim,
         &vec,
         &rflip,

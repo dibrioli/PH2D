@@ -35,7 +35,7 @@
 //! # ⚠️⚠️ E parar o relógio NÃO devolve a forma autorada — a nota anterior estava ERRADA
 //!
 //! Ela dizia *"ao largar as máquinas a cena volta ao que o artista desenhou"*. **Não volta**, e a
-//! lei que manda é a da [`crate::preview_drive::PreviewDrive::settle`]: o ledger repõe o autorado
+//! lei que manda é a da [`ph2d_preview_drive::PreviewDrive::settle`]: o ledger repõe o autorado
 //! **dentro da fotografia** enquanto o motor conduz, e no primeiro quadro em que ele **para** a
 //! entrada morre ⇒ a captura seguinte vê o vivo, difere do baseline e regista **UM** passo. É o
 //! *«desfaz a corrida»*, e aqui ele significa: *sair do modo COMPROMETE a forma em que se ficou*.
@@ -51,7 +51,7 @@ use ph2d_ecs::{Entity, SimWorld, VecMorph, VecMorphMachine};
 use ph2d_input::Input;
 use ph2d_morph_machine::MorphMachine;
 
-use crate::preview_drive::{Driven, PreviewDrive};
+use ph2d_preview_drive::{Driven, PreviewDrive};
 
 /// As máquinas VIVAS, por entidade de Morph.
 ///

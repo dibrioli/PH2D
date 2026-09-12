@@ -40,7 +40,7 @@ fn capture_with_prev(
     prev: Option<&ProjectState>,
 ) -> ProjectState {
     ProjectState::capture(
-        &crate::preview_drive::PreviewDrive::default(),
+        &ph2d_preview_drive::PreviewDrive::default(),
         sim,
         vec,
         &ph2d_flip::FlipDoc::new(),
@@ -166,7 +166,7 @@ fn capture_flip_with_prev(
     prev: Option<&ProjectState>,
 ) -> ProjectState {
     ProjectState::capture(
-        &crate::preview_drive::PreviewDrive::default(),
+        &ph2d_preview_drive::PreviewDrive::default(),
         sim,
         &VecScene::new(),
         flip,

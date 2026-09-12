@@ -386,9 +386,11 @@ mod precision_geometry;
 /// ⭐⭐⭐ **A receita SOBE AO PALCO quando ela abre** — ela vem ao artista, e não o artista a ela.
 mod prefab_stage;
 mod prefs;
-/// **Estado de PRÉ-VISUALIZAÇÃO contra estado de DOCUMENTO** — o conceito que faltava ao undo
-/// (Enio, 2026-08-23: *«precisamos corrigir o CtrlZ para ambas»*).
-mod preview_drive;
+// **Estado de PRÉ-VISUALIZAÇÃO contra estado de DOCUMENTO** — a lei mudou-se para a folha
+// `ph2d-preview-drive`; os GATES dela ficaram aqui, porque medem a captura desta shell.
+#[cfg(test)]
+#[path = "preview_drive_tests.rs"]
+mod preview_drive_tests;
 /// **A sonda da §4.3 do plano da UI viva** — o cursor pode ser PRESO nesta máquina? Só de teste:
 /// ela abre janela e precisa de uma mão mexendo o rato, então nunca entra num build de produto.
 #[cfg(test)]
@@ -1081,7 +1083,7 @@ impl App {
             undo_request: None,
             undo_button: None,
             any_input_this_frame: false,
-            preview_drive: crate::preview_drive::PreviewDrive::default(),
+            preview_drive: ph2d_preview_drive::PreviewDrive::default(),
             project_path: crate::App::initial_project_path(),
             vec_build: None,
             // ⭐ O cadeado do padrão nasce LIGADO — o comportamento que a secção tinha antes de os

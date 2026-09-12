@@ -96,7 +96,7 @@ pub(crate) fn run(
     toasts: &mut ph2d_editor::ToastQueue,
     hero: &HeroScreen,
     world: &World,
-    preview: &crate::preview_drive::PreviewDrive,
+    preview: &ph2d_preview_drive::PreviewDrive,
 ) {
     let panel_open = hero.is_panel_visible("timeline");
     let armed = panel_open && timeline.flags.auto_key;

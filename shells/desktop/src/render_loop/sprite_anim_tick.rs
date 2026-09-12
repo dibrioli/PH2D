@@ -64,7 +64,7 @@ pub(crate) fn tick_sprite_animations(
     ticks: u32,
     fixed_dt: f64,
     tool_preview_bits: &[Option<u64>],
-    drive: &mut crate::preview_drive::PreviewDrive,
+    drive: &mut ph2d_preview_drive::PreviewDrive,
 ) -> Vec<AnimSignal> {
     let mut out = Vec::new();
     if ticks == 0 {
@@ -158,7 +158,7 @@ pub(crate) fn tick_sprite_animations(
         let cells = grid.cells().max(1);
         let mut frame = grid.frame;
         // O que o artista tem no documento, ANTES de este tique lhe tocar (`crate::preview_drive`).
-        let before = crate::preview_drive::Driven::SpriteAnim {
+        let before = ph2d_preview_drive::Driven::SpriteAnim {
             elapsed_ticks: animator.elapsed_ticks,
             pingpong_reverse: animator.pingpong_reverse,
             repeat_count: animator.repeat_count,
@@ -180,7 +180,7 @@ pub(crate) fn tick_sprite_animations(
         }
         // **A DECLARAÇÃO**, com o depois lido do que ficou de facto escrito (o `preview_only`
         // devolve só o relógio, então `run` sozinho mentiria sobre o animador).
-        let after = crate::preview_drive::Driven::SpriteAnim {
+        let after = ph2d_preview_drive::Driven::SpriteAnim {
             elapsed_ticks: animator.elapsed_ticks,
             pingpong_reverse: animator.pingpong_reverse,
             repeat_count: animator.repeat_count,

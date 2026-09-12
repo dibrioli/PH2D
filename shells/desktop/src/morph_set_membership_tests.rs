@@ -275,7 +275,7 @@ fn the_ghost_does_not_come_back_on_the_next_tick() {
     let host = Entity::from_bits(map[&scene.paths().last().unwrap().id]);
     let mut states = ph2d_ui_state::StateSets::default();
     let mut machines = crate::morph_machine_drive::MorphMachines::new();
-    let mut drive = crate::preview_drive::PreviewDrive::default();
+    let mut drive = ph2d_preview_drive::PreviewDrive::default();
     let input = ph2d_input::InputMap::new();
     let quiet = ph2d_input::ActionState::new();
 

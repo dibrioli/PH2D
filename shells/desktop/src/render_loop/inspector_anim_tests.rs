@@ -305,7 +305,7 @@ fn the_tick_writes_the_frame_and_only_when_it_changes() {
         6,
         dt,
         &[],
-        &mut crate::preview_drive::PreviewDrive::default(),
+        &mut ph2d_preview_drive::PreviewDrive::default(),
     );
     assert_eq!(info(&sim, e).frame, 1);
     crate::render_loop::sprite_anim_tick::tick_sprite_animations(
@@ -313,7 +313,7 @@ fn the_tick_writes_the_frame_and_only_when_it_changes() {
         6,
         dt,
         &[],
-        &mut crate::preview_drive::PreviewDrive::default(),
+        &mut ph2d_preview_drive::PreviewDrive::default(),
     );
     assert_eq!(info(&sim, e).frame, 2);
 
@@ -324,7 +324,7 @@ fn the_tick_writes_the_frame_and_only_when_it_changes() {
         600,
         dt,
         &[],
-        &mut crate::preview_drive::PreviewDrive::default(),
+        &mut ph2d_preview_drive::PreviewDrive::default(),
     );
     assert_eq!(info(&sim, e).frame, 2, "pausado nao anda");
 }

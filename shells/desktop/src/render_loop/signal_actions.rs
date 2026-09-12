@@ -30,7 +30,7 @@
 
 use ph2d_ecs::{SignalEffect, SignalVerb, SimWorld, TimerRuntime, Timers, Visibility};
 
-use crate::preview_drive::{Driven, PreviewDrive};
+use ph2d_preview_drive::{Driven, PreviewDrive};
 
 /// O que uma aplicação fez — para o log de diagnóstico, e para os gates.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]

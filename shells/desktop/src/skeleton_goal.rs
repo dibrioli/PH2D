@@ -13,7 +13,7 @@
 //! **derivada** dela. Sem o ledger, cada clique enquanto a âncora está fora do sítio empilharia um
 //! passo de undo cujo conteúdo é *«o solver mexeu»* — o defeito que a auditoria da §11 mediu.
 //!
-//! ⚠️ **O motor é o [`crate::preview_drive::Driver::SolverPose`], e não um novo**: o doc dele já
+//! ⚠️ **O motor é o [`ph2d_preview_drive::Driver::SolverPose`], e não um novo**: o doc dele já
 //! declara que a pose escrita por um motor é *«o mesmo facto vindo de outro motor»* — é assim que a
 //! física e as curvas da timeline já partilham aquela chave. Uma chave nova sobre o **mesmo
 //! componente** poria dois memos a repor `Transform`s diferentes na mesma fotografia, e quem
@@ -41,7 +41,7 @@
 use ph2d_ecs::{ChildOf, Entity, Name, RootOrder, SimWorld, StableId, Transform};
 use ph2d_skeleton_ecs::{Bone, IkGoal};
 
-use crate::preview_drive::{Driven, PreviewDrive};
+use ph2d_preview_drive::{Driven, PreviewDrive};
 
 /// O nome que uma âncora nova recebe. ⚠️ Em inglês, como toda a UI da casa.
 const ANCHOR_NAME: &str = "IK Goal";
@@ -380,7 +380,7 @@ pub(crate) fn remove(sim: &mut SimWorld, bone: Entity, preview: &mut PreviewDriv
     }
     sim.world_mut().entity_mut(bone).remove::<IkGoal>();
     for e in corrente {
-        preview.release_to_authored(sim, e, crate::preview_drive::Driver::SolverPose);
+        preview.release_to_authored(sim, e, ph2d_preview_drive::Driver::SolverPose);
     }
     true
 }
@@ -539,7 +539,7 @@ fn solve_one(
             // **PERSISTENTE**: ela escreve todo quadro, e o output dela é constante na maior parte
             // do tempo. Sem esta linha a `settle` lê a constância como *«o motor largou»* e promove
             // a pose da restrição a documento — e o *Remove IK* já não tem o autorado para devolver.
-            preview.still_driving(e, crate::preview_drive::Driver::SolverPose);
+            preview.still_driving(e, ph2d_preview_drive::Driver::SolverPose);
             continue;
         }
         let Some(mut t) = sim.world_mut().get_mut::<Transform>(e) else {

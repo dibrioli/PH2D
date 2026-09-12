@@ -5668,6 +5668,7 @@ dependencies = [
  "ph2d-panel-wet-tuning",
  "ph2d-physics-ecs",
  "ph2d-poly2d",
+ "ph2d-preview-drive",
  "ph2d-quadchain",
  "ph2d-quadextract",
  "ph2d-quadfill",
@@ -7796,6 +7797,15 @@ name = "ph2d-poly2d"
 version = "0.0.0"
 dependencies = [
  "serde",
+]
+
+[[package]]
+name = "ph2d-preview-drive"
+version = "0.0.0"
+dependencies = [
+ "ph2d-ecs",
+ "ph2d-physics-ecs",
+ "ph2d-render",
 ]
 
 [[package]]

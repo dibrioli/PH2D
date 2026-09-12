@@ -1542,7 +1542,7 @@ pub(crate) struct App {
     /// consumido por um sítio só: a captura do projeto, que é a unidade do undo e do save.
     ///
     /// Vazio = zero custo, e é o estado normal.
-    pub(crate) preview_drive: crate::preview_drive::PreviewDrive,
+    pub(crate) preview_drive: ph2d_preview_drive::PreviewDrive,
     /// **O ficheiro que este projeto tem AGORA** (`crate::project_io`). `None` = ainda sem nome, e
     /// o primeiro `Ctrl+S` pergunta. Semeado pela env `PH2D_PROJECT_PATH` quando ela existe.
     pub(crate) project_path: Option<String>,

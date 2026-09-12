@@ -64,7 +64,7 @@ fn play(simulate: bool) -> (f32, u64) {
             simulate,
             ph2d_physics_ecs::PlayerInput::default(),
             &mut ph2d_physics_ecs::InputTape::new(),
-            &mut crate::preview_drive::PreviewDrive::default(),
+            &mut ph2d_preview_drive::PreviewDrive::default(),
         );
     }
     (height(&sim, ball), bridge.steps_taken())
@@ -126,7 +126,7 @@ fn arming_mid_take_resumes_it_does_not_replay_what_was_skipped() {
             false,
             ph2d_physics_ecs::PlayerInput::default(),
             &mut ph2d_physics_ecs::InputTape::new(),
-            &mut crate::preview_drive::PreviewDrive::default(),
+            &mut ph2d_preview_drive::PreviewDrive::default(),
         );
     }
     // The artist ticks the checkbox. One more frame goes by.
@@ -140,7 +140,7 @@ fn arming_mid_take_resumes_it_does_not_replay_what_was_skipped() {
         true,
         ph2d_physics_ecs::PlayerInput::default(),
         &mut ph2d_physics_ecs::InputTape::new(),
-        &mut crate::preview_drive::PreviewDrive::default(),
+        &mut ph2d_preview_drive::PreviewDrive::default(),
     );
 
     assert_eq!(
@@ -208,7 +208,7 @@ fn taped(sim: &mut SimWorld, simulate: bool) -> usize {
             simulate,
             walking,
             &mut tape,
-            &mut crate::preview_drive::PreviewDrive::default(),
+            &mut ph2d_preview_drive::PreviewDrive::default(),
         );
     }
     tape.len()
@@ -285,7 +285,7 @@ fn a_falling_ball_is_not_an_undo_step() {
     let mut reg = ComponentRegistry::new();
     register_ecs_components(&mut reg);
     ph2d_render::register_render_components(&mut reg);
-    let shot = |sim: &mut SimWorld, drive: &crate::preview_drive::PreviewDrive| {
+    let shot = |sim: &mut SimWorld, drive: &ph2d_preview_drive::PreviewDrive| {
         crate::undo::ProjectState::capture(
             drive,
             sim,
@@ -305,7 +305,7 @@ fn a_falling_ball_is_not_an_undo_step() {
     let mut doc = TimelineDoc::new();
     let mut playhead = Playhead::new(DT);
     playhead.play();
-    let mut drive = crate::preview_drive::PreviewDrive::default();
+    let mut drive = ph2d_preview_drive::PreviewDrive::default();
     let at_rest = shot(&mut sim, &drive);
     let started_at = height(&sim, ball);
 

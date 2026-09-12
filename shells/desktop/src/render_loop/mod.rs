@@ -263,7 +263,7 @@ mod present_bands;
 mod present_frost;
 /// ⭐⭐ Os passes de LUZ do quadro (a sprite emissiva e o glow do Motion).
 mod present_fx;
-/// ⚠️ `pub(crate)`: os gates do [`crate::preview_drive`] correm o tique de fora do `render_loop` —
+/// ⚠️ `pub(crate)`: os gates do `preview_drive` correm o tique de fora do `render_loop` —
 /// é ele o motor que declara a §11 como pré-visualização, e um gate que o encenasse à mão mediria
 /// a encenação.
 pub(crate) mod sprite_anim_tick;
@@ -2702,7 +2702,7 @@ impl crate::App {
             player_input,
             &mut self.player_tape,
             // ⚠️ **A pose que o solver escreve é pré-visualização** — o ledger que a separa do
-            // documento (`crate::preview_drive`, Enio 2026-08-23: *«corrigir o CtrlZ para ambas»*).
+            // documento (a folha `ph2d-preview-drive`, Enio 2026-08-23: *«corrigir o CtrlZ para ambas»*).
             &mut self.preview_drive,
         );
         // O flash do estouro envelhece uma vez por frame, aqui: ao lado do

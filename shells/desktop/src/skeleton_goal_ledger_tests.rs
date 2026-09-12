@@ -51,7 +51,7 @@ fn removing_the_anchor_gives_the_authored_pose_back() {
 /// **todo quadro**) e ela ficou verde… e o desenho ORIGINAL também. ⇒ **a cura era redundante e foi
 /// revertida.**
 ///
-/// ⭐ A razão está na regra da **outra mão** que o [`crate::preview_drive::PreviewDrive::driven`] já
+/// ⭐ A razão está na regra da **outra mão** que o [`ph2d_preview_drive::PreviewDrive::driven`] já
 /// tinha: perturbar um osso governado muda a solução, então a restrição **volta a escrever** no
 /// quadro seguinte — e nessa escrita o `before` é a pose do artista, que passa a ser o autorado.
 /// *O buraco fechava-se sozinho porque o motor reage ao que a outra mão fez.*
@@ -117,7 +117,7 @@ fn posing_a_governed_bone_by_hand_is_not_swallowed_by_the_ledger() {
     // A fotografia: o autorado tem de ser o que o artista acabou de fazer.
     let vivo = pv.substitute_authored(&mut sim);
     let fotografado = sim.world().get::<Transform>(governado).expect("t").rotation;
-    crate::preview_drive::PreviewDrive::restore_live(&mut sim, &vivo);
+    ph2d_preview_drive::PreviewDrive::restore_live(&mut sim, &vivo);
     assert!(
         (f64::from(fotografado) - 1.1).abs() < 1e-3,
         "a fotografia viu {fotografado} e o artista pos 1.1 - a pose dele foi ENGOLIDA pelo memo, \
@@ -131,7 +131,7 @@ fn posing_a_governed_bone_by_hand_is_not_swallowed_by_the_ledger() {
 /// animado à posição inicial»*), achado ao medir aquele: uma restrição é um condutor
 /// **PERSISTENTE** — ela escreve todo quadro, e o output dela é constante assim que a corrente
 /// assenta. O `solve_one` só declarava condução quando a rotação **mudava**, então a
-/// [`crate::preview_drive::PreviewDrive::settle`] lia a constância como *«o motor largou»* e promovia
+/// [`ph2d_preview_drive::PreviewDrive::settle`] lia a constância como *«o motor largou»* e promovia
 /// a pose da restrição a **documento**.
 ///
 /// ⚠️ **O gate anterior (`removing_the_anchor_gives_the_authored_pose_back`) não o via**, e a razão

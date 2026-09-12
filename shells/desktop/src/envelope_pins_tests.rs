@@ -311,7 +311,7 @@ fn the_pins_survive_an_undo() {
     let snap = {
         crate::undo::ProjectState::capture(
             // Nada sob condução nesta cena: o ledger vazio é a captura de sempre.
-            &crate::preview_drive::PreviewDrive::default(),
+            &ph2d_preview_drive::PreviewDrive::default(),
             &mut sim,
             &scene,
             &ph2d_flip::FlipDoc::new(),

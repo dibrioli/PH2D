@@ -6,7 +6,7 @@ use ph2d_input::{ActionState, Binding, InputMap, InputState, Key};
 use ph2d_morph_machine::MorphKey;
 use ph2d_vec_scene::{VecPathId, VecScene};
 
-use crate::preview_drive::PreviewDrive;
+use ph2d_preview_drive::PreviewDrive;
 use crate::vec_entities::{VecEntityMap, sync};
 
 const KEY_Z: u32 = 0x5A;

@@ -11,7 +11,7 @@
 //! (`doc.bindings()`), então o censo é `O(bindings)` — a dúzia de objetos que o artista keyou — e
 //! não `O(mundo)`. *Uma ausência afirmada sem olhar a API é um palpite com cara de medição.*
 
-use crate::preview_drive::PreviewDrive;
+use ph2d_preview_drive::PreviewDrive;
 use crate::undo::ProjectState;
 use ph2d_anim::{AnimValue, Interp, RationalTime};
 use ph2d_ecs::scene::{ComponentRegistry, register_ecs_components};
@@ -221,7 +221,7 @@ fn a_fading_opacity_is_not_an_edit_either() {
 /// fazê-lo escrever também o `frame` (o componente todo) parte este gate.
 #[test]
 fn the_frame_and_the_alpha_are_driven_side_by_side() {
-    use crate::preview_drive::Driven;
+    use ph2d_preview_drive::Driven;
     let mut sim = SimWorld::new();
     let e = sim
         .world_mut()

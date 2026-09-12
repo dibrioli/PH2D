@@ -45,7 +45,8 @@
 
 use super::painter_bridge_assets::{load_brush_shape_image, load_brush_texture_image};
 use super::painter_gpu_preview::{self, PainterGpuPreview};
-use crate::app_state::{PainterPreview, PainterPreviewGpu};
+use ph2d_preview_slot::PreviewGpu as PainterPreviewGpu;
+use ph2d_tool_runtime::PreviewCache as PainterPreview;
 use ph2d_asset::{AssetDb, AssetId};
 use ph2d_ecs::SimWorld;
 use ph2d_editor::HeroScreen;

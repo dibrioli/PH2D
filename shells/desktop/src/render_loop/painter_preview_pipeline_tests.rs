@@ -19,7 +19,8 @@
 //! leaks — vanished relief, displaced patch rects, missed settle frames — is a byte diff here.
 
 use super::painter_bridge::{UploadPlan, extract_region, plan_upload};
-use crate::app_state::{PainterPreview, PainterPreviewGpu};
+use ph2d_preview_slot::PreviewGpu as PainterPreviewGpu;
+use ph2d_tool_runtime::PreviewCache as PainterPreview;
 use ph2d_editor::tool::{CanvasPaintTool, CanvasPointer, PointerPhase, RasterEditTool};
 use ph2d_render::premultiply_rgba8;
 use ph2d_tool_painter::PainterTool;

@@ -75,6 +75,9 @@ ph2d-panel-wet-tuning = { path = "../../crates/ph2d-panel-wet-tuning" }
 ph2d-render = { path = "../../crates/ph2d-render" }
 # ⭐ A folha do afim `imagem-px → ecrã-px`: quatro assuntos da shell partilhavam esta lei, e duas
 # famílias que partilham código partilham uma FOLHA, nunca uma delas à outra (HOWTO §1.2).
+# ⭐ A folha da ranhura de pre-visualizacao: o tipo era uma struct do `app_state.rs`,
+# partilhada pela remocao de fundo e pelo Painter (o doc dela ja dizia "tool-agnostic").
+ph2d-preview-slot = { path = "../../crates/ph2d-preview-slot" }
 ph2d-sprite-screen = { path = "../../crates/ph2d-sprite-screen" }
 # ⭐ A FAMILIA Painter (W2 Fase D): as cenas de smoke, as pontes de desenho e os corpos dos
 # gestos de canvas. A shell chama `ph2d_app_painter::<mod>::<fn>` no ponto certo do laco.

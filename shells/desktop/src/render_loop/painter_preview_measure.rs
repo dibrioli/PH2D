@@ -9,7 +9,7 @@
 
 use super::painter_preview_handoff_tests::app_frame;
 use super::painter_preview_pipeline_tests::{cp, impasto_tool};
-use crate::app_state::PainterPreviewGpu;
+use ph2d_preview_slot::PreviewGpu as PainterPreviewGpu;
 use ph2d_editor::tool::{CanvasPaintTool, PointerPhase};
 use ph2d_tool_painter::PainterTool;
 

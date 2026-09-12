@@ -1793,40 +1793,19 @@ pub(crate) type BgremovalPreview = ph2d_tool_runtime::PreviewCache;
 
 /// GPU-side companion to [`BgremovalPreview`] (Lens F, 2026-05-26).
 ///
-/// Owns the transient `IndividualTextureStore` slot that backs a tool's
-/// on-canvas live preview. **Tool-agnostic** — shared by BgRemoval and the
-/// Painter (see [`PainterPreviewGpu`]); the fields carry no BgR-specific
-/// state. The CPU-side preview cache (`PreviewCache`) is
-/// the source of truth (Arc-shared with the tool's `current_preview`);
-/// the bridge replays it onto this texture whenever the `Arc` buffer
-/// is swapped. `arc_ptr` is `Arc::as_ptr` of the last uploaded buffer
-/// — comparing it against the live cache's pointer detects a fresh
-/// preview without hashing pixels.
-#[derive(Copy, Clone, Debug)]
-pub(crate) struct BgremovalPreviewGpu {
-    /// Renderer-assigned id (the slot in `IndividualTextureStore`).
-    pub(crate) texture_id: u32,
-    /// Source-pixel width of the texture currently uploaded. Used to
-    /// detect resize → `replace_pixels` will rebuild the entry.
-    pub(crate) width: u32,
-    /// Source-pixel height of the texture currently uploaded.
-    pub(crate) height: u32,
-    /// Opaque change token of the pixels most recently uploaded, `usize` so the
-    /// struct stays `Send + Sync` — never dereferenced. A different value in the
-    /// live cache means new pixels → re-upload; `0` means the slot was NOT
-    /// CPU-seeded (the GPU producer's stamp), which forces the next CPU frame to a
-    /// full upload. BgRemoval fills it with `Arc::as_ptr(rgba)`; the **Painter**
-    /// fills it with the tool's monotonic `canvas_version()` — because keying on a
-    /// pointer forced the shell to hold a clone of the live canvas, and holding
-    /// that clone made `stamp_dabs`' `Arc::make_mut` copy the whole canvas every
-    /// move (the CPU-bound FPS drop on a big canvas). A version lets the shell own
-    /// its preview buffer and leave the tool sole owner of its canvas.
-    pub(crate) arc_token: usize,
-    /// Entity whose source produced the uploaded pixels. Used as a
-    /// belt-and-suspenders check alongside `arc_token` so a
-    /// coincidental token reuse can't paint the wrong sprite.
-    pub(crate) entity_bits: u64,
-}
+/// ⭐ **O TIPO mudou-se para a folha [`ph2d_preview_slot`]** (W2 Fase D). ⚠️ Ele NÃO foi para a
+/// `ph2d-tool-runtime`, onde o gémeo de CPU (`PreviewCache`) vive: aquela crate tem um teto de
+/// LOC que se declara *«the discipline mechanism»* e exige ADR para subir — o header da folha
+/// tem a tabela dos DOIS destinos medidos e recusados. Ele era uma `struct` declarada aqui, e o doc dela dizia
+/// *«tool-agnostic — shared by BgRemoval and the Painter»* por escrito: estava no `app_state.rs`
+/// por INÉRCIA, escrito pela remoção de fundo, que era da shell. Era ele que prendia **nove**
+/// ficheiros da família `painter` a este ficheiro.
+///
+/// ⚠️ **O alias fica, e é ele o ponto:** os dois ficheiros da remoção de fundo — e toda a prosa
+/// que os cita — continuam byte a byte iguais. *O TIPO muda-se para junto do conteúdo dele; os
+/// CAMPOS da `App` ficam com quem possui uma pré-visualização em curso* (a cura que o
+/// `GroupDragSnapshot` levou na Fase C da `line/app-physics`).
+pub(crate) type BgremovalPreviewGpu = ph2d_preview_slot::PreviewGpu;
 
 /// Cached on-canvas live preview bitmap for the Painter tool (W1 T1.5).
 /// Same generic `ph2d_tool_runtime::PreviewCache` shape as BgR / CEQ /
@@ -1837,7 +1816,7 @@ pub(crate) type PainterPreview = ph2d_tool_runtime::PreviewCache;
 /// [`BgremovalPreviewGpu`] (texture_id + dims + arc_token + entity_bits).
 /// Aliased so the Painter bridge reads as its own type while sharing the
 /// one implementation (W3 sprite-suppression).
-pub(crate) type PainterPreviewGpu = BgremovalPreviewGpu;
+pub(crate) type PainterPreviewGpu = ph2d_preview_slot::PreviewGpu;
 
 /// Cached on-canvas live preview bitmap for the Color Equalization
 /// tool. Wave 10 / Etapa 3: now uniformized with BgR + Upscale as

@@ -5871,6 +5871,7 @@ dependencies = [
  "ph2d-physics-ecs",
  "ph2d-poly2d",
  "ph2d-preview-drive",
+ "ph2d-preview-slot",
  "ph2d-quadchain",
  "ph2d-quadextract",
  "ph2d-quadfill",
@@ -8047,6 +8048,10 @@ dependencies = [
  "ph2d-physics-ecs",
  "ph2d-render",
 ]
+
+[[package]]
+name = "ph2d-preview-slot"
+version = "0.0.0"
 
 [[package]]
 name = "ph2d-quadchain"

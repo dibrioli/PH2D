@@ -8,7 +8,7 @@
 
 use super::painter_bridge::own_preview_buffer;
 use super::painter_preview_pipeline_tests::ENTITY;
-use crate::app_state::PainterPreview;
+use ph2d_tool_runtime::PreviewCache as PainterPreview;
 use ph2d_editor::tool::{CanvasPaintTool, PointerPhase, RasterEditTool};
 use ph2d_tool_painter::PainterTool;
 use std::sync::Arc;

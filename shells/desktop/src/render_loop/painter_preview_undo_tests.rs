@@ -12,7 +12,8 @@
 
 use super::painter_preview_handoff_tests::app_frame;
 use super::painter_preview_pipeline_tests::{assert_screen_equals, cp, impasto_tool, screen_truth};
-use crate::app_state::{PainterPreview, PainterPreviewGpu};
+use ph2d_preview_slot::PreviewGpu as PainterPreviewGpu;
+use ph2d_tool_runtime::PreviewCache as PainterPreview;
 use ph2d_editor::tool::{CanvasPaintTool, PointerPhase};
 use ph2d_tool_painter::PainterTool;
 

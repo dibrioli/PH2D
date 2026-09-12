@@ -283,7 +283,7 @@ pub(super) fn draw_repeat_image(
     camera: &Camera2d,
     window_size: WindowSize,
     vector_scene: &mut VectorScene,
-    preview: Option<&crate::app_state::PainterPreview>,
+    preview: Option<&ph2d_tool_runtime::PreviewCache>,
 ) {
     if !painter.repeat_image() {
         return;

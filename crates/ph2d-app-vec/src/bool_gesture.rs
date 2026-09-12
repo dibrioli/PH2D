@@ -27,7 +27,7 @@ use ph2d_vec_entities::entities::VecEntityMap;
 /// Sobe a partir de cada caminho selecionado e devolve o **mais próximo** — com booleanas
 /// aninhadas, quem o clique re-mira é o grupo imediato, que é o que o artista tem em mãos.
 #[must_use]
-pub(crate) fn group_of_selection(
+pub fn group_of_selection(
     sim: &SimWorld,
     map: &VecEntityMap,
     selected: &[VecPathId],
@@ -51,7 +51,7 @@ pub(crate) fn group_of_selection(
 
 /// **Arma** a booleana viva sobre a seleção — re-mirando um grupo existente, ou criando um.
 /// Devolve `true` se alguma coisa mudou (e o `post_frame_undo` a capturará).
-pub(crate) fn arm(
+pub fn arm(
     sim: &mut SimWorld,
     scene: &VecScene,
     map: &VecEntityMap,
@@ -93,7 +93,7 @@ pub(crate) fn arm(
 /// responderia a partir de um estado que pode ter mudado desde o último desenho.
 ///
 /// Devolve quantos caminhos nasceram.
-pub(crate) fn bake(
+pub fn bake(
     sim: &mut SimWorld,
     scene: &mut VecScene,
     pen: &mut ph2d_vec_edit::PenTool,

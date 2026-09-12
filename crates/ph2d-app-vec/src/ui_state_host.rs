@@ -1,5 +1,5 @@
 //! **QUEM é o hospedeiro desta seleção, e o que o painel vê dele** — irmão do
-//! [`super`](crate::vec_ui_state_edit) pelo teto de 600 LOC do HR-18, cortado por
+//! [`super`](crate::ui_state_edit) pelo teto de 600 LOC do HR-18, cortado por
 //! RESPONSABILIDADE: ali ficam os VERBOS (capturar, instalar, gravar, deslocar); aqui, a pergunta
 //! que todos eles fazem primeiro e a projeção que o painel recebe.
 //!
@@ -38,7 +38,7 @@ use super::*;
 ///
 /// ⚠️ Sem ancestral-forma comum (duas formas soltas, ou um grupo na raiz) continua a ser `None` —
 /// e aí a seção pinta a **face vazia com a dica**, em vez de desaparecer.
-pub(crate) fn host_of_selection(
+pub fn host_of_selection(
     sim: &SimWorld,
     scene: &VecScene,
     map: &VecEntityMap,
@@ -94,7 +94,7 @@ fn covering_shape(
 // seguem — e duas convenções para o mesmo trio custam mais que o lint. O dia em que o trio virar
 // um tipo, ele vira para as cinco de uma vez.
 #[allow(clippy::too_many_arguments)]
-pub(crate) fn publish(
+pub fn publish(
     sim: &SimWorld,
     scene: &VecScene,
     map: &VecEntityMap,
@@ -200,5 +200,5 @@ pub(crate) fn publish(
 }
 
 #[cfg(test)]
-#[path = "vec_ui_state_host_tests.rs"]
+#[path = "ui_state_host_tests.rs"]
 mod tests;

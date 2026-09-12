@@ -37,14 +37,14 @@ use ph2d_vec_entities::entities::VecEntityMap;
 /// ⚠️ **Elas não são serializadas, e não podem ser:** uma máquina é *onde a cena está agora*, e
 /// o documento guarda *onde as poses são*. Salvar a máquina faria um projeto reabrir a meio
 /// caminho de um hover.
-pub(crate) type UiMachines = BTreeMap<VecPathId, Machine>;
+pub type UiMachines = BTreeMap<VecPathId, Machine>;
 
 /// **Pede a `host` que vá para `role`.** Cria a máquina se ela ainda não existe.
 ///
 /// ⚠️ A máquina nasce parada no primeiro estado gravado, e é por isso que a construção lê a
 /// tabela inteira: partir de um estado inventado faria a primeira transição vir de uma pose que
 /// ninguém autorou.
-pub(crate) fn request(
+pub fn request(
     machines: &mut UiMachines,
     states: &StateSets,
     host: VecPathId,
@@ -92,7 +92,7 @@ fn empty_machine() -> Machine {
 /// viva lê-o mais tarde no mesmo quadro. Ele é **limpo em toda entrada**, e é isso que garante que
 /// um recado não sobrevive à transição que o produziu: sem a limpeza, um grupo continuaria a
 /// cozinhar duas pontas para sempre depois de a cena chegar.
-pub(crate) fn dispatch(
+pub fn dispatch(
     machines: &mut UiMachines,
     states: &mut StateSets,
     sim: &mut SimWorld,
@@ -125,7 +125,7 @@ pub(crate) fn dispatch(
         // frame do fim.
         if was {
             for p in m.pose() {
-                crate::vec_ui_state_edit::install(sim, scene, map, p);
+                crate::ui_state_edit::install(sim, scene, map, p);
             }
             // ⚠️ **Colhido dentro do mesmo `if was` que instala a pose**, e não ao lado: o recado
             // descreve o quadro que ACABOU de ser escrito. Colhê-lo de uma máquina que não andou
@@ -150,16 +150,16 @@ pub(crate) fn dispatch(
 ///
 /// ⚠️ **Runtime-only:** descrevem *onde a cena está agora*; o documento guarda *onde as poses são*.
 #[derive(Default)]
-pub(crate) struct Cooked {
+pub struct Cooked {
     /// As formas a meio de uma troca de VERBO booleano.
-    pub(crate) bool_morphs: Vec<ph2d_ui_state::BoolMorph>,
+    pub bool_morphs: Vec<ph2d_ui_state::BoolMorph>,
     /// ⭐⭐⭐ Os conjuntos de Morph States a meio de uma troca de FORMA (plano 32 W11c).
-    pub(crate) morph_steps: Vec<ph2d_ui_state::MorphStep>,
+    pub morph_steps: Vec<ph2d_ui_state::MorphStep>,
 }
 
 /// Que papel a cena mostra para `host` — o índice, para o painel.
 #[must_use]
-pub(crate) fn live_role(machines: &UiMachines, host: Option<VecPathId>) -> Option<usize> {
+pub fn live_role(machines: &UiMachines, host: Option<VecPathId>) -> Option<usize> {
     let h = host?;
     let m = machines.get(&h)?;
     // ⚠️ Em voo o que interessa é PARA ONDE ela vai, não de onde saiu: o artista pediu aquele

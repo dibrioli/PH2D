@@ -24,7 +24,7 @@ use ph2d_vec_entities::entities::VecEntityMap;
 
 /// **O que esta forma É** dentro da booleana viva que a consome.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) enum BoolRole {
+pub enum BoolRole {
     /// A forma mais ao FUNDO: o acumulador inicial. ⚠️ Ela **não tem verbo** — não há nada sobre
     /// o que dobrar antes de existir um acumulado —, e é por isso que o papel dela é um valor
     /// próprio em vez de um verbo qualquer.
@@ -44,7 +44,7 @@ impl BoolRole {
     /// `CAM`, `SPR`): eles são códigos, e a tabela de TOM da linha casa contra a própria string —
     /// traduzir o selo tiraria a cor dele. O app é inglês-only por decisão do Enio.
     #[must_use]
-    pub(crate) fn badge(self) -> &'static str {
+    pub fn badge(self) -> &'static str {
         match self {
             BoolRole::Base => "BSE",
             BoolRole::Recipe => "RCP",
@@ -67,7 +67,7 @@ impl BoolRole {
 /// 3. ela é a **base** ⇒ `Base`, sem verbo;
 /// 4. senão, o verbo dela — o override próprio, ou o do grupo por herança.
 #[must_use]
-pub(crate) fn role_of(
+pub fn role_of(
     sim: &SimWorld,
     map: &VecEntityMap,
     bool_live: &BoolLive,
@@ -122,7 +122,7 @@ fn effective_code(sim: &SimWorld, map: &VecEntityMap, id: VecPathId, group_op: u
 /// seria mover uma das duas metades na ordem do frame, que é mudança com gates próprios e sem
 /// nada a ganhar.
 #[must_use]
-pub(crate) fn badges(
+pub fn badges(
     sim: &SimWorld,
     map: &VecEntityMap,
     bool_live: &BoolLive,
@@ -154,7 +154,7 @@ pub(crate) fn badges(
 /// da hierarquia confirma. ⚠️ Sem `Name` o nome vem vazio, e o painel cai no rótulo genérico: o
 /// nome é dado do documento, não copy de UI.
 #[must_use]
-pub(crate) fn shape_row_of_selection(
+pub fn shape_row_of_selection(
     sim: &SimWorld,
     map: &VecEntityMap,
     bool_live: &BoolLive,
@@ -192,7 +192,7 @@ pub(crate) fn shape_row_of_selection(
 /// dos quatro chips é a dos quatro primeiros discriminantes, e uma tabela paralela divergiria dela
 /// no dia em que alguém reordenasse a fileira do painel.
 #[must_use]
-pub(crate) fn shape_op_for_id(id: ph2d_editor::ids::NodeId) -> Option<u8> {
+pub fn shape_op_for_id(id: ph2d_editor::ids::NodeId) -> Option<u8> {
     [
         ph2d_editor::ids::VECTOR_BOOL_SHAPE_UNION,
         ph2d_editor::ids::VECTOR_BOOL_SHAPE_SUBTRACT,
@@ -209,7 +209,7 @@ pub(crate) fn shape_op_for_id(id: ph2d_editor::ids::NodeId) -> Option<u8> {
 /// ⚠️ Ele **repete a triagem** em vez de confiar no que o painel mostrou: entre pintar a fileira e
 /// o clique chegar passa um frame, e nele a seleção pode ter mudado. Escrever sem reconferir é
 /// como um clique numa forma acaba a mudar outra.
-pub(crate) fn set_selected_shape_op(
+pub fn set_selected_shape_op(
     sim: &mut SimWorld,
     map: &VecEntityMap,
     bool_live: &BoolLive,
@@ -230,5 +230,5 @@ pub(crate) fn set_selected_shape_op(
 }
 
 #[cfg(test)]
-#[path = "vec_bool_shape_tests.rs"]
+#[path = "bool_shape_tests.rs"]
 mod tests;

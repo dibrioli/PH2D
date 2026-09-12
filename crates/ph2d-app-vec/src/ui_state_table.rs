@@ -20,7 +20,7 @@ use ph2d_vec_scene::VecPathId;
 /// `Transform`**: a forma solta **salta para a origem do hospedeiro**, no meio de uma animação que
 /// já não é sobre ela.
 ///
-/// ⚠️ É o mesmo argumento do `retain_hosts` da [`crate::render_loop::ui_state_bridge`], um nível
+/// ⚠️ É o mesmo argumento do `retain_hosts` da [`crate::ui_state_bridge`], um nível
 /// abaixo — ali *"uma forma apagada leva os estados dela"*, aqui *"uma forma que sai leva as poses
 /// dela"*.
 ///
@@ -28,7 +28,7 @@ use ph2d_vec_scene::VecPathId;
 /// `retain_hosts` deixa cair a tabela inteira do hospedeiro no mesmo quadro.
 ///
 /// Devolve `true` se alguma pose saiu.
-pub(crate) fn forget_object_in_all_states(
+pub fn forget_object_in_all_states(
     states: &mut StateSets,
     host: VecPathId,
     id: VecPathId,
@@ -83,7 +83,7 @@ pub(crate) fn forget_object_in_all_states(
 /// outro.
 ///
 /// Devolve a forma escolhida, ou `None` se nada nomeava a que saiu (ou se não sobrou candidata).
-pub(crate) fn replace_morph_shape_in_all_states(
+pub fn replace_morph_shape_in_all_states(
     states: &mut StateSets,
     host: VecPathId,
     object: VecPathId,
@@ -161,7 +161,7 @@ pub(crate) fn replace_morph_shape_in_all_states(
 /// seja um GRUPO puro nunca teve o problema (o `members` não o inclui — ele não tem forma), e é
 /// por isso que o defeito só aparece depois de o artista gravar um estado que move a própria
 /// forma-hospedeiro.
-pub(crate) fn shift_host_in_all_states(
+pub fn shift_host_in_all_states(
     states: &mut StateSets,
     host: VecPathId,
     delta: [f64; 2],

@@ -14,7 +14,7 @@ fn bare() -> (SimWorld, VecScene, VecEntityMap) {
 /// **Cada id da tabela endereça o gesto certo** — e nada mais endereça gesto nenhum.
 #[test]
 fn every_table_id_addresses_its_own_gesture() {
-    use crate::vec_ui_state_edit::{SignalEdit, signal_edit_for_id, signal_name_row};
+    use crate::ui_state_edit::{SignalEdit, signal_edit_for_id, signal_name_row};
 
     assert_eq!(
         signal_edit_for_id(ph2d_editor::ids::VECTOR_STATE_SIGNAL_ADD),
@@ -59,7 +59,7 @@ fn every_table_id_addresses_its_own_gesture() {
 #[test]
 fn the_three_gestures_write_the_table_and_add_stops_at_the_pool() {
     let (sim, scene, map) = bare();
-    use crate::vec_ui_state_edit::{SignalEdit, apply_signal_edit};
+    use crate::ui_state_edit::{SignalEdit, apply_signal_edit};
 
     let host: VecPathId = 1;
     let sel = [host];
@@ -120,7 +120,7 @@ fn the_three_gestures_write_the_table_and_add_stops_at_the_pool() {
 #[test]
 fn the_table_refuses_a_selection_with_no_host() {
     let (sim, scene, map) = bare();
-    use crate::vec_ui_state_edit::{SignalEdit, apply_signal_edit};
+    use crate::ui_state_edit::{SignalEdit, apply_signal_edit};
 
     let mut states = StateSets::default();
     assert!(!apply_signal_edit(

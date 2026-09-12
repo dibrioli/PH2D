@@ -259,7 +259,12 @@ mod upscale_bridge;
 // de downcast deste bridge).
 /// **A ponte dos ESTADOS de UI** (plano UI/UX W7) — quem faz a cena ANDAR entre duas poses.
 pub(crate) mod ui_preview;
-pub(crate) mod ui_state_bridge;
+// ⭐ **A LEI dos estados de UI mudou-se para [`ph2d_app_vec::ui_state_bridge`]** (W2 Fase D): ela
+// é pura sobre o ECS (zero `App`, zero `gfx`) e a única coisa da shell que ela nomeava era o
+// `vec_ui_state_edit`, que foi com ela. ⛔ **O LAÇO e os CAMPOS ficam**: o `app_state` guarda as
+// `UiMachines` e o `Cooked`, e é este módulo que decide quando `request`/`dispatch` correm.
+// *O que sai são os CORPOS; o que decide a ordem do quadro fica* (HOWTO §4).
+pub(crate) use ph2d_app_vec::ui_state_bridge;
 /// O NÚMERO do smart guide — a ficha de distância; veja os docs do módulo.
 // ⭐ W2/L4: foi para `crates/ph2d-app-vec`. Re-exportado para `render_loop::vec_snap_labels`
 // continuar a resolver nos chamadores deste módulo.

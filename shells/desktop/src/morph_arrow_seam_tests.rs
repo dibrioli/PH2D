@@ -119,7 +119,11 @@ fn the_arrow_click_reaches_the_world() {
     // Sem esta linha, arrastar uma forma para dentro do conjunto na Hierarquia não a faria
     // participar: o motor continuaria a percorrer uma lista que ninguém actualiza.
     assert!(
-        include_str!("morph_machine_drive.rs").contains(
+        // ⚠️ **Esta agulha sozinha segue o MOTOR, e ele mudou de crate** (W2 Fase D): as outras
+        // deste ficheiro medem o que a SHELL escreve (`render_loop/mod.rs`, os dois do teclado) e
+        // ficam. ⭐ *O ficheiro partiu-se em dois sujeitos, e cada agulha segue o seu* — é a 4.ª vez
+        // que esta linha aplica a regra, e a 1.ª em que ela dá duas respostas DENTRO do mesmo gate.
+        include_str!("../../../crates/ph2d-app-vec/src/morph_machine_drive.rs").contains(
             "ph2d_vec_entities::morph_set::graph_of(sim, map_paths, Entity::from_bits(b))"
         ),
         "o motor deixou de DERIVAR o grafo dos filhos -- arrastar para dentro deixa de entrar"

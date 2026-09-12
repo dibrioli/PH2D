@@ -230,7 +230,7 @@ fn the_preview_switch_is_offered_only_where_there_is_something_to_preview() {
 /// **A FORMA no estado** — o que a autoria grava de geometria, e como ela viaja. Módulo FILHO
 /// (e não irmão) de propósito: a fixture `scene_with_host_and_child` continua a ser **uma
 /// porta**, e um irmão obrigaria a duplicá-la ou a torná-la pública para fora do assunto.
-#[path = "vec_ui_state_shape_tests.rs"]
+#[path = "ui_state_shape_tests.rs"]
 mod shape;
 
 /// **A curva que o painel mostra é a que o documento guarda.**

@@ -67,7 +67,7 @@ fn touching_a_live_boolean_reaches_the_states_section() {
         selection
     );
 
-    let published = crate::vec_ui_state_edit::publish(
+    let published = crate::ui_state_edit::publish(
         &sim,
         &scene,
         &map,
@@ -84,7 +84,7 @@ fn touching_a_live_boolean_reaches_the_states_section() {
         "a seccao apareceu sem dizer de QUEM sao as poses"
     );
     assert_eq!(
-        crate::vec_ui_state_edit::host_of_selection(&sim, &scene, &map, &selection),
+        crate::ui_state_edit::host_of_selection(&sim, &scene, &map, &selection),
         Some(chip),
         "o hospedeiro derivado nao e' a forma que contem a booleana"
     );
@@ -100,13 +100,13 @@ fn recording_from_a_boolean_selection_captures_the_operands() {
     let (mut sim, mut scene, map, _chip, ops) = chip_with_a_live_boolean();
     let selection = ph2d_vec_entities::entities::object_selection_for(&sim, &scene, &map, ops[0]);
     let mut states = StateSets::default();
-    crate::vec_ui_state_edit::apply(
+    crate::ui_state_edit::apply(
         &mut sim,
         &mut scene,
         &map,
         &selection,
         &mut states,
-        crate::vec_ui_state_edit::UiStateEdit::Record(ph2d_ui_state::StateRole::Default),
+        crate::ui_state_edit::UiStateEdit::Record(ph2d_ui_state::StateRole::Default),
     );
     let recorded: Vec<VecPathId> = states
         .role(_chip, ph2d_ui_state::StateRole::Default)
@@ -162,7 +162,7 @@ fn the_verb_row_and_the_states_section_coexist_on_one_selection() {
     );
 
     let row =
-        crate::vec_bool_shape::shape_row_of_selection(&sim, &map, &bl, &selection, Some(ops[1]));
+        crate::bool_shape::shape_row_of_selection(&sim, &map, &bl, &selection, Some(ops[1]));
     assert!(
         row.is_some(),
         "a fileira do verbo por forma nao aparece sobre a selecao que o clique produz"
@@ -171,7 +171,7 @@ fn the_verb_row_and_the_states_section_coexist_on_one_selection() {
     // gate que só perguntasse *"a seção existe?"* ficaria verde sobre a seção a dizer *"nenhuma
     // forma governa esta seleção"*, que é exactamente o estado que esta wave veio curar. Medido:
     // um mutante que devolvia `None` no braço da seleção múltipla **sobreviveu** à primeira versão.
-    let published = crate::vec_ui_state_edit::publish(
+    let published = crate::ui_state_edit::publish(
         &sim,
         &scene,
         &map,

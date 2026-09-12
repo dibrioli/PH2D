@@ -83,18 +83,18 @@ struct Memo {
 /// exatamente o que está na tela. Uma segunda chamada ao `pathfinder` faria a forma SALTAR no
 /// clique se qualquer coisa a montante tivesse mudado — o defeito que o ADR-0128 pagou cinco
 /// vezes com o Expand do Blend.
-pub(crate) struct Cooked {
+pub struct Cooked {
     /// O operando mais ao FUNDO: quem carrega o resultado no mapa, e onde ele é inserido no bake.
-    pub(crate) base: VecPathId,
+    pub base: VecPathId,
     /// Todos os operandos consumidos, **na ordem de z** (a base é o primeiro).
-    pub(crate) operands: Vec<VecPathId>,
+    pub operands: Vec<VecPathId>,
     /// A geometria que o grupo desenha, em MUNDO.
-    pub(crate) out: Vec<VecPath>,
+    pub out: Vec<VecPath>,
 }
 
 /// A booleana viva de toda a cena, com memo por grupo (chaveado pela BASE).
 #[derive(Default)]
-pub(crate) struct BoolLive {
+pub struct BoolLive {
     memo: BTreeMap<VecPathId, Memo>,
     /// O que cada grupo desenhou NESTE frame, por bits de entidade. Reconstruído a cada
     /// `recook` — é uma fotografia, não estado.
@@ -117,7 +117,7 @@ impl BoolLive {
     /// ([`ph2d_ui_state::Transition::bool_morphs`]) — vazio no caso comum. Um grupo tocado por
     /// alguma delas cozinha **as duas pontas** e entrega o par ao morph; os outros correm
     /// byte-idênticos ao que sempre correram.
-    pub(crate) fn recook(
+    pub fn recook(
         &mut self,
         scene: &VecScene,
         sim: &SimWorld,
@@ -236,14 +236,14 @@ impl BoolLive {
     /// verde sobre outra coisa.
     #[cfg(test)]
     #[must_use]
-    pub(crate) fn morphed(&self) -> usize {
+    pub fn morphed(&self) -> usize {
         self.morphed
     }
 
     /// **O que este grupo desenhou neste frame.** `None` = ele não cozinhou (menos de dois
     /// operandos fechados, código desconhecido, ou o motor recusou).
     #[must_use]
-    pub(crate) fn plan(&self, group: Entity) -> Option<&Cooked> {
+    pub fn plan(&self, group: Entity) -> Option<&Cooked> {
         let bits = group.to_bits();
         self.plans.iter().find(|(b, _)| *b == bits).map(|(_, c)| c)
     }
@@ -256,7 +256,7 @@ impl BoolLive {
     /// decrescente. O verbo de uma forma vale dentro do grupo *dela* — quem consome o resultado
     /// desse grupo é outra pergunta, com outra resposta.
     #[must_use]
-    pub(crate) fn plan_containing(&self, id: VecPathId) -> Option<(Entity, &Cooked)> {
+    pub fn plan_containing(&self, id: VecPathId) -> Option<(Entity, &Cooked)> {
         self.plans
             .iter()
             .find(|(_, c)| c.operands.contains(&id))
@@ -278,7 +278,7 @@ impl BoolLive {
     /// smoka. Seguir a cadeia até quem de facto desenha é uma volta por frame, e deixa o pick a
     /// fazer uma pergunta só.
     #[must_use]
-    pub(crate) fn absorbed(&self) -> Vec<(VecPathId, VecPathId)> {
+    pub fn absorbed(&self) -> Vec<(VecPathId, VecPathId)> {
         let direct: Vec<(VecPathId, VecPathId)> = self
             .plans
             .iter()
@@ -292,7 +292,7 @@ impl BoolLive {
 
     /// Esquece tudo — o load de projeto e o restore de undo trocam a cena inteira debaixo do
     /// memo, e os `VecPathId` são reciclados entre documentos.
-    pub(crate) fn forget(&mut self) {
+    pub fn forget(&mut self) {
         self.memo.clear();
         self.plans.clear();
     }
@@ -376,7 +376,7 @@ fn input_of(
 /// ⚠️ **O mais PRÓXIMO vence**, e é a mesma lei do `plan_containing`: com grupos aninhados, uma
 /// forma pertence ao grupo dela — quem consome o resultado desse grupo é outra pergunta.
 #[must_use]
-pub(crate) fn group_above(
+pub fn group_above(
     sim: &SimWorld,
     map: &VecEntityMap,
     id: VecPathId,
@@ -460,7 +460,7 @@ const MAX_DEPTH: usize = 64;
 /// e uma segunda tabela em qualquer outro sítio divergiria dela no dia em que a 9ª operação
 /// aparecesse.
 #[must_use]
-pub(crate) fn op_of_code(code: u8) -> Option<ph2d_vec_boolean::PathfinderOp> {
+pub fn op_of_code(code: u8) -> Option<ph2d_vec_boolean::PathfinderOp> {
     use ph2d_vec_boolean::PathfinderOp as P;
     Some(match code {
         0 => P::Union,
@@ -479,7 +479,7 @@ pub(crate) fn op_of_code(code: u8) -> Option<ph2d_vec_boolean::PathfinderOp> {
 /// [`op_of_code`], e as duas moram lado a lado porque uma tabela sem a sua inversa é a metade que
 /// alguém reescreve com os índices trocados.
 #[must_use]
-pub(crate) fn code_of_op(op: ph2d_vec_boolean::PathfinderOp) -> u8 {
+pub fn code_of_op(op: ph2d_vec_boolean::PathfinderOp) -> u8 {
     use ph2d_vec_boolean::PathfinderOp as P;
     match op {
         P::Union => 0,

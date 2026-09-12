@@ -49,13 +49,13 @@ fn the_frame_composes_the_bridge_and_the_cook() {
     // As duas poses, pela porta do PRODUTO — nunca escrevendo a tabela à mão.
     let mut states = StateSets::default();
     let rec = |sim: &mut SimWorld, scene: &mut VecScene, states: &mut StateSets, role| {
-        crate::vec_ui_state_edit::apply(
+        crate::ui_state_edit::apply(
             sim,
             scene,
             &map,
             &[chip],
             states,
-            crate::vec_ui_state_edit::UiStateEdit::Record(role),
+            crate::ui_state_edit::UiStateEdit::Record(role),
         );
     };
     rec(&mut sim, &mut scene, &mut states, StateRole::Default);
@@ -68,10 +68,10 @@ fn the_frame_composes_the_bridge_and_the_cook() {
     states.set_easing(chip, Easing::new(EasingFamily::Linear, EasingMode::InOut));
     let (duration, _) = states.timing(chip);
 
-    let mut machines = crate::render_loop::ui_state_bridge::UiMachines::new();
-    crate::render_loop::ui_state_bridge::request(&mut machines, &states, chip, StateRole::Hover);
-    let mut cooked = crate::render_loop::ui_state_bridge::Cooked::default();
-    let animating = crate::render_loop::ui_state_bridge::dispatch(
+    let mut machines = crate::ui_state_bridge::UiMachines::new();
+    crate::ui_state_bridge::request(&mut machines, &states, chip, StateRole::Hover);
+    let mut cooked = crate::ui_state_bridge::Cooked::default();
+    let animating = crate::ui_state_bridge::dispatch(
         &mut machines,
         &mut states,
         &mut sim,

@@ -75,6 +75,13 @@ ph2d-vec-pattern = { path = "../ph2d-vec-pattern" }
 # shell. A `line/app-motion` levou-a para esta folha na Fase C, e o cluster `fx_live` libertou-se
 # **sem uma linha de trabalho novo** deste lado.
 ph2d-vec-art-live = { path = "../ph2d-vec-art-live" }
+# ⚠️ **A 17a, a 18a e a 19a invisiveis** (HOWTO §1.3), e as tres chegaram com os ESTADOS DE UI: a
+# maquina de estados (`ph2d-ui-state`), o vocabulario de ponteiro do gesto booleano (`ph2d-input`) e
+# o ledger de pre-visualizacao (`ph2d-preview-drive`) -- este ultimo porque uma transicao de estado
+# escreve poses que sao pre-visualizacao, nao autoria.
+ph2d-input = { path = "../ph2d-input" }
+ph2d-preview-drive = { path = "../ph2d-preview-drive" }
+ph2d-ui-state = { path = "../ph2d-ui-state" }
 # ⚠️ **MAIS DUAS na FASE C, e sao a OITAVA e a NONA invisiveis desta familia** (HOWTO §1.3): o
 # editor de widget autorado traduz o rotulo de cada `WidgetKind` (`ph2d_i18n::tr`) e a costura das
 # setas fala a chave da maquina de estados. Dentro da shell as duas eram dependencia do binario e

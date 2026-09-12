@@ -109,10 +109,10 @@ mod bone_smart_probe;
 mod bone_undo_probe;
 /// Os GESTOS da booleana viva: armar (criar/re-mirar) e consolidar. O documento mora aqui; o
 /// motor, no `bool_live`.
-mod bool_gesture;
+pub(crate) use ph2d_app_vec::bool_gesture;
 /// A BOOLEANA VIVA (plano UI/UX W1): um grupo cujos filhos se combinam e continuam editáveis.
 /// O 7º produtor de `LiveGeometry`, e o segundo que TRANSFORMA o mapa em vez de o estender.
-mod bool_live;
+pub(crate) use ph2d_app_vec::bool_live;
 /// A cena de smoke da booleana viva (`PH2D_BUILD_SMOKE=48`) — irmã de `build_smoke`, teto de LOC.
 mod bool_smoke;
 /// ⭐ **DAR e TIRAR o traço de uma forma** (plano 34) — a porta da caixa *Stroke* do painel. Existe
@@ -279,7 +279,7 @@ mod merge_layers;
 mod modal_tests;
 mod morph_fade_smoke;
 pub(crate) use ph2d_app_vec::morph_live;
-mod morph_machine_drive;
+pub(crate) use ph2d_app_vec::morph_machine_drive;
 // A LEI mudou-se para a folha `ph2d-vec-entities`; a CADEIA de gates dela fica, porque
 // atravessa o `morph_live`, o `vec_convert`, o `vec_ui_state_edit` e o `render_loop`.
 /// A metade do gizmo de campo que fala com a `App` — o prólogo que FICA (W2 Fase C).
@@ -535,12 +535,9 @@ mod vec_bone_smoke;
 /// ⭐ Os gates de ROTA da booleana viva até os ESTADOS (auditoria de 2026-08-23): *com uma
 /// booleana em mãos, o artista chega às poses dela?* — a pergunta que "o widget existe e o clique
 /// chega ao barramento" não faz.
-#[cfg(test)]
-#[path = "vec_bool_reach_tests.rs"]
-mod vec_bool_reach_tests;
 /// **O papel de cada forma dentro de uma booleana viva** — a porta única de *"que verbo é o
 /// dela?"*, que o painel e a linha da hierarquia partilham.
-mod vec_bool_shape;
+pub(crate) use ph2d_app_vec::bool_shape as vec_bool_shape;
 /// ⭐⭐⭐ **SOLDAR** (plano 39) — linhas cruzadas partem-se em arcos que partilham o nó.
 mod vec_bucket;
 // ⛔ **O `bucket_repro` NÃO é re-exportado, e a ausência é a cura** (W2/L4 Fase B): aquele módulo
@@ -636,7 +633,7 @@ mod vec_text_ride;
 mod vec_tree_settle;
 mod vec_trim;
 /// **OS VERBOS DA PELE** (plano UI/UX W6.2) — vestir, trocar de tipo, despir.
-mod vec_ui_state_edit;
+pub(crate) use ph2d_app_vec::ui_state_edit as vec_ui_state_edit;
 /// **OS VARIANTS** (plano UI/UX W5c) — que versão do componente uma instância é. Um conjunto de
 /// variants é DERIVADO (os mestres irmãos), e os eixos saem dos NOMES: zero componente novo.
 ///

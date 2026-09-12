@@ -1,4 +1,4 @@
-//! **Os verbos dos ESTADOS de UI** (plano UI/UX W7) — irmão do [`crate::vec_widget_edit`], mesma
+//! **Os verbos dos ESTADOS de UI** (plano UI/UX W7) — irmão do [`crate::widget_edit`], mesma
 //! divisão: o painel PEDE, a shell FAZ, e o que muda é o documento.
 //!
 //! # O que um estado GRAVA, e por que a sub-árvore inteira
@@ -30,7 +30,7 @@ use ph2d_vec_entities::entities::VecEntityMap;
 
 /// O que um clique na seção STATES pede.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) enum UiStateEdit {
+pub enum UiStateEdit {
     /// **Record / Update** — grava a pose ATUAL da sub-árvore neste papel.
     Record(StateRole),
     /// **Clear** — esquece a pose deste papel.
@@ -41,7 +41,7 @@ pub(crate) enum UiStateEdit {
 
 /// Este id é um verbo de estado? **Porta única** do roteador.
 #[must_use]
-pub(crate) fn ui_state_edit_for_id(id: ph2d_editor::NodeId) -> Option<UiStateEdit> {
+pub fn ui_state_edit_for_id(id: ph2d_editor::NodeId) -> Option<UiStateEdit> {
     for (i, &role) in StateRole::ALL.iter().enumerate() {
         if id == ph2d_editor::ids::vector_state_record_id(i) {
             return Some(UiStateEdit::Record(role));
@@ -63,7 +63,7 @@ pub(crate) fn ui_state_edit_for_id(id: ph2d_editor::NodeId) -> Option<UiStateEdi
 /// que carregasse a curva completa obrigaria o painel a reconstruir a outra metade — e o painel
 /// pinta a partir do que a shell publica, então ele estaria a adivinhar o que o documento tem.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) enum EasingPick {
+pub enum EasingPick {
     Family(ph2d_anim::EasingFamily),
     Mode(ph2d_anim::EasingMode),
 }
@@ -71,7 +71,7 @@ pub(crate) enum EasingPick {
 /// Este id é um chip do seletor de curva? **Porta única** do roteador — a irmã exata do
 /// [`ui_state_edit_for_id`], e percorrida pelo mesmo `ALL` que os pinta.
 #[must_use]
-pub(crate) fn easing_pick_for_id(id: ph2d_editor::NodeId) -> Option<EasingPick> {
+pub fn easing_pick_for_id(id: ph2d_editor::NodeId) -> Option<EasingPick> {
     for (i, &f) in ph2d_anim::EasingFamily::ALL.iter().enumerate() {
         if id == ph2d_editor::ids::vector_easing_family_id(i) {
             return Some(EasingPick::Family(f));
@@ -91,7 +91,7 @@ pub(crate) fn easing_pick_for_id(id: ph2d_editor::NodeId) -> Option<EasingPick> 
 /// o artista que passe por `Linear` e volte a `Quad` espera reencontrar a direção que escolheu.
 /// Zerá-la aqui seria perder uma decisão dele para arrumar um byte que ninguém lê.
 #[must_use]
-pub(crate) fn easing_with(cur: ph2d_anim::Easing, pick: EasingPick) -> ph2d_anim::Easing {
+pub fn easing_with(cur: ph2d_anim::Easing, pick: EasingPick) -> ph2d_anim::Easing {
     match pick {
         EasingPick::Family(family) => ph2d_anim::Easing { family, ..cur },
         EasingPick::Mode(mode) => ph2d_anim::Easing { mode, ..cur },
@@ -104,10 +104,10 @@ fn entity_of(map: &VecEntityMap, id: VecPathId) -> Option<Entity> {
 
 /// Os caminhos que este hospedeiro governa: ele próprio e cada descendente que é uma forma.
 ///
-/// ⚠️ `pub(crate)` desde o modo de PREVIEW (W7r): ele pergunta o INVERSO — *"o que o rato tocou
+/// ⚠️ `pub` desde o modo de PREVIEW (W7r): ele pergunta o INVERSO — *"o que o rato tocou
 /// pertence a algum hospedeiro?"* — e uma segunda travessia da árvore ao lado daria duas respostas
 /// a *"quem este botão governa"*, com o hover a morrer sobre a metade que uma delas esquecesse.
-pub(crate) fn members(
+pub fn members(
     sim: &SimWorld,
     scene: &VecScene,
     map: &VecEntityMap,
@@ -127,11 +127,11 @@ pub(crate) fn members(
 
 /// **A pose de AGORA**, lida do mundo e do documento.
 ///
-/// ⚠️ `pub(crate)` desde o modo de PREVIEW (W7r): ele captura, ao ENTRAR, exactamente a mesma
+/// ⚠️ `pub` desde o modo de PREVIEW (W7r): ele captura, ao ENTRAR, exactamente a mesma
 /// coisa que o **Rec** captura — *o que a cena mostra agora* —, e uma segunda leitura ao lado
 /// seria a que esquece um canal no dia em que a pose ganhar um. Uma porta, dois consumidores.
 #[must_use]
-pub(crate) fn capture(
+pub fn capture(
     sim: &SimWorld,
     scene: &VecScene,
     map: &VecEntityMap,
@@ -243,7 +243,7 @@ pub(crate) fn capture(
 /// realizados, então re-cozinhá-la seria aplicá-los duas vezes. Na CHEGADA volta a autorada, com
 /// as alças de quina e a pilha intactas — a passagem pelo documento é transitória e cura-se
 /// sozinha, e é o preço de o Show ter de deixar a cena *editável no estado que mostra*.
-pub(crate) fn install(
+pub fn install(
     sim: &mut SimWorld,
     scene: &mut VecScene,
     map: &VecEntityMap,
@@ -357,8 +357,8 @@ pub(crate) fn install(
 /// ⚠️ **O Show não escreve pose aqui**, e a fronteira é o desenho inteiro: uma escrita direta
 /// seria uma SEGUNDA porta para *"pôr a cena nesta pose"*, ao lado da máquina — e a diferença
 /// entre as duas é justamente o tween que o artista autorou. Quem mostra é a
-/// [`crate::render_loop::ui_state_bridge`]; aqui só se decodifica o pedido.
-pub(crate) fn apply(
+/// [`crate::ui_state_bridge`]; aqui só se decodifica o pedido.
+pub fn apply(
     sim: &mut SimWorld,
     scene: &mut VecScene,
     map: &VecEntityMap,
@@ -387,9 +387,9 @@ pub(crate) fn apply(
 
 /// **AS OPERAÇÕES SOBRE A TABELA INTEIRA** — irmão por LOC (HR-18), cortado por responsabilidade:
 /// o objecto moveu-se, saiu, ou a forma que uma pose nomeia deixou de ser um estado.
-#[path = "vec_ui_state_table.rs"]
+#[path = "ui_state_table.rs"]
 mod table;
-pub(crate) use table::{
+pub use table::{
     forget_object_in_all_states, replace_morph_shape_in_all_states, shift_host_in_all_states,
 };
 
@@ -400,7 +400,7 @@ pub(crate) use table::{
 /// teto que o `populate` regista e o `paint` percorre. Uma segunda varredura escrita noutro
 /// arquivo é a que esquece o `MAX` quando ele se mover.
 #[must_use]
-pub(crate) fn signal_edit_for_id(id: ph2d_editor::NodeId) -> Option<SignalEdit> {
+pub fn signal_edit_for_id(id: ph2d_editor::NodeId) -> Option<SignalEdit> {
     if id == ph2d_editor::ids::VECTOR_STATE_SIGNAL_ADD {
         return Some(SignalEdit::Add);
     }
@@ -419,7 +419,7 @@ pub(crate) fn signal_edit_for_id(id: ph2d_editor::NodeId) -> Option<SignalEdit> 
 
 /// O que um gesto da tabela sinal → papel pede.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) enum SignalEdit {
+pub enum SignalEdit {
     /// Acrescenta uma ligação vazia.
     Add,
     /// Apaga a ligação `i`.
@@ -432,7 +432,7 @@ pub(crate) enum SignalEdit {
 ///
 /// ⚠️ **Ele exige hospedeiro ÚNICO**, a mesma guarda da duração e da curva: a tabela é por
 /// hospedeiro, e carimbar a mesma ligação em vários seria um gesto cujo alcance o artista não vê.
-pub(crate) fn apply_signal_edit(
+pub fn apply_signal_edit(
     sim: &SimWorld,
     scene: &VecScene,
     map: &VecEntityMap,
@@ -462,31 +462,31 @@ pub(crate) fn apply_signal_edit(
 
 /// **O nome commitado num campo da tabela** — o índice da linha, se o id for de uma.
 #[must_use]
-pub(crate) fn signal_name_row(id: ph2d_editor::NodeId) -> Option<usize> {
+pub fn signal_name_row(id: ph2d_editor::NodeId) -> Option<usize> {
     (0..ph2d_editor::ids::MAX_SIGNAL_BINDINGS)
         .find(|&i| ph2d_editor::ids::vector_state_signal_name_id(i) == id)
 }
 
 /// **O HOSPEDEIRO e a PROJEÇÃO** — irmão por LOC (HR-18), cortado por responsabilidade.
-#[path = "vec_ui_state_host.rs"]
+#[path = "ui_state_host.rs"]
 mod host;
-pub(crate) use host::{host_of_selection, publish};
+pub use host::{host_of_selection, publish};
 
 #[cfg(test)]
-#[path = "vec_ui_state_edit_tests.rs"]
+#[path = "ui_state_edit_tests.rs"]
 mod tests;
 
 /// Os gates do canal de FILTROS na pose — irmão por LOC (HR-18), com fixture própria.
 #[cfg(test)]
-#[path = "vec_ui_state_edit_filter_tests.rs"]
+#[path = "ui_state_edit_filter_tests.rs"]
 mod filter_tests;
 
 #[cfg(test)]
-#[path = "vec_ui_state_signal_tests.rs"]
+#[path = "ui_state_signal_tests.rs"]
 mod signal_tests;
 
 /// Os gates dos dois canais da BOOLEANA VIVA na pose — irmão por LOC (HR-18), com fixture própria
 /// (uma cena SEM grupo booleano não teria como afirmar nada sobre eles).
 #[cfg(test)]
-#[path = "vec_ui_state_edit_bool_tests.rs"]
+#[path = "ui_state_edit_bool_tests.rs"]
 mod bool_tests;

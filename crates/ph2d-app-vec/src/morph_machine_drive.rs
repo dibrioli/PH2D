@@ -60,7 +60,7 @@ use ph2d_preview_drive::{Driven, PreviewDrive};
 /// transição. Mesma lei, palavra por palavra, das `UiMachines`.
 ///
 /// ⚠️ `BTreeMap` e não `HashMap` — a espinha do determinismo deste repo (lint estrutural).
-pub(crate) type MorphMachines = BTreeMap<u64, MorphMachine>;
+pub type MorphMachines = BTreeMap<u64, MorphMachine>;
 
 /// **Um quadro da máquina.** Devolve quantas máquinas correram.
 ///
@@ -69,7 +69,7 @@ pub(crate) type MorphMachines = BTreeMap<u64, MorphMachine>;
 ///
 /// ⚠️ **O nome é `active` e não `playing` de propósito** — ele deixou de ser o playhead na W9, e um
 /// parâmetro que continuasse a chamar-se `playing` faria a próxima leitura procurar o transporte.
-pub(crate) fn tick(
+pub fn tick(
     machines: &mut MorphMachines,
     sim: &mut SimWorld,
     map_paths: &ph2d_vec_entities::entities::VecEntityMap,
@@ -176,7 +176,7 @@ fn write_driven(sim: &mut SimWorld, e: Entity, drive: &mut PreviewDrive, after: 
 /// ⚠️ **Ele corre DEPOIS do [`tick`] no quadro**, e a ordem é uma decisão: se as duas coisas
 /// escrevem o mesmo objecto, quem manda é a **transição de UI** — ela é o gesto que o artista
 /// acabou de fazer (um hover), e a máquina de teclas é o estado de fundo.
-pub(crate) fn apply_ui_steps(
+pub fn apply_ui_steps(
     sim: &mut SimWorld,
     map: &ph2d_vec_entities::entities::VecEntityMap,
     steps: &[ph2d_ui_state::MorphStep],
@@ -237,7 +237,7 @@ pub(crate) fn apply_ui_steps(
 ///
 /// ⚠️ **Ela não liga o modo**, de propósito: quem o liga é o despacho, e pôr o interruptor aqui
 /// dentro daria duas respostas a *"quem decide o modo"*.
-pub(crate) fn play(
+pub fn play(
     machines: &mut MorphMachines,
     sim: &SimWorld,
     map: &ph2d_vec_entities::entities::VecEntityMap,
@@ -289,7 +289,7 @@ pub(crate) fn play(
 /// documental de um gesto do artista (o ⊘), e o `post_frame_undo` regista-a **junto** com ele.
 ///
 /// Devolve quantos conjuntos foram arrumados (diagnóstico e gate).
-pub(crate) fn reconcile(
+pub fn reconcile(
     machines: &mut MorphMachines,
     sim: &mut SimWorld,
     scene: &ph2d_vec_scene::VecScene,
@@ -351,7 +351,7 @@ pub(crate) fn reconcile(
 /// ⚠️ Ele existe porque o caminho que falha é o **da janela**: o ⊘, o apagar e o arrasto vivem no
 /// laço de render, e um gate headless prova a lei sem provar a fiação. *Quando a lei está verde e o
 /// produto não, o instrumento é o que fecha a distância.*
-pub(crate) fn log_on() -> bool {
+pub fn log_on() -> bool {
     static ON: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
     *ON.get_or_init(|| std::env::var_os("PH2D_MORPH_LOG").is_some())
 }
@@ -374,9 +374,9 @@ pub(crate) fn log_on() -> bool {
 /// # As duas coisas que ficam desalinhadas, e são diferentes
 ///
 /// 1. **um OBJECTO que saiu da sub-árvore** — a pose dele fica na tabela e o `install` do próximo
-///    Show atira a forma solta para a origem do conjunto ⇒ [`crate::vec_ui_state_edit::forget_object_in_all_states`];
+///    Show atira a forma solta para a origem do conjunto ⇒ [`crate::ui_state_edit::forget_object_in_all_states`];
 /// 2. **uma FORMA que a pose do hospedeiro nomeia** e que já não é estado ⇒
-///    [`crate::vec_ui_state_edit::replace_morph_shape_in_all_states`], que põe outra do conjunto no
+///    [`crate::ui_state_edit::replace_morph_shape_in_all_states`], que põe outra do conjunto no
 ///    lugar (o pedido do Enio).
 ///
 /// ⚠️ **Só sobre conjuntos de Morph States** (o chamador itera `VecMorphMachine`), e é o que a
@@ -420,7 +420,7 @@ fn repair_states(
     let keys: Vec<ph2d_vec_scene::VecPathId> = states.hosts().collect();
     let mut fixed = false;
     for k in keys {
-        let live = crate::vec_ui_state_edit::members(sim, scene, map, k);
+        let live = crate::ui_state_edit::members(sim, scene, map, k);
         if !live.contains(&h) {
             continue; // esta tabela nao governa este conjunto
         }
@@ -458,12 +458,12 @@ fn repair_states(
             );
         }
         for id in gone_objects {
-            fixed |= crate::vec_ui_state_edit::forget_object_in_all_states(states, k, id);
+            fixed |= crate::ui_state_edit::forget_object_in_all_states(states, k, id);
         }
         // ⚠️ **Uma de cada vez, e em sequência**: a escolha prefere uma forma que nenhum outro
         // estado nomeie, então a segunda substituição tem de ver o que a primeira escolheu.
         for s in gone_shapes {
-            let to = crate::vec_ui_state_edit::replace_morph_shape_in_all_states(
+            let to = crate::ui_state_edit::replace_morph_shape_in_all_states(
                 states, k, h, s, shapes,
             );
             if log_on() {
@@ -507,7 +507,7 @@ fn repair_states(
 /// ⚠️ **Uma função e não um `&&` no braço do despacho**: é a quinta vez nesta linha que uma lei
 /// escrita dentro do laço de render fica fora do alcance de todo gate.
 #[must_use]
-pub(crate) fn drives(morph_preview: bool, ui_state_live: bool) -> bool {
+pub fn drives(morph_preview: bool, ui_state_live: bool) -> bool {
     morph_preview && !ui_state_live
 }
 

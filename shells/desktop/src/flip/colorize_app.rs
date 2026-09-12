@@ -1,16 +1,16 @@
 //! **O invólucro de shell** do Colorize (W2/L5 Fase B 2.ª volta, 2026-09-12).
 //!
-//! A lei vive em [`crate::flip::colorize`]. Aqui fica o `impl crate::App`: destrancar o
+//! A lei vive em [`ph2d_app_flip::colorize`]. Aqui fica o `impl crate::App`: destrancar o
 //! `Option<AppGfx>`, derivar o afim mundo→local, e traduzir o valor de retorno em
 //! `title_dirty`.
 
-use crate::flip::ctx::FlipFrame;
+use ph2d_app_flip::ctx::FlipFrame;
 
 impl crate::App {
     /// A tool Flip quer o canvas para RABISCAR agora?
     #[must_use]
     pub(crate) fn flip_wants_colorize(&self) -> bool {
-        crate::flip::colorize::wants(&self.flip_state)
+        ph2d_app_flip::colorize::wants(&self.flip_state)
     }
 
     /// Pen-down: começa um rabisco novo com a cor atual do Colorize.
@@ -26,7 +26,7 @@ impl crate::App {
             camera: &gfx.camera,
             win,
         };
-        crate::flip::colorize::canvas_down(&mut self.flip_state, &f, x, y)
+        ph2d_app_flip::colorize::canvas_down(&mut self.flip_state, &f, x, y)
     }
 
     /// Pen-move: acumula amostras.
@@ -42,24 +42,24 @@ impl crate::App {
             camera: &gfx.camera,
             win,
         };
-        crate::flip::colorize::canvas_move(&mut self.flip_state, &f, x, y)
+        ph2d_app_flip::colorize::canvas_move(&mut self.flip_state, &f, x, y)
     }
 
     /// Pen-up: fecha o rabisco em curso e o acumula.
     pub(crate) fn flip_colorize_canvas_up(&mut self) -> bool {
-        crate::flip::colorize::canvas_up(&mut self.flip_state)
+        ph2d_app_flip::colorize::canvas_up(&mut self.flip_state)
     }
 
     /// **Clear** — descarta os rabiscos acumulados.
     pub(crate) fn flip_colorize_clear(&mut self) {
-        crate::flip::colorize::clear(&mut self.flip_state);
+        ph2d_app_flip::colorize::clear(&mut self.flip_state);
     }
 
     /// GPU-data dos rabiscos para o overlay ao vivo.
     #[must_use]
     pub(crate) fn flip_colorize_preview_data(&self) -> Option<ph2d_flip_render::FlipGpuData> {
         let w2l = self.flip_active_world_to_local();
-        crate::flip::colorize::preview_data(&self.flip_state, &w2l)
+        ph2d_app_flip::colorize::preview_data(&self.flip_state, &w2l)
     }
 
     /// **Apply** — roda o corte LazyBrush e materializa as regiões.
@@ -76,7 +76,7 @@ impl crate::App {
             camera: &gfx.camera,
             win,
         };
-        if crate::flip::colorize::apply(&mut self.flip_state, &mut f, &mut gfx.toasts, &w2l) {
+        if ph2d_app_flip::colorize::apply(&mut self.flip_state, &mut f, &mut gfx.toasts, &w2l) {
             self.title_dirty = true;
         }
     }

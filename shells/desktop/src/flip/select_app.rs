@@ -1,22 +1,22 @@
 //! **O invólucro de shell** da selecção do Edit Mode (W2/L5 Fase B 2.ª volta, 2026-09-12).
 //!
-//! A lei vive em [`crate::flip::select`]. Aqui fica o `impl crate::App`: destrancar o
+//! A lei vive em [`ph2d_app_flip::select`]. Aqui fica o `impl crate::App`: destrancar o
 //! `Option<AppGfx>`, derivar os DOIS afins (pose-aware e pose-free), ler o Shift, e marcar o
 //! `title_dirty` a partir do valor de retorno.
 
-use crate::flip::ctx::FlipFrame;
+use ph2d_app_flip::ctx::FlipFrame;
 
 impl crate::App {
     /// O DOMÍNIO do toggle do painel (Stroke|Point) agora.
     #[must_use]
     pub(crate) fn flip_edit_domain_now(&self) -> ph2d_tool_flip::EditDomain {
-        crate::flip::select::edit_domain_now(&self.flip_state)
+        ph2d_app_flip::select::edit_domain_now(&self.flip_state)
     }
 
     /// A tool Flip quer o canvas para SELECIONAR agora?
     #[must_use]
     pub(crate) fn flip_wants_edit(&self) -> bool {
-        crate::flip::select::wants_edit(&self.flip_state)
+        ph2d_app_flip::select::wants_edit(&self.flip_state)
     }
 
     /// O clique de seleção.
@@ -35,7 +35,7 @@ impl crate::App {
             camera: &gfx.camera,
             win,
         };
-        let (consumed, dirty) = crate::flip::select::canvas_down(
+        let (consumed, dirty) = ph2d_app_flip::select::canvas_down(
             &mut self.flip_state,
             &mut f,
             &mut gfx.toasts,
@@ -58,7 +58,7 @@ impl crate::App {
             return false;
         };
         let deleted =
-            crate::flip::select::delete_selected(&self.flip_state, &mut gfx.flip, &playhead);
+            ph2d_app_flip::select::delete_selected(&self.flip_state, &mut gfx.flip, &playhead);
         if deleted {
             self.title_dirty = true;
         }

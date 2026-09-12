@@ -1,11 +1,11 @@
 //! **O invólucro de shell** do ajuste ao vivo do Colorize (W2/L5 Fase B 2.ª volta,
 //! 2026-09-12).
 //!
-//! A lei vive em [`crate::flip::colorize::live_adjust`]. Aqui fica o `impl crate::App`: a escala do
+//! A lei vive em [`ph2d_app_flip::colorize::live_adjust`]. Aqui fica o `impl crate::App`: a escala do
 //! objecto, o `Option<AppGfx>`, e a tradução do valor de retorno em `any_input_this_frame` +
 //! `title_dirty` — *a fronteira atravessa-se com um valor, não com um campo alheio*.
 
-use crate::flip::ctx::FlipFrame;
+use ph2d_app_flip::ctx::FlipFrame;
 
 impl crate::App {
     /// Trap/Bleed em tempo real depois do Apply, fora da thread de UI.
@@ -26,7 +26,7 @@ impl crate::App {
             camera: &gfx.camera,
             win,
         };
-        let installed = crate::flip::colorize::live_adjust(
+        let installed = ph2d_app_flip::colorize::live_adjust(
             &mut self.flip_state,
             &mut f,
             wants_colorize,

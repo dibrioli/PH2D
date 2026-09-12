@@ -1356,7 +1356,7 @@ fn gizmo_anchor_half(
     if let Some(ah) = crate::vec_gizmo_view::anchor_half(sim, vec_scene, entity) {
         return ah;
     }
-    crate::flip::gizmo_view::anchor_half(sim, flip, entity).unwrap_or(([0.0, 0.0], [0.0, 0.0]))
+    ph2d_app_flip::gizmo_view::anchor_half(sim, flip, entity).unwrap_or(([0.0, 0.0], [0.0, 0.0]))
 }
 
 impl App {
@@ -5648,12 +5648,12 @@ impl App {
                     let over_flip_art = {
                         let window_size = gfx.surface.size();
                         let world_pos = gfx.camera.screen_to_world((evt.x, evt.y), window_size);
-                        !crate::flip::gizmo_view::pick_all_at_world(
+                        !ph2d_app_flip::gizmo_view::pick_all_at_world(
                             &gfx.sim,
                             &gfx.flip,
                             &self.flip_state.entities,
                             world_pos,
-                            crate::flip::gizmo_view::stroke_hit_r(&gfx.camera, window_size),
+                            ph2d_app_flip::gizmo_view::stroke_hit_r(&gfx.camera, window_size),
                         )
                         .is_empty()
                     };
@@ -5705,12 +5705,15 @@ impl App {
                                     world_pos,
                                     crate::vec_gizmo_view::stroke_hit_r(&gfx.camera, window_size),
                                 )
-                                || crate::flip::gizmo_view::contains_world(
+                                || ph2d_app_flip::gizmo_view::contains_world(
                                     &gfx.sim,
                                     &gfx.flip,
                                     entity,
                                     world_pos,
-                                    crate::flip::gizmo_view::stroke_hit_r(&gfx.camera, window_size),
+                                    ph2d_app_flip::gizmo_view::stroke_hit_r(
+                                        &gfx.camera,
+                                        window_size,
+                                    ),
                                 );
                         if (on_pivot_dot || on_object)
                             && !ph2d_ecs::is_locked_for_edit(gfx.sim.world(), entity)
@@ -6359,7 +6362,7 @@ impl App {
                             );
                             // ADR-0114/ADR-0111: o marquee também pega objetos Flip pela
                             // bbox de mundo.
-                            bits.extend(crate::flip::gizmo_view::pick_in_world_rect(
+                            bits.extend(ph2d_app_flip::gizmo_view::pick_in_world_rect(
                                 &gfx.sim,
                                 &gfx.flip,
                                 &self.flip_state.entities,

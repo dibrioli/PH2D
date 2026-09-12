@@ -1,15 +1,15 @@
 //! **O invólucro de shell** da correção de pares (W2/L5 Fase B 2.ª volta, 2026-09-12).
 //!
-//! A lei vive em [`crate::flip::tween_correct`]. Aqui fica o `impl crate::App`: destrancar o
+//! A lei vive em [`ph2d_app_flip::tween_correct`]. Aqui fica o `impl crate::App`: destrancar o
 //! `Option<AppGfx>` e entregar o documento, o relógio, a câmera e o mundo do ECS.
 
-use crate::flip::ctx::FlipFrame;
+use ph2d_app_flip::ctx::FlipFrame;
 
 impl crate::App {
     /// A tool Flip quer o canvas para RE-PAREAR agora?
     #[must_use]
     pub(crate) fn flip_wants_tween_pairs(&self) -> bool {
-        crate::flip::tween_correct::wants(&self.flip_state)
+        ph2d_app_flip::tween_correct::wants(&self.flip_state)
     }
 
     /// Re-pina a sessão ao intervalo atual quando o artista navega.
@@ -18,7 +18,7 @@ impl crate::App {
         let Some(gfx) = self.gfx.as_ref() else {
             return;
         };
-        crate::flip::tween_correct::upkeep(&mut self.flip_state, &gfx.flip, &playhead);
+        ph2d_app_flip::tween_correct::upkeep(&mut self.flip_state, &gfx.flip, &playhead);
     }
 
     /// Pen-down no modo Pairs.
@@ -34,6 +34,6 @@ impl crate::App {
             camera: &gfx.camera,
             win,
         };
-        crate::flip::tween_correct::canvas_down(&mut self.flip_state, &f, &gfx.sim, x, y)
+        ph2d_app_flip::tween_correct::canvas_down(&mut self.flip_state, &f, &gfx.sim, x, y)
     }
 }

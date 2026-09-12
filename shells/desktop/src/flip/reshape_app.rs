@@ -1,15 +1,15 @@
 //! **O invólucro de shell** do Sculpt (W2/L5 Fase B 2.ª volta, 2026-09-12).
 //!
-//! A lei vive em [`crate::flip::reshape`]. Aqui fica o `impl crate::App`: destrancar o
+//! A lei vive em [`ph2d_app_flip::reshape`]. Aqui fica o `impl crate::App`: destrancar o
 //! `Option<AppGfx>`, derivar o afim mundo→local, ler o modificador e marcar o `title_dirty`.
 
-use crate::flip::ctx::FlipFrame;
+use ph2d_app_flip::ctx::FlipFrame;
 
 impl crate::App {
     /// A tool Flip quer o canvas para ESCULPIR agora?
     #[must_use]
     pub(crate) fn flip_wants_reshape(&self) -> bool {
-        crate::flip::reshape::wants(&self.flip_state)
+        ph2d_app_flip::reshape::wants(&self.flip_state)
     }
 
     /// Pen-down do Sculpt.
@@ -27,7 +27,7 @@ impl crate::App {
             camera: &gfx.camera,
             win,
         };
-        let (consumed, warned) = crate::flip::reshape::canvas_down(
+        let (consumed, warned) = ph2d_app_flip::reshape::canvas_down(
             &mut self.flip_state,
             &mut f,
             &mut gfx.toasts,
@@ -61,11 +61,11 @@ impl crate::App {
             camera: &gfx.camera,
             win,
         };
-        crate::flip::reshape::canvas_move(&mut self.flip_state, &mut f, &w2l, invert, x, y)
+        ph2d_app_flip::reshape::canvas_move(&mut self.flip_state, &mut f, &w2l, invert, x, y)
     }
 
     /// Pen-up do Sculpt.
     pub(crate) fn flip_reshape_canvas_up(&mut self) -> bool {
-        crate::flip::reshape::canvas_up(&mut self.flip_state)
+        ph2d_app_flip::reshape::canvas_up(&mut self.flip_state)
     }
 }

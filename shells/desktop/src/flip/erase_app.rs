@@ -1,6 +1,6 @@
 //! **O invólucro de shell** da borracha (W2/L5 Fase B 2.ª volta, 2026-09-12).
 //!
-//! A lei vive em [`crate::flip::erase`]. O que sobra aqui é o bloco `impl crate::App`:
+//! A lei vive em [`ph2d_app_flip::erase`]. O que sobra aqui é o bloco `impl crate::App`:
 //! destrancar o `Option<AppGfx>`, derivar o afim mundo→local e entregar à família os tipos
 //! que ela pediu — todos de outra crate (`FlipDoc`, `Playhead`, `Camera2d`, `WindowSize`,
 //! `Xform`), nunca a `App`.
@@ -10,7 +10,7 @@ impl crate::App {
     /// A tool Flip quer o canvas para APAGAR agora?
     #[must_use]
     pub(crate) fn flip_wants_erase(&self) -> bool {
-        crate::flip::erase::wants(&self.flip_state)
+        ph2d_app_flip::erase::wants(&self.flip_state)
     }
 
     /// Pen-down da borracha.
@@ -22,7 +22,7 @@ impl crate::App {
             return false;
         };
         let win = gfx.surface.size();
-        crate::flip::erase::canvas_down(
+        ph2d_app_flip::erase::canvas_down(
             &mut self.flip_state,
             &mut gfx.flip,
             &self.playhead,
@@ -41,7 +41,7 @@ impl crate::App {
             return false;
         };
         let win = gfx.surface.size();
-        crate::flip::erase::canvas_move(
+        ph2d_app_flip::erase::canvas_move(
             &mut self.flip_state,
             &mut gfx.flip,
             &self.playhead,
@@ -58,6 +58,6 @@ impl crate::App {
         let Some(gfx) = self.gfx.as_mut() else {
             return false;
         };
-        crate::flip::erase::canvas_up(&mut self.flip_state, &mut gfx.flip, &self.playhead)
+        ph2d_app_flip::erase::canvas_up(&mut self.flip_state, &mut gfx.flip, &self.playhead)
     }
 }

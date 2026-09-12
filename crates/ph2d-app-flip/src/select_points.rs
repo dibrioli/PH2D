@@ -1,0 +1,171 @@
+//! ADR-0114 W8 — **o domínio POINT do Edit Mode**, módulo-irmão de `flip_select` (cap
+//! de LOC do HR-18): o pick de âncora, o plano do pen-down por ponto, o marquee por
+//! ponto e a conversão de domínio na troca do toggle (`02_referencia §11`).
+//!
+//! As regras são as do domínio de traço, ponto a ponto — inclusive o **colapso
+//! adiado** (clicar num ponto já selecionado não colapsa a seleção; soltar sem
+//! arrastar colapsa). Quem decide o domínio é a TOOL (o snapshot); quem carrega o
+//! dado é o DOCUMENTO (`FlipStroke::point_sel`).
+
+use ph2d_core::Vec2;
+use ph2d_flip::FlipDrawing;
+use ph2d_vec_scene::Xform;
+
+use crate::select::visible_drawing;
+
+/// Raio de pick de PONTO, em px de tela (domínio Point, W8). Um pouco mais generoso
+/// que o piso do traço: o alvo é uma âncora, não uma linha.
+const POINT_PICK_PX: f32 = 8.0; // LITERAL-PX-OK: folga de pick, nao metrica de design
+
+/// **O PONTO sob o cursor** (domínio Point): o mais próximo dentro do raio, varrendo
+/// todos os traços — devolve `(traço, ponto)`. O raio acompanha o zoom pela MESMA
+/// conversão do pick de traço (px de tela → local); aproximar a câmera não pode exigir
+/// mira mais fina.
+#[must_use]
+pub(crate) fn point_at(
+    drawing: &FlipDrawing,
+    local: Vec2,
+    px_to_world: f32,
+    w2l: &Xform,
+) -> Option<(usize, usize)> {
+    let px_to_local = px_to_world * w2l.mean_scale() as f32;
+    let r = (POINT_PICK_PX * px_to_local).max(f32::EPSILON);
+    let r2 = r * r;
+    let mut best: Option<(f32, usize, usize)> = None;
+    for (si, s) in drawing.strokes.iter().enumerate() {
+        for (pi, p) in s.positions().iter().enumerate() {
+            let d = local - *p;
+            let d2 = d.x * d.x + d.y * d.y;
+            if d2 <= r2 && best.is_none_or(|(bd, _, _)| d2 < bd) {
+                best = Some((d2, si, pi));
+            }
+        }
+    }
+    best.map(|(_, si, pi)| (si, pi))
+}
+
+/// O que o pen-DOWN abre no domínio POINT — o espelho de [`Down`], com o alvo `(traço,
+/// ponto)`. As regras são as mesmas do domínio de traço (inclusive o **colapso
+/// adiado**: clicar num ponto já selecionado não colapsa a seleção; arrastar move o
+/// grupo, soltar sem arrastar colapsa para este ponto).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum DownPoints {
+    Move { collapse_to: Option<(usize, usize)> },
+    Click,
+    Marquee { additive: bool },
+}
+
+/// **O plano do pen-DOWN no domínio Point** — espelho de [`plan_down`], ponto a ponto,
+/// **inclusive o interior do gizmo** (`in_box`): errar a âncora dentro da caixa da seleção
+/// arrasta os pontos selecionados. Um ponto ÚNICO selecionado não tem caixa (a
+/// `grabbable_selection_box` recusa a seleção sem extensão), então ali o `in_box` é sempre
+/// `false` e o gesto é o de sempre — que é exatamente o que o Enio pediu: *"a seleção de um
+/// único ponto, o gizmo da sprite não deve ser usado"*.
+pub(crate) fn plan_down_points(
+    drawing: &mut FlipDrawing,
+    hit: Option<(usize, usize)>,
+    shift: bool,
+    in_box: bool,
+) -> DownPoints {
+    match (hit, shift) {
+        (None, false) if in_box => DownPoints::Move { collapse_to: None },
+        (None, shift) => {
+            if !shift {
+                drawing.clear_selection();
+            }
+            DownPoints::Marquee { additive: shift }
+        }
+        (Some((si, pi)), true) => {
+            let on = !drawing.strokes[si].point_selected(pi);
+            drawing.strokes[si].set_point_selected(pi, on);
+            DownPoints::Click
+        }
+        (Some((si, pi)), false) if drawing.strokes[si].point_selected(pi) => DownPoints::Move {
+            collapse_to: Some((si, pi)),
+        },
+        (Some((si, pi)), false) => {
+            drawing.clear_selection();
+            drawing.strokes[si].set_point_selected(pi, true);
+            DownPoints::Move { collapse_to: None }
+        }
+    }
+}
+
+/// Aplica o marquee no domínio POINT: acende os pontos DENTRO da caixa (em LOCAL).
+/// Devolve `true` se mudou. (Ponto é ponto: dentro-ou-fora, sem teste de segmento —
+/// quem quer pegar a linha inteira usa o domínio Stroke.)
+pub(crate) fn apply_marquee_points(
+    drawing: &mut FlipDrawing,
+    min: Vec2,
+    max: Vec2,
+    additive: bool,
+) -> bool {
+    let mut changed = false;
+    if !additive {
+        changed |= drawing.clear_selection();
+    }
+    for s in &mut drawing.strokes {
+        for i in 0..s.len() {
+            let p = s.positions()[i];
+            if p.x >= min.x && p.x <= max.x && p.y >= min.y && p.y <= max.y {
+                changed |= s.set_point_selected(i, true);
+            }
+        }
+    }
+    changed
+}
+
+/// **A troca de DOMÍNIO reescreve a seleção no documento** (W8 + §4.B): entrar no **Point**
+/// começa **desselecionado** (Enio — o gesto seguinte ali é escolher âncoras; o broadcast
+/// do `02 §11` entregava tudo aceso e obrigava a desmarcar antes); voltar ao **Stroke**
+/// promove por `any()` + desmaterializa. Roda 1×/frame ao lado do
+/// [`flip_edit_style_refresh`]; só age quando o toggle do painel MUDOU (a tool guarda a
+/// escolha, o documento guarda o dado — e as duas pontas se encontram aqui).
+///
+/// **O Segment (§4.B) não converte nada, e o porquê é o mesmo que faz o Point limpar.**
+/// Ele é o domínio Point com outro pick, e o dado dos dois é o MESMO `point_sel` — logo
+/// Point↔Segment não tem o que materializar: a seleção que estava lá continua válida e
+/// continua desenhada igual. Só a fronteira com o **Stroke** é uma troca de domínio de
+/// verdade: entrar (Stroke→Segment) **limpa**, exatamente como o Point, porque o gesto
+/// seguinte é escolher pedaços e herdar o traço todo aceso obrigaria a desmarcar antes;
+/// sair (Segment→Stroke) **promove por `any()`**, também como o Point. Ou seja: a
+/// assimetria documentada do W8 vale, com o Segment do lado do Point — e é por isso que
+/// este `match` casa os dois juntos em vez de dar ao Segment um braço próprio.
+///
+/// ⚠️ Devolve `true` quando converteu — o `title_dirty` é da shell.
+pub fn flip_edit_domain_refresh(
+    state: &mut crate::state::FlipState,
+    flip: &mut ph2d_flip::FlipDoc,
+    playhead: &ph2d_core::Playhead,
+) -> bool {
+    let now = state.style.map(|s| s.edit_domain);
+    let prev = std::mem::replace(&mut state.edit_domain, now);
+    let (Some(prev), Some(now)) = (prev, now) else {
+        return false; // tool inativa (ou 1ª volta): nada a converter
+    };
+    // Point↔Segment: o dado é o mesmo vetor; não há domínio a trocar.
+    use ph2d_tool_flip::EditDomain::{Point, Segment};
+    if prev == now || matches!((prev, now), (Point | Segment, Point | Segment)) {
+        return false;
+    }
+    if !crate::select::wants_edit(state) {
+        return false;
+    }
+    let active_layer = state.active_layer;
+    let Some((oid, _lid, did)) = visible_drawing(flip, playhead, active_layer) else {
+        return false;
+    };
+    let Some(drawing) = flip.object_mut(oid).and_then(|o| o.drawing_mut(did)) else {
+        return false;
+    };
+    match now {
+        // O Segment anda com o Point: mesmo dado, mesma entrada (limpa) e mesma saída
+        // (promove por `any()`) — ver o doc acima.
+        Point | Segment => drawing.enter_point_domain(),
+        ph2d_tool_flip::EditDomain::Stroke => drawing.enter_stroke_domain(),
+    }
+    true
+}
+#[cfg(test)]
+#[path = "select_points_tests.rs"]
+mod tests;

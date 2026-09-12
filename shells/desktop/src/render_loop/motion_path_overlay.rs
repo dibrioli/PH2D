@@ -63,7 +63,7 @@ const THREAD_SAMPLES_PER_SECOND: f64 = 120.0;
 /// continua desenhado.
 const MAX_DOTS: usize = 600;
 
-/// A âmbar do realce de seleção (`flip_selection_overlay::HALO_RGBA`), porque a
+/// A âmbar do realce de seleção (`ph2d_app_flip::selection_overlay::HALO_RGBA`), porque a
 /// trajetória **é** uma extensão de *"esta é a coisa que você tem na mão"*: ela só
 /// aparece para o objeto selecionado, e some com ele.
 ///

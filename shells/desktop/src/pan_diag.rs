@@ -68,7 +68,7 @@ fn vector_px(cam: &Camera2d, w: f32, h: f32) -> (f64, f64) {
 /// Onde a MESMA origem cai pela rota do FLIP — a TERCEIRA, a que ninguém tinha contado e a
 /// que de facto quebrava (ela projetava a janela CHEIA sob o split, `1/t ≈ 1,82×`).
 fn flip_px(cam: &Camera2d, window: WindowSize, sub: Option<[f32; 4]>) -> (f64, f64) {
-    let c = crate::render_loop::flip_pass::camera::camera_scene(cam, window, sub);
+    let c = ph2d_app_flip::pass::camera::camera_scene(cam, window, sub);
     let m = c.world_to_clip;
     (
         (f64::from(m[3][0]) * 0.5 + 0.5) * f64::from(c.viewport[0]),

@@ -24,60 +24,48 @@
 //! F8 dos Componentes e vive numa crate de módulo. A ponte a não partir.
 
 pub(crate) mod airbrush_smoke_app;
-pub(crate) mod autokey;
-pub(crate) mod bake;
-pub(crate) mod colorize;
 pub(crate) mod colorize_app;
 pub(crate) mod colorize_live_app;
 pub(crate) mod colorize_smoke_app;
-pub(crate) mod ctx;
 pub(crate) mod draw_app;
-pub(crate) mod edit_gesture;
 pub(crate) mod edit_gesture_app;
 pub(crate) mod edit_smoke_app;
-pub(crate) mod entities;
-pub(crate) mod erase;
 pub(crate) mod erase_app;
-pub(crate) mod fill;
 pub(crate) mod fill_app;
 pub(crate) mod fill_smoke_app;
-pub(crate) mod fill_target;
 pub(crate) mod gap_live_app;
-pub(crate) mod gizmo_view;
 pub(crate) mod hardness_smoke_app;
-pub(crate) mod layers;
 pub(crate) mod multiplane_smoke_app;
-pub(crate) mod pose_gizmo;
 pub(crate) mod pose_gizmo_app;
 pub(crate) mod pose_smoke_app;
 pub(crate) mod pressure_smoke_app;
 pub(crate) mod resample_smoke_app;
-pub(crate) mod reshape;
 pub(crate) mod reshape_app;
 pub(crate) mod segment_smoke_app;
-pub(crate) mod select;
 pub(crate) mod select_app;
-pub(crate) mod select_pick;
-pub(crate) mod select_points;
-pub(crate) mod select_segment;
 pub(crate) mod select_segment_app;
-pub(crate) mod selection_gizmo;
 pub(crate) mod selection_gizmo_app;
 pub(crate) mod selection_smoke_app;
 pub(crate) mod self_overlap_smoke_app;
-pub(crate) mod state;
-pub(crate) mod strip;
 pub(crate) mod strip_app;
-pub(crate) mod strip_drag;
-pub(crate) mod strip_pins;
 pub(crate) mod strip_smoke_app;
 pub(crate) mod tip_smoke_app;
-pub(crate) mod trace;
 pub(crate) mod trace_app;
-pub(crate) mod transform;
-pub(crate) mod tween_correct;
 pub(crate) mod tween_correct_app;
 pub(crate) mod tween_pairs_smoke_app;
 pub(crate) mod tween_phase_smoke_app;
 pub(crate) mod tween_smoke_app;
 pub(crate) mod tween_torsion_smoke_app;
+
+/// ⭐⭐⭐ **O ponto fixo da captura do undo, na parte que é do Flip.** Ele exercita a ponte
+/// de entidades (hoje em [`ph2d_app_flip::entities`]) mas o que AFIRMA é sobre o
+/// `ProjectState` — e por isso ficou deste lado quando a família saiu (HOWTO §2.6).
+#[cfg(test)]
+#[path = "entities_fixpoint_tests.rs"]
+mod entities_fixpoint_tests;
+
+/// A costura da `App` com a família — os quatro testes que seguiram o SUJEITO (ver o
+/// cabeçalho do módulo).
+#[cfg(test)]
+#[path = "seam_tests.rs"]
+mod seam_tests;

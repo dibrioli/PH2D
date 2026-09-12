@@ -40,7 +40,7 @@ impl crate::App {
         //
         // A pose sai do MESMO amostrador que o render usa (`offset_at_cycled`) — seed e
         // sample são a mesma função (`feedback_derived_coordinate_seed_must_match_sample`).
-        crate::flip::transform::world_to_art(
+        ph2d_app_flip::transform::world_to_art(
             &self.flip_active_object_xform(),
             self.flip_active_pose(),
         )
@@ -62,7 +62,7 @@ impl crate::App {
             .map(|&bits| ph2d_ecs::Entity::from_bits(bits))
             .filter(|e| gfx.sim.world().get_entity(*e).is_ok())
             .map_or(Xform::IDENTITY, |e| {
-                crate::flip::transform::object_xform(&gfx.sim, e)
+                ph2d_app_flip::transform::object_xform(&gfx.sim, e)
             })
     }
 
@@ -75,7 +75,11 @@ impl crate::App {
         let Some(gfx) = self.gfx.as_ref() else {
             return ph2d_flip::Pose::IDENTITY;
         };
-        crate::flip::transform::active_pose(&gfx.flip, self.flip_state.active_layer, &self.playhead)
+        ph2d_app_flip::transform::active_pose(
+            &gfx.flip,
+            self.flip_state.active_layer,
+            &self.playhead,
+        )
     }
 
     /// O afim MUNDO→LOCAL(objeto) **sem a pose da chave** — o funil do gesto de MOVER.
@@ -182,7 +186,7 @@ impl crate::App {
             // painel continuavam reescrevendo o último traço até o usuário fazer outra
             // coisa. O Enio mandou parar com isso em 2026-07-18: um traço desenhado é um
             // FATO, não uma pré-visualização que os sliders continuam editando.)
-            super::bake::bake_stroke(
+            ph2d_app_flip::bake::bake_stroke(
                 &mut gfx.flip,
                 &playhead,
                 &style,

@@ -732,8 +732,8 @@ panel-skeleton       = ["ph2d-panel-registry-init/panel-skeleton", "dep:ph2d-pan
 # Flip Style panel + its render_loop bridge (`flip_bridge` publishes the style +
 # layers snapshots via `ph2d_panel_flip::set_current_flip_*` + reads the OKLCH
 # picker back into the tool), so the shell needs the direct dep too.
-panel-flip           = ["ph2d-panel-registry-init/panel-flip", "dep:ph2d-panel-flip"]
-panel-flip-frames    = ["ph2d-panel-registry-init/panel-flip-frames", "dep:ph2d-panel-flip-frames"]
+panel-flip           = ["ph2d-panel-registry-init/panel-flip", "dep:ph2d-panel-flip", "ph2d-app-flip/panel-flip"]
+panel-flip-frames    = ["ph2d-panel-registry-init/panel-flip-frames", "dep:ph2d-panel-flip-frames", "ph2d-app-flip/panel-flip-frames"]
 panel-grid-snap      = ["ph2d-panel-registry-init/panel-grid-snap"]
 # Direct dep too: the render_loop bridge publishes live levels via
 # `set_snapshot` + reads `master_muted` to drive the engine's master gain.

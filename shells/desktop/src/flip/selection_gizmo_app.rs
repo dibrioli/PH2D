@@ -1,9 +1,9 @@
 //! **O invólucro de shell** do gizmo de seleção (W2/L5 Fase B 2.ª volta, 2026-09-12).
 //!
-//! A lei vive em [`crate::flip::selection_gizmo`]. Aqui fica o `impl crate::App`: destrancar
+//! A lei vive em [`ph2d_app_flip::selection_gizmo`]. Aqui fica o `impl crate::App`: destrancar
 //! o `Option<AppGfx>`, ler os modificadores e entregar o `HeroScreen` por parâmetro.
 
-use crate::flip::ctx::FlipFrame;
+use ph2d_app_flip::ctx::FlipFrame;
 
 impl crate::App {
     /// Pen-down num handle do gizmo de seleção.
@@ -24,7 +24,7 @@ impl crate::App {
             camera: &gfx.camera,
             win,
         };
-        crate::flip::selection_gizmo::gizmo_down(
+        ph2d_app_flip::selection_gizmo::gizmo_down(
             &mut self.flip_state,
             &f,
             &gfx.sim,
@@ -66,7 +66,7 @@ impl crate::App {
                 rotate_deg: h.project.snap_rotate_deg,
             })
             .unwrap_or_default();
-        let consumed = crate::flip::selection_gizmo::gizmo_move(
+        let consumed = ph2d_app_flip::selection_gizmo::gizmo_move(
             &mut self.flip_state,
             &mut gfx.flip,
             cam,
@@ -83,6 +83,6 @@ impl crate::App {
 
     /// Pen-up: fecha o arrasto de seleção. O passo de undo sai do diff pós-frame.
     pub(crate) fn flip_selection_gizmo_up(&mut self) -> bool {
-        crate::flip::selection_gizmo::gizmo_up(&mut self.flip_state)
+        ph2d_app_flip::selection_gizmo::gizmo_up(&mut self.flip_state)
     }
 }

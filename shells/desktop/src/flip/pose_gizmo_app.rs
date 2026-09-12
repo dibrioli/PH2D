@@ -1,10 +1,10 @@
 //! **O invólucro de shell** do gizmo de pose (W2/L5 Fase B 2.ª volta, 2026-09-12).
 //!
-//! A lei vive em [`crate::flip::pose_gizmo`]. Aqui fica o `impl crate::App`: destrancar o
+//! A lei vive em [`ph2d_app_flip::pose_gizmo`]. Aqui fica o `impl crate::App`: destrancar o
 //! `Option<AppGfx>`, ler os modificadores, entregar o `HeroScreen` por parâmetro, e marcar o
 //! `title_dirty` a partir do valor de retorno.
 
-use crate::flip::ctx::FlipFrame;
+use ph2d_app_flip::ctx::FlipFrame;
 
 impl crate::App {
     /// Pen-down num handle do gizmo de pose.
@@ -25,7 +25,7 @@ impl crate::App {
             camera: &gfx.camera,
             win,
         };
-        crate::flip::pose_gizmo::gizmo_down(
+        ph2d_app_flip::pose_gizmo::gizmo_down(
             &mut self.flip_state,
             &f,
             &gfx.sim,
@@ -66,7 +66,7 @@ impl crate::App {
                 rotate_deg: h.project.snap_rotate_deg,
             })
             .unwrap_or_default();
-        let consumed = crate::flip::pose_gizmo::gizmo_move(
+        let consumed = ph2d_app_flip::pose_gizmo::gizmo_move(
             &mut self.flip_state,
             &mut gfx.flip,
             cam,
@@ -84,6 +84,6 @@ impl crate::App {
     /// Pen-up: fecha o arrasto de pose. O passo de undo sai do diff pós-frame, como todo
     /// gesto do Flip (`post_frame_undo` espera o botão soltar).
     pub(crate) fn flip_pose_gizmo_up(&mut self) -> bool {
-        crate::flip::pose_gizmo::gizmo_up(&mut self.flip_state)
+        ph2d_app_flip::pose_gizmo::gizmo_up(&mut self.flip_state)
     }
 }

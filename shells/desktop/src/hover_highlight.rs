@@ -81,12 +81,12 @@ pub(crate) fn pick_objects_at(
     vec_entities: &ph2d_vec_entities::entities::VecEntityMap,
     vec_view_derived: &ph2d_vec_scene::VecViewState,
     vec_live_drawn: &ph2d_vec_render::LiveGeometry,
-    flip_entities: &crate::flip::entities::FlipEntityMap,
+    flip_entities: &ph2d_app_flip::entities::FlipEntityMap,
     pointer: (f32, f32),
 ) -> Vec<u64> {
     let world = w.camera.screen_to_world(pointer, w.window_size);
     let stroke_r = crate::vec_gizmo_view::stroke_hit_r(w.camera, w.window_size);
-    let flip_r = crate::flip::gizmo_view::stroke_hit_r(w.camera, w.window_size);
+    let flip_r = ph2d_app_flip::gizmo_view::stroke_hit_r(w.camera, w.window_size);
     let view =
         ph2d_vec_entities::entities::view_state_for_pick(w.sim, vec_entities, vec_view_derived);
     let mut hits = crate::vec_gizmo_view::pick_all_at_world(
@@ -100,7 +100,7 @@ pub(crate) fn pick_objects_at(
     );
     // ADR-0114/ADR-0111: a arte Flip também compõe por cima dos sprites — entra na lista do
     // clique-cíclico, sob o vetor.
-    hits.extend(crate::flip::gizmo_view::pick_all_at_world(
+    hits.extend(ph2d_app_flip::gizmo_view::pick_all_at_world(
         w.sim,
         w.flip,
         flip_entities,

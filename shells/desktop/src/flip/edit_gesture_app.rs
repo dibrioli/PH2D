@@ -1,9 +1,9 @@
 //! **O invólucro de shell** do gesto de Edit (W2/L5 Fase B 2.ª volta, 2026-09-12).
 //!
-//! A lei vive em [`crate::flip::edit_gesture`]. Aqui fica o `impl crate::App`: destrancar o
+//! A lei vive em [`ph2d_app_flip::edit_gesture`]. Aqui fica o `impl crate::App`: destrancar o
 //! `Option<AppGfx>`, derivar os afins e marcar o `title_dirty` a partir do valor de retorno.
 
-use crate::flip::ctx::FlipFrame;
+use ph2d_app_flip::ctx::FlipFrame;
 
 impl crate::App {
     /// Pen-move no modo Edit.
@@ -25,7 +25,7 @@ impl crate::App {
             win,
         };
         let (live, dirty) =
-            crate::flip::edit_gesture::canvas_move(&mut self.flip_state, &mut f, &w2o, x, y);
+            ph2d_app_flip::edit_gesture::canvas_move(&mut self.flip_state, &mut f, &w2o, x, y);
         if dirty {
             self.title_dirty = true;
         }
@@ -53,7 +53,7 @@ impl crate::App {
             win,
         };
         let (consumed, dirty) =
-            crate::flip::edit_gesture::canvas_up(&mut self.flip_state, &mut f, &w2l);
+            ph2d_app_flip::edit_gesture::canvas_up(&mut self.flip_state, &mut f, &w2l);
         if dirty {
             self.title_dirty = true;
         }

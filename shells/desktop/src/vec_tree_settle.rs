@@ -68,7 +68,7 @@ impl App {
         // ⭐⭐ **A ponte do FLIP, ao lado da vectorial** (censo `every_document_to_tree_bridge_is_in_the_net`,
         // 2026-09-08). Ela é o irmão exacto — bidireccional, mesma latência — e estava fora da rede:
         // apagar um objecto Flip pela Hierarquia deixava o documento com ele até ao quadro seguinte.
-        crate::flip::entities::sync(&mut gfx.sim, &mut gfx.flip, &mut self.flip_state.entities);
+        ph2d_app_flip::entities::sync(&mut gfx.sim, &mut gfx.flip, &mut self.flip_state.entities);
         // ⭐⭐ **O ASSENTAMENTO DO PIVÔ é o TERCEIRO escritor derivado, e só o gate o disse.**
         // Uma entidade cunhada agora nasce com `Transform::default()`; quem lhe põe a origem no
         // centro da arte é este passe. Sem ele aqui, os dois controlos do gate do *duplicar*
@@ -90,7 +90,7 @@ impl App {
             &drawing,
         );
         // ⭐⭐ **E o pivô dos objectos FLIP, pelo mesmo motivo e noutra mídia** (achado pelo censo
-        // `the_net_knows_every_derived_writer`, 2026-09-08). O `crate::flip::transform::settle_origins`
+        // `the_net_knows_every_derived_writer`, 2026-09-08). O `ph2d_app_flip::transform::settle_origins`
         // corria no passe do desenho e **não** estava aqui — o mesmo buraco que o gate do *duplicar*
         // tinha apanhado para o vector, por uma porta que nenhum gate olhava.
         //
@@ -100,7 +100,7 @@ impl App {
         let flip_gesturing = (self.flip_state.draw.is_active() || self.flip_state.erasing)
             .then(|| gfx.flip.objects().first().map(|o| o.id))
             .flatten();
-        crate::flip::transform::settle_origins(
+        ph2d_app_flip::transform::settle_origins(
             &mut gfx.sim,
             &mut gfx.flip,
             &self.flip_state.entities,

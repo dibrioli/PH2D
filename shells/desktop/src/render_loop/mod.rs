@@ -32,13 +32,8 @@ mod cooked_texture_bridge;
 /// do documento: ela diz o que a folha É, e o que se assa são os filhos.
 mod demo_legend;
 mod equalize_sizes_bridge;
-pub(crate) mod flip_bridge;
 /// O anel do cursor do pincel do FLIP (ADR-0114 W5, smoke do Enio): o Size é absoluto
 /// em px de tela, então o anel é px de tela — sem conversão de câmera.
-mod flip_gap_overlay;
-pub(crate) mod flip_pass;
-mod flip_selection_overlay;
-mod flip_tween_overlay;
 mod gizmo_prune;
 /// **O número do arrasto de gizmo** — quem o publica (a lei mora no `editor-core`).
 mod gizmo_readout;
@@ -3235,11 +3230,11 @@ impl crate::App {
                 );
             hero.gizmo.pose_view = flip_edit_mode
                 .then(|| {
-                    crate::flip::pose_gizmo::pose_view(
+                    ph2d_app_flip::pose_gizmo::pose_view(
                         sim,
                         flip,
                         &self.flip_state.entities,
-                        crate::flip::pose_gizmo::PoseViewInputs {
+                        ph2d_app_flip::pose_gizmo::PoseViewInputs {
                             playhead: &self.playhead,
                             active_layer: self.flip_state.active_layer,
                             last_pointer: self.last_pointer,
@@ -3251,11 +3246,11 @@ impl crate::App {
                 .flatten();
             hero.gizmo.selection_view = flip_edit_mode
                 .then(|| {
-                    crate::flip::selection_gizmo::selection_view(
+                    ph2d_app_flip::selection_gizmo::selection_view(
                         sim,
                         flip,
                         &self.flip_state.entities,
-                        crate::flip::selection_gizmo::SelectionViewInputs {
+                        ph2d_app_flip::selection_gizmo::SelectionViewInputs {
                             playhead: &self.playhead,
                             active_layer: self.flip_state.active_layer,
                             last_pointer: self.last_pointer,
@@ -4613,7 +4608,7 @@ impl crate::App {
                         // `gfx.flip` + the active-layer pointer (mirror of the vector
                         // Boolean/Arrange capture). No-op for non-Flip ids. Still
                         // forward `ev` to the tool below (it ignores layer ids).
-                        crate::flip::layers::apply_panel_event(
+                        ph2d_app_flip::layers::apply_panel_event(
                             &ev,
                             flip,
                             &mut self.flip_state.active_layer,
@@ -4632,7 +4627,7 @@ impl crate::App {
                         // frame do clique, então o estado da tecla ainda é o do gesto — e
                         // nenhum contrato precisa ser tocado para a tira ganhar
                         // multisseleção (W7).
-                        crate::flip::strip::apply_panel_event(
+                        ph2d_app_flip::strip::apply_panel_event(
                             &ev,
                             flip,
                             self.flip_state.active_layer,
@@ -8686,12 +8681,12 @@ impl crate::App {
             // GLOBAL e por DIFF: `post_frame_undo` compara o `ProjectState`, do qual o
             // `FlipDoc` faz parte. É o mesmo motivo pelo qual o drain do `PanelEvent`
             // logo acima também ignora o seu.)
-            let _ = crate::flip::strip_drag::apply_strip_intents(
+            let _ = ph2d_app_flip::strip_drag::apply_strip_intents(
                 flip,
                 self.flip_state.active_layer,
                 &mut self.flip_state.strip,
             );
-            let (flip_active, flip_style) = flip_bridge::publish(
+            let (flip_active, flip_style) = ph2d_app_flip::bridge::publish(
                 hero,
                 tools,
                 flip,
@@ -8911,25 +8906,25 @@ impl crate::App {
                     .map(ph2d_ecs::Entity::from_bits)
                     .filter(|e| sim.world().get_entity(*e).is_ok())
                     .map_or(ph2d_vec_scene::Xform::IDENTITY, |e| {
-                        crate::flip::transform::object_xform(sim, e)
+                        ph2d_app_flip::transform::object_xform(sim, e)
                     });
                 // W8/§4.C: o realce fala a linguagem do DOMÍNIO — halo de traço (Stroke),
                 // dots (Point), ou halo do PEDAÇO + preview de hover (Segment).
                 let overlay_domain = match flip_style.map(|s| s.edit_domain) {
                     Some(ph2d_tool_flip::EditDomain::Point) => {
-                        flip_selection_overlay::OverlayDomain::Point
+                        ph2d_app_flip::selection_overlay::OverlayDomain::Point
                     }
                     Some(ph2d_tool_flip::EditDomain::Segment) => {
-                        flip_selection_overlay::OverlayDomain::Segment
+                        ph2d_app_flip::selection_overlay::OverlayDomain::Segment
                     }
-                    _ => flip_selection_overlay::OverlayDomain::Stroke,
+                    _ => ph2d_app_flip::selection_overlay::OverlayDomain::Stroke,
                 };
                 let hover = self
                     .flip_state
                     .segment_hover
                     .as_ref()
                     .map(|(si, pts)| (*si, pts.as_slice()));
-                flip_selection_overlay::draw_flip_selection(
+                ph2d_app_flip::selection_overlay::draw_flip_selection(
                     flip_active,
                     matches!(
                         flip_style.map(|s| s.mode),
@@ -8946,7 +8941,7 @@ impl crate::App {
                     vector_scene,
                 );
                 // A caixa do marquee (W6.1) — em px de tela, como o realce.
-                flip_selection_overlay::draw_flip_marquee(
+                ph2d_app_flip::selection_overlay::draw_flip_marquee(
                     self.flip_state.edit_gesture,
                     vector_scene,
                 );
@@ -9023,7 +9018,7 @@ impl crate::App {
                 // Tween v2 — a correção de pares: os dois desenhos-chave sobrepostos + as
                 // linhas de par (pela confiança) + órfãos, no MESMO `l2w` do objeto. Só
                 // desenha com a sessão Pairs aberta.
-                flip_tween_overlay::draw(
+                ph2d_app_flip::tween_overlay::draw(
                     flip_active && self.flip_state.strip.tween_correct.is_some(),
                     self.flip_state.strip.tween_correct.as_ref(),
                     &l2w,
@@ -9036,13 +9031,13 @@ impl crate::App {
                 // atual fecha, desenhado onde o clique vai fechá-lo. Os segmentos vêm do
                 // worker (`flip_gap_live`, coords de ARTE); a pergunta do modo é a MESMA
                 // porta do tick, e a projeção é a MESMA cadeia do render (l2w ∘ pose).
-                flip_gap_overlay::draw(
+                ph2d_app_flip::gap_overlay::draw(
                     ph2d_app_flip::gap_live::wants_gap_helpers(flip_active, flip_style),
                     &self.flip_state.gap.segments,
                     &l2w,
                     // A MESMA pose que a autoria dobra (`flip_transform::active_pose`) —
                     // função livre porque aqui `self.gfx` está destruturado.
-                    crate::flip::transform::active_pose(
+                    ph2d_app_flip::transform::active_pose(
                         flip,
                         self.flip_state.active_layer,
                         &self.playhead,
@@ -9174,7 +9169,7 @@ impl crate::App {
             // ADR-0114: idem para os objetos Flip (objeto novo ⇒ entidade; entidade
             // apagada ⇒ objeto). No W0 é no-op (nenhuma tool cria objetos ainda); a
             // tool do W2 passa a populá-lo.
-            crate::flip::entities::sync(sim, flip, &mut self.flip_state.entities);
+            ph2d_app_flip::entities::sync(sim, flip, &mut self.flip_state.entities);
             // Live Shapes: mantém o `VecShape::Text` na entidade do texto ativo (a
             // entidade já existe pós-sync) para o objeto lembrar que é texto — re-cook,
             // painel, Convert e save/undo. Idempotente; só com sessão viva.
@@ -9821,7 +9816,7 @@ impl crate::App {
             let flip_gesturing = (self.flip_state.draw.is_active() || self.flip_state.erasing)
                 .then(|| flip.objects().first().map(|o| o.id))
                 .flatten();
-            crate::flip::transform::settle_origins(
+            ph2d_app_flip::transform::settle_origins(
                 sim,
                 flip,
                 &self.flip_state.entities,

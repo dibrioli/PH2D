@@ -38,8 +38,8 @@ fn reach_expr<'a>(src: &'a str, file: &str, marker: &str) -> &'a str {
 #[test]
 fn the_gap_reach_is_zoom_invariant() {
     // O clique real.
-    let click = include_str!("../../src/flip/fill.rs");
-    let click_reach = reach_expr(click, "flip/fill.rs", "gap_reach:");
+    let click = include_str!("../../../../crates/ph2d-app-flip/src/fill.rs");
+    let click_reach = reach_expr(click, "ph2d-app-flip/src/fill.rs", "gap_reach:");
     // Controle positivo: o `px_to_world` legítimo (precision/debug) EXISTE no arquivo.
     assert!(
         click.contains("px_to_world"),

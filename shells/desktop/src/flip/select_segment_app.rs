@@ -1,9 +1,9 @@
 //! **O invólucro de shell** do hover de Segment (W2/L5 Fase B 2.ª volta, 2026-09-12).
 //!
-//! A lei vive em [`crate::flip::select_segment`]. Aqui fica o `impl crate::App`: o ponteiro,
+//! A lei vive em [`ph2d_app_flip::select_segment`]. Aqui fica o `impl crate::App`: o ponteiro,
 //! o afim mundo→local, e a resposta do `edit_gesture` à pergunta *«a tool quer o canvas?»*.
 
-use crate::flip::ctx::FlipFrame;
+use ph2d_app_flip::ctx::FlipFrame;
 
 impl crate::App {
     /// §4.C — recomputa o pedaço sob o cursor no modo Segment.
@@ -24,7 +24,7 @@ impl crate::App {
                 win,
             }
         });
-        crate::flip::select_segment::hover_refresh(
+        ph2d_app_flip::select_segment::hover_refresh(
             &mut self.flip_state,
             f.as_ref(),
             &w2l,

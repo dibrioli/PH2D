@@ -222,7 +222,7 @@ pub(crate) struct AppGfx {
     /// filtro de tamanho do `ensure_slice` (as fatias reais entram por
     /// `inject_slice_from_texture`, então o dummy nunca é subido). Lazy: só nasce
     /// quando há camada Flip ativa (cena vazia = `None`, sem custo de GPU).
-    pub(crate) flip_composite: Option<crate::render_loop::flip_pass::FlipComposite>,
+    pub(crate) flip_composite: Option<ph2d_app_flip::pass::FlipComposite>,
     /// Motion Nodes runtime state (M0.T8): document + transport + persistent
     /// `Cook` + node registry + reused instance buffer. Cooked per frame by
     /// `render_loop::motion_bridge` while the `motion` tool is active. Mirror of
@@ -1151,7 +1151,7 @@ pub(crate) struct App {
     /// partilhado com os Componentes desde a F8). Este aqui é o estado de INTERACÇÃO: gestos em
     /// voo, arrastos, hover, a tira de quadros, o espelho do estilo da tool. Um é o que se grava,
     /// o outro morre com a sessão.
-    pub(crate) flip_state: crate::flip::state::FlipState,
+    pub(crate) flip_state: ph2d_app_flip::state::FlipState,
     /// **Alguma transição de ESTADO de UI está em voo** (plano UI/UX W7).
     ///
     /// ⚠️ Ele existe para o `post_frame_undo`, e a razão é a mesma do `live_busy` do Colorize:

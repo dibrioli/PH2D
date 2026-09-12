@@ -33,7 +33,7 @@ impl crate::App {
         // **Pairs JÁ ABERTO** — o overlay aparece de cara, senão o artista teria de saber
         // ligar o toggle antes de ver qualquer coisa (um smoke que não mostra a feature na
         // largada não é ready-to-smoke).
-        self.flip_state.strip.tween_correct = crate::flip::tween_correct::build(
+        self.flip_state.strip.tween_correct = ph2d_app_flip::tween_correct::build(
             &self.gfx.as_ref().unwrap().flip,
             None,
             &self.playhead,

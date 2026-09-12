@@ -1,16 +1,16 @@
 //! **O invólucro de shell** do balde (W2/L5 Fase B 2.ª volta, 2026-09-12).
 //!
-//! A lei vive em [`crate::flip::fill`]. Aqui fica o `impl crate::App`: destrancar o
+//! A lei vive em [`ph2d_app_flip::fill`]. Aqui fica o `impl crate::App`: destrancar o
 //! `Option<AppGfx>`, derivar o afim mundo→local, e marcar o `title_dirty` a partir do
-//! [`crate::flip::fill::FillOutcome`] — *a fronteira atravessa-se com um valor*.
+//! [`ph2d_app_flip::fill::FillOutcome`] — *a fronteira atravessa-se com um valor*.
 
-use crate::flip::ctx::FlipFrame;
+use ph2d_app_flip::ctx::FlipFrame;
 
 impl crate::App {
     /// A tool Flip quer o canvas para PREENCHER agora?
     #[must_use]
     pub(crate) fn flip_wants_fill(&self) -> bool {
-        crate::flip::fill::wants(&self.flip_state)
+        ph2d_app_flip::fill::wants(&self.flip_state)
     }
 
     /// O clique do balde. `true` = consumido.
@@ -27,7 +27,7 @@ impl crate::App {
             camera: &gfx.camera,
             win,
         };
-        let out = crate::flip::fill::canvas_down(
+        let out = ph2d_app_flip::fill::canvas_down(
             &mut self.flip_state,
             &mut f,
             &mut gfx.toasts,

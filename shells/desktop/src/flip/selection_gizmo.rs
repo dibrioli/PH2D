@@ -360,163 +360,140 @@ pub(crate) fn selection_view(
     })
 }
 
-impl crate::App {
-    /// Pen-DOWN num handle do gizmo de seleção. `true` = arrasto aberto (consumido — o
-    /// caminho genérico de gizmo e o Edit não veem este clique). Reconhece o alvo pelo
-    /// `gizmo_hit_map` (`GizmoTarget::FlipSelection`); os handles só existem quando a
-    /// `selection_view` foi publicada neste frame, então a pré-condição já está provada
-    /// pela pintura.
-    pub(crate) fn flip_selection_gizmo_down(&mut self, x: f32, y: f32) -> bool {
-        if !self.flip_wants_edit() {
-            return false;
-        }
-        let playhead = self.playhead;
-        let active_layer = self.flip_state.active_layer;
-        let ctrl = self.modifiers.control_key() || self.modifiers.super_key();
-        let Some(gfx) = self.gfx.as_ref() else {
-            return false;
-        };
-        let Some(hero) = gfx.hero_screen.as_ref() else {
-            return false;
-        };
-        let Some(hit_id) = hero.hit_index.hit(x, y) else {
-            return false;
-        };
-        let Some(hit) = hero.gizmo.gizmo_hit_map.get(&hit_id).copied() else {
-            return false;
-        };
-        if hit.target != ph2d_editor::GizmoTarget::FlipSelection {
-            return false;
-        }
-        let Some(t) = selection_target(&gfx.flip, &playhead, active_layer) else {
-            return false;
-        };
-        let Some(e) = self
-            .flip_state
-            .entities
-            .get(&t.oid)
-            .map(|&b| ph2d_ecs::Entity::from_bits(b))
-            .filter(|e| gfx.sim.world().get_entity(*e).is_ok())
-        else {
-            return false;
-        };
-        let Some(drawing) = gfx.flip.object(t.oid).and_then(|o| o.drawing(t.did)) else {
-            return false;
-        };
-        let points = snapshot_selected_points(drawing);
-        let parent = snapshot_of(world_transform(&gfx.sim, e));
-        let start = pose_trs(t.pose, t.c_local);
-        let world_snap = ph2d_editor::compose_snapshot(parent, start);
-        let win = gfx.surface.size();
-        let world_pos = gfx.camera.screen_to_world((x, y), win);
-        // Rotate pivota no centro da seleção; scale, no canto/borda OPOSTOS (ou no
-        // centro com Ctrl) — a mesma política do sprite/pose.
-        // `anchor = [0, 0]`: o `start` já É o centro da seleção (ver o irmão em
-        // `flip_pose_gizmo`), então o termo reduz literalmente ao de antes.
-        let pivot =
-            ph2d_editor::anchor_pivot_world(hit.kind, [0.0, 0.0], t.h_local, world_snap, ctrl);
-        self.flip_state.selection_drag = Some(FlipSelectionDrag {
-            drag: ph2d_editor::GizmoDragState {
-                kind: hit.kind,
-                entity_bits: e.to_bits(),
-                start_screen: (x, y),
-                cursor_screen: (x, y),
-                start_transform: start,
-                pivot_world: pivot,
-                start_cursor_world: world_pos,
-                sprite_half_intrinsic: t.h_local,
-                anchor_is_center: ctrl,
-                target: ph2d_editor::GizmoTarget::FlipSelection,
-                parent_world: parent,
-                turns: 0,
-            },
-            oid: t.oid,
-            did: t.did,
-            pose: t.pose,
-            start,
-            points,
-        });
-        true
-    }
+#[cfg(test)]
+#[path = "selection_gizmo_tests.rs"]
+mod tests;
 
-    /// Pen-MOVE com um arrasto de seleção aberto: recomputa cada ponto do snapshot do
-    /// Down pelo delta afim do gizmo e o escreve na geometria. `true` = consumido.
-    /// (`take`-e-restaura porque o snapshot é um `Vec`, não `Copy`.)
-    pub(crate) fn flip_selection_gizmo_move(&mut self, x: f32, y: f32) -> bool {
-        let Some(mut pd) = self.flip_state.selection_drag.take() else {
-            return false;
-        };
-        let mods = GizmoModifiers {
-            shift: self.modifiers.shift_key(),
-            ctrl: self.modifiers.control_key() || self.modifiers.super_key(),
-            alt: self.modifiers.alt_key(),
-        };
-        let Some(gfx) = self.gfx.as_mut() else {
-            self.flip_state.selection_drag = Some(pd);
-            return true;
-        };
-        let size = gfx.surface.size();
-        let cam = GizmoCamera {
-            center: gfx.camera.center,
-            height_world: gfx.camera.height_world,
-            window_w: size.width as f32,
-            window_h: size.height as f32,
-        };
-        let snap = gfx
-            .hero_screen
-            .as_ref()
-            .map(|h| GizmoSnap {
-                move_meters: h.project.snap_move_meters,
-                rotate_deg: h.project.snap_rotate_deg,
-            })
-            .unwrap_or_default();
-        // O cursor avança ATRAVÉS do drag (o contador de voltas do Rotate mora aí).
-        pd.drag.advance_cursor((x, y), &cam);
-        let new_t = ph2d_editor::compute_gizmo_transform(&pd.drag, &cam, mods, snap, None);
-        let m = art_bake_xform(pd.pose, pd.start, new_t);
-        if let Some(dr) = gfx
-            .flip
-            .object_mut(pd.oid)
-            .and_then(|o| o.drawing_mut(pd.did))
-        {
-            for sp in &pd.points {
-                let q = m.apply([f64::from(sp.p0.x), f64::from(sp.p0.y)]);
-                let np = Vec2::new(q[0] as f32, q[1] as f32);
-                match sp.ring {
-                    Ring::Main => {
-                        if let Some(p) = dr
-                            .strokes
-                            .get_mut(sp.si)
-                            .and_then(|s| s.positions_mut().get_mut(sp.pi))
-                        {
-                            *p = np;
-                        }
+use crate::flip::ctx::FlipFrame;
+use crate::flip::state::FlipState;
+
+/// Pen-DOWN num handle do gizmo de seleção. `true` = arrasto aberto (consumido — o caminho
+/// genérico de gizmo e o Edit não veem este clique). Reconhece o alvo pelo `gizmo_hit_map`
+/// (`GizmoTarget::FlipSelection`); os handles só existem quando a `selection_view` foi
+/// publicada neste frame, então a pré-condição já está provada pela pintura.
+pub(crate) fn gizmo_down(
+    state: &mut FlipState,
+    f: &FlipFrame<'_>,
+    sim: &ph2d_ecs::SimWorld,
+    hero: &ph2d_editor::HeroScreen,
+    wants_edit: bool,
+    ctrl: bool,
+    x: f32,
+    y: f32,
+) -> bool {
+    if !wants_edit {
+        return false;
+    }
+    let active_layer = state.active_layer;
+    let Some(hit_id) = hero.hit_index.hit(x, y) else {
+        return false;
+    };
+    let Some(hit) = hero.gizmo.gizmo_hit_map.get(&hit_id).copied() else {
+        return false;
+    };
+    if hit.target != ph2d_editor::GizmoTarget::FlipSelection {
+        return false;
+    }
+    let Some(t) = selection_target(f.flip, f.playhead, active_layer) else {
+        return false;
+    };
+    let Some(e) = state
+        .entities
+        .get(&t.oid)
+        .map(|&b| ph2d_ecs::Entity::from_bits(b))
+        .filter(|e| sim.world().get_entity(*e).is_ok())
+    else {
+        return false;
+    };
+    let Some(drawing) = f.flip.object(t.oid).and_then(|o| o.drawing(t.did)) else {
+        return false;
+    };
+    let points = snapshot_selected_points(drawing);
+    let parent = snapshot_of(world_transform(sim, e));
+    let start = pose_trs(t.pose, t.c_local);
+    let world_snap = ph2d_editor::compose_snapshot(parent, start);
+    let world_pos = f.to_world(x, y);
+    // Rotate pivota no centro da seleção; scale, no canto/borda OPOSTOS (ou no centro com
+    // Ctrl) — a mesma política do sprite/pose. `anchor = [0, 0]`: o `start` já É o centro da
+    // seleção (ver o irmão em `pose_gizmo`), então o termo reduz literalmente ao de antes.
+    let pivot = ph2d_editor::anchor_pivot_world(hit.kind, [0.0, 0.0], t.h_local, world_snap, ctrl);
+    state.selection_drag = Some(FlipSelectionDrag {
+        drag: ph2d_editor::GizmoDragState {
+            kind: hit.kind,
+            entity_bits: e.to_bits(),
+            start_screen: (x, y),
+            cursor_screen: (x, y),
+            start_transform: start,
+            pivot_world: pivot,
+            start_cursor_world: world_pos,
+            sprite_half_intrinsic: t.h_local,
+            anchor_is_center: ctrl,
+            target: ph2d_editor::GizmoTarget::FlipSelection,
+            parent_world: parent,
+            turns: 0,
+        },
+        oid: t.oid,
+        did: t.did,
+        pose: t.pose,
+        start,
+        points,
+    });
+    true
+}
+
+/// Pen-MOVE com um arrasto de seleção aberto: recomputa cada ponto do snapshot do Down pelo
+/// delta afim do gizmo e o escreve na geometria. (`take`-e-restaura porque o snapshot é um
+/// `Vec`, não `Copy`.)
+///
+/// ⚠️ Devolve `true` quando consumiu; o `title_dirty` é da shell e sai daí.
+pub(crate) fn gizmo_move(
+    state: &mut FlipState,
+    flip: &mut ph2d_flip::FlipDoc,
+    cam: GizmoCamera,
+    snap: GizmoSnap,
+    mods: GizmoModifiers,
+    x: f32,
+    y: f32,
+) -> bool {
+    let Some(mut pd) = state.selection_drag.take() else {
+        return false;
+    };
+    // O cursor avança ATRAVÉS do drag (o contador de voltas do Rotate mora aí).
+    pd.drag.advance_cursor((x, y), &cam);
+    let new_t = ph2d_editor::compute_gizmo_transform(&pd.drag, &cam, mods, snap, None);
+    let m = art_bake_xform(pd.pose, pd.start, new_t);
+    if let Some(dr) = flip.object_mut(pd.oid).and_then(|o| o.drawing_mut(pd.did)) {
+        for sp in &pd.points {
+            let q = m.apply([f64::from(sp.p0.x), f64::from(sp.p0.y)]);
+            let np = Vec2::new(q[0] as f32, q[1] as f32);
+            match sp.ring {
+                Ring::Main => {
+                    if let Some(p) = dr
+                        .strokes
+                        .get_mut(sp.si)
+                        .and_then(|s| s.positions_mut().get_mut(sp.pi))
+                    {
+                        *p = np;
                     }
-                    Ring::Hole(h) => {
-                        if let Some(p) = dr
-                            .strokes
-                            .get_mut(sp.si)
-                            .and_then(|s| s.holes.get_mut(h))
-                            .and_then(|hole| hole.get_mut(sp.pi))
-                        {
-                            *p = np;
-                        }
+                }
+                Ring::Hole(h) => {
+                    if let Some(p) = dr
+                        .strokes
+                        .get_mut(sp.si)
+                        .and_then(|s| s.holes.get_mut(h))
+                        .and_then(|hole| hole.get_mut(sp.pi))
+                    {
+                        *p = np;
                     }
                 }
             }
         }
-        self.flip_state.selection_drag = Some(pd);
-        self.title_dirty = true;
-        true
     }
-
-    /// Pen-UP: fecha o arrasto de seleção. `true` = havia um. O passo de undo sai do
-    /// diff pós-frame, como todo gesto do Flip.
-    pub(crate) fn flip_selection_gizmo_up(&mut self) -> bool {
-        self.flip_state.selection_drag.take().is_some()
-    }
+    state.selection_drag = Some(pd);
+    true
 }
 
-#[cfg(test)]
-#[path = "selection_gizmo_tests.rs"]
-mod tests;
+/// Pen-UP: fecha o arrasto de seleção. `true` = havia um.
+pub(crate) fn gizmo_up(state: &mut FlipState) -> bool {
+    state.selection_drag.take().is_some()
+}

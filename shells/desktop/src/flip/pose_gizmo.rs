@@ -226,133 +226,118 @@ pub(crate) fn pose_view(
     })
 }
 
-impl crate::App {
-    /// Pen-DOWN num handle do gizmo de pose. `true` = arrasto de pose aberto
-    /// (consumido — o caminho genérico de gizmo e o Edit não veem este clique).
-    ///
-    /// Reconhece o alvo pelo `gizmo_hit_map` (`GizmoTarget::FlipPose`) — os handles só
-    /// existem no hit-index quando a `pose_view` foi publicada neste frame (tool Flip +
-    /// modo Edit + quadro instanciado), então a pré-condição já está provada pela
-    /// pintura.
-    pub(crate) fn flip_pose_gizmo_down(&mut self, x: f32, y: f32) -> bool {
-        if !self.flip_wants_edit() {
-            return false;
-        }
-        let playhead = self.playhead;
-        let active_layer = self.flip_state.active_layer;
-        let ctrl = self.modifiers.control_key() || self.modifiers.super_key();
-        let Some(gfx) = self.gfx.as_ref() else {
-            return false;
-        };
-        let Some(hero) = gfx.hero_screen.as_ref() else {
-            return false;
-        };
-        let Some(hit_id) = hero.hit_index.hit(x, y) else {
-            return false;
-        };
-        let Some(hit) = hero.gizmo.gizmo_hit_map.get(&hit_id).copied() else {
-            return false;
-        };
-        if hit.target != ph2d_editor::GizmoTarget::FlipPose {
-            return false;
-        }
-        let Some(t) = pose_target(&gfx.flip, &playhead, active_layer) else {
-            return false;
-        };
-        let Some(e) = self
-            .flip_state
-            .entities
-            .get(&t.oid)
-            .map(|&b| ph2d_ecs::Entity::from_bits(b))
-            .filter(|e| gfx.sim.world().get_entity(*e).is_ok())
-        else {
-            return false;
-        };
-        let parent = snapshot_of(world_transform(&gfx.sim, e));
-        let start = pose_trs(t.pose, t.c_local);
-        let world_snap = ph2d_editor::compose_snapshot(parent, start);
-        let win = gfx.surface.size();
-        let world_pos = gfx.camera.screen_to_world((x, y), win);
-        // Rotate pivota no centro da arte (= a translação do TRS); scale, no canto/
-        // borda OPOSTOS (ou no centro com Ctrl) — a mesma política do sprite.
-        // O `anchor` é `[0, 0]` porque o `start` já É o centro da caixa (`pose_trs` põe o
-        // `c_local` na translação) — a caixa está centrada no próprio pivô, e o termo
-        // reduz LITERALMENTE ao que havia antes (`+ 0.0 * scale` é exato).
-        let pivot =
-            ph2d_editor::anchor_pivot_world(hit.kind, [0.0, 0.0], t.h_local, world_snap, ctrl);
-        self.flip_state.pose_drag = Some(FlipPoseDrag {
-            drag: ph2d_editor::GizmoDragState {
-                kind: hit.kind,
-                entity_bits: e.to_bits(),
-                start_screen: (x, y),
-                cursor_screen: (x, y),
-                start_transform: start,
-                pivot_world: pivot,
-                start_cursor_world: world_pos,
-                sprite_half_intrinsic: t.h_local,
-                anchor_is_center: ctrl,
-                target: ph2d_editor::GizmoTarget::FlipPose,
-                parent_world: parent,
-                turns: 0,
-            },
-            oid: t.oid,
-            lid: t.lid,
-            key: t.key,
-            c_local: t.c_local,
-        });
-        true
-    }
-
-    /// Pen-MOVE com um arrasto de pose aberto: recomputa a pose da chave a partir do
-    /// snapshot do Down (nunca do estado vivo — deltas compostos por frame driftariam)
-    /// e a escreve pelo choke point `set_frame_pose`. `true` = consumido.
-    pub(crate) fn flip_pose_gizmo_move(&mut self, x: f32, y: f32) -> bool {
-        let Some(mut pd) = self.flip_state.pose_drag else {
-            return false;
-        };
-        let mods = GizmoModifiers {
-            shift: self.modifiers.shift_key(),
-            ctrl: self.modifiers.control_key() || self.modifiers.super_key(),
-            alt: self.modifiers.alt_key(),
-        };
-        let Some(gfx) = self.gfx.as_mut() else {
-            return true;
-        };
-        let size = gfx.surface.size();
-        let cam = GizmoCamera {
-            center: gfx.camera.center,
-            height_world: gfx.camera.height_world,
-            window_w: size.width as f32,
-            window_h: size.height as f32,
-        };
-        let snap = gfx
-            .hero_screen
-            .as_ref()
-            .map(|h| GizmoSnap {
-                move_meters: h.project.snap_move_meters,
-                rotate_deg: h.project.snap_rotate_deg,
-            })
-            .unwrap_or_default();
-        // O cursor avança ATRAVÉS do drag (o contador de voltas do Rotate mora aí —
-        // pular isto reintroduz o salto de 2π no corte do atan2).
-        pd.drag.advance_cursor((x, y), &cam);
-        let pose = pose_after_drag(&pd.drag, &cam, mods, snap, pd.c_local);
-        if let Some(obj) = gfx.flip.object_mut(pd.oid) {
-            obj.set_frame_pose(pd.lid, pd.key, pose);
-        }
-        self.flip_state.pose_drag = Some(pd);
-        self.title_dirty = true;
-        true
-    }
-
-    /// Pen-UP: fecha o arrasto de pose. `true` = havia um (consumido). O passo de
-    /// undo sai do diff pós-frame, como todo gesto do Flip (`post_frame_undo` espera
-    /// o botão soltar).
-    pub(crate) fn flip_pose_gizmo_up(&mut self) -> bool {
-        self.flip_state.pose_drag.take().is_some()
-    }
-}
-
 #[cfg(test)]
 #[path = "pose_gizmo_tests.rs"]
 mod tests;
+
+use crate::flip::ctx::FlipFrame;
+use crate::flip::state::FlipState;
+
+/// Pen-DOWN num handle do gizmo de pose. `true` = arrasto de pose aberto (consumido — o
+/// caminho genérico de gizmo e o Edit não veem este clique).
+///
+/// Reconhece o alvo pelo `gizmo_hit_map` (`GizmoTarget::FlipPose`) — os handles só existem no
+/// hit-index quando a `pose_view` foi publicada neste frame (tool Flip + modo Edit + quadro
+/// instanciado), então a pré-condição já está provada pela pintura.
+///
+/// ⭐ O `HeroScreen` entra por PARÂMETRO, e há precedente no próprio substrato
+/// (`ph2d_app_host::canvas_area::visible`). O que o HOWTO §1.5 proíbe é um método do trait
+/// **devolver** um handle; um parâmetro é a shell a escolher o que entrega.
+pub(crate) fn gizmo_down(
+    state: &mut FlipState,
+    f: &FlipFrame<'_>,
+    sim: &ph2d_ecs::SimWorld,
+    hero: &ph2d_editor::HeroScreen,
+    wants_edit: bool,
+    ctrl: bool,
+    x: f32,
+    y: f32,
+) -> bool {
+    if !wants_edit {
+        return false;
+    }
+    let active_layer = state.active_layer;
+    let Some(hit_id) = hero.hit_index.hit(x, y) else {
+        return false;
+    };
+    let Some(hit) = hero.gizmo.gizmo_hit_map.get(&hit_id).copied() else {
+        return false;
+    };
+    if hit.target != ph2d_editor::GizmoTarget::FlipPose {
+        return false;
+    }
+    let Some(t) = pose_target(f.flip, f.playhead, active_layer) else {
+        return false;
+    };
+    let Some(e) = state
+        .entities
+        .get(&t.oid)
+        .map(|&b| ph2d_ecs::Entity::from_bits(b))
+        .filter(|e| sim.world().get_entity(*e).is_ok())
+    else {
+        return false;
+    };
+    let parent = snapshot_of(world_transform(sim, e));
+    let start = pose_trs(t.pose, t.c_local);
+    let world_snap = ph2d_editor::compose_snapshot(parent, start);
+    let world_pos = f.to_world(x, y);
+    // Rotate pivota no centro da arte (= a translação do TRS); scale, no canto/borda OPOSTOS
+    // (ou no centro com Ctrl) — a mesma política do sprite. O `anchor` é `[0, 0]` porque o
+    // `start` já É o centro da caixa (`pose_trs` põe o `c_local` na translação).
+    let pivot = ph2d_editor::anchor_pivot_world(hit.kind, [0.0, 0.0], t.h_local, world_snap, ctrl);
+    state.pose_drag = Some(FlipPoseDrag {
+        drag: ph2d_editor::GizmoDragState {
+            kind: hit.kind,
+            entity_bits: e.to_bits(),
+            start_screen: (x, y),
+            cursor_screen: (x, y),
+            start_transform: start,
+            pivot_world: pivot,
+            start_cursor_world: world_pos,
+            sprite_half_intrinsic: t.h_local,
+            anchor_is_center: ctrl,
+            target: ph2d_editor::GizmoTarget::FlipPose,
+            parent_world: parent,
+            turns: 0,
+        },
+        oid: t.oid,
+        lid: t.lid,
+        key: t.key,
+        c_local: t.c_local,
+    });
+    true
+}
+
+/// Pen-MOVE com um arrasto de pose aberto: recomputa a pose da chave a partir do snapshot do
+/// Down (nunca do estado vivo — deltas compostos por frame driftariam) e a escreve pelo choke
+/// point `set_frame_pose`.
+///
+/// Devolve `Some(consumido)`; `None` quer dizer *«não havia arrasto»*. ⚠️ O `title_dirty` é
+/// da shell e sai do valor de retorno, nunca por `&mut bool`.
+pub(crate) fn gizmo_move(
+    state: &mut FlipState,
+    flip: &mut ph2d_flip::FlipDoc,
+    cam: GizmoCamera,
+    snap: GizmoSnap,
+    mods: GizmoModifiers,
+    x: f32,
+    y: f32,
+) -> bool {
+    let Some(mut pd) = state.pose_drag else {
+        return false;
+    };
+    // O cursor avança ATRAVÉS do drag (o contador de voltas do Rotate mora aí — pular isto
+    // reintroduz o salto de 2π no corte do atan2).
+    pd.drag.advance_cursor((x, y), &cam);
+    let pose = pose_after_drag(&pd.drag, &cam, mods, snap, pd.c_local);
+    if let Some(obj) = flip.object_mut(pd.oid) {
+        obj.set_frame_pose(pd.lid, pd.key, pose);
+    }
+    state.pose_drag = Some(pd);
+    true
+}
+
+/// Pen-UP: fecha o arrasto de pose. `true` = havia um (consumido).
+pub(crate) fn gizmo_up(state: &mut FlipState) -> bool {
+    state.pose_drag.take().is_some()
+}

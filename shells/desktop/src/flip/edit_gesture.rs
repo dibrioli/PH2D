@@ -21,7 +21,6 @@
 
 use ph2d_core::Vec2;
 use ph2d_flip::{FlipDrawing, FlipStroke};
-use ph2d_vec_scene::Xform;
 
 /// O gesto em curso no modo Edit.
 #[derive(Clone, Copy, Debug)]
@@ -231,251 +230,224 @@ pub(crate) fn translate_selection(drawing: &mut FlipDrawing, delta: Vec2) -> boo
     moved
 }
 
-impl crate::App {
-    /// Converte um ponto de TELA no espaço LOCAL do objeto Flip ativo.
-    fn flip_screen_to_local(&self, x: f32, y: f32, w2l: &Xform) -> Option<Vec2> {
-        let gfx = self.gfx.as_ref()?;
-        let win = gfx.surface.size();
-        let world = gfx.camera.screen_to_world((x, y), win);
-        let l = w2l.apply([f64::from(world[0]), f64::from(world[1])]);
-        Some(Vec2::new(l[0] as f32, l[1] as f32))
-    }
-
-    /// Pen-move no modo Edit: arrasta a caixa, ou move a seleção. `true` = gesto vivo.
-    pub(crate) fn flip_edit_canvas_move(&mut self, x: f32, y: f32) -> bool {
-        let Some(gesture) = self.flip_state.edit_gesture else {
-            return false;
-        };
-        match gesture {
-            EditGesture::Marquee {
-                start, additive, ..
-            } => {
-                self.flip_state.edit_gesture = Some(EditGesture::Marquee {
-                    start,
-                    cur: (x, y),
-                    additive,
-                });
-                self.title_dirty = true;
-                true
-            }
-            EditGesture::Click => true, // resolvido no down; nada a arrastar
-            // Domínio POINT (W8): o MESMO laço do Move — funil pose-free, slop mata o
-            // colapso — mas quem anda são os PONTOS selecionados.
-            EditGesture::MovePoints {
-                last,
-                down,
-                collapse_to,
-            } => {
-                let w2o = self.flip_active_world_to_object();
-                let Some(now) = self.flip_screen_to_local(x, y, &w2o) else {
-                    return true;
-                };
-                let delta = now - last;
-                let collapse_to = if passed_slop(down, (x, y)) {
-                    None
-                } else {
-                    collapse_to
-                };
-                self.flip_state.edit_gesture = Some(EditGesture::MovePoints {
-                    last: now,
-                    down,
-                    collapse_to,
-                });
-                let active_layer = self.flip_state.active_layer;
-                let playhead = self.playhead;
-                if let Some(gfx) = self.gfx.as_mut()
-                    && let Some((oid, lid, key, did)) =
-                        crate::flip::select::visible_key(&gfx.flip, &playhead, active_layer)
-                    && move_points(&mut gfx.flip, oid, lid, key, did, delta)
-                {
-                    self.title_dirty = true;
-                }
-                true
-            }
-            EditGesture::Move {
-                last,
-                down,
-                collapse_to,
-            } => {
-                // **Funil SEM a pose da chave** (W7.2 fix): o delta do arrasto é um vetor,
-                // e mover uma instância ESCREVE a pose. Usar o funil pose-aware aqui
-                // realimentaria a própria mudança a cada amostra e o desenho tremeria. Ver
-                // `App::flip_active_world_to_object`.
-                let w2l = self.flip_active_world_to_object();
-                let Some(now) = self.flip_screen_to_local(x, y, &w2l) else {
-                    return true;
-                };
-                let delta = now - last;
-                // Passou do slop ⇒ é um ARRASTO de grupo, não um clique: o colapso morre.
-                let collapse_to = if passed_slop(down, (x, y)) {
-                    None
-                } else {
-                    collapse_to
-                };
-                self.flip_state.edit_gesture = Some(EditGesture::Move {
-                    last: now,
-                    down,
-                    collapse_to,
-                });
-                let active_layer = self.flip_state.active_layer;
-                let playhead = self.playhead;
-                if let Some(gfx) = self.gfx.as_mut()
-                    && let Some((oid, lid, key, did)) =
-                        crate::flip::select::visible_key(&gfx.flip, &playhead, active_layer)
-                    && move_drawing(&mut gfx.flip, oid, lid, key, did, delta)
-                {
-                    self.title_dirty = true;
-                }
-                true
-            }
-        }
-    }
-
-    /// Pen-up no modo Edit: fecha o marquee (aplicando a seleção) ou o move.
-    ///
-    /// O passo de undo sai do **diff pós-frame** (como todo o resto do Flip) — um arrasto
-    /// inteiro vira UM passo porque o diff só roda quando não há gesto em curso.
-    pub(crate) fn flip_edit_canvas_up(&mut self) -> bool {
-        let Some(gesture) = self.flip_state.edit_gesture.take() else {
-            return false;
-        };
-        let EditGesture::Marquee {
-            start,
-            cur,
-            additive,
-        } = gesture
-        else {
-            // `Click` (resolvido no down) ou `Move`. No `Move`, os pontos já foram
-            // translados a cada quadro — mas resta o **colapso adiado**: se o usuário
-            // soltou SEM arrastar, o clique num traço já selecionado significava "agora só
-            // este". Em qualquer caso o UP é CONSUMIDO (no Edit o canvas é da ferramenta).
-            if let EditGesture::Move {
-                collapse_to: Some(i),
-                ..
-            } = gesture
-            {
-                let active_layer = self.flip_state.active_layer;
-                let playhead = self.playhead;
-                if let Some(gfx) = self.gfx.as_mut()
-                    && let Some((oid, _l, did)) =
-                        crate::flip::select::visible_drawing(&gfx.flip, &playhead, active_layer)
-                    && let Some(dr) = gfx.flip.object_mut(oid).and_then(|o| o.drawing_mut(did))
-                    && crate::flip::select::apply_pick(
-                        dr,
-                        Some(i),
-                        crate::flip::select::Pick::Replace,
-                    )
-                {
-                    self.title_dirty = true;
-                }
-            }
-            // O colapso adiado do domínio POINT: soltar sem arrastar num ponto já
-            // selecionado = "agora só este ponto". No SEGMENT o `collapse_to` é o
-            // ponto-SONDA e o colapso é para o PEDAÇO dele — colapsar para o ponto solto
-            // ali seria trocar o que o modo inteiro promete por uma âncora.
-            if let EditGesture::MovePoints {
-                collapse_to: Some((si, pi)),
-                ..
-            } = gesture
-            {
-                let active_layer = self.flip_state.active_layer;
-                let playhead = self.playhead;
-                let domain = self.flip_edit_domain_now();
-                if let Some(gfx) = self.gfx.as_mut()
-                    && let Some((oid, lid, did)) =
-                        crate::flip::select::visible_drawing(&gfx.flip, &playhead, active_layer)
-                {
-                    let cutters = (domain == ph2d_tool_flip::EditDomain::Segment)
-                        .then(|| {
-                            gfx.flip.object(oid).map(|o| {
-                                crate::flip::select_segment::frame_cutters(
-                                    o,
-                                    o.frame_at(&playhead),
-                                    lid,
-                                )
-                            })
-                        })
-                        .flatten();
-                    if let Some(dr) = gfx.flip.object_mut(oid).and_then(|o| o.drawing_mut(did)) {
-                        let changed = match &cutters {
-                            Some(c) => {
-                                crate::flip::select_segment::collapse_to_piece(dr, c, si, pi)
-                            }
-                            None => {
-                                let mut ch = dr.clear_selection();
-                                ch |= dr
-                                    .strokes
-                                    .get_mut(si)
-                                    .is_some_and(|s| s.set_point_selected(pi, true));
-                                ch
-                            }
-                        };
-                        if changed {
-                            self.title_dirty = true;
-                        }
-                    }
-                }
-            }
-            return true;
-        };
-        // Um marquee que não passou do slop foi um CLIQUE no vazio: desmarcar (o clique é
-        // tratado no down, então aqui não há o que fazer).
-        if !passed_slop(start, cur) {
-            return true;
-        }
-        let w2l = self.flip_active_world_to_local();
-        let (x0, y0, x1, y1) = marquee_rect(start, cur);
-        let (Some(a), Some(b)) = (
-            self.flip_screen_to_local(x0, y0, &w2l),
-            self.flip_screen_to_local(x1, y1, &w2l),
-        ) else {
-            return true;
-        };
-        // A caixa é de TELA; em LOCAL ela pode chegar invertida no eixo Y (a câmera olha
-        // com y para cima e a tela com y para baixo) — normaliza depois de converter, não
-        // antes. (Um min/max feito só na tela produziria uma caixa vazia em local.)
-        let min = Vec2::new(a.x.min(b.x), a.y.min(b.y));
-        let max = Vec2::new(a.x.max(b.x), a.y.max(b.y));
-
-        let active_layer = self.flip_state.active_layer;
-        let playhead = self.playhead;
-        // No domínio POINT a caixa acende ÂNCORAS; no SEGMENT ela acende os PEDAÇOS que
-        // tocou (o pós-processo da referência: a caixa dá uma máscara de pontos, o modo a
-        // expande — senão a caixa recortaria o traço na borda dela, que é o oposto do que
-        // o modo promete); no Stroke, traços (ponto-dentro OU segmento-cruza). A escolha
-        // vem do snapshot da tool — a mesma porta do down.
-        let domain = self.flip_edit_domain_now();
-        if let Some(gfx) = self.gfx.as_mut()
-            && let Some((oid, lid, did)) =
-                crate::flip::select::visible_drawing(&gfx.flip, &playhead, active_layer)
-        {
-            let cutters = (domain == ph2d_tool_flip::EditDomain::Segment)
-                .then(|| {
-                    gfx.flip.object(oid).map(|o| {
-                        crate::flip::select_segment::frame_cutters(o, o.frame_at(&playhead), lid)
-                    })
-                })
-                .flatten();
-            if let Some(dr) = gfx.flip.object_mut(oid).and_then(|o| o.drawing_mut(did))
-                && (match (domain, &cutters) {
-                    (ph2d_tool_flip::EditDomain::Segment, Some(c)) => {
-                        crate::flip::select_segment::apply_marquee_segments(
-                            dr, c, min, max, additive,
-                        )
-                    }
-                    (ph2d_tool_flip::EditDomain::Point, _) => {
-                        crate::flip::select::apply_marquee_points(dr, min, max, additive)
-                    }
-                    _ => apply_marquee(dr, min, max, additive),
-                })
-            {
-                self.title_dirty = true;
-            }
-        }
-        true
-    }
-}
-
 #[cfg(test)]
 #[path = "edit_gesture_tests.rs"]
 mod tests;
+
+use crate::flip::ctx::FlipFrame;
+use crate::flip::state::FlipState;
+
+/// Converte um ponto de TELA no espaço LOCAL do objeto Flip ativo.
+fn screen_to_local(f: &FlipFrame<'_>, w2l: &ph2d_vec_scene::Xform, x: f32, y: f32) -> Vec2 {
+    let world = f.to_world(x, y);
+    let l = w2l.apply([f64::from(world[0]), f64::from(world[1])]);
+    Vec2::new(l[0] as f32, l[1] as f32)
+}
+
+/// Pen-move no modo Edit: arrasta a caixa, ou move a seleção. `true` = gesto vivo.
+///
+/// ⚠️ Devolve `(vivo, sujou_o_titulo)` — o `title_dirty` é da shell.
+///
+/// ⚠️ O `w2o` é o funil **SEM a pose da chave** (W7.2 fix): o delta do arrasto é um vetor, e
+/// mover uma instância ESCREVE a pose. Usar o funil pose-aware aqui realimentaria a própria
+/// mudança a cada amostra e o desenho tremeria.
+pub(crate) fn canvas_move(
+    state: &mut FlipState,
+    f: &mut FlipFrame<'_>,
+    w2o: &ph2d_vec_scene::Xform,
+    x: f32,
+    y: f32,
+) -> (bool, bool) {
+    let Some(gesture) = state.edit_gesture else {
+        return (false, false);
+    };
+    match gesture {
+        EditGesture::Marquee {
+            start, additive, ..
+        } => {
+            state.edit_gesture = Some(EditGesture::Marquee {
+                start,
+                cur: (x, y),
+                additive,
+            });
+            (true, true)
+        }
+        EditGesture::Click => (true, false), // resolvido no down; nada a arrastar
+        // Domínio POINT (W8): o MESMO laço do Move — funil pose-free, slop mata o colapso —
+        // mas quem anda são os PONTOS selecionados.
+        EditGesture::MovePoints {
+            last,
+            down,
+            collapse_to,
+        } => {
+            let now = screen_to_local(f, w2o, x, y);
+            let delta = now - last;
+            let collapse_to = if passed_slop(down, (x, y)) {
+                None
+            } else {
+                collapse_to
+            };
+            state.edit_gesture = Some(EditGesture::MovePoints {
+                last: now,
+                down,
+                collapse_to,
+            });
+            let active_layer = state.active_layer;
+            let dirty = crate::flip::select::visible_key(f.flip, f.playhead, active_layer)
+                .is_some_and(|(oid, lid, key, did)| {
+                    move_points(f.flip, oid, lid, key, did, delta)
+                });
+            (true, dirty)
+        }
+        EditGesture::Move {
+            last,
+            down,
+            collapse_to,
+        } => {
+            let now = screen_to_local(f, w2o, x, y);
+            let delta = now - last;
+            // Passou do slop ⇒ é um ARRASTO de grupo, não um clique: o colapso morre.
+            let collapse_to = if passed_slop(down, (x, y)) {
+                None
+            } else {
+                collapse_to
+            };
+            state.edit_gesture = Some(EditGesture::Move {
+                last: now,
+                down,
+                collapse_to,
+            });
+            let active_layer = state.active_layer;
+            let dirty = crate::flip::select::visible_key(f.flip, f.playhead, active_layer)
+                .is_some_and(|(oid, lid, key, did)| {
+                    move_drawing(f.flip, oid, lid, key, did, delta)
+                });
+            (true, dirty)
+        }
+    }
+}
+
+/// Pen-up no modo Edit: fecha o marquee (aplicando a seleção) ou o move.
+///
+/// O passo de undo sai do **diff pós-frame** (como todo o resto do Flip) — um arrasto inteiro
+/// vira UM passo porque o diff só roda quando não há gesto em curso.
+///
+/// ⚠️ Devolve `(consumido, sujou_o_titulo)`.
+pub(crate) fn canvas_up(
+    state: &mut FlipState,
+    f: &mut FlipFrame<'_>,
+    w2l: &ph2d_vec_scene::Xform,
+) -> (bool, bool) {
+    let Some(gesture) = state.edit_gesture.take() else {
+        return (false, false);
+    };
+    let active_layer = state.active_layer;
+    let domain = crate::flip::select::edit_domain_now(state);
+    let EditGesture::Marquee {
+        start,
+        cur,
+        additive,
+    } = gesture
+    else {
+        // `Click` (resolvido no down) ou `Move`. No `Move`, os pontos já foram translados a
+        // cada quadro — mas resta o **colapso adiado**: se o usuário soltou SEM arrastar, o
+        // clique num traço já selecionado significava "agora só este". Em qualquer caso o UP
+        // é CONSUMIDO (no Edit o canvas é da ferramenta).
+        let mut dirty = false;
+        if let EditGesture::Move {
+            collapse_to: Some(i),
+            ..
+        } = gesture
+            && let Some((oid, _l, did)) =
+                crate::flip::select::visible_drawing(f.flip, f.playhead, active_layer)
+            && let Some(dr) = f.flip.object_mut(oid).and_then(|o| o.drawing_mut(did))
+            && crate::flip::select::apply_pick(dr, Some(i), crate::flip::select::Pick::Replace)
+        {
+            dirty = true;
+        }
+        // O colapso adiado do domínio POINT: soltar sem arrastar num ponto já selecionado =
+        // "agora só este ponto". No SEGMENT o `collapse_to` é o ponto-SONDA e o colapso é
+        // para o PEDAÇO dele — colapsar para o ponto solto ali seria trocar o que o modo
+        // inteiro promete por uma âncora.
+        if let EditGesture::MovePoints {
+            collapse_to: Some((si, pi)),
+            ..
+        } = gesture
+            && let Some((oid, lid, did)) =
+                crate::flip::select::visible_drawing(f.flip, f.playhead, active_layer)
+        {
+            let cutters = (domain == ph2d_tool_flip::EditDomain::Segment)
+                .then(|| {
+                    f.flip.object(oid).map(|o| {
+                        crate::flip::select_segment::frame_cutters(
+                            o,
+                            o.frame_at(f.playhead),
+                            lid,
+                        )
+                    })
+                })
+                .flatten();
+            if let Some(dr) = f.flip.object_mut(oid).and_then(|o| o.drawing_mut(did)) {
+                let changed = match &cutters {
+                    Some(c) => crate::flip::select_segment::collapse_to_piece(dr, c, si, pi),
+                    None => {
+                        let mut ch = dr.clear_selection();
+                        ch |= dr
+                            .strokes
+                            .get_mut(si)
+                            .is_some_and(|s| s.set_point_selected(pi, true));
+                        ch
+                    }
+                };
+                if changed {
+                    dirty = true;
+                }
+            }
+        }
+        return (true, dirty);
+    };
+    // Um marquee que não passou do slop foi um CLIQUE no vazio: desmarcar (o clique é
+    // tratado no down, então aqui não há o que fazer).
+    if !passed_slop(start, cur) {
+        return (true, false);
+    }
+    let (x0, y0, x1, y1) = marquee_rect(start, cur);
+    let a = screen_to_local(f, w2l, x0, y0);
+    let b = screen_to_local(f, w2l, x1, y1);
+    // A caixa é de TELA; em LOCAL ela pode chegar invertida no eixo Y (a câmera olha com y
+    // para cima e a tela com y para baixo) — normaliza depois de converter, não antes. (Um
+    // min/max feito só na tela produziria uma caixa vazia em local.)
+    let min = Vec2::new(a.x.min(b.x), a.y.min(b.y));
+    let max = Vec2::new(a.x.max(b.x), a.y.max(b.y));
+
+    // No domínio POINT a caixa acende ÂNCORAS; no SEGMENT ela acende os PEDAÇOS que tocou (o
+    // pós-processo da referência: a caixa dá uma máscara de pontos, o modo a expande — senão
+    // a caixa recortaria o traço na borda dela, que é o oposto do que o modo promete); no
+    // Stroke, traços. A escolha vem do snapshot da tool — a mesma porta do down.
+    let mut dirty = false;
+    if let Some((oid, lid, did)) =
+        crate::flip::select::visible_drawing(f.flip, f.playhead, active_layer)
+    {
+        let cutters = (domain == ph2d_tool_flip::EditDomain::Segment)
+            .then(|| {
+                f.flip.object(oid).map(|o| {
+                    crate::flip::select_segment::frame_cutters(o, o.frame_at(f.playhead), lid)
+                })
+            })
+            .flatten();
+        if let Some(dr) = f.flip.object_mut(oid).and_then(|o| o.drawing_mut(did))
+            && (match (domain, &cutters) {
+                (ph2d_tool_flip::EditDomain::Segment, Some(c)) => {
+                    crate::flip::select_segment::apply_marquee_segments(dr, c, min, max, additive)
+                }
+                (ph2d_tool_flip::EditDomain::Point, _) => {
+                    crate::flip::select::apply_marquee_points(dr, min, max, additive)
+                }
+                _ => apply_marquee(dr, min, max, additive),
+            })
+        {
+            dirty = true;
+        }
+    }
+    (true, dirty)
+}

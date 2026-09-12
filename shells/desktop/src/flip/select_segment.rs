@@ -251,60 +251,67 @@ pub(crate) fn apply_marquee_segments(
     changed
 }
 
-impl crate::App {
-    /// §4.C — recomputa o **PEDAÇO sob o cursor** no modo Segment (o hover). Roda 1×/frame,
-    /// ANTES do render (o overlay o lê). Só recomputa quando o cursor de fato **MOVEU** — a
-    /// guarda barata que evita refazer hit-test + cortes a cada frame com o mouse parado
-    /// ([[feedback_measure_perf_symptom_scale]]: MEDIDO em `--release`, o caminho inteiro
-    /// — `frame_cutters` + `hit_at` + `hover_piece` — custa **122 µs** num quadro de ~2400
-    /// segmentos = 0,7 % de um frame de 60 fps, e só dispara com o cursor em movimento; por
-    /// isso **não há cache de conteúdo**, só esta guarda — construir um resolveria um
-    /// problema que a medição não achou) — e **nunca durante um gesto**
-    /// (aí o usuário está selecionando/movendo, não sondando; um preview competiria com o
-    /// que ele arrasta).
-    ///
-    /// `None` = fora do Segment, gesto ativo, ou cursor no vazio. A cadeia de coordenadas
-    /// (cursor de tela → arte local) é a MESMA do pen-down (`flip_edit_canvas_down`): o pick
-    /// e o clique têm de concordar sobre o que está sob o cursor, senão o hover mostra um
-    /// pedaço e o clique pega outro.
-    pub(crate) fn flip_segment_hover_refresh(&mut self) {
-        let is_segment = matches!(
-            self.flip_state.style.map(|s| s.edit_domain),
-            Some(ph2d_tool_flip::EditDomain::Segment)
-        );
-        if !self.flip_wants_edit() || !is_segment || self.flip_state.edit_gesture.is_some() {
-            self.flip_state.segment_hover = None;
-            self.flip_state.segment_hover_at = None;
-            return;
-        }
-        // Cursor parado ⇒ pedaço inalterado (o desenho não muda sem um gesto, e o gesto
-        // zera o hover acima). Guarda barata: nada de hit-test/cortes com o mouse quieto.
-        let cursor = self.last_pointer;
-        if self.flip_state.segment_hover_at == Some(cursor) {
-            return;
-        }
-        self.flip_state.segment_hover_at = Some(cursor);
-
-        let active_layer = self.flip_state.active_layer;
-        let playhead = self.playhead;
-        let w2l = self.flip_active_world_to_local();
-        self.flip_state.segment_hover = self.gfx.as_ref().and_then(|gfx| {
-            let win = gfx.surface.size();
-            let world = gfx.camera.screen_to_world(cursor, win);
-            let px_to_world = gfx.camera.height_world.max(f32::EPSILON) / win.height.max(1) as f32;
-            let l = w2l.apply([f64::from(world[0]), f64::from(world[1])]);
-            let local = Vec2::new(l[0] as f32, l[1] as f32);
-            let (oid, lid, did) =
-                crate::flip::select::visible_drawing(&gfx.flip, &playhead, active_layer)?;
-            let obj = gfx.flip.object(oid)?;
-            let cutters = frame_cutters(obj, obj.frame_at(&playhead), lid);
-            let drawing = obj.drawing(did)?;
-            let (si, w) = crate::flip::select_pick::hit_at(drawing, local, px_to_world, &w2l)?;
-            Some((si, cutters.hover_piece(drawing, si, w)))
-        });
-    }
-}
-
 #[cfg(test)]
 #[path = "select_segment_tests.rs"]
 mod tests;
+
+use crate::flip::ctx::FlipFrame;
+use crate::flip::state::FlipState;
+
+/// §4.C — recomputa o **PEDAÇO sob o cursor** no modo Segment (o hover). Roda 1×/frame,
+/// ANTES do render (o overlay o lê). Só recomputa quando o cursor de fato **MOVEU** — a
+/// guarda barata que evita refazer hit-test + cortes a cada frame com o mouse parado
+/// (MEDIDO em `--release`: o caminho inteiro custa **122 µs** num quadro de ~2400 segmentos
+/// = 0,7 % de um frame de 60 fps, e só dispara com o cursor em movimento; por isso **não há
+/// cache de conteúdo**, só esta guarda) — e **nunca durante um gesto**.
+///
+/// `None` = fora do Segment, gesto ativo, ou cursor no vazio. A cadeia de coordenadas
+/// (cursor de tela → arte local) é a MESMA do pen-down: o pick e o clique têm de concordar
+/// sobre o que está sob o cursor, senão o hover mostra um pedaço e o clique pega outro.
+///
+/// ⚠️ O `wants_edit` chega como BOOL — ele é do `edit_gesture`, e passá-lo evita que este
+/// módulo precise de saber quem responde àquela pergunta.
+pub(crate) fn hover_refresh(
+    state: &mut FlipState,
+    f: Option<&FlipFrame<'_>>,
+    w2l: &ph2d_vec_scene::Xform,
+    cursor: (f32, f32),
+    wants_edit: bool,
+) {
+    let is_segment = matches!(
+        state.style.map(|s| s.edit_domain),
+        Some(ph2d_tool_flip::EditDomain::Segment)
+    );
+    if !wants_edit || !is_segment || state.edit_gesture.is_some() {
+        state.segment_hover = None;
+        state.segment_hover_at = None;
+        return;
+    }
+    // Cursor parado ⇒ pedaço inalterado (o desenho não muda sem um gesto, e o gesto zera o
+    // hover acima). Guarda barata: nada de hit-test/cortes com o mouse quieto.
+    if state.segment_hover_at == Some(cursor) {
+        return;
+    }
+    state.segment_hover_at = Some(cursor);
+
+    let active_layer = state.active_layer;
+    let Some(f) = f else {
+        // Sem `AppGfx` não há câmera nem documento — o `and_then(|gfx| …)` de antes dava
+        // `None` aqui, e é isso que se preserva. ⚠️ O guarda ACIMA corre na mesma: limpar o
+        // hover quando o modo não é Segment não depende de haver janela.
+        state.segment_hover = None;
+        return;
+    };
+    state.segment_hover = (|| {
+        let world = f.to_world(cursor.0, cursor.1);
+        let px_to_world = f.px_to_world();
+        let l = w2l.apply([f64::from(world[0]), f64::from(world[1])]);
+        let local = Vec2::new(l[0] as f32, l[1] as f32);
+        let (oid, lid, did) = crate::flip::select::visible_drawing(f.flip, f.playhead, active_layer)?;
+        let obj = f.flip.object(oid)?;
+        let cutters = frame_cutters(obj, obj.frame_at(f.playhead), lid);
+        let drawing = obj.drawing(did)?;
+        let (si, w) = crate::flip::select_pick::hit_at(drawing, local, px_to_world, w2l)?;
+        Some((si, cutters.hover_piece(drawing, si, w)))
+    })();
+}

@@ -239,82 +239,80 @@ pub(crate) fn apply_click(
     }
 }
 
-impl crate::App {
-    /// A tool Flip quer o canvas para RE-PAREAR agora? (ativa + sessão de pares aberta.)
-    #[must_use]
-    pub(crate) fn flip_wants_tween_pairs(&self) -> bool {
-        self.flip_state.active && self.flip_state.strip.tween_correct.is_some()
-    }
-
-    /// **Re-pina a sessão ao intervalo atual quando o artista navega.** A sessão SEGUE o
-    /// artista: outro intervalo é outra correspondência, e não há correção a preservar entre
-    /// eles. No-op se o intervalo é o mesmo — as correções ficam. Sem intervalo agora, a
-    /// sessão segue pinada ao último (o overlay mostra aquele até o artista voltar a um
-    /// intervalo diferente). Rodado por frame quando ativa (barato: só compara, reconstrói na
-    /// troca).
-    pub(crate) fn flip_tween_pairs_upkeep(&mut self) {
-        if self.flip_state.strip.tween_correct.is_none() {
-            return;
-        }
-        let active_layer = self.flip_state.active_layer;
-        let playhead = self.playhead;
-        let Some(gfx) = self.gfx.as_ref() else {
-            return;
-        };
-        let session = self
-            .flip_state
-            .strip
-            .tween_correct
-            .as_ref()
-            .map(|tc| (tc.layer, tc.from, tc.to));
-        let cur = crate::flip::strip::current_tween_interval(&gfx.flip, active_layer, &playhead);
-        let rebuild = matches!(
-            (session, cur),
-            (Some(s), Some((_, lid, from, to))) if s != (lid, from, to)
-        );
-        if rebuild {
-            let rebuilt = build(&gfx.flip, active_layer, &playhead);
-            self.flip_state.strip.tween_correct = rebuilt;
-        }
-    }
-
-    /// **Pen-DOWN no modo Pairs** — o clique re-pareia. Sempre consome (enquanto Pairs está
-    /// ativo o canvas é da correção, não do Draw/Erase): um clique perdido que virasse traço
-    /// seria pior que um clique que não faz nada.
-    pub(crate) fn flip_tween_pairs_canvas_down(&mut self, x: f32, y: f32) -> bool {
-        if !self.flip_wants_tween_pairs() {
-            return false;
-        }
-        let hit = {
-            let Some(gfx) = self.gfx.as_ref() else {
-                return false;
-            };
-            let Some(tc) = self.flip_state.strip.tween_correct.as_ref() else {
-                return false;
-            };
-            let win = gfx.surface.size();
-            let l2w = self
-                .flip_state
-                .entities
-                .get(&tc.oid)
-                .copied()
-                .map(ph2d_ecs::Entity::from_bits)
-                .filter(|e| gfx.sim.world().get_entity(*e).is_ok())
-                .map_or(Xform::IDENTITY, |e| {
-                    crate::flip::transform::object_xform(&gfx.sim, e)
-                });
-            let cam = gfx.camera.world_to_screen_affine(win);
-            let aff_a = screen_affine(&l2w, tc.pose_a, cam);
-            let aff_b = screen_affine(&l2w, tc.pose_b, cam);
-            nearest_stroke(&tc.a, aff_a, &tc.b, aff_b, f64::from(x), f64::from(y))
-        };
-        if let Some(tc) = self.flip_state.strip.tween_correct.as_mut() {
-            tc.pending = apply_click(&mut tc.plan, tc.pending, hit);
-        }
-        true
-    }
-}
-
 #[cfg(test)]
 #[path = "tween_correct_tests.rs"]
 mod tests;
+
+use crate::flip::ctx::FlipFrame;
+use crate::flip::state::FlipState;
+
+/// A tool Flip quer o canvas para RE-PAREAR agora? (ativa + sessão de pares aberta.)
+#[must_use]
+pub(crate) fn wants(state: &FlipState) -> bool {
+    state.active && state.strip.tween_correct.is_some()
+}
+
+/// **Re-pina a sessão ao intervalo atual quando o artista navega.** A sessão SEGUE o artista:
+/// outro intervalo é outra correspondência, e não há correção a preservar entre eles. No-op
+/// se o intervalo é o mesmo — as correções ficam. Rodado por frame quando ativa (barato: só
+/// compara, reconstrói na troca).
+pub(crate) fn upkeep(
+    state: &mut FlipState,
+    flip: &ph2d_flip::FlipDoc,
+    playhead: &ph2d_core::Playhead,
+) {
+    if state.strip.tween_correct.is_none() {
+        return;
+    }
+    let active_layer = state.active_layer;
+    let session = state
+        .strip
+        .tween_correct
+        .as_ref()
+        .map(|tc| (tc.layer, tc.from, tc.to));
+    let cur = crate::flip::strip::current_tween_interval(flip, active_layer, playhead);
+    let rebuild = matches!(
+        (session, cur),
+        (Some(s), Some((_, lid, from, to))) if s != (lid, from, to)
+    );
+    if rebuild {
+        state.strip.tween_correct = build(flip, active_layer, playhead);
+    }
+}
+
+/// **Pen-DOWN no modo Pairs** — o clique re-pareia. Sempre consome (enquanto Pairs está ativo
+/// o canvas é da correção, não do Draw/Erase): um clique perdido que virasse traço seria pior
+/// que um clique que não faz nada.
+pub(crate) fn canvas_down(
+    state: &mut FlipState,
+    f: &FlipFrame<'_>,
+    sim: &ph2d_ecs::SimWorld,
+    x: f32,
+    y: f32,
+) -> bool {
+    if !wants(state) {
+        return false;
+    }
+    let hit = {
+        let Some(tc) = state.strip.tween_correct.as_ref() else {
+            return false;
+        };
+        let l2w = state
+            .entities
+            .get(&tc.oid)
+            .copied()
+            .map(ph2d_ecs::Entity::from_bits)
+            .filter(|e| sim.world().get_entity(*e).is_ok())
+            .map_or(Xform::IDENTITY, |e| {
+                crate::flip::transform::object_xform(sim, e)
+            });
+        let cam = f.camera.world_to_screen_affine(f.win);
+        let aff_a = screen_affine(&l2w, tc.pose_a, cam);
+        let aff_b = screen_affine(&l2w, tc.pose_b, cam);
+        nearest_stroke(&tc.a, aff_a, &tc.b, aff_b, f64::from(x), f64::from(y))
+    };
+    if let Some(tc) = state.strip.tween_correct.as_mut() {
+        tc.pending = apply_click(&mut tc.plan, tc.pending, hit);
+    }
+    true
+}

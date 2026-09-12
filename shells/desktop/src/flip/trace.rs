@@ -103,156 +103,6 @@ pub(crate) fn rotated(shift: Pose, c: Vec2, da: f32) -> Pose {
     ])
 }
 
-impl crate::App {
-    /// A tool Flip quer o canvas para DESLOCAR fantasmas agora? (ativa + modo Trace.)
-    #[must_use]
-    pub(crate) fn flip_wants_trace(&self) -> bool {
-        self.flip_state.active
-            && matches!(
-                self.flip_state.style.map(|s| s.mode),
-                Some(ph2d_tool_flip::FlipMode::Trace)
-            )
-    }
-
-    /// Os fantasmas da camada ativa AGORA, com o shift que já têm — os candidatos ao hit.
-    /// Espelha os gates do passe (`ph2d_app_flip::pass_ghosts::collect`): o que não é desenhado não
-    /// pode ser pego.
-    fn trace_candidates(&self) -> Vec<TraceGhost> {
-        let Some(gfx) = self.gfx.as_ref() else {
-            return Vec::new();
-        };
-        let Some((oid, lid)) =
-            ph2d_app_flip::strip_resolve::target(&gfx.flip, self.flip_state.active_layer)
-        else {
-            return Vec::new();
-        };
-        let Some(obj) = gfx.flip.object(oid) else {
-            return Vec::new();
-        };
-        let Some(layer) = obj.layer(lid) else {
-            return Vec::new();
-        };
-        if self.playhead.is_playing() || !obj.onion.enabled || !layer.use_onion || !layer.visible {
-            return Vec::new();
-        }
-        let src = layer.source_frame(obj.frame_at(&self.playhead));
-        ph2d_flip::ghosts(
-            layer,
-            src,
-            &obj.onion,
-            self.flip_state.strip.selected_keys(),
-            self.flip_state.strip.pinned_keys(),
-        )
-        .into_iter()
-        .filter_map(|g| {
-            let art = obj.drawing(g.drawing)?;
-            let (c, h) = crate::flip::pose_gizmo::drawing_center_half(art)?;
-            let shift = self
-                .flip_state
-                .strip
-                .trace
-                .get(&g.key)
-                .copied()
-                .unwrap_or_default();
-            Some(TraceGhost {
-                key: g.key,
-                dist: g.delta.unsigned_abs(),
-                to_object: key_xform(layer.frame_pose(g.key)).then(&key_xform(shift)),
-                lo: [c[0] - h[0], c[1] - h[1]],
-                hi: [c[0] + h[0], c[1] + h[1]],
-            })
-        })
-        .collect()
-    }
-
-    /// O ponteiro (tela) no espaço do OBJETO do Flip ativo.
-    fn trace_pointer_obj(&self, x: f32, y: f32) -> Option<Vec2> {
-        let gfx = self.gfx.as_ref()?;
-        let win = gfx.surface.size();
-        let world = gfx.camera.screen_to_world((x, y), win);
-        let p = self
-            .flip_active_world_to_object()
-            .apply([f64::from(world[0]), f64::from(world[1])]);
-        Some(Vec2::new(p[0] as f32, p[1] as f32))
-    }
-
-    /// Pen-down no modo Trace: pega o fantasma sob o cursor (Ctrl = girar). Devolve
-    /// `true` SEMPRE que o modo está ativo — o Trace é dono do canvas (ver doc do módulo).
-    pub(crate) fn flip_trace_canvas_down(&mut self, x: f32, y: f32) -> bool {
-        if !self.flip_wants_trace() {
-            return false;
-        }
-        let Some(p) = self.trace_pointer_obj(x, y) else {
-            return false;
-        };
-        let ghosts = self.trace_candidates();
-        if let Some(i) = pick([f64::from(p.x), f64::from(p.y)], &ghosts) {
-            let g = ghosts[i];
-            let rotate = self.modifiers.control_key().then(|| {
-                let c = g.to_object.apply([
-                    f64::from((g.lo[0] + g.hi[0]) * 0.5),
-                    f64::from((g.lo[1] + g.hi[1]) * 0.5),
-                ]);
-                Vec2::new(c[0] as f32, c[1] as f32)
-            });
-            self.flip_state.trace_drag = Some(TraceDrag {
-                key: g.key,
-                last_obj: p,
-                rotate,
-            });
-        }
-        true
-    }
-
-    /// Movimento com arrasto de trace aberto: translada (ou gira) a folha da chave.
-    /// No-op sem gesto.
-    pub(crate) fn flip_trace_canvas_move(&mut self, x: f32, y: f32) -> bool {
-        if self.flip_state.trace_drag.is_none() {
-            return false;
-        }
-        // O modo trocou sob o gesto (atalho/painel): largar é mais honesto que continuar
-        // deslocando um fantasma que o modo novo nem mostra como alvo.
-        if !self.flip_wants_trace() {
-            self.flip_state.trace_drag = None;
-            return false;
-        }
-        let Some(p) = self.trace_pointer_obj(x, y) else {
-            return false;
-        };
-        let Some(mut d) = self.flip_state.trace_drag else {
-            return false;
-        };
-        let cur = self
-            .flip_state
-            .strip
-            .trace
-            .get(&d.key)
-            .copied()
-            .unwrap_or_default();
-        let next = match d.rotate {
-            None => {
-                let mut s = cur;
-                s.translate(p - d.last_obj);
-                s
-            }
-            Some(c) => {
-                let a0 = (d.last_obj.y - c.y).atan2(d.last_obj.x - c.x);
-                let a1 = (p.y - c.y).atan2(p.x - c.x);
-                rotated(cur, c, a1 - a0)
-            }
-        };
-        self.flip_state.strip.trace.insert(d.key, next);
-        d.last_obj = p;
-        self.flip_state.trace_drag = Some(d);
-        true
-    }
-
-    /// Pen-up: fecha o arrasto de trace. Devolve `true` se havia um.
-    pub(crate) fn flip_trace_canvas_up(&mut self) -> bool {
-        self.flip_state.trace_drag.take().is_some()
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -338,4 +188,144 @@ mod tests {
             "leste: {e:?}"
         );
     }
+}
+
+use crate::flip::ctx::FlipFrame;
+use crate::flip::state::FlipState;
+
+/// A tool Flip quer o canvas para DESLOCAR fantasmas agora? (ativa + modo Trace.)
+#[must_use]
+pub(crate) fn wants(state: &FlipState) -> bool {
+    state.active
+        && matches!(
+            state.style.map(|s| s.mode),
+            Some(ph2d_tool_flip::FlipMode::Trace)
+        )
+}
+
+/// Os fantasmas da camada ativa AGORA, com o shift que já têm — os candidatos ao hit.
+/// Espelha os gates do passe (`ph2d_app_flip::pass_ghosts::collect`): o que não é desenhado
+/// não pode ser pego.
+fn candidates(state: &FlipState, f: &FlipFrame<'_>) -> Vec<TraceGhost> {
+    let Some((oid, lid)) = ph2d_app_flip::strip_resolve::target(f.flip, state.active_layer) else {
+        return Vec::new();
+    };
+    let Some(obj) = f.flip.object(oid) else {
+        return Vec::new();
+    };
+    let Some(layer) = obj.layer(lid) else {
+        return Vec::new();
+    };
+    if f.playhead.is_playing() || !obj.onion.enabled || !layer.use_onion || !layer.visible {
+        return Vec::new();
+    }
+    let src = layer.source_frame(obj.frame_at(f.playhead));
+    ph2d_flip::ghosts(
+        layer,
+        src,
+        &obj.onion,
+        state.strip.selected_keys(),
+        state.strip.pinned_keys(),
+    )
+    .into_iter()
+    .filter_map(|g| {
+        let art = obj.drawing(g.drawing)?;
+        let (c, h) = crate::flip::pose_gizmo::drawing_center_half(art)?;
+        let shift = state.strip.trace.get(&g.key).copied().unwrap_or_default();
+        Some(TraceGhost {
+            key: g.key,
+            dist: g.delta.unsigned_abs(),
+            to_object: key_xform(layer.frame_pose(g.key)).then(&key_xform(shift)),
+            lo: [c[0] - h[0], c[1] - h[1]],
+            hi: [c[0] + h[0], c[1] + h[1]],
+        })
+    })
+    .collect()
+}
+
+/// O ponteiro (tela) no espaço do OBJETO do Flip ativo.
+///
+/// ⚠️ O `w2o` chega PRONTO — derivá-lo é do `transform`, e quem chama já o tem.
+fn pointer_obj(f: &FlipFrame<'_>, w2o: &ph2d_vec_scene::Xform, x: f32, y: f32) -> Vec2 {
+    let world = f.to_world(x, y);
+    let p = w2o.apply([f64::from(world[0]), f64::from(world[1])]);
+    Vec2::new(p[0] as f32, p[1] as f32)
+}
+
+/// Pen-down no modo Trace: pega o fantasma sob o cursor (`ctrl` = girar). Devolve `true`
+/// SEMPRE que o modo está ativo — o Trace é dono do canvas (ver doc do módulo).
+pub(crate) fn canvas_down(
+    state: &mut FlipState,
+    f: &FlipFrame<'_>,
+    w2o: &ph2d_vec_scene::Xform,
+    ctrl: bool,
+    x: f32,
+    y: f32,
+) -> bool {
+    if !wants(state) {
+        return false;
+    }
+    let p = pointer_obj(f, w2o, x, y);
+    let ghosts = candidates(state, f);
+    if let Some(i) = pick([f64::from(p.x), f64::from(p.y)], &ghosts) {
+        let g = ghosts[i];
+        let rotate = ctrl.then(|| {
+            let c = g.to_object.apply([
+                f64::from((g.lo[0] + g.hi[0]) * 0.5),
+                f64::from((g.lo[1] + g.hi[1]) * 0.5),
+            ]);
+            Vec2::new(c[0] as f32, c[1] as f32)
+        });
+        state.trace_drag = Some(TraceDrag {
+            key: g.key,
+            last_obj: p,
+            rotate,
+        });
+    }
+    true
+}
+
+/// Movimento com arrasto de trace aberto: translada (ou gira) a folha da chave.
+pub(crate) fn canvas_move(
+    state: &mut FlipState,
+    f: &FlipFrame<'_>,
+    w2o: &ph2d_vec_scene::Xform,
+    x: f32,
+    y: f32,
+) -> bool {
+    if state.trace_drag.is_none() {
+        return false;
+    }
+    // O modo trocou sob o gesto (atalho/painel): largar é mais honesto que continuar
+    // deslocando um fantasma que o modo novo nem mostra como alvo.
+    if !wants(state) {
+        state.trace_drag = None;
+        return false;
+    }
+    let p = pointer_obj(f, w2o, x, y);
+    let Some(mut d) = state.trace_drag else {
+        return false;
+    };
+    let cur = state.strip.trace.get(&d.key).copied().unwrap_or_default();
+    let next = match d.rotate {
+        None => {
+            let mut s = cur;
+            s.translate(p - d.last_obj);
+            s
+        }
+        Some(c) => {
+            let a0 = (d.last_obj.y - c.y).atan2(d.last_obj.x - c.x);
+            let a1 = (p.y - c.y).atan2(p.x - c.x);
+            rotated(cur, c, a1 - a0)
+        }
+    };
+    state.strip.trace.insert(d.key, next);
+    d.last_obj = p;
+    state.trace_drag = Some(d);
+    true
+}
+
+/// Pen-up: fecha o arrasto de trace. `true` se havia um.
+pub(crate) fn canvas_up(state: &mut FlipState) -> bool {
+    state.trace_drag.take().is_some()
 }

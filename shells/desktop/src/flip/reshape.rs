@@ -189,124 +189,122 @@ pub(crate) fn reshape_sample(
     changed
 }
 
-impl crate::App {
-    /// A tool Flip quer o canvas para ESCULPIR agora? (ativa + modo Reshape.) Lê o
-    /// cache que o `flip_bridge` publica — sem downcast (o `input_dispatch` é livre).
-    #[must_use]
-    pub(crate) fn flip_wants_reshape(&self) -> bool {
-        self.flip_state.active
-            && matches!(
-                self.flip_state.style.map(|s| s.mode),
-                Some(ph2d_tool_flip::FlipMode::Reshape)
-            )
-    }
-
-    /// O cursor (tela) → o espaço local do objeto Flip ativo + a escala da câmera.
-    fn flip_local_at(&mut self, x: f32, y: f32) -> Option<(Vec2, f32, Xform)> {
-        let w2l = self.flip_active_world_to_local();
-        let gfx = self.gfx.as_ref()?;
-        let win = gfx.surface.size();
-        let world = gfx.camera.screen_to_world((x, y), win);
-        let px_to_world = gfx.camera.height_world.max(f32::EPSILON) / win.height.max(1) as f32;
-        let local = w2l.apply([f64::from(world[0]), f64::from(world[1])]);
-        Some((
-            Vec2::new(local[0] as f32, local[1] as f32),
-            px_to_world,
-            w2l,
-        ))
-    }
-
-    /// Pen-down: resolve o desenho-alvo, congela a máscara e aplica a 1ª amostra.
-    /// `true` = consumido (o gizmo/pick não vê o clique).
-    pub(crate) fn flip_reshape_canvas_down(&mut self, x: f32, y: f32) -> bool {
-        if !self.flip_wants_reshape() {
-            return false;
-        }
-        let Some(style) = self.flip_state.style else {
-            return false;
-        };
-        let Some((local, px_to_world, w2l)) = self.flip_local_at(x, y) else {
-            return false;
-        };
-        let invert = self.modifiers.control_key();
-        let p = params_from(&style, px_to_world, &w2l, invert);
-
-        let active_layer = self.flip_state.active_layer;
-        let playhead = self.playhead;
-        let falloff_on = self.flip_state.strip.falloff;
-        let strip = &mut self.flip_state.strip;
-        let Some(gfx) = self.gfx.as_mut() else {
-            return false;
-        };
-        let s = InputSample {
-            pos: local,
-            delta: Vec2::ZERO, // no pen-down o cursor ainda não andou
-            pressure: 1.0,     // sem caneta real: pressão cheia (igual ao desenho)
-        };
-        let Some((oid, targets)) = reshape_begin(
-            &mut gfx.flip,
-            &playhead,
-            active_layer,
-            strip,
-            &p,
-            &s,
-            falloff_on,
-        ) else {
-            // Camada travada, ou sem chave com o AutoKey desligado. Uma ferramenta que
-            // consome o clique e não faz NADA parece quebrada — ela tem de DIZER.
-            gfx.toasts.push(ph2d_editor::Toast::warning(
-                "Sculpt: the layer is locked, or has no drawing on this frame",
-            ));
-            self.title_dirty = true;
-            return true;
-        };
-        self.flip_state.reshape = Some(FlipReshape {
-            targets,
-            last_local: local,
-            oid,
-        });
-        true
-    }
-
-    /// Move: uma amostra por movimento (a **dose é por amostra** — mover devagar
-    /// aplica mais, que é como o pincel do GP se comporta). `true` enquanto o gesto
-    /// está vivo.
-    pub(crate) fn flip_reshape_canvas_move(&mut self, x: f32, y: f32) -> bool {
-        if self.flip_state.reshape.is_none() {
-            return false;
-        }
-        let Some(style) = self.flip_state.style else {
-            return true;
-        };
-        let Some((local, px_to_world, w2l)) = self.flip_local_at(x, y) else {
-            return true;
-        };
-        let invert = self.modifiers.control_key();
-        let p = params_from(&style, px_to_world, &w2l, invert);
-
-        let Some(g) = self.flip_state.reshape.as_mut() else {
-            return true;
-        };
-        let s = InputSample {
-            pos: local,
-            delta: local - g.last_local,
-            pressure: 1.0,
-        };
-        g.last_local = local;
-        let oid = g.oid;
-        if let Some(gfx) = self.gfx.as_mut() {
-            reshape_sample(&mut gfx.flip, oid, &mut g.targets, &p, &s);
-        }
-        true
-    }
-
-    /// Pen-up: encerra o gesto (a máscara congelada morre com ele). O passo de undo
-    /// sai de graça — o `post_frame_undo` registra o diff quando o botão é solto.
-    pub(crate) fn flip_reshape_canvas_up(&mut self) -> bool {
-        self.flip_state.reshape.take().is_some()
-    }
-}
-
 #[cfg(test)]
 #[path = "reshape_tests.rs"]
 mod tests;
+
+use crate::flip::ctx::FlipFrame;
+use crate::flip::state::FlipState;
+
+/// A tool Flip quer o canvas para ESCULPIR agora? (ativa + modo Reshape.)
+#[must_use]
+pub(crate) fn wants(state: &FlipState) -> bool {
+    state.active
+        && matches!(
+            state.style.map(|s| s.mode),
+            Some(ph2d_tool_flip::FlipMode::Reshape)
+        )
+}
+
+/// O cursor (tela) → o espaço local do objeto Flip ativo + a escala da câmera.
+///
+/// ⚠️ O `w2l` chega PRONTO — derivá-lo é do `transform`, e quem chama já o tem.
+fn local_at(f: &FlipFrame<'_>, w2l: &Xform, x: f32, y: f32) -> (Vec2, f32) {
+    let world = f.to_world(x, y);
+    let local = w2l.apply([f64::from(world[0]), f64::from(world[1])]);
+    (
+        Vec2::new(local[0] as f32, local[1] as f32),
+        f.px_to_world(),
+    )
+}
+
+/// Pen-down: resolve o desenho-alvo, congela a máscara e aplica a 1ª amostra.
+///
+/// ⚠️ Devolve `(consumido, avisou)` — o `title_dirty` é da shell.
+pub(crate) fn canvas_down(
+    state: &mut FlipState,
+    f: &mut FlipFrame<'_>,
+    toasts: &mut ph2d_editor::ToastQueue,
+    w2l: &Xform,
+    invert: bool,
+    x: f32,
+    y: f32,
+) -> (bool, bool) {
+    if !wants(state) {
+        return (false, false);
+    }
+    let Some(style) = state.style else {
+        return (false, false);
+    };
+    let (local, px_to_world) = local_at(f, w2l, x, y);
+    let p = params_from(&style, px_to_world, w2l, invert);
+
+    let active_layer = state.active_layer;
+    let falloff_on = state.strip.falloff;
+    let s = InputSample {
+        pos: local,
+        delta: Vec2::ZERO, // no pen-down o cursor ainda não andou
+        pressure: 1.0,     // sem caneta real: pressão cheia (igual ao desenho)
+    };
+    let Some((oid, targets)) = reshape_begin(
+        f.flip,
+        f.playhead,
+        active_layer,
+        &mut state.strip,
+        &p,
+        &s,
+        falloff_on,
+    ) else {
+        // Camada travada, ou sem chave com o AutoKey desligado. Uma ferramenta que consome o
+        // clique e não faz NADA parece quebrada — ela tem de DIZER.
+        toasts.push(ph2d_editor::Toast::warning(
+            "Sculpt: the layer is locked, or has no drawing on this frame",
+        ));
+        return (true, true);
+    };
+    state.reshape = Some(FlipReshape {
+        targets,
+        last_local: local,
+        oid,
+    });
+    (true, false)
+}
+
+/// Move: uma amostra por movimento (a **dose é por amostra** — mover devagar aplica mais, que
+/// é como o pincel do GP se comporta). `true` enquanto o gesto está vivo.
+pub(crate) fn canvas_move(
+    state: &mut FlipState,
+    f: &mut FlipFrame<'_>,
+    w2l: &Xform,
+    invert: bool,
+    x: f32,
+    y: f32,
+) -> bool {
+    if state.reshape.is_none() {
+        return false;
+    }
+    let Some(style) = state.style else {
+        return true;
+    };
+    let (local, px_to_world) = local_at(f, w2l, x, y);
+    let p = params_from(&style, px_to_world, w2l, invert);
+
+    let Some(g) = state.reshape.as_mut() else {
+        return true;
+    };
+    let s = InputSample {
+        pos: local,
+        delta: local - g.last_local,
+        pressure: 1.0,
+    };
+    g.last_local = local;
+    let oid = g.oid;
+    reshape_sample(f.flip, oid, &mut g.targets, &p, &s);
+    true
+}
+
+/// Pen-up: encerra o gesto (a máscara congelada morre com ele). O passo de undo sai de graça
+/// — o `post_frame_undo` registra o diff quando o botão é solto.
+pub(crate) fn canvas_up(state: &mut FlipState) -> bool {
+    state.reshape.take().is_some()
+}

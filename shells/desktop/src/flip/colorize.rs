@@ -19,7 +19,7 @@ use ph2d_core::Vec2;
 use ph2d_editor::Job;
 use ph2d_flip::{DrawingId, FlipDrawing, FlipObjectId, FlipStroke, Point};
 use ph2d_flip_colorize::{ColorRegion, Scribble};
-use ph2d_flip_render::{FlipGpuData, pack_drawing};
+use ph2d_flip_render::pack_drawing;
 use ph2d_tool_flip::{FlipMode, FlipStyleSnapshot};
 use ph2d_vec_scene::Xform;
 
@@ -140,325 +140,15 @@ impl FlipColorize {
     }
 }
 
-impl crate::App {
-    /// A tool Flip quer o canvas para RABISCAR agora? (ativa + modo Colorize.)
-    #[must_use]
-    pub(crate) fn flip_wants_colorize(&self) -> bool {
-        self.flip_state.active
-            && matches!(
-                self.flip_state.style.map(|s| s.mode),
-                Some(FlipMode::Colorize)
-            )
-    }
-
-    /// Tela → mundo (o rabisco é capturado em MUNDO, como o `flip_draw`).
-    fn flip_colorize_world(&self, x: f32, y: f32) -> Option<(Vec2, f32)> {
-        let gfx = self.gfx.as_ref()?;
-        let win = gfx.surface.size();
-        let w = gfx.camera.screen_to_world((x, y), win);
-        let px_to_world = gfx.camera.height_world.max(f32::EPSILON) / win.height.max(1) as f32;
-        Some((Vec2::new(w[0], w[1]), px_to_world))
-    }
-
-    /// Pen-down: começa um rabisco novo com a cor atual do Colorize.
-    pub(crate) fn flip_colorize_canvas_down(&mut self, x: f32, y: f32) -> bool {
-        if !self.flip_wants_colorize() {
-            return false;
-        }
-        let Some(style) = self.flip_state.style else {
-            return false;
-        };
-        let Some((w, _)) = self.flip_colorize_world(x, y) else {
-            return false;
-        };
-        self.flip_state.colorize.current.clear();
-        self.flip_state.colorize.current.push(w);
-        self.flip_state.colorize.current_color = style.colorize_color;
-        self.flip_state.colorize.active = true;
-        true
-    }
-
-    /// Pen-move: acumula amostras (só as que andaram ≥ `MIN_SAMPLE_PX`).
-    pub(crate) fn flip_colorize_canvas_move(&mut self, x: f32, y: f32) -> bool {
-        if !self.flip_state.colorize.active {
-            return false;
-        }
-        let Some((w, px_to_world)) = self.flip_colorize_world(x, y) else {
-            return false;
-        };
-        let min = MIN_SAMPLE_PX * px_to_world;
-        let moved = self
-            .flip_state
-            .colorize
-            .current
-            .last()
-            .is_none_or(|p| (w - *p).length() >= min);
-        if moved {
-            self.flip_state.colorize.current.push(w);
-        }
-        true
-    }
-
-    /// Pen-up: fecha o rabisco em curso e o acumula (≥ 2 pontos).
-    pub(crate) fn flip_colorize_canvas_up(&mut self) -> bool {
-        if !self.flip_state.colorize.active {
-            return false;
-        }
-        self.flip_state.colorize.active = false;
-        let color = self.flip_state.colorize.current_color;
-        let pts = std::mem::take(&mut self.flip_state.colorize.current);
-        if pts.len() >= 2 {
-            // Pela porta única: um rabisco novo também descarta os removidos (redo local).
-            self.flip_state.colorize.push_scribble(color, pts);
-        }
-        true
-    }
-
-    /// **Clear** — descarta os rabiscos acumulados.
-    pub(crate) fn flip_colorize_clear(&mut self) {
-        self.flip_state.colorize.clear();
-    }
-
-    /// GPU-data dos rabiscos acumulados (+ o em curso) pro **overlay ao vivo**.
-    ///
-    /// Sem ele o artista rabisca ÀS CEGAS — os rabiscos só existiriam no resultado do
-    /// Apply, e um gesto que não deixa marca não se aprende. Viaja pelo MESMO slot de
-    /// preview do traço do Draw (`flip_draw::flip_preview_data`): os dois nunca coexistem,
-    /// porque são MODOS diferentes — um slot, uma resposta a *"o que está em curso?"*.
-    #[must_use]
-    pub(crate) fn flip_colorize_preview_data(&self) -> Option<FlipGpuData> {
-        if !self.flip_wants_colorize() {
-            return None;
-        }
-        let live = self.flip_state.colorize.active && self.flip_state.colorize.current.len() >= 2;
-        if self.flip_state.colorize.scribbles.is_empty() && !live {
-            return None;
-        }
-        let style = self.flip_state.style?;
-        // MUNDO → LOCAL da camada ativa (a mesma conversão do preview do Draw; o Apply
-        // usa a MESMA `w2l` e a MESMA largura, então o que se vê é o que semeia).
-        let w2l = self.flip_active_world_to_local();
-        let width = scribble_width(&style, &w2l);
-        let mut d = FlipDrawing::default();
-        let committed = self
-            .flip_state
-            .colorize
-            .scribbles
-            .iter()
-            .map(|(c, p)| (*c, p));
-        let in_flight = live.then_some({
-            (
-                self.flip_state.colorize.current_color,
-                &self.flip_state.colorize.current,
-            )
-        });
-        for (color, pts) in committed.chain(in_flight) {
-            if pts.len() < 2 {
-                continue;
-            }
-            let c = ph2d_app_flip::draw::srgb8_to_linear(color);
-            let mut s = FlipStroke::new();
-            for p in pts {
-                let l = w2l.apply([f64::from(p.x), f64::from(p.y)]);
-                s.push_point(Point {
-                    pos: Vec2::new(l[0] as f32, l[1] as f32),
-                    width,
-                    opacity: 1.0,
-                    color: c,
-                });
-            }
-            d.strokes.push(s);
-        }
-        if d.strokes.is_empty() {
-            return None;
-        }
-        Some(pack_drawing(&d))
-    }
-
-    /// **Apply** — roda o corte LazyBrush sobre TODOS os rabiscos + a line-art e materializa
-    /// cada região como um traço preenchido, no desenho-alvo (autokey `Modify`, como o
-    /// balde). Consome os rabiscos.
-    pub(crate) fn flip_colorize_apply(&mut self) {
-        if self.flip_state.colorize.scribbles.is_empty() {
-            return;
-        }
-        let Some(style) = self.flip_state.style else {
-            return;
-        };
-        let active_layer = self.flip_state.active_layer;
-        let w2l = self.flip_active_world_to_local();
-        // A MESMA largura que o overlay desenhou — o que o artista pinta é o que semeia.
-        let seed_width = scribble_width(&style, &w2l);
-        let playhead = self.playhead;
-
-        // Rabiscos MUNDO → LOCAL, agrupados por cor: cada cor distinta é um rótulo, e o
-        // mapa rótulo→cor devolve a cor de cada região.
-        //
-        // ⚠️ **Feito ANTES de tocar o `gfx`, e as sementes NÃO são consumidas aqui.** Abaixo há
-        // CINCO saídas que recusam o Apply, e três delas mandam o artista *corrigir e tentar de
-        // novo* ("desenhe a line-art primeiro", "rabisque dentro das formas fechadas", "a
-        // camada está travada") — o que era impossível, porque um `mem::take` no topo já tinha
-        // levado os rabiscos embora, e o **Ctrl+Z não os trazia de volta** (a fila de removidos
-        // era limpa na linha seguinte, então o `undo_route` deixava de ser dono do atalho).
-        // Uma recusa não pode custar o trabalho do artista: só o SUCESSO consome (no fim).
-        let mut palette: Vec<[u8; 4]> = Vec::new();
-        let mut seeds: Vec<Scribble> = Vec::new();
-        for (color, world_pts) in &self.flip_state.colorize.scribbles {
-            let label = palette.iter().position(|c| c == color).unwrap_or_else(|| {
-                palette.push(*color);
-                palette.len() - 1
-            }) as u16;
-            let points: Vec<Vec2> = world_pts
-                .iter()
-                .map(|p| {
-                    let l = w2l.apply([f64::from(p.x), f64::from(p.y)]);
-                    Vec2::new(l[0] as f32, l[1] as f32)
-                })
-                .collect();
-            seeds.push(Scribble {
-                label,
-                points,
-                width: seed_width,
-            });
-        }
-
-        let strip = &mut self.flip_state.strip;
-        let Some(gfx) = self.gfx.as_mut() else {
-            return;
-        };
-        let win = gfx.surface.size();
-        let px_to_world = gfx.camera.height_world.max(f32::EPSILON) / win.height.max(1) as f32;
-
-        let Some((oid, lid, did)) = crate::flip::autokey::target_drawing(
-            &mut gfx.flip,
-            &playhead,
-            active_layer,
-            strip,
-            crate::flip::autokey::FlipEdit::Modify,
-        ) else {
-            gfx.toasts.push(ph2d_editor::Toast::warning(
-                "Colorize: the layer is locked, or has no drawing on this frame",
-            ));
-            self.title_dirty = true;
-            return;
-        };
-
-        let Some(drawing) = gfx.flip.object_mut(oid).and_then(|o| o.drawing_mut(did)) else {
-            return;
-        };
-        if boundaries(drawing).is_empty() {
-            gfx.toasts.push(ph2d_editor::Toast::warning(
-                "Colorize: draw the line-art first",
-            ));
-            self.title_dirty = true;
-            return;
-        }
-        let obj_scale = w2l.mean_scale() as f32;
-
-        // O **Trap** é o raio da bola, e o **Bleed** governa o vazamento pelo vão em duas
-        // metades: o pedágio de aperto (contínuo) e, no extremo baixo, o RAIO de selagem (que
-        // entra no `max` com o Trap). `precision_and_trap`/`squeeze_from_bleed` são as portas
-        // compartilhadas com o re-Apply ao vivo, senão os dois caminhos divergiriam.
-        //
-        // ⚠️ **Correção (auditoria 2026-07-20): o comentário que morava aqui MENTIA.** Ele
-        // dizia *"o Trap é um PISO — o motor cresce a bola até os rabiscos caírem em regiões
-        // distintas"*. O motor **não faz isso**: `trap_px` vai direto para `segment(grid,
-        // trap_px)` e a única adaptação é o *fallback* para raio 0 quando NENHUM pixel comporta
-        // a bola. Não há busca, não há crescimento — o número que entra é o que vale.
-        let (precision, trap_px) = precision_and_trap(&style, px_to_world, obj_scale);
-        let squeeze = ph2d_flip_colorize::squeeze_from_bleed(style.colorize_bleed as f32);
-
-        // A **base congelada** — o desenho ANTES de a 1ª região entrar. É o que o re-Apply ao
-        // vivo restaura para reinserir sem empilhar (Trap/Bleed em tempo real); as `lines`
-        // vêm junto porque o worker do ajuste ao vivo não pode ver o documento.
-        let base = drawing.strokes.clone();
-        let lines = boundaries(drawing);
-        let regions = colorize_regions(&lines, &seeds, precision, trap_px, squeeze);
-        let produced = install_regions(drawing, &lines, &palette, regions);
-        if produced == 0 {
-            drawing.strokes = base; // nada saiu — devolve o desenho intocado
-            gfx.toasts.push(ph2d_editor::Toast::warning(
-                "Colorize: no regions — scribble inside the closed shapes",
-            ));
-            self.title_dirty = true;
-            return;
-        }
-        let mut frames = vec![LiveFrame {
-            did,
-            lines,
-            base,
-            produced,
-        }];
-
-        // **O ONION FILL** (fatia C3, `09 §5.2`): com chaves selecionadas na tira, o MESMO
-        // rabisco colore todas. O que a C3 acrescenta ao multiframe do balde **não é o
-        // range** (esse já existia) — é a **SEMENTE**: o balde replica um PONTO, e aqui o
-        // artista rabisca por cima das poses EMPILHADAS e cada quadro é semeado pelo traço
-        // inteiro. As sementes já estão em LOCAL e servem todos os quadros (a `w2l` é do
-        // OBJETO); o que muda de quadro para quadro é a LINHA, então cada um resolve
-        // sozinho — `09 §5.2` e o comentário gêmeo do `flip_fill`: *"N solves independentes;
-        // a região pode mudar de forma, não há contorno a reaproveitar"*.
-        //
-        // **Os vizinhos falham em SILÊNCIO** (a política herdada do balde, `09 §5.2`): um
-        // quadro em que a arte não fecha não pode derrubar o gesto nos outros, e o toast
-        // fala pelo quadro ATIVO — que é onde o artista está olhando. A recusa acima já
-        // aconteceu: se o ATIVO não produziu nada, nem chegamos aqui.
-        //
-        // **`falloff = false`**: colorir é op discreta, como o balde. Meia-cor não existe.
-        let extra: Vec<DrawingId> = ph2d_app_flip::multiframe::targets(
-            &gfx.flip,
-            oid,
-            lid,
-            &playhead,
-            strip.selected_keys(),
-            (
-                did,
-                gfx.flip.object(oid).map_or(0, |o| o.frame_at(&playhead)),
-            ),
-            false,
-        )
-        .into_iter()
-        .map(|t| t.did)
-        .filter(|d| *d != did)
-        .collect();
-        frames.extend(colorize_frames(
-            &mut gfx.flip,
-            oid,
-            &extra,
-            &palette,
-            &seeds,
-            precision,
-            trap_px,
-            squeeze,
-        ));
-
-        // ✅ SÓ AGORA as sementes foram consumidas — o Apply teve sucesso. Um redo de rabisco
-        // pós-Apply devolveria uma semente sem o contexto que a criou, então a fila de
-        // removidos morre junto.
-        self.flip_state.colorize.scribbles.clear();
-        self.flip_state.colorize.popped.clear();
-
-        // A operação fica VIVA: mexer no Trap/Bleed agora re-roda o corte em tempo real
-        // (`flip_colorize_live_adjust`), sem clicar Apply de novo — em TODOS os quadros que
-        // o gesto escreveu, senão os vizinhos ficariam presos no Trap da 1ª rodada e a tira
-        // mostraria dois ajustes diferentes para uma operação só.
-        self.flip_state.colorize.live = Some(LiveApply {
-            palette,
-            seeds,
-            oid,
-            frames,
-            trap: style.trap,
-            bleed: style.colorize_bleed,
-            job: None,
-        });
-        self.title_dirty = true;
-    }
-}
-
 /// A sessão viva (o ajuste Trap/Bleed pós-Apply + o worker) — irmão pelo teto de LOC.
 #[path = "colorize_live.rs"]
 mod live;
 use live::{LiveApply, LiveFrame};
+// ⚠️ A PORTA do ajuste ao vivo, re-exportada pelo pai: o módulo `live` continua privado
+// (os tipos `LiveApply`/`LiveFrame` são detalhe dele), e o invólucro de shell alcança só
+// esta função. *Abrir o módulo inteiro para expor uma função é a fronteira a alargar-se
+// por conveniência.*
+pub(crate) use live::adjust as live_adjust;
 
 /// O motor (conversões + a porta única de inserção) — irmão pelo teto de LOC do shell.
 #[path = "colorize_engine.rs"]
@@ -468,3 +158,272 @@ use engine::{colorize_frames, colorize_regions, install_regions, precision_and_t
 #[cfg(test)]
 #[path = "colorize_tests.rs"]
 mod tests;
+
+use crate::flip::ctx::FlipFrame;
+use crate::flip::state::FlipState;
+
+/// A tool Flip quer o canvas para RABISCAR agora? (ativa + modo Colorize.)
+#[must_use]
+pub(crate) fn wants(state: &FlipState) -> bool {
+    state.active && matches!(state.style.map(|s| s.mode), Some(FlipMode::Colorize))
+}
+
+/// Pen-down: começa um rabisco novo com a cor atual do Colorize.
+pub(crate) fn canvas_down(state: &mut FlipState, f: &FlipFrame<'_>, x: f32, y: f32) -> bool {
+    if !wants(state) {
+        return false;
+    }
+    let Some(style) = state.style else {
+        return false;
+    };
+    let w = f.to_world(x, y);
+    let w = Vec2::new(w[0], w[1]);
+    state.colorize.current.clear();
+    state.colorize.current.push(w);
+    state.colorize.current_color = style.colorize_color;
+    state.colorize.active = true;
+    true
+}
+
+/// Pen-move: acumula amostras (só as que andaram ≥ `MIN_SAMPLE_PX`).
+pub(crate) fn canvas_move(state: &mut FlipState, f: &FlipFrame<'_>, x: f32, y: f32) -> bool {
+    if !state.colorize.active {
+        return false;
+    }
+    let w = f.to_world(x, y);
+    let w = Vec2::new(w[0], w[1]);
+    let min = MIN_SAMPLE_PX * f.px_to_world();
+    let moved = state
+        .colorize
+        .current
+        .last()
+        .is_none_or(|p| (w - *p).length() >= min);
+    if moved {
+        state.colorize.current.push(w);
+    }
+    true
+}
+
+/// Pen-up: fecha o rabisco em curso e o acumula (≥ 2 pontos).
+pub(crate) fn canvas_up(state: &mut FlipState) -> bool {
+    if !state.colorize.active {
+        return false;
+    }
+    state.colorize.active = false;
+    let color = state.colorize.current_color;
+    let pts = std::mem::take(&mut state.colorize.current);
+    if pts.len() >= 2 {
+        // Pela porta única: um rabisco novo também descarta os removidos (redo local).
+        state.colorize.push_scribble(color, pts);
+    }
+    true
+}
+
+/// **Clear** — descarta os rabiscos acumulados.
+pub(crate) fn clear(state: &mut FlipState) {
+    state.colorize.clear();
+}
+
+/// GPU-data dos rabiscos acumulados (+ o em curso) pro **overlay ao vivo**.
+///
+/// Sem ele o artista rabisca ÀS CEGAS — os rabiscos só existiriam no resultado do Apply, e um
+/// gesto que não deixa marca não se aprende. Viaja pelo MESMO slot de preview do traço do
+/// Draw: os dois nunca coexistem, porque são MODOS diferentes — um slot, uma resposta a
+/// *"o que está em curso?"*.
+#[must_use]
+pub(crate) fn preview_data(
+    state: &FlipState,
+    w2l: &Xform,
+) -> Option<ph2d_flip_render::FlipGpuData> {
+    if !wants(state) {
+        return None;
+    }
+    let live = state.colorize.active && state.colorize.current.len() >= 2;
+    if state.colorize.scribbles.is_empty() && !live {
+        return None;
+    }
+    let style = state.style?;
+    // A mesma largura do Apply, sobre a MESMA `w2l` — o que se vê é o que semeia.
+    let width = scribble_width(&style, w2l);
+    let mut d = FlipDrawing::default();
+    let committed = state.colorize.scribbles.iter().map(|(c, p)| (*c, p));
+    let in_flight = live.then_some((state.colorize.current_color, &state.colorize.current));
+    for (color, pts) in committed.chain(in_flight) {
+        if pts.len() < 2 {
+            continue;
+        }
+        let c = ph2d_app_flip::draw::srgb8_to_linear(color);
+        let mut s = FlipStroke::new();
+        for p in pts {
+            let l = w2l.apply([f64::from(p.x), f64::from(p.y)]);
+            s.push_point(Point {
+                pos: Vec2::new(l[0] as f32, l[1] as f32),
+                width,
+                opacity: 1.0,
+                color: c,
+            });
+        }
+        d.strokes.push(s);
+    }
+    if d.strokes.is_empty() {
+        return None;
+    }
+    Some(pack_drawing(&d))
+}
+
+/// **Apply** — roda o corte LazyBrush sobre TODOS os rabiscos + a line-art e materializa cada
+/// região como um traço preenchido, no desenho-alvo (autokey `Modify`, como o balde). Consome
+/// os rabiscos.
+///
+/// ⚠️ Devolve `true` quando a shell tem de repintar o título (sucesso OU recusa avisada) —
+/// *a fronteira atravessa-se com um valor, nunca com um `&mut bool` alheio*.
+pub(crate) fn apply(
+    state: &mut FlipState,
+    f: &mut FlipFrame<'_>,
+    toasts: &mut ph2d_editor::ToastQueue,
+    w2l: &Xform,
+) -> bool {
+    if state.colorize.scribbles.is_empty() {
+        return false;
+    }
+    let Some(style) = state.style else {
+        return false;
+    };
+    let active_layer = state.active_layer;
+    // A MESMA largura que o overlay desenhou — o que o artista pinta é o que semeia.
+    let seed_width = scribble_width(&style, w2l);
+
+    // Rabiscos MUNDO → LOCAL, agrupados por cor: cada cor distinta é um rótulo, e o mapa
+    // rótulo→cor devolve a cor de cada região.
+    //
+    // ⚠️ **Feito ANTES de tocar o documento, e as sementes NÃO são consumidas aqui.** Abaixo
+    // há CINCO saídas que recusam o Apply, e três delas mandam o artista *corrigir e tentar
+    // de novo* — o que era impossível, porque um `mem::take` no topo já tinha levado os
+    // rabiscos embora, e o **Ctrl+Z não os trazia de volta**. Uma recusa não pode custar o
+    // trabalho do artista: só o SUCESSO consome (no fim).
+    let mut palette: Vec<[u8; 4]> = Vec::new();
+    let mut seeds: Vec<Scribble> = Vec::new();
+    for (color, world_pts) in &state.colorize.scribbles {
+        let label = palette.iter().position(|c| c == color).unwrap_or_else(|| {
+            palette.push(*color);
+            palette.len() - 1
+        }) as u16;
+        let points: Vec<Vec2> = world_pts
+            .iter()
+            .map(|p| {
+                let l = w2l.apply([f64::from(p.x), f64::from(p.y)]);
+                Vec2::new(l[0] as f32, l[1] as f32)
+            })
+            .collect();
+        seeds.push(Scribble {
+            label,
+            points,
+            width: seed_width,
+        });
+    }
+
+    let px_to_world = f.px_to_world();
+    let playhead = f.playhead;
+
+    let Some((oid, lid, did)) = crate::flip::autokey::target_drawing(
+        f.flip,
+        playhead,
+        active_layer,
+        &mut state.strip,
+        crate::flip::autokey::FlipEdit::Modify,
+    ) else {
+        toasts.push(ph2d_editor::Toast::warning(
+            "Colorize: the layer is locked, or has no drawing on this frame",
+        ));
+        return true;
+    };
+
+    let Some(drawing) = f.flip.object_mut(oid).and_then(|o| o.drawing_mut(did)) else {
+        return false;
+    };
+    if boundaries(drawing).is_empty() {
+        toasts.push(ph2d_editor::Toast::warning(
+            "Colorize: draw the line-art first",
+        ));
+        return true;
+    }
+    let obj_scale = w2l.mean_scale() as f32;
+
+    // O **Trap** é o raio da bola, e o **Bleed** governa o vazamento pelo vão em duas
+    // metades: o pedágio de aperto (contínuo) e, no extremo baixo, o RAIO de selagem.
+    // `precision_and_trap`/`squeeze_from_bleed` são as portas compartilhadas com o re-Apply
+    // ao vivo, senão os dois caminhos divergiriam.
+    //
+    // ⚠️ **Correção (auditoria 2026-07-20):** o motor **não** cresce a bola — `trap_px` vai
+    // direto para `segment(grid, trap_px)`, e a única adaptação é o *fallback* para raio 0
+    // quando NENHUM pixel a comporta. O número que entra é o que vale.
+    let (precision, trap_px) = precision_and_trap(&style, px_to_world, obj_scale);
+    let squeeze = ph2d_flip_colorize::squeeze_from_bleed(style.colorize_bleed as f32);
+
+    // A **base congelada** — o desenho ANTES de a 1ª região entrar. É o que o re-Apply ao
+    // vivo restaura para reinserir sem empilhar; as `lines` vêm junto porque o worker do
+    // ajuste ao vivo não pode ver o documento.
+    let base = drawing.strokes.clone();
+    let lines = boundaries(drawing);
+    let regions = colorize_regions(&lines, &seeds, precision, trap_px, squeeze);
+    let produced = install_regions(drawing, &lines, &palette, regions);
+    if produced == 0 {
+        drawing.strokes = base; // nada saiu — devolve o desenho intocado
+        toasts.push(ph2d_editor::Toast::warning(
+            "Colorize: no regions — scribble inside the closed shapes",
+        ));
+        return true;
+    }
+    let mut frames = vec![LiveFrame {
+        did,
+        lines,
+        base,
+        produced,
+    }];
+
+    // **O ONION FILL** (fatia C3, `09 §5.2`): com chaves selecionadas na tira, o MESMO
+    // rabisco colore todas. O que a C3 acrescenta ao multiframe do balde **não é o range** —
+    // é a **SEMENTE**: o balde replica um PONTO, e aqui o artista rabisca por cima das poses
+    // EMPILHADAS e cada quadro é semeado pelo traço inteiro.
+    //
+    // **Os vizinhos falham em SILÊNCIO** (a política herdada do balde): um quadro em que a
+    // arte não fecha não pode derrubar o gesto nos outros. **`falloff = false`**: colorir é
+    // op discreta, como o balde. Meia-cor não existe.
+    let frame_now = f.flip.object(oid).map_or(0, |o| o.frame_at(playhead));
+    let extra: Vec<DrawingId> = ph2d_app_flip::multiframe::targets(
+        f.flip,
+        oid,
+        lid,
+        playhead,
+        state.strip.selected_keys(),
+        (did, frame_now),
+        false,
+    )
+    .into_iter()
+    .map(|t| t.did)
+    .filter(|d| *d != did)
+    .collect();
+    frames.extend(colorize_frames(
+        f.flip, oid, &extra, &palette, &seeds, precision, trap_px, squeeze,
+    ));
+
+    // ✅ SÓ AGORA as sementes foram consumidas — o Apply teve sucesso. Um redo de rabisco
+    // pós-Apply devolveria uma semente sem o contexto que a criou, então a fila de removidos
+    // morre junto.
+    state.colorize.scribbles.clear();
+    state.colorize.popped.clear();
+
+    // A operação fica VIVA: mexer no Trap/Bleed agora re-roda o corte em tempo real, sem
+    // clicar Apply de novo — em TODOS os quadros que o gesto escreveu, senão os vizinhos
+    // ficariam presos no Trap da 1ª rodada.
+    state.colorize.live = Some(LiveApply {
+        palette,
+        seeds,
+        oid,
+        frames,
+        trap: style.trap,
+        bleed: style.colorize_bleed,
+        job: None,
+    });
+    true
+}

@@ -63,137 +63,117 @@ pub(super) struct LiveApply {
     pub(super) job: Option<Job<LiveResult>>,
 }
 
-impl crate::App {
-    /// **Trap/Bleed em tempo real depois do Apply** (6º smoke, pedido do Enio: *"trap e bleed
-    /// não estão em tempo real após apply. faça ficar em tempo real para ajustes"*) —
-    /// **fora da thread de UI** (`09 §7.2`).
-    ///
-    /// Roda no prólogo do frame (ao lado do drain do Apply, com `self` livre). Quando o Trap
-    /// ou o Bleed mudou desde a última rodada, o corte é re-executado com os parâmetros novos
-    /// e as regiões substituem as anteriores sobre a base congelada — o *"ajustar a última
-    /// operação"* do Blender.
-    ///
-    /// # Por que assíncrono, e por que NÃO foi uma escolha
-    ///
-    /// O `§7.2` declarou o kill-criterion **antes** do build: *"se o solve de um quadro ficar
-    /// acima de um frame de 60 fps (16 ms), o Colorize não é síncrono — ele copia o padrão
-    /// `progress`"*. Medido na escala do PRODUTO (câmera default = 10 unidades de mundo em
-    /// 1080p ⇒ precisão 172,8) e com os 3 quadros que a C3 introduziu:
-    ///
-    /// | precisão | grade | 1 quadro | 3 quadros (C3) | × o orçamento |
-    /// |---|---|---|---|---|
-    /// | 86,4 | ~731 px | 26 ms | 72 ms | 2× / 5× |
-    /// | **172,8** | ~1422 px | **104 ms** | **304 ms** | **7× / 19×** |
-    /// | 345,6 | ~2804 px | 486 ms | 1449 ms | 30× / **90×** |
-    ///
-    /// ⚠️ **E nenhum cache resolve** — medido o split: `solve` **76%**, vetorização 18%,
-    /// raster+setup **4%**. O que é constante entre tiques (o raster) é justamente a fatia
-    /// desprezível; o que custa depende de `trap`/`squeeze`, que é o que o slider move. Ou
-    /// seja: a medição diz *muda o invólucro, não o kernel* — exatamente o que o §7.2
-    /// pré-decidiu.
-    ///
-    /// # O rate-limiter não tem constante
-    ///
-    /// **No máximo UM worker em voo, e o pedido mais recente é coalescido.** Enquanto ele
-    /// roda, mexer o slider só reescreve `want`; quando termina, se `want` mudou, sai outro.
-    /// Isso se auto-pace na taxa do próprio solve, sem `SETTLE` para calibrar — e é a
-    /// diferença deliberada para o [`OffThread`] do áudio (ADR-0125), que precisa de debounce
-    /// porque lá o trabalho é **automático e invisível**; aqui ele **é** o feedback visual, e
-    /// esperar um timer seria a tela deixar de responder de propósito.
-    ///
-    /// **Undo continua UM passo por gesto:** durante o arrasto o `held_button` suprime, e
-    /// depois dele o [`FlipColorize::live_busy`] assume o mesmo papel — um recálculo pendente
-    /// **é** o gesto não ter terminado. Só a instalação que zera a fila registra o passo.
-    pub(crate) fn flip_colorize_live_adjust(&mut self) {
-        if self.flip_state.colorize.live.is_none() {
-            return;
-        }
-        // Sair do modo Colorize encerra a adjustabilidade (o painel some, a base congelada
-        // deixa de descrever o que está na tela).
-        let Some(style) = self.flip_state.style.filter(|_| self.flip_wants_colorize()) else {
-            self.flip_state.colorize.end_live();
-            return;
-        };
-        let oid = self.flip_state.colorize.live.as_ref().expect("live").oid;
-        let w2l = self.flip_active_world_to_local();
-        let obj_scale = w2l.mean_scale() as f32;
-        let Some(gfx) = self.gfx.as_mut() else {
-            return;
-        };
-        let win = gfx.surface.size();
-        let px_to_world = gfx.camera.height_world.max(f32::EPSILON) / win.height.max(1) as f32;
 
-        // ⚠️ **O guard é perguntado a TODOS os quadros ANTES de escrever em qualquer um** — o
-        // ajuste é UMA operação, e re-rodar metade dela deixaria a tira com dois Traps. Se
-        // um único quadro não é mais `base + as MINHAS regiões` (o artista desenhou, encheu
-        // com o balde, apagou), a sessão MORRE inteira e o Trap novo simplesmente não
-        // retro-aplica — o artista clica Apply de novo.
-        let live = self
-            .flip_state
-            .colorize
-            .live
-            .as_ref()
-            .expect("live is Some");
-        let intact = live.frames.iter().all(|f| {
-            gfx.flip
-                .object(oid)
-                .and_then(|o| o.drawing(f.did))
-                .is_some_and(|d| d.strokes.len() == f.base.len() + f.produced)
-        });
-        if !intact {
-            self.flip_state.colorize.end_live(); // desenho editado ou sumido (undo/delete)
-            return;
-        }
+use crate::flip::ctx::FlipFrame;
+use crate::flip::state::FlipState;
 
-        // ── 1. Colhe o resultado pronto, se houver. ──
-        let live = self
-            .flip_state
-            .colorize
-            .live
-            .as_mut()
-            .expect("live is Some");
-        if let Some(done) = live.job.as_mut().and_then(Job::try_take) {
-            live.job = None;
-            for (f, regions) in live.frames.iter_mut().zip(done.regions) {
-                let Some(drawing) = gfx.flip.object_mut(oid).and_then(|o| o.drawing_mut(f.did))
-                else {
-                    continue; // o `intact` acima já provou que existe; defensivo
-                };
-                drawing.strokes.clone_from(&f.base);
-                f.produced = install_regions(drawing, &f.lines, &live.palette, regions);
-            }
-            live.trap = done.trap;
-            live.bleed = done.bleed;
-            // Sem isto o `post_frame_undo` pularia o diff num frame sem outro input, e o
-            // ajuste ficaria fora do passo.
-            self.any_input_this_frame = true;
-            self.title_dirty = true;
-        }
-
-        // ── 2. O pedido mais recente ainda não foi honrado? Sai um worker (um só). ──
-        let live = self
-            .flip_state
-            .colorize
-            .live
-            .as_mut()
-            .expect("live is Some");
-        if live.job.is_some() || (style.trap == live.trap && style.colorize_bleed == live.bleed) {
-            return;
-        }
-        let (precision, trap_px) = precision_and_trap(&style, px_to_world, obj_scale);
-        let squeeze = ph2d_flip_colorize::squeeze_from_bleed(style.colorize_bleed as f32);
-        // O worker recebe geometria CLONADA e **nunca vê o `FlipDoc`** — é o que torna a
-        // porta segura, e o que obrigou as `lines` a serem congeladas no Apply.
-        let lines: Vec<_> = live.frames.iter().map(|f| f.lines.clone()).collect();
-        let seeds = live.seeds.clone();
-        let (trap, bleed) = (style.trap, style.colorize_bleed);
-        live.job = Some(Job::spawn("colorize", move |_| LiveResult {
-            regions: lines
-                .iter()
-                .map(|l| colorize_regions(l, &seeds, precision, trap_px, squeeze))
-                .collect(),
-            trap,
-            bleed,
-        }));
+/// **Trap/Bleed em tempo real depois do Apply** (6º smoke, pedido do Enio: *"trap e bleed não
+/// estão em tempo real após apply. faça ficar em tempo real para ajustes"*) — **fora da
+/// thread de UI** (`09 §7.2`).
+///
+/// Roda no prólogo do frame. Quando o Trap ou o Bleed mudou desde a última rodada, o corte é
+/// re-executado com os parâmetros novos e as regiões substituem as anteriores sobre a base
+/// congelada — o *"ajustar a última operação"* do Blender.
+///
+/// # Por que assíncrono, e por que NÃO foi uma escolha
+///
+/// O `§7.2` declarou o kill-criterion **antes** do build: *"se o solve de um quadro ficar
+/// acima de um frame de 60 fps (16 ms), o Colorize não é síncrono"*. Medido na escala do
+/// PRODUTO (câmera default = 10 unidades de mundo em 1080p ⇒ precisão 172,8) e com os 3
+/// quadros que a C3 introduziu:
+///
+/// | precisão | grade | 1 quadro | 3 quadros (C3) | × o orçamento |
+/// |---|---|---|---|---|
+/// | 86,4 | ~731 px | 26 ms | 72 ms | 2× / 5× |
+/// | **172,8** | ~1422 px | **104 ms** | **304 ms** | **7× / 19×** |
+/// | 345,6 | ~2804 px | 486 ms | 1449 ms | 30× / **90×** |
+///
+/// ⚠️ **E nenhum cache resolve** — medido o split: `solve` **76%**, vetorização 18%,
+/// raster+setup **4%**. O que é constante entre tiques (o raster) é justamente a fatia
+/// desprezível.
+///
+/// # O rate-limiter não tem constante
+///
+/// **No máximo UM worker em voo, e o pedido mais recente é coalescido.** Isso se auto-pace na
+/// taxa do próprio solve, sem `SETTLE` para calibrar — a diferença deliberada para o
+/// `OffThread` do áudio (ADR-0125), que precisa de debounce porque lá o trabalho é
+/// **automático e invisível**; aqui ele **é** o feedback visual.
+///
+/// **Undo continua UM passo por gesto:** durante o arrasto o `held_button` suprime, e depois
+/// dele o `FlipColorize::live_busy` assume o mesmo papel.
+///
+/// ⚠️ Devolve `true` quando **instalou** um resultado — a shell traduz isso em
+/// `any_input_this_frame` + `title_dirty`. Sem isso o `post_frame_undo` pularia o diff num
+/// frame sem outro input, e o ajuste ficaria fora do passo.
+pub(crate) fn adjust(
+    state: &mut FlipState,
+    f: &mut FlipFrame<'_>,
+    wants_colorize: bool,
+    obj_scale: f32,
+) -> bool {
+    if state.colorize.live.is_none() {
+        return false;
     }
+    // Sair do modo Colorize encerra a adjustabilidade (o painel some, a base congelada deixa
+    // de descrever o que está na tela).
+    let Some(style) = state.style.filter(|_| wants_colorize) else {
+        state.colorize.end_live();
+        return false;
+    };
+    let oid = state.colorize.live.as_ref().expect("live").oid;
+    let px_to_world = f.px_to_world();
+
+    // ⚠️ **O guard é perguntado a TODOS os quadros ANTES de escrever em qualquer um** — o
+    // ajuste é UMA operação, e re-rodar metade dela deixaria a tira com dois Traps. Se um
+    // único quadro não é mais `base + as MINHAS regiões`, a sessão MORRE inteira.
+    let live = state.colorize.live.as_ref().expect("live is Some");
+    let intact = live.frames.iter().all(|fr| {
+        f.flip
+            .object(oid)
+            .and_then(|o| o.drawing(fr.did))
+            .is_some_and(|d| d.strokes.len() == fr.base.len() + fr.produced)
+    });
+    if !intact {
+        state.colorize.end_live(); // desenho editado ou sumido (undo/delete)
+        return false;
+    }
+
+    // ── 1. Colhe o resultado pronto, se houver. ──
+    let mut installed = false;
+    let live = state.colorize.live.as_mut().expect("live is Some");
+    if let Some(done) = live.job.as_mut().and_then(Job::try_take) {
+        live.job = None;
+        for (fr, regions) in live.frames.iter_mut().zip(done.regions) {
+            let Some(drawing) = f.flip.object_mut(oid).and_then(|o| o.drawing_mut(fr.did)) else {
+                continue; // o `intact` acima já provou que existe; defensivo
+            };
+            drawing.strokes.clone_from(&fr.base);
+            fr.produced = install_regions(drawing, &fr.lines, &live.palette, regions);
+        }
+        live.trap = done.trap;
+        live.bleed = done.bleed;
+        installed = true;
+    }
+
+    // ── 2. O pedido mais recente ainda não foi honrado? Sai um worker (um só). ──
+    let live = state.colorize.live.as_mut().expect("live is Some");
+    if live.job.is_some() || (style.trap == live.trap && style.colorize_bleed == live.bleed) {
+        return installed;
+    }
+    let (precision, trap_px) = precision_and_trap(&style, px_to_world, obj_scale);
+    let squeeze = ph2d_flip_colorize::squeeze_from_bleed(style.colorize_bleed as f32);
+    // O worker recebe geometria CLONADA e **nunca vê o `FlipDoc`** — é o que torna a porta
+    // segura, e o que obrigou as `lines` a serem congeladas no Apply.
+    let lines: Vec<_> = live.frames.iter().map(|fr| fr.lines.clone()).collect();
+    let seeds = live.seeds.clone();
+    let (trap, bleed) = (style.trap, style.colorize_bleed);
+    live.job = Some(Job::spawn("colorize", move |_| LiveResult {
+        regions: lines
+            .iter()
+            .map(|l| colorize_regions(l, &seeds, precision, trap_px, squeeze))
+            .collect(),
+        trap,
+        bleed,
+    }));
+    installed
 }

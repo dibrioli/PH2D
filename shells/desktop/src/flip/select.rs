@@ -174,215 +174,6 @@ pub(crate) fn apply_pick(drawing: &mut FlipDrawing, hit: Option<usize>, pick: Pi
     }
 }
 
-impl crate::App {
-    /// O DOMÍNIO do toggle do painel (Stroke|Point) agora. Tool inativa = `Stroke` (o
-    /// default): quem pergunta isto está sempre dentro do Edit, e um `Option` obrigaria
-    /// cada chamador a inventar a mesma resposta.
-    #[must_use]
-    pub(crate) fn flip_edit_domain_now(&self) -> ph2d_tool_flip::EditDomain {
-        self.flip_state
-            .style
-            .map(|s| s.edit_domain)
-            .unwrap_or(ph2d_tool_flip::EditDomain::Stroke)
-    }
-
-    /// A tool Flip quer o canvas para SELECIONAR agora? (ativa + modo Edit.)
-    #[must_use]
-    pub(crate) fn flip_wants_edit(&self) -> bool {
-        self.flip_state.active
-            && matches!(
-                self.flip_state.style.map(|s| s.mode),
-                Some(ph2d_tool_flip::FlipMode::Edit)
-            )
-    }
-
-    /// O clique de seleção. `true` = consumido (o gizmo/pick de objeto não o vê).
-    ///
-    /// **Consome mesmo quando erra o traço**: no modo Edit, um clique no vazio é
-    /// "desmarcar", não "selecionar o objeto com o gizmo". Deixá-lo cair no gizmo faria o
-    /// arrasto seguinte MOVER o objeto inteiro — que é justamente o que o Edit Mode
-    /// existe para separar do Object Mode.
-    pub(crate) fn flip_edit_canvas_down(&mut self, x: f32, y: f32) -> bool {
-        if !self.flip_wants_edit() {
-            return false;
-        }
-        let pick = if self.modifiers.shift_key() {
-            Pick::Toggle
-        } else {
-            Pick::Replace
-        };
-        let active_layer = self.flip_state.active_layer;
-        let domain = self.flip_edit_domain_now();
-        // Dois funis, dois usos: o **pose-aware** (arte) leva o cursor ao espaço da
-        // GEOMETRIA — é onde o hit-test tem de perguntar. O **pose-free** (objeto) semeia
-        // o `Move.last`: o gesto de mover consome no mesmo referencial pose-free (senão o
-        // 1º delta daria um salto igual à pose — ver `flip_active_world_to_object`).
-        let w2l = self.flip_active_world_to_local();
-        let w2o = self.flip_active_world_to_object();
-        let playhead = self.playhead;
-
-        let Some(gfx) = self.gfx.as_mut() else {
-            return false;
-        };
-        let win = gfx.surface.size();
-        let world = gfx.camera.screen_to_world((x, y), win);
-        let px_to_world = gfx.camera.height_world.max(f32::EPSILON) / win.height.max(1) as f32;
-        let local = w2l.apply([f64::from(world[0]), f64::from(world[1])]);
-        let local = Vec2::new(local[0] as f32, local[1] as f32);
-        // 1 px de TELA em unidades de ARTE — o MESMO degrau que o raio de pick usa; a folga
-        // do gizmo é chrome e tem de medir igual na tela em qualquer zoom.
-        let px_to_art = px_to_world * w2l.mean_scale() as f32;
-        let local_obj = w2o.apply([f64::from(world[0]), f64::from(world[1])]);
-        let move_seed = Vec2::new(local_obj[0] as f32, local_obj[1] as f32);
-
-        let Some((oid, lid, did)) = visible_drawing(&gfx.flip, &playhead, active_layer) else {
-            // Camada travada, ou quadro sem desenho: DIZ, em vez de engolir o clique em
-            // silêncio (o mesmo princípio dos erros do balde).
-            gfx.toasts.push(ph2d_editor::Toast::warning(
-                "Edit: the layer is locked, or has no drawing on this frame",
-            ));
-            self.title_dirty = true;
-            return true;
-        };
-        // **Os cortadores do QUADRO** (§4.B) saem do objeto INTEIRO — todas as camadas
-        // visíveis, não só o desenho ativo (o corte é VISUAL). Colhidos AQUI porque o
-        // empréstimo mutável do desenho, logo abaixo, tranca o objeto.
-        let cutters = (domain == ph2d_tool_flip::EditDomain::Segment)
-            .then(|| {
-                gfx.flip.object(oid).map(|o| {
-                    crate::flip::select_segment::frame_cutters(o, o.frame_at(&playhead), lid)
-                })
-            })
-            .flatten();
-        let Some(drawing) = gfx.flip.object_mut(oid).and_then(|o| o.drawing_mut(did)) else {
-            return true;
-        };
-        // ── Domínios POINT (W8) e SEGMENT (§4.B) ──
-        //
-        // O DADO dos dois é o mesmo (`point_sel`), e o gesto também: o que muda é só o
-        // PICK — uma âncora × o pedaço entre dois cruzamentos. Por isso os dois desembocam
-        // no MESMO `DownPoints` e no mesmo mapeamento para gesto; o Segment não é um gesto
-        // novo, é uma política de pick (`02_referencia §11`: *"segment→Point + pós-processo"*).
-        let shift = pick == Pick::Toggle;
-        // A ÁREA do gizmo da seleção (mesma caixa que ele desenha, em coords da ARTE —
-        // `local` já está nelas): errar o alvo ali dentro ARRASTA a seleção.
-        let in_box =
-            crate::flip::selection_gizmo::selection_box_contains(drawing, local, px_to_art);
-        let plan = match domain {
-            ph2d_tool_flip::EditDomain::Point => {
-                let hit = point_at(drawing, local, px_to_world, &w2l);
-                Some(plan_down_points(drawing, hit, shift, in_box))
-            }
-            ph2d_tool_flip::EditDomain::Segment => {
-                let hit = crate::flip::select_pick::hit_at(drawing, local, px_to_world, &w2l);
-                cutters.as_ref().map(|c| {
-                    crate::flip::select_segment::plan_down_segment(drawing, c, hit, shift, in_box)
-                })
-            }
-            ph2d_tool_flip::EditDomain::Stroke => None,
-        };
-        if let Some(plan) = plan {
-            // **Mover ponto de uma INSTÂNCIA deformaria o gêmeo** (a arte é compartilhada
-            // — a regra W7.2: arrasto nunca deforma arte compartilhada). Selecionar pode;
-            // mover não: o gesto vira Click e o usuário é AVISADO (zero no-op silencioso).
-            let instanced = drawing.is_instanced();
-            self.title_dirty = true;
-            self.flip_state.edit_gesture = Some(match plan {
-                DownPoints::Move { .. } if instanced => {
-                    gfx.toasts.push(ph2d_editor::Toast::warning(
-                        "Point move needs exclusive art - Unlink the key first",
-                    ));
-                    crate::flip::edit_gesture::EditGesture::Click
-                }
-                DownPoints::Move { collapse_to } => {
-                    crate::flip::edit_gesture::EditGesture::MovePoints {
-                        last: move_seed,
-                        down: (x, y),
-                        collapse_to,
-                    }
-                }
-                DownPoints::Click => crate::flip::edit_gesture::EditGesture::Click,
-                DownPoints::Marquee { additive } => {
-                    crate::flip::edit_gesture::EditGesture::Marquee {
-                        start: (x, y),
-                        cur: (x, y),
-                        additive,
-                    }
-                }
-            });
-            return true;
-        }
-        // ── Domínio STROKE (W6): o clique pega o traço inteiro. ──
-        let hit = stroke_at(drawing, local, px_to_world, &w2l);
-        // `PH2D_FLIP_SELECT_DEBUG=1` — a régua do Edit Mode no app REAL. O seam
-        // modificador→pick é a única linha que um teste de unidade não alcança (ele não
-        // tem um `App`), e é exatamente onde um defeito de multisseleção mora.
-        if std::env::var("PH2D_FLIP_SELECT_DEBUG").is_ok() {
-            eprintln!(
-                "[edit] shift={} hit={hit:?} tracos={} selecionados_antes={:?}",
-                pick == Pick::Toggle,
-                drawing.strokes.len(),
-                drawing.selected_indices(),
-            );
-        }
-        // **Arrastar um traço já o move** (W6.1). Se o clique pegou traço, o gesto que
-        // começa é o de MOVER — inclusive quando o traço ainda não estava selecionado
-        // (aí o pick o seleciona primeiro, e o arrasto o leva junto). Exigir clicar,
-        // soltar e clicar de novo para arrastar é a ergonomia que faz o usuário concluir
-        // que a ferramenta não responde. No VAZIO, o gesto é o marquee.
-        //
-        // Shift+arrasto num traço já selecionado seria ambíguo (alternar ou mover?): o
-        // Shift manda, e o gesto vira alternar — o arrasto não pega.
-        self.title_dirty = true;
-        self.flip_state.edit_gesture = Some(match plan_down(drawing, hit, shift, in_box) {
-            Down::Move { collapse_to } => crate::flip::edit_gesture::EditGesture::Move {
-                last: move_seed,
-                down: (x, y),
-                collapse_to,
-            },
-            Down::Click => crate::flip::edit_gesture::EditGesture::Click,
-            Down::Marquee { additive } => crate::flip::edit_gesture::EditGesture::Marquee {
-                start: (x, y),
-                cur: (x, y),
-                additive,
-            },
-        });
-        true
-    }
-}
-
-impl crate::App {
-    /// Apaga os traços selecionados do desenho visível. `true` = apagou algo (e a tecla
-    /// foi consumida — ver o chamador em `input_dispatch::keyboard`).
-    pub(crate) fn flip_delete_selected(&mut self) -> bool {
-        let active_layer = self.flip_state.active_layer;
-        let playhead = self.playhead;
-        let Some(gfx) = self.gfx.as_mut() else {
-            return false;
-        };
-        let Some((oid, _lid, did)) = visible_drawing(&gfx.flip, &playhead, active_layer) else {
-            return false;
-        };
-        let Some(drawing) = gfx.flip.object_mut(oid).and_then(|o| o.drawing_mut(did)) else {
-            return false;
-        };
-        // Domínio POINT: dissolve as âncoras selecionadas (o traço continua ligado pelos
-        // que ficam; traço esvaziado sai). Domínio Stroke: apaga os traços, como sempre.
-        let n = if matches!(
-            self.flip_state.style.map(|s| s.edit_domain),
-            Some(ph2d_tool_flip::EditDomain::Point)
-        ) {
-            drawing.delete_selected_points()
-        } else {
-            drawing.delete_selected()
-        };
-        if n > 0 {
-            self.title_dirty = true;
-        }
-        n > 0
-    }
-}
-
 /// **Os ajustes do painel miram a SELEÇÃO** — o passe por-frame que aposenta o "alvo
 /// vivo" enquanto há traços selecionados.
 ///
@@ -565,3 +356,198 @@ pub(crate) use crate::flip::select_points::{
 #[cfg(test)]
 #[path = "select_tests.rs"]
 mod tests;
+
+use crate::flip::ctx::FlipFrame;
+use crate::flip::state::FlipState;
+
+/// O DOMÍNIO do toggle do painel (Stroke|Point) agora. Tool inativa = `Stroke` (o default):
+/// quem pergunta isto está sempre dentro do Edit, e um `Option` obrigaria cada chamador a
+/// inventar a mesma resposta.
+#[must_use]
+pub(crate) fn edit_domain_now(state: &FlipState) -> ph2d_tool_flip::EditDomain {
+    state
+        .style
+        .map(|s| s.edit_domain)
+        .unwrap_or(ph2d_tool_flip::EditDomain::Stroke)
+}
+
+/// A tool Flip quer o canvas para SELECIONAR agora? (ativa + modo Edit.)
+#[must_use]
+pub(crate) fn wants_edit(state: &FlipState) -> bool {
+    state.active
+        && matches!(
+            state.style.map(|s| s.mode),
+            Some(ph2d_tool_flip::FlipMode::Edit)
+        )
+}
+
+/// O clique de seleção. `true` = consumido (o gizmo/pick de objeto não o vê).
+///
+/// **Consome mesmo quando erra o traço**: no modo Edit, um clique no vazio é "desmarcar", não
+/// "selecionar o objeto com o gizmo". Deixá-lo cair no gizmo faria o arrasto seguinte MOVER o
+/// objeto inteiro — que é justamente o que o Edit Mode existe para separar do Object Mode.
+///
+/// ⚠️ Devolve `(consumido, sujou_o_titulo)`.
+///
+/// ⚠️ Os DOIS afins chegam prontos, e são dois usos: o **pose-aware** (`w2l`, arte) leva o
+/// cursor ao espaço da GEOMETRIA — é onde o hit-test tem de perguntar. O **pose-free**
+/// (`w2o`, objeto) semeia o `Move.last`: o gesto de mover consome no mesmo referencial
+/// pose-free (senão o 1.º delta daria um salto igual à pose).
+pub(crate) fn canvas_down(
+    state: &mut FlipState,
+    f: &mut FlipFrame<'_>,
+    toasts: &mut ph2d_editor::ToastQueue,
+    w2l: &ph2d_vec_scene::Xform,
+    w2o: &ph2d_vec_scene::Xform,
+    shift: bool,
+    x: f32,
+    y: f32,
+) -> (bool, bool) {
+    if !wants_edit(state) {
+        return (false, false);
+    }
+    let pick = if shift { Pick::Toggle } else { Pick::Replace };
+    let active_layer = state.active_layer;
+    let domain = edit_domain_now(state);
+    let playhead = f.playhead;
+
+    let world = f.to_world(x, y);
+    let px_to_world = f.px_to_world();
+    let local = w2l.apply([f64::from(world[0]), f64::from(world[1])]);
+    let local = Vec2::new(local[0] as f32, local[1] as f32);
+    // 1 px de TELA em unidades de ARTE — o MESMO degrau que o raio de pick usa; a folga do
+    // gizmo é chrome e tem de medir igual na tela em qualquer zoom.
+    let px_to_art = px_to_world * w2l.mean_scale() as f32;
+    let local_obj = w2o.apply([f64::from(world[0]), f64::from(world[1])]);
+    let move_seed = Vec2::new(local_obj[0] as f32, local_obj[1] as f32);
+
+    let Some((oid, lid, did)) = visible_drawing(f.flip, playhead, active_layer) else {
+        // Camada travada, ou quadro sem desenho: DIZ, em vez de engolir o clique em silêncio
+        // (o mesmo princípio dos erros do balde).
+        toasts.push(ph2d_editor::Toast::warning(
+            "Edit: the layer is locked, or has no drawing on this frame",
+        ));
+        return (true, true);
+    };
+    // **Os cortadores do QUADRO** (§4.B) saem do objeto INTEIRO — todas as camadas visíveis,
+    // não só o desenho ativo (o corte é VISUAL). Colhidos AQUI porque o empréstimo mutável do
+    // desenho, logo abaixo, tranca o objeto.
+    let cutters = (domain == ph2d_tool_flip::EditDomain::Segment)
+        .then(|| {
+            f.flip.object(oid).map(|o| {
+                crate::flip::select_segment::frame_cutters(o, o.frame_at(playhead), lid)
+            })
+        })
+        .flatten();
+    let Some(drawing) = f.flip.object_mut(oid).and_then(|o| o.drawing_mut(did)) else {
+        return (true, false);
+    };
+    // ── Domínios POINT (W8) e SEGMENT (§4.B) ──
+    //
+    // O DADO dos dois é o mesmo (`point_sel`), e o gesto também: o que muda é só o PICK —
+    // uma âncora × o pedaço entre dois cruzamentos. Por isso os dois desembocam no MESMO
+    // `DownPoints`; o Segment não é um gesto novo, é uma política de pick.
+    let shift_pick = pick == Pick::Toggle;
+    // A ÁREA do gizmo da seleção (mesma caixa que ele desenha, em coords da ARTE — `local` já
+    // está nelas): errar o alvo ali dentro ARRASTA a seleção.
+    let in_box = crate::flip::selection_gizmo::selection_box_contains(drawing, local, px_to_art);
+    let plan = match domain {
+        ph2d_tool_flip::EditDomain::Point => {
+            let hit = point_at(drawing, local, px_to_world, w2l);
+            Some(plan_down_points(drawing, hit, shift_pick, in_box))
+        }
+        ph2d_tool_flip::EditDomain::Segment => {
+            let hit = crate::flip::select_pick::hit_at(drawing, local, px_to_world, w2l);
+            cutters.as_ref().map(|c| {
+                crate::flip::select_segment::plan_down_segment(drawing, c, hit, shift_pick, in_box)
+            })
+        }
+        ph2d_tool_flip::EditDomain::Stroke => None,
+    };
+    if let Some(plan) = plan {
+        // **Mover ponto de uma INSTÂNCIA deformaria o gêmeo** (a arte é compartilhada — a
+        // regra W7.2). Selecionar pode; mover não: o gesto vira Click e o usuário é AVISADO.
+        let instanced = drawing.is_instanced();
+        state.edit_gesture = Some(match plan {
+            DownPoints::Move { .. } if instanced => {
+                toasts.push(ph2d_editor::Toast::warning(
+                    "Point move needs exclusive art - Unlink the key first",
+                ));
+                crate::flip::edit_gesture::EditGesture::Click
+            }
+            DownPoints::Move { collapse_to } => crate::flip::edit_gesture::EditGesture::MovePoints {
+                last: move_seed,
+                down: (x, y),
+                collapse_to,
+            },
+            DownPoints::Click => crate::flip::edit_gesture::EditGesture::Click,
+            DownPoints::Marquee { additive } => crate::flip::edit_gesture::EditGesture::Marquee {
+                start: (x, y),
+                cur: (x, y),
+                additive,
+            },
+        });
+        return (true, true);
+    }
+    // ── Domínio STROKE (W6): o clique pega o traço inteiro. ──
+    let hit = stroke_at(drawing, local, px_to_world, w2l);
+    // `PH2D_FLIP_SELECT_DEBUG=1` — a régua do Edit Mode no app REAL. O seam modificador→pick
+    // é a única linha que um teste de unidade não alcança, e é exatamente onde um defeito de
+    // multisseleção mora.
+    if std::env::var("PH2D_FLIP_SELECT_DEBUG").is_ok() {
+        eprintln!(
+            "[edit] shift={} hit={hit:?} tracos={} selecionados_antes={:?}",
+            pick == Pick::Toggle,
+            drawing.strokes.len(),
+            drawing.selected_indices(),
+        );
+    }
+    // **Arrastar um traço já o move** (W6.1). Se o clique pegou traço, o gesto que começa é o
+    // de MOVER — inclusive quando o traço ainda não estava selecionado. Exigir clicar, soltar
+    // e clicar de novo para arrastar é a ergonomia que faz o usuário concluir que a
+    // ferramenta não responde. No VAZIO, o gesto é o marquee.
+    //
+    // Shift+arrasto num traço já selecionado seria ambíguo: o Shift manda, e o gesto vira
+    // alternar — o arrasto não pega.
+    state.edit_gesture = Some(match plan_down(drawing, hit, shift_pick, in_box) {
+        Down::Move { collapse_to } => crate::flip::edit_gesture::EditGesture::Move {
+            last: move_seed,
+            down: (x, y),
+            collapse_to,
+        },
+        Down::Click => crate::flip::edit_gesture::EditGesture::Click,
+        Down::Marquee { additive } => crate::flip::edit_gesture::EditGesture::Marquee {
+            start: (x, y),
+            cur: (x, y),
+            additive,
+        },
+    });
+    (true, true)
+}
+
+/// Apaga os traços selecionados do desenho visível. `true` = apagou algo (e a tecla foi
+/// consumida — ver o chamador em `input_dispatch::keyboard`).
+pub(crate) fn delete_selected(
+    state: &FlipState,
+    flip: &mut ph2d_flip::FlipDoc,
+    playhead: &ph2d_core::Playhead,
+) -> bool {
+    let active_layer = state.active_layer;
+    let Some((oid, _lid, did)) = visible_drawing(flip, playhead, active_layer) else {
+        return false;
+    };
+    let Some(drawing) = flip.object_mut(oid).and_then(|o| o.drawing_mut(did)) else {
+        return false;
+    };
+    // Domínio POINT: dissolve as âncoras selecionadas (o traço continua ligado pelos que
+    // ficam; traço esvaziado sai). Domínio Stroke: apaga os traços, como sempre.
+    let n = if matches!(
+        state.style.map(|s| s.edit_domain),
+        Some(ph2d_tool_flip::EditDomain::Point)
+    ) {
+        drawing.delete_selected_points()
+    } else {
+        drawing.delete_selected()
+    };
+    n > 0
+}

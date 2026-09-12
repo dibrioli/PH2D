@@ -490,42 +490,6 @@ pub(crate) fn apply_panel_event(
     }
 }
 
-impl crate::App {
-    /// O FPS do objeto Flip ativo (o relógio em que "um quadro" faz sentido para o
-    /// animador). `None` sem objeto.
-    pub(crate) fn flip_fps(&self) -> Option<f64> {
-        let gfx = self.gfx.as_ref()?;
-        gfx.flip.objects().first().map(|o| f64::from(o.fps))
-    }
-
-    /// **O flip por DESENHO** (atalho das setas ↑/↓ e dos botões da tira): leva o
-    /// playhead à chave anterior/seguinte da camada ativa, PULANDO os holds.
-    pub(crate) fn flip_step_drawing(&mut self, next: bool) {
-        let active_layer = self.flip_state.active_layer;
-        let Some(gfx) = self.gfx.as_ref() else { return };
-        let Some((oid, lid)) = target(&gfx.flip, active_layer) else {
-            return;
-        };
-        let Some(obj) = gfx.flip.object(oid) else {
-            return;
-        };
-        let fps = obj.fps;
-        let Some(layer) = obj.layer(lid) else { return };
-        // No quadro-FONTE: sob um Loop, navegar a partir da 2ª volta tem de andar
-        // dentro do vão (no quadro cru não haveria vizinho nenhum).
-        let frame = layer.source_frame(obj.frame_at(&self.playhead));
-        let to = if next {
-            layer.next_drawing_key(frame)
-        } else {
-            layer.prev_drawing_key(frame)
-        };
-        if let Some(f) = to {
-            seek(&mut self.playhead, fps, f);
-            self.flip_state.strip.selection = vec![f];
-        }
-    }
-}
-
 /// `CycleMode` do chip → o par (pre, post). "Hold" é o default do sistema (nada
 /// antes, o último desenho segura depois); Loop/Ping-Pong valem dos DOIS lados
 /// (senão o scrub para trás mostraria vazio no meio de um ciclo).
@@ -544,3 +508,43 @@ mod pin_tests;
 #[cfg(test)]
 #[path = "strip_tests.rs"]
 mod tests;
+
+/// O FPS do objeto Flip ativo (o relógio em que "um quadro" faz sentido para o
+/// animador). `None` sem objeto.
+///
+/// ⭐ W2/L5 2.ª volta: era um método de `App`. O que ele pedia à shell era **um tipo de
+/// outra crate** (`FlipDoc`), nunca a `App` — logo é ASSINATURA, não porta (regra 4).
+pub(crate) fn fps(flip: &ph2d_flip::FlipDoc) -> Option<f64> {
+    flip.objects().first().map(|o| f64::from(o.fps))
+}
+
+/// **O flip por DESENHO** (atalho das setas ↑/↓ e dos botões da tira): leva o
+/// playhead à chave anterior/seguinte da camada ativa, PULANDO os holds.
+pub(crate) fn step_drawing(
+    state: &mut crate::flip::state::FlipState,
+    flip: &ph2d_flip::FlipDoc,
+    playhead: &mut ph2d_core::Playhead,
+    next: bool,
+) {
+    let active_layer = state.active_layer;
+    let Some((oid, lid)) = target(flip, active_layer) else {
+        return;
+    };
+    let Some(obj) = flip.object(oid) else {
+        return;
+    };
+    let fps = obj.fps;
+    let Some(layer) = obj.layer(lid) else { return };
+    // No quadro-FONTE: sob um Loop, navegar a partir da 2ª volta tem de andar
+    // dentro do vão (no quadro cru não haveria vizinho nenhum).
+    let frame = layer.source_frame(obj.frame_at(playhead));
+    let to = if next {
+        layer.next_drawing_key(frame)
+    } else {
+        layer.prev_drawing_key(frame)
+    };
+    if let Some(f) = to {
+        seek(playhead, fps, f);
+        state.strip.selection = vec![f];
+    }
+}

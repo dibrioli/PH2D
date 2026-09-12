@@ -280,102 +280,111 @@ pub(crate) fn cleanup_soft(
     dr.strokes.len() != before
 }
 
-impl crate::App {
-    /// The Flip tool wants the canvas for ERASING now (active + Erase mode). The
-    /// `input_dispatch` reads the published style cache — no downcast.
-    #[must_use]
-    pub(crate) fn flip_wants_erase(&self) -> bool {
-        self.flip_state.active
-            && matches!(
-                self.flip_state.style.map(|s| s.mode),
-                Some(ph2d_tool_flip::FlipMode::Erase)
-            )
-    }
-
-    /// Pen-down of the eraser: begin the gesture + erase at the cursor. Returns
-    /// `true` if consumed (so the caller doesn't fall into the gizmo/pick).
-    pub(crate) fn flip_erase_canvas_down(&mut self, x: f32, y: f32) -> bool {
-        if !self.flip_wants_erase() {
-            return false;
-        }
-        self.flip_state.erasing = true;
-        self.flip_erase_apply(x, y);
-        true
-    }
-
-    /// Move while erasing: erase at the cursor. `true` while a gesture is live.
-    pub(crate) fn flip_erase_canvas_move(&mut self, x: f32, y: f32) -> bool {
-        if !self.flip_state.erasing {
-            return false;
-        }
-        self.flip_erase_apply(x, y);
-        true
-    }
-
-    /// Pen-up: end the gesture + (Soft mode) drop the faded points.
-    pub(crate) fn flip_erase_canvas_up(&mut self) -> bool {
-        if !self.flip_state.erasing {
-            return false;
-        }
-        self.flip_state.erasing = false;
-        let soft = matches!(
-            self.flip_state.style.map(|s| s.erase),
-            Some(ph2d_tool_flip::EraseMode::Soft)
-        );
-        if soft {
-            let active_layer = self.flip_state.active_layer;
-            let playhead = self.playhead;
-            let strip = &mut self.flip_state.strip;
-            if let Some(gfx) = self.gfx.as_mut() {
-                cleanup_soft(&mut gfx.flip, &playhead, active_layer, strip);
-            }
-        }
-        true
-    }
-
-    /// Erase once under the cursor (screen coords → world + radius from the brush).
-    fn flip_erase_apply(&mut self, x: f32, y: f32) {
-        let Some(style) = self.flip_state.style else {
-            return;
-        };
-        let active_layer = self.flip_state.active_layer;
-        // Fronteira MUNDO→LOCAL (ADR-0111): a geometria de um objeto já movido pelo
-        // gizmo é LOCAL, então o cursor (mundo) desce ao espaço local e o raio recua
-        // pela escala. Identidade num objeto não-movido (o comum) → no-op.
-        let w2l = self.flip_active_world_to_local();
-        let playhead = self.playhead;
-        let strip = &mut self.flip_state.strip;
-        if let Some(gfx) = self.gfx.as_mut() {
-            let win = gfx.surface.size();
-            let w = gfx.camera.screen_to_world((x, y), win);
-            // Raio/força EFETIVOS da borracha (§4.C): `erase_px`/`erase_strength` já vêm
-            // com o link resolvido pela tool — linkados, são o Size/Strength do pincel
-            // (o comportamento de sempre); deslinkados, os próprios dela. Um só campo:
-            // re-derivar a regra aqui seria a 2ª porta que diverge.
-            //
-            // **O raio é fixo no MUNDO** (§4.C.6): o Size é uma medida do mundo, então a
-            // borracha morde sempre o mesmo pedaço de ARTE — dar zoom não muda o que ela
-            // leva, só o tamanho com que você a vê. (Antes ele saía de `px_to_world`, ou
-            // seja, era constante na TELA e variável na arte.) O Size é COMPARTILHADO com
-            // o pincel — e agora literalmente o mesmo número, quando linkado —, então ele
-            // não pode significar mundo pra desenhar e tela pra apagar.
-            let radius = ph2d_tool_flip::size_to_world(style.erase_px) * 0.5;
-            let local = w2l.apply([f64::from(w[0]), f64::from(w[1])]);
-            let radius_local = radius * w2l.mean_scale() as f32;
-            erase_at(
-                &mut gfx.flip,
-                &playhead,
-                active_layer,
-                strip,
-                style.erase,
-                Vec2::new(local[0] as f32, local[1] as f32),
-                radius_local,
-                style.erase_strength,
-            );
-        }
-    }
-}
-
 #[cfg(test)]
 #[path = "erase_tests.rs"]
 mod tests;
+
+/// A tool Flip quer o canvas para APAGAR agora? (ativa + modo Erase.)
+///
+/// ⭐ W2/L5 2.ª volta: era método de `App`. Pede só o estado da própria família.
+#[must_use]
+pub(crate) fn wants(state: &crate::flip::state::FlipState) -> bool {
+    state.active
+        && matches!(
+            state.style.map(|s| s.mode),
+            Some(ph2d_tool_flip::FlipMode::Erase)
+        )
+}
+
+/// Apaga uma vez sob o cursor (tela → mundo → local, raio do pincel).
+///
+/// ⚠️ O `w2l` chega PRONTO: derivá-lo é trabalho do `transform`, e quem chama já o tem.
+pub(crate) fn apply(
+    state: &mut crate::flip::state::FlipState,
+    flip: &mut ph2d_flip::FlipDoc,
+    playhead: &ph2d_core::Playhead,
+    camera: &ph2d_render::Camera2d,
+    win: ph2d_host::WindowSize,
+    w2l: &ph2d_vec_scene::Xform,
+    x: f32,
+    y: f32,
+) {
+    let Some(style) = state.style else {
+        return;
+    };
+    let active_layer = state.active_layer;
+    let w = camera.screen_to_world((x, y), win);
+    // Raio/força EFETIVOS da borracha (§4.C): `erase_px`/`erase_strength` já vêm com o link
+    // resolvido pela tool. **O raio é fixo no MUNDO** (§4.C.6) — dar zoom não muda o que ela leva.
+    let radius = ph2d_tool_flip::size_to_world(style.erase_px) * 0.5;
+    let local = w2l.apply([f64::from(w[0]), f64::from(w[1])]);
+    let radius_local = radius * w2l.mean_scale() as f32;
+    erase_at(
+        flip,
+        playhead,
+        active_layer,
+        &mut state.strip,
+        style.erase,
+        Vec2::new(local[0] as f32, local[1] as f32),
+        radius_local,
+        style.erase_strength,
+    );
+}
+
+/// Pen-down da borracha: começa o gesto + apaga no cursor. `true` = consumido.
+pub(crate) fn canvas_down(
+    state: &mut crate::flip::state::FlipState,
+    flip: &mut ph2d_flip::FlipDoc,
+    playhead: &ph2d_core::Playhead,
+    camera: &ph2d_render::Camera2d,
+    win: ph2d_host::WindowSize,
+    w2l: &ph2d_vec_scene::Xform,
+    x: f32,
+    y: f32,
+) -> bool {
+    if !wants(state) {
+        return false;
+    }
+    state.erasing = true;
+    apply(state, flip, playhead, camera, win, w2l, x, y);
+    true
+}
+
+/// Move com a borracha em baixo. `true` enquanto o gesto está vivo.
+pub(crate) fn canvas_move(
+    state: &mut crate::flip::state::FlipState,
+    flip: &mut ph2d_flip::FlipDoc,
+    playhead: &ph2d_core::Playhead,
+    camera: &ph2d_render::Camera2d,
+    win: ph2d_host::WindowSize,
+    w2l: &ph2d_vec_scene::Xform,
+    x: f32,
+    y: f32,
+) -> bool {
+    if !state.erasing {
+        return false;
+    }
+    apply(state, flip, playhead, camera, win, w2l, x, y);
+    true
+}
+
+/// Pen-up: fecha o gesto + (modo Soft) larga os pontos desvanecidos.
+pub(crate) fn canvas_up(
+    state: &mut crate::flip::state::FlipState,
+    flip: &mut ph2d_flip::FlipDoc,
+    playhead: &ph2d_core::Playhead,
+) -> bool {
+    if !state.erasing {
+        return false;
+    }
+    state.erasing = false;
+    let soft = matches!(
+        state.style.map(|s| s.erase),
+        Some(ph2d_tool_flip::EraseMode::Soft)
+    );
+    if soft {
+        let active_layer = state.active_layer;
+        cleanup_soft(flip, playhead, active_layer, &mut state.strip);
+    }
+    true
+}

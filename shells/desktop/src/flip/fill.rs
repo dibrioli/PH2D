@@ -331,120 +331,131 @@ pub(crate) fn fill_click(
     Ok(())
 }
 
-impl crate::App {
-    /// A tool Flip quer o canvas para PREENCHER agora? (ativa + modo Fill.) Lê o cache
-    /// que o `flip_bridge` publica — sem downcast (o `input_dispatch` é livre).
-    #[must_use]
-    pub(crate) fn flip_wants_fill(&self) -> bool {
-        self.flip_state.active
-            && matches!(
-                self.flip_state.style.map(|s| s.mode),
-                Some(ph2d_tool_flip::FlipMode::Fill)
-            )
-    }
-
-    /// O clique do balde. `true` = consumido (o gizmo/pick não vê o clique).
-    ///
-    /// O balde é um CLIQUE, não um arrasto: uma única chamada faz tudo. O desenho-alvo
-    /// vem do **autokey por-tool** (`flip_autokey`, política `Modify`): preencher é
-    /// MODIFICAR o que está na tela, então no rabo de um hold a chave nova nasce como
-    /// duplicata — nunca em branco (preencher um quadro vazio e invisível seria o mesmo
-    /// desastre da borracha, `docs/Flip/05 §4`).
-    pub(crate) fn flip_fill_canvas_down(&mut self, x: f32, y: f32) -> bool {
-        if !self.flip_wants_fill() {
-            return false;
-        }
-        let Some(style) = self.flip_state.style else {
-            return false;
-        };
-        let active_layer = self.flip_state.active_layer;
-        let w2l = self.flip_active_world_to_local();
-        let playhead = self.playhead;
-        let strip = &mut self.flip_state.strip;
-
-        let Some(gfx) = self.gfx.as_mut() else {
-            return false;
-        };
-        let win = gfx.surface.size();
-        let world = gfx.camera.screen_to_world((x, y), win);
-        let px_to_world = gfx.camera.height_world.max(f32::EPSILON) / win.height.max(1) as f32;
-        let local = w2l.apply([f64::from(world[0]), f64::from(world[1])]);
-        let local = Vec2::new(local[0] as f32, local[1] as f32);
-
-        let Some((oid, lid, did)) = crate::flip::autokey::target_drawing(
-            &mut gfx.flip,
-            &playhead,
-            active_layer,
-            strip,
-            crate::flip::autokey::FlipEdit::Modify,
-        ) else {
-            // Sem desenho-alvo — camada TRAVADA, ou sem chave com o AutoKey desligado.
-            // Também aqui o balde tem de DIZER: consumir o clique e não fazer nada é
-            // exatamente o que faz uma ferramenta parecer quebrada (é o mesmo princípio
-            // dos erros do solver, logo abaixo — só que este caminho tinha escapado).
-            gfx.toasts.push(ph2d_editor::Toast::warning(
-                "Fill: the layer is locked, or has no drawing on this frame",
-            ));
-            self.title_dirty = true;
-            return true;
-        };
-        let frame = gfx.flip.object(oid).map_or(0, |o| o.frame_at(&playhead));
-
-        // **O balde multiframe** (W7): com chaves selecionadas na tira, o MESMO clique
-        // preenche todas. O pipeline roda **por quadro** (`02_referencia §11`: *"N fills
-        // independentes — a região pode mudar de forma"*): a linha se move entre os
-        // quadros, então o solver tem de re-traçar a região em cada um. Não há como
-        // reaproveitar o contorno.
-        //
-        // **Falloff = 1.0 sempre** — meio-preenchimento não existe. O falloff só multiplica
-        // influência de PINCEL (a regra 2 da referência), e o balde é uma op discreta.
-        //
-        // Os quadros vizinhos são preenchidos em SILÊNCIO (sem toast): um quadro em que a
-        // região não fecha não pode derrubar o clique nos outros — o toast fala pelo quadro
-        // ATIVO, que é onde o usuário está olhando.
-        let extra: Vec<_> = ph2d_app_flip::multiframe::targets(
-            &gfx.flip,
-            oid,
-            lid,
-            &playhead,
-            strip.selected_keys(),
-            (did, frame),
-            false,
-        )
-        .into_iter()
-        .filter(|t| t.did != did)
-        .collect();
-        for t in extra {
-            if let Some(dr) = gfx.flip.object_mut(oid).and_then(|o| o.drawing_mut(t.did)) {
-                let _ = fill_click(dr, &style, local, px_to_world, &w2l);
-            }
-        }
-
-        let Some(drawing) = gfx.flip.object_mut(oid).and_then(|o| o.drawing_mut(did)) else {
-            return true;
-        };
-        match fill_click(drawing, &style, local, px_to_world, &w2l) {
-            Ok(()) => {}
-            Err(e) => {
-                // Um fill que não aconteceu DIZ por quê — em vez de não fazer nada em
-                // silêncio (que é como um balde parece quebrado).
-                let msg = match e {
-                    FillError::Leaked => "Fill leaked — raise Gap Closure to seal the outline",
-                    FillError::OnBoundary => "Fill: clicked on a line",
-                    FillError::Empty => "Fill: nothing to fill here",
-                    FillError::Degenerate => "Fill: no region under the cursor",
-                    // Aponta para o lado CONTRARIO do Leaked: aqui a bola e grande
-                    // demais para o lugar, entao a saida e BAIXAR o Trap.
-                    FillError::BallTooFat => "Fill: Trap is wider than this area — lower it",
-                };
-                gfx.toasts.push(ph2d_editor::Toast::warning(msg));
-                self.title_dirty = true;
-            }
-        }
-        true
-    }
-}
-
 #[cfg(test)]
 #[path = "fill_tests.rs"]
 pub(crate) mod tests;
+
+use crate::flip::ctx::FlipFrame;
+use crate::flip::state::FlipState;
+
+/// A tool Flip quer o canvas para PREENCHER agora? (ativa + modo Fill.)
+#[must_use]
+pub(crate) fn wants(state: &FlipState) -> bool {
+    state.active
+        && matches!(
+            state.style.map(|s| s.mode),
+            Some(ph2d_tool_flip::FlipMode::Fill)
+        )
+}
+
+/// O que o clique do balde fez, para a shell saber se tem de repintar o título.
+pub(crate) struct FillOutcome {
+    /// O clique foi consumido (o gizmo/pick não o vê).
+    pub consumed: bool,
+    /// Um aviso foi empurrado para a fila de toasts.
+    pub warned: bool,
+}
+
+/// O clique do balde.
+///
+/// O balde é um CLIQUE, não um arrasto: uma única chamada faz tudo. O desenho-alvo vem do
+/// **autokey por-tool** (política `Modify`): preencher é MODIFICAR o que está na tela, então
+/// no rabo de um hold a chave nova nasce como duplicata — nunca em branco.
+///
+/// ⚠️ O `title_dirty` NÃO entra aqui: ele é da shell, e sai no [`FillOutcome::warned`] —
+/// *a fronteira atravessa-se com um valor, não com um campo alheio* (a lei da Fase B).
+pub(crate) fn canvas_down(
+    state: &mut FlipState,
+    f: &mut FlipFrame<'_>,
+    toasts: &mut ph2d_editor::ToastQueue,
+    w2l: &Xform,
+    x: f32,
+    y: f32,
+) -> FillOutcome {
+    let no = FillOutcome {
+        consumed: false,
+        warned: false,
+    };
+    if !wants(state) {
+        return no;
+    }
+    let Some(style) = state.style else {
+        return no;
+    };
+    let active_layer = state.active_layer;
+    let world = f.to_world(x, y);
+    let px_to_world = f.px_to_world();
+    let local = w2l.apply([f64::from(world[0]), f64::from(world[1])]);
+    let local = Vec2::new(local[0] as f32, local[1] as f32);
+    let playhead = f.playhead;
+
+    let Some((oid, lid, did)) = crate::flip::autokey::target_drawing(
+        f.flip,
+        playhead,
+        active_layer,
+        &mut state.strip,
+        crate::flip::autokey::FlipEdit::Modify,
+    ) else {
+        // Sem desenho-alvo — camada TRAVADA, ou sem chave com o AutoKey desligado. Também
+        // aqui o balde tem de DIZER: consumir o clique e não fazer nada é exatamente o que
+        // faz uma ferramenta parecer quebrada.
+        toasts.push(ph2d_editor::Toast::warning(
+            "Fill: the layer is locked, or has no drawing on this frame",
+        ));
+        return FillOutcome {
+            consumed: true,
+            warned: true,
+        };
+    };
+    let frame = f.flip.object(oid).map_or(0, |o| o.frame_at(playhead));
+
+    // **O balde multiframe** (W7): com chaves selecionadas na tira, o MESMO clique preenche
+    // todas. O pipeline roda **por quadro** — a linha se move entre os quadros, então o
+    // solver tem de re-traçar a região em cada um.
+    //
+    // Os quadros vizinhos são preenchidos em SILÊNCIO: um quadro em que a região não fecha
+    // não pode derrubar o clique nos outros — o toast fala pelo quadro ATIVO.
+    let extra: Vec<_> = ph2d_app_flip::multiframe::targets(
+        f.flip,
+        oid,
+        lid,
+        playhead,
+        state.strip.selected_keys(),
+        (did, frame),
+        false,
+    )
+    .into_iter()
+    .filter(|t| t.did != did)
+    .collect();
+    for t in extra {
+        if let Some(dr) = f.flip.object_mut(oid).and_then(|o| o.drawing_mut(t.did)) {
+            let _ = fill_click(dr, &style, local, px_to_world, w2l);
+        }
+    }
+
+    let Some(drawing) = f.flip.object_mut(oid).and_then(|o| o.drawing_mut(did)) else {
+        return FillOutcome {
+            consumed: true,
+            warned: false,
+        };
+    };
+    let mut warned = false;
+    if let Err(e) = fill_click(drawing, &style, local, px_to_world, w2l) {
+        // Um fill que não aconteceu DIZ por quê — em vez de não fazer nada em silêncio.
+        let msg = match e {
+            FillError::Leaked => "Fill leaked — raise Gap Closure to seal the outline",
+            FillError::OnBoundary => "Fill: clicked on a line",
+            FillError::Empty => "Fill: nothing to fill here",
+            FillError::Degenerate => "Fill: no region under the cursor",
+            // Aponta para o lado CONTRARIO do Leaked: aqui a bola e grande demais para o
+            // lugar, entao a saida e BAIXAR o Trap.
+            FillError::BallTooFat => "Fill: Trap is wider than this area — lower it",
+        };
+        toasts.push(ph2d_editor::Toast::warning(msg));
+        warned = true;
+    }
+    FillOutcome {
+        consumed: true,
+        warned,
+    }
+}

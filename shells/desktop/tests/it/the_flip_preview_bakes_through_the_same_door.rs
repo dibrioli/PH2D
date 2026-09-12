@@ -55,13 +55,27 @@ fn the_flip_preview_bakes_through_the_same_door() {
          bake aplica — é exatamente a divergência que esta cerca existe para impedir."
     );
 
-    // ⚠️ **AS DUAS METADES DO GATE CAÍRAM EM DOIS FICHEIROS** (W2/L5, 2026-09-11): o `preview`
-    // é método da `App` e ficou na shell; a porta de baixo (`stroke_from_samples`) é LEI e foi
-    // para a shell, no ficheiro irmao. Um gate que afirma uma relação entre duas funções tem de seguir as duas
-    // quando elas se separam — ler só uma delas ficaria VERDE sobre a metade que não mudou.
-    let lei = fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/src/flip/draw.rs"))
-        .expect("flip/draw.rs");
-    let bake = corpo(&lei, "pub(crate) fn stroke_from_samples(");
+    // ⚠️ **AS DUAS METADES DO GATE CAÍRAM EM LADOS DIFERENTES DA FRONTEIRA** (W2/L5, 2026-09-11):
+    // o `preview` é método da `App` e ficou na shell; a porta de baixo (`stroke_from_samples`) é
+    // LEI e foi para a **crate** `ph2d-app-flip`. Um gate que afirma uma relação entre duas
+    // funções tem de seguir as duas quando elas se separam — ler só uma delas ficaria VERDE sobre
+    // a metade que não mudou.
+    //
+    // ⛔⛔ **Este bloco esteve errado nas DUAS pontas, e as duas só falham a CORRER** (curado na
+    // integração de 12/09):
+    //   1. o comentário dizia *«foi para a shell»* e o caminho seguia-o — mas a lei atravessou
+    //      para `crates/`, e um `read_to_string` de caminho fixo é a armadilha §2.6 do HOWTO:
+    //      ele compila, e só um `#[ignore]` ou um filtro o separam de nunca falhar;
+    //   2. ⭐ **atravessar uma fronteira de CRATE muda a VISIBILIDADE**: a função era
+    //      `pub(crate) fn` dentro da shell e teve de virar `pub fn` para a shell a alcançar. A
+    //      agulha citava o modificador, logo ficaria a procurar um texto que deixou de existir —
+    //      *uma agulha que cita visibilidade não sobrevive a uma mudança de crate.*
+    let lei = fs::read_to_string(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../crates/ph2d-app-flip/src/draw.rs"
+    ))
+    .expect("ph2d-app-flip/src/draw.rs");
+    let bake = corpo(&lei, "fn stroke_from_samples(");
     assert!(
         bake.contains("stroke_from_samples_cached("),
         "`stroke_from_samples` deixou de delegar à porta de baixo. Com dois corpos, o traço \

@@ -104,6 +104,7 @@ pub mod paint_stack;
 pub mod pick;
 pub mod shape_live;
 pub mod smoke_appearance;
+pub mod smoke_bone;
 pub mod smoke_fade;
 pub mod smoke_stack;
 pub mod smoke_svg;
@@ -116,19 +117,48 @@ pub mod weld;
 
 /// **O que esta família declara à shell** (`ph2d-app-registry-init`).
 ///
-/// ⚠️⚠️ **`routers: &[]` aqui é a verdade MEDIDA da Fase A, não um esquecimento** — e por isso a
-/// chave `"vec"` está escrita na catraca `FAMILIAS_COM_O_ROTEADOR_AINDA_NA_SHELL` do registo, que
-/// é o único sítio onde *«ainda não saiu»* se distingue de *«alguém esqueceu»*.
+/// ⭐⭐ **Os CINCO roteadores estão aqui desde 2026-09-12** (W2 Fase B, 2.ª volta), e a chave
+/// `"vec"` saiu da catraca `FAMILIAS_COM_O_ROTEADOR_AINDA_NA_SHELL` no mesmo commit — *uma dívida
+/// cumprida e não apagada lê-se como dívida aberta*.
 ///
-/// Medido em 2026-09-11: dos nomes `PH2D_VEC_*_SMOKE` que esta crate menciona, **nenhum é lido
-/// aqui** — eles aparecem só em doc-comments dos campos de [`state::VecState`], que são a memória
-/// *«esta cena já montou?»*. Quem **lê** a variável e escolhe a cena é o roteador da shell, porque
-/// ele toca a `App`. ⛔ *Uma varredura textual pelo nome da variável mede MENÇÃO, não posse* — foi
-/// exactamente essa leitura que, na integração, quase escreveu quatro roteadores que esta crate
-/// não responde.
+/// # ⚠️ São CINCO, e o quinto quase não foi contado
 ///
-/// ⇒ a entrada sai da catraca no dia em que a Fase B trouxer o roteador de cenas para cá.
+/// O briefing desta linha listava **quatro** (`BONE` · `STACK` · `APPEARANCE` · `FADE`) e mandava
+/// **contar, não copiar**. Contados, são cinco: o `PH2D_VEC_SVG_SMOKE` é lido por um ficheiro que
+/// se chamava `svg_import_smoke.rs` — **sem** o prefixo `vec_` —, e o censo desta família era
+/// definido por *prefixo de nome de ficheiro*. ⛔ *A unidade da posse é o ASSUNTO, nunca o nome do
+/// ficheiro* (é a §2.7 do HOWTO um nível acima: ali um censo por prefixo varre **zero** e fica
+/// verde; aqui varreu **menos** e a diferença leu-se como «não há mais nada»).
+///
+/// # ⛔ O que NÃO é declarado, e porquê
+///
+/// O `PH2D_BUILD_SMOKE` e o `PH2D_UI_MOTION_SMOKE` aparecem como smokes do módulo Vector no
+/// `CLAUDE.md` §5, e **continuam a ser lidos pela SHELL** (`build_smoke.rs`, `ui_motion_smoke.rs`).
+/// Declará-los aqui diria que esta crate responde por cenas que ela não encaminha — e **nenhum
+/// gate do registo o apanharia**, porque eles medem a FORMA do nome e o `max_level`, nunca se a
+/// env é lida deste lado. *Um registo que se pode mentir sem reprovar só vale o cuidado de quem o
+/// escreve.*
+///
+/// ⚠️ `PH2D_BLEND_LOG`, `PH2D_TEXT_LOG` e `PH2D_VEC_OVERLAY_DIAG` são **diagnóstico** e não entram;
+/// `PH2D_VEC_PEN` e `PH2D_VEC_DEMO_N` são configuração de arranque, não roteadores de cena.
+///
+/// # O `max_level` é CONTADO, e para os cinco ele é `1`
+///
+/// Cada um é um **interruptor**: o corpo pergunta `std::env::var_os(..).is_some()` e monta UMA
+/// cena — não há `match` de níveis em nenhum deles (ao contrário do `PH2D_PHYSICS_SMOKE`, que
+/// declara 117). O número sai da forma do roteador, não de memória.
 pub const FAMILY: ph2d_app_host::AppFamily = ph2d_app_host::AppFamily {
     key: "vec",
-    routers: &[],
+    routers: &[
+        r("PH2D_VEC_APPEARANCE_SMOKE"),
+        r("PH2D_VEC_BONE_SMOKE"),
+        r("PH2D_VEC_FADE_SMOKE"),
+        r("PH2D_VEC_STACK_SMOKE"),
+        r("PH2D_VEC_SVG_SMOKE"),
+    ],
 };
+
+/// Um roteador-interruptor desta família — ver a nota do [`FAMILY`] sobre o `max_level`.
+const fn r(env: &'static str) -> ph2d_app_host::SmokeRouter {
+    ph2d_app_host::SmokeRouter { env, max_level: 1 }
+}

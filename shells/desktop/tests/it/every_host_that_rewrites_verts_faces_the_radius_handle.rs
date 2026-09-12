@@ -34,23 +34,60 @@ use std::fs;
 /// MESMO commit em que nasce, senão este gate passa a guardar menos do que promete.
 const VERTS_REWRITE: [&str; 3] = [".verts = ", ".verts.clear()", ".replace_cooked("];
 
+/// As árvores onde um host vivo pode morar, relativas à raiz da workspace.
+///
+/// ⛔⛔ **A shell deixou de ser a única, e o censo NÃO seguiu sozinho** (W2, 2026-09-12). O
+/// `shape_live` — *a forma viva*, o primeiro dos cinco que a mensagem abaixo nomeia — mudou-se
+/// para `ph2d-app-vec` numa fase anterior, e este censo continuou a ler `5` porque o
+/// `skeleton_live.rs` da shell **também** acabava em `_live.rs` e entrou no lugar dele.
+///
+/// ⚠️ *O piso segurou o NÚMERO enquanto a POPULAÇÃO trocava por baixo dele* — a mesma forma da
+/// catraca sem censo de obsolescência (`CLAUDE.md` §5.0), um nível abaixo: um controlo positivo
+/// que conta quantos não vê **quais**. Só quando a pele saiu da shell é que o número caiu e isto
+/// ficou visível.
+///
+/// ⇒ O censo varre as três árvores onde a lei de facto vive. A convenção `*_live.rs` vale nas
+/// três, e é por isso que o módulo da pele se chama `skin_live.rs` dentro da crate dele.
+const ARVORES: [&str; 3] = [
+    "shells/desktop/src",
+    "crates/ph2d-app-vec/src",
+    "crates/ph2d-skeleton-live/src",
+];
+
 /// Só hosts vivos: `*_live.rs`. Exclui os `*_tests.rs` (que montam fixtures e escrevem
 /// `verts` legitimamente) e o `blend_smoke.rs` — e evita o falso positivo que o gate irmão
 /// (`settle_skips_every_derived_geometry`) pagou ao varrer por nome de arquivo largo demais.
 fn live_hosts() -> Vec<(String, String)> {
-    fs::read_dir(concat!(env!("CARGO_MANIFEST_DIR"), "/src"))
-        .expect("src/")
-        .filter_map(Result::ok)
-        .filter_map(|e| e.file_name().into_string().ok())
-        .filter(|n| n.ends_with("_live.rs"))
-        .filter_map(|n| {
-            let src = fs::read_to_string(format!("{}/src/{n}", env!("CARGO_MANIFEST_DIR"))).ok()?;
-            VERTS_REWRITE
-                .iter()
-                .any(|m| src.contains(m))
-                .then_some((n, src))
-        })
-        .collect()
+    // CARGO_MANIFEST_DIR = shells/desktop; dois pais = a raiz da workspace.
+    let raiz = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .and_then(std::path::Path::parent)
+        .expect("shells/desktop tem dois pais")
+        .to_path_buf();
+    let mut achados = Vec::new();
+    for arvore in ARVORES {
+        let dir = raiz.join(arvore);
+        let Ok(entradas) = fs::read_dir(&dir) else {
+            panic!(
+                "a árvore `{arvore}` do censo não existe — o caminho mudou e este gate passaria a medir menos"
+            )
+        };
+        for e in entradas.filter_map(Result::ok) {
+            let Ok(n) = e.file_name().into_string() else {
+                continue;
+            };
+            if !n.ends_with("_live.rs") || n.ends_with("_live_tests.rs") {
+                continue;
+            }
+            let Ok(src) = fs::read_to_string(dir.join(&n)) else {
+                continue;
+            };
+            if VERTS_REWRITE.iter().any(|m| src.contains(m)) {
+                achados.push((n, src));
+            }
+        }
+    }
+    achados
 }
 
 #[test]
@@ -63,11 +100,13 @@ fn every_live_host_that_rewrites_verts_is_named_by_the_radius_handle_policy() {
 
     let hosts = live_hosts();
     assert!(
-        hosts.len() >= 5,
-        "só {} hosts vivos reescrevem `verts` — a forma viva, o conector, o blend, o morph e \
-         o envelope existem, então o detector cegou (alguém mudou como se reescreve a \
-         geometria?). Um gate que não vê nada passa sempre.",
-        hosts.len()
+        hosts.len() >= 6,
+        "só {} hosts vivos reescrevem `verts` — a forma viva, a PELE, o conector, o blend, o \
+         morph e o envelope existem, então o detector cegou (alguém mudou como se reescreve a \
+         geometria, ou um host mudou de árvore sem entrar em `ARVORES`?). Um gate que não vê \
+         nada passa sempre. Achados: {:?}",
+        hosts.len(),
+        hosts.iter().map(|(n, _)| n.as_str()).collect::<Vec<_>>()
     );
 
     for (host, _) in &hosts {

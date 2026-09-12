@@ -1,0 +1,41 @@
+[package]
+name = "ph2d-skeleton-live"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+[dependencies]
+# A LEI e os COMPONENTES do esqueleto (ADR-0169: o esqueleto é módulo próprio).
+ph2d-core = { path = "../ph2d-core" }
+ph2d-ecs = { path = "../ph2d-ecs" }
+ph2d-skeleton = { path = "../ph2d-skeleton" }
+ph2d-skeleton-ecs = { path = "../ph2d-skeleton-ecs" }
+# ⚠️ **A ponte documento ⇄ árvore, e é ela que proíbe esta lei de viver na
+# `ph2d-skeleton-ecs`:** aquela crate é dependência da `ph2d-vec-entities`, então pôr o `bind` lá
+# fecharia o ciclo `skeleton-ecs → vec-entities → skeleton-ecs`. *Uma folha nova não é escolha de
+# gosto quando a alternativa é um ciclo.*
+ph2d-vec-entities = { path = "../ph2d-vec-entities" }
+ph2d-vec-scene = { path = "../ph2d-vec-scene" }
+# A malha da tinta e a `Sprite` de onde ela sai — a 2.ª mídia do esqueleto.
+# ⚠️⚠️ **A FEATURE não viaja com o código** (HOWTO §2.4): a `serde` da `ph2d-poly2d` é opcional
+# («só quem GUARDA uma malha liga isto», diz o Cargo.toml dela) e quem a ligava era a SHELL. Numa
+# crate que não a declara, o `postcard::to_allocvec(&Mesh2d)` deixa de compilar — e esta falha
+# alto, que é a metade boa; a irmã perigosa é o `#[cfg(feature)]` que fica falso em silêncio.
+ph2d-poly2d = { path = "../ph2d-poly2d", features = ["serde"] }
+ph2d-render = { path = "../ph2d-render" }
+# ⚠️ A SÉTIMA invisível dentro da shell (HOWTO §1.3): o `skin_image` desenha a malha com
+# `BezPath`/`Point` e escolhe a qualidade de amostragem da imagem.
+ph2d-vector = { path = "../ph2d-vector" }
+# E mais duas invisíveis: a lei de deformação da pele, e o catálogo de onde sai a textura.
+ph2d-vec-skin = { path = "../ph2d-vec-skin" }
+ph2d-asset = { path = "../ph2d-asset" }
+postcard = { version = "1", features = ["use-std"] }
+
+[features]
+# ⚠️ HOWTO §2.5 — do tamanho do que ATRAVESSA a fronteira, e nada mais.
+test-support = []

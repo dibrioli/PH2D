@@ -837,14 +837,9 @@ pub(crate) struct App {
     /// A cena do IMPORTAR SVG (`PH2D_VEC_SVG_SMOKE`) já montou — ela escreve o próprio ficheiro.
     pub(crate) svg_import_smoke_done: bool,
     /// As três peças da cena entre os dois tempos: `(forma, raiz do esqueleto dela)`.
-    /// ⭐ **A IMAGEM da cena de osso** — os bits da sprite e a raiz do esqueleto dela.
-    ///
-    /// ⚠️ **Slot próprio, e não uma 4.ª entrada no `_pend`:** aquele guarda `VecPathId`, e uma
-    /// imagem não é um caminho. Enfiá-la lá pediria um id inventado, e o passo que espera as
-    /// entidades (`vec_entities::contains_key`) procuraria por ele para sempre.
-    pub(crate) vec_bone_smoke_img: Option<(u64, Option<ph2d_ecs::Entity>)>,
-    pub(crate) vec_bone_smoke_pend:
-        Option<[(ph2d_vec_scene::VecPathId, Option<ph2d_ecs::Entity>); 3]>,
+    // ⭐ Os dois slots da cena de osso mudaram-se para o `ph2d_app_vec::state::VecState`, ao lado
+    // do `bone_smoke_step` que sempre lhes pertenceu (HOWTO §1.1: *a família que guardou o estado
+    // em casa foi a que conseguiu sair de casa*).
     pub(crate) nest_smoke_done: bool,
     /// Latch de `PH2D_INSTANCE_SMOKE` (o ragdoll instanciado 3×, ADR-0164 F4).
     pub(crate) instance_smoke_done: bool,

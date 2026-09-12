@@ -452,7 +452,9 @@ pub fn cook_tinted(
     rgb: [u8; 3],
 ) -> crate::VecPath {
     let mut p = cook(kind, a, b, v);
-    p.fill = Some(crate::Paint::solid(crate::Rgba8::new(rgb[0], rgb[1], rgb[2], 255)));
+    p.fill = Some(crate::Paint::solid(crate::Rgba8::new(
+        rgb[0], rgb[1], rgb[2], 255,
+    )));
     p
 }
 

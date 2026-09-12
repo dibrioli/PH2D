@@ -6,7 +6,9 @@
 //! e o que ela escreve é **pré-visualização**, não documento.
 
 use super::*;
+// ⚠️ Declarado aqui: o pai deixou de nomear o `Bone` quando a lei foi para a folha.
 use ph2d_ecs::{ChildOf, Name, RootOrder};
+use ph2d_skeleton_ecs::Bone;
 
 /// Um braço de dois ossos deitado no `+X`, com a raiz na origem: ombro `(0,0)→(10,0)`, cotovelo
 /// `(10,0)→(20,0)`. Devolve `(sim, [ombro, cotovelo])`.

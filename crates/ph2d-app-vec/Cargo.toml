@@ -64,6 +64,16 @@ ph2d-vec-boolean = { path = "../ph2d-vec-boolean" }
 # cujos três últimos braços de cena também autoram timeline.
 ph2d-anim = { path = "../ph2d-anim" }
 ph2d-timeline = { path = "../ph2d-timeline" }
+# ⭐ A cena `PH2D_VEC_BONE_SMOKE` monta um esqueleto, prende-lhe uma imagem e gradua a malha dela.
+# As três são folhas partilhadas, e as duas primeiras nasceram nesta jornada exactamente para que
+# esta cena pudesse sair da shell.
+ph2d-skeleton-live = { path = "../ph2d-skeleton-live" }
+ph2d-skeleton-ecs = { path = "../ph2d-skeleton-ecs" }
+ph2d-skeleton = { path = "../ph2d-skeleton" }
+ph2d-image-import = { path = "../ph2d-image-import" }
+ph2d-poly2d = { path = "../ph2d-poly2d" }
+ph2d-asset = { path = "../ph2d-asset" }
+ph2d-render = { path = "../ph2d-render" }
 ph2d-vector = { path = "../ph2d-vector" }
 ph2d-vector-font = { path = "../ph2d-vector-font" }
 ph2d-panel-vector = { path = "../ph2d-panel-vector" }

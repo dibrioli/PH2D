@@ -4947,12 +4947,19 @@ dependencies = [
  "fontique",
  "ph2d-anim",
  "ph2d-app-host",
+ "ph2d-asset",
  "ph2d-core",
  "ph2d-ecs",
  "ph2d-editor",
+ "ph2d-image-import",
  "ph2d-painter-brush",
  "ph2d-panel-authored",
  "ph2d-panel-vector",
+ "ph2d-poly2d",
+ "ph2d-render",
+ "ph2d-skeleton",
+ "ph2d-skeleton-ecs",
+ "ph2d-skeleton-live",
  "ph2d-text",
  "ph2d-timeline",
  "ph2d-tokens",
@@ -5636,6 +5643,7 @@ dependencies = [
  "ph2d-guides",
  "ph2d-host",
  "ph2d-i18n",
+ "ph2d-image-import",
  "ph2d-imageio",
  "ph2d-imageio-registry-init",
  "ph2d-input",
@@ -5722,6 +5730,7 @@ dependencies = [
  "ph2d-sdf",
  "ph2d-skeleton",
  "ph2d-skeleton-ecs",
+ "ph2d-skeleton-live",
  "ph2d-skeleton-render",
  "ph2d-sprite-sheet",
  "ph2d-table",
@@ -5779,6 +5788,17 @@ dependencies = [
 [[package]]
 name = "ph2d-i18n"
 version = "0.0.0"
+
+[[package]]
+name = "ph2d-image-import"
+version = "0.0.0"
+dependencies = [
+ "ph2d-asset",
+ "ph2d-core",
+ "ph2d-ecs",
+ "ph2d-render",
+ "ph2d-unique-name",
+]
 
 [[package]]
 name = "ph2d-imageio"
@@ -8004,6 +8024,24 @@ dependencies = [
  "ph2d-ecs",
  "ph2d-skeleton",
  "serde",
+]
+
+[[package]]
+name = "ph2d-skeleton-live"
+version = "0.0.0"
+dependencies = [
+ "ph2d-asset",
+ "ph2d-core",
+ "ph2d-ecs",
+ "ph2d-poly2d",
+ "ph2d-render",
+ "ph2d-skeleton",
+ "ph2d-skeleton-ecs",
+ "ph2d-vec-entities",
+ "ph2d-vec-scene",
+ "ph2d-vec-skin",
+ "ph2d-vector",
+ "postcard",
 ]
 
 [[package]]

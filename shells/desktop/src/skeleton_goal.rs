@@ -38,13 +38,12 @@
 //! Mover o osso moveria o alvo, que moveria o osso. O passe **recusa** esse caso (e diz-o no
 //! `PH2D_BONE_LOG`) em vez de o resolver, porque não há resposta certa para um laço.
 
-use ph2d_ecs::{ChildOf, Entity, Name, RootOrder, SimWorld, StableId, Transform};
-use ph2d_skeleton_ecs::{Bone, IkGoal};
+use ph2d_ecs::{ChildOf, Entity, SimWorld, StableId, Transform};
+use ph2d_skeleton_ecs::IkGoal;
 
 use ph2d_preview_drive::{Driven, PreviewDrive};
 
 /// O nome que uma âncora nova recebe. ⚠️ Em inglês, como toda a UI da casa.
-const ANCHOR_NAME: &str = "IK Goal";
 
 /// **O índice `StableId → entidade` de TUDO** — o alvo de uma âncora é um objecto qualquer, não um
 /// osso, então este índice é mais largo que o [`crate::skeleton_live`]'s.
@@ -56,20 +55,6 @@ fn index(sim: &SimWorld) -> std::collections::BTreeMap<StableId, Entity> {
         .iter_entities()
         .filter_map(|er| er.get::<StableId>().map(|s| (*s, er.id())))
         .collect()
-}
-
-/// **A corrente que esta âncora governa** — os `n` ossos que acabam em `tip`, da raiz para a ponta.
-///
-/// ⚠️ `chain == 0` significa *até à raiz do esqueleto*, que é a leitura do Blender. E o tecto real
-/// é a corrente que EXISTE: um número absurdo vindo de um ficheiro é aparado pela árvore, não por
-/// uma constante escolhida.
-pub(crate) fn governed(sim: &SimWorld, tip: Entity, chain: u32) -> Vec<Entity> {
-    let toda = crate::skeleton_live::chain_to(sim, tip.to_bits());
-    if chain == 0 {
-        return toda;
-    }
-    let n = (chain as usize).min(toda.len());
-    toda[toda.len() - n..].to_vec()
 }
 
 /// ⭐⭐⭐ **ESTE OSSO É GOVERNADO POR UMA ÂNCORA?** — ou seja: *o ângulo dele é DERIVADO, e não
@@ -296,59 +281,6 @@ pub(crate) fn drag_anchor(sim: &mut SimWorld, bone: Entity, world: [f64; 2]) -> 
     true
 }
 
-/// ⭐⭐⭐ **CRIA a âncora** deste osso, com o alvo pousado na ponta dele. Devolve o alvo.
-///
-/// ⚠️ **Nasce COINCIDENTE com a ponta**, e isso é a lei da casa aplicada: *todo motor novo é no-op
-/// no ponto neutro*. Carregar em *Add IK* não pode mover o desenho — se movesse, o artista perderia
-/// a pose que acabou de fazer e a feature seria uma armadilha.
-///
-/// ⚠️ **O alvo nasce RAIZ**, e não filho do osso: filho da corrente é exactamente o laço que o
-/// [`feeds_back`] recusa.
-///
-/// `None` se `bone` não é um osso, ou se ele já tem âncora (o painel não oferece o botão nesse
-/// caso — e recusar aqui também é o que impede duas âncoras a puxar a mesma corrente).
-pub(crate) fn add(sim: &mut SimWorld, bone: Entity) -> Option<Entity> {
-    if sim.world().get::<Bone>(bone).is_none() || sim.world().get::<IkGoal>(bone).is_some() {
-        return None;
-    }
-    let ponta = crate::bone_pick::tip_of(sim, bone.to_bits())?;
-    #[expect(
-        clippy::cast_possible_truncation,
-        reason = "o `Transform` da casa é f32; a geometria do documento é f64"
-    )]
-    let alvo = sim
-        .world_mut()
-        .spawn((
-            Transform {
-                translation: ph2d_core::Vec2::new(ponta[0] as f32, ponta[1] as f32),
-                ..Transform::IDENTITY
-            },
-            Name::new(ANCHOR_NAME),
-            RootOrder(0),
-            // ⚠️ **A marca vem no spawn**, e não depois: entre o spawn e um `insert` seguinte corre
-            // pelo menos um `empty_objects`, e o alvo apareceria com o anel do objecto vazio por um
-            // quadro. *Um piscar de um quadro é indistinguível de um defeito intermitente.*
-            ph2d_skeleton_ecs::IkTarget,
-        ))
-        .id();
-    // ⚠️ **Semear o id ANTES de o guardar** — um objecto criado neste quadro ainda não tem
-    // `StableId` (a varredura corre uma vez por quadro), e sem isto a âncora nomearia `NONE`. É o
-    // mesmo que o `skeleton_live::bind` faz, e pela mesma razão.
-    ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
-    let id = ph2d_ecs::stable_id_of(sim.world(), alvo)?;
-    // ⭐⭐⭐ **O LADO É CAPTURADO, não escolhido** — a âncora nasce a defender a dobra que o artista
-    // já posou à mão. ⚠️ Sem isto ela nasceria em `Keep`, e a primeira vez que ele esticasse o
-    // membro o joelho inverteria sozinho: é o defeito medido em
-    // `the_elbow_flips_when_the_chain_passes_through_straight`.
-    let bend = captured_side(sim, &governed(sim, bone, ph2d_skeleton_ecs::DEFAULT_CHAIN));
-    sim.world_mut().entity_mut(bone).insert(IkGoal {
-        target: id,
-        bend,
-        ..IkGoal::default()
-    });
-    Some(alvo)
-}
-
 /// **APAGA a âncora** deste osso, o alvo com ela, **e devolve a pose que o artista autorou**.
 /// Devolve `true` se havia uma.
 ///
@@ -434,49 +366,6 @@ pub(crate) fn solve(sim: &mut SimWorld, preview: &mut PreviewDrive) -> usize {
         eprintln!("[bone] {feitas} corrente(s) sob ancora");
     }
     feitas
-}
-
-/// **AS JUNTAS DE UMA CORRENTE, em MUNDO** — `corrente.len() + 1` posições e os comprimentos entre
-/// elas. `None` quando um osso da corrente não tem segmento (a forma nasceu neste quadro).
-///
-/// ⭐ **Uma porta, dois consumidores:** quem RESOLVE ([`solve_one`]) e quem CAPTURA o lado da dobra
-/// ([`add`]). ⚠️ Escrita duas vezes, ela divergia no dia em que um dos dois passasse a saltar um
-/// osso — e o sintoma seria a âncora nascer com o lado do vizinho.
-fn joints_of(sim: &SimWorld, corrente: &[Entity]) -> Option<(Vec<[f64; 2]>, Vec<f64>)> {
-    let segs = crate::skeleton_live::bone_segments(sim);
-    let mut juntas: Vec<[f64; 2]> = Vec::with_capacity(corrente.len() + 1);
-    let mut comps: Vec<f64> = Vec::with_capacity(corrente.len());
-    for (i, &e) in corrente.iter().enumerate() {
-        let (_, a, b) = segs.iter().copied().find(|(x, _, _)| *x == e.to_bits())?;
-        juntas.push(a);
-        comps.push((b[0] - a[0]).hypot(b[1] - a[1]));
-        if i + 1 == corrente.len() {
-            juntas.push(b);
-        }
-    }
-    Some((juntas, comps))
-}
-
-/// ⭐⭐⭐ **DE QUE LADO A CORRENTE JÁ ESTÁ**, no instante em que a âncora nasce.
-///
-/// A recta de referência é `raiz → ponta`, e ela é exactamente a certa aqui: o alvo nasce **na
-/// ponta** (é o que faz criar a âncora ser um no-op visual), logo `raiz → alvo` e `raiz → ponta`
-/// são a mesma recta.
-///
-/// ⚠️ Uma corrente que nasce **recta** não tem lado, e aí devolve-se [`BendSide::Keep`] — que é o
-/// desempate determinístico de sempre. ⛔ Escolher um lado ali seria inventar uma decisão do artista
-/// a partir de ruído de `f32`.
-fn captured_side(sim: &SimWorld, corrente: &[Entity]) -> ph2d_skeleton::BendSide {
-    let Some((juntas, comps)) = joints_of(sim, corrente) else {
-        return ph2d_skeleton::BendSide::Keep;
-    };
-    let alcance: f64 = comps.iter().sum();
-    let Some(&ponta) = juntas.last() else {
-        return ph2d_skeleton::BendSide::Keep;
-    };
-    // ⚠️ **Quem decide o que «recta» significa é a LEI**, não esta função: a barra é uma fracção do
-    // alcance e vive lá dentro, ao lado do arqueamento que a usa.
-    ph2d_skeleton::bend_side_of(&juntas, ponta, alcance)
 }
 
 /// Uma corrente, um alvo. Separada por responsabilidade e pelo teto de LOC por função (HR-18).
@@ -567,3 +456,22 @@ mod tests;
 #[cfg(test)]
 #[path = "skeleton_goal_ledger_tests.rs"]
 mod ledger_tests;
+
+/// ⭐⭐⭐ **CRIA a âncora** deste osso — delegação para [`ph2d_skeleton_live::goal::add`].
+pub(crate) fn add(sim: &mut SimWorld, bone: Entity) -> Option<Entity> {
+    ph2d_skeleton_live::goal::add(sim, bone)
+}
+
+/// **A corrente que esta âncora governa** — delegação para [`ph2d_skeleton_live::goal::governed`].
+///
+/// ⚠️ `chain` é `u32` e não `u16`: a 1.ª redacção desta delegação escreveu a assinatura de
+/// memória e o compilador apanhou-a em três sítios. *Uma assinatura lê-se do ficheiro.*
+pub(crate) fn governed(sim: &SimWorld, tip: Entity, chain: u32) -> Vec<Entity> {
+    ph2d_skeleton_live::goal::governed(sim, tip, chain)
+}
+
+/// **As juntas de uma corrente, em MUNDO** — delegação para
+/// [`ph2d_skeleton_live::goal::joints_of`].
+fn joints_of(sim: &SimWorld, corrente: &[Entity]) -> Option<(Vec<[f64; 2]>, Vec<f64>)> {
+    ph2d_skeleton_live::goal::joints_of(sim, corrente)
+}

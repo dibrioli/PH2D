@@ -6,6 +6,8 @@
 //! existe com um mundo ECS é a **captura no nascimento** e o defeito de ponta a ponta.
 
 use super::*;
+// ⚠️ Declarado aqui: o pai deixou de nomear o `Bone` quando a lei foi para a folha.
+use ph2d_skeleton_ecs::Bone;
 
 /// O mesmo braço, mas **dobrado** por `theta` radianos no cotovelo.
 ///

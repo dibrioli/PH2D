@@ -974,8 +974,6 @@ impl App {
             morph_fade_smoke_done: false,
             vec_state: ph2d_app_vec::state::VecState::default(),
             svg_import_smoke_done: false,
-            vec_bone_smoke_pend: None,
-            vec_bone_smoke_img: None,
             nest_smoke_done: false,
             instance_smoke_done: false,
             instance_echo: Default::default(),
@@ -1359,12 +1357,11 @@ impl ApplicationHandler for App {
     }
 }
 
-/// Floor for `pixels_per_meter` used inside the import math; below
-/// this a single sprite would span kilometers and break camera math.
-/// The UI clamps to a higher floor (`MIN_PIXELS_PER_METER = 1.0` in
-/// `ph2d_editor::project`) but defense-in-depth here keeps the shell
-/// safe even if a future config path skips that clamp.
-pub(crate) const EPS_PIXELS_PER_METER: f32 = 0.01;
+// ⭐ Os dois pisos da matemática de importação mudaram-se para a folha
+// [`ph2d_image_import`] com a lei que os lê (W2/L4 Fase B, 2.ª volta). A re-exportação mantém os
+// 21 ficheiros que escrevem `crate::EPS_PIXELS_PER_METER` byte a byte iguais — ⛔ declará-los aqui
+// OUTRA vez seriam duas respostas à mesma pergunta, e a que envelhece é a que o artista vê.
+pub(crate) use ph2d_image_import::EPS_PIXELS_PER_METER;
 
 /// When the image-edit undo slot is being overwritten by a new edit,
 /// release every pre-edit Individual texture across the previous
@@ -1404,10 +1401,7 @@ pub(crate) fn commit_image_edit_transaction(
     *slot = Some(ImageEditTransaction { entries, label });
 }
 
-/// Floor for the world-space side length of an imported sprite.
-/// Guarantees the quad is selectable even if the user picks an
-/// absurd `pixels_per_meter` value combined with a 1-pixel image.
-pub(crate) const MIN_SPRITE_SIZE: f32 = 0.001;
+pub(crate) use ph2d_image_import::MIN_SPRITE_SIZE;
 
 /// Query the live cursor position relative to `window` in physical
 /// pixels (top-left origin). Returns `None` if the platform path

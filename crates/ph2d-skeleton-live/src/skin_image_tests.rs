@@ -118,7 +118,7 @@ fn binding_an_image_to_a_still_skeleton_moves_nothing() {
         }
     }
     assert!(
-        crate::skeleton_live::bind_image(
+        crate::skin_live::bind_image(
             &mut sim,
             e,
             &rgba,
@@ -161,7 +161,7 @@ fn turning_the_bone_carries_the_image() {
         }
     }
     let raiz = ph2d_ecs::Entity::from_bits(osso);
-    assert!(crate::skeleton_live::bind_image(
+    assert!(crate::skin_live::bind_image(
         &mut sim,
         e,
         &rgba,

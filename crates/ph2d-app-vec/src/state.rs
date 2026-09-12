@@ -65,6 +65,14 @@ pub struct VecState {
     /// prender exige a ENTIDADE da forma, e quem a cria corre depois do prólogo.
     pub bone_smoke_step: u8,
 
+    /// ⭐ **A IMAGEM da cena de osso** — os bits da sprite e a raiz do esqueleto dela.
+    ///
+    /// ⚠️ **Slot próprio, e não uma 4.ª entrada no `_pend`:** aquele guarda `VecPathId`, e uma
+    /// imagem não é um caminho. Enfiá-la lá pediria um id inventado, e o passo que espera as
+    /// entidades (`vec_entities::contains_key`) procuraria por ele para sempre.
+    pub bone_smoke_img: Option<(u64, Option<ph2d_ecs::Entity>)>,
+    pub bone_smoke_pend: Option<[(ph2d_vec_scene::VecPathId, Option<ph2d_ecs::Entity>); 3]>,
+
     /// In-app path clipboard for Vector Ctrl+C/X/V — a clone of the copied path
     /// (geometry + style, id-less). `None` until the first copy/cut.
     pub clipboard: Option<ph2d_vec_scene::VecClip>,

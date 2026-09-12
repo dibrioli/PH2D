@@ -108,6 +108,13 @@ mod tests {
     /// já não descreve nada, seja porque a família passou a declarar roteador, seja porque ela
     /// deixou de existir.
     ///
+    /// ⭐⭐ **A `vec` SAIU em 2026-09-12 (W2/L4 Fase B, 2.ª volta):** os **cinco** roteadores dela
+    /// (⚠️ cinco, não os quatro que o briefing listava — o `PH2D_VEC_SVG_SMOKE` vivia num ficheiro
+    /// sem o prefixo `vec_` e o censo por prefixo não o via) passaram para `ph2d_app_vec`, com a
+    /// env lida lá. ⛔ O que destravou não foi um refactor: foram **duas folhas partilhadas novas**
+    /// — `ph2d-skeleton-live` e `ph2d-image-import` —, porque a cena do osso chamava cinco funções
+    /// puras que viviam na shell, e esta catraca é **all-or-nothing por família**.
+    ///
     /// ⭐ **Medido em 2026-09-11, na integração das seis linhas da W2:** das cinco famílias da
     /// Fase A, só a `flip` lia as próprias `PH2D_*_SMOKE` dentro da crate (15 delas); `vec`,
     /// `motion`, `physics` e `sculpt3d` extraíram código e **não** o roteador — o `match` de cenas
@@ -118,7 +125,7 @@ mod tests {
     /// lida lá. ⚠️ **O que destravou foi uma decisão, não um refactor:** os três últimos braços
     /// autoram uma track de timeline, e a família passou a poder depender da `ph2d-timeline` —
     /// *uma crate-motor irmã não é a shell* (ADR-0075). As outras três continuam aqui.
-    const FAMILIAS_COM_O_ROTEADOR_AINDA_NA_SHELL: &[&str] = &["motion", "vec"];
+    const FAMILIAS_COM_O_ROTEADOR_AINDA_NA_SHELL: &[&str] = &["motion"];
 
     /// ⚠️ **Uma família registada tem de declarar pelo menos um roteador, e todo roteador tem de ter
     /// nível.** Sem esta metade, uma família que se registasse com `routers: &[]` passaria no gate

@@ -1,6 +1,9 @@
 //! Os gates do gesto do modo Osso — o que o artista aponta contra o que o documento guarda.
 
 use super::*;
+// ⚠️ Declarado AQUI e não herdado do pai: a `create` delegou para a folha e o pai deixou de
+// nomear o `Name` no código dele. *Um `use` que só o filho usa é um aviso no pai.*
+use ph2d_ecs::Name;
 use ph2d_skeleton_render::BonePart;
 use ph2d_tool_vector::BoneAction;
 

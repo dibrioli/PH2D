@@ -29,14 +29,6 @@ pub(crate) fn hit(sim: &SimWorld, world: [f64; 2], px_to_world: f64) -> Option<u
     melhor.map(|(_, bits)| bits)
 }
 
-/// **A ponta de um osso, em MUNDO** — para o encaixe do próximo nascer colado nela.
-pub(crate) fn tip_of(sim: &SimWorld, bits: u64) -> Option<[f64; 2]> {
-    crate::skeleton_live::bone_segments(sim)
-        .into_iter()
-        .find(|(b, _, _)| *b == bits)
-        .map(|(_, _, tip)| tip)
-}
-
 /// ⭐⭐⭐ **A PONTA DE OSSO SOB O PONTEIRO** — a porta ÚNICA do parentesco (ordem do dono,
 /// 2026-09-09). Devolve o osso que a oferece e o ponto dela, em mundo.
 ///
@@ -419,3 +411,8 @@ impl crate::App {
 #[cfg(test)]
 #[path = "bone_pick_tests.rs"]
 mod tests;
+
+/// **A ponta de um osso, em MUNDO** — delegação para [`ph2d_skeleton_live::bone::tip_of`].
+pub(crate) fn tip_of(sim: &SimWorld, bits: u64) -> Option<[f64; 2]> {
+    ph2d_skeleton_live::bone::tip_of(sim, bits)
+}

@@ -1,4 +1,4 @@
-//! Os gates do [`crate::skeleton_live`] — o esqueleto como HOST.
+//! Os gates do [`crate::skin_live`] — o esqueleto como HOST.
 //!
 //! A **lei** da mistura (peso, órfão, C¹, escala) é do MÓDULO (`ph2d-skeleton`) e está gateada lá. Aqui
 //! mede-se o que só existe com um mundo ECS: prender não move nada · dobrar um osso dobra o desenho
@@ -344,7 +344,7 @@ fn probe_the_smoke_sequence() {
     }
     eprintln!(
         "[probe] ossos = {:?}",
-        crate::skeleton_live::bone_segments(&sim)
+        crate::skin_live::bone_segments(&sim)
     );
     let n = bind(&mut sim, &scene, &map, &[id], raiz);
     eprintln!("[probe] bind devolveu {n}");

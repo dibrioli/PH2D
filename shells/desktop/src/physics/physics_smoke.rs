@@ -70,7 +70,14 @@ impl crate::App {
         let Some(gfx) = self.gfx.as_mut() else {
             return;
         };
-        let mut ctx = ph2d_app_physics::SceneCtx::new(gfx.sim.world_mut(), gfx.physics.settings());
+        // ⚠️ `self.gfx` e `self.timeline` são campos DISJUNTOS da `App`: o
+        // empréstimo mutável de ambos no mesmo escopo é o que torna a timeline
+        // alcançável de uma cena sem o roteador a ter de correr duas vezes.
+        let mut ctx = ph2d_app_physics::SceneCtx::new(
+            gfx.sim.world_mut(),
+            gfx.physics.settings(),
+            &mut self.timeline.doc,
+        );
         build(&mut ctx);
         let want = std::mem::take(&mut ctx.want);
         drop(ctx);
@@ -83,6 +90,12 @@ impl crate::App {
         }
         if let Some(s) = want.settings {
             gfx.physics.set_settings(s);
+        }
+        if let Some((a, b)) = want.playhead_loop {
+            self.playhead.set_loop(a, b);
+        }
+        if let Some(bits) = want.player_readout_log {
+            self.physics.player_readout_log = Some(bits);
         }
         if let Some(hero) = gfx.hero_screen.as_mut() {
             for k in &want.panels {

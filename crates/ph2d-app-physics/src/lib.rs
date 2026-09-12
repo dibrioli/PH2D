@@ -52,6 +52,21 @@ pub struct SceneSetup {
     pub select: Option<u64>,
     /// Definições de mundo que a cena quer impor (gravidade, sub-passos, …).
     pub settings: Option<ph2d_physics_ecs::PhysicsSettings>,
+    /// O laço do transporte que a cena quer armado, em segundos `(início, fim)`.
+    ///
+    /// ⚠️ `f64` porque é o que o `Playhead` guarda — estreitar para `f32` aqui
+    /// poria uma conversão no meio de um pedido que é só dados.
+    ///
+    /// ⚠️ **Pedido e não escrita directa**: o `Playhead` é da shell, e uma cena
+    /// que lhe tocasse a meio da construção decidiria a ordem em que as coisas
+    /// acontecem — que é precisamente o que o roteador existe para decidir.
+    pub playhead_loop: Option<(f64, f64)>,
+    /// O corpo cujo *readout* de jogador a cena quer ver impresso, em bits.
+    ///
+    /// ⚠️ Isto era `self.physics.player_readout_log = Some(bits)` — um campo do
+    /// `PhysicsState`, que vive na shell. Como pedido, a cena declara-o e o
+    /// roteador escreve-o, e a cena deixa de precisar do estado da shell.
+    pub player_readout_log: Option<u64>,
 }
 
 /// O contexto que o roteador passa a uma cena: o mundo para povoar, as definições
@@ -67,6 +82,18 @@ pub struct SceneCtx<'w> {
     pub world: &'w mut bevy_ecs::world::World,
     /// As definições de física vigentes no momento em que a cena corre.
     pub settings: ph2d_physics_ecs::PhysicsSettings,
+    /// O documento da timeline, para as cenas que AUTORAM uma track.
+    ///
+    /// ⚠️⚠️ **Esta é a única coisa que uma cena escreve DURANTE, e não por
+    /// pedido** — e a razão é que uma track não é um facto sobre a cena, é
+    /// conteúdo autorado: o que se guarda não caberia num `SceneSetup` sem o
+    /// transformar num segundo formato de timeline.
+    ///
+    /// ⭐ **Ela só é alcançável porque a `ph2d-timeline` é uma crate-motor IRMÃ**
+    /// (decisão do integrador, 11/09): não há ciclo — a `ph2d-timeline` não
+    /// depende de nenhuma `ph2d-app-*` nem da shell. *Uma crate-motor irmã não é
+    /// a shell*, que é o ADR-0075 a funcionar.
+    pub timeline: &'w mut ph2d_timeline::TimelineDoc,
     /// O que a cena pede à shell. O roteador aplica-o depois de a cena correr.
     pub want: SceneSetup,
 }
@@ -76,10 +103,12 @@ impl<'w> SceneCtx<'w> {
     pub fn new(
         world: &'w mut bevy_ecs::world::World,
         settings: ph2d_physics_ecs::PhysicsSettings,
+        timeline: &'w mut ph2d_timeline::TimelineDoc,
     ) -> Self {
         Self {
             world,
             settings,
+            timeline,
             want: SceneSetup::default(),
         }
     }

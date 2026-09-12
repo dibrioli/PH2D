@@ -69,7 +69,7 @@ struct SculptDoc {
 
 /// Por que um documento de escultura foi recusado.
 #[derive(Debug)]
-pub(crate) enum SculptDocError {
+pub enum SculptDocError {
     /// Os bytes não são um documento (truncado, de outro formato).
     Bytes(postcard::Error),
     /// O documento é de outra versão do módulo.
@@ -91,7 +91,7 @@ impl core::fmt::Display for SculptDocError {
 }
 
 /// Uma peça já reconstruída — o que o load entrega e o device consome.
-pub(crate) type LoadedPiece = (Multires, Pose);
+pub type LoadedPiece = (Multires, Pose);
 
 /// **Lê um documento**, derivando de novo tudo o que é derivável.
 ///
@@ -102,7 +102,7 @@ pub(crate) type LoadedPiece = (Multires, Pose);
 ///
 /// # Errors
 /// Bytes ilegíveis, versão de outro módulo, ou geometria que não valida.
-pub(crate) fn decode(bytes: &[u8]) -> Result<(Vec<LoadedPiece>, usize), SculptDocError> {
+pub fn decode(bytes: &[u8]) -> Result<(Vec<LoadedPiece>, usize), SculptDocError> {
     let doc: SculptDoc = postcard::from_bytes(bytes).map_err(SculptDocError::Bytes)?;
     if doc.version != SCULPT_DOC_VERSION {
         return Err(SculptDocError::Version {
@@ -156,7 +156,7 @@ pub(crate) fn encode(pieces: &[(StackData, PoseData)], active: usize) -> Vec<u8>
 impl Sculpt3dScene {
     /// **Escreve o documento** desta cena.
     #[must_use]
-    pub(crate) fn to_doc_bytes(&self) -> Vec<u8> {
+    pub fn to_doc_bytes(&self) -> Vec<u8> {
         let pieces: Vec<(StackData, PoseData)> = self
             .objects
             .iter()

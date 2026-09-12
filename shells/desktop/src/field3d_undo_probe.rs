@@ -169,7 +169,7 @@ impl crate::App {
             ph2d_app_field3d::input::handles(s)
                 .into_iter()
                 .find_map(|h| match (h.live, &h.shape) {
-                    (true, crate::field3d_gizmo::Shape::Arrow { from, to }) => Some((
+                    (true, ph2d_viewport3d::gizmo::Shape::Arrow { from, to }) => Some((
                         area.x + from[0] + (to[0] - from[0]) * 0.7,
                         area.y + from[1] + (to[1] - from[1]) * 0.7,
                     )),
@@ -248,7 +248,7 @@ impl crate::App {
         let setas = ph2d_app_field3d::smoke::with_smoke(|s| {
             ph2d_app_field3d::input::handles(s)
                 .iter()
-                .filter(|h| h.live && matches!(h.shape, crate::field3d_gizmo::Shape::Arrow { .. }))
+                .filter(|h| h.live && matches!(h.shape, ph2d_viewport3d::gizmo::Shape::Arrow { .. }))
                 .count()
         })
         .unwrap_or(0);

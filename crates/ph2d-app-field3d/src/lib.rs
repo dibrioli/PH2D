@@ -36,7 +36,7 @@
 //! - `main.rs` / `init.rs` / `App` / o esqueleto do laço / o `input_dispatch` (o roteador);
 //! - **`field3d_snapshot_tests.rs`** — ele captura um `ProjectState`, que é a máquina de undo da
 //!   shell. O doc dele já se chamava *«a metade de SHELL da ponte ECS»*;
-//! - **cinco alias de uma linha** (`field3d_views`, `_navball`, `_layout`, `_view_menu`,
+//! - **cinco alias de uma linha** (`ph2d_viewport3d::views`, `_navball`, `_layout`, `_view_menu`,
 //!   `_gizmo`), que existem só porque `sculpt3d_*` os consome e a `line/app-sculpt3d` está a mover
 //!   os ficheiros dela **hoje**.
 //!

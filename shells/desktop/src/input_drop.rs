@@ -29,7 +29,7 @@ impl App {
             let (mesh, rest): (Vec<_>, Vec<_>) = paths
                 .iter()
                 .cloned()
-                .partition(|p| crate::sculpt3d::is_mesh_file(p));
+                .partition(|p| ph2d_app_sculpt3d::is_mesh_file(p));
             self.sculpt3d_import_files(&mesh);
             rest
         };

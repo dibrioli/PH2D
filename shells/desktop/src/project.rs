@@ -81,7 +81,7 @@ pub(crate) struct ProjectFile {
     /// Ver [`crate::project_settings`].
     pub(crate) settings: crate::project_settings::SavedSettings,
     /// **A ESCULTURA** (ADR-0150 W8.3) — a lista de peças, cada uma com a pilha de
-    /// níveis e a pose, em postcard. Ver [`crate::sculpt3d`] (`sculpt3d/doc.rs`).
+    /// níveis e a pose, em postcard. Ver [`ph2d_app_sculpt3d`] (`sculpt3d/doc.rs`).
     ///
     /// Fora do `ProjectState` pelo mesmo motivo de `motion`/`timeline`/`physics`: o
     /// `ProjectState` é a unidade do undo GLOBAL, e a escultura tem fila própria —

@@ -140,7 +140,7 @@ fn stamp_identity(sim: &mut SimWorld, entity: Entity, next_id: &mut u32) -> u32 
 /// [`ph2d_form_donation::baked_form::relight_stale`], roda por frame **sem a feature**, e é o que faz um objeto
 /// reaberto acender.
 #[allow(clippy::too_many_arguments)]
-pub(crate) fn drain(
+pub fn drain(
     scene: &mut Sculpt3dScene,
     forms: &mut BTreeMap<u64, BakedForm>,
     pass: &mut Option<ImpastoLightPass>,
@@ -206,7 +206,7 @@ pub(crate) fn drain(
 /// ⚠️ **Ele não ACENDE nada** — só re-autora. Quem acende é a
 /// [`ph2d_form_donation::baked_form::relight_stale`], que vê o carimbo divergir e faz o trabalho; separar as duas
 /// é o que deixa a acendida fora da feature.
-pub(crate) fn follow_live_rig(forms: &mut BTreeMap<u64, BakedForm>, rig: &ph2d_light::LightRig) {
+pub fn follow_live_rig(forms: &mut BTreeMap<u64, BakedForm>, rig: &ph2d_light::LightRig) {
     for b in forms.values_mut() {
         b.rig = *rig;
     }
@@ -227,7 +227,7 @@ impl Sculpt3dScene {
     ///
     /// ⚠️ **Testemunha, não enumeração:** quem move o rig são as quatro teclas de luz, o painel, e
     /// uma cena de smoke que traz rig próprio. Comparar carimbos cobre os três — e o quarto.
-    pub(crate) fn take_rig_edge(&mut self) -> bool {
+    pub fn take_rig_edge(&mut self) -> bool {
         let now = ph2d_form_donation::baked_form::rig_stamp(&self.rig);
         now != std::mem::replace(&mut self.rig_was, now)
     }

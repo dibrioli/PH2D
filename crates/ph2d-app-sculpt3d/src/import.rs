@@ -83,7 +83,7 @@ pub(crate) const MESH_EXTS: &[&str] = &["obj", "ply", "stl"];
 /// `.obj` nunca é uma imagem, então a pergunta *"de quem é este arquivo?"* não
 /// tem ambiguidade a resolver. (O roteador de decode do áudio olha o CONTEÚDO
 /// porque lá as extensões mentem — um `.ogg` pode ser Vorbis ou Opus.)
-pub(crate) fn is_mesh_file(path: &std::path::Path) -> bool {
+pub fn is_mesh_file(path: &std::path::Path) -> bool {
     path.extension()
         .and_then(|e| e.to_str())
         .is_some_and(|e| MESH_EXTS.iter().any(|m| e.eq_ignore_ascii_case(m)))
@@ -246,7 +246,7 @@ pub fn import_files(
     paths: &[std::path::PathBuf],
     slot: &mut Option<Sculpt3dScene>,
     gpu: (&std::sync::Arc<wgpu::Device>, (u32, u32)),
-    toasts: &mut Vec<ph2d_editor::Toast>,
+    toasts: &mut ph2d_editor::ToastQueue,
 ) {
     if paths.is_empty() {
         return;
@@ -304,7 +304,7 @@ pub fn import_files(
 pub fn pick_and_import(
     slot: &mut Option<Sculpt3dScene>,
     gpu: (&std::sync::Arc<wgpu::Device>, (u32, u32)),
-    toasts: &mut Vec<ph2d_editor::Toast>,
+    toasts: &mut ph2d_editor::ToastQueue,
 ) {
     let picked = rfd::FileDialog::new()
         .add_filter("Mesh", MESH_EXTS)
@@ -319,7 +319,7 @@ pub fn pick_and_import(
 /// ⚠️ `pub(super)` — o irmão [`super::export`] o usa pelo MESMO motivo (um
 /// gesto de arquivo que falha em silêncio é indistinguível de um app
 /// travado), e uma segunda função de toast daria duas vozes ao módulo.
-pub(crate) fn toast(toasts: &mut Vec<ph2d_editor::Toast>, msg: String) {
+pub(crate) fn toast(toasts: &mut ph2d_editor::ToastQueue, msg: String) {
     toasts.push(ph2d_editor::Toast::info(msg));
 }
 

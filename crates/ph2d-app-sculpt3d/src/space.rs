@@ -153,7 +153,7 @@ impl Sculpt3dScene {
     /// que é exatamente o que uma `Mesh` sem vértices já dá. Um `Option` aqui
     /// obrigaria vinte sítios a escrever o mesmo `else` para chegar ao mesmo
     /// lugar.
-    pub(crate) fn mesh(&self) -> &Mesh {
+    pub fn mesh(&self) -> &Mesh {
         static EMPTY: std::sync::OnceLock<Mesh> = std::sync::OnceLock::new();
         self.obj().map_or_else(
             || EMPTY.get_or_init(|| Mesh::from_parts(Vec::new(), Vec::new()).expect("vazia")),

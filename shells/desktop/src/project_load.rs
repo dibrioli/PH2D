@@ -179,7 +179,7 @@ impl crate::App {
         let sculpt = if file.sculpt.is_empty() {
             None
         } else {
-            match crate::sculpt3d::decode_doc(&file.sculpt) {
+            match ph2d_app_sculpt3d::decode_doc(&file.sculpt) {
                 Ok(v) => Some(v),
                 Err(e) => {
                     eprintln!("[proj] escultura ilegivel — load RECUSADO: {e}");

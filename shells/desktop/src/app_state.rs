@@ -196,9 +196,9 @@ pub(crate) struct AppGfx {
     pub(crate) flip_render: ph2d_flip_render::FlipRenderer,
     /// ADR-0150 W1/M2: a cena 3D viva (malha + camera orbital + pipeline).
     /// `None` num run normal — so o smoke a cria, e sem ela toda porta do
-    /// `crate::sculpt3d` devolve `false` e o frame 2D fica intocado.
+    /// `ph2d_app_sculpt3d` devolve `false` e o frame 2D fica intocado.
     #[cfg(feature = "sculpt3d")]
-    pub(crate) sculpt3d: Option<crate::sculpt3d::Sculpt3dScene>,
+    pub(crate) sculpt3d: Option<ph2d_app_sculpt3d::Sculpt3dScene>,
     /// **OS SPRITES QUE UMA FORMA ACENDE** (`docs/3D/02.2`, rota A), por bits de entidade.
     ///
     /// ⚠️ **Ele mora aqui, e NÃO dentro da cena 3D, porque um objeto assado sobrevive à escultura —
@@ -771,7 +771,7 @@ pub(crate) struct App {
     /// ⇒ **dois campos e não um**, com a fronteira a ser *o que a `cfg` obriga*.
     /// Quando aqueles tipos saírem para a crate (Fase B), os dois fundem-se.
     #[cfg(feature = "sculpt3d")]
-    pub(crate) sculpt3d: crate::sculpt3d::Sculpt3dShellState,
+    pub(crate) sculpt3d: ph2d_app_sculpt3d::Sculpt3dShellState,
     /// Latch do `PH2D_STACK_SMOKE` (cena da composicao de clips, uma vez).
     pub(crate) stack_smoke_done: bool,
     /// Latch do `PH2D_NEST_SMOKE` (cena do nesting, uma vez).

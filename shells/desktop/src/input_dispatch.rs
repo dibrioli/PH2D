@@ -1921,7 +1921,7 @@ impl App {
         self.gfx
             .as_ref()
             .and_then(|g| g.sculpt3d.as_ref())
-            .is_some_and(crate::sculpt3d::Sculpt3dScene::clay_on_screen)
+            .is_some_and(ph2d_app_sculpt3d::Sculpt3dScene::clay_on_screen)
     }
 
     /// **As teclas da ESCULTURA estão vivas?** — o irmão de [`Self::motion_keys_live`]
@@ -3095,7 +3095,7 @@ impl App {
             let (px, py) = self.last_pointer;
             if self
                 .sculpt3d_scene_mut()
-                .is_some_and(|scene| crate::sculpt3d::pointer_move(scene, px, py))
+                .is_some_and(|scene| ph2d_app_sculpt3d::pointer_move(scene, px, py))
             {
                 return;
             }
@@ -3578,7 +3578,7 @@ impl App {
                 // e `modifiers` — logo continua em `impl App`, com a razão escrita lá.
                 ElementState::Released => self
                     .sculpt3d_scene_mut()
-                    .is_some_and(crate::sculpt3d::pointer_up),
+                    .is_some_and(ph2d_app_sculpt3d::pointer_up),
             };
             if taken {
                 return;

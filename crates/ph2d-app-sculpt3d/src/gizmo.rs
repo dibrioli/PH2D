@@ -119,7 +119,7 @@ impl Sculpt3dScene {
     }
 
     /// As alças prontas a pintar e a apontar — vazio sem transform armado.
-    pub(crate) fn gizmo_handles(&self) -> Vec<Projected> {
+    pub fn gizmo_handles(&self) -> Vec<Projected> {
         let (Some(kind), Some(anchor)) = (self.transform_arm(), self.gizmo_anchor()) else {
             return Vec::new();
         };
@@ -132,12 +132,12 @@ impl Sculpt3dScene {
     }
 
     /// A alça sob o cursor no último quadro — só realce.
-    pub(crate) fn gizmo_hot(&self) -> Option<Handle> {
+    pub fn gizmo_hot(&self) -> Option<Handle> {
         self.janela.gizmo_hot
     }
 
     /// O quadro publica qual alça está quente.
-    pub(crate) fn note_gizmo_hot(&mut self, pointer: (f32, f32)) {
+    pub fn note_gizmo_hot(&mut self, pointer: (f32, f32)) {
         self.janela.gizmo_hot = self.gizmo_pick(pointer.0, pointer.1);
     }
 

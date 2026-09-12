@@ -94,7 +94,7 @@ impl Sculpt3dScene {
     }
 
     /// As seis bolas, prontas a pintar — de trás para a frente.
-    pub(crate) fn navball(
+    pub fn navball(
         &self,
         area: EditorRect,
         safe: EditorRect,
@@ -104,7 +104,7 @@ impl Sculpt3dScene {
     }
 
     /// A bola sob o cursor no último quadro — o realce.
-    pub(crate) fn nav_hot(&self) -> Option<Standard> {
+    pub fn nav_hot(&self) -> Option<Standard> {
         self.janela.nav_hot
     }
 
@@ -192,7 +192,7 @@ impl Sculpt3dScene {
     /// cursor está é o quadro e quem sabe onde as bolas caem é a lei — e a
     /// segunda depende da primeira. *Duas derivações do «qual bola está quente»
     /// divergiriam no quadro em que a câmera se mexe entre elas.*
-    pub(crate) fn note_nav(&mut self, safe: EditorRect, pointer: (f32, f32)) {
+    pub fn note_nav(&mut self, safe: EditorRect, pointer: (f32, f32)) {
         self.janela.nav_safe = Some(safe);
         let Some((area, _)) = self.nav_rects() else {
             self.janela.nav_hot = None;
@@ -212,7 +212,7 @@ impl Sculpt3dScene {
     /// à mesma pergunta* (a lei está escrita no `field3d_smoke_draw`), e a
     /// moldura do app que empurra o widget não conhece divisão nenhuma — ela
     /// está por cima do canvas todo.
-    pub(crate) fn nav_rects(&self) -> Option<(EditorRect, EditorRect)> {
+    pub fn nav_rects(&self) -> Option<(EditorRect, EditorRect)> {
         Some((self.vp_rect(self.vp_active())?, self.janela.nav_safe?))
     }
 }

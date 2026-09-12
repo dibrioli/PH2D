@@ -24,10 +24,18 @@
 /// existir. Lei pura, zero dependências; era `shells/desktop/src/sculpt3d_rulers.rs`.
 pub mod rulers;
 
+// ⚠️ **O glob mantém-se de propósito**: os ~30 filhos leem `super::ORBIT_RAD_PER_PX` como
+// sempre leram, e a travessia de crate não move um caminho — tal como o corte de ficheiro não
+// movia. ⛔ **E ele estava declarado DUAS vezes** até 2026-09-11 (W2/L3-B): o `mod.rs` da shell
+// trazia o dele, e ao ser fundido neste `lib.rs` os dois ficaram lado a lado com **90 linhas
+// entre eles**. Um glob duplicado não dá erro e não muda o produto — o `unused import` do
+// segundo é o único sinal que existe, e ele lê-se como *«ninguém usa as réguas»*, que é o
+// contrário da verdade.
 pub use rulers::*;
 
 mod requests;
 pub use requests::Sculpt3dRequests;
+pub use requests::FAMILY;
 
 // A costura do módulo 3D com o shell — **a cena, o gesto e o passe**.
 //
@@ -50,20 +58,20 @@ use ph2d_sculpt3d::{Brush, Dab, Grip, SculptStroke, Symmetry, Verb};
 /// **A DOAÇÃO** — o carimbo, a rasterização e o interruptor de três posições.
 /// Filho para alcançar os campos privados da cena; o corte é *o que
 /// o escultor FAZ* (aqui) contra *o que a forma DOA* (lá).
-pub(crate) mod donation;
+pub mod donation;
 
 /// **O GESTO** — as portas de ponteiro, roda e teclado. Filho para
 /// alcançar os campos privados da cena; o corte é *o que a cena É* (aqui) contra
 /// *o que a mão FAZ* (lá), o mesmo que separa a [`donation`].
 /// ⭐⭐ **QUEM TOMA O GESTO** — o pen-down, separado do que o gesto FAZ. Ver o
 /// cabeçalho dele: um é arbitragem, o outro é execução.
-mod input_down;
+pub mod input_down;
 
-mod input;
+pub mod input;
 /// ⭐ **As três portas do gesto que só precisam da CENA** (W2/L3-A2) — a shell procura-a (é
 /// ela que tem o `gfx`) e estas aplicam a lei. Ver a nota no fim do [`input`]: as outras nove
 /// continuam em `impl App` porque leem janela, e essa é a lista que o substrato tem de cobrir.
-pub(crate) use input::{flush_grab, pointer_move, pointer_up};
+pub use input::{flush_grab, pointer_move, pointer_up};
 
 /// **O TRANSFORM PONDERADO PELA MÁSCARA** — mover, girar e escalar a parte
 /// LIVRE. Filho pelo motivo dos vizinhos; o corte é *o que a mão na
@@ -79,7 +87,7 @@ mod filter;
 /// **O TECLADO** — que tecla escolhe o quê. Irmão do [`input`], e o corte é
 /// entre *o que a mão faz com o PONTEIRO* e *o que ela ESCOLHE com o teclado*;
 /// ele nasceu quando a tabela de teclas levou o arquivo do gesto ao teto de LOC.
-mod keys;
+pub mod keys;
 
 /// ⭐⭐⭐ **O GIZMO DE TRANSFORMAÇÃO** — as alças que se agarram (ordem do Enio,
 /// 2026-09-08). Filho pelo motivo dos vizinhos; a LEI das alças é a
@@ -100,7 +108,7 @@ mod viewports;
 mod navball;
 
 /// ⭐⭐⭐ **A PONTE com a árvore do editor** — uma peça ⟺ uma entidade; ver [`entities`].
-pub(crate) mod entities;
+pub mod entities;
 
 /// **O CURSOR** — onde a mão está mirando, na tela (W12). Irmão dos três abaixo,
 /// e o mais estreito: *onde o gesto vai pousar*, e nada além.
@@ -108,16 +116,24 @@ mod cursor;
 
 /// **ENTRAR E SAIR** — o pill SCULPT. Irmão do [`input`] e do [`keys`], e o corte é o mesmo com
 /// outro sujeito: aqueles perguntam *o que a mão faz com o barro*, este *quem é dono da tela*.
-mod mode;
-pub(crate) use mode::sync_pill;
+pub mod mode;
+pub use mode::sync_pill;
 
-pub(crate) use cursor::{OFF_SURFACE_RGBA, ON_SURFACE_RGBA};
+pub use cursor::{OFF_SURFACE_RGBA, ON_SURFACE_RGBA};
 
 /// **O PAINEL** — o retrato que ele pinta e o gesto que ele devolve (W12).
 /// Terceiro irmão do [`input`] e do [`keys`]: o mesmo corte, com um vocabulário
 /// próprio (o gesto chega como DADO, um frame depois, pela fila de intents).
 mod panel;
-pub(crate) use panel::Sculpt3dFrameRequest;
+pub use panel::Sculpt3dFrameRequest;
+
+/// ⭐ **A FASE da ponte do painel** — o 112.º ficheiro a sair da shell (W2/L3-B).
+///
+/// ⚠️ Ele vivia no `render_loop/` e não na pasta da família, e por isso não estava no alvo de
+/// 111 medido em 11/09. Ele atravessa porque o que ele toca — o [`ph2d_editor::screens::hero::HeroScreen`]
+/// — é de uma crate-MÓDULO, não da shell: *o que decide se um ficheiro sai não é a pasta em que
+/// ele estava, é o fecho de compilação dele.*
+pub mod panel_bridge;
 
 /// **COMO O BARRO É MOSTRADO** — o desenho e as opções de vista. Filho pelo mesmo motivo dos vizinhos, e o corte é *o que a cena É*
 /// (aqui) contra *como ela APARECE* (lá): as duas metades crescem por motivos
@@ -133,14 +149,6 @@ use history::{Entry, StrokeUndo, legacy_requested, retopo_line};
 use donation::FormRole;
 use donation::FormStamp;
 
-// **AS RÉGUAS DO GESTO** — quanto um pixel de arrasto vale, e onde uma grandeza deixa de
-// existir. ⭐ **Saíram para a `ph2d-app-sculpt3d` em 2026-09-11 (W2/L3-A4)**: já eram lei pura
-// e não precisavam da shell para nada. O corte por ASSUNTO que as criou continua a valer —
-// aqui diz-se *o que a CENA é*, lá *com que régua a mão fala com ela*.
-//
-// O glob mantém-se de propósito: os filhos leem `super::ORBIT_RAD_PER_PX` como sempre leram,
-// e a travessia de crate não move um caminho — tal como o corte de arquivo não movia.
-use rulers::*;
 
 /// **AS CENAS DO SMOKE** — a fixture de cada uma. Filho pelo motivo
 /// dos outros três: o corte é de responsabilidade, e a lista de cenas cresce uma
@@ -206,7 +214,7 @@ mod slots;
 /// acendendo depois de a malha sair. Filho e irmão da [`donation`]:
 /// lá a forma acende a tela do Painter, aqui um objeto da cena — duas perguntas
 /// diferentes, e só a segunda sobrevive à escultura.
-pub(crate) mod bake;
+pub mod bake;
 
 /// **OS VERBOS QUE PUXAM** — Grab, Snake Hook, Twist, Local Scale. Filho pelo motivo dos outros: o corte é de responsabilidade, e o deles
 /// é uma LEI própria (a pegada é presa no pen-down, e o alvo é função do puxão
@@ -215,7 +223,7 @@ mod pull;
 
 /// **O DOCUMENTO** — a cena como bytes, e os bytes como cena. Filho pelo mesmo
 /// motivo: ele lê `objects`/`active`/`next_id` e as filas de desfazer.
-mod doc;
+pub mod doc;
 
 /// **A PORTA DE ENTRADA** — um arquivo de malha vira peças. Filho pelo mesmo
 /// motivo: ele constrói `SceneObject`s e mexe na lista.
@@ -224,22 +232,22 @@ mod doc;
 /// (`field3d_import`), e ele **não** duplica o leitor — o `read_pieces` é a única resposta da casa a
 /// *"que malha há neste arquivo?"*, e uma segunda diria "cor preservada" sobre um STL no dia em que
 /// alguém trocasse o leitor.
-pub(crate) mod import;
+pub mod import;
 
 /// **A PORTA DE SAÍDA** — a cena vira um arquivo que outro programa abre. Irmão
 /// da entrada, e o par dela: sem isto a escultura entra, salva e não sai.
-mod export;
+pub mod export;
 
 /// ⭐ **O aviso do que cada formato NÃO carrega**, partilhado com a modelagem 3D
 /// ([`crate::field3d_export`]). Uma segunda cópia lá diria *"cor preservada"*
 /// sobre um STL no dia em que alguém trocasse o escritor — e um aviso errado é
 /// pior que aviso nenhum, porque o artista confia nele. **Uma tabela, um aviso.**
-pub(crate) use import::is_mesh_file;
+pub use import::is_mesh_file;
 
 // ⚠️ Só o que ATRAVESSA a fronteira do módulo: o `SCULPT_DOC_VERSION` e o
 // `SculptDocError` são assunto de dentro (o load só formata o `Display` do
 // erro), e re-exportá-los seria superfície que ninguém pede.
-pub(crate) use doc::{LoadedPiece, decode as decode_doc};
+pub use doc::{LoadedPiece, decode as decode_doc};
 
 // ⚠️ O ESCRITOR atravessa a fronteira só para os gates: as fixtures de
 // `project_tests` precisam de um documento de escultura VÁLIDO, e montá-lo à mão
@@ -260,7 +268,7 @@ pub(crate) use doc::encode as encode_doc;
 pub(crate) use objects::{ObjectId, SceneObject};
 
 /// A cena 3D viva: os objetos, a câmera, o pincel e o pipeline que a desenha.
-pub(crate) struct Sculpt3dScene {
+pub struct Sculpt3dScene {
     /// **A CENA é uma LISTA.** Nunca vazia — a invariante que torna
     /// [`Sculpt3dScene::obj`] total.
     pub(crate) objects: Vec<SceneObject>,
@@ -601,8 +609,8 @@ mod birth;
 /// ⭐ **O ESTADO DA FAMÍLIA que vive na `App`** — os quatro campos que eram soltos lá
 /// (W2/L3-A2). Ver o cabeçalho dele: a fronteira com o irmão não-gateado da crate é imposta
 /// pela `cfg`, não escolhida.
-mod shell_state;
-pub(crate) use shell_state::Sculpt3dShellState;
+pub mod shell_state;
+pub use shell_state::Sculpt3dShellState;
 
 /// ⭐⭐ **O teclado da CÂMERA da escultura** — a divisão em quatro e as seis vistas.
 /// Irmão do [`keys`] pelo tecto de LOC; ver o cabeçalho dele.
@@ -611,4 +619,4 @@ pub(crate) use shell_state::Sculpt3dShellState;
 /// ficheiro da família fora desta árvore. Passou a filho em 2026-09-11 (W2/L3-A3), e é
 /// por isso que os testes dele mudaram de `sculpt3d_keys_view::…` para
 /// `sculpt3d::keys_view::…`: o nome da função não mudou, a casa dela sim.
-mod keys_view;
+pub mod keys_view;

@@ -27,7 +27,7 @@ mod keys_scene;
 /// duas declarações, e o `Delete` é uma pergunta do TECLADO — quem a lê está a ler este ficheiro,
 /// e o único chamador dela sempre foi este.
 #[path = "keys_delete.rs"]
-mod keys_delete;
+pub mod keys_delete;
 
 /// As teclas da cena 3D. Devolve `true` se consumiu.
 pub fn key(

@@ -28,15 +28,15 @@
 
 /// **Os factos de que a decisão precisa** — e nada do `App`.
 #[derive(Debug, Clone, Copy)]
-pub(super) struct DeleteFacts {
+pub struct DeleteFacts {
     /// O barro está na tela? (`FormRole::draws_clay`)
-    pub(super) clay_on_screen: bool,
+    pub clay_on_screen: bool,
     /// Um campo de texto tem o foco do teclado?
-    pub(super) text_focused: bool,
+    pub text_focused: bool,
     /// O ponteiro está sobre um painel do chrome?
-    pub(super) over_panel: bool,
+    pub over_panel: bool,
     /// A ferramenta vetorial tem um vértice ou um caminho **selecionado**?
-    pub(super) vector_has_selection: bool,
+    pub vector_has_selection: bool,
 }
 
 /// O veredito sobre um `Delete` que chegou ao teclado da escultura.

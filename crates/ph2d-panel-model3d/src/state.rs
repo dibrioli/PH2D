@@ -258,7 +258,7 @@ pub struct ModelSnapshot {
     ///
     /// ⚠️ **É uma LEITURA, e é derivada da CÂMERA**, nunca do último botão apertado: orbitar a
     /// vista de cima faz dela *User*, que é o que ela passou a ser. Quem a resolve é o shell
-    /// (`field3d_views::label_key`), porque só ele tem a câmera.
+    /// (`ph2d_viewport3d::views::label_key`), porque só ele tem a câmera.
     ///
     /// ⚠️ Vazia por omissão — um retrato que ninguém publicou não tem vista para nomear, e o
     /// `area_bar` cai num rótulo genérico em vez de pedir `tr("")`.

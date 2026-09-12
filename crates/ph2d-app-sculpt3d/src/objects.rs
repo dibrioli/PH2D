@@ -168,7 +168,7 @@ impl Primitive {
     /// densa nasce uma peça*. Refinar aqui, e não no pill, é o que mantém uma resposta só: o verbo
     /// de acrescentar sofria do MESMO defeito, e uma peça acrescentada no meio de uma sessão é tão
     /// inesculpível quanto a que o modo abre.
-    pub(crate) fn mesh(self) -> Mesh {
+    pub fn mesh(self) -> Mesh {
         let base = match self {
             Self::Sphere => shapes::uv_sphere(SEGMENTS / 2, SEGMENTS, 1.0),
             // `size` é a ARESTA, então a diagonal de um cubo de aresta 2/√3

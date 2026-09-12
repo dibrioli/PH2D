@@ -165,7 +165,7 @@ impl Sculpt3dScene {
 ///
 /// ⚠️ **Sem cena aberta é no-op** — e não um `expect`: este é chamado do
 /// laço de quadro incondicionalmente, como os irmãos ao lado dele.
-pub(crate) fn flush_grab(scene: &mut Sculpt3dScene) {
+pub fn flush_grab(scene: &mut Sculpt3dScene) {
     scene.flush_pending_grab();
     // ⭐ **E o passo do filtro de tecido, pela MESMA porta e pelo mesmo
     // motivo**: um evento de ponteiro regista, o quadro corre. Sem isto o
@@ -174,7 +174,7 @@ pub(crate) fn flush_grab(scene: &mut Sculpt3dScene) {
     scene.flush_cloth_filter();
 }
 
-pub(crate) fn pointer_up(scene: &mut Sculpt3dScene) -> bool {
+pub fn pointer_up(scene: &mut Sculpt3dScene) -> bool {
     if scene.seam_release() {
         return true;
     }
@@ -217,7 +217,7 @@ pub(crate) fn pointer_up(scene: &mut Sculpt3dScene) -> bool {
 
 /// O ponteiro moveu. Só consome com um arrasto EM CURSO — senão a cena 3D
 /// engoliria todo hover do app.
-pub(crate) fn pointer_move(scene: &mut Sculpt3dScene, x: f32, y: f32) -> bool {
+pub fn pointer_move(scene: &mut Sculpt3dScene, x: f32, y: f32) -> bool {
     // ⚠️ **A costura primeiro, pelo motivo do pen-down.**
     if scene.seam_at(x, y) {
         scene.last = (x, y);

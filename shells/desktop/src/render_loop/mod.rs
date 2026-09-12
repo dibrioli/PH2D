@@ -157,7 +157,6 @@ pub(crate) mod record_fit;
 /// O painel da cena 3D (ADR-0150 W12) — irmão do `physics_panel_bridge` e do
 /// `tokens_bridge`: um painel de MUNDO, publicado e drenado na mesma fase.
 #[cfg(feature = "sculpt3d")]
-pub(crate) mod sculpt3d_panel_bridge;
 pub(crate) mod timeline_bridge;
 /// **A AUTORIA de uma chave** — irmão do `timeline_bridge` por teto de LOC (HR-18).
 mod timeline_bridge_keys;
@@ -976,7 +975,7 @@ impl crate::App {
         // ⭐ A shell PROCURA a cena (é ela que tem o `gfx`) e a família aplica a lei — desde
         // 2026-09-11 (W2/L3-A2) esta porta é uma função livre, não um `impl App`.
         if let Some(scene) = self.sculpt3d_scene_mut() {
-            crate::sculpt3d::flush_grab(scene);
+            ph2d_app_sculpt3d::flush_grab(scene);
         }
         // A escultura que um Ctrl+O deixou pendente — ela espera o device, que o
         // load não tinha (ADR-0150 W8.3).
@@ -994,7 +993,7 @@ impl crate::App {
         #[cfg(feature = "sculpt3d")]
         self.sculpt3d_donate_form();
         // ⭐⭐⭐ **A PONTE com a Hierarquia** (uma peça ⟺ uma entidade) — ver
-        // [`crate::sculpt3d::entities`]. ⚠️ **Depois do `apply_toggle`**, para uma cena criada
+        // [`ph2d_app_sculpt3d::entities`]. ⚠️ **Depois do `apply_toggle`**, para uma cena criada
         // pelo pill NESTE quadro já entrar na lista, e **antes** de a Hierarquia ser desenhada,
         // para o quadro ver um estado consistente. Sem cena armada é um `return` imediato.
         #[cfg(feature = "sculpt3d")]
@@ -1355,14 +1354,23 @@ impl crate::App {
         {
             let ppm = hero.project.pixels_per_meter;
             let cell = *next_import_cell;
-            if let Some(bits) = crate::sculpt3d::donation::spawn_canvas_if_enabled(
-                sim,
-                renderer,
-                asset_db,
-                cell,
-                ppm,
-                atlas_asset_map,
-            ) {
+            // ⚠️ **Duas chamadas, e o corte é o da regra 2** (W2/L3-B): a família diz SE uma
+            // tela é precisa e COMO ela tem de ser (`canvas_wanted`, com os três números e a
+            // razão de cada); quem sabe FAZER uma é o `image_import`, folha desta shell com 41
+            // consumidores de famílias diferentes. Ela nunca foi da escultura.
+            if let Some(bits) = ph2d_app_sculpt3d::donation::canvas_wanted().and_then(|q| {
+                ph2d_app_sculpt3d::donation::canvas_born(crate::image_import::spawn_blank_canvas(
+                    sim,
+                    renderer,
+                    asset_db,
+                    cell,
+                    q.edge,
+                    q.bg,
+                    q.center,
+                    ppm,
+                    atlas_asset_map,
+                ))
+            }) {
                 *next_import_cell = next_import_cell.saturating_add(1);
                 hero.gizmo.replace_selection(Some(bits));
                 hero.bus
@@ -1388,7 +1396,7 @@ impl crate::App {
             let selected = hero_screen
                 .as_ref()
                 .and_then(|h| h.gizmo.iter_selected().next());
-            if let Some(line) = crate::sculpt3d::bake::drain(
+            if let Some(line) = ph2d_app_sculpt3d::bake::drain(
                 scene,
                 baked_forms,
                 baked_light,
@@ -1398,8 +1406,29 @@ impl crate::App {
                 selected,
                 sim,
                 renderer,
-                asset_db,
-                atlas_asset_map,
+                // ⚠️ **Lido ANTES do bake** — ele substitui a textura, e depois já não há 16
+                // bits que ver. A porta é da shell; o que a família precisa é o veredito.
+                selected.is_some_and(|bits| {
+                    crate::hero_intents::texture_edit::holds_sixteen_bit(
+                        ph2d_ecs::Entity::from_bits(bits),
+                        sim,
+                        renderer,
+                    )
+                }),
+                // ⚠️ **PREGUIÇOSO**: um sprite já assado reúsa o `base` e nunca chega a
+                // perguntar, e esta leitura custa uma volta ao device.
+                &mut |sim: &mut ph2d_ecs::SimWorld, renderer: &mut _| {
+                    selected.and_then(|bits| {
+                        crate::hero_intents::texture_edit::read_sprite_source(
+                            ph2d_ecs::Entity::from_bits(bits),
+                            sim,
+                            renderer,
+                            asset_db,
+                            atlas_asset_map,
+                        )
+                        .map(|s| s.image)
+                    })
+                },
             ) {
                 eprintln!("{line}");
                 toasts.push(Toast::success(line));
@@ -1494,7 +1523,7 @@ impl crate::App {
             // acabou de nascer não é um gesto, e tratá-la como um re-acendia todo objeto assado do
             // documento com o rig default, sem ninguém ter pedido.
             if scene.take_rig_edge() {
-                crate::sculpt3d::bake::follow_live_rig(baked_forms, scene.rig());
+                ph2d_app_sculpt3d::bake::follow_live_rig(baked_forms, scene.rig());
             }
         }
         // **A RE-ACENDIDA, e ela NÃO está atrás da feature.** É esta linha que torna a promessa da
@@ -8530,7 +8559,7 @@ impl crate::App {
                     {
                         sculpt3d
                             .as_ref()
-                            .is_some_and(crate::sculpt3d::Sculpt3dScene::clay_on_screen)
+                            .is_some_and(ph2d_app_sculpt3d::Sculpt3dScene::clay_on_screen)
                     }
                     #[cfg(not(feature = "sculpt3d"))]
                     {
@@ -8644,12 +8673,12 @@ impl crate::App {
             // dispatch do frame SEGUINTE (o `bake::drain` roda mais cedo neste),
             // exatamente como o do teclado.
             #[cfg(feature = "sculpt3d")]
-            for req in sculpt3d_panel_bridge::dispatch(hero, sculpt3d.as_mut()) {
+            for req in ph2d_app_sculpt3d::panel_bridge::dispatch(hero, sculpt3d.as_mut()) {
                 match req {
-                    crate::sculpt3d::Sculpt3dFrameRequest::Bake => {
+                    ph2d_app_sculpt3d::Sculpt3dFrameRequest::Bake => {
                         self.sculpt3d_req.bake_request = true;
                     }
-                    crate::sculpt3d::Sculpt3dFrameRequest::AlphaFromSprite => {
+                    ph2d_app_sculpt3d::Sculpt3dFrameRequest::AlphaFromSprite => {
                         self.sculpt3d_req.alpha_request = true;
                     }
                 }
@@ -8825,9 +8854,9 @@ impl crate::App {
                 if !over_panel && let Some(mark) = scene.cursor_mark(px, py) {
                     use ph2d_vector::{Affine, Brush, Color, Stroke};
                     let rgba = if mark.on_surface {
-                        crate::sculpt3d::ON_SURFACE_RGBA
+                        ph2d_app_sculpt3d::ON_SURFACE_RGBA
                     } else {
-                        crate::sculpt3d::OFF_SURFACE_RGBA
+                        ph2d_app_sculpt3d::OFF_SURFACE_RGBA
                     };
                     vector_scene.inner_mut().stroke(
                         // ⚠️ `Affine::IDENTITY`: no Vello o transform do `stroke`
@@ -11898,7 +11927,7 @@ impl crate::App {
             // por cima dele. Os retângulos vêm de quem os conhece — o `panel_rect` do store (só
             // publicado enquanto o painel está aberto) e o índice de acerto da faixa do topo (só
             // escrito no quadro em que ela de facto pintou). A **lei** de como eles empurram o
-            // gizmo é pura e vive no módulo (`field3d_navball::safe_corner`).
+            // gizmo é pura e vive no módulo (`ph2d_viewport3d::navball::safe_corner`).
             {
                 let mut obstacles: Vec<ph2d_editor::zones::Rect> = Vec::new();
                 for id in crate::forwarding::CHROME_BACKDROPS {
@@ -11924,11 +11953,11 @@ impl crate::App {
                 // ⚠️ `last_canvas` **é** a `HeroLayout::draw_area` publicada pelo quadro anterior
                 // (ver `screens/hero/paint.rs`); no primeiro quadro ela é degenerada, e aí vale a
                 // janela — que é o comportamento de sempre.
-                let area = crate::field3d_layout::area(
+                let area = ph2d_viewport3d::layout::area(
                     hero,
                     ph2d_editor::zones::Rect::new(viewport.x, viewport.y, viewport.w, viewport.h),
                 );
-                let safe = crate::field3d_navball::safe_corner(area, &obstacles);
+                let safe = ph2d_viewport3d::navball::safe_corner(area, &obstacles);
                 ph2d_app_field3d::smoke::note_safe(safe);
                 // ⭐⭐⭐ **E A ESCULTURA LÊ O MESMO PAR** (2026-09-08, ordem do Enio: *«traga esses
                 // features para esse módulo»*). ⚠️ **Calculado UMA vez e publicado nos dois**, e não
@@ -11976,11 +12005,11 @@ impl crate::App {
             // baixo da barra de menus, da fila de ferramentas, da coluna da esquerda e das duas
             // réguas — e com a divisão aberta as costuras caíam onde não há área nenhuma.
             //
-            // ⚠️ **A MESMA porta que alimenta o gizmo de navegação** (`field3d_layout::area`), e é
+            // ⚠️ **A MESMA porta que alimenta o gizmo de navegação** (`ph2d_viewport3d::layout::area`), e é
             // por isso que os dois se encaixam: um segundo rect aqui seria a fonte por onde a
             // imagem e a moldura voltavam a discordar.
             ph2d_app_field3d::smoke::draw(
-                crate::field3d_layout::area(
+                ph2d_viewport3d::layout::area(
                     hero,
                     ph2d_editor::zones::Rect::new(viewport.x, viewport.y, viewport.w, viewport.h),
                 ),
@@ -11989,7 +12018,7 @@ impl crate::App {
                 vector_scene,
             );
             // ⭐⭐⭐ **O GIZMO DA VIEWPORT DA ESCULTURA** (2026-09-08) — as seis bolas de eixo, a
-            // MESMA lei e o MESMO pintor do módulo vizinho (`field3d_navball`), com a base desta
+            // MESMA lei e o MESMO pintor do módulo vizinho (`ph2d_viewport3d::navball`), com a base desta
             // câmera. Ver `sculpt3d_navball`.
             //
             // ⚠️ **Pintado aqui e não no bloco do anel do pincel**, que corre ~3 000 linhas acima:
@@ -12071,7 +12100,7 @@ impl crate::App {
                         scene.nav_hot(),
                         hero.theme,
                         [area.x, area.y],
-                        crate::field3d_navball::centre_in(area, safe),
+                        ph2d_viewport3d::navball::centre_in(area, safe),
                     );
                 }
                 // ⭐⭐⭐ **O MENU DA VISTA, POR CIMA DE TUDO** (report do Enio, 2026-09-08: *«ao
@@ -12143,7 +12172,7 @@ impl crate::App {
             // só quando há o que trazer (a lei da W34). Sem a feature, fica sempre falso.
             #[cfg(feature = "sculpt3d")]
             {
-                let live = sculpt3d.as_ref().map(crate::sculpt3d::Sculpt3dScene::mesh);
+                let live = sculpt3d.as_ref().map(ph2d_app_sculpt3d::Sculpt3dScene::mesh);
                 ph2d_app_field3d::smoke::note_live_sculpt(live.is_some());
                 if ph2d_app_field3d::smoke::take_scene_sculpt_request() {
                     let msg = live.map_or_else(

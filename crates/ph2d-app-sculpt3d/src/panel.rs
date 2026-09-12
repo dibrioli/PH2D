@@ -26,7 +26,7 @@ use super::{MaskOp, Primitive, Sculpt3dScene, legacy_requested, retopo_line};
 /// o mapa de atlas só existem dentro do frame —, e nomeá-los é o que impede o
 /// terceiro de nascer como um segundo `bool` que alguém esquece de ler.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) enum Sculpt3dFrameRequest {
+pub enum Sculpt3dFrameRequest {
     /// Acender o sprite selecionado com a forma esculpida (o `Shift+B`).
     Bake,
     /// Ler os pixels do sprite selecionado como PADRÃO do pincel.
@@ -146,7 +146,7 @@ impl Sculpt3dScene {
     /// linha conserta o **preview do painel** e o **modelo**: a fatia `z = 0`
     /// que o swatch desenha passa a ser EXATAMENTE o que todo ponto da malha
     /// recebe. O swatch fica *verdadeiro* em vez de ganhar um caso especial.
-    pub(crate) fn set_alpha_image(
+    pub fn set_alpha_image(
         &mut self,
         img: ph2d_sculpt3d::AlphaImage,
         from: std::sync::Arc<str>,

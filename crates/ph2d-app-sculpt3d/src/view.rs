@@ -18,7 +18,7 @@ impl Sculpt3dScene {
     /// ⚠️ **Mudou-se do pai para aqui em 2026-09-08**, pelo tecto de LOC — e o
     /// corte é o deste ficheiro, que já era *como a cena APARECE*: a luz é
     /// exactamente isso.
-    pub(crate) fn rig(&self) -> &ph2d_light::LightRig {
+    pub fn rig(&self) -> &ph2d_light::LightRig {
         &self.rig
     }
 
@@ -30,7 +30,7 @@ impl Sculpt3dScene {
     /// elas — ver [`ph2d_mesh_render::MeshRenderer::render_views`]. Quem os cria
     /// é a porta; um encoder emprestado de fora não teria como ser submetido no
     /// meio.
-    pub(crate) fn render(
+    pub fn render(
         &mut self,
         gpu: &ph2d_gpu::GpuContext,
         color: &wgpu::TextureView,

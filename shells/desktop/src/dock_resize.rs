@@ -7,7 +7,7 @@
 //! ⭐ **Uma pergunta, dois consumidores.** O cursor e o arrasto chamam a MESMA função
 //! ([`ph2d_editor::screens::layout::HeroLayout::dock_seam_at`]) — a seta a aparecer um pixel ao
 //! lado de onde o gesto agarra lê-se como *«às vezes não pega»*, e é o defeito que o irmão desta
-//! costura no canvas 3D (`field3d_layout::seam_cursor`) já pagou.
+//! costura no canvas 3D (`ph2d_viewport3d::layout::seam_cursor`) já pagou.
 //!
 //! ⚠️ **O layout vem PUBLICADO, não re-derivado** (`hero.last_layout`): o ponteiro corre fora do
 //! quadro, e espelhar a aritmética das colunas aqui seria dar dois donos ao mesmo pixel.

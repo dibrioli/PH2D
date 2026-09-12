@@ -63,7 +63,7 @@ pub use ssao::{RADIUS_FRACTION as SSAO_RADIUS_FRACTION, SsaoParams, SsaoRaw};
 /// dizer de que lado do produto estava o sinal.
 ///
 /// ⚠️ **As arestas são INTEIRAS de propósito.** A lição está escrita no
-/// `field3d_layout` desta casa: *um valor que é pixels não pode sair
+/// `ph2d_viewport3d::layout` desta casa: *um valor que é pixels não pode sair
 /// fraccionário da porta que o define* — `h·t` quase nunca é inteiro, e a
 /// fracção fez a mesma função dar duas respostas (o passe recebia `422,4` e o
 /// `set_scissor_rect` ao lado `422`), o que parado é invisível e num pan é

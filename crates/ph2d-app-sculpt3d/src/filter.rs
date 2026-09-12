@@ -416,7 +416,7 @@ impl Sculpt3dScene {
 /// `[0, 0, −1]` que estava escrito aqui é a convenção do **alvo** da espec §7
 /// (que é `Z` para cima), e esta casa é **`Y` para cima** — a
 /// [`ph2d_mesh_render::Camera3d`] roda o `yaw` em torno do `+Y` e o
-/// `field3d_navball` já o diz por escrito para o módulo vizinho.
+/// `ph2d_viewport3d::navball` já o diz por escrito para o módulo vizinho.
 ///
 /// ⚠️ **A cura NÃO é trocar um literal por outro** — é o «baixo» passar a ser
 /// **derivado** do cima da câmera ([`ph2d_mesh_render::Camera3d::UP`]). Um

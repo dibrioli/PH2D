@@ -134,7 +134,7 @@ impl Sculpt3dScene {
     /// mesma que alimenta o módulo vizinho ([`crate::canvas_area::visible`]),
     /// **de propósito** — dois rects seriam a fonte por onde a imagem e a
     /// moldura voltam a discordar.
-    pub(crate) fn note_canvas(&mut self, area: EditorRect) {
+    pub fn note_canvas(&mut self, area: EditorRect) {
         self.janela.canvas = Some(area);
         // A lista segue a divisão. ⚠️ **Só quando a CONTAGEM muda** — refazê-la
         // todo quadro deitaria fora as três câmeras que o artista posicionou.
@@ -150,7 +150,7 @@ impl Sculpt3dScene {
     }
 
     /// Qual quadrante está activo.
-    pub(crate) fn vp_active(&self) -> usize {
+    pub fn vp_active(&self) -> usize {
         self.janela.vp_active.min(self.vp_count().saturating_sub(1))
     }
 
@@ -159,7 +159,7 @@ impl Sculpt3dScene {
     /// ⚠️ Sai da porta do módulo vizinho, que garante que os quatro **ladrilham
     /// a área exactamente** — sem folga, sem sobreposição, e a soma das larguras
     /// é a largura.
-    pub(crate) fn vp_rects(&self) -> Vec<EditorRect> {
+    pub fn vp_rects(&self) -> Vec<EditorRect> {
         let Some(area) = self.janela.canvas else {
             return Vec::new();
         };
@@ -253,7 +253,7 @@ impl Sculpt3dScene {
 
     /// ⭐⭐ **O QUADRO PUBLICA OS CHIPS DOS RÓTULOS** — um por quadrante, na
     /// ordem deles. Vazio quando não há rótulos (uma vista só).
-    pub(crate) fn note_view_labels(&mut self, chips: Vec<Option<EditorRect>>) {
+    pub fn note_view_labels(&mut self, chips: Vec<Option<EditorRect>>) {
         self.janela.vp_labels = chips;
     }
 
@@ -263,22 +263,22 @@ impl Sculpt3dScene {
     /// menu da vista precisa dela para ficar preso ao canvas — o chip do
     /// quadrante de baixo-direita está a poucos pixels do canto, e um menu que
     /// descesse dali sairia da janela.
-    pub(crate) fn canvas(&self) -> Option<EditorRect> {
+    pub fn canvas(&self) -> Option<EditorRect> {
         self.janela.canvas
     }
 
     /// O chip do rótulo daquele quadrante, se ele foi pintado.
-    pub(crate) fn chip_of(&self, i: usize) -> Option<EditorRect> {
+    pub fn chip_of(&self, i: usize) -> Option<EditorRect> {
         self.janela.vp_labels.get(i).copied().flatten()
     }
 
     /// Que quadrante tem o menu aberto, se algum.
-    pub(crate) fn view_menu_open(&self) -> Option<usize> {
+    pub fn view_menu_open(&self) -> Option<usize> {
         self.janela.view_menu
     }
 
     /// O quadro publica onde o menu foi pintado.
-    pub(crate) fn note_view_menu_rect(&mut self, r: EditorRect) {
+    pub fn note_view_menu_rect(&mut self, r: EditorRect) {
         self.janela.view_menu_rect = Some(r);
     }
 
@@ -394,7 +394,7 @@ impl Sculpt3dScene {
     /// ⚠️ **Derivada da CÂMERA, nunca do quadrante**: orbitar a vista de cima faz
     /// dela *User*, que é o que ela passou a ser. *Um rótulo preso ao sítio
     /// mentiria assim que a mão tocasse na vista, e mentiria em silêncio.*
-    pub(crate) fn vp_label_key(&self, i: usize) -> &'static str {
+    pub fn vp_label_key(&self, i: usize) -> &'static str {
         match super::navball::named_view(&self.cam_of(i)) {
             Some(Standard::Front) => "viewport.model3d.view.front",
             Some(Standard::Back) => "viewport.model3d.view.back",

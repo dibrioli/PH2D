@@ -61,16 +61,16 @@ use super::Sculpt3dScene;
 const RING_SEGS: usize = 48;
 
 /// O anel **sobre a superfície** — a mão está no barro.
-pub(crate) const ON_SURFACE_RGBA: [f32; 4] = [0.98, 0.83, 0.36, 0.95];
+pub const ON_SURFACE_RGBA: [f32; 4] = [0.98, 0.83, 0.36, 0.95];
 /// O anel **no vazio** — o raio errou a malha, e um clique aqui ORBITA em vez de
 /// esculpir. Cor apagada e não ausência: sumir com o cursor no vazio esconde
 /// justamente a informação de que o gesto mudou de significado.
-pub(crate) const OFF_SURFACE_RGBA: [f32; 4] = [0.98, 0.83, 0.36, 0.30];
+pub const OFF_SURFACE_RGBA: [f32; 4] = [0.98, 0.83, 0.36, 0.30];
 
 /// Onde o cursor está e o que ele vai fazer.
-pub(crate) struct CursorMark {
-    pub(crate) path: BezPath,
-    pub(crate) on_surface: bool,
+pub struct CursorMark {
+    pub path: BezPath,
+    pub on_surface: bool,
 }
 
 impl Sculpt3dScene {
@@ -79,7 +79,7 @@ impl Sculpt3dScene {
     /// `None` quando o barro não está na tela (a doação em modo LUZ) — ali o
     /// ponteiro nem é da cena, e um cursor de escultura sobre a tinta prometeria
     /// um gesto que o clique não faz.
-    pub(crate) fn cursor_mark(&self, x: f32, y: f32) -> Option<CursorMark> {
+    pub fn cursor_mark(&self, x: f32, y: f32) -> Option<CursorMark> {
         if !self.shows_clay() {
             return None;
         }

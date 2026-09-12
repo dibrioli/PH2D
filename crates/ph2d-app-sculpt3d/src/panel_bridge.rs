@@ -1,6 +1,6 @@
 //! A costura entre o **painel da cena 3D** e a `Sculpt3dScene` (ADR-0150, W12).
 //!
-//! ⚠️ Não confundir com o `sculpt3d::panel`, que é o outro lado da mesma ponte:
+//! ⚠️ Não confundir com o `crate::panel`, que é o outro lado da mesma ponte:
 //! lá mora a TRADUÇÃO (intent → campos privados da cena), aqui a FASE (quando ela
 //! roda, e quem abre o painel). Dois arquivos, dois assuntos — e o de lá é filho
 //! da cena justamente porque precisa dos privados dela.
@@ -34,7 +34,7 @@
 
 use ph2d_editor::screens::hero::HeroScreen;
 
-use crate::sculpt3d::Sculpt3dScene;
+use crate::Sculpt3dScene;
 
 /// Publica o retrato para o `paint` e aplica o que o artista fez.
 ///
@@ -44,15 +44,15 @@ use crate::sculpt3d::Sculpt3dScene;
 /// `Shift+B` arma: uma porta, dois pedintes, e por isso o botão e o atalho não
 /// podem divergir. É o precedente do `physics_panel_bridge`, que devolve o
 /// `show_colliders` pela mesma razão.
-pub(crate) fn dispatch(
+pub fn dispatch(
     hero: &mut HeroScreen,
     scene: Option<&mut Sculpt3dScene>,
-) -> Vec<crate::sculpt3d::Sculpt3dFrameRequest> {
+) -> Vec<crate::Sculpt3dFrameRequest> {
     // ── 0. O pill SCULPT diz o que a forma É. ──
     // ⚠️ **ANTES do early-return**, e é a metade que o torna correto: sem cena o pill tem de ficar
     // SOLTO (o estado honesto de *entrar*), e um sync que morasse depois do `let Some` deixaria o
     // botão preso em *pressed* para sempre no frame em que a cena fosse largada.
-    crate::sculpt3d::sync_pill(hero, scene.as_deref());
+    crate::sync_pill(hero, scene.as_deref());
 
     let Some(scene) = scene else {
         // Sem cena não há retrato — e é isso que faz o `paint` do painel sair no

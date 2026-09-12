@@ -2,7 +2,7 @@
 //!
 //! ⚠️ É um **módulo-filho** de [`super`], e não uma crate nem um irmão de topo: ele partilha as
 //! constantes de desenho e os utilitários de geometria do pai (`use super::*`), e todos os caminhos
-//! que já existiam (`field3d_gizmo::drag`, `field3d_gizmo::Motion`) continuam a valer pelo
+//! que já existiam (`ph2d_viewport3d::gizmo::drag`, `ph2d_viewport3d::gizmo::Motion`) continuam a valer pelo
 //! re-export. *Cortar um arquivo não pode custar uma reescrita a cada sítio que o chamava.*
 //!
 //! # Por que a linha do corte cai AQUI

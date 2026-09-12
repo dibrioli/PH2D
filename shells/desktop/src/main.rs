@@ -187,7 +187,6 @@ mod envelope_smoke;
 mod expr_blend_smoke;
 mod extrap_smoke;
 mod falloff_smoke;
-mod field3d_gizmo;
 // ⭐ **Estes dois VOLTARAM da família, e a razão é o SUJEITO de cada um.**
 //
 // - `field3d_undo_probe` conduz a `App` REAL pelo ponteiro real (`self.smoke_pointer_move`,
@@ -198,15 +197,11 @@ mod field3d_gizmo;
 // ⚠️ **O censo da linha contou `1 impl App` nesta família e eram DOIS** — ele grepou `^impl App`
 // e o segundo está escrito `impl crate::App`. *Um censo por forma textual conta a forma, não a
 // coisa.*
-mod field3d_layout;
-mod field3d_navball;
 #[cfg(test)]
 #[path = "field3d_snapshot_tests.rs"]
 mod field3d_snapshot_tests;
 mod field3d_undo_probe;
 /// ADR-0161 W109 — o cabeçalho CLICÁVEL de cada vista: o menu que troca a câmera daquele quadrante.
-mod field3d_view_menu;
-mod field3d_views;
 /// Motion Nodes: o gizmo de canvas de um field espacial (`field.box`, …). Espelho do
 /// `flip_selection_gizmo` — `GizmoTarget::MotionField`, apply nos params do NÓ.
 mod field_gizmo;
@@ -441,8 +436,10 @@ mod scroll_smoke;
 /// `sculpt3d_*.rs` que viviam soltos aqui no `src/` passaram a `src/sculpt3d/`, e o
 /// `sculpt3d_keys_view` — que era o único irmão declarado à parte — é hoje
 /// [`sculpt3d::keys_view`]. ⇒ o corte da Fase B é mover UMA pasta.
+/// ⭐ **Onde a shell ATENDE a família da escultura** — os quinze invólucros que desmontam o
+/// `AppGfx`. A família mora em [`ph2d_app_sculpt3d`] desde a W2/L3.
 #[cfg(feature = "sculpt3d")]
-mod sculpt3d;
+mod sculpt3d_host;
 mod shape_build;
 mod shape_build_gesture;
 /// O BAKE da folha — as peças passam a ser N janelas para UMA textura (plano §7.3, W5.2).

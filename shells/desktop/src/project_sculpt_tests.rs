@@ -14,7 +14,7 @@ fn a_sculpture() -> Vec<u8> {
     let mut stack = ph2d_mesh::Multires::new(ph2d_mesh::shapes::octahedron(1.0));
     assert!(stack.add_level(), "a fixture precisa do 2º nível");
     stack.mesh_mut().positions_mut()[0][1] += 0.25;
-    crate::sculpt3d::encode_doc(&[(stack.to_data(), ph2d_mesh::Pose::IDENTITY.to_data())], 0)
+    ph2d_app_sculpt3d::encode_doc(&[(stack.to_data(), ph2d_mesh::Pose::IDENTITY.to_data())], 0)
 }
 
 /// **UMA ESCULTURA ILEGÍVEL RECUSA O LOAD INTEIRO** — a lei da timeline, pelo

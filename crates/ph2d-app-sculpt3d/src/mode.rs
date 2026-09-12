@@ -82,7 +82,7 @@ impl Sculpt3dScene {
     /// abrir o pill MODEL tem de tirar o barro da tela. A alternativa era o modelador escrever a
     /// própria saída do modo escultura — uma segunda resposta a *"como se sai do barro"*, e a que
     /// não conhece a ordem do ciclo que o cabeçalho deste arquivo defende.
-    pub(crate) fn toggle_clay(&mut self) -> &'static str {
+    pub fn toggle_clay(&mut self) -> &'static str {
         self.role = if self.role.draws_clay() {
             // Ver o cabeçalho: a saída é a próxima posição do ciclo, não um destino escolhido aqui.
             self.role.next()
@@ -97,7 +97,7 @@ impl Sculpt3dScene {
     /// ⚠️ Ela é a mesma do [`Self::shows_clay`], e existe separada só porque aquela é
     /// `pub(super)` do módulo do gesto. Um segundo campo aqui seria o bool que passa a discordar do
     /// `D`.
-    pub(crate) fn clay_on_screen(&self) -> bool {
+    pub fn clay_on_screen(&self) -> bool {
         self.role.draws_clay()
     }
 
@@ -123,7 +123,7 @@ impl Sculpt3dScene {
 /// Painter evita derivando do modo publicado.
 ///
 /// Sem cena o pill fica solto (`Normal`): não há barro na tela, e é o estado honesto de *entrar*.
-pub(crate) fn sync_pill(
+pub fn sync_pill(
     hero: &mut ph2d_editor::screens::hero::HeroScreen,
     scene: Option<&Sculpt3dScene>,
 ) {

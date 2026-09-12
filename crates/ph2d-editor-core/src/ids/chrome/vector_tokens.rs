@@ -6,7 +6,7 @@
 use ph2d_a11y::NodeId;
 
 use super::super::hash_node_id;
-use super::painter::fnv_node_id_runtime;
+use ph2d_tool_registry::hash_node_id_runtime;
 
 /// **O chip de token do PREENCHIMENTO** — abre a lista, e mostra o token vigente (ou `—`).
 ///
@@ -155,5 +155,5 @@ pub fn token_slot_of(chip: NodeId) -> Option<TokenSlot> {
 /// `i == 0` é a linha **Unbind** — soltar a propriedade; as demais são `ColorToken::ALL[i - 1]`.
 #[must_use]
 pub fn vector_token_option_id(prop: u16, i: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("vector.token.opt.{prop}.{i}"))
+    hash_node_id_runtime(&format!("vector.token.opt.{prop}.{i}"))
 }

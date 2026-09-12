@@ -6,7 +6,8 @@
 //! value as `SetValue` (routed via [`super::PAINTER_WATERCOLOR_FIELDS`] +
 //! `is_param_field`). Split into its own file like `painter_shape.rs` to keep the ids tidy.
 
-use super::{NodeId, fnv_node_id_runtime, hash_node_id};
+use super::{NodeId, hash_node_id};
+use ph2d_tool_registry::hash_node_id_runtime;
 
 /// Collapsible **Watercolor** section header (ALL-CAPS label + collapse chevron + assignable colour
 /// dot). `mark_collapsible_section`-registered in `crate::populate`.
@@ -132,7 +133,7 @@ pub const PAINTER_WATERCOLOR_PAPER_PARAMS: [NodeId; 6] = [
 /// Derive the stable [`NodeId`] for **Paper** mapping option `m` in the open Paper mapping popover.
 #[must_use]
 pub fn painter_paper_mapping_option_id(m: u8) -> NodeId {
-    fnv_node_id_runtime(&format!("painter_brush.papermapopt.{m}"))
+    hash_node_id_runtime(&format!("painter_brush.papermapopt.{m}"))
 }
 
 /// **Granulation** "Same as Paper" toggle — shown in the **Grain** section in watercolor mode (the Grain
@@ -150,7 +151,7 @@ pub const PAINTER_WATERCOLOR_SMOOTH_EDGES: NodeId =
 /// `painter_brush_texture_kind_option_id`.
 #[must_use]
 pub fn painter_paper_kind_option_id(k: u8) -> NodeId {
-    fnv_node_id_runtime(&format!("painter_brush.paperkindopt.{k}"))
+    hash_node_id_runtime(&format!("painter_brush.paperkindopt.{k}"))
 }
 
 /// The Watercolor **Click** widgets the panel actually paints (master enable + section reset +

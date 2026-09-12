@@ -73,21 +73,21 @@ pub const WET_TUNING_KM_MIXING: NodeId = hash_node_id("wet_tuning.km_mixing");
 pub const WET_TUNING_KM_GLAZE: NodeId = hash_node_id("wet_tuning.km_glaze");
 
 /// A knob row's SLIDER id, derived from the engine knob key (the runtime FNV
-/// twin of [`hash_node_id`], same hash — `fnv_node_id_runtime` is gated to
-/// agree with the const fn).
+/// door `hash_node_id_runtime`, same hash as [`hash_node_id`] — its agreement
+/// with the const fn is gated).
 #[must_use]
 pub fn wet_tuning_slider_id(key: &str) -> NodeId {
-    super::painter::fnv_node_id_runtime(&format!("wet_tuning.slider.{key}"))
+    ph2d_tool_registry::hash_node_id_runtime(&format!("wet_tuning.slider.{key}"))
 }
 
 /// A knob row's number-CHIP id.
 #[must_use]
 pub fn wet_tuning_chip_id(key: &str) -> NodeId {
-    super::painter::fnv_node_id_runtime(&format!("wet_tuning.chip.{key}"))
+    ph2d_tool_registry::hash_node_id_runtime(&format!("wet_tuning.chip.{key}"))
 }
 
 /// A knob row's per-knob RESET id.
 #[must_use]
 pub fn wet_tuning_reset_id(key: &str) -> NodeId {
-    super::painter::fnv_node_id_runtime(&format!("wet_tuning.reset.{key}"))
+    ph2d_tool_registry::hash_node_id_runtime(&format!("wet_tuning.reset.{key}"))
 }

@@ -4,7 +4,7 @@
 //! source). Split from `painter.rs` to keep that file under the workspace LOC cap;
 //! the option-id factories reuse the FNV runtime-hash twin in `painter.rs`.
 
-use super::painter::fnv_node_id_runtime;
+use ph2d_tool_registry::hash_node_id_runtime;
 use super::{NodeId, hash_node_id};
 
 /// Brush texture **kind** picker chip (None/Noise/Checker/Voronoi/Stripes — the
@@ -84,14 +84,14 @@ pub const PAINTER_BRUSH_TEXTURE_PARAMS: [NodeId; 6] = [
 /// hit-registered, so the `format!` is bounded.
 #[must_use]
 pub fn painter_brush_texture_mapping_option_id(m: u8) -> NodeId {
-    fnv_node_id_runtime(&format!("painter_brush.texmapopt.{m}"))
+    hash_node_id_runtime(&format!("painter_brush.texmapopt.{m}"))
 }
 
 /// Derive the stable [`NodeId`] for texture-kind option `k` (the `TextureKind` wire discriminant)
 /// in the open kind picker popover.
 #[must_use]
 pub fn painter_brush_texture_kind_option_id(k: u8) -> NodeId {
-    fnv_node_id_runtime(&format!("painter_brush.texkindopt.{k}"))
+    hash_node_id_runtime(&format!("painter_brush.texkindopt.{k}"))
 }
 
 // ── Texture Color Ramp editor (maps the texture's scalar to a colour) ──
@@ -151,19 +151,19 @@ pub const PAINTER_BRUSH_TEXTURE_RAMP_VALUE_IDS: [NodeId; 3] = [
 /// under [`PAINTER_BRUSH_TEXTURE_RAMP_EDIT`]; distinct from its swatch button id).
 #[must_use]
 pub fn painter_brush_texture_ramp_handle_id(i: u8) -> NodeId {
-    fnv_node_id_runtime(&format!("painter_brush.texramphandle.{i}"))
+    hash_node_id_runtime(&format!("painter_brush.texramphandle.{i}"))
 }
 
 /// Stable [`NodeId`] for ramp colour-mode option `m` in the open Mode dropdown popover.
 #[must_use]
 pub fn painter_brush_texture_ramp_mode_option_id(m: u8) -> NodeId {
-    fnv_node_id_runtime(&format!("painter_brush.texrampmodeopt.{m}"))
+    hash_node_id_runtime(&format!("painter_brush.texrampmodeopt.{m}"))
 }
 
 /// Stable [`NodeId`] for ramp interpolation option `i` in the open Interpolation dropdown popover.
 #[must_use]
 pub fn painter_brush_texture_ramp_interp_option_id(i: u8) -> NodeId {
-    fnv_node_id_runtime(&format!("painter_brush.texrampinterpopt.{i}"))
+    hash_node_id_runtime(&format!("painter_brush.texrampinterpopt.{i}"))
 }
 
 /// Ramp **alpha action** dropdown (Off / → Strength / → Sprite) — what the ramp colour's alpha does
@@ -175,5 +175,5 @@ pub const PAINTER_BRUSH_TEXTURE_RAMP_ALPHA_MODE: NodeId =
 /// open dropdown popover.
 #[must_use]
 pub fn painter_brush_texture_ramp_alpha_option_id(m: u8) -> NodeId {
-    fnv_node_id_runtime(&format!("painter_brush.texrampalphaopt.{m}"))
+    hash_node_id_runtime(&format!("painter_brush.texrampalphaopt.{m}"))
 }

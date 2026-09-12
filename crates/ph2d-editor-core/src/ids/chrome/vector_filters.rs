@@ -22,7 +22,7 @@
 use ph2d_a11y::NodeId;
 
 use super::super::hash_node_id;
-use super::painter::fnv_node_id_runtime;
+use ph2d_tool_registry::hash_node_id_runtime;
 
 // ── Filters: a pilha de FX raster por-forma ─────────────────────────────────────
 // A pilha é o componente `ph2d_ecs::VecFilter` na entidade da forma; presença = tem filtros,
@@ -54,96 +54,96 @@ pub const MAX_FILTER_MODES: usize = 4;
 /// mede a DISTÂNCIA à borda (uma banda de largura constante ao longo de todo o contorno).
 #[must_use]
 pub fn filter_mode_id(row: usize, mode: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("vector.filter.mode.{row}.{mode}"))
+    hash_node_id_runtime(&format!("vector.filter.mode.{row}.{mode}"))
 }
 
 /// **Add \<tipo\>** — põe um degrau do tipo `kind` no TOPO da pilha (o fim da lista).
 #[must_use]
 pub fn filter_add_id(kind: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("vector.filter.add.{kind}"))
+    hash_node_id_runtime(&format!("vector.filter.add.{kind}"))
 }
 
 /// **O card** da linha `row` — a moldura. Id próprio, e não o do ✕: o card e o botão de apagar
 /// são coisas diferentes para a a11y.
 #[must_use]
 pub fn filter_card_id(row: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("vector.filter.card.{row}"))
+    hash_node_id_runtime(&format!("vector.filter.card.{row}"))
 }
 
 /// **Remove** o degrau da linha `row`. Removida a última linha, o componente inteiro sai da
 /// entidade (a forma volta nua).
 #[must_use]
 pub fn filter_remove_id(row: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("vector.filter.remove.{row}"))
+    hash_node_id_runtime(&format!("vector.filter.remove.{row}"))
 }
 
 /// Sobe o degrau da linha `row`. **A ORDEM é a feature**: `Shadow → Blur` e `Blur → Shadow`
 /// desenham coisas diferentes, e é isso que uma pilha entrega e um filtro único não.
 #[must_use]
 pub fn filter_up_id(row: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("vector.filter.up.{row}"))
+    hash_node_id_runtime(&format!("vector.filter.up.{row}"))
 }
 
 /// Desce o degrau da linha `row`.
 #[must_use]
 pub fn filter_down_id(row: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("vector.filter.down.{row}"))
+    hash_node_id_runtime(&format!("vector.filter.down.{row}"))
 }
 
 /// **O olho** da linha `row` — desarma o degrau sem o apagar; os parâmetros ficam.
 #[must_use]
 pub fn filter_hide_id(row: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("vector.filter.hide.{row}"))
+    hash_node_id_runtime(&format!("vector.filter.hide.{row}"))
 }
 
 /// **Radius** da linha `row` — o `stdDev` do borrão, em unidades de MUNDO (dar zoom aumenta o
 /// borrão na tela).
 #[must_use]
 pub fn filter_radius_id(row: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("vector.filter.radius.{row}"))
+    hash_node_id_runtime(&format!("vector.filter.radius.{row}"))
 }
 
 /// O campo numérico gêmeo do [`filter_radius_id`].
 #[must_use]
 pub fn filter_radius_num_id(row: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("vector.filter.radius.{row}.num"))
+    hash_node_id_runtime(&format!("vector.filter.radius.{row}.num"))
 }
 
 /// **Offset X** da linha `row` (mundo). Só no Drop Shadow.
 #[must_use]
 pub fn filter_offx_id(row: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("vector.filter.offx.{row}"))
+    hash_node_id_runtime(&format!("vector.filter.offx.{row}"))
 }
 
 /// O campo numérico gêmeo do [`filter_offx_id`].
 #[must_use]
 pub fn filter_offx_num_id(row: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("vector.filter.offx.{row}.num"))
+    hash_node_id_runtime(&format!("vector.filter.offx.{row}.num"))
 }
 
 /// **Offset Y** da linha `row` (mundo). Só no Drop Shadow.
 #[must_use]
 pub fn filter_offy_id(row: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("vector.filter.offy.{row}"))
+    hash_node_id_runtime(&format!("vector.filter.offy.{row}"))
 }
 
 /// O campo numérico gêmeo do [`filter_offy_id`].
 #[must_use]
 pub fn filter_offy_num_id(row: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("vector.filter.offy.{row}.num"))
+    hash_node_id_runtime(&format!("vector.filter.offy.{row}.num"))
 }
 
 /// **Color** da linha `row` — a cor do halo (swatch, abre o picker OKLCH). O Blur a ignora.
 #[must_use]
 pub fn filter_color_id(row: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("vector.filter.color.{row}"))
+    hash_node_id_runtime(&format!("vector.filter.color.{row}"))
 }
 
 /// **A SEGUNDA cor** da linha `row` — a ponta CLARA da rampa do Duotone (swatch, abre o MESMO
 /// picker OKLCH). Só os tipos com `FxKindSpec::color_b_label` a oferecem.
 #[must_use]
 pub fn filter_color_b_id(row: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("vector.filter.colorb.{row}"))
+    hash_node_id_runtime(&format!("vector.filter.colorb.{row}"))
 }
 
 /// O teto de STOPS de uma rampa. **Espelha o `ph2d_ecs::FxOp::MAX_GRADIENT_STOPS`** (há gate na
@@ -161,14 +161,14 @@ pub const MAX_FILTER_STOPS: usize = 8;
 /// MESMO que o editor de falloff do Painter e a curva do motion-params já usam.
 #[must_use]
 pub fn filter_ramp_id(row: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("vector.filter.ramp.{row}"))
+    hash_node_id_runtime(&format!("vector.filter.ramp.{row}"))
 }
 
 /// O punho do stop `stop` da rampa da linha `row` — arrastável na horizontal (a POSIÇÃO), e
 /// clicável para selecionar (a cor do selecionado é o que a swatch edita).
 #[must_use]
 pub fn filter_stop_id(row: usize, stop: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("vector.filter.stop.{row}.{stop}"))
+    hash_node_id_runtime(&format!("vector.filter.stop.{row}.{stop}"))
 }
 
 /// **A COR do stop SELECIONADO** da rampa da linha `row` (swatch, abre o MESMO picker OKLCH das
@@ -179,13 +179,13 @@ pub fn filter_stop_id(row: usize, stop: usize) -> NodeId {
 /// depois a cor*; e o picker é modal, então ele só pode ter um alvo de qualquer forma.
 #[must_use]
 pub fn filter_stop_color_id(row: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("vector.filter.stop.color.{row}"))
+    hash_node_id_runtime(&format!("vector.filter.stop.color.{row}"))
 }
 
 /// **+** — acrescenta um stop na rampa da linha `row`.
 #[must_use]
 pub fn filter_stop_add_id(row: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("vector.filter.stop.add.{row}"))
+    hash_node_id_runtime(&format!("vector.filter.stop.add.{row}"))
 }
 
 /// **−** — remove o stop SELECIONADO da rampa da linha `row`. O piso é DOIS (uma rampa com menos
@@ -193,7 +193,7 @@ pub fn filter_stop_add_id(row: usize) -> NodeId {
 /// `no_stops_is_the_painters_empty_ramp_which_is_not_the_two_stop_default`).
 #[must_use]
 pub fn filter_stop_remove_id(row: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("vector.filter.stop.remove.{row}"))
+    hash_node_id_runtime(&format!("vector.filter.stop.remove.{row}"))
 }
 
 /// O teto de LEIS DE MISTURA que um degrau oferece. Espelha o `ph2d_ecs::FxOp::BLEND_KINDS`.
@@ -208,25 +208,25 @@ pub const MAX_FILTER_BLENDS: usize = 20;
 /// Overlay em `Color` troca a matiz preservando a luminosidade.
 #[must_use]
 pub fn filter_blend_id(row: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("vector.filter.blend.{row}"))
+    hash_node_id_runtime(&format!("vector.filter.blend.{row}"))
 }
 
 /// A opção `mode` no popover de mistura da linha `row`.
 #[must_use]
 pub fn filter_blend_option_id(row: usize, mode: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("vector.filter.blend.{row}.{mode}"))
+    hash_node_id_runtime(&format!("vector.filter.blend.{row}.{mode}"))
 }
 
 /// **Opacity** da linha `row` (0..1).
 #[must_use]
 pub fn filter_opacity_id(row: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("vector.filter.opacity.{row}"))
+    hash_node_id_runtime(&format!("vector.filter.opacity.{row}"))
 }
 
 /// O campo numérico gêmeo do [`filter_opacity_id`].
 #[must_use]
 pub fn filter_opacity_num_id(row: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("vector.filter.opacity.{row}.num"))
+    hash_node_id_runtime(&format!("vector.filter.opacity.{row}.num"))
 }
 
 /// **Size** da linha `row` — o TAMANHO das ondulações do ruído, em unidades de MUNDO. É o
@@ -234,38 +234,38 @@ pub fn filter_opacity_num_id(row: usize) -> NodeId {
 /// pensa em *quão grandes são os caroços* e não em quantos cabem por unidade.
 #[must_use]
 pub fn filter_scale_id(row: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("vector.filter.scale.{row}"))
+    hash_node_id_runtime(&format!("vector.filter.scale.{row}"))
 }
 
 /// O campo numérico gêmeo do [`filter_scale_id`].
 #[must_use]
 pub fn filter_scale_num_id(row: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("vector.filter.scale.{row}.num"))
+    hash_node_id_runtime(&format!("vector.filter.scale.{row}.num"))
 }
 
 /// **Detail** da linha `row` — quantas OITAVAS o ruído soma (o `numOctaves`).
 #[must_use]
 pub fn filter_detail_id(row: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("vector.filter.detail.{row}"))
+    hash_node_id_runtime(&format!("vector.filter.detail.{row}"))
 }
 
 /// O campo numérico gêmeo do [`filter_detail_id`].
 #[must_use]
 pub fn filter_detail_num_id(row: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("vector.filter.detail.{row}.num"))
+    hash_node_id_runtime(&format!("vector.filter.detail.{row}.num"))
 }
 
 /// **Seed** da linha `row` — qual das infinitas realizações do ruído. Não muda a estatística do
 /// campo, só qual desenho ele é.
 #[must_use]
 pub fn filter_seed_id(row: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("vector.filter.seed.{row}"))
+    hash_node_id_runtime(&format!("vector.filter.seed.{row}"))
 }
 
 /// O campo numérico gêmeo do [`filter_seed_id`].
 #[must_use]
 pub fn filter_seed_num_id(row: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("vector.filter.seed.{row}.num"))
+    hash_node_id_runtime(&format!("vector.filter.seed.{row}.num"))
 }
 
 /// **Amount** da linha `row` — quanto a silhueta ENGORDA, **com sinal** (o Grow / Shrink).
@@ -275,13 +275,13 @@ pub fn filter_seed_num_id(row: usize) -> NodeId {
 /// emprestar a régua do raio faria o Blur ler metade da faixa dele como negativa.
 #[must_use]
 pub fn filter_grow_id(row: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("vector.filter.grow.{row}"))
+    hash_node_id_runtime(&format!("vector.filter.grow.{row}"))
 }
 
 /// O campo numérico gêmeo do [`filter_grow_id`].
 #[must_use]
 pub fn filter_grow_num_id(row: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("vector.filter.grow.{row}.num"))
+    hash_node_id_runtime(&format!("vector.filter.grow.{row}.num"))
 }
 
 /// **Hue** da linha `row` — a matiz do Color Adjust, régua BIPOLAR (`0,5` no meio = sem rotação).
@@ -291,35 +291,35 @@ pub fn filter_grow_num_id(row: usize) -> NodeId {
 /// ler metade da faixa dele ao contrário quando ela troca de tipo em runtime.
 #[must_use]
 pub fn filter_hue_id(row: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("vector.filter.hue.{row}"))
+    hash_node_id_runtime(&format!("vector.filter.hue.{row}"))
 }
 
 /// O campo numérico gêmeo do [`filter_hue_id`].
 #[must_use]
 pub fn filter_hue_num_id(row: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("vector.filter.hue.{row}.num"))
+    hash_node_id_runtime(&format!("vector.filter.hue.{row}.num"))
 }
 
 /// **Saturation** da linha `row` — bipolar: `-1` drena até o cinza, `+1` dobra o croma.
 #[must_use]
 pub fn filter_sat_id(row: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("vector.filter.sat.{row}"))
+    hash_node_id_runtime(&format!("vector.filter.sat.{row}"))
 }
 
 /// O campo numérico gêmeo do [`filter_sat_id`].
 #[must_use]
 pub fn filter_sat_num_id(row: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("vector.filter.sat.{row}.num"))
+    hash_node_id_runtime(&format!("vector.filter.sat.{row}.num"))
 }
 
 /// **Brightness** da linha `row` — bipolar: `-1` é preto exacto, `+1` é branco exacto.
 #[must_use]
 pub fn filter_bright_id(row: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("vector.filter.bright.{row}"))
+    hash_node_id_runtime(&format!("vector.filter.bright.{row}"))
 }
 
 /// O campo numérico gêmeo do [`filter_bright_id`].
 #[must_use]
 pub fn filter_bright_num_id(row: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("vector.filter.bright.{row}.num"))
+    hash_node_id_runtime(&format!("vector.filter.bright.{row}.num"))
 }

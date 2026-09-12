@@ -148,7 +148,7 @@ impl TexPatKnob {
 /// `vector_marker_option_id` e dos chips do catálogo de formas.
 #[must_use]
 pub fn texpat_id(slot: usize, knob: TexPatKnob) -> NodeId {
-    super::painter::fnv_node_id_runtime(&format!("vector.texpat.{slot}.{knob:?}"))
+    ph2d_tool_registry::hash_node_id_runtime(&format!("vector.texpat.{slot}.{knob:?}"))
 }
 
 // ── A secção BRUSH (plano 36, W4) ─────────────────────────────────────────────

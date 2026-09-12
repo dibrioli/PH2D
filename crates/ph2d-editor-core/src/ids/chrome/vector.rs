@@ -1,5 +1,5 @@
 //! Vector module chrome NodeIds (VGRAPH_* geometry-graph + VECTOR_INSPECTOR_*).
-use super::painter::fnv_node_id_runtime;
+use ph2d_tool_registry::hash_node_id_runtime;
 use super::{NodeId, hash_node_id};
 
 /// Vector Geometry-Graph panel (W3 T3.1) — docked panel that places the
@@ -159,7 +159,7 @@ pub const MAX_MARKER_OPTIONS: usize = 16;
 /// espelho das fábricas do catálogo de formas.
 #[must_use]
 pub fn vector_marker_option_id(slot: usize, index: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("vector.marker.opt.{slot}.{index}"))
+    hash_node_id_runtime(&format!("vector.marker.opt.{slot}.{index}"))
 }
 
 // ── Seletor de MODO (ADR-0108/0112) ──────────────────────────────────────────
@@ -188,20 +188,20 @@ pub const VECTOR_CONVERT_TO_CURVES: NodeId = hash_node_id("vector.convert_to_cur
 /// Botão da forma `index` no catálogo (o seletor de formas do painel).
 #[must_use]
 pub fn vector_shape_id(index: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("vector.shape.{index}"))
+    hash_node_id_runtime(&format!("vector.shape.{index}"))
 }
 
 /// Aba da família `index` (Basic / Round / Arrows / Flow / Bubbles / Symbols…).
 #[must_use]
 pub fn vector_shape_group_id(index: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("vector.shape.group.{index}"))
+    hash_node_id_runtime(&format!("vector.shape.group.{index}"))
 }
 
 /// Campo numérico do parâmetro `index` da forma ativa (o rótulo e a faixa vêm do
 /// catálogo). Teto = `ph2d_vec_scene::MAX_SHAPE_FIELDS`.
 #[must_use]
 pub fn vector_shape_field_id(index: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("vector.shape.field.{index}"))
+    hash_node_id_runtime(&format!("vector.shape.field.{index}"))
 }
 
 /// **Botão** do parâmetro `index` quando ele é uma ESCOLHA (`FieldUnit::Choice`) em vez de
@@ -213,7 +213,7 @@ pub fn vector_shape_field_id(index: usize) -> NodeId {
 /// lugar só — o slot numérico é apenas o depósito, e deixa de ser clicável.
 #[must_use]
 pub fn vector_shape_choice_id(index: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("vector.shape.choice.{index}"))
+    hash_node_id_runtime(&format!("vector.shape.choice.{index}"))
 }
 
 /// Teto de campos de forma que o painel registra (espelha `MAX_SHAPE_FIELDS`).
@@ -509,7 +509,7 @@ pub const MAX_ENVELOPE_PRESETS: usize = 16;
 /// espaço de ids — espelho das fábricas do catálogo de formas e das pontas de traço.
 #[must_use]
 pub fn vector_envelope_preset_id(index: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("vector.envelope.preset.{index}"))
+    hash_node_id_runtime(&format!("vector.envelope.preset.{index}"))
 }
 /// **Bend** — a força do preset, `[-1, 1]`. Só é oferecido com um preset ativo: sem ele o slider
 /// não teria o que re-carimbar, e seria um knob morto.
@@ -555,26 +555,26 @@ pub const MAX_FX_ROW_PARAMS: usize = 6;
 /// **Add \<tipo\>** — o botão que põe um efeito do tipo `kind` na pilha.
 #[must_use]
 pub fn vector_fx_add_id(kind: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("vector.fx.add.{kind}"))
+    hash_node_id_runtime(&format!("vector.fx.add.{kind}"))
 }
 
 /// **Remove** o efeito da linha `row`.
 #[must_use]
 pub fn vector_fx_remove_id(row: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("vector.fx.remove.{row}"))
+    hash_node_id_runtime(&format!("vector.fx.remove.{row}"))
 }
 
 /// Sobe o efeito da linha `row` na pilha. A ORDEM muda a geometria (ADR-0132), então
 /// reordenar é feature, não enfeite.
 #[must_use]
 pub fn vector_fx_up_id(row: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("vector.fx.up.{row}"))
+    hash_node_id_runtime(&format!("vector.fx.up.{row}"))
 }
 
 /// Desce o efeito da linha `row`.
 #[must_use]
 pub fn vector_fx_down_id(row: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("vector.fx.down.{row}"))
+    hash_node_id_runtime(&format!("vector.fx.down.{row}"))
 }
 
 /// **O card** da linha `row` — a moldura. Id próprio, e não o do ✕: o card e o botão de
@@ -582,7 +582,7 @@ pub fn vector_fx_down_id(row: usize) -> NodeId {
 /// a moldura inteira como "remover".
 #[must_use]
 pub fn vector_fx_card_id(row: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("vector.fx.card.{row}"))
+    hash_node_id_runtime(&format!("vector.fx.card.{row}"))
 }
 
 /// **O olho** da linha `row` — desarma o efeito sem o apagar. Desarmar não pode custar os
@@ -590,19 +590,19 @@ pub fn vector_fx_card_id(row: usize) -> NodeId {
 /// artista a lembrar-se de números.
 #[must_use]
 pub fn vector_fx_hide_id(row: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("vector.fx.hide.{row}"))
+    hash_node_id_runtime(&format!("vector.fx.hide.{row}"))
 }
 
 /// O slider do parâmetro `param` do efeito da linha `row`.
 #[must_use]
 pub fn vector_fx_param_id(row: usize, param: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("vector.fx.p.{row}.{param}"))
+    hash_node_id_runtime(&format!("vector.fx.p.{row}.{param}"))
 }
 
 /// O campo numérico do [`vector_fx_param_id`].
 #[must_use]
 pub fn vector_fx_param_num_id(row: usize, param: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("vector.fx.p.{row}.{param}.num"))
+    hash_node_id_runtime(&format!("vector.fx.p.{row}.{param}.num"))
 }
 
 /// **A CAIXINHA** do parâmetro `param` da linha `row` — id PRÓPRIO, e a razão é dura.
@@ -618,7 +618,7 @@ pub fn vector_fx_param_num_id(row: usize, param: usize) -> NodeId {
 /// por completo, porque tirou o único escritor que existia.
 #[must_use]
 pub fn vector_fx_toggle_id(row: usize, param: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("vector.fx.p.{row}.{param}.toggle"))
+    hash_node_id_runtime(&format!("vector.fx.p.{row}.{param}.toggle"))
 }
 
 /// **Apply** — assa a pilha inteira no seu resultado cozido (`VecScene::bake_cooked`) e a

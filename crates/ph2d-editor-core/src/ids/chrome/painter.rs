@@ -1,7 +1,12 @@
-//! Painter sidebar + layers chrome NodeIds, per-row id helpers, and the
-//! private FNV runtime-hash twin used by them (PAINTER_SIDEBAR_*, PAINTER_LAYERS_*,
-//! PAINTER_CURVE_*, PAINTER_GRADIENT_*, PAINTER_MIXER_*, PAINTER_SELCOLOR_*).
+//! Painter sidebar + layers chrome NodeIds and per-row id helpers (PAINTER_SIDEBAR_*,
+//! PAINTER_LAYERS_*, PAINTER_CURVE_*, PAINTER_GRADIENT_*, PAINTER_MIXER_*, PAINTER_SELCOLOR_*).
+//!
+//! ⚠️ **O hash de runtime que estes ids derivam é a PORTA** (`ph2d_tool_registry::hash_node_id_runtime`).
+//! Até 2026-09-12 este ficheiro guardava uma CÓPIA à mão da lei FNV-1a (`fnv_node_id_runtime`),
+//! partilhada por 21 ficheiros irmãos: era a última das três cópias que a porta veio substituir, e
+//! prendia na fundação todo id derivado em runtime (um privado só se vê no módulo que o declara).
 use super::{NodeId, hash_node_id};
+use ph2d_tool_registry::hash_node_id_runtime;
 
 /// Painter sidebar panel container (`ph2d-panel-painter-sidebar` outer rect; right-docked, painter-only).
 pub const PAINTER_SIDEBAR_PANEL: NodeId = hash_node_id("painter_sidebar_panel");
@@ -123,7 +128,7 @@ pub const PAINTER_BRUSH_BLEND: NodeId = hash_node_id("painter_brush.blend");
 /// hit-registered, so the `format!` is bounded.
 #[must_use]
 pub fn painter_brush_blend_option_id(mode: u8) -> NodeId {
-    fnv_node_id_runtime(&format!("painter_brush.blendopt.{mode}"))
+    hash_node_id_runtime(&format!("painter_brush.blendopt.{mode}"))
 }
 
 /// The **Paint Mode** dropdown chip at the head of the appearance half — the paint's MEDIUM
@@ -141,7 +146,7 @@ pub const PAINTER_BRUSH_MEDIA: NodeId = hash_node_id("painter_brush.media");
 /// [`PAINTER_BRUSH_MEDIA`] popover. Mirror of [`painter_brush_blend_option_id`].
 #[must_use]
 pub fn painter_brush_media_option_id(idx: u8) -> NodeId {
-    fnv_node_id_runtime(&format!("painter_brush.mediaopt.{idx}"))
+    hash_node_id_runtime(&format!("painter_brush.mediaopt.{idx}"))
 }
 
 /// Brush **Preset** dropdown chip at the very top of the Painter panel: one-click
@@ -157,14 +162,14 @@ pub const PAINTER_BRUSH_PRESET_COUNT: u8 = 2;
 /// open Preset dropdown popover. Mirror of [`painter_brush_blend_option_id`].
 #[must_use]
 pub fn painter_brush_preset_option_id(idx: u8) -> NodeId {
-    fnv_node_id_runtime(&format!("painter_brush.presetopt.{idx}"))
+    hash_node_id_runtime(&format!("painter_brush.presetopt.{idx}"))
 }
 
 /// Derive the stable [`NodeId`] for falloff preset option `preset` in the open
 /// brush Falloff dropdown popover. Mirror of [`painter_brush_blend_option_id`].
 #[must_use]
 pub fn painter_brush_falloff_option_id(preset: u8) -> NodeId {
-    fnv_node_id_runtime(&format!("painter_brush.falloffopt.{preset}"))
+    hash_node_id_runtime(&format!("painter_brush.falloffopt.{preset}"))
 }
 
 // ── Stroke section (the layers-panel "Stroke" sub-section; Blender Stroke panel) ──
@@ -196,7 +201,7 @@ pub const PAINTER_BRUSH_ACCUMULATE: NodeId = hash_node_id("painter_brush.accumul
 /// [`painter_brush_media_option_id`].
 #[must_use]
 pub fn painter_line_type_option_id(idx: u8) -> NodeId {
-    fnv_node_id_runtime(&format!("painter_line.typeopt.{idx}"))
+    hash_node_id_runtime(&format!("painter_line.typeopt.{idx}"))
 }
 /// "Sync with other tools" checkbox at the top of the brush panel: off (default) = each paint tool keeps
 /// its own settings; on = all tools share these. `Click` → `toggle_link_shared_settings`.
@@ -245,14 +250,14 @@ pub const PAINTER_BRUSH_STABILIZE: NodeId = hash_node_id("painter_brush.stabiliz
 /// discriminant) in the open Stroke Method dropdown popover. Mirror of the blend option factory.
 #[must_use]
 pub fn painter_brush_stroke_method_option_id(m: u8) -> NodeId {
-    fnv_node_id_runtime(&format!("painter_brush.strokeopt.{m}"))
+    hash_node_id_runtime(&format!("painter_brush.strokeopt.{m}"))
 }
 
 /// Derive the stable [`NodeId`] for jitter-unit option `u` (`0` = Brush, `1` = View) in the open
 /// Jitter Unit dropdown popover.
 #[must_use]
 pub fn painter_brush_jitter_unit_option_id(u: u8) -> NodeId {
-    fnv_node_id_runtime(&format!("painter_brush.jituopt.{u}"))
+    hash_node_id_runtime(&format!("painter_brush.jituopt.{u}"))
 }
 
 // ── Brush Falloff curve editor (the always-on shape preview that becomes an
@@ -281,7 +286,7 @@ pub const PAINTER_BRUSH_FALLOFF_REMOVE: NodeId = hash_node_id("painter_brush.fal
 /// small grab rect; the 2-D drag normalizes against the editor's canvas.
 #[must_use]
 pub fn painter_brush_falloff_point_id(index: u8) -> NodeId {
-    fnv_node_id_runtime(&format!("painter_brush.falloff_pt.{index}"))
+    hash_node_id_runtime(&format!("painter_brush.falloff_pt.{index}"))
 }
 
 /// Per-layer-row interactive widget kind, used to derive a stable, collision-
@@ -421,28 +426,6 @@ impl PainterLayerWidget {
     ];
 }
 
-/// Runtime FNV-1a 64-bit over `s`, byte-identical to the `const fn`
-/// [`ph2d_tool_registry::hash_node_id`] (which only accepts `&'static str`).
-/// Needed because the per-row layer ids below are derived from a runtime
-/// `format!` (the layer id is only known at runtime). Kept here, private to
-/// the additive per-row helpers, so the hashing stays consistent with the rest
-/// of the id space (same offset basis / prime / `NodeId(0)` bump). `pub(super)`
-/// so the sibling `painter_texture` module's option-id factories share the one
-/// twin (its agreement with `hash_node_id` is pinned by the test below).
-pub(super) fn fnv_node_id_runtime(s: &str) -> NodeId {
-    const FNV_OFFSET_BASIS_64: u64 = 0xcbf2_9ce4_8422_2325;
-    const FNV_PRIME_64: u64 = 0x0000_0100_0000_01b3;
-    let mut hash: u64 = FNV_OFFSET_BASIS_64;
-    for &b in s.as_bytes() {
-        hash ^= b as u64;
-        hash = hash.wrapping_mul(FNV_PRIME_64);
-    }
-    if hash == 0 {
-        hash = 1; // reserve NodeId(0) = a11y root, mirror of hash_node_id
-    }
-    NodeId(hash)
-}
-
 /// Derive the stable [`NodeId`] for the `kind` control on the Painter
 /// layers-panel row whose layer has runtime id `layer_id`. FNV-hashed from
 /// `"painter_layer.<kind>.<layer_id>"`. Runtime `format!` is acceptable here:
@@ -450,7 +433,7 @@ pub(super) fn fnv_node_id_runtime(s: &str) -> NodeId {
 /// sidebar formats "NN px"). See [`PainterLayerWidget`].
 #[must_use]
 pub fn painter_layer_widget_id(layer_id: u64, kind: PainterLayerWidget) -> NodeId {
-    fnv_node_id_runtime(&format!("painter_layer.{}.{}", kind.tag(), layer_id))
+    hash_node_id_runtime(&format!("painter_layer.{}.{}", kind.tag(), layer_id))
 }
 
 /// Derive the stable [`NodeId`] for blend-mode option `mode` (the
@@ -460,7 +443,7 @@ pub fn painter_layer_widget_id(layer_id: u64, kind: PainterLayerWidget) -> NodeI
 /// so the `format!` cost is bounded.
 #[must_use]
 pub fn painter_layer_blend_option_id(layer_id: u64, mode: u8) -> NodeId {
-    fnv_node_id_runtime(&format!("painter_layer.blendopt.{layer_id}.{mode}"))
+    hash_node_id_runtime(&format!("painter_layer.blendopt.{layer_id}.{mode}"))
 }
 
 /// Derive the stable [`NodeId`] for the `index`-th kind option in the open
@@ -471,7 +454,7 @@ pub fn painter_layer_blend_option_id(layer_id: u64, mode: u8) -> NodeId {
 /// Only the open popover's options are hit-registered, so the `format!` is bounded.
 #[must_use]
 pub fn painter_adjustment_kind_option_id(index: u8) -> NodeId {
-    fnv_node_id_runtime(&format!("painter_layers.adjkind.{index}"))
+    hash_node_id_runtime(&format!("painter_layers.adjkind.{index}"))
 }
 
 /// Derive the stable [`NodeId`] of the bespoke Curves editor (the `parent` of its
@@ -480,7 +463,7 @@ pub fn painter_adjustment_kind_option_id(index: u8) -> NodeId {
 /// forwards to `PainterTool::set_curve_point`. Per Curves adjustment layer.
 #[must_use]
 pub fn painter_curve_editor_id(layer_id: u64) -> NodeId {
-    fnv_node_id_runtime(&format!("painter_curve.editor.{layer_id}"))
+    hash_node_id_runtime(&format!("painter_curve.editor.{layer_id}"))
 }
 
 /// Derive the stable [`NodeId`] for control point `index` of `channel`
@@ -489,7 +472,7 @@ pub fn painter_curve_editor_id(layer_id: u64) -> NodeId {
 /// with a small grab rect; the 2-D drag normalizes against the editor's canvas.
 #[must_use]
 pub fn painter_curve_point_id(layer_id: u64, channel: u8, index: u8) -> NodeId {
-    fnv_node_id_runtime(&format!("painter_curve.pt.{layer_id}.{channel}.{index}"))
+    hash_node_id_runtime(&format!("painter_curve.pt.{layer_id}.{channel}.{index}"))
 }
 
 /// Fixed routing id for a Curves control-point edit forwarded from the panel to
@@ -504,7 +487,7 @@ pub const PAINTER_CURVE_EDIT: NodeId = hash_node_id("painter_curve_edit");
 /// that channel — pure panel view state, not forwarded to the tool.
 #[must_use]
 pub fn painter_curve_tab_id(layer_id: u64, channel: u8) -> NodeId {
-    fnv_node_id_runtime(&format!("painter_curve.tab.{layer_id}.{channel}"))
+    hash_node_id_runtime(&format!("painter_curve.tab.{layer_id}.{channel}"))
 }
 
 /// Derive the [`NodeId`] of the "+ point" / "− point" button of `layer_id`'s
@@ -512,13 +495,13 @@ pub fn painter_curve_tab_id(layer_id: u64, channel: u8) -> NodeId {
 /// channel via [`PAINTER_CURVE_ADD`] / [`PAINTER_CURVE_REMOVE`].
 #[must_use]
 pub fn painter_curve_add_id(layer_id: u64) -> NodeId {
-    fnv_node_id_runtime(&format!("painter_curve.add.{layer_id}"))
+    hash_node_id_runtime(&format!("painter_curve.add.{layer_id}"))
 }
 
 /// See [`painter_curve_add_id`].
 #[must_use]
 pub fn painter_curve_remove_id(layer_id: u64) -> NodeId {
-    fnv_node_id_runtime(&format!("painter_curve.remove.{layer_id}"))
+    hash_node_id_runtime(&format!("painter_curve.remove.{layer_id}"))
 }
 
 /// Fixed routing id — panel → tool "add a control point" (W4 §3). Payload
@@ -534,7 +517,7 @@ pub const PAINTER_CURVE_REMOVE: NodeId = hash_node_id("painter_curve_remove");
 /// not forwarded to the tool.
 #[must_use]
 pub fn painter_mixer_tab_id(layer_id: u64, channel: u8) -> NodeId {
-    fnv_node_id_runtime(&format!("painter_mixer.tab.{layer_id}.{channel}"))
+    hash_node_id_runtime(&format!("painter_mixer.tab.{layer_id}.{channel}"))
 }
 
 /// Fixed routing id for a Channel-Mixer weight edit forwarded from the panel to
@@ -550,7 +533,7 @@ pub const PAINTER_MIXER_EDIT: NodeId = hash_node_id("painter_mixer_edit");
 /// which group the 4 CMYK sliders edit — pure panel view state, not forwarded.
 #[must_use]
 pub fn painter_selcolor_bucket_id(layer_id: u64, bucket: u8) -> NodeId {
-    fnv_node_id_runtime(&format!("painter_selcolor.bucket.{layer_id}.{bucket}"))
+    hash_node_id_runtime(&format!("painter_selcolor.bucket.{layer_id}.{bucket}"))
 }
 
 /// Fixed routing id for a Selective-Color CMYK edit forwarded from the panel to
@@ -565,7 +548,7 @@ pub const PAINTER_SELCOLOR_EDIT: NodeId = hash_node_id("painter_selcolor_edit");
 /// whose `x` is the stop offset) stashes the result keyed by this parent.
 #[must_use]
 pub fn painter_gradient_editor_id(layer_id: u64) -> NodeId {
-    fnv_node_id_runtime(&format!("painter_gradient.editor.{layer_id}"))
+    hash_node_id_runtime(&format!("painter_gradient.editor.{layer_id}"))
 }
 
 /// Derive the [`NodeId`] of gradient stop `index`'s draggable handle on
@@ -574,20 +557,20 @@ pub fn painter_gradient_editor_id(layer_id: u64) -> NodeId {
 /// preview bar; the drag's `x` becomes the stop offset.
 #[must_use]
 pub fn painter_gradient_stop_id(layer_id: u64, index: u8) -> NodeId {
-    fnv_node_id_runtime(&format!("painter_gradient.stop.{layer_id}.{index}"))
+    hash_node_id_runtime(&format!("painter_gradient.stop.{layer_id}.{index}"))
 }
 
 /// Derive the [`NodeId`] of the "+ stop" / "− stop" button of `layer_id`'s
 /// Gradient-Map editor (W4 BATCH-2). See [`PAINTER_GRADIENT_ADD`] / [`PAINTER_GRADIENT_REMOVE`].
 #[must_use]
 pub fn painter_gradient_add_id(layer_id: u64) -> NodeId {
-    fnv_node_id_runtime(&format!("painter_gradient.add.{layer_id}"))
+    hash_node_id_runtime(&format!("painter_gradient.add.{layer_id}"))
 }
 
 /// See [`painter_gradient_add_id`].
 #[must_use]
 pub fn painter_gradient_remove_id(layer_id: u64) -> NodeId {
-    fnv_node_id_runtime(&format!("painter_gradient.remove.{layer_id}"))
+    hash_node_id_runtime(&format!("painter_gradient.remove.{layer_id}"))
 }
 
 // The fixed `PAINTER_GRADIENT_*` routing ids live in the sibling `painter_gradient` module (file-LOC cap).
@@ -595,21 +578,20 @@ pub fn painter_gradient_remove_id(layer_id: u64) -> NodeId {
 mod tests {
     use super::*;
 
-    /// W3 audit-2 B.2: [`fnv_node_id_runtime`] is a hand-copied twin of
-    /// [`ph2d_tool_registry::hash_node_id`] (same offset basis / prime /
-    /// `NodeId(0)` bump) used to derive the per-row painter widget ids. Editing
-    /// one twin's basis or prime would silently diverge the runtime ids from the
-    /// const id space, misrouting clicks. Pin the twin agreement + the
-    /// empty-string FNV-1a-64 offset basis (the value `hash_node_id("")` also
-    /// returns; `!= 0`, so it never shadows `NodeId(0)` = a11y root).
+    /// W3 audit-2 B.2: the runtime hash the per-row painter widget ids are derived with
+    /// ([`hash_node_id_runtime`], the door — once a hand-copied twin named `fnv_node_id_runtime`)
+    /// must agree with the const [`ph2d_tool_registry::hash_node_id`] (same offset basis / prime /
+    /// `NodeId(0)` bump). A divergence would silently move the runtime ids out of the const id
+    /// space, misrouting clicks. Pin the agreement + the empty-string FNV-1a-64 offset basis (the
+    /// value `hash_node_id("")` also returns; `!= 0`, so it never shadows `NodeId(0)` = a11y root).
     #[test]
     fn fnv_node_id_runtime_agrees_with_hash_node_id() {
         assert_eq!(
-            fnv_node_id_runtime("").0,
+            hash_node_id_runtime("").0,
             0xcbf2_9ce4_8422_2325,
             "empty-string hash must equal the FNV-1a-64 offset basis",
         );
-        assert_eq!(fnv_node_id_runtime("").0, hash_node_id("").0);
+        assert_eq!(hash_node_id_runtime("").0, hash_node_id("").0);
 
         for s in [
             "a",
@@ -621,9 +603,9 @@ mod tests {
             "x",
         ] {
             assert_eq!(
-                fnv_node_id_runtime(s).0,
+                hash_node_id_runtime(s).0,
                 hash_node_id(s).0,
-                "fnv_node_id_runtime / hash_node_id diverged on {s:?}",
+                "hash_node_id_runtime / hash_node_id diverged on {s:?}",
             );
         }
     }

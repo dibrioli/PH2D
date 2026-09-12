@@ -12,7 +12,7 @@
 use ph2d_a11y::NodeId;
 
 use super::super::hash_node_id;
-use super::painter::fnv_node_id_runtime;
+use ph2d_tool_registry::hash_node_id_runtime;
 
 /// O cabeçalho da seção **Appearance**.
 pub const VECTOR_SECTION_APPEARANCE: NodeId = hash_node_id("vector.section.appearance");
@@ -41,7 +41,7 @@ pub const VECTOR_OBJ_BLEND: NodeId = hash_node_id("vector.obj.blend");
 /// valor gravado.
 #[must_use]
 pub fn vector_obj_blend_option_id(i: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("vector.obj.blendopt.{i}"))
+    hash_node_id_runtime(&format!("vector.obj.blendopt.{i}"))
 }
 
 // ⭐⭐⭐ **A PILHA DE APARÊNCIA** (estudo 42 item 4, v20) — N preenchimentos e N contornos numa
@@ -58,37 +58,37 @@ pub const VECTOR_PAINT_ADD_STROKE: NodeId = hash_node_id("vector.paint.add.strok
 /// O olho da camada `i` — desarma sem perder os parâmetros.
 #[must_use]
 pub fn vector_paint_eye_id(i: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("vector.paint.eye.{i}"))
+    hash_node_id_runtime(&format!("vector.paint.eye.{i}"))
 }
 
 /// A swatch da camada `i` — abre o selector de cor DELA.
 #[must_use]
 pub fn vector_paint_swatch_id(i: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("vector.paint.swatch.{i}"))
+    hash_node_id_runtime(&format!("vector.paint.swatch.{i}"))
 }
 
 /// A linha da camada `i` — clicar ABRE-a (as propriedades dela aparecem por baixo).
 #[must_use]
 pub fn vector_paint_row_id(i: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("vector.paint.row.{i}"))
+    hash_node_id_runtime(&format!("vector.paint.row.{i}"))
 }
 
 /// Sobe a camada `i` uma posição na pilha.
 #[must_use]
 pub fn vector_paint_up_id(i: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("vector.paint.up.{i}"))
+    hash_node_id_runtime(&format!("vector.paint.up.{i}"))
 }
 
 /// Desce a camada `i` uma posição.
 #[must_use]
 pub fn vector_paint_down_id(i: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("vector.paint.down.{i}"))
+    hash_node_id_runtime(&format!("vector.paint.down.{i}"))
 }
 
 /// Apaga a camada `i`.
 #[must_use]
 pub fn vector_paint_del_id(i: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("vector.paint.del.{i}"))
+    hash_node_id_runtime(&format!("vector.paint.del.{i}"))
 }
 
 /// A largura do contorno da camada ABERTA.
@@ -130,5 +130,5 @@ pub const VECTOR_PAINT_BLEND: NodeId = hash_node_id("vector.paint.blend");
 /// partilhar os ids faria um clique num deles resolver no outro.
 #[must_use]
 pub fn vector_paint_blend_option_id(i: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("vector.paint.blendopt.{i}"))
+    hash_node_id_runtime(&format!("vector.paint.blendopt.{i}"))
 }

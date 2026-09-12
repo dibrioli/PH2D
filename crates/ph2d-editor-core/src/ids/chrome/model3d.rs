@@ -18,7 +18,7 @@
 
 use ph2d_a11y::NodeId;
 
-use super::painter::fnv_node_id_runtime;
+use ph2d_tool_registry::hash_node_id_runtime;
 use crate::ids::hash_node_id;
 
 /// O retângulo externo do painel — z-order, barreira de hit e roteamento da roda.
@@ -41,19 +41,19 @@ pub const MODEL3D_CLOSE: NodeId = hash_node_id("model3d.close");
 /// partilhar a família faria um clique em «Subtract» disparar o verbo da mesma posição.
 #[must_use]
 pub fn model3d_select_button(slot: u32) -> NodeId {
-    fnv_node_id_runtime(&format!("model3d.select.{slot}"))
+    hash_node_id_runtime(&format!("model3d.select.{slot}"))
 }
 
 /// ⭐ **O botão de ACRESCENTAR uma forma** (caixa, esfera, cilindro, toro), pela posição.
 #[must_use]
 pub fn model3d_add_button(slot: u32) -> NodeId {
-    fnv_node_id_runtime(&format!("model3d.add.{slot}"))
+    hash_node_id_runtime(&format!("model3d.add.{slot}"))
 }
 
 /// ⭐ **O botão de uma OPERAÇÃO booleana** (unir, subtrair, intersectar), pela posição.
 #[must_use]
 pub fn model3d_op_button(slot: u32) -> NodeId {
-    fnv_node_id_runtime(&format!("model3d.op.{slot}"))
+    hash_node_id_runtime(&format!("model3d.op.{slot}"))
 }
 
 /// ⭐ **O botão de um MODIFICADOR** (casca, afastamento), pela posição.
@@ -62,7 +62,7 @@ pub fn model3d_op_button(slot: u32) -> NodeId {
 /// no mesmo painel, e partilhar a família faria «Casca» disparar «Unir».
 #[must_use]
 pub fn model3d_mod_button(slot: u32) -> NodeId {
-    fnv_node_id_runtime(&format!("model3d.mod.{slot}"))
+    hash_node_id_runtime(&format!("model3d.mod.{slot}"))
 }
 
 /// ⭐⭐⭐ **O botão do VERBO DESTA FORMA** — com que operação ela dobra sobre as anteriores.
@@ -73,7 +73,7 @@ pub fn model3d_mod_button(slot: u32) -> NodeId {
 /// na fileira de baixo trocar a operação do grupo inteiro.
 #[must_use]
 pub fn model3d_verb_button(slot: u32) -> NodeId {
-    fnv_node_id_runtime(&format!("model3d.verb.{slot}"))
+    hash_node_id_runtime(&format!("model3d.verb.{slot}"))
 }
 
 /// ⭐⭐⭐ **O botão do CARÁCTER da mistura** — a FORMA da transição (arco · corte reto · derretido).
@@ -83,31 +83,31 @@ pub fn model3d_verb_button(slot: u32) -> NodeId {
 /// faria um clique em «Chamfer» trocar o verbo.
 #[must_use]
 pub fn model3d_character_button(slot: u32) -> NodeId {
-    fnv_node_id_runtime(&format!("model3d.character.{slot}"))
+    hash_node_id_runtime(&format!("model3d.character.{slot}"))
 }
 
 /// ⭐ **O botão de EXPORTAR** numa resolução, pela posição.
 #[must_use]
 pub fn model3d_export_button(slot: u32) -> NodeId {
-    fnv_node_id_runtime(&format!("model3d.export.{slot}"))
+    hash_node_id_runtime(&format!("model3d.export.{slot}"))
 }
 
 /// ⭐ **O botão de uma AÇÃO sobre o objeto escolhido** (duplicar, apagar), pela posição.
 #[must_use]
 pub fn model3d_act_button(slot: u32) -> NodeId {
-    fnv_node_id_runtime(&format!("model3d.act.{slot}"))
+    hash_node_id_runtime(&format!("model3d.act.{slot}"))
 }
 
 /// ⭐ **O botão de uma VISTA NOMEADA** (frente, topo, …), pela posição no seletor.
 #[must_use]
 pub fn model3d_view_button(slot: u32) -> NodeId {
-    fnv_node_id_runtime(&format!("model3d.view.{slot}"))
+    hash_node_id_runtime(&format!("model3d.view.{slot}"))
 }
 
 /// ⭐ **O botão de um gesto de CÂMERA** que não é uma vista — a lente, o enquadrar.
 #[must_use]
 pub fn model3d_camera_button(slot: u32) -> NodeId {
-    fnv_node_id_runtime(&format!("model3d.camera.{slot}"))
+    hash_node_id_runtime(&format!("model3d.camera.{slot}"))
 }
 
 /// ⭐ **A track de motion de uma VIAGEM entre vistas** (ADR-0161 W51), pela geração.
@@ -117,7 +117,7 @@ pub fn model3d_camera_button(slot: u32) -> NodeId {
 /// exactamente o ciclo de vida para que ele foi feito.
 #[must_use]
 pub fn model3d_view_travel(generation: u32) -> NodeId {
-    fnv_node_id_runtime(&format!("model3d.view.travel.{generation}"))
+    hash_node_id_runtime(&format!("model3d.view.travel.{generation}"))
 }
 
 /// ⭐⭐⭐ **UM BOTÃO DE ESCOLHA** de uma linha de painel — a fileira `X / Y / Z` do eixo de um
@@ -128,13 +128,13 @@ pub fn model3d_view_travel(generation: u32) -> NodeId {
 /// convenção implícita entre duas crates.
 #[must_use]
 pub fn model3d_choice_button(row: u32, cell: u32) -> NodeId {
-    fnv_node_id_runtime(&format!("model3d.choice.{row}.{cell}"))
+    hash_node_id_runtime(&format!("model3d.choice.{row}.{cell}"))
 }
 
 /// O **slider do raio** do nó `node` da arena.
 #[must_use]
 pub fn model3d_radius_slider(node: u32) -> NodeId {
-    fnv_node_id_runtime(&format!("model3d.radius.slider.{node}"))
+    hash_node_id_runtime(&format!("model3d.radius.slider.{node}"))
 }
 
 /// O **campo numérico** do raio do nó `node` — o gêmeo do slider, para digitar o valor exato.
@@ -144,5 +144,5 @@ pub fn model3d_radius_slider(node: u32) -> NodeId {
 /// move o outro.
 #[must_use]
 pub fn model3d_radius_chip(node: u32) -> NodeId {
-    fnv_node_id_runtime(&format!("model3d.radius.chip.{node}"))
+    hash_node_id_runtime(&format!("model3d.radius.chip.{node}"))
 }

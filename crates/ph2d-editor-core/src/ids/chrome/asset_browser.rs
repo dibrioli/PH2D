@@ -74,7 +74,7 @@ pub const MAX_ASSET_CELLS: usize = 512;
 /// modos (o índice garante-o), então este `index` não muda entre dois quadros com o mesmo filtro.
 #[must_use]
 pub fn asset_cell_id(index: usize) -> NodeId {
-    asset_fnv_node_id(&format!("asset_browser.cell.{index}"))
+    ph2d_tool_registry::hash_node_id_runtime(&format!("asset_browser.cell.{index}"))
 }
 
 // ── ⭐⭐ A COLUNA DE CATÁLOGOS (wave A3) ────────────────────────────────────────────────────────
@@ -131,7 +131,7 @@ pub const MAX_CATALOG_ROWS: usize = 256;
 /// ⚠️ Ela também tira o `format!` do **laço que pinta** a coluna, que corria por quadro.
 static CATALOG_ROWS: std::sync::LazyLock<Vec<NodeId>> = std::sync::LazyLock::new(|| {
     (0..MAX_CATALOG_ROWS)
-        .map(|i| asset_fnv_node_id(&format!("asset_browser.catalog.row.{i}")))
+        .map(|i| ph2d_tool_registry::hash_node_id_runtime(&format!("asset_browser.catalog.row.{i}")))
         .collect()
 });
 
@@ -143,7 +143,7 @@ static CATALOG_ROWS: std::sync::LazyLock<Vec<NodeId>> = std::sync::LazyLock::new
 pub fn catalog_row_id(index: usize) -> NodeId {
     match CATALOG_ROWS.get(index) {
         Some(id) => *id,
-        None => asset_fnv_node_id(&format!("asset_browser.catalog.row.{index}")),
+        None => ph2d_tool_registry::hash_node_id_runtime(&format!("asset_browser.catalog.row.{index}")),
     }
 }
 
@@ -161,16 +161,6 @@ pub fn catalog_row_index(id: NodeId) -> Option<usize> {
     CATALOG_ROWS.iter().position(|c| *c == id)
 }
 
-/// O gémeo de runtime do `hash_node_id`, **a PORTA e não uma cópia**
-/// ([`ph2d_tool_registry::hash_node_id_runtime`]).
-///
-/// ⚠️ **A cópia à mão que aqui esteve tinha o PRIMO errado** (`0x1000_0000_01b3` em vez de
-/// `0x0000_0100_0000_01b3`) — os ids das células caíam noutro espaço e o hit-test nunca os
-/// resolveria. O gate abaixo apanhou-o; a cura foi promover a lei a porta única.
-fn asset_fnv_node_id(slug: &str) -> NodeId {
-    ph2d_tool_registry::hash_node_id_runtime(slug)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -179,8 +169,8 @@ mod tests {
     /// noutro espaço e o hit-test nunca os resolve.
     #[test]
     fn the_runtime_hasher_agrees_with_the_const_one() {
-        assert_eq!(asset_fnv_node_id("asset_browser.panel"), ASSET_PANEL);
-        assert_eq!(asset_fnv_node_id("asset_browser.search"), ASSET_SEARCH);
+        assert_eq!(ph2d_tool_registry::hash_node_id_runtime("asset_browser.panel"), ASSET_PANEL);
+        assert_eq!(ph2d_tool_registry::hash_node_id_runtime("asset_browser.search"), ASSET_SEARCH);
     }
 
     /// ⭐⭐ **A escada lê-se nos dois sentidos, e os dois sentidos concordam.**

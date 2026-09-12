@@ -23,7 +23,7 @@
 
 use ph2d_a11y::NodeId;
 
-use super::painter::fnv_node_id_runtime;
+use ph2d_tool_registry::hash_node_id_runtime;
 use crate::ids::hash_node_id;
 
 /// O cabeçalho da seção **Component**.
@@ -86,7 +86,7 @@ pub const MAX_INSTANCE_PIECES: usize = 16;
 /// O interruptor de visibilidade da peça `row` **nesta instância** (`OverrideSlot::Hidden`).
 #[must_use]
 pub fn vector_instance_piece_show_id(row: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("vector.instance.piece.show.{row}"))
+    hash_node_id_runtime(&format!("vector.instance.piece.show.{row}"))
 }
 
 /// Quantos VALORES por eixo a seção endereça (plano UI/UX W5c).
@@ -100,7 +100,7 @@ pub const MAX_VARIANT_VALUES: usize = 8;
 /// destes?"* com poucos candidatos, e ele quebra em linhas sozinho quando não cabem.
 #[must_use]
 pub fn vector_variant_option_id(axis: usize, value: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("vector.variant.{axis}.{value}"))
+    hash_node_id_runtime(&format!("vector.variant.{axis}.{value}"))
 }
 
 /// A swatch de cor da peça `row` **nesta instância** (`OverrideSlot::Fill`).
@@ -110,5 +110,5 @@ pub fn vector_variant_option_id(axis: usize, value: usize) -> NodeId {
 /// picker nunca abrir.
 #[must_use]
 pub fn vector_instance_piece_colour_id(row: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("vector.instance.piece.colour.{row}"))
+    hash_node_id_runtime(&format!("vector.instance.piece.colour.{row}"))
 }

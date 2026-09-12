@@ -21,7 +21,7 @@
 
 use ph2d_a11y::NodeId;
 
-use super::painter::fnv_node_id_runtime;
+use ph2d_tool_registry::hash_node_id_runtime;
 use crate::ids::hash_node_id;
 
 /// O retângulo externo do painel (z-order + barreira de hit + roteamento da roda).
@@ -40,13 +40,13 @@ pub const TOKENS_RESET_ALL: NodeId = hash_node_id("tokens.reset_all");
 /// ficaria ineditável com todos os gates verdes (a cicatriz que a lista de peças da W5b já pagou).
 #[must_use]
 pub fn tokens_swatch_id(row: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("tokens.swatch.{row}"))
+    hash_node_id_runtime(&format!("tokens.swatch.{row}"))
 }
 
 /// O **Reset** da linha `row` — devolve UM token à fábrica.
 #[must_use]
 pub fn tokens_reset_id(row: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("tokens.reset.{row}"))
+    hash_node_id_runtime(&format!("tokens.reset.{row}"))
 }
 
 /// O **elo** da linha `row` — o gesto de fazer um token SEGUIR outro (plano UI/UX W4b).
@@ -60,7 +60,7 @@ pub fn tokens_reset_id(row: usize) -> NodeId {
 /// cai no botão que a row já tem.
 #[must_use]
 pub fn tokens_link_id(row: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("tokens.link.{row}"))
+    hash_node_id_runtime(&format!("tokens.link.{row}"))
 }
 
 /// O **chip numérico** da linha `row` da família de px (plano UI/UX W4c.1) — o campo que o artista
@@ -72,13 +72,13 @@ pub fn tokens_link_id(row: usize) -> NodeId {
 /// **inedidável** — a cicatriz que a swatch já pagou.
 #[must_use]
 pub fn tokens_num_chip_id(row: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("tokens.num.chip.{row}"))
+    hash_node_id_runtime(&format!("tokens.num.chip.{row}"))
 }
 
 /// O **Reset** da linha numérica `row`.
 #[must_use]
 pub fn tokens_num_reset_id(row: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("tokens.num.reset.{row}"))
+    hash_node_id_runtime(&format!("tokens.num.reset.{row}"))
 }
 
 /// O **elo** da linha numérica `row` — o mesmo gesto de dois toques do elo de cor.
@@ -87,7 +87,7 @@ pub fn tokens_num_reset_id(row: usize) -> NodeId {
 /// id partilhado faria o clique numa linha de espaçamento acertar a linha de cor de mesmo índice.
 #[must_use]
 pub fn tokens_num_link_id(row: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("tokens.num.link.{row}"))
+    hash_node_id_runtime(&format!("tokens.num.link.{row}"))
 }
 
 /// O botão **`f(x)`** da linha numérica `row` — *dá uma fórmula a este token* (plano UI/UX W4c.3).
@@ -97,13 +97,13 @@ pub fn tokens_num_link_id(row: usize) -> NodeId {
 /// fórmula é o *Reset*, que já está na mesma linha.
 #[must_use]
 pub fn tokens_num_fx_id(row: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("tokens.num.fx.{row}"))
+    hash_node_id_runtime(&format!("tokens.num.fx.{row}"))
 }
 
 /// O **campo de fórmula** da linha numérica `row`.
 #[must_use]
 pub fn tokens_num_formula_id(row: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("tokens.num.formula.{row}"))
+    hash_node_id_runtime(&format!("tokens.num.formula.{row}"))
 }
 
 /// **Export DTCG** — a tabela deste modo sai para um `.tokens.json` (plano UI/UX W9).

@@ -11,7 +11,8 @@
 //! histórias diferentes e gates diferentes partilhando um cabeçalho é uma porta a mais na seção de
 //! quem chegou primeiro.
 
-use super::{NodeId, fnv_node_id_runtime, hash_node_id};
+use super::{NodeId, hash_node_id};
+use ph2d_tool_registry::hash_node_id_runtime;
 
 /// **O cabeçalho da seção MORPH STATES** — a máquina de estados do Morph selecionado.
 ///
@@ -98,7 +99,7 @@ pub const VECTOR_MORPH_DISSOLVE: NodeId = hash_node_id("vector.morph.dissolve");
 /// ele que tem o relógio), e um Play que não tocasse nada seria um botão morto com nome de verbo.
 #[must_use]
 pub fn morph_shape_play_id(row: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("vector.morph.shape.play.{row}"))
+    hash_node_id_runtime(&format!("vector.morph.shape.play.{row}"))
 }
 
 /// **DESCONECTAR a forma `row`** — ela sai do conjunto e volta a ser uma forma solta e visível.
@@ -111,7 +112,7 @@ pub fn morph_shape_play_id(row: usize) -> NodeId {
 /// atalho, nunca uma segunda lei.
 #[must_use]
 pub fn morph_shape_disconnect_id(row: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("vector.morph.shape.disconnect.{row}"))
+    hash_node_id_runtime(&format!("vector.morph.shape.disconnect.{row}"))
 }
 
 /// **O botão que ABRE o modal dos eventos** para a forma `row`.
@@ -122,7 +123,7 @@ pub fn morph_shape_disconnect_id(row: usize) -> NodeId {
 /// lista inteira com espaço para o nome de cada acção.
 #[must_use]
 pub fn morph_shape_key_button_id(row: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("vector.morph.shape.keybtn.{row}"))
+    hash_node_id_runtime(&format!("vector.morph.shape.keybtn.{row}"))
 }
 
 /// A opção `action` no menu da condição da seta `row`.
@@ -132,5 +133,5 @@ pub fn morph_shape_key_button_id(row: usize) -> NodeId {
 /// construção, então uma seta sem acção é uma passagem que existe e **nunca acontece**.
 #[must_use]
 pub fn morph_shape_key_option_id(row: usize, action: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("vector.morph.arrow.when.{row}.{action}"))
+    hash_node_id_runtime(&format!("vector.morph.arrow.when.{row}.{action}"))
 }

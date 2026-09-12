@@ -7,7 +7,7 @@
 
 use ph2d_a11y::NodeId;
 
-use super::fnv_node_id_runtime;
+use ph2d_tool_registry::hash_node_id_runtime;
 
 /// Teto de perfis nomeados que o painel oferece (`ph2d_stroke_width::PRESETS`). O `populate`
 /// registra os `MAX` botões de uma vez e o `paint` desenha só os que a tabela publica — assim
@@ -19,5 +19,5 @@ pub const MAX_WIDTH_PRESETS: usize = 8;
 /// espaço de ids — espelho exato da fábrica dos presets de gaiola.
 #[must_use]
 pub fn vector_width_preset_id(index: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("vector.width.preset.{index}"))
+    hash_node_id_runtime(&format!("vector.width.preset.{index}"))
 }

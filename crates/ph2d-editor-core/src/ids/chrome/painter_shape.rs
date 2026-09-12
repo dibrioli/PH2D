@@ -5,7 +5,7 @@
 //! the frozen `PanelEvent` channel to `PainterTool::set_brush_shape_*` / `set_brush_grain_depth`.
 //! Split from `painter.rs` / `painter_texture.rs` to keep those under the workspace LOC cap.
 
-use super::painter::fnv_node_id_runtime;
+use ph2d_tool_registry::hash_node_id_runtime;
 use super::{NodeId, hash_node_id};
 
 /// **Grain Depth** slider (`0..1` track; `1` = full bite, default). `SetValue` → `set_brush_grain_depth`.
@@ -29,7 +29,7 @@ pub const PAINTER_SHAPE_WATERCOLOR_AUTO: NodeId =
 /// are hit-registered, so the `format!` is bounded.
 #[must_use]
 pub fn painter_shape_kind_option_id(k: u8) -> NodeId {
-    fnv_node_id_runtime(&format!("painter_brush.shapekindopt.{k}"))
+    hash_node_id_runtime(&format!("painter_brush.shapekindopt.{k}"))
 }
 
 /// Collapsible **Shape** section header (Inspector pattern: ALL-CAPS label + collapse chevron +
@@ -59,7 +59,7 @@ pub const PAINTER_SHAPE_FOLLOW_MODES: [(u8, &str); 3] = [(0, "Off"), (1, "Rake")
 /// Only the open popover's options are hit-registered, so the `format!` is bounded.
 #[must_use]
 pub fn painter_shape_follow_option_id(v: u8) -> NodeId {
-    fnv_node_id_runtime(&format!("painter_brush.shapefollowopt.{v}"))
+    hash_node_id_runtime(&format!("painter_brush.shapefollowopt.{v}"))
 }
 /// Shape **Offset X** slider (`0..1` track → `−1..1` tile). `SetValue` → `set_brush_shape_offset_norm(0, ..)`.
 pub const PAINTER_SHAPE_OFFSET_X: NodeId = hash_node_id("painter_brush.shape_offset_x");
@@ -169,14 +169,14 @@ pub const PAINTER_SHAPE_DEPOSIT_FIELDS: [NodeId; 2] = [PAINTER_SHAPE_RELIEF, PAI
 /// painted, so the `format!` is bounded). `Click` → `toggle_brush_shape_layer_color(i)`.
 #[must_use]
 pub fn painter_shape_layer_color_check_id(i: u8) -> NodeId {
-    fnv_node_id_runtime(&format!("painter_brush.shapelayercolorck.{i}"))
+    hash_node_id_runtime(&format!("painter_brush.shapelayercolorck.{i}"))
 }
 
 /// Stable [`NodeId`] for Shape layer `i`'s **colour swatch** (shown when its checkbox is on). Opens the
 /// shared colour picker; the per-frame readback forwards `set_brush_shape_layer_color(i, rgb)`.
 #[must_use]
 pub fn painter_shape_layer_color_swatch_id(i: u8) -> NodeId {
-    fnv_node_id_runtime(&format!("painter_brush.shapelayercolorsw.{i}"))
+    hash_node_id_runtime(&format!("painter_brush.shapelayercolorsw.{i}"))
 }
 
 /// Stable [`NodeId`] for Shape layer `i`'s **blend** dropdown chip (the "B" button on the layer row) —
@@ -184,21 +184,21 @@ pub fn painter_shape_layer_color_swatch_id(i: u8) -> NodeId {
 /// `set_brush_shape_layer_blend(i, mode)`.
 #[must_use]
 pub fn painter_shape_layer_blend_id(i: u8) -> NodeId {
-    fnv_node_id_runtime(&format!("painter_brush.shapelayerblend.{i}"))
+    hash_node_id_runtime(&format!("painter_brush.shapelayerblend.{i}"))
 }
 
 /// Stable [`NodeId`] for blend option `mode` of Shape layer `i` in the open blend popover (only the open
 /// popover's options are hit-registered, so the `format!` is bounded).
 #[must_use]
 pub fn painter_shape_layer_blend_option_id(i: u8, mode: u8) -> NodeId {
-    fnv_node_id_runtime(&format!("painter_brush.shapelayerblendopt.{i}.{mode}"))
+    hash_node_id_runtime(&format!("painter_brush.shapelayerblendopt.{i}.{mode}"))
 }
 
 /// Stable [`NodeId`] for Shape layer `i`'s **opacity** numeric box (right of the colour box) — mirrors the
 /// source document layer's opacity (`0..100`). `SetValue` → `set_brush_shape_layer_opacity(i, v/100)`.
 #[must_use]
 pub fn painter_shape_layer_opacity_id(i: u8) -> NodeId {
-    fnv_node_id_runtime(&format!("painter_brush.shapelayeropacity.{i}"))
+    hash_node_id_runtime(&format!("painter_brush.shapelayeropacity.{i}"))
 }
 
 // ── Dab **flatten + rotate** gizmo (Procreate Shape panel; Enio 2026-06-26) ─────────────────────
@@ -216,7 +216,7 @@ pub const PAINTER_BRUSH_DAB_ANGLE: NodeId = hash_node_id("painter_brush.dab_angl
 /// static hit↔populate wiring scan.
 #[must_use]
 pub fn painter_brush_dab_handle_id(channel: u8) -> NodeId {
-    fnv_node_id_runtime(&format!("painter_brush.dabhandle.{channel}"))
+    hash_node_id_runtime(&format!("painter_brush.dabhandle.{channel}"))
 }
 
 // ── **Taper** (Procreate *Touch Taper*; Enio 2026-08-08) ─────────────────────────────────────────
@@ -262,7 +262,7 @@ pub const PAINTER_TAPER_FIELDS: [NodeId; 2] = [PAINTER_TAPER_TIP_START, PAINTER_
 /// registered, and a second spelling of "the head handle" is how the two stop agreeing.
 #[must_use]
 pub fn painter_taper_handle_id(channel: u8) -> NodeId {
-    fnv_node_id_runtime(&format!("painter_brush.taperhandle.{channel}"))
+    hash_node_id_runtime(&format!("painter_brush.taperhandle.{channel}"))
 }
 
 // ── Shape **Colour Ramp** (colourises the silhouette; "Shape Color" section) ─────────────────────
@@ -328,25 +328,25 @@ pub const PAINTER_SHAPE_RAMP_VALUE_IDS: [NodeId; 3] = [
 /// hit-registered, so the `format!` is bounded).
 #[must_use]
 pub fn painter_shape_ramp_handle_id(i: u8) -> NodeId {
-    fnv_node_id_runtime(&format!("painter_brush.shaperamphandle.{i}"))
+    hash_node_id_runtime(&format!("painter_brush.shaperamphandle.{i}"))
 }
 
 /// Stable [`NodeId`] for Shape-ramp colour-mode option `m` in the open Mode dropdown popover.
 #[must_use]
 pub fn painter_shape_ramp_mode_option_id(m: u8) -> NodeId {
-    fnv_node_id_runtime(&format!("painter_brush.shaperampmodeopt.{m}"))
+    hash_node_id_runtime(&format!("painter_brush.shaperampmodeopt.{m}"))
 }
 
 /// Stable [`NodeId`] for Shape-ramp interpolation option `i` in the open dropdown popover.
 #[must_use]
 pub fn painter_shape_ramp_interp_option_id(i: u8) -> NodeId {
-    fnv_node_id_runtime(&format!("painter_brush.shaperampinterpopt.{i}"))
+    hash_node_id_runtime(&format!("painter_brush.shaperampinterpopt.{i}"))
 }
 
 /// Stable [`NodeId`] for Shape-ramp alpha-action option `m` in the open dropdown popover.
 #[must_use]
 pub fn painter_shape_ramp_alpha_option_id(m: u8) -> NodeId {
-    fnv_node_id_runtime(&format!("painter_brush.shaperampalphaopt.{m}"))
+    hash_node_id_runtime(&format!("painter_brush.shaperampalphaopt.{m}"))
 }
 
 /// Per-pattern parameter sliders for a **procedural** Shape (Contrast / Brightness + the kind's shape

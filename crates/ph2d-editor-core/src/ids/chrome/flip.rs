@@ -230,19 +230,6 @@ pub const FLIP_LAYER_DELETE: NodeId = hash_node_id("flip.layer.delete");
 /// timeline's `TIMELINE_MARKER_RENAME_INPUT`.
 pub const FLIP_LAYER_RENAME_INPUT: NodeId = hash_node_id("flip.layer.rename_input");
 
-/// Runtime FNV-1a 64-bit over `s`, byte-identical to the `const fn`
-/// [`hash_node_id`] (which only accepts `&'static str`). Needed because the
-/// per-layer row ids are derived from a runtime `format!` (the `LayerId` is only
-/// known at runtime). Kept flip-local (isolation, ADR-0114) — its agreement with
-/// `hash_node_id` is pinned by the test at the bottom of this module.
-fn flip_fnv_node_id(s: &str) -> NodeId {
-    // ⚠️ **A cópia à mão que aqui esteve virou a PORTA** (2026-08-30): a terceira cópia desta lei,
-    // escrita noutro ficheiro na mesma semana, saiu com o primo errado e os ids caíam noutro
-    // espaço. O gate abaixo (`runtime_hasher_matches_const_hash_node_id`) continua a valer, e a
-    // troca é byte a byte — as duas eram literalmente o mesmo código.
-    ph2d_tool_registry::hash_node_id_runtime(s)
-}
-
 /// Which control on a Flip layers-panel row a runtime id addresses. The layer id
 /// is only known at runtime, so per-row widgets hash `(layer_u64, kind)` into a
 /// [`NodeId`] via [`flip_layer_widget_id`] (mirror of `PainterLayerWidget`). A
@@ -315,7 +302,7 @@ impl FlipLayerWidget {
 /// like the sidebar formats "NN px"). See [`FlipLayerWidget`].
 #[must_use]
 pub fn flip_layer_widget_id(layer_id: u64, kind: FlipLayerWidget) -> NodeId {
-    flip_fnv_node_id(&format!("flip_layer.{}.{}", kind.tag(), layer_id))
+    ph2d_tool_registry::hash_node_id_runtime(&format!("flip_layer.{}.{}", kind.tag(), layer_id))
 }
 
 /// Derive the stable [`NodeId`] for blend-mode option `mode` (the `BlendMode`
@@ -324,7 +311,7 @@ pub fn flip_layer_widget_id(layer_id: u64, kind: FlipLayerWidget) -> NodeId {
 /// popover's options are ever hit-registered, so the `format!` cost is bounded.
 #[must_use]
 pub fn flip_layer_blend_option_id(layer_id: u64, mode: u8) -> NodeId {
-    flip_fnv_node_id(&format!("flip_layer.blendopt.{layer_id}.{mode}"))
+    ph2d_tool_registry::hash_node_id_runtime(&format!("flip_layer.blendopt.{layer_id}.{mode}"))
 }
 
 // ── Frame strip (bottom-docked `ph2d-panel-flip-frames`, ADR-0114 W3) ────────
@@ -421,7 +408,7 @@ pub const FLIP_TWEEN_PAIRS: NodeId = hash_node_id("flip.strip.tween_pairs");
 /// Derive the id of easing option `preset` in the open easing dropdown popover.
 #[must_use]
 pub fn flip_tween_ease_option_id(preset: u8) -> NodeId {
-    flip_fnv_node_id(&format!("flip.strip.easeopt.{preset}"))
+    ph2d_tool_registry::hash_node_id_runtime(&format!("flip.strip.easeopt.{preset}"))
 }
 
 // ── Cycle (post behavior of the active layer) ────────────────────────────────
@@ -432,14 +419,14 @@ pub const FLIP_CYCLE_DD: NodeId = hash_node_id("flip.strip.cycle_dd");
 /// dropdown popover.
 #[must_use]
 pub fn flip_cycle_option_id(mode: u8) -> NodeId {
-    flip_fnv_node_id(&format!("flip.strip.cycleopt.{mode}"))
+    ph2d_tool_registry::hash_node_id_runtime(&format!("flip.strip.cycleopt.{mode}"))
 }
 
 /// Derive the id of the strip cell at `index` (position in the active layer's
 /// cell list, NOT the frame number — the index is bounded by what is painted).
 #[must_use]
 pub fn flip_cell_id(index: usize) -> NodeId {
-    flip_fnv_node_id(&format!("flip.strip.cell.{index}"))
+    ph2d_tool_registry::hash_node_id_runtime(&format!("flip.strip.cell.{index}"))
 }
 
 /// Derive the id of the **hold edge** of the strip cell at `index` — the grip on the
@@ -450,7 +437,7 @@ pub fn flip_cell_id(index: usize) -> NodeId {
 /// widget cannot answer both. Same index space as the cell it belongs to.
 #[must_use]
 pub fn flip_hold_edge_id(index: usize) -> NodeId {
-    flip_fnv_node_id(&format!("flip.strip.holdedge.{index}"))
+    ph2d_tool_registry::hash_node_id_runtime(&format!("flip.strip.holdedge.{index}"))
 }
 
 #[cfg(test)]
@@ -461,8 +448,8 @@ mod tests {
     fn runtime_hasher_matches_const_hash_node_id() {
         // The runtime twin must agree with the const hasher for a static string,
         // so runtime-derived ids live in the same space as the fixed consts.
-        assert_eq!(flip_fnv_node_id("flip.panel"), FLIP_PANEL);
-        assert_eq!(flip_fnv_node_id("flip.mode.draw"), FLIP_MODE_DRAW);
+        assert_eq!(ph2d_tool_registry::hash_node_id_runtime("flip.panel"), FLIP_PANEL);
+        assert_eq!(ph2d_tool_registry::hash_node_id_runtime("flip.mode.draw"), FLIP_MODE_DRAW);
     }
 
     #[test]

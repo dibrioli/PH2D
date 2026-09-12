@@ -7,7 +7,7 @@
 //! cada acção criada — o mesmo par que o painel de tokens já usa, e pela mesma razão: um id fixo
 //! por linha limitaria a lista ao número de constantes que alguém escreveu.
 
-use super::painter::fnv_node_id_runtime;
+use ph2d_tool_registry::hash_node_id_runtime;
 use super::{NodeId, hash_node_id};
 
 /// A faixa do título — **a alça de arrasto**. Um Down aqui começa a mover a janela, e ela **não**
@@ -45,7 +45,7 @@ pub const INPUT_MAP_LISTEN_CANCELLED: NodeId = hash_node_id("input_map.listen_ca
 /// O **X** da linha da acção `row` — apaga a acção inteira.
 #[must_use]
 pub fn input_map_delete_action_id(row: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("input_map.del_action.{row}"))
+    hash_node_id_runtime(&format!("input_map.del_action.{row}"))
 }
 
 /// **+ Bind** da acção `row` — arma a escuta: a **próxima tecla** vira uma ligação dela.
@@ -54,7 +54,7 @@ pub fn input_map_delete_action_id(row: usize) -> NodeId {
 /// executar o atalho do editor. Sem isso, ligar `S` a uma acção **salva o projecto**.
 #[must_use]
 pub fn input_map_listen_id(row: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("input_map.listen.{row}"))
+    hash_node_id_runtime(&format!("input_map.listen.{row}"))
 }
 
 /// **A ZONA MORTA** da acção `row` — abaixo dela a força é `0` (o ruído do analógico).
@@ -62,7 +62,7 @@ pub fn input_map_listen_id(row: usize) -> NodeId {
 /// ⚠️ Um dos **DOIS** números que substituem o de duplo propósito do Godot. Ver [`crate`].
 #[must_use]
 pub fn input_map_deadzone_id(row: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("input_map.deadzone.{row}"))
+    hash_node_id_runtime(&format!("input_map.deadzone.{row}"))
 }
 
 /// **O PONTO DE DISPARO** da acção `row` — acima dele `pressed` é `true`.
@@ -71,7 +71,7 @@ pub fn input_map_deadzone_id(row: usize) -> NodeId {
 /// **empurra** o outro em vez de deixar nascer um estado incoerente.
 #[must_use]
 pub fn input_map_press_point_id(row: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("input_map.press_point.{row}"))
+    hash_node_id_runtime(&format!("input_map.press_point.{row}"))
 }
 
 /// O **chip numérico** da zona morta da linha `row` — o número que o slider mostra.
@@ -81,17 +81,17 @@ pub fn input_map_press_point_id(row: usize) -> NodeId {
 /// desta janela (uma barra rosa, sem rótulo e sem número).
 #[must_use]
 pub fn input_map_deadzone_chip_id(row: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("input_map.deadzone_chip.{row}"))
+    hash_node_id_runtime(&format!("input_map.deadzone_chip.{row}"))
 }
 
 /// O **chip numérico** do ponto de disparo da linha `row`. Ver [`input_map_deadzone_chip_id`].
 #[must_use]
 pub fn input_map_press_point_chip_id(row: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("input_map.press_point_chip.{row}"))
+    hash_node_id_runtime(&format!("input_map.press_point_chip.{row}"))
 }
 
 /// O **X** da ligação `bind` da acção `row` — apaga uma ligação só.
 #[must_use]
 pub fn input_map_delete_binding_id(row: usize, bind: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("input_map.del_bind.{row}.{bind}"))
+    hash_node_id_runtime(&format!("input_map.del_bind.{row}.{bind}"))
 }

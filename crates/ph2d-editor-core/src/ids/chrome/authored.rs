@@ -26,7 +26,7 @@
 
 use ph2d_a11y::NodeId;
 
-use super::painter::fnv_node_id_runtime;
+use ph2d_tool_registry::hash_node_id_runtime;
 use crate::ids::hash_node_id;
 
 /// O retângulo externo do painel (z-order + barreira de hit + roteamento da roda).
@@ -52,7 +52,7 @@ pub const AUTHORED_RESIZE_HANDLE_BL: NodeId = hash_node_id("authored.resize_hand
 /// `populate` e outro no `paint`, e o controle nasceria morto sob o rato.
 #[must_use]
 pub fn authored_row_id(key: &str) -> NodeId {
-    fnv_node_id_runtime(&format!("authored.row.{key}"))
+    hash_node_id_runtime(&format!("authored.row.{key}"))
 }
 
 /// O id da opção `index` da row de chave `key` — a família da lista ABERTA.
@@ -80,5 +80,5 @@ pub fn authored_row_id(key: &str) -> NodeId {
 /// [`WidgetKind::defers_a_popover`]: crate::widget::WidgetKind::defers_a_popover
 #[must_use]
 pub fn authored_option_id(key: &str, index: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("authored.opt.{key}.{index}"))
+    hash_node_id_runtime(&format!("authored.opt.{key}.{index}"))
 }

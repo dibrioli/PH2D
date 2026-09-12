@@ -1,5 +1,5 @@
 //! Left rail + transform tool NodeIds (HIERARCHY_ADD, TOOL_*, RAIL_*).
-use super::painter::fnv_node_id_runtime;
+use ph2d_tool_registry::hash_node_id_runtime;
 use super::{NodeId, hash_node_id};
 
 pub const HIERARCHY_ADD: NodeId = hash_node_id("hierarchy_add");
@@ -52,7 +52,7 @@ pub const TOOL_BAR_OVERFLOW: NodeId = hash_node_id("tool_bar_overflow");
 /// rótulo fixo — é isso que faz o chip valer o lugar dele mesmo fechado.
 #[must_use]
 pub fn area_menu_button(slot: u32) -> NodeId {
-    fnv_node_id_runtime(&format!("area.menu.{slot}"))
+    hash_node_id_runtime(&format!("area.menu.{slot}"))
 }
 
 /// Quantos pulldowns de área o `left_rail` regista às cegas — ver [`area_menu_button`].

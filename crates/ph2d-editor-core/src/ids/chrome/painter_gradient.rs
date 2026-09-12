@@ -1,6 +1,6 @@
 //! Gradient-Map (W4 BATCH-2) fixed routing NodeIds (`PAINTER_GRADIENT_*`) — panel → tool stop
 //! add/remove/drag/colour. The per-layer derive helpers (`painter_gradient_*_id`) stay in `painter`
-//! (they share the `fnv_node_id_runtime` twin); split out here for the file-LOC cap.
+//! (they derive through the runtime door `hash_node_id_runtime`); split out here for the file-LOC cap.
 use super::{NodeId, hash_node_id};
 
 /// Fixed routing id — panel → tool Gradient-Map stop drag (W4 BATCH-2). Payload

@@ -5,7 +5,7 @@
 //! tracking, o refluxo) — e no pai fica *o que uma forma É*. `VECTOR_MODE_TEXT` **não** vem
 //! junto de propósito: ele é um MODO, e mora com os outros três.
 
-use super::painter::fnv_node_id_runtime;
+use ph2d_tool_registry::hash_node_id_runtime;
 use super::{NodeId, hash_node_id};
 
 /// Text "Size" slider (world units) — shown only in Text mode; drives the glyph
@@ -57,7 +57,7 @@ pub const VECTOR_TEXT_WRAP_W_NUM: NodeId = hash_node_id("vector.text.wrap_w_num"
 /// fatories (`painter_brush_*_option_id`).
 #[must_use]
 pub fn vector_text_font_option_id(index: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("vector.text.fontopt.{index}"))
+    hash_node_id_runtime(&format!("vector.text.fontopt.{index}"))
 }
 
 /// Max variation-axis number fields the Text panel shows (besides the dedicated
@@ -71,7 +71,7 @@ pub fn vector_text_font_option_id(index: usize) -> NodeId {
 /// defeito: ele convence.* Alcançável com a Roboto Flex, que publica ~12 eixos além do `wght`.
 ///
 /// **De que recurso ele é:** não dos ids — eles são hasheados em runtime
-/// (`fnv_node_id_runtime`) e um slot a mais custa uma iteração. É do **orçamento de linhas do
+/// (`hash_node_id_runtime`) e um slot a mais custa uma iteração. É do **orçamento de linhas do
 /// painel**, a mesma grandeza que já governa o resto do chrome.
 ///
 /// **Por que 16:** o OpenType regista exactamente **cinco** tags de eixo (`ital`, `opsz`, `slnt`,
@@ -88,5 +88,5 @@ pub const MAX_TEXT_VARIATION_AXES: usize = 16;
 /// factory.
 #[must_use]
 pub fn vector_text_axis_id(index: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("vector.text.axis.{index}"))
+    hash_node_id_runtime(&format!("vector.text.axis.{index}"))
 }

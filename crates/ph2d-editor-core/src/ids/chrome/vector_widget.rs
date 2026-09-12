@@ -5,7 +5,7 @@
 use ph2d_a11y::NodeId;
 
 use super::super::hash_node_id;
-use super::painter::fnv_node_id_runtime;
+use ph2d_tool_registry::hash_node_id_runtime;
 
 /// O cabeçalho da seção **Widget Skin**.
 pub const VECTOR_SECTION_WIDGET: NodeId = hash_node_id("vector.section.widget");
@@ -54,7 +54,7 @@ pub const VECTOR_WIDGET_ICON_DD: NodeId = hash_node_id("vector.widget.icon_dd");
 /// alcançáveis. É o padrão do `vector_text_font_option_id`.
 #[must_use]
 pub fn vector_widget_icon_option_id(i: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("vector.widget.iconopt.{i}"))
+    hash_node_id_runtime(&format!("vector.widget.iconopt.{i}"))
 }
 
 /// O chip do tipo `i` (índice em `WidgetKind::ALL`).
@@ -63,5 +63,5 @@ pub fn vector_widget_icon_option_id(i: usize) -> NodeId {
 /// frame, e a mesma razão do `vector_variant_option_id` vale aqui.
 #[must_use]
 pub fn vector_widget_kind_id(i: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("vector.widget.kind.{i}"))
+    hash_node_id_runtime(&format!("vector.widget.kind.{i}"))
 }

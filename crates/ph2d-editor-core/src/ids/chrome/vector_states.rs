@@ -6,7 +6,7 @@
 use ph2d_a11y::NodeId;
 
 use super::super::hash_node_id;
-use super::painter::fnv_node_id_runtime;
+use ph2d_tool_registry::hash_node_id_runtime;
 
 /// O cabeçalho da seção **States**.
 pub const VECTOR_SECTION_STATES: NodeId = hash_node_id("vector.section.states");
@@ -24,13 +24,13 @@ pub const MAX_STATE_ROLES: usize = 4;
 /// mesmo racional do `vector_widget_kind_id`.
 #[must_use]
 pub fn vector_state_record_id(i: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("vector.state.record.{i}"))
+    hash_node_id_runtime(&format!("vector.state.record.{i}"))
 }
 
 /// **Clear** o papel `i` — só é pintado onde há o que apagar.
 #[must_use]
 pub fn vector_state_clear_id(i: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("vector.state.clear.{i}"))
+    hash_node_id_runtime(&format!("vector.state.clear.{i}"))
 }
 
 /// **Apply** o papel `i` — põe a cena nessa pose, para o artista a EDITAR.
@@ -39,7 +39,7 @@ pub fn vector_state_clear_id(i: usize) -> NodeId {
 /// cabeça para regravá-la, e um estado autorado uma vez seria um estado autorado para sempre.
 #[must_use]
 pub fn vector_state_apply_id(i: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("vector.state.apply.{i}"))
+    hash_node_id_runtime(&format!("vector.state.apply.{i}"))
 }
 
 /// A duração da transição, em segundos — o slider e o chip que o espelha.
@@ -90,7 +90,7 @@ pub const MAX_EASING_MODES: usize = 3;
 /// mover a chave de registo de um widget.
 #[must_use]
 pub fn vector_easing_family_id(i: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("vector.state.ease.family.{i}"))
+    hash_node_id_runtime(&format!("vector.state.ease.family.{i}"))
 }
 
 /// O MODO de easing `i` (In / Out / In-Out).
@@ -101,7 +101,7 @@ pub fn vector_easing_family_id(i: usize) -> NodeId {
 /// gate — nunca uma lista de exceções neste ficheiro.
 #[must_use]
 pub fn vector_easing_mode_id(i: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("vector.state.ease.mode.{i}"))
+    hash_node_id_runtime(&format!("vector.state.ease.mode.{i}"))
 }
 
 /// ⭐ **Quantas LIGAÇÕES sinal → papel o painel oferece por hospedeiro.**
@@ -125,19 +125,19 @@ pub const MAX_SIGNAL_BINDINGS: usize = 6;
 /// `StateRole` deriva.
 #[must_use]
 pub fn vector_state_signal_name_id(i: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("vector.state.signal.name.{i}"))
+    hash_node_id_runtime(&format!("vector.state.signal.name.{i}"))
 }
 
 /// O chip do papel `r` da ligação `i` — para onde ir quando aquele nome chegar.
 #[must_use]
 pub fn vector_state_signal_role_id(i: usize, r: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("vector.state.signal.role.{i}.{r}"))
+    hash_node_id_runtime(&format!("vector.state.signal.role.{i}.{r}"))
 }
 
 /// **Apaga** a ligação `i`.
 #[must_use]
 pub fn vector_state_signal_remove_id(i: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("vector.state.signal.remove.{i}"))
+    hash_node_id_runtime(&format!("vector.state.signal.remove.{i}"))
 }
 
 /// **Acrescenta** uma ligação vazia. Não é oferecido no teto — um botão que não faz nada é pior

@@ -147,6 +147,20 @@ pub fn dispatch() -> String {
     out
 }
 
+/// **Onde acaba um item de `impl`**, dentro de `rest` (que começa no cabeçalho dele): no PRIMEIRO de todos os fins
+/// possíveis — o item irmão seguinte em QUALQUER visibilidade, ou a chaveta que fecha o `impl`.
+///
+/// ⚠️ Existe porque o `dispatch()` junta ficheiros e os métodos que saíram do índice são `pub(super) fn`: um fim
+/// procurado por UMA visibilidade (`.find(pub(crate)).or_else(fn)`) deixa de casar no sítio certo e cai no ficheiro
+/// seguinte — a janela estica em SILÊNCIO, e uma ausência ou uma ordem afirmada dentro dela passa a medir o despacho.
+pub fn fim_do_item(rest: &str) -> usize {
+    ["\n    fn ", "\n    pub fn ", "\n    pub(crate) fn ", "\n    pub(super) fn ", "\n}\n"]
+        .iter()
+        .filter_map(|b| rest.find(b))
+        .min()
+        .unwrap_or(rest.len())
+}
+
 /// O `keyboard.rs` tal como corre.
 pub fn keyboard() -> String {
     file("input_dispatch/keyboard.rs")
@@ -406,6 +420,18 @@ fn a_ramo_definition_is_blanked_and_its_signature_kept() {
     let b = blank_ramos(t);
     assert!(b.contains("fn ramo_x(&mut self, k: u8) -> bool {"), "{b}");
     assert!(!b.contains("UNICO") && b.contains("FICA;"), "{b}");
+}
+
+/// **O fim de um item é o PRIMEIRO fim possível, em qualquer visibilidade** — senão a janela salta o irmão
+/// `pub(super)` e só pára no ficheiro seguinte; e o último método de um ficheiro acaba no fecho do `impl`.
+#[test]
+fn the_end_of_an_item_is_the_first_sibling_in_any_visibility() {
+    let t = "fn a(&mut self) {\n        CORPO;\n    }\n    pub(super) fn b() {\n        OUTRO;\n    }\n}\n// [[ficheiro x]]\nimpl A {\n    pub(crate) fn longe() {}\n}\n";
+    let w = &t[..fim_do_item(t)];
+    assert!(w.contains("CORPO") && !w.contains("OUTRO"), "{w}");
+    let t = "fn z(&self) {\n        ULTIMO;\n    }\n}\nfn livre() {\n    FORA;\n}\n";
+    let w = &t[..fim_do_item(t)];
+    assert!(w.contains("ULTIMO") && !w.contains("FORA"), "{w}");
 }
 
 /// **PISO do `dispatch()`:** as regiões que o `input_dispatch.rs` tinha a 2026-09-13 continuam lá —

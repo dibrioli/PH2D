@@ -206,7 +206,10 @@ fn the_secondary_button_cancels_a_live_pencil_stroke() {
 #[test]
 fn the_stabiliser_filters_screen_px_and_the_press_seeds_the_hand() {
     // ── a função de MOVE: o filtro antes da conversão ──
-    let mv = window(at("fn vec_pencil_drag_move"), "\n    fn ");
+    // ⚠️ O fim é o método irmão seguinte em QUALQUER visibilidade (`line/input-dispatch`, 2026-09-13): no ficheiro para
+    // onde ele se mudou os irmãos são `pub(super) fn`, e só o `\n    fn ` esticaria a janela até ao ficheiro seguinte.
+    let mv_at = at("fn vec_pencil_drag_move");
+    let mv = &SRC[mv_at..mv_at + crate::input_text::fim_do_item(&SRC[mv_at..])];
     // O ELO e não o endereço inteiro: desde a A9 o `rustfmt` parte `self.vec.pencil_hand` em linhas.
     let filter = mv.find(".pencil_hand").expect(
         "o move do lapis nao passa pela mao filtrada — o estabilizador nao chega ao produto",

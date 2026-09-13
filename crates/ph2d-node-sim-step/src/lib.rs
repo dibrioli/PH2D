@@ -436,6 +436,13 @@ fn step(
             p[i] = q;
         }
     }
+    // ⭐⭐ O CONTACTO ENTRE PEÇAS (doc 109) — depois da integração, só onde há colisor declarado.
+    contact::resolve(state, &mut p, &mut vel, &w, |i| {
+        t_prev
+            .as_ref()
+            .map(|t| (playhead - t[i]).clamp(0.0, MAX_DT)) // CLAMP-OK: const bounds, min < max
+            .unwrap_or(0.0)
+    });
 
     let age: Vec<f32> = (0..n)
         .map(|i| {
@@ -474,6 +481,8 @@ fn step(
     out.set("sim_t", Column::Scalar(vec![playhead; n]));
     out
 }
+
+mod contact;
 
 struct SimStep;
 

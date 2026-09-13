@@ -1,0 +1,20 @@
+[package]
+name = "ph2d-contact"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# ⛔ UMA dependência, e só pela porta paralela auditada (`par_build`): o contacto entre peças é
+# uma lei pura sobre posições, raios e pesos, e é por isso que ela é uma folha e não mora em
+# nenhum nó — dois integradores a pedem (`sim.step` hoje, `motion.integrate` na W4 do doc 109), e
+# um nó a depender de outro nó quebraria o isolamento de drop-crate (ADR-0075).
+[dependencies]
+ph2d-nodegraph = { path = "../ph2d-nodegraph" }
+
+[lints]
+workspace = true

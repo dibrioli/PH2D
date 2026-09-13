@@ -5481,6 +5481,13 @@ name = "ph2d-component-desc"
 version = "0.0.0"
 
 [[package]]
+name = "ph2d-contact"
+version = "0.0.0"
+dependencies = [
+ "ph2d-nodegraph",
+]
+
+[[package]]
 name = "ph2d-core"
 version = "0.0.0"
 dependencies = [
@@ -7387,6 +7394,7 @@ dependencies = [
 name = "ph2d-node-sim-step"
 version = "0.0.0"
 dependencies = [
+ "ph2d-contact",
  "ph2d-node-registry",
  "ph2d-node-registry-init",
  "ph2d-nodegraph",

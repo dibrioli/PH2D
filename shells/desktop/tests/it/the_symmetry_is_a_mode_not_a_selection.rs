@@ -93,9 +93,13 @@ fn the_axis_is_seeded_by_the_switch_alone() {
 ///
 /// Com a cena vazia não há forma nenhuma a produzir eixo, então sem esta metade o botão ligaria e
 /// nada apareceria até o primeiro traço — que é o defeito reportado.
+///
+/// ⚠️ Desde a OBRA 2 da `line/render-loop` (2026-09-13) o overlay mora na fase `fase_vector_guides_and_build`: o
+/// gate lê o QUADRO emendado (`frame_text::render_frame`), e as duas secções que delimitam o bloco são as do texto
+/// que corre.
 #[test]
 fn the_overlay_draws_the_session_line_even_with_an_empty_scene() {
-    let src = render_loop_src();
+    let src = crate::frame_text::render_frame();
     let start = src
         .find("As linhas da SIMETRIA")
         .expect("o bloco de overlay da simetria sumiu — o gate perdeu o alvo");

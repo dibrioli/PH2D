@@ -222,10 +222,15 @@ fn the_shell_publishes_how_many_nodes_are_selected() {
 /// ⚠️ O oráculo é a **PROFUNDIDADE DE CHAVES**, não a ordem: `draw_cut_line` estar *depois* de
 /// `if overlay.edit {` é verdade dentro E fora do bloco, então uma asserção de ordem não podia
 /// falhar pelo motivo que alega. Contar chaves diz de que lado do `}` a chamada está.
+///
+/// ⚠️ Desde a OBRA 2 da `line/render-loop` (2026-09-13) o desenho da lâmina mora na fase
+/// `fase_vector_guides_and_build`: o gate lê o QUADRO emendado (`frame_text::render_frame`), e a
+/// profundidade de chaves entre o guard e a chamada é a do texto que corre.
 #[test]
 fn the_cut_line_is_drawn_outside_the_edit_mode_guard() {
     // Comentários fora do caminho: a região é densa em prosa, e prosa em português tem chaves.
-    let code: String = LOOP_SRC
+    let frame = crate::frame_text::render_frame();
+    let code: String = frame
         .lines()
         .map(|l| l.split("//").next().unwrap_or(""))
         .collect::<Vec<_>>()

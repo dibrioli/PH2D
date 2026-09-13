@@ -22,7 +22,15 @@
 //! ⚠️ As asserções afirmam uma RELAÇÃO ou um CONTEÚDO dentro de uma janela
 //! sintática, nunca uma distância em bytes.
 
-const RENDER: &str = include_str!("../../src/render_loop/mod.rs");
+/// O QUADRO pela ordem em que corre (`frame_text::render_frame`).
+///
+/// ⚠️ Desde a OBRA 2 da `line/render-loop` (2026-09-13) as guias e a ficha moram na fase
+/// `fase_vector_guides_and_build`; lidas só no `render_loop/mod.rs`, as três asserções reprovavam sobre
+/// produto correcto. A ordem e as janelas são as do texto emendado, que é a ordem de execução.
+fn render() -> &'static str {
+    static FRAME: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+    FRAME.get_or_init(crate::frame_text::render_frame)
+}
 
 /// A posição da 1ª ocorrência de `needle`, ou pânico com a razão — o **controle
 /// positivo**: um dono que se mudou vira falha alta, e não varredura vazia.
@@ -38,8 +46,8 @@ fn at(src: &str, needle: &str) -> usize {
 /// **A ficha é desenhada, e DEPOIS do traço da guia.**
 #[test]
 fn the_number_is_drawn_after_the_line_it_measures() {
-    let line = at(RENDER, "ph2d_vec_render::draw_snap_guides(");
-    let label = at(RENDER, "vec_snap_labels::draw(");
+    let line = at(render(), "ph2d_vec_render::draw_snap_guides(");
+    let label = at(render(), "vec_snap_labels::draw(");
     assert!(
         label > line,
         "a ficha é pintada ANTES do traço da guia — a cena tem de estar livre para o \
@@ -50,9 +58,10 @@ fn the_number_is_drawn_after_the_line_it_measures() {
 /// **A unidade sai do PROJETO** — a mesma porta que a régua usa.
 #[test]
 fn the_number_wears_the_unit_the_artist_chose() {
-    let label = at(RENDER, "vec_snap_labels::draw(");
+    let src = render();
+    let label = at(src, "vec_snap_labels::draw(");
     // A janela é a chamada: os argumentos nascem aqui.
-    let window = &RENDER[label..(label + 600).min(RENDER.len())];
+    let window = &src[label..(label + 600).min(src.len())];
     assert!(
         window.contains("LengthDisplay::of(&hero.project)"),
         "a ficha não lê a unidade do projeto — o artista troca para metros no menu Settings, \
@@ -70,9 +79,10 @@ fn the_number_wears_the_unit_the_artist_chose() {
 /// uma segunda estimativa de zoom divergiria da linha que o artista está a olhar.
 #[test]
 fn the_precision_comes_from_the_camera_that_drew_the_segment() {
-    let label = at(RENDER, "vec_snap_labels::draw(");
+    let src = render();
+    let label = at(src, "vec_snap_labels::draw(");
     let start = label.saturating_sub(400);
-    let window = &RENDER[start..label];
+    let window = &src[start..label];
     assert!(
         window.contains("cam_affine.as_coeffs()"),
         "o zoom da ficha não sai do afim que desenhou a guia. Janela:\n{window}"

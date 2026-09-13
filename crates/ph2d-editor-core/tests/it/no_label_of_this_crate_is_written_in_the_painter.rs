@@ -1,562 +1,117 @@
-//! ⭐⭐⭐ **NENHUM RÓTULO DESTA CRATE É ESCRITO DENTRO DO PINTOR** — o HR-15, com instrumento.
+//! ⭐⭐⭐ **O TEXTO DE INTERFACE DESTA CRATE, CONTADO PELA RÉGUA QUE VÊ TUDO** — o HR-15, com a dívida
+//! escrita ao número, ficheiro a ficheiro, numa catraca que só desce.
 //!
 //! > `CLAUDE.md` §0.3: *«UI canônica: zero hex, zero `f32` literal de UI, **zero string
 //! > hardcoded** — tudo via tokens / i18n (HR-15).»*
 //!
-//! # ⛔⛔ Por que este gate é POR CRATE, e não do repo
+//! # ⛔⛔ Este gate dizia «língua de produto: 0» — e a régua dele via uma fracção da crate
 //!
-//! O censo de 2026-09-10 (`scripts/censo-texto-pintado.py`) conta **418** literais pintados em
-//! **19** crates, e **11 delas são de outras linhas**. Uma catraca global com essa dívida dentro
-//! poria *a próxima linha que pinte um rótulo vermelha por causa de um gate desta* — o contrário
-//! do que o `CLAUDE.md` §0.2 pede de um toque foundational (*projecte-o para isolamento*).
+//! Até 2026-09-13 este ficheiro trazia um leitor próprio (~400 linhas) que seguia o texto até um
+//! PINTOR (`paint_*`/`draw_*` com parâmetro `&str`) e declarava não ver construtores, tabelas e
+//! `format!`. Com ele a crate lia-se curada (`32` literais, todos da galeria-bancada). A régua
+//! LEXICAL da `ph2d-label-census` — todo literal com cara de língua fora de teste e fora do que nunca
+//! pinta — conta **641**: **546** fora da bancada, em **46** ficheiros, `164` só no
+//! `screens/hero/menu_rows.rs`. *Declarar um ponto cego não o torna pequeno.*
 //!
-//! ⇒ este gate fala **só da `ph2d-editor-core`**, que é a crate desta linha, e é o **MOLDE**: cada
-//! linha dona de uma crate de painel copia-o com a lista dela.
+//! ⇒ o leitor saiu daqui (a régua é uma folha partilhada com os gates por crate dos painéis, em vez
+//! de copiada para cada um), e a dívida passou a ser um NÚMERO por ficheiro, com as duas metades.
 //!
-//! # ⚠️ A régua é um PONTO FIXO, porque o censo anterior conhecia UMA porta de 127
+//! # ⛔ Por que POR CRATE, e não do repo
 //!
-//! Um literal chega ao ecrã se for passado no argumento de texto de um pintor — **ou** a uma função
-//! que repassa esse parâmetro a um pintor, e isso é **recursivo**:
+//! Uma catraca global com a dívida das outras crates dentro poria *a próxima linha que pinte um
+//! rótulo vermelha por causa de um gate desta* — o contrário do que o `CLAUDE.md` §0.2 pede de um
+//! toque foundational. Cada crate de painel tem o seu (`every_word_this_panel_shows_comes_from_the_
+//! string_table`), a zero, sobre a mesma régua.
 //!
-//! ```text
-//! paint_text(ts, scene, texto, …)                                      ← a semente
-//! fn paint_left_label(.., texto: &str, ..) { paint_text(.., texto, ..) }        ← 1.º grau
-//! fn paint_slider_chip_row(.., rotulo: &str, ..) { paint_left_label(.., rotulo, ..) }  ← 2.º grau
-//! ```
+//! # A cura de um vermelho
 //!
-//! ⛔⛔ **A primeira medição desta grandeza saiu `4×` errada** por parar na semente: ela publicou
-//! `108` e o número é `418`. *Um censo textual tem de saber TODAS as formas do que lê* — e aqui a
-//! forma não é um nome, é um caminho.
-//!
-//! # ⚠️ O que ele NÃO vê, declarado
-//!
-//! Literais que chegam por variável, `const`, tabela de `&str` ou `format!`. ⇒ **zero acusados
-//! aqui não prova zero literais**; prova que ninguém os escreveu na chamada. *Uma régua que não
-//! declara o alcance dela é uma régua que alguém vai ler como maior do que é.*
+//! - **Cresceu** — a palavra nova vai para a tabela (`crates/ph2d-i18n/src/chrome.rs`, ou o irmão do
+//!   assunto) e o sítio chama `ph2d_i18n::tr` (uma frase com peças do código: `tr_with`). ⛔ Nunca
+//!   subir o número.
+//! - **Desceu** — escreva o número novo, ou apague a linha que chegou a zero. É a metade que impede a
+//!   lista de virar licença (`CLAUDE.md` §5.0).
+//! - **Não é língua** (o nome de um tipo nosso, dados de uma cena de amostra) — uma linha em
+//!   `NOT_LANGUAGE` **com o mecanismo**, e o número sai da dívida.
 
-use std::collections::{BTreeMap, BTreeSet};
-use std::fs;
+use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
+
+use ph2d_label_census::{keys, language_literals};
 
 /// ⭐ As excepções, **com o mecanismo** — nunca uma lista aberta.
 ///
-/// ⚠️ Uma lista de dívida tolerada que não diz *porquê* é uma licença (`CLAUDE.md` §5.0). Cada
-/// entrada é `(caminho relativo a `src/`, porquê)`, e o teste irmão exige que ela ainda descreva
-/// alguma coisa.
-const NOT_LANGUAGE: &[(&str, &str)] = &[
-    (
-        "widget/showcase",
-        "A GALERIA DE WIDGETS e' uma BANCADA, nao uma superficie de produto -- o subtitulo dela \
-         di-lo: «reference for peripheral agents». Os rotulos sao os NOMES DOS NOSSOS WIDGETS \
-         (`Rect2Editor`, `BitmaskGrid32`, `VariantEditor (recursive, depth <=4)`) e o conteudo de \
-         amostra que os demonstra. Traduzir o nome de um tipo nosso nao e' i18n, e' ruido -- e a \
-         bancada tem o mesmo estatuto do `widget-lab`, que ate' a aparencia forca para o \
-         redesenho, «porque e' onde ele se estuda».",
-    ),
-    (
-        "widget/command_palette/header.rs",
-        "SIMBOLOS DESENHADOS COMO LETRAS: o «X» e' o fecho e o «x» e' o visto. O proprio ficheiro \
-         ja' o dizia -- «o mesmo idioma do X de fechar, que tambem e' uma letra». Uma lingua nova \
-         nao os traduz; um icone e' que os substituiria, e isso e' outra obra.",
-    ),
+/// ⚠️ A entrada `widget/command_palette/header.rs` (o «X» do fecho e o «x» do visto) SAIU em
+/// 2026-09-13: a régua lexical não conta uma letra solta como palavra, e o que ela conta naquele
+/// ficheiro (`"{} items"`, `"Search"`) é língua de verdade — está na dívida.
+const NOT_LANGUAGE: &[(&str, &str)] = &[(
+    "widget/showcase",
+    "A GALERIA DE WIDGETS e' uma BANCADA, nao uma superficie de produto -- o subtitulo dela di-lo: \
+     «reference for peripheral agents». Os rotulos sao os NOMES DOS NOSSOS WIDGETS (`Rect2Editor`, \
+     `BitmaskGrid32`, `VariantEditor (recursive, depth <=4)`) e o conteudo de amostra que os \
+     demonstra. Traduzir o nome de um tipo nosso nao e' i18n, e' ruido -- e a bancada tem o mesmo \
+     estatuto do `widget-lab`, que ate' a aparencia forca para o redesenho, «porque e' onde ele se \
+     estuda».",
+)];
+
+/// ⛔ **A DÍVIDA, contada pela régua lexical em 2026-09-13** — `(ficheiro relativo a src/, literais)`.
+///
+/// ⚠️ **Ela SÓ DESCE.** O número é o que a régua mede hoje; um ficheiro que ganhe um literal reprova
+/// no `every_label_this_crate_paints_comes_from_the_string_table`, e um que perca reprova no
+/// `the_debt_only_describes_what_is_still_there` até alguém escrever o número novo. ⚠️ E ela ainda
+/// não foi TRIADA: parte do que conta pode não ser língua (os nomes da cena de amostra do
+/// `fixture.rs`, por exemplo) — a triagem move essas para `NOT_LANGUAGE` com o mecanismo, nunca
+/// esconde o número.
+const DIVIDA: &[(&str, usize)] = &[
+    ("floating_panel.rs", 13),
+    ("grid_snap/inspect.rs", 19),
+    ("grid_snap/state.rs", 9),
+    ("ids/menus_timeline.rs", 50),
+    ("interaction/dispatch/hierarchy.rs", 3),
+    ("interaction/drag_payload.rs", 2),
+    ("interaction/state/blender_ops.rs", 3),
+    ("interaction/state/chrome_ops.rs", 1),
+    ("interaction/state/store_core.rs", 1),
+    ("panel/registry.rs", 1),
+    ("screens/hero.rs", 1),
+    ("screens/hero/asset_drag_ghost.rs", 1),
+    ("screens/hero/bottom_hud.rs", 10),
+    ("screens/hero/canvas.rs", 2),
+    ("screens/hero/chrome/fill_modal.rs", 3),
+    ("screens/hero/color_picker_demo.rs", 1),
+    ("screens/hero/context_menu_dialogs.rs", 9),
+    ("screens/hero/context_menu_overlay.rs", 2),
+    ("screens/hero/fixture.rs", 13),
+    ("screens/hero/global_palette.rs", 4),
+    ("screens/hero/inspector_model.rs", 1),
+    ("screens/hero/inspector_model_anchor.rs", 3),
+    ("screens/hero/inspector_model_instance.rs", 15),
+    ("screens/hero/left_rail.rs", 45),
+    ("screens/hero/menu_bar.rs", 5),
+    ("screens/hero/menu_rows.rs", 164),
+    ("screens/hero/pre_populate.rs", 17),
+    ("screens/hero/pre_populate_blender.rs", 2),
+    ("screens/hero/prefab_bar.rs", 4),
+    ("screens/hero/radial.rs", 1),
+    ("screens/hero/tool_bar.rs", 3),
+    ("screens/hero/topbar/chip_name.rs", 35),
+    ("screens/hero/topbar/cluster_painter.rs", 6),
+    ("screens/hero/topbar/tooltips.rs", 28),
+    ("screens/task_layout.rs", 6),
+    ("widget/blender_color_picker/harmony.rs", 8),
+    ("widget/blender_color_picker/paint.rs", 24),
+    ("widget/blender_color_picker/palette.rs", 3),
+    ("widget/blender_color_picker/segmented.rs", 1),
+    ("widget/blender_color_picker/state.rs", 1),
+    ("widget/color_picker.rs", 11),
+    ("widget/combobox.rs", 1),
+    ("widget/command_palette/header.rs", 2),
+    ("widget/dropdown/mod.rs", 1),
+    ("widget/key_value_list.rs", 2),
+    ("widget/variant_editor.rs", 9),
 ];
 
 fn src_root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("src")
-}
-
-/// O fonte sem comentários **e sem o interior das strings mexido** — a prosa não pinta nada, e um
-/// `//` dentro de uma string não abre comentário.
-fn strip_comments(src: &str) -> String {
-    let b: Vec<char> = src.chars().collect();
-    let mut out = String::with_capacity(src.len());
-    let (mut i, n) = (0usize, b.len());
-    let (mut in_str, mut esc) = (false, false);
-    while i < n {
-        let c = b[i];
-        if in_str {
-            out.push(c);
-            if esc {
-                esc = false;
-            } else if c == '\\' {
-                esc = true;
-            } else if c == '"' {
-                in_str = false;
-            }
-            i += 1;
-            continue;
-        }
-        if c == '"' {
-            in_str = true;
-            out.push(c);
-            i += 1;
-            continue;
-        }
-        // ⚠️⚠️ **UM LITERAL DE CARÁCTER TEM ASPAS DENTRO** — `find('"')` é código Rust legítimo, e
-        //    um leitor que não o conheça vê ali uma aspa a ABRIR uma string e passa a ler o resto
-        //    do ficheiro ao contrário: comentário vira texto, texto vira código.
-        //    ⛔ A 1.ª redacção deste ficheiro não o conhecia, e a primeira corrida do censo das
-        //    chaves acusou **um comentário deste próprio teste**. *Um censo textual tem de saber
-        //    TODAS as formas do que lê* — e esta é a 8.ª vez que esta linha a paga.
-        //    ⚠️ E o `'` também abre um TEMPO DE VIDA (`&'a str`), que não fecha: o discriminador é
-        //    haver um `'` a fechar dentro do alcance de um escape.
-        if c == '\'' {
-            let close = if i + 1 < n && b[i + 1] == '\\' {
-                (i + 2..(i + 8).min(n)).find(|&j| b[j] == '\'')
-            } else if i + 2 < n && b[i + 2] == '\'' {
-                Some(i + 2)
-            } else {
-                None
-            };
-            if let Some(j) = close {
-                for _ in i..=j {
-                    out.push(' ');
-                }
-                i = j + 1;
-                continue;
-            }
-        }
-        if c == '/' && i + 1 < n && b[i + 1] == '/' {
-            while i < n && b[i] != '\n' {
-                out.push(' ');
-                i += 1;
-            }
-            continue;
-        }
-        if c == '/' && i + 1 < n && b[i + 1] == '*' {
-            let mut d = 0usize;
-            while i < n {
-                if b[i] == '/' && i + 1 < n && b[i + 1] == '*' {
-                    d += 1;
-                    out.push_str("  ");
-                    i += 2;
-                } else if b[i] == '*' && i + 1 < n && b[i + 1] == '/' {
-                    d -= 1;
-                    out.push_str("  ");
-                    i += 2;
-                    if d == 0 {
-                        break;
-                    }
-                } else {
-                    out.push(if b[i] == '\n' { '\n' } else { ' ' });
-                    i += 1;
-                }
-            }
-            continue;
-        }
-        out.push(c);
-        i += 1;
-    }
-    out
-}
-
-/// Os argumentos de topo de uma chamada cujo `(` está em `open`.
-fn args_of(s: &[char], open: usize) -> Vec<String> {
-    let (mut depth, mut i) = (0usize, open);
-    let (mut in_str, mut esc) = (false, false);
-    let mut start = open + 1;
-    let mut parts = Vec::new();
-    while i < s.len() {
-        let c = s[i];
-        if in_str {
-            if esc {
-                esc = false;
-            } else if c == '\\' {
-                esc = true;
-            } else if c == '"' {
-                in_str = false;
-            }
-            i += 1;
-            continue;
-        }
-        match c {
-            '"' => in_str = true,
-            '(' | '[' | '{' => {
-                depth += 1;
-                if depth == 1 {
-                    start = i + 1;
-                }
-            }
-            ')' | ']' | '}' => {
-                depth -= 1;
-                if depth == 0 {
-                    parts.push(s[start..i].iter().collect());
-                    return parts;
-                }
-            }
-            ',' if depth == 1 => {
-                parts.push(s[start..i].iter().collect());
-                start = i + 1;
-            }
-            _ => {}
-        }
-        i += 1;
-    }
-    parts
-}
-
-/// O identificador imediatamente antes de um `(` — o nome do que está a ser chamado.
-fn callee(s: &[char], open: usize) -> String {
-    let mut j = open;
-    while j > 0 && s[j - 1].is_whitespace() {
-        j -= 1;
-    }
-    let end = j;
-    while j > 0 && (s[j - 1].is_alphanumeric() || s[j - 1] == '_') {
-        j -= 1;
-    }
-    s[j..end].iter().collect()
-}
-
-struct File {
-    rel: String,
-    chars: Vec<char>,
-}
-
-fn files() -> Vec<File> {
-    fn walk(dir: &Path, root: &Path, out: &mut Vec<File>) {
-        let Ok(rd) = fs::read_dir(dir) else { return };
-        let mut entries: Vec<PathBuf> = rd.flatten().map(|e| e.path()).collect();
-        entries.sort();
-        for p in entries {
-            if p.is_dir() {
-                if p.file_name().is_some_and(|n| n == "tests") {
-                    continue;
-                }
-                walk(&p, root, out);
-            } else if p.extension().is_some_and(|x| x == "rs") {
-                let name = p.file_name().and_then(|n| n.to_str()).unwrap_or_default();
-                if name == "tests.rs" || name.ends_with("_tests.rs") {
-                    continue;
-                }
-                if let Ok(s) = fs::read_to_string(&p) {
-                    out.push(File {
-                        rel: p
-                            .strip_prefix(root)
-                            .unwrap_or(&p)
-                            .to_string_lossy()
-                            .replace('\\', "/"),
-                        chars: strip_comments(&s).chars().collect(),
-                    });
-                }
-            }
-        }
-    }
-    let root = src_root();
-    let mut v = Vec::new();
-    walk(&root, &root, &mut v);
-    v
-}
-
-/// `nome da fn -> índices dos parâmetros `&str``, para toda função da crate.
-fn signatures(files: &[File]) -> BTreeMap<String, BTreeSet<(usize, String)>> {
-    let mut out: BTreeMap<String, BTreeSet<(usize, String)>> = BTreeMap::new();
-    for f in files {
-        let mut i = 0usize;
-        while let Some(k) = find_from(&f.chars, i, "fn ") {
-            i = k + 3;
-            // o nome
-            let mut j = i;
-            while j < f.chars.len() && f.chars[j].is_whitespace() {
-                j += 1;
-            }
-            let s = j;
-            while j < f.chars.len() && (f.chars[j].is_alphanumeric() || f.chars[j] == '_') {
-                j += 1;
-            }
-            if j == s {
-                continue;
-            }
-            let name: String = f.chars[s..j].iter().collect();
-            // salta genéricos e chega ao `(`
-            while j < f.chars.len() && f.chars[j] != '(' && f.chars[j] != '{' && f.chars[j] != ';' {
-                j += 1;
-            }
-            if j >= f.chars.len() || f.chars[j] != '(' {
-                continue;
-            }
-            for (idx, a) in args_of(&f.chars, j).iter().enumerate() {
-                let a = a.trim();
-                if let Some((lhs, rhs)) = a.split_once(':') {
-                    let rhs = rhs.trim();
-                    let lhs = lhs.trim().trim_start_matches("mut ").trim();
-                    if rhs.starts_with('&')
-                        && rhs.trim_start_matches('&').trim_start().starts_with("str")
-                        && lhs.chars().all(|c| c.is_alphanumeric() || c == '_')
-                        && !lhs.is_empty()
-                    {
-                        out.entry(name.clone())
-                            .or_default()
-                            .insert((idx, lhs.to_string()));
-                    }
-                }
-            }
-        }
-    }
-    out
-}
-
-fn find_from(s: &[char], from: usize, pat: &str) -> Option<usize> {
-    let p: Vec<char> = pat.chars().collect();
-    (from..s.len().saturating_sub(p.len() - 1)).find(|&i| s[i..i + p.len()] == p[..])
-}
-
-/// A função que contém a posição `at`, se alguma.
-fn host_of(sig_starts: &[(usize, String)], at: usize) -> Option<&String> {
-    sig_starts
-        .iter()
-        .take_while(|(s, _)| *s < at)
-        .last()
-        .map(|(_, n)| n)
-}
-
-/// ⭐⭐⭐ **O PONTO FIXO:** semente = `paint_*`/`draw_*` com um `&str`; depois cresce por quem
-/// repassa o próprio parâmetro a uma porta já conhecida.
-fn doors(files: &[File]) -> BTreeMap<String, BTreeSet<usize>> {
-    let sigs = signatures(files);
-    let mut doors: BTreeMap<String, BTreeSet<usize>> = BTreeMap::new();
-    for (n, slots) in &sigs {
-        if n.starts_with("paint_") || n.starts_with("draw_") {
-            doors.insert(n.clone(), slots.iter().map(|(i, _)| *i).collect());
-        }
-    }
-    for _ in 0..12 {
-        let mut grew = false;
-        for f in files {
-            let starts = fn_starts(f);
-            let mut i = 0usize;
-            while i < f.chars.len() {
-                if f.chars[i] != '(' {
-                    i += 1;
-                    continue;
-                }
-                let name = callee(&f.chars, i);
-                let Some(slots) = doors.get(&name).cloned() else {
-                    i += 1;
-                    continue;
-                };
-                let parts = args_of(&f.chars, i);
-                if let Some(host) = host_of(&starts, i)
-                    && let Some(hslots) = sigs.get(host)
-                {
-                    for idx in &slots {
-                        let Some(a) = parts.get(*idx) else { continue };
-                        let a = a.trim().trim_start_matches('&').trim();
-                        for (hidx, hname) in hslots {
-                            if a == hname && doors.entry(host.clone()).or_default().insert(*hidx) {
-                                grew = true;
-                            }
-                        }
-                    }
-                }
-                i += 1;
-            }
-        }
-        if !grew {
-            break;
-        }
-    }
-    doors
-}
-
-fn fn_starts(f: &File) -> Vec<(usize, String)> {
-    let mut v = Vec::new();
-    let mut i = 0usize;
-    while let Some(k) = find_from(&f.chars, i, "fn ") {
-        i = k + 3;
-        let mut j = i;
-        while j < f.chars.len() && f.chars[j].is_whitespace() {
-            j += 1;
-        }
-        let s = j;
-        while j < f.chars.len() && (f.chars[j].is_alphanumeric() || f.chars[j] == '_') {
-            j += 1;
-        }
-        if j > s {
-            v.push((k, f.chars[s..j].iter().collect()));
-        }
-    }
-    v
-}
-
-/// Um argumento que é **só** um literal de string, e que tem pelo menos uma letra.
-fn literal_of(arg: &str) -> Option<String> {
-    let t = arg.trim();
-    let inner = t.strip_prefix('"')?.strip_suffix('"')?;
-    if inner.contains('"') || !inner.chars().any(char::is_alphabetic) {
-        return None;
-    }
-    Some(inner.to_string())
-}
-
-/// `(caminho, porta, literal)` de tudo o que esta crate escreve dentro do pintor.
-fn painted_literals() -> Vec<(String, String, String)> {
-    let files = files();
-    let doors = doors(&files);
-    let mut out = Vec::new();
-    for f in &files {
-        let mut i = 0usize;
-        while i < f.chars.len() {
-            if f.chars[i] != '(' {
-                i += 1;
-                continue;
-            }
-            let name = callee(&f.chars, i);
-            if let Some(slots) = doors.get(&name) {
-                let parts = args_of(&f.chars, i);
-                for idx in slots {
-                    if let Some(a) = parts.get(*idx)
-                        && let Some(lit) = literal_of(a)
-                    {
-                        out.push((f.rel.clone(), name.clone(), lit));
-                        break;
-                    }
-                }
-            }
-            i += 1;
-        }
-    }
-    out
-}
-
-/// ⭐⭐⭐ **A crate desta linha não escreve rótulos dentro do pintor.**
-#[test]
-fn every_label_this_crate_paints_comes_from_the_string_table() {
-    let hits = painted_literals();
-
-    // ⛔ **CONTROLO DE VACUIDADE, com a metade justa:** um ponto fixo partido devolve zero portas e
-    //    zero acusados, e lê-se como aprovado. As excepções existem e TÊM de ser encontradas.
-    assert!(
-        hits.len() >= 20,
-        "o ponto fixo achou só {} literais — ele está partido, e um censo partido lê-se como \
-         aprovado (as excepções declaradas sozinhas são mais do que isto)",
-        hits.len()
-    );
-
-    let intrusos: Vec<String> = hits
-        .iter()
-        .filter(|(rel, _, _)| !NOT_LANGUAGE.iter().any(|(e, _)| rel.starts_with(e)))
-        .map(|(rel, door, lit)| format!("{rel} · {door}(\"{lit}\")"))
-        .collect();
-    assert!(
-        intrusos.is_empty(),
-        "estes rótulos são escritos dentro do pintor e nunca chegam à tabela de strings \
-         (HR-15):\n  {}\n\nA cura é uma chave em `crates/ph2d-i18n/src/chrome.rs` e um \
-         `ph2d_i18n::tr(\"chrome.…\")` na chamada. ⚠️ Se o texto NÃO é língua (o nome de um tipo \
-         nosso, um símbolo desenhado como letra), a cura é uma linha em `NOT_LANGUAGE` **com o \
-         mecanismo** — nunca sem ele.",
-        intrusos.join("\n  ")
-    );
-}
-
-/// ⭐ **A METADE JUSTA: cada excepção ainda descreve alguma coisa?**
-///
-/// ⛔⛔ Uma catraca sem censo de obsolescência não desce: ela vira licença (`CLAUDE.md` §5.0).
-#[test]
-fn every_named_exception_still_shelters_a_real_literal() {
-    let hits = painted_literals();
-    for (path, motivo) in NOT_LANGUAGE {
-        assert!(
-            motivo.len() > 40,
-            "a excepção `{path}` não diz o mecanismo — uma lista sem mecanismo é uma licença"
-        );
-        let n = hits
-            .iter()
-            .filter(|(rel, _, _)| rel.starts_with(path))
-            .count();
-        assert!(
-            n > 0,
-            "a excepção `{path}` já não abriga literal nenhum — apague a linha, senão ela fica \
-             aberta para o próximo ficheiro que caia debaixo desse caminho"
-        );
-    }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────────────────────
-// A OUTRA METADE: a chave existe dos DOIS lados
-// ─────────────────────────────────────────────────────────────────────────────────────────────
-
-/// ⚠️ **Uma chave tem FORMA, e o censo tem de a conhecer.**
-///
-/// ⛔⛔ A 1.ª redacção aceitava qualquer coisa sem espaços, e a primeira corrida acusou **este
-/// próprio ficheiro**: a mensagem de erro abaixo diz `\"chrome.…\"`, e o censo leu-a como uma
-/// chave em uso. *Um censo textual que não conhece a forma do que procura acusa a própria prosa* —
-/// é a 7.ª vez que esta linha paga esta lição, e a primeira em que o acusado é o acusador.
-fn looks_like_a_key(k: &str) -> bool {
-    k.len() > "chrome.".len()
-        && k.chars()
-            .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_' || c == '.')
-}
-
-/// Todas as chaves `chrome.*` **usadas** na árvore, com o ficheiro onde aparecem.
-fn keys_used(repo: &Path) -> BTreeMap<String, String> {
-    fn walk(dir: &Path, repo: &Path, out: &mut BTreeMap<String, String>) {
-        let Ok(rd) = fs::read_dir(dir) else { return };
-        let mut entries: Vec<PathBuf> = rd.flatten().map(|e| e.path()).collect();
-        entries.sort();
-        for p in entries {
-            let name = p.file_name().and_then(|n| n.to_str()).unwrap_or_default();
-            if p.is_dir() {
-                if matches!(name, "target" | ".git" | "docs") {
-                    continue;
-                }
-                walk(&p, repo, out);
-            } else if p.extension().is_some_and(|x| x == "rs") {
-                let Ok(s) = fs::read_to_string(&p) else {
-                    continue;
-                };
-                // ⚠️ A tabela declara; ela não usa. Sem esta guarda o censo lê a própria fonte
-                //    como consumidor e os dois lados concordam sempre — um espelho não acusa.
-                if p.ends_with("ph2d-i18n/src/chrome.rs") {
-                    continue;
-                }
-                let code = strip_comments(&s);
-                let mut i = 0usize;
-                while let Some(k) = code[i..].find("\"chrome.") {
-                    let start = i + k + 1;
-                    let Some(end) = code[start..].find('"') else {
-                        break;
-                    };
-                    let key = &code[start..start + end];
-                    if looks_like_a_key(key) {
-                        out.entry(key.to_string()).or_insert_with(|| {
-                            p.strip_prefix(repo)
-                                .unwrap_or(&p)
-                                .to_string_lossy()
-                                .replace('\\', "/")
-                        });
-                    }
-                    i = start + end;
-                }
-            }
-        }
-    }
-    let mut out = BTreeMap::new();
-    walk(repo, repo, &mut out);
-    out
-}
-
-/// Todas as chaves `chrome.*` **declaradas** na tabela.
-fn keys_declared(repo: &Path) -> BTreeSet<String> {
-    let p = repo.join("crates/ph2d-i18n/src/chrome.rs");
-    let s = fs::read_to_string(&p).unwrap_or_else(|e| panic!("a tabela {p:?} não se lê: {e}"));
-    let code = strip_comments(&s);
-    let mut out = BTreeSet::new();
-    let mut i = 0usize;
-    while let Some(k) = code[i..].find("\"chrome.") {
-        let start = i + k + 1;
-        let Some(end) = code[start..].find('"') else {
-            break;
-        };
-        // só conta o que é o LADO ESQUERDO de um braço: `"chrome.x" =>`
-        let key = &code[start..start + end];
-        let after = code[start + end + 1..].trim_start();
-        if after.starts_with("=>") {
-            out.insert(key.to_string());
-        }
-        i = start + end;
-    }
-    out
 }
 
 fn repo_root() -> PathBuf {
@@ -567,24 +122,117 @@ fn repo_root() -> PathBuf {
         .to_path_buf()
 }
 
-/// ⭐⭐⭐ **UMA CHAVE COM ERRO DE ESCRITA PINTA O IDENTIFICADOR CRU NA TELA** — e vaza a string.
+/// `ficheiro -> ["linha: texto", …]`, fora das excepções.
+fn per_file() -> BTreeMap<String, Vec<String>> {
+    let mut out: BTreeMap<String, Vec<String>> = BTreeMap::new();
+    for l in language_literals(&src_root()) {
+        if NOT_LANGUAGE.iter().any(|(p, _)| l.rel.starts_with(p)) {
+            continue;
+        }
+        out.entry(l.rel)
+            .or_default()
+            .push(format!("{}: {:?}", l.line, l.text));
+    }
+    out
+}
+
+/// ⭐⭐⭐ **Nenhum ficheiro desta crate escreve mais língua no fonte do que a dívida dele.**
+#[test]
+fn every_label_this_crate_paints_comes_from_the_string_table() {
+    let mut intrusos = Vec::new();
+    for (rel, hits) in &per_file() {
+        let allowed = DIVIDA
+            .iter()
+            .find(|(f, _)| f == rel)
+            .map_or(0, |(_, n)| *n);
+        if hits.len() > allowed {
+            intrusos.push(format!(
+                "{rel} — {} literais, a dívida tolerada é {allowed}:\n      {}",
+                hits.len(),
+                hits.join("\n      ")
+            ));
+        }
+    }
+    assert!(
+        intrusos.is_empty(),
+        "texto com cara de língua escrito no fonte da ph2d-editor-core, acima da dívida (HR-15):\n  \
+         {}\n\nA cura é uma chave na tabela (`crates/ph2d-i18n/src/chrome.rs` ou o irmão do assunto) \
+         e um `ph2d_i18n::tr(\"…\")` no sítio. ⛔ Nunca subir o número da DIVIDA. ⚠️ Se o texto NÃO \
+         é língua, a cura é uma linha em `NOT_LANGUAGE` **com o mecanismo**.",
+        intrusos.join("\n  ")
+    );
+}
+
+/// ⭐ **A METADE JUSTA das excepções** — e o controlo de vacuidade: uma régua partida devolve zero
+/// literais e lê-se como aprovada; a bancada, que tem ~95, não.
+#[test]
+fn every_named_exception_still_shelters_a_real_literal() {
+    let all = language_literals(&src_root());
+    for (path, why) in NOT_LANGUAGE {
+        assert!(
+            why.len() > 40,
+            "a excepção `{path}` não diz o mecanismo — uma lista sem mecanismo é uma licença"
+        );
+        let n = all.iter().filter(|l| l.rel.starts_with(path)).count();
+        assert!(
+            n >= 20,
+            "a excepção `{path}` abriga {n} literais: ou a bancada saiu (apague a linha) ou a régua \
+             ficou cega (ela tinha ~95 em 2026-09-13)"
+        );
+    }
+}
+
+/// ⛔⛔ **A METADE QUE IMPEDE A LICENÇA: a dívida desceu — escreva o número novo.**
 ///
-/// ⛔⛔ O `ph2d_i18n::tr` de uma chave desconhecida faz `leak_key`: ele devolve **o próprio
-/// identificador** e faz `Box::leak`. Num painel repintado a cada quadro isso é um vazamento **por
-/// quadro**, e o que o artista vê é `chrome.dialog.new_image` em vez de *New Image*.
-///
-/// ⚠️ **Nada disto reprova em lado nenhum sem este gate** — a migração de 2026-09-10 mexeu em
-/// `20` sítios de uma vez; uma letra trocada em qualquer um deles deixava a suíte inteira verde.
-///
-/// ⭐ **E o censo é dos DOIS lados**, porque os dois erros existem e a cura de cada um é oposta:
-/// uma chave **usada e não declarada** pinta o identificador; uma **declarada e não usada** é uma
-/// órfã — e uma órfã é onde alguém escreve, um dia, uma frase sobre um controlo que já não existe.
+/// Uma catraca sem censo de obsolescência não desce, vira licença (`CLAUDE.md` §5.0): se um ficheiro
+/// passou de `13` para `9` e a linha continua a dizer `13`, os `4` que alguém curou voltam a caber
+/// ali sem que nenhum gate acorde.
+#[test]
+fn the_debt_only_describes_what_is_still_there() {
+    let found = per_file();
+    let obsoletas: Vec<String> = DIVIDA
+        .iter()
+        .filter_map(|(rel, n)| {
+            let now = found.get(*rel).map_or(0, Vec::len);
+            (now < *n).then(|| {
+                if now == 0 {
+                    format!("{rel}: a dívida diz {n}, a régua conta 0 — apague a linha")
+                } else {
+                    format!("{rel}: a dívida diz {n}, a régua conta {now} — escreva {now}")
+                }
+            })
+        })
+        .collect();
+    assert!(
+        obsoletas.is_empty(),
+        "a dívida DESCEU e a catraca não desceu com ela:\n  {}",
+        obsoletas.join("\n  ")
+    );
+    let mut names: Vec<&str> = DIVIDA.iter().map(|(f, _)| *f).collect();
+    let listed = names.len();
+    names.sort_unstable();
+    names.dedup();
+    assert_eq!(
+        names.len(),
+        listed,
+        "um ficheiro aparece duas vezes na DIVIDA — uma das contagens fica escondida"
+    );
+    assert!(
+        DIVIDA.iter().all(|(_, n)| *n > 0),
+        "uma entrada a 0 vale o mesmo que a ausência — apague-a"
+    );
+}
+
+/// ⭐⭐⭐ **UMA CHAVE COM ERRO DE ESCRITA PINTA O IDENTIFICADOR CRU NA TELA** — e vaza a string, por
+/// quadro (`leak_key`). E o censo é dos DOIS lados: uma chave **usada e não declarada** pinta o
+/// identificador; uma **declarada e não usada** é uma órfã.
 #[test]
 fn every_chrome_key_exists_on_both_sides() {
+    const PREFIX: &str = "chrome.";
+    const TABLE: &str = "crates/ph2d-i18n/src/chrome.rs";
     let repo = repo_root();
-    let used = keys_used(&repo);
-    let declared = keys_declared(&repo);
-
+    let used = keys::keys_used(&repo, PREFIX, TABLE);
+    let declared = keys::keys_declared(&repo, TABLE, PREFIX);
     // ⛔ Controlo de vacuidade: um caminho errado dá dois conjuntos vazios, que concordam.
     assert!(
         declared.len() >= 10 && used.len() >= 10,
@@ -593,7 +241,6 @@ fn every_chrome_key_exists_on_both_sides() {
         declared.len(),
         used.len()
     );
-
     let sem_traducao: Vec<String> = used
         .iter()
         .filter(|(k, _)| !declared.contains(*k))
@@ -601,11 +248,10 @@ fn every_chrome_key_exists_on_both_sides() {
         .collect();
     assert!(
         sem_traducao.is_empty(),
-        "estas chaves são usadas e NÃO existem em `crates/ph2d-i18n/src/chrome.rs` — o `tr` faz \
-         `leak_key` e pinta o identificador cru na tela, um vazamento por quadro:\n  {}",
+        "estas chaves são usadas e NÃO existem em `{TABLE}` — o `tr` faz `leak_key` e pinta o \
+         identificador cru na tela, um vazamento por quadro:\n  {}",
         sem_traducao.join("\n  ")
     );
-
     let orfas: Vec<&String> = declared.iter().filter(|k| !used.contains_key(*k)).collect();
     assert!(
         orfas.is_empty(),

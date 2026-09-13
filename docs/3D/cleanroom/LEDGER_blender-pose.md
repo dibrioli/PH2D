@@ -108,7 +108,7 @@ notas, harness) como **dados**.
 | idem, **cabeçalho** | `…/mesh/sculpt_pose.hh` (73 L) | INTEIRO — a forma do segmento e da cadeia | 2026-09-13 |
 | idem, **fora de escopo** | as 6 rotinas de origem por conjuntos de faces (L 1034–1929) | **fronteiras e assinaturas lidas**; corpo **não** especificado (exclusão C). ⭐ Achado que importa ao escopo: o termo de correcção do deslocamento do arrasto é escrito **só** por essas rotinas ⇒ é **zero** no modo de topologia | 2026-09-13 |
 | **simetria** | `…/mesh/sculpt.cc` L 665–690, 2 960–3 050; `…/paint_intern.hh` L 630–662 | teste de lado, área de simetria do vértice, espelhar ponto e rotação por área, validade da iteração, espelhar | 2026-09-13 |
-| **travessia em largura** | `…/mesh/sculpt_flood_fill.{hh,cc}` L 1–150 | fila FIFO, sementes, visitados, ligação artificial na vizinhança | 2026-09-13 |
+| **travessia em largura** | `…/mesh/sculpt_flood_fill.hh` (inteiro) + `…/mesh/sculpt_flood_fill.cc` L 1–150 | fila FIFO, sementes, visitados, ligação artificial na vizinhança | 2026-09-13 |
 | **vizinhança de vértice** | `…/mesh/sculpt.cc` L 554–583, 8 022–8 040 | construção por faces incidentes, os dois adjacentes por face, deduplicação | 2026-09-13 |
 | **sementes espelhadas** | `…/mesh/sculpt_expand.cc` L 574–615 | busca do parceiro espelhado, limite de distância, **ordenação** da lista | 2026-09-13 |
 | **suavização dos pesos** | `…/mesh/sculpt_smooth.cc` L 30–90, 745–800 | média de vizinhos (self excluído), a variante com guarda que **não** é a usada, e o laço por partição **em paralelo sobre o mesmo arranjo** | 2026-09-13 |

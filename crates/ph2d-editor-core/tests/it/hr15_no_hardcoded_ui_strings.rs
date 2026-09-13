@@ -75,69 +75,13 @@ const BASELINE: &[(&str, usize)] = &[
     // contagem cair para 0 sem tirar o literal do binário, que é a isenção silenciosa que as
     // duas notas abaixo já nomeiam.
     ("ph2d-panel-asset-browser/src/paint.rs", 1),
-    // The entity-name TextInput placeholder ("Name…"). Moved from
-    // sections.rs to sections/identity.rs in the §T2.1 per-section split;
-    // i18n migration tracked separately (replaced when Fluent ships).
-    // §12 Sockets / Named Anchors (ADR-0072, 2026-08-21): o `placeholder` da caixa do NOME.
-    // Mesma forma e mesma razão do `identity.rs` acima — um placeholder genérico, congelado
-    // aqui enquanto o runtime Fluent não existe.
-    ("ph2d-panel-inspector/src/sections/anchors.rs", 1),
-    // ⚠️ A §11 tem o MESMO `placeholder` da §12 (o nome que o campo sugere), e a mesma dívida:
-    // as duas caem quando o `t!(…)` shipar. Uma entrada, não uma exceção — o gate continua a
-    // cobrar a SEGUNDA string que alguém acrescentar a este ficheiro.
-    //
-    // ⚠️ **1 → 3 em 2026-08-23** (os SINAIS da §11, spec §8.10): os dois campos novos são
-    // `placeholder`s como o primeiro, e a dívida deles é a mesma.
-    //
-    // ⭐ **E eles ficaram VISÍVEIS de propósito.** A 1.ª versão pintava os três por uma função só
-    // que recebia a string num argumento — e a contagem caiu de 1 para **0**, porque o scanner
-    // procura `.placeholder("literal")`. Era a rota que a `physics_rows.rs` tomou (ver a nota
-    // abaixo): a entrada saiu da lista e as strings ficaram. Aqui o `TextInput` chega **pronto do
-    // chamador**, então os três literais continuam onde este gate os vê. *Um helper que esconde
-    // literais do scanner é uma isenção silenciosa da regra que ele scanneia.*
-    ("ph2d-panel-inspector/src/sections/anim_rows.rs", 3),
-    // ⭐ Os DOIS `placeholder` da secção TIMERS (TOP-20 #2, W3) — o nome do timer e o nome do
-    // sinal. Mesma dívida e mesma cura dos três da §11 acima: caem juntos quando o `t!(…)` shipar.
-    // ⚠️ E ficam VISÍVEIS pela razão que a nota acima nomeia — o `TextInput` chega **pronto do
-    // chamador** (é para isso que o `anim_rows::text_row` recebe o widget e não a string), então os
-    // dois literais continuam onde este gate os vê.
-    ("ph2d-panel-inspector/src/sections/timers.rs", 2),
-    // ⭐ Os TRÊS `placeholder` da secção SIGNAL ACTIONS (TOP-20 #5, W3) — o nome do sinal, o do
-    // objecto alvo e o do timer. Mesma dívida e mesma cura dos irmãos acima: caem juntos quando o
-    // `t!(…)` shipar, e ficam VISÍVEIS porque o `TextInput` chega pronto do chamador.
-    ("ph2d-panel-inspector/src/sections/actions.rs", 3),
-    // ⭐ O `placeholder` do caminho do som, na secção AUDIO (TOP-20 #4, W3). Mesma dívida e mesma
-    // cura dos irmãos acima — ele cai junto quando o `t!(…)` shipar, e fica VISÍVEL porque o
-    // `TextInput` chega pronto do chamador.
-    //
-    // ⚠️ **UM, e não os quatro AVISOS desta secção**: eles passam pelo `paint_text`, que este gate
-    // já conta noutro braço. *A dívida é a que ele mede, não a que a leitura supõe.*
-    ("ph2d-panel-inspector/src/sections/audio.rs", 1),
-    // ⭐ O `placeholder` do NOME do alvo, na secção CAMERA (TOP-20 #7, W3). Mesma dívida e mesma
-    // cura da irmã acima — ele cai junto quando o `t!(…)` shipar.
-    //
-    // ⚠️ **UM, e não os quatro AVISOS desta secção** (nem os rótulos das linhas): eles passam pelo
-    // `paint_text` e pelo `field_row`, que este gate conta noutro braço. *A dívida é a que ele mede,
-    // não a que a leitura supõe.*
-    ("ph2d-panel-inspector/src/sections/camera.rs", 1),
-    ("ph2d-panel-inspector/src/sections/identity.rs", 1),
-    // ⚠️ **W-SignalLeave: a entrada da §11 saiu daqui, e a DÍVIDA NÃO.** O
-    // scanner conta literais dentro de `.placeholder("…")`, e a §11 passou a ter
-    // DOIS campos de sinal (chegada e saída) pintados por uma função só, com os
-    // dois textos numa TABELA — então nenhum dos dois cruza o padrão que este
-    // gate procura, e a contagem caiu de 1 para 0.
-    //
-    // As duas strings continuam hardcoded, em
-    // `ph2d-panel-inspector/src/sections/physics_rows.rs` ("Signal on hit…" e
-    // "Signal on leave…"), e migram junto com o irmão da row de Name quando o
-    // Fluent chegar — a `ph2d-panel-inspector` não depende de `ph2d-i18n`, e a
-    // alternativa hoje seria uma dependência nova para duas strings, com um
-    // segundo mecanismo de texto convivendo com o primeiro.
-    //
-    // A entrada é REMOVIDA em vez de zerada porque o gate exige que a lista seja
-    // exata: uma entrada em 0 vale o mesmo que ausência, e ausência é o que o
-    // arquivo de fato tem *pelo padrão que este scanner enxerga*. O gate segue
-    // afiado para o próximo `.placeholder("literal")` que nascer ali.
+    // ✅ **As SETE entradas do INSPECTOR saíram (2026-09-13, `line/UIUX`) — e a DÍVIDA com elas.**
+    // Os `placeholder` do nome (`identity.rs`), do nome da âncora (`anchors.rs`), da §11
+    // (`anim_rows.rs`, 3), dos TIMERS (2), das SIGNAL ACTIONS (3), do AUDIO e da CAMERA passaram a
+    // `tr("panel.inspector.…")`, e com eles os dois do `physics_rows.rs` que a nota W-SignalLeave
+    // dizia escondidos numa tabela, fora do alcance deste scanner. O painel inteiro fala pela tabela,
+    // com gate próprio na crate dele (`every_word_this_panel_shows_comes_from_the_string_table`,
+    // régua da `ph2d-label-census`).
     // The Audio Editor's empty-state TextInput placeholder ("No clip loaded").
     // Generic English fallback — replaced when Fluent runtime ships.
     // The clip-name placeholder moved to `paint_sections.rs` when the panel was split

@@ -61,9 +61,21 @@ const NOT_LANGUAGE: &[(&str, &str)] = &[(
 /// não foi TRIADA: parte do que conta pode não ser língua (os nomes da cena de amostra do
 /// `fixture.rs`, por exemplo) — a triagem move essas para `NOT_LANGUAGE` com o mecanismo, nunca
 /// esconde o número.
+///
+/// ⛔ **Os números SUBIRAM uma vez, e foi a RÉGUA — não o código** (2026-09-13, na migração do
+/// Inspector). A 1.ª redacção do `is_language` descartava toda palavra só em MAIÚSCULAS, e os títulos
+/// dos cards do Inspector (`"LEG"`, `"WALK"`) apanharam-na. Aqui ela escondia **46**: o trilho
+/// esquerdo (`"BRUSH"`, `"PICK"`… `left_rail.rs` +26), os módulos do topo (`fixture.rs` +13), o
+/// `"EDIT"` do HUD (`bottom_hud.rs` +1), os três modelos do seletor de cor (`segmented.rs` +3 — `RGB`,
+/// `HSV`, `OKLCH`, que a triagem deve mover para `NOT_LANGUAGE`: são o mesmo símbolo em toda língua)
+/// e os três modos do `paint.rs` (entrada nova). ⚠️ E a MESMA jornada corrigiu a régua uma segunda
+/// vez — uma BARRA numa frase não é um caminho —, o que descobriu mais **3**: o `grid_snap/inspect.rs`
+/// (`"Line / Neighbors"`, `"{} cells / {}"`) e o `bottom_hud.rs` (`"{}\u{2192}{} ev/stamp"`).
+/// *Uma correcção da medição, nunca licença para crescer*: a partir daqui os números voltam a só
+/// descer.
 const DIVIDA: &[(&str, usize)] = &[
     ("floating_panel.rs", 13),
-    ("grid_snap/inspect.rs", 19),
+    ("grid_snap/inspect.rs", 21),
     ("grid_snap/state.rs", 9),
     ("ids/menus_timeline.rs", 50),
     ("interaction/dispatch/hierarchy.rs", 3),
@@ -71,21 +83,22 @@ const DIVIDA: &[(&str, usize)] = &[
     ("interaction/state/blender_ops.rs", 3),
     ("interaction/state/chrome_ops.rs", 1),
     ("interaction/state/store_core.rs", 1),
+    ("paint.rs", 3),
     ("panel/registry.rs", 1),
     ("screens/hero.rs", 1),
     ("screens/hero/asset_drag_ghost.rs", 1),
-    ("screens/hero/bottom_hud.rs", 10),
+    ("screens/hero/bottom_hud.rs", 12),
     ("screens/hero/canvas.rs", 2),
     ("screens/hero/chrome/fill_modal.rs", 3),
     ("screens/hero/color_picker_demo.rs", 1),
     ("screens/hero/context_menu_dialogs.rs", 9),
     ("screens/hero/context_menu_overlay.rs", 2),
-    ("screens/hero/fixture.rs", 13),
+    ("screens/hero/fixture.rs", 26),
     ("screens/hero/global_palette.rs", 4),
     ("screens/hero/inspector_model.rs", 1),
     ("screens/hero/inspector_model_anchor.rs", 3),
     ("screens/hero/inspector_model_instance.rs", 15),
-    ("screens/hero/left_rail.rs", 45),
+    ("screens/hero/left_rail.rs", 71),
     ("screens/hero/menu_bar.rs", 5),
     ("screens/hero/menu_rows.rs", 164),
     ("screens/hero/pre_populate.rs", 17),
@@ -100,7 +113,7 @@ const DIVIDA: &[(&str, usize)] = &[
     ("widget/blender_color_picker/harmony.rs", 8),
     ("widget/blender_color_picker/paint.rs", 24),
     ("widget/blender_color_picker/palette.rs", 3),
-    ("widget/blender_color_picker/segmented.rs", 1),
+    ("widget/blender_color_picker/segmented.rs", 4),
     ("widget/blender_color_picker/state.rs", 1),
     ("widget/color_picker.rs", 11),
     ("widget/combobox.rs", 1),
@@ -228,8 +241,8 @@ fn every_chrome_key_exists_on_both_sides() {
     const PREFIX: &str = "chrome.";
     const TABLE: &str = "crates/ph2d-i18n/src/chrome.rs";
     let repo = repo_root();
-    let used = keys::keys_used(&repo, PREFIX, TABLE);
-    let declared = keys::keys_declared(&repo, TABLE, PREFIX);
+    let used = keys::keys_used(&repo, PREFIX, &[TABLE]);
+    let declared = keys::keys_declared(&repo, &[TABLE], PREFIX);
     // ⛔ Controlo de vacuidade: um caminho errado dá dois conjuntos vazios, que concordam.
     assert!(
         declared.len() >= 10 && used.len() >= 10,

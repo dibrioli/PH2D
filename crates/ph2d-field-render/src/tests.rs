@@ -4,6 +4,8 @@ use super::*;
 use ph2d_field::{NodeId, Primitive, Xform};
 use ph2d_field_eval::hybrid::Registry;
 
+mod hull_cache_probe;
+
 fn sphere(radius: f32) -> FieldDoc {
     FieldDoc::new(
         vec![ph2d_field_eval::leaf(

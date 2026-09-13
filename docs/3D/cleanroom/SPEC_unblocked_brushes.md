@@ -8,8 +8,9 @@ Patente (§8.1): buscado em 2026-09-13 — projecção por raycast em escultura 
   projecção entre sub-ferramentas · relaxação multirresolução. Resultado: NENHUMA patente viva
   alcança os métodos (a mais próxima, a de Kelvinlets, é solução analítica de elasticidade e não
   descreve nenhum destes quatro). Arte anterior pública abundante desde 2009–2013. Veredito: prosseguir.
-Filtragem §4.3: re-executada em 2026-09-13 sobre os 3 achados · Sweep: ✅ VERDE em 2026-09-13
-  sobre **196** entradas (181 do R-pré + 15 sentinelas das transliterações removidas).
+Filtragem §4.3: re-executada em 2026-09-13, DUAS vezes (3 achados na 1.ª passagem do R-pré, mais
+  4 na 2.ª) · Sweep: ✅ VERDE em 2026-09-13 sobre **206** entradas (181 do R-pré + 25 sentinelas
+  do texto removido nas duas rondas).
   ⚠️⚠️ **O verde ANTERIOR, sobre 175, não provava filtragem nenhuma:** a vassoura estava só na
   língua do ALVO e esta espec escreve-se na NOSSA, logo toda tradução de comentário passava por
   baixo dela. *Uma vassoura monolingue não vigia uma espec traduzida* — e é por isso que as
@@ -17,16 +18,54 @@ Filtragem §4.3: re-executada em 2026-09-13 sobre os 3 achados · Sweep: ✅ VER
   ⭐ **Controlo positivo, para o verde significar alguma coisa:** a mesma vassoura sobre a versão
   ANTES da reescrita (`git show <commit anterior>:…`) dá **19 hits** — os 5 do 1.º bloco, os 8 do
   2.º, e os 6 da prosa; sobre esta versão dá **0**.
-Auditoria §4.2 (R-pré): ⛔ REPROVADA em 2026-09-13 — 3 achados (2 blocos de pseudo-código que
-  espelhavam o original passo a passo · 1 família de prosa de comentário traduzida, em 4 sítios).
-  ⭐ **OS TRÊS ESTÃO CURADOS nesta redacção:** o bloco da §3.2 SAIU (a prosa em volta já dizia o
-  mesmo, e o bloco só acrescentava FORMA); o da §5.2 foi reescrito como **média ponderada em forma
-  fechada**, com o desvio **matematicamente inerte** demovido a nota de custo (§4.1.8); e os 4
-  sítios de prosa foram re-ditos como **REQUISITO**, nunca como a explicação do autor traduzida.
+Auditoria §4.2 (R-pré): ⛔ REPROVADA DUAS vezes em 2026-09-13, e as duas com achado substancial.
+  · **1.ª passagem — 3 achados:** 2 blocos de pseudo-código que espelhavam o original passo a passo ·
+    1 família de prosa de comentário traduzida, em 4 sítios. ⭐ **CURADOS:** o bloco da §3.2 SAIU (a
+    prosa em volta já dizia o mesmo, e ele só acrescentava FORMA); o da §5.2 virou **média ponderada
+    em forma fechada**, com o desvio **matematicamente inerte** demovido a nota de custo (§4.1.8); os
+    4 sítios foram re-ditos como **REQUISITO**.
+  · **2.ª passagem — 4 achados** (ela confirmou as três curas acima uma a uma e achou mais):
+    ⛔ **SUBSTANCIAL, e byte-idêntico à redacção que já tinha sido reprovada — a 1.ª emenda não lhe
+    tocou:** a §3.1 sustentava um facto de comportamento descrevendo o **INVENTÁRIO e a FORMA** do
+    código do alvo, em três orações. ⭐ **CURADO, e o facto ficou MAIS FORTE:** ele é agora **medido**
+    (`densidade_detalhe_manual`, `max │Δposição│ = 0` exactamente, `0` de `1 681` vértices movidos) —
+    *ele não tinha fixture nenhuma, e a atribuição ao fonte estava a fazer o trabalho de uma*.
+    Mais: a atribuição do expoente da força a texto do fonte (§1.1 ⇒ aponta à §9.1, que já declara a
+    proveniência lícita) · a caracterização do pincel pela FORMA DA CONDIÇÃO (§3.2 ⇒ **tabela-verdade**,
+    que as 4 fixtures da secção provam) · e a **política de nomes**, que vivia só no ledger e o
+    protocolo veda ao Implementador (⇒ está no bloco acima).
+  ⚠️ **A lição das duas rondas:** *uma emenda cura o que o auditor NOMEOU, e a §3.1 sobreviveu à
+  primeira por ninguém lhe ter apontado o dedo.* Quem reescrever daqui em diante varre o documento
+  inteiro pela pergunta da §4.3.1 — **«isto descreve o que o programa FAZ, ou como ele está
+  ESCRITO?»** — e não só os parágrafos citados no relatório.
   ⛔⛔ **A janela NÃO implementa nem LÊ esta espec enquanto esta linha não disser «auditada contra
   §4.2 por R-pré em <data>»** — e quem a escreve é um **R-pré NOVO sobre esta redacção**, nunca o
   autor da reescrita: *autofiltragem não é auditoria*, e foi exactamente a autofiltragem verde de
   há uma hora que deixou passar os três.
+Política de NOMES (§4.2 + §4.1.13) — o quadro que o Implementador confere, porque o ledger é-lhe
+  vedado por protocolo e esta é a única página onde ele pode lê-la:
+  · ⛔ **ZERO identificador interno do alvo** nesta espec — nenhum nome de função, variável, tipo,
+    ficheiro ou constante do fonte dele. O que não é interface pública é dito em **vocabulário do
+    DOMÍNIO** («a superfície de referência», «o passe de topologia», «a fracção mínima de aresta»).
+  · ⭐ **Tudo o que esta espec NOMEIA é interface PÚBLICA**, e o modo de obtenção é o que a torna
+    lícita: ela saiu de **CORRER** o alvo sem interface e despejar as definições que ele publica a
+    quem o programa de fora — os identificadores de propriedade e os valores de enumeração que
+    qualquer script de utilizador usa —, **nunca de ler o fonte**. São eles: `SIMPLIFY` ·
+    `DISPLACEMENT_ERASER` · `DISPLACEMENT_SMEAR` · `SCENE_PROJECT` · `project_ray_direction_type`
+    (`VIEW_NORMAL` · `PLANE_NORMAL`) · `minimum_distance` · `use_bidirectional` ·
+    `smear_deform_type` (`DRAG` · `PINCH` · `EXPAND`). Mais os **rótulos que aparecem na tela**,
+    que são texto público do manual.
+  · ⚠️ **No corpo, o RÓTULO lidera** — títulos e tabelas dizem o que o artista vê (*Density*,
+    *Scene Project*, *Minimum Distance*…), e o identificador público fica **só** onde regenerar uma
+    fixture exige a cadeia exacta (o cabeçalho de cada fixture, e a §7).
+  · ⚠️ **Os identificadores do NOSSO repo** (`ph2d_mesh::…`, `crates/…`) são nossos e não têm cerca.
+Constantes do passe de topologia (§3.4–§3.6): as três leis de tamanho de detalhe, a fracção mínima
+  `0,4`, a constante de escala do detalhe relativo `0,4`, as prioridades de bordo `1,50`/`1,25` e os
+  dois factores da propagação `1,2`/`1,6` entram como **FACTO LIDO**, não medido pela porta do
+  produto. ⚠️ Declarado aqui de propósito: cada um deles é um **número**, não uma expressão, e a
+  §4.1.3 aceita-os com proveniência — mas quem os gatear deve saber que a proveniência é *leitura*, e
+  que o caminho para os **medir** existe e não foi corrido (varrer o knob e contar o que a topologia
+  faz, como a §3.2 faz para as quatro células da tabela-verdade).
 Mapa de leitura da literatura (tudo PÚBLICO e livre; nenhum apêndice a pular):
   · Catmull & Clark 1978, «Recursively generated B-spline surfaces on arbitrary topological meshes»
     — o esquema de subdivisão de quads.
@@ -66,12 +105,12 @@ Quatro pincéis do catálogo público do alvo que o nosso [plano de ferramentas]
 §5.2 deixou de fora **por bloqueio de substrato**. A missão pediu que cada bloqueio fosse
 **reconferido contra o NOSSO código** antes de a espec existir. Foi, e o resultado não é uniforme:
 
-| pincel (nome público) | rótulo na tela | bloqueio de 2026 | estado do NOSSO substrato hoje | degrau |
+| pincel (o rótulo na tela) | identificador público | bloqueio de 2026 | estado do NOSSO substrato hoje | degrau |
 |---|---|---|---|---|
-| `SIMPLIFY` | *Density* | «falta o decimate do dyntopo» | ⭐ **CAIU, e por inteiro** — `ph2d_mesh::collapse_in_sphere` + `collapse_target` + `edge_target` existem, e o nosso passe de topologia já corre **colapso antes de refino**, que é a ordem do alvo | **T0 sobre o motor, T2 sobre a semântica** (§3.9) |
-| `DISPLACEMENT_ERASER` | *Erase Multires Displacement* | «falta multires» | ⚠️ **CAIU PELA METADE** — a pilha existe (`ph2d_mesh::Multires`), mas a grandeza que ela guarda **não é a mesma** (§4.4). Falta **uma** peça, nomeada e barata | **T2** |
-| `DISPLACEMENT_SMEAR` | *Smear Multires Displacement* | «falta multires» | ⚠️ **idem** — mesma peça em falta, mesmo motivo | **T2** |
-| `SCENE_PROJECT` | *Scene Project* | «o viewport de escultura é de um objeto» | ⭐ **CAIU** — `cena.rs` tem `objects: Vec<SceneObject>` com `active: usize`, cada peça com a própria pose, e `ph2d_mesh::ray` já lança raio contra uma malha com octree | **T2** (a lei é do alvo; o motor de raio é nosso) |
+| **Density** | `SIMPLIFY` | «falta o decimate do dyntopo» | ⭐ **CAIU, e por inteiro** — `ph2d_mesh::collapse_in_sphere` + `collapse_target` + `edge_target` existem, e o nosso passe de topologia já corre **colapso antes de refino**, que é a ordem do alvo | **T0 sobre o motor, T2 sobre a semântica** (§3.9) |
+| **Erase Multires Displacement** | *Erase Multires Displacement* | «falta multires» | ⚠️ **CAIU PELA METADE** — a pilha existe (`ph2d_mesh::Multires`), mas a grandeza que ela guarda **não é a mesma** (§4.4). Falta **uma** peça, nomeada e barata | **T2** |
+| **Smear Multires Displacement** | *Smear Multires Displacement* | «falta multires» | ⚠️ **idem** — mesma peça em falta, mesmo motivo | **T2** |
+| **Scene Project** | *Scene Project* | «o viewport de escultura é de um objeto» | ⭐ **CAIU** — `cena.rs` tem `objects: Vec<SceneObject>` com `active: usize`, cada peça com a própria pose, e `ph2d_mesh::ray` já lança raio contra uma malha com octree | **T2** (a lei é do alvo; o motor de raio é nosso) |
 
 ⛔ **Fora de escopo por ordem do dono, e nomeados para não serem procurados:** tudo o que depende
 de *face sets* (não existem nesta casa) e todo pincel ou opção de **cor** (*Paint*, *Smear*, *Blur*).
@@ -112,11 +151,12 @@ pincéis que esta casa já portou, e a ordem dos passos é observável:
 8. **Auto-máscara** (cavidade, face de frente, topologia…), se ligada.
 9. **Textura de máscara**, se houver.
 
-### §1.1 — ⭐⭐ A FORÇA ENTRA AO QUADRADO, e isso é declarado
+### §1.1 — ⭐⭐ A FORÇA ENTRA AO QUADRADO
 
-O número que a UI chama *Strength* **não é o factor**. O alvo eleva-o ao quadrado antes de o usar,
-e o motivo está escrito no fonte pelos próprios autores: elevar ao quadrado torna a metade de baixo
-do slider mais sensível (mais curso útil onde o artista trabalha).
+O número que a UI chama *Strength* **não é o factor**: ele é elevado ao quadrado antes de ser usado.
+⇒ o efeito de uma posição do slider é a **fracção ao quadrado**, e a metade de baixo do curso ganha
+resolução às custas da de cima. A proveniência de que isto é **deliberado**, e não um acidente
+numérico, está na §9.1.
 
 ```
 factor_de_força = força_UI²  ×  pressão  ×  sobreposição_de_simetria  ×  feather
@@ -130,10 +170,10 @@ de peso, não dentro dela. O resultado por dab é `peso × factor_de_força`.
 
 | pincel | força UI | fracção do alvo percorrida | `força¹` | `força²` |
 |---|---|---|---|---|
-| `SCENE_PROJECT` | `1,0` | **`1,000000`** | 1,000 | 1,000 |
-| `SCENE_PROJECT` | `0,5` | **`0,250000`** | 0,500 | **0,250** ✓ |
-| `DISPLACEMENT_ERASER` | `1,0` | **`1,000000`** | 1,000 | 1,000 |
-| `DISPLACEMENT_ERASER` | `0,5` | **`0,250000`** | 0,500 | **0,250** ✓ |
+| *Scene Project* | `1,0` | **`1,000000`** | 1,000 | 1,000 |
+| *Scene Project* | `0,5` | **`0,250000`** | 0,500 | **0,250** ✓ |
+| *Erase Multires Displacement* | `1,0` | **`1,000000`** | 1,000 | 1,000 |
+| *Erase Multires Displacement* | `0,5` | **`0,250000`** | 0,500 | **0,250** ✓ |
 
 ⇒ *duas famílias independentes, o mesmo expoente*. Implementar `força¹` faz o pincel parecer o dobro
 de forte a meio curso, e é o erro que a medição de um pincel só não distinguiria de um bug de curva.
@@ -142,9 +182,9 @@ de forte a meio curso, e é o erro que a medição de um pincel só não disting
 
 | pincel | o que o Ctrl faz | medido |
 |---|---|---|
-| `DISPLACEMENT_ERASER` | ⭐ **NADA** — o sinal de inversão não entra na força dele | `max |d − d'| = 0,000e+00` sobre o traço inteiro: a saída é **byte-idêntica** |
-| `DISPLACEMENT_SMEAR` | **NADA**, pelo mesmo motivo | (mesma forma; o factor não tem sinal) |
-| `SCENE_PROJECT` | **troca o sentido do raio** (o sinal entra no factor, logo a translação nega) | ver §6.6 |
+| *Erase Multires Displacement* | ⭐ **NADA** — o sinal de inversão não entra na força dele | `max |d − d'| = 0,000e+00` sobre o traço inteiro: a saída é **byte-idêntica** |
+| *Smear Multires Displacement* | **NADA**, pelo mesmo motivo | (mesma forma; o factor não tem sinal) |
+| *Scene Project* | **troca o sentido do raio** (o sinal entra no factor, logo a translação nega) | ver §6.6 |
 
 ⚠️ *Um pincel que ignora o Ctrl não é um pincel a que falta uma feature* — apagar deslocamento tem
 um só sentido (o deslocamento zero), e «apagar ao contrário» não nomeia nada.
@@ -160,9 +200,9 @@ por cobrir, e vice-versa: **os dois têm fixture**.
 
 | pincel | tecto sobre o factor de força |
 |---|---|
-| `DISPLACEMENT_ERASER` | `min(f, 1)` — nunca passa do alvo (não há ultrapassagem) |
-| `DISPLACEMENT_SMEAR` | `clamp(f, 0, 1)` — idem, e o piso importa (§5.4) |
-| `SCENE_PROJECT` | ⛔ **nenhum** — o factor vai cru. Com `força² ≤ 1` ele não passa de `1` por si, mas a sobreposição de simetria pode empurrá-lo acima, e aí a peça **ultrapassa o alvo** |
+| *Erase Multires Displacement* | `min(f, 1)` — nunca passa do alvo (não há ultrapassagem) |
+| *Smear Multires Displacement* | `clamp(f, 0, 1)` — idem, e o piso importa (§5.4) |
+| *Scene Project* | ⛔ **nenhum** — o factor vai cru. Com `força² ≤ 1` ele não passa de `1` por si, mas a sobreposição de simetria pode empurrá-lo acima, e aí a peça **ultrapassa o alvo** |
 
 ---
 
@@ -255,13 +295,29 @@ esquema em vigor***, e isso é uma divergência **deliberada** a declarar no gat
 
 ---
 
-## §3 — `SIMPLIFY` (rótulo *Density*) — o pincel que não tem lei por vértice
+## §3 — *Density* — o pincel que não tem lei por vértice
 
-### §3.1 — ⭐⭐ Ele não move um único vértice, e isso é literal
+> Identificador público do tipo de pincel: `SIMPLIFY`.
 
-O despacho de deformação do alvo tem, para este pincel, um braço **vazio**. A função que calcula a
-força de um pincel devolve, para ele, **zero**, e o comentário ao lado diz-se explicitamente
-inutilizado. ⇒ *tudo o que este pincel faz, ele faz ao passe de TOPOLOGIA*.
+### §3.1 — ⭐⭐ Ele não move um único vértice, e isso é MEDIDO
+
+**Este pincel não desloca vértice nenhum; todo o efeito dele é sobre o passe de TOPOLOGIA.**
+
+⭐ **É observável, e a fixture é o controlo:** corra um traço dele com o passe de topologia
+**desarmado** (o *Detailing* em **Manual** desarma-o por inteiro — §3.2) e **nenhuma posição muda**.
+Medido em `densidade_detalhe_manual` (esfera de `1 681` vértices, traço de 6 pontos, auto-alisamento
+a `0`):
+
+| grandeza | leitura |
+|---|---|
+| `max │posição_saída − posição_repouso│` | **`0` exactamente** — não «pequeno», **zero** |
+| vértices movidos | **`0` de `1 681`** |
+| contagem de vértices e faces | inalterada |
+
+⇒ com a única metade que ele arma fora de jogo, o pincel é **inteiramente inerte**. ⚠️ **O
+auto-alisamento a zero é load-bearing na fixture:** ele é um passe **separado** que corre depois de
+todo pincel, logo com ele ligado há movimento — e esse movimento não é deste pincel
+(`densidade_autosuave05` existe para o contraste).
 
 ⚠️ **Consequência que muda o desenho:** ele não pertence à família `Dab`/`Grip` do nosso
 [`brush_verb.rs`](../../../crates/ph2d-sculpt3d/src/brush_verb.rs). Um verbo novo que caia no
@@ -275,9 +331,20 @@ longas · colapsar arestas curtas). O modo sai das preferências de *Refine Meth
 **excepto** que este pincel **acrescenta a bandeira de colapso**, aconteça o que acontecer com a
 preferência. E o conjunto inteiro é ignorado quando o *Detailing* está em **Manual**.
 
-⭐ **É isto e mais nada** — o pincel não acrescenta uma lei, acrescenta **uma disjunção à condição
-que já decidia o colapso**, e é por isso que o manual público pode dizer que ele consegue sempre
-colapsar mesmo com o método em *Subdivide Edges*.
+⭐ **É isto e mais nada**, e a tabela-verdade cabe em três linhas — as quatro fixtures abaixo provam
+as quatro células que importam:
+
+| *Detailing* | a preferência de *Refine Method* pede… | **colapsar** corre? | **partir** corre? |
+|---|---|---|---|
+| Manual | (qualquer) | **não** | **não** |
+| ≠ Manual | partir | **SIM** (é este pincel a pedi-lo) | sim |
+| ≠ Manual | colapsar | sim | não |
+| ≠ Manual | partir + colapsar | sim | sim |
+
+⇒ *o colapso corre quando a preferência o pede **ou** quando este pincel está em mãos; o partir
+corre **apenas** quando a preferência o pede; e o ajuste manual de detalhe desarma os dois.* É por
+isso que o manual público pode dizer que ele consegue sempre colapsar mesmo com o método em
+*Subdivide Edges*.
 
 **Medido** (esfera triangulada de `1 681` vértices, detalhe constante, traço de 6 pontos):
 
@@ -427,7 +494,9 @@ e sem terceira saída:
 
 ---
 
-## §4 — `DISPLACEMENT_ERASER` (rótulo *Erase Multires Displacement*)
+## §4 — *Erase Multires Displacement*
+
+> Identificador público do tipo de pincel: `DISPLACEMENT_ERASER`.
 
 ### §4.1 — A lei, inteira
 
@@ -482,7 +551,9 @@ ela tem de ter **outro nome** e o doc tem de dizer de que superfície ela repõe
 
 ---
 
-## §5 — `DISPLACEMENT_SMEAR` (rótulo *Smear Multires Displacement*)
+## §5 — *Smear Multires Displacement*
+
+> Identificador público do tipo de pincel: `DISPLACEMENT_SMEAR`.
 
 ### §5.1 — O que ele é
 
@@ -492,12 +563,13 @@ tocada — o que muda é quanto cada elemento da grelha se afasta da referência
 
 ### §5.2 — A lei, passo a passo
 
-**No início do traço** (uma vez, e só uma):
-1. avalia a superfície de referência (§2) para a peça **inteira**;
-2. aloca o campo *deslocamento anterior*, **a zeros**.
+**No início do traço** (uma vez, e só uma) o estado do traço passa a ter:
+1. a superfície de referência (§2) da peça **inteira**, `R`;
+2. um campo de deslocamento `D`, **cujo valor inicial é zero em todo vértice** — ⚠️ zero, e não «o
+   deslocamento actual»: a diferença é observável e está no §5.4.
 
-**Em cada dab**, para os nós tocados:
-3. **reescreve** o campo de deslocamento desses nós: `D[u] := p[u] − R[u]`;
+**Em cada dab**, sobre os nós tocados:
+3. `D[u]` passa a valer o deslocamento actual desses vértices: `D[u] = p[u] − R[u]`;
 4. o deslocamento de cada vértice `v` da região passa a ser uma **média ponderada do campo sobre a
    vizinhança de `v` na grelha**, e o vértice é movido uma fracção do caminho até lá.
 
@@ -548,16 +620,17 @@ não do movimento; `esfregao_pinch_parado` mede `2,0e-02`, quinze vezes mais.
 
 ### §5.4 — O artefacto que os autores escolheram MANTER
 
-O campo *deslocamento anterior* é actualizado **só nos nós tocados** pelo dab, mas a média lê
-vizinhos que podem estar **fora** deles. Esses vizinhos contribuem com o valor que o campo tinha —
-no primeiro dab, **zero**. ⇒ na orla da pincelada, o esfregão mistura deslocamento real com zeros, o
-que **come** deslocamento na borda.
+O campo `D` só é posto em dia **nos nós tocados** pelo dab, mas a média lê vizinhos que podem estar
+**fora** deles. Esses vizinhos entram com o valor que o campo tinha — no primeiro dab, **zero**. ⇒
+na orla da pincelada o esfregão mistura deslocamento real com zeros, e isso **come** deslocamento na
+borda.
 
-⭐ **Isto tem história pública:** antes, o campo era inicializado por uma subtracção redundante; ao
-removê-la, vizinhos não inicializados passaram a propagar **NaN**, e a cura publicada foi
-**inicializar explicitamente a zeros** — *não* alargar a actualização à vizinhança. ⇒ o artefacto é
-deliberado (ou pelo menos tolerado), e a nossa versão pode escolher: reproduzi-lo (paridade) ou
-actualizar o campo na vizinhança **um anel para fora** (melhor, e uma divergência a declarar).
+⭐ **O valor inicial zero é a cura PUBLICADA de uma regressão**, não uma escolha de conveniência:
+houve uma versão em que vértices fora dos nós tocados chegavam à média **sem valor definido** e
+propagavam **NaN** pela malha, e o defeito foi fechado fixando o zero. ⚠️ **O que a cura NÃO fez foi
+alargar a actualização à vizinhança** ⇒ a orla é um artefacto **tolerado**, com a fronteira do
+mecanismo à vista. A nossa versão escolhe: reproduzi-la (paridade) ou pôr o campo em dia **um anel
+para fora** (melhor, e divergência a declarar).
 
 ### §5.5 — A alegação dos autores sobre conservação, MEDIDA
 
@@ -590,7 +663,9 @@ com a direcção da deriva livre (ela muda de sinal entre modos).
 
 ---
 
-## §6 — `SCENE_PROJECT` (rótulo *Scene Project*)
+## §6 — *Scene Project*
+
+> Identificador público do tipo de pincel: `SCENE_PROJECT`.
 
 ### §6.1 — Quem são os alvos
 

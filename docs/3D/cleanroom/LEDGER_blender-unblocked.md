@@ -353,3 +353,43 @@ exactamente nomes internos a alojarem-se nos nossos comentários. *Um atestado g
 ficheiro que o destinatário não pode ler não atesta nada para ele.*
 
 ⚠️ **Esta espec fica BLOQUEADA para implementação** até a 3.ª redacção e um R-pré novo sobre ela.
+
+---
+
+## Emenda 2 §3.E — a 2.ª passagem do R-pré (2026-09-13)
+
+Ele **confirmou as três curas da 1.ª emenda uma a uma** (e registou que três delas ficaram *mais
+fortes* por darem o nosso mecanismo em vez do argumento dos autores), correu o **controlo positivo
+dele próprio** — `19` linhas na redacção anterior, `0` na de então — e **não atestou**: mais `4`
+achados, um substancial.
+
+| # | achado | cura |
+|---|---|---|
+| 1 | ⛔ **SUBSTANCIAL. §3.1, byte-idêntica à redacção já reprovada — a 1.ª emenda não lhe tocou.** Três orações sustentavam um facto de comportamento descrevendo o **INVENTÁRIO e a FORMA** do código do alvo | **APAGADAS**, e o facto ficou **MEDIDO**: `densidade_detalhe_manual` dá `max │Δposição│ = 0` **exactamente** e `0` de `1 681` vértices movidos ⇒ *o pincel é inteiramente inerte com a metade que ele arma fora de jogo*. ⭐ **Ele não tinha fixture nenhuma, e a atribuição ao fonte estava a fazer o trabalho de uma** |
+| 2 | §1.1 — o motivo ergonómico do expoente da força atribuído a texto escrito no fonte | a oração saiu; a §1.1 aponta à **§9.1**, que já declara a proveniência lícita (mensagens de commit · o pedido público · o relatório de defeitos · o manual) |
+| 3 | §3.2 — a frase que substituiu o bloco caracterizava o pincel pela **FORMA DA CONDIÇÃO** no código | **TABELA-VERDADE** (4 linhas), que as 4 fixtures da própria secção provam: o colapso corre se a preferência o pede **ou** se este pincel está em mãos · o partir só se a preferência o pede · o detalhe Manual desarma os dois |
+| 4 | Cabeçalho — a **política de nomes** vivia só neste ledger, e o protocolo veda o ledger à janela | escrita no cabeçalho: zero identificador interno · o que a espec nomeia é **interface pública**, obtida **correndo** o alvo e despejando o que ele publica (nunca lendo) · o resto é vocabulário do domínio · e **no corpo o RÓTULO lidera** (títulos e tabelas dizem o que o artista vê; o identificador fica onde regenerar uma fixture o exige) |
+
+**Menores, tratados:** as constantes do passe de topologia ganharam **linha de proveniência no
+cabeçalho** — entram como *facto LIDO*, com o caminho para as medir nomeado e declarado por correr ·
+duas orações trocaram verbo de código por facto de **estado** (o campo de deslocamento *tem valor
+inicial zero*, em vez de *é alocado a zeros*) · e a narrativa da subtracção redundante foi trocada
+pelo que importa: **o zero inicial é a cura publicada de uma regressão** (vértices sem valor
+definido propagavam NaN), e o que a cura **não** fez foi alargar a actualização à vizinhança.
+
+⚠️⚠️ **A LEI DAS DUAS RONDAS, e é a mais cara desta obra:** *uma emenda cura o que o auditor
+NOMEOU.* A §3.1 sobreviveu à 1.ª passagem inteira — com um achado substancial dentro — **por
+ninguém lhe ter apontado o dedo**, e eu reescrevi à volta dela sem a ler pela pergunta da §4.3.1.
+⇒ a regra que fica, escrita no cabeçalho da espec: **quem reescreve varre o documento INTEIRO** por
+*«isto descreve o que o programa FAZ, ou como ele está ESCRITO?»*, nunca só os parágrafos citados.
+⭐ Aplicada agora ao documento todo por varredura textual (`o fonte` · `a função` · `o comentário` ·
+`despacho` · `devolve` · `invoca` · `o módulo` · `o ficheiro` · …): **zero** ocorrências a descrever
+a estrutura do alvo; os únicos hits são sobre o NOSSO lado e sobre o processo.
+
+**Vassoura: `196 → 206`** — mais `10` sentinelas do texto exacto removido nesta ronda.
+⭐ **Controlo positivo:** a mesma vassoura sobre a redacção que o R-pré reprovou (`9efef37ba`) acusa
+**as quatro** linhas — §1.1, §3.1, §3.2 e §5.4 —; sobre esta acusa `0`. Cross-sweep contra as quatro
+vassouras irmãs: limpo nas quatro.
+
+⏳ **PENDENTE: 3.ª passagem do R-pré.** ⛔ A janela não implementa nem lê a espec até a linha
+«auditada contra §4.2 por R-pré em `<data>`» estar escrita, e **não é quem reescreveu que a escreve**.

@@ -130,8 +130,8 @@ pub(crate) fn paint_transform_section(
     let unit = current_display_unit();
     let (pos_label, pos_step) = match unit {
         ph2d_editor_core::project::DisplayUnit::Meters => {
-            (tr("panel.inspector.transform.position_m"), 0.01_f64)
-        } // LITERAL-PX-OK: NumberInput step
+            (tr("panel.inspector.transform.position_m"), 0.01_f64) // LITERAL-PX-OK: passo em metros
+        }
         ph2d_editor_core::project::DisplayUnit::Pixels => {
             (tr("panel.inspector.transform.position_px"), 1.0_f64)
         }

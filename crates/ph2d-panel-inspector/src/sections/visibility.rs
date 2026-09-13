@@ -134,9 +134,6 @@ pub(crate) fn paint_visibility_section(
     //    `Spacing::Xs` (4) escrito à mão — ordem do dono, 2026-09-07. Esta secção é
     //    anterior à porta. Ver `every_stack_of_rows_asks_the_rhythm`.
     let row_gap = ph2d_tokens::control_gap_px();
-    let label_font = TypeToken::Sm.px();
-    let label_color = resolve(ColorToken::Text2, theme);
-    let label_h = label_font + Spacing::Xs.px();
     let mut yy = y;
 
     // Visibility Layer — collapsible sub-section using the CANONICAL
@@ -260,6 +257,35 @@ pub(crate) fn paint_visibility_section(
     paint_checkbox(&src_cb, src_rect, scene, text_system, theme);
     yy += h + row_gap;
 
+    yy = paint_enabler_rows(scene, text_system, theme, hit_index, store, x, w, yy, info);
+
+    yy + SECTION_BOTTOM_PAD_PX
+}
+
+/// **A moldura de ecrã** — o interruptor do `OnScreenEnabler` e o rectângulo dele.
+///
+/// ⚠️ **Função irmã por CAP** (200): com este bloco inline a [`paint_visibility_section`] media
+/// **213** depois de os rótulos passarem pela tabela — o `tr("…")` alonga a chamada e o `rustfmt`
+/// parte-a. *A cura de um tecto estourado é o CORTE.* E a fronteira é a que a secção já desenha: as
+/// rows de cima dizem *o que este objecto mostra*, estas *quando ele deixa de ser desenhado*.
+#[allow(clippy::too_many_arguments)]
+fn paint_enabler_rows(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    x: f32,
+    w: f32,
+    y: f32,
+    info: &InspectorVisibilitySectionInfo,
+) -> f32 {
+    let h = ROW_H_PX;
+    let row_gap = ph2d_tokens::control_gap_px();
+    let label_font = TypeToken::Sm.px();
+    let label_h = label_font + Spacing::Xs.px();
+    let label_color = resolve(ColorToken::Text2, theme);
+    let mut yy = y;
     // On-Screen Enabler toggle (presence of the component).
     let on_rect = Rect::new(x, yy, w, h);
     hit_index.register(ids::INSP_VIS_ON_SCREEN, on_rect);
@@ -338,6 +364,5 @@ pub(crate) fn paint_visibility_section(
         );
         yy += editor_h + row_gap;
     }
-
-    yy + SECTION_BOTTOM_PAD_PX
+    yy
 }

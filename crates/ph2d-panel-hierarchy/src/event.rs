@@ -286,10 +286,7 @@ pub(crate) fn apply_event(
         if let Some(entry) = state::live_entry_for(id) {
             *host.selection_mut() = Some(HeroSelection {
                 label: entry.name.clone(),
-                kind: entry
-                    .badge
-                    .clone()
-                    .unwrap_or_else(|| ph2d_i18n::tr("panel.hierarchy.badge.entity").to_string()),
+                kind: entry.badge.clone().unwrap_or_else(entity_badge),
                 world_pos: (0.0, 0.0),
             });
             return EventOutcome::Consumed;
@@ -385,4 +382,12 @@ pub(crate) fn apply_event(
         return EventOutcome::Observed;
     }
     EventOutcome::Ignored
+}
+
+/// O selo de TIPO de uma linha que não traz o seu — a palavra vem da tabela (HR-15).
+///
+/// ⚠️ **Porta própria por CAP**: o `apply_event` está no tecto de 200 LOC da secção, e a chamada
+/// inteira em linha punha-o em 203. *O corte é a cura; o número não sobe.*
+fn entity_badge() -> String {
+    ph2d_i18n::tr("panel.hierarchy.badge.entity").to_string()
 }

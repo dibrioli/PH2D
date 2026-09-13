@@ -240,8 +240,8 @@ fn source_body(
         (
             tr("panel.inspector.audio.pitch"),
             ids::INSP_AUDIO_PITCH,
-            0.05,
-        ), // LITERAL-PX-OK: passo do factor de tom
+            0.05, // LITERAL-PX-OK: passo do factor de tom
+        ),
         (
             tr("panel.inspector.audio.max_distance_m"),
             ids::INSP_AUDIO_MAX_DIST,
@@ -250,18 +250,18 @@ fn source_body(
         (
             tr("panel.inspector.audio.attenuation"),
             ids::INSP_AUDIO_ATTENUATION,
-            0.1,
-        ), // LITERAL-PX-OK: passo do expoente
+            0.1, // LITERAL-PX-OK: passo do expoente
+        ),
         (
             tr("panel.inspector.audio.non_spatialized_radius_m"),
             ids::INSP_AUDIO_RADIUS,
-            0.1,
-        ), // LITERAL-PX-OK: metros
+            0.1, // LITERAL-PX-OK: metros
+        ),
         (
             tr("panel.inspector.audio.panning_strength"),
             ids::INSP_AUDIO_PANNING,
-            0.05,
-        ), // LITERAL-PX-OK: passo da fracção
+            0.05, // LITERAL-PX-OK: passo da fracção
+        ),
         (
             tr("panel.inspector.audio.max_polyphony"),
             ids::INSP_AUDIO_POLYPHONY,

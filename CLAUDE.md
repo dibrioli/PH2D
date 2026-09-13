@@ -97,8 +97,9 @@
   nenhum. ⇒ a catraca é `the_shell_only_shrinks` (`ph2d-editor-core/tests/it/`), com as duas
   metades (cresceu / o tecto ficou para trás). **Quando ela reprovar, MOVA para a crate da família
   — nunca suba o número.** ⚠️ **A única subida foi ordem do DONO** (13/09): o `run_render_frame` de 13 685 linhas virou
-  um índice de 125 fases ([handoff](docs/IntegracaoMultiAgente/HANDOFF_INTEGRACAO_line_render_loop_2026-09-13.md)) — uma edição no quadro mora na FASE onde
-  o código está, e um gate que o lê usa o `frame_text::render_frame`, nunca o `mod.rs`. Molde, as 5 portas do trait de host e as 20 armadilhas medidas:
+  um índice de fases ([handoff](docs/IntegracaoMultiAgente/HANDOFF_INTEGRACAO_line_render_loop_2026-09-13.md)) — **71 linhas desde a refatoração final de 13/09**, que partiu
+  também o `on_mouse_input` em ramos e deixou **uma** função da shell acima de 200, numerada ([ESTADO W2 §6](docs/IntegracaoMultiAgente/ESTADO_W2_2026-09-12.md)). Uma edição no quadro mora na FASE onde
+  o código está, e um gate que o lê usa o `frame_text::render_frame` (o despacho: `input_text`), nunca o `mod.rs`; mover um corpo prova-se com `scripts/moved-proof.py`. Molde, as 5 portas do trait de host e as 20 armadilhas medidas:
   [`HOWTO_partir_uma_familia_da_shell.md`](docs/IntegracaoMultiAgente/HOWTO_partir_uma_familia_da_shell.md).
 - **Cargos simultâneos:** `constrained` ≤3 (RAM 8 GiB); `workstation` ~cores/6 (build) / ~cores/3 (check) — vide hw-profile.
 - **NÃO use:** Cranelift (ruim p/ check-loop + gaps macOS). Linker = `mold` no Linux (**nunca no `.cargo/config.toml` do repo** — global), `lld/ld-prime` no macOS (mold é ELF-only).
@@ -1267,7 +1268,7 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   **Deform** = transformação/deformação do Painter, com [tracker único](docs/Deform/00_README.md) e [índice](docs/Deform/README.md)
 - ⚠️ **As duas maiores crates do repo não eram nomeadas em lugar nenhum deste arquivo:**
   [`ph2d-tool-painter`](crates/ph2d-tool-painter/) (**136.093 LOC** — é onde o módulo Painter de facto
-  vive; o §5 nomeava só `ph2d-paint-gpu`) e [`ph2d-editor-core`](crates/ph2d-editor-core/) (**97 370** em `src/`, medido 13/09 —
+  vive; o §5 nomeava só `ph2d-paint-gpu`) e [`ph2d-editor-core`](crates/ph2d-editor-core/) (**97 385** em `src/`, medido 13/09 depois da refatoração final —
   widgets, interaction e os ids que ela própria lê; ⭐ **1 944 ids desceram para as crates que os lêem** ([A5b](docs/IntegracaoMultiAgente/HANDOFF_INTEGRACAO_line_editor_core_2026-09-12.md)) e os módulos de topo formam um DAG com catraca de 7 arestas; **27** gates `architecture_*` entre os **113** ficheiros de `tests/it/`). *Um módulo que o roteador não
   nomeia é procurado por `grep`, não alcançado por link.*
 - **Retirados (histórico — não reconstrua sem ler o porquê):** a simulação de **aquarela/fluid/wash**

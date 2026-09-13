@@ -551,3 +551,31 @@ I. No fim: rm -rf target/*/incremental ; DEIXE O SMOKE COMPILADO, 2
    que a versão fundida lê os DOIS endereços novos e ainda reprova (mutação).
 5. **Os portões novos do `ship.sh`** (`check-standalone-optional.sh`, `check-workflow-packages.sh`)
    correm na árvore combinada antes do envio.
+
+### §6-bis — O que a fusão MEDIU (13/09), ponto a ponto
+
+1. **Ordem** `input-dispatch → render-bodies → loc-caps`, cada uma rebaseada sobre a ponta anterior. A colisão foi a
+   prevista — as duas listas numeradas da shell e o `the_highlight_has_one_source` —, ⛔ mas **uma** das previstas fundiu
+   MAL em silêncio: o Mergiraf largou duas deleções da `loc-caps` numa lista e disse *«Solved»*. Cura: as duas listas por
+   `merge=text`, cada conflito resolvido pelos estágios por chave `(ficheiro, função)` com asserts, e **prova commit a
+   commit** (o multiconjunto de `+/-` por ficheiro, original × rebaseado, com controlo positivo): 131 commits, **2**
+   diferenças, as duas intencionais (ponto 5).
+2. **`TETO_LOC`:** os três deltas somavam +2 771 sobre 193 205; medido na ponta, depois do `fmt`, **196 003** (+2 798 — o
+   resto é o `rustfmt` que a árvore combinada pediu). ≤ 196 990, **intocado**.
+3. **Os instrumentos da prova de movimento** eram três cópias, e já divergiam (o `mover.py` perdoava 2 das 4
+   reformatações do `rustfmt`) ⇒ **versionados** como [`scripts/moved-proof.py`](../../scripts/moved-proof.py): a UNIÃO das
+   réguas, `--before/--after` para auditar um commit feito, auto-teste 16/16 e controlo em dados reais (`5ebcdf16b`: as
+   51 L do botão direito vetorial provadas `OK`; o mesmo trecho procurado noutro ramo → `FALHA`). ⚠️ As pastas `.cauda-*`
+   das três worktrees continuam **fora do repo** e guardam as specs de cada peça — preserve-as antes de apagar uma
+   worktree.
+4. **`the_highlight_has_one_source`** fundiu a ler os dois endereços novos (os ramos do despacho pelo
+   `input_text::dispatch()` e os filhos `#[path]` do `snapshots.rs`). Mutação na árvore combinada: um 2.º
+   `pick_hovered_object(` num ramo (`despacho_metodos_picks_e_arrastos.rs`) e noutro num filho (`snapshots_hud.rs`)
+   reprovam os dois com *«picado 2 vezes»*, restauro byte a byte, controlo verde antes e depois. ⏳ **Ponto cego nomeado,
+   pré-existente:** a lei diz *«qualquer sítio da shell»* e o `asset_drag_wire.rs` chama a porta ao largar, fora dos quatro
+   textos lidos.
+5. **`ship.sh` na árvore combinada: 14/14**, com os dois portões novos; suíte 22 735/22 735, `ONLY-A 0`, `ONLY-B 12` (os 8
+   auto-testes da lente `input_text` + os 4 gates do dreno e da lente de caminho). ⚠️ E a árvore combinada pariu o que
+   nenhuma linha podia ver: **dois `dead_code`** (o `fn src` do `convert_to_curves_asks_one_question` e o `const NASCEU` do
+   `fn_loc_caps` — cada linha apagou os seus usos, e o último morreu na fusão), curados **no commit em que nascem** para o
+   `bisect` não atravessar uma árvore vermelha, e **um `fmt`** pré-existente da `render-bodies`, num commit de estilo.

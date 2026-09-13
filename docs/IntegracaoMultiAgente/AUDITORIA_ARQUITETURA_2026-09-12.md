@@ -292,11 +292,13 @@ tocou (14 commits depois desta auditoria).
 
 ### O que fica, MEDIDO, depois da integração de 13/09
 
-1. **`input_dispatch.rs`** (7 117 L; `on_mouse_input` 3 102 numa função, numerada no `FN_OVERAGE_OK`) é o
-   próximo laço por partir — o molde é o da `line/render-loop` (fases pela mesma ordem, prova de
-   movimento verbatim, gates re-apontados ANTES da extracção).
+1. ✅ **`input_dispatch.rs`** (7 117 L; `on_mouse_input` 3 102 numa função) **partiu-se** — `line/input-dispatch`,
+   integrada em 13/09 com a `render-bodies` e a `loc-caps` ([ESTADO W2 §6](ESTADO_W2_2026-09-12.md)): o índice tem
+   527 L e nenhuma função do território passa de 200. O molde foi o da `line/render-loop`, e a régua da prova de
+   movimento ficou versionada em [`scripts/moved-proof.py`](../../scripts/moved-proof.py).
 2. **A10:** a catraca tem 7 arestas, e o corte da fundação só compensa para o `screens` — não agora
    (acima).
 3. ⚠️ **Os gates que leem a SHELL pelo caminho moram também fora dela**: três de família reprovaram na
    ponta da `line/render-loop` sem ninguém ver. Quem partir o `input_dispatch` corre
-   `git grep -n 'shells/desktop/src' -- crates tools` antes de fechar.
+   `git grep -n 'shells/desktop/src' -- crates tools` antes de fechar. ✅ Corrido pelas linhas de 13/09 (a
+   `render-bodies` mediu 10 de 10 desses gates verdes na ponta dela), e a árvore combinada passou o `ship.sh` inteiro.

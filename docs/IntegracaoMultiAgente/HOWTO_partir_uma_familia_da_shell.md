@@ -202,6 +202,21 @@ mesmo `[dependencies]`. Há gate de *staleness*.
 ⛔ **Toda família entra no `default`.** Uma família fora dele é a recusa medida da auditoria §9 a
 acontecer de propósito: o gate e o CI deixam de compilar as cenas **em silêncio**.
 
+### §1.7 — Partir uma FUNÇÃO gigante (não uma família): a prova de movimento
+
+Quando o que sai não é uma família mas o CORPO de uma função — o `run_render_frame` em fases, o
+`on_mouse_input` em ramos, os corpos das fases —, a cura é **mover verbatim, pela mesma ordem, e
+PROVAR que só se moveu**: `python3 scripts/moved-proof.py <spec.json>` antes de cada commit (o
+trecho de `HEAD` aparece 1× no destino e 0× na origem, módulo as quatro reformatações do `rustfmt`;
+toda troca de texto é DECLARADA na spec e contada). `--before <c>~1 --after <c>` audita um commit já
+feito. O molde, os gates re-apontados ANTES da extracção e as lentes de texto que os leem
+(`frame_text`, `input_text`, `rust_src::path_children`) estão nos handoffs da
+[`render-loop`](HANDOFF_INTEGRACAO_line_render_loop_2026-09-13.md), da
+[`input-dispatch`](HANDOFF_INTEGRACAO_line_input_dispatch_2026-09-13.md) e da
+[`render-bodies`](HANDOFF_INTEGRACAO_line_render_bodies_2026-09-13.md).
+⚠️ **A régua nasceu em TRÊS cópias fora do repo, e elas divergiram** (uma perdoava 2 das 4
+reformatações) — use a versionada, e ensine-lhe uma reformatação nova no auto-teste dela.
+
 ---
 
 ## §2 — As armadilhas, com o número (leia ANTES de mover)

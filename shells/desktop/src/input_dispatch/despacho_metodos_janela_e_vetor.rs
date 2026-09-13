@@ -531,3 +531,21 @@ impl crate::App {
         moved
     }
 }
+
+/// The double-arrow cursor for a panel-border grip, given its edge bitmask
+/// (`TIMELINE_EDGE_*`; a corner sets two bits). Corners point along their own
+/// diagonal: the top-left / bottom-right pair is `Nwse` (↖↘), the other `Nesw`.
+pub(super) fn resize_cursor_for_edges(edges: u8) -> winit::window::CursorIcon {
+    use ph2d_editor_core::interaction::{
+        TIMELINE_EDGE_B, TIMELINE_EDGE_L, TIMELINE_EDGE_R, TIMELINE_EDGE_T,
+    };
+    use winit::window::CursorIcon;
+    let (l, r) = (edges & TIMELINE_EDGE_L != 0, edges & TIMELINE_EDGE_R != 0);
+    let (t, b) = (edges & TIMELINE_EDGE_T != 0, edges & TIMELINE_EDGE_B != 0);
+    match (l, r, t, b) {
+        (true, _, true, _) | (_, true, _, true) => CursorIcon::NwseResize,
+        (_, true, true, _) | (true, _, _, true) => CursorIcon::NeswResize,
+        (_, _, true, _) | (_, _, _, true) => CursorIcon::NsResize,
+        _ => CursorIcon::EwResize,
+    }
+}

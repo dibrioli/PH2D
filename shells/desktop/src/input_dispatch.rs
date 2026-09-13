@@ -112,6 +112,9 @@ mod painter_curve_input;
 pub(crate) mod painter_falloff_input;
 mod painter_grid_erase; // os modificadores que o CanvasPointer nao carrega
 pub(crate) mod protect_brush;
+// Só os `cursor_tests` o leem por `super::` — o `timeline_resize_cursor` já o tem no próprio ficheiro.
+#[cfg(test)]
+use despacho_metodos_janela_e_vetor::resize_cursor_for_edges;
 // Só os testes do eixo espectral o leem por `super::` — os métodos de áudio já o têm no próprio ficheiro.
 use despacho_clique_roldana::select_wheel_at;
 #[cfg(all(test, feature = "panel-audio-editor"))]
@@ -1687,24 +1690,6 @@ impl App {
 #[cfg(test)]
 #[path = "input_dispatch/despacho_testes.rs"]
 mod tests;
-
-/// The double-arrow cursor for a panel-border grip, given its edge bitmask
-/// (`TIMELINE_EDGE_*`; a corner sets two bits). Corners point along their own
-/// diagonal: the top-left / bottom-right pair is `Nwse` (↖↘), the other `Nesw`.
-fn resize_cursor_for_edges(edges: u8) -> winit::window::CursorIcon {
-    use ph2d_editor_core::interaction::{
-        TIMELINE_EDGE_B, TIMELINE_EDGE_L, TIMELINE_EDGE_R, TIMELINE_EDGE_T,
-    };
-    use winit::window::CursorIcon;
-    let (l, r) = (edges & TIMELINE_EDGE_L != 0, edges & TIMELINE_EDGE_R != 0);
-    let (t, b) = (edges & TIMELINE_EDGE_T != 0, edges & TIMELINE_EDGE_B != 0);
-    match (l, r, t, b) {
-        (true, _, true, _) | (_, true, _, true) => CursorIcon::NwseResize,
-        (_, true, true, _) | (true, _, _, true) => CursorIcon::NeswResize,
-        (_, _, true, _) | (_, _, _, true) => CursorIcon::NsResize,
-        _ => CursorIcon::EwResize,
-    }
-}
 
 #[cfg(test)]
 #[path = "input_dispatch/despacho_testes_cursor.rs"]

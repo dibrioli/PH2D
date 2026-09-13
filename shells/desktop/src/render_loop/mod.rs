@@ -210,6 +210,8 @@ mod fase_connector_and_shape_params;
 mod fase_contour_verbs;
 /// Fase do quadro: o converter em curvas.
 mod fase_convert_to_curves;
+/// Fase do quadro: os restos do dreno.
+mod fase_drain_leftovers;
 /// Fase do quadro: a sincronizacao das entidades e as formas vivas.
 mod fase_entity_sync;
 /// Fase do quadro: o envelope.
@@ -3250,12 +3252,10 @@ impl crate::App {
                     _ => {}
                 }
             }
-            for a in bgremoval_leftover {
-                hero.bus.push(a);
-            }
-            for a in painter_leftover {
-                hero.bus.push(a);
-            }
+            self.fase_drain_leftovers(fase_drain_leftovers::DrainLeftoversIntents {
+                bgremoval_leftover,
+                painter_leftover,
+            });
             self.fase_image_tool_activation(
                 fase_image_tool_activation::ImageToolActivationIntents {
                     pending_image_tool_activation,

@@ -2,28 +2,30 @@
 
 > Modo L. Branch `line/render-loop`, worktree `Worktrees/line-render-loop`. **Nada integrado, nada enviado.**
 > Leitor: o agente INTEGRADOR (e a próxima LLM que tocar no quadro).
-> ⛔⛔ **Leia o §12 antes de tudo:** a CAUDA da obra (as três últimas fases) NÃO correu — o tecto da shell
-> (`architecture_the_shell_only_shrinks`) reprovou nesta árvore, e a decisão é do dono.
+> ⭐ **A obra está INTEIRA:** as três fases da cauda (P7a–P7c) correram depois da decisão do dono (13/09).
+> ⛔⛔ **Leia o §12 antes de integrar:** o tecto da shell (`architecture_the_shell_only_shrinks`) reprova nesta árvore
+> POR DESENHO — o dono **autorizou subi-lo para caber a separação**, e quem o reconta é o INTEGRADOR, sobre a árvore
+> combinada (o gate proíbe uma linha de o escrever).
 
 ## §1 · Identidade
 
 | | |
 |---|---|
 | branch | `line/render-loop` |
-| HEAD | `447b30838` (as duas grafias que o `typos` do fecho reprovou) — o handoff entra no commit seguinte; o último commit de CÓDIGO do quadro é `d573402d5` (a preparação da cauda) |
-| merge-base com `main` | `e18e75307` |
-| commits da linha | 136 (+ o do handoff) |
+| HEAD | `eed708eec` (a grafia do doc da `fase_snapshots_publish`, que o `typos` do fecho reprovou) — o handoff entra no commit seguinte; as três fases da cauda são `00b58c9ab` · `7ea93f47f` · `642d91da7` |
+| merge-base com `main` | `e18e75307` (o `main` não andou durante a linha) |
+| commits da linha | 143 (+ o do handoff) |
 
 ## §2 · O veredito, em números
 
 | grandeza | antes | depois |
 |---|---|---|
 | campos da `App` (A9) | 245 | **187** (catraca `the_app_only_sheds_fields`, tecto 187 no nascimento) |
-| `run_render_frame` (LOC medido pelo `fn_loc_caps`) | 13 566 | **3 255** (a cauda por fazer: o dreno do barramento ~2 207, o `snapshots::publish` ~194, as vistas do gizmo ~100) |
-| `render_loop/mod.rs` (linhas) | 13 922 | **3 869** |
-| fases do quadro (`render_loop/fase_*.rs`) | 0 | **122** (121 chamadas no `run_render_frame`; uma fase chama outra) |
-| entradas numeradas novas no `FN_OVERAGE_OK` | — | **2** (`fase_audio_panels`, `fase_vector_bands`: cada uma um statement indivisível, com a razão escrita) |
-| linhas `.rs` em `shells/desktop` (o tecto `the_shell_only_shrinks` = 190 629) | 187 356 | **192 199** ⛔ (ver §12) |
+| `run_render_frame` (LOC medido pelo `fn_loc_caps`) | 13 566 | **984** (o índice: prelúdio, guardas, cola entre fases e as chamadas — a cauda correu) |
+| `render_loop/mod.rs` (linhas) | 13 922 | **1 604** |
+| fases do quadro (`render_loop/fase_*.rs`) | 0 | **125** (124 chamadas no `run_render_frame` — uma delas partida em duas linhas pelo `rustfmt` —; a `fase_frame_profile_report` é chamada pela `fase_frame_profile`) |
+| entradas numeradas novas no `FN_OVERAGE_OK` | — | **4** (`fase_audio_panels` 373 · `fase_vector_bands` 209 · `fase_bus_drain` 2 401 · `fase_snapshots_publish` 216: cada uma um statement indivisível, com a razão escrita) — e **1** no `FILE_OVERAGE_OK` (`fase_bus_drain.rs` 2 654) |
+| linhas `.rs` em `shells/desktop` (o tecto `the_shell_only_shrinks` = 190 629) | 187 356 | **192 969** ⛔ **POR DESENHO** — o dono autorizou; o integrador reconta (§12) |
 
 ## §3 · A9 — os campos `vec_*` da `App` agrupados por ASSUNTO
 
@@ -135,18 +137,24 @@ dentro do bloco hero, que o rustfmt dedenta e pode re-juntar).
 
 Um statement acima do tecto de 200 LOC não se parte por linhas: ou leva uma **entrada numerada** no `FN_OVERAGE_OK` com
 a razão escrita, ou é cortado **UM nível abaixo**, quando o corpo do `if` é uma sequência de statements.
-- **Entradas numeradas (2):** `fase_audio_panels` (UM `if` de ~373 linhas) e `fase_vector_bands` (~209).
+- **Entradas numeradas (4):** `fase_audio_panels` (UM `if` de 373 linhas), `fase_vector_bands` (209) e as duas da
+  cauda — `fase_bus_drain` (**2 401** por função e **2 654** por ficheiro: o dreno do barramento é UM `match` de ~1 700
+  linhas dentro de um `for`, com os ~230 pedidos declarados antes dele, e sai com eles no `DrainOut`) e
+  `fase_snapshots_publish` (**216**: UMA chamada ao `snapshots::publish` cuja lista de argumentos traz os blocos que os
+  calculam). ⚠️ Cada entrada nasce com o número que o gate MEDE (o driver lê-o da própria reprovação) e só desce.
 - **Cortes aninhados** (a fase leva statements de DENTRO de um bloco; a cabeça e a cola ficam no quadro): P4k, P5b, os
   dois do esqueleto (P6i `[6, 13]` e P6j `[1, 5]` dentro do `if let Some(bits) = osso_selecionado`) e os dois dos
   filtros (P6m, P6n dentro de um bloco nu). ⚠️ Os dois do esqueleto ensinaram duas regras ao corte aninhado (§8): um
   `} else if … {` tem saldo zero de chavetas, e um nome ligado pela CABEÇA do bloco de fora não é visto como livre.
-- **A cauda por fazer** são três statements que ficam inteiros por desenho (§9): o dreno do barramento (UM `match` de
-  ~1 700 linhas dentro de um `for`, com os ~230 pedidos declarados antes dele), a chamada ao `snapshots::publish`
-  (UMA chamada cuja lista de argumentos traz os blocos que os calculam) e as vistas do gizmo.
+- **A cauda correu** (P7a · P7b · P7c, de baixo para cima dentro do bloco hero): os dois statements indivisíveis acima
+  levam as entradas numeradas, e as vistas do gizmo com a receita aberta (`fase_gizmo_views_and_prefab`, 127 linhas)
+  cabem no tecto sem entrada. ⚠️ Com a última delas o bloco hero deixou de LER o `hero`: a cabeça passou de
+  `if let Some(hero) = hero_screen.as_mut() {` a `if hero_screen.is_some() {` (§8) — a mesma pergunta, porque ela decide
+  se o bloco corre.
 
 ## §5 · As fases, pela ordem do quadro
 
-Gerada do `git log` no fecho (`phase_table.py`: o commit que CRIOU cada ficheiro de fase; `↳` marca uma fase que outra fase chama). A ordem é a do quadro.
+Gerada do `git log` no fecho (`phase_table.py` sobre `642d91da7`, com a cauda: o commit que CRIOU cada ficheiro de fase; `↳` marca uma fase que outra fase chama). A ordem é a do quadro.
 
 | # | fase | ficheiro | L | commit | assunto do commit |
 |---|---|---|---|---|---|
@@ -180,103 +188,106 @@ Gerada do `git log` no fecho (`phase_table.py`: o commit que CRIOU cada ficheiro
 | 28 | `fase_signal_outbox` | `fase_signal_outbox.rs` | 180 | `1823c3d2a` | o outbox de sinais vira `fase_signal_outbox` |
 | 29 | `fase_open_recipe` | `fase_open_recipe.rs` | 68 | `db1357e44` | a receita aberta vira `fase_open_recipe` |
 | 30 | `fase_sim_extract` | `fase_sim_extract.rs` | 56 | `842a015e2` | o extract vira `fase_sim_extract` |
-| 31 | `fase_drain_leftovers` | `fase_drain_leftovers.rs` | 34 | `9733c23e0` | os restos do dreno vira `fase_drain_leftovers` |
-| 32 | `fase_image_tool_activation` | `fase_image_tool_activation.rs` | 127 | `4a95a27c0` | a activacao da ferramenta de imagem vira `fase_image_tool_activation` |
-| 33 | `fase_image_tools_mode_and_pills` | `fase_image_tools_mode_and_pills.rs` | 113 | `14bad4b14` | o modo Image Tools e as pills vira `fase_image_tools_mode_and_pills` |
-| 34 | `fase_image_tool_bridges` | `fase_image_tool_bridges.rs` | 114 | `a5d3cee13` | as pontes das ferramentas de imagem vira `fase_image_tool_bridges` |
-| 35 | `fase_painter_dispatch` | `fase_painter_dispatch.rs` | 160 | `783a7e60a` | o Painter: persistir, despachar e medir vira `fase_painter_dispatch` |
-| 36 | `fase_vector_scale` | `fase_vector_scale.rs` | 31 | `bcc7a2a75` | a escala do desenho vectorial vira `fase_vector_scale` |
-| 37 | `fase_blend_and_morph` | `fase_blend_and_morph.rs` | 157 | `57d406217` | o blend e o morph vira `fase_blend_and_morph` |
-| 38 | `fase_text_on_path` | `fase_text_on_path.rs` | 75 | `09abc031b` | o texto no caminho vira `fase_text_on_path` |
-| 39 | `fase_contour_verbs` | `fase_contour_verbs.rs` | 115 | `6d0affd7b` | os comandos e os knobs do contorno vira `fase_contour_verbs` |
-| 40 | `fase_filter_commands` | `fase_filter_commands.rs` | 169 | `2a41b9382` | os comandos da pilha de filtros vira `fase_filter_commands` |
-| 41 | `fase_filter_values_and_colour` | `fase_filter_values_and_colour.rs` | 102 | `50336fb9c` | o valor do filtro e a cor do picker vira `fase_filter_values_and_colour` |
-| 42 | `fase_pattern_path_and_pickers` | `fase_pattern_path_and_pickers.rs` | 148 | `7c230cfca` | o padrao no caminho, o pincel e os pickers vira `fase_pattern_path_and_pickers` |
-| 43 | `fase_skeleton_verbs` | `fase_skeleton_verbs.rs` | 131 | `5ba9e4024` | os verbos do esqueleto vira `fase_skeleton_verbs` |
-| 44 | `fase_bone_ik_and_limits` | `fase_bone_ik_and_limits.rs` | 58 | `7c2238a23` | o IK e os limites do osso vira `fase_bone_ik_and_limits` |
-| 45 | `fase_bone_smart_and_knobs` | `fase_bone_smart_and_knobs.rs` | 150 | `d5fc42dcf` | os smart bones e os numeros do osso vira `fase_bone_smart_and_knobs` |
-| 46 | `fase_envelope` | `fase_envelope.rs` | 129 | `f7d0155e6` | o envelope vira `fase_envelope` |
-| 47 | `fase_path_effects_spine_bool` | `fase_path_effects_spine_bool.rs` | 92 | `17437b693` | os efeitos, o spine, os passos e a booleana vira `fase_path_effects_spine_bool` |
-| 48 | `fase_live_offset_and_width` | `fase_live_offset_and_width.rs` | 149 | `79d2c24dd` | o offset e a largura vivos vira `fase_live_offset_and_width` |
-| 49 | `fase_authored_controls_and_ui_states` | `fase_authored_controls_and_ui_states.rs` | 111 | `4eca531ee` | os controlos autorados e os estados de UI vira `fase_authored_controls_and_ui_states` |
-| 50 | `fase_ui_host_transition` | `fase_ui_host_transition.rs` | 113 | `9c45834f8` | a transicao do hospedeiro vira `fase_ui_host_transition` |
-| 51 | `fase_ui_state_preview` | `fase_ui_state_preview.rs` | 140 | `06cba5535` | a previa dos estados e mover com todos os estados vira `fase_ui_state_preview` |
-| 52 | `fase_component_verbs` | `fase_component_verbs.rs` | 96 | `118852208` | os verbos de componente vira `fase_component_verbs` |
-| 53 | `fase_compound_snap_rulers` | `fase_compound_snap_rulers.rs` | 68 | `278e38358` | o composto, os encaixes e as reguas vira `fase_compound_snap_rulers` |
-| 54 | `fase_node_and_arrange_verbs` | `fase_node_and_arrange_verbs.rs` | 168 | `cf133e2e5` | os verbos de no e de arranjo vira `fase_node_and_arrange_verbs` |
-| 55 | `fase_transform_ops` | `fase_transform_ops.rs` | 205 | `c70c5305f` | as operacoes de transformacao vira `fase_transform_ops` |
-| 56 | `fase_connector_and_shape_params` | `fase_connector_and_shape_params.rs` | 68 | `4e77d9992` | o conector e os parametros de forma vira `fase_connector_and_shape_params` |
-| 57 | `fase_text_fields` | `fase_text_fields.rs` | 166 | `021ec3aab` | os campos de texto vira `fase_text_fields` |
-| 58 | `fase_fonts` | `fase_fonts.rs` | 120 | `d392826e8` | as fontes vira `fase_fonts` |
-| 59 | `fase_path_shape_and_paint` | `fase_path_shape_and_paint.rs` | 159 | `8186cf486` | a forma do caminho e as tintas vira `fase_path_shape_and_paint` |
-| 60 | `fase_texpat_gradient_align` | `fase_texpat_gradient_align.rs` | 183 | `135c59bac` | o padrao de textura, os gradientes, o alinhamento e o pivo vira `fase_texpat_gradient_align` |
-| 61 | `fase_vector_panel_dispatch` | `fase_vector_panel_dispatch.rs` | 116 | `20f72c42c` | o despacho do painel vectorial e a tinta do traco vira `fase_vector_panel_dispatch` |
-| 62 | `fase_motion_bridge` | `fase_motion_bridge.rs` | 119 | `0a6a1bdd4` | o Motion: publicar, despachar e os sinais vira `fase_motion_bridge` |
-| 63 | `fase_tool_mirrors` | `fase_tool_mirrors.rs` | 68 | `62612d119` | os espelhos da ferramenta vetorial, do Flip e da fisica vira `fase_tool_mirrors` |
-| 64 | `fase_world_panel_bridges` | `fase_world_panel_bridges.rs` | 171 | `a970962a7` | as pontes do modelador 3D, dos tokens e da escultura vira `fase_world_panel_bridges` |
-| 65 | `fase_flip_strip_and_cursor` | `fase_flip_strip_and_cursor.rs` | 61 | `fdccde186` | a tira e o cursor do Flip vira `fase_flip_strip_and_cursor` |
-| 66 | `fase_physics_overlay` | `fase_physics_overlay.rs` | 154 | `c654dad84` | a sobreposicao da fisica vira `fase_physics_overlay` |
-| 67 | `fase_canvas_overlays` | `fase_canvas_overlays.rs` | 98 | `fd0d666b4` | as sobreposicoes do canvas vira `fase_canvas_overlays` |
-| 68 | `fase_selection_highlight` | `fase_selection_highlight.rs` | 192 | `c9164fe2e` | o realce da seleccao vira `fase_selection_highlight` |
-| 69 | `fase_text_panel` | `fase_text_panel.rs` | 119 | `9a333f8e7` | o estilo do texto e o painel de texto vira `fase_text_panel` |
-| 70 | `fase_entity_sync` | `fase_entity_sync.rs` | 52 | `33c61e4f5` | a sincronizacao das entidades e as formas vivas vira `fase_entity_sync` |
-| 71 | `fase_convert_to_curves` | `fase_convert_to_curves.rs` | 41 | `53bea810e` | o converter em curvas vira `fase_convert_to_curves` |
-| 72 | `fase_selection_mirror_convert_envelope` | `fase_selection_mirror_convert_envelope.rs` | 31 | `ea6c58f06` | o converter e o envelope no painel vira `fase_selection_mirror_convert_envelope` |
-| 73 | `fase_selection_mirror_skin` | `fase_selection_mirror_skin.rs` | 63 | `1097607cf` | a pele e a ferramenta do osso no painel vira `fase_selection_mirror_skin` |
-| 74 | `fase_selection_mirror_bone_focus` | `fase_selection_mirror_bone_focus.rs` | 180 | `f838ffa23` | o osso em foco no painel do esqueleto vira `fase_selection_mirror_bone_focus` |
-| 75 | `fase_selection_mirror_path_links` | `fase_selection_mirror_path_links.rs` | 136 | `a6faa67d5` | o texto, o padrao e o contorno no painel vira `fase_selection_mirror_path_links` |
-| 76 | `fase_selection_mirror_filters` | `fase_selection_mirror_filters.rs` | 100 | `ac97c9a5d` | a pilha de filtros no painel vira `fase_selection_mirror_filters` |
-| 77 | `fase_selection_mirror_effects_envelope` | `fase_selection_mirror_effects_envelope.rs` | 47 | `e9d1c16a9` | os efeitos e os presets de envelope no painel vira `fase_selection_mirror_effects_envelope` |
-| 78 | `fase_shape_fields` | `fase_shape_fields.rs` | 89 | `e5345175a` | o latch da forma armada e os campos de forma vira `fase_shape_fields` |
-| 79 | `fase_vector_upkeeps` | `fase_vector_upkeeps.rs` | 67 | `701dc3384` | as manutencoes vivas do vector vira `fase_vector_upkeeps` |
-| 80 | `fase_vector_tree_settle` | `fase_vector_tree_settle.rs` | 143 | `025aa437f` | o assentamento das origens e da arvore vira `fase_vector_tree_settle` |
-| 81 | `fase_vector_view_and_drives` | `fase_vector_view_and_drives.rs` | 198 | `abfcbe951` | a vista vectorial, os estilos conduzidos e as recozeduras de forma vira `fase_vector_view_and_drives` |
-| 82 | `fase_vector_live_recooks` | `fase_vector_live_recooks.rs` | 104 | `772cf1d49` | as etiquetas, a vista do pen e as recozeduras vivas vira `fase_vector_live_recooks` |
-| 83 | `fase_vector_live_geometry` | `fase_vector_live_geometry.rs` | 155 | `d11a5ac38` | a simetria, o lapis e a geometria viva fundida vira `fase_vector_live_geometry` |
-| 84 | `fase_vector_selection_frame_panel` | `fase_vector_selection_frame_panel.rs` | 152 | `2e368acba` | a moldura, o layout, o z e as ancoras da seleccao vira `fase_vector_selection_frame_panel` |
-| 85 | `fase_vector_selection_states_panel` | `fase_vector_selection_states_panel.rs` | 121 | `db21ec3f9` | a pele, os estados, o z-index e o layout publicados vira `fase_vector_selection_states_panel` |
-| 86 | `fase_vector_tokens_and_labels` | `fase_vector_tokens_and_labels.rs` | 61 | `977c3d782` | os tokens e as etiquetas das molduras vira `fase_vector_tokens_and_labels` |
-| 87 | `fase_vector_bool_shape_row` | `fase_vector_bool_shape_row.rs` | 61 | `849268c42` | o grupo booleano e o verbo da forma vira `fase_vector_bool_shape_row` |
-| 88 | `fase_vector_morph_verbs` | `fase_vector_morph_verbs.rs` | 191 | `43d435f0b` | os verbos do Morph vira `fase_vector_morph_verbs` |
-| 89 | `fase_vector_bool_apply_and_morph_reconcile` | `fase_vector_bool_apply_and_morph_reconcile.rs` | 58 | `76799d7c9` | o Apply booleano e a reconciliacao dos conjuntos de Morph vira `fase_vector_bool_apply_and_morph_reconcile` |
-| 90 | `fase_vector_layout_recook` | `fase_vector_layout_recook.rs` | 81 | `7eddc1ef5` | o layout vivo, o alinhamento e a silhueta vira `fase_vector_layout_recook` |
-| 91 | `fase_vector_fx_recook` | `fase_vector_fx_recook.rs` | 204 | `5673554e1` | a recozedura de FX e de padroes vira `fase_vector_fx_recook` |
-| 92 | `fase_vector_bands` | `fase_vector_bands.rs` | 233 | `6a5adeec8` | as faixas do documento vira `fase_vector_bands` |
-| 93 | `fase_vector_overlays` | `fase_vector_overlays.rs` | 162 | `7a4e00f8f` | os overlays vectoriais do quadro vira `fase_vector_overlays` |
-| 94 | `fase_vector_edit_overlay` | `fase_vector_edit_overlay.rs` | 173 | `a014b66bf` | o overlay de edicao vectorial e as imagens com pele vira `fase_vector_edit_overlay` |
-| 95 | `fase_vector_bone_overlay` | `fase_vector_bone_overlay.rs` | 167 | `92b71fa0f` | o overlay dos ossos vira `fase_vector_bone_overlay` |
-| 96 | `fase_vector_guides_and_build` | `fase_vector_guides_and_build.rs` | 198 | `67883ccd0` | as linhas de corte, as guias e a construcao de forma vira `fase_vector_guides_and_build` |
-| 97 | `fase_vector_tool_handles` | `fase_vector_tool_handles.rs` | 161 | `bef94db7a` | as alcas da ferramenta vectorial vira `fase_vector_tool_handles` |
-| 98 | `fase_gizmo_suppression_and_field3d_frame` | `fase_gizmo_suppression_and_field3d_frame.rs` | 178 | `fe1ed4fd1` | a supressao do gizmo e a moldura do modelador 3D vira `fase_gizmo_suppression_and_field3d_frame` |
-| 99 | `fase_field3d_smoke_draw` | `fase_field3d_smoke_draw.rs` | 156 | `50e014edd` | o desenho do modelador 3D vira `fase_field3d_smoke_draw` |
-| 100 | `fase_field3d_requests` | `fase_field3d_requests.rs` | 125 | `a62580c4a` | os pedidos do modelador 3D vira `fase_field3d_requests` |
-| 101 | `fase_hero_paint` | `fase_hero_paint.rs` | 89 | `1f49ff694` | a pintura do ecra hero vira `fase_hero_paint` |
-| 102 | `fase_hierarchy_select_lock` | `fase_hierarchy_select_lock.rs` | 59 | `4ce720abb` | a trava do Painter na seleccao da Hierarquia vira `fase_hierarchy_select_lock` |
-| 103 | `fase_recipe_and_asset_verbs` | `fase_recipe_and_asset_verbs.rs` | 193 | `05f2aefce` | os verbos de receita e de assets vira `fase_recipe_and_asset_verbs` |
-| 104 | `fase_hierarchy_dispatch` | `fase_hierarchy_dispatch.rs` | 182 | `74aa022ac` | o despacho da Hierarquia vira `fase_hierarchy_dispatch` |
-| 105 | `fase_inspector_commits` | `fase_inspector_commits.rs` | 197 | `306dbb013` | os commits do Inspector vira `fase_inspector_commits` |
-| 106 | `fase_source_strategy_and_joint_pivot` | `fase_source_strategy_and_joint_pivot.rs` | 87 | `416321e99` | a estrategia de origem e o re-assento do pivo vira `fase_source_strategy_and_joint_pivot` |
-| 107 | `fase_component_palette` | `fase_component_palette.rs` | 67 | `9d930fa07` | a paleta de componentes vira `fase_component_palette` |
-| 108 | `fase_sprite_precision_emissive` | `fase_sprite_precision_emissive.rs` | 140 | `c0dc8ad66` | a precisao, a emissao e o Remove from Sheet vira `fase_sprite_precision_emissive` |
-| 109 | `fase_sheet_verbs` | `fase_sheet_verbs.rs` | 199 | `56018a0e0` | os verbos da folha de sprites vira `fase_sheet_verbs` |
-| 110 | `fase_physics_edits` | `fase_physics_edits.rs` | 187 | `ff10d6a79` | as edicoes de joint, player e roldana vira `fase_physics_edits` |
-| 111 | `fase_physics_join_rig_bake` | `fase_physics_join_rig_bake.rs` | 177 | `b8192b4b1` | ligar, rigar e assar a fisica vira `fase_physics_join_rig_bake` |
-| 112 | `fase_autokey` | `fase_autokey.rs` | 52 | `8eed132bf` | o AutoKey vira `fase_autokey` |
-| 113 | `fase_hierarchy_group_merge` | `fase_hierarchy_group_merge.rs` | 161 | `8aba9f569` | agrupar, recolher e fundir sprites vira `fase_hierarchy_group_merge` |
-| 114 | `fase_use_as_brush` | `fase_use_as_brush.rs` | 142 | `50e3cf078` | o Use as Brush Shape / Grain da Hierarquia vira `fase_use_as_brush` |
-| 115 | `fase_use_as_paper` | `fase_use_as_paper.rs` | 113 | `2c99f78c7` | o Use as Paper / Granulation da Hierarquia vira `fase_use_as_paper` |
-| 116 | `fase_image_edit_apply` | `fase_image_edit_apply.rs` | 179 | `f6f4ecee0` | o dreno de edicao de imagem e os desmontes do Apply vira `fase_image_edit_apply` |
-| 117 | `fase_hero_chrome_tail` | `fase_hero_chrome_tail.rs` | 55 | `16e22ec1e` | o fim do ramo hero vira `fase_hero_chrome_tail` |
-| 118 | `fase_legacy_chrome` | `fase_legacy_chrome.rs` | 71 | `301058410` | o ramo sem `HeroScreen` vira `fase_legacy_chrome` |
-| 119 | `fase_ui_burst_paint` | `fase_ui_burst_paint.rs` | 25 | `ac8a201e8` | a poeira de impacto vira `fase_ui_burst_paint` |
-| 120 | `fase_frame_profile` | `fase_frame_profile.rs` | 38 | `ada7c0678` | o perfilador do quadro vira `fase_frame_profile` |
-| 121 | ↳ `fase_frame_profile_report` | `fase_frame_profile_report.rs` | 206 | `f38cddfef` | o relatorio do perfilador vira `fase_frame_profile_report` |
+| 31 | `fase_snapshots_publish` | `fase_snapshots_publish.rs` | 233 | `642d91da7` | a publicação dos instantâneos vira `fase_snapshots_publish` |
+| 32 | `fase_gizmo_views_and_prefab` | `fase_gizmo_views_and_prefab.rs` | 127 | `7ea93f47f` | a receita aberta e as vistas do gizmo vira `fase_gizmo_views_and_prefab` |
+| 33 | `fase_bus_drain` | `fase_bus_drain.rs` | 2654 | `00b58c9ab` | o dreno do barramento e os pedidos do quadro vira `fase_bus_drain` |
+| 34 | `fase_drain_leftovers` | `fase_drain_leftovers.rs` | 34 | `9733c23e0` | os restos do dreno vira `fase_drain_leftovers` |
+| 35 | `fase_image_tool_activation` | `fase_image_tool_activation.rs` | 127 | `4a95a27c0` | a activacao da ferramenta de imagem vira `fase_image_tool_activation` |
+| 36 | `fase_image_tools_mode_and_pills` | `fase_image_tools_mode_and_pills.rs` | 113 | `14bad4b14` | o modo Image Tools e as pills vira `fase_image_tools_mode_and_pills` |
+| 37 | `fase_image_tool_bridges` | `fase_image_tool_bridges.rs` | 114 | `a5d3cee13` | as pontes das ferramentas de imagem vira `fase_image_tool_bridges` |
+| 38 | `fase_painter_dispatch` | `fase_painter_dispatch.rs` | 160 | `783a7e60a` | o Painter: persistir, despachar e medir vira `fase_painter_dispatch` |
+| 39 | `fase_vector_scale` | `fase_vector_scale.rs` | 31 | `bcc7a2a75` | a escala do desenho vectorial vira `fase_vector_scale` |
+| 40 | `fase_blend_and_morph` | `fase_blend_and_morph.rs` | 157 | `57d406217` | o blend e o morph vira `fase_blend_and_morph` |
+| 41 | `fase_text_on_path` | `fase_text_on_path.rs` | 75 | `09abc031b` | o texto no caminho vira `fase_text_on_path` |
+| 42 | `fase_contour_verbs` | `fase_contour_verbs.rs` | 115 | `6d0affd7b` | os comandos e os knobs do contorno vira `fase_contour_verbs` |
+| 43 | `fase_filter_commands` | `fase_filter_commands.rs` | 169 | `2a41b9382` | os comandos da pilha de filtros vira `fase_filter_commands` |
+| 44 | `fase_filter_values_and_colour` | `fase_filter_values_and_colour.rs` | 102 | `50336fb9c` | o valor do filtro e a cor do picker vira `fase_filter_values_and_colour` |
+| 45 | `fase_pattern_path_and_pickers` | `fase_pattern_path_and_pickers.rs` | 148 | `7c230cfca` | o padrao no caminho, o pincel e os pickers vira `fase_pattern_path_and_pickers` |
+| 46 | `fase_skeleton_verbs` | `fase_skeleton_verbs.rs` | 131 | `5ba9e4024` | os verbos do esqueleto vira `fase_skeleton_verbs` |
+| 47 | `fase_bone_ik_and_limits` | `fase_bone_ik_and_limits.rs` | 58 | `7c2238a23` | o IK e os limites do osso vira `fase_bone_ik_and_limits` |
+| 48 | `fase_bone_smart_and_knobs` | `fase_bone_smart_and_knobs.rs` | 150 | `d5fc42dcf` | os smart bones e os numeros do osso vira `fase_bone_smart_and_knobs` |
+| 49 | `fase_envelope` | `fase_envelope.rs` | 129 | `f7d0155e6` | o envelope vira `fase_envelope` |
+| 50 | `fase_path_effects_spine_bool` | `fase_path_effects_spine_bool.rs` | 92 | `17437b693` | os efeitos, o spine, os passos e a booleana vira `fase_path_effects_spine_bool` |
+| 51 | `fase_live_offset_and_width` | `fase_live_offset_and_width.rs` | 149 | `79d2c24dd` | o offset e a largura vivos vira `fase_live_offset_and_width` |
+| 52 | `fase_authored_controls_and_ui_states` | `fase_authored_controls_and_ui_states.rs` | 111 | `4eca531ee` | os controlos autorados e os estados de UI vira `fase_authored_controls_and_ui_states` |
+| 53 | `fase_ui_host_transition` | `fase_ui_host_transition.rs` | 113 | `9c45834f8` | a transicao do hospedeiro vira `fase_ui_host_transition` |
+| 54 | `fase_ui_state_preview` | `fase_ui_state_preview.rs` | 140 | `06cba5535` | a previa dos estados e mover com todos os estados vira `fase_ui_state_preview` |
+| 55 | `fase_component_verbs` | `fase_component_verbs.rs` | 96 | `118852208` | os verbos de componente vira `fase_component_verbs` |
+| 56 | `fase_compound_snap_rulers` | `fase_compound_snap_rulers.rs` | 68 | `278e38358` | o composto, os encaixes e as reguas vira `fase_compound_snap_rulers` |
+| 57 | `fase_node_and_arrange_verbs` | `fase_node_and_arrange_verbs.rs` | 168 | `cf133e2e5` | os verbos de no e de arranjo vira `fase_node_and_arrange_verbs` |
+| 58 | `fase_transform_ops` | `fase_transform_ops.rs` | 205 | `c70c5305f` | as operacoes de transformacao vira `fase_transform_ops` |
+| 59 | `fase_connector_and_shape_params` | `fase_connector_and_shape_params.rs` | 68 | `4e77d9992` | o conector e os parametros de forma vira `fase_connector_and_shape_params` |
+| 60 | `fase_text_fields` | `fase_text_fields.rs` | 166 | `021ec3aab` | os campos de texto vira `fase_text_fields` |
+| 61 | `fase_fonts` | `fase_fonts.rs` | 120 | `d392826e8` | as fontes vira `fase_fonts` |
+| 62 | `fase_path_shape_and_paint` | `fase_path_shape_and_paint.rs` | 159 | `8186cf486` | a forma do caminho e as tintas vira `fase_path_shape_and_paint` |
+| 63 | `fase_texpat_gradient_align` | `fase_texpat_gradient_align.rs` | 183 | `135c59bac` | o padrao de textura, os gradientes, o alinhamento e o pivo vira `fase_texpat_gradient_align` |
+| 64 | `fase_vector_panel_dispatch` | `fase_vector_panel_dispatch.rs` | 116 | `20f72c42c` | o despacho do painel vectorial e a tinta do traco vira `fase_vector_panel_dispatch` |
+| 65 | `fase_motion_bridge` | `fase_motion_bridge.rs` | 119 | `0a6a1bdd4` | o Motion: publicar, despachar e os sinais vira `fase_motion_bridge` |
+| 66 | `fase_tool_mirrors` | `fase_tool_mirrors.rs` | 68 | `62612d119` | os espelhos da ferramenta vetorial, do Flip e da fisica vira `fase_tool_mirrors` |
+| 67 | `fase_world_panel_bridges` | `fase_world_panel_bridges.rs` | 171 | `a970962a7` | as pontes do modelador 3D, dos tokens e da escultura vira `fase_world_panel_bridges` |
+| 68 | `fase_flip_strip_and_cursor` | `fase_flip_strip_and_cursor.rs` | 61 | `fdccde186` | a tira e o cursor do Flip vira `fase_flip_strip_and_cursor` |
+| 69 | `fase_physics_overlay` | `fase_physics_overlay.rs` | 154 | `c654dad84` | a sobreposicao da fisica vira `fase_physics_overlay` |
+| 70 | `fase_canvas_overlays` | `fase_canvas_overlays.rs` | 98 | `fd0d666b4` | as sobreposicoes do canvas vira `fase_canvas_overlays` |
+| 71 | `fase_selection_highlight` | `fase_selection_highlight.rs` | 192 | `c9164fe2e` | o realce da seleccao vira `fase_selection_highlight` |
+| 72 | `fase_text_panel` | `fase_text_panel.rs` | 119 | `9a333f8e7` | o estilo do texto e o painel de texto vira `fase_text_panel` |
+| 73 | `fase_entity_sync` | `fase_entity_sync.rs` | 52 | `33c61e4f5` | a sincronizacao das entidades e as formas vivas vira `fase_entity_sync` |
+| 74 | `fase_convert_to_curves` | `fase_convert_to_curves.rs` | 41 | `53bea810e` | o converter em curvas vira `fase_convert_to_curves` |
+| 75 | `fase_selection_mirror_convert_envelope` | `fase_selection_mirror_convert_envelope.rs` | 31 | `ea6c58f06` | o converter e o envelope no painel vira `fase_selection_mirror_convert_envelope` |
+| 76 | `fase_selection_mirror_skin` | `fase_selection_mirror_skin.rs` | 63 | `1097607cf` | a pele e a ferramenta do osso no painel vira `fase_selection_mirror_skin` |
+| 77 | `fase_selection_mirror_bone_focus` | `fase_selection_mirror_bone_focus.rs` | 180 | `f838ffa23` | o osso em foco no painel do esqueleto vira `fase_selection_mirror_bone_focus` |
+| 78 | `fase_selection_mirror_path_links` | `fase_selection_mirror_path_links.rs` | 136 | `a6faa67d5` | o texto, o padrao e o contorno no painel vira `fase_selection_mirror_path_links` |
+| 79 | `fase_selection_mirror_filters` | `fase_selection_mirror_filters.rs` | 100 | `ac97c9a5d` | a pilha de filtros no painel vira `fase_selection_mirror_filters` |
+| 80 | `fase_selection_mirror_effects_envelope` | `fase_selection_mirror_effects_envelope.rs` | 47 | `e9d1c16a9` | os efeitos e os presets de envelope no painel vira `fase_selection_mirror_effects_envelope` |
+| 81 | `fase_shape_fields` | `fase_shape_fields.rs` | 89 | `e5345175a` | o latch da forma armada e os campos de forma vira `fase_shape_fields` |
+| 82 | `fase_vector_upkeeps` | `fase_vector_upkeeps.rs` | 67 | `701dc3384` | as manutencoes vivas do vector vira `fase_vector_upkeeps` |
+| 83 | `fase_vector_tree_settle` | `fase_vector_tree_settle.rs` | 143 | `025aa437f` | o assentamento das origens e da arvore vira `fase_vector_tree_settle` |
+| 84 | `fase_vector_view_and_drives` | `fase_vector_view_and_drives.rs` | 198 | `abfcbe951` | a vista vectorial, os estilos conduzidos e as recozeduras de forma vira `fase_vector_view_and_drives` |
+| 85 | `fase_vector_live_recooks` | `fase_vector_live_recooks.rs` | 104 | `772cf1d49` | as etiquetas, a vista do pen e as recozeduras vivas vira `fase_vector_live_recooks` |
+| 86 | `fase_vector_live_geometry` | `fase_vector_live_geometry.rs` | 155 | `d11a5ac38` | a simetria, o lapis e a geometria viva fundida vira `fase_vector_live_geometry` |
+| 87 | `fase_vector_selection_frame_panel` | `fase_vector_selection_frame_panel.rs` | 152 | `2e368acba` | a moldura, o layout, o z e as ancoras da seleccao vira `fase_vector_selection_frame_panel` |
+| 88 | `fase_vector_selection_states_panel` | `fase_vector_selection_states_panel.rs` | 121 | `db21ec3f9` | a pele, os estados, o z-index e o layout publicados vira `fase_vector_selection_states_panel` |
+| 89 | `fase_vector_tokens_and_labels` | `fase_vector_tokens_and_labels.rs` | 61 | `977c3d782` | os tokens e as etiquetas das molduras vira `fase_vector_tokens_and_labels` |
+| 90 | `fase_vector_bool_shape_row` | `fase_vector_bool_shape_row.rs` | 61 | `849268c42` | o grupo booleano e o verbo da forma vira `fase_vector_bool_shape_row` |
+| 91 | `fase_vector_morph_verbs` | `fase_vector_morph_verbs.rs` | 191 | `43d435f0b` | os verbos do Morph vira `fase_vector_morph_verbs` |
+| 92 | `fase_vector_bool_apply_and_morph_reconcile` | `fase_vector_bool_apply_and_morph_reconcile.rs` | 58 | `76799d7c9` | o Apply booleano e a reconciliacao dos conjuntos de Morph vira `fase_vector_bool_apply_and_morph_reconcile` |
+| 93 | `fase_vector_layout_recook` | `fase_vector_layout_recook.rs` | 81 | `7eddc1ef5` | o layout vivo, o alinhamento e a silhueta vira `fase_vector_layout_recook` |
+| 94 | `fase_vector_fx_recook` | `fase_vector_fx_recook.rs` | 204 | `5673554e1` | a recozedura de FX e de padroes vira `fase_vector_fx_recook` |
+| 95 | `fase_vector_bands` | `fase_vector_bands.rs` | 233 | `6a5adeec8` | as faixas do documento vira `fase_vector_bands` |
+| 96 | `fase_vector_overlays` | `fase_vector_overlays.rs` | 162 | `7a4e00f8f` | os overlays vectoriais do quadro vira `fase_vector_overlays` |
+| 97 | `fase_vector_edit_overlay` | `fase_vector_edit_overlay.rs` | 173 | `a014b66bf` | o overlay de edicao vectorial e as imagens com pele vira `fase_vector_edit_overlay` |
+| 98 | `fase_vector_bone_overlay` | `fase_vector_bone_overlay.rs` | 167 | `92b71fa0f` | o overlay dos ossos vira `fase_vector_bone_overlay` |
+| 99 | `fase_vector_guides_and_build` | `fase_vector_guides_and_build.rs` | 198 | `67883ccd0` | as linhas de corte, as guias e a construcao de forma vira `fase_vector_guides_and_build` |
+| 100 | `fase_vector_tool_handles` | `fase_vector_tool_handles.rs` | 161 | `bef94db7a` | as alcas da ferramenta vectorial vira `fase_vector_tool_handles` |
+| 101 | `fase_gizmo_suppression_and_field3d_frame` | `fase_gizmo_suppression_and_field3d_frame.rs` | 178 | `fe1ed4fd1` | a supressao do gizmo e a moldura do modelador 3D vira `fase_gizmo_suppression_and_field3d_frame` |
+| 102 | `fase_field3d_smoke_draw` | `fase_field3d_smoke_draw.rs` | 156 | `50e014edd` | o desenho do modelador 3D vira `fase_field3d_smoke_draw` |
+| 103 | `fase_field3d_requests` | `fase_field3d_requests.rs` | 125 | `a62580c4a` | os pedidos do modelador 3D vira `fase_field3d_requests` |
+| 104 | `fase_hero_paint` | `fase_hero_paint.rs` | 89 | `1f49ff694` | a pintura do ecra hero vira `fase_hero_paint` |
+| 105 | `fase_hierarchy_select_lock` | `fase_hierarchy_select_lock.rs` | 59 | `4ce720abb` | a trava do Painter na seleccao da Hierarquia vira `fase_hierarchy_select_lock` |
+| 106 | `fase_recipe_and_asset_verbs` | `fase_recipe_and_asset_verbs.rs` | 193 | `05f2aefce` | os verbos de receita e de assets vira `fase_recipe_and_asset_verbs` |
+| 107 | `fase_hierarchy_dispatch` | `fase_hierarchy_dispatch.rs` | 182 | `74aa022ac` | o despacho da Hierarquia vira `fase_hierarchy_dispatch` |
+| 108 | `fase_inspector_commits` | `fase_inspector_commits.rs` | 197 | `306dbb013` | os commits do Inspector vira `fase_inspector_commits` |
+| 109 | `fase_source_strategy_and_joint_pivot` | `fase_source_strategy_and_joint_pivot.rs` | 87 | `416321e99` | a estrategia de origem e o re-assento do pivo vira `fase_source_strategy_and_joint_pivot` |
+| 110 | `fase_component_palette` | `fase_component_palette.rs` | 67 | `9d930fa07` | a paleta de componentes vira `fase_component_palette` |
+| 111 | `fase_sprite_precision_emissive` | `fase_sprite_precision_emissive.rs` | 140 | `c0dc8ad66` | a precisao, a emissao e o Remove from Sheet vira `fase_sprite_precision_emissive` |
+| 112 | `fase_sheet_verbs` | `fase_sheet_verbs.rs` | 199 | `56018a0e0` | os verbos da folha de sprites vira `fase_sheet_verbs` |
+| 113 | `fase_physics_edits` | `fase_physics_edits.rs` | 187 | `ff10d6a79` | as edicoes de joint, player e roldana vira `fase_physics_edits` |
+| 114 | `fase_physics_join_rig_bake` | `fase_physics_join_rig_bake.rs` | 177 | `b8192b4b1` | ligar, rigar e assar a fisica vira `fase_physics_join_rig_bake` |
+| 115 | `fase_autokey` | `fase_autokey.rs` | 52 | `8eed132bf` | o AutoKey vira `fase_autokey` |
+| 116 | `fase_hierarchy_group_merge` | `fase_hierarchy_group_merge.rs` | 161 | `8aba9f569` | agrupar, recolher e fundir sprites vira `fase_hierarchy_group_merge` |
+| 117 | `fase_use_as_brush` | `fase_use_as_brush.rs` | 142 | `50e3cf078` | o Use as Brush Shape / Grain da Hierarquia vira `fase_use_as_brush` |
+| 118 | `fase_use_as_paper` | `fase_use_as_paper.rs` | 113 | `2c99f78c7` | o Use as Paper / Granulation da Hierarquia vira `fase_use_as_paper` |
+| 119 | `fase_image_edit_apply` | `fase_image_edit_apply.rs` | 179 | `f6f4ecee0` | o dreno de edicao de imagem e os desmontes do Apply vira `fase_image_edit_apply` |
+| 120 | `fase_hero_chrome_tail` | `fase_hero_chrome_tail.rs` | 55 | `16e22ec1e` | o fim do ramo hero vira `fase_hero_chrome_tail` |
+| 121 | `fase_legacy_chrome` | `fase_legacy_chrome.rs` | 71 | `301058410` | o ramo sem `HeroScreen` vira `fase_legacy_chrome` |
+| 122 | `fase_ui_burst_paint` | `fase_ui_burst_paint.rs` | 25 | `ac8a201e8` | a poeira de impacto vira `fase_ui_burst_paint` |
+| 123 | `fase_frame_profile` | `fase_frame_profile.rs` | 38 | `ada7c0678` | o perfilador do quadro vira `fase_frame_profile` |
+| 124 | ↳ `fase_frame_profile_report` | `fase_frame_profile_report.rs` | 206 | `f38cddfef` | o relatorio do perfilador vira `fase_frame_profile_report` |
 
-121 fases.
+124 fases.
 
 ## §6 · Gates re-apontados (todos com prova de mutação)
 
-Gerada do `git log` no fecho (`gates_table.py`: os ficheiros de gate que cada commit mudou). Cada re-apontamento tem a prova de mutação na mensagem do commit dele.
+Gerada do `git log` no fecho (`gates_table.py` sobre `642d91da7`: os ficheiros de gate que cada commit mudou). Cada re-apontamento tem a prova de mutação na mensagem do commit dele.
 
 | commit | fase | gates re-apontados (ficheiros que o commit mudou) |
 |---|---|---|
@@ -344,26 +355,16 @@ Gerada do `git log` no fecho (`gates_table.py`: os ficheiros de gate que cada co
 | `09abc031b` | P6p | `every_text_on_path_id_is_consumed_by_the_render_loop` |
 | `783a7e60a` | P6s | `architecture_no_downcast_to_concrete_tool_in_shell` · `the_painter_asks_the_tool_whether_it_needs_a_document` · `the_panel_drag_drafts_the_shape` |
 | `d573402d5` | — | `every_inspector_verb_declares_its_bulk_behaviour` · `the_card_opens_the_prefab_through_the_same_door` · `the_clear_run_verb_reaches_the_tape` · `the_hierarchy_opens_the_prefab_through_the_same_verb` · `the_skeleton_speaks_when_it_has_no_subject` · `the_unused_override_gestures_reach_the_verb` |
+| `00b58c9ab` | P7a | `architecture_no_downcast_to_concrete_tool_in_shell` |
 
-112 ficheiros de gate distintos em 64 commits.
-
-⭐ **Dois gates ficaram MAIS FORTES do que eram, porque a mudança de casa os expunha:**
-- `architecture_no_per_tool_branch_in_render_loop` contava os literais por-ferramenta SÓ no `mod.rs`; com o
-  dreno a sair para uma fase ele leria ZERO e um ramo novo numa fase passaria verde. Passa a contar
-  `mod.rs` + todo `fase_*.rs`, com piso de população, e o tecto desce de 16 para o medido (6). Medido antes:
-  6 no P0 e 6 em HEAD — a cura chegou ANTES do furo (commit `f467d61ae`).
-- `selection_gestures_are_not_fanned_out`: a janela do braço `InspectorPhysicsEdit` acabava no próximo
-  `EditorAction::` achado por uma INDENTAÇÃO de 20 espaços (que a fase do dreno muda, e cuja falha alargava a
-  janela até ao fim do ficheiro em silêncio); passa a ser o bloco pelas chavetas. ⚠️ A 1.ª redacção abria na
-  chaveta do PADRÃO (`{ entity_bits, edit }`) e fechava uma dezena de caracteres adiante — quem a apanhou foi o
-  CONTROLO da própria prova de mutação.
+112 ficheiros de gate distintos em 65 commits.
 
 ## §7 · Foundational / compartilhado tocado
 
 | área (desde o merge-base `e18e75307`) | ficheiros | + / − | porquê |
 |---|---|---|---|
-| `shells/desktop/src` | 229 | +18 926 / −15 031 | a OBRA 2 (122 fases e o `run_render_frame` índice) e a A9 (os campos `vec_*` num `VecState`) |
-| `shells/desktop/tests` | 107 | +2 510 / −637 | os gates re-apontados para o quadro emendado (com prova de mutação), a régua `frame_text`, a catraca `the_app_only_sheds_fields` |
+| `shells/desktop/src` | 234 | +19 697 / −15 978 | a OBRA 2 (125 fases, a cauda incluída, e o `run_render_frame` índice) e a A9 (os campos `vec_*` num `VecState`) |
+| `shells/desktop/tests` | 107 | +2 535 / −641 | os gates re-apontados para o quadro emendado (com prova de mutação), a régua `frame_text`, a catraca `the_app_only_sheds_fields`, as entradas numeradas da cauda nos tectos |
 | `crates/ph2d-app-vec` | 34 | +807 / −503 | A9: os oito tipos da família vec que a shell guardava descem para a crate (`ConnectorDrag`, `HandleDrag`, `LabelPoses`, `Grab`, `BuildSession`, `VecTextEdit`, `TrimHit`, `VecSelSync`) e o `VecState` ganha os campos |
 | `crates/ph2d-app-skeleton` | 2 | +110 / −0 | A9: o `SkeletonState` (os oito campos do esqueleto que viviam na `App`) |
 | `crates/ph2d-vec-edit` | 4 | +14 / −119 | A9: o `History`/`HISTORY_CAP` MORTO apagado (escrito, nunca lido) |
@@ -687,6 +688,30 @@ Nenhum contrato congelado (§6 do `CLAUDE.md`) foi tocado; nenhum ADR; nenhum sc
   cada fase de pintura reconstrói o dela a partir do `theme`/`viewport`/`text_system`, e o do quadro ficou sem ninguém.
   Ele saiu — uma construção de struct sem efeito, fora do trecho movido — e ⛔ não foi calado com `_paint_ctx`: um
   prelúdio partilhado que ninguém lê é código morto, e silenciar o aviso deixava-o a fingir que o quadro ainda pinta ali.
+- ⭐ **A CAUDA (13/09, depois da ordem do dono) e o que ela ensinou.** A cadeia `run_phases2.sh p7a p7b p7c` correu
+  sobre metas cujas specs, geradas outra vez sobre o `mod.rs` do dia, saíram **idênticas ao byte** às do ensaio da
+  sessão anterior — e ⚠️ antes de a lançar as ferramentas tiveram de voltar à vida: a pasta do scratchpad morava num
+  `tmpfs` e o desligar da máquina apagou-a; a cópia em `.cauda-render-loop/` (§12) é o que a salvou, e o caminho antigo
+  voltou por um atalho (nenhum script editado).
+  - **A sonda do FURO parou a cadeia TRÊS vezes, e os 10 candidatos eram falsos pelo MESMO mecanismo** — a palavra cuja
+    última cópia morava no trecho saiu do `mod.rs`, e a asserção lê outra coisa: o QUADRO emendado (os três de
+    `the_clear_run_verb_reaches_the_tape`, re-apontados na preparação), o `panel_bridge.rs` da física, o `Cargo.toml`
+    da shell, a crate da família do sculpt (`sculpt_src()`, três), o `warp_overlay.rs`/`warp_gizmo_drag.rs` (o
+    `scene_window_wh(`), e uma STRING de runtime (`line.contains("ASSADO")`, cuja cópia no `mod.rs` era um comentário).
+    ⚠️ Cada um foi lido antes de entrar por NOME na lista (5 → 15). *A sonda vê a PALAVRA sair, não o texto que a
+    asserção lê — e é por isso que ela acusa e quem lê o teste decide.*
+  - **A P7c levou o ÚLTIMO leitor do `hero`**, e a cabeça do bloco hero (`if let Some(hero) = hero_screen.as_mut()`)
+    ficou com uma ligação morta. ⛔ Ela não sai — DECIDE se o bloco corre (o `HeroScreen` só falta com `PH2D_M5_DEMO=1`)
+    — e ⛔ não se cala com `_hero` (a lei da P6s, logo acima): passou a `if hero_screen.is_some() {`, fora do trecho
+    movido, dito na mensagem do commit.
+  - **Duas armadilhas de FERRAMENTA, as duas mudas de consequência e altas de sintoma:** a retoma
+    `phase_driver.sh … --no-extract` com caminhos RELATIVOS parou em «sem a fase no disco» (o driver faz `cd` para a
+    worktree ANTES de ler a spec; o `run_phases2.sh` sempre passou absolutos) · e a guarda «há cargo a correr?» escrita
+    como `pgrep -f "cargo|rustc"` casou com a PRÓPRIA linha de comando do `bash -c` que a continha, e recusou-se a
+    correr — `pgrep -x` compara só o nome do processo.
+  - **O `typos` do fecho apanhou um `mod_doc` sem acentos** que a meta da P7c escreveu (`instantaneos`): sem acento a
+    palavra portuguesa lê-se como inglês mal escrito. Curado em `eed708eec`; e a tabela do §5, que copia o assunto do
+    commit, leva a grafia acentuada pelo mesmo motivo.
 
 ## §9 · Premissas refutadas
 
@@ -697,7 +722,9 @@ Nenhum contrato congelado (§6 do `CLAUDE.md`) foi tocado; nenhum ADR; nenhum sc
   do `IkKnob`), que devolve os pedidos num struct (`DrainOut`) e leva entradas NUMERADAS nos tectos por função e por
   ficheiro — como a `fase_audio_panels` (373) e a `fase_vector_bands` (209). O mesmo vale para a chamada ao
   `snapshots::publish` (statement [0], 194 linhas): UM statement cuja lista de argumentos traz os blocos que os
-  calculam, e parti-la em `let`s mudaria a ordem de avaliação.
+  calculam, e parti-la em `let`s mudaria a ordem de avaliação. ✅ **Correu exactamente assim** depois da ordem do dono:
+  P7a `00b58c9ab` (entradas medidas pelo gate: `fase_bus_drain` **2 401** por função, **2 654** por ficheiro) e P7c
+  `642d91da7` (`fase_snapshots_publish` **216**), com as provas de mutação mortas (10 e 1) e a suíte verde em cada uma.
 - ⛔ *«As fases de dentro do bloco hero chamam-se no sítio, de cima para baixo»* — a chamada colide com os
   empréstimos do `gfx` que o resto do bloco ainda usa; só de baixo para cima a chamada fica no sítio.
 - ⛔ *«O censo dos ramos por-ferramenta já foi furado pelas fases extraídas»* — medido: 6 no P0, 6 em HEAD,
@@ -729,12 +756,12 @@ Nenhum contrato congelado (§6 do `CLAUDE.md`) foi tocado; nenhum ADR; nenhum sc
 6. **Ponto cego de ferramenta:** o `frontier.py` do scratchpad não via nomes ligados por destructure de struct;
    a partir da P3 o censo passou a ser `census_hero.py` (com a profundidade de uma linha de fecho contada pelo
    FIM da linha — a v1 colava o statement seguinte a um bloco).
-7. **A superfície de colisão** (`bash /home/enio/Documentos/Projetos/PH2D/scripts/collision-surface.sh`, corrida no fecho sobre `d573402d5`). ⚠️ Os «TETOS DE LOC» abaixo são o MAPA contra o tecto de 600 do workspace: os cinco ficheiros têm tecto NUMERADO próprio no `file_loc_caps` da shell, e o `render_loop/mod.rs` DESCEU de 13 922 para 3 869.
+7. **A superfície de colisão** (`bash /home/enio/Documentos/Projetos/PH2D/scripts/collision-surface.sh`, corrida no fecho sobre `642d91da7`, com a cauda). ⚠️ Os «TETOS DE LOC» abaixo são o MAPA contra o tecto de 600 do workspace: os ficheiros acusados têm tecto NUMERADO próprio no `file_loc_caps` da shell, e o `render_loop/mod.rs` DESCEU de 13 922 para 1 604.
 
 ```
 
 SUPERFÍCIE DE COLISÃO — line/render-loop contra main
-  merge-base e18e75307   ·   135 commit(s)   ·   384 arquivo(s)
+  merge-base e18e75307   ·   142 commit(s)   ·   388 arquivo(s)
 ───────────────────────────────────────────────────────────────────────────────
 ▸ SCHEMAS — ⚠️ o valor se CONTA contra o main do dia; confira nos TRÊS sítios
     PROJECT_SCHEMA                        128   (base: 128)
@@ -769,17 +796,18 @@ SUPERFÍCIE DE COLISÃO — line/render-loop contra main
   ✗  7117 / 600   shells/desktop/src/input_dispatch.rs
   ✗   816 / 600   shells/desktop/src/input_dispatch/gizmo_drag.rs
   ✗  1289 / 600   shells/desktop/src/main.rs
-  ✗  3869 / 600   shells/desktop/src/render_loop/mod.rs
+  ✗  2654 / 600   shells/desktop/src/render_loop/fase_bus_drain.rs
+  ✗  1604 / 600   shells/desktop/src/render_loop/mod.rs
 ───────────────────────────────────────────────────────────────────────────────
   ⚠️ Isto é o MAPA, não o gate. O gate mecânico é scripts/foundational-integrate.sh;
      o que exige julgamento (mesmo-símbolo, decisão de produto) continua leitura humana.
 ```
-8. **O fecho do disco e a build de smoke** (DIRETRIZ §1.5.9 item 7, sobre `ed35496c9`): `rm -rf target/*/incremental`
-   (27 GB de `debug/incremental`, `ci-test/incremental` já vazio); a 1.ª `cargo build -p ph2d-host-desktop --profile
-   smoke` recompilou e terminou em 51,34 s; a 2.ª, colada inteira —
-   **zero `Compiling`**:
+8. **O fecho do disco e a build de smoke** (DIRETRIZ §1.5.9 item 7, sobre `eed708eec` — o último commit de código; o
+   handoff é só documento): `rm -rf target/*/incremental` (1,9 GB de `debug/incremental` e 2,9 GB de
+   `smoke/incremental`, `ci-test/incremental` já vazio); a 1.ª `cargo build -p ph2d-host-desktop --profile smoke`
+   recompilou só a shell e terminou em 9,13 s; a 2.ª, colada inteira — **zero `Compiling`**:
    ```
-       Finished `smoke` profile [optimized] target(s) in 0.23s
+       Finished `smoke` profile [optimized] target(s) in 0.19s
    ```
 
 ## §11 · Smoke do dono
@@ -807,53 +835,58 @@ cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-render-loop && cargo run -
 7. **Física** — `env PH2D_PHYSICS_SMOKE=6` (junta + Play) e o painel de mundo (`W`).
 8. **3D** — pill **MODEL** (acrescentar forma, gizmo, vistas) e `env PH2D_SCULPT3D_SMOKE=34`.
 9. **Timeline / UI States** — Play, scrub, uma transição de estado de UI com *Preview*.
+10. ⭐ **A CAUDA — correu DEPOIS do smoke aprovado, e é o que o dono re-smoka.** A P7a levou o dreno de TODO clique de
+    painel: no Inspector mudar um campo com DOIS objectos seleccionados (tem de espalhar pelos dois); na Hierarquia
+    renomear, olho, cadeado, apagar, duplicar e *Edit Prefab* (e o mesmo *Edit Prefab* pelo cartão do Inspector);
+    os verbos das sheets e das image tools pelas linhas da Hierarquia. A P7c publica os instantâneos: seleccionar
+    objectos diferentes e ver o Inspector, a Hierarquia e o gizmo acompanharem **no mesmo quadro** (um valor que só
+    aparece ao segundo clique é o sintoma). A P7b: o gizmo com a ferramenta Flip e com a Motion, e o vidro do prefab
+    aberto com *Done*/*Cancel*.
 
 **Como saber que partiu:** um botão que acende e não faz nada, um painel que mostra o valor anterior por um quadro
 (clicar duas vezes para «pegar»), um Ctrl+Z que desfaz só uma vez, ou um aviso no terminal que antes não aparecia.
 
 ## §12 · O que fica ABERTO
 
-- ⛔⛔ **A CAUDA (P7a `fase_bus_drain` · P7b `fase_gizmo_views_and_prefab` · P7c `fase_snapshots_publish`) NÃO CORREU —
-  o tecto da SHELL reprovou, e as duas regras do dono colidem.** Medido antes de a lançar, com o gate que o driver das
-  fases nunca corre (`ph2d-editor-core::architecture_the_shell_only_shrinks`):
+- ⛔⛔ **O TECTO DA SHELL REPROVA NESTA ÁRVORE, E É O PREÇO AUTORIZADO DA DIVISÃO — O INTEGRADOR RECONTA-O.**
+  A 1.ª redacção deste handoff parou antes da cauda e devolveu a decisão ao dono com três saídas. ⭐ **A ordem dele
+  (13/09, com o smoke aprovado):** *«Autorizo subir o limite para caber a separação.»* ⇒ a linha correu a cauda
+  (P7a `00b58c9ab` · P7b `7ea93f47f` · P7c `642d91da7`) e **NÃO tocou no `TETO_LOC`**: o doc-comment do gate proíbe-o
+  por escrito a uma linha (*«é um número que soma entre linhas, logo CONTA-SE, nunca se escolhe … Quem o reconta é o
+  integrador, sobre a árvore combinada»*), e o número desta árvore mente sobre a combinada.
 
   | | linhas `.rs` em `shells/desktop` |
   |---|---|
-  | tecto (`TETO_LOC`, já com a folga de composição) | **190 629** |
+  | tecto em vigor (`TETO_LOC`, já com a folga de composição) | **190 629** |
   | merge-base `e18e75307` (`src` 153 234 + `tests` 34 122) | **187 356** (verde) |
-  | agora, depois da P6w | **192 199** (**+1 570** acima) |
-  | a cauda, estimada sobre o `mod.rs` vivo (`DrainOut` de 230 campos: struct + retorno + destructure) | **~+750** |
+  | depois da P6w, a cauda por correr | **192 199** (+1 570 acima) |
+  | **HEAD, com a cauda** (`src` 156 953 + `tests` 36 016) | **192 969** (**+2 340** acima) |
 
-  **De onde veio o crescimento** (`git diff --numstat` desde o merge-base): as 122 fases `+14 515`, o `mod.rs` `−10 169`,
-  o resto de `src` `−1 376` ⇒ **`src` +2 970** (a prelude, a assinatura, o `FrameGfx::of`, as intenções de cada fase —
-  ~24 linhas por fase); e **`tests` +1 857** (os gates re-apontados, as notas, a régua do quadro).
+  **⭐ O que o integrador faz** (e é o único vermelho desta linha): na árvore COMBINADA, na ordem do `ESTADO_W2` §5 —
+  *integrar → `cargo fmt --all` → medir → escrever* —, contar as linhas `.rs` de `shells/desktop` e escrever
+  `TETO_LOC = medido + FOLGA_DE_COMPOSICAO` (4 000), com uma entrada no histórico do doc-comment a citar esta ordem do
+  dono e a divisão do quadro como o que ela compra. ⚠️ As duas metades do gate passam com esse número: `medido ≤
+  TETO_LOC` e `medido + 20 000 ≥ TETO_LOC`. ⛔ **O que NÃO fazer:** subir a `FOLGA_DE_COMPOSICAO` (ela é a margem da
+  raiz de composição para TODAS as linhas, não o custo desta) nem escrever o número desta árvore.
 
-  **O que as curas permitidas alcançam, medido:** (a) mover código de família — `scripts/fecho-da-familia.py vec --extra
-  'vec_*'` dá **7 ficheiros / 412 LOC movíveis e 38 / 11 624 presos** a 12 âncoras da shell (`app_state.rs`,
-  `input_dispatch.rs`, `envelope_live.rs`, `layout_live.rs`, …) — desprendê-las é trabalho de substrato de uma linha de
-  família, não um anexo desta; (b) consolidar o que se repete em cada fase (os dois comentários de prelúdio: 165 linhas;
-  o `/// Ver o cabeçalho do módulo.`: 122) e condensar as notas dos gates: **~600–1 100**. Somadas, não pagam os `+1 570`
-  de hoje, e muito menos os `~2 300` com a cauda.
+  **De onde veio o crescimento** (`git diff --numstat` desde o merge-base, com a cauda): as 125 fases `+17 529` e o
+  `mod.rs` `−12 434` ⇒ **`src` `+3 719`** líquido (a prelude, a assinatura, o `FrameGfx::of` e o contexto que entra e
+  sai de cada fase — ~24 linhas por fase, e o `DrainOut` da P7a, que é struct + retorno + destructure de ~230 pedidos);
+  **`tests` `+1 894`** (os gates re-apontados com as notas, e a régua do quadro `frame_text`).
 
-  **O que o tecto protege, medido:** o `cargo check` da shell NÃO-incremental, depois de uma mudança de conteúdo, com a
-  máquina calma (load < 2), leva **2,28 s** (duas corridas: 2,286 · 2,279) — o `ESTADO_W2` registava 5,9 s. ⚠️ Um
-  `touch` e uma edição incremental dão ~1 s e não medem o tamanho da unidade.
+  **O que o tecto protege, medido ANTES da cauda:** o `cargo check` da shell NÃO-incremental, depois de uma mudança de
+  conteúdo, com a máquina calma (load < 2), leva **2,28 s** (2,286 · 2,279) — o `ESTADO_W2` registava 5,9 s; a cauda
+  soma 770 linhas (0,4 % da unidade) e ⚠️ não foi re-medida. Um `touch` e uma edição incremental dão ~1 s e não medem o
+  tamanho da unidade.
 
-  **As saídas, para o dono decidir** (a regra da linha proíbe a primeira; as outras mudam o âmbito):
-  1. o integrador **reconta o tecto** com o custo da divisão do quadro dentro, por ordem expressa do dono (a divisão
-     compra legibilidade e ordem gateada, e custa ~2,5 % da unidade e nenhum tempo mensurável de `check`);
-  2. uma **linha de família** desprende as âncoras da `vec` (≥ 1 570 LOC a mover) antes de a cauda correr;
-  3. a cauda fica por fazer e o **dreno do barramento continua no `run_render_frame`** (o índice fica com ~2 400 linhas
-     de dreno), e a consolidação do que se repete devolve parte do crescimento de hoje.
-  ⚠️ **Tudo o que a cauda precisa está pronto e nada é perdido:** as metas `meta_p7a/b/c.json` com o `ret_struct`, os
-  gates que ela partiria JÁ re-apontados e commitados (o commit de preparação, provado contra o `mod.rs`), o `pre_p7a.sh`
-  que troca a entrada do `mod.rs` pela da fase na allowlist de downcast (o `mod.rs` ficará sem downcast nenhum), e as
-  provas de mutação dela (`mut_p7a.sh`, `mut_p7c.sh`), mais o driver inteiro (`run_phases2.sh` · `extract_phase.py` ·
-  `verbatim.py --selftest` · `mutlib.sh` · `prescan_gates.py` · `brace_preflight.py` · `header_bind_scan.py` ·
-  `evasion_probe2.py` + `evasion_accepted.txt`) e os logs do fecho (`fecho/`). ⚠️ **Vivem em
-  `Worktrees/line-render-loop/.cauda-render-loop/`, NÃO versionados** (1 608 ficheiros, 51 MB, copiados do scratchpad
-  da sessão — que mora num `tmpfs` e morreria no desligar). ⛔ **Antes de `git worktree remove` desta árvore, copie
-  essa pasta para fora** — ela é a única cópia, e o `remove` só a apaga com `--force`.
+  **As saídas que o dono tinha na mão e NÃO escolheu**, para registo: uma linha de família que desprendesse as âncoras
+  da `vec` (`scripts/fecho-da-familia.py vec --extra 'vec_*'`: só **7 ficheiros / 412 LOC** movíveis, 38 / 11 624
+  presos a 12 âncoras da shell) · deixar a cauda por fazer com o dreno de ~2 400 linhas no índice.
+  ⚠️ **As ferramentas da cadeia vivem em `Worktrees/line-render-loop/.cauda-render-loop/`, NÃO versionadas** (o driver
+  `run_phases2.sh`/`phase_driver.sh`, `extract_phase.py`, `verbatim.py --selftest`, `mutlib.sh`, as metas e provas de
+  mutação de cada fase, a sonda `evasion_probe2.py` + `evasion_accepted.txt` + `probe_check.sh`, a nota
+  `nota_furo_p7a.md` e os logs `fecho/`). ⛔ **Antes de `git worktree remove` desta árvore, copie essa pasta para
+  fora** — é a única cópia, e o `remove` só a apaga com `--force`.
 - ⚠️ **A prova de fim de linha dá `ONLY-A = 8`, não `0`, e os 8 são DE PROPÓSITO** (`nextest list --workspace
   --cargo-profile ci-test` sobre o HEAD final contra o merge-base: 22 700 → 22 704 testes, 17 `MOVED`, 12 `ONLY-B`).
   São os testes que mediam SÓ a pilha `ph2d_vec_edit::History`, que morreu no `dcfa2ec4d` (A9: ~40 portas escreviam-na e
@@ -865,9 +898,12 @@ cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-render-loop && cargo run -
   a propriedade que o undo global vê (`scene != antes` / `scene == antes`). ⛔ **Um 9.º nome na coluna é defeito.**
 - ⚠️ **Auditoria dos ~40 gates que leem o `render_loop/mod.rs` com asserções de AUSÊNCIA ou CONTAGEM**: uma
   ausência medida só no `mod.rs` passa a ser trivialmente verdadeira quando o código sai para uma fase. **Estado no
-  fecho (HEAD `447b30838`):** a sonda por teste (`evasion_probe2.py`, com o controlo meio/todo a ver as duas metades)
-  acusa **5 candidatos em 77 ficheiros que nomeiam o `mod.rs`, e os 5 são exactamente a lista nomeada dos aceites**
-  (`evasion_accepted.txt`, cada um lido e explicado no §8: `later` · `pending_ui_sound = Some` · `gizmo.selection)` ·
-  `vec_bindings::resolve` · `offset_live`) ⇒ **0 novos**. ⚠️ O que isto NÃO fecha: a sonda vê agulhas LITERAIS que
+  fecho (HEAD `642d91da7`, com a cauda):** a sonda por teste (`evasion_probe2.py`, com o controlo meio/todo a ver as
+  duas metades) acusa **15 candidatos em 77 ficheiros que nomeiam o `mod.rs`, e os 15 são exactamente a lista nomeada
+  dos aceites** (`evasion_accepted.txt`): os 5 de antes da cauda (`later` · `pending_ui_sound = Some` ·
+  `gizmo.selection)` · `vec_bindings::resolve` · `offset_live`, explicados no §8) e os 10 que a cauda acrescentou — 8
+  depois da P7a, 1 depois da P7b, 1 depois da P7c —, lidos um a um e falsos pelo MESMO mecanismo: a palavra cuja
+  última cópia morava no trecho saiu do `mod.rs`, e nenhuma dessas asserções lê o `mod.rs` (tabela no §8) ⇒
+  **0 novos**. ⚠️ O que isto NÃO fecha: a sonda vê agulhas LITERAIS que
   saem do `mod.rs`; um gate que conte por regex, por posição ou por texto construído em runtime fica fora dela, e
   esses foram tratados um a um na cadeia (os `mut_<tag>.sh` de cada fase).

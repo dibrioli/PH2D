@@ -29,11 +29,18 @@
 //! opinion about. A byte landmark is a proxy that expires; the loop's own extent
 //! is the property.
 
-const SRC: &str = include_str!("../../src/render_loop/mod.rs");
+/// The FRAME in the order it runs — the spliced text (`frame_text::render_frame`). Since OBRA 2 of
+/// `line/render-loop` (2026-09-12) the §12 loop leaves `render_loop/mod.rs` for a phase; the spliced
+/// text reads it in either place. The byte range below is a range of THIS text.
+fn src() -> &'static str {
+    static FRAME: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+    FRAME.get_or_init(crate::frame_text::render_frame)
+}
 
 /// The byte range of the `for … in &joint_edits { … }` body, by brace matching.
 fn joint_loop_body() -> (usize, usize) {
-    let head = SRC
+    let src = src();
+    let head = src
         .find("for &(bits, edit) in &joint_edits {")
         .unwrap_or_else(|| {
             panic!(
@@ -42,9 +49,9 @@ fn joint_loop_body() -> (usize, usize) {
                  the editor command queue per edit)"
             )
         });
-    let open = SRC[head..].find('{').expect("the loop opens a block") + head;
+    let open = src[head..].find('{').expect("the loop opens a block") + head;
     let mut depth = 0usize;
-    for (i, c) in SRC[open..].char_indices() {
+    for (i, c) in src[open..].char_indices() {
         match c {
             '{' => depth += 1,
             '}' => {
@@ -62,7 +69,7 @@ fn joint_loop_body() -> (usize, usize) {
 #[test]
 fn the_joint_edit_loop_flushes_the_command_queue() {
     let (open, close) = joint_loop_body();
-    let body = &SRC[open..close];
+    let body = &src()[open..close];
     // `apply_editor_commands` appears nowhere else in mod.rs (every other flush
     // lives in inspector_commits.rs), so its presence INSIDE this body IS the
     // joint-loop flush.
@@ -129,7 +136,7 @@ fn the_joint_edit_loop_flushes_the_command_queue() {
 #[test]
 fn the_structural_joint_verbs_are_dispatched_before_the_field_edits() {
     let (open, close) = joint_loop_body();
-    let body = &SRC[open..close];
+    let body = &src()[open..close];
     let apply = body
         .find("ph2d_app_physics::joint::apply_joint_edit(")
         .expect("o braço de edição de campo");

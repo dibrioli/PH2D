@@ -90,7 +90,9 @@ fn the_gesture_is_modal_and_precedes_the_generic_picking() {
 /// Mutação-testada: pôr `if show` em volta do bloco da banda vai RED.
 #[test]
 fn the_band_is_drawn_even_with_the_outline_off() {
-    let call = fs::read_to_string("src/render_loop/mod.rs").expect("render_loop/mod.rs");
+    // O QUADRO emendado (as fases no sítio da chamada, pela ordem em que correm) — desde a OBRA 2 da
+    // `line/render-loop` (2026-09-12) a banda sai do `render_loop/mod.rs` para uma fase.
+    let call = crate::frame_text::render_frame();
     assert!(
         call.contains("ph2d_app_physics::joint_draw::band(self.physics.joint_draw)"),
         "o `physics_overlay::draw` não recebe mais a banda do gesto"
@@ -287,7 +289,9 @@ fn escape_cancels_the_drawing_before_any_tool_scoped_escape() {
 /// que este gate existe além dele).
 #[test]
 fn the_draw_button_toggles_through_the_single_door() {
-    let src = fs::read_to_string("src/render_loop/mod.rs").expect("render_loop/mod.rs");
+    // O QUADRO emendado — desde a OBRA 2 da `line/render-loop` (2026-09-12) o braço sai do
+    // `render_loop/mod.rs` para uma fase.
+    let src = crate::frame_text::render_frame();
     let arm = src
         .find("if join_draw_arm {")
         .expect("the JoinDraw arm vanished from the render loop");

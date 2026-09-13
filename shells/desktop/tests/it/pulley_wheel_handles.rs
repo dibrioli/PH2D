@@ -48,7 +48,9 @@ fn dragging_a_wheel_centre_reseats_a_mounted_axle() {
 /// imediatamente acima, e o da roldana tem de estar no mesmo bloco.
 #[test]
 fn committing_a_wheel_position_reseats_the_same_axle() {
-    let src = fs::read_to_string("src/render_loop/mod.rs").expect("render_loop/mod.rs");
+    // O QUADRO emendado (as fases no sítio da chamada, pela ordem em que correm) — desde a OBRA 2 da
+    // `line/render-loop` (2026-09-12) este bloco sai do `render_loop/mod.rs` para uma fase.
+    let src = crate::frame_text::render_frame();
     let start = src
         .find("if let Some((bits, world)) = joint_pivot_commit {")
         .expect("o bloco de commit de pivô sumiu");
@@ -117,7 +119,9 @@ fn both_radius_handles_ask_one_door() {
 /// segue curado, que é exactamente como este buraco nasceria de novo).
 #[test]
 fn authoring_the_radius_through_the_panel_reopens_the_rope_length() {
-    let src = fs::read_to_string("src/render_loop/mod.rs").expect("render_loop/mod.rs");
+    // O QUADRO emendado (as fases no sítio da chamada, pela ordem em que correm) — desde a OBRA 2 da
+    // `line/render-loop` (2026-09-12) este bloco sai do `render_loop/mod.rs` para uma fase.
+    let src = crate::frame_text::render_frame();
     let at = src
         .find("for &(bits, edit) in &wheel_edits {")
         .expect("o laço da §13 sumiu");

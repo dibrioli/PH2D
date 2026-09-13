@@ -21,23 +21,59 @@
 //! literal: what it pins is that the interception exists *before* the fan-out,
 //! which is the only place the distinction can be made.
 
-const SRC: &str = include_str!("../../src/render_loop/mod.rs");
+/// The FRAME in the order it runs — the spliced text (`frame_text::render_frame`).
+///
+/// ⚠️ Since OBRA 2 of `line/render-loop` (2026-09-12) the frame is split into phases in other files, and
+/// both the action drain and the rig block leave `render_loop/mod.rs`; the spliced text reads them in
+/// either place, in execution order.
+fn src() -> &'static str {
+    static FRAME: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+    FRAME.get_or_init(crate::frame_text::render_frame)
+}
+
+/// From `at` to the brace that closes the first `{` after it — a window by STRUCTURE, never by bytes or
+/// by indentation.
+fn block_after(src: &str, at: usize) -> &str {
+    let open = src[at..].find('{').expect("the block opens a brace") + at;
+    let mut depth = 0usize;
+    for (i, c) in src[open..].char_indices() {
+        match c {
+            '{' => depth += 1,
+            '}' => {
+                depth -= 1;
+                if depth == 0 {
+                    return &src[at..open + i];
+                }
+            }
+            _ => {}
+        }
+    }
+    panic!("the block never closes");
+}
 
 /// The window of source that handles `InspectorPhysicsEdit`.
 fn physics_edit_arm() -> &'static str {
-    let start = SRC
+    let src = src();
+    let start = src
         .find("EditorAction::InspectorPhysicsEdit { entity_bits, edit } => {")
         .expect(
             "the §11 physics edit arm has been renamed — this gate points at \
              nothing and has to be re-aimed",
         );
-    let rest = &SRC[start..];
-    // The arm ends at the next top-level `EditorAction::` arm.
-    let end = rest[1..]
-        .find("                    EditorAction::")
-        .map(|i| i + 1)
-        .unwrap_or(rest.len());
-    &rest[..end]
+    // The arm ends at the brace that closes it. ⚠️ It used to end at the next `EditorAction::` arm found
+    // by a 20-space indentation — a column the drain's move into its own phase changes, and a miss
+    // silently widened the window to the end of the file.
+    //
+    // ⚠️⚠️ The body opens at the `=> {`, NOT at the first brace after the arm's name: that one belongs to
+    // the struct PATTERN (`InspectorPhysicsEdit { entity_bits, edit }`), and a window that closed there
+    // was a dozen characters long — every gate reading this arm went red over a correct frame (caught
+    // by the control of this re-aim's own mutation proof).
+    let arrow = start
+        + src[start..]
+            .find("=> {")
+            .expect("the §11 physics edit arm has a block body");
+    let body = block_after(src, arrow);
+    &src[start..arrow + body.len()]
 }
 
 #[test]
@@ -172,10 +208,12 @@ fn rig_is_intercepted_before_the_per_entity_fan_out() {
 /// gate escrito com dois objetos marcados ficaria verde por cima disso.
 #[test]
 fn the_rig_reads_the_live_selection_not_the_multi_select_buffer() {
-    let start = SRC
+    let src = src();
+    let start = src
         .find("if rig_now {")
         .expect("o bloco que executa o rig sumiu do render loop");
-    let block = &SRC[start..start + 900];
+    // O BLOCO do rig, pelas chavetas — eram 900 bytes, que numa fase dedentada cobrem o bloco seguinte.
+    let block = block_after(src, start);
     assert!(
         block.contains("hero.gizmo.iter_selected()"),
         "o rig não lê a seleção viva — com UM objeto marcado (o gesto normal) \

@@ -29,14 +29,21 @@
 //! certo lá (aquelas cenas não têm player). Escrever a mesma coisa aqui
 //! compilaria, passaria os oito, e devolveria o defeito inteiro.
 
-const SRC: &str = include_str!("../../src/render_loop/mod.rs");
+/// O QUADRO pela ordem em que corre — o texto emendado (`frame_text::render_frame`). Desde a OBRA 2 da
+/// `line/render-loop` (2026-09-12) o assar sai do `render_loop/mod.rs` para uma fase; o texto emendado
+/// lê-o nos dois sítios.
+fn src() -> &'static str {
+    static FRAME: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+    FRAME.get_or_init(crate::frame_text::render_frame)
+}
 
 /// Os argumentos da chamada de PRODUÇÃO ao `bake_selection`.
 fn production_call() -> &'static str {
-    let at = SRC
+    let src = src();
+    let at = src
         .find("ph2d_app_physics::bake::bake_selection(")
         .expect("o laço de render tem de chamar o bake_selection");
-    let rest = &SRC[at..];
+    let rest = &src[at..];
     let end = rest.find(");").expect("a chamada fecha");
     &rest[..end]
 }

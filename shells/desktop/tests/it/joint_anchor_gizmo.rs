@@ -170,7 +170,9 @@ fn the_generic_translate_does_not_reseed_a_joints_anchors() {
 /// body B's end.
 #[test]
 fn the_position_commit_reseats_the_anchor_through_the_door() {
-    let src = fs::read_to_string("src/render_loop/mod.rs").expect("render_loop/mod.rs");
+    // O QUADRO emendado (as fases no sítio da chamada, pela ordem em que correm) — desde a OBRA 2 da
+    // `line/render-loop` (2026-09-12) este bloco sai do `render_loop/mod.rs` para uma fase.
+    let src = crate::frame_text::render_frame();
     assert!(
         src.contains("let joint_pivot_commit ="),
         "the Position commit no longer captures the joint pivot"
@@ -265,7 +267,9 @@ fn the_paint_pass_draws_the_point_gizmo_last() {
 ///    swinging body and author a pose nobody chose.
 #[test]
 fn the_published_handles_come_from_the_bridge_door_for_every_joint() {
-    let src = fs::read_to_string("src/render_loop/mod.rs").expect("render_loop/mod.rs");
+    // O QUADRO emendado (as fases no sítio da chamada, pela ordem em que correm) — desde a OBRA 2 da
+    // `line/render-loop` (2026-09-12) este bloco sai do `render_loop/mod.rs` para uma fase.
+    let src = crate::frame_text::render_frame();
     // ⚠️ **O bloco é delimitado por CHAVES, não por uma distância em bytes.** A
     // primeira versão lia 1600 bytes depois do primeiro argumento e caiu na wave
     // seguinte, quando a terceira família de alças (as da RODA, W-Pulley W1)

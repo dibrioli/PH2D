@@ -123,6 +123,26 @@ impl VectorScene {
         let sx = (x1 - x0) / f64::from(w);
         let sy = (y1 - y0) / f64::from(h);
         let transform = Affine::translate((x0, y0)) * Affine::scale_non_uniform(sx, sy);
+        self.draw_stable_image_transformed(image, transform, quality);
+    }
+
+    /// Como [`Self::draw_stable_image`], mas com o afim COMPLETO `pixel da imagem → ecrã` — o par
+    /// estável de [`Self::draw_image_rgba_transformed`].
+    ///
+    /// ⭐⭐⭐ **Existe para quem desenha a MESMA imagem MUITAS VEZES NO MESMO QUADRO** (a pele de
+    /// uma imagem presa ao esqueleto: um recorte mais um afim por triângulo). Pela porta crua cada
+    /// chamada cunha um id novo, e o atlas guarda **uma cópia inteira da imagem por peça** — a
+    /// contagem de peças passa a ser multiplicada pela ÁREA da imagem contra o tecto de `8192²`, e
+    /// o que não cabe **não é desenhado, em silêncio** (`atlas_probe_tests`).
+    pub fn draw_stable_image_transformed(
+        &mut self,
+        image: &StableImage,
+        transform: Affine,
+        quality: ImageQuality,
+    ) {
+        if image.data.width == 0 || image.data.height == 0 {
+            return;
+        }
         // Clone do `ImageData` = clone da `Blob` = refcount + MESMO id (o que dá o cache-hit).
         let brush = ImageBrush::new(image.data.clone()).with_quality(quality);
         self.inner.draw_image(brush.as_ref(), transform);

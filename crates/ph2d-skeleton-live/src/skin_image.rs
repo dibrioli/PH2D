@@ -21,8 +21,11 @@
 //! Um triângulo de repouso e um de destino determinam um afim exactamente
 //! ([`ph2d_affine::Xform::from_triangle`]), então uma malha deformada desenha-se como *N* pedaços
 //! da MESMA imagem, cada um recortado ao seu triângulo. As duas peças já existiam — o
-//! [`ph2d_vector::VectorScene::push_clip`] e o `draw_image_rgba_transformed` — e o compositor põe
+//! [`ph2d_vector::VectorScene::push_clip`] e o desenho de imagem com afim — e o compositor põe
 //! o Vello **por cima** do passe de sprites.
+//!
+//! ⛔⛔ **«A MESMA imagem» tem de ser o mesmo ID do atlas, e não só os mesmos bytes** — ver
+//! [`SkinImageCache`]: pela porta crua cada peça era uma cópia inteira da imagem no atlas.
 //!
 //! ⛔ **A rota por INSTÂNCIA de sprite foi medida e recusada:** a instância carrega um basis 2×2,
 //! logo cada célula sairia **paralelogramo**, e duas células vizinhas de um warp real não partilham
@@ -211,6 +214,21 @@ mod tests;
 /// leitura da GPU por quadro, e nunca de uma cópia por quadro: o `Asset` entrega um `Cow`, e
 /// convertê-lo a cada quadro copiaria a imagem inteira 60 vezes por segundo. *É a mesma lição que
 /// o `field3d_smoke_state` já escreveu ao lado do slot dele.*
+///
+/// ⛔⛔⛔ **E a cache guarda a IMAGEM ESTÁVEL, não os bytes** (report *«Smooth bugado quebrando a
+/// forma»*, medido 2026-09-13). A 1.ª redacção guardava o `Arc` e desenhava cada peça pela porta
+/// crua, que cunha um id do atlas **por chamada** ⇒ uma cópia inteira da imagem **por triângulo**,
+/// por quadro, contra um atlas que pára em `8192²`. Medido sem ecrã, no `Resolver` (a decisão do
+/// atlas é da CPU):
+///
+/// | imagem | peças | porta crua: peças que NÃO aparecem | estável |
+/// |---|---:|---:|---:|
+/// | `320×96` (o smoke) | `216` | `0` — e `25,3 MB` reenviados por quadro | `0` |
+/// | `320×96` | `7 776` (o report) | **`5 651`** | `0` |
+/// | `1024×1024` | `216` (o `Fast`!) | **`152`** | `0` |
+///
+/// ⇒ o report era o ATLAS, e o modo `Fast` partia com arte de tamanho comum. O gate é
+/// `a_skinned_image_is_one_atlas_resident_however_many_pieces_and_frames` (o que a cena EMITE).
 pub fn draw_skinned_images(
     sim: &SimWorld,
     asset_db: &ph2d_asset::AssetDb,
@@ -234,7 +252,7 @@ pub fn draw_skinned_images(
         let Some((p2l, pele)) = deform_field(sim, e, mesh.size) else {
             continue;
         };
-        let Some((w, h, rgba)) = pixels(asset_db, cache, id) else {
+        let Some(imagem) = stable_image(asset_db, cache, id) else {
             continue;
         };
         // `local → ecrã`: a pose de mundo da sprite, depois a câmara.
@@ -295,10 +313,8 @@ pub fn draw_skinned_images(
             p.line_to(pt(alvo[2]));
             p.close_path();
             scene.push_clip(&p);
-            scene.draw_image_rgba_transformed(
-                &rgba,
-                w,
-                h,
+            scene.draw_stable_image_transformed(
+                &imagem,
                 to_screen * affine_of(pixel_to_local_deformado),
                 ph2d_vector::ImageQuality::Medium,
             );
@@ -309,20 +325,24 @@ pub fn draw_skinned_images(
     feitas
 }
 
-/// Os bytes de uma imagem, uma vez por `AssetId`.
-fn pixels(
+/// A imagem de um `AssetId` como recurso ESTÁVEL do Vello — construída uma vez, clonada por peça.
+///
+/// ⚠️ **O clone é refcount + o MESMO id**, e o id é a unidade do atlas: é isto que faz as N peças
+/// de um quadro, e os quadros seguintes, serem **um** residente em vez de N cópias da imagem.
+fn stable_image(
     asset_db: &ph2d_asset::AssetDb,
     cache: &mut SkinImageCache,
     id: ph2d_asset::AssetId,
-) -> Option<(u32, u32, RgbaArc)> {
-    if let Some(v) = cache.get(&id) {
-        return Some((v.0, v.1, std::sync::Arc::clone(&v.2)));
+) -> Option<ph2d_vector::StableImage> {
+    if let Some(imagem) = cache.get(&id) {
+        return Some(imagem.clone());
     }
     let asset = asset_db.get(&id)?;
     let (w, h, cow) = asset.image_rgba8()?;
-    let arc: RgbaArc = std::sync::Arc::new(cow.into_owned());
-    cache.insert(id, (w, h, std::sync::Arc::clone(&arc)));
-    Some((w, h, arc))
+    let imagem =
+        ph2d_vector::StableImage::from_rgba(std::sync::Arc::new(cow.into_owned()), w, h)?;
+    cache.insert(id, imagem.clone());
+    Some(imagem)
 }
 
 /// A malha guardada nos bytes opacos da pele desta entidade.
@@ -337,15 +357,16 @@ pub fn mesh_of(sim: &SimWorld, e: Entity) -> Option<Mesh2d> {
     postcard::from_bytes(&skin.source).ok()
 }
 
-/// Os bytes de uma imagem, partilhados — o tipo que o desenho do Vello consome.
-pub type RgbaArc = std::sync::Arc<Vec<u8>>;
-
-/// **A cache dos pixels das imagens presas**, por CONTEÚDO — ver [`draw_skinned_images`].
+/// **A cache das imagens presas**, por CONTEÚDO — ver [`draw_skinned_images`].
 ///
 /// ⚠️ Tem nome desde 2026-09-12 porque passou a ser um campo de uma struct de OUTRA crate
 /// (`ph2d_app_skeleton::state::SkeletonState`): escrita por extenso lá, a família precisaria de
 /// depender da `ph2d-asset` só para nomear a chave.
-pub type SkinImageCache = std::collections::BTreeMap<ph2d_asset::AssetId, (u32, u32, RgbaArc)>;
+///
+/// ⛔⛔ **O valor é um [`ph2d_vector::StableImage`], e NÃO os bytes** (2026-09-13). Guardar o `Arc`
+/// e desenhar pela porta crua poupava a CÓPIA de CPU e cunhava um **id por peça**: o atlas guardava
+/// uma cópia inteira da imagem por triângulo, e o que não cabia em `8192²` não era desenhado.
+pub type SkinImageCache = std::collections::BTreeMap<ph2d_asset::AssetId, ph2d_vector::StableImage>;
 
 fn affine_of(x: Xform) -> ph2d_vector::Affine {
     ph2d_vector::Affine::new(x.0)

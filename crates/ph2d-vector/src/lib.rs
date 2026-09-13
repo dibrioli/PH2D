@@ -30,6 +30,8 @@ mod scene_tests;
 /// Vive aqui, e não numa crate consumidora, porque esta é a única autorizada a importar `vello`.
 #[cfg(test)]
 mod atlas_probe_tests;
+#[cfg(test)]
+mod atlas_probe_pieces_tests;
 
 pub use scene::{StableImage, VectorScene};
 pub use vector_network::{

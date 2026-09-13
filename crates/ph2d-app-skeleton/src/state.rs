@@ -83,13 +83,15 @@ pub struct SkeletonState {
     /// significa agora* — e porque o sítio do desenho já não tem `&self` livre: o `gfx` está
     /// emprestado mutável, e ler a câmara ali seria o segundo empréstimo.
     pub bone_preview: Option<([f64; 2], [f64; 2], bool)>,
-    /// ⭐ **Os pixels de cada imagem PRESA ao esqueleto, uma vez por conteúdo.**
+    /// ⭐ **Cada imagem PRESA ao esqueleto, uma vez por conteúdo, como recurso ESTÁVEL do Vello.**
     ///
     /// ⚠️ **Sem ela o desenho copiava a imagem inteira 60 vezes por segundo:** o `AssetDb` entrega
-    /// um `Cow` e o Vello consome um `Arc`, então a conversão por quadro seria uma cópia por
-    /// quadro. A chave é o `AssetId` (o hash do CONTEÚDO), logo duas sprites com a mesma arte
-    /// partilham a entrada — e um `Ctrl+Z` que troque os pixels traz um id novo, não uma entrada
-    /// obsoleta.
+    /// um `Cow`, então a conversão por quadro seria uma cópia por quadro. A chave é o `AssetId` (o
+    /// hash do CONTEÚDO), logo duas sprites com a mesma arte partilham a entrada — e um `Ctrl+Z`
+    /// que troque os pixels traz um id novo, não uma entrada obsoleta.
+    ///
+    /// ⛔⛔ **E o valor guardado é o id do ATLAS, não só os bytes** — ver o doc do tipo: guardar os
+    /// bytes e desenhar pela porta crua fazia de cada peça da malha uma cópia da imagem no atlas.
     pub skin_image_cache: ph2d_skeleton_live::skin_image::SkinImageCache,
     /// ⭐⭐⭐ **O OSSO em desenho** (estudo 42 item 5) — o que o press decidiu (origem em MUNDO e
     /// PAI), e `None` fora do gesto. O `release` faz o osso dali até onde a mão soltou.

@@ -191,6 +191,97 @@ fn turning_the_bone_carries_the_image() {
     );
 }
 
+/// ⭐⭐⭐ **UMA IMAGEM PRESA É UM SÓ RESIDENTE DO ATLAS — em quantas peças for, e quadro após
+/// quadro.**
+///
+/// ⛔⛔ **O report que isto fecha** (*«Smooth bugado quebrando a forma»*, dono, 2026-09-10): cada
+/// peça desenhava a imagem pela porta crua, que cunha um id **por chamada**, e o atlas da `vello`
+/// 0.10 guarda **uma cópia inteira por id** até `8192²`. Medido na sonda
+/// `ph2d-vector::atlas_probe_pieces_tests`: a imagem do smoke em `7 776` peças perde **`5 651`**, e
+/// uma imagem de `1024²` no `Fast` (`216` peças) perde **`152`** — o que não cabe não é desenhado,
+/// em silêncio.
+///
+/// ⚠️ **A pergunta é o que a cena EMITE** (`probe_image_ids`), nunca o que a cache GUARDA: um
+/// desenho novo pela porta crua ao lado de uma cache certa deixaria a cache verde.
+///
+/// ⚠️ **Dois ossos, e o de baixo dobrado**: com um osso só a pele é um movimento rígido, o campo é
+/// linear, o `Smooth` pede `k = 1` e o gate compararia `Fast` com `Fast`. Os dois controlos abaixo
+/// (mais de uma peça · o `Smooth` emite MAIS que o `Fast`) são o que o impede de ser vácuo.
+#[test]
+fn a_skinned_image_is_one_atlas_resident_however_many_pieces_and_frames() {
+    let mut sim = ph2d_ecs::SimWorld::default();
+    let raiz = crate::bone::create(&mut sim, None, [-2.0, 0.0], [0.0, 0.0]).expect("raiz");
+    let raiz = ph2d_ecs::Entity::from_bits(raiz);
+    let ponta = crate::bone::create(&mut sim, Some(raiz), [0.0, 0.0], [2.0, 0.0]).expect("ponta");
+    let (w, h) = (40_u32, 20_u32);
+    let mut rgba = vec![0u8; (w * h * 4) as usize];
+    for y in 4..16 {
+        for x in 2..38 {
+            rgba[(y * w as usize + x) * 4 + 3] = 255;
+        }
+    }
+    let db = ph2d_asset::AssetDb::new();
+    let id = db.insert_image_rgba8(w, h, rgba.clone());
+    let e = sim
+        .world_mut()
+        .spawn((
+            Transform::IDENTITY,
+            sprite(4.0, 2.0, 0.0, 0.0),
+            ph2d_ecs::SpritePixels(id),
+        ))
+        .id();
+    assert!(crate::skin_live::bind_image(
+        &mut sim,
+        e,
+        &rgba,
+        [w, h],
+        ph2d_poly2d::GridOptions::default(),
+        Some(raiz),
+    ));
+    sim.world_mut()
+        .get_mut::<Transform>(ph2d_ecs::Entity::from_bits(ponta))
+        .expect("Transform da ponta")
+        .rotation = 1.0;
+
+    let suave = ph2d_poly2d::RefineOptions {
+        tolerance_px: 1e-3,
+        max_pieces: 4_096,
+    };
+    let cam = ph2d_vector::Affine::scale(50.0);
+    let mut cache = SkinImageCache::default();
+    let mut ids = std::collections::BTreeSet::new();
+    let (mut pecas_fast, mut pecas_suave) = (0_usize, 0_usize);
+    for _quadro in 0..2 {
+        for modo in [None, Some(suave)] {
+            let mut cena = ph2d_vector::VectorScene::new();
+            assert_eq!(
+                draw_skinned_images(&sim, &db, &mut cache, cam, &mut cena, modo),
+                1,
+                "a imagem presa nao foi desenhada"
+            );
+            let emitidos = cena.probe_image_ids();
+            match modo {
+                None => pecas_fast = emitidos.len(),
+                Some(_) => pecas_suave = emitidos.len(),
+            }
+            ids.extend(emitidos);
+        }
+    }
+    assert!(
+        pecas_fast > 1 && pecas_suave > pecas_fast,
+        "a fixtura nao parte a imagem (Fast {pecas_fast} pecas, Smooth {pecas_suave}) — sem \
+         varias pecas a contagem de ids abaixo nao mede nada"
+    );
+    assert_eq!(
+        ids.len(),
+        1,
+        "{} ids distintos para UMA imagem ({pecas_fast} pecas no Fast, {pecas_suave} no Smooth, \
+         dois quadros) — cada id e' uma copia inteira da imagem no atlas, e o que nao cabe nao e' \
+         desenhado",
+        ids.len()
+    );
+}
+
 /// **A malha, já POSADA** — os vértices de repouso levados pela pele para onde eles estão agora.
 ///
 /// ⚠️⚠️ **Ela vive aqui, no ARNÊS, desde 2026-09-10**, e a mudança diz o que a wave fez: no produto

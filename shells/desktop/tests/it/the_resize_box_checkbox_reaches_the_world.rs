@@ -19,8 +19,13 @@
 
 use std::fs;
 
+/// O QUADRO pela ordem em que corre (`frame_text::render_frame`).
+///
+/// ⚠️ Desde a OBRA 2 da `line/render-loop` (2026-09-13) o quadro vive em FASES: o roteamento do clique continua
+/// no dreno do `render_loop/mod.rs`, e o honrar e a publicação mudaram-se para a
+/// `fase_vector_selection_states_panel`. A ORDEM honrar → publicar é de execução, e só o texto emendado a tem.
 fn source() -> String {
-    fs::read_to_string("src/render_loop/mod.rs").expect("render_loop/mod.rs")
+    crate::frame_text::render_frame()
 }
 
 /// **O clique é roteado para a porta.**

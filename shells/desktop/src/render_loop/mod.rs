@@ -304,6 +304,8 @@ mod fase_vector_layout_recook;
 mod fase_vector_morph_verbs;
 /// Fase do quadro: os overlays vectoriais do quadro.
 mod fase_vector_overlays;
+/// Fase do quadro: a pele, os estados, o z-index e o layout publicados.
+mod fase_vector_selection_states_panel;
 /// Fase do quadro: os tokens e as etiquetas das molduras.
 mod fase_vector_tokens_and_labels;
 /// Fase do quadro: as alcas da ferramenta vectorial.
@@ -7968,94 +7970,12 @@ impl crate::App {
                         ),
                     ),
                 );
-                // **A PELE por-widget** (plano UI/UX W6.2) — que controle do catálogo esta forma
-                // veste. Publicada pela MESMA porta que o clique honra, e para qualquer forma
-                // única (vestida ou não): uma seção que só existisse onde já há pele tornaria a
-                // feature alcançável apenas onde ela já foi usada.
-                let skin = crate::vec_widget_edit::publish(sim, &self.vec.entities, &sel);
-                let skin_beyond = skin.as_ref().map_or(0, |(_, b)| *b);
-                ph2d_panel_vector::state::set_widget_skin_state(skin.map(|(s, _)| s), skin_beyond);
-                // **OS ESTADOS de UI** (plano UI/UX W7) — que poses esta forma tem, e qual delas a
-                // cena mostra AGORA. O `live` sai da MESMA máquina que escreve o mundo: um
-                // readout derivado noutro lugar diria um papel e a cena mostraria outro.
-                // ⭐ **A seção MORPH STATES** (plano 32 W4/W8) — as transições da máquina e qual
-                // delas a cena percorre; ou, sem máquina, quantas formas a seleção tem prontas a
-                // virar um conjunto. As acções vêm do Input Map do projecto: elas são o
-                // vocabulário das condições, e lê-las no painel seria uma segunda leitura.
-                ph2d_panel_vector::state::set_morph_states_state(crate::vec_morph_edit::publish(
-                    sim,
-                    vec_scene,
-                    &self.vec.entities,
-                    &sel,
-                    self.morph_preview,
-                    hero.input_map
-                        .actions()
-                        .iter()
-                        .map(|a| a.name.clone())
-                        .collect(),
-                ));
-                ph2d_panel_vector::state::set_ui_states_state(crate::vec_ui_state_edit::publish(
-                    sim,
-                    vec_scene,
-                    &self.vec.entities,
-                    &sel,
-                    ui_states,
-                    // ⚠️ **Pelo HOSPEDEIRO, não pelo primeiro da seleção.** O readout diz *que
-                    // papel a cena mostra*, e a máquina está pendurada no hospedeiro — com uma
-                    // seleção múltipla, `sel.first()` é um operando qualquer e a busca falha em
-                    // silêncio: a seção mostraria as poses de um objeto e o readout o estado de
-                    // outro (ou de nenhum).
-                    crate::render_loop::ui_state_bridge::live_role(
-                        ui_machines,
-                        crate::vec_ui_state_edit::host_of_selection(
-                            sim,
-                            vec_scene,
-                            &self.vec.entities,
-                            &sel,
-                        ),
-                    ),
-                    self.ui_preview.is_on(),
-                    self.ui_states_move_all,
-                ));
-                // **O Z-INDEX da seleção** (Enio, 2026-08-04) — o número GLOBAL que sobrepõe a
-                // ordem da hierarquia. Publicado pela MESMA porta que o campo escreve e que os
-                // botões Arrange movem, para o número que o artista lê ser o que ele edita.
-                ph2d_panel_vector::state::set_z_index(
-                    sel.first()
-                        .and_then(|id| {
-                            ph2d_vec_entities::entities::zorder::authored_z(
-                                sim,
-                                &self.vec.entities,
-                                *id,
-                            )
-                        })
-                        .map(|z| z as f32),
-                );
-                // **Resize Box** (plano UI/UX W3b): honrar e so' depois publicar, a mesma ordem
-                // dos irmaos acima — publicar antes deixaria a caixa a mostrar o estado ANTERIOR
-                // por um frame, e o artista veria o clique "nao pegar".
-                if pending_resize_box {
-                    crate::vec_resize_box_edit::toggle_resize_box(sim, &self.vec.entities, &sel);
-                }
-                ph2d_panel_vector::state::set_resize_box(
-                    crate::vec_resize_box_edit::selected_resize_box(sim, &self.vec.entities, &sel),
-                );
-                // ⚠️ **Os DEZ comprimentos do fluxo cruzam a fronteira; `columns` NÃO.** O
-                // `flow_in_display` é a porta, e o `selected_flow` continua a falar mundo — o
-                // nome dele descreve o que a cena TEM, e converter lá dentro o faria mentir.
-                ph2d_panel_vector::state::set_layout_flow(
-                    crate::vec_layout_edit::selected_flow(sim, &self.vec.entities, &sel).map(|f| {
-                        crate::vec_layout_edit::flow_in_display(
-                            f,
-                            ph2d_editor_core::LengthDisplay::of(&hero.project),
-                        )
-                    }),
-                );
-                ph2d_panel_vector::state::set_layout_item(crate::vec_layout_edit::selected_item(
-                    sim,
-                    &self.vec.entities,
-                    &sel,
-                ));
+                let Some(sel) = self.fase_vector_selection_states_panel(
+                    fase_vector_selection_states_panel::ResizeBoxIntents { pending_resize_box },
+                    sel,
+                ) else {
+                    return;
+                };
                 let Some((vec_xf_back, sel)) = self.fase_vector_tokens_and_labels(
                     fase_vector_tokens_and_labels::TokenBindIntents { pending_token_bind },
                     vec_xf,

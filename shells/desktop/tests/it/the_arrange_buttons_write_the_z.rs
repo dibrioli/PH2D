@@ -60,7 +60,10 @@ fn body_of(s: &str, sig: &str) -> String {
 /// **O clique cai na porta do Z.**
 #[test]
 fn the_reorder_click_lands_on_the_z_door() {
-    let s = src("render_loop/mod.rs");
+    // ⚠️ O QUADRO emendado (`frame_text::render_frame`), e não o `render_loop/mod.rs`: desde a OBRA 2 da
+    // `line/render-loop` (2026-09-13) o quadro vive em fases, e a publicação do Z já mora na
+    // `fase_vector_selection_states_panel`.
+    let s = crate::frame_text::render_frame();
     let at = s
         .find("if let Some(order) = pending_vec_reorder")
         .expect("o sítio que honra o Arrange mudou de forma — reancore este gate");
@@ -97,7 +100,10 @@ fn the_scene_order_door_is_gone_from_the_shell() {
 /// autorado e o commit escreve noutro sítio. Aí ele mostra um número e edita outro, e nada falha.
 #[test]
 fn the_published_z_index_comes_from_the_same_module_as_the_write() {
-    let s = src("render_loop/mod.rs");
+    // ⚠️ O QUADRO emendado (`frame_text::render_frame`), e não o `render_loop/mod.rs`: desde a OBRA 2 da
+    // `line/render-loop` (2026-09-13) o quadro vive em fases, e a publicação do Z já mora na
+    // `fase_vector_selection_states_panel`.
+    let s = crate::frame_text::render_frame();
     let at = s
         .find("ph2d_panel_vector::state::set_z_index(")
         .expect("a shell deixou de publicar o Z-index: o campo some do painel em silêncio");

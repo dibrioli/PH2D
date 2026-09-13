@@ -149,7 +149,10 @@ fn the_drag_rate_crosses_the_same_frontier_as_the_value() {
 /// `to_world`.
 #[test]
 fn the_typed_number_comes_back_through_the_door_and_the_preset_does_not() {
-    let src = read("src/render_loop/mod.rs");
+    // ⚠️ O QUADRO emendado (`frame_text::render_frame`), e não o `render_loop/mod.rs`: desde a OBRA 2 da
+    // `line/render-loop` (2026-09-13) o quadro vive em fases, e a publicação do fluxo já mora na
+    // `fase_vector_selection_states_panel`.
+    let src = crate::frame_text::render_frame();
     assert!(
         src.contains("LengthDisplay::of(&hero.project).to_world(target)"),
         "o número DIGITADO está na unidade do artista e volta pela mesma porta"
@@ -178,7 +181,10 @@ fn the_typed_number_comes_back_through_the_door_and_the_preset_does_not() {
 /// Mutações que têm de sangrar: (a) tirar a conversão; (b) convertê-la incondicionalmente.
 #[test]
 fn the_layout_drain_asks_the_type_before_converting() {
-    let src = read("src/render_loop/mod.rs");
+    // ⚠️ O QUADRO emendado (`frame_text::render_frame`), e não o `render_loop/mod.rs`: desde a OBRA 2 da
+    // `line/render-loop` (2026-09-13) o quadro vive em fases, e a publicação do fluxo já mora na
+    // `fase_vector_selection_states_panel`.
+    let src = crate::frame_text::render_frame();
     let at = src
         .find("if let Some((f, v)) = pending_layout_field {")
         .expect("o dreno do campo de layout tem de existir — controle positivo");
@@ -226,7 +232,10 @@ fn the_node_position_is_published_in_the_artists_unit() {
 /// dreno passar o número digitado sem `to_world`.
 #[test]
 fn typing_a_node_coordinate_displaces_the_set_it_does_not_write_each_node() {
-    let src = read("src/render_loop/mod.rs");
+    // ⚠️ O QUADRO emendado (`frame_text::render_frame`), e não o `render_loop/mod.rs`: desde a OBRA 2 da
+    // `line/render-loop` (2026-09-13) o quadro vive em fases, e a publicação do fluxo já mora na
+    // `fase_vector_selection_states_panel`.
+    let src = crate::frame_text::render_frame();
     let at = src
         .find("if let Some((is_y, target)) = pending_vec_vert {")
         .expect("o dreno do campo X/Y do nó tem de existir — controle positivo");
@@ -259,7 +268,10 @@ fn typing_a_node_coordinate_displaces_the_set_it_does_not_write_each_node() {
 /// Mutação que tem de sangrar: publicar `selected_flow(..)` cru.
 #[test]
 fn the_published_flow_goes_through_the_length_aware_door() {
-    let src = read("src/render_loop/mod.rs");
+    // ⚠️ O QUADRO emendado (`frame_text::render_frame`), e não o `render_loop/mod.rs`: desde a OBRA 2 da
+    // `line/render-loop` (2026-09-13) o quadro vive em fases, e a publicação do fluxo já mora na
+    // `fase_vector_selection_states_panel`.
+    let src = crate::frame_text::render_frame();
     assert!(
         src.contains("vec_layout_edit::flow_in_display("),
         "os dez comprimentos do fluxo cruzam a fronteira por UMA porta — mapear o struct em bloco \

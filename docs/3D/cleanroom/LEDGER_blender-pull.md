@@ -188,6 +188,41 @@ identificador e uma frase da vassoura, cada um num ficheiro de teste fora da ár
 script a `exit 1`; os artefactos reais deram `exit 0`. *Um instrumento que nunca foi visto
 reprovar não aprova nada.*
 
+## Papel R — modo PRÉ (auditoria §4.2 da espec), 2026-09-13
+
+| campo | valor |
+|---|---|
+| quem | subagente-R `agent-ae2f81f455d29b69f` (descrição do despacho: «R-pré: auditoria da espec do puxar») |
+| janela-mãe (I) | `9f820704-0d7e-4d96-847e-9cd720cbf178` |
+| independência (§3.R) | ✅ contexto **novo**, distinto dos dois subagentes-E (`agent-acc2adbfcf5cf748e`, `agent-a5ce83c4776f4dff1`) — autofiltragem não se audita |
+| transcript (⛔ zona contaminada — I nunca lê) | `/home/enio/.claude/projects/-home-enio-Documentos-Projetos-PH2D/9f820704-0d7e-4d96-847e-9cd720cbf178/subagents/agent-ae2f81f455d29b69f.jsonl` |
+| **veredito §4.2** | ✅ **VERDE** — atestado no cabeçalho da espec |
+| sweep (§7.1) | `exit 0` sobre `SPEC_pull_brushes.md` + `fixtures/pull/` (68 ficheiros), vassoura de **298** entradas |
+
+### O que foi auditado, item a item do §4.2
+
+| cláusula do §4.2 | veredito |
+|---|---|
+| texto de código, trechos, diffs | ✅ nenhum — os blocos são pseudo-código de nível de paper, em português e em vocabulário do domínio |
+| nomes internos (funções, variáveis, ficheiros, structs) | ✅ nenhum. Os identificadores que aparecem (os dois nomes de pincel e as cinco propriedades/itens de enum das opções do §7) são **API pública** do alvo, alcançáveis pela linguagem de script dele ⇒ §4.1.13 (*«interno se renomeia, interface pública se documenta»*); a espec ainda lhes dá nomes nossos e descreve cada opção funcionalmente |
+| comentários do original | ✅ nenhum verbatim. Há **uma** frase (§3) que re-diz, em palavras nossas, a intenção de desenho registada pelos autores — licenciada pelo §4.1.12, com proveniência **funcional** (*«onde o quadrado é feito»*), sem nome nem endereço de ficheiro |
+| wording de manual/doc/paper verbatim ou quase | ✅ nenhum. A única paráfrase entre aspas é de um documento **de patente** (USPTO), que não é obra do alvo |
+| organização arquivo-a-arquivo / função-a-função | ✅ a espec organiza-se por **fases funcionais** (referencial · peso · força · as duas famílias de deslocamento · cada gesto · o partilhado); a decomposição em unidades de código fica para o I |
+| pseudo-código espelhado linha a linha | ✅ não — cada bloco tem 5–12 linhas, é a matemática do método (§4.1.2/§4.1.11) e vem acompanhado do **porquê** funcional |
+| LUTs grandes copiadas verbatim | ✅ nenhuma — as três curvas de alcance são **fórmulas**, não tabelas |
+
+### Mandato específico desta auditoria — o modo excluído por patente
+
+1. ✅ **Está declarado FORA DE ÂMBITO e a espec não carrega lei nem constante dele.** Varrida a
+   espec por toda a matemática daquele modo: o modo é nomeado em **três** sítios (§7.4, §9.1, §13) e
+   **sempre** para dizer que sai. Zero fórmula, zero constante de material, zero regularização.
+2. ⚠️ **A leitura sobre o que a casa já shipa SUSTENTA-SE**, e o R-pré corrigiu o §9.1 com três
+   factos de patente que faltavam (texto concedido, lido em 2026-09-13): são **três**
+   reivindicações independentes (1 método · 13 meio legível · 20 sistema) e não uma; o argumento
+   *«usamos um meio, logo estamos fora»* é **derrubado pela própria dependente 12**; e a família é
+   **só dos EUA**, o que é a alavanca de território que o documento não tinha.
+   ⛔ Nenhuma dessas correcções toca material do alvo — patente é documento público.
+
 ## Fixtures
 
 `docs/3D/cleanroom/fixtures/pull/` — 62 traços + 5 malhas de repouso, chaves e etiquetas em

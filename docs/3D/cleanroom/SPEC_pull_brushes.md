@@ -6,7 +6,9 @@ Licença: GPL-2.0-or-later (lida no ficheiro do checkout)   ·   Degrau: T2
 Ledger: aberto em docs/3D/cleanroom/LEDGER_blender-pull.md, 2026-09-13
 Patente (§8.1): buscado em 2026-09-13 — ⛔ UMA VIVA, e ela EXCLUI uma das opções do âmbito (§9.1)
 Filtragem §4.3: executada em 2026-09-13   ·   Sweep: verde em 2026-09-13
-Auditoria §4.2 (R-pré): PENDENTE — condição de abrir a janela que implementa
+Auditoria §4.2 (R-pré): auditada contra §4.2 por R-pré em 2026-09-13 — ✅ VERDE
+  (subagente `agent-ae2f81f455d29b69f`; sweep verde sobre esta espec e as 68 fixtures,
+   vassoura de 298 entradas. O §9.1 foi corrigido pelo R-pré com facto de patente — ver lá.)
 Mapa de leitura da literatura: nenhum paper é necessário para o que fica dentro do âmbito;
   a única lei desta família que tem literatura própria é a que a patente EXCLUI (§9.1)
 Denylist de URLs: o repositório do alvo e os seus espelhos; qualquer busca de código
@@ -442,21 +444,54 @@ máquina (`pencil_input.rs`) — ⇒ **não é bloqueador**, é um multiplicador
 **US 10 586 401 B2** — *Sculpting brushes based on solutions of elasticity*, Pixar.
 Prioridade 2017-05-02, concedida 2020-03-10, **expira 2038-05-02** (lido em 2026-09-13).
 
-A reivindicação independente cobre, em substância, *escolher um pincel e um tamanho, receber um
-movimento, e determinar a deformação por soluções regularizadas da elasticidade linear com um
-coeficiente de Poisson especificado*. O modo elástico do gancho é exactamente isso.
+⚠️ **São TRÊS reivindicações independentes, não uma** (conferidas pelo R-pré em 2026-09-13, no
+texto concedido): **1** (método), **13** (meio legível por computador que armazena o programa) e
+**20** (sistema — processador + memória com o programa). As três têm o **mesmo corpo**: *receber a
+escolha de um pincel e de um tamanho de pincel · receber um movimento de um dispositivo de entrada ·
+determinar a deformação de um objecto gráfico com base, pelo menos em parte, nesse pincel e tamanho,
+nesse movimento, e em **uma ou mais soluções regularizadas de uma equação da elasticidade linear,
+em que essas soluções incluem um valor especificado do coeficiente de Poisson** · e renderizar uma
+ou mais imagens do objecto com a deformação determinada.* O modo elástico do gancho é exactamente
+isso.
+
+⚠️ **Que sejam três muda o ALCANCE, e é por isso que o número importa:** a 1 é sobre **executar** a
+lei, a 20 sobre a **máquina que a corre**, e a 13 sobre **o programa distribuído** — uma delas
+alcança o acto de enviar o binário, não só o de o usar.
 
 ⇒ **a opção sai da espec**; o selector do §7.4 não se constrói.
 
 ⚠️⚠️ **E há uma segunda metade que o dono tem de ver:** esta reivindicação **lê também sobre o que
 a nossa casa JÁ SHIPA** — o nosso módulo tem um `kelvinlet` com aterrissagem na borda, usado pelo
-modo elástico dos verbos de agarrar (`crates/ph2d-sculpt3d/src/kelvinlet.rs`, cena `=28`).
-Isto é registado como **facto**, sem mais análise: clean-room **não protege contra patente**
-(SKILL §8.1), e a decisão é do dono, com parecer humano.
+modo elástico dos verbos de agarrar (`crates/ph2d-sculpt3d/src/kelvinlet.rs`, cena `=28`), que é um
+**modo opcional** (o chip `L`) e **não** o caminho de omissão. Lido **elemento a elemento** pelo
+R-pré, os quatro elementos do corpo estão **presentes**: o artista escolhe o verbo e o modo e tem
+raio de pincel · o gesto vem do ponteiro · a deformação sai de uma solução regularizada da
+elasticidade linear com um coeficiente de Poisson **declarado como constante** · e o resultado é
+desenhado no ecrã.
 
-⛔ Nenhuma outra patente viva lê sobre esta obra — foram examinadas quatro famílias (escultura
-progressiva; referencial tangente para pintura em superfícies; alisamento adaptativo) e nenhuma
-alcança o polegar, o empurrão, a silhueta, a âncora em vértice, o deslize ou o modo de alcance.
+⛔⛔ **DUAS saídas que parecem existir e NÃO existem** — as duas foram conferidas, e quem as repetir
+gasta a jornada:
+
+1. *«o nosso coeficiente é `1/2`, logo estamos fora»* — **falso**: a reivindicação **12**
+   (dependente) restringe-se ao caso em que *o valor não é infinito nem um meio*, logo a
+   independente de que ela depende **cobre** o um meio — uma dependente é mais estreita que a sua
+   independente, nunca mais larga.
+2. *«o coeficiente cancela na normalização, logo não é parâmetro»* — **verdadeiro só para o modo de
+   ESCALA**; no campo de **agarrar** a anisotropia move-se com ele (`1,125×` a `1,333×` na tabela
+   medida dentro do nosso próprio módulo), logo ali ele é parâmetro vivo.
+
+⭐ **A alavanca real é o TERRITÓRIO, e esta espec não a dizia:** a patente **não tem família fora
+dos EUA** — a única outra publicação é a pré-concessão americana do mesmo pedido
+(`US 2018/0330554 A1`), e não foram achados membros europeus, brasileiros ou asiáticos. ⇒ a leitura
+só morde onde há uso ou distribuição **nos Estados Unidos**; qual é o mercado é decisão do dono.
+
+⚠️ Tudo isto é **parecer técnico de leitura de reivindicação, não aconselhamento jurídico**:
+clean-room **não protege contra patente** (SKILL §8.1), e a decisão é do dono, com parecer humano.
+
+⛔ Nenhuma outra patente viva lê sobre esta obra — foram examinadas **três** outras famílias
+(escultura progressiva; referencial tangente para pintura em superfícies; alisamento adaptativo) e
+nenhuma alcança o polegar, o empurrão, a silhueta, a âncora em vértice, o deslize ou o modo de
+alcance.
 
 ### §9.2 — ⛔⛔ O alvo de deformação «simulação» — excluído por MEDIÇÃO
 

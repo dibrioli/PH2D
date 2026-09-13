@@ -211,6 +211,54 @@ pub(crate) fn drain_equalize_sizes(
         vec![None; entries.len()]
     };
 
+    let applied = commit_per_entity(
+        entries,
+        outputs,
+        new_translations,
+        max_dim,
+        px_per_m,
+        sim,
+        renderer,
+        asset_db,
+        toasts,
+        pending_undo_entries,
+    );
+
+    if applied == 0 {
+        toasts.push(Toast::info("Equalize Sizes: nothing to change"));
+        return true;
+    }
+
+    if skipped > 0 {
+        toasts.push(Toast::success(format!(
+            "Equalize Sizes · {} sprite(s), {} skipped · Cmd+Z to undo",
+            applied, skipped
+        )));
+    } else if applied == 1 {
+        toasts.push(Toast::success("Equalize Sizes applied · Cmd+Z to undo"));
+    } else {
+        toasts.push(Toast::success(format!(
+            "Equalize Sizes · {} sprites · Cmd+Z to undo",
+            applied
+        )));
+    }
+    true
+}
+
+/// A fase 3 do [`drain_equalize_sizes`]: cada saída do bake volta à sua entidade; devolve quantas aplicaram.
+#[allow(clippy::too_many_arguments)]
+fn commit_per_entity(
+    entries: Vec<EqsEntry>,
+    outputs: Vec<ph2d_tool_equalize_sizes::SpriteOutput>,
+    new_translations: Vec<Option<[f32; 2]>>,
+    max_dim: u32,
+    px_per_m: f32,
+    sim: &mut SimWorld,
+    renderer: &mut SpriteRenderer,
+    asset_db: &AssetDb,
+    toasts: &mut ToastQueue,
+    pending_undo_entries: &mut Vec<ImageEditSnapshot>,
+) -> usize {
     // Phase 3: commit per-entity. Each successful sprite pushes an
     // entry into the caller's `pending_undo_entries` so the cross-sprite
     // Apply restores ALL sprites on Cmd+Z (the old single-slot design
@@ -295,24 +343,5 @@ pub(crate) fn drain_equalize_sizes(
             label: "Equalize Sizes",
         });
     }
-
-    if applied == 0 {
-        toasts.push(Toast::info("Equalize Sizes: nothing to change"));
-        return true;
-    }
-
-    if skipped > 0 {
-        toasts.push(Toast::success(format!(
-            "Equalize Sizes · {} sprite(s), {} skipped · Cmd+Z to undo",
-            applied, skipped
-        )));
-    } else if applied == 1 {
-        toasts.push(Toast::success("Equalize Sizes applied · Cmd+Z to undo"));
-    } else {
-        toasts.push(Toast::success(format!(
-            "Equalize Sizes · {} sprites · Cmd+Z to undo",
-            applied
-        )));
-    }
-    true
+    applied
 }

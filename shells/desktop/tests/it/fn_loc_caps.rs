@@ -43,12 +43,6 @@ const FN_OVERAGE_OK: &[(&str, &str, usize, &str)] = &[
         NASCEU,
     ),
     (
-        "hero_intents/image_edit/equalize_sizes.rs",
-        "drain_equalize_sizes",
-        204,
-        NASCEU,
-    ),
-    (
         "hero_intents/sprite_merge.rs",
         "drain_merge_sprites",
         439,

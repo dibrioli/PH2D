@@ -79,6 +79,7 @@ mod the_added_piece_gesture_reaches_the_verb;
 mod the_alpha_image_comes_from_a_straight_sprite;
 mod the_anchor_section_reaches_every_anchor_the_model_allows;
 mod the_app_never_reshapes_a_still_screen;
+mod the_app_only_sheds_fields;
 mod the_apply_ladder_has_one_door;
 mod the_armed_shape_latch_is_wired;
 mod the_arrange_buttons_write_the_z;

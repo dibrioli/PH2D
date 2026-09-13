@@ -39,9 +39,7 @@ fn at(src: &str, needle: &str, what: &str) -> usize {
 fn body_of<'a>(src: &'a str, fn_sig: &str, what: &str) -> &'a str {
     let start = at(src, fn_sig, what);
     let rest = &src[start + fn_sig.len()..];
-    // ⚠️ O fim é o PRIMEIRO item irmão em qualquer visibilidade, ou o fecho do `impl` (`line/input-dispatch`,
-    // 2026-09-13): com os métodos mudados para `despacho_*.rs` como `pub(super) fn`, o `pub(crate)` seguinte passou a
-    // morar noutro ficheiro, e a janela esticaria por cima deles em silêncio.
+    // ⚠️ Fim = 1.º irmão em QUALQUER visibilidade ou o fecho do `impl` (os métodos que saíram são `pub(super)`).
     &rest[..crate::input_text::fim_do_item(rest)]
 }
 

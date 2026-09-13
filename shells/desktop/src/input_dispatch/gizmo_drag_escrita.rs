@@ -1,16 +1,11 @@
-//! **O arrasto do gizmo, a ESCRITA** — ramos do `advance_gizmo_drag` ([`super`]): o grupo que roda e
-//! escala como um corpo só no mundo, a moldura que redimensiona, o fluxo que reordena, e a peça simples com os
-//! extras que a seguem. Os corpos MUDARAM-SE verbatim (`line/input-dispatch`, 2026-09-13) e correm no sítio da
-//! chamada, pela mesma ordem.
-//!
-//! ⚠️ A cadeia `grupo / moldura / fluxo / simples` fica CONTÍGUA num ramo só: dois gates leem as janelas entre
-//! os `} else if` dela, e partir a cadeia mudaria o que eles medem.
+//! **O arrasto do gizmo, a ESCRITA** — ramos do `advance_gizmo_drag` ([`super`]), corpos verbatim pela mesma ordem: o
+//! grupo que roda e escala no mundo, a moldura, o fluxo, a peça simples. ⚠️ A cadeia `grupo / moldura / fluxo /
+//! simples` fica CONTÍGUA num ramo só: dois gates leem as janelas entre os `} else if` dela.
 
 use crate::Transform;
 
-/// **Os valores que a escrita do arrasto lê**, calculados no ramo dos factores e entregues de uma vez. Os campos têm
-/// exactamente os nomes das variáveis que eram no `advance_gizmo_drag`: o ramo desestrutura-o na primeira linha, e o
-/// corpo mudou-se sem uma letra diferente. Oito `Copy` na pilha — nada aloca por movimento do cursor.
+/// **Os valores que a escrita do arrasto lê**, com os nomes exactos das variáveis do `advance_gizmo_drag` (o ramo
+/// desestrutura-o na 1.ª linha, e o corpo mudou-se sem uma letra diferente): oito `Copy` na pilha, nada aloca.
 #[derive(Clone, Copy)]
 pub(super) struct EscritaDoGizmo {
     pub(super) drag: ph2d_editor_core::GizmoDragState,

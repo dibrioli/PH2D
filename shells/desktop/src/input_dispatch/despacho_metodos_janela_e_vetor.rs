@@ -1,7 +1,5 @@
-//! **Os métodos do despacho: janela e vetor** — `impl App` ([`super`]): o pick de formas do Blend, o fecho, o
-//! redimensionar, os ficheiros largados, os modificadores, o IME, os cursores, e os verbos do vetor (booleana,
-//! nudge, apagar, copiar/colar, agrupar, origem). Mudados VERBATIM (`line/input-dispatch`, 2026-09-13); os
-//! privados passam a `pub(super)`.
+//! **Os métodos do despacho: janela e vetor** ([`super`]) — o pick do Blend, o fecho, o redimensionar, os ficheiros
+//! largados, modificadores, IME, cursores e os verbos do vetor, mudados VERBATIM; os privados passam a `pub(super)`.
 
 use super::*;
 

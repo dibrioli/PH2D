@@ -1,7 +1,5 @@
-//! **Os métodos do despacho: picks e arrastos** — `impl App` que o `on_mouse_input` e o `on_cursor_moved` chamam
-//! ([`super`]): o poke da explosão, os picks modais da física e do osso, os arrastos do vetor, e o editor de áudio.
-//! Mudados VERBATIM (`line/input-dispatch`, 2026-09-13); os que eram privados passam a `pub(super)` — a única
-//! troca, e é o preço de o `impl` morar num módulo irmão.
+//! **Os métodos do despacho: picks e arrastos** ([`super`]) — o poke, os picks modais da física e do osso, os arrastos
+//! do vetor e o editor de áudio, mudados VERBATIM; os privados passam a `pub(super)`, o preço de morar num irmão.
 
 use super::*;
 

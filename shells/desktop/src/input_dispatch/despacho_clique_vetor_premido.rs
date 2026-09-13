@@ -1,10 +1,6 @@
-//! **O clique, o PREMIR da ferramenta vetorial** — ramos do `on_mouse_input` ([`super`]): a cadeia de prioridade
-//! do press no canvas (a região do Node, as alças de gradiente, Text, Build, lápis, Connect, Blend, Width) · o
-//! Corte, o Trim, o Balde e o Osso · as quinas (Fillet/Chamfer) · e a caneta/forma com o snap. Os corpos
-//! MUDARAM-SE verbatim (`line/input-dispatch`, 2026-09-13) e correm no sítio da chamada, pela mesma ordem.
-//!
-//! ⚠️ Cada ramo devolve `true` onde o braço fazia `return;`; o braço chama-os em sequência e devolve ao primeiro
-//! `true` — que é a cadeia de early-returns que o braço era.
+//! **O clique, o PREMIR da ferramenta vetorial** — ramos do `on_mouse_input` ([`super`]), corpos verbatim pela mesma
+//! ordem: a prioridade do press (Node, gradiente, Text, Build, lápis, Connect, Blend, Width) · Corte, Trim, Balde e
+//! Osso · as quinas · a caneta/forma com o snap. Cada ramo devolve `true` onde o braço fazia `return;`.
 
 use super::*;
 

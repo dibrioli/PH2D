@@ -33,8 +33,7 @@ fn corpo_do_on_mouse_input(fonte: &str) -> &str {
     let resto = &fonte[inicio..];
     // O `fn` seguinte ao mesmo nível de indentação fecha o corpo. Sem fim explícito o gate mediria
     // o ficheiro inteiro, e uma soltura escrita 2 000 linhas abaixo passaria.
-    // ⚠️ Em QUALQUER visibilidade, ou no fecho do `impl` (`line/input-dispatch`, 2026-09-13): os métodos que saíram do
-    // índice são `pub(super) fn` noutro ficheiro, e procurar só o `pub(crate)` seguinte esticaria a janela até lá.
+    // ⚠️ Fim = 1.º irmão em QUALQUER visibilidade ou o fecho do `impl` (os métodos que saíram são `pub(super)`).
     let fim = crate::input_text::fim_do_item(&resto[1..]) + 1;
     &resto[..fim]
 }

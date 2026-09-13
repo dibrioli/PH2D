@@ -1,9 +1,6 @@
-//! **O clique, o PRÓLOGO** — ramos do `on_mouse_input` ([`super`]): o arrasto da biblioteca, o aperto no canvas
-//! que solta o teclado do painel, a navegação das janelas 3D e a alça do gizmo de âncora (antes das locais do
-//! evento), e o editor de áudio (logo depois delas). Os corpos MUDARAM-SE verbatim (`line/input-dispatch`,
-//! 2026-09-13) e correm no sítio da chamada, pela mesma ordem.
-//!
-//! ⚠️ A soltura das mãos NÃO está aqui: ela é a primeira coisa do handler, e fica no índice à vista.
+//! **O clique, o PRÓLOGO** — ramos do `on_mouse_input` ([`super`]), corpos verbatim pela mesma ordem: o arrasto da
+//! biblioteca, o aperto que solta o teclado do painel, as janelas 3D e a alça do gizmo de âncora, e o editor de áudio.
+//! ⚠️ A soltura das mãos NÃO está aqui: é a primeira coisa do handler, e fica no índice à vista.
 
 use super::*;
 

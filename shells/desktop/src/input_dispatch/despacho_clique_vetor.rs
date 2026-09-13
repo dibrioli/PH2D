@@ -1,10 +1,6 @@
-//! **O clique, a FERRAMENTA VETORIAL** — ramos do `on_mouse_input` ([`super`]): o guarda do ADR-0112 (Node e os
-//! modos de desenho capturam o canvas; o Select não), o blur do campo de texto, o picker que se fecha, e os
-//! braços do `match` — o Shift que alterna ou abre a região, e o direito que aborta. Os corpos MUDARAM-SE
-//! verbatim (`line/input-dispatch`, 2026-09-13) e correm no sítio da chamada, pela mesma ordem.
-//!
-//! ⚠️ Os braços que SEMPRE devolvem (o Shift e o direito) são ramos SEM sinal: o `return;` final ficou no
-//! braço que os chama, e um `return;` de dentro sai do ramo para cair exactamente nesse `return;`.
+//! **O clique, a FERRAMENTA VETORIAL** — ramos do `on_mouse_input` ([`super`]), corpos verbatim pela mesma ordem: o
+//! guarda do ADR-0112, o blur do campo de texto, o picker que se fecha, o Shift e o direito. ⚠️ Os braços que SEMPRE
+//! devolvem são ramos SEM sinal: o `return;` final ficou no braço, e um `return;` de dentro cai nele.
 
 use super::*;
 

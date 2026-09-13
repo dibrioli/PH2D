@@ -1,8 +1,6 @@
-// O ÍNDICE do despacho da janela (`line/input-dispatch`, 2026-09-13): o tecto de LOC numerado que este ficheiro teve
-// (chegou a 7 115 L em `tests/it/file_loc_caps.rs`) SAIU. A decomposição que a nota antiga adiava para «um follow-up
-// da Onda 2» é esta: os corpos grandes do MouseInput e do CursorMoved moram em `input_dispatch/despacho_*.rs`, como
-// ramos chamados PELA MESMA ORDEM, e os ajudantes e os testes em irmãos. Um gate que leia este despacho como texto
-// lê o `tests/it/input_text.rs::dispatch()`, nunca este ficheiro sozinho.
+// O ÍNDICE do despacho da janela: o tecto numerado (7 115 L) SAIU com a `line/input-dispatch` (2026-09-13) — os corpos
+// grandes são ramos em `input_dispatch/despacho_*.rs`, chamados PELA MESMA ORDEM, e os ajudantes e testes moram em
+// irmãos. Um gate que leia o despacho como texto lê o `tests/it/input_text.rs::dispatch()`, nunca este ficheiro.
 //! Window-event dispatch — one method per `WindowEvent` variant.
 //!
 //! PR 9b of `docs/Migracao/2026-05-convention-by-discovery.md`:
@@ -65,41 +63,24 @@ mod keyboard_field3d;
 mod keyboard_modal;
 mod keyboard_palette; // as teclas do palette de nos -- MODAL, ver o doc do modulo
 
-/// A preview, os fechos do Up e os press do Flip e dos gizmos de nó — ramos do `on_mouse_input`.
+// Os ramos e os irmãos do despacho: cada `despacho_*.rs` diz no próprio `//!` o que guarda.
 mod despacho_clique_flip;
-/// O gizmo do botão primário (modificador, alvo, pivô, âncoras, alça) — ramos do `on_mouse_input`.
 mod despacho_clique_gizmo;
-/// O largar do botão primário (borracha, colapso da multi-seleção, fim do arrasto) — ramos do `on_mouse_input`.
 mod despacho_clique_largar;
-/// O pick de canvas do botão primário (hits, ciclo, seleção, arrasto) — ramos do `on_mouse_input`.
 mod despacho_clique_pick;
-/// O prólogo do clique (biblioteca, teclado do painel, 3D, âncora, áudio) — ramos do `on_mouse_input`.
 mod despacho_clique_prologo;
-/// Os reclamantes do fim do clique (painter, modais, pan, barra lateral) — ramos do `on_mouse_input`.
 mod despacho_clique_reclamantes;
-/// A roldana sob o cursor vira a seleção (a porta do ramo do pivô e da âncora).
 mod despacho_clique_roldana;
-/// Os picks modais e as alças do Select, antes da ferramenta vetorial — ramos do `on_mouse_input`.
 mod despacho_clique_select;
-/// A ferramenta vetorial no clique (o guarda do ADR-0112, o Shift, o direito) — ramos do `on_mouse_input`.
 mod despacho_clique_vetor;
-/// O premir da ferramenta vetorial (modos, corte/balde/osso, quinas, caneta/forma) — ramos do `on_mouse_input`.
 mod despacho_clique_vetor_premido;
-/// O soltar da ferramenta vetorial (osso, gestos, caneta/forma) — ramos do `on_mouse_input`.
 mod despacho_clique_vetor_solto;
-/// Os métodos auxiliares do despacho: janela e vetor (movidos do índice).
 mod despacho_metodos_janela_e_vetor;
-/// Os métodos auxiliares do despacho: modos e alças (movidos do índice).
 mod despacho_metodos_modos_e_alcas;
-/// Os métodos auxiliares do despacho: picks e arrastos (movidos do índice).
 mod despacho_metodos_picks_e_arrastos;
-/// Os arrastos em curso do movimento do cursor — ramos do `on_cursor_moved`.
 mod despacho_mover;
-/// As funções livres do vetor: alinhar, distribuir, forma e transformação.
 mod despacho_vetor_alinhar_e_forma;
-/// As funções livres do vetor: tinta e gradiente.
 mod despacho_vetor_gradiente;
-/// As funções livres do vetor: booleana, vértices, duplicar, ordem, espelho, rotação, fecho, tipo de tinta.
 mod despacho_vetor_ops;
 /// **Os acordes de ARQUIVO** — irmão do `keyboard`, cortado dele pelo cap de LOC.
 mod keyboard_files;

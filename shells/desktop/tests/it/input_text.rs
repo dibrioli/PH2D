@@ -1,18 +1,10 @@
-//! **O DESPACHO DE ENTRADA como TEXTO, pela ordem em que CORRE** — gémeo do [`crate::frame_text`].
-//!
-//! Até à `line/input-dispatch` (2026-09-13) o `on_mouse_input` era UMA função de 3 102 linhas, e um
-//! gate de ordem media *«A antes de B»* pela posição de dois literais no `input_dispatch.rs`. Partido
-//! em RAMOS noutros ficheiros, essa régua passaria a ler a ordem dos FICHEIROS.
-//!
-//! ⇒ cada PORTA ([`mouse_input`], [`cursor_moved`], [`mouse_wheel`], [`key_input`], [`editor_key`],
-//! [`gizmo_drag`]) devolve o corpo da função com cada chamada `self.ramo_*(` EMENDADA pelo corpo do
-//! ramo (recursivamente), marcada `[[ramo nome]]`: a posição de um literal é a ordem em que ele corre.
-//! [`territory`] é o território inteiro, concatenado — a lente das agulhas de PRESENÇA sem ordem.
-//!
-//! ⚠️ **As duas metades, testadas aqui:** um ramo chamado que não se encontra FALHA alto (senão o
-//! texto perderia um pedaço em silêncio); e uma `fn ramo_*` que nenhuma porta chama é ÓRFÃ.
-//! ⚠️ A emenda é a do `frame_text` com outro prefixo; o dia em que uma das duas aprender uma forma
-//! nova do `rustfmt`, a outra tem de a aprender também.
+//! **O DESPACHO DE ENTRADA como TEXTO, pela ordem em que CORRE** — gémeo do [`crate::frame_text`]. Partido o
+//! `on_mouse_input` (3 102 L) em RAMOS noutros ficheiros (`line/input-dispatch`, 2026-09-13), a posição de dois
+//! literais passaria a ler a ordem dos FICHEIROS ⇒ cada PORTA ([`mouse_input`], [`cursor_moved`], [`mouse_wheel`],
+//! [`key_input`], [`editor_key`], [`gizmo_drag`]) devolve o corpo com cada `self.ramo_*(` EMENDADO pelo corpo do ramo
+//! (recursivo, marcado `[[ramo nome]]`), e [`territory`] é o território concatenado, para agulhas de PRESENÇA.
+//! ⚠️ Testadas as duas metades: ramo chamado e não achado FALHA alto; `fn ramo_*` que ninguém chama é ÓRFÃ. A emenda é
+//! a do `frame_text` com outro prefixo: uma forma nova do `rustfmt` aprendida por uma tem de o ser pela outra.
 
 use std::collections::BTreeMap;
 use std::fs;
@@ -20,8 +12,7 @@ use std::path::{Path, PathBuf};
 
 use crate::rust_src::{fn_body, fn_names};
 
-/// O prefixo que faz de uma função um RAMO do despacho. Medido em 2026-09-13: zero identificadores
-/// `ramo_*` em `shells/` e `crates/` (os `passo_`, `peca_` e `clique_` já existiam).
+/// O prefixo de um RAMO do despacho (medido 13/09: zero `ramo_*` em `shells/` e `crates/` antes desta linha).
 pub const RAMO: &str = "ramo_";
 
 fn src() -> PathBuf {
@@ -62,8 +53,7 @@ fn read(p: &Path) -> String {
     fs::read_to_string(p).unwrap_or_else(|e| panic!("ler {}: {e}", p.display()))
 }
 
-/// **O território inteiro**, cada ficheiro precedido de `// [[ficheiro <rel>]]`, pela ordem dos caminhos.
-/// ⚠️ Não mede ORDEM de execução — só presença. Para ordem, use a porta da função.
+/// **O território inteiro**, cada ficheiro após `// [[ficheiro <rel>]]` — PRESENÇA só; para ORDEM, a porta da função.
 pub fn territory() -> String {
     let mut out = String::new();
     for f in territory_files() {
@@ -118,17 +108,13 @@ fn door(name: &str) -> String {
     splice(&body(name), &ramos(), 0)
 }
 
-/// **Um ficheiro do território tal como CORRE**: cada chamada `self.ramo_*(` emendada pelo corpo, e o
-/// corpo das definições `fn ramo_*` apagado (senão cada ramo apareceria duas vezes e uma contagem mentiria).
+/// **Um ficheiro do território como CORRE**: cada `self.ramo_*(` emendado, e o corpo das `fn ramo_*` apagado (nada conta 2×).
 pub fn file(rel: &str) -> String {
     splice(&blank_ramos(&read(&src().join(rel))), &ramos(), 0)
 }
 
-/// **O `input_dispatch.rs` reconstituído** — o índice tal como corre, seguido do que saiu dele para
-/// `input_dispatch/despacho_*.rs` (a lente de um gate que lia o ficheiro INTEIRO).
-///
-/// ⚠️ A ORDEM entre um ajudante e o despacho não é a de 2026-09-13 (os ajudantes vinham antes): uma
-/// agulha que compare as duas regiões mede ENDEREÇOS, e é por isso que o piso abaixo nomeia as regiões.
+/// **O `input_dispatch.rs` reconstituído**: o índice como corre + os `input_dispatch/despacho_*.rs`. ⚠️ Um ajudante
+/// (que vinha ANTES do despacho a 13/09) vem hoje DEPOIS: uma agulha que compare as duas regiões mede ENDEREÇOS.
 pub fn dispatch() -> String {
     let mut out = file("input_dispatch.rs");
     let mut carved = Vec::new();
@@ -147,12 +133,8 @@ pub fn dispatch() -> String {
     out
 }
 
-/// **Onde acaba um item de `impl`**, dentro de `rest` (que começa no cabeçalho dele): no PRIMEIRO de todos os fins
-/// possíveis — o item irmão seguinte em QUALQUER visibilidade, ou a chaveta que fecha o `impl`.
-///
-/// ⚠️ Existe porque o `dispatch()` junta ficheiros e os métodos que saíram do índice são `pub(super) fn`: um fim
-/// procurado por UMA visibilidade (`.find(pub(crate)).or_else(fn)`) deixa de casar no sítio certo e cai no ficheiro
-/// seguinte — a janela estica em SILÊNCIO, e uma ausência ou uma ordem afirmada dentro dela passa a medir o despacho.
+/// **Onde acaba um item de `impl`** em `rest`: o 1.º irmão em QUALQUER visibilidade ou o fecho do `impl` — um fim por
+/// UMA visibilidade cairia noutro ficheiro do `dispatch()` (os métodos que saíram são `pub(super)`) e esticaria mudo.
 pub fn fim_do_item(rest: &str) -> usize {
     ["\n    fn ", "\n    pub fn ", "\n    pub(crate) fn ", "\n    pub(super) fn ", "\n}\n"]
         .iter()
@@ -176,8 +158,7 @@ pub fn gizmo_drag_file() -> String {
     file("input_dispatch/gizmo_drag.rs")
 }
 
-/// O texto sem o que vem depois de `//` em cada linha — a régua do `sculpt_source::source`, para os
-/// gates que a usavam sobre um ficheiro do território.
+/// O texto sem o que vem depois de `//` — a régua do `sculpt_source::source`, para os gates do território.
 pub fn code_only(text: &str) -> String {
     text.lines()
         .map(|l| l.find("//").map_or(l, |at| &l[..at]))
@@ -185,8 +166,7 @@ pub fn code_only(text: &str) -> String {
         .join("\n")
 }
 
-/// O corpo de um ramo como corre INLINE no chamador: o `return true;` do ramo («consumiu») é o
-/// `return;` da porta — e só ele (o `return false;` de um prelúdio fica, porque não sai da porta).
+/// O corpo de um ramo INLINE: o `return true;` («consumiu») é o `return;` da porta; o `return false;` fica.
 fn inline(body: &str) -> String {
     body.replace("return true;", "return;")
         .replace("return true,", "return,")

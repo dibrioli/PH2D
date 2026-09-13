@@ -1,10 +1,6 @@
-//! **O clique, o SOLTAR da ferramenta vetorial** — ramos do `on_mouse_input` ([`super`]): o osso que nasce do
-//! arrasto, os gestos que se fecham (Build, conector, gradiente, gaiola, região, Width, lápis) e o release da
-//! caneta e da forma, com a solda. Os corpos MUDARAM-SE verbatim (`line/input-dispatch`, 2026-09-13) e correm no
-//! sítio da chamada, pela mesma ordem.
-//!
-//! ⚠️ Cada ramo devolve `true` onde o braço fazia `return;` — e o braço, ao receber `true`, devolve. Um Up que
-//! nenhum consome cai no chrome, como caía.
+//! **O clique, o SOLTAR da ferramenta vetorial** — ramos do `on_mouse_input` ([`super`]), corpos verbatim pela mesma
+//! ordem: o osso do arrasto, os gestos que se fecham (Build, conector, gradiente, gaiola, região, Width, lápis) e o
+//! release da caneta e da forma, com a solda. Um Up que nenhum ramo consome cai no chrome, como caía.
 
 use super::*;
 

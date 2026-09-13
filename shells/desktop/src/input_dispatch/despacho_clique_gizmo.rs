@@ -1,10 +1,6 @@
-//! **O clique, o GIZMO** — ramos do `on_mouse_input` ([`super`]): o toque com modificador, o que o hit diz
-//! (alça, traço aberto, arte Flip, Translate chaveado), o pivô, as âncoras de junta, a roldana, e a cadeia
-//! que decide entre a alça e o pick de canvas. Os corpos MUDARAM-SE verbatim (`line/input-dispatch`,
-//! 2026-09-13) e correm no sítio da chamada, pela mesma ordem.
-//!
-//! ⚠️ Cada ramo re-empresta `gfx`/`hero` com o MESMO guarda do braço de onde saiu (`if let … && let …`), e
-//! chama o seguinte só depois do último uso deles (NLL) — é isso que deixa o texto correr em sequência.
+//! **O clique, o GIZMO** — ramos do `on_mouse_input` ([`super`]), corpos verbatim pela mesma ordem: modificador, o hit
+//! (alça, traço, arte Flip, Translate chaveado), pivô, âncoras de junta, roldana, e a cadeia alça/pick. ⚠️ Cada ramo
+//! re-empresta `gfx`/`hero` com o MESMO guarda do braço, e chama o seguinte depois do último uso deles (NLL).
 
 use super::*;
 

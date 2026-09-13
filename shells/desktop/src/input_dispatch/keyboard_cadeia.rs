@@ -1,12 +1,7 @@
-//! **A cadeia do teclado** — ramos do `key_input` ([`super`]): as teclas 3D antes do store, o texto
-//! vetorial, o Delete do Flip e os atalhos do vetor, a selecção de nós e o nudge, os acordes de ficheiro e de
-//! clipboard, o undo do grafo, e a cauda das cadeias — timeline, escapes, Painter e Hierarquia. Os corpos
-//! MUDARAM-SE verbatim (`line/input-dispatch`, 2026-09-13) e correm no sítio da chamada, pela mesma ordem.
-//!
-//! ⚠️ O nome começa por `keyboard` DE PROPÓSITO: o censo `the_key_blocks_ask_whether_the_keys_are_live` varre
-//! a família `keyboard*.rs`, e um bloco vetorial fora dela ficaria fora da pergunta «as teclas estão vivas?».
-//! Os blocos eram de nível de topo do `key_input` e continuam à mesma indentação — a agulha exacta do
-//! `the_hierarchy_has_a_delete_key` casa no texto emendado.
+//! **A cadeia do teclado** — ramos do `key_input` ([`super`]), corpos verbatim pela mesma ordem: teclas 3D, texto
+//! vetorial, Delete do Flip, atalhos do vetor, nós e nudge, acordes, undo do grafo, e a cauda (timeline, escapes,
+//! Painter, Hierarquia). ⚠️ O nome começa por `keyboard` DE PROPÓSITO (o `the_key_blocks_ask_whether_the_keys_are_live`
+//! varre `keyboard*.rs`), e os blocos ficam à mesma indentação (a agulha do `the_hierarchy_has_a_delete_key`).
 
 use winit::event::ElementState;
 use winit::keyboard::{KeyCode, PhysicalKey};

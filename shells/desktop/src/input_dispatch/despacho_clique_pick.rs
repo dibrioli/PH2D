@@ -1,10 +1,6 @@
-//! **O clique, o PICK de canvas** — ramos do `on_mouse_input` ([`super`]): o que está sob o dedo (vetor, Flip,
-//! sprites, pela porta única), o ciclo de cliques repetidos, a seleção com e sem modificador, a trava do
-//! Painter, e o arrasto que o pick abre. Os corpos MUDARAM-SE verbatim (`line/input-dispatch`, 2026-09-13) e
-//! correm no sítio da chamada, pela mesma ordem.
-//!
-//! ⚠️ Cada ramo re-empresta `gfx`/`hero` com o MESMO guarda do braço de onde saiu (`if let … && let …`), e
-//! chama o seguinte só depois do último uso deles (NLL) — é isso que deixa o texto correr em sequência.
+//! **O clique, o PICK de canvas** — ramos do `on_mouse_input` ([`super`]), corpos verbatim pela mesma ordem: o que está
+//! sob o dedo (vetor, Flip, sprites), o ciclo de cliques, a seleção, a trava do Painter e o arrasto que o pick abre.
+//! ⚠️ Cada ramo re-empresta `gfx`/`hero` com o MESMO guarda do braço, e chama o seguinte depois do último uso (NLL).
 
 use super::*;
 

@@ -1,10 +1,6 @@
-//! **O clique, o LARGAR do botão primário** — ramos do `on_mouse_input` ([`super`]): a borracha que resolve a
-//! seleção, o clique que colapsa a multi-seleção, o fim do arrasto do gizmo e a solda das pontas. Os corpos
-//! MUDARAM-SE verbatim (`line/input-dispatch`, 2026-09-13) e correm no sítio da chamada, pela mesma ordem.
-//!
-//! ⚠️ Cada ramo re-empresta `gfx`/`hero` com o MESMO guarda do braço de onde saiu (`if let … && let …`): sem
-//! eles o braço não fazia nada, e o ramo também não. A chamada seguinte só é legal porque o empréstimo MORRE
-//! antes dela (NLL) — nada do ramo volta a ler `gfx`/`hero` depois de chamar o próximo.
+//! **O clique, o LARGAR do botão primário** — ramos do `on_mouse_input` ([`super`]), corpos verbatim pela mesma ordem:
+//! a borracha, o clique que colapsa a multi-seleção, o fim do arrasto do gizmo e a solda. ⚠️ Cada ramo re-empresta
+//! `gfx`/`hero` com o MESMO guarda do braço; a chamada seguinte só é legal porque o empréstimo MORRE antes (NLL).
 
 use super::*;
 

@@ -1,10 +1,6 @@
-//! **O clique, os PICKS e as ALÇAS antes da ferramenta** — ramos do `on_mouse_input` ([`super`]): o que
-//! vale no modo Select (Set Center, duplo-clique no texto, alças do conector, do texto e das fichas), os picks
-//! MODAIS (caminho-guia, alvo do osso inteligente, corpo da junta, montagem e corda da roldana), a explosão e
-//! a atracção, o desenho de junta, o motion path, e os Up que fecham essas alças. Os corpos MUDARAM-SE
-//! verbatim (`line/input-dispatch`, 2026-09-13) e correm no sítio da chamada, pela mesma ordem.
-//!
-//! ⚠️ Cada ramo devolve `true` onde o handler fazia `return;`, e o índice devolve ao receber `true`.
+//! **O clique, os PICKS e as ALÇAS antes da ferramenta** — ramos do `on_mouse_input` ([`super`]), corpos verbatim pela
+//! mesma ordem: o Select (Set Center, duplo-clique no texto, alças do conector/texto/fichas), os picks MODAIS, explosão
+//! e atracção, desenho de junta, motion path, e os Up que fecham as alças. `true` onde o handler fazia `return;`.
 
 use super::*;
 

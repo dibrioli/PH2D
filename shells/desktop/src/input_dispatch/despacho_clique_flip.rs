@@ -1,10 +1,6 @@
-//! **O clique, a PREVIEW, o FLIP e os gizmos de nó** — ramos do `on_mouse_input` ([`super`]): a preview da UI
-//! desenhada (dona do clique), os Up que fecham traços e arrastos em curso, a costura da coluna e as guias, e os
-//! press do Flip (Draw, Pairs, Fill, Colorize, Trace, Erase, Reshape, Edit) e dos gizmos de pose, de selecção,
-//! de warp e de field. Os corpos MUDARAM-SE verbatim (`line/input-dispatch`, 2026-09-13) e correm no sítio da
-//! chamada, pela mesma ordem: todos os Up antes de todos os press.
-//!
-//! ⚠️ Cada ramo devolve `true` onde o handler fazia `return;`, e o índice devolve ao receber `true`.
+//! **O clique, a PREVIEW, o FLIP e os gizmos de nó** — ramos do `on_mouse_input` ([`super`]), corpos verbatim pela mesma
+//! ordem (todos os Up antes de todos os press): a preview da UI, os Up de traços e arrastos em curso, costura e guias,
+//! os press do Flip e dos gizmos de pose, selecção, warp e field. `true` onde o handler fazia `return;`.
 
 use super::*;
 

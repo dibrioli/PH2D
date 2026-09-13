@@ -1,9 +1,6 @@
-//! **O movimento do cursor, os ARRASTOS em curso** — ramos do `on_cursor_moved` ([`super`]): cada arrasto vivo é
-//! dono do ponteiro até ao Up e devolve cedo; sem arrasto, cada porta é no-op. Os corpos MUDARAM-SE verbatim
-//! (`line/input-dispatch`, 2026-09-13) e correm no sítio da chamada, pela mesma ordem.
-//!
-//! ⚠️ Os blocos eram de nível de topo do handler, e continuam à MESMA indentação dentro dos ramos: as agulhas
-//! de coluna que os gates lêem (o fecho do `if` da preview) casam no texto emendado como casavam no ficheiro.
+//! **O movimento do cursor, os ARRASTOS em curso** — ramos do `on_cursor_moved` ([`super`]), corpos verbatim pela mesma
+//! ordem: cada arrasto vivo é dono do ponteiro até ao Up. ⚠️ Os blocos ficam à MESMA indentação: as agulhas de coluna
+//! dos gates (o fecho do `if` da preview) casam no texto emendado.
 
 use super::*;
 

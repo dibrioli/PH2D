@@ -206,8 +206,7 @@ fn the_secondary_button_cancels_a_live_pencil_stroke() {
 #[test]
 fn the_stabiliser_filters_screen_px_and_the_press_seeds_the_hand() {
     // ── a função de MOVE: o filtro antes da conversão ──
-    // ⚠️ O fim é o método irmão seguinte em QUALQUER visibilidade (`line/input-dispatch`, 2026-09-13): no ficheiro para
-    // onde ele se mudou os irmãos são `pub(super) fn`, e só o `\n    fn ` esticaria a janela até ao ficheiro seguinte.
+    // ⚠️ Fim = o irmão seguinte em QUALQUER visibilidade: no ficheiro dele os irmãos são `pub(super) fn`.
     let mv_at = at("fn vec_pencil_drag_move");
     let mv = &SRC[mv_at..mv_at + crate::input_text::fim_do_item(&SRC[mv_at..])];
     // O ELO e não o endereço inteiro: desde a A9 o `rustfmt` parte `self.vec.pencil_hand` em linhas.
@@ -225,10 +224,8 @@ fn the_stabiliser_filters_screen_px_and_the_press_seeds_the_hand() {
 
     // ── o braço do PRESS: a semente mora nele ──
     //
-    // ⛔ **O fim é o comentário do braço SEGUINTE, nunca a coluna dele** (`line/input-dispatch`, 2026-09-13).
-    // A agulha levava os 20 espaços do `on_mouse_input`, e o `window` cai no fim do texto quando ela não casa:
-    // com o press mudado para um ramo, a janela esticaria até ao fim do despacho em SILÊNCIO e a semente
-    // passaria a ser achada em qualquer sítio. Por isso o fim tem de EXISTIR depois do press.
+    // ⛔ **O fim é o comentário do braço SEGUINTE, nunca a coluna dele**: sem a agulha de 20 espaços o `window` cairia
+    // no fim do despacho em SILÊNCIO (o press foi para um ramo) — por isso o fim tem de EXISTIR depois do press.
     let from = at("DrawMode::Pencil {");
     assert!(
         SRC[from..].contains("// Modo Connect"),

@@ -1,10 +1,6 @@
-//! **Os atalhos do editor, a segunda metade do `match code`** — ramos do `handle_editor_key` ([`super`]). Um
-//! `match` parte-se pelo braço `_`: os braços seguintes, PELA MESMA ORDEM, formam o `match code` do ramo, e o
-//! primeiro que casar é o mesmo de antes (o `match` do Rust é ordenado, guardas incluídas). Os corpos
-//! MUDARAM-SE verbatim (`line/input-dispatch`, 2026-09-13), à mesma indentação.
-//!
-//! ⚠️ O ficheiro vive no território do despacho (`input_dispatch/`) e é FILHO do `input_handlers` (por `#[path]`):
-//! assim ele vê os métodos privados de lá sem mudar a visibilidade de nenhum.
+//! **Os atalhos do editor, a segunda metade do `match code`** — ramos do `handle_editor_key` ([`super`]): o `match`
+//! parte-se pelo braço `_`, e os braços seguintes, PELA MESMA ORDEM e verbatim, formam o `match code` do ramo. ⚠️ É
+//! FILHO do `input_handlers` (por `#[path]`), para ver os métodos privados de lá sem mudar a visibilidade de nenhum.
 
 use super::*;
 

@@ -248,7 +248,7 @@ pub(crate) fn paint_hierarchy_row(
         scene,
         theme,
         row_id,
-        hit_index.as_deref_mut(),
+        hit_index,
         eye_size,
         icon_cluster_gap,
         right_x,

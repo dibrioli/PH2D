@@ -242,10 +242,20 @@ pub fn is_language(text: &str) -> bool {
         (Some(a), Some(b)) if a.is_ascii_uppercase() && b.is_ascii_lowercase()
     );
     let letters = u.chars().filter(char::is_ascii_alphabetic).count();
-    if token && !capitalized && !(had_placeholder && letters >= 3) {
+    // ⛔⛔ **Uma palavra GRITADA é língua** (medido 2026-09-13, na migração do Inspector): os títulos
+    //    dos cards da §14 são `"LEG"`, `"WALK"`, `"FORGIVENESS"`, pintados no ecrã, e a 1.ª redacção
+    //    só aceitava um token Capitalizado — todo título em maiúsculas saía em silêncio. ⚠️ Só
+    //    LETRAS e pelo menos três: `SCREAMING_CASE` (identificador), `UV` (sigla curta) e `RGBA16`
+    //    (formato) continuam de fora.
+    let shouted = letters >= 3 && u.chars().all(|c| c.is_ascii_uppercase());
+    if token && !capitalized && !shouted && !(had_placeholder && letters >= 3) {
         return false;
     }
-    if u.contains('/') || u.contains('\\') {
+    // ⛔⛔ **Uma BARRA numa FRASE não é um caminho** (medido 2026-09-13, na migração do Inspector):
+    //    `"Speed (m/s)"` e `"Corners F fixed (on/off)…"` saíam como caminho, e treze rótulos da §14
+    //    ficaram fora do censo — quem os achou foi o COMPILADOR, com a tabela deles meio `TextKey`. Um
+    //    caminho não tem espaço; uma unidade sozinha (`m/s`) continua de fora pela mesma pergunta.
+    if (u.contains('/') || u.contains('\\')) && !u.contains(char::is_whitespace) {
         return false;
     }
     ![

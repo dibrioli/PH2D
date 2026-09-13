@@ -20,6 +20,10 @@ use crate::source;
 pub fn looks_like_a_key(k: &str, prefix: &str) -> bool {
     k.len() > prefix.len()
         && k.starts_with(prefix)
+        // ⚠️ **Uma chave acaba num NOME, nunca num ponto** (2026-09-13): um gate que escreve o
+        //    PREFIXO de uma secção (`"panel.inspector.player."`, para separar as duas metades de um
+        //    vocabulário) era lido como uma chave em uso, e o censo acusava o próprio gate.
+        && !k.ends_with('.')
         && k.chars()
             .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_' || c == '.')
 }
@@ -32,9 +36,11 @@ fn code_of(p: &Path) -> Option<String> {
 
 /// Todas as chaves `<prefix>…` **usadas** na árvore do repo, com o primeiro ficheiro onde aparecem.
 ///
-/// ⚠️ A tabela declara; ela não usa — `table_rel` fica de fora, senão o censo lê a própria fonte
-/// como consumidor e os dois lados concordam sempre: um espelho não acusa.
-pub fn keys_used(repo: &Path, prefix: &str, table_rel: &str) -> BTreeMap<String, String> {
+/// ⚠️ As tabelas declaram; elas não usam — `tables` ficam de fora, senão o censo lê a própria fonte
+/// como consumidor e os dois lados concordam sempre: um espelho não acusa. ⚠️ São VÁRIAS porque um
+/// vocabulário pode estar partido por secção (o Inspector: a §14 num irmão, pelo tecto de LOC) — e
+/// uma metade lida como consumidora daria por usadas todas as chaves que ela declara.
+pub fn keys_used(repo: &Path, prefix: &str, tables: &[&str]) -> BTreeMap<String, String> {
     fn walk(dir: &Path, out: &mut Vec<PathBuf>) {
         let Ok(rd) = fs::read_dir(dir) else {
             return;
@@ -52,14 +58,14 @@ pub fn keys_used(repo: &Path, prefix: &str, table_rel: &str) -> BTreeMap<String,
             }
         }
     }
-    let table = repo.join(table_rel);
+    let tables: Vec<PathBuf> = tables.iter().map(|t| repo.join(t)).collect();
     let mut files = Vec::new();
     walk(repo, &mut files);
     files.sort();
     let needle = format!("\"{prefix}");
     let mut out = BTreeMap::new();
     for p in files {
-        if p == table {
+        if tables.contains(&p) {
             continue;
         }
         let Some(code) = code_of(&p) else {
@@ -86,24 +92,26 @@ pub fn keys_used(repo: &Path, prefix: &str, table_rel: &str) -> BTreeMap<String,
     out
 }
 
-/// Todas as chaves `<prefix>…` **declaradas** na tabela `table_rel` — só o LADO ESQUERDO de um
-/// braço (`"chave" =>`) conta.
-pub fn keys_declared(repo: &Path, table_rel: &str, prefix: &str) -> BTreeSet<String> {
-    let p = repo.join(table_rel);
-    let code = code_of(&p).unwrap_or_else(|| panic!("a tabela {p:?} não se lê"));
+/// Todas as chaves `<prefix>…` **declaradas** nas tabelas `tables` — só o LADO ESQUERDO de um
+/// braço (`"chave" =>`) conta, e as metades de um vocabulário partido somam-se.
+pub fn keys_declared(repo: &Path, tables: &[&str], prefix: &str) -> BTreeSet<String> {
     let needle = format!("\"{prefix}");
     let mut out = BTreeSet::new();
-    let mut i = 0usize;
-    while let Some(k) = code[i..].find(&needle) {
-        let start = i + k + 1;
-        let Some(end) = code[start..].find('"') else {
-            break;
-        };
-        let key = &code[start..start + end];
-        if code[start + end + 1..].trim_start().starts_with("=>") {
-            out.insert(key.to_string());
+    for table_rel in tables {
+        let p = repo.join(table_rel);
+        let code = code_of(&p).unwrap_or_else(|| panic!("a tabela {p:?} não se lê"));
+        let mut i = 0usize;
+        while let Some(k) = code[i..].find(&needle) {
+            let start = i + k + 1;
+            let Some(end) = code[start..].find('"') else {
+                break;
+            };
+            let key = &code[start..start + end];
+            if code[start + end + 1..].trim_start().starts_with("=>") {
+                out.insert(key.to_string());
+            }
+            i = start + end;
         }
-        i = start + end;
     }
     out
 }

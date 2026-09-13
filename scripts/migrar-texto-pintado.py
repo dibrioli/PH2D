@@ -65,6 +65,30 @@ def load_sections(path):
     return sorted(rows, key=lambda r: -len(r[0]))
 
 
+CONST_START = re.compile(r"\s*(pub(\([^)]*\))?\s+)?(const|static)\s+[A-Z_0-9]+\s*:")
+
+
+def in_const_item(lines, idx):
+    """O literal da linha `idx` está no inicializador de um `const`/`static`?
+
+    ⚠️ **Sobe até ao INÍCIO da instrução, não olha só a linha do literal** — a 1.ª redacção deste
+    script perguntava se a linha do literal começava por `const`, e uma tabela escrita em várias
+    linhas (`const KIND_LABELS: [&str; 9] = [\\n "Pin", …`) passava por `tr`, que não compila num
+    `const` (E0015). Uma linha que FECHA uma instrução (`;`, `{`, `}`) antes de achar o `const`
+    quer dizer que o literal está noutra instrução.
+
+    ⚠️ **A linha que FECHA uma instrução decide ANTES de a que abre um `const`** — medido na 1.ª
+    corrida sobre o Inspector: `const RECT_STEP: f64 = 0.1;` na linha de cima de um `Rect2Editor::new(
+    …, "Enabler Rect", …)` casava como início de `const`, e o rótulo levou `TextKey` num argumento.
+    """
+    for j in range(idx, -1, -1):
+        if j < idx and lines[j].split("//")[0].rstrip().endswith((";", "{", "}")):
+            return False
+        if CONST_START.match(lines[j]):
+            return True
+    return False
+
+
 def esqueleto(crate, prefixo, seccoes_path):
     src_root = f"crates/{crate}/src"
     out = subprocess.run(
@@ -83,12 +107,11 @@ def esqueleto(crate, prefixo, seccoes_path):
             sec = "SEM_SECCAO"
         if rel not in lines_cache:
             lines_cache[rel] = open(os.path.join(src_root, rel), encoding="utf8").read().split("\n")
-        src_line = lines_cache[rel][int(line) - 1]
         acao = "tr"
         if via == "macro:format":
             acao = "manual"
-        elif re.match(r"\s*(pub(\([^)]*\))?\s+)?(const|static)\s", src_line):
-            acao = "manual"
+        elif in_const_item(lines_cache[rel], int(line) - 1):
+            acao = "const"
         print("\t".join([acao, rel, line, start, end, via, f"{prefixo}.{sec}.{slug(unescape_tsv(text))}", text]))
     if unmapped:
         print("⚠️ ficheiros sem secção no mapa (chave SEM_SECCAO): " + ", ".join(sorted(unmapped)), file=sys.stderr)
@@ -109,9 +132,10 @@ def read_plan(path):
     return rows
 
 
-def insert_use(src):
-    """`use ph2d_i18n::tr;` depois do PRIMEIRO bloco de `use` de topo (o `rustfmt` ordena-o)."""
-    if re.search(r"^use ph2d_i18n::tr;$", src, re.M):
+def insert_use(src, name="tr"):
+    """`use ph2d_i18n::<name>;` antes do PRIMEIRO `use` de topo (o `rustfmt` ordena-o)."""
+    line = f"use ph2d_i18n::{name};"
+    if re.search(r"^" + re.escape(line) + r"$", src, re.M):
         return src, False
     lines = src.split("\n")
     first_use = next((i for i, l in enumerate(lines) if re.match(r"(pub(\([^)]*\))?\s+)?use\s", l)), None)
@@ -120,9 +144,9 @@ def insert_use(src):
         i = 0
         while i < len(lines) and (lines[i].startswith("//!") or lines[i].startswith("#![") or not lines[i].strip()):
             i += 1
-        lines.insert(i, "use ph2d_i18n::tr;")
+        lines.insert(i, line)
         return "\n".join(lines), True
-    lines.insert(first_use, "use ph2d_i18n::tr;")
+    lines.insert(first_use, line)
     return "\n".join(lines), True
 
 
@@ -132,7 +156,7 @@ def aplicar(crate, plan_path, tabela):
     # 1. a TABELA: uma chave, um texto — nunca dois
     table = collections.OrderedDict()
     for r in rows:
-        if r["acao"] not in ("tr", "manual", "saltar"):
+        if r["acao"] not in ("tr", "const", "manual", "saltar"):
             sys.exit(f"acao desconhecida {r['acao']!r} em {r['rel']}:{r['linha']}")
         if r["acao"] == "saltar":
             continue
@@ -142,8 +166,11 @@ def aplicar(crate, plan_path, tabela):
         table[r["chave"]] = r["texto"]
     # 2. os FICHEIROS, conferidos antes de qualquer escrita
     by_file = collections.defaultdict(list)
+    # ⭐ `const`: o literal mora num inicializador `const`/`static`, onde o `tr` não compila — fica a
+    #    CHAVE tipada (`ph2d_i18n::TextKey`), e o consumidor que se esquecer de a traduzir não compila.
+    call = {"tr": 'tr("{}")', "const": 'TextKey::new("{}")'}
     for r in rows:
-        if r["acao"] == "tr":
+        if r["acao"] in call:
             by_file[r["rel"]].append(r)
     new_sources = {}
     for rel, rs in by_file.items():
@@ -155,30 +182,46 @@ def aplicar(crate, plan_path, tabela):
             got = src[a:b]
             if got != want:
                 sys.exit(f"⛔ {rel}:{r['linha']} — nos índices {a}..{b} está {got!r}, esperava {want!r}. NADA foi escrito.")
-            src = src[:a] + f'tr("{r["chave"]}")' + src[b:]
-        src, _ = insert_use(src)
+            src = src[:a] + call[r["acao"]].format(r["chave"]) + src[b:]
+        for acao, name in (("tr", "tr"), ("const", "TextKey")):
+            if any(r["acao"] == acao for r in rs):
+                src, _ = insert_use(src, name)
         new_sources[p] = (src, len(rs))
     # 3. escrever, e reler para contar
     for p, (src, n) in new_sources.items():
         open(p, "w", encoding="utf8").write(src)
         back = open(p, encoding="utf8").read()
-        assert back.count('tr("') >= n, f"{p}: esperava ≥{n} chamadas tr, li {back.count('tr(\"')}"
-    arms = "\n".join(f'        "{k}" => "{unescape_tsv(v)}",' for k, v in table.items())
-    block = f"{BEGIN}\n{arms}\n        {END}"
-    if os.path.exists(tabela):
-        t = open(tabela, encoding="utf8").read()
-        assert t.count(BEGIN) == 1 and t.count(END) == 1, f"{tabela}: marcadores ausentes ou repetidos"
-        t = re.sub(re.escape(BEGIN) + r".*?" + re.escape(END), lambda _: block, t, flags=re.S)
-    else:
-        t = (
+        got = back.count('tr("') + back.count('TextKey::new("')
+        assert got >= n, f"{p}: esperava ≥{n} chamadas tr/TextKey::new, li {got}"
+    # ⛔ **A tabela JUNTA, nunca reescreve** (2026-09-13): a 1.ª redacção substituía o bloco entre os
+    #    marcadores pelo plano, e uma SEGUNDA passagem sobre a mesma crate (o que a régua passou a ver
+    #    depois de corrigida) apagaria os braços da primeira. Uma chave que já lá está com OUTRO texto
+    #    aborta; a mesma chave com o mesmo texto é saltada; uma órfã é o gate de chaves que a acusa.
+    if not os.path.exists(tabela):
+        open(tabela, "w", encoding="utf8").write(
             "pub(crate) fn tr(key: &str) -> Option<&'static str> {\n"
             "    Some(match key {\n"
-            f"        {block}\n"
+            f"        {BEGIN}\n"
+            f"        {END}\n"
             "        _ => return None,\n"
             "    })\n"
             "}\n"
         )
+    t = open(tabela, encoding="utf8").read()
+    assert t.count(BEGIN) == 1 and t.count(END) == 1, f"{tabela}: marcadores ausentes ou repetidos"
+    new_arms = []
+    for k, v in table.items():
+        m = re.search(r'^\s*"' + re.escape(k) + r'" => "', t, re.M)
+        if m:
+            first = unescape_tsv(v).split("\n")[0]
+            if not t[m.end():].startswith(first):
+                sys.exit(f"⛔ a chave {k} já está em {tabela} com OUTRO texto (queria {first!r}). NADA foi escrito na tabela.")
+            continue
+        new_arms.append(f'        "{k}" => "{unescape_tsv(v)}",\n')
+    end_at = re.search(r"^[ \t]*" + re.escape(END), t, re.M).start()
+    t = t[:end_at] + "".join(new_arms) + t[end_at:]
     open(tabela, "w", encoding="utf8").write(t)
+    print(f"  tabela: {len(new_arms)} braços novos, {len(table) - len(new_arms)} já lá estavam")
     manual = [r for r in rows if r["acao"] == "manual"]
     print(f"✓ {sum(n for _, n in new_sources.values())} literais trocados em {len(new_sources)} ficheiros · "
           f"{len(table)} chaves na tabela · {len(manual)} à MÃO:")

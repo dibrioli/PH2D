@@ -151,6 +151,11 @@ fn the_language_test_has_both_sides_of_every_border() {
     assert!(is_language("Size"));
     assert!(is_language("no canvas"));
     assert!(is_language("Brush over a defect · release to heal."));
+    // a palavra GRITADA de um título de card é língua; a sigla curta e o formato não
+    assert!(is_language("LEG"));
+    assert!(is_language("FORGIVENESS"));
+    assert!(!is_language("UV"));
+    assert!(!is_language("RGBA16"));
     // símbolos sem palavra
     assert!(!is_language("X"));
     assert!(!is_language("%"));
@@ -169,6 +174,10 @@ fn the_language_test_has_both_sides_of_every_border() {
     // caminhos
     assert!(!is_language("docs/design/icons/bone.svg"));
     assert!(!is_language("Cargo.toml"));
+    // uma barra numa FRASE não é caminho; uma unidade sozinha não é língua
+    assert!(is_language("Speed (m/s)"));
+    assert!(is_language("Corners F fixed (on/off)."));
+    assert!(!is_language("m/s"));
 }
 
 /// ⛔⛔ **Um escape do fonte NÃO é um caminho.** A 1.ª redacção deitava fora todo texto com `\`, e
@@ -186,4 +195,25 @@ fn a_source_escape_is_not_a_path_and_is_not_a_placeholder() {
     let src =
         "fn f(a: u32, b: u32) { let t = format!(\"{a} entities \\u{00b7} {b} components\"); }";
     assert_eq!(texts(src), ["{a} entities \\u{00b7} {b} components"]);
+}
+
+/// ⛔ **Um PREFIXO de secção não é uma chave.** Um gate que parte o vocabulário em duas tabelas
+/// escreve o prefixo da secção no fonte para as separar — e o censo de chaves lia-o como uma chave
+/// em uso, acusando o gate de usar uma chave que tabela nenhuma declara.
+#[test]
+fn a_section_prefix_is_not_a_key() {
+    use ph2d_label_census::keys::looks_like_a_key;
+    assert!(looks_like_a_key(
+        "panel.inspector.player.speed",
+        "panel.inspector."
+    ));
+    assert!(!looks_like_a_key(
+        "panel.inspector.player.",
+        "panel.inspector."
+    ));
+    assert!(!looks_like_a_key("panel.inspector.", "panel.inspector."));
+    assert!(!looks_like_a_key(
+        "panel.inspector.Player",
+        "panel.inspector."
+    ));
 }

@@ -1,0 +1,36 @@
+# O mapa FICHEIRO -> SECÇÃO DA UI do painel Inspector, para as chaves `panel.inspector.<secção>.…`
+# (consumido por `scripts/migrar-texto-pintado.py esqueleto`). O prefixo MAIS LONGO ganha.
+# ⚠️ A chave nomeia a secção que o artista VÊ, nunca o ficheiro: `emissive_row.rs` e as ranhuras
+# `Storage`/`Source` do `sections/mod.rs` são linhas da secção *Render Source*, cortadas pelo tecto
+# de LOC; `anchor_mount_row.rs` é a linha «Rides Parent Anchor» da §12 *Anchors*.
+lib.rs	panel
+paint_frame.rs	panel
+paint_head.rs	panel
+popovers.rs	panel
+populate_anchor.rs	anchors
+populate_player.rs	player
+sections/actions.rs	actions
+sections/anchor_mount_row.rs	anchors
+sections/anchors.rs	anchors
+sections/anim	animation
+sections/audio.rs	audio
+sections/camera.rs	camera
+sections/color_tint.rs	color_tint
+sections/emissive_row.rs	render_source
+sections/identity.rs	identity
+sections/instance	instance
+sections/joint	joint
+sections/material_blend.rs	material
+sections/mod.rs	render_source
+sections/ordering.rs	ordering
+sections/physics	physics
+sections/player	player
+sections/properties.rs	properties
+sections/render_source	render_source
+sections/sampling.rs	sampling
+sections/slice	slice
+sections/sprite_sheet.rs	sprite_sheet
+sections/timers.rs	timers
+sections/transform.rs	transform
+sections/visibility.rs	visibility
+sections/wheel.rs	wheel

@@ -25,7 +25,11 @@
 //! alvo do picker nomeou** — e com as duas recusas que impedem a decisão de voltar para dentro da
 //! função window-gated.
 
-const SRC: &str = include_str!("../../src/render_loop/mod.rs");
+/// O QUADRO pela ordem em que corre (`frame_text::render_frame`).
+///
+/// ⚠️ Desde a OBRA 2 da `line/render-loop` (2026-09-13) o readback do picker de filtro mora na
+/// `fase_filter_values_and_colour`: o `mod.rs` sozinho já não o tem.
+static SRC: std::sync::LazyLock<String> = std::sync::LazyLock::new(crate::frame_text::render_frame);
 
 /// O ORÇAMENTO da janela do scanner, em bytes.
 ///

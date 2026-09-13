@@ -17,14 +17,14 @@
 //! ⚠️ **Controle positivo:** um scanner que deixe de encontrar o bloco passa a guardar NADA, e um
 //! gate que não vê nada passa sempre. Por isso ele primeiro exige achar o bloco e a chamada.
 
-use std::fs;
-
+/// O QUADRO pela ordem em que corre (`frame_text::render_frame`).
+///
+/// ⚠️ Desde a OBRA 2 da `line/render-loop` (2026-09-13) o quadro vive em FASES: a adopção e a semeadura do eixo
+/// moram na `fase_vector_live_geometry`, e o overlay na `fase_vector_guides_and_build`. A janela da adopção vai do
+/// cabeçalho da wave até ao cozimento que a consome — uma relação de EXECUÇÃO, que só o texto emendado tem; e a
+/// agulha de AUSÊNCIA (`selected_paths`) lida só no `mod.rs` ficaria verde sem ver fase nenhuma.
 fn render_loop_src() -> String {
-    fs::read_to_string(concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/src/render_loop/mod.rs"
-    ))
-    .expect("render_loop/mod.rs")
+    crate::frame_text::render_frame()
 }
 
 /// O bloco que ADOPTA — do cabeçalho da wave até o cozimento que o consome.

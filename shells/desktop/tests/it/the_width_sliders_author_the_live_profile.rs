@@ -42,6 +42,28 @@ fn at(needle: &str) -> usize {
     })
 }
 
+/// A posição de `head` seguido de `tail` com SÓ espaço em branco entre os dois.
+///
+/// ⚠️ A agulha antiga era `"self.profile_live\n                .recook("` — dezasseis espaços de INDENTAÇÃO dentro
+/// dela. O `rustfmt` parte a cadeia conforme a coluna, e a coluna muda quando o corpo muda de casa (P4k: o cozimento
+/// mudou-se para a `fase_vector_live_geometry`, com outra indentação, e o gate reprovou sobre o quadro certo).
+/// *Uma agulha que carrega indentação mede a CASA, não a chamada.*
+fn at_chain(head: &str, tail: &str) -> usize {
+    let s = src();
+    let mut from = 0;
+    while let Some(i) = s[from..].find(head) {
+        let p = from + i;
+        if s[p + head.len()..].trim_start().starts_with(tail) {
+            return p;
+        }
+        from = p + head.len();
+    }
+    panic!(
+        "`{head}` seguido de `{tail}` sumiu do render_loop — se foi renomeado, atualize este gate (e confira \
+         que a largura viva ainda chega à tela: `PH2D_BUILD_SMOKE=41`)"
+    )
+}
+
 /// **Arrastar um dos quatro sliders ARMA o perfil na seleção.** Sem esta costura os knobs
 /// voltam a ser parâmetros de um comando: o artista arrasta, nada acontece, e só o clique
 /// mostra o resultado — que é exatamente o produto que o ADR-0148 substituiu.
@@ -103,7 +125,7 @@ fn the_cooked_ribbon_reaches_the_dispatch() {
 #[test]
 fn the_profile_cook_runs_after_the_sync_and_before_the_draw() {
     let sync = at("ph2d_vec_entities::entities::sync(");
-    let cook = at("self.profile_live\n                .recook(");
+    let cook = at_chain("self.profile_live", ".recook(");
     let draw = at("ph2d_vec_render::dispatch(");
     assert!(
         sync < cook,
@@ -153,7 +175,7 @@ fn the_pencil_arms_its_profile_before_the_cook() {
     let src = src();
     let sync = at("ph2d_vec_entities::entities::sync(");
     let arm = at("crate::profile_live::arm(sim, &self.vec.entities, &[id], &stops)");
-    let cook = at("self.profile_live\n                .recook(");
+    let cook = at_chain("self.profile_live", ".recook(");
     assert!(
         sync < arm,
         "o lápis arma ANTES do `sync` — a forma recém-nascida ainda não tem entidade"

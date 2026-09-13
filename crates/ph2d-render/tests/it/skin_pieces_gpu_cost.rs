@@ -387,3 +387,149 @@ fn measure_skin_pieces_on_the_gpu() {
     }
     println!("\ncarga no fim: {}\n", carga());
 }
+
+/// Arte com estrutura e alfa UNIFORME `alfa` — a translúcida é a que denuncia uma sobreposição.
+fn arte_com_alfa(w: u32, h: u32, alfa: u8) -> StableImage {
+    let mut px = Vec::with_capacity((w as usize) * (h as usize) * 4);
+    for y in 0..h {
+        for x in 0..w {
+            let r = u8::try_from(x * 255 / w.max(1)).unwrap_or(255);
+            let g = u8::try_from(y * 255 / h.max(1)).unwrap_or(255);
+            px.extend_from_slice(&[r, g, 160, alfa]);
+        }
+    }
+    StableImage::from_rgba(Arc::new(px), w, h).expect("dimensoes batem")
+}
+
+/// Afasta cada aresta do triângulo exactamente `e` px: homotetia pelo INCENTRO de razão
+/// `(r + e) / r`, com `r` o raio inscrito.
+fn dilata(tri: [Point; 3], e: f64) -> [Point; 3] {
+    let [a, b, c] = tri;
+    let (la, lb, lc) = ((b - c).hypot(), (c - a).hypot(), (a - b).hypot());
+    let perimetro = la + lb + lc;
+    let dobro_da_area = (b - a).cross(c - a).abs();
+    if perimetro <= 0.0 || dobro_da_area <= 0.0 {
+        return tri;
+    }
+    let incentro = Point::new(
+        (la * a.x + lb * b.x + lc * c.x) / perimetro,
+        (la * a.y + lb * b.y + lc * c.y) / perimetro,
+    );
+    let r = dobro_da_area / perimetro;
+    let s = (r + e) / r;
+    tri.map(|p| incentro + (p - incentro) * s)
+}
+
+/// Como [`cena`], com cada recorte dilatado `e` px no ecrã (`e = 0` não toca num bit).
+fn cena_dilatada(img: &StableImage, to_screen: Affine, (cols, rows): (u32, u32), e: f64) -> VectorScene {
+    let mut s = VectorScene::new();
+    let (w, h) = (f64::from(img.width()), f64::from(img.height()));
+    let p = |x: f64, y: f64| to_screen * Point::new(x, y);
+    for j in 0..rows {
+        for i in 0..cols {
+            let x0 = w * f64::from(i) / f64::from(cols);
+            let x1 = w * f64::from(i + 1) / f64::from(cols);
+            let y0 = h * f64::from(j) / f64::from(rows);
+            let y1 = h * f64::from(j + 1) / f64::from(rows);
+            for tri in [
+                [p(x0, y0), p(x1, y0), p(x1, y1)],
+                [p(x0, y0), p(x1, y1), p(x0, y1)],
+            ] {
+                let tri = if e == 0.0 { tri } else { dilata(tri, e) };
+                let mut t = BezPath::new();
+                t.move_to(tri[0]);
+                t.line_to(tri[1]);
+                t.line_to(tri[2]);
+                t.close_path();
+                s.push_clip(&t);
+                s.draw_stable_image_transformed(img, to_screen, ImageQuality::Medium);
+                s.pop_layer();
+            }
+        }
+    }
+    s
+}
+
+/// `(pixels comparados, pixels com |Δα| > 8, maior |Δα|)` onde a referência tem tinta.
+fn desvio_de_alfa(
+    referencia: &[u8],
+    pecas: &[u8],
+    largura: u32,
+    rect: (u32, u32, u32, u32),
+) -> (usize, usize, u8) {
+    let (mut dentro, mut fora_da_barra, mut pior) = (0, 0, 0_u8);
+    let (x0, y0, x1, y1) = rect;
+    for y in y0..y1 {
+        for x in x0..x1 {
+            let i = ((y * largura + x) * 4 + 3) as usize;
+            if referencia[i] == 0 {
+                continue;
+            }
+            dentro += 1;
+            let d = referencia[i].abs_diff(pecas[i]);
+            if d > 8 {
+                fora_da_barra += 1;
+            }
+            pior = pior.max(d);
+        }
+    }
+    (dentro, fora_da_barra, pior)
+}
+
+/// ⭐⭐ **A CURA BARATA DAS COSTURAS, medida antes de ser escolhida** — dilatar cada recorte.
+///
+/// Dois recortes vizinhos com AA analítico compõem `1 − a·b` na aresta partilhada e o fundo espreita
+/// (a sonda acima: `16 580` px a zoom 4 com `216` peças, alfa mínimo `182`). Dilatar cada recorte
+/// `e` px faz os vizinhos SOBREPOREM-SE: em arte OPACA isso fecha a costura; em arte TRANSLÚCIDA a
+/// faixa sobreposta é composta DUAS vezes. As duas metades são o que decide.
+#[test]
+#[ignore = "sonda de GPU: costura contra dilatacao dos recortes, em arte opaca e translucida"]
+fn measure_seams_against_clip_dilation() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("sem GPU headless — nada medido");
+        return;
+    };
+    let (alvo, (aw, ah), escala, margem) = ((1_320_u32, 424_u32), (320_u32, 96_u32), 4.0, 20.0);
+    let to_screen = Affine::translate((margem, margem)) * Affine::scale(escala);
+    #[expect(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "cantos de um rectangulo de ecra positivo e pequeno"
+    )]
+    let rect = (
+        margem as u32 + 2,
+        margem as u32 + 2,
+        (margem + f64::from(aw) * escala) as u32 - 2,
+        (margem + f64::from(ah) * escala) as u32 - 2,
+    );
+    let mut pass = VelloPass::new(&gpu, SURFACE, alvo).expect("VelloPass");
+    println!("\ncarga {}", carga());
+    println!(
+        "{:>12} {:>6} {:>6} {:>9} {:>11} {:>7}",
+        "arte", "pecas", "e px", "miolo", "|dalfa|>8", "pior"
+    );
+    for (nome, alfa) in [("opaca", 255_u8), ("translucida", 128)] {
+        let img = arte_com_alfa(aw, ah, alfa);
+        let referencia = pass
+            .render_and_readback(&gpu, cena(&img, to_screen, None).inner(), alvo)
+            .expect("readback da referencia");
+        for grelha in [(18_u32, 6_u32), (72, 24)] {
+            for e in [0.0, 0.25, 0.5, 1.0] {
+                let px = pass
+                    .render_and_readback(&gpu, cena_dilatada(&img, to_screen, grelha, e).inner(), alvo)
+                    .expect("readback das pecas");
+                let (dentro, fora, pior) = desvio_de_alfa(&referencia, &px, alvo.0, rect);
+                println!(
+                    "{:>12} {:>6} {:>6.2} {:>9} {:>11} {:>7}",
+                    nome,
+                    2 * grelha.0 * grelha.1,
+                    e,
+                    dentro,
+                    fora,
+                    pior
+                );
+            }
+        }
+    }
+    println!();
+}

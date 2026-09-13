@@ -173,30 +173,56 @@ fn a_call_ends_at_its_own_closing_paren() {
     assert_eq!(call_end("draw(a, b", 0), None);
 }
 
+/// A próxima referência a uma fase em `s`: `(início do `self`, índice do `.`)`.
+///
+/// ⚠️ **Espaço em branco entre o `self` e o `.` é permitido, e foi medido** (P6a): o `rustfmt` partiu a chamada
+/// `if self.fase_vec_expand(…).is_none()` em `if self\n    .fase_vec_expand(…)\n    .is_none()`, a emenda procurava
+/// `self.fase_` CONTÍGUO, e a fase ficou ÓRFÃ no texto — o gate das órfãs reprovou alto, e um gate de ordem teria lido
+/// o quadro sem ela. *Uma agulha que carrega a formatação mede o `rustfmt`* (a lei da `find_chain`, no próprio
+/// instrumento). O `self` tem de ser uma PALAVRA: `myself.fase_x` não é o quadro.
+fn next_phase_ref(s: &str) -> Option<(usize, usize)> {
+    let alvo = format!(".{FASE}");
+    let mut from = 0;
+    while let Some(k) = s[from..].find(&alvo) {
+        let dot = from + k;
+        let antes = s[..dot].trim_end();
+        if let Some(inicio) = antes.strip_suffix("self").map(str::len)
+            && s[..inicio]
+                .chars()
+                .next_back()
+                .is_none_or(|c| !(c.is_alphanumeric() || c == '_'))
+        {
+            return Some((inicio, dot));
+        }
+        from = dot + alvo.len();
+    }
+    None
+}
+
 fn splice(text: &str, phases: &BTreeMap<String, String>, depth: usize) -> String {
     assert!(
         depth < 8,
         "fases aninhadas mais de 8 níveis — ou há um ciclo entre fases, ou o quadro deixou de ser \
          uma lista"
     );
-    let chamada = format!("self.{FASE}");
     let mut out = String::with_capacity(text.len());
     let mut rest = text;
-    while let Some(i) = rest.find(&chamada) {
-        let depois = &rest[i + "self.".len()..];
+    while let Some((i, dot)) = next_phase_ref(rest) {
+        let depois = &rest[dot + ".".len()..];
         let fim = depois
             .find(|c: char| !(c.is_alphanumeric() || c == '_'))
             .unwrap_or(depois.len());
         let nome = &depois[..fim];
+        let ate = dot + ".".len() + fim;
         // Só uma CHAMADA é fase: `self.fase_x` sem `(` a seguir seria um campo, e emendá-lo leria
         // um endereço de dados como um pedaço do quadro. E uma chamada citada num COMENTÁRIO também
         // não é: emendá-la poria o corpo da fase duas vezes no texto, e um gate de ordem acharia o
         // literal no sítio da prosa.
-        let inicio_da_linha = rest[..i].rfind('\n').map_or(0, |n| n + 1);
-        let em_comentario = rest[inicio_da_linha..i].contains("//");
+        let inicio_da_linha = rest[..dot].rfind('\n').map_or(0, |n| n + 1);
+        let em_comentario = rest[inicio_da_linha..dot].contains("//");
         if em_comentario || !depois[fim..].trim_start().starts_with('(') {
-            out.push_str(&rest[..i + "self.".len() + fim]);
-            rest = &rest[i + "self.".len() + fim..];
+            out.push_str(&rest[..ate]);
+            rest = &rest[ate..];
             continue;
         }
         let corpo = phases.get(nome).unwrap_or_else(|| {
@@ -208,11 +234,30 @@ fn splice(text: &str, phases: &BTreeMap<String, String>, depth: usize) -> String
         out.push_str(&rest[..i]);
         out.push_str(&format!("/* ⟦fase {nome}⟧ */"));
         out.push_str(&splice(corpo, phases, depth + 1));
-        out.push_str(&rest[i..i + "self.".len() + fim]);
-        rest = &rest[i + "self.".len() + fim..];
+        out.push_str(&rest[i..ate]);
+        rest = &rest[ate..];
     }
     out.push_str(rest);
     out
+}
+
+/// **Uma chamada que o `rustfmt` parte em linhas continua a ser uma chamada** — e só a do `self`.
+#[test]
+fn a_call_split_by_rustfmt_is_still_a_call_and_only_selfs() {
+    let texto = "x; if self\n    .fase_b()\n    .is_none() { return; }\ny;";
+    let e = splice(texto, &fases_de_brinquedo(), 0);
+    let b = e
+        .find("B;")
+        .unwrap_or_else(|| panic!("a chamada partida não foi emendada: {e}"));
+    let y = e.find("y;").expect("o resto do texto");
+    assert!(e.contains("⟦fase fase_b⟧") && b < y, "{e}");
+    for nao in ["outro\n    .fase_b();", "myself.fase_b();"] {
+        let e = splice(nao, &fases_de_brinquedo(), 0);
+        assert!(
+            !e.contains("⟦fase"),
+            "`{nao}` não é o quadro a chamar uma fase: {e}"
+        );
+    }
 }
 
 /// **O texto do quadro chega ao fim do quadro, e nenhuma fase fica de fora dele.**

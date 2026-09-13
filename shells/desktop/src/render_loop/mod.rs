@@ -338,6 +338,8 @@ mod fase_ui_burst_paint;
 mod fase_use_as_brush;
 /// Fase do quadro: o Use as Paper / Granulation da Hierarquia.
 mod fase_use_as_paper;
+/// Fase do quadro: o Apply Offset e o Power Stroke.
+mod fase_vec_expand;
 /// Fase do quadro: as faixas do documento.
 mod fase_vector_bands;
 /// Fase do quadro: o overlay dos ossos.
@@ -5058,97 +5060,11 @@ impl crate::App {
                     self.vec.path_pick = Some(crate::vec_pick::PathPick::InstanceMain(at));
                 }
             }
-            if let Some(cmd) = pending_vec_expand {
-                let xf = ph2d_vec_entities::transform::build(sim, &self.vec.entities);
-                // **Apply Offset MATERIALIZA o offset vivo** — é o único momento em que os
-                // vértices do offset passam a existir no documento (Enio, 2026-07-21). Cada
-                // forma é assada com o `VecOffset` DELA, e não com o slider: duas formas podem
-                // carregar offsets diferentes, e o botão tem de honrar o que está na TELA.
-                // Passa pela MESMA porta do caminho numérico (`expand_selection`), senão
-                // haveria uma 2ª maneira de a geometria do offset entrar na cena.
-                // **O botão Power Stroke MATERIALIZA o perfil vivo** (ADR-0148) — o espelho
-                // exato do Apply Offset logo abaixo. Sem perfil armado na seleção devolve
-                // `false`, e o clique segue pelo caminho numérico (que lê os sliders).
-                let sel_now: Vec<ph2d_vec_scene::VecPathId> =
-                    self.vec.pen.selected_paths().to_vec();
-                if matches!(cmd, crate::vec_expand::Expand::PowerStroke { .. })
-                    && crate::profile_live::materialise(
-                        vec_scene,
-                        sim,
-                        &mut self.vec.pen,
-                        &self.vec.entities,
-                        &xf,
-                        &sel_now,
-                    )
-                {
-                    // A forma nova não tem perfil vivo, e knobs parados num afinamento sobre ela
-                    // mentiriam sobre o que está na cena — o mesmo argumento do slider de Offset.
-                    self.vec.profile_mirrored = None;
-                    crate::profile_live::write_preset_to_store(
-                        &mut hero.store,
-                        &ph2d_vec_scene::WidthProfile::UNIFORM,
-                    );
-                    return;
-                }
-                let materialised = matches!(cmd, crate::vec_expand::Expand::Offset { .. }) && {
-                    let ids: Vec<ph2d_vec_scene::VecPathId> =
-                        self.vec.pen.selected_paths().to_vec();
-                    crate::offset_live::materialise(
-                        vec_scene,
-                        sim,
-                        &mut self.vec.pen,
-                        &self.vec.entities,
-                        &xf,
-                        &ids,
-                    )
-                };
-                if materialised {
-                    self.vec.offset_mirrored = None;
-                    // O slider volta ao zero: a forma nova não tem offset vivo, e um slider
-                    // parado em +40% sobre ela mentiria sobre o que está na cena.
-                    hero.store.set_slider_value(
-                        ph2d_editor_core::ids::VECTOR_EXPAND_OFFSET,
-                        ph2d_tool_vector::params::offset_frac_to_slider(0.0),
-                    );
-                } else {
-                    // O caminho NUMÉRICO (sem offset vivo armado): a distância vem do slider —
-                    // a MESMA fonte que o chip mostra —, fração × escala da seleção atual.
-                    let d = hero
-                        .store
-                        .slider(ph2d_editor_core::ids::VECTOR_EXPAND_OFFSET)
-                        .map_or(ph2d_tool_vector::params::OFFSET_DEFAULT_FRAC, |(_, v)| {
-                            ph2d_tool_vector::params::slider_to_offset_frac(v)
-                        })
-                        * crate::vec_expand::offset_scale(vec_scene, &self.vec.pen, &xf);
-                    // ⚠️ O PERFIL também vem dos sliders — a mesma fonte que o chip mostra. O
-                    // `expand_for_id` devolve o comando com o perfil UNIFORME (ele não tem o
-                    // store), e é aqui que ele é preenchido; um default cravado lá seria um 2º
-                    // lugar decidindo o que o artista já arrastou.
-                    let cmd = match cmd {
-                        crate::vec_expand::Expand::PowerStroke { .. } => {
-                            crate::vec_expand::Expand::PowerStroke {
-                                stops: crate::profile_live::preset_from_store(&hero.store)
-                                    .to_stops(),
-                            }
-                        }
-                        other => other,
-                    };
-                    crate::vec_expand::apply_vec_expand(
-                        vec_scene,
-                        &mut self.vec.pen,
-                        &xf,
-                        cmd.clone(),
-                        d,
-                    );
-                    // O botão de Offset (caminho numérico: arrastar sem seleção viva e clicar)
-                    // recentra o slider — cada aplicação offseta pelo valor mostrado e zera.
-                    if matches!(cmd, crate::vec_expand::Expand::Offset { .. }) {
-                        hero.store.set_slider_value(
-                            ph2d_editor_core::ids::VECTOR_EXPAND_OFFSET,
-                            ph2d_tool_vector::params::offset_frac_to_slider(0.0),
-                        );
-                    }
-                }
+            if self
+                .fase_vec_expand(fase_vec_expand::VecExpandIntents { pending_vec_expand })
+                .is_none()
+            {
+                return;
             }
             self.fase_compound_snap_rulers(fase_compound_snap_rulers::CompoundSnapRulersIntents {
                 pending_vec_compound,

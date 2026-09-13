@@ -22,7 +22,31 @@
 /// wave atrás.
 #[test]
 fn the_arrow_click_reaches_the_world() {
-    let shell = include_str!("render_loop/mod.rs");
+    // ⚠️ **O QUADRO vive em FASES** (OBRA 2 da `line/render-loop`, 2026-09-13): o `render_loop/mod.rs` parte-se em
+    // `render_loop/fase_*.rs`, e a reconciliação foi a primeira destas agulhas a mudar de casa. As afirmações aqui
+    // são de PRESENÇA (e uma de ausência), nunca de ordem — então a lente é o DIRECTÓRIO do quadro inteiro, e não
+    // uma lista de ficheiros que envelheceria a cada fase. ⛔ Com PISO de população: uma varredura que achasse zero
+    // ficheiros deixaria as presenças vermelhas e a ausência VERDE sobre nada.
+    let shell: String = {
+        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src/render_loop");
+        let mut files: Vec<std::path::PathBuf> = std::fs::read_dir(&dir)
+            .expect("ler src/render_loop")
+            .flatten()
+            .map(|e| e.path())
+            .filter(|p| p.extension().is_some_and(|x| x == "rs"))
+            .collect();
+        files.sort();
+        assert!(
+            files.len() >= 30 && files.iter().any(|p| p.ends_with("mod.rs")),
+            "a varredura do render_loop achou {} ficheiros (sem o mod.rs?) — o gate mediria nada",
+            files.len()
+        );
+        files
+            .iter()
+            .map(|p| std::fs::read_to_string(p).expect("ler um ficheiro do render_loop"))
+            .collect::<Vec<_>>()
+            .join("\n")
+    };
     for (needle, what) in [
         (
             "crate::vec_morph_edit::morph_cmd_for_id(*id)",

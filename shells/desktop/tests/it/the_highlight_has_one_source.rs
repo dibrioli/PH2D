@@ -216,7 +216,7 @@ fn only_the_listed_gestures_arm_a_sound() {
             // COMMITs — a mão mexeu no documento de vez. ⛔ E as TRANSIÇÕES continuam mudas: elas
             // correm durante a reprodução, e um som por transição seria o app a comentar o que o
             // motor decidiu.
-            "src/render_loop/mod.rs",
+            FRAME,
             5,
             "consolidar a booleana · o interruptor da preview de poses · fazer o conjunto de \
              Morph States · o interruptor da preview do Morph · os três verbos de mundo dele",
@@ -227,8 +227,39 @@ fn only_the_listed_gestures_arm_a_sound() {
             "as duas recusas da trava do Painter",
         ),
     ];
+    // ⚠️ **O QUADRO conta-se INTEIRO** (OBRA 2 da `line/render-loop`, 2026-09-13): o `render_loop/mod.rs` parte-se em
+    // fases (`render_loop/fase_*.rs`), e o armamento da booleana foi o primeiro a mudar de casa. Contado por
+    // FICHEIRO, cada fase que sai obrigaria a reescrever esta lista sem que um único som mudasse — e uma entrada
+    // por fase seria a lista a medir ENDEREÇOS em vez de gestos. A unidade é o quadro.
+    const FRAME: &str = "src/render_loop/{mod.rs, fase_*.rs}";
+    fn is_frame_file(rel: &str) -> bool {
+        rel == "src/render_loop/mod.rs"
+            || (rel.starts_with("src/render_loop/fase_") && rel.ends_with(".rs"))
+    }
+    fn frame_count() -> usize {
+        let (mut files, mut n) = (0usize, 0usize);
+        let mut has_mod = false;
+        walk_shell_src(&mut |rel, src| {
+            if is_frame_file(&rel) {
+                files += 1;
+                has_mod |= rel == "src/render_loop/mod.rs";
+                n += src.matches("pending_ui_sound = Some").count();
+            }
+        });
+        // ⛔ PISO: uma varredura que achasse zero ficheiros do quadro contaria zero sons e reprovaria pelo
+        // motivo errado — ou, com a lista a dizer 0, passaria sobre nada.
+        assert!(
+            has_mod && files >= 30,
+            "a varredura achou {files} ficheiros do quadro (mod.rs: {has_mod}) — o censo mediria nada"
+        );
+        n
+    }
     for (rel, want, what) in ARMED {
-        let n = shell(rel).matches("pending_ui_sound = Some").count();
+        let n = if *rel == FRAME {
+            frame_count()
+        } else {
+            shell(rel).matches("pending_ui_sound = Some").count()
+        };
         assert_eq!(
             n, *want,
             "{rel} arma {n} som(ns) e a lista diz {want} ({what}) — se o novo é deliberado, \
@@ -240,7 +271,11 @@ fn only_the_listed_gestures_arm_a_sound() {
     let listed: Vec<&str> = ARMED.iter().map(|(r, _, _)| *r).collect();
     let mut strays = Vec::new();
     walk_shell_src(&mut |rel, src| {
-        if !listed.contains(&rel.as_str()) && src.contains("pending_ui_sound = Some") {
+        // Os ficheiros do QUADRO estão contados como UM, acima — eles não são intrusos.
+        if !listed.contains(&rel.as_str())
+            && !is_frame_file(&rel)
+            && src.contains("pending_ui_sound = Some")
+        {
             strays.push(rel);
         }
     });

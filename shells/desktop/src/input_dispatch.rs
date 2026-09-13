@@ -77,6 +77,8 @@ mod despacho_clique_largar;
 mod despacho_clique_pick;
 /// Os reclamantes do fim do clique (painter, modais, pan, barra lateral) — ramos do `on_mouse_input`.
 mod despacho_clique_reclamantes;
+/// Os picks modais e as alças do Select, antes da ferramenta vetorial — ramos do `on_mouse_input`.
+mod despacho_clique_select;
 /// A ferramenta vetorial no clique (o guarda do ADR-0112, o Shift, o direito) — ramos do `on_mouse_input`.
 mod despacho_clique_vetor;
 /// O premir da ferramenta vetorial (modos, corte/balde/osso, quinas, caneta/forma) — ramos do `on_mouse_input`.
@@ -4198,60 +4200,7 @@ impl App {
         {
             return;
         }
-        // O Up que FECHA o arrasto de alça (ele nasceu no Select, e é lá que morre).
-        if self.vec.conn_handle.is_some()
-            && mapped_button == ph2d_host::PointerButton::Primary
-            && kind == PointerKind::Up
-        {
-            if let Some(w) = self.vec_world_at((evt.x, evt.y)) {
-                self.conn_handle_up(w);
-            } else {
-                self.conn_handle_cancel();
-            }
-            return;
-        }
-        // O Up que fecha o arrasto da alça do texto — nasceu no Select, morre no Select.
-        if self.vec.textpath_handle_drag
-            && mapped_button == ph2d_host::PointerButton::Primary
-            && kind == PointerKind::Up
-        {
-            self.vec.textpath_handle_drag = false;
-            return;
-        }
-        // ⭐⭐⭐ **O Up que fecha o arrasto de uma ALÇA DE OSSO.**
-        //
-        // ⚠️ Ela CONSOME o gesto: sem isto, soltar depois de girar um osso cai na cadeia de baixo e
-        // a forma sob o cursor é seleccionada.
-        //
-        // ⛔⛔ **Ele vivia DENTRO do bloco `vector_tool_active() && modo != Select`** e a alça passou
-        // a poder ser agarrada em todo modo (auditoria de 2026-09-08) ⇒ no modo **Select** o slot
-        // era armado e **nunca** libertado: o osso seguia o rato para sempre, sem botão nenhum
-        // apertado. *Um slot de arrasto tem de ser largado onde quer que possa ser agarrado* — e é
-        // por isso que ele passou para esta família, que é a dos irmãos independentes de modo.
-        if self.skeleton.bone_pose.is_some()
-            && mapped_button == ph2d_host::PointerButton::Primary
-            && kind == PointerKind::Up
-        {
-            self.skeleton.bone_pose = None;
-            return;
-        }
-        // O Up que fecha o arrasto de uma ficha do PATTERN (W4) — mesma vida da do texto.
-        if self.vec.patternpath_handle.is_some()
-            && mapped_button == ph2d_host::PointerButton::Primary
-            && kind == PointerKind::Up
-        {
-            self.vec.patternpath_handle = None;
-            return;
-        }
-        // O Up que fecha o arrasto de uma ÂNCORA do motion path — e que FECHA o passo de
-        // undo que o press abriu. Sem este `commit_if_changed` o `begin` fica pendurado e
-        // o próximo gesto o herda: um Ctrl+Z desfaria os dois de uma vez.
-        if self.motion_shell.path_drag.is_some()
-            && mapped_button == ph2d_host::PointerButton::Primary
-            && kind == PointerKind::Up
-        {
-            self.motion_shell.path_drag = None;
-            self.timeline.history.commit_if_changed(&self.timeline.doc);
+        if self.ramo_alcas_soltas(kind, mapped_button, evt) {
             return;
         }
         if self.ramo_ferramenta_vetorial(mapped_button, kind, on_canvas, evt, menu_open_before) {

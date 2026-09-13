@@ -290,6 +290,8 @@ mod fase_vector_bands;
 mod fase_vector_bone_overlay;
 /// Fase do quadro: o Apply booleano e a reconciliacao dos conjuntos de Morph.
 mod fase_vector_bool_apply_and_morph_reconcile;
+/// Fase do quadro: o grupo booleano e o verbo da forma.
+mod fase_vector_bool_shape_row;
 /// Fase do quadro: o overlay de edicao vectorial e as imagens com pele.
 mod fase_vector_edit_overlay;
 /// Fase do quadro: a recozedura de FX e de padroes.
@@ -8083,39 +8085,14 @@ impl crate::App {
                     &vec_xf,
                     &sel,
                 );
-                let group = crate::bool_gesture::group_of_selection(sim, &self.vec.entities, &sel);
-                ph2d_panel_vector::state::set_bool_group_selected(group.is_some());
-                // **O VERBO DA FORMA: honrar o clique ANTES de publicar** — a ordem é a mesma do
-                // chip do recorte, e pela mesma razão: publicar primeiro deixaria o chip a piscar
-                // de volta ao valor antigo por um quadro.
-                //
-                // ⚠️ O escritor **reconfere** a triagem em vez de confiar no que o painel pintou:
-                // entre pintar a fileira e o clique chegar passa um frame, e nele a seleção pode
-                // ter mudado.
-                // ⚠️ O sujeito é o **PRIMÁRIO**, e não «a seleção». Tocar um filho seleciona o
-                // GRUPO inteiro (`input_dispatch`), então uma regra de contagem tornava esta
-                // fileira inalcançável por clique — foi o defeito de 22/08. O primário sobrevive
-                // à expansão (`set_object_selection` preserva-o) e é a forma que o dedo apontou.
-                let primary = self.vec.pen.selected();
-                if let Some(code) = pending_bool_shape_op {
-                    crate::vec_bool_shape::set_selected_shape_op(
-                        sim,
-                        &self.vec.entities,
-                        &self.bool_live,
-                        &sel,
-                        primary,
-                        code,
-                    );
-                }
-                ph2d_panel_vector::state::set_bool_shape_row(
-                    crate::vec_bool_shape::shape_row_of_selection(
-                        sim,
-                        &self.vec.entities,
-                        &self.bool_live,
-                        &sel,
-                        primary,
-                    ),
-                );
+                let Some((group, sel)) = self.fase_vector_bool_shape_row(
+                    fase_vector_bool_shape_row::BoolShapeIntents {
+                        pending_bool_shape_op,
+                    },
+                    sel,
+                ) else {
+                    return;
+                };
                 self.fase_vector_morph_verbs(
                     fase_vector_morph_verbs::MorphVerbIntents {
                         pending_morph_arrow,

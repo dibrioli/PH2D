@@ -318,6 +318,8 @@ mod fase_vector_tokens_and_labels;
 mod fase_vector_tool_handles;
 /// Fase do quadro: o assentamento das origens e da arvore.
 mod fase_vector_tree_settle;
+/// Fase do quadro: as manutencoes vivas do vector.
+mod fase_vector_upkeeps;
 /// Fase do quadro: a vista vectorial, os estilos conduzidos e as recozeduras de forma.
 mod fase_vector_view_and_drives;
 /// O empréstimo do `gfx` do quadro: o destructure exaustivo do `AppGfx`, re-derivado por fase.
@@ -7318,58 +7320,7 @@ impl crate::App {
                     vector_bridge::adopt_shape_values(tools, focus.1, ui);
                 }
             }
-            // **Conectores, 1ª metade:** pendura o `VecConnector` na entidade (que nasceu no
-            // `sync` acima) do conector EM GESTO e do recém-fechado.
-            //
-            // **Antes do `settle`, e isso não é arrumação:** o `settle` pula os conectores
-            // (a geometria deles é MUNDO, reescrita a cada frame) — mas só pode pular o que
-            // ENXERGA. Sem o componente já pendurado, a linha recém-empurrada seria assentada
-            // como um path comum: origem no centro dela, geometria recuada, e a rota do frame
-            // seguinte sairia deslocada exatamente por esse delta.
-            crate::connector_live::upkeep(
-                sim,
-                vec_scene,
-                &self.vec.entities,
-                self.vec.connect.as_ref().map(|d| (d.path, &d.conn)),
-                &mut self.vec.connect_pending,
-            );
-            // **Blend Objects, 1ª metade:** pendura o `VecBlend` na entidade (nascida no `sync`)
-            // do blend recém-criado. ANTES do `settle`, pela mesma razão do conector: o `settle`
-            // pula o blend, mas só o que ENXERGA — sem o componente já pendurado, o spine
-            // recém-empurrado seria assentado como um path comum e o recook do frame seguinte
-            // sairia deslocado (ADR-0128).
-            crate::blend_live::upkeep(
-                sim,
-                vec_scene,
-                &self.vec.entities,
-                &mut self.vec.blend_pending,
-            );
-            // **A LINHA DE CORTE, 1ª metade:** pendura o `VecCutPath` na entidade (nascida no
-            // `sync`) da lâmina recém-desenhada. Mesma posição e mesma razão dos dois de cima.
-            crate::vec_cut_line::upkeep(
-                sim,
-                vec_scene,
-                &self.vec.entities,
-                &mut self.vec.cut_pending,
-            );
-            // **Morph Objects, 1ª metade:** idem, e pela MESMA razão — sem o componente pendurado
-            // antes do `settle`, o path recém-empurrado seria assentado como um path comum e o
-            // recook do frame seguinte sairia deslocado.
-            crate::morph_live::upkeep(
-                sim,
-                vec_scene,
-                &self.vec.entities,
-                &mut self.vec.morph_pending,
-            );
-            // ⭐⭐ **O CONJUNTO de estados** (plano 32 W8) — mesma posição e mesma razão do irmão
-            // acima, e mais uma: é aqui que os membros são reparentados e escondidos, e as quatro
-            // escritas têm de cair no MESMO quadro para o Ctrl+Z desfazer o conjunto inteiro.
-            ph2d_vec_entities::morph_set::upkeep(
-                sim,
-                vec_scene,
-                &self.vec.entities,
-                &mut self.vec.morph_set_pending,
-            );
+            self.fase_vector_upkeeps();
             let Some((drawing, reparent_intent)) =
                 self.fase_vector_tree_settle(fase_vector_tree_settle::TreeSettleIntents {
                     reparent_intent,

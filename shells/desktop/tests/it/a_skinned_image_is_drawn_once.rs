@@ -76,9 +76,13 @@ fn a_bound_sprite_emits_no_render_instance() {
 ///
 /// ⚠️ **A ORDEM é a leitura**: a imagem é a ARTE e o rig é o chrome que se desenha por cima dela.
 /// Invertê-la esconderia o esqueleto debaixo do desenho exactamente quando o artista o está a posar.
+///
+/// ⚠️ Desde a OBRA 2 da `line/render-loop` (2026-09-13) os ossos desenham-se na fase
+/// `fase_vector_bone_overlay`: a ORDEM mede-se no QUADRO emendado (`frame_text::render_frame`), que é a ordem
+/// em que corre — dois ficheiros não têm ordem entre si.
 #[test]
 fn the_frame_draws_the_deformed_image_before_the_bones() {
-    let src = code_only(LOOP);
+    let src = code_only(&crate::frame_text::render_frame());
     let desenho = src
         .find("skeleton_skin_image::draw_skinned_images(")
         .expect("o quadro deixou de desenhar as imagens presas");

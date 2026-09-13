@@ -79,10 +79,14 @@ const DOWNCAST_ALLOWLIST: &[&str] = &[
     // deste gate — *o laço central fica livre de downcasts* — passou a ser satisfeita mais
     // fortemente do que por uma excepção. ⛔ A entrada não foi apagada por conveniência: o censo de
     // obsolescência abaixo **obriga-o**.
-    // render_loop/mod.rs: PainterTool downcasts for the right-click handle-kind
-    // drains (falloff / curve point handle). Same exception class as
-    // painter_bridge; the central dispatch stays free of *vector* downcasts.
-    "src/render_loop/mod.rs",
+    // ⭐ **A entrada do `render_loop/mod.rs` SAIU** (OBRA 2 da `line/render-loop`, 2026-09-13): o quadro partiu-se
+    // em fases e cada downcast dele mudou-se verbatim com o bloco que o contém — as entradas `fase_*` abaixo são a
+    // MESMA excepção de classe que ela licenciava («PainterTool downcasts», a do `painter_bridge`). O censo de
+    // obsolescência obriga-a a sair: o `mod.rs` deixou de ter downcast nenhum. As notas das entradas `fase_*` que
+    // dizem «a MESMA excepção de classe da entrada do `mod.rs`» descrevem a classe, e esta nota diz onde ela foi.
+    // ⚠️ **O `fase_bus_drain.rs` HERDOU o último**: o `set_shape_draft_hold` do Painter no braço `ToolPanelEvent`
+    // do dreno do barramento (o gesto de knob publicado ANTES do edit que re-carimba a figura).
+    "src/render_loop/fase_bus_drain.rs",
     // ⚠️ **O `fase_sculpt3d_bake.rs` HERDOU um downcast do `render_loop/mod.rs`** (OBRA 2 da
     // `line/render-loop`, 2026-09-12): o alpha por imagem pergunta ao `PainterTool` o que a tela
     // MOSTRA (`needs_document_bind` + `composite_to_lum`, a porta do «Use as Brush Grain»), sem o

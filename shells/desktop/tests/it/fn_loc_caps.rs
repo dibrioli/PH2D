@@ -88,6 +88,12 @@ const FN_OVERAGE_OK: &[(&str, &str, usize, &str)] = &[
          que fica na shell porque as três features que o guardam são da shell",
     ),
     (
+        "render_loop/fase_bus_drain.rs",
+        "fase_bus_drain",
+        2401,
+        "fase do quadro (OBRA 2): o dreno do barramento, verbatim; UM `match` de ~1 700 linhas dentro de um `for`, e um braço não é um statement",
+    ),
+    (
         "render_loop/fase_vector_bands.rs",
         "fase_vector_bands",
         209,
@@ -99,7 +105,7 @@ const FN_OVERAGE_OK: &[(&str, &str, usize, &str)] = &[
     (
         "render_loop/mod.rs",
         "run_render_frame",
-        3255,
+        1279,
         "o QUADRO inteiro numa função; a OBRA 2 da `line/render-loop` parte-o em fases chamadas pela \
          mesma ordem, e cada fase que sai baixa este número no mesmo commit",
     ),

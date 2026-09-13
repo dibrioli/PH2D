@@ -18,7 +18,13 @@
 //! ⚠️ E cada asserção é uma PROPRIEDADE, nunca uma distância em bytes — o proxy expira quando
 //! alguém acrescenta uma linha no meio, e o produto continua certo.
 
-const LOOP: &str = include_str!("../../src/render_loop/mod.rs");
+/// O laço de quadro é o QUADRO pela ordem em que corre (`frame_text::render_frame`).
+///
+/// ⚠️ Desde a OBRA 2 da `line/render-loop` (2026-09-13) o despacho de Motion, a lei, a leitura e o dreno mudaram-se
+/// juntos para a `fase_motion_bridge`. As três propriedades de POSIÇÃO deste gate medem-se no texto EMENDADO, onde a
+/// posição de um literal é a ordem em que ele corre — e o controlo positivo de baixo foi quem reprovou alto.
+static LOOP: std::sync::LazyLock<String> =
+    std::sync::LazyLock::new(crate::frame_text::render_frame);
 const MOTION: &str = include_str!("../../../../crates/ph2d-app-motion/src/motion_bridge.rs");
 const TIMELINE: &str = include_str!("../../src/render_loop/timeline_bridge.rs");
 
@@ -41,7 +47,7 @@ fn sources() -> (&'static str, &'static str, &'static str) {
         "o timeline_bridge não foi lido: {} bytes",
         TIMELINE.len()
     );
-    (LOOP, MOTION, TIMELINE)
+    (LOOP.as_str(), MOTION, TIMELINE)
 }
 
 /// **Os DOIS emissores fazem a MESMA pergunta, e a fazem à mesma função.**

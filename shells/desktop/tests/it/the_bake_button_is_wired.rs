@@ -16,7 +16,7 @@
 //! armarem o **mesmo** campo.
 
 use crate::sculpt_source;
-use sculpt_source::{arm_with, braced_block, family, function_body, sculpt_src, source};
+use sculpt_source::{arm_with, braced_block, family, function_body, sculpt_src};
 
 /// **O botão e o atalho armam o MESMO pedido.**
 ///
@@ -24,10 +24,18 @@ use sculpt_source::{arm_with, braced_block, family, function_body, sculpt_src, s
 /// ganhasse um segundo campo, cada porta passaria a ter o seu ciclo de vida — e
 /// o dia em que uma delas fosse consumida num ponto diferente do frame, o botão
 /// e o atalho fariam coisas diferentes com o mesmo nome.
+///
+/// ⚠️ O laço de frame é o QUADRO pela ordem em que corre (`frame_text::render_frame`), sem comentários como o
+/// `sculpt_source::source` que este gate usava: desde a OBRA 2 da `line/render-loop` (2026-09-13) o retorno da ponte
+/// do painel mora na `fase_world_panel_bridges`.
 #[test]
 fn the_button_and_the_shortcut_arm_the_same_request() {
     let cluster = sculpt_src();
-    let loop_src = source("render_loop/mod.rs");
+    let loop_src = crate::frame_text::render_frame()
+        .lines()
+        .map(|l| l.find("//").map_or(l, |at| &l[..at]))
+        .collect::<Vec<_>>()
+        .join("\n");
 
     // O atalho, no roteador de teclado do cluster.
     assert!(

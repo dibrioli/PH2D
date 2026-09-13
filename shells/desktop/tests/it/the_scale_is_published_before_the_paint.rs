@@ -16,7 +16,6 @@
 use std::fs;
 
 const BRIDGE: &str = "src/render_loop/tokens_bridge.rs";
-const LOOP: &str = "src/render_loop/mod.rs";
 
 fn read(path: &str) -> String {
     fs::read_to_string(path).unwrap_or_else(|e| panic!("{path}: {e}"))
@@ -83,9 +82,13 @@ fn the_gate_is_reading_the_file_it_thinks_it_is() {
 /// ⚠️ Se um dia alguém a gatear na visibilidade do painel (uma optimização plausível — a
 /// precificação do áudio é gateada assim), a escala congelaria em silêncio para quem fechasse o
 /// painel. Este gate torna essa mudança ruidosa.
+///
+/// ⚠️ O laço de quadro é o QUADRO pela ordem em que corre (`frame_text::render_frame`): desde a OBRA 2 da
+/// `line/render-loop` (2026-09-13) a chamada mora na `fase_world_panel_bridges`, e a janela de duas linhas abre-se onde
+/// a chamada está.
 #[test]
 fn the_frame_calls_the_bridge_without_gating_it_on_the_panel() {
-    let src = read(LOOP);
+    let src = crate::frame_text::render_frame();
     let call = src
         .find("tokens_bridge::dispatch(")
         .expect("o laco de quadro nao chama a ponte de tokens");

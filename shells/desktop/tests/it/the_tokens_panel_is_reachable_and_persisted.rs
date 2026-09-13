@@ -114,9 +114,12 @@ fn the_t_key_toggles_the_tokens_panel() {
 /// gate ancorado na FORMA de uma chamada mede a assinatura de hoje, e a propriedade que ele existe
 /// para afirmar é *"o laço de frame chama a ponte"*. É a mesma cicatriz que os dois arch-gates
 /// desta linha pagaram em 23/07 (janela de bytes · distância entre presses).
+///
+/// ⚠️ **O laço de frame é o QUADRO pela ordem em que corre** (`frame_text::render_frame`), não o `render_loop/mod.rs`:
+/// desde a OBRA 2 da `line/render-loop` (2026-09-13) a chamada mora na `fase_world_panel_bridges`.
 #[test]
 fn the_frame_loop_runs_the_tokens_bridge() {
-    let s = src("render_loop/mod.rs");
+    let s = crate::frame_text::render_frame();
     assert!(
         s.contains("tokens_bridge::dispatch("),
         "o laço de frame não chama a ponte de tokens"

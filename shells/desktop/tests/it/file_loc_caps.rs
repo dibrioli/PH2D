@@ -49,7 +49,7 @@ const FILE_OVERAGE_OK: &[(&str, usize, &str)] = &[
     ),
     (
         "render_loop/mod.rs",
-        12853,
+        12743,
         "frame orchestrator — heavy phases already extracted to",
     ),
     (

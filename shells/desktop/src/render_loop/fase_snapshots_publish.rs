@@ -1,10 +1,17 @@
 //! **Fase do quadro: A PUBLICAÇÃO DOS INSTANTÂNEOS** — o `snapshots::publish` que escreve no `HeroScreen` o que a
 //! cena é neste quadro: hierarquia, grelha, estatísticas, gizmo e inspector (OBRA 2 da `line/render-loop`, 2026-09-13).
 //!
-//! ⚠️ É UM statement: a chamada e a lista de argumentos, com os blocos que os calculam. Partir os argumentos em
-//! `let`s mudaria a ORDEM em que são avaliados — por isso a fase leva uma entrada NUMERADA no tecto por função.
+//! ⚠️ É UM statement: a chamada e a lista de argumentos, com os blocos que os calculam — menos as leituras da física
+//! (a contagem do Paste, o player, as alças, o encaixe), que a fase-filha `fase_snapshot_readouts` calcula ANTES.
+//! Nenhuma delas escreve nada, logo a ordem nova de avaliação não se observa (OBRA 3 da `line/render-bodies`).
 
 use super::*;
+
+/// As leituras da física que esta fase passa ao `publish` — fase-filha, num ficheiro irmão (por `#[path]`, para o
+/// `render_loop/mod.rs` não crescer acima do tecto dele).
+#[path = "fase_snapshot_readouts.rs"]
+mod readouts;
+use readouts::SnapshotReadouts;
 
 impl crate::App {
     /// Ver o cabeçalho do módulo.
@@ -15,6 +22,14 @@ impl crate::App {
         tool_preview_bits: [Option<u64>; 3],
         window_size: ph2d_host::WindowSize,
     ) -> Option<[Option<u64>; 3]> {
+        // As leituras da física que a chamada passa — ver a fase-filha.
+        let SnapshotReadouts {
+            joint_paste_targets,
+            player_live,
+            player_law,
+            joint_anchor_handles,
+            joint_anchor_snap,
+        } = self.fase_snapshot_readouts(window_size)?;
         // O `gfx` re-derivado; os guardas do quadro já correram na `fase_chrome_clock`.
         let gfx = self.gfx.as_mut()?;
         let FrameGfx {
@@ -32,7 +47,6 @@ impl crate::App {
             atlas_asset_map,
             asset_catalogs,
             component_registry,
-            physics,
             ..
         } = FrameGfx::of(gfx);
         // O bloco do quadro só chama esta fase com o `HeroScreen` vivo.
@@ -114,25 +128,7 @@ impl crate::App {
             // The armed §12 joint-body eyedropper, so the waiting slot's
             // picker paints pressed.
             self.joint_body_pick,
-            // W-JointCopy: quantos joints um Paste atingiria. `0` sem nada
-            // copiado — e é o zero que tira o botão da tela.
-            //
-            // ⚠️ Contado sobre a SELEÇÃO, porque o Paste é a única edição da
-            // §12 que faz fan-out; e contando só quem de fato carrega um
-            // `PhysicsJoint`, senão o rótulo prometeria dez alvos numa
-            // seleção de nove sprites e um joint.
-            if self.joint_clipboard.is_some() {
-                hero.gizmo
-                    .iter_selected()
-                    .filter(|&b| {
-                        sim.world()
-                            .get::<ph2d_physics_ecs::PhysicsJoint>(ph2d_ecs::Entity::from_bits(b))
-                            .is_some()
-                    })
-                    .count()
-            } else {
-                0
-            },
+            joint_paste_targets,
             // W17: quantos tiques de corrida gravada o documento carrega — e
             // é o zero que tira o *Clear Recorded Run* da tela, pelo mesmo
             // desenho do Paste acima.
@@ -142,74 +138,15 @@ impl crate::App {
             // (descartar esvazia a fita viva).
             self.discarded_run.len(),
             self.fixed_step.fixed_dt(),
-            // `W-PlayerOut` A3: o readout do player SELECIONADO. Resolvido
-            // aqui porque `publish` não recebe a ponte, e pela porta única —
-            // `None` fora de um player, e também com a física desarmada, que
-            // é o que faz a §14 dizer *"not simulating"* em vez de mostrar
-            // números de uma corrida que acabou.
-            hero.gizmo
-                .selection
-                .and_then(|b| physics.player_view(ph2d_ecs::Entity::from_bits(b)))
-                .copied(),
-            // **O que a LEI de facto lê deste personagem** — resolvido aqui
-            // pela mesma razão do readout acima (`publish` não recebe a
-            // ponte) e pela MESMA porta que decide quem escreve a pose. A
-            // shell re-derivá-lo do `PlayerMode` era a segunda cópia que
-            // fazia a §14 pintar doze cards vivos sobre um player ASSADO,
-            // que a lei não dirige.
-            hero.gizmo
-                .selection
-                .map_or(ph2d_physics_ecs::PlayerLiveness::INERT, |b| {
-                    physics.player_liveness(sim.world(), ph2d_ecs::Entity::from_bits(b))
-                }),
+            player_live,
+            player_law,
             // W-Pulley W3: o eyedropper de montagem da §13, pelo mesmo motivo.
             self.wheel_body_pick,
             self.wheel_rope_pick,
             // W-J4: o gesto de desenhar está armado?
             self.physics.joint_draw_armed,
-            // W-J2/W-J2b: every grabbable joint anchor. Resolved HERE
-            // because `publish` does not take the bridge, and through the
-            // SAME door `sync_joint_pivots` uses for the A pivot — two
-            // derivations of "where is this anchor" is how two dots would
-            // come to disagree. Rest-only (the rule lives in the callee):
-            // during play the overlay draws the SOLVER's anchors, and these
-            // authored ones would describe a pose the artist is not editing.
-            {
-                // As DUAS famílias numa lista só: as âncoras (sempre) e os
-                // grips de parâmetro (só com o overlay de joints na tela —
-                // eles agarram a geometria DELE).
-                let at_rest = !self.playhead.is_playing();
-                let mut hs = point_gizmo::joint_anchor_handles(sim, physics, at_rest);
-                hs.extend(point_gizmo::joint_param_handles(
-                    physics,
-                    camera,
-                    window_size,
-                    self.show_colliders,
-                    at_rest,
-                ));
-                // E as alças da RODA selecionada (W-Pulley W1). Terceira
-                // família, e a única que lê a SELEÇÃO: uma corda com seis
-                // roldanas publicaria doze alças sobrepostas.
-                hs.extend(point_gizmo::wheel_handles(
-                    sim,
-                    hero.gizmo.selection,
-                    self.show_colliders,
-                    at_rest,
-                ));
-                // E a QUARTA: os limitadores da corda (W-RopeStop). De toda
-                // polia, como as âncoras — a marca É a feature, e escondê-la
-                // atrás de uma seleção faria o artista ter de descobrir que
-                // ela existe antes de poder descobri-la.
-                hs.extend(point_gizmo::rope_stop_handles(
-                    sim,
-                    physics,
-                    self.show_colliders,
-                    at_rest,
-                ));
-                hs
-            },
-            // The candidate a live anchor drag has caught (the crosshair).
-            self.physics.joint_anchor_drag.and_then(|d| d.snap),
+            joint_anchor_handles,
+            joint_anchor_snap,
             // **O SELO do papel booleano de cada linha** (2026-08-22). ⚠️ Ele lê o plano do
             // quadro ANTERIOR: a hierarquia publica aqui, e a booleana cozinha lá em baixo
             // no mesmo `run_render_frame`. O atraso é de um quadro e o `vec_bool_shape` o

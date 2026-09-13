@@ -195,10 +195,24 @@ fn palavras_de_informacao(pecas: usize, w: u32, h: u32) -> u32 {
         cena.draw_stable_image_transformed(&estavel, Affine::IDENTITY, ImageQuality::Medium);
         cena.pop_layer();
     }
-    let mut packed = Vec::new();
-    let (layout, _ramps, _imagens) =
-        vello_encoding::Resolver::new().resolve(cena.inner().encoding(), &mut packed);
-    layout.bin_data_start
+    // ⚠️ Pela sonda do PRODUTO, e não por um `Resolver` escrito aqui: duas contagens da mesma
+    // grandeza divergem no dia em que uma delas mudar.
+    cena.probe_bin_info_words()
+}
+
+/// ⭐⭐ **Uma peça da pele custa ONZE palavras do buffer fixo do Vello, e o custo é LINEAR.**
+///
+/// É o número de que o orçamento por quadro sai (`1 << 18` ÷ palavras por peça). ⚠️ Se um `vello`
+/// novo mudar a informação por desenho, este gate reprova e o orçamento tem de ser recontado —
+/// nunca afrouxado.
+#[test]
+fn a_skin_piece_costs_eleven_vello_bin_info_words_and_the_cost_is_linear() {
+    assert_eq!(palavras_de_informacao(1, 320, 96), 11, "uma peca deixou de custar 11 palavras");
+    assert_eq!(
+        palavras_de_informacao(7_776, 320, 96),
+        7_776 * 11,
+        "o custo por peca deixou de ser linear — ha' um termo por cena escondido"
+    );
 }
 
 /// ⭐⭐ **A SONDA DO TECTO DURO** — quantas palavras de informação cada peça gasta do buffer que o

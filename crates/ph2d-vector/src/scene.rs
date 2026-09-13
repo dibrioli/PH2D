@@ -177,6 +177,25 @@ impl VectorScene {
             .collect()
     }
 
+    /// ⚠️ **Só para sondas e gates: quantas palavras do buffer FIXO `bin_data` do Vello esta cena
+    /// gasta** — o `layout.bin_data_start` que o `render` subtrai de `1 << 18`
+    /// (`vello_encoding::BufferSizes::new`).
+    ///
+    /// ⛔⛔ **Esse buffer é do QUADRO inteiro** (painéis, texto, arte, pele de imagem), e passar dele
+    /// dá a volta a um `u32` dentro do Vello: pânico em debug, quadro em branco em release.
+    ///
+    /// ⚠️ Corre um `Resolver` NOVO — é caro e existe para medir, nunca para o caminho do quadro.
+    /// Um `Resolver` novo é o certo aqui: as palavras não dependem do atlas, e o texto é resolvido
+    /// e contado como no produto.
+    #[must_use]
+    #[doc(hidden)]
+    pub fn probe_bin_info_words(&self) -> u32 {
+        let mut packed = Vec::new();
+        let (layout, _ramps, _images) =
+            vello_encoding::Resolver::new().resolve(self.inner.encoding(), &mut packed);
+        layout.bin_data_start
+    }
+
     pub fn new() -> Self {
         Self {
             inner: Scene::new(),

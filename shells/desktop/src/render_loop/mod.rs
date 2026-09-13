@@ -188,6 +188,8 @@ mod fase_audio_panels;
 mod fase_chrome_clock;
 /// Fase do quadro: a entrada (carimbo coalescido, diagnóstico, gamepad, script, soltos).
 mod fase_input_and_drops;
+/// Fase do quadro: as cenas do pincel do Painter (taper, tinta molhada).
+mod fase_painter_brush_smokes;
 /// Fase do quadro: o que está sob o cursor (a 1.ª do `run_render_frame`).
 mod fase_pointer_subjects;
 /// Fase do quadro: a re-acendida dos objetos assados — FORA da feature `sculpt3d`, de propósito.
@@ -409,6 +411,7 @@ impl crate::App {
         self.fase_atlas_scene_smokes_late();
         self.fase_sprite_inspector_smokes();
         self.fase_sprite_pixel_smokes();
+        self.fase_painter_brush_smokes();
         let Some(gfx) = self.gfx.as_mut() else {
             return;
         };
@@ -478,63 +481,6 @@ impl crate::App {
         let Some(host) = self.host.as_ref() else {
             return;
         };
-
-        // Taper smoke (`PH2D_TAPER_SMOKE=1`): the same dance for the Procreate Touch Taper. Nothing but
-        // the canvas is staged — the taper opens OFF, because the first thing this scene asks is
-        // whether an untouched build still paints what it painted yesterday.
-        if let Some(hero) = hero_screen.as_mut()
-            && ph2d_app_painter::taper_smoke::enabled()
-            && !std::mem::replace(&mut self.taper_smoke_done, true)
-        {
-            let ppm = hero.project.pixels_per_meter;
-            let cell = *next_import_cell;
-            if let Some(bits) = ph2d_app_painter::taper_smoke::spawn_if_enabled(
-                sim,
-                renderer,
-                asset_db,
-                cell,
-                ppm,
-                atlas_asset_map,
-            ) {
-                *next_import_cell = next_import_cell.saturating_add(1);
-                hero.gizmo.replace_selection(Some(bits));
-                hero.bus
-                    .push(ph2d_editor_core::action_bus::EditorAction::SetViewFocus {
-                        kind: ph2d_editor_core::ViewFocusKind::Selected,
-                    });
-                toasts.push(Toast::success(
-                    "Taper smoke: brush panel -> TAPER, under the Falloff".to_string(),
-                ));
-            }
-        }
-
-        // Wet Paint smoke (`PH2D_WETPAINT_SMOKE=1`): the impasto smoke's exact dance for the fluid
-        // mode (ADR-0134 W1) — spawn, seat the selection, arm in `painter_bridge`.
-        if let Some(hero) = hero_screen.as_mut()
-            && ph2d_app_painter::wetpaint_smoke::enabled()
-            && !std::mem::replace(&mut self.wetpaint_smoke_done, true)
-        {
-            let ppm = hero.project.pixels_per_meter;
-            let cell = *next_import_cell;
-            if let Some(bits) = ph2d_app_painter::wetpaint_smoke::spawn_if_enabled(
-                sim,
-                renderer,
-                asset_db,
-                cell,
-                ppm,
-                atlas_asset_map,
-            ) {
-                *next_import_cell = next_import_cell.saturating_add(1);
-                hero.gizmo.replace_selection(Some(bits));
-                hero.bus
-                    .push(ph2d_editor_core::action_bus::EditorAction::SetViewFocus {
-                        kind: ph2d_editor_core::ViewFocusKind::Selected,
-                    });
-                toasts.push(Toast::success(
-                    "Wet Paint smoke: pick the Painter tool and drag".to_string(),
-                ));
-            }
-        }
 
         // New-image modal (Cmd/Ctrl+N) → spawn the chosen blank canvas. The modal's Create button set
         // `new_image_request`; service it here where `gfx` is destructured (sim/renderer/atlas access).

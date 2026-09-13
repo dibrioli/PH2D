@@ -13,7 +13,8 @@
 [`06_resultados_cena_e_gizmo.md`](../06_resultados_cena_e_gizmo.md) são uma wave cada, com a tabela
 medida e as provas de mutação ao lado. Esta pasta guarda o que atravessa a **fronteira da linha**.
 
-**10 handoffs.**
+**11 handoffs.** ⚠️ *Esta contagem dizia «10» e a tabela não tinha o de 10/09 — um índice escrito à
+mão envelhece no dia do primeiro esquecimento.*
 
 | Data | Arquivo | Papel | Assunto |
 |---|---|---|---|
@@ -26,6 +27,7 @@ medida e as provas de mutação ao lado. Esta pasta guarda o que atravessa a **f
 | 2026-09-03 | [HANDOFF_INTEGRACAO_line_3DModeling_2026-09-03.md](HANDOFF_INTEGRACAO_line_3DModeling_2026-09-03.md) | **FECHO** | 55 commits desde `066b4f92e`. ⛔⛔⛔ o **undo/redo pula etapas e NÃO está curado** (o §7.1 tem as **oito** suspeitas já eliminadas e as **três** que eram defeitos reais já curados) · ⚠️ `PROJECT_SCHEMA` **103 → 106**, três degraus · o chanfro honesto · o laço que subtrai |
 | 2026-09-06 | [HANDOFF_INTEGRACAO_line_3DModeling_2026-09-06.md](HANDOFF_INTEGRACAO_line_3DModeling_2026-09-06.md) | **FECHO** | 17 commits desde `53832c884`. A **SUPERQUADRÁTICA** (W127) e a **SUPERFÓRMULA** de Gielis (W128), a mola e o gyroid, o cilindro com bojo · ⚠️ `PROJECT_SCHEMA` **114 → 115** (o `offset` do espelho, que era um controlo **morto**) · o divisor da W128 corria por LADRILHO (`642×`) |
 | 2026-09-07 | [HANDOFF_INTEGRACAO_line_3DModeling_2026-09-07.md](HANDOFF_INTEGRACAO_line_3DModeling_2026-09-07.md) | **FECHO** | 10 commits desde `815555aed`. O **TRIÂNGULO** (W131), o **POLÍGONO de `N`** com os vértices arrastáveis no canvas (W132–W133), o **NÓ DE TORO `(p,q)`** (W134, mais os três defeitos de forma do report em W134b) e a **ROSCA + SERRILHADO** (W135) ⇒ o catálogo vai a **68** entradas sobre **58** primitivas e a fila de formas fecha de 10 para **6** · ⚠️ `FIELD_DOC_VERSION` **17 → 18**, e ⛔ **ele NÃO está no `collision-surface.sh`** · ⭐ nenhum dos quatro schemas da sonda se mexe |
+| 2026-09-10 | [HANDOFF_INTEGRACAO_line_3DModeling_2026-09-10.md](HANDOFF_INTEGRACAO_line_3DModeling_2026-09-10.md) | **FECHO** | 23 commits desde `39d48cd76`. A **avaliação ponto a ponto** (W147): a fita `f64` bit-a-bit, o gradiente analítico **recusado** (`9,4×` a folga num vinco), e o tecto no **perfil de build** (`372 s → 57 s`, 4 linhas no `Cargo.toml` da raiz) · o doc 06 vira **roteador** (`901 KB → 91 KB`) · ⚠️ `FIELD_DOC_VERSION` **18 → 22** |
 | 2026-09-11 | [HANDOFF_INTEGRACAO_line_app_host_2026-09-11.md](HANDOFF_INTEGRACAO_line_app_host_2026-09-11.md) | **FECHO** | ⭐⭐ **W2/L0 — a família SAI da shell.** 6 commits desde `8fa4f115b`. O substrato ([`ph2d-app-host`] + o registo gerado) e o **piloto**: 90 ficheiros / 29 234 LOC para [`ph2d-app-field3d`], a moldura 3D partilhada para [`ph2d-viewport3d`], o `impl App` como trait de extensão. Shell **493 252 → 461 512** LOC; `ONLY-A = 0`; **14 cenas podadas**. ⚠️ O §8 tem as **15** correcções de gate em duas espécies — e só uma avisa. ⭐ Nenhum contador partilhado se move |
 
 ---

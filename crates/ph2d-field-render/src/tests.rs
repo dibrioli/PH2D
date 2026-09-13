@@ -5902,6 +5902,93 @@ fn the_padded_region_still_contains_its_query() {
     }
 }
 
+/// ⛔⛔ **UMA FITA DE CASCO NUNCA É SERVIDA A UMA REGIÃO QUE OS CASCOS DELA NÃO CONTÊM** (W148).
+///
+/// # ⛔ Ele nasceu de uma MUTAÇÃO QUE SOBREVIVEU aos três gates de imagem
+///
+/// Servir a fita de casco só pela contenção de CAIXA deixou verdes o
+/// [`the_cache_never_changes_the_image`], o [`a_cached_tape_is_never_served_to_another_document`] e o
+/// gate da peça com poses (`tests/it/hull_cache_posed.rs`). ⚠️ **Não é cegueira de fixtura:** o corte
+/// guarda toda aresta a menos de `dmax`, e o `dmax` é um majorante GENEROSO (`82 %` de folga, §65.3) —
+/// um ponto pouco fora do casco quase sempre ainda tem a sua aresta vencedora na fita. A imagem sai
+/// igual *quase sempre*, e «quase sempre» é o modo de falha que nenhum pixel mostra até ao dia em que
+/// mostra. ⇒ *a propriedade gateia-se onde é definida* (a lição do §65.3), e é esta.
+#[test]
+fn a_hull_tape_is_never_served_to_a_region_its_hulls_do_not_contain() {
+    use ph2d_field_eval::hybrid::RegionTape;
+    let doc = cache_piece(168);
+    let rc = ph2d_field_eval::RegionCompiler::new(&doc);
+    let cache = crate::TapeCache::with_pad_of_reach(crate::PAD_OF_REACH);
+    cache.begin(&doc, 64);
+    // Um tubo fino e OBLÍQUO no plano do perfil: a caixa dele é quase toda vazio, e é aí que a caixa
+    // e o casco discordam.
+    let tube = |c: [f32; 3], len: f32| -> ([f32; 3], [f32; 3], Vec<[f32; 3]>) {
+        let r = std::f32::consts::FRAC_1_SQRT_2;
+        let (d, e) = ([r, r, 0.0f32], [-r, r, 0.0f32]);
+        let (w, pad) = (0.01f32, 0.004f32);
+        let mut pts = Vec::with_capacity(8);
+        for s in [-0.5f32, 0.5] {
+            for a in [-1.0f32, 1.0] {
+                for z in [-w, w] {
+                    pts.push([
+                        c[0] + d[0] * s * len + e[0] * a * w,
+                        c[1] + d[1] * s * len + e[1] * a * w,
+                        c[2] + z,
+                    ]);
+                }
+            }
+        }
+        let (mut lo, mut hi) = ([f32::INFINITY; 3], [f32::NEG_INFINITY; 3]);
+        for p in &pts {
+            for k in 0..3 {
+                lo[k] = lo[k].min(p[k] - pad);
+                hi[k] = hi[k].max(p[k] + pad);
+            }
+        }
+        (lo, hi, pts)
+    };
+    let (lo, hi, pts) = tube([0.0; 3], 1.0);
+    let (glo, ghi) = cache.grow(lo, hi, 1.0, 7);
+    let eh = rc.hulls(&doc, glo, ghi, &pts);
+    assert_eq!(eh.probe_leaves(), 1, "a extrusão perdeu o casco");
+    cache.insert(
+        glo,
+        ghi,
+        Some(eh.clone()),
+        RegionTape::compile(rc.compile_hulled(&doc, glo, ghi, &eh)),
+    );
+
+    // ⭐ O controlo positivo: a região para que a fita foi construída é servida.
+    let own = rc.hulls(&doc, lo, hi, &pts);
+    assert!(
+        cache.get(lo, hi, Some(&own)).is_some(),
+        "a cache não serve nem a região para que a fita foi construída — o gate abaixo não prenderia \
+         nada"
+    );
+
+    // ⛔ Uma região no CANTO da caixa, longe da diagonal do tubo: a caixa contém-na, o casco não.
+    let (qlo, qhi, qpts) = tube([0.25, -0.25, 0.0], 0.1);
+    assert!(
+        (0..3).all(|k| qlo[k] >= glo[k] && qhi[k] <= ghi[k]),
+        "a região do canto saiu da caixa da fita — ela deixou de ser o caso que a caixa serviria"
+    );
+    let qh = rc.hulls(&doc, qlo, qhi, &qpts);
+    assert!(
+        !eh.contains(&qh),
+        "os cascos da fita contêm a região do canto — a fixtura deixou de separar a caixa do casco"
+    );
+    assert!(
+        cache.get(qlo, qhi, Some(&qh)).is_none(),
+        "a cache serviu uma fita de CASCO a uma região que a caixa contém e o casco não — a distância \
+         ali pode sair grande demais, e a marcha atravessa a peça"
+    );
+    // ⛔ E uma consulta sem cascos nunca leva uma fita de casco.
+    assert!(
+        cache.get(lo, hi, None).is_none(),
+        "uma consulta SEM cascos levou uma fita de casco — o lado seguro é não servir"
+    );
+}
+
 /// ⭐⭐⭐ **O DESPEJO DEITA FORA METADE, E A CACHE NUNCA PASSA O TECTO** (W89).
 ///
 /// # A lei, e o modo de falha que ela fecha

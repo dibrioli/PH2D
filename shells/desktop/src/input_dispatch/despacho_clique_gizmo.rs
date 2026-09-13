@@ -8,6 +8,21 @@
 
 use super::*;
 
+/// **O que o hit de um pen-down disse**, calculado UMA vez e lido pelos ramos seguintes (o pivô, as âncoras, a
+/// cadeia). Os campos têm exactamente os nomes das variáveis que eram no `on_mouse_input`: cada ramo desestrutura-o
+/// na primeira linha, e o corpo mudou-se sem uma letra diferente. Oito `Copy` na pilha — nada aloca por evento.
+#[derive(Clone, Copy)]
+pub(super) struct AlvoDoClique {
+    pub(super) hit_id: Option<ph2d_editor_core::NodeId>,
+    pub(super) gizmo_kind: Option<ph2d_editor_core::GizmoDragKind>,
+    pub(super) effective_target: ph2d_editor_core::GizmoTarget,
+    pub(super) effective_kind: Option<ph2d_editor_core::GizmoDragKind>,
+    pub(super) is_specific_handle: bool,
+    pub(super) over_open_vec_stroke: bool,
+    pub(super) over_flip_art: bool,
+    pub(super) is_keyed_translate: bool,
+}
+
 impl crate::App {
     /// A alça (escala/rotação) de um alvo: a recusa do trancado, a pose de partida, o pivô e o grupo a semear.
     pub(super) fn ramo_gizmo_alca(
@@ -163,6 +178,58 @@ impl crate::App {
                     &selected,
                     carry_reach,
                 );
+            }
+        }
+        false
+    }
+
+    /// A cadeia do pen-down: o pivô, a âncora ou a roldana já abertos · a alça de um alvo · o pick de canvas.
+    pub(super) fn ramo_gizmo_cadeia(
+        &mut self,
+        evt: PointerEvent,
+        menu_open_before: bool,
+        alvo: AlvoDoClique,
+        began_pivot: bool,
+        began_joint_anchor: bool,
+        began_wheel_select: bool,
+    ) -> bool {
+        let AlvoDoClique {
+            hit_id,
+            gizmo_kind,
+            effective_target,
+            effective_kind,
+            is_specific_handle,
+            over_open_vec_stroke,
+            over_flip_art,
+            is_keyed_translate,
+        } = alvo;
+        if let Some(gfx) = self.gfx.as_mut()
+            && let Some(hero) = gfx.hero_screen.as_mut()
+        {
+            if began_pivot || began_joint_anchor || began_wheel_select {
+                // Pivot or joint-anchor drag opened; Move events drive it.
+            } else if is_specific_handle
+                && !over_open_vec_stroke
+                && !over_flip_art
+                && let Some(gkind) = effective_kind
+                && let Some(entity_bits) = match effective_target {
+                    ph2d_editor_core::GizmoTarget::ExtraIndividual(bits) => Some(bits),
+                    _ => hero.gizmo.selection,
+                }
+            {
+                if self.ramo_gizmo_alca(evt, gkind, entity_bits, effective_target) {
+                    return true;
+                }
+            } else if hero.store.panel_at(evt.x, evt.y).is_none()
+                && !menu_open_before
+                && (hit_id.is_none()
+                    || matches!(gizmo_kind, Some(ph2d_editor_core::GizmoDragKind::Translate))
+                    || hit_id == Some(ph2d_editor_core::gizmo::ids::GIZMO_PIVOT)
+                    || is_keyed_translate
+                    || over_open_vec_stroke
+                    || over_flip_art)
+            {
+                self.ramo_gizmo_pick(evt, gizmo_kind);
             }
         }
         false

@@ -5533,6 +5533,17 @@ impl App {
                     let is_keyed_translate = hit_map_entry
                         .map(|h| matches!(h.kind, ph2d_editor_core::GizmoDragKind::Translate))
                         .unwrap_or(false);
+                    // O que o hit disse, para os ramos que seguem (`despacho_clique_gizmo::AlvoDoClique`).
+                    let alvo = despacho_clique_gizmo::AlvoDoClique {
+                        hit_id,
+                        gizmo_kind,
+                        effective_target,
+                        effective_kind,
+                        is_specific_handle,
+                        over_open_vec_stroke,
+                        over_flip_art,
+                        is_keyed_translate,
+                    };
                     // TOOL_PIVOT begin: when the Pivot transform tool is
                     // the active radio selection and the click lands on
                     // the selected sprite (or its pivot dot), open a
@@ -5687,33 +5698,15 @@ impl App {
                             hero,
                             (evt.x, evt.y),
                         );
-                    if began_pivot || began_joint_anchor || began_wheel_select {
-                        // Pivot or joint-anchor drag opened; Move events drive it.
-                    } else if is_specific_handle
-                        && !over_open_vec_stroke
-                        && !over_flip_art
-                        && let Some(gkind) = effective_kind
-                        && let Some(entity_bits) = match effective_target {
-                            ph2d_editor_core::GizmoTarget::ExtraIndividual(bits) => Some(bits),
-                            _ => hero.gizmo.selection,
-                        }
-                    {
-                        if self.ramo_gizmo_alca(evt, gkind, entity_bits, effective_target) {
-                            return;
-                        }
-                    } else if hero.store.panel_at(evt.x, evt.y).is_none()
-                        && !menu_open_before
-                        && (hit_id.is_none()
-                            || matches!(
-                                gizmo_kind,
-                                Some(ph2d_editor_core::GizmoDragKind::Translate)
-                            )
-                            || hit_id == Some(ph2d_editor_core::gizmo::ids::GIZMO_PIVOT)
-                            || is_keyed_translate
-                            || over_open_vec_stroke
-                            || over_flip_art)
-                    {
-                        self.ramo_gizmo_pick(evt, gizmo_kind);
+                    if self.ramo_gizmo_cadeia(
+                        evt,
+                        menu_open_before,
+                        alvo,
+                        began_pivot,
+                        began_joint_anchor,
+                        began_wheel_select,
+                    ) {
+                        return;
                     }
                 }
                 PointerKind::Up => {

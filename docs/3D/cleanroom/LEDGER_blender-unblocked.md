@@ -238,3 +238,39 @@ redacção nova dá **0**. Cross-sweep contra as quatro vassouras irmãs: limpo 
 
 ⏳ **PENDENTE: R-pré NOVO sobre esta redacção.** ⛔ Quem reescreveu não atesta — *autofiltragem não
 é auditoria*, e foi precisamente a autofiltragem verde da 1.ª entrega que deixou passar os três.
+
+## Incidentes
+
+### INC-U1 — a 1.ª redacção FICOU NO HISTÓRICO (registado 2026-09-13, por quem reescreveu)
+
+**O que é.** A cura dos 3 achados do R-pré limpou a **árvore**, e não o **histórico**. O commit
+`de143530f` acrescentou a 1.ª redacção, e `git log -p` retém o patch dela para sempre. Medido com a
+vassoura de 196 em modo `--git-history` sobre o caminho da espec: **38 linhas** de achado, todas no
+patch daquele commit — os dois blocos de pseudo-código e os 4 sítios de prosa. A árvore em `HEAD`
+está **limpa** (`0` hits sobre a espec e sobre as 60 fixtures, nas cinco vassouras).
+
+⛔ **Não reproduzido aqui, por regra (§6.1).** O endereço é o sha; o conteúdo é o que a §4.2 nomeia.
+
+**A regra que isto viola, e ela estava escrita.** A SKILL §3.E manda a espec entrar num **commit
+ÚNICO, pós-filtragem (§4.3)**, *«nunca rascunhos incrementais: `git log -p` retém para sempre o que
+um rascunho contaminado carregou»*. O commit **foi** único — e foi **pré-auditoria**. ⚠️ **A lei
+tem uma metade que eu li como cumprida e não estava:** «pós-filtragem» não quer dizer *depois da
+MINHA filtragem*; a §4.3 acaba em «autofiltragem não é auditoria», logo o commit único só é lícito
+**depois do R-pré**. *Um commit único antes da auditoria é exactamente o rascunho que a regra proíbe,
+com outro nome.*
+
+**O que NÃO foi feito, e porquê.** ⛔ Nenhuma reescrita de histórico. Esta worktree tem **outros
+três subagentes a commitar no mesmo ramo agora** (`blender-pull`, `blender-pose`,
+`blender-boundary`) e a janela-mãe a escrever código em `crates/`; um rebase aqui destrói trabalho
+alheio em curso. ⇒ **decisão do Enio**, com as três saídas e o preço de cada uma:
+
+| saída | preço |
+|---|---|
+| **Deixar** e registar (o estado actual) | o histórico do ramo retém 38 linhas de forma derivada do alvo até ao fim da vida do repo. ⚠️ O R-pós corre `--git-history` no fechamento (§7.2b) e **vai** reprovar — com este registo a explicar porquê |
+| **Squash da linha na integração** | o integrador funde `de143530f`+`b1026c9e8`+`9efef37ba` num commit só, com a redacção final. Barato **se** a integração já for por squash; ⛔ perde a rastreabilidade dos 3 achados, que este ledger passa a ser o único sítio a guardar |
+| **Reescrever o histórico do ramo** | ⛔ **fora de questão hoje** — três linhas vivas no mesmo ramo |
+
+**A lei que fica, e ela é para as quatro obras de hoje:** ⇒ *a espec commita-se **depois** do
+R-pré, não antes.* O ciclo certo é **draft fora da árvore → R-pré → cura → commit ÚNICO**; o que
+correu aqui foi *commit → R-pré → cura → 2.º commit*, e é a diferença entre um histórico limpo e um
+histórico com registo de incidente. ⚠️ Esta obra **não** pode voltar atrás; as irmãs ainda podem.

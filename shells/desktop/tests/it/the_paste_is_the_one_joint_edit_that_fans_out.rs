@@ -28,7 +28,16 @@
 //! vermelha; faça o Copy escrever um componente em vez de `self.joint_clipboard`
 //! e a 3ª fica.
 
-const SRC: &str = include_str!("../../src/render_loop/mod.rs");
+/// O QUADRO pela ordem em que corre — o texto emendado (`frame_text::render_frame`).
+///
+/// ⚠️ Desde a OBRA 2 da `line/render-loop` (2026-09-12) o laço de aplicação da §12 mudou-se para a fase
+/// `fase_physics_edits`, e o braço de ação continua no dreno; o texto emendado lê os dois, e a ORDEM entre
+/// eles (o dreno antes do laço) é a do quadro — é por isso que a 1.ª ocorrência do Copy continua a ser a do
+/// laço.
+fn src() -> &'static str {
+    static FRAME: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+    FRAME.get_or_init(crate::frame_text::render_frame)
+}
 
 /// A extensão do `match edit { … }` que roteia as edições da §12 no laço de
 /// ações, por CASAMENTO DE CHAVES.
@@ -44,7 +53,8 @@ fn joint_action_arm() -> &'static str {
     // palavras adiante e o gate mediria uma janela vazia. (Foi o que ele fez na
     // primeira corrida: `left: 0`.)
     const HEAD: &str = "EditorAction::InspectorJointEdit { entity_bits, edit } => {";
-    let head = SRC.find(HEAD).unwrap_or_else(|| {
+    let src = src();
+    let head = src.find(HEAD).unwrap_or_else(|| {
         panic!(
             "o braço de ação da §12 sumiu do render loop — se ele foi \
                  reestruturado, atualize este gate (e confirme que o Paste ainda \
@@ -53,13 +63,13 @@ fn joint_action_arm() -> &'static str {
     });
     let open = head + HEAD.len() - 1;
     let mut depth = 0usize;
-    for (i, c) in SRC[open..].char_indices() {
+    for (i, c) in src[open..].char_indices() {
         match c {
             '{' => depth += 1,
             '}' => {
                 depth -= 1;
                 if depth == 0 {
-                    return &SRC[open..open + i];
+                    return &src[open..open + i];
                 }
             }
             _ => {}
@@ -110,11 +120,12 @@ fn no_other_joint_edit_fans_out() {
 /// nenhum, e por isso não passa pela fila nem pelo clamp.
 #[test]
 fn the_copy_arm_only_arms_the_clipboard() {
-    let head = SRC
+    let src = src();
+    let head = src
         .find("JointFieldEdit::CopyProperties")
         .expect("o Copy sumiu do laço de aplicação da §12");
     // A janela é o braço `else if` dele, até o `} else if` seguinte.
-    let tail = &SRC[head..];
+    let tail = &src[head..];
     let end = tail.find("} else if").unwrap_or(tail.len());
     let body = &tail[..end];
     assert!(

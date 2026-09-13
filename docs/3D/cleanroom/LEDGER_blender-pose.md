@@ -245,6 +245,75 @@ uma proveniência de **medição**. A paridade com as fixturas não muda uma cas
 
 ---
 
+### Auditoria R-pré — 2026-09-13 (espec v2, **2.ª passagem**)
+
+| papel | id | data |
+|---|---|---|
+| R-pré (2.ª passagem) | subagente R-pré **novo**, despachado pela janela-mãe `9f820704-0d7e-4d96-847e-9cd720cbf178` (elo **I-3**) — ⛔ **não** é o subagente-E que escreveu a v1 **nem** o R-pré que a reprovou; contexto novo; viu os dois lados (fonte por shell, `Read` deny-listed) | 2026-09-13 — ⛔ **NÃO ATESTA: 5 achados, ZERO substanciais** |
+
+**Adendo A conferido por shell:** o fonte vive fora de qualquer árvore do PH2D, tag `v5.2.0` /
+`fbe6228777e7d9afefcd61a413844e790ae75db7`; oráculo `/usr/bin/blender` = **5.2.1 LTS** (build
+2026-09-01). Confere com o cabeçalho da espec.
+
+#### ⭐ O CONTROLO POSITIVO DO SWEEP FOI CORRIDO POR TERCEIRO — e ele de facto acusa
+
+⚠️ *Um instrumento cujo controlo positivo foi corrido só pelo autor dele continua por provar.* Corrido
+aqui, **sem escrever a v1 em ficheiro nenhum** (⛔ nada do alvo toca `/tmp`): a vassoura de **137**
+entradas contra o **histórico** do ficheiro da espec
+(`cleanroom-sweep.sh <vassoura> --git-history docs/3D/cleanroom/SPEC_pose_brush.md`) ⇒ **`exit 1`,
+`5` linhas distintas acusadas**, cada uma num dos cinco sítios que a 1.ª passagem nomeou (§2.4 · §3 ·
+§5.1 · §5.2 · §8), impressas nos dois sentidos do diff (`-` da emenda e `+` da v1). A mesma vassoura
+sobre o **HEAD** (espec + as 85 fixturas) ⇒ **`exit 0`, limpo**. ⇒ o alargamento `112 → 137`
+**discrimina**, e o verde da v2 vale mais do que o verde da v1 valia.
+⚠️ **O que o controlo NÃO prova:** nenhum dos 5 achados desta passagem é apanhado pela vassoura — os
+quatro do §4.2 são *descrição de programa* e *tradução de uma oração curta*, formas que nenhum grep
+tem como ver. *O sweep verde continua a ser condição necessária e nunca suficiente.*
+
+#### As 6 curas da v1 — **confirmadas uma a uma contra o fonte**
+
+| # (v1) | sítio | veredicto |
+|---|---|---|
+| **A1** | §3 | ✅ a oração causal desapareceu; ficou o **requisito** com proveniência de **fixtura** (duas que pedem `3` segmentos e entregam `1`) |
+| **A2** | §8 | ✅ enunciado como **requisito observável** + o efeito («as passagens seguintes não produzem deslocamento»); a descrição do retorno antecipado **saiu** |
+| **A3** | §5.1 | ✅ **e a cura é substantiva, não cosmética:** a sequência de atribuições virou **tabela de estado exigido por segmento**, e a origem está em **forma fechada** — uma linha de álgebra onde o alvo encadeia duas operações. ⭐ A re-expressão **produziu um facto novo e correcto** que a lista de passos escondia (cabeça e origem guardadas não distam o comprimento). Mesmo tratamento conferido em **§2.2** (conjuntos) e **§6**, cuja **lei algébrica eu re-derivei e bate** com a composição que o alvo monta |
+| **A4** | §2.4 · §5.2 | ✅ custo re-atribuído às **issues públicas**; a constante angular passou a ter proveniência de **medição da saída do oráculo** (`46` vértices, duas fixturas a duas forças, dispersão `1,8e-6`) |
+| **A5** | §5.2 · §1.2 · §6 | ✅ vocabulário da casa; conferido contra [`falloff.rs`](../../../crates/ph2d-sculpt3d/src/falloff.rs) — as **dez** leis, com as fórmulas certas (F2 fechado) |
+| **A6** | §7.3 · §13 | ✅ os dois re-enunciados pelo observável |
+| **F1** | §2.1 | ✅ **e verifiquei as DUAS grandezas no fonte**: elas são mesmo distintas (uma semeia a varredura; a outra, achada por busca **sem limite de distância**, recebe peso `1` **antes** de a varredura começar) e a espec descreve-as certo, com a medição de inércia (`69/69`) e a fixtura em falta **nomeada** |
+
+#### Os 5 achados desta passagem — **nenhum substancial**
+
+⚠️ **Os quatro primeiros são a MESMA ESPÉCIE que a 1.ª passagem curou (A6 e A1/A2), sobreviventes em
+secções que a emenda NÃO tocou** — §4, §5.4 e §7.1 não têm um único *hunk* no diff `v1 → v2`.
+*Uma cura que varre os sítios NOMEADOS deixa a espécie viva nos sítios que ninguém nomeou.*
+
+| # | sítio | espécie | o que é |
+|---|---|---|---|
+| **B1** | **§4**, o parêntesis sobre a variante com guarda | §4.2 organização (= A6) | afirma o **inventário de código** do alvo (que existe uma rotina irmã e que este caminho não a chama). **Zero** conteúdo observável; apagá-lo não perde nada — o comportamento já está dito («média de um conjunto vazio») e a nossa divergência já está prescrita no §11.4 |
+| **B2** | **§4**, o parágrafo do determinismo | §4.2 organização (= A6) **+ §4.3** | descreve a **estrutura de execução** do alvo (partição, paralelismo, escrita no arranjo que lê) em vez do observável, e é a única afirmação de mecanismo da espec **sem proveniência** — vem de leitura de fonte, não de medição. A metade medida (as 69 fixturas cabem; a paridade fecha a `~1e-7`) é legítima e fica |
+| **B3** | **§7.1** | §4.2 organização **+ defeito de legibilidade** | a soma é escrita com dois símbolos **que a espec nunca define em lado nenhum**, e que são exactamente a decomposição de **armazenamento** do alvo (duas matrizes por segmento-e-octante, mais uma inversa) — a mesma que o §6 já tinha dissolvido numa lei. Um implementador não consegue resolver a notação, e ao tentar reconstrói a escolha de armazenamento do alvo |
+| **B4** | **§5.4**, a oração final do passo 1 | §4.2 *wording* (= A1/A2) | **tradução quase 1:1 da oração de finalidade** de um comentário do alvo. É curta e o resto da frase é nosso, logo o peso é pequeno — nomeio-a porque é **precisamente a espécie que esta emenda existiu para curar**, e porque há forma alternativa melhor à mão: o observável (com a trava desligada o gesto **roda e escala**; com ela ligada, escala **sem rodar**), que é o que o controlo do §1.1 já implica |
+| **B5** | **§2.2** / **§2.5** | ⚠️ **funcional**, não §4.2 | o teste de lado é um predicado de **dois** argumentos e a espec só **liga** o segundo num dos dois sítios que o usam: o §3.1 diz «contra o alvo corrente» (✅ correcto, conferido), o §2.2 não diz nada. **Conferido no fonte: na acumulação da franja o segundo argumento é o ponto do cursor `C`.** ⛔ Não é cosmético — a franja decide o pivô e o pivô decide a deformação inteira (§12.1), e o §11.3 **só é verdade** com essa ligação, que ele pressupõe sem a enunciar |
+
+#### O que a 3.ª passagem custa
+
+⭐ **Quatro edições de uma linha e uma cláusula acrescentada.** Nenhum achado pede medição nova,
+re-derivação, nem toca numa fixtura; a paridade não muda uma casa decimal. ⚠️ E **nenhum** deles move
+o sweep (ver acima) ⇒ o verde do sweep não é prova de que foram curados: a 3.ª passagem confere-os
+**a olho**, como esta.
+
+#### Interacção nomeada (⛔ não é achado desta espec)
+
+A espec manda o implementador buscar o vocabulário das curvas ao
+[`falloff.rs`](../../../crates/ph2d-sculpt3d/src/falloff.rs) — o que está **certo** (§4.1: é o
+catálogo que o produto já tem). ⚠️ Só que esse ficheiro carrega, numa tabela de doc-comment, as
+**grafias internas de identificador** do alvo. É a dívida que o `CLAUDE.md` §5 já declara **ABERTA e
+nomeada** («os nomes de SÍMBOLO internos são §4.2 pela mesma linha da SKILL e o gate não os mede»),
+e é da linha dona daquele ficheiro — não desta obra. Fica registada porque **esta espec é o que põe
+um implementador a abrir aquele ficheiro**.
+
+---
+
 ## Espec
 
 | versão | caminho | rascunho | filtragem §4.3 | sweep | data |

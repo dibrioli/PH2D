@@ -475,71 +475,7 @@ impl App {
             }
         }
 
-        // Os atalhos que a TIMELINE reivindica (undo/redo · Delete das keys · `M` do marker ·
-        // o acorde C/X/V/D/R/E do dope-sheet) moram no irmão `keyboard_timeline.rs`. A ORDEM
-        // é a mesma: depois de Vector/Motion (ferramenta ativa fica com o acorde), antes dos
-        // Escapes. `true` = consumiu.
-        if self.timeline_key(physical_key, state, repeat) {
-            return;
-        }
-
-        // As teclas que ENCERRAM um gesto em curso (Esc cancela, Enter confirma) moram no
-        // irmão `keyboard_escapes.rs`. ⚠️ **A ORDEM entre elas É a lei** — quem consome
-        // antes de quem —, e é por isso que elas viajam juntas em vez de por dono.
-        // `true` = consumiu.
-        if self.escape_key(physical_key, state, repeat) {
-            return;
-        }
-
-        // Painter brush size: `[` shrinks, `]` grows the active brush
-        // (Blender/Photoshop convention). Consumed only when the Painter tool is
-        // active (the nudge downcast gates on it), so the brackets fall through
-        // otherwise. `Pressed` covers held-key repeat so the size keeps changing.
-        if state == ElementState::Pressed
-            && let PhysicalKey::Code(code @ (KeyCode::BracketLeft | KeyCode::BracketRight)) =
-                physical_key
-        {
-            let dir = if code == KeyCode::BracketRight { 1 } else { -1 };
-            if self.painter_nudge_brush_size(dir) {
-                return;
-            }
-        }
-
-        // Painter eraser toggle: `E` flips erase mode (Blender/PS convention).
-        // Consumed only when the Painter tool is active (the toggle gates on it),
-        // so `E` falls through otherwise. No modifiers, no repeat.
-        if state == ElementState::Pressed
-            && !repeat
-            && matches!(physical_key, PhysicalKey::Code(KeyCode::KeyE))
-            && !(self.modifiers.super_key() || self.modifiers.control_key())
-            && self.painter_toggle_eraser()
-        {
-            return;
-        }
-
-        // **A cadeia do DELETE no Painter** — âncora → figura → falloff, e a ORDEM é a feature
-        // (`keyboard_painter`). Corta ANTES da Hierarquia, cujo `Delete` apagaria a ENTIDADE.
-        if self.painter_delete_chain(state, physical_key) {
-            return;
-        }
-
-        // **O clipboard da SELEÇÃO do Painter** (Ctrl+X/C/V/A/D, Ctrl+Shift+I) — modo-exclusivo, então
-        // não disputa o Ctrl+A do vetor nem o Ctrl+C do grafo (`keyboard_painter`).
-        if self.painter_selection_clipboard_chain(state, physical_key) {
-            return;
-        }
-
-        // ⭐⭐⭐ **A HIERARQUIA: `Delete` apaga a selecção, `Ctrl/Cmd+D` duplica-a** (report do Enio,
-        // 2026-08-30 — `keyboard_hierarchy`).
-        //
-        // ⛔ **O «caminho genérico do hero» que os comentários acima invocam NÃO EXISTE** — o
-        // `KEY_DELETE` do dispatcher vira `GraphKey::Delete`, e o único consumidor dele na árvore é
-        // o painel do grafo de motion. Apagar um objeto só era possível pelo menu de contexto.
-        //
-        // ⚠️ Ela entra AQUI — depois de toda cadeia específica e antes do encaminhamento ao widget
-        // focado — e é gateada ao ponteiro estar sobre o painel: sem isso roubaria o `Delete` do
-        // traço do Flip, do nó de curva, da figura do Painter, da key da timeline e do nó do grafo.
-        if self.hierarchy_key_chain(state, repeat, physical_key) {
+        if self.ramo_teclas_timeline_painter_hierarquia(physical_key, state, repeat) {
             return;
         }
 
@@ -596,3 +532,7 @@ impl App {
 /// ⭐ Os dois ramos que correm depois de toda a cadeia — ver [`tail`].
 #[path = "keyboard_tail.rs"]
 mod tail;
+
+/// A cadeia do `key_input` (3D, texto/Flip/vetor, nós/ficheiros/acordes, timeline/Painter/Hierarquia) — os ramos.
+#[path = "keyboard_cadeia.rs"]
+mod cadeia;

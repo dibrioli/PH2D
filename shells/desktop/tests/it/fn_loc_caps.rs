@@ -61,7 +61,7 @@ const FN_OVERAGE_OK: &[(&str, &str, usize, &str)] = &[
         708,
         NASCEU,
     ),
-    ("input_dispatch/keyboard.rs", "key_input", 544, NASCEU),
+    ("input_dispatch/keyboard.rs", "key_input", 480, NASCEU),
     ("input_handlers.rs", "handle_editor_key", 358, NASCEU),
     ("layout_live.rs", "lay_out", 206, NASCEU),
     ("main.rs", "new", 263, NASCEU),

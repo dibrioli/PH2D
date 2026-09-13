@@ -14,7 +14,38 @@
 //! assunto. Neste painel ele é a **primeira** linha — o que sobra é o encaixe partilhado, e revelar
 //! passa a ser **trazer a aba à frente** (`bump_panel_z`).
 
-const LOOP: &str = include_str!("../../src/render_loop/mod.rs");
+/// **O QUADRO como UNIDADE**: o `render_loop/mod.rs` e toda `render_loop/fase_*.rs`, concatenados.
+///
+/// ⚠️ Desde a OBRA 2 da `line/render-loop` (2026-09-13) o quadro vive em FASES: a aresta do foco e a única escrita da
+/// visibilidade mudaram-se para a `fase_selection_mirror_bone_focus`. O gate de baixo é um CENSO («escrita em 1
+/// sítio»), e a unidade dele não pode ser o texto emendado — que repetiria o que ainda mora no `run_render_frame` —
+/// nem só o `mod.rs`, que acharia ZERO e reprovaria, ou acharia 1 com uma segunda escrita escondida numa fase. É a
+/// unidade do quadro inteiro, cada ficheiro uma vez — a mesma cura do censo dos sons (P4e). ⛔ Com PISO de população:
+/// uma varredura que achasse só o `mod.rs` voltaria a medir metade.
+static LOOP: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+    let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src/render_loop");
+    let mut files: Vec<std::path::PathBuf> = std::fs::read_dir(&dir)
+        .expect("ler src/render_loop")
+        .flatten()
+        .map(|e| e.path())
+        .filter(|p| {
+            p.file_name()
+                .and_then(|n| n.to_str())
+                .is_some_and(|n| n == "mod.rs" || (n.starts_with("fase_") && n.ends_with(".rs")))
+        })
+        .collect();
+    files.sort();
+    assert!(
+        files.iter().any(|p| p.ends_with("mod.rs")) && files.len() >= 30,
+        "o quadro achou {} ficheiros (sem o mod.rs?) — o censo mediria metade",
+        files.len()
+    );
+    files
+        .iter()
+        .map(|p| std::fs::read_to_string(p).expect("ler um ficheiro do quadro"))
+        .collect::<Vec<_>>()
+        .join("\n")
+});
 
 /// **As `n` linhas de CÓDIGO a seguir a `i`** — as vazias e as comentadas não contam.
 ///
@@ -85,7 +116,7 @@ fn code_only(src: &str) -> String {
 /// uma aresta.
 #[test]
 fn nothing_writes_the_visibility_every_frame() {
-    let src = code_only(LOOP);
+    let src = code_only(&LOOP);
     let linhas: Vec<&str> = src.lines().collect();
     let escritas: Vec<usize> = linhas
         .iter()
@@ -125,7 +156,7 @@ fn nothing_writes_the_visibility_every_frame() {
 /// todo quadro prenderia a aba e o artista não conseguiria olhar para outra.
 #[test]
 fn the_focus_edge_opens_raises_and_arms() {
-    let src = code_only(LOOP);
+    let src = code_only(&LOOP);
     let linhas: Vec<&str> = src.lines().collect();
     let i = linhas
         .iter()

@@ -304,6 +304,8 @@ mod fase_vector_layout_recook;
 mod fase_vector_morph_verbs;
 /// Fase do quadro: os overlays vectoriais do quadro.
 mod fase_vector_overlays;
+/// Fase do quadro: os tokens e as etiquetas das molduras.
+mod fase_vector_tokens_and_labels;
 /// Fase do quadro: as alcas da ferramenta vectorial.
 mod fase_vector_tool_handles;
 /// O empréstimo do `gfx` do quadro: o destructure exaustivo do `AppGfx`, re-derivado por fase.
@@ -8054,37 +8056,14 @@ impl crate::App {
                     &self.vec.entities,
                     &sel,
                 ));
-                // **OS TOKENS** (plano UI/UX W4): aplicar a escolha, e depois publicar o que a
-                // seleção tem preso. Nesta ordem — publicar antes deixaria o chip a mostrar o
-                // token ANTERIOR por um frame, e o artista veria a escolha "não pegar".
-                // ⚠️ O detach vem ANTES da escolha do picker: no mesmo frame em que o artista
-                // escolhe um TOKEN o `colour_authored` está limpo, então nenhum dos dois pisa no
-                // outro — mas na ordem inversa uma cor autorada soltaria o token recém-escolhido.
-                crate::vec_bindings::detach_on_authored(sim, &self.vec.entities, &sel);
-                if let Some((prop, token)) = pending_token_bind {
-                    crate::vec_bindings::set_selected_binding(
-                        sim,
-                        &self.vec.entities,
-                        &sel,
-                        prop,
-                        token,
-                    );
-                }
-                ph2d_panel_vector::state::set_token_bindings(
-                    crate::vec_bindings::selected_bindings(sim, &self.vec.entities, &sel),
-                );
-                // **As ETIQUETAS das molduras** (Enio 2026-08-01) — publicadas em TODO frame, com
-                // qualquer ferramenta em mãos. ⚠️ Aqui não vale a cerca da RÉGUA (que só vive com
-                // o Vector porque OCUPA a borda do canvas e comeria o pen-down do Painter): uma
-                // etiqueta é desenho puro, sem região de hit, e uma moldura é mobília de cena que
-                // se precisa reconhecer mesmo enquanto se pinta dentro dela.
-                hero.gizmo.frame_labels = crate::vec_frame_labels::frame_labels(
-                    sim,
-                    vec_scene,
-                    &self.vec.entities,
-                    &vec_xf,
-                    &sel,
-                );
+                let Some((vec_xf_back, sel)) = self.fase_vector_tokens_and_labels(
+                    fase_vector_tokens_and_labels::TokenBindIntents { pending_token_bind },
+                    vec_xf,
+                    sel,
+                ) else {
+                    return;
+                };
+                vec_xf = vec_xf_back;
                 let Some((group, sel)) = self.fase_vector_bool_shape_row(
                     fase_vector_bool_shape_row::BoolShapeIntents {
                         pending_bool_shape_op,

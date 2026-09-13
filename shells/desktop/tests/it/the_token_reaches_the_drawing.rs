@@ -9,7 +9,16 @@
 //! unidade o alcança: sem a asserção sobre o fonte, o resolvedor ficaria correto, gateado e
 //! **nunca chamado** — a metade silenciosa de toda feature de chrome.
 
-const RENDER_LOOP: &str = include_str!("../../src/render_loop/mod.rs");
+/// O QUADRO pela ordem em que corre (`frame_text::render_frame`).
+///
+/// ⚠️ Desde a OBRA 2 da `line/render-loop` (2026-09-13) o quadro vive em FASES: a publicação dos vínculos da
+/// selecção mora na `fase_vector_tokens_and_labels`, e a tinta resolvida do passe de desenho continua, por
+/// agora, no `render_loop/mod.rs`. Lido só num ficheiro, este gate reprovaria sobre produto correcto na
+/// primeira metade que muda de casa — foi o que a publicação dos vínculos fez.
+fn render_loop() -> &'static str {
+    static FRAME: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+    FRAME.get_or_init(crate::frame_text::render_frame)
+}
 
 /// **A fiação existe: o passe de desenho publica a tinta resolvida.**
 ///
@@ -19,12 +28,12 @@ const RENDER_LOOP: &str = include_str!("../../src/render_loop/mod.rs");
 #[test]
 fn the_draw_pass_publishes_the_resolved_paint() {
     assert!(
-        RENDER_LOOP.contains("vec_view.bound = crate::vec_bindings::resolve("),
+        render_loop().contains("vec_view.bound = crate::vec_bindings::resolve("),
         "o passe de desenho deixou de publicar a tinta dos tokens — todo binding fica inerte, e \
          os gates de unidade do resolvedor continuam verdes"
     );
     assert!(
-        RENDER_LOOP.contains("ph2d_panel_vector::state::set_token_bindings("),
+        render_loop().contains("ph2d_panel_vector::state::set_token_bindings("),
         "a shell deixou de publicar os bindings da seleção — os chips do painel mostrariam '—' \
          para sempre, mesmo sobre uma forma bindada"
     );

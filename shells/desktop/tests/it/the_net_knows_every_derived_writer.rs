@@ -33,7 +33,17 @@
 //! apanhado para o pivô vectorial (uma entidade cunhada tarde nasce com `Transform::default()`, e
 //! o quadro seguinte assenta-a sozinho), noutra mídia.
 
-const RENDER_LOOP: &str = include_str!("../../src/render_loop/mod.rs");
+/// O QUADRO pela ordem em que corre (`frame_text::render_frame`) — a janela da reconciliação.
+///
+/// ⚠️ Desde a OBRA 2 da `line/render-loop` (2026-09-13) o quadro vive em FASES: o assentamento do pivô, os
+/// `assign_missing_*`, os drenos e a projecção mudaram-se para a `fase_vector_tree_settle`. Lida só no
+/// `render_loop/mod.rs`, a janela perderia o início (reprova alto) — e, pior, um censo de PRESENÇA sobre um texto que
+/// encolhe a cada fase acha MENOS escritores e fica verde. Medido: o texto emendado dá à janela os MESMOS 9
+/// escritores que o `mod.rs` de HEAD dava.
+static RENDER_LOOP: std::sync::LazyLock<String> =
+    std::sync::LazyLock::new(crate::frame_text::render_frame);
+/// O `render_loop/mod.rs` INTEIRO — o que mora fora do corpo do quadro; o censo das pontes lê os dois.
+const RENDER_LOOP_FILE: &str = include_str!("../../src/render_loop/mod.rs");
 const NET_SRC: &str = include_str!("../../src/vec_tree_settle.rs");
 
 /// ⚠️⚠️ **O CÓDIGO da rede, sem a prosa — e esta linha nasceu de uma mutação SOBREVIVENTE.**
@@ -158,17 +168,34 @@ fn every_document_to_tree_bridge_is_in_the_net() {
     let net = net_code();
     // ⚠️ **Sem a prosa dos DOIS lados**: um `// crate::mesh_entities::sync(…)` comentado no passe
     // do desenho não é uma chamada, e acusá-lo mandaria alguém pôr na rede código que não corre.
-    let desenho = code_only(RENDER_LOOP);
+    // ⚠️ As DUAS lentes: o `render_loop/mod.rs` inteiro e o quadro emendado (as fases).
+    let desenho = code_only(&format!("{RENDER_LOOP_FILE}\n{}", *RENDER_LOOP));
+    let mut pontes: Vec<String> = Vec::new();
     let mut faltam: Vec<String> = Vec::new();
-    for (i, _) in desenho.match_indices("_entities::sync(") {
+    // ⛔⛔ **A agulha é `entities::sync(`, e a antiga (`_entities::sync(`) esteve MUDA** desde `3ba2cacb8`: quando a
+    // ponte saiu da shell a chamada virou `ph2d_vec_entities::entities::sync(` (e o Flip idem), a agulha deixou de
+    // casar, e o censo achava ZERO pontes e ficava verde sobre nada (medido na `line/render-loop`, 2026-09-13).
+    for (i, _) in desenho.match_indices("entities::sync(") {
         let inicio = desenho[..i]
             .rfind(|c: char| !(c.is_ascii_alphanumeric() || c == '_' || c == ':'))
             .map_or(0, |p| p + 1);
-        let caminho = &desenho[inicio..i + "_entities::sync".len()];
+        let caminho = &desenho[inicio..i + "entities::sync".len()];
+        if !pontes.iter().any(|p| p == caminho) {
+            pontes.push(caminho.to_string());
+        }
         if !net.contains(caminho) && !faltam.iter().any(|f| f == caminho) {
             faltam.push(caminho.to_string());
         }
     }
+    // ⛔ **O PISO de população** — é ele que torna a varredura incapaz de voltar a ficar verde sobre nada. Hoje o
+    // passe do desenho corre DUAS pontes (a vectorial e a do Flip); uma mídia nova sobe o número, e uma ponte que
+    // saia do quadro obriga quem a tirou a reconferir esta lista.
+    assert!(
+        pontes.len() >= 2,
+        "o censo das pontes achou {} ({pontes:?}) — a agulha deixou de casar a forma da chamada, e um censo que \
+         acha zero fica VERDE sobre nada (foi assim de `3ba2cacb8` a 2026-09-13)",
+        pontes.len()
+    );
     assert!(
         faltam.is_empty(),
         "estas pontes documento ⟺ árvore correm no passe do DESENHO e a rede não as tem: \

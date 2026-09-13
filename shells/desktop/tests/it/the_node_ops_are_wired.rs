@@ -15,7 +15,13 @@
 //! ⚠️ As asserções afirmam uma RELAÇÃO ou um CONTEÚDO dentro de uma janela sintática, nunca uma
 //! distância em bytes: esta linha já teve dois arch-gates apodrecerem por medirem bytes.
 
-const LOOP_SRC: &str = include_str!("../../src/render_loop/mod.rs");
+/// O QUADRO pela ordem em que corre (`frame_text::render_frame`).
+///
+/// ⚠️ Desde a OBRA 2 da `line/render-loop` (2026-09-13) o quadro vive em FASES: os drenos dos botões continuam no
+/// `render_loop/mod.rs`, e o assentamento das origens mudou-se para a `fase_vector_tree_settle` — a janela
+/// *sync → adopção da lâmina → settle* é de EXECUÇÃO, e só o texto emendado a tem.
+static LOOP_SRC: std::sync::LazyLock<String> =
+    std::sync::LazyLock::new(crate::frame_text::render_frame);
 const DISPATCH: &str = include_str!("../../src/input_dispatch.rs");
 
 /// A posição da 1ª ocorrência de `needle` em `src`, ou pânico com a razão.
@@ -140,9 +146,9 @@ fn the_cut_mode_draws_with_the_pen_and_owns_no_press_branch() {
 /// caminho já teria sido assentado como arte comum.
 #[test]
 fn the_cut_line_is_adopted_between_the_sync_and_the_settle() {
-    let sync = at(LOOP_SRC, "ph2d_vec_entities::entities::sync(");
-    let adopt = at(LOOP_SRC, "crate::vec_cut_line::upkeep(");
-    let settle = at(LOOP_SRC, "settle_origins(");
+    let sync = at(&LOOP_SRC, "ph2d_vec_entities::entities::sync(");
+    let adopt = at(&LOOP_SRC, "crate::vec_cut_line::upkeep(");
+    let settle = at(&LOOP_SRC, "settle_origins(");
     assert!(
         sync < adopt && adopt < settle,
         "a adocao da lamina saiu da janela entre o sync e o settle"
@@ -156,8 +162,8 @@ fn the_cut_line_is_adopted_between_the_sync_and_the_settle() {
 /// pilha que o Ctrl+Z nunca leu; o passo de undo do corte é o da fila global, por diff.)
 #[test]
 fn the_two_cut_buttons_are_drained_by_the_shell() {
-    let apply = at(LOOP_SRC, "if pending_vec_cut {");
-    let discard = at(LOOP_SRC, "if pending_vec_cut_discard {");
+    let apply = at(&LOOP_SRC, "if pending_vec_cut {");
+    let discard = at(&LOOP_SRC, "if pending_vec_cut_discard {");
     assert!(apply < discard, "os dois ramos trocaram de ordem");
     let a = &LOOP_SRC[apply..discard];
     for (needle, why) in [

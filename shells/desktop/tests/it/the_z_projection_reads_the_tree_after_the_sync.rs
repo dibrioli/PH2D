@@ -30,11 +30,20 @@
 //! Se você precisar mesmo mover um destes passes, o teste falha com a razão — não o silencie sem
 //! rodar `PH2D_BUILD_SMOKE=6 PH2D_UNDO_LOG=1` e ler o log de undo.
 
-const SRC: &str = include_str!("../../src/render_loop/mod.rs");
+/// O QUADRO pela ordem em que corre (`frame_text::render_frame`).
+///
+/// ⚠️ Desde a OBRA 2 da `line/render-loop` (2026-09-13) o quadro vive em FASES: o `sync` continua no
+/// `render_loop/mod.rs`, e a ordem de raiz, o snapshot da árvore e a projecção mudaram-se para a
+/// `fase_vector_tree_settle`. A ordem do §BUGS #15 é de EXECUÇÃO — entre dois ficheiros não há ordem, e só o
+/// texto emendado a tem.
+fn src() -> &'static str {
+    static FRAME: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+    FRAME.get_or_init(crate::frame_text::render_frame)
+}
 
 /// A posição (em bytes) da 1ª ocorrência de `needle`, ou pânico com a razão.
 fn at(needle: &str) -> usize {
-    SRC.find(needle).unwrap_or_else(|| {
+    src().find(needle).unwrap_or_else(|| {
         panic!(
             "o passe `{needle}` sumiu do render_loop — se ele foi renomeado, atualize este gate \
              (e confira que a ordem do §BUGS #15 continua de pé)"

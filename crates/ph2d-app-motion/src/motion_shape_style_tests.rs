@@ -277,7 +277,7 @@ fn a_wire_driven_param_reaches_the_publisher_and_the_geometry_follows_the_clock(
 /// store, que é a memória de facto. Antes da varredura os dois subiam juntos; hoje o
 /// primeiro sobe e o segundo fica em 1.
 ///
-/// `cargo test -p ph2d-host-desktop --bins measure_shape_store_growth -- --ignored --nocapture`
+/// `cargo test -p ph2d-app-motion --lib measure_shape_store_growth -- --ignored --nocapture`
 #[test]
 #[ignore = "sonda de medição, não gate"]
 fn measure_shape_store_growth() {

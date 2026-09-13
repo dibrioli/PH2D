@@ -14,7 +14,7 @@
 //! sonda existe para não ter.
 //!
 //! ```text
-//! cargo test -p ph2d-host-desktop --bins --release -- --ignored --nocapture what_the_card_still_cannot_reach
+//! cargo test -p ph2d-app-motion --lib --release -- --ignored --nocapture what_the_card_still_cannot_reach
 //! ```
 
 use crate::motion_state::MotionState;

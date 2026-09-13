@@ -9,7 +9,7 @@
 //! instrumento.
 //!
 //! ```text
-//! cargo test -p ph2d-host-desktop --bins -- --ignored --nocapture audit_the_field_group
+//! cargo test -p ph2d-app-motion --lib -- --ignored --nocapture audit_the_field_group
 //! ```
 
 /// Os sete do ciclo 4 (doc 103 §5).
@@ -33,7 +33,7 @@ fn audit_the_field_group() {
 /// referências. ⚠️ Sem esta lista, «falta X» é um palpite.
 ///
 /// ```text
-/// cargo test -p ph2d-host-desktop --bins -- --ignored --nocapture what_each_field_offers
+/// cargo test -p ph2d-app-motion --lib -- --ignored --nocapture what_each_field_offers
 /// ```
 #[test]
 #[ignore = "sonda de auditoria — corra à mão"]
@@ -44,7 +44,7 @@ fn what_each_field_offers() {
 /// ⭐⭐ **AS ROWS QUE O CARTÃO DE FACTO PINTA** — ver a porta.
 ///
 /// ```text
-/// cargo test -p ph2d-host-desktop --bins -- --ignored --nocapture what_the_field_card_shows
+/// cargo test -p ph2d-app-motion --lib -- --ignored --nocapture what_the_field_card_shows
 /// ```
 #[test]
 #[ignore = "sonda de auditoria — corra à mão"]
@@ -56,7 +56,7 @@ fn what_the_field_card_shows() {
 /// nome? É o achado §2.3 do ciclo 3 (*«seis vocabulários para onde é o centro»*) virado régua.
 ///
 /// ```text
-/// cargo test -p ph2d-host-desktop --bins -- --ignored --nocapture the_field_vocabulary
+/// cargo test -p ph2d-app-motion --lib -- --ignored --nocapture the_field_vocabulary
 /// ```
 /// Os NOMES que os cartões pintam — o que o tutorial tem de escrever.
 #[test]
@@ -149,7 +149,7 @@ fn the_two_spatial_boxes_group_a_shared_param_the_same_way() {
 /// planeador decide se a coisa fica no dispositivo.
 ///
 /// ```text
-/// cargo test -p ph2d-host-desktop --bins --release -- --ignored --nocapture measure_the_field_group
+/// cargo test -p ph2d-app-motion --lib --release -- --ignored --nocapture measure_the_field_group
 /// ```
 #[test]
 #[ignore = "sonda de medição — corra à mão, em RELEASE e com a máquina calma"]

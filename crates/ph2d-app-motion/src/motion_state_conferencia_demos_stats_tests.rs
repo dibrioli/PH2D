@@ -299,7 +299,7 @@ fn the_three_weights_filter_the_same_step_three_ways() {
 
 /// **A sonda que produziu os números do anúncio** — as alturas de cada banda.
 #[test]
-#[ignore = "sonda: cargo test -p ph2d-host-desktop --bins -- --ignored --nocapture stats_scene"]
+#[ignore = "sonda: cargo test -p ph2d-app-motion --lib -- --ignored --nocapture stats_scene"]
 fn measure_the_stats_scene() {
     let ls = lanes();
     let f = &ls[lane::B1_FIELD];

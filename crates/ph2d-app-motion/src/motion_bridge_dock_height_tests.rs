@@ -110,7 +110,7 @@ fn reach_census() -> Vec<(&'static str, f32, f32)> {
 }
 
 /// A SONDA da altura: imprime o censo, para o veredito sair de uma medição.
-/// `cargo test -p ph2d-host-desktop --bins measure_the_param_height_census -- --ignored --nocapture`
+/// `cargo test -p ph2d-app-motion --lib measure_the_param_height_census -- --ignored --nocapture`
 #[test]
 #[ignore = "sonda de medição, não gate"]
 fn measure_the_param_height_census() {
@@ -524,7 +524,7 @@ fn the_dock_overflow_is_named_not_discovered() {
 /// controle já desaparecem quando o artista nomeia uma forma (`ParamGateText`), então o
 /// tamanho no estado de DEFAULT é o do FALLBACK, não o do nó em uso.
 ///
-/// `cargo test -p ph2d-host-desktop --bins measure_the_wrap_with_a_shape -- --ignored --nocapture`
+/// `cargo test -p ph2d-app-motion --lib measure_the_wrap_with_a_shape -- --ignored --nocapture`
 #[test]
 #[ignore = "sonda, não gate"]
 fn measure_the_wrap_with_a_shape() {

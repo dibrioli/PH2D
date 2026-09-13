@@ -163,7 +163,7 @@ fn the_siblings_of_a_burst_fly_apart() {
 
 /// **A SONDA** — imprime a população quadro a quadro, de onde saem os números do anúncio.
 ///
-/// `cargo test -p ph2d-host-desktop --lib death_demo::tests::probe -- --ignored --nocapture`
+/// `cargo test -p ph2d-app-motion --lib death_demo::tests::probe -- --ignored --nocapture`
 #[test]
 #[ignore]
 fn probe_population() {

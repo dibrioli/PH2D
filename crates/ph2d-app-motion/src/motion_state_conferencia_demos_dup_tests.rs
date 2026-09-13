@@ -457,7 +457,7 @@ fn every_caption_is_a_chip_over_its_own_band() {
 /// conjunto e o tamanho de cada ilha do grafo.
 ///
 /// ```text
-/// cargo test -p ph2d-host-desktop --bins measure_the_dup_scene -- --ignored --nocapture
+/// cargo test -p ph2d-app-motion --lib measure_the_dup_scene -- --ignored --nocapture
 /// ```
 #[test]
 #[ignore = "sonda de medicao, nao um gate"]
@@ -495,7 +495,7 @@ fn measure_the_dup_scene() {
 /// **QUE SEMENTE FAZ O `RANDOM` MOSTRAR AS TRÊS FORMAS** — a sonda que escolheu o `PICK_SEED`.
 ///
 /// ```text
-/// cargo test -p ph2d-host-desktop --bins which_seed_shows_every_shape -- --ignored --nocapture
+/// cargo test -p ph2d-app-motion --lib which_seed_shows_every_shape -- --ignored --nocapture
 /// ```
 #[test]
 #[ignore = "sonda de calibracao, nao um gate"]

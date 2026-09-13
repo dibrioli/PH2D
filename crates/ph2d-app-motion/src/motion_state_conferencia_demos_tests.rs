@@ -282,7 +282,7 @@ fn the_partial_aim_scene_has_a_band_that_aims_and_a_soft_edge() {
 
 /// **A SONDA das quatro cenas** — os números que a mensagem de smoke cita.
 ///
-/// `cargo test -p ph2d-host-desktop --bin ph2d-host-desktop probe_conferencia_scenes -- --ignored --nocapture`
+/// `cargo test -p ph2d-app-motion --lib probe_conferencia_scenes -- --ignored --nocapture`
 #[test]
 #[ignore = "sonda"]
 fn probe_conferencia_scenes() {

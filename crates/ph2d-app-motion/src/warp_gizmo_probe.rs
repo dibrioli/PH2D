@@ -24,7 +24,7 @@
 //! com o aviso de que ela responde pela rota da CPU.
 //!
 //! ```text
-//! cargo test -p ph2d-host-desktop --bins --release -- --ignored --nocapture why_the_warp_gizmo_is_not_there
+//! cargo test -p ph2d-app-motion --lib --release -- --ignored --nocapture why_the_warp_gizmo_is_not_there
 //! ```
 
 use crate::motion_state::MotionState;

@@ -9,7 +9,7 @@
 //! silêncio no dia em que a família cresce.*
 //!
 //! ```text
-//! cargo test -p ph2d-host-desktop --bins -- --ignored --nocapture audit_the_sim_group
+//! cargo test -p ph2d-app-motion --lib -- --ignored --nocapture audit_the_sim_group
 //! ```
 
 /// A metade escrita: os nós do ciclo que **não** são uma família.
@@ -92,7 +92,7 @@ fn the_force_family_is_derived_and_not_empty() {
 /// [`crate::field_gizmo::spec_for`] conhece.
 ///
 /// ```text
-/// cargo test -p ph2d-host-desktop --bins -- --ignored --nocapture which_sim_nodes_have_a_place
+/// cargo test -p ph2d-app-motion --lib -- --ignored --nocapture which_sim_nodes_have_a_place
 /// ```
 #[test]
 #[ignore = "sonda de auditoria — corra à mão"]
@@ -347,7 +347,7 @@ fn every_row_the_sim_tutorial_names_is_on_the_card() {
 /// carga ao lado não é uma medição, é um número*.
 ///
 /// ```text
-/// cargo test -p ph2d-host-desktop --bins --release -- --ignored --nocapture measure_the_sim_group
+/// cargo test -p ph2d-app-motion --lib --release -- --ignored --nocapture measure_the_sim_group
 /// ```
 #[test]
 #[ignore = "sonda de medição — corra à mão, em RELEASE e com a máquina calma"]

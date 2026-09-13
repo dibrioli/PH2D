@@ -106,7 +106,7 @@ fn the_card_shows_and_drags_the_same_numbers_the_panel_does() {
 /// `0.94` num sítio e `94 px` noutro — e este censo é o número dela, para a wave que a fecha não
 /// começar por um palpite.
 ///
-/// `cargo test -p ph2d-host-desktop --bins --release -- --ignored --nocapture how_many_params_wear_a_face`
+/// `cargo test -p ph2d-app-motion --lib --release -- --ignored --nocapture how_many_params_wear_a_face`
 #[test]
 #[ignore = "sonda de censo, nao um gate"]
 fn how_many_params_wear_a_face() {

@@ -32,7 +32,7 @@
 //! duas paletas.
 //!
 //! ```text
-//! cargo test -p ph2d-host-desktop --bins --release -- --ignored --nocapture dump_deformadores_figures
+//! cargo test -p ph2d-app-motion --lib --release -- --ignored --nocapture dump_deformadores_figures
 //! ```
 
 use super::animadores_figures::{liga, no_com};

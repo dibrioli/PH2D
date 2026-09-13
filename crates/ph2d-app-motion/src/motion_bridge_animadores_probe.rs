@@ -7,7 +7,7 @@
 //! `grade → animador → output` **menos** `grade → output`. *Cronometrar a cadeia inteira
 //! mediria a grade oito vezes.*
 //!
-//! `cargo test -p ph2d-host-desktop --bins --release -- --ignored --nocapture measure_the_animator_group`
+//! `cargo test -p ph2d-app-motion --lib --release -- --ignored --nocapture measure_the_animator_group`
 
 use crate::motion_state::MotionState;
 use ph2d_nodegraph::cook::Cook;

@@ -11,7 +11,7 @@
 //! régua do `rot`/`size` cobrou naquele ciclo.
 //!
 //! ```text
-//! cargo test -p ph2d-host-desktop --bins -- --ignored --nocapture write_the_field_figures
+//! cargo test -p ph2d-app-motion --lib -- --ignored --nocapture write_the_field_figures
 //! ```
 
 use super::tutorial_draw as draw;

@@ -270,7 +270,7 @@ fn a_muted_disc_is_walked_through_and_a_pinned_one_is_an_obstacle() {
 ///
 /// Não afirma nada: imprime o que as seis bandas de facto cozinham, para a
 /// mensagem do roteador sair de uma MEDIÇÃO e não de uma expectativa. Rodar:
-/// `cargo test -p ph2d-host-desktop --release conferencia_demos_collide -- --ignored --nocapture`
+/// `cargo test -p ph2d-app-motion --release conferencia_demos_collide -- --ignored --nocapture`
 #[test]
 #[ignore = "sonda: mede, nao afirma"]
 fn measure_what_the_six_bands_draw() {

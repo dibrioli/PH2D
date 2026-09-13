@@ -15,7 +15,7 @@
 //! que ela imprime é o que tem de aparecer ao lado de cada teto que esta wave escrever**.
 //!
 //! ```text
-//! cargo test -p ph2d-host-desktop --bins measure_the_count_ceiling -- --ignored --nocapture
+//! cargo test -p ph2d-app-motion --lib measure_the_count_ceiling -- --ignored --nocapture
 //! ```
 
 #[cfg(test)]

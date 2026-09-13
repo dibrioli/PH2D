@@ -304,7 +304,7 @@ mod tests {
     /// varre a `strength` do `value.gain` e imprime o número que o fio de fato põe na
     /// `frequency` — pela porta do PRODUTO (`driven_value`, o memo do cook), nunca por uma
     /// segunda avaliação.
-    /// `cargo test -p ph2d-host-desktop --bins measure_the_gain_knob -- --ignored --nocapture`
+    /// `cargo test -p ph2d-app-motion --lib measure_the_gain_knob -- --ignored --nocapture`
     #[test]
     #[ignore = "sonda de medição, não gate"]
     fn measure_the_gain_knob() {
@@ -342,7 +342,7 @@ mod tests {
     }
 
     /// A SONDA: quanto a altura de fato RESPIRA, e quanto o ritmo passeia.
-    /// `cargo test -p ph2d-host-desktop --bins measure_the_driven_scene -- --ignored --nocapture`
+    /// `cargo test -p ph2d-app-motion --lib measure_the_driven_scene -- --ignored --nocapture`
     #[test]
     #[ignore = "sonda de medição, não gate"]
     fn measure_the_driven_scene() {

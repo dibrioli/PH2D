@@ -21,7 +21,7 @@ use ph2d_nodegraph::graph::Edge;
 /// A sonda monta o gesto REAL (`splice_node`, o mesmo que o menu chama), cozinha, e imprime o
 /// que sai: a porta em que o fio caiu, a contagem emitida e o relógio.
 ///
-/// `cargo test -p ph2d-host-desktop --release --bins -- --ignored --nocapture the_enio_duplicator_after_emitter`
+/// `cargo test -p ph2d-app-motion --release --lib -- --ignored --nocapture the_enio_duplicator_after_emitter`
 #[test]
 #[ignore = "sonda de reproducao, nao um gate"]
 fn the_enio_duplicator_after_emitter() {
@@ -181,7 +181,7 @@ fn a_spliced_wire_enters_the_port_the_type_declares() {
 /// deslocamento máximo depois de N tiques, **com e sem** o duplicator no meio. E imprime as
 /// colunas que chegam ao integrador — que é onde a resposta está.
 ///
-/// `cargo test -p ph2d-host-desktop --release --bins -- --ignored --nocapture the_enio_sim_died_after_the_duplicator`
+/// `cargo test -p ph2d-app-motion --release --lib -- --ignored --nocapture the_enio_sim_died_after_the_duplicator`
 #[test]
 #[ignore = "sonda de reproducao, nao um gate"]
 fn the_enio_sim_died_after_the_duplicator() {
@@ -386,7 +386,7 @@ fn a_simulation_survives_a_duplicator_in_the_middle() {
 /// `size_random` do emissor sorteia um tamanho por partícula, e um carimbo que o substitua
 /// pelo tamanho da FORMA entrega uma coluna cheia — de um valor só.
 ///
-/// `cargo test -p ph2d-host-desktop --release --bins -- --ignored --nocapture which_emitter_properties_survive`
+/// `cargo test -p ph2d-app-motion --release --lib -- --ignored --nocapture which_emitter_properties_survive`
 #[test]
 #[ignore = "sonda de reproducao, nao um gate"]
 fn which_emitter_properties_survive() {
@@ -502,7 +502,7 @@ fn which_emitter_properties_survive() {
 /// definição, e um deformador cuja 2.ª entrada é uma jaula não copia as colunas dela. A
 /// sonda IMPRIME; quem lê decide, com o nó ao lado.
 ///
-/// `cargo test -p ph2d-host-desktop --release --bins -- --ignored --nocapture which_nodes_drop_a_streams_columns`
+/// `cargo test -p ph2d-app-motion --release --lib -- --ignored --nocapture which_nodes_drop_a_streams_columns`
 #[test]
 #[ignore = "sonda de varredura, nao um gate"]
 fn which_nodes_drop_a_streams_columns() {

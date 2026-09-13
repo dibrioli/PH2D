@@ -5,7 +5,7 @@
 //! do que eu acho que falta.
 //!
 //! ```text
-//! cargo test -p ph2d-host-desktop --bins --release -- --ignored --nocapture audit_the_animator_group
+//! cargo test -p ph2d-app-motion --lib --release -- --ignored --nocapture audit_the_animator_group
 //! ```
 
 use crate::motion_state::MotionState;
@@ -78,7 +78,7 @@ fn audit_the_animator_group() {
 /// referências. ⚠️ Sem esta lista, «falta X» é um palpite.
 ///
 /// ```text
-/// cargo test -p ph2d-host-desktop --bins -- --ignored --nocapture what_each_animator_offers
+/// cargo test -p ph2d-app-motion --lib -- --ignored --nocapture what_each_animator_offers
 /// ```
 #[test]
 #[ignore = "sonda de auditoria — corra à mão"]
@@ -138,7 +138,7 @@ fn what_each_animator_offers() {
 /// `ParamGate`/`ParamGateText`/`ParamGateAbove` que o nomeia, ou ele é um achado.
 ///
 /// ```text
-/// cargo test -p ph2d-host-desktop --bins -- --ignored --nocapture what_the_card_hides_and_why
+/// cargo test -p ph2d-app-motion --lib -- --ignored --nocapture what_the_card_hides_and_why
 /// ```
 /// `(total de controlos, escondidos, as linhas, os SEM explicação)` sobre todo o catálogo.
 fn census_of_hidden_params() -> (usize, usize, Vec<String>, Vec<String>) {
@@ -261,7 +261,7 @@ fn every_param_the_card_hides_has_a_declared_reason() {
 /// O CENSO — a mesma varredura, a imprimir a tabela.
 ///
 /// ```text
-/// cargo test -p ph2d-host-desktop --bins -- --ignored --nocapture what_the_card_hides_and_why
+/// cargo test -p ph2d-app-motion --lib -- --ignored --nocapture what_the_card_hides_and_why
 /// ```
 #[test]
 #[ignore = "sonda de censo, nao um gate"]

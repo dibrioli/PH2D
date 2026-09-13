@@ -5,7 +5,7 @@
 //! Para cada um dos dez nós que põem objectos na tela: quantos elementos emite, se a cadeia
 //! `nó → output` fica inteira no **device**, quantos passes despacha, e o que custa na CPU.
 //!
-//! `cargo test -p ph2d-host-desktop --bins --release -- --ignored --nocapture measure_the_arranjo_group`
+//! `cargo test -p ph2d-app-motion --lib --release -- --ignored --nocapture measure_the_arranjo_group`
 
 use crate::motion_state::MotionState;
 use ph2d_nodegraph::cook::Cook;

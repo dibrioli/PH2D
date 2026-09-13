@@ -108,7 +108,7 @@ fn compare(motion: &MotionState, frequency: f32, period: f32, rotulo: &str) {
     }
 }
 
-/// `cargo test -p ph2d-host-desktop --release --bins -- --ignored --nocapture the_tee_against_the_fused_node`
+/// `cargo test -p ph2d-app-motion --release --lib -- --ignored --nocapture the_tee_against_the_fused_node`
 #[test]
 #[ignore = "sonda de medicao, nao um gate"]
 fn the_tee_against_the_fused_node() {

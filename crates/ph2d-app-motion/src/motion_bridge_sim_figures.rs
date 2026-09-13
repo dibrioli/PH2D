@@ -133,7 +133,7 @@ fn vaos(fotos: &[Vec<[f32; 2]>]) -> Vec<f32> {
 /// **`1,00×`** sob `Force` contra **`0,55×`** sob `Target Velocity`.
 ///
 /// ```text
-/// cargo test -p ph2d-host-desktop --bins -- --ignored --nocapture write_the_sim_figures
+/// cargo test -p ph2d-app-motion --lib -- --ignored --nocapture write_the_sim_figures
 /// ```
 #[test]
 #[ignore = "escreve ficheiros — corra à mão"]

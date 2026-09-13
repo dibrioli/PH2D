@@ -14,7 +14,7 @@ use crate::motion_state::MotionState;
 /// **O CENSO: quantos params cada tipo de nó põe no cartão** — a sonda que responde *«o cartão
 /// está vazio porque ninguém o encheu, ou porque ninguém o pintou?»* sem arqueologia de pixels.
 ///
-/// `cargo test -p ph2d-host-desktop --bins --release -- --ignored --nocapture what_each_card_carries`
+/// `cargo test -p ph2d-app-motion --lib --release -- --ignored --nocapture what_each_card_carries`
 #[test]
 #[ignore = "sonda de censo, nao um gate"]
 fn what_each_card_carries() {
@@ -128,7 +128,7 @@ fn what_each_card_carries() {
 /// A régua é de INCLUSÃO, não de igualdade: o cartão pode oferecer mais (e oferece — ele não
 /// dobra nada ainda), nunca menos.
 ///
-/// `cargo test -p ph2d-host-desktop --bins --release -- --ignored --nocapture what_the_panel_offers_and_the_card_does_not`
+/// `cargo test -p ph2d-app-motion --lib --release -- --ignored --nocapture what_the_panel_offers_and_the_card_does_not`
 #[test]
 #[ignore = "sonda de censo, nao um gate"]
 fn what_the_panel_offers_and_the_card_does_not() {
@@ -197,7 +197,7 @@ fn what_the_panel_offers_and_the_card_does_not() {
 
 /// **O CENSO DAS ESPÉCIES DE CONTROLO** — onde o esforço dos editores ricos tem de ir.
 ///
-/// `cargo test -p ph2d-host-desktop --bins --release -- --ignored --nocapture what_species_of_control_the_catalogue_has`
+/// `cargo test -p ph2d-app-motion --lib --release -- --ignored --nocapture what_species_of_control_the_catalogue_has`
 #[test]
 #[ignore = "sonda de censo, nao um gate"]
 fn what_species_of_control_the_catalogue_has() {
@@ -261,7 +261,7 @@ fn what_species_of_control_the_catalogue_has() {
 /// **O GRUPO DO CICLO ABERTO, controlo a controlo** — a pergunta que decide se os editores
 /// ricos bloqueiam o ciclo 1 (doc 104) ou pertencem a um ciclo mais à frente.
 ///
-/// `cargo test -p ph2d-host-desktop --bins --release -- --ignored --nocapture what_the_open_cycle_group_needs`
+/// `cargo test -p ph2d-app-motion --lib --release -- --ignored --nocapture what_the_open_cycle_group_needs`
 #[test]
 #[ignore = "sonda de censo, nao um gate"]
 fn what_the_open_cycle_group_needs() {

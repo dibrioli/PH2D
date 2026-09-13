@@ -8,7 +8,7 @@
 //! essa coluna fabrica uma tabela de dívida com oito kernels que já existem.
 //!
 //! ```text
-//! cargo test -p ph2d-host-desktop --bins --release -- --ignored --nocapture audit_the_deformer_group
+//! cargo test -p ph2d-app-motion --lib --release -- --ignored --nocapture audit_the_deformer_group
 //! ```
 
 use crate::motion_state::MotionState;
@@ -40,7 +40,7 @@ fn audit_the_deformer_group() {
 /// referências. ⚠️ Sem esta lista, «falta X» é um palpite.
 ///
 /// ```text
-/// cargo test -p ph2d-host-desktop --bins -- --ignored --nocapture what_each_deformer_offers
+/// cargo test -p ph2d-app-motion --lib -- --ignored --nocapture what_each_deformer_offers
 /// ```
 #[test]
 #[ignore = "sonda de auditoria — corra à mão"]
@@ -51,7 +51,7 @@ fn what_each_deformer_offers() {
 /// ⭐⭐ **AS ROWS QUE O CARTÃO DE FACTO PINTA, com o RÓTULO que aparece na tela** — ver a porta.
 ///
 /// ```text
-/// cargo test -p ph2d-host-desktop --bins -- --ignored --nocapture what_the_card_shows
+/// cargo test -p ph2d-app-motion --lib -- --ignored --nocapture what_the_card_shows
 /// ```
 #[test]
 #[ignore = "sonda de auditoria — corra à mão"]
@@ -126,7 +126,7 @@ fn scene_bounds(level: u32) -> Option<([f32; 2], [f32; 2], usize)> {
 /// lidas — e a esse tamanho o zoom máximo mostra um sétimo delas, de propósito.
 ///
 /// ```text
-/// cargo test -p ph2d-host-desktop --bins --release -- --ignored --nocapture where_each_demo_scene_lives
+/// cargo test -p ph2d-app-motion --lib --release -- --ignored --nocapture where_each_demo_scene_lives
 /// ```
 #[test]
 #[ignore = "sonda de auditoria — corra à mão"]

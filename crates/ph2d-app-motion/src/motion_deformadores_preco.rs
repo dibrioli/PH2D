@@ -50,7 +50,7 @@ fn waking_a_node_takes_it_off_the_identity() {
 /// relógio está ao lado só para dizer quanto.
 ///
 /// ```text
-/// cargo test -p ph2d-host-desktop --bins --release -- --ignored --nocapture measure_the_deformer_group
+/// cargo test -p ph2d-app-motion --lib --release -- --ignored --nocapture measure_the_deformer_group
 /// ```
 #[test]
 #[ignore = "sonda de medição — corra à mão, em RELEASE e com a máquina calma"]

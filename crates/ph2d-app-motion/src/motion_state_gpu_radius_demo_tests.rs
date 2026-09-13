@@ -140,7 +140,7 @@ fn the_sized_row_rests_on_the_floor_the_artist_authored() {
 
 /// **A SONDA** — imprime as duas fileiras, de onde saem os números do anúncio e do doc.
 ///
-/// `cargo test -p ph2d-host-desktop --lib radius_demo::tests::probe -- --ignored --nocapture`
+/// `cargo test -p ph2d-app-motion --lib radius_demo::tests::probe -- --ignored --nocapture`
 #[test]
 #[ignore]
 fn probe_radius_rest() {

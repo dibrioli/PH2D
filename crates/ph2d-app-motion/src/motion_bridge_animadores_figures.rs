@@ -11,7 +11,7 @@
 //! - **`Fantasma`** — a entrada por baixo e a saída por cima, no mesmo instante: mostra o que
 //!   o nó **fez**, e não o que ele produziu.
 //!
-//! `cargo test -p ph2d-host-desktop --bins --release -- --ignored --nocapture dump_animadores_figures`
+//! `cargo test -p ph2d-app-motion --lib --release -- --ignored --nocapture dump_animadores_figures`
 
 use super::tutorial_draw::{moldura, svg};
 use crate::motion_state::MotionState;

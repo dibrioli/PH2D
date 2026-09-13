@@ -141,7 +141,7 @@ fn probe_reach_during_the_fall() {
 
 /// **A SONDA** — de onde saem os números do anúncio e do doc.
 ///
-/// `cargo test -p ph2d-host-desktop --bins probe_speed_ceiling -- --ignored --nocapture`
+/// `cargo test -p ph2d-app-motion --lib probe_speed_ceiling -- --ignored --nocapture`
 #[test]
 #[ignore]
 fn probe_speed_ceiling() {
@@ -157,7 +157,7 @@ fn probe_speed_ceiling() {
 /// **SONDA — O PUMP DA CPU REBOBINA PARA O TIQUE 0?** (a metade que a sonda do
 /// `ph2d-gpu-cook` nao alcanca: o produto cai no pump sempre que a rota do dispositivo recusa.)
 ///
-/// `cargo test -p ph2d-host-desktop --lib probe_cpu_pump_rewind -- --ignored --nocapture`
+/// `cargo test -p ph2d-app-motion --lib probe_cpu_pump_rewind -- --ignored --nocapture`
 #[test]
 #[ignore]
 fn probe_cpu_pump_rewind() {

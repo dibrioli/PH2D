@@ -123,7 +123,7 @@ fn the_size_is_the_contact_now_and_the_frame_converges() {
 
 /// **A SONDA** — de onde saem os números do anúncio e do doc.
 ///
-/// `cargo test -p ph2d-host-desktop --lib hit_demo::tests::probe -- --ignored --nocapture`
+/// `cargo test -p ph2d-app-motion --lib hit_demo::tests::probe -- --ignored --nocapture`
 #[test]
 #[ignore]
 fn probe_hit_mark() {

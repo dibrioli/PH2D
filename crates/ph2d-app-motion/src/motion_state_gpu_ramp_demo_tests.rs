@@ -120,7 +120,7 @@ fn the_shower_rests_on_the_ramp_it_slid_down() {
 
 /// **A SONDA** — imprime o que a cena faz, de onde saem os números do anúncio e do doc.
 ///
-/// `cargo test -p ph2d-host-desktop --lib ramp_demo::tests::probe -- --ignored --nocapture`
+/// `cargo test -p ph2d-app-motion --lib ramp_demo::tests::probe -- --ignored --nocapture`
 #[test]
 #[ignore]
 fn probe_ramp_chute() {

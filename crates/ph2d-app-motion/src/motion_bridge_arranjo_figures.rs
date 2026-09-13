@@ -9,7 +9,7 @@
 //! A tabela dos controlos sai do **registry** (`param_ui` + `param_units`), pela mesma razão:
 //! uma tabela escrita à mão envelhece no primeiro param novo.
 //!
-//! `cargo test -p ph2d-host-desktop --bins --release -- --ignored --nocapture dump_arranjo_figures`
+//! `cargo test -p ph2d-app-motion --lib --release -- --ignored --nocapture dump_arranjo_figures`
 
 use crate::motion_state::MotionState;
 use ph2d_nodegraph::attr::Column;
@@ -223,7 +223,7 @@ fn dump_arranjo_figures() {
 /// tiver escala de face, a tabela impressa passa a mentir sobre a faixa.
 ///
 /// ```text
-/// cargo test -p ph2d-host-desktop --bins does_the_tutorial_table_still_match_the_card -- --ignored --nocapture
+/// cargo test -p ph2d-app-motion --lib does_the_tutorial_table_still_match_the_card -- --ignored --nocapture
 /// ```
 #[test]
 #[ignore = "sonda de censo, nao um gate"]

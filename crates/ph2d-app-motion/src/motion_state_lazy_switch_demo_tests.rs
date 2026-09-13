@@ -35,7 +35,7 @@ fn the_announcement_cites_the_numbers_the_scene_uses() {
 /// **A SONDA QUE ESCOLHE O `SIDE`** — imprime, não afirma.
 ///
 /// ```text
-/// cargo test -p ph2d-host-desktop --bins measure_lazy_switch_cost -- --ignored --nocapture
+/// cargo test -p ph2d-app-motion --lib measure_lazy_switch_cost -- --ignored --nocapture
 /// ```
 ///
 /// ⚠️ **Ela existe porque a tabela do doc-comment do [`SIDE`] não tinha instrumento.** A 1.ª

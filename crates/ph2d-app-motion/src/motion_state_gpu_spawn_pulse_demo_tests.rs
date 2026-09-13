@@ -169,7 +169,7 @@ fn sem_o_fio_do_pulso_a_cena_fica_vazia() {
 
 /// Sonda: o retrato da cena em números, para a mensagem de smoke **medir** em vez de estimar.
 ///
-/// `cargo test -p ph2d-host-desktop --bins probe_cinco_fontes -- --ignored --nocapture`
+/// `cargo test -p ph2d-app-motion --lib probe_cinco_fontes -- --ignored --nocapture`
 #[test]
 #[ignore = "sonda de diagnóstico: imprime, não afirma"]
 fn probe_cinco_fontes() {

@@ -247,7 +247,7 @@ fn select_present_bakes_named_and_group_flip_objects_but_not_loose_art() {
 /// um Flip animado**, logo a primeira a percorrer o caminho de RE-BAKE (despejo +
 /// aquisição) — e é ali que um piscar tem de ser procurado, não no offset.
 ///
-/// Roda com `cargo test -p ph2d-host-desktop --bins probe_animated_flip_bake_churn --
+/// Roda com `cargo test -p ph2d-app-motion --lib probe_animated_flip_bake_churn --
 /// --ignored --nocapture`.
 #[test]
 #[ignore = "sonda de medicao; requires a GPU adapter"]

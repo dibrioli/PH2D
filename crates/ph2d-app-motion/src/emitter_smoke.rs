@@ -204,7 +204,7 @@ mod tests {
     /// cenas deste painel vivem em torno de `|x|,|y| ≲ 1,5` (o echo orbita a 0,9), então é
     /// contra ISSO que a caixa desta fonte é lida.
     ///
-    /// `cargo test -p ph2d-host-desktop --bin ph2d-host-desktop emitter_smoke -- --ignored --nocapture`
+    /// `cargo test -p ph2d-app-motion --lib emitter_smoke -- --ignored --nocapture`
     #[test]
     #[ignore = "sonda de diagnostico"]
     fn measure_what_the_fountain_occupies() {

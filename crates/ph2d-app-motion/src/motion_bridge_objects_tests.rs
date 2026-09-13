@@ -417,7 +417,7 @@ fn tile_texture_for_gid_finds_the_baked_tile() {
 /// acima). `apply_object_lod` conta por `geometry_id` (BTreeMap), resolve a tile e MOVE as
 /// instâncias acima do joelho para `instances` como quads. É O(N); esta sonda mede se ele é um
 /// segundo freeze escondido (160k) ou custo insignificante — decide se há próxima alavanca.
-/// `cargo test -p ph2d-host-desktop --release the_lod_partition_cost -- --ignored --nocapture`
+/// `cargo test -p ph2d-app-motion --release the_lod_partition_cost -- --ignored --nocapture`
 #[test]
 #[ignore = "sonda manual de escala; rode em --release --nocapture"]
 fn the_lod_partition_cost_at_scale() {

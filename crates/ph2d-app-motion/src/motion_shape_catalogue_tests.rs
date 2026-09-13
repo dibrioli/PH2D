@@ -403,7 +403,7 @@ fn the_pie_and_the_segment_answer_to_the_new_knobs() {
 /// quina nenhuma.
 ///
 /// Imprime `SIM`/`nao` por espécie. Rode com
-/// `cargo test -p ph2d-host-desktop --bin ph2d-host-desktop -- which_kinds_the_corner_moves --ignored --nocapture`.
+/// `cargo test -p ph2d-app-motion --lib -- which_kinds_the_corner_moves --ignored --nocapture`.
 #[test]
 #[ignore = "sonda: imprime a tabela de que o ParamGate do `corner` e' derivado"]
 fn which_kinds_the_corner_moves() {

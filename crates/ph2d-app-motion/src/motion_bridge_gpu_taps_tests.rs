@@ -23,7 +23,7 @@
 //! sobre um programa que não é este.
 //!
 //! ```text
-//! cargo test -p ph2d-host-desktop --bins -- --ignored --nocapture the_fully_gpu_route
+//! cargo test -p ph2d-app-motion --lib -- --ignored --nocapture the_fully_gpu_route
 //! ```
 
 use super::{GpuOutcome, cook_gpu};

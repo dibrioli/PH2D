@@ -9,7 +9,7 @@
 //! quantas cenas nunca lá chegam.
 //!
 //! ```text
-//! cargo test -p ph2d-host-desktop --bins --release -- --ignored --nocapture measure_the_stamp_at_a_million
+//! cargo test -p ph2d-app-motion --lib --release -- --ignored --nocapture measure_the_stamp_at_a_million
 //! ```
 
 use crate::motion_state::MotionState;

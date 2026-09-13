@@ -113,7 +113,7 @@ fn the_row_cap_is_measured_not_guessed() {
 }
 
 /// A SONDA: imprime o censo inteiro, para o número do teto sair de uma medição.
-/// `cargo test -p ph2d-host-desktop measure_the_param_row_census -- --ignored --nocapture`
+/// `cargo test -p ph2d-app-motion measure_the_param_row_census -- --ignored --nocapture`
 #[test]
 #[ignore = "sonda de medição, não gate"]
 fn measure_the_param_row_census() {

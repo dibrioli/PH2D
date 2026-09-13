@@ -219,7 +219,7 @@ fn a_round_trip_of_the_field_leaves_the_scene_where_it_found_it() {
 /// M1 — o `field.box` sozinho é PURO sob o ida-e-volta? (cozinha o nó, lê `falloff`.)
 /// M2 — a CENA volta ao mesmo lugar? (cozinha os tiques, com o toggle no meio da corrida.)
 #[test]
-#[ignore = "sonda: cargo test -p ph2d-host-desktop --bins probe_invert_round_trip -- --ignored --nocapture"]
+#[ignore = "sonda: cargo test -p ph2d-app-motion --lib probe_invert_round_trip -- --ignored --nocapture"]
 fn probe_invert_round_trip() {
     let (moved, diff, n) = invert_round_trip_on_the_node();
     eprintln!("M1  o NO: {n} linhas | invert MUDOU {moved} | ida-e-volta difere em {diff}");
@@ -366,7 +366,7 @@ fn classify(sizes: &[[f32; 2]]) -> (usize, usize, usize, usize) {
 
 /// Quanto custa um tique desta cena, e é dele que o `SIDE` sai (§0: meça antes de limitar).
 #[test]
-#[ignore = "sonda: cargo test -p ph2d-host-desktop --bins measure_the_gate_scene_tick -- --ignored --nocapture"]
+#[ignore = "sonda: cargo test -p ph2d-app-motion --lib measure_the_gate_scene_tick -- --ignored --nocapture"]
 fn measure_the_gate_scene_tick() {
     let mut registry = NodeRegistry::new();
     ph2d_node_registry_init::register_all_nodes(&mut registry).expect("registry builds");

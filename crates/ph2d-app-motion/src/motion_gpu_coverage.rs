@@ -23,7 +23,7 @@
 //! the report with `--nocapture`:
 //!
 //! ```text
-//! cargo test -p ph2d-host-desktop gpu_coverage --  --nocapture
+//! cargo test -p ph2d-app-motion gpu_coverage --  --nocapture
 //! ```
 //!
 //! The one assertion is the decision-relevant invariant: at least one real
@@ -434,7 +434,7 @@ fn reg_has_kernel(reg: &NodeRegistry, ty: ph2d_nodegraph::node::NodeTypeId) -> O
 /// Afirmar um sobre ele seria inventar a régua que o produto não tem.
 ///
 /// ```text
-/// cargo test -p ph2d-host-desktop --bins what_the_corpus_authors_and_no_one_can_type -- --ignored --nocapture
+/// cargo test -p ph2d-app-motion --lib what_the_corpus_authors_and_no_one_can_type -- --ignored --nocapture
 /// ```
 #[test]
 #[ignore = "sonda: imprime uma tabela para a varredura por família do doc 88 §9"]

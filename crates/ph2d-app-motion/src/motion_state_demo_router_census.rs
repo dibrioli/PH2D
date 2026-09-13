@@ -46,7 +46,7 @@ use super::*;
 /// que o cook devolve — e até esta sonda existir, o único instrumento que media a
 /// diferença entre os dois era o olho do Enio, depois de compilar em release.
 ///
-/// `PH2D_LAYOUT_LEVEL=73 cargo test -p ph2d-host-desktop --bins
+/// `PH2D_LAYOUT_LEVEL=73 cargo test -p ph2d-app-motion --lib
 /// measure_scene_layout -- --ignored --nocapture` (sem a env, varre tudo).
 #[test]
 #[ignore = "sonda de layout, não um gate — `-- --ignored --nocapture`"]
@@ -134,7 +134,7 @@ fn band_box(
 ///
 /// *Uma sonda que acusa a cena boa está a acusar-se a si própria.*
 ///
-/// `PH2D_LAYOUT_LEVEL=75 cargo test -p ph2d-host-desktop --bins
+/// `PH2D_LAYOUT_LEVEL=75 cargo test -p ph2d-app-motion --lib
 /// measure_scene_motion -- --ignored --nocapture`
 #[test]
 #[ignore = "sonda de movimento, não um gate — `-- --ignored --nocapture`"]
@@ -193,7 +193,7 @@ fn measure_scene_motion() {
 /// livre ou se custa uma capacidade.
 ///
 /// ```text
-/// cargo test -p ph2d-host-desktop --bins measure_feedback_ports -- --ignored --nocapture
+/// cargo test -p ph2d-app-motion --lib measure_feedback_ports -- --ignored --nocapture
 /// ```
 ///
 /// ⚠️ **A pergunta vem de um report do Enio (2026-08-27, com foto): a porta de estado do
@@ -290,7 +290,7 @@ fn measure_feedback_ports() {
 /// entrega é o CENSO — quantas das cenas que o produto expõe correm no caminho rápido —, para
 /// que ninguém volte a afirmar «GPU-resident por omissão» sem o número ao lado.
 ///
-/// `cargo test -p ph2d-host-desktop --bins motion_route_census -- --ignored --nocapture`
+/// `cargo test -p ph2d-app-motion --lib motion_route_census -- --ignored --nocapture`
 #[test]
 #[ignore = "sonda de rota, não um gate — `-- --ignored --nocapture`"]
 fn motion_route_census() {
@@ -383,7 +383,7 @@ fn motion_route_census() {
 /// rato por vários, não veria nada, e concluiria que está partido. *Um smoke cuja condição o
 /// leitor não consegue avaliar reprova sobre produto correcto* (§0.8).
 ///
-/// `cargo test -p ph2d-host-desktop --release --bins -- --ignored --nocapture where_the_drops_note_shows_up`
+/// `cargo test -p ph2d-app-motion --release --lib -- --ignored --nocapture where_the_drops_note_shows_up`
 #[test]
 #[ignore = "sonda de smoke, nao um gate"]
 fn where_the_drops_note_shows_up() {
@@ -440,7 +440,7 @@ fn where_the_drops_note_shows_up() {
 /// que encontrou.
 ///
 /// ```text
-/// cargo test -p ph2d-host-desktop --bins what_feeds_every_duplicators_shape_port -- --ignored --nocapture
+/// cargo test -p ph2d-app-motion --lib what_feeds_every_duplicators_shape_port -- --ignored --nocapture
 /// ```
 #[test]
 #[ignore = "sonda de censo, nao um gate"]

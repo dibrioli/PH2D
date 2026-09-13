@@ -298,7 +298,7 @@ fn sem_o_fio_do_carry_o_ponto_nao_cresce_mas_ainda_pula() {
 
 /// Sonda: o retrato da cena em números, para a mensagem de smoke MEDIR em vez de estimar.
 ///
-/// `cargo test -p ph2d-host-desktop --bins probe_o_compasso -- --ignored --nocapture`
+/// `cargo test -p ph2d-app-motion --lib probe_o_compasso -- --ignored --nocapture`
 #[test]
 #[ignore = "sonda de diagnóstico: imprime, não afirma"]
 fn probe_o_compasso() {

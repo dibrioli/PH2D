@@ -186,7 +186,7 @@ fn the_scene_builds_every_band_the_log_names() {
 /// Ela não afirma nada: imprime o que as seis bandas de facto cozinham, para a
 /// mensagem do roteador ser escrita a partir de uma MEDIÇÃO e não de uma
 /// expectativa. Rodar:
-/// `cargo test -p ph2d-host-desktop --release conferencia_demos_velocity -- --ignored --nocapture`
+/// `cargo test -p ph2d-app-motion --release conferencia_demos_velocity -- --ignored --nocapture`
 #[test]
 #[ignore = "sonda: mede, nao afirma"]
 fn measure_what_the_six_bands_draw() {

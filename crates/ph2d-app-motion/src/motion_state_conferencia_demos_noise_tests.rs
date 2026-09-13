@@ -164,7 +164,7 @@ fn every_grid_in_the_kernel_scene_is_visible() {
 }
 
 /// Sonda: o que a cena `=37` de facto monta. Roda com
-/// `cargo test -p ph2d-host-desktop probe_noise_kernel_scene -- --ignored --nocapture`.
+/// `cargo test -p ph2d-app-motion probe_noise_kernel_scene -- --ignored --nocapture`.
 #[test]
 #[ignore = "sonda de medicao"]
 fn probe_noise_kernel_scene() {

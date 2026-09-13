@@ -22,7 +22,7 @@ use ph2d_nodegraph::graph::Edge;
 /// (a MESMA porta que o menu do gesto chama) e mede o `rot` da corrente ao longo do tempo:
 /// um condutor que age faz o ângulo VARIAR entre instantes.
 ///
-/// `cargo test -p ph2d-host-desktop --release --bins -- --ignored --nocapture what_can_drive_the_rotate_angle`
+/// `cargo test -p ph2d-app-motion --release --lib -- --ignored --nocapture what_can_drive_the_rotate_angle`
 #[test]
 #[ignore = "sonda de reproducao, nao um gate"]
 fn what_can_drive_the_rotate_angle() {
@@ -146,7 +146,7 @@ fn only_a_value_output_may_drive_a_param() {
 /// escalar · losango = vector). A pergunta que decide a avaliação é *quantos valores distintos
 /// cada canal de facto toma no catálogo* — um canal com um valor só é tinta gasta.
 ///
-/// `cargo test -p ph2d-host-desktop --release --bins -- --ignored --nocapture what_the_socket_encoding_carries`
+/// `cargo test -p ph2d-app-motion --release --lib -- --ignored --nocapture what_the_socket_encoding_carries`
 #[test]
 #[ignore = "sonda de censo, nao um gate"]
 fn what_the_socket_encoding_carries() {
@@ -221,7 +221,7 @@ fn what_the_socket_encoding_carries() {
 /// de facto toma no nosso catálogo — um canal com um valor só não distingue nada, esteja ou não
 /// declarado. É a mesma régua do `what_the_socket_encoding_carries`.
 ///
-/// `cargo test -p ph2d-host-desktop --release --bins -- --ignored --nocapture what_our_visual_channels_carry`
+/// `cargo test -p ph2d-app-motion --release --lib -- --ignored --nocapture what_our_visual_channels_carry`
 #[test]
 #[ignore = "sonda de censo, nao um gate"]
 fn what_our_visual_channels_carry() {
@@ -272,7 +272,7 @@ fn what_our_visual_channels_carry() {
 ///
 /// Esta sonda mede a **cobertura**: para quantos dos 134 tipos a derivação existe hoje.
 ///
-/// `cargo test -p ph2d-host-desktop --release --bins -- --ignored --nocapture how_much_reads_writes_we_can_derive`
+/// `cargo test -p ph2d-app-motion --release --lib -- --ignored --nocapture how_much_reads_writes_we_can_derive`
 #[test]
 #[ignore = "sonda de censo, nao um gate"]
 fn how_much_reads_writes_we_can_derive() {

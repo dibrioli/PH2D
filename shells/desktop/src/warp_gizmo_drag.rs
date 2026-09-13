@@ -129,4 +129,33 @@ impl crate::App {
     pub(crate) fn warp_gizmo_up(&mut self) -> bool {
         self.warp_drag.take().is_some()
     }
+
+    /// **O gizmo do COLISOR da forma** (doc 109 §5) — as três pontas, pela MESMA janela e câmara
+    /// do warp. A lei e o estado do arrasto vivem na família; aqui só se projecta o ponteiro.
+    pub(crate) fn collider_gizmo_down(&mut self, sx: f32, sy: f32) -> bool {
+        let (Some(world), Some(wpp)) = (self.warp_world_at(sx, sy), self.warp_world_per_px())
+        else {
+            return false;
+        };
+        self.gfx.as_mut().is_some_and(|gfx| {
+            ph2d_app_motion::collider_gizmo::pointer_down(&mut gfx.motion, world, wpp)
+        })
+    }
+
+    /// Move a alça do colisor agarrada. `true` = consumiu o movimento.
+    pub(crate) fn collider_gizmo_move(&mut self, sx: f32, sy: f32) -> bool {
+        let world = self.warp_world_at(sx, sy);
+        self.gfx.as_mut().is_some_and(|gfx| match world {
+            Some(w) => ph2d_app_motion::collider_gizmo::pointer_move(&mut gfx.motion, w),
+            // Agarrado mas sem câmara: consome e não escreve lixo.
+            None => gfx.motion.collider_drag.is_some(),
+        })
+    }
+
+    /// Larga a alça do colisor e fecha o passo de undo. `true` = havia um arrasto.
+    pub(crate) fn collider_gizmo_up(&mut self) -> bool {
+        self.gfx
+            .as_mut()
+            .is_some_and(|gfx| ph2d_app_motion::collider_gizmo::pointer_up(&mut gfx.motion))
+    }
 }

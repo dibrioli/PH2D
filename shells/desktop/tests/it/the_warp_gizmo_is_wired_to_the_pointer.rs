@@ -77,6 +77,43 @@ fn all_three_pointer_ends_are_wired() {
     }
 }
 
+/// ⭐⭐ **O gizmo do COLISOR da forma (doc 109 §5) está ligado como o do warp** — publicado com a
+/// modalidade da tool, desenhado a partir do retrato, as três pontas do ponteiro, e o `down` só
+/// sobre o canvas. *A costura é o que se perde num merge, não a matemática.*
+#[test]
+fn the_collider_gizmo_is_wired_like_the_warp() {
+    let quadro = crate::frame_text::render_frame()
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ");
+    assert!(
+        quadro.contains(
+            "ph2d_app_motion::collider_gizmo::publish(ph2d_app_motion::collider_gizmo::resolve_at( motion, motion_tool_active,"
+        ),
+        "o retrato do colisor tem de ser publicado no prologo, gateado pela tool Motion"
+    );
+    assert!(
+        quadro.contains("collider_gizmo::view()")
+            && quadro.contains("collider_gizmo_overlay::draw("),
+        "e desenhado a partir do retrato publicado"
+    );
+    let s = crate::input_text::dispatch();
+    for needle in [
+        "self.collider_gizmo_down(",
+        "self.collider_gizmo_move(",
+        "self.collider_gizmo_up()",
+    ] {
+        assert!(s.contains(needle), "a costura `{needle}` não está ligada");
+    }
+    let at = s
+        .find("self.collider_gizmo_down(")
+        .expect("o colisor está lá");
+    assert!(
+        s[at.saturating_sub(400)..at].contains("&& on_canvas"),
+        "o `down` do colisor tem de exigir `on_canvas`"
+    );
+}
+
 /// **O `down` do warp vem ANTES do do field e do genérico.**
 ///
 /// ⚠️ Uma alça alcançada pelo caminho genérico escreveria um `Transform` de ENTIDADE em

@@ -122,6 +122,15 @@ impl crate::App {
             motion,
             motion_tool_active,
         ));
+        // **O gizmo do COLISOR da forma** (doc 109 §5) — o mesmo sítio, a mesma modalidade.
+        ph2d_app_motion::collider_gizmo::publish(ph2d_app_motion::collider_gizmo::resolve_at(
+            motion,
+            motion_tool_active,
+            camera,
+            hero.view.center_split,
+            window_size,
+            self.last_pointer,
+        ));
         Some(motion_tool_active)
     }
 }

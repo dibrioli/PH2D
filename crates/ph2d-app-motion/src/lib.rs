@@ -99,6 +99,10 @@ pub mod picker_smoke;
 // ─── os 17 que eram filhos DIRECTOS do `render_loop/mod.rs` ──────────────────────
 // ⚠️ O LAÇO ficou na shell (ele garante a ordem dos 48 símbolos); o que saiu foram os
 // CORPOS, e a shell chama-os por `crate::<mod>::<fn>` no ponto certo.
+/// ⭐⭐ O gizmo do COLISOR da forma (doc 109 §5) — os contornos e as alças no canvas.
+pub mod collider_gizmo;
+/// O DESENHO desse gizmo.
+pub mod collider_gizmo_overlay;
 /// doc 89 folha 14: a metade do shell do `source.text` — o bloco vira uma
 /// instância POR CARACTERE, com a geometria de cada glifo internada no MESMO
 /// store das formas (um `geometry_id` é um `geometry_id`, venha de onde vier).

@@ -332,6 +332,9 @@ pub struct MotionState {
     /// looks it up to draw the shape live. Kept across frames — a static shape
     /// builds once.
     pub shape_store: crate::motion_shape_gen::VecPathStore,
+    /// ⭐ O arrasto em curso do gizmo do COLISOR da forma (doc 109 §5) — mora aqui e não na `App`
+    /// porque é estado da família: a shell só entrega o ponteiro em coordenadas de mundo.
+    pub collider_drag: Option<crate::collider_gizmo::Arrasto>,
     /// ⭐ O memo da DERIVAÇÃO do L-System — irmão do `shape_store`, varrido no mesmo sítio.
     /// Ver `motion_lsystem_gen::PlantMemo` para porque ele é uma tabela à parte.
     pub lsystem_memo: crate::motion_lsystem_gen::PlantMemo,
@@ -478,6 +481,7 @@ impl MotionState {
             flip_object_bake: crate::motion_flip_bake::FlipObjectBake::default(),
             // ADR-0154: empty until the publish pass interns a `source.shape`.
             shape_store: crate::motion_shape_gen::VecPathStore::default(),
+            collider_drag: None,
             lsystem_memo: crate::motion_lsystem_gen::PlantMemo::default(),
             band_cache: crate::motion_audio_gen::BandCache::default(),
             table_cache: crate::motion_table_gen::TableCache::default(),

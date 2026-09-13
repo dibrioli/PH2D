@@ -126,6 +126,16 @@ impl crate::App {
                 // seguidas serem palpites.
                 ph2d_app_motion::warp_overlay::diag("nao ha' retrato publicado (`view()` = None)");
             }
+            // **O gizmo do COLISOR da forma** (doc 109 §5): os contornos e as alças.
+            if let Some(v) = ph2d_app_motion::collider_gizmo::view() {
+                ph2d_app_motion::collider_gizmo_overlay::draw(
+                    &v,
+                    camera,
+                    hero.view.center_split,
+                    surface.size(),
+                    vector_scene,
+                );
+            }
             anchor_overlay::draw_anchor_marks(
                 !hero
                     .store

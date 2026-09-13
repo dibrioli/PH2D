@@ -56,7 +56,6 @@ const FILE_OVERAGE_OK: &[(&str, usize)] = &[
     // quadro de âncora levou-o a 777, e a cura foi cortar o `mod tests` para o irmão
     // `transform_tests.rs` (o idioma do `children_order_tests.rs`). Ficou em 621 — abaixo do cap
     // default, sem entrada nenhuma. *Os números desta lista só descem.*
-    ("ph2d-editor-core/src/grid_snap/state.rs", 796),
     // Aposentada 2026-07-27 (W-FK): `paint.rs` tinha 884 LOC de primitivas de
     // GEOMETRIA + a família do TEXTO inteira; a segunda saiu para o irmão
     // `paint_text.rs` (com re-export, então nenhum chamador mudou de endereço) e

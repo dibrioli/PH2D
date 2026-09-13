@@ -44,9 +44,9 @@
 
 use crate::geom::{self, View};
 use crate::snapshot::GraphNodeView;
+use ph2d_editor_core::paint::paint_text_title_elided;
 use ph2d_editor_core::paint::{paint_text_title, resolve};
 use ph2d_editor_core::panel::PaintCtx;
-use ph2d_editor_core::text_elide::paint_text_title_elided;
 use ph2d_tokens::{ColorToken, Theme};
 
 use super::socket_center;

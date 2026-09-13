@@ -7,7 +7,7 @@ use super::*;
 use crate::param_file_browse_id;
 use crate::snapshot::scalar_text;
 use crate::{ChannelsRow, ColorRow, EnumRow, ScalarRow, SourceRow, ToggleRow};
-use ph2d_editor_core::text_elide::paint_text_elided;
+use ph2d_editor_core::paint::paint_text_elided;
 use ph2d_editor_core::widget::panel_chrome::paint_segmented_button_in_group;
 use ph2d_editor_core::widget::{block_cells, grid_height};
 

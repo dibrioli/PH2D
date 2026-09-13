@@ -13,8 +13,8 @@ use super::{
     param_text_id, row_value,
 };
 use ph2d_editor_core::interaction::{HitIndex, WidgetStore};
+use ph2d_editor_core::paint::paint_text_elided;
 use ph2d_editor_core::paint::resolve;
-use ph2d_editor_core::text_elide::paint_text_elided;
 use ph2d_editor_core::widget::panel_chrome::paint_segmented_button;
 use ph2d_editor_core::widget::{
     Checkbox, CheckboxValue, ColorSwatch, DEFAULT_LABEL_W, SwatchSize, paint_checkbox,

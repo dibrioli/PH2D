@@ -79,7 +79,7 @@ pub(crate) fn paint(
     );
     let font = TypeToken::Sm.px();
     let label_budget = (lock.x - region.x - Spacing::Sm.px() * 2.0).max(0.0);
-    ph2d_editor_core::text_elide::paint_text_elided(
+    ph2d_editor_core::paint::paint_text_elided(
         ctx.text_system,
         ctx.scene,
         ph2d_i18n::tr("panel.timeline.summary"),

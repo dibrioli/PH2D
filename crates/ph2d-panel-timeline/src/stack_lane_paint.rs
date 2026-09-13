@@ -11,9 +11,9 @@
 
 use ph2d_editor_core::icons::IconId;
 use ph2d_editor_core::interaction::{InteractiveState, TimelineHitKind};
+use ph2d_editor_core::paint::paint_text_elided;
 use ph2d_editor_core::paint::{fill_rounded_rect, paint_icon, rect_to_vello, resolve};
 use ph2d_editor_core::panel::PaintCtx;
-use ph2d_editor_core::text_elide::paint_text_elided;
 use ph2d_editor_core::zones::Rect;
 use ph2d_timeline::TimelineViewSnapshot;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, StrokeToken, Theme, TypeToken};

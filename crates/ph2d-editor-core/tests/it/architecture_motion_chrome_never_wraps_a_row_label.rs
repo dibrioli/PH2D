@@ -11,7 +11,7 @@
 //!
 //! A causa é uma porta com dois sentidos: o `max_width` de
 //! [`ph2d_editor_core::paint::paint_text`] é um **orçamento de QUEBRA**, e o de
-//! [`ph2d_editor_core::text_elide::paint_text_elided`] é um **limite de CORTE**.
+//! [`ph2d_editor_core::paint::paint_text_elided`] é um **limite de CORTE**.
 //!
 //! ⚠️ **A lei já existia e ninguém a chamava.** O `text_elide.rs` diz no cabeçalho *"a label
 //! one pixel too wide for its column silently becomes two lines and spills into the row
@@ -364,7 +364,7 @@ fn the_motion_chrome_never_gives_a_row_label_a_wrap_budget() {
         offenders.is_empty(),
         "rotulo de linha com orcamento de QUEBRA — ele parte em duas linhas e escreve por cima \
          da entrada seguinte (o report do Enio de 2026-08-30). Use \
-         `ph2d_editor_core::text_elide::paint_text_elided` (ou `paint_text_title_elided` para \
+         `ph2d_editor_core::paint::paint_text_elided` (ou `paint_text_title_elided` para \
          SemiBold), que corta com reticencias:\n  {}",
         offenders.join("\n  ")
     );

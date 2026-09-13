@@ -17,9 +17,9 @@
 //! um teto é o corte para um irmão, nunca uma isenção* — e o corte por RESPONSABILIDADE é este: lá
 //! mora a row (o twirl, os hits, os diamantes); aqui, o que se escreve na coluna de nomes.
 
+use ph2d_editor_core::paint::paint_text_elided;
 use ph2d_editor_core::paint::resolve;
 use ph2d_editor_core::panel::PaintCtx;
-use ph2d_editor_core::text_elide::paint_text_elided;
 use ph2d_timeline::{TimelineViewSnapshot, TrackView};
 use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, Theme, TypeToken};
 

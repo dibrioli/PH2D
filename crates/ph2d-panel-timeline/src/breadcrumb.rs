@@ -182,7 +182,7 @@ pub(crate) fn paint(ctx: &mut PaintCtx, theme: Theme, x: f32, y: f32, snap: &Tim
     };
     let text = st.text();
     let font = TypeToken::Xs.px();
-    ph2d_editor_core::text_elide::paint_text_elided(
+    ph2d_editor_core::paint::paint_text_elided(
         ctx.text_system,
         ctx.scene,
         &text,

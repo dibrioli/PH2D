@@ -25,9 +25,9 @@
 
 use crate::geom::{View, card_h};
 use crate::snapshot::{GraphBackdropView, GraphNodeView};
+use ph2d_editor_core::paint::paint_text_title_elided;
 use ph2d_editor_core::paint::{fill_rounded_rect, resolve};
 use ph2d_editor_core::panel::PaintCtx;
-use ph2d_editor_core::text_elide::paint_text_title_elided;
 use ph2d_editor_core::widget::panel_chrome::{
     paint_panel_corner_dot, paint_panel_corner_dot_bl, panel_resize_handle_rect,
     panel_resize_handle_rect_bl,

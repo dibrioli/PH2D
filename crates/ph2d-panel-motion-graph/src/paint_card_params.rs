@@ -16,9 +16,9 @@
 
 use crate::geom::{self, View};
 use crate::snapshot::{CardParam, GraphNodeView};
+use ph2d_editor_core::paint::paint_text_title_elided;
 use ph2d_editor_core::paint::{fill_rounded_rect, resolve};
 use ph2d_editor_core::panel::PaintCtx;
-use ph2d_editor_core::text_elide::paint_text_title_elided;
 use ph2d_editor_core::zones::Rect;
 use ph2d_node_registry::ParamWidget;
 use ph2d_tokens::{ColorToken, Theme};

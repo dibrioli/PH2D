@@ -8,9 +8,9 @@ use super::{
 use crate::geom;
 use crate::snapshot::{GraphViewSnapshot, menu_rows};
 use crate::state::{Menu, MenuBody};
+use ph2d_editor_core::paint::paint_text_title_elided;
 use ph2d_editor_core::paint::{fill_circle, fill_rounded_rect, rect_to_vello, resolve};
 use ph2d_editor_core::panel::PaintCtx;
-use ph2d_editor_core::text_elide::paint_text_title_elided;
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, Theme};
 

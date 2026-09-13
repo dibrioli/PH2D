@@ -69,10 +69,10 @@ fn snap_x_apply(x: f32, snap: ph2d_tokens::SnapX) -> f32 {
 #[path = "paint_icons.rs"]
 mod icons_paint;
 pub use icons_paint::{paint_icon, paint_icon_path, paint_icon_rotated};
-/// A porta com o PESO explícito — interna à crate, para o [`crate::text_elide`] poder pintar
-/// no mesmo peso em que mediu **sem um `if` a enumerar pesos** (ver a nota lá).
-pub(crate) use text::paint_text_weighted;
-pub use text::{paint_text, paint_text_block, paint_text_rotated_ccw, paint_text_title};
+pub use text::{
+    paint_text, paint_text_block, paint_text_elided, paint_text_rotated_ccw, paint_text_title,
+    paint_text_title_elided,
+};
 
 /// Convert a `ph2d_tokens::Color` (sRGB 8-bit + alpha) to Vello's
 /// `peniko::Color`. Vello stores its native palette as `[r,g,b,a]`

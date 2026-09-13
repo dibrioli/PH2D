@@ -27,8 +27,8 @@
 
 use crate::icons::IconId;
 use crate::interaction::{HitIndex, InteractiveState, WidgetStore};
+use crate::paint::paint_text_elided;
 use crate::paint::{fill_rounded_rect, paint_icon, paint_text_centered, resolve};
-use crate::text_elide::paint_text_elided;
 use crate::widget::TextInputState;
 use crate::widget::number_input::{stepper_down_rect, stepper_up_rect, stepper_width};
 use crate::widget::property_box::{PropertyBox, PropertyBoxState, paint_property_box};

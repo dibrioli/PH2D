@@ -14,6 +14,7 @@
 //! resultado.
 
 use super::{snap_x_apply, text_rendering};
+use crate::text_elide::elide;
 use ph2d_text::{FontWeight, PositionedLayoutItem, TextSystem};
 use ph2d_vector::{Affine, Color, Fill, Glyph, VectorScene};
 
@@ -345,5 +346,151 @@ pub fn paint_text_rotated_ccw(
                     }),
                 );
         }
+    }
+}
+
+// ⚠️ **Os três pintores de texto CORTADO vieram do `text_elide`** (auditoria A10, 2026-09-12): a lei
+// da reticência ([`crate::text_elide`]) fica em baixo, e quem PINTA mora com os outros pintores de
+// texto. Os corpos não mudaram uma linha — o `elide` passou a ser nomeado pelo módulo dele.
+
+/// Paint `text` on **one line**, ellipsized when it does not fit `max_width`.
+///
+/// [`paint_text`] treats `max_width` as a *wrap* budget, so a label one pixel
+/// too wide silently becomes two lines and spills into the row below. Anything
+/// that must stay on its own line — list rows, track names — belongs here.
+///
+/// `max_width` too small for even the ellipsis paints nothing.
+#[allow(clippy::too_many_arguments)]
+pub fn paint_text_elided(
+    text_system: &mut TextSystem,
+    scene: &mut VectorScene,
+    text: &str,
+    x: f32,
+    y: f32,
+    font_size: f32,
+    max_width: f32,
+    color: Color,
+) {
+    paint_elided_weighted(
+        text_system,
+        scene,
+        text,
+        x,
+        y,
+        font_size,
+        max_width,
+        color,
+        FontWeight::MEDIUM,
+    );
+}
+
+/// ⭐ [`paint_text_elided`] em **SemiBold** — a irmã de [`paint_text_title`], para o mesmo
+/// motivo pelo qual ela existe.
+///
+/// ⚠️ Sem ela, cortar um TÍTULO obrigava a escolher entre duas regressões silenciosas: pintar
+/// o corte em `Medium` (o título muda de peso e ninguém escreveu isso) ou medir em `Medium` e
+/// pintar em `SemiBold` (o prefixo escolhido transborda ~3 %, exactamente na fronteira em que o
+/// corte existe para não transbordar).
+#[allow(clippy::too_many_arguments)]
+pub fn paint_text_title_elided(
+    text_system: &mut TextSystem,
+    scene: &mut VectorScene,
+    text: &str,
+    x: f32,
+    y: f32,
+    font_size: f32,
+    max_width: f32,
+    color: Color,
+) {
+    paint_elided_weighted(
+        text_system,
+        scene,
+        text,
+        x,
+        y,
+        font_size,
+        max_width,
+        color,
+        FontWeight::SEMI_BOLD,
+    );
+}
+
+#[allow(clippy::too_many_arguments)]
+fn paint_elided_weighted(
+    text_system: &mut TextSystem,
+    scene: &mut VectorScene,
+    text: &str,
+    x: f32,
+    y: f32,
+    font_size: f32,
+    max_width: f32,
+    color: Color,
+    weight: FontWeight,
+) {
+    // ⚠️⚠️ **O peso ATRAVESSA, não é escolhido por um `if`.** A 1.ª redacção ramificava em
+    // `weight == SEMI_BOLD`, e uma auditoria adversarial mostrou que era **um braço só**:
+    // um terceiro peso seria MEDIDO nele e PINTADO em Medium, em silêncio — o defeito exacto
+    // que este módulo existe para impedir. Três mutações sobreviveram a 1 100 testes por
+    // causa dele. *Uma lista de pesos é uma lista que alguém esquece; um parâmetro não.*
+    let paint = |ts: &mut TextSystem, sc: &mut VectorScene, t: &str| {
+        paint_text_weighted(ts, sc, t, x, y, font_size, f32::INFINITY, color, weight);
+    };
+    if max_width <= 0.0 {
+        return;
+    }
+    if text_system.prefix_width_weighted(text, font_size, weight) <= max_width {
+        // `INFINITY`, not `max_width`: it fits, and passing the budget back would
+        // let a sub-pixel measurement disagreement re-introduce the wrap.
+        paint(text_system, scene, text);
+        return;
+    }
+    let Some(elided) = elide(text_system, text, font_size, max_width, weight) else {
+        return;
+    };
+    paint(text_system, scene, &elided);
+}
+
+#[cfg(test)]
+mod elided_tests {
+    use super::*;
+
+    /// ⭐⭐ **E O QUE FOI PINTADO TEM O PESO QUE FOI MEDIDO** — a outra metade, que a
+    /// auditoria de 2026-08-30 também deixou sem gate (a mutação *"pinta sempre em Medium"*
+    /// sobrevivia a 1 100 testes).
+    ///
+    /// A régua é a TINTA, lida da cena emitida. ⚠️ **E ela custou duas tentativas:** contar
+    /// `n_paths` e `n_path_segments` dá **zero** nos dois (um glifo não entra na cena como
+    /// caminho, entra por `draw_glyphs`), e contar os glifos dá **17 nos dois** (é a mesma
+    /// string). O que separa os pesos é o **eixo normalizado da fonte VARIÁVEL** —
+    /// `resources.normalized_coords` —, que é literalmente onde o peso viaja.
+    /// ⛔ Não é comparar duas construções: é perguntar à saída.
+    #[test]
+    fn the_ink_carries_the_weight_that_was_measured() {
+        let axes = |bold: bool| {
+            let mut text = TextSystem::without_system_fonts();
+            let mut scene = VectorScene::new();
+            let name = "Tropism Direction";
+            let f = if bold {
+                paint_text_title_elided
+            } else {
+                paint_text_elided
+            };
+            f(
+                &mut text,
+                &mut scene,
+                name,
+                0.0,
+                0.0,
+                13.0,
+                f32::INFINITY,
+                Color::from_rgba8(255, 255, 255, 255),
+            );
+            scene.inner().encoding().resources.normalized_coords.clone()
+        };
+        assert_ne!(
+            axes(true),
+            axes(false),
+            "as duas portas pintaram a MESMA tinta — o peso nao chega ao pintor"
+        );
     }
 }

@@ -388,7 +388,7 @@ fn paint_markers(
             );
         }
         // Label to the right of the triangle, elided so it never runs off.
-        ph2d_editor_core::text_elide::paint_text_elided(
+        ph2d_editor_core::paint::paint_text_elided(
             ctx.text_system,
             ctx.scene,
             label,

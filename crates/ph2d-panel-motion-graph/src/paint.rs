@@ -93,12 +93,12 @@ use crate::snapshot::{
 use crate::state::{MotionGraphPanelState, ViewState};
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::GraphHitKind;
+use ph2d_editor_core::paint::paint_text_title_elided;
 use ph2d_editor_core::paint::{
     fill_circle, fill_rounded_rect, rect_to_vello, resolve, stroke_polyline, stroke_rounded_rect,
 };
 use ph2d_editor_core::paint_shapes::fill_diamond;
 use ph2d_editor_core::panel::PaintCtx;
-use ph2d_editor_core::text_elide::paint_text_title_elided;
 use ph2d_editor_core::zones::Rect;
 use ph2d_node_registry::NodeUiCategory;
 use ph2d_nodegraph::port::Domain;

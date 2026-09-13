@@ -22,8 +22,8 @@ use ph2d_color::{
 };
 use ph2d_editor_core::interaction::{HitIndex, WidgetStore};
 use ph2d_editor_core::math::safe_clamp;
+use ph2d_editor_core::paint::paint_text_elided;
 use ph2d_editor_core::paint::{fill_circle, fill_rounded_rect, paint_text_centered, resolve};
-use ph2d_editor_core::text_elide::paint_text_elided;
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, Theme, TypeToken};

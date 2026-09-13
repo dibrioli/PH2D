@@ -190,6 +190,10 @@ cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-UIUX && cargo run -p ph2d-
 O binário já está compilado nesta worktree (§12). ⚠️ `~/.ph2d/layout.txt` guarda a arrumação dos painéis —
 um ficheiro velho abre o app com um painel fechado, e apagá-lo é o reset.
 
+✅ **Smoke APROVADO pelo dono em 2026-09-13** (*«smoke OK»*), sobre o binário `smoke` desta worktree compilado
+da árvore de `9bdf86631` (o commit desta nota só toca este ficheiro). Aprovar o smoke **não** é ordem de
+integrar (CLAUDE.md §0.7): a linha continua parada à espera dela.
+
 ## 8 — ⏳ ABERTO (não corrigir na integração)
 
 | item | de quem depende |

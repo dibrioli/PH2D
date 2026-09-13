@@ -29,7 +29,10 @@ fn the_view_is_published_once_per_frame_gated_by_the_motion_tool() {
     // ⚠️ **ACHATADO desde a Fase C (2026-09-12):** a chamada passou a ser qualificada
     // (`ph2d_app_motion::warp_gizmo::…`) e o `cargo fmt` partiu-a em quatro linhas. Uma agulha
     // que casa uma linha inteira mede a FORMATAÇÃO junto com a lei; achatar mede só a lei.
-    let s = src("render_loop/mod.rs")
+    // ⚠️ O QUADRO emendado (`frame_text::render_frame`), e não o `render_loop/mod.rs` (OBRA 2 da `line/render-loop`,
+    // 2026-09-13): a publicação ainda mora no `mod.rs`, mas o desenho mudou-se para a `fase_selection_highlight` e a
+    // publicação é a próxima a sair — os dois testes deste par leem a mesma lente.
+    let s = crate::frame_text::render_frame()
         .replace('\n', " ")
         .split_whitespace()
         .collect::<Vec<_>>()
@@ -44,7 +47,8 @@ fn the_view_is_published_once_per_frame_gated_by_the_motion_tool() {
 /// **E ELE É DESENHADO.**
 #[test]
 fn the_published_view_is_actually_drawn() {
-    let s = src("render_loop/mod.rs");
+    // ⚠️ O QUADRO emendado: o desenho do retrato mudou-se para a `fase_selection_highlight` (P5k).
+    let s = crate::frame_text::render_frame();
     assert!(
         s.contains("warp_overlay::draw_warp_gizmo("),
         "o retrato publicado tem de chegar à tinta"

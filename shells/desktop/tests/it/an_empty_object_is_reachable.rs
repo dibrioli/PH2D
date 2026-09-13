@@ -31,7 +31,10 @@ fn the_gizmo_pass_publishes_a_view_for_a_group_or_an_empty() {
 /// **O anel é DESENHADO** — sem isto um objeto vazio continua sem um pixel na tela.
 #[test]
 fn the_paint_pass_draws_the_empty_object_ring() {
-    let src = fs::read_to_string("src/render_loop/mod.rs").expect("render_loop/mod.rs");
+    // ⚠️ O QUADRO emendado (`frame_text::render_frame`), e não o `render_loop/mod.rs`: desde a OBRA 2 da
+    // `line/render-loop` (2026-09-13) o quadro vive em fases, e as marcas de canvas (o anel do vazio incluído) mudaram-se
+    // para a `fase_selection_highlight`.
+    let src = crate::frame_text::render_frame();
     assert!(
         src.contains("empty_object_overlay::draw_empty_object_marks("),
         "o passe de pintura deixou de desenhar o anel do objeto vazio — ele fica invisivel no \

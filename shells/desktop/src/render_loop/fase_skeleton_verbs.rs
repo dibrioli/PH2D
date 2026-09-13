@@ -21,6 +21,7 @@ impl crate::App {
             sim,
             asset_db,
             vec_scene,
+            hero_screen,
             ..
         } = FrameGfx::of(gfx);
         let SkeletonVerbsIntents {
@@ -56,6 +57,12 @@ impl crate::App {
                         .map(|p| (e, p.0))
                 })
                 .collect();
+            // ⚠️ **O `ppm` do PROJECTO, lido como a `fase_extract_inputs` o lê:** a régua da imagem
+            // resolve a âncora ao prender e o quad ao desenhar, e os dois têm de dar a mesma.
+            let ppm = hero_screen
+                .as_ref()
+                .map(|h| h.project.pixels_per_meter)
+                .unwrap_or(ph2d_editor_core::project::DEFAULT_PIXELS_PER_METER);
             let mut n_img = 0;
             for (e, id) in imagens {
                 let Some(asset) = asset_db.get(&id) else {
@@ -69,6 +76,7 @@ impl crate::App {
                     e,
                     &cow,
                     [w, h],
+                    ppm,
                     ph2d_poly2d::GridOptions::default(),
                     semente,
                 ) {

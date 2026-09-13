@@ -118,6 +118,9 @@ pub fn bind(
     sim: &mut ph2d_ecs::SimWorld,
     doc: &mut ph2d_timeline::TimelineDoc,
     assets: &ph2d_asset::AssetDb,
+    // O `ppm` do projecto — a imagem é presa com a âncora que o quadro vai desenhar
+    // (`Sprite::resolve_anchor`).
+    ppm: f32,
     st: &mut crate::state::VecState,
 ) {
     st.bone_smoke_step = 2;
@@ -150,6 +153,7 @@ pub fn bind(
                     e,
                     &cow,
                     [w, h],
+                    ppm,
                     ph2d_poly2d::GridOptions::default(),
                     raiz,
                 )

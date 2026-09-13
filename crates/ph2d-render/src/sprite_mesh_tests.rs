@@ -32,7 +32,11 @@ fn stitching_n_triangles_gives_5n_minus_2_vertices_and_the_real_windows_are_the_
             .collect();
         assert_eq!(reais.len(), n as usize, "n = {n}: janelas reais");
         for (t, janela) in tris.iter().zip(&reais) {
-            let esperado = [verts[t[0] as usize], verts[t[1] as usize], verts[t[2] as usize]];
+            let esperado = [
+                verts[t[0] as usize],
+                verts[t[1] as usize],
+                verts[t[2] as usize],
+            ];
             assert_eq!(
                 janela.map(|q| q.pos),
                 esperado.map(|q| q.pos),
@@ -51,7 +55,11 @@ fn a_triangle_with_an_index_out_of_range_is_skipped() {
     assert_eq!(stitch(&mut out, &verts, &[[0, 1, 9]]), None);
     assert!(out.is_empty());
     let r = stitch(&mut out, &verts, &[[0, 1, 9], [0, 1, 2]]).expect("o 2.o e' valido");
-    assert_eq!(r, (0, 3), "so' o triangulo valido entra, sem ligacao a um fantasma");
+    assert_eq!(
+        r,
+        (0, 3),
+        "so' o triangulo valido entra, sem ligacao a um fantasma"
+    );
 }
 
 /// ⭐ **A volta `local → quad_pos → anchor + quad_pos·size` devolve o `local`**, com a âncora
@@ -69,6 +77,32 @@ fn quad_pos_round_trips_through_the_shader_law_with_an_offset_anchor() {
     }
     assert_eq!(quad_pos([0.0, 0.0], anchor, [0.0, 1.0]), None);
     assert_eq!(quad_pos([0.0, 0.0], anchor, [1.0, f32::NAN]), None);
+}
+
+/// ⭐⭐ **`SpriteMesh::uv_at` dá a cada canto do QUAD a UV que o quad lhe dá** — com a âncora deslocada.
+///
+/// ⚠️ É o que faz uma malha em repouso ler os mesmos texels que o quad: a UV sai do ponto onde o
+/// vértice está, e o gate confere-a contra a PRÓPRIA tabela do quad (`QuadVertex::QUAD_STRIP`), não
+/// contra uma convenção de `v` escrita à mão aqui.
+///
+/// (Mutação: `0.5 + q[1]` no `uv_at` ⇒ RED nos quatro cantos.)
+#[test]
+fn uv_at_gives_every_quad_corner_the_uv_the_quad_gives_it() {
+    let (anchor, size) = ([0.75_f32, -1.25], [3.0_f32, 2.0]);
+    for canto in QuadVertex::QUAD_STRIP {
+        let local = [
+            anchor[0] + canto.pos[0] * size[0],
+            anchor[1] + canto.pos[1] * size[1],
+        ];
+        let uv = SpriteMesh::uv_at(local, anchor, size).expect("size valido");
+        assert!(
+            (uv[0] - canto.uv[0]).abs() < 1e-6 && (uv[1] - canto.uv[1]).abs() < 1e-6,
+            "o canto {:?} deu a UV {uv:?} e o quad usa {:?}",
+            canto.pos,
+            canto.uv
+        );
+    }
+    assert_eq!(SpriteMesh::uv_at([0.0, 0.0], anchor, [0.0, 1.0]), None);
 }
 
 fn instancia() -> RenderInstance {
@@ -126,7 +160,10 @@ fn the_collect_tags_the_meshed_instance_and_clears_a_tag_from_outside() {
     // A malha em repouso cobre o quad: os cantos voltam aos cantos do QUAD_STRIP.
     let cantos: Vec<[f32; 2]> = malhas.vertices.iter().map(|q| q.pos).collect();
     for canto in [[-0.5_f32, -0.5], [0.5, -0.5], [0.5, 0.5], [-0.5, 0.5]] {
-        assert!(cantos.contains(&canto), "o canto {canto:?} do quad nao esta' na malha");
+        assert!(
+            cantos.contains(&canto),
+            "o canto {canto:?} do quad nao esta' na malha"
+        );
     }
 }
 
@@ -136,10 +173,22 @@ fn a_mesh_that_cannot_be_drawn_leaves_the_quad_and_no_vertices() {
     let mut malhas = MeshFrame::default();
     let mut torta = quadrado();
     torta.uv.pop();
-    assert_eq!(malhas.push(&torta, [0.0, 0.0], [1.0, 1.0]), 0, "comprimentos diferentes");
-    assert_eq!(malhas.push(&quadrado(), [0.0, 0.0], [0.0, 1.0]), 0, "size nulo");
+    assert_eq!(
+        malhas.push(&torta, [0.0, 0.0], [1.0, 1.0]),
+        0,
+        "comprimentos diferentes"
+    );
+    assert_eq!(
+        malhas.push(&quadrado(), [0.0, 0.0], [0.0, 1.0]),
+        0,
+        "size nulo"
+    );
     let mut sem_triangulo = quadrado();
     sem_triangulo.tris = vec![[0, 1, 99]];
-    assert_eq!(malhas.push(&sem_triangulo, [0.0, 0.0], [1.0, 1.0]), 0, "nenhum valido");
+    assert_eq!(
+        malhas.push(&sem_triangulo, [0.0, 0.0], [1.0, 1.0]),
+        0,
+        "nenhum valido"
+    );
     assert!(malhas.vertices.is_empty() && malhas.ranges.is_empty());
 }

@@ -1,6 +1,7 @@
 //! **Fase do quadro: O EXTRACT** — o tique do movimento de demo, a propagação de transforms e a emissão
 //! das sprites e da ordem TOTAL do quadro, pelo `sim_extract::run` (OBRA 2 da `line/render-loop`,
-//! 2026-09-12).
+//! 2026-09-12) — e a MALHA de cada imagem presa ao esqueleto, posta na instância que o extract emitiu
+//! (plano `docs/Skeleton/03`, W2, 2026-09-13).
 //!
 //! ⚠️ Os cinco parâmetros são os que a `fase_extract_inputs` preparou neste quadro (o contexto
 //! `ExtractInputs`), e esta fase corre DEPOIS da timeline, da física, dos sinais e da marca da receita
@@ -18,6 +19,13 @@ impl crate::App {
         ppm: f32,
         default_filter: ph2d_ecs::FilterMode,
     ) {
+        // A escolha do artista para a pele de imagem, lida antes do empréstimo do `gfx`.
+        let pele_suave = match self.vec.draw_config.skin_deform {
+            ph2d_tool_vector::SkinDeform::Fast => None,
+            ph2d_tool_vector::SkinDeform::Smooth => {
+                Some(crate::skeleton_skin_image::refine_options())
+            }
+        };
         // O `gfx` re-derivado; os guardas do quadro já correram na `fase_chrome_clock`.
         let Some(gfx) = self.gfx.as_mut() else {
             return;
@@ -32,6 +40,8 @@ impl crate::App {
             sort_scratch,
             sort_inputs,
             frame_order,
+            surface,
+            hero_screen,
             ..
         } = FrameGfx::of(gfx);
 
@@ -52,5 +62,22 @@ impl crate::App {
             sheet_preview,
             frame_order,
         );
+
+        // ⭐⭐⭐ **A MALHA DAS IMAGENS PRESAS AO ESQUELETO** — DEPOIS do extract, porque a sujeita é a
+        // INSTÂNCIA que ele emitiu: uma sprite escondida não tem instância e não recebe malha, e o
+        // passe de sprites troca o quad de cada uma pela malha posada.
+        //
+        // ⚠️ **O `ppm` é o MESMO do extract:** a régua da imagem e o quad resolvem a mesma âncora.
+        // ⚠️ E a escala da câmera é a da CENA (`scene_camera_window`, a porta que o split do Motion
+        // pede a todo mapeamento mundo↔ecrã), que é onde a tolerância do `Smooth` é medida.
+        let janela = hero_screen.as_ref().map_or(surface.size(), |h| {
+            ph2d_app_motion::field_gizmo::scene_camera_window(h.view.center_split, surface.size())
+        });
+        let px_por_metro = camera
+            .world_to_screen_affine(janela)
+            .determinant()
+            .abs()
+            .sqrt();
+        crate::skeleton_skin_image::attach_skin_meshes(sim, present, ppm, pele_suave, px_por_metro);
     }
 }

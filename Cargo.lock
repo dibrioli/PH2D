@@ -8355,7 +8355,6 @@ dependencies = [
 name = "ph2d-skeleton-live"
 version = "0.0.0"
 dependencies = [
- "ph2d-asset",
  "ph2d-core",
  "ph2d-ecs",
  "ph2d-poly2d",

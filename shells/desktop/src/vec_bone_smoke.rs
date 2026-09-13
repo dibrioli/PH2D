@@ -22,15 +22,18 @@ impl crate::App {
         if !ph2d_app_vec::smoke_bone::armed() || self.gfx.is_none() {
             return;
         }
+        // O `ppm` do projecto, UMA vez: o 1.º tempo mede a imagem com ele e o 2.º prende-a com ele
+        // — dois valores dariam à régua da imagem duas âncoras.
+        let ppm = self
+            .gfx
+            .as_ref()
+            .and_then(|gfx| gfx.hero_screen.as_ref())
+            .map_or(ph2d_editor_core::DEFAULT_PIXELS_PER_METER, |h| {
+                h.project.pixels_per_meter.max(crate::EPS_PIXELS_PER_METER)
+            });
         match self.vec.bone_smoke_step {
             0 => {
                 let gfx = self.gfx.as_mut().expect("gfx");
-                let ppm = gfx
-                    .hero_screen
-                    .as_ref()
-                    .map_or(ph2d_editor_core::DEFAULT_PIXELS_PER_METER, |h| {
-                        h.project.pixels_per_meter.max(crate::EPS_PIXELS_PER_METER)
-                    });
                 let _ = gfx
                     .tools
                     .set_active(&ph2d_editor_core::ToolId::new("vector"));
@@ -60,6 +63,7 @@ impl crate::App {
                         &mut gfx.sim,
                         &mut self.timeline.doc,
                         &gfx.asset_db,
+                        ppm,
                         &mut self.vec,
                     );
                 }

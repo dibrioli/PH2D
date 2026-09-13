@@ -2,9 +2,10 @@
 //!
 //! # Porque existe (esqueleto, F6-d, 2026-09-13)
 //!
-//! A pele de uma imagem presa ao esqueleto desenha **um recorte mais um afim por triângulo**
-//! (`ph2d_skeleton_live::skin_image::draw_skinned_images`). O report *«Smooth bugado quebrando a
-//! forma»* foi atribuído à camada de recorte do Vello, e o orçamento `max_pieces = 1024` ficou
+//! A pele de uma imagem presa ao esqueleto desenhava **um recorte mais um afim por triângulo** pelo
+//! Vello — até 2026-09-13, quando a W2 do plano `docs/Skeleton/03` a pôs no passe de sprites como
+//! malha; esta sonda fica como o registo do que aquele caminho custava. O report *«Smooth bugado
+//! quebrando a forma»* foi atribuído à camada de recorte do Vello, e o orçamento `max_pieces = 1024` ficou
 //! «do lado seguro» de um intervalo que ninguém mediu. A sonda do atlas
 //! (`ph2d-vector::atlas_probe_pieces_tests`) mostrou que o report era o **ATLAS** (uma cópia da
 //! imagem por peça); curado isso, sobram três perguntas que só a GPU responde:
@@ -421,7 +422,12 @@ fn dilata(tri: [Point; 3], e: f64) -> [Point; 3] {
 }
 
 /// Como [`cena`], com cada recorte dilatado `e` px no ecrã (`e = 0` não toca num bit).
-fn cena_dilatada(img: &StableImage, to_screen: Affine, (cols, rows): (u32, u32), e: f64) -> VectorScene {
+fn cena_dilatada(
+    img: &StableImage,
+    to_screen: Affine,
+    (cols, rows): (u32, u32),
+    e: f64,
+) -> VectorScene {
     let mut s = VectorScene::new();
     let (w, h) = (f64::from(img.width()), f64::from(img.height()));
     let p = |x: f64, y: f64| to_screen * Point::new(x, y);
@@ -516,7 +522,11 @@ fn measure_seams_against_clip_dilation() {
         for grelha in [(18_u32, 6_u32), (72, 24)] {
             for e in [0.0, 0.25, 0.5, 1.0] {
                 let px = pass
-                    .render_and_readback(&gpu, cena_dilatada(&img, to_screen, grelha, e).inner(), alvo)
+                    .render_and_readback(
+                        &gpu,
+                        cena_dilatada(&img, to_screen, grelha, e).inner(),
+                        alvo,
+                    )
                     .expect("readback das pecas");
                 let (dentro, fora, pior) = desvio_de_alfa(&referencia, &px, alvo.0, rect);
                 println!(

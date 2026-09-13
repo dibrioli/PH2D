@@ -1873,10 +1873,10 @@ sobra é da arte do canvas, que **não foi medida**. Gate
 único no stderr.
 
 ⏳ **ABERTO, e nomeado:**
-- **A família de curas das costuras:** sobrepor cada recorte `~0,5 px` (perfeito em arte opaca,
-  dobra a composição em arte translúcida ao longo da costura) · ou o **pipeline de triângulos
-  texturados**, que a F6 nomeou como optimização *«com razão medida»* — e a razão está agora medida
-  três vezes: costuras em todo modo, o tecto por quadro, e `~3–5 ms` a `7 776` peças.
+- ✅ **As costuras — CURADAS pela F6-i.** Sobrepor cada recorte `~0,5 px` foi medido e recusado
+  (dobra a composição em arte translúcida ao longo da costura); ficou o **pipeline de triângulos
+  texturados** que a F6 nomeou *«com razão medida»* — e ele não pediu pipeline nova: é a malha
+  dentro do passe de sprites.
 - ✅ **Medido por leitura, e é pior do que a pergunta:** ver a F6-h.
 
 ### F6-h — ⛔⛔⛔ **A IMAGEM PRESA NÃO É UMA SPRITE DO QUADRO: é uma camada por cima dele** — quatro defeitos, uma causa (2026-09-13)
@@ -1903,8 +1903,62 @@ Lido no código (com um mapa da composição do quadro a apontar os sítios):
 ⇒ **A cura de padrão-ouro é uma só: a sprite presa é desenhada como MALHA dentro do passe de
 sprites, no lugar dela na ordem** — a extracção emite-a (com rank, com a porta de visibilidade, com
 as propriedades), e o passe troca o quad pela malha posada. As costuras somem (triângulos sem AA nas
-arestas internas) e o orçamento do Vello deixa de se aplicar. ⏳ Plano em escrita; ⛔ o passe de
-sprites **não tem hoje caminho de malha com UV** (só quads instanciados).
+arestas internas) e o orçamento do Vello deixa de se aplicar. ✅ **Curada pela F6-i**
+([plano 03](03_plano_a_pele_no_passe_de_sprites.md), W1+W2) — e o plano achou um quinto defeito: a
+régua da imagem lia a âncora CRUA.
+
+### F6-i — ✅ **A IMAGEM PRESA É UMA SPRITE DO QUADRO, desenhada como MALHA** (plano 03, W1+W2, 2026-09-13)
+
+A cura da F6-h, em duas waves ([plano 03](03_plano_a_pele_no_passe_de_sprites.md) §5).
+
+**W1 — o primitivo** (`ph2d-render`, aditivo, `335fe893a`). Um `SpriteMesh { local, uv, tris }` na
+entidade de presente de uma instância faz o passe de sprites trocar o quad pela malha.
+⭐ **Sem pipeline nova:** o `vs_main` já calcula tudo de `quad_pos`/`quad_uv` e da instância, logo
+um vértice leva a UV de repouso e o `quad_pos` que devolve a posição posada, e a malha herda tinta,
+opacidade, mistura, repetição, espelho e recorte. `N` triângulos entram como UMA tira com
+degenerados (`5N − 2` vértices) nas 10 pipelines `TriangleStrip` de sempre; a marca da malha vive
+nos bits `8..31` do `flip_uv` (só CPU), e os três passes (normal, recorte, máscara) desenham pela
+mesma porta (`sprite_mesh::draw_run`). Gates de GPU: a malha em repouso É o quad (tinta, opacidade,
+espelho, âncora deslocada) e ⭐ **uma imagem TRANSLÚCIDA numa malha `8×8` não tem costura** — a regra
+de canto dá cada centro de pixel a UM triângulo.
+
+**W2 — a extracção** (shell + `ph2d-skeleton-live`):
+
+- A guarda `!skinned_image` saiu: a sprite presa passa pelo `emit::sprite` (rank, porta de
+  visibilidade, propriedades), e **depois** do extract o `attach_skin_meshes` põe o `SpriteMesh`
+  posado na instância BASE (`Without<SlicePatchMirror>`) — só se ela for o quad da própria sprite.
+  Uma sprite escondida não tem instância ⇒ não recebe malha: *a visibilidade não é perguntada duas
+  vezes*.
+- ⛔⛔ **O quinto defeito:** o `pixel_to_local` lia a âncora CRUA. Hoje lê a `resolve_anchor(ppm)` e
+  o ESPELHO entra na POSIÇÃO; a UV é a do quad no ponto de repouso (`SpriteMesh::uv_at`, na crate do
+  shader), e o shader espelha-a. O `ppm` do projecto entra no `bind_image`, `joints_in_image` e
+  `deform_field`.
+- O `Smooth` mede a tolerância com a base que a instância leva à GPU × a escala da câmera da CENA
+  (`scene_camera_window`).
+- Saíram: `draw_skinned_images`, `SkinImageCache`, `stable_image`, `triangle_xform`, o campo
+  `skin_image_cache` do `SkeletonState`, a chamada no overlay do Vello e a `skinned_image` do
+  extract — que virou `skin_image::is_skinned_image` (o painel do esqueleto pergunta-a, e o
+  `attach_skin_meshes` também).
+- Gates: `at_rest_each_pixel_of_a_bound_image_is_read_where_the_quad_reads_it` (controlo · não
+  centrada + offset · espelho X + offset · não centrada + espelho Y) ·
+  `only_the_base_instance_of_the_sprites_own_quad_gets_the_mesh` · o orçamento por quadro reescrito
+  sobre a malha · `uv_at_gives_every_quad_corner_the_uv_the_quad_gives_it` · os três de texto da
+  shell reescritos contra a lei nova (o braço que emite não pergunta pela pele · a malha é posta
+  depois do extract e a camada do Vello não voltou · o *Bind* alcança as duas mídias).
+- **Oito mutações, oito RED na asserção certa** (cada controlo com `1 failed`): âncora crua (o pixel
+  cai `21 px` ao lado) · sem espelho (o pixel `0` lê o `40`) · sem `Without<SlicePatchMirror>` (a
+  fantasma rouba a malha à base) · sem a comparação do quad (`2` malhas) · `v` do `uv_at` invertido ·
+  tecto por imagem (`288` peças contra `144`) · a guarda de volta ao extract · a chamada apagada.
+
+⏳ **ABERTO, e nomeado (W3–W5 do plano):**
+- **Quem COPIA a instância perde a malha** (lido no código): o vidro do prefab
+  (`present_frost::lift`), o emissivo (`sprite_emissive::collect`) e os fantasmas do onion
+  (`timeline_onion`) copiam o `RenderInstance` sem o `SpriteMesh` ⇒ desenham o quad de repouso.
+- **Quem lê o quad de repouso:** o picking (`ph2d-render::picking`) e o *View All*
+  (`hero_intents/view.rs`, que também ignora a âncora e a base).
+- O `SKIN_FRAME_PIECES` ainda é o número do Vello (W4) · a cena que ensina a ordem e o olho (W5).
+- **9-slice e folha desdobrada:** a malha só conhece o quad da sprite; essas desenham-se sem
+  deformar, com aviso único no stderr.
 
 ## ⛔ Recusas MEDIDAS deste módulo — não as reconstrua
 

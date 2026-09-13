@@ -91,7 +91,7 @@ importada nasce centrada e sem offset).
 
 ## §5 — As waves
 
-### W1 — o primitivo: `SpriteMesh` no passe de sprites (`ph2d-render`, foundational, aditivo)
+### W1 — o primitivo: `SpriteMesh` no passe de sprites (`ph2d-render`, foundational, aditivo) — ✅ FEITA (2026-09-13, `335fe893a`)
 
 - Componente de apresentação `SpriteMesh { local, uv, tris }` (posições posadas em metros LOCAIS da
   sprite, UVs de repouso, triângulos).
@@ -109,7 +109,7 @@ importada nasce centrada e sem offset).
   GPU: arte **translúcida** numa malha fina em repouso **é o quad** (a lei que o caminho do Vello
   reprovava com `10 580` px).
 
-### W2 — a extracção emite a sprite presa com a malha (shell + `ph2d-skeleton-live`)
+### W2 — a extracção emite a sprite presa com a malha (shell + `ph2d-skeleton-live`) — ✅ FEITA (2026-09-13)
 
 - A guarda `!skinned_image` sai: a sprite presa passa pelo `emit::sprite` (rank, visibilidade,
   propriedades) e ganha o `SpriteMesh` posado (`Fast` = a malha guardada; `Smooth` = refinada contra a
@@ -119,6 +119,13 @@ importada nasce centrada e sem offset).
   que o «confirmava» são reescritos contra a lei nova.
 - **Gates:** a sprite presa tem rank · escondida não emite · tinta/opacidade chegam à instância · a
   malha em repouso coincide com o quad com *Centered* desligado e *Offset*.
+
+⭐ **Como ficou** (mecanismo, gates e as oito mutações na [fila, F6-i](01_a_fila.md)): a malha é posta
+por `ph2d_skeleton_live::skin_image::attach_skin_meshes` DEPOIS do extract, na instância base que
+ele emitiu — o rank, a visibilidade e as propriedades vêm do `emit::sprite` por construção, e o gate
+é que o braço que emite não pergunta pela pele. ⚠️ **O espelho entrou junto com a âncora:** a régua
+espelha a POSIÇÃO e a UV é a do quad (`SpriteMesh::uv_at`), senão uma sprite espelhada lia a tinta
+fora da silhueta. ⚠️ **O 9-slice e a folha desdobrada** desenham-se sem deformar, com aviso.
 
 ### W3 — os outros consumidores de instâncias
 

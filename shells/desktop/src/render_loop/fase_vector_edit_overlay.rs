@@ -1,5 +1,6 @@
-//! **Fase do quadro: O OVERLAY DE EDIÇÃO E AS IMAGENS COM PELE** — os nós e as alças da forma em edição, e as
-//! imagens que obedecem ao esqueleto (a malha refinada no quadro quando a pele é `Smooth`) (OBRA 2 da `line/render-loop`, 2026-09-12).
+//! **Fase do quadro: O OVERLAY DE EDIÇÃO** — os nós e as alças da forma em edição (OBRA 2 da
+//! `line/render-loop`, 2026-09-12). ⚠️ As imagens presas ao esqueleto desenhavam-se aqui, pelo Vello, até
+//! 2026-09-13; hoje são sprites do quadro com malha (plano `docs/Skeleton/03`, W2).
 
 use super::*;
 
@@ -16,7 +17,6 @@ impl crate::App {
         let gfx = self.gfx.as_mut()?;
         let FrameGfx {
             sim,
-            asset_db,
             vector_scene,
             vec_scene,
             hero_screen,
@@ -142,32 +142,9 @@ impl crate::App {
                 }
             }
         }
-        let pele_suave = match self.vec.draw_config.skin_deform {
-            ph2d_tool_vector::SkinDeform::Fast => None,
-            ph2d_tool_vector::SkinDeform::Smooth => {
-                Some(crate::skeleton_skin_image::refine_options())
-            }
-        };
-        // ⭐⭐⭐ **AS IMAGENS PRESAS AO ESQUELETO** — a 2.ª mídia (ordem do dono, 2026-09-09).
-        //
-        // ⚠️ **ANTES dos ossos, e a ordem é a leitura:** a imagem é a ARTE e o rig é o chrome
-        // que se desenha por cima dela. Invertê-la esconderia o esqueleto debaixo do desenho
-        // exactamente quando o artista o está a posar.
-        //
-        // ⚠️ **A sprite original é escondida pelo passe de sprites** (`vec_overlay::skinned`),
-        // senão ela ficaria por baixo, por deformar — e o artista veria a arte DUAS vezes.
-        //
-        // ⚠️ **A escolha é lida ANTES do `&mut self.skin_image_cache`**: os dois vivem no
-        // `self`, e o compilador não deixa emprestar um deles imutavelmente no meio da chamada
-        // que já empresta o outro mutavelmente.
-        crate::skeleton_skin_image::draw_skinned_images(
-            sim,
-            asset_db,
-            &mut self.skeleton.skin_image_cache,
-            cam_affine,
-            vector_scene,
-            pele_suave,
-        );
+        // ⚠️ **As imagens presas ao esqueleto já NÃO se desenham aqui** (plano `docs/Skeleton/03`,
+        // W2, 2026-09-13): elas são sprites do quadro, desenhadas como malha no passe de sprites — a
+        // malha é posta na `fase_sim_extract`.
         Some((vec_xf, cam_affine))
     }
 }

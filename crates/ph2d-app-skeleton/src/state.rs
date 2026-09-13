@@ -14,6 +14,10 @@
 //! para esta mudança não precisar de uma aresta nova para a `ph2d-asset`) —, logo o grupo desce
 //! inteiro. É o molde da `FlipState` e do `VecState`.
 //!
+//! ⚠️ **São SETE desde 2026-09-13:** a `skin_image_cache` saiu com a camada do Vello que a usava
+//! (plano `docs/Skeleton/03`, W2) — a imagem presa desenha-se como malha com a textura da própria
+//! sprite, e não há imagem estável a guardar.
+//!
 //! ⚠️ **Não é o documento.** Nenhum destes campos entra no `ProjectState` nem no save: são o que o
 //! ponteiro está a fazer, o que está aceso e uma cache de pixels. Mover não toca `PROJECT_SCHEMA`
 //! nem os registos do `ph2d-ecs`.
@@ -83,16 +87,6 @@ pub struct SkeletonState {
     /// significa agora* — e porque o sítio do desenho já não tem `&self` livre: o `gfx` está
     /// emprestado mutável, e ler a câmara ali seria o segundo empréstimo.
     pub bone_preview: Option<([f64; 2], [f64; 2], bool)>,
-    /// ⭐ **Cada imagem PRESA ao esqueleto, uma vez por conteúdo, como recurso ESTÁVEL do Vello.**
-    ///
-    /// ⚠️ **Sem ela o desenho copiava a imagem inteira 60 vezes por segundo:** o `AssetDb` entrega
-    /// um `Cow`, então a conversão por quadro seria uma cópia por quadro. A chave é o `AssetId` (o
-    /// hash do CONTEÚDO), logo duas sprites com a mesma arte partilham a entrada — e um `Ctrl+Z`
-    /// que troque os pixels traz um id novo, não uma entrada obsoleta.
-    ///
-    /// ⛔⛔ **E o valor guardado é o id do ATLAS, não só os bytes** — ver o doc do tipo: guardar os
-    /// bytes e desenhar pela porta crua fazia de cada peça da malha uma cópia da imagem no atlas.
-    pub skin_image_cache: ph2d_skeleton_live::skin_image::SkinImageCache,
     /// ⭐⭐⭐ **O OSSO em desenho** (estudo 42 item 5) — o que o press decidiu (origem em MUNDO e
     /// PAI), e `None` fora do gesto. O `release` faz o osso dali até onde a mão soltou.
     ///

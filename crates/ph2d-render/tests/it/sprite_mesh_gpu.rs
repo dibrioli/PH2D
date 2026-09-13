@@ -186,7 +186,7 @@ fn desenha(
 /// `(pixels com algum canal a diferir mais de 1, pior diferença)`.
 fn diferenca(a: &[u8], b: &[u8]) -> (usize, u8) {
     let (mut n, mut pior) = (0, 0_u8);
-    for (pa, pb) in a.chunks_exact(4).zip(b.chunks_exact(4)) {
+    for (pa, pb) in a.as_chunks::<4>().0.iter().zip(b.as_chunks::<4>().0) {
         let d = (0..4).map(|c| pa[c].abs_diff(pb[c])).max().unwrap_or(0);
         if d > 1 {
             n += 1;
@@ -198,7 +198,11 @@ fn diferenca(a: &[u8], b: &[u8]) -> (usize, u8) {
 
 /// Controlo de toda a comparação: a sprite tem de ter pintado alguma coisa, senão «igual» é vácuo.
 fn pintou(px: &[u8]) -> usize {
-    px.chunks_exact(4).filter(|p| p[0] > 8 || p[1] > 8 || p[2] > 8).count()
+    px.as_chunks::<4>()
+        .0
+        .iter()
+        .filter(|p| p[0] > 8 || p[1] > 8 || p[2] > 8)
+        .count()
 }
 
 /// ⭐⭐ **Uma malha de 2 triângulos em repouso É o quad**, com âncora deslocada, tinta, opacidade e

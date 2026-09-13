@@ -28,12 +28,13 @@ ph2d-vec-scene = { path = "../ph2d-vec-scene" }
 # alto, que é a metade boa; a irmã perigosa é o `#[cfg(feature)]` que fica falso em silêncio.
 ph2d-poly2d = { path = "../ph2d-poly2d", features = ["serde"] }
 ph2d-render = { path = "../ph2d-render" }
-# ⚠️ A SÉTIMA invisível dentro da shell (HOWTO §1.3): o `skin_image` desenha a malha com
-# `BezPath`/`Point` e escolhe a qualidade de amostragem da imagem.
+# ⚠️ Só as duas constantes do buffer do Vello de onde o `SKIN_FRAME_PIECES` foi derivado: o desenho
+# da pele pelo Vello saiu na W2 do plano 03 (2026-09-13), e a W4 troca o número pelo do caminho vivo
+# — e com ele esta aresta.
 ph2d-vector = { path = "../ph2d-vector" }
-# E mais duas invisíveis: a lei de deformação da pele, e o catálogo de onde sai a textura.
+# E mais uma invisível: a lei de deformação da pele. (O `ph2d-asset` saiu com a cache de imagens do
+# Vello: a malha desenha-se com a textura da própria sprite.)
 ph2d-vec-skin = { path = "../ph2d-vec-skin" }
-ph2d-asset = { path = "../ph2d-asset" }
 postcard = { version = "1", features = ["use-std"] }
 
 [features]

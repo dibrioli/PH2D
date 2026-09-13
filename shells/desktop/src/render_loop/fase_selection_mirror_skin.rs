@@ -33,7 +33,7 @@ impl crate::App {
         ph2d_panel_skeleton::set_current_skinned_image(
             sim.world()
                 .iter_entities()
-                .any(|er| crate::render_loop::sim_extract::skinned_image(sim.world(), er.id())),
+                .any(|er| crate::skeleton_skin_image::is_skinned_image(sim.world(), er.id())),
         );
         // E se a CENA tem esqueleto — é isso que faz a seção aparecer (ou não) fora do modo
         // Osso. ⛔ Sem esta metade ela seria um cabeçalho permanente num app que nunca viu

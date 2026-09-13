@@ -1,26 +1,22 @@
-//! ⭐⭐⭐ **UMA IMAGEM PRESA AO ESQUELETO É DESENHADA UMA VEZ, E DEFORMADA.**
+//! ⭐⭐⭐ **UMA IMAGEM PRESA AO ESQUELETO É UMA SPRITE DO QUADRO, desenhada como MALHA.**
 //!
-//! ⛔⛔ **As duas metades andam juntas ou a arte aparece DUAS vezes.** O Vello desenha a imagem
-//! deformada por cima; se o passe de sprites continuar a emitir a instância original, ela fica por
-//! baixo, por deformar — e assim que o artista dobra o braço ela espreita por fora.
+//! (plano `docs/Skeleton/03_plano_a_pele_no_passe_de_sprites.md`, W2, 2026-09-13)
 //!
-//! ⚠️ **E a metade que se esquece é sempre a segunda**, porque a primeira é a que se vê a funcionar:
-//! com a pose em repouso as duas coincidem ao pixel, e o defeito só aparece quando alguém dobra um
-//! osso. *Uma cena que só mostra o defeito depois de um gesto não o mostra a quem só olha.*
-
+//! ⛔⛔ **Até esse dia ela era desenhada por DOIS motores com uma guarda entre eles** — o extract não
+//! emitia a instância dela e o Vello desenhava-a deformada por CIMA do quadro. Daí os cinco defeitos
+//! da fila F6-h: fora da ordem, visível com o olho fechado, sem as propriedades da sprite, com
+//! costuras entre peças, e meio quad ao lado com *Centered* desligado. Os gates que aqui viviam
+//! provavam essa camada; estes provam a lei nova, e cada um prova também que a antiga não voltou.
+//!
 //! # ⚠️⚠️ O que um gate que VARRE O FONTE não pode ver
 //!
-//! Estes três leem o texto do produto, e a prova de mutação desta wave expôs o limite deles: pôr
-//! `if false &&` à frente da chamada do *Bind* **SOBREVIVEU** — o texto continua lá. ⇒ eles
-//! apanham a chamada a **desaparecer**, a mudar de **selector** e a mudar de **ordem**; não
-//! apanham uma chamada morta por uma condição.
-//!
-//! ⛔ **A cura NÃO é apertar a varredura** (procurar `if false` seria uma corrida contra o
-//! próximo idioma que a desliga). A metade que falta é medida do outro lado: os gates de unidade
-//! do [`crate::skeleton_skin_image`] provam que o bind e a deformação FAZEM o que dizem, e o smoke
-//! é quem julga a costura inteira. *Um gate de texto responde «isto está escrito», nunca «isto
-//! corre» — e escrever isso ao lado dele é o que impede o próximo leitor de lhe pedir a segunda
-//! resposta.*
+//! Estes leem o texto do produto: apanham uma chamada a **desaparecer**, a mudar de **selector** e
+//! a mudar de **ordem**; não apanham uma chamada morta por uma condição. ⛔ **A cura NÃO é apertar
+//! a varredura.** A metade que falta é medida do outro lado: os gates de unidade da
+//! `ph2d-skeleton-live` provam que a malha posta é a do quad em repouso e que só a instância base a
+//! recebe, o gate de GPU `ph2d-render::sprite_mesh_gpu` prova que a malha desenha o que o quad
+//! desenha, e o smoke julga a costura inteira. *Um gate de texto responde «isto está escrito», nunca
+//! «isto corre».*
 
 const EXTRACT: &str = include_str!("../../src/render_loop/sim_extract.rs");
 
@@ -35,63 +31,55 @@ fn code_only(src: &str) -> String {
         .join("\n")
 }
 
-/// ⭐⭐⭐ **A SPRITE PRESA NÃO EMITE INSTÂNCIA** — e a guarda está no braço que emite.
+/// ⭐⭐⭐ **A SPRITE PRESA EMITE A SUA INSTÂNCIA** — nenhuma guarda a tira do braço que emite.
 ///
-/// ⚠️ **Ela tem de estar na MESMA condição que constrói a instância**, e não num `continue` ou num
-/// filtro à parte: a travessia do extract também semeia a ORDEM, e um filtro por fora tiraria a
-/// imagem da ordenação — ela deixaria de ocupar o lugar dela e abriria uma faixa que não desenha
-/// nada, que é o defeito que o comentário da forma vectorial já nomeia oito linhas acima.
+/// ⚠️ É esse braço que lhe dá o rank, a visibilidade e as propriedades (tinta, opacidade, mistura,
+/// recorte). ⛔ E a pergunta *«está presa?»* não volta a este ficheiro: o extract não precisa de
+/// saber o que é uma pele, e a última vez que soube tirou a imagem do quadro.
 #[test]
-fn a_bound_sprite_emits_no_render_instance() {
+fn a_bound_sprite_emits_its_instance_like_any_sprite() {
     let src = code_only(EXTRACT);
-    let i = src
-        .find("skinned_image(sim, sim_entity)")
-        .expect("o extract deixou de perguntar se a sprite está presa");
     let j = src
         .find("let Some(spr) = sim.get::<Sprite>(sim_entity)")
         .expect("o braço que emite a instância da sprite deixou de existir");
+    let i = src[..j]
+        .rfind("if ")
+        .expect("o braço que emite a sprite perdeu a condição");
+    let condicao = &src[i..j];
     assert!(
-        i < j && j - i < 200,
-        "a guarda da imagem presa (byte {i}) não está na condição que emite a instância (byte \
-         {j}) — fora dela, ou ela não guarda nada, ou tira a imagem da ORDEM"
-    );
-    // ⚠️ E a pergunta é DERIVADA: nada aqui escreve `Visibility`, que é o olho da Hierarquia.
-    let porta = src
-        .find("pub(super) fn skinned_image")
-        .expect("a porta da pergunta deixou de existir");
-    let corpo = &src[porta..porta + 400];
-    assert!(
-        corpo.contains("SkinBind") && corpo.contains("Sprite"),
-        "a pergunta deixou de ser derivada dos dois componentes"
+        !condicao.contains("skinned") && !condicao.contains("SkinBind"),
+        "o braço que emite a sprite voltou a perguntar se ela está presa: `{condicao}`"
     );
     assert!(
-        !corpo.contains("Visibility"),
-        "o extract passou a escrever/ler `Visibility` para esconder a imagem — é o olho da \
-         Hierarquia, e a shell não pode discutir com o artista por aquele bool"
+        !src.contains("SkinBind"),
+        "o extract voltou a ler a pele (`SkinBind`) — quem sabe o que é uma pele é a \
+         `ph2d-skeleton-live`, depois do extract"
     );
 }
 
-/// ⭐⭐ **E A OUTRA METADE: o Vello desenha-a**, no quadro, antes dos ossos.
+/// ⭐⭐⭐ **A MALHA É POSTA DEPOIS DO EXTRACT, e a camada do Vello não voltou.**
 ///
-/// ⚠️ **A ORDEM é a leitura**: a imagem é a ARTE e o rig é o chrome que se desenha por cima dela.
-/// Invertê-la esconderia o esqueleto debaixo do desenho exactamente quando o artista o está a posar.
-///
-/// ⚠️ Desde a OBRA 2 da `line/render-loop` (2026-09-13) os ossos desenham-se na fase
-/// `fase_vector_bone_overlay`: a ORDEM mede-se no QUADRO emendado (`frame_text::render_frame`), que é a ordem
-/// em que corre — dois ficheiros não têm ordem entre si.
+/// ⚠️ **A ordem é a leitura:** a malha vai para a instância que o extract emitiu — antes dele não há
+/// instância nenhuma (o `present` é refeito por quadro), e é por isso que uma sprite escondida não
+/// recebe malha. Mede-se no QUADRO emendado (`frame_text::render_frame`), que é a ordem em que corre.
 #[test]
-fn the_frame_draws_the_deformed_image_before_the_bones() {
+fn the_frame_attaches_the_skin_mesh_after_the_extract_and_draws_no_skin_layer() {
     let src = code_only(&crate::frame_text::render_frame());
-    let desenho = src
-        .find("skeleton_skin_image::draw_skinned_images(")
-        .expect("o quadro deixou de desenhar as imagens presas");
-    let ossos = src
-        .find("skeleton_render::draw_bones(")
-        .expect("o quadro deixou de desenhar os ossos");
+    let extract = src
+        .find("sim_extract::run(")
+        .expect("o quadro deixou de correr o extract");
+    let malha = src
+        .find("skeleton_skin_image::attach_skin_meshes(")
+        .expect("o quadro deixou de pôr a malha nas imagens presas");
     assert!(
-        desenho < ossos,
-        "a imagem é desenhada DEPOIS dos ossos (byte {desenho} contra {ossos}) — o rig fica \
-         debaixo da arte exactamente quando o artista o está a posar"
+        extract < malha,
+        "a malha é posta ANTES do extract (byte {malha} contra {extract}) — ali não há instância \
+         nenhuma para a receber, e a imagem desenha-se sem deformar"
+    );
+    assert!(
+        !src.contains("draw_skinned_images"),
+        "a camada do Vello voltou: a imagem presa seria desenhada duas vezes, e a de cima fora da \
+         ordem do quadro"
     );
 }
 

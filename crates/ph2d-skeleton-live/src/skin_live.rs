@@ -309,6 +309,10 @@ fn tendons_for(sim: &SimWorld, ossos: &[Entity], shape_inv: Xform) -> Vec<Tendon
 /// ⚠️ **Os tendões saem da MESMA porta que os de uma forma** ([`tendons_for`]): as duas mídias
 /// respondem à mesma pose ou o personagem parte-se ao meio.
 ///
+/// ⚠️ **`pixels_per_meter` é o do PROJECTO** — o mesmo que o extract passa ao
+/// `Sprite::resolve_anchor`. A régua da imagem lê a âncora resolvida ao prender e ao desenhar
+/// ([`crate::skin_image::pixel_to_local`]); dois valores dariam uma âncora a cada gesto.
+///
 /// `false` quando não há esqueleto, quando a pose da imagem é singular, ou quando a tinta não dá
 /// uma malha — e nos três casos **nada é escrito**, porque uma pele sem malha lá dentro não é uma
 /// pele, é uma imagem prestes a sumir.
@@ -317,6 +321,7 @@ pub fn bind_image(
     e: Entity,
     rgba: &[u8],
     size_px: [u32; 2],
+    pixels_per_meter: f32,
     opts: ph2d_poly2d::GridOptions,
     seed: Option<Entity>,
 ) -> bool {
@@ -327,7 +332,7 @@ pub fn bind_image(
     ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
     // ⭐⭐⭐ **AS ARTICULAÇÕES GRADUAM A MALHA** (report do dono, 2026-09-10). Elas saem daqui e não
     // do leaf da geometria: só quem PRENDE sabe onde a dobra vai acontecer.
-    let focos = crate::skin_image::joints_in_image(sim, e, &ossos, size_px);
+    let focos = crate::skin_image::joints_in_image(sim, e, &ossos, size_px, pixels_per_meter);
     let Some(malha) = crate::skin_image::mesh_from_rgba(rgba, size_px[0], size_px[1], &focos, opts)
     else {
         return false;

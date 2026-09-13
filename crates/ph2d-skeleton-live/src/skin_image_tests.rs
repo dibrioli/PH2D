@@ -1,9 +1,16 @@
-//! Os gates da 2.ª mídia — a régua da imagem contra a régua do canvas.
+//! Os gates da 2.ª mídia — a régua da imagem contra a régua do quad.
 
 use super::*;
 use ph2d_ecs::Transform;
+use ph2d_poly2d::GridOptions;
 
-/// Uma sprite de `size` unidades de mundo, sem âncora.
+/// O `pixels_per_meter` de omissão do projecto.
+const PPM: f32 = 100.0;
+
+/// A escala da câmera das fixturas, em pixels de ecrã por metro de mundo.
+const PX_POR_METRO: f64 = 50.0;
+
+/// Uma sprite de `size` metros locais, com a âncora dada.
 fn sprite(w: f32, h: f32, ax: f32, ay: f32) -> Sprite {
     Sprite {
         anchor: [ax, ay],
@@ -11,19 +18,53 @@ fn sprite(w: f32, h: f32, ax: f32, ay: f32) -> Sprite {
     }
 }
 
+/// Tinta opaca num rectângulo `w×h`, com as margens dadas.
+fn tinta(w: u32, h: u32, mx: usize, my: usize) -> Vec<u8> {
+    let (w, h) = (w as usize, h as usize);
+    let mut rgba = vec![0u8; w * h * 4];
+    for y in my..h - my {
+        for x in mx..w - mx {
+            rgba[(y * w + x) * 4 + 3] = 255;
+        }
+    }
+    rgba
+}
+
+/// A instância que o extract emite para a sprite `s`: o quad DELA, com a âncora resolvida e o espelho.
+fn instancia_de(s: &Sprite) -> RenderInstance {
+    RenderInstance {
+        world_pos: [0.0, 0.0],
+        size: s.size,
+        atlas_uv: [0.0, 0.0, 1.0, 1.0],
+        tint: [1.0; 4],
+        basis: RenderInstance::IDENTITY_BASIS,
+        texture_id: 0,
+        premultiplied: 0.0,
+        anchor: s.resolve_anchor(PPM),
+        per_corner_tint: [[1.0; 4]; 4],
+        opacity: 1.0,
+        flip_uv: RenderInstance::pack_flip_flags(s.flip_x, s.flip_y, false),
+        z_order: 0,
+        sampling: 0,
+        uv_xform: RenderInstance::IDENTITY_UV_XFORM,
+        clip_group: RenderInstance::CLIP_GROUP_NONE,
+        clip_meta: 0,
+        sub_order: 0,
+    }
+}
+
 /// ⭐⭐⭐ **O CANTO DA IMAGEM É O CANTO DO QUAD, E O `y` VIRA.**
 ///
-/// ⛔⛔ **É a única inversão de todo o módulo, e esquecê-la desenha o personagem de cabeça para
-/// baixo** — um defeito que passa por TODO gate de geometria (a malha está certa, a deformação
-/// está certa, e a imagem está ao contrário). Uma imagem tem o `y` a crescer para baixo; o mundo
-/// tem-no a crescer para cima.
+/// ⛔⛔ **Esquecer a inversão desenha o personagem de cabeça para baixo** — um defeito que passa por
+/// TODO gate de geometria (a malha está certa, a deformação está certa, e a imagem está ao
+/// contrário). Uma imagem tem o `y` a crescer para baixo; o mundo tem-no a crescer para cima.
 ///
 /// (Mutação: tirar o sinal de `-sy / h` ⇒ RED nos dois cantos de `y`.)
 #[test]
 fn the_image_corner_is_the_quad_corner_and_the_y_axis_flips() {
     // Uma imagem de 100×50 pixels ocupando 4×2 unidades de mundo, centrada no pivô.
     let s = sprite(4.0, 2.0, 0.0, 0.0);
-    let m = pixel_to_local(&s, [100, 50]).expect("a imagem tem lado");
+    let m = pixel_to_local(&s, [100, 50], PPM).expect("a imagem tem lado");
     let perto = |a: [f64; 2], b: [f64; 2]| (a[0] - b[0]).abs() < 1e-9 && (a[1] - b[1]).abs() < 1e-9;
     // (0,0) é o canto SUPERIOR esquerdo da textura ⇒ o canto de cima-esquerda do quad.
     assert!(
@@ -47,8 +88,8 @@ fn the_image_corner_is_the_quad_corner_and_the_y_axis_flips() {
 /// entrasse na escala, uma sprite com pivô fora do centro sairia esticada.
 #[test]
 fn the_anchor_moves_the_whole_quad_and_not_the_scale() {
-    let sem = pixel_to_local(&sprite(4.0, 2.0, 0.0, 0.0), [100, 50]).expect("lado");
-    let com = pixel_to_local(&sprite(4.0, 2.0, 1.5, -0.25), [100, 50]).expect("lado");
+    let sem = pixel_to_local(&sprite(4.0, 2.0, 0.0, 0.0), [100, 50], PPM).expect("lado");
+    let com = pixel_to_local(&sprite(4.0, 2.0, 1.5, -0.25), [100, 50], PPM).expect("lado");
     for p in [[0.0, 0.0], [100.0, 50.0], [37.0, 11.0]] {
         let (a, b) = (sem.apply(p), com.apply(p));
         assert!(
@@ -58,7 +99,10 @@ fn the_anchor_moves_the_whole_quad_and_not_the_scale() {
         );
     }
     // ⛔ Uma imagem de lado zero não tem régua.
-    assert_eq!(pixel_to_local(&sprite(4.0, 2.0, 0.0, 0.0), [0, 50]), None);
+    assert_eq!(
+        pixel_to_local(&sprite(4.0, 2.0, 0.0, 0.0), [0, 50], PPM),
+        None
+    );
 }
 
 /// ⭐⭐ **SÓ O CANAL ALFA DECIDE A SILHUETA.**
@@ -79,7 +123,7 @@ fn only_the_alpha_channel_decides_the_silhouette() {
         }
         v
     };
-    let opts = ph2d_poly2d::GridOptions::default();
+    let opts = GridOptions::default();
     let sem_focos: &[[f64; 2]] = &[];
     let preto = mesh_from_rgba(&faz([0, 0, 0], 255), 20, 20, sem_focos, opts).expect("ha' alfa");
     let branco =
@@ -104,34 +148,33 @@ fn only_the_alpha_channel_decides_the_silhouette() {
 /// (Mutação: qualquer troca de sinal no [`pixel_to_local`] ⇒ RED.)
 #[test]
 fn binding_an_image_to_a_still_skeleton_moves_nothing() {
-    let mut sim = ph2d_ecs::SimWorld::default();
+    let mut sim = SimWorld::default();
     // Um osso deitado sobre o eixo X, e uma imagem por cima dele.
     let osso = crate::bone::create(&mut sim, None, [0.0, 0.0], [4.0, 0.0]).expect("osso");
     let e = sim
         .world_mut()
         .spawn((Transform::IDENTITY, sprite(4.0, 2.0, 0.0, 0.0)))
         .id();
-    let mut rgba = vec![0u8; 40 * 20 * 4];
-    for y in 4..16 {
-        for x in 4..36 {
-            rgba[(y * 40 + x) * 4 + 3] = 255;
-        }
-    }
     assert!(
         crate::skin_live::bind_image(
             &mut sim,
             e,
-            &rgba,
+            &tinta(40, 20, 4, 4),
             [40, 20],
-            ph2d_poly2d::GridOptions::default(),
-            Some(ph2d_ecs::Entity::from_bits(osso)),
+            PPM,
+            GridOptions::default(),
+            Some(Entity::from_bits(osso)),
         ),
         "o bind tinha de acontecer: ha' osso, ha' tinta e a pose nao e' singular"
     );
-    let malha = malha_de(&sim, e).expect("a malha esta' guardada nos bytes opacos");
+    let malha = mesh_of(&sim, e).expect("a malha esta' guardada nos bytes opacos");
     let posados = posed_local(&sim, e, &malha).expect("a pele resolve");
-    let p2l =
-        pixel_to_local(sim.world().get::<Sprite>(e).expect("sprite"), malha.size).expect("regua");
+    let p2l = pixel_to_local(
+        sim.world().get::<Sprite>(e).expect("sprite"),
+        malha.size,
+        PPM,
+    )
+    .expect("regua");
     for (i, &r) in malha.rest.iter().enumerate() {
         let repouso = p2l.apply(r);
         let agora = posados[i];
@@ -148,28 +191,23 @@ fn binding_an_image_to_a_still_skeleton_moves_nothing() {
 /// estava. Sem ele, um bug que movesse TUDO por igual (uma translação global) passaria.
 #[test]
 fn turning_the_bone_carries_the_image() {
-    let mut sim = ph2d_ecs::SimWorld::default();
+    let mut sim = SimWorld::default();
     let osso = crate::bone::create(&mut sim, None, [-2.0, 0.0], [2.0, 0.0]).expect("osso");
     let e = sim
         .world_mut()
         .spawn((Transform::IDENTITY, sprite(4.0, 2.0, 0.0, 0.0)))
         .id();
-    let mut rgba = vec![0u8; 40 * 20 * 4];
-    for y in 4..16 {
-        for x in 4..36 {
-            rgba[(y * 40 + x) * 4 + 3] = 255;
-        }
-    }
-    let raiz = ph2d_ecs::Entity::from_bits(osso);
+    let raiz = Entity::from_bits(osso);
     assert!(crate::skin_live::bind_image(
         &mut sim,
         e,
-        &rgba,
+        &tinta(40, 20, 4, 4),
         [40, 20],
-        ph2d_poly2d::GridOptions::default(),
+        PPM,
+        GridOptions::default(),
         Some(raiz),
     ));
-    let malha = malha_de(&sim, e).expect("malha");
+    let malha = mesh_of(&sim, e).expect("malha");
     let antes = posed_local(&sim, e, &malha).expect("pele");
     // Gira o osso um quarto de volta.
     {
@@ -191,173 +229,249 @@ fn turning_the_bone_carries_the_image() {
     );
 }
 
-/// ⭐⭐⭐ **UMA IMAGEM PRESA É UM SÓ RESIDENTE DO ATLAS — em quantas peças for, e quadro após
-/// quadro.**
-///
-/// ⛔⛔ **O report que isto fecha** (*«Smooth bugado quebrando a forma»*, dono, 2026-09-10): cada
-/// peça desenhava a imagem pela porta crua, que cunha um id **por chamada**, e o atlas da `vello`
-/// 0.10 guarda **uma cópia inteira por id** até `8192²`. Medido na sonda
-/// `ph2d-vector::atlas_probe_pieces_tests`: a imagem do smoke em `7 776` peças perde **`5 651`**, e
-/// uma imagem de `1024²` no `Fast` (`216` peças) perde **`152`** — o que não cabe não é desenhado,
-/// em silêncio.
-///
-/// ⚠️ **A pergunta é o que a cena EMITE** (`probe_image_ids`), nunca o que a cache GUARDA: um
-/// desenho novo pela porta crua ao lado de uma cache certa deixaria a cache verde.
-///
-/// ⚠️ **Dois ossos, e o de baixo dobrado**: com um osso só a pele é um movimento rígido, o campo é
-/// linear, o `Smooth` pede `k = 1` e o gate compararia `Fast` com `Fast`. Os dois controlos abaixo
-/// (mais de uma peça · o `Smooth` emite MAIS que o `Fast`) são o que o impede de ser vácuo.
-#[test]
-fn a_skinned_image_is_one_atlas_resident_however_many_pieces_and_frames() {
-    let mut sim = ph2d_ecs::SimWorld::default();
-    let raiz = crate::bone::create(&mut sim, None, [-2.0, 0.0], [0.0, 0.0]).expect("raiz");
-    let raiz = ph2d_ecs::Entity::from_bits(raiz);
-    let ponta = crate::bone::create(&mut sim, Some(raiz), [0.0, 0.0], [2.0, 0.0]).expect("ponta");
-    let (w, h) = (40_u32, 20_u32);
-    let mut rgba = vec![0u8; (w * h * 4) as usize];
-    for y in 4..16 {
-        for x in 2..38 {
-            rgba[(y * w as usize + x) * 4 + 3] = 255;
-        }
+/// A sprite de um caso do gate de repouso: `4×2` metros com a âncora deslocada, e as três escolhas
+/// de autoria que mudam onde o quad se desenha.
+fn sprite_do_caso(centered: bool, offset: [f32; 2], flip_x: bool, flip_y: bool) -> Sprite {
+    Sprite {
+        centered,
+        offset,
+        flip_x,
+        flip_y,
+        ..sprite(4.0, 2.0, 0.25, -0.5)
     }
-    let db = ph2d_asset::AssetDb::new();
-    let id = db.insert_image_rgba8(w, h, rgba.clone());
-    let e = sim
-        .world_mut()
-        .spawn((
-            Transform::IDENTITY,
-            sprite(4.0, 2.0, 0.0, 0.0),
-            ph2d_ecs::SpritePixels(id),
-        ))
-        .id();
-    assert!(crate::skin_live::bind_image(
-        &mut sim,
-        e,
-        &rgba,
-        [w, h],
-        ph2d_poly2d::GridOptions::default(),
-        Some(raiz),
-    ));
-    sim.world_mut()
-        .get_mut::<Transform>(ph2d_ecs::Entity::from_bits(ponta))
-        .expect("Transform da ponta")
-        .rotation = 1.0;
+}
 
-    let suave = ph2d_poly2d::RefineOptions {
-        tolerance_px: 1e-3,
-        max_pieces: 4_096,
-    };
-    let cam = ph2d_vector::Affine::scale(50.0);
-    let mut cache = SkinImageCache::default();
-    let mut ids = std::collections::BTreeSet::new();
-    let (mut pecas_fast, mut pecas_suave) = (0_usize, 0_usize);
-    for _quadro in 0..2 {
-        for modo in [None, Some(suave)] {
-            let mut cena = ph2d_vector::VectorScene::new();
-            assert_eq!(
-                draw_skinned_images(&sim, &db, &mut cache, cam, &mut cena, modo),
-                1,
-                "a imagem presa nao foi desenhada"
+/// ⭐⭐⭐ **EM REPOUSO, CADA PIXEL DA IMAGEM PRESA É LIDO ONDE O QUAD O LÊ** — com *Centered*
+/// desligado, *Offset* e espelho.
+///
+/// ⛔⛔ **O quinto defeito da F6-h:** a régua da imagem lia a âncora CRUA, e o quad desenha-se na
+/// RESOLVIDA ([`Sprite::resolve_anchor`]) — com *Centered* desligado a malha ficava meio quad ao lado
+/// da arte. E o espelho: o shader espelha a UV do quad, então a régua tem de espelhar a POSIÇÃO.
+///
+/// ⚠️ **O gate escreve a lei do shader por extenso** (`quad_pos = (local − anchor)/size`,
+/// `uv = (qx + ½, ½ − qy)`, e o espelho aplicado à UV) e faz duas perguntas a cada vértice: a UV dele
+/// é a do quad no ponto onde ele está? e o TEXEL que o shader lê com ela é o pixel de onde o vértice
+/// veio? O controlo é a sprite de sempre (centrada, sem offset, sem espelho).
+///
+/// (Mutações: a âncora crua no `pixel_to_local` ⇒ RED nos dois casos deslocados; sem espelho na
+/// posição ⇒ RED nos dois espelhados.)
+#[test]
+fn at_rest_each_pixel_of_a_bound_image_is_read_where_the_quad_reads_it() {
+    let casos: [(&str, bool, [f32; 2], bool, bool); 4] = [
+        ("controlo", true, [0.0, 0.0], false, false),
+        ("nao centrada + offset", false, [12.0, -7.0], false, false),
+        ("espelho em X + offset", true, [5.0, 3.0], true, false),
+        (
+            "nao centrada + espelho em Y",
+            false,
+            [0.0, 0.0],
+            false,
+            true,
+        ),
+    ];
+    for (nome, centered, offset, flip_x, flip_y) in casos {
+        let mut sim = SimWorld::default();
+        let osso = crate::bone::create(&mut sim, None, [-2.0, 0.0], [2.0, 0.0]).expect("osso");
+        let e = sim
+            .world_mut()
+            .spawn((
+                Transform::IDENTITY,
+                sprite_do_caso(centered, offset, flip_x, flip_y),
+            ))
+            .id();
+        assert!(
+            crate::skin_live::bind_image(
+                &mut sim,
+                e,
+                &tinta(40, 20, 4, 4),
+                [40, 20],
+                PPM,
+                GridOptions::default(),
+                Some(Entity::from_bits(osso)),
+            ),
+            "{nome}: o bind tinha de acontecer"
+        );
+        let inst = instancia_de(&sprite_do_caso(centered, offset, flip_x, flip_y));
+        let mut present = PresentWorld::new();
+        let p = present.world_mut().spawn((SimRef(e), inst)).id();
+        assert_eq!(
+            attach_skin_meshes(&sim, &mut present, PPM, None, PX_POR_METRO),
+            1,
+            "{nome}: a instancia da imagem presa nao recebeu malha"
+        );
+        let malha = present
+            .world()
+            .get::<SpriteMesh>(p)
+            .expect("a malha esta' na instancia")
+            .clone();
+        let guardada = mesh_of(&sim, e).expect("malha guardada");
+        assert_eq!(malha.local.len(), guardada.rest.len(), "{nome}");
+        let (w, h) = (f64::from(guardada.size[0]), f64::from(guardada.size[1]));
+        for (i, r) in guardada.rest.iter().enumerate() {
+            let (l, uv) = (malha.local[i], malha.uv[i]);
+            // A lei do shader, por extenso.
+            let q = [
+                (l[0] - inst.anchor[0]) / inst.size[0],
+                (l[1] - inst.anchor[1]) / inst.size[1],
+            ];
+            let do_quad = [q[0] + 0.5, 0.5 - q[1]];
+            assert!(
+                (uv[0] - do_quad[0]).abs() < 1e-4 && (uv[1] - do_quad[1]).abs() < 1e-4,
+                "{nome}: o vertice {i} leva a UV {uv:?} e o quad naquele ponto leva {do_quad:?}"
             );
-            let emitidos = cena.probe_image_ids();
-            match modo {
-                None => pecas_fast = emitidos.len(),
-                Some(_) => pecas_suave = emitidos.len(),
-            }
-            ids.extend(emitidos);
+            let texel = [
+                if flip_x { 1.0 - uv[0] } else { uv[0] },
+                if flip_y { 1.0 - uv[1] } else { uv[1] },
+            ];
+            let pixel = [f64::from(texel[0]) * w, f64::from(texel[1]) * h];
+            assert!(
+                (pixel[0] - r[0]).abs() < 1e-2 && (pixel[1] - r[1]).abs() < 1e-2,
+                "{nome}: o vertice {i} veio do pixel {r:?} e o shader le o pixel {pixel:?}"
+            );
         }
     }
-    assert!(
-        pecas_fast > 1 && pecas_suave > pecas_fast,
-        "a fixtura nao parte a imagem (Fast {pecas_fast} pecas, Smooth {pecas_suave}) — sem \
-         varias pecas a contagem de ids abaixo nao mede nada"
-    );
+}
+
+/// ⭐⭐⭐ **SÓ A INSTÂNCIA BASE DO QUAD DA SPRITE RECEBE A MALHA** — e só se o extract a emitiu.
+///
+/// ⚠️ **A visibilidade não é perguntada outra vez:** uma sprite escondida pelo olho não tem
+/// instância, e é por isso que não recebe malha. Três imagens presas, três destinos:
+/// - `a` tem a instância base ⇒ malha (o controlo); a célula fantasma dela (`SlicePatchMirror`), com
+///   a MESMA `SimRef` e o mesmo quad, fica no quad;
+/// - a do meio não tem instância (escondida) ⇒ nada;
+/// - `c` só tem uma instância cujo quad não é o dela (o 1.º patch de um 9-slice) ⇒ fica no quad.
+///
+/// (Mutações: tirar o `Without<SlicePatchMirror>` ⇒ a fantasma rouba a malha à base; tirar a
+/// comparação com o quad da sprite ⇒ o patch de `c` recebe a malha do quad inteiro.)
+#[test]
+fn only_the_base_instance_of_the_sprites_own_quad_gets_the_mesh() {
+    let mut sim = SimWorld::default();
+    let osso = crate::bone::create(&mut sim, None, [-2.0, 0.0], [2.0, 0.0]).expect("osso");
+    let raiz = Some(Entity::from_bits(osso));
+    let mut presas = Vec::new();
+    for _ in 0..3 {
+        let e = sim
+            .world_mut()
+            .spawn((Transform::IDENTITY, sprite(4.0, 2.0, 0.0, 0.0)))
+            .id();
+        assert!(crate::skin_live::bind_image(
+            &mut sim,
+            e,
+            &tinta(40, 20, 4, 4),
+            [40, 20],
+            PPM,
+            GridOptions::default(),
+            raiz,
+        ));
+        presas.push(e);
+    }
+    let &[a, _escondida, c] = presas.as_slice() else {
+        panic!("fixtura: tres imagens presas");
+    };
+    let s = sprite(4.0, 2.0, 0.0, 0.0);
+    let mut present = PresentWorld::new();
+    let base_a = present
+        .world_mut()
+        .spawn((SimRef(a), instancia_de(&s)))
+        .id();
+    let fantasma_a = present
+        .world_mut()
+        .spawn((SimRef(a), instancia_de(&s), SlicePatchMirror))
+        .id();
+    let mut patch = instancia_de(&s);
+    patch.size = [1.0, 0.5];
+    patch.anchor = [-1.5, 0.75];
+    let patch_c = present.world_mut().spawn((SimRef(c), patch)).id();
+
     assert_eq!(
-        ids.len(),
+        attach_skin_meshes(&sim, &mut present, PPM, None, PX_POR_METRO),
         1,
-        "{} ids distintos para UMA imagem ({pecas_fast} pecas no Fast, {pecas_suave} no Smooth, \
-         dois quadros) — cada id e' uma copia inteira da imagem no atlas, e o que nao cabe nao e' \
-         desenhado",
-        ids.len()
+        "so' a imagem com o quad dela emitido podia receber malha"
+    );
+    assert!(
+        present.world().get::<SpriteMesh>(base_a).is_some(),
+        "a instancia base da imagem visivel nao recebeu malha"
+    );
+    assert!(
+        present.world().get::<SpriteMesh>(fantasma_a).is_none(),
+        "a celula fantasma (mesma SimRef, SlicePatchMirror) recebeu a malha"
+    );
+    assert!(
+        present.world().get::<SpriteMesh>(patch_c).is_none(),
+        "o patch de um 9-slice recebeu a malha do quad inteiro da sprite"
     );
 }
 
 /// ⭐⭐⭐ **O ORÇAMENTO DO `Smooth` É DO QUADRO, e reparte-se pelas imagens presas.**
 ///
-/// ⛔⛔ O Vello guarda a informação de todo desenho de um quadro num buffer FIXO
-/// ([`ph2d_vector::VELLO_BIN_DATA_WORDS`]), e passar dele deixa o **quadro inteiro em branco** —
-/// painéis incluídos. Um tecto por IMAGEM não o protege: N imagens presas multiplicam-no.
+/// ⚠️ Um tecto por IMAGEM não é um tecto do quadro: N imagens presas multiplicam-no.
 ///
 /// ⚠️ **A fixtura escolhe o orçamento para as duas leis darem respostas diferentes:** com
 /// `B = 9 t` (`t` triângulos por imagem), um tecto por imagem deixa cada uma refinar a `k = 3` e o
 /// quadro emite `18 t > B`; repartido, cada uma recebe `4,5 t` e fica em `k = 2` (`8 t ≤ B`). ⚠️ E
 /// as duas têm de refinar — um orçamento que coubesse por dar tudo a uma e nada à outra passaria na
 /// primeira metade.
+///
+/// ⚠️ **Dois ossos, e o de baixo dobrado**: com um osso só a pele é um movimento rígido, o campo é
+/// linear, o `Smooth` pede `k = 1` e o gate compararia `Fast` com `Fast`.
 #[test]
 fn the_smooth_pieces_of_all_skinned_images_share_one_frame_budget() {
-    let mut sim = ph2d_ecs::SimWorld::default();
+    let mut sim = SimWorld::default();
     let raiz = crate::bone::create(&mut sim, None, [-2.0, 0.0], [0.0, 0.0]).expect("raiz");
-    let raiz = ph2d_ecs::Entity::from_bits(raiz);
+    let raiz = Entity::from_bits(raiz);
     let ponta = crate::bone::create(&mut sim, Some(raiz), [0.0, 0.0], [2.0, 0.0]).expect("ponta");
-    let (w, h) = (40_u32, 20_u32);
-    let db = ph2d_asset::AssetDb::new();
-    // Duas artes DIFERENTES ⇒ dois ids do atlas ⇒ as peças de cada uma contam-se à parte.
-    let mut ids_das_artes = Vec::new();
-    for tom in [200_u8, 90] {
-        let mut rgba = vec![0u8; (w * h * 4) as usize];
-        for y in 4..16 {
-            for x in 2..38 {
-                let i = (y * w as usize + x) * 4;
-                rgba[i] = tom;
-                rgba[i + 3] = 255;
-            }
-        }
-        let id = db.insert_image_rgba8(w, h, rgba.clone());
+    let s = sprite(4.0, 2.0, 0.0, 0.0);
+    let mut present = PresentWorld::new();
+    let mut instancias = Vec::new();
+    for _ in 0..2 {
         let e = sim
             .world_mut()
-            .spawn((
-                Transform::IDENTITY,
-                sprite(4.0, 2.0, 0.0, 0.0),
-                ph2d_ecs::SpritePixels(id),
-            ))
+            .spawn((Transform::IDENTITY, sprite(4.0, 2.0, 0.0, 0.0)))
             .id();
         assert!(crate::skin_live::bind_image(
             &mut sim,
             e,
-            &rgba,
-            [w, h],
-            ph2d_poly2d::GridOptions::default(),
+            &tinta(40, 20, 2, 4),
+            [40, 20],
+            PPM,
+            GridOptions::default(),
             Some(raiz),
         ));
-        ids_das_artes.push(id);
+        instancias.push(
+            present
+                .world_mut()
+                .spawn((SimRef(e), instancia_de(&s)))
+                .id(),
+        );
     }
     sim.world_mut()
-        .get_mut::<Transform>(ph2d_ecs::Entity::from_bits(ponta))
+        .get_mut::<Transform>(Entity::from_bits(ponta))
         .expect("Transform da ponta")
         .rotation = 1.0;
 
-    let cam = ph2d_vector::Affine::scale(50.0);
-    let mut cache = SkinImageCache::default();
-    let mut desenha = |modo: Option<ph2d_poly2d::RefineOptions>| {
-        let mut cena = ph2d_vector::VectorScene::new();
-        assert_eq!(
-            draw_skinned_images(&sim, &db, &mut cache, cam, &mut cena, modo),
-            2,
-            "as duas imagens presas tinham de ser desenhadas"
-        );
-        let mut por_id: std::collections::BTreeMap<u64, usize> = std::collections::BTreeMap::new();
-        for id in cena.probe_image_ids() {
-            *por_id.entry(id).or_default() += 1;
+    let mut desenha = |modo: Option<RefineOptions>| -> Vec<usize> {
+        for &p in &instancias {
+            present.world_mut().entity_mut(p).remove::<SpriteMesh>();
         }
-        por_id.into_values().collect::<Vec<usize>>()
+        assert_eq!(
+            attach_skin_meshes(&sim, &mut present, PPM, modo, PX_POR_METRO),
+            2,
+            "as duas imagens presas tinham de receber malha"
+        );
+        instancias
+            .iter()
+            .map(|&p| {
+                present
+                    .world()
+                    .get::<SpriteMesh>(p)
+                    .expect("malha")
+                    .tris
+                    .len()
+            })
+            .collect()
     };
 
     let fast = desenha(None);
-    assert_eq!(
-        fast.len(),
-        2,
-        "fixtura: as duas artes tinham de ter ids distintos"
-    );
     assert_eq!(
         fast[0], fast[1],
         "fixtura: as duas malhas tinham de ter o mesmo tamanho"
@@ -369,7 +483,7 @@ fn the_smooth_pieces_of_all_skinned_images_share_one_frame_budget() {
     );
 
     let orcamento = 9 * t;
-    let suave = desenha(Some(ph2d_poly2d::RefineOptions {
+    let suave = desenha(Some(RefineOptions {
         tolerance_px: 1e-3,
         max_pieces: orcamento,
     }));
@@ -377,8 +491,7 @@ fn the_smooth_pieces_of_all_skinned_images_share_one_frame_budget() {
     assert!(
         total <= orcamento,
         "o quadro emitiu {total} pecas contra um orcamento de {orcamento} ({suave:?}) — o tecto \
-         esta' a ser aplicado POR IMAGEM, e N imagens presas multiplicam-no ate' o Vello deixar o \
-         quadro em branco"
+         esta' a ser aplicado POR IMAGEM, e N imagens presas multiplicam-no"
     );
     assert!(
         suave.iter().all(|&n| n > t),
@@ -388,17 +501,11 @@ fn the_smooth_pieces_of_all_skinned_images_share_one_frame_budget() {
 
 /// **A malha, já POSADA** — os vértices de repouso levados pela pele para onde eles estão agora.
 ///
-/// ⚠️⚠️ **Ela vive aqui, no ARNÊS, desde 2026-09-10**, e a mudança diz o que a wave fez: no produto
-/// quem pergunta ao campo é o DESENHO, e ele passou a poder pedir-lhe **mais** pontos que os
-/// vértices da malha (o `Smooth`). Deixar no produto uma segunda porta que só sabe perguntar pelos
-/// vértices seria a segunda resposta à mesma pergunta — a mesma razão que já pôs a [`malha_de`]
-/// neste ficheiro.
-fn posed_local(
-    sim: &ph2d_ecs::SimWorld,
-    e: ph2d_ecs::Entity,
-    mesh: &ph2d_poly2d::Mesh2d,
-) -> Option<Vec<[f64; 2]>> {
-    let (p2l, pele) = deform_field(sim, e, mesh.size)?;
+/// ⚠️ Vive no ARNÊS: no produto quem pergunta ao campo é o [`attach_skin_meshes`], que pode pedir-lhe
+/// **mais** pontos que os vértices da malha (o `Smooth`). Uma segunda porta no produto que só sabe
+/// perguntar pelos vértices seria a segunda resposta à mesma pergunta.
+fn posed_local(sim: &SimWorld, e: Entity, mesh: &Mesh2d) -> Option<Vec<[f64; 2]>> {
+    let (p2l, pele) = deform_field(sim, e, mesh.size, PPM)?;
     let mut w = pele.scratch();
     Some(
         mesh.rest
@@ -406,11 +513,4 @@ fn posed_local(
             .map(|&p| pele.point(p2l.apply(p), &mut w))
             .collect(),
     )
-}
-
-/// **A malha guardada nos bytes opacos da pele.** Ela vive aqui, no arnês, porque no produto quem
-/// a lê é o desenho — e um segundo leitor no caminho do quadro seria a segunda porta.
-fn malha_de(sim: &ph2d_ecs::SimWorld, e: ph2d_ecs::Entity) -> Option<ph2d_poly2d::Mesh2d> {
-    let skin = sim.world().get::<ph2d_skeleton_ecs::SkinBind>(e)?;
-    postcard::from_bytes(&skin.source).ok()
 }

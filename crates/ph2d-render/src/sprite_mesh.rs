@@ -47,6 +47,24 @@ pub struct SpriteMesh {
     pub tris: Vec<[u32; 3]>,
 }
 
+impl SpriteMesh {
+    /// ⭐ **A UV de um vértice que, EM REPOUSO, está no ponto local `local`** — a do QUAD naquele ponto.
+    ///
+    /// É a inversa da lei do shader (`local = anchor + quad_pos · size`) com `uv = (qx + ½, ½ − qy)`,
+    /// a convenção do [`QuadVertex::QUAD_STRIP`]. Um vértice cuja UV sai daqui lê, em repouso, o mesmo
+    /// texel que o quad leria ali — e o espelho, a repetição e o `uv_xform`, que o shader aplica a
+    /// esta UV, tratam a malha e o quad da mesma maneira.
+    ///
+    /// ⚠️ **Mora aqui, na crate do shader, e não em quem prende a imagem:** uma segunda convenção de
+    /// `v` escrita noutra crate seria a segunda resposta à mesma pergunta.
+    ///
+    /// `None` com um lado do `size` nulo ou não finito.
+    #[must_use]
+    pub fn uv_at(local: [f32; 2], anchor: [f32; 2], size: [f32; 2]) -> Option<[f32; 2]> {
+        quad_pos(local, anchor, size).map(|q| [q[0] + 0.5, 0.5 - q[1]])
+    }
+}
+
 /// As malhas de UMA chamada de render: os vértices costurados e o intervalo de cada uma.
 #[derive(Default)]
 pub(crate) struct MeshFrame {

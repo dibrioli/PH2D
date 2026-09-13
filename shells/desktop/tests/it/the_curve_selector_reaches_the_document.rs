@@ -17,12 +17,13 @@
 //! esta linha já pagou duas vezes (2026-07-23), e o motivo pelo qual não há aqui nenhuma janela
 //! de N caracteres depois de uma âncora.
 
-use std::fs;
-
-/// O `render_loop` inteiro. Um `expect` em vez de `unwrap` porque um caminho errado aqui é um
-/// gate que passa a medir o vazio — o controle positivo abaixo é a outra metade dessa defesa.
+/// O `render_loop` inteiro, como o QUADRO pela ordem em que corre (`frame_text::render_frame`) — o controle positivo
+/// abaixo é a outra metade da defesa contra medir o vazio.
+///
+/// ⚠️ Desde a OBRA 2 da `line/render-loop` (2026-09-13) a secção dos estados de UI mora em fases: o `mod.rs` sozinho
+/// deixou de ser o laço, e o censo de AUSÊNCIA de baixo ficaria verde sobre um ficheiro que já não tem os gestos.
 fn render_loop() -> String {
-    fs::read_to_string("src/render_loop/mod.rs").expect("o render_loop mudou de sitio")
+    crate::frame_text::render_frame()
 }
 
 /// **CONTROLE POSITIVO** — se o ficheiro deixar de conter a seção de estados, todo gate deste

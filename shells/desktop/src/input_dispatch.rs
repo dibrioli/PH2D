@@ -77,6 +77,8 @@ mod despacho_clique_gizmo;
 mod despacho_clique_largar;
 /// O pick de canvas do botão primário (hits, ciclo, seleção, arrasto) — ramos do `on_mouse_input`.
 mod despacho_clique_pick;
+/// O prólogo do clique (biblioteca, teclado do painel, 3D, âncora, áudio) — ramos do `on_mouse_input`.
+mod despacho_clique_prologo;
 /// Os reclamantes do fim do clique (painter, modais, pan, barra lateral) — ramos do `on_mouse_input`.
 mod despacho_clique_reclamantes;
 /// Os picks modais e as alças do Select, antes da ferramenta vetorial — ramos do `on_mouse_input`.
@@ -3555,76 +3557,9 @@ impl App {
             timestamp_ns: Self::timestamp_ns(),
         };
         self.handler.on_pointer(evt);
-        // Audio Editor waveform selection (SHELL-only): a primary press INSIDE the
-        // overlay waveform starts a selection (cleared to a point); release ends
-        // it. Early-return so the press doesn't drive the canvas/gizmo underneath.
-        // Presses on the overlay's title-bar / resize handles fall through (they're
-        // outside the waveform rect) to the shared BlenderHit dispatch.
         #[cfg(feature = "panel-audio-editor")]
-        match kind {
-            // Press on the RULER strip → grab the playhead and scrub (seek).
-            PointerKind::Down
-                if let Some(frame) =
-                    self.audio_ruler_frame_at(self.last_pointer.0, self.last_pointer.1) =>
-            {
-                self.audio_scrub_drag = true;
-                if let Some(a) = self.audio.as_mut() {
-                    a.editor_scrub_to_frame(frame);
-                }
-                return;
-            }
-            // Press on the WAVE body → what it means depends on the armed tool (the Edit
-            // section's toolbar). Select drags a time range, which is what the waveform has
-            // always done; Move drags a piece onto another seam; Scale drags a piece's edge.
-            PointerKind::Down
-                if let Some(hit) =
-                    self.audio_wave_frame_at(self.last_pointer.0, self.last_pointer.1) =>
-            {
-                use ph2d_panel_audio_editor::tool_state::{EditTool, tool};
-                let frame = hit.0 as usize;
-                match tool() {
-                    EditTool::Move => {
-                        if let Some(a) = self.audio.as_mut() {
-                            a.editor_piece_grab(frame);
-                        }
-                    }
-                    EditTool::Scale => {
-                        if let Some(a) = self.audio.as_mut() {
-                            a.editor_piece_scale_grab(frame);
-                        }
-                    }
-                    EditTool::Select => {
-                        self.audio_sel_drag = Some(hit);
-                        if let Some(a) = self.audio.as_mut() {
-                            a.editor_clear_selection();
-                        }
-                    }
-                }
-                return;
-            }
-            // Let go of a piece: THIS is where the reorder / stretch lands, as one undo step.
-            PointerKind::Up
-                if self
-                    .audio
-                    .as_ref()
-                    .is_some_and(|a| a.editor_piece_drag().is_some()) =>
-            {
-                if let Some(a) = self.audio.as_mut() {
-                    a.editor_piece_release();
-                }
-                return;
-            }
-            PointerKind::Up if self.audio_scrub_drag => {
-                self.audio_scrub_drag = false;
-                // Hand the playhead back to playback if it's advancing; else the
-                // manual position stays where it was dropped.
-                if let Some(a) = self.audio.as_mut() {
-                    a.editor_end_scrub();
-                }
-                return;
-            }
-            PointerKind::Up if self.audio_sel_drag.take().is_some() => return,
-            _ => {}
+        if self.ramo_editor_audio(kind) {
+            return;
         }
         // Was a right-click context menu (or the Fill "Fill adjust" modal) open when this click
         // arrived? If so the click belongs to that overlay (its slider/buttons/items) — chrome dispatch

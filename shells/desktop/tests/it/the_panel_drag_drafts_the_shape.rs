@@ -26,7 +26,12 @@
 //! ⚠️ Os dois chamam a MESMA porta com a MESMA expressão (`held_button.is_some()`); não são duas
 //! respostas, é uma pergunta feita nos dois instantes em que ela decide algo.
 
-const DRAIN: &str = include_str!("../../src/render_loop/mod.rs");
+/// O QUADRO pela ordem em que corre (`frame_text::render_frame`).
+///
+/// ⚠️ Desde a OBRA 2 da `line/render-loop` (2026-09-13) a chamada do `painter_bridge::dispatch` mora na
+/// `fase_painter_dispatch`, e o drain de `ToolPanelEvent` que ARMA continua no `mod.rs`: só o texto EMENDADO tem as duas.
+static DRAIN: std::sync::LazyLock<String> =
+    std::sync::LazyLock::new(crate::frame_text::render_frame);
 const BRIDGE: &str = include_str!("../../../../crates/ph2d-app-painter/src/painter_bridge.rs");
 
 /// O ARMAR acontece **antes** do `handle_panel_event` — é o edit que re-carimba.

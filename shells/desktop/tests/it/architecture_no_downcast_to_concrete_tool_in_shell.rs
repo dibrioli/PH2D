@@ -118,6 +118,11 @@ const DOWNCAST_ALLOWLIST: &[&str] = &[
     // entrada do `mod.rs` («PainterTool downcasts for the right-click handle-kind»), mudada verbatim para a
     // fase, sem downcast novo.
     "src/render_loop/fase_vector_tool_handles.rs",
+    // ⚠️ **O `fase_painter_dispatch.rs` HERDOU dois downcasts do `render_loop/mod.rs`** (OBRA 2 da
+    // `line/render-loop`, 2026-09-13): o assar da tinta ao trocar de sprite e a desactivação diferida ao sair
+    // do Painter (`take_deferred_bake` + `auto_commit_painter` + o teardown) falam com o `PainterTool` concreto;
+    // o bloco mudou-se verbatim para a fase — a MESMA excepção de classe da entrada do `mod.rs`, sem downcast novo.
+    "src/render_loop/fase_painter_dispatch.rs",
     // Pointer forwarder: the colour-picker eyedropper samples the active PainterTool's layer COMPOSITE
     // (`sample_composite_at_uv`) + reads `repeat_image()` to walk the Repeat-Image neighbour tiles —
     // a Painter-specific affordance integrating the eyedropper with the layer system. Same exception

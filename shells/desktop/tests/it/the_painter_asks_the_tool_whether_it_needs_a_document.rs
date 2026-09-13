@@ -46,6 +46,58 @@ fn bind_decision() -> &'static str {
     &SRC[start..end]
 }
 
+/// O índice do `}` a partir de `from` que leva a profundidade de chavetas a ZERO, começando em `depth` — com
+/// `depth = 0` e `from` numa `{`, o par dela; com `depth = 1` e `from` dentro de um bloco, o `}` que o fecha.
+///
+/// ⚠️ Saltando comentários de linha, strings e literais de carácter: um `{` numa nota não abre nada (a régua do
+/// `frame_text::call_end`, para chavetas).
+fn close_at_depth(s: &str, from: usize, mut depth: i32) -> Option<usize> {
+    let b = s.as_bytes();
+    let mut i = from;
+    while i < b.len() {
+        match b[i] {
+            b'/' if b.get(i + 1) == Some(&b'/') => {
+                i += s[i..].find('\n').unwrap_or(s.len() - i);
+                continue;
+            }
+            b'"' => {
+                i += 1;
+                while i < b.len() && b[i] != b'"' {
+                    if b[i] == b'\\' {
+                        i += 1;
+                    }
+                    i += 1;
+                }
+            }
+            b'\'' if b.get(i + 2) == Some(&b'\'') => i += 2,
+            b'{' => depth += 1,
+            b'}' => {
+                depth -= 1;
+                if depth == 0 {
+                    return Some(i);
+                }
+            }
+            _ => {}
+        }
+        i += 1;
+    }
+    None
+}
+
+/// **As duas metades da régua das chavetas:** acha o par certo com um `{` numa nota e numa string pelo meio, e o fim
+/// do bloco que CONTÉM uma posição.
+#[test]
+fn a_brace_closes_at_its_own_depth() {
+    let s = "fn f() { if a { b(\"{\"); // {\n c('{'); } d(); }";
+    let open_if = s.find("if a {").expect("o if") + "if a ".len();
+    let close_if = close_at_depth(s, open_if, 0).expect("o if fecha");
+    assert_eq!(&s[close_if..close_if + 5], "} d()");
+    let inside = s.find("d();").expect("d");
+    let close_fn = close_at_depth(s, inside, 1).expect("a fn fecha");
+    assert_eq!(close_fn, s.len() - 1);
+    assert_eq!(close_at_depth("{ sem fim", 0, 0), None);
+}
+
 /// A decisão de bind pergunta ao TOOL.
 ///
 /// **Mutação que deve sangrar:** trocar `painter.needs_document_bind(bits)` de volta por
@@ -75,32 +127,38 @@ fn the_bind_decision_asks_the_tool_not_the_shells_memo() {
 ///
 /// **Mutação que deve sangrar:** mover o `self.last_painter_pushed_entity = None;` de volta para
 /// dentro do `if … take_deferred_bake()`.
+///
+/// ⚠️ **Os FECHOS são `}` EQUILIBRADOS, nunca uma indentação** (OBRA 2 da `line/render-loop`, 2026-09-13). O gate lia
+/// o fim do `else if` como `"\n            }"` (doze espaços) e o fim do `if` interior como a mesma chaveta a vinte — e o
+/// bloco mudou-se para a `fase_painter_dispatch`, noutra coluna. Uma agulha que carrega indentação mede a CASA do
+/// bloco, não o bloco (a régua do `frame_text::call_end`, um nível acima). E o texto lido é o QUADRO pela ordem em que
+/// corre (`frame_text::render_frame`).
 #[test]
 fn leaving_the_painter_clears_the_shells_memo_even_with_nothing_to_bake() {
-    const LOOP_SRC: &str = include_str!("../../src/render_loop/mod.rs");
-    let start = LOOP_SRC
-        .find("&& painter.take_deferred_bake()")
-        .or_else(|| LOOP_SRC.find("&& painter.take_deferred_bake()"))
-        .or_else(|| LOOP_SRC.find("painter.take_deferred_bake()"))
-        .expect("o ramo de desativação do painter sumiu do render_loop — atualize este gate");
-    // Da condição até o fim do `else if` (a próxima linha em coluna 16 fechando o bloco).
-    let tail = &LOOP_SRC[start..];
-    let end = tail
-        .find("\n            }")
-        .expect("não achei o fim do bloco de desativação");
-    let block = &tail[..end];
+    let loop_src = crate::frame_text::render_frame();
+    let start = loop_src
+        .find("painter.take_deferred_bake()")
+        .expect("o ramo de desativação do painter sumiu do quadro — atualize este gate");
+    // Da condição até ao fim do `else if` que a contém: o 1.º `}` que desce abaixo da profundidade dela.
+    let end = close_at_depth(&loop_src, start, 1).expect("não achei o fim do bloco de desativação");
+    let block = &loop_src[start..end];
     let bake_at = block
         .find("(painter as &mut dyn ph2d_editor_core::tool::RasterEditTool).deactivate();")
         .expect("o teardown diferido sumiu do ramo de desativação");
     // ⚠️ **Fecho de BLOCO, não posição.** A 1ª versão deste gate só pedia que a limpeza viesse
     // DEPOIS do teardown — e a mutação (pôr a limpeza de volta na linha seguinte, ainda dentro do
     // `if`) passou por ele. "Depois" e "fora" não são a mesma pergunta: o que importa é o `}` que
-    // fecha o `if … take_deferred_bake()`, na indentação de 20 espaços.
-    const INNER_CLOSE: &str = "\n                    }";
-    let close_at = block[bake_at..]
-        .find(INNER_CLOSE)
-        .map(|o| bake_at + o)
+    // fecha o `if … take_deferred_bake()` — o par da `{` que abre o corpo dele.
+    let open = block
+        .find('{')
+        .expect("o `if … take_deferred_bake()` abre um bloco");
+    let close_at = close_at_depth(block, open, 0)
         .expect("não achei o `}` que fecha o `if … take_deferred_bake()`");
+    assert!(
+        bake_at < close_at,
+        "o teardown diferido já não está dentro do `if … take_deferred_bake()` — o gate está a ler \
+         outro bloco. Bloco lido:\n{block}"
+    );
     let clear_at = block
         .find("self.last_painter_pushed_entity = None;")
         .expect(

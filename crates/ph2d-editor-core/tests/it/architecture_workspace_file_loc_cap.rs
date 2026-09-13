@@ -99,7 +99,6 @@ const FILE_OVERAGE_OK: &[(&str, usize)] = &[
     ("ph2d-tool-color-equalization/src/params.rs", 888),
     ("ph2d-tool-equalize-sizes/src/algorithm.rs", 755),
     ("ph2d-tool-rasterize/src/algorithm.rs", 734),
-    ("ph2d-vector/src/vector_network.rs", 780),
 ];
 
 fn crates_root() -> PathBuf {

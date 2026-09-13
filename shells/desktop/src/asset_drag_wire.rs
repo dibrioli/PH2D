@@ -10,11 +10,11 @@
 //! ⇒ o `WidgetStore` guarda o estado (para o fantasma o poder pintar) e o shell conduz as três
 //! metades: `Down` semeia, `Move` anda, `Up` resolve.
 //!
-//! ⚠️ **A lei da queda não está aqui** — ela é pura e vive no [`crate::asset_drop`]. Este ficheiro
+//! ⚠️ **A lei da queda não está aqui** — ela é pura e vive no [`ph2d_app_components::asset_drop`]. Este ficheiro
 //! é só a fiação: ele recolhe os factos (onde o cursor está, o que está por baixo) e executa o que
 //! a lei devolver. *Uma decisão dentro da fiação seria uma decisão sem gate.*
 
-use crate::asset_drop::{DropAction, DropOver, DropTarget};
+use ph2d_app_components::asset_drop::{DropAction, DropOver, DropTarget};
 use ph2d_editor_core::interaction::drag_payload::{DragPayload, DragVerdict};
 
 impl crate::App {
@@ -77,9 +77,9 @@ impl crate::App {
             // ⚠️ **Desistir não é recusa.** Voltar ao painel de origem é o gesto universal de
             // largar o assunto, e ele é silencioso em todo o software que o tem — pintá-lo de
             // aviso acusaria o artista de um erro que ele não cometeu.
-            Some(t) => match crate::asset_drop::resolve(payload, t) {
-                crate::asset_drop::DropAction::Refuse => DragVerdict::Refuse,
-                crate::asset_drop::DropAction::Cancel => DragVerdict::Unknown,
+            Some(t) => match ph2d_app_components::asset_drop::resolve(payload, t) {
+                ph2d_app_components::asset_drop::DropAction::Refuse => DragVerdict::Refuse,
+                ph2d_app_components::asset_drop::DropAction::Cancel => DragVerdict::Unknown,
                 _ => DragVerdict::Accept,
             },
             None => DragVerdict::Unknown,
@@ -114,7 +114,7 @@ impl crate::App {
         let Some(target) = target else {
             return true;
         };
-        let action = crate::asset_drop::resolve(drag.payload, target);
+        let action = ph2d_app_components::asset_drop::resolve(drag.payload, target);
         self.perform_drop(action, drag.payload);
         true
     }

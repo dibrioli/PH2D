@@ -76,7 +76,7 @@ thread_local! {
 /// ⚠️ **`visible == false` não publica nada, e é a decisão:** o índice é uma travessia do mundo,
 /// e pagá-la com o painel fechado seria trabalho que ninguém lê. ⛔ O preço de o publicar não é
 /// zero e está medido no handoff — é por isso que a guarda existe em vez de «é barato».
-pub(crate) fn publish_for_frame(
+pub fn publish_for_frame(
     sim: &mut SimWorld,
     db: &AssetDb,
     atlas_assets: &BTreeMap<u32, AssetId>,
@@ -338,7 +338,7 @@ pub(crate) fn build(
 /// ⚠️ **Ela é estável por construção:** o `build` reconstrói o índice a partir da verdade, então
 /// uma textura que ainda tenha entidade a referenciá-la volta no quadro seguinte — e é isso que
 /// impede este gesto de mentir. *Esquecer é dizer «ninguém a usa», e o mundo é quem confirma.*
-pub(crate) fn forget_texture(id: AssetId) {
+pub fn forget_texture(id: AssetId) {
     LIBRARY.with(|lib| lib.borrow_mut().forget(id));
 }
 
@@ -353,7 +353,7 @@ pub(crate) fn forget_texture(id: AssetId) {
 /// ⛔ **Sem isto o gesto era irreversível**: a imagem sem utilizadores não tem quem a re-lembre no
 /// quadro seguinte (o laço só vê entidades vivas), então esquecê-la era para sempre.
 #[must_use]
-pub(crate) fn forgotten_textures() -> Vec<[u8; 32]> {
+pub fn forgotten_textures() -> Vec<[u8; 32]> {
     LIBRARY.with(|lib| {
         lib.borrow()
             .forgotten
@@ -367,7 +367,7 @@ pub(crate) fn forgotten_textures() -> Vec<[u8; 32]> {
 ///
 /// ⚠️ **Conjunto inteiro e não «acrescenta»** — desfazer uma remoção tem de tirar a lápide, e um
 /// `insert` só saberia pôr.
-pub(crate) fn set_forgotten_textures(ids: &[[u8; 32]]) {
+pub fn set_forgotten_textures(ids: &[[u8; 32]]) {
     LIBRARY.with(|lib| {
         lib.borrow_mut().forgotten = ids.iter().map(|d| AssetId::from_digest(*d)).collect();
     });

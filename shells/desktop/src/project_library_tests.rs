@@ -82,23 +82,23 @@ fn the_document_round_trips_both_halves() {
     let mut tree = CatalogTree::new();
     let a = tree.create("Personagens/Herois");
     tree.assign(AssetRef::Component { stable_id: 7 }, a);
-    crate::asset_index_build::set_forgotten_textures(&[[3; 32], [9; 32]]);
+    ph2d_app_components::asset_index_build::set_forgotten_textures(&[[3; 32], [9; 32]]);
 
     let mut cache = LibraryCache::default();
     let doc = cache.doc(&tree).clone();
     assert_eq!(doc.forgotten, vec![[3; 32], [9; 32]]);
 
     // Apaga tudo, e devolve pelo documento.
-    crate::asset_index_build::set_forgotten_textures(&[]);
+    ph2d_app_components::asset_index_build::set_forgotten_textures(&[]);
     apply_forgotten(&doc);
     let back = apply_catalogs(&doc);
     assert_eq!(back, tree, "a taxonomia não voltou igual");
     assert_eq!(
-        crate::asset_index_build::forgotten_textures(),
+        ph2d_app_components::asset_index_build::forgotten_textures(),
         vec![[3; 32], [9; 32]],
         "as lápides não voltaram"
     );
-    crate::asset_index_build::set_forgotten_textures(&[]);
+    ph2d_app_components::asset_index_build::set_forgotten_textures(&[]);
 }
 
 /// ⚠️ **Um documento vazio é uma biblioteca vazia**, e não um estouro — é o estado em que todo
@@ -108,5 +108,5 @@ fn an_empty_document_is_an_empty_library() {
     apply_forgotten(&LibraryDoc::default());
     let back = apply_catalogs(&LibraryDoc::default());
     assert_eq!(back, CatalogTree::new());
-    assert!(crate::asset_index_build::forgotten_textures().is_empty());
+    assert!(ph2d_app_components::asset_index_build::forgotten_textures().is_empty());
 }

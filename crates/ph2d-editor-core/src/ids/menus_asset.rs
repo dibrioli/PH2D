@@ -9,8 +9,9 @@
 //! O menu não sabe se o cartão é um **Prefab** ou uma **Imagem** — o
 //! [`crate::interaction::ContextMenuKind::AssetCard`] carrega a CÉLULA, e quem a converte em
 //! endereço de asset é o painel (a única crate que conhece o `AssetRef`). ⇒ os três itens aparecem
-//! sobre as duas famílias, e **três das seis células são recusas**. Quem as redige é o shell
-//! (`shells/desktop/src/asset_card_verbs.rs`), porque o `PanelHostInternal` não dá `ToastQueue` e
+//! sobre as duas famílias, e **três das seis células são recusas**. Quem as redige é a família dos
+//! componentes (`crates/ph2d-app-components/src/asset_card_verbs.rs`, que a shell chama com a
+//! `ToastQueue`), porque o `PanelHostInternal` não dá `ToastQueue` e
 //! uma recusa muda é pior que um item ausente.
 
 use super::*;

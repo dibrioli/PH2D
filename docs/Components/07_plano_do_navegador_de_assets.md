@@ -174,7 +174,7 @@ As duas etapas são complexas ⇒ **as duas são auditadas antes de eu sugerir o
 | Wave | Estado | Onde |
 |---|---|---|
 | **A1** — o vocabulário | ✅ | [`crates/ph2d-asset-index/`](../../crates/ph2d-asset-index/) |
-| **A2** — a junção das duas fontes | ✅ | [`asset_index_build.rs`](../../shells/desktop/src/asset_index_build.rs) |
+| **A2** — a junção das duas fontes | ✅ | [`asset_index_build.rs`](../../crates/ph2d-app-components/src/asset_index_build.rs) |
 | **A3** — catálogos | ⏳ **não** | ver §9.3 |
 | **A4** — o painel + a grade | ✅ | [`crates/ph2d-panel-asset-browser/`](../../crates/ph2d-panel-asset-browser/) |
 | **A5** — busca · ordenações · slider | ✅ (uma busca, não duas — §9.3) | idem |
@@ -581,7 +581,7 @@ fica onde tem de ficar — ela é a única coisa que carrega o mecanismo da cerc
 ### §12.4 — Correcções ao §9.3 desta mesma página
 
 - ✅ **A6, as miniaturas** — **feita** (2026-09-02): o retrato de um componente é composto na CPU a
-  partir das miniaturas das peças ([`asset_card_portrait.rs`](../../shells/desktop/src/asset_card_portrait.rs)),
+  partir das miniaturas das peças ([`asset_card_portrait.rs`](../../crates/ph2d-app-components/src/asset_card_portrait.rs)),
   sem GPU e sem tocar no atlas. A linha do §9.1 que a dá por pendente envelheceu.
 - ✅ **Imagens de 16 bits com a cor neutra** — **fechada**: o `swatch_for` passou a ir pela porta
   `image_rgba8`, que cobre as duas variantes.

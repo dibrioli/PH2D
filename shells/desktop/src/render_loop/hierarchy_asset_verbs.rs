@@ -30,7 +30,7 @@ pub(super) fn drain_card_verb(
     camera: &ph2d_render::Camera2d,
     window_size: ph2d_host::WindowSize,
     // ⭐ `célula do átlas → AssetId` — o que separa *«o artista trouxe isto»* de *«o boot pôs
-    // isto no `AssetDb`»*. Ver [`crate::asset_index_build::texture_of`].
+    // isto no `AssetDb`»*. Ver [`ph2d_app_components::asset_index_build::texture_of`].
     atlas_assets: &std::collections::BTreeMap<u32, ph2d_asset::AssetId>,
     title_dirty: &mut bool,
 ) -> Option<u64> {
@@ -38,7 +38,7 @@ pub(super) fn drain_card_verb(
     // variável faria o mesmo defeito que a nota dos DOIS slots do irmão descreve.
     let mut card_select: Option<u64> = None;
     if let Some((asset, verb)) = asset_card_verb
-        && crate::asset_card_verbs::drain(
+        && ph2d_app_components::asset_card_verbs::drain(
             asset,
             verb,
             sim,

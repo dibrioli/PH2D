@@ -48,6 +48,20 @@ ph2d-unique-name = { path = "../ph2d-unique-name" }
 ph2d-vec-entities = { path = "../ph2d-vec-entities" }
 ph2d-vec-scene = { path = "../ph2d-vec-scene" }
 
+# ⭐⭐ **Os ASSETS e o PALCO do prefab** (W2 5.ª rodada, 2026-09-13): as leis que vieram da shell
+# trazem seis irmãs que só elas usam — o `AssetDb` e o índice (`ph2d-asset`, `ph2d-asset-index`),
+# a redução das miniaturas (`ph2d-thumbnail`), o ledger de pré-visualização e o tamanho da janela
+# do palco (`ph2d-preview-drive`, `ph2d-host`), e o painel da biblioteca, a quem o índice do
+# quadro é publicado (`ph2d-panel-asset-browser` — família → painel é aresta permitida pelo
+# `architecture_no_dependency_climbs_a_layer`). ⚠️ O `ph2d-asset` VOLTA: o machete de 12/09
+# tirou-o porque nenhum ficheiro da família o usava — e os que o usam chegaram agora.
+ph2d-asset = { path = "../ph2d-asset" }
+ph2d-asset-index = { path = "../ph2d-asset-index" }
+ph2d-host = { path = "../ph2d-host" }
+ph2d-panel-asset-browser = { path = "../ph2d-panel-asset-browser" }
+ph2d-preview-drive = { path = "../ph2d-preview-drive" }
+ph2d-thumbnail = { path = "../ph2d-thumbnail" }
+
 # ⛔ **Esta família já NÃO depende da família da física** (auditoria de arquitectura A1, 2026-09-12).
 # A nota que aqui estava chamava-o «legítimo» — uma crate-motor irmã não é a shell —, mas a
 # `ph2d-app-physics` não é uma crate-motor: é uma FAMÍLIA, e o ADR-0075 proíbe famílias de se
@@ -69,6 +83,15 @@ postcard = { version = "1", default-features = false, features = ["use-std"] }
 # inteira existe para apanhar.
 ph2d-field-ecs = { path = "../ph2d-field-ecs" }
 ph2d-skeleton-ecs = { path = "../ph2d-skeleton-ecs" }
+
+[dev-dependencies]
+# ⚠️ **As duas que só os TESTES dos assets pedem, e só o `--all-targets` as revelou** (HOWTO §2.5):
+# o `prefab_stage_tests` pergunta ao ledger se a condução continua viva (`PreviewDrive::is_empty`,
+# que mora atrás de `test-support` na crate dele — a shell liga-a pela mesma via), e o
+# `asset_card_portrait_tests` grava o retrato em PNG quando o `PH2D_PORTRAIT_DUMP` o pede. ⛔ Nas
+# `[dependencies]` a feature de teste entraria no binário do produto.
+image = { version = "0.25", default-features = false, features = ["png"] }
+ph2d-preview-drive = { path = "../ph2d-preview-drive", features = ["test-support"] }
 
 [features]
 # ⚠️⚠️ **Um `#[cfg(test)]` da família é INVISÍVEL do outro lado da fronteira**

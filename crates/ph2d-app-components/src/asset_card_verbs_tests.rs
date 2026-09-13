@@ -154,12 +154,12 @@ fn an_atlas_sprite_counts_as_a_user_of_the_image_it_shows() {
 #[test]
 fn editing_a_prefab_from_the_library_selects_the_recipe() {
     let mut sim = SimWorld::new();
-    let r = crate::init::build_component_registry();
-    let mut echo = ph2d_app_components::instance_sync::MasterEcho::default();
+    let r = crate::component_registry_for_tests::registo();
+    let mut echo = crate::instance_sync::MasterEcho::default();
     let mut gizmo = ph2d_editor_core::screens::hero::GizmoStateGroup::default();
     let mut toasts = ph2d_editor_core::ToastQueue::default();
-    let (mut sc, mut mp) = ph2d_app_components::instance_docs::empty_docs();
-    let mut docs = ph2d_app_components::instance_docs::OwnedDocs {
+    let (mut sc, mut mp) = crate::instance_docs::empty_docs();
+    let mut docs = crate::instance_docs::OwnedDocs {
         vec_scene: &mut sc,
         vec_entities: &mut mp,
     };
@@ -204,12 +204,12 @@ fn editing_a_prefab_from_the_library_selects_the_recipe() {
 #[test]
 fn the_library_card_places_both_kinds_of_copy() {
     let mut sim = SimWorld::new();
-    let r = crate::init::build_component_registry();
-    let mut echo = ph2d_app_components::instance_sync::MasterEcho::default();
+    let r = crate::component_registry_for_tests::registo();
+    let mut echo = crate::instance_sync::MasterEcho::default();
     let mut gizmo = ph2d_editor_core::screens::hero::GizmoStateGroup::default();
     let mut toasts = ph2d_editor_core::ToastQueue::default();
-    let (mut sc, mut mp) = ph2d_app_components::instance_docs::empty_docs();
-    let mut docs = ph2d_app_components::instance_docs::OwnedDocs {
+    let (mut sc, mut mp) = crate::instance_docs::empty_docs();
+    let mut docs = crate::instance_docs::OwnedDocs {
         vec_scene: &mut sc,
         vec_entities: &mut mp,
     };
@@ -227,27 +227,26 @@ fn the_library_card_places_both_kinds_of_copy() {
     ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
     let stable_id = sim.world().get::<StableId>(master).expect("id").0;
 
-    let mut put =
-        |verb, sim: &mut SimWorld, docs: &mut ph2d_app_components::instance_docs::OwnedDocs<'_>| {
-            let mut out = None;
-            assert!(
-                super::drain(
-                    DragPayload::Prefab { stable_id },
-                    verb,
-                    sim,
-                    &r,
-                    &mut echo,
-                    &mut gizmo,
-                    &mut toasts,
-                    docs,
-                    [0.25, 0.0],
-                    &BTreeMap::new(),
-                    &mut out,
-                ),
-                "o cartao nao pos copia nenhuma"
-            );
-            ph2d_ecs::Entity::from_bits(out.expect("a copia nova"))
-        };
+    let mut put = |verb, sim: &mut SimWorld, docs: &mut crate::instance_docs::OwnedDocs<'_>| {
+        let mut out = None;
+        assert!(
+            super::drain(
+                DragPayload::Prefab { stable_id },
+                verb,
+                sim,
+                &r,
+                &mut echo,
+                &mut gizmo,
+                &mut toasts,
+                docs,
+                [0.25, 0.0],
+                &BTreeMap::new(),
+                &mut out,
+            ),
+            "o cartao nao pos copia nenhuma"
+        );
+        ph2d_ecs::Entity::from_bits(out.expect("a copia nova"))
+    };
     let plain = put(
         ph2d_editor_core::action_bus::AssetCardAction::Instantiate,
         &mut sim,
@@ -275,12 +274,12 @@ fn the_library_card_places_both_kinds_of_copy() {
 #[test]
 fn editing_an_image_is_refused_out_loud() {
     let mut sim = SimWorld::new();
-    let r = crate::init::build_component_registry();
-    let mut echo = ph2d_app_components::instance_sync::MasterEcho::default();
+    let r = crate::component_registry_for_tests::registo();
+    let mut echo = crate::instance_sync::MasterEcho::default();
     let mut gizmo = ph2d_editor_core::screens::hero::GizmoStateGroup::default();
     let mut toasts = ph2d_editor_core::ToastQueue::default();
-    let (mut sc, mut mp) = ph2d_app_components::instance_docs::empty_docs();
-    let mut docs = ph2d_app_components::instance_docs::OwnedDocs {
+    let (mut sc, mut mp) = crate::instance_docs::empty_docs();
+    let mut docs = crate::instance_docs::OwnedDocs {
         vec_scene: &mut sc,
         vec_entities: &mut mp,
     };

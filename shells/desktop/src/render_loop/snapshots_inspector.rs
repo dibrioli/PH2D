@@ -280,7 +280,7 @@ fn physics(
     // ⭐⭐ A TAXONOMIA (wave A3) — publicada como o índice, e pela mesma razão: o painel não pode
     // ser a segunda fonte de verdade sobre o que existe.
     ph2d_panel_asset_browser::set_current_catalogs(catalogs.clone());
-    crate::asset_index_build::publish_for_frame(
+    ph2d_app_components::asset_index_build::publish_for_frame(
         sim,
         asset_db,
         // ⭐⭐ Ele já chegava a esta função — o que faltava era chegar ao índice. É o mapa que

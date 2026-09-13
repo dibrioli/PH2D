@@ -1,6 +1,6 @@
 //! ⭐⭐ **O que a queda EXECUTA** (plano `docs/Components/07`, etapa B) — as três acções.
 //!
-//! ⛔ **Nenhuma decisão mora aqui.** Quem decide é a lei pura ([`crate::asset_drop::resolve`]);
+//! ⛔ **Nenhuma decisão mora aqui.** Quem decide é a lei pura ([`ph2d_app_components::asset_drop::resolve`]);
 //! isto é o braço. Uma decisão dentro do braço seria uma decisão sem gate.
 //!
 //! ⚠️ **E cada acção passa pela PORTA que já existe**, nunca por uma segunda:

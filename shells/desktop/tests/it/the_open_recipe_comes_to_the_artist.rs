@@ -25,6 +25,26 @@ fn code_of(rel: &str) -> String {
         .join("\n")
 }
 
+/// O corpo de um ficheiro da FAMÍLIA das instâncias, com a mesma limpeza do [`code_of`].
+///
+/// ⚠️ **A lei do palco mudou-se para `crates/ph2d-app-components/src/`** (W2 5.ª rodada,
+/// 2026-09-13), e a PONTE das saídas (`prefab_exit.rs`) ficou na shell porque o `Cancel` repõe o
+/// `ProjectState`. Cada gate abaixo lê a metade que mede — ⛔ concatenar as duas para «ler tudo»
+/// deixaria um gate de AUSÊNCIA verde sobre a metade que não viu.
+fn code_of_family(rel: &str) -> String {
+    let p = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../crates/ph2d-app-components/src")
+        .join(rel);
+    let body = std::fs::read_to_string(&p).unwrap_or_else(|e| panic!("{}: {e}", p.display()));
+    body.lines()
+        .map(|l| match l.find("//") {
+            Some(i) => &l[..i],
+            None => l,
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
 /// O QUADRO sem comentários, pela ordem em que CORRE — com a mesma limpeza do [`code_of`].
 ///
 /// ⚠️ **Desde a OBRA 2 da `line/render-loop` (2026-09-12)** o quadro está partido em fases noutros
@@ -76,7 +96,7 @@ fn the_frame_arms_the_request_and_serves_it_on_the_stage() {
 /// devolve um deslocamento e nem recebe a câmera mutável.
 #[test]
 fn the_stage_never_moves_the_view() {
-    let body = code_of("prefab_stage.rs");
+    let body = code_of_family("prefab_stage.rs");
     for proibido in ["camera.center", "height_world", "zoom"] {
         assert!(
             !body.contains(proibido),
@@ -94,7 +114,7 @@ fn the_stage_never_moves_the_view() {
 /// mão.
 #[test]
 fn the_visible_area_has_one_door_and_both_clients_use_it() {
-    let stage = code_of("prefab_stage.rs");
+    let stage = code_of_family("prefab_stage.rs");
     assert!(
         stage.contains("canvas_area::visible("),
         "o palco deixou de perguntar a` porta da area visivel"
@@ -110,9 +130,14 @@ fn the_visible_area_has_one_door_and_both_clients_use_it() {
         "o modulo 3D voltou a ter a propria copia da area visivel"
     );
     // E a porta é uma só: ninguém mais lê o `last_content` cru.
-    for rel in ["prefab_stage.rs", "chrome_hit.rs"] {
+    // ⚠️ As duas metades moram em casas diferentes desde 2026-09-13: a lei do palco na família, o
+    // chrome na shell — e cada uma é lida no sítio dela.
+    for (rel, body) in [
+        ("prefab_stage.rs", code_of_family("prefab_stage.rs")),
+        ("chrome_hit.rs", code_of("chrome_hit.rs")),
+    ] {
         assert!(
-            !code_of(rel).contains("last_content"),
+            !body.contains("last_content"),
             "{rel} le o `last_content` cru — e' a segunda resposta a` mesma pergunta"
         );
     }
@@ -158,7 +183,8 @@ fn the_session_only_ends_through_the_two_doors() {
 /// a trava era solta e o modo voltava, o que se lê como *«o botão não funciona»*.
 #[test]
 fn cancelling_restores_the_document_and_both_exits_let_go() {
-    let body = code_of("prefab_stage.rs");
+    // ⚠️ A PONTE ficou na shell (`prefab_exit.rs`) — é ela que repõe o `ProjectState`.
+    let body = code_of("prefab_exit.rs");
     let at = body
         .find("fn serve_prefab_exit")
         .expect("o servico da saida desapareceu");
@@ -190,7 +216,7 @@ fn the_keys_are_the_same_door_and_yield_to_a_text_field() {
         keys.contains("Exit::Cancel") && keys.contains("Exit::Done"),
         "uma das duas teclas perdeu o fim dela"
     );
-    let stage = code_of("prefab_stage.rs");
+    let stage = code_of("prefab_exit.rs");
     let at = stage
         .find("fn request_prefab_exit")
         .expect("a porta do pedido desapareceu");

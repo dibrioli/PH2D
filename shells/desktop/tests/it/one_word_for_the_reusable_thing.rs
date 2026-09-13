@@ -39,7 +39,8 @@ const SURFACES: &[&str] = &[
     "crates/ph2d-app-components/src/instance_verbs.rs",
     "crates/ph2d-app-components/src/instance_revert.rs",
     "crates/ph2d-app-components/src/instance_unmake.rs",
-    "shells/desktop/src/asset_card_verbs.rs",
+    // ⭐ E a quarta em 2026-09-13 (W2 5.ª rodada — as leis dos assets).
+    "crates/ph2d-app-components/src/asset_card_verbs.rs",
     "shells/desktop/src/vec_component_general.rs",
     "shells/desktop/src/render_loop/hierarchy_delete.rs",
     "shells/desktop/src/hero_intents/hierarchy.rs",

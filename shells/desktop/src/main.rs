@@ -54,25 +54,16 @@ mod ase_import;
 /// A cena de smoke do import do `.ase` (`PH2D_ASE_SMOKE=1`) — ela ESCREVE o ficheiro e larga-o
 /// pela porta do produto, para o smoke não precisar do Aseprite instalado.
 mod ase_smoke;
-/// ⭐⭐ **Os três verbos do menu de um cartão** (plano `docs/Components/07`, etapa C) — e as três
-/// RECUSAS, que são o corpo dele: o painel não tem voz, então quem decide e fala é o shell.
-/// ⭐⭐ **O que um cartão DESENHA** (a cor, a miniatura) e a memória por conteúdo disso.
-mod asset_card_art;
-mod asset_card_portrait;
-mod asset_card_verbs;
-/// ⭐⭐ **Os verbos de CATÁLOGO** (plano 07, wave A3) — criar, renomear, apagar, atribuir.
-mod asset_catalog_verbs;
+// ⛔ **As LEIS dos assets mudaram-se para `ph2d-app-components`** (W2 5.ª rodada, 2026-09-13):
+// o índice (`asset_index_build`), o que um cartão desenha (`asset_card_art`/`_portrait`), os verbos
+// do cartão e do catálogo (`asset_card_verbs`/`asset_catalog_verbs`) e a lei da queda
+// (`asset_drop`). Ficam aqui as duas PONTES — o arrasto precisa da câmara e do pick, o braço da
+// queda do `SpriteRenderer` e do funil de texturas — e o smoke dirigido pelo ponteiro.
 /// ⭐⭐⭐ **O arrasto da biblioteca, ligado ao ponteiro** (plano `docs/Components/07`, etapa B) —
-/// a fiação `Down`/`Move`/`Up`. ⚠️ A LEI da queda vive no `asset_drop`, e é pura.
+/// a fiação `Down`/`Move`/`Up`. ⚠️ A LEI da queda vive no `ph2d_app_components::asset_drop`, e é pura.
 mod asset_drag_wire;
-/// ⭐⭐⭐ **A lei da QUEDA** (plano `docs/Components/07`, etapa B) — o que acontece ao largar um
-/// asset, e onde a recusa é exprimível. ⚠️ Pura: ela não toca no mundo.
-mod asset_drop;
 /// ⭐⭐ **O braço da queda** — as três acções, cada uma pela porta que já existe. ⛔ Sem decisões.
 mod asset_drop_apply;
-/// ⭐⭐ **A junção das duas fontes de asset** (plano `docs/Components/07`, wave A2) — o único
-/// sítio que conhece o mundo E o `AssetDb`, e por isso o único que responde «que assets existem?».
-mod asset_index_build;
 /// ⭐⭐⭐ **O navegador de assets DIRIGIDO PELO PONTEIRO** (`PH2D_BUILD_SMOKE=78`) — o buraco que a
 /// auditoria da etapa B nomeou: nenhum gate do painel aperta o botão de verdade.
 mod asset_menu_smoke;
@@ -128,8 +119,9 @@ mod build_smoke_drive;
 /// A cena de smoke do **Expand** (Outline Stroke + Offset Path) — `PH2D_BUILD_SMOKE=17`.
 mod build_smoke_expand;
 mod build_smoke_router;
-/// ⭐⭐ **A ÁREA de desenho visível** — a porta única de *«onde o canvas de facto se vê?»*.
-mod canvas_area;
+// ⛔ A fachada `canvas_area` (um `pub(crate) use ph2d_app_host::canvas_area::visible`) morreu em
+// 2026-09-13: o último leitor dela era o palco do prefab, que se mudou para `ph2d-app-components` e
+// escreve o caminho da porta.
 /// ⭐⭐ **A cor com que a camada de sprites é limpa** — o fundo que o artista vê no canvas, hoje
 /// derivado da porta única em vez de escrito à mão. Ver o cabeçalho de lá.
 mod canvas_clear;
@@ -335,8 +327,9 @@ mod pick_order;
 mod precision_convert;
 /// **As ferramentas que só movem pixels preservam a precisão** — veja os docs do módulo.
 mod precision_geometry;
-/// ⭐⭐⭐ **A receita SOBE AO PALCO quando ela abre** — ela vem ao artista, e não o artista a ela.
-mod prefab_stage;
+/// ⭐⭐⭐ **As duas SAÍDAS do palco do prefab** (`Done`/`Cancel`) — a ponte que fica porque o `Cancel`
+/// repõe o `ProjectState`. ⚠️ A LEI do palco vive em `ph2d_app_components::prefab_stage` (2026-09-13).
+mod prefab_exit;
 mod prefs;
 /// ⚠️ NÃO é do Motion apesar do nome: ele toca `self.ui_motion_smoke_done` e abre o painel
 /// de física. O `CLAUDE.md` lista-o sob o **Vector** (W2 Fase C).
@@ -995,7 +988,7 @@ impl App {
         // ⭐⭐⭐ **A SAÍDA da sessão de receita** (`Done`/`Enter` · `Cancel`/`Esc`) — servida aqui,
         // com o `self` livre, e ANTES do `post_frame_undo`: um cancelamento é uma mudança do
         // documento como outra qualquer, e o passo por diff regista-o (o `Ctrl+Z` traz as edições
-        // de volta). Ver [`crate::prefab_stage`].
+        // de volta). Ver [`ph2d_app_components::prefab_stage`].
         self.serve_prefab_exit();
         // ⚠️ **A rede dos escritores tardios da árvore mudou-se para DENTRO do
         // [`crate::undo_app`], colada à captura que ela serve** — ela custa uma varredura O(formas)

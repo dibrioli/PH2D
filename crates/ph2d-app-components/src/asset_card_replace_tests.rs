@@ -46,17 +46,17 @@ fn two_recipes_and_a_copy(
     let truck = make("Truck");
     ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
     ph2d_ecs::assign_master_pieces(sim.world_mut());
-    let (mut sc, mut mp) = ph2d_app_components::instance_docs::empty_docs();
-    let copy = ph2d_app_components::instantiate::instantiate_master(
+    let (mut sc, mut mp) = crate::instance_docs::empty_docs();
+    let copy = crate::instantiate::instantiate_master(
         sim,
         r,
         car,
         None,
-        &mut ph2d_app_components::instance_docs::OwnedDocs {
+        &mut crate::instance_docs::OwnedDocs {
             vec_scene: &mut sc,
             vec_entities: &mut mp,
         },
-        ph2d_app_components::instantiate::ArtLink::Own,
+        crate::instantiate::ArtLink::Own,
     )
     .expect("instanciou");
     (sim.world().get::<StableId>(truck).expect("id").0, copy)
@@ -74,12 +74,12 @@ fn run_replace(
     asset: DragPayload,
     selected: Option<u64>,
 ) -> (bool, String) {
-    let mut echo = ph2d_app_components::instance_sync::MasterEcho::default();
+    let mut echo = crate::instance_sync::MasterEcho::default();
     let mut gizmo = ph2d_editor_core::screens::hero::GizmoStateGroup::default();
     gizmo.replace_selection(selected);
     let mut toasts = ph2d_editor_core::ToastQueue::default();
-    let (mut sc, mut mp) = ph2d_app_components::instance_docs::empty_docs();
-    let mut docs = ph2d_app_components::instance_docs::OwnedDocs {
+    let (mut sc, mut mp) = crate::instance_docs::empty_docs();
+    let mut docs = crate::instance_docs::OwnedDocs {
         vec_scene: &mut sc,
         vec_entities: &mut mp,
     };
@@ -119,7 +119,7 @@ fn master_of(sim: &SimWorld, e: ph2d_ecs::Entity) -> u64 {
 #[test]
 fn replacing_the_selection_makes_the_copy_belong_to_the_other_component() {
     let mut sim = SimWorld::new();
-    let r = crate::init::build_component_registry();
+    let r = crate::component_registry_for_tests::registo();
     let (truck_id, copy) = two_recipes_and_a_copy(&mut sim, &r);
     assert_ne!(
         master_of(&sim, copy),
@@ -158,7 +158,7 @@ fn replacing_the_selection_makes_the_copy_belong_to_the_other_component() {
 #[test]
 fn picking_a_piece_inside_the_copy_replaces_the_whole_copy() {
     let mut sim = SimWorld::new();
-    let r = crate::init::build_component_registry();
+    let r = crate::component_registry_for_tests::registo();
     let (truck_id, copy) = two_recipes_and_a_copy(&mut sim, &r);
     let piece = sim
         .world()
@@ -192,7 +192,7 @@ fn picking_a_piece_inside_the_copy_replaces_the_whole_copy() {
 #[test]
 fn replacing_with_nothing_picked_says_what_to_pick() {
     let mut sim = SimWorld::new();
-    let r = crate::init::build_component_registry();
+    let r = crate::component_registry_for_tests::registo();
     let (truck_id, _copy) = two_recipes_and_a_copy(&mut sim, &r);
     let (acted, spoke) = run_replace(
         &mut sim,
@@ -214,7 +214,7 @@ fn replacing_with_nothing_picked_says_what_to_pick() {
 #[test]
 fn an_image_cannot_replace_a_copy_and_it_says_so() {
     let mut sim = SimWorld::new();
-    let r = crate::init::build_component_registry();
+    let r = crate::component_registry_for_tests::registo();
     let (_truck_id, copy) = two_recipes_and_a_copy(&mut sim, &r);
     let before = master_of(&sim, copy);
     let (acted, spoke) = run_replace(
@@ -262,7 +262,7 @@ fn the_three_replace_items_are_three_different_laws() {
         (A::ReplaceSelectionByTree, "Wheel"),
     ] {
         let mut sim = SimWorld::new();
-        let r = crate::init::build_component_registry();
+        let r = crate::component_registry_for_tests::registo();
         // ⚠️ A ordem dos irmãos ao CONTRÁRIO — o único arranjo em que os dois modos discordam.
         let mut make = |name: &str, pieces: [&str; 2]| {
             let root = sim
@@ -283,17 +283,17 @@ fn the_three_replace_items_are_three_different_laws() {
         let truck = make("Truck", ["Wheel", "Body"]);
         ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
         ph2d_ecs::assign_master_pieces(sim.world_mut());
-        let (mut sc, mut mp) = ph2d_app_components::instance_docs::empty_docs();
-        let copy = ph2d_app_components::instantiate::instantiate_master(
+        let (mut sc, mut mp) = crate::instance_docs::empty_docs();
+        let copy = crate::instantiate::instantiate_master(
             &mut sim,
             &r,
             car,
             None,
-            &mut ph2d_app_components::instance_docs::OwnedDocs {
+            &mut crate::instance_docs::OwnedDocs {
                 vec_scene: &mut sc,
                 vec_entities: &mut mp,
             },
-            ph2d_app_components::instantiate::ArtLink::Own,
+            crate::instantiate::ArtLink::Own,
         )
         .expect("instanciou");
         // A excepção do artista, escrita à mão na chave: é ela que o re-key move.

@@ -154,7 +154,7 @@ pub const INSP_VIS_ALPHA_CUTOFF: NodeId = hash_node_id("insp_vis_alpha_cutoff");
 /// biblioteca e, ao clique, abre-a (plano `docs/Components/07`, wave B3).
 ///
 /// ⚠️ **O porquê vive com quem o honra**: a affordance em `sections/render_source.rs`, a lei da
-/// queda em `shells/desktop/src/asset_drop.rs`, e a razão de ela ser um CONTROLO — e não uma zona
+/// queda em `crates/ph2d-app-components/src/asset_drop.rs`, e a razão de ela ser um CONTROLO — e não uma zona
 /// inerte — no `populate.rs` do painel. *O transporte não é o sítio onde se explica o gesto.*
 pub const INSP_RENDER_TEXTURE_SLOT: NodeId = hash_node_id("insp_render_texture_slot");
 

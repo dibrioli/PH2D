@@ -27,7 +27,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-fn shell_src() -> PathBuf {
+fn family_src() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("src")
 }
 
@@ -70,7 +70,7 @@ fn the_index_asks_the_texture_door() {
 
     let mut guilty: Vec<String> = Vec::new();
     for name in WATCHED {
-        let path = shell_src().join(name);
+        let path = family_src().join(name);
         let lines = code_lines(&path);
         assert!(
             !lines.is_empty(),

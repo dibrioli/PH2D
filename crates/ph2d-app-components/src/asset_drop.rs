@@ -30,7 +30,7 @@ use ph2d_i18n::tr;
 
 /// Onde o cursor estava quando a mão largou.
 #[derive(Copy, Clone, Debug, PartialEq)]
-pub(crate) enum DropTarget {
+pub enum DropTarget {
     /// Sobre o canvas, no ponto de MUNDO `world`.
     ///
     /// `over` é a entidade debaixo do cursor, se houver — já resolvida pela porta de pick do
@@ -78,7 +78,7 @@ pub(crate) enum DropTarget {
 /// componente ela tem?»*. Passar a entidade obrigaria esta lei a consultar o mundo, e ela deixaria
 /// de ser pura.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub(crate) struct DropOver {
+pub struct DropOver {
     pub entity_bits: u64,
     /// Ela mostra pixels? ⇒ pode receber uma imagem.
     pub is_sprite: bool,
@@ -86,7 +86,7 @@ pub(crate) struct DropOver {
 
 /// O que fazer. ⛔ Uma variante por EFEITO, não por gesto.
 #[derive(Copy, Clone, Debug, PartialEq)]
-pub(crate) enum DropAction {
+pub enum DropAction {
     /// Instanciar o prefab `stable_id` com a raiz em `world`.
     PlacePrefab { stable_id: u64, world: [f32; 2] },
     /// A sprite `entity_bits` passa a mostrar `asset`.
@@ -131,7 +131,7 @@ impl DropAction {
 /// forma do código envelhece no primeiro braço que alguém acrescenta; a que vale é sobre a
 /// PROPRIEDADE.*
 #[must_use]
-pub(crate) fn resolve(payload: DragPayload, target: DropTarget) -> DropAction {
+pub fn resolve(payload: DragPayload, target: DropTarget) -> DropAction {
     match (payload, target) {
         // ⭐ Desistir é silencioso — ver [`DropTarget::Source`].
         (_, DropTarget::Source) => DropAction::Cancel,

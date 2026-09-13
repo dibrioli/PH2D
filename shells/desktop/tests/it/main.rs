@@ -151,7 +151,8 @@ mod the_hierarchy_has_a_delete_key;
 mod the_hierarchy_opens_the_prefab_through_the_same_verb;
 mod the_highlight_has_one_source;
 mod the_hovered_area_owns_the_clipboard_chord;
-mod the_index_asks_the_texture_door;
+// ⛔ `the_index_asks_the_texture_door` mudou-se para `ph2d-app-components` (2026-09-13) com os três
+// ficheiros que ele vigia — `asset_texture_door_census_tests.rs`.
 mod the_input_map_window_can_be_moved;
 mod the_joint_edit_loop_flushes_the_command_queue;
 mod the_key_blocks_ask_whether_the_keys_are_live;

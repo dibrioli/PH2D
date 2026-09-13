@@ -559,7 +559,7 @@ pub enum EditorAction {
 
     /// ⭐⭐ **Instanciar a partir da biblioteca**, no ponto de mundo `at`. ⚠️ Irmã da
     /// `HierInstantiate` e NÃO a mesma: ali chega uma `row`, aqui um `StableId`. A lei da
-    /// queda vive em `shells/desktop/src/asset_drop.rs`.
+    /// queda vive em `crates/ph2d-app-components/src/asset_drop.rs`.
     AssetInstantiate {
         /// O `StableId` da raiz da receita.
         stable_id: u64,

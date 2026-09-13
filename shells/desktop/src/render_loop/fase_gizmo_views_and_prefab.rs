@@ -27,7 +27,7 @@ impl crate::App {
         // deste quadro já foi projectado com a pose ANTIGA, então ele desenha um quadro
         // atrasado; o desenho do mundo (que é encodado mais abaixo) já usa a nova. *Um quadro
         // de 16 ms, contra a alternativa de reconstruir a vista inteira só para o esconder.*
-        crate::prefab_stage::run(
+        ph2d_app_components::prefab_stage::run(
             &mut self.prefab_stage_pending,
             &mut self.prefab_stage,
             hero,

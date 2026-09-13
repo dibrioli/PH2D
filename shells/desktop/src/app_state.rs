@@ -224,10 +224,10 @@ pub(crate) struct App {
     /// carimbo do [`ph2d_app_components::master_editing`], que corre **antes** do extract; quem sabe
     /// onde ela está é a caixa do gizmo, publicada **depois**. Um dos dois tem de esperar pelo
     /// outro, e é o pedido — ele fica pendente até a caixa existir, e no quadro seguinte se ainda
-    /// não existir. Ver [`crate::prefab_stage`].
+    /// não existir. Ver [`ph2d_app_components::prefab_stage`].
     pub(crate) prefab_stage_pending: Option<u64>,
     /// A receita que está EM CENA, com a pose de bastidor que o palco lhe devolve ao fechar.
-    pub(crate) prefab_stage: Option<crate::prefab_stage::Stage>,
+    pub(crate) prefab_stage: Option<ph2d_app_components::prefab_stage::Stage>,
     /// ⭐⭐⭐ **A TRAVA da sessão de receita** (Enio, 2026-09-07: *«só permita sair apertando Done ou
     /// a tecla Enter»*), em bits de `Entity`.
     ///

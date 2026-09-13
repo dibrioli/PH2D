@@ -95,7 +95,7 @@ fn deleting_a_catalog_is_undone_with_its_contents() {
 fn removing_an_image_from_the_library_is_undone() {
     let reg = registry();
     let (mut sim, vec) = scene();
-    crate::asset_index_build::set_forgotten_textures(&[]);
+    ph2d_app_components::asset_index_build::set_forgotten_textures(&[]);
 
     let mut cache = crate::project_library::LibraryCache::default();
     let tree = ph2d_asset_index::CatalogTree::new();
@@ -103,9 +103,11 @@ fn removing_an_image_from_the_library_is_undone() {
     assert!(before.library.forgotten.is_empty());
 
     // O gesto: `Remove from Library` sobre uma imagem sem utilizadores.
-    crate::asset_index_build::forget_texture(ph2d_asset::AssetId::from_digest([7; 32]));
+    ph2d_app_components::asset_index_build::forget_texture(ph2d_asset::AssetId::from_digest(
+        [7; 32],
+    ));
     assert_eq!(
-        crate::asset_index_build::forgotten_textures(),
+        ph2d_app_components::asset_index_build::forgotten_textures(),
         vec![[7; 32]],
         "a lápide não foi posta"
     );
@@ -116,10 +118,10 @@ fn removing_an_image_from_the_library_is_undone() {
         crate::project_library::apply_catalogs(&before.library)
     };
     assert!(
-        crate::asset_index_build::forgotten_textures().is_empty(),
+        ph2d_app_components::asset_index_build::forgotten_textures().is_empty(),
         "a imagem não voltou — o gesto continua irreversível"
     );
-    crate::asset_index_build::set_forgotten_textures(&[]);
+    ph2d_app_components::asset_index_build::set_forgotten_textures(&[]);
 }
 
 /// ⛔⛔ **E o mesmo estado capturado duas vezes NÃO regista passo.**

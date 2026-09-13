@@ -39,10 +39,39 @@
 //! - **Duas COSTURAS de teste** ficam na shell porque o sujeito delas é meio chrome de famílias que
 //!   ainda não saíram — ver [`test_support`].
 //!
+//! # ⭐⭐ A 5.ª rodada (2026-09-13): as LEIS dos assets e a LEI do palco do prefab
+//!
+//! Vieram os ficheiros que o fecho de 12/09 deixara para trás por **ASSUNTO** (ADR-0165, o plano 07 e
+//! o *Edit Prefab* de 07/09): o índice (`asset_index_build`), o que um cartão desenha
+//! (`asset_card_art`/`_portrait`), os verbos do cartão e do catálogo, a lei da queda (`asset_drop`)
+//! e a lei do palco (`prefab_stage`) — **14 ficheiros**, mais o censo da porta da textura. As quatro
+//! âncoras que as prendiam, medidas pelo `scripts/fecho-da-familia.py`, curaram-se cada uma pela
+//! espécie certa: o `init.rs` pelo `component_registry_for_tests::registo` que já existia · a
+//! sub-UV (`render_loop::sim_extract`) é uma LEI com dois leitores e **desceu para o motor**
+//! (`ph2d_render::sprite`) · o `canvas_area` era uma **fachada** e morreu · e o `undo.rs` só era
+//! tocado pela PONTE das saídas, que se partiu da lei.
+//!
+//! ⛔ **Ficam na shell, por desenho** — e o fecho diz porquê em tipos:
+//! - `asset_drag_wire` e `asset_drop_apply` — o arrasto precisa da câmara e do pick, e o braço da
+//!   queda do `SpriteRenderer` e do funil `commit_edited_texture` (as âncoras `image_import` e
+//!   `texture_edit` são DELES, não das leis);
+//! - `prefab_exit` — o `Cancel` repõe o `ProjectState`, que é da fila de undo;
+//! - os smokes dirigidos pelo PONTEIRO (`asset_menu_smoke`, `variant_*_smoke`, níveis do
+//!   `PH2D_BUILD_SMOKE`) — conduzem a `App` real, e o `AppHost` não tem porta para isso.
+//!
+//! ⚠️ O `nest_smoke`, que o handoff de 12/09 contava nesta família, é da **Timeline** (ADR-0133):
+//! *o prefixo não é a família* (HOWTO §2.15).
+//!
 //! [howto]: ../../../docs/IntegracaoMultiAgente/HOWTO_partir_uma_familia_da_shell.md
 
 #![forbid(unsafe_code)]
 
+pub mod asset_card_art;
+pub mod asset_card_portrait;
+pub mod asset_card_verbs;
+pub mod asset_catalog_verbs;
+pub mod asset_drop;
+pub mod asset_index_build;
 pub mod audio_2d_smoke;
 pub mod camera_2d_smoke;
 pub mod component_attach;
@@ -72,6 +101,7 @@ pub mod instance_verbs;
 pub mod instance_verbs_walk;
 pub mod instantiate;
 pub mod master_editing;
+pub mod prefab_stage;
 pub mod scene_ctx;
 pub mod signal_action_smoke;
 pub mod timer_smoke;
@@ -86,6 +116,12 @@ pub mod component_registry_for_tests;
 /// na shell porque o sujeito delas é meio chrome. Ver o cabeçalho dele.
 #[cfg(any(test, feature = "test-support"))]
 pub mod test_support;
+
+/// ⛔⛔⛔ **O censo «que textura usa esta peça?» tem UMA porta** — veio de
+/// `shells/desktop/tests/it/the_index_asks_the_texture_door.rs` com os três ficheiros que ele vigia
+/// (W2 5.ª rodada, 2026-09-13). *Um censo mora com o sujeito que mede* (HOWTO §2.6).
+#[cfg(test)]
+mod asset_texture_door_census_tests;
 
 /// **A declaração da família** — a chave e os roteadores de smoke que ela POSSUI.
 ///

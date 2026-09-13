@@ -1,7 +1,7 @@
 //! O estado retido do navegador — e a **publicação** do índice, que vem do shell.
 //!
 //! ⚠️ O índice **não** vive aqui: ele é derivado do mundo + do `AssetDb` a cada quadro
-//! (`shells/desktop/src/asset_index_build.rs`) e publicado por [`set_current_index`], que é o mesmo
+//! (`crates/ph2d-app-components/src/asset_index_build.rs`) e publicado por [`set_current_index`], que é o mesmo
 //! idioma do `ph2d_panel_inspector::set_current_inspector_instance`. *Guardá-lo no painel faria do
 //! painel a segunda fonte de verdade sobre o que existe.*
 

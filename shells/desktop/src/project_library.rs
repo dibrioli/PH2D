@@ -50,7 +50,7 @@ pub(crate) struct LibraryDoc {
     /// `PROJECT_SCHEMA`.
     pub(crate) catalog_bytes: Vec<u8>,
     /// ⭐ As imagens que o artista mandou SAIR da biblioteca — ver
-    /// [`crate::asset_index_build::forgotten_textures`].
+    /// [`ph2d_app_components::asset_index_build::forgotten_textures`].
     ///
     /// ⚠️ **Ordenado** (vem de um `BTreeSet`), senão duas capturas do mesmo estado dariam bytes
     /// diferentes e o diff registaria um passo por quadro.
@@ -87,7 +87,7 @@ impl LibraryCache {
                 self.encodes += 1;
             }
         }
-        self.doc.forgotten = crate::asset_index_build::forgotten_textures();
+        self.doc.forgotten = ph2d_app_components::asset_index_build::forgotten_textures();
         &self.doc
     }
 
@@ -115,7 +115,7 @@ impl LibraryCache {
 /// projecto B deixava as lápides do A vivas.** *Uma função que devolve um valor e escreve num
 /// global é governada pela guarda do valor.*
 pub(crate) fn apply_forgotten(doc: &LibraryDoc) {
-    crate::asset_index_build::set_forgotten_textures(&doc.forgotten);
+    ph2d_app_components::asset_index_build::set_forgotten_textures(&doc.forgotten);
 }
 
 /// ⭐ **A taxonomia restaurada** — a metade que tem dono.

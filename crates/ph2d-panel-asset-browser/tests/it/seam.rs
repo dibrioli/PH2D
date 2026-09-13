@@ -371,7 +371,7 @@ fn every_asset_card_menu_entry_dispatches_something() {
         "linhas do menu do cartão que são PINTADAS e não chegam a efeito nenhum: {dead:?}.\n\
          Um item que toca no MUNDO liga-se no `card_verb_of` de \
          `crates/ph2d-panel-asset-browser/src/event.rs` e drena em \
-         `shells/desktop/src/asset_card_verbs.rs`; um que só muda a VISTA da grade liga-se no \
+         `crates/ph2d-app-components/src/asset_card_verbs.rs`; um que só muda a VISTA da grade liga-se no \
          `relation_of` do mesmo ficheiro e escreve no `AssetBrowserState`."
     );
 }

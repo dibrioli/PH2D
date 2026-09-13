@@ -206,7 +206,7 @@ impl crate::App {
         // de propósito: a taxonomia não é o mundo, e misturá-los no mesmo bloco daria a
         // impressão de que um catálogo é um objecto da cena.
         for v in &catalog_verbs {
-            if crate::asset_catalog_verbs::drain(v, asset_catalogs, toasts) {
+            if ph2d_app_components::asset_catalog_verbs::drain(v, asset_catalogs, toasts) {
                 self.title_dirty = true;
             }
         }

@@ -154,9 +154,11 @@ impl App {
         // teclas continuam a cair no blur de widget e nos campos de texto.
         if state == ElementState::Pressed && !repeat {
             let exit = match physical_key {
-                PhysicalKey::Code(KeyCode::Escape) => Some(crate::prefab_stage::Exit::Cancel),
+                PhysicalKey::Code(KeyCode::Escape) => {
+                    Some(ph2d_app_components::prefab_stage::Exit::Cancel)
+                }
                 PhysicalKey::Code(KeyCode::Enter | KeyCode::NumpadEnter) => {
-                    Some(crate::prefab_stage::Exit::Done)
+                    Some(ph2d_app_components::prefab_stage::Exit::Done)
                 }
                 _ => None,
             };

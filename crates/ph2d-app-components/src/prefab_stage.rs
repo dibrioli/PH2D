@@ -13,7 +13,7 @@
 //! A recusa que shipou na wave anterior — *«mover a receita seria uma edição de verdade: entra no
 //! undo e viaja no ficheiro»* — assentava numa premissa que **duas medições derrubaram**:
 //!
-//! 1. **O undo tem o conceito que faltava.** O [`crate::preview_drive`] separa *documento* de
+//! 1. **O undo tem o conceito que faltava.** O [`ph2d_preview_drive`] separa *documento* de
 //!    *pré-visualização*: o motor escreve no mundo e a **captura** repõe o valor autorado. ⇒ pôr a
 //!    receita no palco não regista passo nenhum e não entra no ficheiro.
 //! 2. **A posição de mundo de uma receita é BASTIDOR.** Ela é invisível fora do modo de edição
@@ -21,7 +21,7 @@
 //!    nunca foi uma escolha que o artista visse. O palco toma-a emprestada e devolve-a ao fechar.
 //!
 //! ⚠️⚠️ **E as cópias não se mexem, por CONSTRUÇÃO** — não por cuidado meu: o `Transform` da RAIZ
-//! está na lista `ROOT_IS_ITS_OWN` do [`ph2d_app_components::instance_sync`] (*«o `Transform` de uma peça
+//! está na lista `ROOT_IS_ITS_OWN` do [`crate::instance_sync`] (*«o `Transform` de uma peça
 //! propaga; o da raiz é onde o artista a largou»*), logo ele nunca alcança uma cópia. É a mesma
 //! razão pela qual o motor vectorial remove só a **translação** do mestre ao compor uma instância.
 //!
@@ -44,7 +44,7 @@ use ph2d_preview_drive::{Driven, PreviewDrive};
 
 /// ⭐ **Como a sessão acabou** — o alias do tipo que a barra publica, para a shell não ter de
 /// nomear a crate do chrome em cada sítio.
-pub(crate) use ph2d_editor_core::screens::hero::prefab_bar::PrefabExit as Exit;
+pub use ph2d_editor_core::screens::hero::prefab_bar::PrefabExit as Exit;
 
 /// Uma receita em cena: a identidade dela, a entidade viva, a pose de **bastidor** e o que o palco
 /// escreveu por último.
@@ -53,7 +53,7 @@ pub(crate) use ph2d_editor_core::screens::hero::prefab_bar::PrefabExit as Exit;
 /// sessão respawna tudo com bits novos — guardar só os bits fazia o palco desmontar-se ao desfazer,
 /// e a receita saltava de volta para o bastidor (fora do ecrã) com a sessão ainda aberta.
 #[derive(Clone, Copy, Debug)]
-pub(crate) struct Stage {
+pub struct Stage {
     /// A identidade DURÁVEL da receita.
     pub(super) id: u64,
     /// A entidade de agora — re-resolvida a cada quadro pelo [`hold`].
@@ -112,7 +112,7 @@ fn usable(area: Rect, window: WindowSize) -> Rect {
 /// struct-de-argumentos convidaria alguém a guardá-lo entre quadros — que é exactamente como um
 /// deles ficaria velho sem que nada dissesse.
 #[allow(clippy::too_many_arguments)]
-pub(crate) fn run(
+pub fn run(
     pending: &mut Option<u64>,
     stage: &mut Option<Stage>,
     hero: &ph2d_editor_core::screens::hero::HeroScreen,
@@ -142,8 +142,7 @@ pub(crate) fn hold(stage: &mut Option<Stage>, sim: &mut SimWorld, drive: &mut Pr
         return;
     };
     // ⭐ **O endereço re-resolve-se pela identidade a cada quadro** — ver o doc do [`Stage`].
-    let Some(bits) = ph2d_app_components::instance_verbs_walk::entity_for_stable_id(sim, st.id)
-    else {
+    let Some(bits) = crate::instance_verbs_walk::entity_for_stable_id(sim, st.id) else {
         // A receita deixou de existir (apagada, ou um restauro que não a trouxe): não há onde
         // repor, e insistir seria escrever numa entidade morta.
         *stage = None;
@@ -206,7 +205,7 @@ fn raise(
         let d = delta_to_centre(
             camera,
             window,
-            crate::canvas_area::visible(hero, viewport),
+            ph2d_app_host::canvas_area::visible(hero, viewport),
             view.bbox_min_world,
             view.bbox_max_world,
         );
@@ -238,72 +237,6 @@ fn raise(
 fn is_open(sim: &SimWorld, root: u64) -> bool {
     let e = Entity::from_bits(root);
     sim.world().get_entity(e).is_ok() && sim.world().get::<MasterEditing>(e).is_some()
-}
-
-impl crate::App {
-    /// ⭐⭐⭐ **DESCER O PALCO** — serve o pedido que a barra (ou a tecla) deixou.
-    ///
-    /// ⚠️ **Corre com o `self` LIVRE, no fim do quadro**, e não é conforto: o `Cancel` repõe o
-    /// documento inteiro (`apply_project`), o que respawna as entidades — a meio do quadro, com o
-    /// `gfx` emprestado, isso é inexprimível.
-    ///
-    /// ⚠️ **ANTES do `post_frame_undo`**, de propósito: o cancelamento é uma mudança do documento
-    /// como qualquer outra, então o passo por DIFF regista-o e o `Ctrl+Z` **traz as edições de
-    /// volta**. *Um cancelamento que não se pudesse desfazer seria a única acção irreversível do
-    /// app.*
-    ///
-    /// ⚠️ **As DUAS saídas largam a trava e a selecção.** Sem a segunda, o carimbo do quadro
-    /// seguinte reabria a sessão a partir da selecção — a trava seria solta e o modo voltaria.
-    pub(crate) fn serve_prefab_exit(&mut self) {
-        let exit = self
-            .gfx
-            .as_mut()
-            .and_then(|g| g.hero_screen.as_mut())
-            .and_then(|h| h.prefab_exit.take());
-        let Some(exit) = exit else {
-            return;
-        };
-        if exit == crate::prefab_stage::Exit::Cancel
-            && let Some(state) = self.prefab_cancel.take()
-        {
-            // ⚠️ **O palco larga-se SEM repor a pose**: a fotografia foi tirada com o autorado no
-            // lugar (a captura substitui a pré-visualização), então repô-la aqui escreveria numa
-            // entidade que o restauro está prestes a matar — e a pose certa já vem lá dentro.
-            self.prefab_stage = None;
-            self.apply_project(&state);
-        }
-        self.prefab_cancel = None;
-        self.prefab_cancel_pending = false;
-        self.prefab_editing = None;
-        self.prefab_stage_pending = None;
-        if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
-            hero.gizmo.replace_selection(None);
-        }
-    }
-
-    /// **Pede a saída** — a porta que a TECLA usa, para o teclado e o botão terminarem no mesmo
-    /// sítio.
-    ///
-    /// ⚠️ Devolve `false` quando não há sessão aberta, e é isso que deixa o `Esc`/`Enter` cair para
-    /// os consumidores de sempre (o blur de um widget, um campo de texto).
-    pub(crate) fn request_prefab_exit(&mut self, exit: crate::prefab_stage::Exit) -> bool {
-        if self.prefab_editing.is_none() {
-            return false;
-        }
-        // ⛔⛔ **E NUNCA com um campo de texto no foco.** A sessão dura minutos, então esta guarda
-        // não é uma cortesia: renomear uma peça dentro da receita e carregar `Enter` para confirmar
-        // o nome **fecharia a sessão**, e o `Esc` que desiste do nome **cancelaria tudo o que foi
-        // feito**. *Uma tecla reivindicada por um modo longo tem de devolver o teclado a quem está
-        // a escrever.*
-        if self.text_entry_focused() {
-            return false;
-        }
-        let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) else {
-            return false;
-        };
-        hero.prefab_exit = Some(exit);
-        true
-    }
 }
 
 #[cfg(test)]

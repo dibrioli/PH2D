@@ -49,7 +49,7 @@ fn free_path(tree: &CatalogTree, parent: Option<CatalogId>) -> String {
 /// ⚠️ **O `true` continua a servir para outra coisa**: ele marca o título como sujo, que é o que
 /// faz o Ctrl+S ter o que gravar. ⛔ *Ler este valor como «é isto que torna o gesto desfazível»
 /// seria confundir dois mecanismos* — o undo não lhe pergunta nada.
-pub(crate) fn drain(
+pub fn drain(
     verb: &CatalogVerb,
     tree: &mut CatalogTree,
     toasts: &mut ph2d_editor_core::ToastQueue,

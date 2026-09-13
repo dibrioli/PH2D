@@ -50,8 +50,10 @@ fn the_move_and_the_drop_ask_the_same_door() {
 #[test]
 fn both_decide_through_the_same_law() {
     let s = code("src/asset_drag_wire.rs");
+    // ⚠️ A agulha ancora na LEI (`asset_drop::resolve(`), e não no CAMINHO até ela: a lei mudou-se
+    // para `ph2d-app-components` em 2026-09-13 e o endereço cresceu um prefixo (HOWTO §2.9/§2.13).
     assert_eq!(
-        s.matches("crate::asset_drop::resolve(").count(),
+        s.matches("asset_drop::resolve(").count(),
         2,
         "a lei da queda tem de ser consultada nos DOIS caminhos, e em nenhum outro sitio"
     );

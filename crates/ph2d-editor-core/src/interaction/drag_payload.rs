@@ -91,8 +91,8 @@ pub struct InFlightDrag {
     pub armed: bool,
     /// ⭐⭐⭐ **O que aconteceria se a mão largasse agora** — ver [`DragVerdict`].
     ///
-    /// ⚠️ **Escrito a cada `Move` pela MESMA porta que o `Up` usa** (`drop_target_at` + a lei
-    /// `asset_drop::resolve`, no shell). *Duas respostas a «isto seria aceite?» divergiriam, e o
+    /// ⚠️ **Escrito a cada `Move` pela MESMA porta que o `Up` usa** (`drop_target_at`, no shell, + a
+    /// lei `asset_drop::resolve`, na família dos componentes). *Duas respostas a «isto seria aceite?» divergiriam, e o
     /// fantasma prometeria uma coisa enquanto a queda fazia outra.*
     pub verdict: DragVerdict,
 }

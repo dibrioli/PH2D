@@ -41,7 +41,7 @@ impl crate::App {
         // ⭐⭐⭐ **A RECEITA QUE ABRE SOBE AO PALCO** (Enio, 2026-09-07: *«o prefab deve aparecer na
         // posição central do canvas onde o canvas está»*). ⚠️ O pedido é **armado aqui e servido
         // depois** — a caixa da receita só existe quando o `snapshots` publicar o gizmo dela, e é
-        // dela que o deslocamento sai (ver [`crate::prefab_stage::run`]).
+        // dela que o deslocamento sai (ver [`ph2d_app_components::prefab_stage::run`]).
         //
         // ⚠️ **A primeira, e não todas:** seleccionar duas receitas de uma vez abre as duas, e o
         // palco tem um centro só. Empilhá-las nele poria uma em cima da outra — o artista abriu

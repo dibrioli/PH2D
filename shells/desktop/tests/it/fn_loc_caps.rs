@@ -31,7 +31,6 @@ const FN_LOC_CAP: usize = 200;
 /// **Só descem.** Medidas pelo parser deste gate no nascimento dele (2026-09-12).
 const NASCEU: &str = "medido no nascimento do gate (2026-09-12); nenhuma linha o partiu ainda";
 const FN_OVERAGE_OK: &[(&str, &str, usize, &str)] = &[
-    ("build_smoke.rs", "build_smoke", 416, NASCEU),
     ("main.rs", "new", 263, NASCEU),
 ];
 

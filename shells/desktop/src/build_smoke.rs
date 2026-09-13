@@ -121,10 +121,145 @@ impl crate::App {
         if crate::build_smoke_router::route(self, f, level) {
             return;
         }
+        // As cenas do BLEND destrutivo e as de OBJETO vetorial moram em métodos-irmãos (tecto de
+        // LOC por função); nenhum braço do `match` abaixo aceita estes níveis.
+        if matches!(level, 7..=9) {
+            self.build_smoke_blend_scenes(f, level);
+            return;
+        }
+        if matches!(level, 10 | 15..=19) {
+            self.build_smoke_object_scenes(f, level);
+            return;
+        }
         match f {
             // A cena. A geometria entra em MUNDO com o `Transform` na identidade — é como a
             // Shape tool deixa uma forma recém-desenhada; o `settle_origins` do frame a
             // centra no local 0 e põe a pose na entidade (ADR-0111/0112).
+            3 => {
+                let gfx = self.gfx.as_mut().expect("gfx");
+                let _ = gfx
+                    .tools
+                    .set_active(&ph2d_editor_core::ToolId::new("vector"));
+                let scene = &mut gfx.vec_scene;
+                scene.push_path(shape(
+                    ShapeKind::RoundRect,
+                    [-1.6, -1.1],
+                    [1.6, 1.1],
+                    &[0.4, 0.0, 0.0, 0.0, 0.0],
+                    [70, 110, 190],
+                ));
+                scene.push_path(shape(
+                    ShapeKind::Polygon,
+                    [-1.9, -0.9],
+                    [-0.1, 0.9],
+                    &[5.0, 0.0],
+                    [200, 120, 80],
+                ));
+                scene.push_path(shape(
+                    ShapeKind::Star,
+                    [-0.3, -1.0],
+                    [1.7, 1.0],
+                    &[5.0, 0.45, 0.0],
+                    [110, 190, 130],
+                ));
+            }
+            // Seleciona as três e entra no Build — o estado em que o Enio começa a testar.
+            //
+            // ⚠️ Gate `level <= 6`, NÃO catch-all. Este arm é do Shape Builder (a cena default
+            // `3 =>`, 3 formas, níveis 1-6). Os níveis de OBJETO vetorial (7-11) têm cena própria e
+            // NÃO querem Build: 7/8/9 já têm seu `8 if level == N` acima; 10 (morph) fica no Select
+            // que a cena deixou; 11 (envelope) fica no NODE que o frame 4 armou — e é o Build deste
+            // arm, quando era catch-all, que engolia esse Node e sumia com a gaiola (a alça só
+            // aparece no Node). Adicionar um nível novo sem cena de Build? ele cai em `_ => {}`.
+            8 if level <= 6 => {
+                let ids: Vec<u64> = self
+                    .gfx
+                    .as_ref()
+                    .expect("gfx")
+                    .vec_scene
+                    .paths()
+                    .iter()
+                    .map(|p| p.id)
+                    .collect();
+                self.vec.pen.select_many(&ids);
+                self.vec_set_draw_mode(ph2d_tool_vector::DrawMode::Build);
+                eprintln!(
+                    "[build-smoke] cena pronta, {} formas, modo Build",
+                    ids.len()
+                );
+            }
+            // O dedo pousa e arrasta por duas faces — e NÃO solta (o véu das pintadas fica
+            // na tela para ser olhado).
+            10 if level == 2 => {
+                self.build_down(IN_STAR, false, false);
+                self.build_move(IN_PENT);
+            }
+            f if f > 10 && level == 2 => {
+                self.build_move(IN_STAR);
+                self.build_move(IN_PENT);
+            }
+            // **Níveis 3 e 4 — o undo pelo CAMINHO REAL.** Nada de chamar `build_up` e
+            // `undo_request` na mão: aqui entram `on_mouse_input` e `key_input`, que é por
+            // onde o winit entra. É a diferença entre provar o mecanismo e provar o produto.
+            //
+            // O baseline precisa ser ARMADO: o hook cria as formas sem input nenhum, e o undo
+            // global registra por diff **em frames com input** — sem isto o 1º clique
+            // arrastaria "as 3 formas nasceram" para dentro do mesmo passo, e o Ctrl+Z
+            // voltaria para a cena VAZIA. (No produto isso não acontece: desenhar é input.)
+            //
+            // O `>= 3` de antes VAZAVA para as cenas 7 e 8 (o Blend): elas passam do 3, então o
+            // harness injetava um CLIQUE sintético em (0,35 · 0,15) quatro frames depois do blend
+            // rodar — e o passo do meio nasce em cima desse ponto. No modo Select o clique PEGA a
+            // forma (ADR-0112), a seleção trocava, e o Enio abria o smoke num estado que a doc
+            // não descreve. O harness de undo é dos níveis 3..=6 e de mais ninguém.
+            9 if (3..=6).contains(&level) => {
+                self.any_input_this_frame = true;
+                self.smoke_state("baseline (3 formas)");
+            }
+            12 if (3..=5).contains(&level) => self.smoke_click(IN_STAR),
+            13 if (3..=5).contains(&level) => self.smoke_state("depois do clique"),
+            14 if level == 3 || level == 4 => self.smoke_undo(false), // Ctrl+Z
+            15 if level == 3 || level == 4 => self.smoke_state("depois do UNDO"),
+            // Nível 3: redo direto. Nível 4: um clique no VAZIO ANTES do redo — é aí que um
+            // passo espúrio apareceria, e um passo espúrio **limpa a pilha de redo**.
+            16 if level == 4 => self.smoke_click([9.0, 9.0]),
+            17 if level == 4 => self.smoke_state("depois de um clique no nada"),
+            18 if level == 3 || level == 4 => self.smoke_undo(true), // Ctrl+Shift+Z
+            19 if level == 3 || level == 4 => self.smoke_state("depois do REDO"),
+            // **Nível 5 — os BOTÕES da barra**, clicados com o mouse de verdade: o ponteiro
+            // acha o chip no hit-index, o widget emite o Click, o chrome despacha, o bus é
+            // drenado e o shell desfaz. É o caminho inteiro, sem atalho nenhum.
+            14 if level == 5 => self.smoke_rail_click(ph2d_editor_core::ids::TOOL_UNDO, "Undo"),
+            15 if level == 5 => self.smoke_state("depois do BOTÃO Undo"),
+            16 if level == 5 => self.smoke_rail_click(ph2d_editor_core::ids::TOOL_REDO, "Redo"),
+            17 if level == 5 => self.smoke_state("depois do BOTÃO Redo"),
+            // **Nível 6 — o bug do Enio: "undo só faz uma etapa".** Duas ações, depois três
+            // Ctrl+Z, com o DOWN e o UP em frames SEPARADOS (é o que o winit entrega).
+            12 if level == 6 => self.smoke_click(IN_STAR),
+            13 if level == 6 => self.smoke_state("ação 1 (build na estrela)"),
+            16 if level == 6 => self.smoke_click(IN_PENT),
+            17 if level == 6 => self.smoke_state("ação 2 (build no pentágono)"),
+            20 if level == 6 => self.smoke_key_z(false, true),
+            21 if level == 6 => self.smoke_key_z(false, false),
+            22 if level == 6 => self.smoke_state("Ctrl+Z #1"),
+            24 if level == 6 => self.smoke_key_z(false, true),
+            25 if level == 6 => self.smoke_key_z(false, false),
+            26 if level == 6 => self.smoke_state("Ctrl+Z #2"),
+            28 if level == 6 => self.smoke_key_z(false, true),
+            29 if level == 6 => self.smoke_key_z(false, false),
+            30 if level == 6 => self.smoke_state("Ctrl+Z #3"),
+            _ => {}
+        }
+    }
+
+    /// **As cenas do BLEND destrutivo** (`=7` quadrado → estrela · `=8` quadrado → círculo · `=9`
+    /// estrela → círculo): o frame 3 monta as duas formas, o frame 8 corre o blend pelo caminho REAL.
+    ///
+    /// ⚠️ Saíram do [`Self::build_smoke`] pelo tecto de 200 LOC por função (`fn_loc_caps`), verbatim:
+    /// os braços e os guardas são os de antes, e nenhum outro braço do `match` de lá aceitava estes
+    /// três níveis — por isso o `build_smoke` pode entregá-los inteiros.
+    fn build_smoke_blend_scenes(&mut self, f: u32, level: u32) {
+        match f {
             // A cena do BLEND: duas formas distantes, com contagens de âncora diferentes (4 e
             // 10) — é o caso em que a correspondência importa.
             3 if level == 7 => {
@@ -148,110 +283,6 @@ impl crate::App {
                     [200, 120, 80],
                 ));
             }
-            // A cena do MORPH: as duas formas do blend, mas o objetivo é UMA forma animável. Elas
-            // ficam SELECIONADAS (frame 4, depois de o `sync` lhes ter dado entidade) para o smoke
-            // ser um clique só — o Enio não deve ter de montar nada.
-            3 if level == 10 => {
-                let gfx = self.gfx.as_mut().expect("gfx");
-                let _ = gfx
-                    .tools
-                    .set_active(&ph2d_editor_core::ToolId::new("vector"));
-                let scene = &mut gfx.vec_scene;
-                scene.push_path(shape(
-                    ShapeKind::Rectangle,
-                    [-3.4, -1.0],
-                    [-1.4, 1.0],
-                    &[],
-                    [70, 110, 190],
-                ));
-                scene.push_path(shape(
-                    ShapeKind::Star,
-                    [1.4, -1.0],
-                    [3.4, 1.0],
-                    &[5.0, 0.45, 0.0],
-                    [200, 120, 80],
-                ));
-            }
-            4 if level == 10 => {
-                let ids: Vec<_> = self
-                    .gfx
-                    .as_ref()
-                    .expect("gfx")
-                    .vec_scene
-                    .paths()
-                    .iter()
-                    .map(|p| p.id)
-                    .collect();
-                self.vec.pen.select_many(&ids);
-                eprintln!(
-                    "[smoke] morph: 2 formas selecionadas — clique **Morph** no painel, depois \
-                     arraste **Morph t**"
-                );
-            }
-            // A cena do CHAMFER (ADR-0121): um quadrado com quinas ARREDONDADAS, no modo Node,
-            // centrado na origem (o `settle` não o move → local == mundo, e a seleção de vértice
-            // por coordenada acerta). Só o modo Node mostra a seção Vertex + as alças de quina.
-            3 if level == 15 => {
-                let gfx = self.gfx.as_mut().expect("gfx");
-                let _ = gfx
-                    .tools
-                    .set_active(&ph2d_editor_core::ToolId::new("vector"));
-                let scene = &mut gfx.vec_scene;
-                let id = scene.push_path(shape(
-                    ShapeKind::Rectangle,
-                    [-1.2, -1.2],
-                    [1.2, 1.2],
-                    &[],
-                    [90, 150, 220],
-                ));
-                // Todas as 4 quinas arredondadas (raio > 0). O toggle Chamfer as vira retas.
-                if let Some(p) = scene.path_mut(id) {
-                    for v in &mut p.verts {
-                        v.corner_radius = 0.4;
-                    }
-                }
-                self.vec_set_draw_mode(ph2d_tool_vector::DrawMode::Node);
-            }
-            // Seleciona as 4 quinas (frame 4, pós-`settle`) — assim a seção Vertex + o toggle
-            // Chamfer já aparecem no primeiro olhar; um clique no toggle chanfra as quatro.
-            4 if level == 15 => {
-                let corners = [[-1.2, -1.2], [1.2, -1.2], [1.2, 1.2], [-1.2, 1.2]];
-                let scene = &self.gfx.as_ref().expect("gfx").vec_scene;
-                for c in corners {
-                    self.vec.pen.toggle_vert_at(scene, c, 0.2);
-                }
-                eprintln!(
-                    "[smoke] chamfer: quadrado arredondado, 4 quinas selecionadas no modo Node. \
-                     Na seção **Vertex** clique **Chamfer** — as quinas viram RETAS (mesmo recuo). \
-                     Arraste a alça de raio: o estilo sobrevive. Clique de novo p/ voltar a arco."
-                );
-            }
-            // A cena das ferramentas de QUINA (Fillet / Chamfer) — corpo no módulo irmão
-            // `build_smoke_corner_tools` (teto de LOC). Frame 3 monta, frame 4 pré-seleciona.
-            3 if level == 16 => self.smoke_corner_tools_build(),
-            4 if level == 16 => self.smoke_corner_tools_select(),
-            // A cena do EXPAND (Outline Stroke + Offset Path) — corpo no módulo irmão
-            // `build_smoke_expand` (teto de LOC).
-            3 if level == 17 => self.smoke_expand_build(),
-            4 if level == 17 => self.smoke_expand_select(),
-            // Nível 18 = a cena do 17 com o roteiro do RETUNE auto-dirigido (diagnóstico).
-            // Nível 19 = a MESMA cena com o fluxo do report de 2026-07-20 (Round armado
-            // ANTES + arrasto SATURADO — o regime que era join-inerte na faixa antiga).
-            3 if level == 18 || level == 19 => self.smoke_expand_build(),
-            4 if level == 18 || level == 19 => {
-                // O alvo do offset é o DONUT (a 3ª forma).
-                let donut = self
-                    .gfx
-                    .as_ref()
-                    .expect("gfx")
-                    .vec_scene
-                    .paths()
-                    .get(2)
-                    .map(|p| p.id);
-                self.vec.pen.select(donut);
-            }
-            f18 if level == 18 && f18 >= 5 => self.smoke_expand_retune_drive(f18),
-            f19 if level == 19 && f19 >= 5 => self.smoke_expand_saturate_drive(f19),
             // A cena do GIRO (o 2º smoke do Enio): quadrado → CÍRCULO. Ele teve de desenhar o
             // círculo à MÃO da última vez, porque a cena não o oferecia — e é justamente o par em
             // que o defeito aparecia (as intermediárias rodavam 45° e voltavam).
@@ -298,34 +329,6 @@ impl crate::App {
                     [3.4, 1.0],
                     &[],
                     [200, 120, 80],
-                ));
-            }
-            3 => {
-                let gfx = self.gfx.as_mut().expect("gfx");
-                let _ = gfx
-                    .tools
-                    .set_active(&ph2d_editor_core::ToolId::new("vector"));
-                let scene = &mut gfx.vec_scene;
-                scene.push_path(shape(
-                    ShapeKind::RoundRect,
-                    [-1.6, -1.1],
-                    [1.6, 1.1],
-                    &[0.4, 0.0, 0.0, 0.0, 0.0],
-                    [70, 110, 190],
-                ));
-                scene.push_path(shape(
-                    ShapeKind::Polygon,
-                    [-1.9, -0.9],
-                    [-0.1, 0.9],
-                    &[5.0, 0.0],
-                    [200, 120, 80],
-                ));
-                scene.push_path(shape(
-                    ShapeKind::Star,
-                    [-0.3, -1.0],
-                    [1.7, 1.0],
-                    &[5.0, 0.45, 0.0],
-                    [110, 190, 130],
                 ));
             }
             // BLEND, o par do GIRO: quadrado → círculo, 5 passos (com 3 o giro de 45° era fácil
@@ -440,16 +443,43 @@ impl crate::App {
                      (nao os vales); as arestas retas ficam retas."
                 );
             }
-            // Seleciona as três e entra no Build — o estado em que o Enio começa a testar.
-            //
-            // ⚠️ Gate `level <= 6`, NÃO catch-all. Este arm é do Shape Builder (a cena default
-            // `3 =>`, 3 formas, níveis 1-6). Os níveis de OBJETO vetorial (7-11) têm cena própria e
-            // NÃO querem Build: 7/8/9 já têm seu `8 if level == N` acima; 10 (morph) fica no Select
-            // que a cena deixou; 11 (envelope) fica no NODE que o frame 4 armou — e é o Build deste
-            // arm, quando era catch-all, que engolia esse Node e sumia com a gaiola (a alça só
-            // aparece no Node). Adicionar um nível novo sem cena de Build? ele cai em `_ => {}`.
-            8 if level <= 6 => {
-                let ids: Vec<u64> = self
+            _ => {}
+        }
+    }
+
+    /// **As cenas de OBJETO vetorial** — Morph (`=10`), Chamfer (`=15`), as ferramentas de quina
+    /// (`=16`), Expand (`=17`) e os dois roteiros de retune dele (`=18`/`=19`).
+    ///
+    /// ⚠️ Saíram do [`Self::build_smoke`] pelo mesmo tecto e pela mesma razão: nenhum braço de lá
+    /// aceitava estes níveis.
+    fn build_smoke_object_scenes(&mut self, f: u32, level: u32) {
+        match f {
+            // A cena do MORPH: as duas formas do blend, mas o objetivo é UMA forma animável. Elas
+            // ficam SELECIONADAS (frame 4, depois de o `sync` lhes ter dado entidade) para o smoke
+            // ser um clique só — o Enio não deve ter de montar nada.
+            3 if level == 10 => {
+                let gfx = self.gfx.as_mut().expect("gfx");
+                let _ = gfx
+                    .tools
+                    .set_active(&ph2d_editor_core::ToolId::new("vector"));
+                let scene = &mut gfx.vec_scene;
+                scene.push_path(shape(
+                    ShapeKind::Rectangle,
+                    [-3.4, -1.0],
+                    [-1.4, 1.0],
+                    &[],
+                    [70, 110, 190],
+                ));
+                scene.push_path(shape(
+                    ShapeKind::Star,
+                    [1.4, -1.0],
+                    [3.4, 1.0],
+                    &[5.0, 0.45, 0.0],
+                    [200, 120, 80],
+                ));
+            }
+            4 if level == 10 => {
+                let ids: Vec<_> = self
                     .gfx
                     .as_ref()
                     .expect("gfx")
@@ -459,72 +489,75 @@ impl crate::App {
                     .map(|p| p.id)
                     .collect();
                 self.vec.pen.select_many(&ids);
-                self.vec_set_draw_mode(ph2d_tool_vector::DrawMode::Build);
                 eprintln!(
-                    "[build-smoke] cena pronta, {} formas, modo Build",
-                    ids.len()
+                    "[smoke] morph: 2 formas selecionadas — clique **Morph** no painel, depois \
+                     arraste **Morph t**"
                 );
             }
-            // O dedo pousa e arrasta por duas faces — e NÃO solta (o véu das pintadas fica
-            // na tela para ser olhado).
-            10 if level == 2 => {
-                self.build_down(IN_STAR, false, false);
-                self.build_move(IN_PENT);
+            // A cena do CHAMFER (ADR-0121): um quadrado com quinas ARREDONDADAS, no modo Node,
+            // centrado na origem (o `settle` não o move → local == mundo, e a seleção de vértice
+            // por coordenada acerta). Só o modo Node mostra a seção Vertex + as alças de quina.
+            3 if level == 15 => {
+                let gfx = self.gfx.as_mut().expect("gfx");
+                let _ = gfx
+                    .tools
+                    .set_active(&ph2d_editor_core::ToolId::new("vector"));
+                let scene = &mut gfx.vec_scene;
+                let id = scene.push_path(shape(
+                    ShapeKind::Rectangle,
+                    [-1.2, -1.2],
+                    [1.2, 1.2],
+                    &[],
+                    [90, 150, 220],
+                ));
+                // Todas as 4 quinas arredondadas (raio > 0). O toggle Chamfer as vira retas.
+                if let Some(p) = scene.path_mut(id) {
+                    for v in &mut p.verts {
+                        v.corner_radius = 0.4;
+                    }
+                }
+                self.vec_set_draw_mode(ph2d_tool_vector::DrawMode::Node);
             }
-            f if f > 10 && level == 2 => {
-                self.build_move(IN_STAR);
-                self.build_move(IN_PENT);
+            // Seleciona as 4 quinas (frame 4, pós-`settle`) — assim a seção Vertex + o toggle
+            // Chamfer já aparecem no primeiro olhar; um clique no toggle chanfra as quatro.
+            4 if level == 15 => {
+                let corners = [[-1.2, -1.2], [1.2, -1.2], [1.2, 1.2], [-1.2, 1.2]];
+                let scene = &self.gfx.as_ref().expect("gfx").vec_scene;
+                for c in corners {
+                    self.vec.pen.toggle_vert_at(scene, c, 0.2);
+                }
+                eprintln!(
+                    "[smoke] chamfer: quadrado arredondado, 4 quinas selecionadas no modo Node. \
+                     Na seção **Vertex** clique **Chamfer** — as quinas viram RETAS (mesmo recuo). \
+                     Arraste a alça de raio: o estilo sobrevive. Clique de novo p/ voltar a arco."
+                );
             }
-            // **Níveis 3 e 4 — o undo pelo CAMINHO REAL.** Nada de chamar `build_up` e
-            // `undo_request` na mão: aqui entram `on_mouse_input` e `key_input`, que é por
-            // onde o winit entra. É a diferença entre provar o mecanismo e provar o produto.
-            //
-            // O baseline precisa ser ARMADO: o hook cria as formas sem input nenhum, e o undo
-            // global registra por diff **em frames com input** — sem isto o 1º clique
-            // arrastaria "as 3 formas nasceram" para dentro do mesmo passo, e o Ctrl+Z
-            // voltaria para a cena VAZIA. (No produto isso não acontece: desenhar é input.)
-            //
-            // O `>= 3` de antes VAZAVA para as cenas 7 e 8 (o Blend): elas passam do 3, então o
-            // harness injetava um CLIQUE sintético em (0,35 · 0,15) quatro frames depois do blend
-            // rodar — e o passo do meio nasce em cima desse ponto. No modo Select o clique PEGA a
-            // forma (ADR-0112), a seleção trocava, e o Enio abria o smoke num estado que a doc
-            // não descreve. O harness de undo é dos níveis 3..=6 e de mais ninguém.
-            9 if (3..=6).contains(&level) => {
-                self.any_input_this_frame = true;
-                self.smoke_state("baseline (3 formas)");
+            // A cena das ferramentas de QUINA (Fillet / Chamfer) — corpo no módulo irmão
+            // `build_smoke_corner_tools` (teto de LOC). Frame 3 monta, frame 4 pré-seleciona.
+            3 if level == 16 => self.smoke_corner_tools_build(),
+            4 if level == 16 => self.smoke_corner_tools_select(),
+            // A cena do EXPAND (Outline Stroke + Offset Path) — corpo no módulo irmão
+            // `build_smoke_expand` (teto de LOC).
+            3 if level == 17 => self.smoke_expand_build(),
+            4 if level == 17 => self.smoke_expand_select(),
+            // Nível 18 = a cena do 17 com o roteiro do RETUNE auto-dirigido (diagnóstico).
+            // Nível 19 = a MESMA cena com o fluxo do report de 2026-07-20 (Round armado
+            // ANTES + arrasto SATURADO — o regime que era join-inerte na faixa antiga).
+            3 if level == 18 || level == 19 => self.smoke_expand_build(),
+            4 if level == 18 || level == 19 => {
+                // O alvo do offset é o DONUT (a 3ª forma).
+                let donut = self
+                    .gfx
+                    .as_ref()
+                    .expect("gfx")
+                    .vec_scene
+                    .paths()
+                    .get(2)
+                    .map(|p| p.id);
+                self.vec.pen.select(donut);
             }
-            12 if (3..=5).contains(&level) => self.smoke_click(IN_STAR),
-            13 if (3..=5).contains(&level) => self.smoke_state("depois do clique"),
-            14 if level == 3 || level == 4 => self.smoke_undo(false), // Ctrl+Z
-            15 if level == 3 || level == 4 => self.smoke_state("depois do UNDO"),
-            // Nível 3: redo direto. Nível 4: um clique no VAZIO ANTES do redo — é aí que um
-            // passo espúrio apareceria, e um passo espúrio **limpa a pilha de redo**.
-            16 if level == 4 => self.smoke_click([9.0, 9.0]),
-            17 if level == 4 => self.smoke_state("depois de um clique no nada"),
-            18 if level == 3 || level == 4 => self.smoke_undo(true), // Ctrl+Shift+Z
-            19 if level == 3 || level == 4 => self.smoke_state("depois do REDO"),
-            // **Nível 5 — os BOTÕES da barra**, clicados com o mouse de verdade: o ponteiro
-            // acha o chip no hit-index, o widget emite o Click, o chrome despacha, o bus é
-            // drenado e o shell desfaz. É o caminho inteiro, sem atalho nenhum.
-            14 if level == 5 => self.smoke_rail_click(ph2d_editor_core::ids::TOOL_UNDO, "Undo"),
-            15 if level == 5 => self.smoke_state("depois do BOTÃO Undo"),
-            16 if level == 5 => self.smoke_rail_click(ph2d_editor_core::ids::TOOL_REDO, "Redo"),
-            17 if level == 5 => self.smoke_state("depois do BOTÃO Redo"),
-            // **Nível 6 — o bug do Enio: "undo só faz uma etapa".** Duas ações, depois três
-            // Ctrl+Z, com o DOWN e o UP em frames SEPARADOS (é o que o winit entrega).
-            12 if level == 6 => self.smoke_click(IN_STAR),
-            13 if level == 6 => self.smoke_state("ação 1 (build na estrela)"),
-            16 if level == 6 => self.smoke_click(IN_PENT),
-            17 if level == 6 => self.smoke_state("ação 2 (build no pentágono)"),
-            20 if level == 6 => self.smoke_key_z(false, true),
-            21 if level == 6 => self.smoke_key_z(false, false),
-            22 if level == 6 => self.smoke_state("Ctrl+Z #1"),
-            24 if level == 6 => self.smoke_key_z(false, true),
-            25 if level == 6 => self.smoke_key_z(false, false),
-            26 if level == 6 => self.smoke_state("Ctrl+Z #2"),
-            28 if level == 6 => self.smoke_key_z(false, true),
-            29 if level == 6 => self.smoke_key_z(false, false),
-            30 if level == 6 => self.smoke_state("Ctrl+Z #3"),
+            f18 if level == 18 && f18 >= 5 => self.smoke_expand_retune_drive(f18),
+            f19 if level == 19 && f19 >= 5 => self.smoke_expand_saturate_drive(f19),
             _ => {}
         }
     }

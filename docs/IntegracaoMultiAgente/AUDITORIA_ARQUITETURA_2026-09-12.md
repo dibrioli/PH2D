@@ -265,14 +265,16 @@ tocou (14 commits depois desta auditoria).
 | A2 | ✅ | `[workspace.lints.rust] unsafe_code = "forbid"`, 358 membros herdam, 2 excepções nomeadas (FFI) com o `allow` confinado aos módulos; 5 `unsafe` curados sem `unsafe` (porta injectável, `OnceLock`, relançamento, derive). Gate `architecture_every_member_inherits_the_workspace_lints`, 3 mutações | `69da236cc` |
 | A3 | ✅ | o marcador sem número morreu; os tectos da shell e da workspace são NUMERADOS e têm a metade *«o tecto ficou para trás»* | `4c33194ec` |
 | A4 | ✅ | shim `ph2d-editor` apagado, 2 454 usos passam ao nome real (7 menções históricas ficaram de propósito) | `d94e4155c` |
-| A5 | 🟡 | 138 ids sem citação nenhuma saíram (102 de `painter_studio.rs`, de um painel que nunca existiu). ⏳ Medido para a frente seguinte: **754 de 2 533** ids só têm leitor no painel dono (e em famílias/shell que dependem dele) e podem descer; 948 são lidos pela própria editor-core, 474 citados dentro de `ids/`, 179 por vários painéis | `13fafa554` |
+| A5 | ✅ | 138 ids sem citação saíram (102 de um painel que nunca existiu). **A5b** (`line/editor-core`, integrada 13/09): **1 737** ids desceram para as 21 crates que os lêem e o censo de colisões passou a DERIVADO da workspace; na integração desceram os **207** que a cerca prendia, morreram a fachada `screens::hero::ids` e as três cópias de slug repetido (catraca VAZIA), e nasceu o censo «um nome de id, um valor». Fundação: `ids/` 13 683 → **3 391** linhas, `src/` 107 585 → **97 370** | `13fafa554` · `7f15f3e54` · `d3b9ecdc0` |
 | A6 | ✅ | as 4 dependências de teste passam a `[dev-dependencies]` | `9274fd3c7` |
 | A7 | ✅ | a promessa impossível sai do cabeçalho do registo; gate `the_shell_links_exactly_the_registered_families` (as duas listas concordam), provado por mutação | `8c2e4de71` |
 | A8 | ✅ | 4 stubs apagados; `ph2d-system-fonts` ganha consumidor (a `library` de fontes que a `ph2d-app-vec` reimplementava) e o doc diz que o fallback de glifo continua sem chamador; `ph2d-audio-stream` fica (ADR-0118, consumidor por nascer, já registado no §5 Áudio) | `9274fd3c7` · `53966e092` |
-| A9 | ⏳ | medido: 54 campos `vec_*` soltos na `App` (24 de tipos de crate, 30 da shell), 1 171 acessos por `self.`, 86 por `app.`, 5 desmontagens | — |
-| A10 | ⏳ | medido: os módulos da editor-core dependem uns dos outros nos DOIS sentidos (`widget`↔`interaction` 73/165, `screens`↔`interaction` 162/22, `interaction`↔`ids` 90/10) — partir a crate exige desenredar primeiro | — |
+| A9 | ✅ | (`line/render-loop`, integrada 13/09) os campos `vec_*` num `app.vec` (`VecState`), os tipos de assunto da família descidos para a `ph2d-app-vec`, o estado do esqueleto num `SkeletonState`, e a `History` do vetor apagada (escrita, nunca lida). `App` 245 → **187** campos, com a catraca `the_app_only_sheds_fields` | `6c058a7d1` |
+| A10 | 🟡 | os módulos de topo formam um DAG com catraca de **7** arestas (`architecture_the_foundation_modules_form_a_dag`). ⛔ Partir a fundação foi MEDIDO e fica por fazer de propósito: nem cada módulo numa crate poupa mais de 3,8 % do CPU por commit, e o único corte que compensa (`screens`) pede curar `action_bus → screens`, que move ~40 tipos do Inspector nomeados 2 539 vezes em 208 ficheiros | `e4399fcb5` |
 | A11 | ✅ | CLAUDE.md, ESTADO da W2 e HOWTO (§2.19 o atributo não viaja · §2.20 família não chama família) dizem o que o código diz | `7239fc7e9` |
 | — | ✅ | achado durante as curas: a feature `panel-vector` da `ph2d-app-vec` era precisão falsa (20 `cfg` sobre uma dependência obrigatória, e um `let _ = (…)` a calar o compilador) — só se via compilando a crate SOZINHA | `044ff1e16` |
+| quadro | ✅ | `run_render_frame` 13 685 → **984** linhas: um índice de 125 fases (`render_loop/fase_*.rs`) chamadas pela mesma ordem, provado por movimento verbatim; o tecto da shell subiu por ordem do dono (190 629 → 196 990) | `642d91da7` · `1fd4a4bde` |
+| âmbar | ✅ | o realce do editor tem UMA porta (`ph2d_editor_core::editor_highlight`) e um gate de censo | `d3b9ecdc0` |
 
 ### Correcções a esta auditoria (o que a lista acima tinha errado)
 
@@ -281,17 +283,20 @@ tocou (14 commits depois desta auditoria).
   certas, e o gate de camadas classifica-as assim.
 - **A1 não viu a 7.ª aresta** (`ph2d-app-skeleton → ph2d-app-vec` em `[dev-dependencies]`): a medição
   olhou só `[dependencies]`. Quem a achou foi o gate, na primeira corrida.
+- **A auditoria de fecho da `line/editor-core` acusou o seletor de cor de «nunca vir à frente»** (§9 achado 11), e o
+  integrador passou-o ao dono como defeito visível. Medido na integração de 13/09: o seletor é pintado FORA da ordem das
+  janelas, depois de todo painel, e sempre veio à frente — o `NodeId(380)` era uma entrada fantasma na lista. A cura ficou
+  pelo defeito latente (um nome de id, um valor), não pelo ecrã.
 - **A2 dizia «as nove famílias e as sete folhas» entre as 23 de setembro** — eram 7 famílias e as 7
   folhas partilhadas (corrigido no próprio §2 antes do commit).
 
-### O que fica, MEDIDO, para a jornada seguinte
+### O que fica, MEDIDO, depois da integração de 13/09
 
-1. **A5, 2.ª metade** — 754 ids descem para o painel dono; o censo de colisões passa a ler os
-   literais `hash_node_id("…")` da workspace (hoje o `CHROME_IDS` lista 619 à mão contra 3 587 literais).
-2. **`run_render_frame`: 13 685 linhas numa função.** O bloco do ecrã principal tem 10 855 linhas e 241
-   sub-blocos; o dreno de acções sozinho 1 699; 43 variáveis locais (entre elas a desmontagem do
-   `AppGfx`) atravessam as fases. A cura é um CONTEXTO de quadro explícito passado a funções de fase,
-   na mesma ordem — ⛔ nunca ganchos genéricos (ESTADO §3). O tecto numerado impede-o de crescer.
-3. **A9** e **A10**, com os números acima.
-4. O realce âmbar é o MESMO literal em dois ficheiros (`ph2d-app-flip` `HALO_RGBA` e
-   `ph2d-app-motion` `PATH_RGBA`) — pede um token.
+1. **`input_dispatch.rs`** (7 117 L; `on_mouse_input` 3 102 numa função, numerada no `FN_OVERAGE_OK`) é o
+   próximo laço por partir — o molde é o da `line/render-loop` (fases pela mesma ordem, prova de
+   movimento verbatim, gates re-apontados ANTES da extracção).
+2. **A10:** a catraca tem 7 arestas, e o corte da fundação só compensa para o `screens` — não agora
+   (acima).
+3. ⚠️ **Os gates que leem a SHELL pelo caminho moram também fora dela**: três de família reprovaram na
+   ponta da `line/render-loop` sem ninguém ver. Quem partir o `input_dispatch` corre
+   `git grep -n 'shells/desktop/src' -- crates tools` antes de fechar.

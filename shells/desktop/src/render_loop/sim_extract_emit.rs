@@ -4,6 +4,7 @@
 //! da mesma condição (`drawn`, não presa ao esqueleto, com `Sprite`), que fica lá — os gates leem-na ali.
 
 use super::*;
+use bevy_ecs::world::EntityWorldMut;
 use ph2d_ecs::GlobalTransform;
 use ph2d_render::TextureAtlas;
 
@@ -12,8 +13,7 @@ use ph2d_render::TextureAtlas;
 #[allow(clippy::too_many_arguments)]
 pub(super) fn sprite(
     sim: &World,
-    present: &mut World,
-    builder_id: Entity,
+    builder: EntityWorldMut<'_>,
     sim_entity: Entity,
     gt: GlobalTransform,
     spr: &Sprite,
@@ -188,8 +188,7 @@ pub(super) fn sprite(
     };
     spawn(
         sim,
-        present,
-        builder_id,
+        builder,
         sim_entity,
         gt,
         spr,
@@ -209,12 +208,11 @@ pub(super) fn sprite(
 }
 
 /// Os quads da instância: ela sozinha (e os extras da folha aberta e da pré-visualização animada), ou os nove do
-/// 9-slice. O `builder` é a entidade que o closure já gerou para esta `SimRef`, re-obtida pelo id.
+/// 9-slice. O `builder` é a entidade que o closure já gerou para esta `SimRef`, com o `present` emprestado.
 #[allow(clippy::too_many_arguments)]
 fn spawn(
     sim: &World,
-    present: &mut World,
-    builder_id: Entity,
+    mut builder: EntityWorldMut<'_>,
     sim_entity: Entity,
     gt: GlobalTransform,
     spr: &Sprite,
@@ -231,7 +229,6 @@ fn spawn(
     sheet_uv: [f32; 4],
     quad_anchor: [f32; 2],
 ) {
-    let mut builder = present.entity_mut(builder_id);
     // **9-SLICE** (spec Sprite 03 §3.5): um sprite fatiado desenha-se como até
     // NOVE quads. `patches_for` devolve `None` para todo sprite normal — e para
     // um 9-slice que não produziria quad nenhum —, e aí o caminho abaixo é o de
@@ -287,9 +284,8 @@ fn spawn(
                 )
             });
             if ghosts.is_some() || anim_preview.is_some() {
-                // O `drop` é pelo EMPRÉSTIMO, como no braço do 9-slice ao lado.
-                #[allow(clippy::drop_non_drop)]
-                drop(builder);
+                // O `present` volta do `builder`, como no braço do 9-slice ao lado.
+                let present = builder.into_world_mut();
                 for i in 0..ghosts.unwrap_or(0) {
                     if let Some((uv, off)) =
                         crate::render_loop::sim_extract_sheet::cell(spr, grid, sheet_uv, i)
@@ -323,13 +319,12 @@ fn spawn(
             // colocá-las. Sem alocar: array fixo + contagem (HR-3).
             let (insts, n) = crate::render_loop::sim_extract_slice::instances(&base, &patches);
             builder.insert(insts[0]);
-            // ⚠️ **O `drop` é pelo EMPRÉSTIMO, não pelo valor.** `builder` tem o
-            // `present` emprestado mutavelmente; sem o largar aqui, os oito
-            // `present.spawn` abaixo não compilam. O lint `drop_non_drop` avisa
-            // que o tipo não tem `Drop` — verdade, e irrelevante: o que acaba
-            // aqui é o empréstimo.
-            #[allow(clippy::drop_non_drop)]
-            drop(builder);
+            // ⚠️ **O `present` volta do `builder`.** `builder` tem o `present` emprestado
+            // mutavelmente, e os oito `present.spawn` abaixo pedem-no de volta: o
+            // `into_world_mut` devolve-o sem procurar a entidade outra vez. (Até à
+            // `line/render-bodies` largava-se o `builder` com um `drop` — pelo EMPRÉSTIMO,
+            // não pelo valor, e o lint `drop_non_drop` avisava que o tipo não tem `Drop`.)
+            let present = builder.into_world_mut();
             for ri in insts.iter().take(n).skip(1) {
                 present.spawn((
                     SimRef(sim_entity),

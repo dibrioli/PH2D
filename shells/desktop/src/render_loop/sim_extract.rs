@@ -411,7 +411,7 @@ pub(super) fn run(
             present_w,
             worklist,
             |sim, present, sim_entity, gt| {
-                let builder_id = present.spawn((SimRef(sim_entity), gt)).id();
+                let builder = present.spawn((SimRef(sim_entity), gt));
                 // ⭐⭐⭐ **UMA porta, TRÊS razões** — o olho da Hierarquia / a peça de uma receita,
                 // a máscara de camadas contra a da câmara, e o rect do `OnScreenEnabler`. As três
                 // vivem em [`ph2d_entity_visibility::off_canvas::draws_this_frame`], onde cada uma tem gate e prova
@@ -470,8 +470,7 @@ pub(super) fn run(
                 {
                     emit::sprite(
                         sim,
-                        present,
-                        builder_id,
+                        builder,
                         sim_entity,
                         gt,
                         spr,

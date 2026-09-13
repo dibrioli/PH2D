@@ -54,10 +54,23 @@ fn code(rel: &str) -> String {
         .join("\n")
 }
 
+/// O QUADRO pela ordem em que corre (`frame_text::render_frame`), **sem comentários** como o [`code`].
+///
+/// ⚠️ Desde a OBRA 2 da `line/render-loop` (2026-09-13) a publicação da fileira mora na `fase_vector_panel_dispatch`, e
+/// o acumulador, o reconhecimento e o dreno continuam no `mod.rs`. Todas as leituras do laço de quadro deste ficheiro
+/// mudam de lente JUNTAS: uma ausência medida só no `mod.rs` ficaria verde no dia em que uma fase levasse a agulha dela.
+fn frame_code() -> String {
+    crate::frame_text::render_frame()
+        .lines()
+        .filter(|l| !l.trim_start().starts_with("//"))
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
 /// **Os quatro sítios da tinta do traço**, e cada um mata a fileira sozinho.
 #[test]
 fn the_stroke_paint_row_is_wired_at_all_four_sites() {
-    let render = code("render_loop/mod.rs");
+    let render = frame_code();
     for (agulha, o_que) in [
         (
             "let mut pending_vec_stroke_kind: Option<ph2d_panel_vector::StrokePaintKind>",
@@ -106,7 +119,7 @@ fn the_stroke_paint_row_is_wired_at_all_four_sites() {
 /// que este gate proíbe aqui.
 #[test]
 fn choosing_pattern_on_a_bare_stroke_leads_somewhere_and_it_is_not_the_image_dialog() {
-    let render = code("render_loop/mod.rs");
+    let render = frame_code();
     let dreno = render
         .find("crate::vec_stroke_paint::set_kind(")
         .expect("o dreno existe");
@@ -187,7 +200,7 @@ fn each_paint_publishes_its_own_law() {
 /// lê de outro sítio no drain é um sujeito que pode discordar do gesto.*
 #[test]
 fn every_pattern_write_takes_its_subject_from_the_control_that_was_touched() {
-    let render = code("render_loop/mod.rs");
+    let render = frame_code();
     assert!(
         !render.contains("texpat_target"),
         "a preferencia de sessao do alvo voltou - com duas seccoes ela nao tem sujeito, e foi ela \

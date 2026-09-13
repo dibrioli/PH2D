@@ -53,8 +53,13 @@ fn sem_prosa(s: &str) -> String {
         .join("\n")
 }
 
-fn code(rel: &str) -> String {
-    sem_prosa(&shell(rel))
+/// O QUADRO pela ordem em que corre (`frame_text::render_frame`), **sem comentários**.
+///
+/// ⚠️ Desde a OBRA 2 da `line/render-loop` (2026-09-13) o dreno que honra o clique e a publicação da caixa moram na
+/// `fase_vector_panel_dispatch`, e o acumulador e o reconhecimento continuam no `mod.rs`: os quatro sítios e a ORDEM
+/// medem-se no texto EMENDADO, onde a posição de um literal é a ordem em que ele corre.
+fn frame_code() -> String {
+    sem_prosa(&crate::frame_text::render_frame())
 }
 
 /// O mesmo, do lado da **crate da família** — o `vec_bindings` mudou-se para lá na Fase B (2.ª
@@ -70,7 +75,7 @@ fn code_familia(rel: &str) -> String {
 /// **Os quatro sítios**, e cada um mata a feature sozinho.
 #[test]
 fn the_stroke_checkbox_is_wired_at_all_four_sites() {
-    let render = code("render_loop/mod.rs");
+    let render = frame_code();
     for (agulha, o_que) in [
         (
             "let mut pending_stroke_present = false;",
@@ -102,7 +107,7 @@ fn the_stroke_checkbox_is_wired_at_all_four_sites() {
 /// o clique *"não pegar"* — o report que esta casa já recebeu sobre outra fileira.
 #[test]
 fn the_click_is_honoured_before_the_state_is_published() {
-    let render = code("render_loop/mod.rs");
+    let render = frame_code();
     let honra = render
         .find("crate::vec_stroke_present::toggle(")
         .expect("o dreno existe");

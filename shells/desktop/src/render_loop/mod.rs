@@ -188,6 +188,8 @@ mod fase_audio_panels;
 mod fase_autokey;
 /// Fase do quadro: o relógio do chrome (`wall_dt`, `ui_dt` e os tiques que andam nele).
 mod fase_chrome_clock;
+/// Fase do quadro: a paleta de componentes.
+mod fase_component_palette;
 /// Fase do quadro: os insumos do extract (passo, pré-visualizações, folha aberta, px/m, filtro).
 mod fase_extract_inputs;
 /// Fase do quadro: os relógios do passo fixo (sim, cabeças de leitura, §11 Animation, timers).
@@ -548,7 +550,6 @@ impl crate::App {
             sprite_type_id,
             motion,
             physics,
-            component_palette_target,
             frost_doc_scene,
             frost_front_scene,
             frosting,
@@ -10286,44 +10287,7 @@ impl crate::App {
                 // UM eixo, então não há segunda metade a perder como no joint).
                 ph2d_physics_ecs::reseat_mounted_axle(sim.world_mut(), e);
             }
-            // ⚠️ **E fica DEPOIS do dreno do pivot do joint, pela razão que os dois blocos abaixo
-            // já têm escrita:** ele esteve NO MEIO do par `let joint_pivot_commit = …` →
-            // `if let Some(…) = joint_pivot_commit`, e o gate
-            // `the_position_commit_reseats_the_anchor_through_the_door` reprovou — ele lê os 3000
-            // bytes a seguir à captura à procura da porta, e 27 linhas alheias empurraram-na para
-            // fora da janela. *A janela é a forma de o gate exigir que a captura e o dreno de uma
-            // intenção fiquem à vista um do outro; a cura é tirar o intruso, nunca alargá-la.*
-            // ⭐ **O `+` do Inspector, as DUAS pontas** (ADR-0166 / F3) — abrir a paleta para quem
-            // pediu, e anexar o que ela escolheu. Irmã por assunto (`component_attach`), como a
-            // biblioteca do Motion é irmã do `motion_bridge`.
-            ph2d_app_components::component_attach::open_palette_if_asked(
-                hero,
-                sim,
-                component_registry,
-                add_component_for,
-                component_palette_target,
-            );
-            // ⭐ **A caixa *Show all*** — o widget vira o estado dele e avisa; quem reconstrói o
-            // modelo é quem abriu a paleta (só ele sabe o que «mostrar tudo» quer dizer).
-            ph2d_app_components::component_attach::refresh_palette_on_toggle(
-                hero,
-                sim,
-                component_registry,
-                *component_palette_target,
-            );
-            // ⚠️ O pick chega **noutro quadro** (a paleta fica aberta), e por isso o alvo vive no
-            // `AppGfx` em vez de num local deste laço.
-            let picked =
-                ph2d_app_components::component_attach::route_pick(hero, component_palette_target);
-            ph2d_app_components::component_attach::attach_picked(
-                picked.as_ref(),
-                sim,
-                component_registry,
-                // ⭐ A COMPOSIÇÃO entrega as sementes da família dona (auditoria A1): a família de
-                // componentes não conhece a física.
-                ph2d_app_physics::physics_seed::COMPONENT_SEEDS,
-                toasts,
-            );
+            self.fase_component_palette(add_component_for);
             self.fase_sprite_precision_emissive(fase_sprite_precision_emissive::SpriteRowIntents {
                 remove_from_sheet_row,
                 precision_request,

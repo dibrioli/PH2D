@@ -242,6 +242,89 @@ pub(crate) fn paint_hierarchy_row(
         idx.register(ids::hier_eye_companion(row_id), hit_rect);
     }
     right_x -= eye_size + icon_cluster_gap;
+    right_x = paint_row_locks(
+        entity,
+        rect,
+        scene,
+        theme,
+        row_id,
+        hit_index.as_deref_mut(),
+        eye_size,
+        icon_cluster_gap,
+        right_x,
+    );
+    if let Some(swatch) = entity.swatch {
+        let sw = INLINE_ICON_PX;
+        let sw_rect = Rect::new(right_x - sw, rect.y + (rect.h - sw) * 0.5, sw, sw);
+        // Canonical color swatch painter (single source of truth).
+        let cs = ph2d_editor_core::widget::ColorSwatch::new(
+            row_id.unwrap_or(ph2d_a11y::NodeId(0)),
+            "",
+            swatch,
+        );
+        ph2d_editor_core::widget::paint_color_swatch(&cs, sw_rect, scene, theme);
+        right_x -= sw + icon_cluster_gap;
+    }
+    if let Some(badge) = &entity.badge {
+        let badge_w = ICON_BTN_SIZE_PX;
+        let badge_h = TypeToken::Lg.px();
+        let badge_rect = Rect::new(
+            right_x - badge_w,
+            rect.y + (rect.h - badge_h) * 0.5,
+            badge_w,
+            badge_h,
+        );
+        let tone = badge_tone(badge);
+        let tag = Tag::new(ph2d_a11y::NodeId(0), badge)
+            .tone(tone)
+            .state(if entity.muted {
+                TagState::Disabled
+            } else {
+                TagState::Normal
+            });
+        paint_tag(&tag, badge_rect, scene, text_system, theme);
+        right_x -= badge_w + icon_cluster_gap;
+    }
+
+    // Icon → name gap tightened Md (8) → Xs (4) 2026-05-24 per user:
+    // "nome mais próximos dos ícones".
+    let name_x = icon_rect.x + icon_w + ph2d_tokens::icon_label_gap_px();
+    let name_color = if entity.muted {
+        ColorToken::TextDisabled
+    } else if direct_match {
+        ColorToken::Accent
+    } else {
+        ColorToken::Text1
+    };
+    paint_row_name(
+        scene,
+        text_system,
+        theme,
+        entity,
+        rect,
+        name_x,
+        right_x,
+        name_color,
+    );
+}
+
+/// ⭐ **O GRUPO e o CADEADO** — os dois companheiros de trava à esquerda do olho, sempre pintados e
+/// sempre clicáveis, com a cor a dizer o estado.
+///
+/// ⚠️ Saiu do [`paint_hierarchy_row`] pelo tecto de 200 LOC por função, verbatim: recebe o `right_x`
+/// onde o olho acabou e devolve onde o cadeado acaba — a coluna segue a encolher da direita.
+#[allow(clippy::too_many_arguments)]
+fn paint_row_locks(
+    entity: &fixture::HierarchyEntity,
+    rect: Rect,
+    scene: &mut VectorScene,
+    theme: Theme,
+    row_id: Option<ph2d_a11y::NodeId>,
+    mut hit_index: Option<&mut HitIndex>,
+    eye_size: f32,
+    icon_cluster_gap: f32,
+    mut right_x: f32,
+) -> f32 {
     // ── Group lock (folder icon) — pinta SE locked, sempre clicável.
     // À esquerda do olho. Click toggla `GroupedChildren` em SimWorld
     // via EditorAction::Hierarchy(ph2d_editor_core::action_bus::HierRequest::ToggleGrou)p (handler no shell). Enio
@@ -312,59 +395,7 @@ pub(crate) fn paint_hierarchy_row(
         idx.register(crate::ids::hier_lock_companion(row_id), hit_rect);
     }
     right_x -= icon_btn + icon_cluster_gap;
-    if let Some(swatch) = entity.swatch {
-        let sw = INLINE_ICON_PX;
-        let sw_rect = Rect::new(right_x - sw, rect.y + (rect.h - sw) * 0.5, sw, sw);
-        // Canonical color swatch painter (single source of truth).
-        let cs = ph2d_editor_core::widget::ColorSwatch::new(
-            row_id.unwrap_or(ph2d_a11y::NodeId(0)),
-            "",
-            swatch,
-        );
-        ph2d_editor_core::widget::paint_color_swatch(&cs, sw_rect, scene, theme);
-        right_x -= sw + icon_cluster_gap;
-    }
-    if let Some(badge) = &entity.badge {
-        let badge_w = ICON_BTN_SIZE_PX;
-        let badge_h = TypeToken::Lg.px();
-        let badge_rect = Rect::new(
-            right_x - badge_w,
-            rect.y + (rect.h - badge_h) * 0.5,
-            badge_w,
-            badge_h,
-        );
-        let tone = badge_tone(badge);
-        let tag = Tag::new(ph2d_a11y::NodeId(0), badge)
-            .tone(tone)
-            .state(if entity.muted {
-                TagState::Disabled
-            } else {
-                TagState::Normal
-            });
-        paint_tag(&tag, badge_rect, scene, text_system, theme);
-        right_x -= badge_w + icon_cluster_gap;
-    }
-
-    // Icon → name gap tightened Md (8) → Xs (4) 2026-05-24 per user:
-    // "nome mais próximos dos ícones".
-    let name_x = icon_rect.x + icon_w + ph2d_tokens::icon_label_gap_px();
-    let name_color = if entity.muted {
-        ColorToken::TextDisabled
-    } else if direct_match {
-        ColorToken::Accent
-    } else {
-        ColorToken::Text1
-    };
-    paint_row_name(
-        scene,
-        text_system,
-        theme,
-        entity,
-        rect,
-        name_x,
-        right_x,
-        name_color,
-    );
+    right_x
 }
 
 /// ⭐⭐ **O NOME da linha** — o que o artista lê, recortado ao espaço que sobra.

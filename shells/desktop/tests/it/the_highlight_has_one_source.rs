@@ -225,12 +225,34 @@ fn only_the_listed_gestures_arm_a_sound() {
             "consolidar a booleana · o interruptor da preview de poses · fazer o conjunto de \
              Morph States · o interruptor da preview do Morph · os três verbos de mundo dele",
         ),
-        (
-            "src/input_dispatch.rs",
-            2,
-            "as duas recusas da trava do Painter",
-        ),
+        (DISPATCH, 2, "as duas recusas da trava do Painter"),
     ];
+    // ⚠️ **O DESPACHO do clique conta-se INTEIRO, pela lei do quadro** (`line/input-dispatch`, 2026-09-13): o
+    // `on_mouse_input` parte-se em ramos (`input_dispatch/despacho_*.rs`), e as duas recusas da trava mudam de casa com
+    // o pick e com a borracha. Contadas por FICHEIRO, a lista mediria o endereço dos ramos em vez dos gestos.
+    const DISPATCH: &str = "src/input_dispatch{.rs, /despacho_*.rs}";
+    fn is_dispatch_file(rel: &str) -> bool {
+        rel == "src/input_dispatch.rs"
+            || (rel.starts_with("src/input_dispatch/despacho_") && rel.ends_with(".rs"))
+    }
+    fn dispatch_count() -> usize {
+        let (mut files, mut n) = (0usize, 0usize);
+        let mut has_root = false;
+        walk_shell_src(&mut |rel, src| {
+            if is_dispatch_file(&rel) {
+                files += 1;
+                has_root |= rel == "src/input_dispatch.rs";
+                n += src.matches("pending_ui_sound = Some").count();
+            }
+        });
+        // ⛔ PISO: o índice e pelo menos um ramo. Um ramo que saísse do prefixo não se perde (a metade dos intrusos,
+        // abaixo, acusa-o); o que o piso guarda é a varredura que não achasse o índice e contasse zero.
+        assert!(
+            has_root && files >= 2,
+            "a varredura achou {files} ficheiros do despacho (input_dispatch.rs: {has_root})"
+        );
+        n
+    }
     // ⚠️ **O QUADRO conta-se INTEIRO** (OBRA 2 da `line/render-loop`, 2026-09-13): o `render_loop/mod.rs` parte-se em
     // fases (`render_loop/fase_*.rs`), e o armamento da booleana foi o primeiro a mudar de casa. Contado por
     // FICHEIRO, cada fase que sai obrigaria a reescrever esta lista sem que um único som mudasse — e uma entrada
@@ -261,6 +283,8 @@ fn only_the_listed_gestures_arm_a_sound() {
     for (rel, want, what) in ARMED {
         let n = if *rel == FRAME {
             frame_count()
+        } else if *rel == DISPATCH {
+            dispatch_count()
         } else {
             shell(rel).matches("pending_ui_sound = Some").count()
         };
@@ -275,9 +299,10 @@ fn only_the_listed_gestures_arm_a_sound() {
     let listed: Vec<&str> = ARMED.iter().map(|(r, _, _)| *r).collect();
     let mut strays = Vec::new();
     walk_shell_src(&mut |rel, src| {
-        // Os ficheiros do QUADRO estão contados como UM, acima — eles não são intrusos.
+        // Os ficheiros do QUADRO e os do DESPACHO estão contados como UM cada, acima — eles não são intrusos.
         if !listed.contains(&rel.as_str())
             && !is_frame_file(&rel)
+            && !is_dispatch_file(&rel)
             && src.contains("pending_ui_sound = Some")
         {
             strays.push(rel);

@@ -20,7 +20,14 @@
 //! ANTES apagaria a curva **deste** quadro, e a forma deixaria de desvanecer com a suíte inteira
 //! verde.
 
-const LOOP: &str = include_str!("../../src/render_loop/mod.rs");
+/// **O QUADRO pela ordem em que corre** (`frame_text::render_frame`).
+///
+/// ⚠️ Desde a OBRA 2 da `line/render-loop` (2026-09-13) o quadro vive em FASES: a projecção e a aplicação da
+/// aparência conduzida mudaram-se para a `fase_vector_view_and_drives`. *Ler → aplicar → repor* é uma ordem de
+/// EXECUÇÃO — entre dois ficheiros não há ordem, e só o texto emendado a tem.
+fn frame() -> String {
+    crate::frame_text::render_frame()
+}
 
 /// **O fonte sem comentários** — sem isto, uma nota que cita a chamada conta como chamada.
 fn code_only(src: &str) -> String {
@@ -36,7 +43,7 @@ fn code_only(src: &str) -> String {
 /// ⭐⭐⭐ **LER, APLICAR, e SÓ ENTÃO repor o autorado.**
 #[test]
 fn the_driven_style_settles_after_the_frame_has_read_it() {
-    let src = code_only(LOOP);
+    let src = code_only(&frame());
     let resolve = src
         .find("vec_driven_style::resolve(")
         .expect("a projecção da aparência conduzida vive no quadro");

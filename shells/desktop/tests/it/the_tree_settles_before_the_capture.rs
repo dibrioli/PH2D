@@ -108,19 +108,23 @@ fn the_net_does_not_run_on_every_frame() {
 
 /// ⛔ **A rede não pode virar a única projecção.**
 ///
-/// O passe do desenho (`render_loop/mod.rs`) continua a projectar a ordem de z **antes** dos ~40
+/// O passe do desenho (o `render_frame`) continua a projectar a ordem de z **antes** dos ~40
 /// consumidores da cena — `envelope_live`, `skeleton_live`, `pattern_live`, `align_live`, o
 /// hit-test e o próprio desenho. A ordem das `paths` **é** a ordem de pintura: mover a leitura para
 /// o fim do quadro daria a todos eles um quadro de atraso. *Esta é a razão medida pela qual a cura
 /// foi uma SEGUNDA passagem e não mudar a posição da primeira.*
+///
+/// ⚠️ Desde a OBRA 2 da `line/render-loop` (2026-09-13) o quadro vive em FASES: o `envelope_live::recook` mudou-se
+/// para a `fase_vector_view_and_drives`. «Antes dos consumidores» é uma ordem de EXECUÇÃO, e só o texto emendado
+/// (`frame_text::render_frame`) a tem.
 #[test]
 fn the_drawing_pass_still_projects_the_z_order_before_the_consumers() {
-    const RENDER_LOOP: &str = include_str!("../../src/render_loop/mod.rs");
-    let reorder = at(RENDER_LOOP, "vec_scene.reorder_to(", "render_loop/mod.rs");
+    let quadro = crate::frame_text::render_frame();
+    let reorder = at(&quadro, "vec_scene.reorder_to(", "o quadro emendado");
     let consumidor = at(
-        RENDER_LOOP,
+        &quadro,
         "crate::envelope_live::recook(",
-        "render_loop/mod.rs",
+        "o quadro emendado",
     );
     assert!(
         reorder < consumidor,

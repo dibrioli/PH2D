@@ -47,6 +47,12 @@ fn the_arrow_click_reaches_the_world() {
             .collect::<Vec<_>>()
             .join("\n")
     };
+    // ⚠️ **O espaço em branco COLAPSADO** (P4m): duas agulhas carregavam `\n` + dezasseis espaços de INDENTAÇÃO, e a
+    // chamada mudou-se para a `fase_vector_view_and_drives` noutra coluna — a de presença reprovou alto, e a de
+    // AUSÊNCIA (o playhead a voltar a ser a porta) ficaria verde para sempre, sem casar nada. *Uma agulha que carrega
+    // indentação mede a CASA, não a chamada*; aqui o fonte lê-se com todo o espaço reduzido a um só, e as agulhas
+    // escrevem-se assim.
+    let shell = shell.split_whitespace().collect::<Vec<_>>().join(" ");
     for (needle, what) in [
         (
             "crate::vec_morph_edit::morph_cmd_for_id(*id)",
@@ -113,7 +119,7 @@ fn the_arrow_click_reaches_the_world() {
         // cima do `Default` no repouso e na chegada — é o 2.º report do Enio (*"Default não
         // segurou wide e está em tall"*).
         (
-            "crate::morph_machine_drive::drives(self.morph_preview, self.ui_state_live),\n                self.fixed_step.fixed_dt(),",
+            "crate::morph_machine_drive::drives(self.morph_preview, self.ui_state_live), self.fixed_step.fixed_dt(),",
             "DIRIGIR a maquina pelo MODO, e nao pelo playhead -- e LARGAR enquanto os States agem",
         ),
         // ⭐⭐⭐ **E a RECONCILIAÇÃO corre FORA do modo** (W11g): a lista de estados é derivada dos
@@ -136,7 +142,7 @@ fn the_arrow_click_reaches_the_world() {
     // ⛔ **E o playhead NÃO pode voltar a ser a porta:** ele não tranca o teclado do editor, que é
     // exactamente o conflito que este modo existe para curar.
     assert!(
-        !shell.contains("self.playhead.is_playing(),\n                self.fixed_step.fixed_dt(),"),
+        !shell.contains("self.playhead.is_playing(), self.fixed_step.fixed_dt(),"),
         "o playhead voltou a dirigir a maquina -- o conflito de atalhos volta com ele"
     );
     // ⭐⭐ **A DERIVAÇÃO chega ao MOTOR** (W11) — e ela vive no `morph_machine_drive`, não aqui.

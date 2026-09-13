@@ -13,15 +13,20 @@
 //! inerte **em toda forma bindada** — inerte só ALI, que é a pior forma de um controle falhar: ele
 //! funciona na cena de teste e não funciona na arte do artista.
 
-const SRC: &str = include_str!("../../src/render_loop/mod.rs");
-
+/// O QUADRO pela ordem em que corre (`frame_text::render_frame`).
+///
+/// ⚠️ Desde a OBRA 2 da `line/render-loop` (2026-09-13) o quadro vive em FASES: a publicação dos tokens e a
+/// resolução e aplicação dos drives mudaram-se para a `fase_vector_view_and_drives`. A ORDEM tokens → opacidade é de
+/// EXECUÇÃO, e só o texto emendado a tem.
+///
 /// Controle positivo: uma varredura vazia tornaria todo gate abaixo verde por vácuo.
-fn body() -> &'static str {
+fn body() -> String {
+    let frame = crate::frame_text::render_frame();
     assert!(
-        SRC.len() > 10_000,
-        "o fonte do render_loop nao foi lido — os gates abaixo seriam verdes por vacuo"
+        frame.len() > 10_000,
+        "o texto do quadro nao foi montado — os gates abaixo seriam verdes por vacuo"
     );
-    SRC
+    frame
 }
 
 /// **O passe de desenho RESOLVE e APLICA os drives.**

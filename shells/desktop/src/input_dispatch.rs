@@ -4254,80 +4254,8 @@ impl App {
             self.timeline.history.commit_if_changed(&self.timeline.doc);
             return;
         }
-        // ADR-0112: no modo **Select** a ferramenta não captura o canvas — o clique
-        // cai no caminho de sempre (picking de sprite + gizmo), e é assim que uma
-        // forma vetorial se transforma. Só Node e os modos de desenho entram aqui.
-        if self.vector_tool_active()
-            && self.vec.draw_config.mode != ph2d_tool_vector::DrawMode::Select
-            && !menu_open_before
-        {
-            // A canvas press while a text field is focused must blur it (commit the
-            // edit) — the pen/shape arms below consume the press and bypass the
-            // chrome dispatch that normally does this. Route it explicitly (only a
-            // primary press with a field actually focused, so normal draw clicks
-            // don't churn dispatch and a right-click can't open a menu here).
-            if mapped_button == ph2d_host::PointerButton::Primary
-                && kind == PointerKind::Down
-                && on_canvas
-                && self.text_entry_focused()
-            {
-                let _ = forward_to_hero(self.gfx.as_mut(), evt);
-            }
-            // A canvas press dismisses an open colour picker (click-outside closes
-            // it, mirroring the chrome light-dismiss). `on_canvas` already excludes
-            // the picker rect, so any press reaching here is genuinely outside it —
-            // done BEFORE the grad/pen/shape arms so the picker's colour is never
-            // applied to the handle the press then selects (Enio 2026-07-08).
-            if mapped_button == ph2d_host::PointerButton::Primary
-                && kind == PointerKind::Down
-                && on_canvas
-                && let Some(gfx) = self.gfx.as_mut()
-                && let Some(hero) = gfx.hero_screen.as_mut()
-                && hero.store.picker_target().is_some()
-            {
-                hero.store.set_picker_target(None);
-            }
-            match (mapped_button, kind) {
-                // Shift+Down on a PATH → toggle it in the object multi-selection
-                // (Align/Distribute); Shift+Down on empty canvas → vertex marquee.
-                // Tried first so Shift diverts the press from the pen/shape draw.
-                (ph2d_host::PointerButton::Primary, PointerKind::Down)
-                    if on_canvas && self.modifiers.shift_key() =>
-                {
-                    self.ramo_vetor_shift_premido();
-                    return;
-                }
-                (ph2d_host::PointerButton::Primary, PointerKind::Down) if on_canvas => {
-                    if self.ramo_vetor_premido_modos() {
-                        return;
-                    }
-                    if self.ramo_vetor_premido_corte_balde_osso() {
-                        return;
-                    }
-                    if self.ramo_vetor_premido_quina() {
-                        return;
-                    }
-                    if self.ramo_vetor_premido_caneta() {
-                        return;
-                    }
-                }
-                (ph2d_host::PointerButton::Primary, PointerKind::Up) => {
-                    if self.ramo_vetor_solto_osso() {
-                        return;
-                    }
-                    if self.ramo_vetor_solto_gestos() {
-                        return;
-                    }
-                    if self.ramo_vetor_solto_caneta() {
-                        return;
-                    }
-                }
-                (ph2d_host::PointerButton::Secondary, PointerKind::Down) if on_canvas => {
-                    self.ramo_vetor_direito_premido();
-                    return;
-                }
-                _ => {}
-            }
+        if self.ramo_ferramenta_vetorial(mapped_button, kind, on_canvas, evt, menu_open_before) {
+            return;
         }
 
         // Painter layers drag-reparent (W3 T3.8): the dispatch emits a

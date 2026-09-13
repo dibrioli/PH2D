@@ -69,6 +69,14 @@ use std::path::{Path, PathBuf};
 /// **186 647** / 778 (o **PAINTER**, a última família grande sem crate própria:
 /// `crates/ph2d-app-painter`, 43 f).
 ///
+/// **A DIVISÃO DO QUADRO** (13/09, `line/render-loop` + `line/editor-core` integradas) → **192 990** /
+/// 907. ⛔⛔ **A única vez que este tecto SOBE, e foi por ordem do dono:** o `run_render_frame` de
+/// 13 685 linhas partiu-se em 125 fases chamadas pela MESMA ordem (`render_loop/fase_*.rs`), e cada
+/// fase paga prelúdio, assinatura e o contexto que entra e sai (~24 linhas) — `src` `+3 719` e
+/// `tests` `+1 894` líquidos, medidos pela linha. O dono, com o smoke aprovado: *«Autorizo subir o
+/// limite para caber a separação.»* ⛔ **Não é precedente:** o que cresceu aqui é a FORMA do laço,
+/// não código de família; a cura de um crescimento continua a ser MOVER para a crate da família.
+///
 /// ⭐⭐⭐ **De 526 809 para 186 647 em dois dias — a shell tem 35 % do tamanho que tinha**, e a
 /// unidade de compilação que era o tecto do relógio deste repo deixou de o ser.
 ///
@@ -96,7 +104,7 @@ use std::path::{Path, PathBuf};
 /// ⛔ **Nenhuma LINHA lhe toca** — é um número que soma entre linhas, logo CONTA-SE, nunca se
 /// escolhe (`CLAUDE.md` §5.0): com cinco linhas a escrevê-lo o merge fica com um deles e nenhum
 /// está certo, em silêncio. Quem o reconta é o integrador, sobre a árvore combinada.
-const TETO_LOC: usize = 190_629;
+const TETO_LOC: usize = 196_990;
 
 /// Quanto a shell pode crescer acima do medido antes de o gate reprovar — a margem da raiz de
 /// composição, **não** espaço para um módulo.

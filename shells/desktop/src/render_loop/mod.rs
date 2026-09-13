@@ -184,6 +184,8 @@ mod fase_atlas_scene_smokes;
 mod fase_atlas_scene_smokes_late;
 /// Fase do quadro: os painéis de áudio (mixer + editor) ouvidos pelo motor.
 mod fase_audio_panels;
+/// Fase do quadro: o AutoKey.
+mod fase_autokey;
 /// Fase do quadro: o relógio do chrome (`wall_dt`, `ui_dt` e os tiques que andam nele).
 mod fase_chrome_clock;
 /// Fase do quadro: os insumos do extract (passo, pré-visualizações, folha aberta, px/m, filtro).
@@ -10853,34 +10855,7 @@ impl crate::App {
                     )));
                 }
             }
-            // AutoKey (W4.T1/T2) — the single choke point. Runs HERE, after every
-            // UI Transform/opacity write for the frame (gizmo early, Inspector +
-            // Hierarchy reset just above) so it reads the settled pose of each
-            // selected sprite and keys only what left its curve. Placed after the
-            // apply pass too, so an undo/paste/scrub — which the apply writes back
-            // to the world — reads world == curve and keys nothing.
-            // The pass authors on the clock the APPLY drove this parent: the clip
-            // playhead in Keys, the CONTAINER playhead inside one, the timeline's on
-            // Arrange — the same three-way pick `timeline_bridge::run` made above, from
-            // the same stamped facts (`keys_mode` / `container_open`, which the pass
-            // reads to root its scratch). Handing it the wrong clock while a solo drives
-            // the pose is how one strip in a lane killed auto-key (2026-07-22).
-            let autokey_clock = if self.timeline.keys_mode {
-                &self.clip_playhead
-            } else if self.timeline.container_open.is_some() {
-                &self.container_playhead
-            } else {
-                &self.playhead
-            };
-            autokey_pass::run(
-                &mut self.timeline,
-                autokey_clock,
-                &mut self.autokey,
-                toasts,
-                hero,
-                sim.world(),
-                &self.preview_drive,
-            );
+            self.fase_autokey();
             self.fase_hierarchy_group_merge(fase_hierarchy_group_merge::HierarchyMergeIntents {
                 group_row,
                 merge_sprites_row,

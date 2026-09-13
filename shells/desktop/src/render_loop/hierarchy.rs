@@ -19,6 +19,11 @@ use ph2d_editor_core::{HeroScreen, NodeId, Toast, ToastQueue, ViewFocusKind};
 use ph2d_host::WindowSize;
 use ph2d_render::Camera2d;
 
+/// ⭐ A selecção pela Hierarquia (o modificador e o intervalo) — filho por ASSUNTO, num ficheiro
+/// próprio para este caber no tecto.
+#[path = "hierarchy_select.rs"]
+mod select;
+
 /// Fase 0e: hierarchy-side multi-select intent collected from the
 /// editor bus drain in `render_loop::mod`. The shell resolves
 /// `row → entity_bits` here (panel crate has no bridge access) and
@@ -106,6 +111,202 @@ pub(super) fn dispatch(
 ) -> bool {
     let mut title_dirty = false;
 
+    title_dirty |= drain_view_and_row_toggles(
+        view_focus_kind,
+        visibility_toggle_row,
+        lock_toggle_row,
+        group_toggle_row,
+        reparent_intent,
+        hero,
+        hero_live,
+        sim,
+        present,
+        camera,
+        toasts,
+        window_size,
+    );
+    // M14.6 F: drain per-row Hierarchy context-menu actions. Each is
+    // a `HierDuplicate/AddChild/ResetTransform/Delete` bus variant
+    // — bridge resolves row → Entity, then we apply the corresponding
+    // ECS mutation. Order is intentional: Delete last, so a
+    // (degenerate) frame that queues "duplicate then delete" leaves
+    // the duplicate in place and removes the original. The next
+    // snapshot rebuild picks up the result automatically.
+    if let Some(row) = duplicate_row
+        && let Some(live) = hero_live.as_ref()
+        && let Some(entity_bits) = live.bridge.entity_for(row)
+    {
+        // ⭐ **O que duplicar QUER DIZER mora no irmão** (`hierarchy_duplicate`), pelo tecto de
+        // 600 LOC — o corte é por assunto: aqui o dreno das intenções, lá a lei da cópia.
+        title_dirty |= super::hierarchy_duplicate::drain(
+            ph2d_ecs::Entity::from_bits(entity_bits),
+            entity_bits,
+            hero,
+            sim,
+            camera,
+            window_size,
+            toasts,
+            vec_scene,
+            vec_entities,
+            vec_pen,
+            duplicate_made,
+            registry,
+        );
+    }
+    if let Some(row) = add_child_row
+        && let Some(live) = hero_live.as_ref()
+        && let Some(parent_bits) = live.bridge.entity_for(row)
+    {
+        let parent = ph2d_ecs::Entity::from_bits(parent_bits);
+        let child_name = ph2d_unique_name::unique_name(sim, "Child");
+        sim.world_mut().spawn((
+            Transform::IDENTITY,
+            Name::new(child_name),
+            ph2d_ecs::ChildOf(parent),
+        ));
+        toasts.push(Toast::success("Added child entity"));
+        title_dirty = true;
+    }
+    // ⭐ **O objeto VAZIO na raiz** (ADR-0166 / F3) — o primeiro passo do smoke desta fase.
+    //
+    // ⚠️ **`Transform` + `Name`, e mais NADA.** É esta a base de que a F3 fala: o Inspector passa a
+    // mostrar o que o objeto TEM, então um objeto acabado de nascer mostra duas seções, não doze. A
+    // tentação de lhe dar um `Sprite` "para se ver alguma coisa" é exatamente o que a fase apaga.
+    //
+    // ⚠️ **`assign_missing_root_order` a seguir, não depois:** uma raiz sem `RootOrder` colate em
+    // `u32::MAX` e o desempate cai no `Entity::to_bits()`, que muda a cada respawn do undo — foi
+    // esse o defeito que fez a captura deixar de ser ponto fixo (BUGS #15). O `StableId` vem pela
+    // mesma porta, e por isso os dois assigners andam em par (precedente: `inspector_joint_create`).
+    //
+    // ⚠️ **E o objeto novo fica SELECIONADO**, senão o `+` do Inspector não teria sobre quem abrir:
+    // criar um objeto e não o mostrar obriga o artista a caçá-lo na lista para continuar o gesto.
+    // ⭐ **DEVOLVER à receita** (ADR-0164 / F4.4) — o dreno mora em `instance_sync`, com o verbo:
+    // ele é sobre INSTÂNCIAS, e não sobre a mecânica da Hierarquia. (E este ficheiro estava no
+    // teto de 600 LOC — *o corte é por assunto*.)
+    if let Some(row) = revert_to_master_row
+        && let Some(live) = hero_live.as_ref()
+        && let Some(entity_bits) = live.bridge.entity_for(row)
+        && ph2d_app_components::instance_revert::drain_revert_to_master(
+            sim,
+            echo,
+            entity_bits,
+            toasts,
+        )
+    {
+        title_dirty = true;
+    }
+    let (verbs_dirty, verb_select, drop_select) = drain_instance_verbs(
+        instance_verb_row,
+        instance_verb_stable_id,
+        hero_live,
+        sim,
+        camera,
+        toasts,
+        window_size,
+        vec_scene,
+        vec_entities,
+        registry,
+        echo,
+    );
+    title_dirty |= verbs_dirty;
+    // ⭐⭐ **O menu de um cartão da biblioteca** (etapa C) — o corpo mudou-se para o irmão
+    // `hierarchy_asset_verbs` quando este ficheiro bateu no tecto de 600 LOC do shell.
+    let card_select = super::hierarchy_asset_verbs::drain_card_verb(
+        asset_card_verb,
+        sim,
+        registry,
+        echo,
+        hero,
+        toasts,
+        vec_scene,
+        vec_entities,
+        camera,
+        window_size,
+        atlas_assets,
+        &mut title_dirty,
+    );
+    // ⭐⭐ **A selecção segue a CÓPIA.** Sem isto, o gesto seguinte do artista acerta na receita
+    // invisível — que é o mecanismo dos dois reports de 30/08 (apagar e esconder).
+    if let Some(bits) = verb_select.or(drop_select).or(card_select) {
+        hero.gizmo.replace_selection(Some(bits));
+    }
+    if add_root {
+        let bits = super::hierarchy_add_root::spawn_empty_root(sim);
+        hero.gizmo.replace_selection(Some(bits));
+        toasts.push(Toast::success("Added empty object"));
+        title_dirty = true;
+    }
+    if let Some(row) = reset_transform_row
+        && let Some(live) = hero_live.as_ref()
+        && let Some(entity_bits) = live.bridge.entity_for(row)
+    {
+        let entity = ph2d_ecs::Entity::from_bits(entity_bits);
+        if let Some(mut t) = sim.world_mut().get_mut::<Transform>(entity) {
+            *t = Transform::IDENTITY;
+            toasts.push(Toast::info("Transform reset"));
+            title_dirty = true;
+        }
+    }
+    // ⭐⭐ **O gesto de APAGAR vive no irmão** [`super::hierarchy_delete`] — corte por assunto,
+    // imposto pelo tecto de 600 LOC quando a recusa de uma peça entrou (F5.10). Ali estão as TRÊS
+    // respostas que um `Delete` pode ter nesta casa, e a voz que as distingue.
+    if super::hierarchy_delete::drain(delete_row, hero, hero_live.as_ref(), sim, toasts) {
+        title_dirty = true;
+    }
+    // M14.6 D: drain pending hierarchy-row click → sync
+    // `gizmo_selection` to whichever entity the user just picked in
+    // the hierarchy panel. Legacy single-select path (kept for
+    // double-click + any consumer still emitting the variant). Fase 0c
+    // shifted the Hierarchy panel to `HierSelectRow` / `HierRangeSelect`
+    // which carry modifier semantics — see the dispatch below.
+    if let Some(row) = hierarchy_row_click
+        && let Some(live) = hero_live.as_ref()
+        && let Some(entity_bits) = live.bridge.entity_for(row)
+    {
+        hero.gizmo.replace_selection(Some(entity_bits));
+    }
+    select::apply(hierarchy_select_intent, hero, hero_live);
+    // M14.7 polish: one-shot seed of the rename TextInput when rename
+    // mode opens. `HierRenameSeed` is pushed by hero on the open path
+    // (right-click Rename / long-press) and drained here exactly once
+    // — so subsequent Backspace edits that empty the buffer don't get
+    // clobbered back to the original name on the next frame.
+    // ⭐⭐ **O RENOMEAR mudou-se para o irmão** ([`super::hierarchy_rename`]) quando este ficheiro
+    // bateu no teto de 600 LOC do shell (HR-18) — pago por CORTE, nunca por excepção.
+    //
+    // ⚠️ **É um corte por RESPONSABILIDADE, não pelo fim do ficheiro:** semear o campo, gravar o
+    // nome, limpar o buffer e honrar as chaves que o nome declara são **uma** coisa — *renomear uma
+    // linha* —, e ela não tem nada a ver com os verbos de instância que este ficheiro dreno.
+    title_dirty |= super::hierarchy_rename::drain(
+        rename_seed_row,
+        rename_commit,
+        hero,
+        hero_live,
+        sim,
+        toasts,
+    );
+
+    title_dirty
+}
+
+/// A câmera (o reset e o foco), os interruptores de linha (olho, cadeado, grupo) e o reparent;
+/// devolve se o título ficou sujo.
+#[allow(clippy::too_many_arguments)]
+fn drain_view_and_row_toggles(
+    view_focus_kind: Option<ViewFocusKind>,
+    visibility_toggle_row: Option<NodeId>,
+    lock_toggle_row: Option<NodeId>,
+    group_toggle_row: Option<NodeId>,
+    reparent_intent: Option<HierReparentIntent>,
+    hero: &mut HeroScreen,
+    hero_live: &Option<HeroLive>,
+    sim: &mut SimWorld,
+    present: &mut PresentWorld,
+    camera: &mut Camera2d,
+    toasts: &mut ToastQueue,
+    window_size: WindowSize,
+) -> bool {
+    let mut title_dirty = false;
     // M14.4b.bis: drain pending camera-reset request from the VIEW
     // button (legacy "Zero" mode — kept around for shells that still
     // raise it).
@@ -194,76 +395,30 @@ pub(super) fn dispatch(
     {
         hero_intents::drain_reparent(intent, live, sim, toasts);
     }
-    // M14.6 F: drain per-row Hierarchy context-menu actions. Each is
-    // a `HierDuplicate/AddChild/ResetTransform/Delete` bus variant
-    // — bridge resolves row → Entity, then we apply the corresponding
-    // ECS mutation. Order is intentional: Delete last, so a
-    // (degenerate) frame that queues "duplicate then delete" leaves
-    // the duplicate in place and removes the original. The next
-    // snapshot rebuild picks up the result automatically.
-    if let Some(row) = duplicate_row
-        && let Some(live) = hero_live.as_ref()
-        && let Some(entity_bits) = live.bridge.entity_for(row)
-    {
-        // ⭐ **O que duplicar QUER DIZER mora no irmão** (`hierarchy_duplicate`), pelo tecto de
-        // 600 LOC — o corte é por assunto: aqui o dreno das intenções, lá a lei da cópia.
-        title_dirty |= super::hierarchy_duplicate::drain(
-            ph2d_ecs::Entity::from_bits(entity_bits),
-            entity_bits,
-            hero,
-            sim,
-            camera,
-            window_size,
-            toasts,
-            vec_scene,
-            vec_entities,
-            vec_pen,
-            duplicate_made,
-            registry,
-        );
-    }
-    if let Some(row) = add_child_row
-        && let Some(live) = hero_live.as_ref()
-        && let Some(parent_bits) = live.bridge.entity_for(row)
-    {
-        let parent = ph2d_ecs::Entity::from_bits(parent_bits);
-        let child_name = ph2d_unique_name::unique_name(sim, "Child");
-        sim.world_mut().spawn((
-            Transform::IDENTITY,
-            Name::new(child_name),
-            ph2d_ecs::ChildOf(parent),
-        ));
-        toasts.push(Toast::success("Added child entity"));
-        title_dirty = true;
-    }
-    // ⭐ **O objeto VAZIO na raiz** (ADR-0166 / F3) — o primeiro passo do smoke desta fase.
-    //
-    // ⚠️ **`Transform` + `Name`, e mais NADA.** É esta a base de que a F3 fala: o Inspector passa a
-    // mostrar o que o objeto TEM, então um objeto acabado de nascer mostra duas seções, não doze. A
-    // tentação de lhe dar um `Sprite` "para se ver alguma coisa" é exatamente o que a fase apaga.
-    //
-    // ⚠️ **`assign_missing_root_order` a seguir, não depois:** uma raiz sem `RootOrder` colate em
-    // `u32::MAX` e o desempate cai no `Entity::to_bits()`, que muda a cada respawn do undo — foi
-    // esse o defeito que fez a captura deixar de ser ponto fixo (BUGS #15). O `StableId` vem pela
-    // mesma porta, e por isso os dois assigners andam em par (precedente: `inspector_joint_create`).
-    //
-    // ⚠️ **E o objeto novo fica SELECIONADO**, senão o `+` do Inspector não teria sobre quem abrir:
-    // criar um objeto e não o mostrar obriga o artista a caçá-lo na lista para continuar o gesto.
-    // ⭐ **DEVOLVER à receita** (ADR-0164 / F4.4) — o dreno mora em `instance_sync`, com o verbo:
-    // ele é sobre INSTÂNCIAS, e não sobre a mecânica da Hierarquia. (E este ficheiro estava no
-    // teto de 600 LOC — *o corte é por assunto*.)
-    if let Some(row) = revert_to_master_row
-        && let Some(live) = hero_live.as_ref()
-        && let Some(entity_bits) = live.bridge.entity_for(row)
-        && ph2d_app_components::instance_revert::drain_revert_to_master(
-            sim,
-            echo,
-            entity_bits,
-            toasts,
-        )
-    {
-        title_dirty = true;
-    }
+    title_dirty
+}
+
+/// Os verbos de instância — pela linha e pelo `StableId` do navegador de assets — e a pose da queda;
+/// devolve `(título sujo?, a selecção do verbo, a selecção da queda)`.
+#[allow(clippy::too_many_arguments)]
+fn drain_instance_verbs(
+    instance_verb_row: Option<(NodeId, ph2d_app_components::instance_verbs::Verb)>,
+    instance_verb_stable_id: Option<(
+        u64,
+        ph2d_app_components::instance_verbs::Verb,
+        Option<[f32; 2]>,
+    )>,
+    hero_live: &Option<HeroLive>,
+    sim: &mut SimWorld,
+    camera: &Camera2d,
+    toasts: &mut ToastQueue,
+    window_size: WindowSize,
+    vec_scene: &mut ph2d_vec_scene::VecScene,
+    vec_entities: &mut ph2d_vec_entities::entities::VecEntityMap,
+    registry: &ph2d_ecs::scene::ComponentRegistry,
+    echo: &mut ph2d_app_components::instance_sync::MasterEcho,
+) -> (bool, Option<u64>, Option<u64>) {
+    let mut title_dirty = false;
     // ⭐ **Os outros verbos de instância** (ADR-0164 / F4.5) — o dreno mora com eles, pela razão
     // do *Revert*: é sobre INSTÂNCIAS, e não sobre a mecânica das linhas.
     // ⭐ Para onde a selecção vai depois de um verbo de instância.
@@ -355,165 +510,5 @@ pub(super) fn dispatch(
         t.translation.x = world[0];
         t.translation.y = world[1];
     }
-    // ⭐⭐ **O menu de um cartão da biblioteca** (etapa C) — o corpo mudou-se para o irmão
-    // `hierarchy_asset_verbs` quando este ficheiro bateu no tecto de 600 LOC do shell.
-    let card_select = super::hierarchy_asset_verbs::drain_card_verb(
-        asset_card_verb,
-        sim,
-        registry,
-        echo,
-        hero,
-        toasts,
-        vec_scene,
-        vec_entities,
-        camera,
-        window_size,
-        atlas_assets,
-        &mut title_dirty,
-    );
-    // ⭐⭐ **A selecção segue a CÓPIA.** Sem isto, o gesto seguinte do artista acerta na receita
-    // invisível — que é o mecanismo dos dois reports de 30/08 (apagar e esconder).
-    if let Some(bits) = verb_select.or(drop_select).or(card_select) {
-        hero.gizmo.replace_selection(Some(bits));
-    }
-    if add_root {
-        let bits = super::hierarchy_add_root::spawn_empty_root(sim);
-        hero.gizmo.replace_selection(Some(bits));
-        toasts.push(Toast::success("Added empty object"));
-        title_dirty = true;
-    }
-    if let Some(row) = reset_transform_row
-        && let Some(live) = hero_live.as_ref()
-        && let Some(entity_bits) = live.bridge.entity_for(row)
-    {
-        let entity = ph2d_ecs::Entity::from_bits(entity_bits);
-        if let Some(mut t) = sim.world_mut().get_mut::<Transform>(entity) {
-            *t = Transform::IDENTITY;
-            toasts.push(Toast::info("Transform reset"));
-            title_dirty = true;
-        }
-    }
-    // ⭐⭐ **O gesto de APAGAR vive no irmão** [`super::hierarchy_delete`] — corte por assunto,
-    // imposto pelo tecto de 600 LOC quando a recusa de uma peça entrou (F5.10). Ali estão as TRÊS
-    // respostas que um `Delete` pode ter nesta casa, e a voz que as distingue.
-    if super::hierarchy_delete::drain(delete_row, hero, hero_live.as_ref(), sim, toasts) {
-        title_dirty = true;
-    }
-    // M14.6 D: drain pending hierarchy-row click → sync
-    // `gizmo_selection` to whichever entity the user just picked in
-    // the hierarchy panel. Legacy single-select path (kept for
-    // double-click + any consumer still emitting the variant). Fase 0c
-    // shifted the Hierarchy panel to `HierSelectRow` / `HierRangeSelect`
-    // which carry modifier semantics — see the dispatch below.
-    if let Some(row) = hierarchy_row_click
-        && let Some(live) = hero_live.as_ref()
-        && let Some(entity_bits) = live.bridge.entity_for(row)
-    {
-        hero.gizmo.replace_selection(Some(entity_bits));
-    }
-    // Fase 0e: drain pending multi-select-aware hierarchy intent.
-    // Bridge resolves row → entity_bits; modifier picks the
-    // `GizmoStateGroup` mutation (Replace / Add / Toggle). Range walks
-    // the canonical hierarchy order between primary's row and target,
-    // adding every entity in between.
-    if let Some(intent) = hierarchy_select_intent
-        && let Some(live) = hero_live.as_ref()
-    {
-        match intent {
-            HierarchySelectIntent::Row { row, modifier } => {
-                if let Some(entity_bits) = live.bridge.entity_for(row) {
-                    match modifier {
-                        SelectModifier::Replace => {
-                            // Smart-click parity with canvas pick (Fase
-                            // 0 hotfix): bare click on a row already
-                            // part of a multi-selection preserves the
-                            // group instead of collapsing to single.
-                            let preserves_multi = hero.gizmo.selected_len() > 1
-                                && hero.gizmo.is_selected(entity_bits);
-                            if !preserves_multi {
-                                hero.gizmo.replace_selection(Some(entity_bits));
-                            }
-                        }
-                        SelectModifier::Add => {
-                            hero.gizmo.add_to_selection(entity_bits);
-                        }
-                        SelectModifier::Toggle => {
-                            hero.gizmo.toggle_in_selection(entity_bits);
-                        }
-                    }
-                }
-            }
-            HierarchySelectIntent::Range { row: target_row } => {
-                // Onda 2 hotfix v2 — preserves the anchor (Enio: "o
-                // shift em múltiplas sprites desselecionou a primeira").
-                // Decision based on the TARGET row's current state:
-                //   - target NOT selected → ADD every row in
-                //     [anchor..target] (anchor stays as primary; new
-                //     rows enter via add_to_selection, which is a
-                //     no-op for ones already there).
-                //   - target selected → REMOVE every row in
-                //     [anchor..target] EXCEPT the anchor itself
-                //     (anchor never demoted by this gesture; primary
-                //     remains stable for the next range click).
-                // Without an anchor (selection empty), degenerates to
-                // a single add of the target — same as Cmd-click /
-                // bare-click on an empty selection.
-                let target_bits = live.bridge.entity_for(target_row);
-                let anchor_row = hero
-                    .gizmo
-                    .selection
-                    .and_then(|bits| live.bridge.node_for(bits));
-                if let (Some(target_bits), Some(anchor_row)) = (target_bits, anchor_row) {
-                    let order = hero.store.hierarchy_order();
-                    let i_anchor = order.iter().position(|n| *n == anchor_row);
-                    let i_target = order.iter().position(|n| *n == target_row);
-                    if let (Some(a), Some(t)) = (i_anchor, i_target) {
-                        let (lo, hi) = if a <= t { (a, t) } else { (t, a) };
-                        let row_range: Vec<_> = order[lo..=hi].to_vec();
-                        let target_was_selected = hero.gizmo.is_selected(target_bits);
-                        for n in row_range {
-                            if n == anchor_row {
-                                continue;
-                            }
-                            if let Some(bits) = live.bridge.entity_for(n) {
-                                if target_was_selected {
-                                    // Remove from extras only — anchor
-                                    // (= primary) skipped above so we
-                                    // never demote it.
-                                    hero.gizmo.extra_selection.retain(|b| *b != bits);
-                                } else {
-                                    hero.gizmo.add_to_selection(bits);
-                                }
-                            }
-                        }
-                    } else {
-                        hero.gizmo.add_to_selection(target_bits);
-                    }
-                } else if let Some(target_bits) = target_bits {
-                    hero.gizmo.add_to_selection(target_bits);
-                }
-            }
-        }
-    }
-    // M14.7 polish: one-shot seed of the rename TextInput when rename
-    // mode opens. `HierRenameSeed` is pushed by hero on the open path
-    // (right-click Rename / long-press) and drained here exactly once
-    // — so subsequent Backspace edits that empty the buffer don't get
-    // clobbered back to the original name on the next frame.
-    // ⭐⭐ **O RENOMEAR mudou-se para o irmão** ([`super::hierarchy_rename`]) quando este ficheiro
-    // bateu no teto de 600 LOC do shell (HR-18) — pago por CORTE, nunca por excepção.
-    //
-    // ⚠️ **É um corte por RESPONSABILIDADE, não pelo fim do ficheiro:** semear o campo, gravar o
-    // nome, limpar o buffer e honrar as chaves que o nome declara são **uma** coisa — *renomear uma
-    // linha* —, e ela não tem nada a ver com os verbos de instância que este ficheiro dreno.
-    title_dirty |= super::hierarchy_rename::drain(
-        rename_seed_row,
-        rename_commit,
-        hero,
-        hero_live,
-        sim,
-        toasts,
-    );
-
-    title_dirty
+    (title_dirty, verb_select, drop_select)
 }

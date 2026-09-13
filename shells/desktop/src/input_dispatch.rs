@@ -1,12 +1,8 @@
-// Tecto de LOC NUMERADO em `tests/it/file_loc_caps.rs` — Onda 2C multi-select dispatch + hit_map routing +
-// click-vs-drag + group-translate snapshot capture grew this file
-// past the HR-18 600-LOC cap (currently ~900 LOC). The MouseInput
-// Down/Up arms are the bulk; the natural decomposition is to move
-// each Down sub-path (modifier override / pivot tool / gizmo handle /
-// canvas pick) and the Up resolver into siblings under
-// `input_dispatch/`, parallel to the existing eyedropper / gizmo_drag
-// / keyboard / protect_brush splits. That refactor lands as a
-// follow-up to Onda 2 once the gizmo polish is locked.
+// O ÍNDICE do despacho da janela (`line/input-dispatch`, 2026-09-13): o tecto de LOC numerado que este ficheiro teve
+// (chegou a 7 115 L em `tests/it/file_loc_caps.rs`) SAIU. A decomposição que a nota antiga adiava para «um follow-up
+// da Onda 2» é esta: os corpos grandes do MouseInput e do CursorMoved moram em `input_dispatch/despacho_*.rs`, como
+// ramos chamados PELA MESMA ORDEM, e os ajudantes e os testes em irmãos. Um gate que leia este despacho como texto
+// lê o `tests/it/input_text.rs::dispatch()`, nunca este ficheiro sozinho.
 //! Window-event dispatch — one method per `WindowEvent` variant.
 //!
 //! PR 9b of `docs/Migracao/2026-05-convention-by-discovery.md`:

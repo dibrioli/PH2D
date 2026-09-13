@@ -40,6 +40,9 @@ use crate::theme::parse_theme_env;
 use crate::winit_host::{LoggingHandler, WinitHost};
 use crate::{AppGfx, HeroLive, SPRITE_COUNT};
 
+#[path = "init_subsystems.rs"]
+mod subsystems; // os subsistemas do arranque, por ordem (LOC cap: sibling module)
+
 /// ⭐ **O registo de componentes do produto** — as quatro famílias que o app conhece.
 ///
 /// ⚠️ **É função com nome porque o censo da F3 tem de perguntar ao MESMO registo que o app usa**
@@ -107,370 +110,28 @@ pub(crate) fn build_initial_state(
     ph2d_gpu::pass_profiler::init(&gpu.device, &gpu.queue);
     let surface = SurfaceContext::new(gpu, raw_surface, size).expect("SurfaceContext::new");
 
-    // M6: try to compose the atlas from real PNG files on disk.
-    // Auto-generates 16 procedural fixtures on first launch so the
-    // demo is self-contained (no committed binary fixtures). Any
-    // failure logs and falls back to the M5 procedural dummy —
-    // the shell must boot regardless of asset-pipeline issues.
-    let asset_db = AssetDb::new();
-    // KTX2 Fase 2 (W2.T4): logical-texture → per-tier cooked AssetId map.
-    // Empty until a cooked texture is loaded (e.g. the PH2D_KTX2_SMOKE
-    // harness below, or a future scene/import path).
-    let mut logical_texture_map = LogicalTextureMap::new();
-    let assets_dir = integration::demo_assets_dir();
-    let (mut atlas, atlas_is_real) =
-        match crate::atlas_loader::load_atlas(surface.gpu(), &asset_db, &assets_dir) {
-            Ok(atlas) => {
-                println!(
-                    "[{:>6}ms] M6: real atlas composed from {} ({} assets cached)",
-                    handler.elapsed_ms(),
-                    assets_dir.display(),
-                    asset_db.len_assets()
-                );
-                (atlas, true)
-            }
-            Err(e) => {
-                eprintln!(
-                    "[{:>6}ms] M6 fallback to dummy atlas: {e}",
-                    handler.elapsed_ms()
-                );
-                (TextureAtlas::dummy(surface.gpu()), false)
-            }
-        };
-    // Motion Nodes M0: the raw default document has no framing node yet, so its
-    // instances carry no `uv_rect` column and fall back to this rect. It must be
-    // the reserved opaque WHITE tile: the shader multiplies `tint` by the texel,
-    // so any other tile silently stains the authored colour (the demo's tile 0 is
-    // saturated red -- a red->blue gradient came out red->maroon). Whole-atlas
-    // fallback only if the insert fails. Read before the atlas moves into the
-    // renderer below.
-    let motion_default_uv = atlas
-        .insert_white_tile(surface.gpu())
-        .unwrap_or([0.0, 0.0, 1.0, 1.0]);
-    // M14.5: sprite pipeline now targets the offscreen HDR game RT
-    // (Rgba16Float) instead of the swap chain. The tonemap +
-    // compositor passes carry pixels through to the surface.
-    let renderer = SpriteRenderer::new(
-        surface.gpu().clone(),
-        GameRt::FORMAT,
-        atlas,
-        SPRITE_COUNT.next_power_of_two(),
-    );
+    let (asset_db, mut logical_texture_map, atlas_is_real, motion_default_uv, renderer) =
+        subsystems::boot_assets_and_renderer(handler, &surface);
 
-    // Mode gate inverted 2026-05-14: hero live is the **default**
-    // user-facing experience. `PH2D_M5_DEMO=1` opts into the legacy
-    // M5 perf-validation demo (1000-sprite Vogel spiral, no editor
-    // chrome) — kept reachable for HR-4 frame-budget validation,
-    // 100k-sprite stress tests, and future bench work without
-    // forcing users through it on first launch.
-    let m5_demo_enabled = std::env::var("PH2D_M5_DEMO").as_deref() == Ok("1");
-    let hero_live_enabled = !m5_demo_enabled;
-    let mut sim = SimWorld::new();
-    // The physics smoke OWNS the scene: no demo sprites, so the hierarchy
-    // shows only the simulation (Enio 2026-07-18). Spawning them here just to
-    // despawn them later would leave a frame of debris in the hierarchy.
-    // ⚠️ O smoke de instância entra na MESMA condição, e não numa segunda: ele também é uma
-    // cena de física, e a razão é a mesma — sprites de demonstração na Hierarquia ao lado de
-    // três instâncias é exatamente o ruído que torna o smoke ilegível.
-    // ⚠️ **Pergunta-se à CRATE, não à variável.** Desde a Fase B o dono do `PH2D_PHYSICS_SMOKE` é
-    // a `ph2d-app-physics` (é ela que o declara no `FAMILY` e que responde por ele). Reler a env
-    // aqui punha DUAS respostas à mesma pergunta, que é a forma que este repo já pagou várias
-    // vezes: elas divergem no dia em que só uma for afinada. O `PH2D_INSTANCE_SMOKE` fica cru
-    // porque não tem família — ninguém o declarou ainda.
-    let physics_smoke = ph2d_app_physics::smoke::armed_scene().is_some()
-        || std::env::var_os("PH2D_INSTANCE_SMOKE").is_some();
-    if physics_smoke {
-        println!(
-            "[{:>6}ms] physics smoke: empty scene (only the physics bodies)",
-            handler.elapsed_ms()
-        );
-    } else if hero_live_enabled {
-        // **A cena nasce VAZIA** (Enio 2026-07-17: *"vamos retirar os grupos de sprites de
-        // teste do hierarchy para ficarmos apenas com nossos objetos flip"*).
-        //
-        // O `populate_sim_live` da M14.4a semeava 8 entidades falsas (`group_01/02` +
-        // `sprite_001..008`) só para a Hierarquia ter linhas legíveis quando ela ainda não
-        // tinha conteúdo real. Hoje tem — objetos Flip, formas vetoriais, sprites
-        // importados, camadas do Painter —, então o andaime virou RUÍDO: o artista abre o
-        // app e a árvore já vem suja de coisa que ele não criou. Mesmo destino dos
-        // scaffolds de debug da timeline, aposentados quando a autoria real os tornou
-        // obsoletos.
-        println!(
-            "[{:>6}ms] live hero mode (cena vazia; a Hierarquia mostra o que VOCE criar)",
-            handler.elapsed_ms()
-        );
-    } else {
-        crate::sim_populate::populate_sim(&mut sim);
-        println!(
-            "[{:>6}ms] M5 demo mode (PH2D_M5_DEMO=1; 1000-sprite \
-             Vogel spiral, no editor chrome)",
-            handler.elapsed_ms()
-        );
-    }
-    // W2.T4 end-to-end smoke (PH2D_KTX2_SMOKE=1): cook an RGBA8 KTX2 in
-    // memory, register it, and spawn a `SpriteSource::CookedTexture` sprite so
-    // the loader path renders it. No-op unless the env var is set.
-    crate::ktx2_smoke::spawn_if_enabled(&mut sim, &asset_db, &mut logical_texture_map);
-    let present = PresentWorld::new();
-    // ADR-0025 M14.1: build the cached propagation queries AFTER
-    // populate_sim so bevy_ecs has already seen the Transform
-    // archetype. QueryState::new on `&mut World` is fine here
-    // (one-shot at boot); inside the extract phase the queries
-    // iterate via `&World` only.
-    let prop_state = TransformPropagationState::new(sim.world_mut());
-    let worklist = WorklistBuf::new();
-    let hero_live = if hero_live_enabled {
-        let walk_state = HierarchyWalkState::new(sim.world_mut());
-        let z_walk_state = HierarchyWalkState::new(sim.world_mut());
-        Some(HeroLive {
-            bridge: hero_bridge::EntityNodeMap::new(),
-            walk_state,
-            walk_scratch: Vec::with_capacity(64),
-            snapshot: HierarchySnapshot::new(),
-            z_walk_state,
-            z_walk_scratch: Vec::with_capacity(64),
-            z_snapshot: HierarchySnapshot::new(),
-        })
-    } else {
-        None
-    };
+    let (hero_live_enabled, sim, present, prop_state, worklist, hero_live) =
+        subsystems::boot_sim_world(handler, &asset_db, &mut logical_texture_map);
     let camera = Camera2d::default();
 
-    // M7: ScriptHost. Failure here is also non-fatal (script is
-    // a placeholder; full sim-driving lands in M12+ editor panel).
-    let script = match integration::init_script_host() {
-        Ok(host) => {
-            println!(
-                "[{:>6}ms] M7: ScriptHost initialized (placeholder script loaded)",
-                handler.elapsed_ms()
-            );
-            Some(host)
-        }
-        Err(e) => {
-            eprintln!(
-                "[{:>6}ms] M7 ScriptHost failed: {e} — continuing without scripting",
-                handler.elapsed_ms()
-            );
-            None
-        }
-    };
+    let script = subsystems::boot_script_host(handler);
 
-    // M12 + M11: editor data layer + Vello widget paint pass.
-    // ZenMode/ToastQueue/ToolRegistry model state, Layout computes
-    // the 4 zones, VelloPass renders all widgets onto the surface
-    // AFTER the sprite pass.
-    let theme = parse_theme_env();
-    eprintln!("[ph2d] theme = {}", theme.id());
-    let zen = ZenMode::new();
-    let jobs = JobQueue::new();
-    let mut toasts = ToastQueue::new();
-    toasts.push(Toast::success("Editor data layer wired (M12)"));
-    toasts.push(Toast::info("Press 1=Brush, 2=Move, 3=Bg Removal, Tab=Zen"));
-    // All modal tools are registered by codegen (ADR-0040 T-close):
-    // `ph2d-tool-sync` generates `register_all_tools` from the scan of
-    // `crates/ph2d-tool-*` (pub fn make). Adding a tool = drop a crate +
-    // run the sync — zero edit here. `activate_default` selects the boot
-    // tool data-drivenly (`Tool::is_default` = Brush), not registration order.
-    let mut tools = ToolRegistry::new();
-    ph2d_tool_registry_init::register_all_tools(&mut tools);
-    tools.activate_default();
-    let layout = EditorLayout::new(size.width as f32, size.height as f32);
-    let vello_pass =
-        match VelloPass::new(surface.gpu(), surface.format(), (size.width, size.height)) {
-            Ok(p) => {
-                println!(
-                    "[{:>6}ms] M11: VelloPass initialized ({}×{} intermediate)",
-                    handler.elapsed_ms(),
-                    size.width,
-                    size.height
-                );
-                p
-            }
-            Err(e) => {
-                // Pass init failure is fatal here — the demo's whole
-                // point is showing the editor over the canvas.
-                panic!("VelloPass::new failed: {e}");
-            }
-        };
+    let (theme, zen, jobs, toasts, tools, layout, vello_pass) =
+        subsystems::boot_editor_layer(handler, &surface, size);
 
-    // M14.5: viewport / RT pipeline construction. game_rt → tonemap
-    // → compositor (which also reads vello_pass intermediate). The
-    // sample views are extracted here at boot; rebound on resize
-    // alongside game_rt/tonemap output recreation.
-    let game_rt = GameRt::new(surface.gpu(), (size.width, size.height));
-    // ADR-0154 Fase 2: o acumulador do mundo + a colagem de faixa. Inertes enquanto a cena não
-    // intercalar vetor e sprite.
-    let world_rt = ph2d_render::WorldRt::new(surface.gpu(), (size.width, size.height));
-    let band_blit = ph2d_render::BandBlit::new(surface.gpu(), ph2d_render::WorldRt::FORMAT);
-    // ⭐⭐⭐ O vidro jateado do *Edit Prefab*: ele borra o acumulador, então nasce no formato DELE.
-    let frost = ph2d_render::FrostPass::new(surface.gpu(), ph2d_render::WorldRt::FORMAT);
-    // doc 67: the Motion module's own HDR glow pass, sized to the surface like
-    // game_rt. Inert until the artist authors bloom on the active Motion doc.
-    let motion_fx = ph2d_render::MotionFx::new(surface.gpu(), (size.width, size.height));
-    let tonemap = Tonemap::new(
-        surface.gpu(),
-        game_rt
-            .texture()
-            .create_view(&wgpu::TextureViewDescriptor::default()),
-        (size.width, size.height),
-    );
-    let compositor = Compositor::new(
-        surface.gpu(),
-        surface.format(),
-        tonemap
-            .output_texture()
-            .create_view(&wgpu::TextureViewDescriptor::default()),
-        vello_pass
-            .intermediate_texture()
-            .create_view(&wgpu::TextureViewDescriptor::default()),
-    );
-    println!(
-        "[{:>6}ms] M14.5: RT pipeline ready (game_rt Rgba16Float HDR + AgX tonemap + compositor)",
-        handler.elapsed_ms()
-    );
+    let (game_rt, world_rt, band_blit, frost, motion_fx, tonemap, compositor) =
+        subsystems::boot_rt_pipeline(handler, &surface, size, &vello_pass);
     let vector_scene = VectorScene::new();
     let text_system = TextSystem::new();
 
-    // Hero screen (TopBar / LeftRail / Hierarchy / Inspector /
-    // BottomHUD) is always-on in the default mode and disabled
-    // in the M5 demo path. The legacy `PH2D_HERO_SCREEN=1` env
-    // var is kept as a no-op alias — anyone with it in their
-    // shell rc still gets the editor instead of an error.
-    let hero_screen_enabled = hero_live_enabled;
-    // Wave 8 Phase 1 — install the panel registry BEFORE the first
-    // `HeroScreen::new` call. `register_all_panels` honors the
-    // `panel-*` cargo features on `ph2d-panel-registry-init`, so
-    // `--no-default-features --features panel-inspector` (etc.)
-    // produces a binary with exactly the selected panels at runtime.
-    // Idempotent — re-entry is a no-op.
-    if hero_screen_enabled {
-        let _ = ph2d_panel_registry_init::register_all_panels();
-    }
-    // ⚠️ **O registry de TOOLS tem de estar instalado ANTES do primeiro `HeroScreen::new`** —
-    // pela MESMA razão que o de painéis, logo acima, e este bloco vivia 50 linhas abaixo do hero.
-    //
-    // O `topbar::populate()` (que corre dentro do `HeroScreen::new`) dá `InteractiveState` a cada
-    // pill da fila de Image Tools **percorrendo a fila derivada do registry**. Sem registry
-    // instalado ela cai no fallback de três (trim · make_square · bgremoval) e **os outros oito
-    // pills nascem sem estado: pintados, hit-registered e MORTOS sob o rato** (Enio, 2026-08-19:
-    // *"padding, Color equalization, Rasterize, Upscale e Painter não estão funcionando"*).
-    //
-    // ⚠️ Foi uma regressão que eu introduzi ao curar exatamente este defeito para UM tool: troquei
-    // a lista escrita à mão por uma derivada, sem reparar que a derivação corria antes da fonte
-    // existir. *Uma lista derivada de algo que ainda não existe é uma lista vazia com cara de
-    // correta.* O gate `the_tool_registry_is_installed_before_the_hero` fixa esta ordem.
-    //
-    // PR 8 of the convention-by-discovery migration: build the tool
-    // registry at boot. `register_all` adds every manifest declared
-    // in `ph2d-tool-registry-init`'s append-only list; `build()`
-    // detects id duplicates + NodeId hash collisions + sorts
-    // deterministically per HR-5. Held on `AppGfx` for PR 9 (generic
-    // dispatcher) and chrome derivation follow-ups.
-    let mut registry = ph2d_tool_registry::Registry::default();
-    ph2d_tool_registry_init::register_all(&mut registry);
-    registry
-        .build()
-        .expect("registry build must succeed at boot");
-    let manifest_count = registry.manifests().len();
-    // Wave 2 PR 11.4: hand the built registry to `ph2d-editor` so the
-    // hero painters can derive chrome (Image Tools action row, future
-    // TopBar clusters) from manifests instead of hardcoded lists.
-    // `install_registry` returns true on first install; subsequent
-    // calls from re-init paths in tests get false and silently drop
-    // the second registry (safe — the manifests are identical).
-    ph2d_editor_core::install_registry(registry);
-    println!(
-        "[{:>6}ms] PR 8: tool registry built ({} manifests, installed in editor)",
-        handler.elapsed_ms(),
-        manifest_count,
-    );
+    let hero_screen = boot_hero_screen(handler, hero_live_enabled, theme);
 
-    let hero_screen = if hero_screen_enabled {
-        let mut hero = HeroScreen::new(NodeId(1)).theme(theme);
-        // Cross-session palettes: restore the named-palette set saved last run (the picker was just
-        // seeded with the default by `pre_populate`; replace it when a save exists).
-        let saved = crate::palette_persist::load();
-        if !saved.is_empty() {
-            let palettes = saved
-                .into_iter()
-                .map(
-                    |(name, colors)| ph2d_editor_core::interaction::NamedPalette {
-                        name,
-                        swatches: colors
-                            .iter()
-                            .map(|c| ph2d_tokens::ColorValue::from_rgba8(c[0], c[1], c[2], c[3]))
-                            .collect(),
-                    },
-                )
-                .collect();
-            hero.store
-                .blender_set_palettes(ph2d_editor_core::ids::INSP_BLENDER_PICKER, palettes);
-            hero.store
-                .sync_blender_palette_name_buffer(ph2d_editor_core::ids::INSP_BLENDER_PICKER);
-        }
-        // Preferências de utilizador (`~/.ph2d/prefs.txt`): o carácter da UI viva + o reduced
-        // motion, escolhidos no pill Settings → Motion. ⚠️ Instaladas ANTES do primeiro quadro —
-        // instalar depois deixaria a primeira animação correr no carácter errado, e é justamente o
-        // primeiro quadro que o artista vê. Ficheiro ausente ⇒ os defaults, que são os de hoje.
-        let prefs = crate::prefs::load();
-        hero.motion.set_character(prefs.character);
-        hero.motion.set_reduced_motion(prefs.reduced_motion);
-        hero.ui_sound = prefs.ui_sound;
-        // ⭐⭐ **A ARRUMAÇÃO do artista** (`~/.ph2d/layout.txt`, decisão D4): que painel está em
-        // que encaixe e a largura das colunas. ⚠️ Antes do primeiro quadro, pela mesma razão das
-        // preferências — instalar depois faria o primeiro quadro desenhar a arrumação de omissão e
-        // saltar para a do artista no seguinte.
-        crate::layout_persist::install_saved(&mut hero, &crate::layout_persist::load());
-        Some(hero)
-    } else {
-        None
-    };
+    let (imageio_importers, imageio_exporters) = subsystems::boot_imageio_registries(handler);
 
-    let _ = hero_screen_enabled; // explicitly mark consumed
-    let _ = Lifecycle::Foreground; // exercise import; lifecycle hook fires from caller.
-
-    // ADR-0054 W0.T6: image I/O registries populated at boot. Same
-    // "drop a crate, zero central edit" mechanism as the tool registry
-    // above — `ph2d-imageio-sync` regenerates the bodies from a scan of
-    // `crates/ph2d-imageio-*`. W0.T5 wires PNG only; W1+ adds JPEG /
-    // WebP / GIF / .ph2d-native; W2+ adds PSD/ORA/TIFF/APNG; W3+ adds
-    // EXR/AVIF/JXL/HDR/SVG.
-    let mut imageio_importers = ImporterRegistry::new();
-    let mut imageio_exporters = ExporterRegistry::new();
-    ph2d_imageio_registry_init::register_all_importers(&mut imageio_importers);
-    ph2d_imageio_registry_init::register_all_exporters(&mut imageio_exporters);
-    println!(
-        "[{:>6}ms] ADR-0054 W0.T6: imageio registries built ({} importer(s), {} exporter(s))",
-        handler.elapsed_ms(),
-        imageio_importers.len(),
-        imageio_exporters.len(),
-    );
-
-    // ADR-0108 Fase 0: cena-demo prova o seam; `PH2D_VEC_DEMO_N=<n>` troca para a
-    // grade de N blobs do spike de escala (kill-criterion §5). Loga a escolha no
-    // terminal — diagnóstico infalível de qual caminho rodou.
-    let pen_on =
-        std::env::var("PH2D_VEC_PEN").is_ok_and(|v| v == "1" || v.eq_ignore_ascii_case("true"));
-    let vec_scene = match std::env::var("PH2D_VEC_DEMO_N")
-        .ok()
-        .and_then(|s| s.parse::<usize>().ok())
-    {
-        Some(n) if n > 0 => {
-            eprintln!("[ph2d-vec] Fase 0 spike: demo_grid N={n}");
-            ph2d_vec_scene::VecScene::demo_grid(n)
-        }
-        // Pen ligado → canvas vazio, pra o desenho aparecer sem o smiley junto.
-        _ if pen_on => {
-            eprintln!(
-                "[ph2d-vec] Fase 1.1: Pen ATIVO — canvas vazio; clique desenha, \
-                 botão direito finaliza o traço"
-            );
-            ph2d_vec_scene::VecScene::new()
-        }
-        // Default (sem flag): cena VAZIA — a feature é 100% flag-gated, o app
-        // normal não mostra nada da pipeline vetorial nova.
-        _ => ph2d_vec_scene::VecScene::new(),
-    };
+    let vec_scene = subsystems::boot_vec_scene();
 
     // ADR-0114 W1: rasterizador do traço do Flip, no formato HDR do game_rt.
     // Criado ANTES do literal (o `surface` é movido pra dentro dele).
@@ -577,4 +238,115 @@ pub(crate) fn build_initial_state(
     };
 
     (window, host, gfx)
+}
+
+/// **Os registos de painéis e de ferramentas, e o HeroScreen** — com as preferências, as paletas e
+/// a arrumação do artista instaladas antes do primeiro quadro.
+///
+/// ⚠️ Saiu do [`build_initial_state`] pelo tecto de 200 LOC por função, verbatim, e FICA neste
+/// ficheiro de propósito: o gate `the_registry_is_installed_before_the_hero` lê aqui a ordem
+/// `install_registry(` → `HeroScreen::new(`.
+fn boot_hero_screen(
+    handler: &LoggingHandler,
+    hero_live_enabled: bool,
+    theme: ph2d_tokens::Theme,
+) -> Option<HeroScreen> {
+    // Hero screen (TopBar / LeftRail / Hierarchy / Inspector /
+    // BottomHUD) is always-on in the default mode and disabled
+    // in the M5 demo path. The legacy `PH2D_HERO_SCREEN=1` env
+    // var is kept as a no-op alias — anyone with it in their
+    // shell rc still gets the editor instead of an error.
+    let hero_screen_enabled = hero_live_enabled;
+    // Wave 8 Phase 1 — install the panel registry BEFORE the first
+    // `HeroScreen::new` call. `register_all_panels` honors the
+    // `panel-*` cargo features on `ph2d-panel-registry-init`, so
+    // `--no-default-features --features panel-inspector` (etc.)
+    // produces a binary with exactly the selected panels at runtime.
+    // Idempotent — re-entry is a no-op.
+    if hero_screen_enabled {
+        let _ = ph2d_panel_registry_init::register_all_panels();
+    }
+    // ⚠️ **O registry de TOOLS tem de estar instalado ANTES do primeiro `HeroScreen::new`** —
+    // pela MESMA razão que o de painéis, logo acima, e este bloco vivia 50 linhas abaixo do hero.
+    //
+    // O `topbar::populate()` (que corre dentro do `HeroScreen::new`) dá `InteractiveState` a cada
+    // pill da fila de Image Tools **percorrendo a fila derivada do registry**. Sem registry
+    // instalado ela cai no fallback de três (trim · make_square · bgremoval) e **os outros oito
+    // pills nascem sem estado: pintados, hit-registered e MORTOS sob o rato** (Enio, 2026-08-19:
+    // *"padding, Color equalization, Rasterize, Upscale e Painter não estão funcionando"*).
+    //
+    // ⚠️ Foi uma regressão que eu introduzi ao curar exatamente este defeito para UM tool: troquei
+    // a lista escrita à mão por uma derivada, sem reparar que a derivação corria antes da fonte
+    // existir. *Uma lista derivada de algo que ainda não existe é uma lista vazia com cara de
+    // correta.* O gate `the_tool_registry_is_installed_before_the_hero` fixa esta ordem.
+    //
+    // PR 8 of the convention-by-discovery migration: build the tool
+    // registry at boot. `register_all` adds every manifest declared
+    // in `ph2d-tool-registry-init`'s append-only list; `build()`
+    // detects id duplicates + NodeId hash collisions + sorts
+    // deterministically per HR-5. Held on `AppGfx` for PR 9 (generic
+    // dispatcher) and chrome derivation follow-ups.
+    let mut registry = ph2d_tool_registry::Registry::default();
+    ph2d_tool_registry_init::register_all(&mut registry);
+    registry
+        .build()
+        .expect("registry build must succeed at boot");
+    let manifest_count = registry.manifests().len();
+    // Wave 2 PR 11.4: hand the built registry to `ph2d-editor` so the
+    // hero painters can derive chrome (Image Tools action row, future
+    // TopBar clusters) from manifests instead of hardcoded lists.
+    // `install_registry` returns true on first install; subsequent
+    // calls from re-init paths in tests get false and silently drop
+    // the second registry (safe — the manifests are identical).
+    ph2d_editor_core::install_registry(registry);
+    println!(
+        "[{:>6}ms] PR 8: tool registry built ({} manifests, installed in editor)",
+        handler.elapsed_ms(),
+        manifest_count,
+    );
+
+    let hero_screen = if hero_screen_enabled {
+        let mut hero = HeroScreen::new(NodeId(1)).theme(theme);
+        // Cross-session palettes: restore the named-palette set saved last run (the picker was just
+        // seeded with the default by `pre_populate`; replace it when a save exists).
+        let saved = crate::palette_persist::load();
+        if !saved.is_empty() {
+            let palettes = saved
+                .into_iter()
+                .map(
+                    |(name, colors)| ph2d_editor_core::interaction::NamedPalette {
+                        name,
+                        swatches: colors
+                            .iter()
+                            .map(|c| ph2d_tokens::ColorValue::from_rgba8(c[0], c[1], c[2], c[3]))
+                            .collect(),
+                    },
+                )
+                .collect();
+            hero.store
+                .blender_set_palettes(ph2d_editor_core::ids::INSP_BLENDER_PICKER, palettes);
+            hero.store
+                .sync_blender_palette_name_buffer(ph2d_editor_core::ids::INSP_BLENDER_PICKER);
+        }
+        // Preferências de utilizador (`~/.ph2d/prefs.txt`): o carácter da UI viva + o reduced
+        // motion, escolhidos no pill Settings → Motion. ⚠️ Instaladas ANTES do primeiro quadro —
+        // instalar depois deixaria a primeira animação correr no carácter errado, e é justamente o
+        // primeiro quadro que o artista vê. Ficheiro ausente ⇒ os defaults, que são os de hoje.
+        let prefs = crate::prefs::load();
+        hero.motion.set_character(prefs.character);
+        hero.motion.set_reduced_motion(prefs.reduced_motion);
+        hero.ui_sound = prefs.ui_sound;
+        // ⭐⭐ **A ARRUMAÇÃO do artista** (`~/.ph2d/layout.txt`, decisão D4): que painel está em
+        // que encaixe e a largura das colunas. ⚠️ Antes do primeiro quadro, pela mesma razão das
+        // preferências — instalar depois faria o primeiro quadro desenhar a arrumação de omissão e
+        // saltar para a do artista no seguinte.
+        crate::layout_persist::install_saved(&mut hero, &crate::layout_persist::load());
+        Some(hero)
+    } else {
+        None
+    };
+
+    let _ = hero_screen_enabled; // explicitly mark consumed
+    let _ = Lifecycle::Foreground; // exercise import; lifecycle hook fires from caller.
+    hero_screen
 }

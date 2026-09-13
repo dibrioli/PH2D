@@ -188,6 +188,8 @@ mod fase_audio_panels;
 mod fase_chrome_clock;
 /// Fase do quadro: a entrada (carimbo coalescido, diagnóstico, gamepad, script, soltos).
 mod fase_input_and_drops;
+/// Fase do quadro: o modal de imagem nova (Cmd/Ctrl+N) cria a tela escolhida.
+mod fase_new_image_modal;
 /// Fase do quadro: as cenas do pincel do Painter (taper, tinta molhada).
 mod fase_painter_brush_smokes;
 /// Fase do quadro: o que está sob o cursor (a 1.ª do `run_render_frame`).
@@ -412,6 +414,7 @@ impl crate::App {
         self.fase_sprite_inspector_smokes();
         self.fase_sprite_pixel_smokes();
         self.fase_painter_brush_smokes();
+        self.fase_new_image_modal();
         let Some(gfx) = self.gfx.as_mut() else {
             return;
         };
@@ -481,40 +484,6 @@ impl crate::App {
         let Some(host) = self.host.as_ref() else {
             return;
         };
-
-        // New-image modal (Cmd/Ctrl+N) → spawn the chosen blank canvas. The modal's Create button set
-        // `new_image_request`; service it here where `gfx` is destructured (sim/renderer/atlas access).
-        if let Some(hero) = hero_screen.as_mut()
-            && let Some((size, bg)) = hero.store.take_new_image_request()
-        {
-            let ppm = hero.project.pixels_per_meter;
-            let cell = *next_import_cell;
-            match crate::image_import::spawn_blank_canvas(
-                sim,
-                renderer,
-                asset_db,
-                cell,
-                size,
-                bg,
-                ph2d_core::Vec2::new(0.0, 0.0),
-                ppm,
-                atlas_asset_map,
-            ) {
-                Ok((label, bits)) => {
-                    *next_import_cell = next_import_cell.saturating_add(1);
-                    hero.gizmo.replace_selection(Some(bits));
-                    hero.bus
-                        .push(ph2d_editor_core::action_bus::EditorAction::SetViewFocus {
-                            kind: ph2d_editor_core::ViewFocusKind::Selected,
-                        });
-                    toasts.push(Toast::success(format!("New canvas · {label} ({size}²)")));
-                }
-                Err(e) => {
-                    toasts.push(Toast::error(format!("New canvas failed: {e}")));
-                }
-            }
-            self.title_dirty = true;
-        }
 
         // M7 per-frame GC step. Cheap (p99 ≤ 10µs target per the M7
         // gate test) — keeps the Luau heap from accumulating between

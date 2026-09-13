@@ -326,7 +326,7 @@ SÍMBOLO** já nomeada como ABERTA no fecho de 13/09.
 ## §3.R-pré (2.ª passagem) — 2026-09-13 · ⛔ **NÃO ATESTADA**
 
 Subagente R-pré novo, contexto independente do que escreveu a espec **e** do que escreveu a
-reescrita. Leu os dois lados. Veredito contra o §4.2: **3 achados, 1 SUBSTANCIAL.**
+reescrita. Leu os dois lados. Veredito contra o §4.2: **4 achados, 1 SUBSTANCIAL.**
 
 **O que foi CONFIRMADO (cura a cura, com o instrumento corrido por terceiro):**
 
@@ -342,5 +342,14 @@ a obra irmã `blender-pose` já pagou na EMENDA 2): a acusação era *«prosa de
 e a cura foi aplicada **aos quatro endereços acusados**. A espécie maior — **descrever o PROGRAMA
 em vez do comportamento** — continua viva em dois sítios que ninguém nomeou, e a §3.1 é
 **byte-idêntica** à redacção reprovada. Os achados estão no report ao I, em termos funcionais.
+
+⛔⛔ **E o 4.º achado é do QUADRO DE ATESTADOS, não do corpo:** a política de nomes desta obra
+(*zero identificador interno; tudo o que a espec nomeia é API pública, conferida contra as
+definições que o binário publica, §4.1.13*) está registada **neste ledger** — e a §6 proíbe a
+janela de o abrir, enquanto a §4 define o cabeçalho da espec como *«o quadro de atestados que I
+confere (I não lê o ledger)»*. ⇒ **o Implementador não tem como distinguir um identificador público
+lícito de um nome interno proibido**, e o incidente desta mesma linha em 13/09 (INC-4) foi
+exactamente nomes internos a alojarem-se nos nossos comentários. *Um atestado guardado no único
+ficheiro que o destinatário não pode ler não atesta nada para ele.*
 
 ⚠️ **Esta espec fica BLOQUEADA para implementação** até a 3.ª redacção e um R-pré novo sobre ela.

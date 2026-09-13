@@ -25,13 +25,30 @@ fn code_of(rel: &str) -> String {
         .join("\n")
 }
 
+/// O QUADRO sem comentários, pela ordem em que CORRE — com a mesma limpeza do [`code_of`].
+///
+/// ⚠️ **Desde a OBRA 2 da `line/render-loop` (2026-09-12)** o quadro está partido em fases noutros
+/// ficheiros, e as duas metades deste censo moram em fases diferentes: a ABERTURA (a marca, o pedido de
+/// palco e a trava) na `fase_open_recipe`, o SERVIÇO do pedido ainda no `mod.rs`. O texto emendado
+/// (`frame_text::render_frame`) é o único que tem as duas, na ordem de execução.
+fn code_of_frame() -> String {
+    crate::frame_text::render_frame()
+        .lines()
+        .map(|l| match l.find("//") {
+            Some(i) => &l[..i],
+            None => l,
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
 /// ⭐⭐⭐ **O quadro ARMA o pedido a partir da abertura, e SERVE-o com o mundo e o ledger.**
 ///
 /// **Mutação que deve sangrar:** apagar qualquer uma das duas linhas — sem a primeira o pedido
 /// nunca nasce; sem a segunda ele nunca é servido, e nos dois casos a receita abre onde estava.
 #[test]
 fn the_frame_arms_the_request_and_serves_it_on_the_stage() {
-    let body = code_of("render_loop/mod.rs");
+    let body = code_of_frame();
     assert!(
         body.contains("master_editing::mark(") && body.contains(".opened"),
         "o quadro deixou de ler QUEM ABRIU do carimbo — o pedido de palco nunca nasce"
@@ -109,7 +126,7 @@ fn the_visible_area_has_one_door_and_both_clients_use_it() {
 /// preso num modo sem saída — que é o pior resultado possível desta feature.
 #[test]
 fn the_session_only_ends_through_the_two_doors() {
-    let frame = code_of("render_loop/mod.rs");
+    let frame = code_of_frame();
     let at = frame
         .find("self.prefab_editing =")
         .expect("a abertura ja' nao fecha a trava — clicar no vazio volta a fechar a sessao");

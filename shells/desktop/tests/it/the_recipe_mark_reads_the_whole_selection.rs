@@ -40,7 +40,12 @@ fn src(name: &str) -> String {
 /// O passe que acende a receita vê os EXTRAS, e não só o primário.
 #[test]
 fn the_recipe_mark_is_fed_the_extra_selection_too() {
-    let s = src("render_loop/mod.rs");
+    // ⚠️ **O texto EMENDADO do quadro, e não o `mod.rs`** (OBRA 2 da `line/render-loop`, 2026-09-12): a
+    // marca mudou-se para a `fase_open_recipe` e o extract para a `fase_sim_extract`, e a janela deste gate
+    // vai de uma à outra pela ORDEM de execução. ⛔ E a régua antiga ancorava na coisa errada: no `mod.rs`
+    // o 1.º `master_editing::mark(` é o de um ajudante de nível de ficheiro, FORA do quadro, e o gate só
+    // passava porque a janela dele continuava até à marca verdadeira. O texto emendado só tem o quadro.
+    let s = crate::frame_text::render_frame();
     let Some(at) = s.find("master_editing::mark(") else {
         panic!("o passe que acende a receita mudou de nome — reancore este gate");
     };

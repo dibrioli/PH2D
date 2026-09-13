@@ -188,6 +188,9 @@ mod fase_chrome_clock;
 mod fase_input_and_drops;
 /// Fase do quadro: o que está sob o cursor (a 1.ª do `run_render_frame`).
 mod fase_pointer_subjects;
+/// Fase do quadro: a cena da doação do sculpt3d (`PH2D_SCULPT3D_SMOKE=2`).
+#[cfg(feature = "sculpt3d")]
+mod fase_sculpt3d_donation_smoke;
 /// Fase do quadro: o pré-quadro do sculpt3d (Grab, pendente, pill, doação, Hierarquia).
 mod fase_sculpt3d_pre_frame;
 /// Fase do quadro: a manutenção de sessão (Shape Builder, tween, Colorize, Gap Closure).
@@ -387,6 +390,8 @@ impl crate::App {
             return;
         };
         self.fase_atlas_scene_smokes();
+        #[cfg(feature = "sculpt3d")]
+        self.fase_sculpt3d_donation_smoke();
         let Some(gfx) = self.gfx.as_mut() else {
             return;
         };
@@ -459,43 +464,6 @@ impl crate::App {
         let Some(host) = self.host.as_ref() else {
             return;
         };
-
-        // A cena da DOAÇÃO (`PH2D_SCULPT3D_SMOKE=2`): a mesma dança do impasto, para a tela em que a
-        // forma vai acender a tinta. A esfera nasce em `sculpt3d_smoke`; aqui nasce o que pintar.
-        #[cfg(feature = "sculpt3d")]
-        if let Some(hero) = hero_screen.as_mut()
-            && !std::mem::replace(&mut self.sculpt3d_req.canvas_done, true)
-        {
-            let ppm = hero.project.pixels_per_meter;
-            let cell = *next_import_cell;
-            // ⚠️ **Duas chamadas, e o corte é o da regra 2** (W2/L3-B): a família diz SE uma
-            // tela é precisa e COMO ela tem de ser (`canvas_wanted`, com os três números e a
-            // razão de cada); quem sabe FAZER uma é o `image_import`, folha desta shell com 41
-            // consumidores de famílias diferentes. Ela nunca foi da escultura.
-            if let Some(bits) = ph2d_app_sculpt3d::donation::canvas_wanted().and_then(|q| {
-                ph2d_app_sculpt3d::donation::canvas_born(crate::image_import::spawn_blank_canvas(
-                    sim,
-                    renderer,
-                    asset_db,
-                    cell,
-                    q.edge,
-                    q.bg,
-                    q.center,
-                    ppm,
-                    atlas_asset_map,
-                ))
-            }) {
-                *next_import_cell = next_import_cell.saturating_add(1);
-                hero.gizmo.replace_selection(Some(bits));
-                hero.bus
-                    .push(ph2d_editor_core::action_bus::EditorAction::SetViewFocus {
-                        kind: ph2d_editor_core::ViewFocusKind::Selected,
-                    });
-                toasts.push(Toast::success(
-                    "Sculpt3d: esculpa, aperte D ate ler LUZ, e pinte".to_string(),
-                ));
-            }
-        }
 
         // **O OBJETO MISTO** (`docs/3D/02.2`): assa a forma no sprite selecionado, e re-acende os
         // que já foram assados quando a lâmpada anda. Ele mora AQUI, e não ao lado da doação, por

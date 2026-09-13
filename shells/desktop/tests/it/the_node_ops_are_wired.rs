@@ -548,12 +548,12 @@ fn the_ruler_is_painted_with_the_canvas_the_layout_resolved() {
 /// rect à mão — *um gate sobre a lei não é um gate sobre quem a alimenta*, e é exactamente por isso
 /// que a mutação «devolve a janela ao produto» sobrevive a todos eles. É a nota que a própria porta
 /// carrega, herdada do gizmo de navegação, e o defeito de hoje é a segunda vez que ela morde.
+///
+/// ⚠️ Desde a OBRA 2 da `line/render-loop` (2026-09-13) o desenho do 3D mora na fase
+/// `fase_field3d_smoke_draw`: o gate lê o QUADRO emendado (`frame_text::render_frame`), e não um ficheiro dele.
 #[test]
 fn the_three_d_module_is_drawn_into_the_area_never_into_the_window() {
-    let src = std::fs::read_to_string(
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src/render_loop/mod.rs"),
-    )
-    .expect("render_loop/mod.rs");
+    let src = crate::frame_text::render_frame();
     let call = src
         .find("ph2d_app_field3d::smoke::draw(")
         .expect("o modulo 3D e' desenhado");

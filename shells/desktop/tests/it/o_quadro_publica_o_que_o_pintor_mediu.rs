@@ -21,7 +21,11 @@ fn o_quadro_publica_o_chip_e_o_rectangulo_que_o_pintor_mediu() {
     // e um `include_str!` de uma crate para dentro de uma shell é uma seta que não devia
     // existir. ⇒ o gate mudou-se para o lado que MEDE: ele afirma uma propriedade do
     // `render_loop`, e agora vive ao lado dele.
-    let fonte = include_str!("../../src/render_loop/mod.rs");
+    //
+    // ⚠️ **E «o quadro» deixou de ser um ficheiro** (OBRA 2 da `line/render-loop`, 2026-09-13): o desenho do
+    // modelador 3D mudou-se para a fase `fase_field3d_smoke_draw`, e o gate lê o texto EMENDADO do quadro
+    // (`frame_text::render_frame`) — a ordem e a distância entre a chamada e a publicação são as de execução.
+    let fonte = crate::frame_text::render_frame();
     for (chamada, porta) in [
         ("paint_view_label(", "note_view_labels("),
         ("paint_view_menu(", "note_view_menu_rect("),

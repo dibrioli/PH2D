@@ -231,6 +231,60 @@ de o derivar da fracção, e somava as passagens de simetria com o centro errado
 com o oráculo é uma hipótese sobre o alvo **ou** sobre a nossa régua, e a régua é a mais barata de
 conferir primeiro.*
 
+### §5.4 — ⭐⭐⭐ A direcção NÃO muda com o número de eventos (emenda medida, 2026-09-13)
+
+Perguntado se algo muda no alvo entre o 8.º e o 10.º evento — a normal re-amostrada, o centro a
+sair da âncora, um segundo termo acima de um limiar, ou um `Δ` acumulado em planos diferentes —,
+a resposta é **não, nada muda**, e está medida sobre **nove** comprimentos de traço na mesma
+esfera (2, 3, 4, 5, 6, 7, 8, 9 e 10 eventos; vista de topo, raio `0,35`, força `1`, fracção da
+normal `0,5`):
+
+| grandeza | valor | espalhamento nas nove |
+|---|---|---|
+| direcção do deslocamento | `(0,957277 · 0 · −0,289172)` | **idêntica às 6 casas decimais** |
+| `pico / |Δ|` | **`0,9549005`** | **`5,7e-06`** |
+| `|offset| / |Δ|` | `0,957277082` | `= √(1 − (n̂₀·Δ̂)²)`, exacto |
+| `pico / |offset|` | `0,9975179` | o peso da §2 no vértice mais perto da âncora |
+| normal da área congelada `n₀` | `(0,289172 · 0 · 0,957277)` | uma só, do pen-down |
+
+⇒ **as quatro hipóteses estão refutadas**, cada uma por medição:
+
+1. *a normal é re-amostrada?* ⛔ Não — se fosse, a direcção rodaria; ela é a mesma nas nove.
+2. *o centro sai da âncora?* ⛔ Não — o número de vértices movidos é **`492` em todas** as que
+   passam do 3.º evento, e a pegada não anda.
+3. *entra um segundo termo acima de um limiar?* ⛔ Não — `pico/|Δ|` é **constante** de `|Δ| = 0,044`
+   a `|Δ| = 0,400`, uma faixa de `9×`; um termo extra partiria a proporcionalidade.
+4. *o alvo acumula incrementos projectados em planos diferentes?* ⛔ Não. Ele **acumula
+   incrementos** (isso é verdade, §4), mas todos no **mesmo** plano — o plano paralelo ao ecrã que
+   passa pela **âncora**, que não se mexe durante o traço (§1.2). ⇒ a soma telescopa e é
+   exactamente `g_N − âncora`. *Acumular incrementos e usar o total são a mesma coisa aqui, e é por
+   isso que a §4 pode dizer «o total» sem mentir.*
+
+⭐⭐ **E a direcção é ortogonal a `n₀` mas NÃO está no plano do ecrã:** `dot(direcção, n₀) = 3,9e-07`
+e `dot(direcção, eixo da vista) = −0,289172`. *O gesto lê-se no plano do ecrã; o deslocamento vive
+no plano tangente de `n₀`* — e as duas coisas são diferentes numa superfície curva. Quem projectar
+o **offset** de volta ao plano do ecrã (em vez de projectar só o **gesto**) ganha um erro que cresce
+com a curvatura sob o traço.
+
+⚠️⚠️ **A armadilha que explica uma comparação `|pico|` contra `|pico|`:** o vértice do pico **não
+está na âncora**, logo o peso dele é `0,9975179`, não `1`. Comparar o nosso `|offset|` com o `|pico|`
+do alvo mistura a lei com o alcance e devolve `+0,25 %` de erro que não existe. ⇒ compare
+**campo contra campo**, ou divida o pico por `|Δ|` e compare o quociente — que é a constante acima.
+
+⭐ **Quatro invariantes para bissectar uma implementação que discorde**, do mais barato ao mais caro:
+
+1. `pico / |Δ|` tem de ser **constante** ao variar o comprimento do traço (aqui `0,9549005 ± 3e-06`).
+   *Se cresce com o comprimento, o erro está na magnitude do offset, não na pegada.*
+2. a **direcção** tem de ser a mesma em todos os comprimentos.
+3. `dot(direcção, n₀) = 0`.
+4. o campo é **unidireccional**: acima de `10 %` do pico o cosseno com a direcção do pico é
+   `1,000000000` nos `307` vértices; acima de `0,1 %` é `≥ 0,99999992`. ⛔ Abaixo disso é ruído de
+   `f32` (vértices a `6e-08`, onde a direcção não significa nada) — **não meça espalhamento sem
+   um piso de magnitude**.
+
+**Fixtures:** `polegar_esfera_topo_k02/k04/k06/k08`, `polegar_esfera_passo03/05/07/09` e
+`polegar_esfera_topo` — nove comprimentos do **mesmo** traço.
+
 ---
 
 ## §6 — O EMPURRÃO (o gesto que viaja)
@@ -279,9 +333,47 @@ continua plana, o acerto coincide com o ponto analítico, e o resíduo cai para 
 não coincide. ⚠️ **O gesto ancorado é imune a isto por construção** — ele nunca volta a perguntar à
 superfície.
 
-⇒ **Como fechar** (uma corrida do oráculo, acto de E): fazer o harness gravar, por evento, a
-posição do centro que o alvo de facto usou, e re-alimentar o modelo com ela em vez do ponto
-analítico. *Comparar por PASSO, não só o resultado* — a casa já pagou por esta lição no tecido.
+### §6.3-bis — A decomposição POR EVENTO existe (2026-09-13), e ela move a culpa
+
+⭐ O instrumento foi construído e corrido: **truncar o mesmo traço em `2..10` eventos** e subtrair
+truncagens vizinhas. Como `P_k = P_{k−1} + offset_k · w_k`, a diferença de duas truncagens **é** o
+campo do `k`-ésimo carimbo — logo o `offset` e o centro de cada evento recuperam-se **sem
+qualquer acesso ao interior do alvo**. Fixtures `empurrao_esfera_passo02…passo10`.
+
+| evento | `|offset_k|` | direcção do `offset_k` |
+|---|---|---|
+| 3 | `0,041407` | `(0,93609 · 0 · −0,35176)` |
+| 4 | `0,040832` | `(0,92901 · 0 · −0,37005)` |
+| 5 | `0,040572` | `(0,92049 · 0 · −0,39076)` |
+| 6 | `0,040182` | `(0,91024 · 0 · −0,41408)` |
+| 7 | `0,039289` | `(0,89698 · 0 · −0,44208)` |
+| 8 | `0,038024` | `(0,88030 · 0 · −0,47443)` |
+| 9 | `0,036440` | `(0,85947 · 0 · −0,51119)` |
+| 10 | `0,034732` | `(0,83085 · 0 · −0,55650)` |
+
+⭐⭐ **A direcção roda a cada evento** (`21,6°` no total) — que é o esperado numa superfície curva, e
+o contrário do gesto ancorado (§5.4). O que a decomposição **exclui** é onde estávamos a procurar:
+
+- ⛔ **NÃO é o centro.** Trilaterando o centro de cada carimbo a partir do próprio campo (invertendo
+  o alcance para uma distância por vértice), ele fica a `0,001`–`0,036` do ponto analítico do
+  caminho, com resíduo de ajuste `0,013`–`0,022` — ou seja, **consistente com o ponto analítico**.
+  E a hipótese que este documento preferia — *o centro é o acerto do raio na superfície VIVA* —
+  está **REFUTADA com número**: esse acerto explica pior que o ponto analítico em **7 de 8** eventos
+  (`0,048` contra `0,036` no pior).
+- ⏳ **É a NORMAL, e ela ATRASA-SE.** Convertendo cada direcção medida na normal que a explicaria,
+  essa normal fica **atrás** do centro do evento, e o atraso **cresce** ao longo do traço. Duas
+  amostragens candidatas foram medidas e **as duas falham, as duas com erro crescente**: a calota
+  na pose de **repouso** erra `1,8° → 10,4°` (média `6,8°`), a calota na pose **viva** erra
+  `0,4° → 15,1°` (média `5,8°`). *Nenhuma das duas é a lei.*
+
+⇒ **o que fica aberto é estreito e tem os dados na mão:** qual pose/instante alimenta a normal da
+área do gesto que viaja. ⛔ **Não é o centro** (medido), ⛔ não é a calota no repouso nem a calota
+na pose viva (medidas). Quem pegar nisto começa das oito linhas da tabela acima, não do zero.
+
+⚠️ **E o gesto ancorado é imune a tudo isto por construção** — ele amostra a normal uma vez e nunca
+mais pergunta à superfície (§5.4). É por isso que ele fecha a `2e-07` na mesma esfera em que este
+fica a `~10 %`: *não são dois níveis de qualidade da mesma lei, são duas leis com números de
+perguntas diferentes.*
 
 ⚠️ **Enquanto isso não fechar, a barra de paridade do empurrão vale sobre as fixtures PLANAS**
 (onde ele está confirmado ao bit) e as curvas ficam como *regressão*, não como paridade.
@@ -554,9 +646,12 @@ alguém escreva que os mediu.
    hover — o harness tentou mover o cursor do sistema e a ferramenta de que precisa não está
    instalada nesta máquina. ⇒ **fechar com uma corrida de E**: instalar essa ferramenta (ou
    conduzir um hover real) e repetir as cinco. ⚠️ Até lá, a lei do §7.1 está **lida, não medida**.
-2. ⏳ **O empurrão em superfície curva** (§6.3) — fechar gravando o centro por evento.
-3. ⏳ **Os resíduos `~2e-03` de duas direcções do deslize** (§7.3) — mesma causa suspeita, mesmo
-   instrumento.
+2. ⏳ **O empurrão em superfície curva** (§6.3) — **estreitado em 2026-09-13**, já não é «fechar
+   gravando o centro»: o centro está medido e é o analítico; o que falta é **qual pose alimenta a
+   normal da área por evento**, com duas candidatas já refutadas e a tabela dos oito eventos
+   publicada (§6.3-bis). ⛔ O gesto ancorado **não** partilha este buraco.
+3. ⏳ **Os resíduos `~2e-03` de duas direcções do deslize** (§7.3) — a suspeita era a mesma do
+   item 2 e ⚠️ **a parte «o centro» dela caiu**; o instrumento é o mesmo (truncar e subtrair).
 4. ⏳ **As curvas de alcance não exercitadas** (§2.2) — só três das formas foram medidas.
 5. ⏳ **A versão.** O fonte lido é `5.2.0`; o binário-oráculo é `5.2.1 LTS`. Nenhuma diferença de
    comportamento foi observada nesta família, e nenhuma foi **procurada** — o checkout não tem a

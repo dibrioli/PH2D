@@ -93,6 +93,21 @@ fator_raio_da_normal · peso_da_normal · aperto · alvo_da_deformacao`), mais `
 - **`*_alvo_geometria` / `*_alvo_pano`.** O par por gesto que mede o alvo da deformação. ⛔ O lado
   `pano` move **zero** nos cinco.
 
+### ⭐ A série POR EVENTO (`*_passoNN`, acrescentada em 2026-09-13)
+
+`empurrao_esfera_passo02…passo10` (9) e `polegar_esfera_passo03/05/07/09` (4) são **o mesmo traço
+truncado** em `N` eventos, na esfera. Servem a um instrumento que não precisa de ver o interior do
+alvo: como cada carimbo **soma** à pose anterior, **subtrair truncagens vizinhas devolve o campo de
+UM carimbo** — e daí saem a direcção, a magnitude e (por trilateração do alcance) o centro de cada
+evento. Espec §6.3-bis.
+
+⭐ Com a série do gesto ancorado (as quatro `polegar_*_passo*` mais as cinco `polegar_*_k*`) ficam
+**nove** comprimentos do mesmo traço, que é o que prova o invariante da espec §5.4:
+`pico / |Δ|` é constante a `5,7e-06` e a direcção é a mesma às seis casas decimais nos nove.
+
+⚠️ **Elas partilham a malha da esfera já entregue** (`esfera.repouso` / `esfera.malha`, `6 050`
+vértices) — conferido por igualdade exacta do array de repouso, não presumido.
+
 ⚠️ **Os cinco `*_alvo_pano` e os cinco `*_silhueta_sim` são fixtures de valor ZERO, e estão aqui de
 propósito:** elas são a prova medida de que o oráculo scriptado **não exibiu** aqueles dois
 comportamentos — a espec §9.2 e §12.1 dizem o que isso significa e o que falta para os fechar.

@@ -249,3 +249,30 @@ são **`6 050`**. O valor fora **copiado** do README da obra irmã do tecido —
 parâmetros — em vez de lido desta malha. *Um número copiado de um documento vizinho é um palpite
 com cara de medição.* Os cinco números da tabela de proveniência passam a ser os que o gerador
 imprime.
+
+### 2.ª emenda de 2026-09-13 — a série POR EVENTO, e uma pergunta fechada
+
+Pergunta de quem implementa: *o que muda no alvo entre o 8.º e o 10.º evento do gesto ancorado?*
+**Nada muda** — e isso ficou medido sobre **nove** comprimentos do mesmo traço (espec §5.4):
+`pico/|Δ|` constante a `5,7e-06` e direcção idêntica às 6 casas nos nove. As quatro hipóteses
+levantadas (normal re-amostrada · centro a sair da âncora · termo extra acima de um limiar ·
+incrementos acumulados em planos diferentes) estão **refutadas uma a uma, cada uma com o número**.
+⭐ A 4.ª é a mais subtil e merece a nota: o alvo **acumula mesmo incrementos**, mas todos no mesmo
+plano (o da âncora, que não se mexe) ⇒ a soma telescopa e «incrementos» e «total» são a mesma coisa
+**neste** gesto.
+
+⚠️ **Nova corrida do oráculo** (acto de E, fora da árvore, em compositor **virtual aninhado** —
+⛔ não toma o ecrã do dono): 13 truncagens do mesmo traço na esfera, `cfg_passo.json`/`log_passo.txt`.
+
+⭐ **O instrumento que ela destravou não precisa de ver o interior do alvo:** truncar em `N` eventos
+e **subtrair truncagens vizinhas** devolve o campo de **um** carimbo, e daí saem a direcção, a
+magnitude e — por trilateração do alcance — o **centro** de cada evento. É a resposta ao pedido de
+«gravar por evento o deslocamento e a normal»: essas duas grandezas **não são expostas** à API de
+scripting do alvo, e esta rota chega ao mesmo sítio por fora.
+
+⏳ **O que ela moveu no item aberto do gesto que viaja** (espec §6.3-bis): ⛔ **não é o centro** — o
+trilaterado bate com o ponto analítico, e a hipótese preferida deste ledger (*o centro é o acerto do
+raio na superfície viva*) está **REFUTADA**, explicando pior em **7 de 8** eventos. ⏳ É a **normal**,
+que se atrasa com o traço; a calota no repouso erra `1,8°→10,4°` e a calota na pose viva `0,4°→15,1°`
+— **as duas falham, as duas a crescer**. *Uma medição que refuta a hipótese preferida vale mais que
+uma que a confirma: ela devolve a pergunta estreita.*

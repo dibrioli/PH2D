@@ -221,8 +221,69 @@ NÚMEROS entram na espec, como facto observado.
 
 | papel | id | data |
 |---|---|---|
-| R-pré | ⏳ | — |
+| R-pré | subagente R-pré despachado pela janela `9f820704-0d7e-4d96-847e-9cd720cbf178` | 2026-09-13 — ⛔ **REPROVADA, 4 achados** |
 | R-pós | ⏳ | — |
+
+### Auditoria R-pré (2026-09-13) — ⛔ REPROVADA
+
+**Alvo confirmado por shell:** binário `/usr/bin/blender` = **5.2.1 LTS** (build 2026-09-01); fonte
+em `/home/enio/Documentos/Recursos/BlenderSculpt` na tag **v5.2.0** (`fbe62287`), **fora** de toda
+árvore do PH2D. Os dois lados lidos por shell (o `deny` da linha bloqueia `Read`).
+
+#### ⛔ O instrumento estava cego: a vassoura media só a língua do alvo
+
+O sweep de entrega do E fechou **verde** com `163` entradas — e a espec contém **quatro** traduções
+frásicas de **comentários do fonte**. Das `163`, ~`100` são frases de prosa e **todas em inglês**,
+enquanto a espec é escrita em português: *a vassoura não podia, por construção, ver esta classe*.
+(Mesmo achado da obra irmã `blender-pose`/`blender-unblocked` desta janela; lá a vassoura foi de
+`112` para `137`.)
+
+⇒ **Vassoura alargada de `163` para `199`** (36 entradas de prosa em **português**, base64).
+⚠️ **Regra de desenho, deliberada:** só entram formas PT de prosa de **comentário/TODO do fonte**,
+que não tem direito de citação nenhum (§4.2: *«comentários do original — a expressão mais protegida
+do arquivo»*). ⛔ **Não** entram formas PT de prosa do **manual, mensagem de commit ou tracker**:
+essa o §4.1.12 permite citar curto e com fonte, e pô-la na vassoura faria o instrumento acusar um
+acto permitido.
+⭐ **Controlo positivo e negativo corridos:** com a vassoura nova o sweep acusa **exactamente** os 4
+sítios achados à mão (`exit 1`) e **nada mais** — zero falsos positivos sobre a espec, sobre as `78`
+fixtures e sobre a árvore rastreada inteira (`git grep -F` de cada entrada nova: só a própria espec).
+
+#### Os 4 achados (o mecanismo é UM: prosa do FONTE a atravessar a parede)
+
+| # | onde | o que é | por que não pode |
+|---|---|---|---|
+| 1 | §5.2, coluna *«porquê (D)»*, as 2 linhas | as duas justificações são a tradução PT dos **dois comentários** que estão por cima dos dois testes de recusa em `sculpt_boundary.cc` | §4.2 (comentário do original) **+** proveniência falsa: nenhuma das duas frases existe no manual, em commit ou em issue — conferi o corpus público inteiro que o próprio E capturou em `notes/`. O `(D)` do §0 da espec é *manual / mensagem de commit / rastreador* |
+| 2 | §5.2 (l. 173) · §13.6 (l. 711) · §14.4 (l. 768–769, e o §16.1 que lhe aponta) | a espec cita **o que o alvo diz dentro do próprio fonte** — dois `TODO` e um comentário —, e em §14.4 com o selo `(D)` | mesma §4.2 + proveniência falsa. ⚠️ Em §14.4 a frase seguinte (*«a nossa implementação pode fazer melhor: depois da fase D o conjunto alcançado é conhecido»*) **é o conteúdo do `TODO` do alvo** apresentado como ideia nossa — o caso mais caro dos quatro |
+| 3 | §14.4 (l. 765) | *«três arrays do tamanho do número de vértices»* | é o **layout interno** do alvo (a struct de trabalho tem exactamente três arrays paralelos, e eu confirmei-o no header e nos `BLI_assert`) — §4.2 «organização/structs». O facto funcional é a **classe de custo**, não a contagem |
+| 4 (menor) | §7.4 | *«desenha como uma linha branca … para o artista ver até onde a deformação chega (D, manual)»* | é a tradução de **uma frase inteira** do manual. O conteúdo é legítimo e **observável**; o que não pode é a forma. §4.1.12 pedia aspas + fonte, ou re-dizer |
+
+#### O que foi CONFERIDO e está LIMPO (não refazer)
+
+- ⭐ **Nomes conservados:** `boundary_deform_type` · `boundary_falloff_type` · `boundary_offset` ·
+  `deform_target` e os valores de enum são todos identificadores **RNA públicos** (Python API),
+  verificados um a um em `rna_brush.cc`. A declaração do §0 da espec está **correcta** (§4.1.13).
+- ⭐ **Zero nome interno** na espec (sweep das 163 entradas de identificador: limpo).
+- ⭐ **Matemática:** as seis leis do §10, a queda do §8.1, o par `LOOP`/`LOOP_INVERT` do §8.3 (o sinal
+  bate com a aritmética do alvo **e** com a tabela medida) e o encaixe de ângulo do §9.3 são
+  matemática, e a espec traz a medição ao lado (§4.1.2 / §4.1.11). ⛔ **Não** espelham corpo de
+  função: sem intermediários nomeados, sem a sequência de recolha/filtro/dispersão do alvo.
+- ⭐ **Decomposição em fases:** a ordem A→H é **forçada por dependência de dados** (âncora → cadeia →
+  propagação → peso → lei → aplicar), logo não é a «organização arbitrária» do §4.2; e a espec
+  reparte diferente do alvo (funde a inicialização por-modo no §10 e separa avanço/lei/aplicar).
+- ⭐ **Prosa pública bem tratada:** o eixo Y/Z do manual (§10.1, §10.5), os triângulos «imprevisíveis»
+  (§13.2), a geometria escondida (§4.2 da espec), os vizinhos por **aresta** de borda (§4.4), a
+  auto-máscara (§8.2), o laço removido (§6.3), a primeira passagem que as seguintes desfazem (§11.2)
+  e a região de simetria (§12.2) — **todas** conferidas contra o corpus público capturado: existem no
+  manual / em commit / em issue, e estão **re-ditas** ou citadas curto com atribuição. Legítimas.
+- ⭐ **Fixtures:** os `78` ficheiros e as chaves de cabeçalho estão em vocabulário **do domínio** e em
+  português (`superficie`, `modo`, `queda_no_contorno`, `arrasto`, `movidos`…) — ⛔ nenhuma chave,
+  nenhum nome de ficheiro do alvo (§4.2 cobre os dois). Limpo.
+
+#### Nota de higiene (não bloqueia)
+
+Várias entradas `(D)` citam só uma **data** (§4.2 da espec «2020-09-06», §4.4 «2025-11-19», §10.1
+«2024-08-01») onde o §4.1.12 pede o **endereço**. As que citam número de defeito estão bem. Ao
+reescrever, pôr o endereço ao lado de cada `(D)` restante.
 
 ## Espec
 

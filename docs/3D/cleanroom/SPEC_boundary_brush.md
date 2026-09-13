@@ -5,8 +5,11 @@ Alvo: Blender 5.2.1 LTS (binário /usr/bin/blender) · fonte lido: tag v5.2.0 ·
 Ledger: aberto em docs/3D/cleanroom/LEDGER_blender-boundary.md, 2026-09-13
 Patente (§8.1): buscado em 2026-09-13 — termos e resultado no ledger; nenhuma patente viva alcança o método
   (uma cerca NOMEADA fica: ⛔ nunca acrescentar «reposição de volume por inflação» ao modo de suavizar — §10.6)
-Filtragem §4.3: executada em 2026-09-13 · Sweep: verde em 2026-09-13 (vassoura de 163 entradas)
-Auditoria §4.2 (R-pré): ⏳ pendente — condição de abrir a janela que implementa
+Filtragem §4.3: executada em 2026-09-13 · Sweep: ⛔ VERMELHO em 2026-09-13 (vassoura alargada a 199
+  entradas; o «verde» de 163 media só a língua do alvo — ver ledger, auditoria R-pré)
+Auditoria §4.2 (R-pré): ⛔ REPROVADA em 2026-09-13 — 4 achados (§5.2 · §13.6 · §14.4).
+  ⛔ NÃO ATESTADA ⇒ a janela NÃO implementa a partir desta versão. Reescrita + re-sweep + novo
+  R-pré são a condição. Os achados estão no LEDGER_blender-boundary.md §«Auditoria R-pré».
 Mapa de leitura da literatura: nenhum paper. As fontes livres usadas são (a) o manual público do alvo,
   (b) as mensagens de commit públicas e (c) o rastreador de defeitos público — todas re-ditas em palavras
   nossas, com o endereço ao lado; e (d) a SAÍDA do binário sobre malhas NOSSAS (§19).

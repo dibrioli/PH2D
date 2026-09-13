@@ -19,10 +19,12 @@
 //! Arch-gate sobre o fonte porque o `[frame]` só existe com janela — nenhum
 //! teste de unidade alcança aquele `eprintln`.
 
-const SRC: &str = include_str!("../../src/render_loop/mod.rs");
+/// O `eprintln` do `[frame]` — desde a OBRA 2 da `line/render-loop` (2026-09-12), a fase do RELATÓRIO
+/// do perfilador.
+const SRC: &str = include_str!("../../src/render_loop/fase_frame_profile_report.rs");
 /// ⚠️ **A SOMA e o DIVISOR moram noutro ficheiro que a LINHA** desde a OBRA 2 da `line/render-loop`
 /// (2026-09-12): o acumulador corre ao lado do batimento da ferramenta, que é a fase
-/// `fase_fixed_step_clocks`; o `eprintln` do `[frame]` continua no fim do quadro, no `mod.rs`. Cada gate
+/// `fase_fixed_step_clocks`; o `eprintln` do `[frame]` está no relatório do perfilador. Cada gate
 /// lê o ficheiro do SEU sujeito — a propriedade do de baixo é *a soma e o divisor no MESMO bloco*, e
 /// esse bloco está inteiro na fase.
 const ACCUMULATE: &str = include_str!("../../src/render_loop/fase_fixed_step_clocks.rs");

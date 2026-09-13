@@ -25,7 +25,9 @@
 //! Arch-gate sobre o fonte porque o `[frame]` só existe com janela — nenhum
 //! teste de unidade alcança aquele `eprintln`.
 
-const SRC: &str = include_str!("../../src/render_loop/mod.rs");
+/// O `eprintln` do `[frame]` — desde a OBRA 2 da `line/render-loop` (2026-09-12), a fase do RELATÓRIO
+/// do perfilador.
+const SRC: &str = include_str!("../../src/render_loop/fase_frame_profile_report.rs");
 const BRIDGE: &str = include_str!("../../../../crates/ph2d-app-painter/src/painter_bridge.rs");
 
 /// O divisor é IMPRESSO ao lado do tempo que ele divide.

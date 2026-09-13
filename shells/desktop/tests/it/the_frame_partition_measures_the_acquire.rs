@@ -17,7 +17,9 @@
 //! Arch-gate sobre o fonte porque o `[frame]` só existe com janela — nenhum
 //! teste de unidade alcança aquele `eprintln`.
 
-const SRC: &str = include_str!("../../src/render_loop/mod.rs");
+/// ⚠️ **O `[frame]` mora na fase do RELATÓRIO do perfilador** desde a OBRA 2 da `line/render-loop`
+/// (2026-09-12) — o `eprintln` e o `outside_ms` que ele imprime estão os dois lá, e é esse o sujeito.
+const SRC: &str = include_str!("../../src/render_loop/fase_frame_profile_report.rs");
 const PRESENT: &str = include_str!("../../src/render_loop/present.rs");
 
 /// A espera é cronometrada NO SÍTIO do `acquire_frame`.

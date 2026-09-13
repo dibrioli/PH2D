@@ -19,11 +19,6 @@
 
 use std::path::Path;
 
-fn src(rel: &str) -> String {
-    let p = Path::new(env!("CARGO_MANIFEST_DIR")).join("src").join(rel);
-    std::fs::read_to_string(&p).unwrap_or_else(|e| panic!("{}: {e}", p.display()))
-}
-
 /// Tira comentários de linha — a lição da caça de 2026-08-30.
 fn strip_comments(s: &str) -> String {
     s.lines()
@@ -133,9 +128,13 @@ fn the_assignment_detector_tells_an_assignment_from_a_comparison() {
 }
 
 /// ⭐⭐ **E o shell dreno passa pela porta do `swap`.**
+///
+/// ⚠️ Desde a OBRA 2 da `line/render-loop` (2026-09-13) a aplicação da troca mora na fase
+/// `fase_recipe_and_asset_verbs`: o censo lê o QUADRO inteiro pela ordem em que corre
+/// (`frame_text::render_frame`), e não um ficheiro dele.
 #[test]
 fn the_shell_drains_the_swap_through_its_door() {
-    let body = strip_comments(&src("render_loop/mod.rs"));
+    let body = strip_comments(&crate::frame_text::render_frame());
     assert!(
         body.contains("instance_variant::swap("),
         "o dreno da troca não chama a porta — sem ela não há re-key, nem sepultamento de órfãos"

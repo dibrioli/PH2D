@@ -56,9 +56,14 @@ fn code_of(body: &str) -> String {
 /// ⭐⭐⭐ **A acção tem BRAÇO** — sem ele o botão do cartão publica no barramento e o `_ => {}` come-o.
 ///
 /// **Mutação que deve sangrar:** apagar o braço `EditorAction::InspectorApplyToLevel` do dreno.
+///
+/// ⚠️ **O braço e a porta moram em casas diferentes desde a OBRA 2 da `line/render-loop`** (2026-09-13): o
+/// braço continua no dreno do `render_loop/mod.rs`, e a chamada à porta mudou-se para a fase
+/// `fase_recipe_and_asset_verbs`. O censo lê o QUADRO inteiro pela ordem em que corre
+/// (`frame_text::render_frame`) — lido só no `mod.rs`, a 2.ª asserção reprovaria sobre produto correcto.
 #[test]
 fn the_apply_level_action_reaches_the_verb() {
-    let body = code_of(&src("render_loop/mod.rs"));
+    let body = code_of(&crate::frame_text::render_frame());
     assert!(
         body.contains("EditorAction::InspectorApplyToLevel"),
         "a accao nao tem braco no dreno — o `_ => {{}}` do fim do match come-a em silencio"

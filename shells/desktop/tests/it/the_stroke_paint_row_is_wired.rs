@@ -73,7 +73,9 @@ fn the_stroke_paint_row_is_wired_at_all_four_sites() {
     let render = frame_code();
     for (agulha, o_que) in [
         (
-            "let mut pending_vec_stroke_kind: Option<ph2d_panel_vector::StrokePaintKind>",
+            // ⚠️ Desde a `line/render-bodies` o acumulador é um campo do `DrainOut` (o tipo mora lá, e o compilador
+            // guarda-o): o que o quadro mostra dele é a ESCRITA — que é o que morre se o clique deixar de o encher.
+            "pd.pending_vec_stroke_kind = Some(k);",
             "o acumulador do clique",
         ),
         (

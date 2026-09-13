@@ -78,7 +78,9 @@ fn the_stroke_checkbox_is_wired_at_all_four_sites() {
     let render = frame_code();
     for (agulha, o_que) in [
         (
-            "let mut pending_stroke_present = false;",
+            // ⚠️ Desde a `line/render-bodies` o acumulador é um campo do `DrainOut`: a declaração saiu do corpo do
+            // dreno, e o que o quadro mostra dele é a ESCRITA — que é o que morre se o clique deixar de o encher.
+            "pd.pending_stroke_present = true;",
             "o acumulador do clique",
         ),
         (

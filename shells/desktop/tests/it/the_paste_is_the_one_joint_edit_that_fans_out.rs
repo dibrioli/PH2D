@@ -92,7 +92,7 @@ fn the_paste_arm_fans_out_over_the_selection() {
          rótulo `Paste to N Joints` estaria mentindo sobre o que o clique faz"
     );
     assert!(
-        tail.contains("for &t in &inspector_selection"),
+        tail.contains("for &t in &pd.inspector_selection"),
         "o braço do Paste não ITERA a seleção — ler a lista e usar só o primeiro \
          seria o mesmo defeito com um nome melhor"
     );

@@ -83,7 +83,7 @@ fn the_shape_art_picker_is_wired_from_the_button_to_the_link() {
     // `(tinta, controlo)`, então já não há uma constante com este nome. *Um gate que fixa o nome de
     // uma constante reprova a família que a substitui sem mudar a lei que ele defende.*
     assert!(
-        render.contains("K::PickShape => pending_texpat_pick"),
+        render.contains("K::PickShape => pd.pending_texpat_pick"),
         "o botao Use Shape nao e' reconhecido no despacho"
     );
     // ⚠️ **A agulha é o PREFIXO, e a 1.ª redacção fixava `TexturePatternArt(host)` inteiro** — a

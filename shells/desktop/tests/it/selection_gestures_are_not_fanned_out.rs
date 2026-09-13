@@ -85,7 +85,7 @@ fn join_is_intercepted_before_the_per_entity_fan_out() {
          treated as an ordinary per-entity edit, so a click on \"Join Selected \
          Bodies\" creates one joint PER selected body",
     );
-    let fan_out_at = arm.find("for &t in &inspector_selection").expect(
+    let fan_out_at = arm.find("for &t in &pd.inspector_selection").expect(
         "the physics edit arm no longer fans out over the selection — if that \
          is deliberate this gate should be deleted along with it",
     );
@@ -144,7 +144,7 @@ fn bake_is_intercepted_before_the_per_entity_fan_out() {
          treated as an ordinary per-entity edit, so baking a selection of N \
          bodies runs the whole simulation N times and leaves N undo steps",
     );
-    let fan_out_at = arm.find("for &t in &inspector_selection").expect(
+    let fan_out_at = arm.find("for &t in &pd.inspector_selection").expect(
         "the physics edit arm no longer fans out over the selection — if that \
          is deliberate this gate should be deleted along with it",
     );
@@ -188,7 +188,7 @@ fn rig_is_intercepted_before_the_per_entity_fan_out() {
          como uma edição por-entidade, e o gerador roda uma vez por objeto \
          selecionado",
     );
-    let fan_out_at = arm.find("for &t in &inspector_selection").expect(
+    let fan_out_at = arm.find("for &t in &pd.inspector_selection").expect(
         "o braço da §11 não faz mais fan-out sobre a seleção — se isso é \
          deliberado, este gate sai junto",
     );
@@ -219,8 +219,10 @@ fn the_rig_reads_the_live_selection_not_the_multi_select_buffer() {
         "o rig não lê a seleção viva — com UM objeto marcado (o gesto normal) \
          ele receberia uma lista vazia e não faria nada"
     );
+    // ⚠️ O NOME, e não `&inspector_selection`: desde a `line/render-bodies` o buffer é um campo do `DrainOut`, e a
+    // leitura `&pd.inspector_selection` passaria por baixo da agulha antiga.
     assert!(
-        !block.contains("&inspector_selection"),
+        !block.contains("inspector_selection"),
         "o rig voltou a ler o buffer de multi-seleção, que é vazio no caso de \
          um objeto só"
     );

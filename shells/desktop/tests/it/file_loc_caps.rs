@@ -38,11 +38,6 @@ const FILE_OVERAGE_OK: &[(&str, usize, &str)] = &[
         "crate-root module hub — the 80+ `mod` declarations are an",
     ),
     (
-        "render_loop/fase_bus_drain.rs",
-        2654,
-        "fase do quadro (OBRA 2): o dreno do barramento, verbatim, e o struct dos pedidos que ele devolve; um braço do `match` não é um statement",
-    ),
-    (
         "render_loop/mod.rs",
         1604,
         "frame orchestrator — heavy phases already extracted to",

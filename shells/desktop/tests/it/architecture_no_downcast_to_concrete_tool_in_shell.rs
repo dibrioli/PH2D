@@ -85,8 +85,10 @@ const DOWNCAST_ALLOWLIST: &[&str] = &[
     // obsolescência obriga-a a sair: o `mod.rs` deixou de ter downcast nenhum. As notas das entradas `fase_*` que
     // dizem «a MESMA excepção de classe da entrada do `mod.rs`» descrevem a classe, e esta nota diz onde ela foi.
     // ⚠️ **O `fase_bus_drain.rs` HERDOU o último**: o `set_shape_draft_hold` do Painter no braço `ToolPanelEvent`
-    // do dreno do barramento (o gesto de knob publicado ANTES do edit que re-carimba a figura).
-    "src/render_loop/fase_bus_drain.rs",
+    // do dreno do barramento (o gesto de knob publicado ANTES do edit que re-carimba a figura). ⚠️ E desde a
+    // `line/render-bodies` (2026-09-13) esse braço é o sub-dreno `fase_bus_tool_panel`, no ficheiro dele: a licença
+    // seguiu o SUJEITO, e o censo de obsolescência abaixo tirou-a do `fase_bus_drain.rs`.
+    "src/render_loop/fase_bus_tool_panel.rs",
     // ⚠️ **O `fase_sculpt3d_bake.rs` HERDOU um downcast do `render_loop/mod.rs`** (OBRA 2 da
     // `line/render-loop`, 2026-09-12): o alpha por imagem pergunta ao `PainterTool` o que a tela
     // MOSTRA (`needs_document_bind` + `composite_to_lum`, a porta do «Use as Brush Grain»), sem o

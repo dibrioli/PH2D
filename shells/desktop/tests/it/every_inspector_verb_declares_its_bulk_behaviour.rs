@@ -91,7 +91,7 @@ fn every_inspector_verb_either_fans_out_or_says_why_not() {
     let body = drain_body();
     // Controlo positivo: sem isto a varredura poderia medir um ficheiro vazio e passar.
     assert!(
-        body.contains("for &t in &inspector_selection"),
+        body.contains("for &t in &pd.inspector_selection"),
         "o dreno nao contem fan-out nenhum — a varredura partiu-se e este gate mede o vazio"
     );
 
@@ -109,7 +109,7 @@ fn every_inspector_verb_either_fans_out_or_says_why_not() {
             silent.push(format!("{action} (braco NAO ENCONTRADO no dreno)"));
             continue;
         };
-        if !arm.contains("for &t in &inspector_selection") {
+        if !arm.contains("for &t in &pd.inspector_selection") {
             silent.push(format!("{action} (nao espalha e nao esta' declarado)"));
         }
     }
@@ -117,7 +117,7 @@ fn every_inspector_verb_either_fans_out_or_says_why_not() {
         silent.is_empty(),
         "estes verbos do Inspector editam so' a entidade PRIMARIA numa selecao multipla, sem \
          nenhuma diferenca visual face aos vizinhos que espalham:\n  {}\n\n\
-         Ou espalhe (`for &t in &inspector_selection`), ou acrescente uma entrada a \
+         Ou espalhe (`for &t in &pd.inspector_selection`), ou acrescente uma entrada a \
          `DOES_NOT_FAN_OUT` neste ficheiro com a RAZAO.\n\
          ⚠️ A spec §3.14 diz «edit em qualquer campo aplica imediatamente a TODOS selecionados» — \
          a excecao e' que precisa de justificacao, nao a regra.",
@@ -136,7 +136,7 @@ fn every_declared_exception_is_still_an_exception() {
     let mut stale: Vec<&str> = Vec::new();
     for (action, _reason) in DOES_NOT_FAN_OUT {
         if let Some(arm) = arm_body(&body, action)
-            && arm.contains("for &t in &inspector_selection")
+            && arm.contains("for &t in &pd.inspector_selection")
         {
             stale.push(action);
         }

@@ -6,7 +6,8 @@
 //! mecanicamente e pela MESMA ordem do arranque. Cada bloco saiu inteiro para uma função que
 //! devolve o que o arranque lê dele. Mudaram duas linhas, e por força do corte: o `mut` de um mapa
 //! que o bloco de assets deixou de mutar, e os dois empréstimos que o smoke do KTX2 recebe e que
-//! passaram a chegar já emprestados.
+//! passaram a chegar já emprestados. E duas funções devolvem o `match` em vez de o guardar num
+//! `let` que era a última linha (`boot_script_host` · `boot_vec_scene` — clippy `let_and_return`).
 //!
 //! ⚠️ **O bloco dos REGISTOS e do HERO ficou no `init.rs`** (`boot_hero_screen`): o gate
 //! `the_registry_is_installed_before_the_hero` lê a ORDEM das duas chamadas naquele ficheiro.
@@ -182,7 +183,7 @@ pub(super) fn boot_sim_world(
 pub(super) fn boot_script_host(handler: &LoggingHandler) -> Option<ph2d_script::ScriptHost> {
     // M7: ScriptHost. Failure here is also non-fatal (script is
     // a placeholder; full sim-driving lands in M12+ editor panel).
-    let script = match integration::init_script_host() {
+    match integration::init_script_host() {
         Ok(host) => {
             println!(
                 "[{:>6}ms] M7: ScriptHost initialized (placeholder script loaded)",
@@ -197,8 +198,7 @@ pub(super) fn boot_script_host(handler: &LoggingHandler) -> Option<ph2d_script::
             );
             None
         }
-    };
-    script
+    }
 }
 
 /// **A camada de dados do editor e o passe Vello** (M12 + M11) — tema, zen, fila de jobs, toasts,
@@ -343,7 +343,7 @@ pub(super) fn boot_vec_scene() -> ph2d_vec_scene::VecScene {
     // terminal — diagnóstico infalível de qual caminho rodou.
     let pen_on =
         std::env::var("PH2D_VEC_PEN").is_ok_and(|v| v == "1" || v.eq_ignore_ascii_case("true"));
-    let vec_scene = match std::env::var("PH2D_VEC_DEMO_N")
+    match std::env::var("PH2D_VEC_DEMO_N")
         .ok()
         .and_then(|s| s.parse::<usize>().ok())
     {
@@ -362,6 +362,5 @@ pub(super) fn boot_vec_scene() -> ph2d_vec_scene::VecScene {
         // Default (sem flag): cena VAZIA — a feature é 100% flag-gated, o app
         // normal não mostra nada da pipeline vetorial nova.
         _ => ph2d_vec_scene::VecScene::new(),
-    };
-    vec_scene
+    }
 }

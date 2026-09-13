@@ -55,12 +55,6 @@ const FN_OVERAGE_OK: &[(&str, &str, usize, &str)] = &[
         NASCEU,
     ),
     ("init.rs", "build_initial_state", 499, NASCEU),
-    (
-        "input_dispatch/gizmo_drag.rs",
-        "advance_gizmo_drag",
-        346,
-        NASCEU,
-    ),
     ("layout_live.rs", "lay_out", 206, NASCEU),
     ("main.rs", "new", 263, NASCEU),
     ("project_load.rs", "project_load_from", 484, NASCEU),

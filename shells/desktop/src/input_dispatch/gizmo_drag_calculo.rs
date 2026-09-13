@@ -149,4 +149,160 @@ impl crate::App {
             });
         }
     }
+
+    /// A câmera da cena, os modificadores vivos, o snap (vetorial com guias, de grelha, ou nenhum) e o `new_t` do
+    /// gizmo — com a rotação zerada para um arrasto GLOBAL e reposta a seguir.
+    pub(super) fn ramo_gizmo_calcular(
+        &mut self,
+        drag: ph2d_editor_core::GizmoDragState,
+        is_scale_drag: bool,
+        vec_scale_snap: bool,
+        vec_cfg: ph2d_vec_edit::snap::SnapConfig,
+    ) {
+        if let Some(gfx) = self.gfx.as_mut()
+            && let Some(hero) = gfx.hero_screen.as_mut()
+        {
+            let window_size = ph2d_app_motion::field_gizmo::scene_camera_window(
+                hero.view.center_split,
+                gfx.surface.size(),
+            );
+            let cam = ph2d_editor_core::GizmoCamera {
+                center: gfx.camera.center,
+                height_world: gfx.camera.height_world,
+                window_w: window_size.width as f32,
+                window_h: window_size.height as f32,
+            };
+            // M14.7 D: sample winit's tracked modifier state (updated
+            // on ModifiersChanged). Shift / Ctrl / Alt feed AR lock +
+            // snap + mirror-anchor. On macOS we treat Cmd as Ctrl
+            // (industry convention for snap-to-grid).
+            let mods = ph2d_editor_core::GizmoModifiers {
+                shift: self.modifiers.shift_key(),
+                ctrl: self.modifiers.control_key() || self.modifiers.super_key(),
+                alt: self.modifiers.alt_key(),
+            };
+            let snap = ph2d_editor_core::GizmoSnap {
+                move_meters: hero.project.snap_move_meters,
+                rotate_deg: hero.project.snap_rotate_deg,
+            };
+            // Grid-snap apply (gizmo sites). The grid_snap subsystem's
+            // `snap_world` is the canonical place to align world
+            // positions to the active grid; it's a no-op when
+            // `state.snap_enabled` is false or the active kind has no
+            // snap target (Quadtree / Voronoi).
+            let entity = ph2d_ecs::Entity::from_bits(drag.entity_bits);
+            let sprite_half_rendered = gfx
+                .sim
+                .world()
+                .get::<ph2d_render::Sprite>(entity)
+                .map(|s| {
+                    [
+                        s.size[0] * drag.start_transform.scale[0] * 0.5,
+                        s.size[1] * drag.start_transform.scale[1] * 0.5,
+                    ]
+                })
+                .unwrap_or([0.0, 0.0]);
+            let is_scale = is_scale_drag;
+            // Onda 2 hotfix: for a Global gizmo drag, the axis math
+            // inside `compute_gizmo_transform` projects the cursor
+            // delta into the PRIMARY's LOCAL rotated frame —
+            // correct for a single-sprite gizmo (whose handles
+            // ARE in that rotated frame) but wrong for the global
+            // gizmo, which is axis-aligned in world space. If the
+            // primary happens to be rotated 90°, dragging the
+            // global's right edge would scale the primary's local
+            // Y axis (which IS world X) — the symptom Enio saw
+            // as "scale em x muda em y e vice versa". Solution:
+            // run `compute_gizmo_transform` against a drag whose
+            // start_transform.rotation is zeroed so the axis
+            // projection happens in WORLD coords, then restore
+            // the primary's actual start rotation when applying
+            // the new transform.
+            let is_global_drag = matches!(drag.target, ph2d_editor_core::GizmoTarget::Global);
+            let drag_for_math = if is_global_drag {
+                let mut d = drag;
+                d.start_transform.rotation = 0.0;
+                d
+            } else {
+                drag
+            };
+            let new_t = if is_scale && vec_scale_snap {
+                // Encaixa o CANTO arrastado (cursor) nas outras formas + grade e
+                // publica as guias — mesmo motor do translate, mas quem aplica é o
+                // gizmo (o cursor encaixado dirige a razão de escala, pivô fixo). O
+                // bloco interno solta os borrows do closure antes de gravar as guias.
+                let targets = &self.vec.snap_targets;
+                let mut guides: Vec<ph2d_vec_render::Guide> = Vec::new();
+                let snap_state = &mut hero.grid.snap_state;
+                let t = {
+                    let mut snap_closure = |w: [f32; 2]| -> [f32; 2] {
+                        let p = [f64::from(w[0]), f64::from(w[1])];
+                        let mut grid = |q: [f64; 2]| crate::vec_snap::ask_grid(snap_state, q);
+                        let r = ph2d_vec_edit::snap::snap(&[p], targets, vec_cfg, Some(&mut grid));
+                        guides = crate::vec_snap::guides_of(&r);
+                        let s = r.apply(p);
+                        [s[0] as f32, s[1] as f32]
+                    };
+                    ph2d_editor_core::compute_gizmo_transform(
+                        &drag_for_math,
+                        &cam,
+                        mods,
+                        snap,
+                        Some(&mut snap_closure),
+                    )
+                };
+                self.vec.snap_guides = guides;
+                t
+            } else if is_scale {
+                let snap_state = &mut hero.grid.snap_state;
+                let mut snap_closure =
+                    |w: [f32; 2]| -> [f32; 2] { snap_state.snap_world(w, sprite_half_rendered) };
+                ph2d_editor_core::compute_gizmo_transform(
+                    &drag_for_math,
+                    &cam,
+                    mods,
+                    snap,
+                    Some(&mut snap_closure),
+                )
+            } else {
+                ph2d_editor_core::compute_gizmo_transform(&drag_for_math, &cam, mods, snap, None)
+            };
+            // Restore the primary's actual rotation: in Global
+            // drags `compute_gizmo_transform` returned a rotation
+            // computed against the zeroed start, so we shift it
+            // back by the primary's original start rotation. For
+            // non-Global drags this is a no-op.
+            let new_t = if is_global_drag {
+                ph2d_editor_core::TransformSnapshot {
+                    rotation: drag.start_transform.rotation
+                        + (new_t.rotation - drag_for_math.start_transform.rotation),
+                    ..new_t
+                }
+            } else {
+                new_t
+            };
+            let new_t = if is_scale {
+                new_t
+            } else {
+                let mut new_t = new_t;
+                let sprite_half_new = gfx
+                    .sim
+                    .world()
+                    .get::<ph2d_render::Sprite>(entity)
+                    .map(|s| {
+                        [
+                            s.size[0] * new_t.scale[0] * 0.5,
+                            s.size[1] * new_t.scale[1] * 0.5,
+                        ]
+                    })
+                    .unwrap_or([0.0, 0.0]);
+                new_t.translation = hero
+                    .grid
+                    .snap_state
+                    .snap_world(new_t.translation, sprite_half_new);
+                new_t
+            };
+            self.ramo_gizmo_factores(drag, entity, new_t, is_scale);
+        }
+    }
 }

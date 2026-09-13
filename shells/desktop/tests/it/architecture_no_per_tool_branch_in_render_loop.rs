@@ -1,5 +1,5 @@
-//! Wave 10 / Etapa 3 arch-gate: `shells/desktop/src/render_loop/mod.rs`
-//! must NOT grow per-tool branches as new raster tools are added.
+//! Wave 10 / Etapa 3 arch-gate: the FRAME (`shells/desktop/src/render_loop/mod.rs` and the `fase_*`
+//! files it is split into) must NOT grow per-tool branches as new raster tools are added.
 //!
 //! ## What this gate enforces
 //!
@@ -12,11 +12,16 @@
 //!
 //! ## How it works
 //!
-//! Scan `shells/desktop/src/render_loop/mod.rs` for:
+//! Scan the frame — `render_loop/mod.rs` AND every `render_loop/fase_*.rs` — for:
 //!   - String literal `"bgremoval"`, `"color_equalization"`,
 //!     `"upscale"`, `"padding"`, `"equalize_sizes"`, etc — UNLESS
 //!     the line is in the allowlisted file-region comment.
 //!   - Match-on-tool-id arms (`match tool_id { ... "X" ... }`).
+//!
+//! ⚠️ **Why the phase files too** (OBRA 2 da `line/render-loop`, 2026-09-12): the frame is being split
+//! into `fase_*` files, called in the same order. A census that reads only `mod.rs` would read ZERO once
+//! the bus drain moves out — and a new per-tool branch written in a phase would pass, green, with the
+//! gate still "running". *A census that presumes where the code lives stops counting when it moves.*
 //!
 //! ## Allowlist
 //!
@@ -30,7 +35,7 @@
 //! As more bridges go through the `RasterEditTool` channel +
 //! `OneShotImageOp` routes via Registry `kind` lookup, this gate
 //! catches regressions where someone re-adds a tool-id branch in
-//! render_loop/mod.rs.
+//! the frame.
 
 use std::fs;
 use std::path::PathBuf;
@@ -49,17 +54,45 @@ const KNOWN_TOOL_IDS: &[&str] = &[
 
 const ALLOWLIST_MARKER: &str = "ARCH-ALLOW: per-tool-branch";
 
+/// The frame's files: `render_loop/mod.rs` and every `render_loop/fase_*.rs`, sorted.
+fn frame_files() -> Vec<PathBuf> {
+    let dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("src")
+        .join("render_loop");
+    let mut out: Vec<PathBuf> = fs::read_dir(&dir)
+        .expect("render_loop/ readable")
+        .flatten()
+        .map(|e| e.path())
+        .filter(|p| {
+            p.file_name()
+                .and_then(|n| n.to_str())
+                .is_some_and(|n| n == "mod.rs" || (n.starts_with("fase_") && n.ends_with(".rs")))
+        })
+        .collect();
+    out.sort();
+    out
+}
+
 #[test]
 fn render_loop_mod_has_no_per_tool_id_branch() {
-    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("src")
-        .join("render_loop")
-        .join("mod.rs");
-    let content = fs::read_to_string(&path).expect("render_loop/mod.rs readable");
+    let files = frame_files();
+    // ⚠️ Population floor: a broken scan reads zero files and zero mentions, which reads as approved.
+    // Measured 2026-09-12: `mod.rs` + 44 phases.
+    assert!(
+        files.iter().any(|p| p.ends_with("render_loop/mod.rs")),
+        "the scan does not see render_loop/mod.rs — the census broke"
+    );
+    assert!(
+        files.len() >= 30,
+        "the scan sees only {} frame files — the census broke, and zero mentions would read as \
+         approved",
+        files.len()
+    );
 
-    // Wave 10 / Etapa 3 baseline (audit fix [C2]): snapped to the EXACT
-    // current count (16). The gate WILL FAIL if a new per-tool branch
-    // is added, forcing the author to either:
+    // Wave 10 / Etapa 3 baseline (audit fix [C2]) was 16. Snapped DOWN to the exact count measured over
+    // the whole frame on 2026-09-12 (6, all in the bus drain: five `OneShotImageOp` routes and the
+    // Bg-Removal preview reset on activation), when the census was widened to the phase files. The
+    // gate WILL FAIL if a new per-tool branch is added, forcing the author to either:
     //   1. Generalize via Registry kind lookup / RasterEditTool channel
     //      (preferred — that's why Wave 10 exists), OR
     //   2. Mark the line with `// ARCH-ALLOW: per-tool-branch (<reason>)`
@@ -68,40 +101,45 @@ fn render_loop_mod_has_no_per_tool_id_branch() {
     // Bumping the cap UP requires explicit Coord-A decision + ADR.
     // Bumping DOWN is ENCOURAGED — every Etapa that retires a branch
     // should snap the cap to the new lower count.
-    const BASELINE_MENTIONS: usize = 16;
+    const BASELINE_MENTIONS: usize = 6;
 
     let mut total_mentions = 0usize;
-    for (line_no, line) in content.lines().enumerate() {
-        // Allowlisted lines don't count.
-        if line.contains(ALLOWLIST_MARKER) {
-            continue;
-        }
-        // Comments don't count (but doc-comments DO, because they often
-        // copy the same string in examples; for now skip ALL comments to
-        // avoid false-positives).
-        let trimmed = line.trim_start();
-        if trimmed.starts_with("//") {
-            continue;
-        }
-        for tool_id in KNOWN_TOOL_IDS {
-            // Match exact string literal "<tool_id>" or ToolId::new("<tool_id>").
-            let quoted = format!("\"{tool_id}\"");
-            if line.contains(&quoted) {
-                eprintln!(
-                    "[per-tool-branch] mod.rs:{}: \"{}\" → {}",
-                    line_no + 1,
-                    tool_id,
-                    line.trim()
-                );
-                total_mentions += 1;
+    for path in &files {
+        let content = fs::read_to_string(path).expect("frame file readable");
+        let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("?");
+        for (line_no, line) in content.lines().enumerate() {
+            // Allowlisted lines don't count.
+            if line.contains(ALLOWLIST_MARKER) {
+                continue;
+            }
+            // Comments don't count (but doc-comments DO, because they often
+            // copy the same string in examples; for now skip ALL comments to
+            // avoid false-positives).
+            let trimmed = line.trim_start();
+            if trimmed.starts_with("//") {
+                continue;
+            }
+            for tool_id in KNOWN_TOOL_IDS {
+                // Match exact string literal "<tool_id>" or ToolId::new("<tool_id>").
+                let quoted = format!("\"{tool_id}\"");
+                if line.contains(&quoted) {
+                    eprintln!(
+                        "[per-tool-branch] {}:{}: \"{}\" → {}",
+                        name,
+                        line_no + 1,
+                        tool_id,
+                        line.trim()
+                    );
+                    total_mentions += 1;
+                }
             }
         }
     }
 
     assert!(
         total_mentions <= BASELINE_MENTIONS,
-        "render_loop/mod.rs has {total_mentions} per-tool-id string-literal mentions \
-         (baseline cap: {BASELINE_MENTIONS}).\n\
+        "the frame (render_loop/mod.rs + fase_*.rs) has {total_mentions} per-tool-id string-literal \
+         mentions (baseline cap: {BASELINE_MENTIONS}).\n\
          \n\
          Adding new ones is the anti-pattern Wave 10 retires (ADR-0040 §2.1):\n\
          the shell should dispatch via Registry `kind` + RasterEditTool channel,\n\

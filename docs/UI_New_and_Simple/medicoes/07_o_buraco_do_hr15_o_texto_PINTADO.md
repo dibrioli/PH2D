@@ -163,11 +163,11 @@ por crate usam-na.
 | população | ponto fixo (§2-bis) | lexical |
 |---|---:|---:|
 | `ph2d-panel-painter-layers` | 166 | **376** |
-| `ph2d-editor-core` | 32 | **593** |
-| `ph2d-panel-inspector` | 116 | **523** |
-| crates de UI inteiras (painéis, `app-*`, `editor-core`, shell) | 445 | **5 533** |
+| `ph2d-editor-core` | 32 | **641** (95 da galeria-bancada) |
+| `ph2d-panel-inspector` | 116 | **582** |
+| crates de UI inteiras (painéis, `app-*`, `editor-core`, shell) | 445 | **5 035** (depois desta jornada) |
 
-⚠️ **O `5 533` é um TECTO, e a amostra diz de quê.** Nos **painéis** a leitura de 25 amostras deu
+⚠️ **O `5 035` é um TECTO, e a amostra diz de quê.** Nos **painéis** a leitura de 25 amostras deu
 praticamente só língua de interface. Na **shell** e nas **`ph2d-app-*`** o número mistura três
 coisas: avisos reais de interface (*«Select at least 2 objects to group»*), **nomes de objectos
 criados por cenas de smoke** (*«Plank»*, *«Hook»* — conteúdo, não interface) e **narração de smoke
@@ -175,8 +175,8 @@ em português**. ⇒ o número firme é o dos painéis; o das `app-*` e da shell
 virar dívida.
 
 ⛔⛔ **E o §2-ter desta linha foi medido pela régua cega.** *«A crate DESTA linha está curada, língua
-de produto 0»* é verdade só para o que chega a um pintor pelo nome: a `editor-core` tem **593**
-literais com cara de língua (140 no `screens/hero/menu_rows.rs`, 45 no trilho, 41 nas tabelas de
+de produto 0»* é verdade só para o que chega a um pintor pelo nome: a `editor-core` tem **641**
+literais com cara de língua (95 da bancada; **546** fora dela, em 46 ficheiros) (140 no `screens/hero/menu_rows.rs`, 45 no trilho, 41 nas tabelas de
 menu da timeline…). *Declarar um ponto cego não o torna pequeno.*
 
 ### ⛔ E a régua lexical nasceu com um defeito MUDO, apanhado no mesmo dia

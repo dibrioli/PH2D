@@ -17,9 +17,13 @@
 //!
 //! | população | régua anterior (ponto fixo de pintores) | esta régua (lexical) |
 //! |---|---:|---:|
-//! | `ph2d-panel-painter-layers` | 166 | 378 |
-//! | `ph2d-editor-core` | 32 | 593 |
-//! | as crates de UI inteiras (painéis, `app-*`, shell, `editor-core`) | 445 | 5 533 |
+//! | `ph2d-panel-painter-layers` | 166 | 376 (antes da migração) |
+//! | `ph2d-editor-core` | 32 | 641 (95 da galeria-bancada) |
+//! | as crates de UI inteiras (painéis, `app-*`, shell, `editor-core`) | 445 | 5 035 (depois da migração) |
+//!
+//! ⚠️ A 1.ª redacção desta tabela trazia os números do PROTÓTIPO em Python (`593`, `5 533`), que
+//! contava ficheiros de teste que o [`cfg_test`] ainda não reconhecia. *Um número lê-se da régua de
+//! registo, nunca do protótipo que a antecedeu.*
 //!
 //! A régua anterior seguia o texto até um PINTOR (`paint_*`/`draw_*` com parâmetro `&str`). O texto
 //! de um painel entra sobretudo por **construtores de widget** (`Button::new(id, "Apply")`), por

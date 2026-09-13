@@ -206,6 +206,8 @@ mod fase_field3d_smoke_draw;
 mod fase_fixed_step_clocks;
 /// Fase do quadro: a tira e o cursor do Flip.
 mod fase_flip_strip_and_cursor;
+/// Fase do quadro: as fontes.
+mod fase_fonts;
 /// Fase do quadro: o perfilador (conta os quadros e chama o relatório a cada 120).
 mod fase_frame_profile;
 /// Fase do quadro: o relatório do perfilador (a partição do quadro a cada 120 quadros).
@@ -5594,93 +5596,16 @@ impl crate::App {
                     align,
                 );
             }
-            // A família "corrente" para o ciclo `<`/`>` é a do ALVO: o objeto de texto
-            // selecionado (sem sessão) ou o default da shell.
-            let cur_family = if editing_session {
-                self.vec.text.family.clone()
-            } else {
-                crate::vec_text::selected_text_object(sim, &self.vec.entities, &vec_text_sel)
-                    .map_or_else(|| self.vec.text.family.clone(), |(_, _, p)| p.family)
-            };
-            if let Some(dir) = pending_vec_font_cycle {
-                let next = crate::vec_font::cycle_family(cur_family.as_deref(), dir);
-                if !editing_session {
-                    crate::vec_text::set_selected_text_font(
-                        sim,
-                        vec_scene,
-                        &self.vec.entities,
-                        &vec_text_sel,
-                        next.clone(),
-                    );
-                }
-                crate::vec_text::set_text_font(
-                    &mut self.vec.text_edit,
-                    &mut self.vec.text.family,
-                    &mut self.vec.text.extra_axes,
-                    vec_scene,
-                    next,
-                );
-            }
-            if let Some(i) = pending_vec_font_pick {
-                // Índice na MESMA lista que gerou as previews → família escolhida.
-                let family = crate::vec_font::pickable_families()
-                    .get(i)
-                    .cloned()
-                    .flatten();
-                if !editing_session {
-                    crate::vec_text::set_selected_text_font(
-                        sim,
-                        vec_scene,
-                        &self.vec.entities,
-                        &vec_text_sel,
-                        family.clone(),
-                    );
-                }
-                crate::vec_text::set_text_font(
-                    &mut self.vec.text_edit,
-                    &mut self.vec.text.family,
-                    &mut self.vec.text.extra_axes,
-                    vec_scene,
-                    family,
-                );
-            }
-            if let Some((index, value)) = pending_vec_text_axis {
-                crate::vec_text::apply_text_axis(
-                    &mut self.vec.text_edit,
-                    &mut self.vec.text.extra_axes,
-                    vec_scene,
-                    index,
-                    value,
-                );
-            }
-            if pending_vec_font_import {
-                let imported = crate::vec_text::import_text_font(
-                    &mut self.vec.text_edit,
-                    &mut self.vec.text.family,
-                    &mut self.vec.text.extra_axes,
-                    vec_scene,
-                );
-                // Sem sessão, a fonte importada vai para o objeto de texto SELECIONADO.
-                if imported && !editing_session {
-                    let fam = self.vec.text.family.clone();
-                    crate::vec_text::set_selected_text_font(
-                        sim,
-                        vec_scene,
-                        &self.vec.entities,
-                        &vec_text_sel,
-                        fam,
-                    );
-                }
-                // A fonte importada entra no dropdown: reconstrói as previews agora.
-                #[cfg(feature = "panel-vector")]
-                if imported {
-                    ph2d_panel_vector::set_current_text_font_previews(
-                        crate::vec_font_preview::build_previews(),
-                    );
-                }
-                #[cfg(not(feature = "panel-vector"))]
-                let _ = imported;
-            }
+            self.fase_fonts(
+                fase_fonts::FontsIntents {
+                    pending_vec_text_axis,
+                    pending_vec_font_cycle,
+                    pending_vec_font_pick,
+                    pending_vec_font_import,
+                },
+                vec_text_sel,
+                editing_session,
+            );
             self.fase_path_shape_and_paint(fase_path_shape_and_paint::PathShapeAndPaintIntents {
                 pending_vec_path_shape,
                 pending_vec_toggle_closed,

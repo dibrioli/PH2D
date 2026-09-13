@@ -53,12 +53,6 @@ const FN_OVERAGE_OK: &[(&str, &str, usize, &str)] = &[
         "fase do quadro (OBRA 2): o dreno do barramento, verbatim; UM `match` de ~1 700 linhas dentro de um `for`, e um braço não é um statement",
     ),
     (
-        "render_loop/fase_vector_bands.rs",
-        "fase_vector_bands",
-        209,
-        "fase do quadro (OBRA 2): as faixas do documento, verbatim; tres `&BTreeMap` de `self.*_live` lidos pelos lacos das faixas nao atravessam uma chamada `&mut self`",
-    ),
-    (
         "render_loop/mod.rs",
         "run_render_frame",
         984,

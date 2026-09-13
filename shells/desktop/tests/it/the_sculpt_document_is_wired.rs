@@ -26,17 +26,28 @@ use sculpt_source::{function_body, project_family_fn, sculpt_src, source};
 /// nem chegou a aceitar.
 #[test]
 fn the_refusal_precedes_every_mutation_of_the_session() {
-    let body = function_body(&source("project_load.rs"), "project_load_from");
+    // ⚠️ **A ordem mede-se em DUAS metades** (`line/loc-caps`, 2026-09-13): o `project_load_from`
+    // passou a entregar o esquecimento ao irmão `project_forget_previous`, e a ordem é a da CHAMADA
+    // no pai. ⛔ Concatenar os dois corpos para medir a posição seria fraude — tudo o que está no
+    // irmão viria depois de tudo o que está no pai, e a asserção passaria por construção.
+    let body = project_family_fn("project_load_from");
     let parse = body
         .find("decode_doc(")
         .expect("o load precisa DECODIFICAR a escultura antes de aceitar o arquivo");
     let mutate = body
-        .find("forget_live_producers()")
+        .find("self.project_forget_previous(")
         .expect("o load precisa esquecer o documento anterior");
     assert!(
         parse < mutate,
-        "o parse da escultura aparece DEPOIS do `forget_live_producers` — um \
+        "o parse da escultura aparece DEPOIS do esquecimento do documento anterior — um \
          arquivo recusado passaria a derrubar a sessao que continua aberta"
+    );
+    // A 2.ª metade: o irmão que o pai chama é o que MUTA. Sem ela, o `parse < mutate` acima
+    // mediria uma chamada que já não esquece nada.
+    assert!(
+        project_family_fn("project_forget_previous").contains("forget_live_producers()"),
+        "o `project_forget_previous` deixou de chamar o `forget_live_producers` — a ordem acima \
+         deixou de medir a mutacao da sessao"
     );
 }
 

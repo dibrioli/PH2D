@@ -220,15 +220,27 @@ fn loading_forgets_the_baked_objects_of_the_previous_document() {
         "o load precisa esquecer os objetos assados do documento anterior"
     );
     // E a ORDEM: esquecer depois de repovoar apagaria o que o arquivo acabou de trazer.
-    let load = function_body(&source("project_load.rs"), "project_load_from");
+    // ⚠️ **Em TRÊS metades** (`line/loc-caps`, 2026-09-13): o `project_load_from` entrega as duas
+    // fases a irmãos (`project_forget_previous` · `project_install_accepted`), e a ordem é a das
+    // CHAMADAS no pai. ⛔ Concatenar os corpos seria fraude — tudo o que está no segundo irmão
+    // viria depois do primeiro, por construção.
+    let load = project_family_fn("project_load_from");
     let forget = load
-        .find("forget_live_producers()")
+        .find("self.project_forget_previous(")
         .expect("o load precisa esquecer");
     let restore = load
-        .find("restore_baked_forms(")
+        .find("self.project_install_accepted(")
         .expect("o load precisa devolver os canais");
     assert!(
         forget < restore,
         "o `forget` roda DEPOIS do `restore` -- ele apagaria exatamente o que o arquivo trouxe"
+    );
+    assert!(
+        project_family_fn("project_forget_previous").contains("forget_live_producers()"),
+        "o irmao que esquece deixou de chamar o `forget_live_producers`"
+    );
+    assert!(
+        project_family_fn("project_install_accepted").contains("restore_baked_forms("),
+        "o irmao que instala deixou de devolver os canais assados"
     );
 }

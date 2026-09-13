@@ -81,6 +81,8 @@ mod despacho_clique_pick;
 mod despacho_clique_prologo;
 /// Os reclamantes do fim do clique (painter, modais, pan, barra lateral) — ramos do `on_mouse_input`.
 mod despacho_clique_reclamantes;
+/// A roldana sob o cursor vira a seleção (a porta do ramo do pivô e da âncora).
+mod despacho_clique_roldana;
 /// Os picks modais e as alças do Select, antes da ferramenta vetorial — ramos do `on_mouse_input`.
 mod despacho_clique_select;
 /// A ferramenta vetorial no clique (o guarda do ADR-0112, o Shift, o direito) — ramos do `on_mouse_input`.
@@ -110,6 +112,7 @@ mod painter_curve_input;
 pub(crate) mod painter_falloff_input;
 mod painter_grid_erase; // os modificadores que o CanvasPointer nao carrega
 pub(crate) mod protect_brush;
+use despacho_clique_roldana::select_wheel_at;
 
 /// Deslocamento diagonal de um paste/duplicate, em pixels de tela (o zoom converte
 /// para world) — a cópia não nasce exatamente sob o original.
@@ -1719,39 +1722,3 @@ fn freq_at_y(view: &ph2d_app_audio::WaveView, y: f32) -> f32 {
 #[cfg(all(test, feature = "panel-audio-editor"))]
 #[path = "input_dispatch/despacho_testes_espectro.rs"]
 mod spectral_axis_tests;
-
-/// **A roldana sob o cursor vira a SELEÇÃO** (W-RopeStop) — o pedido do Enio
-/// *"permita selecionar as polias com mouse no canvas"*.
-///
-/// Até aqui uma roldana só era alcançável pela Hierarquia: ela não tem sprite,
-/// então o `pick_sprites_at_world` não a vê, e as alças dela (centro/aro) só
-/// nascem DEPOIS de ela estar selecionada — o laço em que a única porta de
-/// entrada era uma lista de nomes.
-///
-/// ⚠️ **A tolerância é a MESMA `SNAP_PX` do ímã de âncora e do conta-gotas de
-/// corda**, convertida em mundo pelo zoom: um app onde dois alvos de canvas
-/// respondem a distâncias diferentes é um app que se aprende duas vezes.
-///
-/// Devolve se alguma roldana foi de fato selecionada — o chamador usa isso para
-/// consumir o Down, como faz com o pivô e com a âncora.
-/// ⚠️ Toma os TRÊS pedaços do `AppGfx` de que precisa, e não `&AppGfx`: quem
-/// chama já segura um `&mut` em `gfx.hero_screen` — empréstimos por CAMPO são
-/// disjuntos, um reborrow da struct inteira não é. A mesma assinatura, pelo mesmo
-/// motivo, que o `joint_anchor_drag::open_drag`.
-fn select_wheel_at(
-    physics: &ph2d_physics_ecs::PhysicsBridge,
-    camera: &ph2d_render::Camera2d,
-    win: ph2d_host::WindowSize,
-    hero: &mut ph2d_editor_core::HeroScreen,
-    at: (f32, f32),
-) -> bool {
-    let w = camera.screen_to_world(at, win);
-    let tol =
-        ph2d_app_physics::joint_anchor_drag::SNAP_PX * camera.height_world / win.height as f32;
-    let Some(wheel) = physics.wheel_at_world(w, tol) else {
-        return false;
-    };
-    hero.gizmo.selection = Some(wheel.to_bits());
-    hero.gizmo.extra_selection.clear();
-    true
-}

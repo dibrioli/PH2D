@@ -208,6 +208,8 @@ mod fase_hierarchy_group_merge;
 mod fase_image_edit_apply;
 /// Fase do quadro: a entrada (carimbo coalescido, diagnóstico, gamepad, script, soltos).
 mod fase_input_and_drops;
+/// Fase do quadro: os commits do Inspector.
+mod fase_inspector_commits;
 /// Fase do quadro: o chrome legado (o ramo sem `HeroScreen`).
 mod fase_legacy_chrome;
 /// Fase do quadro: o modal de imagem nova (Cmd/Ctrl+N) cria a tela escolhida.
@@ -544,11 +546,6 @@ impl crate::App {
             atlas_asset_map,
             asset_catalogs,
             component_registry,
-            editor_queue,
-            transform_type_id,
-            visibility_type_id,
-            name_type_id,
-            sprite_type_id,
             motion,
             physics,
             frost_doc_scene,
@@ -1358,7 +1355,7 @@ impl crate::App {
             // #7) esta bandeira serve DUAS secções, e o nome antigo passou a descrever metade do
             // que ela significa. *Um nome que já não cobre a população dele mente na próxima
             // leitura.*
-            let mut inspector_queue_dirty = false;
+            let inspector_queue_dirty = false;
             let mut action_edits: Vec<(u64, ph2d_editor_core::ActionFieldEdit)> = Vec::new();
             // ⭐ O `+` do Inspector (F3): quem pediu a paleta neste quadro.
             let mut add_component_for: Option<u64> = None;
@@ -10123,131 +10120,32 @@ impl crate::App {
                     );
                 }
             }
-            // Inspector commits phase — Transform / Visibility / Name
-            // / Sprite source-strategy + Reimport. Extracted to sibling
-            // `inspector_commits.rs` as a free fn (Wave 3.2 stage A).
-            //
-            // W-J2: a physics joint's Position IS its A anchor, so the committed
-            // pivot is re-seated through the bridge's anchor door just below.
-            // Captured here because `transform_edit` is consumed by the call.
-            let joint_pivot_commit =
-                transform_edit.map(|info| (info.entity_bits, info.translation));
-            if inspector_commits::dispatch(
-                reimport_entity,
-                transform_edit,
-                &visibility_edits,
-                name_edit,
-                signal_edit,
-                signal_leave_edit,
-                &sprite_edits,
-                &ordering_edits,
-                &sampling_edits,
-                &blend_edits,
-                &slice_edits,
-                &anchor_edits,
-                &anim_edits,
-                &timer_edits,
-                &action_edits,
-                &physics_edits,
-                &visibility_section_edits,
-                hero,
-                sim,
-                asset_db,
-                atlas_asset_map,
-                toasts,
-                editor_queue,
-                component_registry,
-                *transform_type_id,
-                *visibility_type_id,
-                *name_type_id,
-                *sprite_type_id,
-            ) {
-                self.title_dirty = true;
-            }
-            // ⭐⭐⭐ **A secção AUDIO** (TOP-20 #4, W3) — e ela corre AQUI, e não no
-            // `inspector_commits`, porque as edições dela são de DUAS naturezas: a maioria escreve
-            // um campo do documento, e três (`Preview`, `Stop`, `Browse`) tocam no DISPOSITIVO ou
-            // abrem um diálogo. ⚠️ O `inspector_commits` não tem — nem devia ter — a placa de som
-            // nem a janela. *Duas naturezas, dois sítios; a fronteira é o que cada edição TOCA.*
-            for (bits, edit) in &audio_edits {
-                match edit {
-                    ph2d_editor_core::AudioFieldEdit::Preview => {
-                        let e = ph2d_ecs::Entity::from_bits(*bits);
-                        audio_2d::play_target(sim, self.audio.as_mut(), e);
-                    }
-                    ph2d_editor_core::AudioFieldEdit::StopPreview => {
-                        let e = ph2d_ecs::Entity::from_bits(*bits);
-                        audio_2d::stop_target(sim, self.audio.as_mut(), e);
-                    }
-                    ph2d_editor_core::AudioFieldEdit::Browse => {
-                        // ⚠️ **A lista de extensões é a MESMA do resto do app** (`decode_any`), e
-                        // não uma escrita à mão: uma segunda lista ao lado de um predicado é o
-                        // defeito que o diálogo de importação já pagou — o `.ase` esteve invisível
-                        // lá durante meses.
-                        if let Some(p) = rfd::FileDialog::new()
-                            .add_filter("audio", ph2d_audio_decode::decode_any::AUDIO_IMPORT_EXTS)
-                            .pick_file()
-                        {
-                            let edit = ph2d_editor_core::AudioFieldEdit::Sound(
-                                p.to_string_lossy().into_owned(),
-                            );
-                            if inspector_audio::apply_audio_edit(
-                                sim,
-                                *bits,
-                                &edit,
-                                editor_queue,
-                                component_registry,
-                            )
-                            .is_none()
-                            {
-                                inspector_queue_dirty = true;
-                            }
-                        }
-                    }
-                    _ => {
-                        if let Some(t) = inspector_audio::apply_audio_edit(
-                            sim,
-                            *bits,
-                            edit,
-                            editor_queue,
-                            component_registry,
-                        ) {
-                            toasts.push(t);
-                        } else {
-                            inspector_queue_dirty = true;
-                        }
-                    }
-                }
-            }
-            // ⭐⭐⭐ **A secção CAMERA** (TOP-20 #7, W3) — aqui pela MESMA razão da irmã de cima:
-            // as edições são de DUAS naturezas. O `Preview` liga a VISTA (que só a `App` tem) e as
-            // restantes escrevem um campo do documento. *Duas naturezas, um sítio que tem as duas.*
-            for (bits, edit) in &camera_edits {
-                if let ph2d_editor_core::CameraFieldEdit::Preview(on) = edit {
-                    self.game_camera_preview = *on;
-                    continue;
-                }
-                inspector_camera::apply_camera_edit(
-                    sim,
-                    *bits,
-                    edit,
-                    editor_queue,
-                    component_registry,
-                );
-                inspector_queue_dirty = true;
-            }
-            if inspector_queue_dirty
-                && let Err(e) = ph2d_ecs::scene::apply_editor_commands(
-                    sim.world_mut(),
-                    editor_queue,
-                    component_registry,
-                )
-            {
-                toasts.push(ph2d_editor_core::Toast::error(format!(
-                    "Audio commit failed: {e}"
-                )));
-                self.title_dirty = true;
-            }
+            let Some(joint_pivot_commit) =
+                self.fase_inspector_commits(fase_inspector_commits::InspectorIntents {
+                    reimport_entity,
+                    transform_edit,
+                    visibility_edits,
+                    sprite_edits,
+                    ordering_edits,
+                    sampling_edits,
+                    blend_edits,
+                    slice_edits,
+                    anchor_edits,
+                    anim_edits,
+                    timer_edits,
+                    audio_edits,
+                    camera_edits,
+                    inspector_queue_dirty,
+                    action_edits,
+                    physics_edits,
+                    visibility_section_edits,
+                    name_edit,
+                    signal_edit,
+                    signal_leave_edit,
+                })
+            else {
+                return;
+            };
             self.fase_source_strategy_and_joint_pivot(
                 fase_source_strategy_and_joint_pivot::SourceStrategyIntents {
                     sprite_source_change,

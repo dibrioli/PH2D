@@ -88,6 +88,9 @@ bytemuck = "1"
 ph2d-chrome-sync = { path = "../../tools/ph2d-chrome-sync" }
 # Wave 10 / Etapa 4.3 — staleness gate for widget `mod` block.
 ph2d-widget-sync = { path = "../../tools/ph2d-widget-sync" }
+# O censo dos rótulos (HR-15) e a pergunta «é este ficheiro um módulo de teste?» — uma folha sem
+# dependências, partilhada com os gates por crate dos painéis em vez de copiada para cada um.
+ph2d-label-census = { path = "../ph2d-label-census" }
 # ADR-0029 Phase C.1 NOTE: Inspector regression tests that need
 # `ph2d_panel_inspector::*` are scheduled to migrate to
 # `crates/ph2d-panel-inspector/tests/it/inspector_regression.rs` in

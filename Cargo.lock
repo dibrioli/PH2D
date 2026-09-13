@@ -5401,6 +5401,7 @@ dependencies = [
  "ph2d-host",
  "ph2d-i18n",
  "ph2d-input",
+ "ph2d-label-census",
  "ph2d-panel-flip",
  "ph2d-panel-registry-init",
  "ph2d-panel-timeline",
@@ -6135,6 +6136,10 @@ dependencies = [
  "postcard",
  "serde",
 ]
+
+[[package]]
+name = "ph2d-label-census"
+version = "0.0.0"
 
 [[package]]
 name = "ph2d-light"

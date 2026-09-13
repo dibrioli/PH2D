@@ -1,0 +1,17 @@
+[package]
+name = "ph2d-label-census"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# ⭐ ZERO dependências, e é de propósito: esta crate só lê FONTE como texto. Um gate que a use
+# nunca recompila por o produto ter mudado, e nenhum tipo do app atravessa a fronteira.
+[dependencies]
+
+[lints]
+workspace = true

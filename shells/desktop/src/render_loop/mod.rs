@@ -196,6 +196,8 @@ mod fase_painter_brush_smokes;
 mod fase_pointer_subjects;
 /// Fase do quadro: a re-acendida dos objetos assados — FORA da feature `sculpt3d`, de propósito.
 mod fase_relight_baked_forms;
+/// Fase do quadro: o passo do GC do Luau (M7).
+mod fase_script_gc;
 /// Fase do quadro: o objeto misto do sculpt3d (bake, alpha por imagem, luz a re-autorar).
 #[cfg(feature = "sculpt3d")]
 mod fase_sculpt3d_bake;
@@ -415,6 +417,7 @@ impl crate::App {
         self.fase_sprite_pixel_smokes();
         self.fase_painter_brush_smokes();
         self.fase_new_image_modal();
+        self.fase_script_gc();
         let Some(gfx) = self.gfx.as_mut() else {
             return;
         };
@@ -432,7 +435,6 @@ impl crate::App {
             present,
             camera,
             asset_db,
-            script,
             theme,
             toasts,
             jobs,
@@ -484,15 +486,6 @@ impl crate::App {
         let Some(host) = self.host.as_ref() else {
             return;
         };
-
-        // M7 per-frame GC step. Cheap (p99 ≤ 10µs target per the M7
-        // gate test) — keeps the Luau heap from accumulating between
-        // future scripted ticks. Errors here are non-fatal; just log.
-        if let Some(host) = script
-            && let Err(e) = host.gc_step()
-        {
-            eprintln!("M7 gc_step error: {e}");
-        }
 
         // ── Coalesced resize + FLUID-DRAG present mode (Enio 2026-07-05, take 2) ──
         // The full re-fit (layout + RT reallocs + rebinds) runs once per frame with the latest size —

@@ -178,6 +178,8 @@ pub(crate) use timer_tick::start_autostart_timers;
 mod fase_app_scene_smokes;
 /// Fase do quadro: as cenas de smoke que pedem a `App` inteira (2.ª metade).
 mod fase_app_scene_smokes_late;
+/// Fase do quadro: as cenas de smoke que precisam do atlas, 1.ª metade (impasto, substrato, LINE).
+mod fase_atlas_scene_smokes;
 /// Fase do quadro: os painéis de áudio (mixer + editor) ouvidos pelo motor.
 mod fase_audio_panels;
 /// Fase do quadro: o relógio do chrome (`wall_dt`, `ui_dt` e os tiques que andam nele).
@@ -384,6 +386,7 @@ impl crate::App {
         let Some(wall_dt) = self.fase_chrome_clock() else {
             return;
         };
+        self.fase_atlas_scene_smokes();
         let Some(gfx) = self.gfx.as_mut() else {
             return;
         };
@@ -456,92 +459,6 @@ impl crate::App {
         let Some(host) = self.host.as_ref() else {
             return;
         };
-
-        // Impasto smoke (`PH2D_IMPASTO_SMOKE=1`): one-shot, on the first frame where the atlas plumbing
-        // is in scope — spawn a white canvas and SEAT the selection on it, so the artist lands on a
-        // ready surface instead of assembling one. The brush itself is armed in `painter_bridge`, when
-        // the painter first binds the document.
-        if let Some(hero) = hero_screen.as_mut()
-            && ph2d_app_painter::impasto_smoke::enabled()
-            && !std::mem::replace(&mut self.impasto_smoke_done, true)
-        {
-            let ppm = hero.project.pixels_per_meter;
-            let cell = *next_import_cell;
-            if let Some(bits) = ph2d_app_painter::impasto_smoke::spawn_if_enabled(
-                sim,
-                renderer,
-                asset_db,
-                cell,
-                ppm,
-                atlas_asset_map,
-            ) {
-                *next_import_cell = next_import_cell.saturating_add(1);
-                hero.gizmo.replace_selection(Some(bits));
-                hero.bus
-                    .push(ph2d_editor_core::action_bus::EditorAction::SetViewFocus {
-                        kind: ph2d_editor_core::ViewFocusKind::Selected,
-                    });
-                toasts.push(Toast::success(
-                    "Impasto smoke: pick the Painter tool and drag".to_string(),
-                ));
-            }
-        }
-
-        // A cena do SUBSTRATO (`PH2D_SUBSTRATE_SMOKE=1`): a mesma dança do impasto, para o dente do
-        // papel — que acende no DIGITAL, e por isso a cena não escolhe meio nenhum.
-        if let Some(hero) = hero_screen.as_mut()
-            && ph2d_app_painter::substrate_smoke::enabled()
-            && !std::mem::replace(&mut self.substrate_smoke_done, true)
-        {
-            let ppm = hero.project.pixels_per_meter;
-            let cell = *next_import_cell;
-            if let Some(bits) = ph2d_app_painter::substrate_smoke::spawn_if_enabled(
-                sim,
-                renderer,
-                asset_db,
-                cell,
-                ppm,
-                atlas_asset_map,
-            ) {
-                *next_import_cell = next_import_cell.saturating_add(1);
-                hero.gizmo.replace_selection(Some(bits));
-                hero.bus
-                    .push(ph2d_editor_core::action_bus::EditorAction::SetViewFocus {
-                        kind: ph2d_editor_core::ViewFocusKind::Selected,
-                    });
-                toasts.push(Toast::success(
-                    "Substrate smoke: Painter -> secao Paper -> suba o Relief".to_string(),
-                ));
-            }
-        }
-
-        // A cena do card LINE (`PH2D_LINE_SMOKE=1`): a mesma dança, para os tipos de linha
-        // procedural — que vivem no DIGITAL, e por isso a cena não escolhe meio nem tipo nenhum.
-        if let Some(hero) = hero_screen.as_mut()
-            && ph2d_app_painter::line_smoke::enabled()
-            && !std::mem::replace(&mut self.line_smoke_done, true)
-        {
-            let ppm = hero.project.pixels_per_meter;
-            let cell = *next_import_cell;
-            if let Some(bits) = ph2d_app_painter::line_smoke::spawn_if_enabled(
-                sim,
-                renderer,
-                asset_db,
-                cell,
-                ppm,
-                atlas_asset_map,
-            ) {
-                *next_import_cell = next_import_cell.saturating_add(1);
-                hero.gizmo.replace_selection(Some(bits));
-                hero.bus
-                    .push(ph2d_editor_core::action_bus::EditorAction::SetViewFocus {
-                        kind: ph2d_editor_core::ViewFocusKind::Selected,
-                    });
-                toasts.push(Toast::success(
-                    "Line smoke: Painter -> card Line -> dropdown Type".to_string(),
-                ));
-            }
-        }
 
         // A cena da DOAÇÃO (`PH2D_SCULPT3D_SMOKE=2`): a mesma dança do impasto, para a tela em que a
         // forma vai acender a tinta. A esfera nasce em `sculpt3d_smoke`; aqui nasce o que pintar.

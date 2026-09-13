@@ -292,7 +292,128 @@ clippy `-D warnings` em 7 crates · fmt · typos.
 ### §5.5 — Aberto
 
 - ⏳ **O smoke do dono** da `=114` com as alças.
-- ⏳ **Rotação por contacto** (corpo rígido) — uma caixa em quina fica em quina.
+- ✅ ~~**Rotação por contacto**~~ — **pedida e feita no mesmo dia**: §6.
 - ⏳ **O contorno exacto** (casco convexo) — o terceiro colisor, depois da caixa e do círculo.
 - ⏳ **Centro e ângulo do colisor como params** — hoje o centro é o meio da forma e o ângulo o da peça.
 - ⏳ **W4** (o `motion.integrate`) e ⏸️ **W5** (o dispositivo), inalterados.
+
+---
+
+## §6 — O colisor VÊ-SE em todas as formas, e as peças RODAM (2.º report do dono, 2026-09-13)
+
+> *«o collider deve aparecer na frente da shape (z-index maior) e visível em TODAS as formas.
+> Coloque um botão no nó shape: Ver collider. Precisa destravar a rot. e colocar outro botão para
+> travar rotação»*
+
+### §6.1 — O dono tinha razão: o contorno ESTAVA por baixo
+
+⛔⛔ **A minha primeira leitura foi que a ordem já estava certa** — *«a fase que desenha o gizmo corre
+depois da que codifica a arte»*, lido dos sítios das chamadas — e escrevi-a aqui. A RÉGUA refutou-a no
+mesmo dia: no quadro emendado (`frame_text::render_frame`, que costura cada fase no ponto em que ela
+CORRE) a tinta do gizmo aparecia em **`484 970`** e a arte das formas em **`623 773`** — o gizmo era
+pintado **antes**, e no Vello quem pinta primeiro fica por baixo.
+
+⇒ a cura é o SÍTIO da chamada: os dois gizmos de nó (o do colisor e o do warp) passam a ser
+desenhados na `fase_vector_overlays`, **logo a seguir** ao `motion_shape_gen::encode` e na mesma cena.
+Gate novo com essa régua: `the_collider_outline_is_painted_after_the_shape_art`, que mede os DOIS.
+
+⚠️⚠️ **E isto reabre o report de 2026-09-08 do gizmo de warp** (*«está sendo desenhado por trás das
+shapes»*): a cura de então foi um **casing** escuro, sob uma nota que afirmava *«o gizmo ESTÁ por
+cima»*. O casing é bom pelo outro motivo (um traço claro some sobre conteúdo claro), mas a ordem
+estava errada desde aí — *uma afirmação sobre a ordem do quadro tirada do sítio do CÓDIGO é um palpite
+com cara de medição; o quadro emendado é a régua.*
+
+As outras duas metades do report:
+
+- **o contorno das peças SEM alças era o traço fino e apagado** (o dos braços do warp), e sobre uma
+  folha de quadrados brancos isso soma-se ao defeito de ordem. Hoje **todo contorno** leva o traço
+  forte com casing, e o que distingue a peça com alças é **ter alças**;
+- **só a forma SELECCIONADA pintava.** Hoje pinta **toda** forma com `Collide` e `Show Collider`
+  ligados, esteja seleccionada ou não; as alças continuam a ser da seleccionada, porque o arrasto
+  edita os params DELA.
+
+### §6.2 — Os dois botões novos no cartão (secção «Collision»)
+
+| param | o que faz | default |
+|---|---|---|
+| **`Show Collider`** | pinta o contorno do colisor de cada peça desta forma, por cima da arte | **ligado** — quem liga o `Collide` quer ver o que declarou |
+| **`Lock Rotation`** | escreve `inv_inertia = 0`: as peças desta forma não rodam no contacto | **desligado** — o dono pediu a rotação destravada |
+
+⚠️ Os dois só aparecem com o `Collide` ligado, e nenhum entra na chave de conteúdo da geometria.
+
+### §6.3 — A rotação: a correcção reparte-se entre MOVER e RODAR
+
+Todo contacto passa a saber **onde** toca, e a projecção de posição vira a canónica do PBD de corpo
+rígido:
+
+```text
+  r = ponto − centro      c = r × n      k = w + invI · c²
+  λ = penetração / (k_a + k_b)      Δp = n · λ · w      Δθ = c · λ · invI
+```
+
+⚠️ **`invI = 0` devolve a lei anterior termo a termo** (`k = w`, `λ = pen/(w_a + w_b)`), e é isso que o
+`Lock Rotation` escreve. A inércia ausente DERIVA da forma: caixa `3w/(hx² + hy²)`, disco `2w/r²`.
+
+| onde | o PONTO do contacto |
+|---|---|
+| disco × disco | sobre a normal, a meio do trecho sobreposto |
+| caixa × caixa | o **meio do trecho recortado** da face incidente contra a de referência |
+| disco × caixa | o ponto da caixa mais próximo do disco (ou o da face, com o centro dentro) |
+| plano / chão | o **ponto de suporte**: o meio da face quando ela é paralela, a quina quando inclinada |
+| taça | o ponto extremo — a borda do disco, o canto mais longe da caixa |
+
+⛔ **Não há velocidade ANGULAR.** A rotação é projecção de posição, como o afastamento: uma peça roda
+enquanto toca e não continua a girar no ar. É o que separa isto de um corpo rígido a sério.
+
+⚠️⚠️ **Dois defeitos que a construção pagou, e os dois são sobre o PONTO:**
+
+- o do plano era `centro − n · suporte`, que cai sempre **debaixo do centro** ⇒ braço zero, e uma
+  caixa a `20°` nunca se endireitava (medido: giro `0,000`). O certo é o ponto de suporte — e com a
+  face paralela ele tem de ser o **meio** dela, senão uma peça pousada de chapa tomba sozinha;
+- o de duas caixas como *«vértice mais fundo»* faz uma **pilha parada** tombar, pela mesma razão. Daí o
+  recorte, com gate próprio (`a_box_resting_flat_on_another_does_not_turn`).
+
+### §6.4 — Medido
+
+**A `=114`, `2,6 s`, a metade que colide** (25 peças):
+
+| | |
+|---|---|
+| destravada (o default) | maior ângulo **`49,4°`**, **22 de 25** acima de `5°` |
+| `Lock Rotation` ligado | a coluna `rot` **nem nasce** — a cena sai como saía antes da rotação existir |
+
+⚠️ **E a régua de GEOMETRIA da cena passa a correr TRAVADA** (`pilha_travada`): com as peças a tombar,
+um quadrado a `45°` toca o vizinho pela quina e o vão típico sobe até à DIAGONAL — uma barra de
+«encostado» medida sobre isso não separaria o encosto do ar que o dono fotografou. A rotação tem gate
+próprio (`the_pieces_tumble_unless_the_card_locks_the_rotation`), e os números de §5.3 continuam a ser
+os da pilha travada.
+
+**Mutações — 27 de 27 mortas** nas duas waves. As do §6, com o gate que as mata:
+
+| mutação | quem a mata |
+|---|---|
+| o suporte sempre na quina (nunca o meio da face) | `a_tilted_box_turns_on_the_floor_and_flat_or_locked_does_not` |
+| o contacto de duas caixas no vértice mais fundo · o giro sem o braço | `a_box_resting_flat_on_another_does_not_turn` |
+| a caixa com a inércia de um disco | `the_inverse_inertia_comes_from_the_shape_and_a_pin_never_turns` |
+| a coluna que não trava | `the_inertia_column_locks_and_the_absent_one_derives` |
+| a massa efectiva apagada (`k = 1`) | a metade NOVA do gate do plano (*travada sobe mais que livre*) |
+| o giro que não chega ao ângulo | `a_box_caught_off_centre_turns_unless_the_column_locks_it` |
+| `Lock Rotation` que não escreve a coluna | `locking_the_rotation_writes_a_zero_inertia_column` |
+| o `Show Collider` ignorado · só a seleccionada a pintar | `every_shape_that_shows_its_collider_is_drawn_and_only_the_selected_one_has_handles` |
+| o contorno apagado do quadro | `the_collider_outline_is_painted_after_the_shape_art` |
+
+⚠️ **Uma SOBREVIVEU à primeira volta, e o gate nasceu daí:** apagar a massa efectiva (`k = 1`) não
+muda a direcção nem o travamento — muda só a REPARTIÇÃO, e nada media isso. O gate que a mata compara
+quanto a peça SOBE travada e livre: com a rotação livre ela sobe menos, porque parte do empurrão virou
+giro.
+
+⚠️ **E o tecto de LOC apanhou o solver**: com a rotação a `ph2d-contact/src/lib.rs` foi a `821`
+linhas. Cortada por responsabilidade — a lei de UM par (normal, profundidade, ponto) vive agora em
+`par.rs` (`217`), e o `lib.rs` (`615`) fica com a NUVEM: a grelha, o Jacobi com média e a ordem das
+somas.
+
+### §6.5 — Aberto
+
+- ⏳ **Velocidade angular** (uma peça que continua a girar depois do toque) e **atrito angular**.
+- ⏳ **O contorno exacto** (casco convexo), §5.5.
+- ⏳ **W4** (o `motion.integrate`) e ⏸️ **W5** (o dispositivo).

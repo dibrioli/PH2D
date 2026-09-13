@@ -15,6 +15,7 @@ use ph2d_editor_core::widget::{
     paint_segmented_adaptive, slider_with_chip_height,
 };
 use ph2d_editor_core::zones::Rect;
+use ph2d_i18n::tr;
 use ph2d_tokens::{ROW_H_PX, Spacing};
 use ph2d_tool_painter::BrushSettings;
 
@@ -40,13 +41,28 @@ pub(crate) fn paint_selection_section(
         content_w,
         y,
         ph2d_tool_painter::ids::PAINTER_SEL_MODE,
-        "Selection mode",
+        tr("panel.painter_layers.selection.selection_mode"),
         &[
-            (ph2d_tool_painter::ids::PAINTER_SEL_MODE_AUTO, "Auto"),
-            (ph2d_tool_painter::ids::PAINTER_SEL_MODE_FREEHAND, "Free"),
-            (ph2d_tool_painter::ids::PAINTER_SEL_MODE_RECT, "Rect"),
-            (ph2d_tool_painter::ids::PAINTER_SEL_MODE_ELLIPSE, "Ellipse"),
-            (ph2d_tool_painter::ids::PAINTER_SEL_MODE_PEN, "Pen"),
+            (
+                ph2d_tool_painter::ids::PAINTER_SEL_MODE_AUTO,
+                tr("panel.painter_layers.selection.auto"),
+            ),
+            (
+                ph2d_tool_painter::ids::PAINTER_SEL_MODE_FREEHAND,
+                tr("panel.painter_layers.selection.free"),
+            ),
+            (
+                ph2d_tool_painter::ids::PAINTER_SEL_MODE_RECT,
+                tr("panel.painter_layers.selection.rect"),
+            ),
+            (
+                ph2d_tool_painter::ids::PAINTER_SEL_MODE_ELLIPSE,
+                tr("panel.painter_layers.selection.ellipse"),
+            ),
+            (
+                ph2d_tool_painter::ids::PAINTER_SEL_MODE_PEN,
+                tr("panel.painter_layers.selection.pen"),
+            ),
         ],
         brush.selection_mode as usize,
     );
@@ -59,7 +75,7 @@ pub(crate) fn paint_selection_section(
             x,
             content_w,
             y,
-            "Threshold",
+            tr("panel.painter_layers.selection.threshold"),
             ph2d_tool_painter::ids::PAINTER_SEL_THRESHOLD_SLIDER,
             ph2d_tool_painter::ids::PAINTER_SEL_THRESHOLD_CHIP,
             brush.selection_threshold,
@@ -74,7 +90,7 @@ pub(crate) fn paint_selection_section(
             x,
             content_w,
             y,
-            "Stabilization",
+            tr("panel.painter_layers.selection.stabilization"),
             ph2d_tool_painter::ids::PAINTER_SEL_STABILIZE_SLIDER,
             ph2d_tool_painter::ids::PAINTER_SEL_STABILIZE_CHIP,
             brush.selection_stabilizer,
@@ -88,7 +104,7 @@ pub(crate) fn paint_selection_section(
         x,
         content_w,
         y,
-        "Feather",
+        tr("panel.painter_layers.selection.feather"),
         ph2d_tool_painter::ids::PAINTER_SEL_FEATHER_SLIDER,
         ph2d_tool_painter::ids::PAINTER_SEL_FEATHER_CHIP,
         brush.selection_feather,
@@ -101,7 +117,7 @@ pub(crate) fn paint_selection_section(
         x,
         content_w,
         y,
-        "Overlay",
+        tr("panel.painter_layers.selection.overlay"),
         ph2d_tool_painter::ids::PAINTER_SEL_OPACITY_SLIDER,
         ph2d_tool_painter::ids::PAINTER_SEL_OPACITY_CHIP,
         brush.selection_overlay_opacity,
@@ -123,7 +139,7 @@ pub(crate) fn paint_selection_section(
         content_w,
         y,
         ph2d_tool_painter::ids::PAINTER_SEL_EDIT,
-        "Edit Gizmos",
+        tr("panel.painter_layers.selection.edit_gizmos"),
         brush.selection_edit,
     );
 
@@ -140,12 +156,15 @@ pub(crate) fn paint_selection_section(
             &[
                 (
                     ph2d_tool_painter::ids::PAINTER_SEL_CONVERT,
-                    "Convert to Curve",
+                    tr("panel.painter_layers.selection.convert_to_curve"),
                 ),
-                (ph2d_tool_painter::ids::PAINTER_SEL_MERGE, "Merge Curves"),
+                (
+                    ph2d_tool_painter::ids::PAINTER_SEL_MERGE,
+                    tr("panel.painter_layers.selection.merge_curves"),
+                ),
                 (
                     ph2d_tool_painter::ids::PAINTER_SEL_SIMPLIFY,
-                    "Simplify Curve",
+                    tr("panel.painter_layers.selection.simplify_curve"),
                 ),
             ],
             usize::MAX,
@@ -171,11 +190,20 @@ fn action_rows(
         content_w,
         y,
         NodeId(0), // group a11y id unused for a momentary action row
-        "Selection actions",
+        tr("panel.painter_layers.selection.actions"),
         &[
-            (ph2d_tool_painter::ids::PAINTER_SEL_ALL, "All"),
-            (ph2d_tool_painter::ids::PAINTER_SEL_INVERT, "Invert"),
-            (ph2d_tool_painter::ids::PAINTER_SEL_CLEAR, "Clear"),
+            (
+                ph2d_tool_painter::ids::PAINTER_SEL_ALL,
+                tr("panel.painter_layers.selection.all"),
+            ),
+            (
+                ph2d_tool_painter::ids::PAINTER_SEL_INVERT,
+                tr("panel.painter_layers.selection.invert"),
+            ),
+            (
+                ph2d_tool_painter::ids::PAINTER_SEL_CLEAR,
+                tr("panel.painter_layers.selection.clear"),
+            ),
         ],
         usize::MAX, // none selected — these are actions, not a radio
     );
@@ -186,13 +214,28 @@ fn action_rows(
         content_w,
         y,
         NodeId(0),
-        "Selection content actions",
+        tr("panel.painter_layers.selection.content_actions"),
         &[
-            (ph2d_tool_painter::ids::PAINTER_SEL_LAYER_CONTENTS, "Layer"),
-            (ph2d_tool_painter::ids::PAINTER_SEL_FILL, "Fill"),
-            (ph2d_tool_painter::ids::PAINTER_SEL_CUT, "Cut"),
-            (ph2d_tool_painter::ids::PAINTER_SEL_COPY, "Copy"),
-            (ph2d_tool_painter::ids::PAINTER_SEL_PASTE, "Paste"),
+            (
+                ph2d_tool_painter::ids::PAINTER_SEL_LAYER_CONTENTS,
+                tr("panel.painter_layers.selection.layer"),
+            ),
+            (
+                ph2d_tool_painter::ids::PAINTER_SEL_FILL,
+                tr("panel.painter_layers.selection.fill"),
+            ),
+            (
+                ph2d_tool_painter::ids::PAINTER_SEL_CUT,
+                tr("panel.painter_layers.selection.cut"),
+            ),
+            (
+                ph2d_tool_painter::ids::PAINTER_SEL_COPY,
+                tr("panel.painter_layers.selection.copy"),
+            ),
+            (
+                ph2d_tool_painter::ids::PAINTER_SEL_PASTE,
+                tr("panel.painter_layers.selection.paste"),
+            ),
         ],
         usize::MAX,
     )
@@ -213,14 +256,23 @@ fn operation_card(
     let card = Card::new(ph2d_tool_painter::ids::PAINTER_SEL_OP_CARD).title("OPERATION");
     let seg = SegmentedAdaptive::new(
         ph2d_tool_painter::ids::PAINTER_SEL_OP,
-        "Boolean operation",
+        tr("panel.painter_layers.selection.boolean_operation"),
         vec![
-            SegmentedOption::new(ph2d_tool_painter::ids::PAINTER_SEL_OP_NEW, "New"),
-            SegmentedOption::new(ph2d_tool_painter::ids::PAINTER_SEL_OP_ADD, "Add"),
-            SegmentedOption::new(ph2d_tool_painter::ids::PAINTER_SEL_OP_REMOVE, "Remove"),
+            SegmentedOption::new(
+                ph2d_tool_painter::ids::PAINTER_SEL_OP_NEW,
+                tr("panel.painter_layers.selection.new"),
+            ),
+            SegmentedOption::new(
+                ph2d_tool_painter::ids::PAINTER_SEL_OP_ADD,
+                tr("panel.painter_layers.selection.add"),
+            ),
+            SegmentedOption::new(
+                ph2d_tool_painter::ids::PAINTER_SEL_OP_REMOVE,
+                tr("panel.painter_layers.selection.remove"),
+            ),
             SegmentedOption::new(
                 ph2d_tool_painter::ids::PAINTER_SEL_OP_INTERSECT,
-                "Intersect",
+                tr("panel.painter_layers.selection.intersect"),
             ),
         ],
     )
@@ -274,12 +326,15 @@ fn offset_card(
     // Momentary buttons — nothing selected (usize::MAX), like the old inline group.
     let seg = SegmentedAdaptive::new(
         NodeId(0),
-        "Selection offset commit",
+        tr("panel.painter_layers.selection.offset_commit"),
         vec![
-            SegmentedOption::new(ph2d_tool_painter::ids::PAINTER_SEL_OFFSET_APPLY, "Apply"),
+            SegmentedOption::new(
+                ph2d_tool_painter::ids::PAINTER_SEL_OFFSET_APPLY,
+                tr("panel.painter_layers.selection.apply"),
+            ),
             SegmentedOption::new(
                 ph2d_tool_painter::ids::PAINTER_SEL_OFFSET_APPLY_KEEP,
-                "Apply & Keep",
+                tr("panel.painter_layers.selection.apply_and_keep"),
             ),
         ],
     )
@@ -305,7 +360,7 @@ fn offset_card(
         body.x,
         body.w,
         body.y,
-        "Offset",
+        tr("panel.painter_layers.selection.offset"),
         ph2d_tool_painter::ids::PAINTER_SEL_OFFSET_SLIDER,
         ph2d_tool_painter::ids::PAINTER_SEL_OFFSET_CHIP,
         offset,

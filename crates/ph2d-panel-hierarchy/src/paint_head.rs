@@ -9,6 +9,7 @@
 //! `hr15_no_hardcoded_ui_strings` mudou de endereço no mesmo commit: a dívida é a mesma.
 
 use super::*;
+use ph2d_i18n::{tr, tr_with};
 
 /// Pinta o cabeçalho e devolve `(body_pad, search_rect, search_text)`.
 pub(super) fn paint_hierarchy_head(
@@ -22,7 +23,8 @@ pub(super) fn paint_hierarchy_head(
     // Canonical panel title (single source of truth — `panel_chrome`).
     // Reserve ≈ICON_BTN_SIZE on the right for the header Add-button.
     let title_y = rect.y + PANEL_TITLE_BASELINE;
-    let title_size = paint_panel_title(rect, "Hierarchy", 40.0, scene, text_system, theme); // LITERAL-PX-OK: Add-button reserve
+    let title = tr("panel.hierarchy.title");
+    let title_size = paint_panel_title(rect, title, 40.0, scene, text_system, theme); // LITERAL-PX-OK: Add-button reserve
     let (entities, components) = if let Some(live) = current_live_entries() {
         let entity_count = live.len() as u32;
         let comp_count = current_component_count();
@@ -30,10 +32,14 @@ pub(super) fn paint_hierarchy_head(
     } else {
         fixture::hierarchy_counts()
     };
+    // A frase mora INTEIRA na tabela, com os marcadores: a ordem das palavras é da língua.
     let counts = if components > 0 {
-        format!("{entities} entities \u{00b7} {components} components")
+        tr_with(
+            "panel.hierarchy.count.entities_components",
+            &[("entities", &entities), ("components", &components)],
+        )
     } else {
-        format!("{entities} entities")
+        tr_with("panel.hierarchy.count.entities", &[("entities", &entities)])
     };
     paint_text(
         text_system,
@@ -58,7 +64,7 @@ pub(super) fn paint_hierarchy_head(
     // button — e.g. panel Close). Was a one-off accent-circle that read
     // as "disabled" (AccentSoft) under the cursor.
     let add_state = store.button_visual(ids::HIERARCHY_ADD);
-    let add_btn = widget::Button::new(ids::HIERARCHY_ADD, "Add")
+    let add_btn = widget::Button::new(ids::HIERARCHY_ADD, tr("panel.hierarchy.add"))
         .icon_only(IconId::Add)
         .visual(add_state);
     widget::paint_button(&add_btn, add_rect, scene, text_system, theme);
@@ -89,7 +95,7 @@ pub(super) fn paint_hierarchy_head(
             _ => (TextInputState::Normal, String::new(), 0, None),
         };
     let search_input = TextInput::new(crate::ids::HIER_SEARCH, "")
-        .placeholder("Search\u{2026}")
+        .placeholder(tr("panel.hierarchy.search"))
         .visual((search_state, store.hover_live(crate::ids::HIER_SEARCH)));
     paint_text_input_with_buffer(
         &search_input,

@@ -63,9 +63,11 @@ const BASELINE: &[(&str, usize)] = &[
     // Wave 10 / Etapa 5.1: panel-* extension. Hardcoded placeholders
     // for chrome fields (name input, search) — replaced when Fluent
     // runtime ships. Path key is `<crate>/src/<rel>`.
-    // The search placeholder moved with the panel header to `paint_head.rs` (2026-09-13,
-    // `line/loc-caps`, function LOC cap); same one string, new file.
-    ("ph2d-panel-hierarchy/src/paint_head.rs", 1),
+    // ✅ **A entrada da HIERARQUIA saiu (2026-09-13, `line/UIUX`) — e desta vez a DÍVIDA também.**
+    // O `"Search…"` do `paint_head.rs` passou a `tr("panel.hierarchy.search")`: o literal saiu do
+    // binário, não só do alcance deste scanner (o contrário da nota do `physics_rows.rs` abaixo). O
+    // painel inteiro fala pela tabela, com gate próprio na crate dele
+    // (`every_word_this_panel_shows_comes_from_the_string_table`, régua da `ph2d-label-census`).
     // O `placeholder` da busca do NAVEGADOR DE ASSETS (plano `docs/Components/07`, wave A5).
     // ⚠️ Mesma forma e mesma dívida do irmão da Hierarquia, uma linha acima — é literalmente o
     // mesmo widget a fazer o mesmo trabalho no painel ao lado —, e cai com ele quando o `t!(…)`

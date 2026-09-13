@@ -10,6 +10,7 @@ use crate::paint_ramp_widget::{RampIds, RampView, paint_color_ramp_section};
 use crate::state;
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::DropdownOption;
+use ph2d_i18n::tr;
 use ph2d_tool_painter::ids::{
     painter_shape_ramp_alpha_option_id, painter_shape_ramp_handle_id,
     painter_shape_ramp_interp_option_id, painter_shape_ramp_mode_option_id,
@@ -71,7 +72,7 @@ pub(crate) fn paint_shape_ramp_section(
         x,
         content_w,
         y,
-        "Shape Color",
+        tr("panel.painter_layers.shape.shape_color"),
         &shape_ramp_ids(),
         view,
     )

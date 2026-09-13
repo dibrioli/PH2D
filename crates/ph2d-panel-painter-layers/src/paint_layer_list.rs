@@ -12,6 +12,7 @@ use ph2d_editor_core::paint::{paint_text, resolve};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::panel_chrome::PANEL_HEAD_PAD;
 use ph2d_editor_core::zones::Rect;
+use ph2d_i18n::tr;
 use ph2d_tokens::{ColorToken, Spacing, TypeToken};
 use ph2d_tool_painter::ids::{PainterLayerWidget, painter_layer_widget_id};
 
@@ -98,7 +99,7 @@ pub(crate) fn paint_layer_rows(
             paint_text(
                 ctx.text_system,
                 ctx.scene,
-                "No layers",
+                tr("panel.painter_layers.layers.no_layers"),
                 rect.x + PANEL_HEAD_PAD,
                 y,
                 font,

@@ -20,6 +20,7 @@ use ph2d_editor_core::widget::DropdownOption;
 use ph2d_editor_core::widget::panel_chrome::PANEL_HEAD_PAD;
 use ph2d_editor_core::widget::section_cards::close_section;
 use ph2d_editor_core::zones::Rect;
+use ph2d_i18n::tr;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, StrokeToken, TypeToken};
 use ph2d_tool_painter::ids::{
     painter_brush_blend_option_id, painter_brush_falloff_option_id, painter_brush_preset_option_id,
@@ -92,7 +93,7 @@ pub(crate) fn paint_brush_body(
         content_w,
         y,
         ph2d_tool_painter::ids::PAINTER_BRUSH_SYNC,
-        "Sync with other tools",
+        tr("panel.painter_layers.brush.sync_tools"),
         brush.link_shared,
     );
 
@@ -143,7 +144,7 @@ fn paint_top_basics(
                 x,
                 content_w,
                 y,
-                "Blend",
+                tr("panel.painter_layers.brush.blend"),
                 ph2d_tool_painter::ids::PAINTER_BRUSH_BLEND,
                 brush.blend,
                 BrushBlend::from_u8(brush.blend).name(),
@@ -163,7 +164,7 @@ fn paint_top_basics(
         x,
         content_w,
         y,
-        "Size",
+        tr("panel.painter_layers.brush.size"),
         ph2d_tool_painter::ids::PAINTER_BRUSH_SIZE_SLIDER,
         ph2d_tool_painter::ids::PAINTER_BRUSH_SIZE_CHIP,
         brush.size_norm,
@@ -203,7 +204,7 @@ fn paint_top_basics(
             x,
             content_w,
             y,
-            "Strength",
+            tr("panel.painter_layers.brush.strength"),
             ph2d_tool_painter::ids::PAINTER_BRUSH_STRENGTH_SLIDER,
             ph2d_tool_painter::ids::PAINTER_BRUSH_STRENGTH_CHIP,
             brush.strength,
@@ -275,7 +276,7 @@ fn paint_top_basics(
             content_w,
             y,
             ph2d_tool_painter::ids::PAINTER_BRUSH_ACCUMULATE,
-            "Accumulate",
+            tr("panel.painter_layers.brush.accumulate"),
             brush.accumulate,
         );
     }
@@ -409,7 +410,14 @@ fn paint_color_swatch_row(
     brush: BrushSettings,
 ) -> f32 {
     let font = TypeToken::Sm.px();
-    crate::paint_brush_rows::label(ctx, theme, "Color", x, y, font);
+    crate::paint_brush_rows::label(
+        ctx,
+        theme,
+        tr("panel.painter_layers.brush.color"),
+        x,
+        y,
+        font,
+    );
     let sx = x + LABEL_W + Spacing::Sm.px();
     let sw = (content_w - LABEL_W - Spacing::Sm.px()).max(0.0);
     let rect = Rect::new(sx, y, sw, ROW_H_PX);
@@ -467,7 +475,7 @@ fn paint_preset_row(
         x,
         content_w,
         y,
-        "Preset",
+        tr("panel.painter_layers.brush.preset"),
         ph2d_tool_painter::ids::PAINTER_BRUSH_PRESET,
         preset_idx,
         preset_name(preset_idx),
@@ -481,8 +489,8 @@ fn paint_preset_row(
 /// Display name for a brush-preset index (`0` = Digital, `1` = Watercolor). English UI (HR-15).
 fn preset_name(idx: u8) -> &'static str {
     match idx {
-        1 => "Watercolor Basic",
-        _ => "Digital Basic",
+        1 => tr("panel.painter_layers.brush.watercolor_basic"),
+        _ => tr("panel.painter_layers.brush.digital_basic"),
     }
 }
 

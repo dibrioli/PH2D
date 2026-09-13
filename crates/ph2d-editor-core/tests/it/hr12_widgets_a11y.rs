@@ -755,6 +755,13 @@ const PANEL_A11Y_DELEGATE_OK: &[(&str, &str)] = &[
         "ph2d-panel-painter-layers/src/paint_stencil.rs",
         "number boxes delegate to number_field (a11y-wired NumberInput); rest is decorative chrome",
     ),
+    // The Grain's tiling rows (Offset / Size / Depth) — cut from `paint_texture.rs` by the function LOC
+    // cap on 2026-09-13, and it paints nothing itself: the same `number_field` delegation as the
+    // Stencil card above. It registers no id (0 `NodeId` / `hit_index` / `register(`).
+    (
+        "ph2d-panel-painter-layers/src/paint_texture_tiling.rs",
+        "Offset/Size/Depth rows delegate to number_field (a11y-wired NumberInput); registers no id itself",
+    ),
     // Flatten/rotate gizmo — its two handles are `CurvePoint`s dispatched in editor-core (the same
     // pattern as paint_falloff); the rim + ellipse + axes are a decorative template.
     (

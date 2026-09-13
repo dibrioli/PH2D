@@ -37,9 +37,13 @@ ph2d-text = { path = "../ph2d-text" }
 # handles render the user's actual gradient colors (not theme tokens), the same
 # way `widget::color_swatch` builds `Color::from_rgba8`.
 ph2d-vector = { path = "../ph2d-vector" }
+# A tabela de strings (HR-15): todo rótulo do painel é uma chave `panel.painter_layers.*`.
+ph2d-i18n = { path = "../ph2d-i18n" }
 
 [dev-dependencies]
 ph2d-host = { path = "../ph2d-host" }
+# O gate `every_word_this_panel_shows_comes_from_the_string_table` — a régua lexical partilhada.
+ph2d-label-census = { path = "../ph2d-label-census" }
 # Headless seam test (MockPanelHost): drives the real apply_event path and
 # drains the action bus to prove the panel→shell forward is alive.
 ph2d-ui-testkit = { path = "../ph2d-ui-testkit" }

@@ -17,6 +17,7 @@ use ph2d_editor_core::paint::{paint_text, resolve};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::DropdownOption;
 use ph2d_editor_core::zones::Rect;
+use ph2d_i18n::tr;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, TypeToken};
 use ph2d_tool_painter::ids::painter_brush_stroke_method_option_id;
 use ph2d_tool_painter::{
@@ -40,7 +41,7 @@ pub(crate) fn paint_stroke_section(
         x,
         content_w,
         y,
-        "Stroke",
+        tr("panel.painter_layers.stroke.stroke"),
         ph2d_tool_painter::ids::PAINTER_BRUSH_STROKE_SECTION,
         ph2d_tool_painter::ids::PAINTER_BRUSH_STROKE_SECTION_COLOR,
         ph2d_tool_painter::ids::PAINTER_BRUSH_STROKE_RESET,
@@ -74,7 +75,7 @@ pub(crate) fn paint_stroke_section(
             content_w,
             y,
             ph2d_tool_painter::ids::PAINTER_BRUSH_LINE_DIMENSIONS,
-            "Dimensions",
+            tr("panel.painter_layers.stroke.dimensions"),
             brush.line_show_dimensions,
         );
     }
@@ -111,7 +112,7 @@ pub(crate) fn paint_stroke_section(
             content_w,
             y,
             ph2d_tool_painter::ids::PAINTER_BRUSH_EDGE_TO_EDGE,
-            "Edge to Edge",
+            tr("panel.painter_layers.stroke.edge_to_edge"),
             brush.edge_to_edge,
         );
     }
@@ -126,7 +127,7 @@ pub(crate) fn paint_stroke_section(
             x,
             content_w,
             y,
-            "Rate",
+            tr("panel.painter_layers.stroke.rate"),
             ph2d_tool_painter::ids::PAINTER_BRUSH_RATE,
             ph2d_tool_painter::ids::PAINTER_BRUSH_RATE_CHIP,
             track,
@@ -141,7 +142,7 @@ pub(crate) fn paint_stroke_section(
             x,
             content_w,
             y,
-            "Spacing",
+            tr("panel.painter_layers.stroke.spacing"),
             ph2d_tool_painter::ids::PAINTER_BRUSH_SPACING,
             ph2d_tool_painter::ids::PAINTER_BRUSH_SPACING_CHIP,
             brush.spacing,
@@ -153,7 +154,7 @@ pub(crate) fn paint_stroke_section(
             content_w,
             y,
             ph2d_tool_painter::ids::PAINTER_BRUSH_SPACE_ATTEN,
-            "Adjust Strength",
+            tr("panel.painter_layers.stroke.adjust_strength"),
             brush.space_attenuation,
         );
     }
@@ -173,7 +174,7 @@ pub(crate) fn paint_stroke_section(
             x,
             content_w,
             y,
-            "Dash",
+            tr("panel.painter_layers.stroke.dash"),
             ph2d_tool_painter::ids::PAINTER_BRUSH_DASH_RATIO,
             ph2d_tool_painter::ids::PAINTER_BRUSH_DASH_RATIO_CHIP,
             brush.dash_ratio,
@@ -184,7 +185,7 @@ pub(crate) fn paint_stroke_section(
             x,
             content_w,
             y,
-            "Length",
+            tr("panel.painter_layers.stroke.length"),
             ph2d_tool_painter::ids::PAINTER_BRUSH_DASH_LENGTH,
             ph2d_tool_painter::ids::PAINTER_BRUSH_DASH_LENGTH_CHIP,
             count_to_norm(brush.dash_samples),
@@ -198,7 +199,7 @@ pub(crate) fn paint_stroke_section(
         x,
         content_w,
         y,
-        "Samples",
+        tr("panel.painter_layers.stroke.samples"),
         ph2d_tool_painter::ids::PAINTER_BRUSH_INPUT_SAMPLES,
         ph2d_tool_painter::ids::PAINTER_BRUSH_INPUT_SAMPLES_CHIP,
         count_to_norm(brush.input_samples),
@@ -213,7 +214,7 @@ pub(crate) fn paint_stroke_section(
             x,
             content_w,
             y,
-            "Stabilize",
+            tr("panel.painter_layers.stroke.stabilize"),
             ph2d_tool_painter::ids::PAINTER_BRUSH_STABILIZE,
             ph2d_tool_painter::ids::PAINTER_BRUSH_STABILIZE_CHIP,
             brush.stabilizer,
@@ -241,7 +242,7 @@ pub(crate) fn paint_tiling_section(
         x,
         content_w,
         y,
-        "Tiling",
+        tr("panel.painter_layers.stroke.tiling"),
         ph2d_tool_painter::ids::PAINTER_BRUSH_TILING_SECTION,
         ph2d_tool_painter::ids::PAINTER_BRUSH_TILING_SECTION_COLOR,
         ph2d_tool_painter::ids::PAINTER_BRUSH_TILING_RESET,
@@ -256,7 +257,7 @@ pub(crate) fn paint_tiling_section(
         content_w,
         y,
         ph2d_tool_painter::ids::PAINTER_BRUSH_TILING_X,
-        "Tiling X",
+        tr("panel.painter_layers.stroke.tiling_x"),
         brush.tiling[0],
     );
     y = paint_checkbox_row(
@@ -266,7 +267,7 @@ pub(crate) fn paint_tiling_section(
         content_w,
         y,
         ph2d_tool_painter::ids::PAINTER_BRUSH_TILING_Y,
-        "Tiling Y",
+        tr("panel.painter_layers.stroke.tiling_y"),
         brush.tiling[1],
     );
     // Repeat Image: on-canvas 3×3 tile preview + its per-axis Aspect Ratio (shown when on).
@@ -277,7 +278,7 @@ pub(crate) fn paint_tiling_section(
         content_w,
         y,
         ph2d_tool_painter::ids::PAINTER_BRUSH_REPEAT_IMAGE,
-        "Repeat Image",
+        tr("panel.painter_layers.stroke.repeat_image"),
         brush.repeat_image,
     );
     let out = y;
@@ -335,7 +336,7 @@ fn paint_method_row(
         x,
         dd_w,
         y,
-        "Method",
+        tr("panel.painter_layers.stroke.method"),
         core_ids::PAINTER_BRUSH_STROKE_METHOD,
         brush.stroke_method,
         stroke_method_name(brush.stroke_method),
@@ -394,17 +395,17 @@ fn count_to_norm(n: u32) -> f32 {
 /// Display name for a stroke-method wire discriminant.
 fn stroke_method_name(m: u8) -> &'static str {
     match StrokeMethod::from_u8(m) {
-        StrokeMethod::Dots => "Dots",
-        StrokeMethod::Airbrush => "Airbrush",
-        StrokeMethod::Anchored => "Anchored",
-        StrokeMethod::Space => "Space",
-        StrokeMethod::DragDot => "Drag Dot",
-        StrokeMethod::Line => "Line",
-        StrokeMethod::Arc => "Arc",
-        StrokeMethod::Ellipse => "Ellipse",
-        StrokeMethod::Polygon => "Polygon",
-        StrokeMethod::FreeHand => "Free Hand",
-        StrokeMethod::GridStamp => "Grid Stamp",
+        StrokeMethod::Dots => tr("panel.painter_layers.stroke.dots"),
+        StrokeMethod::Airbrush => tr("panel.painter_layers.stroke.airbrush"),
+        StrokeMethod::Anchored => tr("panel.painter_layers.stroke.anchored"),
+        StrokeMethod::Space => tr("panel.painter_layers.stroke.space"),
+        StrokeMethod::DragDot => tr("panel.painter_layers.stroke.drag_dot"),
+        StrokeMethod::Line => tr("panel.painter_layers.stroke.line"),
+        StrokeMethod::Arc => tr("panel.painter_layers.stroke.arc"),
+        StrokeMethod::Ellipse => tr("panel.painter_layers.stroke.ellipse"),
+        StrokeMethod::Polygon => tr("panel.painter_layers.stroke.polygon"),
+        StrokeMethod::FreeHand => tr("panel.painter_layers.stroke.free_hand"),
+        StrokeMethod::GridStamp => tr("panel.painter_layers.stroke.grid_stamp"),
     }
 }
 

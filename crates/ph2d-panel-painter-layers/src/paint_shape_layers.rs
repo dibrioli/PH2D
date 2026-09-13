@@ -20,6 +20,7 @@ use ph2d_editor_core::widget::{
     SwatchState, paint_button, paint_checkbox, paint_color_swatch,
 };
 use ph2d_editor_core::zones::Rect;
+use ph2d_i18n::{tr, tr_with};
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, StrokeToken, TypeToken};
 use ph2d_tool_painter::{BlendMode, BrushSettings, MAX_BLEND_MODES};
 
@@ -44,7 +45,7 @@ pub(crate) fn paint_use_layers_button(
     y: f32,
 ) -> f32 {
     let id = ph2d_tool_painter::ids::PAINTER_SHAPE_USE_LAYERS;
-    let btn = Button::new(id, "Use Document Layers");
+    let btn = Button::new(id, tr("panel.painter_layers.shape.use_document_layers"));
     let rect = Rect::new(x, y, content_w, ROW_H_PX);
     paint_button(&btn, rect, ctx.scene, ctx.text_system, theme);
     register_button(ctx.host.store_mut(), id);
@@ -85,7 +86,7 @@ pub(crate) fn paint_shape_per_layer_color(
             content_w,
             y,
             ph2d_tool_painter::ids::PAINTER_SHAPE_ALPHA_FROM_IMAGE,
-            "Alpha From Image",
+            tr("panel.painter_layers.shape.alpha_from_image"),
             brush.shape_alpha_from_image,
         );
     }
@@ -98,9 +99,9 @@ pub(crate) fn paint_shape_per_layer_color(
         y,
         ph2d_tool_painter::ids::PAINTER_SHAPE_PER_LAYER_COLOR,
         if single {
-            "Use Texture Colors"
+            tr("panel.painter_layers.shape.use_texture_colors")
         } else {
-            "Per-Layer Color"
+            tr("panel.painter_layers.shape.per_layer_color")
         },
         brush.shape_per_layer_color,
     );
@@ -127,13 +128,16 @@ pub(crate) fn paint_shape_per_layer_color(
         } else {
             content_w
         };
-        let cb = Checkbox::new(check_id, format!("Layer {} Color", i + 1))
-            .visual(ctx.host.store().checkbox_visual(check_id))
-            .value(if color_on {
-                CheckboxValue::Checked
-            } else {
-                CheckboxValue::Unchecked
-            });
+        let cb = Checkbox::new(
+            check_id,
+            tr_with("panel.painter_layers.shape.layer_color", &[("n", &(i + 1))]),
+        )
+        .visual(ctx.host.store().checkbox_visual(check_id))
+        .value(if color_on {
+            CheckboxValue::Checked
+        } else {
+            CheckboxValue::Unchecked
+        });
         let cb_rect = Rect::new(x, y, cb_w, ROW_H_PX);
         paint_checkbox(&cb, cb_rect, ctx.scene, ctx.text_system, theme);
         register_button(ctx.host.store_mut(), check_id);
@@ -173,7 +177,7 @@ pub(crate) fn paint_shape_per_layer_color(
             paint_text(
                 ctx.text_system,
                 ctx.scene,
-                "Blend",
+                tr("panel.painter_layers.shape.blend"),
                 x,
                 y + (ROW_H_PX - font) * 0.5,
                 font,

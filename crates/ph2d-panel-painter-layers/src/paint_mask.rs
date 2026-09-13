@@ -18,6 +18,7 @@ use ph2d_editor_core::widget::{
     flat_button_surface_color, paint_button, paint_color_swatch, paint_section_header,
 };
 use ph2d_editor_core::zones::Rect;
+use ph2d_i18n::tr;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, StrokeToken, TypeToken};
 use ph2d_tool_painter::BrushSettings;
 
@@ -52,13 +53,16 @@ pub(crate) fn paint_mask_section(
         .host
         .store()
         .is_collapsed(ph2d_tool_painter::ids::PAINTER_MASK_SECTION);
-    let header = SectionHeader::new(ph2d_tool_painter::ids::PAINTER_MASK_SECTION, "Mask")
-        .collapsible(!collapsed)
-        .open_t(
-            ctx.host
-                .store()
-                .section_open_live(ph2d_tool_painter::ids::PAINTER_MASK_SECTION),
-        );
+    let header = SectionHeader::new(
+        ph2d_tool_painter::ids::PAINTER_MASK_SECTION,
+        tr("panel.painter_layers.mask.mask"),
+    )
+    .collapsible(!collapsed)
+    .open_t(
+        ctx.host
+            .store()
+            .section_open_live(ph2d_tool_painter::ids::PAINTER_MASK_SECTION),
+    );
     let header_rect = Rect::new(x, y, content_w, header_h);
     {
         let scene = &mut *ctx.scene;
@@ -75,14 +79,19 @@ pub(crate) fn paint_mask_section(
 
     // ── Card 1: Brushes — the mask sub-brush toggle group (one selected). Paint sits SOLO on the top
     //    row (the primary brush), Erase/Blur/Smear reflow below (Enio). ──
-    let brush_labels = ["Paint", "Erase", "Blur", "Smear"];
+    let brush_labels = [
+        tr("panel.painter_layers.mask.paint"),
+        tr("panel.painter_layers.mask.erase"),
+        tr("panel.painter_layers.mask.blur"),
+        tr("panel.painter_layers.mask.smear"),
+    ];
     y = button_card(
         ctx,
         theme,
         x,
         content_w,
         y,
-        "Brushes",
+        tr("panel.painter_layers.mask.brushes"),
         &brush_labels,
         &ph2d_tool_painter::ids::PAINTER_MASK_BRUSH,
         Some(brush.mask_brush as usize),
@@ -90,14 +99,21 @@ pub(crate) fn paint_mask_section(
     );
 
     // ── Card 2: Modifiers — whole-canvas ops (one-click). ──
-    let op_labels = ["Expand", "Contract", "Blur", "Sharpen", "Invert", "Clear"];
+    let op_labels = [
+        tr("panel.painter_layers.mask.expand"),
+        tr("panel.painter_layers.mask.contract"),
+        tr("panel.painter_layers.mask.blur"),
+        tr("panel.painter_layers.mask.sharpen"),
+        tr("panel.painter_layers.mask.invert"),
+        tr("panel.painter_layers.mask.clear"),
+    ];
     y = button_card(
         ctx,
         theme,
         x,
         content_w,
         y,
-        "Modifiers",
+        tr("panel.painter_layers.mask.modifiers"),
         &op_labels,
         &ph2d_tool_painter::ids::PAINTER_MASK_OP,
         None,
@@ -118,7 +134,7 @@ pub(crate) fn paint_mask_section(
     let apply_id = ph2d_tool_painter::ids::PAINTER_MASK_APPLY;
     let apply_rect = Rect::new(x, y, content_w, ROW_H_PX);
     let apply_st = ctx.host.store().button_visual(apply_id);
-    let apply_btn = Button::new(apply_id, "Apply Mask")
+    let apply_btn = Button::new(apply_id, tr("panel.painter_layers.mask.apply_mask"))
         .accent()
         .visual(apply_st);
     paint_button(&apply_btn, apply_rect, ctx.scene, ctx.text_system, theme);
@@ -269,8 +285,15 @@ fn colors_card(
     let inner_w = (content_w - 2.0 * pad).max(0.0);
     let n = OVERLAY_COLORS.len();
     let (_, body_h) = flow_fixed(0.0, 0.0, inner_w, n, SWATCH_PX, SWATCH_PX, gap);
-    let (inner_x, inner_w, body_top, next_y) =
-        card_frame(ctx, theme, x, content_w, y, "Overlay Color", body_h);
+    let (inner_x, inner_w, body_top, next_y) = card_frame(
+        ctx,
+        theme,
+        x,
+        content_w,
+        y,
+        tr("panel.painter_layers.mask.overlay_color"),
+        body_h,
+    );
     let (rects, _) = flow_fixed(inner_x, body_top, inner_w, n, SWATCH_PX, SWATCH_PX, gap);
     for (i, rgba) in OVERLAY_COLORS.iter().enumerate() {
         let id = ph2d_tool_painter::ids::PAINTER_MASK_COLOR[i];

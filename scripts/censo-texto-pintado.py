@@ -34,11 +34,26 @@ existir, é **por crate, na crate dela**.
 ⚠️ **O que ele NÃO vê**, declarado: literais que chegam por variável, por `const`, por tabela de
 `&str` ou por `format!` — todos eles continuam a ser texto pintado. ⇒ *o número que ele imprime é
 um PISO.*
+
+⛔⛔ **E O PISO ERA MUITO MAIS BAIXO DO QUE O TECTO (medido 2026-09-13).** Os construtores de widget
+(`Button::new(id, "Apply")`), as tabelas (`["Paint", "Erase"]`) e o `format!` são a MAIORIA do
+texto de um painel: sobre a mesma árvore este script conta `166` na `ph2d-panel-painter-layers` e a
+régua lexical conta `376`; `32` contra `593` na `ph2d-editor-core`; `445` contra `5 533` nas crates
+de UI inteiras. ⇒ **a régua de registo é a da crate `ph2d-label-census`**, a mesma que os gates por
+crate correm:
+
+    cargo run -q -p ph2d-label-census --example censo -- --resumo
+
+Este script fica como o IRMÃO que mede a outra grandeza (o que chega a um pintor pelo nome dele).
+
+⚠️ **E ele varria por PREFIXO** (`ph2d-panel-*` + `ph2d-editor-core`) até 2026-09-13: o código de
+família que a W2 levou da shell para `ph2d-app-*` ficou fora dele em silêncio (`10` literais na
+`ph2d-app-motion`, `1` na `ph2d-param-editors`). A raiz passou a ser a árvore inteira.
 """
 import os,re,sys,collections,json
 
-ROOTS=["crates/ph2d-editor-core/src"]+[f"crates/{d}/src" for d in sorted(os.listdir("crates"))
-       if d.startswith("ph2d-panel-") and d!="ph2d-panel-registry-init" and os.path.isdir(f"crates/{d}/src")]
+ROOTS=[f"crates/{d}/src" for d in sorted(os.listdir("crates")) if os.path.isdir(f"crates/{d}/src")] \
+     +[f"shells/{d}/src" for d in sorted(os.listdir("shells")) if os.path.isdir(f"shells/{d}/src")]
 
 def strip_comments(src):
     out=[];i=0;n=len(src);instr=False;esc=False

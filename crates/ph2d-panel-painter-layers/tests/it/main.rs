@@ -7,6 +7,7 @@
 //! ⚠️ Teste novo = ficheiro novo AQUI + uma linha `mod` abaixo — nunca um `tests/*.rs` solto.
 
 mod curve_handle_menu_e2e;
+mod every_word_this_panel_shows_comes_from_the_string_table;
 mod falloff_drain_repro;
 mod falloff_handle_menu_e2e;
 mod seam;

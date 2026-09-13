@@ -9,6 +9,7 @@
 use crate::PaintCtx;
 use crate::card::card_row;
 use crate::number_field;
+use ph2d_i18n::{tr, tr_with};
 use ph2d_tool_painter::BrushSettings;
 
 // Knob ranges/steps: each mirrors the `set_wet_knob_value` clamp in the tool
@@ -47,7 +48,7 @@ pub(crate) fn paint_wetpaint_section(
         x,
         content_w,
         y,
-        "Wet Paint",
+        tr("panel.painter_layers.wetpaint.wet_paint"),
         ph2d_tool_painter::ids::PAINTER_WETPAINT_SECTION,
         ph2d_tool_painter::ids::PAINTER_WETPAINT_SECTION_COLOR,
         ph2d_tool_painter::ids::PAINTER_WETPAINT_RESET,
@@ -83,22 +84,22 @@ pub(crate) fn paint_wetpaint_section(
         };
         let t = ph2d_tool_painter::ids::PAINTER_WETPAINT_TOOL_IDS;
         let tool_opts: [(ph2d_a11y::NodeId, String); 7] = [
-            (t[0], "Paint".into()),
-            (t[1], "Erase".into()),
-            (t[2], "Smear".into()),
-            (t[3], "Blend".into()),
-            (t[4], "Wet".into()),
-            (t[5], "Dry".into()),
-            (t[6], "Blow".into()),
+            (t[0], tr("panel.painter_layers.wetpaint.paint").into()),
+            (t[1], tr("panel.painter_layers.wetpaint.erase").into()),
+            (t[2], tr("panel.painter_layers.wetpaint.smear").into()),
+            (t[3], tr("panel.painter_layers.wetpaint.blend").into()),
+            (t[4], tr("panel.painter_layers.wetpaint.wet").into()),
+            (t[5], tr("panel.painter_layers.wetpaint.dry").into()),
+            (t[6], tr("panel.painter_layers.wetpaint.blow").into()),
         ];
-        y = crate::paint_impasto::seg_row_owned(
+        y = crate::paint_seg_row::seg_row_owned(
             ctx,
             theme,
             x,
             content_w,
             y,
             ph2d_tool_painter::ids::PAINTER_WETPAINT_TOOL_IDS[0],
-            "Wet paint tool",
+            tr("panel.painter_layers.wetpaint.wet_paint_tool"),
             &tool_opts,
             selected,
         );
@@ -107,7 +108,7 @@ pub(crate) fn paint_wetpaint_section(
         let k = brush.wet_knobs;
         let rows: [(&str, ph2d_a11y::NodeId, f32, f32, f32, f64, usize); 7] = [
             (
-                "Water",
+                tr("panel.painter_layers.wetpaint.water"),
                 ph2d_tool_painter::ids::PAINTER_WETPAINT_WATER,
                 k.water as f32,
                 0.0,
@@ -116,7 +117,7 @@ pub(crate) fn paint_wetpaint_section(
                 2,
             ),
             (
-                "Pigment",
+                tr("panel.painter_layers.wetpaint.pigment"),
                 ph2d_tool_painter::ids::PAINTER_WETPAINT_PIGMENT,
                 k.pigment() as f32,
                 0.0,
@@ -125,7 +126,7 @@ pub(crate) fn paint_wetpaint_section(
                 0,
             ),
             (
-                "Pickup",
+                tr("panel.painter_layers.wetpaint.pickup"),
                 ph2d_tool_painter::ids::PAINTER_WETPAINT_PICKUP,
                 k.pickup() as f32,
                 0.0,
@@ -134,7 +135,7 @@ pub(crate) fn paint_wetpaint_section(
                 3,
             ),
             (
-                "Dry Speed",
+                tr("panel.painter_layers.wetpaint.dry_speed"),
                 ph2d_tool_painter::ids::PAINTER_WETPAINT_DRY_SPEED,
                 k.dry_speed() as f32,
                 0.0,
@@ -143,7 +144,7 @@ pub(crate) fn paint_wetpaint_section(
                 2,
             ),
             (
-                "Edge Darkening",
+                tr("panel.painter_layers.wetpaint.edge_darkening"),
                 ph2d_tool_painter::ids::PAINTER_WETPAINT_EDGE,
                 k.edge_darkening() as f32,
                 0.0,
@@ -152,7 +153,7 @@ pub(crate) fn paint_wetpaint_section(
                 0,
             ),
             (
-                "Gravity",
+                tr("panel.painter_layers.wetpaint.gravity"),
                 ph2d_tool_painter::ids::PAINTER_WETPAINT_GRAVITY,
                 k.gravity() as f32,
                 0.0,
@@ -161,7 +162,7 @@ pub(crate) fn paint_wetpaint_section(
                 4,
             ),
             (
-                "Erase Strength",
+                tr("panel.painter_layers.wetpaint.erase_strength"),
                 ph2d_tool_painter::ids::PAINTER_WETPAINT_ERASE,
                 k.erase as f32,
                 0.0,
@@ -178,26 +179,26 @@ pub(crate) fn paint_wetpaint_section(
         // Canvas actions (the model's bottom bar): three one-shots as a
         // momentary button row (the watercolor Dry/Wet pattern) + Show Wet
         // as an honest TOGGLE (its state is visible, not implied).
-        y = crate::paint_impasto::seg_row_owned(
+        y = crate::paint_seg_row::seg_row_owned(
             ctx,
             theme,
             x,
             content_w,
             y,
             ph2d_tool_painter::ids::PAINTER_WETPAINT_WETCANVAS,
-            "Wet canvas actions",
+            tr("panel.painter_layers.wetpaint.canvas_actions"),
             &[
                 (
                     ph2d_tool_painter::ids::PAINTER_WETPAINT_WETCANVAS,
-                    "Wet canvas".into(),
+                    tr("panel.painter_layers.wetpaint.wet_canvas").into(),
                 ),
                 (
                     ph2d_tool_painter::ids::PAINTER_WETPAINT_DRYCANVAS,
-                    "Dry canvas".into(),
+                    tr("panel.painter_layers.wetpaint.dry_canvas").into(),
                 ),
                 (
                     ph2d_tool_painter::ids::PAINTER_WETPAINT_FASTDRY,
-                    "Fast dry".into(),
+                    tr("panel.painter_layers.wetpaint.fast_dry").into(),
                 ),
             ],
             usize::MAX,
@@ -209,7 +210,7 @@ pub(crate) fn paint_wetpaint_section(
             content_w,
             y,
             ph2d_tool_painter::ids::PAINTER_WETPAINT_SHOWWET,
-            "Show Wet",
+            tr("panel.painter_layers.wetpaint.show_wet"),
             brush.wet_show_wet,
         );
         // Paper — the tooth becomes visually part of the painting (render
@@ -221,7 +222,7 @@ pub(crate) fn paint_wetpaint_section(
             content_w,
             y,
             ph2d_tool_painter::ids::PAINTER_WETPAINT_PAPER_VISUAL,
-            "Paper",
+            tr("panel.painter_layers.wetpaint.paper"),
             brush.wet_paper_visual,
         );
         // Tuning — opens the side panel with the engine's full knob table.
@@ -232,7 +233,7 @@ pub(crate) fn paint_wetpaint_section(
             content_w,
             y,
             ph2d_tool_painter::ids::PAINTER_WETPAINT_TUNING,
-            "Tuning",
+            tr("panel.painter_layers.wetpaint.tuning"),
             brush.wet_tuning_open,
         );
     }
@@ -267,7 +268,7 @@ fn paint_resolution_group(
         x,
         content_w,
         y,
-        "Grid Size (px)",
+        tr("panel.painter_layers.wetpaint.grid_size_px"),
         ph2d_tool_painter::ids::PAINTER_WETPAINT_GRID,
         f32::from(brush.wet_grid_ratio),
         GRID_MIN,
@@ -286,7 +287,7 @@ fn paint_resolution_group(
         x,
         content_w,
         y,
-        "Flow Grid (x)",
+        tr("panel.painter_layers.wetpaint.flow_grid_x"),
         ph2d_tool_painter::ids::PAINTER_WETPAINT_FLOW,
         f32::from(brush.wet_flow_ratio),
         FLOW_MIN,
@@ -309,9 +310,12 @@ fn paint_resolution_group(
 fn resolution_readout(fluid: (u32, u32), flow: (u32, u32)) -> String {
     let ((gw, gh), (fw, fh)) = (fluid, flow);
     if gw == 0 || gh == 0 {
-        "no canvas".to_string()
+        tr("panel.painter_layers.wetpaint.no_canvas").to_string()
     } else {
-        format!("fluid {gw}x{gh} - flow {fw}x{fh}")
+        tr_with(
+            "panel.painter_layers.wetpaint.resolution",
+            &[("gw", &gw), ("gh", &gh), ("fw", &fw), ("fh", &fh)],
+        )
     }
 }
 

@@ -7,6 +7,7 @@ use ph2d_editor_core::widget::{
     paint_segmented_adaptive,
 };
 use ph2d_editor_core::zones::Rect;
+use ph2d_i18n::tr;
 use ph2d_tokens::{ROW_H_PX, Spacing};
 
 /// Paint the multi-shape **OPERATION** card (Overlay / Add / Remove) — a framed surface with a title, above
@@ -25,11 +26,20 @@ pub(super) fn operation_card(
     let card = Card::new(ph2d_tool_painter::ids::PAINTER_STROKE_OP_CARD).title("OPERATION");
     let seg = SegmentedAdaptive::new(
         ph2d_tool_painter::ids::PAINTER_STROKE_OP,
-        "Shape operation",
+        tr("panel.painter_layers.stroke.shape_operation"),
         vec![
-            SegmentedOption::new(ph2d_tool_painter::ids::PAINTER_STROKE_OP_OVERLAY, "Overlay"),
-            SegmentedOption::new(ph2d_tool_painter::ids::PAINTER_STROKE_OP_ADD, "Add"),
-            SegmentedOption::new(ph2d_tool_painter::ids::PAINTER_STROKE_OP_REMOVE, "Remove"),
+            SegmentedOption::new(
+                ph2d_tool_painter::ids::PAINTER_STROKE_OP_OVERLAY,
+                tr("panel.painter_layers.stroke.overlay"),
+            ),
+            SegmentedOption::new(
+                ph2d_tool_painter::ids::PAINTER_STROKE_OP_ADD,
+                tr("panel.painter_layers.stroke.add"),
+            ),
+            SegmentedOption::new(
+                ph2d_tool_painter::ids::PAINTER_STROKE_OP_REMOVE,
+                tr("panel.painter_layers.stroke.remove"),
+            ),
         ],
     )
     .selected(selected);

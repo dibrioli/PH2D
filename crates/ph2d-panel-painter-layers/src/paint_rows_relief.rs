@@ -13,6 +13,7 @@ use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, resolve};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::{Slider, paint_slider};
 use ph2d_editor_core::zones::Rect;
+use ph2d_i18n::tr;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, StrokeToken};
 use ph2d_tool_painter::ids::{PainterLayerWidget, painter_layer_widget_id};
 use ph2d_tool_painter::{Layer, ReliefComposite};
@@ -109,7 +110,11 @@ pub(crate) fn paint_relief_line(
     paint_text(
         ctx.text_system,
         ctx.scene,
-        if leveling { "Level" } else { "Add" },
+        if leveling {
+            tr("panel.painter_layers.impasto.level")
+        } else {
+            tr("panel.painter_layers.impasto.add")
+        },
         chip.x + cell_gap,
         chip.y + (ROW_H_PX - font) * 0.5,
         font,

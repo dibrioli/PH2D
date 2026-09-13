@@ -11,6 +11,7 @@ use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, resolve};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::{Checkbox, CheckboxValue, Slider, paint_checkbox, paint_slider};
 use ph2d_editor_core::zones::Rect;
+use ph2d_i18n::tr;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, StrokeToken, TypeToken};
 use ph2d_tool_painter::BrushSettings;
 
@@ -28,9 +29,9 @@ const N_LAYERS: f32 = 3.0; // LITERAL-PX-OK: the 3 fixed composite layers (count
 /// The name shown in each layer row for a composite op wire discriminant (`0` Brush · `1` Smear · `2` Blur).
 fn op_name(op: u8) -> &'static str {
     match op {
-        1 => "Smear",
-        2 => "Blur",
-        _ => "Brush",
+        1 => tr("panel.painter_layers.composite.smear"),
+        2 => tr("panel.painter_layers.composite.blur"),
+        _ => tr("panel.painter_layers.composite.brush"),
     }
 }
 
@@ -85,7 +86,7 @@ pub(crate) fn paint_composite_card(
     // The enable checkbox (forwards a plain Click → the tool's `toggle_composite`).
     let cb = Checkbox::new(
         ph2d_tool_painter::ids::PAINTER_BRUSH_COMPOSITE_ENABLE,
-        "Composite Brush",
+        tr("panel.painter_layers.composite.composite_brush"),
     )
     .visual(
         ctx.host

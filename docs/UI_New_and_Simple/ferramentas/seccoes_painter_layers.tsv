@@ -1,0 +1,36 @@
+# O mapa FICHEIRO -> SECÇÃO DA UI do painel Painter, para as chaves `panel.painter_layers.<secção>.…`
+# (consumido por `scripts/migrar-texto-pintado.py esqueleto`). O prefixo MAIS LONGO ganha.
+# ⚠️ A chave nomeia a secção que o artista VÊ, nunca o ficheiro: `paint_brush_top.rs` e
+# `paint_brush_sections.rs` são o mesmo cartão *Brush* cortado pelo tecto de LOC.
+lib.rs	panel
+paint.rs	layers
+populate.rs	layers
+paint_layer_list.rs	layers
+paint_adjust	adjust
+paint_brush_top.rs	brush
+paint_brush	brush
+paint_clone.rs	clone
+paint_composite.rs	composite
+paint_deform.rs	deform
+paint_impasto	impasto
+paint_rows_relief.rs	impasto
+paint_inpaint.rs	inpaint
+paint_line.rs	line
+paint_mask	mask
+paint_ramp_widget.rs	ramp
+paint_texture_ramp.rs	ramp
+paint_sculpt.rs	sculpt
+paint_selection.rs	selection
+paint_shape	shape
+paint_stencil.rs	stencil
+paint_stroke/apply.rs	stroke
+paint_stroke/grid_card.rs	stroke.grid
+paint_stroke/jitter_card.rs	stroke.jitter
+paint_stroke/op_card.rs	stroke
+paint_stroke	stroke
+paint_symmetry.rs	symmetry
+paint_taper.rs	taper
+paint_texture.rs	grain
+paint_watercolor_paper.rs	paper
+paint_watercolor.rs	watercolor
+paint_wetpaint	wetpaint

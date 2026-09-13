@@ -19,6 +19,7 @@ use ph2d_editor_core::widget::{
     paint_segmented_adaptive,
 };
 use ph2d_editor_core::zones::Rect;
+use ph2d_i18n::tr;
 use ph2d_tokens::{ROW_H_PX, Spacing};
 use ph2d_tool_painter::BrushSettings;
 
@@ -37,8 +38,16 @@ pub(crate) fn paint_tool_card(
 ) -> f32 {
     let card = Card::new(ph2d_tool_painter::ids::PAINTER_IMPASTO_TOOL).title("TOOL");
     let labels = [
-        "Deposit", "Knife", "Smooth", "Sharpen", "Flatten", "Scrape", "Fill", "Chisel", "Layer",
-        "Inflate",
+        tr("panel.painter_layers.impasto.deposit"),
+        tr("panel.painter_layers.impasto.knife"),
+        tr("panel.painter_layers.impasto.smooth"),
+        tr("panel.painter_layers.impasto.sharpen"),
+        tr("panel.painter_layers.impasto.flatten"),
+        tr("panel.painter_layers.impasto.scrape"),
+        tr("panel.painter_layers.impasto.fill"),
+        tr("panel.painter_layers.impasto.chisel"),
+        tr("panel.painter_layers.impasto.layer"),
+        tr("panel.painter_layers.impasto.inflate"),
     ];
     let opts: Vec<SegmentedOption> = ph2d_tool_painter::ids::PAINTER_IMPASTO_TOOL_IDS
         .iter()
@@ -47,7 +56,7 @@ pub(crate) fn paint_tool_card(
         .collect();
     let seg = SegmentedAdaptive::new(
         ph2d_tool_painter::ids::PAINTER_IMPASTO_TOOL,
-        "Which operation acts on the paint's body",
+        tr("panel.painter_layers.impasto.tool_group"),
         opts,
     )
     .selected(brush.impasto_tool as usize);

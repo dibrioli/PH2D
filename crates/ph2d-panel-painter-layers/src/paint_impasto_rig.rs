@@ -21,6 +21,7 @@ use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::tool::PanelEvent;
 use ph2d_editor_core::widget::{ColorSwatch, SwatchSize, SwatchState, paint_color_swatch};
 use ph2d_editor_core::zones::Rect;
+use ph2d_i18n::tr;
 use ph2d_tokens::{ROW_H_PX, Spacing};
 use ph2d_tool_painter::BrushSettings;
 
@@ -57,14 +58,14 @@ pub(crate) fn paint_light_rows(
 
     // ── Row: the lamp selector. A lamp that is OFF says so in its own chip — an artist scanning the rig
     //    must not have to click through four lamps to find out which are lit.
-    let mut ry = crate::paint_impasto::seg_row_owned(
+    let mut ry = crate::paint_seg_row::seg_row_owned(
         ctx,
         theme,
         x,
         w,
         y,
         ph2d_tool_painter::ids::PAINTER_IMPASTO_LIGHT_1,
-        "Light",
+        tr("panel.painter_layers.impasto.light"),
         &LAMP_IDS
             .iter()
             .enumerate()
@@ -94,7 +95,7 @@ pub(crate) fn paint_light_rows(
             w,
             ry,
             ph2d_tool_painter::ids::PAINTER_IMPASTO_LIGHT_ON,
-            "Enable",
+            tr("panel.painter_layers.impasto.enable"),
             lamp.on,
         );
     }
@@ -105,7 +106,7 @@ pub(crate) fn paint_light_rows(
         x,
         w,
         ry,
-        "Angle",
+        tr("panel.painter_layers.impasto.angle"),
         ph2d_tool_painter::ids::PAINTER_IMPASTO_LIGHT_ANGLE,
         f32::from(lamp.angle_deg),
         0.0,
@@ -119,7 +120,7 @@ pub(crate) fn paint_light_rows(
         x,
         w,
         ry,
-        "Elevation",
+        tr("panel.painter_layers.impasto.elevation"),
         ph2d_tool_painter::ids::PAINTER_IMPASTO_LIGHT_ELEV,
         f32::from(lamp.elev_deg),
         crate::paint_impasto::ELEV_MIN_DEG,
@@ -137,7 +138,7 @@ pub(crate) fn paint_light_rows(
         x,
         box_w,
         ry,
-        "Intensity",
+        tr("panel.painter_layers.impasto.intensity"),
         ph2d_tool_painter::ids::PAINTER_IMPASTO_LIGHT_POWER,
         lamp.intensity,
         0.0,

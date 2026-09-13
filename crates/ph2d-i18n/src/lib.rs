@@ -38,6 +38,7 @@ mod vector;
 /// with arguments) at that point.
 mod chrome;
 mod model3d;
+mod painter_layers;
 mod sculpt3d;
 
 pub fn tr(key: &str) -> &'static str {
@@ -321,6 +322,16 @@ pub fn tr(key: &str) -> &'static str {
         // `tokens.json`, o endereço que o artista digita no picker de binding e que o arquivo
         // guarda — traduzi-los partiria o endereço.
         "panel.tokens.title" => "Tokens",
+        // A HIERARQUIA (2026-09-13) — o painel que o artista tem aberto o dia inteiro, e que não
+        // tinha uma única chave. As duas frases do contador moram INTEIRAS aqui, com os marcadores
+        // (`ph2d_i18n::tr_with`): colar o número no código fixaria a ordem das palavras.
+        "panel.hierarchy.title" => "Hierarchy",
+        "panel.hierarchy.add" => "Add",
+        "panel.hierarchy.search" => "Search\u{2026}",
+        "panel.hierarchy.count.entities" => "{entities} entities",
+        "panel.hierarchy.count.entities_components" => {
+            "{entities} entities \u{00b7} {components} components"
+        }
         "panel.tokens.authored" => "authored",
         "panel.tokens.reset" => "Reset",
         "panel.tokens.reset_all" => "Reset This Mode",
@@ -450,8 +461,30 @@ pub fn tr(key: &str) -> &'static str {
             .or_else(|| sculpt3d::tr(k))
             .or_else(|| model3d::tr(k))
             .or_else(|| chrome::tr(k))
+            .or_else(|| painter_layers::tr(k))
             .unwrap_or_else(|| leak_key(k)),
     }
+}
+
+/// **Uma frase com PEÇAS vindas do código** — `tr_with("panel.hierarchy.count", &[("n", "12")])`
+/// sobre `"{n} entities"` dá `"12 entities"`.
+///
+/// ⭐ **A frase inteira mora na tabela, com os marcadores nomeados**, e o código só entrega os
+/// valores. É a forma que o Fluent tem (`{ $n } entities`) e a única que sobrevive a uma segunda
+/// língua: colar `format!("{n} {}", tr("…entities"))` fixa a ORDEM das palavras no código, e há
+/// línguas em que o número vem depois do nome.
+///
+/// ⚠️ Um marcador sem valor fica ESCRITO (`{n}`), de propósito — como a chave desconhecida do [`tr`],
+/// o erro tem de se ver na tela.
+pub fn tr_with(key: &str, args: &[(&str, &dyn std::fmt::Display)]) -> String {
+    let mut out = tr(key).to_string();
+    for (name, value) in args {
+        let marker = format!("{{{name}}}");
+        if out.contains(&marker) {
+            out = out.replace(&marker, &value.to_string());
+        }
+    }
+    out
 }
 
 /// Stub for the unknown-key path: leak the input into a `&'static`

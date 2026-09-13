@@ -6,6 +6,7 @@
 use crate::paint_brush_top::paint_slider_chip_row;
 use ph2d_editor_core::paint::{paint_text, resolve};
 use ph2d_editor_core::panel::PaintCtx;
+use ph2d_i18n::tr;
 use ph2d_tokens::{ColorToken, ROW_H_PX, TypeToken};
 use ph2d_tool_painter::BrushSettings;
 
@@ -23,7 +24,7 @@ pub(crate) fn paint_inpaint_card(
     paint_text(
         ctx.text_system,
         ctx.scene,
-        "Brush over a defect · release to heal.",
+        tr("panel.painter_layers.inpaint.hint"),
         x,
         y + (ROW_H_PX - font) * 0.5,
         font,
@@ -38,7 +39,7 @@ pub(crate) fn paint_inpaint_card(
         x,
         content_w,
         y,
-        "Patch Size",
+        tr("panel.painter_layers.inpaint.patch_size"),
         ph2d_tool_painter::ids::PAINTER_INPAINT_PATCH_SLIDER,
         ph2d_tool_painter::ids::PAINTER_INPAINT_PATCH_CHIP,
         brush.inpaint_patch,
@@ -49,7 +50,7 @@ pub(crate) fn paint_inpaint_card(
         x,
         content_w,
         y,
-        "Quality",
+        tr("panel.painter_layers.inpaint.quality"),
         ph2d_tool_painter::ids::PAINTER_INPAINT_QUALITY_SLIDER,
         ph2d_tool_painter::ids::PAINTER_INPAINT_QUALITY_CHIP,
         brush.inpaint_quality,
@@ -60,7 +61,7 @@ pub(crate) fn paint_inpaint_card(
         x,
         content_w,
         y,
-        "Search",
+        tr("panel.painter_layers.inpaint.search"),
         ph2d_tool_painter::ids::PAINTER_INPAINT_SEARCH_SLIDER,
         ph2d_tool_painter::ids::PAINTER_INPAINT_SEARCH_CHIP,
         brush.inpaint_search,

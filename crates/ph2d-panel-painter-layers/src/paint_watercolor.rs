@@ -17,6 +17,7 @@ use crate::number_field;
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::{SegmentedAdaptive, SegmentedOption, paint_segmented_adaptive};
 use ph2d_editor_core::zones::Rect;
+use ph2d_i18n::tr;
 use ph2d_tokens::ROW_H_PX;
 use ph2d_tool_painter::BrushSettings;
 
@@ -46,7 +47,7 @@ pub(crate) fn paint_watercolor_section(
         x,
         content_w,
         y,
-        "Watercolor",
+        tr("panel.painter_layers.watercolor.watercolor"),
         ph2d_tool_painter::ids::PAINTER_WATERCOLOR_SECTION,
         ph2d_tool_painter::ids::PAINTER_WATERCOLOR_SECTION_COLOR,
         ph2d_tool_painter::ids::PAINTER_WATERCOLOR_RESET,
@@ -86,14 +87,22 @@ fn paint_wetness_card(
     y: f32,
     brush: &BrushSettings,
 ) -> f32 {
-    let (ix, iw, mut ry, next_y) = card_frame(ctx, theme, x, content_w, y, "Wetness", 3);
+    let (ix, iw, mut ry, next_y) = card_frame(
+        ctx,
+        theme,
+        x,
+        content_w,
+        y,
+        tr("panel.painter_layers.watercolor.wetness"),
+        3,
+    );
     ry = card_row(
         ctx,
         theme,
         ix,
         iw,
         ry,
-        "Drying Time",
+        tr("panel.painter_layers.watercolor.drying_time"),
         ph2d_tool_painter::ids::PAINTER_WATERCOLOR_DRY_TIME,
         brush.dry_time_s,
         DRY_TIME_MIN,
@@ -107,7 +116,7 @@ fn paint_wetness_card(
         ix,
         iw,
         ry,
-        "Preview",
+        tr("panel.painter_layers.watercolor.preview"),
         ph2d_tool_painter::ids::PAINTER_WATERCOLOR_WET_PREVIEW,
         brush.wet_preview,
         0.0,
@@ -122,8 +131,14 @@ fn paint_wetness_card(
         iw,
         ry,
         &[
-            (ph2d_tool_painter::ids::PAINTER_WATERCOLOR_DRY_NOW, "Dry"),
-            (ph2d_tool_painter::ids::PAINTER_WATERCOLOR_WET_NOW, "Wet"),
+            (
+                ph2d_tool_painter::ids::PAINTER_WATERCOLOR_DRY_NOW,
+                tr("panel.painter_layers.watercolor.dry"),
+            ),
+            (
+                ph2d_tool_painter::ids::PAINTER_WATERCOLOR_WET_NOW,
+                tr("panel.painter_layers.watercolor.wet"),
+            ),
         ],
     );
     next_y
@@ -144,8 +159,12 @@ fn wetness_button_row(
         .iter()
         .map(|(id, label)| SegmentedOption::new(*id, *label))
         .collect();
-    let seg = SegmentedAdaptive::new(ph2d_a11y::NodeId(0), "Canvas wetness actions", opts)
-        .selected(usize::MAX);
+    let seg = SegmentedAdaptive::new(
+        ph2d_a11y::NodeId(0),
+        tr("panel.painter_layers.watercolor.wetness_actions"),
+        opts,
+    )
+    .selected(usize::MAX);
     let scene = &mut *ctx.scene;
     let text_system = &mut *ctx.text_system;
     let (store, hit_index) = ctx.host.store_and_hit_index_mut();
@@ -170,14 +189,22 @@ fn paint_wash_card(
     y: f32,
     brush: &BrushSettings,
 ) -> f32 {
-    let (ix, iw, mut ry, next_y) = card_frame(ctx, theme, x, content_w, y, "Wash", 7);
+    let (ix, iw, mut ry, next_y) = card_frame(
+        ctx,
+        theme,
+        x,
+        content_w,
+        y,
+        tr("panel.painter_layers.watercolor.wash"),
+        7,
+    );
     ry = card_row(
         ctx,
         theme,
         ix,
         iw,
         ry,
-        "Body",
+        tr("panel.painter_layers.watercolor.body"),
         ph2d_tool_painter::ids::PAINTER_WATERCOLOR_FILL,
         brush.fill,
         0.0,
@@ -191,7 +218,7 @@ fn paint_wash_card(
         ix,
         iw,
         ry,
-        "Concentration",
+        tr("panel.painter_layers.watercolor.concentration"),
         ph2d_tool_painter::ids::PAINTER_WATERCOLOR_DEPTH,
         brush.depth,
         DEPTH_MIN,
@@ -205,7 +232,7 @@ fn paint_wash_card(
         ix,
         iw,
         ry,
-        "Opacity",
+        tr("panel.painter_layers.watercolor.opacity"),
         ph2d_tool_painter::ids::PAINTER_WATERCOLOR_OPACITY,
         brush.opacity,
         0.0,
@@ -219,7 +246,7 @@ fn paint_wash_card(
         ix,
         iw,
         ry,
-        "Edge Darkening",
+        tr("panel.painter_layers.watercolor.edge_darkening"),
         ph2d_tool_painter::ids::PAINTER_WATERCOLOR_EDGE,
         brush.edge_gain,
         0.0,
@@ -233,7 +260,7 @@ fn paint_wash_card(
         ix,
         iw,
         ry,
-        "Bleed",
+        tr("panel.painter_layers.watercolor.bleed"),
         ph2d_tool_painter::ids::PAINTER_WATERCOLOR_SPREAD,
         brush.edge_spread,
         SPREAD_MIN,
@@ -247,7 +274,7 @@ fn paint_wash_card(
         ix,
         iw,
         ry,
-        "Ragged Edge",
+        tr("panel.painter_layers.watercolor.ragged_edge"),
         ph2d_tool_painter::ids::PAINTER_WATERCOLOR_WARP,
         brush.warp,
         0.0,
@@ -264,7 +291,7 @@ fn paint_wash_card(
         iw,
         ry,
         ph2d_tool_painter::ids::PAINTER_WATERCOLOR_SMOOTH_EDGES,
-        "Smooth Edges",
+        tr("panel.painter_layers.watercolor.smooth_edges"),
         brush.smooth_edges,
     );
     next_y
@@ -279,14 +306,22 @@ fn paint_brush_card(
     y: f32,
     brush: &BrushSettings,
 ) -> f32 {
-    let (ix, iw, mut ry, next_y) = card_frame(ctx, theme, x, content_w, y, "Brush", 3);
+    let (ix, iw, mut ry, next_y) = card_frame(
+        ctx,
+        theme,
+        x,
+        content_w,
+        y,
+        tr("panel.painter_layers.watercolor.brush"),
+        3,
+    );
     ry = card_row(
         ctx,
         theme,
         ix,
         iw,
         ry,
-        "Charge",
+        tr("panel.painter_layers.watercolor.charge"),
         ph2d_tool_painter::ids::PAINTER_WATERCOLOR_CHARGE,
         brush.wet_charge,
         0.0,
@@ -300,7 +335,7 @@ fn paint_brush_card(
         ix,
         iw,
         ry,
-        "Dilution",
+        tr("panel.painter_layers.watercolor.dilution"),
         ph2d_tool_painter::ids::PAINTER_WATERCOLOR_DILUTION,
         brush.wet_dilution,
         0.0,
@@ -314,7 +349,7 @@ fn paint_brush_card(
         ix,
         iw,
         ry,
-        "Pull",
+        tr("panel.painter_layers.watercolor.pull"),
         ph2d_tool_painter::ids::PAINTER_WATERCOLOR_PULL,
         brush.wet_pull,
         0.0,
@@ -341,14 +376,22 @@ fn paint_water_card(
     } else {
         0.0
     };
-    let (ix, iw, mut ry, next_y) = card_frame(ctx, theme, x, content_w, y, "Water", 3);
+    let (ix, iw, mut ry, next_y) = card_frame(
+        ctx,
+        theme,
+        x,
+        content_w,
+        y,
+        tr("panel.painter_layers.watercolor.water"),
+        3,
+    );
     ry = card_row(
         ctx,
         theme,
         ix,
         iw,
         ry,
-        "Rewet",
+        tr("panel.painter_layers.watercolor.rewet"),
         ph2d_tool_painter::ids::PAINTER_WATERCOLOR_WET,
         brush.wet_rewet,
         0.0,
@@ -362,7 +405,7 @@ fn paint_water_card(
         ix,
         iw,
         ry,
-        "Smudge",
+        tr("panel.painter_layers.watercolor.smudge"),
         ph2d_tool_painter::ids::PAINTER_WATERCOLOR_SMUDGE,
         brush.wet_smudge,
         0.0,
@@ -376,7 +419,7 @@ fn paint_water_card(
         ix,
         iw,
         ry,
-        "Pigment",
+        tr("panel.painter_layers.watercolor.pigment"),
         ph2d_tool_painter::ids::PAINTER_WATERCOLOR_MIX,
         pigment_amt,
         0.0,

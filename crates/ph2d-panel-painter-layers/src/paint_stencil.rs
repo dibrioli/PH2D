@@ -8,6 +8,7 @@ use crate::number_field::{ANGLE_STEP, FINE_STEP, SIZE_STEP, paint_num_row, paint
 use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, resolve};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::zones::Rect;
+use ph2d_i18n::tr;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, StrokeToken, TypeToken};
 use ph2d_tool_painter::{
     BrushSettings, TEX_ANGLE_MAX_DEG, TEX_OFFSET_MAX, TEX_OFFSET_MIN, TEX_SIZE_MAX, TEX_SIZE_MIN,
@@ -57,7 +58,7 @@ pub(crate) fn paint_stencil_card(
     paint_text(
         ctx.text_system,
         ctx.scene,
-        "Stencil",
+        tr("panel.painter_layers.stencil.stencil"),
         inner_x,
         y + pad + (title_h - font) * 0.5,
         font,
@@ -72,7 +73,7 @@ pub(crate) fn paint_stencil_card(
         inner_x,
         inner_w,
         iy,
-        "Size",
+        tr("panel.painter_layers.stencil.size"),
         ph2d_tool_painter::ids::PAINTER_BRUSH_STENCIL_SIZE_X,
         brush.stencil_size[0],
         ph2d_tool_painter::ids::PAINTER_BRUSH_STENCIL_SIZE_Y,
@@ -89,7 +90,7 @@ pub(crate) fn paint_stencil_card(
         inner_x,
         inner_w,
         iy,
-        "Offset",
+        tr("panel.painter_layers.stencil.offset"),
         ph2d_tool_painter::ids::PAINTER_BRUSH_STENCIL_OFFSET_X,
         brush.stencil_offset[0],
         ph2d_tool_painter::ids::PAINTER_BRUSH_STENCIL_OFFSET_Y,
@@ -106,7 +107,7 @@ pub(crate) fn paint_stencil_card(
         inner_x,
         inner_w,
         iy,
-        "Rotation",
+        tr("panel.painter_layers.stencil.rotation"),
         ph2d_tool_painter::ids::PAINTER_BRUSH_STENCIL_ANGLE,
         f32::from(brush.stencil_angle_deg),
         0.0,

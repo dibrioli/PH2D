@@ -7,6 +7,7 @@
 use super::section_header;
 use crate::paint_brush_top::{paint_checkbox_row, paint_slider_chip_row};
 use ph2d_editor_core::panel::PaintCtx;
+use ph2d_i18n::tr;
 use ph2d_tool_painter::BrushSettings;
 
 /// Paint the **Grid Stamp** rows, returning the next `y`: the cell size and the lattice offset, one
@@ -24,8 +25,18 @@ pub(super) fn paint_grid_stamp_card(
     y: f32,
     brush: BrushSettings,
 ) -> f32 {
-    let mut y = section_header(ctx, theme, x, content_w, y, "Grid");
-    for (axis, label) in [(0usize, "Cell X"), (1, "Cell Y")] {
+    let mut y = section_header(
+        ctx,
+        theme,
+        x,
+        content_w,
+        y,
+        tr("panel.painter_layers.stroke.grid.grid"),
+    );
+    for (axis, label) in [
+        (0usize, tr("panel.painter_layers.stroke.grid.cell_x")),
+        (1, tr("panel.painter_layers.stroke.grid.cell_y")),
+    ] {
         y = paint_slider_chip_row(
             ctx,
             theme,
@@ -38,7 +49,10 @@ pub(super) fn paint_grid_stamp_card(
             brush.grid_cell[axis],
         );
     }
-    for (axis, label) in [(0usize, "Offset X"), (1, "Offset Y")] {
+    for (axis, label) in [
+        (0usize, tr("panel.painter_layers.stroke.grid.offset_x")),
+        (1, tr("panel.painter_layers.stroke.grid.offset_y")),
+    ] {
         y = paint_slider_chip_row(
             ctx,
             theme,
@@ -59,7 +73,7 @@ pub(super) fn paint_grid_stamp_card(
         x,
         content_w,
         y,
-        "Cell Fit",
+        tr("panel.painter_layers.stroke.grid.cell_fit"),
         ph2d_tool_painter::ids::PAINTER_BRUSH_GRID_FIT,
         ph2d_tool_painter::ids::PAINTER_BRUSH_GRID_FIT_CHIP,
         brush.grid_fit,
@@ -71,7 +85,7 @@ pub(super) fn paint_grid_stamp_card(
         content_w,
         y,
         ph2d_tool_painter::ids::PAINTER_BRUSH_GRID_SHOW,
-        "Show Grid",
+        tr("panel.painter_layers.stroke.grid.show_grid"),
         brush.grid_show,
     )
 }

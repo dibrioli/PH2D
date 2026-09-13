@@ -9,6 +9,7 @@ use ph2d_editor_core::paint::{paint_text, resolve};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::{Button, ButtonKind, paint_button};
 use ph2d_editor_core::zones::Rect;
+use ph2d_i18n::tr;
 use ph2d_tokens::{ColorToken, ROW_H_PX, TypeToken};
 use ph2d_tool_painter::BrushSettings;
 
@@ -26,11 +27,11 @@ pub(crate) fn paint_clone_card(
     // "checked" until the canvas click samples the source) — mirror of the Symmetry pick buttons.
     let id = ph2d_tool_painter::ids::PAINTER_BRUSH_CLONE_SET_SOURCE;
     let label = if brush.clone_sample_armed {
-        "Click canvas to sample"
+        tr("panel.painter_layers.clone.sample_hint")
     } else if brush.clone_has_source {
-        "Set Source (resample)"
+        tr("panel.painter_layers.clone.set_source_resample")
     } else {
-        "Set Source"
+        tr("panel.painter_layers.clone.set_source")
     };
     let state = ctx.host.store().button_visual(id);
     let kind = if brush.clone_sample_armed {
@@ -53,7 +54,7 @@ pub(crate) fn paint_clone_card(
         content_w,
         y,
         ph2d_tool_painter::ids::PAINTER_BRUSH_CLONE_ALIGNED,
-        "Aligned",
+        tr("panel.painter_layers.clone.aligned"),
         brush.clone_aligned,
     );
 
@@ -63,7 +64,7 @@ pub(crate) fn paint_clone_card(
         paint_text(
             ctx.text_system,
             ctx.scene,
-            "Click Set Source, then the canvas to sample.",
+            tr("panel.painter_layers.clone.hint"),
             x,
             y + (ROW_H_PX - font) * 0.5,
             font,

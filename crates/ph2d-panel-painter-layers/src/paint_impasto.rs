@@ -23,14 +23,13 @@
 
 use crate::card::{card_frame, card_row};
 use crate::number_field;
+use crate::paint_seg_row::seg_row;
 use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::tool::PanelEvent;
-use ph2d_editor_core::widget::{
-    ColorSwatch, SegmentedAdaptive, SegmentedOption, SwatchSize, SwatchState, paint_color_swatch,
-    paint_segmented_adaptive,
-};
+use ph2d_editor_core::widget::{ColorSwatch, SwatchSize, SwatchState, paint_color_swatch};
 use ph2d_editor_core::zones::Rect;
+use ph2d_i18n::tr;
 use ph2d_tokens::{ROW_H_PX, Spacing};
 
 /// Width of the Wax-colour swatch — the same square the lamp's colour uses.
@@ -82,7 +81,7 @@ pub(crate) fn paint_impasto_section(
         x,
         content_w,
         y,
-        "Impasto",
+        tr("panel.painter_layers.impasto.title"),
         ph2d_tool_painter::ids::PAINTER_IMPASTO_SECTION,
         ph2d_tool_painter::ids::PAINTER_IMPASTO_SECTION_COLOR,
         ph2d_tool_painter::ids::PAINTER_IMPASTO_RESET,
@@ -119,7 +118,7 @@ pub(crate) fn paint_impasto_section(
         content_w,
         y,
         ph2d_tool_painter::ids::PAINTER_IMPASTO_LIVE_EDIT,
-        "Adjust Last Stroke",
+        tr("panel.painter_layers.impasto.adjust_last_stroke"),
         brush.impasto_live_edit,
     );
     // …and directly beneath it, the ten tools (Enio: *"as tools todas devem ser organizadas logo abaixo
@@ -172,7 +171,15 @@ fn paint_sculpt_card(
     if brush.sculpt_filters {
         rows += 1;
     }
-    let (ix, iw, ry, next_y) = card_frame(ctx, theme, x, content_w, y, "Sculpt", rows);
+    let (ix, iw, ry, next_y) = card_frame(
+        ctx,
+        theme,
+        x,
+        content_w,
+        y,
+        tr("panel.painter_layers.impasto.sculpt"),
+        rows,
+    );
     let _ = crate::paint_sculpt::paint_sculpt_rows(ctx, theme, ix, iw, ry, *brush);
     next_y
 }
@@ -193,14 +200,22 @@ fn paint_material_card(
     y: f32,
     brush: &BrushSettings,
 ) -> f32 {
-    let (ix, iw, mut ry, next_y) = card_frame(ctx, theme, x, content_w, y, "Material", 4);
+    let (ix, iw, mut ry, next_y) = card_frame(
+        ctx,
+        theme,
+        x,
+        content_w,
+        y,
+        tr("panel.painter_layers.impasto.material"),
+        4,
+    );
     ry = card_row(
         ctx,
         theme,
         ix,
         iw,
         ry,
-        "Shine",
+        tr("panel.painter_layers.impasto.shine"),
         ph2d_tool_painter::ids::PAINTER_IMPASTO_SHINE,
         brush.impasto_shine,
         0.0,
@@ -217,7 +232,7 @@ fn paint_material_card(
         ix,
         iw,
         ry,
-        "Roughness",
+        tr("panel.painter_layers.impasto.roughness"),
         ph2d_tool_painter::ids::PAINTER_IMPASTO_ROUGHNESS,
         brush.impasto_roughness,
         0.0,
@@ -231,7 +246,7 @@ fn paint_material_card(
         ix,
         iw,
         ry,
-        "Metallic",
+        tr("panel.painter_layers.impasto.metallic"),
         ph2d_tool_painter::ids::PAINTER_IMPASTO_METALLIC,
         brush.impasto_metallic,
         0.0,
@@ -253,7 +268,7 @@ fn paint_material_card(
         ix,
         box_w,
         ry,
-        "Wax",
+        tr("panel.painter_layers.impasto.wax"),
         ph2d_tool_painter::ids::PAINTER_IMPASTO_WAX,
         brush.impasto_wax,
         0.0,
@@ -310,14 +325,22 @@ pub(crate) fn paint_body_card(
     y: f32,
     brush: &BrushSettings,
 ) -> f32 {
-    let (ix, iw, mut ry, next_y) = card_frame(ctx, theme, x, content_w, y, "Body", 7);
+    let (ix, iw, mut ry, next_y) = card_frame(
+        ctx,
+        theme,
+        x,
+        content_w,
+        y,
+        tr("panel.painter_layers.impasto.body"),
+        7,
+    );
     ry = card_row(
         ctx,
         theme,
         ix,
         iw,
         ry,
-        "Depth",
+        tr("panel.painter_layers.impasto.depth"),
         ph2d_tool_painter::ids::PAINTER_IMPASTO_DEPTH,
         brush.impasto_depth,
         DEPTH_MIN,
@@ -333,7 +356,7 @@ pub(crate) fn paint_body_card(
         ix,
         iw,
         ry,
-        "Body",
+        tr("panel.painter_layers.impasto.body"),
         ph2d_tool_painter::ids::PAINTER_IMPASTO_BODY,
         brush.impasto_body,
         0.0,
@@ -350,7 +373,7 @@ pub(crate) fn paint_body_card(
         ix,
         iw,
         ry,
-        "Push",
+        tr("panel.painter_layers.impasto.push"),
         ph2d_tool_painter::ids::PAINTER_IMPASTO_PUSH,
         brush.impasto_push,
         0.0,
@@ -364,7 +387,7 @@ pub(crate) fn paint_body_card(
         ix,
         iw,
         ry,
-        "Smoothing",
+        tr("panel.painter_layers.impasto.smoothing"),
         ph2d_tool_painter::ids::PAINTER_IMPASTO_SMOOTHING,
         brush.impasto_smoothing,
         0.0,
@@ -379,15 +402,15 @@ pub(crate) fn paint_body_card(
         iw,
         ry,
         ph2d_tool_painter::ids::PAINTER_IMPASTO_SOURCE,
-        "Depth source",
+        tr("panel.painter_layers.impasto.depth_source"),
         &[
             (
                 ph2d_tool_painter::ids::PAINTER_IMPASTO_SOURCE_UNIFORM,
-                "Uniform",
+                tr("panel.painter_layers.impasto.uniform"),
             ),
             (
                 ph2d_tool_painter::ids::PAINTER_IMPASTO_SOURCE_GRAIN,
-                "Grain",
+                tr("panel.painter_layers.impasto.grain"),
             ),
         ],
         brush.impasto_source as usize,
@@ -399,11 +422,20 @@ pub(crate) fn paint_body_card(
         iw,
         ry,
         ph2d_tool_painter::ids::PAINTER_IMPASTO_DRAW_TO,
-        "What the brush writes",
+        tr("panel.painter_layers.impasto.draw_group"),
         &[
-            (ph2d_tool_painter::ids::PAINTER_IMPASTO_DRAW_BOTH, "Both"),
-            (ph2d_tool_painter::ids::PAINTER_IMPASTO_DRAW_COLOR, "Color"),
-            (ph2d_tool_painter::ids::PAINTER_IMPASTO_DRAW_DEPTH, "Depth"),
+            (
+                ph2d_tool_painter::ids::PAINTER_IMPASTO_DRAW_BOTH,
+                tr("panel.painter_layers.impasto.both"),
+            ),
+            (
+                ph2d_tool_painter::ids::PAINTER_IMPASTO_DRAW_COLOR,
+                tr("panel.painter_layers.impasto.color"),
+            ),
+            (
+                ph2d_tool_painter::ids::PAINTER_IMPASTO_DRAW_DEPTH,
+                tr("panel.painter_layers.impasto.depth"),
+            ),
         ],
         brush.impasto_draw_to as usize,
     );
@@ -416,7 +448,7 @@ pub(crate) fn paint_body_card(
         iw,
         ry,
         ph2d_tool_painter::ids::PAINTER_IMPASTO_SMOOTH_EDGES,
-        "Smooth Edges",
+        tr("panel.painter_layers.impasto.smooth_edges"),
         brush.impasto_smooth_edges,
     );
     next_y
@@ -436,7 +468,15 @@ fn paint_lighting_card(
     // Rows: Show · Light (1 2 3 4) · [Enable] · Angle · Elevation · Intensity+colour. (Shine LEFT: it
     // is the paint's, not the room's — it lives in the Material card now.)
     let rows = if brush.impasto_rig.selected > 0 { 6 } else { 5 };
-    let (ix, iw, mut ry, next_y) = card_frame(ctx, theme, x, content_w, y, "Lighting", rows);
+    let (ix, iw, mut ry, next_y) = card_frame(
+        ctx,
+        theme,
+        x,
+        content_w,
+        y,
+        tr("panel.painter_layers.impasto.lighting"),
+        rows,
+    );
     ry = crate::paint_brush_top::paint_checkbox_row(
         ctx,
         theme,
@@ -444,77 +484,11 @@ fn paint_lighting_card(
         iw,
         ry,
         ph2d_tool_painter::ids::PAINTER_IMPASTO_SHOW,
-        "Show Impasto",
+        tr("panel.painter_layers.impasto.show_impasto"),
         brush.impasto_show,
     );
     let _ = crate::paint_impasto_rig::paint_light_rows(ctx, theme, ix, iw, ry, brush);
     next_y
-}
-
-/// [`seg_row`] with OWNED labels — the lamp chips carry an on/off mark, so they cannot be `&'static str`.
-#[allow(clippy::too_many_arguments)]
-pub(crate) fn seg_row_owned(
-    ctx: &mut PaintCtx,
-    theme: ph2d_tokens::Theme,
-    x: f32,
-    content_w: f32,
-    y: f32,
-    group_id: ph2d_a11y::NodeId,
-    a11y: &str,
-    options: &[(ph2d_a11y::NodeId, String)],
-    selected: usize,
-) -> f32 {
-    let opts: Vec<SegmentedOption> = options
-        .iter()
-        .map(|(id, label)| SegmentedOption::new(*id, label.as_str()))
-        .collect();
-    let seg = SegmentedAdaptive::new(group_id, a11y, opts).selected(selected);
-    let scene = &mut *ctx.scene;
-    let text_system = &mut *ctx.text_system;
-    let (store, hit_index) = ctx.host.store_and_hit_index_mut();
-    let used = paint_segmented_adaptive(
-        &seg,
-        Rect::new(x, y, content_w, ROW_H_PX),
-        scene,
-        text_system,
-        theme,
-        store,
-        hit_index,
-    );
-    y + used + ph2d_tokens::control_gap_px()
-}
-
-/// A segmented option group as one card row (mirrors `paint_deform::seg_group`).
-#[allow(clippy::too_many_arguments)]
-fn seg_row(
-    ctx: &mut PaintCtx,
-    theme: ph2d_tokens::Theme,
-    x: f32,
-    content_w: f32,
-    y: f32,
-    group_id: ph2d_a11y::NodeId,
-    a11y: &str,
-    options: &[(ph2d_a11y::NodeId, &str)],
-    selected: usize,
-) -> f32 {
-    let opts: Vec<SegmentedOption> = options
-        .iter()
-        .map(|(id, label)| SegmentedOption::new(*id, *label))
-        .collect();
-    let seg = SegmentedAdaptive::new(group_id, a11y, opts).selected(selected);
-    let scene = &mut *ctx.scene;
-    let text_system = &mut *ctx.text_system;
-    let (store, hit_index) = ctx.host.store_and_hit_index_mut();
-    let used = paint_segmented_adaptive(
-        &seg,
-        Rect::new(x, y, content_w, ROW_H_PX),
-        scene,
-        text_system,
-        theme,
-        store,
-        hit_index,
-    );
-    y + used + ph2d_tokens::control_gap_px()
 }
 
 /// The **Knife**'s card: **Plow**, and nothing else.
@@ -535,14 +509,22 @@ pub(crate) fn paint_knife_card(
     y: f32,
     brush: &BrushSettings,
 ) -> f32 {
-    let (ix, iw, ry, next_y) = card_frame(ctx, theme, x, content_w, y, "Knife", 1);
+    let (ix, iw, ry, next_y) = card_frame(
+        ctx,
+        theme,
+        x,
+        content_w,
+        y,
+        tr("panel.painter_layers.impasto.knife"),
+        1,
+    );
     let _ = card_row(
         ctx,
         theme,
         ix,
         iw,
         ry,
-        "Plow",
+        tr("panel.painter_layers.impasto.plow"),
         ph2d_tool_painter::ids::PAINTER_IMPASTO_PLOW,
         brush.impasto_plow,
         0.0,

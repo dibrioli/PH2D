@@ -16,14 +16,14 @@ use ph2d_editor_core::paint::resolve;
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::{DropdownOption, SectionFold};
 use ph2d_editor_core::zones::Rect;
+use ph2d_i18n::tr;
 use ph2d_tokens::{ColorToken, Radius};
 use ph2d_tool_painter::ids::{
     painter_brush_texture_kind_option_id, painter_brush_texture_mapping_option_id,
 };
 use ph2d_tool_painter::{
-    BrushSettings, ImageMask, RampAlphaMode, TEX_ANGLE_MAX_DEG, TEX_OFFSET_MAX, TEX_OFFSET_MIN,
-    TEX_SIZE_MAX, TEX_SIZE_MIN, TextureKind, TextureLayer, TextureMapping, linear_to_srgb_byte,
-    param_specs, render_texture_preview,
+    BrushSettings, ImageMask, RampAlphaMode, TEX_ANGLE_MAX_DEG, TextureKind, TextureLayer,
+    TextureMapping, linear_to_srgb_byte, param_specs, render_texture_preview,
 };
 use ph2d_vector::ImageQuality;
 
@@ -48,7 +48,17 @@ pub(crate) fn paint_texture_section(
     // inline da CAMADA nao e' dobravel (nao ha seccao a fechar), enquanto no painel de pincel um
     // `None` e' a seccao FECHADA e parada. O `compact` e' quem as separa.
     let (mut y, fold) = if compact {
-        (section_header(ctx, theme, x, content_w, y, "Grain"), None)
+        (
+            section_header(
+                ctx,
+                theme,
+                x,
+                content_w,
+                y,
+                tr("panel.painter_layers.grain.grain"),
+            ),
+            None,
+        )
     } else {
         crate::paint_brush_top::paint_collapsible_section(
             ctx,
@@ -56,7 +66,7 @@ pub(crate) fn paint_texture_section(
             x,
             content_w,
             y,
-            "Grain",
+            tr("panel.painter_layers.grain.grain"),
             ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_SECTION,
             ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_SECTION_COLOR,
             ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_RESET,
@@ -85,7 +95,7 @@ pub(crate) fn paint_texture_section(
         x,
         content_w,
         y,
-        "Grain",
+        tr("panel.painter_layers.grain.grain"),
         ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_KIND,
         brush.texture_kind,
         kind.name(),
@@ -121,7 +131,7 @@ pub(crate) fn paint_texture_section(
             x,
             content_w,
             y,
-            "Mapping",
+            tr("panel.painter_layers.grain.mapping"),
             ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_MAPPING,
             brush.texture_mapping,
             TextureMapping::from_u8(brush.texture_mapping).name(),
@@ -154,7 +164,7 @@ pub(crate) fn paint_texture_section(
                 content_w,
                 y,
                 ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_RAKE,
-                "Rake",
+                tr("panel.painter_layers.grain.rake"),
                 brush.texture_rake,
             );
         }
@@ -166,7 +176,7 @@ pub(crate) fn paint_texture_section(
             x,
             content_w,
             y,
-            "Angle",
+            tr("panel.painter_layers.grain.angle"),
             ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_ANGLE,
             f32::from(brush.texture_angle_deg),
             0.0,
@@ -176,58 +186,9 @@ pub(crate) fn paint_texture_section(
         );
     }
 
-    // ── Offset X/Y + Size X/Y — the TEXTURE tiling (each pair on ONE line). Always shown; under
-    //    Stencil they tile the pattern INSIDE the rect (the rect placement is the Stencil card). ──
-    y = crate::number_field::paint_num_xy(
-        ctx,
-        theme,
-        x,
-        content_w,
-        y,
-        "Offset",
-        ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_OFFSET_X,
-        brush.texture_offset[0],
-        ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_OFFSET_Y,
-        brush.texture_offset[1],
-        TEX_OFFSET_MIN,
-        TEX_OFFSET_MAX,
-        crate::number_field::FINE_STEP,
-        2,
+    y = crate::paint_texture_tiling::paint_texture_tiling(
+        ctx, theme, x, content_w, y, brush, compact,
     );
-    y = crate::number_field::paint_num_xy(
-        ctx,
-        theme,
-        x,
-        content_w,
-        y,
-        "Size",
-        ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_SIZE_X,
-        brush.texture_size[0],
-        ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_SIZE_Y,
-        brush.texture_size[1],
-        TEX_SIZE_MIN,
-        TEX_SIZE_MAX,
-        crate::number_field::SIZE_STEP,
-        2,
-    );
-
-    // ── Depth — how strongly the Grain bites (brush only; a Texture-LAYER is full-cover). ──
-    if !compact {
-        y = crate::number_field::paint_num_row(
-            ctx,
-            theme,
-            x,
-            content_w,
-            y,
-            "Depth",
-            ph2d_tool_painter::ids::PAINTER_BRUSH_GRAIN_DEPTH,
-            brush.grain_depth.clamp(0.0, 1.0),
-            0.0,
-            1.0,
-            crate::number_field::FINE_STEP,
-            2,
-        );
-    }
 
     // In watercolor mode the BRUSH Grain slot IS the granulation map (a grayscale height-field), so its
     // Color Ramp is meaningless — hide it (the Paper section carries the colour). A Texture LAYER
@@ -276,7 +237,7 @@ fn paint_texture_params_and_ramp(
         content_w,
         y,
         brush,
-        "Grain Colors",
+        tr("panel.painter_layers.grain.grain_colors"),
     )
 }
 

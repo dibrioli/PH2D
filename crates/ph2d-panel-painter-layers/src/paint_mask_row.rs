@@ -10,6 +10,7 @@ use ph2d_editor_core::paint::{paint_text, resolve};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::{Button, ButtonKind, paint_button};
 use ph2d_editor_core::zones::Rect;
+use ph2d_i18n::tr;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, StrokeToken, TypeToken};
 use ph2d_tool_painter::LayerId;
 use ph2d_tool_painter::ids::{PainterLayerWidget, painter_layer_widget_id};
@@ -57,7 +58,11 @@ pub(crate) fn paint_mask_row(
     let eye_rect = Rect::new(inv_rect.x - cell_gap - MASK_EYE_W, y, MASK_EYE_W, ROW_H_PX);
     let view_open = crate::state::current_mask_grayscale_view() == Some(mask_id.0);
 
-    let label = if inverted { "Mask · Inverted" } else { "Mask" };
+    let label = if inverted {
+        tr("panel.painter_layers.mask.mask_inverted")
+    } else {
+        tr("panel.painter_layers.mask.mask")
+    };
     let label_x = x + Spacing::Sm.px();
     let label_y = y + (ROW_H_PX - font) * 0.5;
     let label_w = (eye_rect.x - cell_gap - label_x).max(0.0);
@@ -88,7 +93,7 @@ pub(crate) fn paint_mask_row(
     } else {
         IconId::EyeClosed
     };
-    let eye_btn = Button::new(eye_id, "Mask view")
+    let eye_btn = Button::new(eye_id, tr("panel.painter_layers.mask.mask_view"))
         .icon_only(eye_icon)
         .visual(eye_st);
     paint_button(&eye_btn, eye_rect, ctx.scene, ctx.text_system, theme);
@@ -98,7 +103,7 @@ pub(crate) fn paint_mask_row(
     let inv_id = painter_layer_widget_id(mask_id.0, PainterLayerWidget::MaskInvert);
     register_button(ctx.host.store_mut(), inv_id);
     let inv_st = ctx.host.store().button_visual(inv_id);
-    let mut inv_btn = Button::new(inv_id, "Inv").visual(inv_st);
+    let mut inv_btn = Button::new(inv_id, tr("panel.painter_layers.mask.inv")).visual(inv_st);
     if inverted {
         inv_btn.kind = ButtonKind::Accent;
     }
@@ -109,7 +114,7 @@ pub(crate) fn paint_mask_row(
     let apply_id = painter_layer_widget_id(mask_id.0, PainterLayerWidget::MaskApply);
     register_button(ctx.host.store_mut(), apply_id);
     let apply_st = ctx.host.store().button_visual(apply_id);
-    let apply_btn = Button::new(apply_id, "Apply").visual(apply_st);
+    let apply_btn = Button::new(apply_id, tr("panel.painter_layers.mask.apply")).visual(apply_st);
     paint_button(&apply_btn, apply_rect, ctx.scene, ctx.text_system, theme);
     ctx.host.hit_index_mut().register(apply_id, apply_rect);
 

@@ -11,6 +11,7 @@ use ph2d_editor_core::paint::resolve;
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::DropdownOption;
 use ph2d_editor_core::zones::Rect;
+use ph2d_i18n::tr;
 use ph2d_tokens::{ColorToken, Radius};
 use ph2d_tool_painter::{
     BrushSettings, Falloff, FootprintDeform, ImageMask, TEX_ANGLE_MAX_DEG, TEX_OFFSET_MAX,
@@ -40,7 +41,7 @@ pub(crate) fn paint_shape_section(
         x,
         content_w,
         y,
-        "Shape",
+        tr("panel.painter_layers.shape.shape"),
         ph2d_tool_painter::ids::PAINTER_SHAPE_SECTION,
         ph2d_tool_painter::ids::PAINTER_SHAPE_SECTION_COLOR,
         ph2d_tool_painter::ids::PAINTER_SHAPE_RESET,
@@ -60,7 +61,7 @@ pub(crate) fn paint_shape_section(
             content_w,
             y,
             ph2d_tool_painter::ids::PAINTER_SHAPE_WATERCOLOR_AUTO,
-            "Automatic",
+            tr("panel.painter_layers.shape.automatic"),
             brush.watercolor_shape_auto,
         );
         if brush.watercolor_shape_auto {
@@ -80,7 +81,7 @@ pub(crate) fn paint_shape_section(
             x,
             content_w,
             y,
-            "Falloff",
+            tr("panel.painter_layers.shape.falloff"),
             ph2d_tool_painter::ids::PAINTER_BRUSH_FALLOFF,
             brush.falloff,
             Falloff::from_u8(brush.falloff).name(),
@@ -113,7 +114,7 @@ pub(crate) fn paint_shape_section(
         x,
         content_w,
         y,
-        "Texture",
+        tr("panel.painter_layers.shape.texture"),
         ph2d_tool_painter::ids::PAINTER_SHAPE_KIND,
         brush.shape_kind,
         kind.name(),
@@ -195,7 +196,7 @@ fn paint_shape_deposit_rows(
         x,
         content_w,
         y,
-        "Relief",
+        tr("panel.painter_layers.shape.relief"),
         ph2d_tool_painter::ids::PAINTER_SHAPE_RELIEF,
         brush.shape_relief,
         0.0,
@@ -210,7 +211,7 @@ fn paint_shape_deposit_rows(
             x,
             content_w,
             y,
-            "Shine",
+            tr("panel.painter_layers.shape.shine"),
             ph2d_tool_painter::ids::PAINTER_SHAPE_SHINE,
             brush.impasto_shine,
             0.0,
@@ -239,14 +240,14 @@ fn paint_shape_transform_controls(
     let follow_name = ph2d_tool_painter::ids::PAINTER_SHAPE_FOLLOW_MODES
         .iter()
         .find(|(v, _)| *v == brush.shape_follow)
-        .map_or("Off", |(_, n)| n);
+        .map_or(tr("panel.painter_layers.shape.off"), |(_, n)| n);
     let (ny, open) = crate::paint_brush_rows::paint_dropdown_row(
         ctx,
         theme,
         x,
         content_w,
         y,
-        "Follow",
+        tr("panel.painter_layers.shape.follow"),
         ph2d_tool_painter::ids::PAINTER_SHAPE_FOLLOW,
         brush.shape_follow,
         follow_name,
@@ -261,7 +262,7 @@ fn paint_shape_transform_controls(
         x,
         content_w,
         y,
-        "Angle",
+        tr("panel.painter_layers.shape.angle"),
         ph2d_tool_painter::ids::PAINTER_SHAPE_ANGLE,
         f32::from(brush.shape_angle_deg),
         0.0,
@@ -275,7 +276,7 @@ fn paint_shape_transform_controls(
         x,
         content_w,
         y,
-        "Offset",
+        tr("panel.painter_layers.shape.offset"),
         ph2d_tool_painter::ids::PAINTER_SHAPE_OFFSET_X,
         brush.shape_offset[0],
         ph2d_tool_painter::ids::PAINTER_SHAPE_OFFSET_Y,
@@ -291,7 +292,7 @@ fn paint_shape_transform_controls(
         x,
         content_w,
         y,
-        "Size",
+        tr("panel.painter_layers.shape.size"),
         ph2d_tool_painter::ids::PAINTER_SHAPE_SIZE_X,
         brush.shape_size[0],
         ph2d_tool_painter::ids::PAINTER_SHAPE_SIZE_Y,

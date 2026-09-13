@@ -10,6 +10,7 @@ use ph2d_editor_core::interaction::InteractiveState;
 use ph2d_editor_core::paint::{fill_circle, paint_text, resolve, stroke_polyline};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::zones::Rect;
+use ph2d_i18n::tr;
 use ph2d_tokens::{ColorToken, ROW_H_PX, TypeToken};
 use ph2d_tool_painter::BrushSettings;
 
@@ -37,7 +38,7 @@ pub(crate) fn paint_shape_dab_gizmo(
     paint_text(
         ctx.text_system,
         ctx.scene,
-        "Flatten & Rotate",
+        tr("panel.painter_layers.shape.flatten_and_rotate"),
         x,
         y + (ROW_H_PX - font) * 0.5,
         font,

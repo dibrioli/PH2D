@@ -10,6 +10,7 @@ use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
 use ph2d_editor_core::widget::{
     ButtonState, DropdownState, SliderOrientation, SliderState, TextInputState,
 };
+use ph2d_i18n::tr;
 
 pub fn populate(store: &mut WidgetStore) {
     register_chrome_buttons(store);
@@ -486,7 +487,7 @@ fn register_toggles_and_dropdowns(store: &mut WidgetStore) {
     // Mouse-over hint for the (not-yet-wired) Save As Object button.
     store.set_tooltip(
         ph2d_tool_painter::ids::PAINTER_BRUSH_STROKE_SAVE_OBJECT,
-        "Save As Object",
+        tr("panel.painter_layers.layers.save_as_object"),
     );
     // Blend + Falloff + Stroke-Method + Jitter-Unit chips are Dropdowns (generic
     // open/close dispatch); their options are popover buttons.

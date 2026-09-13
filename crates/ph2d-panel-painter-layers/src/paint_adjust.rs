@@ -29,6 +29,7 @@ use ph2d_editor_core::widget::{
     Slider, SliderOrientation, SliderState, Toggle, paint_slider, paint_toggle,
 };
 use ph2d_editor_core::zones::Rect;
+use ph2d_i18n::tr;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, TypeToken};
 use ph2d_tool_painter::ids::{
     PainterLayerWidget, painter_curve_add_id, painter_curve_editor_id, painter_curve_point_id,
@@ -272,9 +273,13 @@ fn paint_channel_mixer(
         .map(|(_, on)| *on)
         .unwrap_or(false);
     let tabs: &[&str] = if mono {
-        &["Gray"]
+        &[tr("panel.painter_layers.adjust.gray")]
     } else {
-        &["Red", "Green", "Blue"]
+        &[
+            tr("panel.painter_layers.adjust.red"),
+            tr("panel.painter_layers.adjust.green"),
+            tr("panel.painter_layers.adjust.blue"),
+        ]
     };
     let active = if mono {
         0u8

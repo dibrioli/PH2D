@@ -16,6 +16,7 @@ use ph2d_editor_core::widget::{
     Checkbox, CheckboxValue, DropdownOption, Slider, paint_checkbox, paint_slider,
 };
 use ph2d_editor_core::zones::Rect;
+use ph2d_i18n::tr;
 
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, StrokeToken, TypeToken};
 use ph2d_tool_painter::{
@@ -32,12 +33,12 @@ const MIN_SLIDER_W: f32 = 24.0; // LITERAL-PX-OK: piso da pista
 /// O nome de cada tipo, para o chip e para as opções do popover.
 fn kind_name(k: LineKind) -> &'static str {
     match k {
-        LineKind::None => "None",
-        LineKind::Speed => "Speed",
-        LineKind::Sketchy => "Sketchy",
-        LineKind::Wire => "Wire",
-        LineKind::Ribbon => "Ribbon",
-        LineKind::Rough => "Rough",
+        LineKind::None => tr("panel.painter_layers.line.none"),
+        LineKind::Speed => tr("panel.painter_layers.line.speed"),
+        LineKind::Sketchy => tr("panel.painter_layers.line.sketchy"),
+        LineKind::Wire => tr("panel.painter_layers.line.wire"),
+        LineKind::Ribbon => tr("panel.painter_layers.line.ribbon"),
+        LineKind::Rough => tr("panel.painter_layers.line.rough"),
     }
 }
 
@@ -116,13 +117,15 @@ pub(crate) fn paint_line_card(
     let iw = content_w - 2.0 * pad;
     let mut iy = y + pad;
 
-    let cb = Checkbox::new(ph2d_tool_painter::ids::PAINTER_LINE_SOLID, "Solid").value(
-        if brush.style_solid {
-            CheckboxValue::Checked
-        } else {
-            CheckboxValue::Unchecked
-        },
-    );
+    let cb = Checkbox::new(
+        ph2d_tool_painter::ids::PAINTER_LINE_SOLID,
+        tr("panel.painter_layers.line.solid"),
+    )
+    .value(if brush.style_solid {
+        CheckboxValue::Checked
+    } else {
+        CheckboxValue::Unchecked
+    });
     let cb_rect = Rect::new(ix, iy, iw, ROW_H_PX);
     paint_checkbox(&cb, cb_rect, ctx.scene, ctx.text_system, theme);
     ctx.host
@@ -136,7 +139,7 @@ pub(crate) fn paint_line_card(
         ix,
         iw,
         iy,
-        "Type",
+        tr("panel.painter_layers.line.type"),
         ph2d_tool_painter::ids::PAINTER_LINE_TYPE,
         brush.line_kind,
         kind_name(kind),
@@ -160,7 +163,11 @@ fn rows_of(kind: LineKind) -> f32 {
     sliders_of(kind).len() as f32 + f32::from(u8::from(checkbox_of(kind).is_some()))
 }
 
-/// Um slider de parâmetro do tipo: `(id, rótulo, valor na pista 0..1, o que o readout mostra)`.
+/// Um slider de parâmetro do tipo: `(id, CHAVE do rótulo, valor na pista 0..1, o que o readout mostra)`.
+///
+/// ⚠️ **O segundo campo é a CHAVE da tabela de strings, nunca o texto**: a tabela é `const` e o
+/// `ph2d_i18n::tr` não é `const fn` — quem PINTA traduz ([`paint_param_rows`]). As duas tabelas
+/// deste ficheiro têm o mesmo contrato, para nenhuma row chegar ao ecrã traduzida duas vezes.
 ///
 /// ⚠️ **UMA tabela por tipo, DOIS consumidores** — o pintor a percorre e o `populate` registra os
 /// mesmos ids; e é ela que faz a altura do card ser CONTADA em vez de escolhida. Uma row a mais
@@ -178,12 +185,12 @@ type ParamSlider = (
 const THREAD_INK_ROWS: [ParamSlider; 2] = [
     (
         ph2d_tool_painter::ids::PAINTER_LINE_SKETCHY_WIDTH,
-        "Line Width",
+        "panel.painter_layers.line.line_width",
         |b| (b.thread_width_px / THREAD_WIDTH_MAX_PX, b.thread_width_px),
     ),
     (
         ph2d_tool_painter::ids::PAINTER_LINE_SKETCHY_OPACITY,
-        "Opacity",
+        "panel.painter_layers.line.opacity",
         |b| (b.thread_opacity, b.thread_opacity),
     ),
 ];
@@ -191,12 +198,12 @@ const THREAD_INK_ROWS: [ParamSlider; 2] = [
 const SKETCHY_SLIDERS: [ParamSlider; 4] = [
     (
         ph2d_tool_painter::ids::PAINTER_LINE_SKETCHY_REACH,
-        "Reach",
+        "panel.painter_layers.line.reach",
         |b| (b.sketchy_reach / SKETCHY_REACH_MAX, b.sketchy_reach),
     ),
     (
         ph2d_tool_painter::ids::PAINTER_LINE_SKETCHY_DENSITY,
-        "Density",
+        "panel.painter_layers.line.density",
         |b| {
             const PCT: f32 = 100.0; // LITERAL-PX-OK: a Density é lida em PORCENTAGEM na face do artista
             (
@@ -212,7 +219,7 @@ const SKETCHY_SLIDERS: [ParamSlider; 4] = [
 const WIRE_SLIDERS: [ParamSlider; 3] = [
     (
         ph2d_tool_painter::ids::PAINTER_LINE_WIRE_HISTORY,
-        "History",
+        "panel.painter_layers.line.history",
         |b| (b.wire_history / WIRE_HISTORY_MAX, b.wire_history),
     ),
     THREAD_INK_ROWS[0],
@@ -235,22 +242,22 @@ const WIRE_SLIDERS: [ParamSlider; 3] = [
 const RIBBON_SLIDERS: [ParamSlider; 6] = [
     (
         ph2d_tool_painter::ids::PAINTER_LINE_RIBBON_WEIGHT,
-        "Weight",
+        "panel.painter_layers.line.weight",
         |b| (b.ribbon_weight, b.ribbon_weight),
     ),
     (
         ph2d_tool_painter::ids::PAINTER_LINE_RIBBON_FRICTION,
-        "Friction",
+        "panel.painter_layers.line.friction",
         |b| (b.ribbon_friction, b.ribbon_friction),
     ),
     (
         ph2d_tool_painter::ids::PAINTER_LINE_RIBBON_GRAVITY,
-        "Gravity",
+        "panel.painter_layers.line.gravity",
         |b| (b.ribbon_gravity, b.ribbon_gravity),
     ),
     (
         ph2d_tool_painter::ids::PAINTER_LINE_RIBBON_RUNGS,
-        "Rungs",
+        "panel.painter_layers.line.rungs",
         |b| (b.ribbon_rungs, b.ribbon_rungs),
     ),
     THREAD_INK_ROWS[0],
@@ -269,7 +276,7 @@ fn sliders_of(kind: LineKind) -> &'static [ParamSlider] {
     }
 }
 
-/// O checkbox de um tipo: `(id, rótulo, o valor)`.
+/// O checkbox de um tipo: `(id, CHAVE do rótulo, o valor)` — o mesmo contrato do [`ParamSlider`].
 type ParamCheckbox = (
     ph2d_editor_core::NodeId,
     &'static str,
@@ -288,7 +295,7 @@ type ParamCheckbox = (
 const ROUGH_SLIDERS: [ParamSlider; 3] = [
     (
         ph2d_tool_painter::ids::PAINTER_LINE_ROUGH_AMOUNT,
-        "Roughness",
+        "panel.painter_layers.line.roughness",
         |b| {
             (
                 b.rough_amount / ROUGH_AMOUNT_MAX_D,
@@ -298,7 +305,7 @@ const ROUGH_SLIDERS: [ParamSlider; 3] = [
     ),
     (
         ph2d_tool_painter::ids::PAINTER_LINE_ROUGH_BOWING,
-        "Bowing",
+        "panel.painter_layers.line.bowing",
         |b| {
             (
                 b.rough_bowing / ROUGH_AMOUNT_MAX_D,
@@ -308,7 +315,7 @@ const ROUGH_SLIDERS: [ParamSlider; 3] = [
     ),
     (
         ph2d_tool_painter::ids::PAINTER_LINE_ROUGH_PASSES,
-        "Passes",
+        "panel.painter_layers.line.passes",
         |b| {
             #[allow(clippy::cast_precision_loss)]
             let n = b.rough_passes as f32;
@@ -326,12 +333,12 @@ fn checkbox_of(kind: LineKind) -> Option<ParamCheckbox> {
     match kind {
         LineKind::Sketchy => Some((
             ph2d_tool_painter::ids::PAINTER_LINE_SKETCHY_MAGNETIFY,
-            "Magnetify",
+            "panel.painter_layers.line.magnetify",
             |b: BrushSettings| b.sketchy_magnetify,
         )),
         LineKind::Wire => Some((
             ph2d_tool_painter::ids::PAINTER_LINE_WIRE_CONNECTION,
-            "Connection Line",
+            "panel.painter_layers.line.connection_line",
             |b: BrushSettings| b.wire_connection_line,
         )),
         // Nem a fita nem o `Rough` têm checkbox: os knobs deles são contínuos, e um interruptor a
@@ -355,11 +362,11 @@ fn paint_param_rows(
     let mut iy = y;
     for (id, label, read) in sliders_of(kind) {
         let (track, shown) = read(brush);
-        paint_param_row(ctx, theme, x, row_w, iy, label, *id, track, shown);
+        paint_param_row(ctx, theme, x, row_w, iy, tr(label), *id, track, shown);
         iy += ph2d_tokens::row_pitch_px();
     }
     if let Some((id, label, read)) = checkbox_of(kind) {
-        let cb = Checkbox::new(id, label).value(if read(brush) {
+        let cb = Checkbox::new(id, tr(label)).value(if read(brush) {
             CheckboxValue::Checked
         } else {
             CheckboxValue::Unchecked

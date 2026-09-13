@@ -147,6 +147,55 @@ reimplementado em Rust, o controlo de vacuidade e a metade de obsolescência.
 dão `32` e `32`.** *Uma régua nova que concorda ao número com outra, escrita noutra linguagem por
 outro caminho, é uma régua de que se pode duvidar menos.*
 
+## §2-quater — ⛔⛔⛔ O `418` era um PISO, e o tecto é ~13× maior (2026-09-13)
+
+> Medido na retomada da `line/UIUX` sobre o `main` `1d43da737`, ao ir curar o painel Painter.
+
+A régua do §2-bis segue o texto até um **pintor** (`paint_*`/`draw_*` com parâmetro `&str`) e
+declarava não ver construtores, tabelas e `format!`. **Essas três formas são a MAIORIA do texto de
+um painel**: `Button::new(id, "Apply")`, `SegmentedOption::new(id, "Push")`, `["Paint", "Erase"]`,
+`(id, "Reset")`, `Checkbox::new(id, format!("Layer {} Color", i))`. A régua **lexical** — todo
+literal com cara de língua fora de teste, fora de `panic!`/`expect`/log, padrões de `match`,
+comparações, atributos e chaves — mora agora numa folha partilhada
+([`ph2d-label-census`](../../../crates/ph2d-label-census/src/lib.rs)), com 12 controlos, e os gates
+por crate usam-na.
+
+| população | ponto fixo (§2-bis) | lexical |
+|---|---:|---:|
+| `ph2d-panel-painter-layers` | 166 | **376** |
+| `ph2d-editor-core` | 32 | **593** |
+| `ph2d-panel-inspector` | 116 | **523** |
+| crates de UI inteiras (painéis, `app-*`, `editor-core`, shell) | 445 | **5 533** |
+
+⚠️ **O `5 533` é um TECTO, e a amostra diz de quê.** Nos **painéis** a leitura de 25 amostras deu
+praticamente só língua de interface. Na **shell** e nas **`ph2d-app-*`** o número mistura três
+coisas: avisos reais de interface (*«Select at least 2 objects to group»*), **nomes de objectos
+criados por cenas de smoke** (*«Plank»*, *«Hook»* — conteúdo, não interface) e **narração de smoke
+em português**. ⇒ o número firme é o dos painéis; o das `app-*` e da shell pede triagem antes de
+virar dívida.
+
+⛔⛔ **E o §2-ter desta linha foi medido pela régua cega.** *«A crate DESTA linha está curada, língua
+de produto 0»* é verdade só para o que chega a um pintor pelo nome: a `editor-core` tem **593**
+literais com cara de língua (140 no `screens/hero/menu_rows.rs`, 45 no trilho, 41 nas tabelas de
+menu da timeline…). *Declarar um ponto cego não o torna pequeno.*
+
+### ⛔ E a régua lexical nasceu com um defeito MUDO, apanhado no mesmo dia
+
+A 1.ª redacção do critério deitava fora todo texto com `\` por «parecer um caminho» — e o conteúdo de
+um literal chega com os escapes do fonte (`\u{00b7}`, `\n`, `\"`). **Todo rótulo com um escape
+sumia.** Quem o apanhou foi a Hierarquia: `"{entities} entities \u{00b7} {components} components"`
+não aparecia no censo. O controlo `a_source_escape_is_not_a_path_and_is_not_a_placeholder` fixa-o.
+
+### ✅ O que a jornada curou
+
+- **Painter:** `376 → 0` (+1 excepção declarada: o `Panel::TITLE`, que é `const` e lido pela aba).
+  **364 chaves** `panel.painter_layers.<secção>.<nome>` numa tabela irmã
+  (`crates/ph2d-i18n/src/painter_layers.rs`), migradas por `scripts/migrar-texto-pintado.py`, que
+  confere cada literal no sítio antes de escrever.
+- **Hierarquia:** `6 → 0` (+2 excepções: o `TITLE` e o nome da entidade de amostra).
+- **`ph2d_i18n::tr_with`:** uma frase com peças do código mora INTEIRA na tabela, com marcadores
+  nomeados — colar `format!("{n} {}", tr(…))` fixaria a ordem das palavras no código.
+
 ## §3 — Por que esta linha MEDIU e não CUROU
 
 ⛔ **Não é preguiça, é o custo de merge.** Curar os `418` (§2-bis; a §2 dizia `108`) toca **19 crates**, e onze delas são de

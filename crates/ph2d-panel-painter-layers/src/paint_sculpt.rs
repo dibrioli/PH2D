@@ -20,6 +20,7 @@ use ph2d_editor_core::widget::{
     paint_slider_with_chip_layout_adaptive,
 };
 use ph2d_editor_core::zones::Rect;
+use ph2d_i18n::tr;
 use ph2d_tokens::ROW_H_PX;
 use ph2d_tool_painter::BrushSettings;
 
@@ -67,7 +68,7 @@ pub(crate) fn paint_sculpt_rows(
                     content_w,
                     y,
                     ph2d_tool_painter::ids::PAINTER_SCULPT_RAKE,
-                    "Rake",
+                    tr("panel.painter_layers.sculpt.rake"),
                     brush.sculpt_rake,
                 );
             }
@@ -114,17 +115,17 @@ fn filter_row(
 ) -> f32 {
     let mut opts = vec![SegmentedOption::new(
         ph2d_tool_painter::ids::PAINTER_SCULPT_FILTER,
-        "Filter Layer",
+        tr("panel.painter_layers.sculpt.filter_layer"),
     )];
     if can_filter_stroke {
         opts.push(SegmentedOption::new(
             ph2d_tool_painter::ids::PAINTER_SCULPT_FILTER_STROKE,
-            "Filter Stroke",
+            tr("panel.painter_layers.sculpt.filter_stroke"),
         ));
     }
     let seg = SegmentedAdaptive::new(
         ph2d_a11y::NodeId(0),
-        "Apply the sculpt verb to the whole layer, or to the last stroke",
+        tr("panel.painter_layers.sculpt.filter_group"),
         opts,
     )
     .selected(usize::MAX);
@@ -160,7 +161,7 @@ fn depth_row(
     let (store, hit_index) = ctx.host.store_and_hit_index_mut();
     let used = paint_slider_with_chip_layout_adaptive(
         Rect::new(x, y, content_w, ROW_H_PX),
-        "Depth",
+        tr("panel.painter_layers.sculpt.depth"),
         brush.sculpt_depth,
         f64::from(loads),
         Some(&display),
@@ -194,7 +195,7 @@ fn angle_row(
     let (store, hit_index) = ctx.host.store_and_hit_index_mut();
     let used = paint_slider_with_chip_layout_adaptive(
         Rect::new(x, y, content_w, ROW_H_PX),
-        "Angle",
+        tr("panel.painter_layers.sculpt.angle"),
         brush.sculpt_angle,
         f64::from(deg),
         Some(&display),
@@ -229,7 +230,7 @@ fn smooth_row(
     let (store, hit_index) = ctx.host.store_and_hit_index_mut();
     let used = paint_slider_with_chip_layout_adaptive(
         Rect::new(x, y, content_w, ROW_H_PX),
-        "Smooth",
+        tr("panel.painter_layers.sculpt.smooth"),
         brush.sculpt_smooth,
         f64::from(px),
         Some(&display),
@@ -270,7 +271,7 @@ fn offset_row(
     let (store, hit_index) = ctx.host.store_and_hit_index_mut();
     let used = paint_slider_with_chip_layout_adaptive(
         Rect::new(x, y, content_w, ROW_H_PX),
-        "Offset",
+        tr("panel.painter_layers.sculpt.offset"),
         brush.sculpt_offset,
         f64::from(loads),
         Some(&display),
@@ -306,7 +307,7 @@ fn radius_row(
     let (store, hit_index) = ctx.host.store_and_hit_index_mut();
     let used = paint_slider_with_chip_layout_adaptive(
         Rect::new(x, y, content_w, ROW_H_PX),
-        "Radius",
+        tr("panel.painter_layers.sculpt.radius"),
         brush.sculpt_radius,
         f64::from(px),
         Some(&display),

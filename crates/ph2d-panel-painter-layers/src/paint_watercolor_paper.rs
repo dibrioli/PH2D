@@ -12,6 +12,7 @@ use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::tool::PanelEvent;
 use ph2d_editor_core::widget::DropdownOption;
 use ph2d_editor_core::zones::Rect;
+use ph2d_i18n::tr;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, StrokeToken, TypeToken};
 use ph2d_tool_painter::{
     BrushSettings, TEX_OFFSET_MAX, TEX_OFFSET_MIN, TextureKind, TextureMapping, param_specs,
@@ -61,12 +62,12 @@ fn paint_substrate_rows(
     let mut y = y;
     for (label, id, value) in [
         (
-            "Relief",
+            tr("panel.painter_layers.paper.relief"),
             ph2d_tool_painter::ids::PAINTER_SUBSTRATE_RELIEF,
             brush.substrate_relief,
         ),
         (
-            "Roughness",
+            tr("panel.painter_layers.paper.roughness"),
             ph2d_tool_painter::ids::PAINTER_SUBSTRATE_ROUGHNESS,
             brush.substrate_roughness,
         ),
@@ -121,7 +122,7 @@ pub(crate) fn paint_paper_section(
         x,
         content_w,
         y,
-        "Paper",
+        tr("panel.painter_layers.paper.paper"),
         ph2d_tool_painter::ids::PAINTER_WATERCOLOR_PAPER_SECTION,
         ph2d_tool_painter::ids::PAINTER_WATERCOLOR_PAPER_SECTION_COLOR,
         ph2d_tool_painter::ids::PAINTER_WATERCOLOR_PAPER_RESET,
@@ -153,7 +154,7 @@ pub(crate) fn paint_paper_section(
         x,
         content_w,
         y,
-        "Paper",
+        tr("panel.painter_layers.paper.paper"),
         ph2d_tool_painter::ids::PAINTER_WATERCOLOR_PAPER_KIND,
         brush.paper_kind,
         kind.name(),
@@ -187,7 +188,7 @@ pub(crate) fn paint_paper_section(
             x,
             content_w,
             y,
-            "Mapping",
+            tr("panel.painter_layers.paper.mapping"),
             ph2d_tool_painter::ids::PAINTER_WATERCOLOR_PAPER_MAPPING,
             brush.paper_mapping,
             mapping.name(),
@@ -203,7 +204,7 @@ pub(crate) fn paint_paper_section(
         x,
         content_w,
         y,
-        "Angle",
+        tr("panel.painter_layers.paper.angle"),
         ph2d_tool_painter::ids::PAINTER_WATERCOLOR_PAPER_ANGLE,
         f32::from(brush.paper_angle),
         0.0,
@@ -218,7 +219,7 @@ pub(crate) fn paint_paper_section(
         x,
         content_w,
         y,
-        "Offset",
+        tr("panel.painter_layers.paper.offset"),
         ph2d_tool_painter::ids::PAINTER_WATERCOLOR_PAPER_OFFSET_X,
         brush.paper_offset[0],
         ph2d_tool_painter::ids::PAINTER_WATERCOLOR_PAPER_OFFSET_Y,
@@ -234,7 +235,7 @@ pub(crate) fn paint_paper_section(
         x,
         content_w,
         y,
-        "Size",
+        tr("panel.painter_layers.paper.size"),
         ph2d_tool_painter::ids::PAINTER_WATERCOLOR_PAPER_SIZE_X,
         brush.paper_size[0],
         ph2d_tool_painter::ids::PAINTER_WATERCOLOR_PAPER_SIZE_Y,
@@ -252,7 +253,7 @@ pub(crate) fn paint_paper_section(
             x,
             content_w,
             y,
-            "Tooth",
+            tr("panel.painter_layers.paper.tooth"),
             ph2d_tool_painter::ids::PAINTER_WATERCOLOR_PAPER_DEPTH,
             brush.paper_depth.clamp(0.0, 1.0),
             0.0,
@@ -321,7 +322,14 @@ fn paint_paper_color_row(
 ) -> f32 {
     const LABEL_W: f32 = 60.0; // LITERAL-PX-OK: row label column (mirrors paint_brush::LABEL_W)
     let id = ph2d_tool_painter::ids::PAINTER_WATERCOLOR_PAPER_COLOR_THUMB;
-    crate::paint_brush_rows::label(ctx, theme, "Color", x, y, TypeToken::Sm.px());
+    crate::paint_brush_rows::label(
+        ctx,
+        theme,
+        tr("panel.painter_layers.paper.color"),
+        x,
+        y,
+        TypeToken::Sm.px(),
+    );
     let sx = x + LABEL_W + Spacing::Sm.px();
     let sw = (content_w - LABEL_W - Spacing::Sm.px()).max(0.0);
     let rect = Rect::new(sx, y, sw, ROW_H_PX);
@@ -372,7 +380,7 @@ pub(crate) fn paint_grain_watercolor_extras(
         content_w,
         y,
         ph2d_tool_painter::ids::PAINTER_WATERCOLOR_GRAN_SAME,
-        "Same as Paper",
+        tr("panel.painter_layers.paper.same_as_paper"),
         brush.granulation_use_paper,
     );
     number_field::paint_num_row(
@@ -381,7 +389,7 @@ pub(crate) fn paint_grain_watercolor_extras(
         x,
         content_w,
         y,
-        "Amount",
+        tr("panel.painter_layers.paper.amount"),
         ph2d_tool_painter::ids::PAINTER_WATERCOLOR_GRANULATION,
         brush.granulation,
         0.0,

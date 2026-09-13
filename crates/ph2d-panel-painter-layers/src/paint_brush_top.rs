@@ -11,6 +11,7 @@ use ph2d_editor_core::widget::{
     paint_slider_with_chip,
 };
 use ph2d_editor_core::zones::Rect;
+use ph2d_i18n::tr;
 use ph2d_tokens::{ROW_H_PX, Spacing, TypeToken};
 use ph2d_tool_painter::BrushSettings;
 
@@ -19,19 +20,19 @@ use ph2d_tool_painter::BrushSettings;
 /// The modes are mutually exclusive; Eraser is a flag on Paint; the Composite Brush is still "Brush".
 pub(crate) fn header_title(shows_layers: bool, brush: Option<BrushSettings>) -> &'static str {
     if shows_layers {
-        return "Layers";
+        return tr("panel.painter_layers.brush.layers");
     }
     match brush {
-        Some(b) if b.is_deform => "Deform",
-        Some(b) if b.is_sculpt => "Sculpt",
-        Some(b) if b.is_selection => "Select",
-        Some(b) if b.is_mask => "Mask",
-        Some(b) if b.is_inpaint => "Inpaint",
-        Some(b) if b.is_clone => "Clone",
-        Some(b) if b.is_blur => "Blur",
-        Some(b) if b.is_smear => "Smear",
-        Some(b) if b.eraser => "Eraser",
-        _ => "Brush",
+        Some(b) if b.is_deform => tr("panel.painter_layers.brush.deform"),
+        Some(b) if b.is_sculpt => tr("panel.painter_layers.brush.sculpt"),
+        Some(b) if b.is_selection => tr("panel.painter_layers.brush.select"),
+        Some(b) if b.is_mask => tr("panel.painter_layers.brush.mask"),
+        Some(b) if b.is_inpaint => tr("panel.painter_layers.brush.inpaint"),
+        Some(b) if b.is_clone => tr("panel.painter_layers.brush.clone"),
+        Some(b) if b.is_blur => tr("panel.painter_layers.brush.blur"),
+        Some(b) if b.is_smear => tr("panel.painter_layers.brush.smear"),
+        Some(b) if b.eraser => tr("panel.painter_layers.brush.eraser"),
+        _ => tr("panel.painter_layers.brush.brush"),
     }
 }
 
@@ -188,7 +189,7 @@ pub(crate) fn paint_randomize_section(
         x,
         content_w,
         y,
-        "Randomize Color",
+        tr("panel.painter_layers.brush.randomize_color"),
         ph2d_tool_painter::ids::PAINTER_BRUSH_RANDOMIZE_SECTION,
         ph2d_tool_painter::ids::PAINTER_BRUSH_RANDOMIZE_SECTION_COLOR,
         ph2d_tool_painter::ids::PAINTER_BRUSH_RANDOMIZE_RESET,
@@ -196,7 +197,14 @@ pub(crate) fn paint_randomize_section(
     let Some(fold) = fold else {
         return y;
     };
-    for (slot, label) in ["Hue", "Saturation", "Value"].into_iter().enumerate() {
+    for (slot, label) in [
+        tr("panel.painter_layers.brush.hue"),
+        tr("panel.painter_layers.brush.saturation"),
+        tr("panel.painter_layers.brush.value"),
+    ]
+    .into_iter()
+    .enumerate()
+    {
         y = paint_slider_chip_row(
             ctx,
             theme,

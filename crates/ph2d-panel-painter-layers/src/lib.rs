@@ -55,6 +55,7 @@ mod paint_ramp_widget;
 mod paint_rows;
 mod paint_rows_relief;
 mod paint_sculpt;
+mod paint_seg_row; // the segmented row of a card — Impasto, the light rig and Wet Paint
 mod paint_selection;
 mod paint_shape;
 mod paint_shape_dab;
@@ -66,6 +67,7 @@ mod paint_symmetry;
 mod paint_taper;
 mod paint_texture;
 mod paint_texture_ramp;
+mod paint_texture_tiling; // the Grain's Offset / Size / Depth rows
 mod paint_watercolor;
 mod paint_watercolor_paper;
 mod paint_wetpaint;

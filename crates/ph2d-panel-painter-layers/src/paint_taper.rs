@@ -34,6 +34,7 @@ use ph2d_editor_core::interaction::InteractiveState;
 use ph2d_editor_core::paint::{fill_circle, paint_text, resolve, stroke_polyline};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::zones::Rect;
+use ph2d_i18n::tr;
 use ph2d_tokens::{ColorToken, ROW_H_PX, TypeToken};
 use ph2d_tool_painter::ids::painter_taper_handle_id;
 use ph2d_tool_painter::{BrushSettings, MAX_TAPER_DIAMETERS};
@@ -79,7 +80,7 @@ pub(crate) fn paint_taper_section(
     paint_text(
         ctx.text_system,
         ctx.scene,
-        "Taper",
+        tr("panel.painter_layers.taper.taper"),
         x,
         y + (ROW_H_PX - font) * 0.5,
         font,
@@ -154,7 +155,7 @@ pub(crate) fn paint_taper_section(
         x,
         content_w,
         y,
-        "Tip",
+        tr("panel.painter_layers.taper.tip"),
         ph2d_tool_painter::ids::PAINTER_TAPER_TIP_START,
         taper.tip_start.clamp(0.0, 1.0),
         0.0,
@@ -168,7 +169,7 @@ pub(crate) fn paint_taper_section(
         x,
         content_w,
         y,
-        "Opacity",
+        tr("panel.painter_layers.taper.opacity"),
         ph2d_tool_painter::ids::PAINTER_TAPER_OPACITY,
         taper.opacity.clamp(0.0, 1.0),
         0.0,

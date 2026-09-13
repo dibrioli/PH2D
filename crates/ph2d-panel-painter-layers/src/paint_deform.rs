@@ -16,6 +16,7 @@ use ph2d_editor_core::widget::{
     paint_segmented_adaptive,
 };
 use ph2d_editor_core::zones::Rect;
+use ph2d_i18n::tr;
 use ph2d_tokens::{ROW_H_PX, Spacing};
 use ph2d_tool_painter::BrushSettings;
 
@@ -57,15 +58,15 @@ pub(crate) fn paint_deform_section(
         content_w,
         y,
         ph2d_tool_painter::ids::PAINTER_DEFORM_TEMPERAMENT,
-        "Warp tool",
+        tr("panel.painter_layers.deform.warp_tool"),
         &[
             (
                 ph2d_tool_painter::ids::PAINTER_DEFORM_TEMPERAMENT_RESHAPE,
-                "Liquify",
+                tr("panel.painter_layers.deform.liquify"),
             ),
             (
                 ph2d_tool_painter::ids::PAINTER_DEFORM_TEMPERAMENT_TRANSFORM,
-                "Transform",
+                tr("panel.painter_layers.deform.transform"),
             ),
         ],
         selected,
@@ -110,23 +111,23 @@ fn paint_transform_body(
         content_w,
         y,
         ph2d_tool_painter::ids::PAINTER_DEFORM_TRANSFORM_MODE,
-        "Transform mode",
+        tr("panel.painter_layers.deform.transform_mode"),
         &[
             (
                 ph2d_tool_painter::ids::PAINTER_DEFORM_TRANSFORM_MODE_UNIFORM,
-                "Uniform",
+                tr("panel.painter_layers.deform.uniform"),
             ),
             (
                 ph2d_tool_painter::ids::PAINTER_DEFORM_TRANSFORM_MODE_FREE,
-                "Free",
+                tr("panel.painter_layers.deform.free"),
             ),
             (
                 ph2d_tool_painter::ids::PAINTER_DEFORM_TRANSFORM_MODE_DISTORT,
-                "Distort",
+                tr("panel.painter_layers.deform.distort"),
             ),
             (
                 ph2d_tool_painter::ids::PAINTER_DEFORM_TRANSFORM_MODE_WARP,
-                "Warp",
+                tr("panel.painter_layers.deform.warp"),
             ),
         ],
         selected,
@@ -153,7 +154,7 @@ fn paint_reshape_body(
         x,
         content_w,
         y,
-        "Size",
+        tr("panel.painter_layers.deform.size"),
         ph2d_tool_painter::ids::PAINTER_DEFORM_SIZE_SLIDER,
         ph2d_tool_painter::ids::PAINTER_DEFORM_SIZE_CHIP,
         brush.deform_size_norm,
@@ -164,7 +165,7 @@ fn paint_reshape_body(
         x,
         content_w,
         y,
-        "Pressure",
+        tr("panel.painter_layers.deform.pressure"),
         ph2d_tool_painter::ids::PAINTER_DEFORM_PRESSURE_SLIDER,
         ph2d_tool_painter::ids::PAINTER_DEFORM_PRESSURE_CHIP,
         brush.deform_pressure,
@@ -178,7 +179,7 @@ fn paint_reshape_body(
             x,
             content_w,
             y,
-            "Distortion",
+            tr("panel.painter_layers.deform.distortion"),
             ph2d_tool_painter::ids::PAINTER_DEFORM_DISTORTION_SLIDER,
             ph2d_tool_painter::ids::PAINTER_DEFORM_DISTORTION_CHIP,
             brush.deform_distortion,
@@ -189,7 +190,7 @@ fn paint_reshape_body(
             x,
             content_w,
             y,
-            "Momentum",
+            tr("panel.painter_layers.deform.momentum"),
             ph2d_tool_painter::ids::PAINTER_DEFORM_MOMENTUM_SLIDER,
             ph2d_tool_painter::ids::PAINTER_DEFORM_MOMENTUM_CHIP,
             brush.deform_momentum,
@@ -201,7 +202,7 @@ fn paint_reshape_body(
             x,
             content_w,
             y,
-            "Strength",
+            tr("panel.painter_layers.deform.strength"),
             ph2d_tool_painter::ids::PAINTER_DEFORM_STRENGTH_SLIDER,
             ph2d_tool_painter::ids::PAINTER_DEFORM_STRENGTH_CHIP,
             brush.deform_strength,
@@ -218,7 +219,7 @@ fn paint_reshape_body(
             content_w,
             y,
             ph2d_tool_painter::ids::PAINTER_DEFORM_RELIEF,
-            "Affect Relief",
+            tr("panel.painter_layers.deform.affect_relief"),
             brush.deform_affect_relief,
         );
     }
@@ -243,13 +244,19 @@ fn paint_actions(
         content_w,
         y,
         NodeId(0),
-        "Deform actions",
+        tr("panel.painter_layers.deform.deform_actions"),
         &[
-            (ph2d_tool_painter::ids::PAINTER_DEFORM_RESET, "Reset"),
-            (ph2d_tool_painter::ids::PAINTER_DEFORM_APPLY, "Apply"),
+            (
+                ph2d_tool_painter::ids::PAINTER_DEFORM_RESET,
+                tr("panel.painter_layers.deform.reset"),
+            ),
+            (
+                ph2d_tool_painter::ids::PAINTER_DEFORM_APPLY,
+                tr("panel.painter_layers.deform.apply"),
+            ),
             (
                 ph2d_tool_painter::ids::PAINTER_DEFORM_APPLY_KEEP,
-                "Apply & Keep",
+                tr("panel.painter_layers.deform.apply_and_keep"),
             ),
         ],
         usize::MAX,
@@ -271,19 +278,31 @@ fn mode_card(
     let card = Card::new(ph2d_tool_painter::ids::PAINTER_DEFORM_MODE_CARD).title("MODE");
     let seg = SegmentedAdaptive::new(
         ph2d_tool_painter::ids::PAINTER_DEFORM_MODE,
-        "Deform mode",
+        tr("panel.painter_layers.deform.deform_mode"),
         vec![
-            SegmentedOption::new(ph2d_tool_painter::ids::PAINTER_DEFORM_MODE_PUSH, "Push"),
-            SegmentedOption::new(ph2d_tool_painter::ids::PAINTER_DEFORM_MODE_TWIST, "Twist"),
-            SegmentedOption::new(ph2d_tool_painter::ids::PAINTER_DEFORM_MODE_PINCH, "Pinch"),
+            SegmentedOption::new(
+                ph2d_tool_painter::ids::PAINTER_DEFORM_MODE_PUSH,
+                tr("panel.painter_layers.deform.push"),
+            ),
+            SegmentedOption::new(
+                ph2d_tool_painter::ids::PAINTER_DEFORM_MODE_TWIST,
+                tr("panel.painter_layers.deform.twist"),
+            ),
+            SegmentedOption::new(
+                ph2d_tool_painter::ids::PAINTER_DEFORM_MODE_PINCH,
+                tr("panel.painter_layers.deform.pinch"),
+            ),
             SegmentedOption::new(
                 ph2d_tool_painter::ids::PAINTER_DEFORM_MODE_WRINKLE,
-                "Wrinkle",
+                tr("panel.painter_layers.deform.wrinkle"),
             ),
-            SegmentedOption::new(ph2d_tool_painter::ids::PAINTER_DEFORM_MODE_FOLD, "Fold"),
+            SegmentedOption::new(
+                ph2d_tool_painter::ids::PAINTER_DEFORM_MODE_FOLD,
+                tr("panel.painter_layers.deform.fold"),
+            ),
             SegmentedOption::new(
                 ph2d_tool_painter::ids::PAINTER_DEFORM_MODE_RECONSTRUCT,
-                "Reconstruct",
+                tr("panel.painter_layers.deform.reconstruct"),
             ),
         ],
     )

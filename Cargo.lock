@@ -7670,6 +7670,8 @@ version = "0.0.0"
 dependencies = [
  "ph2d-a11y",
  "ph2d-editor-core",
+ "ph2d-i18n",
+ "ph2d-label-census",
  "ph2d-text",
  "ph2d-tokens",
  "ph2d-tool-registry",
@@ -7758,6 +7760,8 @@ dependencies = [
  "ph2d-a11y",
  "ph2d-editor-core",
  "ph2d-host",
+ "ph2d-i18n",
+ "ph2d-label-census",
  "ph2d-panel-hierarchy",
  "ph2d-panel-inspector",
  "ph2d-panel-widget-gallery",

@@ -12,6 +12,7 @@ use ph2d_editor_core::paint::{
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::flat_button_surface_color;
 use ph2d_editor_core::zones::Rect;
+use ph2d_i18n::tr;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, StrokeToken, TypeToken};
 use ph2d_tool_painter::BrushSettings;
 
@@ -37,7 +38,7 @@ pub(super) fn paint_apply_row(
             ctx,
             theme,
             Rect::new(x, y, content_w, ROW_H_PX),
-            Some("Convert to Curve"),
+            Some(tr("panel.painter_layers.stroke.convert_to_curve")),
             ph2d_tool_painter::ids::PAINTER_BRUSH_STROKE_EDIT,
         );
         y += ph2d_tokens::row_pitch_px();
@@ -57,7 +58,7 @@ pub(super) fn paint_apply_row(
             ctx,
             theme,
             Rect::new(x, y, w, ROW_H_PX),
-            Some("Apply"),
+            Some(tr("panel.painter_layers.stroke.apply")),
             apply,
         );
         let keep_x = x + w + gap;
@@ -65,7 +66,7 @@ pub(super) fn paint_apply_row(
             ctx,
             theme,
             Rect::new(keep_x, y, w, ROW_H_PX),
-            Some("Apply & Keep"),
+            Some(tr("panel.painter_layers.stroke.apply_and_keep")),
             keep,
         );
         paint_icon_cluster(ctx, theme, keep_x + w + gap, y, sq);
@@ -77,7 +78,7 @@ pub(super) fn paint_apply_row(
             ctx,
             theme,
             Rect::new(x, y, text_w, ROW_H_PX),
-            Some("Apply"),
+            Some(tr("panel.painter_layers.stroke.apply")),
             apply,
         );
         paint_icon_cluster(ctx, theme, x + text_w + gap, y, sq);
@@ -86,7 +87,7 @@ pub(super) fn paint_apply_row(
             ctx,
             theme,
             Rect::new(x, keep_y, content_w, ROW_H_PX),
-            Some("Apply & Keep"),
+            Some(tr("panel.painter_layers.stroke.apply_and_keep")),
             keep,
         );
         keep_y + ph2d_tokens::row_pitch_px()
@@ -107,7 +108,7 @@ pub(super) fn paint_simplify_row(
         ctx,
         theme,
         Rect::new(x, y, content_w, ROW_H_PX),
-        Some("Simplify"),
+        Some(tr("panel.painter_layers.stroke.simplify")),
         ph2d_tool_painter::ids::PAINTER_BRUSH_STROKE_SIMPLIFY,
     );
     y + ph2d_tokens::row_pitch_px()
@@ -127,7 +128,7 @@ pub(super) fn paint_merge_row(
         ctx,
         theme,
         Rect::new(x, y, content_w, ROW_H_PX),
-        Some("Merge Curves"),
+        Some(tr("panel.painter_layers.stroke.merge_curves")),
         ph2d_tool_painter::ids::PAINTER_BRUSH_STROKE_MERGE,
     );
     y + ph2d_tokens::row_pitch_px()
@@ -178,7 +179,7 @@ pub(super) fn paint_offset_card(
     paint_text(
         ctx.text_system,
         ctx.scene,
-        "Offset",
+        tr("panel.painter_layers.stroke.offset"),
         inner_x,
         y + pad + (title_h - font) * 0.5,
         font,
@@ -192,7 +193,7 @@ pub(super) fn paint_offset_card(
         inner_x,
         inner_w,
         iy,
-        "Distance",
+        tr("panel.painter_layers.stroke.distance"),
         ph2d_tool_painter::ids::PAINTER_BRUSH_OFFSET,
         ph2d_tool_painter::ids::PAINTER_BRUSH_OFFSET_CHIP,
         brush.offset,
@@ -204,7 +205,7 @@ pub(super) fn paint_offset_card(
         inner_w,
         iy,
         ph2d_tool_painter::ids::PAINTER_BRUSH_OFFSET_TRIM,
-        "Trim",
+        tr("panel.painter_layers.stroke.trim"),
         brush.offset_trim,
     );
     y + card_h + ph2d_tokens::control_gap_px()

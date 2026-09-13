@@ -12,6 +12,7 @@ use ph2d_editor_core::widget::{
     paint_button, paint_radio_group_with_labels, paint_slider_with_chip_layout_adaptive,
 };
 use ph2d_editor_core::zones::Rect;
+use ph2d_i18n::tr;
 use ph2d_tokens::ROW_H_PX;
 use ph2d_tool_painter::BrushSettings;
 
@@ -39,7 +40,7 @@ pub(crate) fn paint_symmetry_section(
         x,
         content_w,
         y,
-        "Symmetry",
+        tr("panel.painter_layers.symmetry.symmetry"),
         ph2d_tool_painter::ids::PAINTER_BRUSH_SYMMETRY_SECTION,
         ph2d_tool_painter::ids::PAINTER_BRUSH_SYMMETRY_SECTION_COLOR,
         ph2d_tool_painter::ids::PAINTER_BRUSH_SYMMETRY_RESET,
@@ -54,7 +55,7 @@ pub(crate) fn paint_symmetry_section(
         content_w,
         y,
         ph2d_tool_painter::ids::PAINTER_BRUSH_SYMMETRY_USE,
-        "Use Symmetry",
+        tr("panel.painter_layers.symmetry.use_symmetry"),
         brush.symmetry_enabled,
     );
     // The rest of the controls only make sense once symmetry is on.
@@ -68,7 +69,7 @@ pub(crate) fn paint_symmetry_section(
         content_w,
         y,
         ph2d_tool_painter::ids::PAINTER_BRUSH_SYMMETRY_CIRCULAR,
-        "Circular",
+        tr("panel.painter_layers.symmetry.circular"),
         brush.symmetry_circular,
     );
     if brush.symmetry_circular {
@@ -81,7 +82,7 @@ pub(crate) fn paint_symmetry_section(
             content_w,
             y,
             ph2d_tool_painter::ids::PAINTER_BRUSH_SYMMETRY_PICK_CENTER,
-            "Pick Center",
+            tr("panel.painter_layers.symmetry.pick_center"),
             brush.symmetry_pick_center,
         );
     } else {
@@ -95,7 +96,7 @@ pub(crate) fn paint_symmetry_section(
                 content_w,
                 y,
                 ph2d_tool_painter::ids::PAINTER_BRUSH_SYMMETRY_DRAW_LINE,
-                "Draw Custom Line",
+                tr("panel.painter_layers.symmetry.draw_custom_line"),
                 brush.symmetry_pick_line,
             );
         }
@@ -116,12 +117,12 @@ fn paint_axis_segment(
 ) -> f32 {
     let selected = match axis {
         1 => "Y",
-        2 => "Custom",
+        2 => tr("panel.painter_layers.symmetry.custom"),
         _ => "X",
     };
     let rg = RadioGroup::new(
         ph2d_a11y::NodeId(0),
-        "Axis",
+        tr("panel.painter_layers.symmetry.axis"),
         vec![
             RadioOption::new(
                 ph2d_tool_painter::ids::PAINTER_BRUSH_SYMMETRY_AXIS_X,
@@ -135,8 +136,8 @@ fn paint_axis_segment(
             ),
             RadioOption::new(
                 ph2d_tool_painter::ids::PAINTER_BRUSH_SYMMETRY_AXIS_CUSTOM,
-                "Custom",
-                "Custom",
+                tr("panel.painter_layers.symmetry.custom"),
+                tr("panel.painter_layers.symmetry.custom"),
             ),
         ],
     )
@@ -178,7 +179,7 @@ fn paint_segments_row(
     let (store, hit_index) = ctx.host.store_and_hit_index_mut();
     let used = paint_slider_with_chip_layout_adaptive(
         Rect::new(x, y, content_w, ROW_H_PX),
-        "Segments",
+        tr("panel.painter_layers.symmetry.segments"),
         track,
         f64::from(seg),
         Some(&display),

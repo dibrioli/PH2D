@@ -36,6 +36,7 @@ use ph2d_editor_core::widget::{
     scrollbar_is_needed, scrollbar_track_rect,
 };
 use ph2d_editor_core::zones::Rect;
+use ph2d_i18n::tr;
 use ph2d_tokens::{ROW_H_PX, Spacing};
 
 // Chrome layout metrics (the per-row metrics live in `paint_rows.rs`).
@@ -323,12 +324,12 @@ fn paint_dock_modes(
     );
     let segments = [
         (
-            "Brush",
+            tr("panel.painter_layers.layers.brush"),
             !shows_layers,
             ph2d_tool_painter::ids::PAINTER_SIDEBAR_TOGGLE_DOCK,
         ),
         (
-            "Layers",
+            tr("panel.painter_layers.layers.layers"),
             shows_layers,
             ph2d_tool_painter::ids::PAINTER_LAYERS_TOGGLE_DOCK,
         ),
@@ -372,22 +373,22 @@ fn paint_action_toolbar(ctx: &mut PaintCtx, toolbar_rect: Rect, theme: ph2d_toke
         (
             ph2d_tool_painter::ids::PAINTER_LAYERS_ADD,
             IconId::Add,
-            "New layer",
+            tr("panel.painter_layers.layers.new_layer"),
         ),
         (
             ph2d_tool_painter::ids::PAINTER_LAYERS_GROUP,
             IconId::Group,
-            "New group",
+            tr("panel.painter_layers.layers.new_group"),
         ),
         (
             ph2d_tool_painter::ids::PAINTER_LAYERS_DUPLICATE,
             IconId::Duplicate,
-            "Duplicate layer",
+            tr("panel.painter_layers.layers.duplicate_layer"),
         ),
         (
             ph2d_tool_painter::ids::PAINTER_LAYERS_DELETE,
             IconId::Trash,
-            "Delete layer",
+            tr("panel.painter_layers.layers.delete_layer"),
         ),
     ];
     for (id, icon, label) in specs {
@@ -411,7 +412,8 @@ fn paint_action_toolbar(ctx: &mut PaintCtx, toolbar_rect: Rect, theme: ph2d_toke
         ctx.host.store().get(adj_id),
         Some(InteractiveState::Dropdown { open: true, .. })
     );
-    let mut adj_btn = Button::new(adj_id, "Add adjustment").icon_only(IconId::ColorEqualization);
+    let mut adj_btn = Button::new(adj_id, tr("panel.painter_layers.layers.add_adjustment"))
+        .icon_only(IconId::ColorEqualization);
     if open {
         adj_btn.kind = ButtonKind::Accent;
     }
@@ -432,7 +434,7 @@ fn paint_action_toolbar(ctx: &mut PaintCtx, toolbar_rect: Rect, theme: ph2d_toke
     let tex_id = ph2d_tool_painter::ids::PAINTER_LAYERS_ADD_TEXTURE;
     let tex_rect = Rect::new(x, y, HEADER_ICON_W, HEADER_ICON_W);
     let tex_st = ctx.host.store().button_visual(tex_id);
-    let tex_btn = Button::new(tex_id, "Add texture layer")
+    let tex_btn = Button::new(tex_id, tr("panel.painter_layers.layers.add_texture_layer"))
         .icon_only(IconId::Grid)
         .visual(tex_st);
     paint_button(&tex_btn, tex_rect, ctx.scene, ctx.text_system, theme);
@@ -451,22 +453,22 @@ fn paint_modifier_toolbar(ctx: &mut PaintCtx, toolbar_rect: Rect, theme: ph2d_to
     let specs = [
         (
             ph2d_tool_painter::ids::PAINTER_LAYERS_MASK,
-            "Mask",
+            tr("panel.painter_layers.layers.mask"),
             mods.is_some_and(|m| m.has_mask),
         ),
         (
             ph2d_tool_painter::ids::PAINTER_LAYERS_CLIP,
-            "Clip",
+            tr("panel.painter_layers.layers.clip"),
             mods.is_some_and(|m| m.clipping),
         ),
         (
             ph2d_tool_painter::ids::PAINTER_LAYERS_ALPHA_LOCK,
-            "Lock",
+            tr("panel.painter_layers.layers.lock"),
             mods.is_some_and(|m| m.alpha_locked),
         ),
         (
             ph2d_tool_painter::ids::PAINTER_LAYERS_REFERENCE,
-            "Ref",
+            tr("panel.painter_layers.layers.ref"),
             mods.is_some_and(|m| m.is_reference),
         ),
     ];
@@ -500,9 +502,12 @@ fn paint_apply_button(ctx: &mut PaintCtx, rect: Rect, theme: ph2d_tokens::Theme)
         .host
         .store()
         .button_visual(ph2d_tool_painter::ids::PAINTER_APPLY);
-    let btn = Button::new(ph2d_tool_painter::ids::PAINTER_APPLY, "Apply")
-        .accent()
-        .visual(st);
+    let btn = Button::new(
+        ph2d_tool_painter::ids::PAINTER_APPLY,
+        tr("panel.painter_layers.layers.apply"),
+    )
+    .accent()
+    .visual(st);
     paint_button(&btn, rect, ctx.scene, ctx.text_system, theme);
     ctx.host
         .hit_index_mut()

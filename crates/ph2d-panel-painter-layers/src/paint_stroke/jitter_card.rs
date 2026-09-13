@@ -12,6 +12,7 @@ use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, resolve};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::DropdownOption;
 use ph2d_editor_core::zones::Rect;
+use ph2d_i18n::tr;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, StrokeToken, TypeToken};
 use ph2d_tool_painter::ids::painter_brush_jitter_unit_option_id;
 use ph2d_tool_painter::{BRUSH_JITTER_ABS_MAX_PX, BrushSettings, JitterUnit, SPRAY_COUNT_MAX};
@@ -70,7 +71,7 @@ pub(super) fn paint_jitter_card(
     paint_text(
         ctx.text_system,
         ctx.scene,
-        "Jitter",
+        tr("panel.painter_layers.stroke.jitter.jitter"),
         inner_x,
         y + pad + (title_h - font) * 0.5,
         font,
@@ -88,7 +89,7 @@ pub(super) fn paint_jitter_card(
         inner_x,
         inner_w,
         iy,
-        "Count",
+        tr("panel.painter_layers.stroke.jitter.count"),
         ph2d_tool_painter::ids::PAINTER_BRUSH_SPRAY_COUNT,
         ph2d_tool_painter::ids::PAINTER_BRUSH_SPRAY_COUNT_CHIP,
         spray_count_track(brush.spray_count),
@@ -106,7 +107,7 @@ pub(super) fn paint_jitter_card(
         inner_x,
         inner_w,
         iy,
-        "Position",
+        tr("panel.painter_layers.stroke.jitter.position"),
         ph2d_tool_painter::ids::PAINTER_BRUSH_JITTER,
         ph2d_tool_painter::ids::PAINTER_BRUSH_JITTER_CHIP,
         jval,
@@ -118,7 +119,7 @@ pub(super) fn paint_jitter_card(
         inner_x,
         inner_w,
         iy,
-        "Unit",
+        tr("panel.painter_layers.stroke.jitter.unit"),
         ph2d_tool_painter::ids::PAINTER_BRUSH_JITTER_UNIT,
         brush.jitter_unit,
         jitter_unit_name(brush.jitter_unit),
@@ -134,7 +135,7 @@ pub(super) fn paint_jitter_card(
         inner_x,
         inner_w,
         iy,
-        "Scale",
+        tr("panel.painter_layers.stroke.jitter.scale"),
         ph2d_tool_painter::ids::PAINTER_BRUSH_JITTER_SCALE,
         ph2d_tool_painter::ids::PAINTER_BRUSH_JITTER_SCALE_CHIP,
         brush.jitter_scale,
@@ -146,7 +147,7 @@ pub(super) fn paint_jitter_card(
         inner_x,
         inner_w,
         iy,
-        "Spacing",
+        tr("panel.painter_layers.stroke.jitter.spacing"),
         ph2d_tool_painter::ids::PAINTER_BRUSH_JITTER_SPACING,
         ph2d_tool_painter::ids::PAINTER_BRUSH_JITTER_SPACING_CHIP,
         brush.jitter_spacing,
@@ -159,7 +160,7 @@ pub(super) fn paint_jitter_card(
         inner_x,
         inner_w,
         iy,
-        "Rotation",
+        tr("panel.painter_layers.stroke.jitter.rotation"),
         ph2d_tool_painter::ids::PAINTER_BRUSH_JITTER_ROTATE,
         ph2d_tool_painter::ids::PAINTER_BRUSH_JITTER_ROTATE_CHIP,
         brush.jitter_rotate,
@@ -187,8 +188,8 @@ pub(super) fn spray_count_track(count: u32) -> f32 {
 /// Display name for a jitter-unit wire discriminant.
 fn jitter_unit_name(u: u8) -> &'static str {
     match JitterUnit::from_u8(u) {
-        JitterUnit::Brush => "Brush",
-        JitterUnit::View => "View",
+        JitterUnit::Brush => tr("panel.painter_layers.stroke.jitter.brush"),
+        JitterUnit::View => tr("panel.painter_layers.stroke.jitter.view"),
     }
 }
 

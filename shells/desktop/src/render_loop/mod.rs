@@ -192,6 +192,8 @@ mod fase_canvas_overlays;
 mod fase_chrome_clock;
 /// Fase do quadro: a paleta de componentes.
 mod fase_component_palette;
+/// Fase do quadro: o composto, os encaixes e as reguas.
+mod fase_compound_snap_rulers;
 /// Fase do quadro: o conector e os parametros de forma.
 mod fase_connector_and_shape_params;
 /// Fase do quadro: o converter em curvas.
@@ -5148,31 +5150,15 @@ impl crate::App {
                     }
                 }
             }
-            if let Some(make) = pending_vec_compound {
-                crate::input_dispatch::apply_vec_compound(vec_scene, &mut self.vec.pen, make);
-            }
-            if let Some(even_odd) = pending_vec_fill_rule {
-                crate::input_dispatch::apply_vec_fill_rule(vec_scene, &self.vec.pen, even_odd);
-            }
-            // Snap settings are TOOL state, not document state — no undo step.
-            if let Some(on) = pending_vec_snap_on {
-                self.vec.snap.on = on;
-            }
-            if let Some(on) = pending_vec_snap_path {
-                self.vec.snap.path = on;
-            }
-            if let Some(on) = pending_vec_snap_cross {
-                self.vec.snap.crossings = on;
-            }
-            if let Some(on) = pending_vec_snap_guides {
-                self.vec.snap.guides = on;
-            }
-            // ⚠️ A régua é estado do HERO, não da ferramenta: ela é chrome de canvas, aparece
-            // com qualquer ferramenta na mão, e é o mesmo flag que a tecla/menu de vista
-            // mexeria. O painel do vetor é só mais um lugar de onde se alcança o interruptor.
-            if let Some(on) = pending_rulers {
-                hero.view.rulers_visible = on;
-            }
+            self.fase_compound_snap_rulers(fase_compound_snap_rulers::CompoundSnapRulersIntents {
+                pending_vec_compound,
+                pending_vec_fill_rule,
+                pending_vec_snap_on,
+                pending_vec_snap_path,
+                pending_vec_snap_cross,
+                pending_vec_snap_guides,
+                pending_rulers,
+            });
             self.fase_node_and_arrange_verbs(
                 fase_node_and_arrange_verbs::NodeAndArrangeVerbsIntents {
                     pending_vec_select_subpath,

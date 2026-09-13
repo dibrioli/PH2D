@@ -278,7 +278,10 @@ fn the_cut_line_is_drawn_outside_the_edit_mode_guard() {
 /// enxergasse.
 #[test]
 fn the_snap_toggles_are_not_crossed() {
-    let code = std::fs::read_to_string("src/render_loop/mod.rs").expect("render_loop");
+    // ⚠️ O QUADRO pela ordem em que corre (`frame_text::render_frame`), e não o `mod.rs`: os braços moram no dreno do
+    // barramento, que a OBRA 2 da `line/render-loop` (2026-09-13) também parte em fase — um gate que lê só o `mod.rs`
+    // reprovaria alto nesse dia, e o seu irmão de baixo já reprovou.
+    let code = crate::frame_text::render_frame();
     for (id, slot) in [
         (
             "VECTOR_SNAP_PATH_OFF",
@@ -319,9 +322,13 @@ fn the_snap_toggles_are_not_crossed() {
 /// E cada `pending` chega ao campo CORRESPONDENTE de `vec_snap`. O braço acima decide o
 /// destino; este decide o que o destino faz — trocar os dois aqui é o mesmo defeito um passo
 /// adiante, e o gate anterior não o vê.
+///
+/// ⚠️ O destino é lido no QUADRO pela ordem em que corre (`frame_text::render_frame`): desde a OBRA 2 da
+/// `line/render-loop` (2026-09-13) os interruptores moram na `fase_compound_snap_rulers`, e o `mod.rs` sozinho já não
+/// tem o `if let` de nenhum.
 #[test]
 fn each_pending_snap_toggle_lands_on_its_own_field() {
-    let code = std::fs::read_to_string("src/render_loop/mod.rs").expect("render_loop");
+    let code = crate::frame_text::render_frame();
     for (pending, field) in [
         ("pending_vec_snap_path", "self.vec.snap.path = on"),
         ("pending_vec_snap_cross", "self.vec.snap.crossings = on"),

@@ -143,13 +143,14 @@ fn the_move_advances_the_hand() {
 /// *onde a mola está presa*.
 #[test]
 fn the_overlay_reads_the_marks_from_the_bridge() {
-    let src = fs::read_to_string("src/render_loop/mod.rs").expect("render_loop/mod.rs");
+    // O QUADRO emendado (OBRA 2 da `line/render-loop`): a sobreposição da física mudou-se para a
+    // `fase_physics_overlay` (P5m). ⚠️ E a chamada acaba no `)` que a FECHA (`frame_text::call_end`), nunca num
+    // `"\n            );"` com doze espaços — a fase põe-na noutra coluna.
+    let src = crate::frame_text::render_frame();
     let i = src
         .find("ph2d_app_physics::overlay::outline::draw(")
         .expect("o overlay é despachado");
-    let call = &src[i..i + src[i..]
-        .find("\n            );")
-        .expect("chamada sem fechamento")];
+    let call = &src[i..crate::frame_text::call_end(&src, i).expect("chamada sem fechamento")];
     assert!(
         call.contains("physics.grab_marks()"),
         "o overlay tem de receber as marcas da ponte. Chamada:\n{call}"
@@ -242,7 +243,9 @@ fn the_poke_press_asks_the_door_with_the_clock_and_the_transport() {
 /// e uma promessa que a ferramenta não cumpre é pior que nenhuma marca.
 #[test]
 fn the_overlay_is_handed_the_tool_marks() {
-    let src = fs::read_to_string("src/render_loop/mod.rs").expect("render_loop/mod.rs");
+    // O QUADRO emendado (OBRA 2 da `line/render-loop`): a sobreposição da física mudou-se para a
+    // `fase_physics_overlay` (P5m).
+    let src = crate::frame_text::render_frame();
     let i = src
         .find("ph2d_app_physics::overlay::outline::draw(")
         .expect("a chamada do overlay existe");
@@ -251,11 +254,10 @@ fn the_overlay_is_handed_the_tool_marks() {
     // argumentos — com um `⚠️`, que ocupa três bytes — para o corte cair no meio
     // de um caractere e este gate PANICAR em vez de julgar
     // [[feedback_a_gate_anchored_on_a_byte_distance_is_a_proxy_that_expires]].
-    // O `);` na indentação da chamada é a propriedade: é o fim da lista de
-    // argumentos, que é exatamente o que este gate percorre.
-    let end = src[i..]
-        .find("\n            );")
-        .map_or(src.len(), |k| i + k);
+    // ⛔ **E o fim também não é uma INDENTAÇÃO** (P5m): a janela procurava `"\n            );"` com doze espaços e,
+    // sem o achar, `map_or(len)` alargava-a até ao FIM do texto — a fase pôs a chamada noutra coluna, e este gate
+    // passaria a achar os argumentos em qualquer sítio a seguir. O fim é o `)` que a FECHA (`frame_text::call_end`).
+    let end = crate::frame_text::call_end(&src, i).expect("a chamada do overlay fecha");
     let call = &src[i..end];
     assert!(
         call.contains("physics.attract_marks()"),

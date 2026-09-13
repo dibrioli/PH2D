@@ -20,7 +20,13 @@
 //! a COSTURA: passar `&[]` compila, apaga os sensores da tela e deixa as duas
 //! outras famílias de gate **verdes**.
 
-const SRC: &str = include_str!("../../src/render_loop/mod.rs");
+/// O QUADRO pela ordem em que corre (`frame_text::render_frame`).
+///
+/// ⚠️ Desde a OBRA 2 da `line/render-loop` (2026-09-13) o quadro vive em FASES: a sobreposição da física — o binding
+/// dos sensores e a chamada do `draw` — mudou-se para a `fase_physics_overlay`. O controlo positivo de baixo previa
+/// exactamente isto (*«se ele foi partido, os dois gates acima podem estar a ler o lado sem a chamada»*), e passa a
+/// medir o texto emendado.
+static SRC: std::sync::LazyLock<String> = std::sync::LazyLock::new(crate::frame_text::render_frame);
 
 fn at(needle: &str) -> usize {
     SRC.find(needle).unwrap_or_else(|| {
@@ -46,12 +52,15 @@ fn the_marks_come_from_the_bridge() {
 
 /// **E ela é ENTREGUE ao `draw`** — sem isto, o passe de sensores recebe uma
 /// lista vazia todo quadro e não desenha um pixel, com tudo verde.
+///
+/// ⚠️ A chamada acaba no `)` que a FECHA (`frame_text::call_end`), nunca num `"\n            );"` com doze espaços:
+/// a fase põe a chamada noutra coluna, e um fim medido em indentação é um fim medido na casa (P5m).
 #[test]
 fn the_marks_are_handed_to_the_draw() {
     let call = at("ph2d_app_physics::overlay::outline::draw(");
-    let end = SRC[call..].find("\n            );").unwrap_or_else(|| {
+    let end = crate::frame_text::call_end(&SRC, call).unwrap_or_else(|| {
         panic!("nao achei o fim da chamada de `physics_overlay::draw` — atualize este gate")
-    }) + call;
+    });
     let args = &SRC[call..end];
     assert!(
         args.contains("&probes"),
@@ -60,7 +69,7 @@ fn the_marks_are_handed_to_the_draw() {
     );
 }
 
-/// **CONTROLE POSITIVO:** o arquivo lido é o do produto e contém a chamada que
+/// **CONTROLE POSITIVO:** o texto lido é o do produto e contém a chamada que
 /// os dois gates acima inspecionam.
 ///
 /// ⚠️ Sem ele, um `render_loop` que se mudasse de lugar deixaria os `find`
@@ -70,12 +79,12 @@ fn the_marks_are_handed_to_the_draw() {
 fn the_file_this_gate_reads_is_the_one_that_draws() {
     assert!(
         SRC.contains("ph2d_app_physics::overlay::outline::draw("),
-        "este gate lê o arquivo errado"
+        "este gate lê o texto errado"
     );
     assert!(
         SRC.len() > 100_000,
-        "o `render_loop/mod.rs` encolheu de forma suspeita ({} bytes) — se ele foi partido, os \
-         dois gates acima podem estar a ler o lado sem a chamada",
+        "o texto do quadro encolheu de forma suspeita ({} bytes) — se a emenda das fases partiu, os \
+         dois gates acima podem estar a ler um pedaço sem a chamada",
         SRC.len()
     );
 }

@@ -119,6 +119,60 @@ fn a_chain_is_found_in_any_column_and_only_with_its_tail() {
     );
 }
 
+/// O índice do `)` que FECHA a 1.ª `(` a partir de `from` — a extensão de uma chamada, por parêntesis equilibrados.
+///
+/// ⚠️ **O fim de uma chamada não é uma INDENTAÇÃO.** Dois gates da física procuravam `"\n            );"` (doze
+/// espaços) e a chamada mudou-se para uma fase noutra coluna (P5m): um reprovou alto, e o outro — com `map_or(len)` —
+/// alargava a janela até ao fim do texto e passava a achar os argumentos em QUALQUER sítio a seguir. Aqui contam-se
+/// parêntesis, saltando strings, literais de carácter e comentários de linha (um `(` numa nota não abre nada).
+pub fn call_end(s: &str, from: usize) -> Option<usize> {
+    let b = s.as_bytes();
+    let mut i = from + s[from..].find('(')?;
+    let mut depth = 0usize;
+    while i < b.len() {
+        match b[i] {
+            b'"' => {
+                i += 1;
+                while i < b.len() && b[i] != b'"' {
+                    i += if b[i] == b'\\' { 2 } else { 1 };
+                }
+            }
+            b'\'' if i + 2 < b.len() && b[i + 2] == b'\'' => i += 2,
+            b'/' if b.get(i + 1) == Some(&b'/') => {
+                while i < b.len() && b[i] != b'\n' {
+                    i += 1;
+                }
+            }
+            b'(' => depth += 1,
+            b')' => {
+                depth -= 1;
+                if depth == 0 {
+                    return Some(i);
+                }
+            }
+            _ => {}
+        }
+        i += 1;
+    }
+    None
+}
+
+/// **As duas metades da extensão de uma chamada:** fecha no `)` certo com parêntesis aninhados, numa string e num
+/// comentário pelo meio — e devolve `None` a uma chamada que não fecha, em vez de uma janela até ao fim do texto.
+#[test]
+fn a_call_ends_at_its_own_closing_paren() {
+    let s = "draw(\n    a(b),\n    // nota (sem fecho\n    \"(\",\n    c,\n);\nlater(x);";
+    let end = call_end(s, 0).expect("a chamada fecha");
+    assert_eq!(
+        &s[end..end + 2],
+        ");",
+        "fechou no sítio errado: {:?}",
+        &s[..end]
+    );
+    assert!(s[..end].contains("c,") && !s[..end].contains("later"));
+    assert_eq!(call_end("draw(a, b", 0), None);
+}
+
 fn splice(text: &str, phases: &BTreeMap<String, String>, depth: usize) -> String {
     assert!(
         depth < 8,

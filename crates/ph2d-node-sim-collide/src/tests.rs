@@ -378,14 +378,23 @@ fn the_radius_is_the_circle_inscribed_in_the_sprite() {
         "…and so is a tall thin one: the inscribed circle does not care which way it is long"
     );
     // A mirrored sprite is the same size, not a negative one.
-    assert_eq!(particle_radius(RADIUS_SIZE, 0.0, 1.0, [-3.0, 3.0], 0.0), 1.5);
+    assert_eq!(
+        particle_radius(RADIUS_SIZE, 0.0, 1.0, [-3.0, 3.0], 0.0),
+        1.5
+    );
     // `size_scale` reaches the circle AROUND a square sprite for whoever wants it.
     let circumscribed =
         particle_radius(RADIUS_SIZE, 0.0, std::f32::consts::SQRT_2, [2.0, 2.0], 0.0);
     assert!((circumscribed - std::f32::consts::SQRT_2).abs() < 1e-6);
     // And it can never come out negative, however the sliders are dragged.
-    assert_eq!(particle_radius(RADIUS_SIZE, 0.0, -5.0, [1.0, 1.0], 0.0), 0.0);
-    assert_eq!(particle_radius(RADIUS_FIXED, -5.0, 1.0, [1.0, 1.0], 0.0), 0.0);
+    assert_eq!(
+        particle_radius(RADIUS_SIZE, 0.0, -5.0, [1.0, 1.0], 0.0),
+        0.0
+    );
+    assert_eq!(
+        particle_radius(RADIUS_FIXED, -5.0, 1.0, [1.0, 1.0], 0.0),
+        0.0
+    );
 }
 
 /// ⭐⭐ **`Auto` pousa a peça pelo colisor que ela DECLAROU** (doc 109), e só `Auto` o lê.
@@ -416,9 +425,15 @@ fn auto_rests_a_piece_on_the_collider_it_declared_and_only_auto_reads_it() {
         .0[1]
     };
     let auto = pousa((RADIUS_AUTO, 9.0, 9.0));
-    assert!((auto - -1.0).abs() < 1e-6, "Auto: o centro 1 acima do chao, medido {auto}");
+    assert!(
+        (auto - -1.0).abs() < 1e-6,
+        "Auto: o centro 1 acima do chao, medido {auto}"
+    );
     let fixo = pousa((RADIUS_FIXED, 0.25, 9.0));
-    assert!((fixo - -1.75).abs() < 1e-6, "Fixed ignora a declaracao: {fixo}");
+    assert!(
+        (fixo - -1.75).abs() < 1e-6,
+        "Fixed ignora a declaracao: {fixo}"
+    );
     let sprite = pousa((RADIUS_SIZE, 9.0, 1.0));
     assert!((sprite - -1.5).abs() < 1e-6, "Sprite Size tambem: {sprite}");
 }

@@ -5,7 +5,7 @@
 //! (restrição de não-penetração do *Position Based Dynamics*, Müller et al. 2007), com o mesmo
 //! **Jacobi com média** que o tornou independente da ordem do stream (Macklin & Müller, *Unified
 //! Particle Physics*, 2014): cada varredura lê UMA fotografia das posições, cada disco soma o que
-//! os contactos dele pedem, e aplica a MÉDIA.
+//! os contatos dele pedem, e aplica a MÉDIA.
 //!
 //! ## Porque é uma folha
 //!
@@ -146,7 +146,7 @@ fn corrigida(
     ativo: &[bool],
 ) -> Option<[f32; 2]> {
     let mut delta = [0.0_f32; 2];
-    let mut contactos = 0_u32;
+    let mut contatos = 0_u32;
     for j in parceiros {
         if j == k || !ativo[j] {
             continue;
@@ -186,14 +186,14 @@ fn corrigida(
         let empurra = penetracao * (pesos[k] / soma_w);
         delta[0] -= nx * empurra;
         delta[1] -= ny * empurra;
-        contactos += 1;
+        contatos += 1;
     }
-    (contactos > 0).then(|| {
+    (contatos > 0).then(|| {
         #[expect(
             clippy::cast_precision_loss,
-            reason = "uma contagem de contactos de um disco, muito abaixo de 2^24"
+            reason = "uma contagem de contatos de um disco, muito abaixo de 2^24"
         )]
-        let inv = 1.0 / contactos as f32;
+        let inv = 1.0 / contatos as f32;
         [foto[k][0] + delta[0] * inv, foto[k][1] + delta[1] * inv]
     })
 }

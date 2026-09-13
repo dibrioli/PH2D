@@ -36,7 +36,11 @@ fn the_bridge_cooks_a_document_that_names_the_collider_on_the_cpu() {
     };
     let mut sem = monta(false);
     let _ = cook_gpu(&mut sem, &gpu, 0, 1.0 / 60.0, &scopes);
-    assert_ne!(sem.route_said, Some(RECUSA_COLISOR), "o controlo nao pode ser recusado por isto");
+    assert_ne!(
+        sem.route_said,
+        Some(RECUSA_COLISOR),
+        "o controlo nao pode ser recusado por isto"
+    );
 
     let mut com = monta(true);
     let saida = cook_gpu(&mut com, &gpu, 0, 1.0 / 60.0, &scopes);
@@ -54,20 +58,34 @@ fn the_bridge_cooks_a_document_that_names_the_collider_on_the_cpu() {
 fn only_the_exact_collider_name_sends_the_document_to_the_cpu() {
     let mut m = MotionState::new();
     let drive = m.doc.graph.add_node("motion.drive");
-    assert!(!graph_declares_collider(&m.doc.graph), "sem text param nenhum");
+    assert!(
+        !graph_declares_collider(&m.doc.graph),
+        "sem text param nenhum"
+    );
 
     m.doc.graph.set_text_param(drive, "column", "tint");
     assert!(!graph_declares_collider(&m.doc.graph), "outra coluna");
 
-    m.doc.graph.set_text_param(drive, "column", "collider_around");
-    assert!(!graph_declares_collider(&m.doc.graph), "um nome PARECIDO nao conta");
+    m.doc
+        .graph
+        .set_text_param(drive, "column", "collider_around");
+    assert!(
+        !graph_declares_collider(&m.doc.graph),
+        "um nome PARECIDO nao conta"
+    );
 
     m.doc.graph.set_text_param(drive, "column", " collider ");
-    assert!(graph_declares_collider(&m.doc.graph), "o nome, com espacos a volta");
+    assert!(
+        graph_declares_collider(&m.doc.graph),
+        "o nome, com espacos a volta"
+    );
 
     // A pergunta é sobre o NOME e não sobre a chave: um nó que o guarde noutro text param conta.
     let mut outro = MotionState::new();
     let n = outro.doc.graph.add_node("motion.drive");
-    outro.doc.graph.set_text_param(n, "qualquer_chave", "collider");
+    outro
+        .doc
+        .graph
+        .set_text_param(n, "qualquer_chave", "collider");
     assert!(graph_declares_collider(&outro.doc.graph));
 }

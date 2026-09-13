@@ -28,7 +28,10 @@ fn a_circle_is_one_radius_around_and_inside() {
 #[test]
 fn a_square_is_root_two_around_and_one_inside() {
     let [around, inside] = raios(ShapeKind::Square);
-    assert!((around - std::f32::consts::SQRT_2).abs() < TOL, "around {around}");
+    assert!(
+        (around - std::f32::consts::SQRT_2).abs() < TOL,
+        "around {around}"
+    );
     assert!((inside - 1.0).abs() < TOL, "inside {inside}");
 }
 
@@ -92,7 +95,10 @@ fn the_declared_collider_rides_the_duplicator_to_every_copy() {
 #[test]
 fn a_star_reserves_its_points_around_and_its_core_inside() {
     let [around, inside] = raios(ShapeKind::Star);
-    assert!((around - 1.0).abs() < TOL, "as pontas estao em raio 1: {around}");
+    assert!(
+        (around - 1.0).abs() < TOL,
+        "as pontas estao em raio 1: {around}"
+    );
     assert!(
         inside > 0.1 && inside < around * 0.8,
         "o miolo e' bem mais pequeno que as pontas: inside {inside}, around {around}"

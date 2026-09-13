@@ -64,9 +64,15 @@ fn an_approach_is_cancelled_not_reflected() {
     // Encostadas (distância 1 = a soma dos raios) e a vir uma para a outra.
     let s = step(&par(0.5, 2.0, Some(0.5)), DT, 1.0, 0.0, 0.0, 1.0);
     let (p, v) = (col(&s, "P"), col(&s, "vel"));
-    assert!(((p[1][0] - p[0][0]) - 1.0).abs() < 1e-4, "encostadas: {p:?}");
+    assert!(
+        ((p[1][0] - p[0][0]) - 1.0).abs() < 1e-4,
+        "encostadas: {p:?}"
+    );
     for (i, vi) in v.iter().enumerate() {
-        assert!(vi[0].abs() < 1e-3, "a peca {i} parou em x, sem ressalto: {vi:?}");
+        assert!(
+            vi[0].abs() < 1e-3,
+            "a peca {i} parou em x, sem ressalto: {vi:?}"
+        );
     }
 }
 

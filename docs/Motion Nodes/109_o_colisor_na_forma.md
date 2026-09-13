@@ -48,7 +48,7 @@ excepção, e mesmo lá o **tamanho** é da partícula.
 para `geometry_id`, e *«a bomba de CPU é dona do tique desde o início»*.
 
 ⇒ **para peças que são formas, a obra que entrega o pedido é a de CPU** — e ela tem de escalar
-(o `motion.collide` de CPU é `O(n²·iterações)`). ⛔ O passe de contactos **no dispositivo** só passa
+(o `motion.collide` de CPU é `O(n²·iterações)`). ⛔ O passe de contatos **no dispositivo** só passa
 a ter cliente no dia em que uma fonte que o dispositivo desenha (a sprite do `source.object`)
 declarar colisor, e o preço está nomeado: no cozinhador o passe de grelha está preso ao **tipo de
 nó** de cada etapa (`kernels.grid(stage.ty)`), então um segundo passe dentro do `sim.step` é
@@ -87,10 +87,10 @@ re-internaria um `VecPath` a cada clique na caixa.
 ### §2.3 — Quem resolve: o PASSO da simulação
 
 O `sim.step` já é *«one integration step»* — o `world.step()` de todo motor integra **e** resolve
-contactos. Depois da integração, se o estado traz `collider`:
+contatos. Depois da integração, se o estado traz `collider`:
 
 1. **projecção de posições** por Jacobi com média (a lei do `motion.collide`: `r_i + r_j`, divisão
-   pelo peso `inv_mass`, média por contagem de contactos) — numa **grelha uniforme** de CPU, para não
+   pelo peso `inv_mass`, média por contagem de contatos) — numa **grelha uniforme** de CPU, para não
    ser `O(n²)`;
 2. **correcção de velocidade** `v += Δp / dt`: sem ela a velocidade continua a empurrar para dentro da
    vizinha a cada tique e a pilha **respira** (é o `93 %` do vão que a `=114` mede hoje com o
@@ -119,7 +119,7 @@ drop-crate; copiar a lei seria a segunda resposta à mesma pergunta.
 | **W2** o passo resolve | `ph2d-contact` · o `sim.step` projecta e corrige a velocidade · o `sim.collide` lê a declaração | sem coluna ⇒ passo ao bit · duas peças assentam a `r_i + r_j` · uma sem colisor atravessa · pino é obstáculo · a energia cinética não sobe no contacto · a grelha dá o mesmo que todos-os-pares |
 | **W3** a cena | a `=114` passa a ser formas + duplicador, «Colide» desligado à esquerda e ligado à direita, **sem `motion.collide`** · anúncio e legenda | as duas metades (borrão × pilha) · o passo que o anúncio manda fazer existe no cartão |
 | **W4** o outro integrador | o `motion.integrate` resolve pela mesma porta | idem W2 |
-| ⏸️ **W5** o dispositivo | a sprite do `source.object` declara colisor · passe de contactos no cozinhador de GPU | **bloqueada por falta de cliente**: nenhuma fonte residente no dispositivo declara colisor antes dela (§1.3) |
+| ⏸️ **W5** o dispositivo | a sprite do `source.object` declara colisor · passe de contatos no cozinhador de GPU | **bloqueada por falta de cliente**: nenhuma fonte residente no dispositivo declara colisor antes dela (§1.3) |
 
 ⚠️ **Enquanto a W5 não existir, só fontes que recusam o dispositivo podem escrever `collider`** —
 senão a mesma cena daria pilha na CPU e borrão no dispositivo. Isto é **gate**, não nota.
@@ -155,6 +155,25 @@ Medido: `Circle` `[1, 1]` · `Square` `[√2, 1]`. **4 de 4 mutações mortas.**
   placa (`the_bridge_cooks_a_document_that_names_the_collider_on_the_cpu`).
 - **Mutações: 8 de 8 mortas** (4 na W2a, 4 na W2b/W2c — entre elas desligar a chamada no `cook_gpu`,
   que só o gate da placa apanha).
+
+### ✅ W3 — a cena `=114` reescrita (⏳ smoke do dono)
+
+As duas taças são agora **quadrados do `source.shape`** carimbados por um duplicador, com a caixa
+`Collide` ligada só à direita, e **nenhum `motion.collide`** na linha (gate). A taça pousa cada peça
+pelo colisor dela (`Auto`). Medido pelos gates da cena (vão típico = mediana da distância ao vizinho
+mais próximo, 2,6 s):
+
+| | vão típico |
+|---|---:|
+| `Collide` desligado | `0,0000` — borrão total |
+| `Collide` ligado (`Around`, raio `√2 · 0,11 = 0,1556`) | **`0,3094` = 99 % do diâmetro** |
+| `Collider Scale` `0,6` · `1,0` · `1,4` | `0,184` · `0,309` · `0,433` |
+| `Collider Fit` `Inside` (raio `0,11`) | `0,216` — os quadrados encostam pelos lados |
+
+⭐ **O `99 %` é o ganho da correcção de velocidade:** a mesma cena com o `motion.collide` (que só mexe
+em `P`) media `93 %` — a pilha respirava contra a gravidade; com a aproximação cancelada ela assenta.
+
+⏳ **O default do `Collider Fit`** continua em `Around` até o dono ver as duas imagens no smoke.
 
 ## §4 — Aberto, com o que o decide
 

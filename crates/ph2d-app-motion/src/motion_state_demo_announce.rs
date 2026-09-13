@@ -169,27 +169,32 @@ pub(super) fn lazy_switch() {
 }
 
 /// **NEM TODOS AO MESMO TEMPO** (`=112`) — a cena de smoke do ciclo 4 (doc 107).
-/// **PEÇAS QUE NÃO SE ATRAVESSAM** (`=114`) — o `motion.collide` dentro de uma simulação.
+/// **PEÇAS QUE NÃO SE ATRAVESSAM** (`=114`) — o colisor NA FORMA (doc 109).
 ///
 /// ⚠️ **Precisa de Play**, como a `=99` e a `=113`.
 pub(super) fn pilha() {
     eprintln!(
-        "[cena 114] PECAS QUE NAO SE ATRAVESSAM. Duas tacas, as MESMAS pecas a cair
-  nas duas, e a cadeia difere em UM no'.
+        "[cena 114] PECAS QUE NAO SE ATRAVESSAM. Duas tacas, os MESMOS quadrados a cair
+  nas duas, e a diferenca e' UMA caixa no cartao da forma.
 
   1. Carregue em PLAY. Sem isto nada cai.
-  2. Olhe as duas tacas. A` ESQUERDA as 25 pecas juntam-se todas no fundo e viram um
-     BORRAO -- elas atravessam-se, porque nada lhes diz que ocupam espaco. A` DIREITA
-     as mesmas 25 empilham-se e da' para as CONTAR.
-  3. Clique no cartao `Collide` (so' a metade da direita o tem). Arraste `Radius`:
-     as pecas reclamam mais ou menos espaco e a pilha incha ou assenta.
-     ⚠ O raio e' um MULTIPLICADOR do tamanho de cada peca, nao uma distancia --
-     por isso pecas de tamanhos diferentes empacotam certo sem ninguem afinar nada.
-  4. Arraste `Iterations` para baixo (ate' 1): a pilha volta a atravessar-se, porque
-     o no' relaxa menos vezes por quadro.
+  2. Olhe as duas tacas. A` ESQUERDA os 25 quadrados juntam-se no fundo e viram um
+     BORRAO -- atravessam-se uns aos outros. A` DIREITA os mesmos 25 empilham-se e
+     da' para os CONTAR.
+  3. No grafo, clique no cartao `Shape (Collide)` (e' a linha de BAIXO). Abra a seccao
+     `Collision`: a caixa `Collide` esta' LIGADA. Desligue-a -- a pilha da direita volta
+     a ser um borrao. Ligue-a outra vez.
+     (i) Repare: nao ha' cartao `Collide` nenhum na linha da simulacao. O colisor e' da
+         FORMA, e a simulacao respeita-o sozinha.
+  4. Arraste `Collider Scale`: os quadrados reclamam mais ou menos espaco e a pilha
+     incha ou assenta.
+  5. Troque `Collider Fit` de `Around` para `Inside`. Com `Around` os quadrados deixam
+     FOLGA entre eles (o circulo passa pelos cantos); com `Inside` ENCOSTAM pelos lados
+     e os cantos entram um bocadinho uns nos outros.
+     >>> Diga qual das duas prefere como PADRAO.
 
-  ⚠ Ele AFASTA, nao faz QUICAR: as pecas param de se sobrepor, mas nao ricocheteiam
-  uma na outra."
+  DEU ERRADO se: a pilha da direita for um borrao com `Collide` ligado; se desligar a
+  caixa nao mudar nada; ou se aparecer um cartao `Collide` na linha da simulacao."
     );
 }
 

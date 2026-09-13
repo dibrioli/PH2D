@@ -67,7 +67,10 @@ fn the_grid_gives_the_same_bits_as_all_pairs() {
     separate_all_pairs(&mut todos, &r, &w, 8);
     // O controlo: a nuvem de facto se mexeu, senão a igualdade seria de duas identidades.
     let mexeu = (0..p0.len()).filter(|&i| p0[i] != todos[i]).count();
-    assert!(mexeu > 200, "a nuvem tinha de estar apertada: so' {mexeu} pecas se mexeram");
+    assert!(
+        mexeu > 200,
+        "a nuvem tinha de estar apertada: so' {mexeu} pecas se mexeram"
+    );
     for i in 0..p0.len() {
         assert_eq!(
             (grelha[i][0].to_bits(), grelha[i][1].to_bits()),
@@ -85,7 +88,10 @@ fn two_overlapping_pieces_settle_at_the_sum_of_their_radii() {
     let mut p = vec![[-0.1, 0.0], [0.1, 0.0]];
     separate(&mut p, &[0.3, 0.6], &[1.0, 1.0], 8);
     assert!((dist(p[0], p[1]) - 0.9).abs() < 1e-4, "{p:?}");
-    assert!(((p[0][0] + p[1][0]) * 0.5).abs() < 1e-6, "o meio do par ficou: {p:?}");
+    assert!(
+        ((p[0][0] + p[1][0]) * 0.5).abs() < 1e-6,
+        "o meio do par ficou: {p:?}"
+    );
 }
 
 /// ⭐ **Duas peças no MESMO ponto separam-se em sentidos opostos, até à soma dos raios.**
@@ -120,7 +126,10 @@ fn a_pinned_piece_does_not_move_and_the_other_goes_around_it() {
     let mut p = vec![[0.0, 0.0], [0.2, 0.0]];
     separate(&mut p, &[0.5, 0.5], &[0.0, 1.0], 8);
     assert_eq!(p[0], [0.0, 0.0], "o pino ficou");
-    assert!((dist(p[0], p[1]) - 1.0).abs() < 1e-4, "a livre saiu toda: {p:?}");
+    assert!(
+        (dist(p[0], p[1]) - 1.0).abs() < 1e-4,
+        "a livre saiu toda: {p:?}"
+    );
 }
 
 /// ⭐ **Uma peça sem vizinhos sai com os MESMOS bits** — a lei não toca no que não tem contacto.

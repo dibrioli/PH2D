@@ -1,7 +1,7 @@
 //! ⭐⭐ **O PASSO RESOLVE O CONTACTO ENTRE PEÇAS** — doc 109, ordem do dono (2026-09-13):
 //! *«colidem sozinhas»*.
 //!
-//! Todo motor faz num `step` duas coisas: integra e resolve contactos. Este nó fazia a primeira;
+//! Todo motor faz num `step` duas coisas: integra e resolve contatos. Este nó fazia a primeira;
 //! a segunda passa a correr aqui, **depois** da integração, sobre as peças que declaram colisor
 //! (a coluna [`COLLIDER_COLUMN`], escrita por quem desenha). Sem a coluna nada aqui corre, e o
 //! passo é o de sempre.

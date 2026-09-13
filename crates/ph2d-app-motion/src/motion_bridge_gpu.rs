@@ -143,7 +143,7 @@ pub(super) fn graph_has_live_vector_source(graph: &Graph, reg: &NodeRegistry) ->
 /// A frase da recusa — uma constante, para o gate que prova a LIGAÇÃO ler a frase do produto e não
 /// uma cópia dela.
 pub(super) const RECUSA_COLISOR: &str =
-    "CPU: uma peca declara colisor pelo nome -- o dispositivo ainda nao resolve contactos (doc 109)";
+    "CPU: uma peca declara colisor pelo nome -- o dispositivo ainda nao resolve contatos (doc 109)";
 
 pub(super) fn graph_declares_collider(graph: &Graph) -> bool {
     graph.node_text_params().values().any(|params| {

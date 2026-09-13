@@ -102,7 +102,10 @@ fn lados(c: &[[f64; 2]]) -> impl Iterator<Item = ([f64; 2], [f64; 2])> + '_ {
 
 /// A área com sinal (shoelace).
 fn area(c: &[[f64; 2]]) -> f64 {
-    lados(c).map(|(a, b)| a[0] * b[1] - b[0] * a[1]).sum::<f64>() * 0.5
+    lados(c)
+        .map(|(a, b)| a[0] * b[1] - b[0] * a[1])
+        .sum::<f64>()
+        * 0.5
 }
 
 /// A origem está dentro da polilinha? (par-ímpar, raio para `+x`)

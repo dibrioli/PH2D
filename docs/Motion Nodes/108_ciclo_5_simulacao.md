@@ -450,7 +450,7 @@ não é contra-intuitivo?* — *«Vou preferir colocar na shape.»* A frase tinh
 
 | opção | na tela | preço |
 |---|---|---|
-| ✅ **Colidem sozinhas** (a escolhida) | liga-se «Colide» no cartão da forma, e dentro de qualquer simulação as peças deixam de se atravessar — **sem nó `Collide`** na linha | substrato: a simulação passa a resolver contactos no dispositivo |
+| ✅ **Colidem sozinhas** (a escolhida) | liga-se «Colide» no cartão da forma, e dentro de qualquer simulação as peças deixam de se atravessar — **sem nó `Collide`** na linha | substrato: a simulação passa a resolver contatos no dispositivo |
 | a forma dá o tamanho, o nó colide | o `Collide` fica na linha e deixa de adivinhar o raio | horas |
 
 ⭐ **O argumento técnico está no código, e é por isso que só a forma pode responder:** com o mesmo

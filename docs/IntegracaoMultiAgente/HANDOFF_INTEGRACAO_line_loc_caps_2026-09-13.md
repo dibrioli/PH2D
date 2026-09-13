@@ -7,6 +7,7 @@
 > ⭐ **Zero mudança de produto** — todo commit MOVE código (prova por `git show --color-moved`), e as
 > únicas linhas novas são assinaturas, chamadas, declarações de módulo, re-exports e cabeçalhos. A
 > auditoria de correção (§10) conferiu-o commit a commit.
+> ✅ **Smoke do dono OK** (13/09, sobre `cffed737d`: os gestos do §12 — *«smoke parece ok»*).
 > ⛔ **Leia o §7.8–§7.12 antes de bissecar esta linha:** quatro commits do meio têm um gate vermelho
 > ou enfraquecido que só o fecho apanhou, cada um curado num commit próprio no fim.
 

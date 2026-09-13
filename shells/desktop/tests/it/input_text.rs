@@ -6,7 +6,7 @@
 //!
 //! ⇒ cada PORTA ([`mouse_input`], [`cursor_moved`], [`mouse_wheel`], [`key_input`], [`editor_key`],
 //! [`gizmo_drag`]) devolve o corpo da função com cada chamada `self.ramo_*(` EMENDADA pelo corpo do
-//! ramo (recursivamente), marcada `⟦ramo nome⟧`: a posição de um literal é a ordem em que ele corre.
+//! ramo (recursivamente), marcada `[[ramo nome]]`: a posição de um literal é a ordem em que ele corre.
 //! [`territory`] é o território inteiro, concatenado — a lente das agulhas de PRESENÇA sem ordem.
 //!
 //! ⚠️ **As duas metades, testadas aqui:** um ramo chamado que não se encontra FALHA alto (senão o
@@ -62,13 +62,13 @@ fn read(p: &Path) -> String {
     fs::read_to_string(p).unwrap_or_else(|e| panic!("ler {}: {e}", p.display()))
 }
 
-/// **O território inteiro**, cada ficheiro precedido de `// ⟦ficheiro <rel>⟧`, pela ordem dos caminhos.
+/// **O território inteiro**, cada ficheiro precedido de `// [[ficheiro <rel>]]`, pela ordem dos caminhos.
 /// ⚠️ Não mede ORDEM de execução — só presença. Para ordem, use a porta da função.
 pub fn territory() -> String {
     let mut out = String::new();
     for f in territory_files() {
         let rel = f.strip_prefix(src()).unwrap_or(&f).display().to_string();
-        out.push_str(&format!("// ⟦ficheiro {rel}⟧\n"));
+        out.push_str(&format!("// [[ficheiro {rel}]]\n"));
         out.push_str(&read(&f));
     }
     out
@@ -141,7 +141,7 @@ pub fn dispatch() -> String {
     carved.sort();
     for f in carved {
         let rel = f.strip_prefix(src()).unwrap_or(&f).display().to_string();
-        out.push_str(&format!("\n// ⟦ficheiro {rel}⟧\n"));
+        out.push_str(&format!("\n// [[ficheiro {rel}]]\n"));
         out.push_str(&splice(&blank_ramos(&read(&f)), &ramos(), 0));
     }
     out
@@ -192,7 +192,7 @@ fn blank_ramos(text: &str) -> String {
     spans.sort_unstable();
     let mut out = text.to_string();
     for (a, b) in spans.into_iter().rev() {
-        out.replace_range(a..b, " /* ⟦corpo emendado no chamador⟧ */ ");
+        out.replace_range(a..b, " /* [[corpo emendado no chamador]] */ ");
     }
     out
 }
@@ -277,7 +277,7 @@ fn splice(text: &str, ramos: &BTreeMap<String, String>, depth: usize) -> String 
             )
         });
         out.push_str(&rest[..i]);
-        out.push_str(&format!("/* ⟦ramo {nome}⟧ */"));
+        out.push_str(&format!("/* [[ramo {nome}]] */"));
         out.push_str(&splice(&inline(corpo), ramos, depth + 1));
         out.push_str(&rest[i..ate]);
         rest = &rest[ate..];
@@ -319,7 +319,7 @@ fn every_door_is_whole_and_every_ramo_is_called() {
     }
     let orfaos: Vec<String> = ramos()
         .into_keys()
-        .filter(|n| !todas.contains(&format!("⟦ramo {n}⟧")))
+        .filter(|n| !todas.contains(&format!("[[ramo {n}]]")))
         .collect();
     assert!(
         orfaos.is_empty(),
@@ -368,13 +368,13 @@ fn a_call_split_by_rustfmt_is_still_a_call_and_only_self_calls() {
         0,
     );
     assert!(
-        e.contains("⟦ramo ramo_b⟧") && e.find("B;") < e.find("y;"),
+        e.contains("[[ramo ramo_b]]") && e.find("B;") < e.find("y;"),
         "{e}"
     );
     for nao in ["outro\n    .ramo_b();", "myself.ramo_b();"] {
         let e = splice(nao, &ramos_de_brinquedo(), 0);
         assert!(
-            !e.contains("⟦ramo"),
+            !e.contains("[[ramo"),
             "`{nao}` não é o despacho a chamar um ramo: {e}"
         );
     }

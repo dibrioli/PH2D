@@ -25,6 +25,7 @@ impl crate::App {
             sim,
             toasts,
             physics,
+            tags,
             ..
         } = FrameGfx::of(gfx);
 
@@ -127,7 +128,9 @@ impl crate::App {
                 .collect();
             if !disparados.is_empty() {
                 let nomes: Vec<&str> = disparados.iter().map(String::as_str).collect();
-                let efeitos = ph2d_ecs::resolve_signal_actions(sim.world_mut(), &nomes);
+                // ⚠️ **A ÁRVORE DE TAGS entra aqui** (TOP-20 #9): uma linha com alvo por TAG pergunta
+                // quem pertence à subárvore dela; uma por nome nunca a lê.
+                let efeitos = ph2d_ecs::resolve_signal_actions(sim.world_mut(), tags, &nomes);
                 if !efeitos.is_empty() {
                     let r = signal_actions::apply(
                         sim,

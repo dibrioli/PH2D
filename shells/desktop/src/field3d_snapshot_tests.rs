@@ -252,6 +252,7 @@ fn the_part_crosses_the_project_file_and_the_load_replaces_it_instead_of_stackin
         &ph2d_guides::GuideSet::default(),
         &ph2d_ui_state::StateSets::default(),
         &crate::project_library::LibraryDoc::default(),
+        &[],
         &reg,
         &mut ph2d_ecs::scene::incremental::CaptureCache::new(),
         None,

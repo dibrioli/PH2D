@@ -104,6 +104,7 @@ pub mod master_editing;
 pub mod prefab_stage;
 pub mod scene_ctx;
 pub mod signal_action_smoke;
+pub mod tags_doc;
 pub mod timer_smoke;
 
 /// ⚠️ **`#[cfg(any(test, feature = "test-support"))]` e não `#[cfg(test)]`** (HOWTO §2.5): daqui a
@@ -122,6 +123,8 @@ pub mod test_support;
 /// (W2 5.ª rodada, 2026-09-13). *Um censo mora com o sujeito que mede* (HOWTO §2.6).
 #[cfg(test)]
 mod asset_texture_door_census_tests;
+#[cfg(test)]
+mod instance_tags_tests;
 
 /// **A declaração da família** — a chave e os roteadores de smoke que ela POSSUI.
 ///

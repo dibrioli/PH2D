@@ -41,6 +41,7 @@ fn the_library_travels_in_the_file() {
         guides: ph2d_guides::GuideSet::default(),
         ui_states: ph2d_ui_state::StateSets::default(),
         library,
+        tags: Vec::new(),
     };
     let bytes = postcard::to_allocvec(&state).unwrap();
     let back: ProjectState = postcard::from_bytes(&bytes).unwrap();

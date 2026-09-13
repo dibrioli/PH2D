@@ -48,6 +48,7 @@ fn probe_does_the_anchor_cross_the_undo_capture() {
             &ph2d_guides::GuideSet::default(),
             &ph2d_ui_state::StateSets::default(),
             &crate::project_library::LibraryDoc::default(),
+            &[],
             &reg,
             cache,
             None,

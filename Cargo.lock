@@ -4828,6 +4828,7 @@ dependencies = [
  "ph2d-preview-drive",
  "ph2d-render",
  "ph2d-skeleton-ecs",
+ "ph2d-tags",
  "ph2d-text",
  "ph2d-thumbnail",
  "ph2d-tokens",
@@ -4836,6 +4837,7 @@ dependencies = [
  "ph2d-vec-entities",
  "ph2d-vec-scene",
  "postcard",
+ "serde",
 ]
 
 [[package]]
@@ -5890,6 +5892,7 @@ dependencies = [
  "ph2d-sprite-screen",
  "ph2d-sprite-sheet",
  "ph2d-system-fonts",
+ "ph2d-tags",
  "ph2d-text",
  "ph2d-timeline",
  "ph2d-timeline-preview",

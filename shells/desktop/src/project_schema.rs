@@ -508,4 +508,29 @@
 /// sempre: os componentes viajam em `ComponentBlob`s, que para ela são opacos. É por isso que o
 /// número tem de subir à mão. (⚠️ dizia **oitava** quando o degrau era o `124`; os quatro da
 /// `line/Vector` entraram à frente dele e cada um deles é também invisível à tripla.)
-pub(crate) const PROJECT_SCHEMA: u32 = 128;
+/// # 128 -> 129 — as TAGS: a árvore no `ProjectState` e o alvo do `SignalAction` (TOP-20 #9)
+///
+/// ⚠️⚠️ **DUAS mudanças num degrau só, e nenhuma delas é aditiva no fio:**
+///
+/// 1. O `ProjectState` ganhou `tags: Vec<u8>` — o blob auto-versionado do
+///    `ph2d_app_components::tags_doc`. ⛔ **Ele cai no MEIO do fluxo de bytes**, porque o `state` é o
+///    PRIMEIRO campo do `ProjectFile`: um v128 lido com o tipo vivo não chega ao fim dos bytes, ele
+///    lê *lixo bem-formado* a partir dali. É exactamente o que o degrau `105` documentou quando a
+///    biblioteca entrou, e é por isso que este degrau traz um tipo CONGELADO
+///    ([`crate::project_migrate::ProjectFileV128`]) em vez de reler com o vivo.
+/// 2. O `SignalAction` ganhou `target_by` no fim — *por nome* ou *por tag*. Os bytes dele vivem
+///    DENTRO de um `ComponentBlob`, que o parse do ficheiro atravessa sem olhar, então a migração é
+///    uma travessia das linhas do snapshot (o precedente do `crate::project_migrate_sprite`).
+///
+/// ⭐ **E esta é a ÚNICA vez que a árvore de tags paga o número.** A versão do blob mora dentro dele
+/// (`TAGS_DOC_VERSION`), então uma descrição por tag, uma cor ou uma ordem manual custam só aquele —
+/// o precedente do `CATALOG_DOC_VERSION`, do `timeline` e do `sculpt`.
+///
+/// ⚠️ **COM degrau de migração, ao contrário dos últimos onze** (a decisão do Enio de 26/08 —
+/// *«não há projetos salvos»* — valia para ficheiros de antes do navegador de assets). O `128` é o
+/// schema que a integração de 10/09 pôs no `main` com o `Timer` e o `SignalActions` dentro: um
+/// projecto gravado desde então TEM tabelas de acções, e recusá-lo apagaria autoria que existe.
+///
+/// ⚠️ **A tripla NÃO vê este degrau** — é a **décima terceira** vez: o `FlipDoc` e a `VecScene` não
+/// se mexeram, e o que mudou foi o `ProjectFile` e os bytes de um blob.
+pub(crate) const PROJECT_SCHEMA: u32 = 129;

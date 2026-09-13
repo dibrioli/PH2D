@@ -72,6 +72,9 @@ impl crate::App {
         // [`crate::project_library`]: sem ela isto custava até 28 % de um quadro, em todo quadro
         // com input.
         let library = gfx.library_cache.doc(&gfx.catalogs).clone();
+        // ⚠️ **A árvore de tags é codificada AQUI, e a cache é que a torna barata** — a irmã exacta
+        // da linha acima, e pela medição que a biblioteca pagou (até 28 % de um quadro sem ela).
+        let tags = gfx.tags_cache.doc(&gfx.tags).to_vec();
         Some(ProjectState::capture(
             drive,
             &mut gfx.sim,
@@ -80,6 +83,7 @@ impl crate::App {
             &gfx.guides,
             &gfx.ui_states,
             &library,
+            &tags,
             &gfx.component_registry,
             &mut gfx.undo_capture_cache,
             // ⚠️ **O baseline é o passo anterior**, e é dele que a cena é reaproveitada quando o
@@ -177,6 +181,16 @@ impl crate::App {
         // cache já viu é o caso NORMAL, não o raro.
         gfx.catalogs = crate::project_library::apply_catalogs(&state.library);
         gfx.library_cache.invalidate();
+        // ⭐⭐⭐ **E a ÁRVORE DE TAGS volta** (TOP-20 #9), com a MESMA disciplina da biblioteca: a
+        // árvore restaurada nasce com revisão `0`, logo a cache tem de esquecer a que viu.
+        //
+        // ⚠️ **O `remap` corre no MESMO gesto**: um documento com gémeos funde-os, e sem ele os
+        // objectos do gémeo descartado ficariam com um id que a árvore já não tem — a tag deles
+        // desaparecia em silêncio. Num passo de undo ele é vazio (os bytes saíram do nosso
+        // `collect`), e é no LOAD que ele trabalha.
+        let (arvore, _) = crate::project_tags::apply(&state.tags, gfx.sim.world_mut());
+        gfx.tags = arvore;
+        gfx.tags_cache.invalidate();
         if let Some(hero) = gfx.hero_screen.as_mut() {
             hero.gizmo.clear_all_selection();
             for bits in field_back {

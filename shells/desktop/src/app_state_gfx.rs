@@ -314,6 +314,16 @@ pub(crate) struct AppGfx {
     /// ⭐ A cache que impede a taxonomia de ser re-codificada por quadro — ver
     /// [`crate::project_library::LibraryCache`], com a tabela da medição.
     pub(crate) library_cache: crate::project_library::LibraryCache,
+    /// ⭐⭐⭐ **A ÁRVORE DE TAGS do projecto** (TOP-20 #9) — a taxonomia que o artista escreve e a
+    /// que os objectos pertencem por [`ph2d_ecs::Tags`].
+    ///
+    /// ⚠️ **Ela é do PROJECTO e DESFAZ**, como os catálogos: viaja no `.ph2dproj` dentro do
+    /// `ProjectState` (o blob auto-versionado do [`ph2d_app_components::tags_doc`]), e apagar uma
+    /// tag desfaz-se junto com a pertença que o gesto levou.
+    pub(crate) tags: ph2d_tags::TagTree,
+    /// ⭐ A cache que impede a árvore de ser re-codificada por quadro — a irmã exacta da
+    /// [`AppGfx::library_cache`], e pela medição que aquela pagou.
+    pub(crate) tags_cache: ph2d_app_components::tags_doc::TagsCache,
     /// M14.A: editor → SimWorld mutation pipeline. Populated at boot
     /// with the canonical Transform / Name / Visibility / RootOrder
     /// type registrations via `register_ecs_components`; future crates

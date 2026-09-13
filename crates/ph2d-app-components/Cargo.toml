@@ -61,6 +61,11 @@ ph2d-host = { path = "../ph2d-host" }
 ph2d-panel-asset-browser = { path = "../ph2d-panel-asset-browser" }
 ph2d-preview-drive = { path = "../ph2d-preview-drive" }
 ph2d-thumbnail = { path = "../ph2d-thumbnail" }
+# ⭐ **A árvore de tags do projecto** (TOP-20 #9): o formato dela dentro do `ProjectState`
+# (`tags_doc`) vive nesta família, e a shell só o chama. O `serde` é o do par de fio (`SavedTag`):
+# a árvore vive numa folha sem serde, de propósito.
+ph2d-tags = { path = "../ph2d-tags" }
+serde = { version = "1", features = ["derive"] }
 
 # ⛔ **Esta família já NÃO depende da família da física** (auditoria de arquitectura A1, 2026-09-12).
 # A nota que aqui estava chamava-o «legítimo» — uma crate-motor irmã não é a shell —, mas a

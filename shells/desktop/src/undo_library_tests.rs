@@ -30,6 +30,7 @@ fn capture_with_library(
         &ph2d_guides::GuideSet::default(),
         &ph2d_ui_state::StateSets::default(),
         library,
+        &[],
         reg,
         &mut ph2d_ecs::scene::incremental::CaptureCache::new(),
         None,

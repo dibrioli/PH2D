@@ -42,6 +42,7 @@ fn capture(sim: &mut SimWorld, vec: &VecScene, reg: &ComponentRegistry) -> Proje
         &ph2d_guides::GuideSet::default(),
         &ph2d_ui_state::StateSets::default(),
         &crate::project_library::LibraryDoc::default(),
+        &[],
         reg,
         &mut ph2d_ecs::scene::incremental::CaptureCache::new(),
         None,
@@ -127,6 +128,7 @@ fn push_undo_then_undo_redo_alternate() {
         guides: ph2d_guides::GuideSet::default(),
         ui_states: ph2d_ui_state::StateSets::default(),
         library: crate::project_library::LibraryDoc::default(),
+        tags: Vec::new(),
     };
     // ⭐⭐ **A marca da SELEÇÃO viaja com o passo** (2026-09-04) — duas diferentes, para o gate
     // poder dizer qual voltou. Ver [`crate::undo::SelectionMark`].
@@ -212,6 +214,7 @@ fn flip_survives_capture_restore_and_rebuilds_bridge() {
             &ph2d_guides::GuideSet::default(),
             &ph2d_ui_state::StateSets::default(),
             &crate::project_library::LibraryDoc::default(),
+            &[],
             &reg,
             &mut ph2d_ecs::scene::incremental::CaptureCache::new(),
             None,
@@ -236,6 +239,7 @@ fn flip_survives_capture_restore_and_rebuilds_bridge() {
         &ph2d_guides::GuideSet::default(),
         &ph2d_ui_state::StateSets::default(),
         &crate::project_library::LibraryDoc::default(),
+        &[],
         &reg,
         &mut ph2d_ecs::scene::incremental::CaptureCache::new(),
         None,
@@ -248,6 +252,7 @@ fn flip_survives_capture_restore_and_rebuilds_bridge() {
         &ph2d_guides::GuideSet::default(),
         &ph2d_ui_state::StateSets::default(),
         &crate::project_library::LibraryDoc::default(),
+        &[],
         &reg,
         &mut ph2d_ecs::scene::incremental::CaptureCache::new(),
         None,
@@ -415,6 +420,10 @@ fn editing_an_effect_param_is_its_own_undo_step() {
         "o restore não devolveu o parâmetro ao valor anterior"
     );
 }
+
+/// ⭐⭐⭐ **A ÁRVORE DE TAGS no undo** (TOP-20 #9) — irmão por assunto, ver o cabeçalho de lá.
+#[path = "undo_tags_tests.rs"]
+mod tags_tests;
 
 #[path = "undo_library_tests.rs"]
 mod library;

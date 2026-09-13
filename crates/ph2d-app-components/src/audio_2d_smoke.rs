@@ -144,6 +144,7 @@ pub fn audio_2d_smoke(cx: &mut crate::scene_ctx::SceneCtx) {
                 target: "Sirene".into(),
                 verb: SignalVerb::PlaySound,
                 arg: String::new(),
+                target_by: ph2d_ecs::SignalTarget::Named,
             }]),
         ));
     }

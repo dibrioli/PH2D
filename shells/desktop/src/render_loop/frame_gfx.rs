@@ -77,6 +77,9 @@ pub(super) struct FrameGfx<'a> {
     pub(super) next_sheet_id: &'a mut u32,
     pub(super) atlas_asset_map: &'a mut BTreeMap<u32, AssetId>,
     pub(super) asset_catalogs: &'a mut ph2d_asset_index::CatalogTree,
+    /// ⭐⭐ **A ÁRVORE DE TAGS do projecto** (TOP-20 #9) — lida pela resolução do `SignalActions`
+    /// (um alvo por tag pergunta quem pertence à subárvore) e, a partir da W3, pelo painel.
+    pub(super) tags: &'a mut ph2d_tags::TagTree,
     pub(super) logical_texture_map: &'a mut LogicalTextureMap,
     pub(super) component_registry: &'a mut ComponentRegistry,
     pub(super) editor_queue: &'a mut EditorCommandQueue,
@@ -176,6 +179,11 @@ impl<'a> FrameGfx<'a> {
             atlas_asset_map,
             // ⭐⭐ A TAXONOMIA da biblioteca (wave A3) — publicada ao painel e mutada pelos verbos.
             catalogs: asset_catalogs,
+            // ⭐⭐ A ÁRVORE DE TAGS (TOP-20 #9) — ver o campo.
+            tags,
+            // ⚠️ **CONSIDERADA e deixada de fora**, pela razão exacta da `library_cache` abaixo: a
+            // cache das tags é lida no `capture_project_state`, que corre depois deste bloco.
+            tags_cache: _,
             logical_texture_map,
             component_registry,
             editor_queue,
@@ -263,6 +271,7 @@ impl<'a> FrameGfx<'a> {
             next_sheet_id,
             atlas_asset_map,
             asset_catalogs,
+            tags,
             logical_texture_map,
             component_registry,
             editor_queue,

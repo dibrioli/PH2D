@@ -13,6 +13,7 @@ fn linha(on: &str, target: &str, verb: SignalVerb, arg: &str) -> SignalAction {
         target: target.into(),
         verb,
         arg: arg.into(),
+        target_by: SignalTarget::Named,
     }
 }
 
@@ -30,7 +31,7 @@ fn mundo(nome: &str, tabela: Vec<SignalAction>) -> (World, Entity) {
 #[test]
 fn a_named_signal_produces_the_action_it_names() {
     let (mut w, e) = mundo("Porta", vec![linha("botao", "", SignalVerb::Show, "")]);
-    let out = resolve(&mut w, &["botao"]);
+    let out = resolve(&mut w, &TagTree::new(), &["botao"]);
     assert_eq!(out.len(), 1, "a accao nao saiu");
     assert_eq!(out[0].target, e, "o alvo vazio nao caiu em quem reagiu");
     assert_eq!(out[0].source, e);
@@ -53,10 +54,10 @@ fn an_unnamed_row_never_fires_and_neither_does_an_unheard_signal() {
         ],
     );
     assert!(
-        resolve(&mut w, &["outro"]).is_empty(),
+        resolve(&mut w, &TagTree::new(), &["outro"]).is_empty(),
         "um sinal que a tabela nao nomeia produziu accao"
     );
-    let out = resolve(&mut w, &["botao"]);
+    let out = resolve(&mut w, &TagTree::new(), &["botao"]);
     assert_eq!(out.len(), 1, "a linha SEM NOME disparou junto com a outra");
     assert_eq!(out[0].verb, SignalVerb::Hide);
 }
@@ -85,7 +86,7 @@ fn a_named_target_reaches_another_object() {
         .id();
     assign_missing_stable_ids(&mut w);
 
-    let out = resolve(&mut w, &["botao"]);
+    let out = resolve(&mut w, &TagTree::new(), &["botao"]);
     assert_eq!(out.len(), 1);
     assert_eq!(out[0].target, parede, "a accao nao alcancou o alvo nomeado");
     assert_eq!(out[0].source, porta, "quem REAGIU perdeu-se");
@@ -97,8 +98,8 @@ fn a_named_target_reaches_another_object() {
 /// porta esconder-se a si mesma no dia em que alguém renomeasse a parede, e o artista leria isso
 /// como um defeito do motor.
 ///
-/// **Mutação que deve sangrar:** trocar o `let Some(target) = … else { continue }` por
-/// `unwrap_or(source)`.
+/// **Mutação que deve sangrar:** o braço `Named` do [`targets_of`] a cair em `source` quando o nome
+/// não casa.
 #[test]
 fn a_target_that_does_not_exist_produces_nothing_at_all() {
     let (mut w, _) = mundo(
@@ -106,7 +107,7 @@ fn a_target_that_does_not_exist_produces_nothing_at_all() {
         vec![linha("botao", "NaoExiste", SignalVerb::Hide, "")],
     );
     assert!(
-        resolve(&mut w, &["botao"]).is_empty(),
+        resolve(&mut w, &TagTree::new(), &["botao"]).is_empty(),
         "um alvo inexistente caiu em quem reagiu — a porta esconder-se-ia a si mesma"
     );
 }
@@ -142,7 +143,7 @@ fn the_order_between_reactors_is_the_identity_not_the_query() {
         v.into_iter().map(|(_, e)| e).collect()
     };
 
-    let antes: Vec<Entity> = resolve(&mut w, &["s"])
+    let antes: Vec<Entity> = resolve(&mut w, &TagTree::new(), &["s"])
         .into_iter()
         .map(|f| f.source)
         .collect();
@@ -150,7 +151,7 @@ fn the_order_between_reactors_is_the_identity_not_the_query() {
 
     // Mover a entidade do MEIO para outro arquétipo — a ordem da query muda, a da lei não.
     w.entity_mut(ids[1]).insert(Visibility::hidden());
-    let depois: Vec<Entity> = resolve(&mut w, &["s"])
+    let depois: Vec<Entity> = resolve(&mut w, &TagTree::new(), &["s"])
         .into_iter()
         .map(|f| f.source)
         .collect();
@@ -172,7 +173,7 @@ fn within_one_object_the_order_is_the_authored_one() {
             linha("s", "", SignalVerb::Show, ""),
         ],
     );
-    let verbos: Vec<SignalVerb> = resolve(&mut w, &["s"])
+    let verbos: Vec<SignalVerb> = resolve(&mut w, &TagTree::new(), &["s"])
         .into_iter()
         .map(|f| f.verb)
         .collect();
@@ -199,7 +200,7 @@ fn several_signals_in_one_frame_fire_their_own_rows() {
         ]),
     ));
     assign_missing_stable_ids(&mut w);
-    let verbos: Vec<SignalVerb> = resolve(&mut w, &["abre", "fecha"])
+    let verbos: Vec<SignalVerb> = resolve(&mut w, &TagTree::new(), &["abre", "fecha"])
         .into_iter()
         .map(|f| f.verb)
         .collect();
@@ -210,7 +211,7 @@ fn several_signals_in_one_frame_fire_their_own_rows() {
 #[test]
 fn a_frame_with_no_signals_resolves_to_nothing() {
     let (mut w, _) = mundo("Porta", vec![linha("s", "", SignalVerb::Show, "")]);
-    assert!(resolve(&mut w, &[]).is_empty());
+    assert!(resolve(&mut w, &TagTree::new(), &[]).is_empty());
 }
 
 /// ⭐ **O `arg` só é lido pelos verbos que o usam**, e a lista é DERIVADA do verbo.
@@ -280,4 +281,221 @@ fn starting_rewinds_and_stopping_keeps_the_progress() {
     crate::timer::start(&mut s);
     assert!(s.running, "arrancar nao arrancou");
     assert_eq!(s.elapsed_us, 0, "arrancar nao voltou ao principio");
+}
+
+// ── ⭐⭐⭐ O ALVO POR TAG (TOP-20 #9, `docs/Components/08_plano_tags.md` §5.2, W2) ─────────────────
+
+/// A árvore do plano §5.1: `Enemy` › `Flying` › `Boss`, e a raiz irmã `Statue`.
+fn arvore() -> (TagTree, TagId, TagId, TagId, TagId) {
+    let mut t = TagTree::new();
+    let boss = t.create("Enemy/Flying/Boss").expect("cria");
+    let enemy = t.find("Enemy").expect("ancestral");
+    let flying = t.find("Enemy/Flying").expect("ancestral");
+    let statue = t.create("Statue").expect("cria");
+    (t, enemy, flying, boss, statue)
+}
+
+fn marcado(w: &mut World, nome: &str, tags: &[TagId]) -> Entity {
+    w.spawn((
+        Transform::default(),
+        Name::new(nome),
+        crate::Tags::from_ids(tags.iter().copied()),
+    ))
+    .id()
+}
+
+fn por_tag(on: &str, tag: TagId, verb: SignalVerb) -> SignalAction {
+    SignalAction {
+        on: on.into(),
+        target: String::new(),
+        verb,
+        arg: String::new(),
+        target_by: SignalTarget::Tagged(tag.0),
+    }
+}
+
+/// ⭐⭐⭐ **Um sinal para `Enemy` atinge a subárvore inteira, e a raiz irmã fica** (gate 14).
+///
+/// **Mutações que devem sangrar:** o braço `Tagged` a ler só a pertença directa (o `Bat` e o `Dragon`
+/// ficam) · a ordem dos alvos ser a da query.
+#[test]
+fn a_signal_to_a_tag_reaches_the_whole_subtree_and_the_sibling_root_stays() {
+    let (tree, enemy, flying, boss, statue) = arvore();
+    let mut w = World::new();
+    let goblin = marcado(&mut w, "Goblin", &[enemy]);
+    let bat = marcado(&mut w, "Bat", &[flying]);
+    let dragon = marcado(&mut w, "Dragon", &[boss]);
+    let estatua = marcado(&mut w, "Statue", &[statue]);
+    let cerebro = w
+        .spawn((
+            Transform::default(),
+            Name::new("Scene Brain"),
+            SignalActions(vec![por_tag("alarm", enemy, SignalVerb::Hide)]),
+        ))
+        .id();
+    assign_missing_stable_ids(&mut w);
+    // ⚠️ O controlo da ordem: o Goblin muda de arquétipo, e a query passa a listá-lo depois.
+    w.entity_mut(goblin).insert(Visibility::hidden());
+
+    let out = resolve(&mut w, &tree, &["alarm"]);
+    let alvos: Vec<Entity> = out.iter().map(|f| f.target).collect();
+    assert_eq!(
+        alvos,
+        vec![goblin, bat, dragon],
+        "a subarvore inteira, pela ordem da identidade"
+    );
+    assert!(!alvos.contains(&estatua), "a raiz irma casou");
+    assert!(
+        out.iter()
+            .all(|f| f.source == cerebro && f.verb == SignalVerb::Hide),
+        "um efeito perdeu quem reagiu ou o verbo"
+    );
+}
+
+/// ⭐ **Quem reage É atingido, se pertencer à tag** — o `call_group` do Godot (medido na sonda do
+/// plano §1.1: o chamador está no grupo e recebe a chamada).
+#[test]
+fn the_reactor_is_reached_when_it_belongs_to_the_tag() {
+    let (tree, enemy, ..) = arvore();
+    let mut w = World::new();
+    let chefe = w
+        .spawn((
+            Transform::default(),
+            Name::new("Chefe"),
+            crate::Tags::from_ids([enemy]),
+            SignalActions(vec![por_tag("grito", enemy, SignalVerb::Show)]),
+        ))
+        .id();
+    let lacaio = marcado(&mut w, "Lacaio", &[enemy]);
+    assign_missing_stable_ids(&mut w);
+    let alvos: Vec<Entity> = resolve(&mut w, &tree, &["grito"])
+        .into_iter()
+        .map(|f| f.target)
+        .collect();
+    assert_eq!(alvos, vec![chefe, lacaio]);
+}
+
+/// ⛔ **Uma tag que já não existe não alcança ninguém** — nem o id reservado `0`, nem um id de outro
+/// documento (gate 15).
+///
+/// **Mutação que deve sangrar:** o braço `Tagged` a cair em `source` (ou no alvo por nome) quando a
+/// tag falta.
+#[test]
+fn a_deleted_tag_target_reaches_nobody() {
+    let (mut tree, _, _, boss, _) = arvore();
+    let mut w = World::new();
+    marcado(&mut w, "Dragon", &[boss]);
+    w.spawn((
+        Transform::default(),
+        Name::new("Brain"),
+        SignalActions(vec![
+            por_tag("x", boss, SignalVerb::Hide),
+            por_tag("y", TagId(999), SignalVerb::Hide),
+            por_tag("z", TagId(0), SignalVerb::Hide),
+        ]),
+    ));
+    assign_missing_stable_ids(&mut w);
+    assert_eq!(
+        resolve(&mut w, &tree, &["x"]).len(),
+        1,
+        "controlo: com a tag viva o Dragon e' atingido"
+    );
+    assert!(
+        resolve(&mut w, &tree, &["y", "z"]).is_empty(),
+        "um id que a arvore nao tem atingiu alguem"
+    );
+    let _ = tree.delete(boss);
+    assert!(
+        resolve(&mut w, &tree, &["x"]).is_empty(),
+        "a tag apagada continuou a atingir o Dragon"
+    );
+}
+
+/// ⚠️ **Um alvo por NOME resolve igual com qualquer árvore** — o mundo de antes da W2, byte a byte no
+/// comportamento (gate 15). E o default de uma linha é o alvo por nome.
+///
+/// **Mutação que deve sangrar:** o braço `Named` a consultar a árvore.
+#[test]
+fn a_named_target_resolves_the_same_whatever_the_tree() {
+    let construir = |tags: &[TagId]| {
+        let mut w = World::new();
+        marcado(&mut w, "Parede", tags);
+        w.spawn((
+            Transform::default(),
+            Name::new("Porta"),
+            crate::Tags::from_ids(tags.iter().copied()),
+            SignalActions(vec![
+                linha("botao", "Parede", SignalVerb::Hide, ""),
+                linha("botao", "", SignalVerb::Show, ""),
+            ]),
+        ));
+        assign_missing_stable_ids(&mut w);
+        w
+    };
+    let resumo =
+        |w: &mut World, t: &TagTree| -> Vec<(Option<String>, SignalVerb, Option<String>)> {
+            resolve(w, t, &["botao"])
+                .into_iter()
+                .map(|f| (name_of(w, f.target), f.verb, name_of(w, f.source)))
+                .collect()
+        };
+    let (cheia, enemy, ..) = arvore();
+    let sem = resumo(&mut construir(&[]), &TagTree::new());
+    let com = resumo(&mut construir(&[enemy]), &cheia);
+    assert_eq!(sem.len(), 2, "controlo: as duas linhas por nome resolvem");
+    assert_eq!(sem, com, "a arvore mudou o que um alvo por NOME atinge");
+    assert_eq!(SignalAction::default().target_by, SignalTarget::Named);
+}
+
+/// ⭐⭐⭐ **Os bytes CONGELADOS de um `SignalActions` v128 carregam como alvo por nome** (gate 16).
+///
+/// ⚠️ **Os bytes são literais, e não saem do tipo congelado**: se o tipo congelado derivasse com o
+/// vivo, os dois lados mudariam juntos e nada ficaria vermelho — a lei do `the_frozen_v95_bytes_still_load`.
+/// Eles são o postcard de `[("botao", "Parede", Hide, "")]`: comprimento `1`, as duas strings com o
+/// comprimento à frente, o verbo pela POSIÇÃO (`Hide` = `3`) e o `arg` vazio.
+///
+/// **Mutações que devem sangrar:** a migração a escrever `Tagged` · a perder um campo · ler com o tipo
+/// vivo (que falha — e é o controlo de que a migração é precisa).
+#[test]
+fn a_v128_signal_action_loads_as_a_named_target() {
+    const V128: &[u8] = &[
+        0x01, 0x05, b'b', b'o', b't', b'a', b'o', 0x06, b'P', b'a', b'r', b'e', b'd', b'e', 0x03,
+        0x00,
+    ];
+    assert!(
+        postcard::from_bytes::<SignalActions>(V128).is_err(),
+        "controlo: o tipo VIVO leu um v128 -- entao a migracao nao seria precisa"
+    );
+    let vivo = migrate_v1_blob(V128).expect("um v128 le-se");
+    let (lido, resto): (SignalActions, &[u8]) =
+        postcard::take_from_bytes(&vivo).expect("o blob reescrito le-se com o tipo vivo");
+    assert!(resto.is_empty(), "sobraram bytes no blob reescrito");
+    assert_eq!(
+        lido.0,
+        vec![SignalAction {
+            on: "botao".into(),
+            target: "Parede".into(),
+            verb: SignalVerb::Hide,
+            arg: String::new(),
+            target_by: SignalTarget::Named,
+        }]
+    );
+    assert_eq!(migrate_v1_blob(&[0x00]), Some(vec![0x00]), "a tabela vazia");
+}
+
+/// ⚠️ **Um blob que não se lê como v128 fica como estava** — e um blob VIVO de uma linha é recusado
+/// pela sobra do `target_by`.
+///
+/// **Mutação que deve sangrar:** trocar o `take_from_bytes` + resto vazio por um `from_bytes`, que
+/// aceita um prefixo válido e ignora o que sobra.
+#[test]
+fn a_blob_that_is_not_v128_is_left_alone() {
+    let vivo = postcard::to_allocvec(&SignalActions(vec![por_tag(
+        "a",
+        TagId(5),
+        SignalVerb::Show,
+    )]))
+    .expect("serializa");
+    assert_eq!(migrate_v1_blob(&vivo), None);
+    assert_eq!(migrate_v1_blob(&[0xff, 0xff]), None);
 }

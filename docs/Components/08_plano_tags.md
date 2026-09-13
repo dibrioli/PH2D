@@ -296,13 +296,21 @@ dobrado que a D2 acrescenta (`a_document_with_twins_merges_them_and_keeps_every_
     **E as leis da porta que a W1 acrescentou:** `belonging_reaches_the_subtree_and_never_the_sibling_root` · `a_tag_that_no_longer_exists_reaches_nobody` · `a_refused_gesture_does_not_move_the_revision`.
 
 **W2 — consumidores, documento, schema:**
-14. `a_signal_to_a_tag_reaches_the_whole_subtree_and_the_sibling_root_stays`.
-15. `a_deleted_tag_target_reaches_nobody` · `a_named_target_is_byte_identical_to_before`.
-16. `a_v128_signal_action_loads_as_a_named_target` — bytes congelados de um v128.
+14. `a_signal_to_a_tag_reaches_the_whole_subtree_and_the_sibling_root_stays` (com o controlo de que a perturbação de arquétipo perturba) · `the_reactor_is_reached_when_it_belongs_to_the_tag` (o `call_group` do Godot, medido).
+15. `a_deleted_tag_target_reaches_nobody` (a tag apagada, o id de outro documento e o reservado `0`) · `a_named_target_resolves_the_same_whatever_the_tree`.
+16. `a_v128_signal_action_loads_as_a_named_target` — bytes congelados de um v128, com o controlo de que o tipo VIVO os recusa · `a_blob_that_is_not_v128_is_left_alone` · e na shell `a_frozen_v128_file_migrates_its_signal_actions` + `the_live_type_cannot_read_a_v128` (o ficheiro inteiro, montado campo a campo).
 17. `a_filtered_trap_ignores_a_non_member_on_arrival_and_departure` · `an_unfiltered_trap_is_byte_identical` · `a_missing_filter_tag_passes_nobody`.
-18. `the_tag_tree_travels_in_the_project_and_through_undo` — `collect(restore(b)) == b`; um `Ctrl+Z` depois de apagar devolve a árvore **e** a pertença.
-19. Contadores: `85→86`, `86→87` (×2), `32→33`, `PROJECT_SCHEMA` e a tripla.
-20. `a_recipe_tag_reaches_every_copy` (D4) · a cópia profunda leva o `Tags`.
+18. `the_tag_tree_travels_in_the_project_and_through_undo` (um `Ctrl+Z` depois de apagar devolve a árvore **e** a pertença, e o gesto mexe em `["world", "tags"]` e em mais nada) · `an_untouched_tag_tree_does_not_register_a_step` — mais os cinco do FORMATO em `ph2d_app_components::tags_doc`: `a_tag_tree_survives_its_own_bytes` · `the_next_id_travels_so_a_deleted_tag_is_never_recycled` · `an_unreadable_or_foreign_blob_opens_an_empty_tree` · `a_document_with_twins_merges_and_hands_back_the_remap` · `the_cache_encodes_once_per_revision_and_again_after_invalidate`.
+19. Contadores: `85→86`, `86→87` (×2), `PROJECT_SCHEMA` `128→129` e a tripla `(129, 13, 22)` — o `32→33` da física vai com a W3 (ver a nota do §7).
+20. `a_recipe_tag_reaches_every_copy` (D4) — a tag da receita chega às cópias, uma cópia nova nasce com ela, e a lista própria de uma cópia sobrevive ao passe.
+    ⛔⛔ **E a prova de mutação desta achou um campo MORTO no substrato:** a 1.ª mutação pôs o
+    descritor do `Tags` em `Propagation::InstanceLocal` e **SOBREVIVEU** — porque a política do
+    descritor **não tem um único leitor na workspace** (`grep -rn 'Propagation::'` fora do próprio
+    catálogo: zero; `\.policy`: zero). Quem decide o que propaga é o REGISTO (o passe compara os
+    BYTES dos componentes registados), e o papel que a `InstanceLocal` descreve é hoje uma **lista
+    escrita à mão** dentro do passe (`ROOT_IS_ITS_OWN`, `instance_sync.rs`). ⇒ a alavanca da
+    mutação é tirar o `Tags` do registo. ⚠️ *Um campo declarado em todo descritor e lido por
+    ninguém é uma promessa que a próxima wave vai acreditar* — fica nomeado no handoff.
 
 **W3 — o Inspector (seam, `ph2d-ui-testkit`, gesto REAL):**
 21. escrever `inimigo` + `Enter` com `Inimigo` existente ⇒ o chip é o **existente**, e nada é criado;
@@ -410,9 +418,21 @@ ordem, que as duas procuras acham à primeira.
 | wave | entrega | acaba em |
 |---|---|---|
 | **W1** | `ph2d-label-fold` · `ph2d-label-path` (e o `CatalogTree` a usá-la, com o defeito do gémeo curado) · `ph2d-tags` · `ph2d_ecs::tags` (portas, registo, catálogo) | gates 1–13 vistos vermelhos · headless |
-| **W2** | `SignalTarget` + `targets_of` · `SignalTagFilter` + `signal_passes` · `ProjectState.tags` (formato, cache, undo, load com gémeos) · `PROJECT_SCHEMA` +1 com a migração · contadores | gates 14–20 · headless |
-| **W3** | secção *Tags* do Inspector · alvo por tag · filtro da física | seam 21–25 + smoke do Enio |
+| **W2** | `SignalTarget` + `targets_of` · `ProjectState.tags` (formato, cache, undo, load com gémeos) · `PROJECT_SCHEMA` +1 com a migração · contadores | gates 14–16, 18, 20 · headless |
+| **W3** | secção *Tags* do Inspector · alvo por tag · **`SignalTagFilter` + `signal_passes`** e a linha *Only for tag* | gates 17, seam 21–25 + smoke do Enio |
 | **W4** | painel *Tags* · `PH2D_TAGS_SMOKE=1..2` | gates 26–28 + smoke do Enio |
+
+⚠️⚠️ **O FILTRO DA FÍSICA mudou-se da W2 para a W3 na implementação (2026-09-13), e o motivo é um
+gate:** o `every_registered_physics_component_has_a_ui_writer` (em `shells/desktop/tests/it/`) exige
+que todo componente de física REGISTADO seja nomeado por um caminho de escrita da UI — ele existe
+precisamente para impedir o órfão *«funciona em toda cena de smoke e é inalcançável no produto»*.
+Registar o `SignalTagFilter` na W2, com a linha *Only for tag* a nascer só na W3, deixaria esse gate
+VERMELHO no intervalo entre as duas. ⇒ o componente, a porta `signal_passes` e a row viajam juntos.
+
+⚠️ **O degrau do `PROJECT_SCHEMA` traz uma MIGRAÇÃO, e ela não estava no §3.3:** aquele texto previa
+uma travessia de blobs com o tipo VIVO (o precedente do v97→v98), e isso só vale quando a forma do
+ficheiro não muda. O campo `ProjectState.tags` cai no MEIO do fluxo de bytes (o `state` é o primeiro
+campo do `ProjectFile`), logo o v128 pede um tipo CONGELADO — o precedente do `ProjectFileV95`.
 
 ⚠️ **O custo na shell é uma linha por fase** (o dreno do barramento, a publicação do snapshot, o
 campo do `ProjectState`, a chamada da migração) — as leis e as pontes vivem nas folhas e na família.

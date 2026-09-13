@@ -379,6 +379,8 @@ mod project_settings;
 /// irmão do `project_painter`, e o chão que faltava debaixo dele: cobre o funil que TODAS as
 /// ferramentas de imagem atravessam, não um produtor só.
 mod project_sprite_pixels;
+/// ⭐⭐ **A ÁRVORE DE TAGS a chegar à sessão** (TOP-20 #9) — a porta que o load e o undo partilham.
+mod project_tags;
 mod project_texture_pattern;
 /// **A tabela de COR autorada viaja no arquivo** (plano UI/UX W6) — irmão de `project`
 /// pelo teto de LOC, cortado por assunto.

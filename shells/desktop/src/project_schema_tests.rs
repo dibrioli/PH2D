@@ -500,7 +500,11 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // dos dois lados, e e' esta a linha que as duas editaram, logo o git conflitou em vez de
         // fundir mudo. Os dois numeros ao lado NAO se mexem: nenhum dos cinco degraus mudou a
         // forma da `VecScene` nem do `FlipDoc`.
-        (128, 13, 22),
+        // ⚠️ **`129` desde 2026-09-13** — as TAGS (TOP-20 #9): a árvore entrou no `ProjectState` (um
+        // campo no MEIO do fluxo de bytes, logo com tipo congelado e migração) e o `SignalAction`
+        // ganhou o alvo por TAG. Os dois números ao lado NÃO se mexem: nada na forma do `FlipDoc`
+        // nem da `VecScene` mudou — é a décima terceira vez que esta tripla é cega a um degrau.
+        (129, 13, 22),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

@@ -109,6 +109,9 @@ pub(crate) fn migrate_v95_to_v96(old: ProjectFileV95) -> MigratedV95 {
                 // build sem navegador de assets nenhum, logo ele não tem taxonomia a dizer nem
                 // imagem nenhuma mandada sair. Uma biblioteca vazia é o que ele já significava.
                 library: crate::project_library::LibraryDoc::default(),
+                // ⚠️ **VAZIA, e o vazio é a resposta certa:** um ficheiro v95 foi gravado por um
+                // build sem tags nenhumas, logo ele não tem árvore a declarar. Ver o degrau 129.
+                tags: Vec::new(),
             },
             assets: old.assets,
             painted: old.painted,
@@ -136,6 +139,132 @@ pub(crate) fn migrate_v95_to_v96(old: ProjectFileV95) -> MigratedV95 {
     }
 }
 
+// ── ⭐⭐⭐ v128 → v129: as TAGS (TOP-20 #9, degrau em `crate::project_schema`) ──────────────────────
+
+/// O `ProjectState` como a v128 o guardava — **sem** a árvore de tags.
+///
+/// ⚠️ A ordem dos campos **é** o formato (postcard é posicional). Não a reordene.
+#[derive(serde::Deserialize)]
+pub(crate) struct ProjectStateV128 {
+    pub(crate) world: ph2d_ecs::scene::WorldSnapshot,
+    pub(crate) vec: std::sync::Arc<ph2d_vec_scene::VecScene>,
+    pub(crate) flip: std::sync::Arc<ph2d_flip::FlipDoc>,
+    pub(crate) guides: ph2d_guides::GuideSet,
+    pub(crate) ui_states: ph2d_ui_state::StateSets,
+    pub(crate) library: crate::project_library::LibraryDoc,
+}
+
+/// O ficheiro como a v128 o guardava.
+///
+/// ⛔ **Ele referencia os tipos VIVOS** nos campos que não mudaram, e é aí que pode apodrecer em
+/// silêncio — a mesma cerca do [`ProjectFileV95`]: o gate que o guarda é o dos **BYTES**
+/// (`a_frozen_v128_file_migrates_its_signal_actions`), nunca o tipo.
+#[derive(serde::Deserialize)]
+pub(crate) struct ProjectFileV128 {
+    pub(crate) state: ProjectStateV128,
+    pub(crate) assets: Vec<crate::project::SavedAsset>,
+    pub(crate) painted: Vec<ph2d_tool_painter::PaintedDocument>,
+    pub(crate) motion: String,
+    pub(crate) timeline: Vec<u8>,
+    pub(crate) physics: ph2d_physics_ecs::PhysicsSettings,
+    pub(crate) tokens: Vec<crate::project_tokens::SavedToken>,
+    pub(crate) settings: crate::project_settings::SavedSettings,
+    pub(crate) sculpt: Vec<u8>,
+    pub(crate) baked_forms: Vec<crate::project_baked_form::BakedFormDocument>,
+    pub(crate) player_tape: ph2d_physics_ecs::TapeWire,
+    pub(crate) sprite_pixels: Vec<u8>,
+    pub(crate) stable_id_counter: u64,
+    pub(crate) input_map: ph2d_input::InputMap,
+    pub(crate) pattern_art: Vec<u8>,
+}
+
+/// Quantas tabelas de acções a travessia reescreveu — e quantas não leu.
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
+pub(crate) struct SignalActionSplit {
+    /// Tabelas reescritas no formato vivo.
+    pub(crate) tables: usize,
+    /// ⚠️ Blobs de `SignalActions` que **não** decodificaram como v128. Zero é o esperado; um número
+    /// aqui é o sinal de que o ficheiro não é o que o cabeçalho dele diz — e a tabela fica **como
+    /// estava**, porque reescrevê-la com um palpite seria pior que a deixar.
+    pub(crate) unreadable: usize,
+}
+
+/// **v128 → o schema CORRENTE.** A árvore de tags entra vazia (um ficheiro v128 não tem nada a dizer
+/// sobre tags), e cada tabela de acções é reescrita com o alvo *por nome*, que é o que ela significava.
+#[must_use]
+pub(crate) fn migrate_v128_to_v129(old: ProjectFileV128) -> MigratedV128 {
+    let mut state = ProjectState {
+        world: old.state.world,
+        vec: old.state.vec,
+        flip: old.state.flip,
+        guides: old.state.guides,
+        ui_states: old.state.ui_states,
+        library: old.state.library,
+        // ⚠️ **VAZIA:** o build que gravou este ficheiro não tinha tags. Um blob vazio abre uma
+        // árvore vazia, calado — ver `ph2d_app_components::tags_doc::restore`.
+        tags: Vec::new(),
+    };
+    let actions = migrate_signal_action_blobs(&mut state.world);
+    MigratedV128 {
+        file: crate::project::ProjectFile {
+            state,
+            assets: old.assets,
+            painted: old.painted,
+            motion: old.motion,
+            timeline: old.timeline,
+            physics: old.physics,
+            tokens: old.tokens,
+            settings: old.settings,
+            sculpt: old.sculpt,
+            baked_forms: old.baked_forms,
+            player_tape: old.player_tape,
+            sprite_pixels: old.sprite_pixels,
+            stable_id_counter: old.stable_id_counter,
+            input_map: old.input_map,
+            pattern_art: old.pattern_art,
+        },
+        actions,
+    }
+}
+
+/// O resultado de migrar um v128: o ficheiro vivo e o que a travessia das acções fez.
+pub(crate) struct MigratedV128 {
+    pub(crate) file: crate::project::ProjectFile,
+    pub(crate) actions: SignalActionSplit,
+}
+
+/// **Reescreve o blob do `SignalActions` de cada linha do snapshot** — o precedente exacto do
+/// [`crate::project_migrate_sprite`].
+///
+/// ⛔ **Só se corre sobre um ficheiro v128**: a lei do re-encode vive no `ph2d-ecs`, e o cabeçalho
+/// dela diz porquê um blob vivo com várias linhas pode ler-se como v128 sem erro. Quem garante a
+/// origem é o número do ficheiro.
+fn migrate_signal_action_blobs(world: &mut ph2d_ecs::scene::WorldSnapshot) -> SignalActionSplit {
+    let type_id = ph2d_ecs::scene::stable_type_id("ph2d::ecs::SignalActions");
+    let mut out = SignalActionSplit::default();
+    for row in &mut world.entities {
+        let Some(slot) = row.components.iter().position(|b| b.type_id == type_id) else {
+            continue;
+        };
+        match ph2d_ecs::signal_actions::migrate_v1_blob(&row.components[slot].data) {
+            Some(bytes) => {
+                // ⚠️ `make_mut` e não uma cópia: as linhas são partilhadas desde a F2, e a
+                // cópia-na-escrita acontece só na linha que de facto muda.
+                let row = std::sync::Arc::make_mut(row);
+                row.components[slot].data = bytes;
+                out.tables += 1;
+            }
+            None => out.unreadable += 1,
+        }
+    }
+    out
+}
+
 #[cfg(test)]
 #[path = "project_migrate_tests.rs"]
 mod tests;
+
+/// ⭐ **O gate da migração das TAGS** (v128 → v129) — irmão por assunto, ver o cabeçalho de lá.
+#[cfg(test)]
+#[path = "project_migrate_v128_tests.rs"]
+mod v128_tests;

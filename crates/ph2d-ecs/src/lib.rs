@@ -149,7 +149,7 @@ pub use sibling_order::{
     sibling_key,
 };
 pub use signal_actions::{
-    SIGNAL_ACTIONS_MAX, SignalAction, SignalActions, SignalEffect, SignalVerb,
+    SIGNAL_ACTIONS_MAX, SignalAction, SignalActions, SignalEffect, SignalTarget, SignalVerb,
     resolve as resolve_signal_actions,
 };
 pub use sim::{SimComponent, SimWorld};

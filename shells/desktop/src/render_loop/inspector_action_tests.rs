@@ -134,6 +134,7 @@ fn editing_one_field_leaves_the_others_alone() {
             target: "Parede".into(),
             verb: SignalVerb::Hide,
             arg: "x".into(),
+            target_by: ph2d_ecs::SignalTarget::Named,
         }],
     );
     edit(

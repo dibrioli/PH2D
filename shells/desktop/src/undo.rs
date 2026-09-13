@@ -87,6 +87,14 @@ pub(crate) struct ProjectState {
     /// ⚠️ Ela é BYTES com uma cache por revisão, e o porquê está medido em
     /// [`crate::project_library`]: codificá-la por quadro custava até 28 % de um quadro.
     pub(crate) library: crate::project_library::LibraryDoc,
+    /// ⭐⭐⭐ **A ÁRVORE DE TAGS**, no blob auto-versionado do [`ph2d_app_components::tags_doc`]
+    /// (TOP-20 #9). Plain data, como as guias e a biblioteca, e aqui pelo mesmo motivo que elas:
+    /// **criar ou apagar uma tag é autoria**, e apagar uma tem de desfazer junto com a pertença que
+    /// o gesto tirou aos objectos — as duas metades no MESMO passo.
+    ///
+    /// ⚠️ Bytes e não a árvore: a [`ph2d_tags::TagTree`] vive numa folha sem `serde`, de propósito.
+    /// Eles são codificados uma vez por mutação pela [`crate::app_state_gfx::AppGfx::tags_cache`].
+    pub(crate) tags: Vec<u8>,
 }
 
 impl ProjectState {
@@ -101,7 +109,7 @@ impl ProjectState {
     /// ([`crate::preview_drive`]). Sem condução nenhuma (`PreviewDrive::default()`, o caso normal)
     /// o custo é zero e o resultado é byte-a-byte o de antes.
     ///
-    /// ⚠️ Dez argumentos, e eles são **dez fatos independentes** — o ledger, o mundo, as três
+    /// ⚠️ Onze argumentos, e eles são **onze fatos independentes** — o ledger, o mundo, as três
     /// geometrias, a biblioteca, o registro e o scratch. Agrupá-los num struct só para agradar ao lint criaria
     /// um tipo cuja única razão de existir é a contagem, e todo chamador passaria a montá-lo.
     #[allow(clippy::too_many_arguments)]
@@ -114,6 +122,8 @@ impl ProjectState {
         guides: &ph2d_guides::GuideSet,
         ui_states: &ph2d_ui_state::StateSets,
         library: &crate::project_library::LibraryDoc,
+        // Os bytes da árvore de tags, já codificados pela cache — ver o campo `tags`.
+        tags: &[u8],
         registry: &ComponentRegistry,
         cache: &mut ph2d_ecs::scene::incremental::CaptureCache,
         // ⭐⭐ **O passo ANTERIOR, para lhe reaproveitar a cena** — ver o campo [`Self::vec`].
@@ -163,6 +173,9 @@ impl ProjectState {
             // ⚠️ **Um `clone` de bytes já codificados, e é isso que o torna barato** — quem
             // codifica é a `LibraryCache`, uma vez por mutação da árvore.
             library: library.clone(),
+            // ⚠️ **Um `clone` de bytes já codificados**, pela mesma razão da biblioteca: quem
+            // codifica é a `TagsCache`, uma vez por mutação da árvore.
+            tags: tags.to_vec(),
         }
     }
 
@@ -233,6 +246,9 @@ impl ProjectState {
         }
         if self.library != other.library {
             v.push("library");
+        }
+        if self.tags != other.tags {
+            v.push("tags");
         }
         v
     }

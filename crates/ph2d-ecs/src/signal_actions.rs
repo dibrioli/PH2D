@@ -42,6 +42,7 @@ use bevy_ecs::component::Component;
 use serde::{Deserialize, Serialize};
 
 use crate::{Entity, Name, World};
+use ph2d_tags::{TagId, TagTree};
 
 /// Quantas acções uma entidade pode ter.
 ///
@@ -149,6 +150,41 @@ impl SignalVerb {
     }
 }
 
+/// ⭐⭐ **A QUEM a acção se aplica** — pelo nome, ou a todos os que pertencem a uma tag (TOP-20 #9,
+/// `docs/Components/08_plano_tags.md` §2.3).
+///
+/// ⚠️ **Ele é APENDADO ao fim do [`SignalAction`]** e o default é o de sempre, então uma linha que
+/// nunca escolheu tag resolve exactamente como antes. O postcard é posicional, e é por isso que o
+/// campo custa o degrau `128 -> 129` do `PROJECT_SCHEMA` e a migração em `signal_actions_v1.rs`.
+///
+/// ⛔ **Não é um segundo campo de texto ao lado do `target`**: com os dois, *«a quem?»* teria duas
+/// respostas escritas ao mesmo tempo e o painel teria de escolher uma. Aqui a variante escolhe, e o
+/// `target` só é lido pelo `Named`.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub enum SignalTarget {
+    /// O objecto chamado [`SignalAction::target`] — vazio = **este objecto**. O de sempre, e o
+    /// default: toda linha de um ficheiro v128 migra para aqui.
+    #[default]
+    Named,
+    /// **Todos os que pertencem à tag**, com a subárvore dela, pela ordem da identidade
+    /// ([`crate::tags::tagged`]). ⚠️ Inclui quem reage, se pertencer — o `call_group` do Godot
+    /// (medido). Uma tag que já não existe = **ninguém** (a lei do alvo que não existe).
+    ///
+    /// ⚠️ `u64` e não [`TagId`] porque a folha das tags não fala `serde` (de propósito).
+    Tagged(u64),
+}
+
+impl SignalTarget {
+    /// A tag escolhida, se o alvo for por tag.
+    #[must_use]
+    pub const fn tag(self) -> Option<TagId> {
+        match self {
+            Self::Tagged(id) => Some(TagId(id)),
+            Self::Named => None,
+        }
+    }
+}
+
 /// **Uma linha da tabela** — *quando o sinal `on` chegar, faz `verb` em `target`*.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SignalAction {
@@ -163,6 +199,9 @@ pub struct SignalAction {
     /// O parâmetro do verbo — hoje, o nome do timer. Vazio quando o verbo não o lê
     /// ([`SignalVerb::uses_arg`]), e **vazio também significa «todos»** para os verbos de timer.
     pub arg: String,
+    /// ⭐ **Por nome ou por tag** — ver [`SignalTarget`]. ⚠️ O ÚLTIMO campo, de propósito: é o que
+    /// torna a migração de um v128 uma leitura com um tipo congelado e um re-encode.
+    pub target_by: SignalTarget,
 }
 
 /// **A tabela de uma entidade** — o componente registado.
@@ -209,8 +248,12 @@ pub struct SignalEffect {
 ///
 /// ⚠️ **`&mut World` porque a resolução de nome ATRIBUI ids em falta** (`stable_id_for_name`), e
 /// isso é uma escrita. Ela é idempotente e o `assign_missing_stable_ids` já corre no quadro.
+///
+/// ⚠️ **A árvore de tags entra por parâmetro**, e é o documento do PROJECTO (a shell guarda-a no
+/// `AppGfx`): uma acção por tag pergunta quem pertence à subárvore, e a pertença de um objecto é só
+/// uma lista de ids. Uma acção por nome nunca a lê.
 #[must_use]
-pub fn resolve(world: &mut World, fired: &[&str]) -> Vec<SignalEffect> {
+pub fn resolve(world: &mut World, tree: &TagTree, fired: &[&str]) -> Vec<SignalEffect> {
     if fired.is_empty() {
         return Vec::new();
     }
@@ -233,18 +276,41 @@ pub fn resolve(world: &mut World, fired: &[&str]) -> Vec<SignalEffect> {
             if action.on.is_empty() || !fired.contains(&action.on.as_str()) {
                 continue;
             }
-            let Some(target) = target_of(world, source, &action.target) else {
-                continue;
-            };
-            out.push(SignalEffect {
-                target,
-                verb: action.verb,
-                arg: action.arg.clone(),
-                source,
-            });
+            // ⚠️ A ordem dentro de uma linha é a dos ALVOS (pela identidade), depois da ordem dos
+            // reactores e da ordem das linhas — as três, deterministas.
+            for target in targets_of(world, tree, source, action) {
+                out.push(SignalEffect {
+                    target,
+                    verb: action.verb,
+                    arg: action.arg.clone(),
+                    source,
+                });
+            }
         }
     }
     out
+}
+
+/// ⭐⭐ **Quem sofre esta acção** — a porta ÚNICA da pergunta *«a quem?»* (plano de Tags §2.2).
+///
+/// - [`SignalTarget::Named`]: o objecto com aquele nome, ou `source` com o nome vazio — zero ou um.
+/// - [`SignalTarget::Tagged`]: todos os que pertencem à subárvore da tag, pela ordem do
+///   [`crate::StableId`]; uma tag que já não existe dá **ninguém**.
+///
+/// ⛔ Resolver o alvo na shell seria a segunda resposta, e é a que envelhece.
+#[must_use]
+pub fn targets_of(
+    world: &mut World,
+    tree: &TagTree,
+    source: Entity,
+    action: &SignalAction,
+) -> Vec<Entity> {
+    match action.target_by {
+        SignalTarget::Named => target_of(world, source, &action.target)
+            .into_iter()
+            .collect(),
+        SignalTarget::Tagged(id) => crate::tags::tagged(world, tree, TagId(id)),
+    }
 }
 
 /// O alvo de uma acção: `source` quando o nome é vazio, senão quem tiver aquele [`Name`].
@@ -264,6 +330,11 @@ fn target_of(world: &mut World, source: Entity, name: &str) -> Option<Entity> {
 pub fn name_of(world: &World, entity: Entity) -> Option<String> {
     world.get::<Name>(entity).map(|n| n.as_str().to_string())
 }
+
+/// O `SignalAction` como o `PROJECT_SCHEMA` 128 o gravava, congelado para a migração.
+#[path = "signal_actions_v1.rs"]
+mod v1;
+pub use v1::migrate_v1_blob;
 
 #[cfg(test)]
 #[path = "signal_actions_tests.rs"]

@@ -50,6 +50,9 @@ ph2d-app-physics = { path = "../../crates/ph2d-app-physics" }
 # prefab que se abre, e os quatro componentes do TOP-20. Dep directa e
 # não-opcional: o `render_loop` chama-lhe os passes pelo nome, em ordem.
 ph2d-app-components = { path = "../../crates/ph2d-app-components" }
+# ⭐ **A árvore de tags do projecto** (TOP-20 #9) — a shell guarda a ÁRVORE VIVA no `AppGfx` e os
+# BYTES dela no `ProjectState`; o formato e a cache vivem na família (`ph2d_app_components::tags_doc`).
+ph2d-tags = { path = "../../crates/ph2d-tags" }
 # ADR-0161 W4 — o painel de MODELAGEM 3D (nao confundir com `panel-sculpt3d`,
 # que e o da escultura). Dep direta nao-opcional: o `field3d_smoke` publica o
 # retrato e drena os intents dele.

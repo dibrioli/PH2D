@@ -19,10 +19,13 @@
 /// inteiro (para eles o tempo passou mesmo).
 #[test]
 fn the_chrome_clock_reads_the_discounted_dt() {
-    let src = std::fs::read_to_string(
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src/render_loop/mod.rs"),
-    )
-    .expect("o loop existe");
+    // ⚠️ **O relógio do chrome mudou-se para a FASE dele** (OBRA 2 da `line/render-loop`, 2026-09-12):
+    // os toasts e a UI viva andam em `fase_chrome_clock.rs`, e a simulação continua no `mod.rs`. Ler os
+    // DOIS é honesto aqui porque nenhuma agulha abaixo mede ORDEM — só presença.
+    let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src/render_loop");
+    let src = ["mod.rs", "fase_chrome_clock.rs"]
+        .map(|f| std::fs::read_to_string(dir.join(f)).expect("o loop e a fase do relógio existem"))
+        .join("\n");
     // ⚠️ Comentários fora, pela razão escrita no gate da porta.
     let code: String = src
         .lines()

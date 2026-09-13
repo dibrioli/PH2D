@@ -33,7 +33,8 @@ fn the_ui_burst_is_wired_at_all_four_ends() {
             "o campo do quadro",
         ),
         (
-            "render_loop/mod.rs",
+            // O relógio mudou-se para a fase do chrome (OBRA 2 da `line/render-loop`, 2026-09-12).
+            "render_loop/fase_chrome_clock.rs",
             "self.ui_burst.tick(",
             "o RELOGIO: sem ele a faisca nasce e fica parada para sempre",
         ),
@@ -62,7 +63,9 @@ fn the_ui_burst_is_wired_at_all_four_ends() {
 /// lugar a mensagem"*, 2026-08-22) para ser descoberta.
 #[test]
 fn the_burst_ages_on_the_chrome_clock_never_on_the_wall_clock() {
-    let render = code("render_loop/mod.rs");
+    // O relógio mudou-se para a fase do chrome (OBRA 2 da `line/render-loop`, 2026-09-12); a agulha é
+    // uma LINHA, então ela segue a chamada e não precisa do texto emendado do quadro.
+    let render = code("render_loop/fase_chrome_clock.rs");
     let i = render
         .find("self.ui_burst.tick(")
         .expect("o relogio existe");

@@ -393,3 +393,110 @@ vassouras irmãs: limpo nas quatro.
 
 ⏳ **PENDENTE: 3.ª passagem do R-pré.** ⛔ A janela não implementa nem lê a espec até a linha
 «auditada contra §4.2 por R-pré em `<data>`» estar escrita, e **não é quem reescreveu que a escreve**.
+
+---
+
+## §3.R-pré (3.ª passagem) — 2026-09-13 · ✅ **ATESTADA**
+
+Subagente R-pré **novo** (contexto independente; não é o autor de nenhuma das três redacções, nem o
+subagente-E). Redacção auditada: `a9655a9ed` + as duas curas de higiene desta mesma passagem.
+
+**Veredito: ZERO achados de §4.2. A espec está `auditada contra §4.2 por R-pré em 2026-09-13`**, e a
+linha está escrita no cabeçalho dela.
+
+### O que foi corrido (e não só o que a passagem anterior nomeou)
+
+A 2.ª passagem deixou a lei escrita: *uma emenda cura o que o auditor NOMEOU*. Esta passagem
+confirmou as **sete** curas uma a uma **por diff** contra as redacções reprovadas e depois varreu o
+documento inteiro, de novo, pela pergunta da §4.3.1 — porque foi exactamente assim que a 2.ª achou o
+que a 1.ª não viu.
+
+| # | régua | resultado |
+|---|---|---|
+| 1 | **Censo de identificadores do corpo** (todo token entre crases, menos os nossos e a notação matemática) | **zero** fora da lista pública declarada; tudo o resto é `ph2d_*`/`crates/…` nosso ou nome de fixture nosso |
+| 2 | **Varredura mecânica por linguagem de FORMA**, com termos que as passagens anteriores **não** usaram (`assinatura` · `parâmetro` · `argumento` · `struct` · `classe` · `aloca` · `buffer` · `ponteiro` · `array` · `bitflag` · `decompo…` · `iteração` · `percorre` · `linha a linha` · …) | **zero** a descrever a estrutura do alvo. Os `17` hits são: o cabeçalho a falar do processo (7), o NOSSO lado (3), matemática e notas de custo (5), o guarda-costas do §5.2 (1) e `ramo` no sentido de **ramo de git** na §9.3 (1) |
+| 3 | **Os dois blocos de pseudo-código reprovados na 1.ª ronda** | um **ausente**; o outro é média ponderada em **forma fechada**, com o ramo matematicamente inerte demovido a nota de custo que se **auto-declara** optimização |
+| 4 | **A §3.1 — o achado SUBSTANCIAL da 2.ª ronda** | as três orações de inventário/forma **não existem**; o facto é medido — e ⭐ **o R-pré re-verificou a medição contra a própria fixture**, ver abaixo |
+| 5 | **Citação verbatim** | zero, como o documento declara de si mesmo |
+| 6 | **LUT afinada à mão** (§4.2, último ponto) | zero — a §2.3 dá a **fórmula geradora** e **proíbe por escrito** a tabela de pesos por valência, que é o caminho (a) do §4.2 |
+| 7 | **As afirmações sobre o NOSSO código** (não é §4.2, mas um Implementador age sobre elas) | **todas verdadeiras**: `HYSTERESIS = 2.05` e o joelho `1,8–2,0` estão no cabeçalho de `collapse.rs` · a meia-extensão `0,4198` do limite do cubo está em `shapes.rs` · as cinco funções e os cinco ficheiros citados existem, nos ficheiros que a espec nomeia |
+
+### ⭐ A medição da §3.1, re-verificada pelo auditor (e não aceite por declaração)
+
+A 2.ª passagem exigiu que o facto deixasse de se apoiar no fonte e passasse a apoiar-se numa
+fixture. Ele passou — e **uma fixture citada não é uma fixture conferida**, por isso o R-pré abriu-a
+e recontou:
+
+| grandeza | a espec afirma | o R-pré mediu na fixture |
+|---|---|---|
+| `max │saída − repouso│` | `0` exactamente | **`0.0`** exactamente |
+| vértices movidos | `0` de `1 681` | **`0` de `1 681`** |
+| contagem de faces | inalterada | **`3 200 → 3 200`** |
+| pontos do cursor | traço de `6` | **`6`** |
+| o desarme | *Detailing* **Manual** | cabeçalho: tipo de detalhe **MANUAL**, refino *Subdivide Collapse* |
+| o load-bearing | auto-alisamento a `0` | cabeçalho: auto-alisamento **`0.0`** |
+
+⇒ a atribuição ao fonte foi substituída por uma medição que **é verdadeira ao bit**, e o facto ficou
+mais forte do que a versão reprovada.
+
+### Controlo positivo — corrido pelo auditor sobre as duas redacções reprovadas
+
+⛔ *Um sweep verde cujo controlo positivo ninguém correu não prova filtragem; prova que o
+instrumento não foi apontado a nada.*
+
+| redacção | veredito na altura | hits |
+|---|---|---|
+| `de143530f` (1.ª) | reprovada, 3 achados | **22** |
+| `9efef37ba` (1.ª emenda) | reprovada, 4 achados | **4** — *uma por achado nomeado* |
+| esta | atestada | **0** |
+
+### ⚠️ O INSTRUMENTO tinha uma cegueira, medida e curada: a DE-ACENTUAÇÃO
+
+A obra irmã (`blender-boundary`) mediu no mesmo dia que de-acentuar a prosa portuguesa mata parte
+dos achados. Medido **aqui**: o sweep casa por texto **exacto** (`grep -F`), e **`21` das `80`
+entradas de prosa (`26,2 %`) carregam marca diacrítica** — a mesma frase escrita sem acentos passava
+por baixo de todas elas. ⭐ *É o buraco da vassoura monolingue um nível abaixo: lá era a **língua**,
+aqui é a **ortografia**.*
+
+⇒ **vassoura `206 → 227`**: as `21` variantes sem acento, geradas por NFD (nenhuma já lá estava).
+⚠️ **Estritamente aditivas, e provado**: os três controlos dão **o mesmo número** com `206` e com
+`227` (`22` · `4` · `0`), logo nenhuma delas fabrica um falso positivo sobre a redacção curada.
+⚠️ **Fica NOMEADA a cegueira gémea que NÃO foi curada:** `60` das `227` entradas têm maiúscula e o
+`grep -F` é sensível à caixa. Não foi tratada porque uma tradução muda acentos e **não** muda caixa
+— mas quem escrever uma vassoura nova herda a pergunta.
+
+### As DUAS notas de higiene da parede — não bloqueantes, e curadas por esta passagem
+
+Nenhuma é violação do §4.2 (nada do alvo vazou); as duas são **bagagem da parede**, e o R-pré é a
+parte certa para as curar porque não tocam em afirmação nenhuma de comportamento.
+
+1. **O quadro de nomes declarava-se fechado e não o era.** Ele lista os identificadores do **corpo**
+   — e o censo confirma que ali não há outro —, mas a §7 manda o Implementador ler o **cabeçalho de
+   cada fixture**, onde aparecem mais valores públicos (método de refino, tipo de detalhe, método do
+   traço, forma da pegada, predefinição de curva, sentido do pincel). São lícitos pela mesma razão e
+   pelo mesmo modo de obtenção — o arnês **escreveu-os** pela API pública para a corrida ser
+   regenerável (§4.1.13) — e o `README` das fixtures declara a cadeia. ⇒ o quadro passa a dizer o seu
+   **âmbito** e a apontar o README. ⛔ *Uma lista que se lê como fechada e não cobre os artefactos
+   para que a própria página aponta ensina o Implementador a parar de a consultar* — e ela é a única
+   defesa dele, porque este ledger lhe é vedado.
+2. **A §2 trazia uma LIGAÇÃO VIVA para este ledger**, que o cabeçalho da espec declara vedado ao
+   Implementador, na mesma frase que dizia que ele não precisa dela. ⇒ **ligação removida**, facto
+   mantido inteiro. ⚠️ O risco medido é **baixo e não nulo**: a regra `Read(docs/**/cleanroom/LEDGER_*)`
+   **existe** e o Read falha fechado, e este ledger passa o sweep a **zero** — mas um `Read` negado
+   convida ao `cat`, que **não** está negado, e uma página que liga ao que ela própria declara vedado
+   ensina que a cerca é conselho. *A cerca é o mecanismo; o documento não deve trabalhar contra ela.*
+
+### O que ficou conferido e NÃO precisa de ser re-auditado (salvo reescrita)
+
+§1 (a cadeia de peso é ordem de fases — §4.1.1) · §1.1–§1.3 · §2.1–§2.4 · §2.3 (fórmulas dos papers
+públicos, com a proibição da LUT escrita) · §3.2 (tabela-verdade; **e o «modo com duas bandeiras» é
+`o que entra` de uma fase, §4.1.1 — além de ser vocabulário que o NOSSO `dyntopo.rs` já usa, com
+`Refine` e o par `refine_in_sphere`/`collapse_in_sphere`**) · §3.3–§3.9 · §4 · §5 · §6 · §7 (chaves
+e nomes de ficheiro das fixtures são **nossos**, em português) · §8 · §9 (§4.1.12, re-dito, endereços
+só aqui) · §10 · a tabela de recusas medidas.
+
+⛔ **Uma observação de QUALIDADE, sem consequência de parede** (fica registada para quem implementar,
+não bloqueia): a forma prática do ponto-limite de Loop na §2.3 está escrita com uma elipse (`…`) e a
+primeira das duas igualdades não fecha. O caminho lícito está lá e é o certo — **derivar** do
+auto-vector à esquerda dominante, com a tese pública no mapa de leitura — mas quem implementar deve
+contar com derivar, não com copiar aquela linha.

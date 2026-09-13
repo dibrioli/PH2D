@@ -9,16 +9,33 @@ Patente (§8.1): buscado em 2026-09-13 — projecção por raycast em escultura 
   alcança os métodos (a mais próxima, a de Kelvinlets, é solução analítica de elasticidade e não
   descreve nenhum destes quatro). Arte anterior pública abundante desde 2009–2013. Veredito: prosseguir.
 Filtragem §4.3: re-executada em 2026-09-13, DUAS vezes (3 achados na 1.ª passagem do R-pré, mais
-  4 na 2.ª) · Sweep: ✅ VERDE em 2026-09-13 sobre **206** entradas (181 do R-pré + 25 sentinelas
-  do texto removido nas duas rondas).
+  4 na 2.ª) · Sweep: ✅ VERDE em 2026-09-13 sobre **227** entradas (181 do R-pré + 25 sentinelas
+  do texto removido nas duas rondas + **21 variantes SEM ACENTO**, acrescentadas pela 3.ª passagem).
+  ⚠️ **A vassoura era cega à DE-ACENTUAÇÃO, e a cegueira não é teórica:** `21` das `80` entradas de
+  prosa (**26,2 %**) carregavam marca diacrítica, e o sweep casa por texto EXACTO — escrever a mesma
+  frase sem acentos passava por baixo de todas elas. *É o mesmo buraco da vassoura monolingue, um
+  nível abaixo: lá era a LÍNGUA, aqui é a ORTOGRAFIA.* As 21 variantes são estritamente aditivas —
+  os três controlos abaixo dão o mesmo número com `206` e com `227`.
   ⚠️⚠️ **O verde ANTERIOR, sobre 175, não provava filtragem nenhuma:** a vassoura estava só na
   língua do ALVO e esta espec escreve-se na NOSSA, logo toda tradução de comentário passava por
   baixo dela. *Uma vassoura monolingue não vigia uma espec traduzida* — e é por isso que as
   entradas novas do R-pré são prosa em PORTUGUÊS.
-  ⭐ **Controlo positivo, para o verde significar alguma coisa:** a mesma vassoura sobre a versão
-  ANTES da reescrita (`git show <commit anterior>:…`) dá **19 hits** — os 5 do 1.º bloco, os 8 do
-  2.º, e os 6 da prosa; sobre esta versão dá **0**.
-Auditoria §4.2 (R-pré): ⛔ REPROVADA DUAS vezes em 2026-09-13, e as duas com achado substancial.
+  ⭐ **Controlo positivo, corrido pela 3.ª passagem do R-pré sobre as DUAS redacções anteriores**
+  (`git show <commit>:…`), para o verde significar alguma coisa:
+
+  | redacção | veredito do R-pré na altura | hits da vassoura de hoje |
+  |---|---|---|
+  | `de143530f` — a 1.ª, antes de qualquer cura | ⛔ reprovada, 3 achados | **22** |
+  | `9efef37ba` — a 1.ª emenda | ⛔ reprovada, 4 achados | **4** — *uma por achado* |
+  | esta | ✅ atestada | **0** |
+
+  ⇒ *a vassoura discrimina*: ela acusa exactamente a população que cada passagem nomeou, e cala-se
+  sobre a redacção curada. ⛔ Um sweep verde cujo controlo positivo ninguém correu não é prova de
+  filtragem — é prova de que o instrumento não foi apontado a nada.
+Auditoria §4.2 (R-pré): ✅ **auditada contra §4.2 por R-pré em 2026-09-13** — 3.ª passagem, subagente
+  novo, ZERO achados. ⛔ **A janela pode implementar.**
+  ⚠️ As DUAS passagens anteriores REPROVARAM, as duas com achado substancial, e o histórico fica
+  aqui porque é load-bearing — ele é a prova de que este verde foi conquistado, não declarado:
   · **1.ª passagem — 3 achados:** 2 blocos de pseudo-código que espelhavam o original passo a passo ·
     1 família de prosa de comentário traduzida, em 4 sítios. ⭐ **CURADOS:** o bloco da §3.2 SAIU (a
     prosa em volta já dizia o mesmo, e ele só acrescentava FORMA); o da §5.2 virou **média ponderada
@@ -38,10 +55,31 @@ Auditoria §4.2 (R-pré): ⛔ REPROVADA DUAS vezes em 2026-09-13, e as duas com 
   primeira por ninguém lhe ter apontado o dedo.* Quem reescrever daqui em diante varre o documento
   inteiro pela pergunta da §4.3.1 — **«isto descreve o que o programa FAZ, ou como ele está
   ESCRITO?»** — e não só os parágrafos citados no relatório.
-  ⛔⛔ **A janela NÃO implementa nem LÊ esta espec enquanto esta linha não disser «auditada contra
-  §4.2 por R-pré em <data>»** — e quem a escreve é um **R-pré NOVO sobre esta redacção**, nunca o
-  autor da reescrita: *autofiltragem não é auditoria*, e foi exactamente a autofiltragem verde de
-  há uma hora que deixou passar os três.
+  · ✅ **3.ª passagem — ZERO achados.**
+    O R-pré confirmou **as sete curas uma a uma** contra as redacções reprovadas
+    (diff), e **não parou nelas** — varreu o documento inteiro pela pergunta da §4.3.1, por leitura
+    e por varredura textual independente. As sete réguas que a atestação carrega:
+    **(1)** censo de identificadores do corpo: **zero** fora da lista pública declarada abaixo —
+    tudo o resto é nosso ou é nome de fixture nosso · **(2)** varredura mecânica por linguagem de
+    FORMA (`o fonte` · `a função` · `assinatura` · `despacho` · `devolve` · `aloca` · `comentário` ·
+    `laço` · `o módulo` · `decomposição` · …): **zero** ocorrências a descrever a estrutura do alvo —
+    os únicos hits são o cabeçalho a falar do processo, o nosso lado, e notas de custo · **(3)** os
+    dois blocos de pseudo-código reprovados: um **ausente**, o outro **matemática em forma fechada**
+    com o ramo inerte demovido a nota de custo · **(4)** a §3.1 **medida**, e a medição
+    **re-verificada contra a fixture pelo próprio R-pré** (§3.1) · **(5)** zero citação verbatim,
+    como o documento declara · **(6)** zero LUT: a §2.3 dá a fórmula geradora e **proíbe por escrito**
+    a tabela por valência, que é o caminho (a) do §4.2 · **(7)** as afirmações que a espec faz sobre
+    o NOSSO código conferidas no código (a histerese `2,05` e o joelho `1,8–2,0` · a meia-extensão
+    `0,4198` do limite do cubo · as cinco funções e os cinco ficheiros citados).
+  ⚠️ **DUAS notas de higiene da parede, NÃO bloqueantes, curadas pelo próprio R-pré** (nenhuma é
+  violação do §4.2 — as duas são a bagagem da parede, não conteúdo do alvo): o quadro de nomes
+  declarava-se fechado e os cabeçalhos das fixtures, para onde a §7 o manda, trazem mais valores
+  públicos (⇒ o quadro passa a dizer o seu ÂMBITO); e a §2 trazia uma **ligação viva para o ledger**,
+  que este mesmo cabeçalho declara vedado ao Implementador (⇒ ligação removida, facto mantido).
+  ⛔⛔ **A regra fica de pé para toda redacção FUTURA:** mexer nesta espec re-abre a auditoria, e
+  quem a atesta é um **R-pré NOVO sobre a redacção nova**, nunca o autor da reescrita —
+  *autofiltragem não é auditoria*, e foi exactamente uma autofiltragem verde que deixou passar os
+  três da 1.ª ronda.
 Política de NOMES (§4.2 + §4.1.13) — o quadro que o Implementador confere, porque o ledger é-lhe
   vedado por protocolo e esta é a única página onde ele pode lê-la:
   · ⛔ **ZERO identificador interno do alvo** nesta espec — nenhum nome de função, variável, tipo,
@@ -50,11 +88,20 @@ Política de NOMES (§4.2 + §4.1.13) — o quadro que o Implementador confere, 
   · ⭐ **Tudo o que esta espec NOMEIA é interface PÚBLICA**, e o modo de obtenção é o que a torna
     lícita: ela saiu de **CORRER** o alvo sem interface e despejar as definições que ele publica a
     quem o programa de fora — os identificadores de propriedade e os valores de enumeração que
-    qualquer script de utilizador usa —, **nunca de ler o fonte**. São eles: `SIMPLIFY` ·
+    qualquer script de utilizador usa —, **nunca de ler o fonte**. **No CORPO desta página são
+    exactamente estes**, e o censo do R-pré confirmou que não há outro: `SIMPLIFY` ·
     `DISPLACEMENT_ERASER` · `DISPLACEMENT_SMEAR` · `SCENE_PROJECT` · `project_ray_direction_type`
     (`VIEW_NORMAL` · `PLANE_NORMAL`) · `minimum_distance` · `use_bidirectional` ·
     `smear_deform_type` (`DRAG` · `PINCH` · `EXPAND`). Mais os **rótulos que aparecem na tela**,
     que são texto público do manual.
+  · ⚠️⚠️ **E o ÂMBITO desta lista é o corpo desta página, NÃO as fixtures** — a §7 manda-o ler o
+    cabeçalho de cada fixture, e lá aparecem **mais** valores públicos (método de refino, tipo de
+    detalhe, método do traço, forma da pegada, predefinição de curva, sentido do pincel). Eles são
+    lícitos pela **mesma** razão e pelo mesmo modo de obtenção: são o que o arnês **escreveu** pela
+    API pública para a corrida ser regenerável (§4.1.13), e o
+    [`README` das fixtures](fixtures/unblocked/README.md) declara a cadeia inteira. ⛔ *Uma lista que
+    se lê como fechada e não cobre os artefactos para que a própria página aponta ensina o
+    Implementador a parar de a consultar* — e é a única defesa dele, porque o ledger é-lhe vedado.
   · ⚠️ **No corpo, o RÓTULO lidera** — títulos e tabelas dizem o que o artista vê (*Density*,
     *Scene Project*, *Minimum Distance*…), e o identificador público fica **só** onde regenerar uma
     fixture exige a cadeia exacta (o cabeçalho de cada fixture, e a §7).
@@ -223,9 +270,9 @@ paramétrica `(u, v)` daquele elemento da grelha — **não** o resultado de `k`
 
 ⭐ **A palavra «limite» é literal e é dos autores:** a mensagem de commit que introduziu o apagador
 descreve-o como repor a malha na superfície-limite da subdivisão, e a do esfregão descreve-o como
-esfregar o deslocamento **sobre** a superfície-limite
-([o histórico público do alvo](../../3D/cleanroom/LEDGER_blender-unblocked.md) tem os dois endereços;
-o Implementador não precisa deles — o facto está aqui).
+esfregar o deslocamento **sobre** a superfície-limite. ⚠️ Os dois endereços públicos ficam no ledger,
+**que o protocolo veda ao Implementador e esta página NÃO liga de propósito** — o facto está aqui,
+inteiro, e não há nada a ir buscar.
 
 ### §2.1 — Por que isto não é um detalhe de implementação
 

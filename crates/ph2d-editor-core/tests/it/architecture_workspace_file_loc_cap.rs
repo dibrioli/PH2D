@@ -76,7 +76,6 @@ const FILE_OVERAGE_OK: &[(&str, usize)] = &[
     // Retired 2026-09-13 (`line/loc-caps`): `ph2d-render/src/individual.rs` (708) caiu para 621 no
     // QUINTO corte por responsabilidade — o tipo de erro saiu para `individual_error.rs`. Os quatro
     // cortes anteriores (e porque cada um) estão no `git log` desta linha da tabela.
-    ("ph2d-tool-bgremoval/src/algorithm/chroma/mod.rs", 704),
 ];
 
 fn crates_root() -> PathBuf {

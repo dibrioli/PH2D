@@ -184,7 +184,8 @@ fn the_price_of_the_superformula_next_to_a_drawing() {
 /// cena, que é o que liga a especialização por ladrilho.
 ///
 /// ⚠️ **Contador e não relógio:** esta workstation corre vários agentes, e nenhuma leitura de tempo
-/// vale acima de `load ~5`. *Uma contagem é imune à carga.*
+/// vale acima de `load ~5`. ⛔⛔ *Mas um contador atrás de um memo POR THREAD é imune ao RELÓGIO, não ao
+/// ESCALONADOR* — ver as duas metades do gate, e porque a lei exacta corre numa pool de uma thread.
 #[test]
 fn the_shape_constants_are_computed_once_per_shape_not_once_per_tile() {
     use ph2d_field::{FillRule, Profile};
@@ -237,34 +238,66 @@ fn the_shape_constants_are_computed_once_per_shape_not_once_per_tile() {
     let reg = Registry::default();
     let cam = Orbit::default();
 
+    // ⭐⭐ **A LEI, EXACTA — numa pool de UMA thread.** O memo é `thread_local` e a marcha corre em rayon:
+    // com a pool fixa numa thread o quadro inteiro corre numa thread só, e a conta deixa de depender de
+    // quem o escalonador acorda.
     // ⚠️ **O quadro FRIO é o que o artista paga ao ARRASTAR um knob** — ali os parâmetros mudam a
     // cada quadro e o memo falha de propósito. O que ele NÃO pode pagar é uma conta por região.
-    let antes = ph2d_field_eval::ops_gielis::SCANS.load(Ordering::Relaxed);
-    let _ = trace(&doc, &reg, &cam, 640, 360);
-    let regioes = SPECIALISED.load(Ordering::Relaxed);
-    let frio = ph2d_field_eval::ops_gielis::SCANS.load(Ordering::Relaxed) - antes;
+    let uma = rayon::ThreadPoolBuilder::new()
+        .num_threads(1)
+        .build()
+        .expect("pool de uma thread");
+    let (regioes, frio, morno) = uma.install(|| {
+        let antes = ph2d_field_eval::ops_gielis::SCANS.load(Ordering::Relaxed);
+        let _ = trace(&doc, &reg, &cam, 640, 360);
+        let regioes = SPECIALISED.load(Ordering::Relaxed);
+        let frio = ph2d_field_eval::ops_gielis::SCANS.load(Ordering::Relaxed) - antes;
+        // E o quadro MORNO: a mesma forma outra vez.
+        let antes = ph2d_field_eval::ops_gielis::SCANS.load(Ordering::Relaxed);
+        let _ = trace(&doc, &reg, &cam, 640, 360);
+        let morno = ph2d_field_eval::ops_gielis::SCANS.load(Ordering::Relaxed) - antes;
+        (regioes, frio, morno)
+    });
 
-    // E o quadro MORNO: a mesma forma outra vez.
-    let antes = ph2d_field_eval::ops_gielis::SCANS.load(Ordering::Relaxed);
-    let _ = trace(&doc, &reg, &cam, 640, 360);
-    let morno = ph2d_field_eval::ops_gielis::SCANS.load(Ordering::Relaxed) - antes;
-
-    println!("  regiões especializadas: {regioes} · varreduras: frio {frio}, morno {morno}");
+    println!(
+        "  UMA thread: regiões especializadas {regioes} · varreduras: frio {frio}, morno {morno}"
+    );
     assert!(
         regioes > 50,
         "a cena tinha de LIGAR a especialização por ladrilho (só {regioes} regiões) — sem ela este \
          gate não mede o caminho do produto"
     );
-    // ⚠️ **A barra é por THREAD**: o memo é `thread_local`, e a marcha corre em rayon. `4` é a conta
-    // de uma forma (dois `r_max` e dois máximos), e o tecto dá margem para o número de threads.
-    assert!(
-        frio <= 4 * 64,
-        "quadro FRIO pagou {frio} varreduras com {regioes} regiões — a conta da forma está a correr \
-         por LADRILHO em vez de por FORMA"
+    // `4` é a conta de UMA forma (dois `r_max` e dois máximos), e aqui é EXACTA: a thread é uma.
+    assert_eq!(
+        frio, 4,
+        "quadro FRIO pagou {frio} varreduras com {regioes} regiões numa thread só — a conta da forma \
+         está a correr por LADRILHO em vez de por FORMA"
     );
     assert_eq!(
         morno, 0,
-        "quadro MORNO tinha de pagar ZERO varreduras e pagou {morno}"
+        "quadro MORNO pagou {morno} varreduras numa thread só — o memo não sobreviveu ao quadro"
+    );
+
+    // ⭐ **E na pool do PRODUTO (a global):** a lei é por THREAD — nenhuma thread paga a forma duas
+    // vezes, logo os dois quadros juntos custam no máximo `4 × (threads da pool + a que chama)`.
+    // ⛔⛔ **Aqui NÃO se afirma `morno == 0`** (medido na integração de 13/09): uma thread que o quadro
+    // frio não chegou a usar paga a PRIMEIRA conta dela no morno, e quais são usadas decide-o o
+    // escalonador. Sozinho, este gate leu `frio 132 = 33 × 4, morno 0` dez vezes em dez; com 24 cópias
+    // concorrentes leu `morno 4` e `morno 8` em 3 a 4 de cada 24; e o `ship.sh` reprovou-o uma vez
+    // com `frio 128, morno 4` sem uma linha de Rust mudada. *Uma contagem é imune ao RELÓGIO, não ao
+    // ESCALONADOR* — é a família de flakes de fan-out do CLAUDE.md §5.0, com um contador no lugar do
+    // relógio.
+    let tecto = 4 * u64::try_from(rayon::current_num_threads() + 1)
+        .expect("o número de threads cabe num u64");
+    let antes = ph2d_field_eval::ops_gielis::SCANS.load(Ordering::Relaxed);
+    let _ = trace(&doc, &reg, &cam, 640, 360);
+    let _ = trace(&doc, &reg, &cam, 640, 360);
+    let dois = ph2d_field_eval::ops_gielis::SCANS.load(Ordering::Relaxed) - antes;
+    println!("  pool do produto: dois quadros, {dois} varreduras (tecto {tecto})");
+    assert!(
+        dois <= tecto,
+        "dois quadros na pool do produto pagaram {dois} varreduras contra o tecto de {tecto} (4 por \
+         thread) — alguma thread pagou a forma mais de uma vez"
     );
 }
 

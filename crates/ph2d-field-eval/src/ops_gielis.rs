@@ -186,7 +186,10 @@ fn golden_max(f: &impl Fn(f64) -> f64, lo: f64, hi: f64) -> f64 {
 /// ⭐ **Quantas varreduras de uma dimensão já correram** — o instrumento da auditoria de 06/09.
 ///
 /// ⚠️ **Um CONTADOR e não um relógio**: esta workstation corre vários agentes ao mesmo tempo, e
-/// nenhuma leitura de tempo vale acima de `load ~5`. *Uma contagem é imune à carga.*
+/// nenhuma leitura de tempo vale acima de `load ~5`. ⛔⛔ *Mas é imune ao relógio, não ao ESCALONADOR*
+/// (medido 13/09): com o memo POR THREAD de [`shape_constants`], quantas contas um quadro paga depende de
+/// quantas threads o rayon pôs a tocar a forma — o mesmo quadro morno leu `0`, `4` e `8` sob carga. Um
+/// gate sobre este contador fixa a pool (`the_price_of_the_superformula`).
 pub static SCANS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 
 fn scan_max(lo: f64, hi: f64, n: usize, f: impl Fn(f64) -> f64) -> f64 {

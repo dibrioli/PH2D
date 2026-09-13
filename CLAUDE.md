@@ -347,6 +347,8 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   que não reproduziu em 4 corridas»* sem o nomear. *Uma flake sem nome não entra numa lista — quem
   a encontrar outra vez recomeça do zero.*
   *Todo gate que compara duas medianas de um RECURSO é candidato, e a lista nunca estará completa.*
+  ⛔ **E um CONTADOR atrás de estado POR THREAD (memo, arena) também** — ele conta quantas threads o escalonador pôs a
+  trabalhar: o gate da superfórmula leu `morno 0/4/8` sob fan-out e foi curado numa pool de UMA thread (13/09, ESTADO W2 §6).
 - ⚠️ **Gates de GPU são `#[ignore]`** e precisam de adapter — *skip gracioso não é verde*; e o `nextest` só deixou de
   **cancelar na primeira falha** em 10/09 (`fail-fast = false` no `.config/nextest.toml`) — numa árvore mais
   velha, `--no-fail-fast`, senão suítes inteiras nunca chegam a correr. E desde o mesmo dia **todo teste tem

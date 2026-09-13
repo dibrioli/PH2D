@@ -168,7 +168,80 @@ notas, harness) como **dados**.
 
 ## Papel R
 
-*(vazio — R-pré ainda não despachado)*
+| papel | id | data |
+|---|---|---|
+| R-pré | subagente R-pré despachado pela janela-mãe `9f820704-0d7e-4d96-847e-9cd720cbf178` (elo **I-3**) — **contexto novo**, ⛔ não é o subagente-E que escreveu a espec; **viu os dois lados** (fonte por shell, `Read` deny-listed para a sessão; transcript = zona contaminada) | 2026-09-13 — ⛔ **NÃO ATESTADA: 6 achados, 4 substanciais.** Veredictos abaixo |
+
+### Auditoria R-pré — 2026-09-13 (espec v1)
+
+**Sweep (§7.1):** `bash scripts/cleanroom-sweep.sh docs/3D/cleanroom/VASSOURA_blender-pose.txt
+docs/3D/cleanroom/SPEC_pose_brush.md docs/3D/cleanroom/fixtures/pose` ⇒ **`✓ limpo`, 112 entradas,
+exit 0.** ⚠️⚠️ **E é exactamente por isso que a auditoria humana existe: o sweep é cego a TRADUÇÃO.**
+Cinco das 27 entradas de prosa da vassoura são frases de comentário do fonte que a espec carrega
+**em português**, palavra a palavra — o grep nunca as veria. *Uma vassoura em inglês não varre uma
+espec em português; ela só prova que ninguém colou.*
+
+⚠️⚠️ **E o sweep sobre ESTE ledger dá `exit 1`, por CONSTRUÇÃO do protocolo — não é achado, é uma
+tensão entre duas regras, e o R-PÓS tem de a saber:** o §6 **manda** o ledger registar os ficheiros
+do fonte percorridos, e o §7.1 **manda** a vassoura conter os nomes de ficheiro do alvo ⇒ a secção
+*Cobertura da travessia* casa consigo mesma. Conferido: o [`LEDGER_blender-cloth.md`](LEDGER_blender-cloth.md)
+tem a **mesma** propriedade contra a vassoura dele. ⇒ a barra do §7.2 (*«zero hits sobre a árvore
+inteira»*) **não é satisfazível** enquanto os ledgers viverem na árvore rastreada: ou o sweep de
+fechamento exclui `docs/**/cleanroom/LEDGER_*.md` por escrito, ou a cobertura passa a ser registada
+sem nomear ficheiro. ⛔ **Decisão de protocolo, não desta auditoria** — fica nomeada. A **espec
+sozinha** é `exit 0`, que é a condição de entrega do §4.3.
+
+**Conferido e limpo:** nomes de ficheiro das 85 fixtures · chaves do cabeçalho das fixtures (todas
+em vocabulário nosso: `modo`/`origem`/`raio`/`segmentos`/`desvio_da_origem`/… — ⛔ nenhuma chave de
+dump do alvo) · renomeações de domínio que estão CERTAS (o factor de pose → **peso**; os vizinhos
+artificiais; a **franja**; a **semente**) · a decomposição em fases A–F (forçada pelo fluxo de
+dados, não arbitrária) · §2.1 passo 3 (**a ordenação das sementes é REAL** — conferida no fonte,
+`std::ranges::sort` no produtor da lista; a espec não a inventou) · §2.3 (a origem de recurso e a
+inicialização dela em `C` estão exactas) · §3.1–§3.2 (re-descrição legítima: as duas regras de
+paragem estão ditas por grandeza, não por prosa do alvo) · as **12 issues públicas** do §15
+(§4.1.12 — é o canal permitido, e estão re-ditas).
+
+#### Os 4 SUBSTANCIAIS (a espec carrega expressão do alvo)
+
+| # | sítio | o que é | vassoura |
+|---|---|---|---|
+| **A1** | **§3**, 1.º parágrafo (a frase que explica por que a cadeia é forçada a um segmento) | **tradução frásica de um comentário do fonte, com a oração causal incluída.** O FACTO é livre; a frase é a expressão mais protegida do ficheiro (§4.2) | entrada **91** |
+| **A2** | **§8**, abertura (a frase da passagem única de simetria + o «as outras devolvem imediatamente») | **tradução frásica de um comentário do fonte**, e a segunda metade descreve o **retorno antecipado** do código em vez do comportamento | entradas **95** e **96** |
+| **A3** | **§5.1** (os 5 passos numerados) | **transcrição instrução-a-instrução do corpo de UMA função do alvo**: os mesmos intermediários, na mesma ordem, em notação de atribuição — §4.2 *«pseudo-código que espelha o original linha a linha é tradução, não descrição»*. O parêntese do passo 5 é, além disso, **tradução do comentário** que marca esse passo. ⚠️ O mesmo padrão, mais fraco, em **§2.2** (corpo do *callback* da varredura) e **§6** (corpo do laço das matrizes) | entrada **94** |
+| **A4** | **§2.4** (*«os próprios autores o escrevem no código»*) e **§5.2** (*«confirmada pelo comentário dos autores»*) | a espec **atribui dois factos do produto a comentários do fonte**. Importa o conteúdo do comentário por referência **e** viola o §4.3 (a proveniência de um número é fórmula · medição · decisão nossa). Os dois factos têm proveniência lícita à mão: a constante é **medível** das fixtures (elas carregam `pixels_por_unidade`) e o custo quadrático é **afirmado pelas issues públicas** citadas no mesmo parágrafo | entradas **86** e **98** |
+
+#### Os 2 menores (§4.2, higiene de vocabulário)
+
+| # | sítio | o que é |
+|---|---|---|
+| **A5** | **§5.2** (tabela de presets) e **§1.2** (alvo da deformação) | os presets são nomeados pelas **grafias de identificador do enum do alvo** — duas delas (`LIN`, `POW4`) **não são palavras nem rótulos**: na interface pública o alvo escreve *Linear* e *Sharper*. ⚠️ E a casa **já decidiu este vocabulário** em [`falloff.rs`](../../../crates/ph2d-sculpt3d/src/falloff.rs), com a tabela das nove leis e os nomes de domínio; a espec importa a grafia interna e contradiz o catálogo que o produto já tem. Idem `«áreas de simetria»` no §6 (termo interno traduzido — as aspas na própria espec denunciam-no) |
+| **A6** | **§7.3** (*«não está na lista dos que repõem a malha…»*) e **§13** (*«o pincel declara que precisa da malha toda»*) | dois requisitos enunciados pela **estrutura interna do alvo** (uma lista de despacho e um predicado que só existem no código dele), em vez de pelo comportamento. §4.2, organização |
+
+#### Achados FUNCIONAIS (fora do §4.2 — devolvidos ao E na mesma passagem)
+
+- **F1 — a espec descreve UMA semente; o alvo tem DUAS grandezas distintas.** A varredura da fase A
+  é semeada pelo vértice que a **eleição do cursor** produziu (mais os espelhos dele dentro de `R`,
+  e a lista é ordenada), enquanto o vértice achado por uma **consulta de mais-próximo global sobre
+  as posições do início do traço** recebe peso `1` **antes** de a varredura começar. Nas fixturas
+  comuns os dois coincidem e a diferença é invisível; ⚠️ eles **não são a mesma coisa por
+  construção**. ⇒ a espec tem de dizer qual grandeza semeia e qual recebe o peso, e o E deve
+  **medir** se alguma fixtura os separa — ⭐ é candidato nomeado para o resíduo `2,7e-3` que a §12.3
+  deixou **«por explicar, item aberto para o R-pré»** (a fixtura é de UM segmento ancorado, onde só
+  o pivô e os pesos decidem, e o desvio é **sistemático**, não descontínuo).
+- **F2 — a tabela de presets do §5.2 tem NOVE linhas e o alvo oferece DEZ.** Falta o preset
+  quadrático inverso, que o artista pode escolher e que só o modo de torção lê. ⛔ Nove das dez já
+  estão escritas e medidas no nosso [`falloff.rs`](../../../crates/ph2d-sculpt3d/src/falloff.rs),
+  a décima incluída — *a espec manda reconstruir uma tabela que o produto já tem, e com um buraco*.
+
+#### O que a reescrita NÃO pode perder
+
+⚠️ **Todos os FACTOS dos seis sítios são legítimos e caros** — a ordem de percurso da cadeia
+(perto→longe), o que se mede contra o estado **inicial** e o que se mede contra o estado do evento
+**anterior** (§5.1-bis, o achado mais valioso da espec), o epílogo da âncora, a lei de composição
+das matrizes e o teto de um segmento nos dois modos de escala. A cura é **re-exprimir**, nunca
+apagar: enunciar cada fase como **requisito fechado** (em que configuração cada segmento tem de
+acabar, e qual é o alvo do seguinte) em vez de como sequência de atribuições, e dar a cada número
+uma proveniência de **medição**. A paridade com as fixturas não muda uma casa decimal por isto.
 
 ---
 

@@ -152,7 +152,13 @@ fn the_four_verbs_the_sweep_found_are_real_and_now_declare() {
         // a mensagem dele diz *«se isso é verdade, APAGUE esta entrada em vez de a silenciar»*.
         // O `bake.rs` da família deixou de ler os pixels — ele RECEBE-os por um leitor
         // preguiçoso —, e quem os lê agora é o laço da shell, que é quem tem o `AssetDb`.
-        ("render_loop/mod.rs", "o `base x luz` e' de 8 bits"),
+        // ⚠️ **E mudou OUTRA vez na OBRA 2 da `line/render-loop` (2026-09-12):** o laço partiu-se em
+        // fases, e quem assa a forma é a `fase_sculpt3d_bake`. O `mod.rs` continua a ler pixels
+        // noutros sítios e passa na varredura acima por conta própria (`commit_edited_texture`).
+        (
+            "render_loop/fase_sculpt3d_bake.rs",
+            "o `base x luz` e' de 8 bits",
+        ),
     ] {
         let path = shell_src().join(rel);
         let src = std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("read {path:?}: {e}"));

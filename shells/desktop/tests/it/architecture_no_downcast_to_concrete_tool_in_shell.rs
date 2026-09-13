@@ -83,6 +83,13 @@ const DOWNCAST_ALLOWLIST: &[&str] = &[
     // drains (falloff / curve point handle). Same exception class as
     // painter_bridge; the central dispatch stays free of *vector* downcasts.
     "src/render_loop/mod.rs",
+    // ⚠️ **O `fase_sculpt3d_bake.rs` HERDOU um downcast do `render_loop/mod.rs`** (OBRA 2 da
+    // `line/render-loop`, 2026-09-12): o alpha por imagem pergunta ao `PainterTool` o que a tela
+    // MOSTRA (`needs_document_bind` + `composite_to_lum`, a porta do «Use as Brush Grain»), sem o
+    // activar. É a MESMA excepção que a entrada do `mod.rs` acima licencia, mudada de ficheiro com o
+    // corpo que a contém — a contagem de downcasts da shell não mudou (12). ⛔ Não é uma excepção
+    // nova: o quadro partiu-se em fases, e a licença segue o SUJEITO, como a entrada da precisão.
+    "src/render_loop/fase_sculpt3d_bake.rs",
     // Pointer forwarder: the colour-picker eyedropper samples the active PainterTool's layer COMPOSITE
     // (`sample_composite_at_uv`) + reads `repeat_image()` to walk the Repeat-Image neighbour tiles —
     // a Painter-specific affordance integrating the eyedropper with the layer system. Same exception

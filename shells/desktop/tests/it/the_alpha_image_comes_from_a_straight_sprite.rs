@@ -8,7 +8,8 @@
 
 use std::fs;
 
-const FRAME: &str = "src/render_loop/mod.rs";
+// ⚠️ O laço lê-se no texto EMENDADO (`frame_text::render_frame`) desde a OBRA 2 da `line/render-loop`
+// (2026-09-12): o cumprimento do pedido mudou-se para a fase `fase_sculpt3d_bake.rs`.
 const PANEL: &str = "../../crates/ph2d-app-sculpt3d/src/panel.rs";
 
 /// O corpo do bloco que cumpre o pedido, do `mem::replace` do flag até o fim.
@@ -37,7 +38,7 @@ fn fulfilment(src: &str) -> String {
 /// este não é um caso de canto — é o caminho de quem acabou de pintar.
 #[test]
 fn the_pixels_are_straightened_before_the_law_reads_them() {
-    let src = fs::read_to_string(FRAME).expect("o laço de frame existe");
+    let src = crate::frame_text::render_frame();
     let body = fulfilment(&src);
 
     // ⚠️ **A asserção é sobre o caminho da imagem GUARDADA, e o recorte é o
@@ -121,7 +122,7 @@ fn arming_an_image_seeds_the_scale_this_model_can_hold() {
 /// nenhum: o toast anunciava `WxH` e ficava calado sobre o que tinha acabado de escrever.
 #[test]
 fn the_readout_reports_the_scale_the_door_returned() {
-    let src = fs::read_to_string(FRAME).expect("o laço de frame existe");
+    let src = crate::frame_text::render_frame();
     let body = fulfilment(&src);
 
     let at = body

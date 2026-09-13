@@ -243,7 +243,7 @@ fn splice(text: &str, phases: &BTreeMap<String, String>, depth: usize) -> String
 
 /// **Uma chamada que o `rustfmt` parte em linhas continua a ser uma chamada** — e só a do `self`.
 #[test]
-fn a_call_split_by_rustfmt_is_still_a_call_and_only_selfs() {
+fn a_call_split_by_rustfmt_is_still_a_call_and_only_self_calls() {
     let texto = "x; if self\n    .fase_b()\n    .is_none() { return; }\ny;";
     let e = splice(texto, &fases_de_brinquedo(), 0);
     let b = e

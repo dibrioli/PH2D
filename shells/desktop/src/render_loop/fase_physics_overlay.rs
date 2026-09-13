@@ -1,5 +1,5 @@
 //! **Fase do quadro: A SOBREPOSIÇÃO DA FÍSICA** — o contorno dos colliders e tudo o que a física sabe e a tela não mostrava: juntas, rodas,
-//! gravidade, sensores, contactos, flashes, água e sondas (OBRA 2 da `line/render-loop`, 2026-09-13).
+//! gravidade, sensores, contatos, flashes, água e sondas (OBRA 2 da `line/render-loop`, 2026-09-13).
 
 use super::*;
 

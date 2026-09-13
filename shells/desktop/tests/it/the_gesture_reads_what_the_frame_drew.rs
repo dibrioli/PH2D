@@ -82,9 +82,13 @@ fn walk(dir: &str) -> Vec<String> {
 
 /// **E o desenho PUBLICA o que derivou.** Sem esta metade a porta de fusão funde com nada, e o
 /// gate acima passaria sobre um produto igualmente quebrado.
+///
+/// ⚠️ Desde a OBRA 2 da `line/render-loop` (2026-09-13) o passe de layout e a publicação moram na fase
+/// `fase_vector_layout_recook`: o gate lê o QUADRO emendado (`frame_text::render_frame`), e a ORDEM layout →
+/// publicação é a de execução.
 #[test]
 fn the_draw_pass_publishes_the_facts_it_derived() {
-    let src = read("src/render_loop/mod.rs");
+    let src = crate::frame_text::render_frame();
     // ⚠️ **Sem espaço em branco dos dois lados**, e a razão é que este gate já expirou uma vez por
     // isso: o campo mudou de nome (duas vezes — `clips` → `parent_spans` → `clips`, ao sabor de o
     // intervalo ser sobre antecipação ou sobre recorte), o `rustfmt` quebrou a linha no ponto, e a

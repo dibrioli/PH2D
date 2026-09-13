@@ -294,6 +294,8 @@ mod fase_vector_edit_overlay;
 mod fase_vector_fx_recook;
 /// Fase do quadro: as linhas de corte, as guias e a construcao de forma.
 mod fase_vector_guides_and_build;
+/// Fase do quadro: o layout vivo, o alinhamento e a silhueta.
+mod fase_vector_layout_recook;
 /// Fase do quadro: os overlays vectoriais do quadro.
 mod fase_vector_overlays;
 /// Fase do quadro: as alcas da ferramenta vectorial.
@@ -8301,57 +8303,11 @@ impl crate::App {
                     ui_states,
                 );
             }
-            // **O AUTO LAYOUT roda entre a booleana e o alinhamento** (ADR-0153), e as duas
-            // metades da ordem são a lei:
-            //
-            // - DEPOIS da booleana, porque ele coloca *o que os filhos de fato desenham* — um
-            //   grupo booleano é UMA forma para o fluxo, e ela tem de estar cozida antes de ser
-            //   medida;
-            // - ANTES do alinhamento, porque o alinhamento recorta a faixa do traço na largura
-            //   AUTORADA: escalar uma forma depois de a faixa estar recortada esticaria a
-            //   espessura dela junto, e o traço do artista mudaria de peso ao redimensionar a
-            //   moldura.
-            //
-            // E ele TRANSFORMA o mapa (não o estende) pelo motivo do `bool_live`: é um componente
-            // do PAI, então convive com o offset vivo de cada filho.
-            self.layout_live.recook(
-                vec_scene,
-                sim,
-                &self.vec.entities,
-                &vec_xf,
-                &mut vec_live,
-                crate::vec_bindings::TokenCtx {
-                    theme: hero.theme,
-                    pixels_per_meter: hero.project.pixels_per_meter,
-                },
-            );
-            // **A POSE que cada filho colocado recebeu**, publicada para quem NÃO desenha
-            // geometria: as âncoras do modo Node, a caixa do gizmo e o hit-test leem a pose
-            // AUTORADA, e ela não se mexeu com o layout.
-            vec_view.poses = self.layout_live.poses();
-            // **E os TRÊS fatos derivados são PUBLICADOS** para quem vier depois do desenho. O
-            // hit-test monta o `VecViewState` dele do zero a cada evento de ponteiro, e aquela
-            // porta só sabe o que a ÁRVORE diz (escondido, travado) — sem isto ele decide como se
-            // nenhuma moldura existisse, nenhuma forma tivesse sido colocada e nenhum operando
-            // tivesse sido absorvido.
-            self.vec.view_derived.clips.clone_from(&vec_view.clips);
-            self.vec.view_derived.poses.clone_from(&vec_view.poses);
-            self.vec
-                .view_derived
-                .absorbed
-                .clone_from(&vec_view.absorbed);
-            // **O ALINHAMENTO roda por ÚLTIMO, e TRANSFORMA o mapa em vez de o estender.**
-            // Os cinco acima são mutuamente exclusivos (um componente cada, um por vez no
-            // painel), e é isso que torna o `extend` seguro. O alinhamento não é membro dessa
-            // família — é um campo do `StrokeSpec`, então convive com um offset vivo; fundido
-            // por `extend` ele apagaria o offset (ou seria apagado), em silêncio.
-            self.align_live.recook(vec_scene, &vec_xf, &mut vec_live);
-            // A SILHUETA resolvida das formas TRAÇADAS: `preenchimento ∪ contorno-do-traço`,
-            // pela booleana, memoizada na geometria de MUNDO. Sem ela o campo de distância de uma
-            // forma com traço cai no caminho do raster, cuja semente discreta desenha o pente que
-            // o Enio fotografou no bevel. Roda DEPOIS de `vec_live` (a união é do que se DESENHA).
-            self.fx_silhouette
-                .recook(vec_scene, sim, &self.vec.entities, &vec_xf, &vec_live);
+            let Some((vec_view, vec_live, vec_xf)) =
+                self.fase_vector_layout_recook(vec_view, vec_xf, vec_live)
+            else {
+                return;
+            };
             let Some((vec_view, vec_xf, cam_affine, vec_live)) =
                 self.fase_vector_fx_recook(vec_view, vec_xf, cam_affine, vec_live)
             else {

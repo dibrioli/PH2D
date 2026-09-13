@@ -16,7 +16,16 @@
 //!    computar — *o que está na tela*. Chamá-lo antes seria consolidar a resposta do frame
 //!    anterior, e a forma saltaria no clique.
 
-const SRC: &str = include_str!("../../src/render_loop/mod.rs");
+/// O QUADRO pela ordem em que corre (`frame_text::render_frame`).
+///
+/// ⚠️ Desde a OBRA 2 da `line/render-loop` (2026-09-13) o quadro vive em FASES noutros ficheiros: o layout, o
+/// alinhamento e a silhueta moram na `fase_vector_layout_recook`, e a fusão dos cinco e a booleana continuam,
+/// por agora, no `render_loop/mod.rs`. As três afirmações deste gate são ORDENS de execução, e entre dois
+/// ficheiros não há ordem — só o texto emendado as tem.
+fn src() -> &'static str {
+    static FRAME: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+    FRAME.get_or_init(crate::frame_text::render_frame)
+}
 
 /// **A chamada do COZIMENTO da booleana** — a âncora dos dois gates de ordem abaixo.
 ///
@@ -41,7 +50,8 @@ const COOK: &str = "self.bool_live.recook(";
 
 /// Onde a chamada `needle` aparece — falha nomeando quem sumiu.
 fn at(needle: &str) -> usize {
-    SRC.find(needle)
+    src()
+        .find(needle)
         .unwrap_or_else(|| panic!("a chamada `{needle}` sumiu do render_loop"))
 }
 
@@ -55,7 +65,7 @@ fn at(needle: &str) -> usize {
 fn the_boolean_cooks_after_the_five_and_before_the_alignment() {
     // O ÚLTIMO `extend` é o que fecha o mapa fundido — qual dos cinco é ele não importa, e
     // depender disso amarraria o gate à ordem interna deles.
-    let profile = SRC
+    let profile = src()
         .rfind("vec_live.extend(")
         .expect("os `extend` que fundem o mapa sumiram do render_loop");
     let boolean = at(COOK);
@@ -94,7 +104,7 @@ fn the_apply_materialises_the_plan_the_producer_just_cooked() {
         "o Apply consulta o plano fora de ordem (recook {boolean}, plan {plan}, bake {bake})"
     );
     assert!(
-        !SRC.contains("bool_gesture::bake(sim, vec_scene, &mut self.vec.pen, &recompute"),
+        !src().contains("bool_gesture::bake(sim, vec_scene, &mut self.vec.pen, &recompute"),
         "o bake voltou a re-computar em vez de materializar o plano"
     );
 }
@@ -106,7 +116,7 @@ fn the_apply_materialises_the_plan_the_producer_just_cooked() {
 #[test]
 fn the_shell_publishes_whether_a_live_boolean_is_selected() {
     assert!(
-        SRC.contains("ph2d_panel_vector::state::set_bool_group_selected("),
+        src().contains("ph2d_panel_vector::state::set_bool_group_selected("),
         "a shell parou de publicar o fato que decide se o Apply é oferecido"
     );
 }
@@ -123,11 +133,11 @@ fn the_shell_publishes_whether_a_live_boolean_is_selected() {
 #[test]
 fn the_shell_publishes_the_per_shape_verb_row_with_the_primary() {
     assert!(
-        SRC.contains("ph2d_panel_vector::state::set_bool_shape_row("),
+        src().contains("ph2d_panel_vector::state::set_bool_shape_row("),
         "a shell parou de publicar a fileira do verbo por forma — ela nunca apareceria no app"
     );
     assert!(
-        SRC.contains("let primary = self.vec.pen.selected();"),
+        src().contains("let primary = self.vec.pen.selected();"),
         "o sujeito da fileira deixou de ser o PRIMÁRIO — com a contagem, nenhum clique a alcança"
     );
 }

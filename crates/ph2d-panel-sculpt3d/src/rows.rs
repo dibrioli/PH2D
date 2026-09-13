@@ -404,6 +404,33 @@ static BRUSH: &[Row] = &[
         level: UiLevel::Basic,
         place: Place::Knobs,
     },
+    // **A FRACÇÃO DO RAIO QUE A NORMAL DO GESTO LÊ** — ver
+    // [`ph2d_sculpt3d::Brush::normal_radius_frac`], onde o `0,5` de fábrica tem
+    // a proveniência ao lado.
+    Row {
+        label: "panel.sculpt3d.normal_radius",
+        slider: crate::ids::SCULPT3D_NORMAL_RADIUS,
+        chip: crate::ids::SCULPT3D_NORMAL_RADIUS_NUM,
+        // ⚠️ **ZERO é alcançável e a degeneração é NOMEADA**: sem amostra
+        // nenhuma dentro da fracção, o gesto cai na normal do plano do carimbo —
+        // que existe sempre. Um piso acima de zero esconderia uma continuidade
+        // que a lei tem, e a lei já responde por ela.
+        min: 0.0,
+        // A fracção é do RAIO: acima de `1` ela deixaria de ser uma fracção, e a
+        // pegada inteira já é o que o plano do carimbo lê.
+        max: 1.0,
+        step: 0.01, // LITERAL-PX-OK: fracção adimensional, não layout
+        decimals: 2,
+        get: |u| u.brush.normal_radius_frac,
+        set: |u, v| u.brush.normal_radius_frac = v,
+        show: |u| matches!(u.brush.verb, Verb::Thumb | Verb::Nudge),
+        // ⚠️ **Pro, e o teste é o mesmo do vizinho com resposta OPOSTA:**
+        // escondê-lo não deixa a ferramenta sem o que o nome promete — um
+        // polegar continua a espalmar —, ele afina *de que superfície* o gesto
+        // se declara paralelo.
+        level: UiLevel::Pro,
+        place: Place::Knobs,
+    },
     // ⚠️ **Ela NÃO é um seletor de falloff, e a distinção é da REFERÊNCIA.** O
     // canal de máscara do original tem curva PRÓPRIA — `(1 − d)^{2(1 − hardness)}`
     // (`Masking.js:66`) — enquanto as dez tools de geometria multiplicam pela

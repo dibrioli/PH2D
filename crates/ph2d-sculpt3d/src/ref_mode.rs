@@ -317,6 +317,10 @@ impl RefMode {
             // ⚠️ **E nem a DEMÃO**, a sétima: o *Layer* é da referência restrita, e o
             // SculptGL não tem ferramenta com estado por-vértice ao longo do
             // traço — que é a lei inteira deste verbo.
+            // ⚠️ **E nem o POLEGAR nem o EMPURRÃO**, a oitava e a nona vez a
+            // mesma frase: o `Move.js` leva o gesto INTEIRO, e o que define
+            // estes dois é levarem só a componente tangencial dele. Uma
+            // subtracção que o parente não faz é uma ferramenta que ele não tem.
             Self::S => !matches!(
                 verb,
                 Verb::ClayStrips
@@ -326,6 +330,8 @@ impl RefMode {
                     | Verb::SlideRelax
                     | Verb::SurfaceSmooth
                     | Verb::Layer
+                    | Verb::Thumb
+                    | Verb::Nudge
             ),
             // A lei de kernel (bilateral · tangencial · front-face contínuo) e
             // a `StrengthCurve::Squared` do E13.

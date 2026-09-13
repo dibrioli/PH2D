@@ -45,6 +45,17 @@ impl SculptStroke {
         brush: &Brush,
         dab: &Dab,
         plane: &PlaneFit,
+        // **A NORMAL DO GESTO**, quando o verbo em mãos a pede — ver
+        // `stroke_normal_do_gesto.rs`.
+        //
+        // ⚠️ **Ela é PASSADA e não computada aqui pela mesma razão que o `w`:**
+        // é uma varredura da pegada, e esta função corre **por vértice**.
+        // Derivá-la cá dentro faria um dab custar o quadrado do que custa.
+        //
+        // ⚠️ **`None` não é «não há normal»** — é *este verbo não pergunta*. Os
+        // dois que perguntam caem na normal do plano do carimbo quando a
+        // amostragem degenera, que é a única resposta finita.
+        n_gesto: Option<[f32; 3]>,
         reach: f32,
         shape: f32,
         // O peso COMPLETO deste dab (`falloff × intensidade × máscara`) — o
@@ -515,8 +526,15 @@ impl SculptStroke {
             Verb::Mask => base,
             // **OS QUATRO GESTOS COM ÂNCORA** vivem no irmão [`gripped`] — a
             // família que a [`Verb::anchors`] nomeia.
-            Verb::Move | Verb::SnakeHook | Verb::Twist | Verb::LocalScale => {
-                self.target_gripped(brush, dab, w, base, live)
+            // **OS QUATRO GESTOS COM ÂNCORA**, mais os **DOIS TANGENCIAIS** que
+            // herdam o grip deles e trocam só o que o offset é.
+            Verb::Move
+            | Verb::SnakeHook
+            | Verb::Twist
+            | Verb::LocalScale
+            | Verb::Thumb
+            | Verb::Nudge => {
+                self.target_gripped(brush, dab, w, base, live, n_gesto.unwrap_or(n_area))
             }
         }
     }

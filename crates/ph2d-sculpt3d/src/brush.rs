@@ -241,6 +241,19 @@ pub struct Brush {
     /// nasce no neutro e o número passa a ser do ARTISTA — nunca uma tabela
     /// inventada com o nome de outro produto.
     pub hardness: f32,
+    /// **QUE FRACÇÃO DO RAIO A NORMAL DO GESTO LÊ** — o miolo de que o
+    /// [`Verb::Thumb`] e o [`Verb::Nudge`] tiram o plano tangente. Ver
+    /// `stroke_normal_do_gesto.rs`.
+    ///
+    /// ⚠️ **É um knob da REFERÊNCIA, não um número nosso** (a opção pública
+    /// existe lá e nasce em `0,5`), e ele **não** é o raio do pincel: a pegada
+    /// que se move continua a ser a inteira. O que esta fracção decide é *de
+    /// que superfície o gesto se declara paralelo*.
+    ///
+    /// ⚠️ **Duas fixtures do oráculo dependem dele** (as `…raionormal03`, a
+    /// `0,3`): sem o knob elas seriam inexplicáveis, e com ele fecham no mesmo
+    /// resíduo das outras — é a diferença entre uma constante e um controlo.
+    pub normal_radius_frac: f32,
     /// **SÓ AS FACES DE FRENTE** — a opção de pincel *"Front Faces Only"* da
     /// referência (rótulo público: é o que o artista vê na tela dela).
     ///
@@ -561,6 +574,11 @@ impl Default for Brush {
             mask_hardness: 0.25,
             // O neutro da etapa de dureza — ver o campo.
             hardness: 0.0,
+            // ⚠️ **`0,5` é o valor de fábrica da referência, lido do cabeçalho
+            // das fixtures** (`fator_raio_da_normal`), não um palpite — e as
+            // duas fixtures que o movem para `0,3` são o controlo de que ele
+            // chega ao resultado.
+            normal_radius_frac: 0.5,
             // ⚠️ **DERIVADO do verbo, como o `accumulate` e o `falloff` logo
             // acima** — e pela mesma razão: um literal aqui seria o MESMO fato
             // em dois lugares, e no dia em que a tabela do verbo mudasse ele

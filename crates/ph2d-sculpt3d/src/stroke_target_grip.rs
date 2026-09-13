@@ -1,5 +1,10 @@
-//! **O ALVO DOS QUATRO GESTOS COM ÂNCORA** — a família que a
+//! **O ALVO DOS GESTOS COM ÂNCORA** — a família que a
 //! [`Verb::anchors`] nomeia, cortada por ASSUNTO do irmão [`super::target`].
+//!
+//! ⚠️ **O cabeçalho dizia «os QUATRO» e a família passou a ter mais** (os dois
+//! gestos tangenciais de 2026-09-13): a contagem sai da [`Verb::anchors`], que é
+//! a fonte, e não de uma palavra escrita aqui — *duas contagens do mesmo facto
+//! divergem no dia em que só uma é actualizada*.
 //!
 //! ⚠️ **A linha de corte é uma porta que já existia, não uma inventada para
 //! caber no teto de LOC:** `anchors()` responde *este verbo escolhe um ponto
@@ -13,6 +18,7 @@
 //! viraria função do TAMANHO do arquivo, que é o oposto do que o teto existe
 //! para fazer.
 
+use super::super::normal_do_gesto::tangencial;
 use super::*;
 
 impl SculptStroke {
@@ -33,6 +39,9 @@ impl SculptStroke {
         w: f32,
         base: [f32; 3],
         live: [f32; 3],
+        // A normal de que os dois gestos tangenciais subtraem o puxão — ver
+        // `stroke_normal_do_gesto.rs`. Os outros quatro não a leem.
+        n_gesto: [f32; 3],
     ) -> [f32; 3] {
         match brush.verb {
             // **O GRAB.** O alvo é o `pre` deslocado pelo gesto INTEIRO: o
@@ -216,7 +225,41 @@ impl SculptStroke {
                 let f = (1.0 + dab.amount * grow).max(0.0);
                 add_vec(dab.center, d, f)
             }
-            // Os doze carimbos vivem no pai.
+            // ⭐⭐ **O POLEGAR** — o [`Verb::Move`] com a componente NORMAL
+            // subtraída, e nada mais. O alvo é função do `pre` congelado e do
+            // puxão TOTAL, logo o gesto é idempotente: só o último evento conta
+            // (medido no oráculo, 12 e 24 eventos dão o mesmo pico).
+            //
+            // ⭐⭐⭐ **A FORÇA AO QUADRADO NÃO SE ESCREVE AQUI — ELA JÁ É A LEI DO
+            // MODO**, e isto foi medido contra o oráculo, não deduzido: o perfil
+            // do `B` declara [`crate::StrengthCurve::Squared`] desde o E13, logo
+            // o [`crate::Brush::weight`] que entra no `accum` **é** `s²`. O alvo
+            // é `base + tangencial`, sem factor nenhum, e o aplicador multiplica
+            // pelo `accum` — o produto sai `s²·pressão·curva·máscara`, que é
+            // exactamente o que o oráculo mede.
+            //
+            // ⛔⛔ **A primeira versão desta linha multiplicava por `weight()`
+            // «para dar o quadrado», e o resultado era a QUARTA potência** —
+            // medido `0,0625` onde a lei pede `0,25`. ⚠️ **E as fixtures de
+            // força `1,0` passavam todas**, porque ali `s² = s⁴ = 1`: quem
+            // apanhou foi a ÚNICA fixture de força `0,5` desta bancada. *Um
+            // corpus todo no ponto neutro de um knob não testa esse knob.*
+            //
+            // ⚠️ **O `s²` é do MODO, não do verbo** — o agarrar e o gancho
+            // continuam lineares no slider porque a lei deles é de outra
+            // referência, e é por isso que esta linha não tem de saber disso.
+            Verb::Thumb => add_vec(base, tangencial(dab.pull, n_gesto), 1.0),
+            // ⭐⭐ **O EMPURRÃO** — a MESMA conta, com a pegada a viajar: o
+            // [`Verb::SnakeHook`] com a componente normal subtraída. Aqui o alvo
+            // já é a posição final (o grip carimba `accum = 1`), então o `w`
+            // entra explicitamente — e ele já traz o `s²` do modo, como no irmão
+            // acima.
+            //
+            // ⚠️ **Voltar pelo mesmo caminho não devolve o barro**, e isso é o
+            // que esticar significa: o doc do [`crate::Grip::Hook`] já o escreve.
+            Verb::Nudge => add_vec(live, tangencial(dab.pull, n_gesto), w),
+            // Os carimbos vivem no pai — quem os conta lê a [`Verb::anchors`],
+            // nunca um número escrito numa linha de comentário.
             _ => base,
         }
     }

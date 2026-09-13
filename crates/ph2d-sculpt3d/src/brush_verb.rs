@@ -348,11 +348,61 @@ pub enum Verb {
     /// escolhida no pen-down simula, o anel de fora fica pregado, e a mão entra
     /// como força. Ver [`Grip::Simulate`] e o `stroke_cloth`.
     Cloth,
+    /// **O POLEGAR** — espalma o barro na direcção do gesto **sem o levantar**:
+    /// o deslocamento é a componente do puxão no PLANO TANGENTE, e mais nada.
+    ///
+    /// ⚠️ **É o [`Self::Move`] menos a componente normal, e a subtracção É a
+    /// ferramenta:** o agarrar leva o gesto inteiro (e pode inclinar-se para a
+    /// normal por um peso próprio); este leva só o que corre paralelo à
+    /// superfície. É por isso que ele *espalma* em vez de *levantar* — um
+    /// polegar a alisar barro, que é o que o nome público diz.
+    ///
+    /// ⚠️ **O grip é o [`Grip::Hold`] que já existe**, e com ele vem a
+    /// propriedade que define este gesto: o alvo é função do `pre` CONGELADO e
+    /// do puxão TOTAL ⇒ **só o último evento conta**. Medido no oráculo, o
+    /// mesmo caminho em 12 e em 24 eventos dá o MESMO deslocamento máximo
+    /// (`0,600000` nos dois), enquanto o irmão que viaja dá `0,599054` contra
+    /// `0,595226`.
+    ///
+    /// ⚠️⚠️ **A força entra ao QUADRADO, e isto não é herança — é medição:**
+    /// com o slider a `0,5` o pico cai para **exactamente `1/4`**. Na nossa
+    /// cadeia isso sai de graça e por construção: o alvo leva UM
+    /// [`crate::Brush::weight`] e o aplicador multiplica pelo `accum`, que já
+    /// carrega o outro. ⛔ **Não generalize:** o agarrar e o gancho são
+    /// LINEARES no mesmo slider (`docs/3D/cleanroom/SPEC_pull_brushes.md` §3),
+    /// e quem levar o quadrado para lá erra por `2×`.
+    ///
+    /// ⚠️ **A normal que ele lê NÃO é a do plano do carimbo** — é a
+    /// [`crate::stroke_normal_do_gesto`], amostrada num raio próprio e com os
+    /// dois lados da silhueta separados.
+    ///
+    /// ⚠️ **O `Ctrl` não o inverte**: quem dá o sentido é a direcção do gesto.
+    /// Ver [`Self::honours_invert`].
+    Thumb,
+    /// **O EMPURRÃO** — a MESMA conta do [`Self::Thumb`], com a pegada a
+    /// VIAJAR: varre matéria ao longo do traço em vez de espalmar um sítio.
+    ///
+    /// ⭐⭐ **A fórmula é a mesma, letra por letra** (a parte tangencial do
+    /// gesto vezes a força efectiva) — o que muda são **três** coisas, e as
+    /// três já são vocabulário desta casa: o puxão é o INCREMENTO e não o
+    /// total, a pegada anda com o cursor, e o peso mede-se na pose VIVA. Isso é
+    /// exactamente o [`Grip::Hook`] ⇒ **zero modelo novo**.
+    ///
+    /// ⚠️ **Voltar pelo mesmo caminho NÃO devolve o barro** (medido no oráculo:
+    /// o pico fica em `0,259160` depois da ida e da volta, não em zero) — é uma
+    /// integral de linha, que é o que o doc do [`Grip::Hook`] já promete.
+    ///
+    /// ⚠️ **A paridade está fechada no PLANO e ABERTA na superfície curva**
+    /// (`~10 %`), e a causa **não é a lei**: quatro variantes da normal foram
+    /// medidas e dão o mesmo resíduo. O que falta é o centro que o oráculo de
+    /// facto usou em cada evento — ele reamostra a superfície VIVA, que se
+    /// deforma debaixo do traço. Ver a espec §6.3.
+    Nudge,
 }
 
 impl Verb {
     /// Todos, na ordem em que a UI os lista.
-    pub const ALL: [Self; 24] = [
+    pub const ALL: [Self; 26] = [
         Self::Draw,
         Self::Inflate,
         Self::Smooth,
@@ -377,6 +427,8 @@ impl Verb {
         Self::SurfaceSmooth,
         Self::Layer,
         Self::Cloth,
+        Self::Thumb,
+        Self::Nudge,
     ];
 
     /// O nome que a UI mostra.
@@ -407,6 +459,8 @@ impl Verb {
             Self::SlideRelax => "Slide Relax",
             Self::SurfaceSmooth => "Surface Smooth",
             Self::Layer => "Layer",
+            Self::Thumb => "Thumb",
+            Self::Nudge => "Nudge",
         }
     }
 
@@ -496,6 +550,13 @@ impl Verb {
             Self::Cloth => Grip::Simulate,
             Self::Move => Grip::Hold,
             Self::SnakeHook => Grip::Hook,
+            // ⭐⭐ **OS DOIS GESTOS TANGENCIAIS NÃO TRAZEM GRIP NOVO**, e é o
+            // achado que os torna baratos: o que os separa um do outro é
+            // exactamente o que já separa o agarrar do gancho — de que pose a
+            // pegada é medida e se o puxão é o TOTAL ou o INCREMENTO. A conta
+            // do deslocamento é a mesma nos dois.
+            Self::Thumb => Grip::Hold,
+            Self::Nudge => Grip::Hook,
             Self::Twist => Grip::Turn(Amount::Angle),
             Self::LocalScale => Grip::Turn(Amount::Fraction),
             // O CARIMBO: a faixa compõe sobre a lista de dabs como o Draw.

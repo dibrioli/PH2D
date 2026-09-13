@@ -58,7 +58,7 @@ pub const SCULPT3D_SEC_BAKE: NodeId = hash_node_id("sculpt3d.sec.bake");
 /// ⚠️ **O tamanho é o do `Verb::ALL`, e o gate o compara** — um verbo novo sem
 /// chip aqui é uma ferramenta que o artista não alcança, que é exatamente o que
 /// aconteceu com o `Magnify` antes de ele ganhar a tecla `A`.
-pub const SCULPT3D_VERB: [NodeId; 24] = [
+pub const SCULPT3D_VERB: [NodeId; 26] = [
     hash_node_id("sculpt3d.verb.0"),
     hash_node_id("sculpt3d.verb.1"),
     hash_node_id("sculpt3d.verb.2"),
@@ -83,6 +83,8 @@ pub const SCULPT3D_VERB: [NodeId; 24] = [
     hash_node_id("sculpt3d.verb.21"),
     hash_node_id("sculpt3d.verb.22"),
     hash_node_id("sculpt3d.verb.23"),
+    hash_node_id("sculpt3d.verb.24"),
+    hash_node_id("sculpt3d.verb.25"),
 ];
 
 /// **A REFERÊNCIA que o verbo corrente segue** — os chips `S` · `B` · `L`.
@@ -122,6 +124,14 @@ pub const SCULPT3D_SCRAPE_DYNAMIC: NodeId = hash_node_id("sculpt3d.scrape_dynami
 /// **A ESPESSURA DA DEMÃO** — o slider e o chip numérico do
 /// `ph2d_sculpt3d::Verb::Layer`.
 pub const SCULPT3D_LAYER_HEIGHT: NodeId = hash_node_id("sculpt3d.layer_height");
+
+/// **A FRACÇÃO DO RAIO QUE A NORMAL DO GESTO LÊ** — o slider e o chip numérico
+/// do `ph2d_sculpt3d::Brush::normal_radius_frac`, que só o polegar e o empurrão
+/// consomem.
+pub const SCULPT3D_NORMAL_RADIUS: NodeId = hash_node_id("sculpt3d.normal_radius");
+
+/// A caixa numérica da fracção acima — o par que toda row de knob tem.
+pub const SCULPT3D_NORMAL_RADIUS_NUM: NodeId = hash_node_id("sculpt3d.normal_radius.num");
 
 /// O chip numérico da espessura da demão.
 pub const SCULPT3D_LAYER_HEIGHT_NUM: NodeId = hash_node_id("sculpt3d.layer_height.num");

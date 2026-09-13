@@ -108,6 +108,32 @@ pub struct SculptStroke {
     accum: Vec<f32>,
     target: Vec<[f32; 3]>,
     footprint: Vec<u32>,
+    /// **A PEGADA DO PEN-DOWN**, para os gestos que a CONGELAM.
+    ///
+    /// ⚠️⚠️ **Ela existe porque a pegada normal sai das posições VIVAS, e num
+    /// gesto que desloca o barro `0,38` num pincel de raio `0,35` isso deixa de
+    /// ser inócuo:** os vértices que o próprio gesto levou saem do raio da
+    /// consulta, o conjunto amostrado encolhe, e a normal da área — que é uma
+    /// média sobre ele — **muda com o comprimento do traço**. O efeito é
+    /// invisível num plano (ali toda normal é a mesma) e MEDIDO numa esfera:
+    /// `8,5e-3` de desvio contra o oráculo no traço inteiro, contra `1,5e-4`
+    /// truncado a 8 eventos.
+    ///
+    /// ⚠️ **Só o [`crate::Verb::Thumb`] a lê hoje**, e a cerca é deliberada: o
+    /// [`crate::Verb::Move`] tem a mesma forma e o mesmo defeito **provável**,
+    /// mas é um verbo que já shipa, com corpus próprio por correr — mudá-lo
+    /// aqui seria alterar produto a partir de uma inferência. *A fixture que o
+    /// decide existe* (o oráculo gravou o agarrar), e a pergunta está nomeada.
+    ///
+    /// ⛔⛔ **A CHAVE É O CENTRO, e ela nasceu de um gate que reprovou:** a
+    /// primeira versão guardava UMA pegada por traço, e a simetria corre o
+    /// mesmo traço espelhado — a segunda passagem reusava a pegada da primeira
+    /// e só metade da malha se mexia. O censo
+    /// `every_verb_inherits_symmetry_from_the_one_place_it_is_expanded` apanhou
+    /// no minuto seguinte. ⇒ uma entrada por PASSAGEM, e o centro espelhado é
+    /// a identidade natural dela: constante ao longo do gesto, distinto entre
+    /// passagens, sem ninguém ter de propagar um índice até aqui.
+    pegada_ancorada: Vec<([f32; 3], Vec<u32>)>,
     moved: Vec<u32>,
     query: QueryScratch,
     /// Os buffers do passeio pela superfície — ver [`crate::dab_alcance`].
@@ -361,6 +387,9 @@ impl SculptStroke {
         // primeiro dab apontaria para onde a mão ia no gesto passado, que é um
         // lugar arbitrário.
         self.last_center = None;
+        // ⚠️ **Nem a pegada congelada** — ela é do GESTO, e um traço novo
+        // escolhe a dele no próprio pen-down.
+        self.pegada_ancorada.clear();
         // ⚠️ **Nem a inclinação**, e a referência faz o mesmo (*Clay Thumb*:
         // a inclinação volta a zero no primeiro passo do traço).
         // Sem ela o segundo traço começaria de onde o primeiro parou, e o
@@ -435,6 +464,13 @@ mod probe;
 /// os dezasseis, *que forma a superfície tem* é uma pergunta só.
 #[path = "stroke_plane.rs"]
 mod plane;
+
+/// **A NORMAL QUE OS GESTOS TANGENCIAIS LEEM** — ver [`normal_do_gesto`]. Irmã
+/// do [`plane`], e o corte é o SUJEITO: lá a superfície sob a pegada inteira,
+/// com o peso da máscara; aqui a superfície sob o MIOLO (uma fracção do raio),
+/// com a curva suave fixa e os dois lados da silhueta em baldes separados.
+#[path = "stroke_normal_do_gesto.rs"]
+mod normal_do_gesto;
 
 /// **A SUPERFÍCIE LOCAL do `l-mode`** — ver [`surface`]. Irmão do [`plane`], e o
 /// corte são dois PAPERS: lá o plano da pegada por média de posições e normais

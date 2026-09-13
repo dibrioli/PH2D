@@ -38,9 +38,34 @@ impl SculptStroke {
         // suporte, e espremê-lo dentro do círculo do cursor é o que fazia o
         // `l-mode` do Grab desenhar uma agulha (ver [`crate::KELVINLET_REACH`]).
         let query_r = brush.query_radius(dab.radius);
-        mesh.verts_in_sphere(dab.center, query_r, &mut self.query, &mut self.footprint);
+        // ⭐⭐ **O POLEGAR CONGELA A PEGADA NO PEN-DOWN** — ver
+        // [`SculptStroke::pegada_ancorada`], onde o mecanismo e o número estão.
+        // Em duas linhas: a consulta é feita nas posições VIVAS, e um gesto que
+        // desloca o barro quase um raio leva os próprios vértices para fora
+        // dela; a normal da área, que é uma média sobre a pegada, passaria a
+        // depender de QUANTOS eventos o traço teve — o que num gesto ancorado é
+        // precisamente a propriedade que ele não pode ter.
+        // ⚠️ **A chave é o CENTRO — uma pegada por PASSAGEM de simetria**, senão
+        // a passagem espelhada herda a pegada da primeira e só metade da malha
+        // se mexe (ver o doc do campo: um censo já reprovou por isso).
+        let congela = matches!(brush.verb, Verb::Thumb);
+        let guardada = congela
+            .then(|| {
+                self.pegada_ancorada
+                    .iter()
+                    .position(|(c, _)| *c == dab.center)
+            })
+            .flatten();
+        match guardada {
+            Some(i) => self.footprint.clone_from(&self.pegada_ancorada[i].1),
+            None => mesh.verts_in_sphere(dab.center, query_r, &mut self.query, &mut self.footprint),
+        }
         if self.footprint.is_empty() {
             return 0;
+        }
+        if congela && guardada.is_none() {
+            self.pegada_ancorada
+                .push((dab.center, self.footprint.clone()));
         }
         // ⭐⭐⭐ **A MÁSCARA DE ALCANCE** — quem a superfície não liga sai da
         // pegada, e o PESO de quem fica não muda um bit
@@ -66,6 +91,15 @@ impl SculptStroke {
         }
 
         let plane = self.fit_plane(mesh, brush, dab);
+        // ⚠️ **A guarda é o VERBO, e não um `Option` preguiçoso computado
+        // sempre:** esta é a segunda varredura da pegada de um dab, e os outros
+        // vinte e quatro verbos não a leem. Pagá-la para todos seria dobrar o
+        // custo geométrico de cada carimbo para servir dois.
+        let n_gesto = if matches!(brush.verb, Verb::Thumb | Verb::Nudge) {
+            self.normal_do_gesto(mesh, brush, dab)
+        } else {
+            None
+        };
         // ⚠️ **A preparação do HC, irmã do `fit_plane` e do `alpha_frame`:** uma
         // vez por dab, antes de qualquer escrita, porque as duas linhas da lei
         // dele só leem o estado de ANTES do dab. No-op para os outros vinte e um
@@ -459,6 +493,7 @@ impl SculptStroke {
                     brush,
                     dab,
                     &plane,
+                    n_gesto,
                     reach,
                     shape * pass.weight,
                     w * pass.weight,

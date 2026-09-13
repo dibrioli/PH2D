@@ -233,7 +233,14 @@ const fn profile_s(verb: Verb) -> Option<VerbProfile> {
         // `None` cobra o mesmo que no vizinho: o SculptGL tem o laplaciano cru e
         // nada que devolva o volume, então força e curva de fábrica são NOSSAS.
         | Verb::SurfaceSmooth
-        | Verb::Layer => return None,
+        | Verb::Layer
+        // ⚠️ **Nem o POLEGAR nem o EMPURRÃO** — idem, a sétima e a oitava vez a
+        // mesma frase: os dois são da referência restrita e o SculptGL não tem
+        // gesto nenhum que leve só a componente TANGENCIAL do puxão (o `Move.js`
+        // leva o vector inteiro). ⇒ força e curva de fábrica são NOSSAS, e o
+        // `unwrap_or` do [`Verb::default_strength`] é a resposta honesta.
+        | Verb::Thumb
+        | Verb::Nudge => return None,
     };
     Some(p)
 }

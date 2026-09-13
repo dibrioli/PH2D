@@ -56,6 +56,7 @@ mod mede_o_filtro_de_tecido;
 mod mede_o_tecido_que_atravessa_os_gestos;
 mod mede_o_tecido_que_estica;
 mod o_produto_corre_a_lei;
+mod oraculo_dos_gestos_tangenciais;
 mod probe_cloth_front;
 mod probe_layer_product;
 mod sculptgl_parity;

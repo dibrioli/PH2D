@@ -192,6 +192,8 @@ mod fase_canvas_overlays;
 mod fase_chrome_clock;
 /// Fase do quadro: a paleta de componentes.
 mod fase_component_palette;
+/// Fase do quadro: os verbos de componente.
+mod fase_component_verbs;
 /// Fase do quadro: o composto, os encaixes e as reguas.
 mod fase_compound_snap_rulers;
 /// Fase do quadro: o conector e os parametros de forma.
@@ -5000,66 +5002,10 @@ impl crate::App {
                     self.ui_states_anchor = None;
                 }
             }
-            if let Some(verb) = pending_component {
-                let sel: Vec<ph2d_vec_scene::VecPathId> = self.vec.pen.selected_paths().to_vec();
-                // ⭐⭐⭐ **O CLIQUE da secção *Prefab*, e há UM motor** (F4.6c fechada, 2026-09-07).
-                //
-                // ⚠️ **Aqui viveu um `if armed() { … } else { … }`** — o modelo geral de um lado e o
-                // motor `VecInstance` do outro, com uma variável de ambiente a escolher. O `else`
-                // morreu com a fatia: *dois motores para o mesmo estado é pior que um motor lento*,
-                // e a régua de que nada se perdeu está em `instance_piece_override_tests.rs`, que a
-                // wave anterior escreveu **como pré-condição desta**.
-                //
-                // ⚠️ **O sujeito resolve-se ANTES dos documentos** — o mapa `path ⟺ entidade`
-                // entra no `OwnedDocs` emprestado mutavelmente, e pedi-lo outra vez lá dentro
-                // seria o segundo empréstimo.
-                //
-                // ⚠️ **Pela MESMA função que a secção usa para se MOSTRAR** — duas resoluções
-                // dariam um botão oferecido sobre o grupo e um clique a agir sobre um filho.
-                let subject = crate::vec_component_general::subject_of(
-                    &self.vec.entities,
-                    &sel,
-                    (hero.gizmo.selected_len() == 1)
-                        .then_some(hero.gizmo.selection)
-                        .flatten(),
-                );
-                let step = crate::input_dispatch::screen_offset_world(
-                    camera,
-                    window_size,
-                    crate::input_dispatch::PASTE_OFFSET_PX,
-                );
-                let mut select_out = None;
-                let mut arm_pick = false;
-                if let Some(subject) = subject {
-                    let mut docs = ph2d_app_components::instance_docs::OwnedDocs {
-                        vec_scene,
-                        vec_entities: &mut self.vec.entities,
-                    };
-                    if crate::vec_component_general::dispatch(
-                        verb,
-                        sim,
-                        component_registry,
-                        &mut self.instance_echo,
-                        subject,
-                        toasts,
-                        &mut docs,
-                        [step.0 as f32, step.1 as f32],
-                        &mut select_out,
-                        &mut arm_pick,
-                    ) {
-                        self.title_dirty = true;
-                    }
-                }
-                if let Some(bits) = select_out {
-                    hero.gizmo.replace_selection(Some(bits));
-                }
-                // ⭐⭐ **A shell só ESCREVE o pick — quem decide é o módulo do modo.** O
-                // `PathPick` vive no `App`, e por isso o dreno não lhe chega; mas a pergunta
-                // *«este verbo abre o gesto de duas mãos?»* é lei do modo, e fica lá.
-                if arm_pick && let Some(&at) = sel.first() {
-                    self.vec.path_pick = Some(crate::vec_pick::PathPick::InstanceMain(at));
-                }
-            }
+            self.fase_component_verbs(
+                fase_component_verbs::ComponentVerbsIntents { pending_component },
+                window_size,
+            );
             if self
                 .fase_vec_expand(fase_vec_expand::VecExpandIntents { pending_vec_expand })
                 .is_none()

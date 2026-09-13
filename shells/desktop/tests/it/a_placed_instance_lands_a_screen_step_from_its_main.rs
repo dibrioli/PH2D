@@ -42,9 +42,12 @@ fn src(name: &str) -> String {
 /// fonte da shell (vive dentro do dreno) e passou a ter régua de COMPORTAMENTO, em
 /// `instance_verbs_tests::no_two_copies_of_a_recipe_ever_land_on_each_other`. *Um censo textual
 /// que persegue uma lei para dentro de outra crate mede o nome dela, não o efeito.*
+///
+/// ⚠️ O sítio que despacha é o QUADRO pela ordem em que corre (`frame_text::render_frame`): desde a OBRA 2 da
+/// `line/render-loop` (2026-09-13) o bloco do verbo de prefab mora numa fase, e a janela abre-se onde ele está.
 #[test]
 fn the_place_step_comes_from_the_camera_not_from_a_constant() {
-    let s = src("render_loop/mod.rs");
+    let s = crate::frame_text::render_frame();
     let Some(at) = s.find("let subject = crate::vec_component_general::subject_of(") else {
         panic!("o sítio que despacha o verbo de prefab mudou de forma — reancore este gate");
     };

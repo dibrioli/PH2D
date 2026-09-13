@@ -35,11 +35,18 @@ fn src(name: &str) -> String {
 /// `vec_component_general::swap_by_pick`. ⭐ **A lei ficou mais forte com a troca** — o alvo do
 /// modelo geral é *uma CÓPIA do prefab que se quer*, porque a receita está escondida do canvas e
 /// clicar nela é impossível.
+///
+/// ⚠️ O arm é lido no QUADRO pela ordem em que corre (`frame_text::render_frame`): desde a OBRA 2 da
+/// `line/render-loop` (2026-09-13) o bloco dos verbos de prefab mora numa fase.
 #[test]
 fn the_swap_arms_the_modal_pick_and_the_click_resolves_it() {
-    let s = src("render_loop/mod.rs");
+    let s = crate::frame_text::render_frame();
+    // ⛔ **A agulha é a ESCRITA do pick, não o nome dele** (P6b da `line/render-loop`, 2026-09-13): ela era
+    // `PathPick::InstanceMain(` e a prova de mutação que tirou o ARM do quadro SOBREVIVEU — o nome aparece também onde o
+    // quadro LÊ o pick armado (`Some(crate::vec_pick::PathPick::InstanceMain(_))`, na fase do painel da selecção). Uma
+    // agulha que casa com a leitura aprova um botão que já não arma nada. Pré-existente: o `mod.rs` tinha os dois.
     assert!(
-        s.contains("crate::vec_pick::PathPick::InstanceMain("),
+        s.contains("path_pick = Some(crate::vec_pick::PathPick::InstanceMain("),
         "o Swap deixou de armar o pick modal: o botão acende e não leva a lado nenhum"
     );
     let d = src("input_dispatch.rs");

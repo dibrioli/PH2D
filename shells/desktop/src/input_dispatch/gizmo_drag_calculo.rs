@@ -8,7 +8,7 @@ use crate::Transform;
 impl crate::App {
     /// Do `new_t` aos valores da escrita: a escala uniforme de uma selecção rodada, os factores, a rotação que atravessa
     /// a costura do `atan2` sem saltar, o `delta_rot` — e a escrita.
-    pub(super) fn ramo_gizmo_factores(
+    pub(super) fn ramo_gizmo_escala_e_rotacao(
         &mut self,
         drag: ph2d_editor_core::GizmoDragState,
         entity: ph2d_ecs::Entity,
@@ -302,7 +302,7 @@ impl crate::App {
                     .snap_world(new_t.translation, sprite_half_new);
                 new_t
             };
-            self.ramo_gizmo_factores(drag, entity, new_t, is_scale);
+            self.ramo_gizmo_escala_e_rotacao(drag, entity, new_t, is_scale);
         }
     }
 

@@ -50,7 +50,7 @@
 //! mesma porta, `RefMode::field`, que a largura do campo já segue), e o
 //! **Falloff** é pintado sempre, por uma cerca com motivo escrito —
 //! `the_basic_level_never_hides_the_curve_that_shapes_the_dab`, que porta a
-//! decisão do Blender (*o `FalloffPanel` é dobrado, nunca ausente*).
+//! decisão do Blender (*o painel de queda é dobrado, nunca ausente*).
 //!
 //! Rodar: `bash scripts/cargo-test-narrow.sh ph2d-sculpt3d`
 

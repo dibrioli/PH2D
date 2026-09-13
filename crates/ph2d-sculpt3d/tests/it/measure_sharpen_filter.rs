@@ -165,7 +165,7 @@ fn measure_enhance_details_against_negative_smooth() {
     println!("        0,00 | {:>8.6} | {:>10.3e} |", 0.0, max_dev(&r, &o));
 
     println!("\n=== O TETO: o que o clamp de (−1, 1) do nosso Smooth deixa de fora ===");
-    println!("  (a referência NÃO clampa o ENHANCE_DETAILS -- ver `clamp_factors`)");
+    println!("  (a referência NÃO clampa o factor do realce de detalhes)");
     println!("\n  força pedida | excursão nossa | excursão da referência");
     for s in [1.0f32, 1.5, 2.0, 3.0] {
         let r = reference_enhance_details(&pre, &mesh, s);

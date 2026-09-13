@@ -115,22 +115,22 @@ fn every_blender_preset_is_the_formula_the_reference_writes() {
     // Cada linha: o preset, a nossa curva, e a expressão do C em `u`.
     #[allow(clippy::type_complexity)]
     let table: [(&str, Falloff, fn(f32) -> f32); 9] = [
-        ("BRUSH_CURVE_CONSTANT", Falloff::Constant, |_u| 1.0),
-        ("BRUSH_CURVE_LIN", Falloff::Linear, |u| u),
-        ("BRUSH_CURVE_SHARP", Falloff::Sharp, |u| u * u),
-        ("BRUSH_CURVE_POW4", Falloff::Sharper, |u| u * u * u * u),
-        ("BRUSH_CURVE_ROOT", Falloff::Root, f32::sqrt),
+        ("Falloff «Constant»", Falloff::Constant, |_u| 1.0),
+        ("Falloff «Linear»", Falloff::Linear, |u| u),
+        ("Falloff «Sharp»", Falloff::Sharp, |u| u * u),
+        ("Falloff «Sharper»", Falloff::Sharper, |u| u * u * u * u),
+        ("Falloff «Root»", Falloff::Root, f32::sqrt),
         // ⚠️ A transcrição do C, NÃO a nossa forma reduzida.
-        ("BRUSH_CURVE_SPHERE", Falloff::Sphere, |u| {
+        ("Falloff «Sphere»", Falloff::Sphere, |u| {
             (2.0 * u - u * u).sqrt()
         }),
-        ("BRUSH_CURVE_INVSQUARE", Falloff::InvSquare, |u| {
+        ("Falloff «Inv Square»", Falloff::InvSquare, |u| {
             u * (2.0 - u)
         }),
-        ("BRUSH_CURVE_SMOOTH", Falloff::Smooth, |u| {
+        ("Falloff «Smooth»", Falloff::Smooth, |u| {
             3.0 * u * u - 2.0 * u * u * u
         }),
-        ("BRUSH_CURVE_SMOOTHER", Falloff::Smoother, |u| {
+        ("Falloff «Smoother»", Falloff::Smoother, |u| {
             u * u * u * (u * (u * 6.0 - 15.0) + 10.0)
         }),
     ];

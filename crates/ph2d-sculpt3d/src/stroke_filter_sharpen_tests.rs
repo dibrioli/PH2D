@@ -307,7 +307,7 @@ fn the_sharpen_raises_the_step_between_neighbours_instead_of_flattening_it() {
     assert!(
         ratio > 1.0,
         "a lei ALISOU em vez de afiar: o degrau foi a {ratio:.4}× \
-         (é a assinatura do `sharpen_factor` recomputado por sub-passo)"
+         (é a assinatura do factor de afiação do pré-passe recomputado por sub-passo)"
     );
 
     // ⚠️ **O CONTROLE, e ele é a metade que dá sentido à primeira:** o mesmo

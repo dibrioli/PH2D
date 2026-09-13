@@ -224,7 +224,7 @@ fn the_layer_is_born_with_the_numbers_the_smoke_approved() {
     );
     assert!(
         Verb::Layer.default_hardness() > 0.0,
-        "a dureza da demão colapsou no neutro do apply_hardness_to_distances"
+        "a dureza da demão colapsou no neutro da dureza aplicada às distâncias do dab"
     );
     // E o alisamento é ZERO de propósito — o neutro do Blender.
     assert!(

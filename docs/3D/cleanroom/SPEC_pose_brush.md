@@ -8,8 +8,8 @@
 | **Licença** | **GPL-2.0-or-later** (`COPYING` da raiz, lido 2026-09-13) · **Degrau: T2** |
 | **Ledger** | [`LEDGER_blender-pose.md`](LEDGER_blender-pose.md), aberto 2026-09-13 (⛔ o Implementador não o abre) |
 | **Patente (§8.1)** | buscado 2026-09-13 — termos e tabela no ledger. ⭐ **Nenhuma patente viva alcança o método.** A mais próxima (máscara topológica + linha de acção do *Transpose*, **US 9 460 556 B2**, Pixologic) está **EXPIRADA** por falta de anuidade ⇒ literatura livre. Duas cercas nomeadas: ⛔ nunca implementar «derreter de volta a uma pose de repouso por comparação com uma pose atractora» (US 8 704 828 B1, Pixar, viva até 2031) · ⛔ nunca implementar um modo elástico por Kelvinlet dentro deste pincel (US 10 586 401 B2, Pixar, viva até 2038) |
-| **Filtragem §4.3** | executada 2026-09-13 · **Sweep:** verde em 2026-09-13 |
-| **Auditoria §4.2 (R-pré)** | ⛔⛔ **executada 2026-09-13 — NÃO ATESTADA.** Subagente R-pré independente (contexto novo, viu os dois lados), **6 achados** devolvidos ao E, **4 substanciais**: a espec carrega **expressão do alvo** em §3, §8 e §5.1 (prosa de comentário re-dita por tradução; uma fase escrita como sequência de atribuições), e atribui **dois factos a comentários do fonte** em §2.4 e §5.2 (§4.3: um número vem de fórmula, medição ou decisão nossa — nunca de prosa lida). ⚠️ **A janela NÃO implementa** — E reescreve os seis sítios e uma NOVA passagem de R-pré atesta. Veredictos em [`LEDGER_blender-pose.md` §Papel R](LEDGER_blender-pose.md) |
+| **Filtragem §4.3** | executada 2026-09-13 (v2) · **Sweep:** verde em 2026-09-13, **com controlo positivo** — a vassoura cobre agora as **duas línguas** e acusa `5` achados na v1 desta espec, `0` nesta |
+| **Auditoria §4.2 (R-pré)** | ⛔ a **v1 NÃO foi atestada** (6 achados, 4 substanciais); esta é a **v2**, reescrita pela regra do arquivo fechado. ⏳ Aguarda **R-pré novo** — condição para abrir a janela que implementa |
 | **Mapa de leitura da literatura** | não há paper. A literatura livre é: (a) as **issues públicas** do rastreador do alvo, citadas por número no §15 — são a fonte da sabedoria dos autores (§4.1.12); (b) a documentação de utilizador pública do alvo (factos, nunca o *wording*); (c) a patente expirada acima. ⛔ **A PULAR:** qualquer *code search*, espelho de fonte, ou o repositório do alvo |
 | **Denylist de URLs** | `projects.blender.org/blender/blender` (e `/src/`, `/raw/`, `/commit/`) · `github.com/blender/blender` e espelhos · `developer.blender.org/D*` (revisões diferenciais = diffs) · qualquer *grep.app* / *searchcode* / *sourcegraph* sobre o alvo. ⭐ **PERMITIDO:** `projects.blender.org/blender/blender/issues/<n>` (texto de utilizadores e triagem — é o que o §15 cita) e `docs.blender.org` (manual, para FACTOS) |
 
@@ -74,7 +74,7 @@ falam deles, e são os nomes que a nossa implementação deve usar. As faixas e 
 | **simetria de espelho X/Y/Z** | §8 |
 | **«só conectado»** / **distância máxima entre peças** | §2.4 |
 | **travas de eixo / recorte do modificador de espelho** | aplicados ao deslocamento final (§7.4) |
-| **alvo da deformação** | `GEOMETRY` (mexe nos vértices) ou o alvo de simulação de tecido. Só o primeiro é especificado aqui |
+| **alvo da deformação** | **a geometria** (o pincel move os vértices) ou a simulação de tecido. Só o primeiro é especificado aqui |
 
 ### §1.3 — Controlos que este pincel **NÃO** lê (medido — a ausência é o facto)
 
@@ -110,13 +110,30 @@ Saída: uma **origem** `O₀` (o pivô) e um **peso** por vértice, em `[0,1]`.
 
 ### §2.1 — A semente
 
-1. Achar o vértice mais próximo de `C` — busca **sem limite de distância**, sobre as posições
-   **do início do traço**, saltando vértices escondidos.
-2. A semente é esse vértice **mais**, para cada combinação de eixos de simetria activa, o vértice
-   mais próximo da imagem espelhada dele — **e só se essa distância for menor que `R`**.
-3. A lista de sementes é **ordenada por índice crescente** antes de começar.
-   ⚠️ Isto é uma exigência de **determinismo**, não um detalhe: a ordem de visita decide qual
-   vértice fica registado como «o mais afastado» (§2.3) em caso de empate.
+⚠️⚠️ **São DUAS grandezas distintas, e a 1.ª redacção desta espec descrevia-as como uma.** Elas
+coincidem em todas as fixturas publicadas, mas **não por construção**:
+
+| | o que é | o que faz |
+|---|---|---|
+| **o vértice ELEITO** | o vértice que a amostragem do ponteiro elege sobre a superfície sob o cursor | **semeia a varredura** (§2.2), junto com os espelhos dele |
+| **o mais-próximo GLOBAL** | o vértice mais próximo de `C` por uma busca **sem limite de distância**, sobre as posições do **início do traço**, saltando escondidos | recebe **peso `1`** antes de a varredura começar |
+
+A semente da varredura é, então: **o vértice eleito**, mais — para cada combinação de eixos de
+simetria activa — o vértice mais próximo da imagem espelhada dele, **e só se essa distância for
+menor que `R`**. A lista é **ordenada por índice crescente** antes de começar.
+⚠️ A ordenação é exigência de **determinismo**: a ordem de visita decide qual vértice fica
+registado como «o mais afastado» (§2.3) em caso de empate.
+
+⭐ **O peso posto pelo mais-próximo global é OBSERVACIONALMENTE INERTE neste corpus, e isso é
+medido:** em **`69` de `69`** fixturas a varredura alcança esse vértice — e a varredura põe peso `1`
+em tudo o que visita —, logo apagar esse pré-peso do modelo de referência muda a saída em
+**`0,000e+00`** nas quatro fixturas testadas. ⇒ **as duas grandezas só se separam quando o
+mais-próximo global NÃO é alcançável a partir do eleito** — outra peça da malha, ou uma peça mais
+perto no espaço do que a que está sob o cursor, com a ligação entre peças (§2.4) desligada.
+⏳ **Nomeado e por fechar:** o corpus não tem essa fixtura. Ela é construtível (cursor sobre uma
+peça, outra peça mais perto em 3D, «só conectado» ligado) e é o que falta para decidir se o
+pré-peso é uma ilha de influência real ou lixo inerte. ⛔ **Não é** o que explica o resíduo aberto
+da §12.3 — isso foi medido e está lá.
 
 ### §2.2 — A travessia
 
@@ -125,14 +142,18 @@ vizinho de outro quando partilham uma aresta de alguma face visível; a lista de
 vértice constrói-se percorrendo as faces incidentes e tomando, em cada face, os **dois** vértices
 adjacentes a ele no anel da face, **sem repetir** (isso suporta topologia não-manifold).
 
-Ao **visitar** um vértice `v` (cada vértice é visitado no máximo uma vez):
+A travessia parte a malha em três conjuntos, e é deles que tudo o resto se deriva. Seja
+`dentro(v)` o predicado *«`v` está **estritamente** a menos de `R` de `C` ou de alguma imagem
+espelhada válida de `C`»* (§12.1 — a comparação é estrita e em `f32`):
 
-1. **peso[v] ← 1**;
-2. actualizar o candidato a origem de recurso (§2.3);
-3. **decidir se a travessia continua por `v`:** continua **se e só se** `v` estiver
-   **estritamente dentro** do raio, medido a `C` **ou** a qualquer imagem espelhada válida de `C`;
-4. se **não** continuar — isto é, se `v` é a **franja imediatamente fora** da região — e se `v`
-   passar no **teste de lado** (§2.5), então `v` entra numa **média de posições**.
+| conjunto | definição | o que produz |
+|---|---|---|
+| **visitados** | os vértices alcançáveis a partir da semente por uma cadeia de vizinhos em que **todos os elos anteriores** satisfazem `dentro` | cada um recebe **peso `1`** |
+| **interior** | os visitados que satisfazem `dentro` | são os únicos por onde a travessia continua |
+| **franja** | os visitados que **não** satisfazem `dentro` — o primeiro anel para lá do raio | os que passam no **teste de lado** (§2.5) entram na **média que dá o pivô** (§2.3) |
+
+⚠️ Cada vértice entra nos conjuntos **uma vez só**; a ordem de visita é FIFO e importa apenas para
+o desempate do §2.3.
 
 ### §2.3 — A origem
 
@@ -160,10 +181,11 @@ desligadas da malha, e a travessia atravessa-as:
 emparelhamento óptimo, e a escolha de quem fica com quem depende da ordem. Os autores registam o
 sintoma: com muitas peças, a deformação sai com picos e inconsistente
 ([issue #133739](https://projects.blender.org/blender/blender/issues/133739)).
-⚠️ **Custo:** esta construção é **quadrática no número de vértices** — os próprios autores o
-escrevem no código, e é a causa das travadas relatadas em
-[#128329](https://projects.blender.org/blender/blender/issues/128329) e
-[#127259](https://projects.blender.org/blender/blender/issues/127259). §13.
+⚠️ **Custo: esta construção é quadrática no número de vértices.** A proveniência é **pública e
+observável** — o relato de [#128329](https://projects.blender.org/blender/blender/issues/128329) é
+que, com esta opção desligada, **cada** movimento de câmara volta a pagar a construção e o editor
+engasga a cada zoom/pan; o de [#127259](https://projects.blender.org/blender/blender/issues/127259)
+é o mesmo custo numa malha densa. §13.
 
 ### §2.5 — O teste de lado (usado em §2.2, §3 e em mais lado nenhum)
 
@@ -190,10 +212,12 @@ Se `d ≠ 0`:
 
 ## §3 — Fase B: os segmentos seguintes
 
-Só corre se a cadeia tiver mais de um segmento. ⚠️ **Nos modos de escala e de espremer/esticar a
-cadeia é forçada a UM segmento**, qualquer que seja o valor do controlo — escalar vários segmentos
-ao mesmo tempo não é suportado porque o solver não sabe lidar com segmentos que mudam de
-comprimento.
+Só corre se a cadeia tiver mais de um segmento.
+
+⚠️ **Requisito: nos modos de escala e de espremer/esticar a cadeia tem exactamente UM segmento**,
+seja qual for o valor do controlo. *Observado:* `figura_escalar_braco_ik3` e
+`figura_esticar_braco_ik3` pedem `3` segmentos no cabeçalho e produzem a mesma cadeia de um
+segmento que as fixturas de `1`.
 
 O comprimento-alvo de cada segmento é `L = R · (1 + d)`.
 
@@ -273,26 +297,41 @@ Seja `s` a força efectiva (§1.3) e `T = C + G·s` o **alvo**.
 
 ### §5.1 — Rotação (cadeia de cinemática inversa)
 
-Para cada segmento `i`, **do mais próximo do cursor para o mais distante**:
+Os segmentos resolvem-se **do mais próximo do cursor para o mais distante**, cada um contra um
+**alvo** `T` que começa em `C + G·s` e que **cada segmento reescreve para o seguinte**.
 
-1. `dir ← normalizar(T − origem_i)`;
-2. `rot_i ← ` a rotação que leva `normalizar(cabeça_inicial_i − origem_inicial_i)` em `dir`;
-3. `cabeça_i ← origem_i + dir · comprimento_i`;
-4. `origem_i ← origem_i + (T − cabeça_i)`;
-5. `T ← origem_i` (a origem deste segmento é o alvo do seguinte).
+Para o segmento `i`, sejam `O⁻` a origem em que o **evento anterior** o deixou (§5.1-bis) e
+`comprimento_i` o comprimento fixado no início do traço (§3.4). O evento tem de deixar o segmento
+nesta configuração:
 
-**Se ancorado:** no fim, desloca-se a cadeia **inteira** por
-`origem_inicial_do_último − origem_do_último`, de modo que a extremidade distante volte exactamente
-ao sítio onde nasceu.
+| grandeza | valor exigido | o que ela é |
+|---|---|---|
+| **direcção** `d` | `normalizar(T − O⁻)` | para onde o segmento aponta agora: do sítio onde ficou, para o alvo |
+| **rotação** `rot_i` | a rotação que leva `normalizar(cabeça_inicial_i − origem_inicial_i)` em `d` | ⚠️ medida contra o estado **INICIAL**, não contra `O⁻` — é isto que faz a deformação ser sempre a pose acumulada desde o princípio do traço, e não um incremento |
+| **origem** `origem_i` | `T − d · comprimento_i` | ⭐ a origem é posta de modo que **um segmento do comprimento original, apontado ao longo de `d`, tenha a ponta distante exactamente em `T`** |
+| **cabeça** `cabeça_i` | `O⁻ + d · comprimento_i` | o mesmo avanço, medido a partir da origem **ANTIGA** |
+| **alvo do seguinte** | `origem_i` | a origem deste é o alvo do próximo |
+
+⚠️⚠️ **A cabeça e a origem guardadas NÃO ficam à distância `comprimento_i` uma da outra** — elas
+são medidas a partir de origens diferentes (`O⁻` e `T`), e a separação delas vale
+`|2·comprimento_i − ‖T − O⁻‖|`. Isto é **invisível em todos os modos menos um**: a cabeça só é lida
+pelo referencial do espremer/esticar (§6), e é lá — e só lá — que a inconsistência chega a pixel.
+*Uma implementação que "corrigisse" a cabeça para `origem_i + d·comprimento_i` diverge nesse modo e
+em mais nenhum.*
+
+**Epílogo da âncora.** Com a âncora ligada, a cadeia **inteira** é a seguir deslocada pelo vector
+que devolve a origem do **último** segmento ao sítio onde ela nasceu
+(`origem_inicial_do_último − origem_do_último`), somado a `origem` **e** a `cabeça` de todos os
+segmentos. ⇒ a extremidade distante fica presa e o gesto roda a cadeia em torno dela.
 
 ⭐ **Consequência com UM segmento e âncora ligada:** a origem volta sempre ao lugar, logo a
 translação da matriz (§7.1) é nula e a deformação é **rotação pura em torno do pivô**.
 
 ### §5.1-bis — ⚠️⚠️ O solver é INCREMENTAL: a cadeia carrega estado entre eventos
 
-Repare no passo 1: `dir` sai de `origem_i` **corrente** — o valor deixado pelo evento **anterior** —,
-não de `origem_inicial_i`. Só a **rotação** (passo 2) é medida contra o estado inicial. ⇒ **este não
-é um solver fechado avaliado no deslocamento final: é uma relaxação que dá UM passo por evento do
+Repare na tabela acima: a **direcção** `d` sai de `O⁻` — a origem que o evento **anterior** deixou —
+e não de `origem_inicial_i`. Só a **rotação** é medida contra o estado inicial. ⇒ **este não é um
+solver fechado avaliado no deslocamento final: é uma relaxação que dá UM passo por evento do
 ponteiro**, partindo da configuração em que o evento anterior a deixou.
 
 **Consequências, as duas medidas:**
@@ -325,25 +364,41 @@ segmento. ⇒ recomendação: implementar o incremental (é o comportamento que 
 
 ### §5.2 — Torção (a inversão do modo de rotação)
 
-`ângulo = (x_do_ponteiro_no_primeiro_evento − x_do_ponteiro_agora) · s · 0,02` **radianos**
-(`0,02 rad` por **pixel**; a constante é do alvo, observada e confirmada pelo comentário dos
-autores).
+`ângulo = (x_do_ponteiro_no_primeiro_evento − x_do_ponteiro_agora) · s · k` **radianos**, com
+
+> ⭐ **`k = 0,020000 rad por pixel`, MEDIDO da saída do oráculo** (2026-09-13): num segmento de peso
+> `1` a deformação é uma rotação pura em torno do eixo do segmento, e o ângulo dela lê-se da malha
+> deformada. Sobre `46` vértices de peso `1`, `figura_torcer_braco_ik1` dá `+0,910416 rad` para um
+> percurso de `45,52 px` a força `1,0` ⇒ `0,020000`; `figura_torcer_braco_ik3_forca05` dá
+> `+0,455208 rad` no mesmo percurso a força `0,5` ⇒ `0,020000`. Dispersão entre vértices: `1,8e-6`.
+> *O par de fixturas mede a constante **e** confirma que a força entra linearmente.*
 
 Cada segmento `i` de `n` roda em torno do **próprio eixo inicial**
 (`normalizar(cabeça_inicial_i − origem_inicial_i)`) por `ângulo · curva(i, n)`, onde `curva` é a
 curva de atenuação do pincel avaliada com `p = 1 − i/n` (para `i ≥ n` daria `0`, o que não acontece):
 
-| preset | `curva(p)` |
+⭐ **São DEZ, e os nomes são os da casa** — o vocabulário já está fixado em
+[`crates/ph2d-sculpt3d/src/falloff.rs`](../../../crates/ph2d-sculpt3d/src/falloff.rs), onde as
+mesmas leis já vivem (o `Falloff::ALL` da casa tem `12`: estas nove mais a do SculptGL e as duas
+próprias):
+
+| curva (nome da casa) | `curva(p)` |
 |---|---|
-| `SMOOTH` (omissão) | `3p² − 2p³` |
-| `SHARP` | `p²` |
-| `SMOOTHER` | `p³(p(6p − 15) + 10)` |
-| `LIN` | `p` |
-| `CONSTANT` | `1` |
-| `ROOT` | `√p` |
-| `SPHERE` | `√(2p − p²)` |
-| `POW4` | `p⁴` |
-| `CUSTOM` | a curva autorada, avaliada em `1 − p` |
+| **Smooth** (omissão) | `3p² − 2p³` |
+| **Sharp** | `p²` |
+| **Sharper** | `p⁴` |
+| **Smoother** | `p³(6p² − 15p + 10)` |
+| **Linear** | `p` |
+| **Constant** | `1` |
+| **Root** | `√p` |
+| **Sphere** | `√(2p − p²)` |
+| **InvSquare** | `p(2 − p)` |
+| **personalizada** | a curva autorada, avaliada em `1 − p` |
+
+⚠️ **A `InvSquare` faltava à 1.ª redacção desta espec** — ela é escolhível pelo artista e este modo
+lê-a como qualquer outra. ⚠️ E a `Sphere` escreve-se `√(2p − p²)`, que é a **mesma** curva que a
+casa guarda como `√(1 − t²)` com `t = 1 − p`: *duas formas da mesma parábola* (a nota do
+`falloff.rs` documenta a álgebra, e a casa já pagou o erro de as ler como curvas diferentes).
 
 ⚠️ **A rotação guardada é a INVERSA dessa rotação** (equivalentemente, uma rotação de `−ângulo`
 em torno do mesmo eixo). As posições de cabeça e origem **não** se mexem neste modo.
@@ -386,33 +441,38 @@ Neste modo a rotação guardada de cada segmento **não é usada** como rotaçã
 
 ## §6 — Fase E: da cadeia para as matrizes
 
-Para **cada** segmento e para **cada uma das 8 «áreas de simetria»** (as combinações de sinais dos
-três eixos), constrói-se uma transformação. A área de um vértice é escolhida pelos **sinais das
-coordenadas do próprio vértice** (`< 0` liga o bit do eixo).
+Cada vértice é governado, por segmento, por **um mapa afim**. Há um mapa por segmento e por
+**octante de espelho** — as 8 combinações de sinal dos três eixos —, e o octante de um vértice é
+lido dos **sinais das coordenadas do próprio vértice** (coordenada `< 0` liga o bit do eixo).
 
-Com `q` a rotação do segmento, `O` a origem corrente, `O₀` a origem inicial, e `P` o ponto âncora do
-traço (a posição de aplicação do primeiro evento):
+**A lei, em álgebra.** Para o segmento `i` no octante `a`, com `Õ` e `Õ₀` a origem corrente e a
+inicial já espelhadas para `a`, `R` a rotação do segmento (também espelhada), `S = diag(escala)` e
+`F` o referencial local:
 
-1. **Espelhar para a área:** `q`, `O` e `O₀` são espelhados para a área em questão. A regra de
-   espelhamento de um ponto, por eixo activo: espelha **uma vez** se o bit do eixo está na área, e
-   espelha **outra vez** se a coordenada correspondente do ponto âncora for negativa (duas
-   inversões cancelam-se). Para a rotação, espelhar num eixo nega a componente do eixo no vector de
-   rotação **e** nega o ângulo.
-2. **Matriz de transformação** `M`:
-   - modo espremer/esticar: `M = identidade`;
-   - restantes: `M = matriz_de_rotação(q_espelhado)`;
-   - em ambos os casos, **as três colunas de `M` são multiplicadas pelas três componentes da escala
-     do segmento**;
-   - e `M` recebe a translação `O_espelhado − O₀_espelhado`.
-3. **Matriz de pivô** `P₄`: translação para `O_espelhado`, **pós-multiplicada** por um referencial
-   local `F`:
-   - modo espremer/esticar: `F` tem o eixo **z** igual a `normalizar(cabeça_espelhada − O_espelhado)`
-     e `x`, `y` uma base ortonormal qualquer que o complete;
-   - restantes: `F = identidade`.
-4. Guarda-se também `P₄⁻¹`.
+```
+X(p)  =  T(Õ) · F · [ R · S · T(Õ − Õ₀) ] · F⁻¹ · T(−Õ) · p
+```
 
-⚠️ **É o referencial `F` que faz o espremer/esticar agir «ao longo do osso»** e não ao longo do eixo
-z do mundo — e é por isso que naquele modo a rotação vive em `F` e não em `M`.
+— isto é: leva-se `p` ao referencial do pivô, aplica-se lá dentro *rotação, escala e a translação
+que a origem sofreu*, e devolve-se. O deslocamento do vértice é `X(p₀) − p₀`, com `p₀` a posição do
+**início do traço**.
+
+**Os dois casos, e é só nisto que os modos diferem:**
+
+| | `R` | `F` |
+|---|---|---|
+| girar · torcer · escalar · transladar | a rotação do segmento | **identidade** |
+| espremer/esticar | **identidade** | base ortonormal com o eixo **z** em `normalizar(cabeça_espelhada − Õ)` |
+
+⚠️ **É `F` que faz o espremer/esticar agir ao longo do SEGMENTO** e não ao longo do eixo `z` do
+mundo — e é por isso que naquele modo a orientação vive em `F` e a rotação `R` não é usada.
+⚠️ É também o único sítio onde a **cabeça** é lida — ver o aviso do §5.1 sobre ela.
+
+**O espelhamento para um octante**, para cada eixo activo: um ponto inverte a coordenada desse eixo
+**uma vez** se o bit do eixo está no octante, e **outra vez** se a coordenada correspondente do
+**ponto âncora do traço** for negativa (duas inversões cancelam-se ⇒ não inverte). Uma rotação
+espelha num eixo negando **a componente do eixo no vector de rotação e o ângulo**, o que é a
+conjugação da rotação pela mesma reflexão.
 
 ---
 
@@ -443,8 +503,10 @@ subtrai-se-lhe `posição_actual(v) − p₀(v)`. ⇒ aplicar o resultado à pos
 exactamente em `p₀(v) + deslocamento(v)`, e **o traço não acumula** mesmo sem repor a malha entre
 eventos.
 
-⚠️ Este pincel **não** está na lista dos que repõem a malha do passo de desfazer a cada evento.
-O rebase é o mecanismo equivalente, e é mais barato.
+⚠️ **Requisito equivalente, enunciado pelo que se observa:** a malha **não** é reposta ao estado do
+passo de desfazer entre eventos — e não precisa de o ser, porque o rebase já entrega o mesmo
+resultado. *Observável:* a pose depois de `N` eventos é a que o `G` acumulado pede, sem acumulação
+de traço (as fixturas por evento medem-no directamente, §14).
 
 ### §7.4 — Depois do rebase
 
@@ -455,9 +517,9 @@ modificador de espelho** (um vértice a menos de uma tolerância do plano de esp
 
 ## §8 — Simetria
 
-⚠️⚠️ **Este pincel aplica TODOS os eixos de espelho activos numa PASSAGEM SÓ**, e as restantes
-passagens de simetria do traço são **saltadas** (a primeira passagem faz tudo; as outras devolvem
-imediatamente). É isso que as 8 áreas do §6 compram.
+⚠️⚠️ **Requisito observável: a simetria inteira resolve-se numa passagem só do traço; as passagens
+seguintes não produzem deslocamento nenhum.** É isso que os 8 octantes do §6 compram — as
+transformações de todos os octantes existem já na primeira passagem, e cada vértice escolhe a sua.
 
 Consequências, as três medidas:
 
@@ -619,7 +681,7 @@ sai, e o segmento muda de sítio.
 | `7` | família da escala, longe do polo | `2,0e-5` a `2,6e-5` | arredondamento amplificado pelo quociente de §5.4 — relativo `≤ 1,6e-5` |
 | `2` | degeneradas | `2,5e-1` · `1,7e-4` | §11.1 e §11.3 — ⭐ **as duas são bugs do nosso MODELO, não limites de paridade**: o alvo devolve deslocamento nulo e o modelo não |
 | `1` | auto-suavização não modelada | `2,6e-4` | §15 — o modelo não implementa a opção |
-| `1` | **por explicar** | `2,7e-3` | `figura_girar_cabeca_no_plano_sem_simetria`: `2 %` de um deslocamento de `0,137`. ⛔ **Não é descontinuidade** — perturbar o raio ou o cursor em `1e-6` move a saída em `≤ 2,4e-6`, logo é um desvio **sistemático**, não um salto. Fica como **item aberto** para o R-pré |
+| `1` | **por explicar** | `2,7e-3` | `figura_girar_cabeca_no_plano_sem_simetria`: `2 %` de um deslocamento de `0,137`. ⛔ **Não é descontinuidade** — perturbar o raio ou o cursor em `1e-6` move a saída em `≤ 2,4e-6`, logo é um desvio **sistemático**, não um salto. ⛔ **E não é a confusão das duas sementes do §2.1**, que foi o candidato nomeado e caiu na medição: apagar o pré-peso muda a saída desta fixtura em `0,000e+00`. Fica **aberto**, com esses dois mecanismos já eliminados |
 
 ⚠️ **Bit-parity NÃO é a meta** e não deve ser prometida — cerca da casa ([ADR-0162](../../architecture/decisions/0162-quad-remesh-pivots-to-the-global-family-clean-room-from-papers-gpl-oracle-outside.md)), mantida aqui.
 
@@ -634,7 +696,7 @@ sai, e o segmento muda de sítio.
 | **ligações entre peças** (§2.4) | ⛔ **`O(V²)`** | só com «só conectado» **desligado**; recalculado sempre que a distância máxima muda |
 | **cada varredura de crescimento** (§3.1) | `O(V)` sobre a malha **inteira** | e são várias varreduras por segmento |
 | suavização (§4) | `O(V · N)` **por segmento** | `N` até `100`, segmentos até `20` |
-| aplicação por evento (§7) | `O(V · n_segmentos)` | ⚠️ **todas** as partições são visitadas, sempre — o pincel declara que precisa da malha toda, porque a cadeia pode crescer para qualquer lado |
+| aplicação por evento (§7) | `O(V · n_segmentos)` | ⚠️ **nenhuma parte da malha é excluída pelo raio**: um vértice a qualquer distância do cursor pode ter peso, porque a cadeia cresce pela ligação e não pela vizinhança espacial. ⇒ o custo por evento é da malha **inteira**, não da região sob o pincel |
 | memória | `O(V · n_segmentos)` | um peso por vértice **por segmento** |
 
 ⚠️ **O produto destes factores é a queixa dos autores e dos utilizadores** (§10): `20` segmentos ×

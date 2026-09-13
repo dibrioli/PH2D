@@ -249,9 +249,51 @@ uma proveniência de **medição**. A paridade com as fixturas não muda uma cas
 
 | versão | caminho | rascunho | filtragem §4.3 | sweep | data |
 |---|---|---|---|---|---|
-| 1 | `docs/3D/cleanroom/SPEC_pose_brush.md` | `~/Referencias/blender-pose/draft/SPEC_pose_brush.md` (regra do arquivo fechado, §4.1.11) | executada — cada número com proveniência (fórmula · dump · decisão nossa); nomes internos renomeados para vocabulário do domínio; zero trecho; as citações de prosa dos autores foram **re-ditas**, não transcritas | verde | 2026-09-13 |
+| 1 | `docs/3D/cleanroom/SPEC_pose_brush.md` | `~/Referencias/blender-pose/draft/SPEC_pose_brush.md` (regra do arquivo fechado, §4.1.11) | executada — cada número com proveniência; nomes internos renomeados | verde (⚠️ **mas ver abaixo: o sweep era cego**) | 2026-09-13 |
+| **2 — EMENDA** | idem | idem | **reescrita pela regra do arquivo fechado**, com o fonte fechado; o fonte só foi reaberto para confirmar **dois factos** (as duas sementes do §2.1 · as fixturas que exercitam o tecto de um segmento) | verde, **com controlo positivo** | 2026-09-13 |
 
 ⚠️ **Commit ÚNICO, pós-filtragem** (§3.E): a espec **não** entrou por rascunhos incrementais.
+
+### ⛔⛔ A emenda: o R-pré NÃO atestou a versão 1
+
+Seis achados, **quatro substanciais** — a espec carregava expressão do alvo. Curados assim:
+
+| # | achado | cura |
+|---|---|---|
+| 1 | §3 — a frase que justificava o tecto de um segmento era tradução frásica de prosa do alvo | enunciado só o **requisito**, com a proveniência a ser duas fixturas que pedem `3` segmentos e entregam `1` |
+| 2 | §8 — tradução de prosa, e a 2.ª metade descrevia o **retorno antecipado** do código | enunciado o **efeito observável** |
+| 3 | §5.1 — os cinco passos numerados eram transcrição instrução-a-instrução (mesmos intermediários, mesma ordem, notação de atribuição) | reescrito como **requisito fechado por segmento** (tabela grandeza → valor exigido → o que é), preservando o §5.1-bis e o epílogo da âncora. ⭐ A reescrita **expôs um facto que a lista de passos escondia**: cabeça e origem guardadas não ficam à distância do comprimento (são medidas de origens diferentes), e isso só é observável no modo espremer/esticar. Mesmo tratamento em **§2.2** (conjuntos, não passos) e **§6** (**lei algébrica** da composição, não sequência de construção) |
+| 4 | §2.4 e §5.2 — dois factos atribuídos a **comentários do fonte** | re-atribuídos: o custo quadrático às issues públicas já citadas; ⭐ e a constante angular **medida da saída do oráculo** (ver abaixo) |
+| 5 | §5.2/§1.2/§6 — grafias de identificador de enum e um termo entre aspas | vocabulário da casa (`falloff.rs`); os oito sectores passam a **octantes de espelho** |
+| 6 | §7.3/§13 — dois requisitos enunciados pela estrutura interna do alvo | re-enunciados pelo que se observa |
+
+### ⛔⛔⛔ ACHADO DE INSTRUMENTO: o sweep estava a provar ausência de COLAGEM, não FILTRAGEM
+
+A versão 1 passou o sweep **verde** carregando quatro traduções — porque a vassoura estava em
+**inglês** e a espec é escrita em **português**. *Uma vassoura que só apanha colagem não prova
+filtragem nenhuma.*
+
+⇒ A `VASSOURA_blender-pose.txt` passou a cobrir **as duas línguas**: `112 → 137` entradas, as `25`
+novas sendo a prosa do alvo **na forma que uma tradução produziria**, com acentuação correcta.
+
+⚠️⚠️ **E a 1.ª tentativa de a alargar foi ela própria um instrumento cego:** `29` entradas escritas
+**sem acentos** e em frases longas deram **`0` achados** sobre a espec defeituosa — *um filtro que
+casa zero lê-se exactamente como um filtro que aprova*. Duas causas, as duas medidas: sem acentos
+nada casa, e o sweep casa **por linha** enquanto a espec é *hard-wrapped*, logo toda frase que
+atravessa uma quebra é invisível. ⇒ as entradas boas são **fragmentos curtos, acentuados, que cabem
+numa linha**.
+
+⭐ **Controlo positivo, e é ele que torna isto um gate:** a vassoura alargada, corrida sobre a
+**versão 1** da espec (recuperada de `git show`), acusa **5 achados — exactamente os 5 sítios que o
+R-pré nomeou** (§2.4, §3, §5.1, §5.2, §8); corrida sobre a versão 2, sai **limpa**.
+*Sem esse controlo, o verde da versão 2 não valeria mais do que o verde da versão 1.*
+
+### Medições novas desta emenda
+
+| pergunta | experiência | veredito |
+|---|---|---|
+| a constante angular da torção tem proveniência lícita? | **recuperar o ângulo da malha deformada**: num vértice de peso `1` a deformação é rotação pura em torno do eixo do segmento | ⭐ `k = 0,020000 rad/px`, sobre `46` vértices, dispersão `1,8e-6`. Duas fixturas a forças `1,0` e `0,5` dão o **mesmo** `k` ⇒ medem a constante **e** confirmam que a força entra linearmente. Nenhuma leitura de prosa |
+| a confusão das duas sementes (§2.1) explica o resíduo aberto? | separar as duas no modelo e apagar o pré-peso | ⛔ **refutado**: em `69` de `69` fixturas a varredura alcança o vértice pré-pesado, e apagá-lo muda a saída em `0,000e+00`. O pré-peso é **inerte neste corpus**; as duas só se separam numa fixtura que o corpus não tem (nomeada na espec §2.1) |
 
 ---
 

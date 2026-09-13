@@ -93,6 +93,7 @@ Registado **antes** de qualquer leitura do fonte, em 2026-09-05.
 | **E (Q19 · Q20 · Q21)** | **2026-09-07** | **subagente-E da janela `1246816c-63cf-414b-842d-663a8baa86ca`** | **releu: a função que devolve a localização usada pela área simulada e as três áreas; onde a localização por passo é (ou não é) relida do evento do traço e onde ela é reescrita pela origem ancorada; a classificação de «ferramenta de agarrar» que decide o tamanho por pressão; a porta que inclina o delta para a normal e a capacidade que a declara (mais o Python do painel e a porta de propriedades que a expõe); a construção de restrições com as posições persistentes e as quatro leituras que elas substituem; os quatro construtores de restrição; a resolução de colisão e a ordem dela dentro do passo. Produziu a EMENDA Q19 (§2.1 · §4.3 · §5.6 · §6.4 · §8.1 · §8.4 · §10.13 errata · §10.15 · §10.16 · §11 · gate 46 reescrito + gates 48-54), OITO fixtures novas, a chave `dispersao_entre_realizacoes` em TREZE cabeçalhos, e 80 corridas novas do oráculo** |
 
 | **E (Q23 — o filtro ATRAVESSA gestos)** | **2026-09-09** | **subagente-E da janela `1246816c-63cf-414b-842d-663a8baa86ca`** | **ABERTA ANTES DA PRIMEIRA LEITURA (§6)** — ver a secção «Q23» no fim deste ledger para o pedido transcrito, o que foi reaberto e o veredicto |
+| **E (INC-4 — a VASSOURA cobre a população)** | **2026-09-13** | **subagente-E da janela `9f820704-0d7e-4d96-847e-9cd720cbf178`** (elo **I-3**) | **releu:** o checkout inteiro como **índice de palavras** (429 ficheiros, por script, para confirmar cada candidato), as **quatro frases de comentário** citadas pela família, conferidas no fonte, e a **API pública MEDIDA correndo o oráculo** sem interface. **Produziu:** a EMENDA da vassoura (**+79 ⇒ 149**) e o sweep de verificação com controlo positivo — ver *Incidentes* → INC-4 → «Emenda à vassoura» |
 
 ### Cobertura da travessia (§3.E) — 2026-09-05, por shell (`cat`/`sed`/`grep`), fonte v5.2.0
 
@@ -1078,6 +1079,75 @@ ele não contém expressão do alvo.
 
 **Data:** 2026-09-13 · **R:** subagente-R do INC-4 (contexto novo; viu os dois lados por shell).
 **INC-4 FECHADO como RELANCE**, com o plano de reescrita entregue e a lacuna da vassoura anotada.
+
+#### INC-4 — Emenda à vassoura + sweep de verificação (subagente-E, 2026-09-13)
+
+**Pedido:** fechar a lacuna que o R registou (a vassoura não cobria **nenhum** nome do alvo desta população) e
+provar, **com controlo positivo**, o que a reescrita do commit `ec47dc846` deixou na família.
+
+**Colheita (estado ANTES = `ec47dc846^`).** Fonte: as linhas removidas de `git diff ec47dc846^ ec47dc846 -- crates shells`
+(**499** linhas, **77** ficheiros). Régua: todo token identificador dessas linhas que existe como palavra no checkout
+v5.2.0 (índice de palavras de **429** ficheiros, construído por script na zona contaminada) **e** tem forma composta
+(minúsculas com sublinhado · maiúsculas com sublinhado · CamelCase de 2+ partes) ⇒ **111** candidatos. Mais **1** macro
+sem sublinhado, idiossincrática, acrescentada à mão (a conversão de graus). Descartados **37**:
+
+| motivo | n |
+|---|---|
+| **API pública, MEDIDA correndo o oráculo** (Blender 5.2.1 sem interface: identificadores de propriedades, funções e itens de enum de todos os tipos RNA e de todos os operadores ⇒ **17 365** nomes) | 8 |
+| nome NOSSO (definição em código da workspace) ou de biblioteca | 3 |
+| ⚠️ interno e citado, mas casa **por substring** um identificador NOSSO (um id do painel do Painter · os ids do filtro de tecido do nosso painel) ⇒ seria falso positivo | 2 |
+| genérico de 1–2 palavras que escreveríamos de forma independente (posições e normais de vértice e de origem, factores de escala, a cache do filtro, …) — §7.1: a vassoura é **idiossincrática** | 24 |
+
+Frases: **4** frases de **comentário do alvo** que a família citava entre aspas, cada uma **conferida literalmente**
+no fonte (duas atravessam uma quebra de linha do comentário original). Uma quinta frase citada **não** casa
+literalmente no fonte ⇒ **fora** (entrada não verificada não entra). Os **37** nomes internos de 3+ palavras da
+régua do R estão **todos** dentro.
+
+**Emenda:** **+79** entradas (**75** identificadores + **4** frases), cada uma em base64, deduplicadas contra as
+70 existentes descodificadas em memória (**0** duplicadas) ⇒ **149** entradas.
+
+**Controlo positivo (ANTES).** Os **77** ficheiros tocados pela reescrita, extraídos de `ec47dc846^` para
+`~/Referencias/blender-cloth/draft/` (temporário, **apagado** a seguir):
+vassoura EMENDADA ⇒ **exit 1, 199 linhas com hit em 50 ficheiros** · vassoura ANTIGA (70 entradas), os mesmos
+ficheiros ⇒ **exit 0, 0 hits** — a lacuna do R **reproduzida por medição**: o sweep verde de antes não distinguia
+«limpo» de «vassoura que não casa nada».
+
+**Sweep da família (DEPOIS = `ec47dc846`).** **389** ficheiros (as cinco crates da família, os ficheiros de
+`shells/desktop` com `sculpt` no caminho e os `SPEC_*.md` de `cleanroom/`) ⇒ ⛔ **exit 1 · 13 linhas em 5
+ficheiros**, e as **13 são RESÍDUO REAL da reescrita** — **nenhum falso positivo** (cada linha tem um nome interno
+do alvo, conferido contra o fonte e fora da API pública medida):
+
+| ficheiro:linha | espécie | o que é (descrito, nunca reproduzido) |
+|---|---|---|
+| `crates/ph2d-sculpt3d/src/brush_tests.rs:118,119,120,121,122,124,127,130,133` | **literal de string** (rótulo de caso) | os nomes internos da enumeração das curvas de queda da referência, usados como rótulos da tabela que emparelha as nossas curvas com as dela (9 linhas) |
+| `crates/ph2d-panel-sculpt3d/tests/it/verb_slots.rs:227` | literal de string (mensagem de asserção) | o nome interno da função que aplica a dureza às distâncias |
+| `crates/ph2d-sculpt3d/src/stroke_filter_sharpen_tests.rs:310` | literal de string (mensagem de asserção) | o nome interno do factor de afiar do filtro |
+| `crates/ph2d-sculpt3d/tests/it/measure_sharpen_filter.rs:168` | literal de string (`println!`) | o nome interno da chamada que restringe a faixa dos factores |
+| `crates/ph2d-sculpt3d/tests/it/measure_where_the_curve_knobs_reach.rs:53` | **comentário** de módulo | o nome interno da classe de interface do painel de queda |
+
+⇒ **Causa:** o plano de reescrita varria **linhas de comentário**; **12 das 13** são **literais de string** (a mesma
+dívida por outro canal — a régua do R também só olhava comentários) e **1** é um comentário que o plano não listou.
+⇒ **Cura (produto ⇒ da janela I; este E não a aplica):** reescrever os 5 sítios em vocabulário de domínio (os
+rótulos da tabela passam a ser os NOSSOS nomes de curva; as três mensagens dizem a grandeza sem nome; o comentário
+diz «o painel de queda»). Depois disso o **mesmo** comando tem de dar **exit 0**.
+
+**Sweep informativo fora da família** (`git ls-files 'crates/**' 'shells/**'`, **8 219** ficheiros): as mesmas 13
+linhas e **nenhuma outra** ⇒ `crates/ph2d-sculpt3d: 12` · `crates/ph2d-panel-sculpt3d: 1` · **fora da família: 0
+hits em 0 crates**. ⚠️ **Este zero NÃO mede a dívida das outras famílias:** a vassoura cobre o pincel e o filtro de
+tecido e, agora, o motor de escultura; o Painter cita **outro** vocabulário da referência (visto de passagem: um
+doc-comment de `crates/ph2d-painter-brush/src/spec.rs` com uma bandeira interna do pincel, cuja entrada ficou de
+fora por colidir com um id nosso) ⇒ a dívida de lá pede colheita própria, com a sua vassoura.
+
+**Armadilha medida (instrumento):** a 1.ª corrida do sweep da família saiu **exit 2** (`path não existe`) sobre um
+ficheiro presente — a lista foi guardada numa variável e expandida sem aspas sob **zsh**, que **não parte** uma
+expansão de parâmetro ⇒ o script recebeu **um** argumento com 389 linhas. A forma copiável com `$(git ls-files …)`
+directo parte (é substituição de comando); lista em ficheiro + `mapfile` num `bash -c` é a forma robusta.
+⛔ **Exit 2 é uso errado, nunca «limpo»** — e ele não imprime hit nenhum.
+
+**Rastro:** ficheiros de trabalho deste E em `~/Referencias/blender-cloth/e-inc4-vassoura-2026-09-13/` (zona
+contaminada); **nada** no scratchpad da janela; **nada** em `project-memory/`.
+
+**Data:** 2026-09-13 · **E:** subagente-E despachado pela janela `9f820704-0d7e-4d96-847e-9cd720cbf178` (elo I-3).
 
 ---
 

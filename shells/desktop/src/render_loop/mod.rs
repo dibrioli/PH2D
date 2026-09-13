@@ -264,6 +264,8 @@ mod fase_painter_brush_smokes;
 mod fase_path_effects_spine_bool;
 /// Fase do quadro: a forma do caminho e as tintas.
 mod fase_path_shape_and_paint;
+/// Fase do quadro: o padrao no caminho, o pincel e os pickers.
+mod fase_pattern_path_and_pickers;
 /// Fase do quadro: as edicoes de joint, player e roldana.
 mod fase_physics_edits;
 /// Fase do quadro: ligar, rigar e assar a fisica.
@@ -4105,112 +4107,21 @@ impl crate::App {
                     });
                 }
             }
-            // Pattern on Path (plano 23): os sliders afinam o vínculo do MOTIVO — que é o caminho
-            // LINKADO da seleção (`linked_motif`), não o primário: depois de prender, o primário
-            // pode ser o GUIA. O comando prende/solta/vira. Tudo pela porta única `pattern_live`, e
-            // o `recook` do frame seguinte redesenha as cópias.
-            let pp_motif = crate::pattern_live::linked_motif(
-                sim,
-                &self.vec.entities,
-                self.vec.pen.selected_paths(),
+            self.fase_pattern_path_and_pickers(
+                fase_pattern_path_and_pickers::PatternPathAndPickersIntents {
+                    pending_patternpath,
+                    pending_pp_spacing,
+                    pending_pp_start,
+                    pending_pp_end,
+                    pending_pp_slide,
+                    pending_pp_offset,
+                    pending_pp_rotation,
+                    pending_pp_pick,
+                    pending_texpat_pick,
+                    pending_brush_pick,
+                    pending_brush,
+                },
             );
-            if let Some(v) = pending_pp_spacing
-                && let Some(motif) = pp_motif
-            {
-                crate::pattern_live::edit(sim, &self.vec.entities, motif, |l| l.spacing = v as f32);
-            }
-            if let Some(v) = pending_pp_start
-                && let Some(motif) = pp_motif
-            {
-                crate::pattern_live::edit(sim, &self.vec.entities, motif, |l| {
-                    l.start_offset = v as f32;
-                });
-            }
-            if let Some(v) = pending_pp_end
-                && let Some(motif) = pp_motif
-            {
-                crate::pattern_live::edit(sim, &self.vec.entities, motif, |l| {
-                    l.end_offset = v as f32;
-                });
-            }
-            if let Some(v) = pending_pp_offset
-                && let Some(motif) = pp_motif
-            {
-                crate::pattern_live::edit(sim, &self.vec.entities, motif, |l| l.offset = v as f32);
-            }
-            // A rotação tem porta PRÓPRIA (`set_rotation`) e não o `edit`: ela vive num componente
-            // separado, para não bumpar o `PROJECT_SCHEMA` -- e essa porta destaca no neutro.
-            if let Some(v) = pending_pp_rotation
-                && let Some(motif) = pp_motif
-            {
-                crate::pattern_live::set_rotation(sim, &self.vec.entities, motif, v as f32);
-            }
-            // Slide re-centra o trecho `[Start, End]` PRESERVANDO o comprimento: move as duas
-            // âncoras juntas (o pedido do Enio). O centro é clampado para a janela caber em [0,1].
-            if let Some(v) = pending_pp_slide
-                && let Some(motif) = pp_motif
-            {
-                crate::pattern_live::edit(sim, &self.vec.entities, motif, |l| {
-                    let half = (f64::from(l.end_offset) - f64::from(l.start_offset)) * 0.5;
-                    let c = v.clamp(half, 1.0 - half);
-                    l.start_offset = (c - half) as f32;
-                    l.end_offset = (c + half) as f32;
-                });
-            }
-            if let Some(cmd) = pending_patternpath {
-                let sel = self.vec.pen.selected_paths().to_vec();
-                let done = match cmd {
-                    // O guia é o caminho de MAIOR extensão dos dois (independe da ordem de clique)
-                    // — a correção do "escolhendo a si mesmo" (Enio).
-                    crate::pattern_live::PatternPathCmd::Link => {
-                        crate::pattern_live::link_candidate(vec_scene, &sel).is_some_and(
-                            |(motif, guide)| {
-                                crate::pattern_live::link(sim, &self.vec.entities, motif, guide)
-                            },
-                        )
-                    }
-                    crate::pattern_live::PatternPathCmd::Detach => pp_motif
-                        .is_some_and(|m| crate::pattern_live::detach(sim, &self.vec.entities, m)),
-                    crate::pattern_live::PatternPathCmd::Flip(v) => pp_motif.is_some_and(|m| {
-                        crate::pattern_live::edit(sim, &self.vec.entities, m, |l| l.flip = v)
-                    }),
-                };
-                if !done {
-                    eprintln!(
-                        "[ph2d-vec] pattern on path: selecione o MOTIVO e um caminho (ou um motivo \
-                         ja' preso, para soltar/afinar)"
-                    );
-                }
-            }
-            // Picker do motivo (Enio 2026-07-23): o botão só ARMOU; a FONTE é o motivo selecionado (a
-            // `can_pick` já garantiu um só, ainda solto). O clique seguinte no canvas escolhe o guia.
-            // ⭐⭐⭐ O PINCEL (plano 36, W4): a lei primeiro, o arm depois — a mesma ordem do padrão.
-            if let Some(cmd) = pending_brush {
-                crate::vec_stroke_paint::apply(vec_scene, &self.vec.pen, cmd);
-            }
-            if pending_brush_pick && let Some(host) = self.vec.pen.selected() {
-                self.vec.path_pick = Some(crate::vec_pick::PathPick::BrushArt(host));
-                eprintln!(
-                    "[ph2d-vec] brush: pick armado -- clique na FORMA ou no GRUPO que vai ser a \
-                     arte do contorno (vazio = desiste)"
-                );
-            }
-            if let Some(slot) = pending_texpat_pick
-                && let Some(host) = self.vec.pen.selected()
-            {
-                self.vec.path_pick = Some(crate::vec_pick::PathPick::TexturePatternArt(host, slot));
-                eprintln!(
-                    "[ph2d-vec] texture pattern: pick armado -- clique na FORMA ou no GRUPO que \
-                     vai ser a arte (vazio = desiste)"
-                );
-            }
-            if pending_pp_pick && let Some(motif) = self.vec.pen.selected() {
-                self.vec.path_pick = Some(crate::vec_pick::PathPick::PatternMotif(motif));
-                eprintln!(
-                    "[ph2d-vec] pattern on path: pick armado -- clique no CAMINHO-guia (vazio = \
-                     desiste)"
-                );
-            }
             let Some(mudos_antes) =
                 self.fase_skeleton_verbs(fase_skeleton_verbs::SkeletonVerbsIntents {
                     pending_bone_bind,

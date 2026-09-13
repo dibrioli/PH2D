@@ -55,6 +55,18 @@ fn code(rel: &str) -> String {
         .join("\n")
 }
 
+/// O QUADRO pela ordem em que corre (`frame_text::render_frame`), **sem comentários** como o [`code`].
+///
+/// ⚠️ Desde a OBRA 2 da `line/render-loop` (2026-09-13) o arm do picker mora na `fase_pattern_path_and_pickers`, e o
+/// reconhecimento do botão continua no dreno do barramento: só o texto EMENDADO tem os dois.
+fn frame_code() -> String {
+    crate::frame_text::render_frame()
+        .lines()
+        .filter(|l| !l.trim_start().starts_with("//"))
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
 /// ⭐⭐ **O PICKER DA ARTE-FORMA está fiado** (plano 33, W7) — o gesto de duas mãos do Figma.
 ///
 /// ⚠️ **A fonte é CAPTURADA no arm**, e é essa a razão de existir do picker: o clique seguinte cai
@@ -62,7 +74,7 @@ fn code(rel: &str) -> String {
 /// padrão para a forma errada — o *"escolhendo a si mesmo"* que o doc do `vec_pick` nomeia.
 #[test]
 fn the_shape_art_picker_is_wired_from_the_button_to_the_link() {
-    let render = code("render_loop/mod.rs");
+    let render = frame_code();
     // ⚠️ A agulha passou a ser o KNOB (plano 35, wave F): os ids da secção são derivados por
     // `(tinta, controlo)`, então já não há uma constante com este nome. *Um gate que fixa o nome de
     // uma constante reprova a família que a substitui sem mudar a lei que ele defende.*
@@ -184,7 +196,6 @@ fn the_pattern_has_no_canvas_handles_anymore() {
     for (rel, agulha) in [
         ("input_dispatch.rs", "vec_pattern_hit"),
         ("input_dispatch.rs", "vec_pattern_drag"),
-        ("render_loop/mod.rs", "draw_pattern_handles"),
         ("app_state.rs", "vec_pattern_selected"),
     ] {
         assert!(
@@ -193,6 +204,14 @@ fn the_pattern_has_no_canvas_handles_anymore() {
              do Enio (plano 33 §6); os ajustes vivem no painel"
         );
     }
+    // ⚠️ O desenho das alças lê-se no QUADRO inteiro (`frame_text::render_frame`), não no `render_loop/mod.rs`: desde a
+    // OBRA 2 da `line/render-loop` (2026-09-13) o quadro vive em fases, e uma AUSÊNCIA medida só no `mod.rs` ficaria
+    // verde com as alças escritas numa delas.
+    assert!(
+        !crate::frame_text::render_frame().contains("draw_pattern_handles"),
+        "`draw_pattern_handles` voltou ao quadro - as alcas de canvas do padrao foram RETIRADAS por decisao do Enio \
+         (plano 33 §6); os ajustes vivem no painel"
+    );
     // ⚠️ E o CONTROLO: a porta que ficou no lugar delas tem de existir, senão este gate ficaria
     // verde num produto que perdeu a posição do padrão em vez de a ter mudado de sítio.
     assert!(

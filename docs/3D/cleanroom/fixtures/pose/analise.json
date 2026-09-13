@@ -1,0 +1,642 @@
+{
+ "fixtures": [
+  {
+   "eventos": 12,
+   "fixture": "braco3d_escalar_r029",
+   "max_deslocamento": 0.24956,
+   "modo": "escalar_transladar",
+   "movidos": 334,
+   "porpasso": 0,
+   "superficie": "braco"
+  },
+  {
+   "eventos": 12,
+   "fixture": "braco3d_espremer_r029",
+   "max_deslocamento": 0.135535,
+   "modo": "espremer_esticar",
+   "movidos": 334,
+   "porpasso": 0,
+   "superficie": "braco"
+  },
+  {
+   "eventos": 12,
+   "fixture": "braco3d_esticar",
+   "max_deslocamento": 12.452452,
+   "modo": "espremer_esticar",
+   "movidos": 339,
+   "porpasso": 0,
+   "superficie": "braco"
+  },
+  {
+   "eventos": 12,
+   "fixture": "braco3d_esticar_r029",
+   "max_deslocamento": 0.20026,
+   "modo": "espremer_esticar",
+   "movidos": 334,
+   "porpasso": 0,
+   "superficie": "braco"
+  },
+  {
+   "eventos": 12,
+   "fixture": "braco3d_girar_ik1",
+   "max_deslocamento": 0.446513,
+   "modo": "girar_torcer",
+   "movidos": 339,
+   "porpasso": 0,
+   "superficie": "braco"
+  },
+  {
+   "eventos": 12,
+   "fixture": "braco3d_girar_ik1_r029",
+   "max_deslocamento": 0.441418,
+   "modo": "girar_torcer",
+   "movidos": 334,
+   "porpasso": 0,
+   "superficie": "braco"
+  },
+  {
+   "eventos": 12,
+   "fixture": "braco3d_girar_ik3",
+   "max_deslocamento": 0.634811,
+   "modo": "girar_torcer",
+   "movidos": 739,
+   "porpasso": 12,
+   "superficie": "braco"
+  },
+  {
+   "eventos": 12,
+   "fixture": "braco3d_girar_ik3_r029",
+   "max_deslocamento": 0.627433,
+   "modo": "girar_torcer",
+   "movidos": 702,
+   "porpasso": 12,
+   "superficie": "braco"
+  },
+  {
+   "eventos": 12,
+   "fixture": "braco3d_raio_cobre_tudo",
+   "max_deslocamento": 0.624271,
+   "modo": "girar_torcer",
+   "movidos": 1297,
+   "porpasso": 0,
+   "superficie": "braco"
+  },
+  {
+   "eventos": 12,
+   "fixture": "braco3d_torcer_ik1",
+   "max_deslocamento": 0.247189,
+   "modo": "girar_torcer",
+   "movidos": 338,
+   "porpasso": 0,
+   "superficie": "braco"
+  },
+  {
+   "eventos": 12,
+   "fixture": "braco3d_torcer_ik1_r029",
+   "max_deslocamento": 0.247523,
+   "modo": "girar_torcer",
+   "movidos": 333,
+   "porpasso": 0,
+   "superficie": "braco"
+  },
+  {
+   "eventos": 12,
+   "fixture": "braco3d_torcer_ik3_r029",
+   "max_deslocamento": 0.247523,
+   "modo": "girar_torcer",
+   "movidos": 701,
+   "porpasso": 0,
+   "superficie": "braco"
+  },
+  {
+   "eventos": 12,
+   "fixture": "figura_escalar_braco_ik3",
+   "max_deslocamento": 0.2403,
+   "modo": "escalar_transladar",
+   "movidos": 263,
+   "porpasso": 0,
+   "superficie": "figura"
+  },
+  {
+   "eventos": 12,
+   "fixture": "figura_escalar_dedo_atravessa_origem",
+   "max_deslocamento": 0.525653,
+   "modo": "escalar_transladar",
+   "movidos": 62,
+   "porpasso": 0,
+   "superficie": "figura"
+  },
+  {
+   "eventos": 12,
+   "fixture": "figura_escalar_dedo_diagonal",
+   "max_deslocamento": 1.685135,
+   "modo": "escalar_transladar",
+   "movidos": 62,
+   "porpasso": 12,
+   "superficie": "figura"
+  },
+  {
+   "eventos": 12,
+   "fixture": "figura_escalar_dedo_diagonal_solto",
+   "max_deslocamento": 2.002188,
+   "modo": "escalar_transladar",
+   "movidos": 63,
+   "porpasso": 0,
+   "superficie": "figura"
+  },
+  {
+   "eventos": 12,
+   "fixture": "figura_escalar_dedo_diagonal_travado",
+   "max_deslocamento": 1.603096,
+   "modo": "escalar_transladar",
+   "movidos": 62,
+   "porpasso": 0,
+   "superficie": "figura"
+  },
+  {
+   "eventos": 12,
+   "fixture": "figura_escalar_dedo_encolher",
+   "max_deslocamento": 0.178125,
+   "modo": "escalar_transladar",
+   "movidos": 62,
+   "porpasso": 0,
+   "superficie": "figura"
+  },
+  {
+   "eventos": 12,
+   "fixture": "figura_escalar_dedo_esticar",
+   "max_deslocamento": 2.404705,
+   "modo": "escalar_transladar",
+   "movidos": 62,
+   "porpasso": 0,
+   "superficie": "figura"
+  },
+  {
+   "eventos": 12,
+   "fixture": "figura_escalar_dedo_simetria_x",
+   "max_deslocamento": 2.404705,
+   "modo": "escalar_transladar",
+   "movidos": 124,
+   "porpasso": 0,
+   "superficie": "figura"
+  },
+  {
+   "eventos": 12,
+   "fixture": "figura_espremer_dedo",
+   "max_deslocamento": 0.177983,
+   "modo": "espremer_esticar",
+   "movidos": 62,
+   "porpasso": 0,
+   "superficie": "figura"
+  },
+  {
+   "eventos": 12,
+   "fixture": "figura_espremer_dedo_atravessa_origem",
+   "max_deslocamento": 0.275706,
+   "modo": "espremer_esticar",
+   "movidos": 62,
+   "porpasso": 0,
+   "superficie": "figura"
+  },
+  {
+   "eventos": 12,
+   "fixture": "figura_esticar_braco_ik3",
+   "max_deslocamento": 0.621179,
+   "modo": "espremer_esticar",
+   "movidos": 263,
+   "porpasso": 0,
+   "superficie": "figura"
+  },
+  {
+   "eventos": 12,
+   "fixture": "figura_esticar_dedo",
+   "max_deslocamento": 2.400294,
+   "modo": "espremer_esticar",
+   "movidos": 62,
+   "porpasso": 12,
+   "superficie": "figura"
+  },
+  {
+   "eventos": 12,
+   "fixture": "figura_esticar_dedo_invertido",
+   "max_deslocamento": 2.400294,
+   "modo": "espremer_esticar",
+   "movidos": 62,
+   "porpasso": 0,
+   "superficie": "figura"
+  },
+  {
+   "eventos": 12,
+   "fixture": "figura_girar_braco_ik1",
+   "max_deslocamento": 0.285692,
+   "modo": "girar_torcer",
+   "movidos": 263,
+   "porpasso": 0,
+   "superficie": "figura"
+  },
+  {
+   "eventos": 36,
+   "fixture": "figura_girar_braco_ik1_36ev",
+   "max_deslocamento": 0.285692,
+   "modo": "girar_torcer",
+   "movidos": 263,
+   "porpasso": 0,
+   "superficie": "figura"
+  },
+  {
+   "eventos": 4,
+   "fixture": "figura_girar_braco_ik1_4ev",
+   "max_deslocamento": 0.285692,
+   "modo": "girar_torcer",
+   "movidos": 263,
+   "porpasso": 0,
+   "superficie": "figura"
+  },
+  {
+   "eventos": 12,
+   "fixture": "figura_girar_braco_ik2",
+   "max_deslocamento": 0.912724,
+   "modo": "girar_torcer",
+   "movidos": 425,
+   "porpasso": 0,
+   "superficie": "figura"
+  },
+  {
+   "eventos": 12,
+   "fixture": "figura_girar_braco_ik3",
+   "max_deslocamento": 0.956665,
+   "modo": "girar_torcer",
+   "movidos": 497,
+   "porpasso": 12,
+   "superficie": "figura"
+  },
+  {
+   "eventos": 36,
+   "fixture": "figura_girar_braco_ik3_36ev",
+   "max_deslocamento": 0.950141,
+   "modo": "girar_torcer",
+   "movidos": 497,
+   "porpasso": 0,
+   "superficie": "figura"
+  },
+  {
+   "eventos": 4,
+   "fixture": "figura_girar_braco_ik3_4ev",
+   "max_deslocamento": 0.999541,
+   "modo": "girar_torcer",
+   "movidos": 497,
+   "porpasso": 0,
+   "superficie": "figura"
+  },
+  {
+   "eventos": 13,
+   "fixture": "figura_girar_braco_ik3_ida_volta",
+   "max_deslocamento": 0.240177,
+   "modo": "girar_torcer",
+   "movidos": 497,
+   "porpasso": 0,
+   "superficie": "figura"
+  },
+  {
+   "eventos": 12,
+   "fixture": "figura_girar_braco_ik3_r021",
+   "max_deslocamento": 0.956926,
+   "modo": "girar_torcer",
+   "movidos": 495,
+   "porpasso": 0,
+   "superficie": "figura"
+  },
+  {
+   "eventos": 12,
+   "fixture": "figura_girar_braco_ik3_r021_desvio05",
+   "max_deslocamento": 0.979914,
+   "modo": "girar_torcer",
+   "movidos": 549,
+   "porpasso": 0,
+   "superficie": "figura"
+  },
+  {
+   "eventos": 12,
+   "fixture": "figura_girar_braco_ik3_simetria_x",
+   "max_deslocamento": 0.956665,
+   "modo": "girar_torcer",
+   "movidos": 994,
+   "porpasso": 12,
+   "superficie": "figura"
+  },
+  {
+   "eventos": 12,
+   "fixture": "figura_girar_braco_ik3_solto",
+   "max_deslocamento": 1.257037,
+   "modo": "girar_torcer",
+   "movidos": 497,
+   "porpasso": 12,
+   "superficie": "figura"
+  },
+  {
+   "eventos": 36,
+   "fixture": "figura_girar_braco_ik3_solto_36ev",
+   "max_deslocamento": 1.263277,
+   "modo": "girar_torcer",
+   "movidos": 497,
+   "porpasso": 0,
+   "superficie": "figura"
+  },
+  {
+   "eventos": 4,
+   "fixture": "figura_girar_braco_ik3_solto_4ev",
+   "max_deslocamento": 1.236355,
+   "modo": "girar_torcer",
+   "movidos": 497,
+   "porpasso": 0,
+   "superficie": "figura"
+  },
+  {
+   "eventos": 12,
+   "fixture": "figura_girar_braco_ik5",
+   "max_deslocamento": 0.997731,
+   "modo": "girar_torcer",
+   "movidos": 650,
+   "porpasso": 0,
+   "superficie": "figura"
+  },
+  {
+   "eventos": 12,
+   "fixture": "figura_girar_braco_ik5_r021",
+   "max_deslocamento": 1.0002,
+   "modo": "girar_torcer",
+   "movidos": 657,
+   "porpasso": 12,
+   "superficie": "figura"
+  },
+  {
+   "eventos": 12,
+   "fixture": "figura_girar_cabeca_no_plano_sem_simetria",
+   "max_deslocamento": 0.140285,
+   "modo": "girar_torcer",
+   "movidos": 184,
+   "porpasso": 0,
+   "superficie": "figura"
+  },
+  {
+   "eventos": 12,
+   "fixture": "figura_girar_cabeca_no_plano_simetria_x",
+   "max_deslocamento": 0.000786,
+   "modo": "girar_torcer",
+   "movidos": 184,
+   "porpasso": 12,
+   "superficie": "figura"
+  },
+  {
+   "eventos": 12,
+   "fixture": "figura_girar_dedo",
+   "max_deslocamento": 0.444626,
+   "modo": "girar_torcer",
+   "movidos": 62,
+   "porpasso": 12,
+   "superficie": "figura"
+  },
+  {
+   "eventos": 12,
+   "fixture": "figura_girar_dedo_desvio05",
+   "max_deslocamento": 0.509584,
+   "modo": "girar_torcer",
+   "movidos": 89,
+   "porpasso": 0,
+   "superficie": "figura"
+  },
+  {
+   "eventos": 12,
+   "fixture": "figura_girar_dedo_desvio10",
+   "max_deslocamento": 0.55181,
+   "modo": "girar_torcer",
+   "movidos": 339,
+   "porpasso": 0,
+   "superficie": "figura"
+  },
+  {
+   "eventos": 12,
+   "fixture": "figura_girar_dedo_desvio20",
+   "max_deslocamento": 0.596042,
+   "modo": "girar_torcer",
+   "movidos": 405,
+   "porpasso": 0,
+   "superficie": "figura"
+  },
+  {
+   "eventos": 12,
+   "fixture": "figura_girar_dedo_forca05",
+   "max_deslocamento": 0.339986,
+   "modo": "girar_torcer",
+   "movidos": 62,
+   "porpasso": 0,
+   "superficie": "figura"
+  },
+  {
+   "eventos": 12,
+   "fixture": "figura_girar_dedo_mascara05",
+   "max_deslocamento": 0.222313,
+   "modo": "girar_torcer",
+   "movidos": 62,
+   "porpasso": 0,
+   "superficie": "figura"
+  },
+  {
+   "eventos": 12,
+   "fixture": "figura_girar_dedo_mascara1",
+   "max_deslocamento": 0.114354,
+   "modo": "girar_torcer",
+   "movidos": 26,
+   "porpasso": 0,
+   "superficie": "figura"
+  },
+  {
+   "eventos": 12,
+   "fixture": "figura_girar_dedo_origem_no_cursor",
+   "max_deslocamento": 0.0,
+   "modo": "girar_torcer",
+   "movidos": 0,
+   "porpasso": 0,
+   "superficie": "figura"
+  },
+  {
+   "eventos": 12,
+   "fixture": "figura_girar_dedo_pressao03",
+   "max_deslocamento": 0.444626,
+   "modo": "girar_torcer",
+   "movidos": 62,
+   "porpasso": 0,
+   "superficie": "figura"
+  },
+  {
+   "eventos": 12,
+   "fixture": "figura_girar_dedo_simetria_x",
+   "max_deslocamento": 0.444626,
+   "modo": "girar_torcer",
+   "movidos": 124,
+   "porpasso": 0,
+   "superficie": "figura"
+  },
+  {
+   "eventos": 12,
+   "fixture": "figura_girar_dedo_solto",
+   "max_deslocamento": 0.77209,
+   "modo": "girar_torcer",
+   "movidos": 63,
+   "porpasso": 0,
+   "superficie": "figura"
+  },
+  {
+   "eventos": 12,
+   "fixture": "figura_girar_dedo_suave0",
+   "max_deslocamento": 0.444626,
+   "modo": "girar_torcer",
+   "movidos": 50,
+   "porpasso": 0,
+   "superficie": "figura"
+  },
+  {
+   "eventos": 12,
+   "fixture": "figura_girar_dedo_suave10",
+   "max_deslocamento": 0.444626,
+   "modo": "girar_torcer",
+   "movidos": 100,
+   "porpasso": 0,
+   "superficie": "figura"
+  },
+  {
+   "eventos": 12,
+   "fixture": "figura_girar_dedo_suavizacao05",
+   "max_deslocamento": 0.444626,
+   "modo": "girar_torcer",
+   "movidos": 62,
+   "porpasso": 0,
+   "superficie": "figura"
+  },
+  {
+   "eventos": 12,
+   "fixture": "figura_torcer_braco_ik1",
+   "max_deslocamento": 0.153877,
+   "modo": "girar_torcer",
+   "movidos": 249,
+   "porpasso": 0,
+   "superficie": "figura"
+  },
+  {
+   "eventos": 12,
+   "fixture": "figura_torcer_braco_ik3",
+   "max_deslocamento": 0.159275,
+   "modo": "girar_torcer",
+   "movidos": 459,
+   "porpasso": 12,
+   "superficie": "figura"
+  },
+  {
+   "eventos": 12,
+   "fixture": "figura_torcer_braco_ik3_constante",
+   "max_deslocamento": 0.17586,
+   "modo": "girar_torcer",
+   "movidos": 459,
+   "porpasso": 0,
+   "superficie": "figura"
+  },
+  {
+   "eventos": 12,
+   "fixture": "figura_torcer_braco_ik3_forca05",
+   "max_deslocamento": 0.081537,
+   "modo": "girar_torcer",
+   "movidos": 449,
+   "porpasso": 0,
+   "superficie": "figura"
+  },
+  {
+   "eventos": 12,
+   "fixture": "figura_torcer_braco_ik3_simetria_x",
+   "max_deslocamento": 0.159275,
+   "modo": "girar_torcer",
+   "movidos": 918,
+   "porpasso": 0,
+   "superficie": "figura"
+  },
+  {
+   "eventos": 12,
+   "fixture": "figura_torcer_braco_ik3_vertical",
+   "max_deslocamento": 0.0,
+   "modo": "girar_torcer",
+   "movidos": 0,
+   "porpasso": 0,
+   "superficie": "figura"
+  },
+  {
+   "eventos": 12,
+   "fixture": "figura_transladar_dedo",
+   "max_deslocamento": 0.5,
+   "modo": "escalar_transladar",
+   "movidos": 63,
+   "porpasso": 0,
+   "superficie": "figura"
+  },
+  {
+   "eventos": 12,
+   "fixture": "figura_transladar_dedo_forca05",
+   "max_deslocamento": 0.25,
+   "modo": "escalar_transladar",
+   "movidos": 63,
+   "porpasso": 0,
+   "superficie": "figura"
+  },
+  {
+   "eventos": 12,
+   "fixture": "pulso_girar_mao_ik1_desvio1_conectado",
+   "max_deslocamento": 0.669773,
+   "modo": "girar_torcer",
+   "movidos": 355,
+   "porpasso": 0,
+   "superficie": "figura_pulso_aberto"
+  },
+  {
+   "eventos": 12,
+   "fixture": "pulso_girar_mao_ik3_conectado",
+   "max_deslocamento": 0.285692,
+   "modo": "girar_torcer",
+   "movidos": 263,
+   "porpasso": 0,
+   "superficie": "figura_pulso_aberto"
+  },
+  {
+   "eventos": 12,
+   "fixture": "pulso_girar_mao_ik3_solto001",
+   "max_deslocamento": 0.285692,
+   "modo": "girar_torcer",
+   "movidos": 263,
+   "porpasso": 0,
+   "superficie": "figura_pulso_aberto"
+  },
+  {
+   "eventos": 12,
+   "fixture": "pulso_girar_mao_ik3_solto01",
+   "max_deslocamento": 0.918841,
+   "modo": "girar_torcer",
+   "movidos": 444,
+   "porpasso": 0,
+   "superficie": "figura_pulso_aberto"
+  }
+ ],
+ "malhas": {
+  "braco": {
+   "faces": 1312,
+   "sha256_16": "006715d9ced68a61",
+   "vertices": 1298
+  },
+  "figura": {
+   "faces": 4476,
+   "sha256_16": "8dc1142aa39bba0f",
+   "vertices": 4930
+  },
+  "figura_pulso_aberto": {
+   "faces": 4460,
+   "sha256_16": "4541ba995e9239ed",
+   "vertices": 4930
+  }
+ }
+}

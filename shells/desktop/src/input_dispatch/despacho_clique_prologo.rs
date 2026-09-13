@@ -85,4 +85,57 @@ impl crate::App {
         }
         false
     }
+
+    /// A cena de escultura 3D e a janela de modelagem tomam o botão para navegar; a alça do gizmo de âncora toma-o
+    /// antes do resto do `Down`.
+    pub(super) fn ramo_navegacao_3d_e_ancora(
+        &mut self,
+        state: ElementState,
+        button: MouseButton,
+    ) -> bool {
+        // ADR-0150 W1/M2: a cena 3D toma o botão para navegar. Inerte (e
+        // portanto invisível) sem cena armada.
+        #[cfg(feature = "sculpt3d")]
+        {
+            let taken = match state {
+                ElementState::Pressed => self.sculpt3d_pointer_down(button),
+                // ⚠️ **Os dois lados do `match` deixaram de ter a mesma FORMA** (W2/L3-A2), e
+                // é mensagem, não descuido: o pen-up só precisa da CENA e é função livre; o
+                // pen-down arbitra quem fica com o gesto e para isso lê `gfx`, `last_pointer`
+                // e `modifiers` — logo continua em `impl App`, com a razão escrita lá.
+                ElementState::Released => self
+                    .sculpt3d_scene_mut()
+                    .is_some_and(ph2d_app_sculpt3d::pointer_up),
+            };
+            if taken {
+                return true;
+            }
+        }
+        // ADR-0161 W4: a janela 3D de modelagem toma o botão para navegar. Inerte
+        // (e portanto invisível) sem o smoke armado, e ela só reclama o gesto que
+        // começa DENTRO da área que ela desenhou.
+        {
+            let taken = match state {
+                ElementState::Pressed => self.field3d_pointer_down(button),
+                ElementState::Released => self.field3d_pointer_up(),
+            };
+            if taken {
+                return true;
+            }
+        }
+        // **§12 — a alça do gizmo de âncora toma o botão** (ADR-0072 §2.3).
+        //
+        // ⚠️ Antes do resto do `Down`, e com `return`: agarrar uma alça **não** é selecionar um
+        // sprite, não é começar um marquee e não é entregar o ponteiro à ferramenta. O
+        // `try_open_…` já recusou tudo o que não é canvas (painel por cima, seção fechada, nenhuma
+        // linha aberta), então chegar aqui e devolver `true` significa que o gesto é este.
+        if state == ElementState::Pressed
+            && button == MouseButton::Left
+            && let (px, py) = self.last_pointer
+            && self.try_open_anchor_gizmo_drag(px, py)
+        {
+            return true;
+        }
+        false
+    }
 }

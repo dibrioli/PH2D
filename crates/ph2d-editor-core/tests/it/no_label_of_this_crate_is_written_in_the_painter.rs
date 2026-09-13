@@ -141,10 +141,7 @@ fn per_file() -> BTreeMap<String, Vec<String>> {
 fn every_label_this_crate_paints_comes_from_the_string_table() {
     let mut intrusos = Vec::new();
     for (rel, hits) in &per_file() {
-        let allowed = DIVIDA
-            .iter()
-            .find(|(f, _)| f == rel)
-            .map_or(0, |(_, n)| *n);
+        let allowed = DIVIDA.iter().find(|(f, _)| f == rel).map_or(0, |(_, n)| *n);
         if hits.len() > allowed {
             intrusos.push(format!(
                 "{rel} — {} literais, a dívida tolerada é {allowed}:\n      {}",

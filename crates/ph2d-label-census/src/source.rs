@@ -11,14 +11,9 @@ pub(crate) fn is_ident(c: char) -> bool {
 }
 
 fn starts_with_at(code: &[char], i: usize, pat: &str) -> bool {
-    let mut k = i;
-    for p in pat.chars() {
-        if k >= code.len() || code[k] != p {
-            return false;
-        }
-        k += 1;
-    }
-    true
+    pat.chars()
+        .enumerate()
+        .all(|(k, p)| code.get(i + k) == Some(&p))
 }
 
 /// Se um literal de string COMEÇA em `i` — com os prefixos `b`, `c`, `r`, `br`, `cr` e os `#` de

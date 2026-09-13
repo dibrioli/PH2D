@@ -114,7 +114,11 @@ fn declares_cfg_test_mod(src: &str, stem: &str, path: &Path, parent: &Path) -> b
 fn decl_matches(src: &str, stem: &str, path: &Path, parent: &Path, need_cfg: bool) -> bool {
     let lines: Vec<&str> = src.lines().collect();
     for (i, line) in lines.iter().enumerate() {
-        let t = line.trim();
+        // ⛔ **Um comentário no fim da linha do `mod` escondia o nome** (2026-09-13): `mod
+        // line_seam_tests; // o seam do card Line` lia-se como o módulo `Line)`, e o ficheiro —
+        // declarado sob `#[cfg(test)]` na linha de cima — contava como PRODUÇÃO. Apanhado pela régua
+        // lexical sobre a `ph2d-tool-painter`.
+        let t = line.split("//").next().unwrap_or_default().trim();
         if !t.starts_with("mod ") && !t.starts_with("pub mod ") && !t.starts_with("pub(") {
             continue;
         }

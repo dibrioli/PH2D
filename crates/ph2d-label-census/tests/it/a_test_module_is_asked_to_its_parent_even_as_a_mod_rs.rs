@@ -48,10 +48,12 @@ fn every_shape_of_a_test_module_is_test_and_the_product_neighbour_is_not() {
         ),
         (
             "src/paint.rs",
-            "#[cfg(test)]\n#[path = \"paint_tests.rs\"]\nmod paint_tests;\nmod helper;\n",
+            "#[cfg(test)]\n#[path = \"paint_tests.rs\"]\nmod paint_tests;\nmod helper;\n#[cfg(test)]\nmod commented_tests; // o seam do card\nmod commented_prod; // produto\n",
         ),
         ("src/paint_tests.rs", "fn t() {}\n"),
         ("src/helper.rs", "fn h() {}\n"),
+        ("src/paint/commented_tests.rs", "fn ct() {}\n"),
+        ("src/paint/commented_prod.rs", "fn cp() {}\n"),
         ("src/tests.rs", "mod inner;\n"),
         ("src/tests/inner.rs", "fn i() {}\n"),
         (
@@ -76,5 +78,8 @@ fn every_shape_of_a_test_module_is_test_and_the_product_neighbour_is_not() {
     assert!(!is_test(&t, "src/dispatch/keys.rs"));
     assert!(!is_test(&t, "src/helper.rs"));
     assert!(!is_test(&t, "src/paint.rs"));
+    // ⛔ um comentário no fim da linha do `mod` escondia o nome (`mod line_seam_tests; // …`)
+    assert!(is_test(&t, "src/paint/commented_tests.rs"));
+    assert!(!is_test(&t, "src/paint/commented_prod.rs"));
     assert!(!Path::new(&t.0).join("src/nao_existe.rs").exists());
 }

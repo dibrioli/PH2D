@@ -36,8 +36,8 @@ use ph2d_editor_core::screens::hero::{
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_panel_inspector::{
-    InspectorPanel, InspectorState, set_current_inspector_action, set_current_inspector_timer,
-    set_current_inspector_transform,
+    InspectorPanel, InspectorState, set_current_inspector_action, set_current_inspector_camera,
+    set_current_inspector_tags, set_current_inspector_timer, set_current_inspector_transform,
 };
 use ph2d_ui_testkit::MockPanelHost;
 
@@ -102,6 +102,53 @@ fn actions() -> InspectorActionInfo {
     }
 }
 
+/// ⭐⭐ A secção CAMERA na fixtura — ⛔ **sem ela a TAGS não tem nada por cima**, e a mutação que
+/// deita fora o `y` da câmera fica VERDE: um `paint_camera_section` sobre um snapshot `None` devolve
+/// o `y` que recebeu, logo trocar `y = f(…)` por `let _ = f(…)` é um no-op. *A fixtura tem de conter
+/// a secção que a cadeia empilha, não só a que se acrescentou.*
+fn camera() -> ph2d_editor_core::screens::hero::InspectorCameraInfo {
+    ph2d_editor_core::screens::hero::InspectorCameraInfo {
+        entity_bits: 1,
+        camera: ph2d_editor_core::screens::hero::InspectorGameCamera {
+            height_world: 10.0,
+            offset: [0.0, 0.0],
+            priority: 0,
+            active: true,
+            cull_mask: u32::MAX,
+        },
+        follow: None,
+        limits: None,
+        camera_count: 1,
+        is_active_camera: true,
+        preview_on: false,
+        selected_count: 1,
+    }
+}
+
+/// ⭐ A secção TAGS na fixtura — ela é a ÚLTIMA da cadeia desde a W3a, e é por isso que entra aqui:
+/// a que fecha a lista é a única cujo `y` ninguém consome, logo a única em que trocar o `y = ` por
+/// uma chamada solta não se nota até a secção SEGUINTE nascer.
+fn tags() -> ph2d_editor_core::screens::hero::InspectorTagsInfo {
+    let linha = |id: u64, path: &str, label: &str, depth: usize| {
+        ph2d_editor_core::screens::hero::InspectorTagRow {
+            id,
+            path: path.into(),
+            label: label.into(),
+            depth,
+        }
+    };
+    ph2d_editor_core::screens::hero::InspectorTagsInfo {
+        entity_bits: 1,
+        on_object: vec![linha(1, "Enemy", "Enemy", 0)],
+        all: vec![
+            linha(1, "Enemy", "Enemy", 0),
+            linha(2, "Enemy/Flying", "Flying", 1),
+        ],
+        full: false,
+        selected_count: 1,
+    }
+}
+
 /// Pinta o painel **pela porta do produto** e devolve as bandas de cabeçalho das secções vivas,
 /// na ordem em que foram registadas.
 ///
@@ -113,15 +160,21 @@ fn section_bands() -> Vec<(&'static str, Rect)> {
     set_current_inspector_transform(Some(transform()));
     set_current_inspector_timer(Some(timers()));
     set_current_inspector_action(Some(actions()));
+    set_current_inspector_camera(Some(camera()));
+    set_current_inspector_tags(Some(tags()));
     let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
     set_current_inspector_transform(None);
     set_current_inspector_timer(None);
     set_current_inspector_action(None);
+    set_current_inspector_camera(None);
+    set_current_inspector_tags(None);
 
-    let nomes: [(&str, ph2d_a11y::NodeId); 3] = [
+    let nomes: [(&str, ph2d_a11y::NodeId); 5] = [
         ("Transform", ids::INSP_LIVE_TRANSFORM_SECTION),
         ("Timers", ids::INSP_LIVE_TIMER_SECTION),
         ("Signal Actions", ids::INSP_LIVE_ACTION_SECTION),
+        ("Camera", ids::INSP_LIVE_CAMERA_SECTION),
+        ("Tags", ids::INSP_LIVE_TAGS_SECTION),
     ];
     let mut out = Vec::new();
     for (nome, id) in nomes {
@@ -140,8 +193,8 @@ fn section_bands() -> Vec<(&'static str, Rect)> {
 fn two_live_sections_never_share_a_band() {
     let bandas = section_bands();
     assert!(
-        bandas.len() >= 3,
-        "a fixtura nao produziu as tres seccoes: {:?}",
+        bandas.len() >= 5,
+        "a fixtura nao produziu as cinco seccoes: {:?}",
         bandas.iter().map(|(n, _)| *n).collect::<Vec<_>>()
     );
     for i in 0..bandas.len() {

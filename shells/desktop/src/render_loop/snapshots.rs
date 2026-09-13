@@ -161,6 +161,13 @@ pub(super) fn publish(
     // de guardar uma tabela de nomes: uma SEGUNDA resposta a *«como se chama este
     // componente?»*, que divergiria do rótulo do botão que o anexa.
     component_registry: &ph2d_ecs::scene::ComponentRegistry,
+    // ⭐⭐⭐ **A ÁRVORE DE TAGS do projecto** (TOP-20 #9) — a lista que a secção *Tags* oferece.
+    //
+    // ⚠️ **Ela viaja como o `vec_scene` e o `flip`, e pela MESMA razão: não está no mundo.** É um
+    // documento irmão, e o painel não tem como lá chegar — derivar a lista dos ids que os objectos
+    // carregam daria só as tags JÁ usadas, e a caixa de escolha deixaria de saber oferecer as
+    // outras (nem de existir num projecto ainda sem nenhum objecto marcado).
+    tags: &ph2d_tags::TagTree,
 ) {
     #[cfg(feature = "panel-hierarchy")]
     publish_hierarchy(hero, hero_live, hovered, sim, bool_badges);
@@ -232,6 +239,7 @@ pub(super) fn publish(
         join_draw_armed,
         component_registry,
         inspector_player,
+        tags,
     );
 }
 

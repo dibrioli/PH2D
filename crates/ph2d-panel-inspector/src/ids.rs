@@ -31,6 +31,8 @@ mod inspector_sampling;
 pub use inspector_sampling::*;
 mod inspector_slice;
 pub use inspector_slice::*;
+mod inspector_tags;
+pub use inspector_tags::*;
 mod inspector_timer;
 pub use inspector_timer::*;
 mod menus;

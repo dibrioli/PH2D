@@ -242,6 +242,7 @@ pub(crate) fn paint_optional_sections(
     action_selected: &mut usize,
     audio: Option<&ph2d_editor_core::screens::hero::InspectorAudioInfo>,
     camera: Option<&ph2d_editor_core::screens::hero::InspectorCameraInfo>,
+    tags: Option<&ph2d_editor_core::screens::hero::InspectorTagsInfo>,
     notes: &[Vec<(usize, NoteData)>],
 ) -> f32 {
     y = paint_anim_section(
@@ -319,7 +320,7 @@ pub(crate) fn paint_optional_sections(
         header_h,
         audio,
     );
-    paint_camera_section(
+    y = paint_camera_section(
         scene,
         text_system,
         theme,
@@ -332,6 +333,83 @@ pub(crate) fn paint_optional_sections(
         y,
         header_h,
         camera,
+    );
+    // ⚠️ **`y = ` na irmã de cima, e não uma chamada solta**: a CAMERA deixou de ser a última desta
+    // cadeia, e uma chamada cujo `y` se deita fora empilha a secção seguinte por cima dela — o
+    // defeito exacto que o gate `two_sections_never_stack` existe para apanhar.
+    paint_tags_section(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        section_tops_y,
+        inner_x,
+        inner_w,
+        body_top_y,
+        y,
+        header_h,
+        tags,
+    )
+}
+
+/// **A secção TAGS** — moldura e tudo. ⚠️ Sem estado de painel, como a do áudio e a da câmera: não
+/// há «a tag aberta», e o `open` da caixa de escolha vive no store como o de todas as outras.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn paint_tags_section(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: ph2d_tokens::Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    section_tops_y: &mut Vec<f32>,
+    inner_x: f32,
+    inner_w: f32,
+    body_top_y: f32,
+    mut y: f32,
+    header_h: f32,
+    tags: Option<&ph2d_editor_core::screens::hero::InspectorTagsInfo>,
+) -> f32 {
+    let Some(tg) = tags else {
+        return y;
+    };
+    y = close_section(scene, theme, inner_x, inner_w, y);
+    let y_before = y;
+    begin_section(
+        section_tops_y,
+        hit_index,
+        inner_x,
+        inner_w,
+        body_top_y,
+        y_before,
+        ids::INSP_LIVE_TAGS_SECTION,
+        header_h,
+    );
+    let new_y = crate::sections::tags::paint_tags_section(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        inner_x,
+        inner_w,
+        y,
+        tg,
+    );
+    // ⚠️ **Sem slot de NOTA**, e é a mesma decisão das quatro irmãs da família lógica: os slots são
+    // uma lista posicional que as secções partilham, e acrescentar um a meio renumeraria as notas
+    // que os artistas já colaram.
+    finish_section(
+        scene,
+        text_system,
+        hit_index,
+        store,
+        inner_x,
+        inner_w,
+        ids::INSP_LIVE_TAGS_SECTION,
+        y_before,
+        new_y,
+        &[],
     )
 }
 

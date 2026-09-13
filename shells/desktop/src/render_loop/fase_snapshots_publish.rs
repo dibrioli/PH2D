@@ -47,6 +47,7 @@ impl crate::App {
             atlas_asset_map,
             asset_catalogs,
             component_registry,
+            tags,
             ..
         } = FrameGfx::of(gfx);
         // O bloco do quadro só chama esta fase com o `HeroScreen` vivo.
@@ -164,6 +165,8 @@ impl crate::App {
             },
             // O registo — ver o parâmetro na assinatura do `publish`.
             component_registry,
+            // ⭐ A árvore de tags do projecto — ver o parâmetro na assinatura do `publish`.
+            tags,
         );
         Some(tool_preview_bits)
     }

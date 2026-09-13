@@ -78,6 +78,29 @@ pub(crate) fn sync_new_sections(
     if let Some(cam) = crate::state::current_inspector_camera() {
         sync_camera_fields(host, &cam, entity_changed);
     }
+    // ⭐⭐⭐ **TAGS** (TOP-20 #9). ⚠️ **Ela não tem campo a semear do objecto** — os chips e a lista
+    // são DERIVADOS do snapshot a cada pintura, e o único campo editável (a busca/criação) é do
+    // PAINEL, não da cena. ⛔ O que ela precisa é do OPOSTO: esvaziá-lo ao trocar de objecto,
+    // senão a lista abre estreitada por uma busca feita noutro objecto e a tag procurada parece
+    // não existir.
+    if entity_changed {
+        limpa_busca_de_tags(host);
+    }
+}
+
+/// Esvazia a busca da secção TAGS — ver a chamada.
+fn limpa_busca_de_tags(host: &mut dyn PanelHostInternal) {
+    if let Some(InteractiveState::TextInput {
+        text,
+        caret,
+        selection_anchor,
+        ..
+    }) = host.store_mut().get_mut(crate::ids::INSP_TAGS_NEW)
+    {
+        text.clear();
+        *caret = 0;
+        *selection_anchor = None;
+    }
 }
 
 /// **Escreve um campo de TEXTO do store** — a porta que as três secções partilham.

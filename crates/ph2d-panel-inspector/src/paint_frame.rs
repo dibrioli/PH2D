@@ -343,7 +343,7 @@ pub(crate) fn finish_section(
 /// section has to be remembered here — a fact that is easier to keep true
 /// when it has a name and a signature that changes when you forget.
 #[allow(clippy::too_many_arguments, clippy::fn_params_excessive_bools)]
-pub(crate) fn any_live_section(flags: [bool; 15]) -> bool {
+pub(crate) fn any_live_section(flags: [bool; 16]) -> bool {
     flags.iter().any(|&b| b)
 }
 
@@ -508,6 +508,10 @@ pub(crate) struct LiveSnapshots {
     /// ⭐⭐⭐ **A secção SIGNAL ACTIONS** — `Some` só quando o objecto tem `SignalActions`.
     /// ⚠️ **ENTRA no `any_section`**, pela razão do `timer_info`: ela vale para qualquer objecto.
     pub action_info: Option<ph2d_editor_core::screens::hero::InspectorActionInfo>,
+    /// ⭐⭐⭐ **A secção TAGS** (TOP-20 #9) — `Some` só quando o objecto tem `Tags`.
+    /// ⚠️ **ENTRA no `any_section`**, pela razão do `timer_info`: um objecto vazio é tão marcável
+    /// quanto uma sprite (`ObjectKinds::ANY` no descritor).
+    pub tags_info: Option<ph2d_editor_core::screens::hero::InspectorTagsInfo>,
     /// ⭐⭐⭐ **A secção AUDIO** (TOP-20 #4) — `Some` quando o objecto tem a FONTE, as ORELHAS, ou
     /// as duas. ⚠️ **ENTRA no `any_section`**, pela razão do `timer_info`: ela vale para qualquer
     /// objecto, e um objecto que só tenha o marcador de ouvinte não está representado por mais
@@ -556,6 +560,7 @@ impl LiveSnapshots {
         let action_info = crate::state::current_inspector_action();
         let audio_info = crate::state::current_inspector_audio();
         let camera_info = crate::state::current_inspector_camera();
+        let tags_info = crate::state::current_inspector_tags();
         let any_section = any_live_section([
             transform_info.is_some(),
             sprite_info.is_some(),
@@ -572,6 +577,7 @@ impl LiveSnapshots {
             action_info.is_some(),
             audio_info.is_some(),
             camera_info.is_some(),
+            tags_info.is_some(),
         ]);
         Self {
             transform_info,
@@ -586,6 +592,7 @@ impl LiveSnapshots {
             action_info,
             audio_info,
             camera_info,
+            tags_info,
             blend_info,
             physics_info,
             joint_info,

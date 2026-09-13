@@ -20,6 +20,7 @@ pub(super) struct InspectorIntents {
     pub(super) timer_edits: Vec<(u64, ph2d_editor_core::TimerFieldEdit)>,
     pub(super) audio_edits: Vec<(u64, ph2d_editor_core::AudioFieldEdit)>,
     pub(super) camera_edits: Vec<(u64, ph2d_editor_core::CameraFieldEdit)>,
+    pub(super) tags_edits: Vec<(u64, ph2d_editor_core::TagsFieldEdit)>,
     pub(super) inspector_queue_dirty: bool,
     pub(super) action_edits: Vec<(u64, ph2d_editor_core::ActionFieldEdit)>,
     pub(super) physics_edits: Vec<(u64, ph2d_editor_core::PhysicsFieldEdit)>,
@@ -49,6 +50,7 @@ impl crate::App {
             visibility_type_id,
             name_type_id,
             sprite_type_id,
+            tags,
             ..
         } = FrameGfx::of(gfx);
         // O bloco do quadro só chama esta fase com o `HeroScreen` vivo.
@@ -67,6 +69,7 @@ impl crate::App {
             timer_edits,
             audio_edits,
             camera_edits,
+            tags_edits,
             mut inspector_queue_dirty,
             action_edits,
             physics_edits,
@@ -179,6 +182,24 @@ impl crate::App {
                 continue;
             }
             inspector_camera::apply_camera_edit(sim, *bits, edit, editor_queue, component_registry);
+            inspector_queue_dirty = true;
+        }
+        // ⭐⭐⭐ **A secção TAGS** (TOP-20 #9) — aqui pela razão MAIS forte das três: ela é a única
+        // do Inspector que escreve em DOIS documentos, e o segundo (a árvore) nem sequer está no
+        // mundo. O `inspector_commits` não o recebe — e não devia: ele é o dreno da CENA.
+        //
+        // ⚠️ **Nada invalida a cache do documento das tags aqui, e isso é uma propriedade:** ela
+        // compara a REVISÃO, que toda mutação incrementa. O `invalidate()` é de quem SUBSTITUI a
+        // árvore (o load), não de quem lhe mexe — ver o cabeçalho do `inspector_tags`.
+        for (bits, edit) in &tags_edits {
+            inspector_tags::apply_tags_edit(
+                sim.world(),
+                tags,
+                *bits,
+                edit,
+                editor_queue,
+                component_registry,
+            );
             inspector_queue_dirty = true;
         }
         if inspector_queue_dirty

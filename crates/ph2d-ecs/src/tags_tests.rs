@@ -331,6 +331,32 @@ fn tags_bytes_do_not_depend_on_insertion_order() {
     assert_eq!(b.direct_ids().collect::<Vec<_>>(), [TagId(1), TagId(3)]);
 }
 
+/// ⚠️ **O objecto não aceita mais tags do que o painel mostra** — a lei que o `ANIM_TAGS_MAX` já
+/// pagou: *um modelo que aceita o que o painel não mostra produz estado inalcançável*.
+///
+/// ⚠️ O número sai da SECÇÃO: ela desenha um chip por tag dentro da largura do Inspector, e
+/// [`super::TAGS_MAX`] é o que cabe sem a secção sozinha passar a altura útil da coluna — o mesmo
+/// argumento do `TIMERS_MAX`.
+///
+/// **Mutação que deve sangrar:** o `insert` sem o tecto (o 17.º chip nascia inalcançável).
+#[test]
+fn an_object_takes_no_more_tags_than_the_panel_shows() {
+    let mut t = Tags::default();
+    for i in 1..=super::TAGS_MAX {
+        assert!(t.insert(TagId(i as u64)), "a {i}.ª tag foi recusada");
+    }
+    assert_eq!(t.len(), super::TAGS_MAX);
+    assert!(
+        !t.insert(TagId(999)),
+        "o objecto aceitou mais tags do que a seccao desenha"
+    );
+    assert_eq!(t.len(), super::TAGS_MAX, "a recusa acrescentou na mesma");
+    // ⚠️ E uma que JÁ lá está continua a ser recusada por ser repetida, não por falta de espaço.
+    assert!(!t.insert(TagId(1)));
+    // Tirar uma abre espaço para outra — o tecto é do CONJUNTO, não um contador à parte.
+    assert!(t.remove(TagId(1)) && t.insert(TagId(999)));
+}
+
 /// ⛔ **Uma tag que já não existe não alcança ninguém** — nem como pergunta, nem como id órfão num
 /// objecto (a lei do alvo que não existe: falha FECHADA).
 ///

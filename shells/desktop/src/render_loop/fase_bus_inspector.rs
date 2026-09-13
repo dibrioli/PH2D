@@ -200,6 +200,15 @@ impl crate::App {
             EditorAction::InspectorCameraEdit { entity_bits, edit } => {
                 pd.camera_edits.push((entity_bits, edit));
             }
+            // ⭐ **A secção TAGS** (TOP-20 #9). ⚠️ **NÃO espalha sobre a BulkSelect**, e aqui a
+            // razão é OUTRA que a das irmãs: o que a edição carrega não é um índice — é uma
+            // IDENTIDADE, que significa o mesmo em toda a cena, logo espalhar seria exprimível.
+            // Fica de fora porque *marcar N objectos de uma vez* é um gesto que ninguém pediu e
+            // que o painel não desenha: a secção mostra os chips da primária e diz quantos mais
+            // estão escolhidos. ⛔ Ligá-lo sem o desenhar daria ao artista um efeito invisível.
+            EditorAction::InspectorTagsEdit { entity_bits, edit } => {
+                pd.tags_edits.push((entity_bits, edit));
+            }
             // ⭐ **O `+` do Inspector** (ADR-0166 / F3) — o painel PEDE e a shell abre,
             // porque só ela sabe o tipo do objeto, o que ele já tem, e o que o registo
             // sabe construir.

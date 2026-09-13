@@ -49,6 +49,17 @@ use ph2d_tags::{TagId, TagTree};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 
+/// **Quantas tags um objecto pode ter.**
+///
+/// ⚠️ **O número sai da SECÇÃO, não de um palpite** — é a lei que o [`crate::ANIM_TAGS_MAX`] já
+/// pagou: *um modelo que aceita o que o painel não mostra produz estado inalcançável*. A secção
+/// *Tags* do Inspector desenha um chip por tag dentro da largura da coluna, e `16` é o que cabe sem
+/// ela sozinha passar a altura útil — o mesmo argumento do [`crate::TIMERS_MAX`].
+///
+/// ⛔ Não é um limite da ÁRVORE: o projecto pode ter as tags que quiser (medido: `9 344` custam
+/// `9,2 ms` a abrir). Este é o das que cabem num objecto.
+pub const TAGS_MAX: usize = 16;
+
 /// As tags a que um objecto pertence DIRECTAMENTE.
 ///
 /// ⚠️ **O campo é privado**: quem pergunta *«pertence?»* passa por [`belongs`] / [`tagged`], que
@@ -57,14 +68,24 @@ use std::collections::{BTreeMap, BTreeSet};
 pub struct Tags(BTreeSet<u64>);
 
 impl Tags {
-    /// Um conjunto com estas tags. ⚠️ O `TagId(0)` nunca é dado pela árvore e é ignorado.
+    /// Um conjunto com estas tags. ⚠️ O `TagId(0)` nunca é dado pela árvore e é ignorado, e o que
+    /// passar do [`TAGS_MAX`] fica de fora (pelos ids mais altos) — ver a lei do tecto.
     pub fn from_ids(ids: impl IntoIterator<Item = TagId>) -> Self {
-        Self(ids.into_iter().map(|t| t.0).filter(|&i| i != 0).collect())
+        let mut set: BTreeSet<u64> = ids.into_iter().map(|t| t.0).filter(|&i| i != 0).collect();
+        while set.len() > TAGS_MAX {
+            let ultima = *set.iter().next_back().expect("o conjunto nao esta' vazio");
+            set.remove(&ultima);
+        }
+        Self(set)
     }
 
-    /// Marca o objecto com `id`. Devolve `false` se já estava (ou se `id` é o reservado `0`).
+    /// Marca o objecto com `id`. Devolve `false` se já estava, se `id` é o reservado `0`, ou se o
+    /// objecto já tem [`TAGS_MAX`] tags.
+    ///
+    /// ⚠️ **O tecto é do CONJUNTO**: tirar uma abre espaço para outra, e não há contador ao lado a
+    /// manter coerente.
     pub fn insert(&mut self, id: TagId) -> bool {
-        id.0 != 0 && self.0.insert(id.0)
+        id.0 != 0 && self.0.len() < TAGS_MAX && self.0.insert(id.0)
     }
 
     /// Tira `id`. Devolve `false` se não estava.

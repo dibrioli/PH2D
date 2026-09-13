@@ -303,6 +303,7 @@ fn paint_inspector(
         action_selected,
         snaps.audio_info.as_ref(),
         snaps.camera_info.as_ref(),
+        snaps.tags_info.as_ref(),
         &notes_per_section,
     );
     if snaps.any_section {

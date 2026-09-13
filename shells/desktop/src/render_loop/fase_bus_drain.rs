@@ -441,6 +441,8 @@ pub(super) struct DrainOut {
     pub(super) timer_edits: Vec<(u64, ph2d_editor_core::TimerFieldEdit)>,
     pub(super) audio_edits: Vec<(u64, ph2d_editor_core::AudioFieldEdit)>,
     pub(super) camera_edits: Vec<(u64, ph2d_editor_core::CameraFieldEdit)>,
+    // ⭐ A secção TAGS (TOP-20 #9) — ver o dreno dela no `fase_inspector_commits`.
+    pub(super) tags_edits: Vec<(u64, ph2d_editor_core::TagsFieldEdit)>,
     // ⚠️ **`inspector_queue_dirty` e não `audio_commit`**: desde a secção CAMERA (TOP-20
     // #7) esta bandeira serve DUAS secções, e o nome antigo passou a descrever metade do
     // que ela significa. *Um nome que já não cobre a população dele mente na próxima

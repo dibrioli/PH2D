@@ -43,6 +43,15 @@ thread_local! {
         std::cell::Cell<Option<(u8, ph2d_editor_core::zones::Rect)>> =
         const { std::cell::Cell::new(None) };
 
+    /// TAGS: quando a caixa de escolha está aberta, a secção guarda aqui o **rect do chip** para o
+    /// popover se pintar POR ÚLTIMO.
+    ///
+    /// ⚠️ **Só o rect, e nada mais** — as opções rederivam-se do snapshot MAIS o texto da busca,
+    /// que vive no `WidgetStore`, e o passe diferido tem os dois. É a lei da irmã levada até ao
+    /// fim: *guardar o que não se pode rederivar; rederivar o resto*.
+    pub(crate) static PENDING_TAGS_DD:
+        std::cell::Cell<Option<ph2d_editor_core::zones::Rect>> = const { std::cell::Cell::new(None) };
+
     /// AUDIO: quando o seletor do BARRAMENTO está aberto, a seção guarda aqui
     /// `(tag escolhida, rect do chip)`. ⚠️ Mesma assimetria do irmão: a tag vem no slot, os
     /// rótulos rederivam-se do snapshot.
@@ -90,6 +99,14 @@ pub(crate) fn set_pending_action_dd(chip: Option<(u8, ph2d_editor_core::zones::R
 
 pub(crate) fn take_pending_action_dd() -> Option<(u8, ph2d_editor_core::zones::Rect)> {
     PENDING_ACTION_DD.with(|c| c.take())
+}
+
+pub(crate) fn set_pending_tags_dd(chip: Option<ph2d_editor_core::zones::Rect>) {
+    PENDING_TAGS_DD.with(|c| c.set(chip));
+}
+
+pub(crate) fn take_pending_tags_dd() -> Option<ph2d_editor_core::zones::Rect> {
+    PENDING_TAGS_DD.with(|c| c.take())
 }
 
 pub(crate) fn set_pending_audio_dd(chip: Option<(u8, ph2d_editor_core::zones::Rect)>) {

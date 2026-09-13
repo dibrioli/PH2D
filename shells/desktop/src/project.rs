@@ -219,6 +219,10 @@ mod save;
 #[path = "project_load.rs"]
 mod load;
 
+/// A metade do load que decide QUE BYTES SÃO ESTES — irmã do módulo acima por tecto de LOC.
+#[path = "project_load_read.rs"]
+mod load_read;
+
 /// **Os pixels que o undo não guarda** — irmão pelo teto de LOC (HR-18); o corte é por
 /// responsabilidade: aqui fica *o que um arquivo É*, lá *como os pixels vão e voltam do atlas*.
 #[path = "project_assets.rs"]

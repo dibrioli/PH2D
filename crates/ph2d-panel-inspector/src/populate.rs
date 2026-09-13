@@ -53,6 +53,7 @@ pub fn populate(store: &mut WidgetStore) {
     super::populate_anchor::populate_anchors(store);
     super::populate_anim::populate_anim(store);
     super::populate_timer::populate_timer(store);
+    super::populate_tags::populate_tags(store);
     super::populate_action::populate_action(store);
     super::populate_audio::populate_audio(store);
     super::populate_camera::populate_camera(store);

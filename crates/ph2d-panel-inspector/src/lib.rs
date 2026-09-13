@@ -33,6 +33,8 @@ mod event_precision;
 mod event_slice;
 mod event_sprite_geometry;
 mod event_sprite_value;
+/// ⭐ O despacho da secção TAGS — irmão do `event` por CAP de função.
+mod event_tags;
 /// ⭐ O despacho da secção TIMERS — irmão do `event` por CAP de função.
 mod event_timer;
 mod event_transform;
@@ -60,6 +62,8 @@ mod populate_camera;
 mod populate_instance;
 mod populate_physics;
 mod populate_player;
+/// ⭐ O registo dos widgets da secção TAGS — irmão por CAP de ficheiro.
+mod populate_tags;
 /// ⭐ O registo dos widgets da secção TIMERS — irmão por CAP de ficheiro.
 mod populate_timer;
 mod sections;
@@ -141,11 +145,24 @@ pub use state::{
     set_current_inspector_camera, set_current_inspector_instance, set_current_inspector_joint,
     set_current_inspector_name, set_current_inspector_ordering, set_current_inspector_physics,
     set_current_inspector_player, set_current_inspector_properties, set_current_inspector_sampling,
-    set_current_inspector_slice, set_current_inspector_sprite, set_current_inspector_timer,
-    set_current_inspector_transform, set_current_inspector_visibility,
+    set_current_inspector_slice, set_current_inspector_sprite, set_current_inspector_tags,
+    set_current_inspector_timer, set_current_inspector_transform, set_current_inspector_visibility,
     set_current_inspector_visibility_section, set_current_inspector_wheel,
 };
 pub use state::{probe_current_instance, probe_current_properties, texture_slot_pick};
+
+/// ⭐ **As opções que a caixa de escolha da secção TAGS oferece**, para o gate as poder LER.
+///
+/// ⚠️ **Exportado, e não duplicado no teste:** a lista é a que o pintor E o despacho derivam, e um
+/// gate que a reconstruísse mediria a sua própria cópia — exactamente o oráculo auto-referente que
+/// a `player_control_ids()` pagou (encolher a lista encolhia a varredura, e a mutação passava).
+#[must_use]
+pub fn probe_tag_options(
+    info: &ph2d_editor_core::screens::hero::InspectorTagsInfo,
+    filtro_dobrado: &str,
+) -> Vec<ph2d_editor_core::widget::DropdownOption<u64>> {
+    crate::sections::tags::pick_options(info, filtro_dobrado)
+}
 
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::{WidgetEvent, WidgetStore};

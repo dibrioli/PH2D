@@ -7,7 +7,9 @@
 //! ⚠️ Teste novo = ficheiro novo AQUI + uma linha `mod` abaixo — nunca um `tests/*.rs` solto.
 
 mod a_field_is_never_narrower_than_its_owner_declared;
+mod a_lista_de_tags_cabe_no_popover;
 mod a_long_popover_scrolls;
+mod a_seccao_tags_esta_viva;
 mod action_verb_is_a_dropdown;
 mod every_form_row_reserves_the_animation_column;
 mod every_label_this_panel_paints_fits_its_column;

@@ -23,6 +23,12 @@ ph2d-a11y        = { path = "../ph2d-a11y" }
 ph2d-tokens      = { path = "../ph2d-tokens" }
 ph2d-text        = { path = "../ph2d-text" }
 ph2d-vector      = { path = "../ph2d-vector" }
+# ⭐⭐ **A DOBRA de um rótulo** (TOP-20 #9) — a busca da secção Tags tem de honrar a decisão do dono
+# («maiúscula não importa, letra acentuada não importa»), e a única forma honesta é passar pela
+# MESMA porta que a árvore usa para decidir se duas tags são a mesma. ⛔ Um `to_lowercase` aqui
+# seria a segunda resposta à mesma pergunta, e divergiria no primeiro `Énemy`.
+# Folha com três ICU, duas das quais o `ph2d-text` já traz — ver o Cargo.toml dela.
+ph2d-label-fold  = { path = "../ph2d-label-fold" }
 
 [dev-dependencies]
 # Blindagem Fase 0.1: headless seam harness. Dev-dep only — the

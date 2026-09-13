@@ -90,6 +90,8 @@ mod sampling;
 pub(crate) mod slice_grid;
 pub(crate) mod slice_nine;
 mod sprite_sheet;
+/// ⭐⭐⭐ **A secção TAGS** (TOP-20 #9, W3a) — a que o objecto É.
+pub(crate) mod tags;
 /// ⭐⭐⭐ **A secção TIMERS** (TOP-20 #2, W3) — o painel do primeiro relógio autorável.
 pub(crate) mod timers;
 mod transform;

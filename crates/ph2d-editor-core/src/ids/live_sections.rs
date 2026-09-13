@@ -30,7 +30,7 @@ use super::*;
 /// ⚠️ `finish_section` lê `store.section_outline_color(<id da seção>)` para TODA seção viva, por
 /// isso uma seção ausente daqui tem um contorno que o passe de pintura está pronto a desenhar e
 /// gesto nenhum que o possa definir.
-pub const LIVE_SECTIONS: [(NodeId, NodeId); 20] = [
+pub const LIVE_SECTIONS: [(NodeId, NodeId); 21] = [
     (INSP_LIVE_NAME_SECTION, INSP_LIVE_NAME_COLOR),
     (INSP_LIVE_VISIBILITY_SECTION, INSP_LIVE_VISIBILITY_COLOR),
     (INSP_LIVE_TRANSFORM_SECTION, INSP_LIVE_TRANSFORM_COLOR),
@@ -55,6 +55,13 @@ pub const LIVE_SECTIONS: [(NodeId, NodeId); 20] = [
     (INSP_LIVE_AUDIO_SECTION, INSP_LIVE_AUDIO_COLOR),
     // ⭐ A secção CAMERA (TOP-20 #7, W3) — a 20.ª, e a primeira da família CÂMERA.
     (INSP_LIVE_CAMERA_SECTION, INSP_LIVE_CAMERA_COLOR),
+    // ⭐ A secção TAGS (TOP-20 #9, W3) — a 21.ª, e a primeira da família IDENTIDADE que é opcional.
+    //
+    // ⚠️ **No FIM da tabela, e pintada com as outras opcionais**, embora o descritor a ponha na
+    // família `Identity`: uma secção que só existe para quem TEM o componente (ADR-0166) nasce no
+    // grupo das opcionais, como as quatro acima — e acrescentar a meio renumeraria a lista posicional
+    // das notas, que é a armadilha que a §5 9-Slice já pagou.
+    (INSP_LIVE_TAGS_SECTION, INSP_LIVE_TAGS_COLOR),
 ];
 
 /// Só os cabeçalhos — **projeção** de [`LIVE_SECTIONS`], nunca uma segunda lista.

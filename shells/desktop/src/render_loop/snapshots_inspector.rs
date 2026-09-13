@@ -28,6 +28,8 @@ pub(super) fn publish(
     join_draw_armed: bool,
     component_registry: &ph2d_ecs::scene::ComponentRegistry,
     inspector_player: Option<ph2d_editor_core::InspectorPlayerInfo>,
+    // ⭐ A árvore de tags — ver o parâmetro homónimo do `super::publish`.
+    tags: &ph2d_tags::TagTree,
 ) {
     // M14.5 inspector phase (6.4/§9): publish a per-frame
     // snapshot of the selected sprite so `paint_inspector` can
@@ -124,6 +126,14 @@ pub(super) fn publish(
         window_size,
         game_camera_preview,
     );
+    // ⭐⭐⭐ **A secção TAGS** (TOP-20 #9) — `None` para quem não tem o componente (ADR-0166).
+    //
+    // ⚠️ **Ela é construída AQUI e não na [`late`]**, e a razão é a assinatura: a `late` recebe o
+    // que sai da CENA, e esta secção precisa da árvore, que é um documento irmão. Enfiá-la lá
+    // obrigaria a `late` a receber um argumento que nenhuma das outras cinco lê.
+    let inspector_tags = hero.gizmo.selection.and_then(|b| {
+        crate::render_loop::inspector_tags::build_tags_info(sim.world(), tags, b, selected_count)
+    });
     // ADR-0029 Phase C.1: publish snapshots to the panel crate's
     // thread-locals (replaces the pre-C.1 `hero.inspector.<field>`
     // writes — the field no longer exists; the panel-owned state +
@@ -143,6 +153,7 @@ pub(super) fn publish(
         ph2d_panel_inspector::set_current_inspector_action(inspector_action);
         ph2d_panel_inspector::set_current_inspector_audio(inspector_audio);
         ph2d_panel_inspector::set_current_inspector_camera(inspector_camera);
+        ph2d_panel_inspector::set_current_inspector_tags(inspector_tags);
         ph2d_panel_inspector::set_current_inspector_physics(inspector_physics);
         ph2d_panel_inspector::set_current_inspector_joint(inspector_joint);
         ph2d_panel_inspector::set_current_inspector_wheel(inspector_wheel);

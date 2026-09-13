@@ -76,6 +76,7 @@ impl crate::App {
                 timer_edits: take(&mut pd.timer_edits),
                 audio_edits: take(&mut pd.audio_edits),
                 camera_edits: take(&mut pd.camera_edits),
+                tags_edits: take(&mut pd.tags_edits),
                 inspector_queue_dirty: take(&mut pd.inspector_queue_dirty),
                 action_edits: take(&mut pd.action_edits),
                 physics_edits: take(&mut pd.physics_edits),

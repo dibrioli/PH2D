@@ -63,6 +63,11 @@ pub(crate) fn apply_event(
     if crate::event_camera::apply_camera_event(host, ev) {
         return EventOutcome::Consumed;
     }
+    // ⭐⭐⭐ **TAGS** (TOP-20 #9) — ela NÃO precisa do estado do painel: não há «a tag aberta», e o
+    // que a caixa de escolha guarda (o `open`) vive no store como o de todas as outras.
+    if crate::event_tags::apply_tags_event(host, ev) {
+        return EventOutcome::Consumed;
+    }
     if crate::event_audio::apply_audio_event(host, ev) {
         return EventOutcome::Consumed;
     }

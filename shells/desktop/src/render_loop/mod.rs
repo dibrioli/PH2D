@@ -130,6 +130,9 @@ mod inspector_commits_sprite;
 pub(crate) mod inspector_instance;
 mod inspector_properties;
 mod inspector_slice;
+/// ⭐⭐⭐ **A secção TAGS** (TOP-20 #9) — o snapshot e o commit, que é o único a tocar em DOIS
+/// documentos (o mundo e a árvore de tags).
+mod inspector_tags;
 mod inspector_timer;
 // ⭐ A derivação do `MasterPiece` (`master_editing`, F4.6) mudou-se para a
 // `ph2d_app_components` em 2026-09-12: é **lei da família das instâncias**, não do laço. O gate do

@@ -15,8 +15,9 @@ use ph2d_editor_core::screens::hero::{
     InspectorActionInfo, InspectorAnchorInfo, InspectorAnimInfo, InspectorAudioInfo,
     InspectorBlendInfo, InspectorCameraInfo, InspectorJointInfo, InspectorNameInfo,
     InspectorOrderingInfo, InspectorPhysicsInfo, InspectorPlayerInfo, InspectorSamplingInfo,
-    InspectorSliceInfo, InspectorSpriteInfo, InspectorTimerInfo, InspectorTransformInfo,
-    InspectorVisibilityInfo, InspectorVisibilitySectionInfo, InspectorWheelInfo,
+    InspectorSliceInfo, InspectorSpriteInfo, InspectorTagsInfo, InspectorTimerInfo,
+    InspectorTransformInfo, InspectorVisibilityInfo, InspectorVisibilitySectionInfo,
+    InspectorWheelInfo,
 };
 
 /// Inspector panel retained state. Held inside `ErasedPanel<InspectorPanel>`
@@ -164,6 +165,11 @@ thread_local! {
     /// CAMERA — o snapshot da entidade selecionada (TOP-20 #7).
     pub(crate) static CURRENT_INSPECTOR_CAMERA:
         std::cell::RefCell<Option<InspectorCameraInfo>> = const { std::cell::RefCell::new(None) };
+
+    /// TAGS — os chips do objecto E a árvore do projecto (TOP-20 #9). ⚠️ A segunda lista é do
+    /// DOCUMENTO, não da cena: sem ela a caixa de escolha só saberia oferecer as tags já usadas.
+    pub(crate) static CURRENT_INSPECTOR_TAGS:
+        std::cell::RefCell<Option<InspectorTagsInfo>> = const { std::cell::RefCell::new(None) };
 
     /// **§12 — a linha ABERTA da lista, no sentido PAINEL → SHELL.**
     ///
@@ -350,6 +356,14 @@ pub fn set_current_inspector_camera(info: Option<InspectorCameraInfo>) {
 
 pub(crate) fn current_inspector_camera() -> Option<InspectorCameraInfo> {
     CURRENT_INSPECTOR_CAMERA.with(|c| c.borrow().clone())
+}
+
+pub fn set_current_inspector_tags(info: Option<InspectorTagsInfo>) {
+    CURRENT_INSPECTOR_TAGS.with(|c| *c.borrow_mut() = info);
+}
+
+pub(crate) fn current_inspector_tags() -> Option<InspectorTagsInfo> {
+    CURRENT_INSPECTOR_TAGS.with(|c| c.borrow().clone())
 }
 
 pub(crate) fn current_inspector_audio() -> Option<InspectorAudioInfo> {

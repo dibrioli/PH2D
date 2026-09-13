@@ -255,4 +255,36 @@ pub(crate) fn paint_deferred_popovers(
             hit_index,
         );
     }
+
+    // ⭐⭐⭐ **TAGS** (TOP-20 #9) — a mesma máquina, e a lei da rederivação levada até ao fim: aqui
+    // **só o rect** viaja no slot. As opções saem do snapshot MAIS o texto da busca, que vive no
+    // store — e este passe tem os dois. ⚠️ Se o texto fosse guardado no slot, a lista pintada podia
+    // ficar um quadro atrás do que o artista está a escrever.
+    if let Some(chip) = state_popovers::take_pending_tags_dd()
+        && let Some(info) = state::current_inspector_tags()
+    {
+        let escrito = match store.get(crate::ids::INSP_TAGS_NEW) {
+            Some(ph2d_editor_core::interaction::InteractiveState::TextInput { text, .. }) => {
+                text.clone()
+            }
+            _ => String::new(),
+        };
+        let dd = Dropdown::new(
+            crate::ids::INSP_TAGS_PICK,
+            "",
+            sections::tags::pick_options(&info, &ph2d_label_fold::fold(&escrito)),
+        )
+        .placeholder("Pick a tag\u{2026}")
+        .open(true);
+        paint_open_popover(
+            &dd,
+            chip,
+            region,
+            store,
+            scene,
+            text_system,
+            theme,
+            hit_index,
+        );
+    }
 }

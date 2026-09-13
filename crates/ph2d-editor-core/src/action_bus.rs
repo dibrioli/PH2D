@@ -317,6 +317,16 @@ pub enum EditorAction {
         edit: crate::screens::hero::ActionFieldEdit,
     },
 
+    /// **A secção TAGS** (TOP-20 #9, W3) — marcar, desmarcar, ou criar uma tag e marcar.
+    ///
+    /// ⚠️ **A `Create` carrega TEXTO e as outras um id**, e é isso que faz a caixa de escolha ter uma
+    /// porta só: escrever um nome que não existe e carregar em *Create “…”* cria a tag na árvore do
+    /// projecto **e** marca o objecto, num gesto — a árvore é documento, e o passo de undo é um só.
+    InspectorTagsEdit {
+        entity_bits: u64,
+        edit: crate::screens::hero::TagsFieldEdit,
+    },
+
     /// **A secção AUDIO** (TOP-20 #4) — o som de um objecto da cena.
     ///
     /// ⚠️ **Duas das variantes não escrevem no documento** (`Preview` e `StopPreview`): elas são

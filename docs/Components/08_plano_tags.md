@@ -422,6 +422,61 @@ ordem, que as duas procuras acham à primeira.
 | **W3** | secção *Tags* do Inspector · alvo por tag · **`SignalTagFilter` + `signal_passes`** e a linha *Only for tag* | gates 17, seam 21–25 + smoke do Enio |
 | **W4** | painel *Tags* · `PH2D_TAGS_SMOKE=1..2` | gates 26–28 + smoke do Enio |
 
+### §7.1 — A W3 partiu-se em três, e a W3a FECHOU (2026-09-13)
+
+| | entrega | estado |
+|---|---|---|
+| **W3a** | o TECTO do objecto (`TAGS_MAX`) · a costura na shell (instantâneo + commit) · a **secção *Tags*** do painel (chips com `×` · caixa de escolha com busca · `+ Create "…"`) | ✅ 7 gates na shell · 8 no painel · **18 mutações** |
+| **W3b** | o alvo por tag nas *Signal Actions* (o `Name \| Tag` segmentado + a caixa de escolha partilhada) | ⏳ |
+| **W3c** | `SignalTagFilter` + `signal_passes` + a row *Only for tag* (fecha o gate 17) | ⏳ |
+
+⛔⛔ **DUAS correcções ao que este plano afirmava, as duas medidas na W3a:**
+
+1. **O chip com `×` EXISTE** — `ph2d_editor_core::widget::tag` (`Tag`, `WidgetKind::Tag`,
+   `InteractiveState::Tag`, e um `close_rect()` que dá ao `×` zona de acerto própria). O plano dizia
+   *«não existe widget de chip»* e mandava construí-lo com botões. ⚠️ O **único** consumidor era o
+   *showcase*, e é por isso que um levantamento feito a partir dos painéis lê zero — *uma ausência
+   afirmada pela população de consumidores é um palpite com cara de medição*. ⚠️ Preço real de um
+   widget por estrear: não há `store.tag_visual()` como há `button_visual()`, porque nunca houve
+   quem o pedisse; usa-se a porta `Tag::visual((estado, hover))`.
+2. **O tamanho da lista de escolha é MEDIDO, e o recurso não é o modelo** — a árvore não tem cap
+   (`9 344` tags abrem em `9,2 ms`), logo o array de ids não pode copiar um cap que não existe. O
+   recurso é o POPOVER, preso à altura da coluna do Inspector:
+
+   | janela | região do popover | linhas visíveis |
+   |---|---:|---:|
+   | workstation `2560×1440` | `1376,0 px` | **62** |
+   | portátil `1600×900` | `836,0 px` | 38 |
+   | tablet `1280×800` | `736,0 px` | 33 |
+
+   ⇒ **`INSP_TAGS_OPT = 64`**, o ecrã maior mais dois, com o gate
+   `a_lista_de_tags_cobre_um_ecra_cheio` a imprimir a tabela e a reprovar se alguém mexer na altura
+   da linha. ⛔ **E o que passa daqui é CONTADO na tela** (*«Showing 64 of N — type to narrow»*):
+   um chooser que esconde metade dos resultados em silêncio ensina que a tag não existe.
+
+### §7.2 — A W3b começa por CORRIGIR onde a lista da árvore vive
+
+⛔⛔ **O `InspectorTagsInfo.all` está no sítio errado, e só a SEGUNDA superfície o mostra.** A lista
+inteira da árvore viaja hoje dentro do instantâneo da secção *Tags*, que é **por objecto** e nasce
+`None` para quem não tem o componente (ADR-0166). A secção *Signal Actions* precisa da mesma lista
+para escolher o alvo — e um objecto com `SignalActions` **pode não ter `Tags` nenhum**. ⇒ com a
+lista onde está, a caixa de escolha do alvo abre vazia exactamente no caso normal.
+
+⚠️ **A árvore é um documento do PROJECTO, não dado de um objecto** — a `VecScene` e o `FlipDoc` já
+viajam assim. ⇒ a W3b abre com a lista a subir para uma porta própria
+(`set_current_tag_tree(Vec<InspectorTagRow>)`), lida pelas DUAS superfícies; o
+`InspectorTagsInfo` fica só com o que é do objecto (`on_object`, `full`, `selected_count`).
+
+⭐ *Não foi um erro de leitura do plano: foi a forma certa enquanto houve um consumidor só.* O
+segundo consumidor é que revela o nível a que um dado pertence — e é por isso que esta correcção
+vem **antes** da feature dela, e não depois.
+
+⭐⭐ **E a busca dobra pela porta da ÁRVORE** (`ph2d_label_fold::fold`), o que fez o
+`ph2d-panel-inspector` ganhar essa folha como dependência. ⛔ Um `to_lowercase` no painel seria a
+segunda resposta à mesma pergunta: `Énemy` deixaria de ser encontrado por `enemy` na busca enquanto
+a árvore continuava a tratá-los como a mesma tag — ou seja, a decisão D2 do dono valeria no
+documento e não na única superfície onde ele a exerce.
+
 ⚠️⚠️ **O FILTRO DA FÍSICA mudou-se da W2 para a W3 na implementação (2026-09-13), e o motivo é um
 gate:** o `every_registered_physics_component_has_a_ui_writer` (em `shells/desktop/tests/it/`) exige
 que todo componente de física REGISTADO seja nomeado por um caminho de escrita da UI — ele existe

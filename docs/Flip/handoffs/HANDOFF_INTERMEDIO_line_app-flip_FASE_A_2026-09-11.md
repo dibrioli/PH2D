@@ -2,7 +2,7 @@
 
 > **Fase A fechada. A Fase B espera a `line/app-host` integrar** (o Enio avisa; então
 > `git rebase main` + ler o `HOWTO_partir_uma_familia_da_shell.md` + o corte).
-> Contexto: [`BRIEFINGS_W2_PARTIR_A_SHELL_2026-09-11.md`](../../IntegracaoMultiAgente/BRIEFINGS_W2_PARTIR_A_SHELL_2026-09-11.md)
+> Contexto: [`BRIEFINGS_W2_PARTIR_A_SHELL_2026-09-11.md`](../../archive/integracao-jornadas/BRIEFINGS_W2_PARTIR_A_SHELL_2026-09-11.md)
 > §5 · [auditoria de velocidade](../../DevOps/AUDITORIA_VELOCIDADE_DE_DESENVOLVIMENTO_2026-09-10.md) §4-C2.
 
 ## 1 — Identidade

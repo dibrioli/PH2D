@@ -2,7 +2,9 @@
 description: Briefing inicial de uma worktree nova (DIRETRIZ §1.5.8).
 argument-hint: [Nome da linha] [Objetivo] [Docs extras a ler]
 ---
-Abra a linha `$1` na worktree dela.
+Abra a linha `$1`: execute o BLOCO de `docs/IntegracaoMultiAgente/MODELO_ABERTURA_LINHA.md`
+com `line/$1` — a FASE 1 inteira (hw-profile, worktree, mergiraf) e as regras A–J, que valem até
+ao fim da sessão.
 
 ANTES de ler qualquer arquivo: `cd` na worktree, `pwd`, `git branch --show-current`.
 A janela abre na raiz (= main) e o mesmo path relativo existe nas 2 árvores — editar a
@@ -11,7 +13,7 @@ errada compila e commita sem erro.
 Objetivo da linha:
 $2
 
-Leia primeiro: docs/IntegracaoMultiAgente/DIRETIVA_IMPLEMENTACAO.md + DIRETRIZ §1.5$3
+Leia primeiro: docs/IntegracaoMultiAgente/DIRETIVA_IMPLEMENTACAO.md + DIRETRIZ §1.5. Extras: $3
 
 Regras da linha:
 - Foundational você PODE tocar (ADR-0107), projetando para isolamento (módulo irmão /

@@ -58,7 +58,7 @@ Engine virou **node-centric** (ADR-0030..0038). Modelo = **funil**: neck serial 
 > `ph2d-nodegraph`+`ph2d-expr` foi congelada (caps do arch-gate apertados ao
 > tamanho atual; marcadores 🔒 nos `lib.rs`). **Você está no FAN-OUT agora**
 > (§9): adicionar feature = largar um node-crate isolado, sem editar nada
-> central, via o briefing `docs/IntegracaoMultiAgente/briefing-node-crate.md`.
+> central, via o briefing `docs/archive/integracao-jornadas/briefing-node-crate.md`.
 > NÃO altere o contrato congelado sem ser um evento Coordenador-only explícito
 > (bump do cap + ADR). Tudo local, não pushado — o ship/push é do Enio. Releia
 > §0 (mandato) e §1 (loop) antes de qualquer código.
@@ -117,7 +117,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> { reg.regis
 
 ## 5. Como adicionar um nó (fan-out, pós-FREEZE)
 
-Briefing pronto-pra-colar: [`IntegracaoMultiAgente/briefing-node-crate.md`](IntegracaoMultiAgente/briefing-node-crate.md). Exemplo: `crates/ph2d-node-debug-wave/`.
+Briefing pronto-pra-colar: [`archive/integracao-jornadas/briefing-node-crate.md`](archive/integracao-jornadas/briefing-node-crate.md). Exemplo: `crates/ph2d-node-debug-wave/`.
 Fluxo: criar `crates/ph2d-node-<dom>-<slug>/` → MANIFEST+eval+register+golden → `cargo run -p ph2d-node-sync` → `cargo test -p ph2d-node-registry-init` (gate) → `cargo test -p ph2d-node-<dom>-<slug>`. Zero edit central, sem colisão.
 
 ---

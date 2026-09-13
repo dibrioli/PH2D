@@ -5,7 +5,7 @@
 > e escreveu aqui o que aprendeu. As cinco famílias da W2 (`motion`, `physics`, `sculpt3d`, `vec`,
 > `flip`) seguem isto à letra.
 >
-> Contexto: [BRIEFINGS_W2](BRIEFINGS_W2_PARTIR_A_SHELL_2026-09-11.md) ·
+> Contexto: [BRIEFINGS_W2](../archive/integracao-jornadas/BRIEFINGS_W2_PARTIR_A_SHELL_2026-09-11.md) ·
 > [auditoria §4-C2](../DevOps/AUDITORIA_VELOCIDADE_DE_DESENVOLVIMENTO_2026-09-10.md) · DIRETRIZ §6.7.
 >
 > ⭐⭐⭐ **E a regra que este HOWTO serve tem INSTRUMENTO desde 11/09:** a catraca
@@ -39,6 +39,10 @@ não se pode bissectar.
 | 9 | A **prova** (§3) e o handoff | §3 |
 
 ### §1.1 — O censo, e o que ele responde
+
+> ⚠️ **Desde 12/09 o censo é `python3 scripts/fecho-da-familia.py <fam>` (§1.1-bis).** Os comandos
+> abaixo são os do piloto e varrem por PREFIXO de nome de ficheiro — que mente (§2.15: o prefixo não é a
+> família); ficam como registo do que o piloto mediu.
 
 ```bash
 FAM=motion   # a sua família
@@ -150,8 +154,9 @@ a reescrita **uniforme sobre os 901 sítios** — e um mapa com excepções é o
 ### §1.5 — O `impl App` vira um trait de extensão
 
 ⛔ **Não transforme os métodos em funções livres.** No piloto a shell chama-os em **14 sítios** do
-`input_dispatch` — um ficheiro de 355 KB que toca 273 membros de `App`, e onde as seis linhas da W2
-mais se encontram. Funções livres obrigariam a reescrever os 14.
+`input_dispatch` — à data um ficheiro de 355 KB que tocava 273 membros de `App`, onde as seis linhas da
+W2 mais se encontravam (desde 13/09 é um índice de 527 linhas com os ramos em `input_dispatch/`, e os
+gates leem-no pela lente `input_text`). Funções livres obrigariam a reescrever os 14.
 
 ```rust
 // crates/ph2d-app-<fam>/src/input.rs
@@ -183,7 +188,7 @@ que é como um teste o encena sem janela nenhuma.
 | `self.any_input_this_frame \|= autorou;` | `if autorou { self.note_authored_change(); }` |
 
 > ⚠️ **Se a sua família precisa de um método por campo da `App` que hoje toca, ela não precisa de
-> um trait maior: precisa de tirar o campo da `App`.** O trait tem **cinco** métodos e o número é a
+> um trait maior: precisa de tirar o campo da `App`.** O trait tem **seis** métodos (o sexto, `canvas_visible`, com default) e o número é a
 > medida da regra — leia o `lib.rs` da [`ph2d-app-host`](../../crates/ph2d-app-host/src/lib.rs)
 > antes de propor o sexto. ⛔ E **nenhum método devolve um handle** (`&App`, `&AppGfx`,
 > `&HeroScreen`): isso desfaria a fronteira inteira.
@@ -211,9 +216,9 @@ trecho de `HEAD` aparece 1× no destino e 0× na origem, módulo as quatro refor
 toda troca de texto é DECLARADA na spec e contada). `--before <c>~1 --after <c>` audita um commit já
 feito. O molde, os gates re-apontados ANTES da extracção e as lentes de texto que os leem
 (`frame_text`, `input_text`, `rust_src::path_children`) estão nos handoffs da
-[`render-loop`](HANDOFF_INTEGRACAO_line_render_loop_2026-09-13.md), da
-[`input-dispatch`](HANDOFF_INTEGRACAO_line_input_dispatch_2026-09-13.md) e da
-[`render-bodies`](HANDOFF_INTEGRACAO_line_render_bodies_2026-09-13.md).
+[`render-loop`](../archive/integracao-jornadas/HANDOFF_INTEGRACAO_line_render_loop_2026-09-13.md), da
+[`input-dispatch`](../archive/integracao-jornadas/HANDOFF_INTEGRACAO_line_input_dispatch_2026-09-13.md) e da
+[`render-bodies`](../archive/integracao-jornadas/HANDOFF_INTEGRACAO_line_render_bodies_2026-09-13.md).
 ⚠️ **A régua nasceu em TRÊS cópias fora do repo, e elas divergiram** (uma perdoava 2 das 4
 reformatações) — use a versionada, e ensine-lhe uma reformatação nova no auto-teste dela.
 
@@ -303,8 +308,8 @@ E os dois repartem-se por **sujeito**:
 | que a SHELL chama a família | com a família, apontando para fora | `"../../../shells/desktop/src/…"` |
 | a `App`, o `ProjectState`, o arnês do ponteiro | **na shell** | inalterado |
 
-⭐ Apontar para fora é legítimo e tem precedente: os ~53 gates de arquitectura do
-`ph2d-editor-core` já varrem `shells/desktop/src` de fora.
+⭐ Apontar para fora é legítimo e tem precedente: 18 ficheiros de gates do `ph2d-editor-core`
+(`tests/it/`, contados 13/09) já varrem `shells/desktop/src` de fora.
 
 ### §2.7 — O censo que varre por PREFIXO fica verde a varrer NADA ⛔⛔ mudo
 
@@ -601,9 +606,11 @@ que nenhuma leitura de relógio desta máquina vale nada acima de `load ~5`. Med
 - ⛔ **Abstrair o laço de quadro no registo.** O `render_loop` chama 48 símbolos do piloto, em ordem
   e heterogéneos. A shell continua a chamar `ph2d_app_<fam>::…` **pelo nome**, e pode.
 - ⛔ **Editar a árvore de outra linha.** Cinco famílias movem os próprios ficheiros no mesmo dia.
-  Quando um módulo seu é consumido por `<outra>_*`, deixe um **alias de uma linha** na shell, com a
-  data de validade escrita (*«quando a `line/app-<outra>` fechar, este ficheiro some»*). Um alias com
-  prazo é dívida nomeada; um sem prazo é uma camada.
+  Quando um módulo seu é consumido por `<outra>_*` **de uma linha viva**, deixe um **alias de uma linha
+  no `main.rs`** — o único sítio que o `fecho-da-familia.py` reconhece; um módulo-fachada na shell conta
+  como âncora dela (5 das 6 «âncoras» da Fase C da `vec` eram fachadas, §2.20) —, com a data de validade
+  escrita. Sem linha paralela viva, reescreva os chamadores para `ph2d_app_<fam>::…`. Um alias com prazo
+  é dívida nomeada; um sem prazo é uma camada.
 - ⛔ **Mover contadores partilhados.** `PROJECT_SCHEMA`, os registos do `ph2d-ecs`, `FLIP_SCHEMA`:
   mover código **não** muda serialização. Se eles se mexeram, a linha fez mais do que a tarefa.
 
@@ -611,12 +618,13 @@ que nenhuma leitura de relógio desta máquina vale nada acima de `load ~5`. Med
 
 ## §5 — O que o piloto deixou ABERTO para quem vier
 
-1. **Os cinco alias na shell** (`field3d_views`, `_navball`, `_layout`, `_view_menu`, `_gizmo`)
-   existem só porque `sculpt3d_*` os consome. **Quando a `line/app-sculpt3d` fechar, eles somem** e
-   os chamadores passam a escrever `ph2d_viewport3d::…`.
+1. ✅ **FECHADO (11/09): os cinco alias na shell** (`field3d_views`, `_navball`, `_layout`, `_view_menu`,
+   `_gizmo`) existiam só porque `sculpt3d_*` os consumia; a `line/app-sculpt3d` apagou-os e os chamadores
+   escrevem `ph2d_viewport3d::…`.
 2. **O `Orbit`/`Screen` mora na `ph2d-field-render`** — a crate de render do módulo de *modelagem*.
    A `ph2d-viewport3d` depende dela só pelo tipo de câmera, e por transitividade a escultura também.
    Já era verdade antes; hoje tem nome. A cura é um vocabulário 3D partilhado, e **não** é desta wave.
-3. **O trait `AppHost` tem cinco métodos** e cobriu o piloto inteiro. A `physics` toca **126**
-   membros de `App` em 22 `impl App`: se o pedido dela for grande, **PARE e reporte com a lista** —
+3. ✅ **O trait `AppHost` tem seis métodos** (o sexto com default) e cobriu as famílias todas — a
+   `physics`, que tocava **126** membros de `App`, saiu na Fase C com **zero** métodos novos. Um pedido de
+   método novo continua a ser: **PARE e reporte com a lista** —
    estender o substrato é decisão do integrador, não de cinco linhas em paralelo.

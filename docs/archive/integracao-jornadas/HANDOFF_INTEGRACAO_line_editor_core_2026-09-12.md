@@ -90,7 +90,7 @@ Troque, no bullet *«As duas maiores crates do repo não eram nomeadas…»*, o 
 > (**98 633** em `src/`, medido 13/09 — widgets, interaction e os ids que a própria fundação lê, e **27** gates
 > `architecture_*` entre os **112** ficheiros de `tests/it/`; ⭐ **A5b+A10 (12/09): 1 737 ids desceram para as
 > crates que os lêem e os módulos de topo formam um DAG com catraca de 7 arestas** — uma edição num id de painel
-> recompila 7–8 crates em vez de 61; [handoff](docs/IntegracaoMultiAgente/HANDOFF_INTEGRACAO_line_editor_core_2026-09-12.md))
+> recompila 7–8 crates em vez de 61; [handoff](../../IntegracaoMultiAgente/docs/archive/integracao-jornadas/HANDOFF_INTEGRACAO_line_editor_core_2026-09-12.md))
 
 ### 0.6 — Um defeito de PRODUTO pré-existente, reportado e não curado
 

@@ -1,7 +1,7 @@
 //! ⭐⭐ **TODA crate da workspace herda os lints da workspace — e o `unsafe` é PROIBIDO nelas.**
 //!
 //! Auditoria de arquitectura 2026-09-12, achado A2
-//! (`docs/IntegracaoMultiAgente/AUDITORIA_ARQUITETURA_2026-09-12.md`).
+//! (`docs/archive/integracao-jornadas/AUDITORIA_ARQUITETURA_2026-09-12.md`).
 //!
 //! # O defeito que isto fecha, medido
 //!

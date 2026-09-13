@@ -6,7 +6,7 @@
 >
 > Fase B (1.ª volta): [`…FASE_B_2026-09-11.md`](HANDOFF_INTEGRACAO_line_app-flip_FASE_B_2026-09-11.md) ·
 > molde: [`HOWTO_partir_uma_familia_da_shell.md`](../../IntegracaoMultiAgente/HOWTO_partir_uma_familia_da_shell.md) ·
-> estado da wave: [`ESTADO_W2_2026-09-12.md`](../../IntegracaoMultiAgente/ESTADO_W2_2026-09-12.md).
+> estado da wave: [`ESTADO_W2_2026-09-12.md`](../../archive/integracao-jornadas/ESTADO_W2_2026-09-12.md).
 
 ## 1 — Identidade
 

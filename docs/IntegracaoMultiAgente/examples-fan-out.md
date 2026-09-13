@@ -1,8 +1,8 @@
 # Examples — fan-out drop-crate (paste-ready)
 
-> **Companheiro do [DIRETRIZ.md §3.8](DIRETRIZ.md)**.
+> **Companheiro do [DIRETRIZ.md §3.A](DIRETRIZ.md)**.
 >
-> §3.8.2 traz o briefing **parametrizado** com `<family>`/`<slug>`/`<domínio>`.
+> §3.A.2 traz o briefing **parametrizado** com `<family>`/`<slug>`/`<domínio>`.
 > Este doc instancia esse briefing **fim-a-fim para dois slugs concretos** —
 > um node (`shader.blur`) e um tool sabor-(1) (`grayscale`) — com **todos os
 > arquivos** que o agente deve criar, sem placeholder algum. Cole o briefing
@@ -13,7 +13,7 @@
 ## Intent
 
 Auditoria multi-agente (2026-05-24) identificou: o briefing parametrizado de
-§3.8.2 é suficiente para um agente já familiarizado com o domínio, mas exige
+§3.A.2 é suficiente para um agente já familiarizado com o domínio, mas exige
 que o agente faça substituições (`<slug>` → algo concreto) **e** decida sozinho
 o que vai em cada arquivo. Para reduzir esse atrito a zero, este doc apresenta
 dois exemplos **completamente instantiated**:
@@ -52,7 +52,7 @@ BRIEFING — node-crate · slug: shader-blur · domínio: shader
 
 PASTA EXCLUSIVA: crates/ph2d-node-shader-blur/
 
-ANTES DE CODAR: leia o mapa node↔tool em DIRETRIZ §3.8.1 (entry points,
+ANTES DE CODAR: leia o mapa node↔tool em DIRETRIZ §3.A.1 (entry points,
 contrato, vocab, templates). Sua família é "node Temporal" — copie a
 estrutura de crates/ph2d-node-debug-wave/ como base.
 
@@ -254,8 +254,8 @@ BRIEFING — tool-crate · slug: grayscale · sabor: (1) one-shot
 
 PASTA EXCLUSIVA: crates/ph2d-tool-grayscale/
 
-ANTES DE CODAR: leia o mapa node↔tool em DIRETRIZ §3.8.1 e a tabela
-de sabores §3.8.3 — você é sabor (1), template = ph2d-tool-make-square/.
+ANTES DE CODAR: leia o mapa node↔tool em DIRETRIZ §3.A.1 e a tabela
+de sabores §3.A.3 — você é sabor (1), template = ph2d-tool-make-square/.
 
 O QUE VOCÊ FAZ (só dentro da sua pasta):
 0. PRIMEIRO arquivo: src/lib.rs (1 linha qualquer destrava o workspace
@@ -298,12 +298,17 @@ O QUE VOCÊ FAZ (só dentro da sua pasta):
    ORDEM ALFABÉTICA. NÃO pule via --no-verify — quebra TODOS os ícones
    (o gate enum_order_matches_svgs ordena por ordinal e bate com o
    índice de SVGs).
-   Avise o Coord-A antes de fazer (pode haver outro agente paralelo
-   adicionando IconId — sincroniza pra evitar conflito de ordinal).
+   Outra linha a adicionar IconId em paralelo? O Mergiraf mantém as
+   DUAS entradas (DIRETRIZ §1.5.5) — confira a ordem alfabética no rebase.
 
-   ↑ ESSE arquivo + a SVG e o TOML acima são as ÚNICAS 3 edições fora
-   da sua pasta que o sabor (1) exige. Nenhuma delas é em código
-   foundational congelado — são índices alfabéticos / assets.
+   ↑ ESSE arquivo + a SVG e o TOML acima são as 3 edições de ÍNDICE/ASSET
+   fora da sua pasta. ⛔ E o sabor (1) exige MAIS TRÊS, na shell (medido
+   13/09): o braço `"grayscale" => …` no dreno do OneShotImageOp
+   (shells/desktop/src/render_loop/fase_bus_inspector.rs — um id sem braço
+   cai no `_ => {}` e o pill nasce MORTO com todo gate verde), o campo em
+   render_loop/fase_image_edit_apply.rs e o
+   hero_intents/image_edit/grayscale.rs. É shell: reporte ao
+   Enio/integrador antes de tocar.
 
 O QUE VOCÊ NÃO TOCA:
 - 🔒 crates/ph2d-editor-core/src/tool.rs (Tool/RasterEditTool/
@@ -387,7 +392,7 @@ use ph2d_tool_registry::{HandlerFn, McpExposure, ToolHandler, ToolManifest, Zone
 
 use crate::icon::grayscale_bezpath;
 
-fn shadow_handler() {} // shell drena via EditorAction::OneShotImageOp
+fn shadow_handler() {} // shell drena via EditorAction::OneShotImageOp — POR tool_id literal (passo 7)
 
 pub const MANIFEST: ToolManifest = ToolManifest {
     id: "grayscale",
@@ -395,10 +400,10 @@ pub const MANIFEST: ToolManifest = ToolManifest {
     icon_fn: grayscale_bezpath,
     zone: Zone::TopRight,
     cluster: "image_tools",
-    order: 130, // próximo livre após upscale=120. Confira com
-                //   grep -h "^order" docs/design/tools/*.toml | sort -n
+    order: 140, // próximo livre (13/09: o maior é o painter=130). Confira com
+                //   grep -h "^order" docs/design/tools/*.toml | sort -t= -k2 -n
                 // antes de assumir (outro agente paralelo pode ter
-                // reservado 130 enquanto você editava).
+                // reservado o mesmo enquanto você editava).
     a11y_role: Role::Button,
     handler: ToolHandler::OneShot {
         on_click: shadow_handler as HandlerFn,
@@ -530,7 +535,7 @@ pub fn grayscale_bezpath() -> BezPath {
 id          = "grayscale"
 cluster     = "image_tools"
 zone        = "top_right"
-order       = 130
+order       = 140
 a11y_role   = "Button"
 icon_slug   = "grayscale"
 touches_sim = false
@@ -576,15 +581,15 @@ ph2d-tool-sync: <N+1> crate(s) total; <M+1> manifest, <K> modal (make);
 | Superfícies regen | 1 (register_all_nodes) | 5 (register_all + register_all_tools + 2 testes + deps) |
 | Staleness gate | `-p ph2d-node-registry-init` | `-p ph2d-tool-registry-init` |
 | Entry point | `pub fn register(reg) -> Result<…>` | `pub fn register(reg)` |
-| Contrato congelado | NodeOp ≤ 2 / NodeManifest ≤ 8 (ADR-0039) | Tool ≤ 11 / RasterEditTool ≤ 5 / PanelEvent ≤ 4 (ADR-0040+0041) |
-| Edição fora da pasta | Nenhuma | 3 touches: IconId variant em `editor-core/src/icons.rs` (ordem alfabética) + design TOML em `docs/design/tools/` + SVG em `docs/design/icons/` (Enio fornece) |
+| Contrato congelado | NodeOp ≤ 2 / NodeManifest ≤ 8 (ADR-0039) | Tool ≤ 12 / RasterEditTool ≤ 5 / PanelEvent ≤ 4 (ADR-0040+0041) |
+| Edição fora da pasta | Nenhuma | 3 touches de índice/asset: IconId variant em `editor-core/src/icons.rs` (ordem alfabética) + design TOML em `docs/design/tools/` + SVG em `docs/design/icons/` (Enio fornece) + ⛔ sabor (1): o dreno por `tool_id` na shell (`render_loop/fase_bus_inspector.rs` + `fase_image_edit_apply.rs` + `hero_intents/image_edit/<slug>.rs`) |
 | Templates vivos | `ph2d-node-debug-const` / `-debug-wave` / `-motion-*` | `ph2d-tool-make-square` / `-move` / `-padding` |
 
 ---
 
 ## Quando este doc precisa de atualização
 
-- Mudança em §3.8.2 (briefing parametrizado): reflita aqui.
+- Mudança em §3.A.2 (briefing parametrizado): reflita aqui.
 - Cap arch-gate bumpado em ADR amendment: atualize a linha de contrato.
 - Sabor novo de tool ou domínio novo de node: adicione um terceiro exemplo.
 - Friction novo descoberto em fan-out: documente no exemplo afetado.

@@ -48,7 +48,7 @@
 ## 2 — Codando UI interativa (slider / botão / cycler): fie as pontas JUNTAS
 Um controle interativo atravessa o **seam painel↔tool**, no mínimo **7 sites**:
 
-`id (ph2d-editor-core/src/ids/…)` → `register em populate.rs/seam.rs (vira focável)`
+`id no módulo ids da crate que o LÊ (<painel|tool>/src/ids.rs; na ph2d-editor-core só o que a fundação lê — A5b)` → `register em populate.rs/seam.rs (vira focável)`
 → `paint + hit-index em paint*.rs` → `emite o evento em event.rs/seam.rs`
 → `EditorAction::ToolPanelEvent (bus)` → `tool.handle_panel_event` → `apply_ui_edit (muda o spec/estado)`.
 

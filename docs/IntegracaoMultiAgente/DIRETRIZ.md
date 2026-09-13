@@ -144,6 +144,9 @@ cd Worktrees/line-<módulo>                                 # TODO o trabalho a 
 3. **`git rebase main` no início de CADA jornada e antes de integrar** (refs compartilhadas
    entre worktrees — sem fetch). Conflito em arquivo GERADO ou `Cargo.lock` → NUNCA resolva
    na mão (tabela 1.5.5). Conflito em código fora da sua pasta → você violou o item 1.
+   ⚠️ **Antes do rebase, `git cherry main HEAD`:** uma linha que o integrador rebaseou num `integ/*`
+   fica com hashes velhos, e um `git rebase main` cego reaplica-os por cima dos que ele emendou —
+   sem `+` ⇒ `git reset --keep main` (FASE 1 do [`MODELO_TROCA_DE_AGENTE_NA_LINHA.md`](MODELO_TROCA_DE_AGENTE_NA_LINHA.md)).
 4. Inner loop normal (`cargo check -p`, §6); **gate batched no fechamento do módulo**
    (§6.6.A.2) — verde-de-compilação vale zero, como sempre. Então **escreva o handoff de
    integração (§1.5.9), reporte "linha pronta + handoff" e PARE.** Não rode
@@ -166,10 +169,12 @@ bash scripts/collision-surface.sh            # a linha contra main — AGORA, de
 ```
 
 ⚠️ **Rode-o você, em cada worktree, imediatamente antes de fundir aquela linha — inclusive depois
-de cada fusão anterior.** A tabela que veio no handoff (§1.5.9 item 3) mede a linha contra o `main`
-do dia em que ela FECHOU; entre esse dia e a sua ordem de integração o `main` andou (e cada linha
-que você já fundiu nesta sessão o moveu de novo). O handoff diz o que a linha *achava* que estava
-tocando — **a evidência é a leitura de agora**, e a diferença entre as duas nomeia quem mexeu no meio.
+de cada fusão anterior.** A tabela que veio no handoff (§1.5.9 item 3) é referência, não evidência.
+⛔ **Mas a coluna `base:` é o MERGE-BASE da linha e NÃO anda com o `main`** (medido 10/09): re-rodar
+antes do rebase devolve a MESMA coluna, e a partir da 2.ª fusão de uma rodada ela está desactualizada
+por construção. O valor do `main` lê-se **no ficheiro** (`git show main:<arq>`), o degrau da linha
+conta-se como DELTA sobre ele, e o que o mapa dá de novo é a coluna da LINHA e os `⚠`/`✗`. Um
+`✗ SONDA CEGA` (saída 2) = a const mudou de ficheiro: corrija o script antes de confiar no resto.
 
 Ele mede de uma vez o que o integrador redescobre a cada vez: os **schemas nos TRÊS sítios**
 (`PROJECT_SCHEMA` + a escada + a tripla), o **registro de componentes e os DOIS espelhos**, o
@@ -194,8 +199,10 @@ bash scripts/foundational-integrate.sh
 
 Ele executa, em ordem, e aborta com a orientação certa em qualquer falha:
 `git rebase main` → re-sync (tool/node/**app**) + commit da regen → staleness gate → **gate da árvore
-COMBINADA** (`cargo check --workspace` se a linha tocou foundational; senão `-p` nas crates
-mudadas) → `nextest-impacted` → `git -C <primário> merge --ff-only`.
+COMBINADA** (`CARGO_BUILD_WARNINGS=deny cargo check --workspace --all-targets` sempre que a linha tocou
+fora de `docs/` — desde a W2 as famílias leem `ph2d-tool-*`, `ph2d-panel-*` e `ph2d-node-*`, logo nenhuma
+drop-crate está isolada de quem a lê) → `nextest-impacted` → `git -C <primário> merge --ff-only`.
+Aceita ramos `line/*` e `integ/*`.
 
 **Por que o `check --workspace` é obrigatório para foundational:** o `--ff-only` prova só que
 ninguém entrou entre seu rebase e seu merge; **não prova que a árvore combinada compila**.
@@ -206,9 +213,21 @@ testar o futuro main (ADR-0107, prova de correção).
 
 **O `--ff-only` É a serialização:** se falhar, outra linha integrou entre seu rebase e seu
 merge → **re-rode o script** (rebase de novo sobre a recém-integrada, re-testa, re-tenta) — você
-nunca funde uma combinação não-testada. Precondição dura: primário limpo e em main (sujo =
-violação do 1.5.1 — pare e reporte). Linha integrada segue viva pra próxima wave do módulo;
-morreu de vez → `git worktree remove Worktrees/line-<x> && git branch -d line/<x>`.
+nunca funde uma combinação não-testada. Precondição dura: primário limpo **fora de `project-memory/`**
+e em main (sujo fora dela = violação do 1.5.1 — pare e reporte; a memória é symlink de todas as sessões
+e suja-o sempre). Linha integrada segue viva pra próxima wave do módulo; morreu de vez → o procedimento
+de [`MODELO_ABERTURA_LINHA.md`](MODELO_ABERTURA_LINHA.md) §«Encerrar uma linha». ⛔ **Nunca
+`git worktree remove` a seco:** ele apaga ficheiros ignorados em silêncio (instrumentos `.cauda-*`,
+projectos gravados, repositórios de referência), e o `git branch -d` recusa a linha integrada por rebase.
+
+**Rodada de várias linhas (13/09):** o integrador rebaseia-as em cadeia num ramo `integ/<rodada>`, corre
+o gate da árvore combinada no tip e só então avança o `main` por `--ff-only`. Três regras que só a rodada
+pagou: (a) um `dead_code` que só existe na fusão cura-se **no commit rebaseado em que o último uso
+morre** (edit-rebase), para o `bisect` nunca atravessar árvore vermelha; (b) cada commit rebaseado
+compara-se com o original (§1.5.5); (c) os **registos** da rodada — blocos de abertura, briefings,
+handoffs de integração, estado, auditorias — vivem em
+[`docs/archive/integracao-jornadas/`](../archive/integracao-jornadas/) desde que nascem: esta pasta é
+processo, e o gate `the_live_process_folder_holds_no_dated_record` reprova um registo datado nela.
 
 ⚠️ **Antes de reportar "main verde local", deixe o binário do smoke compilado NO PRIMÁRIO** —
 `cargo build -p ph2d-host-desktop --profile smoke` de dentro da raiz (mais as `--features` de cada
@@ -235,6 +254,12 @@ acima. O script é a fonte única — não duplique a lista aqui.)*
 > em **partes diferentes** do mesmo `.rs`/`.toml`/`.json` fundem sozinhos via AST — o que era
 > conflito textual vira auto-merge. Ele **não** decide os dois casos abaixo (`Cargo.lock`/gerados
 > = regenere; mesmo-símbolo = reporte) nem pega quebra semântica (isso é o gate testado, 1.5.3).
+>
+> ⛔ **E o `Solved` dele não é prova** (13/09): numa lista numerada partilhada ele largou a remoção
+> de um lado em **2 de 130** commits — rebase sem marcadores, índice limpo, `Solved` impresso. Na
+> integração, listas e catracas fundem por `merge=text` (em `$(git rev-parse --git-common-dir)/info/attributes`,
+> retirado no fim) com resolução pelos ESTÁGIOS e assert de contagem, e **cada commit rebaseado
+> compara-se com o original** (multiconjunto de linhas `+/-` por ficheiro, com controlo positivo).
 
 | Arquivo | Regra |
 |---|---|
@@ -305,12 +330,11 @@ fecha a linha ([`CLAUDE.md §0.7`](../../CLAUDE.md)). Conteúdo mínimo (curto, 
 
    ⚠️ **PRAZO DE VALIDADE — a tabela colada é REFERÊNCIA, nunca EVIDÊNCIA.** Ela mede a sua linha
    **contra o `main` do dia em que você fechou**. Se a linha fecha na segunda e o Enio manda
-   integrar na quinta, com duas linhas fundidas no meio, todo número da coluna "base" mudou e o
-   handoff descreve um `main` que já não existe — **e ele não reclama**, porque uma tabela colada
-   não sabe que envelheceu. Por isso: **o integrador RE-RODA `collision-surface.sh` em cada
-   worktree imediatamente antes de fundir** (§1.5.3), e usa a tabela do handoff só para *saber o
-   que a linha ACHAVA que estava tocando* — a divergência entre as duas leituras é ela própria um
-   achado, e aponta para a linha que integrou no meio.
+   integrar na quinta, com duas linhas fundidas no meio, o `main` já não é o que a tabela descreve —
+   **e ela não reclama**, porque uma tabela colada não sabe que envelheceu. ⛔ **E re-rodar o script
+   não actualiza a coluna `base:`**: ela é o MERGE-BASE da linha, que só muda com o rebase. Por isso o
+   integrador lê o valor do `main` **no ficheiro** (`git show main:<arq>`) e conta o degrau da linha
+   como DELTA sobre ele (§1.5.3); a tabela do handoff diz só *o que a linha ACHAVA que estava tocando*.
 4. **Contratos congelados encostados** (§4) — deve ser **nenhum**; se sim, exige ADR (pare e reporte).
 5. **O que só o `ship.sh` pega** (o gate de integração NÃO roda): fmt/typos pré-fork, deps novas
    p/ machete, clippy latente, RUSTSEC ([[project_integration_prefork_lines_ship_drift]]).
@@ -320,6 +344,10 @@ fecha a linha ([`CLAUDE.md §0.7`](../../CLAUDE.md)). Conteúdo mínimo (curto, 
    o CI reprova. Esta alínea já pedia *«deps novas p/ machete»* no handoff, e nenhuma linha o correu,
    porque o comando de fecho (`/pd-linha-fechar`) não o chamava pelo nome — hoje chama.
    [`HOWTO_partir_uma_familia_da_shell.md`](HOWTO_partir_uma_familia_da_shell.md) §2.18.
+   ⚠️ **E três que o `ship.sh` ganhou e a linha também corre ao fechar** (13/09): um `dead_code` que só a
+   workspace inteira vê (`CARGO_BUILD_WARNINGS=deny cargo check --workspace --all-targets`), uma crate
+   com dependência interna opcional que não compila sozinha (`scripts/check-standalone-optional.sh`) e
+   um pacote apagado/renomeado que um workflow cita por `-p` (`scripts/check-workflow-packages.sh`).
 6. **Ordem/dependências** entre commits, se houver, e **o que smoke-testar** (o que NÃO foi smokado).
 7. ⚠️ **RECLAME o `incremental/` da sua worktree** — depois do gate batched e do handoff, antes de
    parar: `rm -rf "$(git rev-parse --show-toplevel)"/target/*/incremental`. São **25 GB por
@@ -375,10 +403,15 @@ fecha a linha ([`CLAUDE.md §0.7`](../../CLAUDE.md)). Conteúdo mínimo (curto, 
      cobre todas as cenas. O que multiplica builds é **feature**, **perfil** e **`target/`**.
    - **Por último, e depois do último commit** — qualquer edição posterior o torna obsoleto **em
      silêncio**: o cargo simplesmente reconstrói quando ele apertar Enter, e nada avisa.
-   - **Não colide com o item 7:** o perfil release **não usa** compilação incremental — medido
-     2026-08-27, `target/release/incremental` está **vazio (0 B)** enquanto o `incremental/` de
-     `debug`+`ci-test` da mesma worktree pesa **14,5 GB**. Você devolve ~14 GB e guarda **2,0 GB**
-     de `target/release`: o saldo do fecho continua fortemente negativo.
+   - **A ordem com o item 7 importa:** o perfil `smoke` **é incremental** (`incremental = true` no
+     `Cargo.toml` — ⚠️ esta alínea dizia o contrário, medido no `release` em 27/08, antes de o `smoke`
+     existir). Reclame o `incremental/` (item 7) **antes** deste build: o `target/smoke/` que ele deixa
+     — o binário e o incremental dele — é o entregável, e apagá-lo depois devolve o build ao Enio.
+
+10. ⚠️ **INSTRUMENTO que o handoff cita vive VERSIONADO** — `scripts/` (com auto-teste, se for régua) ou
+    `docs/<Módulo>/ferramentas/`, nunca numa pasta não rastreada da worktree (`.cauda-*`): ela morre com a
+    worktree, e o handoff fica a citar um caminho que não existe. Medido 13/09: três linhas tinham três
+    cópias da prova de movimento fora do repo, e elas **já tinham divergido** — daí `scripts/moved-proof.py`.
 
 Modelo de resumo no fim da linha: *"Linha `<módulo>` pronta (HEAD `<sha>`, N commits). Handoff
 de integração: <itens 2–6>. Smoke compilado: `<o comando exato>` (2ª corrida: Finished em `<N>`s,
@@ -419,7 +452,8 @@ TRIAGEM
 | **Nó novo** (domínio com avaliador existente) | **(A) §3.A** | Drop-crate `crates/ph2d-node-<dom>-<slug>/` + `cargo run -p ph2d-node-sync`. Wiring gerado. |
 | **Tool nova** (any shape) | **(A) §3.A** | Drop-crate `crates/ph2d-tool-<slug>/` + `cargo run -p ph2d-tool-sync`. Sem variant novo em `EditorAction`. |
 | **Modificar** nó/tool existente | **(A) §3.D** | A pasta já existe — edite dentro dela. |
-| **Painel novo** (`ph2d-panel-<slug>`) | **(B) §3.B.1** | Coord plumba feature flag + `register_all_panels` ANTES. |
+| **Painel novo** (`ph2d-panel-<slug>`) | **(B) §3.B.1** | Crate + `cargo run -p ph2d-panel-sync` (registo GERADO) + a feature-proxy na shell + `ICON`/`DEFAULT_SLOT` obrigatórios + os sítios à mão da §3.B.1. Modo C: o Coord plumba ANTES. |
+| **Código de uma FAMÍLIA** (cena, lei, estado de um módulo) | **(A)** na crate da família | `crates/ph2d-app-<família>/` — a shell é composição e a catraca `the_shell_only_shrinks` reprova crescimento. Código que ainda está na shell muda-se pelo [HOWTO](HOWTO_partir_uma_familia_da_shell.md) (§1.7 + `scripts/moved-proof.py` para um corpo de função). |
 | **Widget primitive novo** | **(B) §3.B.2** | Cria o arquivo + `cargo run -p ph2d-widget-sync` (bloco `mod` GERADO); `pub use` + showcase à mão. |
 | **Chrome handler novo** | **(B) §3.B.3** | Cria stub `chrome/<slug>.rs` + marcador `z=NN` + `cargo run -p ph2d-chrome-sync` (`mod` + `dispatch_all` GERADOS). |
 | **Avaliador novo (Wave-neck)** — Shader/Som/Gameplay | **(C)** durante neck → (A) depois | Trabalho "tipo W2" serial; abre fan-out só após o neck. Tracker **histórico** (arquivado): [`HANDOFF_node_system.md`](../archive/handoffs-2026-06-16/HANDOFF_node_system.md). |
@@ -515,6 +549,13 @@ O QUE VOCÊ FAZ (só dentro da sua pasta):
 
 O QUE VOCÊ NÃO TOCA:
 - Qualquer arquivo fora da sua pasta.
+  ⛔ [tool sabor (1) one-shot de imagem] EXCEÇÃO MEDIDA (13/09): o dreno
+  do OneShotImageOp é por tool_id LITERAL na shell
+  (render_loop/fase_bus_inspector.rs, com `_ => {}` a descartar calado)
+  + o campo em render_loop/fase_image_edit_apply.rs + o
+  hero_intents/image_edit/<slug>.rs. Sem os três o pill nasce MORTO com
+  todo gate verde (o every_image_tool_pill_dispatches_* só prova o
+  barramento). É shell: reporte ao Enio/integrador antes de tocar.
 - 🔒 Contrato congelado (vide §4). Mudança = serial + ADR (Modo C: Coord-only; Modo L: reporte ao Enio, §1.5.2.1).
   [node]  ph2d-nodegraph, ph2d-expr, ph2d-node-registry,
           ph2d-node-registry-init/ (GERADO).
@@ -605,11 +646,13 @@ Coord:
 1. Decide `slug`, `DEFAULT_VISIBLE`, feature flag (`panel-<slug>`).
 2. Cria `crates/ph2d-panel-<slug>/` com `Cargo.toml` (deps: `ph2d-editor-core`, `ph2d-a11y`, `ph2d-tokens`, `ph2d-text`, `ph2d-vector`, `ph2d-tool-registry`).
 3. Cria `src/lib.rs` com stub `impl Panel` (template completo: [`ph2d-panel-inspector`](../../crates/ph2d-panel-inspector/src/lib.rs)). **Notas factuais:** `Panel::paint` tem 2 params (`state`, `ctx`); o host fica em `ctx.host` (campo de `PaintCtx`), não param separado; trait usado pelo host é `PanelHostInternal`; `hash_node_id` vive em `ph2d-tool-registry`.
-4. Em [`ph2d-panel-registry-init/Cargo.toml`](../../crates/ph2d-panel-registry-init/Cargo.toml): adiciona feature `panel-<slug> = ["dep:ph2d-panel-<slug>"]` + entrada em `[dependencies]` `{ path = "...", optional = true }` + inclui em `default = [...]`.
-5. Em `ph2d-panel-registry-init/src/lib.rs::build_typed_registry`: `#[cfg(feature = "panel-<slug>")] reg.push(ErasedPanel::new::<ph2d_panel_<slug>::Panel>());` (ordem não é alfabética — sem arch-gate, mantém ordem de migração ADR-0029).
-6. Atualiza `EXPECTED_TYPED` no `#[cfg(test)] mod tests` (incrementa contador).
-7. `cargo check -p ph2d-panel-<slug>` + `cargo test -p ph2d-panel-registry-init` verde.
-8. Commit + briefing pro Implementador (§2.B).
+4. `cargo run -p ph2d-panel-sync` — regenera, entre os marcadores `ph2d-panel-sync`, a feature `panel-<slug>`, a dependência opcional no [`ph2d-panel-registry-init/Cargo.toml`](../../crates/ph2d-panel-registry-init/Cargo.toml) e o `reg.push(...)` do `build_typed_registry`. ⛔ **Nunca à mão entre os marcadores** (o gate de staleness reprova). À mão ficam só a entrada em `default = [...]` e um bloco `#[cfg(feature = "panel-<slug>")] { n += 1 }` no `EXPECTED_TYPED` do `#[cfg(test)] mod tests`.
+5. Na shell: a feature-proxy `panel-<slug> = ["ph2d-panel-registry-init/panel-<slug>"]` + a entrada no `default` de `shells/desktop/Cargo.toml` — sem ela o painel compila e não chega ao binário (gate `every_panel_the_registry_ships_reaches_the_binary`).
+6. `impl Panel` com os consts **obrigatórios** `ICON` (variant nova de `IconId` em ordem alfabética + `docs/design/icons/<slug>.svg`) e `DEFAULT_SLOT` ([`panel_trait.rs`](../../crates/ph2d-editor-core/src/panel/panel_trait.rs)); os ids de controlo no `src/ids.rs` da PRÓPRIA crate do painel — quem os lê —, nunca na `ph2d-editor-core` (A5b, 12/09).
+7. O `NodeId` do painel entra no `PANEL_Z_ORDER_FALLBACK` ([`screens/hero/paint.rs`](../../crates/ph2d-editor-core/src/screens/hero/paint.rs)) — o passeio de pintura (`panel_walk.rs`) só caminha essa lista mais os painéis já trazidos à frente, e um painel registado e visível fora dos dois **nunca é pintado** (gate `architecture_every_panel_is_painted`, que diz a cura ao reprovar).
+8. Se o painel ROLA (publica polegar de barra): o id dele entra no `cursor_over_hero_panel` ([`forwarding.rs`](../../shells/desktop/src/forwarding.rs)) — sem isso a roda sobre o painel dá zoom na câmera por baixo, e o painel aparece e clica normal (gates `every_scrollable_panel_intercepts_the_wheel` + `the_allowlist_has_no_stale_entries`, em `shells/desktop/tests/it/`).
+9. `cargo check -p ph2d-panel-<slug>` + `cargo test -p ph2d-panel-registry-init` verde — ⚠️ e os gates dos passos 5, 7 e 8 vivem em `tests/it/` da `ph2d-editor-core` e da shell: um `--bins` não lhes chega.
+10. Commit + briefing pro Implementador (§2.B).
 
 Implementador: preenche `paint`, `apply_event`, `populate`, `State`.
 
@@ -630,14 +673,14 @@ O bloco `mod` **e** a chain `dispatch_all` são GERADOS — zero edit central à
 1. Cria `editor-core/src/screens/hero/chrome/<slug>.rs` com stub `pub fn apply(_hero, _event) -> bool { false }`
    e o marcador de prioridade `// ph2d-chrome-sync:z=NN` na 1ª linha (menor = despacha antes, "vence" em id overlap; omita → vai pro fim, `DEFAULT_Z`).
 2. `cargo run -p ph2d-chrome-sync` regenera `mod` + `dispatch_all` (ordem = `z=NN`, depois nome). **NUNCA edite os blocos entre marcadores à mão** — gate `architecture_chrome_dispatch_in_sync` confirma.
-3. Se precisa NodeIds: `screens/hero/ids.rs` via `hash_node_id`.
+3. Se precisa NodeIds: `crates/ph2d-editor-core/src/ids/chrome/<slug>.rs` via `hash_node_id` (a fundação é quem os lê; o `screens/hero/ids.rs` já não existe).
 4. `cargo check -p ph2d-editor-core` verde.
 
 Implementador (Modo C) / a própria linha (Modo L): preenche o corpo do handler.
 
 ### 3.C Foundational + contratos congelados (caminho (C))
 
-Foundational = `ph2d-core`, `ph2d-tokens`, `ph2d-editor-core` (exceto widget/chrome scaffold de B), `ph2d-a11y`, `ph2d-host`, `ph2d-vector`, `ph2d-text`, `ph2d-tool-registry`, `ph2d-{tool,node,panel}-registry-init`, `tools/ph2d-{node,tool}-sync`, `shells/*`, arch tests, **+ os 2 contratos congelados** (§4).
+Foundational = `ph2d-core`, `ph2d-tokens`, `ph2d-editor-core` (exceto widget/chrome scaffold de B), `ph2d-a11y`, `ph2d-host`, `ph2d-vector`, `ph2d-text`, `ph2d-tool-registry`, `ph2d-{tool,node,panel,app}-registry-init`, `ph2d-app-host`, `tools/ph2d-*-sync`, `shells/*`, arch tests, **+ os 2 contratos congelados** (§4).
 
 **Modo C:** não paralelizável — o Coordenador faz sozinho. **Modo L (ADR-0107):** foundational NÃO-contrato é editável por **qualquer linha** sob o gate testado (§1.5.2.1 + §1.5.3); só **contrato congelado** e **mesmo-símbolo de tipo-núcleo** ficam seriais (reporte/ADR).
 
@@ -963,11 +1006,11 @@ fechado**, não por micro-task (vide §6.6.A.2).
    1.º ✗. Precisa de mais? `[[profile.default.overrides]]` com o número medido. Gate de relógio/alocação
    novo entra na **lane** pelo nome (§6.5) — a barra fica.
 5. **A shell é o caminho crítico de todo build grande** (34–45 s sozinha no fim de todo gate) — ela é **UMA**
-   unidade de compilação e a **última** de toda build grande. ✅ **W2 FEITA em 11/09, em seis linhas
-   paralelas: 526 809 → 465 105 LOC (−61 704, −11,7 %) e −222 ficheiros**, com as famílias a nascerem em
+   unidade de compilação e a **última** de toda build grande. ✅ **W2 FEITA em 11–12/09, em quatro
+   rodadas de linhas paralelas: 526 809 → 186 647 LOC (−65 %)**, com as famílias a nascerem em
    `crates/ph2d-app-{field3d,vec,flip,physics,sculpt3d,motion}` sobre o substrato `ph2d-app-host` +
    `ph2d-app-registry-init`. ⇒ **a regra que fica: código de FAMÍLIA vive em `crates/ph2d-app-<família>`;
-   a shell é COMPOSIÇÃO.** O molde, as 5 portas do trait de host e as **15** armadilhas medidas (⛔ quatro
+   a shell é COMPOSIÇÃO.** O molde, as portas do `AppHost` e as **20** armadilhas medidas (⛔ metade
    delas MUDAS — uma feature não viaja com o código, um `#[cfg(test)]` é invisível do outro lado da crate,
    um censo que varre por prefixo passa a varrer zero) estão no
    [`HOWTO_partir_uma_familia_da_shell.md`](HOWTO_partir_uma_familia_da_shell.md).
@@ -979,10 +1022,10 @@ fechado**, não por micro-task (vide §6.6.A.2).
    tanto que o tecto deixou de a descrever. ⚠️ **Quando ela reprovar, MOVA para a crate da família; subir o
    número é desfazer a W2 uma wave de cada vez.** A folga de `4 000` linhas é para a raiz de composição
    (ligar uma família custa linhas no `main.rs`), **não** para um módulo.
-   ⏳ **A Fase B das cinco famílias fica aberta**: os roteadores de cenas (`PH2D_*_SMOKE`) ainda tocam a
-   `App` e por isso ficaram na shell — só a `flip` levou os dela. Quem estiver a meio está **declarado** na
-   catraca `FAMILIAS_COM_O_ROTEADOR_AINDA_NA_SHELL` do `ph2d-app-registry-init`, que volta a vazia quando a
-   Fase B acabar. Uma cena de smoke nova que nenhum doc cite pelo número é 1 k linhas pagas por ninguém.
+   ✅ **As Fases B–D fecharam em 12/09**: os roteadores de cenas (`PH2D_*_SMOKE`) vivem nas crates das
+   famílias e a catraca `FAMILIAS_COM_O_ROTEADOR_AINDA_NA_SHELL` MORREU; a refatoração final (13/09) partiu
+   o `run_render_frame` e o `on_mouse_input` em fases e ramos (registo:
+   [ESTADO W2 §6](../archive/integracao-jornadas/ESTADO_W2_2026-09-12.md), no arquivo). Uma cena de smoke nova que nenhum doc cite pelo número é 1 k linhas pagas por ninguém.
 6. **`jobs = 32` nesta máquina** (era 6; a nota media codegen e prendia o front-end): check frio do
    workspace 156 → 93 s. É config por máquina (`~/.cargo/config.toml`), não do repo.
 7. **Recusas medidas — não reconstrua:** `cargo-hakari`/unificação de features (não há cascata) ·
@@ -1038,7 +1081,7 @@ Uma armadilha sobrevive aqui porque **morde nos dois modos** — o gate de `typo
 **Fim do dia — ship (Enio dispara: "commit"/"push"/"ship"/"fim do dia"):**
 O Coordenador entra em **modo observa-e-corrige** e tem a OBRIGAÇÃO de entregar verde:
 
-1. **`./scripts/ship.sh`** — job de lint+test do CI inteira, local, de uma vez (fmt, clippy `--all-targets --features ph2d-spike/bevy_ecs`, `cargo machete`, `cargo deny`, `cargo audit`, `nextest --workspace`, `typos`). Paridade EXATA com `spike.yml`.
+1. **`./scripts/ship.sh`** — job de lint+test do CI inteira, local, de uma vez (fmt, clippy `--all-targets --features ph2d-spike/bevy_ecs`, `cargo machete`, `cargo deny`, `cargo audit`, `nextest --workspace`, `typos`, crates opcionais que compilam sozinhas, pacotes citados pelos workflows, índices de docs — a lista viva é o script). Paridade EXATA com `spike.yml`.
 2. Pra CADA `✗`: diagnostica + corrige + re-roda. **NÃO pusha enquanto não estiver 100% verde.**
 3. Organiza os checkpoints `--no-verify` do dia em commits limpos (squash se preciso).
 4. Push (§8.3) → babysit do CI (§8.4) até verde; em vermelho, fix + re-push até verde (escalona após 3 falhas do MESMO job).
@@ -1047,12 +1090,14 @@ O Coordenador entra em **modo observa-e-corrige** e tem a OBRIGAÇÃO de entrega
 ### 8.2 Smoke local — antes do push
 
 ```bash
-./play.command
+cd <árvore> && cargo run -p ph2d-host-desktop --profile smoke   # Modo L — o binário já compilado (§1.5.9 item 9)
+./play.command                                                    # Modo C / Mac — compila --release noutro target
 ```
 
-Smoke é do **Enio**, sob comando do Coord. Coord escreve checklist concreta:
+Smoke é do **Enio**, sob comando do Coord (Modo C) ou do integrador (Modo L), em passos numerados
+(`CLAUDE.md §0.8`):
 
-> "Enio, rode `./play.command` e verifica:
+> "Enio, rode o comando acima e verifica:
 > 1. App abre sem panic.
 > 2. Tool X aparece na TopBar Image Tools com ícone correto.
 > 3. Clique → ação esperada.
@@ -1149,7 +1194,7 @@ Ciclo fechado. Disponível para próxima ordem.
 
 Completo em [`SKILL_Stack_PH2D_Definitiva.md`](../../SKILL_Stack_PH2D_Definitiva.md) §HR-1..HR-18.
 
-#### ⚠️ Os caps de LOC são CINCO, e confundi-los é erro recorrente
+#### ⚠️ Os caps de LOC são SETE, e confundi-los é erro recorrente
 
 Não existe "o cap de 600" nem "o cap de 700": **cada um cobre uma árvore diferente**, e o que vale
 para o seu arquivo é o do gate cuja árvore o contém. Duas auditorias já "corrigiram" um pelo outro.
@@ -1157,11 +1202,13 @@ Os números abaixo saem do fonte do gate — se divergirem dele, **o fonte está
 
 | Árvore coberta | Cap | Gate (a fonte do número) |
 |---|---:|---|
-| `crates/**` (workspace inteira) | **700** | `ph2d-editor-core/tests/it/architecture_workspace_file_loc_cap.rs` (`FILE_LOC_CAP`) — ADR-0105 subiu 600→700; existentes acima ficam **congelados** numa allowlist (podem encolher, nunca crescer) |
+| `crates/**` (workspace inteira) | **700** | `ph2d-editor-core/tests/it/architecture_workspace_file_loc_cap.rs` (`FILE_LOC_CAP`) — ADR-0105 subiu 600→700; a lista de folgas (`FILE_OVERAGE_OK`) está **VAZIA** desde 13/09, como a dos painéis: estouro cura-se cortando por responsabilidade, **nunca** com entrada nova |
 | `shells/<plat>/src/**` | **600** | `shells/desktop/tests/it/file_loc_caps.rs` (`FILE_LOC_CAP`) — HR-18 |
 | `ph2d-panel-*/src/**` | **600** arquivo · **200** função | `ph2d-editor-core/tests/it/architecture_panel_loc_cap.rs` (`PANEL_FILE_LOC_CAP` / `PANEL_FN_LOC_CAP`) |
 | `ph2d-editor-core/src/widget/**` | **500** | `ph2d-editor-core/tests/it/architecture_widget_loc_cap.rs` (`WIDGET_LOC_CAP`) |
 | `ph2d-tool-runtime/src/**` | **650** | `ph2d-tool-runtime/tests/architecture_runtime_loc_cap.rs` (`CAP`) |
+| `shells/<plat>/src/**` por **função** | **200** | `shells/desktop/tests/it/fn_loc_caps.rs` (`FN_LOC_CAP`) — a lista numerada tem **uma** entrada (`main.rs::new`) e só encolhe |
+| `shells/desktop/**` — a **crate inteira** | tecto que só desce | `ph2d-editor-core/tests/it/architecture_the_shell_only_shrinks.rs` (`TETO_LOC`) — **soma entre linhas**, e nenhum cap por ficheiro o vê; acima dele MOVA para a crate da família, nunca suba o número |
 
 ⚠️ **Cap de FUNÇÃO e cap de ARQUIVO são grandezas diferentes:** extrair um corpo grande para uma
 função irmã **no mesmo arquivo** cura o de função e estoura o de arquivo. Corte para o **arquivo
@@ -1182,8 +1229,8 @@ de medir — a re-quebra de linhas do fmt reexpande o arquivo depois do corte.
 | 🔒 Contrato de tools | `crates/ph2d-editor-core/src/tool.rs` + `action_bus.rs` |
 | **Tool registry (GERADO)** | `crates/ph2d-tool-registry-init/` |
 | **Node registry (GERADO)** | `crates/ph2d-node-registry-init/` |
-| Panel registry (manual) | `crates/ph2d-panel-registry-init/src/lib.rs` |
-| Codegens | `tools/ph2d-{node,tool,panel,chrome,widget}-sync/` |
+| Panel registry (GERADO por `cargo run -p ph2d-panel-sync` entre marcadores; à mão só o `default = [...]` e o bloco `#[cfg]` no `EXPECTED_TYPED`) | `crates/ph2d-panel-registry-init/` |
+| Codegens | `tools/ph2d-{node,tool,panel,chrome,widget,app,imageio}-sync/` |
 | Widget showcase | `crates/ph2d-editor-core/src/widget/showcase/` |
 | Tokens source | `docs/design/tokens.json` → build.rs gera `crates/ph2d-tokens/src/` |
 | Tool design TOML | `docs/design/tools/<slug>.toml` |

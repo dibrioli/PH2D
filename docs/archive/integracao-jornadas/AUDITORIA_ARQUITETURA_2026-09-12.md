@@ -295,7 +295,7 @@ tocou (14 commits depois desta auditoria).
 1. ✅ **`input_dispatch.rs`** (7 117 L; `on_mouse_input` 3 102 numa função) **partiu-se** — `line/input-dispatch`,
    integrada em 13/09 com a `render-bodies` e a `loc-caps` ([ESTADO W2 §6](ESTADO_W2_2026-09-12.md)): o índice tem
    527 L e nenhuma função do território passa de 200. O molde foi o da `line/render-loop`, e a régua da prova de
-   movimento ficou versionada em [`scripts/moved-proof.py`](../../scripts/moved-proof.py).
+   movimento ficou versionada em [`scripts/moved-proof.py`](../../../scripts/moved-proof.py).
 2. **A10:** a catraca tem 7 arestas, e o corte da fundação só compensa para o `screens` — não agora
    (acima).
 3. ⚠️ **Os gates que leem a SHELL pelo caminho moram também fora dela**: três de família reprovaram na

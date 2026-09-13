@@ -14,8 +14,8 @@
 
 `bash scripts/hw-profile.sh` tem que dizer **`workstation`**. Se disser `constrained`,
 esta máquina é **Modo C** (Coordenador + Implementadores, shared tree) — este guia não
-vale; veja DIRETRIZ §1 (e o detalhe do Modo C no arquivo que ela aponta). Modo L é só no
-desktop 128 GB.
+vale; veja DIRETRIZ §1 (e o detalhe do Modo C no arquivo que ela aponta). Modo L é o tier
+`workstation`, e quem o decide é o `hw-profile.sh` (RAM e núcleos), não o nome da máquina.
 
 ## Papéis: só você + N linhas. Zero coordenador.
 
@@ -37,8 +37,12 @@ disjunta isola merge, Mergiraf + gate testado cobrem foundational).
   `workstation` várias voam. Comece com 3–4 se estiver calibrando.
 - **Foundational agora pode entrar numa linha** (ADR-0107) — não precisa mais de uma fila
   única. Só **contrato congelado** (nodes/tools, §6) você sequencia à parte (exige ADR).
-- Confira quem já está aberto: `git worktree list` (ou [`SESSION_ACTIVE.md`](../SESSION_ACTIVE.md)).
-  **Nunca 2 linhas no mesmo módulo.**
+- Confira quem já está aberto: `git worktree list` + `git branch --no-merged main --list 'line/*'`
+  (⛔ o `SESSION_ACTIVE.md` é do Modo C e está parado desde 18/08). **Nunca 2 linhas no mesmo módulo.**
+- ⚠️ **Linhas que tocam `shells/desktop` partilham UM tecto** (`the_shell_only_shrinks`, que soma
+  entre linhas): o bloco de cada uma diz que ficheiros da shell ela possui e quanto do tecto pode
+  gastar — pasta disjunta já não basta. O molde medido são os
+  [blocos da refatoração final](../archive/integracao-jornadas/BLOCOS_ABERTURA_REFATORACAO_FINAL_2026-09-13.md) §1–§2.
 
 ### 2. Abra cada linha
 Para cada linha, **uma janela nova** do Claude **na raiz do repo** (sempre a mesma pasta):
@@ -81,17 +85,22 @@ Quando as linhas reportarem "pronta + handoff" e **você decidir integrar**:
 1. **Junte os handoffs** (um por linha, DIRETRIZ §1.5.9) e abra **uma janela de agente
    integrador** no primário (`main`). Cole os handoffs + a ordem de integração.
 2. O integrador funde **uma linha de cada vez** via `bash scripts/foundational-integrate.sh`
-   (de dentro de cada worktree): `--ff-only` serializa — a 1ª é FF, as demais rebaseiam sobre
-   o novo main e o integrador resolve os conflitos (Cargo.lock/gerados = regenera; mesmo-símbolo
-   = renumera/decide com base nos handoffs). Ele reporta o **main verde local** e PARA —
-   **com o binário de release do primário já construído** (DIRETRIZ §1.5.3), porque depois da
-   fusão é o `main` que você smoka, e as worktrees quentes não servem para isso.
-3. Cada linha integrada segue viva pra próxima wave (ou "encerra a linha":
-   `git worktree remove` + `git branch -d`).
+   (de dentro de cada worktree) — ou, numa rodada de várias linhas, rebaseia-as em cadeia num
+   ramo `integ/<rodada>` e só no fim avança o `main` por fast-forward (DIRETRIZ §1.5.3). Nos dois
+   casos `--ff-only` serializa e o integrador resolve os conflitos (Cargo.lock/gerados = regenera;
+   mesmo-símbolo = renumera/decide com base nos handoffs). Ele reporta o **main verde local** e
+   PARA — **com o binário do smoke (`--profile smoke`) do primário já construído** (DIRETRIZ
+   §1.5.3), porque depois da fusão é o `main` que você smoka, e as worktrees quentes não servem
+   para isso. Os registos da rodada (blocos de abertura, briefings, handoffs de integração,
+   estado) vivem em [`docs/archive/integracao-jornadas/`](../archive/integracao-jornadas/): esta
+   pasta fica só com o que se lê para trabalhar, e há gate a mantê-la assim.
+3. Cada linha integrada segue viva pra próxima wave (ou "encerra a linha": o procedimento do
+   [`MODELO_ABERTURA_LINHA.md`](MODELO_ABERTURA_LINHA.md) §"Encerrar uma linha", que guarda antes
+   o que o `git worktree remove` apagaria).
 4. **Ship é 1× por jornada, e SÓ quando você mandar** ("ship"/"push"). O integrador (ou uma
    sessão-ship dedicada) roda:
    ```
-   ./scripts/ship.sh          # paridade EXATA com o CI (fmt/clippy/deny/audit/nextest/typos)
+   ./scripts/ship.sh          # paridade EXATA com o CI — a lista viva de verificações é o script
    git push origin main       # só depois de verde
    ```
    Aí babysit o CI (`gh run watch`) até `success` — protocolo em DIRETRIZ §8.

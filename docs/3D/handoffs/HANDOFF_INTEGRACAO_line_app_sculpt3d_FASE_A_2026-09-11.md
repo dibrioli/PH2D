@@ -1,6 +1,6 @@
 # Handoff de integração — `line/app-sculpt3d`, **FASE A** (2026-09-11)
 
-> W2/L3 do [briefing de partir a shell](../../IntegracaoMultiAgente/BRIEFINGS_W2_PARTIR_A_SHELL_2026-09-11.md) §5-A.
+> W2/L3 do [briefing de partir a shell](../../archive/integracao-jornadas/BRIEFINGS_W2_PARTIR_A_SHELL_2026-09-11.md) §5-A.
 > ⚠️ **Isto fecha a FASE A, não a linha.** A Fase B (o corte para `crates/ph2d-app-sculpt3d`)
 > espera a `line/app-host` integrar e o `HOWTO_partir_uma_familia_da_shell.md` existir.
 

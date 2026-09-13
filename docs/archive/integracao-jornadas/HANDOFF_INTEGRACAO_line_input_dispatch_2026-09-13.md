@@ -12,7 +12,7 @@
 |---|---|
 | branch | `line/input-dispatch` |
 | HEAD | `c51a055c8` (o `fim_do_item` na forma do `rustfmt`) — o handoff entra no commit seguinte |
-| merge-base com `main` | `29ff6576e` — o `main` andou UM commit desde então (`0bfee712e`, só `docs/IntegracaoMultiAgente/ESTADO_W2_2026-09-12.md`: sem colisão) |
+| merge-base com `main` | `29ff6576e` — o `main` andou UM commit desde então (`0bfee712e`, só `docs/archive/integracao-jornadas/ESTADO_W2_2026-09-12.md`: sem colisão) |
 | commits da linha | 67 (+ o do handoff) |
 
 ## §2 · O veredito, em números

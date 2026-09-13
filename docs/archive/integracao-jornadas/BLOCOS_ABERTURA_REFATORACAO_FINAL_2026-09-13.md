@@ -110,9 +110,9 @@ SETUP (execute já, sem pedir confirmação; reporte cada ✗):
       → ⛔ NUNCA os commite (git add só por caminho). Faltou algum? Leia
         o §4 do handoff da line/render-loop e escreva o seu equivalente.
 9. LEIA INTEIRO (dentro da worktree):
-   a) docs/IntegracaoMultiAgente/BLOCOS_ABERTURA_REFATORACAO_FINAL_2026-09-13.md
+   a) docs/archive/integracao-jornadas/BLOCOS_ABERTURA_REFATORACAO_FINAL_2026-09-13.md
       — §1 territórios e §2 CERCAS (LEI).
-   b) docs/IntegracaoMultiAgente/HANDOFF_INTEGRACAO_line_render_loop_2026-09-13.md
+   b) docs/archive/integracao-jornadas/HANDOFF_INTEGRACAO_line_render_loop_2026-09-13.md
       — §4 (o MÉTODO: fases pela mesma ordem, prova verbatim, gates
         re-apontados ANTES de extrair) e §10–§12.
    c) docs/IntegracaoMultiAgente/HOWTO_partir_uma_familia_da_shell.md §2
@@ -291,9 +291,9 @@ SETUP (execute já, sem pedir confirmação; reporte cada ✗):
    cp /home/enio/Documentos/Projetos/PH2D/Worktrees/line-render-loop/.cauda-render-loop/{verbatim.py,extract_phase.py,mutlib.sh,prescan_gates.py,run_phases2.sh} .cauda-render-bodies/
       → ⛔ NUNCA os commite. Faltou algum? §4 do handoff da line/render-loop.
 9. LEIA INTEIRO (dentro da worktree):
-   a) docs/IntegracaoMultiAgente/BLOCOS_ABERTURA_REFATORACAO_FINAL_2026-09-13.md
+   a) docs/archive/integracao-jornadas/BLOCOS_ABERTURA_REFATORACAO_FINAL_2026-09-13.md
       — §1 territórios e §2 CERCAS (LEI).
-   b) docs/IntegracaoMultiAgente/HANDOFF_INTEGRACAO_line_render_loop_2026-09-13.md
+   b) docs/archive/integracao-jornadas/HANDOFF_INTEGRACAO_line_render_loop_2026-09-13.md
       — INTEIRO: é a linha cujo trabalho você continua (§4 o método,
         §10–§12 o que ficou).
    c) shells/desktop/tests/it/frame_text.rs — o instrumento de que 63
@@ -443,7 +443,7 @@ SETUP (execute já, sem pedir confirmação; reporte cada ✗):
    wc -l target/prova/antes.txt        # ⚠️ vazio = a prova mede nada
    bash -c 'find shells/desktop -name "*.rs" -not -path "*/target/*" -exec cat {} + | wc -l' > target/prova/shell_antes.txt
 8. LEIA INTEIRO (dentro da worktree):
-   a) docs/IntegracaoMultiAgente/BLOCOS_ABERTURA_REFATORACAO_FINAL_2026-09-13.md
+   a) docs/archive/integracao-jornadas/BLOCOS_ABERTURA_REFATORACAO_FINAL_2026-09-13.md
       — §1 territórios e §2 CERCAS (LEI; a §2.2 e a §2.6 são SUAS).
    b) docs/IntegracaoMultiAgente/HOWTO_partir_uma_familia_da_shell.md §2
       (as ⛔ são MUDAS) e §3.
@@ -563,7 +563,7 @@ I. No fim: rm -rf target/*/incremental ; DEIXE O SMOKE COMPILADO, 2
 2. **`TETO_LOC`:** os três deltas somavam +2 771 sobre 193 205; medido na ponta, depois do `fmt`, **196 003** (+2 798 — o
    resto é o `rustfmt` que a árvore combinada pediu). ≤ 196 990, **intocado**.
 3. **Os instrumentos da prova de movimento** eram três cópias, e já divergiam (o `mover.py` perdoava 2 das 4
-   reformatações do `rustfmt`) ⇒ **versionados** como [`scripts/moved-proof.py`](../../scripts/moved-proof.py): a UNIÃO das
+   reformatações do `rustfmt`) ⇒ **versionados** como [`scripts/moved-proof.py`](../../../scripts/moved-proof.py): a UNIÃO das
    réguas, `--before/--after` para auditar um commit feito, auto-teste 16/16 e controlo em dados reais (`5ebcdf16b`: as
    51 L do botão direito vetorial provadas `OK`; o mesmo trecho procurado noutro ramo → `FALHA`). ⚠️ As pastas `.cauda-*`
    das três worktrees continuam **fora do repo** e guardam as specs de cada peça — preserve-as antes de apagar uma

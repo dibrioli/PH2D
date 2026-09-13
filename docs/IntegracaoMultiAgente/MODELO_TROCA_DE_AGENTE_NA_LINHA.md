@@ -50,32 +50,43 @@ FASE 0 — ONDE VOCÊ ESTÁ (execute já, sem pedir confirmação):
       Deu `main`, ou a pasta não existe? PARE e reporte ao Enio: ou o
       módulo está escrito errado, ou a linha nunca foi aberta (aí o
       bloco certo é o MODELO_ABERTURA_LINHA.md).
-2. git log --oneline -5 && git status -sb
-      → é daqui que o agente anterior parou. Árvore suja = trabalho não
-        commitado dele: NÃO descarte, commite (`--no-verify`).
+2. git log --oneline -5 && git status --short --ignored | grep -v target/
+      → é daqui que o agente anterior parou. PRODUTO sujo (`M`, ficheiros
+        novos de crates/docs) = trabalho não commitado dele: NÃO descarte,
+        commite POR CAMINHO (`--no-verify`). Pastas de INSTRUMENTO dele
+        (`.cauda-*`, `target/prova/`): NUNCA commite — leia-as.
 
-FASE 1 — RETOMADA (só se a linha já integrou ao main alguma vez):
-3. git rebase main
-      → obrigatório no início de CADA jornada (DIRETRIZ §1.5.2.3).
+FASE 1 — RETOMADA (obrigatória no início de CADA jornada, §1.5.2.3):
+3. git cherry main HEAD | grep -c '^+'
+      → 0: todo commit seu JÁ está no main — o integrador rebaseou a
+        linha num `integ/*` e ela ficou com hashes velhos. Faça
+        `git reset --keep main` e siga. ⛔ Um `git rebase main` aqui
+        reaplicaria os commits velhos por cima dos que o integrador EMENDOU.
+      → >0: `git range-diff main...HEAD`. São seus e ainda não integrados?
+        Siga. Algum já está no main com outro patch? PARE e reporte.
+   git rebase main 2>&1 | tee target/rebase.log
         Conflito em Cargo.lock ou arquivo GERADO (registry-init,
         chrome/mod.rs): NUNCA na mão — regenere (DIRETRIZ §1.5.5).
         Conflito em código FORA dos seus arquivos = colisão de
-        mesmo-símbolo: PARE e reporte ao Enio.
+        mesmo-símbolo: PARE e reporte ao Enio. E se o log disser
+        `Solved` (Mergiraf): `git range-diff ORIG_HEAD...HEAD` ficheiro a
+        ficheiro — ele larga a remoção de um lado numa lista e diz
+        «Solved» (13/09, 2 de 130).
 4. cargo check -p <sua crate principal>
       → confirma que a base nova não quebrou você. 1º build pode ser
         frio (minutos): é esperado, não investigue.
 
 FASE 2 — ESTADO (leia, nesta ordem, DENTRO da worktree):
-5. O handoff/tracker do SEU módulo (`docs/HANDOFF_*<módulo>*.md` e/ou
-   `docs/<Módulo>/`) — é onde o agente anterior deixou o que já foi
+5. O handoff/tracker do SEU módulo (`ls -t docs/<Módulo>/handoffs/`, a
+   linha do módulo no CLAUDE.md §5 e `git log --oneline
+   $(git merge-base main HEAD)..HEAD`) — é onde o agente anterior deixou o que já foi
    decidido, medido e REPROVADO. Ler antes evita reconstruir o que já
    foi tentado e re-litigar decisão fechada.
 6. docs/IntegracaoMultiAgente/DIRETIVA_IMPLEMENTACAO.md — inteira, e
    RELEIA a cada passo, como ela manda.
-6b. docs/IntegracaoMultiAgente/STACK_VERSOES.md — 1 pagina. As versoes
-   que voce usa (Rust 1.98/edition 2024 · wgpu 29 · vello 0.10 ·
-   parley 0.11 · rapier2d 0.35 · bevy_ecs 0.19) e as tres regras que
-   um agente novo erra. Uma linha reaberta e' onde uma versao de
+6b. docs/IntegracaoMultiAgente/STACK_VERSOES.md — 1 pagina, gateada
+   contra o Cargo.lock (as versoes NAO se copiam para aqui: a copia
+   envelheceria sem gate) e as tres regras que um agente novo erra. Uma linha reaberta e' onde uma versao de
    memoria mais mente: o handoff que voce herdou pode ser anterior a'
    subida do stack.
 7. As REGRAS PERMANENTES DA SESSÃO (A–I) do
@@ -120,19 +131,25 @@ Reporte ao Enio e execute o caso que se aplica:
 
 ```bash
 cd ~/Documentos/Projetos/PH2D        # primário
-git log --oneline origin/main..HEAD  # o que é seu? (confira ANTES)
 git branch --show-current            # confirme: main
+git reflog main | head -20           # ache o último sha do main que NÃO é seu: <ANTES>
+git log --oneline <ANTES>..main      # só os seus? confira UM A UM
 
 # leva os commits para a linha, sem duplicá-los no main
-git -C Worktrees/line-<módulo> cherry-pick <sha-mais-antigo>^..<sha-mais-novo>
-git reset --hard origin/main         # ⚠️ só depois do cherry-pick VERDE
+git -C Worktrees/line-<módulo> cherry-pick <ANTES>..<sha-mais-novo>
+git reset --keep <ANTES>             # ⚠️ só depois do cherry-pick VERDE
 ```
+
+⛔ **Nunca `origin/main` como alvo.** Entre uma integração e o envio, o `main` local está **à
+frente** do `origin` (137 commits em 13/09): `git log origin/main..HEAD` lista o trabalho do
+integrador como «seu», e um `reset --hard origin/main` apaga a integração inteira.
 
 **Ainda não commitou (mudanças soltas no `main`):**
 
 ```bash
 cd ~/Documentos/Projetos/PH2D
-git diff > /tmp/resgate.patch        # inclua --cached se houver staged
+git add -N -- <seus ficheiros NOVOS> # sem isto o diff não leva os ficheiros novos
+git diff --binary > /tmp/resgate.patch   # inclua --cached se houver staged
 git -C Worktrees/line-<módulo> apply /tmp/resgate.patch
 git checkout -- <SÓ os seus arquivos>   # NUNCA `git checkout .`
 ```

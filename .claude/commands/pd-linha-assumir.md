@@ -4,9 +4,10 @@ argument-hint: [Nome da linha] [Handoff a ler] [Próximo item]
 ---
 Você está assumindo a linha `$1`, que já existe.
 
-Leia docs/IntegracaoMultiAgente/MODELO_TROCA_DE_AGENTE_NA_LINHA.md e siga a rota
-"linha reaberta": `cd` na worktree + `pwd` + `git branch --show-current` ANTES de
-abrir qualquer arquivo, depois `git rebase main`.
+Execute o BLOCO de docs/IntegracaoMultiAgente/MODELO_TROCA_DE_AGENTE_NA_LINHA.md com
+`line/$1`, FASE 0 → 1 → 2: `cd` na worktree + `pwd` + `git branch --show-current` ANTES de
+abrir qualquer arquivo; depois o `git cherry` da FASE 1 (uma linha integrada por rebase tem
+hashes velhos, e um `git rebase main` cego reaplica-os) e só então o rebase.
 
 Estado / handoff: $2
 

@@ -28,7 +28,7 @@
 ## §0 — A ORDEM, e porquê ela não é «as cinco de uma vez»
 
 ⛔⛔ **A `physics` abre PRIMEIRO e sozinha, como batedora.** Não é cautela: é a pergunta do
-[HOWTO §5.3](HOWTO_partir_uma_familia_da_shell.md), que está **em aberto** e cuja resposta é uma só
+[HOWTO §5.3](../../IntegracaoMultiAgente/HOWTO_partir_uma_familia_da_shell.md), que está **em aberto** e cuja resposta é uma só
 para as cinco — *o trait `AppHost` tem cinco métodos e cobriu a piloto inteira; a `physics` toca
 **126** membros de `App` em 22 `impl App`*. Se cinco linhas baterem nessa parede ao mesmo tempo,
 cada uma inventa a extensão dela, e isso é **colisão de mesmo-símbolo em foundational** — o único
@@ -82,7 +82,7 @@ Estas entram em **todos** os blocos. Não são repetição: são o que a Fase A 
 6. **A PROVA, sempre:** `cargo nextest list --workspace --cargo-profile ci-test` **antes** de mover
    (na base) e depois, comparados por `python3 scripts/nextest-list-diff.py antes.txt depois.txt`.
    `ONLY-A` vazio ou a linha não fechou.
-7. ⚠️ **Leia o [HOWTO](HOWTO_partir_uma_familia_da_shell.md) INTEIRO antes de mover o primeiro
+7. ⚠️ **Leia o [HOWTO](../../IntegracaoMultiAgente/HOWTO_partir_uma_familia_da_shell.md) INTEIRO antes de mover o primeiro
    ficheiro** — a §2 tem **11** armadilhas medidas e **quatro têm modo de falha MUDO** (uma feature
    não viaja com o código · `#[cfg(test)]` é invisível do outro lado da crate · um censo que varre
    por prefixo passa a varrer zero e fica verde · uma fronteira põe um elo novo na corrente e ele não
@@ -100,7 +100,7 @@ Você é o agente da linha  line/app-physics.  A linha JÁ EXISTE: a Fase A
 dela fechou e FOI INTEGRADA ao main em 11/09. Isto é a FASE B — o corte.
 
 ⭐ VOCÊ É A BATEDORA. Abre sozinha, e a razão está no §0 do
-   docs/IntegracaoMultiAgente/BLOCOS_ABERTURA_W2_FASE_B_2026-09-11.md:
+   docs/archive/integracao-jornadas/BLOCOS_ABERTURA_W2_FASE_B_2026-09-11.md:
    a sua família toca 126 membros de `App` em 22 `impl App`, e a pergunta
    do HOWTO §5.3 (o trait de host chega?) tem de ser respondida UMA vez,
    por você, antes de as outras quatro abrirem.

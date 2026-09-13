@@ -3,7 +3,7 @@
 > **O que este documento é:** a **ordem** da rodada, **medida**, mais o que cada fusão vai partir e
 > onde. Ele **não substitui** os seis handoffs de linha — ele diz **em que ordem os ler** e **um de
 > cada vez**.
-> **Autoridade:** [`DIRETRIZ §1.5.3`](DIRETRIZ.md) (mecanismo) · [`CLAUDE.md §0.7`](../../CLAUDE.md)
+> **Autoridade:** [`DIRETRIZ §1.5.3`](../../IntegracaoMultiAgente/DIRETRIZ.md) (mecanismo) · [`CLAUDE.md §0.7`](../../../CLAUDE.md)
 > (integrar e shipar só por ordem explícita do Enio).
 
 ---

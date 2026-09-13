@@ -1,6 +1,6 @@
 # Briefing — node-crate (fan-out)
 
-> **Stub — não edite aqui.** Briefing canônico vive em [`DIRETRIZ.md` §3.A](DIRETRIZ.md)
+> **Stub — não edite aqui.** Briefing canônico vive em [`DIRETRIZ.md` §3.A](../../IntegracaoMultiAgente/DIRETRIZ.md)
 > ("Fan-out drop-crate — node OU tool"). Desde DIRETRIZ v6.6 (2026-05-22) o
 > briefing foi integrado no doc único de implementação; desde v6.8 (mesmo dia,
 > pós-ADR-0040 FREEZE) ele é **unificado com o briefing de tool-crate** num
@@ -16,10 +16,10 @@
 > - **§3.A.6** — checklist do revisor
 >
 > A triagem "Coordenador ou só Implementador?" está em
-> [`DIRETRIZ.md` §2](DIRETRIZ.md). Node novo e tool nova são ambos
+> [`DIRETRIZ.md` §2](../../IntegracaoMultiAgente/DIRETRIZ.md). Node novo e tool nova são ambos
 > caminho **(A) Só Implementador**, simétricos.
 >
-> **Variante 100% paste-ready (sem placeholder):** [`examples-fan-out.md`](examples-fan-out.md)
+> **Variante 100% paste-ready (sem placeholder):** [`examples-fan-out.md`](../../IntegracaoMultiAgente/examples-fan-out.md)
 > instancia o briefing fim-a-fim para `ph2d-node-shader-blur` e
 > `ph2d-tool-grayscale`, com todos os arquivos a criar.
 >

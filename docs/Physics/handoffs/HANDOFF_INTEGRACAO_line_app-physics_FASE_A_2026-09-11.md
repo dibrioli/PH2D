@@ -3,7 +3,7 @@
 **Status:** Fase A FECHADA · a linha **não integrou e não pushou** · aguarda ordem do Enio.
 **Fase B (o corte pelo HOWTO da L0) NÃO começou** — ela depende de a `line/app-host` integrar.
 
-> Para o **agente integrador**, DIRETRIZ §1.5.9. Tarefa: [`BRIEFINGS_W2`](../../IntegracaoMultiAgente/BRIEFINGS_W2_PARTIR_A_SHELL_2026-09-11.md) §5-A.
+> Para o **agente integrador**, DIRETRIZ §1.5.9. Tarefa: [`BRIEFINGS_W2`](../../archive/integracao-jornadas/BRIEFINGS_W2_PARTIR_A_SHELL_2026-09-11.md) §5-A.
 
 ---
 

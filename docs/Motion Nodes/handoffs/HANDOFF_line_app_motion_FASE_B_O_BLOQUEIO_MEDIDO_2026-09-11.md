@@ -5,7 +5,7 @@
 > resolveu isso) nem o trait de host (as 5 portas chegam): são **13 módulos residentes na shell,
 > partilhados entre famílias** — dos quais **10 são folhas PURAS** cuja dona não é esta linha.
 >
-> ⇒ **PARE e reporte**, pela regra 2 do [§1 da Fase B](../../IntegracaoMultiAgente/BLOCOS_ABERTURA_W2_FASE_B_2026-09-11.md)
+> ⇒ **PARE e reporte**, pela regra 2 do [§1 da Fase B](../../archive/integracao-jornadas/BLOCOS_ABERTURA_W2_FASE_B_2026-09-11.md)
 > e pela regra 5 (*não edite a árvore de outra linha*). É exactamente a categoria que a **batedora**
 > nomeou — *«três folhas residentes na shell, partilhadas entre famílias … não é porta e não é sua:
 > reporte, é linha própria»* — só que aqui ela **não é uma nota de rodapé: é o caminho crítico

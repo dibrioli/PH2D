@@ -254,7 +254,7 @@ somaram +1 220; o dreno −226; o quadro −117; as curas do fecho +296 (a maior
 - Nenhum contrato congelado, schema, registo, ADR ou pacote externo tocado (§2).
 - O `CLAUDE.md §5` não foi tocado (edita-se na integração): uma linha sugerida para o *Editor / shell* — *«o
   `run_render_frame` (71 L) e o dreno do barramento (`DrainOut` + 11 sub-drenos) cabem nos tectos sem entrada numerada —
-  [handoff](docs/IntegracaoMultiAgente/HANDOFF_INTEGRACAO_line_render_bodies_2026-09-13.md)»*.
+  [handoff](../../IntegracaoMultiAgente/docs/archive/integracao-jornadas/HANDOFF_INTEGRACAO_line_render_bodies_2026-09-13.md)»*.
 
 ## 12. Smoke do dono — os gestos
 

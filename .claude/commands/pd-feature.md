@@ -8,8 +8,12 @@ O que o artista deve conseguir fazer:
 $2
 
 Antes de escrever código, me entregue o plano:
-1. Pesquisa do estado da arte (o que Blender/AE/Illustrator/Rive fazem, e por quê) —
-   incluindo o que foi TENTADO e abandonado por eles.
+1. Outro app já faz isto? Triagem de licença POR ARTEFACTO instalado (porta aberta ⇒ porta-se,
+   com atribuição); o alvo é um ORÁCULO que se CORRE sem interface sobre entradas nossas,
+   ⛔ nunca um fonte que se lê (`docs/_ComoInvestigarApps/`, CLAUDE.md §0.9). Depois o estado da
+   arte (Blender/AE/Illustrator/Rive…), incluindo o que foi TENTADO e abandonado por eles.
+1b. Onde o código mora: família em `crates/ph2d-app-<família>` (a shell é composição, com tecto
+   que só desce); ids no módulo `ids` da crate que os LÊ.
 2. O desenho, com a porta ÚNICA de cada pergunta (duas portas divergem em silêncio).
 3. Onde isso encosta em contrato congelado (§6) ou schema — e a prova por grep de que
    não encosta, se for o caso.

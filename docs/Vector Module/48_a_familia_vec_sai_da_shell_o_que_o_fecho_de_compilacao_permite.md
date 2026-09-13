@@ -6,7 +6,7 @@
 > que dei antes dessa estavam todas erradas *no mesmo sentido*: a favor de mover demasiado.
 >
 > Contexto: [auditoria de velocidade §4-C2](../DevOps/AUDITORIA_VELOCIDADE_DE_DESENVOLVIMENTO_2026-09-10.md)
-> · [briefings W2](../IntegracaoMultiAgente/BRIEFINGS_W2_PARTIR_A_SHELL_2026-09-11.md) §0–§3 e §5
+> · [briefings W2](../archive/integracao-jornadas/BRIEFINGS_W2_PARTIR_A_SHELL_2026-09-11.md) §0–§3 e §5
 > · DIRETRIZ §6.7 item 5.
 
 ## §1 — O censo de partida

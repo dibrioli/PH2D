@@ -4,7 +4,7 @@
 > de hoje (`main` = shell **225 394** / 917 ficheiros), não copiados de handoff.
 >
 > Estado da obra: [`ESTADO_W2_2026-09-12.md`](ESTADO_W2_2026-09-12.md) ·
-> molde: [`HOWTO_partir_uma_familia_da_shell.md`](HOWTO_partir_uma_familia_da_shell.md) ·
+> molde: [`HOWTO_partir_uma_familia_da_shell.md`](../../IntegracaoMultiAgente/HOWTO_partir_uma_familia_da_shell.md) ·
 > rodada anterior: [`BLOCOS_REABERTURA_W2_FASE_C_2026-09-12.md`](BLOCOS_REABERTURA_W2_FASE_C_2026-09-12.md).
 
 ## ⭐ O que mudou desde a Fase C (leia antes de tudo)
@@ -178,7 +178,7 @@ SETUP (execute já, sem pedir confirmação; reporte cada ✗):
 2. git rebase main                      # 355 commits, ZERO seus ⇒ fast-forward
 3. cargo check -p ph2d-host-desktop      # ⚠️ o 1º build desta worktree é FRIO
 4. LEIA INTEIRO, nesta ordem:
-   a) docs/IntegracaoMultiAgente/ESTADO_W2_2026-09-12.md — a obra toda, e as
+   a) docs/archive/integracao-jornadas/ESTADO_W2_2026-09-12.md — a obra toda, e as
       OITO leis que ela pagou. ⛔ Sem isto você não sabe em que árvore está.
    b) docs/IntegracaoMultiAgente/HOWTO_partir_uma_familia_da_shell.md — a LEI
    c) o §1 deste documento (as DEZ regras comuns)
@@ -254,7 +254,7 @@ SETUP (execute já, sem pedir confirmação; reporte cada ✗):
 2. git status --porcelain                # deve ser vazio; já está em main
 3. cargo check -p ph2d-host-desktop      # ⚠️ o 1º build desta worktree é FRIO
 4. LEIA INTEIRO, nesta ordem:
-   a) docs/IntegracaoMultiAgente/ESTADO_W2_2026-09-12.md — a obra, e as OITO
+   a) docs/archive/integracao-jornadas/ESTADO_W2_2026-09-12.md — a obra, e as OITO
       leis. ⛔ Você é a primeira linha desta wave que não as pagou: leia-as.
    b) docs/IntegracaoMultiAgente/HOWTO_partir_uma_familia_da_shell.md — a LEI,
       e a §2 tem as armadilhas, metade delas com modo de falha MUDO

@@ -79,7 +79,7 @@ SETUP (execute já, sem pedir confirmação; reporte cada ✗):
       → conflito em código FORA dos seus ficheiros: PARE e reporte.
 3. cargo check -p ph2d-app-motion       # warm-up; o 1º build é frio
 4. LEIA INTEIRO, nesta ordem:
-   a) docs/IntegracaoMultiAgente/ESTADO_W2_2026-09-12.md
+   a) docs/archive/integracao-jornadas/ESTADO_W2_2026-09-12.md
       — o estado completo. A §4 tem as SEIS leis destes dois dias, e a
         nº 1 é literalmente a sua: contar citações erra A FAVOR, e você
         pagou-a a 30×.
@@ -91,7 +91,7 @@ SETUP (execute já, sem pedir confirmação; reporte cada ✗):
       integrada, logo ele não está no main. Depois do rebase do passo 2
       ele continua lá (é um dos seus 3 commits). Se não o achar, você
       está na árvore errada: `pwd`.
-   d) o §1 de docs/IntegracaoMultiAgente/BLOCOS_REABERTURA_W2_FASE_B2_2026-09-12.md
+   d) o §1 de docs/archive/integracao-jornadas/BLOCOS_REABERTURA_W2_FASE_B2_2026-09-12.md
 5. Reporte "motion pronta, a re-medir o fecho" e SIGA.
 
 A TAREFA:

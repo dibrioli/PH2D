@@ -17,8 +17,8 @@
    Docs/tracker do módulo nascem depois, dentro da própria worktree.
 
 **Nunca** abra duas linhas pro mesmo módulo. Pra fechar uma linha que terminou de vez:
-peça ao agente "encerre a linha" (ele roda `git worktree remove` + `git branch -d` após
-a integração).
+peça ao agente "encerre a linha" — o procedimento, com o que tem de ser guardado ANTES, está em
+§"Encerrar uma linha" (o `git worktree remove` apaga ficheiros ignorados em silêncio).
 
 ---
 
@@ -49,7 +49,9 @@ FASE 1 — SETUP (execute já, sem pedir confirmação; reporte cada ✗):
    git worktree add -b line/$MODULO Worktrees/line-$MODULO main
       → a branch do novo módulo já existe (linha reaberta)? Então:
         git worktree add Worktrees/line-$MODULO line/$MODULO
-        e em seguida, DENTRO dela: git rebase main
+        e em seguida, DENTRO dela, a FASE 1 do
+        MODELO_TROCA_DE_AGENTE_NA_LINHA.md (o `git cherry` ANTES do
+        rebase: uma linha integrada por rebase tem hashes velhos)
 5. cd Worktrees/line-$MODULO
    git branch --show-current        # DEVE imprimir a sua branch
 6. cargo check -p ph2d-core
@@ -61,10 +63,10 @@ FASE 1 — SETUP (execute já, sem pedir confirmação; reporte cada ✗):
         embutido. Reporte a linha do ✗ e siga (Enio instala depois).
 8. Leia INTEIRAS (dentro da worktree):
       docs/IntegracaoMultiAgente/STACK_VERSOES.md       → tudo (1 pagina)
-        as versoes que voce usa: Rust 1.98/edition 2024, wgpu 29,
-        vello 0.10, parley 0.11, rapier2d 0.35, bevy_ecs 0.19 -- e as
-        tres regras que um agente novo erra. NUNCA escreva uma versao
-        de memoria: `bash scripts/stack-audit.sh --tetos` responde.
+        as versoes que voce usa (gateadas contra o Cargo.lock; nao se
+        copiam para aqui) e as tres regras que um agente novo erra.
+        NUNCA escreva uma versao de memoria: `bash scripts/stack-audit.sh
+        --tetos` responde.
       docs/IntegracaoMultiAgente/DIRETRIZ.md            → §0, §1.5, §2, §6
       docs/IntegracaoMultiAgente/DIRETIVA_IMPLEMENTACAO.md  → tudo
         (e RELEIA a cada passo do trabalho, como ela manda)
@@ -92,13 +94,20 @@ B'. Ao CRIAR arquivo foundational NOVO, projete-o para ISOLAMENTO —
    DIRETRIZ §1.5.2.1, que o passo 8 já te manda ler.
 C. Commits locais frequentes: git commit --no-verify (fast mode).
    NUNCA push. NUNCA --force. NUNCA git add -A.
-D. git rebase main no início de cada jornada e antes de integrar.
+D. git rebase main no início de cada jornada e antes de integrar, com o
+   log gravado (`git rebase main 2>&1 | tee target/rebase.log`).
    Conflito em Cargo.lock ou arquivo GERADO (registry-init): NUNCA
    resolva na mão — regenere (DIRETRIZ §1.5.5). Conflito em código
-   fora da sua pasta = você violou a regra B.
-E. Fechamento do módulo = gate batched (DIRETRIZ §6.6.A.2: nextest-
-   impacted + clippy --all-targets + audit ≥2 lentes + DIRETIVA §3-§5).
-   Então PARE — NÃO integre nem faça ship por conta própria. Quem funde
+   fora da sua pasta = você violou a regra B. ⚠️ `Solved` do Mergiraf
+   não é prova: numa lista partilhada ele larga a remoção de um lado
+   (13/09, 2 de 130) — `git range-diff ORIG_HEAD...HEAD` antes de seguir.
+E. Fechamento do módulo = `/pd-linha-fechar` (DIRETRIZ §1.5.9): gate
+   batched 1× — `BASE=$(git merge-base main HEAD) bash
+   scripts/nextest-impacted.sh` · `CARGO_BUILD_WARNINGS=deny cargo check
+   --workspace --all-targets` · clippy --all-targets · `cargo machete` ·
+   `bash scripts/check-standalone-optional.sh` · `bash
+   scripts/check-workflow-packages.sh` · auditoria ≥2 lentes + DIRETIVA
+   §3-§5. Então PARE — NÃO integre nem faça ship por conta própria. Quem funde
    as linhas é um AGENTE INTEGRADOR DEDICADO, e só por ORDEM EXPLÍCITA
    do Enio (DIRETRIZ §1.5.3–1.5.4). Você NÃO roda foundational-integrate.sh.
 F. Ship (ship.sh + push + babysit CI): NUNCA por conta própria. É ordem
@@ -109,7 +118,12 @@ H. HANDOFF DE INTEGRAÇÃO (entregável obrigatório ao fechar): escreva o
    base; foundational tocado + por quê; ids/consts/variants novos com
    valores (colisão!); contratos congelados encostados (deve ser nenhum);
    o que só o ship.sh pega (fmt pré-fork/deps machete/clippy latente); o
-   que smoke-testar. Reporte "linha pronta + handoff" e ESPERE.
+   que smoke-testar. E também: toda entrada de lista/catraca que você
+   BAIXOU e todo item PARTILHADO cujos usos apagou (duas linhas que apagam
+   usos do mesmo item deixam um `dead_code` que só a árvore combinada
+   tem); o delta de linhas da `shells/desktop` (o tecto dela SOMA entre
+   linhas); e as premissas deste briefing que a medição derrubou.
+   Reporte "linha pronta + handoff" e ESPERE.
 G. UI canônica sempre: zero hex, zero f32 literal de UI, tudo por
    tokens/i18n (CLAUDE.md §0.3). Contratos congelados (CLAUDE.md §6)
    são intocáveis nesta linha.
@@ -125,6 +139,19 @@ I. DEIXE O SMOKE COMPILADO. O ÚLTIMO passo da linha — depois do commit
    em segundos, ZERO "Compiling"): é a prova. Compile a MESMA linha de
    comando que entrega (pacote, perfil, features e a árvore do `cd`) —
    qualquer diferença é outro build. Detalhe: DIRETRIZ §1.5.9 item 9.
+J. RÉGUA E INSTRUMENTOS. (1) A régua da linha é o MERGE-BASE: todo diff,
+   contagem e "antes" é contra `git merge-base main HEAD`, nunca contra o
+   `main` que anda. (2) Código de família vive em `crates/ph2d-app-<fam>`;
+   a shell é composição, com tecto que só desce (`the_shell_only_shrinks`):
+   acima dele MOVA, nunca suba o número. Vai mover código da shell?
+   `git grep -n 'shells/desktop/src' -- crates tools` ANTES: cada leitor
+   por caminho é gate seu. (3) O shell das ferramentas é zsh: `for f in
+   $LISTA` itera UMA vez e um glob sem aspas aborta — verificação que
+   enumera vai num ficheiro `bash` com arrays e controlo positivo.
+   (4) Instrumento que o handoff cita (sonda, prova, extractor) vive
+   VERSIONADO (`scripts/` ou `docs/<Módulo>/ferramentas/`), nunca numa
+   pasta não rastreada da worktree: ela morre com a worktree. Script mais
+   novo que a sua worktree: chame-o pelo caminho absoluto do primário.
 ═══════════════════════════════════════════════════════════════════
 ```
 
@@ -134,9 +161,23 @@ I. DEIXE O SMOKE COMPILADO. O ÚLTIMO passo da linha — depois do commit
 
 ```bash
 cd ~/Documentos/Projetos/PH2D          # raiz (ou git -C ../.. de dentro dela)
-git worktree remove Worktrees/line-<módulo>
-git branch -d line/<módulo>            # -d só passa se tudo foi integrado
+W=Worktrees/line-<módulo>
+git -C "$W" status --porcelain --ignored --untracked-files=normal   # o que o remove APAGARIA
+git cherry main line/<módulo> | grep -c '^+'                        # commits que o main não tem
 ```
+
+1. **O que não se regenera sai ANTES, verificado** (`cp -a` + `diff -r`): pastas de instrumento
+   (`.cauda-*`), projectos gravados, saídas de spike, repositórios de referência (os de
+   `docs/UI_New_and_Simple/referencias/` vão para o primário, onde o `.gitignore` os espera).
+   ⚠️ `git worktree remove` **apaga ignorados em silêncio** e recusa não-rastreados — o que
+   empurra para o `--force`, que apaga os dois. Só `target/`, `__pycache__/` e as fixtures geradas
+   idênticas às do primário (`assets/sprites/`) se deitam fora.
+2. **Os portões da [DIRETIVA_FIM_DE_DIA](DIRETIVA_FIM_DE_DIA.md) §1**, re-checados logo antes:
+   ninguém constrói, executa ou tem `cwd` dentro dela; fonte limpa. Só então
+   `git worktree remove --force "$W"`.
+3. **O ramo:** `git cherry` sem `+` ⇒ tudo está no `main` ⇒ `git branch -D line/<módulo>` é seguro
+   (o `-d` recusa uma linha integrada por REBASE, que ficou com hashes velhos). Com `+` ⇒ deixe o
+   ramo e reporte: há commit cujo patch o `main` não tem.
 
 Linha que continua na próxima jornada **não precisa** disso — fica aberta; o agente
 seguinte usa o mesmo bloco (o passo 4 tem a rota "linha reaberta").

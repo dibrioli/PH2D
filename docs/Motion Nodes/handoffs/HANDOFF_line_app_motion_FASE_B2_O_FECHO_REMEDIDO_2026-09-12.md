@@ -17,9 +17,9 @@
 > gente.** A `motion` é **estruturalmente a última** da W2: ela é a única das três cujo fecho
 > depende das **outras duas**.
 >
-> ⇒ **PARE e reporte**, pela regra 5 do [§1 dos blocos](../../IntegracaoMultiAgente/BLOCOS_REABERTURA_W2_FASE_B2_2026-09-12.md)
+> ⇒ **PARE e reporte**, pela regra 5 do [§1 dos blocos](../../archive/integracao-jornadas/BLOCOS_REABERTURA_W2_FASE_B2_2026-09-12.md)
 > (*não edite a árvore de outra linha*) e pela lei 6 do
-> [ESTADO](../../IntegracaoMultiAgente/ESTADO_W2_2026-09-12.md) (*uma linha de folhas abre quando
+> [ESTADO](../../archive/integracao-jornadas/ESTADO_W2_2026-09-12.md) (*uma linha de folhas abre quando
 > ninguém está lá dentro*). **Zero produto movido** — outra vez, e desta vez com o pedido exacto.
 
 ---

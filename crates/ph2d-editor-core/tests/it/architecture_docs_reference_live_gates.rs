@@ -165,8 +165,12 @@ fn the_live_gate_census_sees_the_shell_and_the_crates() {
     }
 }
 
-/// ⭐ **O canon deixa os `HANDOFF_*` de fora e mantém os docs que mandam** — as duas metades, com a
-/// população do lado de fora medida (sem handoffs no directório, «ficam de fora» não mediria nada).
+/// ⭐ **O canon deixa os `HANDOFF_*` de fora e mantém os docs que mandam** — as duas metades.
+///
+/// ⚠️ A metade «fica de fora» mede-se numa pasta de FIXTURA com um handoff dentro, não no repo: desde
+/// 13/09 os registos datados vivem no arquivo (o gate irmão abaixo), logo a pasta viva não tem nenhum
+/// handoff para medir — e um piso de população sobre ela obrigaria a deixar lá um registo só para o
+/// gate ter o que ver. Na fixtura a população existe POR CONSTRUÇÃO.
 #[test]
 fn the_canon_leaves_the_handoffs_out_and_keeps_the_directives() {
     let root = workspace_root();
@@ -179,14 +183,81 @@ fn the_canon_leaves_the_handoffs_out_and_keeps_the_directives() {
     }
     let dentro: Vec<&String> = nomes.iter().filter(|n| n.starts_with("HANDOFF_")).collect();
     assert!(dentro.is_empty(), "handoffs entraram no canon: {dentro:?}");
-    let no_directorio = std::fs::read_dir(root.join("docs/IntegracaoMultiAgente"))
-        .expect("o directório do canon existe")
-        .flatten()
-        .filter(|e| e.file_name().to_string_lossy().starts_with("HANDOFF_"))
-        .count();
+
+    let fx = std::env::temp_dir().join(format!("ph2d_canon_fixture_{}", std::process::id()));
+    let dir = fx.join("docs/IntegracaoMultiAgente");
+    std::fs::create_dir_all(&dir).expect("pasta da fixtura");
+    std::fs::write(fx.join("CLAUDE.md"), "").expect("CLAUDE.md da fixtura");
+    std::fs::write(dir.join("DIRETRIZ.md"), "").expect("DIRETRIZ.md da fixtura");
+    std::fs::write(dir.join("HANDOFF_INTEGRACAO_line_x_2026-01-01.md"), "")
+        .expect("handoff da fixtura");
+    let na_fixtura: Vec<String> = canon_files(&fx)
+        .iter()
+        .filter_map(|p| p.file_name()?.to_str().map(str::to_owned))
+        .collect();
+    let _ = std::fs::remove_dir_all(&fx);
     assert!(
-        no_directorio > 0,
-        "nenhum HANDOFF_* no directório — a metade «fica de fora» mede nada"
+        na_fixtura.iter().any(|n| n == "DIRETRIZ.md"),
+        "o canon não leu a pasta da fixtura — a metade «fica de fora» mediria nada: {na_fixtura:?}"
+    );
+    assert!(
+        !na_fixtura.iter().any(|n| n.starts_with("HANDOFF_")),
+        "o handoff da fixtura entrou no canon: {na_fixtura:?}"
+    );
+}
+
+/// `…_AAAA-MM-DD.md` (ou com sufixo depois da data): o nome de um REGISTO de jornada.
+fn is_dated_record(name: &str) -> bool {
+    name.strip_suffix(".md")
+        .unwrap_or(name)
+        .split('_')
+        .any(|seg| {
+            seg.len() == 10
+                && seg.char_indices().all(|(i, c)| {
+                    if i == 4 || i == 7 {
+                        c == '-'
+                    } else {
+                        c.is_ascii_digit()
+                    }
+                })
+        })
+}
+
+/// ⛔ **A pasta VIVA não guarda registos DATADOS** (13/09). Blocos de abertura, briefings, handoffs de
+/// integração, estados e auditorias de uma jornada são registo do que foi, não processo: nascem e
+/// ficam em `docs/archive/integracao-jornadas/` (DIRETRIZ §1.5.9). Medido: a pasta tinha sido limpa em
+/// 18/08 e voltou a 28 ficheiros em 26 dias, 18 deles datados — e o canon lia-os, então um bloco que
+/// citasse um gate renomeado depois ficava vermelho para sempre sem mentir a ninguém.
+#[test]
+fn the_live_process_folder_holds_no_dated_record() {
+    assert!(
+        is_dated_record("BLOCOS_ABERTURA_X_2026-01-01.md"),
+        "o predicado não reconhece uma data"
+    );
+    assert!(
+        is_dated_record("HANDOFF_x_2026-01-01_FECHO.md"),
+        "o predicado não reconhece data com sufixo"
+    );
+    assert!(
+        !is_dated_record("DIRETRIZ.md") && !is_dated_record("STACK_VERSOES.md"),
+        "o predicado acusa um doc vivo"
+    );
+    let dir = workspace_root().join("docs/IntegracaoMultiAgente");
+    let nomes: Vec<String> = std::fs::read_dir(&dir)
+        .expect("a pasta viva existe")
+        .flatten()
+        .map(|e| e.file_name().to_string_lossy().into_owned())
+        .filter(|n| n.ends_with(".md"))
+        .collect();
+    assert!(
+        nomes.iter().any(|n| n == "DIRETRIZ.md") && nomes.len() >= 5,
+        "a varredura leu {} ficheiros sem a DIRETRIZ — «nenhum datado» sobre isso não mede nada: {nomes:?}",
+        nomes.len()
+    );
+    let datados: Vec<&String> = nomes.iter().filter(|n| is_dated_record(n)).collect();
+    assert!(
+        datados.is_empty(),
+        "registos datados na pasta viva — movam-se para docs/archive/integracao-jornadas/ (DIRETRIZ §1.5.9): {datados:?}"
     );
 }
 

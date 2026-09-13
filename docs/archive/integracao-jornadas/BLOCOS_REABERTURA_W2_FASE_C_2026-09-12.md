@@ -10,7 +10,7 @@
 > 1 498 ficheiros), **medidos hoje**, não copiados de um handoff.
 >
 > Estado completo da obra: [`ESTADO_W2_2026-09-12.md`](ESTADO_W2_2026-09-12.md).
-> Molde do corte: [`HOWTO_partir_uma_familia_da_shell.md`](HOWTO_partir_uma_familia_da_shell.md).
+> Molde do corte: [`HOWTO_partir_uma_familia_da_shell.md`](../../IntegracaoMultiAgente/HOWTO_partir_uma_familia_da_shell.md).
 
 ---
 
@@ -104,7 +104,7 @@ SETUP (execute já, sem pedir confirmação; reporte cada ✗):
 2. git rebase main                      # 16 commits; os seus 5 são docs+script
 3. cargo check -p ph2d-app-motion       # warm-up
 4. LEIA INTEIRO, nesta ordem:
-   a) docs/IntegracaoMultiAgente/ESTADO_W2_2026-09-12.md — o §3 tem o seu
+   a) docs/archive/integracao-jornadas/ESTADO_W2_2026-09-12.md — o §3 tem o seu
       cluster com o mecanismo, e o §4 as SETE leis (a 1.ª e a 7.ª são suas)
    b) docs/IntegracaoMultiAgente/HOWTO_partir_uma_familia_da_shell.md — a LEI
    c) o §1 de BLOCOS_REABERTURA_W2_FASE_C_2026-09-12.md (as nove regras)

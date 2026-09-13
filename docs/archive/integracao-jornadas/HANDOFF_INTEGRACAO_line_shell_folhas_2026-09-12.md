@@ -24,7 +24,7 @@
 
 ⛔ **A régua é o CONSUMO POR FAMÍLIA, e ela foi medida no `main` de hoje** — não herdada do
 briefing. Uma peça que duas famílias usam é uma FOLHA, nunca a casa de uma delas (ADR-0075,
-[HOWTO §1.2](HOWTO_partir_uma_familia_da_shell.md)).
+[HOWTO §1.2](../../IntegracaoMultiAgente/HOWTO_partir_uma_familia_da_shell.md)).
 
 | crate | assunto | LOC | famílias que a consumiam |
 |---|---|---:|---|
@@ -50,7 +50,7 @@ briefing. Uma peça que duas famílias usam é uma FOLHA, nunca a casa de uma de
 | `field3d` | **1** | `preview_drive` 1 | **0** |
 
 ⚠️ **Isto NÃO é uma promessa de quanto sai.** É o que estas peças prendiam; *a régua de um
-bloqueio é o fecho, nunca a contagem* ([HOWTO §2.12](HOWTO_partir_uma_familia_da_shell.md)). O que
+bloqueio é o fecho, nunca a contagem* ([HOWTO §2.12](../../IntegracaoMultiAgente/HOWTO_partir_uma_familia_da_shell.md)). O que
 de facto sai mede-se quando cada família voltar a fechar.
 
 ---
@@ -142,7 +142,7 @@ com `-D warnings`. **Quem shipar tem de os curar ou pedir à linha deles.**
 
 A suíte da shell deu **11 de 816 vermelhas** na primeira corrida, com o `cargo check` verde:
 
-1. **[HOWTO §2.6](HOWTO_partir_uma_familia_da_shell.md) — o gémeo em RUNTIME** (4 leituras em 3
+1. **[HOWTO §2.6](../../IntegracaoMultiAgente/HOWTO_partir_uma_familia_da_shell.md) — o gémeo em RUNTIME** (4 leituras em 3
    gates): `read_to_string("src/render_loop/off_canvas.rs")` e irmãos. *Um `cargo check` verde não
    diz nada sobre eles*; um `#[ignore]` ou um filtro e nunca falhariam.
 2. **§2.9 — a agulha que nomeia um ENDEREÇO** (9 ficheiros): procuravam
@@ -178,7 +178,7 @@ O briefing dava-lhe *«motion 6 · physics 1»* e contava só o ficheiro de topo
 * o módulo é uma **árvore de 37 ficheiros** (o dispositivo, o rack, os presets, o espectral, o
   livro das vozes, o runtime do editor), com 7 roteadores `PH2D_AUDIO_*` e estado na `App`.
 
-⇒ é a [§2.12](HOWTO_partir_uma_familia_da_shell.md) outra vez: **um censo textual que não separa
+⇒ é a [§2.12](../../IntegracaoMultiAgente/HOWTO_partir_uma_familia_da_shell.md) outra vez: **um censo textual que não separa
 prosa e identificadores alheios do código**. Ele saiu pelo relógio da shell (2,1 % de uma unidade
 de compilação que é a **última** de toda build grande), e isso está dito no commit.
 
@@ -198,7 +198,7 @@ Agora ele é um pacote e o `cargo check -p` mede-o. A cura custou **quatro** `#[
 `delivery` / `platforms` / `fx_scratch` / `spectral` do `AudioSystem` e os inicializadores deles), e
 as **três** configurações ficam verdes: sem feature · com `panel-audio-editor` · com `audio-ml`.
 
-⚠️⚠️ **As features foram declaradas na crate E reenviadas pela shell** ([§2.4](HOWTO_partir_uma_familia_da_shell.md),
+⚠️⚠️ **As features foram declaradas na crate E reenviadas pela shell** ([§2.4](../../IntegracaoMultiAgente/HOWTO_partir_uma_familia_da_shell.md),
 a armadilha muda): 21 sítios vivem sob um `cfg(feature = …)`, e numa crate que não as declara o
 `cfg` é falso **por construção** — ela compilaria VERDE com o editor de áudio e o denoise inteiros
 desligados. A composição foi lida do manifesto da shell, não de memória (o `audio-ml` **implica** o
@@ -251,7 +251,7 @@ painel, que arrasta o `-edit` e o `-encode`).
 
 ---
 
-## §10 — Dependências INVISÍVEIS que só a crate revelou ([§1.3](HOWTO_partir_uma_familia_da_shell.md))
+## §10 — Dependências INVISÍVEIS que só a crate revelou ([§1.3](../../IntegracaoMultiAgente/HOWTO_partir_uma_familia_da_shell.md))
 
 Dentro da shell **todas** aquelas crates já eram dependência do binário, então um ficheiro escrevia
 o nome sem nada que o declarasse. A lista de `[dependencies]` é o custo real, e só se lê aqui:

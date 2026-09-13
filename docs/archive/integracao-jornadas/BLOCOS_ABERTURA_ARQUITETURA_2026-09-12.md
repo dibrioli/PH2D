@@ -77,9 +77,9 @@ SETUP (execute já, sem pedir confirmação; reporte cada ✗):
    cargo nextest list --workspace --cargo-profile ci-test > target/prova/antes.txt
    wc -l target/prova/antes.txt        # ⚠️ vazio = a prova mede nada
 8. LEIA INTEIRO (dentro da worktree):
-   a) docs/IntegracaoMultiAgente/BLOCOS_ABERTURA_ARQUITETURA_2026-09-12.md
+   a) docs/archive/integracao-jornadas/BLOCOS_ABERTURA_ARQUITETURA_2026-09-12.md
       — §1 o que se sobrepõe; §2 a CERCA com a line/render-loop (LEI).
-   b) docs/IntegracaoMultiAgente/AUDITORIA_ARQUITETURA_2026-09-12.md
+   b) docs/archive/integracao-jornadas/AUDITORIA_ARQUITETURA_2026-09-12.md
       §2 (A1, A5, A10) e §6 — as três espécies de cura e o que já foi feito.
    c) docs/IntegracaoMultiAgente/HOWTO_partir_uma_familia_da_shell.md
       §2 (20 armadilhas; as ⛔ são MUDAS) e §3 (a prova).
@@ -277,11 +277,11 @@ SETUP (execute já, sem pedir confirmação; reporte cada ✗):
    cargo nextest list --workspace --cargo-profile ci-test > target/prova/antes.txt
    wc -l target/prova/antes.txt        # ⚠️ vazio = a prova mede nada
 8. LEIA INTEIRO (dentro da worktree):
-   a) docs/IntegracaoMultiAgente/BLOCOS_ABERTURA_ARQUITETURA_2026-09-12.md
+   a) docs/archive/integracao-jornadas/BLOCOS_ABERTURA_ARQUITETURA_2026-09-12.md
       — §1 o que se sobrepõe; §2 a CERCA com a line/editor-core (LEI).
-   b) docs/IntegracaoMultiAgente/AUDITORIA_ARQUITETURA_2026-09-12.md
+   b) docs/archive/integracao-jornadas/AUDITORIA_ARQUITETURA_2026-09-12.md
       §2 (A1, A9) e §6.
-   c) docs/IntegracaoMultiAgente/ESTADO_W2_2026-09-12.md §3 — «o que fica
+   c) docs/archive/integracao-jornadas/ESTADO_W2_2026-09-12.md §3 — «o que fica
       na shell por desenho»: o render_loop é o LAÇO, e o porquê.
    d) docs/IntegracaoMultiAgente/HOWTO_partir_uma_familia_da_shell.md
       §2 (as ⛔ são MUDAS), §3 (a prova) e §4 (o que NÃO se faz).

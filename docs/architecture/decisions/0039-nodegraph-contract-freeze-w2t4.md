@@ -27,7 +27,7 @@ Mudar o contrato depois disto é um **evento raro, Coordenador-only**: bumpar o 
 ## 3. Consequências
 
 **Aceitas:**
-- O fan-out (ADR-0031 §fan-out, `docs/IntegracaoMultiAgente/briefing-node-crate.md`) está **aberto**: adicionar feature = largar um crate isolado, sem editar nada central (glob de `workspace.members` + `register_all_nodes` gerado).
+- O fan-out (ADR-0031 §fan-out, `docs/archive/integracao-jornadas/briefing-node-crate.md`) está **aberto**: adicionar feature = largar um crate isolado, sem editar nada central (glob de `workspace.members` + `register_all_nodes` gerado).
 - Crescimento acidental do contrato vira erro de CI (gate vermelho), não um drift silencioso.
 - O que NÃO está coberto pelo cap (APIs aditivas de `Graph`/`Cook`/`EvalCtx` que os nós *consomem* mas não implementam) pode crescer aditivamente sem ripple — o cap mira de propósito só as superfícies *implementadas* (`NodeOp`/`OpResolver`) e o literal que todo nó escreve (`NodeManifest`).
 

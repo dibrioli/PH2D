@@ -111,7 +111,7 @@ SETUP (execute já, sem pedir confirmação; reporte cada ✗):
 5. cargo check -p ph2d-editor-core     # warm-up; o 1º build é frio
 6. bash scripts/mergiraf-setup.sh      # idempotente; ✗ não é bloqueio
 7. LEIA INTEIRO:
-   a) docs/IntegracaoMultiAgente/BLOCO_ABERTURA_LINHA_FOLHAS_2026-09-12.md
+   a) docs/archive/integracao-jornadas/BLOCO_ABERTURA_LINHA_FOLHAS_2026-09-12.md
       — o §1 é o GRAFO MEDIDO (as três camadas, o ciclo, e o que fica
         fora com o motivo); o §2 é a decisão de desenho, que é LEI aqui.
    b) docs/IntegracaoMultiAgente/HOWTO_partir_uma_familia_da_shell.md

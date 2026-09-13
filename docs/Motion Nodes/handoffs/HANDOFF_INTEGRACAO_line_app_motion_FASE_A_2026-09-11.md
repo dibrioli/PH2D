@@ -1,6 +1,6 @@
 # HANDOFF DE INTEGRAÇÃO — `line/app-motion`, **Fase A** (2026-09-11)
 
-> W2/L1 do [briefing de partir a shell](../../IntegracaoMultiAgente/BRIEFINGS_W2_PARTIR_A_SHELL_2026-09-11.md)
+> W2/L1 do [briefing de partir a shell](../../archive/integracao-jornadas/BRIEFINGS_W2_PARTIR_A_SHELL_2026-09-11.md)
 > (§0–§3 e §5) · auditoria de velocidade [§4-C2](../../DevOps/AUDITORIA_VELOCIDADE_DE_DESENVOLVIMENTO_2026-09-10.md)
 > · DIRETRIZ §6.7.
 >

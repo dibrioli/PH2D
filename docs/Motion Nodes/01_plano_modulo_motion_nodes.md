@@ -334,7 +334,7 @@ Delete · F fit · Ctrl+A/D/G · Esc · Ctrl+Z global · drag divisor · chips S
 ## 3. Roadmap e TASKS por fase
 
 > Modelo funil (como node-waves): **neck serial** → fan-out paralelo (1 crate/agente, briefing
-> `docs/IntegracaoMultiAgente/briefing-node-crate.md`). Inner loop = `cargo check -p`; gate
+> `docs/archive/integracao-jornadas/briefing-node-crate.md`). Inner loop = `cargo check -p`; gate
 > batched no fim de cada wave; ship 1× por jornada (DIRETRIZ §1.5.4).
 > Template de node-crate: `crates/ph2d-node-debug-wave/`.
 

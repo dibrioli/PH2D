@@ -1,6 +1,6 @@
 # Os SEIS blocos de abertura — W2: partir a shell (2026-09-11)
 
-> Gerado de um molde só (o [`MODELO_ABERTURA_LINHA.md`](MODELO_ABERTURA_LINHA.md) + a tarefa de cada linha,
+> Gerado de um molde só (o [`MODELO_ABERTURA_LINHA.md`](../../IntegracaoMultiAgente/MODELO_ABERTURA_LINHA.md) + a tarefa de cada linha,
 > dos [briefings](BRIEFINGS_W2_PARTIR_A_SHELL_2026-09-11.md)), para os seis não divergirem.
 > **Uma janela nova do VSCode por linha, na pasta do repo; cole o bloco inteiro como 1.ª mensagem.**
 > ⚠️ **Desvio deliberado do MODELO:** o passo 9 dele manda o agente parar e esperar a tarefa; aqui a tarefa
@@ -90,7 +90,7 @@ I. DEIXE O SMOKE COMPILADO — último passo, depois do commit final e de
 A TAREFA — W2/L0: o substrato por onde uma família sai da shell
 
 CONTEXTO (leia antes de tocar num ficheiro):
-  docs/IntegracaoMultiAgente/BRIEFINGS_W2_PARTIR_A_SHELL_2026-09-11.md  → §0 a §4, INTEIRO
+  docs/archive/integracao-jornadas/BRIEFINGS_W2_PARTIR_A_SHELL_2026-09-11.md  → §0 a §4, INTEIRO
   docs/DevOps/AUDITORIA_VELOCIDADE_DE_DESENVOLVIMENTO_2026-09-10.md      → §4-C2 (o mecanismo e o censo)
   DIRETRIZ §6.7                                                          → as regras que a auditoria deixou
 
@@ -252,7 +252,7 @@ I. DEIXE O SMOKE COMPILADO — último passo, depois do commit final e de
 A TAREFA — W2/L1: a família `motion` sai da shell, em DUAS FASES
 
 CONTEXTO (leia antes de tocar num ficheiro):
-  docs/IntegracaoMultiAgente/BRIEFINGS_W2_PARTIR_A_SHELL_2026-09-11.md  → §0 a §3 e §5, INTEIRO
+  docs/archive/integracao-jornadas/BRIEFINGS_W2_PARTIR_A_SHELL_2026-09-11.md  → §0 a §3 e §5, INTEIRO
   docs/DevOps/AUDITORIA_VELOCIDADE_DE_DESENVOLVIMENTO_2026-09-10.md      → §4-C2 (o mecanismo e o censo)
   DIRETRIZ §6.7                                                          → as regras que a auditoria deixou
 
@@ -418,7 +418,7 @@ I. DEIXE O SMOKE COMPILADO — último passo, depois do commit final e de
 A TAREFA — W2/L2: a família `physics` sai da shell, em DUAS FASES
 
 CONTEXTO (leia antes de tocar num ficheiro):
-  docs/IntegracaoMultiAgente/BRIEFINGS_W2_PARTIR_A_SHELL_2026-09-11.md  → §0 a §3 e §5, INTEIRO
+  docs/archive/integracao-jornadas/BRIEFINGS_W2_PARTIR_A_SHELL_2026-09-11.md  → §0 a §3 e §5, INTEIRO
   docs/DevOps/AUDITORIA_VELOCIDADE_DE_DESENVOLVIMENTO_2026-09-10.md      → §4-C2 (o mecanismo e o censo)
   DIRETRIZ §6.7                                                          → as regras que a auditoria deixou
 
@@ -585,7 +585,7 @@ I. DEIXE O SMOKE COMPILADO — último passo, depois do commit final e de
 A TAREFA — W2/L3: a família `sculpt3d` sai da shell, em DUAS FASES
 
 CONTEXTO (leia antes de tocar num ficheiro):
-  docs/IntegracaoMultiAgente/BRIEFINGS_W2_PARTIR_A_SHELL_2026-09-11.md  → §0 a §3 e §5, INTEIRO
+  docs/archive/integracao-jornadas/BRIEFINGS_W2_PARTIR_A_SHELL_2026-09-11.md  → §0 a §3 e §5, INTEIRO
   docs/DevOps/AUDITORIA_VELOCIDADE_DE_DESENVOLVIMENTO_2026-09-10.md      → §4-C2 (o mecanismo e o censo)
   DIRETRIZ §6.7                                                          → as regras que a auditoria deixou
 
@@ -752,7 +752,7 @@ I. DEIXE O SMOKE COMPILADO — último passo, depois do commit final e de
 A TAREFA — W2/L4: a família `vec` sai da shell, em DUAS FASES
 
 CONTEXTO (leia antes de tocar num ficheiro):
-  docs/IntegracaoMultiAgente/BRIEFINGS_W2_PARTIR_A_SHELL_2026-09-11.md  → §0 a §3 e §5, INTEIRO
+  docs/archive/integracao-jornadas/BRIEFINGS_W2_PARTIR_A_SHELL_2026-09-11.md  → §0 a §3 e §5, INTEIRO
   docs/DevOps/AUDITORIA_VELOCIDADE_DE_DESENVOLVIMENTO_2026-09-10.md      → §4-C2 (o mecanismo e o censo)
   DIRETRIZ §6.7                                                          → as regras que a auditoria deixou
 
@@ -918,7 +918,7 @@ I. DEIXE O SMOKE COMPILADO — último passo, depois do commit final e de
 A TAREFA — W2/L5: a família `flip` sai da shell, em DUAS FASES
 
 CONTEXTO (leia antes de tocar num ficheiro):
-  docs/IntegracaoMultiAgente/BRIEFINGS_W2_PARTIR_A_SHELL_2026-09-11.md  → §0 a §3 e §5, INTEIRO
+  docs/archive/integracao-jornadas/BRIEFINGS_W2_PARTIR_A_SHELL_2026-09-11.md  → §0 a §3 e §5, INTEIRO
   docs/DevOps/AUDITORIA_VELOCIDADE_DE_DESENVOLVIMENTO_2026-09-10.md      → §4-C2 (o mecanismo e o censo)
   DIRETRIZ §6.7                                                          → as regras que a auditoria deixou
 

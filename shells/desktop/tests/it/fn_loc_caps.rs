@@ -33,7 +33,6 @@ const NASCEU: &str = "medido no nascimento do gate (2026-09-12); nenhuma linha o
 const FN_OVERAGE_OK: &[(&str, &str, usize, &str)] = &[
     ("build_smoke.rs", "build_smoke", 416, NASCEU),
     ("main.rs", "new", 263, NASCEU),
-    ("project_load.rs", "project_load_from", 484, NASCEU),
 ];
 
 fn src_root() -> PathBuf {

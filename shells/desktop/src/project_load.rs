@@ -122,11 +122,6 @@ impl crate::App {
                 return;
             }
         };
-        // ⚠️ **A semente do contador.** Num ficheiro v96 ela vem do campo; num migrado, da
-        // contagem de linhas. Sem ela a primeira entidade criada depois do load reusaria um id
-        // que já está vivo — e o `reconcile_at_least` do próprio contador é a segunda rede,
-        // porque ele também se compara com os ids que o mundo de facto tem.
-        let stable_id_seed = migrated_counter.unwrap_or(file.stable_id_counter);
         // A ANIMAÇÃO É PARTE DO ARQUIVO, e um documento que este binário não sabe ler faz o
         // load inteiro ser RECUSADO — não "abre sem a animação".
         //
@@ -208,6 +203,32 @@ impl crate::App {
         };
         // ---- Daqui pra baixo o arquivo foi ACEITO. ----
         //
+        #[cfg(feature = "sculpt3d")]
+        self.project_forget_previous(&mut file, sculpt);
+        #[cfg(not(feature = "sculpt3d"))]
+        self.project_forget_previous(&mut file);
+        self.project_install_accepted(
+            path,
+            file,
+            migrated_counter,
+            sprite_pixels,
+            sprite_sheets,
+            pattern_art,
+            timeline,
+        );
+    }
+
+    /// **A sessão ESQUECE o documento anterior** — o relógio, o undo, o mundo rígido e as settings
+    /// dele, a tabela de cor, a timeline e as poses que ela devia, os produtores vivos, a memória da
+    /// modelagem 3D e a escultura; e as duas perguntas que o MODEL faz ao documento que entra.
+    ///
+    /// ⚠️ Saiu do [`Self::project_load_from`] pelo tecto de 200 LOC por função (`fn_loc_caps`),
+    /// verbatim e no MESMO instante: colada logo a seguir a o arquivo ser aceite.
+    fn project_forget_previous(
+        &mut self,
+        file: &mut ProjectFile,
+        #[cfg(feature = "sculpt3d")] sculpt: Option<(Vec<ph2d_app_sculpt3d::LoadedPiece>, usize)>,
+    ) {
         // **A SESSÃO ESQUECE O DOCUMENTO ANTERIOR.** Este bloco fica colado na decisão de
         // aceitar, e não lá no fim: entre o aceite e o esquecimento não sobra nenhum passo que
         // dependa de `gfx`, então o que o gate headless observa é exatamente o que o app com
@@ -337,6 +358,33 @@ impl crate::App {
         self.timeline_insert_key = false;
         self.timeline_reveal_after_apply = false;
         self.autokey = Default::default(); // pins/baselines de pose keyados por bits mortos
+    }
+
+    /// **O ficheiro aceite ENTRA** — os assets e o mundo, a semente de identidades (e, na migração, as
+    /// juntas por identidade), os pixels, a arte dos padrões, a biblioteca, as folhas, os documentos
+    /// pintados e assados, a fita, o Input Map, o grafo de Motion, a animação e o loop dela, o
+    /// autoplay, e o baseline do undo desarmado.
+    ///
+    /// ⚠️ Saiu do [`Self::project_load_from`] pelo tecto de 200 LOC por função, verbatim e pela MESMA
+    /// ordem — aqui a ordem é a PRECEDÊNCIA (ver os comentários de dentro). A semente do contador
+    /// veio com ele: é o único leitor dela, e calculá-la aqui em vez de lá em cima não muda nada
+    /// (o `stable_id_counter` do ficheiro não é tocado entre os dois sítios).
+    #[allow(clippy::too_many_arguments)]
+    fn project_install_accepted(
+        &mut self,
+        path: &str,
+        file: ProjectFile,
+        migrated_counter: Option<u64>,
+        sprite_pixels: Vec<ph2d_sprite_sheet::SpritePixelDoc>,
+        sprite_sheets: Vec<ph2d_sprite_sheet::AuthoredSheet>,
+        pattern_art: Vec<crate::project_texture_pattern::SavedPatternArt>,
+        timeline: ph2d_timeline::TimelineState,
+    ) {
+        // ⚠️ **A semente do contador.** Num ficheiro v96 ela vem do campo; num migrado, da
+        // contagem de linhas. Sem ela a primeira entidade criada depois do load reusaria um id
+        // que já está vivo — e o `reconcile_at_least` do próprio contador é a segunda rede,
+        // porque ele também se compara com os ids que o mundo de facto tem.
+        let stable_id_seed = migrated_counter.unwrap_or(file.stable_id_counter);
         self.materialize_assets(&file.assets);
         self.apply_project(&file.state);
         // ⚠️ **A semente do contador entra AQUI, logo depois de o mundo existir** (ADR-0164

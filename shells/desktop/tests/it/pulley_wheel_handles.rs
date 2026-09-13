@@ -271,20 +271,19 @@ fn the_rope_eyedropper_arms_a_modal_pick_against_the_route() {
         "o handler de corda não pode resolver por SPRITE — seria um pick que nunca \
          acerta"
     );
-    // A ordem: o guard de corda vem antes do picking genérico de canvas.
-    let rope_guard = src
-        .find("self.wheel_rope_pick.is_some()")
-        .expect("já afirmado");
-    let generic = src
-        .find("fn canvas_pick")
-        .or_else(|| src.find("self.begin_selection"))
-        .or_else(|| src.find("pick_sprites_at_world(gfx.present.world_mut(), world_pos)\n            .into_iter()\n            .find(|&bits| {\n                bits != joint"));
-    if let Some(generic) = generic {
-        assert!(
-            rope_guard < generic || generic < src.find("fn wheel_rope_pick_click").expect("achado"),
-            "o guard do pick de corda tem de preceder o picking genérico"
-        );
-    }
+    // A ordem: o guard de corda vem antes do picking genérico de canvas, medida no CLIQUE emendado. ⚠️ A régua antiga
+    // comparava ENDEREÇOS (as agulhas não existiam ou casavam num método auxiliar) e o `||` passava por construção.
+    let clique = crate::input_text::mouse_input();
+    let rope_guard = clique
+        .find("if self.wheel_rope_pick.is_some()")
+        .expect("o guard do pick de corda saiu do clique");
+    let generic = clique
+        .find("crate::hover_highlight::pick_objects_at(")
+        .expect("o picking genérico de canvas saiu do clique");
+    assert!(
+        rope_guard < generic,
+        "o guard do pick de corda tem de preceder o picking genérico"
+    );
     // E a tolerância é a MESMA do resto do editor, lida do único lugar onde ela mora.
     assert!(
         src.contains("ph2d_app_physics::joint_anchor_drag::SNAP_PX"),

@@ -374,4 +374,156 @@ impl crate::App {
         }
         false
     }
+
+    /// O topo da prioridade do press: a região do Node no vazio, as alças de gradiente, e os modos cujo gesto é
+    /// INTEIRO deles — Text, Build, lápis, Connect, Pick Shapes (Blend) e Width.
+    pub(super) fn ramo_vetor_premido_modos(&mut self) -> bool {
+        // Canvas press priority (most specific first):
+        //   1. "Set Center" armed mode (positions the gizmo pivot).
+        //   2. Gradient handles — tiny (~9 px) and only present when the
+        //      selected path has a gradient fill, so they must outrank the
+        //      gizmo, whose bbox interior otherwise swallows every dot.
+        //   3. Transform gizmo handles (scale / rotate / interior move).
+        //   4. Pen / shape drawing + vertex editing.
+        // **Modo Node: o press no VAZIO abre o retângulo — sem Shift** (plano 25 §6).
+        //
+        // ⚠️ Ele exigia Shift, e o Shift é o modificador de ADIÇÃO em todo app de
+        // desenho: quem quisesse somar nós não tinha tecla, e quem quisesse só o
+        // retângulo tinha de descobrir uma. Agora o gesto é o de todo mundo — arrastar
+        // do vazio desenha a caixa, e o Shift SOMA.
+        //
+        // A pergunta *"o press acerta alguma coisa?"* é feita à porta que já existe
+        // (`node_edit_hit_at` + `path_at`), e **antes** do `on_press_node`: ele
+        // desseleciona quando não acerta nada, e um marquee aditivo aberto depois disso
+        // somaria a uma seleção que acabou de ser apagada.
+        if self.vec.draw_config.mode == ph2d_tool_vector::DrawMode::Node
+            && let Some(w) = self.vec_world_at(self.last_pointer)
+            && let Some(gfx) = self.gfx.as_ref()
+        {
+            let px = self.vec_px_to_world();
+            let empty = self
+                .vec
+                .pen
+                .node_edit_hit_at(&gfx.vec_scene, w, px)
+                .is_none()
+                && self
+                    .vec
+                    .pen
+                    .path_at(&gfx.vec_scene, w, HANDLE_HIT_PX * px)
+                    .is_none();
+            if empty {
+                self.vec.marquee = Some(crate::vec_marquee::VecMarquee::open(
+                    self.marquee_shape_for_press(),
+                    self.last_pointer,
+                ));
+                return true;
+            }
+        }
+        // Gradient group 3b: a Down on a gradient handle starts dragging it.
+        if let Some(i) = self.vec_grad_hit(self.last_pointer) {
+            self.vec.grad_selected = Some(i);
+            self.vec.grad_drag = Some(i);
+            return true;
+        }
+        // Modo Text: o clique põe/reposiciona o cursor de texto no ponto
+        // clicado (finalizando a edição anterior). A digitação vem pelo
+        // teclado; nada de shape/pen aqui.
+        if self.vec.draw_config.mode == ph2d_tool_vector::DrawMode::Text {
+            let w = self.gfx.as_ref().map(|gfx| {
+                gfx.camera
+                    .screen_to_world(self.last_pointer, gfx.surface.size())
+            });
+            if let Some(w) = w {
+                self.vec_text_click([f64::from(w[0]), f64::from(w[1])]);
+            }
+            return true;
+        }
+        // Modo Build (Shape Builder): a pressão começa a PINTAR faces do
+        // arranjo. Captura o canvas inteiro — não há pen, shape nem gizmo aqui;
+        // o que se manipula não é a forma, é a região.
+        if self.vec.draw_config.mode == ph2d_tool_vector::DrawMode::Build {
+            if let Some(w) = self.vec_world_at(self.last_pointer) {
+                let alt = self.modifiers.alt_key();
+                let shift = self.modifiers.shift_key();
+                self.build_down(w, alt, shift);
+            }
+            return true;
+        }
+        // **Modo Lápis**: a pressão abre um traço de mão livre. O gesto é INTEIRO
+        // dele (press/move/release), como o Build e o Connect — não há hit-test a
+        // fazer: um lápis desenha onde você encostou.
+        if self.vec.draw_config.mode == ph2d_tool_vector::DrawMode::Pencil {
+            let px_to_world = self.vec_px_to_world();
+            let dyn_in = self.pointer_dynamics();
+            if let Some(w) = self.vec_world_at(self.last_pointer)
+                && let Some(gfx) = self.gfx.as_mut()
+            {
+                self.vec
+                    .pencil
+                    .on_press(&mut gfx.vec_scene, w, px_to_world, dyn_in);
+            }
+            // O estabilizador começa ONDE A MÃO ENCOSTOU. Sem esta semente o 1º move
+            // mistura a partir de onde o gesto ANTERIOR acabou, e o traço nasce com um
+            // salto vindo do outro lado da tela. Fora do `if let` de propósito: ele
+            // depende só do ponteiro, e semear a mão nunca pode ficar refém de a cena
+            // estar pronta — o move consome esta posição sem perguntar mais nada.
+            self.vec.pencil_hand.begin(self.last_pointer);
+            return true;
+        }
+        // Modo Connect: a pressão abre o gesto do CONECTOR (sobre uma forma, a
+        // ponta nasce presa a ela; no vazio, solta ali). Nada de pen/shape —
+        // a linha de um conector não é autorada, é derivada.
+        if self.vec.draw_config.mode == ph2d_tool_vector::DrawMode::Connect {
+            if let Some(w) = self.vec_world_at(self.last_pointer) {
+                self.connector_down(w);
+            }
+            return true;
+        }
+        // Modo Pick Shapes (Blend): a pressão coleta a forma FECHADA sob o
+        // cursor na ordem de clique (ADR-0128 C2b). Não há pen/shape/gizmo — o
+        // que se escolhe é a LISTA de formas, e o botão Blend a liga. Clicar de
+        // novo numa já escolhida a remove (corrigir sem recomeçar).
+        if self.vec.draw_config.mode == ph2d_tool_vector::DrawMode::PickBlend {
+            if let Some(w) = self.vec_world_at(self.last_pointer) {
+                self.blend_pick_at(w);
+            }
+            return true;
+        }
+        // Modos **Fillet / Chamfer**: a pressão agarra a QUINA sob o cursor e arma o
+        // arrasto de raio (o dedo dita a MAGNITUDE, a ferramenta o ESTILO). Só o press
+        // é próprio — move e release reusam o caminho do pen (o arrasto é guiado pelo
+        // `grab`, o release comita um passo). "Basta clicar numa quina", e um ponto
+        // SUAVE é primeiro transformado em quina (`on_press_corner`).
+        // **Modo Width**: a pressão agarra a alça de largura sob o cursor, ou
+        // ACRESCENTA uma parada se o cursor está sobre a curva (plano 25 §5). O gesto
+        // é inteiro dele — o `Grab` armado dita o move, e o release comita um passo.
+        if self.vec.draw_config.mode == ph2d_tool_vector::DrawMode::Width {
+            let px_to_world = self.vec_px_to_world();
+            if let Some(world) = self.vec_world_at(self.last_pointer) {
+                let hit_r = HANDLE_HIT_PX * px_to_world;
+                // (Re)seleciona o caminho sob o cursor — o gesto vale sem
+                // pré-selecionar, como o das ferramentas de quina.
+                if let Some(gfx) = self.gfx.as_mut()
+                    && let Some(pid) = self.vec.pen.path_at(&gfx.vec_scene, world, hit_r)
+                {
+                    self.vec.pen.select(Some(pid));
+                }
+                if let Some(pid) = self.vec.pen.selected()
+                    && let Some(gfx) = self.gfx.as_mut()
+                {
+                    let scene = &gfx.vec_scene;
+                    self.vec.width_grab = crate::width_handles::press(
+                        &mut gfx.sim,
+                        scene,
+                        &self.vec.entities,
+                        pid,
+                        world,
+                        hit_r,
+                    );
+                }
+            }
+            return true;
+        }
+        false
+    }
 }

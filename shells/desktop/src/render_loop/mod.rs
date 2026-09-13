@@ -184,6 +184,8 @@ mod fase_atlas_scene_smokes;
 mod fase_atlas_scene_smokes_late;
 /// Fase do quadro: os painéis de áudio (mixer + editor) ouvidos pelo motor.
 mod fase_audio_panels;
+/// Fase do quadro: os controlos autorados e os estados de UI.
+mod fase_authored_controls_and_ui_states;
 /// Fase do quadro: o AutoKey.
 mod fase_autokey;
 /// Fase do quadro: as sobreposicoes do canvas.
@@ -644,8 +646,6 @@ impl crate::App {
         // O empréstimo do `gfx` do quadro: o padrão EXAUSTIVO do `AppGfx` mora em [`frame_gfx`]; aqui
         // ficam só os campos que o resto do corpo ainda lê (os das fases já extraídas saem da lista).
         let FrameGfx {
-            ui_states,
-            ui_machines,
             #[cfg(feature = "sculpt3d")]
             surface,
             renderer,
@@ -4740,88 +4740,12 @@ impl crate::App {
                     self.vec.profile_mirrored = (sel.len() == 1).then(|| sel[0]);
                 }
             }
-            // **A POSIÇÃO dos controles autorados** (W8b.4): o store e o mundo de acordo, nas
-            // duas direções. ⚠️ ANTES do resolvedor dos drives (mais abaixo, no passe de desenho)
-            // — um valor que acabou de chegar de um load tem de mexer na arte NESTE frame, senão a
-            // cena abre com a arte antiga por um quadro e pisca.
-            if crate::vec_widget_value::reconcile(
-                sim,
-                &self.vec.entities,
-                &mut hero.store,
-                &mut self.vec.widget_applied,
-            ) {
-                self.any_input_this_frame = true;
-            }
-            if let Some(verb) = pending_widget_edit {
-                let sel: Vec<ph2d_vec_scene::VecPathId> = self.vec.pen.selected_paths().to_vec();
-                crate::vec_widget_edit::apply(sim, &self.vec.entities, &sel, verb);
-                // **Bind Shape** ARMA o conta-gotas (W8b.3) — quem resolve é o clique seguinte
-                // (`vec_path_pick_click`), pela guarda modal que precede o picking/gizmo. É o
-                // mesmo desenho do **Swap Main**, e reusá-lo é o que dá Escape, realce de hover e
-                // desistência-no-vazio sem uma linha a mais.
-                if verb == crate::vec_widget_edit::WidgetEdit::Bind
-                    && let Some(&at) = sel.first()
-                {
-                    self.vec.path_pick = Some(crate::vec_pick::PathPick::WidgetBind(at));
-                }
-            }
-            // OS ESTADOS de UI (W7). ⚠️ O **Show** não escreve pose aqui: ele DEVOLVE o pedido, e
-            // quem o honra é a máquina — uma escrita direta seria a segunda porta para *"pôr a
-            // cena nesta pose"*, e a diferença entre as duas é o tween que o artista autorou.
-            if let Some(verb) = pending_ui_state {
-                let sel: Vec<ph2d_vec_scene::VecPathId> = self.vec.pen.selected_paths().to_vec();
-                if let Some((host, role)) = crate::vec_ui_state_edit::apply(
-                    sim,
-                    vec_scene,
-                    &self.vec.entities,
-                    &sel,
-                    ui_states,
-                    verb,
-                ) {
-                    crate::render_loop::ui_state_bridge::request(
-                        ui_machines,
-                        ui_states,
-                        host,
-                        role,
-                    );
-                }
-            }
-            // ⭐ **O SINAL MOVE A CENA** — o consumidor da tabela de ligação (item 4 do estudo dos
-            // contêineres). A saída é a MESMA do R0: a timeline, a física e um controle autorado
-            // publicam nomes, e quem escuta casa numa string sem perguntar a origem (ADR-0143).
-            //
-            // ⚠️ **O cursor anda SEMPRE e a ação só corre na PREVIEW**, e a assimetria não é
-            // gosto — é a lei que a própria preview escreveu, aplicada a um produtor novo:
-            //
-            // - fora dela **não há restauração**, então um sinal que chegasse enquanto o artista
-            //   desenha **moveria o desenho dele** e ficaria assim;
-            // - fora dela **o undo regista**, e um sinal de física a 60 Hz seria um passo de undo
-            //   por quadro.
-            //
-            // ⚠️ **E isto NÃO contradiz o botão Show**, que escreve o mundo fora da preview: a
-            // diferença é *quem pediu*. Uma pose que o artista pediu com um clique custa um passo
-            // de undo e ele sabe porquê; uma pose que **chega sozinha** não pode cobrar nada.
-            //
-            // ⚠️ **Ler fora da preview é o que impede o salto de entrada** — ver o doc do
-            // `ui_signal_reader`. Sem o `let _`, o `read` devolve um iterador preguiçoso e **nada
-            // é consumido**: o cursor não andaria, e o gate que o prova é o da entrada limpa.
-            {
-                let acting = self.ui_preview.is_on();
-                let moves: Vec<(ph2d_vec_scene::VecPathId, ph2d_ui_state::StateRole)> = self
-                    .signals
-                    .read(&mut self.ui_signal_reader)
-                    .filter(|_| acting)
-                    .flat_map(|sig| ui_states.targets(&sig.name).collect::<Vec<_>>())
-                    .collect();
-                for (host, role) in moves {
-                    crate::render_loop::ui_state_bridge::request(
-                        ui_machines,
-                        ui_states,
-                        host,
-                        role,
-                    );
-                }
-            }
+            self.fase_authored_controls_and_ui_states(
+                fase_authored_controls_and_ui_states::AuthoredControlsAndUiStatesIntents {
+                    pending_widget_edit,
+                    pending_ui_state,
+                },
+            );
             self.fase_ui_host_transition(fase_ui_host_transition::UiHostTransitionIntents {
                 pending_ui_state_duration,
                 pending_ui_spring_toggle,

@@ -11,12 +11,12 @@
 //! O que se afirma aqui é a **PROPRIEDADE**, nunca um endereço: que a leitura existe, que ela
 //! atravessa a tabela, e que a AÇÃO é gateada na preview enquanto o CURSOR não é.
 
+/// O laço de frame como o QUADRO pela ordem em que corre (`frame_text::render_frame`).
+///
+/// ⚠️ Desde a OBRA 2 da `line/render-loop` (2026-09-13) o consumidor da saída de sinais mora na
+/// `fase_authored_controls_and_ui_states`: o `mod.rs` sozinho já não tem a leitura, e as janelas abrem-se onde ela está.
 fn frame_src() -> String {
-    std::fs::read_to_string(concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/src/render_loop/mod.rs"
-    ))
-    .expect("o laço de frame existe")
+    crate::frame_text::render_frame()
 }
 
 /// **O consumidor existe e passa pela tabela.**

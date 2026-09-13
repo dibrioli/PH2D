@@ -8,14 +8,25 @@ Patente (§8.1): buscado em 2026-09-13 — projecção por raycast em escultura 
   projecção entre sub-ferramentas · relaxação multirresolução. Resultado: NENHUMA patente viva
   alcança os métodos (a mais próxima, a de Kelvinlets, é solução analítica de elasticidade e não
   descreve nenhum destes quatro). Arte anterior pública abundante desde 2009–2013. Veredito: prosseguir.
-Filtragem §4.3: executada em 2026-09-13 · Sweep: ⛔ VERMELHO em 2026-09-13, e o vermelho é o
-  ACHADO — a vassoura foi de 175 para 181 entradas quando o R-pré lhe juntou as marcas de PROSA
-  em PORTUGUÊS. ⚠️ O verde anterior não provava filtragem nenhuma: a vassoura está na língua do
-  alvo e esta espec escreve-se na nossa, logo toda tradução de comentário passava por baixo dela.
+Filtragem §4.3: re-executada em 2026-09-13 sobre os 3 achados · Sweep: ✅ VERDE em 2026-09-13
+  sobre **196** entradas (181 do R-pré + 15 sentinelas das transliterações removidas).
+  ⚠️⚠️ **O verde ANTERIOR, sobre 175, não provava filtragem nenhuma:** a vassoura estava só na
+  língua do ALVO e esta espec escreve-se na NOSSA, logo toda tradução de comentário passava por
+  baixo dela. *Uma vassoura monolingue não vigia uma espec traduzida* — e é por isso que as
+  entradas novas do R-pré são prosa em PORTUGUÊS.
+  ⭐ **Controlo positivo, para o verde significar alguma coisa:** a mesma vassoura sobre a versão
+  ANTES da reescrita (`git show <commit anterior>:…`) dá **19 hits** — os 5 do 1.º bloco, os 8 do
+  2.º, e os 6 da prosa; sobre esta versão dá **0**.
 Auditoria §4.2 (R-pré): ⛔ REPROVADA em 2026-09-13 — 3 achados (2 blocos de pseudo-código que
-  espelham o original passo a passo · 1 família de prosa de comentário traduzida, em 4 sítios).
-  ⛔ A janela NÃO implementa enquanto esta linha não disser «auditada contra §4.2 por R-pré em
-  <data>», e ela só se escreve com o sweep de novo verde SOBRE a vassoura de 181.
+  espelhavam o original passo a passo · 1 família de prosa de comentário traduzida, em 4 sítios).
+  ⭐ **OS TRÊS ESTÃO CURADOS nesta redacção:** o bloco da §3.2 SAIU (a prosa em volta já dizia o
+  mesmo, e o bloco só acrescentava FORMA); o da §5.2 foi reescrito como **média ponderada em forma
+  fechada**, com o desvio **matematicamente inerte** demovido a nota de custo (§4.1.8); e os 4
+  sítios de prosa foram re-ditos como **REQUISITO**, nunca como a explicação do autor traduzida.
+  ⛔⛔ **A janela NÃO implementa nem LÊ esta espec enquanto esta linha não disser «auditada contra
+  §4.2 por R-pré em <data>»** — e quem a escreve é um **R-pré NOVO sobre esta redacção**, nunca o
+  autor da reescrita: *autofiltragem não é auditoria*, e foi exactamente a autofiltragem verde de
+  há uma hora que deixou passar os três.
 Mapa de leitura da literatura (tudo PÚBLICO e livre; nenhum apêndice a pular):
   · Catmull & Clark 1978, «Recursively generated B-spline surfaces on arbitrary topological meshes»
     — o esquema de subdivisão de quads.
@@ -264,18 +275,9 @@ longas · colapsar arestas curtas). O modo sai das preferências de *Refine Meth
 **excepto** que este pincel **acrescenta a bandeira de colapso**, aconteça o que acontecer com a
 preferência. E o conjunto inteiro é ignorado quando o *Detailing* está em **Manual**.
 
-Em pseudo-código do nível do paper:
-
-```
-modo := {}
-se detailing ≠ Manual:
-    se preferência pede partir:            modo |= PARTIR
-    se preferência pede colapsar
-       OU o pincel em mãos é o Density:    modo |= COLAPSAR
-```
-
-⭐ **É isto e mais nada.** O pincel é uma **cláusula OR numa linha**, e é por isso que o manual
-público pode dizer que ele consegue sempre colapsar mesmo com o método em *Subdivide Edges*.
+⭐ **É isto e mais nada** — o pincel não acrescenta uma lei, acrescenta **uma disjunção à condição
+que já decidia o colapso**, e é por isso que o manual público pode dizer que ele consegue sempre
+colapsar mesmo com o método em *Subdivide Edges*.
 
 **Medido** (esfera triangulada de `1 681` vértices, detalhe constante, traço de 6 pontos):
 
@@ -359,26 +361,40 @@ uma aresta vizinha entra se  comprimento² > max( 1,2 · comprimento²_da_que_a_
                                                  (1,6 · limite_da_geração)² )
 ```
 
-— a primeira guarda evita perseguir triângulos só ligeiramente finos; a segunda faz o limite crescer
-a cada geração, o que **termina** a recursão a uma distância finita. ⛔ **O colapso não tem
-recursão nenhuma**: ele vê só o que está na região.
+⚠️ **Os dois factores são REQUISITOS, e cada um responde por uma coisa diferente:**
+- **`1,6` garante TERMINAÇÃO.** O limite cresce geometricamente a cada geração, logo a condição
+  deixa de poder ser satisfeita a uma distância finita do dab, qualquer que seja a malha. Sem ele a
+  propagação é ilimitada e um dab pode reescrever a peça inteira.
+- **`1,2` é um PISO RELATIVO.** Uma vizinha só entra se exceder por esse factor a aresta que a
+  chamou ⇒ a propagação **exclui** vizinhas de comprimento comparável e só segue um gradiente
+  estrito de comprimento.
+
+⛔ **O colapso não tem recursão nenhuma**: ele vê só o que está na região.
 
 ### §3.7 — O colapso de uma aresta: quem sobrevive e onde ele fica
 
 1. **Se algum extremo toca um bordo**, sobrevive o que toca (se ambos, o primeiro).
 2. **Senão**, sobrevive o **MAIS mascarado** — apaga-se o menos mascarado. ⚠️ Isto é o contrário do
    palpite: a máscara protege o vértice, e proteger significa *ficar*.
-3. As faces em volta do apagado são recosidas ao sobrevivente; uma face que ficaria **duplicada**
-   (a mesma tripla de cantos) é **apagada junto com a original**, para não nascerem abas.
+3. As faces em volta do apagado são recosidas ao sobrevivente. ⚠️ **Invariante exigida da saída: a
+   malha não pode conter duas faces com a MESMA tripla de cantos.** Onde o recoser produziria uma
+   repetida, **ambas** saem — a que nasceria e a que já lá estava.
 4. ⭐ **O sobrevivente move-se para o PONTO MÉDIO dos dois**, e a normal dele passa a ser a soma
    normalizada das duas — **excepto** se ele toca um bordo, caso em que **não se mexe**, para o
    contorno não mudar de forma sozinho.
 
 **A máscara também filtra a ENTRADA na fila**, e a regra é generosa: uma aresta entra se **algum**
-dos dois extremos tem máscara `< 1` (só um par totalmente mascarado é recusado). Os autores
-registam que a alternativa óbvia — um corte a 50 % — deixava uma **borda feia** visível na malha, e
-o argumento deles é que a máscara já reduz o movimento do pincel, logo a topologia já muda menos por
-consequência. Vértices **escondidos** são recusados sempre.
+dos dois extremos tem máscara `< 1` (só um par totalmente mascarado é recusado). Vértices
+**escondidos** são recusados sempre.
+
+⛔ **Um limiar a meio caminho (`0,5`) esteve em vigor e foi RETIRADO** — recusa medida por
+terceiros, registada na história pública do alvo. O defeito que ela produzia é **estrutural e
+previsível**: a máscara atenua por **rampa** e um limiar decide por **degrau**, logo a densidade
+saltava ao longo de uma curva de nível da máscara, onde a geometria não salta. ⇒ a lei que fica é
+***só a máscara SATURADA protege a topologia***. ⚠️ E isso **não** deixa a região atenuada
+desprotegida: a cadeia de §1 já escala todo movimento por `1 − máscara`, logo ali a geometria muda
+pouco e o passe encontra menos aresta fora de faixa — *a protecção é consequência da lei de peso,
+não uma segunda cerca*.
 
 **Medido:** `densidade_mascara_metade` (metade da esfera mascarada) — dos vértices ao alcance,
 `110` de `114` sobrevivem no lado mascarado e **`0` de `112`** no lado livre.
@@ -481,36 +497,40 @@ tocada — o que muda é quanto cada elemento da grelha se afasta da referência
 2. aloca o campo *deslocamento anterior*, **a zeros**.
 
 **Em cada dab**, para os nós tocados:
-3. **reescreve** o *deslocamento anterior* dos vértices desses nós: `D[v] := p[v] − R[v]`;
-4. para cada vértice `v` da região:
+3. **reescreve** o campo de deslocamento desses nós: `D[u] := p[u] − R[u]`;
+4. o deslocamento de cada vértice `v` da região passa a ser uma **média ponderada do campo sobre a
+   vizinhança de `v` na grelha**, e o vértice é movido uma fracção do caminho até lá.
 
-   ```
-   dir := direcção do modo:
-       Drag   →  centro_do_dab_agora − centro_do_dab_do_dab_anterior
-       Pinch  →  centro_do_dab_agora − p[v]
-       Expand →  p[v] − centro_do_dab_agora
-   d̂ := normaliza(dir)
+**A média, em forma fechada.** Seja `d̂` a direcção unitária do modo (§5.3) e, para cada vizinho `w`
+de `v`, seja `ê_w` a direcção unitária de `R[v]` para `R[w]` **medida na superfície de referência**.
+O peso de cada vizinho é a **parte negativa do cosseno** entre as duas,
 
-   acumulado := D[v]        (o próprio vértice entra com peso 1)
-   pesos     := 1
-   para cada vizinho w de v na grelha:
-       ê := normaliza( R[w] − R[v] )       ← a direcção MEDIDA NA REFERÊNCIA
-       se  d̂ · ê  ≥ 0:  salta            ← só contam os vizinhos A MONTANTE
-       g := clamp( −(d̂ · ê), 0, 1 )
-       acumulado += D[w] · g
-       pesos     += g
+```
+g(w) = max( 0, −( d̂ · ê_w ) )          ∈ [0, 1]
+```
 
-   novo := R[v] + acumulado / pesos
-   p[v] := lerp( p[v], novo, peso(§1) × clamp(factor_de_força, 0, 1) )
-   ```
+e o vértice entra na própria média com peso **exactamente 1**:
+
+```
+D′[v] = ( D[v]  +  Σ_w g(w)·D[w] )  /  ( 1 + Σ_w g(w) )
+
+p[v] ← lerp(  p[v] ,  R[v] + D′[v] ,  peso(§1) × clamp(factor_de_força, 0, 1)  )
+```
 
 ⭐ **Três coisas que a leitura rápida inverte:**
-- os vizinhos entram pelo **cosseno negativo** — ou seja, só os que ficam **atrás** do movimento —,
-  e é isso que faz o deslocamento *viajar* em vez de borrar por igual;
+- `g` é a parte **negativa** do cosseno, logo **só os vizinhos a montante contribuem** (quem está do
+  lado para onde a mão vai tem peso zero) — é isso que faz o deslocamento *viajar* em vez de borrar
+  por igual;
 - a vizinhança é medida **na superfície de referência**, nunca nas posições deslocadas: é por isso
   que esfregar repetidamente não deforma a topologia;
-- o vértice entra na média **com peso 1 fixo**, o que dá ao resultado um travão natural (o
-  acumulado nunca é dominado pelos vizinhos).
+- o peso próprio é **`1` fixo**, não normalizado com os outros — é o travão que impede a vizinhança
+  de dominar a média por mais vizinhos que haja a montante.
+
+⚠️ **Nota de custo (§4.1.8), não de resposta:** um vizinho com `d̂ · ê_w ≥ 0` tem `g(w) = 0` e
+portanto **não contribui para nenhuma das duas somas**. Testá-lo antes de calcular poupa a leitura
+de `D[w]` e a divisão, e é o que uma implementação quente faz — ⛔ mas é **optimização**, e a
+resposta é a mesma com ou sem ela. *Um ramo que não muda o valor não é lei; escrevê-lo como lei é
+como o alvo está organizado, não o que ele calcula.*
 
 ### §5.3 — Os três modos (`smear_deform_type`)
 
@@ -608,9 +628,13 @@ Para cada vértice com peso ≠ 0:
    infinito»);
 4. **houve acerto ⇒ `d := d − minimum_distance`**.
 
-⚠️ **O raio é lançado e a árvore é consultada no espaço do ALVO**, mas `d` é uma distância
-**paramétrica** ao longo de um vector transformado, logo é **a mesma** nos dois espaços — é isso que
-deixa o pincel funcionar com alvos rodados e escalados sem converter distâncias.
+⚠️ **O raio é lançado no espaço do ALVO** (a árvore dele foi construída lá) e **`d` não se
+converte de volta.** A justificação é uma derivação de duas linhas, e está aqui porque ela é
+também o **requisito de implementação**: se o impacto satisfaz `Q = P + d·N`, então para qualquer
+afim `M` vale `M·Q = M·P + d·(M·N)` — o **mesmo** `d` resolve a equação do outro lado. ⇒ `d` é o
+**parâmetro da recta**, e não um comprimento; só voltaria a ser um comprimento se `M` preservasse
+norma. ⚠️ **O requisito que daí sai:** a direcção tem de atravessar a matriz como **direcção**
+(sem translação) e a posição como **ponto** — trocar os dois dá um `d` plausível e errado.
 **Medido:** `projectar_alvo_inclinado_escalado` atinge o plano exactamente (`|dz|max = 0,500000`).
 
 ### §6.4 — ⛔⛔ As DUAS armadilhas do `minimum_distance`, as duas medidas

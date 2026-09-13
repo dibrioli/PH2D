@@ -209,3 +209,32 @@ positivo do instrumento e **a condição de re-entrada é ele voltar a verde sob
   projecção expõe exactamente os controlos que a espec descreve.
 - **Fixtures:** 60 ficheiros, nomes e chaves de cabeçalho em vocabulário nosso, entradas **nossas**,
   sweep limpo sobre as 181 entradas.
+
+---
+
+## Emenda §3.E — a reescrita depois do R-pré (2026-09-13)
+
+O **R-pré NÃO atestou** a 1.ª redacção: 3 achados, o 1.º substancial. O que ele apanhou, o que foi
+feito, e o instrumento que fica:
+
+| # | achado | cura |
+|---|---|---|
+| 1 | **§3.2** — bloco de pseudo-código a transliterar o fluxo de controlo do alvo (inicializar vazio · guardar num modo · dois acumuladores por «ou-bit», na ordem dele). *A prosa em volta já dizia tudo; o bloco acrescentava FORMA.* | **APAGADO.** Fica a prosa, com uma frase nova a nomear o que ele é funcionalmente: uma disjunção acrescentada à condição que já decidia o colapso |
+| 2 | **§5.2** — bloco a espelhar o laço interior declaração a declaração. ⭐ **A assinatura que o denunciou:** ele preservava um desvio **matematicamente inerte** — no ramo saltado o peso já valeria zero e as duas somas ficariam intactas. *Preservar um ramo sem força funcional é marca de transcrição, não de descrição* | **REESCRITO como FÓRMULA**: média ponderada do campo sobre a vizinhança, peso próprio `1`, peso do vizinho = parte negativa do cosseno. O desvio foi **demovido a nota de custo** (§4.1.8), dizendo-se optimização |
+| 3 | **§3.6 · §3.7 (×2) · §6.3** — prosa de comentário vertida quase palavra a palavra, com a oração causal incluída, sem aspas e sem fonte | **RE-DITO como REQUISITO** em cada um: a terminação da recursão e o piso relativo (§3.6) · a invariante de saída sobre faces repetidas (§3.7) · a lei que fica sobre a máscara saturada + de onde vem a protecção da região atenuada (§3.7) · a **derivação** da invariância paramétrica e o requisito de transformar direcção como direcção (§6.3) |
+
+⚠️⚠️ **A lição do instrumento, e ela atravessa as quatro obras de hoje:** a vassoura estava só na
+**língua do alvo** e a espec escreve-se **na nossa** — o inglês de cada frase apanhada **já lá
+estava** e não casava com a tradução. *Uma vassoura monolingue não vigia uma espec traduzida, e o
+verde dela lê-se exactamente como o verde de uma que vigia.*
+
+**Vassoura: `175 → 181` (R-pré, prosa em português) `→ 196`** — mais **15 sentinelas** do texto
+EXACTO que foi removido nos dois blocos, para que uma **recaída** reprove o sweep em vez de esperar
+por outra auditoria humana.
+
+⭐ **Controlo positivo** (senão são 15 entradas a medir nada): a mesma vassoura sobre a redacção
+anterior (`de143530f`) dá **19 hits** — `5` do 1.º bloco, `8` do 2.º, `6` da prosa —; sobre a
+redacção nova dá **0**. Cross-sweep contra as quatro vassouras irmãs: limpo nas quatro.
+
+⏳ **PENDENTE: R-pré NOVO sobre esta redacção.** ⛔ Quem reescreveu não atesta — *autofiltragem não
+é auditoria*, e foi precisamente a autofiltragem verde da 1.ª entrega que deixou passar os três.

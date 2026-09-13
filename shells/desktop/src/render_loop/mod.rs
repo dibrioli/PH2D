@@ -198,6 +198,8 @@ mod fase_input_and_drops;
 mod fase_new_image_modal;
 /// Fase do quadro: as cenas do pincel do Painter (taper, tinta molhada).
 mod fase_painter_brush_smokes;
+/// Fase do quadro: o passo da física (dispatch, flash, readout do player, juntas que cederam).
+mod fase_physics_step;
 /// Fase do quadro: o que está sob o cursor (a 1.ª do `run_render_frame`).
 mod fase_pointer_subjects;
 /// Fase do quadro: a re-acendida dos objetos assados — FORA da feature `sculpt3d`, de propósito.
@@ -467,6 +469,7 @@ impl crate::App {
         };
         self.fase_timeline_containers(container, keys_mode);
         self.fase_timeline_drain(container, dragging_entity, keys_mode, selected_now);
+        self.fase_physics_step(player_input);
         let Some(gfx) = self.gfx.as_mut() else {
             return;
         };
@@ -526,70 +529,6 @@ impl crate::App {
             ..
         } = FrameGfx::of(gfx);
 
-        // Global rigid physics (ADR-0131 W1): step the rapier world at the
-        // Playhead tick and read poses back into Transform, BEFORE
-        // sim_extract so bodies render the same frame. Runtime-truth: play
-        // = N sequential steps + readback; paused = settle to the authored
-        // pose (read-only on Transform → no spurious undo step when idle).
-        // ⚠️ ONE transport, two consumers — the curves and the rapier world.
-        // Which of them the clock reaches is the artist's call, armed on the
-        // transport bar and OFF by default (`TimelineFlags::simulate_physics`).
-        let simulate_physics = self.timeline.flags.simulate_physics;
-        ph2d_app_physics::bridge::dispatch::dispatch(
-            physics,
-            sim,
-            &self.playhead,
-            self.fixed_step.fixed_dt(),
-            &mut self.timeline.doc,
-            simulate_physics,
-            // O dedo do jogador — **resolvido do `InputMap` do projecto** (plano 30 W5), e
-            // entregue INTEIRO por uma porta só. Ele é calculado no topo do quadro, antes de
-            // qualquer empréstimo de `self`.
-            player_input,
-            &mut self.player_tape,
-            // ⚠️ **A pose que o solver escreve é pré-visualização** — o ledger que a separa do
-            // documento (a folha `ph2d-preview-drive`, Enio 2026-08-23: *«corrigir o CtrlZ para ambas»*).
-            &mut self.preview_drive,
-        );
-        // O flash do estouro envelhece uma vez por frame, aqui: ao lado do
-        // dispatch da física, que é a fase em que o tempo do mundo anda. Um canal
-        // PRÓPRIO, porque uma explosão é um impulso e não deixa estado no mundo
-        // para uma marca derivada ler (o irmão exato do `ContactFlash`).
-        ph2d_app_physics::body_grab::age_blast_flash(&mut self.blast_flash);
-        // **O READOUT do player, a cada meio segundo** (`W-PlayerOut` A5) — a
-        // metade do smoke que torna a afinação legível sem um `println` à mão.
-        //
-        // ⚠️ **Depois do dispatch, e a ordem é a lei:** a vista é escrita no fim
-        // do laço de tiques, então ler antes dele imprimiria o tique anterior — e
-        // um readout um tique atrasado é indistinguível de um readout certo,
-        // menos exactamente no instante em que o artista está a olhar.
-        if let Some(bits) = self.physics.player_readout_log {
-            const EVERY: u64 = 30;
-            let tick = self.fixed_step.tick_count();
-            if tick.is_multiple_of(EVERY) {
-                let e = ph2d_ecs::Entity::from_bits(bits);
-                match physics.player_view(e) {
-                    Some(v) => eprintln!(
-                        "[player] {:?} facing {:+.0} vel ({:.2}, {:.2})                          ar {} dash {} agarrado {}",
-                        v.footing,
-                        v.facing,
-                        v.velocity[0],
-                        v.velocity[1],
-                        v.air_jumps_left,
-                        u8::from(v.dash_charged),
-                        u8::from(v.ledging),
-                    ),
-                    // ⚠️ **A ausência é o outro readout**, e ela é a linha que
-                    // ensina o toggle: sem `Physics` armado a lei não corre.
-                    None => eprintln!("[player] (a fisica esta' desarmada)"),
-                }
-            }
-        }
-        // A joint that gave way announces itself (W-J7). The overlay shows where
-        // and that; only the event carries the load it broke at.
-        for msg in ph2d_app_physics::bridge::dispatch::break_reports(physics, sim) {
-            toasts.push(Toast::warning(msg));
-        }
         // **E a FÍSICA publica no MESMO outbox dos sinais da timeline** (W-Signal).
         // Os quatro canais de leitura dela existem desde o W7 e nenhum fazia nada
         // ACONTECER; o que faltava era o publicador, não o consumidor — a nota do

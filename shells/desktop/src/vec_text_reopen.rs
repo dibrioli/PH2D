@@ -140,12 +140,12 @@ impl crate::app_state::App {
     /// chamador consome a pressão; sem isso ela iria para o gizmo e arrastaria a forma).
     pub(crate) fn vec_text_double_click(&mut self, x: f32, y: f32) -> bool {
         let now = std::time::Instant::now();
-        let is_double = self.vec_last_canvas_click.is_some_and(|(t, (px, py))| {
+        let is_double = self.vec.last_canvas_click.is_some_and(|(t, (px, py))| {
             now.duration_since(t).as_millis() <= Self::DOUBLE_CLICK_MS
                 && (x - px).abs() <= Self::DOUBLE_CLICK_SLOP_PX
                 && (y - py).abs() <= Self::DOUBLE_CLICK_SLOP_PX
         });
-        self.vec_last_canvas_click = Some((now, (x, y)));
+        self.vec.last_canvas_click = Some((now, (x, y)));
         // Diagnóstico opt-in (`PH2D_TEXT_LOG=1`): o gesto tem três degraus (é duplo? há
         // path sob o cursor? o path é um texto?) e o 1º smoke morreu no degrau da guarda
         // — sem isto, um "não abre" volta a ser adivinhação.
@@ -183,7 +183,7 @@ impl crate::app_state::App {
             eprintln!("[text] duplo-clique: reabrindo \"{}\"", edit.text);
         }
         self.vec_set_draw_mode(ph2d_tool_vector::DrawMode::Text);
-        self.vec_text_edit = Some(edit);
+        self.vec.text_edit = Some(edit);
         self.vec_text_regen();
         true
     }
@@ -195,13 +195,14 @@ impl crate::app_state::App {
         const HIT_PX: f64 = 10.0;
         let gfx = self.gfx.as_ref()?;
         let hit = self
-            .vec_pen
+            .vec
+            .pen
             .path_at(&gfx.vec_scene, world, HIT_PX * self.vec_px_to_world())?;
-        let (entity, params) = text_object_at(&gfx.sim, &self.vec_entities, hit)?;
+        let (entity, params) = text_object_at(&gfx.sim, &self.vec.entities, hit)?;
         let edit = reopen_text_session(&gfx.sim, hit, entity, &params, &gfx.vec_scene);
         // O objeto reaberto vira a seleção (o painel passa a mostrá-lo, e o Convert /
         // recolor agem sobre ele) — é o que o usuário acabou de apontar.
-        self.vec_pen.select_many(&[hit]);
+        self.vec.pen.select_many(&[hit]);
         Some(edit)
     }
 }

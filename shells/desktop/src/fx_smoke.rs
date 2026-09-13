@@ -119,7 +119,7 @@ fn select_the_shape(app: &mut crate::App) {
         .as_ref()
         .map(|g| g.vec_scene.paths().iter().map(|p| p.id).collect())
         .unwrap_or_default();
-    app.vec_pen.select_many(&ids);
+    app.vec.pen.select_many(&ids);
     eprintln!(
         "[smoke] apply/convert: 1 elipse com Zig Zag ATIVO, selecionada. Na seção **Effects** \
          clique **Apply Effects** (assa a pilha na geometria); ou **Convert to Curves** (agora \

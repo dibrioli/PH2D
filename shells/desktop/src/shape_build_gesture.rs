@@ -20,17 +20,17 @@ impl App {
     /// de cache).
     pub(crate) fn build_session_upkeep(&mut self) {
         let Some(gfx) = self.gfx.as_ref() else { return };
-        if self.vec_draw_config.mode != ph2d_tool_vector::DrawMode::Build {
-            self.vec_build = None;
+        if self.vec.draw_config.mode != ph2d_tool_vector::DrawMode::Build {
+            self.vec.build = None;
             return;
         }
-        if self.vec_build.as_ref().is_some_and(|s| s.dragging) {
+        if self.vec.build.as_ref().is_some_and(|s| s.dragging) {
             return; // no meio de um arrasto o arranjo é sagrado
         }
         // **Ordem de z (fundo → topo), não a ordem de clique.** O `selected_paths` guarda a
         // ordem em que o artista clicou; o arranjo promete z, e é o z que decide de quem a
         // forma nova herda o estilo (a do topo) e onde ela nasce na pilha.
-        let mut sel: Vec<VecPathId> = self.vec_pen.selected_paths().to_vec();
+        let mut sel: Vec<VecPathId> = self.vec.pen.selected_paths().to_vec();
         sel.sort_by_key(|id| {
             gfx.vec_scene
                 .paths()
@@ -38,12 +38,12 @@ impl App {
                 .position(|p| p.id == *id)
                 .unwrap_or(usize::MAX)
         });
-        let xf = ph2d_vec_entities::transform::build(&gfx.sim, &self.vec_entities);
+        let xf = ph2d_vec_entities::transform::build(&gfx.sim, &self.vec.entities);
         let key = source_key(&gfx.vec_scene, &xf, &sel);
-        if self.vec_build.as_ref().is_some_and(|s| s.opened_for == key) {
+        if self.vec.build.as_ref().is_some_and(|s| s.opened_for == key) {
             return; // mesma arte, mesma pose: o arranjo (e o memo) valem
         }
-        self.vec_build = BuildSession::open(&gfx.vec_scene, &xf, &sel);
+        self.vec.build = BuildSession::open(&gfx.vec_scene, &xf, &sel);
     }
 
     /// Pressão no canvas em modo Build. `alt` = subtrai; `shift` = soma à seleção.
@@ -55,11 +55,11 @@ impl App {
     /// ele clica as formas que quer combinar (Shift para somar), o arranjo abre sozinho no
     /// frame seguinte, e o canvas vira a mesa de trabalho.
     pub(crate) fn build_down(&mut self, world: [f64; 2], alt: bool, shift: bool) {
-        if self.vec_build.is_none() {
+        if self.vec.build.is_none() {
             self.build_select(world, shift);
             return;
         }
-        let Some(s) = self.vec_build.as_mut() else {
+        let Some(s) = self.vec.build.as_mut() else {
             return;
         };
         s.subtract = alt; // fixado no press: o mesmo gesto não pode mudar de significado
@@ -72,11 +72,11 @@ impl App {
     fn build_select(&mut self, world: [f64; 2], shift: bool) {
         let px = self.vec_px_to_world();
         let Some(gfx) = self.gfx.as_ref() else { return };
-        let hit = self.vec_pen.path_at(&gfx.vec_scene, world, 10.0 * px);
+        let hit = self.vec.pen.path_at(&gfx.vec_scene, world, 10.0 * px);
         match (hit, shift) {
-            (Some(id), true) => self.vec_pen.toggle_path(id),
-            (Some(id), false) => self.vec_pen.select(Some(id)),
-            (None, false) => self.vec_pen.select(None),
+            (Some(id), true) => self.vec.pen.toggle_path(id),
+            (Some(id), false) => self.vec.pen.select(Some(id)),
+            (None, false) => self.vec.pen.select(None),
             (None, true) => {}
         }
     }
@@ -84,7 +84,7 @@ impl App {
     /// O cursor andou em modo Build. Realça a face sob ele e, se estiver arrastando, pinta.
     /// Devolve `true` se consumiu o movimento.
     pub(crate) fn build_move(&mut self, world: [f64; 2]) -> bool {
-        let Some(s) = self.vec_build.as_mut() else {
+        let Some(s) = self.vec.build.as_mut() else {
             return false;
         };
         s.touch(world);
@@ -103,7 +103,7 @@ impl App {
     /// — o `vec_history` era uma fila morta (ADR-0110+, "populado mas não lido"), e foi apagado em
     /// 2026-09-12 (`line/render-loop`, A9).
     pub(crate) fn build_up(&mut self) {
-        let Some(session) = self.vec_build.as_mut() else {
+        let Some(session) = self.vec.build.as_mut() else {
             return;
         };
         session.dragging = false;
@@ -117,15 +117,15 @@ impl App {
         // A regra do que morre e do que fica vive em `shape_build::commit` — provável sem
         // `App`, e é o que os gates exercem.
         let sel = ph2d_app_vec::shape_build::commit(&mut gfx.vec_scene, &sources, result);
-        self.vec_pen.select_many(&sel);
+        self.vec.pen.select_many(&sel);
         // A sessão morre com o gesto: a arte mudou, e o `upkeep` do próximo frame reabre o
         // arranjo sobre o que ficou.
-        self.vec_build = None;
+        self.vec.build = None;
     }
 
     /// Esc em modo Build: desmarca tudo, sem tocar na arte.
     pub(crate) fn build_cancel(&mut self) -> bool {
-        let Some(s) = self.vec_build.as_mut() else {
+        let Some(s) = self.vec.build.as_mut() else {
             return false;
         };
         if !s.dragging && s.marked.is_empty() {

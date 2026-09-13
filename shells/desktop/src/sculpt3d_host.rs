@@ -123,8 +123,8 @@ impl App {
                 self.last_pointer.0,
                 self.last_pointer.1,
             ),
-            vector_has_selection: self.vec_pen.selected_vert().is_some()
-                || !self.vec_pen.selected_paths().is_empty(),
+            vector_has_selection: self.vec.pen.selected_vert().is_some()
+                || !self.vec.pen.selected_paths().is_empty(),
         };
         let keys_live = self.sculpt3d_keys_live();
         let App {

@@ -172,7 +172,7 @@ fn arm(app: &mut crate::App) {
             ));
         }
     }
-    let map = &app.vec_entities;
+    let map = &app.vec.entities;
     let sim = &mut app.gfx.as_mut().expect("gfx").sim;
     // O arm passa pela porta única `set_filter` (a mesma que o bridge do painel usa).
     for (i, ops) in stacks {

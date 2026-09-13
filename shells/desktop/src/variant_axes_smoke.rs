@@ -46,7 +46,7 @@ pub(crate) fn frame(app: &mut crate::App, f: u32) {
 /// por marcar quatro mestres soltos: o parentesco lê-se dos ELOS, e quatro mestres irmãos na
 /// hierarquia **não** são uma família aqui (é a diferença medida contra o sistema vetorial).
 fn build(app: &mut crate::App) {
-    let vec_entities = &mut app.vec_entities;
+    let vec_entities = &mut app.vec.entities;
     let Some(gfx) = app.gfx.as_mut() else {
         return;
     };

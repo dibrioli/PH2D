@@ -75,7 +75,7 @@ pub fn panel_shape_target(
 /// Live Shape: *"desenhei uma estrela, deixa-me ajustar as pontas dela"* e *"armei o Polígono,
 /// mostra-me o Polígono"* são os dois `DrawMode::Shape` com uma forma viva selecionada. O que os
 /// separa é **qual gesto veio por último**, e é isso que o `armed` carrega
-/// (`App::vec_shape_armed`: a tool publica o clique, a shell apaga o latch quando a selecção
+/// (`VecState::shape_armed`: a tool publica o clique, a shell apaga o latch quando a selecção
 /// muda — e desenhar selecciona a forma nova, então o ciclo volta sozinho).
 ///
 /// ⛔ O modo **Moldura** NÃO entra: ali o gesto desenha um `RoundRect` e um `RoundRect`

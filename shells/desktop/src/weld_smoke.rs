@@ -130,7 +130,7 @@ pub(crate) fn frame(app: &mut crate::App, f: u32) {
         .tools
         .set_active(&ph2d_editor_core::ToolId::new("vector"));
     crate::render_loop::vector_bridge::set_mode(&mut gfx.tools, ph2d_tool_vector::DrawMode::Select);
-    app.vec_pen.select_many(&primeiro_par);
+    app.vec.pen.select_many(&primeiro_par);
     eprintln!(
         "[weld-smoke] 6 curvas em 3 pares, a seta PRETA armada, e o 1.o par JA' SELECCIONADO.\n\
          [weld-smoke]  1) carregue em 'Weld' no painel -> as duas pontas do par de cima-esquerda\n\
@@ -191,7 +191,7 @@ mod tests {
             "a cena voltou a armar o modo Node — o Shift+clique dela deixa de somar formas"
         );
         assert!(
-            src.contains("app.vec_pen.select_many(&primeiro_par);"),
+            src.contains("app.vec.pen.select_many(&primeiro_par);"),
             "sem a pre-seleccao a seccao Path nao e' pintada, e o botao Weld nao esta' na tela"
         );
     }

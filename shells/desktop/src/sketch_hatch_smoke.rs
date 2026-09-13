@@ -125,7 +125,7 @@ fn select_hero(app: &mut crate::App, level: u32) {
         .as_ref()
         .and_then(|g| g.vec_scene.paths().get(1).map(|p| p.id));
     if let Some(id) = mid {
-        app.vec_pen.select_many(&[id]);
+        app.vec.pen.select_many(&[id]);
     }
     if level == 31 {
         eprintln!(

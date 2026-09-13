@@ -44,7 +44,7 @@ impl crate::App {
             .first()
             .map(|p| p.id);
         if let Some(id) = first {
-            self.vec_pen.select(Some(id));
+            self.vec.pen.select(Some(id));
         }
         eprintln!(
             "[smoke] Fillet/Chamfer + Convert to Curves.\n\

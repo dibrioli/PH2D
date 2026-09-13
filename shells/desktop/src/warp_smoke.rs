@@ -95,7 +95,7 @@ fn arm(app: &mut crate::App) {
     let Some(id) = PENDING.lock().expect("smoke lock").take() else {
         return;
     };
-    app.vec_pen.select_many(&[id]);
+    app.vec.pen.select_many(&[id]);
     let names: Vec<&str> = WarpStyle::ALL.iter().map(|s| s.label()).collect();
     eprintln!(
         "[smoke] WARP -- a familia Effect > Warp (menu Add da secao Effects).\n\

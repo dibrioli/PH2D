@@ -80,7 +80,7 @@ fn the_pick_reaches_the_document_composed_over_what_is_there() {
 /// Sem ela, uma seleção escreveria a curva em… qual forma? Escolher em silêncio é como um ajuste
 /// acaba pendurado no objeto errado.
 ///
-/// ⚠️ **A âncora era `[host] = self.vec_pen.selected_paths()`**, e ela expirou em 2026-08-23,
+/// ⚠️ **A âncora era `[host] = self.vec.pen.selected_paths()`**, e ela expirou em 2026-08-23,
 /// quando o hospedeiro deixou de ser *"a forma única selecionada"* e passou a ser DERIVADO da
 /// seleção. O que o gate afirma não mudou; o que mudou foi por onde a resposta vem — e uma âncora
 /// que copia a IMPLEMENTAÇÃO de uma lei em vez de a nomear expira sempre que a lei se muda de
@@ -101,7 +101,7 @@ fn the_curve_is_written_to_the_host() {
 
 /// ⛔ **NENHUM GESTO DA SEÇÃO RE-DERIVA O HOSPEDEIRO À MÃO** (auditoria de 2026-08-23).
 ///
-/// ⚠️ Havia **cinco** `if let [host] = self.vec_pen.selected_paths()` espalhados pelo bloco dos
+/// ⚠️ Havia **cinco** `if let [host] = self.vec.pen.selected_paths()` espalhados pelo bloco dos
 /// estados — cinco portas para o mesmo fato —, e **nenhuma** delas era a que o `publish` usa para
 /// PINTAR a seção. Enquanto o hospedeiro foi *"a forma única selecionada"* as seis respostas
 /// coincidiam por acidente; no instante em que ele passou a ser derivado, o painel mostraria as
@@ -113,7 +113,7 @@ fn the_curve_is_written_to_the_host() {
 fn no_state_gesture_re_derives_the_host_by_hand() {
     let src = render_loop();
     let n = src
-        .matches("[host] = self.vec_pen.selected_paths()")
+        .matches("[host] = self.vec.pen.selected_paths()")
         .count();
     assert_eq!(
         n, 0,

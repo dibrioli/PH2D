@@ -140,7 +140,7 @@ impl App {
             &mut gfx.atlas_asset_map,
             crate::import_router::VecTarget {
                 scene: &mut gfx.vec_scene,
-                map: &mut self.vec_entities,
+                map: &mut self.vec.entities,
             },
         );
         for name in &batch.skipped {

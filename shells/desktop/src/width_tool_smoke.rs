@@ -68,13 +68,13 @@ fn build(app: &mut crate::App) {
         [220, 150, 90],
     );
     let rid = gfx.vec_scene.push_path(ref_line);
-    app.vec_width_ref = Some(rid);
+    app.vec.width_ref = Some(rid);
 }
 
 fn announce(app: &mut crate::App) {
     // O perfil da referência é armado AQUI, depois do `sync` do frame 3 ter dado entidade ao
     // caminho — antes disso o componente não teria onde pousar.
-    if let Some(rid) = app.vec_width_ref.take()
+    if let Some(rid) = app.vec.width_ref.take()
         && let Some(gfx) = app.gfx.as_mut()
     {
         let stops = WidthProfile {
@@ -84,7 +84,7 @@ fn announce(app: &mut crate::App) {
             position: 0.5,
         }
         .to_stops();
-        crate::profile_live::arm(&mut gfx.sim, &app.vec_entities, &[rid], &stops);
+        crate::profile_live::arm(&mut gfx.sim, &app.vec.entities, &[rid], &stops);
     }
     eprintln!(
         "[smoke] width tool (plano 25 §5): tres tracos -- AZUL reto, VERDE ondulado, LARANJA reto \

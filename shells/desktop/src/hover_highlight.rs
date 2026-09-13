@@ -169,9 +169,9 @@ impl crate::App {
         };
         pick_objects_at(
             &mut w,
-            &self.vec_entities,
-            &self.vec_view_derived,
-            &self.vec_live_drawn,
+            &self.vec.entities,
+            &self.vec.view_derived,
+            &self.vec.live_drawn,
             &self.flip_state.entities,
             pointer,
         )
@@ -194,8 +194,8 @@ impl crate::App {
         let vector = hover_outline_world(
             &gfx.sim,
             &gfx.vec_scene,
-            &self.vec_entities,
-            &self.vec_live_drawn,
+            &self.vec.entities,
+            &self.vec.live_drawn,
             bits,
         );
         if !vector.is_empty() {

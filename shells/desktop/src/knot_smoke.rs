@@ -82,7 +82,7 @@ fn select_hero(app: &mut crate::App) {
         .as_ref()
         .and_then(|g| g.vec_scene.paths().get(1).map(|p| p.id));
     if let Some(id) = mid {
-        app.vec_pen.select_many(&[id]);
+        app.vec.pen.select_many(&[id]);
     }
     eprintln!(
         "[smoke] knot: 3 pentagramas (5 travessias cada), tracados como FITA. ESQUERDA = Gap 6% \

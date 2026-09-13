@@ -140,7 +140,7 @@ fn the_apply_button_bakes_the_live_profile_not_the_sliders() {
 #[test]
 fn the_pencil_arms_its_profile_before_the_cook() {
     let sync = at("ph2d_vec_entities::entities::sync(");
-    let arm = at("crate::profile_live::arm(sim, &self.vec_entities, &[id], &stops)");
+    let arm = at("crate::profile_live::arm(sim, &self.vec.entities, &[id], &stops)");
     let cook = at("self.profile_live\n                .recook(");
     assert!(
         sync < arm,
@@ -154,7 +154,7 @@ fn the_pencil_arms_its_profile_before_the_cook() {
     // o perfil seria o que os sliders da Expand dizem, e o lápis não teria fonte nenhuma.
     let head = &SRC[..arm];
     let gesture = head
-        .rfind("self.vec_state.pencil.active_path()")
+        .rfind("self.vec.pencil.active_path()")
         .expect("o armamento do lápis não é gateado por um traço VIVO");
     assert!(
         SRC[gesture..arm].contains("width_stops"),

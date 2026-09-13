@@ -134,7 +134,7 @@ fn arm(app: &mut crate::App) {
         (6, vec![base_bevel(), overlay(WHITE, NORMAL)]),
         (7, vec![base_bevel(), overlay(WHITE, OVERLAY_LAW)]),
     ];
-    let map = &app.vec_entities;
+    let map = &app.vec.entities;
     let sim = &mut app.gfx.as_mut().expect("gfx").sim;
     for (i, ops) in stacks {
         crate::fx_live::set_filter(sim, map, &[ids[i]], Some(VecFilter { ops }));

@@ -38,8 +38,8 @@ fn a_press_on_empty_canvas_opens_the_marquee_before_the_node_press() {
         DISPATCH,
         "// **Modo Node: o press no VAZIO abre o retângulo",
     );
-    let arm = at(&DISPATCH[block..], "self.vec_marquee = Some(") + block;
-    let node_press = at(DISPATCH, "self.vec_pen.on_press_node(");
+    let arm = at(&DISPATCH[block..], "self.vec.marquee = Some(") + block;
+    let node_press = at(DISPATCH, "self.vec.pen.on_press_node(");
     assert!(
         block < node_press && arm < node_press,
         "o ramo do marquee corre DEPOIS do `on_press_node` -- ele ja' desselecionou, e o Shift \
@@ -71,7 +71,7 @@ fn the_marquee_release_adds_with_shift_and_deselects_on_a_bare_click() {
     // reprovou uma vez por ancorar em `Some((start, cur))`, que a wave do LAÇO trocou por
     // `Some(m)` quando o gesto passou a carregar a forma. O `at` panica com a razão — é o
     // controle positivo, e é o que torna isto uma falha alta em vez de uma varredura vazia.
-    let take = at(DISPATCH, "self.vec_marquee.take()");
+    let take = at(DISPATCH, "self.vec.marquee.take()");
     let call = at(&DISPATCH[take..], "box_select_with(") + take;
     let window = &DISPATCH[take..call];
     assert!(
@@ -86,7 +86,7 @@ fn the_marquee_release_adds_with_shift_and_deselects_on_a_bare_click() {
     // E o clique nu desseleciona: a metade que fecha o gesto.
     let tail = &DISPATCH[take..at(&DISPATCH[take..], "return;") + take];
     assert!(
-        tail.contains("self.vec_pen.select(None)"),
+        tail.contains("self.vec.pen.select(None)"),
         "o clique no vazio nao desseleciona"
     );
 }

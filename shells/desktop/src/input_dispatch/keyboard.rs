@@ -322,7 +322,7 @@ impl App {
         // ⚠️ Só no modo **Node**: noutro modo não há nó selecionado a que estas teclas se refiram,
         // e o `Tab` do app tem outros donos.
         if self.vector_keys_live()
-            && self.vec_draw_config.mode == ph2d_tool_vector::DrawMode::Node
+            && self.vec.draw_config.mode == ph2d_tool_vector::DrawMode::Node
             && state == ElementState::Pressed
             && let PhysicalKey::Code(code) = physical_key
         {
@@ -334,11 +334,11 @@ impl App {
                 match code {
                     // `Tab` anda para a frente, `Shift+Tab` para trás — o percurso do Inkscape.
                     KeyCode::Tab if !ctrl => {
-                        self.vec_pen.step_vert_selection(&gfx.vec_scene, !back);
+                        self.vec.pen.step_vert_selection(&gfx.vec_scene, !back);
                         return;
                     }
                     // `Ctrl+A` (ou `Cmd+A`) apanha TODOS os nós do caminho selecionado.
-                    KeyCode::KeyA if ctrl && self.vec_pen.select_all_verts(&gfx.vec_scene) => {
+                    KeyCode::KeyA if ctrl && self.vec.pen.select_all_verts(&gfx.vec_scene) => {
                         return;
                     }
                     _ => {}
@@ -353,7 +353,7 @@ impl App {
         // stack died unread — the Ctrl+Z is the global queue's.)
         if self.vector_keys_live()
             && state == ElementState::Pressed
-            && !self.vec_pen.is_drawing()
+            && !self.vec.pen.is_drawing()
             && !self.modifiers.control_key()
             && !self.modifiers.alt_key()
             && !self.modifiers.super_key()

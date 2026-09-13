@@ -115,7 +115,7 @@ fn the_bone_handles_are_grabbed_before_the_tool_takes_the_canvas() {
         .find("self.bone_handle_at((evt.x, evt.y))")
         .expect("o arm das alças de osso é despachado — sem ele elas acendem e não pegam");
     let bloco = src
-        .find("&& self.vec_draw_config.mode != ph2d_tool_vector::DrawMode::Select")
+        .find("&& self.vec.draw_config.mode != ph2d_tool_vector::DrawMode::Select")
         .expect("o bloco que a ferramenta usa para tomar o canvas vive neste ficheiro");
     assert!(
         arm < bloco,
@@ -163,7 +163,7 @@ fn the_bone_handle_is_released_in_every_mode_it_can_be_grabbed_in() {
         .find("self.skeleton.bone_pose = None;")
         .expect("o Up que liberta a alça vive neste ficheiro");
     let bloco = src
-        .find("&& self.vec_draw_config.mode != ph2d_tool_vector::DrawMode::Select")
+        .find("&& self.vec.draw_config.mode != ph2d_tool_vector::DrawMode::Select")
         .expect("o bloco que a ferramenta usa para tomar o canvas vive neste ficheiro");
     assert!(
         solta < bloco,

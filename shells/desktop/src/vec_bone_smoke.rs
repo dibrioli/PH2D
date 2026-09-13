@@ -22,7 +22,7 @@ impl crate::App {
         if !ph2d_app_vec::smoke_bone::armed() || self.gfx.is_none() {
             return;
         }
-        match self.vec_state.bone_smoke_step {
+        match self.vec.bone_smoke_step {
             0 => {
                 let gfx = self.gfx.as_mut().expect("gfx");
                 let ppm = gfx
@@ -40,7 +40,7 @@ impl crate::App {
                     &mut gfx.renderer,
                     &mut gfx.asset_db,
                     ppm,
-                    &mut self.vec_state,
+                    &mut self.vec,
                 );
             }
             // ⚠️⚠️ **NÃO se conta QUADROS aqui, pergunta-se o FATO.** Prender exige a ENTIDADE de
@@ -50,18 +50,17 @@ impl crate::App {
             // sintoma seria exactamente *"nenhuma forma pode ser deformada"*.
             1 => {
                 let prontas =
-                    self.vec_state.bone_smoke_pend.as_ref().is_some_and(|p| {
-                        p.iter().all(|(id, _)| self.vec_entities.contains_key(id))
+                    self.vec.bone_smoke_pend.as_ref().is_some_and(|p| {
+                        p.iter().all(|(id, _)| self.vec.entities.contains_key(id))
                     });
                 if prontas {
                     let gfx = self.gfx.as_mut().expect("gfx");
                     ph2d_app_vec::smoke_bone::bind(
                         &mut gfx.vec_scene,
                         &mut gfx.sim,
-                        &self.vec_entities,
                         &mut self.timeline.doc,
                         &gfx.asset_db,
-                        &mut self.vec_state,
+                        &mut self.vec,
                     );
                 }
             }

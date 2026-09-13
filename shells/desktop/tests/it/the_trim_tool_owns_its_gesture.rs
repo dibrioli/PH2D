@@ -45,13 +45,13 @@ fn the_scanner_finds_what_it_scans_for() {
 fn the_press_never_falls_through_to_the_drawing_chain() {
     let arm = at(
         DISPATCH,
-        "self.vec_draw_config.mode == ph2d_tool_vector::DrawMode::Trim",
+        "self.vec.draw_config.mode == ph2d_tool_vector::DrawMode::Trim",
         "o dispatch",
     );
     let apply = at(DISPATCH, "crate::vec_trim::apply(", "o dispatch");
     let corner = at(
         DISPATCH,
-        "if self.vec_draw_config.mode.is_corner_tool() {",
+        "if self.vec.draw_config.mode.is_corner_tool() {",
         "o dispatch",
     );
     assert!(
@@ -76,17 +76,17 @@ fn the_press_never_falls_through_to_the_drawing_chain() {
 fn the_click_consumes_the_highlighted_piece_and_does_not_recompute_it() {
     let arm = at(
         DISPATCH,
-        "self.vec_draw_config.mode == ph2d_tool_vector::DrawMode::Trim",
+        "self.vec.draw_config.mode == ph2d_tool_vector::DrawMode::Trim",
         "o dispatch",
     );
     let corner = at(
         DISPATCH,
-        "if self.vec_draw_config.mode.is_corner_tool() {",
+        "if self.vec.draw_config.mode.is_corner_tool() {",
         "o dispatch",
     );
     let bloco = &DISPATCH[arm..corner];
     assert!(
-        bloco.contains("self.vec_trim_hit"),
+        bloco.contains("self.vec.trim_hit"),
         "o clique tem de LER o pedaco do quadro"
     );
     assert!(
@@ -100,7 +100,7 @@ fn the_click_consumes_the_highlighted_piece_and_does_not_recompute_it() {
 fn a_live_shape_freezes_its_recipe_before_the_cut() {
     let arm = at(
         DISPATCH,
-        "self.vec_draw_config.mode == ph2d_tool_vector::DrawMode::Trim",
+        "self.vec.draw_config.mode == ph2d_tool_vector::DrawMode::Trim",
         "o dispatch",
     );
     let apply = at(DISPATCH, "crate::vec_trim::apply(", "o dispatch");
@@ -126,7 +126,7 @@ fn the_highlight_is_cleared_outside_the_tool() {
         "o refresh nao pergunta pelo modo"
     );
     assert!(
-        corpo.contains("self.vec_state.trim_piece.clear();"),
+        corpo.contains("self.vec.trim_piece.clear();"),
         "fora do modo o realce tem de ser LIMPO, nao apenas nao-actualizado"
     );
 }

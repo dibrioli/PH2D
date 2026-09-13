@@ -129,7 +129,7 @@ impl crate::App {
             .first()
             .map(|p| p.id);
         if let Some(id) = first {
-            self.vec_pen.select(Some(id));
+            self.vec.pen.select(Some(id));
         }
         eprintln!(
             "[smoke] EXPAND — a seção **Expand** no painel (abaixo de Boolean).\n\
@@ -221,7 +221,7 @@ impl crate::App {
             let mut d = None;
             for id in self.offset_live.live().keys() {
                 if let Some(g) = self.gfx.as_ref()
-                    && let Some(spec) = crate::offset_live::spec_of(&g.sim, &self.vec_entities, *id)
+                    && let Some(spec) = crate::offset_live::spec_of(&g.sim, &self.vec.entities, *id)
                 {
                     n += 1;
                     d.get_or_insert(spec.d);

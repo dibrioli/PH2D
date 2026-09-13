@@ -85,7 +85,7 @@ fn dress(app: &mut crate::App) {
         return;
     }
     for (i, (_, name, kind)) in ART.iter().enumerate() {
-        let Some(&bits) = app.vec_entities.get(&ids[i]) else {
+        let Some(&bits) = app.vec.entities.get(&ids[i]) else {
             continue;
         };
         let Ok(mut ent) = gfx

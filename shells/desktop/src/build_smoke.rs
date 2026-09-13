@@ -182,7 +182,7 @@ impl crate::App {
                     .iter()
                     .map(|p| p.id)
                     .collect();
-                self.vec_pen.select_many(&ids);
+                self.vec.pen.select_many(&ids);
                 eprintln!(
                     "[smoke] morph: 2 formas selecionadas — clique **Morph** no painel, depois \
                      arraste **Morph t**"
@@ -218,7 +218,7 @@ impl crate::App {
                 let corners = [[-1.2, -1.2], [1.2, -1.2], [1.2, 1.2], [-1.2, 1.2]];
                 let scene = &self.gfx.as_ref().expect("gfx").vec_scene;
                 for c in corners {
-                    self.vec_pen.toggle_vert_at(scene, c, 0.2);
+                    self.vec.pen.toggle_vert_at(scene, c, 0.2);
                 }
                 eprintln!(
                     "[smoke] chamfer: quadrado arredondado, 4 quinas selecionadas no modo Node. \
@@ -248,7 +248,7 @@ impl crate::App {
                     .paths()
                     .get(2)
                     .map(|p| p.id);
-                self.vec_pen.select(donut);
+                self.vec.pen.select(donut);
             }
             f18 if level == 18 && f18 >= 5 => self.smoke_expand_retune_drive(f18),
             f19 if level == 19 && f19 >= 5 => self.smoke_expand_saturate_drive(f19),
@@ -341,20 +341,21 @@ impl crate::App {
                     .iter()
                     .map(|p| p.id)
                     .collect();
-                self.vec_pen.select_many(&ids);
+                self.vec.pen.select_many(&ids);
                 self.vec_set_draw_mode(ph2d_tool_vector::DrawMode::Select);
                 let Some(gfx) = self.gfx.as_mut() else { return };
-                let xf = ph2d_vec_entities::transform::build(&gfx.sim, &self.vec_entities);
+                let xf = ph2d_vec_entities::transform::build(&gfx.sim, &self.vec.entities);
                 crate::vec_blend::apply(
                     &mut gfx.vec_scene,
-                    &mut self.vec_pen,
+                    &mut self.vec.pen,
                     &xf,
-                    &mut self.vec_blend,
+                    &mut self.vec.blend,
                     5,
                     true,
                 );
-                self.vec_restack = self
-                    .vec_blend
+                self.vec.restack = self
+                    .vec
+                    .blend
                     .as_ref()
                     .map(crate::vec_blend::BlendSession::stack)
                     .into_iter()
@@ -377,20 +378,21 @@ impl crate::App {
                     .iter()
                     .map(|p| p.id)
                     .collect();
-                self.vec_pen.select_many(&ids);
+                self.vec.pen.select_many(&ids);
                 self.vec_set_draw_mode(ph2d_tool_vector::DrawMode::Select);
                 let Some(gfx) = self.gfx.as_mut() else { return };
-                let xf = ph2d_vec_entities::transform::build(&gfx.sim, &self.vec_entities);
+                let xf = ph2d_vec_entities::transform::build(&gfx.sim, &self.vec.entities);
                 crate::vec_blend::apply(
                     &mut gfx.vec_scene,
-                    &mut self.vec_pen,
+                    &mut self.vec.pen,
                     &xf,
-                    &mut self.vec_blend,
+                    &mut self.vec.blend,
                     5,
                     true,
                 );
-                self.vec_restack = self
-                    .vec_blend
+                self.vec.restack = self
+                    .vec
+                    .blend
                     .as_ref()
                     .map(crate::vec_blend::BlendSession::stack)
                     .into_iter()
@@ -413,20 +415,21 @@ impl crate::App {
                     .iter()
                     .map(|p| p.id)
                     .collect();
-                self.vec_pen.select_many(&ids);
+                self.vec.pen.select_many(&ids);
                 self.vec_set_draw_mode(ph2d_tool_vector::DrawMode::Select);
                 let Some(gfx) = self.gfx.as_mut() else { return };
-                let xf = ph2d_vec_entities::transform::build(&gfx.sim, &self.vec_entities);
+                let xf = ph2d_vec_entities::transform::build(&gfx.sim, &self.vec.entities);
                 crate::vec_blend::apply(
                     &mut gfx.vec_scene,
-                    &mut self.vec_pen,
+                    &mut self.vec.pen,
                     &xf,
-                    &mut self.vec_blend,
+                    &mut self.vec.blend,
                     3,
                     true, // os passos sobem: cada um acima do anterior
                 );
-                self.vec_restack = self
-                    .vec_blend
+                self.vec.restack = self
+                    .vec
+                    .blend
                     .as_ref()
                     .map(crate::vec_blend::BlendSession::stack)
                     .into_iter()
@@ -455,7 +458,7 @@ impl crate::App {
                     .iter()
                     .map(|p| p.id)
                     .collect();
-                self.vec_pen.select_many(&ids);
+                self.vec.pen.select_many(&ids);
                 self.vec_set_draw_mode(ph2d_tool_vector::DrawMode::Build);
                 eprintln!(
                     "[build-smoke] cena pronta, {} formas, modo Build",

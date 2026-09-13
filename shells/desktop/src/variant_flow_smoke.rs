@@ -91,7 +91,7 @@ fn step_4_make_variant(app: &mut crate::App) {
 /// Corre um verbo pela porta do menu e imprime a VOZ que o artista ouviria.
 fn verb(app: &mut crate::App, v: ph2d_app_components::instance_verbs::Verb, name: &str) {
     let bits = LIVE.with(std::cell::Cell::get);
-    let vec_entities = &mut app.vec_entities;
+    let vec_entities = &mut app.vec.entities;
     let Some(gfx) = app.gfx.as_mut() else { return };
     let registry = crate::init::build_component_registry();
     let mut echo = ph2d_app_components::instance_sync::MasterEcho::default();

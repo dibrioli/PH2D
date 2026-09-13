@@ -78,11 +78,11 @@ fn nest_and_record(app: &mut crate::App) {
         return;
     }
     // ⚠️ O aninhamento vai pela árvore ECS, que é onde `members` o lê.
-    let Some(menu_e) = app.vec_entities.get(&ids[0]).copied() else {
+    let Some(menu_e) = app.vec.entities.get(&ids[0]).copied() else {
         return;
     };
     for id in &ids[1..3] {
-        let Some(bits) = app.vec_entities.get(id).copied() else {
+        let Some(bits) = app.vec.entities.get(id).copied() else {
             continue;
         };
         if let Some(gfx) = app.gfx.as_mut() {
@@ -118,7 +118,7 @@ fn nest_and_record(app: &mut crate::App) {
 /// ⚠️ Pela porta do PRODUTO (`vec_ui_state_edit::apply`), e não escrevendo a tabela à mão: uma
 /// cena que semeia estado por baixo pula exactamente a costura que ela existe para provar.
 fn record(app: &mut crate::App, ids: &[ph2d_vec_scene::VecPathId], role: StateRole) {
-    let map = &app.vec_entities;
+    let map = &app.vec.entities;
     let Some(gfx) = app.gfx.as_mut() else {
         return;
     };
@@ -139,7 +139,7 @@ fn announce(app: &mut crate::App) {
     let (hosts, governs) = app.gfx.as_ref().map_or((0, 0), |g| {
         let hosts = g.ui_states.hosts().count();
         let governs = ids.first().map_or(0, |m| {
-            crate::vec_ui_state_edit::members(&g.sim, &g.vec_scene, &app.vec_entities, *m).len()
+            crate::vec_ui_state_edit::members(&g.sim, &g.vec_scene, &app.vec.entities, *m).len()
         });
         (hosts, governs)
     });

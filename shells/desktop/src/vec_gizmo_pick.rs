@@ -48,7 +48,7 @@ const STROKE_SAMPLES: u32 = 24;
 /// `input_dispatch` passavam só o `offset_live` enquanto o `dispatch` recebia a fusão de nove
 /// produtores. Medido em 2026-08-10, com uma simetria armada: **3 de 3** pontos da metade
 /// espelhada estavam na tela com o clique a atravessar. Hoje o que chega aqui é o campo
-/// `App::vec_live_drawn` — literalmente o mapa que o `dispatch` desenhou —, e quem garante que
+/// `app.vec.live_drawn` — literalmente o mapa que o `dispatch` desenhou —, e quem garante que
 /// continua a ser é o arch-gate `the_pick_reads_the_map_that_was_drawn`, não a disciplina de
 /// quem acrescentar o décimo produtor.
 ///

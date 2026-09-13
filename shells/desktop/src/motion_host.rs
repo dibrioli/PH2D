@@ -9,7 +9,7 @@
 //! a pergunta é feita **uma vez**, aqui, onde a resposta existe; uma cena que corre já tem tudo.
 //!
 //! ⚠️⚠️ **O que faz isto compilar é o EMPRÉSTIMO DISJUNTO DE CAMPOS:** `self.gfx` e
-//! `self.vec_entities` são campos diferentes da mesma struct, logo podem ser emprestados
+//! `self.vec.entities` são campos diferentes da mesma struct, logo podem ser emprestados
 //! mutavelmente ao mesmo tempo. ⛔ Um método `fn gfx_mut(&mut self)` no meio disto quebraria a
 //! propriedade — ele empresta a `App` INTEIRA, e os cinco campos seguintes deixariam de estar
 //! disponíveis. *É a mesma razão pela qual o `AppHost` não devolve handles.*
@@ -31,7 +31,7 @@ impl crate::App {
             vec_scene: &mut gfx.vec_scene,
             flip: &mut gfx.flip,
             hero: gfx.hero_screen.as_mut(),
-            vec_entities: &mut self.vec_entities,
+            vec_entities: &mut self.vec.entities,
             motion_shell: &mut self.motion_shell,
             flip_entities: &self.flip_state.entities,
             playhead: &mut self.playhead,

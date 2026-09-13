@@ -116,7 +116,7 @@ fn the_cut_mode_draws_with_the_pen_and_owns_no_press_branch() {
         "o modo Corte ganhou um ramo de press proprio -- ele deixaria de desenhar pela caneta"
     );
     // E o press da caneta ARMA a adoção da lâmina.
-    let pen = at(DISPATCH, "let click = self.vec_pen.on_press(");
+    let pen = at(DISPATCH, "let click = self.vec.pen.on_press(");
     let window = &DISPATCH[pen..at(&DISPATCH[pen..], "Some(kind) => {") + pen];
     for (needle, why) in [
         ("DrawMode::Cut", "a adocao nao e' gateada no modo Corte"),
@@ -125,7 +125,7 @@ fn the_cut_mode_draws_with_the_pen_and_owns_no_press_branch() {
             "adota em todo clique, nao so' no que CRIA um caminho",
         ),
         (
-            "self.vec_state.cut_pending = Some(",
+            "self.vec.cut_pending = Some(",
             "o caminho novo nunca vira lamina",
         ),
     ] {
@@ -166,7 +166,7 @@ fn the_two_cut_buttons_are_drained_by_the_shell() {
             "o botao Cut nao chama a porta que corta",
         ),
         (
-            "self.vec_pen.select(None)",
+            "self.vec.pen.select(None)",
             "a selecao sobrevive as formas que ela apontava",
         ),
     ] {
@@ -312,9 +312,9 @@ fn the_snap_toggles_are_not_crossed() {
 fn each_pending_snap_toggle_lands_on_its_own_field() {
     let code = std::fs::read_to_string("src/render_loop/mod.rs").expect("render_loop");
     for (pending, field) in [
-        ("pending_vec_snap_path", "self.vec_snap.path = on"),
-        ("pending_vec_snap_cross", "self.vec_snap.crossings = on"),
-        ("pending_vec_snap_guides", "self.vec_snap.guides = on"),
+        ("pending_vec_snap_path", "self.vec.snap.path = on"),
+        ("pending_vec_snap_cross", "self.vec.snap.crossings = on"),
+        ("pending_vec_snap_guides", "self.vec.snap.guides = on"),
         // ⚠️ A régua é o único dos cinco que NÃO é campo de ferramenta: ela é vista, e o
         // destino é o hero. Colapsá-la com os outros faria esconder a régua desligar o ímã.
         ("pending_rulers", "hero.view.rulers_visible = on"),

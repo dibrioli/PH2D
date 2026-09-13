@@ -27,8 +27,8 @@ impl crate::App {
         let Some(gfx) = self.gfx.as_ref() else {
             return;
         };
-        let xf = ph2d_vec_entities::transform::build(&gfx.sim, &self.vec_entities);
-        let vista = ph2d_vec_entities::entities::view_state(&gfx.sim, &self.vec_entities);
+        let xf = ph2d_vec_entities::transform::build(&gfx.sim, &self.vec.entities);
+        let vista = ph2d_vec_entities::entities::view_state(&gfx.sim, &self.vec.entities);
         // ⚠️ As DUAS perguntas são as mesmas que o balde faz: o que não se vê não sai, e o que é
         // área de balde sai MARCADO (`VecViewState::is_derived` é populado do `VecBucketFill`).
         let out = svg(&gfx.vec_scene, &xf, &|id| vista.is_hidden(id), &|id| {

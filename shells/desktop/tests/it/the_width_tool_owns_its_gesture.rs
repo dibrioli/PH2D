@@ -39,7 +39,7 @@ fn the_scanner_finds_what_it_scans_for() {
         "crate::width_handles::drag(",
         "crate::width_handles::remove(",
         "crate::width_handles::discard_if_untouched(",
-        "if shape_kind_for_mode(&self.vec_draw_config).is_none() {",
+        "if shape_kind_for_mode(&self.vec.draw_config).is_none() {",
     ] {
         assert!(
             SRC.contains(needle),
@@ -53,7 +53,7 @@ fn the_scanner_finds_what_it_scans_for() {
 #[test]
 fn the_width_press_runs_before_the_mode_chain() {
     let press = at("crate::width_handles::press(");
-    let chain = at("if shape_kind_for_mode(&self.vec_draw_config).is_none() {");
+    let chain = at("if shape_kind_for_mode(&self.vec.draw_config).is_none() {");
     assert!(
         press < chain,
         "o press do Width corre DEPOIS da cadeia de modo — `shape_kind_for_mode(..).is_none()` e' \
@@ -64,9 +64,9 @@ fn the_width_press_runs_before_the_mode_chain() {
 /// **O release larga a alça, e também ANTES da cadeia** — pela mesma razão.
 #[test]
 fn the_width_release_is_its_own_arm_before_the_mode_chain() {
-    let release = at("if let Some(grab) = self.vec_width_grab.take()");
+    let release = at("if let Some(grab) = self.vec.width_grab.take()");
     let chain = SRC[release..]
-        .find("if shape_kind_for_mode(&self.vec_draw_config).is_none() {")
+        .find("if shape_kind_for_mode(&self.vec.draw_config).is_none() {")
         .map(|i| release + i);
     assert!(
         chain.is_some(),
@@ -115,7 +115,7 @@ fn the_secondary_button_removes_a_width_stop() {
 /// `smoothstep`, que o gesto (arrastar para criar) esconde.
 #[test]
 fn a_bare_click_is_undone_on_release() {
-    let release = at("if let Some(grab) = self.vec_width_grab.take()");
+    let release = at("if let Some(grab) = self.vec.width_grab.take()");
     let discard = at("crate::width_handles::discard_if_untouched(");
     assert!(
         release < discard,

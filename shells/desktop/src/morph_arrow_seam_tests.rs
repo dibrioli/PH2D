@@ -29,11 +29,11 @@ fn the_arrow_click_reaches_the_world() {
             "RESOLVER o id do clique",
         ),
         (
-            "crate::vec_morph_edit::apply(sim, &self.vec_entities, e, cmd, &actions)",
+            "crate::vec_morph_edit::apply(sim, &self.vec.entities, e, cmd, &actions)",
             "APLICAR ao mundo",
         ),
         (
-            "morph_of_selection(sim, &self.vec_entities, &sel)",
+            "morph_of_selection(sim, &self.vec.entities, &sel)",
             "RESOLVER a seleccao pelo MAPA, e nunca como bits de entidade",
         ),
         (
@@ -62,7 +62,7 @@ fn the_arrow_click_reaches_the_world() {
             "DRENAR o pendente: pendurar a maquina, reparentar e esconder os membros",
         ),
         (
-            "self.vec_pen.select_many(&[p.path]);",
+            "self.vec.pen.select_many(&[p.path]);",
             "SELECCIONAR o conjunto novo -- senao a seleccao fica nos MEMBROS, que acabaram de \
              ficar ocultos e com dono, e a seccao oferece um SEGUNDO conjunto sobre eles",
         ),

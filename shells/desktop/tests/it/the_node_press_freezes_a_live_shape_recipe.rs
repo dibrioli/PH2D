@@ -51,18 +51,18 @@ fn the_node_arm_freezes_the_recipe_through_the_hit_door() {
         .unwrap_or(src.len());
     let arm = &src[node_arm..end];
 
-    // ⚠️ Os alvos são as CHAMADAS (`self.vec_pen.…`), não os nomes: a 1ª versão deste gate
+    // ⚠️ Os alvos são as CHAMADAS (`self.vec.pen.…`), não os nomes: a 1ª versão deste gate
     // procurava `on_press_node` cru e casou com a MENÇÃO dele no comentário que explica a ordem —
     // ficou vermelho sobre produto correto. Um proxy de texto tem de casar com o código, não com a
     // prosa que fala dele.
     let door = arm
-        .find("self.vec_pen.node_edit_hit_at(")
+        .find("self.vec.pen.node_edit_hit_at(")
         .expect("o press do modo Node deixou de perguntar `node_edit_hit_at` — sem essa pergunta ou o congelamento nao acontece, ou acontece num clique que apenas SELECIONA");
     let freeze = arm
         .find("vec_convert::freeze_shape_recipe")
         .expect("o press do modo Node deixou de congelar a receita de uma forma VIVA: o no' arrastado sera' descartado em silencio pela primeira edicao de parametro (medido 2026-07-29)");
     let press = arm
-        .find("self.vec_pen.on_press_node(")
+        .find("self.vec.pen.on_press_node(")
         .expect("o braco do Node deixou de chamar `on_press_node`");
 
     assert!(

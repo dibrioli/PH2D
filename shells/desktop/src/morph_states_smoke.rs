@@ -78,9 +78,9 @@ fn name_shapes(app: &mut crate::App, ids: [VecPathId; 3]) {
     let Some(gfx) = app.gfx.as_mut() else {
         return;
     };
-    ph2d_vec_entities::entities::sync(&mut gfx.sim, &mut gfx.vec_scene, &mut app.vec_entities);
+    ph2d_vec_entities::entities::sync(&mut gfx.sim, &mut gfx.vec_scene, &mut app.vec.entities);
     for (id, n) in ids.into_iter().zip(["Wide", "Tall", "Thin"]) {
-        if let Some(&bits) = app.vec_entities.get(&id) {
+        if let Some(&bits) = app.vec.entities.get(&id) {
             gfx.sim
                 .world_mut()
                 .entity_mut(Entity::from_bits(bits))
@@ -98,7 +98,8 @@ fn announce(app: &crate::App) {
     // ⚠️ A contagem sai de uma QUERY, e não de um `iter_entities` — a shell não tem acesso mutável
     // aqui, e a query é a porta que o resto do frame já usa.
     let morphs = app
-        .vec_entities
+        .vec
+        .entities
         .iter()
         .filter(|(_, bits)| {
             gfx.sim

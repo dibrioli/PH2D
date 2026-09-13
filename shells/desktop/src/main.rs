@@ -605,7 +605,6 @@ pub(crate) use ph2d_app_vec::overlay_diag as vec_overlay_diag;
 /// O offset de CAD de uma camada da pilha (v22) — o memo do cozimento.
 pub(crate) use ph2d_app_vec::paint_dilate as vec_paint_dilate;
 pub(crate) use ph2d_app_vec::paint_stack as vec_paint_stack;
-pub(crate) use ph2d_app_vec::pencil_input as vec_pencil_input;
 /// O **Picker de caminho-guia** — o gesto de duas mãos partilhado pelo Pattern e pelo Text on Path.
 pub(crate) use ph2d_app_vec::pick as vec_pick;
 pub(crate) use ph2d_app_vec::resize_box_edit as vec_resize_box_edit;
@@ -842,7 +841,7 @@ impl App {
             extrap_smoke_done: false,
             expr_blend_smoke_done: false,
             morph_fade_smoke_done: false,
-            vec_state: ph2d_app_vec::state::VecState::default(),
+            vec: ph2d_app_vec::state::VecState::default(),
             svg_import_smoke_done: false,
             nest_smoke_done: false,
             instance_smoke_done: false,
@@ -903,11 +902,6 @@ impl App {
             donated_form: ph2d_form_donation::donated_form::DonatedForm::default(),
             painter_undo_requested: false,
             painter_redo_requested: false,
-            // ADR-0108 cutover: the Vector drawing tool's shell-held Pen +
-            // shape tool + undo history over `AppGfx.vec_scene`.
-            vec_pen: ph2d_vec_edit::PenTool::new(),
-            vec_draw_config: ph2d_tool_vector::VectorDrawConfig::default(),
-            vec_pencil_hand: crate::vec_pencil_input::PencilHand::default(),
             // ADR-0114 W2: estado de desenho do Flip (publicado pelo flip_bridge).
             flip_state: Default::default(),
             ui_state_live: false,
@@ -920,23 +914,9 @@ impl App {
             discarded_run: ph2d_physics_ecs::InputTape::new(),
             field_gizmo_drag: None,
             warp_drag: None,
-            vec_marquee: None,
-            vec_connect: None,
-            vec_conn_handle: None,
-            vec_blend: None,
-            vec_restack: Vec::new(),
             pending_sheet_targets: Vec::new(),
-            vec_connect_pending: None,
-            vec_connect_sides: crate::connector_live::SideCache::new(),
-            vec_blend_pending: None,
-            vec_morph_pending: None,
-            vec_morph_set_pending: None,
             morph_preview: false,
             morph_preview_leave: false,
-            vec_envelope_drag: None,
-            vec_patternpath_handle: None,
-            vec_path_pick: None,
-            vec_widget_applied: Default::default(),
             joint_body_pick: None,
             joint_clipboard: None,
             wheel_body_pick: None,
@@ -945,18 +925,12 @@ impl App {
             // O agregado da família `physics` (W2/L2). O `Default` reproduz,
             // campo a campo, os sete inicializadores que viviam soltos aqui.
             physics: ph2d_app_physics::physics_state::PhysicsState::default(),
-            vec_morph_plans: crate::morph_live::MorphPlans::new(),
             morph_machines: Default::default(),
-            vec_blend_spines: crate::blend_live::BlendSpines::new(),
-            vec_label_pending: None,
-            vec_label_poses: ph2d_app_vec::state::LabelPoses::new(),
             offset_live: crate::offset_live::OffsetLive::default(),
-            vec_live_drawn: ph2d_vec_render::LiveGeometry::new(),
             profile_live: crate::profile_live::ProfileLive::default(),
             contour_live: crate::contour_live::ContourLive::default(),
             paint_dilate_live: crate::vec_paint_dilate::PaintDilateLive::default(),
             layout_live: crate::layout_live::LayoutLive::default(),
-            vec_view_derived: ph2d_vec_scene::VecViewState::default(),
             align_live: crate::align_live::AlignLive::default(),
             bool_live: crate::bool_live::BoolLive::default(),
             symmetry_live: crate::symmetry_live::SymmetryLive::default(),
@@ -966,10 +940,6 @@ impl App {
             brush_live: ph2d_vec_art_live::brush::BrushLive::default(),
             texture_pattern_scratch: None,
             fx_silhouette: crate::fx_silhouette::FxSilhouette::default(),
-            vec_expand_knobs: (0, 2),
-            vec_offset_mirrored: None,
-            vec_width_grab: None,
-            vec_width_ref: None,
             undo: crate::undo::ProjectUndo::default(),
             undo_baseline: None,
             undo_baseline_selection: crate::undo::SelectionMark::default(),
@@ -978,44 +948,17 @@ impl App {
             any_input_this_frame: false,
             preview_drive: ph2d_preview_drive::PreviewDrive::default(),
             project_path: crate::App::initial_project_path(),
-            vec_build: None,
             // ⭐ O cadeado do padrão nasce LIGADO — o comportamento que a secção tinha antes de os
             // dois eixos existirem (plano 33, W10).
             texpat_lock_aspect: [true, true],
             texpat_gap_link: [true, true],
-            vec_snap: crate::vec_snap::VecSnapSettings::default(),
-            vec_snap_targets: ph2d_vec_edit::SnapTargets::default(),
-            vec_snap_guides: Vec::new(),
             guide_drag: None,
-            vec_text_edit: None,
-            vec_text_size: ph2d_tool_vector::params::DEFAULT_TEXT_SIZE,
-            vec_text_weight: ph2d_tool_vector::params::DEFAULT_TEXT_WEIGHT as f32,
-            vec_text_line_height: ph2d_tool_vector::params::DEFAULT_TEXT_LINE_HEIGHT,
-            vec_text_tracking: ph2d_tool_vector::params::DEFAULT_TEXT_TRACKING,
-            // ⚠️ **Auto é o default**, e é decisão de produto: um texto criado com a ferramenta
-            // cresce com o que se digita (é o que todo editor faz num clique-e-digite). Uma
-            // caixa nasce quando o artista a pede — e o gesto de ARRASTAR uma caixa ainda não
-            // existe, então pedi-la é escolher `Fixed`.
-            vec_text_align: ph2d_vec_text::TextAlign::Left,
-            vec_text_extra_axes: vec_font::seed_extra_axes(None),
-            vec_text_family: None,
-            vec_last_canvas_click: None,
-            vec_text_last_target: None,
-            vec_shape_last_focus: None,
-            vec_shape_armed: false,
-            vec_trim_hit: None,
-            vec_bucket_face: None,
-            vec_bucket_cache: None,
-            vec_bucket_new: Vec::new(),
-            vec_shape_armed_target: None,
-            vec_entities: Default::default(),
             motion_shell: Default::default(),
             // ⭐ E os quatro que só existem com o módulo ligado (W2/L3-A2): UM `cfg` no lugar
             // de quatro, que é o ponto — a fronteira entre este e o `sculpt3d_req` acima é
             // imposta pela `cfg`, não escolhida (ver `sculpt3d/shell_state.rs`).
             #[cfg(feature = "sculpt3d")]
             sculpt3d: Default::default(),
-            vec_sel: Default::default(),
             frame_ms_ewma: 16.7, // ~60 Hz baseline so the first
                                  // frame's status bar doesn't display
                                  // a wild value while the EWMA seeds.

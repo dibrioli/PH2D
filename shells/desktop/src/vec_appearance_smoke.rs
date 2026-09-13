@@ -7,13 +7,13 @@
 impl crate::App {
     /// No prólogo do frame, uma vez. No-op sem a env.
     pub(crate) fn vec_appearance_smoke(&mut self) {
-        if self.vec_state.appearance_smoke_done || !ph2d_app_vec::smoke_appearance::armed() {
+        if self.vec.appearance_smoke_done || !ph2d_app_vec::smoke_appearance::armed() {
             return;
         }
         if self.gfx.is_none() {
             return; // sem mundo ainda; tenta no próximo frame
         }
-        self.vec_state.appearance_smoke_done = true;
+        self.vec.appearance_smoke_done = true;
         ph2d_app_vec::smoke_appearance::build(&mut self.gfx.as_mut().expect("gfx").vec_scene);
     }
 }

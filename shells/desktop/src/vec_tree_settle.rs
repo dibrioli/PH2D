@@ -64,7 +64,7 @@ impl App {
         let Some(gfx) = self.gfx.as_mut() else {
             return;
         };
-        ph2d_vec_entities::entities::sync(&mut gfx.sim, &mut gfx.vec_scene, &mut self.vec_entities);
+        ph2d_vec_entities::entities::sync(&mut gfx.sim, &mut gfx.vec_scene, &mut self.vec.entities);
         // ⭐⭐ **A ponte do FLIP, ao lado da vectorial** (censo `every_document_to_tree_bridge_is_in_the_net`,
         // 2026-09-08). Ela é o irmão exacto — bidireccional, mesma latência — e estava fora da rede:
         // apagar um objecto Flip pela Hierarquia deixava o documento com ele até ao quadro seguinte.
@@ -83,14 +83,14 @@ impl App {
         // ([`ph2d_vec_entities::transform::gesture_paths`]) — um `&[]` aqui assentaria a forma que a mão
         // está a desenhar, e somar geometria + `Transform` desloca a arte de baixo do cursor.
         let drawing = ph2d_vec_entities::transform::gesture_paths(
-            &self.vec_pen,
-            &self.vec_state.shape,
-            &self.vec_state.pencil,
+            &self.vec.pen,
+            &self.vec.shape,
+            &self.vec.pencil,
         );
         ph2d_vec_entities::transform::settle_origins(
             &mut gfx.sim,
             &mut gfx.vec_scene,
-            &self.vec_entities,
+            &self.vec.entities,
             &drawing,
         );
         // ⭐⭐ **E o pivô dos objectos FLIP, pelo mesmo motivo e noutra mídia** (achado pelo censo

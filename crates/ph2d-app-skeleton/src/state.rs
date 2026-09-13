@@ -99,7 +99,7 @@ pub struct SkeletonState {
     /// selecção, que era a lei antiga) seria a segunda resposta à mesma pergunta.
     ///
     /// ⚠️ **Estado de GESTO, não de documento**: ele não entra no snapshot, não tem undo e morre
-    /// no Up — como o `vec_envelope_drag` e o marquee.
+    /// no Up — como o `envelope_drag` e o `marquee` do `VecState`.
     pub bone_drag: Option<crate::bone_gesture::BoneBirth>,
     /// ⭐ **O osso a ser POSADO** e por onde ele foi agarrado (`true` = pela junta ⇒ desloca;
     /// `false` = pelo corpo ⇒ gira). `None` fora do gesto.

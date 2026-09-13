@@ -288,7 +288,7 @@ fn telemetry(app: &crate::App, f: u32) {
             .and_then(|p| p.effects.first())
             .map_or((f64::NAN, true), |e| (e.effect.get(0), e.enabled))
     });
-    let target = crate::fx_bridge::sole_path(app.vec_pen.selected_paths()).is_some();
+    let target = crate::fx_bridge::sole_path(app.vec.pen.selected_paths()).is_some();
     let paths = app.gfx.as_ref().map_or(0, |g| g.vec_scene.paths().len());
     // Os VÉRTICES autorados — o Apply assa o cozido neles, então é aqui que se vê o bake (e se
     // vê o Ctrl+Z desfazê-lo).
@@ -348,7 +348,7 @@ fn select_the_shape(app: &mut crate::App) {
         .as_ref()
         .map(|g| g.vec_scene.paths().iter().map(|p| p.id).collect())
         .unwrap_or_default();
-    app.vec_pen.select_many(&ids);
+    app.vec.pen.select_many(&ids);
     eprintln!(
         "[smoke] UNDO DA PILHA DE EFEITOS (auto-dirigido) — não toque no mouse.\n\
          \x20 O roteiro clica **Add** (o 1º efeito da lista) e depois dá **Ctrl+Z**.\n\

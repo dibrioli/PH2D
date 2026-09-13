@@ -181,7 +181,7 @@ impl crate::App {
                     .collect();
                 self.vec_set_draw_mode(ph2d_tool_vector::DrawMode::Select);
                 let Some(gfx) = self.gfx.as_mut() else { return };
-                let xf = ph2d_vec_entities::transform::build(&gfx.sim, &self.vec_entities);
+                let xf = ph2d_vec_entities::transform::build(&gfx.sim, &self.vec.entities);
                 let mut made = crate::blend_live::create(&mut gfx.vec_scene, &xf, &ids, 6);
                 if let Some((spine, blend)) = made.as_mut() {
                     blend.spine_authored = true; // o artista "editou" a curva
@@ -195,9 +195,9 @@ impl crate::App {
                     }
                 }
                 if let Some((spine, _)) = &made {
-                    self.vec_pen.select_many(&[*spine]);
+                    self.vec.pen.select_many(&[*spine]);
                 }
-                self.vec_blend_pending = made;
+                self.vec.blend_pending = made;
                 // Entra em modo Node: o spine sobe para o TOPO (acima das formas e dos passos) e
                 // aparece com as âncoras — pronto para arrastar (ADR-0128). Em Select ele ficaria
                 // no z dele (traço sutil), possivelmente sob as formas.
@@ -237,16 +237,16 @@ impl crate::App {
                     .collect();
                 self.vec_set_draw_mode(ph2d_tool_vector::DrawMode::Select);
                 let Some(gfx) = self.gfx.as_mut() else { return };
-                let xf = ph2d_vec_entities::transform::build(&gfx.sim, &self.vec_entities);
+                let xf = ph2d_vec_entities::transform::build(&gfx.sim, &self.vec.entities);
                 let steps = if level == 1 { 5 } else { 4 };
                 let made = crate::blend_live::create(&mut gfx.vec_scene, &xf, &ids, steps);
                 // Seleciona o OBJETO blend (o spine) — assim o slider Steps do painel já mira nele
                 // (arraste-o e veja os passos mudarem ao vivo, inclusive além de 12). Clique numa
                 // fonte para movê-la/girá-la: a transição se refaz sozinha.
                 if let Some((spine, _)) = &made {
-                    self.vec_pen.select_many(&[*spine]);
+                    self.vec.pen.select_many(&[*spine]);
                 }
-                self.vec_blend_pending = made;
+                self.vec.blend_pending = made;
                 self.any_input_this_frame = true;
                 eprintln!(
                     "[blend-smoke] Blend Object VIVO sobre {} forma(s), {steps} passos/elo. \

@@ -30,17 +30,17 @@ pub(crate) use ph2d_app_vec::bucket::*;
 impl crate::App {
     /// No laço do quadro, em qualquer ferramenta. Ver [`ph2d_app_vec::bucket::upkeep`].
     pub(crate) fn bucket_upkeep(&mut self) {
-        let armado = self.vec_draw_config.mode == ph2d_tool_vector::DrawMode::Bucket;
+        let armado = self.vec.draw_config.mode == ph2d_tool_vector::DrawMode::Bucket;
         let Some(gfx) = self.gfx.as_mut() else {
             return;
         };
         ph2d_app_vec::bucket::upkeep(
             &gfx.sim,
             &mut gfx.vec_scene,
-            &self.vec_entities,
+            &self.vec.entities,
             armado,
-            &mut self.vec_bucket_cache,
-            &mut self.vec_bucket_face,
+            &mut self.vec.bucket_cache,
+            &mut self.vec.bucket_face,
         );
     }
 
@@ -49,19 +49,19 @@ impl crate::App {
     /// ⚠️ **Fora do modo ele é LIMPO**, e não apenas não-actualizado: uma região a arder depois de
     /// trocar de ferramenta prometeria um preenchimento que nenhum clique faria.
     pub(crate) fn refresh_bucket_hover(&mut self, pointer: (f32, f32)) {
-        if self.vec_draw_config.mode != ph2d_tool_vector::DrawMode::Bucket {
-            self.vec_bucket_face = None;
+        if self.vec.draw_config.mode != ph2d_tool_vector::DrawMode::Bucket {
+            self.vec.bucket_face = None;
             return;
         }
         let Some(world) = self.vec_world_at(pointer) else {
-            self.vec_bucket_face = None;
+            self.vec.bucket_face = None;
             return;
         };
-        let Some(cache) = self.vec_bucket_cache.as_ref() else {
-            self.vec_bucket_face = None;
+        let Some(cache) = self.vec.bucket_cache.as_ref() else {
+            self.vec.bucket_face = None;
             return;
         };
-        self.vec_bucket_face = ph2d_app_vec::bucket::hover(cache, world);
+        self.vec.bucket_face = ph2d_app_vec::bucket::hover(cache, world);
     }
 
     /// **A tinta que o balde deposita** — a corrente da ferramenta.
@@ -69,7 +69,7 @@ impl crate::App {
     /// ⚠️ **`alpha == 0` significa SEM preenchimento** neste app (a convenção que a ferramenta de
     /// forma usa ao fechar), e um balde que a ignorasse depositaria formas invisíveis.
     pub(crate) fn bucket_paint(&self) -> Option<ph2d_vec_scene::Rgba8> {
-        let f = self.vec_pen.style().fill;
+        let f = self.vec.pen.style().fill;
         (f.a != 0).then_some(f)
     }
 
@@ -84,7 +84,7 @@ impl crate::App {
             );
             return false;
         };
-        let Some(hit) = self.vec_bucket_face.clone() else {
+        let Some(hit) = self.vec.bucket_face.clone() else {
             return false;
         };
         let Some(gfx) = self.gfx.as_mut() else {
@@ -93,18 +93,19 @@ impl crate::App {
         let id = ph2d_app_vec::bucket::deposit(
             &gfx.sim,
             &mut gfx.vec_scene,
-            &self.vec_entities,
+            &self.vec.entities,
             &hit,
             tinta,
         );
         #[allow(clippy::cast_possible_truncation)]
-        self.vec_bucket_new
+        self.vec
+            .bucket_new
             .push((id, [hit.seed[0] as f32, hit.seed[1] as f32], hit.ancoras));
-        self.vec_pen.select(Some(id));
+        self.vec.pen.select(Some(id));
         // A rede não muda (um preenchimento não é parede), mas o `upkeep` tem de reconhecer o
         // caminho novo como fill — o cache cai e o próximo quadro reconstrói com ele de fora.
-        self.vec_bucket_cache = None;
-        self.vec_bucket_face = None;
+        self.vec.bucket_cache = None;
+        self.vec.bucket_face = None;
         true
     }
 }

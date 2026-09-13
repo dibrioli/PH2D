@@ -357,7 +357,7 @@ fn select_hero(app: &mut crate::App) {
         .as_ref()
         .and_then(|g| g.vec_scene.paths().first().map(|p| p.id));
     if let Some(id) = first {
-        app.vec_pen.select_many(&[id]);
+        app.vec.pen.select_many(&[id]);
     }
     eprintln!(
         "[smoke] texture pattern: 6 formas. (1) GRADE, ja' selecionada - o chip **Pattern** esta' \

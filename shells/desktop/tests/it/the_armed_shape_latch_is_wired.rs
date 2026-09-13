@@ -27,11 +27,11 @@ fn the_latch_is_armed_disarmed_and_read_by_both_routes() {
         ),
         (
             "APAGAR — a selecção que muda desarma (desenhar selecciona a forma nova)",
-            "if alvo_vivo != self.vec_shape_armed_target {",
+            "if alvo_vivo != self.vec.shape_armed_target {",
         ),
         (
             "A PINTURA — o que a shell publica ao painel sai da porta com o latch",
-            "self.vec_shape_armed,\n                );",
+            "self.vec.shape_armed,\n                );",
         ),
     ] {
         assert!(
@@ -47,7 +47,7 @@ fn the_latch_is_armed_disarmed_and_read_by_both_routes() {
         .expect("a rota de escrita dos campos de forma");
     let corpo = &SRC[escrita..escrita + 1200];
     assert!(
-        corpo.contains("self.vec_shape_armed,"),
+        corpo.contains("self.vec.shape_armed,"),
         "a ESCRITA nao recebe o latch — ela alcancaria a forma que o painel ja' nao mostra"
     );
 }
@@ -58,7 +58,7 @@ fn the_latch_is_armed_disarmed_and_read_by_both_routes() {
 #[test]
 fn the_disarm_runs_before_the_arm() {
     let desarme = SRC
-        .find("if alvo_vivo != self.vec_shape_armed_target {")
+        .find("if alvo_vivo != self.vec.shape_armed_target {")
         .expect("o desarme");
     let arme = SRC
         .find("if vector_bridge::take_shape_armed(tools) {")

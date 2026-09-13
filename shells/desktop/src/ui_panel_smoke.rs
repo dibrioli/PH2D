@@ -279,7 +279,8 @@ fn name_and_parent(app: &mut crate::App) {
     let ents: Vec<_> = ids
         .iter()
         .map(|&id| {
-            app.vec_entities
+            app.vec
+                .entities
                 .get(&id)
                 .map(|&bits| ph2d_ecs::Entity::from_bits(bits))
         })
@@ -332,7 +333,7 @@ fn bind_the_slider(app: &mut crate::App) {
     }
     let (slider, star) = (ids[2], ids[STAR]);
     let Some(gfx) = app.gfx.as_mut() else { return };
-    crate::vec_widget_edit::bind(&mut gfx.sim, &app.vec_entities, slider, star);
+    crate::vec_widget_edit::bind(&mut gfx.sim, &app.vec.entities, slider, star);
 }
 
 /// Abre o painel autorado, do mesmo jeito que o interruptor da seção Frame o abre.
@@ -355,7 +356,8 @@ fn announce(app: &mut crate::App) {
         return;
     }
     let Some(frame_e) = app
-        .vec_entities
+        .vec
+        .entities
         .get(&ids[FRAME])
         .map(|&b| ph2d_ecs::Entity::from_bits(b))
     else {

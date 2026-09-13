@@ -222,7 +222,7 @@ pub(crate) fn hero_of(scene: &ph2d_vec_scene::VecScene) -> Option<VecPathId> {
 fn select_hero(app: &mut crate::App) {
     let heroi = app.gfx.as_ref().and_then(|g| hero_of(&g.vec_scene));
     if let Some(id) = heroi {
-        app.vec_pen.select_many(&[id]);
+        app.vec.pen.select_many(&[id]);
     }
     eprintln!(
         "[smoke] A OPACIDADE DAS DUAS TINTAS (plano 36, W6). Duas fileiras de tres formas sobre \

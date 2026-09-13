@@ -102,9 +102,10 @@ fn arm(app: &mut crate::App) {
         return;
     };
     let Some(gfx) = app.gfx.as_mut() else { return };
-    crate::vec_text_object::upsert_text_shape(&mut gfx.sim, &app.vec_entities, &edit);
+    crate::vec_text_object::upsert_text_shape(&mut gfx.sim, &app.vec.entities, &edit);
     let is_text = app
-        .vec_entities
+        .vec
+        .entities
         .get(&id)
         .and_then(|&b| {
             gfx.sim
@@ -112,7 +113,7 @@ fn arm(app: &mut crate::App) {
                 .get::<VecShape>(ph2d_ecs::Entity::from_bits(b))
         })
         .is_some();
-    app.vec_pen.select_many(&[id]);
+    app.vec.pen.select_many(&[id]);
     eprintln!(
         "[smoke] W0 texto+efeitos: a palavra \"{WORD}\" com Zig Zag ATIVO, selecionada \
          (objeto de texto: {is_text}).\n\

@@ -111,7 +111,7 @@ pub(crate) fn state_of(
     // ⭐ **O objecto único na mão do gizmo** — a segunda fonte do sujeito; ver [`subject_of`].
     single_selected: Option<u64>,
     // ⭐ **O conta-gotas está armado?** — o mesmo dado que o produtor vetorial recebe. Ele vive no
-    // `App::vec_path_pick`, que é da shell: publicá-lo é o que faz o botão trocar de rótulo para
+    // `app.vec.path_pick`, que a shell guarda: publicá-lo é o que faz o botão trocar de rótulo para
     // *Click a copy of the prefab* enquanto o gesto está aberto.
     pick_armed: bool,
 ) -> Option<ph2d_panel_vector::state::ComponentState> {

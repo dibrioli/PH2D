@@ -154,7 +154,7 @@ fn arm(app: &mut crate::App) {
         (6, vec![bevel(), ramp(gap, 0)]),
         (7, vec![bevel(), ramp(poster, 0)]),
     ];
-    let map = &app.vec_entities;
+    let map = &app.vec.entities;
     let sim = &mut app.gfx.as_mut().expect("gfx").sim;
     for (i, ops) in stacks {
         crate::fx_live::set_filter(sim, map, &[ids[i]], Some(VecFilter { ops }));

@@ -93,7 +93,7 @@ fn adopt(app: &mut crate::App) {
     }
     for i in 0..2 {
         let base = i * per;
-        let Some(&fb) = app.vec_entities.get(&ids[base + KIDS.len()]) else {
+        let Some(&fb) = app.vec.entities.get(&ids[base + KIDS.len()]) else {
             continue;
         };
         let frame = Entity::from_bits(fb);
@@ -101,7 +101,7 @@ fn adopt(app: &mut crate::App) {
             e.insert(VecFrame);
         }
         for k in 0..KIDS.len() {
-            let Some(&kb) = app.vec_entities.get(&ids[base + k]) else {
+            let Some(&kb) = app.vec.entities.get(&ids[base + k]) else {
                 continue;
             };
             if let Ok(mut e) = gfx.sim.world_mut().get_entity_mut(Entity::from_bits(kb)) {

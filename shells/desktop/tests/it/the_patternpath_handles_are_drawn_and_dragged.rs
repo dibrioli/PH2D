@@ -59,7 +59,7 @@ fn the_render_loop_wires_the_handle_gesture() {
             "o MOVE (arrastar) não está no dispatch do ponteiro",
         ),
         (
-            "self.vec_patternpath_handle = None",
+            "self.vec.patternpath_handle = None",
             "o RELEASE não limpa o arrasto — a ficha ficaria colada ao cursor após soltar",
         ),
     ] {

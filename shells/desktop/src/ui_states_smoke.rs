@@ -108,7 +108,8 @@ fn path_ids(app: &crate::App) -> Vec<VecPathId> {
 }
 
 fn entity(app: &crate::App, id: VecPathId) -> Option<ph2d_ecs::Entity> {
-    app.vec_entities
+    app.vec
+        .entities
         .get(&id)
         .map(|&bits| ph2d_ecs::Entity::from_bits(bits))
 }
@@ -146,7 +147,7 @@ fn record(app: &mut crate::App, host: usize, role: StateRole) {
     if ids.len() < ART.len() {
         return;
     }
-    let map = &app.vec_entities;
+    let map = &app.vec.entities;
     let Some(gfx) = app.gfx.as_mut() else {
         return;
     };

@@ -113,7 +113,7 @@ fn the_overlay_draws_the_session_line_even_with_an_empty_scene() {
          alguém desenhar, e a linha aparece ANTES disso"
     );
     assert!(
-        block.contains("self.vec_state.symmetry_origin"),
+        block.contains("self.vec.symmetry_origin"),
         "e a fonte dele é o eixo de sessão da shell, o único que existe com a cena vazia"
     );
     assert!(

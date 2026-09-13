@@ -32,7 +32,7 @@ const RENDER: &str = include_str!("../../src/render_loop/mod.rs");
 const INPUT: &str = include_str!("../../src/input_dispatch.rs");
 
 /// O campo onde o mapa desenhado descansa até o próximo clique.
-const FIELD: &str = "vec_live_drawn";
+const FIELD: &str = "vec.live_drawn";
 
 /// As portas que respondem *"o que está desenhado aqui?"* **no módulo VETORIAL**. Cada uma tem de
 /// receber o mapa desenhado — e a lista é o que faz a sétima porta nascer coberta em vez de

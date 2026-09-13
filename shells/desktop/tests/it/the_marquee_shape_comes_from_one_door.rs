@@ -77,7 +77,7 @@ fn the_one_door_composes_the_sticky_chip_with_the_modifier() {
     let end = at(body, "\n    }\n");
     let body = &body[..end];
     assert!(
-        body.contains("self.vec_draw_config.marquee"),
+        body.contains("self.vec.draw_config.marquee"),
         "a porta nao le' o chip pegajoso do painel — o par Box|Lasso vira um controle morto"
     );
     assert!(
@@ -94,7 +94,7 @@ fn the_one_door_composes_the_sticky_chip_with_the_modifier() {
 /// **O release ramifica na forma que o press congelou** — e as duas rotas existem.
 #[test]
 fn the_release_routes_the_frozen_shape_to_its_own_selection() {
-    let take = at(DISPATCH, "if let Some(m) = self.vec_marquee.take()");
+    let take = at(DISPATCH, "if let Some(m) = self.vec.marquee.take()");
     let window = &DISPATCH[take..(take + 2600).min(DISPATCH.len())];
     assert!(
         window.contains("m.shape"),
@@ -114,7 +114,7 @@ fn the_release_routes_the_frozen_shape_to_its_own_selection() {
 /// **O desenho ramifica na MESMA forma** — o que se vê é o que decide.
 #[test]
 fn the_paint_draws_the_shape_the_gesture_froze() {
-    let at_paint = at(RENDER, "if let Some(m) = self.vec_marquee.as_ref()");
+    let at_paint = at(RENDER, "if let Some(m) = self.vec.marquee.as_ref()");
     let window = &RENDER[at_paint..(at_paint + 1200).min(RENDER.len())];
     assert!(
         window.contains("m.shape"),

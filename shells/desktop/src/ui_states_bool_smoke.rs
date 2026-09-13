@@ -102,7 +102,8 @@ fn path_ids(app: &crate::App) -> Vec<VecPathId> {
 }
 
 fn entity(app: &crate::App, id: VecPathId) -> Option<ph2d_ecs::Entity> {
-    app.vec_entities
+    app.vec
+        .entities
         .get(&id)
         .map(|&bits| ph2d_ecs::Entity::from_bits(bits))
 }
@@ -123,7 +124,7 @@ fn name_and_arm(app: &mut crate::App) {
         return;
     }
     let ents: Vec<_> = ids.iter().map(|&id| entity(app, id)).collect();
-    let map = app.vec_entities.clone();
+    let map = app.vec.entities.clone();
     let Some(gfx) = app.gfx.as_mut() else {
         return;
     };
@@ -217,7 +218,7 @@ fn pose_default(app: &mut crate::App) {
 fn group_of(app: &crate::App, e: ph2d_ecs::Entity) -> Option<ph2d_ecs::Entity> {
     let gfx = app.gfx.as_ref()?;
     let id = gfx.sim.world().get::<ph2d_ecs::VecPathRef>(e)?.0;
-    crate::bool_live::group_above(&gfx.sim, &app.vec_entities, id).map(|(g, _)| g)
+    crate::bool_live::group_above(&gfx.sim, &app.vec.entities, id).map(|(g, _)| g)
 }
 
 /// Grava a pose do rig 1 no papel `role`, pela porta do produto.
@@ -226,7 +227,7 @@ fn record(app: &mut crate::App, role: StateRole) {
     if ids.len() < 6 {
         return;
     }
-    let map = &app.vec_entities;
+    let map = &app.vec.entities;
     let Some(gfx) = app.gfx.as_mut() else {
         return;
     };

@@ -31,7 +31,7 @@ impl crate::App {
         // sair emprestado obrigaria a uma segunda travessia sem necessidade nenhuma.
         let audio_ready = self.audio.is_some();
         let camera_preview = &mut self.game_camera_preview;
-        let vec_entities = &mut self.vec_entities;
+        let vec_entities = &mut self.vec.entities;
         let playhead = &mut self.playhead;
         let gfx = self.gfx.as_mut()?;
         Some(SceneCtx {
@@ -124,7 +124,7 @@ impl crate::App {
     /// `sync_instances(sim, registry, bridge, echo, docs)` vive na crate desde sempre; o que aqui
     /// estava era só quem lhe entrega os cinco.
     pub(crate) fn sync_instances(&mut self) {
-        let vec_entities = &mut self.vec_entities;
+        let vec_entities = &mut self.vec.entities;
         let echo = &mut self.instance_echo;
         let Some(gfx) = self.gfx.as_mut() else {
             return;

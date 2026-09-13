@@ -86,7 +86,7 @@ fn adopt(app: &mut crate::App) {
     }
     for i in 0..2 {
         let base = i * 4;
-        let Some(&fb) = app.vec_entities.get(&ids[base + 3]) else {
+        let Some(&fb) = app.vec.entities.get(&ids[base + 3]) else {
             continue;
         };
         let frame = Entity::from_bits(fb);
@@ -100,7 +100,7 @@ fn adopt(app: &mut crate::App) {
             }
         }
         for k in 0..3 {
-            let Some(&kb) = app.vec_entities.get(&ids[base + k]) else {
+            let Some(&kb) = app.vec.entities.get(&ids[base + k]) else {
                 continue;
             };
             if let Ok(mut e) = gfx.sim.world_mut().get_entity_mut(Entity::from_bits(kb)) {
@@ -117,7 +117,8 @@ fn announce(app: &mut crate::App) {
     // A contagem sai do MAPA de caminhos: é a mesma porta que a shell usa para ir de um
     // `VecPathId` à entidade, e o que o smoke afirma é sobre as molduras que a cena montou.
     let frames = app
-        .vec_entities
+        .vec
+        .entities
         .values()
         .filter(|&&b| {
             gfx.sim

@@ -59,7 +59,7 @@ impl crate::App {
             ph2d_vec_entities::entities::sync(
                 &mut gfx.sim,
                 &mut gfx.vec_scene,
-                &mut self.vec_entities,
+                &mut self.vec.entities,
             );
         }
         // ⚠️ Empréstimos DISJUNTOS de `self` — o ledger e o `gfx` são campos diferentes, e é por
@@ -138,7 +138,7 @@ impl crate::App {
         // dela fazia um restauro sem GPU manter as da sessão anterior. Ver `project_library`.
         crate::project_library::apply_forgotten(&state.library);
         // ANTES do restore: o que o artista tinha selecionado, em ids ESTÁVEIS.
-        let was_selected = self.vec_pen.selected_paths().to_vec();
+        let was_selected = self.vec.pen.selected_paths().to_vec();
         let Some(gfx) = self.gfx.as_mut() else {
             return;
         };
@@ -182,29 +182,29 @@ impl crate::App {
                 hero.gizmo.add_to_selection(bits);
             }
         }
-        self.vec_entities = map;
+        self.vec.entities = map;
         self.flip_state.entities = flip_map;
-        self.vec_sel = ph2d_app_vec::selection_sync::VecSelSync::default();
-        self.vec_pen.clear();
+        self.vec.sel = ph2d_app_vec::selection_sync::VecSelSync::default();
+        self.vec.pen.clear();
         // E de volta, filtrada pelo que sobreviveu. O `vec_sel` ficou zerado de propósito: no frame
         // seguinte o `sync_selection` vê "o pen mudou" e republica os bits NOVOS no gizmo.
         let alive = surviving_selection(&was_selected, &gfx.vec_scene);
         if !alive.is_empty() {
-            self.vec_pen.select_many(&alive);
+            self.vec.pen.select_many(&alive);
         }
         // Live Shapes: uma SESSÃO de texto viva reescreveria o `VecShape` (e a pose) da
         // entidade com os params dela a cada frame — ou seja, desfaria o undo no frame
         // seguinte. O estado restaurado é a verdade: a sessão termina (o objeto de texto
         // continua lá, editável pela seleção).
-        self.vec_text_edit = None;
-        self.vec_text_last_target = None;
+        self.vec.text_edit = None;
+        self.vec.text_last_target = None;
         // O cache de poses dos rótulos é a memória de "o que EU escrevi no frame passado". O
         // restore põe poses novas no mundo sem passar por ele — deixá-lo faria o passe ler a
         // pose restaurada como um arrasto do usuário. É inócuo (o estado restaurado é
         // auto-consistente, e re-absorver devolve o MESMO offset), mas zerar é o honesto: a
         // memória não é mais de nada. O arm de rótulo pendente morre com a sessão de texto.
-        self.vec_label_poses.clear();
-        self.vec_label_pending = None;
+        self.vec.label_poses.clear();
+        self.vec.label_pending = None;
         // O memo do Offset vivo é chaveado por `VecPathId`, e o restore RECICLA os ids: um id
         // que volta descrevendo outra forma acertaria o memo e desenharia o offset da forma
         // ANTERIOR sobre a nova, sem erro nenhum. O espelho do painel morre pela mesma razão
@@ -219,15 +219,15 @@ impl crate::App {
         // O FX raster vivo (plano 24) pela mesma razão: a cena inteira mudou debaixo do cozimento.
         self.fx_live.forget();
         self.fx_silhouette.forget();
-        self.vec_offset_mirrored = None;
+        self.vec.offset_mirrored = None;
         // A mesma forma (mesmo id) pode voltar com OUTROS parâmetros — zerar o alvo
         // força a re-semente dos sliders, senão o painel seguiria mostrando o valor
         // que o undo acabou de desfazer.
-        self.vec_shape_last_focus = None;
+        self.vec.shape_last_focus = None;
         // ⚠️ **E o latch de «armado» também**: o restore repõe outra selecção, e um latch de antes
         // do undo descreveria um gesto que já não aconteceu.
-        self.vec_shape_armed = false;
-        self.vec_shape_armed_target = None;
+        self.vec.shape_armed = false;
+        self.vec.shape_armed_target = None;
         // O Colorize ao vivo guarda a base congelada de um desenho que este restore acaba de
         // substituir — re-Aplicar sobre ela apagaria o estado restaurado. A sessão termina.
         self.flip_state.colorize.end_live();

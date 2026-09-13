@@ -172,7 +172,7 @@ impl ProjectState {
     /// formas/objetos).
     ///
     /// O chamador atribui os quatro: `gfx.vec_scene = vec; gfx.flip = flip;
-    /// self.vec_entities = vec_map; self.flip_state.entities = flip_map`.
+    /// self.vec.entities = vec_map; self.flip_state.entities = flip_map`.
     #[must_use]
     pub(crate) fn restore(
         &self,

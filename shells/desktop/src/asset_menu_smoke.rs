@@ -124,7 +124,7 @@ pub(crate) fn frame(app: &mut crate::App, f: u32) {
 fn build(app: &mut crate::App) {
     // ⚠️ Os DOIS documentos que a instanciação toca vivem em campos diferentes do `App`, e é por
     // isso que eles se pegam separadamente: o `vec_scene` é do `AppGfx`, o mapa é do `App`.
-    let vec_entities = &mut app.vec_entities;
+    let vec_entities = &mut app.vec.entities;
     let Some(gfx) = app.gfx.as_mut() else {
         return;
     };

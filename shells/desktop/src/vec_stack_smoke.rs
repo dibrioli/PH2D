@@ -6,13 +6,13 @@
 impl crate::App {
     /// No prólogo do frame, uma vez. No-op sem a env.
     pub(crate) fn vec_stack_smoke(&mut self) {
-        if self.vec_state.stack_smoke_done || !ph2d_app_vec::smoke_stack::armed() {
+        if self.vec.stack_smoke_done || !ph2d_app_vec::smoke_stack::armed() {
             return;
         }
         if self.gfx.is_none() {
             return; // sem mundo ainda; tenta no próximo frame
         }
-        self.vec_state.stack_smoke_done = true;
+        self.vec.stack_smoke_done = true;
         let gfx = self.gfx.as_mut().expect("gfx");
         let _ = gfx
             .tools

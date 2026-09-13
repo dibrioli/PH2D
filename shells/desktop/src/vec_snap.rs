@@ -24,29 +24,29 @@ use ph2d_vec_scene::VecPathId;
 
 // ⭐ **A LEI mora em `ph2d_app_vec::vec_snap`; aqui fica o que PERGUNTA à janela** (W2/L4, A2).
 //
-// A re-exportação é o que mantém `crate::vec_snap::ask_grid` / `::guides_of` / `::VecSnapSettings`
+// A re-exportação é o que mantém `crate::vec_snap::ask_grid` / `::guides_of`
 // / `::vec_weld_tolerance` a resolver nos cinco ficheiros da shell que os chamam — mover a lei
 // custou ZERO alterações neles. ⚠️ **O módulo do outro lado chamava-se `vec_snap` e na Fase B passou a `snap`** — o prefixo sai
 // porque dentro da crate tudo é a família (HOWTO §1.3), e isso também desfez uma colisão de
 // BASENAME real com `crates/ph2d-ecs/src/vec_bindings.rs`. O nome do módulo entra no nome de cada
 // teste, então a prova (`nextest-list-diff`) corre a `--depth 1`, que compara a FUNÇÃO.
 pub(crate) use ph2d_app_vec::snap::{
-    DragSnap, VecSnapSettings, ask_grid, drag_snap_kind, guides_of, ids_of_bits, snap_cfg,
-    vec_weld_tolerance, wants_curves,
+    DragSnap, ask_grid, drag_snap_kind, guides_of, ids_of_bits, snap_cfg, vec_weld_tolerance,
+    wants_curves,
 };
 
 impl App {
     /// Configuração de snap EM FORMA para este frame. `px_to_world` = world-units
     /// por pixel. O Alt segurado desliga tudo (forma e grade).
     pub(crate) fn vec_snap_cfg(&self, px_to_world: f64) -> SnapConfig {
-        snap_cfg(&self.vec_snap, self.modifiers.alt_key(), px_to_world)
+        snap_cfg(&self.vec.snap, self.modifiers.alt_key(), px_to_world)
     }
 
     /// A cena precisa oferecer a GEOMETRIA neste gesto? Porta única: quem recolhe os alvos e
     /// quem os resolve perguntam à mesma função, senão o recolhimento pararia de trazer as
     /// curvas no dia em que um terceiro interruptor de posição nascer.
     pub(crate) fn vec_snap_wants_curves(&self) -> bool {
-        wants_curves(&self.vec_snap)
+        wants_curves(&self.vec.snap)
     }
 
     /// world-units por pixel de tela (delta de 1 px na horizontal).
@@ -71,9 +71,9 @@ impl App {
         let curves = self.vec_snap_wants_curves();
         let dragged = self.dragged_entity_bits();
         let sprites = self.sprite_snap_points(&dragged);
-        self.vec_snap_targets = match self.gfx.as_ref() {
+        self.vec.snap_targets = match self.gfx.as_ref() {
             Some(gfx) => {
-                let xf = ph2d_vec_entities::transform::build(&gfx.sim, &self.vec_entities);
+                let xf = ph2d_vec_entities::transform::build(&gfx.sim, &self.vec.entities);
                 let mut t = collect_targets(&gfx.vec_scene, &xf, skip_paths, skip_verts, curves);
                 t.points.extend(sprites);
                 // ⚠️ As guias entram INTEIRAS, sem filtro de gesto: elas não pertencem a forma
@@ -89,21 +89,21 @@ impl App {
     /// Encaixa um único ponto (cursor) contra formas + grade, e registra as guias.
     /// Usado pelas ferramentas de forma.
     pub(crate) fn vec_snap_point(&mut self, p: [f64; 2], cfg: SnapConfig) -> [f64; 2] {
-        let targets = std::mem::take(&mut self.vec_snap_targets);
+        let targets = std::mem::take(&mut self.vec.snap_targets);
         let mut hero = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut());
         let mut grid = |q: [f64; 2]| {
             let h = hero.as_mut()?;
             ask_grid(&mut h.grid.snap_state, q)
         };
         let r = snap(&[p], &targets, cfg, Some(&mut grid));
-        self.vec_snap_targets = targets;
-        self.vec_snap_guides = guides_of(&r);
+        self.vec.snap_targets = targets;
+        self.vec.snap_guides = guides_of(&r);
         r.apply(p)
     }
 
     /// Zera as guias (fim de gesto / gesto sem encaixe).
     pub(crate) fn vec_clear_snap_guides(&mut self) {
-        self.vec_snap_guides.clear();
+        self.vec.snap_guides.clear();
     }
 
     /// Os pontos-FONTE de um arrasto de forma/grupo: os 9 pontos-chave da bbox de
@@ -113,7 +113,7 @@ impl App {
         let Some(gfx) = self.gfx.as_ref() else {
             return Vec::new();
         };
-        let xf = ph2d_vec_entities::transform::build(&gfx.sim, &self.vec_entities);
+        let xf = ph2d_vec_entities::transform::build(&gfx.sim, &self.vec.entities);
         let mut pts = Vec::new();
         let (mut lo, mut hi) = ([f64::INFINITY; 2], [f64::NEG_INFINITY; 2]);
         let mut any = false;
@@ -145,19 +145,19 @@ impl App {
     fn vec_snap_move(&mut self, ids: &[VecPathId]) -> [f64; 2] {
         let sources = self.vec_move_sources(ids);
         if sources.is_empty() {
-            self.vec_snap_guides.clear();
+            self.vec.snap_guides.clear();
             return [0.0, 0.0];
         }
         let cfg = self.vec_snap_cfg(self.vec_px_to_world());
-        let targets = std::mem::take(&mut self.vec_snap_targets);
+        let targets = std::mem::take(&mut self.vec.snap_targets);
         let mut hero = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut());
         let mut grid = |q: [f64; 2]| {
             let h = hero.as_mut()?;
             ask_grid(&mut h.grid.snap_state, q)
         };
         let r = snap(&sources, &targets, cfg, Some(&mut grid));
-        self.vec_snap_targets = targets;
-        self.vec_snap_guides = guides_of(&r);
+        self.vec.snap_targets = targets;
+        self.vec.snap_guides = guides_of(&r);
         r.delta()
     }
 
@@ -190,7 +190,7 @@ impl App {
             .and_then(|g| g.hero_screen.as_ref())
             .and_then(|h| h.gizmo.drag);
         let Some(drag) = drag else {
-            self.vec_snap_guides.clear();
+            self.vec.snap_guides.clear();
             return;
         };
         // O snap de translação (deslizar a forma pelo delta) é feito AQUI. Scale
@@ -200,7 +200,7 @@ impl App {
             DragSnap::SlideTranslate => {}
             DragSnap::GizmoOwnsGuides => return,
             DragSnap::ClearGuides => {
-                self.vec_snap_guides.clear();
+                self.vec.snap_guides.clear();
                 return;
             }
         }

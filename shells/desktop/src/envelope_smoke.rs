@@ -52,7 +52,7 @@ pub(crate) fn frame(app: &mut crate::App, f: u32, level: u32) {
                 crate::envelope_live::create(
                     &mut gfx.sim,
                     &mut gfx.vec_scene,
-                    &self_.vec_entities,
+                    &self_.vec.entities,
                     &[id],
                 )
             };
@@ -85,7 +85,7 @@ pub(crate) fn frame(app: &mut crate::App, f: u32, level: u32) {
                 .as_ref()
                 .and_then(|g| g.vec_scene.paths().first().map(|p| p.id))
             {
-                self_.vec_pen.select_many(&[id]);
+                self_.vec.pen.select_many(&[id]);
             }
             self_.vec_set_draw_mode(ph2d_tool_vector::DrawMode::Node);
             eprintln!(
@@ -132,7 +132,7 @@ pub(crate) fn frame(app: &mut crate::App, f: u32, level: u32) {
                 crate::envelope_live::create(
                     &mut gfx.sim,
                     &mut gfx.vec_scene,
-                    &self_.vec_entities,
+                    &self_.vec.entities,
                     &ids,
                 )
             };
@@ -161,7 +161,7 @@ pub(crate) fn frame(app: &mut crate::App, f: u32, level: u32) {
                 .as_ref()
                 .and_then(|g| g.vec_scene.paths().first().map(|p| p.id))
             {
-                self_.vec_pen.select_many(&[id]);
+                self_.vec.pen.select_many(&[id]);
             }
             self_.vec_set_draw_mode(ph2d_tool_vector::DrawMode::Node);
             eprintln!(
@@ -207,7 +207,7 @@ pub(crate) fn frame(app: &mut crate::App, f: u32, level: u32) {
                 .as_ref()
                 .and_then(|g| g.vec_scene.paths().first().map(|p| p.id))
             {
-                self_.vec_pen.select_many(&[id]);
+                self_.vec.pen.select_many(&[id]);
             }
             self_.vec_set_draw_mode(ph2d_tool_vector::DrawMode::Node);
         }
@@ -222,14 +222,14 @@ pub(crate) fn frame(app: &mut crate::App, f: u32, level: u32) {
                 crate::envelope_live::create(
                     &mut gfx.sim,
                     &mut gfx.vec_scene,
-                    &self_.vec_entities,
+                    &self_.vec.entities,
                     &[id],
                 )
             };
             let Some(container) = container else { return };
             // O MESMO que o render_loop faz ao clicar Envelope: invalida a memória do sync para a
             // promoção filho→container rerodar (o pen não mudou — enveloparr só re-parenteou).
-            self_.vec_sel.invalidate();
+            self_.vec.sel.invalidate();
             // Puxa o topo a 40% da base — o MESMO trapézio de perspectiva do `=11`, para a estrela
             // nascer deformada e o olho julgar sem arrastar. BL/BR ficam; TR/TL vêm ao centro-topo.
             if let Some(gfx) = self_.gfx.as_mut() {

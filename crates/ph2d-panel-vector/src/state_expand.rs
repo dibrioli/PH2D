@@ -9,6 +9,14 @@
 
 use std::cell::Cell;
 
+/// O par `(junção, lado)` com que os dois knobs NASCEM — `0` Miter e `2` Both.
+///
+/// `pub` porque a SHELL guarda o par que viu no quadro anterior para distinguir *"o artista clicou
+/// um chip"* de *"o painel está no valor de sempre"*, e esse par tem de nascer IGUAL a este: com
+/// outro, o 1.º quadro leria um clique que ninguém deu e retunaria os offsets vivos da seleção. Os
+/// dois números eram escritos à mão aqui e no construtor da `App` (A9, 2026-09-12).
+pub const EXPAND_KNOBS_AT_BIRTH: (u8, u8) = (0, 2);
+
 thread_local! {
     /// Junção das quinas do **Offset Path** (`0` Miter · `1` Round · `2` Bevel).
     ///
@@ -16,11 +24,11 @@ thread_local! {
     /// offsetado, e mesmo tendo, a quina que o traço desenha e a quina que o offset produz
     /// são escolhas diferentes. Reaproveitar `VECTOR_JOIN_*` faria um controle mexer em
     /// dois fatos.
-    static EXPAND_JOIN: Cell<u8> = const { Cell::new(0) };
+    static EXPAND_JOIN: Cell<u8> = const { Cell::new(EXPAND_KNOBS_AT_BIRTH.0) };
     /// Qual contorno o **Offset Path** move (`0` Outer · `1` Inner · `2` Both). Default `2`
     /// (Both) — num caminho sem furo é o único contorno de qualquer jeito. Panel-local, como o
     /// `EXPAND_JOIN`: a shell o lê no clique/drag de offset e o motor o honra.
-    static EXPAND_SIDE: Cell<u8> = const { Cell::new(2) };
+    static EXPAND_SIDE: Cell<u8> = const { Cell::new(EXPAND_KNOBS_AT_BIRTH.1) };
 }
 
 /// A junção escolhida para o **Offset Path** (`0` Miter · `1` Round · `2` Bevel).

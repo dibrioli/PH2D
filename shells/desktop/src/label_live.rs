@@ -382,10 +382,10 @@ impl crate::app_state::App {
             let Some(gfx) = self.gfx.as_ref() else {
                 return false;
             };
-            let Some(host) = self.vec_pen.path_at(&gfx.vec_scene, world, tol) else {
+            let Some(host) = self.vec.pen.path_at(&gfx.vec_scene, world, tol) else {
                 return false; // o duplo-clique caiu no vazio
             };
-            if let Some((lid, entity, params)) = label_of(&gfx.sim, &self.vec_entities, host) {
+            if let Some((lid, entity, params)) = label_of(&gfx.sim, &self.vec.entities, host) {
                 let edit = crate::vec_text_reopen::reopen_text_session(
                     &gfx.sim,
                     lid,
@@ -395,9 +395,9 @@ impl crate::app_state::App {
                 );
                 LabelHit::Reopen(lid, Box::new(edit))
             } else {
-                let xf = ph2d_vec_entities::transform::build(&gfx.sim, &self.vec_entities);
+                let xf = ph2d_vec_entities::transform::build(&gfx.sim, &self.vec.entities);
                 let Some(anchor) =
-                    anchor_of(&gfx.sim, &gfx.vec_scene, &xf, &self.vec_entities, host)
+                    anchor_of(&gfx.sim, &gfx.vec_scene, &xf, &self.vec.entities, host)
                 else {
                     return false;
                 };
@@ -406,26 +406,26 @@ impl crate::app_state::App {
         };
         match hit {
             LabelHit::Reopen(lid, edit) => {
-                self.vec_pen.select_many(&[lid]);
+                self.vec.pen.select_many(&[lid]);
                 self.vec_set_draw_mode(ph2d_tool_vector::DrawMode::Text);
-                self.vec_text_edit = Some(*edit);
+                self.vec.text_edit = Some(*edit);
                 self.vec_text_regen();
             }
             LabelHit::New(host, anchor) => {
                 // O rótulo herda o Style ATIVO do painel, como qualquer texto.
                 let (fill, stroke) =
-                    crate::vec_glyph::resolve_style(&self.vec_pen.style(), self.vec_px_to_world());
-                self.vec_text_edit = Some(ph2d_app_vec::text_edit::VecTextEdit {
+                    crate::vec_glyph::resolve_style(&self.vec.pen.style(), self.vec_px_to_world());
+                self.vec.text_edit = Some(ph2d_app_vec::text_edit::VecTextEdit {
                     // A âncora é só a semente do caret na 1ª letra: quem manda na pose é o
                     // [`upkeep`], que a re-deriva do hospedeiro a cada frame.
                     origin: anchor,
-                    size: self.vec_text_size,
-                    weight: self.vec_text_weight,
-                    line_height: self.vec_text_line_height,
-                    tracking: self.vec_text_tracking,
-                    align: self.vec_text_align,
-                    extra_axes: self.vec_text_extra_axes.clone(),
-                    family: self.vec_text_family.clone(),
+                    size: self.vec.text.size,
+                    weight: self.vec.text.weight,
+                    line_height: self.vec.text.line_height,
+                    tracking: self.vec.text.tracking,
+                    align: self.vec.text.align,
+                    extra_axes: self.vec.text.extra_axes.clone(),
+                    family: self.vec.text.family.clone(),
                     fill,
                     stroke,
                     text: String::new(),
@@ -436,7 +436,7 @@ impl crate::app_state::App {
                     center: [0.0, 0.0],
                 });
                 // O vínculo espera a 1ª letra criar o objeto (ver [`upkeep_pending`]).
-                self.vec_label_pending = Some(host);
+                self.vec.label_pending = Some(host);
                 self.vec_set_draw_mode(ph2d_tool_vector::DrawMode::Text);
             }
         }

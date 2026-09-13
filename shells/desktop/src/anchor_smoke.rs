@@ -86,7 +86,7 @@ fn adopt(app: &mut crate::App) {
     if ids.len() < PIECES.len() + 1 {
         return;
     }
-    let Some(&fb) = app.vec_entities.get(&ids[PIECES.len()]) else {
+    let Some(&fb) = app.vec.entities.get(&ids[PIECES.len()]) else {
         return;
     };
     let frame = Entity::from_bits(fb);
@@ -94,7 +94,7 @@ fn adopt(app: &mut crate::App) {
         e.insert((VecFrame, VecClipContent));
     }
     for id in ids.iter().take(PIECES.len()) {
-        let Some(&kb) = app.vec_entities.get(id) else {
+        let Some(&kb) = app.vec.entities.get(id) else {
             continue;
         };
         if let Ok(mut e) = gfx.sim.world_mut().get_entity_mut(Entity::from_bits(kb)) {

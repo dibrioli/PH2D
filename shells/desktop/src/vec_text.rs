@@ -29,7 +29,7 @@ impl crate::app_state::App {
     /// de texto; a mesma troca de modo do botão do painel (W1.3 passo 2).
     pub(crate) fn vec_text_toggle_mode(&mut self) {
         use ph2d_tool_vector::DrawMode;
-        if self.vec_draw_config.mode == DrawMode::Text {
+        if self.vec.draw_config.mode == DrawMode::Text {
             self.vec_text_finish();
             self.vec_set_draw_mode(DrawMode::Select);
         } else {
@@ -44,7 +44,7 @@ impl crate::app_state::App {
         if let Some(gfx) = self.gfx.as_mut() {
             ph2d_app_vec::vector_bridge::set_mode(&mut gfx.tools, mode);
         }
-        self.vec_draw_config.mode = mode;
+        self.vec.draw_config.mode = mode;
     }
 
     /// Clique no canvas em modo Text: finaliza a edição anterior (se houver) e, se o
@@ -57,26 +57,26 @@ impl crate::app_state::App {
     pub(crate) fn vec_text_click(&mut self, world: [f64; 2]) {
         self.vec_text_finish();
         if let Some(edit) = self.vec_text_reopen_at(world) {
-            self.vec_text_edit = Some(edit);
+            self.vec.text_edit = Some(edit);
             self.vec_text_regen();
             return;
         }
         // O texto herda o Style ATIVO do painel do vetor (fill/stroke/width/cap/join)
         // — a mesma regra das formas — capturado no clique.
-        let (fill, stroke) = resolve_style(&self.vec_pen.style(), self.vec_px_to_world());
-        self.vec_text_edit = Some(VecTextEdit {
+        let (fill, stroke) = resolve_style(&self.vec.pen.style(), self.vec_px_to_world());
+        self.vec.text_edit = Some(VecTextEdit {
             origin: world,
-            size: self.vec_text_size, // o tamanho corrente do painel (Size slider)
-            weight: self.vec_text_weight, // o peso corrente (Weight slider)
-            line_height: self.vec_text_line_height, // entrelinha corrente
-            tracking: self.vec_text_tracking, // tracking corrente
-            align: self.vec_text_align, // alinhamento corrente
-            extra_axes: self.vec_text_extra_axes.clone(), // eixos extras correntes
-            family: self.vec_text_family.clone(), // a família corrente (Font picker)
+            size: self.vec.text.size, // o tamanho corrente do painel (Size slider)
+            weight: self.vec.text.weight, // o peso corrente (Weight slider)
+            line_height: self.vec.text.line_height, // entrelinha corrente
+            tracking: self.vec.text.tracking, // tracking corrente
+            align: self.vec.text.align, // alinhamento corrente
+            extra_axes: self.vec.text.extra_axes.clone(), // eixos extras correntes
+            family: self.vec.text.family.clone(), // a família corrente (Font picker)
             fill,
             stroke,
             text: String::new(),
-            wrap_width: self.vec_state.text_wrap, // Auto/Fixed corrente (Width)
+            wrap_width: self.vec.text.wrap, // Auto/Fixed corrente (Width)
             id: None,
             center: [0.0, 0.0],
         });
@@ -84,7 +84,7 @@ impl crate::app_state::App {
 
     /// Anexa um caractere ao texto em edição e regenera os glyphs. No-op sem edição.
     pub(crate) fn vec_text_append(&mut self, ch: char) {
-        if let Some(edit) = self.vec_text_edit.as_mut() {
+        if let Some(edit) = self.vec.text_edit.as_mut() {
             edit.text.push(ch);
             self.vec_text_regen();
         }
@@ -92,7 +92,7 @@ impl crate::app_state::App {
 
     /// Apaga o último caractere (Backspace).
     pub(crate) fn vec_text_backspace(&mut self) {
-        if let Some(edit) = self.vec_text_edit.as_mut() {
+        if let Some(edit) = self.vec.text_edit.as_mut() {
             edit.text.pop();
             self.vec_text_regen();
         }
@@ -106,13 +106,13 @@ impl crate::app_state::App {
     /// Finaliza a sessão: os glyphs ficam na cena, o cursor some. Se ficou vazia, não
     /// deixa nada (o `regen` já não gerou paths).
     pub(crate) fn vec_text_finish(&mut self) {
-        self.vec_text_edit = None;
+        self.vec.text_edit = None;
     }
 
     /// Há uma sessão de texto ativa?
     #[must_use]
     pub(crate) fn vec_text_editing(&self) -> bool {
-        self.vec_text_edit.is_some()
+        self.vec.text_edit.is_some()
     }
 
     /// Regenera os glyphs da sessão: remove os antigos da cena e empurra os novos a
@@ -121,7 +121,7 @@ impl crate::app_state::App {
         let Some(gfx) = self.gfx.as_mut() else {
             return;
         };
-        let Some(edit) = self.vec_text_edit.as_mut() else {
+        let Some(edit) = self.vec.text_edit.as_mut() else {
             return;
         };
         regen_into(&mut gfx.vec_scene, edit);

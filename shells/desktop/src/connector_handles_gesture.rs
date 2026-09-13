@@ -17,7 +17,7 @@ use ph2d_vec_scene::{VecPathId, VecScene, xform_of};
 impl App {
     /// O componente do conector `path`, mutável.
     fn conn_mut(&mut self, path: VecPathId) -> Option<&mut VecConnector> {
-        let &bits = self.vec_entities.get(&path)?;
+        let &bits = self.vec.entities.get(&path)?;
         let gfx = self.gfx.as_mut()?;
         Some(
             gfx.sim
@@ -48,7 +48,7 @@ impl App {
     /// novo acha o seu lugar e um redundante é reconhecido.
     fn conn_stations(&self, path: VecPathId) -> Option<Vec<[f64; 2]>> {
         let gfx = self.gfx.as_ref()?;
-        let &bits = self.vec_entities.get(&path)?;
+        let &bits = self.vec.entities.get(&path)?;
         let c = gfx
             .sim
             .world()
@@ -85,8 +85,8 @@ impl App {
         // Só os conectores da SELEÇÃO têm alça — senão toda linha da tela seria um campo minado
         // de pontos agarráveis.
         let mut found: Option<(HandleDrag, [f64; 2])> = None;
-        for &id in self.vec_pen.selected_paths() {
-            let Some(&bits) = self.vec_entities.get(&id) else {
+        for &id in self.vec.pen.selected_paths() {
+            let Some(&bits) = self.vec.entities.get(&id) else {
                 continue;
             };
             let Some(c) = gfx.sim.world().get::<VecConnector>(Entity::from_bits(bits)) else {
@@ -170,7 +170,7 @@ impl App {
             // Não há caminho de preview separado — o preview é o conector.
             self.conn_grab_set(drag.path, drag.grab, at);
         }
-        self.vec_conn_handle = Some(drag);
+        self.vec.conn_handle = Some(drag);
         true
     }
 
@@ -182,7 +182,7 @@ impl App {
     ///
     /// `false` sem arrasto armado.
     pub(crate) fn conn_handle_move(&mut self, x: f32, y: f32) -> bool {
-        let Some(drag) = self.vec_conn_handle.clone() else {
+        let Some(drag) = self.vec.conn_handle.clone() else {
             return false;
         };
         let Some(world) = self.vec_world_at((x, y)) else {
@@ -196,7 +196,7 @@ impl App {
             if let Some(c) = self.conn_mut(drag.path) {
                 c.waypoints.insert(i, world);
             }
-            self.vec_conn_handle = Some(HandleDrag {
+            self.vec.conn_handle = Some(HandleDrag {
                 grab: Grab::Waypoint(i),
                 born_now: true,
                 ..drag
@@ -215,7 +215,7 @@ impl App {
     /// (arraste-o de volta para a linha) e que apaga o que um clique perdido criaria — um ponto
     /// invisível, exatamente sobre a linha, que o usuário nunca saberia que existe.
     pub(crate) fn conn_handle_up(&mut self, world: [f64; 2]) -> bool {
-        let Some(drag) = self.vec_conn_handle.take() else {
+        let Some(drag) = self.vec.conn_handle.take() else {
             return false;
         };
         if let Grab::Waypoint(i) = drag.grab {
@@ -242,7 +242,7 @@ impl App {
         let Some(gfx) = self.gfx.as_ref() else {
             return false;
         };
-        let xforms = ph2d_vec_entities::transform::build(&gfx.sim, &self.vec_entities);
+        let xforms = ph2d_vec_entities::transform::build(&gfx.sim, &self.vec.entities);
         let mk = |id: VecPathId| -> Option<DropTarget> {
             let (lo, hi) = gfx.vec_scene.path_curve_bbox(id)?;
             Some(DropTarget {
@@ -268,7 +268,7 @@ impl App {
     /// **Cancela** (Esc, botão direito): tudo volta ao que era. Um waypoint que nasceu neste
     /// gesto é desfeito — desistir não pode deixar um ponto para trás.
     pub(crate) fn conn_handle_cancel(&mut self) -> bool {
-        let Some(drag) = self.vec_conn_handle.take() else {
+        let Some(drag) = self.vec.conn_handle.take() else {
             return false;
         };
         match drag.grab {

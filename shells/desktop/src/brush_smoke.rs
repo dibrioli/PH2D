@@ -181,7 +181,7 @@ fn select_hero(app: &mut crate::App) {
         .as_ref()
         .and_then(|g| g.vec_scene.paths().get(1).map(|p| p.id));
     if let Some(id) = heroi {
-        app.vec_pen.select_many(&[id]);
+        app.vec.pen.select_many(&[id]);
     }
     eprintln!(
         "[smoke] PINCEL DE CONTORNO (plano 36). A forma da ESQUERDA ja' esta' selecionada, e na \

@@ -77,7 +77,7 @@ fn the_render_loop_wires_the_handle_gesture() {
             "o MOVE (arrastar) não está no dispatch do ponteiro",
         ),
         (
-            "self.vec_state.textpath_handle_drag = false",
+            "self.vec.textpath_handle_drag = false",
             "o RELEASE não limpa o arrasto — a alça ficaria colada ao cursor após soltar",
         ),
     ] {

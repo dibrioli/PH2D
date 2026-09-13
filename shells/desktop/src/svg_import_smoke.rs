@@ -23,7 +23,7 @@ impl crate::App {
         ph2d_app_vec::smoke_svg::build(
             &mut gfx.sim,
             &mut gfx.vec_scene,
-            &mut self.vec_entities,
+            &mut self.vec.entities,
             ppm,
         );
     }

@@ -92,8 +92,8 @@ fn the_draw_pass_publishes_the_facts_it_derived() {
     // *"ela cabe numa linha"*.
     let flat: String = src.chars().filter(|c| !c.is_whitespace()).collect();
     for (what, needle) in [
-        ("os intervalos de RECORTE", "self.vec_view_derived.clips"),
-        ("as poses do auto layout", "self.vec_view_derived.poses"),
+        ("os intervalos de RECORTE", "self.vec.view_derived.clips"),
+        ("as poses do auto layout", "self.vec.view_derived.poses"),
     ] {
         assert!(
             flat.contains(needle),
@@ -112,7 +112,7 @@ fn the_draw_pass_publishes_the_facts_it_derived() {
         .find("self.layout_live.recook(")
         .expect("o passe de layout");
     let publish = flat
-        .find("self.vec_view_derived.poses")
+        .find("self.vec.view_derived.poses")
         .expect("a publicacao das poses");
     assert!(
         publish > recook,

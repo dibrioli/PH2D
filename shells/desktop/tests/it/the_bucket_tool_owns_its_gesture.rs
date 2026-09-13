@@ -61,7 +61,7 @@ fn the_scanner_finds_what_it_scans_for() {
 fn the_press_is_consumed_so_it_never_falls_into_drawing() {
     let modo = at(
         DISPATCH,
-        "if self.vec_draw_config.mode == ph2d_tool_vector::DrawMode::Bucket {",
+        "if self.vec.draw_config.mode == ph2d_tool_vector::DrawMode::Bucket {",
         "o dispatch",
     );
     let aplica = at(DISPATCH, "self.apply_bucket()", "o dispatch");
@@ -89,7 +89,7 @@ fn the_press_is_consumed_so_it_never_falls_into_drawing() {
     };
     let guarda = at(
         DISPATCH,
-        "if self.vec_bucket_face.is_some() && self.gfx.is_some() {",
+        "if self.vec.bucket_face.is_some() && self.gfx.is_some() {",
         "o dispatch",
     );
     assert_eq!(
@@ -108,7 +108,7 @@ fn the_click_deposits_what_the_highlight_showed() {
     let fim = corpo.find("\n    /// ").unwrap_or(corpo.len());
     let corpo = &corpo[..fim];
     assert!(
-        corpo.contains("self.vec_bucket_face.clone()"),
+        corpo.contains("self.vec.bucket_face.clone()"),
         "o `apply_bucket` nao le a face do quadro"
     );
     assert!(
@@ -241,7 +241,7 @@ fn leaving_the_tool_clears_the_highlight_and_the_cache() {
     let corpo = &BUCKET[guarda..];
     let fim = corpo.find("return;").expect("a guarda tem de sair cedo");
     assert!(
-        corpo[..fim].contains("self.vec_bucket_face = None;"),
+        corpo[..fim].contains("self.vec.bucket_face = None;"),
         "sair do Balde nao apaga o realce"
     );
     // ⚠️ A rede guardada NÃO morre aqui: ela serve os preenchimentos vivos em toda ferramenta. O

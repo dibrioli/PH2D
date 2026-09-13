@@ -29,8 +29,8 @@ fn the_seed_memo_is_the_pair_not_just_the_target() {
         .find("let focus = crate::vec_shape_params::shape_seed_focus(")
         .expect("a decisao tem de vir da porta unica `shape_seed_focus`");
     let cmp = SRC
-        .find("if Some(focus) != self.vec_shape_last_focus {")
-        .expect("a memo comparada tem de ser o PAR (`vec_shape_last_focus`)");
+        .find("if Some(focus) != self.vec.shape_last_focus {")
+        .expect("a memo comparada tem de ser o PAR (`vec.shape_last_focus`)");
     assert!(
         focus < cmp,
         "o par e' computado DEPOIS de ser comparado (focus em {focus}, comparacao em {cmp})"
@@ -46,16 +46,29 @@ fn the_seed_memo_is_the_pair_not_just_the_target() {
         .find("crate::vec_shape_params::seed_shape_fields(&mut hero.store, focus.1, &ui);")
         .expect("a semente");
     let janela = &SRC[focus..seed];
-    let memos: Vec<&str> = janela
-        .match_indices("self.vec_shape_")
+    // ⚠️ **O prefixo é o endereço do campo, e o endereço mudou** (A9, 2026-09-12: `self.vec_shape_*`
+    // passou a `self.vec.shape_*`). Com o prefixo velho este censo varria ZERO nomes e o
+    // `is_empty()` de baixo ficava verde sobre nada — por isso o piso: o próprio PAR está nesta
+    // janela, então um prefixo que não o encontra é um prefixo partido, não uma janela limpa.
+    const PREFIXO: &str = "self.vec.shape_";
+    let vistos: Vec<&str> = janela
+        .match_indices(PREFIXO)
         .map(|(i, _)| {
-            let campo = &janela[i + "self.".len()..];
+            let campo = &janela[i + "self.vec.".len()..];
             let fim = campo
                 .find(|c: char| !c.is_alphanumeric() && c != '_')
                 .unwrap_or(campo.len());
             &campo[..fim]
         })
-        .filter(|m| *m != "vec_shape_last_focus")
+        .collect();
+    assert!(
+        vistos.contains(&"shape_last_focus"),
+        "o censo nao encontra nem o PAR com `{PREFIXO}` — o prefixo esta partido e a metade de \
+         baixo estaria a medir nada: {vistos:?}"
+    );
+    let memos: Vec<&str> = vistos
+        .into_iter()
+        .filter(|m| *m != "shape_last_focus")
         .collect();
     assert!(
         memos.is_empty(),

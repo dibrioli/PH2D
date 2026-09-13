@@ -263,7 +263,8 @@ impl crate::App {
                 .iter()
                 .map(|id| {
                     let r = self
-                        .vec_entities
+                        .vec
+                        .entities
                         .get(id)
                         .and_then(|&b| {
                             gfx.sim

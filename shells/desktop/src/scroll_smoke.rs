@@ -97,7 +97,7 @@ fn adopt(app: &mut crate::App) {
         if base + n > ids.len() {
             return;
         }
-        let Some(&fb) = app.vec_entities.get(&ids[base + n - 1]) else {
+        let Some(&fb) = app.vec.entities.get(&ids[base + n - 1]) else {
             base += n;
             continue;
         };
@@ -108,7 +108,7 @@ fn adopt(app: &mut crate::App) {
             e.insert((VecFrame, VecClipContent));
         }
         for k in 0..n - 1 {
-            let Some(&kb) = app.vec_entities.get(&ids[base + k]) else {
+            let Some(&kb) = app.vec.entities.get(&ids[base + k]) else {
                 continue;
             };
             if let Ok(mut e) = gfx.sim.world_mut().get_entity_mut(Entity::from_bits(kb)) {

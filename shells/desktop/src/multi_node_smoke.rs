@@ -79,7 +79,7 @@ fn scale_the_middle_one(app: &mut crate::App) {
         return;
     };
     let ids: Vec<u64> = gfx.vec_scene.paths().iter().map(|p| p.id).collect();
-    let Some(&bits) = ids.get(1).and_then(|id| app.vec_entities.get(id)) else {
+    let Some(&bits) = ids.get(1).and_then(|id| app.vec.entities.get(id)) else {
         return;
     };
     let e = Entity::from_bits(bits);
@@ -108,7 +108,7 @@ fn announce(app: &crate::App) {
         .vec_scene
         .paths()
         .get(1)
-        .and_then(|p| app.vec_entities.get(&p.id))
+        .and_then(|p| app.vec.entities.get(&p.id))
         .and_then(|&b| gfx.sim.world().get::<Transform>(Entity::from_bits(b)))
         .map_or(1.0, |t| t.scale.x);
     eprintln!("[multi-node-smoke] cena montada: {n} formas, {nodes} nos, modo NODE.");

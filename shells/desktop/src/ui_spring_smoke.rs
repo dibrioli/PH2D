@@ -153,7 +153,8 @@ fn name_them(app: &mut crate::App) {
     let ents: Vec<_> = ids
         .iter()
         .map(|id| {
-            app.vec_entities
+            app.vec
+                .entities
                 .get(id)
                 .map(|&b| ph2d_ecs::Entity::from_bits(b))
         })
@@ -184,7 +185,7 @@ fn record(app: &mut crate::App, role: StateRole) {
     if hosts.is_empty() {
         return;
     }
-    let map = &app.vec_entities;
+    let map = &app.vec.entities;
     let Some(gfx) = app.gfx.as_mut() else {
         return;
     };
@@ -209,7 +210,8 @@ fn pose_hover(app: &mut crate::App) {
     let ents: Vec<_> = hosts
         .iter()
         .map(|id| {
-            app.vec_entities
+            app.vec
+                .entities
                 .get(id)
                 .map(|&b| ph2d_ecs::Entity::from_bits(b))
         })

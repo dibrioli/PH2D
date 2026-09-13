@@ -94,9 +94,10 @@ fn arm(app: &mut crate::App) {
     };
     let Some(id) = edit.id else { return };
     let Some(gfx) = app.gfx.as_mut() else { return };
-    crate::vec_text_object::upsert_text_shape(&mut gfx.sim, &app.vec_entities, &edit);
+    crate::vec_text_object::upsert_text_shape(&mut gfx.sim, &app.vec.entities, &edit);
     let is_text = app
-        .vec_entities
+        .vec
+        .entities
         .get(&id)
         .and_then(|&b| {
             gfx.sim
@@ -105,11 +106,11 @@ fn arm(app: &mut crate::App) {
         })
         .is_some();
     // Os DOIS: é a seleção que o gesto exige, e a cena existe para a pôr pronta.
-    app.vec_pen.select_many(&[id, guide]);
+    app.vec.pen.select_many(&[id, guide]);
     let can = crate::vec_text_ride::link_candidate(
         &gfx.sim,
-        &app.vec_entities,
-        app.vec_pen.selected_paths(),
+        &app.vec.entities,
+        app.vec.pen.selected_paths(),
     )
     .is_some();
     eprintln!(

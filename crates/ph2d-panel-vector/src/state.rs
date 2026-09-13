@@ -459,7 +459,9 @@ pub use patternpath::{
 
 #[path = "state_expand.rs"] // Os knobs do Offset Path, irmão pelo teto de 600 LOC
 mod expand;
-pub use expand::{expand_join, expand_side, set_expand_join, set_expand_side};
+pub use expand::{
+    EXPAND_KNOBS_AT_BIRTH, expand_join, expand_side, set_expand_join, set_expand_side,
+};
 
 #[path = "state_contour.rs"] // Contour (pesquisa `20_*` #9), irmão pelo teto de 600 LOC
 pub(crate) mod contour;

@@ -219,7 +219,7 @@ impl crate::App {
         let gfx = self.gfx.as_ref()?;
         let entity = Entity::from_bits(entity_bits);
         let id = resizable_frame(&gfx.sim, entity)?;
-        let xf = ph2d_vec_entities::transform::build(&gfx.sim, &self.vec_entities);
+        let xf = ph2d_vec_entities::transform::build(&gfx.sim, &self.vec.entities);
         let recipe = match gfx.sim.world().get::<ph2d_ecs::VecShape>(entity) {
             Some(ph2d_ecs::VecShape::Param { w, h, .. }) => Some([*w, *h]),
             _ => None,

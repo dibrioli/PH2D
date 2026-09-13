@@ -29,12 +29,12 @@ const MARKER_WINDOW_LINES: usize = 20;
 const FILE_OVERAGE_OK: &[(&str, usize, &str)] = &[
     (
         "app_state.rs",
-        1800,
+        1551,
         "AppGfx + App are the shell's two top-level aggregates —",
     ),
     (
         "input_dispatch.rs",
-        7116,
+        7120,
         "Onda 2C multi-select dispatch + hit_map routing +",
     ),
     (
@@ -44,12 +44,12 @@ const FILE_OVERAGE_OK: &[(&str, usize, &str)] = &[
     ),
     (
         "main.rs",
-        1346,
+        1289,
         "crate-root module hub — the 80+ `mod` declarations are an",
     ),
     (
         "render_loop/mod.rs",
-        13922,
+        13918,
         "frame orchestrator — heavy phases already extracted to",
     ),
     (

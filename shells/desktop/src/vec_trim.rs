@@ -160,30 +160,30 @@ impl crate::App {
     /// ⚠️ **Fora do modo Trim ele é LIMPO**, e não simplesmente não-actualizado: um realce vermelho
     /// deixado a arder depois de trocar de ferramenta prometeria um corte que nenhum clique faria.
     pub(crate) fn refresh_trim_hover(&mut self, pointer: (f32, f32)) {
-        if self.vec_draw_config.mode != ph2d_tool_vector::DrawMode::Trim {
-            self.vec_trim_hit = None;
-            self.vec_state.trim_piece.clear();
+        if self.vec.draw_config.mode != ph2d_tool_vector::DrawMode::Trim {
+            self.vec.trim_hit = None;
+            self.vec.trim_piece.clear();
             return;
         }
         let Some(world) = self.vec_world_at(pointer) else {
-            self.vec_trim_hit = None;
-            self.vec_state.trim_piece.clear();
+            self.vec.trim_hit = None;
+            self.vec.trim_piece.clear();
             return;
         };
         let Some(tol) = self.trim_tolerance() else {
-            self.vec_trim_hit = None;
-            self.vec_state.trim_piece.clear();
+            self.vec.trim_hit = None;
+            self.vec.trim_piece.clear();
             return;
         };
         let achado = self.trim_hit_at(world, tol);
-        self.vec_state.trim_piece = match (&achado, self.gfx.as_ref()) {
+        self.vec.trim_piece = match (&achado, self.gfx.as_ref()) {
             (Some(h), Some(gfx)) => {
-                let xf = ph2d_vec_entities::transform::build(&gfx.sim, &self.vec_entities);
+                let xf = ph2d_vec_entities::transform::build(&gfx.sim, &self.vec.entities);
                 piece_world(&gfx.vec_scene, &xf, h)
             }
             _ => Vec::new(),
         };
-        self.vec_trim_hit = achado;
+        self.vec.trim_hit = achado;
     }
 
     /// **O RAIO DE CAPTURA em unidades de MUNDO** — o mesmo que as outras ferramentas de apontar
@@ -201,8 +201,8 @@ impl crate::App {
     /// ajuste de tolerância, e o artista veria uma coisa e apagaria outra.
     pub(crate) fn trim_hit_at(&self, world: [f64; 2], tol: f64) -> Option<TrimHit> {
         let gfx = self.gfx.as_ref()?;
-        let xf = ph2d_vec_entities::transform::build(&gfx.sim, &self.vec_entities);
-        let alvo = self.vec_pen.path_at(&gfx.vec_scene, world, tol)?;
+        let xf = ph2d_vec_entities::transform::build(&gfx.sim, &self.vec.entities);
+        let alvo = self.vec.pen.path_at(&gfx.vec_scene, world, tol)?;
         let local = ph2d_vec_scene::xform_of(&xf, alvo)
             .inverse()
             .map_or(world, |inv| inv.apply(world));

@@ -80,7 +80,7 @@ impl App {
         if state == ElementState::Pressed
             && !repeat
             && matches!(physical_key, PhysicalKey::Code(KeyCode::Escape))
-            && self.vec_path_pick.take().is_some()
+            && self.vec.path_pick.take().is_some()
         {
             return true;
         }
@@ -117,9 +117,9 @@ impl App {
             && !repeat
             && matches!(physical_key, PhysicalKey::Code(KeyCode::Escape))
             && self.vector_keys_live()
-            && self.vec_pen.is_drawing()
+            && self.vec.pen.is_drawing()
         {
-            self.vec_pen.finish();
+            self.vec.pen.finish();
             return true;
         }
         // Painter shapes (Curve/Circle): Escape discards the in-progress shape (reverts the preview);

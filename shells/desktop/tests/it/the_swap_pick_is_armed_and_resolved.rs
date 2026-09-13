@@ -65,7 +65,7 @@ fn escape_gives_up_an_armed_pick() {
     // com o Esc do modo de preview, W7r); a PROPRIEDADE afirmada continua exactamente a mesma.
     let s = src("input_dispatch/keyboard_escapes.rs");
     let at = s
-        .find("self.vec_path_pick.take().is_some()")
+        .find("self.vec.path_pick.take().is_some()")
         .expect("o Esc deixou de desistir de um pick armado — o artista fica preso no conta-gotas");
     // ⚠️ Ele TEM de consumir: um Esc que desarma e deixa passar daria blur num widget que o
     // artista não estava a editar, no mesmo toque.
@@ -86,7 +86,7 @@ fn escape_gives_up_an_armed_pick() {
     // gate reprovar código correto na primeira corrida — o `at < pen` comparava com o sítio
     // errado. Um anchor tem de ser único no que ele nomeia.
     let pen = s
-        .find("self.vec_pen.finish();")
+        .find("self.vec.pen.finish();")
         .expect("o Escape do Pen mudou de forma — reancore este gate");
     assert!(at < pen, "o Esc do pick tem de preceder o do Pen");
 }

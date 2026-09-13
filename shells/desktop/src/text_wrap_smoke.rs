@@ -95,13 +95,14 @@ fn arm(app: &mut crate::App) {
     };
     let Some(gfx) = app.gfx.as_mut() else { return };
     for (_, e) in &made {
-        crate::vec_text_object::upsert_text_shape(&mut gfx.sim, &app.vec_entities, e);
+        crate::vec_text_object::upsert_text_shape(&mut gfx.sim, &app.vec.entities, e);
     }
     let Some((boxed_id, boxed_edit)) = made.first() else {
         return;
     };
     let is_text = app
-        .vec_entities
+        .vec
+        .entities
         .get(boxed_id)
         .and_then(|&b| {
             gfx.sim
@@ -109,7 +110,7 @@ fn arm(app: &mut crate::App) {
                 .get::<VecShape>(ph2d_ecs::Entity::from_bits(b))
         })
         .is_some();
-    app.vec_pen.select_many(&[*boxed_id]);
+    app.vec.pen.select_many(&[*boxed_id]);
     let lines = |e: &VecTextEdit| {
         let font = crate::vec_font::resolve(e.family.as_deref());
         crate::vec_glyph::wrapped_lines(

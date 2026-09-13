@@ -40,7 +40,7 @@ impl crate::App {
     /// é relido; ver o porquê no cabeçalho deste módulo.
     pub(crate) fn marquee_shape_for_press(&self) -> MarqueeShape {
         let ctrl = self.modifiers.control_key() || self.modifiers.super_key();
-        MarqueeShape::for_gesture(self.vec_draw_config.marquee, ctrl)
+        MarqueeShape::for_gesture(self.vec.draw_config.marquee, ctrl)
     }
 }
 

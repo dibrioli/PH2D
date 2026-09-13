@@ -80,8 +80,8 @@ fn arm(app: &mut crate::App) {
     // Só o MOTIVO selecionado — é a seleção que o **Picker** exige (a fonte à espera do clique do
     // guia). Selecionar os DOIS mostraria a auto-ligação ("Pattern on Path") em vez do Picker; o
     // Picker é a porta explícita e mais correta (Enio 2026-07-23), então é ela que a cena encena.
-    app.vec_pen.select(Some(motif));
-    let sel = app.vec_pen.selected_paths().to_vec();
+    app.vec.pen.select(Some(motif));
+    let sel = app.vec.pen.selected_paths().to_vec();
     let ready = sel.len() == 1
         && sel[0] == motif
         && app

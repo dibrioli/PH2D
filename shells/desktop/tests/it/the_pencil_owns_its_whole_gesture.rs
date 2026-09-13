@@ -34,21 +34,40 @@ fn at(needle: &str) -> usize {
 
 /// A posição da 1ª chamada a `method` sobre `recv`, **tolerante à quebra de linha**.
 ///
-/// ⚠️ Existe porque a agulha `self.vec_state.pencil.on_press(` MORREU quando o W1d acrescentou um
-/// argumento: o `rustfmt` quebrou a chamada em duas linhas (`self.vec_state.pencil\n    .on_press(`) e o
+/// ⚠️ Existe porque a agulha `self.vec.pencil.on_press(` MORREU quando o W1d acrescentou um
+/// argumento: o `rustfmt` quebrou a chamada em duas linhas (`self.vec.pencil\n    .on_press(`) e o
 /// gate ficou **VERMELHO sobre código correto** — a mesma classe de proxy que o cabeçalho deste
 /// arquivo condena, só que em vez de distância em bytes era a FORMATAÇÃO. Uma chamada é um
 /// receptor seguido de um método; o espaço em branco entre os dois é do `rustfmt`, não do produto.
+///
+/// ⚠️ **E a quebra também cai DENTRO do receptor** (A9, 2026-09-12): com o campo em
+/// `self.vec.pencil` a cadeia ganhou um elo, passou do `chain_width` do `rustfmt` e saiu em três
+/// linhas (`self.vec` · `.pencil` · `.on_press(`). Tolerar espaço só antes do método voltava a
+/// reprovar código correcto — então a comparação é **elo a elo**, com espaço permitido antes de
+/// cada `.` e o elo obrigado a ACABAR ali (senão `self.vec.pen` casaria com `self.vec.pencil`).
 fn call_at(recv: &str, method: &str) -> Option<usize> {
+    let elos: Vec<&str> = recv.split('.').collect();
     let mut from = 0;
-    while let Some(i) = SRC[from..].find(recv) {
+    while let Some(i) = SRC[from..].find(elos[0]) {
         let start = from + i;
-        let after = &SRC[start + recv.len()..];
-        let trimmed = after.trim_start();
-        if trimmed.starts_with(&format!(".{method}(")) {
+        let mut rest = &SRC[start + elos[0].len()..];
+        let mut casou = true;
+        for elo in elos[1..].iter().copied().chain(std::iter::once(method)) {
+            rest = rest.trim_start();
+            let Some(depois) = rest.strip_prefix('.').and_then(|r| r.strip_prefix(elo)) else {
+                casou = false;
+                break;
+            };
+            if depois.starts_with(|c: char| c.is_alphanumeric() || c == '_') {
+                casou = false;
+                break;
+            }
+            rest = depois;
+        }
+        if casou && rest.starts_with('(') {
             return Some(start);
         }
-        from = start + recv.len();
+        from = start + elos[0].len();
     }
     None
 }
@@ -73,10 +92,10 @@ fn window(from: usize, until: &str) -> &'static str {
 #[test]
 fn the_scanner_finds_what_it_scans_for() {
     for (recv, method) in [
-        ("self.vec_state.pencil", "on_press"),
-        ("self.vec_pen", "on_press"),
-        ("self.vec_state.shape", "on_press"),
-        ("self.vec_state.pencil", "on_release"),
+        ("self.vec.pencil", "on_press"),
+        ("self.vec.pen", "on_press"),
+        ("self.vec.shape", "on_press"),
+        ("self.vec.pencil", "on_release"),
     ] {
         assert!(
             call_at(recv, method).is_some(),
@@ -86,7 +105,7 @@ fn the_scanner_finds_what_it_scans_for() {
     }
     for needle in [
         "DrawMode::Pencil",
-        "if shape_kind_for_mode(&self.vec_draw_config).is_none() {",
+        "if shape_kind_for_mode(&self.vec.draw_config).is_none() {",
     ] {
         assert!(
             SRC.contains(needle),
@@ -99,9 +118,9 @@ fn the_scanner_finds_what_it_scans_for() {
 /// **O press do lápis precede o da caneta E o da forma.**
 #[test]
 fn the_pencil_press_runs_before_the_pen_and_the_shape() {
-    let pencil = call("self.vec_state.pencil", "on_press");
-    let pen = call("self.vec_pen", "on_press");
-    let shape = call("self.vec_state.shape", "on_press");
+    let pencil = call("self.vec.pencil", "on_press");
+    let pen = call("self.vec.pen", "on_press");
+    let shape = call("self.vec.shape", "on_press");
     assert!(
         pencil < pen && pencil < shape,
         "o braco do lapis (byte {pencil}) roda DEPOIS da caneta ({pen}) ou da forma ({shape}) — \
@@ -136,7 +155,7 @@ fn the_pencil_move_is_dispatched() {
 ///
 /// ⚠️ **Este gate nasceu vermelho sobre um defeito reportado pelo Enio, com os outros cinco deste
 /// arquivo VERDES.** O braço do release vivia no `else` de
-/// `shape_kind_for_mode(&self.vec_draw_config).is_none()`, que é **verdadeiro em modo Pencil** (o
+/// `shape_kind_for_mode(&self.vec.draw_config).is_none()`, que é **verdadeiro em modo Pencil** (o
 /// lápis não é um `ShapeKind`) ⇒ a primeira metade ganhava sempre e o `else if` era **código morto
 /// no único modo capaz de o alcançar**. Os cinco afirmavam que as *strings* existem no arquivo, e
 /// existiam: **presença não é alcançabilidade** — a mesma família do *registrado ≠ despachado* que
@@ -151,8 +170,8 @@ fn the_pencil_move_is_dispatched() {
 /// cadeia de modo, ele não pode estar dentro de nenhum ramo dela.
 #[test]
 fn the_pencil_release_is_its_own_arm_before_the_mode_chain() {
-    let release = call("self.vec_state.pencil", "on_release");
-    let mode_chain = at("if shape_kind_for_mode(&self.vec_draw_config).is_none() {");
+    let release = call("self.vec.pencil", "on_release");
+    let mode_chain = at("if shape_kind_for_mode(&self.vec.draw_config).is_none() {");
     assert!(
         release < mode_chain,
         "o release do lapis (byte {release}) corre DEPOIS da cadeia de modo ({mode_chain}) — se \
@@ -166,7 +185,7 @@ fn the_pencil_release_is_its_own_arm_before_the_mode_chain() {
 #[test]
 fn the_secondary_button_cancels_a_live_pencil_stroke() {
     assert!(
-        SRC.contains("self.vec_state.pencil.cancel("),
+        SRC.contains("self.vec.pencil.cancel("),
         "o lapis nao tem tecla de fuga — um traco comecado por acidente nao pode ser descartado"
     );
 }
@@ -188,7 +207,8 @@ fn the_secondary_button_cancels_a_live_pencil_stroke() {
 fn the_stabiliser_filters_screen_px_and_the_press_seeds_the_hand() {
     // ── a função de MOVE: o filtro antes da conversão ──
     let mv = window(at("fn vec_pencil_drag_move"), "\n    fn ");
-    let filter = mv.find("vec_pencil_hand").expect(
+    // O ELO e não o endereço inteiro: desde a A9 o `rustfmt` parte `self.vec.pencil_hand` em linhas.
+    let filter = mv.find(".pencil_hand").expect(
         "o move do lapis nao passa pela mao filtrada — o estabilizador nao chega ao produto",
     );
     let to_world = mv
@@ -206,11 +226,11 @@ fn the_stabiliser_filters_screen_px_and_the_press_seeds_the_hand() {
         "\n                    // Modo Connect",
     );
     assert!(
-        press.contains("self.vec_state.pencil") && press.contains(".on_press("),
+        press.contains("self.vec.pencil") && press.contains(".on_press("),
         "controle positivo: a janela do press nao contem o proprio press"
     );
     assert!(
-        press.contains("self.vec_pencil_hand.begin("),
+        press.contains("self.vec.pencil_hand.begin("),
         "o braco do press NAO semeia a mao — o 1o move mistura a partir do fim do gesto ANTERIOR e \
          o traco nasce com um salto vindo do outro lado da tela"
     );

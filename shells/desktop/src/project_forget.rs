@@ -18,7 +18,7 @@ impl crate::App {
         // herdado, o ramo de primeira-vista do `reconcile` (o que faz o arquivo mandar num load) é
         // pulado, cai-se em *"o artista ganha"* — e o artista é o projeto morto. Medido: o 0.8 que
         // saiu do arquivo vira o 0.0 neutro do controle, mais um passo de undo que ninguém pediu.
-        self.vec_widget_applied.clear();
+        self.vec.widget_applied.clear();
         self.offset_live.forget();
         self.pattern_live.forget();
         self.contour_live.forget();
@@ -27,7 +27,7 @@ impl crate::App {
         self.symmetry_live.forget();
         self.fx_live.forget();
         // Não é memo, é uma decisão de sessão: qual lado do offset foi espelhado por último.
-        self.vec_offset_mirrored = None;
+        self.vec.offset_mirrored = None;
         // **OS OBJETOS ASSADOS do documento anterior** (`docs/3D/02.2`). O mapa é chaveado por bits
         // de entidade, e o `apply_project` despawna tudo: as entradas que sobrassem descreveriam
         // objetos de outro projeto, e o passe de re-acendida ficaria acendendo, todo frame e para
@@ -56,10 +56,10 @@ mod tests {
     #[test]
     fn the_load_forgets_the_authored_control_memo() {
         let mut app = crate::App::new();
-        app.vec_widget_applied.insert(3, 0.30);
+        app.vec.widget_applied.insert(3, 0.30);
         app.forget_live_producers();
         assert!(
-            app.vec_widget_applied.is_empty(),
+            app.vec.widget_applied.is_empty(),
             "o memo do documento anterior sobreviveu ao load — a proxima forma que herdar o \
              VecPathId 3 nasce com a posicao de um controle morto, e o valor que o arquivo \
              carrega e' destruido"

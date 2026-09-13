@@ -33,15 +33,15 @@ impl crate::App {
         let window_size = gfx.surface.size();
         let view = ph2d_vec_entities::entities::view_state_for_pick(
             &gfx.sim,
-            &self.vec_entities,
-            &self.vec_view_derived,
+            &self.vec.entities,
+            &self.vec.view_derived,
         );
         let hits = crate::vec_gizmo_view::pick_all_at_world(
             &gfx.sim,
             &gfx.vec_scene,
             self.offset_live.live(),
             &view,
-            &self.vec_entities,
+            &self.vec.entities,
             [world[0] as f32, world[1] as f32],
             crate::vec_gizmo_view::stroke_hit_r(&gfx.camera, window_size),
         );
@@ -51,7 +51,8 @@ impl crate::App {
         let picked: Vec<VecPathId> = hits
             .into_iter()
             .filter_map(|bits| {
-                self.vec_entities
+                self.vec
+                    .entities
                     .iter()
                     .find(|&(_, &b)| b == bits)
                     .map(|(&id, _)| id)
@@ -60,7 +61,7 @@ impl crate::App {
         crate::render_loop::ui_preview::host_under(
             &gfx.sim,
             &gfx.vec_scene,
-            &self.vec_entities,
+            &self.vec.entities,
             &gfx.ui_states,
             &picked,
         )
@@ -103,7 +104,7 @@ impl crate::App {
         // casa num NOME e nunca pergunta a origem, então uma colisão e um botão com o mesmo nome
         // movem a mesma cena. É o desacoplamento do ADR-0075, e é o que torna a ligação reusável.
         if let Some(host) = clicked
-            && let Some(name) = host_name(gfx, &self.vec_entities, host)
+            && let Some(name) = host_name(gfx, &self.vec.entities, host)
         {
             self.signals
                 .publish(ph2d_runtime::Signal::from_control(&name));

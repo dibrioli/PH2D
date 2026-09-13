@@ -97,7 +97,7 @@ fn adopt(app: &mut crate::App) {
     }
     for (row, _) in CY.iter().enumerate() {
         let base = row * PER_FRAME;
-        let Some(&fb) = app.vec_entities.get(&ids[base + PER_FRAME - 1]) else {
+        let Some(&fb) = app.vec.entities.get(&ids[base + PER_FRAME - 1]) else {
             continue;
         };
         let frame = Entity::from_bits(fb);
@@ -114,7 +114,7 @@ fn adopt(app: &mut crate::App) {
             }
         }
         for k in 0..PER_FRAME - 1 {
-            let Some(&kb) = app.vec_entities.get(&ids[base + k]) else {
+            let Some(&kb) = app.vec.entities.get(&ids[base + k]) else {
                 continue;
             };
             if let Ok(mut e) = gfx.sim.world_mut().get_entity_mut(Entity::from_bits(kb)) {
@@ -134,7 +134,7 @@ fn announce(app: &crate::App) {
         .paths()
         .iter()
         .filter(|p| {
-            app.vec_entities.get(&p.id).is_some_and(|&b| {
+            app.vec.entities.get(&p.id).is_some_and(|&b| {
                 gfx.sim
                     .world()
                     .get::<VecLayout>(Entity::from_bits(b))

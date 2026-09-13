@@ -123,7 +123,7 @@ fn adopt(app: &mut crate::App) {
     let Some((&bar, kids)) = ids.split_last().map(|(b, r)| (b, &r[r.len() - BAR_KIDS..])) else {
         return;
     };
-    let Some(&fb) = app.vec_entities.get(&bar) else {
+    let Some(&fb) = app.vec.entities.get(&bar) else {
         return;
     };
     let frame = ph2d_ecs::Entity::from_bits(fb);
@@ -131,7 +131,7 @@ fn adopt(app: &mut crate::App) {
         e.insert(ph2d_ecs::VecFrame);
     }
     for k in kids {
-        let Some(&kb) = app.vec_entities.get(k) else {
+        let Some(&kb) = app.vec.entities.get(k) else {
             continue;
         };
         if let Ok(mut e) = gfx

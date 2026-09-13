@@ -94,7 +94,7 @@ fn the_apply_materialises_the_plan_the_producer_just_cooked() {
         "o Apply consulta o plano fora de ordem (recook {boolean}, plan {plan}, bake {bake})"
     );
     assert!(
-        !SRC.contains("bool_gesture::bake(sim, vec_scene, &mut self.vec_pen, &recompute"),
+        !SRC.contains("bool_gesture::bake(sim, vec_scene, &mut self.vec.pen, &recompute"),
         "o bake voltou a re-computar em vez de materializar o plano"
     );
 }
@@ -127,7 +127,7 @@ fn the_shell_publishes_the_per_shape_verb_row_with_the_primary() {
         "a shell parou de publicar a fileira do verbo por forma — ela nunca apareceria no app"
     );
     assert!(
-        SRC.contains("let primary = self.vec_pen.selected();"),
+        SRC.contains("let primary = self.vec.pen.selected();"),
         "o sujeito da fileira deixou de ser o PRIMÁRIO — com a contagem, nenhum clique a alcança"
     );
 }

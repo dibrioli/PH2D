@@ -276,7 +276,7 @@ impl App {
                     // publica as guias — mesmo motor do translate, mas quem aplica é o
                     // gizmo (o cursor encaixado dirige a razão de escala, pivô fixo). O
                     // bloco interno solta os borrows do closure antes de gravar as guias.
-                    let targets = &self.vec_snap_targets;
+                    let targets = &self.vec.snap_targets;
                     let mut guides: Vec<ph2d_vec_render::Guide> = Vec::new();
                     let snap_state = &mut hero.grid.snap_state;
                     let t = {
@@ -297,7 +297,7 @@ impl App {
                             Some(&mut snap_closure),
                         )
                     };
-                    self.vec_snap_guides = guides;
+                    self.vec.snap_guides = guides;
                     t
                 } else if is_scale {
                     let snap_state = &mut hero.grid.snap_state;

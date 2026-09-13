@@ -88,7 +88,7 @@ fn adopt(app: &mut crate::App) {
     if ids.len() < 2 {
         return;
     }
-    let (Some(&pb), Some(&cb)) = (app.vec_entities.get(&ids[0]), app.vec_entities.get(&ids[1]))
+    let (Some(&pb), Some(&cb)) = (app.vec.entities.get(&ids[0]), app.vec.entities.get(&ids[1]))
     else {
         return;
     };

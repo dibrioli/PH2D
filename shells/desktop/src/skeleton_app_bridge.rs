@@ -82,8 +82,8 @@ impl crate::App {
         // ⚠️ **O verbo só manda DENTRO do modo Osso.** Fora dele o `bone_action` continua guardado
         // (ele é estado da ferramenta, não do quadro), e lê-lo aqui deixaria o realce das outras 13
         // ferramentas preso no que o artista armou da última vez que passou pelo esqueleto.
-        let acao = if self.vec_draw_config.mode == ph2d_tool_vector::DrawMode::Bone {
-            self.vec_draw_config.bone_action
+        let acao = if self.vec.draw_config.mode == ph2d_tool_vector::DrawMode::Bone {
+            self.vec.draw_config.bone_action
         } else {
             ph2d_tool_vector::BoneAction::Transform
         };

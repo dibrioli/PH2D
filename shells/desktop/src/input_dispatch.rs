@@ -1289,7 +1289,8 @@ impl App {
         let px = self.vec_px_to_world();
         let hit = {
             let Some(gfx) = self.gfx.as_ref() else { return };
-            self.vec_pen
+            self.vec
+                .pen
                 .path_at(&gfx.vec_scene, world, 10.0 * px)
                 .filter(|id| {
                     gfx.vec_scene
@@ -1299,10 +1300,10 @@ impl App {
                 })
         };
         let Some(id) = hit else { return };
-        if let Some(pos) = self.vec_state.blend_picks.iter().position(|&p| p == id) {
-            self.vec_state.blend_picks.remove(pos);
-        } else if self.vec_state.blend_picks.len() < crate::blend_live::MAX_BLEND_SOURCES {
-            self.vec_state.blend_picks.push(id);
+        if let Some(pos) = self.vec.blend_picks.iter().position(|&p| p == id) {
+            self.vec.blend_picks.remove(pos);
+        } else if self.vec.blend_picks.len() < crate::blend_live::MAX_BLEND_SOURCES {
+            self.vec.blend_picks.push(id);
         }
         self.any_input_this_frame = true;
     }
@@ -1453,7 +1454,7 @@ impl App {
         // o comportamento errado (o usuário costuma apertar com o mouse parado).
         let c = shape_constraint(self.modifiers);
         if let Some(gfx) = self.gfx.as_mut() {
-            self.vec_state.shape.set_constraint(&mut gfx.vec_scene, c);
+            self.vec.shape.set_constraint(&mut gfx.vec_scene, c);
         }
     }
 
@@ -1577,8 +1578,8 @@ impl App {
     /// chamável).
     fn vec_boolean(&mut self, op: ph2d_vec_boolean::PathfinderOp) {
         if let Some(gfx) = self.gfx.as_mut() {
-            let xf = ph2d_vec_entities::transform::build(&gfx.sim, &self.vec_entities);
-            apply_vec_boolean(&mut gfx.vec_scene, &mut self.vec_pen, &xf, op);
+            let xf = ph2d_vec_entities::transform::build(&gfx.sim, &self.vec.entities);
+            apply_vec_boolean(&mut gfx.vec_scene, &mut self.vec.pen, &xf, op);
         }
     }
 
@@ -1597,16 +1598,16 @@ impl App {
             .camera
             .screen_to_world((dx_px as f32, dy_px as f32), win);
         let (dx, dy) = ((moved[0] - base[0]) as f64, (moved[1] - base[1]) as f64);
-        self.vec_pen.nudge(&mut gfx.vec_scene, dx, dy)
+        self.vec.pen.nudge(&mut gfx.vec_scene, dx, dy)
     }
 
     /// ADR-0108 Fase 1: Delete/Backspace no modo vetorial — prioriza apagar o
     /// VÉRTICE selecionado (edição de nó); sem vértice selecionado (ex.: resultado
     /// de booleana), apaga o PATH inteiro.
     pub(crate) fn vec_delete_selected_vertex_or_path(&mut self) -> bool {
-        if self.vec_pen.selected_vert().is_some()
+        if self.vec.pen.selected_vert().is_some()
             && let Some(gfx) = self.gfx.as_mut()
-            && apply_vec_delete_vertex(&mut gfx.vec_scene, &mut self.vec_pen)
+            && apply_vec_delete_vertex(&mut gfx.vec_scene, &mut self.vec.pen)
         {
             eprintln!("[ph2d-vec] vértice apagado");
             return true;
@@ -1657,14 +1658,14 @@ impl App {
     /// recorte leva os GRUPOS inteiramente selecionados junto (ver `VecScene::
     /// copy_paths`), então colar reconstrói a estrutura. No-op sem seleção.
     fn vec_copy(&mut self) {
-        let sel = self.vec_pen.selected_paths().to_vec();
+        let sel = self.vec.pen.selected_paths().to_vec();
         if sel.is_empty() {
             return;
         }
         if let Some(gfx) = self.gfx.as_ref() {
             let clip = gfx.vec_scene.copy_paths(&sel);
             if !clip.is_empty() {
-                self.vec_state.clipboard = Some(clip);
+                self.vec.clipboard = Some(clip);
             }
         }
     }
@@ -1678,7 +1679,7 @@ impl App {
     /// Vector Ctrl+V: paste the clipboard, offset ~12 px (screen→world), e seleciona
     /// o resultado. Ctrl+Shift+V cola **no lugar** (sem deslocar). ONE undo step.
     fn vec_paste(&mut self, in_place: bool) {
-        let Some(clip) = self.vec_state.clipboard.clone() else {
+        let Some(clip) = self.vec.clipboard.clone() else {
             return;
         };
         let (dx, dy) = if in_place {
@@ -1693,7 +1694,7 @@ impl App {
         if new_ids.is_empty() {
             return;
         }
-        self.vec_pen.select_many(&new_ids);
+        self.vec.pen.select_many(&new_ids);
     }
 
     /// A seleção de objeto que tocar `path` produz — o grupo inteiro, se houver.
@@ -1705,7 +1706,7 @@ impl App {
         ph2d_vec_entities::entities::object_selection_for(
             &gfx.sim,
             &gfx.vec_scene,
-            &self.vec_entities,
+            &self.vec.entities,
             path,
         )
     }
@@ -1714,10 +1715,11 @@ impl App {
     /// comum, então ele aceita sprite e path vetorial no mesmo saco.
     fn vec_group(&mut self, group: bool) {
         let sel: Vec<u64> = self
-            .vec_pen
+            .vec
+            .pen
             .selected_paths()
             .iter()
-            .filter_map(|id| self.vec_entities.get(id).copied())
+            .filter_map(|id| self.vec.entities.get(id).copied())
             .collect();
         if sel.is_empty() {
             return;
@@ -1748,14 +1750,14 @@ impl App {
     fn vec_duplicate_shortcut(&mut self) {
         let (dx, dy) = self.vec_screen_offset(PASTE_OFFSET_PX);
         if let Some(gfx) = self.gfx.as_mut() {
-            apply_vec_duplicate(&mut gfx.vec_scene, &mut self.vec_pen, dx, dy);
+            apply_vec_duplicate(&mut gfx.vec_scene, &mut self.vec.pen, dx, dy);
         }
     }
 
     /// Apaga TODA a seleção de objeto (um grupo some inteiro) e limpa os grupos
     /// que ficaram sem membro. ONE undo step.
     fn vec_delete_selected(&mut self) -> bool {
-        let sel = self.vec_pen.selected_paths().to_vec();
+        let sel = self.vec.pen.selected_paths().to_vec();
         if sel.is_empty() {
             return false;
         }
@@ -1769,7 +1771,7 @@ impl App {
         if !any {
             return false;
         }
-        self.vec_pen.clear();
+        self.vec.pen.clear();
         eprintln!("[ph2d-vec] {} path(s) apagado(s)", sel.len());
         true
     }
@@ -1779,10 +1781,10 @@ impl App {
     /// Põe a ORIGEM (o pivô) do path selecionado sob o cursor, sem mover a forma.
     /// `false` (e não consome o clique) se não há forma selecionada.
     fn vec_set_origin_to_cursor(&mut self, x: f32, y: f32) -> bool {
-        let Some(sel) = self.vec_pen.selected() else {
+        let Some(sel) = self.vec.pen.selected() else {
             return false;
         };
-        let Some(&bits) = self.vec_entities.get(&sel) else {
+        let Some(&bits) = self.vec.entities.get(&sel) else {
             return false;
         };
         let Some(gfx) = self.gfx.as_mut() else {
@@ -1973,7 +1975,7 @@ impl App {
     /// posição do cursor, respeitando a convexidade (o canto para na fronteira, não sai
     /// dela). No-op (false) sem um arrasto vivo — a mesma disciplina do `vec_pen_drag_move`.
     fn vec_textpath_handle_move(&mut self, x: f32, y: f32) -> bool {
-        if !self.vec_state.textpath_handle_drag {
+        if !self.vec.textpath_handle_drag {
             return false;
         }
         let Some(gfx) = self.gfx.as_mut() else {
@@ -1984,10 +1986,10 @@ impl App {
         crate::vec_text_ride::handle::drag(
             &mut gfx.sim,
             &mut gfx.vec_scene,
-            &self.vec_entities,
-            self.vec_pen.selected_paths(),
+            &self.vec.entities,
+            self.vec.pen.selected_paths(),
             [f64::from(w[0]), f64::from(w[1])],
-            self.vec_state.textpath_handle_drag,
+            self.vec.textpath_handle_drag,
         )
     }
 
@@ -2003,11 +2005,11 @@ impl App {
         crate::vec_text_ride::handle::press(
             &gfx.sim,
             &gfx.vec_scene,
-            &self.vec_entities,
-            self.vec_pen.selected_paths(),
+            &self.vec.entities,
+            self.vec.pen.selected_paths(),
             world,
             radius,
-            &mut self.vec_state.textpath_handle_drag,
+            &mut self.vec.textpath_handle_drag,
         )
     }
 
@@ -2185,10 +2187,10 @@ impl App {
     /// Arrasta a alça do PATTERN (Start/End, W4) armada para o cursor — no-op sem uma armada.
     /// Irmã do `vec_textpath_handle_move`, mesma disciplina de early-return.
     fn vec_patternpath_handle_move(&mut self, x: f32, y: f32) -> bool {
-        if self.vec_patternpath_handle.is_none() {
+        if self.vec.patternpath_handle.is_none() {
             return false;
         }
-        let armed = self.vec_patternpath_handle;
+        let armed = self.vec.patternpath_handle;
         let Some(gfx) = self.gfx.as_mut() else {
             return false;
         };
@@ -2197,8 +2199,8 @@ impl App {
         crate::pattern_live::handle::drag(
             &mut gfx.sim,
             &gfx.vec_scene,
-            &self.vec_entities,
-            self.vec_pen.selected_paths(),
+            &self.vec.entities,
+            self.vec.pen.selected_paths(),
             [f64::from(w[0]), f64::from(w[1])],
             armed,
         )
@@ -2215,11 +2217,11 @@ impl App {
         crate::pattern_live::handle::press(
             &gfx.sim,
             &gfx.vec_scene,
-            &self.vec_entities,
-            self.vec_pen.selected_paths(),
+            &self.vec.entities,
+            self.vec.pen.selected_paths(),
             world,
             radius,
-            &mut self.vec_patternpath_handle,
+            &mut self.vec.patternpath_handle,
         )
     }
 
@@ -2228,7 +2230,7 @@ impl App {
     /// clicar a própria fonte é ignorado (fica armado). Consome sempre o press (o guard já filtrou por
     /// `vec_path_pick.is_some()`), então o clique nunca cai no picking/gizmo enquanto o pick corre.
     fn vec_path_pick_click(&mut self, world: [f64; 2]) {
-        let Some(pick) = self.vec_path_pick else {
+        let Some(pick) = self.vec.path_pick else {
             return;
         };
         // LITERAL-PX-OK: o MESMO raio/resolvedor do realce do hover, para o que se clica ser o que se vê.
@@ -2237,8 +2239,8 @@ impl App {
         let Some(gfx) = self.gfx.as_mut() else {
             return;
         };
-        let Some(guide) = self.vec_pen.path_at(&gfx.vec_scene, world, hit_r) else {
-            self.vec_path_pick = None; // clique no vazio = desiste
+        let Some(guide) = self.vec.pen.path_at(&gfx.vec_scene, world, hit_r) else {
+            self.vec.path_pick = None; // clique no vazio = desiste
             return;
         };
         if guide == pick.source() {
@@ -2246,12 +2248,12 @@ impl App {
         }
         let done = match pick {
             crate::vec_pick::PathPick::PatternMotif(motif) => {
-                crate::pattern_live::link(&mut gfx.sim, &self.vec_entities, motif, guide)
+                crate::pattern_live::link(&mut gfx.sim, &self.vec.entities, motif, guide)
             }
             crate::vec_pick::PathPick::TextObject(text) => crate::vec_text_ride::link_explicit(
                 &mut gfx.sim,
                 &mut gfx.vec_scene,
-                &self.vec_entities,
+                &self.vec.entities,
                 text,
                 guide,
             ),
@@ -2270,10 +2272,11 @@ impl App {
             // prefab pela porta errada, e o sintoma era uma cópia que muda de desenho e mantém o
             // elo antigo* — hoje só há uma porta, e a classe inteira do defeito com ela.
             crate::vec_pick::PathPick::InstanceMain(inst) => self
-                .vec_entities
+                .vec
+                .entities
                 .get(&inst)
                 .copied()
-                .zip(self.vec_entities.get(&guide).copied())
+                .zip(self.vec.entities.get(&guide).copied())
                 .is_some_and(|(src, dst)| {
                     crate::vec_component_general::swap_by_pick(
                         &mut gfx.sim,
@@ -2295,19 +2298,19 @@ impl App {
                 // ⚠️ Pela porta que ASSA (`art_dims` -> `bake_dims`) e com a MESMA expansão de
                 // objecto, senão o ladrilho tem um aspecto e a colocação tem outro.
                 let fonte = ph2d_vec_scene::PatternSource::Shape(guide);
-                let xf = ph2d_vec_entities::transform::build(&gfx.sim, &self.vec_entities);
+                let xf = ph2d_vec_entities::transform::build(&gfx.sim, &self.vec.entities);
                 let arte = crate::texture_pattern_pick::art_dims(
                     &gfx.asset_db,
                     &gfx.vec_scene,
                     &xf,
-                    &self.vec_live_drawn,
+                    &self.vec.live_drawn,
                     host,
                     &fonte,
                     &|id| {
                         ph2d_vec_entities::entities::object_selection_for(
                             &gfx.sim,
                             &gfx.vec_scene,
-                            &self.vec_entities,
+                            &self.vec.entities,
                             id,
                         )
                     },
@@ -2332,7 +2335,7 @@ impl App {
                 let membros = ph2d_vec_entities::entities::object_selection_for(
                     &gfx.sim,
                     &gfx.vec_scene,
-                    &self.vec_entities,
+                    &self.vec.entities,
                     guide,
                 );
                 crate::vec_stroke_paint::set_art(&mut gfx.vec_scene, host, guide, &|_| {
@@ -2341,11 +2344,11 @@ impl App {
             }
             // **O vínculo da row** (W8b.3): a fonte é o WIDGET, o clicado é a forma dirigida.
             crate::vec_pick::PathPick::WidgetBind(widget) => {
-                crate::vec_widget_edit::bind(&mut gfx.sim, &self.vec_entities, widget, guide)
+                crate::vec_widget_edit::bind(&mut gfx.sim, &self.vec.entities, widget, guide)
             }
         };
         if done {
-            self.vec_path_pick = None;
+            self.vec.path_pick = None;
             eprintln!("[ph2d-vec] pick: preso ao caminho-guia");
         }
     }
@@ -2463,9 +2466,10 @@ impl App {
             return;
         };
         let por_forma = self
-            .vec_pen
+            .vec
+            .pen
             .path_at(&gfx.vec_scene, world, hit_r)
-            .and_then(|pid| self.vec_entities.get(&pid).copied());
+            .and_then(|pid| self.vec.entities.get(&pid).copied());
         let alvo = por_forma.or_else(|| {
             // ⚠️ O mundo do documento é `f64` e o do render `f32` — a conversão vive aqui, na porta
             // entre os dois, e não numa das pontas.
@@ -2578,7 +2582,7 @@ impl App {
     }
 
     fn vec_envelope_corner_move(&mut self, x: f32, y: f32) -> bool {
-        let Some(active) = self.vec_envelope_drag else {
+        let Some(active) = self.vec.envelope_drag else {
             return false;
         };
         let Some(gfx) = self.gfx.as_mut() else {
@@ -2594,16 +2598,16 @@ impl App {
     }
 
     fn vec_pen_drag_move(&mut self, x: f32, y: f32) -> bool {
-        if !self.vector_tool_active() || !self.vec_pen.is_dragging() {
+        if !self.vector_tool_active() || !self.vec.pen.is_dragging() {
             return false;
         }
         let cfg = self.vec_snap_cfg(self.vec_px_to_world());
         // `take` evita emprestar `self` duas vezes: a closure fica com os alvos e as
-        // guias, `self.vec_pen`/`self.gfx` seguem livres. Devolvidos logo abaixo.
-        let targets = std::mem::take(&mut self.vec_snap_targets);
+        // guias, `self.vec.pen`/`self.gfx` seguem livres. Devolvidos logo abaixo.
+        let targets = std::mem::take(&mut self.vec.snap_targets);
         let mut guides = Vec::new();
         let Some(gfx) = self.gfx.as_mut() else {
-            self.vec_snap_targets = targets;
+            self.vec.snap_targets = targets;
             return false;
         };
         let win = gfx.surface.size();
@@ -2621,10 +2625,11 @@ impl App {
             r.apply(p)
         };
         let consumed =
-            self.vec_pen
+            self.vec
+                .pen
                 .on_drag(&mut gfx.vec_scene, [w[0] as f64, w[1] as f64], &mut snap);
-        self.vec_snap_targets = targets;
-        self.vec_snap_guides = guides;
+        self.vec.snap_targets = targets;
+        self.vec.snap_guides = guides;
         consumed
     }
 
@@ -2637,7 +2642,7 @@ impl App {
             return None;
         }
         let gfx = self.gfx.as_ref()?;
-        let sel = self.vec_pen.selected()?;
+        let sel = self.vec.pen.selected()?;
         let path = gfx.vec_scene.paths().iter().find(|p| p.id == sel)?;
         let win = gfx.surface.size();
         let w = gfx.camera.screen_to_world(pos, win);
@@ -2650,7 +2655,7 @@ impl App {
         let x = ph2d_vec_entities::transform::xform_of_transform(
             ph2d_vec_entities::transform::world_transform(
                 &gfx.sim,
-                ph2d_ecs::Entity::from_bits(*self.vec_entities.get(&sel)?),
+                ph2d_ecs::Entity::from_bits(*self.vec.entities.get(&sel)?),
             ),
         );
         let inv = x.inverse()?;
@@ -2662,10 +2667,10 @@ impl App {
     /// world position (a radial edge sets the radius). No-op unless a grad drag is
     /// live. Reuses the pure `drag_gradient_handle` geometry helper.
     fn vec_grad_drag_move(&mut self, x: f32, y: f32) -> bool {
-        let Some(handle) = self.vec_state.grad_drag else {
+        let Some(handle) = self.vec.grad_drag else {
             return false;
         };
-        let Some(sel) = self.vec_pen.selected() else {
+        let Some(sel) = self.vec.pen.selected() else {
             return false;
         };
         let Some(gfx) = self.gfx.as_mut() else {
@@ -2674,7 +2679,7 @@ impl App {
         let win = gfx.surface.size();
         let w = gfx.camera.screen_to_world((x, y), win);
         // O ponto do gradiente é guardado no espaço local do path (ADR-0111).
-        let w = match self.vec_entities.get(&sel).and_then(|&b| {
+        let w = match self.vec.entities.get(&sel).and_then(|&b| {
             ph2d_vec_entities::transform::xform_of_transform(
                 ph2d_vec_entities::transform::world_transform(
                     &gfx.sim,
@@ -2724,7 +2729,7 @@ impl App {
     /// No-op unless the Vector tool is active AND a shape gesture is in progress.
     /// A ferramenta de forma não faz hit-test, então o canto é encaixado direto.
     fn vec_shape_drag_move(&mut self, x: f32, y: f32) -> bool {
-        if !self.vector_tool_active() || !self.vec_state.shape.is_active() {
+        if !self.vector_tool_active() || !self.vec.shape.is_active() {
             return false;
         }
         let Some(w) = self
@@ -2739,7 +2744,7 @@ impl App {
         let Some(gfx) = self.gfx.as_mut() else {
             return false;
         };
-        self.vec_state
+        self.vec
             .shape
             .on_drag(&mut gfx.vec_scene, p, shape_constraint(self.modifiers))
     }
@@ -2755,7 +2760,7 @@ impl App {
     /// multiplicador e a projeção nela vira a posição. Mesma disciplina de early-return do lápis;
     /// no-op sem alça agarrada.
     fn vec_width_drag_move(&mut self, x: f32, y: f32) -> bool {
-        let Some(grab) = self.vec_width_grab else {
+        let Some(grab) = self.vec.width_grab else {
             return false;
         };
         let Some(w) = self
@@ -2772,12 +2777,12 @@ impl App {
         crate::width_handles::drag(
             &mut gfx.sim,
             scene,
-            &self.vec_entities,
+            &self.vec.entities,
             grab,
             [f64::from(w[0]), f64::from(w[1])],
         );
         // O dedo MOVEU: a parada deixa de ser "nascida num clique" e o release não a desfaz.
-        self.vec_width_grab = Some(ph2d_app_vec::width_grab::Grab {
+        self.vec.width_grab = Some(ph2d_app_vec::width_grab::Grab {
             created: false,
             ..grab
         });
@@ -2787,15 +2792,16 @@ impl App {
     }
 
     fn vec_pencil_drag_move(&mut self, x: f32, y: f32) -> bool {
-        if !self.vector_tool_active() || !self.vec_state.pencil.is_active() {
+        if !self.vector_tool_active() || !self.vec.pencil.is_active() {
             return false;
         }
         // **O ESTABILIZADOR corre aqui, em px de TELA, antes da conversão para mundo** — o tremor
         // é um fato da mão sobre a mesa, e é em px que ele tem tamanho. Com o slider no mínimo o
         // `lazy_mouse_step` devolve o ponteiro cru, ao bit.
         let (x, y) = self
-            .vec_pencil_hand
-            .filter((x, y), self.vec_draw_config.pencil_stabilizer);
+            .vec
+            .pencil_hand
+            .filter((x, y), self.vec.draw_config.pencil_stabilizer);
         let Some(w) = self
             .gfx
             .as_ref()
@@ -2807,7 +2813,7 @@ impl App {
         let Some(gfx) = self.gfx.as_mut() else {
             return false;
         };
-        self.vec_state.pencil.on_drag(
+        self.vec.pencil.on_drag(
             &mut gfx.vec_scene,
             [f64::from(w[0]), f64::from(w[1])],
             dyn_in,
@@ -3113,13 +3119,13 @@ impl App {
         }
         // ADR-0108 Fase 1: o gesto de REGIÃO do modo Node — o canto vivo segue, e o LAÇO grava
         // mais um ponto se andou o bastante. Early-return para não panar / desenhar. No-op parado.
-        if let Some(m) = self.vec_marquee.as_mut() {
+        if let Some(m) = self.vec.marquee.as_mut() {
             m.advance(self.last_pointer);
             return;
         }
         // Shape Builder: o realce segue o cursor mesmo SEM botão apertado (é o que
         // deixa o artista ver as regiões antes de escolher uma), e com o botão ele PINTA.
-        if self.vec_draw_config.mode == ph2d_tool_vector::DrawMode::Build
+        if self.vec.draw_config.mode == ph2d_tool_vector::DrawMode::Build
             && let Some(w) = self.vec_world_at(self.last_pointer)
             && self.build_move(w)
         {
@@ -3935,14 +3941,14 @@ impl App {
         // "Set Center" armado (ADR-0112): a pressão põe a ORIGEM da forma selecionada
         // sob o cursor e desarma. Vale em QUALQUER modo — inclusive Select, onde o
         // pivô do gizmo é o que se está ajustando.
-        if self.vec_state.pivot_edit
+        if self.vec.pivot_edit
             && self.vector_tool_active()
             && mapped_button == ph2d_host::PointerButton::Primary
             && kind == PointerKind::Down
             && on_canvas
             && !menu_open_before
         {
-            self.vec_state.pivot_edit = false;
+            self.vec.pivot_edit = false;
             if self.vec_set_origin_to_cursor(evt.x, evt.y) {
                 return;
             }
@@ -3958,7 +3964,7 @@ impl App {
         // do 1º smoke). O que vale aqui é: fora de painel, e o único widget sob o cursor
         // pode ser o gizmo — que é exatamente o que está por cima do texto.
         if self.vector_tool_active()
-            && self.vec_draw_config.mode == ph2d_tool_vector::DrawMode::Select
+            && self.vec.draw_config.mode == ph2d_tool_vector::DrawMode::Select
             && mapped_button == ph2d_host::PointerButton::Primary
             && kind == PointerKind::Down
             && !menu_open_before
@@ -3976,7 +3982,7 @@ impl App {
         // um conector SELECIONADO; em qualquer outro caso o clique segue o caminho de sempre.
         // É esse contrato que mantém o resto do editor intacto.
         if self.vector_tool_active()
-            && self.vec_draw_config.mode == ph2d_tool_vector::DrawMode::Select
+            && self.vec.draw_config.mode == ph2d_tool_vector::DrawMode::Select
             && mapped_button == ph2d_host::PointerButton::Primary
             && kind == PointerKind::Down
             && !menu_open_before
@@ -3990,11 +3996,11 @@ impl App {
         // clique no canvas PRENDE (ou desiste no vazio) — nunca seleciona nem arrasta ficha. Por
         // isso precede as alças e o picking/gizmo: um pick em curso é modal, e o clique é dele.
         if self.vector_tool_active()
-            && self.vec_draw_config.mode == ph2d_tool_vector::DrawMode::Select
+            && self.vec.draw_config.mode == ph2d_tool_vector::DrawMode::Select
             && mapped_button == ph2d_host::PointerButton::Primary
             && kind == PointerKind::Down
             && !menu_open_before
-            && self.vec_path_pick.is_some()
+            && self.vec.path_pick.is_some()
             && self.over_canvas_or_gizmo(evt.x, evt.y)
             && let Some(w) = self.vec_world_at((evt.x, evt.y))
         {
@@ -4044,7 +4050,7 @@ impl App {
             && kind == PointerKind::Down
             && !menu_open_before
             && self.vector_tool_active()
-            && self.vec_draw_config.mode != ph2d_tool_vector::DrawMode::Bone
+            && self.vec.draw_config.mode != ph2d_tool_vector::DrawMode::Bone
             && self.over_canvas_or_gizmo(evt.x, evt.y)
             && let Some(h) = self.bone_handle_at((evt.x, evt.y))
         {
@@ -4135,7 +4141,7 @@ impl App {
         // com ponto de objeto nenhum (Enio, smoke). Só devolve `true` sobre a alça de um texto
         // vinculado SELECIONADO; qualquer outro caso segue o caminho de sempre.
         if self.vector_tool_active()
-            && self.vec_draw_config.mode == ph2d_tool_vector::DrawMode::Select
+            && self.vec.draw_config.mode == ph2d_tool_vector::DrawMode::Select
             && mapped_button == ph2d_host::PointerButton::Primary
             && kind == PointerKind::Down
             && !menu_open_before
@@ -4149,7 +4155,7 @@ impl App {
         // gizmo é inócuo sobre um motivo vinculado, então a ficha precisa deste arm antes do
         // picking/gizmo. Irmão do `vec_textpath_handle_down` logo acima.
         if self.vector_tool_active()
-            && self.vec_draw_config.mode == ph2d_tool_vector::DrawMode::Select
+            && self.vec.draw_config.mode == ph2d_tool_vector::DrawMode::Select
             && mapped_button == ph2d_host::PointerButton::Primary
             && kind == PointerKind::Down
             && !menu_open_before
@@ -4184,7 +4190,7 @@ impl App {
             return;
         }
         // O Up que FECHA o arrasto de alça (ele nasceu no Select, e é lá que morre).
-        if self.vec_conn_handle.is_some()
+        if self.vec.conn_handle.is_some()
             && mapped_button == ph2d_host::PointerButton::Primary
             && kind == PointerKind::Up
         {
@@ -4196,11 +4202,11 @@ impl App {
             return;
         }
         // O Up que fecha o arrasto da alça do texto — nasceu no Select, morre no Select.
-        if self.vec_state.textpath_handle_drag
+        if self.vec.textpath_handle_drag
             && mapped_button == ph2d_host::PointerButton::Primary
             && kind == PointerKind::Up
         {
-            self.vec_state.textpath_handle_drag = false;
+            self.vec.textpath_handle_drag = false;
             return;
         }
         // ⭐⭐⭐ **O Up que fecha o arrasto de uma ALÇA DE OSSO.**
@@ -4221,11 +4227,11 @@ impl App {
             return;
         }
         // O Up que fecha o arrasto de uma ficha do PATTERN (W4) — mesma vida da do texto.
-        if self.vec_patternpath_handle.is_some()
+        if self.vec.patternpath_handle.is_some()
             && mapped_button == ph2d_host::PointerButton::Primary
             && kind == PointerKind::Up
         {
-            self.vec_patternpath_handle = None;
+            self.vec.patternpath_handle = None;
             return;
         }
         // O Up que fecha o arrasto de uma ÂNCORA do motion path — e que FECHA o passo de
@@ -4243,7 +4249,7 @@ impl App {
         // cai no caminho de sempre (picking de sprite + gizmo), e é assim que uma
         // forma vetorial se transforma. Só Node e os modos de desenho entram aqui.
         if self.vector_tool_active()
-            && self.vec_draw_config.mode != ph2d_tool_vector::DrawMode::Select
+            && self.vec.draw_config.mode != ph2d_tool_vector::DrawMode::Select
             && !menu_open_before
         {
             // A canvas press while a text field is focused must blur it (commit the
@@ -4285,13 +4291,13 @@ impl App {
                     // somar pontos a dedo era impossível (só o retângulo). Mesmo raio do grab do
                     // Node (`10 px`), então o que se agarra é o que se alterna. Sem ponto sob o
                     // cursor, cai no comportamento de sempre (objeto / marquee).
-                    if self.vec_draw_config.mode == ph2d_tool_vector::DrawMode::Node
+                    if self.vec.draw_config.mode == ph2d_tool_vector::DrawMode::Node
                         && let Some(wp) = self.vec_world_at(self.last_pointer)
                     {
                         let hit_r = 10.0 * self.vec_px_to_world();
                         // `gfx.vec_scene` e `vec_pen` são campos DISJUNTOS de `self`.
                         if let Some(gfx) = self.gfx.as_ref()
-                            && self.vec_pen.toggle_vert_at(&gfx.vec_scene, wp, hit_r)
+                            && self.vec.pen.toggle_vert_at(&gfx.vec_scene, wp, hit_r)
                         {
                             return;
                         }
@@ -4303,20 +4309,21 @@ impl App {
                         let w1 = gfx.camera.screen_to_world((1.0, 0.0), win);
                         let px =
                             (((w1[0] - w0[0]).powi(2) + (w1[1] - w0[1]).powi(2)).sqrt()) as f64;
-                        self.vec_pen
+                        self.vec
+                            .pen
                             .path_at(&gfx.vec_scene, [w[0] as f64, w[1] as f64], 10.0 * px)
                     });
                     if let Some(id) = hit {
                         // Um grupo entra e sai da seleção INTEIRO (a árvore é a
                         // Hierarquia — o ancestral de topo diz quem vem junto).
                         let members = self.vec_object_selection_for(id);
-                        self.vec_pen.toggle_object_members(&members);
+                        self.vec.pen.toggle_object_members(&members);
                         // Object selection changed → drop any gradient-handle selection.
-                        self.vec_state.grad_selected = None;
-                        self.vec_state.grad_drag = None;
+                        self.vec.grad_selected = None;
+                        self.vec.grad_drag = None;
                         return;
                     }
-                    self.vec_marquee = Some(crate::vec_marquee::VecMarquee::open(
+                    self.vec.marquee = Some(crate::vec_marquee::VecMarquee::open(
                         self.marquee_shape_for_press(),
                         self.last_pointer,
                     ));
@@ -4341,21 +4348,23 @@ impl App {
                     // (`node_edit_hit_at` + `path_at`), e **antes** do `on_press_node`: ele
                     // desseleciona quando não acerta nada, e um marquee aditivo aberto depois disso
                     // somaria a uma seleção que acabou de ser apagada.
-                    if self.vec_draw_config.mode == ph2d_tool_vector::DrawMode::Node
+                    if self.vec.draw_config.mode == ph2d_tool_vector::DrawMode::Node
                         && let Some(w) = self.vec_world_at(self.last_pointer)
                         && let Some(gfx) = self.gfx.as_ref()
                     {
                         let px = self.vec_px_to_world();
                         let empty = self
-                            .vec_pen
+                            .vec
+                            .pen
                             .node_edit_hit_at(&gfx.vec_scene, w, px)
                             .is_none()
                             && self
-                                .vec_pen
+                                .vec
+                                .pen
                                 .path_at(&gfx.vec_scene, w, HANDLE_HIT_PX * px)
                                 .is_none();
                         if empty {
-                            self.vec_marquee = Some(crate::vec_marquee::VecMarquee::open(
+                            self.vec.marquee = Some(crate::vec_marquee::VecMarquee::open(
                                 self.marquee_shape_for_press(),
                                 self.last_pointer,
                             ));
@@ -4364,14 +4373,14 @@ impl App {
                     }
                     // Gradient group 3b: a Down on a gradient handle starts dragging it.
                     if let Some(i) = self.vec_grad_hit(self.last_pointer) {
-                        self.vec_state.grad_selected = Some(i);
-                        self.vec_state.grad_drag = Some(i);
+                        self.vec.grad_selected = Some(i);
+                        self.vec.grad_drag = Some(i);
                         return;
                     }
                     // Modo Text: o clique põe/reposiciona o cursor de texto no ponto
                     // clicado (finalizando a edição anterior). A digitação vem pelo
                     // teclado; nada de shape/pen aqui.
-                    if self.vec_draw_config.mode == ph2d_tool_vector::DrawMode::Text {
+                    if self.vec.draw_config.mode == ph2d_tool_vector::DrawMode::Text {
                         let w = self.gfx.as_ref().map(|gfx| {
                             gfx.camera
                                 .screen_to_world(self.last_pointer, gfx.surface.size())
@@ -4384,7 +4393,7 @@ impl App {
                     // Modo Build (Shape Builder): a pressão começa a PINTAR faces do
                     // arranjo. Captura o canvas inteiro — não há pen, shape nem gizmo aqui;
                     // o que se manipula não é a forma, é a região.
-                    if self.vec_draw_config.mode == ph2d_tool_vector::DrawMode::Build {
+                    if self.vec.draw_config.mode == ph2d_tool_vector::DrawMode::Build {
                         if let Some(w) = self.vec_world_at(self.last_pointer) {
                             let alt = self.modifiers.alt_key();
                             let shift = self.modifiers.shift_key();
@@ -4395,31 +4404,28 @@ impl App {
                     // **Modo Lápis**: a pressão abre um traço de mão livre. O gesto é INTEIRO
                     // dele (press/move/release), como o Build e o Connect — não há hit-test a
                     // fazer: um lápis desenha onde você encostou.
-                    if self.vec_draw_config.mode == ph2d_tool_vector::DrawMode::Pencil {
+                    if self.vec.draw_config.mode == ph2d_tool_vector::DrawMode::Pencil {
                         let px_to_world = self.vec_px_to_world();
                         let dyn_in = self.pointer_dynamics();
                         if let Some(w) = self.vec_world_at(self.last_pointer)
                             && let Some(gfx) = self.gfx.as_mut()
                         {
-                            self.vec_state.pencil.on_press(
-                                &mut gfx.vec_scene,
-                                w,
-                                px_to_world,
-                                dyn_in,
-                            );
+                            self.vec
+                                .pencil
+                                .on_press(&mut gfx.vec_scene, w, px_to_world, dyn_in);
                         }
                         // O estabilizador começa ONDE A MÃO ENCOSTOU. Sem esta semente o 1º move
                         // mistura a partir de onde o gesto ANTERIOR acabou, e o traço nasce com um
                         // salto vindo do outro lado da tela. Fora do `if let` de propósito: ele
                         // depende só do ponteiro, e semear a mão nunca pode ficar refém de a cena
                         // estar pronta — o move consome esta posição sem perguntar mais nada.
-                        self.vec_pencil_hand.begin(self.last_pointer);
+                        self.vec.pencil_hand.begin(self.last_pointer);
                         return;
                     }
                     // Modo Connect: a pressão abre o gesto do CONECTOR (sobre uma forma, a
                     // ponta nasce presa a ela; no vazio, solta ali). Nada de pen/shape —
                     // a linha de um conector não é autorada, é derivada.
-                    if self.vec_draw_config.mode == ph2d_tool_vector::DrawMode::Connect {
+                    if self.vec.draw_config.mode == ph2d_tool_vector::DrawMode::Connect {
                         if let Some(w) = self.vec_world_at(self.last_pointer) {
                             self.connector_down(w);
                         }
@@ -4429,7 +4435,7 @@ impl App {
                     // cursor na ordem de clique (ADR-0128 C2b). Não há pen/shape/gizmo — o
                     // que se escolhe é a LISTA de formas, e o botão Blend a liga. Clicar de
                     // novo numa já escolhida a remove (corrigir sem recomeçar).
-                    if self.vec_draw_config.mode == ph2d_tool_vector::DrawMode::PickBlend {
+                    if self.vec.draw_config.mode == ph2d_tool_vector::DrawMode::PickBlend {
                         if let Some(w) = self.vec_world_at(self.last_pointer) {
                             self.blend_pick_at(w);
                         }
@@ -4443,7 +4449,7 @@ impl App {
                     // **Modo Width**: a pressão agarra a alça de largura sob o cursor, ou
                     // ACRESCENTA uma parada se o cursor está sobre a curva (plano 25 §5). O gesto
                     // é inteiro dele — o `Grab` armado dita o move, e o release comita um passo.
-                    if self.vec_draw_config.mode == ph2d_tool_vector::DrawMode::Width {
+                    if self.vec.draw_config.mode == ph2d_tool_vector::DrawMode::Width {
                         let px_to_world = self.vec_px_to_world();
                         if let Some(world) = self.vec_world_at(self.last_pointer) {
                             let hit_r = HANDLE_HIT_PX * px_to_world;
@@ -4451,18 +4457,18 @@ impl App {
                             // pré-selecionar, como o das ferramentas de quina.
                             if let Some(gfx) = self.gfx.as_mut()
                                 && let Some(pid) =
-                                    self.vec_pen.path_at(&gfx.vec_scene, world, hit_r)
+                                    self.vec.pen.path_at(&gfx.vec_scene, world, hit_r)
                             {
-                                self.vec_pen.select(Some(pid));
+                                self.vec.pen.select(Some(pid));
                             }
-                            if let Some(pid) = self.vec_pen.selected()
+                            if let Some(pid) = self.vec.pen.selected()
                                 && let Some(gfx) = self.gfx.as_mut()
                             {
                                 let scene = &gfx.vec_scene;
-                                self.vec_width_grab = crate::width_handles::press(
+                                self.vec.width_grab = crate::width_handles::press(
                                     &mut gfx.sim,
                                     scene,
-                                    &self.vec_entities,
+                                    &self.vec.entities,
                                     pid,
                                     world,
                                     hit_r,
@@ -4489,23 +4495,23 @@ impl App {
                     // ⚠️ **A forma VIVA congela a receita AQUI**, como no Fillet/Chamfer: um corte
                     // não sobrevive ao `recook_into`, então sem isto o pedaço voltaria no quadro
                     // seguinte e a ferramenta leria como *"não funciona"*.
-                    if self.vec_draw_config.mode == ph2d_tool_vector::DrawMode::Trim {
-                        if let Some(hit) = self.vec_trim_hit
+                    if self.vec.draw_config.mode == ph2d_tool_vector::DrawMode::Trim {
+                        if let Some(hit) = self.vec.trim_hit
                             && let Some(gfx) = self.gfx.as_mut()
                         {
                             crate::vec_convert::freeze_shape_recipe(
                                 &mut gfx.sim,
-                                &self.vec_entities,
+                                &self.vec.entities,
                                 hit.path,
                             );
                             if crate::vec_trim::apply(&mut gfx.vec_scene, &hit) {
                                 // A selecção pode ter deixado de existir (a peça toda saiu).
                                 if gfx.vec_scene.path(hit.path).is_none() {
-                                    self.vec_pen.select(None);
+                                    self.vec.pen.select(None);
                                 }
                             }
-                            self.vec_trim_hit = None;
-                            self.vec_state.trim_piece.clear();
+                            self.vec.trim_hit = None;
+                            self.vec.trim_piece.clear();
                         }
                         // ⛔ Consome o press SEMPRE que a ferramenta está na mão: um clique no
                         // vazio não pode cair na cadeia de baixo e começar a desenhar uma forma.
@@ -4517,11 +4523,11 @@ impl App {
                     //
                     // ⛔ Consome o press SEMPRE, pela razão do Trim: um clique no vazio não pode
                     // cair na cadeia de baixo e começar a desenhar uma forma.
-                    if self.vec_draw_config.mode == ph2d_tool_vector::DrawMode::Bucket {
+                    if self.vec.draw_config.mode == ph2d_tool_vector::DrawMode::Bucket {
                         // ⚠️ A guarda de fora é a de sempre: o `apply_bucket` pergunta a tinta ANTES das guardas
                         // dele (e avisa se ela for transparente), então chamá-lo sem face nem `gfx` imprimiria um
                         // aviso que este clique nunca imprimiu.
-                        if self.vec_bucket_face.is_some() && self.gfx.is_some() {
+                        if self.vec.bucket_face.is_some() && self.gfx.is_some() {
                             self.apply_bucket();
                         }
                         return;
@@ -4542,17 +4548,17 @@ impl App {
                     // ⛔ Consome o press SEMPRE que a ferramenta está na mão, pela razão do Trim e
                     // do Balde: um clique no vazio não pode cair na cadeia de baixo e começar a
                     // desenhar uma forma.
-                    if self.vec_draw_config.mode == ph2d_tool_vector::DrawMode::Bone {
+                    if self.vec.draw_config.mode == ph2d_tool_vector::DrawMode::Bone {
                         if let Some(world) = self.vec_world_at(self.last_pointer) {
                             let px = self.vec_px_to_world();
                             let sel = self.selected_bone_bits();
                             // ⭐ O VERBO do arrasto, que o grupo alternável da seção SKELETON diz.
-                            let acao = self.vec_draw_config.bone_action;
+                            let acao = self.vec.draw_config.bone_action;
                             let decisao = self.gfx.as_ref().map(|g| {
                                 crate::bone_gesture::press(
                                     &g.sim,
                                     &g.vec_scene,
-                                    &self.vec_pen,
+                                    &self.vec.pen,
                                     world,
                                     px,
                                     sel,
@@ -4575,7 +4581,7 @@ impl App {
                                 // ⭐ Em *Transformar*, um press fora de osso aponta a forma e mais
                                 // nada — o *Bind* precisa do sujeito, e nenhum osso nasce aqui.
                                 Some(crate::bone_gesture::BonePress::Pick { path: Some(pid) }) => {
-                                    self.vec_pen.select(Some(pid));
+                                    self.vec.pen.select(Some(pid));
                                 }
                                 // ⛔ Sem forma sob o cursor, um press em *Transformar* não faz
                                 // NADA — nem cria, nem DESMARCA: desmarcar tiraria o sujeito do
@@ -4589,7 +4595,7 @@ impl App {
                                     // não faz osso nenhum, então apontar uma forma é só apontar —
                                     // e é assim que o *Bind* passa a ter sujeito.
                                     if let Some(pid) = pick {
-                                        self.vec_pen.select(Some(pid));
+                                        self.vec.pen.select(Some(pid));
                                     }
                                 }
                                 None => {}
@@ -4597,8 +4603,8 @@ impl App {
                         }
                         return;
                     }
-                    if self.vec_draw_config.mode.is_corner_tool() {
-                        let chamfer = self.vec_draw_config.mode.corner_is_chamfer();
+                    if self.vec.draw_config.mode.is_corner_tool() {
+                        let chamfer = self.vec.draw_config.mode.corner_is_chamfer();
                         let px_to_world = self.vec_px_to_world();
                         if let Some(world) = self.vec_world_at(self.last_pointer)
                             && let Some(gfx) = self.gfx.as_mut()
@@ -4607,8 +4613,8 @@ impl App {
                             // (re)seleciona o path sob o cursor num acerto — o gesto vale sem
                             // pré-selecionar; num erro mantém a seleção (uma quina do path já
                             // selecionado ainda pega).
-                            if let Some(pid) = self.vec_pen.path_at(&gfx.vec_scene, world, hit_r) {
-                                self.vec_pen.select(Some(pid));
+                            if let Some(pid) = self.vec.pen.path_at(&gfx.vec_scene, world, hit_r) {
+                                self.vec.pen.select(Some(pid));
                             }
                             // **A forma VIVA congela a receita AQUI** (Enio: *"fillet e chanfer
                             // nao funciona diretamente nos vertex das shapes"*). Um raio
@@ -4617,14 +4623,15 @@ impl App {
                             // ela faz, dentro do gesto, o "Convert to Curves" que o artista faria
                             // à mão. Só com a quina de fato ACERTADA: congelar num clique que
                             // erra expandiria a forma sem ninguém pedir.
-                            if let Some(pid) = self.vec_pen.selected()
+                            if let Some(pid) = self.vec.pen.selected()
                                 && self
-                                    .vec_pen
+                                    .vec
+                                    .pen
                                     .corner_hit_at(&gfx.vec_scene, world, px_to_world)
                             {
                                 crate::vec_convert::freeze_shape_recipe(
                                     &mut gfx.sim,
-                                    &self.vec_entities,
+                                    &self.vec.entities,
                                     pid,
                                 );
                             }
@@ -4635,13 +4642,13 @@ impl App {
                             // somem depois, foi o gesto. O motor e o recook da forma viva já
                             // estão provados limpos por gate, então o eraser está fora deles.
                             if std::env::var_os("PH2D_CORNER_LOG").is_some()
-                                && let Some(pid) = self.vec_pen.selected()
+                                && let Some(pid) = self.vec.pen.selected()
                             {
                                 // `shape` = a receita ainda esta' pendurada? Se ela reaparece
                                 // entre gestos, o `recook_into` reescreve `verts` e zera TODOS
                                 // os raios de uma vez -- o unico mecanismo que casa com "so' um
                                 // raio vivo por vez, com a contagem de vertices intacta".
-                                let shape = self.vec_entities.get(&pid).is_some_and(|&b| {
+                                let shape = self.vec.entities.get(&pid).is_some_and(|&b| {
                                     gfx.sim
                                         .world()
                                         .get::<ph2d_ecs::VecShape>(ph2d_ecs::Entity::from_bits(b))
@@ -4659,15 +4666,15 @@ impl App {
                             // Os hosts de RELAÇÃO (conector, morph, blend, envelope) seguem
                             // recusados: ali a geometria é uma relação, e soltá-la sem o artista
                             // pedir destruiria o que ele construiu. A forma viva já saiu acima.
-                            let derived = self.vec_pen.selected().is_some_and(|pid| {
+                            let derived = self.vec.pen.selected().is_some_and(|pid| {
                                 crate::corner_handles::has_derived_verts(
                                     &gfx.sim,
-                                    &self.vec_entities,
+                                    &self.vec.entities,
                                     pid,
                                 )
                             });
                             if !derived {
-                                self.vec_pen.on_press_corner(
+                                self.vec.pen.on_press_corner(
                                     &mut gfx.vec_scene,
                                     world,
                                     px_to_world,
@@ -4677,14 +4684,14 @@ impl App {
                         }
                         return;
                     }
-                    let shape_kind = shape_kind_for_mode(&self.vec_draw_config);
+                    let shape_kind = shape_kind_for_mode(&self.vec.draw_config);
                     // Alt held → the Pen breaks the tangent when grabbing a handle.
                     let alt = self.modifiers.alt_key();
                     // Snap targets for THIS gesture: the whole scene as it stands.
                     // Rebuilt right after the press, once we know what got grabbed.
                     self.vec_rebuild_snap_targets(&[], &[]);
                     let cfg = self.vec_snap_cfg(self.vec_px_to_world());
-                    let targets = std::mem::take(&mut self.vec_snap_targets);
+                    let targets = std::mem::take(&mut self.vec.snap_targets);
                     if let Some(gfx) = self.gfx.as_mut() {
                         let win = gfx.surface.size();
                         let w = gfx.camera.screen_to_world(self.last_pointer, win);
@@ -4710,7 +4717,7 @@ impl App {
                             ph2d_vec_edit::snap::snap(&[p], &targets, cfg, Some(&mut grid)).apply(p)
                         };
                         let node_mode =
-                            self.vec_draw_config.mode == ph2d_tool_vector::DrawMode::Node;
+                            self.vec.draw_config.mode == ph2d_tool_vector::DrawMode::Node;
                         match shape_kind {
                             // Node edita nós e NUNCA cria (ADR-0112). Não encaixa
                             // tampouco: o snap serve a quem POSICIONA um ponto novo.
@@ -4729,13 +4736,13 @@ impl App {
                                 if crate::envelope_gesture::press(
                                     &mut gfx.sim,
                                     &gfx.vec_scene,
-                                    &self.vec_live_drawn,
-                                    &self.vec_view_derived,
+                                    &self.vec.live_drawn,
+                                    &self.vec.view_derived,
                                     env_container,
                                     [w[0] as f64, w[1] as f64],
                                     px_to_world,
                                     self.modifiers.alt_key(),
-                                    &mut self.vec_envelope_drag,
+                                    &mut self.vec.envelope_drag,
                                 ) {
                                     // canto agarrado — o pen fica de fora
                                 } else {
@@ -4753,21 +4760,21 @@ impl App {
                                     // pergunta é feita ANTES, à porta que faz a MESMA busca
                                     // (`node_edit_hit_at`) — congelar num clique que só seleciona
                                     // expandiria a forma sem ninguém pedir.
-                                    if let Some(pid) = self.vec_pen.node_edit_hit_at(
+                                    if let Some(pid) = self.vec.pen.node_edit_hit_at(
                                         &gfx.vec_scene,
                                         [w[0] as f64, w[1] as f64],
                                         px_to_world,
                                     ) {
                                         crate::vec_convert::freeze_shape_recipe(
                                             &mut gfx.sim,
-                                            &self.vec_entities,
+                                            &self.vec.entities,
                                             pid,
                                         );
                                     }
                                     // Node edita âncoras/handles. Arredondar/chanfrar quina não é
                                     // mais deste modo — virou o par Fillet/Chamfer (o hit-test aqui
                                     // não agarra alça de raio nenhuma).
-                                    self.vec_pen.on_press_node(
+                                    self.vec.pen.on_press_node(
                                         &mut gfx.vec_scene,
                                         [w[0] as f64, w[1] as f64],
                                         px_to_world,
@@ -4776,7 +4783,7 @@ impl App {
                                 }
                             }
                             None => {
-                                let click = self.vec_pen.on_press(
+                                let click = self.vec.pen.on_press(
                                     &mut gfx.vec_scene,
                                     [w[0] as f64, w[1] as f64],
                                     px_to_world,
@@ -4787,11 +4794,11 @@ impl App {
                                 // começado aqui em modo Cut é a LÂMINA, e não desenho: fica
                                 // pendente até o `sync` lhe dar entidade, e aí recebe o
                                 // `VecCutPath` (o padrão exato do conector e do blend).
-                                if self.vec_draw_config.mode == ph2d_tool_vector::DrawMode::Cut
+                                if self.vec.draw_config.mode == ph2d_tool_vector::DrawMode::Cut
                                     && click == ph2d_vec_edit::PenClick::Started
-                                    && let Some(id) = self.vec_pen.selected()
+                                    && let Some(id) = self.vec.pen.selected()
                                 {
-                                    self.vec_state.cut_pending = Some(id);
+                                    self.vec.cut_pending = Some(id);
                                 }
                             }
                             Some(kind) => {
@@ -4803,10 +4810,10 @@ impl App {
                                 // raios), a geometria só fala mundo.
                                 let values = ph2d_tool_vector::shapes::to_world(
                                     kind,
-                                    &self.vec_draw_config.values,
+                                    &self.vec.draw_config.values,
                                     px_to_world,
                                 );
-                                self.vec_state.shape.on_press(
+                                self.vec.shape.on_press(
                                     &mut gfx.vec_scene,
                                     kind,
                                     values,
@@ -4816,20 +4823,17 @@ impl App {
                                 );
                             }
                         }
-                        self.vec_snap_targets = targets;
+                        self.vec.snap_targets = targets;
                         // Tocar um filho seleciona o GRUPO (a árvore é a Hierarquia).
                         // Depois do press, porque só agora sabemos o que foi agarrado.
-                        if let Some(primary) = self.vec_pen.selected() {
+                        if let Some(primary) = self.vec.pen.selected() {
                             let members = self.vec_object_selection_for(primary);
-                            self.vec_pen.set_object_selection(&members);
+                            self.vec.pen.set_object_selection(&members);
                         }
                         // Agora sabemos o que o press agarrou: o que se move sai dos
                         // alvos (uma âncora não pode encaixar em si mesma; a forma em
                         // desenho não é referência de nada).
-                        match (
-                            self.vec_pen.dragging_anchors(),
-                            self.vec_state.shape.selected(),
-                        ) {
+                        match (self.vec.pen.dragging_anchors(), self.vec.shape.selected()) {
                             // ⚠️ Os pares vêm PRONTOS do pen: ele passou a guardar o dono de cada
                             // nó, então a re-montagem que morava aqui (`map(|&v| (pid, v))`) some
                             // — e com ela o pressuposto de que todas as âncoras em movimento
@@ -4840,7 +4844,7 @@ impl App {
                         }
                         return;
                     }
-                    self.vec_snap_targets = targets;
+                    self.vec.snap_targets = targets;
                 }
                 (ph2d_host::PointerButton::Primary, PointerKind::Up) => {
                     // Fim de gesto: as guias de snap não sobrevivem ao Up.
@@ -4926,14 +4930,14 @@ impl App {
                     // Shape Builder: o Up materializa as faces pintadas. Consome SÓ com o
                     // arrasto VIVO, pela mesma razão que o conector documenta abaixo —
                     // um Up sobre um botão do painel não pode ser engolido pelo modo.
-                    if self.vec_build.as_ref().is_some_and(|s| s.dragging) {
+                    if self.vec.build.as_ref().is_some_and(|s| s.dragging) {
                         self.build_up();
                         return;
                     }
                     // Conector: o Up prende a 2ª ponta (na forma sob o cursor, ou solta ali).
                     // Consome SÓ com gesto vivo — senão soltar sobre um botão do painel no
                     // modo Connect engoliria o clique (a armadilha do `shape_up_consumes`).
-                    if self.vec_connect.is_some() {
+                    if self.vec.connect.is_some() {
                         let w = self.vec_world_at(self.last_pointer);
                         if let Some(w) = w {
                             self.connector_up(w);
@@ -4943,7 +4947,7 @@ impl App {
                         return;
                     }
                     // Gradient group 3b: end a gradient-handle drag.
-                    if self.vec_state.grad_drag.take().is_some() {
+                    if self.vec.grad_drag.take().is_some() {
                         return;
                     }
                     // ADR-0129 Fatia 1: fim de um arrasto de canto da gaiola. O
@@ -4952,13 +4956,13 @@ impl App {
                     // (`post_frame_undo`), então não há `commit_if_changed` a chamar aqui
                     // (esse é o histórico do PEN; o envelope viaja no `WorldSnapshot`).
                     // Consome só quando havia um canto vivo.
-                    if self.vec_envelope_drag.take().is_some() {
+                    if self.vec.envelope_drag.take().is_some() {
                         return;
                     }
                     // (A alça do texto em caminho é do modo Select — o Up dela mora lá em cima,
                     // ao lado do Up do conector; não aqui, que é o caminho de Node.)
                     // Fim do gesto de REGIÃO → selecciona as âncoras dentro dela.
-                    if let Some(m) = self.vec_marquee.take() {
+                    if let Some(m) = self.vec.marquee.take() {
                         // **Shift SOMA** (o retângulo de todo app); sem ele, substitui. E uma
                         // região de tamanho zero é um CLIQUE no vazio: ela desseleciona, em vez
                         // de fazer um select que não apanha nada e deixa a seleção intacta.
@@ -4973,7 +4977,7 @@ impl App {
                                     [w[0] as f64, w[1] as f64]
                                 };
                                 match m.shape {
-                                    MarqueeShape::Box => self.vec_pen.box_select_with(
+                                    MarqueeShape::Box => self.vec.pen.box_select_with(
                                         &gfx.vec_scene,
                                         to_world(start),
                                         to_world(cur),
@@ -4986,7 +4990,7 @@ impl App {
                                     MarqueeShape::Lasso => {
                                         let poly: Vec<[f64; 2]> =
                                             m.closed_path().into_iter().map(to_world).collect();
-                                        self.vec_pen.lasso_select_with(
+                                        self.vec.pen.lasso_select_with(
                                             &gfx.vec_scene,
                                             &poly,
                                             additive,
@@ -4994,7 +4998,7 @@ impl App {
                                     }
                                 }
                             } else if !additive {
-                                self.vec_pen.select(None);
+                                self.vec.pen.select(None);
                             }
                         }
                         return;
@@ -5006,14 +5010,14 @@ impl App {
                     // pagou logo abaixo: `shape_kind_for_mode(..).is_none()` é verdadeiro no modo
                     // Width, então um ramo posto no `else` dele seria código morto no único modo
                     // capaz de o alcançar — e a alça ficaria agarrada ao dedo depois de solta.
-                    if let Some(grab) = self.vec_width_grab.take() {
+                    if let Some(grab) = self.vec.width_grab.take() {
                         if let Some(gfx) = self.gfx.as_mut() {
                             // Um clique que não moveu nada não pediu nada: a parada que o press
                             // criou é desfeita, e o desenho fica como estava (ver `Grab::created`
                             // — os 13,1% da re-parametrização nunca chegam à tela).
                             crate::width_handles::discard_if_untouched(
                                 &mut gfx.sim,
-                                &self.vec_entities,
+                                &self.vec.entities,
                                 grab,
                             );
                         }
@@ -5036,31 +5040,31 @@ impl App {
                     // do painel enquanto o lápis está armado mas ocioso TEM de cair no chrome,
                     // senão todo clique de painel morre em silêncio (a lição que o
                     // `shape_up_consumes` documenta ao lado).
-                    if self.vec_state.pencil.is_active() {
+                    if self.vec.pencil.is_active() {
                         let committed = if let Some(gfx) = self.gfx.as_mut() {
-                            self.vec_state.pencil.on_release(&mut gfx.vec_scene)
+                            self.vec.pencil.on_release(&mut gfx.vec_scene)
                         } else {
                             false
                         };
                         if committed {
-                            let sel = self.vec_state.pencil.selected();
-                            self.vec_pen.select(sel);
+                            let sel = self.vec.pencil.selected();
+                            self.vec.pen.select(sel);
                         }
                         return;
                     }
-                    if shape_kind_for_mode(&self.vec_draw_config).is_none() {
+                    if shape_kind_for_mode(&self.vec.draw_config).is_none() {
                         // Pen: the release ends a handle drag / grab.
-                        let consumed = self.vec_pen.on_release();
+                        let consumed = self.vec.pen.on_release();
                         // DIAGNÓSTICO (`PH2D_CORNER_LOG=1`): os raios LOGO APÓS o gesto. Com o
                         // log do press, parte o report em dois — se aqui os raios anteriores já
                         // sumiram, foi o GESTO; se estão inteiros e somem até o press seguinte,
                         // foi um passe POR-FRAME entre os dois.
                         if std::env::var_os("PH2D_CORNER_LOG").is_some()
-                            && self.vec_draw_config.mode.is_corner_tool()
+                            && self.vec.draw_config.mode.is_corner_tool()
                             && let Some(gfx) = self.gfx.as_ref()
-                            && let Some(pid) = self.vec_pen.selected()
+                            && let Some(pid) = self.vec.pen.selected()
                         {
-                            let shape = self.vec_entities.get(&pid).is_some_and(|&b| {
+                            let shape = self.vec.entities.get(&pid).is_some_and(|&b| {
                                 gfx.sim
                                     .world()
                                     .get::<ph2d_ecs::VecShape>(ph2d_ecs::Entity::from_bits(b))
@@ -5077,8 +5081,8 @@ impl App {
                             return;
                         }
                     } else if shape_up_consumes(
-                        self.vec_draw_config.mode,
-                        self.vec_state.shape.is_active(),
+                        self.vec.draw_config.mode,
+                        self.vec.shape.is_active(),
                     ) {
                         // A shape drag is in progress → finalize it. Commit if the
                         // drag spanned a real size, else discard the stray click
@@ -5089,7 +5093,7 @@ impl App {
                         // through to the chrome dispatch, else every panel click
                         // (mode switch, boolean, close) is silently swallowed.
                         let committed = if let Some(gfx) = self.gfx.as_mut() {
-                            let c = self.vec_state.shape.on_release(&mut gfx.vec_scene);
+                            let c = self.vec.shape.on_release(&mut gfx.vec_scene);
                             if c {
                                 // Solda os endpoints da forma recém-criada com nós
                                 // vizinhos: basta ficarem próximos para se fundirem, e
@@ -5099,13 +5103,13 @@ impl App {
                                 // geometria PRÉ-existente nunca se mexe (só a nova
                                 // snapa nela). Ao fechar num laço, recebe o fill do
                                 // estilo atual — como uma região desenhada pela pen.
-                                if let Some(new_id) = self.vec_state.shape.selected() {
-                                    let fill = self.vec_pen.style().fill;
+                                if let Some(new_id) = self.vec.shape.selected() {
+                                    let fill = self.vec.pen.style().fill;
                                     let fill_on_close =
                                         (fill.a != 0).then(|| ph2d_vec_scene::Paint::solid(fill));
                                     let xforms = ph2d_vec_entities::transform::build(
                                         &gfx.sim,
-                                        &self.vec_entities,
+                                        &self.vec.entities,
                                     );
                                     let win = gfx.surface.size();
                                     let tol =
@@ -5125,12 +5129,12 @@ impl App {
                         if committed {
                             // Seleciona a forma nova para edição imediata — a menos que
                             // o weld a tenha fundido noutro objeto (o id sumiu).
-                            let sel = self.vec_state.shape.selected().filter(|id| {
+                            let sel = self.vec.shape.selected().filter(|id| {
                                 self.gfx.as_ref().is_some_and(|g| {
                                     g.vec_scene.paths().iter().any(|p| p.id == *id)
                                 })
                             });
-                            self.vec_pen.select(sel);
+                            self.vec.pen.select(sel);
                         }
                         return;
                     }
@@ -5141,7 +5145,7 @@ impl App {
                     // O botão direito ABORTA o gesto em curso — a mesma tecla de fuga que já vale para
                     // a caneta, a forma e o conector. Um Picker armado é um gesto: o direito desiste
                     // dele (o clique esquerdo no vazio também, mas o direito é o "cancela" universal).
-                    if self.vec_path_pick.take().is_some() {
+                    if self.vec.path_pick.take().is_some() {
                         return;
                     }
                     // O botão direito ABORTA o conector em construção (a linha some) — o
@@ -5156,8 +5160,8 @@ impl App {
                     // abortar; um clique é um clique). Abaixo de duas paradas o perfil inteiro
                     // sai e o traço volta ao uniforme, que é o neutro-é-ausência das outras
                     // rotas. O passo de undo é o da fila global, por diff.
-                    if self.vec_draw_config.mode == ph2d_tool_vector::DrawMode::Width
-                        && let Some(pid) = self.vec_pen.selected()
+                    if self.vec.draw_config.mode == ph2d_tool_vector::DrawMode::Width
+                        && let Some(pid) = self.vec.pen.selected()
                         && let Some(world) = self.vec_world_at(self.last_pointer)
                     {
                         let hit_r = HANDLE_HIT_PX * self.vec_px_to_world();
@@ -5166,7 +5170,7 @@ impl App {
                             crate::width_handles::remove(
                                 &mut gfx.sim,
                                 scene,
-                                &self.vec_entities,
+                                &self.vec.entities,
                                 pid,
                                 world,
                                 hit_r,
@@ -5176,17 +5180,17 @@ impl App {
                     }
                     // **O lápis** desiste pelo direito também: o traço vivo some sem deixar
                     // rastro e o passo de undo pendente é cancelado.
-                    if self.vec_state.pencil.is_active() {
+                    if self.vec.pencil.is_active() {
                         if let Some(gfx) = self.gfx.as_mut() {
-                            self.vec_state.pencil.cancel(&mut gfx.vec_scene);
+                            self.vec.pencil.cancel(&mut gfx.vec_scene);
                         }
                         return;
                     }
-                    if shape_kind_for_mode(&self.vec_draw_config).is_none() {
-                        self.vec_pen.finish();
+                    if shape_kind_for_mode(&self.vec.draw_config).is_none() {
+                        self.vec.pen.finish();
                     } else {
                         if let Some(gfx) = self.gfx.as_mut() {
-                            self.vec_state.shape.cancel(&mut gfx.vec_scene);
+                            self.vec.shape.cancel(&mut gfx.vec_scene);
                         }
                     }
                     return;
@@ -5408,9 +5412,9 @@ impl App {
                         };
                         let hits = crate::hover_highlight::pick_objects_at(
                             &mut pw,
-                            &self.vec_entities,
-                            &self.vec_view_derived,
-                            &self.vec_live_drawn,
+                            &self.vec.entities,
+                            &self.vec.view_derived,
+                            &self.vec.live_drawn,
                             &self.flip_state.entities,
                             (evt.x, evt.y),
                         );
@@ -5469,15 +5473,15 @@ impl App {
                         let world_pos = gfx.camera.screen_to_world((evt.x, evt.y), window_size);
                         let vec_view = ph2d_vec_entities::entities::view_state_for_pick(
                             &gfx.sim,
-                            &self.vec_entities,
-                            &self.vec_view_derived,
+                            &self.vec.entities,
+                            &self.vec.view_derived,
                         );
                         let hits = crate::vec_gizmo_view::pick_all_at_world(
                             &gfx.sim,
                             &gfx.vec_scene,
-                            &self.vec_live_drawn,
+                            &self.vec.live_drawn,
                             &vec_view,
-                            &self.vec_entities,
+                            &self.vec.entities,
                             world_pos,
                             crate::vec_gizmo_view::stroke_hit_r(&gfx.camera, window_size),
                         );
@@ -5552,8 +5556,8 @@ impl App {
                                 || crate::vec_gizmo_view::contains_world(
                                     &gfx.sim,
                                     &gfx.vec_scene,
-                                    &self.vec_live_drawn,
-                                    &self.vec_view_derived,
+                                    &self.vec.live_drawn,
+                                    &self.vec.view_derived,
                                     entity,
                                     world_pos,
                                     crate::vec_gizmo_view::stroke_hit_r(&gfx.camera, window_size),
@@ -5867,9 +5871,9 @@ impl App {
                         };
                         let mut hits = crate::hover_highlight::pick_objects_at(
                             &mut pw,
-                            &self.vec_entities,
-                            &self.vec_view_derived,
-                            &self.vec_live_drawn,
+                            &self.vec.entities,
+                            &self.vec.view_derived,
+                            &self.vec.live_drawn,
                             &self.flip_state.entities,
                             (evt.x, evt.y),
                         );
@@ -6213,15 +6217,15 @@ impl App {
                             let rmax = [world_a[0].max(world_b[0]), world_a[1].max(world_b[1])];
                             let vec_view = ph2d_vec_entities::entities::view_state_for_pick(
                                 &gfx.sim,
-                                &self.vec_entities,
-                                &self.vec_view_derived,
+                                &self.vec.entities,
+                                &self.vec.view_derived,
                             );
                             let mut bits = crate::vec_gizmo_view::pick_in_world_rect(
                                 &gfx.sim,
                                 &gfx.vec_scene,
-                                &self.vec_live_drawn,
+                                &self.vec.live_drawn,
                                 &vec_view,
-                                &self.vec_entities,
+                                &self.vec.entities,
                                 rmin,
                                 rmax,
                             );
@@ -6340,7 +6344,7 @@ impl App {
                             })
                             .collect();
                         if !moved_ids.is_empty() {
-                            let fill = self.vec_pen.style().fill;
+                            let fill = self.vec.pen.style().fill;
                             let fill_on_close =
                                 (fill.a != 0).then(|| ph2d_vec_scene::Paint::solid(fill));
                             let win = gfx.surface.size();
@@ -6354,7 +6358,7 @@ impl App {
                                 if !gfx.vec_scene.paths().iter().any(|p| p.id == id) {
                                     continue;
                                 }
-                                let Some(bits) = self.vec_entities.get(&id).copied() else {
+                                let Some(bits) = self.vec.entities.get(&id).copied() else {
                                     continue;
                                 };
                                 if gfx.vec_scene.paths().iter().any(|p| p.id == id && p.closed) {
@@ -6362,14 +6366,14 @@ impl App {
                                 }
                                 let xforms = ph2d_vec_entities::transform::build(
                                     &gfx.sim,
-                                    &self.vec_entities,
+                                    &self.vec.entities,
                                 );
                                 if let Some(rd) = gfx.vec_scene.rigid_snap_delta(id, &xforms, tol) {
                                     crate::vec_snap::slide_entity_world(&mut gfx.sim, bits, rd);
                                 }
                                 let xforms = ph2d_vec_entities::transform::build(
                                     &gfx.sim,
-                                    &self.vec_entities,
+                                    &self.vec.entities,
                                 );
                                 gfx.vec_scene.weld_new_shape(
                                     id,
@@ -6380,7 +6384,7 @@ impl App {
                             }
                         }
                         // Fim do gesto: apaga as guias de alinhamento.
-                        self.vec_snap_guides.clear();
+                        self.vec.snap_guides.clear();
                     }
                     // Onda 1: release the group-translate snapshot so
                     // the next single-select drag doesn't accidentally

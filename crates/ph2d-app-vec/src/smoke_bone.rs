@@ -110,10 +110,12 @@ pub fn build(
 }
 
 /// O 2.º tempo: prende as DUAS primeiras. A folha fica solta de propósito.
+///
+/// O mapa de entidades vem do próprio `st` (A9, 2026-09-12): desde que ele mora no `VecState`, a
+/// shell não consegue emprestá-lo à parte do estado que o contém.
 pub fn bind(
     scene: &mut ph2d_vec_scene::VecScene,
     sim: &mut ph2d_ecs::SimWorld,
-    map: &crate::entity_map::VecEntityMap,
     doc: &mut ph2d_timeline::TimelineDoc,
     assets: &ph2d_asset::AssetDb,
     st: &mut crate::state::VecState,
@@ -122,6 +124,7 @@ pub fn bind(
     let Some(pecas) = st.bone_smoke_pend.take() else {
         return;
     };
+    let map = &st.entities;
     eprintln!(
         "[vec-bone-smoke] mapa de entidades = {} forma(s); cena = {} caminho(s)",
         map.len(),

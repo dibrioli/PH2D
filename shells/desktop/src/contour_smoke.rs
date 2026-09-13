@@ -76,8 +76,8 @@ impl crate::App {
         let Some((&star, &hex)) = ids.first().zip(ids.get(1)) else {
             return;
         };
-        self.vec_pen.select(Some(star));
-        let Some(&bits) = self.vec_entities.get(&hex) else {
+        self.vec.pen.select(Some(star));
+        let Some(&bits) = self.vec.entities.get(&hex) else {
             eprintln!("[smoke] contour: o hexágono ainda não tem entidade — o `sync` não correu");
             return;
         };

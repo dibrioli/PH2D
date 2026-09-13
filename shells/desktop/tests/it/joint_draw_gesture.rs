@@ -225,7 +225,7 @@ fn escape_cancels_the_drawing_before_any_tool_scoped_escape() {
     //
     // ⚠️ Duas versões anteriores deste gate falharam sobre produto CORRETO, as duas
     // por proxy: procurar o helper cru achava a primeira menção dele em qualquer
-    // lugar (um `!self.vec_pen.is_drawing()` num guard sem relação), e janelas em
+    // lugar (um `!self.vec.pen.is_drawing()` num guard sem relação), e janelas em
     // torno de `KeyCode::Escape` colavam braços vizinhos num índice só — há ainda
     // um `KeyCode::Escape` de outro construto lá no alto, cuja janela engolia meio
     // arquivo. Perguntar pela família recorta exatamente os quatro braços.
@@ -265,7 +265,7 @@ fn escape_cancels_the_drawing_before_any_tool_scoped_escape() {
     let rest: String = (2..arms.len()).map(extent).collect();
     for sibling in [
         "self.build_cancel()",
-        "self.vec_pen.is_drawing()",
+        "self.vec.pen.is_drawing()",
         "self.painter_shape_cancel()",
     ] {
         assert!(

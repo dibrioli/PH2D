@@ -58,15 +58,15 @@ impl App {
         let window_size = gfx.surface.size();
         let view = ph2d_vec_entities::entities::view_state_for_pick(
             &gfx.sim,
-            &self.vec_entities,
-            &self.vec_view_derived,
+            &self.vec.entities,
+            &self.vec.view_derived,
         );
         let hits = crate::vec_gizmo_view::pick_all_at_world(
             &gfx.sim,
             &gfx.vec_scene,
             self.offset_live.live(),
             &view,
-            &self.vec_entities,
+            &self.vec.entities,
             [world[0] as f32, world[1] as f32],
             crate::vec_gizmo_view::stroke_hit_r(&gfx.camera, window_size),
         );
@@ -74,7 +74,8 @@ impl App {
         // é a que o olho vê sob o cursor.
         hits.into_iter()
             .filter_map(|bits| {
-                self.vec_entities
+                self.vec
+                    .entities
                     .iter()
                     .find(|&(_, &b)| b == bits)
                     .map(|(&id, _)| id)
@@ -83,7 +84,7 @@ impl App {
             // resposta. (Filtrar depois de escolher devolveria `None` sempre que um rótulo
             // estivesse por cima da caixa, que é justamente onde todo rótulo está.)
             .find(|&id| {
-                !crate::connector_live::walls::is_annotation(&gfx.sim, &self.vec_entities, id)
+                !crate::connector_live::walls::is_annotation(&gfx.sim, &self.vec.entities, id)
             })
     }
 
@@ -105,7 +106,7 @@ impl App {
     /// direção. É `marker_end` por default — e continua sendo Style (o painel a troca).
     pub(crate) fn connector_down(&mut self, world: [f64; 2]) -> bool {
         let px_to_world = self.vec_px_to_world();
-        let style = self.vec_pen.style();
+        let style = self.vec.pen.style();
         let start = self.end_at(world);
         let Some(gfx) = self.gfx.as_mut() else {
             return false;
@@ -129,7 +130,7 @@ impl App {
             marker_round: style.marker_round,
         });
         let id = gfx.vec_scene.push_path(path);
-        self.vec_connect = Some(ConnectorDrag {
+        self.vec.connect = Some(ConnectorDrag {
             path: id,
             conn: VecConnector {
                 start,
@@ -153,7 +154,7 @@ impl App {
     /// encosta no contorno dela, porque é o re-cook de verdade que a desenha). `false` se não
     /// há gesto (o chamador segue o caminho normal do Move).
     pub(crate) fn connector_drag_move(&mut self, x: f32, y: f32) -> bool {
-        if self.vec_connect.is_none() {
+        if self.vec.connect.is_none() {
             return false;
         }
         let Some(w) = self
@@ -165,7 +166,7 @@ impl App {
         };
         let world = [f64::from(w[0]), f64::from(w[1])];
         let end = self.end_at(world);
-        if let Some(drag) = self.vec_connect.as_mut() {
+        if let Some(drag) = self.vec.connect.as_mut() {
             drag.conn.end = end;
         }
         true
@@ -176,7 +177,7 @@ impl App {
     ///
     /// `true` se o Up foi consumido (havia gesto).
     pub(crate) fn connector_up(&mut self, world: [f64; 2]) -> bool {
-        let Some(mut drag) = self.vec_connect.take() else {
+        let Some(mut drag) = self.vec.connect.take() else {
             return false;
         };
         drag.conn.end = self.end_at(world);
@@ -195,15 +196,15 @@ impl App {
         if self.gfx.is_some() {
             // O componente é (re)escrito no frame do render, quando a entidade já existe.
             // Aqui só resta selecionar a linha nova — como a shape-tool faz.
-            self.vec_pen.select(Some(drag.path));
+            self.vec.pen.select(Some(drag.path));
         }
-        self.vec_connect_pending = Some((drag.path, drag.conn));
+        self.vec.connect_pending = Some((drag.path, drag.conn));
         true
     }
 
     /// **Cancela** o gesto (botão direito / Esc): a linha em construção some.
     pub(crate) fn connector_cancel(&mut self) -> bool {
-        let Some(drag) = self.vec_connect.take() else {
+        let Some(drag) = self.vec.connect.take() else {
             return false;
         };
         if let Some(gfx) = self.gfx.as_mut() {
@@ -235,7 +236,8 @@ impl App {
             (x == Some(a) && y == Some(b)) || (x == Some(b) && y == Some(a))
         };
         let n = self
-            .vec_entities
+            .vec
+            .entities
             .iter()
             .filter(|&(&id, _)| id != me)
             .filter_map(|(_, &bits)| gfx.sim.world().get::<VecConnector>(Entity::from_bits(bits)))

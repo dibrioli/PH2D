@@ -118,18 +118,18 @@ impl crate::App {
             ph2d_vec_entities::entities::sync(
                 &mut gfx.sim,
                 &mut gfx.vec_scene,
-                &mut self.vec_entities,
+                &mut self.vec.entities,
             );
             let (id, mut morph) = crate::morph_live::create(&mut gfx.vec_scene, ia, ib);
             ph2d_vec_entities::entities::sync(
                 &mut gfx.sim,
                 &mut gfx.vec_scene,
-                &mut self.vec_entities,
+                &mut self.vec.entities,
             );
             morph.t = AUTHORED_T; // a POSE AUTORADA — o que o `rest` tem de capturar
-            let attached = crate::morph_live::attach(&mut gfx.sim, &self.vec_entities, id, &morph);
+            let attached = crate::morph_live::attach(&mut gfx.sim, &self.vec.entities, id, &morph);
             assert!(attached, "[morph-fade-smoke] o morph nao pendurou");
-            let bits = self.vec_entities[&id];
+            let bits = self.vec.entities[&id];
             gfx.sim
                 .world_mut()
                 .entity_mut(ph2d_ecs::Entity::from_bits(bits))

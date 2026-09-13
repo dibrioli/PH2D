@@ -111,7 +111,7 @@ fn arm(app: &mut crate::App) {
         (6, vec![adjust(0.35, 0.8, 0.0)]),
         (7, vec![adjust(0.0, 0.0, -0.45)]),
     ];
-    let map = &app.vec_entities;
+    let map = &app.vec.entities;
     let sim = &mut app.gfx.as_mut().expect("gfx").sim;
     for (i, ops) in stacks {
         crate::fx_live::set_filter(sim, map, &[ids[i]], Some(VecFilter { ops }));

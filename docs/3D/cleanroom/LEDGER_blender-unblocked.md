@@ -156,3 +156,56 @@ o portão porque o autor se lembrou de escolher outra frase não é auditável.
 | Este ledger | `docs/3D/cleanroom/LEDGER_blender-unblocked.md` | (não vai à janela) |
 
 **Incidentes:** nenhum.
+
+---
+
+## Papel R — Revisor, modo PRÉ (§3.R)
+
+| campo | valor |
+|---|---|
+| quem | **subagente R-pré** despachado pela janela `9f820704-0d7e-4d96-847e-9cd720cbf178` (I-3 da `line/sculpt3d`) — contexto novo, **distinto** do subagente-E que escreveu a espec |
+| data | 2026-09-13 |
+| leu | os dois lados: a espec + os três ficheiros de pincel do alvo, o despacho do modo de escultura (a lei da força, a cláusula que liga o colapso), o módulo de topologia dinâmica do kernel (prioridades, recursão, filtro de máscara, colapso de aresta), o módulo de detalhe e as definições RNA — tudo **por shell**, fora da árvore |
+| escreveu | este bloco · o cabeçalho da espec · `VASSOURA_blender-unblocked.txt` (175 → **181**) |
+| veredito | ⛔ **REPROVADA — 3 achados.** Sem atestado; a janela não implementa |
+
+### O achado de INSTRUMENTO (e é o que explica os outros)
+
+⚠️⚠️ **O sweep de E fechou VERDE sobre uma espec que carrega quatro traduções de prosa do alvo.**
+A vassoura está na **língua do alvo** e a espec escreve-se **na nossa** ⇒ toda frase de comentário
+vertida para português passa por baixo dela, por construção.
+
+⭐ **A prova é decisiva e sai da própria vassoura de E:** o inglês de **cada uma** das frases que
+o R-pré apanhou **já lá estava** — o E julgou-as idiossincráticas ao ponto de as varrer, e depois
+escreveu-as traduzidas na espec. *O instrumento estava certo e cego ao mesmo tempo; o que faltava
+era a outra língua.*
+
+⇒ juntaram-se **6** marcas de prosa **em português** (base64, como as outras). O sweep passa a
+**VERMELHO nos 6 sítios da espec** e fica **limpo nas 60 fixtures** — o vermelho é o controlo
+positivo do instrumento e **a condição de re-entrada é ele voltar a verde sobre as 181**.
+
+### Os 3 achados (mecanismo; o texto funcional foi devolvido à janela pelo contrato de retorno)
+
+| # | onde | §4.2 violado | mecanismo |
+|---|---|---|---|
+| 1 | espec §3.2, o bloco de pseudo-código | *pseudo-código que espelha o original* | transliteração do fluxo de controlo do alvo passo a passo (inicializar vazio · guardar no modo manual · dois acumuladores de bandeira por «ou-bit», na ordem dele). ⭐ **A prosa imediatamente acima e abaixo já diz tudo o que ele diz** ⇒ o bloco só acrescenta **forma** |
+| 2 | espec §5.2, o bloco de pseudo-código | idem | espelha o laço interior do alvo declaração a declaração, com os **mesmos intermediários** e na mesma ordem. ⛔ **A assinatura que o denuncia:** ele preserva um desvio que é **matematicamente inerte** (onde o desvio salta, o peso já valeria zero e os dois acumuladores ficariam intactos) — *preservar um ramo sem força funcional é a marca de transcrição, não de descrição* |
+| 3 | espec §3.6 · §3.7 · §6.3 (4 sítios) | *comentários do original* | prosa de comentário do alvo vertida quase palavra a palavra, **com a oração causal incluída**, apresentada sem aspas e sem fonte. ⚠️ §4.1.12 admite a sabedoria dos autores **re-dita** ou citada **curta e entre aspas**; isto não é nenhuma das duas |
+
+### O que foi conferido e está LIMPO (para não ser re-auditado)
+
+- **Nomes:** zero identificador interno. Tudo o que a espec e os cabeçalhos das fixtures nomeiam
+  é **API pública** (tipos de pincel, os dois enums de direcção e de deformação, as propriedades de
+  folga e de duplo sentido, rótulos de UI) — conferido **contra as definições RNA**, §4.1.13.
+- **Tabelas:** ⭐ **nenhuma LUT.** A peça de substrato em falta é dada por **fórmula publicada**, e a
+  espec **proíbe por escrito** a tabela por valência — exemplar.
+- **Constantes:** as três conversões de detalhe, os dois multiplicadores de prioridade, as duas
+  constantes da recursão e a lei da dureza entram como **matemática/facto com proveniência** (§4.1.2–3),
+  em forma de fórmula, não de código. ⭐ E a espec **acrescenta** um facto que o alvo não diz — que dois
+  dos números iguais são constantes **diferentes**.
+- **Organização:** descrita por fases funcionais; a cadeia de peso é uma **ordem observável** (trocá-la
+  muda o resultado), logo é §4.1.1 e não decomposição arbitrária.
+- **Cobertura:** a §6 **não** tem buraco de controlo — a triagem de RNA confirma que o pincel de
+  projecção expõe exactamente os controlos que a espec descreve.
+- **Fixtures:** 60 ficheiros, nomes e chaves de cabeçalho em vocabulário nosso, entradas **nossas**,
+  sweep limpo sobre as 181 entradas.

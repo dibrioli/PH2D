@@ -8,8 +8,14 @@ Patente (§8.1): buscado em 2026-09-13 — projecção por raycast em escultura 
   projecção entre sub-ferramentas · relaxação multirresolução. Resultado: NENHUMA patente viva
   alcança os métodos (a mais próxima, a de Kelvinlets, é solução analítica de elasticidade e não
   descreve nenhum destes quatro). Arte anterior pública abundante desde 2009–2013. Veredito: prosseguir.
-Filtragem §4.3: executada em 2026-09-13 · Sweep: verde em 2026-09-13
-Auditoria §4.2 (R-pré): ⏳ PENDENTE — condição de abrir a janela que implementa
+Filtragem §4.3: executada em 2026-09-13 · Sweep: ⛔ VERMELHO em 2026-09-13, e o vermelho é o
+  ACHADO — a vassoura foi de 175 para 181 entradas quando o R-pré lhe juntou as marcas de PROSA
+  em PORTUGUÊS. ⚠️ O verde anterior não provava filtragem nenhuma: a vassoura está na língua do
+  alvo e esta espec escreve-se na nossa, logo toda tradução de comentário passava por baixo dela.
+Auditoria §4.2 (R-pré): ⛔ REPROVADA em 2026-09-13 — 3 achados (2 blocos de pseudo-código que
+  espelham o original passo a passo · 1 família de prosa de comentário traduzida, em 4 sítios).
+  ⛔ A janela NÃO implementa enquanto esta linha não disser «auditada contra §4.2 por R-pré em
+  <data>», e ela só se escreve com o sweep de novo verde SOBRE a vassoura de 181.
 Mapa de leitura da literatura (tudo PÚBLICO e livre; nenhum apêndice a pular):
   · Catmull & Clark 1978, «Recursively generated B-spline surfaces on arbitrary topological meshes»
     — o esquema de subdivisão de quads.

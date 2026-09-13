@@ -58,7 +58,12 @@ fn no_conference_scene_ships_a_setup_hole() {
 /// **exacto** contra esta mutação: apagar a chamada apaga o nome.
 #[test]
 fn the_demo_family_takes_the_motion_tool_and_the_call_site_says_so() {
-    let src = include_str!("../../../shells/desktop/src/render_loop/mod.rs");
+    // ⚠️ O call site mudou-se para a FASE do quadro que o encena (OBRA 2 da `line/render-loop`,
+    // 2026-09-12): as três agulhas moram juntas em `fase_atlas_scene_smokes_late.rs`, que é onde a cura
+    // vive agora. `include_str!` e não leitura em runtime: um endereço que se mude outra vez falha a
+    // COMPILAR, em vez de passar por um filtro que nunca corre este teste.
+    let src =
+        include_str!("../../../shells/desktop/src/render_loop/fase_atlas_scene_smokes_late.rs");
     for needle in [
         "demo_wants_the_motion_tool(",
         "ToolId::new(\"motion\")",

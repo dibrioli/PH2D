@@ -409,4 +409,174 @@ impl crate::App {
         }
         false
     }
+
+    /// O pen-down do botão primário no canvas: o toque com modificador (alterna a seleção e devolve) e o que o
+    /// hit diz — a alça, o traço aberto, a arte Flip, o Translate chaveado —, que segue num `AlvoDoClique`.
+    pub(super) fn ramo_gizmo_premido(&mut self, evt: PointerEvent, menu_open_before: bool) -> bool {
+        if let Some(gfx) = self.gfx.as_mut()
+            && let Some(hero) = gfx.hero_screen.as_mut()
+        {
+            // Onda 1 hotfix: Shift/Cmd in the canvas ALWAYS means
+            // selection-adjustment. Pre-empt the gizmo-handle /
+            // pivot-tool / canvas-pick cascade so a modifier
+            // click never accidentally opens a scale-handle drag
+            // (gizmo handles overlap the sprite bbox corners —
+            // bare Shift+click was landing on a handle and
+            // entering the `is_specific_handle` branch which
+            // bypasses the canvas pick where toggle lives).
+            let shift_held_early = self.modifiers.shift_key();
+            let cmd_held_early = self.modifiers.super_key() || self.modifiers.control_key();
+            if (shift_held_early || cmd_held_early)
+                && hero.store.panel_at(evt.x, evt.y).is_none()
+                && !menu_open_before
+            {
+                // ⭐ **A porta ÚNICA do pick de objecto** — vetor, depois Flip, depois
+                // sprites, na ordem de z que o artista vê. Esta lista existia copiada
+                // aqui e no clique simples, e o realce de proveniência ia ser a terceira.
+                let ppm_for_pick = hero.project.pixels_per_meter;
+                let mut pw = crate::hover_highlight::PickWorld {
+                    window_size: gfx.surface.size(),
+                    sim: &gfx.sim,
+                    vec_scene: &gfx.vec_scene,
+                    flip: &gfx.flip,
+                    present: &mut gfx.present,
+                    camera: &gfx.camera,
+                    pixels_per_meter: ppm_for_pick,
+                };
+                let hits = crate::hover_highlight::pick_objects_at(
+                    &mut pw,
+                    &self.vec.entities,
+                    &self.vec.view_derived,
+                    &self.vec.live_drawn,
+                    &self.flip_state.entities,
+                    (evt.x, evt.y),
+                );
+                if let Some(bits) = hits.first().copied() {
+                    hero.gizmo.toggle_in_selection(bits);
+                    let primary = hero.gizmo.selection;
+                    if let Some(entry) = resolve_live_entry(gfx.hero_live.as_ref(), primary) {
+                        hero.selection = Some(ph2d_editor_core::HeroSelection {
+                            label: entry.name.clone(),
+                            kind: entry.badge.clone().unwrap_or_else(|| "ENT".to_string()),
+                            world_pos: (0.0, 0.0),
+                        });
+                    } else if primary.is_none() {
+                        hero.selection = None;
+                    }
+                    self.title_dirty = true;
+                    return true;
+                }
+                // Modifier on empty canvas → fall through to
+                // existing cascade so a Shift-drag can still
+                // open an additive rubber-band.
+            }
+            let hit_id = hero.hit_index.hit(evt.x, evt.y);
+            let gizmo_kind = hit_id.and_then(ph2d_editor_core::gizmo_kind_for_id);
+            // Onda 2C: hit_map fills in for handles whose ids
+            // aren't canonical — extras + global. The primary
+            // keeps canonical IDs (matches the legacy
+            // `gizmo_kind_for_id` lookup above so the primary
+            // path runs unchanged when it's the only sprite
+            // selected).
+            let hit_map_entry: Option<ph2d_editor_core::GizmoHit> =
+                hit_id.and_then(|id| hero.gizmo.gizmo_hit_map.get(&id).copied());
+            let effective_target = hit_map_entry
+                .map(|h| h.target)
+                .unwrap_or(ph2d_editor_core::GizmoTarget::PrimaryIndividual);
+            let effective_kind = hit_map_entry.map(|h| h.kind).or(gizmo_kind);
+            let is_specific_handle = matches!(
+                effective_kind,
+                Some(ph2d_editor_core::GizmoDragKind::ScaleCorner { .. })
+                    | Some(ph2d_editor_core::GizmoDragKind::ScaleEdge { .. })
+                    | Some(ph2d_editor_core::GizmoDragKind::Rotate)
+            );
+            // Enio 2026-07-10: uma forma vetorial ABERTA (linha/arco/pen aberto)
+            // tem bbox FINA — o interior "Translate" do gizmo de sprite colapsa
+            // e os handles de scale/rotate cobrem o traço inteiro, roubando o
+            // clique (o hit-walk é back-to-front, handles vencem). Resultado:
+            // arrastar a linha a ESCALAVA em vez de mover, e o snap-ao-mover
+            // (que só dispara num Translate) nunca rodava. Se o cursor está
+            // sobre o TRAÇO de uma forma vetorial aberta, o arrasto é um
+            // Translate dela: pula o branch de handle e cai no canvas-pick.
+            // Handles de quina FORA do traço (arco/linha diagonal) seguem
+            // escalando — a checagem é só do traço.
+            let over_open_vec_stroke = {
+                let window_size = gfx.surface.size();
+                let world_pos = gfx.camera.screen_to_world((evt.x, evt.y), window_size);
+                let vec_view = ph2d_vec_entities::entities::view_state_for_pick(
+                    &gfx.sim,
+                    &self.vec.entities,
+                    &self.vec.view_derived,
+                );
+                let hits = crate::vec_gizmo_view::pick_all_at_world(
+                    &gfx.sim,
+                    &gfx.vec_scene,
+                    &self.vec.live_drawn,
+                    &vec_view,
+                    &self.vec.entities,
+                    world_pos,
+                    crate::vec_gizmo_view::stroke_hit_r(&gfx.camera, window_size),
+                );
+                hits.first().is_some_and(|&bits| {
+                    gfx.sim
+                        .world()
+                        .get::<ph2d_ecs::VecPathRef>(ph2d_ecs::Entity::from_bits(bits))
+                        .is_some_and(|vp| {
+                            gfx.vec_scene
+                                .paths()
+                                .iter()
+                                .any(|p| p.id == vp.0 && !p.closed)
+                        })
+                })
+            };
+            // Idem para a arte Flip: uma nuvem de traços não tem interior, então
+            // o gizmo de sprite colapsaria e os handles roubariam o clique.
+            // Sobre a arte ⇒ o arrasto é Translate dela (cai no canvas-pick).
+            let over_flip_art = {
+                let window_size = gfx.surface.size();
+                let world_pos = gfx.camera.screen_to_world((evt.x, evt.y), window_size);
+                !ph2d_app_flip::gizmo_view::pick_all_at_world(
+                    &gfx.sim,
+                    &gfx.flip,
+                    &self.flip_state.entities,
+                    world_pos,
+                    ph2d_app_flip::gizmo_view::stroke_hit_r(&gfx.camera, window_size),
+                )
+                .is_empty()
+            };
+            // Also recognize Translate from a keyed bbox-interior
+            // hit — clicking the interior of an extra or the global
+            // gizmo should open a group translate via the
+            // `effective_target` route (the canvas-pick path below
+            // skips keyed ids since they aren't None / Translate /
+            // PIVOT canonical, so without this guard those clicks
+            // would fall through to nothing).
+            // Keyed Translate = click on the bbox interior of an
+            // extra or the global gizmo (whose interior IDs are
+            // hashed, so `gizmo_kind_for_id` doesn't recognise
+            // them). Treated as a multi-select translate
+            // through the canvas-pick branch below — that
+            // branch resolves the world position to a sprite
+            // via `pick_sprites_at_world` and opens a group
+            // translate drag.
+            let is_keyed_translate = hit_map_entry
+                .map(|h| matches!(h.kind, ph2d_editor_core::GizmoDragKind::Translate))
+                .unwrap_or(false);
+            // O que o hit disse, para os ramos que seguem (`despacho_clique_gizmo::AlvoDoClique`).
+            let alvo = AlvoDoClique {
+                hit_id,
+                gizmo_kind,
+                effective_target,
+                effective_kind,
+                is_specific_handle,
+                over_open_vec_stroke,
+                over_flip_art,
+                is_keyed_translate,
+            };
+            if self.ramo_gizmo_pivo_e_ancora(evt, menu_open_before, alvo) {
+                return true;
+            }
+        }
+        false
+    }
 }

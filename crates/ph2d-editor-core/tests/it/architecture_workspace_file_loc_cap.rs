@@ -70,7 +70,6 @@ const FILE_OVERAGE_OK: &[(&str, usize)] = &[
     // 63 crates desta árvore) e os ficheiros caíram para 496 e 410 — **sob o teto simples de
     // 700**, então as duas entradas foram DELETADAS. *Um teto que cresce ao ser tocado não
     // é um teto.*
-    ("ph2d-imageio-ph2d-native/src/schema.rs", 746),
     // Retired 2026-07-09 (M2.N1): `cook.rs` was 864 LOC of engine + inline
     // tests; the tests moved to `cook_tests.rs` + `cook_scope_tests.rs`, so the
     // engine now sits at ~459 LOC under the plain 700 cap. Entry deleted rather

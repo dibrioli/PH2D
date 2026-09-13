@@ -74,7 +74,6 @@ const FILE_OVERAGE_OK: &[(&str, usize)] = &[
     // tests; the tests moved to `cook_tests.rs` + `cook_scope_tests.rs`, so the
     // engine now sits at ~459 LOC under the plain 700 cap. Entry deleted rather
     // than raised, per this gate's own instruction.
-    ("ph2d-painter-effects/src/adjustments/spatial.rs", 856),
     // Ratcheted 969 -> 722 em 2026-08-21. A wave dos 16 bits (`docs/Sprite_projeto/18`)
     // acrescentou-lhe o `readback_rgba8` e o ficheiro chegou a 1029; a LEITURA DE VOLTA inteira
     // (`readback` / `_rgba8` / `_mip` / `replace_pixels*` / a fn livre `readback_texture`) saiu

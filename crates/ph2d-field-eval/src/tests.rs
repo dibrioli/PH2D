@@ -2592,6 +2592,124 @@ fn the_specialised_document_agrees_inside_its_region() {
     }
 }
 
+/// ⛔⛔ **UM MODIFICADOR QUE REMAPEIA NUMA OPERAÇÃO DOBRA TAMBÉM A FOLHA DE BAIXO** (auditoria da
+/// W148, 2026-09-13).
+///
+/// O [`the_specialised_document_agrees_inside_its_region`] mede a especialização a desistir debaixo
+/// de uma matriz — **na própria folha** (ali a folha é a raiz). ⚠️ E a W79 estabeleceu que o espelho
+/// numa **operação** é um gesto do produto: ele dobra os filhos. Nenhuma fixture punha uma folha de
+/// perfil debaixo de uma operação que remapeia, e o mapa mundo→local (`affine::local_maps`) desce
+/// compondo só **poses** — um espelho no pai não entra nele.
+///
+/// ⚠️ **A fixture tem de conter o fenómeno**, e são duas as condições que a W56 já pagou: um contorno
+/// ALONGADO e DENSO (numa forma de quatro arestas o corte guarda tudo e a discrepância some), e regiões
+/// CENTRADAS na cópia dobrada (numa região ao acaso o corte guarda quase todas as arestas).
+#[test]
+fn the_specialisation_gives_up_under_a_remapping_ancestor() {
+    use fidget::shape::EzShape;
+    use ph2d_field::{Op, Unary};
+    // Uma elipse fina e densa, fora do eixo: a cópia espelhada fica LONGE da original.
+    let ellipse: Vec<[f32; 2]> = (0..168)
+        .map(|i| {
+            let a = std::f32::consts::TAU * i as f32 / 168.0;
+            [0.3 * a.cos(), 0.06 * a.sin()]
+        })
+        .collect();
+    let spacing = 0.9f32;
+    let mut worsts: Vec<(&str, f32)> = Vec::new();
+    for (name, m, copy_x) in [
+        ("espelho na operação", Unary::Mirror { offset: 0.0 }, -0.35f32),
+        (
+            "matriz na operação",
+            Unary::Array {
+                count: 3,
+                spacing,
+                joint: ph2d_field::Joint::SHARP,
+                axis: ph2d_field::mods::ARRAY_AXIS,
+            },
+            0.35 + spacing,
+        ),
+    ] {
+        let nodes = vec![
+            Node {
+                xform: Xform::at(0.35, 0.1, 0.0),
+                kind: NodeKind::Leaf(Primitive::Extrude {
+                    profile: profile_of(vec![ellipse.clone()], FillRule::NonZero),
+                    half_height: 0.15,
+                    round: 0.0,
+                    chamfer: 0.0,
+                }),
+                mods: Vec::new(),
+                verb: None,
+            },
+            Node {
+                xform: Xform::at(0.0, 0.7, 0.0),
+                kind: NodeKind::Leaf(Primitive::Sphere { radius: 0.05 }),
+                mods: Vec::new(),
+                verb: None,
+            },
+            Node {
+                xform: Xform::IDENTITY,
+                kind: NodeKind::Combine {
+                    op: Op::Union(Blend::Sharp),
+                    children: vec![NodeId(0), NodeId(1)],
+                },
+                mods: vec![m],
+                verb: None,
+            },
+        ];
+        let doc = FieldDoc::new(nodes, NodeId(2)).expect("a operação com modificador");
+        let full = crate::Engine::from(crate::compile(&doc));
+        let mut full_eval = crate::Engine::new_float_slice_eval();
+        let full_tape = full.ez_float_slice_tape();
+        let mut s = 0x0A7C_E57u64;
+        let mut rnd = move || {
+            s = s.wrapping_mul(6_364_136_223_846_793_005).wrapping_add(1);
+            (s >> 33) as f32 / u32::MAX as f32
+        };
+        let mut worst = 0.0f32;
+        for _ in 0..40 {
+            // Regiões do tamanho de um ladrilho, sobre a CÓPIA dobrada e perto da superfície dela.
+            let c = [
+                copy_x + (rnd() - 0.5) * 0.5,
+                0.1 + (rnd() - 0.5) * 0.14,
+                (rnd() - 0.5) * 0.3,
+            ];
+            let half = 0.04f32.mul_add(rnd(), 0.03);
+            let (lo, hi) = (c.map(|v| v - half), c.map(|v| v + half));
+            let cut = crate::Engine::from(crate::compile_in_region(&doc, lo, hi));
+            let mut eval = crate::Engine::new_float_slice_eval();
+            let tape = cut.ez_float_slice_tape();
+            let (mut xs, mut ys, mut zs) = (Vec::new(), Vec::new(), Vec::new());
+            for _ in 0..128 {
+                xs.push((rnd() - 0.5).mul_add(2.0 * half, c[0]));
+                ys.push((rnd() - 0.5).mul_add(2.0 * half, c[1]));
+                zs.push((rnd() - 0.5).mul_add(2.0 * half, c[2]));
+            }
+            let got = eval.eval(&tape, &xs, &ys, &zs).expect("avalia").to_vec();
+            let want = full_eval
+                .eval(&full_tape, &xs, &ys, &zs)
+                .expect("avalia")
+                .to_vec();
+            for i in 0..xs.len() {
+                worst = worst.max((got[i] - want[i]).abs());
+            }
+        }
+        println!("{name}: pior desacordo dentro das regiões = {worst:e}");
+        worsts.push((name, worst));
+    }
+    // ⚠️ O `assert` é DEPOIS dos dois casos: parar no primeiro deixava o segundo por medir, e um caso
+    // que nunca corre não prova que a cura o cobre.
+    for (name, worst) in worsts {
+        assert!(
+            worst < 1.0e-4,
+            "{name}: o documento especializado discorda do completo em {worst:e} DENTRO da região, \
+             sobre a cópia dobrada — a folha foi especializada no espaço SEM o modificador do pai, e a \
+             marcha atravessaria a peça"
+        );
+    }
+}
+
 /// ⚠️ **E a especialização de facto ENCOLHE a árvore** — a metade que impede a cura degenerada.
 ///
 /// A régua é a contagem de arestas que a região guarda, contra as que o perfil tem. Um documento

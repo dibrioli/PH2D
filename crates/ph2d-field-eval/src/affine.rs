@@ -14,7 +14,21 @@ use crate::inverse_rotation_matrix;
 /// Duas cópias desta descida divergiriam no dia em que uma pose mudasse de regra — e a cache serviria
 /// uma fita cujo casco foi medido noutro espaço.
 ///
-/// ⚠️ `None` = um nó que nenhum caminho a partir da raiz alcança.
+/// ⚠️ `None` = um nó cujo espaço local uma caixa do mundo **não alcança como caixa**: ou nenhum
+/// caminho a partir da raiz chega a ele, ou há no caminho uma operação com um modificador que
+/// REMAPEIA coordenadas.
+///
+/// # ⛔⛔ Porque a descida PÁRA debaixo de um modificador que remapeia (auditoria da W148)
+///
+/// Um espelho, uma matriz ou uma torção numa **operação** dobram os filhos (é um gesto do produto
+/// desde a W79), e a caixa da cópia dobrada chega à folha num sítio que uma composição de poses não
+/// descreve. A descida compunha só poses, e a especialização de uma folha de perfil ali guardava as
+/// arestas da região errada — medido: `0,496` de desacordo dentro da região, e **84** (espelho) e
+/// **586** (matriz) pixels errados na pré-visualização contra `0` do gémeo sem o modificador
+/// (`the_specialisation_gives_up_under_a_remapping_ancestor` ·
+/// `the_folded_leaf_draws_like_the_row_march`). ⇒ debaixo de uma dobra a folha não recebe mapa, e
+/// quem pergunta por ele (a especialização, os cascos da cache) desiste — a mesma regra que a folha já
+/// seguia para os seus próprios modificadores.
 pub(crate) fn local_maps(doc: &FieldDoc) -> Vec<Option<Affine>> {
     let n = doc.nodes().len();
     let mut to_local = vec![None::<Affine>; n];
@@ -26,6 +40,10 @@ pub(crate) fn local_maps(doc: &FieldDoc) -> Vec<Option<Affine>> {
         let Some(parent) = to_local[i] else {
             continue;
         };
+        // ⛔ Uma dobra no pai: os filhos ficam sem mapa (ver o doc da função).
+        if doc.nodes()[i].mods.iter().any(crate::remaps_coordinates) {
+            continue;
+        }
         if let NodeKind::Combine { children, .. } = &doc.nodes()[i].kind {
             for c in children {
                 let ci = c.0 as usize;

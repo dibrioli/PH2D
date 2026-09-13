@@ -20,6 +20,7 @@ mod tape_cache_alternation;
 mod tape_cache_budget;
 mod the_bend_does_not_starve_the_march;
 mod the_eviction_storm;
+mod the_folded_leaf_draws_like_the_row_march;
 mod the_picture_matches_an_honest_march;
 mod the_piece_does_not_vanish_as_shapes_are_added;
 mod the_price_of_four_views;

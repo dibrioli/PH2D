@@ -774,6 +774,13 @@ SUPERFÍCIE DE COLISÃO — line/render-loop contra main
   ⚠️ Isto é o MAPA, não o gate. O gate mecânico é scripts/foundational-integrate.sh;
      o que exige julgamento (mesmo-símbolo, decisão de produto) continua leitura humana.
 ```
+8. **O fecho do disco e a build de smoke** (DIRETRIZ §1.5.9 item 7, sobre `ed35496c9`): `rm -rf target/*/incremental`
+   (27 GB de `debug/incremental`, `ci-test/incremental` já vazio); a 1.ª `cargo build -p ph2d-host-desktop --profile
+   smoke` recompilou e terminou em 51,34 s; a 2.ª, colada inteira —
+   **zero `Compiling`**:
+   ```
+       Finished `smoke` profile [optimized] target(s) in 0.23s
+   ```
 
 ## §11 · Smoke do dono
 

@@ -312,6 +312,8 @@ mod fase_timeline_containers;
 mod fase_timeline_drain;
 /// Fase do quadro: a vista da timeline (amostragem, intents estacionadas, espelhos do painel).
 mod fase_timeline_view;
+/// Fase do quadro: os espelhos da ferramenta vetorial, do Flip e da fisica.
+mod fase_tool_mirrors;
 /// Fase do quadro: a poeira de impacto (as faíscas por cima do chrome).
 mod fase_ui_burst_paint;
 /// Fase do quadro: o Use as Brush Shape / Grain da Hierarquia.
@@ -6102,49 +6104,9 @@ impl crate::App {
                     &sig.name, sig.tick, sig.rows,
                 ));
             }
-            // Mirror the tool's mode + shape params for the input dispatch's
-            // pen-vs-shape routing (the downcast lives in the bridge).
-            self.vec.draw_config = vec_cfg;
-
-            // ADR-0114 W2 T2.17 (ready-to-smoke): ativar a tool Flip num documento
-            // VAZIO cria um objeto inicial (1 camada) pra desenhar na hora — sem
-            // ele o `bake_stroke` sai (não há objeto). Só na borda de ativação;
-            // um doc já povoado (ex. PH2D_FLIP_DEMO) não é tocado.
-            {
-                let now_active = tools
-                    .active()
-                    .is_some_and(|t| t.id() == ph2d_editor_core::ToolId::new("flip"));
-                if now_active && !self.flip_state.active && flip.is_empty() {
-                    let oid = flip.push_object("Flip");
-                    if let Some(obj) = flip.object_mut(oid) {
-                        self.flip_state.active_layer = Some(obj.add_layer("Layer 1"));
-                    }
-                }
-            }
-            // ADR-0114 W2: espelha o estado da tool Flip (ativa + estilo de brush)
-            // pro input_dispatch decidir/assar o desenho sem downcast (o downcast
-            // vive no flip_bridge, allowlistado).
-            // Physics WORLD panel (ADR-0131 D8 / W2b). Same phase as the other
-            // panel bridges — after the ActivateTool drain, before paint — but
-            // deliberately NOT tool-gated: this panel belongs to the document,
-            // so the artist owns its visibility and this call never writes it.
-            //
-            // ⚠️ Distinct from `ph2d_app_physics::bridge::dispatch::dispatch` far above, which steps
-            // the SIMULATION at the Playhead tick. Two bridges, two phases.
-            self.show_colliders = ph2d_app_physics::panel_bridge::dispatch(
-                hero,
-                physics,
-                self.show_colliders,
-                &mut self.physics.interaction,
-                // W25: a corrida gravada é um fato do DOCUMENTO, e este é o
-                // painel do documento. A §14 mostra o mesmo par de números; as
-                // duas vistas caem na mesma porta (`run_stash`).
-                ph2d_app_physics::panel_bridge::RunTapes {
-                    live: &mut self.player_tape,
-                    stash: &mut self.discarded_run,
-                    fixed_dt: self.fixed_step.fixed_dt(),
-                },
-            );
+            let Some(vec_cfg) = self.fase_tool_mirrors(vec_cfg) else {
+                return;
+            };
             self.fase_world_panel_bridges();
             let Some((flip_active, flip_style)) = self.fase_flip_strip_and_cursor(window_size)
             else {

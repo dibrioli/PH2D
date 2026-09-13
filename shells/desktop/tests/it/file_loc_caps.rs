@@ -39,7 +39,7 @@ const FILE_OVERAGE_OK: &[(&str, usize, &str)] = &[
     ),
     (
         "input_dispatch/gizmo_drag.rs",
-        816,
+        717,
         "~735 LOC — the keyed-handle-id multi-select rotate/scale/translate",
     ),
     (

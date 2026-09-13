@@ -261,6 +261,8 @@ somaram +1 220; o dreno −226; o quadro −117; as curas do fecho +296 (a maior
 ```
 cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-render-bodies && cargo run -p ph2d-host-desktop --profile smoke
 ```
+✅ **Smoke do dono (2026-09-13): «smoke parece ok»** — sobre `fd9aa8f97`, com o binário `--profile smoke` desta worktree.
+
 O critério é um só: **tudo igual a antes**. Qualquer diferença (um painel que não atualiza, um clique que não faz nada, uma
 ordem diferente, um Ctrl+Z que não desfaz) é defeito desta linha.
 1. Abrir cada módulo pela barra do topo (os pills) e voltar.

@@ -87,9 +87,16 @@ fn ajuste(amostras: &[([f32; 3], f32)], base: ([f32; 3], [f32; 3])) -> Quadric {
     .expect("a pegada tem pontos de sobra e não é degenerada")
 }
 
-/// ⚠️ **A barra saiu de um vale MEDIDO** (2026-09-13): o produto lê um pior desvio da ordem de
-/// `1e-7` (a aritmética de `f32` sobre alturas de `~0,2`), e o mutante que troca o monómio `uv`
-/// por `u²` no `height_at` lê `~1e-2`. `1e-5` fica a duas ordens de grandeza de cada lado.
+/// ⚠️ **A barra saiu de um vale MEDIDO** (2026-09-13):
+///
+/// | lado | pior desvio |
+/// |---|---:|
+/// | produto, `n` antes da troca de semente | `2,98e-8` |
+/// | produto, `n` depois da troca de semente | `2,24e-8` |
+/// | mutante: o monómio `uv` vira `u²` no `height_at` | `8,53e-2` |
+///
+/// `1e-5` fica ~2,5 ordens de grandeza acima do produto (a aritmética de `f32`) e ~4 abaixo do
+/// mutante.
 const TOL: f32 = 1e-5;
 
 #[test]

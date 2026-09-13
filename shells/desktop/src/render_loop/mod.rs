@@ -196,6 +196,8 @@ mod fase_frame_profile;
 mod fase_frame_profile_report;
 /// Fase do quadro: a câmera de jogo (o herói da cena de smoke e o passe da câmera).
 mod fase_game_camera;
+/// Fase do quadro: o fim do ramo hero (toasts, barras de trabalho, a arena do quadro).
+mod fase_hero_chrome_tail;
 /// Fase do quadro: a entrada (carimbo coalescido, diagnóstico, gamepad, script, soltos).
 mod fase_input_and_drops;
 /// Fase do quadro: o chrome legado (o ramo sem `HeroScreen`).
@@ -506,7 +508,6 @@ impl crate::App {
             asset_db,
             theme,
             toasts,
-            jobs,
             tools,
             vello_pass,
             vector_scene,
@@ -514,7 +515,6 @@ impl crate::App {
             flip,
             text_system,
             hero_screen,
-            hero_arena,
             frame_order,
             band_doc_scenes,
             hero_live,
@@ -579,7 +579,7 @@ impl crate::App {
             window_size.height as f32,
         );
         vector_scene.reset();
-        let mut paint_ctx = PaintCtx {
+        let paint_ctx = PaintCtx {
             theme: *theme,
             viewport,
             text: text_system,
@@ -11303,27 +11303,7 @@ impl crate::App {
                 self.painter_preview = None;
                 self.title_dirty = true;
             }
-            // Legacy `FloatingPanel` Procreate-style paint was retired
-            // here (2026-05-17). The pink/magenta tab-strip + Accent
-            // toggle decoration was inconsistent with the canonical
-            // dark-glass surface used by Inspector / Hierarchy /
-            // Widget Gallery. `Tool::build_panel()` still exists for
-            // event dispatch but the visual is dropped; per-tool
-            // chrome rewires through the new panel style in a
-            // follow-up wave (BgRemoval especially needs its preview
-            // panel re-painted; Move/Brush were stubs anyway).
-            let _ = tools;
-            toasts.paint(vector_scene, &mut paint_ctx);
-            // The job bars share the toasts' column and stack UNDER them, so they are handed
-            // the number of rows already spoken for. The count, not the geometry: the column's
-            // ruler lives in `progress::column_row` and neither the shell nor the toast painter
-            // gets to have an opinion about where row N is.
-            jobs.paint_below(toasts.len(), vector_scene, &mut paint_ctx);
-            // Drain frame-local arena AFTER the dispatch + paint pass
-            // so any events emitted earlier this frame are still alive
-            // for downstream consumers — wired in Phase A+ (currently
-            // events are logged, not acted on).
-            hero_arena.reset();
+            self.fase_hero_chrome_tail(viewport);
         } else {
             self.fase_legacy_chrome(viewport);
         }

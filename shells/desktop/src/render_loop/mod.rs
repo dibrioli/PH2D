@@ -246,6 +246,8 @@ mod fase_sheet_verbs;
 mod fase_signal_outbox;
 /// Fase do quadro: o extract (propagação, emissão das sprites e a ordem total do quadro).
 mod fase_sim_extract;
+/// Fase do quadro: a estrategia de origem e o re-assento do pivo.
+mod fase_source_strategy_and_joint_pivot;
 /// Fase do quadro: as cenas do Sprite Inspector (9-slice, âncoras, montagem, Animation).
 mod fase_sprite_inspector_smokes;
 /// Fase do quadro: as cenas dos pixels da sprite (`.ase`, dither, emissiva).
@@ -538,7 +540,6 @@ impl crate::App {
             frame_order,
             band_doc_scenes,
             hero_live,
-            next_import_cell,
             sheets,
             atlas_asset_map,
             asset_catalogs,
@@ -10247,46 +10248,12 @@ impl crate::App {
                 )));
                 self.title_dirty = true;
             }
-            // A troca de ESTRATÉGIA de origem sai por uma porta própria (irmã, pelo teto de LOC):
-            // ela precisa do `atlas_asset_map` e do `next_import_cell` em modo MUTÁVEL — a volta
-            // ao atlas ocupa uma célula nova —, e o `dispatch` acima recebe o mapa por leitura.
-            if inspector_strategy::dispatch(
-                sprite_source_change,
-                hero,
-                sim,
-                renderer,
-                asset_db,
-                atlas_asset_map,
-                next_import_cell,
-                toasts,
-                editor_queue,
-                component_registry,
-                *sprite_type_id,
-            ) {
-                self.title_dirty = true;
-            }
-            // W-J2: re-seat a joint's A anchor after a Position commit — the
-            // SAME door the canvas handles write through, so typing a pivot and
-            // dragging it mean the same thing. ⚠️ Not the `anchored` sentinel the
-            // old tail cleared: that re-derives BOTH locals, so editing X for the
-            // A end would silently reset the B end the artist just placed.
-            // A joint is a root entity, so its local translation IS world.
-            if let Some((bits, world)) = joint_pivot_commit {
-                let e = ph2d_ecs::Entity::from_bits(bits);
-                if sim
-                    .world()
-                    .get::<ph2d_physics_ecs::PhysicsJoint>(e)
-                    .is_some()
-                {
-                    physics.set_joint_anchor_world(sim, e, ph2d_physics_ecs::JointSide::A, world);
-                }
-                // W6: e o mesmo commit numa RODLANA montada precisa do sentinela
-                // desarmado — o centro dela também é derivado, e o
-                // `sync_mounted_wheels` o reescreveria. Pela MESMA porta do dot de
-                // canvas; ⚠️ aqui o sentinela É a resposta certa (uma roldana tem
-                // UM eixo, então não há segunda metade a perder como no joint).
-                ph2d_physics_ecs::reseat_mounted_axle(sim.world_mut(), e);
-            }
+            self.fase_source_strategy_and_joint_pivot(
+                fase_source_strategy_and_joint_pivot::SourceStrategyIntents {
+                    sprite_source_change,
+                },
+                joint_pivot_commit,
+            );
             self.fase_component_palette(add_component_for);
             self.fase_sprite_precision_emissive(fase_sprite_precision_emissive::SpriteRowIntents {
                 remove_from_sheet_row,

@@ -26,12 +26,12 @@ pub mod vector_network;
 #[cfg(test)]
 mod scene_tests;
 
+#[cfg(test)]
+mod atlas_probe_pieces_tests;
 /// ⚠️ **A sonda do atlas de imagem persistente da `vello` 0.10** — e os gates que a acompanham.
 /// Vive aqui, e não numa crate consumidora, porque esta é a única autorizada a importar `vello`.
 #[cfg(test)]
 mod atlas_probe_tests;
-#[cfg(test)]
-mod atlas_probe_pieces_tests;
 
 pub use scene::{CLIPPED_IMAGE_INFO_WORDS, StableImage, VELLO_BIN_DATA_WORDS, VectorScene};
 pub use vector_network::{

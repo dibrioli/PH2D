@@ -91,7 +91,10 @@ mod tests {
             None,
             &Rect::new(0.0, 0.0, 10.0, 10.0),
         );
-        assert!(solida.encoding().resources.patches.is_empty(), "fixtura: tinha de ser sem patch");
+        assert!(
+            solida.encoding().resources.patches.is_empty(),
+            "fixtura: tinha de ser sem patch"
+        );
         let n_caminhos = solida.encoding().n_paths;
         let entregue = keep.scene_for_vello(&solida);
         assert_eq!(
@@ -139,7 +142,10 @@ mod tests {
             .join("\n");
         let entregas = fonte.matches(".render_to_texture(").count();
         let portas = fonte.matches("keepalive.scene_for_vello(").count();
-        assert!(entregas >= 2, "o censo nao achou as entregas ao Vello ({entregas}) — mudou de forma?");
+        assert!(
+            entregas >= 2,
+            "o censo nao achou as entregas ao Vello ({entregas}) — mudou de forma?"
+        );
         assert_eq!(
             entregas, portas,
             "{entregas} entregas ao Vello e so' {portas} passam pela porta que mantem o atlas — a \

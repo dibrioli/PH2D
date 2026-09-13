@@ -116,7 +116,12 @@ struct Fidelidade {
     rgb_max: u8,
 }
 
-fn compara(referencia: &[u8], pecas: &[u8], largura: u32, rect: (u32, u32, u32, u32)) -> Fidelidade {
+fn compara(
+    referencia: &[u8],
+    pecas: &[u8],
+    largura: u32,
+    rect: (u32, u32, u32, u32),
+) -> Fidelidade {
     let mut f = Fidelidade {
         alfa_min: u8::MAX,
         ..Fidelidade::default()
@@ -154,8 +159,16 @@ fn carga() -> String {
 }
 
 /// Desenha `s` num alvo LIMPO e devolve o alfa do pixel `(x, y)`.
-fn alfa_em(gpu: &GpuContext, pass: &mut VelloPass, s: &VectorScene, alvo: (u32, u32), xy: (u32, u32)) -> u8 {
-    let px = pass.render_and_readback(gpu, s.inner(), alvo).expect("readback");
+fn alfa_em(
+    gpu: &GpuContext,
+    pass: &mut VelloPass,
+    s: &VectorScene,
+    alvo: (u32, u32),
+    xy: (u32, u32),
+) -> u8 {
+    let px = pass
+        .render_and_readback(gpu, s.inner(), alvo)
+        .expect("readback");
     px[((xy.1 * alvo.0 + xy.0) * 4 + 3) as usize]
 }
 
@@ -214,7 +227,10 @@ fn a_stable_image_survives_a_frame_without_late_bound_resources() {
     let meio = alfa_em(&gpu, &mut pass, &vazia, alvo, centro);
     let c = alfa_em(&gpu, &mut pass, &com, alvo, centro);
     let d = alfa_em(&gpu, &mut pass, &com, alvo, centro);
-    assert_eq!(meio, 0, "o quadro vazio tem de limpar o alvo — senao o caso nao mede nada");
+    assert_eq!(
+        meio, 0,
+        "o quadro vazio tem de limpar o alvo — senao o caso nao mede nada"
+    );
     assert_eq!(
         (a, c, d),
         (255, 255, 255),
@@ -233,6 +249,9 @@ fn a_stable_image_survives_a_frame_without_late_bound_resources() {
     );
 }
 
+/// Um caso da sonda: `(nome, alvo em px, lado da arte em px, zoom)`.
+type Caso = (&'static str, (u32, u32), (u32, u32), f64);
+
 /// ⭐ **A SONDA** — não afirma nada; imprime a tabela que decide o orçamento `max_pieces`.
 #[test]
 #[ignore = "sonda de GPU: imprime o preco e a fidelidade de uma imagem em N recortes, nao afirma"]
@@ -242,9 +261,19 @@ fn measure_skin_pieces_on_the_gpu() {
         return;
     };
     // `320 × 96` é a imagem do smoke do osso; o zoom põe-na do tamanho de um membro na tela.
-    let casos: [(&str, (u32, u32), (u32, u32), f64); 2] = [
-        ("320x96 a zoom 4 (1280x384 px)", (1_320, 424), (320, 96), 4.0),
-        ("320x96 a zoom 8 (2560x768 px)", (2_600, 808), (320, 96), 8.0),
+    let casos: [Caso; 2] = [
+        (
+            "320x96 a zoom 4 (1280x384 px)",
+            (1_320, 424),
+            (320, 96),
+            4.0,
+        ),
+        (
+            "320x96 a zoom 8 (2560x768 px)",
+            (2_600, 808),
+            (320, 96),
+            8.0,
+        ),
     ];
     // ⚠️ A varredura é FINA entre `7 776` e `86 400`: a 1.ª corrida leu `21 600` com os MESMOS
     // números de `7 776` e entrou em pânico a `86 400` dentro do encoding do Vello.
@@ -298,7 +327,13 @@ fn measure_skin_pieces_on_the_gpu() {
         ms_ref.sort_by(f64::total_cmp);
         println!(
             "{:>8} {:>9.3} {:>9} {:>9} {:>9} {:>8} {:>8}",
-            "sem clip", ms_ref[AMOSTRAS / 2], "-", "-", "-", "-", "-"
+            "sem clip",
+            ms_ref[AMOSTRAS / 2],
+            "-",
+            "-",
+            "-",
+            "-",
+            "-"
         );
         s_ref.reset();
         for (cols, rows) in grelhas {

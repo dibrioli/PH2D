@@ -171,18 +171,17 @@ fn measure_a_skinned_image_split_into_pieces() {
             );
         }
     }
-    println!("\n({QUADROS} quadros por caso; SEM LUGAR = pecas do ultimo quadro que nao aparecem)\n");
+    println!(
+        "\n({QUADROS} quadros por caso; SEM LUGAR = pecas do ultimo quadro que nao aparecem)\n"
+    );
 }
 
 /// Quanta informação por desenho o `Resolver` conta para uma imagem estável em `pecas` recortes —
 /// o `layout.bin_data_start`, que é o que o Vello subtrai do buffer FIXO `bin_data`.
 fn palavras_de_informacao(pecas: usize, w: u32, h: u32) -> u32 {
-    let estavel = StableImage::from_rgba(
-        Arc::new(vec![0x7F; (w as usize) * (h as usize) * 4]),
-        w,
-        h,
-    )
-    .expect("dimensoes batem");
+    let estavel =
+        StableImage::from_rgba(Arc::new(vec![0x7F; (w as usize) * (h as usize) * 4]), w, h)
+            .expect("dimensoes batem");
     let mut cena = VectorScene::new();
     for i in 0..pecas {
         let x = f64::from(u32::try_from(i).unwrap_or(0) % w.max(1));
@@ -249,7 +248,10 @@ fn the_bin_data_words_constant_is_the_one_vello_allocates() {
 #[ignore = "sonda: imprime as palavras de informacao por peca e o tecto do Vello, nao afirma"]
 fn measure_vello_bin_info_words_per_skin_piece() {
     const BIN_DATA: u32 = 1 << 18;
-    println!("\n{:>8} {:>14} {:>12} {:>10}", "pecas", "bin_data_start", "por peca", "cabe?");
+    println!(
+        "\n{:>8} {:>14} {:>12} {:>10}",
+        "pecas", "bin_data_start", "por peca", "cabe?"
+    );
     for pecas in [1_usize, 216, 864, 7_776, 20_000, 21_600, 30_000] {
         let palavras = palavras_de_informacao(pecas, 320, 96);
         #[expect(clippy::cast_precision_loss, reason = "uma razao para uma tabela")]

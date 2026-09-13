@@ -1860,10 +1860,19 @@ mais a distribuição por bins, que usa o resto do mesmo buffer).
 analítico compõem `1 − a·b` na aresta partilhada, e o fundo espreita até **~29 %** (alfa `182`) numa
 linha por aresta — `16 580` px a zoom 4 com as `216` peças do smoke.
 
+**4. ✅ A guarda por QUADRO** (o tecto de `1 024` por IMAGEM passava por cima da tolerância — a
+`k = 2` o `Smooth` entregava `3,5 px` numa dobra forte contra `0,5 px` pedidos — e não protegia o
+quadro: N imagens presas multiplicavam-no). Medido o outro consumidor do buffer, o chrome do editor
+pintado sem ecrã pelo registo real (sonda `ph2d-editor-core::vello_bin_budget_of_an_editor_frame`,
+texto incluído): **`109`** palavras com os painéis de omissão, **`~1 190`** com todos abertos. ⇒
+`SKIN_FRAME_PIECES = (1 << 18) ÷ 2 ÷ (11 + 4) = 8 738`, repartido **proporcionalmente** pelas
+imagens presas (o mesmo `k` para todas), e dentro dele **a tolerância decide**. ⚠️ A metade que
+sobra é da arte do canvas, que **não foi medida**. Gate
+`the_smooth_pieces_of_all_skinned_images_share_one_frame_budget` (visto RED com o tecto por imagem:
+`18 t` contra `9 t`). Malhas `Fast` que sozinhas passam do orçamento não têm o que cortar: aviso
+único no stderr.
+
 ⏳ **ABERTO, e nomeado:**
-- **A guarda por QUADRO.** O `max_pieces` é por IMAGEM e o buffer é do quadro: N imagens presas
-  multiplicam-no, e a malha `Fast` de uma imagem grande já custa milhares de peças. Falta a reserva
-  do chrome (sonda `ph2d-editor-core::vello_bin_budget_of_an_editor_frame`).
 - **A família de curas das costuras:** sobrepor cada recorte `~0,5 px` (perfeito em arte opaca,
   dobra a composição em arte translúcida ao longo da costura) · ou o **pipeline de triângulos
   texturados**, que a F6 nomeou como optimização *«com razão medida»* — e a razão está agora medida

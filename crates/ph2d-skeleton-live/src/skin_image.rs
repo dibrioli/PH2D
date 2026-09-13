@@ -398,8 +398,7 @@ fn stable_image(
     }
     let asset = asset_db.get(&id)?;
     let (w, h, cow) = asset.image_rgba8()?;
-    let imagem =
-        ph2d_vector::StableImage::from_rgba(std::sync::Arc::new(cow.into_owned()), w, h)?;
+    let imagem = ph2d_vector::StableImage::from_rgba(std::sync::Arc::new(cow.into_owned()), w, h)?;
     cache.insert(id, imagem.clone());
     Some(imagem)
 }

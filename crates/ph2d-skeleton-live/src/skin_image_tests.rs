@@ -353,10 +353,20 @@ fn the_smooth_pieces_of_all_skinned_images_share_one_frame_budget() {
     };
 
     let fast = desenha(None);
-    assert_eq!(fast.len(), 2, "fixtura: as duas artes tinham de ter ids distintos");
-    assert_eq!(fast[0], fast[1], "fixtura: as duas malhas tinham de ter o mesmo tamanho");
+    assert_eq!(
+        fast.len(),
+        2,
+        "fixtura: as duas artes tinham de ter ids distintos"
+    );
+    assert_eq!(
+        fast[0], fast[1],
+        "fixtura: as duas malhas tinham de ter o mesmo tamanho"
+    );
     let t = fast[0];
-    assert!(t > 1, "fixtura: a malha guardada tem de ter mais de um triangulo");
+    assert!(
+        t > 1,
+        "fixtura: a malha guardada tem de ter mais de um triangulo"
+    );
 
     let orcamento = 9 * t;
     let suave = desenha(Some(ph2d_poly2d::RefineOptions {

@@ -1,0 +1,1 @@
+I session: 9f820704-0d7e-4d96-847e-9cd720cbf178 2026-09-13 — janela I da line/sculpt3d (a mesma do INC-4 classificado RELANCE); obra: pincel Boundary

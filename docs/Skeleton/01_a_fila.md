@@ -1877,9 +1877,34 @@ sobra é da arte do canvas, que **não foi medida**. Gate
   dobra a composição em arte translúcida ao longo da costura) · ou o **pipeline de triângulos
   texturados**, que a F6 nomeou como optimização *«com razão medida»* — e a razão está agora medida
   três vezes: costuras em todo modo, o tecto por quadro, e `~3–5 ms` a `7 776` peças.
-- ⚠️ **Não medido:** a pele é desenhada na fase de overlay do Vello, por ordem de ARQUÉTIPO
-  (`iter_entities`), e não pela ordem de profundidade do artista — duas imagens presas sobrepostas
-  podem trocar de frente. Pergunta com endereço, ainda sem corrida.
+- ✅ **Medido por leitura, e é pior do que a pergunta:** ver a F6-h.
+
+### F6-h — ⛔⛔⛔ **A IMAGEM PRESA NÃO É UMA SPRITE DO QUADRO: é uma camada por cima dele** — quatro defeitos, uma causa (2026-09-13)
+
+Lido no código (com um mapa da composição do quadro a apontar os sítios):
+
+1. **A ORDEM DE PROFUNDIDADE perde-se inteira.** Sprites e formas vectoriais do documento
+   intercalam-se por UMA classificação partilhada (`sim_extract.rs` → `compute_sort_ranks_into` →
+   `FrameOrder` → bandas). A sprite presa passa pela guarda `drawn && !skinned_image(…)` e **não
+   emite** — e o `emit::sprite` é o único sítio onde uma sprite empurra o seu `SortInput`; a
+   `vector_participant` devolve `None` para toda entidade com `Sprite`. ⇒ **sem rank**. O desenho vai
+   para a cena do CHROME (`fase_vector_edit_overlay.rs`), que se compõe por cima de tudo: **acima de
+   todas as sprites, de toda a arte do documento, e do vidro do prefab aberto**; entre várias imagens
+   presas, a ordem é a de arquétipo (`iter_entities`).
+   ⛔ **E o doc da `skinned_image` afirma o contrário** (*«ocupa o lugar dele na ordem mas não emite
+   instância»*), com um gate que só compara posições de texto.
+2. **A VISIBILIDADE não é perguntada.** A porta `off_canvas::draws_this_frame` (olho da Hierarquia,
+   peça de receita fora do canvas, camadas) só corre na extracção; o `draw_skinned_images` não a
+   chama ⇒ **uma imagem presa escondida continua a ser desenhada**.
+3. **As PROPRIEDADES da sprite perdem-se:** o desenho da pele não lê tinta, opacidade, espelhamento,
+   modo de mistura nem filtro de amostragem (zero ocorrências no `skin_image.rs`).
+4. **As COSTURAS** (F6-g), e o tecto de peças do Vello.
+
+⇒ **A cura de padrão-ouro é uma só: a sprite presa é desenhada como MALHA dentro do passe de
+sprites, no lugar dela na ordem** — a extracção emite-a (com rank, com a porta de visibilidade, com
+as propriedades), e o passe troca o quad pela malha posada. As costuras somem (triângulos sem AA nas
+arestas internas) e o orçamento do Vello deixa de se aplicar. ⏳ Plano em escrita; ⛔ o passe de
+sprites **não tem hoje caminho de malha com UV** (só quads instanciados).
 
 ## ⛔ Recusas MEDIDAS deste módulo — não as reconstrua
 

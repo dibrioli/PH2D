@@ -1,11 +1,8 @@
 //! Snapshot publication phase — once per frame, before paint.
 //!
-// Tecto de LOC NUMERADO em `tests/it/file_loc_caps.rs` — accreted one producer per W3 Inspector section
-// (sprite/transform/visibility/ordering/sampling/name + §8 visibility-
-// section). Was already AT the 600-LOC ceiling before §8; +7 LOC for the
-// §8 producer tips it. Follow-up: lift the per-section producers into
-// their sibling `inspector_*` modules (build_* already live there) and
-// leave this file as the thin publish orchestrator.
+// Partido por assunto na OBRA 3 da `line/render-bodies` (2026-09-13): aqui ficam a `publish` (o orquestrador, pela ordem
+// de sempre), a hierarquia e o passe do gizmo — o que os gates leem pelo caminho deste ficheiro —; o HUD, a caixa de sprite
+// e a vista global do gizmo, e o Inspector moram nos filhos `hud`, `gizmo`, `inspector` e `inspector_sprite`.
 //!
 //! Wave 3.2 stage A — extracted from `render_loop::mod.rs` as a free
 //! function taking explicit refs to the destructured `AppGfx` fields
@@ -27,95 +24,18 @@ use ph2d_host::WindowSize;
 use ph2d_render::{Camera2d, Sprite};
 use std::collections::BTreeMap;
 
-/// BulkSelect (T2.0): compute which editable `Sprite` fields diverge
-/// across the `selected` entities, relative to `primary`. Exact equality
-/// is intentional — "Mixed" means the stored values literally differ, so
-/// editing the field would stomp the divergence. `selected` includes the
-/// primary (a no-op self-compare); unknown / non-sprite entities are
-/// skipped. Returns all-`false` for a single selection.
-///
-/// ⚠️ **Os três componentes do corte (ADR-0164 F1 passo 6) comparam-se pelo valor EFETIVO**, e é
-/// a mesma lei que o [`emissive_of`] abaixo já escrevia: *a ausência **é** o valor neutro*. Uma
-/// sprite sem `SpriteGrid` e outra com `1×1` concordam; comparar `Option` diria que divergem, e o
-/// chip «Mixed» acenderia sobre duas sprites que têm exatamente a mesma grelha de uma célula.
-/// ⭐ A ÚNICA exceção é o `region_enabled`, que **é** a presença — ali `Option::is_some()` é o valor.
-#[allow(clippy::float_cmp)] // exact compare: same stored value = not mixed
-fn compute_sprite_mixed(
-    world: &ph2d_ecs::World,
-    selected: &[u64],
-    primary_bits: u64,
-) -> ph2d_editor_core::InspectorSpriteMixed {
-    let mut m = ph2d_editor_core::InspectorSpriteMixed::default();
-    let primary_entity = ph2d_ecs::Entity::from_bits(primary_bits);
-    let Some(primary) = world.get::<Sprite>(primary_entity) else {
-        return m;
-    };
-    let p_grid = grid_of(world, primary_entity);
-    let p_region = world.get::<ph2d_ecs::SpriteRegion>(primary_entity).copied();
-    let p_rect = p_region.map_or([0.0; 4], |r| r.rect);
-    let p_corner = corner_tint_of(world, primary_entity);
-    for &bits in selected {
-        let entity = ph2d_ecs::Entity::from_bits(bits);
-        let Some(s) = world.get::<Sprite>(entity) else {
-            continue;
-        };
-        let grid = grid_of(world, entity);
-        let region = world.get::<ph2d_ecs::SpriteRegion>(entity).copied();
-        let rect = region.map_or([0.0; 4], |r| r.rect);
-        m.flip_x |= s.flip_x != primary.flip_x;
-        m.flip_y |= s.flip_y != primary.flip_y;
-        m.tint_fill |= s.tint_fill != primary.tint_fill;
-        m.centered |= s.centered != primary.centered;
-        m.region_enabled |= region.is_some() != p_region.is_some();
-        m.region_filter_clip |= region.map(|r| r.filter_clip) != p_region.map(|r| r.filter_clip);
-        m.opacity |= s.opacity != primary.opacity;
-        m.hframes |= grid.hframes != p_grid.hframes;
-        m.vframes |= grid.vframes != p_grid.vframes;
-        m.frame |= grid.frame != p_grid.frame;
-        m.offset_x |= s.offset[0] != primary.offset[0];
-        m.offset_y |= s.offset[1] != primary.offset[1];
-        m.region_x |= rect[0] != p_rect[0];
-        m.region_y |= rect[1] != p_rect[1];
-        m.region_w |= rect[2] != p_rect[2];
-        m.region_h |= rect[3] != p_rect[3];
-        m.tint |= s.tint != primary.tint;
-        m.self_tint |= s.self_tint != primary.self_tint;
-        m.per_corner |= corner_tint_of(world, entity) != p_corner;
-    }
-    m
-}
-
-/// A grelha efetiva desta entidade — ausente = uma célula ([`ph2d_ecs::SpriteGrid::SINGLE`]).
-fn grid_of(world: &ph2d_ecs::World, entity: ph2d_ecs::Entity) -> ph2d_ecs::SpriteGrid {
-    world
-        .get::<ph2d_ecs::SpriteGrid>(entity)
-        .copied()
-        .unwrap_or(ph2d_ecs::SpriteGrid::SINGLE)
-}
-
-/// O degradê efetivo — ausente = quatro cantos brancos (identidade).
-fn corner_tint_of(world: &ph2d_ecs::World, entity: ph2d_ecs::Entity) -> [[f32; 4]; 4] {
-    world
-        .get::<ph2d_ecs::SpriteCornerTint>(entity)
-        .map_or(ph2d_ecs::SpriteCornerTint::IDENTITY.0, |c| c.0)
-}
-
-/// **A divergência de EMISSÃO** — comparada à parte porque ela não vive no `Sprite`.
-///
-/// ⚠️ `SpriteEmissive` é um componente OPCIONAL, e a sua ausência **é** `EMISSIVE_OFF`: uma sprite
-/// sem o componente e outra com `0.0` concordam. Comparar `Option<&SpriteEmissive>` diretamente
-/// diria que divergem, e o chip branquearia sobre duas sprites que emitem exatamente o mesmo nada.
-fn emissive_of(world: &ph2d_ecs::World, entity: ph2d_ecs::Entity) -> f32 {
-    world
-        .get::<ph2d_ecs::SpriteEmissive>(entity)
-        .map_or(ph2d_ecs::EMISSIVE_OFF, |e| e.clamped())
-}
-
-fn compute_emissive_mixed(world: &ph2d_ecs::World, selected: &[u64], primary: f32) -> bool {
-    selected
-        .iter()
-        .any(|&bits| emissive_of(world, ph2d_ecs::Entity::from_bits(bits)) != primary)
-}
+/// A caixa de uma sprite e a vista global do gizmo — filho por assunto.
+#[path = "snapshots_gizmo.rs"]
+mod gizmo;
+/// A grelha, a barra do Edit Prefab e o HUD — filho por assunto, num ficheiro irmão.
+#[path = "snapshots_hud.rs"]
+mod hud;
+/// O Inspector da seleção — filho por assunto.
+#[path = "snapshots_inspector.rs"]
+mod inspector;
+/// A secção Sprite do Inspector e os ajudantes dela — filho por assunto.
+#[path = "snapshots_inspector_sprite.rs"]
+mod inspector_sprite;
 
 /// Walks PresentWorld + SimWorld to build the per-frame snapshots
 /// and writes them onto the `HeroScreen`. Caller (orchestrator)
@@ -241,204 +161,107 @@ pub(super) fn publish(
     // componente?»*, que divergiria do rótulo do botão que o anexa.
     component_registry: &ph2d_ecs::scene::ComponentRegistry,
 ) {
-    // M14.4a: if live-bridge enabled, rebuild HierarchySnapshot
-    // from SimWorld + push into HeroScreen BEFORE paint. The
-    // snapshot's DFS visit order = hierarchy panel display
-    // order. ADR-0029 Phase C.2: the typed Hierarchy panel owns the
-    // live-entries thread-local; we call into the panel crate
-    // directly here (the shell already gates `panel-hierarchy` via
-    // feature).
     #[cfg(feature = "panel-hierarchy")]
-    if let Some(live) = hero_live.as_mut() {
-        crate::build_hierarchy_snapshot(
-            sim.world(),
-            &mut live.walk_state,
-            &mut live.walk_scratch,
-            &mut live.snapshot,
-        );
-        let (ordered, mut entries) = live.bridge.sync_from_snapshot(&live.snapshot);
-        // ⭐⭐⭐ **UMA RECEITA NÃO É UMA LINHA DA CENA** (report do Enio, 2026-08-30: *«se apagar o
-        // objeto de origem na hierarquia, some no painel»* + *«o original deve ficar apenas no
-        // painel»*).
-        //
-        // O *Make Component* marca como receita o objecto escolhido e põe uma cópia no lugar. A
-        // receita já não se DESENHA — mas continuava a ser uma linha da Hierarquia, e apagá-la de
-        // lá destruía o asset. ⇒ ela sai da lista: o sítio dela é a biblioteca.
-        //
-        // ⭐ **E a lei é a MESMA do canvas**, não uma segunda: o
-        // [`ph2d_entity_visibility::off_canvas::is_unedited_recipe`] já responde *«esta entidade é peça de uma
-        // receita que ninguém está a editar agora?»*, e é o que o extract usa para não a desenhar.
-        // Uma cópia dessa regra aqui divergiria no dia em que a edição de receita mudasse.
-        //
-        // ⚠️ **A receita que está a ser EDITADA volta à lista** — senão a forma do mestre seria
-        // impossível de mudar, que é a metade que o `is_unedited_recipe` protege.
-        let hidden_rows: std::collections::BTreeSet<ph2d_editor_core::NodeId> = ordered
-            .iter()
-            .copied()
-            .filter(|id| {
-                live.bridge.entity_for(*id).is_some_and(|bits| {
-                    ph2d_entity_visibility::off_canvas::is_unedited_recipe(
-                        sim.world(),
-                        ph2d_ecs::Entity::from_bits(bits),
-                    )
-                })
-            })
-            .collect();
-        let ordered: Vec<ph2d_editor_core::NodeId> = ordered
-            .into_iter()
-            .filter(|id| !hidden_rows.contains(id))
-            .collect();
-        entries.retain(|id, _| !hidden_rows.contains(id));
-        // Fase 0 hotfix: mark every multi-selection row's
-        // `HierarchyEntity.selected` BEFORE the panel paints, so
-        // the row painter highlights N rows instead of just the
-        // primary (paint.rs falls back to label match only when
-        // `selected` is still false — fixture/demo path).
-        for bits in hero.gizmo.iter_selected() {
-            if let Some(node_id) = live.bridge.node_for(bits)
-                && let Some(entry) = entries.get_mut(&node_id)
-            {
-                entry.selected = true;
-            }
-        }
-        // ⭐ **O REALCE DE PROVENIÊNCIA** (estudo de UI viva, C2) — carimbado pela porta ÚNICA
-        // (`App::hovered_object`), que responde ao ponteiro venha ele do canvas ou desta lista.
-        //
-        // ⚠️ **UM objecto, uma linha.** A porta devolve `Option`, então duas linhas acesas ao mesmo
-        // tempo não é exprimível daqui — e seria a assinatura de um segundo produtor a nascer.
-        if let Some(bits) = hovered
-            && let Some(node_id) = live.bridge.node_for(bits)
-            && let Some(entry) = entries.get_mut(&node_id)
-        {
-            entry.hovered = true;
-        }
-        // Onda 1 hotfix: centralise the header label sync to the
-        // multi-selection primary. Input handlers (canvas pick,
-        // Hierarchy panel click, modifier override) used to stamp
-        // hero.selection themselves and could race — e.g. Hierarchy
-        // Cmd+click on row A stamped label="A" BEFORE the bus drain
-        // toggled A out of the selection, leaving paint's label-match
-        // fallback to re-highlight A. Snapshotting it once here
-        // post-drain, against the post-toggle primary, removes the
-        // race entirely.
-        let primary_label = hero
-            .gizmo
-            .selection
-            .and_then(|bits| live.bridge.node_for(bits))
-            .and_then(|node| {
-                entries
-                    .get(&node)
-                    .map(|e| (e.name.clone(), e.badge.clone()))
-            });
-        // **O SELO DO PAPEL BOOLEANO**, stampado DEPOIS do `primary_label` de propósito: o
-        // cabeçalho usa o badge como *tipo* da seleção, e sobrescrevê-lo antes faria a
-        // barra de cima dizer `SUB` onde sempre disse `ENT`. São dois consumidores do
-        // mesmo campo, e só um deles pediu esta informação.
-        if !bool_badges.is_empty() {
-            for (&bits, &badge) in bool_badges {
-                if let Some(node_id) = live.bridge.node_for(bits)
-                    && let Some(entry) = entries.get_mut(&node_id)
-                {
-                    entry.badge = Some(badge.to_string());
-                }
-            }
-        }
-        ph2d_panel_hierarchy::sync_from_hierarchy(&mut hero.store, &ordered, entries);
-        if let Some((label, badge)) = primary_label {
-            hero.selection = Some(ph2d_editor_core::HeroSelection {
-                label,
-                kind: badge.unwrap_or_else(|| "ENT".to_string()),
-                world_pos: (0.0, 0.0),
-            });
-        } else if hero.gizmo.selection.is_none() {
-            hero.selection = None;
-        }
-    }
-    // M14.4b: publish the demo camera + window dims so the
-    // hero paints its world grid overlay. `canvas` is a
-    // placeholder — `paint_hero_screen` overrides it with
-    // the layout-computed canvas rect.
-    // Motion Nodes drift fix (2026-07-25): sob o split da tool Motion a CENA renderiza num
-    // sub-retângulo (present.rs, via `CenterSplit::scene_viewport`), mas a grade do mundo
-    // projetava a janela CHEIA — as linhas não pousavam sobre os sprites/instâncias do
-    // Motion. A grade usa as MESMAS dims da cena (a porta única); fora do split é a janela
-    // cheia, byte-idêntico.
-    let (grid_w, grid_h) =
-        ph2d_app_motion::field_gizmo::scene_window_wh(hero.view.center_split, window_size);
-    hero.set_grid_view(Some(ph2d_editor_core::GridView {
-        camera_center: camera.center,
-        camera_height_world: camera.height_world,
-        window_w: grid_w,
-        window_h: grid_h,
-        canvas: ph2d_editor_core::zones::Rect::new(0.0, 0.0, 0.0, 0.0),
-    }));
-    // ⭐⭐⭐ **A BARRA DO MODO DE RECEITA** (o *Edit Prefab*) — o nome do que se está a editar,
-    // quantas cópias seguem, e a saída. ⚠️ Publicada como o `grid_view` e pela mesma razão: quem
-    // sabe que há uma receita aberta é o MUNDO, e a crate do chrome não o alcança. `None` fecha a
-    // barra, e é o caminho de sempre.
-    hero.set_prefab_edit(ph2d_app_components::master_editing::open_view(sim));
-    // M14.4g Telemetry Phase A: publish real stats. Sprite
-    // and entity counts come from PresentWorld (the source of
-    // truth for "what we shipped to the GPU this frame"); fps
-    // is derived from the EWMA frame_ms.
-    let sprite_count = present
-        .world_mut()
-        .query::<&ph2d_render::RenderInstance>()
-        .iter(present.world_mut())
-        .count() as u32;
-    // ⚠️ **Sem os quads de 9-slice.** Os nove quads de um sprite fatiado partilham o `SimRef`
-    // da entidade (é o que faz o carimbo de `z_order` servir os nove), por isso contá-los aqui
-    // faria UMA caixa de diálogo aparecer no HUD como NOVE entidades — um número que passaria a
-    // mentir exatamente quando a cena fica interessante. A contagem de INSTÂNCIAS acima sobe de
-    // propósito: nove quads são nove quads, e isso é o que um contador de desenho deve dizer.
-    let entity_count = present
-        .world_mut()
-        .query_filtered::<&SimRef, bevy_ecs::query::Without<ph2d_render::nine_slice::SlicePatchMirror>>()
-        .iter(present.world_mut())
-        .count() as u32;
-    let fps = if frame_ms_ewma > 0.001 {
-        1000.0 / frame_ms_ewma
-    } else {
-        0.0
-    };
-    // M14.7 polish (10.1): raw fps = inverse of pure
-    // CPU/command-encode time. Floored at 1 ms (1000 fps) so
-    // a startup-edge measurement of 0 doesn't blow up to
-    // `inf`; real workloads stabilize within a few frames.
-    let raw_fps = 1000.0 / frame_cpu_ms_ewma.max(0.001);
-    // Diagnostics: wall-clock NOT in the CPU-encode window = present/vsync acquire stall PLUS any
-    // between-frames input work — the gap that makes "Raw" rise while FPS falls (HANDOFF §1.R).
-    let present_stall_ms = (frame_ms_ewma - frame_cpu_ms_ewma).max(0.0);
-    hero.stats = ph2d_editor_core::BottomHudStats {
-        fps,
-        frame_ms: frame_ms_ewma,
-        draws: 1,
-        sprite_count,
-        entity_count,
-        raw_fps,
-        present_stall_ms,
-        paint_ms,
+    publish_hierarchy(hero, hero_live, hovered, sim, bool_badges);
+    hud::publish(
+        hero,
+        sim,
+        present,
+        camera,
+        window_size,
+        frame_ms_ewma,
+        frame_cpu_ms_ewma,
         input_events,
         paint_stamps,
-    };
-    // Hierarchy counts use PresentWorld's archetype components
-    // (Transform + Sprite + Visibility + ChildOf + Children).
-    // It's a proxy — exactly the components the editor's
-    // snapshot pipeline observes per entity. Multiplying by
-    // entity count is a rough estimate; counting via archetype
-    // walk is cheap enough at editor scales.
-    let component_count = {
-        let world = sim.world();
-        let mut total = 0u32;
-        for archetype in world.archetypes().iter() {
-            let len = archetype.len();
-            let comps = archetype.components().len() as u32;
-            total = total.saturating_add(len.saturating_mul(comps));
-        }
-        total
-    };
-    #[cfg(feature = "panel-hierarchy")]
-    ph2d_panel_hierarchy::set_live_component_count(component_count);
+        paint_ms,
+    );
+    publish_gizmo(
+        hero,
+        sim,
+        present,
+        camera,
+        window_size,
+        last_pointer,
+        tool_preview_bits,
+        vec_scene,
+        vec_gizmo_on,
+        vec_view,
+        flip,
+        flip_gizmo_on,
+        joint_anchor_handles,
+        joint_anchor_snap,
+        join_draw_armed,
+    );
+    gizmo::global_view(hero, sim, last_pointer, suppress_sprite_gizmo);
+    // §14 Platform Player (W5) — a quarta da família. Ao contrário da §12/§13,
+    // ela TEM face vazia: `Some` para todo corpo Dynamic, com ou sem o
+    // componente, porque o botão dela é o que faz o comportamento existir.
+    // ⚠️ **A corrida gravada entra por FORA do mundo** (W17): ela é um fato do
+    // documento, não desta entidade, e é o único número da §14 que não sai do
+    // componente. Segundos, medidos com o MESMO passo fixo que gravou os tiques.
+    let recorded_run_seconds = (player_tape_ticks as f64 * fixed_dt) as f32;
+    let discarded_run_seconds = (discarded_run_ticks as f64 * fixed_dt) as f32;
+    let inspector_player = hero.gizmo.selection.and_then(|b| {
+        ph2d_app_physics::inspector::player::build_player_info(
+            sim,
+            b,
+            recorded_run_seconds,
+            discarded_run_seconds,
+            player_live,
+            player_law,
+        )
+    });
+    inspector::publish(
+        hero,
+        sim,
+        asset_db,
+        atlas_asset_map,
+        catalogs,
+        sheets,
+        renderer,
+        window_size,
+        game_camera_preview,
+        bake_range,
+        bake_channels_tag,
+        join_kind_tag,
+        joint_body_pick,
+        joint_paste_targets,
+        wheel_body_pick,
+        wheel_rope_pick,
+        join_draw_armed,
+        component_registry,
+        inspector_player,
+    );
+}
+
+// A regra da autoria de folha mora no filho `inspector_sprite`; os testes dela seguem neste módulo, pelo nome.
+#[cfg(test)]
+use inspector_sprite::sheet_authorship;
+
+#[cfg(test)]
+#[path = "snapshots_sheet_authorship_tests.rs"]
+mod sheet_authorship_tests;
+
+/// O passe do gizmo: a poda dos mortos, a view da seleção primária e das extras (o `build_view`), o número do
+/// arrasto e o gizmo de ponto das juntas. Os gates que leem este passe pelo caminho do ficheiro leem-no aqui.
+#[allow(clippy::too_many_arguments)]
+fn publish_gizmo(
+    hero: &mut HeroScreen,
+    sim: &SimWorld,
+    present: &mut PresentWorld,
+    camera: &Camera2d,
+    window_size: WindowSize,
+    last_pointer: (f32, f32),
+    tool_preview_bits: &[Option<u64>],
+    vec_scene: &ph2d_vec_scene::VecScene,
+    vec_gizmo_on: bool,
+    vec_view: &ph2d_vec_scene::VecViewState,
+    flip: &FlipDoc,
+    flip_gizmo_on: bool,
+    joint_anchor_handles: Vec<ph2d_editor_core::gizmo::PointHandle>,
+    joint_anchor_snap: Option<[f32; 2]>,
+    join_draw_armed: bool,
+) {
     // M14.7 B: publish the gizmo's per-frame projection. When
     // the selection still resolves to a present entity (it can
     // vanish if the user deleted it between frames) we build a
@@ -561,63 +384,19 @@ pub(super) fn publish(
                 gizmo_ppm,
             );
         }
-        let sprite = sim.world().get::<Sprite>(sim_entity)?;
-        let mut q = present
-            .world_mut()
-            .query::<(&SimRef, &ph2d_ecs::GlobalTransform)>();
-        let gt = q.iter(present.world()).find_map(|(sref, gt)| {
-            if sref.0 == sim_entity {
-                Some(*gt)
-            } else {
-                None
-            }
-        })?;
-        let affine = gt.affine();
-        let col0_x = affine[0];
-        let col0_y = affine[1];
-        let col1_x = affine[2];
-        let col1_y = affine[3];
-        let scale_x = (col0_x * col0_x + col0_y * col0_y).sqrt();
-        let scale_y = (col1_x * col1_x + col1_y * col1_y).sqrt();
-        let rotation = col0_y.atan2(col0_x);
-        let p = gt.translation();
-        // **COM A FOLHA ABERTA, A CAIXA ENVOLVE A FOLHA** (Enio, 2026-08-23: *«o gizmo da
-        // sprite deve englobar todas as células»*). A escolha e os números vivem em
-        // `sheet_grid_overlay::gizmo_box`, que é onde eles têm gate — aqui só se aplica a
-        // escala e a rotação, como sempre.
-        let (eff_anchor, half) = crate::render_loop::sheet_grid_overlay::gizmo_box(
-            sprite,
-            sim.world().get::<ph2d_ecs::SpriteGrid>(sim_entity).copied(),
-            gizmo_ppm,
-            sheet_gizmo_bits == Some(bits),
-            crate::render_loop::sim_extract_sheet::is_tool_previewed(tool_preview_bits, sim_entity),
-        );
-        let half_w = half[0] * scale_x;
-        let half_h = half[1] * scale_y;
-        let ax = eff_anchor[0] * scale_x;
-        let ay = eff_anchor[1] * scale_y;
-        // T1.3.5 cross-OS bit-identical.
-        let (sin_r, cos_r) = libm::sincosf(rotation);
-        let cx = p.x + ax * cos_r - ay * sin_r;
-        let cy = p.y + ax * sin_r + ay * cos_r;
-        Some(ph2d_editor_core::GizmoView {
-            bbox_min_world: [cx - half_w, cy - half_h],
-            bbox_max_world: [cx + half_w, cy + half_h],
-            pivot_world: [p.x, p.y],
+        gizmo::sprite_view(
+            bits,
+            sim_entity,
+            sim,
+            present,
+            camera,
+            window_size,
+            last_pointer,
             pivot_tool_active,
-            rotation,
-            camera_center: camera.center,
-            camera_height_world: camera.height_world,
-            window_w: window_size.width as f32,
-            window_h: window_size.height as f32,
-            canvas: ph2d_editor_core::zones::Rect::new(
-                0.0,
-                0.0,
-                window_size.width as f32,
-                window_size.height as f32,
-            ),
-            cursor_screen: Some(last_pointer),
-        })
+            gizmo_ppm,
+            sheet_gizmo_bits,
+            tool_preview_bits,
+        )
     };
     // Poda ANTES de construir as views: só a morte de uma entidade tira alguém da
     // seleção (ver `gizmo_prune` — o atalho "sem view = morreu" expulsava as
@@ -659,740 +438,129 @@ pub(super) fn publish(
             hero.gizmo.extra_views.push((bits, v));
         }
     }
-    // Onda 2 polish: while a Global gizmo drag is alive, derive the
-    // global view from the cached `global_view_start` snapshot +
-    // primary's transform deltas. This is what makes the global gizmo
-    // **rotate visually** during a Global Rotate (and scale rigidly
-    // during a Global Scale) instead of being the axis-aligned union
-    // of rotated sprites — that union grows under rotation, which
-    // would make the gizmo "balloon" rather than rotate.
-    let global_from_drag = if let (Some(start), Some(drag)) = (
-        hero.gizmo.global_view_start.as_ref().copied(),
-        hero.gizmo.drag.as_ref().copied(),
-    ) && matches!(drag.target, ph2d_editor_core::GizmoTarget::Global)
-    {
-        let primary_entity = ph2d_ecs::Entity::from_bits(drag.entity_bits);
-        let world = sim.world();
-        let (delta_rot, factor_x, factor_y) =
-            if let Some(t) = world.get::<Transform>(primary_entity) {
-                let dr = t.rotation - drag.start_transform.rotation;
-                let fx = if drag.start_transform.scale[0].abs() > f32::EPSILON {
-                    t.scale.x / drag.start_transform.scale[0]
-                } else {
-                    1.0
-                };
-                let fy = if drag.start_transform.scale[1].abs() > f32::EPSILON {
-                    t.scale.y / drag.start_transform.scale[1]
-                } else {
-                    1.0
-                };
-                (dr, fx, fy)
-            } else {
-                (0.0, 1.0, 1.0)
-            };
-        let cx_s = (start.bbox_min_world[0] + start.bbox_max_world[0]) * 0.5;
-        let cy_s = (start.bbox_min_world[1] + start.bbox_max_world[1]) * 0.5;
-        let hw_s = (start.bbox_max_world[0] - start.bbox_min_world[0]) * 0.5;
-        let hh_s = (start.bbox_max_world[1] - start.bbox_min_world[1]) * 0.5;
-        // Onda 2 hotfix: global drags (Scale + Rotate) PIVOT around the
-        // start centre. The primary's translation shifts as a side
-        // effect of the rotation/scale, but the gizmo's centre stays
-        // at the original pivot — using the primary's delta_translation
-        // here was making the gizmo drift away from the sprites it
-        // covers (smoke: "o desenho do gizmo não rotaciona corretamente
-        // em seu centro causando um drift entre as sprites e o
-        // desenho do gizmo"). Global has no Translate handle (we
-        // dropped BBOX_INTERIOR for keyed gizmos), so this branch only
-        // sees Scale + Rotate.
-        let new_cx = cx_s;
-        let new_cy = cy_s;
-        let new_hw = hw_s * factor_x.abs();
-        let new_hh = hh_s * factor_y.abs();
-        Some(ph2d_editor_core::GizmoView {
-            bbox_min_world: [new_cx - new_hw, new_cy - new_hh],
-            bbox_max_world: [new_cx + new_hw, new_cy + new_hh],
-            pivot_world: [new_cx, new_cy],
-            pivot_tool_active: false,
-            rotation: delta_rot,
-            camera_center: start.camera_center,
-            camera_height_world: start.camera_height_world,
-            window_w: start.window_w,
-            window_h: start.window_h,
-            canvas: start.canvas,
-            cursor_screen: Some(last_pointer),
-        })
-    } else {
-        None
-    };
-    // Onda 2: global view = union of every selected sprite's bbox,
-    // EXPANDED by a fixed screen offset so the global gizmo's handles
-    // sit clear of the individual gizmos' handles (Enio: "o gizmo da
-    // multiseleção com offset em relação aos gizmos individuais para
-    // não conflitar as alças de manipulação"). 32 px in screen space,
-    // converted to world units at the current zoom so the offset
-    // tracks the zoom level — handles stay one handle-size + a gap
-    // outside the individuals at any scale.
-    // Conta VIEWS, não bits selecionados: uma seleção de 1 sprite + 1 path
-    // vetorial (ADR-0110) tem `selected_len() == 2` mas uma view só, e o gizmo
-    // global desenharia — deslocado 32 px — em volta de um sprite sozinho.
-    let painted_views = usize::from(hero.gizmo.view.is_some()) + hero.gizmo.extra_views.len();
-    hero.gizmo.global_view = if let Some(v) = global_from_drag {
-        Some(v)
-    } else if painted_views > 1 {
-        let primary = hero.gizmo.view.as_ref();
-        let mut iter = primary
+}
+
+/// A Hierarquia viva: o instantâneo da cena sem as receitas, a seleção e o realce de proveniência carimbados nas
+/// linhas, o selo booleano, e o cabeçalho da seleção.
+#[cfg(feature = "panel-hierarchy")]
+fn publish_hierarchy(
+    hero: &mut HeroScreen,
+    hero_live: &mut Option<HeroLive>,
+    hovered: Option<u64>,
+    sim: &SimWorld,
+    bool_badges: &std::collections::BTreeMap<u64, &'static str>,
+) {
+    // M14.4a: if live-bridge enabled, rebuild HierarchySnapshot
+    // from SimWorld + push into HeroScreen BEFORE paint. The
+    // snapshot's DFS visit order = hierarchy panel display
+    // order. ADR-0029 Phase C.2: the typed Hierarchy panel owns the
+    // live-entries thread-local; we call into the panel crate
+    // directly here (the shell already gates `panel-hierarchy` via
+    // feature).
+    #[cfg(feature = "panel-hierarchy")]
+    if let Some(live) = hero_live.as_mut() {
+        crate::build_hierarchy_snapshot(
+            sim.world(),
+            &mut live.walk_state,
+            &mut live.walk_scratch,
+            &mut live.snapshot,
+        );
+        let (ordered, mut entries) = live.bridge.sync_from_snapshot(&live.snapshot);
+        // ⭐⭐⭐ **UMA RECEITA NÃO É UMA LINHA DA CENA** (report do Enio, 2026-08-30: *«se apagar o
+        // objeto de origem na hierarquia, some no painel»* + *«o original deve ficar apenas no
+        // painel»*).
+        //
+        // O *Make Component* marca como receita o objecto escolhido e põe uma cópia no lugar. A
+        // receita já não se DESENHA — mas continuava a ser uma linha da Hierarquia, e apagá-la de
+        // lá destruía o asset. ⇒ ela sai da lista: o sítio dela é a biblioteca.
+        //
+        // ⭐ **E a lei é a MESMA do canvas**, não uma segunda: o
+        // [`ph2d_entity_visibility::off_canvas::is_unedited_recipe`] já responde *«esta entidade é peça de uma
+        // receita que ninguém está a editar agora?»*, e é o que o extract usa para não a desenhar.
+        // Uma cópia dessa regra aqui divergiria no dia em que a edição de receita mudasse.
+        //
+        // ⚠️ **A receita que está a ser EDITADA volta à lista** — senão a forma do mestre seria
+        // impossível de mudar, que é a metade que o `is_unedited_recipe` protege.
+        let hidden_rows: std::collections::BTreeSet<ph2d_editor_core::NodeId> = ordered
+            .iter()
+            .copied()
+            .filter(|id| {
+                live.bridge.entity_for(*id).is_some_and(|bits| {
+                    ph2d_entity_visibility::off_canvas::is_unedited_recipe(
+                        sim.world(),
+                        ph2d_ecs::Entity::from_bits(bits),
+                    )
+                })
+            })
+            .collect();
+        let ordered: Vec<ph2d_editor_core::NodeId> = ordered
             .into_iter()
-            .chain(hero.gizmo.extra_views.iter().map(|(_, v)| v));
-        iter.next().map(|first| {
-            let mut min_x = first.bbox_min_world[0];
-            let mut min_y = first.bbox_min_world[1];
-            let mut max_x = first.bbox_max_world[0];
-            let mut max_y = first.bbox_max_world[1];
-            for v in iter {
-                min_x = min_x.min(v.bbox_min_world[0]);
-                min_y = min_y.min(v.bbox_min_world[1]);
-                max_x = max_x.max(v.bbox_max_world[0]);
-                max_y = max_y.max(v.bbox_max_world[1]);
+            .filter(|id| !hidden_rows.contains(id))
+            .collect();
+        entries.retain(|id, _| !hidden_rows.contains(id));
+        // Fase 0 hotfix: mark every multi-selection row's
+        // `HierarchyEntity.selected` BEFORE the panel paints, so
+        // the row painter highlights N rows instead of just the
+        // primary (paint.rs falls back to label match only when
+        // `selected` is still false — fixture/demo path).
+        for bits in hero.gizmo.iter_selected() {
+            if let Some(node_id) = live.bridge.node_for(bits)
+                && let Some(entry) = entries.get_mut(&node_id)
+            {
+                entry.selected = true;
             }
-            let pixel_to_world = first.camera_height_world / first.window_h.max(1.0);
-            let offset_world = 32.0 * pixel_to_world;
-            ph2d_editor_core::GizmoView {
-                bbox_min_world: [min_x - offset_world, min_y - offset_world],
-                bbox_max_world: [max_x + offset_world, max_y + offset_world],
-                pivot_world: [(min_x + max_x) * 0.5, (min_y + max_y) * 0.5],
-                pivot_tool_active: false,
-                rotation: 0.0,
-                camera_center: first.camera_center,
-                camera_height_world: first.camera_height_world,
-                window_w: first.window_w,
-                window_h: first.window_h,
-                canvas: first.canvas,
-                cursor_screen: first.cursor_screen,
-            }
-        })
-    } else {
-        None
-    };
-    // While the Painter's Deform **Transform** gizmo is live (Uniform / Free / Distort / Warp), the
-    // SPRITE gizmo is fully suppressed — view, extras and the global union. On a whole-image transform
-    // both gizmos put their corner squares on the SAME screen corners, and a near-corner Down grabbed
-    // the sprite's scale handle instead of the deform's (Enio 2026-07-04: "inative o gizmo da sprite
-    // para as quatro ferramentas de Transform"). No view ⇒ nothing painted ⇒ no handle registered in
-    // the hit index ⇒ every corner click reaches the deform gizmo.
-    if suppress_sprite_gizmo {
-        hero.gizmo.view = None;
-        hero.gizmo.extra_views.clear();
-        hero.gizmo.global_view = None;
-    }
-    // M14.5 inspector phase (6.4/§9): publish a per-frame
-    // snapshot of the selected sprite so `paint_inspector` can
-    // surface the Render Source section + Reimport button
-    // without crossing the ADR-0021 boundary into SimWorld.
-    // BulkSelect (T2.0): the full selection (primary + extras). Only
-    // collected (one alloc) for a MULTI-selection — single-select (the
-    // common case) takes the empty path and skips the Mixed compare.
-    let selected_count = hero.gizmo.selected_len();
-    let inspector_selection: Vec<u64> = if selected_count > 1 {
-        hero.gizmo.iter_selected().collect()
-    } else {
-        Vec::new()
-    };
-    let inspector_sprite = hero.gizmo.selection.and_then(|bits| {
-        let entity = ph2d_ecs::Entity::from_bits(bits);
-        let world = sim.world();
-        let sprite = world.get::<Sprite>(entity)?;
-        let transform = world.get::<Transform>(entity)?;
-        // ⚠️ A emissão é lida pela mesma porta que a comparação usa (`emissive_of`), senão as duas
-        // metades — o valor mostrado e a decisão de o mostrar — poderiam discordar sobre o que
-        // «ausente» significa.
-        let emissive = emissive_of(world, entity);
-        // A grelha e a janela desta sprite (ADR-0164 F1 passo 6).
-        let grid = grid_of(world, entity);
-        let region = world.get::<ph2d_ecs::SpriteRegion>(entity).copied();
-        let mut mixed = if inspector_selection.len() > 1 {
-            compute_sprite_mixed(world, &inspector_selection, bits)
-        } else {
-            ph2d_editor_core::InspectorSpriteMixed::default()
-        };
-        if inspector_selection.len() > 1 {
-            mixed.emissive = compute_emissive_mixed(world, &inspector_selection, emissive);
         }
-        let (source_kind, source_pixels, can_reimport) = match sprite.source {
-            ph2d_render::SpriteSource::Atlas { key } => {
-                // ⚠️ `image_dimensions` e não um `match` na variante — ver o irmão em
-                // `inspector_commits.rs`. Aqui a falha silenciosa era o tamanho da sprite sumir do
-                // Inspector (plano `docs/Sprite_projeto/18`, auditoria da W2).
-                let dims = atlas_asset_map
-                    .get(&key)
-                    .and_then(|aid| asset_db.get(aid).and_then(|a| a.image_dimensions()));
-                (
-                    ph2d_editor_core::InspectorSpriteSource::Atlas { key },
-                    dims,
-                    dims.is_some(),
-                )
-            }
-            ph2d_render::SpriteSource::Individual { texture_id } => {
-                // Source dims come from the renderer's individual-texture
-                // store (the bake's own size) so the Region UI can show
-                // "Source W×H" and seed `region_rect` to the full source —
-                // the extract already supports Individual region sampling.
-                let dims = renderer.individual().dims(texture_id);
-                // ⚠️ **A ESTRATÉGIA é uma pergunta de AUTORIA, não de armazenamento.** No
-                // armazenamento um sprite hand-packed É uma textura individual com um retângulo
-                // — é essa composição que faz o extract não precisar de saber que ele existe
-                // (plano `docs/Sprite_projeto/17` §2.1). Quem sabe de que FOLHA ele é, é o
-                // `SpriteSheetRef`, e por isso o painel pergunta ao componente, não ao `source`.
-                match world.get::<ph2d_ecs::SpriteSheetRef>(entity) {
-                    Some(r) => (
-                        ph2d_editor_core::InspectorSpriteSource::HandPacked {
-                            sheet: r.sheet,
-                            region: r.region,
-                        },
-                        dims,
-                        false,
-                    ),
-                    None => (
-                        ph2d_editor_core::InspectorSpriteSource::Individual { texture_id },
-                        dims,
-                        // Reimport recomputes world size from an Atlas asset's
-                        // px/m; Individual bakes have no atlas asset to re-decode.
-                        false,
-                    ),
+        // ⭐ **O REALCE DE PROVENIÊNCIA** (estudo de UI viva, C2) — carimbado pela porta ÚNICA
+        // (`App::hovered_object`), que responde ao ponteiro venha ele do canvas ou desta lista.
+        //
+        // ⚠️ **UM objecto, uma linha.** A porta devolve `Option`, então duas linhas acesas ao mesmo
+        // tempo não é exprimível daqui — e seria a assinatura de um segundo produtor a nascer.
+        if let Some(bits) = hovered
+            && let Some(node_id) = live.bridge.node_for(bits)
+            && let Some(entry) = entries.get_mut(&node_id)
+        {
+            entry.hovered = true;
+        }
+        // Onda 1 hotfix: centralise the header label sync to the
+        // multi-selection primary. Input handlers (canvas pick,
+        // Hierarchy panel click, modifier override) used to stamp
+        // hero.selection themselves and could race — e.g. Hierarchy
+        // Cmd+click on row A stamped label="A" BEFORE the bus drain
+        // toggled A out of the selection, leaving paint's label-match
+        // fallback to re-highlight A. Snapshotting it once here
+        // post-drain, against the post-toggle primary, removes the
+        // race entirely.
+        let primary_label = hero
+            .gizmo
+            .selection
+            .and_then(|bits| live.bridge.node_for(bits))
+            .and_then(|node| {
+                entries
+                    .get(&node)
+                    .map(|e| (e.name.clone(), e.badge.clone()))
+            });
+        // **O SELO DO PAPEL BOOLEANO**, stampado DEPOIS do `primary_label` de propósito: o
+        // cabeçalho usa o badge como *tipo* da seleção, e sobrescrevê-lo antes faria a
+        // barra de cima dizer `SUB` onde sempre disse `ENT`. São dois consumidores do
+        // mesmo campo, e só um deles pediu esta informação.
+        if !bool_badges.is_empty() {
+            for (&bits, &badge) in bool_badges {
+                if let Some(node_id) = live.bridge.node_for(bits)
+                    && let Some(entry) = entries.get_mut(&node_id)
+                {
+                    entry.badge = Some(badge.to_string());
                 }
             }
-            // W2.T2: a cooked KTX2 source — read-only display marker. Dims
-            // come from the W2.T4 loader (logical_id → tier asset); unknown
-            // here, so the Region UI shows no "Source W×H" and no reimport.
-            ph2d_render::SpriteSource::CookedTexture { .. } => (
-                ph2d_editor_core::InspectorSpriteSource::CookedTexture,
-                None,
-                false,
-            ),
-        };
-        // **ESTAR NUMA FOLHA JÁ É SER HAND-PACKED** (Enio, 2026-08-19: *"ao colocar uma imagem
-        // numa sheet, no inspector ainda diz que ela usa a estratégia Individual"*).
-        //
-        // ⚠️ **O modelo já concordava com ele e o código não seguia** — a nota logo acima diz que
-        // *"a estratégia é uma pergunta de AUTORIA, não de armazenamento"*, e a autoria estava a
-        // ser lida só do `SpriteSheetRef`, que **nasce no bake**. Entre pôr a peça na folha e
-        // assá-la, o painel dizia `Individual` — que é verdade sobre os PIXELS e mentira sobre o
-        // que o artista acabou de fazer. *Uma resposta correta à pergunta errada lê-se como um
-        // bug, e é.*
-        //
-        // A autoria passa a ter duas fontes, na ordem em que se tornam verdadeiras: o
-        // `SpriteSheetRef` (assado — sabe a região) e, na falta dele, **ser filho de uma folha**
-        // (arranjado — ainda não sabe). O rótulo diz qual das duas é.
-        // **A precisão MEDIDA, não derivada** (plano `docs/Sprite_projeto/18` W5). O store de
-        // texturas é quem sabe: o Inspector recebe o facto pronto, como já recebe o `sheet_label`.
-        //
-        // ⚠️ Uma célula de atlas é `Rgba8UnormSrgb` por construção; uma individual pode ser
-        // qualquer das duas, e é por isso que se **pergunta** em vez de assumir.
-        let source_precision = match sprite.source {
-            ph2d_render::SpriteSource::Atlas { .. } => Some(ph2d_color::Precision::Rgba8),
-            ph2d_render::SpriteSource::Individual { texture_id } => {
-                renderer.individual_format(texture_id).map(|f| {
-                    if f == ph2d_render::IndividualTextureStore::FORMAT_16 {
-                        ph2d_color::Precision::Rgba16
-                    } else {
-                        ph2d_color::Precision::Rgba8
-                    }
-                })
-            }
-            // Cozida: BC/ASTC/ETC2, e o formato concreto depende do tier resolvido.
-            ph2d_render::SpriteSource::CookedTexture { .. } => None,
-        };
-        let unbaked_sheet = if matches!(
-            source_kind,
-            ph2d_editor_core::InspectorSpriteSource::Individual { .. }
-                | ph2d_editor_core::InspectorSpriteSource::Atlas { .. }
-        ) {
-            world
-                .get::<ph2d_ecs::ChildOf>(entity)
-                .map(|c| c.parent())
-                .filter(|p| world.get::<ph2d_ecs::SpriteSheetFrame>(*p).is_some())
-                .map(|p| {
-                    world
-                        .get::<ph2d_ecs::Name>(p)
-                        .map(|n| n.0.clone())
-                        .unwrap_or_else(|| "Sprite Sheet".to_string())
-                })
-        } else {
-            None
-        };
-        // O rótulo legível de uma origem hand-packed. Derivado AQUI (e não no painel) porque o
-        // painel é chrome e não pode depender do documento de folhas sem inverter a seta.
-        let baked_label = match source_kind {
-            ph2d_editor_core::InspectorSpriteSource::HandPacked { sheet, region } => {
-                sheets.get(&sheet).and_then(|s| {
-                    s.region(region)
-                        .map(|r| format!("{} \u{00b7} {}", s.name, r.name))
-                })
-            }
-            _ => None,
-        };
-        let (source_kind, sheet_label) =
-            sheet_authorship(source_kind, unbaked_sheet.as_deref(), baked_label);
-        let world_size = [
-            sprite.size[0] * transform.scale.x,
-            sprite.size[1] * transform.scale.y,
-        ];
-        Some(ph2d_editor_core::InspectorSpriteInfo {
-            sheet_label,
-            entity_bits: bits,
-            world_size,
-            source_kind,
-            source_precision,
-            // **Quanto esta sprite emite** (plano `docs/Sprite_projeto/18` W8). Ausente = `0.0`:
-            // para o painel, «sem componente» e «componente a zero» são a mesma coisa, e é isso que
-            // deixa o slider voltar a zero remover a linha em vez de a deixar morta no ficheiro.
-            emissive,
-            source_pixels,
-            can_reimport,
-            flip_x: sprite.flip_x,
-            flip_y: sprite.flip_y,
-            opacity: sprite.opacity,
-            tint_fill: sprite.tint_fill,
-            // ⚠️ **Os três do corte (ADR-0164 F1 passo 6) publicam o valor EFETIVO** — ausente =
-            // o neutro que o campo v4 tinha. É a mesma lei do `emissive` acima: para o painel,
-            // «sem componente» e «componente no neutro» são a mesma coisa, e é isso que deixa a
-            // seção desaparecer sem que o widget mude de leitura.
-            hframes: grid.hframes,
-            vframes: grid.vframes,
-            frame: grid.frame,
-            tint: sprite.tint,
-            self_tint: sprite.self_tint,
-            per_corner_tint: corner_tint_of(world, entity),
-            // ⭐ A PRESENÇA é o antigo `region_enabled`.
-            region_enabled: region.is_some(),
-            region_rect: region.map_or([0.0; 4], |r| r.rect),
-            region_filter_clip: region.is_some_and(|r| r.filter_clip),
-            centered: sprite.centered,
-            offset: sprite.offset,
-            selected_count,
-            mixed,
-        })
-    });
-    // M14.A: live Transform snapshot for the inspector. Same
-    // ADR-0021 / HR-8 boundary as sprite snapshot — Inspector
-    // never reads SimWorld; the host bridges. Lands on every
-    // entity that has a `Transform` component, not just sprites
-    // (so non-renderable entities still show their pose).
-    let inspector_transform = hero.gizmo.selection.and_then(|bits| {
-        let entity = ph2d_ecs::Entity::from_bits(bits);
-        let t = sim.world().get::<Transform>(entity)?;
-        Some(ph2d_editor_core::InspectorTransformInfo {
-            entity_bits: bits,
-            translation: [t.translation.x, t.translation.y],
-            rotation_rad: t.rotation,
-            scale: [t.scale.x, t.scale.y],
-            skew_rad: [t.skew_x, t.skew_y],
-        })
-    });
-    // M14.D: live Visibility snapshot. Absence-equals-visible
-    // is the canonical invariant — entities without a
-    // `Visibility` component render normally, so `None` from
-    // `world.get::<Visibility>` maps to `visible = true`.
-    // Only published when the selection has a `Transform`
-    // (i.e. it's an Inspector-worthy entity); without a
-    // Transform the Inspector hides the whole panel content.
-    let inspector_visibility = hero.gizmo.selection.and_then(|bits| {
-        let entity = ph2d_ecs::Entity::from_bits(bits);
-        sim.world().get::<Transform>(entity)?;
-        let visible = sim
-            .world()
-            .get::<Visibility>(entity)
-            .map(|v| !v.hidden)
-            .unwrap_or(true);
-        // ⚠️ A ausência de `Visibility` É visível — a mesma invariante que a leitura acima usa, e
-        // por isso a comparação passa pela mesma expressão. Compará-las como `Option` diria que
-        // uma sprite sem componente diverge de outra com `hidden: false`, e as duas estão visíveis.
-        let mixed = inspector_selection.iter().any(|&other| {
-            let e = ph2d_ecs::Entity::from_bits(other);
-            sim.world()
-                .get::<Visibility>(e)
-                .map(|v| !v.hidden)
-                .unwrap_or(true)
-                != visible
-        });
-        Some(ph2d_editor_core::InspectorVisibilityInfo {
-            entity_bits: bits,
-            visible,
-            mixed,
-        })
-    });
-    // M14.E: live `Name` snapshot. Falls back to
-    // `Entity_{hex}` when the entity has no Name component
-    // yet — matches the existing `InspectorSpriteInfo::name`
-    // shape. Same Transform-presence gate.
-    let inspector_name = hero.gizmo.selection.and_then(|bits| {
-        let entity = ph2d_ecs::Entity::from_bits(bits);
-        sim.world().get::<Transform>(entity)?;
-        let name = sim
-            .world()
-            .get::<Name>(entity)
-            .map(|n| n.0.clone())
-            .unwrap_or_else(|| format!("Entity_{bits:x}"));
-        Some(ph2d_editor_core::InspectorNameInfo {
-            entity_bits: bits,
-            name,
-        })
-    });
-    let sel = &inspector_selection; // W3 §7/§9 snapshots (§7 sibling module)
-    let inspector_ordering = hero.gizmo.selection.and_then(|b| {
-        ph2d_inspector_ordering::build_ordering_info(sim.world(), b, sel, selected_count)
-    });
-    let inspector_sampling = hero.gizmo.selection.and_then(|b| {
-        ph2d_inspector_ordering::build_sampling_info(sim.world(), b, sel, selected_count)
-    });
-    let inspector_blend = hero.gizmo.selection.and_then(|b| {
-        ph2d_inspector_ordering::build_blend_info(sim.world(), b, sel, selected_count)
-    });
-    // §5 9-Slice. ⚠️ Publicado para TODA entidade digna de Inspector, com ou sem o componente:
-    // é o snapshot que diz `present: false`, e é isso que faz a seção mostrar o «+ Add 9-Slice».
-    // Publicar só quando o componente existe faria a seção aparecer depois de a feature estar
-    // ligada — ou seja, nunca, porque não haveria por onde ligá-la.
-    let inspector_slice = hero.gizmo.selection.and_then(|b| {
-        super::inspector_slice::build_slice_info(sim.world(), b, sel, selected_count)
-    });
-    // §12 Sockets / Named Anchors (ADR-0072). Publicado para toda entidade digna de Inspector —
-    // é o snapshot que diz `present: false`, e é isso que faz a seção mostrar o «+ Add Anchor».
-    let inspector_anchor = hero.gizmo.selection.and_then(|b| {
-        super::inspector_anchor::build_anchor_info(
-            sim.world(),
-            b,
-            sel,
-            selected_count,
-            hero.project.pixels_per_meter,
-        )
-    });
-    // ⭐⭐ **O ÍNDICE DE ASSETS** (plano `docs/Components/07`, wave A2) — a junção das duas fontes,
-    // publicada para o navegador. ⚠️ Só com o painel ABERTO: é uma travessia do mundo, e pagá-la
-    // com o painel fechado é trabalho que ninguém lê.
-    // ⭐⭐ A TAXONOMIA (wave A3) — publicada como o índice, e pela mesma razão: o painel não pode
-    // ser a segunda fonte de verdade sobre o que existe.
-    ph2d_panel_asset_browser::set_current_catalogs(catalogs.clone());
-    crate::asset_index_build::publish_for_frame(
-        sim,
-        asset_db,
-        // ⭐⭐ Ele já chegava a esta função — o que faltava era chegar ao índice. É o mapa que
-        // separa *«o artista trouxe isto»* de *«o boot pôs isto no `AssetDb`»*.
-        atlas_asset_map,
-        catalogs,
-        // ⭐ O retrato de um prefab põe cada peça onde a TELA a põe, e o pivô autorado converte-se
-        // com o `pixels_per_meter` do projecto (`Sprite::resolve_anchor`).
-        hero.project.pixels_per_meter,
-        hero.is_panel_visible(ph2d_panel_asset_browser::PANEL_ID),
-    );
-    // ⭐⭐⭐ **A seção COMPONENT** (ADR-0164 / F5) — o que esta cópia tem de diferente da receita.
-    // ⚠️ **`None` quando o selecionado não é peça de cópia nenhuma**, e aí a seção não existe: é a
-    // lei da F3 (o Inspector mostra o que o objeto TEM). ⛔ Ao contrário da §5 e da §12, ela NÃO se
-    // publica «vazia com um +»: não há gesto de anexar uma instância — ela nasce de *Instantiate*.
-    let inspector_instance = super::inspector_instance::build_instance_info(
-        sim,
-        component_registry,
-        hero.gizmo.selection,
-    );
-    // ⭐⭐⭐ **E o CARTÃO DE PROPRIEDADES** (report do Enio, 2026-08-31) — *«o que este objecto DIZ
-    // que é»*, lido das chaves do nome. ⚠️ **Ele NÃO depende de ser cópia**: é exactamente o caso
-    // que faltava, e era por isso que reescrever as chaves não mudava nada no Inspector.
-    let inspector_properties =
-        super::inspector_properties::build_properties_info(sim, hero.gizmo.selection);
-    // W3: the Join gesture needs exactly TWO bodies, and only the shell can
-    // see the selection — the panel is handed one entity at a time. Asked once
-    // here, so the painter (which offers the button) and the event handler
-    // (which honours the click) read the same fact.
-    // ⚠️ `sel.len() == 2`, not just `selected_count == 2`: `all()` on an empty
-    // slice is TRUE, so a count that disagreed with the slice would offer the
-    // button over nothing at all.
-    // ⚠️ **`>= 2`, not `== 2`** (W-J4): three or more selected bodies make a
-    // CHAIN of `n − 1` joints, and the count travels to the panel so the button
-    // can SAY so. A label that says "Join Selected Bodies" over a five-body
-    // selection is how an artist discovers a chain by accident.
-    let join_count = if sel.len() >= 2
-        && selected_count == sel.len()
-        && sel.iter().all(|&b| {
-            let e = ph2d_ecs::Entity::from_bits(b);
-            sim.world().get::<ph2d_physics_ecs::RigidBody>(e).is_some()
-                && sim.world().get::<ph2d_physics_ecs::Collider>(e).is_some()
-        }) {
-        u8::try_from(sel.len()).unwrap_or(u8::MAX)
-    } else {
-        0
-    };
-
-    // W-Rig: quantas PARTES um clique em *Rig* tocaria — 0 quando não há aresta
-    // pai→filho a ligar, e é esse zero que tira o botão da tela.
-    //
-    // ⚠️ **Da `iter_selected()`, NÃO do `inspector_selection`** — aquele vetor é
-    // colhido só numa MULTI-seleção (`selected_count > 1`) e fica vazio no caso
-    // único, que é precisamente o gesto do rig: marcar a raiz do personagem e
-    // clicar. Lido dali, o botão só apareceria com dois objetos marcados, isto é
-    // em toda situação menos a que ele existe para servir.
-    let rig_parts = {
-        let roots: Vec<u64> = hero.gizmo.iter_selected().collect();
-        let plan = ph2d_app_physics::joint_rig::plan(sim, &roots);
-        if plan.is_offered() {
-            u8::try_from(plan.parts.len()).unwrap_or(u8::MAX)
-        } else {
-            0
         }
-    };
-
-    // W-PartFace: quantas PEÇAS estão penduradas no objeto selecionado — filhos
-    // que carregam `Collider` e não `RigidBody`.
-    //
-    // ⚠️ **Só a shell pode contar**, e é por isso que o número atravessa a
-    // fronteira em vez de o painel o derivar: `ChildOf` é a única aresta do ECS,
-    // então não há como DESCER a árvore — cada candidato tem de SUBIR até achar
-    // um corpo, e a lista de candidatos vem de uma query sobre o mundo inteiro.
-    // Mesma classe do `rig_parts` logo acima, e o mesmo custo por frame.
-    let part_count = hero.gizmo.selection.map_or(0, |b| {
-        let owner = ph2d_ecs::Entity::from_bits(b);
-        let mut q = sim.world_mut().query_filtered::<ph2d_ecs::Entity, (
-            bevy_ecs::query::With<ph2d_physics_ecs::Collider>,
-            bevy_ecs::query::Without<ph2d_physics_ecs::RigidBody>,
-        )>();
-        let candidates: Vec<ph2d_ecs::Entity> = q.iter(sim.world()).collect();
-        u8::try_from(ph2d_physics_ecs::count_parts(
-            sim.world(),
-            owner,
-            candidates,
-        ))
-        .unwrap_or(u8::MAX)
-    });
-
-    let inspector_physics = hero.gizmo.selection.and_then(|b| {
-        ph2d_app_physics::inspector::body::build_physics_info(
-            sim.world(),
-            b,
-            join_count,
-            rig_parts,
-            part_count,
-            join_draw_armed,
-            join_kind_tag,
-            bake_range,
-            bake_channels_tag,
-        )
-    });
-    let inspector_joint = hero.gizmo.selection.and_then(|b| {
-        // The eyedropper of the slot with an armed pick FOR THIS joint paints
-        // pressed; 0 otherwise.
-        let pick_armed = match joint_body_pick {
-            Some((j, slot_b)) if j == b => {
-                if slot_b {
-                    2
-                } else {
-                    1
-                }
-            }
-            _ => 0,
-        };
-        ph2d_app_physics::joint::build_joint_info(sim, b, pick_armed, joint_paste_targets)
-    });
-    // §13 Pulley Wheel (W-Pulley W1) — a irmã da §12, e a seleção é a MESMA
-    // pergunta: uma roldana é uma entidade, então ela é o objeto selecionado.
-    let inspector_wheel = hero.gizmo.selection.and_then(|b| {
-        ph2d_app_physics::joint_wheel::build_wheel_info(
-            sim,
-            b,
-            wheel_body_pick == Some(b),
-            wheel_rope_pick == Some(b),
-        )
-    });
-    // §14 Platform Player (W5) — a quarta da família. Ao contrário da §12/§13,
-    // ela TEM face vazia: `Some` para todo corpo Dynamic, com ou sem o
-    // componente, porque o botão dela é o que faz o comportamento existir.
-    // ⚠️ **A corrida gravada entra por FORA do mundo** (W17): ela é um fato do
-    // documento, não desta entidade, e é o único número da §14 que não sai do
-    // componente. Segundos, medidos com o MESMO passo fixo que gravou os tiques.
-    let recorded_run_seconds = (player_tape_ticks as f64 * fixed_dt) as f32;
-    let discarded_run_seconds = (discarded_run_ticks as f64 * fixed_dt) as f32;
-    let inspector_player = hero.gizmo.selection.and_then(|b| {
-        ph2d_app_physics::inspector::player::build_player_info(
-            sim,
-            b,
-            recorded_run_seconds,
-            discarded_run_seconds,
-            player_live,
-            player_law,
-        )
-    });
-    let inspector_anim = hero
-        .gizmo
-        .selection
-        .and_then(|b| super::inspector_anim::build_anim_info(sim.world(), b, selected_count));
-    // ⭐ A secção TIMERS — `None` para quem não tem o componente (ADR-0166).
-    let inspector_timer = hero
-        .gizmo
-        .selection
-        .and_then(|b| super::inspector_timer::build_timer_info(sim.world(), b, selected_count));
-    // ⭐ A secção SIGNAL ACTIONS — `None` para quem não tem o componente (ADR-0166).
-    let inspector_action = hero
-        .gizmo
-        .selection
-        .and_then(|b| super::inspector_action::build_action_info(sim.world(), b, selected_count));
-    // ⭐ A secção AUDIO — `None` para quem não tem a fonte NEM as orelhas (ADR-0166).
-    //
-    // ⚠️ **Ela pede o mundo em MUTÁVEL**, e é a única da família: as três coisas que ela deriva —
-    // quantas orelhas a cena tem, qual delas manda, e se alguma tabela de acções manda isto tocar —
-    // são **queries**, e um `QueryState` do bevy precisa de `&mut World` para se preparar. *Não é
-    // escrita: é o preço de perguntar à cena em vez de adivinhar a partir do componente.*
-    let inspector_audio = hero
-        .gizmo
-        .selection
-        .and_then(|b| super::inspector_audio::build_audio_info(sim.world_mut(), b, selected_count));
-    // ⭐ A secção CAMERA — `None` para quem não tem `GameCamera` (ADR-0166).
-    //
-    // ⚠️ **Ela pede a PROPORÇÃO da janela**, e é a única da família: o aviso *«a cerca é mais
-    // estreita que a vista»* é geometria do ECRÃ, e não dos quatro números da cerca.
-    let inspector_camera = hero.gizmo.selection.and_then(|b| {
-        super::inspector_camera::build_camera_info(
-            sim.world_mut(),
-            b,
-            selected_count,
-            super::camera_2d::aspect_of(window_size),
-            game_camera_preview,
-        )
-    });
-    let inspector_visibility_section = hero.gizmo.selection.and_then(|b| {
-        super::inspector_visibility::build_visibility_section_info(
-            sim.world(),
-            b,
-            sel,
-            selected_count,
-        )
-    });
-    // ADR-0029 Phase C.1: publish snapshots to the panel crate's
-    // thread-locals (replaces the pre-C.1 `hero.inspector.<field>`
-    // writes — the field no longer exists; the panel-owned state +
-    // its thread-local snapshot setters do).
-    #[cfg(feature = "panel-inspector")]
-    {
-        ph2d_panel_inspector::set_current_inspector_sprite(inspector_sprite);
-        ph2d_panel_inspector::set_current_inspector_ordering(inspector_ordering);
-        ph2d_panel_inspector::set_current_inspector_sampling(inspector_sampling);
-        ph2d_panel_inspector::set_current_inspector_blend(inspector_blend);
-        ph2d_panel_inspector::set_current_inspector_slice(inspector_slice);
-        ph2d_panel_inspector::set_current_inspector_anchor(inspector_anchor);
-        ph2d_panel_inspector::set_current_inspector_instance(inspector_instance);
-        ph2d_panel_inspector::set_current_inspector_properties(inspector_properties);
-        ph2d_panel_inspector::set_current_inspector_anim(inspector_anim);
-        ph2d_panel_inspector::set_current_inspector_timer(inspector_timer);
-        ph2d_panel_inspector::set_current_inspector_action(inspector_action);
-        ph2d_panel_inspector::set_current_inspector_audio(inspector_audio);
-        ph2d_panel_inspector::set_current_inspector_camera(inspector_camera);
-        ph2d_panel_inspector::set_current_inspector_physics(inspector_physics);
-        ph2d_panel_inspector::set_current_inspector_joint(inspector_joint);
-        ph2d_panel_inspector::set_current_inspector_wheel(inspector_wheel);
-        ph2d_panel_inspector::set_current_inspector_player(inspector_player);
-        ph2d_panel_inspector::set_current_inspector_visibility_section(
-            inspector_visibility_section,
-        );
-        ph2d_panel_inspector::set_current_inspector_transform(inspector_transform);
-        ph2d_panel_inspector::set_current_inspector_visibility(inspector_visibility);
-        ph2d_panel_inspector::set_current_inspector_name(inspector_name);
-        ph2d_panel_inspector::set_current_display_unit(
-            hero.project.display_unit,
-            hero.project.pixels_per_meter,
-        );
-    }
-    #[cfg(not(feature = "panel-inspector"))]
-    {
-        let _ = (
-            inspector_physics,
-            inspector_sprite,
-            inspector_transform,
-            inspector_visibility,
-            inspector_visibility_section,
-            inspector_name,
-        );
-    }
-}
-
-/// **A autoria de folha que o painel MOSTRA** — a regra, isolada do mundo para poder ser testada.
-///
-/// Duas fontes, na ordem em que se tornam verdadeiras:
-///
-/// 1. **assado** (`SpriteSheetRef`) — o `storage` já chega como `HandPacked` e há uma região
-///    nomeada; o rótulo é `folha · região`;
-/// 2. **arranjado** (filho de uma folha, ainda sem `SpriteSheetRef`) — o armazenamento é mesmo
-///    `Individual`/`Atlas`, mas a AUTORIA já é da folha. Mostra `HandPacked` com o rótulo a dizer
-///    que ainda não foi assado.
-///
-/// ⚠️ **Os ids `0/0` do caso 2 não significam nada**, e é o rótulo (sempre presente aí) que
-/// impede que alguém os leia: a linha `Storage` prefere-o, e só cai nos números quando ele falta —
-/// o que neste caso não pode acontecer. *Um número sem significado é aceitável enquanto for
-/// inalcançável; deixar de o ser é a regressão a vigiar.*
-fn sheet_authorship(
-    storage: ph2d_editor_core::InspectorSpriteSource,
-    unbaked_sheet: Option<&str>,
-    baked_label: Option<String>,
-) -> (ph2d_editor_core::InspectorSpriteSource, Option<String>) {
-    match unbaked_sheet {
-        Some(name) => (
-            ph2d_editor_core::InspectorSpriteSource::HandPacked {
-                sheet: 0,
-                region: 0,
-            },
-            Some(format!("{name} \u{00b7} not baked yet")),
-        ),
-        None => (storage, baked_label),
-    }
-}
-
-#[cfg(test)]
-mod sheet_authorship_tests {
-    use super::sheet_authorship;
-    use ph2d_editor_core::InspectorSpriteSource as S;
-
-    /// ⚠️ **O caso que o Enio relatou.** A peça está na folha e ainda não foi assada: o
-    /// armazenamento é mesmo `Individual`, mas a AUTORIA já é da folha — e é a autoria que a linha
-    /// `Strategy` responde (a nota que já estava no `snapshots.rs` di-lo desde sempre; o código é
-    /// que não a seguia).
-    #[test]
-    fn a_piece_dropped_into_a_sheet_reads_as_hand_packed() {
-        let (kind, label) = sheet_authorship(S::Individual { texture_id: 7 }, Some("Fruits"), None);
-        assert!(matches!(kind, S::HandPacked { .. }));
-        assert_eq!(label.as_deref(), Some("Fruits \u{00b7} not baked yet"));
-    }
-
-    /// O mesmo para uma peça que ainda vive no atlas — pô-la na folha é o mesmo gesto.
-    #[test]
-    fn an_atlas_piece_in_a_sheet_reads_the_same() {
-        let (kind, _) = sheet_authorship(S::Atlas { key: 3 }, Some("Fruits"), None);
-        assert!(matches!(kind, S::HandPacked { .. }));
-    }
-
-    /// **Assado ganha do arranjado**, e não o contrário: quando há região nomeada, é ela que o
-    /// artista quer ler (é por ela que ele reencontra o desenho no Aseprite).
-    #[test]
-    fn a_baked_piece_keeps_its_region_name() {
-        let (kind, label) = sheet_authorship(
-            S::HandPacked {
-                sheet: 4,
-                region: 2,
-            },
-            None,
-            Some("hero \u{00b7} idle_0".into()),
-        );
-        assert!(matches!(
-            kind,
-            S::HandPacked {
-                sheet: 4,
-                region: 2
-            }
-        ));
-        assert_eq!(label.as_deref(), Some("hero \u{00b7} idle_0"));
-    }
-
-    /// **Controle positivo:** fora de uma folha nada muda. Sem isto, a regra podia estar a
-    /// devolver `HandPacked` para toda a gente e os testes acima passariam na mesma.
-    #[test]
-    fn a_sprite_outside_any_sheet_is_untouched() {
-        let (kind, label) = sheet_authorship(S::Individual { texture_id: 7 }, None, None);
-        assert!(matches!(kind, S::Individual { texture_id: 7 }));
-        assert!(label.is_none());
-        let (kind, _) = sheet_authorship(S::Atlas { key: 1 }, None, None);
-        assert!(matches!(kind, S::Atlas { key: 1 }));
+        ph2d_panel_hierarchy::sync_from_hierarchy(&mut hero.store, &ordered, entries);
+        if let Some((label, badge)) = primary_label {
+            hero.selection = Some(ph2d_editor_core::HeroSelection {
+                label,
+                kind: badge.unwrap_or_else(|| "ENT".to_string()),
+                world_pos: (0.0, 0.0),
+            });
+        } else if hero.gizmo.selection.is_none() {
+            hero.selection = None;
+        }
     }
 }

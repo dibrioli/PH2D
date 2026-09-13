@@ -50,6 +50,7 @@ mod every_site_that_replaces_the_catalog_tree_invalidates_the_cache;
 mod every_text_on_path_id_is_consumed_by_the_render_loop;
 mod every_verb_is_born_in_a_mode_that_declares_it;
 mod file_loc_caps;
+mod fn_loc_caps;
 mod geometric_tools_keep_their_precision;
 mod handle_scenes_start_paused;
 mod joint_anchor_gizmo;

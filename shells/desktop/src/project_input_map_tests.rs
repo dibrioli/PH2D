@@ -94,7 +94,13 @@ fn the_map_is_not_part_of_the_undo_unit() {
 /// janela e o jogo a obedecer às novas.
 #[test]
 fn the_authored_map_has_exactly_one_holder() {
-    let src = include_str!("app_state.rs");
+    // ⚠️ O `AppGfx` mudou-se para o irmão `app_state_gfx.rs` (`line/loc-caps`, 2026-09-13): a
+    // agulha lê os DOIS ficheiros, senão um segundo dono escrito no agregado de GPU passava mudo.
+    let src = [
+        include_str!("app_state.rs"),
+        include_str!("app_state_gfx.rs"),
+    ]
+    .concat();
     // ⚠️ **A agulha tem sintaxe que so' o CODIGO tem.** Procurar `input_map` cru acusaria o
     // doc-comment ao lado do `input_actions`, que EXPLICA porque o mapa nao mora aqui -- e' o
     // segundo gate desta linha a quase reprovar sobre PROSA (o primeiro foi removido em 24/08 por

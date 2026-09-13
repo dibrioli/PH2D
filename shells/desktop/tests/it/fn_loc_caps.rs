@@ -35,7 +35,6 @@ const FN_OVERAGE_OK: &[(&str, &str, usize, &str)] = &[
     ("build_smoke.rs", "build_smoke", 416, NASCEU),
     ("build_smoke_router.rs", "route", 441, NASCEU),
     ("envelope_smoke.rs", "frame", 247, NASCEU),
-    ("hero_intents/hierarchy.rs", "drain_reparent", 297, NASCEU),
     (
         "hero_intents/sprite_merge.rs",
         "drain_merge_sprites",

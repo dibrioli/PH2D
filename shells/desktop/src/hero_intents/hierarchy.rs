@@ -141,111 +141,8 @@ pub(crate) fn drain_reparent(
             }
         }
     }
-    // M14.7 polish: root drops need an explicit `RootOrder`.
-    if new_parent_entity.is_none() {
-        let mut roots: Vec<ph2d_ecs::Entity> = {
-            let mut q = sim_w.query_filtered::<ph2d_ecs::Entity, (
-                ph2d_ecs::With<Transform>,
-                ph2d_ecs::Without<ph2d_ecs::ChildOf>,
-            )>();
-            let mut acc: Vec<(ph2d_ecs::Entity, u32)> = Vec::new();
-            for entity in q.iter(sim_w) {
-                if entity == dragged {
-                    continue;
-                }
-                let order = sim_w
-                    .get::<ph2d_ecs::RootOrder>(entity)
-                    .map(|r| r.0)
-                    .unwrap_or(u32::MAX);
-                acc.push((entity, order));
-            }
-            acc.sort_unstable_by(|a, b| {
-                a.1.cmp(&b.1)
-                    .then_with(|| a.0.to_bits().cmp(&b.0.to_bits()))
-            });
-            acc.into_iter().map(|(e, _)| e).collect()
-        };
-        let before_target = intent
-            .before
-            .and_then(|n| live.bridge.entity_for(n))
-            .map(ph2d_ecs::Entity::from_bits);
-        let after_target = intent
-            .after
-            .and_then(|n| live.bridge.entity_for(n))
-            .map(ph2d_ecs::Entity::from_bits);
-        let insert_at = if let Some(b) = before_target {
-            roots.iter().position(|e| *e == b).unwrap_or(roots.len())
-        } else if let Some(a) = after_target {
-            roots
-                .iter()
-                .position(|e| *e == a)
-                .map(|i| i + 1)
-                .unwrap_or(roots.len())
-        } else {
-            roots.len()
-        };
-        roots.insert(insert_at.min(roots.len()), dragged);
-        for (idx, e) in roots.iter().enumerate() {
-            if let Ok(mut entry) = sim_w.get_entity_mut(*e) {
-                entry.insert(ph2d_ecs::RootOrder(idx as u32));
-            }
-        }
-    }
-    // Step 2: enforce sibling order.
-    let target_kind: Option<(ph2d_ecs::Entity, bool)> = if let Some(before_node) = intent.before
-        && let Some(b) = live.bridge.entity_for(before_node)
-    {
-        Some((ph2d_ecs::Entity::from_bits(b), true))
-    } else if let Some(after_node) = intent.after
-        && let Some(a) = live.bridge.entity_for(after_node)
-    {
-        Some((ph2d_ecs::Entity::from_bits(a), false))
-    } else {
-        None
-    };
-    if let (Some(parent), Some((target, place_before))) = (new_parent_entity, target_kind) {
-        let current: Vec<ph2d_ecs::Entity> = sim_w
-            .get::<bevy_ecs::hierarchy::Children>(parent)
-            .map(|c| c.iter().copied().filter(|e| *e != dragged).collect())
-            .unwrap_or_default();
-        let mut desired: Vec<ph2d_ecs::Entity> = Vec::with_capacity(current.len() + 1);
-        let mut inserted = false;
-        for &c in &current {
-            if !inserted && c == target && place_before {
-                desired.push(dragged);
-                inserted = true;
-            }
-            desired.push(c);
-            if !inserted && c == target && !place_before {
-                desired.push(dragged);
-                inserted = true;
-            }
-        }
-        if !inserted {
-            desired.push(dragged);
-        }
-        for &child in &desired {
-            if let Ok(mut entry) = sim_w.get_entity_mut(child) {
-                entry.remove::<ph2d_ecs::ChildOf>();
-                entry.insert(ph2d_ecs::ChildOf(parent));
-            }
-        }
-        // ⭐ **E a ordem vira DADO** (ADR-0164 F1). O bloco acima reescreve a lista `Children`
-        // do bevy, que é **memória de runtime**: ela não entra no snapshot, então até esta
-        // wave reordenar irmãos não era desfazível, não sobrevivia a um Ctrl+Z de outra ação e
-        // não sobrevivia ao save (classe BUGS #15, medida na auditoria de 21/08).
-        //
-        // ⚠️ **As duas escritas são precisas.** O `ChildOf` acima é o que o bevy usa AGORA (o
-        // pai e a relação); o `SiblingOrder` aqui é o que o FICHEIRO guarda, e é dele que o
-        // `world_to_snapshot` e a árvore do painel leem a ordem. Tirar uma das duas dá metade
-        // do gesto: sem a de cima o objeto não muda de pai; sem esta ele volta ao lugar antigo
-        // no próximo Ctrl+Z.
-        //
-        // ⚠️ Escreve com comparação (o `set_sibling_order` só toca no que difere): reescrever
-        // o mesmo número em todo irmão marcaria o arquétipo de cada um como mudado, e o diff
-        // do undo registaria um passo espúrio por quadro em que o gesto corresse.
-        ph2d_ecs::set_sibling_order(sim_w, parent, &desired);
-    }
+    order_among_roots(sim_w, dragged, new_parent_entity, intent, live);
+    order_among_siblings(sim_w, dragged, new_parent_entity, intent, live);
     // Re-solve the dragged entity's LOCAL transform so its captured world
     // transform survives the parent change. The new parent chain is now in
     // place, so `parent_world_transform` reflects the FINAL parent.
@@ -320,6 +217,132 @@ pub(crate) fn drain_reparent(
         ));
     }
     false
+}
+
+/// O passo 1-bis do [`drain_reparent`]: largado na raiz, o arrastado ganha um `RootOrder` entre as raízes.
+fn order_among_roots(
+    sim_w: &mut ph2d_ecs::World,
+    dragged: ph2d_ecs::Entity,
+    new_parent_entity: Option<ph2d_ecs::Entity>,
+    intent: ph2d_editor_core::screens::hero::HierReparentIntent,
+    live: &crate::HeroLive,
+) {
+    use ph2d_ecs::Transform;
+    // M14.7 polish: root drops need an explicit `RootOrder`.
+    if new_parent_entity.is_none() {
+        let mut roots: Vec<ph2d_ecs::Entity> = {
+            let mut q = sim_w.query_filtered::<ph2d_ecs::Entity, (
+                ph2d_ecs::With<Transform>,
+                ph2d_ecs::Without<ph2d_ecs::ChildOf>,
+            )>();
+            let mut acc: Vec<(ph2d_ecs::Entity, u32)> = Vec::new();
+            for entity in q.iter(sim_w) {
+                if entity == dragged {
+                    continue;
+                }
+                let order = sim_w
+                    .get::<ph2d_ecs::RootOrder>(entity)
+                    .map(|r| r.0)
+                    .unwrap_or(u32::MAX);
+                acc.push((entity, order));
+            }
+            acc.sort_unstable_by(|a, b| {
+                a.1.cmp(&b.1)
+                    .then_with(|| a.0.to_bits().cmp(&b.0.to_bits()))
+            });
+            acc.into_iter().map(|(e, _)| e).collect()
+        };
+        let before_target = intent
+            .before
+            .and_then(|n| live.bridge.entity_for(n))
+            .map(ph2d_ecs::Entity::from_bits);
+        let after_target = intent
+            .after
+            .and_then(|n| live.bridge.entity_for(n))
+            .map(ph2d_ecs::Entity::from_bits);
+        let insert_at = if let Some(b) = before_target {
+            roots.iter().position(|e| *e == b).unwrap_or(roots.len())
+        } else if let Some(a) = after_target {
+            roots
+                .iter()
+                .position(|e| *e == a)
+                .map(|i| i + 1)
+                .unwrap_or(roots.len())
+        } else {
+            roots.len()
+        };
+        roots.insert(insert_at.min(roots.len()), dragged);
+        for (idx, e) in roots.iter().enumerate() {
+            if let Ok(mut entry) = sim_w.get_entity_mut(*e) {
+                entry.insert(ph2d_ecs::RootOrder(idx as u32));
+            }
+        }
+    }
+}
+
+/// O passo 2 do [`drain_reparent`]: a ordem entre irmãos, no `Children` do bevy e no `SiblingOrder` do ficheiro.
+fn order_among_siblings(
+    sim_w: &mut ph2d_ecs::World,
+    dragged: ph2d_ecs::Entity,
+    new_parent_entity: Option<ph2d_ecs::Entity>,
+    intent: ph2d_editor_core::screens::hero::HierReparentIntent,
+    live: &crate::HeroLive,
+) {
+    // Step 2: enforce sibling order.
+    let target_kind: Option<(ph2d_ecs::Entity, bool)> = if let Some(before_node) = intent.before
+        && let Some(b) = live.bridge.entity_for(before_node)
+    {
+        Some((ph2d_ecs::Entity::from_bits(b), true))
+    } else if let Some(after_node) = intent.after
+        && let Some(a) = live.bridge.entity_for(after_node)
+    {
+        Some((ph2d_ecs::Entity::from_bits(a), false))
+    } else {
+        None
+    };
+    if let (Some(parent), Some((target, place_before))) = (new_parent_entity, target_kind) {
+        let current: Vec<ph2d_ecs::Entity> = sim_w
+            .get::<bevy_ecs::hierarchy::Children>(parent)
+            .map(|c| c.iter().copied().filter(|e| *e != dragged).collect())
+            .unwrap_or_default();
+        let mut desired: Vec<ph2d_ecs::Entity> = Vec::with_capacity(current.len() + 1);
+        let mut inserted = false;
+        for &c in &current {
+            if !inserted && c == target && place_before {
+                desired.push(dragged);
+                inserted = true;
+            }
+            desired.push(c);
+            if !inserted && c == target && !place_before {
+                desired.push(dragged);
+                inserted = true;
+            }
+        }
+        if !inserted {
+            desired.push(dragged);
+        }
+        for &child in &desired {
+            if let Ok(mut entry) = sim_w.get_entity_mut(child) {
+                entry.remove::<ph2d_ecs::ChildOf>();
+                entry.insert(ph2d_ecs::ChildOf(parent));
+            }
+        }
+        // ⭐ **E a ordem vira DADO** (ADR-0164 F1). O bloco acima reescreve a lista `Children`
+        // do bevy, que é **memória de runtime**: ela não entra no snapshot, então até esta
+        // wave reordenar irmãos não era desfazível, não sobrevivia a um Ctrl+Z de outra ação e
+        // não sobrevivia ao save (classe BUGS #15, medida na auditoria de 21/08).
+        //
+        // ⚠️ **As duas escritas são precisas.** O `ChildOf` acima é o que o bevy usa AGORA (o
+        // pai e a relação); o `SiblingOrder` aqui é o que o FICHEIRO guarda, e é dele que o
+        // `world_to_snapshot` e a árvore do painel leem a ordem. Tirar uma das duas dá metade
+        // do gesto: sem a de cima o objeto não muda de pai; sem esta ele volta ao lugar antigo
+        // no próximo Ctrl+Z.
+        //
+        // ⚠️ Escreve com comparação (o `set_sibling_order` só toca no que difere): reescrever
+        // o mesmo número em todo irmão marcaria o arquétipo de cada um como mudado, e o diff
+        // do undo registaria um passo espúrio por quadro em que o gesto corresse.
+        ph2d_ecs::set_sibling_order(sim_w, parent, &desired);
+    }
 }
 
 #[cfg(test)]

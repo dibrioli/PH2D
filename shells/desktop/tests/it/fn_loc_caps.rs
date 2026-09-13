@@ -64,7 +64,7 @@ const FN_OVERAGE_OK: &[(&str, &str, usize, &str)] = &[
     (
         "input_dispatch.rs",
         "on_mouse_input",
-        2326,
+        2165,
         "o `input_dispatch.rs` fica FORA da `line/render-loop` (a OBRA 2 parte só o quadro)",
     ),
     (

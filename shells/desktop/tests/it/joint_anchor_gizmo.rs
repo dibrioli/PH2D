@@ -71,8 +71,10 @@ fn the_joint_anchor_down_opens_the_anchor_drag_for_its_side() {
          match would recognise nothing and every dot would be painted but dead"
     );
     let args = open_drag_arguments();
+    // ⚠️ The needle is the ARGUMENT, never its column (`line/input-dispatch`, 2026-09-13): it carried the 28
+    // spaces of the `on_mouse_input` arm, and the block moved into a branch method — same product, red gate.
     assert!(
-        args.contains("\n                            joint,"),
+        args.lines().any(|l| l.trim() == "joint,"),
         "the drag is not opened on the joint the hit resolved to: {args}"
     );
     assert!(

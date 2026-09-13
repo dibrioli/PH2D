@@ -86,7 +86,7 @@ const RAIL_CONSUMERS: &[Row] = &[
     (
         "TOOL_PIVOT",
         || ids::TOOL_PIVOT,
-        Fate::ReadBy("shells/desktop/src/input_dispatch.rs"),
+        Fate::ReadBy("shells/desktop/src/input_dispatch/despacho_clique_gizmo.rs"),
     ),
     // ── O referencial e o enquadrar ────────────────────────────────────────────────────────────
     (

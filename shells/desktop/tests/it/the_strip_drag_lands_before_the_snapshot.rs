@@ -23,7 +23,12 @@
 //! for, e um gate ancorado em distância expira sozinho na próxima linha que alguém
 //! acrescentar).
 
-const SRC: &str = include_str!("../../src/render_loop/mod.rs");
+/// O QUADRO pela ordem em que corre (`frame_text::render_frame`).
+///
+/// ⚠️ Desde a OBRA 2 da `line/render-loop` (2026-09-13) o quadro vive em FASES: o drain do arrasto e o publish da tira
+/// mudaram-se juntos para a `fase_flip_strip_and_cursor`, e o `mod.rs` sozinho já não tem nenhuma das duas âncoras. A
+/// relação posicional mede-se no texto EMENDADO, onde a posição de um literal é a ordem em que ele corre.
+static SRC: std::sync::LazyLock<String> = std::sync::LazyLock::new(crate::frame_text::render_frame);
 
 /// A posição (em bytes) da 1ª ocorrência de `needle`, ou pânico com a razão.
 fn at(needle: &str) -> usize {

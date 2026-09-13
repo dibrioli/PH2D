@@ -204,6 +204,8 @@ mod fase_field3d_requests;
 mod fase_field3d_smoke_draw;
 /// Fase do quadro: os relógios do passo fixo (sim, cabeças de leitura, §11 Animation, timers).
 mod fase_fixed_step_clocks;
+/// Fase do quadro: a tira e o cursor do Flip.
+mod fase_flip_strip_and_cursor;
 /// Fase do quadro: o perfilador (conta os quadros e chama o relatório a cada 120).
 mod fase_frame_profile;
 /// Fase do quadro: o relatório do perfilador (a partição do quadro a cada 120 quadros).
@@ -6285,41 +6287,10 @@ impl crate::App {
                     }
                 }
             }
-            // O ARRASTO da tira (mover a chave / esticar o hold): o painel enfileirou o
-            // pedido no pen-up do frame anterior; aqui ele vira documento — ANTES do
-            // publish, senão o snapshot deste frame descreveria a tira de antes do gesto e
-            // a célula piscaria de volta por um frame.
-            // (o retorno diz se o documento mudou; ninguém precisa dele aqui — o undo é
-            // GLOBAL e por DIFF: `post_frame_undo` compara o `ProjectState`, do qual o
-            // `FlipDoc` faz parte. É o mesmo motivo pelo qual o drain do `PanelEvent`
-            // logo acima também ignora o seu.)
-            let _ = ph2d_app_flip::strip_drag::apply_strip_intents(
-                flip,
-                self.flip_state.active_layer,
-                &mut self.flip_state.strip,
-            );
-            let (flip_active, flip_style) = ph2d_app_flip::bridge::publish(
-                hero,
-                tools,
-                flip,
-                self.flip_state.active_layer,
-                &self.playhead,
-                &self.flip_state.strip,
-            );
-            self.flip_state.active = flip_active;
-            self.flip_state.style = flip_style;
-            // O anel do pincel (W5): mostra no canvas o tamanho do que vai acontecer.
-            // Depois do publish (o estilo do frame já está no cache) e na cena de
-            // overlay, como o anel do Painter.
-            ph2d_app_flip::cursor::draw_flip_cursor(
-                flip_active,
-                flip_style,
-                hero,
-                vector_scene,
-                self.last_pointer,
-                // §4.C.6: o Size mede o MUNDO — o anel se projeta pelo zoom, como a tinta.
-                f64::from(window_size.height as f32 / camera.height_world.max(f32::EPSILON)),
-            );
+            let Some((flip_active, flip_style)) = self.fase_flip_strip_and_cursor(window_size)
+            else {
+                return;
+            };
             self.fase_physics_overlay(window_size, viewport);
             self.fase_canvas_overlays(window_size);
             self.fase_selection_highlight(flip_active, flip_style, viewport);

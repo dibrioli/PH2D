@@ -99,7 +99,7 @@ const FN_OVERAGE_OK: &[(&str, &str, usize, &str)] = &[
     (
         "render_loop/mod.rs",
         "run_render_frame",
-        6063,
+        6032,
         "o QUADRO inteiro numa função; a OBRA 2 da `line/render-loop` parte-o em fases chamadas pela \
          mesma ordem, e cada fase que sai baixa este número no mesmo commit",
     ),

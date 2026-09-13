@@ -34,10 +34,26 @@ fn code_of(rel: &str) -> String {
         .join("\n")
 }
 
+/// O QUADRO pela ordem em que corre (`frame_text::render_frame`), sem comentários.
+///
+/// ⚠️ Desde a OBRA 2 da `line/render-loop` (2026-09-13) a codificação das faixas e do vidro mora na fase
+/// `fase_vector_bands`; lida só no `render_loop/mod.rs`, a metade do quadro deste gate reprovava sobre
+/// produto correcto. As metades do presente continuam a ler o `present.rs`.
+fn frame_code() -> String {
+    crate::frame_text::render_frame()
+        .lines()
+        .map(|l| match l.find("//") {
+            Some(i) => &l[..i],
+            None => l,
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
 /// ⭐⭐⭐ **A codificação: o interruptor, o documento fora do chrome, e a receita numa cena própria.**
 #[test]
 fn the_encoding_splits_the_world_from_the_recipe() {
-    let body = code_of("render_loop/mod.rs");
+    let body = frame_code();
     assert!(
         body.contains("*frosting = ph2d_app_components::master_editing::any_open(sim);"),
         "o interruptor do vidro deixou de ser escrito, ou voltou a perguntar a` vista do VETOR — \

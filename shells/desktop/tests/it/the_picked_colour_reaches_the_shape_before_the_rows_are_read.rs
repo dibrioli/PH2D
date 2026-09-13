@@ -17,12 +17,13 @@
 //! (Painter, Vector e timeline usam o mesmo canal), então escrever sem perguntar pintaria a forma
 //! errada sempre que outro painel o abrisse.
 
-use std::fs;
-
-const SRC: &str = "src/render_loop/mod.rs";
-
+/// O QUADRO pela ordem em que corre (`frame_text::render_frame`).
+///
+/// ⚠️ Desde a OBRA 2 da `line/render-loop` (2026-09-13) o retorno do picker e a derivação das rows moram
+/// na fase `fase_vector_bands`; lidos só no `render_loop/mod.rs`, os dois testes reprovavam sobre produto
+/// correcto. A ORDEM escrita → leitura é a do texto que corre.
 fn source() -> String {
-    fs::read_to_string(SRC).unwrap_or_else(|e| panic!("nao consegui ler {SRC}: {e}"))
+    crate::frame_text::render_frame()
 }
 
 /// **O retorno existe, e passa pela porta que sabe de quem é o alvo.**

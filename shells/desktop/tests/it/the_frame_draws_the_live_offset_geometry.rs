@@ -21,11 +21,20 @@
 //! provam o COZIMENTO, não a costura. Nenhum unit test alcança o corpo do `render_frame`, que é
 //! onde a ordem mora — a mesma razão do irmão `the_z_projection_reads_the_tree_after_the_sync`.
 
-const SRC: &str = include_str!("../../src/render_loop/mod.rs");
+/// O QUADRO pela ordem em que corre (`frame_text::render_frame`).
+///
+/// ⚠️ Desde a OBRA 2 da `line/render-loop` (2026-09-13) o quadro vive em FASES noutros ficheiros: o
+/// `dispatch` das faixas mora na `fase_vector_bands`, e o `sync` e o cozimento continuam, por agora, no
+/// `render_loop/mod.rs`. Uma ORDEM entre dois ficheiros não existe; no texto emendado ela é a de execução,
+/// que é a que este gate afirma.
+fn src() -> &'static str {
+    static FRAME: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+    FRAME.get_or_init(crate::frame_text::render_frame)
+}
 
 /// A posição (em bytes) da 1ª ocorrência de `needle`, ou pânico com a razão.
 fn at(needle: &str) -> usize {
-    SRC.find(needle).unwrap_or_else(|| {
+    src().find(needle).unwrap_or_else(|| {
         panic!(
             "`{needle}` sumiu do render_loop — se foi renomeado, atualize este gate (e confira \
              que o Offset vivo ainda chega à tela: `PH2D_BUILD_SMOKE=17`)"
@@ -47,12 +56,13 @@ fn at(needle: &str) -> usize {
 /// nenhum, e um binding que deixe de ler as fontes vivas fica vermelho pelo nome que falta.
 #[test]
 fn the_dispatch_is_handed_the_live_geometry() {
+    let src = src();
     let call = at("ph2d_vec_render::dispatch(");
-    let args_end = SRC[call..]
+    let args_end = src[call..]
         .find(");")
         .expect("fim da lista de argumentos do `dispatch`")
         + call;
-    let args = &SRC[call..args_end];
+    let args = &src[call..args_end];
     assert!(
         !args.contains("LiveGeometry::new()"),
         "o `dispatch` está recebendo um mapa VAZIO — o offset/pattern ao vivo some da tela e \
@@ -74,7 +84,7 @@ fn the_dispatch_is_handed_the_live_geometry() {
         "`vec_live` é ligado DEPOIS do `dispatch` — o frame desenharia a resposta do frame anterior"
     );
     assert!(
-        SRC[bind..call].contains("self.pattern_live"),
+        src[bind..call].contains("self.pattern_live"),
         "`vec_live` não recolhe `self.pattern_live` — as cópias do Pattern Along Path sumiriam \
          da tela sem nenhum teste de unidade notar"
     );

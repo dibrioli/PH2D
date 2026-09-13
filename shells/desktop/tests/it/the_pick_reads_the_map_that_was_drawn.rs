@@ -28,8 +28,17 @@
 //! `dispatch` recebe e exige que seja esse o valor guardado — se alguém renomear o binding, o
 //! gate acompanha; se alguém guardar OUTRO mapa, ele sangra.
 
-const RENDER: &str = include_str!("../../src/render_loop/mod.rs");
 const INPUT: &str = include_str!("../../src/input_dispatch.rs");
+
+/// O QUADRO pela ordem em que corre (`frame_text::render_frame`).
+///
+/// ⚠️ Desde a OBRA 2 da `line/render-loop` (2026-09-13) o `dispatch` das faixas e o `store` do mapa
+/// desenhado moram na fase `fase_vector_bands`; lidos só no `render_loop/mod.rs`, o gate reprovava sobre
+/// produto correcto. A relação *guardado depois de desenhado* é a do texto que corre.
+fn render() -> &'static str {
+    static FRAME: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+    FRAME.get_or_init(crate::frame_text::render_frame)
+}
 
 /// O campo onde o mapa desenhado descansa até o próximo clique.
 const FIELD: &str = "vec.live_drawn";
@@ -65,7 +74,8 @@ fn args_of<'a>(src: &'a str, needle: &str, from: usize) -> Option<(usize, &'a st
 /// que ninguém desenhou.
 #[test]
 fn what_is_stored_is_what_was_drawn() {
-    let (end, args) = args_of(RENDER, "ph2d_vec_render::dispatch(", 0)
+    let render = render();
+    let (end, args) = args_of(render, "ph2d_vec_render::dispatch(", 0)
         .expect("a chamada do `dispatch` sumiu do render_loop");
     let live_arg = args
         .lines()
@@ -77,7 +87,7 @@ fn what_is_stored_is_what_was_drawn() {
     // O 4º argumento é o `live`; os anteriores também são referências, então a busca acima pega o
     // primeiro. O que interessa é o nome que o `store` usa, e ele TEM de estar entre os args.
     let store = format!("self.{FIELD} = ");
-    let at_store = RENDER
+    let at_store = render
         .find(&store)
         .unwrap_or_else(|| panic!("o campo `{FIELD}` deixou de ser escrito no render_loop"));
     assert!(
@@ -85,7 +95,7 @@ fn what_is_stored_is_what_was_drawn() {
         "o mapa é guardado ANTES de o `dispatch` o receber — a fusão ainda pode ser transformada \
          (a booleana e o alinhamento correm sobre ela), e o pick leria um mapa parcial"
     );
-    let stored = RENDER[at_store + store.len()..]
+    let stored = render[at_store + store.len()..]
         .lines()
         .next()
         .and_then(|l| l.strip_suffix(';'))

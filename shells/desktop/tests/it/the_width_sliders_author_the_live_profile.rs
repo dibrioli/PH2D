@@ -21,11 +21,20 @@
 //! sobre código correto**. Aqui as perguntas são posicionais (*isto corre antes daquilo*) e de
 //! conteúdo (*este nome aparece nesta janela sintática*), que sobrevivem a reformatação.
 
-const SRC: &str = include_str!("../../src/render_loop/mod.rs");
+/// O QUADRO pela ordem em que corre (`frame_text::render_frame`).
+///
+/// ⚠️ Desde a OBRA 2 da `line/render-loop` (2026-09-13) o quadro vive em FASES noutros ficheiros: o
+/// `dispatch` das faixas mora na `fase_vector_bands`, e o arrasto, o catálogo, o lápis, o cozimento e o
+/// botão continuam, por agora, no `render_loop/mod.rs`. As relações *antes de* deste gate são de EXECUÇÃO,
+/// e só o texto emendado as tem — entre dois ficheiros não há ordem.
+fn src() -> &'static str {
+    static FRAME: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+    FRAME.get_or_init(crate::frame_text::render_frame)
+}
 
 /// A posição (em bytes) da 1ª ocorrência de `needle`, ou pânico com a razão.
 fn at(needle: &str) -> usize {
-    SRC.find(needle).unwrap_or_else(|| {
+    src().find(needle).unwrap_or_else(|| {
         panic!(
             "`{needle}` sumiu do render_loop — se foi renomeado, atualize este gate (e confira \
              que a largura viva ainda chega à tela: `PH2D_BUILD_SMOKE=41`)"
@@ -43,12 +52,13 @@ fn dragging_a_width_slider_arms_the_live_profile() {
     // armamento ACIMA deste, e a janela passou a fechar antes dos ids que o gate procura. Ele
     // ficou vermelho sobre produto correto, que é exatamente o que o cabeçalho deste arquivo
     // manda evitar.
+    let src = src();
     let block = at("let grabbed = matches!(");
-    let arm = SRC[block..]
+    let arm = src[block..]
         .find("crate::profile_live::arm(")
         .map(|i| block + i)
         .expect("o ramo do arrasto deixou de armar o perfil vivo");
-    let window = &SRC[block..arm];
+    let window = &src[block..arm];
     for id in [
         "VECTOR_EXPAND_W_START",
         "VECTOR_EXPAND_W_MID",
@@ -81,7 +91,7 @@ fn the_cooked_ribbon_reaches_the_dispatch() {
     let bind = at("let mut vec_live = self.offset_live.live()");
     assert!(bind < call, "`vec_live` é ligado DEPOIS do `dispatch`");
     assert!(
-        SRC[bind..call].contains("self.profile_live"),
+        src()[bind..call].contains("self.profile_live"),
         "`vec_live` não recolhe `self.profile_live` — a fita de largura variável é cozida todo \
          frame e jogada fora, e nenhum teste de unidade nota"
     );
@@ -110,6 +120,7 @@ fn the_profile_cook_runs_after_the_sync_and_before_the_draw() {
 /// selecionadas as duas sairiam iguais, com o painel dizendo o contrário do que está na tela.
 #[test]
 fn the_apply_button_bakes_the_live_profile_not_the_sliders() {
+    let src = src();
     let mat = at("crate::profile_live::materialise(");
     let numeric = at("crate::vec_expand::apply_vec_expand(");
     assert!(
@@ -120,12 +131,12 @@ fn the_apply_button_bakes_the_live_profile_not_the_sliders() {
     // E a consulta é gateada no comando certo: materializar num clique de Offset assaria a
     // forma errada. A pergunta é ao `if` que ABRE o bloco da chamada — uma relação, não uma
     // distância (o cabeçalho deste arquivo diz por quê).
-    let head = &SRC[..mat];
+    let head = &src[..mat];
     let guard = head
         .rfind("if matches!(cmd,")
         .expect("o `materialise` não está dentro de um `if matches!(cmd, …)`");
     assert!(
-        SRC[guard..mat].contains("Expand::PowerStroke"),
+        src[guard..mat].contains("Expand::PowerStroke"),
         "o `materialise` do perfil está sob um guard que NÃO é o Power Stroke — clicar Apply \
          Offset assaria a fita da forma errada"
     );
@@ -139,6 +150,7 @@ fn the_apply_button_bakes_the_live_profile_not_the_sliders() {
 /// recém-nascida ainda não tem entidade e o componente não tem onde pousar.
 #[test]
 fn the_pencil_arms_its_profile_before_the_cook() {
+    let src = src();
     let sync = at("ph2d_vec_entities::entities::sync(");
     let arm = at("crate::profile_live::arm(sim, &self.vec.entities, &[id], &stops)");
     let cook = at("self.profile_live\n                .recook(");
@@ -152,12 +164,12 @@ fn the_pencil_arms_its_profile_before_the_cook() {
     );
     // E o que ele arma vem do GESTO vivo, não de um valor de painel: sem `width_stops` no meio,
     // o perfil seria o que os sliders da Expand dizem, e o lápis não teria fonte nenhuma.
-    let head = &SRC[..arm];
+    let head = &src[..arm];
     let gesture = head
         .rfind("self.vec.pencil.active_path()")
         .expect("o armamento do lápis não é gateado por um traço VIVO");
     assert!(
-        SRC[gesture..arm].contains("width_stops"),
+        src[gesture..arm].contains("width_stops"),
         "o perfil armado não sai do gesto (`Pencil::width_stops`) — a fonte de largura do lápis \
          não chega ao desenho"
     );
@@ -200,7 +212,7 @@ fn clicking_a_width_preset_writes_the_sliders_and_arms_the_shape() {
         block < grabbed,
         "o bloco do catálogo não está antes da leitura do arrasto"
     );
-    let window = &SRC[block..grabbed];
+    let window = &src()[block..grabbed];
     assert!(
         window.contains("WIDTH_PRESETS"),
         "o clique não consulta a TABELA de perfis — a lista do painel e a que a shell aplica \

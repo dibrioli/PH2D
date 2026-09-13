@@ -12,6 +12,19 @@
 
 /// Roteia `level` para o módulo dono dele. `true` = tratado (o chamador retorna).
 pub(crate) fn route(app: &mut crate::App, f: u32, level: u32) -> bool {
+    route_deformers_fx_and_text(app, f, level)
+        || route_drawing_and_layout(app, f, level)
+        || route_ui_system(app, f, level)
+        || route_paints_edits_and_assets(app, f, level)
+}
+
+/// **As cenas dos DEFORMADORES, dos EFEITOS e do TEXTO** — Envelope, Contour, Warp, Falloff, Twist,
+/// Knot, Sketch/Hatch, o FX raster (`=33`..`=39`), a pilha de efeitos (`=13`/`=14`) e o undo dela,
+/// o texto (`=21`..`=23`) e o Pattern on Path (`=24`).
+///
+/// ⚠️ Saiu do [`route`] pelo tecto de 200 LOC por função (`fn_loc_caps`), verbatim e na MESMA ordem:
+/// o `route` chama os quatro por `||`, que para no primeiro que tratou o nível.
+fn route_deformers_fx_and_text(app: &mut crate::App, f: u32, level: u32) -> bool {
     // As cenas do ENVELOPE (níveis 11 e 12) vivem no módulo irmão `envelope_smoke` — teto de
     // LOC. Elas só usam os frames 3 e 4 e nenhum braço compartilhado, então sair do `match`
     // aqui é a MESMA sequência de antes: um nível fora de 11/12 nunca entrava nesses braços, e
@@ -130,6 +143,16 @@ pub(crate) fn route(app: &mut crate::App, f: u32, level: u32) -> bool {
         crate::pattern_path_smoke::frame(app, f);
         return true;
     }
+    false
+}
+
+/// **As cenas do DESENHO e da MOLDURA** — lápis, largura viva, Width Tool, alcance do nó, cortes,
+/// guias, simetria e alinhamento (`=40`..`=47`), booleana viva (`=48`/`=74`), moldura, auto layout,
+/// tokens, âncoras, componentes e âncora de escala (`=49`..`=54`).
+///
+/// ⚠️ Saiu do [`route`] pelo tecto de 200 LOC por função (`fn_loc_caps`), verbatim e na MESMA ordem:
+/// o `route` chama os quatro por `||`, que para no primeiro que tratou o nível.
+fn route_drawing_and_layout(app: &mut crate::App, f: u32, level: u32) -> bool {
     // A cena do LÁPIS (=40, plano 25 W1) — irmã `pencil_smoke`. Ela dá a REFERÊNCIA na tela e
     // **não arma o modo**: o gesto que este smoke prova começa no chip do painel.
     if level == 40 {
@@ -258,6 +281,16 @@ pub(crate) fn route(app: &mut crate::App, f: u32, level: u32) -> bool {
     // ⚠️ **Um nível vago não é um buraco a preencher**: o gate `no_two_smoke_scenes_claim_the_same_level`
     // mede COLISÃO, não densidade. Reaproveitá-los para outro assunto faria um roteiro antigo do
     // dono abrir a cena errada.
+    false
+}
+
+/// **As cenas do SISTEMA DE UI** — ordem de z (`=57`), tokens, pele, estados, painel gerado,
+/// refluxo, hierarquia, mola, sizing, rolagem, sinais, grade, nós, laço, rótulo e X/Y do nó
+/// (`=59`..`=73`), e a máquina de estados do Morph (`=75`).
+///
+/// ⚠️ Saiu do [`route`] pelo tecto de 200 LOC por função (`fn_loc_caps`), verbatim e na MESMA ordem:
+/// o `route` chama os quatro por `||`, que para no primeiro que tratou o nível.
+fn route_ui_system(app: &mut crate::App, f: u32, level: u32) -> bool {
     // A cena da ORDEM DE Z (=57) — irmã `zorder_smoke`. Duas perguntas de olho: o FILHO aparece
     // (a lei do Godot) e os botões de z-order fazem alguma coisa (eles escreviam na porta errada).
     if level == 57 {
@@ -366,6 +399,16 @@ pub(crate) fn route(app: &mut crate::App, f: u32, level: u32) -> bool {
         crate::morph_states_smoke::frame(app, f);
         return true;
     }
+    false
+}
+
+/// **As cenas das TINTAS, das EDIÇÕES e dos ASSETS** — estampa, pincel, quinas e opacidade
+/// (`=76`..`=79`), Trim, Soldar e Balde (`=80`..`=82`), o navegador de assets e as variações
+/// (`=83`..`=85`).
+///
+/// ⚠️ Saiu do [`route`] pelo tecto de 200 LOC por função (`fn_loc_caps`), verbatim e na MESMA ordem:
+/// o `route` chama os quatro por `||`, que para no primeiro que tratou o nível.
+fn route_paints_edits_and_assets(app: &mut crate::App, f: u32, level: u32) -> bool {
     // A cena do TEXTURE PATTERN (=76, plano 33) — irmã `texture_pattern_smoke`, mesma razão de LOC.
     // ⚠️ Ela sintetiza a própria arte: um smoke não pode pedir um ficheiro ao Enio.
     if level == 76 {

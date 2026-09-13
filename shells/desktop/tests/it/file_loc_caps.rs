@@ -48,11 +48,6 @@ const FILE_OVERAGE_OK: &[(&str, usize, &str)] = &[
         "frame orchestrator — heavy phases already extracted to",
     ),
     (
-        "render_loop/sim_extract.rs",
-        1155,
-        "per-sprite RenderInstance build accreted every W3 render",
-    ),
-    (
         "render_loop/snapshots.rs",
         1398,
         "accreted one producer per W3 Inspector section",

@@ -92,6 +92,20 @@ pub const VALUE_COLUMN: &str = "v";
 /// divergir, e esta nasce com dois lados no mesmo dia.
 pub const TINT_MASK_COLUMN: &str = "tint_mask";
 
+/// ⭐⭐ **O COLISOR DE UM ELEMENTO** — doc 109, ordem do dono (2026-09-13): *«colidem sozinhas»*.
+///
+/// O raio de colisão **na unidade da GEOMETRIA** do elemento; o raio de mundo é
+/// `collider × max(|sx|, |sy|)` — a lei do `motion.collide` (*o disco que CONTÉM a arte*), para
+/// que escalar a peça a jusante escale o colisor com ela, como em todo motor.
+///
+/// ⚠️ **Ausente ⇒ o elemento NÃO colide.** É a lei do `Collider` da física de corpos rígidos
+/// (*«its absence is the off»*), e é o que mantém toda corrente de hoje byte-idêntica.
+///
+/// ⚠️ **Quem o escreve é quem DESENHA** (o `source.shape`): um consumidor não sabe se recebeu uma
+/// sprite (raio inscrito `size/2`) ou uma forma vectorial (raio `size`), e a razão entre as duas
+/// é da mídia e da geometria. Declarada aqui porque tem dois lados que nascem na mesma obra.
+pub const COLLIDER_COLUMN: &str = "collider";
+
 /// As colunas de **ESCRITURAÇÃO** — aquelas cuja máquina de estado de um nó a
 /// jusante lê, e que por isso um escritor genérico não pode sobrescrever.
 ///

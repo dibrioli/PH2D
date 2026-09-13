@@ -40,6 +40,10 @@ use crate::motion_state::MotionState;
 mod store;
 pub use store::VecPathStore;
 
+/// Os dois raios de colisão de uma geometria (doc 109), no irmão que o tecto de LOC pede.
+#[path = "motion_shape_collider.rs"]
+mod collider;
+
 /// The manifest default for a param NAME — the fallback the node's `ctx.param`
 /// takes when there is no override (and, for `source.shape`, no driven layer).
 /// ⚠️ **Só os TESTES o chamam desde 2026-08-28** — o produto lê a escada inteira pela porta
@@ -422,10 +426,22 @@ pub fn publish(motion: &mut MotionState, seconds: f64) {
         // consequências, e as duas eram o item: animar o `size` deixa de internar um
         // `VecPath` por valor visitado, e um `value.attribute("size")` a jusante passa a
         // VER o tamanho da forma — antes a coluna não existia.
+        // ⭐ **Os dois raios de colisão desta geometria** (doc 109) — o nó ESCOLHE um pelos
+        // params dele e retira os dois. Eles não são a declaração: esta chave é partilhada por
+        // toda forma com a mesma geometria.
+        let [around, inside] = motion.shape_store.collider_radii(handle);
         let stream = Stream::new(1)
             .with("P", Column::Vec2(vec![[0.0, 0.0]]))
             .with("size", Column::Vec2(vec![[scale, scale]]))
-            .with("geometry_id", Column::Scalar(vec![handle as f32]));
+            .with("geometry_id", Column::Scalar(vec![handle as f32]))
+            .with(
+                ph2d_node_motion_shape::param::COLLIDER_AROUND_COL,
+                Column::Scalar(vec![around]),
+            )
+            .with(
+                ph2d_node_motion_shape::param::COLLIDER_INSIDE_COL,
+                Column::Scalar(vec![inside]),
+            );
         motion.pump.cook.set_external(key, stream);
     }
 }

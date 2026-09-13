@@ -580,6 +580,19 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: param::DASH_GAP,
             default: 1.0,
         },
+        // ⚠️ **Apendados** (doc 109). `collide = 0` ⇒ nenhuma coluna nova ⇒ o stream de sempre.
+        ParamSpec {
+            name: param::COLLIDE,
+            default: 0.0,
+        },
+        ParamSpec {
+            name: param::COLLIDER_FIT,
+            default: 0.0,
+        },
+        ParamSpec {
+            name: param::COLLIDER_SCALE,
+            default: 1.0,
+        },
     ],
     lowerings: &[LoweringKind::Cpu],
 };
@@ -620,6 +633,8 @@ impl NodeOp for SourceShape {
                 ph2d_nodegraph::attr::Column::Scalar(vec![rotation; n]),
             );
         }
+        // ⭐ **O COLISOR** que a forma declara, e as colunas de raio do shell retiradas (doc 109).
+        let stream = collider::declare(stream, |name| ctx.param(name));
         ctx.emit(stream);
     }
 }
@@ -640,6 +655,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register_param_units(MANIFEST.id, PARAM_UNITS);
     reg.register_param_gates(MANIFEST.id, PARAM_GATES);
     reg.register_param_gates_above(MANIFEST.id, PARAM_GATES_ABOVE);
+    reg.register_param_groups(MANIFEST.id, PARAM_GROUPS);
     // Its output carries `geometry_id` (a live vector shape) drawn by the vector
     // pass. The GPU-resident cook has no `geometry_id` route, so a document
     // bringing a shape in recuses to the CPU render (ADR-0154/0155). Unlike an
@@ -670,5 +686,6 @@ mod tests;
 #[path = "fill_tests.rs"]
 mod fill_tests;
 
+mod collider;
 mod hints;
-use hints::{PARAM_GATES, PARAM_GATES_ABOVE, PARAM_HINTS};
+use hints::{PARAM_GATES, PARAM_GATES_ABOVE, PARAM_GROUPS, PARAM_HINTS};

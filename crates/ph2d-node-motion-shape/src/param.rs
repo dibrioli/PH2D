@@ -157,3 +157,21 @@ pub const FILL_A: &str = "fill_a";
 /// `rot` de zero*. A jusante isso importa: um `motion.rotate` a somar sobre uma coluna ausente
 /// parte do `0` na mesma, mas um censo de colunas veria uma que ninguém autorou.
 pub const ROTATION: &str = "rotation";
+
+/// ⭐⭐ **O COLISOR QUE A FORMA DECLARA** (doc 109 — ordem do dono, 2026-09-13: *«colidem
+/// sozinhas»*). `collide = 0` ⇒ a coluna `collider` não é escrita ⇒ o stream de sempre.
+///
+/// ⚠️ **Os três ficam FORA de [`ALL`], de propósito:** não mudam a geometria, e entrar na chave
+/// de conteúdo re-internaria um `VecPath` a cada clique na caixa — o custo que a normalização do
+/// `size` existe para evitar.
+pub const COLLIDE: &str = "collide";
+/// `0` Around (o menor círculo à volta do contorno) · `1` Inside (o maior dentro dele).
+/// ⚠️ O índice é formato de arquivo — APPEND ONLY.
+pub const COLLIDER_FIT: &str = "collider_fit";
+/// Multiplicador do raio escolhido (`1` = o contorno).
+pub const COLLIDER_SCALE: &str = "collider_scale";
+
+/// **As duas colunas que o SHELL publica** com a geometria (os dois raios, em unidade de
+/// geometria) — e que o nó **retira sempre**, depois de escolher. Nenhum nó a jusante as vê.
+pub const COLLIDER_AROUND_COL: &str = "collider_around";
+pub const COLLIDER_INSIDE_COL: &str = "collider_inside";

@@ -11,7 +11,7 @@
 //! fazia com que acrescentar um param exigisse duas viagens ao `lib.rs`.
 
 use super::{KIND_LABELS, ShapeKind, param};
-use ph2d_node_registry::{ParamGate, ParamGateAbove, ParamUiHint, ParamWidget};
+use ph2d_node_registry::{ParamGate, ParamGateAbove, ParamGroup, ParamUiHint, ParamWidget};
 
 /// The param rows: a real dropdown for the shape family (the segmented `Enum`
 /// widget the Vector panel uses for Cap/Join), then the geometry sliders. Every
@@ -262,6 +262,44 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
         step: 0.1,
         widget: ParamWidget::Slider,
     },
+    // ⭐⭐ **O COLISOR** (doc 109 — ordem do dono: *«colidem sozinhas»*). Um toggle, e não uma
+    // sentinela no raio: um `Collider Scale` de zero é um colisor PONTUAL, não a ausência dele.
+    ParamUiHint {
+        param: param::COLLIDE,
+        label: "Collide",
+        min: 0.0,
+        max: 1.0,
+        step: 1.0,
+        widget: ParamWidget::Toggle,
+    },
+    ParamUiHint {
+        param: param::COLLIDER_FIT,
+        label: "Collider Fit",
+        min: 0.0,
+        max: 1.0,
+        step: 1.0,
+        widget: ParamWidget::Enum {
+            labels: super::collider::FIT_LABELS,
+        },
+    },
+    // ⚠️ **`0..2` é a faixa CONFORTÁVEL do arrasto, não um recurso**: o dobro do contorno já
+    // afasta as peças à vista, e nada no solver deixa de honrar um número maior.
+    ParamUiHint {
+        param: param::COLLIDER_SCALE,
+        label: "Collider Scale",
+        min: 0.0,
+        max: 2.0,
+        step: 0.01,
+        widget: ParamWidget::Slider,
+    },
+];
+
+/// **A secção «Collision»** — os três do colisor juntos, depois de tudo o que desenha a forma
+/// (os params sem grupo vêm antes de toda secção, que é onde os essenciais moram).
+pub(crate) static PARAM_GROUPS: &[ParamGroup] = &[
+    ParamGroup::new(param::COLLIDE, "Collision"),
+    ParamGroup::new(param::COLLIDER_FIT, "Collision"),
+    ParamGroup::new(param::COLLIDER_SCALE, "Collision"),
 ];
 
 /// **Per-kind visibility** — a param appears only when `kind` is one of the listed
@@ -514,6 +552,17 @@ pub(crate) static PARAM_GATES_ABOVE: &[ParamGateAbove] = &[
     ParamGateAbove {
         param: param::TRIM_OFFSET,
         when: param::STROKE_WIDTH,
+        above: 0.0,
+    },
+    // O ajuste e a escala do colisor só existem com ele ligado — desligado, a coluna nem é escrita.
+    ParamGateAbove {
+        param: param::COLLIDER_FIT,
+        when: param::COLLIDE,
+        above: 0.0,
+    },
+    ParamGateAbove {
+        param: param::COLLIDER_SCALE,
+        when: param::COLLIDE,
         above: 0.0,
     },
 ];

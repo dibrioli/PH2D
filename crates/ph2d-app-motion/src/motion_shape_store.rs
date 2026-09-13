@@ -39,12 +39,29 @@ pub struct VecPathStore {
     next: u32,
     /// As chaves PEDIDAS neste quadro — o que a [`Self::sweep`] preserva.
     live: std::collections::BTreeSet<String>,
+    /// **Os dois raios de colisão por handle** (doc 109) — medidos UMA vez por geometria e
+    /// largados com ela, nas duas portas que largam geometria.
+    radii: BTreeMap<u32, [f32; 2]>,
 }
 
 impl VecPathStore {
     /// The `VecPath` for a `geometry_id` handle, or `None` for 0 / unknown.
     pub fn get(&self, handle: u32) -> Option<&VecPath> {
         self.by_handle.get(&handle)
+    }
+
+    /// **`[around, inside]` desta geometria** (doc 109), medidos da primeira vez que alguém
+    /// pergunta. Um handle sem geometria responde `[0, 0]` — um colisor pontual, nunca inventado.
+    pub fn collider_radii(&mut self, handle: u32) -> [f32; 2] {
+        if let Some(r) = self.radii.get(&handle) {
+            return *r;
+        }
+        let r = self
+            .by_handle
+            .get(&handle)
+            .map_or([0.0, 0.0], super::collider::measure);
+        self.radii.insert(handle, r);
+        r
     }
 
     /// Intern a shape under its content key, building it once. Returns the handle
@@ -113,6 +130,7 @@ impl VecPathStore {
     /// reclamado» é «fuga».
     pub fn forget(&mut self, handle: u32) {
         self.by_handle.remove(&handle);
+        self.radii.remove(&handle);
     }
 
     /// **Esquece as geometrias COM CHAVE que ninguém pediu neste quadro** e devolve os
@@ -132,6 +150,7 @@ impl VecPathStore {
         });
         for h in &dropped {
             self.by_handle.remove(h);
+            self.radii.remove(h);
         }
         self.live.clear();
         dropped

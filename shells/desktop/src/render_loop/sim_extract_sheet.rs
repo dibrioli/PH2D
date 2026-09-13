@@ -137,9 +137,9 @@ pub(super) fn cell(
         return None;
     }
     // ⚠️ **A sub-UV sai da MESMA função que o extract usa** para a célula viva
-    // ([`super::sim_extract::sprite_sheet_subrect`]) — reimplementá-la aqui daria uma segunda
+    // ([`ph2d_render::sprite::sprite_sheet_subrect`]) — reimplementá-la aqui daria uma segunda
     // resposta a *«onde está a célula N»*, e a divergência só apareceria na pré-visualização.
-    let uv = super::sim_extract::sprite_sheet_subrect(base_uv, grid.hframes, grid.vframes, index);
+    let uv = ph2d_render::sprite::sprite_sheet_subrect(base_uv, grid.hframes, grid.vframes, index);
     let dcol = index % hf;
     let drow = index / hf;
     let lcol = live % hf;
@@ -169,7 +169,7 @@ pub(crate) fn anim_preview_quad(
 ) -> Option<([f32; 4], [f32; 2])> {
     let cells = cell_count(grid)?;
     let live = grid.frame.min(cells - 1);
-    let uv = super::sim_extract::sprite_sheet_subrect(base_uv, grid.hframes, grid.vframes, live);
+    let uv = ph2d_render::sprite::sprite_sheet_subrect(base_uv, grid.hframes, grid.vframes, live);
     let vf = grid.vframes.max(1);
     // Meia folha para cima, mais meia célula e uma folga de uma célula — encostado por fora.
     let dy = (f64::from(vf) * 0.5 + 1.0) * f64::from(spr.size[1]);

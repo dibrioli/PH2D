@@ -341,7 +341,7 @@ fn reattach_pixels(sprite: &mut Sprite, texture_id: u32, premultiplied: bool) {
 ///
 /// ⚠️ **`filter_clip` é uma DECISÃO MEDIDA, não um `true` de conforto** (Enio, 2026-08-19: *"ao
 /// fazer o bake sheet a borda transparente muda"*). Ele liga o recuo de meio texel por lado que o
-/// `sim_extract::region_subrect` aplica — a defesa contra a amostragem bilinear puxar o vizinho de
+/// `ph2d_render::sprite::region_subrect` aplica — a defesa contra a amostragem bilinear puxar o vizinho de
 /// atlas pela borda. Numa folha **de origem desconhecida** (um `.png` do Aseprite, que pode
 /// empacotar colado) ele é obrigatório.
 ///

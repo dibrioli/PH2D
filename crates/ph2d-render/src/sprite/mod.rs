@@ -16,6 +16,9 @@
 
 mod component;
 mod instance;
+/// Que pedaço da textura uma sprite amostra — a célula da folha e a região (dois leitores: o
+/// extract da shell e o retrato de um prefab).
+mod subrect;
 mod vertex;
 
 #[cfg(test)]
@@ -23,4 +26,5 @@ mod tests;
 
 pub use component::{Sprite, SpriteSource};
 pub use instance::{GpuTexRun, RenderInstance};
+pub use subrect::{region_subrect, sprite_sheet_subrect};
 pub use vertex::QuadVertex;

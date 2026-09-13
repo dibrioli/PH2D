@@ -153,88 +153,10 @@ fn resolve_mask_meta(sim: &World, entity: Entity, clip_group: u32, clip_meta: u3
     clip_meta
 }
 
-/// Select the sprite-sheet cell `frame` from a base UV rect
-/// `[u_min, v_min, u_max, v_max]`, dividing it into an `hframes × vframes`
-/// grid (anatomia §03 §3.4). Frame 0 = top-left, `col = frame % hframes`,
-/// `row = frame / hframes` (row increases downward, matching V=0 = top).
-/// `hframes`/`vframes` floor at 1 and `frame` is clamped into the grid,
-/// so the default 1×1 sheet returns the input rect unchanged (no-op for
-/// every legacy sprite). Render-only (PresentWorld), HR-5 exempt.
-/// ⚠️ **`pub(crate)` desde 2026-09-01: o RETRATO de um prefab é o segundo leitor.** Ele compõe as
-/// peças de uma receita e tem de mostrar **a mesma célula** que a tela mostra — sem isto, uma
-/// sprite de folha aparecia no cartão com a grelha inteira espremida na célula.
-pub(crate) fn sprite_sheet_subrect(
-    uv: [f32; 4],
-    hframes: u32,
-    vframes: u32,
-    frame: u32,
-) -> [f32; 4] {
-    let hf = hframes.max(1);
-    let vf = vframes.max(1);
-    if hf == 1 && vf == 1 {
-        return uv;
-    }
-    let cells = hf.saturating_mul(vf).max(1);
-    let frame = frame.min(cells - 1);
-    let col = frame % hf;
-    let row = frame / hf;
-    let [u0, v0, u1, v1] = uv;
-    let cw = (u1 - u0) / hf as f32;
-    let ch = (v1 - v0) / vf as f32;
-    let nu0 = u0 + col as f32 * cw;
-    let nv0 = v0 + row as f32 * ch;
-    [nu0, nv0, nu0 + cw, nv0 + ch]
-}
-
-/// Narrow a UV rect to a sprite's pixel-space `region_rect` (anatomia
-/// §03 §3.5). `region` is `[x, y, w, h]` in SOURCE pixels; `(src_w,
-/// src_h)` are the source image's pixel dimensions, so the rect maps to
-/// the fraction `region / src` of the base `uv`. A zero/negative region
-/// or unknown source dims leaves `uv` untouched (region = no-op). When
-/// `filter_clip_half_texel` is `Some((htu, htv))`, the result is inset
-/// by half a texel per side (Godot `region_filter_clip`) so bilinear
-/// sampling can't bleed past the region edge into neighbouring atlas
-/// content. The `htu`/`htv` are in the SAMPLED texture's UV space.
-/// ⚠️ **`pub(crate)` pela razão da irmã acima** — o retrato é o segundo leitor.
-pub(crate) fn region_subrect(
-    uv: [f32; 4],
-    region: [f32; 4],
-    src_w: f32,
-    src_h: f32,
-    filter_clip_half_texel: Option<(f32, f32)>,
-) -> [f32; 4] {
-    let [u0, v0, u1, v1] = uv;
-    let [rx, ry, rw, rh] = region;
-    if rw <= 0.0 || rh <= 0.0 || src_w <= 0.0 || src_h <= 0.0 {
-        return uv;
-    }
-    let du = u1 - u0;
-    let dv = v1 - v0;
-    // Region beyond the source edges is clamped to the base rect.
-    let mut nu0 = (u0 + du * (rx / src_w)).clamp(u0, u1);
-    let mut nv0 = (v0 + dv * (ry / src_h)).clamp(v0, v1);
-    let mut nu1 = (u0 + du * ((rx + rw) / src_w)).clamp(u0, u1);
-    let mut nv1 = (v0 + dv * ((ry + rh) / src_h)).clamp(v0, v1);
-    if let Some((htu, htv)) = filter_clip_half_texel {
-        nu0 += htu;
-        nv0 += htv;
-        nu1 -= htu;
-        nv1 -= htv;
-        // A region thinner than one texel would invert under the inset;
-        // collapse it to its center so the sample stays inside.
-        if nu1 < nu0 {
-            let m = 0.5 * (nu0 + nu1);
-            nu0 = m;
-            nu1 = m;
-        }
-        if nv1 < nv0 {
-            let m = 0.5 * (nv0 + nv1);
-            nv0 = m;
-            nv1 = m;
-        }
-    }
-    [nu0, nv0, nu1, nv1]
-}
+// ⛔ **`sprite_sheet_subrect` e `region_subrect` desceram para o motor** (2026-09-13,
+// `line/components`): `ph2d_render::sprite::{sprite_sheet_subrect, region_subrect}`. Elas tinham um
+// segundo leitor noutra crate (o retrato de um prefab), e uma crate não chama o `bin` — ver o
+// cabeçalho de `crates/ph2d-render/src/sprite/subrect.rs`.
 
 /// Per-frame override that swaps a sprite entity's texture binding
 /// for a transient one — used by the BG-Removal live preview (Lens F,
@@ -514,14 +436,6 @@ pub(super) fn run(
         }
     });
 }
-
-#[cfg(test)]
-#[path = "sim_extract_sprite_sheet_tests.rs"]
-mod sprite_sheet_tests;
-
-#[cfg(test)]
-#[path = "sim_extract_region_subrect_tests.rs"]
-mod region_subrect_tests;
 
 #[cfg(test)]
 #[path = "sim_extract_cascade_tint_tests.rs"]

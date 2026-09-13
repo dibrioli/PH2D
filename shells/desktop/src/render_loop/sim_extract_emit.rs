@@ -7,6 +7,7 @@ use super::*;
 use bevy_ecs::world::EntityWorldMut;
 use ph2d_ecs::GlobalTransform;
 use ph2d_render::TextureAtlas;
+use ph2d_render::sprite::{region_subrect, sprite_sheet_subrect};
 
 /// A sprite `spr` desta entidade: resolve a instância e põe os quads dela no `present`. Sai cedo, sem emitir nada,
 /// quando a textura cozida ainda não subiu — como o `return` do closure fazia.

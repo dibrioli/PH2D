@@ -139,7 +139,7 @@ fn a_ghosts_uv_is_the_one_the_extract_would_give_that_frame() {
     let s = spr(4, 2, 0);
     for i in 1..8u32 {
         let (uv, _) = cl(&s, FULL, i).unwrap();
-        let want = crate::render_loop::sim_extract::sprite_sheet_subrect(FULL, 4, 2, i);
+        let want = ph2d_render::sprite::sprite_sheet_subrect(FULL, 4, 2, i);
         assert_eq!(uv, want, "a celula {i} diverge do extract");
     }
     // E ela respeita um `base_uv` já estreitado por REGIÃO — a folha vive dentro da região.
@@ -147,7 +147,7 @@ fn a_ghosts_uv_is_the_one_the_extract_would_give_that_frame() {
     let (uv, _) = cl(&s, region, 1).unwrap();
     assert_eq!(
         uv,
-        crate::render_loop::sim_extract::sprite_sheet_subrect(region, 4, 2, 1)
+        ph2d_render::sprite::sprite_sheet_subrect(region, 4, 2, 1)
     );
     assert!(
         uv[0] >= 0.25 && uv[2] <= 0.75,
@@ -284,7 +284,7 @@ fn the_animated_preview_follows_the_live_frame_and_sits_outside_the_sheet() {
         // A sub-UV é a do frame vivo — a MESMA que o extract daria.
         assert_eq!(
             uv,
-            crate::render_loop::sim_extract::sprite_sheet_subrect(FULL, 4, 2, live),
+            ph2d_render::sprite::sprite_sheet_subrect(FULL, 4, 2, live),
             "o preview do frame {live} tem de mostrar o frame {live}"
         );
         seen.insert(uv.map(f32::to_bits));

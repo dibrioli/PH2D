@@ -180,7 +180,7 @@ fn uv_window(sim: &SimWorld, p: Entity, thumb: &Thumb) -> [f32; 4] {
     let after_region = match sim.world().get::<ph2d_ecs::SpriteRegion>(p) {
         // ⚠️ **Sem `filter_clip`**: o meio-texel existe para o sampler bilinear não sangrar do
         // átlas vizinho, e aqui a fonte é a imagem inteira — não há vizinho de onde sangrar.
-        Some(r) => crate::render_loop::sim_extract::region_subrect(
+        Some(r) => ph2d_render::sprite::region_subrect(
             unit,
             r.rect,
             f32::from(u16::try_from(thumb.w).unwrap_or(u16::MAX)),
@@ -190,12 +190,9 @@ fn uv_window(sim: &SimWorld, p: Entity, thumb: &Thumb) -> [f32; 4] {
         None => unit,
     };
     match sim.world().get::<ph2d_ecs::SpriteGrid>(p) {
-        Some(g) => crate::render_loop::sim_extract::sprite_sheet_subrect(
-            after_region,
-            g.hframes,
-            g.vframes,
-            g.frame,
-        ),
+        Some(g) => {
+            ph2d_render::sprite::sprite_sheet_subrect(after_region, g.hframes, g.vframes, g.frame)
+        }
         None => after_region,
     }
 }

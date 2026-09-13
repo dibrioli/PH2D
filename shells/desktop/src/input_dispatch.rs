@@ -95,6 +95,7 @@ mod painter_curve_input;
 pub(crate) mod painter_falloff_input;
 mod painter_grid_erase; // os modificadores que o CanvasPointer nao carrega
 pub(crate) mod protect_brush;
+use despacho_clique_roldana::select_wheel_at;
 pub(crate) use despacho_vetor_alinhar_e_forma::{
     VecAlign, VecDistribute, VecPathShapeOp, VecTransformField, apply_vec_align,
     apply_vec_distribute, apply_vec_path_shape, apply_vec_rotate_by, apply_vec_transform,
@@ -115,11 +116,11 @@ pub(crate) use despacho_vetor_ops::{
     vec_bool_op_for_id, vec_fill_kind_for_id, vec_flip_for_id, vec_reorder_for_id,
     vec_rotate_for_id, vec_vertex_kind_for_id,
 };
+
 // Só os `cursor_tests` o leem por `super::` — o `timeline_resize_cursor` já o tem no próprio ficheiro.
 #[cfg(test)]
 use despacho_metodos_janela_e_vetor::resize_cursor_for_edges;
 // Só os testes do eixo espectral o leem por `super::` — os métodos de áudio já o têm no próprio ficheiro.
-use despacho_clique_roldana::select_wheel_at;
 #[cfg(all(test, feature = "panel-audio-editor"))]
 use despacho_metodos_picks_e_arrastos::freq_at_y;
 

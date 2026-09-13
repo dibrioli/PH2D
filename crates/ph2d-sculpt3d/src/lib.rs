@@ -35,6 +35,10 @@
 //! números da W1 foram **re-medidos** em vez de herdados.
 
 mod alpha;
+
+/// **ONDE UM GESTO PEGA O BARRO** — ver [`ancora`]. A porta que o app e a
+/// bancada de paridade chamam, para os dois medirem a mesma âncora.
+pub mod ancora;
 /// **O ORÇAMENTO DE ALISAMENTO** — quantas passadas do laplaciano um
 /// `auto_smooth` compra, e com que força cada uma. Ver [`auto_smooth`].
 pub mod auto_smooth;

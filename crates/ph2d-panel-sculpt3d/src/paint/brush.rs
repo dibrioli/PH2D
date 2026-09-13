@@ -300,6 +300,23 @@ fn paint_per_verb_switches(
     } else {
         y
     };
+    // ⭐ **A ÂNCORA EM VÉRTICE** — a opção do agarrar, e o vizinho certo destas
+    // duas: as três respondem *«sobre o que este gesto age?»*. ⚠️ A pergunta é à
+    // PORTA do motor (`Brush::offers_grab_anchor`), e ela diz *«a lei existe»* e
+    // não *«o flag está ligado»*.
+    let y = if snap.ui.brush.offers_grab_anchor() {
+        toggle(
+            ctx,
+            crate::ids::SCULPT3D_GRAB_ANCHOR,
+            tr("panel.sculpt3d.grab_anchor"),
+            snap.ui.brush.grab_active_vertex,
+            x,
+            w,
+            y,
+        ) + Spacing::Sm.px()
+    } else {
+        y
+    };
     // ⭐⭐⭐ **SÓ O QUE A SUPERFÍCIE LIGA** — o irmão de cima, e o vizinho certo: os
     // dois respondem *«o que é que este carimbo tem o direito de tocar?»*, um
     // pelo lado que a face olha e outro pelo caminho que a superfície faz.

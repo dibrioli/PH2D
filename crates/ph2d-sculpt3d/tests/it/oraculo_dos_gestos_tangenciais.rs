@@ -228,6 +228,7 @@ fn pincel(t: &Traco) -> Brush {
         },
         hardness: t.f("dureza"),
         normal_radius_frac: t.f("fator_raio_da_normal"),
+        grab_active_vertex: t.f("vertice_activo") != 0.0,
         // Todas as fixtures desta bancada correm sem acumulação (cabeçalho).
         accumulate: false,
         ..Brush::default()
@@ -265,6 +266,11 @@ fn correr(t: &Traco) -> Mesh {
     let mut mesh = superficie(t.s("superficie"));
     let brush = pincel(t);
     let eye = olho(t.s("vista"));
+    // ⚠️ **A âncora passa pela PORTA do produto** (`ancora::ancora_do_gesto`), e
+    // não por uma cópia da lei aqui: uma bancada que reimplementa a escolha da
+    // âncora mede a bancada.
+    let ancora =
+        ph2d_sculpt3d::ancora::ancora_do_gesto(&mesh, t.caminho[0], t.f("vertice_activo") != 0.0);
     let mut stroke = SculptStroke::default();
     stroke.begin(&mesh);
     for k in 1..t.caminho.len() {
@@ -277,7 +283,9 @@ fn correr(t: &Traco) -> Mesh {
         // em `1`, `2`, `4` e `12` eventos dá **`0,600000` nas quatro**.
         // *Uma régua que pergunta pelo NOME erra na primeira família nova.*
         let (centro, puxao) = if matches!(brush.verb.grip(), Grip::Hold) {
-            (t.caminho[0], menos(t.caminho[k], t.caminho[0]))
+            // ⚠️ O puxão continua a medir-se do ponto que o cursor tocou, não da
+            // âncora deslocada: o gesto é o que o dedo andou.
+            (ancora, menos(t.caminho[k], t.caminho[0]))
         } else {
             (t.caminho[k], menos(t.caminho[k], t.caminho[k - 1]))
         };
@@ -618,9 +626,15 @@ fn a_fraccao_do_raio_da_normal_muda_o_resultado_numa_superficie_curva() {
 /// quadrado em **todos** os verbos, e a referência fá-lo por verbo. Ver
 /// [`a_forca_do_agarrar_e_linear_e_a_do_polegar_nao`].
 ///
-/// ⚠️ **As duas fixtures com a âncora em VÉRTICE ficam de fora** — essa opção
-/// não está implementada (espec §7.2), e compará-las hoje mediria a ausência
-/// dela, não a lei.
+/// ⭐ **E as duas com a âncora em VÉRTICE entram**, desde que a opção existe
+/// (espec §7.2): na grelha grossa o pico passa a ser **exactamente** o gesto
+/// pedido (`0,200000` contra `0,200000`), porque a âncora cai num vértice e ele
+/// recebe peso `1`.
+///
+/// ⚠️ **As da SILHUETA ficam de fora** — aquela opção está *lida e não medida*
+/// (as cinco fixtures dela movem zero, e a espec §12.1 nomeia as duas causas
+/// possíveis). Implementá-la contra um corpus que não a exibe seria shipar uma
+/// lei sem lado aprovado.
 #[test]
 fn o_agarrar_reproduz_o_oraculo() {
     println!("  fixture                           |   desvio   | pico nosso | pico dele");
@@ -629,9 +643,10 @@ fn o_agarrar_reproduz_o_oraculo() {
         "agarrar_plano_alvo_geometria",
         "agarrar_plano_silhueta_nao",
         "agarrar_grelha8_vertativo_nao",
+        "agarrar_grelha8_vertativo_sim",
+        "agarrar_grelha8_vertativo_sim_forca04",
     ] {
         let t = traco(nome);
-        assert_eq!(t.f("vertice_activo"), 0.0, "{nome}: ancora em vertice");
         assert_eq!(t.f("silhueta"), 0.0, "{nome}: silhueta ligada");
         let malha = correr(&t);
         let d = desvio(&t, &malha);

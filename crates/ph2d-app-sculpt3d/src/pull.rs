@@ -43,10 +43,20 @@ impl Sculpt3dScene {
         let Some(hit) = self.pick_active(x, y) else {
             return false;
         };
+        // ⭐ **E ela pode cair num VÉRTICE** — a opção do agarrar, pela porta
+        // [`ph2d_sculpt3d::ancora::ancora_do_gesto`], que é a MESMA que a
+        // bancada de paridade chama. Numa malha grossa isso muda o gesto (o pico
+        // passa a ser exactamente o deslocamento pedido); numa densa tende a
+        // zero.
+        let ponto = ph2d_sculpt3d::ancora::ancora_do_gesto(
+            self.objects[self.active].stack.mesh(),
+            hit.point,
+            self.armed_brush(hit.point).grab_active_vertex,
+        );
         // ⚠️ **A âncora é guardada em MUNDO**, e não em local, porque quem a
         // consome é a câmera (`screen_delta_to_world`): o dedo anda na TELA. A
         // descida para o espaço da malha acontece no dab, uma vez, na porta.
-        self.grab = Some((self.pose().point_to_world(hit.point), (x, y)));
+        self.grab = Some((self.pose().point_to_world(ponto), (x, y)));
         true
     }
 

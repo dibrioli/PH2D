@@ -254,6 +254,13 @@ pub struct Brush {
     /// `0,3`): sem o knob elas seriam inexplicáveis, e com ele fecham no mesmo
     /// resíduo das outras — é a diferença entre uma constante e um controlo.
     pub normal_radius_frac: f32,
+    /// **A ÂNCORA CAI NUM VÉRTICE** — a opção pública do agarrar
+    /// (`use_grab_active_vertex` na referência). Ver
+    /// [`crate::ancora::ancora_do_gesto`], onde o número está.
+    ///
+    /// ⚠️ **Ela só muda o PEN-DOWN**, e mais nada: escolhido o ponto, o gesto
+    /// segue idêntico. Por isso ela vive aqui e não numa lei de kernel.
+    pub grab_active_vertex: bool,
     /// **SÓ AS FACES DE FRENTE** — a opção de pincel *"Front Faces Only"* da
     /// referência (rótulo público: é o que o artista vê na tela dela).
     ///
@@ -579,6 +586,9 @@ impl Default for Brush {
             // duas fixtures que o movem para `0,3` são o controlo de que ele
             // chega ao resultado.
             normal_radius_frac: 0.5,
+            // ⚠️ **Desligada, como na referência** — e a diferença só se vê em
+            // malha grossa (ver o doc da porta).
+            grab_active_vertex: false,
             // ⚠️ **DERIVADO do verbo, como o `accumulate` e o `falloff` logo
             // acima** — e pela mesma razão: um literal aqui seria o MESMO fato
             // em dois lugares, e no dia em que a tabela do verbo mudasse ele

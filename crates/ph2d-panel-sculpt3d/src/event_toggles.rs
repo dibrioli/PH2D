@@ -33,7 +33,7 @@ pub(super) type Toggle = (NodeId, fn(&Sculpt3dUi) -> bool, fn(&mut Sculpt3dUi));
 /// `Brush::offers_front_faces`, `ClothArea::offers_pin`), nunca a uma lista de
 /// nomes aqui — o pintor faz a mesma pergunta para decidir se desenha a caixa, e
 /// duas cópias divergiriam num interruptor que aparece e não muda um vértice.
-pub(super) const TOGGLES: [Toggle; 13] = [
+pub(super) const TOGGLES: [Toggle; 14] = [
     (
         crate::ids::SCULPT3D_ACCUMULATE,
         |u| u.brush.verb.accumulates(),
@@ -43,6 +43,11 @@ pub(super) const TOGGLES: [Toggle; 13] = [
         crate::ids::SCULPT3D_FRONT_FACES,
         |u| u.brush.offers_front_faces(),
         |u| u.brush.front_faces_only = !u.brush.front_faces_only,
+    ),
+    (
+        crate::ids::SCULPT3D_GRAB_ANCHOR,
+        |u| u.brush.offers_grab_anchor(),
+        |u| u.brush.grab_active_vertex = !u.brush.grab_active_vertex,
     ),
     (
         crate::ids::SCULPT3D_SURFACE_ONLY,

@@ -79,6 +79,18 @@ impl Brush {
         )
     }
 
+    /// **Este verbo oferece a ÂNCORA EM VÉRTICE?** — o [`Brush::grab_active_vertex`].
+    ///
+    /// ⚠️ **Só o agarrar, e a cerca é a MEDIÇÃO e não a mecânica.** O polegar
+    /// tem exactamente a mesma âncora (os dois são [`crate::Grip::Hold`]) e
+    /// nenhuma fixture do corpus a exerce nele — oferecer ali seria estender uma
+    /// lei da referência a uma ferramenta onde ela não foi observada, que é o
+    /// que a §4 do plano 21 proíbe pelo nome.
+    #[must_use]
+    pub fn offers_grab_anchor(&self) -> bool {
+        matches!(self.verb, crate::Verb::Move)
+    }
+
     /// **Este verbo lê o [`Brush::surface_only`]?** — a porta única, pelo mesmo
     /// argumento do irmão acima.
     ///

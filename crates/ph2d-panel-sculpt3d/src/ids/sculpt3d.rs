@@ -133,6 +133,15 @@ pub const SCULPT3D_NORMAL_RADIUS: NodeId = hash_node_id("sculpt3d.normal_radius"
 /// A caixa numérica da fracção acima — o par que toda row de knob tem.
 pub const SCULPT3D_NORMAL_RADIUS_NUM: NodeId = hash_node_id("sculpt3d.normal_radius.num");
 
+/// **A ÂNCORA CAI NUM VÉRTICE** — a caixa do `Brush::grab_active_vertex`, que só
+/// o agarrar oferece.
+///
+/// ⚠️ **Este bloco já esteve ENTRE a doc da fracção e a const dela**, e o efeito
+/// é mudo: a doc passa a documentar o vizinho e a const fica nua. É a família
+/// que o split do painel 2D já pagou em 2026-07-19, e ela morde na inserção,
+/// não na escrita.
+pub const SCULPT3D_GRAB_ANCHOR: NodeId = hash_node_id("sculpt3d.grab_anchor");
+
 /// O chip numérico da espessura da demão.
 pub const SCULPT3D_LAYER_HEIGHT_NUM: NodeId = hash_node_id("sculpt3d.layer_height.num");
 

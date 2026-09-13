@@ -243,6 +243,9 @@ struct Censo {
     literais: Vec<Literal>,
     /// `const X: NodeId = NodeId(<inteiro>)` de produto: `(nome, valor, ficheiro)`.
     numericos: Vec<(String, u64, String)>,
+    /// `const NOME: NodeId = …` de produto, ONDE quer que more (módulo ou corpo de função):
+    /// `(nome, valor, ficheiro)`.
+    nomes: Vec<(String, Valor, String)>,
     moldes: Vec<Molde>,
     formas: BTreeSet<(String, String, Especie)>,
     ficheiros_lidos: usize,
@@ -255,6 +258,8 @@ const PISO_LITERAIS: usize = 3_000;
 /// ⚠️ `15`, e não os `16` que um `grep` conta: um deles só tem o literal num COMENTÁRIO.
 const PISO_CRATES_COM_LITERAL: usize = 15;
 const PISO_MOLDES: usize = 150;
+/// Nomes distintos de `const …: NodeId` de produto — medido **2 452** na integração de 13/09.
+const PISO_NOMES: usize = 2_000;
 
 fn root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -300,6 +305,7 @@ fn varrer() -> Censo {
 
     let mut literais = Vec::new();
     let mut numericos = Vec::new();
+    let mut nomes = Vec::new();
     let mut moldes = Vec::new();
     let mut formas = BTreeSet::new();
     for (abs, rel, com, cod) in &textos {
@@ -361,6 +367,11 @@ fn varrer() -> Censo {
                 }
             }
         }
+        for (nome, valor, off) in consts_de_node_id(com, cod) {
+            if produto(off) {
+                nomes.push((nome, valor, rel.clone()));
+            }
+        }
         // ⚠️ Só nos módulos que DECLARAM ids (`…/ids/…` ou `…/ids.rs`, a mesma convenção do
         // `architecture_panel_wiring_parity`): a pele de canvas do widget tem um `PREVIEW_ID =
         // NodeId(0)` de propósito — um id real ali colidiria com o widget homónimo do painel nativo
@@ -378,6 +389,7 @@ fn varrer() -> Censo {
     let c = Censo {
         literais,
         numericos,
+        nomes,
         moldes,
         formas,
         ficheiros_lidos: ficheiros.len(),
@@ -749,6 +761,62 @@ fn consts_numericos(cod: &str) -> Vec<(String, u64)> {
     out
 }
 
+/// O VALOR de um `const NOME: NodeId` — o slug de um `hash_node_id("…")` ou o inteiro de um `NodeId(n)`.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+enum Valor {
+    Slug(String),
+    Numero(u64),
+}
+
+/// Todo `const NOME: NodeId = hash_node_id("slug")` e `= NodeId(n)` do texto, ONDE quer que more — no
+/// nível do módulo ou no corpo de uma função (foi aí que o `INSP_BLENDER_PICKER = NodeId(380)` do
+/// seletor de cor se escondeu). Devolve o offset do `const`, para a régua de produto.
+fn consts_de_node_id(com: &str, cod: &str) -> Vec<(String, Valor, usize)> {
+    let b = cod.as_bytes();
+    let mut out = Vec::new();
+    let mut from = 0;
+    while let Some(rel) = cod[from..].find("const ") {
+        let at = from + rel;
+        from = at + "const ".len();
+        if at > 0 && ident(b[at - 1]) {
+            continue;
+        }
+        let depois = cod[from..].trim_start();
+        let fim = depois
+            .find(|c: char| !(c.is_ascii_uppercase() || c.is_ascii_digit() || c == '_'))
+            .unwrap_or(depois.len());
+        if fim == 0 {
+            continue;
+        }
+        let nome = &depois[..fim];
+        let Some(r) = depois[fim..].trim_start().strip_prefix(':') else {
+            continue;
+        };
+        let r = r.trim_start();
+        let r = r.strip_prefix("ph2d_a11y::").unwrap_or(r);
+        let Some(r) = r.strip_prefix("NodeId") else {
+            continue;
+        };
+        let Some(r) = r.trim_start().strip_prefix('=') else {
+            continue;
+        };
+        let r = r.trim_start();
+        let r = r.strip_prefix("ph2d_tool_registry::").unwrap_or(r);
+        if r.starts_with("hash_node_id(") {
+            if let Arg::Literal(slug) = argumento(com, cod.len() - r.len()) {
+                out.push((nome.to_owned(), Valor::Slug(slug), at));
+            }
+        } else if let Some(n) = r
+            .strip_prefix("NodeId(")
+            .and_then(|x| x.split(')').next())
+            .and_then(|v| v.replace('_', "").trim().parse::<u64>().ok())
+        {
+            out.push((nome.to_owned(), Valor::Numero(n), at));
+        }
+    }
+    out
+}
+
 fn h(slug: &str) -> u64 {
     hash_node_id_runtime(slug).0
 }
@@ -1087,6 +1155,65 @@ fn every_non_literal_hash_is_named() {
         "entradas de FORMAS_NAO_LITERAIS que já não descrevem nada (a função mudou de casa, de nome, ou \
          deixou de hashear) — reescreva-as no sítio novo ou apague-as:\n  {}",
         obsoletas.join("\n  ")
+    );
+}
+
+/// ⭐⭐ **Um NOME de id, um VALOR** — em toda a workspace de produto, contando os `const` escondidos no
+/// corpo de uma função.
+///
+/// ⛔ O censo de colisões compara SLUGS, e um `const` local com o nome de um id e OUTRO valor passava
+/// por ele: o `set_picker_target` subia à frente um `INSP_BLENDER_PICKER = NodeId(380)` (o id da era das
+/// faixas, antes do hash de slug) enquanto o seletor é pintado e recebe o clique pelo
+/// `hash_node_id("insp_blender_picker")` — abri-lo por cima de outro painel deixava-o POR BAIXO. Achado
+/// pela auditoria de fecho da `line/editor-core` (§9 achado 11), curado na integração de 13/09. Medido
+/// nesse dia: ESSE era o único nome a divergir no produto (`ID` e `SURFACE` divergem só em testes).
+#[test]
+fn a_node_id_name_has_one_value() {
+    let c = censo();
+    let mut por_nome: BTreeMap<&str, BTreeMap<&Valor, BTreeSet<&str>>> = BTreeMap::new();
+    for (nome, valor, file) in &c.nomes {
+        por_nome
+            .entry(nome.as_str())
+            .or_default()
+            .entry(valor)
+            .or_default()
+            .insert(file.as_str());
+    }
+    assert!(
+        por_nome.len() >= PISO_NOMES,
+        "o censo de nomes achou {} nomes de `const …: NodeId` e esperava >= {PISO_NOMES} — o parser cegou",
+        por_nome.len()
+    );
+    let divergentes: Vec<String> = por_nome
+        .iter()
+        .filter(|(_, v)| v.len() > 1)
+        .map(|(n, v)| format!("{n}: {v:?}"))
+        .collect();
+    assert!(
+        divergentes.is_empty(),
+        "nomes de id com MAIS de um valor no produto ({} nomes lidos) — um deles é uma cópia à mão que o \
+         desenho e o clique não usam; nomeie a definição única:\n  {}",
+        por_nome.len(),
+        divergentes.join("\n  ")
+    );
+}
+
+/// A metade justa do censo de nomes: ele lê um `const` no CORPO de uma função (onde o do seletor se
+/// escondia), lê os dois valores possíveis, e não lê prosa.
+#[test]
+fn the_name_census_reads_a_const_inside_a_function() {
+    let src = "fn f() {\n    const X: NodeId = NodeId(380);\n}\n// const Z: NodeId = NodeId(1);\npub const Y: NodeId = hash_node_id(\"a.b\");\n";
+    let (com, cod) = limpar(src);
+    let achados: Vec<(String, Valor)> = consts_de_node_id(&com, &cod)
+        .into_iter()
+        .map(|(n, v, _)| (n, v))
+        .collect();
+    assert_eq!(
+        achados,
+        vec![
+            ("X".to_owned(), Valor::Numero(380)),
+            ("Y".to_owned(), Valor::Slug("a.b".to_owned())),
+        ]
     );
 }
 

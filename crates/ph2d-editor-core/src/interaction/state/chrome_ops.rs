@@ -596,13 +596,12 @@ impl WidgetStore {
         self.picker_target = target;
         // Opening the picker → it's the most recently summoned panel.
         if target.is_some() {
-            // Picker is keyed by INSP_BLENDER_PICKER in the z-order
-            // (canonical floating-panel id). Hard-coded here rather
-            // than re-exporting the screens::hero::ids const into the
-            // interaction crate, since the picker is the single
-            // floating panel for the whole editor.
-            const INSP_BLENDER_PICKER: NodeId = NodeId(380);
-            self.bump_panel_z(INSP_BLENDER_PICKER);
+            // O seletor é pintado e recebe o clique por `ids::INSP_BLENDER_PICKER` (hash de slug), e é
+            // ESSE que sobe. ⛔ Até 2026-09-13 subia aqui um `NodeId(380)` escrito à mão — o id da era
+            // das faixas —, e abrir o seletor por cima de outro painel deixava-o por baixo. Gates:
+            // `opening_the_colour_picker_brings_the_panel_the_paint_uses_to_the_front` e o censo
+            // «um nome, um valor» (`node_id_collisions::a_node_id_name_has_one_value`).
+            self.bump_panel_z(crate::ids::INSP_BLENDER_PICKER);
         } else {
             // Dismissing the picker drops its transient dropdown popover so it
             // doesn't linger (or flash) the next time the picker is summoned.

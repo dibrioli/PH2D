@@ -59,8 +59,6 @@ impl App {
         // graph fits the graph, not the scene. Same for the timeline (W2.E6).
         let over_motion_graph = self.cursor_over_motion_graph();
         let over_timeline = self.cursor_over_timeline();
-        #[cfg(feature = "panel-audio-editor")]
-        let audio_clipboard = self.audio_editor_owns_clipboard();
         let Some(gfx) = self.gfx.as_mut() else {
             return;
         };
@@ -215,102 +213,7 @@ impl App {
                 }));
                 self.title_dirty = true;
             }
-            // Toggle the bottom-docked general timeline panel (W2.E0). Transport
-            // (Space / , / .) already drives the Playhead; this shows/hides the
-            // editor. Free key — audited against the existing shortcut set.
-            KeyCode::KeyL => {
-                let shown = if let Some(hero) = gfx.hero_screen.as_mut() {
-                    let v = !hero.is_panel_visible("timeline");
-                    hero.panel_visibility.insert("timeline", v);
-                    v
-                } else {
-                    false
-                };
-                gfx.toasts.push(Toast::info(if shown {
-                    "Timeline shown (L)"
-                } else {
-                    "Timeline hidden (L)"
-                }));
-                self.title_dirty = true;
-            }
-            // Insert a keyframe at the playhead on every track bound to the
-            // selected sprite (captures its current pose). Processed next frame
-            // in the render loop, which has the world to sample from.
-            KeyCode::KeyK => {
-                self.timeline_insert_key = true;
-            }
-            // Cmd+Z / Ctrl+Z — context-sensitive undo. With the Painter
-            // tool active it undoes the last brush stroke (W2.T2.2;
-            // Cmd+Shift+Z redoes); with any other tool it falls back to
-            // the single-level image-edit undo (Trim, Make Square, Bg
-            // Removal — Wave 2.5 PR 11.8b3 bus migration). Tool identity
-            // is matched by id only (no concrete downcast) so the
-            // shell-downcast arch gate stays green; the actual stroke
-            // undo runs in `painter_bridge::dispatch`, the downcast-
-            // allowed site, via the transient flags set here.
-            // The Audio Editor owns Cmd/Ctrl+X / +C / +V while its panel is open with a clip
-            // loaded — the same ownership rule as its Ctrl+Z below, and for the same reason: a
-            // focused modal editor that does not answer to the clipboard chords is an editor
-            // people assume is broken. They are the first thing anyone tries.
-            //
-            // Consumed unconditionally (the op runs only when it can), so the chord never falls
-            // through to a global handler and does something surprising to the scene.
-            #[cfg(feature = "panel-audio-editor")]
-            KeyCode::KeyX | KeyCode::KeyC | KeyCode::KeyV
-                if (self.modifiers.super_key() || self.modifiers.control_key())
-                    && audio_clipboard =>
-            {
-                use ph2d_panel_audio_editor::AudioEditCmd as Cmd;
-                let cmd = match code {
-                    KeyCode::KeyX => Cmd::Cut,
-                    KeyCode::KeyC => Cmd::Copy,
-                    _ => Cmd::Paste,
-                };
-                if let Some(a) = self.audio.as_mut() {
-                    a.editor_apply(cmd);
-                }
-            }
-            KeyCode::KeyZ if self.modifiers.super_key() || self.modifiers.control_key() => {
-                let redo = self.modifiers.shift_key();
-                self.undo_or_redo(redo);
-            }
-            // Cmd/Ctrl+Y — redo in the Audio Editor (the Windows/Linux redo chord,
-            // alongside Cmd/Ctrl+Shift+Z). No-op unless the WAVE panel is open with
-            // a clip that has something to redo.
-            #[cfg(feature = "panel-audio-editor")]
-            KeyCode::KeyY if cmd_chord => {
-                let audio_open = gfx
-                    .hero_screen
-                    .as_ref()
-                    .is_some_and(|h| h.is_panel_visible("audio_editor"));
-                if audio_open
-                    && let Some(a) = self.audio.as_mut()
-                    && a.editor_loaded()
-                    && a.editor_can_redo()
-                {
-                    a.editor_apply(ph2d_panel_audio_editor::AudioEditCmd::Redo);
-                }
-            }
-            // Cmd+Enter / Ctrl+Enter — commit the active Painter stroke into
-            // the sprite WITHOUT switching tools (W2.T2.5). Sets a transient
-            // flag consumed by `painter_bridge::dispatch` (the only downcast-
-            // allowed site), which calls `PainterTool::request_commit`. If
-            // Painter isn't active the flag is just taken and ignored. No
-            // concrete-tool downcast here — keeps
-            // `architecture_no_downcast_to_concrete_tool_in_shell` green.
-            KeyCode::Enter if self.modifiers.super_key() || self.modifiers.control_key() => {
-                self.painter_commit_requested = true;
-            }
-            // Cmd/Ctrl+N — open the New-image modal (square size + background). The render loop polls
-            // `store.take_new_image_request()` and spawns the chosen blank canvas (see
-            // `painter_bridge::service_new_image_request`). The demo's atlas sprites are 64px, which
-            // distorts the brush↔canvas ratio; a freshly-sized canvas is the canonical brush smoke target.
-            KeyCode::KeyN if cmd_chord => {
-                if let Some(hero) = gfx.hero_screen.as_mut() {
-                    hero.store.open_new_image_dialog();
-                }
-            }
-            _ => self.ramo_teclas_editor_vista_e_transporte(code, cmd_chord, over_timeline),
+            _ => self.ramo_teclas_editor_paineis_e_desfazer(code, cmd_chord, over_timeline),
         }
     }
 

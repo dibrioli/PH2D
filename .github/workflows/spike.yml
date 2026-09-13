@@ -418,7 +418,6 @@ jobs:
             -p ph2d-render \
             -p ph2d-script \
             -p ph2d-mcp \
-            -p ph2d-editor \
             -p ph2d-asset-cooker \
             -p ph2d-imageio \
             -p ph2d-imageio-png \

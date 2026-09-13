@@ -77,6 +77,13 @@ run_optional "typos (project-wide typo scan)" typos typos
 # foi um `cargo nextest run -p` de uma crate só. A lista sai dos manifestos, com piso.
 run "crates com dependência opcional compilam sozinhas" bash scripts/check-standalone-optional.sh
 
+# ── os pacotes que o CI NOMEIA existem? ─────────────────────────────────
+# ⛔ **O nextest daqui corre `--workspace` e o do CI corre `-p <26 nomes>`**, e essa diferença é cega
+# a uma crate apagada: medido no envio de 2026-09-13 (run 34757814212), o shim `ph2d-editor` morrera a
+# 12/09, o CI recusou a especificação nos três sistemas antes de compilar, e este script estava 13 de
+# 13. Os membros saem do `cargo metadata`, os nomes saem dos workflows, com piso nas duas pontas.
+run "pacotes citados pelos workflows existem" bash scripts/check-workflow-packages.sh
+
 # ── índices DERIVADOS: em dia? ──────────────────────────────────────────
 # ⚠️ Estes índices existem porque a alternativa (lista mantida à mão) envelhece na
 # primeira semana — foi o que aconteceu com a tabela "Estado por-wave" do tracker

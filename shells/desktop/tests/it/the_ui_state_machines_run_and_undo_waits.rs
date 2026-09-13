@@ -36,7 +36,9 @@ fn the_anchors_these_gates_read_still_exist() {
 /// **A ponte ANDA a cada frame.** Sem a chamada, `Show` marca um alvo e a cena nunca chega lá.
 #[test]
 fn the_frame_advances_the_ui_state_machines() {
-    let s = src("src/render_loop/mod.rs");
+    // ⚠️ O QUADRO pela ordem em que corre (`frame_text::render_frame`): desde a OBRA 2 (2026-09-13) a ponte e o relógio
+    // dela moram na `fase_ui_state_preview`, e o `mod.rs` sozinho já não os tem.
+    let s = crate::frame_text::render_frame();
     assert!(
         s.contains("ui_state_bridge::dispatch("),
         "ninguem chama o `ui_state_bridge::dispatch` — o Show acende, o artista clica e nada se \
@@ -69,7 +71,9 @@ fn the_frame_advances_the_ui_state_machines() {
 /// `MotionTransport` morreu por isto.
 #[test]
 fn the_machine_runs_on_the_frames_clock() {
-    let s = src("src/render_loop/mod.rs");
+    // ⚠️ O QUADRO pela ordem em que corre (`frame_text::render_frame`): desde a OBRA 2 (2026-09-13) a ponte e o relógio
+    // dela moram na `fase_ui_state_preview`, e o `mod.rs` sozinho já não os tem.
+    let s = crate::frame_text::render_frame();
     assert!(
         s.contains("let ui_state_dt = report.ticks as f64 * self.fixed_step.fixed_dt();"),
         "o `dt` da maquina deixou de sair dos ticks do frame — um segundo relogio diverge do \

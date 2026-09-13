@@ -118,7 +118,7 @@ fn the_preview_consumes_the_click_before_any_tool() {
 /// ([[feedback_layered_defenses_need_per_layer_gates]]).
 #[test]
 fn the_gizmo_is_not_published_while_the_preview_runs() {
-    let src = read("src/render_loop/mod.rs");
+    let src = crate::frame_text::render_frame();
     let flat: String = src.chars().filter(|c| !c.is_whitespace()).collect();
     assert!(
         flat.contains("==ph2d_editor_core::ToolId::new(\"vector\"))||self.vec.draw_config.mode==ph2d_tool_vector::DrawMode::Select)&&!self.ui_preview.is_on()"),
@@ -168,7 +168,7 @@ fn the_pointer_move_feeds_the_preview_without_consuming_it() {
 /// escreve poses de volta: um passo de undo ali diria *"você mexeu na cena"* por ele ter olhado.
 #[test]
 fn the_undo_is_suppressed_for_the_whole_preview_not_just_the_machines() {
-    let src = read("src/render_loop/mod.rs");
+    let src = crate::frame_text::render_frame();
     // ⚠️ Sem espaço em branco dos dois lados: o `rustfmt` decide onde quebra a expressão, e uma
     // âncora que inclui indentação afirma a FORMATAÇÃO em vez do produto (a cicatriz que o
     // `the_draw_pass_publishes_the_facts_it_derived` já pagou duas vezes).
@@ -256,7 +256,7 @@ fn escape_leaves_the_preview_before_any_other_escape() {
 /// derivada realimentada vira autoria que ninguém fez*.
 #[test]
 fn the_state_shift_never_feeds_back_on_a_pose_the_machine_wrote() {
-    let src = read("src/render_loop/mod.rs");
+    let src = crate::frame_text::render_frame();
     let flat: String = src.chars().filter(|c| !c.is_whitespace()).collect();
     let apply = at(
         &flat,

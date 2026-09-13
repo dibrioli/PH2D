@@ -2,6 +2,7 @@
 
 > Modo L. Branch `line/input-dispatch`, worktree `Worktrees/line-input-dispatch`. **Nada integrado, nada enviado.**
 > Leitor: o agente INTEGRADOR (e a próxima LLM que tocar no despacho de entrada).
+> ✅ **Smoke do dono OK** (2026-09-13, *«smoke parece ok»*) — sobre o HEAD `c51a055c8`, com os gestos do §11.
 > ⛔ **Nenhum produto mudou:** cada peça MOVE um corpo verbatim (prova por texto contra o HEAD) e a ORDEM em que os
 > consumidores reclamam um evento é a mesma — os gates que a medem leem o despacho EMENDADO (`input_text`, §4).
 

@@ -1778,6 +1778,100 @@ Com o orçamento de omissão a malha do smoke vai a `k = 2` (`864` peças) em ve
 os `0,41 px` que a F6-c anunciava — *aquele número era real e foi medido sobre uma contagem de peças
 que o renderer não desenha.* Subir o orçamento é do dono, e o botão existe para isso.
 
+### F6-e — ✅ *«Smooth bugado quebrando a forma»* **era o ATLAS, não a camada de recorte** — e o `Fast` também partia (2026-09-13)
+
+⛔⛔⛔ **A F6-d atribuiu o limite à camada de recorte do Vello e escreveu *«não há como o medir sem
+ecrã»*. As duas afirmações estavam erradas.** A decisão que partia a imagem é da **CPU**, dentro
+do `vello_encoding::Resolver`, e mede-se sem adaptador.
+
+**O mecanismo:** cada triângulo desenhava a imagem pela porta CRUA
+(`VectorScene::draw_image_rgba_transformed`), que cunha uma `Blob` — logo um **id do atlas** — **por
+chamada**, mesmo com o `Arc` partilhado. O atlas da `vello` 0.10 é por id e pára em `8192²`: N peças
+eram **N cópias inteiras** da imagem, e o que não cabe **não é desenhado, em silêncio**. Medido
+(`ph2d-vector::atlas_probe_pieces_tests`, 4 quadros, o último lido):
+
+| imagem | peças | porta crua: peças que NÃO aparecem | estável |
+|---|---:|---:|---:|
+| `320×96` (o smoke) | `216` | `0` — e `25,3 MB` reenviados por quadro | `0` |
+| `320×96` | `2 048` | `0` | `0` |
+| `320×96` | `7 776` (o report) | **`5 651`** | `0` |
+| `1024×1024` | `216` (**o `Fast`**) | **`152`** | `0` |
+
+⇒ *«216 desenha, 7 776 parte»* reproduz-se à letra, e a última linha diz que **o modo de omissão
+partia com arte de tamanho comum** — defeito que ninguém tinha reportado porque o smoke usa uma
+imagem pequena.
+
+**A cura:** a `SkinImageCache` guarda um `StableImage` (clone = mesmo id) e cada peça desenha pela
+porta nova `VectorScene::draw_stable_image_transformed` (aditiva; `draw_stable_image` delega nela).
+**Gates:** `a_skinned_image_is_one_atlas_resident_however_many_pieces_and_frames` (o que a cena
+EMITE, pelo `draw_skinned_images` real; visto RED com `8 224` ids para uma imagem) + o controlo da
+porta crua e a lei com a corrida gémea como oráculo.
+
+### F6-f — ✅ **Um quadro sem recurso tardio apagava o atlas do Vello** — achado pela cura da F6-e (2026-09-13)
+
+⛔⛔⛔ **A cura da F6-e pôs a pele num caminho onde um defeito do `vello` 0.10 é alcançável.** Medido
+na GPU, pelo `VelloPass` (alfa no centro):
+
+| sequência | resultado |
+|---|---|
+| imagem → imagem | `255 → 255` |
+| imagem → **quadro vazio** → imagem → imagem | `255 → 0 → 0 → 0` — **nunca mais volta** |
+| imagem → imagem CRUA → imagem | `255 → 255 → 255` |
+
+**O mecanismo:** sem patch nenhum (nenhuma imagem, gradiente ou texto) o `Resolver::resolve` sai por
+`resolve_solid_paths_only` com um atlas de largura `0`; o `render.rs` troca a textura do atlas por
+uma de `1×1` e, no quadro seguinte, por uma NOVA em branco — e o `ImageCache` da CPU continua a dar a
+imagem estável por enviada. ⚠️ Pela porta crua nunca se via (reenvio por quadro). **Vale para todo
+utilizador de `StableImage` da casa.**
+
+**A cura, na porta única** ([`ph2d-render::vello_keepalive`](../../crates/ph2d-render/src/vello_keepalive.rs)):
+uma cena sem recurso tardio é composta com uma imagem de `1×1` fora do alvo (id fixo, cobertura
+zero); com recurso, passa **sem cópia**. **Gates:** o de GPU (visto RED) · a decisão sem GPU · o
+**censo das duas entregas** ao Vello (`render_to_intermediate` e `render`), porque o gate de GPU só
+passa pela primeira. ⚠️ No editor o risco era baixo (todo quadro tem texto); um runtime sem texto
+cairia nele.
+
+### F6-g — ⏳ **O que sobra do orçamento, MEDIDO: o tecto é um buffer do QUADRO, e as costuras existem em todo modo** (2026-09-13)
+
+**1. O tecto duro.** O Vello guarda a informação de todo desenho num buffer FIXO
+(`bin_data = 1 << 18`, *«hand picked»* no `vello_encoding::BufferSizes::new`), e `binning_size =
+bin_data − layout.bin_data_start` dá a volta a um `u32` quando passa: **pânico em debug, quadro em
+branco em release — painéis incluídos**. Uma peça custa **11 palavras**, linear (gate
+`a_skin_piece_costs_eleven_vello_bin_info_words_and_the_cost_is_linear`; sonda do produto
+`VectorScene::probe_bin_info_words`).
+
+**2. A GPU**, sonda `ph2d-render::skin_pieces_gpu_cost` (arte opaca `320×96`, alvo limpo por
+grelha; zoom 8, carga `2,2`→`9,5`, as últimas linhas de relógio valem pouco):
+
+| peças | quadro | BURACOS | px de costura | alfa mín |
+|---:|---:|---:|---:|---:|
+| sem recorte | `1,25 ms` | – | – | – |
+| `216` (`Fast`) | `1,58 ms` | `0` | `33 476` | `182` |
+| `3 456` | `2,46 ms` | `0` | `132 164` | `182` |
+| `7 776` | `5,02 ms` | `0` | `259 231` | `171` |
+| `17 496` | `10,2 ms`* | `0` | `408 886` | `170` |
+| `21 600` | — | **todo o miolo** | — | `0` |
+| `≥ 31 104` | pânico no Vello (debug) | | | |
+
+⇒ numa cena **só com a pele** o quadro fica em branco entre `17 496` e `21 600` peças (as 11 palavras
+mais a distribuição por bins, que usa o resto do mesmo buffer).
+
+**3. ⛔⛔ As COSTURAS existem em todo modo, o `Fast` incluído:** dois recortes vizinhos com AA
+analítico compõem `1 − a·b` na aresta partilhada, e o fundo espreita até **~29 %** (alfa `182`) numa
+linha por aresta — `16 580` px a zoom 4 com as `216` peças do smoke.
+
+⏳ **ABERTO, e nomeado:**
+- **A guarda por QUADRO.** O `max_pieces` é por IMAGEM e o buffer é do quadro: N imagens presas
+  multiplicam-no, e a malha `Fast` de uma imagem grande já custa milhares de peças. Falta a reserva
+  do chrome (sonda `ph2d-editor-core::vello_bin_budget_of_an_editor_frame`).
+- **A família de curas das costuras:** sobrepor cada recorte `~0,5 px` (perfeito em arte opaca,
+  dobra a composição em arte translúcida ao longo da costura) · ou o **pipeline de triângulos
+  texturados**, que a F6 nomeou como optimização *«com razão medida»* — e a razão está agora medida
+  três vezes: costuras em todo modo, o tecto por quadro, e `~3–5 ms` a `7 776` peças.
+- ⚠️ **Não medido:** a pele é desenhada na fase de overlay do Vello, por ordem de ARQUÉTIPO
+  (`iter_entities`), e não pela ordem de profundidade do artista — duas imagens presas sobrepostas
+  podem trocar de frente. Pergunta com endereço, ainda sem corrida.
+
 ## ⛔ Recusas MEDIDAS deste módulo — não as reconstrua
 
 > ⚠️ **As seis de 2026-09-07/08 entraram aqui na auditoria de 08/09** — elas viviam só em prosa e em

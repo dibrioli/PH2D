@@ -84,6 +84,7 @@ mod sprite_collect;
 pub mod sprite_versioned;
 mod texture_clear;
 pub mod tonemap;
+mod vello_keepalive;
 pub mod vello_pass;
 pub mod world_rt;
 

@@ -32,6 +32,9 @@ pub struct VelloPass {
     blitter: TextureBlitter,
     last_size: (u32, u32),
     surface_format: wgpu::TextureFormat,
+    /// ⛔⛔⛔ **O que impede um quadro sem recurso tardio de apagar o atlas do Vello** — e com ele
+    /// toda imagem ESTÁVEL, para sempre. Ver [`crate::vello_keepalive`].
+    keepalive: crate::vello_keepalive::KeepAlive,
 }
 
 impl VelloPass {
@@ -72,6 +75,7 @@ impl VelloPass {
             blitter,
             last_size: initial_size,
             surface_format,
+            keepalive: crate::vello_keepalive::KeepAlive::new(),
         })
     }
 
@@ -187,11 +191,13 @@ impl VelloPass {
             // não ser um parâmetro.
             antialiasing_method: AaConfig::Area,
         };
+        // ⛔⛔⛔ Uma cena sem recurso tardio apagaria o atlas do Vello (`vello_keepalive`).
+        let cena = self.keepalive.scene_for_vello(scene);
         self.renderer
             .render_to_texture(
                 &gpu.device,
                 &gpu.queue,
-                scene,
+                cena,
                 &self.intermediate_view,
                 &params,
             )
@@ -390,11 +396,14 @@ impl VelloPass {
             // fixes; in the current pipeline Area wins.
             antialiasing_method: AaConfig::Area,
         };
+        // ⛔⛔⛔ A MESMA porta que o `render_to_intermediate` — as duas entregas ao Vello passam
+        // por ela, ou o defeito volta pela que ficou de fora (`vello_keepalive`).
+        let cena = self.keepalive.scene_for_vello(scene);
         self.renderer
             .render_to_texture(
                 &gpu.device,
                 &gpu.queue,
-                scene,
+                cena,
                 &self.intermediate_view,
                 &params,
             )

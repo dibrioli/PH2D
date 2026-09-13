@@ -174,6 +174,60 @@ fn measure_a_skinned_image_split_into_pieces() {
     println!("\n({QUADROS} quadros por caso; SEM LUGAR = pecas do ultimo quadro que nao aparecem)\n");
 }
 
+/// Quanta informação por desenho o `Resolver` conta para uma imagem estável em `pecas` recortes —
+/// o `layout.bin_data_start`, que é o que o Vello subtrai do buffer FIXO `bin_data`.
+fn palavras_de_informacao(pecas: usize, w: u32, h: u32) -> u32 {
+    let estavel = StableImage::from_rgba(
+        Arc::new(vec![0x7F; (w as usize) * (h as usize) * 4]),
+        w,
+        h,
+    )
+    .expect("dimensoes batem");
+    let mut cena = VectorScene::new();
+    for i in 0..pecas {
+        let x = f64::from(u32::try_from(i).unwrap_or(0) % w.max(1));
+        let mut tri = BezPath::new();
+        tri.move_to((x, 0.0));
+        tri.line_to((x + 1.0, 0.0));
+        tri.line_to((x, 1.0));
+        tri.close_path();
+        cena.push_clip(&tri);
+        cena.draw_stable_image_transformed(&estavel, Affine::IDENTITY, ImageQuality::Medium);
+        cena.pop_layer();
+    }
+    let mut packed = Vec::new();
+    let (layout, _ramps, _imagens) =
+        vello_encoding::Resolver::new().resolve(cena.inner().encoding(), &mut packed);
+    layout.bin_data_start
+}
+
+/// ⭐⭐ **A SONDA DO TECTO DURO** — quantas palavras de informação cada peça gasta do buffer que o
+/// Vello fixa em `1 << 18` (`vello_encoding::BufferSizes::new`: *«hand picked to accommodate the
+/// vello test scenes as well as paris-30k»*).
+///
+/// ⚠️ **O buffer é do QUADRO, não da pele:** `binning_size = bin_data − layout.bin_data_start`
+/// (`config.rs`), e o `bin_data_start` soma a informação de TODOS os desenhos da cena — painéis,
+/// texto, arte. Passar dele dá a volta a um `u32`: pânico em debug, lixo em release.
+#[test]
+#[ignore = "sonda: imprime as palavras de informacao por peca e o tecto do Vello, nao afirma"]
+fn measure_vello_bin_info_words_per_skin_piece() {
+    const BIN_DATA: u32 = 1 << 18;
+    println!("\n{:>8} {:>14} {:>12} {:>10}", "pecas", "bin_data_start", "por peca", "cabe?");
+    for pecas in [1_usize, 216, 864, 7_776, 20_000, 21_600, 30_000] {
+        let palavras = palavras_de_informacao(pecas, 320, 96);
+        #[expect(clippy::cast_precision_loss, reason = "uma razao para uma tabela")]
+        let por_peca = f64::from(palavras) / pecas as f64;
+        println!(
+            "{:>8} {:>14} {:>12.3} {:>10}",
+            pecas,
+            palavras,
+            por_peca,
+            if palavras < BIN_DATA { "sim" } else { "NAO" }
+        );
+    }
+    println!("(bin_data = {BIN_DATA} palavras, partilhado pelo QUADRO inteiro)\n");
+}
+
 /// ⛔⛔ **O CONTROLO: a porta crua cunha um id POR PEÇA, mesmo com o `Arc` partilhado.**
 ///
 /// É a metade que dá sentido ao gate seguinte — se um dia a porta crua deixar de cunhar (o

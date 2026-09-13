@@ -98,6 +98,10 @@ naga = { version = "29.0.4", features = ["wgsl-in"] }
 # speaks raw `u8` blend codes (no enum coupling), and ph2d-painter-effects does
 # NOT depend on ph2d-render, so this is acyclic.
 ph2d-painter-effects = { path = "../ph2d-painter-effects" }
+# A sonda `skin_pieces_gpu_cost` mede PELA PORTA DO PRODUTO (`push_clip` +
+# `draw_stable_image_transformed`), e não por um espelho do encoding. Sem ciclo: a
+# `ph2d-vector` depende só do `vello` e de folhas.
+ph2d-vector = { path = "../ph2d-vector" }
 
 [[bench]]
 name = "sprites_upload_144b_vs_72b"

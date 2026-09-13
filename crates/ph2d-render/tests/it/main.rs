@@ -38,6 +38,7 @@ mod individual_texture_honours_its_sampling;
 mod ktx2_format_exhaustive_mapping;
 mod layer_compositor_gpu;
 mod layers_no_alloc;
+mod skin_pieces_gpu_cost;
 mod mask_interaction_regression;
 mod measure_first_stroke_pipelines;
 mod migrate_sprite_v3_to_v4;

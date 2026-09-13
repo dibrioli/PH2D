@@ -8277,6 +8277,7 @@ dependencies = [
  "ph2d-light",
  "ph2d-painter-effects",
  "ph2d-tool-painter",
+ "ph2d-vector",
  "postcard",
  "rect_packer",
  "serde",

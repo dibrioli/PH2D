@@ -71,7 +71,6 @@ const FN_OVERAGE_OK: &[(&str, &str, usize, &str)] = &[
         "fase do quadro (OBRA 2): as faixas do documento, verbatim; tres `&BTreeMap` de `self.*_live` lidos pelos lacos das faixas nao atravessam uma chamada `&mut self`",
     ),
     ("render_loop/hierarchy.rs", "dispatch", 414, NASCEU),
-    ("render_loop/image_edit.rs", "dispatch", 483, NASCEU),
     ("render_loop/inspector_commits.rs", "dispatch", 383, NASCEU),
     (
         "render_loop/mod.rs",

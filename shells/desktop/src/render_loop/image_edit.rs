@@ -16,16 +16,17 @@
 //! 1-frame-no-defer contract from the pre-Wave-2.5 `pending_bgremoval`
 //! field.
 
-use crate::{
-    ImageEditSnapshot, ImageEditTransaction, commit_image_edit_transaction, hero_intents,
-    image_import::ImportItemResult,
-};
+use crate::{ImageEditSnapshot, ImageEditTransaction, commit_image_edit_transaction, hero_intents};
 use ph2d_asset::{AssetDb, AssetId};
 use ph2d_ecs::SimWorld;
 use ph2d_editor_core::HeroScreen;
 use ph2d_editor_core::{Toast, ToastQueue, ToolRegistry};
 use ph2d_render::{Camera2d, SpriteRenderer};
 use std::collections::BTreeMap;
+
+/// O pedido de importar — filho por ASSUNTO, num ficheiro próprio para este caber no tecto.
+#[path = "image_edit_import.rs"]
+mod import;
 
 /// Dispatches the 4 image-edit drains + file picker import. Returns
 /// `true` iff any drain pushed a toast (caller sets `title_dirty`).
@@ -61,6 +62,157 @@ pub(super) fn dispatch(
 ) -> bool {
     let mut title_dirty = false;
 
+    title_dirty |= drain_per_sprite_bakes(
+        trim_entities,
+        make_square_entities,
+        real_size_entities,
+        rasterize_entities,
+        padding_apply,
+        color_equalization_apply,
+        hero,
+        sim,
+        renderer,
+        asset_db,
+        atlas_asset_map,
+        toasts,
+        image_edit_undo,
+        tools,
+    );
+    title_dirty |= drain_tool_applies(
+        equalize_sizes_apply,
+        upscale_apply,
+        hero,
+        sim,
+        renderer,
+        asset_db,
+        atlas_asset_map,
+        toasts,
+        image_edit_undo,
+        tools,
+        last_bgremoval_pushed_entity,
+    );
+    // ── Painter Apply drain (W1 T1.5) ─────────────────────────────────────
+    //
+    // **R3-LF-1 fix:** drain the `painter` OneShotImageOp UNCONDITIONALLY
+    // (drop the variant whether or not Painter is currently the active
+    // tool). The previous "filter-and-repush" pattern from bgremoval is
+    // wrong for Painter — bgremoval needs defer-until-active because its
+    // ActivateTool races with OneShotImageOp emission across frames;
+    // Painter's commit comes from `painter_bridge` and is only emitted
+    // when Painter is active, so by the time this drain runs the gate
+    // is either correct (active, bake the entity) or the request is
+    // stale (tool switched mid-frame — drop, don't loop forever on the
+    // bus).
+    let painter_id = ph2d_editor_core::ToolId::new("painter");
+    let painter_active = tools
+        .active()
+        .map(|t| t.id() == painter_id)
+        .unwrap_or(false);
+    let painter_entity = {
+        let mut found: Option<u64> = None;
+        let leftovers: Vec<ph2d_editor_core::action_bus::EditorAction> = hero
+            .bus
+            .drain()
+            .filter_map(|a| match a {
+                ph2d_editor_core::action_bus::EditorAction::OneShotImageOp {
+                    tool_id: "painter",
+                    entity_bits,
+                } => {
+                    // Consume regardless of `painter_active`. If active,
+                    // bake. If not (tool switched mid-frame), the request
+                    // is stale — drop it cleanly so it can't loop forever.
+                    if painter_active && found.is_none() {
+                        found = Some(entity_bits);
+                    }
+                    None
+                }
+                other => Some(other),
+            })
+            .collect();
+        for a in leftovers {
+            hero.bus.push(a);
+        }
+        found
+    };
+    if let Some(entity_bits) = painter_entity {
+        // **R4-LH-2 fix:** soft-fall when the gate is wrong (e.g., a
+        // future refactor moves tool teardown ahead of this drain). The
+        // `.expect` panic was defensible by the gate logic at the time
+        // but turns into a prod-panic the moment the gate moves.
+        let Some(painter) = tools.active_mut().and_then(|t| {
+            t.as_any_mut()
+                .downcast_mut::<ph2d_tool_painter::PainterTool>()
+        }) else {
+            toasts.push(Toast::error(
+                "Painter Apply: tool was inactive when bake fired (gate desynced)",
+            ));
+            return true;
+        };
+        let mut pending: Vec<ImageEditSnapshot> = Vec::new();
+        if hero_intents::drain_painter(
+            entity_bits,
+            sim,
+            renderer,
+            asset_db,
+            atlas_asset_map,
+            toasts,
+            &mut pending,
+            painter,
+            last_painter_pushed_entity,
+        ) {
+            title_dirty = true;
+        }
+        commit_image_edit_transaction(renderer, image_edit_undo, pending);
+    }
+    // Image-edit undo drain. Cmd+Z (or TOOL_UNDO click)
+    // pushes `EditorAction::UndoImageEdit` onto the bus; the
+    // shell owns the snapshot. Single-level: each new edit
+    // overwrites the slot (releasing the previous pre-source),
+    // so undo restores at most the MOST RECENT Trim / Make
+    // Square / Bg Removal.
+    if undo_image_edit
+        && hero_intents::drain_undo_image_edit(image_edit_undo, sim, renderer, toasts)
+    {
+        title_dirty = true;
+    }
+    // Publish whether a snapshot is currently stored so the UI
+    // can dim the TOOL_UNDO chip when there's nothing to undo.
+    hero.image_edit.has_undoable = image_edit_undo.is_some();
+    title_dirty |= import::drain_import(
+        hero,
+        sim,
+        renderer,
+        asset_db,
+        atlas_asset_map,
+        toasts,
+        camera,
+        next_import_cell,
+        vec_scene,
+        vec_entities,
+    );
+    title_dirty
+}
+
+/// Os drenos por sprite (Trim, Make Square, Rasterize, Real Size) e os de selecção inteira que
+/// assam uma sprite de cada vez (Padding, Color Equalization); devolve se o título ficou sujo.
+#[allow(clippy::too_many_arguments)]
+fn drain_per_sprite_bakes(
+    trim_entities: Vec<u64>,
+    make_square_entities: Vec<u64>,
+    real_size_entities: Vec<u64>,
+    rasterize_entities: Vec<u64>,
+    padding_apply: Option<(ph2d_tool_padding::PaddingSpec, bool, Vec<u64>)>,
+    color_equalization_apply: Option<Vec<u64>>,
+    hero: &HeroScreen,
+    sim: &mut SimWorld,
+    renderer: &mut SpriteRenderer,
+    asset_db: &AssetDb,
+    atlas_asset_map: &BTreeMap<u32, AssetId>,
+    toasts: &mut ToastQueue,
+    image_edit_undo: &mut Option<ImageEditTransaction>,
+    tools: &mut ToolRegistry,
+) -> bool {
+    let mut title_dirty = false;
     // ImageToolsV1: drain Trim Transparency request — read the
     // sprite's atlas-source RGBA pixels, run the trim algorithm,
     // and (if any transparent border was found) re-source the
@@ -228,6 +380,26 @@ pub(super) fn dispatch(
             commit_image_edit_transaction(renderer, image_edit_undo, pending);
         }
     }
+    title_dirty
+}
+
+/// Os Apply que pedem a ferramenta activa CONCRETA — Equalize Sizes, Upscale e a Remoção de fundo
+/// (que apanha aqui o seu `OneShotImageOp` do barramento); devolve se o título ficou sujo.
+#[allow(clippy::too_many_arguments)]
+fn drain_tool_applies(
+    equalize_sizes_apply: Option<Vec<u64>>,
+    upscale_apply: Option<Vec<u64>>,
+    hero: &mut HeroScreen,
+    sim: &mut SimWorld,
+    renderer: &mut SpriteRenderer,
+    asset_db: &AssetDb,
+    atlas_asset_map: &BTreeMap<u32, AssetId>,
+    toasts: &mut ToastQueue,
+    image_edit_undo: &mut Option<ImageEditTransaction>,
+    tools: &mut ToolRegistry,
+    last_bgremoval_pushed_entity: &mut Option<u64>,
+) -> bool {
+    let mut title_dirty = false;
     // Equalize Sizes drain — multi-sprite Apply. Cross-sprite: Max
     // mode needs the global max over the selection, so the bake runs
     // ONCE over the whole bits_list (not once per sprite like CEQ).
@@ -376,168 +548,6 @@ pub(super) fn dispatch(
             title_dirty = true;
         }
         commit_image_edit_transaction(renderer, image_edit_undo, pending);
-    }
-    // ── Painter Apply drain (W1 T1.5) ─────────────────────────────────────
-    //
-    // **R3-LF-1 fix:** drain the `painter` OneShotImageOp UNCONDITIONALLY
-    // (drop the variant whether or not Painter is currently the active
-    // tool). The previous "filter-and-repush" pattern from bgremoval is
-    // wrong for Painter — bgremoval needs defer-until-active because its
-    // ActivateTool races with OneShotImageOp emission across frames;
-    // Painter's commit comes from `painter_bridge` and is only emitted
-    // when Painter is active, so by the time this drain runs the gate
-    // is either correct (active, bake the entity) or the request is
-    // stale (tool switched mid-frame — drop, don't loop forever on the
-    // bus).
-    let painter_id = ph2d_editor_core::ToolId::new("painter");
-    let painter_active = tools
-        .active()
-        .map(|t| t.id() == painter_id)
-        .unwrap_or(false);
-    let painter_entity = {
-        let mut found: Option<u64> = None;
-        let leftovers: Vec<ph2d_editor_core::action_bus::EditorAction> = hero
-            .bus
-            .drain()
-            .filter_map(|a| match a {
-                ph2d_editor_core::action_bus::EditorAction::OneShotImageOp {
-                    tool_id: "painter",
-                    entity_bits,
-                } => {
-                    // Consume regardless of `painter_active`. If active,
-                    // bake. If not (tool switched mid-frame), the request
-                    // is stale — drop it cleanly so it can't loop forever.
-                    if painter_active && found.is_none() {
-                        found = Some(entity_bits);
-                    }
-                    None
-                }
-                other => Some(other),
-            })
-            .collect();
-        for a in leftovers {
-            hero.bus.push(a);
-        }
-        found
-    };
-    if let Some(entity_bits) = painter_entity {
-        // **R4-LH-2 fix:** soft-fall when the gate is wrong (e.g., a
-        // future refactor moves tool teardown ahead of this drain). The
-        // `.expect` panic was defensible by the gate logic at the time
-        // but turns into a prod-panic the moment the gate moves.
-        let Some(painter) = tools.active_mut().and_then(|t| {
-            t.as_any_mut()
-                .downcast_mut::<ph2d_tool_painter::PainterTool>()
-        }) else {
-            toasts.push(Toast::error(
-                "Painter Apply: tool was inactive when bake fired (gate desynced)",
-            ));
-            return true;
-        };
-        let mut pending: Vec<ImageEditSnapshot> = Vec::new();
-        if hero_intents::drain_painter(
-            entity_bits,
-            sim,
-            renderer,
-            asset_db,
-            atlas_asset_map,
-            toasts,
-            &mut pending,
-            painter,
-            last_painter_pushed_entity,
-        ) {
-            title_dirty = true;
-        }
-        commit_image_edit_transaction(renderer, image_edit_undo, pending);
-    }
-    // Image-edit undo drain. Cmd+Z (or TOOL_UNDO click)
-    // pushes `EditorAction::UndoImageEdit` onto the bus; the
-    // shell owns the snapshot. Single-level: each new edit
-    // overwrites the slot (releasing the previous pre-source),
-    // so undo restores at most the MOST RECENT Trim / Make
-    // Square / Bg Removal.
-    if undo_image_edit
-        && hero_intents::drain_undo_image_edit(image_edit_undo, sim, renderer, toasts)
-    {
-        title_dirty = true;
-    }
-    // Publish whether a snapshot is currently stored so the UI
-    // can dim the TOOL_UNDO chip when there's nothing to undo.
-    hero.image_edit.has_undoable = image_edit_undo.is_some();
-    // M14.4c: drain pending import request → open native file picker,
-    // import every selected image (PNG/WEBP/JPEG). The batch importer
-    // lays them out in a near-square grid anchored at the camera center
-    // (first cell's center = `camera.center`; grid grows right + down)
-    // instead of stacking every sprite on one point.
-    if hero.import_requested {
-        hero.import_requested = false;
-        // ⚠️ **O filtro é DERIVADO, nunca escrito à mão** (`crate::import_router`, Enio
-        // 2026-08-23: *«.ase não aparece no dialog de import»*). A lista que morava aqui tinha
-        // quatro extensões e o roteamento do drop aceitava **onze** — o `.gif`, o `.psd` e o
-        // `.ora` estavam invisíveis neste diálogo há meses, pelo mesmo mecanismo que escondeu o
-        // `.ase`. *Uma lista escrita à mão ao lado de um predicado é duas respostas à mesma
-        // pergunta, e a que o artista vê é a que envelhece.*
-        let mut dialog = rfd::FileDialog::new();
-        for (label, exts) in crate::import_router::dialog_filters() {
-            dialog = dialog.add_filter(label, &exts);
-        }
-        let picked = dialog.pick_files();
-        let pixels_per_meter = hero.project.pixels_per_meter;
-        if let Some(paths) = picked {
-            // A MESMA função que o drag & drop chama: a única diferença entre as duas portas é de
-            // onde vêm os caminhos.
-            let batch = crate::import_router::import_paths_grid(
-                sim,
-                &mut *renderer,
-                asset_db,
-                camera.center,
-                next_import_cell,
-                &paths,
-                pixels_per_meter,
-                atlas_asset_map,
-                crate::import_router::VecTarget {
-                    scene: vec_scene,
-                    map: vec_entities,
-                },
-            );
-            for name in &batch.skipped {
-                toasts.push(Toast::warning(format!(
-                    "Skipped {name}: not an image, an SVG drawing or an Aseprite file"
-                )));
-                title_dirty = true;
-            }
-            let results = batch.items;
-            // First imported sprite replaces the selection; the rest
-            // join it as extras so a multi-pick import ends up fully
-            // selected (mirrors the drag-drop path). The per-frame
-            // snapshot sync turns this into both the canvas gizmo and
-            // the Hierarchy highlight.
-            let mut selected_any = false;
-            for r in results {
-                match r {
-                    ImportItemResult::Ok { label, bits } => {
-                        if selected_any {
-                            hero.gizmo.add_to_selection(bits);
-                        } else {
-                            hero.gizmo.replace_selection(Some(bits));
-                            selected_any = true;
-                        }
-                        toasts.push(Toast::success(format!("Imported {label}")));
-                        title_dirty = true;
-                    }
-                    ImportItemResult::Err { name, error } => {
-                        eprintln!("M14.4c import failed ({name}): {error}");
-                        toasts.push(Toast::error(format!("Import failed: {error}")));
-                        title_dirty = true;
-                    }
-                }
-            }
-            // ⚠️ As notas do `.ase` falam por ÚLTIMO — elas dizem o que ficou por trás, e uma
-            // linha dessas escondida entre dez «Imported» não é lida.
-            for note in batch.notes {
-                toasts.push(Toast::warning(note));
-            }
-        }
     }
     title_dirty
 }

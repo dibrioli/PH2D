@@ -101,6 +101,7 @@ mod the_brush_cursor_lies_on_the_surface;
 mod the_brush_ring_marks_the_hit_the_dab_will_use;
 mod the_brush_ring_wears_the_live_dab_rotor;
 mod the_bucket_tool_owns_its_gesture;
+mod the_bus_drain_keeps_what_the_single_match_guaranteed;
 mod the_camera_pan_has_exactly_one_door;
 mod the_canvas_backdrop_has_one_door;
 mod the_card_opens_the_prefab_through_the_same_door;

@@ -265,4 +265,114 @@ impl crate::App {
             self.ramo_gizmo_pick_arrasta(evt, picked, is_modifier_click, world_pos);
         }
     }
+
+    /// O pick de canvas: os hits pela porta única, a ordem (filhos antes, a seleção primeiro) e o ciclo.
+    pub(super) fn ramo_gizmo_pick(
+        &mut self,
+        evt: PointerEvent,
+        gizmo_kind: Option<ph2d_editor_core::GizmoDragKind>,
+    ) {
+        if let Some(gfx) = self.gfx.as_mut()
+            && let Some(hero) = gfx.hero_screen.as_mut()
+        {
+            // Canvas pick (M14.7 A) — see commit history
+            // for the four conditions enumerated.
+            let window_size = gfx.surface.size();
+            let world_pos = gfx.camera.screen_to_world((evt.x, evt.y), window_size);
+            // ⭐ **A porta ÚNICA do pick de objecto** (ver o irmão acima).
+            let ppm_for_pick = hero.project.pixels_per_meter;
+            let mut pw = crate::hover_highlight::PickWorld {
+                window_size,
+                sim: &gfx.sim,
+                vec_scene: &gfx.vec_scene,
+                flip: &gfx.flip,
+                present: &mut gfx.present,
+                camera: &gfx.camera,
+                pixels_per_meter: ppm_for_pick,
+            };
+            let mut hits = crate::hover_highlight::pick_objects_at(
+                &mut pw,
+                &self.vec.entities,
+                &self.vec.view_derived,
+                &self.vec.live_drawn,
+                &self.flip_state.entities,
+                (evt.x, evt.y),
+            );
+            // O SPINE de um Blend Object NÃO é selecionável no modo Select (ADR-0128,
+            // Enio 2026-07-15): a linha é editável só no modo Node. Tirá-la dos hits faz
+            // o clique nela não selecionar nada — o que se move no Select são as
+            // FORMAS-fonte, cada uma com o seu gizmo.
+            hits.retain(|&bits| {
+                gfx.sim
+                    .world()
+                    .get::<ph2d_ecs::VecBlend>(ph2d_ecs::Entity::from_bits(bits))
+                    .is_none()
+            });
+            // **UM CONTÊINER NÃO ROUBA O CLIQUE DOS FILHOS** (Enio 2026-08-19): a
+            // lista acima é montada por camada de desenho, e uma moldura — ou uma
+            // folha de sprites — cobre por definição tudo o que tem dentro, então
+            // ficava sempre no índice 0 e a peça de dentro era inalcançável. O
+            // ancestral é ADIADO, não descartado: o segundo clique ainda o alcança.
+            crate::pick_order::descendants_first(gfx.sim.world(), &mut hits);
+            // Uma forma ABERTA (linha/arco) não é pega pelo interior — só
+            // pelo traço. Mas clicar no INTERIOR do gizmo dela (hit
+            // Translate) É o pedido de mover: a bbox inteira é área de
+            // arrasto, como num sprite. Sem nada sob o cursor, cai na
+            // seleção atual (Enio 2026-07-09).
+            if hits.is_empty()
+                && matches!(gizmo_kind, Some(ph2d_editor_core::GizmoDragKind::Translate))
+                && let Some(sel) = hero.gizmo.selection
+            {
+                hits.push(sel);
+            }
+            // ⭐⭐⭐ **O PRIMEIRO CLIQUE É DE QUEM JÁ ESTÁ SELECIONADO** (Enio,
+            // 2026-08-26): um filho desenha por cima do pai, então tentar arrastar um
+            // grupo já selecionado escolhia um filho. A lei — e as quatro fronteiras
+            // dela — vive em `pick_order::start_on_selection`, que é pura e tem gate;
+            // aqui fica só o fio.
+            //
+            // ⛔ **Nunca com modificador:** `Shift`/`Cmd` estão a curar a seleção, e
+            // preferir o primário faria o `Shift`+clique num filho alternar o PAI.
+            let bare_click = !(self.modifiers.shift_key()
+                || self.modifiers.super_key()
+                || self.modifiers.control_key());
+            let cycle_start = if bare_click {
+                crate::pick_order::start_on_selection(
+                    &mut hits,
+                    hero.gizmo.selection,
+                    matches!(gizmo_kind, Some(ph2d_editor_core::GizmoDragKind::Translate)),
+                )
+            } else {
+                0
+            };
+            // ⚠️ **A seleção entra no teste do «mesma lista»**, e é ela que faz a
+            // escolha na HIERARQUIA abrir um ciclo novo: sem isto, clicar num ponto,
+            // escolher o pai na lista e voltar a clicar no MESMO ponto continuava o
+            // ciclo antigo e devolvia o filho outra vez.
+            let same_list = !hits.is_empty()
+                && hits == self.cycle_pick_hits
+                && hero.gizmo.selection == self.cycle_pick_selection;
+            if !same_list {
+                self.cycle_pick_world = Some(world_pos);
+                self.cycle_pick_hits = hits.clone();
+                self.cycle_pick_idx = cycle_start;
+                self.cycle_pick_count = 1;
+            } else {
+                self.cycle_pick_count = self.cycle_pick_count.saturating_add(1);
+                if self.cycle_pick_count.is_multiple_of(2) {
+                    // Even count → selection stays.
+                } else if !hits.is_empty() {
+                    self.cycle_pick_idx = (self.cycle_pick_idx + 1) % hits.len();
+                }
+            }
+            let picked = if hits.is_empty() {
+                // No sprite under the cursor. (The old vector-scene
+                // object pick fell back here; retired with ADR-0108.)
+                None
+            } else {
+                hits.get(self.cycle_pick_idx).copied()
+            };
+            self.ramo_gizmo_pick_selecao(evt, picked, world_pos);
+        }
+    }
 }

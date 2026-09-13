@@ -1,31 +1,38 @@
-# Plano — `Tags` (TOP-20 #9): o objecto PERTENCE a grupos, e um sinal fala com o grupo
+# Plano — `Tags` (TOP-20 #9): o objecto PERTENCE a tags numa árvore, e um sinal fala com a tag
 
-> **Estado:** PLANO — nenhuma linha de produto escrita. `line/components`, 2026-09-13.
-> Fila: [levantamento §7](00_levantamento_componentes.md) #9 · [síntese estrutura_ai §3](pesquisa/sintese_estrutura_ai.md)
-> · [plano 05 §11.2](05_plano_de_implementacao.md). Molde das waves: o `Timer` (§12 do plano 05).
+> **Estado:** PLANO APROVADO com as decisões do dono (2026-09-13, §2.5) — nenhuma linha de produto
+> escrita ainda. `line/components`. Fila: [levantamento §7](00_levantamento_componentes.md) #9 ·
+> [síntese estrutura_ai §3](pesquisa/sintese_estrutura_ai.md) · [plano 05 §11.2](05_plano_de_implementacao.md).
+> Molde das waves: o `Timer` (§12 do plano 05).
 >
 > ⚠️ **Tudo o que aqui tem número foi CORRIDO nesta máquina antes de ser escrito** — dois oráculos
-> sem interface (Godot, Blender) e uma sonda Rust sobre o ECS. Os instrumentos estão versionados:
+> sem interface e uma sonda Rust sobre o ECS, versionados:
 > [`ferramentas/godot_groups_probe.gd`](ferramentas/godot_groups_probe.gd) ·
 > [`ferramentas/blender_collections_probe.py`](ferramentas/blender_collections_probe.py) ·
 > [`crates/ph2d-ecs/tests/it/measure_tag_scan.rs`](../../crates/ph2d-ecs/tests/it/measure_tag_scan.rs).
+>
+> ⛔⛔ **A 1.ª redacção deste plano (commit `352b84b4f`) propunha tags como TEXTO com hierarquia por
+> ponto (`enemy.flying`).** O dono escolheu *«como o Blender»*, e o desenho mudou de natureza: a
+> pertença passou a ser uma **identidade**, a hierarquia vive numa **árvore do projecto**, e o texto
+> é só o nome que se mostra. As secções abaixo são a versão aprovada; a antiga fica no git.
 
 ---
 
 ## §0 — O que o artista passa a conseguir fazer
 
-1. **Marcar** qualquer objecto com uma ou mais tags no Inspector (`enemy`, `enemy.flying`, `pickup`),
-   com sugestões das que já existem na cena.
-2. **Falar com o grupo inteiro por um sinal, sem script:** uma linha do *Signal Actions* passa a ter
-   alvo **por tag** — *«quando `alarm` disparar, esconde todos os `enemy`»* — e `enemy` apanha também
-   `enemy.flying` e `enemy.flying.boss`.
-3. **Filtrar quem dispara uma armadilha:** um sensor com *On Hit* só grita quando quem entra tem a
-   tag pedida (*«só o `player` abre a porta»*).
-4. **Renomear uma tag em todo o lado** e **seleccionar todos os que a têm**, a partir da própria tag.
+1. **Criar tags numa árvore do projecto** — `Enemy`, e dentro dela `Flying`, e dentro `Boss` —,
+   renomeá-las e **arrastá-las para dentro de outra** sem que nenhum objecto perca a tag.
+2. **Marcar** qualquer objecto com uma ou mais tags no Inspector, escrevendo com sugestões —
+   `inimigo`, `Inimigo` e `inímigo` são **a mesma** tag.
+3. **Falar com a tag por um sinal, sem script:** uma linha do *Signal Actions* passa a ter alvo **por
+   tag** — *«quando `alarm` disparar, esconde tudo o que é `Enemy`»* — e isso apanha também `Flying`
+   e `Boss`.
+4. **Filtrar quem dispara uma armadilha:** um sensor com *On Hit* só grita quando quem entra pertence
+   à tag pedida (*«só `Player` abre a porta»*).
+5. **Seleccionar tudo o que pertence a uma tag**, e ver quantos objectos cada tag tem.
 
-⛔ *Um componente sem consumidor lê-se, numa varredura, exactamente como uma feature pronta* (plano
-05 §11.2, sobre o `SensorZone`). ⇒ as quatro frases acima são **uma** wave de produto: a tag nasce
-com os três leitores, nunca antes deles.
+⛔ *Um componente sem consumidor lê-se, numa varredura, exactamente como uma feature pronta* (plano 05
+§11.2). ⇒ a tag nasce **com** os seus leitores (o sinal, o filtro, a selecção), nunca antes deles.
 
 ---
 
@@ -33,62 +40,75 @@ com os três leitores, nunca antes deles.
 
 ### §1.1 — Medido nesta máquina (oráculos corridos sem interface; só a SAÍDA é usada)
 
-**Godot 4.7.2 (MIT)** — `godot --headless --script docs/Components/ferramentas/godot_groups_probe.gd`,
-load `≈3,6`:
+**Godot 4.7.2 (MIT)** — `godot --headless --script docs/Components/ferramentas/godot_groups_probe.gd`, load `≈3,6`:
 
 | pergunta | saída |
 |---|---|
-| ordem de `get_nodes_in_group` (inserção `B, C, A`; árvore `A, C, B`) | `["A", "C", "B"]` — **ordem da ÁRVORE**, não da inserção |
+| ordem de `get_nodes_in_group` (inserção `B, C, A`; árvore `A, C, B`) | `["A", "C", "B"]` — **ordem da ÁRVORE** |
 | `add_to_group` repetido | contagem fica `3` — **idempotente** |
 | `is_in_group("Enemy")` num nó de `enemy` | `false` — **sensível a maiúsculas** |
-| um nó em `enemy.flying.boss` responde a `get_nodes_in_group("enemy")`? | **não** — o ponto é texto, **não há hierarquia** |
-| nome com espaço (`"with space"`) | aceite |
-| `call_group` | chama pela ordem da árvore, **inclui quem chama** se estiver no grupo |
-| nó retirado da árvore | continua `is_in_group == true` e **sai** das consultas; volta ao re-entrar |
+| um nó em `enemy.flying.boss` responde a `get_nodes_in_group("enemy")`? | **não** — grupos **planos**, o ponto é texto |
+| `call_group` | pela ordem da árvore, **inclui quem chama** se estiver no grupo |
+| nó retirado da árvore | continua `is_in_group == true` e **sai** das consultas |
 | `PackedScene.pack` + `instantiate` | só sobrevivem os grupos `persistent = true` |
 | grupos do PROJECTO | o binário traz `Global Groups`, `global_group/`, `add_global_group`, `remove_global_group` e `GroupSettingsEditor::_confirm_rename` (`strings /usr/bin/godot`) |
-| custo, 100 000 nós no grupo | `get_nodes_in_group`: **6,665 ms** a 1.ª, **0,957 ms** a 2.ª (índice cacheado por `SceneTree`) |
+| custo, 100 000 nós no grupo | `get_nodes_in_group` **6,665 ms** a 1.ª, **0,957 ms** a 2.ª (índice por `SceneTree`) |
 
-**Blender 5.2.1 (GPL — parede: saída apenas)** — `blender -b --factory-startup --python docs/Components/ferramentas/blender_collections_probe.py`:
+**Blender 5.2.1 (GPL — parede: saída apenas)** — coleções, `blender -b --factory-startup --python docs/Components/ferramentas/blender_collections_probe.py`, e duas perguntas a mais corridas por `--python-expr`:
 
 | pergunta | saída |
 |---|---|
-| `bpy.data.groups` existe? | **`False`** — os *Groups* **foram retirados** (2.80), trocados pelas coleções |
+| `bpy.data.groups` existe? | **`False`** — os *Groups* **foram retirados** (2.80) |
 | um objecto em duas coleções | `['enemy', 'flying']` — **pertença múltipla** |
-| objecto só na coleção-filha aparece no pai? | `parent.objects = ['Goblin']`, `parent.all_objects = ['Bat', 'Goblin']` — **contenção HIERÁRQUICA** |
+| objecto só na coleção-filha aparece no pai? | `parent.all_objects = ['Bat', 'Goblin']` — **contenção HIERÁRQUICA** |
 | renomear a coleção-filha | o objecto passa a dizer `['winged']` — a pertença é **referência**, não texto |
-| criar uma segunda coleção `enemy` | vira **`enemy.001`** |
-| tags de ASSET (`asset_data.tags`) com o mesmo nome duas vezes | `['Enemy', 'Enemy.001']` — **não deduplica: renomeia** |
+| uma coleção com DOIS pais | aceite (`['a', 'b']`) — as coleções são um **grafo**, não uma árvore |
+| um ciclo (`c` pai de `a`, que é pai de `c`) | **recusado**: `Collection 'a' already in collection 'c'` |
+| apagar a coleção de um objecto | o objecto **vive** e perde só aquela pertença (`users_collection = []`) |
+| `Inimigo`, `inimigo`, `inímigo` | **três** coleções distintas — o Blender **não** dobra maiúsculas nem acentos |
+| criar uma segunda `enemy` | vira **`enemy.001`** |
+
+**Blender 5.2.1 — catálogos de assets** (o ficheiro de dados instalado,
+`/usr/share/blender/5.2/datafiles/assets/blender_assets.cats.txt`, formato `UUID:caminho/do/catálogo:nome`):
+
+| pergunta | saída |
+|---|---|
+| a identidade | um **UUID** por catálogo; a hierarquia é o **caminho** (`Brushes/Mesh Sculpt/General`) |
+| gémeos | **2 dos 63** caminhos aparecem **duas vezes com UUIDs diferentes** (`Brushes/Mesh Sculpt/General/Utilities`, `Geometry Nodes/Generate`) — o modelo do Blender **admite** dois catálogos com o mesmo caminho, no ficheiro que ele próprio distribui |
+
+⭐ **E este é o modelo que a casa JÁ tem:** `ph2d_asset_index::CatalogTree` é o *Asset Browser* do
+Blender — `{ id, path }`, renomear reescreve um prefixo, apagar leva os descendentes, as atribuições
+guardam o id —, gravado no `ProjectState` com undo (`project_library.rs`).
 
 ### §1.2 — Da documentação pública (sem artefacto instalado; ⚠️ não medido)
 
 | app | modelo | o que tentou e abandonou (ou manteve contra a corrente), e porquê |
 |---|---|---|
-| **Unreal** | *Gameplay Tags* hierárquicos (`State.Stunned`), registados num dicionário do projecto; `MatchesTag("A")` é verdade para `A.B`; comparação por `FName` (sem distinção de maiúsculas); *redirects* para renomear — [dossiê](pesquisa/dossie_unreal.md) l.233 | **As *Actor Tags* planas (`TArray<FName>`) continuam lá e perderam o papel** — os Gameplay Tags nasceram por cima delas por dois motivos: a gralha (uma string solta não é validada) e a falta de hierarquia (uma regra sobre `Damage` tinha de listar cada `Damage.*`). |
-| **Unity** | **UMA** tag por GameObject (TagManager) + 32 *Layers* | **O contra-exemplo** ([síntese interacao_fluxo §8.3](pesquisa/sintese_interacao_fluxo.md) l.511): ficou com uma só tag e a comunidade resolve com componentes-marcador — que um artista não autora sem código. |
-| **Godot** | *Groups* planos por nó + (medido) grupos globais do projecto com renomear | Os grupos por-nó são texto livre e sensíveis a maiúsculas (medido acima); o editor ganhou **um registo do projecto e um renomear** — que é a cura da gralha que o Unreal pagou antes. |
-| **Blender** | coleções (medido) | **Groups e as 20 camadas fixas foram abandonados** e fundidos nas coleções (2.80): pertença múltipla + hierarquia + identidade por referência. |
-| **Construct 3** | *Families* (ao nível do TIPO de objecto, carregam behaviors) + *instance tags* com filtro no *Solid* e na *Physics* (`Collision filter tags + mode`) — [dossiê](pesquisa/dossie_construct_gdevelop.md) l.124, l.290, l.344 | As *Families* são por **tipo**; o filtro por instância teve de chegar **à parte** (*instance tags*), porque «este Solid bloqueia o inimigo e não o jogador» é uma pergunta sobre a INSTÂNCIA. |
-| **GameMaker** | objecto-pai como grupo — [dossiê](pesquisa/dossie_gamemaker_defold.md) l.228 | Mata as listas manuais, mas amarra o grupo à herança: um objecto tem **um** pai. |
+| **Unreal** | *Gameplay Tags* hierárquicos registados num dicionário do projecto; `MatchesTag("A")` é verdade para `A.B`; `FName` sem distinção de maiúsculas; *redirects* para renomear — [dossiê](pesquisa/dossie_unreal.md) l.233 | **As *Actor Tags* planas (`TArray<FName>`) ficaram e perderam o papel**: uma string solta não se valida (gralha) e não tem hierarquia |
+| **Unity** | **UMA** tag por GameObject + 32 *Layers* | **O contra-exemplo** ([síntese interacao_fluxo §8.3](pesquisa/sintese_interacao_fluxo.md) l.511): ficou com uma só; a comunidade usa componentes-marcador, que o artista não autora sem código |
+| **Godot** | grupos planos por nó + (medido) grupos globais do projecto com renomear | a gralha dos grupos-texto levou-o a um **registo do projecto** |
+| **Blender** | coleções + catálogos (medido) | **Groups e as 20 camadas fixas foram abandonados** pelas coleções (2.80); o *Asset Browser* nasceu depois com **identidade por UUID e hierarquia por caminho** |
+| **Construct 3** | *Families* (por TIPO) + *instance tags* com filtro no *Solid* e na *Physics* — [dossiê](pesquisa/dossie_construct_gdevelop.md) l.124, l.290, l.344 | as *Families* são por tipo; o filtro por instância teve de chegar à parte |
+| **GameMaker** | objecto-pai como grupo — [dossiê](pesquisa/dossie_gamemaker_defold.md) l.228 | amarra o grupo à herança: **um** pai |
 | **Phaser** | `Group` não-exclusivo + *pooling* — [dossiê](pesquisa/dossie_cocos_phaser.md) l.259 | — |
-| **Bevy** | componente-marcador (tipo zero) | O idioma certo de um ECS, e inalcançável para o artista sem código. |
-| **After Effects** | *Labels*: **uma** cor por camada (16), *Select Label Group* | Uma etiqueta **exclusiva** — a mesma limitação do Unity, no mundo do motion. |
-| **Illustrator** | sem tags de objecto: camadas, grupos e *Select ▸ Same* por atributo | Agrupa pelo que o objecto **parece**, não pelo que ele **é**. |
-| **Rive** | não conheço um sistema de grupos consultáveis na cena; o runtime endereça por nome | ⚠️ afirmação **não verificada** — não há artefacto nesta máquina. |
+| **Bevy** | componente-marcador | idioma certo de um ECS, inalcançável sem código |
+| **After Effects** | *Labels*: **uma** cor por camada (16), *Select Label Group* | etiqueta **exclusiva** — a limitação do Unity |
+| **Illustrator** | sem tags de objecto: camadas, grupos, *Select ▸ Same* | agrupa pelo que o objecto **parece**, não pelo que ele **é** |
+| **Rive** | não conheço grupos consultáveis na cena; o runtime endereça por nome | ⚠️ **não verificado** — sem artefacto nesta máquina |
 
-### §1.3 — As cinco leis que saem daqui
+### §1.3 — As leis que saem daqui
 
-1. **Pertença múltipla, sem hierarquia de objectos** — Blender, Godot, Unreal, Phaser, Construct. O
-   Unity e o AE (uma só) são o contra-exemplo com número de anos.
-2. **Hierarquia por SEGMENTO, não por texto** — Unreal e Blender (medido: `all_objects`). ⛔ E o
-   prefixo de TEXTO não é pai: `enemy` **não** apanha `enemyx` (fixture da sonda).
-3. **A identidade de uma tag é normalizada numa porta** — o Godot é sensível a maiúsculas (medido) e
-   precisou de um registo do projecto para a gralha; o Unreal compara sem distinção.
-4. **A consulta tem ordem DETERMINISTA** — o Godot ordena pela árvore (medido); aqui a árvore não é
-   estável entre um `Ctrl+Z` e o seguinte (o undo respawna), ⇒ a ordem é a do `StableId`, a mesma
-   que o `SignalActions::resolve` já usa.
-5. **Renomear é um verbo de primeira classe** — Blender não precisa dele (a pertença é referência);
-   Godot e Unreal, que guardam TEXTO, ganharam-no no editor. ⇒ quem guarda texto tem de ter o verbo.
+1. **Pertença múltipla** — Blender, Godot, Unreal, Phaser, Construct. Unity e AE são o contra-exemplo.
+2. **A pertença é uma IDENTIDADE, não texto** — Blender (medido: renomear mantém a pertença),
+   Unreal (*redirects* existem porque o texto parte).
+3. **Hierarquia por contenção** — o objecto de `Flying` pertence a `Enemy` (Blender medido,
+   `all_objects`; Unreal `MatchesTag`).
+4. **Uma ÁRVORE, não um grafo** — o *Asset Browser* do Blender e o Unreal são árvores; as coleções
+   são grafo (medido) porque também são **unidades de instância**, que uma tag não é.
+5. **Sem gémeos** — o Blender admite-os e distribui dois (medido); quem cria uma tag que já existe
+   **recebe a que existe**.
+6. **Consulta com ordem DETERMINISTA** — a do `StableId`, porque a árvore da cena não sobrevive a um
+   `Ctrl+Z` (o undo respawna).
 
 ---
 
@@ -96,69 +116,80 @@ load `≈3,6`:
 
 ### §2.1 — O modelo
 
-- **`ph2d_ecs::Tags(BTreeSet<TagPath>)`** — componente REGISTADO, módulo **irmão** `crates/ph2d-ecs/src/tags.rs`
-  (append-only, isolamento B'). `BTreeSet` ⇒ bytes canónicos independentes da ordem de inserção (o
-  undo regista por diff de bytes) e duplicado impossível por construção (o Godot dá o mesmo:
-  idempotente; o Blender **não** — renomeia para `.001`).
-- **`TagPath`** — `String` canónica, só construível por [`TagPath::parse`]: segmentos separados por
-  `.`, cada um de letras/dígitos Unicode ou `_`, **em minúsculas** (D2), sem segmento vazio, sem
-  espaço. ⭐ O `.` está livre: o sufixo de nome único desta casa é ` (n)`
-  (`ph2d-unique-name`, `format!("{stem} ({n})")`), e não o `.001` do Blender.
-- **CONFIG, nunca estado vivo** — a lei do `Timer` (§12.1): nada escreve `Tags` por conta própria.
+| peça | onde | o quê |
+|---|---|---|
+| **a dobra** | crate-folha nova `ph2d-label-fold` | `fold(label) -> String`: NFD → *case folding* completo (`icu_casemap`) → NFD → sem marcas não-espaçadoras (`GeneralCategory::NonspacingMark`, `icu_properties`) → espaços colapsados. `Inimigo` = `inimigo` = `inímigo` = `INÍMIGO`; `Straße` = `STRASSE`; `é` pré-composto = `e` + U+0301 |
+| **a álgebra de caminhos** | crate-folha nova `ph2d-label-path` (zero deps) | `SEP = '/'` · normalizar · prefixo **por segmento** · reescrever prefixo · ordenar por segmento com uma chave dada — **extraída** do `CatalogTree`, que passa a usá-la sem mudar comportamento |
+| **a árvore** | crate-folha nova `ph2d-tags` (sem ECS, sem serde) | `TagId(u64)` · `Tag { id, path }` · `TagTree { tags, next_id, revision }` — o molde exacto do `CatalogTree` |
+| **a pertença** | `ph2d_ecs::Tags(BTreeSet<TagId>)`, módulo irmão `tags.rs` | componente REGISTADO; CONFIG, nunca estado vivo |
+| **o documento** | `ProjectState.tags` (bytes com versão própria, `ph2d-app-components::tags_doc`) + a árvore viva no `AppGfx` | o molde do `LibraryDoc`/`catalogs`: undo, gravação e cache por revisão |
+
+⚠️ **O nome mostra-se como foi ESCRITO** (`Inimigo Voador`) e compara-se **dobrado** — a regra do
+`FName` do Unreal e de um sistema de ficheiros *case-preserving*. Quem escreve primeiro escolhe a
+grafia; quem escreve `inimigo voador` depois **recebe a tag que existe**.
+
+⚠️ **`TagId` é `u64` e não o `u128` do `CatalogId`**: o `CatalogId` tem a largura de um UUID do
+Blender; um `TagId` é guardado **por objecto**, num conjunto, e 8 bytes a menos por pertença é o que
+a pertença múltipla multiplica.
+
+⚠️ **As ICU já estão no programa**: `icu_normalizer` e `icu_properties` 2.3 entram por `parley`
+(`compiled_data`). `icu_casemap` 2.3 (Unicode-3.0) é o **único pacote externo novo**, e é o que dá o
+*case folding* completo — com `to_lowercase` o `ß` e o `SS` ficariam tags diferentes.
 
 ### §2.2 — As portas
 
 | pergunta | porta ÚNICA | quem chama | proibido |
 |---|---|---|---|
-| *isto é uma tag válida, e qual é a forma dela?* | `TagPath::parse(&str) -> Result<TagPath, TagError>` | o painel ao escrever · o `Deserialize` ao ler · o `rename_tag` | normalizar noutro sítio (duas regras discordam sobre `Enemy`) |
-| *a tag `t` satisfaz a consulta `q`?* | `TagPath::matches(&self, q)` — `t == q` ou `t` começa por `q` **seguido de `.`** | `Tags::has` e mais ninguém | comparar strings à mão |
-| *este objecto tem `q`?* | `Tags::has(&q)` | o filtro da física · o `tagged` | ler o `BTreeSet` fora do módulo |
-| *quem tem `q`?* | `tags::tagged(world, &q) -> Vec<Entity>`, ordem do `StableId` | `SignalActions::resolve` · *Select Tagged* · (futuro: Spawner, percepção) | uma segunda varredura; um índice guardado |
-| *que tags existem na cena?* | `tags::known_tags(world) -> BTreeSet<TagPath>` (inclui os pais implícitos) | as sugestões do painel | uma lista escrita à mão |
-| *renomear `a` para `b` em todo o lado* | `tags::rename_tag(world, &a, &b) -> RenameReport` | o menu da tag | reescrever `Tags` sem reescrever os alvos e os filtros que a citam |
-| *este sinal de colisão passa o filtro?* | `ph2d_physics_ecs::signal_passes(world, source, other) -> bool` | `PhysicsBridge::signal_events` (chegada **e** saída) | um filtro para a chegada e outro para a saída |
-| *quem sofre esta acção?* | `signal_actions::targets_of(world, source, &action) -> Vec<Entity>` (substitui o `target_of`) | `resolve` | resolver o alvo no painel ou na shell |
+| *estes dois nomes são o mesmo?* | `ph2d_label_fold::fold` | a árvore (criar · renomear · mover · restaurar) · a busca do painel | `to_lowercase` à mão; uma segunda tabela de acentos |
+| *este caminho é o próprio ou descendente daquele?* | `ph2d_label_path::is_self_or_descendant` | `TagTree` e `CatalogTree` | `starts_with` sem a fronteira de segmento (`Hero` / `Heroine`) |
+| *criar `Enemy/Flying`* | `TagTree::create(path) -> Result<TagId, TagError>` — cria os ancestrais; um caminho que já existe **dobrado** devolve o id existente | painel · smoke | criar sem dobrar |
+| *renomear* | `TagTree::rename(id, label)` — reescreve o prefixo, os ids ficam | painel | tocar num `Tags` de objecto |
+| *mover para dentro de outra* | `TagTree::move_under(id, Option<TagId>)` — recusa a própria subárvore (o ciclo que o Blender recusa, medido) | painel (arrastar) | — |
+| *apagar* | `TagTree::delete(id) -> BTreeSet<TagId>` (a subárvore) + `ph2d_ecs::tags::scrub(world, &ids)` **no mesmo gesto** | painel | apagar a árvore sem tirar a pertença (um id órfão nos objectos) |
+| *que tags estão debaixo desta?* | `TagTree::subtree(id) -> BTreeSet<TagId>` | todas as consultas | expandir à mão |
+| *este objecto pertence a `q`?* | `ph2d_ecs::tags::belongs(tags, tree, q)` | o filtro da física | ler o `BTreeSet` fora do módulo |
+| *quem pertence a `q`?* | `ph2d_ecs::tags::tagged(world, tree, q) -> Vec<Entity>`, ordem do `StableId` | `SignalActions::resolve` · *Select Tagged* · a contagem do painel | uma segunda varredura; um índice guardado |
+| *quem sofre esta acção?* | `signal_actions::targets_of(world, tree, source, &action) -> Vec<Entity>` | `resolve` | resolver o alvo na shell |
+| *este sinal de colisão passa o filtro?* | `ph2d_physics_ecs::signal_passes(sim, tree, source, other)` | `PhysicsBridge::signal_events` (chegada **e** saída) | um filtro por fase |
+| *ler um documento com gémeos* | `TagTree::restore(..) -> (TagTree, Remap)` + `ph2d_ecs::tags::remap(world, &remap)` | o load | perder a pertença do gémeo descartado |
 
-⭐ **Sem índice, e é MEDIDO** (§6.1): a varredura custa `0,064 ms` a 100 000 objectos com 10 000
-marcados e `1,47 ms` no pior caso (100 000 marcados, 66 667 acertos) — contra um quadro de `16,7`.
-O Godot mantém um índice por árvore; aqui um índice seria **estado derivado a manter coerente depois
-de todo restore**, a recusa que o `stable_id.rs` já escreve para o nome.
+⭐ **Sem índice, e é MEDIDO** (§6.1).
 
-### §2.3 — Os três consumidores
+### §2.3 — Os consumidores
 
-1. **`SignalActions`, alvo por tag** — `SignalAction` ganha `target_by: SignalTarget { Named, Tagged }`
-   **apendado no fim** (migração trivial, §3). `Named` é o de hoje, **byte a byte** (vazio = este
-   objecto). `Tagged`: o `target` é uma consulta; vazio ou inválido = **ninguém** (silêncio, a lei do
-   alvo que não existe). A ordem dos efeitos passa a ser *reactor (StableId) → linha escrita → alvo
-   (StableId)*. ⭐ **A shell não muda**: ela já aplica um efeito por alvo
-   (`render_loop::signal_actions::apply`), e um grupo são N efeitos. Inclui quem reage, se tiver a
-   tag — o mesmo que o `call_group` do Godot (medido).
-2. **Filtro de colisão** — `ph2d_physics_ecs::SignalTagFilter(String)`, componente **irmão** do
-   `SignalOnHit` (registado, o cabeçalho do `signal.rs` diz porquê: apendar no `Collider` é bump).
-   Vazio = sem filtro (o mundo de hoje, byte-idêntico). Consultado **dentro** do `signal_events`, que
-   é quem tem o `other` — o `resolve` só recebe nomes. Uma consulta inválida **não passa ninguém**
-   (falha fechada; o painel diz porquê).
-3. **O editor** — *Rename Tag…* e *Select Tagged* no menu de contexto de uma tag (a selecção múltipla
-   já existe: `HeroScreen::add_to_selection` / `extra_selection`).
+1. **`SignalActions`, alvo por tag** — `SignalAction` ganha `target_by: SignalTarget { Named, Tagged(TagId) }`
+   **apendado no fim**. `Named` é o de hoje, **byte a byte** (vazio = este objecto). `Tagged(id)`:
+   todos os que pertencem à subárvore; id que já não existe = **ninguém** (a lei do alvo que não
+   existe). Ordem: *reactor (StableId) → linha escrita → alvo (StableId)*. ⭐ A shell que aplica **não
+   muda** (`render_loop::signal_actions::apply` já faz um efeito por alvo); ela passa a árvore ao
+   `resolve`. Inclui quem reage, se pertencer — o `call_group` do Godot (medido).
+2. **Filtro de colisão** — `ph2d_physics_ecs::SignalTagFilter(TagId)`, componente **irmão** do
+   `SignalOnHit` (o cabeçalho do `signal.rs` diz porque não um campo do `Collider`). Ausente = sem
+   filtro, o mundo de hoje **byte-idêntico**. Tag apagada = **não passa ninguém** (falha fechada; o
+   painel diz *«Missing tag»*). Consultado **dentro** do `signal_events`, que é quem tem o `other`;
+   a chamada de produção é **uma** (`render_loop/fase_signal_outbox.rs:63`).
+3. **O editor** — *Select Tagged* (a selecção múltipla existe: `add_to_selection`/`extra_selection`)
+   e a contagem por tag no painel.
 
 ### §2.4 — Fora desta wave, com o degrau nomeado
 
 | fica de fora | degrau |
 |---|---|
-| Registo de tags do PROJECTO com descrição (o *Global Groups* do Godot) | D3 — pede campo novo no `ProjectFile`; as sugestões desta wave saem do mundo |
-| *Families* com traits (tag que carrega componentes) | a síntese já o marca como etapa 2 |
-| `Team` | TOP-20 fora do #9; pode ser uma tag, decide-se com a percepção |
-| `CameraFollow` por tag (o `GameCamera` tem `target: String`) | mudar o layout do `CameraFollow` é outro bump; entra com o Spawner, que é quem cria alvos em runtime |
-| Spawner / SightSense | #11 / P1 — consumidores futuros da mesma porta `tagged` |
+| Descrição por tag | D3 (o dono: *«pode ser»* sem ela) |
+| *Families* com traits | etapa 2 da síntese |
+| `Team` | P1; decide-se com a percepção |
+| `CameraFollow` por tag | outro layout ⇒ outro bump; entra com o Spawner |
+| Os **catálogos** da biblioteca passarem a dobrar acentos | ⚠️ **decisão do dono** — a porta fica pronta e partilhada, e o `CatalogTree` continua a comparar como hoje |
+| Tags vindas de uma biblioteca **de outro projecto** | ADR-0165 §5 (bibliotecas lado a lado) |
 
-### §2.5 — Decisões de PRODUTO (do Enio), com a recomendação
+### §2.5 — As decisões do dono (2026-09-13)
 
-| # | pergunta | recomendação | porque |
+| # | pergunta | decisão | o que ela fixou no desenho |
 |---|---|---|---|
-| **D1** | Tags com hierarquia por ponto (`enemy.flying` pertence a `enemy`)? | **sim** | Unreal + Blender (medido); a síntese e a crítica já o pediam desde o dia 1; mudar depois é migrar todo projecto |
-| **D2** | `Enemy` e `enemy` são a mesma tag (mostrada em minúsculas)? | **sim** | o Godot trata-as diferentes (medido) e precisou de um registo para a gralha; o Unreal não distingue |
-| **D3** | Lista de tags do projecto com descrição, agora? | **não nesta wave** — sugestões das que já estão em uso + renomear em todo o lado | é campo novo no ficheiro do projecto, e sem ele nada fica inalcançável |
-| **D4** | Uma tag posta numa receita (prefab) vai para todas as cópias? | **sim, e uma cópia pode ter a sua lista** (override da lista inteira) | é o comportamento de todo componente hoje; o override por-elemento de uma LISTA é a pergunta aberta da família (plano 05 §12.6) |
+| **D1** | hierarquia | *«Faça como o Blender»* | pertença por **identidade**, hierarquia por **árvore**, renomear/mover não toca nos objectos — o modelo do *Asset Browser*, que a casa já tem no `CatalogTree`. ⚠️ **Divergências declaradas do Blender**: árvore e não grafo (as coleções aceitam dois pais — medido — porque são instanciáveis); sem gémeos (o Blender distribui dois — medido) |
+| **D2** | nomes | *«Maiúscula não importa, letra acentuada não importa»* | a dobra do §2.1; ⚠️ **divergência declarada do Blender e do Godot**, que distinguem as três grafias (medido) |
+| **D3** | lista do projecto com descrição | *«pode ser»* — sem descrição | a árvore do projecto existe (é o D1), sem campo de descrição |
+| **D4** | prefab | *«sim»* | a tag da receita vai para as cópias; a cópia pode ter a sua lista |
 
 ---
 
@@ -166,19 +197,13 @@ de todo restore**, a recusa que o `stable_id.rs` já escreve para o nome.
 
 ### §3.1 — Contratos congelados (§6 do `CLAUDE.md`): **nenhum é tocado**
 
-Prova por grep sobre a árvore `4ecaddb5f` (os ficheiros que o desenho **não** abre):
+Prova por grep sobre `4ecaddb5f`:
 
 ```text
 crates/ph2d-nodegraph/src/node.rs            ocorrências de tag|group: 0
 crates/ph2d-editor-core/src/tool.rs          ocorrências de tag|group: 1  → «RadioGroup» num doc-comment (l.36), alheio
 crates/ph2d-vector-doc · ph2d-vector-traits  ocorrências de Tags: 0
 ```
-
-Os ficheiros que o desenho abre: `ph2d-ecs` (`tags.rs` novo, `signal_actions.rs`, `scene/registry.rs`),
-`ph2d-physics-ecs` (`components/signal.rs`, `bridge/signals.rs`, `lib.rs`), `ph2d-component-desc`
-(`catalog/core.rs`, `logic.rs`, `physics.rs`), `ph2d-panel-inspector`, `ph2d-editor-core`
-(`action_bus.rs`, `ids/live_sections.rs`), `ph2d-app-components` e a shell (uma linha por fase).
-Nenhum é superfície de §6.
 
 ### §3.2 — Os contadores, em DELTA (nunca o literal — `CLAUDE.md` §5.0)
 
@@ -187,127 +212,145 @@ Nenhum é superfície de §6.
 | `ph2d-ecs` `reg.len()` (`registry_tests.rs:191`) | 85 | **+1** | `Tags` |
 | espelhos `ph2d-render` / `ph2d-script` | 86 | **+1** | a mesma conta |
 | `ph2d-physics-ecs` `reg.len()` (`lib.rs:198`) | 32 | **+1** | `SignalTagFilter` |
-| `PROJECT_SCHEMA` | 128 | **+1** | três razões num degrau: dois componentes **novos** (a regra do degrau 122→123: um blob desconhecido recusa o load, e o número transforma isso numa frase de versão) e o **layout** do `SignalAction` (postcard é posicional) |
-| `LIVE_SECTIONS` / `any_live_section` | 20 / 15 | **+1 / +1** | a secção *Tags* |
+| `PROJECT_SCHEMA` | 128 | **+1** | um degrau para quatro razões: o campo `ProjectState.tags` (postcard posicional), dois componentes **novos** (a regra do degrau 122→123) e o **layout** do `SignalAction` |
+| `LIVE_SECTIONS` / `any_live_section` | 20 / 15 | **+1 / +1** | a secção *Tags* do Inspector |
+| painéis registados (`EXPECTED_TYPED`) | — | **+1** | o painel *Tags* (W4) — ícone `IconId::Tag` **já existe** (`tag.svg`) |
+| `Cargo.lock` | — | **+ `icu_casemap`, `icu_casemap_data`** | o único pacote externo novo |
 | `FLIP_SCHEMA` · `VEC_SCENE_SCHEMA` · `DOC_VERSION` · `FIELD_DOC_VERSION` | — | 0 | não tocados |
 
-### §3.3 — A migração, e porque ela existe desta vez
+### §3.3 — A migração
 
-⛔ **Um bump sem degrau recusaria todo projecto gravado com *Signal Actions*** desde 2026-09-09 — e a
-decisão do Enio de 26/08 (*«não há projetos salvos»*) é **anterior** a esse componente. ⇒ degrau
-`128 → 129` que **reescreve um blob**, pelo precedente exacto do v97→v98
-(`shells/desktop/src/project_migrate_sprite.rs`): um `SignalActionV1` congelado `(on, target, verb, arg)`
-lê os bytes antigos e escreve `target_by = Named`. ⭐ A lei do re-encode vive no `ph2d-ecs`
-(`signal_actions::migrate_v1_blob`); a shell só a chama no degrau — a shell só desce.
+Um degrau `128 → 129` com **uma** migração de blob, pelo precedente exacto do v97→v98
+(`project_migrate_sprite.rs`): um `SignalActionV1` congelado `(on, target, verb, arg)` lê os bytes
+antigos e escreve `target_by = Named`. A lei do re-encode vive no `ph2d-ecs`
+(`signal_actions::migrate_v1_blob`); a shell só a chama. Um v128 não tem `ProjectState.tags` ⇒ árvore
+vazia, que é o que ele era.
 
 ---
 
 ## §4 — A UI: as QUATRO condições, independentes
 
-| superfície | 1. o componente EXISTE | 2. PINTADO e REGISTADO | 3. o clique chega ao BARRAMENTO | 4. a SEQUÊNCIA leva a algum lugar |
+| superfície | 1. EXISTE | 2. PINTADO e REGISTADO | 3. o clique chega ao BARRAMENTO | 4. a SEQUÊNCIA leva a algum lugar |
 |---|---|---|---|---|
-| **Secção *Tags*** (logo abaixo da *Identity*; catálogo `C::Identity`, `O::ANY`, anexa-se pela paleta — ADR-0166) | `Tags` registado + descritor | chips `widget::tag::Tag` (removível) em fileiras que dobram + `widget::combobox::Combobox` para escrever, com a lista filtrada de `known_tags`; ids em `ph2d-panel-inspector/src/ids/inspector_tags.rs`, `populate_tags.rs` | `EditorAction::InspectorTagsEdit { entity, op: Add(String) \| Remove(String) }` → a lei aplica em `ph2d-app-components::tags_edit` | a tag escrita **aparece** em `tagged` (gate), e um *Signal Actions* por tag passa a atingir o objecto (smoke) |
-| **Alvo do *Signal Actions*** | `SignalTarget` no `SignalAction` | segmentado `Name \| Tag` na linha aberta; com `Tag`, o campo de alvo vira `Combobox` de `known_tags` | `InspectorActionEdit` ganha o op `TargetBy` | `resolve` devolve **N** efeitos e a shell aplica-os (gate + smoke: 5 escondidos, o chamariz intacto) |
-| **Filtro da armadilha** (na secção *Physics*, por baixo do *On Hit* / *On Leave* — `INSP_PHYS_SIGNAL*`) | `SignalTagFilter` registado | uma linha *Only for tag* com `Combobox` | op novo no evento da física | `signal_events` **decide** (§5.0: o leitor decide, ou entrega a quem descarta?) — o inimigo passa calado, o herói grita |
-| **Menu da tag** (clique direito num chip) | `ContextMenuKind::TagChip { entity, tag }` | duas linhas: *Rename Tag…* · *Select Tagged* | `EditorAction::TagRename { from, to }` · `TagSelectAll { tag }` | `rename_tag` reescreve Tags + alvos + filtros num passo de undo; a selecção passa a ser `tagged(q)` |
+| **Secção *Tags*** do Inspector (logo abaixo da *Identity*; `C::Identity`, `O::ANY`, anexa-se pela paleta — ADR-0166) | `Tags` registado + descritor | chips `widget::tag::Tag` (nome da folha; o caminho no balão) + `widget::combobox::Combobox` com a busca dobrada e a linha *Create “…”* quando nada casa | `EditorAction::InspectorTagsEdit { entity, op: Add(TagId) \| Create(String) \| Remove(TagId) }` | a pertença entra em `tagged` (gate) e um *Signal Actions* por tag passa a atingir o objecto (smoke) |
+| **Alvo do *Signal Actions*** | `SignalTarget` | segmentado `Name \| Tag`; com `Tag`, um `Combobox` das tags | `InspectorActionEdit` ganha o op `TargetBy` | `resolve` devolve N efeitos e a shell aplica-os (gate + smoke) |
+| **Filtro da armadilha** (secção *Physics*, por baixo do *On Hit* / *On Leave*) | `SignalTagFilter` | linha *Only for tag* com `Combobox` e limpar | op novo no evento da física | `signal_events` **decide** (§5.0: o leitor decide, ou entrega a quem descarta?) |
+| **Painel *Tags*** (docado, fechado por omissão) | a `TagTree` do documento | árvore (`widget::tree_view`) com a contagem por tag; *+ New* · *+ Child* · renomear (duplo clique) · apagar (*«remove from N objects»*) · arrastar para mover · *Select Tagged* | `EditorAction::Tag{Create,Rename,Move,Delete,SelectAll}` | a árvore muda e os objectos **não perdem** a pertença (gate); apagar é **um** passo de undo com a pertença (gate); a selecção passa a ser `tagged` |
 
-⚠️ **O erro de escrita diz-se NA LINHA, nunca num toast** (`TagError` com a razão: *«spaces are not
-allowed»*, *«empty segment»*) — a lei do L-System (`TextRow.problem`), que já provou que uma queixa tem
-de chegar a PIXEL, com gate de glifo.
+⚠️ **O erro diz-se NA LINHA, nunca num toast** (*«A tag with this name already exists here»*, *«Cannot
+move a tag inside itself»*) — a lei do L-System (`TextRow.problem`), com gate de **glifo**.
+⚠️ **E o painel novo tem CINCO sítios de registo** (memória `feedback_docked_panel_registration_four_sites`:
+crate+sync · feature proxy da shell · z-walk · visibilidade · `cursor_over_hero_panel`) — reconferidos
+contra o código na W4, não contra a nota.
 
 ---
 
-## §5 — Os gates, red-first, e a fixture que CONTÉM o fenómeno
+## §5 — Os gates, red-first, e as fixtures que CONTÊM o fenómeno
 
-### §5.1 — A fixture
+### §5.1 — As fixtures
 
-`tags_fixture(world)` — sete objectos e um chamariz, construídos pelo **mecanismo** e não à mão:
+**A dobra** — uma tabela de pares, os que TÊM de colapsar e os que NÃO podem:
 
-| objecto | tags | o que ele prova |
-|---|---|---|
-| Goblin A, Goblin B | `enemy` | o caso exacto |
-| Bat A, Bat B | `enemy.flying` | a hierarquia de um nível |
-| Dragon | `enemy.flying.boss` | a hierarquia de dois níveis |
-| **Statue** | `enemyx` | ⛔ **o prefixo de TEXTO que não pode casar** |
-| Hero | `player` | o filtro da armadilha |
+| colapsam | não colapsam |
+|---|---|
+| `Inimigo` · `inimigo` · `INIMIGO` · `inímigo` · `ÍNIMIGO` | `inimigo` ≠ `inimiga` |
+| `é` (U+00E9) · `e` + U+0301 | `Enemy` ≠ `Enemies` |
+| `Straße` · `STRASSE` · `strasse` | `a b` ≠ `ab` |
+| `Inimigo  Voador` · `inimigo voador` | — |
 
-⚠️ E duas perturbações dentro da mesma fixture: **inserir um componente alheio no Goblin A** (muda a
-ordem de arquétipo — a ordem da consulta tem de sobreviver) e **um restore do snapshot** (bits novos
-— o alvo tem de continuar a resolver).
+**A árvore** — `Enemy` › `Flying` › `Boss`, a raiz irmã `Statue`, e os objectos Goblin A/B (`Enemy`),
+Bat A/B (`Flying`), Dragon (`Boss`), Statue (`Statue`), Hero (`Player`). ⚠️ Com duas perturbações:
+um componente alheio inserido no Goblin A (muda a ordem de arquétipo) e um restore do snapshot (bits
+novos).
 
-### §5.2 — Os gates, por wave (todos escritos ANTES da porta, vistos VERMELHOS contra um *stub*)
+**Os oráculos com cabeçalho** — a saída das duas sondas do §1.1 e as 63 linhas do ficheiro de catálogos
+do Blender (os dois gémeos lá dentro).
 
-**W1 — a lei (`ph2d-ecs`):**
-1. `a_parent_query_matches_its_descendants_and_not_a_text_prefix` — fixture inteira: `enemy` → 5,
-   `enemy.flying` → 3, `enemy.flying.boss` → 1, `enemyx` → 1.
-2. `parse_refuses_what_cannot_be_a_tag_and_says_why` — `""`, `" enemy"`, `"en emy"`, `".enemy"`,
-   `"enemy."`, `"enemy..boss"`, cada um com o `TagError` certo.
-3. `a_tag_is_normalised_at_the_one_door` — `Enemy.Flying` e `enemy.flying` dão os mesmos bytes.
-4. `a_duplicate_tag_is_one_tag` — contra o oráculo (Godot `COUNT_AFTER_DUP 3`) e contra o Blender
-   (`Enemy.001` — divergência declarada).
-5. `tags_bytes_do_not_depend_on_insertion_order` — o undo regista por bytes.
-6. `the_query_order_is_the_identity_not_the_archetype` — com a perturbação de arquétipo.
-7. `a_malformed_tag_in_a_file_is_refused_loudly` — o `Deserialize` passa pela porta.
-8. `only_the_door_reads_tags` — censo textual (sem comentários, sem strings) de
-   `query::<…Tags…>` / `get::<Tags>` fora de `tags.rs`, com **piso de população** (§2.7 do HOWTO).
-9. `the_hierarchy_is_the_one_blender_measures` — fixture do oráculo (`CHILD_ONLY … all_objects
-   ['Bat', 'Goblin']`, com cabeçalho) contra `matches`.
+### §5.2 — Os gates, por wave (escritos ANTES da porta, vistos VERMELHOS contra um *stub*)
 
-**W2 — consumidores + schema:**
-10. `a_signal_to_a_tag_reaches_every_member_and_the_statue_stays` — 5 efeitos, pela ordem declarada.
-11. `an_empty_or_invalid_tag_target_reaches_nobody`.
-12. `a_named_target_is_byte_identical_to_before` — os gates de hoje do `signal_actions_tests`, intocados.
-13. `a_v128_signal_action_loads_as_a_named_target` — bytes congelados de um v128.
-14. `a_filtered_trap_ignores_the_untagged_body_on_arrival_and_departure`.
-15. `an_unfiltered_trap_is_byte_identical` + `an_invalid_filter_passes_nobody`.
-16. `renaming_a_tag_rewrites_tags_targets_and_filters_in_one_step` — inclui a colisão (renomear para
-    uma que já existe **funde**, e o relatório di-lo).
-17. Contadores: `85→86`, `86→87` (×2), `32→33`, `PROJECT_SCHEMA` + a tripla.
-18. `a_recipe_tag_reaches_every_copy` (D4) · a cópia profunda leva o `Tags` (não está no `DROPPED`).
+**W1 — as folhas e a lei:**
+1. `the_fold_collapses_case_and_accents_and_nothing_else` — a tabela da dobra, as duas colunas.
+2. `the_fold_is_idempotent_and_normalisation_blind` — `fold(fold(x)) == fold(x)`; NFC e NFD dão o mesmo.
+3. `the_catalog_tree_behaves_exactly_as_before_the_extraction` — os **12** gates do `catalog_tests.rs` intocados.
+4. ⚠️ `renaming_a_catalog_onto_an_existing_sibling_is_refused` — **defeito latente ACHADO ao ler o
+   `CatalogTree::rename`**: ele não confere se o caminho novo já existe, e o `delete` filtra por
+   caminho ⇒ dois gémeos apagam-se **juntos** e os assets do outro saem da gaveta. Red-first contra o
+   `main`.
+5. `creating_a_tag_that_exists_folded_returns_the_existing_one` — `Enemy` e `énemy`.
+6. `renaming_or_moving_a_tag_never_touches_a_member` — no `ph2d-ecs`, com a fixture.
+7. `moving_a_tag_inside_itself_is_refused` · `a_rename_that_collides_with_a_sibling_is_refused`.
+8. `deleting_a_tag_takes_its_subtree_and_the_membership_in_one_gesture`.
+9. `a_restored_tree_never_recycles_an_id` (a lei do `CatalogTree`) · `a_document_with_twins_merges_them_and_keeps_every_member` — com o ficheiro do Blender.
+10. `the_hierarchy_is_the_one_blender_measures` — `Enemy` alcança o objecto só de `Flying` (`all_objects`).
+11. `the_query_order_is_the_identity_not_the_archetype` · `tags_bytes_do_not_depend_on_insertion_order`.
+12. `only_the_door_reads_tags` — censo sem comentários/strings, com **piso de população** (HOWTO §2.7).
+13. `the_tree_sorts_by_folded_segment` — `Ártico` antes de `Zebra`; o pai sempre antes dos filhos.
 
-**W3 — painel (seam, `ph2d-ui-testkit`, gesto REAL):**
-19. escrever `enemy.flying` + `Enter` cria o chip e a acção chega ao barramento;
-20. o `×` do chip remove;
-21. `en emy` + `Enter` **não escreve nada** e a razão chega a **glifo**;
-22. as sugestões vêm de `known_tags` (incluindo o pai implícito `enemy`);
-23. o segmentado `Name | Tag` do *Signal Actions* e o *Only for tag* da física chegam ao barramento;
-24. `architecture_panel_wiring_parity` e `hit_indexed_ids_are_registered` verdes com os ids novos.
+**W2 — consumidores, documento, schema:**
+14. `a_signal_to_a_tag_reaches_the_whole_subtree_and_the_sibling_root_stays`.
+15. `a_deleted_tag_target_reaches_nobody` · `a_named_target_is_byte_identical_to_before`.
+16. `a_v128_signal_action_loads_as_a_named_target` — bytes congelados de um v128.
+17. `a_filtered_trap_ignores_a_non_member_on_arrival_and_departure` · `an_unfiltered_trap_is_byte_identical` · `a_missing_filter_tag_passes_nobody`.
+18. `the_tag_tree_travels_in_the_project_and_through_undo` — `collect(restore(b)) == b`; um `Ctrl+Z` depois de apagar devolve a árvore **e** a pertença.
+19. Contadores: `85→86`, `86→87` (×2), `32→33`, `PROJECT_SCHEMA` e a tripla.
+20. `a_recipe_tag_reaches_every_copy` (D4) · a cópia profunda leva o `Tags`.
 
-**W4 — menu + smoke:**
-25. *Rename Tag…* e *Select Tagged* pelo ponteiro (clique direito num chip).
+**W3 — o Inspector (seam, `ph2d-ui-testkit`, gesto REAL):**
+21. escrever `inimigo` + `Enter` com `Inimigo` existente ⇒ o chip é o **existente**, e nada é criado;
+22. escrever um nome novo ⇒ *Create “…”* cria e marca, num passo;
+23. o `×` do chip remove;
+24. o segmentado `Name | Tag` e o *Only for tag* chegam ao barramento;
+25. `architecture_panel_wiring_parity` e `hit_indexed_ids_are_registered` verdes.
 
-Cada gate diz, no doc-comment, **a mutação que o sangra** — e as de W1/W2 são corridas (`/pd-mutacao`).
+**W4 — o painel *Tags* e o smoke:**
+26. criar, criar filho, renomear, arrastar para mover e apagar — pelo ponteiro;
+27. a colisão de nomes e o ciclo dizem-se a **glifo**;
+28. *Select Tagged* selecciona a subárvore inteira.
+
+Cada gate diz, no doc-comment, a mutação que o sangra; os de W1/W2 são corridos (`/pd-mutacao`).
 
 ---
 
 ## §6 — O smoke, com os números MEDIDOS antes de escrito
 
-### §6.1 — A sonda Rust (`measure_tag_scan`, `--release`, mediana de 25, **load 1,38**)
+### §6.1 — A sonda Rust (`measure_tag_scan`, `--release`, mediana de 25)
+
+**O modelo aprovado** (conjunto de ids por objecto + expansão da subárvore dentro da medição):
 
 | objectos | com tags | acertos | consulta por tag | alvo por NOME, hoje |
 |---:|---:|---:|---:|---:|
-| 100 | 100 | 67 | 0,0018 ms | 0,0023 ms |
-| 1 000 | 1 000 | 667 | 0,0060 ms | 0,0031 ms |
-| 10 000 | 10 000 | 6 667 | 0,0614 ms | 0,0252 ms |
-| 100 000 | 10 000 | 6 667 | **0,0638 ms** | 0,2884 ms |
-| 100 000 | 100 000 | 66 667 | **1,4702 ms** | 0,2831 ms |
+| 100 | 100 | 67 | 0,0007 ms | 0,0011 ms |
+| 1 000 | 1 000 | 667 | 0,0045 ms | 0,0029 ms |
+| 10 000 | 10 000 | 6 667 | 0,0428 ms | 0,0235 ms |
+| 100 000 | 10 000 | 6 667 | **0,0432 ms** | 0,2361 ms |
+| 100 000 | 100 000 | 66 667 | **0,4464 ms** | 0,2473 ms |
 
-A 1.ª corrida, a load `5,74`, deu a mesma ordem de grandeza nas duas linhas que decidem (`0,0606` e
-`1,6317` contra `0,0638` e `1,4702`) — logo a conclusão não é carga. ⇒ **a varredura cabe**: o pior caso é `8,8 %` de um quadro, e o custo mora nos ACERTOS (a
-ordenação), não nos objectos. O teste irmão `the_probe_matches_the_hierarchy_and_not_the_text_prefix`
+⚠️ **Load `4,98` ao arrancar e ao acabar** — no limite do §5.0, e a corrida esperou por ele (um laço
+que só arranca abaixo de `5`). Uma corrida anterior do MESMO modelo, a load `30,55`, deu a mesma forma
+com o dobro dos tempos (`0,0690` e `0,8535 ms`) — é carga, não o modelo.
+
+**O modelo da 1.ª redacção** (strings por prefixo), a load `1,38`, para comparação: `0,0638 ms` a
+100 000/10 000 e `1,4702 ms` no pior caso — o conjunto de ids é o mais barato dos dois.
+
+⇒ **a varredura cabe** — o pior caso é `2,7 %` de um quadro de `16,7 ms` (`0,4464 ms`), e o custo
+mora nos ACERTOS (a ordenação), não nos objectos: 100 000 objectos com 10 000 marcados custam o
+mesmo que 10 000 com 10 000. O teste irmão `the_probe_reaches_the_subtree_and_not_the_sibling_root`
 fixa a lei da sonda (`20` de `30`).
 
-### §6.2 — A cena `PH2D_TAGS_SMOKE=1` (a construir na W4; família `components`, `max_level` contado)
+### §6.2 — As cenas `PH2D_TAGS_SMOKE=1..2` (W4; família `components`, `max_level` contado)
 
-1. Sobe com a fixture da §5.1 lado a lado, cada objecto com o nome e as tags escritos por baixo.
-2. Um objecto vazio *Scene Brain* com um `Timer` `alarm` de **2 s** e um *Signal Actions*:
-   *on `alarm` → Tag `enemy` → Hide*.
-3. **O que tem de acontecer:** aos 2 s somem **5** objectos (Goblins, Bats, Dragon); ficam **Statue**
-   e **Hero**. O terminal imprime `[tags] alarm: 5 escondidos · Statue intacta`.
-4. Cena `=2`: uma armadilha (sensor, *On Hit* `trap`, *Only for tag* `player`); um Goblin atravessa-a
+1. **`=1`** sobe com a fixture do §5.1 lado a lado, cada objecto com o nome e as tags escritos por
+   baixo, o painel *Tags* aberto a mostrar `Enemy (5)` › `Flying (3)` › `Boss (1)`, `Statue (1)`,
+   `Player (1)`.
+2. Um objecto vazio *Scene Brain* com um `Timer` `alarm` de **2 s** e *on `alarm` → Tag `Enemy` → Hide*.
+3. **O que tem de acontecer:** aos 2 s somem **5** objectos; ficam **Statue** e **Hero**. O terminal
+   imprime `[tags] alarm: 5 escondidos · Statue intacta`.
+4. **Renomear `Enemy` para `Inimigo` no painel e voltar a correr** — continuam a sumir os mesmos 5.
+5. **`=2`**: uma armadilha (sensor, *On Hit* `trap`, *Only for tag* `Player`); um Goblin atravessa-a
    primeiro (**nada**), depois o Hero (a porta abre). O terminal imprime `[tags] trap: 0 → 1`.
-5. **Como saber que deu errado:** a Statue sumir (casou o prefixo de texto) · menos de 5 sumirem (a
-   hierarquia não chegou) · a porta abrir com o Goblin (o filtro não decide).
+6. **Como saber que deu errado:** a Statue some (a raiz irmã casou) · menos de 5 somem (a hierarquia
+   não chegou) · depois de renomear nada some (a pertença era texto) · a porta abre com o Goblin (o
+   filtro não decide).
 
 ---
 
@@ -315,11 +358,13 @@ fixa a lei da sonda (`20` de `30`).
 
 | wave | entrega | acaba em |
 |---|---|---|
-| **W1** | `tags.rs` (as portas `parse`/`matches`/`has`/`tagged`/`known_tags`), registo, catálogo | gates 1–9 verdes vistos vermelhos · headless |
-| **W2** | `SignalTarget` + `targets_of` · `SignalTagFilter` + `signal_passes` · `rename_tag` · `PROJECT_SCHEMA` +1 com o degrau · contadores | gates 10–18 · headless |
-| **W3** | secção *Tags* · alvo por tag · filtro da física | seam 19–24 + smoke do Enio |
-| **W4** | menu da tag · `PH2D_TAGS_SMOKE=1..2` | gate 25 + smoke do Enio |
+| **W1** | `ph2d-label-fold` · `ph2d-label-path` (e o `CatalogTree` a usá-la, com o defeito do gémeo curado) · `ph2d-tags` · `ph2d_ecs::tags` (portas, registo, catálogo) | gates 1–13 vistos vermelhos · headless |
+| **W2** | `SignalTarget` + `targets_of` · `SignalTagFilter` + `signal_passes` · `ProjectState.tags` (formato, cache, undo, load com gémeos) · `PROJECT_SCHEMA` +1 com a migração · contadores | gates 14–20 · headless |
+| **W3** | secção *Tags* do Inspector · alvo por tag · filtro da física | seam 21–25 + smoke do Enio |
+| **W4** | painel *Tags* · `PH2D_TAGS_SMOKE=1..2` | gates 26–28 + smoke do Enio |
 
-⚠️ **O custo na shell é uma linha por fase** (o dreno do barramento e a publicação do snapshot da
-secção chamam `ph2d_app_components::tags_edit`/`tags_snapshot`) — a lei e a ponte vivem na família.
+⚠️ **O custo na shell é uma linha por fase** (o dreno do barramento, a publicação do snapshot, o
+campo do `ProjectState`, a chamada da migração) — as leis e as pontes vivem nas folhas e na família.
 A catraca `the_shell_only_shrinks` tem folga depois da 5.ª rodada (191 016 contra 196 990).
+⚠️ **E as ICU passam a entrar no fecho de dependências do `ph2d-ecs`**: o custo de um `check` frio
+dessa crate mede-se na W1, com a tabela ao lado, antes de o aceitar.

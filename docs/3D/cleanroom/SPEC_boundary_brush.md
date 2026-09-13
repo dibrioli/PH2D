@@ -5,11 +5,15 @@ Alvo: Blender 5.2.1 LTS (binário /usr/bin/blender) · fonte lido: tag v5.2.0 ·
 Ledger: aberto em docs/3D/cleanroom/LEDGER_blender-boundary.md, 2026-09-13
 Patente (§8.1): buscado em 2026-09-13 — termos e resultado no ledger; nenhuma patente viva alcança o método
   (uma cerca NOMEADA fica: ⛔ nunca acrescentar «reposição de volume por inflação» ao modo de suavizar — §10.6)
-Filtragem §4.3: executada em 2026-09-13 · Sweep: ⛔ VERMELHO em 2026-09-13 (vassoura alargada a 199
-  entradas; o «verde» de 163 media só a língua do alvo — ver ledger, auditoria R-pré)
-Auditoria §4.2 (R-pré): ⛔ REPROVADA em 2026-09-13 — 4 achados (§5.2 · §13.6 · §14.4).
-  ⛔ NÃO ATESTADA ⇒ a janela NÃO implementa a partir desta versão. Reescrita + re-sweep + novo
-  R-pré são a condição. Os achados estão no LEDGER_blender-boundary.md §«Auditoria R-pré».
+Filtragem §4.3: executada em 2026-09-13 · Sweep: ✅ VERDE em 2026-09-13 sobre a vassoura de **199**
+  entradas (o «verde» anterior, de 163, media só a língua do alvo — as entradas de prosa eram todas
+  em inglês e esta espec escreve-se em português; ver ledger). ⚠️ Verde CONTROLADO: as 6 linhas que
+  a versão anterior tinha são acusadas pela mesma vassoura (controlo positivo corrido), e o texto
+  novo não.
+Auditoria §4.2 (R-pré): ⛔ REPROVADA em 2026-09-13 (4 achados) → **reescrita entregue no mesmo dia**
+  (versão 2, este documento). ⏳ **AGUARDA R-PRÉ NOVO — ainda NÃO ATESTADA.**
+  ⛔ A janela NÃO implementa a partir desta versão até esse atestado existir.
+  Os 4 achados e o que cada um virou estão no LEDGER_blender-boundary.md §«Auditoria R-pré».
 Mapa de leitura da literatura: nenhum paper. As fontes livres usadas são (a) o manual público do alvo,
   (b) as mensagens de commit públicas e (c) o rastreador de defeitos público — todas re-ditas em palavras
   nossas, com o endereço ao lado; e (d) a SAÍDA do binário sobre malhas NOSSAS (§19).
@@ -50,10 +54,10 @@ todo pincel/opção de COR. ⚠️ Uma consequência dessa exclusão é **load-b
 §4.3: aqui, contorno é **só a borda aberta da malha** (e a borda que o esconder produz, §4.2) —
 ⛔ o alvo NÃO trata a fronteira entre dois face sets como contorno deste pincel.
 
-⛔ **FORA por decisão desta espec** (o alvo tem, nós não temos o substrato): as duas representações
-alternativas de malha do alvo (subdivisão residente e malha dinâmica). A lei é a mesma; o que muda
-é quem responde *«quem é vizinho de quem»*. Onde o alvo diverge entre representações, está dito
-em §13.6.
+⛔ **FORA por decisão desta espec** (N): as duas representações alternativas de malha (subdivisão
+residente e malha dinâmica). A lei de deformação é a mesma; o que muda é quem responde *«quem é
+vizinho de quem»* — e **nós só implementamos a malha base**, cuja regra de visibilidade está na
+§13.6.
 
 ---
 
@@ -69,7 +73,7 @@ em §13.6.
 | **anel `k`** | os vértices a `k` passos topológicos da cadeia, para dentro da malha (§7) |
 | **alcance `K`** | o maior `k` que a propagação atingiu (§7.3) |
 | **patrono** de um vértice interior | o vértice da cadeia de onde a propagação chegou até ele (§7.2) |
-| **ponto-origem** | a posição do vértice do anel `K` na coluna da âncora — o que o alvo desenha como linha branca (§7.4) |
+| **ponto-origem** | a posição do vértice do anel `K` na coluna da âncora; mede a profundidade que a deformação alcança, e é o que o sobrevoo mostra ao artista (§7.4, §17) |
 | **peso** de um vértice | o escalar em `[−1, 1]` que gradua a deformação dele (§8) |
 | **avanço** `s` | o escalar com sinal que o arrasto da mão produz (§9) |
 
@@ -119,16 +123,17 @@ Uma aresta é **aresta de borda** se tiver **menos de duas faces incidentes** �
 
 Um vértice cujas faces incidentes **não estão todas visíveis** é tratado como vértice de borda,
 mesmo que a malha seja fechada ali. ⚠️ Não temos fixture para isto (o harness não esconde
-geometria) — é **afirmação documentada** pelos autores (manual público e mensagem de commit de
-2020-09-06) e confirmada por leitura. ⇒ **quem implementar o esconder tem de reconferir isto com
-uma corrida nova do oráculo.**
+geometria) — é **afirmação documentada** pelos autores em fonte pública (manual do modo de
+escultura, página do pincel de contorno; e commit público `bbbfd7130`, 2020-09-06). ⇒ **quem
+implementar o esconder tem de reconferir isto com uma corrida nova do oráculo** — enquanto isso não
+acontecer, é a única regra desta espec sem fixture (§20).
 
 ### §4.3 — ⛔ A exclusão C, dita com precisão
 
 O alvo tem uma segunda família de «contornos» — a fronteira entre conjuntos de faces marcados —
 que **este pincel não usa**. Aqui ela **não existe** e não deve ser construída.
 
-### §4.4 — O elo que a régua ingénua perde (D, 2025-11-19)
+### §4.4 — O elo que a régua ingénua perde (D — commit público `d1bbef936`, 2025-11-19)
 
 ⚠️ **«São vizinhos de borda os vértices de borda ligados por uma aresta»** é a regra certa, e
 `ambos são vértices de borda` **não** a exprime: numa tira de faces, dois vértices de borda podem
@@ -161,20 +166,25 @@ grelha de `263 169` vértices ele não aparece no relógio do traço (§15).
 que a pressão possa estar a modular — os autores corrigiram precisamente isto (D, defeito público
 #130101).
 
-### §5.2 — As duas recusas (F/D, confirmadas M)
+### §5.2 — As duas recusas (M; a razão de cada uma é geométrica, N)
 
 Depois de achada a âncora, o traço é **recusado por inteiro** (nada se move) se o vértice **sob o
 cursor** falhar qualquer destes dois testes — contando só vizinhos visíveis:
 
-| teste | recusa quando | porquê (D) |
+| teste | recusa quando | a razão, derivada da geometria (N) |
 |---|---|---|
-| **grau** | o vértice tem **≤ 2** vizinhos | numa quina é ambíguo qual das duas bordas activar |
-| **borda ao redor** | **> 2** dos vizinhos são de borda | a borda é não-manifold ali e o resultado seria imprevisível |
+| **grau** | o vértice tem **≤ 2** vizinhos | um vértice com dois ou menos vizinhos está onde **dois troços de borda se encontram**, e não existe regra que escolha entre eles: as duas cadeias são igualmente legítimas a partir dali |
+| **borda ao redor** | **> 2** dos vizinhos são de borda | mais de dois vizinhos de borda quer dizer que a borda **se ramifica** nesse ponto, e uma cadeia única (§6) deixa de estar definida — não há «a borda» para deformar, há várias |
 
-⚠️⚠️ **O sujeito destes dois testes é o vértice SOB O CURSOR, não a âncora** — e é assim mesmo que
-o alvo faz: a âncora pode ser perfeitamente sã e o traço ser recusado por causa do vértice que o
-artista apontou. O próprio alvo marca este ponto como duvidoso no código; **nós reproduzimo-lo**
-(N: reproduzir, com gate que o nomeia — §19.4), porque é o comportamento que o corpus mede.
+⚠️ **As duas condições são MEDIDAS** (as fixtures estão na §5.3); o que está acima é a leitura
+geométrica delas, escrita por nós — ⛔ não é justificação que o alvo dê em lado nenhum público.
+
+⚠️⚠️ **O sujeito destes dois testes é o vértice SOB O CURSOR, não a âncora**, e isso é **observável
+sem conjecturar nada**: na fixture `grade_canto_agarrar_constante` o cursor está na quina de uma
+grelha rectangular e o traço devolve **`0` vértices movidos** — mesmo havendo, a uma célula dali,
+vértices de borda perfeitamente sãos que serviriam de âncora. ⇒ a recusa não pode estar a olhar
+para a âncora; está a olhar para o ponto que o artista apontou.
+**N: reproduzimos este comportamento**, com gate que o nomeia (§19.4), porque é o que o corpus mede.
 
 ⚠️ **O MESMO par de testes é o critério de PARAGEM do passeio da fase C** (§6.2), aí aplicado ao
 vértice que se vai visitar.
@@ -270,10 +280,16 @@ contagem de «movidos» é `K` anéis, não `K+1`.
 ### §7.4 — O ponto-origem (a linha branca)
 
 À medida que a coluna da âncora avança, guarda-se a posição do vértice mais recente dela; no fim,
-essa posição é o **ponto-origem** — o vértice do anel `K` na coluna da âncora. Ele é:
-- o que o alvo **desenha como uma linha branca** do vértice âncora até ele, para o artista ver *até
-  onde a deformação chega* (D, manual);
-- o ponto que define a **direcção do avanço** (§9.1) e o **eixo do `TWIST`** (§10.5).
+essa posição é o **ponto-origem** — o vértice do anel `K` na coluna da âncora. Ele tem dois papéis:
+
+- **é o que a deformação usa como referência**: dele saem a direcção do avanço (§9.1) e o eixo do
+  `TWIST` (§10.5), e a distância dele à âncora é o braço de alavanca do `BEND` (§10.1);
+- **é o que o artista precisa de VER**, porque a profundidade da deformação não se lê do cursor:
+  o segmento entre a âncora e este ponto mede exactamente quanto a deformação avança para dentro da
+  peça. O alvo mostra esse segmento durante o sobrevoo, numa cor de destaque, e marca o ponto
+  (D — [manual público do modo de escultura, página do pincel de contorno, secção *Deformation*]).
+  ⚠️ **Forma, não conteúdo, é o que aqui importa citar com cuidado**: o facto é observável e a §17
+  descreve o desenho inteiro; o texto acima é nosso.
 
 ---
 
@@ -470,8 +486,9 @@ P(v) = ponto(coluna(v)) + rodar( P₀(v) − ponto(coluna(v)), eixo(coluna(v)), 
 componentes nos dois sentidos de arrasto (§9.1).
 
 ⚠️ **A normal usada é a do vértice do anel `K`**, não a do vértice que se move nem a da borda. Os
-autores tiveram um defeito exactamente aqui (D, 2024-08-01: *a deformação usava as normais
-erradas*) — ⇒ **gate nosso que nomeie de que vértice sai a normal**.
+autores tiveram um defeito exactamente aqui — a deformação de dobra chegou a ler a normal errada
+(D — commit público `653b273d2`, 2024-08-01) — ⇒ **gate nosso que nomeie de que vértice sai a
+normal**.
 
 ⚠️ O manual diz que o `BEND` *roda à volta do eixo Y local* (D). **Isso é a descrição do efeito, não
 a lei**: o eixo é derivado por-coluna pela fórmula acima e só coincide com um eixo do objecto em
@@ -612,7 +629,7 @@ aceita-se só `v[i] ≤ 0`.
 
 ⭐ Com `CONSTANT`, as duas passagens escrevem o mesmo valor e a ausência do filtro não se nota; com
 `RADIUS`/`LOOP` elas escrevem valores diferentes e a segunda **apaga** a primeira. Os autores
-acharam isto no dia seguinte ao lançamento do pincel (D, 2020-08-11). ⇒ **o gate desta lei usa
+acharam isto no dia seguinte ao lançamento do pincel (D — commit público `ca827e36a`, 2020-08-11). ⇒ **o gate desta lei usa
 `RADIUS`, nunca `CONSTANT`.**
 
 ### §12.3 — Esbatimento
@@ -670,7 +687,7 @@ comportamento sob dados por-preencher difere).
 
 ⚠️ Este é um defeito **ABERTO** do alvo: *o pincel parte-se quando é maior do que a geometria
 disponível*, e o pedido do relator é **limitar o ponto-origem à peça** (D, defeito público #146793;
-há também um commit de 2020-10-18 que curou **metade** disto — o caso em que o alcance nem sequer
+há também um commit público (`74d1fba1d`, 2020-10-18) que curou **metade** disto — o caso em que o alcance nem sequer
 era escrito). ⇒ ⭐ **N: a nossa implementação ATA o alcance ao anel mais fundo que de facto existe**
 (`K := min(K, anel_máximo_atribuído)`), o que torna as duas leis bem definidas e faz o `EXPAND`
 deformar em vez de ficar mudo. **Divergência declarada, com gate que a nomeia** e com a fixture
@@ -708,11 +725,11 @@ O alvo calcula e guarda em `f32`. Os nossos dumps foram gravados em `f64` a part
 `f32` (round-trip exacto, verificado pelo montador: as malhas de repouso batem ao bit). ⇒ **a barra
 de paridade é derivável de `f32`** (§19.3), nunca um epsilon de conforto.
 
-### §13.6 — O que diverge entre representações de malha do alvo
+### §13.6 — A regra de visibilidade, e porque não há escolha a fazer
 
-Na malha base, a visibilidade das faces entra no teste «isto é borda?»; nas outras duas
-representações **não entra** (o próprio alvo marca isso como limitação por resolver). ⇒ como só
-implementamos a malha base (§1), a nossa regra é a **com** visibilidade, e não há escolha a fazer.
+**N: a visibilidade das faces entra no teste «isto é borda?»** (§4.2) — é a regra da representação
+de malha que implementamos, e a §1 põe as outras duas **fora de alcance**. ⇒ não há aqui decisão
+por tomar nem variante por suportar.
 
 ---
 
@@ -764,13 +781,17 @@ no total de vértices (`16×` os vértices custa `4,9×`) porque o trabalho é p
 **alcançados**, não à malha. `GRAB` e `SMOOTH` custam `~1,3×` o `BEND` na mesma peça
 (`0,00133`/`0,00130` contra `0,00099`).
 
-⚠️ **Mas o pen-down é O(malha):** as fases A–E varrem a malha inteira (o censo de bordas, e três
-arrays do tamanho do número de vértices). ⛔ **Não medimos o pen-down isolado** — o relógio acima é
-do traço todo, e a `263 k` ele já o inclui. ⇒ item aberto (§20).
+⚠️ **Mas o pen-down é O(malha), em tempo E em memória:** as fases A–E percorrem a malha inteira e
+preenchem **dados por-vértice proporcionais ao número de vértices** (§7 precisa, por vértice, do
+anel, do patrono e do peso). ⛔ **Quantas estruturas e com que forma é decisão do Implementador** —
+a espec fixa a classe de custo, não o arranjo. ⛔ **Não medimos o pen-down isolado**: o relógio acima
+é do traço todo, e a `263 k` já o inclui. ⇒ item aberto (§20).
 
-⚠️ O alvo declara por escrito que este pincel **processa a árvore espacial INTEIRA** (não consegue
-saber de antemão onde a deformação vai cair) e marca isso como optimização por fazer (D). ⇒ a nossa
-implementação pode fazer melhor: depois da fase D o conjunto alcançado **é conhecido**.
+⭐ **N: o nosso caminho para fazer melhor está aberto pela própria ordem das fases.** O trabalho por
+evento é proporcional aos vértices **alcançados** (é o que a sublinearidade da tabela mostra), e
+**depois da fase D o conjunto alcançado é conhecido** — logo a região a revisitar por evento pode
+ser restringida a ele, em vez de varrer a estrutura espacial toda. ⚠️ **Não medido**: é proposta,
+não resultado (§20).
 
 ---
 
@@ -794,8 +815,12 @@ deformação, queda no contorno, offset) e nada mais — o resto vem dos ajustes
 
 ## §16 — Três coisas que o pincel herda do editor
 
-### §16.1 — Ele precisa de TODOS os nós da árvore espacial
-Ver §14.4.
+### §16.1 — O alcance do pincel não é o raio do cursor
+
+⚠️ **A região que este pincel toca não está contida na esfera do raio**: a deformação entra pela
+malha a partir da borda (§7) e o `boundary_offset` alonga-a ainda mais (§8.4). ⇒ toda estrutura de
+aceleração espacial que o editor use para decidir *«que parte da malha este traço pode tocar»* tem
+de receber a região da **fase D**, e não o raio. Custo e a nossa via para o restringir: §14.4.
 
 ### §16.2 — Ele desfaz-se como os outros
 O registo de desfazer é o do editor (instantâneo de posições por nó), sem nada de próprio.

@@ -211,6 +211,54 @@ NÚMEROS entram na espec, como facto observado.
    mutuamente consistentes com o sinal **medido**, e a fixture do arrasto tangente (`0` movidos)
    fecha a projecção. *A espec escreve o que a MEDIÇÃO deu, e diz que o faz* (§9.1 dela).
 
+## Auditoria R-pré — 2026-09-13: REPROVADA, e a reescrita (versão 2)
+
+O R-pré **não atestou** a versão 1: **4 achados**, o primeiro classificado SUBSTANCIAL. A reescrita
+entregue no mesmo dia é a versão 2, e ela **aguarda um R-pré NOVO** — ⛔ a janela não implementa
+antes disso.
+
+⚠️⚠️ **O INSTRUMENTO estava cego, e essa é a lição maior desta auditoria.** O sweep de entrega da
+versão 1 fechou **verde sobre quatro traduções frásicas de comentários do fonte**: das 163 entradas
+da vassoura, ~100 eram prosa **toda em inglês**, e esta espec escreve-se em **português**. *Uma
+vassoura na língua do alvo não varre um documento na nossa.* O R alargou-a para **199** (36 entradas
+de prosa em PT), com a regra de desenho que fica: **só entram formas PT de prosa de comentário/TODO
+do fonte** — ⛔ **não** entram formas PT de manual, mensagem de commit ou rastreador, que o §4.1.12
+permite citar; pô-las ali faria o instrumento acusar um acto **permitido**.
+⚠️ E o mesmo defeito apareceu noutras duas especs desta obra no mesmo dia ⇒ **é do método, não da
+espec**.
+
+### O que cada achado virou
+
+| # | achado do R | o que ficou na versão 2 |
+|---|---|---|
+| 1 | **§5.2, coluna «porquê (D)»** — as duas justificações eram tradução de prosa que o alvo guarda DENTRO do fonte, e o selo `(D)` era **falso**: o R conferiu o corpus público inteiro e nenhuma das duas frases existe no manual, em commit ou em issue | coluna substituída por **razão derivada da GEOMETRIA**, marcada `(N)`: grau `≤ 2` = dois troços de borda encontram-se e não há regra que escolha entre eles · `> 2` vizinhos de borda = a borda **ramifica** e cadeia única deixa de estar definida. ⭐ **As condições ficam** — são medidas, e a §5.3 tem as fixtures |
+| 2 | **§5.2 · §13.6 · §14.4 (+§16.1)** — três sítios citavam o que o alvo diz **sobre si mesmo** dentro do fonte. O mais caro era o §14.4: a frase seguinte, apresentada como ideia nossa, **era** o conteúdo da nota de trabalho do alvo | §5.2 passou a apoiar-se no **comportamento medido** (a fixture da quina: `0` movidos com âncoras sãs a uma célula) · §13.6 ficou só com a nossa regra `(N)`, já que a espec declara as outras representações fora de alcance · §14.4/§16.1 ficam com o **custo medido** e a melhoria como decisão nossa `(N)`, **sem** «o alvo declara» e sem o `(D)`. ⭐ O §16.1 deixou de ser um ponteiro e passou a dizer a lei observável: *a região tocada não está contida na esfera do raio* |
+| 3 | **§14.4 — «três arrays do tamanho do número de vértices»** é o LAYOUT INTERNO do alvo | passou a **classe de custo**: o pen-down preenche dados por-vértice proporcionais à malha, em tempo e memória, e ⛔ *quantas estruturas e com que forma é decisão do Implementador* |
+| 4 | (menor) **§7.4 — a linha branca**: conteúdo legítimo e observável; o que atravessava era a **FORMA**, decalque de uma frase inteira do manual | re-dito em estrutura nossa (dois papéis do ponto-origem: referência da deformação · o que o artista precisa de ver), com a citação do manual **endereçada** e uma nota a dizer que o texto é nosso |
+
+### Higiene corrigida no mesmo passe
+
+As entradas `(D)` que citavam **só a data** passaram a trazer o **endereço público** que o §4.1.12
+pede: commits `d1bbef936` (2025-11-19) · `653b273d2` (2024-08-01) · `ca827e36a` (2020-08-11) ·
+`bbbfd7130` (2020-09-06) · `74d1fba1d` (2020-10-18).
+
+### O que o R conferiu e está LIMPO (⛔ não refazer)
+
+Os nomes conservados são **todos** identificadores públicos da API, verificados um a um · zero nome
+interno · a matemática das §8/§9/§10 **não** espelha corpo de função · a ordem das fases A→H é
+forçada por **dependência de dados**, não pela organização do alvo · as fixtures e as chaves em
+vocabulário do domínio · toda a prosa pública citada existe no corpus e está re-dita ou citada curto
+com atribuição.
+
+### Prova de que o verde da versão 2 vale (⭐ o controlo que o verde anterior não teve)
+
+- **Controlo positivo:** as **6** linhas que a versão 1 tinha nesses sítios, extraídas do commit
+  anterior, são **acusadas** pela vassoura de 199 (`exit 1`, as seis nomeadas).
+- **Negativo:** a versão 2 e as 78 fixtures fecham `exit 0` sobre a mesma vassoura.
+- ⚠️ **Limite NOMEADO do instrumento:** ele casa **string literal**. Uma paráfrase — ou a mesma frase
+  sem acentos — **escapa** (medido: três controlos de-acentuados passaram limpos). ⇒ o sweep é a
+  rede, **nunca** o juízo; quem julga é o R.
+
 ## Corrente I
 
 | janela | session-id | data | motivo | declaração |
@@ -287,9 +335,10 @@ reescrever, pôr o endereço ao lado de cada `(D)` restante.
 
 ## Espec
 
-| versão | caminho | commit |
-|---|---|---|
-| 1 | `docs/3D/cleanroom/SPEC_boundary_brush.md` | commit único, docs-only, `line/sculpt3d`, 2026-09-13 |
+| versão | caminho | commit | estado |
+|---|---|---|---|
+| 1 | `docs/3D/cleanroom/SPEC_boundary_brush.md` | `23bb85670`, docs-only, `line/sculpt3d`, 2026-09-13 | ⛔ **REPROVADA** pelo R-pré (4 achados) |
+| 2 | o mesmo caminho | commit docs-only de 2026-09-13 (a reescrita) | ⏳ **aguarda R-pré NOVO** |
 
 **Filtragem §4.3 executada** em 2026-09-13, secção a secção: cada frase responde *o que o programa
 FAZ*; cada número traz `F` (fórmula) · `M` (medido, com a fixture) · `D` (documentado pelos autores,

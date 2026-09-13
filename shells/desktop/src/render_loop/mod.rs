@@ -312,6 +312,8 @@ mod fase_sprite_precision_emissive;
 mod fase_surface_resize;
 /// Fase do quadro: o padrao de textura, os gradientes, o alinhamento e o pivo.
 mod fase_texpat_gradient_align;
+/// Fase do quadro: os campos de texto.
+mod fase_text_fields;
 /// Fase do quadro: o estilo do texto e o painel de texto.
 mod fase_text_panel;
 /// Fase do quadro: o relógio dos contêineres da timeline.
@@ -5478,124 +5480,25 @@ impl crate::App {
                     },
                 );
             }
-            let editing_session = self.vec.text_edit.is_some();
-            if let Some(size) = pending_vec_text_size {
-                crate::vec_text::apply_text_size(
-                    &mut self.vec.text_edit,
-                    &mut self.vec.text.size,
-                    vec_scene,
-                    size,
-                );
-                if !editing_session {
-                    crate::vec_text::edit_selected_text(
-                        sim,
-                        vec_scene,
-                        &self.vec.entities,
-                        &vec_text_sel,
-                        |p| p.size = size,
-                    );
-                }
-            }
-            if let Some(weight) = pending_vec_text_weight {
-                crate::vec_text::apply_text_weight(
-                    &mut self.vec.text_edit,
-                    &mut self.vec.text.weight,
-                    vec_scene,
-                    weight,
-                );
-                if !editing_session {
-                    crate::vec_text::edit_selected_text(
-                        sim,
-                        vec_scene,
-                        &self.vec.entities,
-                        &vec_text_sel,
-                        |p| p.weight = weight,
-                    );
-                }
-            }
-            if let Some(lh) = pending_vec_text_line_height {
-                crate::vec_text::apply_text_line_height(
-                    &mut self.vec.text_edit,
-                    &mut self.vec.text.line_height,
-                    vec_scene,
-                    lh,
-                );
-                if !editing_session {
-                    crate::vec_text::edit_selected_text(
-                        sim,
-                        vec_scene,
-                        &self.vec.entities,
-                        &vec_text_sel,
-                        |p| p.line_height = lh,
-                    );
-                }
-            }
-            if let Some(wrap) = pending_vec_text_wrap {
-                crate::vec_text::apply_text_wrap(
-                    &mut self.vec.text_edit,
-                    &mut self.vec.text.wrap,
-                    vec_scene,
-                    wrap,
-                );
-                if !editing_session {
-                    crate::vec_text::edit_selected_text(
-                        sim,
-                        vec_scene,
-                        &self.vec.entities,
-                        &vec_text_sel,
-                        |p| p.wrap_width = wrap,
-                    );
-                }
-            }
-            if let Some(tr) = pending_vec_text_tracking {
-                crate::vec_text::apply_text_tracking(
-                    &mut self.vec.text_edit,
-                    &mut self.vec.text.tracking,
-                    vec_scene,
-                    tr,
-                );
-                if !editing_session {
-                    crate::vec_text::edit_selected_text(
-                        sim,
-                        vec_scene,
-                        &self.vec.entities,
-                        &vec_text_sel,
-                        |p| p.tracking = tr,
-                    );
-                }
-            }
-            if let Some((i, v)) = pending_vec_text_axis
-                && !editing_session
-            {
-                crate::vec_text::edit_selected_text(
-                    sim,
-                    vec_scene,
-                    &self.vec.entities,
-                    &vec_text_sel,
-                    |p| {
-                        if let Some(a) = p.axes.get_mut(i) {
-                            a.1 = v as f32;
-                        }
-                    },
-                );
-            }
-            if let Some(align) = pending_vec_text_align {
-                if !editing_session {
-                    crate::vec_text::edit_selected_text(
-                        sim,
-                        vec_scene,
-                        &self.vec.entities,
-                        &vec_text_sel,
-                        |p| p.align = crate::vec_text::align_to_u8(align),
-                    );
-                }
-                crate::vec_text::apply_text_align(
-                    &mut self.vec.text_edit,
-                    &mut self.vec.text.align,
-                    vec_scene,
-                    align,
-                );
-            }
+            let Some(fase_text_fields::TextFieldsOut {
+                editing_session,
+                pending_vec_text_axis,
+                vec_text_sel,
+            }) = self.fase_text_fields(
+                fase_text_fields::TextFieldsIntents {
+                    pending_vec_text_size,
+                    pending_vec_text_weight,
+                    pending_vec_text_line_height,
+                    pending_vec_text_tracking,
+                    pending_vec_text_wrap,
+                    pending_vec_text_align,
+                    pending_vec_text_axis,
+                },
+                vec_text_sel,
+            )
+            else {
+                return;
+            };
             self.fase_fonts(
                 fase_fonts::FontsIntents {
                     pending_vec_text_axis,

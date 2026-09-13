@@ -18,7 +18,11 @@
 //! nunca uma distância em bytes, que expira na primeira linha inserida
 //! [[feedback_a_gate_anchored_on_a_byte_distance_is_a_proxy_that_expires]].
 
-const SRC: &str = include_str!("../../src/render_loop/mod.rs");
+/// O QUADRO pela ordem em que corre (`frame_text::render_frame`).
+///
+/// ⚠️ Desde a OBRA 2 da `line/render-loop` (2026-09-13) o dreno do pedido mora na `fase_text_fields`, e os braços que o
+/// escrevem continuam no dreno do barramento: o texto EMENDADO tem os dois, e as janelas abrem-se onde a âncora está.
+static SRC: std::sync::LazyLock<String> = std::sync::LazyLock::new(crate::frame_text::render_frame);
 
 /// O nome da variável que carrega o pedido até o dreno. Se ela for renomeada, este gate falha —
 /// e falhar aqui é barato; o que não pode acontecer é o braço sumir em silêncio.

@@ -1,6 +1,6 @@
 //! ⭐⭐⭐ **O que a HIERARQUIA pede** — as 33 formas de uma família só.
 //!
-//! # ⚠️ Por que elas saíram do [`super::action_bus`] (2026-09-01)
+//! # ⚠️ Por que elas saíram do [`super`] (2026-09-01)
 //!
 //! Elas partilham o **sujeito** (uma `row` da lista — 29 das 33 não carregam mais nada), o
 //! **dreno** (`shells/desktop/src/render_loop/hierarchy.rs`) e a **origem** (o painel da
@@ -12,10 +12,10 @@
 //! ficheiro estava a 676/700 e não aceitava mais nenhuma. *Quando N variantes têm a mesma forma, a
 //! forma é que é o dado* — e este ficheiro é o sítio onde ela vive.
 //!
-//! ⚠️ O molde é o do irmão [`super::action_bus_kinds`], que já guarda os vocabulários que as ações
+//! ⚠️ O molde é o do irmão [`super::kinds`], que já guarda os vocabulários que as ações
 //! carregam.
 
-use super::action_bus_kinds::SelectModifier;
+use super::kinds::SelectModifier;
 
 /// Ver o cabeçalho do módulo.
 #[derive(Debug, Clone, PartialEq)]

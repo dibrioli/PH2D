@@ -1,4 +1,4 @@
-//! ⭐ **A FILA** do [`super::action_bus`] — o irmão por ASSUNTO do ficheiro que a nomeia.
+//! ⭐ **A FILA** do [`super`] (`action_bus`) — o filho por ASSUNTO do ficheiro que a nomeia.
 //!
 //! # ⚠️ Porque a fila saiu, e não o vocabulário
 //!
@@ -12,7 +12,7 @@
 //! linhas no FIM do ficheiro, onde ninguém escreve. *Ao criar foundational, projecte-o para
 //! isolamento* (CLAUDE.md §0.2).
 
-use super::action_bus::EditorAction;
+use super::EditorAction;
 
 /// FIFO queue of [`EditorAction`]s. Held on `HeroScreen` as a single
 /// `bus: ActionBus` field replacing the 20 scattered `pending_X`

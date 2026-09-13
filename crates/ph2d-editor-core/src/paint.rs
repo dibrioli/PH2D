@@ -6,6 +6,9 @@
 //! once per frame, then hands the resulting `VectorScene` to
 //! `ph2d_render::VelloPass` which composites onto the wgpu surface.
 //!
+//! ⚠️ The toast queue's `impl Paint` lives in `toast.rs`, next to the queue (auditoria A10,
+//! 2026-09-12): painting it here made the foundation's painter depend on `toast` and `progress`.
+//!
 //! **Color resolution** goes through `ph2d_tokens::ColorToken::resolve(theme)`
 //! so swapping Dark↔Light flips the entire UI.
 //!
@@ -17,7 +20,6 @@
 // `FloatingPanel` paint impl retired 2026-05-17 — struct itself
 // remains in `crate::floating_panel` for tool event dispatch but no
 // longer needs a paint helper import here.
-use crate::toast::ToastQueue;
 // `paint_color_swatch`, `paint_radio_group`, `paint_slider`, and
 // `paint_toggle` were used inside `impl Paint for FloatingPanel`
 // (retired 2026-05-17). They still ship from `crate::widget` for
@@ -398,101 +400,6 @@ impl Paint for Layout {
 // ToastQueue — stacked at top-center
 // -----------------------------------------------------------------------
 
-/// O lado do ícone de severidade de um balão de aviso.
-///
-/// ⚠️ **Não há token para este tamanho, e a ausência é a nota:** o `chrome.inline-icon` (14) é o
-/// glifo de uma linha e o `chrome.icon-btn-size` (36) é um botão — este está no meio, num balão
-/// que não é nem linha nem botão. Fica NOMEADO em vez de escrito no meio da pintura.
-const TOAST_ICON_PX: f32 = 24.0; // LITERAL-PX-OK: lado do ícone de severidade do balão de aviso
-
-impl Paint for ToastQueue {
-    fn paint(&self, scene: &mut VectorScene, ctx: &mut PaintCtx) {
-        use crate::toast::ToastSeverity;
-        use ph2d_tokens::{Radius, Spacing, StrokeToken, TypeToken};
-        // The toast stream owns the TOP of the top-center column and the job bars
-        // (`progress::JobQueue`) stack under it — a toast lives three seconds and gets one
-        // chance to be read, so its slot must not move because some background job happens to
-        // be running. `column_row` is the shared ruler for both tenants; it lives over there
-        // because this file is at its frozen LOC ceiling (see the workspace LOC-cap gate).
-        let radius = crate::paint::frame_radius(ctx.theme, Radius::Md.px());
-        for (i, toast) in self.iter().enumerate() {
-            let r = crate::progress::column_row(ctx.viewport, i);
-            // Body uses BgElev so the toast lifts off the canvas
-            // independently of its severity tint; the severity color
-            // is reserved for the icon + accent stripe on the left.
-            fill_rounded_rect(scene, r, radius, resolve(ColorToken::BgElev, ctx.theme));
-            // ⭐ **Pela porta do tema** (wave 26): até aqui isto era um `stroke_rounded_rect` cru
-            //    a 1 px, logo o balão desenhava num tema moderno o contorno que a pele plana
-            //    apagou em toda a casa. ⛔ E o censo da moldura não o via: o `paint.rs` está
-            //    ISENTO com o motivo *«é a PORTA»* — verdade para o corpo do `stroke_frame`, e o
-            //    balão vive 290 linhas abaixo, no mesmo ficheiro.
-            crate::paint::stroke_frame(
-                scene,
-                r,
-                radius,
-                ctx.theme,
-                ph2d_tokens::visuals::Feel::Rest,
-                StrokeToken::Thin.px(),
-                resolve(ColorToken::Border, ctx.theme),
-            );
-
-            let (severity_token, icon) = match toast.severity {
-                ToastSeverity::Info => (ColorToken::Info, crate::icons::IconId::Info),
-                ToastSeverity::Success => (ColorToken::Success, crate::icons::IconId::Check),
-                ToastSeverity::Warning => (ColorToken::Warn, crate::icons::IconId::Warning),
-                ToastSeverity::ErrorState => (ColorToken::Danger, crate::icons::IconId::Error),
-            };
-            let severity_color = resolve(severity_token, ctx.theme);
-
-            // Faixa de acento à esquerda, na cor da severidade. ⚠️ O recuo dela é a LARGURA DA
-            // MOLDURA do tema — num tema moderno não há moldura, e a faixa passa a encostar à
-            // borda em vez de deixar um fio do fundo a aparecer.
-            let inset = ph2d_tokens::visuals::Chrome::of(ctx.theme)
-                .panel_border
-                .width;
-            let stripe = Rect::new(
-                r.x + inset,
-                r.y + inset,
-                Spacing::Xs.px(),
-                r.h - inset * 2.0,
-            );
-            scene.fill_rect(rect_to_vello(stripe), severity_color);
-
-            // Ícone da severidade, centrado depois da faixa.
-            let icon_rect = Rect::new(
-                r.x + Spacing::Xl.px(),
-                r.y + (r.h - TOAST_ICON_PX) * 0.5,
-                TOAST_ICON_PX,
-                TOAST_ICON_PX,
-            );
-            paint_icon(
-                scene,
-                icon,
-                icon_rect,
-                severity_color,
-                StrokeToken::Default.px(),
-            );
-
-            // Message text fills the rest, left-aligned with padding.
-            let text_x = icon_rect.x + TOAST_ICON_PX + ph2d_tokens::icon_label_gap_px();
-            let text_rect = Rect {
-                x: text_x,
-                y: r.y,
-                w: (r.x + r.w - text_x - Spacing::Xl.px()).max(0.0),
-                h: r.h,
-            };
-            paint_text_centered(
-                ctx.text,
-                scene,
-                &toast.message,
-                text_rect,
-                TypeToken::Base.px(),
-                resolve(ColorToken::Text1, ctx.theme),
-            );
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -629,22 +536,5 @@ mod tests {
             Color::WHITE,
             1.5,
         );
-    }
-
-    #[test]
-    fn toast_queue_paint_with_three_severities() {
-        use crate::toast::Toast;
-        let mut q = ToastQueue::new();
-        q.push(Toast::info("info"));
-        q.push(Toast::success("success"));
-        q.push(Toast::warning("warn"));
-        let mut scene = VectorScene::new();
-        let mut text = TextSystem::without_system_fonts();
-        let mut ctx = PaintCtx {
-            theme: Theme::Sunstone,
-            viewport: Rect::new(0.0, 0.0, 800.0, 600.0),
-            text: &mut text,
-        };
-        q.paint(&mut scene, &mut ctx);
     }
 }

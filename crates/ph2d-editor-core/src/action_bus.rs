@@ -587,18 +587,29 @@ pub enum EditorAction {
     },
 }
 
-/// ⚠️ A **fila** vive no irmão [`super::action_bus_queue`] e é re-exportada aqui: quem escreve
+// ⚠️ **As três partes abaixo são FILHAS deste módulo, não irmãs na raiz da crate** (auditoria A10,
+// 2026-09-12). Como irmãs elas eram três módulos de topo a depender do `action_bus` e ele delas: um
+// ciclo entre módulos que são um assunto só, e a primeira coisa que o gate de DAG da fundação via.
+// Os ficheiros não mudaram de nome nem de sítio — só quem os declara.
+
+/// ⚠️ A **fila** vive no filho [`queue`] (`action_bus_queue.rs`) e é re-exportada aqui: quem escreve
 /// `action_bus::ActionBus` continua a escrevê-lo. Ver o cabeçalho de lá para o porquê do corte.
-pub use super::action_bus_queue::ActionBus;
+#[path = "action_bus_queue.rs"]
+mod queue;
+pub use queue::ActionBus;
 
-/// ⚠️ Os **vocabulários** que as acções carregam vivem no irmão [`super::action_bus_kinds`] e são
-/// re-exportados aqui: quem escreve `action_bus::TransportCmd` continua a escrevê-lo. Ver o
+/// ⚠️ Os **vocabulários** que as acções carregam vivem no filho [`kinds`] (`action_bus_kinds.rs`) e
+/// são re-exportados aqui: quem escreve `action_bus::TransportCmd` continua a escrevê-lo. Ver o
 /// cabeçalho de lá para o porquê do corte.
-pub use super::action_bus_kinds::{AssetCardAction, CatalogVerb, SelectModifier, TransportCmd};
+#[path = "action_bus_kinds.rs"]
+mod kinds;
+pub use kinds::{AssetCardAction, CatalogVerb, SelectModifier, TransportCmd};
 
-/// ⚠️ A família da **Hierarquia** vive no irmão [`super::action_bus_hier`] e é re-exportada aqui:
-/// quem escreve `action_bus::HierRequest` continua a escrevê-lo.
-pub use super::action_bus_hier::HierRequest;
+/// ⚠️ A família da **Hierarquia** vive no filho [`hier`] (`action_bus_hier.rs`) e é re-exportada
+/// aqui: quem escreve `action_bus::HierRequest` continua a escrevê-lo.
+#[path = "action_bus_hier.rs"]
+mod hier;
+pub use hier::HierRequest;
 
 #[cfg(test)]
 #[path = "action_bus_tests.rs"]

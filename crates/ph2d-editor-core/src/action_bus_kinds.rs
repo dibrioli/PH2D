@@ -1,6 +1,6 @@
-//! ⭐ **Os VOCABULÁRIOS que as acções carregam** — o segundo irmão por assunto do
-//! [`super::action_bus`], pelo mesmo motivo e com a mesma cerca do primeiro
-//! ([`super::action_bus_queue`]).
+//! ⭐ **Os VOCABULÁRIOS que as acções carregam** — o segundo filho por assunto do
+//! [`super`] (`action_bus`), pelo mesmo motivo e com a mesma cerca do primeiro
+//! ([`super::queue`]).
 //!
 //! # ⚠️ Porque saem estes três, e não o `EditorAction`
 //!
@@ -14,7 +14,7 @@
 //! acção, ao lado da acção que o transporta*. Eles são re-exportados pelo `action_bus`, então quem
 //! escreve `action_bus::TransportCmd` continua a escrevê-lo e **nenhum chamador muda**.
 
-/// Modifier-key context for a [`super::action_bus::EditorAction::SelectSprite`] event
+/// Modifier-key context for a [`super::EditorAction::SelectSprite`] event
 /// (Fase 0b — image-tools multi-select). The hero/panel side resolves
 /// the OS keyboard modifier into this enum before pushing; the shell
 /// dispatches the matching [`crate::screens::hero::GizmoStateGroup`]

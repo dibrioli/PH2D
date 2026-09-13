@@ -6,62 +6,16 @@
 
 use super::*;
 use crate::project::{DEFAULT_PIXELS_PER_METER, DisplayUnit, ProjectSettings};
-use crate::ruler::label_text;
 
 /// A régua do artista por default: 100 px por metro, lendo em PIXELS.
 fn shipping() -> LengthDisplay {
     LengthDisplay::of(&ProjectSettings::default())
 }
 
-/// **As duas superfícies dizem o mesmo número.**
-///
-/// O painel de Grid Snap converte por `display_unit.from_meters` (é literalmente
-/// o que o `NumberInput` do passo mostra) e a régua imprime `label_text`. Antes
-/// desta wave, para a MESMA distância de mundo, o painel dizia **150** e a régua
-/// **2** — não por arredondamento, mas porque `paint_rulers` não recebia as
-/// settings e portanto não *conseguia* converter.
-///
-/// Mutação que tem de sangrar: `label_text` voltar a formatar o valor CRU.
-#[test]
-fn the_ruler_and_the_panel_say_the_same_number_for_the_same_distance() {
-    let d = shipping();
-    assert_eq!(d.unit, DisplayUnit::Pixels, "o default do projeto");
-    for world in [0.5_f64, 1.0, 1.5, 12.0] {
-        let panel = f64::from(d.unit.from_meters(world as f32, DEFAULT_PIXELS_PER_METER));
-        // O passo em MUNDO que a régua escolheria num zoom de 1 px por unidade
-        // de display; o que importa aqui é o VALOR, e ele não depende do passo.
-        let printed: f64 = label_text(world, 1.0, d)
-            .parse()
-            .expect("a régua imprime um número");
-        assert!(
-            (printed - panel).abs() < 0.5,
-            "world {world}: régua {printed} contra painel {panel} — as duas \
-             superfícies estão a descrever a mesma distância"
-        );
-    }
-}
-
-/// **Um projeto em METROS é byte-idêntico ao que já shipava** — o CONTROLE.
-///
-/// `from_meters` é a identidade nessa unidade, então a conversão não pode mover
-/// um caractere. Sem este gate, a wave inteira poderia estar a mudar o mundo
-/// para todo mundo em vez de só para quem escolheu pixels.
-#[test]
-fn reading_in_metres_prints_exactly_what_the_old_ruler_printed() {
-    let d = LengthDisplay {
-        unit: DisplayUnit::Meters,
-        pixels_per_meter: DEFAULT_PIXELS_PER_METER,
-    };
-    // Os mesmos pares que o `ruler_tests` pina desde a W6.2.
-    assert_eq!(label_text(0.2, 0.2, d), "0.2");
-    assert_eq!(label_text(1.0, 1.0, d), "1");
-    assert_eq!(label_text(0.05, 0.05, d), "0.05");
-    assert_eq!(
-        label_text(-0.0, 1.0, d),
-        "0",
-        "o zero negativo lê como erro"
-    );
-}
+// ⚠️ Os dois gates que comparam a RÉGUA com esta porta —
+// `the_ruler_and_the_panel_say_the_same_number_for_the_same_distance` e
+// `reading_in_metres_prints_exactly_what_the_old_ruler_printed` — vivem em `ruler_tests.rs`: eles
+// chamam o `label_text` da régua, que está ACIMA desta porta (auditoria A10, 2026-09-12).
 
 /// **As casas vêm da resolução CONVERTIDA, não da resolução de mundo.**
 ///

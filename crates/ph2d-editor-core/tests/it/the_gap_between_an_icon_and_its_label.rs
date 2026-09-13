@@ -30,7 +30,9 @@ use std::path::{Path, PathBuf};
 /// ⚠️ **Metade de OBSOLESCÊNCIA**: cada uma tem de continuar a chamar a porta. Se uma deixar de
 /// pintar o par ícone+rótulo, tire-a daqui — senão o censo mede uma população que já não existe.
 const PAINTS_AN_ICON_AND_ITS_LABEL: &[&str] = &[
-    "crates/ph2d-editor-core/src/paint.rs",
+    // O balão de aviso — o pintor da fila mudou-se do `paint.rs` para o `toast.rs` (auditoria A10,
+    // 2026-09-12), e o vão dele veio junto.
+    "crates/ph2d-editor-core/src/toast.rs",
     "crates/ph2d-editor-core/src/widget/combobox.rs",
     "crates/ph2d-editor-core/src/widget/list_item.rs",
     "crates/ph2d-editor-core/src/widget/section_header/mod.rs",

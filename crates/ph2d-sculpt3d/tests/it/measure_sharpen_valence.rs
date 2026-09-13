@@ -1,7 +1,7 @@
 //! **A VALÊNCIA decide a estabilidade do Sharpen?** — a sonda que separa um
 //! defeito da LEI de um defeito da FIXTURE.
 //!
-//! O gather do `calc_sharpen_filter` é `Σ_vizinhos (p[n] − p[i])·f[n]` e **não é
+//! O gather do tipo *Sharpen* é `Σ_vizinhos (p[n] − p[i])·f[n]` e **não é
 //! normalizado pela contagem**. Com `f ≈ 1` isso é `valência × laplaciano`, e um
 //! passo de alisamento de fator maior que um OVERSHOOTA. Numa esfera UV os polos
 //! têm valência igual ao número de segmentos (64 na fixture) — a malha do

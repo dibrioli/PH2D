@@ -27,7 +27,7 @@
 //! cursor conformado do Blender de resposta a um problema que não temos.
 //!
 //! ⚠️ **A premissa estava certa e a conclusão não, e a distinção é geométrica:**
-//! a pegada é uma BOLA de mundo (`PAINT_FALLOFF_SHAPE_SPHERE`) cujo raio é
+//! a pegada é uma BOLA de mundo (a forma de queda *Sphere* da referência) cujo raio é
 //! derivado dos pixels na profundidade do acerto. O círculo de tela é a
 //! **SILHUETA dessa bola** — mas quem recebe tinta é a interseção dela com a
 //! SUPERFÍCIE, e numa superfície inclinada de `θ` essa interseção projeta uma

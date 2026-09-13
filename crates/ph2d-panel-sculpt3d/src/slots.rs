@@ -114,7 +114,7 @@ impl Sculpt3dUi {
 /// regra é a de sempre: *arma se, e só se, o artista ainda não mexeu*, onde
 /// **"não mexeu" é o valor estar exatamente no default do modo que SAI**.
 /// Nenhuma troca pode APAGAR uma escolha deliberada — o precedente do
-/// `arm_inflate_defaults` do Painter.
+/// `arm_tool_falloff_defaults` do Painter.
 ///
 /// ⚠️ **Ela é uma função e não duas porque tem DOIS chamadores:** o chip de
 /// referência, que mexe no pincel VIVO, e o botão *aplicar a todos*, que mexe no
@@ -196,7 +196,7 @@ pub fn switch_verb_parts(
 /// lei é a de sempre: *arma se, e só se, o artista ainda não mexeu*, onde
 /// **"não mexeu" é o valor estar exatamente no default do modo que SAI**.
 /// Nenhuma troca pode APAGAR uma escolha deliberada — o precedente do
-/// `arm_inflate_defaults` do Painter.
+/// `arm_tool_falloff_defaults` do Painter.
 ///
 /// ⚠️ **O RAIO não entra aqui, e a ausência é medida:** ele é função do VERBO
 /// (`default_radius_px`), não do modo, então trocar de referência nunca o move.

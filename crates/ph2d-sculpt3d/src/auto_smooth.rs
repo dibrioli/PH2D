@@ -1,7 +1,7 @@
 //! **O ORÇAMENTO DE ALISAMENTO** — quantas vezes o laplaciano é aplicado, e com
 //! que força cada vez.
 //!
-//! ⚠️ **O `autosmooth_factor` do Blender NÃO é a força de um lerp.** Esta é a
+//! ⚠️ **O *Auto Smooth* do Blender NÃO é a força de um lerp.** Esta é a
 //! coisa que faltava, e ela não é um detalhe de afinação: um único
 //! `lerp(p, média, fator)` reproduz a referência em `0,24` e diverge de forma
 //! crescente acima disso. Em `1,0` o Blender aplica o operador **quatro vezes**

@@ -4,14 +4,14 @@
 //! afirmação era sobre uma lei errada.** Eu escrevi que *"as duas réguas
 //! geométricas óbvias caem ou oscilam sobre a lei correcta"* e concluí que
 //! *"quem julga a aparência é o smoke"* — o smoke veio, reprovou (*"Sharpen não
-//! parece correto"*), e a causa era minha: o `sharpen_factor` era recomputado a
-//! cada sub-passo quando no fonte ele vive no `filter_cache`, construído **uma
-//! vez por gesto**. *A régua não discriminava porque a lei alisava.* Com o
+//! parece correto"*), e a causa era minha: o factor de afiação era recomputado
+//! a cada sub-passo quando na referência ele é construído **uma vez por
+//! gesto**. *A régua não discriminava porque a lei alisava.* Com o
 //! factor congelado o degrau **sobe**, e o gate que o afirma é o
 //! `..._raises_the_step_between_neighbours_...`.
 //!
 //! Os gates deste arquivo defendem, então, quatro coisas: que o kernel é o do
-//! `calc_sharpen_filter` (paridade contra a lei escrita à mão, numa malha
+//! tipo *Sharpen* (paridade contra a lei escrita à mão, numa malha
 //! REGULAR), que a lei **afia** em vez de alisar, que o gesto é reversível ao
 //! byte e que ele **não depende da taxa de eventos** do rato.
 
@@ -73,14 +73,14 @@ fn sharpened(amount: f32) -> Mesh {
 /// construção — a forma que esta casa já apanhou duas vezes (o `BodyDefaults`
 /// da física, o `row.set` do painel).
 ///
-/// A estrutura é a do `calc_sharpen_filter` lido de cima a baixo: o pré-passe
-/// que mede e normaliza, e o gather que escreve.
+/// Ela segue as **duas fases** da lei: um pré-passe que mede e normaliza a
+/// curvatura, e a soma sobre o anel que escreve.
 fn reference_sharpen(mesh: &Mesh, per: f32) -> Vec<[f32; 3]> {
     let pos = mesh.positions();
     let adj = mesh.adjacency();
     let n = pos.len();
 
-    // Pré-passe: `detail_directions` e `sharpen_factors`.
+    // Pré-passe: as direcções de detalhe e os factores de afiação.
     let mut dirs = vec![[0.0f32; 3]; n];
     let mut fac = vec![0.0f32; n];
     let mut peak = 0.0f32;
@@ -189,8 +189,8 @@ fn sharpen_on(mut mesh: Mesh, amount: f32) -> Mesh {
 /// ⭐ **A LEI NÃO DESTRÓI UMA MALHA DE VALÊNCIA ALTA — e é IDENTIDADE numa
 /// regular.**
 ///
-/// ⚠️ **Gate red-first, e ele nasceu do smoke da `=34`.** O gather do
-/// `calc_sharpen_filter` é uma SOMA sobre o anel, **não normalizada pela
+/// ⚠️ **Gate red-first, e ele nasceu do smoke da `=34`.** O gather do tipo
+/// *Sharpen* é uma SOMA sobre o anel, **não normalizada pela
 /// contagem**: com `f[i]` baixo e os vizinhos altos ele vale `valência ×
 /// laplaciano`, e um passo de alisamento de fator maior que um OVERSHOOTA. A
 /// referência vive com isso porque as malhas dela são regulares; a cena do smoke
@@ -245,7 +245,7 @@ fn the_sharpen_does_not_blow_up_a_high_valence_mesh_and_leaves_a_regular_one_alo
     );
 }
 
-/// ⭐ **O GATE DA WAVE: o kernel é o `calc_sharpen_filter`.**
+/// ⭐ **O GATE DA WAVE: o kernel é o do tipo *Sharpen*.**
 ///
 /// Uma força dentro do teto de uma fatia (`MAX_STEP`) é **UM** passo — ou seja,
 /// a referência com um único evento de rato —, e é aí que o porte é comparável
@@ -285,9 +285,9 @@ fn the_sharpen_filter_is_the_reference_law_written_independently() {
 ///
 /// ⚠️ **Eu escrevi, no cabeçalho deste arquivo, que a régua do degrau *"não
 /// discrimina"*.** Ela não discriminava porque **a lei estava errada**: eu
-/// recomputava o `sharpen_factor` a cada sub-passo, quando no fonte ele vive no
-/// `filter_cache` — construído **uma vez por GESTO** e reusado por toda
-/// iteração. Recomputando, a lei persegue o próprio rasto (a curvatura que ela
+/// recomputava o factor de afiação a cada sub-passo, quando na referência ele é
+/// construído **uma vez por GESTO** e reusado por toda iteração. Recomputando,
+/// a lei persegue o próprio rasto (a curvatura que ela
 /// acabou de achatar deixa de a marcar como detalhe) e converge para um estado
 /// **ALISADO**; com o factor congelado ela empurra consistentemente na mesma
 /// direcção, e o degrau **SOBE**.
@@ -347,8 +347,8 @@ fn a_sharpen_of_zero_is_the_frozen_pose_to_the_byte() {
 /// ⭐ **O resultado é fato do ARRASTO, nunca de como ele foi entregue.**
 ///
 /// ⚠️ **É a propriedade que separa a nossa lei da da referência**, e a razão de
-/// a wave existir na forma em que existe: o `sculpt_mesh_filter_is_continuous`
-/// põe o Sharpen entre os filtros que **não restauram a pose** entre eventos,
+/// a wave existir na forma em que existe: a referência classifica o Sharpen
+/// entre os filtros que **não restauram a pose** entre eventos,
 /// então lá o número de iterações é o número de eventos que o sistema
 /// operativo entregou. Aqui um arrasto que passa por dez valores intermédios
 /// pousa exactamente onde um que salta direto ao fim pousa.
@@ -379,8 +379,8 @@ fn the_sharpen_result_is_a_function_of_the_drag_not_of_how_it_was_delivered() {
 /// **Nenhuma fatia carrega mais que o teto da referência.**
 ///
 /// ⚠️ **A propriedade é sobre a FATIA, não sobre a contagem**, e é por isso que
-/// o gate divide em vez de comparar `n` com uma tabela: o `clamp_factors(0,
-/// 0.5)` do fonte é o que impede o gather de passar da vizinhança, e uma
+/// o gate divide em vez de comparar `n` com uma tabela: a faixa `[0, 0,5]` da
+/// referência é o que impede o gather de passar da vizinhança, e uma
 /// contagem escrita à mão aqui envelheceria no dia em que o teto mudasse.
 #[test]
 fn no_slice_of_a_sharpen_drag_exceeds_the_reference_ceiling() {

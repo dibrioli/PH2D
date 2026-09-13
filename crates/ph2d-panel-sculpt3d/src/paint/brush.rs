@@ -126,15 +126,15 @@ pub(super) fn paint_brush_tail(
     //
     // ⛔ **Escondê-lo mesmo assim foi TENTADO no mesmo dia e REVERTIDO**, porque o gate
     // `the_basic_level_never_hides_the_curve_that_shapes_the_dab` o apanhou — e o doc dele carrega
-    // a decisao, com referencia: no Blender o `FalloffPanel` e' painel de primeira classe e um
+    // a decisao, com referencia: no Blender o painel de queda e' painel de primeira classe e um
     // popover **sempre visivel**; *«ele e' dobrado, nunca ausente: o artista SEMPRE ve^ que existe
     // uma curva»*. ⭐ *Uma fileira inerte num estado nao e' o mesmo que uma fileira morta* — e a
     // diferenca entre as duas e' uma decisao de produto que ja' foi tomada, com argumento.
     //
     // ⚠️ **A row da DUREZA ao lado NAO herda esta cerca**, e desde 2026-08-30 ela segue a porta do
     // motor (`rows::shapes_the_distance`): a dureza e' inerte SO' sob campo elastico — no `Mask`
-    // ela chega, porque o `shaped_distance` roda ANTES da curva do canal, tal como o
-    // `apply_hardness_to_distances` roda antes do `BKE_brush_calc_curve_factors`. *Duas fileiras
+    // ela chega, porque o `shaped_distance` roda ANTES da curva do canal — a mesma ordem da
+    // referencia, que aplica a dureza antes de avaliar a curva de queda do pincel. *Duas fileiras
     // vizinhas, a mesma aparencia, e regimes de morte diferentes: so' a medicao as separa.*
     //
     // ⚠️ **Quem quiser mexer nisto mexe no GATE primeiro**, e leva um argumento melhor que o do

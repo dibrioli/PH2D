@@ -86,8 +86,8 @@ pub(super) fn always(_: &Sculpt3dUi) -> bool {
 /// [`Dureza`](BRUSH), e a MESMA que a largura do campo já segue
 /// (`RefMode::field`).
 ///
-/// ⚠️ **A dureza é o `apply_hardness_to_distances`: ela remapeia a distância que
-/// a curva do dab lê.** Com um campo elástico armado (`RefMode::L` + um verbo que
+/// ⚠️ **A dureza é a etapa da referência que remapeia a distância que a curva
+/// do dab lê.** Com um campo elástico armado (`RefMode::L` + um verbo que
 /// declare `elastic_field`) não existe curva do dab — o suporte é o
 /// `kelvinlet::rim_landing`, que é uma indicadora com aterrissagem, e o
 /// `shaped_distance` **não é chamado**. Medido pela porta do produto em
@@ -104,7 +104,7 @@ pub(super) fn always(_: &Sculpt3dUi) -> bool {
 /// curva é inerte nos mesmos regimes (e num terceiro, o do `Verb::Mask`) e é
 /// pintado assim mesmo, por uma cerca com motivo escrito:
 /// `the_basic_level_never_hides_the_curve_that_shapes_the_dab` porta a decisão do
-/// Blender — *o `FalloffPanel` é dobrado, nunca ausente*. Ver o bloco no
+/// Blender — *o painel de queda é dobrado, nunca ausente*. Ver o bloco no
 /// `paint/brush.rs`, que traz as duas recusas medidas.
 pub(super) fn shapes_the_distance(u: &Sculpt3dUi) -> bool {
     u.brush.mode.field(u.brush.verb).is_none()
@@ -170,9 +170,9 @@ static BRUSH: &[Row] = &[
         // ao bit em `measure_where_the_curve_knobs_reach`.
         show: shapes_the_distance,
         // ⚠️ **O caso mais limpo de Pro que esta tabela tem:** o valor de fábrica
-        // é `0`, que é o NEUTRO do próprio original (o
-        // `apply_hardness_to_distances` abre com `if (hardness == 0.0f) return;`),
-        // então escondê-la não tira capacidade nenhuma de ninguém — ela só some
+        // é `0`, que é o NEUTRO da etapa de dureza da referência (com dureza zero
+        // a etapa não corre), então escondê-la no Basic não tira capacidade
+        // nenhuma de ninguém — ela só some
         // de vista com o pincel exatamente como estava.
         level: UiLevel::Pro,
         place: Place::Knobs,
@@ -384,8 +384,8 @@ static BRUSH: &[Row] = &[
         slider: crate::ids::SCULPT3D_LAYER_HEIGHT,
         chip: crate::ids::SCULPT3D_LAYER_HEIGHT_NUM,
         // ⚠️ **ZERO é alcançável e ali a demão é INERTE** — uma camada de
-        // espessura nenhuma não move um vértice —, e é a faixa da referência
-        // (`RNA_def_property_range(prop, 0, 1.0f)`). Um piso acima de zero
+        // espessura nenhuma não move um vértice —, e é a faixa declarada da
+        // propriedade na referência (de `0` a `1`). Um piso acima de zero
         // esconderia uma continuidade que a lei tem.
         min: 0.0,
         // ⚠️ **O slider para na faixa de UI da referência e a caixa alcança a

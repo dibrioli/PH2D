@@ -93,10 +93,10 @@ impl Verb {
     /// mesma razão — um verbo pode ter uma referência que o grip não conhece.
     ///
     /// ⚠️ **O `from_live` do [`crate::Grip::Stamp`] é o Accumulate do
-    /// SCULPTGL**, e a faixa não é dele. O *Clay Strips* chama
-    /// `calc_local_positions(position_data.eval, …)` — a posição **VIVA**,
-    /// sempre —, e o que o `accum` da referência escolhe é a fonte do PLANO
-    /// (motor de escultura da referência, `!ss.cache->accum` ⇒ pen-down congelado).
+    /// SCULPTGL**, e a faixa não é dele. O *Clay Strips* da referência mede as
+    /// posições locais contra a posição **VIVA**, sempre —, e o que o
+    /// *Accumulate* da referência escolhe é a fonte do PLANO (com o Accumulate
+    /// desligado a referência lê a pose congelada do pen-down).
     ///
     /// ⚠️ **E é a combinação que dá o auto-limite:** posição viva contra plano
     /// congelado faz o `z` do portão `z·(1−z)` **encolher** à medida que o barro
@@ -113,13 +113,14 @@ impl Verb {
         // *Layer*:**
         //
         // * `coat` — a saturação assintótica, que é a lei dela;
-        // * `unit_accum` **falso** — o `accum` da demão **é** o
-        //   `displacement_factor` da referência, então o aplicador tem de o
+        // * `unit_accum` **falso** — o `accum` da demão **é** o factor de
+        //   deslocamento da referência, então o aplicador tem de o
         //   multiplicar (um alvo que já trouxesse o peso levaria a demão inteira
         //   no primeiro dab);
-        // * `from_live` **falso sempre** — o `calc_faces` do *Layer* mede as
-        //   distâncias contra `orig_data.positions` incondicionalmente, e o
-        //   [`Self::accumulates`] já tira o interruptor da tela pelo mesmo
+        // * `from_live` **falso sempre** — o *Layer* da referência mede as
+        //   distâncias contra as posições ORIGINAIS do pen-down
+        //   incondicionalmente, e o [`Self::accumulates`] já tira o interruptor
+        //   da tela pelo mesmo
         //   motivo. Sem esta linha um documento salvo com o checkbox armado
         //   noutro verbo mudaria a lei da demão em silêncio.
         if self == Self::Layer {
@@ -188,8 +189,8 @@ impl Verb {
     /// byte-idênticos.
     ///
     /// ⚠️ **O preço de não ter o flag estava MEDIDO no report do Enio** (*"se
-    /// aumentar hardness, Layer fica muito ruim"*), e o mecanismo é o
-    /// `apply_hardness_to_distances`: com `hardness = h` toda distância `t < h`
+    /// aumentar hardness, Layer fica muito ruim"*), e o mecanismo é a etapa de
+    /// dureza: com `hardness = h` toda distância normalizada `t < h`
     /// vira zero, e zero é onde a curva vale **um** — a `0,90` a curva satura em
     /// **90,5 %** do raio. Ali `shape = curva · alpha · facing · keep` colapsa
     /// em `facing`, o cosseno da CÂMERA, e a demão passa a vestir o perfil de
@@ -227,15 +228,15 @@ impl Verb {
     /// A **DUREZA DO DAB** com que um pincel deste verbo nasce.
     ///
     /// ⚠️ **A referência é MUDA aqui, e a mudez é dos DOIS lados:** o
-    /// `hardness` é o `apply_hardness_to_distances` do Blender, que o SculptGL
-    /// não tem — logo o [`crate::ref_profiles`] nunca poderia respondê-lo —, e
-    /// os defaults por-tool do Blender moram num `.blend` **binário** (o §7.0 do
-    /// plano mediu isso). Então este número **não pode** vir de tabela nenhuma:
-    /// ele vem de quem olhou para o barro.
+    /// `hardness` é uma etapa do Blender que o SculptGL não tem — logo o
+    /// [`crate::ref_profiles`] nunca poderia respondê-lo —, e os defaults
+    /// por-tool do Blender moram num `.blend` **binário** (o §7.0 do plano mediu
+    /// isso). Então este número **não pode** vir de tabela nenhuma: ele vem de
+    /// quem olhou para o barro.
     ///
-    /// ⚠️ **`0` é o NEUTRO e é o default de todo verbo menos um** — o
-    /// `apply_hardness_to_distances` abre com `if (hardness == 0.0f) return;`,
-    /// então o zero não é *"pouca dureza"*, é *"a etapa não corre"*.
+    /// ⚠️ **`0` é o NEUTRO e é o default de todo verbo menos um** — com dureza
+    /// zero a etapa de dureza da referência não corre, então o zero não é
+    /// *"pouca dureza"*, é *"a etapa não corre"*.
     ///
     /// ⚠️ **O `0,4` da demão é veredito de SMOKE** (Enio, 2026-08-17: *"temos
     /// bom resultado para Layer com Strength 0.7, Hardness 0.4 e Auto Smooth

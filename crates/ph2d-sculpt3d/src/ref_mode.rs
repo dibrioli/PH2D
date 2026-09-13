@@ -302,7 +302,7 @@ impl RefMode {
             // TEM** — é a mesma frase que a coluna de defaults já honrava, e
             // agora as duas tabelas concordam.
             // ⚠️ **E nem o Blob, pela MESMA frase:** o `Crease.js` é o único
-            // parente que o SculptGL tem, e ele não carrega o `invert_strength`
+            // parente que o SculptGL tem, e ele não carrega a inversão de força
             // que faz de um Blob um Blob. Uma referência governa as ferramentas
             // que ela TEM.
             // ⚠️ **E nem o Clay Thumb**, pela terceira vez a mesma frase: ele é

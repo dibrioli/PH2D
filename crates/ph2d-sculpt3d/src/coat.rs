@@ -6,8 +6,8 @@
 //! oráculo-espelho que esta casa varre a cada wave — um gate que chama a função
 //! sob teste para computar o que espera é sempre verde.
 
-/// **A CABEÇA que a referência dá ao incremento** — o `1.05` de
-/// `offset_displacement_factors`.
+/// **A CABEÇA que a referência dá ao incremento** — o `1.05` da recorrência
+/// que enche a demão do *Layer*.
 ///
 /// ⚠️ **Ela é `> 1` de propósito, e é o que faz o centro do pincel chegar ao
 /// teto num dab só:** com peso `1` e força `1` o primeiro passo vale
@@ -20,7 +20,7 @@ pub const COAT_HEAD: f32 = 1.05;
 /// **Um passo da demão** — `d ← clamp(d + w·força·(1,05 − |d|), 0, teto)`.
 ///
 /// `d` é a fração da demão já depositada neste vértice (o
-/// `displacement_factor` da referência, que no nosso motor **é** o `accum`),
+/// factor de deslocamento da referência, que no nosso motor **é** o `accum`),
 /// `w` o peso completo do dab e `teto` a máscara livre daquele vértice.
 ///
 /// ⚠️ **O `teto` é a máscara e não `1`, e a referência aplica a máscara DUAS

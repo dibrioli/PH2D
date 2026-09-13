@@ -31,20 +31,20 @@ use super::*;
 
 /// **A LEI que um filtro roda** — uma por LEI, nunca uma por verbo.
 ///
-/// A ordem é a do `prop_mesh_filter_types` da referência
-///, porque é a ordem em que o artista já viu esta
-/// lista noutro programa.
+/// A ordem é a do menu de tipos do filtro de malha da referência, porque é a
+/// ordem em que o artista já viu esta lista noutro programa.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FilterKind {
-    /// `calc_smooth_filter` — anda a fração `f` na direção da média do anel.
+    /// O tipo *Smooth* do filtro de malha — anda a fração `f` na direção da
+    /// média do anel.
     ///
     /// ⚠️ **Com `f` NEGATIVO ele AFIA**, e é por isso que a faixa da referência
     /// é `[−1, 1]` e não `[0, 1]`: `smooth(−f)` **é** `sharpen(f)` (a álgebra
     /// está no gate `the_sharpen_filter_is_the_smooth_filter_dragged_backwards`,
     /// que a mede em vez de a afirmar).
     Smooth,
-    /// `calc_scale_filter` — `t = pre × f`, uma **homotetia em torno da ORIGEM
-    /// DO OBJETO**.
+    /// O tipo *Scale* do filtro de malha — `t = pre × f`, uma **homotetia em
+    /// torno da ORIGEM DO OBJETO**.
     ///
     /// ⚠️ **Não é o gesto de escala do [`crate::MaskTransform`], e a distinção
     /// foi MEDIDA** (`tests/measure_scale_filter.rs`): aquele escala em torno do
@@ -56,48 +56,52 @@ pub enum FilterKind {
     ///
     /// ⚠️ **A ORIGEM é a do objeto, e a consequência fica NOMEADA:** uma peça
     /// cujo pivô não está no meio dela escala *para longe do pivô*. É o
-    /// comportamento da referência (`orig_positions` são coordenadas de objeto),
-    /// e quem o move é o gesto de re-centrar, que já existe.
+    /// comportamento da referência (as posições de partida dela estão em
+    /// coordenadas de objeto), e quem o move é o gesto de re-centrar, que já
+    /// existe.
     Scale,
-    /// `calc_inflate_filter` — `t = orig_normals × f`, ao pé da letra.
+    /// O tipo *Inflate* do filtro de malha — desloca pela normal congelada vezes
+    /// `f`, como na referência.
     Inflate,
-    /// `calc_sphere_filter` — puxa cada vértice para a **esfera unitária** de
-    /// raio 1 centrada na origem do objeto.
+    /// O tipo *Sphere* do filtro de malha — puxa cada vértice para a **esfera
+    /// unitária** de raio 1 centrada na origem do objeto.
     ///
-    /// ⚠️ **A força é o VALOR ABSOLUTO do fator** (`calc_sphere_translations`:
-    /// `midpoint(normalize(p), −p) × abs(factors[i])`), então **arrastar para
-    /// qualquer lado esferiza** — a lei não tem inverso, e a referência a
-    /// escreve assim de propósito: *"desesferizar"* não é uma operação (não há
-    /// para onde voltar sem lembrar de onde se veio).
+    /// ⚠️ **A força é o VALOR ABSOLUTO do fator** (o deslocamento é
+    /// `(p̂ − p)/2 · |f|`), então **arrastar para qualquer lado esferiza** — a
+    /// lei não tem inverso, e a referência a escreve assim de propósito:
+    /// *"desesferizar"* não é uma operação (não há para onde voltar sem lembrar
+    /// de onde se veio).
     ///
-    /// ⚠️ **O `midpoint` é METADE do caminho, não o caminho inteiro:** com
+    /// ⚠️ **O ponto médio é METADE do caminho, não o caminho inteiro:** com
     /// `|f| = 1` o vértice anda `(p̂ − p)/2`, ou seja pousa no MEIO entre onde
     /// estava e a esfera. Um arrasto chega lá; um arrasto por gesto, não.
     Sphere,
-    /// `calc_random_filter` — `t = orig_normals × f × (hash(p, seed) − 0,5)`.
+    /// O tipo *Random* do filtro de malha — desloca ao longo da normal congelada
+    /// por `f · (hash(p, seed) − 0,5)`.
     ///
     /// ⚠️ **O deslocamento é ao longo da NORMAL, não numa direção sorteada** —
     /// a referência sorteia a *magnitude* e mantém a direção, e é isso que
     /// produz *rugosidade* em vez de *nuvem de pontos*.
     ///
-    /// ⚠️ **DIVERGÊNCIA DECLARADA no HASH, e ela é estrutural:** o
-    /// `randomize_factors` chama `BLI_hash_int_2d`, **cuja definição não existe
-    /// neste clone da referência** (medido: `grep -rl BLI_hash_int_2d` sobre
-    /// `source/` devolve **um** arquivo, o que a USA). Não há como portar o que
-    /// não se pode ler, então o hash é o [`crate::alpha`] desta crate — o mesmo
+    /// ⚠️ **DIVERGÊNCIA DECLARADA no HASH, e ela é estrutural:** a etapa de
+    /// sorteio da referência mistura com uma função de hash **cuja definição não
+    /// existe neste clone da referência** (medido: a busca pela definição
+    /// devolve **um** arquivo, o que a USA). Não há como portar o que não se
+    /// pode ler, então o hash é o [`crate::alpha`] desta crate — o mesmo
     /// que os alphas procedurais já usam, porque *uma crate, um hash*. O que se
     /// perde é paridade de BITS com o Blender; o que se mantém são as quatro
     /// propriedades que fazem de um ruído um ruído, e elas são gateadas:
     /// determinismo, faixa `[−0,5, 0,5)`, estabilidade ao longo do arrasto e
     /// descorrelação entre vizinhos.
     Random,
-    /// `calc_relax_filter` — a mesma média, com a componente normal REMOVIDA.
+    /// O tipo *Relax* do filtro de malha — a mesma média, com a componente
+    /// normal REMOVIDA.
     Relax,
-    /// `calc_surface_smooth_filter` — o HC (Vollmer et al.), que devolve parte
-    /// do que o laplaciano tirou.
+    /// O tipo *Surface Smooth* do filtro de malha — o HC (Vollmer et al.), que
+    /// devolve parte do que o laplaciano tirou.
     SurfaceSmooth,
-    /// `calc_enhance_details_filter` — **o MESMO kernel do [`Self::Smooth`],
-    /// com o sinal trocado e SEM teto**.
+    /// O tipo *Enhance Details* do filtro de malha — **o MESMO kernel do
+    /// [`Self::Smooth`], com o sinal trocado e SEM teto**.
     ///
     /// ⚠️ **Ela nao e' lei nova, e isso foi MEDIDO antes de existir** (a sonda
     /// `tests/measure_sharpen_filter.rs`): contra a lei da referencia escrita a`
@@ -107,13 +111,9 @@ pub enum FilterKind {
     /// expressoes da mesma lei, nao dois modelos.*
     ///
     /// ⚠️ **Entao o que ela ACRESCENTA e' exactamente o TETO, e ele e'
-    /// ALCANCAVEL.** O `calc_smooth_filter` chama `clamp_factors(factors, -1,
-    /// 1)` e o `calc_enhance_details_filter`
-    /// **nao passa pelo `clamp_factors`** (conferido no fonte, `:1885-1925`: a
-    /// cadeia e' `fill_factor_from_hide_and_mask` -> `auto_mask::calc_vert_factors`
-    /// -> `scale_factors` -> `gather_data_mesh(detail_directions)` ->
-    /// `scale_translations` -> `zero_disabled_axis_components` ->
-    /// `clip_and_lock_translations`). Medido nas forcas 1,5 / 2,0 / 3,0: o
+    /// ALCANCAVEL.** Na referencia o factor do *Smooth* e' restringido a
+    /// `[-1, 1]` e o do *Enhance Details* **nao passa por restricao de faixa
+    /// nenhuma**. Medido nas forcas 1,5 / 2,0 / 3,0: o
     /// [`Self::Smooth`] fica preso em **0,072617** e a referencia alcanca
     /// **0,108926 / 0,145235 / 0,217852**.
     ///
@@ -129,16 +129,16 @@ pub enum FilterKind {
     /// referencia** precisamente para separar *o alisamento com teto* de *o
     /// realce sem teto*.
     ///
-    /// ⚠️ **O SINAL e' o da referencia** (`t = detail_directions x -strength`):
-    /// arrastar para a DIREITA realca, ao contrario do [`Self::Smooth`], que
-    /// alisa. Os dois chips respondem em sentidos opostos ao mesmo gesto, e e'
-    /// assim no Blender — cada um e' uma entrada propria do
-    /// `prop_mesh_filter_types`.
+    /// ⚠️ **O SINAL e' o da referencia** (o deslocamento e' a direccao de
+    /// detalhe vezes menos a forca): arrastar para a DIREITA realca, ao
+    /// contrario do [`Self::Smooth`], que alisa. Os dois chips respondem em
+    /// sentidos opostos ao mesmo gesto, e e' assim no Blender — cada um e' uma
+    /// entrada propria do menu de tipos do filtro de malha.
     EnhanceDetails,
-    /// `calc_sharpen_filter` — **a única lei desta família que nenhum outro
-    /// verbo exprime**, e a única com PRÉ-PASSE: o deslocamento de um vértice é
-    /// pesado pela curvatura dos VIZINHOS, então nenhum pode ser escrito antes
-    /// de todos serem medidos.
+    /// O tipo *Sharpen* do filtro de malha — **a única lei desta família que
+    /// nenhum outro verbo exprime**, e a única com PRÉ-PASSE: o deslocamento de
+    /// um vértice é pesado pela curvatura dos VIZINHOS, então nenhum pode ser
+    /// escrito antes de todos serem medidos.
     ///
     /// ⚠️ **Ela não desloca uma feição, ela muda o CONTRASTE entre a feição e a
     /// vizinhança** — onde há detalhe o vértice alisa, onde não há ele é puxado
@@ -146,10 +146,11 @@ pub enum FilterKind {
     /// oito: nenhuma delas lê a curvatura de um vizinho.
     ///
     /// ⚠️ **É a única cuja força é FATIADA em iterações**, porque a referência
-    /// a clampa em `0,5` com o motivo escrito num comentário (*"needs multiple
-    /// iterations to reach a stable state"*) — e porque a lei DELA depende da
-    /// taxa de polling do rato, que esta casa recusa. O mecanismo inteiro está
-    /// no cabeçalho do `stroke_filter_sharpen.rs`.
+    /// a clampa em `0,5` por iteração, com o motivo declarado ao lado do número
+    /// (a lei precisa de várias iterações para chegar a um estado estável) — e
+    /// porque a lei DELA depende da taxa de polling do rato, que esta casa
+    /// recusa. O mecanismo inteiro está no cabeçalho do
+    /// `stroke_filter_sharpen.rs`.
     Sharpen,
 }
 
@@ -206,9 +207,9 @@ pub enum FilterKind {
 /// wave própria.
 ///
 /// ⚠️ **A PRIMEIRA tabela que escrevi aqui era de uma lei ERRADA**, e ficou uma
-/// wave inteira no arquivo: ela media o `sharpen_factor` recomputado a cada
+/// wave inteira no arquivo: ela media o factor de afiação recomputado a cada
 /// sub-passo, e nesse regime a lei ALISA (o degrau caía a `0,667×`). Com o
-/// factor congelado — como no `filter_cache` da referência — ele **sobe**, que é
+/// factor construído uma vez por gesto, como na referência, ele **sobe**, que é
 /// o que a coluna acima mostra. *Uma tabela medida sobre um produto que mudou é
 /// pior que tabela nenhuma: ela justifica o número com o fenómeno errado.*
 ///
@@ -235,7 +236,8 @@ impl FilterKind {
         Self::Sharpen,
     ];
 
-    /// O rótulo que o painel mostra — os nomes do `prop_mesh_filter_types`.
+    /// O rótulo que o painel mostra — os rótulos públicos do menu de tipos do
+    /// filtro de malha da referência.
     ///
     /// ⚠️ Eles saem **daqui**, nunca de uma tabela paralela no painel: é a mesma
     /// regra do [`Verb::label`] e do [`crate::TransformKind::label`].
@@ -255,20 +257,20 @@ impl FilterKind {
     }
 
     /// **A FAIXA do fator** — `clamp(máscara × arrasto, lo, hi)`, na ordem da
-    /// referência (`scale_factors` e depois `clamp_factors`).
+    /// referência (escala pela força e depois restringe a faixa).
     ///
     /// ⚠️ **Ela é propriedade da LEI, não do verbo que a semeia**, e é por isso
-    /// que mora aqui: ela sai do `clamp_factors` que cada `calc_*_filter` chama
-    /// (ou não chama), e uma lei sem verbo tem faixa do mesmo jeito.
+    /// que mora aqui: ela sai da restrição de faixa que cada tipo do filtro de
+    /// malha da referência aplica (ou não aplica), e uma lei sem verbo tem faixa
+    /// do mesmo jeito.
     #[must_use]
     pub fn range(self) -> (f32, f32) {
         match self {
-            // `clamp_factors(factors, -1.0f, 1.0f)` — filtro de malha da referência.
+            // Faixa `[−1, 1]` na referência.
             Self::Smooth => (-1.0, 1.0),
-            // ⚠️ **SEM clamp, e a ausência é da referência** (nem
-            // `calc_inflate_filter` nem `calc_scale_filter` nem
-            // `calc_random_filter` chamam `clamp_factors`): o deslocamento é
-            // `strength` em unidades de OBJETO, e um teto aqui seria um número
+            // ⚠️ **SEM clamp, e a ausência é da referência** (nem o *Inflate*,
+            // nem o *Scale*, nem o *Random* têm restrição de faixa lá): o
+            // deslocamento é a força em unidades de OBJETO, e um teto aqui seria um número
             // que ninguém mediu. Quem calibra é a escala do ARRASTO, que é
             // nossa — ver [`crate::FILTER_DRAG_PER_PX`].
             Self::Inflate | Self::Scale | Self::Random => (f32::MIN, f32::MAX),
@@ -277,7 +279,7 @@ impl FilterKind {
             // então força grande satura em vez de divergir — ao contrário do
             // Inflate, que anda sem teto.
             Self::Sphere => (f32::MIN, f32::MAX),
-            // `clamp_factors(factors, 0.0f, 1.0f)` — `:1019` e `:1358`.
+            // Faixa `[0, 1]` na referência.
             //
             // ⚠️ **Arrastar para o lado errado não faz NADA nestes dois, e é a
             // lei da referência:** um relax negativo não é *"desrelaxar"* — não
@@ -285,9 +287,9 @@ impl FilterKind {
             // amplificaria o próprio erro que ele existe para devolver.
             Self::Relax | Self::SurfaceSmooth => (0.0, 1.0),
             // ⚠️ **O teto NÃO é o `0,5` da referência, e a diferença é a wave.**
-            // Aquele número é `clamp_factors(factors, 0.0f, 0.5f)` (`:1662`) e
-            // ele limita **uma ITERAÇÃO**, com o motivo escrito ao lado dele no
-            // fonte (*"needs multiple iterations to reach a stable state"*); a
+            // Aquele número é a faixa `[0, 0,5]` na referência, e ele limita
+            // **uma ITERAÇÃO**, com o motivo declarado ao lado dele: a lei
+            // precisa de várias iterações para chegar a um estado estável; a
             // referência alcança forças maiores acumulando um passo por evento
             // de rato. Nós entregamos a mesma força em sub-passos
             // determinísticos (ver `steps_for`), então o teto aqui é o da FORÇA
@@ -299,9 +301,9 @@ impl FilterKind {
             Self::Sharpen => (0.0, SHARPEN_MAX),
             // ⚠️ **SEM teto, e aqui a ausencia e' a FEATURE inteira** — ao
             // contrario dos tres acima, esta lei tem uma irma CLAMPADA que roda
-            // o mesmo kernel (o [`Self::Smooth`]). O `calc_enhance_details_filter`
-            // nao chama `clamp_factors` (`:1885-1925`), e e' so' isso que o
-            // separa do `calc_smooth_filter` negado. Ver o doc do variant.
+            // o mesmo kernel (o [`Self::Smooth`]). O *Enhance Details* da
+            // referencia nao passa pela restricao de faixa, e e' so' essa
+            // ausencia que o separa do *Smooth* negado. Ver o doc do variant.
             Self::EnhanceDetails => (f32::MIN, f32::MAX),
         }
     }
@@ -376,8 +378,8 @@ impl Verb {
             Self::SurfaceSmooth => FilterKind::SurfaceSmooth,
             // ⚠️ **O verbo que ja' rodava esta lei.** O
             // [`crate::SculptStroke::target_sharpen`] e' o kernel deste pincel
-            // desde que ele nasceu, e e' *a mesma expressao* do
-            // `calc_enhance_details_filter`; ate' a
+            // desde que ele nasceu, e e' *a mesma expressao* do tipo
+            // *Enhance Details* do filtro de malha da referencia; ate' a
             // [`FilterKind::EnhanceDetails`] existir, ele era o unico verbo cuja
             // lei nao tinha filtro correspondente.
             Self::Sharpen => FilterKind::EnhanceDetails,

@@ -18,8 +18,8 @@
 ///
 /// # As NOVE do Blender entraram, e a leitura corrigiu a minha própria tabela
 ///
-/// O definidor de pincel da referência traz as nove fórmulas analíticas do
-/// `BRUSH_CURVE_*` em forma fechada, escritas em `u = 1 − t`. Lidas uma a uma —
+/// O definidor de pincel da referência traz as nove fórmulas analíticas dos
+/// presets de curva em forma fechada, escritas em `u = 1 − t`. Lidas uma a uma —
 /// e **não** de memória — TRÊS das nossas já eram exatamente as dele:
 ///
 /// | preset | em `u` | em `t` | nossa |
@@ -57,9 +57,9 @@
 ///
 /// ⚠️ **E o que o definidor de pincel da referência NÃO diz é qual delas um pincel VESTE — a
 /// fonte
-/// não responde e o ORÁCULO respondeu.** A leitura estática era que o
-/// `curve_preset` de um `Brush` zero-inicializado é `BRUSH_CURVE_CUSTOM = 0` e
-/// que o `brush_init_data` semeia a *curvemapping* com `CURVE_PRESET_SMOOTH`,
+/// não responde e o ORÁCULO respondeu.** A leitura estática sugeria que um
+/// pincel zero-inicializado nasce com a curva personalizada e que a
+/// inicialização de pincel semeia a curva editável com o preset suave,
 /// logo *"uma bézier editável, nenhuma das nove"*. **Medido no Blender 5.2 a
 /// correr** (`docs/3D/ferramentas/blender_sculpt_oracle.py`), o pincel de
 /// fábrica reporta `curve_distance_falloff_preset = SMOOTH`, e o perfil que ele
@@ -70,8 +70,8 @@
 /// [`Falloff::Smooth`] em vez de `None`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub enum Falloff {
-    /// `3u² − 2u³` com `u = 1 − t` — a **smoothstep**, e o `BRUSH_CURVE_SMOOTH`
-    /// do Blender, que é o preset do pincel de fábrica dele.
+    /// `3u² − 2u³` com `u = 1 − t` — a **smoothstep**, e a curva que o Blender
+    /// rotula *Smooth*, que é o preset do pincel de fábrica dele.
     ///
     /// ⚠️ **Ela SUBSTITUIU uma curva inventada que vestia este nome** (`(1 − t²)²`,
     /// escolhida por desenho e que referência nenhuma tem). O nome é do Blender,
@@ -83,10 +83,10 @@ pub enum Falloff {
     /// `√(1 − t²)` — o perfil de uma esfera: cheio no miolo, tangente vertical
     /// na borda. Deposita mais massa que o Smooth com o mesmo raio.
     ///
-    /// ⚠️ **É o `BRUSH_CURVE_SPHERE` do Blender, ao pé da letra** — ele o
-    /// escreve `√(2u − u²)`, que reduz a esta expressão (tabela acima).
+    /// ⚠️ **É a curva que o Blender rotula *Sphere*** — ele a escreve
+    /// `√(2u − u²)`, que reduz a esta expressão (tabela acima).
     Sphere,
-    /// `(1 − t)⁴` — o `BRUSH_CURVE_POW4`, que o Blender **rotula "Sharper"**.
+    /// `(1 − t)⁴` — a curva que o Blender **rotula "Sharper"**.
     /// A mais estreita das nove.
     ///
     /// ⚠️ **Ela SUBSTITUIU uma segunda curva inventada** (`(1 − t²)⁴`), e aqui a
@@ -96,12 +96,12 @@ pub enum Falloff {
     Sharper,
     /// `1` até a borda, e nada além. Um disco duro; o degrau é a feature.
     ///
-    /// ⚠️ **É o `BRUSH_CURVE_CONSTANT` do Blender**, que também não faz nada
+    /// ⚠️ **É a curva *Constant* do Blender**, que também não faz nada
     /// além de recusar o que passa do raio.
     Constant,
     /// `√(1 − t)` — sobe rápido na borda e achata no miolo, o oposto do Sharper.
     ///
-    /// ⚠️ **É o `BRUSH_CURVE_ROOT` do Blender** (`√u`).
+    /// ⚠️ **É a curva *Root* do Blender** (`√u`).
     Root,
     /// `3t⁴ − 4t³ + 1` — **a curva da REFERÊNCIA**, e a única desta família que
     /// não foi escolhida por desenho: ela é a que as dez tools de geometria do
@@ -126,20 +126,20 @@ pub enum Falloff {
     // Apendadas de propósito: os seis chips que o artista já aprendeu não mudam
     // de lugar na fileira. Nada aqui é serializado (o pincel não viaja no
     // documento), então a ORDEM é conforto, não compatibilidade.
-    /// `1 − t` — a rampa. O `BRUSH_CURVE_LIN`.
+    /// `1 − t` — a rampa. A curva *Linear* do Blender.
     Linear,
-    /// `(1 − t)²` — o `BRUSH_CURVE_SHARP`.
+    /// `(1 − t)²` — a curva *Sharp* do Blender.
     ///
     /// ⚠️ **Não confundir com [`Falloff::Sharper`]** (`(1 − t²)⁴`, da família do
     /// Painter): esta cai reto do centro, aquela tem platô e ombro curto.
     Sharp,
-    /// `1 − t²` — o `BRUSH_CURVE_INVSQUARE`, escrito lá como `u(2 − u)`.
+    /// `1 − t²` — a curva *Inverse Square* do Blender, escrita lá como `u(2 − u)`.
     ///
     /// É a [`Falloff::Sphere`] ao quadrado, ou a [`Falloff::Smooth`] pela raiz:
     /// as três são a mesma parábola vista com expoentes diferentes.
     InvSquare,
-    /// `u³(6u² − 15u + 10)` com `u = 1 − t` — a **smootherstep** de Perlin, o
-    /// `BRUSH_CURVE_SMOOTHER`.
+    /// `u³(6u² − 15u + 10)` com `u = 1 − t` — a **smootherstep** de Perlin, a
+    /// curva *Smoother* do Blender.
     ///
     /// C² nas duas pontas: é a curva que um escultor reconhece como *o pincel
     /// do Blender* quando quer que a pressão suba e desça sem quina nenhuma.

@@ -11,7 +11,7 @@
 //!
 //! | | centro | peso |
 //! |---|---|---|
-//! | referência (`calc_scale_filter`) | a **ORIGEM do objeto** (`t = orig_positions × f`) | `p·(1 + w·f)`, **linear** |
+//! | referência (tipo *Scale*) | a **ORIGEM do objeto** (`t = posição de partida × f`) | `p·(1 + w·f)`, **linear** |
 //! | nós (`Gesture::Scale`) | o **CENTROIDE PONDERADO** do que se move | `pivot + (p−pivot)·s^w`, **exponencial** |
 //!
 //! ⚠️ **A diferença de PESO não é um defeito nosso, e a nossa é a que compõe:**
@@ -35,8 +35,8 @@
 use ph2d_mesh::{Mesh, shapes::uv_sphere};
 use ph2d_sculpt3d::{Gesture, MaskTransform};
 
-/// A lei da referência, `calc_scale_filter` + `apply_translations`:
-/// `t = orig_positions × (máscara_livre × strength)`, somada à pose congelada.
+/// A lei da referência para *Scale*:
+/// `t = posição de partida × (máscara livre × força)`, somada à pose congelada.
 ///
 /// ⚠️ **Escrita à mão de propósito** — chamar a nossa seria o oráculo-espelho
 /// que esta casa já documentou: ela devolveria a nossa resposta com outro nome.

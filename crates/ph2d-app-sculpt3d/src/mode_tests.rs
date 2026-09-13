@@ -1,7 +1,7 @@
 //! **O pill SCULPT: entrar, sair, e DIZER onde se está** (ADR-0150).
 //!
 //! Módulo irmão de teste do [`super`] (`#[path]`, `cfg(test)`), no molde do
-//! `sculpt3d_transform_tests`: as travessias de papel exigem uma cena, e uma cena exige um device,
+//! `transform_tests`: as travessias de papel exigem uma cena, e uma cena exige um device,
 //! então elas são `#[ignore]` + `gpu_or_skip!`. O que NÃO exige device (o sync do pill sem cena)
 //! roda sempre.
 //!

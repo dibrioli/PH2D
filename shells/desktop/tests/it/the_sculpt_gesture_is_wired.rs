@@ -954,7 +954,7 @@ fn the_armed_transform_takes_the_left_button_before_the_stroke_does() {
 /// ⚠️ **Este gate existe porque o smoke reprovou**: *"a direção da rotação do
 /// mouse está invertida em relação à rot do objeto e é imprecisa (não
 /// consistente)"*. As três queixas eram consequências de a v1 tirar o eixo e o
-/// centro do pixel de PEN-DOWN — medido em `sculpt3d_transform_tests`, o dedo
+/// centro do pixel de PEN-DOWN — medido em `transform_tests`, o dedo
 /// varria 90° e a peça girava **−37°**.
 ///
 /// ⚠️ **Ele é a metade que roda SEM PLACA.** Os dois gates que julgam o gesto na

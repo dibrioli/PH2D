@@ -18,9 +18,8 @@ use super::*;
 /// ⚠️ **Inclinado, nunca horizontal** — um ajuste horizontal *cava uma cratera
 /// na encosta* em vez de achatá-la (lição paga no `plane.rs` do Painter 2D).
 /// O estimador é a média ponderada pelo falloff das posições e das normais da
-/// pegada, que é o `calc_area_normal_and_center` do Blender; ele difere de um
-/// ajuste por mínimos quadrados de verdade numa sela, e a divergência está
-/// registrada aqui em vez de escondida.
+/// pegada, como o do Blender; ele difere de um ajuste por mínimos quadrados de
+/// verdade numa sela, e a divergência está registrada aqui em vez de escondida.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(super) struct PlaneFit {
     pub(super) point: [f32; 3],
@@ -135,15 +134,9 @@ impl SculptStroke {
         // O SculptGL recomputa sobre a malha VIVA a cada `stroke`
         // (`SculptBase.areaNormal` lê `getNormals()`, `areaCenter` lê
         // `getVertices()`), e é o que os quatro verbos de plano dele fazem. O
-        // Blender ramifica: o
-        // motor de escultura da referência abre com
-        //
-        // ```text
-        // if (ss.cache && !ss.cache->accum) { ... orig_positions / orig_normals ... return; }
-        // ```
-        //
-        // ou seja **com o Accumulate desligado — o default — ele lê o pen-down
-        // CONGELADO**, e é isso que faz o barro subir até o plano e PARAR.
+        // Blender ramifica: **com o Accumulate desligado — o default — ele lê
+        // as posições e normais CONGELADAS do pen-down e sai**, e é isso que faz
+        // o barro subir até o plano e PARAR.
         //
         // ⚠️ **Ler o vivo na faixa custou TRÊS sintomas medidos**, cada um numa
         // wave diferente: o crescimento sub-linear que nunca fecha (§7.21) · a
@@ -155,8 +148,9 @@ impl SculptStroke {
         // ⚠️ **É a mesma lei da [`crate::RefMode::kernel_for`], um andar acima:**
         // uma referência só governa as ferramentas que ela TEM.
         // ⚠️ **E o [`Verb::ClayThumb`] entra na MESMA lista, porque a regra é da
-        // REFERÊNCIA e não do verbo:** o *Clay Thumb* chama o mesmo
-        // `calc_brush_plane`, então herda o `!accum ⇒ orig` acima. Para ele só
+        // REFERÊNCIA e não do verbo:** o *Clay Thumb* usa a mesma construção do
+        // plano do pincel, então herda a leitura congelada do pen-down com o
+        // Accumulate desligado, descrita acima. Para ele só
         // a NORMAL muda de fonte (o plano dele passa pelo centro do DAB, não
         // pelo centro de área) — e é a normal congelada que impede a base da
         // inclinação de perseguir o barro que ela própria moveu.
@@ -166,8 +160,9 @@ impl SculptStroke {
         // e trocá-lo mudaria o desenho de um verbo que esta wave não toca. Quem
         // o quiser dentro traz a medição junto.
         // ⚠️ **E a [`Verb::MultiplaneScrape`] entra pela MESMA razão que o
-        // polegar:** o *Multiplane Scrape* chama o mesmo
-        // `calc_brush_plane`, logo herda o `!accum ⇒ orig`.
+        // polegar:** o *Multiplane Scrape* usa a mesma construção do plano do
+        // pincel, logo herda a leitura congelada do pen-down com o Accumulate
+        // desligado.
         //
         // ⚠️ **DOCUMENTADO em vez de gateado, e com o número:** a mutação que o
         // tira desta lista **não sangra**, e a razão é GEOMETRIA — o V é
@@ -287,10 +282,10 @@ impl SculptStroke {
     /// No modo fixo o campo é escrito na mesma, para que sair do modo dinâmico
     /// não deixe um valor obsoleto a ressuscitar no traço seguinte.
     ///
-    /// `None` = este dab não deposita, e são os **dois** `return` da referência:
-    /// sem direção não há dobradiça (`is_zero(grab_delta_symm)`, que é também o
-    /// *"delay the first daub"*), e no modo dinâmico um lado vazio não tem normal
-    /// (`if (!sample) return;`).
+    /// `None` = este dab não deposita, e são as **duas** saídas antecipadas da
+    /// referência: sem direção não há dobradiça (o deslocamento do traço nulo,
+    /// que é também o primeiro dab do traço, adiado), e no modo dinâmico um lado
+    /// vazio não tem normal (sem amostra não faz nada).
     pub(super) fn scrape_planes(
         &mut self,
         mesh: &Mesh,
@@ -310,23 +305,22 @@ impl SculptStroke {
 
         let angle_deg = if brush.scrape_dynamic {
             // ⚠️ **A amostragem é do VIVO**, e a divergência com a normal de
-            // área (congelada, logo acima) é da REFERÊNCIA: o
-            // `sample_node_surface_mesh` colhe de `vert_positions`/`vert_normals`
-            // — a superfície como ela está AGORA —, enquanto o `calc_brush_plane`
-            // que dá a dobradiça lê o `orig` do pen-down. São duas perguntas: *em
-            // que direção esta lâmina está deitada* (o gesto) e *que forma a
-            // superfície tem debaixo dela neste instante* (a leitura).
+            // área (congelada, logo acima) é da REFERÊNCIA: no modo dinâmico ela
+            // amostra a **superfície viva** — como ela está AGORA —, enquanto a
+            // construção do plano do pincel, que dá a dobradiça, lê a pose
+            // congelada do pen-down. São duas perguntas: *em que direção esta
+            // lâmina está deitada* (o gesto) e *que forma a superfície tem
+            // debaixo dela neste instante* (a leitura).
             let side = |want_positive: bool| -> Option<([f32; 3], [f32; 3])> {
                 let w = |v: u32| {
                     let p = mesh.positions()[v as usize];
                     let u = (p[0] - dab.center[0]) * across[0]
                         + (p[1] - dab.center[1]) * across[1]
                         + (p[2] - dab.center[2]) * across[2];
-                    // ⚠️ **`u <= 0` cai no lado NEGATIVO**, e é o
-                    // `local_positions[i][0] <= 0.0f` da referência ao pé da
-                    // letra. O empate tem de morar num lado só: espalhado pelos
-                    // dois, um vértice exactamente sobre a dobradiça votaria
-                    // duas vezes.
+                    // ⚠️ **`u <= 0` cai no lado NEGATIVO**, que é o lado em que
+                    // a referência também põe o empate. O empate tem de morar
+                    // num lado só: espalhado pelos dois, um vértice exactamente
+                    // sobre a dobradiça votaria duas vezes.
                     if (u > 0.0) != want_positive {
                         return 0.0;
                     }
@@ -361,15 +355,15 @@ impl SculptStroke {
             let cosine =
                 (n_pos[0] * n_neg[0] + n_pos[1] * n_neg[1] + n_pos[2] * n_neg[2]).clamp(-1.0, 1.0);
             let mut rad = cosine.acos();
-            // ⚠️ **O knob VIRA UM ACRÉSCIMO aqui, e a pressão o escala** —
-            // `sampled_angle += DEG2RADF(brush.multiplane_scrape_angle) *
-            // ss.cache->pressure` (`:632`).
+            // ⚠️ **O knob VIRA UM ACRÉSCIMO aqui, e a pressão o escala** — o
+            // ângulo amostrado ganha `knob · pressão`, em radianos, como na
+            // referência.
             rad += brush.scrape_angle_deg.to_radians() * dab.pressure.clamp(0.0, 1.0);
 
             // ⚠️ **CÔNCAVO INVERTE**, e o teste é geométrico: o ponto médio dos
             // dois centros amostrados cai ATRÁS do cursor numa crista e À FRENTE
             // dele num vale, então o sinal de `n · (cursor − meio)` diz de que
-            // lado da dobra a lâmina está (`:635`).
+            // lado da dobra a lâmina está.
             let mid = [
                 f32::midpoint(c_pos[0], c_neg[0]),
                 f32::midpoint(c_pos[1], c_neg[1]),
@@ -387,11 +381,11 @@ impl SculptStroke {
             {
                 rad = -rad;
             }
-            // ⚠️ **O Ctrl ZERA o V no modo dinâmico em vez de o inverter**, e a
-            // referência escreve o porquê: *"so you can trim plane surfaces
-            // without changing the brush"* (`:640`). Inverter é o que ele faz no
-            // modo FIXO — os dois são o mesmo gesto com significados diferentes,
-            // e é o modo que decide qual.
+            // ⚠️ **O Ctrl ZERA o V no modo dinâmico em vez de o inverter** — no
+            // modo dinâmico o Ctrl zera o V para aparar superfícies planas sem
+            // trocar de pincel. Inverter é o que ele faz no modo FIXO — os dois
+            // são o mesmo gesto com significados diferentes, e é o modo que
+            // decide qual.
             let sampled = if flip { 0.0 } else { rad.to_degrees() };
             self.scrape_angle_deg = crate::MULTIPLANE_ANGLE_SMOOTH.mul_add(
                 self.scrape_angle_deg,
@@ -409,10 +403,10 @@ impl SculptStroke {
         };
 
         // ⚠️ **A ORIGEM é o centro do DAB, e a exceção é do modo dinâmico
-        // invertido:** ali a referência NÃO reescreve o `area_position` (o
-        // `else` do `:643`), então o corte plano do Ctrl acontece contra o plano
-        // de ÁREA — o mesmo que os quatro verbos de plano usam, com o
-        // `plane_offset` do artista já dentro dele.
+        // invertido:** ali a referência NÃO troca a origem para o centro do dab
+        // — ela fica no centro de área —, então o corte plano do Ctrl acontece
+        // contra o plano de ÁREA, o mesmo que os quatro verbos de plano usam,
+        // com o `plane_offset` do artista já dentro dele.
         let origin = if brush.scrape_dynamic && flip {
             plane.point
         } else {
@@ -426,11 +420,11 @@ impl SculptStroke {
             normal: plane.normal,
             sin_half,
             cos_half,
-            // ⚠️ **O culling só existe com o V ABERTO** (`if (angle >= 0.0f)`,
-            // `:405`): ali a lâmina raspa e só o que está acima do próprio
-            // meio-plano é matéria a remover. Com o V fechado a projeção é
-            // bilateral, e é isso que faz a mesma ferramenta ENCHER uma dobra
-            // côncava.
+            // ⚠️ **O culling só existe com o V ABERTO** (ângulo `>= 0`, a mesma
+            // fronteira da referência): ali a lâmina raspa e só o que está acima
+            // do próprio meio-plano é matéria a remover. Com o V fechado a
+            // projeção é bilateral, e é isso que faz a mesma ferramenta ENCHER
+            // uma dobra côncava.
             cull: angle_deg >= 0.0,
         })
     }

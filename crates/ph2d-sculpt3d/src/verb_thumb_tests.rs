@@ -172,8 +172,9 @@ fn the_thumb_saturates_at_the_ceiling_instead_of_tilting_for_ever() {
     );
 }
 
-/// **SEM DIREÇÃO NÃO HÁ DEPÓSITO** — os dois `return` do *Clay Thumb*
-/// (*"delay the first daub"* e `is_zero(grab_delta)`) por uma pergunta só.
+/// **SEM DIREÇÃO NÃO HÁ DEPÓSITO** — as duas recusas do *Clay Thumb* (o
+/// primeiro dab do traço é adiado, e um dab cujo deslocamento do traço é nulo
+/// não deposita) por uma pergunta só.
 ///
 /// ⚠️ **O CONTROLE é o Flatten no mesmo dab isolado:** ele deposita, o que é o
 /// que torna a recusa do polegar uma LEI e não um dab que caiu fora da malha.
@@ -212,10 +213,11 @@ fn a_thumb_without_a_path_lays_nothing_and_a_flatten_does() {
 
 /// **A INCLINAÇÃO É DO TRAÇO, NUNCA DO ESPELHO.**
 ///
-/// A referência avança o `front_angle` só em `stroke_is_main_symmetry_pass`;
-/// aqui o avanço mora na fronteira da CHAMADA a [`SculptStroke::dab`], que é a
-/// mesma passada. Sem isto, armar a simetria faria a inclinação correr ao dobro
-/// — e o artista veria a ferramenta mudar de lei ao ligar um espelho.
+/// A referência avança a inclinação só na passada **principal**, não espelhada,
+/// de simetria; aqui o avanço mora na fronteira da CHAMADA a
+/// [`SculptStroke::dab`], que é a mesma passada. Sem isto, armar a simetria faria
+/// a inclinação correr ao dobro — e o artista veria a ferramenta mudar de lei ao
+/// ligar um espelho.
 ///
 /// ⚠️ **O oráculo é o corte no lado QUE A MÃO TOCOU**, e o gate compara o mesmo
 /// traço com e sem espelho.

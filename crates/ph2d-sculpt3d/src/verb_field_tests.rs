@@ -365,9 +365,9 @@ fn the_squeezing_family_stays_inside_the_cursor_ring() {
 /// passaria sozinha no dia em que alguém religasse o campo com um alcance menor.
 ///
 /// ⚠️ **A razão é de REFERÊNCIA e não de número:** o deformador elástico dela
-/// porta este mesmo paper e declara **cinco** famílias — `GRAB`,
-/// `GRAB_BISCALE`, `GRAB_TRISCALE`, `SCALE`, `TWIST` —, e nenhuma é o pinch; o
-/// SculptGL não tem Kelvinlets. Um chip `L` aqui vestia uma LEI inteira com a
+/// porta este mesmo paper e declara **cinco** famílias — agarrar, agarrar a
+/// duas escalas, agarrar a três escalas, escalar e torcer —, e nenhuma é o
+/// pinch; o SculptGL não tem Kelvinlets. Um chip `L` aqui vestia uma LEI inteira com a
 /// autoridade de uma fonte que não a declara, que é o que a §4 do plano proíbe.
 #[test]
 fn no_reference_declares_an_elastic_squeeze() {

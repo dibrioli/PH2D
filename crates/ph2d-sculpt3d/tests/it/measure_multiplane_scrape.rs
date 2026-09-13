@@ -238,8 +238,9 @@ fn what_the_ctrl_and_the_dynamic_mode_do() {
     );
 }
 
-/// **O QUE A DOBRADIÇA CONGELADA COMPRA** — a `calc_brush_plane` do Blender lê o
-/// `orig` do pen-down com o Accumulate desarmado, e este verbo herda a regra.
+/// **O QUE A DOBRADIÇA CONGELADA COMPRA** — a construção do plano do pincel do
+/// Blender lê a pose congelada do pen-down com o Accumulate desarmado, e este
+/// verbo herda a regra.
 ///
 /// ⚠️ **A sonda existe porque a mutação NÃO SANGROU:** num traço que ANDA a
 /// diferença é indetectável (o dab vê barro fresco a cada passo), então o número

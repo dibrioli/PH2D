@@ -5,8 +5,8 @@
 //! Vinco duro em vez de domo. ⚠️ Custo quase nulo: o `pre` congelado já
 //! existe"*. Mas o nosso `Grip::Stamp` já lê `from_live = accumulate`, ou seja
 //! **o Draw com Accumulate DESLIGADO já mede a distância no `pre`** — que é
-//! metade da definição da referência (*Draw Sharp* usa `orig_data` onde o
-//! *Draw* usa `position_data.eval`).
+//! metade da definição da referência (*Draw Sharp* mede sobre as posições de
+//! antes do traço onde o *Draw* mede sobre as posições vivas avaliadas).
 //!
 //! ⇒ A pergunta que esta sonda responde é a do gate 2 do §8: *o chip novo
 //! produziria um resultado diferente do vizinho, acima do piso de paridade?*

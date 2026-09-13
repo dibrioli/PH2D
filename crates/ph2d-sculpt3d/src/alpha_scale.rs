@@ -13,7 +13,7 @@
 /// ⚠️ **O trabalho real desta constante é ser SENTINELA**, não ser um bom
 /// tamanho: é comparando contra ela que o painel sabe *"o artista ainda não
 /// escolheu"* e pode semear a recomendação — o mesmo papel do `Smooth de fábrica`
-/// no `arm_inflate_defaults` do Painter.
+/// no `arm_tool_falloff_defaults` do Painter.
 ///
 /// ⚠️ **Ela já foi o default de verdade, e o smoke a reprovou** (*"os poros são
 /// gigantescos"*, Enio, 2026-08-05). O número era `0,25`, escolhido como *a

@@ -167,8 +167,8 @@ fn both_curve_knobs_reach_the_clay_of_a_geometry_verb() {
 /// ⚠️ **As duas metades num gate só, porque é a assimetria que é a lei.** Os dois
 /// knobs vivem lado a lado no painel e um deles morre aqui: o `mask_weight` é a
 /// curva PRÓPRIA do canal (`Masking.js:66-69`) e o `shaped_distance` roda ANTES
-/// dela, exatamente como o `apply_hardness_to_distances` roda antes do
-/// `BKE_brush_calc_curve_factors` no original. Um gate que só medisse a metade
+/// dela, exatamente como a referência aplica a dureza antes de avaliar a curva
+/// de queda. Um gate que só medisse a metade
 /// morta deixaria a viva livre para morrer no dia seguinte, sem sangrar.
 ///
 /// ⛔ **Não conserte isto ligando o `falloff` ao canal.** Ver as recusas medidas

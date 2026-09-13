@@ -114,11 +114,11 @@ pub const SCULPT3D_MATCAP: [NodeId; 11] = [
     hash_node_id("sculpt3d.matcap.9"),
 ];
 
-/// **ACUMULAR na mesma pincelada** — o `BRUSH_ACCUMULATE` do Blender.
+/// **ACUMULAR na mesma pincelada** — o *Accumulate* do Blender.
 pub const SCULPT3D_ACCUMULATE: NodeId = hash_node_id("sculpt3d.accumulate");
 
-/// **SÓ AS FACES DA FRENTE** — o `BRUSH_FRONTFACE` do Blender, oferecido nos
-/// painéis comuns de pintura dele como *Front Faces Only*.
+/// **SÓ AS FACES DA FRENTE** — a opção *Front Faces Only* do Blender, oferecida
+/// nos painéis comuns de pintura dele.
 pub const SCULPT3D_FRONT_FACES: NodeId = hash_node_id("sculpt3d.front_faces");
 
 /// ⭐⭐⭐ **SÓ O QUE A SUPERFÍCIE LIGA** — o pincel deixa de agarrar o que está

@@ -8,8 +8,8 @@
 //!
 //! | | o que a referência faz | passes |
 //! |---|---|---|
-//! | `ENHANCE_DETAILS` | `t = detail_directions × −strength`, onde `detail_directions` é o deslocamento laplaciano da pose congelada | **1** |
-//! | `SHARPEN` | um `sharpen_factor` por vértice (curvatura normalizada, curvada por `1−(1−f)²` e **alisada N vezes**), e depois um gather cujos dois termos são pesados por `f²` e `(1−f)` | **2** |
+//! | `ENHANCE_DETAILS` | `t = direcção de detalhe × −força`, onde a direcção de detalhe é o deslocamento laplaciano da pose congelada | **1** |
+//! | `SHARPEN` | um factor de afiação por vértice (curvatura normalizada, curvada por `1−(1−f)²` e **alisada N vezes**), e depois um gather cujos dois termos são pesados por `f²` e `(1−f)` | **2** |
 //!
 //! ⚠️ **E o `ENHANCE_DETAILS` é, ALGEBRICAMENTE, o nosso `Smooth` com o sinal
 //! trocado** — o que esta sonda existe para confirmar com um número em vez de
@@ -20,9 +20,9 @@
 //! nossa* —, e uma não implica a outra.
 //!
 //! ⚠️ **A diferença que sobra NÃO é de lei, é de TETO:** o nosso `Smooth` clampa
-//! em `(−1, 1)` porque a referência clampa o `SMOOTH` dela ali
-//! (`clamp_factors(factors, -1.0f, 1.0f)`), e o `ENHANCE_DETAILS` dela **não
-//! passa pelo `clamp_factors`**. A sonda mede o que se perde no teto: em `−1` a
+//! em `(−1, 1)` porque a referência restringe a essa faixa o `SMOOTH` dela, e o
+//! `ENHANCE_DETAILS` dela **não passa por restrição de faixa nenhuma**. A sonda
+//! mede o que se perde no teto: em `−1` a
 //! lei reflete a média através do próprio vértice, e além disso ela continua a
 //! afastar.
 //!
@@ -63,9 +63,9 @@ fn wrinkled_sphere() -> Mesh {
     uv_sphere_noisy(24, 36, 1.0, 0.04)
 }
 
-/// A lei da referência, `calc_enhance_details_filter` + `apply_translations`:
-/// `t = detail_directions × −strength`, com `detail_directions` = o
-/// deslocamento que um passo de smooth daria sobre a pose CONGELADA.
+/// A lei da referência para *Enhance Details*:
+/// `t = direcção de detalhe × −força`, onde a direcção de detalhe é o
+/// deslocamento que um passo de *Smooth* daria sobre a pose CONGELADA.
 ///
 /// ⚠️ **Escrita à mão de propósito** — chamar a nossa seria o oráculo-espelho:
 /// ela devolveria a nossa resposta com outro nome, e o gate ficaria verde por

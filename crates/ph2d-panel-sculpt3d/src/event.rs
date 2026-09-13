@@ -300,7 +300,7 @@ fn arm_alpha_chip(snapshot: &crate::state::Sculpt3dSnapshot, i: usize) {
     // que só o modelo sabe: um literal acerta uma malha e erra todas as outras,
     // que foi o que o smoke reprovou.
     //
-    // A mesma lei do `arm_inflate_defaults` do Painter: **arma um default, nunca
+    // A mesma lei do `arm_tool_falloff_defaults` do Painter: **arma um default, nunca
     // impõe política**. O sentinela é a constante de fábrica.
     if ui.brush.alpha.is_some()
         && (ui.brush.alpha_scale - ph2d_sculpt3d::DEFAULT_ALPHA_SCALE).abs() < 1e-6

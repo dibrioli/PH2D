@@ -929,7 +929,7 @@ fn every_alpha_chip_arms_its_own_pattern() {
 
 /// **O seed é um DEFAULT, não uma política: ele não pisa na escolha do artista.**
 ///
-/// A mesma lei do `arm_inflate_defaults` do Painter e do default de força por
+/// A mesma lei do `arm_tool_falloff_defaults` do Painter e do default de força por
 /// verbo — e sem esta metade o artista perderia o número dele toda vez que
 /// trocasse de padrão, que é pior que não semear.
 #[test]
@@ -1184,8 +1184,9 @@ fn the_accumulate_switch_flips_the_brush_field() {
 ///
 /// ⚠️ **A varredura é por MODO e não por verbo**, e é essa a pergunta: a lei
 /// (`FrontFace`) é do modo de referência, o interruptor é do pincel, e o
-/// Blender tem as duas metades pela mesma razão (`calc_front_face` existe
-/// sempre; o `if (brush.flag & BRUSH_FRONTFACE)` decide se corre).
+/// Blender tem as duas metades pela mesma razão (o factor de frente-de-face é
+/// propriedade da lei e existe sempre; uma opção do pincel, *Front Faces Only*,
+/// decide se ele corre).
 ///
 /// ⚠️ **Ele não é uma `Row`** (é um toggle, não um número), então a varredura
 /// genérica deste arquivo é cega a ele — sem este gate, apagar a metade que o

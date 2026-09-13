@@ -417,9 +417,9 @@ fn the_b_pinch_squeezes_across_the_stroke_and_leaves_the_line_alone() {
 }
 
 /// **SEM DIREÇÃO NÃO HÁ APERTO NO `B`** — a recusa que o *Pinch* da referência faz
-/// (*"delay the first daub because grab delta is not setup"*, e `return` com
-/// `grab_delta` zero), e a metade que impede alguém de "consertar" o degenerado
-/// inventando um eixo.
+/// (o primeiro dab do traço é adiado porque a direção ainda não existe, e um dab
+/// cujo deslocamento do traço é nulo não aperta), e a metade que impede alguém
+/// de "consertar" o degenerado inventando um eixo.
 ///
 /// ⚠️ **O `S` é o CONTROLE, e ele não é um espantalho:** o MESMO dab solto, no
 /// mesmo lugar, aperta em `S` — então o que este gate mede é a LEI, não uma

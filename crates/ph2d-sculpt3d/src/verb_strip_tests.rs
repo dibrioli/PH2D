@@ -321,10 +321,9 @@ fn the_mirrored_copy_lays_its_strip_along_its_own_path() {
     // que este gate afirma.
     //
     // ⚠️ **A divergência residual tem dono e está nomeada:** o nosso
-    // `fit_plane` lê a superfície VIVA, e o
-    // motor de escultura da referência ramifica em
-    // `!ss.cache->accum` para ler o pen-down congelado. Sob o plano congelado os
-    // dois passes de simetria seriam idênticos por construção.
+    // `fit_plane` lê a superfície VIVA, e o motor de escultura da referência lê
+    // o pen-down congelado quando o Accumulate está desligado. Sob o plano
+    // congelado os dois passes de simetria seriam idênticos por construção.
     //
     // A altura no ponto `p` e no espelho dele têm de ser a mesma.
     let h = |p: [f32; 2]| {

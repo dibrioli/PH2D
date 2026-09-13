@@ -27,8 +27,8 @@ pub(crate) fn filter_scene() -> bool {
 /// pelo pior caminho: reprovando.** Eu tinha escrito que *"as duas réguas
 /// geométricas óbvias caem ou oscilam sobre a lei correcta"* e concluído que só
 /// o olho podia decidir — o Enio olhou, disse *"Sharpen não parece correto"*, e
-/// a causa era minha: o `sharpen_factor` era recomputado a cada sub-passo
-/// quando no fonte ele vive no `filter_cache`, construído **uma vez por gesto**.
+/// a causa era minha: o factor de afiação era recomputado a cada sub-passo
+/// quando na referência ele é construído **uma vez por gesto**.
 /// *A régua não discriminava porque a lei alisava.* Corrigida, ela discrimina, e
 /// os passos 4 e 5 passaram de perguntas a **conferências** — cada um com o
 /// sintoma do defeito antigo escrito ao lado, para o smoke saber o que procurar.

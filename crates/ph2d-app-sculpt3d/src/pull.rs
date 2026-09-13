@@ -197,7 +197,7 @@ impl Sculpt3dScene {
     /// varredura a partir do pen-down fazia o dedo dar uma volta inteira em
     /// torno do pivô e a peça girar **meia** (teorema do ângulo inscrito), com
     /// a razão a variar conforme o percurso — medido em
-    /// `sculpt3d_transform_tests`, 0,31× a 0,45× para o mesmo gesto em três
+    /// `transform_tests`, 0,31× a 0,45× para o mesmo gesto em três
     /// amplitudes. *Uma razão que muda com a amplitude é o que o artista sente
     /// como "impreciso".*
     ///
@@ -233,7 +233,7 @@ impl Sculpt3dScene {
     /// A acumulação só soma quando já existe um `last`, então o trecho entre o
     /// pen-down e o primeiro `move` some — um deslocamento CONSTANTE que o
     /// artista lê como *"o barro não acompanha a mão"*. Medido antes de existir
-    /// (`sculpt3d_transform_tests`, amostrando de 5° em 5°): 25° de giro para
+    /// (`transform_tests`, amostrando de 5° em 5°): 25° de giro para
     /// 30° de dedo, 85° para 90°, 175° para 180° — o déficit é exatamente um
     /// passo, sempre.
     ///

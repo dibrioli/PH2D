@@ -10,10 +10,10 @@
 //! - **CONGELADA** — o raio bate nas posições de antes do traço. A profundidade
 //!   satura no valor nominal do pincel.
 //!
-//! ⚠️ **O Blender faz a CONGELADA por default**, e a linha está no
-//! motor de escultura da referência: `original = force_original || (cache ? !cache->accum :
-//! false)` — com *Accumulate* desligado (o de fábrica) o `pbvh::raycast` é
-//! testado contra as posições que o undo guardou. O
+//! ⚠️ **O Blender faz a CONGELADA por default**, e a regra está no motor de
+//! escultura da referência: a superfície lida é a congelada do pen-down quando o
+//! *Accumulate* está desligado (o de fábrica) ou quando o chamador o força — e o
+//! lançamento do raio é testado contra as posições que o undo guardou. O
 //! mesmo vale para a amostragem de ÁREA que orienta o dab.
 //!
 //! ⚠️ **E o gesto que separa as duas NÃO é um traço rápido** — é o traço LENTO,
@@ -71,8 +71,8 @@ fn hold_verb(against: PickAgainst, events: usize, verb: Verb, accumulate: bool) 
     let mut mesh = uv_sphere(24, 36, 1.0);
     mesh.triangulate();
     mesh.rebuild();
-    // A superfície CONGELADA no pen-down — o que o `!cache->accum` do Blender
-    // consulta. Uma cópia, porque a viva vai ser deformada por baixo.
+    // A superfície CONGELADA no pen-down — a que o Blender consulta com o
+    // Accumulate desligado. Uma cópia, porque a viva vai ser deformada por baixo.
     let frozen = mesh.clone();
 
     let brush = Brush {

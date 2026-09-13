@@ -190,9 +190,9 @@ fn the_hardness_is_the_identity_at_zero_bit_for_bit() {
 
 /// **A DUREZA É A FÓRMULA QUE O ORIGINAL ESCREVE.**
 ///
-/// O oráculo é a transcrição literal do `apply_hardness_to_distances`
-///, em unidades de raio — lá ele multiplica e divide por
-/// `radius` nos dois lados, e aqui a distância já chega normalizada.
+/// O oráculo é a fórmula da dureza escrita à mão, em unidades de raio — a
+/// referência multiplica e divide pelo raio dos dois lados, e aqui a distância
+/// já chega normalizada.
 #[test]
 fn the_hardness_remaps_the_distance_the_way_the_reference_does() {
     for &h in &[0.1f32, 0.25, 0.5, 0.75, 0.9] {
@@ -442,7 +442,7 @@ fn one_full_strength_stroke_protects_completely() {
     );
 }
 
-// ── O SEGUNDO PASSE (o `autosmooth_factor` do Blender) ───────────────────────
+// ── O SEGUNDO PASSE (o *Auto Smooth* do Blender) ───────────────────────
 
 /// O neutro é o do original, e ele é o de fábrica.
 #[test]

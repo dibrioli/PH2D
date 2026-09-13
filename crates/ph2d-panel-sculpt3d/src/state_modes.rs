@@ -44,9 +44,10 @@ pub enum UiLevel {
     /// ⚠️ **Isto dizia *"o vocabulário do SculptGL"* e a frase custou um
     /// smoke.** O SculptGL **não tem** seletor de curva — a dele é fixa —, então
     /// herdar o vocabulário dele apagava do Basic um controle que a nossa malha
-    /// tem **doze** vezes e que a OUTRA referência trata como primeiro-classe (o
-    /// `FalloffPanel` do Blender não é `brush_settings_advanced`, e no cabeçalho
-    /// de ferramenta ele é um popover sempre visível). *Um vocabulário herdado
+    /// tem **doze** vezes e que a OUTRA referência trata como primeiro-classe (na
+    /// interface do Blender o painel de queda não está dentro da secção
+    /// *Advanced* das definições do pincel, e no cabeçalho de ferramenta ele é um
+    /// popover sempre visível). *Um vocabulário herdado
     /// descreve a ferramenta de onde veio, não a que se está a construir.*
     #[default]
     Basic,

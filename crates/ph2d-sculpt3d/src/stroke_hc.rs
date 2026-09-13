@@ -14,8 +14,8 @@
 //!
 //! # Por que UM passe e não dois
 //!
-//! O Blender roda dois `foreach_index` sobre os nós porque o array de `b` tem de
-//! estar COMPLETO antes de alguém o mediar. Escrito por extenso, o que os dois
+//! O Blender roda duas passagens paralelas sobre os nós porque o array de `b`
+//! tem de estar COMPLETO antes de alguém o mediar. Escrito por extenso, o que os dois
 //! passes dele computam é:
 //!
 //! ```text
@@ -29,8 +29,8 @@
 //! sai **inteiro** de um passe só. O [`crate::Brush::passes`] fica com o par
 //! λ|μ do Taubin como único consumidor, que é o que ele nasceu para exprimir.
 //!
-//! ⚠️ **O buffer é do TRAÇO e não do dab, como no original** (`ss.cache
-//! ->surface_smooth_laplacian_disp`, alocado a zeros uma vez por traço): um
+//! ⚠️ **O buffer é do TRAÇO e não do dab, como no original** (o deslocamento
+//! laplaciano guardado por vértice, alocado a zeros uma vez por traço): um
 //! vizinho que este dab não alcança contribui com o `b` que o dab ANTERIOR lhe
 //! deixou, e um que ninguém alcançou contribui **zero**. A segunda metade é o
 //! que a `resize` com zeros dá de graça; a primeira é a lei da referência, e ela
@@ -187,8 +187,8 @@ impl SculptStroke {
     /// **A MÉDIA do `b` sobre o anel de `v`.**
     ///
     /// ⚠️ **Pelo MESMO [`ph2d_mesh::ring_average`] que as posições**, e não por
-    /// uma média crua — a referência usa a média crua nos dois lados
-    /// (`neighbor_data_average_mesh`), e é aqui que divergimos de propósito. As
+    /// uma média crua — a referência usa a média crua dos vizinhos nos dois
+    /// lados, e é aqui que divergimos de propósito. As
     /// duas regras de borda daquela porta existem para que um vértice de beira
     /// se mova ao longo da curva de borda em vez de ser sugado para dentro; o
     /// `b` de um vértice de beira é, por construção, um deslocamento ao longo

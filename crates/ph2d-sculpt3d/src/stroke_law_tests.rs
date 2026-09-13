@@ -644,8 +644,9 @@ fn the_second_pass_reaches_every_mirrored_copy_not_just_the_last_one() {
     // O irmão do gate acima para a POSIÇÃO do passe, e ele existe porque aquele
     // não a enxerga: com `Symmetry::default()` o laço de espelho dá uma volta só,
     // e *dentro* e *fora* dele são a mesma coisa. A afirmação do doc — que a
-    // referência o chama no fim do `do_brush_action`, **uma vez por cópia**
-    // — só é observável quando há mais de uma.
+    // referência corre o auto-alisamento no fim do despacho por dab, que é
+    // chamado **uma vez por cópia** de simetria — só é observável quando há
+    // mais de uma.
     //
     // ⚠️ **O oráculo é a APARÊNCIA das duas metades, não um pareamento de
     // índices.** Se o passe rodasse fora do laço, ele alisaria a última cópia e

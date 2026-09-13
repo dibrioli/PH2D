@@ -418,9 +418,8 @@ fn measure_whether_a_low_lift_turns_the_band_into_a_ring() {
 /// crista cresce **linearmente com o número de dabs**. Com o plano do pen-down
 /// o barro sobe até ele e PARA.
 ///
-/// A referência escolhe
-/// entre os dois pelo `!ss.cache->accum`: **congelado com o Accumulate
-/// desligado**, vivo com ele ligado.
+/// A referência escolhe entre os dois pelo estado do Accumulate: **congelado
+/// com o Accumulate desligado**, vivo com ele ligado.
 #[test]
 #[ignore = "sonda de medição: roda sozinha"]
 fn measure_whether_the_strip_saturates_or_grows_without_bound() {
@@ -553,12 +552,13 @@ fn measure_the_band_cross_section_on_flat_and_curved_clay() {
     }
 }
 
-/// **A FAIXA DEPOSITA NAS COSTAS?** — o terceiro termo da cadeia de fatores da
-/// referência (*Clay Strips* → `calc_front_face`).
+/// **A FAIXA DEPOSITA NAS COSTAS?** — o terceiro termo da cadeia de fatores do
+/// *Clay Strips* na referência é a **frente-de-face**.
 ///
 /// O olho é RASANTE, que é a situação da foto: o artista olha um membro de lado
 /// e passa a faixa perto da silhueta. Um vértice de costas tem `n · (−eye) < 0`
-/// e a referência zera o fator dele (`factors[i] *= max(dot, 0)`).
+/// e a referência zera o fator dele (o fator é multiplicado por
+/// `max(n · (−eye), 0)`).
 #[test]
 #[ignore = "sonda de medição: roda sozinha"]
 fn measure_whether_the_strip_deposits_on_back_facing_clay() {

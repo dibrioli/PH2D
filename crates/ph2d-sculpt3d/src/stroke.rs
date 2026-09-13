@@ -146,13 +146,14 @@ pub struct SculptStroke {
     /// aqui — no `StrokeCache`, não no evento.
     ///
     /// ⚠️ **Avançado UMA vez por chamada a [`Self::dab`], antes do espelho** —
-    /// a referência o gateia em `stroke_is_main_symmetry_pass`, e a nossa
-    /// fronteira de chamada É essa passada: avançá-lo por cópia faria a
-    /// inclinação correr de duas a oito vezes mais rápido com o espelho armado,
-    /// e o artista veria a ferramenta mudar de lei ao ligar a simetria.
+    /// a referência só o avança na passada principal, não espelhada, de
+    /// simetria, e a nossa fronteira de chamada É essa passada: avançá-lo por
+    /// cópia faria a inclinação correr de duas a oito vezes mais rápido com o
+    /// espelho armado, e o artista veria a ferramenta mudar de lei ao ligar a
+    /// simetria.
     thumb_tilt_deg: f32,
-    /// **A ABERTURA DO V do [`Verb::MultiplaneScrape`]**, em graus — o
-    /// `cache->multiplane_scrape_angle`.
+    /// **A ABERTURA DO V do [`Verb::MultiplaneScrape`]**, em graus — o ângulo
+    /// do *Multiplane Scrape*, guardado no traço.
     ///
     /// ⚠️ **Ele é do TRAÇO porque o modo dinâmico o SUAVIZA contra o dab
     /// anterior** ([`crate::MULTIPLANE_ANGLE_SMOOTH`]); no modo fixo ele é
@@ -178,8 +179,8 @@ pub struct SculptStroke {
     /// que o dimensiona: um plano por-slot a mais no `capture` cobraria 12 bytes
     /// por vértice tocado a quem nunca escolheu este pincel.
     hc_b: Vec<[f32; 3]>,
-    /// **A curvatura normalizada de cada vértice**, o `sharpen_factors` da
-    /// referência. Campo e não local porque um arrasto o reconstrói a cada
+    /// **A curvatura normalizada de cada vértice**, o factor de afiação por
+    /// vértice da referência. Campo e não local porque um arrasto o reconstrói a cada
     /// quadro (e a cada sub-passo dentro dele) — uma alocação por quadro numa
     /// malha grande é o custo que o `hc_b` ao lado já paga para não pagar.
     sharp_f: Vec<f32>,
@@ -275,7 +276,7 @@ pub struct SculptStroke {
     /// [`Self::par_floor_override`].
     #[cfg(test)]
     pub(crate) cloth_substeps_override: Option<u32>,
-    /// **O deslocamento laplaciano de cada vértice**, o `detail_directions` da
+    /// **O deslocamento laplaciano de cada vértice**, a direção de detalhe da
     /// referência — a MESMA grandeza que a [`crate::FilterKind::EnhanceDetails`]
     /// consome inteira. Aqui ele é medido no pré-passe e relido no gather, e é
     /// isso que o torna um buffer em vez de uma expressão.
@@ -360,8 +361,8 @@ impl SculptStroke {
         // primeiro dab apontaria para onde a mão ia no gesto passado, que é um
         // lugar arbitrário.
         self.last_center = None;
-        // ⚠️ **Nem a inclinação**, e a referência escreve a mesma linha
-        // (*Clay Thumb*, `front_angle = 0` no primeiro passo do traço).
+        // ⚠️ **Nem a inclinação**, e a referência faz o mesmo (*Clay Thumb*:
+        // a inclinação volta a zero no primeiro passo do traço).
         // Sem ela o segundo traço começaria de onde o primeiro parou, e o
         // artista veria a mesma ferramenta cavar mais fundo por ter sido usada
         // antes.
@@ -436,8 +437,9 @@ mod probe;
 mod plane;
 
 /// **A SUPERFÍCIE LOCAL do `l-mode`** — ver [`surface`]. Irmão do [`plane`], e o
-/// corte são dois PAPERS: lá o `calc_area_normal_and_center` da referência, aqui
-/// a projeção MLS de Alexa et al. 2003.
+/// corte são dois PAPERS: lá o plano da pegada por média de posições e normais
+/// ponderada pela queda (o estimador da referência), aqui a projeção MLS de
+/// Alexa et al. 2003.
 #[path = "stroke_surface.rs"]
 mod surface;
 

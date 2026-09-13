@@ -108,7 +108,7 @@ impl Sculpt3dScene {
     /// nasce incompleta no dia em que ela cresce — comparar com o valor anterior não.
     ///
     /// ⚠️ **E ela CONSOME a borda** (o nome diz `take`): um segundo leitor receberia `None` e
-    /// concluiria que nada mudou. O leitor é o `sculpt3d_panel_bridge`, e é um só.
+    /// concluiria que nada mudou. O leitor é o `panel_bridge`, e é um só.
     pub(crate) fn take_clay_edge(&mut self) -> Option<bool> {
         let now = self.clay_on_screen();
         (now != std::mem::replace(&mut self.clay_was_on, now)).then_some(now)

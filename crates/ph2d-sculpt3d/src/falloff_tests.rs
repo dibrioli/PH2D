@@ -15,9 +15,8 @@ use super::Falloff;
 /// Até 2026-08-16 o painel pintava **"Smooth"** sobre `(1 − t²)²` e
 /// **"Sharper"** sobre `(1 − t²)⁴` — duas curvas que referência nenhuma tem —
 /// enquanto as leis do Blender viviam sob `Smoothstep` e `Pow4`, identificadores
-/// que ele não usa em lugar nenhum da UI dele (declarador de propriedades da referência rotula
-/// o
-/// `BRUSH_CURVE_POW4` de *"Sharper"*).
+/// que ele não usa em lugar nenhum da UI dele (o declarador de propriedades da
+/// referência rotula a quarta potência de *"Sharper"*).
 ///
 /// ⚠️ **A mutação que este gate existe para matar é a barata:** devolver a lei
 /// certa sob o rótulo errado. O gate das nove fórmulas fica **VERDE** sob ela —
@@ -60,7 +59,7 @@ fn the_label_the_artist_reads_is_the_one_blender_gives_that_law() {
 ///
 /// ⚠️ **É ele que justifica o `profile_b` declarar [`Falloff::Smooth`]:** a
 /// leitura ESTÁTICA do definidor de pincel da referência dizia que um pincel nasce
-/// `BRUSH_CURVE_CUSTOM` com uma *curvemapping* semeada, logo *"nenhuma das
+/// com a curva personalizada, uma curva editável semeada, logo *"nenhuma das
 /// nove"* — e o Blender a correr reporta `curve_distance_falloff_preset =
 /// SMOOTH`. *Um pincel não nasce zero-inicializado; ele nasce do arquivo de
 /// startup.*

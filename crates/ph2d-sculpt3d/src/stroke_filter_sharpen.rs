@@ -18,8 +18,9 @@
 //!
 //! 1. `d[i] = média_do_anel(i) − p[i]` — o deslocamento laplaciano, que é a
 //!    mesma grandeza que o [`crate::FilterKind::EnhanceDetails`] usa inteira
-//!    (`detail_directions` no fonte);
-//! 2. `f[i] = |d[i]|`, normalizado pelo **MAIOR** da malha (`safe_rcp(max)`);
+//!    (a direcção de detalhe);
+//! 2. `f[i] = |d[i]|`, normalizado pelo **MAIOR** da malha (pelo recíproco
+//!    seguro do máximo, que é zero quando o máximo é zero);
 //! 3. `f[i] = 1 − (1 − f[i])²` — a curva que empurra o meio da faixa para cima.
 //!
 //! **O passe**, por vértice:
@@ -63,7 +64,7 @@
 //! sem teto ele ultrapassa a vizinhança e inverte a feição.
 //!
 //! ⚠️ **E a lei da referência depende da TAXA DE POLLING.** Ela não restaura a
-//! pose entre eventos (é isso que `is_continuous` significa), então o número de
+//! pose entre eventos (é isso que ser um filtro contínuo significa), então o número de
 //! iterações que um arrasto produz é o número de eventos de rato que o sistema
 //! operativo entregou — *o mesmo arrasto, na mesma máquina, com o rato a 125 Hz
 //! e a 1000 Hz, afia quantidades diferentes*. É a lei que esta casa recusou
@@ -198,9 +199,9 @@ impl SculptStroke {
         // `restore` acima já feito, o caminho certo é simplesmente não iterar.
         if total > 0.0 {
             // ⚠️ **O `f` é CONGELADO e corre UMA vez, e a distinção custou um
-            // smoke.** No fonte o `sharpen_factor` vive no `filter_cache` —
-            // construído no `sculpt_filter_specific_init`, ou seja **uma vez por
-            // GESTO** — e toda iteração seguinte reusa o MESMO array. Eu
+            // smoke.** Na referência o factor de afiação é construído na
+            // inicialização do filtro, ou seja **uma vez por GESTO** — e toda
+            // iteração seguinte reusa o MESMO array. Eu
             // recomputava-o por sub-passo, e a consequência não é sutil: a lei
             // passa a perseguir o próprio rasto (a curvatura que ela acabou de
             // achatar deixa de a marcar como detalhe) e converge para um estado
@@ -226,11 +227,10 @@ impl SculptStroke {
     /// **UM sub-passo:** a média VIVA do anel, depois o gather.
     ///
     /// ⚠️ **As duas metades do pré-passe têm tempos de vida DIFERENTES, e
-    /// colapsá-las era o defeito.** O `sharpen_factor` é congelado no init do
-    /// gesto; o `smooth_positions` que alimenta o termo médio é recomputado a
-    /// cada evento (`neighbor_data_average_mesh_check_loose(position_data.eval,
-    /// …)`, `:1673`) — ele mede a pose de AGORA. *Uma delas descreve onde o
-    /// detalhe ESTAVA, a outra onde a superfície ESTÁ.*
+    /// colapsá-las era o defeito.** O factor de afiação é congelado no início do
+    /// gesto; a média do anel que alimenta o termo médio é recomputada a cada
+    /// evento, sobre a pose avaliada — ela mede a pose de AGORA. *Uma delas
+    /// descreve onde o detalhe ESTAVA, a outra onde a superfície ESTÁ.*
     fn sharpen_step(
         &mut self,
         mesh: &mut Mesh,
@@ -287,23 +287,23 @@ impl SculptStroke {
             let hold = (1.0 - fi) * scale;
             let blend = SMOOTH_RATIO * fi * fi;
             let d = self.sharp_d[i];
-            // ⚠️ **O TERMO QUE FAZ DELE UM AFIADOR** — `detail_directions ×
-            // −intensify × f` (`:1605-1609`). Os outros dois apontam AMBOS para
+            // ⚠️ **O TERMO QUE FAZ DELE UM AFIADOR** — a direcção de detalhe
+            // vezes `−INTENSIFY × f`. Os outros dois apontam AMBOS para
             // a média (o topo da feição desce, a borda é puxada para dentro
             // dela), então sem este a lei só ESTREITA a feição: medido, **4,6%**
             // de degrau no teto do arrasto, invisível — e foi o que o smoke
             // reprovou (*"sharpen filter parece alisar o mesh"*).
             //
-            // ⚠️ **Ele SUBTRAI o laplaciano** — é o `calc_enhance_details_filter`
-            // escalado pela curvatura —, e é por isso que ele é o único dos três
+            // ⚠️ **Ele SUBTRAI o laplaciano** — é a lei do tipo *Enhance Details*
+            // escalada pela curvatura —, e é por isso que ele é o único dos três
             // que empurra o detalhe para FORA.
             let push = INTENSIFY * fi;
             for k in 0..3 {
                 acc[k] = acc[k] * hold + d[k] * (blend - push);
             }
 
-            // ⚠️ **A ORDEM é a da referência** (`scale_factors` e só então
-            // `clamp_factors`), a mesma do laço genérico: o fator parte da
+            // ⚠️ **A ORDEM é a da referência** (escala pela força e só então
+            // restringe a faixa), a mesma do laço genérico: o fator parte da
             // máscara, é escalado, e **então** é aparado. Clampar antes daria a
             // um vértice meio-mascarado mais que a um livre no extremo.
             // ⚠️ **E o ALPHA no mesmo produto** — ele é mais um peso por-vértice,
@@ -369,14 +369,14 @@ impl SculptStroke {
         let inv = if max > f32::EPSILON { 1.0 / max } else { 0.0 };
         for f in &mut self.sharp_f {
             let t = *f * inv;
-            // `1 − (1 − t)²`, a curva da referência (`:2085`).
+            // `1 − (1 − t)²`, a curva da referência.
             let u = 1.0 - t;
             *f = 1.0 - u * u;
         }
     }
 
-    /// **A média do anel na pose de AGORA** — o `smooth_positions` da
-    /// referência, guardado como o deslocamento até ela.
+    /// **A média do anel na pose de AGORA** — as posições alisadas da
+    /// referência, guardadas como o deslocamento até elas.
     ///
     /// ⚠️ **Ele é VIVO, ao contrário do `sharp_f`**: a referência o recomputa a
     /// cada evento, e é por isso que o termo médio continua a puxar o vértice

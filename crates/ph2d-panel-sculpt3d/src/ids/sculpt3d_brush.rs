@@ -80,7 +80,7 @@ pub const SCULPT3D_HC_VERTEX_NUM: NodeId = hash_node_id("sculpt3d.hc_vertex_num"
 ///
 /// ⚠️ Ele NÃO é o [`SCULPT3D_MASK_HARDNESS`], embora os nomes se pareçam: aquele
 /// é o expoente da curva PRÓPRIA do canal de máscara, este remapeia a DISTÂNCIA
-/// que qualquer falloff consome (`apply_hardness_to_distances` do Blender). Dois
+/// normalizada que qualquer falloff consome (a etapa de dureza do Blender). Dois
 /// controles, duas perguntas, e o gate de costura pinta os dois para o mesmo
 /// verbo nunca oferecer um pelo outro.
 pub const SCULPT3D_HARDNESS: NodeId = hash_node_id("sculpt3d.hardness");
@@ -88,7 +88,7 @@ pub const SCULPT3D_HARDNESS: NodeId = hash_node_id("sculpt3d.hardness");
 /// Chip ligado a [`SCULPT3D_HARDNESS`].
 pub const SCULPT3D_HARDNESS_NUM: NodeId = hash_node_id("sculpt3d.hardness_num");
 
-/// **O alisamento que corre depois de cada dab** — o `autosmooth_factor` do
+/// **O alisamento que corre depois de cada dab** — o *Auto Smooth* do
 /// Blender, e o VIZINHO do [`SCULPT3D_HARDNESS`] no declarador de propriedades
 /// dele.
 ///

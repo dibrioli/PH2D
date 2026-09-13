@@ -108,9 +108,10 @@ impl Brush {
     /// num gesto cuja razão de existir é **não** mover o barro.
     ///
     /// ⚠️ **O pincel do passe é o MESMO, com o verbo e a força trocados**, e não
-    /// um pincel montado do zero: no original o `do_smooth_brush` recebe o
-    /// `Brush` inteiro e só o `strength` vem do fator, então a dureza, a curva,
-    /// o padrão e a simetria do artista **valem também no alisamento**. Montar
+    /// um pincel montado do zero: no original o passe chama o verbo *Smooth* com
+    /// o pincel inteiro do artista e só a força é substituída pelo fator, então a
+    /// dureza, a curva, o padrão e a simetria do artista **valem também no
+    /// alisamento**. Montar
     /// um pincel neutro aqui seria uma segunda resposta a *"que forma tem este
     /// dab?"*, e ela divergiria da primeira exactamente na borda, que é onde o
     /// passe existe para agir.

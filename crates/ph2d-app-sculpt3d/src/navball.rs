@@ -209,7 +209,7 @@ impl Sculpt3dScene {
     ///
     /// ⚠️⚠️ **A área é a do QUADRANTE ACTIVO e o `safe` é do CANVAS INTEIRO**, e
     /// a assimetria é o desenho: *um gizmo por quadrante seria quatro respostas
-    /// à mesma pergunta* (a lei está escrita no `field3d_smoke_draw`), e a
+    /// à mesma pergunta* (a lei está escrita no `smoke_draw` da `ph2d-app-field3d`), e a
     /// moldura do app que empurra o widget não conhece divisão nenhuma — ela
     /// está por cima do canvas todo.
     pub fn nav_rects(&self) -> Option<(EditorRect, EditorRect)> {

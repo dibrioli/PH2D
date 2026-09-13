@@ -2,7 +2,7 @@
 //! medido no produto.
 //!
 //! Módulo irmão de teste do [`super`] (`#[path]`, `cfg(test)`), no molde do
-//! `sculpt3d_filter_tests`: um gesto exige uma cena e uma cena exige um device,
+//! `filter_tests`: um gesto exige uma cena e uma cena exige um device,
 //! então estes gates são `#[ignore]` + `gpu_or_skip!`.
 //!
 //! ⚠️ **A família inteira do undo tinha UM teste** antes desta wave — o

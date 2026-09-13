@@ -1,11 +1,11 @@
 //! **AS SONDAS DO CAMPO ELÁSTICO** — os números que escolheram o [`POISSON`] e
 //! a família de escalas, e os que dizem o preço.
 //!
-//! `cargo test -p ph2d-sculpt3d --release --test measure_kelvinlet -- --ignored
+//! `cargo test -p ph2d-sculpt3d --release --test it measure_kelvinlet -- --ignored
 //! --nocapture`
 //!
 //! ⚠️ **Elas medem o campo, não o produto.** O que o produto faz com ele — o
-//! `l-mode` do Grab — tem sonda própria (`measure_grab_profile`), porque a
+//! `l-mode` do Grab — tem sonda própria (`measure_pull_profile`), porque a
 //! diferença entre *"o kernel diz isto"* e *"o traço faz isto"* já custou a esta
 //! casa uma nota errada mais de uma vez.
 

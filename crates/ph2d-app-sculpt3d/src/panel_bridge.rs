@@ -42,7 +42,7 @@ use crate::Sculpt3dScene;
 /// bridge não consegue executar, porque ele precisa do mundo, do renderizador e
 /// do mapa de atlas. Ele só o repassa, e o chamador arma o MESMO campo que o
 /// `Shift+B` arma: uma porta, dois pedintes, e por isso o botão e o atalho não
-/// podem divergir. É o precedente do `physics_panel_bridge`, que devolve o
+/// podem divergir. É o precedente do `panel_bridge` da `ph2d-app-physics`, que devolve o
 /// `show_colliders` pela mesma razão.
 pub fn dispatch(
     hero: &mut HeroScreen,

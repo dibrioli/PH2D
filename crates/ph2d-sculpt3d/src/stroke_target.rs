@@ -62,7 +62,7 @@ impl SculptStroke {
         // peso sem geometria*, ao bit. O parâmetro `flat` que existia para eles
         // morreu com essa troca — ver o sítio que constrói o `w`.
         w: f32,
-        // **A demão JÁ acumulada depois deste dab** — o `displacement_factors`
+        // **A demão JÁ acumulada depois deste dab** — o factor de deslocamento
         // do *Layer* da referência, depois de descontar o já depositado.
         //
         // ⚠️ **Só a família do `GripLaw::coat` o lê**, e ele é PASSADO em vez de
@@ -233,14 +233,14 @@ impl SculptStroke {
             }
             // **O POLEGAR é o Flatten contra um plano INCLINADO** — o *Clay Thumb*.
             //
-            // ⚠️ **A projeção é a MESMA do [`Verb::Flatten`], bilateral**
-            // (`calc_translations_to_plane`, sem `comp` e sem teste de lado); o
+            // ⚠️ **A projeção é a MESMA do [`Verb::Flatten`], bilateral** (a
+            // mesma projeção ao plano, sem compensação e sem teste de lado); o
             // que a ferramenta acrescenta é inteiramente a construção do plano,
             // e por isso ela não traz aritmética de alvo nova.
             //
             // ⚠️ **O plano passa pelo CENTRO DO DAB, não pelo centro de área** —
-            // `plane_from_point_normal_v3(plane_tilt, location, ...)`, onde
-            // `location` é o `location_symm`. É a única diferença de ORIGEM
+            // a referência ergue o plano inclinado sobre a posição do dab já
+            // espelhada para a cópia de simetria. É a única diferença de ORIGEM
             // entre este verbo e os quatro que a [`super::plane`] serve, e ela é
             // load-bearing: ancorado no centro de área, o plano inclinado
             // deslizaria para trás junto com a média da pegada, e a inclinação
@@ -248,11 +248,13 @@ impl SculptStroke {
             //
             // ⚠️ **Sem eixo não há depósito.** O [`stroke_axis`] responde `None`
             // pelos dois degenerados de uma vez (dab sem caminho · caminho que
-            // mergulha na normal), e é ele que reproduz os DOIS `return` da
-            // referência — o *"delay the first daub"* e o `is_zero(grab_delta)`.
+            // mergulha na normal), e é ele que reproduz as DUAS saídas
+            // antecipadas da referência — o primeiro dab do traço, adiado, e o
+            // deslocamento do traço nulo.
             Verb::ClayThumb => match stroke_axis(n_area, dab.path) {
-                // ⚠️ **O eixo de INCLINAÇÃO é o do *Clay Thumb*
-                // (`cross(area_normal, grab_delta)`), e ele sai do MESMO door
+                // ⚠️ **O eixo de INCLINAÇÃO é o do *Clay Thumb* (o produto
+                // vetorial da normal de área com o deslocamento do traço), e ele
+                // sai do MESMO door
                 // que devolve o `Y`** — a referência monta `y = n × x`, e num
                 // frame ortonormal isso se inverte exatamente em `x = y × n`.
                 // Derivá-lo assim é o que faz a pergunta *"este dab tem
@@ -261,7 +263,7 @@ impl SculptStroke {
                 // dois pisos mudasse o verbo depositaria onde o outro recusa.
                 Some(along) => {
                     let axis = cross(along, n_area);
-                    // O sinal é o da referência (`DEG2RADF(-front_angle)`): a
+                    // O sinal é o da referência (a inclinação entra negativa): a
                     // normal tomba para TRÁS, contra o caminho, e é isso que põe
                     // a borda dianteira do polegar a cortar mais fundo.
                     let tilted =
@@ -288,8 +290,8 @@ impl SculptStroke {
             // moldura que a [`super::plane::ScrapePlanes`] resolveu uma vez por
             // dab.
             //
-            // ⚠️ **O culling é `d <= 0`, não `d < 0`** — o
-            // `plane_point_side_v3(...) <= 0.0f → factor = 0` do `:85`. Um
+            // ⚠️ **O culling é `d <= 0`, não `d < 0`** — na referência um
+            // vértice do lado de trás do plano, ou sobre ele, tem factor zero. Um
             // vértice exactamente sobre o meio-plano dele não é matéria a
             // remover, e a diferença é o que impede o miolo do sulco de tremer
             // entre dois dabs.
@@ -456,12 +458,12 @@ impl SculptStroke {
             // A família que lê o ANEL vive no irmão [`ring`].
             Verb::SurfaceSmooth => self.target_surface_smooth(mesh, v, s, live, w, brush),
             // **A DEMÃO — o alvo é a camada CHEIA, e o `accum` é a fração dela
-            // já depositada.** É a lei do *Layer* da referência, com o
-            // `displacement_factor` a sair do nosso `accum` em vez de um plano
-            // próprio ([`crate::GripLaw::coat`]).
+            // já depositada.** É a lei do *Layer* da referência, com o factor de
+            // deslocamento a sair do nosso `accum` em vez de um plano próprio
+            // ([`crate::GripLaw::coat`]).
             //
             // ⚠️ **`base` e `base_nrm`, os dois CONGELADOS** — a referência lê
-            // `orig_data.positions`/`orig_data.normals`, e aqui isso é o que
+            // as posições e normais congeladas do pen-down, e aqui isso é o que
             // torna a demão idempotente sob re-carimbo: um shape editor que
             // re-emite a lista inteira de dabs a cada quadro tem de chegar ao
             // mesmo lugar, e um alvo ancorado no VIVO subiria a cada passada.
@@ -476,13 +478,14 @@ impl SculptStroke {
             // e o `disp` é o motivo: ele SATURA (`coat_step`), então a meta é
             // limitada por construção e ancorar no vivo não a deixa crescer. O
             // que o `base` congelado governa é a META e a DISTÂNCIA da curva
-            // (`orig_data.positions`, e isso continua), nunca de onde se anda.
+            // (as posições congeladas do pen-down, e isso continua), nunca de
+            // onde se anda.
             //
             // ⚠️ **(2) O peso multiplica, e não é dobrar o perfil.** A frase
             // antiga dizia *"o aplicador multiplica pelo `accum`, um alvo já
             // pesado aplicaria o perfil duas vezes"* — e a referência de facto
             // o aplica nos DOIS lugares, porque eles respondem perguntas
-            // diferentes: dentro do `offset_displacement_factors` o `factors` é
+            // diferentes: dentro da recorrência da demão o `factors` é
             // a TAXA com que aquele vértice enche a demão, e aqui ele é a
             // FRAÇÃO do caminho até a meta que este dab anda. Sem o segundo a
             // demão escreve a meta de forma ABSOLUTA — e aí ela sobrescreve o
@@ -491,10 +494,9 @@ impl SculptStroke {
             // Hardness deixa de ter forma, porque a única coisa que ele muda é
             // a taxa. Era o report do Enio, nos dois eixos.
             //
-            // ⚠️ **`factors` é o `shape` e NÃO o `w`** — o
-            // A cadeia de fatores da referência chama só o
-            // `BKE_brush_calc_curve_factors`, ou seja **a curva, sem a força**;
-            // a força vive no `cache.bstrength`, que é o nosso `intensity` e já
+            // ⚠️ **`factors` é o `shape` e NÃO o `w`** — a cadeia de fatores da
+            // referência usa só a avaliação da curva de queda, ou seja **a
+            // curva, sem a força**; a força do traço é o nosso `intensity` e já
             // entra na recorrência. Passar o `w` aqui aplicaria a força duas
             // vezes.
             Verb::Layer => {

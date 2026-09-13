@@ -3,7 +3,7 @@
 //! ⚠️ **Estes gates NÃO precisam de GPU**, e é o desenho: tudo o que eles
 //! afirmam é lei de câmera — as vistas nomeadas, o reconhecimento, a base que
 //! alimenta as bolas. O que exige uma cena (o pen-down, o arrasto) vive no
-//! `sculpt3d_filter_tests`/`sculpt3d_transform_tests`, com `gpu_or_skip!`.
+//! `filter_tests`/`transform_tests`, com `gpu_or_skip!`.
 //!
 //! ```text
 //! cargo test -p ph2d-host-desktop --bins sculpt3d::navball

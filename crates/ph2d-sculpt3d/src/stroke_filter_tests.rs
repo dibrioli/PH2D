@@ -230,7 +230,7 @@ fn filtered(kind: crate::FilterKind, amount: f32) -> Mesh {
 /// qualquer.
 ///
 /// ⚠️ **O resíduo é de EXPRESSÃO, não de modelo:** o `target_sharpen` escreve
-/// `live + (live − avg)·w` (a forma do `calc_enhance_details_filter`) e o
+/// `live + (live − avg)·w` (a forma do tipo *Enhance Details*) e o
 /// `target_smooth` escreve `live·(1 − w) + avg·w` — a mesma lei em duas contas,
 /// e em `f32` elas caem a um ou dois ULP uma da outra. A sonda
 /// `tests/measure_sharpen_filter.rs` mediu **1,2e-7 a 2,4e-7** contra a
@@ -384,7 +384,7 @@ fn the_filter_runs_the_same_law_as_the_brush() {
 /// **O arrasto de volta devolve a pose EXACTA.**
 ///
 /// É o que o `accum = 1` mais a âncora no `pre` compram, e o que a referência
-/// paga com o `reset_translations_to_original`. Sem ele um arrasto seria uma
+/// paga com a devolução à pose do início do arrasto. Sem ele um arrasto seria uma
 /// COMPOSIÇÃO de filtros e o resultado dependeria de quantos eventos o rato
 /// mandou.
 ///
@@ -666,7 +666,7 @@ fn the_sharpen_filter_is_the_smooth_filter_dragged_backwards() {
 }
 
 /// **Arrastar para o lado errado não faz nada no Relax nem no HC**, e é a lei
-/// da referência (`clamp_factors(factors, 0.0f, 1.0f)`): não existe a operação
+/// da referência (a faixa `[0, 1]`): não existe a operação
 /// inversa de redistribuir. O **CONTROLE** é o mesmo verbo para o lado certo.
 #[test]
 fn the_one_sided_filters_ignore_a_backwards_drag() {

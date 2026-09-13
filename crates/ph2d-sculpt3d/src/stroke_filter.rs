@@ -15,10 +15,11 @@
 //!
 //! # A lei, e onde ela diverge da referência
 //!
-//! O filtro de malha da referência computa `translations` a partir de
-//! `orig_data.positions` e escreve `eval + t`; o `reset_translations_to_original`
-//! existe para que um arrasto seja **UMA** operação a partir da pose do
-//! pen-down, e não uma composição de todas as posições por que o rato passou.
+//! O filtro de malha da referência calcula as translações a partir das
+//! **posições congeladas no início do arrasto** e escreve posição + translação;
+//! a **devolução à pose do início** existe para que um arrasto seja **UMA**
+//! operação a partir da pose do pen-down, e não uma composição de todas as
+//! posições por que o rato passou.
 //! Aqui ele é o [`SculptStroke::restore_frozen_pose`], e **é uma metade da lei,
 //! não cerimónia** — ver o doc dele.
 //!
@@ -28,9 +29,9 @@
 //! arrasto de volta é **exacto**.
 //!
 //! ⚠️ **A divergência DECLARADA é o histórico.** Para o Smooth e o Relax o
-//! Blender guarda os eventos do arrasto e **REPLAYA** a cadeia inteira
-//! (`sculpt_mesh_filter_apply_with_history`), porque `smooth^n ≠ smooth(n·s)` —
-//! `n` passos pequenos difundem mais longe que um passo grande. Nós aplicamos
+//! Blender guarda os eventos do arrasto e **REPLAYA** a cadeia inteira, porque
+//! `smooth^n ≠ smooth(n·s)` — `n` passos pequenos difundem mais longe que um
+//! passo grande. Nós aplicamos
 //! **um** passo de magnitude `s` a partir do `pre`, e o preço está nomeado: o
 //! nosso Smooth **satura** (em `f = 1` o vértice pousa exactamente na média do
 //! anel, e mais que isso ele não alcança), enquanto a cadeia da referência não
@@ -49,15 +50,16 @@ use crate::FilterKind;
 /// **QUANTO UM PIXEL DE ARRASTO VALE**, em unidades de mundo por pixel.
 ///
 /// ⚠️ **A LEI é da referência e a CALIBRAÇÃO é nossa, e a divisão importa.** O
-/// `calc_inflate_filter` desloca `orig_normals × strength` — ou seja o `strength`
-/// **é** a distância, em unidades de objeto, sem raio nenhum no meio (ao
-/// contrário de todo verbo de carimbo, que passa pelo [`Brush::reach`] e escala
-/// com o raio do pincel). Então a única coisa que sobra para escolher é quantos
-/// pixels custam uma unidade.
+/// tipo *Inflate* da referência desloca pela normal congelada vezes a força — ou
+/// seja a força **é** a distância, em unidades de objeto, sem raio nenhum no
+/// meio (ao contrário de todo verbo de carimbo, que passa pelo [`Brush::reach`]
+/// e escala com o raio do pincel). Então a única coisa que sobra para escolher é
+/// quantos pixels custam uma unidade.
 ///
-/// ⚠️ **O número é o do Blender** (`filter_strength = start · −len · 0,001 ·
-/// UI_SCALE`, filtro de malha da referência): mil pixels de arrasto valem um
-/// `strength` de `1,0`. Sobre a esfera de fábrica (raio ~1) isso é um arrasto de
+/// ⚠️ **O número é o do Blender** (no filtro de malha dele, a força é o
+/// deslocamento do arrasto em pixels vezes `0,001`, corrigido pela escala da
+/// interface): mil pixels de arrasto valem uma força de `1,0`. Sobre a esfera
+/// de fábrica (raio ~1) isso é um arrasto de
 /// tela cheia para inflar por um raio inteiro — que é exactamente o que a
 /// referência faz, e é por isso que o número não é uma escolha nossa a defender.
 pub const FILTER_DRAG_PER_PX: f32 = 0.001;
@@ -87,8 +89,8 @@ impl SculptStroke {
         }
     }
 
-    /// **DEVOLVE a malha à pose do [`Self::filter_begin`]** — o
-    /// `reset_translations_to_original` da referência, e a metade da lei sem a
+    /// **DEVOLVE a malha à pose do [`Self::filter_begin`]** — a devolução à
+    /// pose do início do arrasto que a referência faz, e a metade da lei sem a
     /// qual o filtro deixa de ser *um passo a partir do `pre`*.
     ///
     /// ⚠️ **As leis de anel leem o mesmo `mesh` que este passe escreveu**
@@ -205,8 +207,8 @@ impl SculptStroke {
             let v = self.touched[i];
             let s = self.slot[v as usize] as usize;
             let base = self.base_pos[s];
-            // ⚠️ **A ORDEM é a da referência:** `scale_factors(factors,
-            // strength)` e só depois `clamp_factors` — o fator parte da máscara,
+            // ⚠️ **A ORDEM é a da referência:** escala pela força e só depois
+            // restringe a faixa — o fator parte da máscara,
             // é escalado pelo arrasto e **então** é aparado. Clampar antes
             // deixaria um vértice meio-mascarado receber mais que um livre no
             // extremo da faixa.
@@ -262,19 +264,19 @@ impl SculptStroke {
                 ),
                 // ⚠️ **O [`Self::target_sharpen`] e nao um `target_smooth(-f)`,
                 // e a escolha vale um ULP:** a expressao daquele kernel
-                // (`live + (live - avg)*w`) **e'** a do
-                // `calc_enhance_details_filter`, enquanto o `target_smooth`
+                // (`live + (live - avg)*w`) **e'** a do tipo
+                // *Enhance Details* da referencia, enquanto o `target_smooth`
                 // escreve a mesma lei como `live*(1-w) + avg*w` — algebricamente
                 // igual, e em `f32` a 1,2e-7 de distancia (medido). Rotear pela
                 // expressao da referencia torna a paridade uma identidade em vez
                 // de um epsilon.
-                // ⚠️ **O `f.abs()` é o `-std::abs(strength)` da referência
-                // (filtro de malha da referência, a PRIMEIRA linha do
-                // `calc_enhance_details_filter`), e sem ele esta lei fazia o
-                // OPOSTO do que o chip promete para metade do gesto.**
+                // ⚠️ **O `f.abs()` é a referência a usar o VALOR ABSOLUTO da
+                // força, negado, logo à entrada do tipo *Enhance Details* — e
+                // sem ele esta lei fazia o OPOSTO do que o chip promete para
+                // metade do gesto.**
                 //
-                // A referência realça nos DOIS sentidos do arrasto: `t =
-                // detail_directions × −|s|` é *afastar da média com |força|*,
+                // A referência realça nos DOIS sentidos do arrasto:
+                // `t = direcção de detalhe × −|s|` é *afastar da média com |força|*,
                 // e o sinal do que o artista arrasta não entra. Sem o `abs`, um
                 // arrasto para trás dava `live + (live − avg)·(−2)` — o vértice
                 // ATRAVESSA a média do próprio anel e sai do outro lado ao dobro
@@ -317,7 +319,8 @@ impl SculptStroke {
 
 /// **A ESFERA** — `midpoint(normalize(p), −p) · |f|`, somado à pose congelada.
 ///
-/// ⚠️ **A lei é a do `calc_sphere_translations`, verbatim**, e o que ela faz não
+/// ⚠️ **A lei é a do tipo *Sphere* da referência — a mesma lei, medida por
+/// `the_sphere_filter_pulls_halfway_to_the_unit_sphere`** —, e o que ela faz não
 /// é óbvio pelo nome: `normalize(p)` é o ponto projectado na esfera UNITÁRIA e
 /// `−p` é o espelho pela origem, então o ponto médio dos dois é
 /// `(unit(p) − p)/2` — *metade do caminho até a esfera de raio um*. Um vértice
@@ -350,7 +353,7 @@ fn sphere_target(base: [f32; 3], f: f32) -> [f32; 3] {
     t
 }
 
-/// **O SORTEIO por vértice**, em `[−0,5, 0,5)` — o `randomize_factors` da
+/// **O SORTEIO por vértice**, em `[−0,5, 0,5)` — a etapa de sorteio da
 /// referência.
 ///
 /// ⚠️ **A entrada são os BITS da POSIÇÃO, e é isso que dá a propriedade:**
@@ -365,7 +368,7 @@ fn sphere_target(base: [f32; 3], f: f32) -> [f32; 3] {
 /// crate fica determinista e a variação é uma escolha do shell.
 ///
 /// ⚠️ **DIVERGÊNCIA DECLARADA, e ela não é afinável:** a referência mistura com
-/// o `BLI_hash_int_2d`, cuja definição **não está neste clone** (medido: só o
+/// uma função de hash cuja definição **não está neste clone** (medido: só o
 /// arquivo que a chama). Usamos o hash desta crate ([`crate::alpha::hash4`], o
 /// mesmo dos alphas procedurais) — *um crate, um hash* — e o que os gates
 /// afirmam são as quatro propriedades que fazem de um ruído um ruído

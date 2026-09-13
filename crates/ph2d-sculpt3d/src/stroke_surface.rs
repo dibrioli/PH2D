@@ -3,8 +3,8 @@
 //! (*Computing and Rendering Point Set Surfaces*), §4.
 //!
 //! ⚠️ **Irmão do [`super::plane`], e o corte são DOIS PAPERS.** Lá mora *que
-//! plano a pegada ajusta* — o `calc_area_normal_and_center` da referência, uma
-//! média ponderada de posições e normais. Aqui mora *que forma a superfície tem
+//! plano a pegada ajusta* — uma média ponderada de posições e normais, como a
+//! da referência. Aqui mora *que forma a superfície tem
 //! em torno desse plano*, que é outra pergunta com outra fonte. Enfiá-las no
 //! mesmo arquivo faria a próxima leitura ter de separar as duas de cabeça.
 //!

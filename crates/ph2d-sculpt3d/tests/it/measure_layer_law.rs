@@ -34,7 +34,7 @@
 use ph2d_mesh::{Face, Mesh, shapes};
 use ph2d_sculpt3d::{Brush, Dab, RefMode, SculptStroke, Symmetry, Verb};
 
-/// A recorrência do `offset_displacement_factors`, verbatim.
+/// A recorrência da demão do *Layer*, com cabeça 1,05 e recorte, escrita à mão.
 fn step(disp: f32, f: f32, strength: f32) -> f32 {
     (disp + f * strength * (1.05 - disp.abs())).clamp(-1.0, 1.0)
 }
@@ -184,7 +184,7 @@ fn the_coat_is_flat_on_top() {
 
 /// **P5 — a ESCALA do nosso mundo: quanto vale `height` aqui?**
 ///
-/// A referência declara `height` em unidades de OBJETO (`PROP_DISTANCE`), com
+/// A referência declara `height` em unidades de OBJETO (propriedade de distância), com
 /// default `0,5`, faixa dura `[0, 1]` e faixa macia `[0, 0,2]`. O número só é
 /// legível contra o tamanho do barro que este app de facto abre.
 #[test]

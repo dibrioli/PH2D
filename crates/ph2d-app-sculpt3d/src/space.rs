@@ -375,7 +375,7 @@ impl Sculpt3dScene {
     /// que passa pelo olho projeta num PONTO (o próprio `about_world`
     /// projetado), então girar em torno dela deixa o pivô parado na tela e a
     /// silhueta a rodar em volta dele. O raio do pixel de PEN-DOWN é outra reta:
-    /// medido em `sculpt3d_transform_tests`, ela inclina **3,2° a 50 px** do
+    /// medido em `transform_tests`, ela inclina **3,2° a 50 px** do
     /// pivô e **19,2° a 340 px** — e o que o artista vê nessa inclinação é a
     /// peça **cambalhotando** para fora do plano em vez de girar.
     pub(super) fn view_axis_local(&self, about_world: [f32; 3]) -> [f32; 3] {

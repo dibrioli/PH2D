@@ -39,7 +39,7 @@
 //!   pixel de pen-down: o smoke reprovou com as três consequências juntas —
 //!   *"a direção da rotação do mouse está invertida … e é imprecisa (não
 //!   consistente)"* —, e a medição as separou em sinal, magnitude (0,45× do
-//!   pedido) e proporcionalidade. Ver `sculpt3d_transform_tests`.
+//!   pedido) e proporcionalidade. Ver `transform_tests`.
 //! * **escalar** — a **razão de distâncias** ao pivô projetado, e não um mapa
 //!   linear de pixels: assim o ponto sob o dedo continua sob o dedo, que é o que
 //!   *manipulação direta* significa.

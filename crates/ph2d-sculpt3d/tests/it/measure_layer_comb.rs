@@ -12,8 +12,8 @@
 //! *o período do pente tem de ser o passo da grade*.
 //!
 //! ⚠️ **A medição direta é mais barata que uma autocorrelação, e ela separa as
-//! duas hipóteses sem escolher um número:** com `hardness = h`, o
-//! `apply_hardness_to_distances` manda a `t < h` para **zero**, então a curva
+//! duas hipóteses sem escolher um número:** com `hardness = h`, a etapa de
+//! dureza da referência manda a distância `t < h` para **zero**, então a curva
 //! satura e o `shape` é **constante** em todo o disco interior. A lei do
 //! *Layer* leva todo vértice de mesmo `shape` à **mesma altura absoluta** ⇒
 //!
@@ -105,7 +105,7 @@ fn measure_is_the_comb_the_kernel_or_the_grid() {
 
     for h in [0.0f32, 0.25, 0.5, 0.75, 0.9] {
         let (rest, mesh) = coat(h, 12);
-        // O disco interior: onde o `apply_hardness_to_distances` satura.
+        // O disco interior: onde a etapa de dureza satura.
         // Com `h = 0` não existe platô — a fatia mede o miolo mesmo assim, e
         // é o CONTROLE (ali a ondulação É o falloff, não um defeito).
         let inner = (h * 0.95).max(0.0) * R;

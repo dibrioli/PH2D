@@ -127,7 +127,7 @@ fn a_scaled_piece_wears_the_same_stamp_on_screen() {
 ///
 /// ⚠️ **A régua da esbeltez é `layer_height ÷ raio`**, e o `layer_height` é uma
 /// DISTÂNCIA de mundo nos dois lados da referência (o declarador de propriedades
-/// dela diz `PROP_DISTANCE`; o verbo *Layer* lê `brush.height` cru). Se ela cresce sem
+/// dela declara-o como distância; o verbo *Layer* lê `brush.height` cru). Se ela cresce sem
 /// teto quando a câmera aproxima, *"quanto mais perto, pior"* é literalmente uma
 /// demão que vira espigão — e o número certo sai daqui, não de uma fixture que
 /// dirige o `Engine` direto.
@@ -137,9 +137,9 @@ fn a_scaled_piece_wears_the_same_stamp_on_screen() {
 /// Medido (esfera de fábrica, raio 50 px), `alt/raio` vai de **0,135** com a
 /// câmera longe a **5,857** a 4× de zoom: a demão de fato vira espigão. E a
 /// varredura do Blender diz que **ele faz o mesmo**, em três fatos medidos nele:
-/// o declarador de propriedades dele diz `height` = `PROP_DISTANCE`, o verbo
+/// o declarador de propriedades dele declara `height` como distância, o verbo
 /// *Layer* multiplica-o CRU (`normal_de_repouso · height · deslocamento`), e o
-/// `cache.radius` dele nasce dos PIXELS como o nosso. ⚠️ **E o default dele é
+/// raio do traço dele nasce dos PIXELS como o nosso. ⚠️ **E o default dele é
 /// `0.5` contra o nosso `0.1`** — no mesmo zoom o Layer do Blender espiga
 /// **cinco vezes** mais que o nosso.
 ///

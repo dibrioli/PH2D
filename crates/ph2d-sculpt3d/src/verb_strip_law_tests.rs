@@ -184,8 +184,8 @@ fn the_band_still_lands_under_the_cursor_on_a_convex_form() {
 /// os verbos, incluindo um que o **SculptGL não tem**. O `front_face: Ignored`
 /// do `S` é fiel ao `Brush.js` (`if (this._culling)`, e o `_culling` nasce
 /// desligado), e simplesmente **não é a lei desta ferramenta**: o
-/// *Clay Strips* chama `calc_front_face` como terceira linha da
-/// cadeia de fatores.
+/// *Clay Strips* da referência aplica o fator de **frente-de-face** como
+/// terceiro termo da cadeia de fatores.
 #[test]
 fn the_strip_does_not_lay_clay_on_what_the_artist_cannot_see() {
     // Olhar quase de lado: é assim que a silhueta entra na pegada.
@@ -293,9 +293,9 @@ fn sculptgl_does_not_declare_the_strip_so_it_does_not_govern_it() {
 /// ninguém.
 ///
 /// ⚠️ **E a propriedade não é o número, é o que ele DESTRAVA.** Com o `raio ·
-/// força` do *Clay Strips*, a posição VIVA no portão e o plano
-/// CONGELADO do `!ss.cache->accum`, o `z` do portão `z·(1−z)` encolhe à medida
-/// que o barro sobe e **fecha no plano**. Medido, o pico pousa em `0,1000`
+/// força` do *Clay Strips*, a posição VIVA no portão e o plano **CONGELADO
+/// quando o Accumulate está desligado**, o `z` do portão `z·(1−z)` encolhe à
+/// medida que o barro sobe e **fecha no plano**. Medido, o pico pousa em `0,1000`
 /// contra um plano em `0,1000` e lá fica.
 ///
 /// ⚠️ **A FIXTURE VARIA UMA COISA SÓ, e a 1ª versão variava duas:** ela

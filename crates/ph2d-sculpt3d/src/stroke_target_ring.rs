@@ -64,10 +64,9 @@ impl SculptStroke {
     /// teria.
     ///
     /// ⚠️ **Este doc dizia *"NOSSO, e a referencia nao tem"*, e era FALSO** — a
-    /// referencia tem-no com outro nome: `calc_enhance_details_filter`
-    ///, cuja lei e' `t = detail_directions x
-    /// **-|strength|**` (`:1883`) — ou seja esta expressao com o peso em VALOR
-    /// ABSOLUTO.
+    /// referencia tem-no com outro nome — o tipo *Enhance Details* —, cuja lei
+    /// e' a direcao de detalhe vezes **menos o valor absoluto** da forca — ou
+    /// seja esta expressao com o peso em VALOR ABSOLUTO.
     ///
     /// ⚠️ **A primeira versao deste doc dizia `x -strength`, sem as barras, e a
     /// omissao shipou:** o filtro encaminhava o `f` assinado, e um arrasto para
@@ -101,7 +100,8 @@ impl SculptStroke {
     /// **O RELAX** — a mesma média do [`Self::target_smooth`] com **uma** linha a
     /// mais, e essa linha é a ferramenta inteira: o que corre ao longo da normal
     /// é REMOVIDO, então o que sobra desliza pela superfície e a forma não se
-    /// mexe (`translation_to_plane`, alisador da referência).
+    /// mexe — e é o que o *Relax* da referência faz: remove a componente normal
+    /// da média, e o que sobra desliza pela superfície.
     ///
     /// ⚠️ **A normal é a VIVA (`mesh.normals()`), ao contrário do
     /// [`Verb::Inflate`]** — e as duas escolhas estão certas porque a grandeza

@@ -258,7 +258,7 @@ impl Sculpt3dScene {
     /// ⛔⛔ **O ponto chega por ARGUMENTO, e não de `self.last`** — a 1.ª redacção
     /// lia o campo, e ele está ERRADO exactamente aqui: o `sculpt3d_pointer_down`
     /// escreve `scene.last` **depois** de chamar o `begin_filter`, e o
-    /// `sculpt3d_pointer_move` só o actualiza **com um arrasto em curso**. ⇒ no
+    /// `pointer_move` só o actualiza **com um arrasto em curso**. ⇒ no
     /// pen-down ele ainda guarda *onde o gesto ANTERIOR acabou*, e o aperto
     /// puxaria para lá. Quem o apanhou foi o gate do vértice, que leu a âncora no
     /// centro da caixa (o raio nem sequer acertava na peça).

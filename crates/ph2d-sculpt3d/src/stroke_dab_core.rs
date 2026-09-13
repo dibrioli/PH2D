@@ -16,9 +16,9 @@ impl SculptStroke {
     /// ⚠️ **As PASSADAS chegam por parâmetro, e não de `brush.passes()`.** O
     /// verbo do artista passa a tabela dele; o **autosmooth** passa o orçamento
     /// de [`crate::auto_smooth::iteration_strengths`], que é dinâmico — o
-    /// `&'static` de `passes()` não o exprime. É a forma literal da referência:
-    /// o `do_smooth_brush` percorre as forças e escala os fatores
-    /// (*Smooth*), em vez de as ler do pincel.
+    /// `&'static` de `passes()` não o exprime. É a mesma forma da referência:
+    /// o verbo *Smooth* dela percorre as forças e escala os fatores, em vez de
+    /// as ler do pincel.
     pub(super) fn dab_core(
         &mut self,
         mesh: &mut Mesh,
@@ -251,9 +251,9 @@ impl SculptStroke {
                 // uma tool contra a curva de outra, e é literalmente o *"cada tool
                 // deve ter seu falloff apropriado"* que o pedido nomeia.
                 // ⚠️ **A DUREZA entra AQUI, antes de qualquer curva** — é a ordem
-                // do original (`apply_hardness_to_distances` roda antes do
-                // `BKE_brush_calc_curve_factors`), e é o que faz as duas curvas
-                // abaixo lerem a MESMA distância. Com `hardness = 0`, o default,
+                // do original, que aplica a dureza às distâncias antes de avaliar
+                // a curva de queda, e é o que faz as duas curvas abaixo lerem a
+                // MESMA distância. Com `hardness = 0`, o default,
                 // ela devolve o argumento sem tocar num bit.
                 //
                 // ⚠️ **COM CAMPO a curva é o SUPORTE do campo — hoje uma
@@ -396,8 +396,8 @@ impl SculptStroke {
                 if additive && me.accum[s] >= 1.0 {
                     return;
                 }
-                // ⚠️ **A DEMÃO NÃO TEM EARLY-OUT, e o `calc_faces` do *Layer*
-                // também não tem.** Aqui morava um `if coat && accum >= keep`,
+                // ⚠️ **A DEMÃO NÃO TEM EARLY-OUT, e o cálculo por vértice do
+                // *Layer* da referência também não tem.** Aqui morava um `if coat && accum >= keep`,
                 // irmão do de cima, e ele era CORRECTO sob a lei antiga: o alvo
                 // era escrito de forma ABSOLUTA a partir do `base`, então
                 // re-escrever um vértice já com a demão cheia era um no-op caro.
@@ -430,9 +430,10 @@ impl SculptStroke {
                 // — *quanto foi pintado* e *ainda cabe?* — respondendo o mesmo.
                 // ⚠️ **A DEMÃO satura AQUI pela mesma razão que a aditiva**, e os
                 // dois fatores chegam SEPARADOS porque é assim que a referência
-                // os escreve: `offset_displacement_factors(disp, factors,
-                // cache.bstrength)`. O `factors` do Blender é *curva × máscara*
-                // — o nosso `shape` — e o `bstrength` é *o slider × a pressão* —
+                // os recebe: a recorrência da demão toma o deslocamento já
+                // acumulado, os factores e a força do traço como entradas
+                // distintas. Os factores do Blender são *curva × máscara* — o
+                // nosso `shape` — e a força do traço é *o slider × a pressão* —
                 // o nosso `intensity`, que já traz a curva de força do `B` (o
                 // E13). Passar o `w` (que é o produto dos dois) e um `1.0` daria
                 // o mesmo número hoje; passar `brush.strength` cru daria outro,

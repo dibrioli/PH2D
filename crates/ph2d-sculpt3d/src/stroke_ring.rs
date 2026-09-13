@@ -87,9 +87,8 @@ impl SculptStroke {
     /// movimento AO LONGO da beira, que é o que redistribuir significa ali.
     ///
     /// **`None` = não mexa neste vértice**, e são os três casos em que a
-    /// referência devolve translação zero: anel de dois ou menos (o
-    /// `neighbors.size() <= 2` de `:539`), nenhum vizinho de borda sobreviveu
-    /// (`:559`), e a bissetriz DEGENERADA (`math::is_zero`, `:568`) — que
+    /// referência devolve translação zero: com dois ou menos vizinhos, sem
+    /// vizinho de borda sobrevivente, ou com a bissetriz DEGENERADA — que
     /// geometricamente é a beira perfeitamente RETA, onde não existe *"para
     /// dentro"* a proteger.
     ///
@@ -135,8 +134,8 @@ impl SculptStroke {
         if n == 0 {
             return None;
         }
-        // ⚠️ **Fora de DOIS a referência volta à normal do vértice** (`:573`),
-        // e não à bissetriz de três — inalcançável em malha manifold, mas o
+        // ⚠️ **Fora de DOIS a referência volta à normal do vértice**, e não à
+        // bissetriz de três — inalcançável em malha manifold, mas o
         // `from_obj` pode trazer uma que não é.
         if n != 2 {
             return Some(mesh.normals()[vi]);

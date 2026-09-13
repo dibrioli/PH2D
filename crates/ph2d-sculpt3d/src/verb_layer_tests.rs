@@ -300,7 +300,7 @@ fn the_law_is_the_reference_recurrence() {
         let mut theirs = 0.0f32;
         for _ in 0..64 {
             mine = crate::coat_step(mine, w, strength, cap);
-            // `offset_displacement_factors` + `clamp_displacement_factors`.
+            // A recorrência da demão com cabeça 1,05, recortada ao tecto (a lei, escrita à mão).
             theirs += w * strength * (1.05 - theirs.abs());
             theirs = theirs.clamp(0.0, cap);
             assert_eq!(
@@ -386,8 +386,8 @@ fn ctrl_lays_the_coat_the_other_way() {
 /// garante é dentro de UM traço — que o número de dabs não move o resultado
 /// convergido, e disso trata o `the_coat_stops_at_the_authored_height`.
 ///
-/// Entre traços a demão **empilha**, porque o `ss.cache` da referência morre no
-/// pen-up (`MEM_delete`) e o traço seguinte lê o `orig` NOVO: uma segunda
+/// Entre traços a demão **empilha**, porque a cache do traço da referência é
+/// libertada no pen-up e o traço seguinte lê a pose de partida NOVA: uma segunda
 /// passada deita uma segunda camada, que é o que *demão* significa.
 #[test]
 fn a_second_stroke_lays_a_second_coat() {
@@ -415,11 +415,11 @@ fn a_second_stroke_lays_a_second_coat() {
 
 /// **UMA DEMÃO FECHADA PARA DE CRESCER** — e o teto dela é a MÁSCARA, não `1`.
 ///
-/// ⚠️ **Este gate media TRABALHO e a premissa dele MORREU com o porte do
-/// `calc_translations`.** Ele afirmava *"o 64.º dab move ZERO vértices"*, o que
-/// era verdade enquanto o alvo da demão era escrito de forma ABSOLUTA a partir
-/// do `base`: chegado à demão cheia, re-escrever era um no-op, e um early-out o
-/// poupava.
+/// ⚠️ **Este gate media TRABALHO e a premissa dele MORREU com o porte da lei
+/// de translação da demão da referência.** Ele afirmava *"o 64.º dab move ZERO
+/// vértices"*, o que era verdade enquanto o alvo da demão era escrito de forma
+/// ABSOLUTA a partir do `base`: chegado à demão cheia, re-escrever era um
+/// no-op, e um early-out o poupava.
 ///
 /// Sob a lei da referência a demão **tem de continuar a escrever** — a
 /// translação sai do VIVO, e é o dab seguinte que traz de volta o vértice que

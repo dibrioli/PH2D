@@ -61,9 +61,9 @@ fn profile(verb: Verb, invert: bool, pinch: f32) -> (f32, f32) {
 
 /// O Blob EMPURRA o barro para fora do eixo; o Crease o PUXA para dentro.
 ///
-/// É o `invert_strength` do `do_crease_or_blob_brush` medido no barro: lá o
-/// termo lateral é `(centro − posição) · força`, e a força do Blob é a do Crease
-/// com o sinal trocado.
+/// É a inversão de força do verbo *Crease*/*Blob* da referência medida no
+/// barro: lá o termo lateral é `(centro − posição) · força`, e a força do Blob é
+/// a do Crease com o **sinal trocado**.
 ///
 /// ⚠️ **A fixture usa `pinch: 1.0` de propósito** — o termo lateral é escalado
 /// pelo knob, e num `pinch` baixo os dois verbos convergem para o mesmo
@@ -242,7 +242,7 @@ fn the_blobs_dome_is_narrower_than_a_draws_of_the_same_reach() {
 /// O SculptGL não declara o Blob, então ele não o governa.
 ///
 /// Irmão exato do gate da faixa: o `Crease.js` é o parente mais próximo que
-/// aquela referência tem, e ele não carrega o `invert_strength` que faz de um
+/// aquela referência tem, e ele não carrega a inversão de força que faz de um
 /// Blob um Blob. A lei que governa é a do `B`, que TEM a ferramenta.
 #[test]
 fn sculptgl_does_not_declare_the_blob_so_it_does_not_govern_it() {

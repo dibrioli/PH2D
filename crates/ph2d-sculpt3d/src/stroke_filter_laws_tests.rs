@@ -7,9 +7,9 @@
 //! outra via —, e por isso os gates aqui falam com o [`FilterKind`] direto.
 //!
 //! ⚠️ **O ORÁCULO de cada uma é escrito À MÃO a partir da referência**, nunca
-//! chamando a função sob teste: o `t = base + base·f` do `calc_scale_filter`, o
-//! `midpoint(unit(p), −p)·|f|` do `calc_sphere_translations` e o
-//! `orig_normal · f · (hash − ½)` do `randomize_factors`. Um oráculo que
+//! chamando a função sob teste: o `t = base + base·f` do *Scale*, o
+//! `midpoint(unit(p), −p)·|f|` do *Sphere* e o `normal · f · (hash − ½)` do
+//! *Random*. Um oráculo que
 //! chamasse o kernel devolveria a nossa resposta com outro nome — o gate
 //! sempre-verde que esta casa já documentou.
 
@@ -79,8 +79,8 @@ fn worst(a: &[[f32; 3]], b: &[[f32; 3]]) -> f32 {
 
 // ---------------------------------------------------------------- SCALE
 
-/// **A ESCALA É SOBRE A ORIGEM DO OBJECTO**, e o oráculo é o
-/// `calc_scale_filter` escrito à mão.
+/// **A ESCALA É SOBRE A ORIGEM DO OBJECTO**, e o oráculo é a lei do tipo
+/// *Scale* escrita à mão.
 ///
 /// ⚠️ **Este é o gate que impede a lei de virar a do `MaskTransform`**, que
 /// escala sobre o **centroide ponderado do que está livre** — a sonda
@@ -148,8 +148,8 @@ fn the_scale_filter_moves_a_point_in_proportion_to_its_distance() {
 
 // --------------------------------------------------------------- SPHERE
 
-/// **A ESFERIZAÇÃO PUXA PARA A ESFERA UNITÁRIA**, pelo oráculo do
-/// `calc_sphere_translations` escrito à mão.
+/// **A ESFERIZAÇÃO PUXA PARA A ESFERA UNITÁRIA**, pelo oráculo da lei do tipo
+/// *Sphere* escrito à mão.
 #[test]
 fn the_sphere_filter_pulls_halfway_to_the_unit_sphere() {
     // Uma esfera de raio 1 já ESTÁ no alvo — a fixture tem de conter o
@@ -263,9 +263,9 @@ fn the_sphere_filter_leaves_a_vertex_at_the_origin_finite() {
 /// das quatro propriedades que fazem de um ruído um ruído.
 ///
 /// ⚠️ **Não há paridade bit-a-bit a afirmar**, e a divergência está declarada
-/// no kernel: a referência mistura com o `BLI_hash_int_2d`, cuja definição não
+/// no kernel: a referência mistura com uma função de hash cuja definição não
 /// está no clone. O que se pina é o COMPORTAMENTO — e o limite `|f|/2` é
-/// exactamente a faixa `[−½, ½)` do `randomize_factors`.
+/// exactamente a faixa `[−½, ½)` da etapa de sorteio da referência.
 #[test]
 fn the_random_filter_is_deterministic_and_bounded() {
     let (pre, a) = run(FilterKind::Random, 0.4);
@@ -395,9 +395,8 @@ fn every_new_law_is_one_step_from_the_frozen_pose() {
     }
 }
 
-/// ⭐ **O `ENHANCE_DETAILS` REALÇA NOS DOIS SENTIDOS DO ARRASTO** — o
-/// `-std::abs(strength)` que abre o `calc_enhance_details_filter`
-/// (filtro de malha da referência, a PRIMEIRA linha da função).
+/// ⭐ **O `ENHANCE_DETAILS` REALÇA NOS DOIS SENTIDOS DO ARRASTO** — a
+/// referência usa o valor absoluto da força, negado, logo à entrada do tipo.
 ///
 /// ⚠️ **Gate red-first, e ele nasceu de uma auditoria — não de um smoke.** O
 /// porte encaminhava o arrasto ASSINADO, e um gesto para trás fazia o vértice

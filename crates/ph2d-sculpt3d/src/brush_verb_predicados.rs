@@ -27,8 +27,9 @@ impl Verb {
     /// duas cópias divergiriam num controle que aparece e não faz nada.
     ///
     /// ⚠️ **A DEMÃO fica de fora, e é a referência que a tira:** o *Layer*
-    /// mede as distâncias contra `orig_data.positions` **incondicionalmente** —
-    /// ele não consulta o `BRUSH_ACCUMULATE`, ao contrário dos irmãos de
+    /// mede as distâncias contra as posições ORIGINAIS do pen-down
+    /// **incondicionalmente** — ele não consulta o *Accumulate*, ao contrário
+    /// dos irmãos de
     /// carimbo. E há razão para isso: o que o Accumulate compra num Draw é
     /// *deixar o pincel não se esgotar*, e a demão já tem o próprio motor de
     /// saturação no [`crate::GripLaw::coat`]. Oferecer o interruptor aqui seria

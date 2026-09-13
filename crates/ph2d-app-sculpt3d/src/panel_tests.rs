@@ -1,6 +1,6 @@
 //! **ARMAR UM PADRÃO SEMEIA, NUNCA IMPÕE** — os gates de `set_alpha_image` (ADR-0150).
 //!
-//! Módulo irmão de teste do [`super`] (`#[path]`, `cfg(test)`), no molde do `sculpt3d_mode_tests`:
+//! Módulo irmão de teste do [`super`] (`#[path]`, `cfg(test)`), no molde do `mode_tests`:
 //! `set_alpha_image` é método da CENA, e uma cena exige um device ⇒ `#[ignore]` + `gpu_or_skip!`.
 //!
 //! ```text

@@ -101,8 +101,9 @@ impl SculptStroke {
         // `last_center` ANTES da linha abaixo é o que distingue os dois casos;
         // depois dela a informação já não existe.
         //
-        // ⚠️ **E ela é gateada no VERBO** — o `front_angle` da referência só
-        // avança dentro do `do_clay_thumb_brush`. Sem o gate, um traço de Draw
+        // ⚠️ **E ela é gateada no VERBO** — a inclinação do polegar da
+        // referência só avança dentro do verbo *Clay Thumb*. Sem o gate, um
+        // traço de Draw
         // deixaria a inclinação carregada para o próximo traço de polegar sem
         // que nada na tela dissesse porquê.
         if brush.verb == Verb::ClayThumb && self.last_center.is_some() {
@@ -152,10 +153,10 @@ impl SculptStroke {
                     .extend_from_slice(self.region.refreshed());
             }
             total += n;
-            // ⚠️ **O SEGUNDO PASSE — o `autosmooth_factor` do Blender**, e a
-            // posição é a dele: **depois** do verbo e **dentro** da passada de
-            // simetria (motor de escultura da referência, no fim do `do_brush_action`, que é
-            // chamado uma vez por cópia). Fora do laço ele alisaria só a última
+            // ⚠️ **O SEGUNDO PASSE — o *Auto Smooth* do Blender**, e a posição é
+            // a dele: **depois** do verbo e **dentro** da passada de simetria (no
+            // fim do despacho por dab da referência, que é chamado uma vez por
+            // cópia). Fora do laço ele alisaria só a última
             // cópia; antes do verbo ele alisaria a superfície que o verbo está
             // prestes a substituir.
             //
@@ -169,18 +170,18 @@ impl SculptStroke {
             // decide refino e orçamento por ele.
             //
             // ⚠️ **A FORÇA vive nas PASSADAS, não no `strength` do filho** — o
-            // `autosmooth_factor` é um ORÇAMENTO de até quatro laplacianos
-            // completos, não o coeficiente de um lerp
-            // ([`crate::auto_smooth`]). O filho nasce com `strength = 1,0` e
-            // quem escala é o `Pass::weight`, que é o
-            // `scale_factors(factors, strength)` da referência ao pé da letra.
+            // *Auto Smooth* é um ORÇAMENTO de até quatro laplacianos completos,
+            // não o coeficiente de um lerp ([`crate::auto_smooth`]). O filho
+            // nasce com `strength = 1,0` e quem escala é o `Pass::weight`, que
+            // faz o que a etapa da referência que escala os factores pela força
+            // faz.
             //
             // ⚠️ **E é por isso que o modo não contamina o número:** o
             // `weight()` do filho passa pela curva do slider do modo vigente, e
             // tanto `Linear` como `Squared` devolvem `1,0` para `1,0`. Pôr a
             // força ali faria o `b-mode` elevá-la ao quadrado — e o autosmooth
-            // do Blender é **linear**, ao contrário da ferramenta Smooth, cujo
-            // `bstrength` traz `alpha = strength²`.
+            // do Blender é **linear**, ao contrário da ferramenta Smooth, cuja
+            // força efectiva é o QUADRADO da força do traço.
             if let Some(smoother) = brush.auto_smooth_brush() {
                 let budget = crate::auto_smooth::iteration_strengths(brush.auto_smooth);
                 let m = self.dab_core(mesh, &smoother, &mirrored, budget.as_slice());

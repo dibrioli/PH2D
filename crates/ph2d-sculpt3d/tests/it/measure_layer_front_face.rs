@@ -9,8 +9,8 @@
 //!
 //! # A hipótese, e por que ela é sobre o HARDNESS
 //!
-//! O peso de um dab é `shape = curva(hardness(t)) · alpha · facing · keep`. O
-//! `apply_hardness_to_distances` da referência empurra o
+//! O peso de um dab é `shape = curva(hardness(t)) · alpha · facing · keep`. A
+//! etapa de dureza da referência empurra o
 //! platô para fora: com `hardness = h` toda distância `t < h` vira **zero**, e
 //! zero é onde a curva vale **um**. ⇒ **quanto mais duro o pincel, maior a
 //! fração da pegada em que `curva ≡ 1`** — e ali `shape` colapsa em
@@ -28,12 +28,12 @@
 //!
 //! # E o que a referência de facto faz
 //!
-//! *Layer* é `if (brush.flag & BRUSH_FRONTFACE) calc_front_face(...)` —
-//! um **checkbox do artista** (`use_frontface`, rotulado *"Front Faces Only"* em
-//! painel de pintura da referência), e **nenhuma linha do Blender inteiro o
-//! LIGA** (varrido: o único hit fora de leitura é `use_front_face_ = brush_->flag
-//! & BRUSH_FRONTFACE`, que também lê). Nós o aplicamos **incondicionalmente** em
-//! todo verbo do modo `B`.
+//! O *Layer* só aplica a frente-de-face se a opção *Front Faces Only* estiver
+//! ligada — um **checkbox do artista** (`use_frontface`, rotulado *"Front Faces
+//! Only"* em painel de pintura da referência), e **nenhuma linha do Blender
+//! inteiro o LIGA** (varrido: a única escrita dessa opção fora de leitura é
+//! outra leitura). Nós o aplicamos **incondicionalmente** em todo verbo do modo
+//! `B`.
 //!
 //! A sonda não decide a cura — ela mede o tamanho do fenômeno para a cura ser
 //! escolhida com número na mão.
@@ -72,8 +72,8 @@ fn grid(n: usize, half: f32) -> Mesh {
 /// pergunta errada é pior que instrumento nenhum, que é a lição que o
 /// `PH2D_FLUID_PROFILE` do Painter já pagou três vezes.
 ///
-/// ⚠️ **Hoje a alavanca EXISTE no produto** (`Brush::front_faces_only`, o
-/// `BRUSH_FRONTFACE`), então o A/B é o do artista e não uma ablação inventada.
+/// ⚠️ **Hoje a alavanca EXISTE no produto** (`Brush::front_faces_only`, a opção
+/// *Front Faces Only*), então o A/B é o do artista e não uma ablação inventada.
 /// O texto abaixo descreve a lei que o `mode` carrega, e ela continua exacta: o
 /// **declara** o Layer — o produto não o oferece —, mas o `kernel_for` é um
 /// `match` puro sobre o modo, então ele serve como a rota de ablação que isola

@@ -83,7 +83,7 @@
 //! esquecido. Se ele voltar à mesa, volta contra `0,0373 %` em vinte dabs, não
 //! contra `1,8062 %`.
 //!
-//! ⚠️ **E ele deixou de ser hipotético desde então:** o `SURFACE_SMOOTH` shipou
+//! ⚠️ **E ele deixou de ser hipotético desde então:** o *Surface Smooth* shipou
 //! como VERBO próprio (o [`Verb::SurfaceSmooth`], que é o HC com o `b` num plano
 //! da sessão), então a razão 2 acima — *"o HC pede estado que este motor não
 //! tem"* — descreve o que era verdade quando o par foi escolhido, e o que mudou

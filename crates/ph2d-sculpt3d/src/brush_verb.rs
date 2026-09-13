@@ -152,12 +152,11 @@ pub enum Verb {
     /// lado do `last_center` de que ele é irmão: os dois são fatos sobre o
     /// GESTO, e nenhum deles cabe num [`crate::Dab`].
     ///
-    /// ⚠️ **Sem direção ele não deposita**, e isso é a referência ao pé da
-    /// letra (`if math::is_zero(grab_delta_symm) { return; }`): um plano
-    /// inclinado precisa de um eixo, e o eixo é o traço. O primeiro dab de todo
-    /// traço cai nesse caso por construção — o `path` dele é `[0, 0, 0]` —, que
-    /// é a mesma recusa que o *"delay the first daub"* da referência escreve com
-    /// um `return` próprio.
+    /// ⚠️ **Sem direção ele não deposita**, como na referência (sem deslocamento
+    /// do dab a referência não faz nada): um plano inclinado precisa de um eixo,
+    /// e o eixo é o traço. O primeiro dab de todo traço cai nesse caso por
+    /// construção — o `path` dele é `[0, 0, 0]` —, que é a mesma recusa que a
+    /// referência escreve com uma desistência própria para adiar o primeiro dab.
     ///
     /// ⚠️ **O SculptGL NÃO O TEM** — ver [`crate::RefMode`], como os dois
     /// vizinhos acima.
@@ -181,15 +180,14 @@ pub enum Verb {
     /// tombam ao contrário, o telhado vira vale, e a ferramenta **enche** a
     /// dobra em vez de a cavar.
     ///
-    /// ⚠️ **E o culling de lado é gateado no SINAL do ângulo** (`if (angle >=
-    /// 0.0f)`, `:405`): com o V aberto só o que está ACIMA do próprio meio-plano
-    /// é tocado — o que torna o verbo auto-limitado, como o [`Self::Scrape`] —,
-    /// e com ele fechado a projeção é bilateral e a dobra é preenchida dos dois
-    /// lados.
+    /// ⚠️ **E o culling de lado é gateado no SINAL do ângulo** — ele só corre
+    /// com o ângulo não-negativo: com o V aberto só o que está ACIMA do próprio
+    /// meio-plano é tocado — o que torna o verbo auto-limitado, como o
+    /// [`Self::Scrape`] —, e com ele fechado a projeção é bilateral e a dobra é
+    /// preenchida dos dois lados.
     ///
-    /// ⚠️ **A PONTA NÃO É UM DISCO**, e a referência diz por quê no comentário
-    /// dela: *"deform the local space along the Y axis to avoid artifacts on
-    /// curved strokes; this produces a not round brush tip"* (`:101-104`). É a
+    /// ⚠️ **A ponta é deformada ao longo do traço** para não deixar degraus em
+    /// traços curvos, e por isso **não é um disco**. É a
     /// [`crate::Footprint::Blade`], e sem ela um traço curvo deixa degraus onde
     /// dois dabs vizinhos raspam com dobradiças que já não são paralelas.
     ///
@@ -227,7 +225,7 @@ pub enum Verb {
     /// ⚠️ **Numa BORDA a normal é outra, e este ramo é o caso NORMAL e não a
     /// exceção:** a referência troca a normal do vértice pela **bissetriz** das
     /// arestas de borda quando um vértice de beira ficou com exactamente dois
-    /// vizinhos (`calc_boundary_normal_corner`, `:471`) — e numa malha manifold
+    /// vizinhos de borda — e numa malha manifold
     /// a curva de borda é um LOOP FECHADO, logo **todo** vértice dela tem
     /// exactamente dois vizinhos de borda (medido: 12 de 12 no `open_tube3`, o
     /// número que o [`ph2d_mesh::ring_average`] já regista). Sem a bissetriz o
@@ -236,8 +234,8 @@ pub enum Verb {
     /// dab.
     ///
     /// ⚠️ **APROXIMAÇÃO NOMEADA, não escondida:** a referência tem um terceiro
-    /// filtro (`filter_boundary_face_sets`, `:553`) que impede um vértice de
-    /// atravessar a fronteira de um *face set*. **Nós não temos face sets**
+    /// filtro que impede um vértice de atravessar a fronteira de um *face set*.
+    /// **Nós não temos face sets**
     /// (decisão do Enio, doc 21 §5.2), então esse filtro não tem análogo aqui e
     /// o verbo relaxa através de uma fronteira que o Blender respeitaria.
     ///
@@ -320,7 +318,7 @@ pub enum Verb {
     /// ⚠️ **O `accum` É a fração da demão, e é isso que dispensa um plano
     /// novo.** O aplicador já anda `lerp(pre, alvo, accum)`; pondo o alvo na
     /// altura CHEIA, o `accum` que o motor já guarda passa a ser exactamente o
-    /// `displacement_factor` da referência. O plano por-vértice que o plano 21
+    /// factor de deslocamento da referência. O plano por-vértice que o plano 21
     /// prometia — e a lei do repo que ele arrastava (*ao adicionar um plano,
     /// adicione-o ao snapshot de undo no MESMO commit*) — **não existe**: medido,
     /// o deslocamento acumulado por vértice do *Layer* vive no **cache do traço**
@@ -338,7 +336,7 @@ pub enum Verb {
     /// altura, fechada em 8–55 dabs conforme o peso).
     ///
     /// ⚠️ **E o `f` da referência ali é a atenuação GENÉRICA de borda**, a mesma
-    /// que todo pincel do Blender multiplica no `calc_translations` — não um
+    /// que todo pincel do Blender multiplica no deslocamento — não um
     /// amortecimento próprio da demão. No nosso motor essa atenuação **é** o
     /// `accum`, e aplicá-la duas vezes é o perfil-em-dobro que o
     /// [`crate::Grip::Hold`] já documenta ter pago uma vez.

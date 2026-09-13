@@ -12,7 +12,7 @@
 //! dos verbos do PINCEL»*. Aqui fala-se com a **cena** (nascer uma peça, duplicar, fundir, isolar,
 //! ler a cavidade); depois dali fala-se com o **pincel**. ⭐ E a prova de que o corte é o certo é
 //! que este bloco **não toca `self`** — só precisa da cena, logo é uma função livre e não um
-//! método do `App`. Os irmãos `sculpt3d_keys_view` e `sculpt3d_keys_delete` nasceram da mesma lei.
+//! método do `App`. Os irmãos `keys_view` e `keys_delete` nasceram da mesma lei.
 
 use super::super::{Merge, Primitive, Sculpt3dScene};
 use winit::keyboard::KeyCode;

@@ -43,7 +43,7 @@ pub struct Brush {
     /// morto. Nasce em `S`, e o `ref_mode` diz por quê: o `S` é o **contrato de
     /// paridade**, e mover o default é decisão de PRODUTO.
     pub mode: crate::RefMode,
-    /// **ACUMULAR na mesma pincelada** — o `BRUSH_ACCUMULATE` do Blender, e o
+    /// **ACUMULAR na mesma pincelada** — o *Accumulate* do Blender, e o
     /// irmão exato do campo de mesmo nome do pincel 2D.
     ///
     /// Desarmado (o default) a lei é o ENVELOPE: cruzar o próprio traço não
@@ -122,8 +122,8 @@ pub struct Brush {
     /// ⚠️ **ABSOLUTO, e é o que separa a demão do [`crate::Verb::Draw`]:** o
     /// depósito do Draw é `força · RAIO · 0,1`, então mudar o pincel muda a
     /// altura; aqui o número é uma altura escolhida e um pincel maior só cobre
-    /// mais área com a **mesma** espessura. A referência declara-o
-    /// `PROP_DISTANCE` pela mesma razão.
+    /// mais área com a **mesma** espessura. A referência declara-o como
+    /// DISTÂNCIA pela mesma razão.
     ///
     /// ⚠️ **O DEFAULT é nosso, e o da referência foi RECUSADO com medição.** Ela
     /// declara três números para este campo — faixa dura
@@ -182,13 +182,13 @@ pub struct Brush {
     /// pode ser é o **default** — ver [`DEFAULT_MULTIPLANE_ANGLE_DEG`].
     ///
     /// ⚠️ **No modo dinâmico ele deixa de ser o ângulo e passa a ser um
-    /// ACRÉSCIMO** ao que a superfície ditou (`sampled_angle += DEG2RADF(...) *
-    /// pressure`, `:632`) — o mesmo número com dois papéis, que é a referência
-    /// ao pé da letra e é por isso que o rótulo dela diz *"Plane Angle"* nos
-    /// dois modos.
+    /// ACRÉSCIMO** ao que a superfície ditou (o ângulo autorado soma-se,
+    /// escalado pela pressão, ao ângulo amostrado) — o mesmo número com dois
+    /// papéis, como na referência, e é por isso que o rótulo dela diz *"Plane
+    /// Angle"* nos dois modos.
     pub scrape_angle_deg: f32,
-    /// **O V É LIDO DA SUPERFÍCIE** em vez de ser autorado — o
-    /// `BRUSH_MULTIPLANE_SCRAPE_DYNAMIC`.
+    /// **O V É LIDO DA SUPERFÍCIE** em vez de ser autorado — o modo dinâmico do
+    /// *Multiplane Scrape* da referência.
     ///
     /// Armado, cada dab amostra a normal média dos DOIS lados da lâmina, mede o
     /// ângulo entre elas e usa isso como a abertura do V — a ferramenta encontra
@@ -196,7 +196,7 @@ pub struct Brush {
     /// próprio. O [`Brush::scrape_angle_deg`] passa a somar-se ao que foi lido.
     ///
     /// ⚠️ **Ele também sente o SINAL da dobra:** numa aresta côncava o V é
-    /// invertido (`:635`) e a ferramenta passa a ENCHER a dobra em vez de a
+    /// invertido e a ferramenta passa a ENCHER a dobra em vez de a
     /// cavar. É o que faz um único pincel servir a crista e o vale.
     ///
     /// ⚠️ **Desarmado por default, e o motivo é o mesmo do resto deste módulo:**
@@ -302,8 +302,10 @@ pub struct Brush {
     /// 2026-08-16 (*"tanto hardness como falloffs apresenta problemas graves"*,
     /// com foto de traços em escamas) foi atribuído medindo, e a atribuição
     /// ABSOLVEU as duas leis: um dab só reproduz a curva analítica a três
-    /// decimais nas doze, e o `hardness` é o `apply_hardness_to_distances`
-    /// verbatim, no mesmo ponto do pipeline. O que a foto mostra é o **degrau**
+    /// decimais nas doze, e o `hardness` é a mesma lei da etapa de dureza da
+    /// referência, no mesmo ponto do pipeline — medida pelo gate de dureza de
+    /// `brush_tests.rs` (`the_hardness_remaps_the_distance_the_way_the_reference_does`).
+    /// O que a foto mostra é o **degrau**
     /// que uma curva de PLATÔ necessariamente escreve, e nenhuma das duas
     /// referências o limita na aritmética — o Blender o limita **noutro passe**.
     ///
@@ -557,7 +559,7 @@ impl Default for Brush {
             scrape_dynamic: false,
             // O `_hardness` de fábrica da `Masking` do original.
             mask_hardness: 0.25,
-            // O neutro do `apply_hardness_to_distances` — ver o campo.
+            // O neutro da etapa de dureza — ver o campo.
             hardness: 0.0,
             // ⚠️ **DERIVADO do verbo, como o `accumulate` e o `falloff` logo
             // acima** — e pela mesma razão: um literal aqui seria o MESMO fato

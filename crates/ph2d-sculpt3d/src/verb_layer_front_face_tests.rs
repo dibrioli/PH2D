@@ -258,9 +258,9 @@ fn the_coat_is_born_without_the_front_face_like_the_reference() {
 /// A foto do artista na faixa de dureza alta mostra **listras retangulares**, e
 /// o handoff propôs duas leituras: o kernel ondula, ou a **parede** da mesa
 /// escadeia pela grade de quads. A lei do *Layer* decide entre elas sem um
-/// número escolhido — com `hardness = h` o `apply_hardness_to_distances` manda
+/// número escolhido — com `hardness = h` a etapa de dureza da referência manda
 /// toda distância abaixo de `h` para **zero**, a curva satura, e todo vértice
-/// do disco interior tem o MESMO `shape` ⇒ a mesma altura absoluta.
+/// do disco interior tem o MESMO peso (`shape`) ⇒ a mesma altura absoluta.
 ///
 /// ⚠️ **A régua é a ARESTA da malha, não um épsilon escolhido:** uma ondulação
 /// menor que o espaçamento de vértices não tem como aparecer na tela, e um

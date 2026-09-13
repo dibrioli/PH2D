@@ -190,6 +190,8 @@ mod fase_chrome_clock;
 mod fase_extract_inputs;
 /// Fase do quadro: os relógios do passo fixo (sim, cabeças de leitura, §11 Animation, timers).
 mod fase_fixed_step_clocks;
+/// Fase do quadro: o perfilador (conta os quadros e chama o relatório a cada 120).
+mod fase_frame_profile;
 /// Fase do quadro: o relatório do perfilador (a partição do quadro a cada 120 quadros).
 mod fase_frame_profile_report;
 /// Fase do quadro: a câmera de jogo (o herói da cena de smoke e o passe da câmera).
@@ -11369,29 +11371,6 @@ impl crate::App {
         // refs inside; values needed are passed explicitly.
         self.run_present_phase(cpu_start, r, g, b);
 
-        // Frame-phase profiler (PH2D_FLUID_PROFILE): the `[fluid]` line proves the
-        // fluid drive is ~2 ms, so a 6-fps stall lives elsewhere. This splits the
-        // parent: total vs CPU-encode (raw) → the gap is the present/GPU acquire
-        // stall; plus the painter dispatch (CPU preview produce + upload).
-        if frame_prof_on() {
-            let n = FRAME_PROF_N.with(|c| {
-                let n = c.get().wrapping_add(1);
-                c.set(n);
-                n
-            });
-            // ⚠️ O relógio da janela ARMA no primeiro frame, não no primeiro
-            // relatório: sem isto a primeira janela sairia com `span = 0` e
-            // imprimiria uma partição de zeros, que se lê como *"o worker não
-            // fez nada"* — a mentira oposta à que ele existe para evitar.
-            FRAME_PROF_SINCE.with(|c| {
-                let mut b = c.borrow_mut();
-                if b.is_none() {
-                    *b = Some(std::time::Instant::now());
-                }
-            });
-            if n.is_multiple_of(120) {
-                self.fase_frame_profile_report();
-            }
-        }
+        self.fase_frame_profile();
     }
 }

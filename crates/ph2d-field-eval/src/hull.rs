@@ -54,6 +54,15 @@ pub fn probe_hull_uv(pts: &[[f32; 3]], lo: [f32; 2], hi: [f32; 2]) -> Vec<[f32; 
 #[doc(hidden)]
 #[must_use]
 pub fn probe_in_hull(p: [f32; 2], hull: &[[f32; 2]]) -> bool {
+    in_convex(p, hull)
+}
+
+/// ⭐ **Este ponto está dentro do polígono convexo?** — a pergunta da cache contra o casco (W148), e a
+/// mesma que o gate do casco faz.
+///
+/// ⚠️ Aceita as duas orientações e conta a FRONTEIRA como dentro. Um polígono com menos de três
+/// vértices não contém nada — o lado seguro, porque quem pergunta vai servir uma fita pela resposta.
+pub(crate) fn in_convex(p: [f32; 2], hull: &[[f32; 2]]) -> bool {
     if hull.len() < 3 {
         return false;
     }

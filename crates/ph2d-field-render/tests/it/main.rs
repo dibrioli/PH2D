@@ -12,6 +12,7 @@ mod edge_pass_budget;
 mod gradient_is_lazy;
 mod how_many_frames_to_keep;
 mod how_many_slabs_now;
+mod hull_cache_posed;
 mod march_budget;
 mod stale_costs_as_an_oracle;
 mod tape_budget;

@@ -362,8 +362,10 @@ mod affine;
 mod point_tape;
 use affine::Affine;
 mod hull;
-use hull::hull_uv;
 pub use hull::{probe_hull_uv, probe_in_hull};
+/// ⭐⭐⭐ Os cascos de uma região, por folha — ver [`region_hulls`].
+mod region_hulls;
+pub use region_hulls::RegionHulls;
 
 #[path = "step.rs"]
 mod step;
@@ -439,6 +441,9 @@ fn box_corners(lo: [f32; 3], hi: [f32; 3]) -> Vec<[f32; 3]> {
 pub struct RegionCompiler {
     /// Índice por nó, só para os nós que são forma de perfil.
     idx: std::collections::BTreeMap<usize, profile_index::ProfileIndex>,
+    /// ⭐ O mapa mundo→local de cada nó — do documento, e não da região, então compõe-se **uma** vez
+    /// (W148). Ver [`affine::local_maps`].
+    maps: Vec<Option<Affine>>,
 }
 
 impl RegionCompiler {
@@ -459,7 +464,10 @@ impl RegionCompiler {
                 idx.insert(i, profile_index::ProfileIndex::build(profile));
             }
         }
-        Self { idx }
+        Self {
+            idx,
+            maps: affine::local_maps(doc),
+        }
     }
 
     /// **Este documento tem alguma forma de perfil?** — se não, especializar não compra nada, e o
@@ -473,7 +481,7 @@ impl RegionCompiler {
     /// [`compile_in_region`].
     #[must_use]
     pub fn compile(&self, doc: &FieldDoc, lo: [f32; 3], hi: [f32; 3]) -> Tree {
-        compile_in_region_with(self, doc, lo, hi, &box_corners(lo, hi))
+        self.compile_at(doc, lo, hi, &box_corners(lo, hi))
     }
 
     /// ⭐⭐⭐ **A MESMA especialização, com a região a ser um CONJUNTO DE PONTOS** (W59).
@@ -484,7 +492,10 @@ impl RegionCompiler {
     /// real, e só a **distância** de um `Extrude` a consome.
     ///
     /// ⚠️ Os pontos são os cantos do tubo da região, **crus** (sem a folga da sonda da normal): quem
-    /// a soma de volta é [`hull_uv`], que a lê da caixa.
+    /// a soma de volta é o `hull_uv`, que a lê da caixa.
+    ///
+    /// ⭐ **Desde a W148 esta porta é a [`Self::compile_hulled`] com os cascos calculados na hora** — a
+    /// cache de fitas guarda-os ao lado da fita, e os dois caminhos consomem a MESMA conta.
     #[must_use]
     pub fn compile_at(
         &self,
@@ -493,7 +504,7 @@ impl RegionCompiler {
         hi: [f32; 3],
         corners: &[[f32; 3]],
     ) -> Tree {
-        compile_in_region_with(self, doc, lo, hi, corners)
+        self.compile_hulled(doc, lo, hi, &self.hulls(doc, lo, hi, corners))
     }
 }
 
@@ -502,40 +513,21 @@ fn compile_in_region_with(
     doc: &FieldDoc,
     lo: [f32; 3],
     hi: [f32; 3],
-    corners: &[[f32; 3]],
+    // ⭐⭐ Os cascos da região, por folha (W59, W148) — ver [`RegionHulls`]. O mapa mundo→local de
+    // cada nó mora no compilador, porque é do documento e não da região.
+    hulls: &RegionHulls,
 ) -> Tree {
-    // Passo 1 — o mapa mundo→local de cada nó. A arena tem os filhos ANTES dos pais, então o
-    // percurso é de cima para baixo a partir da raiz.
     let n = doc.nodes().len();
-    let mut to_local = vec![None::<Affine>; n];
-    let root = doc.root().0 as usize;
-    to_local[root] = Some(Affine::of(doc.nodes()[root].xform));
-    // Da raiz para trás: um filho tem índice menor que o pai, logo descer por índices decrescentes
-    // visita todo pai antes dos filhos dele.
-    for i in (0..n).rev() {
-        let Some(parent) = to_local[i] else {
-            continue;
-        };
-        if let NodeKind::Combine { children, .. } = &doc.nodes()[i].kind {
-            for c in children {
-                let ci = c.0 as usize;
-                to_local[ci] = Some(Affine::of(doc.nodes()[ci].xform).after(parent));
-            }
-        }
-    }
-
     let balls = bounds::local_balls(doc, &hybrid::Registry::default());
     let mut built: Vec<Tree> = Vec::with_capacity(n);
     for (i, node) in doc.nodes().iter().enumerate() {
         let inner = match &node.kind {
-            NodeKind::Leaf(p) => to_local[i]
-                .filter(|_| !node.mods.iter().any(remaps_coordinates))
-                .zip(rc.idx.get(&i))
+            // ⚠️ **Quem é especializado decide-o UMA função** ([`RegionCompiler::specialised_leaf`]),
+            // que os cascos guardados pela cache também perguntam.
+            NodeKind::Leaf(p) => rc
+                .specialised_leaf(node, i)
                 .and_then(|(m, idx)| {
-                    // ⭐⭐ **Os CANTOS da região, mapeados** (W59) — o casco em `(u, v)` sai deles, e
-                    // não da caixa. Um mapa afim leva canto a canto, então os oito bastam.
-                    let pts = m.points_of(corners);
-                    specialised_profile(p, idx, m.box_of(lo, hi), &pts)
+                    specialised_profile(p, idx, m.box_of(lo, hi), hulls.hull_of(i))
                 })
                 .unwrap_or_else(|| primitive(p)),
             NodeKind::Combine { op, children } => combine(*op, children, doc.nodes(), &built),
@@ -546,7 +538,7 @@ fn compile_in_region_with(
             node.xform,
         ));
     }
-    built[root].clone()
+    built[doc.root().0 as usize].clone()
 }
 
 /// A mesma pergunta, aberta ao gate — ver [`remaps_coordinates`].
@@ -577,8 +569,9 @@ fn specialised_profile(
     p: &Primitive,
     idx: &profile_index::ProfileIndex,
     local: ([f32; 3], [f32; 3]),
-    // Os cantos da região, já em espaço LOCAL — ver `hull_uv`.
-    pts: &[[f32; 3]],
+    // O casco em `(u, v)` desta folha, JÁ CALCULADO — ver `RegionCompiler::hulls`. Vazio (degenerado)
+    // = a distância corta pela caixa.
+    hull: &[[f32; 2]],
 ) -> Option<Tree> {
     let (lo, hi) = local;
     match p {
@@ -599,7 +592,9 @@ fn specialised_profile(
             // projectados. ⛔ O `Revolve` fica de fora e não é esquecimento: o `u` dele é
             // `√(x² + z²)`, e a região em `(u, v)` é um **rectângulo** por construção — não há
             // polígono a apertar.
-            let hull = hull_uv(pts, [lo[0], lo[1]], [hi[0], hi[1]]);
+            //
+            // ⚠️ **Desde a W148 o casco chega calculado**, porque a cache de fitas o guarda ao lado
+            // da fita e o compara: a conta que especializa e a que decide servir têm de ser UMA.
             let flat = profile::sd_profile_in_region(
                 profile,
                 idx,
@@ -608,7 +603,7 @@ fn specialised_profile(
                 [lo[0], lo[1]],
                 [hi[0], hi[1]],
                 false,
-                (hull.len() >= 3).then_some(&hull[..]),
+                (hull.len() >= 3).then_some(hull),
             );
             Some(profile::extrude_from(
                 &flat,

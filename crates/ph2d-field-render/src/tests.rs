@@ -5853,6 +5853,55 @@ fn the_phased_box_still_contains_its_region() {
     }
 }
 
+/// ⭐⭐⭐ **A CAIXA CRESCIDA POR UMA DISTÂNCIA AINDA CONTÉM A REGIÃO** (W148) — a invariante da
+/// [`crate::tape_cache::pad_phased`], irmã do [`the_phased_box_still_contains_its_region`].
+///
+/// A folga por lado é `pad` e o deslocamento é `pad·u` com `|u| ≤ amp`, logo a região fica dentro
+/// por construção. ⚠️ **E o casco depende disto DUAS vezes:** a fita é servida pela contenção de
+/// caixa antes da de casco, e o `hull_uv` lê a folga do casco como o que a caixa tem além dos pontos —
+/// uma caixa deslocada para fora da região daria ao casco uma folga que não chega a um dos lados. ⇒ o
+/// gate exige a folga MÍNIMA (`pad·(1 − amp)`), e não só a contenção.
+#[test]
+fn the_padded_region_still_contains_its_query() {
+    let amp = crate::tape_cache::PHASE;
+    for (i, (lo, hi)) in [
+        ([-0.2f32, -0.2, -0.2], [0.2f32, 0.2, 0.2]),
+        ([0.0, -1.0, 3.0], [0.01, 1.0, 3.5]),
+        ([-5.0, -5.0, -5.0], [-4.9, 5.0, 0.0]),
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        for pad in [1e-3f32, 0.02, 0.3] {
+            for seed in 0..512u64 {
+                let (blo, bhi) = crate::tape_cache::pad_phased(
+                    lo,
+                    hi,
+                    pad,
+                    seed.wrapping_mul(0x2545_F491_4F6C_DD1D) ^ (i as u64),
+                    amp,
+                );
+                for k in 0..3 {
+                    // ⚠️ A folga do lado mais curto, com um ULP da coordenada de tolerância — a conta
+                    // é em `f32` e a coordenada chega a `5,0`.
+                    let ulp = 4.0 * f32::EPSILON * lo[k].abs().max(hi[k].abs()).max(1.0);
+                    let side = (lo[k] - blo[k]).min(bhi[k] - hi[k]);
+                    assert!(
+                        side >= pad * (1.0 - amp) - ulp,
+                        "a caixa crescida `{pad}` tem de guardar pelo menos `{}` de cada lado \
+                         (eixo {k}, semente {seed}): sobrou {side} — [{}, {}] contra [{}, {}]",
+                        pad * (1.0 - amp),
+                        blo[k],
+                        bhi[k],
+                        lo[k],
+                        hi[k]
+                    );
+                }
+            }
+        }
+    }
+}
+
 /// ⭐⭐⭐ **O DESPEJO DEITA FORA METADE, E A CACHE NUNCA PASSA O TECTO** (W89).
 ///
 /// # A lei, e o modo de falha que ela fecha
@@ -5893,7 +5942,7 @@ fn the_eviction_drops_half_and_the_cache_never_grows_past_its_ceiling() {
     for i in 0..(tecto * 3) {
         let t = (i as f32) * 0.01 - 1.0;
         let tape = RegionTape::compile(rc.compile(&doc, [t, -0.1, -0.1], [t + 0.02, 0.1, 0.1]));
-        cache.insert([t, -0.1, -0.1], [t + 0.02, 0.1, 0.1], tape);
+        cache.insert([t, -0.1, -0.1], [t + 0.02, 0.1, 0.1], None, tape);
         assert!(
             cache.len() <= tecto,
             "a cache passou o tecto ({} > {tecto}) na inserção {i} — um despejo que não despeja \

@@ -211,10 +211,17 @@ pub(crate) fn tiled_trace(
                 k,
             )?;
             // ⭐⭐⭐ **A CACHE ENTRE QUADROS** (W82) — ver [`crate::TapeCache`]. Uma fita
-            // construída para uma caixa serve toda a sub-caixa dela, então a pergunta não é *«qual
-            // é a chave desta região?»* mas *«há alguma fita cuja caixa a contenha?»*.
+            // construída para uma região serve toda a sub-região dela, então a pergunta não é
+            // *«qual é a chave desta região?»* mas *«há alguma fita cuja região a contenha?»*.
+            //
+            // ⭐⭐⭐ **E desde a W148 a região é a que a compilação CONSOME**: os cascos por folha.
+            // ⚠️ Eles são calculados AQUI, fora do cadeado da cache, e só quando a política os
+            // pergunta — a caixa da W82 continua a ser o caminho de bissecção.
+            let query = cache
+                .filter(|c| c.uses_hulls())
+                .map(|_| rc.hulls(doc, r.lo, r.hi, &r.pts));
             if let Some(c) = cache
-                && let Some(t) = c.get(r.lo, r.hi)
+                && let Some(t) = c.get(r.lo, r.hi, query.as_ref())
             {
                 return Some(ph2d_field_eval::hybrid::Hybrid::from_region_tape(&t));
             }
@@ -223,25 +230,30 @@ pub(crate) fn tiled_trace(
                 .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
             let t0 = std::time::Instant::now();
             let tape = match cache {
-                // ⚠️ **Com cache a região é a CAIXA INFLADA, e não o casco do tubo.** Duas razões,
-                // e as duas são sobre a cache e não sobre a marcha: a caixa é a forma que se testa
-                // depressa e sem ambiguidade, e a inflação é o que faz a fita sobreviver ao quadro
-                // seguinte (a `f = 1` a cache acerta `9 %`). O preço está medido no doc do módulo.
+                // ⭐⭐⭐ **Com cache a região CRESCE antes de compilar** — é a folga que faz a fita
+                // sobreviver ao quadro seguinte (a região exacta acerta `9 %`). ⚠️ E desde a W148
+                // ela é compilada para os CASCOS da região crescida, e não para a caixa dela: a
+                // caixa guardava `1,9×`–`2,4×` as arestas do caminho sem cache a `TILE = 24`. A
+                // política vive na cache ([`crate::tape_cache::Growth`]).
                 Some(c) => {
                     // ⚠️ A semente é a IDENTIDADE da região (ladrilho × fatia), **estável entre
                     // quadros** — ver [`crate::tape_cache::PHASE`]. Uma semente que mudasse por
                     // quadro punha a caixa noutro sítio a cada compilação, e a dispersão das
                     // coortes virava ruído.
                     let seed = ((x0 as u64) << 40) ^ ((y0 as u64) << 20) ^ (k as u64);
-                    let (lo, hi) = crate::tape_cache::inflate_phased(
-                        r.lo,
-                        r.hi,
-                        c.inflate_of(),
-                        seed,
-                        c.phase_of(),
-                    );
-                    let t = ph2d_field_eval::hybrid::RegionTape::compile(rc.compile(doc, lo, hi));
-                    c.insert(lo, hi, t.clone());
+                    // ⭐ O braço da câmera, lido do ALVO — ver [`crate::tape_cache::reach`].
+                    let arm = crate::tape_cache::reach(bbox, scene.cam.target);
+                    let (lo, hi) = c.grow(r.lo, r.hi, arm, seed);
+                    let (tree, hulls) = if c.uses_hulls() {
+                        // ⚠️ Os cantos do tubo NÃO crescem: o casco herda a folga pela caixa, e os
+                        // cascos guardados são EXACTAMENTE os que a compilação consumiu.
+                        let h = rc.hulls(doc, lo, hi, &r.pts);
+                        (rc.compile_hulled(doc, lo, hi, &h), Some(h))
+                    } else {
+                        (rc.compile(doc, lo, hi), None)
+                    };
+                    let t = ph2d_field_eval::hybrid::RegionTape::compile(tree);
+                    c.insert(lo, hi, hulls, t.clone());
                     ph2d_field_eval::hybrid::Hybrid::from_region_tape(&t)
                 }
                 None => ph2d_field_eval::hybrid::Hybrid::from_tree(

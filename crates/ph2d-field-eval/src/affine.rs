@@ -3,9 +3,38 @@
 //! Irmão do [`crate`] por responsabilidade (teto de LOC): ali mora *o que se especializa*, aqui *em
 //! que espaço a região chega a cada folha*.
 
-use ph2d_field::Xform;
+use ph2d_field::{FieldDoc, NodeKind, Xform};
 
 use crate::inverse_rotation_matrix;
+
+/// ⭐ **O mapa mundo→local de CADA nó** — a cadeia de poses da árvore, composta de cima para baixo.
+///
+/// ⚠️ **Uma porta, dois leitores** (W148): a especialização (`compile_in_region_with`) e os cascos da
+/// cache (`RegionCompiler::hulls`) perguntam os dois *«em que espaço a região chega a esta folha?»*.
+/// Duas cópias desta descida divergiriam no dia em que uma pose mudasse de regra — e a cache serviria
+/// uma fita cujo casco foi medido noutro espaço.
+///
+/// ⚠️ `None` = um nó que nenhum caminho a partir da raiz alcança.
+pub(crate) fn local_maps(doc: &FieldDoc) -> Vec<Option<Affine>> {
+    let n = doc.nodes().len();
+    let mut to_local = vec![None::<Affine>; n];
+    let root = doc.root().0 as usize;
+    to_local[root] = Some(Affine::of(doc.nodes()[root].xform));
+    // A arena tem os filhos ANTES dos pais, então o percurso é de cima para baixo a partir da raiz:
+    // descer por índices decrescentes visita todo pai antes dos filhos dele.
+    for i in (0..n).rev() {
+        let Some(parent) = to_local[i] else {
+            continue;
+        };
+        if let NodeKind::Combine { children, .. } = &doc.nodes()[i].kind {
+            for c in children {
+                let ci = c.0 as usize;
+                to_local[ci] = Some(Affine::of(doc.nodes()[ci].xform).after(parent));
+            }
+        }
+    }
+    to_local
+}
 
 /// Um mapa afim `p ↦ M·p + c` — a composição de poses que leva o mundo ao plano de um perfil.
 ///

@@ -122,7 +122,8 @@ pub use probe_doors::*;
 pub use shade::Matcap;
 pub use shade::shade;
 pub use tape_cache::{
-    EVICT_NS, GET_NS, INFLATE, TAPE_DROPPED, TAPE_EVICTIONS, TAPE_HITS, TapeCache,
+    EVICT_NS, GET_NS, Growth, INFLATE, PAD_OF_REACH, TAPE_DROPPED, TAPE_EVICTIONS, TAPE_HITS,
+    TapeCache,
 };
 pub use tiles::{RECORD_TILE_COSTS, SLAB_SPEC, SPECIALISE_NS, SPECIALISED, TILE_COSTS, TILE_MAX};
 

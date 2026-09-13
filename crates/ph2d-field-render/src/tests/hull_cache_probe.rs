@@ -147,25 +147,9 @@ struct Piece {
     bbox: Aabb,
 }
 
-/// ⭐ **O maior braço com que uma órbita em torno de `target` move um ponto da peça** — a distância
-/// do alvo ao canto mais afastado da caixa.
-///
-/// ⚠️ **É o ALVO, e não o centro da peça:** um pan leva o alvo para fora do centro, e uma órbita
-/// passa a varrer a peça com um braço maior. *O movimento de um arrasto é `braço × ângulo`, e o braço
-/// mede-se de onde a câmera gira.*
-fn reach(bbox: Aabb, target: [f32; 3]) -> f32 {
-    let mut far = 0.0f32;
-    for c in 0..8u8 {
-        let p = [
-            if c & 1 == 0 { bbox.0[0] } else { bbox.1[0] },
-            if c & 2 == 0 { bbox.0[1] } else { bbox.1[1] },
-            if c & 4 == 0 { bbox.0[2] } else { bbox.1[2] },
-        ];
-        let d = (0..3).map(|k| (p[k] - target[k]).powi(2)).sum::<f32>();
-        far = far.max(d);
-    }
-    far.sqrt()
-}
+// ⭐ O braço da câmera é a MESMA função que o produto usa para crescer a fita
+// (`tape_cache::reach`): uma cópia aqui escolheria o `PAD_OF_REACH` numa régua que o produto não lê.
+use crate::tape_cache::reach;
 
 fn piece(ring: Vec<[f32; 2]>, half_height: f32) -> Piece {
     let profile = Profile::new(vec![ring], FillRule::NonZero, 1e-4).expect("perfil");
@@ -287,16 +271,9 @@ fn grown(q: &Query, g: Grow, arm: f32) -> (Aabb, Vec<[f32; 3]>) {
         Grow::Pad(d) => d,
         Grow::PadOfReach(frac) => frac * arm,
     };
-    // ⚠️ A fase é a do produto, lida da própria função: numa caixa unitária com `f = 2` o
-    // deslocamento do centro É o `u ∈ [−amp, amp]` de cada eixo.
-    let unit = crate::tape_cache::inflate_phased([-1.0; 3], [1.0; 3], 2.0, q.seed, crate::tape_cache::PHASE);
-    let mut b = (q.lo, q.hi);
-    for k in 0..3 {
-        let u = 0.5 * (unit.0[k] + unit.1[k]);
-        b.0[k] = q.lo[k] - d + d * u;
-        b.1[k] = q.hi[k] + d + d * u;
-    }
-    // Os cantos NÃO se mexem: o casco herda a folga `δ` pela caixa (ver `hull_uv`).
+    // ⚠️ A MESMA porta que o produto usa (`tape_cache::pad_phased`), com a fase dele. Os cantos NÃO
+    // se mexem: o casco herda a folga `δ` pela caixa (ver `hull_uv`).
+    let b = crate::tape_cache::pad_phased(q.lo, q.hi, d, q.seed, crate::tape_cache::PHASE);
     (b, q.pts.clone())
 }
 
@@ -558,23 +535,7 @@ enum Gesture {
 }
 
 fn gesture_cams(g: Gesture, h: u32) -> Vec<Orbit> {
-    let mut cam = Orbit::default();
-    let mut out = Vec::with_capacity(FRAMES + 1);
-    for _ in 0..=FRAMES {
-        out.push(cam);
-        match g {
-            Gesture::Orbit(dx) => cam.turn_local([0.0, -dx, 0.0], dx.abs() * ORBIT_RAD_PER_PX),
-            Gesture::Pan(dx) => {
-                let k = cam.half_extent / (h as f32 * 0.5);
-                let (right, _, _) = cam.basis();
-                for (i, r) in right.iter().enumerate() {
-                    cam.target[i] -= r * dx * k;
-                }
-            }
-            Gesture::Zoom(steps) => cam.half_extent /= ZOOM_PER_STEP.powf(steps),
-        }
-    }
-    out
+    gesture_path(g, h, FRAMES + 1)
 }
 
 /// ⏳ **O GANHO SOBREVIVE AO PAN E AO ZOOM?** — a cache mede-se no gesto que o artista faz.
@@ -642,5 +603,132 @@ fn measure_whether_pan_and_zoom_keep_the_gain() {
                 println!("{name:11} | {gname:12} | {} | {}", var.label(), row(&t));
             }
         }
+    }
+}
+
+/// Um gesto com `n` câmeras — a mesma lei do [`gesture_cams`], com o comprimento escolhido.
+fn gesture_path(g: Gesture, h: u32, n: usize) -> Vec<Orbit> {
+    let mut cam = Orbit::default();
+    let mut out = Vec::with_capacity(n);
+    for _ in 0..n {
+        out.push(cam);
+        match g {
+            Gesture::Orbit(dx) => cam.turn_local([0.0, -dx, 0.0], dx.abs() * ORBIT_RAD_PER_PX),
+            Gesture::Pan(dx) => {
+                let k = cam.half_extent / (h as f32 * 0.5);
+                let (right, _, _) = cam.basis();
+                for (i, r) in right.iter().enumerate() {
+                    cam.target[i] -= r * dx * k;
+                }
+            }
+            Gesture::Zoom(steps) => cam.half_extent /= ZOOM_PER_STEP.powf(steps),
+        }
+    }
+    out
+}
+
+/// ⏳ **O QUE A CACHE CONTRA O CASCO COMPRA NO RELÓGIO** — o A/B que as contagens não decidem.
+///
+/// ⚠️ **As contagens disseram que `0,06` e `0,08` do alcance nunca perdem para a caixa; não disseram
+/// qual dos dois ganha mais**, porque a conta tem dois preços em unidades diferentes — uma compilação
+/// (`~1,3 ms` de thread, e satura às 16 threads) contra uma aresta por amostra da marcha. Só o
+/// quadro inteiro os soma.
+///
+/// ⚠️ **INTERCALADO** e **no mesmo processo**: as quatro caches correm ronda a ronda, cada uma a
+/// continuar o SEU arrasto de onde parou (recomeçá-lo daria à cache as regiões que ela acabou de ver).
+/// O 1.º quadro de cada arrasto enche a cache e é deitado fora. ⚠️ **Precisa de `load < 5`** — a
+/// carga é impressa ao lado de cada bloco, e acima disso as colunas de ms não valem nada.
+///
+/// ```text
+/// cargo test -p ph2d-field-render --profile ci-test --lib -- --exact \
+///     tests::hull_cache_probe::measure_what_the_hull_cache_buys_on_the_clock --ignored --nocapture
+/// ```
+#[test]
+#[ignore]
+fn measure_what_the_hull_cache_buys_on_the_clock() {
+    use ph2d_field::{FieldDoc, FillRule, NodeId, Primitive, Profile, Xform};
+    use std::sync::atomic::Ordering;
+    let reg = Registry::new();
+    let doc_of = |ring: Vec<[f32; 2]>| -> FieldDoc {
+        FieldDoc::new(
+            vec![ph2d_field_eval::leaf(
+                Primitive::Extrude {
+                    profile: Profile::new(vec![ring], FillRule::NonZero, 1e-4).expect("perfil"),
+                    half_height: 0.4,
+                    round: 0.04,
+                    chamfer: 0.0,
+                },
+                Xform::IDENTITY,
+            )],
+            NodeId(0),
+        )
+        .expect("extrusão")
+    };
+    let load = || std::fs::read_to_string("/proc/loadavg").unwrap_or_default();
+    let med = |mut v: Vec<f64>| -> (f64, f64) {
+        v.sort_by(f64::total_cmp);
+        (v[v.len() / 2], v[(v.len() * 9) / 10])
+    };
+    const QUADROS: usize = 12;
+    const RONDAS: usize = 3;
+    let caches = || {
+        [
+            ("caixa f 1,25", crate::TapeCache::with_inflate(crate::INFLATE)),
+            ("casco 0,06A", crate::TapeCache::with_pad_of_reach(0.06)),
+            ("casco 0,08A", crate::TapeCache::with_pad_of_reach(0.08)),
+            ("casco 0,10A", crate::TapeCache::with_pad_of_reach(0.10)),
+        ]
+    };
+    println!(
+        "tamanho | peça        | gesto        | cache        | ms mediana | ms p90 | compila/quadro | acertos/quadro"
+    );
+    for (w, h) in [(426u32, 240u32), (640, 360)] {
+        println!("── {w}x{h} · load antes: {}", load().trim());
+        for (name, ring) in [
+            ("círculo 168", ngon_probe(168, 0.6)),
+            ("estrela 168", star_probe(168, 0.22, 0.6)),
+        ] {
+            let doc = doc_of(ring);
+            for (gname, g) in [
+                ("órbita 4 px", Gesture::Orbit(4.0)),
+                ("pan 4 px", Gesture::Pan(4.0)),
+                ("zoom +0,5", Gesture::Zoom(0.5)),
+            ] {
+                // Uma câmera por quadro, para o arrasto inteiro: aquecimento + `RONDAS` pedaços.
+                let path = gesture_path(g, h, QUADROS * (RONDAS + 1));
+                let cs = caches();
+                let mut ms: Vec<Vec<f64>> = vec![Vec::new(); cs.len()];
+                let mut conta: Vec<(usize, usize)> = vec![(0, 0); cs.len()];
+                for ronda in 0..=RONDAS {
+                    for (k, (_, c)) in cs.iter().enumerate() {
+                        ph2d_field_eval::hybrid::FLOAT_TAPES.store(0, Ordering::Relaxed);
+                        crate::TAPE_HITS.store(0, Ordering::Relaxed);
+                        for (i, cam) in path[QUADROS * ronda..QUADROS * (ronda + 1)].iter().enumerate()
+                        {
+                            let t0 = std::time::Instant::now();
+                            let _ = crate::trace_cached_for_test(&doc, &reg, cam, w, h, false, Some(c));
+                            // ⚠️ A ronda 0 é o aquecimento, e o 1.º quadro de cada pedaço também sai.
+                            if ronda > 0 && i > 0 {
+                                ms[k].push(t0.elapsed().as_secs_f64() * 1000.0);
+                            }
+                        }
+                        if ronda > 0 {
+                            conta[k].0 += ph2d_field_eval::hybrid::FLOAT_TAPES.load(Ordering::Relaxed);
+                            conta[k].1 += crate::TAPE_HITS.load(Ordering::Relaxed);
+                        }
+                    }
+                }
+                for (k, (cname, _)) in cs.iter().enumerate() {
+                    let (m50, m90) = med(ms[k].clone());
+                    let quadros = (QUADROS * RONDAS) as f64;
+                    println!(
+                        "{w:>3}x{h:<3} | {name:11} | {gname:12} | {cname:12} | {m50:10.2} | {m90:6.2} | {:14.1} | {:14.1}",
+                        conta[k].0 as f64 / quadros,
+                        conta[k].1 as f64 / quadros,
+                    );
+                }
+            }
+        }
+        println!("── {w}x{h} · load depois: {}", load().trim());
     }
 }

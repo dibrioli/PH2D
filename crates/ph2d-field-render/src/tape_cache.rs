@@ -32,25 +32,76 @@
 //! ⭐⭐ **A `f = 1` a cache acerta `9 %`** — guardar a região *exacta* não serve de nada, e a
 //! **inflação é o mecanismo**, não uma afinação.
 //!
-//! # ⚠️ O que esta cache DEIXA CAIR de propósito, e o preço disso
+//! # ⭐⭐⭐ W148 — A FITA PASSA A SER GUARDADA PARA O CASCO, e a folga passa a ser uma DISTÂNCIA
 //!
-//! O caminho sem cache especializa contra o **casco** do tubo do ladrilho (W59), que é mais apertado
-//! que a caixa. Uma fita guardada tem de valer numa forma que se possa **testar depressa e sem
-//! ambiguidade**, e essa forma é a **caixa**. ⇒ uma fita da cache guarda mais arestas que a fita de
-//! hoje, mesmo antes de a inflar. *A cache troca aresta por compilação, e é por isso que ela só se
-//! decide com o relógio do quadro inteiro ao lado.*
+//! A W82 guardava cada fita para a **caixa** inflada, e o preço estava declarado (*«a cache troca
+//! aresta por compilação»*) com o número de quando o ladrilho era `64`: `1,18×`–`1,31×`. ⛔⛔ **A `24`
+//! px ele era outro** — medido em 13/09 (`tests/hull_cache_probe.rs`, contagens, vale sob carga): a
+//! fita servida guardava **`1,9×`–`2,4×`** as arestas do caminho sem cache. O tubo de um ladrilho fino
+//! e oblíquo tem uma caixa quase toda vazia, e o custo de uma amostra da marcha segue as arestas.
+//!
+//! ⭐ **A cura tem DUAS metades, e nenhuma anda sozinha:**
+//!
+//! 1. **a fita é compilada para o CASCO e servida por contenção de casco** — a pergunta que a
+//!    compilação faz ([`ph2d_field_eval::RegionHulls`]), e não uma forma que se testa mais depressa;
+//! 2. **a folga é uma DISTÂNCIA, e não uma escala** ([`PAD_OF_REACH`]). ⛔ O casco escalado por `f`
+//!    perde os acertos (`f = 1,25`: `48`–`70 %` e as compilações TRIPLICAM) porque a folga dele é
+//!    proporcional à **largura** do tubo — e o que um arrasto move é `braço × ângulo`, que não sabe a
+//!    largura de tubo nenhum.
+//!
+//! ⛔ **E a ORDEM de consulta não era o suspeito:** servir a fita mais velha, a mais nova ou a de
+//! menor volume muda as arestas servidas em menos de `5 %`.
+//!
+//! ⚠️ **A caixa W82 continua viva**, e não por nostalgia: é o caminho de bissecção
+//! (`PH2D_FIELD_TAPE_BOX=1`, ver [`Growth`]) e o lado A de todo relógio que decida este módulo — as
+//! duas políticas têm de poder correr no **mesmo processo**.
 
 use ph2d_field::FieldDoc;
+use ph2d_field_eval::RegionHulls;
 use ph2d_field_eval::hybrid::RegionTape;
 
-/// ⭐⭐⭐ **Quanto uma região é inflada antes de a sua fita ser compilada** — **medido**, ver o doc
-/// do módulo.
+/// ⭐⭐⭐ **Quanto uma região é inflada antes de a sua fita ser compilada** — na política da CAIXA
+/// ([`Growth::Box`]), que é a W82 e hoje o caminho de bissecção.
 ///
 /// ⚠️ **Ele não é um número de conforto: é o mecanismo.** A `1,00` a cache acerta `9 %` e não serve
 /// para nada; a `1,25` acerta `84 %`–`93 %` às velocidades de arrasto reais (um quadro de `24 ms` a
 /// `90°/s` é `2,2°`) por `1,18×` no custo de uma amostra. Subir mais compra acerto num arrasto
 /// **rápido**, que é exactamente onde o artista tolera menos detalhe.
 pub const INFLATE: f32 = 1.25;
+
+/// ⭐⭐⭐ **A folga de uma fita, em fracção do ALCANCE a partir do alvo** — na política do CASCO
+/// ([`Growth::Hull`]), a que shipa (W148).
+///
+/// # Porque uma DISTÂNCIA, e porque do ALCANCE
+///
+/// O que tira uma região de dentro da fita do quadro anterior é o **movimento** da câmera: uma órbita
+/// de `θ` move um ponto `braço × θ`, e o braço é a distância ao alvo ([`reach`]). Um pan move-o por
+/// uma distância de mundo; um zoom escala-o em torno do alvo. ⇒ a folga mede-se na grandeza do
+/// movimento, e o alcance é o que a normaliza.
+///
+/// ⭐⭐ **Medido que é o alcance, e não o ladrilho**, a `426×240` numa varredura de zoom
+/// (`half_extent` `0,4`/`0,8`/`1,6`) × tamanho da peça (`½`/`1`/`2×`): em fracção do alcance o acerto
+/// e as arestas ficam estáveis entre as nove células; em ladrilhos, o mesmo número dá `81 %` numa e
+/// `92 %` noutra.
+///
+/// # O número, contra a caixa que shipava (contagens; `÷ sem cache` = arestas da fita servida)
+///
+/// `426×240`, círculo de 168 arestas, com as leis de câmera do módulo:
+///
+/// | gesto | caixa `f = 1,25`: compila · ÷ | casco `0,06`: compila · ÷ | **casco `0,08`**: compila · ÷ |
+/// |---|---|---|---|
+/// | órbita 4 px | `61` · `1,93×` | `42` · `1,65×` | **`20` · `1,84×`** |
+/// | órbita 12 px | `108` · `2,04×` | `111` · `1,69×` | **`67` · `1,88×`** |
+/// | pan 4 px | `99` · `1,91×` | `45` · `1,67×` | **`20` · `1,83×`** |
+/// | pan 12 px | `61` · `1,94×` | `35` · `1,69×` | **`17` · `1,87×`** |
+/// | zoom `+1` | `57` · `2,32×` | `27` · `2,01×` | **`9` · `2,14×`** |
+/// | zoom `−1` | `78` · `1,82×` | `80` · `1,50×` | **`52` · `1,64×`** |
+///
+/// ⭐ **`0,08` é melhor que a caixa nas DUAS colunas em todo gesto medido**, e é por isso que é o
+/// número que nasce; `0,06` corta mais arestas e compila `+3 %` em duas células. ⏳ **Entre os dois
+/// decide o RELÓGIO**, a `load < 5`, com as duas políticas no mesmo processo — a contagem diz que
+/// nenhum deles perde para a caixa, não qual dos dois ganha mais.
+pub const PAD_OF_REACH: f32 = 0.08;
 
 /// ⭐⭐⭐ **Quantos QUADROS de regiões a cache guarda** — e a capacidade é **derivada** disto.
 ///
@@ -72,6 +123,9 @@ pub const INFLATE: f32 = 1.25;
 /// ⭐⭐ **O tecto passa a ser o que o quadro PEDE**, e `3` quadros é o que a lei da cache precisa: o
 /// quadro corrente, o anterior (de onde vêm os acertos) e o do outro documento (o preview alterna
 /// **dois** — ver [`DOCS`]).
+///
+/// ⚠️ **Medido com a política da CAIXA** (W89). ⏳ A do casco serve **mais** regiões com menos fitas
+/// (compila `3×`–`6×` menos), e isto pede ser reconferido contra ela.
 const FRAMES_KEPT: usize = 3;
 
 /// ⚠️ **O tecto absoluto, e ele diz de que recurso é: MEMÓRIA EXECUTÁVEL.** Cada fita é um `mmap`
@@ -139,7 +193,36 @@ const DOCS: usize = 2;
 ///
 /// ⚠️ **O ganho é de `4` a `10 ms` no máximo, não uma ordem de grandeza** — o defeito grande desta
 /// wave era outro (ver [`FRAMES_KEPT`] e a nota do módulo).
+///
+/// ⚠️ **Na política do casco a mesma fase desloca o centro por `δ·u`** ([`pad_phased`]) — a lei é a
+/// mesma (dispersar coortes sem mudar o volume), e ⏳ a amplitude foi medida com a caixa.
 pub const PHASE: f32 = 0.3;
+
+/// ⭐⭐⭐ **Como uma fita cresce antes de ser compilada, e que pergunta a serve** — ver o doc do
+/// módulo (W148).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum Growth {
+    /// **A W82**: caixa escalada por `inflate`, servida por contenção de caixa. Caminho de bissecção
+    /// (`PH2D_FIELD_TAPE_BOX=1`) e lado A dos relógios.
+    Box { inflate: f32 },
+    /// ⭐ **O que shipa**: a caixa cresce `pad_of_reach × alcance` de cada lado, a fita é compilada
+    /// para os cascos dessa caixa, e só é servida a uma região cujos cascos ela contém.
+    Hull { pad_of_reach: f32 },
+}
+
+/// ⚠️ **A política vem do ambiente?** `PH2D_FIELD_TAPE_BOX=1` volta à caixa da W82.
+///
+/// *Um interruptor de bissecção é a diferença entre «piorou» e «piorou por causa disto».*
+fn growth_from_env() -> Growth {
+    static BOX: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    if *BOX.get_or_init(|| std::env::var("PH2D_FIELD_TAPE_BOX").as_deref() == Ok("1")) {
+        Growth::Box { inflate: INFLATE }
+    } else {
+        Growth::Hull {
+            pad_of_reach: PAD_OF_REACH,
+        }
+    }
+}
 
 /// ⭐⭐ **Quantas fitas vieram da cache** — o par do `FLOAT_TAPES`, que conta as que foram
 /// compiladas.
@@ -167,6 +250,9 @@ pub static TAPE_DROPPED: std::sync::atomic::AtomicUsize = std::sync::atomic::Ato
 /// ⚠️ Ela percorre a população inteira por **cada região** de um quadro (~600 a `426×240`), e a
 /// população é o tecto derivado (`~2 600` fitas). *O que uma cache guarda a mais não é de graça:
 /// alguém a percorre* — e até aqui ninguém tinha medido quanto.
+///
+/// ⚠️ Desde a W148 ele inclui o teste de contenção dos CASCOS das candidatas que a caixa não rejeitou;
+/// o cálculo dos cascos da CONSULTA corre fora (quem chama os passa já feitos).
 #[doc(hidden)]
 pub static GET_NS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 
@@ -180,6 +266,9 @@ type Aabb = ([f32; 3], [f32; 3]);
 struct Entry {
     lo: [f32; 3],
     hi: [f32; 3],
+    /// ⭐ **Os cascos para que a fita foi compilada** (W148) — `None` na política da caixa, e aí a
+    /// contenção de caixa basta.
+    hulls: Option<RegionHulls>,
     tape: RegionTape,
     /// ⚠️ **A que DOCUMENTO esta fita pertence** — ver [`DOCS`]. Uma fita só é servida ao documento
     /// que a construiu; a etiqueta é o que permite guardar mais de um sem os misturar.
@@ -204,11 +293,6 @@ struct Inner {
     phase: f32,
     /// Quantas fitas esta cache guarda — **derivado** do que um quadro pede, ver [`FRAMES_KEPT`].
     capacity: usize,
-    /// ⚠️ Quanto esta cache infla — ver [`INFLATE`]. É um campo, e não a constante lida
-    /// directamente, porque a **varredura** que a escolheu tem de poder correr as duas respostas no
-    /// mesmo processo: entre duas corridas desta workstation o mesmo passe já deu `11,36` e
-    /// `5,50 ms`.
-    inflate: f32,
     /// ⚠️ **Os documentos que a cache conhece**, cada um com a etiqueta dele. Uma fita só é servida
     /// ao documento que a construiu: a fita da peça de ontem responde um número plausível e errado,
     /// que é o pior modo de falha que há — a imagem sai *quase* certa.
@@ -226,6 +310,10 @@ struct Inner {
 /// com um. O dono dela é quem desenha.
 pub struct TapeCache {
     inner: std::sync::RwLock<Inner>,
+    /// ⚠️ **Fora do cadeado de propósito**: ela é fixa desde a construção, e quem chama pergunta-a
+    /// ([`Self::uses_hulls`]) antes de calcular os cascos da consulta — o que tem de acontecer
+    /// **fora** do cadeado, onde 32 threads não esperam por ele.
+    growth: Growth,
 }
 
 impl Default for TapeCache {
@@ -235,28 +323,43 @@ impl Default for TapeCache {
 }
 
 impl TapeCache {
+    /// A cache do produto — a política vem do ambiente ([`growth_from_env`]).
     #[must_use]
     pub fn new() -> Self {
-        Self::with_inflate(INFLATE)
+        Self::with_growth(growth_from_env())
     }
 
-    /// ⚠️ Só para a sonda: a mesma cache com outra inflação — ver [`INFLATE`].
+    /// ⚠️ Só para a sonda e para o relógio: a cache com a política escolhida — ver [`Growth`].
     #[doc(hidden)]
     #[must_use]
-    pub fn with_inflate(f: f32) -> Self {
+    pub fn with_growth(growth: Growth) -> Self {
         Self {
             inner: std::sync::RwLock::new(Inner {
                 frames_kept: FRAMES_KEPT,
                 phase: PHASE,
                 capacity: CAPACITY_MAX,
-                inflate: f,
                 docs: Vec::new(),
                 current: 0,
                 next_doc_id: 1,
                 frame: 0,
                 entries: Vec::new(),
             }),
+            growth,
         }
+    }
+
+    /// ⚠️ Só para a sonda: a cache da W82 (a CAIXA) com outra inflação — ver [`INFLATE`].
+    #[doc(hidden)]
+    #[must_use]
+    pub fn with_inflate(f: f32) -> Self {
+        Self::with_growth(Growth::Box { inflate: f })
+    }
+
+    /// ⚠️ Só para a sonda: a cache do CASCO com outra folga — ver [`PAD_OF_REACH`].
+    #[doc(hidden)]
+    #[must_use]
+    pub fn with_pad_of_reach(r: f32) -> Self {
+        Self::with_growth(Growth::Hull { pad_of_reach: r })
     }
 
     /// ⚠️ Só para a sonda: a mesma cache com outro tecto — ver [`FRAMES_KEPT`].
@@ -293,14 +396,16 @@ impl TapeCache {
             .phase
     }
 
-    /// ⚠️ Só para a sonda.
-    #[doc(hidden)]
+    /// A política desta cache — ver [`Growth`].
     #[must_use]
-    pub fn inflate_of(&self) -> f32 {
-        self.inner
-            .read()
-            .unwrap_or_else(std::sync::PoisonError::into_inner)
-            .inflate
+    pub const fn growth_of(&self) -> Growth {
+        self.growth
+    }
+
+    /// ⭐ **Esta cache pergunta pelos CASCOS?** — quem chama só os calcula se sim.
+    #[must_use]
+    pub const fn uses_hulls(&self) -> bool {
+        matches!(self.growth, Growth::Hull { .. })
     }
 
     /// ⭐ **Abre um quadro** — e deita tudo fora se o documento mudou.
@@ -333,13 +438,34 @@ impl TapeCache {
         inner.frame = inner.frame.wrapping_add(1);
     }
 
-    /// A fita que **contém** `[lo, hi]`, se alguma houver.
+    /// ⭐⭐⭐ **A região que uma fita nova guarda** — a caixa crescida pela política desta cache.
+    ///
+    /// `reach` é o [`reach`] do quadro, e `seed` a identidade estável da região (ver [`PHASE`]).
+    #[must_use]
+    pub fn grow(&self, lo: [f32; 3], hi: [f32; 3], reach: f32, seed: u64) -> Aabb {
+        let amp = self.phase_of();
+        match self.growth {
+            Growth::Box { inflate } => inflate_phased(lo, hi, inflate, seed, amp),
+            Growth::Hull { pad_of_reach } => pad_phased(lo, hi, pad_of_reach * reach, seed, amp),
+        }
+    }
+
+    /// A fita que **contém** `[lo, hi]` — e, se ela foi compilada para cascos, cujos cascos contêm
+    /// `query`.
+    ///
+    /// ⚠️ **`query` são os cascos da região PEDIDA**, calculados por quem chama e fora do cadeado.
+    /// Uma fita com cascos nunca é servida a uma consulta sem eles (`None`): o lado seguro.
     ///
     /// ⚠️ **Tudo debaixo do cadeado de LEITURA** — ver o campo `seen`.
     #[must_use]
-    pub fn get(&self, lo: [f32; 3], hi: [f32; 3]) -> Option<RegionTape> {
+    pub fn get(
+        &self,
+        lo: [f32; 3],
+        hi: [f32; 3],
+        query: Option<&RegionHulls>,
+    ) -> Option<RegionTape> {
         let t0 = std::time::Instant::now();
-        let out = self.get_inner(lo, hi);
+        let out = self.get_inner(lo, hi, query);
         GET_NS.fetch_add(
             u64::try_from(t0.elapsed().as_nanos()).unwrap_or(u64::MAX),
             std::sync::atomic::Ordering::Relaxed,
@@ -347,24 +473,36 @@ impl TapeCache {
         out
     }
 
-    fn get_inner(&self, lo: [f32; 3], hi: [f32; 3]) -> Option<RegionTape> {
+    fn get_inner(
+        &self,
+        lo: [f32; 3],
+        hi: [f32; 3],
+        query: Option<&RegionHulls>,
+    ) -> Option<RegionTape> {
         let inner = self
             .inner
             .read()
             .unwrap_or_else(std::sync::PoisonError::into_inner);
         let cur = inner.current;
-        let e = inner
-            .entries
-            .iter()
-            .find(|e| e.doc_id == cur && (0..3).all(|k| lo[k] >= e.lo[k] && hi[k] <= e.hi[k]))?;
+        let e = inner.entries.iter().find(|e| {
+            e.doc_id == cur
+                // ⭐ O 1.º nível: seis desigualdades, que rejeitam quase tudo.
+                && (0..3).all(|k| lo[k] >= e.lo[k] && hi[k] <= e.hi[k])
+                // ⭐ O 2.º: só as sobreviventes pagam o casco — ver o doc do módulo.
+                && e
+                    .hulls
+                    .as_ref()
+                    .is_none_or(|h| query.is_some_and(|q| h.contains(q)))
+        })?;
         e.seen
             .store(inner.frame, std::sync::atomic::Ordering::Relaxed);
         TAPE_HITS.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         Some(e.tape.clone())
     }
 
-    /// Guarda uma fita construída para a caixa `[lo, hi]`.
-    pub fn insert(&self, lo: [f32; 3], hi: [f32; 3], tape: RegionTape) {
+    /// Guarda uma fita construída para a caixa `[lo, hi]` — com os cascos para que foi compilada,
+    /// quando a política os usa.
+    pub fn insert(&self, lo: [f32; 3], hi: [f32; 3], hulls: Option<RegionHulls>, tape: RegionTape) {
         let mut inner = self
             .inner
             .write()
@@ -400,6 +538,7 @@ impl TapeCache {
         inner.entries.push(Entry {
             lo,
             hi,
+            hulls,
             tape,
             doc_id,
             seen: std::sync::atomic::AtomicU64::new(seen),
@@ -429,17 +568,35 @@ impl TapeCache {
     }
 }
 
-/// ⭐⭐⭐ **A caixa inflada por `f` e DESLOCADA dentro da folga** — ver [`PHASE`].
+/// ⭐⭐ **O braço com que a câmera move a peça** — a distância do `target` ao canto mais afastado da
+/// caixa (W148).
 ///
-/// ⚠️ **A contenção é uma invariante, não uma esperança:** o deslocamento por eixo é
-/// `half·(f−1)·u` com `|u| ≤ amp ≤ 1`, e a folga por lado é exactamente `half·(f−1)` — então a
-/// região continua dentro da caixa para toda amplitude admissível. O gate
-/// `the_phased_box_still_contains_its_region` afirma-o sobre a amplitude que ship.
+/// ⚠️ **É o ALVO, e não o centro da peça:** um pan leva o alvo para fora do centro, e uma órbita
+/// passa a varrer a peça com um braço maior. *O movimento de um arrasto é `braço × ângulo`, e o braço
+/// mede-se de onde a câmera gira.* A sonda que escolheu o [`PAD_OF_REACH`] chama esta mesma função.
 #[must_use]
-pub fn inflate_phased(lo: [f32; 3], hi: [f32; 3], f: f32, seed: u64, amp: f32) -> Aabb {
-    let mut out = ([0.0f32; 3], [0.0f32; 3]);
+pub fn reach(bbox: Aabb, target: [f32; 3]) -> f32 {
+    let mut far = 0.0f32;
+    for c in 0..8u8 {
+        let p = [
+            if c & 1 == 0 { bbox.0[0] } else { bbox.1[0] },
+            if c & 2 == 0 { bbox.0[1] } else { bbox.1[1] },
+            if c & 4 == 0 { bbox.0[2] } else { bbox.1[2] },
+        ];
+        let d = (0..3).map(|k| (p[k] - target[k]).powi(2)).sum::<f32>();
+        far = far.max(d);
+    }
+    far.sqrt()
+}
+
+/// O deslocamento de fase de uma região, por eixo, com `|u| ≤ amp` — ver [`PHASE`].
+///
+/// ⚠️ **Uma função, dois leitores** ([`inflate_phased`] e [`pad_phased`]): as duas políticas dispersam
+/// as coortes com a MESMA semente, e duas cópias do misturador divergiriam em silêncio.
+fn phase_u(seed: u64, amp: f32) -> [f32; 3] {
+    let mut out = [0.0f32; 3];
     let mut z = seed.wrapping_mul(0x9E37_79B9_7F4A_7C15);
-    for k in 0..3 {
+    for o in &mut out {
         // splitmix64: um misturador barato e determinístico — a fase de uma região tem de ser a
         // MESMA em todos os quadros, senão a caixa muda de sítio a cada compilação e a dispersão
         // vira ruído.
@@ -449,12 +606,48 @@ pub fn inflate_phased(lo: [f32; 3], hi: [f32; 3], f: f32, seed: u64, amp: f32) -
         x = (x ^ (x >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
         x ^= x >> 31;
         // u ∈ [-amp, amp]
-        let u = (((x >> 40) as f32) / 8_388_608.0 - 1.0) * amp;
+        *o = (((x >> 40) as f32) / 8_388_608.0 - 1.0) * amp;
+    }
+    out
+}
+
+/// ⭐⭐⭐ **A caixa inflada por `f` e DESLOCADA dentro da folga** — ver [`PHASE`]. A política da
+/// CAIXA ([`Growth::Box`]).
+///
+/// ⚠️ **A contenção é uma invariante, não uma esperança:** o deslocamento por eixo é
+/// `half·(f−1)·u` com `|u| ≤ amp ≤ 1`, e a folga por lado é exactamente `half·(f−1)` — então a
+/// região continua dentro da caixa para toda amplitude admissível. O gate
+/// `the_phased_box_still_contains_its_region` afirma-o sobre a amplitude que ship.
+#[must_use]
+pub fn inflate_phased(lo: [f32; 3], hi: [f32; 3], f: f32, seed: u64, amp: f32) -> Aabb {
+    let u = phase_u(seed, amp);
+    let mut out = ([0.0f32; 3], [0.0f32; 3]);
+    for k in 0..3 {
         let c = 0.5 * (lo[k] + hi[k]);
         let half = 0.5 * (hi[k] - lo[k]);
         let folga = half * (f - 1.0);
-        out.0[k] = c - half * f + folga * u;
-        out.1[k] = c + half * f + folga * u;
+        out.0[k] = c - half * f + folga * u[k];
+        out.1[k] = c + half * f + folga * u[k];
+    }
+    out
+}
+
+/// ⭐⭐⭐ **A caixa crescida `pad` de cada lado e DESLOCADA dentro da folga** — a política do CASCO
+/// ([`Growth::Hull`]).
+///
+/// ⚠️ **A mesma invariante da [`inflate_phased`]**: o deslocamento é `pad·u` com `|u| ≤ amp ≤ 1`, e a
+/// folga por lado é `pad` — a região continua dentro para toda amplitude admissível. O gate
+/// `the_padded_region_still_contains_its_query` afirma-o.
+///
+/// ⚠️ **Só a CAIXA cresce; os cantos do tubo não se mexem.** O casco herda a folga pela caixa: o
+/// `hull_uv` lê a folga como o que a caixa tem além dos pontos, e infla o polígono por ela.
+#[must_use]
+pub fn pad_phased(lo: [f32; 3], hi: [f32; 3], pad: f32, seed: u64, amp: f32) -> Aabb {
+    let u = phase_u(seed, amp);
+    let mut out = ([0.0f32; 3], [0.0f32; 3]);
+    for k in 0..3 {
+        out.0[k] = lo[k] - pad + pad * u[k];
+        out.1[k] = hi[k] + pad + pad * u[k];
     }
     out
 }

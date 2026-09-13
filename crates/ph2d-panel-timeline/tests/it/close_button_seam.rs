@@ -6,7 +6,6 @@
 //! fique invisível — [[feedback_widget_is_done_when_a_test_clicks_it]] e o irmão dele,
 //! [[feedback_painted_is_not_populated_paint_gate]].
 
-use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::{Panel, PanelHostInternal};
 use ph2d_editor_core::zones::Rect;
@@ -31,7 +30,7 @@ fn the_close_button_is_painted_registered_and_actually_closes_the_panel() {
 
     let r = regs
         .iter()
-        .find(|(w, _)| *w == ids::TIMELINE_CLOSE)
+        .find(|(w, _)| *w == ph2d_panel_timeline::ids::TIMELINE_CLOSE)
         .map(|(_, r)| *r)
         .expect("o X foi pintado mas nunca registrado: ele clica no nada");
     assert!(r.w > 0.0 && r.h > 0.0, "o X não tem área pra clicar: {r:?}");
@@ -39,7 +38,9 @@ fn the_close_button_is_painted_registered_and_actually_closes_the_panel() {
     let (cx, cy) = (r.x + r.w * 0.5, r.y + r.h * 0.5);
     let evs = host.click_at(cx, cy);
     assert!(
-        evs.contains(&WidgetEvent::Click(ids::TIMELINE_CLOSE)),
+        evs.contains(&WidgetEvent::Click(
+            ph2d_panel_timeline::ids::TIMELINE_CLOSE
+        )),
         "o ponteiro caiu em {:?}, não no X — got {evs:?}",
         host.hit_at(cx, cy)
     );

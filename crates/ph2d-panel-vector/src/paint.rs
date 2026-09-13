@@ -47,25 +47,25 @@ fn seed_text_sliders(store: &mut ph2d_editor_core::interaction::WidgetStore) {
     };
     let rows = [
         (
-            ph2d_editor_core::ids::VECTOR_TEXT_SIZE,
+            crate::ids::VECTOR_TEXT_SIZE,
             ids::VECTOR_TEXT_SIZE_NUM,
             text_size_to_slider(size),
             size,
         ),
         (
-            ph2d_editor_core::ids::VECTOR_TEXT_WEIGHT,
+            crate::ids::VECTOR_TEXT_WEIGHT,
             ids::VECTOR_TEXT_WEIGHT_NUM,
             text_weight_to_slider(weight),
             weight,
         ),
         (
-            ph2d_editor_core::ids::VECTOR_TEXT_LINE_HEIGHT,
+            crate::ids::VECTOR_TEXT_LINE_HEIGHT,
             ids::VECTOR_TEXT_LINE_HEIGHT_NUM,
             text_line_height_to_slider(lh),
             lh,
         ),
         (
-            ph2d_editor_core::ids::VECTOR_TEXT_TRACKING,
+            crate::ids::VECTOR_TEXT_TRACKING,
             ids::VECTOR_TEXT_TRACKING_NUM,
             text_tracking_to_slider(tr),
             tr,
@@ -99,7 +99,7 @@ fn seed_and_publish(
     // o picker OKLCH partilhado e a shell lê a escolha de volta (`vector_bridge`). Marcar aqui,
     // e não no `paint_contour`, porque este é o passe de sementes — e porque a marca é
     // idempotente (uma pertença a conjunto), então não depende de a seção ter pintado.
-    store.register_picker_swatch(ph2d_editor_core::ids::VECTOR_CONTOUR_TO);
+    store.register_picker_swatch(crate::ids::VECTOR_CONTOUR_TO);
     // ⭐⭐⭐ **E a swatch de CADA camada da pilha de aparência** (estudo 42 item 4). Marcar o espaço
     // FIXO de ids (e não as camadas de hoje) é a mesma lei da resolução do clique: a marca é uma
     // pertença a conjunto, idempotente, e não pode depender de quantas camadas a forma tem — senão
@@ -125,7 +125,7 @@ fn seed_and_publish(
     // A cor do halo de cada LINHA da pilha de filtros (FX raster, plano 24). Marcadas pelo TETO
     // de linhas, como o `populate`: a marca é idempotente e o passe de sementes corre antes de a
     // shell publicar a pilha do frame.
-    for row in 0..ph2d_editor_core::ids::MAX_FILTER_ROWS {
+    for row in 0..crate::ids::MAX_FILTER_ROWS {
         store.register_picker_swatch(ids::filter_color_id(row));
         // A SEGUNDA ponta (a rampa do Duotone) passa pela MESMA porta — pelo teto, e não pelo tipo
         // vigente da linha: a marca é idempotente, e uma marca condicionada ao tipo chegaria tarde
@@ -142,7 +142,7 @@ fn seed_and_publish(
                 store.register(
                     ids::filter_stop_id(row, stop),
                     ph2d_editor_core::interaction::InteractiveState::CurvePoint {
-                        parent: ph2d_editor_core::ids::filter_ramp_id(row),
+                        parent: crate::ids::filter_ramp_id(row),
                         channel: 0,
                         index: stop as u8,
                         canvas: Rect::new(bx, by, bw, bh),
@@ -180,8 +180,8 @@ fn seed_number_fields(store: &mut ph2d_editor_core::interaction::WidgetStore) {
     if let Some([vx, vy]) = state::current_vertex_pos() {
         let focus = store.focus_id();
         for (id, v) in [
-            (ph2d_editor_core::ids::VECTOR_VERT_X, vx),
-            (ph2d_editor_core::ids::VECTOR_VERT_Y, vy),
+            (crate::ids::VECTOR_VERT_X, vx),
+            (crate::ids::VECTOR_VERT_Y, vy),
         ] {
             if focus != Some(id) {
                 store.set_number_value(id, v);
@@ -203,10 +203,10 @@ fn seed_number_fields(store: &mut ph2d_editor_core::interaction::WidgetStore) {
         // ⭐ E o par que diz ONDE ela desenha (v21), pela MESMA porta e com o mesmo guarda: um
         // campo semeado por cima do dígito que o artista acabou de escrever apaga-o.
         for (id, v) in [
-            (ph2d_editor_core::ids::VECTOR_PAINT_WIDTH, row.width),
-            (ph2d_editor_core::ids::VECTOR_PAINT_DX, row.offset[0]),
-            (ph2d_editor_core::ids::VECTOR_PAINT_DY, row.offset[1]),
-            (ph2d_editor_core::ids::VECTOR_PAINT_DILATE, row.dilate),
+            (crate::ids::VECTOR_PAINT_WIDTH, row.width),
+            (crate::ids::VECTOR_PAINT_DX, row.offset[0]),
+            (crate::ids::VECTOR_PAINT_DY, row.offset[1]),
+            (crate::ids::VECTOR_PAINT_DILATE, row.dilate),
         ] {
             if store.focus_id() != Some(id) {
                 store.set_number_value(id, v);
@@ -229,17 +229,17 @@ fn seed_number_fields(store: &mut ph2d_editor_core::interaction::WidgetStore) {
         // The Angle field is a RELATIVE scrub: seed it to 0 (and reset the
         // gesture accumulator) whenever it isn't being edited, so each new
         // drag/type starts from 0 and the shell rotates by the reported delta.
-        if focus != Some(ph2d_editor_core::ids::VECTOR_TRANSFORM_R) {
-            store.set_number_value(ph2d_editor_core::ids::VECTOR_TRANSFORM_R, 0.0);
+        if focus != Some(crate::ids::VECTOR_TRANSFORM_R) {
+            store.set_number_value(crate::ids::VECTOR_TRANSFORM_R, 0.0);
             state::set_rot_last(0.0);
         }
     }
     // **O Z-INDEX**, semeado pela mesma regra e pelo mesmo motivo: nunca sobre o campo em FOCO,
     // senão a tecla que o artista acabou de premir é apagada pelo valor que a shell publicou.
     if let Some(z) = state::z_index()
-        && store.focus_id() != Some(ph2d_editor_core::ids::VECTOR_ARRANGE_Z)
+        && store.focus_id() != Some(crate::ids::VECTOR_ARRANGE_Z)
     {
-        store.set_number_value(ph2d_editor_core::ids::VECTOR_ARRANGE_Z, f64::from(z));
+        store.set_number_value(crate::ids::VECTOR_ARRANGE_Z, f64::from(z));
     }
     // **Os campos do AUTO LAYOUT** (plano UI/UX W2) — semeados do que a shell publicou, e nunca
     // sobre o campo em FOCO: o `NumberInput` é dono do próprio buffer enquanto o artista digita, e
@@ -256,25 +256,25 @@ fn seed_number_fields(store: &mut ph2d_editor_core::interaction::WidgetStore) {
             }
         };
         if let Some(f) = state::layout_flow() {
-            seed(ph2d_editor_core::ids::VECTOR_LAYOUT_GAP_MAIN, f.gap[0]);
-            seed(ph2d_editor_core::ids::VECTOR_LAYOUT_GAP_CROSS, f.gap[1]);
-            seed(ph2d_editor_core::ids::VECTOR_LAYOUT_PAD_ALL, f.pad[0]);
-            seed(ph2d_editor_core::ids::VECTOR_LAYOUT_PAD_T, f.pad[0]);
-            seed(ph2d_editor_core::ids::VECTOR_LAYOUT_PAD_R, f.pad[1]);
-            seed(ph2d_editor_core::ids::VECTOR_LAYOUT_PAD_B, f.pad[2]);
-            seed(ph2d_editor_core::ids::VECTOR_LAYOUT_PAD_L, f.pad[3]);
+            seed(crate::ids::VECTOR_LAYOUT_GAP_MAIN, f.gap[0]);
+            seed(crate::ids::VECTOR_LAYOUT_GAP_CROSS, f.gap[1]);
+            seed(crate::ids::VECTOR_LAYOUT_PAD_ALL, f.pad[0]);
+            seed(crate::ids::VECTOR_LAYOUT_PAD_T, f.pad[0]);
+            seed(crate::ids::VECTOR_LAYOUT_PAD_R, f.pad[1]);
+            seed(crate::ids::VECTOR_LAYOUT_PAD_B, f.pad[2]);
+            seed(crate::ids::VECTOR_LAYOUT_PAD_L, f.pad[3]);
             // Os limites: zero é ausência, e é o que o campo mostra quando não há limite.
-            seed(ph2d_editor_core::ids::VECTOR_LAYOUT_MIN_W, f.min[0]);
-            seed(ph2d_editor_core::ids::VECTOR_LAYOUT_MAX_W, f.max[0]);
-            seed(ph2d_editor_core::ids::VECTOR_LAYOUT_MIN_H, f.min[1]);
-            seed(ph2d_editor_core::ids::VECTOR_LAYOUT_MAX_H, f.max[1]);
+            seed(crate::ids::VECTOR_LAYOUT_MIN_W, f.min[0]);
+            seed(crate::ids::VECTOR_LAYOUT_MAX_W, f.max[0]);
+            seed(crate::ids::VECTOR_LAYOUT_MIN_H, f.min[1]);
+            seed(crate::ids::VECTOR_LAYOUT_MAX_H, f.max[1]);
             // ⚠️ Semeado SEMPRE, mesmo fora da grade: o valor sobrevive a uma troca de direção, e
             // o campo tem de o trazer de volta intacto quando o artista voltar ao *Grid*.
-            seed(ph2d_editor_core::ids::VECTOR_LAYOUT_COLUMNS, f.columns);
+            seed(crate::ids::VECTOR_LAYOUT_COLUMNS, f.columns);
         }
         if let Some(it) = state::layout_item() {
-            seed(ph2d_editor_core::ids::VECTOR_LAYOUT_ITEM_GROW, it.grow);
-            seed(ph2d_editor_core::ids::VECTOR_LAYOUT_ITEM_SHRINK, it.shrink);
+            seed(crate::ids::VECTOR_LAYOUT_ITEM_GROW, it.grow);
+            seed(crate::ids::VECTOR_LAYOUT_ITEM_SHRINK, it.shrink);
         }
     }
     // Seed the variation-axis fields (value + range) from the published axes of the
@@ -284,7 +284,7 @@ fn seed_number_fields(store: &mut ph2d_editor_core::interaction::WidgetStore) {
     let axes: Vec<(f64, f64, f64)> =
         state::with_text_axes(|a| a.iter().map(|s| (s.min, s.max, s.value)).collect());
     for (i, (min, max, value)) in axes.into_iter().enumerate() {
-        let id = ph2d_editor_core::ids::vector_text_axis_id(i);
+        let id = crate::ids::vector_text_axis_id(i);
         let step = ((max - min) / 40.0).max(0.01); // LITERAL-PX-OK: ~40 scrub steps across the axis range (drag granularity, not a metric)
         store.set_number_range(id, min, max, step);
         if focus != Some(id) {

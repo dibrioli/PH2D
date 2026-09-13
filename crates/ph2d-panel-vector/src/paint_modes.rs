@@ -222,12 +222,9 @@ impl BodyCtx<'_> {
             w,
             gap,
             [
+                (crate::ids::VECTOR_CUT_APPLY, tr("panel.vector.cut.apply")),
                 (
-                    ph2d_editor_core::ids::VECTOR_CUT_APPLY,
-                    tr("panel.vector.cut.apply"),
-                ),
-                (
-                    ph2d_editor_core::ids::VECTOR_CUT_DISCARD,
+                    crate::ids::VECTOR_CUT_DISCARD,
                     tr("panel.vector.cut.discard"),
                 ),
             ],

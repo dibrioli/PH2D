@@ -24,8 +24,8 @@
 //! suíte inteira.
 
 use super::HeroLayout;
-use super::ids;
 use super::left_rail::{PAINTER_MASK_SUBS, PAINTER_SHAPES, rail_entries, tool_entry};
+use crate::ids;
 use crate::interaction::{HitIndex, WidgetStore};
 use crate::paint::{fill_rounded_rect, resolve};
 use crate::widget::{

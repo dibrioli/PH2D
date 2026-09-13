@@ -88,3 +88,57 @@ pub fn morph_shape_key_button_id(row: usize) -> NodeId {
 pub fn morph_shape_key_option_id(row: usize, action: usize) -> NodeId {
     hash_node_id_runtime(&format!("vector.morph.arrow.when.{row}.{action}"))
 }
+
+// ── Desceu de `ph2d-editor-core/src/ids/chrome/vector_morph.rs` em 2026-09-13 (2.ª passagem: a cerca com a
+//    `line/render-loop` prendia-os na fundação até às duas linhas se integrarem).
+
+/// ⭐⭐ **O INTERRUPTOR DA PRÉ-VISUALIZAÇÃO** — o modo em que o teclado é da máquina.
+///
+/// ⚠️ **Ele existe porque a condição de uma transição é uma TECLA** (Enio, 2026-08-25: *"precisamos
+/// de um modo preview (com botão) como o de states de animação pois senão temos conflitos de
+/// atalhos (como setas do teclado movendo as formas)"*). Sem um modo, carregar em `Z` morfa a forma
+/// **e** faz o que o `Z` faz no editor — os dois, sem nada na tela a explicar.
+///
+/// ⛔ **É a ÚNICA porta, e o playhead deixou de ser uma delas.** A W5 ligava a máquina ao
+/// transporte a andar; era exactamente aí que o conflito aparecia, porque o Play não tranca o
+/// teclado do editor. *Duas portas para o mesmo modo divergem, e a que o artista encontra primeiro
+/// é a que não tranca nada.*
+pub const VECTOR_MORPH_PREVIEW: NodeId = hash_node_id("vector.morph.preview");
+
+/// **QUANTAS FORMAS um conjunto de estados aceita** — e o recurso é o **relógio de pintura do
+/// painel**, medido.
+///
+/// ⚠️ **Ele é também o tamanho do POOL de linhas**: desde a W10 a lista tem **uma entrada por
+/// forma**, então *quantas formas* e *quantas linhas* passaram a ser o mesmo número. ⛔ A constante
+/// `MAX_MORPH_ARROWS` que vivia aqui **morreu** — duas constantes para uma pergunta divergem.
+///
+/// # ⭐⭐ Este número era **9**, e a W10 dissolveu o que o segurava
+///
+/// O tecto anterior saiu de a lista ser o **grafo completo**: `n(n-1)` linhas, `0,0104 ms` cada.
+/// A regra era *«esta seção sozinha nunca custa mais do que TODO o resto do painel junto»*, e ela
+/// cruzava em `n = 9` (72 linhas, `0,752 ms` contra `0,746 ms`).
+///
+/// A W10 pôs a tecla no **destino** ⇒ a lista passou a ter `n` linhas. A MESMA regra, com a MESMA
+/// sonda, mede agora (2026-08-25, `MockPanelHost` a pintar o painel Vector inteiro, release; o
+/// painel **sem** esta seção custa `0,726 ms`):
+///
+/// | formas = linhas | painel | delta da seção | % de um quadro de 16,7 ms |
+/// |---:|---:|---:|---:|
+/// | 9 | `0,824 ms` | `0,085 ms` | 4,93 % |
+/// | 32 | `0,953 ms` | `0,215 ms` | 5,71 % |
+/// | 64 | `1,128 ms` | `0,389 ms` | 6,75 % |
+/// | 114 | `1,430 ms` | `0,704 ms` | 8,56 % |
+/// | **118** | **`1,457 ms`** | **`0,731 ms`** | **8,73 %** |
+/// | 122 | `1,492 ms` | `0,765 ms` | 8,93 % |
+///
+/// ⇒ **118 é o último `n` que a regra aceita** — e o antigo `9` custa hoje `0,085 ms`, **um nono**
+/// do que custava. *Quem move o número que tornava algo inalcançável tem de reconferir a nota*
+/// (`CLAUDE.md` §0.0), e o que se move aqui não é o tecto: é o **expoente**.
+///
+/// ⛔ **O pool de ids NÃO é o recurso** — medido: `118 × 25 = 2 950` widgets custam `~0,29 ms`
+/// **uma vez**, no `populate`, e nunca por quadro.
+///
+/// ⛔ **A régua não fica como gate.** Ela divide dois relógios, que é exactamente a família de
+/// flakes sob fan-out do `CLAUDE.md` §5.0 — as tabelas acima são o registo, e re-medir é rodar a
+/// sonda.
+pub const MAX_MORPH_STATES: usize = 118;

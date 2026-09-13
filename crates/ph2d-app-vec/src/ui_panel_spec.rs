@@ -289,7 +289,7 @@ pub fn live_rows(sim: &SimWorld, scene: &VecScene, frame: Entity) -> Vec<Authore
         .into_iter()
         .map(|a| AuthoredRow {
             kind: a.kind,
-            id: ph2d_editor_core::ids::authored_row_id(&a.key),
+            id: ph2d_panel_authored::ids::authored_row_id(&a.key),
             label: a.label,
             key: a.key,
             rgba: a.rgba,
@@ -322,7 +322,7 @@ pub fn picker_shape(
         .into_iter()
         .find(|a| {
             a.kind == WidgetKind::ColorSwatch
-                && ph2d_editor_core::ids::authored_row_id(&a.key) == target
+                && ph2d_panel_authored::ids::authored_row_id(&a.key) == target
         })
         .and_then(|a| a.path)
 }

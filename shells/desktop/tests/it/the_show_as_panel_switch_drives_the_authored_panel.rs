@@ -46,7 +46,7 @@ fn body() -> String {
 fn the_switch_writes_the_panels_visibility() {
     let s = body();
     let arm = s
-        .find("ph2d_editor_core::ids::VECTOR_FRAME_PANEL_OFF")
+        .find("ph2d_panel_vector::ids::VECTOR_FRAME_PANEL_OFF")
         .expect("o braco do chip Show as Panel sumiu do render_loop");
     // A janela é o braço do `else if` — o `insert` tem de estar DENTRO dele, não em qualquer
     // lugar do arquivo.

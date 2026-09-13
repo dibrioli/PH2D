@@ -2,8 +2,8 @@
 
 use super::HeroLayout;
 use super::fixture;
-use super::ids;
 use crate::icons::IconId;
+use crate::ids;
 use crate::interaction::{HitIndex, InteractiveState, WidgetEvent, WidgetStore};
 use crate::paint::{fill_rounded_rect, resolve};
 use crate::widget::{ButtonState, IconGlyph, Tooltip, paint_tooltip};

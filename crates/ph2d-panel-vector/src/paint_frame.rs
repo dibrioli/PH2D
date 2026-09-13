@@ -54,12 +54,12 @@ impl BodyCtx<'_> {
             tr("panel.vector.frame.panel"),
             &[
                 (
-                    ph2d_editor_core::ids::VECTOR_FRAME_PANEL_OFF,
+                    crate::ids::VECTOR_FRAME_PANEL_OFF,
                     tr("panel.vector.frame.panel.off"),
                     !panel_open,
                 ),
                 (
-                    ph2d_editor_core::ids::VECTOR_FRAME_PANEL_ON,
+                    crate::ids::VECTOR_FRAME_PANEL_ON,
                     tr("panel.vector.frame.panel.on"),
                     panel_open,
                 ),

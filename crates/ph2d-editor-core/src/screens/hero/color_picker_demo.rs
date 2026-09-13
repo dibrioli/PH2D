@@ -10,7 +10,7 @@
 //! NOT actually rendered inside the Inspector).
 
 use super::HeroLayout;
-use super::ids;
+use crate::ids;
 use crate::interaction::{HitIndex, WidgetStore};
 use crate::widget::BlenderColorPicker;
 use crate::zones::Rect;

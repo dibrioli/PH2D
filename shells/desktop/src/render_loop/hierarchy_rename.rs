@@ -37,9 +37,7 @@ pub(super) fn drain(
             caret,
             selection_anchor,
             ..
-        }) = hero
-            .store
-            .get_mut(ph2d_editor_core::screens::hero::ids::HIER_RENAME_INPUT)
+        }) = hero.store.get_mut(ph2d_editor_core::ids::HIER_RENAME_INPUT)
         {
             let len = value.len();
             *text = value;
@@ -81,9 +79,7 @@ pub(super) fn drain(
             caret,
             selection_anchor,
             ..
-        }) = hero
-            .store
-            .get_mut(ph2d_editor_core::screens::hero::ids::HIER_RENAME_INPUT)
+        }) = hero.store.get_mut(ph2d_editor_core::ids::HIER_RENAME_INPUT)
         {
             text.clear();
             *caret = 0;

@@ -63,19 +63,19 @@ const THREAD_SAMPLES_PER_SECOND: f64 = 120.0;
 /// continua desenhado.
 const MAX_DOTS: usize = 600;
 
-/// A âmbar do realce de seleção (`ph2d_app_flip::selection_overlay::HALO_RGBA`), porque a
+/// A âmbar do realce de seleção ([`ph2d_editor_core::editor_highlight`], a mesma do Flip), porque a
 /// trajetória **é** uma extensão de *"esta é a coisa que você tem na mão"*: ela só
 /// aparece para o objeto selecionado, e some com ele.
 ///
 /// Fica inteiramente fora do vocabulário do `physics_overlay` (verde/ciano/violeta/
 /// magenta/branco/laranja), que é uma família FECHADA sobre *o que uma coisa é
 /// fisicamente* — uma trajetória não é uma resposta a essa pergunta.
-const PATH_RGBA: [f32; 4] = [1.0, 0.72, 0.2, 0.95]; // LITERAL-COLOR-OK: overlay de trajetoria
+const PATH_RGBA: [f32; 4] = ph2d_editor_core::editor_highlight::amber(0.95);
 
 /// A LINHA de uma alça de tangente — a mesma âmbar, meia força: ela sai da âncora e
 /// termina na ponta agarrável, e é a coisa que diz *"esta âncora tem uma tangente
 /// para puxar"*. Mais forte que o fio (a alça se edita), mais fraca que os pontos.
-const TANGENT_LINE_RGBA: [f32; 4] = [1.0, 0.72, 0.2, 0.6]; // LITERAL-COLOR-OK: overlay de trajetoria
+const TANGENT_LINE_RGBA: [f32; 4] = ph2d_editor_core::editor_highlight::amber(0.6);
 
 /// Raio do círculo da ponta de uma alça de tangente. Círculo, não quadrado: a âncora é
 /// o quadrado (o que translada a curva), a ponta é o círculo (o que a MOLDA) — a mesma

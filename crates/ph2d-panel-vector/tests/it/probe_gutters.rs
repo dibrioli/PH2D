@@ -42,16 +42,16 @@ fn measure_the_label_gutters() {
     state::set_frame_present(true);
     state::set_layout_flow(Some(LayoutFlow {
         size: [
-            ph2d_editor_core::ids::VECTOR_LAYOUT_SIZE_W_FIXED,
-            ph2d_editor_core::ids::VECTOR_LAYOUT_SIZE_H_FIXED,
+            ph2d_panel_vector::ids::VECTOR_LAYOUT_SIZE_W_FIXED,
+            ph2d_panel_vector::ids::VECTOR_LAYOUT_SIZE_H_FIXED,
         ],
         min: [0.0; 2],
         max: [0.0; 2],
-        dir: ph2d_editor_core::ids::VECTOR_LAYOUT_DIR_ROW,
+        dir: ph2d_panel_vector::ids::VECTOR_LAYOUT_DIR_ROW,
         gap: [0.0, 0.0],
         pad: [0.0; 4],
-        align: ph2d_editor_core::ids::VECTOR_LAYOUT_ALIGN_START,
-        justify: ph2d_editor_core::ids::VECTOR_LAYOUT_JUSTIFY_START,
+        align: ph2d_panel_vector::ids::VECTOR_LAYOUT_ALIGN_START,
+        justify: ph2d_panel_vector::ids::VECTOR_LAYOUT_JUSTIFY_START,
         columns: 2.0,
     }));
     state::set_layout_item(Some(LayoutItem {
@@ -63,8 +63,8 @@ fn measure_the_label_gutters() {
         // fileiras de Grow/Shrink — a fixtura tem de conter o que ela vai medir.
         parent_is_grid: false,
     }));
-    let off = rect(ph2d_editor_core::ids::VECTOR_LAYOUT_DIR_OFF).expect("o chip Off");
-    let wrap = rect(ph2d_editor_core::ids::VECTOR_LAYOUT_DIR_WRAP).expect("o chip Wrap");
+    let off = rect(ph2d_panel_vector::ids::VECTOR_LAYOUT_DIR_OFF).expect("o chip Off");
+    let wrap = rect(ph2d_panel_vector::ids::VECTOR_LAYOUT_DIR_WRAP).expect("o chip Wrap");
     println!(
         "inner_x={:.2} inner_right={:.2} (largura interna {:.2})",
         off.x,
@@ -72,9 +72,9 @@ fn measure_the_label_gutters() {
         wrap.x + wrap.w - off.x
     );
     for (id, name) in [
-        (ph2d_editor_core::ids::VECTOR_LAYOUT_GAP_MAIN, "Gap"),
-        (ph2d_editor_core::ids::VECTOR_LAYOUT_PAD_ALL, "All"),
-        (ph2d_editor_core::ids::VECTOR_LAYOUT_ITEM_GROW, "Grow"),
+        (ph2d_panel_vector::ids::VECTOR_LAYOUT_GAP_MAIN, "Gap"),
+        (ph2d_panel_vector::ids::VECTOR_LAYOUT_PAD_ALL, "All"),
+        (ph2d_panel_vector::ids::VECTOR_LAYOUT_ITEM_GROW, "Grow"),
     ] {
         let r = rect(id).expect("o campo");
         println!(

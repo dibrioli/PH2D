@@ -49,17 +49,13 @@ impl BodyCtx<'_> {
             // ambas valem; o Picker é a porta explícita e mais correta (Enio 2026-07-23).
             let mut y = y;
             if state::can_link() {
-                y = self.action_button(
-                    ph2d_editor_core::ids::VECTOR_TEXTPATH_LINK,
-                    "Text on Path",
-                    y,
-                );
+                y = self.action_button(crate::ids::VECTOR_TEXTPATH_LINK, "Text on Path", y);
             }
-            return self.action_button(ph2d_editor_core::ids::VECTOR_TEXTPATH_PICK, "Pick Path", y);
+            return self.action_button(crate::ids::VECTOR_TEXTPATH_PICK, "Pick Path", y);
         }
         let track = self
             .store
-            .slider(ph2d_editor_core::ids::VECTOR_TEXTPATH_OFFSET)
+            .slider(crate::ids::VECTOR_TEXTPATH_OFFSET)
             .map_or_else(|| state::offset() as f32, |(_, v)| v);
         let val = self
             .store
@@ -67,7 +63,7 @@ impl BodyCtx<'_> {
             .unwrap_or_else(state::offset);
         y = self.slider_row(
             "Offset",
-            ph2d_editor_core::ids::VECTOR_TEXTPATH_OFFSET,
+            crate::ids::VECTOR_TEXTPATH_OFFSET,
             ids::VECTOR_TEXTPATH_OFFSET_NUM,
             track,
             val,
@@ -88,22 +84,10 @@ impl BodyCtx<'_> {
         // `paint_button`, que são quem wira o AccessKit — nomear o `NodeId` aqui é o que torna
         // essa delegação visível a quem lê o arquivo (e ao scan que a cobra).
         let sides: [(ph2d_a11y::NodeId, &str, bool); 2] = [
-            (
-                ph2d_editor_core::ids::VECTOR_TEXTPATH_FLIP_OFF,
-                "This side",
-                !flip,
-            ),
-            (
-                ph2d_editor_core::ids::VECTOR_TEXTPATH_FLIP,
-                "Other side",
-                flip,
-            ),
+            (crate::ids::VECTOR_TEXTPATH_FLIP_OFF, "This side", !flip),
+            (crate::ids::VECTOR_TEXTPATH_FLIP, "Other side", flip),
         ];
         y = self.segmented("Side", &sides, y);
-        self.action_button(
-            ph2d_editor_core::ids::VECTOR_TEXTPATH_DETACH,
-            "Detach from Path",
-            y,
-        )
+        self.action_button(crate::ids::VECTOR_TEXTPATH_DETACH, "Detach from Path", y)
     }
 }

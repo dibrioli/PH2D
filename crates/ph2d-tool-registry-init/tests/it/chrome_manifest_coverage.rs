@@ -1,6 +1,6 @@
 //! Wave 2 PR 11.4 contract test. Validates two invariants between
 //! the runtime tool [`Registry`] and the hand-allocated chrome NodeId
-//! consts in `ph2d_editor_core::screens::hero::ids`:
+//! consts in `ph2d_editor_core::ids`:
 //!
 //! 1. **Slug parity.** Each chrome const that names a registry-derived
 //!    pill must hash the SAME string slug as the matching manifest's

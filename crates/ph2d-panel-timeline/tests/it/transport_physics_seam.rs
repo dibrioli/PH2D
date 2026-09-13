@@ -14,7 +14,6 @@
 //! makes it active — dead under the mouse), and routed-nowhere.
 
 use ph2d_editor_core::action_bus::EditorAction;
-use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::tool::PanelEvent;
 use ph2d_editor_core::zones::Rect;
@@ -64,7 +63,7 @@ fn the_physics_toggle_is_painted_and_clicks_through_to_the_shell() {
     let regs = paint(&mut host, &mut state, transport(false));
     let r = regs
         .iter()
-        .find(|(w, _)| *w == ids::TIMELINE_PHYSICS)
+        .find(|(w, _)| *w == ph2d_panel_timeline::ids::TIMELINE_PHYSICS)
         .map(|(_, r)| *r)
         .expect("the Physics toggle was painted but never hit-registered");
 
@@ -75,7 +74,7 @@ fn the_physics_toggle_is_painted_and_clicks_through_to_the_shell() {
     let evs = host.click_at(cx, cy);
     let toggled = evs
         .iter()
-        .find(|e| matches!(e, WidgetEvent::Toggled(id) if *id == ids::TIMELINE_PHYSICS))
+        .find(|e| matches!(e, WidgetEvent::Toggled(id) if *id == ph2d_panel_timeline::ids::TIMELINE_PHYSICS))
         .copied()
         .unwrap_or_else(|| {
             panic!(
@@ -88,7 +87,10 @@ fn the_physics_toggle_is_painted_and_clicks_through_to_the_shell() {
     host.apply_panel_event::<TimelinePanel>(&mut state, toggled);
     assert_eq!(
         timeline_events(&mut host),
-        vec![PanelEvent::Toggle(ids::TIMELINE_PHYSICS, true)],
+        vec![PanelEvent::Toggle(
+            ph2d_panel_timeline::ids::TIMELINE_PHYSICS,
+            true
+        )],
         "clicking Physics must reach the shell so it arms the simulation \
          (it is NOT panel-local like the Speed view toggle)"
     );
@@ -109,7 +111,7 @@ fn the_painted_switch_shows_what_the_transport_is_driving() {
 
         let (_, on) = host
             .store()
-            .toggle(ids::TIMELINE_PHYSICS)
+            .toggle(ph2d_panel_timeline::ids::TIMELINE_PHYSICS)
             .expect("the Physics toggle is not registered — check populate.rs");
         assert_eq!(
             on, armed,

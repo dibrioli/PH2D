@@ -163,10 +163,10 @@ pub(super) fn build_instance_info(
     let all_levels = ph2d_app_components::instance_apply_deep::apply_levels(sim, entity);
     let apply_levels_beyond = all_levels
         .len()
-        .saturating_sub(ph2d_editor_core::ids::MAX_INSTANCE_APPLY_LEVELS);
+        .saturating_sub(ph2d_panel_inspector::ids::MAX_INSTANCE_APPLY_LEVELS);
     let apply_levels: Vec<ph2d_editor_core::screens::hero::ApplyChoice> = all_levels
         .iter()
-        .take(ph2d_editor_core::ids::MAX_INSTANCE_APPLY_LEVELS)
+        .take(ph2d_panel_inspector::ids::MAX_INSTANCE_APPLY_LEVELS)
         .enumerate()
         .map(|(i, l)| ph2d_editor_core::screens::hero::ApplyChoice {
             master: l.master,

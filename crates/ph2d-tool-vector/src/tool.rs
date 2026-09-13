@@ -21,7 +21,6 @@
 //! the picker is the live path.
 
 use ph2d_editor_core::floating_panel::{FloatingPanel, PanelAnchor, ToolId};
-use ph2d_editor_core::ids;
 use ph2d_editor_core::tool::{PanelEvent, Tool};
 use ph2d_vec_scene::{ALL_SHAPES, MAX_SHAPE_FIELDS, ShapeKind, ShapeValues};
 

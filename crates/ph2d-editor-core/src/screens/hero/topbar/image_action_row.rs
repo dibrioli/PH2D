@@ -50,7 +50,7 @@ pub(super) struct ImageActionPill {
 ///
 /// Falls back to the legacy hardcoded triple for tests / pre-registry
 /// boot. Both paths produce the same `NodeId`s because the chrome
-/// consts in [`crate::screens::hero::ids`] hash the SAME slug as the
+/// consts in [`crate::ids`] hash the SAME slug as the
 /// matching manifest's `id` field (PR 11.4 contract — pinned by the
 /// `chrome_manifest_coverage` integration test).
 ///

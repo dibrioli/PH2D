@@ -43,3 +43,30 @@ pub const INSP_TIMER_AUTOSTART: NodeId = hash_node_id("insp_timer_autostart");
 
 /// O nome do sinal publicado a cada disparo. **Vazio = calado.**
 pub const INSP_TIMER_SIGNAL: NodeId = hash_node_id("insp_timer_signal");
+
+// ── Desceu de `ph2d-editor-core/src/ids/inspector_timer.rs` em 2026-09-13 (2.ª passagem: a cerca com a
+//    `line/render-loop` prendia-os na fundação até às duas linhas se integrarem).
+
+/// **As linhas da lista** — uma por timer, até ao cap de [`ph2d_ecs::TIMERS_MAX`].
+///
+/// ⚠️ O comprimento deste array **é** o cap do modelo, e há gate na shell a prendê-los: *um modelo
+/// que aceita o que o painel não mostra produz estado inalcançável por gesto nenhum* (a lei que o
+/// `ANIM_TAGS_MAX` já pagou, com o número a descer de 256 para 64 por causa dela).
+pub const INSP_TIMER_ROW: [NodeId; 16] = [
+    hash_node_id("insp_timer_row_00"),
+    hash_node_id("insp_timer_row_01"),
+    hash_node_id("insp_timer_row_02"),
+    hash_node_id("insp_timer_row_03"),
+    hash_node_id("insp_timer_row_04"),
+    hash_node_id("insp_timer_row_05"),
+    hash_node_id("insp_timer_row_06"),
+    hash_node_id("insp_timer_row_07"),
+    hash_node_id("insp_timer_row_08"),
+    hash_node_id("insp_timer_row_09"),
+    hash_node_id("insp_timer_row_10"),
+    hash_node_id("insp_timer_row_11"),
+    hash_node_id("insp_timer_row_12"),
+    hash_node_id("insp_timer_row_13"),
+    hash_node_id("insp_timer_row_14"),
+    hash_node_id("insp_timer_row_15"),
+];

@@ -19,7 +19,7 @@ pub(super) fn populate_style(store: &mut WidgetStore) {
     // Linear-gradient Angle slider (track 0..1 → 0..360°) + its chip.
     slider_chip(
         store,
-        ph2d_editor_core::ids::VECTOR_GRAD_ANGLE,
+        crate::ids::VECTOR_GRAD_ANGLE,
         ph2d_tool_vector::ids::VECTOR_GRAD_ANGLE_NUM,
         0.0,
         0.0,
@@ -29,7 +29,7 @@ pub(super) fn populate_style(store: &mut WidgetStore) {
     // Multi-point Influence (track 0..1 → 0..4); seeded at the default 1.0.
     slider_chip(
         store,
-        ph2d_editor_core::ids::VECTOR_GRAD_INFLUENCE,
+        crate::ids::VECTOR_GRAD_INFLUENCE,
         ph2d_tool_vector::ids::VECTOR_GRAD_INFLUENCE_NUM,
         1.0 / GRAD_INFLUENCE_SLIDER_SCALE,
         1.0,
@@ -39,7 +39,7 @@ pub(super) fn populate_style(store: &mut WidgetStore) {
     // Multi-point Jitter (track 0..1 → 0..1); seeded at the default 0.0 (smooth).
     slider_chip(
         store,
-        ph2d_editor_core::ids::VECTOR_GRAD_JITTER,
+        crate::ids::VECTOR_GRAD_JITTER,
         ph2d_tool_vector::ids::VECTOR_GRAD_JITTER_NUM,
         0.0,
         0.0,

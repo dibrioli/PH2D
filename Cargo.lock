@@ -5824,6 +5824,7 @@ dependencies = [
  "ph2d-panel-bgremoval",
  "ph2d-panel-color-equalization",
  "ph2d-panel-equalize-sizes",
+ "ph2d-panel-flip",
  "ph2d-panel-hierarchy",
  "ph2d-panel-inspector",
  "ph2d-panel-model3d",
@@ -7889,7 +7890,6 @@ dependencies = [
  "ph2d-a11y",
  "ph2d-editor-core",
  "ph2d-tokens",
- "ph2d-tool-registry",
  "ph2d-tool-upscale",
  "ph2d-ui-testkit",
 ]

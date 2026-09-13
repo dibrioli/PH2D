@@ -271,7 +271,7 @@ impl crate::App {
             // Rola o painel até a seção Expand entrar no hit-index (mesmo caminho do 18).
             5..=7
                 if self
-                    .smoke_find_widget(ph2d_editor_core::ids::VECTOR_EXPAND_OFFSET)
+                    .smoke_find_widget(ph2d_panel_vector::ids::VECTOR_EXPAND_OFFSET)
                     .is_none() =>
             {
                 let win = self.gfx.as_ref().map(|g| g.surface.size());
@@ -298,7 +298,7 @@ impl crate::App {
             }
             // Agarra o slider e ARRASTA ATÉ SATURAR (+200 px passa o fim do track): o
             // gesto natural, que na faixa antiga aterrissava o artista em d=+4.
-            20 => match self.smoke_find_widget(ph2d_editor_core::ids::VECTOR_EXPAND_OFFSET) {
+            20 => match self.smoke_find_widget(ph2d_panel_vector::ids::VECTOR_EXPAND_OFFSET) {
                 Some((x, y)) => {
                     GRAB.with(|c| c.set((x, y)));
                     eprintln!("[retune-smoke] slider em ({x}, {y}) — DOWN (vai saturar)");
@@ -408,7 +408,7 @@ impl crate::App {
             // ser dele — o painel docado fica na borda direita.
             5..=7
                 if self
-                    .smoke_find_widget(ph2d_editor_core::ids::VECTOR_EXPAND_OFFSET)
+                    .smoke_find_widget(ph2d_panel_vector::ids::VECTOR_EXPAND_OFFSET)
                     .is_none() =>
             {
                 let win = self.gfx.as_ref().map(|g| g.surface.size());
@@ -422,7 +422,7 @@ impl crate::App {
             // report ("muda em tempo real para round mas não muda para Miter e Bevel"): o
             // Round dele é o 1º RETUNE, não o join do arrasto.
             // Agarra o slider de Offset no centro (d=0) e segura.
-            10 => match self.smoke_find_widget(ph2d_editor_core::ids::VECTOR_EXPAND_OFFSET) {
+            10 => match self.smoke_find_widget(ph2d_panel_vector::ids::VECTOR_EXPAND_OFFSET) {
                 Some((x, y)) => {
                     GRAB.with(|c| c.set((x, y)));
                     eprintln!("[retune-smoke] slider em ({x}, {y}) — DOWN");

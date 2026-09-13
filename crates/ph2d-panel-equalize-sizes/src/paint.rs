@@ -45,7 +45,7 @@ pub(crate) fn paint(_state: &mut EqualizeSizesPanelState, ctx: &mut PaintCtx) {
         // EQS_PANEL once the tool is deactivated.
         ctx.host
             .store_mut()
-            .clear_panel_rect(ph2d_tool_equalize_sizes::ids::EQS_PANEL);
+            .clear_panel_rect(ph2d_editor_core::ids::EQS_PANEL);
         return;
     }
 
@@ -56,7 +56,7 @@ pub(crate) fn paint(_state: &mut EqualizeSizesPanelState, ctx: &mut PaintCtx) {
     // Publish the rect so wheel/click dispatch can route to this panel.
     ctx.host
         .store_mut()
-        .set_panel_rect(ph2d_tool_equalize_sizes::ids::EQS_PANEL, rect);
+        .set_panel_rect(ph2d_editor_core::ids::EQS_PANEL, rect);
 
     paint_panel_surface(rect, ctx.scene, theme);
 
@@ -105,7 +105,7 @@ pub(crate) fn paint(_state: &mut EqualizeSizesPanelState, ctx: &mut PaintCtx) {
     let scroll = ctx
         .host
         .store()
-        .panel_scroll(ph2d_tool_equalize_sizes::ids::EQS_PANEL);
+        .panel_scroll(ph2d_editor_core::ids::EQS_PANEL);
 
     ctx.scene.push_clip(&rect_to_vello(body_rect));
     let y_after = paint_body_sections(
@@ -404,11 +404,11 @@ fn paint_scrollbar_and_publish(
             .register(EQUALIZE_SIZES_SCROLLBAR_ID, thumb);
     }
     let store = ctx.host.store_mut();
-    store.set_panel_content_h(ph2d_tool_equalize_sizes::ids::EQS_PANEL, content_h);
-    store.set_panel_visible_h(ph2d_tool_equalize_sizes::ids::EQS_PANEL, body_h);
+    store.set_panel_content_h(ph2d_editor_core::ids::EQS_PANEL, content_h);
+    store.set_panel_visible_h(ph2d_editor_core::ids::EQS_PANEL, body_h);
     let max_scroll = (content_h - body_h).max(0.0);
-    if store.panel_scroll(ph2d_tool_equalize_sizes::ids::EQS_PANEL) > max_scroll {
-        store.set_panel_scroll(ph2d_tool_equalize_sizes::ids::EQS_PANEL, max_scroll);
+    if store.panel_scroll(ph2d_editor_core::ids::EQS_PANEL) > max_scroll {
+        store.set_panel_scroll(ph2d_editor_core::ids::EQS_PANEL, max_scroll);
     }
 }
 

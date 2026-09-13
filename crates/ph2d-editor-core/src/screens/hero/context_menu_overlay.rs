@@ -6,8 +6,8 @@
 //! per-kind option list (one match arm per [`ContextMenuKind`]).
 
 use super::fixture;
-use super::ids;
 use crate::icons::IconId;
+use crate::ids;
 use crate::interaction::{ContextMenuKind, HitIndex, InteractiveState, WidgetStore};
 use crate::paint::{fill_rounded_rect, paint_icon, paint_text, resolve, stroke_rounded_rect};
 use crate::widget::{TextInput, paint_text_input_with_buffer};

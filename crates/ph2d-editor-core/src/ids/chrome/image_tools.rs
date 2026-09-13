@@ -43,22 +43,16 @@ pub const IMAGE_ACTION_REAL_SIZE: NodeId = hash_node_id("real_size");
 /// Condenses the legacy Image Padding + Directional Expand.
 pub const IMAGE_ACTION_PADDING: NodeId = hash_node_id("padding");
 
-/// Color Equalization panel marker NodeId. Right-docked in the
-/// Inspector geometry slot while the `color_equalization` tool is
-/// active. Hash matches `ph2d_tool_color_equalization::ids::CEQ_PANEL`
-/// (the tool crate owns the canonical const for its own widgets;
-/// editor-core mirrors it here so `paint_hero_screen`'s z_order
-/// fallback can walk the panel without a circular dep on the tool
-/// crate). Same hash key (`"panel.color_equalization"`), same
-/// resolved id.
+/// Color Equalization panel root NodeId. Right-docked in the Inspector geometry slot while the
+/// `color_equalization` tool is active. ⭐ **The ONE definition** (since the 2026-09-13 integration): the
+/// foundation reads it in the scroll dispatch, the menu filter and `paint_hero_screen`'s z-order fallback,
+/// and the tool, `ColorEqualizationPanel::NODE_ID` and the shell bridge all name it here — the copy the
+/// tool crate kept died with its `SLUGS_REPETIDOS_TOLERADOS` entry.
 pub const CEQ_PANEL: NodeId = hash_node_id("panel.color_equalization");
 
-/// Equalize Sizes panel marker NodeId. Mirror of `CEQ_PANEL` for the
-/// multi-sprite size-normalization tool. Hash matches
-/// `ph2d_tool_equalize_sizes::ids::EQS_PANEL` and
-/// `ph2d_panel_equalize_sizes::EqualizeSizesPanel::NODE_ID` — keeping
-/// the dispatcher's `panel_at` lookup, the typed panel registry, and
-/// `paint_hero_screen`'s z_order fallback consistent.
+/// Equalize Sizes panel root NodeId — the ONE definition, like [`CEQ_PANEL`]: the dispatcher's
+/// `panel_at` lookup, `EqualizeSizesPanel::NODE_ID`, the shell bridge and `paint_hero_screen`'s z-order
+/// fallback all name it here.
 pub const EQS_PANEL: NodeId = hash_node_id("panel.equalize_sizes");
 
 /// Image Tools action — Color Equalization pill. Stateful tool: opens
@@ -94,12 +88,9 @@ pub const IMAGE_ACTION_EQUALIZE_SIZES: NodeId = hash_node_id("equalize_sizes");
 /// Transform.
 pub const IMAGE_ACTION_RASTERIZE: NodeId = hash_node_id("rasterize");
 
-/// Upscale panel marker NodeId. Right-docked in the Inspector geometry
-/// slot while the `upscale` tool is active. Hash matches
-/// `ph2d_tool_upscale::tool::ids` namespace and
-/// `ph2d_panel_upscale::UpscalePanel::NODE_ID` — keeping the
-/// dispatcher's `panel_at` lookup, the typed panel registry, and
-/// `paint_hero_screen`'s z_order fallback consistent.
+/// Upscale panel root NodeId — the ONE definition, like [`CEQ_PANEL`]: `UpscalePanel::NODE_ID`, the shell's
+/// `upscale_bridge` and `paint_hero_screen`'s z-order fallback all name it here (the panel crate's `ids`
+/// module only held a copy of this one, and died in the 2026-09-13 integration).
 pub const UPS_PANEL: NodeId = hash_node_id("panel.upscale");
 
 /// Image Tools action — Upscale pill. Stateful, sabor 3: opens the

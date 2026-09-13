@@ -183,7 +183,7 @@ fn paint_open_list(ctx: &mut PaintCtx, open: &OpenList, theme: Theme) {
     if open.options.is_empty() {
         return;
     }
-    let id = ids::authored_row_id(&open.key);
+    let id = crate::ids::authored_row_id(&open.key);
     let opts: Vec<DropdownOption<usize>> = open
         .options
         .iter()

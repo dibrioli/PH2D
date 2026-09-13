@@ -26,21 +26,21 @@ pub(super) fn populate_ops(store: &mut WidgetStore) {
     button(store, ph2d_tool_vector::ids::VECTOR_VERT_CORNER);
     button(store, ph2d_tool_vector::ids::VECTOR_VERT_SMOOTH);
     button(store, ph2d_tool_vector::ids::VECTOR_VERT_SYMMETRIC);
-    button(store, ph2d_editor_core::ids::VECTOR_VERT_DELETE);
+    button(store, crate::ids::VECTOR_VERT_DELETE);
     // As três da W4 (Join · Reverse · Average).
-    button(store, ph2d_editor_core::ids::VECTOR_VERT_AVERAGE);
-    button(store, ph2d_editor_core::ids::VECTOR_PATH_JOIN);
+    button(store, crate::ids::VECTOR_VERT_AVERAGE);
+    button(store, crate::ids::VECTOR_PATH_JOIN);
     // ⭐⭐⭐ **Soldar** (plano 39). Sem esta linha o botão PINTA e fica morto sob o mouse — o
     // defeito que este ficheiro e o `populate_modes` já pagaram cinco vezes entre os dois.
-    button(store, ph2d_editor_core::ids::VECTOR_PATH_WELD);
-    button(store, ph2d_editor_core::ids::VECTOR_PATH_REVERSE);
+    button(store, crate::ids::VECTOR_PATH_WELD);
+    button(store, crate::ids::VECTOR_PATH_REVERSE);
     // Os dois da LINHA DE CORTE. Registrados INCONDICIONALMENTE (a store é agnóstica de estado),
     // embora só sejam PINTADOS com lâmina desenhada — as duas perguntas são diferentes, e
     // confundi-las é o que deixa um botão vivo na tela e morto sob o mouse.
-    button(store, ph2d_editor_core::ids::VECTOR_CUT_APPLY);
-    button(store, ph2d_editor_core::ids::VECTOR_CUT_DISCARD);
-    button(store, ph2d_editor_core::ids::VECTOR_VERT_SEL_SUBPATH);
-    button(store, ph2d_editor_core::ids::VECTOR_VERT_SEL_SAME);
+    button(store, crate::ids::VECTOR_CUT_APPLY);
+    button(store, crate::ids::VECTOR_CUT_DISCARD);
+    button(store, crate::ids::VECTOR_VERT_SEL_SUBPATH);
+    button(store, crate::ids::VECTOR_VERT_SEL_SAME);
 
     // Boolean op buttons (N-ary over the SELECTED closed regions) + compound row.
     super::blend::populate_blend(store);
@@ -48,17 +48,17 @@ pub(super) fn populate_ops(store: &mut WidgetStore) {
     // Text on Path (plano 22): os quatro controles + o slider de offset. Registrados
     // INCONDICIONALMENTE, como todos os irmãos — o store é agnóstico de modo, e quem decide se
     // o clique é possível é a PINTURA (sem hit-rect não há Click).
-    button(store, ph2d_editor_core::ids::VECTOR_TEXTPATH_LINK);
-    button(store, ph2d_editor_core::ids::VECTOR_TEXTPATH_PICK);
-    button(store, ph2d_editor_core::ids::VECTOR_TEXTPATH_DETACH);
-    button(store, ph2d_editor_core::ids::VECTOR_TEXTPATH_FLIP);
-    button(store, ph2d_editor_core::ids::VECTOR_TEXTPATH_FLIP_OFF);
+    button(store, crate::ids::VECTOR_TEXTPATH_LINK);
+    button(store, crate::ids::VECTOR_TEXTPATH_PICK);
+    button(store, crate::ids::VECTOR_TEXTPATH_DETACH);
+    button(store, crate::ids::VECTOR_TEXTPATH_FLIP);
+    button(store, crate::ids::VECTOR_TEXTPATH_FLIP_OFF);
     // O offset é uma FRAÇÃO do comprimento (o `startOffset` do SVG): track e valor coincidem,
     // então a escala é 1 e o deslocamento 0 — o único slider do painel em que isso é verdade,
     // e é o que torna o campo legível (0.50 é meio caminho, em qualquer curva).
     slider_chip(
         store,
-        ph2d_editor_core::ids::VECTOR_TEXTPATH_OFFSET,
+        crate::ids::VECTOR_TEXTPATH_OFFSET,
         ids::VECTOR_TEXTPATH_OFFSET_NUM,
         0.0,
         0.0,
@@ -84,9 +84,9 @@ pub(super) fn populate_ops(store: &mut WidgetStore) {
     button(store, ids::VECTOR_BOOL_UNION);
     // A BOOLEANA VIVA (plano UI/UX W1): o par de modo + o commit. Sem estas linhas os tres
     // pintam e ficam MORTOS sob o mouse -- a falha exata que esta lista existe para prevenir.
-    button(store, ph2d_editor_core::ids::VECTOR_BOOL_LIVE_OFF);
-    button(store, ph2d_editor_core::ids::VECTOR_BOOL_LIVE_ON);
-    button(store, ph2d_editor_core::ids::VECTOR_BOOL_APPLY);
+    button(store, crate::ids::VECTOR_BOOL_LIVE_OFF);
+    button(store, crate::ids::VECTOR_BOOL_LIVE_ON);
+    button(store, crate::ids::VECTOR_BOOL_APPLY);
     // As quatro da W5 — sem estas linhas os botoes pintam e ficam MORTOS sob o mouse.
     button(store, ph2d_tool_vector::ids::VECTOR_BOOL_MINUS_BACK);
     button(store, ph2d_tool_vector::ids::VECTOR_BOOL_TRIM);
@@ -106,7 +106,7 @@ pub(super) fn populate_ops(store: &mut WidgetStore) {
     button(store, ids::VECTOR_BOOL_SHAPE_INTERSECT);
     button(store, ids::VECTOR_BOOL_SHAPE_EXCLUDE);
     button(store, ph2d_editor_core::ids::VECTOR_COMPOUND_MAKE);
-    button(store, ph2d_editor_core::ids::VECTOR_COMPOUND_RELEASE);
+    button(store, crate::ids::VECTOR_COMPOUND_RELEASE);
     // Expand — Outline Stroke + Offset Path (a seção irmã da Boolean).
     button(store, ph2d_tool_vector::ids::VECTOR_EXPAND_SIDE_OUTER);
     button(store, ph2d_tool_vector::ids::VECTOR_EXPAND_SIDE_INNER);
@@ -120,22 +120,22 @@ pub(super) fn populate_ops(store: &mut WidgetStore) {
     // Os perfis nomeados (W2b): o TETO de botões, sempre. O `paint` desenha só os que a tabela
     // publica, então registrar de menos deixaria um perfil novo clicável-e-MORTO sob o mouse, e
     // registrar de mais é inerte. Espelho do laço dos presets de gaiola.
-    for i in 0..ph2d_editor_core::ids::MAX_WIDTH_PRESETS {
-        button(store, ph2d_editor_core::ids::vector_width_preset_id(i));
+    for i in 0..crate::ids::MAX_WIDTH_PRESETS {
+        button(store, crate::ids::vector_width_preset_id(i));
     }
     for (slider, chip, default) in [
         (
-            ph2d_editor_core::ids::VECTOR_EXPAND_W_START,
+            crate::ids::VECTOR_EXPAND_W_START,
             ph2d_tool_vector::ids::VECTOR_EXPAND_W_START_NUM,
             WPROFILE_DEFAULT_START,
         ),
         (
-            ph2d_editor_core::ids::VECTOR_EXPAND_W_MID,
+            crate::ids::VECTOR_EXPAND_W_MID,
             ph2d_tool_vector::ids::VECTOR_EXPAND_W_MID_NUM,
             WPROFILE_DEFAULT_MID,
         ),
         (
-            ph2d_editor_core::ids::VECTOR_EXPAND_W_END,
+            crate::ids::VECTOR_EXPAND_W_END,
             ph2d_tool_vector::ids::VECTOR_EXPAND_W_END_NUM,
             WPROFILE_DEFAULT_END,
         ),
@@ -153,7 +153,7 @@ pub(super) fn populate_ops(store: &mut WidgetStore) {
     // A posição já É uma fração `0..1`: mapa identidade.
     slider_chip(
         store,
-        ph2d_editor_core::ids::VECTOR_EXPAND_W_POS,
+        crate::ids::VECTOR_EXPAND_W_POS,
         ph2d_tool_vector::ids::VECTOR_EXPAND_W_POS_NUM,
         WPROFILE_DEFAULT_POS as f32,
         WPROFILE_DEFAULT_POS,
@@ -164,7 +164,7 @@ pub(super) fn populate_ops(store: &mut WidgetStore) {
     // fica estático e o rótulo nunca mente; o mundo-d resolve na shell (`offset_scale`).
     slider_chip(
         store,
-        ph2d_editor_core::ids::VECTOR_EXPAND_OFFSET,
+        crate::ids::VECTOR_EXPAND_OFFSET,
         ph2d_tool_vector::ids::VECTOR_EXPAND_OFFSET_NUM,
         offset_frac_to_slider(OFFSET_DEFAULT_FRAC),
         OFFSET_DEFAULT_FRAC * 100.0, // LITERAL-PX-OK: unit conversion (fraction -> percent readout), not a design measure.
@@ -172,20 +172,20 @@ pub(super) fn populate_ops(store: &mut WidgetStore) {
         OFFSET_SLIDER_OFFSET,
     );
     // Fill rule (compound paths only — the row hides for a single contour).
-    button(store, ph2d_editor_core::ids::VECTOR_FILL_RULE_NONZERO);
-    button(store, ph2d_editor_core::ids::VECTOR_FILL_RULE_EVENODD);
+    button(store, crate::ids::VECTOR_FILL_RULE_NONZERO);
+    button(store, crate::ids::VECTOR_FILL_RULE_EVENODD);
     // Shape snapping (tool setting, always visible). The grid toggle is in the
     // editor's universal Grid Snap panel.
-    button(store, ph2d_editor_core::ids::VECTOR_SNAP_OFF);
+    button(store, crate::ids::VECTOR_SNAP_OFF);
     button(store, ph2d_editor_core::ids::VECTOR_SNAP_ON);
-    button(store, ph2d_editor_core::ids::VECTOR_SNAP_PATH_OFF);
-    button(store, ph2d_editor_core::ids::VECTOR_SNAP_PATH_ON);
-    button(store, ph2d_editor_core::ids::VECTOR_SNAP_CROSS_OFF);
-    button(store, ph2d_editor_core::ids::VECTOR_SNAP_CROSS_ON);
-    button(store, ph2d_editor_core::ids::VECTOR_SNAP_GUIDES_OFF);
-    button(store, ph2d_editor_core::ids::VECTOR_SNAP_GUIDES_ON);
-    button(store, ph2d_editor_core::ids::VECTOR_RULERS_OFF);
-    button(store, ph2d_editor_core::ids::VECTOR_RULERS_ON);
+    button(store, crate::ids::VECTOR_SNAP_PATH_OFF);
+    button(store, crate::ids::VECTOR_SNAP_PATH_ON);
+    button(store, crate::ids::VECTOR_SNAP_CROSS_OFF);
+    button(store, crate::ids::VECTOR_SNAP_CROSS_ON);
+    button(store, crate::ids::VECTOR_SNAP_GUIDES_OFF);
+    button(store, crate::ids::VECTOR_SNAP_GUIDES_ON);
+    button(store, crate::ids::VECTOR_RULERS_OFF);
+    button(store, crate::ids::VECTOR_RULERS_ON);
 
     // Fill-type selector (Solid / Linear / Radial) — act on the selected path.
     button(store, ph2d_tool_vector::ids::VECTOR_FILL_KIND_SOLID);
@@ -200,14 +200,14 @@ pub(super) fn populate_ops(store: &mut WidgetStore) {
     button(store, ph2d_tool_vector::ids::VECTOR_STROKE_KIND_BRUSH);
     // ⭐ A secção BRUSH (plano 36, W4). Sem o registo eles pintam, ACENDEM sob o rato e o Click
     // morre no painel — o defeito que esta casa ja' pagou com 36 celulas de fisica.
-    button(store, ph2d_editor_core::ids::VECTOR_BRUSH_PICK_SHAPE);
+    button(store, crate::ids::VECTOR_BRUSH_PICK_SHAPE);
     button(store, ids::VECTOR_BRUSH_FLIP);
-    button(store, ph2d_editor_core::ids::VECTOR_GRAD_ADD_POINT);
-    button(store, ph2d_editor_core::ids::VECTOR_GRAD_REMOVE_POINT);
-    button(store, ph2d_editor_core::ids::VECTOR_GRAD_ADD_STOP);
-    button(store, ph2d_editor_core::ids::VECTOR_GRAD_REMOVE_STOP);
+    button(store, crate::ids::VECTOR_GRAD_ADD_POINT);
+    button(store, crate::ids::VECTOR_GRAD_REMOVE_POINT);
+    button(store, crate::ids::VECTOR_GRAD_ADD_STOP);
+    button(store, crate::ids::VECTOR_GRAD_REMOVE_STOP);
     // Align + Distribute (multi-path object selection).
-    button(store, ph2d_editor_core::ids::VECTOR_PIVOT_EDIT);
+    button(store, crate::ids::VECTOR_PIVOT_EDIT);
     button(store, ph2d_tool_vector::ids::VECTOR_ALIGN_LEFT);
     button(store, ph2d_tool_vector::ids::VECTOR_ALIGN_HCENTER);
     button(store, ph2d_tool_vector::ids::VECTOR_ALIGN_RIGHT);

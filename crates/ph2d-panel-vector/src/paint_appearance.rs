@@ -67,11 +67,11 @@ impl BodyCtx<'_> {
         // ⚠️ **O valor VIVO ganha do documento enquanto o dedo arrasta** (`live_track`, a mesma
         // porta das outras rows desta janela): sem isso o slider saltaria de volta a cada quadro,
         // porque a shell republica o documento e o documento só muda quando o arrasto termina.
-        let track = self.live_track(ph2d_editor_core::ids::VECTOR_OBJ_OPACITY, a.opacity);
+        let track = self.live_track(crate::ids::VECTOR_OBJ_OPACITY, a.opacity);
         let pct = f64::from(track) * 100.0; // LITERAL-PX-OK: fraction→percent for the opacity chip
         y = self.slider_row(
             tr("panel.vector.appearance.opacity"),
-            ph2d_editor_core::ids::VECTOR_OBJ_OPACITY,
+            crate::ids::VECTOR_OBJ_OPACITY,
             ids::VECTOR_OBJ_OPACITY_NUM,
             track,
             pct,
@@ -92,17 +92,15 @@ impl BodyCtx<'_> {
     fn blend_row(&mut self, atual: ph2d_vec_scene::BlendMode, y: f32) -> f32 {
         let chip = Rect::new(self.inner_x, y, self.inner_w, self.row_h);
         let open = matches!(
-            self.store.get(ph2d_editor_core::ids::VECTOR_OBJ_BLEND),
+            self.store.get(crate::ids::VECTOR_OBJ_BLEND),
             Some(InteractiveState::Dropdown { open: true, .. })
         );
-        let visual = self
-            .store
-            .dropdown_visual(ph2d_editor_core::ids::VECTOR_OBJ_BLEND);
+        let visual = self.store.dropdown_visual(crate::ids::VECTOR_OBJ_BLEND);
         let dd = Dropdown::new(
-            ph2d_editor_core::ids::VECTOR_OBJ_BLEND,
+            crate::ids::VECTOR_OBJ_BLEND,
             tr("panel.vector.appearance.blend"),
             vec![DropdownOption::new(
-                ph2d_editor_core::ids::VECTOR_OBJ_BLEND,
+                crate::ids::VECTOR_OBJ_BLEND,
                 (),
                 nome(atual),
             )],
@@ -111,8 +109,7 @@ impl BodyCtx<'_> {
         .open(open)
         .visual(visual);
         paint_dropdown_chip(&dd, chip, self.scene, self.text_system, self.theme);
-        self.hit_index
-            .register(ph2d_editor_core::ids::VECTOR_OBJ_BLEND, chip);
+        self.hit_index.register(crate::ids::VECTOR_OBJ_BLEND, chip);
         if open {
             state::set_pending_obj_blend_dd(Some(chip));
         }
@@ -134,7 +131,7 @@ pub(crate) fn paint_blend_popover(ctx: &mut PaintCtx, chip: Rect, theme: Theme) 
         .enumerate()
         .map(|(i, m)| DropdownOption::new(ids::vector_obj_blend_option_id(i), i, nome(*m)))
         .collect();
-    let dd = Dropdown::new(ph2d_editor_core::ids::VECTOR_OBJ_BLEND, "", options)
+    let dd = Dropdown::new(crate::ids::VECTOR_OBJ_BLEND, "", options)
         .selected(sel)
         .open(true);
 
@@ -144,27 +141,26 @@ pub(crate) fn paint_blend_popover(ctx: &mut PaintCtx, chip: Rect, theme: Theme) 
     let max_scroll = (content_h - visible_h).max(0.0);
     {
         let store = ctx.host.store_mut();
-        store.set_dropdown_popover(ph2d_editor_core::ids::VECTOR_OBJ_BLEND, panel);
-        store.set_panel_content_h(ph2d_editor_core::ids::VECTOR_OBJ_BLEND, content_h);
-        store.set_panel_visible_h(ph2d_editor_core::ids::VECTOR_OBJ_BLEND, visible_h);
-        if store.panel_scroll(ph2d_editor_core::ids::VECTOR_OBJ_BLEND) > max_scroll {
-            store.set_panel_scroll(ph2d_editor_core::ids::VECTOR_OBJ_BLEND, max_scroll);
+        store.set_dropdown_popover(crate::ids::VECTOR_OBJ_BLEND, panel);
+        store.set_panel_content_h(crate::ids::VECTOR_OBJ_BLEND, content_h);
+        store.set_panel_visible_h(crate::ids::VECTOR_OBJ_BLEND, visible_h);
+        if store.panel_scroll(crate::ids::VECTOR_OBJ_BLEND) > max_scroll {
+            store.set_panel_scroll(crate::ids::VECTOR_OBJ_BLEND, max_scroll);
         }
     }
     let scroll = ctx
         .host
         .store()
-        .panel_scroll(ph2d_editor_core::ids::VECTOR_OBJ_BLEND)
+        .panel_scroll(crate::ids::VECTOR_OBJ_BLEND)
         .clamp(0.0, max_scroll); // CLAMP-OK: 0.0 literal; max_scroll is a non-negative px extent
     paint_dropdown_popover_scrolled(
         &dd,
         chip,
         panel,
         scroll,
-        ctx.host.store().scrollbar_visual_for(
-            DROPDOWN_SCROLLBAR_ID,
-            Some(ph2d_editor_core::ids::VECTOR_OBJ_BLEND),
-        ),
+        ctx.host
+            .store()
+            .scrollbar_visual_for(DROPDOWN_SCROLLBAR_ID, Some(crate::ids::VECTOR_OBJ_BLEND)),
         ctx.scene,
         ctx.text_system,
         theme,

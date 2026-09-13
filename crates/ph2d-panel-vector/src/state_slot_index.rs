@@ -39,8 +39,7 @@ pub(crate) fn shape_group_index(id: NodeId) -> Option<usize> {
 /// Índice do eixo de variação cujo id de campo é `id` (`None` se não for um). Casa
 /// contra o espaço fixo de slots (`MAX_TEXT_VARIATION_AXES`).
 pub(crate) fn text_axis_index(id: NodeId) -> Option<usize> {
-    (0..ph2d_editor_core::ids::MAX_TEXT_VARIATION_AXES)
-        .find(|&i| ph2d_editor_core::ids::vector_text_axis_id(i) == id)
+    (0..crate::ids::MAX_TEXT_VARIATION_AXES).find(|&i| crate::ids::vector_text_axis_id(i) == id)
 }
 
 /// Índice da família cujo id de opção do dropdown é `id` (`None` se não for uma

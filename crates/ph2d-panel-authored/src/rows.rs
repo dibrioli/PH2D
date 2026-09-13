@@ -15,7 +15,6 @@
 
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::icons::IconId;
-use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::InteractiveState;
 use ph2d_editor_core::widget::WidgetKind;
 use ph2d_vector::BezPath;
@@ -164,7 +163,7 @@ fn resolve(kind: WidgetKind, label: &str, key: &str, rgba: Option<[u8; 4]>) -> R
         kind,
         label: label.to_string(),
         key: key.to_string(),
-        id: ids::authored_row_id(key),
+        id: crate::ids::authored_row_id(key),
         rgba,
         icon: None,
         icon_id: None,
@@ -175,7 +174,7 @@ fn resolve(kind: WidgetKind, label: &str, key: &str, rgba: Option<[u8; 4]>) -> R
 /// **A tabela COMPILADA** — o que o gerador escreveu e alguém colou.
 ///
 /// ⚠️ `OnceLock` porque o id sai de um hash de string em runtime (o gerador não cunha ids — ver o
-/// doc de [`ids::authored_row_id`]), e recomputá-lo por frame seria um `format!` por row por
+/// doc de [`crate::ids::authored_row_id`]), e recomputá-lo por frame seria um `format!` por row por
 /// quadro. O padrão é o `rows()` do painel de Wet Tuning.
 ///
 /// ⚠️ **`pub` para os GATES, e não para pintar.** Quem pinta pergunta ao [`with_rows`], que aplica
@@ -340,7 +339,7 @@ pub fn clamp_selection_to(live: &mut InteractiveState, count: usize) -> bool {
     set_index(live, count - 1)
 }
 
-/// **A que row e a que opção pertence este id** — a inversa do [`ids::authored_option_id`].
+/// **A que row e a que opção pertence este id** — a inversa do [`crate::ids::authored_option_id`].
 ///
 /// ⚠️ **Ela procura, em vez de decodificar.** O id é um HASH, então não há nada a inverter: a
 /// resposta sai de re-derivar o id de cada opção de cada row de lista e comparar. É o mesmo

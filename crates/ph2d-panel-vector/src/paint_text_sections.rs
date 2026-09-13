@@ -42,7 +42,7 @@ impl BodyCtx<'_> {
         }
         let track = self
             .store
-            .slider(ph2d_editor_core::ids::VECTOR_TEXT_SIZE)
+            .slider(crate::ids::VECTOR_TEXT_SIZE)
             .map(|(_, v)| v)
             .unwrap_or_else(|| text_size_to_slider(DEFAULT_TEXT_SIZE));
         let val = self
@@ -51,7 +51,7 @@ impl BodyCtx<'_> {
             .unwrap_or(DEFAULT_TEXT_SIZE);
         y = self.slider_row(
             "Size",
-            ph2d_editor_core::ids::VECTOR_TEXT_SIZE,
+            crate::ids::VECTOR_TEXT_SIZE,
             ids::VECTOR_TEXT_SIZE_NUM,
             track,
             val,
@@ -78,7 +78,7 @@ impl BodyCtx<'_> {
         if state::text_has_weight_axis() {
             let wtrack = self
                 .store
-                .slider(ph2d_editor_core::ids::VECTOR_TEXT_WEIGHT)
+                .slider(crate::ids::VECTOR_TEXT_WEIGHT)
                 .map(|(_, v)| v)
                 .unwrap_or_else(|| text_weight_to_slider(DEFAULT_TEXT_WEIGHT));
             let wval = self
@@ -87,7 +87,7 @@ impl BodyCtx<'_> {
                 .unwrap_or(DEFAULT_TEXT_WEIGHT);
             y = self.slider_row(
                 "Weight",
-                ph2d_editor_core::ids::VECTOR_TEXT_WEIGHT,
+                crate::ids::VECTOR_TEXT_WEIGHT,
                 ids::VECTOR_TEXT_WEIGHT_NUM,
                 wtrack,
                 wval,
@@ -133,14 +133,14 @@ impl BodyCtx<'_> {
         let btn_w = self.row_h;
         let gap = Spacing::Xs.px();
         self.arrow_button(
-            ph2d_editor_core::ids::VECTOR_TEXT_FONT_PREV,
+            crate::ids::VECTOR_TEXT_FONT_PREV,
             "<",
             self.inner_x,
             btn_w,
             y,
         );
         self.arrow_button(
-            ph2d_editor_core::ids::VECTOR_TEXT_FONT_NEXT,
+            crate::ids::VECTOR_TEXT_FONT_NEXT,
             ">",
             self.inner_x + self.inner_w - btn_w,
             btn_w,
@@ -153,18 +153,16 @@ impl BodyCtx<'_> {
             self.row_h,
         );
         let open = matches!(
-            self.store.get(ph2d_editor_core::ids::VECTOR_TEXT_FONT_DD),
+            self.store.get(crate::ids::VECTOR_TEXT_FONT_DD),
             Some(InteractiveState::Dropdown { open: true, .. })
         );
-        let dd_visual = self
-            .store
-            .dropdown_visual(ph2d_editor_core::ids::VECTOR_TEXT_FONT_DD);
+        let dd_visual = self.store.dropdown_visual(crate::ids::VECTOR_TEXT_FONT_DD);
         let name = state::current_text_font().unwrap_or_default();
         let dd = Dropdown::new(
-            ph2d_editor_core::ids::VECTOR_TEXT_FONT_DD,
+            crate::ids::VECTOR_TEXT_FONT_DD,
             "",
             vec![DropdownOption::new(
-                ph2d_editor_core::ids::VECTOR_TEXT_FONT_DD,
+                crate::ids::VECTOR_TEXT_FONT_DD,
                 (),
                 name,
             )],
@@ -174,16 +172,12 @@ impl BodyCtx<'_> {
         .visual(dd_visual);
         paint_dropdown_chip(&dd, chip, self.scene, self.text_system, self.theme);
         self.hit_index
-            .register(ph2d_editor_core::ids::VECTOR_TEXT_FONT_DD, chip);
+            .register(crate::ids::VECTOR_TEXT_FONT_DD, chip);
         if open {
             state::set_pending_font_dd(Some(chip));
         }
         y += self.row_h + self.row_gap;
-        self.action_button(
-            ph2d_editor_core::ids::VECTOR_TEXT_FONT_IMPORT,
-            "Import Font...",
-            y,
-        )
+        self.action_button(crate::ids::VECTOR_TEXT_FONT_IMPORT, "Import Font...", y)
     }
 
     /// Seção **PARAGRAPH** — alinhamento L / C / R + Line-height + Tracking.
@@ -204,17 +198,17 @@ impl BodyCtx<'_> {
             "Align",
             [
                 (
-                    ph2d_editor_core::ids::VECTOR_TEXT_ALIGN_LEFT,
+                    crate::ids::VECTOR_TEXT_ALIGN_LEFT,
                     "Left",
                     align == TextAlign::Left,
                 ),
                 (
-                    ph2d_editor_core::ids::VECTOR_TEXT_ALIGN_CENTER,
+                    crate::ids::VECTOR_TEXT_ALIGN_CENTER,
                     "Center",
                     align == TextAlign::Center,
                 ),
                 (
-                    ph2d_editor_core::ids::VECTOR_TEXT_ALIGN_RIGHT,
+                    crate::ids::VECTOR_TEXT_ALIGN_RIGHT,
                     "Right",
                     align == TextAlign::Right,
                 ),
@@ -223,7 +217,7 @@ impl BodyCtx<'_> {
         );
         let lh_track = self
             .store
-            .slider(ph2d_editor_core::ids::VECTOR_TEXT_LINE_HEIGHT)
+            .slider(crate::ids::VECTOR_TEXT_LINE_HEIGHT)
             .map(|(_, v)| v)
             .unwrap_or_else(|| text_line_height_to_slider(DEFAULT_TEXT_LINE_HEIGHT));
         let lh_val = self
@@ -232,7 +226,7 @@ impl BodyCtx<'_> {
             .unwrap_or(DEFAULT_TEXT_LINE_HEIGHT);
         y = self.slider_row(
             "Line height",
-            ph2d_editor_core::ids::VECTOR_TEXT_LINE_HEIGHT,
+            crate::ids::VECTOR_TEXT_LINE_HEIGHT,
             ids::VECTOR_TEXT_LINE_HEIGHT_NUM,
             lh_track,
             lh_val,
@@ -241,7 +235,7 @@ impl BodyCtx<'_> {
         );
         let tr_track = self
             .store
-            .slider(ph2d_editor_core::ids::VECTOR_TEXT_TRACKING)
+            .slider(crate::ids::VECTOR_TEXT_TRACKING)
             .map(|(_, v)| v)
             .unwrap_or_else(|| text_tracking_to_slider(DEFAULT_TEXT_TRACKING));
         let tr_val = self
@@ -250,7 +244,7 @@ impl BodyCtx<'_> {
             .unwrap_or(DEFAULT_TEXT_TRACKING);
         y = self.slider_row(
             "Tracking",
-            ph2d_editor_core::ids::VECTOR_TEXT_TRACKING,
+            crate::ids::VECTOR_TEXT_TRACKING,
             ids::VECTOR_TEXT_TRACKING_NUM,
             tr_track,
             tr_val,
@@ -284,23 +278,15 @@ impl BodyCtx<'_> {
         let mut y = self.segmented(
             "Width",
             &[
-                (
-                    ph2d_editor_core::ids::VECTOR_TEXT_WRAP_AUTO,
-                    "Auto",
-                    wrap.is_none(),
-                ),
-                (
-                    ph2d_editor_core::ids::VECTOR_TEXT_WRAP_FIXED,
-                    "Fixed",
-                    wrap.is_some(),
-                ),
+                (crate::ids::VECTOR_TEXT_WRAP_AUTO, "Auto", wrap.is_none()),
+                (crate::ids::VECTOR_TEXT_WRAP_FIXED, "Fixed", wrap.is_some()),
             ],
             y,
         );
         let Some(w) = wrap else { return y };
         let track = self
             .store
-            .slider(ph2d_editor_core::ids::VECTOR_TEXT_WRAP_W)
+            .slider(crate::ids::VECTOR_TEXT_WRAP_W)
             .map(|(_, v)| v)
             .unwrap_or_else(|| text_wrap_to_slider(w));
         let val = self
@@ -309,7 +295,7 @@ impl BodyCtx<'_> {
             .unwrap_or(w);
         y = self.slider_row(
             "Wrap width",
-            ph2d_editor_core::ids::VECTOR_TEXT_WRAP_W,
+            crate::ids::VECTOR_TEXT_WRAP_W,
             ids::VECTOR_TEXT_WRAP_W_NUM,
             track,
             val,
@@ -347,15 +333,10 @@ impl BodyCtx<'_> {
         // Gate: `the_panel_never_paints_an_axis_row_nobody_registers`.
         for (i, name) in names
             .iter()
-            .take(ph2d_editor_core::ids::MAX_TEXT_VARIATION_AXES)
+            .take(crate::ids::MAX_TEXT_VARIATION_AXES)
             .enumerate()
         {
-            y = self.labeled_number_field(
-                name,
-                ph2d_editor_core::ids::vector_text_axis_id(i),
-                1.0,
-                y,
-            );
+            y = self.labeled_number_field(name, crate::ids::vector_text_axis_id(i), 1.0, y);
         }
         y
     }

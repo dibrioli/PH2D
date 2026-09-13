@@ -11,7 +11,7 @@
 //! mais superfície do que o facto que ela prova.
 
 use super::context_menu_overlay::id_is_currently_selected;
-use super::ids;
+use crate::ids;
 use crate::interaction::WidgetStore;
 use crate::motion::{UiCharacter, UiMotion};
 use crate::project::ProjectSettings;

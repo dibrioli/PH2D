@@ -21,7 +21,6 @@ use crate::{
     AEDIT_VAR_STRATEGY_PREV, AEDIT_VAR_WEIGHT_DOWN, AEDIT_VAR_WEIGHT_UP, delivery_state,
     loop_state, spectral_state, variation_state,
 };
-use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::{BlenderHitKind, InteractiveState, WidgetStore};
 use ph2d_editor_core::widget::{ButtonState, SliderOrientation, SliderState, TextInputState};
 
@@ -40,20 +39,23 @@ pub(crate) fn populate(store: &mut WidgetStore) {
     // resizes the overlay exactly like the Inspector dock (the shell bridge
     // registers their hit rects each frame + applies the offset/resize).
     for (id, kind) in [
-        (ids::AUDIO_OVERLAY_DRAG_HANDLE, BlenderHitKind::DragHandle),
         (
-            ids::AUDIO_OVERLAY_RESIZE_HANDLE,
+            crate::ids::AUDIO_OVERLAY_DRAG_HANDLE,
+            BlenderHitKind::DragHandle,
+        ),
+        (
+            crate::ids::AUDIO_OVERLAY_RESIZE_HANDLE,
             BlenderHitKind::ResizeHandle,
         ),
         (
-            ids::AUDIO_OVERLAY_RESIZE_HANDLE_BL,
+            crate::ids::AUDIO_OVERLAY_RESIZE_HANDLE_BL,
             BlenderHitKind::ResizeHandleBl,
         ),
     ] {
         store.register(
             id,
             InteractiveState::BlenderHit {
-                parent: ids::AUDIO_OVERLAY_PANEL,
+                parent: crate::ids::AUDIO_OVERLAY_PANEL,
                 kind,
             },
         );
@@ -61,7 +63,7 @@ pub(crate) fn populate(store: &mut WidgetStore) {
     // Body hit-barrier: the overlay floats over the canvas, so its empty body must
     // swallow clicks (mirror of the registry z-walk's per-panel barrier) or clicks
     // between the handles fall through to the canvas tool. `Plain` = hittable no-op.
-    store.register(ids::AUDIO_OVERLAY_PANEL, InteractiveState::Plain);
+    store.register(crate::ids::AUDIO_OVERLAY_PANEL, InteractiveState::Plain);
 
     register_buttons(store);
 

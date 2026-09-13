@@ -164,7 +164,7 @@ impl crate::App {
         // `Viewpoint`, e o critério dele é que *o que substitui esta animação é um CORTE que
         // desorienta mais do que ela*. Ver `ph2d_app_field3d::flight::ROLE`.
         if let Some((generation, fresh)) = ph2d_app_field3d::smoke::flight_track() {
-            let id = ph2d_editor_core::screens::hero::ids::model3d_view_travel(generation);
+            let id = ph2d_editor_core::ids::model3d_view_travel(generation);
             if fresh {
                 // Semear em 0: a primeira vez que um id é visto, o `animate` **chega** ao alvo
                 // (um widget que acaba de aparecer não tem de onde vir). Sem esta linha a

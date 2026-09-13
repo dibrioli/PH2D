@@ -61,7 +61,7 @@ pub(super) fn paint(
             theme,
             x,
             y,
-            ph2d_editor_core::ids::TIMELINE_ONION_SETTINGS,
+            crate::ids::TIMELINE_ONION_SETTINGS,
             IconId::Settings,
         ),
         _ => 0.0,

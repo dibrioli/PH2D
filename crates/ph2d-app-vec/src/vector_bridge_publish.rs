@@ -371,7 +371,7 @@ pub fn publish(
         // scrub (a full drag across the screen ≈ a couple turns), zoom-independent.
         const ROT_DRAG_DEG_PER_PX: f64 = 0.5;
         hero.store.set_number_drag_rate(
-            ph2d_editor_core::ids::VECTOR_TRANSFORM_R,
+            ph2d_panel_vector::ids::VECTOR_TRANSFORM_R,
             ROT_DRAG_DEG_PER_PX,
         );
     }

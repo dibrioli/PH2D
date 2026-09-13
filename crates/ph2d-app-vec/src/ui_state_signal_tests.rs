@@ -41,11 +41,11 @@ fn every_table_id_addresses_its_own_gesture() {
     // ⚠️ O CONTROLE: um id vizinho da MESMA seção não pode cair na tabela — sem ele, uma porta
     // que dissesse `Some` para tudo passaria em todas as asserções acima.
     assert_eq!(
-        signal_edit_for_id(ph2d_editor_core::ids::VECTOR_STATE_SPRING),
+        signal_edit_for_id(ph2d_panel_vector::ids::VECTOR_STATE_SPRING),
         None
     );
     assert_eq!(
-        signal_name_row(ph2d_editor_core::ids::VECTOR_STATE_DURATION),
+        signal_name_row(ph2d_panel_vector::ids::VECTOR_STATE_DURATION),
         None
     );
 }

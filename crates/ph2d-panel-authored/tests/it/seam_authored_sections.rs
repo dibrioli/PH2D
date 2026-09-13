@@ -62,7 +62,7 @@ fn two_sections() -> Vec<rows::Row> {
         kind,
         label: key.to_string(),
         key: key.to_string(),
-        id: ph2d_editor_core::ids::authored_row_id(key),
+        id: ph2d_panel_authored::ids::authored_row_id(key),
         rgba: None,
         icon: None,
         icon_id: None,
@@ -72,7 +72,7 @@ fn two_sections() -> Vec<rows::Row> {
 }
 
 fn key_id(k: &str) -> ph2d_a11y::NodeId {
-    ph2d_editor_core::ids::authored_row_id(k)
+    ph2d_panel_authored::ids::authored_row_id(k)
 }
 
 /// Um host com o painel aberto, **na ORDEM do app**.

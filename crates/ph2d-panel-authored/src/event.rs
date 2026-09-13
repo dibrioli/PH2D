@@ -4,7 +4,6 @@
 //! (*"value-bearing variants carry only the `NodeId` — the caller re-reads from the store"*), e é
 //! o que garante que o número que sai daqui é o mesmo que o `paint` desenha no frame seguinte.
 
-use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::{EventOutcome, Panel, PanelHostInternal};
 use ph2d_editor_core::widget::CheckboxValue;
@@ -43,7 +42,7 @@ pub(crate) fn apply_event(
         // ⚠️ **Nada mais no repo escreve esta seleção.** O despacho genérico não tem braço para
         // `InteractiveState::Tabs` nem para `::Radio` — medido —, então sem esta linha a faixa
         // desenha as N opções, fica viva sob o rato e **não muda a marcada** ao ser clicada.
-        if let Some(live) = host.store_mut().get_mut(ids::authored_row_id(&key)) {
+        if let Some(live) = host.store_mut().get_mut(crate::ids::authored_row_id(&key)) {
             crate::rows::select_in(live, index);
         }
         push_intent(AuthoredIntent::Choice { key, index });

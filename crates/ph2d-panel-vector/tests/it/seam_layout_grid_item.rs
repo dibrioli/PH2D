@@ -40,17 +40,17 @@ const VIEWPORT: Rect = Rect {
 fn publish(grid: bool) {
     ph2d_panel_vector::state::set_layout_flow(Some(LayoutFlow {
         dir: if grid {
-            ph2d_editor_core::ids::VECTOR_LAYOUT_DIR_GRID
+            ph2d_panel_vector::ids::VECTOR_LAYOUT_DIR_GRID
         } else {
-            ph2d_editor_core::ids::VECTOR_LAYOUT_DIR_ROW
+            ph2d_panel_vector::ids::VECTOR_LAYOUT_DIR_ROW
         },
         gap: [0.0; 2],
         pad: [0.0; 4],
-        align: ph2d_editor_core::ids::VECTOR_LAYOUT_ALIGN_START,
-        justify: ph2d_editor_core::ids::VECTOR_LAYOUT_JUSTIFY_START,
+        align: ph2d_panel_vector::ids::VECTOR_LAYOUT_ALIGN_START,
+        justify: ph2d_panel_vector::ids::VECTOR_LAYOUT_JUSTIFY_START,
         size: [
-            ph2d_editor_core::ids::VECTOR_LAYOUT_SIZE_W_FIXED,
-            ph2d_editor_core::ids::VECTOR_LAYOUT_SIZE_H_FIXED,
+            ph2d_panel_vector::ids::VECTOR_LAYOUT_SIZE_W_FIXED,
+            ph2d_panel_vector::ids::VECTOR_LAYOUT_SIZE_H_FIXED,
         ],
         min: [0.0; 2],
         max: [0.0; 2],
@@ -66,8 +66,8 @@ fn publish(grid: bool) {
 }
 
 const ROWS: [(&str, ph2d_a11y::NodeId); 2] = [
-    ("Grow", ph2d_editor_core::ids::VECTOR_LAYOUT_ITEM_GROW),
-    ("Shrink", ph2d_editor_core::ids::VECTOR_LAYOUT_ITEM_SHRINK),
+    ("Grow", ph2d_panel_vector::ids::VECTOR_LAYOUT_ITEM_GROW),
+    ("Shrink", ph2d_panel_vector::ids::VECTOR_LAYOUT_ITEM_SHRINK),
 ];
 
 /// **Controle POSITIVO: sob uma moldura que FLUI, as duas fileiras existem.**

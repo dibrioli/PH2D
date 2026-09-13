@@ -24,7 +24,6 @@
 //! nomeia. Aqui o `Down`+`Up` cai no rectângulo que a pintura de facto registou.
 
 use ph2d_editor_core::action_bus::EditorAction;
-use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::InteractiveState;
 use ph2d_editor_core::screens::HeroLayout;
 use ph2d_editor_core::screens::hero::{ActionFieldEdit, InspectorActionInfo, InspectorActionRow};
@@ -94,9 +93,9 @@ fn actions() -> InspectorActionInfo {
 fn assert_fixture_covers_the_model(i: &InspectorActionInfo) {
     assert_eq!(
         i.verb_labels.len(),
-        ids::INSP_ACTION_VERB.len(),
+        ph2d_panel_inspector::ids::INSP_ACTION_VERB.len(),
         "a FIXTURA e' que esta' velha: o modelo tem {} verbos e ela escreve {} rotulos",
-        ids::INSP_ACTION_VERB.len(),
+        ph2d_panel_inspector::ids::INSP_ACTION_VERB.len(),
         i.verb_labels.len()
     );
 }
@@ -152,7 +151,10 @@ fn opening_it_makes_every_verb_reachable_and_publishes_the_popover() {
     let rects = h.paint::<InspectorPanel>(&mut st, VIEWPORT);
 
     let mut vistos: Vec<Rect> = Vec::new();
-    for (i, &id) in ids::INSP_ACTION_VERB.iter().enumerate() {
+    for (i, &id) in ph2d_panel_inspector::ids::INSP_ACTION_VERB
+        .iter()
+        .enumerate()
+    {
         let r = rects
             .iter()
             .find(|(n, _)| *n == id)
@@ -209,7 +211,7 @@ fn picking_a_verb_reaches_the_bus_and_closes_the_list() {
     let _ = h.paint::<InspectorPanel>(&mut st, VIEWPORT);
     h.set_dropdown_open(ph2d_panel_inspector::ids::INSP_ACTION_VERB_PICK, true);
     let rects = h.paint::<InspectorPanel>(&mut st, VIEWPORT);
-    let alvo = ids::INSP_ACTION_VERB[TAG_SHOW as usize];
+    let alvo = ph2d_panel_inspector::ids::INSP_ACTION_VERB[TAG_SHOW as usize];
     let (_, r) = rects
         .iter()
         .find(|(n, _)| *n == alvo)
@@ -310,7 +312,7 @@ fn the_list_flips_above_when_below_would_leave_the_screen() {
         .expect("o chip do verbo nao foi pintado");
 
     // **Metade 1 — a fixtura produz o fenómeno.** Pendurada abaixo, a lista sairia da região.
-    let altura_da_lista = chip.h * ids::INSP_ACTION_VERB.len() as f32;
+    let altura_da_lista = chip.h * ph2d_panel_inspector::ids::INSP_ACTION_VERB.len() as f32;
     let fundo_se_abaixo = chip.y + chip.h + altura_da_lista;
     assert!(
         fundo_se_abaixo > regiao.y + regiao.h,
@@ -319,7 +321,10 @@ fn the_list_flips_above_when_below_would_leave_the_screen() {
     );
 
     // **Metade 2 — nenhuma entrada sai da região.**
-    for (i, &id) in ids::INSP_ACTION_VERB.iter().enumerate() {
+    for (i, &id) in ph2d_panel_inspector::ids::INSP_ACTION_VERB
+        .iter()
+        .enumerate()
+    {
         let (_, r) = rects
             .iter()
             .find(|(n, _)| *n == id)

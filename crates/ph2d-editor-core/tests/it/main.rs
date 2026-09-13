@@ -88,6 +88,7 @@ mod the_chrome_reads_the_ui_clock;
 mod the_corner_of_a_control_comes_from_the_theme;
 mod the_dock_border_resizes_the_column;
 mod the_drag_band_never_reaches_the_close_button;
+mod the_editor_amber_has_one_door;
 mod the_face_of_a_tab_reaches_the_scene;
 mod the_family_hover_map_agrees_with_the_button_kinds;
 mod the_file_menu_items_are_not_mute;

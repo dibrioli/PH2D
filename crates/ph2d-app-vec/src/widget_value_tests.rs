@@ -21,7 +21,7 @@ fn scene(kind: WidgetKind, name: &str) -> (SimWorld, VecEntityMap, VecPathId) {
 }
 
 fn row_id(name: &str) -> ph2d_editor_core::NodeId {
-    ph2d_editor_core::ids::authored_row_id(&crate::ui_panel_spec::key_of(name))
+    ph2d_panel_authored::ids::authored_row_id(&crate::ui_panel_spec::key_of(name))
 }
 
 fn store_with(name: &str, st: InteractiveState) -> WidgetStore {

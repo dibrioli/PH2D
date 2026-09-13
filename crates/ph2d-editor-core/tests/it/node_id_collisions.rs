@@ -55,34 +55,13 @@ use crate::cfg_test_modules::is_declared_under_cfg_test;
 
 /// ⛔ **O mesmo slug em DOIS sítios de produto** — a catraca, com o número de sítios medido.
 ///
-/// As três entradas são o MESMO id de painel declarado na fundação (que o lê no despacho de rolagem
-/// e no filtro de menus) **e** na crate da ferramenta/painel. A cura é UMA definição — a da fundação —
-/// e os outros sítios a nomeá-la. ⛔ **Bloqueada nesta rodada pela cerca da `line/render-loop`**: os
-/// `shells/desktop/src/render_loop/{color_equalization,equalize_sizes,upscale}_bridge.rs` nomeiam a
-/// CÓPIA (`ph2d_tool_color_equalization::ids::CEQ_PANEL`, `ph2d_tool_equalize_sizes::ids::EQS_PANEL`,
-/// `ph2d_panel_upscale::ids::UPS_PANEL`), e apagá-la sem editar esses ficheiros pediria uma fachada.
-/// ⚠️ **A cerca não é o único leitor das cópias** (medido 2026-09-12, auditoria de fecho): o `NODE_ID`
-/// do `lib.rs` e o `paint.rs` dos três painéis também as nomeiam, e um teste do
-/// `ph2d-tool-color-equalization/src/ids.rs` também. ⇒ depois das duas fusões o integrador troca TODO
-/// leitor (`grep -rn 'ids::CEQ_PANEL\|ids::EQS_PANEL\|ids::UPS_PANEL'`) por `ph2d_editor_core::ids::…`,
-/// apaga as cópias e apaga estas linhas — e o compilador aponta cada leitor que ficar para trás.
-const SLUGS_REPETIDOS_TOLERADOS: &[(&str, usize, &str)] = &[
-    (
-        "panel.color_equalization",
-        2,
-        "CEQ_PANEL na fundação e em ph2d-tool-color-equalization/src/ids.rs — cerca: render_loop/color_equalization_bridge.rs nomeia a cópia",
-    ),
-    (
-        "panel.equalize_sizes",
-        2,
-        "EQS_PANEL na fundação e em ph2d-tool-equalize-sizes/src/ids.rs — cerca: render_loop/equalize_sizes_bridge.rs nomeia a cópia",
-    ),
-    (
-        "panel.upscale",
-        2,
-        "UPS_PANEL na fundação e em ph2d-panel-upscale/src/ids.rs — cerca: render_loop/upscale_bridge.rs nomeia a cópia",
-    ),
-];
+/// ⭐ **VAZIA desde a integração de 2026-09-13.** As três entradas que ela teve (`panel.color_equalization`,
+/// `panel.equalize_sizes`, `panel.upscale`) eram o id de painel declarado na fundação — que o lê no despacho
+/// de rolagem e no filtro de menus — **e** numa cópia da ferramenta ou do painel, que a cerca da
+/// `line/render-loop` nomeava. Com as duas linhas integradas as cópias morreram e todo leitor nomeia
+/// `ph2d_editor_core::ids`. ⛔ Uma entrada nova exige o bloqueador escrito, e
+/// [`the_repeated_slug_ratchet_still_describes_the_tree`] obriga a apagá-la quando a cura acontecer.
+const SLUGS_REPETIDOS_TOLERADOS: &[(&str, usize, &str)] = &[];
 
 /// **As formas de id que NÃO são um literal nem um molde** — `(ficheiro, função, espécie, quem cobre)`.
 ///
@@ -1162,11 +1141,12 @@ fn every_non_literal_hash_is_named() {
 /// corpo de uma função.
 ///
 /// ⛔ O censo de colisões compara SLUGS, e um `const` local com o nome de um id e OUTRO valor passava
-/// por ele: o `set_picker_target` subia à frente um `INSP_BLENDER_PICKER = NodeId(380)` (o id da era das
-/// faixas, antes do hash de slug) enquanto o seletor é pintado e recebe o clique pelo
-/// `hash_node_id("insp_blender_picker")` — abri-lo por cima de outro painel deixava-o POR BAIXO. Achado
-/// pela auditoria de fecho da `line/editor-core` (§9 achado 11), curado na integração de 13/09. Medido
-/// nesse dia: ESSE era o único nome a divergir no produto (`ID` e `SURFACE` divergem só em testes).
+/// por ele: o `set_picker_target` subia na ordem das janelas um `INSP_BLENDER_PICKER = NodeId(380)` (o id
+/// da era das faixas) enquanto o seletor é registado pelo `hash_node_id("insp_blender_picker")`. A
+/// auditoria de fecho da `line/editor-core` (§9 achado 11) leu-o como «o seletor nunca vem à frente»;
+/// ⚠️ MEDIDO na integração de 13/09, sem efeito no ecrã (o seletor é pintado fora da ordem) — a cópia era
+/// uma entrada fantasma à espera do próximo leitor. ESSE era o único nome a divergir no produto (`ID` e
+/// `SURFACE` divergem só em testes).
 #[test]
 fn a_node_id_name_has_one_value() {
     let c = censo();
@@ -1402,8 +1382,8 @@ fn vector_dynamic_ids_dont_collide_with_chrome_or_each_other() {
         );
     }
     // Variation-axis fields (index into the current font's non-wght axes).
-    for index in 0..ids::MAX_TEXT_VARIATION_AXES {
-        let id = ids::vector_text_axis_id(index).0;
+    for index in 0..ph2d_panel_vector::ids::MAX_TEXT_VARIATION_AXES {
+        let id = ph2d_panel_vector::ids::vector_text_axis_id(index).0;
         assert!(
             !chrome.contains(&id),
             "vector_text_axis_id({index}) (id {id:#018x}) collides with a chrome const",
@@ -1462,7 +1442,7 @@ fn vector_dynamic_ids_dont_collide_with_chrome_or_each_other() {
             ph2d_panel_vector::ids::filter_add_id(k).0,
         );
     }
-    for r in 0..ids::MAX_FILTER_ROWS {
+    for r in 0..ph2d_panel_vector::ids::MAX_FILTER_ROWS {
         for (label, id) in [
             ("card", ph2d_panel_vector::ids::filter_card_id(r)),
             ("remove", ph2d_panel_vector::ids::filter_remove_id(r)),

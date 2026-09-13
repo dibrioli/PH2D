@@ -48,7 +48,7 @@ _spec.loader.exec_module(censo)
 EC = "ph2d-editor-core"
 IDS = "crates/ph2d-editor-core/src/ids/"
 GS = "crates/ph2d-editor-core/src/grid_snap/ids.rs"
-DATA = "2026-09-12"
+DATA = "2026-09-13"
 RE_USE = re.compile(r"\b(pub(?:\s*\(([^)]*)\))?\s+)?use\s+([^;]+);")
 IDENT = r"[A-Za-z_][A-Za-z0-9_]*"
 
@@ -657,8 +657,32 @@ def move_definicoes(mundo: Mundo, palco: Palco, pk, precisa_do_dono, rel):
                 f"//! carregar.\n"
             )
             destino = os.path.join(pk[dono]["dir"], "src/ids", stem + ".rs")
-            assert not palco.existe(destino), f"{destino} já existe"
-            texto = head + "\n" + ("\n".join(imp) + "\n\n" if imp else "") + corpo
+            if palco.existe(destino):
+                # ⚠️ 2.ª PASSAGEM (a integração de 2026-09-13, depois da cerca): o ASSUNTO já desceu e o módulo
+                # existe — os itens ACRESCENTAM-SE a ele, nunca num segundo ficheiro com o mesmo nome. Os
+                # imports em falta entram depois do último `use` de topo (um duplicado EXACTO não entra; um
+                # que colida com um grupo existente falha ALTO no compilador), e o `mod` não se declara outra vez.
+                velho = palco.le(destino)
+                ja = {l.strip() for l in velho.splitlines()}
+                novos = [x for x in imp if x.strip() not in ja]
+                if novos:
+                    usos = list(re.finditer(r"(?m)^use [^;]*;[ \t]*\n", velho))
+                    pos = usos[-1].end() if usos else re.match(r"(?:[ \t]*\n)*(?://![^\n]*\n)*", velho).end()
+                    velho = velho[:pos] + "".join(x + "\n" for x in novos) + velho[pos:]
+                bloco = (
+                    f"// ── Desceu de `ph2d-editor-core/src/ids/{relsrc}` em {DATA} (2.ª passagem: a cerca com a\n"
+                    f"//    `line/render-loop` prendia-os na fundação até às duas linhas se integrarem).\n\n"
+                ) + corpo
+                # ⚠️ ANTES de um `mod tests` de topo: depois dele o clippy reprova (`items_after_test_module`,
+                # medido no `ph2d-panel-flip` na integração de 2026-09-13).
+                testes = re.search(r"(?m)^#\[cfg\(test\)\]\s*\n(?:pub(?:\([a-z]+\))? )?mod tests\b", velho)
+                if testes:
+                    texto = velho[: testes.start()].rstrip("\n") + "\n\n" + bloco + "\n" + velho[testes.start():]
+                else:
+                    texto = velho.rstrip("\n") + "\n\n" + bloco
+                stems[dono].remove(stem)
+            else:
+                texto = head + "\n" + ("\n".join(imp) + "\n\n" if imp else "") + corpo
             palco.escreve(destino, texto)
             for ext in set(re.findall(r"(?<![A-Za-z0-9_:])(ph2d_[a-z0-9_]+)::", censo.blank(texto))):
                 if ext.replace("_", "-") in pk:
@@ -744,6 +768,8 @@ def limpa_imports_mortos(s):
 
 def raizes(mundo: Mundo, palco: Palco, pk, stems):
     for dono, sts in stems.items():
+        if not sts:
+            continue  # só acrescentou a módulos que já existiam (2.ª passagem)
         d = pk[dono]["dir"]
         raiz = os.path.join(d, "src/ids.rs")
         bloco = "".join(f"mod {st};\npub use {st}::*;\n" for st in sorted(set(sts)))

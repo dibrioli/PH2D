@@ -44,10 +44,10 @@ fn is_token_option(id: ph2d_a11y::NodeId) -> bool {
 
 fn is_frame_widget(id: ph2d_a11y::NodeId) -> bool {
     id == ph2d_tool_vector::ids::VECTOR_MODE_FRAME
-        || id == ph2d_editor_core::ids::VECTOR_FRAME_CLIP_OFF
-        || id == ph2d_editor_core::ids::VECTOR_FRAME_CLIP_ON
-        || id == ph2d_editor_core::ids::VECTOR_FRAME_PANEL_OFF
-        || id == ph2d_editor_core::ids::VECTOR_FRAME_PANEL_ON
+        || id == crate::ids::VECTOR_FRAME_CLIP_OFF
+        || id == crate::ids::VECTOR_FRAME_CLIP_ON
+        || id == crate::ids::VECTOR_FRAME_PANEL_OFF
+        || id == crate::ids::VECTOR_FRAME_PANEL_ON
         || ph2d_tool_vector::frames::device_preset(id).is_some()
 }
 
@@ -117,7 +117,7 @@ fn is_mode_pill(id: ph2d_a11y::NodeId) -> bool {
             // mesma razão: quem é dono da resposta é a TOOL, e o laço de quadro lê o espelho dela.
             || x == ph2d_tool_vector::ids::VECTOR_BONE_DEFORM_FAST
             || x == ph2d_tool_vector::ids::VECTOR_BONE_DEFORM_SMOOTH
-            || x == ph2d_editor_core::ids::VECTOR_PATH_WELD
+            || x == crate::ids::VECTOR_PATH_WELD
             // A FONTE da largura do lápis (W1d) — três chips exclusivos, do mesmo assunto:
             // com que ferramenta, e como, o traço nasce.
             || x == ph2d_tool_vector::ids::VECTOR_PENCIL_W_UNIFORM
@@ -138,11 +138,11 @@ fn is_mode_pill(id: ph2d_a11y::NodeId) -> bool {
 /// LOC no dia em que este bloco lá entrou, e o corte por assunto já era o certo.
 fn is_morph_states_control(id: ph2d_a11y::NodeId) -> bool {
     id == ids::VECTOR_MORPH_STATES_MAKE
-        || id == ph2d_editor_core::ids::VECTOR_MORPH_PREVIEW
+        || id == crate::ids::VECTOR_MORPH_PREVIEW
         || id == ids::VECTOR_MORPH_DISSOLVE
-        || (0..ph2d_editor_core::ids::MAX_MORPH_STATES)
+        || (0..crate::ids::MAX_MORPH_STATES)
             .any(|r| id == ids::morph_shape_play_id(r) || id == ids::morph_shape_disconnect_id(r))
-        || (0..ph2d_editor_core::ids::MAX_MORPH_STATES).any(|r| {
+        || (0..crate::ids::MAX_MORPH_STATES).any(|r| {
             (0..ids::MAX_MORPH_ACTIONS).any(|a| id == ids::morph_shape_key_option_id(r, a))
         })
 }
@@ -155,37 +155,37 @@ fn is_morph_states_control(id: ph2d_a11y::NodeId) -> bool {
 /// entidade**, logo o clique é da shell; guardá-los no painel seria uma segunda cópia do mesmo
 /// facto, e ela discordaria assim que o artista seleccionasse outra forma.
 fn binds_a_shape_to_something(id: ph2d_a11y::NodeId) -> bool {
-    id == ph2d_editor_core::ids::VECTOR_ENVELOPE_RUN
-        || id == ph2d_editor_core::ids::VECTOR_ENVELOPE_EXPAND
-        || id == ph2d_editor_core::ids::VECTOR_ENVELOPE_RELEASE
-        || id == ph2d_editor_core::ids::VECTOR_ENVELOPE_PERSPECTIVE
-        || id == ph2d_editor_core::ids::VECTOR_ENVELOPE_MESH
-        || id == ph2d_editor_core::ids::VECTOR_ENVELOPE_PINS
-        || id == ph2d_editor_core::ids::VECTOR_ENVELOPE_CLEAR_PINS
+    id == crate::ids::VECTOR_ENVELOPE_RUN
+        || id == crate::ids::VECTOR_ENVELOPE_EXPAND
+        || id == crate::ids::VECTOR_ENVELOPE_RELEASE
+        || id == crate::ids::VECTOR_ENVELOPE_PERSPECTIVE
+        || id == crate::ids::VECTOR_ENVELOPE_MESH
+        || id == crate::ids::VECTOR_ENVELOPE_PINS
+        || id == crate::ids::VECTOR_ENVELOPE_CLEAR_PINS
         // Text on Path: prender / soltar / o lado. Todos mexem no DOCUMENTO (o componente
         // `VecTextPath` da entidade), então atravessam para a shell como os do envelope.
-        || id == ph2d_editor_core::ids::VECTOR_TEXTPATH_LINK
+        || id == crate::ids::VECTOR_TEXTPATH_LINK
         // Pick Path: arma o Picker (a shell captura o texto em foco e espera o clique do guia).
-        || id == ph2d_editor_core::ids::VECTOR_TEXTPATH_PICK
-        || id == ph2d_editor_core::ids::VECTOR_TEXTPATH_DETACH
-        || id == ph2d_editor_core::ids::VECTOR_TEXTPATH_FLIP
-        || id == ph2d_editor_core::ids::VECTOR_TEXTPATH_FLIP_OFF
+        || id == crate::ids::VECTOR_TEXTPATH_PICK
+        || id == crate::ids::VECTOR_TEXTPATH_DETACH
+        || id == crate::ids::VECTOR_TEXTPATH_FLIP
+        || id == crate::ids::VECTOR_TEXTPATH_FLIP_OFF
         // Pattern on Path: prender / soltar / o lado. Todos mexem no DOCUMENTO (o componente
         // `VecPatternPath` da entidade), então atravessam para a shell como os do texto.
-        || id == ph2d_editor_core::ids::VECTOR_PATTERNPATH_LINK
+        || id == crate::ids::VECTOR_PATTERNPATH_LINK
         // Pick Path: arma o Picker (a shell captura o motivo selecionado e espera o clique do guia).
-        || id == ph2d_editor_core::ids::VECTOR_PATTERNPATH_PICK
-        || id == ph2d_editor_core::ids::VECTOR_PATTERNPATH_DETACH
-        || id == ph2d_editor_core::ids::VECTOR_PATTERNPATH_FLIP
-        || id == ph2d_editor_core::ids::VECTOR_PATTERNPATH_FLIP_OFF
+        || id == crate::ids::VECTOR_PATTERNPATH_PICK
+        || id == crate::ids::VECTOR_PATTERNPATH_DETACH
+        || id == crate::ids::VECTOR_PATTERNPATH_FLIP
+        || id == crate::ids::VECTOR_PATTERNPATH_FLIP_OFF
         // Contour: criar / materializar / apagar + os dois trios exclusivos. ⚠️ Corner e Side
         // atravessam para a shell (≠ os gêmeos da seção Expand, que são panel-local): lá eles
         // armam o PRÓXIMO offset, aqui retunam um contour que já está na tela, e o que a fileira
         // mostra sai do componente. Guardá-los no painel seria uma segunda cópia do mesmo fato,
         // e ela discordaria assim que o artista selecionasse outra forma.
-        || id == ph2d_editor_core::ids::VECTOR_CONTOUR_ADD
-        || id == ph2d_editor_core::ids::VECTOR_CONTOUR_EXPAND
-        || id == ph2d_editor_core::ids::VECTOR_CONTOUR_REMOVE
+        || id == crate::ids::VECTOR_CONTOUR_ADD
+        || id == crate::ids::VECTOR_CONTOUR_EXPAND
+        || id == crate::ids::VECTOR_CONTOUR_REMOVE
         || id == ids::VECTOR_CONTOUR_JOIN_MITER
         || id == ids::VECTOR_CONTOUR_JOIN_ROUND
         || id == ids::VECTOR_CONTOUR_JOIN_BEVEL
@@ -197,8 +197,8 @@ fn binds_a_shape_to_something(id: ph2d_a11y::NodeId) -> bool {
 pub(super) fn forwards_plain_click(id: ph2d_a11y::NodeId) -> bool {
     is_mode_pill(id)
         // Os dois botões da seção CUT — executar e descartar a linha de corte.
-        || id == ph2d_editor_core::ids::VECTOR_CUT_APPLY
-        || id == ph2d_editor_core::ids::VECTOR_CUT_DISCARD
+        || id == crate::ids::VECTOR_CUT_APPLY
+        || id == crate::ids::VECTOR_CUT_DISCARD
         || is_morph_states_control(id)
         // **A FORMA do marquee** (`Box | Lasso`) — a tool é a dona do valor pegajoso, então o
         // clique atravessa o barramento como o dos pills de modo.
@@ -206,10 +206,10 @@ pub(super) fn forwards_plain_click(id: ph2d_a11y::NodeId) -> bool {
         || id == ph2d_tool_vector::ids::VECTOR_MARQUEE_LASSO
         // **Resize Box** (W3b) — o override mora no COMPONENTE, então o clique atravessa o
         // barramento. Sem esta linha ele pintaria, acenderia sob o rato e o Click morreria aqui.
-        || id == ph2d_editor_core::ids::VECTOR_TRANSFORM_RESIZE_BOX
+        || id == crate::ids::VECTOR_TRANSFORM_RESIZE_BOX
         // ⭐ **Stroke** (plano 34) — a caixa mexe no DOCUMENTO (`path.stroke`), então o clique é da
         // shell. Fora daqui ela pintaria, acenderia sob o rato e o Click morreria no painel.
-        || id == ph2d_editor_core::ids::VECTOR_STROKE_PRESENT
+        || id == crate::ids::VECTOR_STROKE_PRESENT
         // **A SIMETRIA de desenho** (W6.3) — o par que arma, os quatro tipos, o par do Fuse e o
         // Apply. Fora daqui eles pintam, ACENDEM sob o mouse e o Click morre no painel: o artista
         // clicaria "On" e nada aconteceria, com o log a dizer `[hero] unhandled event`. Foi
@@ -221,7 +221,7 @@ pub(super) fn forwards_plain_click(id: ph2d_a11y::NodeId) -> bool {
         || id == ph2d_tool_vector::ids::VECTOR_SYM_ON
         || id == ph2d_tool_vector::ids::VECTOR_SYM_FUSE_OFF
         || id == ph2d_tool_vector::ids::VECTOR_SYM_FUSE_ON
-        || id == ph2d_editor_core::ids::VECTOR_SYM_APPLY
+        || id == ph2d_tool_vector::ids::VECTOR_SYM_APPLY
         || ph2d_symmetry::SymmetryKind::ALL
             .iter()
             .any(|k| ph2d_tool_vector::params::symmetry_kind_id(*k) == id)
@@ -229,14 +229,14 @@ pub(super) fn forwards_plain_click(id: ph2d_a11y::NodeId) -> bool {
         // (`ALL` → `vector_easing_*_id`): uma família nova atravessa o barramento sozinha.
         || (0..ids::MAX_EASING_FAMILIES).any(|i| ids::vector_easing_family_id(i) == id)
         || (0..ids::MAX_EASING_MODES).any(|i| ids::vector_easing_mode_id(i) == id)
-        || id == ph2d_editor_core::ids::VECTOR_TEXT_FONT_PREV
-        || id == ph2d_editor_core::ids::VECTOR_TEXT_FONT_NEXT
-        || id == ph2d_editor_core::ids::VECTOR_TEXT_FONT_IMPORT
-        || id == ph2d_editor_core::ids::VECTOR_TEXT_WRAP_AUTO
-        || id == ph2d_editor_core::ids::VECTOR_TEXT_WRAP_FIXED
-        || id == ph2d_editor_core::ids::VECTOR_TEXT_ALIGN_LEFT
-        || id == ph2d_editor_core::ids::VECTOR_TEXT_ALIGN_CENTER
-        || id == ph2d_editor_core::ids::VECTOR_TEXT_ALIGN_RIGHT
+        || id == crate::ids::VECTOR_TEXT_FONT_PREV
+        || id == crate::ids::VECTOR_TEXT_FONT_NEXT
+        || id == crate::ids::VECTOR_TEXT_FONT_IMPORT
+        || id == crate::ids::VECTOR_TEXT_WRAP_AUTO
+        || id == crate::ids::VECTOR_TEXT_WRAP_FIXED
+        || id == crate::ids::VECTOR_TEXT_ALIGN_LEFT
+        || id == crate::ids::VECTOR_TEXT_ALIGN_CENTER
+        || id == crate::ids::VECTOR_TEXT_ALIGN_RIGHT
         || id == ph2d_tool_vector::ids::VECTOR_ALIGN_CENTRE
         || id == ph2d_tool_vector::ids::VECTOR_ALIGN_INNER
         || id == ph2d_tool_vector::ids::VECTOR_ALIGN_OUTER
@@ -249,18 +249,18 @@ pub(super) fn forwards_plain_click(id: ph2d_a11y::NodeId) -> bool {
         || id == ph2d_tool_vector::ids::VECTOR_VERT_CORNER
         || id == ph2d_tool_vector::ids::VECTOR_VERT_SMOOTH
         || id == ph2d_tool_vector::ids::VECTOR_VERT_SYMMETRIC
-        || id == ph2d_editor_core::ids::VECTOR_VERT_DELETE
-        || id == ph2d_editor_core::ids::VECTOR_VERT_SEL_SUBPATH
-        || id == ph2d_editor_core::ids::VECTOR_VERT_SEL_SAME
+        || id == crate::ids::VECTOR_VERT_DELETE
+        || id == crate::ids::VECTOR_VERT_SEL_SUBPATH
+        || id == crate::ids::VECTOR_VERT_SEL_SAME
         // As três da W4. Fora daqui pintam, acendem sob o mouse e o Click morre no painel.
-        || id == ph2d_editor_core::ids::VECTOR_VERT_AVERAGE
-        || id == ph2d_editor_core::ids::VECTOR_PATH_JOIN
-        || id == ph2d_editor_core::ids::VECTOR_PATH_REVERSE
-        || id == ph2d_editor_core::ids::VECTOR_BLEND_RUN
-        || id == ph2d_editor_core::ids::VECTOR_BLEND_RESET_SPINE
-        || id == ph2d_editor_core::ids::VECTOR_BLEND_EXPAND
-        || id == ph2d_editor_core::ids::VECTOR_BLEND_RELEASE
-        || id == ph2d_editor_core::ids::VECTOR_MORPH_RUN
+        || id == crate::ids::VECTOR_VERT_AVERAGE
+        || id == crate::ids::VECTOR_PATH_JOIN
+        || id == crate::ids::VECTOR_PATH_REVERSE
+        || id == crate::ids::VECTOR_BLEND_RUN
+        || id == crate::ids::VECTOR_BLEND_RESET_SPINE
+        || id == crate::ids::VECTOR_BLEND_EXPAND
+        || id == crate::ids::VECTOR_BLEND_RELEASE
+        || id == crate::ids::VECTOR_MORPH_RUN
         || is_fx_button(id)
         // O botão de SEÇÃO "Apply" (assa a pilha de efeitos). Fora daqui pintaria e estaria
         // MORTO — a shell classifica-o via `fx_bridge_dispatch::classify_click`.
@@ -284,7 +284,7 @@ pub(super) fn forwards_plain_click(id: ph2d_a11y::NodeId) -> bool {
         // drain da shell os traduz em edições do `VecFilter`. Fora daqui pintariam e estariam
         // MORTOS.
         || filters::is_filter_button(id)
-        || (0..ph2d_editor_core::ids::MAX_ENVELOPE_PRESETS).any(|i| id == ph2d_editor_core::ids::vector_envelope_preset_id(i))
+        || (0..crate::ids::MAX_ENVELOPE_PRESETS).any(|i| id == crate::ids::vector_envelope_preset_id(i))
         || is_boolean_click(id)
         || is_frame_widget(id)
         || is_layout_widget(id)
@@ -300,20 +300,20 @@ pub(super) fn forwards_plain_click(id: ph2d_a11y::NodeId) -> bool {
         // Os perfis nomeados (W2b): o clique escreve os quatro sliders E arma o perfil vivo na
         // seleção, e as duas metades são da SHELL (é ela que tem store e cena). Panel-local, como
         // o Side/Corner, deixaria a forma sem perfil e o botão aceso.
-        || (0..ph2d_editor_core::ids::MAX_WIDTH_PRESETS).any(|i| id == ph2d_editor_core::ids::vector_width_preset_id(i))
-        || id == ph2d_editor_core::ids::VECTOR_FILL_RULE_NONZERO
-        || id == ph2d_editor_core::ids::VECTOR_FILL_RULE_EVENODD
-        || id == ph2d_editor_core::ids::VECTOR_SNAP_OFF
+        || (0..crate::ids::MAX_WIDTH_PRESETS).any(|i| id == crate::ids::vector_width_preset_id(i))
+        || id == crate::ids::VECTOR_FILL_RULE_NONZERO
+        || id == crate::ids::VECTOR_FILL_RULE_EVENODD
+        || id == crate::ids::VECTOR_SNAP_OFF
         || id == ph2d_editor_core::ids::VECTOR_SNAP_ON
-        || id == ph2d_editor_core::ids::VECTOR_SNAP_PATH_OFF
-        || id == ph2d_editor_core::ids::VECTOR_SNAP_PATH_ON
-        || id == ph2d_editor_core::ids::VECTOR_SNAP_CROSS_OFF
-        || id == ph2d_editor_core::ids::VECTOR_SNAP_CROSS_ON
-        || id == ph2d_editor_core::ids::VECTOR_SNAP_GUIDES_OFF
-        || id == ph2d_editor_core::ids::VECTOR_SNAP_GUIDES_ON
-        || id == ph2d_editor_core::ids::VECTOR_RULERS_OFF
-        || id == ph2d_editor_core::ids::VECTOR_RULERS_ON
-        || id == ph2d_editor_core::ids::VECTOR_ARRANGE_DUPLICATE
+        || id == crate::ids::VECTOR_SNAP_PATH_OFF
+        || id == crate::ids::VECTOR_SNAP_PATH_ON
+        || id == crate::ids::VECTOR_SNAP_CROSS_OFF
+        || id == crate::ids::VECTOR_SNAP_CROSS_ON
+        || id == crate::ids::VECTOR_SNAP_GUIDES_OFF
+        || id == crate::ids::VECTOR_SNAP_GUIDES_ON
+        || id == crate::ids::VECTOR_RULERS_OFF
+        || id == crate::ids::VECTOR_RULERS_ON
+        || id == crate::ids::VECTOR_ARRANGE_DUPLICATE
         || id == ph2d_tool_vector::ids::VECTOR_ARRANGE_TO_BACK
         || id == ph2d_tool_vector::ids::VECTOR_ARRANGE_BACKWARD
         || id == ph2d_tool_vector::ids::VECTOR_ARRANGE_FORWARD
@@ -326,7 +326,7 @@ pub(super) fn forwards_plain_click(id: ph2d_a11y::NodeId) -> bool {
         || id == ph2d_tool_vector::ids::VECTOR_PATH_SHARPEN
         || id == ph2d_tool_vector::ids::VECTOR_PATH_SIMPLIFY
         || id == ph2d_tool_vector::ids::VECTOR_PATH_SUBDIVIDE
-        || id == ph2d_editor_core::ids::VECTOR_PATH_CLOSE
+        || id == crate::ids::VECTOR_PATH_CLOSE
         || id == ph2d_tool_vector::ids::VECTOR_FILL_KIND_SOLID
         || id == ph2d_tool_vector::ids::VECTOR_FILL_KIND_LINEAR
         || id == ph2d_tool_vector::ids::VECTOR_FILL_KIND_RADIAL
@@ -338,7 +338,7 @@ pub(super) fn forwards_plain_click(id: ph2d_a11y::NodeId) -> bool {
         || id == ph2d_tool_vector::ids::VECTOR_STROKE_KIND_PATTERN
         || id == ph2d_tool_vector::ids::VECTOR_STROKE_KIND_BRUSH
         // ⭐ A secção BRUSH (plano 36, W4): o picker da arte e o `Flip`.
-        || id == ph2d_editor_core::ids::VECTOR_BRUSH_PICK_SHAPE
+        || id == crate::ids::VECTOR_BRUSH_PICK_SHAPE
         || id == ids::VECTOR_BRUSH_FLIP
         // ⭐⭐ **AS DUAS secções PATTERN** (plano 35, wave F) — a do preenchimento e a do traço.
         //
@@ -346,10 +346,10 @@ pub(super) fn forwards_plain_click(id: ph2d_a11y::NodeId) -> bool {
         // novo atravessa o barramento sozinho, nas duas secções. ⛔ Uma allowlist escrita à mão
         // aqui seria a terceira cópia da lista de controlos — e a que envelhece primeiro.
         || crate::paint_sections::texture_pattern::texpat_knob_of(id).is_some()
-        || id == ph2d_editor_core::ids::VECTOR_GRAD_ADD_POINT
-        || id == ph2d_editor_core::ids::VECTOR_GRAD_REMOVE_POINT
-        || id == ph2d_editor_core::ids::VECTOR_GRAD_ADD_STOP
-        || id == ph2d_editor_core::ids::VECTOR_GRAD_REMOVE_STOP
+        || id == crate::ids::VECTOR_GRAD_ADD_POINT
+        || id == crate::ids::VECTOR_GRAD_REMOVE_POINT
+        || id == crate::ids::VECTOR_GRAD_ADD_STOP
+        || id == crate::ids::VECTOR_GRAD_REMOVE_STOP
         || id == ph2d_tool_vector::ids::VECTOR_ALIGN_LEFT
         || id == ph2d_tool_vector::ids::VECTOR_ALIGN_HCENTER
         || id == ph2d_tool_vector::ids::VECTOR_ALIGN_RIGHT
@@ -358,8 +358,8 @@ pub(super) fn forwards_plain_click(id: ph2d_a11y::NodeId) -> bool {
         || id == ph2d_tool_vector::ids::VECTOR_ALIGN_BOTTOM
         || id == ph2d_tool_vector::ids::VECTOR_DISTRIBUTE_H
         || id == ph2d_tool_vector::ids::VECTOR_DISTRIBUTE_V
-        || id == ph2d_editor_core::ids::VECTOR_PIVOT_EDIT
-        || id == ph2d_editor_core::ids::VECTOR_CONVERT_TO_CURVES
+        || id == crate::ids::VECTOR_PIVOT_EDIT
+        || id == crate::ids::VECTOR_CONVERT_TO_CURVES
         // **Both Ends** (a dupla via). Um `Click` puro — e não um `SetValue` com um booleano
         // — porque o estado é DERIVADO das duas pontas: quem o resolve é a tool, que as
         // possui. Fora daqui o botão pintaria e estaria MORTO.
@@ -406,13 +406,13 @@ fn is_prefab_click(id: ph2d_a11y::NodeId) -> bool {
     })
     // **O MODO DE PREVIEW** (W7r) — quem toma o rato é a shell (só ela tem o picking e o
     // registro de undo), então o interruptor atravessa o barramento como os verbos ao lado.
-    || id == ph2d_editor_core::ids::VECTOR_STATE_PREVIEW
+    || id == crate::ids::VECTOR_STATE_PREVIEW
     // **Mover o widget com TODOS os estados** (W7r): o deslocamento e' aplicado a' TABELA, que
     // mora no documento — entao o toggle atravessa o barramento como os verbos ao lado.
-    || id == ph2d_editor_core::ids::VECTOR_STATE_MOVE_ALL
+    || id == crate::ids::VECTOR_STATE_MOVE_ALL
     // **A MOLA** (W7m): ela troca o motor da transicao, e o motor mora na tabela do DOCUMENTO —
     // entao o checkbox atravessa o barramento como os verbos ao lado.
-    || id == ph2d_editor_core::ids::VECTOR_STATE_SPRING
+    || id == crate::ids::VECTOR_STATE_SPRING
     // ⭐ **A TABELA SINAL → PAPEL** (item 4 do estudo dos conteineres): a ligacao mora no
     // DOCUMENTO (`HostStates.on_signal`), entao os tres gestos — escolher o papel, apagar a
     // linha, acrescentar uma — atravessam o barramento como os verbos ao lado. O NOME nao passa
@@ -439,9 +439,9 @@ fn is_prefab_click(id: ph2d_a11y::NodeId) -> bool {
 /// o report que o Enio já deu duas vezes sobre esta mesma fileira.
 fn is_boolean_click(id: ph2d_a11y::NodeId) -> bool {
     id == ids::VECTOR_BOOL_UNION
-        || id == ph2d_editor_core::ids::VECTOR_BOOL_LIVE_OFF
-        || id == ph2d_editor_core::ids::VECTOR_BOOL_LIVE_ON
-        || id == ph2d_editor_core::ids::VECTOR_BOOL_APPLY
+        || id == crate::ids::VECTOR_BOOL_LIVE_OFF
+        || id == crate::ids::VECTOR_BOOL_LIVE_ON
+        || id == crate::ids::VECTOR_BOOL_APPLY
         || id == ph2d_tool_vector::ids::VECTOR_BOOL_MINUS_BACK
         || id == ph2d_tool_vector::ids::VECTOR_BOOL_TRIM
         || id == ph2d_tool_vector::ids::VECTOR_BOOL_CROP
@@ -454,7 +454,7 @@ fn is_boolean_click(id: ph2d_a11y::NodeId) -> bool {
         || id == ids::VECTOR_BOOL_SHAPE_INTERSECT
         || id == ids::VECTOR_BOOL_SHAPE_EXCLUDE
         || id == ph2d_editor_core::ids::VECTOR_COMPOUND_MAKE
-        || id == ph2d_editor_core::ids::VECTOR_COMPOUND_RELEASE
+        || id == crate::ids::VECTOR_COMPOUND_RELEASE
 }
 
 /// ⭐⭐⭐ **Uma linha do popover de MISTURA do objecto foi escolhida** — fecha o chip e encaminha o
@@ -482,9 +482,7 @@ pub(crate) fn pick_object_blend(
         open,
         selected_index,
         ..
-    }) = host
-        .store_mut()
-        .get_mut(ph2d_editor_core::ids::VECTOR_OBJ_BLEND)
+    }) = host.store_mut().get_mut(crate::ids::VECTOR_OBJ_BLEND)
     {
         *open = false;
         *selected_index = Some(i);
@@ -492,7 +490,7 @@ pub(crate) fn pick_object_blend(
     host.bus_mut()
         .push(ph2d_editor_core::action_bus::EditorAction::ToolPanelEvent(
             ph2d_editor_core::tool::PanelEvent::SetValue(
-                ph2d_editor_core::ids::VECTOR_OBJ_BLEND,
+                crate::ids::VECTOR_OBJ_BLEND,
                 f64::from(mode.to_u8()),
             ),
         ));
@@ -520,9 +518,7 @@ pub(crate) fn pick_layer_blend(
         open,
         selected_index,
         ..
-    }) = host
-        .store_mut()
-        .get_mut(ph2d_editor_core::ids::VECTOR_PAINT_BLEND)
+    }) = host.store_mut().get_mut(crate::ids::VECTOR_PAINT_BLEND)
     {
         *open = false;
         *selected_index = Some(i);
@@ -530,7 +526,7 @@ pub(crate) fn pick_layer_blend(
     host.bus_mut()
         .push(ph2d_editor_core::action_bus::EditorAction::ToolPanelEvent(
             ph2d_editor_core::tool::PanelEvent::SetValue(
-                ph2d_editor_core::ids::VECTOR_PAINT_BLEND,
+                crate::ids::VECTOR_PAINT_BLEND,
                 f64::from(mode.to_u8()),
             ),
         ));

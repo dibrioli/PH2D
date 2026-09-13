@@ -4,9 +4,12 @@
 //!
 //! ⚠️ Os quatro sliders (`VECTOR_EXPAND_W_*`) ficam no irmão, com o resto da seção Expand: eles
 //! REFINAM o perfil, e a seção é uma coisa só. O que muda aqui é como se ESCOLHE um.
+//!
+//! ⚠️ **Desceu de `ph2d-editor-core/src/ids/chrome/vector_width.rs` em 2026-09-13** (auditoria de arquitectura
+//! A5b): quem LÊ estes ids mora nesta crate, e a fundação que 60 crates recompilam deixou de os
+//! carregar.
 
 use ph2d_a11y::NodeId;
-
 use ph2d_tool_registry::hash_node_id_runtime;
 
 /// Teto de perfis nomeados que o painel oferece (`ph2d_stroke_width::PRESETS`). O `populate`

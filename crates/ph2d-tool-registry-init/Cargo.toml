@@ -76,7 +76,7 @@ ph2d-text = { path = "../ph2d-text" }
 ph2d-vector = { path = "../ph2d-vector" }
 ph2d-a11y = { path = "../ph2d-a11y" }
 # Wave 2 PR 11.4 chrome-manifest-coverage test reads the
-# `screens::hero::ids` chrome consts from the editor and checks
+# `ph2d_editor_core::ids` chrome consts from the editor and checks
 # they hash-match the manifest ids registered here. Editor isn't a
 # normal dep — adding it would let registry-init pull editor types
 # into runtime, which violates the dep direction. Dev-dep is safe

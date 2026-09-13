@@ -77,7 +77,7 @@ fn list(
     for (i, (row, &id)) in info
         .rows
         .iter()
-        .zip(core_ids::INSP_TIMER_ROW.iter())
+        .zip(crate::ids::INSP_TIMER_ROW.iter())
         .enumerate()
     {
         let rect = Rect::new(x, cur_y, w, ROW_H);
@@ -161,7 +161,7 @@ fn buttons(
 ) -> f32 {
     // ⚠️ **O `+` desaparece no tecto**, e não fica cinzento a mentir: o modelo não aceita mais, e
     // um botão que aceita o clique e não faz nada é o defeito que a DIRETIVA §2 nomeia.
-    let can_add = info.rows.len() < core_ids::INSP_TIMER_ROW.len();
+    let can_add = info.rows.len() < crate::ids::INSP_TIMER_ROW.len();
     let can_remove = !info.rows.is_empty();
     // ⭐⭐ **`+ Add | x Remove` é UM par**, e por isso passa pela porta do grupo — a mesma pergunta
     // (*o que fazer com a lista*), a mesma fileira, o traço de um pixel entre as duas peças.

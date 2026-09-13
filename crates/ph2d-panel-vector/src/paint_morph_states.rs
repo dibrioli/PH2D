@@ -111,7 +111,7 @@ impl BodyCtx<'_> {
             y = self.label_line(&format!("{} {cur}", tr("panel.vector.morph.current")), y);
         }
 
-        let shown = s.rows.len().min(ph2d_editor_core::ids::MAX_MORPH_STATES);
+        let shown = s.rows.len().min(crate::ids::MAX_MORPH_STATES);
         for (i, row) in s.rows.iter().enumerate().take(shown) {
             y = self.shape_name_row(i, row, y);
             y = self.shape_key_row(i, row, y);
@@ -155,7 +155,7 @@ impl BodyCtx<'_> {
         // o kind descreve o que o botão É. Escrever *ligado* no `ButtonState` faria o aceso
         // desaparecer no instante em que o cursor passasse por cima dele.
         let btn = Button::new(
-            ph2d_editor_core::ids::VECTOR_MORPH_PREVIEW,
+            crate::ids::VECTOR_MORPH_PREVIEW,
             tr("panel.vector.morph.preview"),
         )
         .kind(if on {
@@ -163,13 +163,10 @@ impl BodyCtx<'_> {
         } else {
             ButtonKind::Default
         })
-        .visual(
-            self.store
-                .button_visual(ph2d_editor_core::ids::VECTOR_MORPH_PREVIEW),
-        );
+        .visual(self.store.button_visual(crate::ids::VECTOR_MORPH_PREVIEW));
         paint_button(&btn, rect, self.scene, self.text_system, self.theme);
         self.hit_index
-            .register(ph2d_editor_core::ids::VECTOR_MORPH_PREVIEW, rect);
+            .register(crate::ids::VECTOR_MORPH_PREVIEW, rect);
         let y = y + self.row_h + Spacing::Xs.px();
         if on {
             return self.label_line(tr("panel.vector.morph.preview.on"), y);
@@ -188,14 +185,14 @@ impl BodyCtx<'_> {
         if s.can_make < 2 {
             return self.label_line(tr("panel.vector.morph.need_shapes"), y);
         }
-        if s.can_make > ph2d_editor_core::ids::MAX_MORPH_STATES {
+        if s.can_make > crate::ids::MAX_MORPH_STATES {
             // ⚠️ **A frase traz o TETO**, e o teto vem da constante — nunca de um número escrito na
             // tabela de i18n, que envelheceria no dia em que a medição mudasse.
             return self.label_line(
                 &format!(
                     "{} {}.",
                     tr("panel.vector.morph.too_many"),
-                    ph2d_editor_core::ids::MAX_MORPH_STATES
+                    crate::ids::MAX_MORPH_STATES
                 ),
                 y,
             );

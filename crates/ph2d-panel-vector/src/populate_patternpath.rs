@@ -29,17 +29,17 @@ const PATTERNPATH_ROTATION_STEP: f64 = 1.0; // LITERAL-PX-OK: passo no domínio 
 /// Os quatro botões + os dois sliders do Pattern on Path. Registrados INCONDICIONALMENTE como
 /// todos os irmãos — quem decide se o clique é possível é a PINTURA (sem hit-rect não há Click).
 pub(super) fn populate_patternpath(store: &mut WidgetStore) {
-    button(store, ph2d_editor_core::ids::VECTOR_PATTERNPATH_LINK);
-    button(store, ph2d_editor_core::ids::VECTOR_PATTERNPATH_PICK);
-    button(store, ph2d_editor_core::ids::VECTOR_PATTERNPATH_DETACH);
-    button(store, ph2d_editor_core::ids::VECTOR_PATTERNPATH_FLIP);
-    button(store, ph2d_editor_core::ids::VECTOR_PATTERNPATH_FLIP_OFF);
+    button(store, crate::ids::VECTOR_PATTERNPATH_LINK);
+    button(store, crate::ids::VECTOR_PATTERNPATH_PICK);
+    button(store, crate::ids::VECTOR_PATTERNPATH_DETACH);
+    button(store, crate::ids::VECTOR_PATTERNPATH_FLIP);
+    button(store, crate::ids::VECTOR_PATTERNPATH_FLIP_OFF);
     // Spacing: track `0..1` → valor `SPACING_MIN..SPACING_MAX`. O `scale`/`offset` do chip são o
     // MESMO mapa que o `event::track_slider_event` aplica ao track do slider — a fronteira única.
     let sp_scale = (crate::SPACING_MAX - crate::SPACING_MIN) as f32;
     slider_chip(
         store,
-        ph2d_editor_core::ids::VECTOR_PATTERNPATH_SPACING,
+        crate::ids::VECTOR_PATTERNPATH_SPACING,
         ids::VECTOR_PATTERNPATH_SPACING_NUM,
         ((1.0 - crate::SPACING_MIN) / (crate::SPACING_MAX - crate::SPACING_MIN)) as f32,
         1.0,
@@ -56,17 +56,17 @@ pub(super) fn populate_patternpath(store: &mut WidgetStore) {
     // inteira). O trecho `[Start, End]` é onde as cópias caem.
     for (slider, chip, track) in [
         (
-            ph2d_editor_core::ids::VECTOR_PATTERNPATH_START,
+            crate::ids::VECTOR_PATTERNPATH_START,
             ids::VECTOR_PATTERNPATH_START_NUM,
             0.0,
         ),
         (
-            ph2d_editor_core::ids::VECTOR_PATTERNPATH_END,
+            crate::ids::VECTOR_PATTERNPATH_END,
             ids::VECTOR_PATTERNPATH_END_NUM,
             1.0,
         ),
         (
-            ph2d_editor_core::ids::VECTOR_PATTERNPATH_SLIDE,
+            crate::ids::VECTOR_PATTERNPATH_SLIDE,
             ids::VECTOR_PATTERNPATH_SLIDE_NUM,
             0.5,
         ),
@@ -78,7 +78,7 @@ pub(super) fn populate_patternpath(store: &mut WidgetStore) {
     // (o default) é sobre a curva. O `scale`/`offset` do chip são o MESMO mapa do `event.rs`.
     slider_chip(
         store,
-        ph2d_editor_core::ids::VECTOR_PATTERNPATH_OFFSET,
+        crate::ids::VECTOR_PATTERNPATH_OFFSET,
         ids::VECTOR_PATTERNPATH_OFFSET_NUM,
         0.5,
         0.0,
@@ -95,7 +95,7 @@ pub(super) fn populate_patternpath(store: &mut WidgetStore) {
     // curva. Mesmo mapa do Offset; o `scale`/`offset` do chip são os MESMOS que o `event.rs` aplica.
     slider_chip(
         store,
-        ph2d_editor_core::ids::VECTOR_PATTERNPATH_ROTATION,
+        crate::ids::VECTOR_PATTERNPATH_ROTATION,
         ids::VECTOR_PATTERNPATH_ROTATION_NUM,
         0.5,
         0.0,

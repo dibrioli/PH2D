@@ -58,13 +58,12 @@ fn key_at(sim: &SimWorld, map: &VecEntityMap, host: Entity, row: usize) -> Strin
 /// da segunda ficariam **mortas sob o ponteiro**, e só a de cima funcionaria.
 #[test]
 fn every_arrow_row_resolves_to_its_own_command() {
-    use ph2d_editor_core::ids as i;
     // ⭐ O botão que FAZ o conjunto (W8) — ele é o único controlo da seção sem máquina nenhuma.
     assert_eq!(
         morph_cmd_for_id(ph2d_panel_vector::ids::VECTOR_MORPH_STATES_MAKE),
         Some(MorphCmd::MakeSet)
     );
-    for row in 0..i::MAX_MORPH_STATES {
+    for row in 0..ph2d_panel_vector::ids::MAX_MORPH_STATES {
         assert_eq!(
             morph_cmd_for_id(ph2d_panel_vector::ids::morph_shape_key_option_id(row, 3)),
             Some(MorphCmd::SetWhen { row, action: 3 }),
@@ -141,9 +140,8 @@ fn an_index_beyond_the_published_list_refuses() {
 /// alcançável sangraria aqui.
 #[test]
 fn no_id_in_the_section_asks_to_destroy_a_state() {
-    use ph2d_editor_core::ids as i;
     let mut seen = 0usize;
-    for row in 0..i::MAX_MORPH_STATES {
+    for row in 0..ph2d_panel_vector::ids::MAX_MORPH_STATES {
         for a in 0..ph2d_panel_vector::ids::MAX_MORPH_ACTIONS {
             let cmd = morph_cmd_for_id(ph2d_panel_vector::ids::morph_shape_key_option_id(row, a));
             assert!(matches!(cmd, Some(MorphCmd::SetWhen { .. })));
@@ -153,7 +151,7 @@ fn no_id_in_the_section_asks_to_destroy_a_state() {
     // O CONTROLE POSITIVO: o laço de facto correu sobre o pool inteiro.
     assert_eq!(
         seen,
-        i::MAX_MORPH_STATES * ph2d_panel_vector::ids::MAX_MORPH_ACTIONS
+        ph2d_panel_vector::ids::MAX_MORPH_STATES * ph2d_panel_vector::ids::MAX_MORPH_ACTIONS
     );
     // E a lista continua intacta depois de o único verbo dela correr.
     let (mut sim, map, e, ids) = world();

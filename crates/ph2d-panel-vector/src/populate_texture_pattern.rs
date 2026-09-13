@@ -89,7 +89,7 @@ pub(super) fn populate_brush(store: &mut WidgetStore) {
 }
 
 pub(super) fn populate_texture_pattern(store: &mut WidgetStore) {
-    use ph2d_editor_core::ids::TexPatKnob as K;
+    use crate::ids::TexPatKnob as K;
     for slot in 0..ids::TEXPAT_SLOTS {
         let kid = |k| crate::paint_sections::texture_pattern::kid(slot, k);
         // Os botões: a arte, o picker, o cadeado, os 4 reticulados e as 3 repetições.

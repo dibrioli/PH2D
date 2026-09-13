@@ -45,16 +45,16 @@ fn pointer(kind: PointerKind, x: f32, y: f32, t: u128) -> PointerEvent {
 #[test]
 fn every_snap_option_reaches_the_bus() {
     for (id, name) in [
-        (ph2d_editor_core::ids::VECTOR_SNAP_OFF, "Shapes/Off"),
+        (ph2d_panel_vector::ids::VECTOR_SNAP_OFF, "Shapes/Off"),
         (ph2d_editor_core::ids::VECTOR_SNAP_ON, "Shapes/On"),
-        (ph2d_editor_core::ids::VECTOR_SNAP_PATH_OFF, "Path/Off"),
-        (ph2d_editor_core::ids::VECTOR_SNAP_PATH_ON, "Path/On"),
-        (ph2d_editor_core::ids::VECTOR_SNAP_CROSS_OFF, "Cross/Off"),
-        (ph2d_editor_core::ids::VECTOR_SNAP_CROSS_ON, "Cross/On"),
-        (ph2d_editor_core::ids::VECTOR_SNAP_GUIDES_OFF, "Guides/Off"),
-        (ph2d_editor_core::ids::VECTOR_SNAP_GUIDES_ON, "Guides/On"),
-        (ph2d_editor_core::ids::VECTOR_RULERS_OFF, "Rulers/Off"),
-        (ph2d_editor_core::ids::VECTOR_RULERS_ON, "Rulers/On"),
+        (ph2d_panel_vector::ids::VECTOR_SNAP_PATH_OFF, "Path/Off"),
+        (ph2d_panel_vector::ids::VECTOR_SNAP_PATH_ON, "Path/On"),
+        (ph2d_panel_vector::ids::VECTOR_SNAP_CROSS_OFF, "Cross/Off"),
+        (ph2d_panel_vector::ids::VECTOR_SNAP_CROSS_ON, "Cross/On"),
+        (ph2d_panel_vector::ids::VECTOR_SNAP_GUIDES_OFF, "Guides/Off"),
+        (ph2d_panel_vector::ids::VECTOR_SNAP_GUIDES_ON, "Guides/On"),
+        (ph2d_panel_vector::ids::VECTOR_RULERS_OFF, "Rulers/Off"),
+        (ph2d_panel_vector::ids::VECTOR_RULERS_ON, "Rulers/On"),
     ] {
         let mut host = MockPanelHost::with_panel::<VectorPanel>();
         let mut panel_state = VectorPanelState;
@@ -109,22 +109,22 @@ fn the_snap_section_stacks_five_independent_rows() {
     let path = rect(
         &mut host,
         &mut panel_state,
-        ph2d_editor_core::ids::VECTOR_SNAP_PATH_ON,
+        ph2d_panel_vector::ids::VECTOR_SNAP_PATH_ON,
     );
     let cross = rect(
         &mut host,
         &mut panel_state,
-        ph2d_editor_core::ids::VECTOR_SNAP_CROSS_ON,
+        ph2d_panel_vector::ids::VECTOR_SNAP_CROSS_ON,
     );
     let guides = rect(
         &mut host,
         &mut panel_state,
-        ph2d_editor_core::ids::VECTOR_SNAP_GUIDES_ON,
+        ph2d_panel_vector::ids::VECTOR_SNAP_GUIDES_ON,
     );
     let rulers = rect(
         &mut host,
         &mut panel_state,
-        ph2d_editor_core::ids::VECTOR_RULERS_ON,
+        ph2d_panel_vector::ids::VECTOR_RULERS_ON,
     );
     assert!(
         shapes.y < path.y && path.y < cross.y && cross.y < guides.y && guides.y < rulers.y,
@@ -135,7 +135,7 @@ fn the_snap_section_stacks_five_independent_rows() {
     let path_off = rect(
         &mut host,
         &mut panel_state,
-        ph2d_editor_core::ids::VECTOR_SNAP_PATH_OFF,
+        ph2d_panel_vector::ids::VECTOR_SNAP_PATH_OFF,
     );
     assert!(
         (path_off.x - path.x).abs() > 1.0 && (path_off.y - path.y).abs() < 1.0,

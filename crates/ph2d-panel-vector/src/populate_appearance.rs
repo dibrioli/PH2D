@@ -24,7 +24,7 @@ use crate::populate::{button, number_field, slider_chip, world_number_field};
 pub(crate) fn populate_appearance(store: &mut WidgetStore) {
     slider_chip(
         store,
-        ph2d_editor_core::ids::VECTOR_OBJ_OPACITY,
+        crate::ids::VECTOR_OBJ_OPACITY,
         ids::VECTOR_OBJ_OPACITY_NUM,
         1.0,
         100.0, // LITERAL-PX-OK: initial opacity display = 100 %
@@ -32,7 +32,7 @@ pub(crate) fn populate_appearance(store: &mut WidgetStore) {
         ph2d_tool_vector::params::OPACITY_SLIDER_OFFSET,
     );
     store.register_if_absent(
-        ph2d_editor_core::ids::VECTOR_OBJ_BLEND,
+        crate::ids::VECTOR_OBJ_BLEND,
         InteractiveState::Dropdown {
             state: DropdownState::Normal,
             open: false,
@@ -71,7 +71,7 @@ fn populate_paint_stack(store: &mut WidgetStore) {
     }
     slider_chip(
         store,
-        ph2d_editor_core::ids::VECTOR_PAINT_OPACITY,
+        crate::ids::VECTOR_PAINT_OPACITY,
         ids::VECTOR_PAINT_OPACITY_NUM,
         1.0,
         100.0, // LITERAL-PX-OK: initial opacity display = 100 %
@@ -82,7 +82,7 @@ fn populate_paint_stack(store: &mut WidgetStore) {
     // faixas para ela divergiriam no dia em que uma subisse.
     number_field(
         store,
-        ph2d_editor_core::ids::VECTOR_PAINT_WIDTH,
+        crate::ids::VECTOR_PAINT_WIDTH,
         0.0,
         ph2d_tool_vector::params::WIDTH_MAX_PX,
         ph2d_tool_vector::params::WIDTH_MIN_PX,
@@ -95,14 +95,11 @@ fn populate_paint_stack(store: &mut WidgetStore) {
     // recurso, exactamente o defeito que o §0.0 nomeia. E o recurso que se temia não existe: a
     // caixa que o deslocamento infla dimensiona o scratch do FX, que **já é limitado** pelo
     // `MAX_FX_SIDE` a jusante.
-    for id in [
-        ph2d_editor_core::ids::VECTOR_PAINT_DX,
-        ph2d_editor_core::ids::VECTOR_PAINT_DY,
-    ] {
+    for id in [crate::ids::VECTOR_PAINT_DX, crate::ids::VECTOR_PAINT_DY] {
         world_number_field(store, id, 0.0);
     }
     // ⭐ O OFFSET DE CAD (v22) — também uma distância de MUNDO, logo a mesma porta sem faixa.
-    world_number_field(store, ph2d_editor_core::ids::VECTOR_PAINT_DILATE, 0.0);
+    world_number_field(store, crate::ids::VECTOR_PAINT_DILATE, 0.0);
     for id in [
         ids::VECTOR_PAINT_JOIN_MITER,
         ids::VECTOR_PAINT_JOIN_ROUND,
@@ -111,7 +108,7 @@ fn populate_paint_stack(store: &mut WidgetStore) {
         button(store, id);
     }
     store.register_if_absent(
-        ph2d_editor_core::ids::VECTOR_PAINT_BLEND,
+        crate::ids::VECTOR_PAINT_BLEND,
         InteractiveState::Dropdown {
             state: DropdownState::Normal,
             open: false,

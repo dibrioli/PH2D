@@ -256,10 +256,10 @@ fn moving_the_shape_moves_the_ribbon() {
 fn the_preset_round_trips_through_the_sliders() {
     let mut store = ph2d_editor_core::WidgetStore::default();
     for id in [
-        ph2d_editor_core::ids::VECTOR_EXPAND_W_START,
-        ph2d_editor_core::ids::VECTOR_EXPAND_W_MID,
-        ph2d_editor_core::ids::VECTOR_EXPAND_W_END,
-        ph2d_editor_core::ids::VECTOR_EXPAND_W_POS,
+        ph2d_panel_vector::ids::VECTOR_EXPAND_W_START,
+        ph2d_panel_vector::ids::VECTOR_EXPAND_W_MID,
+        ph2d_panel_vector::ids::VECTOR_EXPAND_W_END,
+        ph2d_panel_vector::ids::VECTOR_EXPAND_W_POS,
     ] {
         store.register(
             id,

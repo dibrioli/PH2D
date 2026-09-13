@@ -47,34 +47,8 @@ mod timeline;
 mod tokens;
 mod topbar;
 mod vector;
-/// Os ids do **AUTO LAYOUT** (plano UI/UX W2, ADR-0153) — irmão de `vector_frame` pelo mesmo teto.
-mod vector_anchors;
-mod vector_appearance;
 /// ⭐ **Os ids do ESQUELETO** (estudo 42 item 5) — o modo Osso e a seção que prende a forma a ele.
 mod vector_bone;
-/// Os ids da seção **Contour** (pesquisa `20_*` #9) — irmão de `vector` pelo teto de 700 LOC.
-mod vector_bool;
-mod vector_contour;
-/// **Os ids do CORTE** (plano 25 §7, W4) — a família que muda a TOPOLOGIA de um caminho.
-mod vector_cut;
-/// Os ids da seção **Filters** (FX raster, plano 24) — irmão de `vector` pelo teto de 700 LOC.
-mod vector_filters;
-mod vector_frame;
-mod vector_layout;
-mod vector_morph;
-/// Os ids da seção **Pattern on Path** (plano 23) — irmão de `vector` pelo teto de 700 LOC.
-mod vector_patternpath;
-mod vector_snap;
-mod vector_states;
-/// Os ids da seção **Symmetry** (a simetria de desenho, plano 25 §9 W6.3) — irmão de `vector`
-/// pelo teto de 700 LOC.
-mod vector_symmetry;
-/// Os ids da seção **Text** — irmão de `vector` pelo teto de 700 LOC.
-mod vector_text;
-/// Os ids da seção **Text on Path** — irmão de `vector` pelo teto de 700 LOC.
-mod vector_textpath;
-mod vector_texture_pattern;
-mod vector_width;
 mod wet_tuning;
 
 pub use asset_browser::*;
@@ -98,22 +72,5 @@ pub use timeline::*;
 pub use tokens::*;
 pub use topbar::*;
 pub use vector::*;
-pub use vector_anchors::*;
-pub use vector_appearance::*;
 pub use vector_bone::*;
-pub use vector_bool::*;
-pub use vector_contour::*;
-pub use vector_cut::*;
-pub use vector_filters::*;
-pub use vector_frame::*;
-pub use vector_layout::*;
-pub use vector_morph::*;
-pub use vector_patternpath::*;
-pub use vector_snap::*;
-pub use vector_states::*;
-pub use vector_symmetry::*;
-pub use vector_text::*;
-pub use vector_textpath::*;
-pub use vector_texture_pattern::*;
-pub use vector_width::*;
 pub use wet_tuning::*;

@@ -33,7 +33,6 @@
 //! O primeiro clique arma e captura a régua.
 
 use ph2d_ecs::{Entity, SimWorld, VecAnchors};
-use ph2d_editor_core::ids;
 use ph2d_panel_vector::state::AnchorState;
 use ph2d_vec_scene::{VecPathId, VecScene};
 
@@ -41,19 +40,19 @@ use ph2d_vec_entities::entities::VecEntityMap;
 
 /// Horizontal: `(chip, [min, max])` no eixo X. `0` = esquerda, `1` = direita.
 const H: &[(ph2d_editor_core::NodeId, [f64; 2])] = &[
-    (ids::VECTOR_ANCHOR_H_START, [0.0, 0.0]),
-    (ids::VECTOR_ANCHOR_H_CENTER, [0.5, 0.5]),
-    (ids::VECTOR_ANCHOR_H_END, [1.0, 1.0]),
-    (ids::VECTOR_ANCHOR_H_STRETCH, [0.0, 1.0]),
+    (ph2d_panel_vector::ids::VECTOR_ANCHOR_H_START, [0.0, 0.0]),
+    (ph2d_panel_vector::ids::VECTOR_ANCHOR_H_CENTER, [0.5, 0.5]),
+    (ph2d_panel_vector::ids::VECTOR_ANCHOR_H_END, [1.0, 1.0]),
+    (ph2d_panel_vector::ids::VECTOR_ANCHOR_H_STRETCH, [0.0, 1.0]),
 ];
 
 /// Vertical: `(chip, [min, max])` no eixo Y. ⚠️ **`Top` é `1`** — o documento é Y-up, e é aqui que
 /// a palavra do artista vira o número do motor.
 const V: &[(ph2d_editor_core::NodeId, [f64; 2])] = &[
-    (ids::VECTOR_ANCHOR_V_START, [1.0, 1.0]),
-    (ids::VECTOR_ANCHOR_V_CENTER, [0.5, 0.5]),
-    (ids::VECTOR_ANCHOR_V_END, [0.0, 0.0]),
-    (ids::VECTOR_ANCHOR_V_STRETCH, [0.0, 1.0]),
+    (ph2d_panel_vector::ids::VECTOR_ANCHOR_V_START, [1.0, 1.0]),
+    (ph2d_panel_vector::ids::VECTOR_ANCHOR_V_CENTER, [0.5, 0.5]),
+    (ph2d_panel_vector::ids::VECTOR_ANCHOR_V_END, [0.0, 0.0]),
+    (ph2d_panel_vector::ids::VECTOR_ANCHOR_V_STRETCH, [0.0, 1.0]),
 ];
 
 /// O que um clique num chip de âncora PEDE: o par `[min, max]` para um dos eixos.

@@ -72,7 +72,7 @@ impl crate::App {
                 // O slider volta ao zero: a forma nova não tem offset vivo, e um slider
                 // parado em +40% sobre ela mentiria sobre o que está na cena.
                 hero.store.set_slider_value(
-                    ph2d_editor_core::ids::VECTOR_EXPAND_OFFSET,
+                    ph2d_panel_vector::ids::VECTOR_EXPAND_OFFSET,
                     ph2d_tool_vector::params::offset_frac_to_slider(0.0),
                 );
             } else {
@@ -80,7 +80,7 @@ impl crate::App {
                 // a MESMA fonte que o chip mostra —, fração × escala da seleção atual.
                 let d = hero
                     .store
-                    .slider(ph2d_editor_core::ids::VECTOR_EXPAND_OFFSET)
+                    .slider(ph2d_panel_vector::ids::VECTOR_EXPAND_OFFSET)
                     .map_or(ph2d_tool_vector::params::OFFSET_DEFAULT_FRAC, |(_, v)| {
                         ph2d_tool_vector::params::slider_to_offset_frac(v)
                     })
@@ -108,7 +108,7 @@ impl crate::App {
                 // recentra o slider — cada aplicação offseta pelo valor mostrado e zera.
                 if matches!(cmd, crate::vec_expand::Expand::Offset { .. }) {
                     hero.store.set_slider_value(
-                        ph2d_editor_core::ids::VECTOR_EXPAND_OFFSET,
+                        ph2d_panel_vector::ids::VECTOR_EXPAND_OFFSET,
                         ph2d_tool_vector::params::offset_frac_to_slider(0.0),
                     );
                 }

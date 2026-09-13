@@ -65,7 +65,7 @@ fn list(
     for (i, (row, &id)) in info
         .rows
         .iter()
-        .zip(core_ids::INSP_ACTION_ROW.iter())
+        .zip(crate::ids::INSP_ACTION_ROW.iter())
         .enumerate()
     {
         let rect = Rect::new(x, cur_y, w, ROW_H);
@@ -127,7 +127,7 @@ fn buttons(
     y: f32,
     info: &InspectorActionInfo,
 ) -> f32 {
-    let can_add = info.rows.len() < core_ids::INSP_ACTION_ROW.len();
+    let can_add = info.rows.len() < crate::ids::INSP_ACTION_ROW.len();
     let can_remove = !info.rows.is_empty();
     let n = usize::from(can_add) + usize::from(can_remove);
     if n == 0 {
@@ -173,7 +173,7 @@ fn buttons(
 /// que o despacho lê com `position()`. ⚠️ `zip` com os rótulos do snapshot: uma lista de rótulos
 /// mais curta perde as excedentes em vez de as pintar sem nome.
 pub(crate) fn verb_options(labels: &[String]) -> Vec<DropdownOption<u8>> {
-    core_ids::INSP_ACTION_VERB
+    crate::ids::INSP_ACTION_VERB
         .iter()
         .enumerate()
         .zip(labels.iter())

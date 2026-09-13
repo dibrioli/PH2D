@@ -100,8 +100,14 @@ fn the_three_strategy_buttons_are_painted_and_hit_registered() {
     let (_host, _state, rects) = painted(atlas_sprite(true));
     for (label, id) in [
         ("Atlas", ids::INSP_RENDER_STRATEGY_ATLAS),
-        ("Individual", ids::INSP_RENDER_STRATEGY_INDIVIDUAL),
-        ("Hand-packed", ids::INSP_RENDER_STRATEGY_HANDPACKED),
+        (
+            "Individual",
+            ph2d_panel_inspector::ids::INSP_RENDER_STRATEGY_INDIVIDUAL,
+        ),
+        (
+            "Hand-packed",
+            ph2d_panel_inspector::ids::INSP_RENDER_STRATEGY_HANDPACKED,
+        ),
     ] {
         let hit = rects.iter().find(|(rid, _)| *rid == id);
         let Some((_, r)) = hit else {
@@ -123,11 +129,11 @@ fn the_three_strategy_buttons_are_painted_and_hit_registered() {
 fn each_strategy_button_raises_its_own_change() {
     for (id, want) in [
         (
-            ids::INSP_RENDER_STRATEGY_INDIVIDUAL,
+            ph2d_panel_inspector::ids::INSP_RENDER_STRATEGY_INDIVIDUAL,
             RequestedSpriteStrategy::Individual,
         ),
         (
-            ids::INSP_RENDER_STRATEGY_HANDPACKED,
+            ph2d_panel_inspector::ids::INSP_RENDER_STRATEGY_HANDPACKED,
             RequestedSpriteStrategy::HandPacked,
         ),
     ] {

@@ -315,7 +315,7 @@ fn populate_sprite_sheet(store: &mut WidgetStore) {
     //
     // ⚠️ Por isso ela também **não** aparece em nenhum `sync`: não há mundo de onde a semear.
     store.register(
-        ids::INSP_SHEET_PREVIEW,
+        crate::ids::INSP_SHEET_PREVIEW,
         InteractiveState::Checkbox {
             state: CheckboxState::Normal,
             value: CheckboxValue::Unchecked,
@@ -506,8 +506,8 @@ fn populate_name_editor(store: &mut WidgetStore) {
 fn populate_render_strategy(store: &mut WidgetStore) {
     for id in [
         ids::INSP_RENDER_STRATEGY_ATLAS,
-        ids::INSP_RENDER_STRATEGY_INDIVIDUAL,
-        ids::INSP_RENDER_STRATEGY_HANDPACKED,
+        crate::ids::INSP_RENDER_STRATEGY_INDIVIDUAL,
+        crate::ids::INSP_RENDER_STRATEGY_HANDPACKED,
     ] {
         store.register(
             id,

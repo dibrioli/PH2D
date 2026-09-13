@@ -35,7 +35,7 @@ const VIEWPORT: Rect = Rect {
 };
 
 /// Quantos eixos a fixtura publica — o tecto MAIS folga, para que o excedente exista.
-const PUBLISHED: usize = ph2d_editor_core::ids::MAX_TEXT_VARIATION_AXES + 6;
+const PUBLISHED: usize = ph2d_panel_vector::ids::MAX_TEXT_VARIATION_AXES + 6;
 
 fn publish_axes(n: usize) {
     ph2d_panel_vector::set_current_text_visible(true);
@@ -67,7 +67,7 @@ fn the_panel_never_paints_an_axis_row_nobody_registers() {
             .painted_rect::<VectorPanel>(
                 &mut st,
                 VIEWPORT,
-                ph2d_editor_core::ids::vector_text_axis_id(i),
+                ph2d_panel_vector::ids::vector_text_axis_id(i),
             )
             .is_some()
         {
@@ -86,7 +86,7 @@ fn the_panel_never_paints_an_axis_row_nobody_registers() {
     let over: Vec<usize> = painted
         .iter()
         .copied()
-        .filter(|&i| i >= ph2d_editor_core::ids::MAX_TEXT_VARIATION_AXES)
+        .filter(|&i| i >= ph2d_panel_vector::ids::MAX_TEXT_VARIATION_AXES)
         .collect();
     assert!(
         over.is_empty(),
@@ -96,7 +96,7 @@ fn the_panel_never_paints_an_axis_row_nobody_registers() {
          \n\
          A cura não é subir o tecto — é o pintor consultá-lo. As duas lentes (o que se pinta e o \
          que se regista) têm de ser a mesma.",
-        ph2d_editor_core::ids::MAX_TEXT_VARIATION_AXES
+        ph2d_panel_vector::ids::MAX_TEXT_VARIATION_AXES
     );
 }
 
@@ -115,7 +115,7 @@ fn a_font_with_two_axes_gets_exactly_two_rows() {
             host.painted_rect::<VectorPanel>(
                 &mut st,
                 VIEWPORT,
-                ph2d_editor_core::ids::vector_text_axis_id(i)
+                ph2d_panel_vector::ids::vector_text_axis_id(i)
             )
             .is_some(),
             "o eixo {i} de uma fonte com dois eixos não foi pintado"
@@ -125,7 +125,7 @@ fn a_font_with_two_axes_gets_exactly_two_rows() {
         host.painted_rect::<VectorPanel>(
             &mut st,
             VIEWPORT,
-            ph2d_editor_core::ids::vector_text_axis_id(2)
+            ph2d_panel_vector::ids::vector_text_axis_id(2)
         )
         .is_none(),
         "foi pintada uma terceira fileira para uma fonte que publica dois eixos"

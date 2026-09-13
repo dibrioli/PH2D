@@ -1,9 +1,12 @@
 //! **Os ids da MOLDURA** (plano UI/UX W0) — irmão de [`super::vector`] pelo teto de 700 LOC, e o
 //! corte é por assunto: aqui mora tudo o que o contêiner precisa e nada mais.
+//!
+//! ⚠️ **Desceu de `ph2d-editor-core/src/ids/chrome/vector_frame.rs` em 2026-09-13** (auditoria de arquitectura
+//! A5b): quem LÊ estes ids mora nesta crate, e a fundação que 60 crates recompilam deixou de os
+//! carregar.
 
 use ph2d_a11y::NodeId;
-
-use crate::ids::hash_node_id;
+use ph2d_tool_registry::hash_node_id;
 
 /// Os dois chips de **Clip content** (o par segmentado Off/On).
 ///
@@ -11,6 +14,7 @@ use crate::ids::hash_node_id;
 /// [`VECTOR_SECTION_CLIP`], sobre qualquer forma fechada. Renomeá-los mudaria o `hash_node_id` —
 /// que é o id que o a11y e os testes de costura conhecem — para não mudar comportamento nenhum.
 pub const VECTOR_FRAME_CLIP_OFF: NodeId = hash_node_id("vector.frame.clip.off");
+
 /// Ver [`VECTOR_FRAME_CLIP_OFF`].
 pub const VECTOR_FRAME_CLIP_ON: NodeId = hash_node_id("vector.frame.clip.on");
 
@@ -21,5 +25,6 @@ pub const VECTOR_FRAME_CLIP_ON: NodeId = hash_node_id("vector.frame.clip.on");
 /// porque o painel é uma coisa PERSISTENTE: um botão diria *"abra"* e não teria o que dizer com
 /// ele já aberto, que é o clique-que-não-faz-nada deste repo.
 pub const VECTOR_FRAME_PANEL_OFF: NodeId = hash_node_id("vector.frame.panel.off");
+
 /// Ver [`VECTOR_FRAME_PANEL_OFF`].
 pub const VECTOR_FRAME_PANEL_ON: NodeId = hash_node_id("vector.frame.panel.on");

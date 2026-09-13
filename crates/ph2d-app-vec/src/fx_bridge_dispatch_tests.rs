@@ -4,7 +4,6 @@
 //! classifica vira um botão pintado e inerte, e nenhum teste de unidade do motor o vê.
 
 use super::*;
-use ph2d_editor_core::ids as i;
 use ph2d_vec_scene::effect::PathEffect;
 use ph2d_vec_scene::{VecPath, VecVertex};
 
@@ -95,8 +94,14 @@ fn every_id_the_panel_can_paint_is_classified() {
 /// Um id de FORA da seção não é classificado — senão a seção roubaria cliques dos vizinhos.
 #[test]
 fn a_foreign_id_is_not_claimed() {
-    assert_eq!(classify_click(i::VECTOR_ENVELOPE_RUN), None);
-    assert_eq!(classify_param(i::VECTOR_ENVELOPE_BEND), None);
+    assert_eq!(
+        classify_click(ph2d_panel_vector::ids::VECTOR_ENVELOPE_RUN),
+        None
+    );
+    assert_eq!(
+        classify_param(ph2d_panel_vector::ids::VECTOR_ENVELOPE_BEND),
+        None
+    );
 }
 
 /// **As linhas e os tipos não se confundem**: o id da linha 1 não é o da linha 0.

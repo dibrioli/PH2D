@@ -13,7 +13,6 @@
 //! under the mouse; this is the bug the Enio reported), and routed-nowhere.
 
 use ph2d_editor_core::action_bus::EditorAction;
-use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::tool::PanelEvent;
 use ph2d_editor_core::zones::Rect;
@@ -62,7 +61,7 @@ fn the_motion_path_toggle_is_painted_and_clicks_through_to_the_shell() {
     let regs = paint(&mut host, &mut state, transport(false));
     let r = regs
         .iter()
-        .find(|(w, _)| *w == ids::TIMELINE_MOTION_PATH)
+        .find(|(w, _)| *w == ph2d_panel_timeline::ids::TIMELINE_MOTION_PATH)
         .map(|(_, r)| *r)
         .expect("the Motion Path toggle was painted but never hit-registered");
 
@@ -73,7 +72,7 @@ fn the_motion_path_toggle_is_painted_and_clicks_through_to_the_shell() {
     let evs = host.click_at(cx, cy);
     let toggled = evs
         .iter()
-        .find(|e| matches!(e, WidgetEvent::Toggled(id) if *id == ids::TIMELINE_MOTION_PATH))
+        .find(|e| matches!(e, WidgetEvent::Toggled(id) if *id == ph2d_panel_timeline::ids::TIMELINE_MOTION_PATH))
         .copied()
         .unwrap_or_else(|| {
             panic!(
@@ -86,7 +85,10 @@ fn the_motion_path_toggle_is_painted_and_clicks_through_to_the_shell() {
     host.apply_panel_event::<TimelinePanel>(&mut state, toggled);
     assert_eq!(
         timeline_events(&mut host),
-        vec![PanelEvent::Toggle(ids::TIMELINE_MOTION_PATH, true)],
+        vec![PanelEvent::Toggle(
+            ph2d_panel_timeline::ids::TIMELINE_MOTION_PATH,
+            true
+        )],
         "clicking Motion Path must reach the shell so it converts the selected object"
     );
 }
@@ -102,7 +104,7 @@ fn the_painted_switch_reflects_the_selected_objects_mode() {
 
         let (_, on) = host
             .store()
-            .toggle(ids::TIMELINE_MOTION_PATH)
+            .toggle(ph2d_panel_timeline::ids::TIMELINE_MOTION_PATH)
             .expect("the Motion Path toggle is not registered — check populate.rs");
         assert_eq!(
             on, is_path,

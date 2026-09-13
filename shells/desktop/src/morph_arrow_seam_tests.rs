@@ -107,7 +107,7 @@ fn the_arrow_click_reaches_the_world() {
     // o que ela faz no editor: é o report do Enio (*"as setas do teclado movendo as formas"*).
     for (needle, what) in [
         (
-            "*id == ph2d_editor_core::ids::VECTOR_MORPH_PREVIEW",
+            "*id == ph2d_panel_vector::ids::VECTOR_MORPH_PREVIEW",
             "RECONHECER o clique no interruptor",
         ),
         (

@@ -34,7 +34,7 @@ fn scene(kind: WidgetKind, name: &str, bound: bool) -> (SimWorld, VecEntityMap, 
 fn store_with(name: &str, st: InteractiveState) -> WidgetStore {
     let mut s = WidgetStore::with_capacity(8);
     s.register(
-        ph2d_editor_core::ids::authored_row_id(&crate::ui_panel_spec::key_of(name)),
+        ph2d_panel_authored::ids::authored_row_id(&crate::ui_panel_spec::key_of(name)),
         st,
     );
     s

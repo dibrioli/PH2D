@@ -381,7 +381,7 @@ fn populate_shape(store: &mut WidgetStore) {
     // default glyph size. The shell drain maps the track back to a size.
     slider_chip(
         store,
-        ph2d_editor_core::ids::VECTOR_TEXT_SIZE,
+        crate::ids::VECTOR_TEXT_SIZE,
         ids::VECTOR_TEXT_SIZE_NUM,
         text_size_to_slider(DEFAULT_TEXT_SIZE),
         DEFAULT_TEXT_SIZE,
@@ -392,7 +392,7 @@ fn populate_shape(store: &mut WidgetStore) {
     // default weight (Regular 400).
     slider_chip(
         store,
-        ph2d_editor_core::ids::VECTOR_TEXT_WEIGHT,
+        crate::ids::VECTOR_TEXT_WEIGHT,
         ids::VECTOR_TEXT_WEIGHT_NUM,
         text_weight_to_slider(DEFAULT_TEXT_WEIGHT),
         DEFAULT_TEXT_WEIGHT,
@@ -400,13 +400,13 @@ fn populate_shape(store: &mut WidgetStore) {
         TEXT_WEIGHT_SLIDER_OFFSET,
     );
     // Font-family picker prev / next (`<` / `>`) — cycle the chosen system font.
-    button(store, ph2d_editor_core::ids::VECTOR_TEXT_FONT_PREV);
-    button(store, ph2d_editor_core::ids::VECTOR_TEXT_FONT_NEXT);
-    button(store, ph2d_editor_core::ids::VECTOR_TEXT_FONT_IMPORT);
+    button(store, crate::ids::VECTOR_TEXT_FONT_PREV);
+    button(store, crate::ids::VECTOR_TEXT_FONT_NEXT);
+    button(store, crate::ids::VECTOR_TEXT_FONT_IMPORT);
     // Font dropdown chip (between the arrows): a `Dropdown` so the generic
     // open/close dispatch toggles its popover (the styled family list).
     store.register_if_absent(
-        ph2d_editor_core::ids::VECTOR_TEXT_FONT_DD,
+        crate::ids::VECTOR_TEXT_FONT_DD,
         InteractiveState::Dropdown {
             state: DropdownState::Normal,
             open: false,
@@ -417,23 +417,23 @@ fn populate_shape(store: &mut WidgetStore) {
     // **Width: Auto | Fixed** + a largura. Registados SEMPRE, inclusive o slider que só é
     // pintado no modo Fixed: o `populate` corre uma vez na instalação do painel, e registar "o
     // que está visível agora" deixaria o slider morto sob o rato no primeiro clique em Fixed.
-    button(store, ph2d_editor_core::ids::VECTOR_TEXT_WRAP_AUTO);
-    button(store, ph2d_editor_core::ids::VECTOR_TEXT_WRAP_FIXED);
+    button(store, crate::ids::VECTOR_TEXT_WRAP_AUTO);
+    button(store, crate::ids::VECTOR_TEXT_WRAP_FIXED);
     slider_chip(
         store,
-        ph2d_editor_core::ids::VECTOR_TEXT_WRAP_W,
+        crate::ids::VECTOR_TEXT_WRAP_W,
         ids::VECTOR_TEXT_WRAP_W_NUM,
         text_wrap_to_slider(DEFAULT_TEXT_WRAP),
         DEFAULT_TEXT_WRAP,
         TEXT_WRAP_SLIDER_SCALE,
         TEXT_WRAP_SLIDER_OFFSET,
     );
-    button(store, ph2d_editor_core::ids::VECTOR_TEXT_ALIGN_LEFT);
-    button(store, ph2d_editor_core::ids::VECTOR_TEXT_ALIGN_CENTER);
-    button(store, ph2d_editor_core::ids::VECTOR_TEXT_ALIGN_RIGHT);
+    button(store, crate::ids::VECTOR_TEXT_ALIGN_LEFT);
+    button(store, crate::ids::VECTOR_TEXT_ALIGN_CENTER);
+    button(store, crate::ids::VECTOR_TEXT_ALIGN_RIGHT);
     slider_chip(
         store,
-        ph2d_editor_core::ids::VECTOR_TEXT_LINE_HEIGHT,
+        crate::ids::VECTOR_TEXT_LINE_HEIGHT,
         ids::VECTOR_TEXT_LINE_HEIGHT_NUM,
         text_line_height_to_slider(DEFAULT_TEXT_LINE_HEIGHT),
         DEFAULT_TEXT_LINE_HEIGHT,
@@ -442,7 +442,7 @@ fn populate_shape(store: &mut WidgetStore) {
     );
     slider_chip(
         store,
-        ph2d_editor_core::ids::VECTOR_TEXT_TRACKING,
+        crate::ids::VECTOR_TEXT_TRACKING,
         ids::VECTOR_TEXT_TRACKING_NUM,
         text_tracking_to_slider(DEFAULT_TEXT_TRACKING),
         DEFAULT_TEXT_TRACKING,
@@ -452,9 +452,9 @@ fn populate_shape(store: &mut WidgetStore) {
     // Variation-axis number fields (one per non-wght axis the current font exposes).
     // Value + range are seeded per-frame from the published axes (paint Phase B), so
     // the fixed slots adapt to whatever axes the current font has.
-    for i in 0..ph2d_editor_core::ids::MAX_TEXT_VARIATION_AXES {
+    for i in 0..crate::ids::MAX_TEXT_VARIATION_AXES {
         store.register(
-            ph2d_editor_core::ids::vector_text_axis_id(i),
+            crate::ids::vector_text_axis_id(i),
             InteractiveState::NumberInput {
                 state: TextInputState::Normal,
                 value: 0.0,
@@ -472,13 +472,13 @@ fn populate_shape(store: &mut WidgetStore) {
 /// Arrange (duplicate / z-order / flip / rotate), reshape de path, e o botão Close.
 fn populate_arrange(store: &mut WidgetStore) {
     // Arrange: Duplicate + z-order restack + Flip buttons (act on the selected path).
-    button(store, ph2d_editor_core::ids::VECTOR_ARRANGE_DUPLICATE);
+    button(store, crate::ids::VECTOR_ARRANGE_DUPLICATE);
     // **O Z-INDEX global.** ⚠️ **Sem `set_number_range`**, e é a decisão dos campos do Transform
     // pelo mesmo motivo: o teto real é o do `ZIndexOverride::Z_MAX`, aplicado na PORTA de escrita
     // da shell (onde a regra é do documento), e um clamp no widget seria a segunda resposta —
     // divergindo no dia em que o componente mudasse de faixa.
     store.register(
-        ph2d_editor_core::ids::VECTOR_ARRANGE_Z,
+        crate::ids::VECTOR_ARRANGE_Z,
         InteractiveState::NumberInput {
             state: TextInputState::Normal,
             value: 0.0,
@@ -502,7 +502,7 @@ fn populate_arrange(store: &mut WidgetStore) {
     button(store, ph2d_tool_vector::ids::VECTOR_PATH_SHARPEN);
     button(store, ph2d_tool_vector::ids::VECTOR_PATH_SIMPLIFY);
     button(store, ph2d_tool_vector::ids::VECTOR_PATH_SUBDIVIDE);
-    button(store, ph2d_editor_core::ids::VECTOR_PATH_CLOSE);
+    button(store, crate::ids::VECTOR_PATH_CLOSE);
 
     // Close (X) button.
     button(store, ph2d_editor_core::ids::VECTOR_CLOSE);
@@ -517,12 +517,12 @@ fn populate_transform_fields(store: &mut WidgetStore) {
         ph2d_tool_vector::ids::VECTOR_TRANSFORM_Y,
         ph2d_tool_vector::ids::VECTOR_TRANSFORM_W,
         ph2d_tool_vector::ids::VECTOR_TRANSFORM_H,
-        ph2d_editor_core::ids::VECTOR_TRANSFORM_R,
+        crate::ids::VECTOR_TRANSFORM_R,
         // As duas do NÓ: mesmo widget, mesma rota, mesma vida sob o mouse. Elas entram nesta
         // lista e não numa nova porque a pergunta é a mesma — *este id é um campo numérico que a
         // shell possui?* —, e uma segunda lista é como a terceira nasce sem o `register`.
-        ph2d_editor_core::ids::VECTOR_VERT_X,
-        ph2d_editor_core::ids::VECTOR_VERT_Y,
+        crate::ids::VECTOR_VERT_X,
+        crate::ids::VECTOR_VERT_Y,
     ] {
         // A lei (campo SEM faixa) vive na porta, e não neste laço — ver [`world_number_field`].
         world_number_field(store, id, 0.0);
@@ -532,7 +532,7 @@ fn populate_transform_fields(store: &mut WidgetStore) {
     // este painel já pagou cinco vezes (os pills de modo, o Cut, a simetria, o layout, as
     // âncoras), e o seam é o que o prova.
     store.register(
-        ph2d_editor_core::ids::VECTOR_TRANSFORM_RESIZE_BOX,
+        crate::ids::VECTOR_TRANSFORM_RESIZE_BOX,
         InteractiveState::Button {
             state: ButtonState::Normal,
         },
@@ -541,7 +541,7 @@ fn populate_transform_fields(store: &mut WidgetStore) {
     // mesma razão que o irmão acima: sem ele a caixa fica pintada, com hit-rect, e MORTA sob o
     // rato — a checagem de focabilidade mora no store.
     store.register(
-        ph2d_editor_core::ids::VECTOR_STROKE_PRESENT,
+        crate::ids::VECTOR_STROKE_PRESENT,
         InteractiveState::Button {
             state: ButtonState::Normal,
         },

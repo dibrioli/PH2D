@@ -14,10 +14,10 @@ pub(super) fn frame_controls(store: &mut WidgetStore) {
     // nasce registado, pintado e vivo, sem passar por três listas.
     let presets = DEVICE_PRESETS.iter().map(|p| p.id);
     for id in presets.chain([
-        ph2d_editor_core::ids::VECTOR_FRAME_CLIP_OFF,
-        ph2d_editor_core::ids::VECTOR_FRAME_CLIP_ON,
-        ph2d_editor_core::ids::VECTOR_FRAME_PANEL_OFF,
-        ph2d_editor_core::ids::VECTOR_FRAME_PANEL_ON,
+        crate::ids::VECTOR_FRAME_CLIP_OFF,
+        crate::ids::VECTOR_FRAME_CLIP_ON,
+        crate::ids::VECTOR_FRAME_PANEL_OFF,
+        crate::ids::VECTOR_FRAME_PANEL_ON,
     ]) {
         store.register(
             id,

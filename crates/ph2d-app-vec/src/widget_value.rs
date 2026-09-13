@@ -114,7 +114,7 @@ pub fn reconcile(
         else {
             continue;
         };
-        let row = ph2d_editor_core::ids::authored_row_id(&crate::ui_panel_spec::key_of(&name));
+        let row = ph2d_panel_authored::ids::authored_row_id(&crate::ui_panel_spec::key_of(&name));
         // Um controle que o painel COMMITADO ainda não carrega não tem posição viva — semear o
         // mundo a partir do nada escreveria uma edição que ninguém fez.
         let Some(live) = store.get(row).and_then(value_of) else {

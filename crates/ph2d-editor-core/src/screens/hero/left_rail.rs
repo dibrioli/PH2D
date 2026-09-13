@@ -18,8 +18,8 @@
 //! lives in the store; dispatch in `chrome/rail_tools.rs` + `chrome/rail_painter_tools.rs`).
 
 use super::HeroLayout;
-use super::ids;
 use crate::icons::IconId;
+use crate::ids;
 use crate::interaction::{HitIndex, InteractiveState, WidgetEvent, WidgetStore};
 use crate::paint::{fill_rounded_rect, resolve};
 use crate::widget::{ButtonState, ToolRail, ToolRailEntry, paint_tool_rail_t};

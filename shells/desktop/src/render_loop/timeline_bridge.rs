@@ -203,7 +203,6 @@ pub(crate) fn intent_for_transport(
     playhead: &Playhead,
 ) -> Option<TimelineIntent> {
     use TimelineIntent as I;
-    use ph2d_editor_core::ids;
     let fps = timeline.doc.fps_display;
     // **"The end" is the end of what THIS VIEW shows** (`TimelineDoc::view_end_seconds`):
     // the active clip on Keys, the last strip on Arrange. Both go-to-end and a freshly
@@ -229,36 +228,53 @@ pub(crate) fn intent_for_transport(
         // already paints the button dead and unhittable — this layer keeps a
         // synthetic/stale click from starting a clock the view says cannot run
         // ([[feedback_layered_defenses_need_per_layer_gates]]).
-        PanelEvent::Click(id) if id == ids::TIMELINE_PLAY && timeline.containers_list => None,
-        PanelEvent::Click(id) if id == ids::TIMELINE_PLAY => Some(I::TogglePlay),
+        PanelEvent::Click(id)
+            if id == ph2d_panel_timeline::ids::TIMELINE_PLAY && timeline.containers_list =>
+        {
+            None
+        }
+        PanelEvent::Click(id) if id == ph2d_panel_timeline::ids::TIMELINE_PLAY => {
+            Some(I::TogglePlay)
+        }
         // Go-to-start is 0 in every mode — the local start of whatever clock the shell
         // hands us (scene, clip, or container). (In container mode the clock is the
         // container's own, so 0 is its interior start, not the scene's.)
-        PanelEvent::Click(id) if id == ids::TIMELINE_GO_START => Some(I::Scrub(0.0)),
-        PanelEvent::Click(id) if id == ids::TIMELINE_ADD_MARKER => Some(I::AddMarker {
-            t_seconds: playhead.time(),
-            label: format!("M{}", timeline.doc.markers().len() + 1),
-        }),
-        PanelEvent::Click(id) if id == ids::TIMELINE_GO_END => {
+        PanelEvent::Click(id) if id == ph2d_panel_timeline::ids::TIMELINE_GO_START => {
+            Some(I::Scrub(0.0))
+        }
+        PanelEvent::Click(id) if id == ph2d_panel_timeline::ids::TIMELINE_ADD_MARKER => {
+            Some(I::AddMarker {
+                t_seconds: playhead.time(),
+                label: format!("M{}", timeline.doc.markers().len() + 1),
+            })
+        }
+        PanelEvent::Click(id) if id == ph2d_panel_timeline::ids::TIMELINE_GO_END => {
             Some(I::Scrub(container.map_or_else(duration, container_len)))
         }
-        PanelEvent::Click(id) if id == ids::TIMELINE_PREV_FRAME => {
+        PanelEvent::Click(id) if id == ph2d_panel_timeline::ids::TIMELINE_PREV_FRAME => {
             Some(I::SeekFrame(playhead.frame(fps) - 1))
         }
-        PanelEvent::Click(id) if id == ids::TIMELINE_NEXT_FRAME => {
+        PanelEvent::Click(id) if id == ph2d_panel_timeline::ids::TIMELINE_NEXT_FRAME => {
             Some(I::SeekFrame(playhead.frame(fps) + 1))
         }
-        PanelEvent::SetValue(id, v) if id == ids::TIMELINE_TIME_NUM => Some(I::Scrub(v)),
-        PanelEvent::SetValue(id, v) if id == ids::TIMELINE_RULER => Some(I::Scrub(v)),
-        PanelEvent::SetValue(id, v) if id == ids::TIMELINE_FRAME_NUM => {
+        PanelEvent::SetValue(id, v) if id == ph2d_panel_timeline::ids::TIMELINE_TIME_NUM => {
+            Some(I::Scrub(v))
+        }
+        PanelEvent::SetValue(id, v) if id == ph2d_panel_timeline::ids::TIMELINE_RULER => {
+            Some(I::Scrub(v))
+        }
+        PanelEvent::SetValue(id, v) if id == ph2d_panel_timeline::ids::TIMELINE_FRAME_NUM => {
             Some(I::SeekFrame(v as i64))
         }
         // Loop and PingPong are ONE loop seen two ways — a range plus what happens
         // at its end. Each toggle sends the whole value, so arming one necessarily
         // disarms the other: there is no state where both are on, and no rule
         // anyone has to remember to enforce.
-        PanelEvent::Toggle(id, on) if id == ids::TIMELINE_LOOP || id == ids::TIMELINE_PINGPONG => {
-            let ping_pong = id == ids::TIMELINE_PINGPONG;
+        PanelEvent::Toggle(id, on)
+            if id == ph2d_panel_timeline::ids::TIMELINE_LOOP
+                || id == ph2d_panel_timeline::ids::TIMELINE_PINGPONG =>
+        {
+            let ping_pong = id == ph2d_panel_timeline::ids::TIMELINE_PINGPONG;
             // Inside a container the toggle writes the CONTAINER's OWN loop, over its
             // local `[0, length)` — persisted on the `NamedContainer`, independent of
             // the scene's and every clip's (Enio, 2026-07-22). The leak this replaces
@@ -283,15 +299,21 @@ pub(crate) fn intent_for_transport(
                 }
             })
         }
-        PanelEvent::Toggle(id, on) if id == ids::TIMELINE_PHYSICS => {
+        PanelEvent::Toggle(id, on) if id == ph2d_panel_timeline::ids::TIMELINE_PHYSICS => {
             Some(I::SetSimulatePhysics(on))
         }
-        PanelEvent::Toggle(id, on) if id == ids::TIMELINE_AUTOKEY => Some(I::SetAutoKey(on)),
-        PanelEvent::Toggle(id, on) if id == ids::TIMELINE_RECORD => Some(I::SetPerforming(on)),
+        PanelEvent::Toggle(id, on) if id == ph2d_panel_timeline::ids::TIMELINE_AUTOKEY => {
+            Some(I::SetAutoKey(on))
+        }
+        PanelEvent::Toggle(id, on) if id == ph2d_panel_timeline::ids::TIMELINE_RECORD => {
+            Some(I::SetPerforming(on))
+        }
         // TIMELINE_MOTION_PATH is NOT translated here: it is per-object and needs the
         // selection, which this pure translator does not have — the shell resolves the
         // entity and emits `ConvertPositionMode` (mod.rs, mirror of the +Track path).
-        PanelEvent::Toggle(id, on) if id == ids::TIMELINE_SNAP => Some(I::SetFrameSnap(on)),
+        PanelEvent::Toggle(id, on) if id == ph2d_panel_timeline::ids::TIMELINE_SNAP => {
+            Some(I::SetFrameSnap(on))
+        }
         _ => None,
     }
 }
@@ -313,16 +335,16 @@ pub(crate) fn selection_jumps_to_keys(prev: Option<u64>, now: Option<u64>) -> bo
 /// Deliberately excludes the ruler scrub (its value is a fraction of the visible
 /// span, so it can never land off-screen) and the flag toggles.
 pub(crate) fn jumps_the_playhead(ev: &PanelEvent) -> bool {
-    use ph2d_editor_core::ids;
     match *ev {
         PanelEvent::Click(id) => {
-            id == ids::TIMELINE_GO_START
-                || id == ids::TIMELINE_GO_END
-                || id == ids::TIMELINE_PREV_FRAME
-                || id == ids::TIMELINE_NEXT_FRAME
+            id == ph2d_panel_timeline::ids::TIMELINE_GO_START
+                || id == ph2d_panel_timeline::ids::TIMELINE_GO_END
+                || id == ph2d_panel_timeline::ids::TIMELINE_PREV_FRAME
+                || id == ph2d_panel_timeline::ids::TIMELINE_NEXT_FRAME
         }
         PanelEvent::SetValue(id, _) => {
-            id == ids::TIMELINE_TIME_NUM || id == ids::TIMELINE_FRAME_NUM
+            id == ph2d_panel_timeline::ids::TIMELINE_TIME_NUM
+                || id == ph2d_panel_timeline::ids::TIMELINE_FRAME_NUM
         }
         _ => false,
     }

@@ -6,7 +6,7 @@
 //! the user types into the field.
 
 use super::context_menu_overlay::{ROW_H, pad_y};
-use super::ids;
+use crate::ids;
 use crate::interaction::{HitIndex, InteractiveState, WidgetStore};
 use crate::paint::{fill_rounded_rect, paint_text, resolve};
 use crate::widget::{Button, TextInput, paint_button, paint_text_input_with_buffer};

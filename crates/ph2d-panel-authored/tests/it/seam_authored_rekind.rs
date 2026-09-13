@@ -48,7 +48,7 @@ fn row(key: &str, kind: WidgetKind) -> rows::Row {
         kind,
         label: key.to_string(),
         key: key.to_string(),
-        id: ph2d_editor_core::ids::authored_row_id(key),
+        id: ph2d_panel_authored::ids::authored_row_id(key),
         rgba: None,
         icon: None,
         icon_id: None,
@@ -87,7 +87,7 @@ fn a_checkbox_that_was_born_a_button_still_checks() {
         .painted_rect::<AuthoredPanel>(
             &mut st,
             VIEWPORT,
-            ph2d_editor_core::ids::authored_row_id("mine"),
+            ph2d_panel_authored::ids::authored_row_id("mine"),
         )
         .expect("a row nao foi pintada");
     let (cx, cy) = (r.x + r.w * 0.5, r.y + r.h * 0.5);
@@ -99,17 +99,17 @@ fn a_checkbox_that_was_born_a_button_still_checks() {
     assert!(
         matches!(
             h.store()
-                .get(ph2d_editor_core::ids::authored_row_id("mine")),
+                .get(ph2d_panel_authored::ids::authored_row_id("mine")),
             Some(InteractiveState::Checkbox { .. })
         ),
         "o store guardou o tipo ANTIGO: a row veste Checkbox e o estado dela continua o do Button \
          que o `Wear` criou — {:?}",
         h.store()
-            .get(ph2d_editor_core::ids::authored_row_id("mine"))
+            .get(ph2d_panel_authored::ids::authored_row_id("mine"))
     );
     assert_eq!(
         h.store()
-            .checkbox(ph2d_editor_core::ids::authored_row_id("mine"))
+            .checkbox(ph2d_panel_authored::ids::authored_row_id("mine"))
             .map(|c| c.1),
         Some(CheckboxValue::Checked),
         "o clique chegou e a caixa nao ficou marcada"
@@ -152,7 +152,7 @@ fn a_control_that_was_born_a_section_header_no_longer_folds() {
         .painted_rect::<AuthoredPanel>(
             &mut st,
             VIEWPORT,
-            ph2d_editor_core::ids::authored_row_id("mine"),
+            ph2d_panel_authored::ids::authored_row_id("mine"),
         )
         .expect("a row nao foi pintada");
     let (cx, cy) = (r.x + r.w * 0.5, r.y + r.h * 0.5);
@@ -162,7 +162,7 @@ fn a_control_that_was_born_a_section_header_no_longer_folds() {
     }
     assert_eq!(
         h.store()
-            .checkbox(ph2d_editor_core::ids::authored_row_id("mine"))
+            .checkbox(ph2d_panel_authored::ids::authored_row_id("mine"))
             .map(|c| c.1),
         Some(CheckboxValue::Checked),
         "o clique nao marcou a caixa — a marca de SEÇÃO sobreviveu a' troca de tipo e o despacho \
@@ -203,7 +203,7 @@ fn a_control_that_was_born_a_colour_swatch_no_longer_opens_the_picker() {
         .painted_rect::<AuthoredPanel>(
             &mut st,
             VIEWPORT,
-            ph2d_editor_core::ids::authored_row_id("mine"),
+            ph2d_panel_authored::ids::authored_row_id("mine"),
         )
         .expect("a row nao foi pintada");
     let (cx, cy) = (r.x + r.w * 0.5, r.y + r.h * 0.5);
@@ -219,7 +219,7 @@ fn a_control_that_was_born_a_colour_swatch_no_longer_opens_the_picker() {
     );
     assert_eq!(
         h.store()
-            .checkbox(ph2d_editor_core::ids::authored_row_id("mine"))
+            .checkbox(ph2d_panel_authored::ids::authored_row_id("mine"))
             .map(|c| c.1),
         Some(CheckboxValue::Checked),
         "o clique nao marcou a caixa"
@@ -245,7 +245,7 @@ fn every_control_kind_survives_being_born_a_button() {
         let _ = h.paint::<AuthoredPanel>(&mut st, VIEWPORT);
         let got = h
             .store()
-            .get(ph2d_editor_core::ids::authored_row_id("mine"));
+            .get(ph2d_panel_authored::ids::authored_row_id("mine"));
         // O que este tipo PEDE, perguntado a um store limpo pelo mesmo caminho do produto.
         rows::set_live_rows(None);
         let mut fresh = MockPanelHost::with_panel::<AuthoredPanel>();
@@ -255,7 +255,7 @@ fn every_control_kind_survives_being_born_a_button() {
         let _ = fresh.paint::<AuthoredPanel>(&mut st2, VIEWPORT);
         let want = fresh
             .store()
-            .get(ph2d_editor_core::ids::authored_row_id("mine"));
+            .get(ph2d_panel_authored::ids::authored_row_id("mine"));
         assert_eq!(
             got.map(std::mem::discriminant),
             want.map(std::mem::discriminant),
@@ -300,7 +300,7 @@ fn a_row_that_died_does_not_leave_its_value_to_the_next_one_of_the_same_name() {
         .painted_rect::<AuthoredPanel>(
             &mut st,
             VIEWPORT,
-            ph2d_editor_core::ids::authored_row_id("Speed"),
+            ph2d_panel_authored::ids::authored_row_id("Speed"),
         )
         .expect("a row nao foi pintada");
     let (cx, cy) = (r.x + r.w * 0.5, r.y + r.h * 0.5);
@@ -310,7 +310,7 @@ fn a_row_that_died_does_not_leave_its_value_to_the_next_one_of_the_same_name() {
     }
     assert_eq!(
         h.store()
-            .toggle(ph2d_editor_core::ids::authored_row_id("Speed"))
+            .toggle(ph2d_panel_authored::ids::authored_row_id("Speed"))
             .map(|t| t.1),
         Some(true),
         "o gesto nao ligou o toggle — a premissa do gate nao vale"
@@ -326,7 +326,7 @@ fn a_row_that_died_does_not_leave_its_value_to_the_next_one_of_the_same_name() {
 
     assert_eq!(
         h.store()
-            .toggle(ph2d_editor_core::ids::authored_row_id("Speed"))
+            .toggle(ph2d_panel_authored::ids::authored_row_id("Speed"))
             .map(|t| t.1),
         Some(false),
         "o controle NOVO nasceu ligado — ele herdou a posicao de um controle que o artista apagou, \

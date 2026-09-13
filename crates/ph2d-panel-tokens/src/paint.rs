@@ -263,7 +263,7 @@ fn paint_token_row(
     // Token do vetor já documenta.
     let colour = token.resolve(theme);
     let sw = ColorSwatch::new(
-        ids::tokens_swatch_id(row),
+        crate::ids::tokens_swatch_id(row),
         "Design token colour",
         [colour.r, colour.g, colour.b, colour.a],
     )
@@ -271,7 +271,7 @@ fn paint_token_row(
     paint_color_swatch(&sw, swatch_rect, ctx.scene, theme);
     ctx.host
         .hit_index_mut()
-        .register(ids::tokens_swatch_id(row), swatch_rect);
+        .register(crate::ids::tokens_swatch_id(row), swatch_rect);
 
     // ⚠️ Os DOIS lados de um par falhado são marcados, e é o que a `involves` já decide: escurecer
     // o FUNDO quebra a legibilidade do TEXTO, e marcar só o texto mandaria o artista consertar o

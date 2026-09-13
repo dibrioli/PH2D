@@ -12,7 +12,6 @@
 //! despachante decide pelo `is_focusable`, e o ramo `None => false` engole o clique **em
 //! silêncio** — é o defeito que a caça aos knobs mortos de 30/08 mediu em 34 controlos.
 
-use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetStore, format_number};
 use ph2d_editor_core::widget::{CheckboxState, CheckboxValue, TextInputState};
 
@@ -21,7 +20,7 @@ use super::populate::register_button_ids;
 pub(crate) fn populate_timer(store: &mut WidgetStore) {
     // As linhas da lista e os dois botões — todos BOTÕES, porque é o `is_focusable` que decide se
     // o clique chega.
-    register_button_ids(store, &ids::INSP_TIMER_ROW);
+    register_button_ids(store, &crate::ids::INSP_TIMER_ROW);
     register_button_ids(
         store,
         &[crate::ids::INSP_TIMER_ADD, crate::ids::INSP_TIMER_REMOVE],

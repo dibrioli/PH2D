@@ -9,15 +9,15 @@
 
 use crate::event_stack_menus::{lane_menu_click, strip_menu_click};
 use crate::ids;
-use crate::state;
-use crate::{TimelinePanel, state::TimelinePanelState};
-use ph2d_a11y::NodeId;
-use ph2d_editor_core::ids::{
+use crate::ids::{
     TIMELINE_ADD_MARKER, TIMELINE_AUTOKEY, TIMELINE_CLOSE, TIMELINE_FRAME_NUM, TIMELINE_GO_END,
     TIMELINE_GO_START, TIMELINE_LOOP, TIMELINE_MOTION_PATH, TIMELINE_NEXT_FRAME,
     TIMELINE_ONION_SETTINGS, TIMELINE_PHYSICS, TIMELINE_PINGPONG, TIMELINE_PLAY,
     TIMELINE_PREV_FRAME, TIMELINE_RECORD, TIMELINE_RULER, TIMELINE_SNAP, TIMELINE_TIME_NUM,
 };
+use crate::state;
+use crate::{TimelinePanel, state::TimelinePanelState};
+use ph2d_a11y::NodeId;
 /// How long a strip of an EMPTY clip is: a clip with no keys has no duration, and
 /// a strip of zero seconds paints as nothing and cannot be grabbed to fix.
 ///

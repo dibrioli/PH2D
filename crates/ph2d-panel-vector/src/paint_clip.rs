@@ -38,12 +38,12 @@ impl BodyCtx<'_> {
             tr("panel.vector.frame.clip"),
             &[
                 (
-                    ph2d_editor_core::ids::VECTOR_FRAME_CLIP_OFF,
+                    crate::ids::VECTOR_FRAME_CLIP_OFF,
                     tr("panel.vector.frame.clip.off"),
                     !clip,
                 ),
                 (
-                    ph2d_editor_core::ids::VECTOR_FRAME_CLIP_ON,
+                    crate::ids::VECTOR_FRAME_CLIP_ON,
                     tr("panel.vector.frame.clip.on"),
                     clip,
                 ),

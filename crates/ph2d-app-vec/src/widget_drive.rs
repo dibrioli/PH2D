@@ -114,7 +114,7 @@ pub fn resolve(sim: &SimWorld, map: &VecEntityMap, store: &WidgetStore) -> Vec<(
         let Some(name) = w.get::<ph2d_ecs::Name>(e) else {
             continue;
         };
-        let row = ph2d_editor_core::ids::authored_row_id(&crate::ui_panel_spec::key_of(&name.0));
+        let row = ph2d_panel_authored::ids::authored_row_id(&crate::ui_panel_spec::key_of(&name.0));
         // Um widget cuja row não está no painel COMMITADO ainda não tem valor vivo — o vínculo
         // fica dormente em vez de inventar um default e mexer na arte sem ninguém ter tocado nada.
         let Some(drive) = store.get(row).and_then(drive_of) else {

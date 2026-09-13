@@ -41,7 +41,7 @@
 //! novo, o defeito da régua tapada que a wave anterior curou.*
 
 use super::HeroLayout;
-use super::ids;
+use crate::ids;
 use crate::interaction::{ContextMenuKind, HitIndex, InteractiveState, WidgetEvent, WidgetStore};
 use crate::paint::{fill_rounded_rect, paint_text_centered, rect_to_vello, resolve};
 use crate::widget::ButtonState;

@@ -43,7 +43,7 @@ fn options() -> usize {
 
 fn long_list() -> (ph2d_a11y::NodeId, String) {
     let key = "mode".to_string();
-    let id = ph2d_editor_core::ids::authored_row_id(&key);
+    let id = ph2d_panel_authored::ids::authored_row_id(&key);
     rows::set_live_rows(Some(vec![rows::Row {
         kind: WidgetKind::Dropdown,
         label: key.clone(),

@@ -40,12 +40,12 @@ const HALO_PX: f64 = 2.0; // LITERAL-PX-OK: chrome de overlay, espessura de tela
 const MARQUEE_PX: f64 = 1.0; // LITERAL-PX-OK: chrome de overlay, espessura de tela
 
 /// Cor do realce (âmbar do editor) — chrome, não arte.
-const HALO_RGBA: [f32; 4] = [1.0, 0.72, 0.2, 0.95]; // LITERAL-COLOR-OK: overlay de selecao
+const HALO_RGBA: [f32; 4] = ph2d_editor_core::editor_highlight::amber(0.95);
 
 /// Cor do realce de HOVER no modo Segment (§4.C) — o MESMO âmbar, mais fraco: hover é uma
 /// PROMESSA (o que o clique vai pegar), a seleção é um FATO. Distintos por alpha, não por
 /// matiz, senão pareceriam dois estados sem relação.
-const HOVER_RGBA: [f32; 4] = [1.0, 0.72, 0.2, 0.45]; // LITERAL-COLOR-OK: overlay de hover
+const HOVER_RGBA: [f32; 4] = ph2d_editor_core::editor_highlight::amber(0.45);
 /// Espessura do realce de hover, em px de tela (um pouco mais grossa que a seleção, para
 /// aparecer POR BAIXO dela quando o pedaço já está selecionado).
 const HOVER_PX: f64 = 4.0; // LITERAL-PX-OK: chrome de overlay, espessura de tela

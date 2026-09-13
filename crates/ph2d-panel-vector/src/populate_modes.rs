@@ -11,7 +11,7 @@ use ph2d_editor_core::interaction::WidgetStore;
 /// vez pelo `populate`. O **Shape** é o 5º pill: sem ele, escolher uma forma punha a tool em
 /// `DrawMode::Shape` e a fileira de modos ficava TODA apagada.
 pub(super) fn mode_buttons(store: &mut WidgetStore) {
-    button(store, ph2d_editor_core::ids::VECTOR_CONVERT_TO_CURVES);
+    button(store, crate::ids::VECTOR_CONVERT_TO_CURVES);
     button(store, ph2d_tool_vector::ids::VECTOR_MODE_SELECT);
     button(store, ph2d_tool_vector::ids::VECTOR_MODE_NODE);
     button(store, ph2d_tool_vector::ids::VECTOR_MODE_PEN);
@@ -62,10 +62,10 @@ pub(crate) fn populate_morph_arrows(store: &mut WidgetStore) {
     // O botão que CRIA o conjunto: ele é o único controlo da seção quando não há máquina nenhuma.
     button(store, ids::VECTOR_MORPH_STATES_MAKE);
     // ⭐⭐ O interruptor da PRÉ-VISUALIZAÇÃO — o modo em que o teclado é da máquina.
-    button(store, ph2d_editor_core::ids::VECTOR_MORPH_PREVIEW);
+    button(store, crate::ids::VECTOR_MORPH_PREVIEW);
     // ⭐⭐ DESFAZER TUDO — o inverso exacto do botão que faz o conjunto.
     button(store, ids::VECTOR_MORPH_DISSOLVE);
-    for row in 0..ph2d_editor_core::ids::MAX_MORPH_STATES {
+    for row in 0..crate::ids::MAX_MORPH_STATES {
         // ⭐ **O BOTÃO que abre a lista dos eventos** (W11b) — **Dropdown** no store, **botão** na
         // tela. Registá-lo como `Button` faria o clique acender e **nunca abrir lista nenhuma**: é
         // a cicatriz da swatch do painel de tokens e a dos dois números do Input Map.

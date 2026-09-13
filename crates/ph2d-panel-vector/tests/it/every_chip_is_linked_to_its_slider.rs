@@ -59,47 +59,47 @@ const PAIRS: &[(&str, ph2d_a11y::NodeId, ph2d_a11y::NodeId)] = &[
     ),
     (
         "Grad Angle",
-        ph2d_editor_core::ids::VECTOR_GRAD_ANGLE,
+        ph2d_panel_vector::ids::VECTOR_GRAD_ANGLE,
         ph2d_tool_vector::ids::VECTOR_GRAD_ANGLE_NUM,
     ),
     (
         "Grad Influence",
-        ph2d_editor_core::ids::VECTOR_GRAD_INFLUENCE,
+        ph2d_panel_vector::ids::VECTOR_GRAD_INFLUENCE,
         ph2d_tool_vector::ids::VECTOR_GRAD_INFLUENCE_NUM,
     ),
     (
         "Grad Jitter",
-        ph2d_editor_core::ids::VECTOR_GRAD_JITTER,
+        ph2d_panel_vector::ids::VECTOR_GRAD_JITTER,
         ph2d_tool_vector::ids::VECTOR_GRAD_JITTER_NUM,
     ),
     (
         "Text Size",
-        ph2d_editor_core::ids::VECTOR_TEXT_SIZE,
+        ph2d_panel_vector::ids::VECTOR_TEXT_SIZE,
         ids::VECTOR_TEXT_SIZE_NUM,
     ),
     (
         "Text Weight",
-        ph2d_editor_core::ids::VECTOR_TEXT_WEIGHT,
+        ph2d_panel_vector::ids::VECTOR_TEXT_WEIGHT,
         ids::VECTOR_TEXT_WEIGHT_NUM,
     ),
     (
         "Text Tracking",
-        ph2d_editor_core::ids::VECTOR_TEXT_TRACKING,
+        ph2d_panel_vector::ids::VECTOR_TEXT_TRACKING,
         ids::VECTOR_TEXT_TRACKING_NUM,
     ),
     (
         "Text Line Height",
-        ph2d_editor_core::ids::VECTOR_TEXT_LINE_HEIGHT,
+        ph2d_panel_vector::ids::VECTOR_TEXT_LINE_HEIGHT,
         ids::VECTOR_TEXT_LINE_HEIGHT_NUM,
     ),
     (
         "Blend Steps",
-        ph2d_editor_core::ids::VECTOR_BLEND_STEPS,
+        ph2d_panel_vector::ids::VECTOR_BLEND_STEPS,
         ph2d_tool_vector::ids::VECTOR_BLEND_STEPS_NUM,
     ),
     (
         "Morph t",
-        ph2d_editor_core::ids::VECTOR_MORPH_T,
+        ph2d_panel_vector::ids::VECTOR_MORPH_T,
         ph2d_tool_vector::ids::VECTOR_MORPH_T_NUM,
     ),
 ];
@@ -125,7 +125,7 @@ fn every_number_chip_is_linked_to_its_slider_in_both_directions() {
     // índice da linha —, e é por isso que a seção inteira estava FORA deste gate desde que ela
     // existe. Uma lista escrita à mão só protege o que alguém lembrou de listar; o laço protege o
     // par que a próxima wave acrescentar.
-    for r in 0..ph2d_editor_core::ids::MAX_FILTER_ROWS {
+    for r in 0..ph2d_panel_vector::ids::MAX_FILTER_ROWS {
         for (name, slider, chip) in [
             (
                 "Filter Radius",

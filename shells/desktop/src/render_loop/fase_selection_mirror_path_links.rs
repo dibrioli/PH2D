@@ -108,20 +108,20 @@ impl crate::App {
                 let accel = f64::from(c.accel);
                 for (slider, chip, track, value) in [
                     (
-                        ph2d_editor_core::ids::VECTOR_CONTOUR_STEPS,
-                        ph2d_editor_core::ids::VECTOR_CONTOUR_STEPS_NUM,
+                        ph2d_panel_vector::ids::VECTOR_CONTOUR_STEPS,
+                        ph2d_panel_vector::ids::VECTOR_CONTOUR_STEPS_NUM,
                         ph2d_panel_vector::contour_steps_to_track(steps),
                         steps,
                     ),
                     (
-                        ph2d_editor_core::ids::VECTOR_CONTOUR_OFFSET,
-                        ph2d_editor_core::ids::VECTOR_CONTOUR_OFFSET_NUM,
+                        ph2d_panel_vector::ids::VECTOR_CONTOUR_OFFSET,
+                        ph2d_panel_vector::ids::VECTOR_CONTOUR_OFFSET_NUM,
                         ph2d_panel_vector::contour_d_to_track(frac),
                         frac * 100.0, // LITERAL-PX-OK: fração -> percentual do readout
                     ),
                     (
-                        ph2d_editor_core::ids::VECTOR_CONTOUR_ACCEL,
-                        ph2d_editor_core::ids::VECTOR_CONTOUR_ACCEL_NUM,
+                        ph2d_panel_vector::ids::VECTOR_CONTOUR_ACCEL,
+                        ph2d_panel_vector::ids::VECTOR_CONTOUR_ACCEL_NUM,
                         ph2d_panel_vector::contour_accel_to_track(accel),
                         accel,
                     ),

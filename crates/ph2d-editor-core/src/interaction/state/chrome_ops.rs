@@ -596,9 +596,11 @@ impl WidgetStore {
         self.picker_target = target;
         // Opening the picker → it's the most recently summoned panel.
         if target.is_some() {
-            // O seletor é pintado e recebe o clique por `ids::INSP_BLENDER_PICKER` (hash de slug), e é
-            // ESSE que sobe. ⛔ Até 2026-09-13 subia aqui um `NodeId(380)` escrito à mão — o id da era
-            // das faixas —, e abrir o seletor por cima de outro painel deixava-o por baixo. Gates:
+            // A ordem guarda o seletor pelo id com que ele é registado e publicado
+            // (`ids::INSP_BLENDER_PICKER`, hash de slug). ⚠️ No ECRÃ ele vem sempre à frente por outro
+            // caminho: é pintado fora da ordem, depois de todo painel (`panel_walk.rs`). ⛔ Até
+            // 2026-09-13 subia aqui um `NodeId(380)` escrito à mão — uma entrada fantasma, sem efeito
+            // visível e armadilha para o próximo leitor da ordem. Gates:
             // `opening_the_colour_picker_brings_the_panel_the_paint_uses_to_the_front` e o censo
             // «um nome, um valor» (`node_id_collisions::a_node_id_name_has_one_value`).
             self.bump_panel_z(crate::ids::INSP_BLENDER_PICKER);

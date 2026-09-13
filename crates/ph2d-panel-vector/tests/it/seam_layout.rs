@@ -39,16 +39,16 @@ fn pointer(kind: PointerKind, x: f32, y: f32, t: u128) -> PointerEvent {
 fn row_flow() -> LayoutFlow {
     LayoutFlow {
         size: [
-            ph2d_editor_core::ids::VECTOR_LAYOUT_SIZE_W_FIXED,
-            ph2d_editor_core::ids::VECTOR_LAYOUT_SIZE_H_FIXED,
+            ph2d_panel_vector::ids::VECTOR_LAYOUT_SIZE_W_FIXED,
+            ph2d_panel_vector::ids::VECTOR_LAYOUT_SIZE_H_FIXED,
         ],
         min: [0.0; 2],
         max: [0.0; 2],
-        dir: ph2d_editor_core::ids::VECTOR_LAYOUT_DIR_ROW,
+        dir: ph2d_panel_vector::ids::VECTOR_LAYOUT_DIR_ROW,
         gap: [0.0, 0.0],
         pad: [0.0; 4],
-        align: ph2d_editor_core::ids::VECTOR_LAYOUT_ALIGN_START,
-        justify: ph2d_editor_core::ids::VECTOR_LAYOUT_JUSTIFY_START,
+        align: ph2d_panel_vector::ids::VECTOR_LAYOUT_ALIGN_START,
+        justify: ph2d_panel_vector::ids::VECTOR_LAYOUT_JUSTIFY_START,
         columns: 2.0,
     }
 }
@@ -57,7 +57,7 @@ fn row_flow() -> LayoutFlow {
 /// encolher e a de colunas nascer.
 fn grid_flow() -> LayoutFlow {
     LayoutFlow {
-        dir: ph2d_editor_core::ids::VECTOR_LAYOUT_DIR_GRID,
+        dir: ph2d_panel_vector::ids::VECTOR_LAYOUT_DIR_GRID,
         ..row_flow()
     }
 }
@@ -130,8 +130,11 @@ fn a_multi_letter_label_gets_more_room_than_one_character() {
     state::set_frame_clip(Some(true));
     state::set_frame_present(true);
     state::set_layout_flow(Some(row_flow()));
-    let inner_x = rect_of(ph2d_editor_core::ids::VECTOR_LAYOUT_DIR_OFF, "o chip Off").x;
-    let gap = rect_of(ph2d_editor_core::ids::VECTOR_LAYOUT_GAP_MAIN, "o campo Gap");
+    let inner_x = rect_of(ph2d_panel_vector::ids::VECTOR_LAYOUT_DIR_OFF, "o chip Off").x;
+    let gap = rect_of(
+        ph2d_panel_vector::ids::VECTOR_LAYOUT_GAP_MAIN,
+        "o campo Gap",
+    );
     assert!(
         gap.x - inner_x > OLD_FIXED_GUTTER_PX,
         "a calha do rotulo 'Gap' e' de {:.1} px — o campo comeca em cima do proprio rotulo",
@@ -160,9 +163,12 @@ fn a_wider_label_pushes_its_field_further_right() {
     }));
     // "Gap" e "Grow" são os dois campos da coluna ESQUERDA — mesma origem de célula, então o x
     // deles é a calha e mais nada.
-    let gap = rect_of(ph2d_editor_core::ids::VECTOR_LAYOUT_GAP_MAIN, "o campo Gap");
+    let gap = rect_of(
+        ph2d_panel_vector::ids::VECTOR_LAYOUT_GAP_MAIN,
+        "o campo Gap",
+    );
     let grow = rect_of(
-        ph2d_editor_core::ids::VECTOR_LAYOUT_ITEM_GROW,
+        ph2d_panel_vector::ids::VECTOR_LAYOUT_ITEM_GROW,
         "o campo Grow",
     );
     assert!(
@@ -184,9 +190,15 @@ fn a_lone_number_field_sits_in_half_the_row() {
     state::set_frame_clip(Some(true));
     state::set_frame_present(true);
     state::set_layout_flow(Some(row_flow()));
-    let wrap = rect_of(ph2d_editor_core::ids::VECTOR_LAYOUT_DIR_WRAP, "o chip Wrap");
+    let wrap = rect_of(
+        ph2d_panel_vector::ids::VECTOR_LAYOUT_DIR_WRAP,
+        "o chip Wrap",
+    );
     let inner_right = wrap.x + wrap.w;
-    let gap = rect_of(ph2d_editor_core::ids::VECTOR_LAYOUT_GAP_MAIN, "o campo Gap");
+    let gap = rect_of(
+        ph2d_panel_vector::ids::VECTOR_LAYOUT_GAP_MAIN,
+        "o campo Gap",
+    );
     let right = gap.x + gap.w;
     assert!(
         right < inner_right - gap.w * 0.5,
@@ -203,14 +215,20 @@ fn the_four_direction_chips_are_reachable_and_reach_the_bus() {
     state::set_frame_clip(Some(true));
     state::set_frame_present(true);
     for (id, what) in [
-        (ph2d_editor_core::ids::VECTOR_LAYOUT_DIR_OFF, "o chip Off"),
-        (ph2d_editor_core::ids::VECTOR_LAYOUT_DIR_ROW, "o chip Row"),
+        (ph2d_panel_vector::ids::VECTOR_LAYOUT_DIR_OFF, "o chip Off"),
+        (ph2d_panel_vector::ids::VECTOR_LAYOUT_DIR_ROW, "o chip Row"),
         (
-            ph2d_editor_core::ids::VECTOR_LAYOUT_DIR_COL,
+            ph2d_panel_vector::ids::VECTOR_LAYOUT_DIR_COL,
             "o chip Column",
         ),
-        (ph2d_editor_core::ids::VECTOR_LAYOUT_DIR_WRAP, "o chip Wrap"),
-        (ph2d_editor_core::ids::VECTOR_LAYOUT_DIR_GRID, "o chip Grid"),
+        (
+            ph2d_panel_vector::ids::VECTOR_LAYOUT_DIR_WRAP,
+            "o chip Wrap",
+        ),
+        (
+            ph2d_panel_vector::ids::VECTOR_LAYOUT_DIR_GRID,
+            "o chip Grid",
+        ),
     ] {
         click_reaches_bus(id, what);
     }
@@ -251,16 +269,16 @@ fn the_column_count_is_born_with_the_grid_and_reaches_the_bus() {
     state::set_frame_present(true);
     state::set_layout_flow(Some(row_flow()));
     assert!(
-        !painted(ph2d_editor_core::ids::VECTOR_LAYOUT_COLUMNS),
+        !painted(ph2d_panel_vector::ids::VECTOR_LAYOUT_COLUMNS),
         "a contagem de colunas foi pintada numa LINHA, onde ela nao move um pixel"
     );
     state::set_layout_flow(Some(grid_flow()));
     assert!(
-        painted(ph2d_editor_core::ids::VECTOR_LAYOUT_COLUMNS),
+        painted(ph2d_panel_vector::ids::VECTOR_LAYOUT_COLUMNS),
         "a grade sem o numero de colunas e' uma grade que o artista nao consegue descrever"
     );
     commit_reaches_bus(
-        ph2d_editor_core::ids::VECTOR_LAYOUT_COLUMNS,
+        ph2d_panel_vector::ids::VECTOR_LAYOUT_COLUMNS,
         "o campo de colunas",
     );
     clear();
@@ -278,8 +296,8 @@ fn the_two_distributions_are_not_offered_in_a_grid_but_survive_in_a_row() {
     state::set_frame_clip(Some(true));
     state::set_frame_present(true);
     for id in [
-        ph2d_editor_core::ids::VECTOR_LAYOUT_JUSTIFY_BETWEEN,
-        ph2d_editor_core::ids::VECTOR_LAYOUT_JUSTIFY_AROUND,
+        ph2d_panel_vector::ids::VECTOR_LAYOUT_JUSTIFY_BETWEEN,
+        ph2d_panel_vector::ids::VECTOR_LAYOUT_JUSTIFY_AROUND,
     ] {
         state::set_layout_flow(Some(row_flow()));
         assert!(
@@ -295,9 +313,9 @@ fn the_two_distributions_are_not_offered_in_a_grid_but_survive_in_a_row() {
     // Os três que ficam continuam vivos — a fileira encolhe, não desaparece.
     state::set_layout_flow(Some(grid_flow()));
     for id in [
-        ph2d_editor_core::ids::VECTOR_LAYOUT_JUSTIFY_START,
-        ph2d_editor_core::ids::VECTOR_LAYOUT_JUSTIFY_CENTER,
-        ph2d_editor_core::ids::VECTOR_LAYOUT_JUSTIFY_END,
+        ph2d_panel_vector::ids::VECTOR_LAYOUT_JUSTIFY_START,
+        ph2d_panel_vector::ids::VECTOR_LAYOUT_JUSTIFY_CENTER,
+        ph2d_panel_vector::ids::VECTOR_LAYOUT_JUSTIFY_END,
     ] {
         assert!(painted(id), "a grade perdeu um chip que ela HONRA");
     }
@@ -312,15 +330,15 @@ fn the_alignment_chips_are_reachable_and_reach_the_bus() {
     state::set_frame_present(true);
     state::set_layout_flow(Some(row_flow()));
     for id in [
-        ph2d_editor_core::ids::VECTOR_LAYOUT_ALIGN_START,
-        ph2d_editor_core::ids::VECTOR_LAYOUT_ALIGN_CENTER,
-        ph2d_editor_core::ids::VECTOR_LAYOUT_ALIGN_END,
-        ph2d_editor_core::ids::VECTOR_LAYOUT_ALIGN_STRETCH,
-        ph2d_editor_core::ids::VECTOR_LAYOUT_JUSTIFY_START,
-        ph2d_editor_core::ids::VECTOR_LAYOUT_JUSTIFY_CENTER,
-        ph2d_editor_core::ids::VECTOR_LAYOUT_JUSTIFY_END,
-        ph2d_editor_core::ids::VECTOR_LAYOUT_JUSTIFY_BETWEEN,
-        ph2d_editor_core::ids::VECTOR_LAYOUT_JUSTIFY_AROUND,
+        ph2d_panel_vector::ids::VECTOR_LAYOUT_ALIGN_START,
+        ph2d_panel_vector::ids::VECTOR_LAYOUT_ALIGN_CENTER,
+        ph2d_panel_vector::ids::VECTOR_LAYOUT_ALIGN_END,
+        ph2d_panel_vector::ids::VECTOR_LAYOUT_ALIGN_STRETCH,
+        ph2d_panel_vector::ids::VECTOR_LAYOUT_JUSTIFY_START,
+        ph2d_panel_vector::ids::VECTOR_LAYOUT_JUSTIFY_CENTER,
+        ph2d_panel_vector::ids::VECTOR_LAYOUT_JUSTIFY_END,
+        ph2d_panel_vector::ids::VECTOR_LAYOUT_JUSTIFY_BETWEEN,
+        ph2d_panel_vector::ids::VECTOR_LAYOUT_JUSTIFY_AROUND,
     ] {
         click_reaches_bus(id, "um chip de alinhamento");
     }
@@ -337,14 +355,14 @@ fn a_frame_that_does_not_flow_paints_only_the_direction_row() {
     state::set_frame_clip(Some(true));
     state::set_frame_present(true);
     assert!(
-        painted(ph2d_editor_core::ids::VECTOR_LAYOUT_DIR_OFF),
+        painted(ph2d_panel_vector::ids::VECTOR_LAYOUT_DIR_OFF),
         "a direcao e' oferecida"
     );
     for id in [
-        ph2d_editor_core::ids::VECTOR_LAYOUT_GAP_MAIN,
-        ph2d_editor_core::ids::VECTOR_LAYOUT_PAD_ALL,
-        ph2d_editor_core::ids::VECTOR_LAYOUT_ALIGN_START,
-        ph2d_editor_core::ids::VECTOR_LAYOUT_JUSTIFY_START,
+        ph2d_panel_vector::ids::VECTOR_LAYOUT_GAP_MAIN,
+        ph2d_panel_vector::ids::VECTOR_LAYOUT_PAD_ALL,
+        ph2d_panel_vector::ids::VECTOR_LAYOUT_ALIGN_START,
+        ph2d_panel_vector::ids::VECTOR_LAYOUT_JUSTIFY_START,
     ] {
         assert!(
             !painted(id),
@@ -363,8 +381,8 @@ fn the_padding_mode_swaps_which_fields_are_painted() {
     state::set_layout_flow(Some(row_flow()));
 
     // Modo *All* (o default): um campo, e os quatro lados NÃO estão na tela.
-    assert!(painted(ph2d_editor_core::ids::VECTOR_LAYOUT_PAD_ALL));
-    assert!(!painted(ph2d_editor_core::ids::VECTOR_LAYOUT_PAD_T));
+    assert!(painted(ph2d_panel_vector::ids::VECTOR_LAYOUT_PAD_ALL));
+    assert!(!painted(ph2d_panel_vector::ids::VECTOR_LAYOUT_PAD_T));
 
     // O chip Each é panel-local: ele muda o que é pintado sem passar pela shell.
     let mut host = MockPanelHost::with_panel::<VectorPanel>();
@@ -385,15 +403,15 @@ fn the_padding_mode_swaps_which_fields_are_painted() {
     }
 
     for id in [
-        ph2d_editor_core::ids::VECTOR_LAYOUT_PAD_T,
-        ph2d_editor_core::ids::VECTOR_LAYOUT_PAD_R,
-        ph2d_editor_core::ids::VECTOR_LAYOUT_PAD_B,
-        ph2d_editor_core::ids::VECTOR_LAYOUT_PAD_L,
+        ph2d_panel_vector::ids::VECTOR_LAYOUT_PAD_T,
+        ph2d_panel_vector::ids::VECTOR_LAYOUT_PAD_R,
+        ph2d_panel_vector::ids::VECTOR_LAYOUT_PAD_B,
+        ph2d_panel_vector::ids::VECTOR_LAYOUT_PAD_L,
     ] {
         assert!(painted(id), "os quatro lados tem de aparecer no modo Each");
     }
     assert!(
-        !painted(ph2d_editor_core::ids::VECTOR_LAYOUT_PAD_ALL),
+        !painted(ph2d_panel_vector::ids::VECTOR_LAYOUT_PAD_ALL),
         "o campo unico tem de SAIR — dois campos para o mesmo numero nao dizem em qual se digita"
     );
 
@@ -419,23 +437,23 @@ fn the_cross_gap_is_born_with_the_mode_that_uses_it() {
     state::set_frame_clip(Some(true));
     state::set_frame_present(true);
     state::set_layout_flow(Some(row_flow()));
-    assert!(painted(ph2d_editor_core::ids::VECTOR_LAYOUT_GAP_MAIN));
+    assert!(painted(ph2d_panel_vector::ids::VECTOR_LAYOUT_GAP_MAIN));
     assert!(
-        !painted(ph2d_editor_core::ids::VECTOR_LAYOUT_GAP_CROSS),
+        !painted(ph2d_panel_vector::ids::VECTOR_LAYOUT_GAP_CROSS),
         "o vao entre FAIXAS foi pintado numa linha unica"
     );
 
     state::set_layout_flow(Some(LayoutFlow {
         size: [
-            ph2d_editor_core::ids::VECTOR_LAYOUT_SIZE_W_FIXED,
-            ph2d_editor_core::ids::VECTOR_LAYOUT_SIZE_H_FIXED,
+            ph2d_panel_vector::ids::VECTOR_LAYOUT_SIZE_W_FIXED,
+            ph2d_panel_vector::ids::VECTOR_LAYOUT_SIZE_H_FIXED,
         ],
         min: [0.0; 2],
         max: [0.0; 2],
-        dir: ph2d_editor_core::ids::VECTOR_LAYOUT_DIR_WRAP,
+        dir: ph2d_panel_vector::ids::VECTOR_LAYOUT_DIR_WRAP,
         ..row_flow()
     }));
-    assert!(painted(ph2d_editor_core::ids::VECTOR_LAYOUT_GAP_CROSS));
+    assert!(painted(ph2d_panel_vector::ids::VECTOR_LAYOUT_GAP_CROSS));
     clear();
 }
 
@@ -447,7 +465,7 @@ fn the_item_rows_follow_the_child_and_coexist_with_the_frame_block() {
     state::set_frame_present(true);
     state::set_layout_flow(Some(row_flow()));
     assert!(
-        !painted(ph2d_editor_core::ids::VECTOR_LAYOUT_ITEM_GROW),
+        !painted(ph2d_panel_vector::ids::VECTOR_LAYOUT_ITEM_GROW),
         "Grow apareceu sem o filho estar num fluxo"
     );
 
@@ -458,10 +476,10 @@ fn the_item_rows_follow_the_child_and_coexist_with_the_frame_block() {
         shrink: 0.0,
         parent_is_grid: false,
     }));
-    assert!(painted(ph2d_editor_core::ids::VECTOR_LAYOUT_ITEM_GROW));
-    assert!(painted(ph2d_editor_core::ids::VECTOR_LAYOUT_ITEM_SHRINK));
+    assert!(painted(ph2d_panel_vector::ids::VECTOR_LAYOUT_ITEM_GROW));
+    assert!(painted(ph2d_panel_vector::ids::VECTOR_LAYOUT_ITEM_SHRINK));
     // A moldura ANINHADA: os dois blocos ao mesmo tempo.
-    assert!(painted(ph2d_editor_core::ids::VECTOR_LAYOUT_DIR_ROW));
+    assert!(painted(ph2d_panel_vector::ids::VECTOR_LAYOUT_DIR_ROW));
     clear();
 }
 
@@ -470,10 +488,10 @@ fn the_item_rows_follow_the_child_and_coexist_with_the_frame_block() {
 fn the_layout_section_is_absent_without_a_subject() {
     clear();
     for id in [
-        ph2d_editor_core::ids::VECTOR_LAYOUT_DIR_OFF,
-        ph2d_editor_core::ids::VECTOR_LAYOUT_DIR_ROW,
-        ph2d_editor_core::ids::VECTOR_LAYOUT_GAP_MAIN,
-        ph2d_editor_core::ids::VECTOR_LAYOUT_ITEM_GROW,
+        ph2d_panel_vector::ids::VECTOR_LAYOUT_DIR_OFF,
+        ph2d_panel_vector::ids::VECTOR_LAYOUT_DIR_ROW,
+        ph2d_panel_vector::ids::VECTOR_LAYOUT_GAP_MAIN,
+        ph2d_panel_vector::ids::VECTOR_LAYOUT_ITEM_GROW,
     ] {
         assert!(
             !painted(id),
@@ -496,9 +514,9 @@ fn a_selected_child_alone_still_gets_its_two_rows() {
         shrink: 0.0,
         parent_is_grid: false,
     }));
-    assert!(painted(ph2d_editor_core::ids::VECTOR_LAYOUT_ITEM_GROW));
+    assert!(painted(ph2d_panel_vector::ids::VECTOR_LAYOUT_ITEM_GROW));
     assert!(
-        !painted(ph2d_editor_core::ids::VECTOR_LAYOUT_DIR_OFF),
+        !painted(ph2d_panel_vector::ids::VECTOR_LAYOUT_DIR_OFF),
         "o bloco da MOLDURA nao pode aparecer sem moldura selecionada"
     );
     clear();
@@ -521,11 +539,11 @@ fn a_row_that_does_not_fit_wraps_and_one_that_fits_does_not() {
     state::set_layout_flow(Some(row_flow()));
 
     let first = rect_of(
-        ph2d_editor_core::ids::VECTOR_LAYOUT_JUSTIFY_START,
+        ph2d_panel_vector::ids::VECTOR_LAYOUT_JUSTIFY_START,
         "o chip Start da distribuição",
     );
     let last = rect_of(
-        ph2d_editor_core::ids::VECTOR_LAYOUT_JUSTIFY_AROUND,
+        ph2d_panel_vector::ids::VECTOR_LAYOUT_JUSTIFY_AROUND,
         "o chip Around",
     );
     assert!(
@@ -535,11 +553,11 @@ fn a_row_that_does_not_fit_wraps_and_one_that_fits_does_not() {
     );
 
     let a_first = rect_of(
-        ph2d_editor_core::ids::VECTOR_LAYOUT_ALIGN_START,
+        ph2d_panel_vector::ids::VECTOR_LAYOUT_ALIGN_START,
         "o chip Start do alinhamento",
     );
     let a_last = rect_of(
-        ph2d_editor_core::ids::VECTOR_LAYOUT_ALIGN_STRETCH,
+        ph2d_panel_vector::ids::VECTOR_LAYOUT_ALIGN_STRETCH,
         "o chip Stretch",
     );
     assert!(
@@ -560,19 +578,19 @@ fn the_size_chips_are_reachable_and_reach_the_bus() {
     state::set_layout_flow(Some(row_flow()));
     for (id, what) in [
         (
-            ph2d_editor_core::ids::VECTOR_LAYOUT_SIZE_W_FIXED,
+            ph2d_panel_vector::ids::VECTOR_LAYOUT_SIZE_W_FIXED,
             "Width: Fixed",
         ),
         (
-            ph2d_editor_core::ids::VECTOR_LAYOUT_SIZE_W_HUG,
+            ph2d_panel_vector::ids::VECTOR_LAYOUT_SIZE_W_HUG,
             "Width: Hug",
         ),
         (
-            ph2d_editor_core::ids::VECTOR_LAYOUT_SIZE_H_FIXED,
+            ph2d_panel_vector::ids::VECTOR_LAYOUT_SIZE_H_FIXED,
             "Height: Fixed",
         ),
         (
-            ph2d_editor_core::ids::VECTOR_LAYOUT_SIZE_H_HUG,
+            ph2d_panel_vector::ids::VECTOR_LAYOUT_SIZE_H_HUG,
             "Height: Hug",
         ),
     ] {
@@ -600,12 +618,12 @@ fn the_absolute_toggle_is_live_and_hides_grow_and_shrink() {
         parent_is_grid: false,
     }));
     click_reaches_bus(
-        ph2d_editor_core::ids::VECTOR_LAYOUT_ITEM_ABSOLUTE,
+        ph2d_panel_vector::ids::VECTOR_LAYOUT_ITEM_ABSOLUTE,
         "o toggle Absolute",
     );
     // No fluxo, os dois números existem.
     assert!(
-        painted(ph2d_editor_core::ids::VECTOR_LAYOUT_ITEM_GROW),
+        painted(ph2d_panel_vector::ids::VECTOR_LAYOUT_ITEM_GROW),
         "no fluxo, Grow tem de ser pintado"
     );
     // Fora do fluxo, não.
@@ -617,12 +635,12 @@ fn the_absolute_toggle_is_live_and_hides_grow_and_shrink() {
         parent_is_grid: false,
     }));
     assert!(
-        !painted(ph2d_editor_core::ids::VECTOR_LAYOUT_ITEM_GROW)
-            && !painted(ph2d_editor_core::ids::VECTOR_LAYOUT_ITEM_SHRINK),
+        !painted(ph2d_panel_vector::ids::VECTOR_LAYOUT_ITEM_GROW)
+            && !painted(ph2d_panel_vector::ids::VECTOR_LAYOUT_ITEM_SHRINK),
         "um filho ABSOLUTO nao reparte sobra: os dois campos nao podem ser pintados"
     );
     assert!(
-        painted(ph2d_editor_core::ids::VECTOR_LAYOUT_ITEM_ABSOLUTE),
+        painted(ph2d_panel_vector::ids::VECTOR_LAYOUT_ITEM_ABSOLUTE),
         "e o proprio toggle TEM de continuar pintado — senao nao ha como desmarcar"
     );
     clear();
@@ -636,10 +654,10 @@ fn the_four_bounds_are_painted_when_the_frame_flows() {
     state::set_frame_present(true);
     state::set_layout_flow(Some(row_flow()));
     for (id, what) in [
-        (ph2d_editor_core::ids::VECTOR_LAYOUT_MIN_W, "Min W"),
-        (ph2d_editor_core::ids::VECTOR_LAYOUT_MAX_W, "Max W"),
-        (ph2d_editor_core::ids::VECTOR_LAYOUT_MIN_H, "Min H"),
-        (ph2d_editor_core::ids::VECTOR_LAYOUT_MAX_H, "Max H"),
+        (ph2d_panel_vector::ids::VECTOR_LAYOUT_MIN_W, "Min W"),
+        (ph2d_panel_vector::ids::VECTOR_LAYOUT_MAX_W, "Max W"),
+        (ph2d_panel_vector::ids::VECTOR_LAYOUT_MIN_H, "Min H"),
+        (ph2d_panel_vector::ids::VECTOR_LAYOUT_MAX_H, "Max H"),
     ] {
         assert!(painted(id), "{what} nao foi pintado");
     }
@@ -668,9 +686,9 @@ fn the_item_block_explains_itself_when_the_parent_does_not_flow() {
         parent_is_grid: false,
     }));
     assert!(
-        !painted(ph2d_editor_core::ids::VECTOR_LAYOUT_ITEM_ABSOLUTE)
-            && !painted(ph2d_editor_core::ids::VECTOR_LAYOUT_ITEM_GROW)
-            && !painted(ph2d_editor_core::ids::VECTOR_LAYOUT_ITEM_SHRINK),
+        !painted(ph2d_panel_vector::ids::VECTOR_LAYOUT_ITEM_ABSOLUTE)
+            && !painted(ph2d_panel_vector::ids::VECTOR_LAYOUT_ITEM_GROW)
+            && !painted(ph2d_panel_vector::ids::VECTOR_LAYOUT_ITEM_SHRINK),
         "sem fluxo no pai nenhum dos tres faz nada — nenhum pode ser oferecido"
     );
     // A outra metade: a seção EXISTE (o cabeçalho foi pintado), que é o que separa *explicar* de

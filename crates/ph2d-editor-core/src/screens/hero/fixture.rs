@@ -16,7 +16,7 @@ pub fn default_selection() -> HeroSelection {
 }
 
 /// Top-bar pill clusters in left-to-right order, paired with the
-/// `NodeId` used in [`crate::screens::hero::ids`] for hit-test +
+/// `NodeId` used in [`crate::ids`] for hit-test +
 /// store lookup.
 ///
 /// Layout note: `paint_top_bar` splits this list at index 4 — the
@@ -24,7 +24,7 @@ pub fn default_selection() -> HeroSelection {
 /// against the viewport edge. New entries should respect that split
 /// (8-cluster default: 4 left + 4 right).
 pub fn topbar_clusters() -> Vec<(ph2d_a11y::NodeId, TopBarCluster)> {
-    use crate::screens::hero::ids;
+    use crate::ids;
     vec![
         (ids::TOPBAR_THEME, TopBarCluster::theme("Forge")),
         // Level / scene selector — moved to the LEFT side 2026-05-24

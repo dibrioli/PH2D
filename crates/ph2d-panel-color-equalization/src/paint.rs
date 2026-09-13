@@ -50,7 +50,7 @@ pub(crate) fn paint(_state: &mut ColorEqualizationPanelState, ctx: &mut PaintCtx
     if !ctx.host.panel_visible(ColorEqualizationPanel::ID) {
         ctx.host
             .store_mut()
-            .clear_panel_rect(ph2d_tool_color_equalization::ids::CEQ_PANEL);
+            .clear_panel_rect(ph2d_editor_core::ids::CEQ_PANEL);
         return;
     }
 
@@ -60,7 +60,7 @@ pub(crate) fn paint(_state: &mut ColorEqualizationPanelState, ctx: &mut PaintCtx
 
     ctx.host
         .store_mut()
-        .set_panel_rect(ph2d_tool_color_equalization::ids::CEQ_PANEL, rect);
+        .set_panel_rect(ph2d_editor_core::ids::CEQ_PANEL, rect);
     paint_panel_surface(rect, ctx.scene, theme);
     // BL resize gripper dot — sem isso o usuário não vê affordance
     // do BL handle (que já é hit-registrado abaixo). Enio 2026-05-26.
@@ -112,7 +112,7 @@ pub(crate) fn paint(_state: &mut ColorEqualizationPanelState, ctx: &mut PaintCtx
     let scroll = ctx
         .host
         .store()
-        .panel_scroll(ph2d_tool_color_equalization::ids::CEQ_PANEL);
+        .panel_scroll(ph2d_editor_core::ids::CEQ_PANEL);
 
     ctx.scene.push_clip(&rect_to_vello(body_rect));
     let y_after = paint_body_sections(ctx, &snapshot, layout, theme, body_top - scroll);
@@ -248,11 +248,11 @@ fn paint_scrollbar_and_publish(
             .register(COLOR_EQUALIZATION_SCROLLBAR_ID, thumb);
     }
     let store = ctx.host.store_mut();
-    store.set_panel_content_h(ph2d_tool_color_equalization::ids::CEQ_PANEL, content_h);
-    store.set_panel_visible_h(ph2d_tool_color_equalization::ids::CEQ_PANEL, body_h);
+    store.set_panel_content_h(ph2d_editor_core::ids::CEQ_PANEL, content_h);
+    store.set_panel_visible_h(ph2d_editor_core::ids::CEQ_PANEL, body_h);
     let max_scroll = (content_h - body_h).max(0.0);
-    if store.panel_scroll(ph2d_tool_color_equalization::ids::CEQ_PANEL) > max_scroll {
-        store.set_panel_scroll(ph2d_tool_color_equalization::ids::CEQ_PANEL, max_scroll);
+    if store.panel_scroll(ph2d_editor_core::ids::CEQ_PANEL) > max_scroll {
+        store.set_panel_scroll(ph2d_editor_core::ids::CEQ_PANEL, max_scroll);
     }
 }
 

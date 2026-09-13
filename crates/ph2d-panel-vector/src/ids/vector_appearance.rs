@@ -95,3 +95,42 @@ pub const VECTOR_PAINT_OPACITY_NUM: NodeId = hash_node_id("vector.paint.opacity.
 pub fn vector_paint_blend_option_id(i: usize) -> NodeId {
     hash_node_id_runtime(&format!("vector.paint.blendopt.{i}"))
 }
+
+// ── Desceu de `ph2d-editor-core/src/ids/chrome/vector_appearance.rs` em 2026-09-13 (2.ª passagem: a cerca com a
+//    `line/render-loop` prendia-os na fundação até às duas linhas se integrarem).
+
+/// **Opacity** — o slider da opacidade do objecto (0..100 %).
+///
+/// ⚠️ **Não confundir com os dois `VECTOR_*_OPACITY` da seção de estilo:** aqueles são o alfa da
+/// TINTA que a ferramenta tem na mão (eles semeiam a forma seguinte e re-vestem a selecção), e
+/// este é uma propriedade da forma SELECIONADA, que viaja no documento.
+pub const VECTOR_OBJ_OPACITY: NodeId = hash_node_id("vector.obj.opacity");
+
+/// **Blend** — o chip que abre a lista de modos de mistura do objecto.
+///
+/// ⚠️ Ele é um `Dropdown` e não uma segmentada pela mesma razão do ícone do widget: são dezanove
+/// modos, e uma fileira de chips cortaria a lista num teto de tabela de ids.
+pub const VECTOR_OBJ_BLEND: NodeId = hash_node_id("vector.obj.blend");
+
+/// A largura do contorno da camada ABERTA.
+pub const VECTOR_PAINT_WIDTH: NodeId = hash_node_id("vector.paint.width");
+
+/// **ONDE a camada ABERTA desenha** — o deslocamento em `x`, relativo à forma.
+pub const VECTOR_PAINT_DX: NodeId = hash_node_id("vector.paint.dx");
+
+/// O gémeo em `y`. ⚠️ Dois campos e não um: a casa escreve um par de coordenadas como duas caixas
+/// (`X`/`Y` do Transform, do Vertex), e um campo só obrigaria o artista a digitar uma sintaxe.
+pub const VECTOR_PAINT_DY: NodeId = hash_node_id("vector.paint.dy");
+
+/// ⭐⭐⭐ **O OFFSET DE CAD da camada ABERTA** — a silhueta cresce (`>0`) ou encolhe (`<0`).
+///
+/// ⛔ **Não confundir com o [`VECTOR_PAINT_DX`]/[`VECTOR_PAINT_DY`]**, que MOVEM a camada sem lhe
+/// mudar a forma. São duas grandezas, e o painel chama-lhes `X`/`Y` e `Offset` — os nomes que o
+/// artista já conhece do Illustrator e de um CAD.
+pub const VECTOR_PAINT_DILATE: NodeId = hash_node_id("vector.paint.dilate");
+
+/// A opacidade da camada ABERTA (0..100 %).
+pub const VECTOR_PAINT_OPACITY: NodeId = hash_node_id("vector.paint.opacity");
+
+/// O modo de mistura da camada ABERTA.
+pub const VECTOR_PAINT_BLEND: NodeId = hash_node_id("vector.paint.blend");

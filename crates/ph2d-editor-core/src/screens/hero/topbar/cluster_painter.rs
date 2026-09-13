@@ -20,8 +20,8 @@ use crate::widget::{ButtonState, IconButtonStyle, IconGlyph, paint_icon_button};
 use crate::zones::Rect;
 
 use super::super::fixture;
-use super::super::ids;
 use super::super::style::icon_button_fg;
+use crate::ids;
 
 /// Width allocated to one rail-style chip column. Chip = 36 px
 /// (Small `RailButtonSize`) + 4 px margin each side = 44 px column.

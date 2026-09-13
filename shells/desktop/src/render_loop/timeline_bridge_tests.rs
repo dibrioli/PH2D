@@ -4,7 +4,6 @@
 //! lines of tests sharing its file, and the cap was measuring the sum.
 
 use super::*;
-use ph2d_editor_core::ids;
 
 #[test]
 fn transport_ids_map_to_intents() {
@@ -13,34 +12,58 @@ fn transport_ids_map_to_intents() {
     ph.seek_frame(10, st.doc.fps_display);
 
     assert_eq!(
-        intent_for_transport(&PanelEvent::Click(ids::TIMELINE_PLAY), &st, &ph),
+        intent_for_transport(
+            &PanelEvent::Click(ph2d_panel_timeline::ids::TIMELINE_PLAY),
+            &st,
+            &ph
+        ),
         Some(TimelineIntent::TogglePlay)
     );
     assert_eq!(
-        intent_for_transport(&PanelEvent::Click(ids::TIMELINE_NEXT_FRAME), &st, &ph),
+        intent_for_transport(
+            &PanelEvent::Click(ph2d_panel_timeline::ids::TIMELINE_NEXT_FRAME),
+            &st,
+            &ph
+        ),
         Some(TimelineIntent::SeekFrame(11))
     );
     assert_eq!(
-        intent_for_transport(&PanelEvent::Click(ids::TIMELINE_PREV_FRAME), &st, &ph),
+        intent_for_transport(
+            &PanelEvent::Click(ph2d_panel_timeline::ids::TIMELINE_PREV_FRAME),
+            &st,
+            &ph
+        ),
         Some(TimelineIntent::SeekFrame(9))
     );
     assert_eq!(
-        intent_for_transport(&PanelEvent::SetValue(ids::TIMELINE_TIME_NUM, 1.5), &st, &ph),
+        intent_for_transport(
+            &PanelEvent::SetValue(ph2d_panel_timeline::ids::TIMELINE_TIME_NUM, 1.5),
+            &st,
+            &ph
+        ),
         Some(TimelineIntent::Scrub(1.5))
     );
     assert_eq!(
-        intent_for_transport(&PanelEvent::Toggle(ids::TIMELINE_AUTOKEY, true), &st, &ph),
+        intent_for_transport(
+            &PanelEvent::Toggle(ph2d_panel_timeline::ids::TIMELINE_AUTOKEY, true),
+            &st,
+            &ph
+        ),
         Some(TimelineIntent::SetAutoKey(true))
     );
     assert_eq!(
-        intent_for_transport(&PanelEvent::Toggle(ids::TIMELINE_RECORD, true), &st, &ph),
+        intent_for_transport(
+            &PanelEvent::Toggle(ph2d_panel_timeline::ids::TIMELINE_RECORD, true),
+            &st,
+            &ph
+        ),
         Some(TimelineIntent::SetPerforming(true))
     );
     // Motion Path (ADR-0141) is PER-OBJECT, so the pure translator does NOT map it —
     // it needs the selection, which the shell resolves into `ConvertPositionMode`.
     assert_eq!(
         intent_for_transport(
-            &PanelEvent::Toggle(ids::TIMELINE_MOTION_PATH, false),
+            &PanelEvent::Toggle(ph2d_panel_timeline::ids::TIMELINE_MOTION_PATH, false),
             &st,
             &ph
         ),
@@ -48,17 +71,29 @@ fn transport_ids_map_to_intents() {
         "the per-object toggle is handled in the shell, not translated here"
     );
     assert_eq!(
-        intent_for_transport(&PanelEvent::Toggle(ids::TIMELINE_SNAP, false), &st, &ph),
+        intent_for_transport(
+            &PanelEvent::Toggle(ph2d_panel_timeline::ids::TIMELINE_SNAP, false),
+            &st,
+            &ph
+        ),
         Some(TimelineIntent::SetFrameSnap(false))
     );
     // Physics (ADR-0131): one transport, two consumers.
     assert_eq!(
-        intent_for_transport(&PanelEvent::Toggle(ids::TIMELINE_PHYSICS, true), &st, &ph),
+        intent_for_transport(
+            &PanelEvent::Toggle(ph2d_panel_timeline::ids::TIMELINE_PHYSICS, true),
+            &st,
+            &ph
+        ),
         Some(TimelineIntent::SetSimulatePhysics(true))
     );
     // A non-transport id (Close is handled in the panel, not translated).
     assert_eq!(
-        intent_for_transport(&PanelEvent::Click(ids::TIMELINE_CLOSE), &st, &ph),
+        intent_for_transport(
+            &PanelEvent::Click(ph2d_panel_timeline::ids::TIMELINE_CLOSE),
+            &st,
+            &ph
+        ),
         None
     );
 }
@@ -71,11 +106,19 @@ fn go_start_and_go_end_scrub_to_the_clip_bounds() {
 
     // Empty doc: both ends are t = 0.
     assert_eq!(
-        intent_for_transport(&PanelEvent::Click(ids::TIMELINE_GO_START), &st, &ph),
+        intent_for_transport(
+            &PanelEvent::Click(ph2d_panel_timeline::ids::TIMELINE_GO_START),
+            &st,
+            &ph
+        ),
         Some(TimelineIntent::Scrub(0.0))
     );
     assert_eq!(
-        intent_for_transport(&PanelEvent::Click(ids::TIMELINE_GO_END), &st, &ph),
+        intent_for_transport(
+            &PanelEvent::Click(ph2d_panel_timeline::ids::TIMELINE_GO_END),
+            &st,
+            &ph
+        ),
         Some(TimelineIntent::Scrub(0.0))
     );
 
@@ -93,11 +136,19 @@ fn go_start_and_go_end_scrub_to_the_clip_bounds() {
         },
     );
     assert_eq!(
-        intent_for_transport(&PanelEvent::Click(ids::TIMELINE_GO_END), &st, &ph),
+        intent_for_transport(
+            &PanelEvent::Click(ph2d_panel_timeline::ids::TIMELINE_GO_END),
+            &st,
+            &ph
+        ),
         Some(TimelineIntent::Scrub(2.5))
     );
     assert_eq!(
-        intent_for_transport(&PanelEvent::Click(ids::TIMELINE_GO_START), &st, &ph),
+        intent_for_transport(
+            &PanelEvent::Click(ph2d_panel_timeline::ids::TIMELINE_GO_START),
+            &st,
+            &ph
+        ),
         Some(TimelineIntent::Scrub(0.0))
     );
 }
@@ -119,7 +170,11 @@ fn the_default_loop_range_spans_to_the_last_key() {
         },
     );
     assert_eq!(
-        intent_for_transport(&PanelEvent::Toggle(ids::TIMELINE_LOOP, true), &st, &ph),
+        intent_for_transport(
+            &PanelEvent::Toggle(ph2d_panel_timeline::ids::TIMELINE_LOOP, true),
+            &st,
+            &ph
+        ),
         Some(TimelineIntent::SetLoop {
             range: Some((0.0, 4.0)),
             ping_pong: false,
@@ -161,7 +216,11 @@ fn in_arrange_the_end_is_the_last_strips_end_not_the_active_clips() {
     // Arrange: the timeline's clock, so the stack is the content.
     st.keys_mode = false;
     assert_eq!(
-        intent_for_transport(&PanelEvent::Toggle(ids::TIMELINE_LOOP, true), &st, &ph),
+        intent_for_transport(
+            &PanelEvent::Toggle(ph2d_panel_timeline::ids::TIMELINE_LOOP, true),
+            &st,
+            &ph
+        ),
         Some(TimelineIntent::SetLoop {
             range: Some((0.0, 9.0)),
             ping_pong: false,
@@ -169,7 +228,11 @@ fn in_arrange_the_end_is_the_last_strips_end_not_the_active_clips() {
         "the loop must bracket every strip, not just the first"
     );
     assert_eq!(
-        intent_for_transport(&PanelEvent::Click(ids::TIMELINE_GO_END), &st, &ph),
+        intent_for_transport(
+            &PanelEvent::Click(ph2d_panel_timeline::ids::TIMELINE_GO_END),
+            &st,
+            &ph
+        ),
         Some(TimelineIntent::Scrub(9.0)),
         "and go-to-end lands on the same end"
     );
@@ -178,7 +241,11 @@ fn in_arrange_the_end_is_the_last_strips_end_not_the_active_clips() {
     // which "always ask the stack" would pass both asserts above.
     st.keys_mode = true;
     assert_eq!(
-        intent_for_transport(&PanelEvent::Toggle(ids::TIMELINE_LOOP, true), &st, &ph),
+        intent_for_transport(
+            &PanelEvent::Toggle(ph2d_panel_timeline::ids::TIMELINE_LOOP, true),
+            &st,
+            &ph
+        ),
         Some(TimelineIntent::SetLoop {
             range: Some((0.0, 3.0)),
             ping_pong: false,
@@ -207,7 +274,11 @@ fn with_no_strips_the_timeline_end_is_still_the_clips_end() {
     );
     st.keys_mode = false; // Arrange, but nothing arranged
     assert_eq!(
-        intent_for_transport(&PanelEvent::Toggle(ids::TIMELINE_LOOP, true), &st, &ph),
+        intent_for_transport(
+            &PanelEvent::Toggle(ph2d_panel_timeline::ids::TIMELINE_LOOP, true),
+            &st,
+            &ph
+        ),
         Some(TimelineIntent::SetLoop {
             range: Some((0.0, 4.0)),
             ping_pong: false,
@@ -218,24 +289,26 @@ fn with_no_strips_the_timeline_end_is_still_the_clips_end() {
 #[test]
 fn only_absolute_jumps_ask_the_panel_to_pan() {
     for ev in [
-        PanelEvent::Click(ids::TIMELINE_GO_START),
-        PanelEvent::Click(ids::TIMELINE_GO_END),
-        PanelEvent::Click(ids::TIMELINE_PREV_FRAME),
-        PanelEvent::Click(ids::TIMELINE_NEXT_FRAME),
-        PanelEvent::SetValue(ids::TIMELINE_TIME_NUM, 9.0),
-        PanelEvent::SetValue(ids::TIMELINE_FRAME_NUM, 200.0),
+        PanelEvent::Click(ph2d_panel_timeline::ids::TIMELINE_GO_START),
+        PanelEvent::Click(ph2d_panel_timeline::ids::TIMELINE_GO_END),
+        PanelEvent::Click(ph2d_panel_timeline::ids::TIMELINE_PREV_FRAME),
+        PanelEvent::Click(ph2d_panel_timeline::ids::TIMELINE_NEXT_FRAME),
+        PanelEvent::SetValue(ph2d_panel_timeline::ids::TIMELINE_TIME_NUM, 9.0),
+        PanelEvent::SetValue(ph2d_panel_timeline::ids::TIMELINE_FRAME_NUM, 200.0),
     ] {
         assert!(jumps_the_playhead(&ev), "{ev:?} lands at an absolute time");
     }
     // The ruler scrub maps a fraction of the VISIBLE span, so it can never
     // land off-screen — panning after it would fight the drag.
     assert!(!jumps_the_playhead(&PanelEvent::SetValue(
-        ids::TIMELINE_RULER,
+        ph2d_panel_timeline::ids::TIMELINE_RULER,
         0.5
     )));
-    assert!(!jumps_the_playhead(&PanelEvent::Click(ids::TIMELINE_PLAY)));
+    assert!(!jumps_the_playhead(&PanelEvent::Click(
+        ph2d_panel_timeline::ids::TIMELINE_PLAY
+    )));
     assert!(!jumps_the_playhead(&PanelEvent::Toggle(
-        ids::TIMELINE_LOOP,
+        ph2d_panel_timeline::ids::TIMELINE_LOOP,
         true
     )));
 }
@@ -308,7 +381,7 @@ fn every_addprop_id_maps_to_its_prop_kind() {
         );
     }
     assert_eq!(
-        prop_for_addprop_id(ids::TIMELINE_PLAY),
+        prop_for_addprop_id(ph2d_panel_timeline::ids::TIMELINE_PLAY),
         None,
         "e um id que não é do +Track continua a não mapear"
     );
@@ -326,17 +399,30 @@ fn the_containers_list_refuses_play_and_only_play() {
     let ph = Playhead::new(1.0 / 60.0);
     st.containers_list = true;
     assert_eq!(
-        intent_for_transport(&PanelEvent::Click(ids::TIMELINE_PLAY), &st, &ph),
+        intent_for_transport(
+            &PanelEvent::Click(ph2d_panel_timeline::ids::TIMELINE_PLAY),
+            &st,
+            &ph
+        ),
         None,
         "na lista, play/pause não vira intent nenhum"
     );
     assert!(
-        intent_for_transport(&PanelEvent::Click(ids::TIMELINE_NEXT_FRAME), &st, &ph).is_some(),
+        intent_for_transport(
+            &PanelEvent::Click(ph2d_panel_timeline::ids::TIMELINE_NEXT_FRAME),
+            &st,
+            &ph
+        )
+        .is_some(),
         "o frame-step não é playback: segue vivo"
     );
     st.containers_list = false;
     assert_eq!(
-        intent_for_transport(&PanelEvent::Click(ids::TIMELINE_PLAY), &st, &ph),
+        intent_for_transport(
+            &PanelEvent::Click(ph2d_panel_timeline::ids::TIMELINE_PLAY),
+            &st,
+            &ph
+        ),
         Some(TimelineIntent::TogglePlay),
         "fora da lista o mesmo clique liga o relógio — sem este controle positivo, \
          recusar tudo ficaria verde"

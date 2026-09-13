@@ -49,7 +49,7 @@ pub(crate) fn previewed(
 ) -> Option<ph2d_ecs::Entity> {
     matches!(
         hero.store
-            .checkbox(ph2d_editor_core::ids::INSP_SHEET_PREVIEW),
+            .checkbox(ph2d_panel_inspector::ids::INSP_SHEET_PREVIEW),
         Some((_, ph2d_editor_core::widget::CheckboxValue::Checked))
     )
     .then(|| hero.gizmo.selection)

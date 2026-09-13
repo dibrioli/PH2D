@@ -127,7 +127,7 @@ impl BodyCtx<'_> {
         if !row.is_fill {
             y = self.lone_number_row(
                 tr("panel.vector.paint.width"),
-                ph2d_editor_core::ids::VECTOR_PAINT_WIDTH,
+                crate::ids::VECTOR_PAINT_WIDTH,
                 y,
             );
         }
@@ -139,15 +139,15 @@ impl BodyCtx<'_> {
         // deixaria de fora o pedido que a wave responde.
         y = self.number_row(
             tr("panel.vector.paint.dx"),
-            ph2d_editor_core::ids::VECTOR_PAINT_DX,
+            crate::ids::VECTOR_PAINT_DX,
             tr("panel.vector.paint.dy"),
-            ph2d_editor_core::ids::VECTOR_PAINT_DY,
+            crate::ids::VECTOR_PAINT_DY,
             y,
         );
         // ⭐⭐⭐ **O OFFSET DE CAD** (v22) — a silhueta cresce (`>0`) ou encolhe (`<0`).
         y = self.lone_number_row(
             tr("panel.vector.paint.dilate"),
-            ph2d_editor_core::ids::VECTOR_PAINT_DILATE,
+            crate::ids::VECTOR_PAINT_DILATE,
             y,
         );
         // ⚠️ **A QUINA só aparece com o offset ARMADO** — é a lei do «nenhum controlo mudo»: com
@@ -164,7 +164,7 @@ impl BodyCtx<'_> {
                 y,
             );
         }
-        let track = self.live_track(ph2d_editor_core::ids::VECTOR_PAINT_OPACITY, row.opacity);
+        let track = self.live_track(crate::ids::VECTOR_PAINT_OPACITY, row.opacity);
         let pct = f64::from(track) * 100.0; // LITERAL-PX-OK: fraction→percent
         #[expect(
             clippy::cast_possible_truncation,
@@ -173,7 +173,7 @@ impl BodyCtx<'_> {
         let rotulo = format!("{}", pct.round() as i64);
         y = self.slider_row(
             tr("panel.vector.paint.opacity"),
-            ph2d_editor_core::ids::VECTOR_PAINT_OPACITY,
+            crate::ids::VECTOR_PAINT_OPACITY,
             ids::VECTOR_PAINT_OPACITY_NUM,
             track,
             pct,
@@ -188,27 +188,24 @@ impl BodyCtx<'_> {
     fn layer_blend_row(&mut self, atual: ph2d_vec_scene::BlendMode, y: f32) -> f32 {
         let chip = Rect::new(self.inner_x, y, self.inner_w, self.row_h);
         let open = matches!(
-            self.store.get(ph2d_editor_core::ids::VECTOR_PAINT_BLEND),
+            self.store.get(crate::ids::VECTOR_PAINT_BLEND),
             Some(InteractiveState::Dropdown { open: true, .. })
         );
         let dd = Dropdown::new(
-            ph2d_editor_core::ids::VECTOR_PAINT_BLEND,
+            crate::ids::VECTOR_PAINT_BLEND,
             tr("panel.vector.paint.blend"),
             vec![DropdownOption::new(
-                ph2d_editor_core::ids::VECTOR_PAINT_BLEND,
+                crate::ids::VECTOR_PAINT_BLEND,
                 (),
                 atual.name(),
             )],
         )
         .selected(())
         .open(open)
-        .visual(
-            self.store
-                .dropdown_visual(ph2d_editor_core::ids::VECTOR_PAINT_BLEND),
-        );
+        .visual(self.store.dropdown_visual(crate::ids::VECTOR_PAINT_BLEND));
         paint_dropdown_chip(&dd, chip, self.scene, self.text_system, self.theme);
         self.hit_index
-            .register(ph2d_editor_core::ids::VECTOR_PAINT_BLEND, chip);
+            .register(crate::ids::VECTOR_PAINT_BLEND, chip);
         if open {
             state::set_pending_paint_blend_dd(Some(chip));
         }
@@ -274,7 +271,7 @@ pub(crate) fn paint_layer_blend_popover(
         .enumerate()
         .map(|(i, m)| DropdownOption::new(ids::vector_paint_blend_option_id(i), i, m.name()))
         .collect();
-    let dd = Dropdown::new(ph2d_editor_core::ids::VECTOR_PAINT_BLEND, "", options)
+    let dd = Dropdown::new(crate::ids::VECTOR_PAINT_BLEND, "", options)
         .selected(sel)
         .open(true);
 
@@ -283,27 +280,26 @@ pub(crate) fn paint_layer_blend_popover(
     let max_scroll = (content_h - panel.h).max(0.0);
     {
         let store = ctx.host.store_mut();
-        store.set_dropdown_popover(ph2d_editor_core::ids::VECTOR_PAINT_BLEND, panel);
-        store.set_panel_content_h(ph2d_editor_core::ids::VECTOR_PAINT_BLEND, content_h);
-        store.set_panel_visible_h(ph2d_editor_core::ids::VECTOR_PAINT_BLEND, panel.h);
-        if store.panel_scroll(ph2d_editor_core::ids::VECTOR_PAINT_BLEND) > max_scroll {
-            store.set_panel_scroll(ph2d_editor_core::ids::VECTOR_PAINT_BLEND, max_scroll);
+        store.set_dropdown_popover(crate::ids::VECTOR_PAINT_BLEND, panel);
+        store.set_panel_content_h(crate::ids::VECTOR_PAINT_BLEND, content_h);
+        store.set_panel_visible_h(crate::ids::VECTOR_PAINT_BLEND, panel.h);
+        if store.panel_scroll(crate::ids::VECTOR_PAINT_BLEND) > max_scroll {
+            store.set_panel_scroll(crate::ids::VECTOR_PAINT_BLEND, max_scroll);
         }
     }
     let scroll = ctx
         .host
         .store()
-        .panel_scroll(ph2d_editor_core::ids::VECTOR_PAINT_BLEND)
+        .panel_scroll(crate::ids::VECTOR_PAINT_BLEND)
         .clamp(0.0, max_scroll); // CLAMP-OK: 0.0 literal; max_scroll is a non-negative px extent
     paint_dropdown_popover_scrolled(
         &dd,
         chip,
         panel,
         scroll,
-        ctx.host.store().scrollbar_visual_for(
-            DROPDOWN_SCROLLBAR_ID,
-            Some(ph2d_editor_core::ids::VECTOR_PAINT_BLEND),
-        ),
+        ctx.host
+            .store()
+            .scrollbar_visual_for(DROPDOWN_SCROLLBAR_ID, Some(crate::ids::VECTOR_PAINT_BLEND)),
         ctx.scene,
         ctx.text_system,
         theme,

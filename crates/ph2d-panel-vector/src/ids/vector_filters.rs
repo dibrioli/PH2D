@@ -308,3 +308,23 @@ pub fn filter_bright_id(row: usize) -> NodeId {
 pub fn filter_bright_num_id(row: usize) -> NodeId {
     hash_node_id_runtime(&format!("vector.filter.bright.{row}.num"))
 }
+
+// ── Desceu de `ph2d-editor-core/src/ids/chrome/vector_filters.rs` em 2026-09-13 (2.ª passagem: a cerca com a
+//    `line/render-loop` prendia-os na fundação até às duas linhas se integrarem).
+
+/// O teto de degraus numa pilha de filtros — o painel regista este número de blocos de linha,
+/// sempre, e pinta só os que a pilha de facto tem.
+///
+/// ⚠️ Espelha o `ph2d_ecs::VecFilter::MAX_OPS`, que o painel não alcança (ele vive de snapshots);
+/// há gate a exigir que os dois lados concordem.
+pub const MAX_FILTER_ROWS: usize = 6;
+
+/// **O trilho da rampa** da linha `row` — o PAI dos arrastos de stop.
+///
+/// ⚠️ Ele não é um widget clicável: é o alvo que o `InteractiveState::CurvePoint` de cada punho
+/// carrega, e é por ele que o dispatch de 2D sabe a que rampa o gesto pertence. O primitivo é o
+/// MESMO que o editor de falloff do Painter e a curva do motion-params já usam.
+#[must_use]
+pub fn filter_ramp_id(row: usize) -> NodeId {
+    hash_node_id_runtime(&format!("vector.filter.ramp.{row}"))
+}

@@ -284,7 +284,7 @@ fn the_open_document_wins_over_the_pasted_code_and_giving_it_back_restores_it() 
         kind: WidgetKind::Slider,
         label: "Ao vivo".to_string(),
         key: "ao_vivo".to_string(),
-        id: ph2d_editor_core::ids::authored_row_id("ao_vivo"),
+        id: crate::ids::authored_row_id("ao_vivo"),
         rgba: None,
         icon: None,
         icon_id: None,

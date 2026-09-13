@@ -49,7 +49,7 @@ impl crate::App {
             // cópia no shell (uma cópia driftaria do que o artista está VENDO).
             let steps = hero
                 .store
-                .slider(ph2d_editor_core::ids::VECTOR_BLEND_STEPS)
+                .slider(ph2d_panel_vector::ids::VECTOR_BLEND_STEPS)
                 .map_or(ph2d_tool_vector::params::BLEND_STEPS_DEFAULT, |(_, v)| {
                     ph2d_tool_vector::params::blend_steps_from_track(f64::from(v))
                 });

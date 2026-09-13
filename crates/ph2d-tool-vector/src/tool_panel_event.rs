@@ -152,7 +152,7 @@ impl VectorTool {
             // é reescrito DEPOIS do bloco que materializa, então o `on` que o arm lê nesse frame
             // ainda é `true` (e o re-arm é um no-op, a spec não mudou); no frame seguinte ele lê
             // `false` e desarma uma selecção que já são as formas NOVAS, sem componente.
-            PanelEvent::Click(id) if id == ids::VECTOR_SYM_APPLY => self.symmetry.on = false,
+            PanelEvent::Click(id) if id == crate::ids::VECTOR_SYM_APPLY => self.symmetry.on = false,
             PanelEvent::Click(id) if id == crate::ids::VECTOR_SYM_ON => self.symmetry.on = true,
             PanelEvent::Click(id) if symmetry_kind(id).is_some() => {
                 if let Some(k) = symmetry_kind(id) {

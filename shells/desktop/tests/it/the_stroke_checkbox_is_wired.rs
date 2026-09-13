@@ -82,7 +82,7 @@ fn the_stroke_checkbox_is_wired_at_all_four_sites() {
             "o acumulador do clique",
         ),
         (
-            "ph2d_editor_core::ids::VECTOR_STROKE_PRESENT",
+            "ph2d_panel_vector::ids::VECTOR_STROKE_PRESENT",
             "o reconhecimento do clique no despacho",
         ),
         (

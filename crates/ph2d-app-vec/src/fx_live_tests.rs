@@ -23,7 +23,7 @@ fn op(kind: u8, radius: f32) -> FxOp {
 #[test]
 fn the_panel_and_the_engine_agree_on_the_ceilings() {
     assert_eq!(
-        ph2d_editor_core::ids::MAX_FILTER_ROWS,
+        ph2d_panel_vector::ids::MAX_FILTER_ROWS,
         VecFilter::MAX_OPS,
         "o teto de LINHAS do painel tem de bater com o `VecFilter::MAX_OPS`"
     );
@@ -462,7 +462,7 @@ fn the_law_reaches_the_pass_only_for_a_kind_that_takes_one() {
 #[test]
 fn hit_of_decodes_every_blend_option() {
     use crate::fx_live::{FilterHit, hit_of};
-    for r in 0..ph2d_editor_core::ids::MAX_FILTER_ROWS {
+    for r in 0..ph2d_panel_vector::ids::MAX_FILTER_ROWS {
         for m in 0..ph2d_panel_vector::ids::MAX_FILTER_BLENDS {
             let id = ph2d_panel_vector::ids::filter_blend_option_id(r, m);
             assert_eq!(
@@ -513,7 +513,7 @@ fn the_noise_knobs_reach_the_pass_and_the_detail_arrives_clamped() {
 #[test]
 fn hit_of_decodes_the_three_noise_knobs() {
     use crate::fx_live::{FilterHit, hit_of};
-    for r in 0..ph2d_editor_core::ids::MAX_FILTER_ROWS {
+    for r in 0..ph2d_panel_vector::ids::MAX_FILTER_ROWS {
         for (id, want) in [
             (
                 ph2d_panel_vector::ids::filter_scale_id(r),
@@ -590,7 +590,7 @@ fn the_adjust_knobs_cross_the_camera_unscaled() {
 #[test]
 fn hit_of_decodes_the_grow_knob() {
     use crate::fx_live::{FilterHit, hit_of};
-    for r in 0..ph2d_editor_core::ids::MAX_FILTER_ROWS {
+    for r in 0..ph2d_panel_vector::ids::MAX_FILTER_ROWS {
         assert_eq!(
             hit_of(ph2d_panel_vector::ids::filter_grow_id(r)),
             Some(FilterHit::Grow(r)),

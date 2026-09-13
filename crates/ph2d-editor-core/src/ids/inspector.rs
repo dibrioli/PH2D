@@ -9,8 +9,6 @@ use super::*;
 // HandPacked transitions surface a toast (asset-picker arrives in
 // M14.C+).
 pub const INSP_RENDER_STRATEGY_ATLAS: NodeId = hash_node_id("insp_render_strategy_atlas");
-pub const INSP_RENDER_STRATEGY_INDIVIDUAL: NodeId = hash_node_id("insp_render_strategy_individual");
-pub const INSP_RENDER_STRATEGY_HANDPACKED: NodeId = hash_node_id("insp_render_strategy_handpacked");
 
 /// M14.E: editable entity-name TextInput at the top of the Inspector
 /// body. Replaces the read-only name display that previously lived in
@@ -69,18 +67,6 @@ pub const INSP_VIS_LAYER_HEADER: NodeId = hash_node_id("insp_vis_layer_header");
 // (The Color & Tint sub-tab ids `INSP_COLOR_TAB_*` were retired
 // 2026-05-31 — the section now stacks every control visible at once.)
 
-/// **«Show sheet on canvas»** — a grelha desdobra-se em células fantasma à volta da viva
-/// (Enio, 2026-08-23: *«você digita 8 quadros e não vê onde eles começam ou terminam»*).
-///
-/// ⚠️ **É VISTA, não documento**, e por isso o valor vive só no [`crate::interaction::WidgetStore`]
-/// e a shell lê-o direto — sem `EditorAction`, sem commit, sem undo, sem save. Um sprite com grelha
-/// desenha UMA célula, então nada no canvas diz onde os cortes caem; a folha aberta é a resposta, e
-/// ela é tão transitória quanto o olhar do artista.
-///
-/// ⛔ Nunca a promova a componente: ela reabriria com o projeto, e o artista veria uma cena que
-/// não montou.
-pub const INSP_SHEET_PREVIEW: NodeId = hash_node_id("insp_sheet_preview");
-
 /// Widget Gallery floating panel — root id. The gallery is a Procreate-
 /// style floating reference panel that hosts the canonical widget
 /// showcase. Toggle visibility via [`TOPBAR_WIDGET_GALLERY`].
@@ -97,21 +83,7 @@ pub const AUDIO_MIXER_PANEL: NodeId = hash_node_id("audio_mixer_panel");
 /// transport + load/export controls; the big waveform + timeline live in the
 /// separate floating [`AUDIO_OVERLAY_PANEL`] on the canvas.
 pub const AUDIO_EDITOR_PANEL: NodeId = hash_node_id("audio_editor_panel");
-/// Audio Editor **floating overlay** — root id for the resizable waveform +
-/// timeline window that floats over the canvas in the gap between the Hierarchy
-/// and Inspector docks. Drag/resize reuse the panel-agnostic
-/// `blender_picker_offset` + `panel_resize_delta` store, keyed by this id
-/// (mirror of the Inspector dock).
-pub const AUDIO_OVERLAY_PANEL: NodeId = hash_node_id("audio_overlay_panel");
-/// Audio Editor overlay — title-bar drag handle. Registered as
-/// `BlenderHit { parent: AUDIO_OVERLAY_PANEL, kind: DragHandle }` by the editor
-/// panel's populate; the panel-agnostic dispatch moves the overlay via
-/// `blender_picker_offset`.
-pub const AUDIO_OVERLAY_DRAG_HANDLE: NodeId = hash_node_id("audio_overlay_drag_handle");
-/// Audio Editor overlay — bottom-right resize gripper (`ResizeHandle`).
-pub const AUDIO_OVERLAY_RESIZE_HANDLE: NodeId = hash_node_id("audio_overlay_resize_handle");
-/// Audio Editor overlay — bottom-left resize gripper (`ResizeHandleBl`).
-pub const AUDIO_OVERLAY_RESIZE_HANDLE_BL: NodeId = hash_node_id("audio_overlay_resize_handle_bl");
+
 /// Drag handle pill at the top of the Widget Gallery panel.
 pub const GAL_DRAG_HANDLE: NodeId = hash_node_id("gal_drag_handle");
 /// Resize gripper at the Widget Gallery's bottom-right corner.

@@ -44,7 +44,7 @@ fn row(key: &str, kind: WidgetKind, options: &[&str]) -> rows::Row {
         kind,
         label: key.to_string(),
         key: key.to_string(),
-        id: ph2d_editor_core::ids::authored_row_id(key),
+        id: ph2d_panel_authored::ids::authored_row_id(key),
         rgba: None,
         icon: None,
         icon_id: None,
@@ -79,7 +79,7 @@ fn marked_third_then_shrunk(kind: WidgetKind) -> (MockPanelHost, AuthoredPanelSt
             .painted_rect::<AuthoredPanel>(
                 &mut st,
                 VIEWPORT,
-                ph2d_editor_core::ids::authored_row_id("mode"),
+                ph2d_panel_authored::ids::authored_row_id("mode"),
             )
             .expect("o chip nao foi pintado");
         click(&mut h, &mut st, chip, SEC);
@@ -92,7 +92,7 @@ fn marked_third_then_shrunk(kind: WidgetKind) -> (MockPanelHost, AuthoredPanelSt
     assert_eq!(
         rows::selected_of(
             h.store()
-                .get(ph2d_editor_core::ids::authored_row_id("mode"))
+                .get(ph2d_panel_authored::ids::authored_row_id("mode"))
         ),
         Some(2),
         "o clique na terceira opcao nao a marcou — a fixture nao contem o fenomeno"
@@ -120,7 +120,7 @@ fn the_marked_option_is_one_the_row_can_offer() {
         let (h, _st) = marked_third_then_shrunk(kind);
         let marked = rows::selected_of(
             h.store()
-                .get(ph2d_editor_core::ids::authored_row_id("mode")),
+                .get(ph2d_panel_authored::ids::authored_row_id("mode")),
         )
         .expect("uma row de lista tem de reportar uma escolha");
         assert!(
@@ -146,7 +146,7 @@ fn a_list_with_no_children_neither_panics_nor_invents_a_choice() {
     assert_eq!(
         rows::selected_of(
             h.store()
-                .get(ph2d_editor_core::ids::authored_row_id("mode"))
+                .get(ph2d_panel_authored::ids::authored_row_id("mode"))
         ),
         Some(1),
         "com zero opcoes a marca tem de ficar onde estava — nao ha indice valido a escolher"
@@ -165,7 +165,7 @@ fn what_the_strip_lights_is_what_the_click_reports() {
     let (mut h, mut st) = marked_third_then_shrunk(WidgetKind::Tabs);
     let stored = rows::selected_of(
         h.store()
-            .get(ph2d_editor_core::ids::authored_row_id("mode")),
+            .get(ph2d_panel_authored::ids::authored_row_id("mode")),
     )
     .unwrap_or(0);
     let items: Vec<TabItem> = ["A", "B"]
@@ -173,7 +173,7 @@ fn what_the_strip_lights_is_what_the_click_reports() {
         .map(|o| TabItem::new(ph2d_editor_core::ids::AUTHORED_PANEL, (*o).to_string()))
         .collect();
     let lit = Tabs::new(
-        ph2d_editor_core::ids::authored_row_id("mode"),
+        ph2d_panel_authored::ids::authored_row_id("mode"),
         "mode",
         items,
     )

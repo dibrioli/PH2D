@@ -55,7 +55,7 @@ impl BodyCtx<'_> {
             }
             // O fora-do-fluxo vem PRIMEIRO porque é ele que decide se o resto existe.
             y = self.checkbox_row(
-                ph2d_editor_core::ids::VECTOR_LAYOUT_ITEM_ABSOLUTE,
+                crate::ids::VECTOR_LAYOUT_ITEM_ABSOLUTE,
                 tr("panel.vector.layout.absolute"),
                 it.absolute,
                 y,
@@ -78,9 +78,9 @@ impl BodyCtx<'_> {
             if !it.absolute && !it.parent_is_grid {
                 y = self.number_row(
                     "Grow",
-                    ph2d_editor_core::ids::VECTOR_LAYOUT_ITEM_GROW,
+                    crate::ids::VECTOR_LAYOUT_ITEM_GROW,
                     "Shrink",
-                    ph2d_editor_core::ids::VECTOR_LAYOUT_ITEM_SHRINK,
+                    crate::ids::VECTOR_LAYOUT_ITEM_SHRINK,
                     y,
                 );
             }
@@ -97,29 +97,29 @@ impl BodyCtx<'_> {
             tr("panel.vector.layout.dir"),
             &[
                 (
-                    ph2d_editor_core::ids::VECTOR_LAYOUT_DIR_OFF,
+                    crate::ids::VECTOR_LAYOUT_DIR_OFF,
                     tr("panel.vector.layout.dir.off"),
                     dir.is_none(),
                 ),
                 (
-                    ph2d_editor_core::ids::VECTOR_LAYOUT_DIR_ROW,
+                    crate::ids::VECTOR_LAYOUT_DIR_ROW,
                     tr("panel.vector.layout.dir.row"),
-                    dir == Some(ph2d_editor_core::ids::VECTOR_LAYOUT_DIR_ROW),
+                    dir == Some(crate::ids::VECTOR_LAYOUT_DIR_ROW),
                 ),
                 (
-                    ph2d_editor_core::ids::VECTOR_LAYOUT_DIR_COL,
+                    crate::ids::VECTOR_LAYOUT_DIR_COL,
                     tr("panel.vector.layout.dir.col"),
-                    dir == Some(ph2d_editor_core::ids::VECTOR_LAYOUT_DIR_COL),
+                    dir == Some(crate::ids::VECTOR_LAYOUT_DIR_COL),
                 ),
                 (
-                    ph2d_editor_core::ids::VECTOR_LAYOUT_DIR_WRAP,
+                    crate::ids::VECTOR_LAYOUT_DIR_WRAP,
                     tr("panel.vector.layout.dir.wrap"),
-                    dir == Some(ph2d_editor_core::ids::VECTOR_LAYOUT_DIR_WRAP),
+                    dir == Some(crate::ids::VECTOR_LAYOUT_DIR_WRAP),
                 ),
                 (
-                    ph2d_editor_core::ids::VECTOR_LAYOUT_DIR_GRID,
+                    crate::ids::VECTOR_LAYOUT_DIR_GRID,
                     tr("panel.vector.layout.dir.grid"),
-                    dir == Some(ph2d_editor_core::ids::VECTOR_LAYOUT_DIR_GRID),
+                    dir == Some(crate::ids::VECTOR_LAYOUT_DIR_GRID),
                 ),
             ],
             y,
@@ -134,21 +134,21 @@ impl BodyCtx<'_> {
         // **OS TOKENS DE VÃO** (W4c.4): a chave presa em cada eixo, para a rachura sobre o número
         // que ela cobre e para a row do picker logo abaixo.
         let bound = state::token_bindings().unwrap_or_default();
-        let wrap = f.dir == ph2d_editor_core::ids::VECTOR_LAYOUT_DIR_WRAP;
+        let wrap = f.dir == crate::ids::VECTOR_LAYOUT_DIR_WRAP;
         // ⚠️ **A contagem de colunas segue a MESMA cerca do vão transversal:** ela é pintada só na
         // direção que a lê. Nas outras três o número não move um pixel — e o valor continua lá,
         // intacto, para quando o artista voltar à grade.
-        if f.dir == ph2d_editor_core::ids::VECTOR_LAYOUT_DIR_GRID {
+        if f.dir == crate::ids::VECTOR_LAYOUT_DIR_GRID {
             y = self.lone_number_row(
                 tr("panel.vector.layout.columns"),
-                ph2d_editor_core::ids::VECTOR_LAYOUT_COLUMNS,
+                crate::ids::VECTOR_LAYOUT_COLUMNS,
                 y,
             );
         }
         let cw = self.half_cell_w();
         let main = self.number_cell(
             tr("panel.vector.layout.gap"),
-            ph2d_editor_core::ids::VECTOR_LAYOUT_GAP_MAIN,
+            crate::ids::VECTOR_LAYOUT_GAP_MAIN,
             self.inner_x,
             cw,
             y,
@@ -159,7 +159,7 @@ impl BodyCtx<'_> {
         if wrap {
             let cross = self.number_cell(
                 "Cross",
-                ph2d_editor_core::ids::VECTOR_LAYOUT_GAP_CROSS,
+                crate::ids::VECTOR_LAYOUT_GAP_CROSS,
                 self.inner_x + cw + Spacing::Sm.px(),
                 cw,
                 y,
@@ -192,14 +192,14 @@ impl BodyCtx<'_> {
             tr("panel.vector.layout.size.w"),
             &[
                 (
-                    ph2d_editor_core::ids::VECTOR_LAYOUT_SIZE_W_FIXED,
+                    crate::ids::VECTOR_LAYOUT_SIZE_W_FIXED,
                     tr("panel.vector.layout.size.fixed"),
-                    f.size[0] == ph2d_editor_core::ids::VECTOR_LAYOUT_SIZE_W_FIXED,
+                    f.size[0] == crate::ids::VECTOR_LAYOUT_SIZE_W_FIXED,
                 ),
                 (
-                    ph2d_editor_core::ids::VECTOR_LAYOUT_SIZE_W_HUG,
+                    crate::ids::VECTOR_LAYOUT_SIZE_W_HUG,
                     tr("panel.vector.layout.size.hug"),
-                    f.size[0] == ph2d_editor_core::ids::VECTOR_LAYOUT_SIZE_W_HUG,
+                    f.size[0] == crate::ids::VECTOR_LAYOUT_SIZE_W_HUG,
                 ),
             ],
             y,
@@ -208,14 +208,14 @@ impl BodyCtx<'_> {
             tr("panel.vector.layout.size.h"),
             &[
                 (
-                    ph2d_editor_core::ids::VECTOR_LAYOUT_SIZE_H_FIXED,
+                    crate::ids::VECTOR_LAYOUT_SIZE_H_FIXED,
                     tr("panel.vector.layout.size.fixed"),
-                    f.size[1] == ph2d_editor_core::ids::VECTOR_LAYOUT_SIZE_H_FIXED,
+                    f.size[1] == crate::ids::VECTOR_LAYOUT_SIZE_H_FIXED,
                 ),
                 (
-                    ph2d_editor_core::ids::VECTOR_LAYOUT_SIZE_H_HUG,
+                    crate::ids::VECTOR_LAYOUT_SIZE_H_HUG,
                     tr("panel.vector.layout.size.hug"),
-                    f.size[1] == ph2d_editor_core::ids::VECTOR_LAYOUT_SIZE_H_HUG,
+                    f.size[1] == crate::ids::VECTOR_LAYOUT_SIZE_H_HUG,
                 ),
             ],
             y,
@@ -224,16 +224,16 @@ impl BodyCtx<'_> {
         // Transform); aqui só se decide que as linhas existem.
         y = self.number_row(
             tr("panel.vector.layout.min.w"),
-            ph2d_editor_core::ids::VECTOR_LAYOUT_MIN_W,
+            crate::ids::VECTOR_LAYOUT_MIN_W,
             tr("panel.vector.layout.max.w"),
-            ph2d_editor_core::ids::VECTOR_LAYOUT_MAX_W,
+            crate::ids::VECTOR_LAYOUT_MAX_W,
             y,
         );
         self.number_row(
             tr("panel.vector.layout.min.h"),
-            ph2d_editor_core::ids::VECTOR_LAYOUT_MIN_H,
+            crate::ids::VECTOR_LAYOUT_MIN_H,
             tr("panel.vector.layout.max.h"),
-            ph2d_editor_core::ids::VECTOR_LAYOUT_MAX_H,
+            crate::ids::VECTOR_LAYOUT_MAX_H,
             y,
         )
     }
@@ -259,20 +259,20 @@ impl BodyCtx<'_> {
         if each {
             y = self.number_row(
                 "T",
-                ph2d_editor_core::ids::VECTOR_LAYOUT_PAD_T,
+                crate::ids::VECTOR_LAYOUT_PAD_T,
                 "R",
-                ph2d_editor_core::ids::VECTOR_LAYOUT_PAD_R,
+                crate::ids::VECTOR_LAYOUT_PAD_R,
                 y,
             );
             y = self.number_row(
                 "B",
-                ph2d_editor_core::ids::VECTOR_LAYOUT_PAD_B,
+                crate::ids::VECTOR_LAYOUT_PAD_B,
                 "L",
-                ph2d_editor_core::ids::VECTOR_LAYOUT_PAD_L,
+                crate::ids::VECTOR_LAYOUT_PAD_L,
                 y,
             );
         } else {
-            y = self.lone_number_row("All", ph2d_editor_core::ids::VECTOR_LAYOUT_PAD_ALL, y);
+            y = self.lone_number_row("All", crate::ids::VECTOR_LAYOUT_PAD_ALL, y);
         }
         y
     }
@@ -283,24 +283,24 @@ impl BodyCtx<'_> {
             tr("panel.vector.layout.align"),
             &[
                 (
-                    ph2d_editor_core::ids::VECTOR_LAYOUT_ALIGN_START,
+                    crate::ids::VECTOR_LAYOUT_ALIGN_START,
                     tr("panel.vector.layout.align.start"),
-                    f.align == ph2d_editor_core::ids::VECTOR_LAYOUT_ALIGN_START,
+                    f.align == crate::ids::VECTOR_LAYOUT_ALIGN_START,
                 ),
                 (
-                    ph2d_editor_core::ids::VECTOR_LAYOUT_ALIGN_CENTER,
+                    crate::ids::VECTOR_LAYOUT_ALIGN_CENTER,
                     tr("panel.vector.layout.align.center"),
-                    f.align == ph2d_editor_core::ids::VECTOR_LAYOUT_ALIGN_CENTER,
+                    f.align == crate::ids::VECTOR_LAYOUT_ALIGN_CENTER,
                 ),
                 (
-                    ph2d_editor_core::ids::VECTOR_LAYOUT_ALIGN_END,
+                    crate::ids::VECTOR_LAYOUT_ALIGN_END,
                     tr("panel.vector.layout.align.end"),
-                    f.align == ph2d_editor_core::ids::VECTOR_LAYOUT_ALIGN_END,
+                    f.align == crate::ids::VECTOR_LAYOUT_ALIGN_END,
                 ),
                 (
-                    ph2d_editor_core::ids::VECTOR_LAYOUT_ALIGN_STRETCH,
+                    crate::ids::VECTOR_LAYOUT_ALIGN_STRETCH,
                     tr("panel.vector.layout.align.stretch"),
-                    f.align == ph2d_editor_core::ids::VECTOR_LAYOUT_ALIGN_STRETCH,
+                    f.align == crate::ids::VECTOR_LAYOUT_ALIGN_STRETCH,
                 ),
             ],
             y,
@@ -318,31 +318,31 @@ impl BodyCtx<'_> {
         // modo, e ele perderia a distribuição ao voltar.
         let mut chips: Vec<(ph2d_a11y::NodeId, &str, bool)> = vec![
             (
-                ph2d_editor_core::ids::VECTOR_LAYOUT_JUSTIFY_START,
+                crate::ids::VECTOR_LAYOUT_JUSTIFY_START,
                 tr("panel.vector.layout.justify.start"),
-                f.justify == ph2d_editor_core::ids::VECTOR_LAYOUT_JUSTIFY_START,
+                f.justify == crate::ids::VECTOR_LAYOUT_JUSTIFY_START,
             ),
             (
-                ph2d_editor_core::ids::VECTOR_LAYOUT_JUSTIFY_CENTER,
+                crate::ids::VECTOR_LAYOUT_JUSTIFY_CENTER,
                 tr("panel.vector.layout.justify.center"),
-                f.justify == ph2d_editor_core::ids::VECTOR_LAYOUT_JUSTIFY_CENTER,
+                f.justify == crate::ids::VECTOR_LAYOUT_JUSTIFY_CENTER,
             ),
             (
-                ph2d_editor_core::ids::VECTOR_LAYOUT_JUSTIFY_END,
+                crate::ids::VECTOR_LAYOUT_JUSTIFY_END,
                 tr("panel.vector.layout.justify.end"),
-                f.justify == ph2d_editor_core::ids::VECTOR_LAYOUT_JUSTIFY_END,
+                f.justify == crate::ids::VECTOR_LAYOUT_JUSTIFY_END,
             ),
         ];
-        if f.dir != ph2d_editor_core::ids::VECTOR_LAYOUT_DIR_GRID {
+        if f.dir != crate::ids::VECTOR_LAYOUT_DIR_GRID {
             chips.push((
-                ph2d_editor_core::ids::VECTOR_LAYOUT_JUSTIFY_BETWEEN,
+                crate::ids::VECTOR_LAYOUT_JUSTIFY_BETWEEN,
                 tr("panel.vector.layout.justify.between"),
-                f.justify == ph2d_editor_core::ids::VECTOR_LAYOUT_JUSTIFY_BETWEEN,
+                f.justify == crate::ids::VECTOR_LAYOUT_JUSTIFY_BETWEEN,
             ));
             chips.push((
-                ph2d_editor_core::ids::VECTOR_LAYOUT_JUSTIFY_AROUND,
+                crate::ids::VECTOR_LAYOUT_JUSTIFY_AROUND,
                 tr("panel.vector.layout.justify.around"),
-                f.justify == ph2d_editor_core::ids::VECTOR_LAYOUT_JUSTIFY_AROUND,
+                f.justify == crate::ids::VECTOR_LAYOUT_JUSTIFY_AROUND,
             ));
         }
         self.segmented(tr("panel.vector.layout.justify"), &chips, y)

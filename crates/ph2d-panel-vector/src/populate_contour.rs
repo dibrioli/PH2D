@@ -25,9 +25,9 @@ const PERCENT: f64 = 100.0; // LITERAL-PX-OK: conversão de unidade (fração ->
 /// Registrados INCONDICIONALMENTE como todos os irmãos — quem decide se o clique é possível é a
 /// PINTURA (sem hit-rect não há Click).
 pub(super) fn populate_contour(store: &mut WidgetStore) {
-    button(store, ph2d_editor_core::ids::VECTOR_CONTOUR_ADD);
-    button(store, ph2d_editor_core::ids::VECTOR_CONTOUR_REMOVE);
-    button(store, ph2d_editor_core::ids::VECTOR_CONTOUR_EXPAND);
+    button(store, crate::ids::VECTOR_CONTOUR_ADD);
+    button(store, crate::ids::VECTOR_CONTOUR_REMOVE);
+    button(store, crate::ids::VECTOR_CONTOUR_EXPAND);
     for id in [
         ids::VECTOR_CONTOUR_JOIN_MITER,
         ids::VECTOR_CONTOUR_JOIN_ROUND,
@@ -43,15 +43,15 @@ pub(super) fn populate_contour(store: &mut WidgetStore) {
     // MESMA const, e é a variante `_int` que garante que o campo nunca aceite `4,5` anéis.
     slider_chip_int(
         store,
-        ph2d_editor_core::ids::VECTOR_CONTOUR_STEPS,
-        ph2d_editor_core::ids::VECTOR_CONTOUR_STEPS_NUM,
+        crate::ids::VECTOR_CONTOUR_STEPS,
+        crate::ids::VECTOR_CONTOUR_STEPS_NUM,
         crate::contour_params::steps_to_track(CONTOUR_STEPS_DEFAULT),
         CONTOUR_STEPS_DEFAULT,
         (CONTOUR_STEPS_MAX - 1.0) as f32,
         1.0,
     );
     store.set_number_range(
-        ph2d_editor_core::ids::VECTOR_CONTOUR_STEPS_NUM,
+        crate::ids::VECTOR_CONTOUR_STEPS_NUM,
         1.0,
         CONTOUR_STEPS_MAX,
         CONTOUR_STEPS_STEP,
@@ -62,15 +62,15 @@ pub(super) fn populate_contour(store: &mut WidgetStore) {
     // são o mapa de `d_from_track` vezes 100.
     slider_chip(
         store,
-        ph2d_editor_core::ids::VECTOR_CONTOUR_OFFSET,
-        ph2d_editor_core::ids::VECTOR_CONTOUR_OFFSET_NUM,
+        crate::ids::VECTOR_CONTOUR_OFFSET,
+        crate::ids::VECTOR_CONTOUR_OFFSET_NUM,
         0.5,
         0.0,
         (2.0 * CONTOUR_D_MAX * PERCENT) as f32,
         (-CONTOUR_D_MAX * PERCENT) as f32,
     );
     store.set_number_range(
-        ph2d_editor_core::ids::VECTOR_CONTOUR_OFFSET_NUM,
+        crate::ids::VECTOR_CONTOUR_OFFSET_NUM,
         -CONTOUR_D_MAX * PERCENT,
         CONTOUR_D_MAX * PERCENT,
         CONTOUR_OFFSET_STEP,
@@ -81,7 +81,7 @@ pub(super) fn populate_contour(store: &mut WidgetStore) {
     // a 21% dele). Ligá-los com um mapa afim faria o campo mostrar um número que o slider não
     // representa. Quem casa os dois é o `event.rs`, com o mapa de verdade e num sítio só.
     store.register(
-        ph2d_editor_core::ids::VECTOR_CONTOUR_ACCEL,
+        crate::ids::VECTOR_CONTOUR_ACCEL,
         InteractiveState::Slider {
             state: SliderState::Normal,
             value: 0.5,
@@ -89,7 +89,7 @@ pub(super) fn populate_contour(store: &mut WidgetStore) {
         },
     );
     store.register(
-        ph2d_editor_core::ids::VECTOR_CONTOUR_ACCEL_NUM,
+        crate::ids::VECTOR_CONTOUR_ACCEL_NUM,
         InteractiveState::NumberInput {
             state: TextInputState::Normal,
             value: 1.0,
@@ -100,7 +100,7 @@ pub(super) fn populate_contour(store: &mut WidgetStore) {
         },
     );
     store.set_number_range(
-        ph2d_editor_core::ids::VECTOR_CONTOUR_ACCEL_NUM,
+        crate::ids::VECTOR_CONTOUR_ACCEL_NUM,
         1.0 / CONTOUR_ACCEL_MAX,
         CONTOUR_ACCEL_MAX,
         CONTOUR_ACCEL_STEP,

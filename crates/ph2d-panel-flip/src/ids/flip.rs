@@ -167,6 +167,16 @@ pub fn flip_layer_blend_option_id(layer_id: u64, mode: u8) -> NodeId {
     ph2d_tool_registry::hash_node_id_runtime(&format!("flip_layer.blendopt.{layer_id}.{mode}"))
 }
 
+// ── Desceu de `ph2d-editor-core/src/ids/chrome/flip.rs` em 2026-09-13 (2.ª passagem: a cerca com a
+//    `line/render-loop` prendia-os na fundação até às duas linhas se integrarem).
+
+/// Apply: run the LazyBrush cut over the accumulated scribbles + the line-art, commit
+/// each region as a filled stroke, and clear the scribble buffer.
+pub const FLIP_COLORIZE_APPLY: NodeId = hash_node_id("flip.colorize.apply");
+
+/// Clear: drop the accumulated scribbles without colouring.
+pub const FLIP_COLORIZE_CLEAR: NodeId = hash_node_id("flip.colorize.clear");
+
 #[cfg(test)]
 mod tests {
     use super::*;

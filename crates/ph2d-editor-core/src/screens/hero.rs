@@ -47,10 +47,6 @@ pub mod radial;
 /// ⭐ A tabela `id da linha ⇄ tema` do menu de tema (as duas famílias).
 pub mod theme_menu;
 pub use panel_ids::{PANEL_MOTION_GRAPH, PANEL_TIMELINE};
-// Wave 6+7 Phase 2: hero ids promoted to ph2d-editor-core so dispatch
-// and panel crates can reach them without depending back on hero. The
-// `screens::hero::ids` path continues to resolve via this re-export.
-pub use crate::ids;
 pub mod left_rail;
 pub mod pre_populate;
 pub mod pre_populate_blender;

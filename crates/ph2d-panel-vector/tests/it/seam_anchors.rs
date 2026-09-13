@@ -38,8 +38,8 @@ fn pointer(kind: PointerKind, x: f32, y: f32, t: u128) -> PointerEvent {
 /// O neutro — a publicação que faz a seção existir para um filho sem regra armada.
 fn neutral() -> AnchorState {
     AnchorState {
-        h: Some(ph2d_editor_core::ids::VECTOR_ANCHOR_H_START),
-        v: Some(ph2d_editor_core::ids::VECTOR_ANCHOR_V_END),
+        h: Some(ph2d_panel_vector::ids::VECTOR_ANCHOR_H_START),
+        v: Some(ph2d_panel_vector::ids::VECTOR_ANCHOR_V_END),
     }
 }
 
@@ -91,14 +91,14 @@ fn all_eight_anchor_chips_are_reachable_and_reach_the_bus() {
     clear();
     state::set_anchor_state(Some(neutral()));
     for (id, what) in [
-        (ph2d_editor_core::ids::VECTOR_ANCHOR_H_START, "H Left"),
-        (ph2d_editor_core::ids::VECTOR_ANCHOR_H_CENTER, "H Center"),
-        (ph2d_editor_core::ids::VECTOR_ANCHOR_H_END, "H Right"),
-        (ph2d_editor_core::ids::VECTOR_ANCHOR_H_STRETCH, "H Stretch"),
-        (ph2d_editor_core::ids::VECTOR_ANCHOR_V_START, "V Top"),
-        (ph2d_editor_core::ids::VECTOR_ANCHOR_V_CENTER, "V Center"),
-        (ph2d_editor_core::ids::VECTOR_ANCHOR_V_END, "V Bottom"),
-        (ph2d_editor_core::ids::VECTOR_ANCHOR_V_STRETCH, "V Stretch"),
+        (ph2d_panel_vector::ids::VECTOR_ANCHOR_H_START, "H Left"),
+        (ph2d_panel_vector::ids::VECTOR_ANCHOR_H_CENTER, "H Center"),
+        (ph2d_panel_vector::ids::VECTOR_ANCHOR_H_END, "H Right"),
+        (ph2d_panel_vector::ids::VECTOR_ANCHOR_H_STRETCH, "H Stretch"),
+        (ph2d_panel_vector::ids::VECTOR_ANCHOR_V_START, "V Top"),
+        (ph2d_panel_vector::ids::VECTOR_ANCHOR_V_CENTER, "V Center"),
+        (ph2d_panel_vector::ids::VECTOR_ANCHOR_V_END, "V Bottom"),
+        (ph2d_panel_vector::ids::VECTOR_ANCHOR_V_STRETCH, "V Stretch"),
     ] {
         state::set_anchor_state(Some(neutral()));
         click_reaches_bus(id, what);
@@ -115,8 +115,8 @@ fn the_section_is_not_painted_without_an_anchorable_child() {
     clear();
     for id in [
         ids::VECTOR_SECTION_ANCHORS,
-        ph2d_editor_core::ids::VECTOR_ANCHOR_H_START,
-        ph2d_editor_core::ids::VECTOR_ANCHOR_V_STRETCH,
+        ph2d_panel_vector::ids::VECTOR_ANCHOR_H_START,
+        ph2d_panel_vector::ids::VECTOR_ANCHOR_V_STRETCH,
     ] {
         assert!(
             rect(id).is_none(),

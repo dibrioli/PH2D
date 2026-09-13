@@ -190,6 +190,7 @@ fn paint_hero_smoke_all_themes() {
     }
 }
 
+use crate::ids;
 use bumpalo::Bump;
 use ph2d_host::{PointerEvent, PointerKind, PointerSource};
 

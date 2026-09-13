@@ -7,9 +7,13 @@
 //! ⚠️ **Bloco APPEND-ONLY**: um id é o hash de uma STRING, então reordenar não quebra nada — mas
 //! renomear uma string quebra tudo o que a referencia por nome, e é assim que um widget fica órfão
 //! em silêncio.
+//!
+//! ⚠️ **Desceu de `ph2d-editor-core/src/ids/chrome/vector_cut.rs` em 2026-09-13** (auditoria de arquitectura
+//! A5b): quem LÊ estes ids mora nesta crate, e a fundação que 60 crates recompilam deixou de os
+//! carregar.
 
-use super::super::hash_node_id;
 use ph2d_a11y::NodeId;
+use ph2d_tool_registry::hash_node_id;
 
 // ── As três operações de NÓ da W4 (bloco APPEND-ONLY, plano 25 §7) ───────────
 // Join · Reverse · Average. As duas primeiras são de CAMINHO e vivem na seção PATH, ao lado do
@@ -18,9 +22,11 @@ use ph2d_a11y::NodeId;
 /// **Join** — solda os caminhos selecionados numa cadeia (2+; fechar um só é o `VECTOR_PATH_CLOSE`,
 /// que já existia — uma segunda porta para "fechar" divergiria dele no primeiro refino).
 pub const VECTOR_PATH_JOIN: NodeId = hash_node_id("vector.path.join");
+
 /// **Reverse** — inverte o sentido de cada caminho selecionado. Decide de que lado uma ponta de
 /// seta aponta, para onde um texto-em-caminho corre e qual contorno de um compound é buraco.
 pub const VECTOR_PATH_REVERSE: NodeId = hash_node_id("vector.path.reverse");
+
 /// **Average** — colapsa os nós selecionados no centroide deles. Compõe com o Join: *Average +
 /// Join* é a solda exata de duas pontas, o par canônico do Illustrator.
 pub const VECTOR_VERT_AVERAGE: NodeId = hash_node_id("vector.vert.average");
@@ -37,13 +43,3 @@ pub const VECTOR_CUT_APPLY: NodeId = hash_node_id("vector.cut.apply");
 /// **Discard Cut Line** — apaga a linha de corte. O par do de cima, e a razão de a linha poder
 /// ser um objeto persistente sem virar lixo na cena: há um gesto explícito para a tirar de lá.
 pub const VECTOR_CUT_DISCARD: NodeId = hash_node_id("vector.cut.discard");
-
-// ── As quatro operações NOVAS do Pathfinder (bloco APPEND-ONLY, plano 25 §8, W5) ──
-// Elas vivem no módulo do CORTE e não no do estilo pela mesma razão que o Join e o Reverse: são
-// a família que muda a TOPOLOGIA de um caminho. As quatro antigas (Union/Subtract/Intersect/
-// Exclude) ficam onde estavam — mover ids seria renomear strings, e um id é o hash de uma string.
-
-// ── A FORMA do marquee (bloco APPEND-ONLY, plano 25 §9, o LAÇO) ──────────────
-// Vive no módulo da topologia por vizinhança de assunto: como o Corte, é um par de chips colado
-// na fileira TOOL que qualifica o gesto que o modo em mãos executa — não um estilo, não uma forma
-// do catálogo.

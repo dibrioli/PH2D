@@ -25,7 +25,7 @@ impl BodyCtx<'_> {
         }
         let track = self
             .store
-            .slider(ph2d_editor_core::ids::VECTOR_EXPAND_OFFSET)
+            .slider(crate::ids::VECTOR_EXPAND_OFFSET)
             .map(|(_, v)| v)
             .unwrap_or_else(|| params::offset_frac_to_slider(params::OFFSET_DEFAULT_FRAC));
         // O chip mostra PERCENTUAL do tamanho da forma (−100 = morte garantida, +100 =
@@ -35,7 +35,7 @@ impl BodyCtx<'_> {
         let pct = params::slider_to_offset_frac(track) * 100.0; // LITERAL-PX-OK: unit conversion (fraction -> percent readout), not a design measure.
         y = self.slider_row(
             "Offset",
-            ph2d_editor_core::ids::VECTOR_EXPAND_OFFSET,
+            crate::ids::VECTOR_EXPAND_OFFSET,
             ph2d_tool_vector::ids::VECTOR_EXPAND_OFFSET_NUM,
             track,
             pct,
@@ -128,22 +128,22 @@ impl BodyCtx<'_> {
         const SLIDERS: [(&str, ph2d_a11y::NodeId, ph2d_a11y::NodeId); 4] = [
             (
                 "W Start",
-                ph2d_editor_core::ids::VECTOR_EXPAND_W_START,
+                crate::ids::VECTOR_EXPAND_W_START,
                 ph2d_tool_vector::ids::VECTOR_EXPAND_W_START_NUM,
             ),
             (
                 "W Mid",
-                ph2d_editor_core::ids::VECTOR_EXPAND_W_MID,
+                crate::ids::VECTOR_EXPAND_W_MID,
                 ph2d_tool_vector::ids::VECTOR_EXPAND_W_MID_NUM,
             ),
             (
                 "W End",
-                ph2d_editor_core::ids::VECTOR_EXPAND_W_END,
+                crate::ids::VECTOR_EXPAND_W_END,
                 ph2d_tool_vector::ids::VECTOR_EXPAND_W_END_NUM,
             ),
             (
                 "W Pos",
-                ph2d_editor_core::ids::VECTOR_EXPAND_W_POS,
+                crate::ids::VECTOR_EXPAND_W_POS,
                 ph2d_tool_vector::ids::VECTOR_EXPAND_W_POS_NUM,
             ),
         ];
@@ -205,10 +205,10 @@ impl BodyCtx<'_> {
         let opts: Vec<(ph2d_a11y::NodeId, &str, bool)> = ph2d_vec_scene::WIDTH_PRESETS
             .iter()
             .enumerate()
-            .take(ph2d_editor_core::ids::MAX_WIDTH_PRESETS)
+            .take(crate::ids::MAX_WIDTH_PRESETS)
             .map(|(i, p)| {
                 (
-                    ph2d_editor_core::ids::vector_width_preset_id(i),
+                    crate::ids::vector_width_preset_id(i),
                     tr(p.key),
                     active == Some(i),
                 )

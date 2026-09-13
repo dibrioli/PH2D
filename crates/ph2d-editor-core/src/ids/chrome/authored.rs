@@ -27,17 +27,6 @@
 use ph2d_a11y::NodeId;
 
 use crate::ids::hash_node_id;
-use ph2d_tool_registry::hash_node_id_runtime;
 
 /// O retângulo externo do painel (z-order + barreira de hit + roteamento da roda).
 pub const AUTHORED_PANEL: NodeId = hash_node_id("authored.panel");
-
-/// O id da row de chave `key`.
-///
-/// ⚠️ O twin de runtime do [`hash_node_id`] — o mesmo FNV-1a, gateado a concordar com a `const fn`
-/// (`fnv_node_id_runtime_agrees_with_hash_node_id`). Duas funções de hash dariam um id no
-/// `populate` e outro no `paint`, e o controle nasceria morto sob o rato.
-#[must_use]
-pub fn authored_row_id(key: &str) -> NodeId {
-    hash_node_id_runtime(&format!("authored.row.{key}"))
-}

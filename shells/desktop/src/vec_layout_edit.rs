@@ -28,7 +28,7 @@ use ph2d_ecs::{
     ChildOf, Entity, LayoutAlign, LayoutDir, LayoutJustify, LayoutSize, SimWorld, VecFrame,
     VecLayout, VecLayoutAbsolute, VecLayoutItem, VecLayoutSize,
 };
-use ph2d_editor_core::ids;
+use ph2d_panel_vector::ids;
 use ph2d_panel_vector::state::{LayoutFlow, LayoutItem};
 use ph2d_vec_scene::VecPathId;
 

@@ -54,7 +54,7 @@ fn the_weld_button_is_alive_under_the_pointer_and_reaches_the_bus() {
         .painted_rect::<VectorPanel>(
             &mut panel_state,
             VIEWPORT,
-            ph2d_editor_core::ids::VECTOR_PATH_WELD,
+            ph2d_panel_vector::ids::VECTOR_PATH_WELD,
         )
         .expect("o botao Weld nao foi PINTADO com area clicavel");
     let (cx, cy) = (r.x + r.w * 0.5, r.y + r.h * 0.5);
@@ -62,7 +62,7 @@ fn the_weld_button_is_alive_under_the_pointer_and_reaches_the_bus() {
     let evs = host.dispatch_pointer_event(pointer(PointerKind::Up, cx, cy, SEC + SEC / 100));
     assert!(
         evs.iter().any(
-            |e| matches!(e, WidgetEvent::Click(c) if *c == ph2d_editor_core::ids::VECTOR_PATH_WELD)
+            |e| matches!(e, WidgetEvent::Click(c) if *c == ph2d_panel_vector::ids::VECTOR_PATH_WELD)
         ),
         "o ponteiro sobre o Weld nao virou Click — ele esta' desenhado e nao existe para o \
          dispatcher (falta o `register` no populate_ops)"
@@ -73,7 +73,7 @@ fn the_weld_button_is_alive_under_the_pointer_and_reaches_the_bus() {
     assert!(
         host.drained_actions().into_iter().any(|a| matches!(
             a,
-            EditorAction::ToolPanelEvent(PanelEvent::Click(c)) if c == ph2d_editor_core::ids::VECTOR_PATH_WELD
+            EditorAction::ToolPanelEvent(PanelEvent::Click(c)) if c == ph2d_panel_vector::ids::VECTOR_PATH_WELD
         )),
         "o Click do Weld nao chegou ao bus — ele acende sob o mouse e nao faz nada (falta a linha \
          na allowlist do event_clicks)"
@@ -92,7 +92,7 @@ fn with_nothing_selected_there_is_no_weld_button() {
     let r = host.painted_rect::<VectorPanel>(
         &mut panel_state,
         VIEWPORT,
-        ph2d_editor_core::ids::VECTOR_PATH_WELD,
+        ph2d_panel_vector::ids::VECTOR_PATH_WELD,
     );
     state::set_current_selection_count(1);
     assert!(

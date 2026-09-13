@@ -250,12 +250,12 @@ fn paint_strategy_row(
             (
                 "Individual",
                 matches!(info.source_kind, InspectorSpriteSource::Individual { .. }),
-                core_ids::INSP_RENDER_STRATEGY_INDIVIDUAL,
+                crate::ids::INSP_RENDER_STRATEGY_INDIVIDUAL,
             ),
             (
                 "Hand-packed",
                 matches!(info.source_kind, InspectorSpriteSource::HandPacked { .. }),
-                core_ids::INSP_RENDER_STRATEGY_HANDPACKED,
+                crate::ids::INSP_RENDER_STRATEGY_HANDPACKED,
             ),
         ],
         scene,

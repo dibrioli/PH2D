@@ -232,21 +232,21 @@ pub fn preset_from_store(store: &WidgetStore) -> WidthProfile {
     };
     WidthProfile {
         start: mult(
-            ph2d_editor_core::ids::VECTOR_EXPAND_W_START,
+            ph2d_panel_vector::ids::VECTOR_EXPAND_W_START,
             params::WPROFILE_DEFAULT_START,
         ),
         mid: mult(
-            ph2d_editor_core::ids::VECTOR_EXPAND_W_MID,
+            ph2d_panel_vector::ids::VECTOR_EXPAND_W_MID,
             params::WPROFILE_DEFAULT_MID,
         ),
         end: mult(
-            ph2d_editor_core::ids::VECTOR_EXPAND_W_END,
+            ph2d_panel_vector::ids::VECTOR_EXPAND_W_END,
             params::WPROFILE_DEFAULT_END,
         ),
         // A posição é a fração crua do trilho — o meio senta onde o slider está, e não há
         // faixa a remapear (o domínio dela JÁ é `[0,1]`).
         position: store
-            .slider(ph2d_editor_core::ids::VECTOR_EXPAND_W_POS)
+            .slider(ph2d_panel_vector::ids::VECTOR_EXPAND_W_POS)
             .map_or(params::WPROFILE_DEFAULT_POS, |(_, v)| f64::from(v)),
     }
 }
@@ -280,10 +280,10 @@ pub fn preset_of(stops: &WidthStops) -> Option<WidthProfile> {
 /// acabou de escolher ficaria apagada.
 pub fn write_preset_to_store(store: &mut WidgetStore, p: &WidthProfile) {
     const IDS: [ph2d_editor_core::NodeId; 4] = [
-        ph2d_editor_core::ids::VECTOR_EXPAND_W_START,
-        ph2d_editor_core::ids::VECTOR_EXPAND_W_MID,
-        ph2d_editor_core::ids::VECTOR_EXPAND_W_END,
-        ph2d_editor_core::ids::VECTOR_EXPAND_W_POS,
+        ph2d_panel_vector::ids::VECTOR_EXPAND_W_START,
+        ph2d_panel_vector::ids::VECTOR_EXPAND_W_MID,
+        ph2d_panel_vector::ids::VECTOR_EXPAND_W_END,
+        ph2d_panel_vector::ids::VECTOR_EXPAND_W_POS,
     ];
     for (id, v) in IDS.into_iter().zip(params::preset_tracks(p)) {
         store.set_slider_value(id, v);

@@ -655,7 +655,7 @@ fn no_section_control_acts_without_its_snapshot() {
             // ele se cala sem sprite nenhuma selecionada.
             (
                 "Strategy Individual",
-                ids::INSP_RENDER_STRATEGY_INDIVIDUAL,
+                ph2d_panel_inspector::ids::INSP_RENDER_STRATEGY_INDIVIDUAL,
                 Stimulus::Click,
             ),
         ])

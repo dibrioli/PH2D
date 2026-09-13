@@ -10,7 +10,6 @@
 //! are ruled by the clip's clock and the STRIPS by the timeline's, so one ruler was two
 //! rulers wearing the same ticks.
 
-use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::zones::Rect;
 use ph2d_panel_timeline::TimelinePanel;
@@ -213,7 +212,7 @@ fn the_clip_ruler_under_a_stack_scrubs_and_draws_its_own_loop_but_no_timeline_ma
 
     let regs = paint(&mut host, &mut state, snap.clone());
     assert!(
-        rect_of(&regs, ids::TIMELINE_RULER).is_some(),
+        rect_of(&regs, ph2d_panel_timeline::ids::TIMELINE_RULER).is_some(),
         "the Keys ruler under a stack must scrub the clip clock — that is how you author keys"
     );
     assert!(
@@ -229,7 +228,7 @@ fn the_clip_ruler_under_a_stack_scrubs_and_draws_its_own_loop_but_no_timeline_ma
     state.tab = Tab::Arrange;
     let regs = paint(&mut host, &mut state, snap);
     assert!(
-        rect_of(&regs, ids::TIMELINE_RULER).is_some(),
+        rect_of(&regs, ph2d_panel_timeline::ids::TIMELINE_RULER).is_some(),
         "Arrange scrubs"
     );
     assert!(rect_of(&regs, ph2d_panel_timeline::ids::timeline_loop_brace_id(0)).is_some());
@@ -250,7 +249,7 @@ fn without_a_stack_the_keys_tab_is_the_panel_it_has_always_been() {
 
     let regs = paint(&mut host, &mut state, snap);
     assert!(
-        rect_of(&regs, ids::TIMELINE_RULER).is_some(),
+        rect_of(&regs, ph2d_panel_timeline::ids::TIMELINE_RULER).is_some(),
         "a timeline that never touched the stack lost its scrub"
     );
     assert!(rect_of(&regs, ph2d_panel_timeline::ids::timeline_loop_brace_id(0)).is_some());

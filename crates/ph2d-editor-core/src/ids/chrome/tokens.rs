@@ -22,16 +22,6 @@
 use ph2d_a11y::NodeId;
 
 use crate::ids::hash_node_id;
-use ph2d_tool_registry::hash_node_id_runtime;
 
 /// O retângulo externo do painel (z-order + barreira de hit + roteamento da roda).
 pub const TOKENS_PANEL: NodeId = hash_node_id("tokens.panel");
-
-/// A swatch da linha `row` — **alvo de PICKER**, como a swatch de Fill do vetor.
-///
-/// ⚠️ Registá-la como botão faria o clique acender o widget e **nunca abrir o picker** — a cor
-/// ficaria ineditável com todos os gates verdes (a cicatriz que a lista de peças da W5b já pagou).
-#[must_use]
-pub fn tokens_swatch_id(row: usize) -> NodeId {
-    hash_node_id_runtime(&format!("tokens.swatch.{row}"))
-}

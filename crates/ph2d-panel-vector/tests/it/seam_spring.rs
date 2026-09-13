@@ -66,7 +66,7 @@ fn the_spring_rows_replace_the_duration_and_curve_rows() {
         host.painted_rect::<VectorPanel>(
             &mut st,
             VIEWPORT,
-            ph2d_editor_core::ids::VECTOR_STATE_DURATION
+            ph2d_panel_vector::ids::VECTOR_STATE_DURATION
         )
         .is_some(),
         "sem mola, a DURACAO tem de estar pintada"
@@ -75,7 +75,7 @@ fn the_spring_rows_replace_the_duration_and_curve_rows() {
         host.painted_rect::<VectorPanel>(
             &mut st,
             VIEWPORT,
-            ph2d_editor_core::ids::VECTOR_STATE_STIFFNESS
+            ph2d_panel_vector::ids::VECTOR_STATE_STIFFNESS
         )
         .is_none(),
         "sem mola, a RIGIDEZ nao pode ser pintada — seria um controle que nao faz nada"
@@ -86,7 +86,7 @@ fn the_spring_rows_replace_the_duration_and_curve_rows() {
         host.painted_rect::<VectorPanel>(
             &mut st,
             VIEWPORT,
-            ph2d_editor_core::ids::VECTOR_STATE_STIFFNESS
+            ph2d_panel_vector::ids::VECTOR_STATE_STIFFNESS
         )
         .is_some(),
         "com mola, a RIGIDEZ tem de estar pintada"
@@ -95,7 +95,7 @@ fn the_spring_rows_replace_the_duration_and_curve_rows() {
         host.painted_rect::<VectorPanel>(
             &mut st,
             VIEWPORT,
-            ph2d_editor_core::ids::VECTOR_STATE_DAMPING
+            ph2d_panel_vector::ids::VECTOR_STATE_DAMPING
         )
         .is_some(),
         "com mola, o AMORTECIMENTO tem de estar pintado"
@@ -104,7 +104,7 @@ fn the_spring_rows_replace_the_duration_and_curve_rows() {
         host.painted_rect::<VectorPanel>(
             &mut st,
             VIEWPORT,
-            ph2d_editor_core::ids::VECTOR_STATE_DURATION
+            ph2d_panel_vector::ids::VECTOR_STATE_DURATION
         )
         .is_none(),
         "com mola, a DURACAO nao pode sobrar — uma mola nao TEM duracao, e deixa-la ali seria \
@@ -115,7 +115,7 @@ fn the_spring_rows_replace_the_duration_and_curve_rows() {
         host.painted_rect::<VectorPanel>(
             &mut st,
             VIEWPORT,
-            ph2d_editor_core::ids::VECTOR_STATE_SPRING
+            ph2d_panel_vector::ids::VECTOR_STATE_SPRING
         )
         .is_some(),
         "o checkbox tem de sobreviver ao proprio modo — sem ele a mola seria um caminho sem volta"
@@ -136,7 +136,7 @@ fn the_spring_checkbox_reaches_the_bus() {
         .painted_rect::<VectorPanel>(
             &mut st,
             VIEWPORT,
-            ph2d_editor_core::ids::VECTOR_STATE_SPRING,
+            ph2d_panel_vector::ids::VECTOR_STATE_SPRING,
         )
         .expect("o checkbox da mola e' pintado");
     let (cx, cy) = (r.x + r.w * 0.5, r.y + r.h * 0.5);
@@ -144,7 +144,7 @@ fn the_spring_checkbox_reaches_the_bus() {
     let evs = host.dispatch_pointer_event(pointer(PointerKind::Up, cx, cy, SEC + SEC / 100));
     assert!(
         evs.iter()
-            .any(|e| matches!(e, WidgetEvent::Click(c) if *c == ph2d_editor_core::ids::VECTOR_STATE_SPRING)),
+            .any(|e| matches!(e, WidgetEvent::Click(c) if *c == ph2d_panel_vector::ids::VECTOR_STATE_SPRING)),
         "o ponteiro sobre o checkbox nao virou Click"
     );
     for ev in evs {
@@ -153,7 +153,7 @@ fn the_spring_checkbox_reaches_the_bus() {
     assert!(
         host.drained_actions().into_iter().any(|a| matches!(
             a,
-            EditorAction::ToolPanelEvent(PanelEvent::Click(c)) if c == ph2d_editor_core::ids::VECTOR_STATE_SPRING
+            EditorAction::ToolPanelEvent(PanelEvent::Click(c)) if c == ph2d_panel_vector::ids::VECTOR_STATE_SPRING
         )),
         "o Click do checkbox nao chegou ao bus — a mola seria inalcancavel"
     );
@@ -163,8 +163,8 @@ fn the_spring_checkbox_reaches_the_bus() {
 #[test]
 fn both_spring_knobs_reach_the_bus() {
     for id in [
-        ph2d_editor_core::ids::VECTOR_STATE_STIFFNESS,
-        ph2d_editor_core::ids::VECTOR_STATE_DAMPING,
+        ph2d_panel_vector::ids::VECTOR_STATE_STIFFNESS,
+        ph2d_panel_vector::ids::VECTOR_STATE_DAMPING,
     ] {
         arm(Some((12.0, 1.0)));
         let mut host = MockPanelHost::with_panel::<VectorPanel>();

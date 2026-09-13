@@ -10,7 +10,6 @@
 //! por clique sobre um facto que a cena nem tem onde guardar.
 
 use ph2d_editor_core::action_bus::EditorAction;
-use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetEvent};
 use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_editor_core::screens::hero::TimerFieldEdit;
@@ -32,7 +31,7 @@ pub(crate) fn apply_timer_event(
 
     if let WidgetEvent::Click(id) = ev {
         // Uma linha da lista: abre a ficha, e **só** isso.
-        if let Some(i) = ids::INSP_TIMER_ROW.iter().position(|&o| o == id)
+        if let Some(i) = crate::ids::INSP_TIMER_ROW.iter().position(|&o| o == id)
             && i < info.rows.len()
         {
             panel.timer_selected = i;

@@ -6,7 +6,6 @@
 //! facto da UI, e publicá-la faria um passo de undo por clique sobre um facto que a cena não tem.
 
 use ph2d_editor_core::action_bus::EditorAction;
-use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetEvent};
 use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_editor_core::screens::hero::ActionFieldEdit;
@@ -27,7 +26,7 @@ pub(crate) fn apply_action_event(
     let sel_u8 = u8::try_from(sel).unwrap_or(0);
 
     if let WidgetEvent::Click(id) = ev {
-        if let Some(i) = ids::INSP_ACTION_ROW.iter().position(|&o| o == id)
+        if let Some(i) = crate::ids::INSP_ACTION_ROW.iter().position(|&o| o == id)
             && i < info.rows.len()
         {
             panel.action_selected = i;
@@ -49,7 +48,7 @@ pub(crate) fn apply_action_event(
         }
         // ⚠️ **A POSIÇÃO no array É a tag** — reordenar aquele array faria um clique escrever
         // outro verbo, e compila. Há gate na lei pura (`the_verb_tag_is_its_position…`).
-        if let Some(i) = ids::INSP_ACTION_VERB.iter().position(|&o| o == id)
+        if let Some(i) = crate::ids::INSP_ACTION_VERB.iter().position(|&o| o == id)
             && !info.rows.is_empty()
         {
             let tag = u8::try_from(i).unwrap_or(0);

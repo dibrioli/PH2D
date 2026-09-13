@@ -6539,7 +6539,7 @@ mod tests {
         );
         // Duplicate is NOT a reorder (handled separately), nor any non-Arrange id.
         assert_eq!(
-            vec_reorder_for_id(ph2d_editor_core::ids::VECTOR_ARRANGE_DUPLICATE),
+            vec_reorder_for_id(ph2d_panel_vector::ids::VECTOR_ARRANGE_DUPLICATE),
             None
         );
         assert_eq!(

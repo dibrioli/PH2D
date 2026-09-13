@@ -13,7 +13,6 @@
 //! que a shell lê**. *Um interruptor de vista prova-se pelo estado que ele deixa, não pelo evento
 //! que ele levanta.*
 
-use ph2d_editor_core::ids;
 use ph2d_editor_core::screens::hero::{
     InspectorSpriteInfo, InspectorSpriteMixed, InspectorSpriteSource,
 };
@@ -80,7 +79,7 @@ fn the_switch_exists_only_where_there_is_a_grid() {
         painted_with_grid(hf, vf)
             .1
             .iter()
-            .any(|(n, _)| *n == ids::INSP_SHEET_PREVIEW)
+            .any(|(n, _)| *n == ph2d_panel_inspector::ids::INSP_SHEET_PREVIEW)
     };
     assert!(!has(1, 1), "uma sprite 1x1 nao tem folha para abrir");
     assert!(has(8, 1), "uma tira de 8 tem");
@@ -100,12 +99,12 @@ fn clicking_the_switch_flips_the_value_the_shell_reads() {
     let (mut host, rects) = painted_with_grid(8, 1);
     let rect = rects
         .iter()
-        .find(|(n, _)| *n == ids::INSP_SHEET_PREVIEW)
+        .find(|(n, _)| *n == ph2d_panel_inspector::ids::INSP_SHEET_PREVIEW)
         .map(|(_, r)| *r)
         .expect("a caixa e' pintada com grelha");
     assert_eq!(
         host.store()
-            .checkbox(ids::INSP_SHEET_PREVIEW)
+            .checkbox(ph2d_panel_inspector::ids::INSP_SHEET_PREVIEW)
             .map(|(_, v)| v),
         Some(CheckboxValue::Unchecked),
         "ela nasce DESLIGADA -- uma vista que se liga sozinha e' uma cena que o artista nao montou"
@@ -117,7 +116,7 @@ fn clicking_the_switch_flips_the_value_the_shell_reads() {
     );
     assert_eq!(
         host.store()
-            .checkbox(ids::INSP_SHEET_PREVIEW)
+            .checkbox(ph2d_panel_inspector::ids::INSP_SHEET_PREVIEW)
             .map(|(_, v)| v),
         Some(CheckboxValue::Checked),
         "o clique tem de deixar a caixa marcada -- e' este valor que a shell le' por quadro"

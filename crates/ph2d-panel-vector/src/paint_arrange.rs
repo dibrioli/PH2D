@@ -32,11 +32,7 @@ impl BodyCtx<'_> {
         if collapsed {
             return y;
         }
-        y = self.action_button(
-            ph2d_editor_core::ids::VECTOR_ARRANGE_DUPLICATE,
-            "Duplicate",
-            y,
-        );
+        y = self.action_button(crate::ids::VECTOR_ARRANGE_DUPLICATE, "Duplicate", y);
         // **O Z-INDEX GLOBAL** (Enio, 2026-08-04: *"o Z index deve ser global e sobrepõe a ordem
         // na hierarquia"*) — maior = mais à frente, a convenção do `CanvasItem.z_index` do Godot.
         // A ordem da Hierarquia só decide entre objetos que EMPATAM neste número.
@@ -47,7 +43,7 @@ impl BodyCtx<'_> {
         if state::z_index().is_some() {
             y = self.lone_number_row(
                 tr("panel.vector.arrange.z"),
-                ph2d_editor_core::ids::VECTOR_ARRANGE_Z,
+                crate::ids::VECTOR_ARRANGE_Z,
                 y,
             );
         }
@@ -150,7 +146,7 @@ impl BodyCtx<'_> {
         let y = self.segmented(
             "Shapes",
             &[
-                (ph2d_editor_core::ids::VECTOR_SNAP_OFF, "Off", !on),
+                (crate::ids::VECTOR_SNAP_OFF, "Off", !on),
                 (ph2d_editor_core::ids::VECTOR_SNAP_ON, "On", on),
             ],
             y,
@@ -158,16 +154,16 @@ impl BodyCtx<'_> {
         let y = self.segmented(
             "Path",
             &[
-                (ph2d_editor_core::ids::VECTOR_SNAP_PATH_OFF, "Off", !path),
-                (ph2d_editor_core::ids::VECTOR_SNAP_PATH_ON, "On", path),
+                (crate::ids::VECTOR_SNAP_PATH_OFF, "Off", !path),
+                (crate::ids::VECTOR_SNAP_PATH_ON, "On", path),
             ],
             y,
         );
         let y = self.segmented(
             "Cross",
             &[
-                (ph2d_editor_core::ids::VECTOR_SNAP_CROSS_OFF, "Off", !cross),
-                (ph2d_editor_core::ids::VECTOR_SNAP_CROSS_ON, "On", cross),
+                (crate::ids::VECTOR_SNAP_CROSS_OFF, "Off", !cross),
+                (crate::ids::VECTOR_SNAP_CROSS_ON, "On", cross),
             ],
             y,
         );
@@ -176,12 +172,8 @@ impl BodyCtx<'_> {
         let y = self.segmented(
             "Guides",
             &[
-                (
-                    ph2d_editor_core::ids::VECTOR_SNAP_GUIDES_OFF,
-                    "Off",
-                    !guides,
-                ),
-                (ph2d_editor_core::ids::VECTOR_SNAP_GUIDES_ON, "On", guides),
+                (crate::ids::VECTOR_SNAP_GUIDES_OFF, "Off", !guides),
+                (crate::ids::VECTOR_SNAP_GUIDES_ON, "On", guides),
             ],
             y,
         );
@@ -191,8 +183,8 @@ impl BodyCtx<'_> {
         self.segmented(
             "Rulers",
             &[
-                (ph2d_editor_core::ids::VECTOR_RULERS_OFF, "Off", !rulers),
-                (ph2d_editor_core::ids::VECTOR_RULERS_ON, "On", rulers),
+                (crate::ids::VECTOR_RULERS_OFF, "Off", !rulers),
+                (crate::ids::VECTOR_RULERS_ON, "On", rulers),
             ],
             y,
         )
@@ -209,7 +201,7 @@ impl BodyCtx<'_> {
             gap,
             [
                 (ph2d_editor_core::ids::VECTOR_COMPOUND_MAKE, "Compound"),
-                (ph2d_editor_core::ids::VECTOR_COMPOUND_RELEASE, "Release"),
+                (crate::ids::VECTOR_COMPOUND_RELEASE, "Release"),
             ],
             y,
         )
@@ -225,12 +217,12 @@ impl BodyCtx<'_> {
             "Fill Rule",
             &[
                 (
-                    ph2d_editor_core::ids::VECTOR_FILL_RULE_NONZERO,
+                    crate::ids::VECTOR_FILL_RULE_NONZERO,
                     "Non-Zero",
                     rule == PathFillRule::NonZero,
                 ),
                 (
-                    ph2d_editor_core::ids::VECTOR_FILL_RULE_EVENODD,
+                    crate::ids::VECTOR_FILL_RULE_EVENODD,
                     "Even-Odd",
                     rule == PathFillRule::EvenOdd,
                 ),
@@ -324,11 +316,8 @@ impl BodyCtx<'_> {
                 two_col,
                 gap,
                 [
-                    (ph2d_editor_core::ids::VECTOR_GRAD_ADD_POINT, "Add Point"),
-                    (
-                        ph2d_editor_core::ids::VECTOR_GRAD_REMOVE_POINT,
-                        "Remove Point",
-                    ),
+                    (crate::ids::VECTOR_GRAD_ADD_POINT, "Add Point"),
+                    (crate::ids::VECTOR_GRAD_REMOVE_POINT, "Remove Point"),
                 ],
                 y,
             );
@@ -336,13 +325,13 @@ impl BodyCtx<'_> {
                 const MAX_INFLUENCE: f64 = 4.0; // LITERAL-PX-OK: IDW strength range (domain)
                 let track = self
                     .store
-                    .slider(ph2d_editor_core::ids::VECTOR_GRAD_INFLUENCE)
+                    .slider(crate::ids::VECTOR_GRAD_INFLUENCE)
                     .map(|(_, v)| v)
                     .unwrap_or((inf / MAX_INFLUENCE) as f32);
                 let val = f64::from(track) * MAX_INFLUENCE;
                 y = self.slider_row(
                     "Influence",
-                    ph2d_editor_core::ids::VECTOR_GRAD_INFLUENCE,
+                    crate::ids::VECTOR_GRAD_INFLUENCE,
                     ph2d_tool_vector::ids::VECTOR_GRAD_INFLUENCE_NUM,
                     track,
                     val,
@@ -354,13 +343,13 @@ impl BodyCtx<'_> {
             if let Some(jit) = state::current_grad_jitter() {
                 let track = self
                     .store
-                    .slider(ph2d_editor_core::ids::VECTOR_GRAD_JITTER)
+                    .slider(crate::ids::VECTOR_GRAD_JITTER)
                     .map(|(_, v)| v)
                     .unwrap_or(jit as f32);
                 let val = f64::from(track);
                 y = self.slider_row(
                     "Jitter",
-                    ph2d_editor_core::ids::VECTOR_GRAD_JITTER,
+                    crate::ids::VECTOR_GRAD_JITTER,
                     ph2d_tool_vector::ids::VECTOR_GRAD_JITTER_NUM,
                     track,
                     val,
@@ -376,11 +365,8 @@ impl BodyCtx<'_> {
                 two_col,
                 gap,
                 [
-                    (ph2d_editor_core::ids::VECTOR_GRAD_ADD_STOP, "Add Stop"),
-                    (
-                        ph2d_editor_core::ids::VECTOR_GRAD_REMOVE_STOP,
-                        "Remove Stop",
-                    ),
+                    (crate::ids::VECTOR_GRAD_ADD_STOP, "Add Stop"),
+                    (crate::ids::VECTOR_GRAD_REMOVE_STOP, "Remove Stop"),
                 ],
                 y,
             );
@@ -390,13 +376,13 @@ impl BodyCtx<'_> {
             let angle = state::current_grad_angle().unwrap_or(0.0);
             let track = self
                 .store
-                .slider(ph2d_editor_core::ids::VECTOR_GRAD_ANGLE)
+                .slider(crate::ids::VECTOR_GRAD_ANGLE)
                 .map(|(_, v)| v)
                 .unwrap_or((angle / FULL_TURN_DEG) as f32);
             let deg = f64::from(track) * FULL_TURN_DEG;
             y = self.slider_row(
                 "Angle",
-                ph2d_editor_core::ids::VECTOR_GRAD_ANGLE,
+                crate::ids::VECTOR_GRAD_ANGLE,
                 ph2d_tool_vector::ids::VECTOR_GRAD_ANGLE_NUM,
                 track,
                 deg,
@@ -483,11 +469,7 @@ impl BodyCtx<'_> {
         let gap = Spacing::Xs.px();
         let w = ((self.inner_w - gap) / 2.0).max(1.0);
         if state::convertible() {
-            y = self.action_button(
-                ph2d_editor_core::ids::VECTOR_CONVERT_TO_CURVES,
-                "Convert to Curves",
-                y,
-            );
+            y = self.action_button(crate::ids::VECTOR_CONVERT_TO_CURVES, "Convert to Curves", y);
         }
         y = self.row2(
             w,
@@ -514,15 +496,15 @@ impl BodyCtx<'_> {
         } else {
             "Close Path"
         };
-        y = self.action_button(ph2d_editor_core::ids::VECTOR_PATH_CLOSE, label, y);
+        y = self.action_button(crate::ids::VECTOR_PATH_CLOSE, label, y);
         // **Reverse** (W4) — o sentido do caminho é um fato autorado, e até aqui não havia gesto
         // nenhum que o mudasse: o `reverse_path` existia com UM chamador interno e nenhum id.
-        y = self.action_button(ph2d_editor_core::ids::VECTOR_PATH_REVERSE, "Reverse", y);
+        y = self.action_button(crate::ids::VECTOR_PATH_REVERSE, "Reverse", y);
         // **Join** — ⚠️ só com 2+ selecionados. Com um caminho só a resposta é o `Close Path` logo
         // acima; oferecer o Join ali seria um segundo botão para a mesma pergunta, e ele
         // devolveria `false` em silêncio (a lei do botão morto).
         if state::current_selection_count() >= 2 {
-            y = self.action_button(ph2d_editor_core::ids::VECTOR_PATH_JOIN, "Join", y);
+            y = self.action_button(crate::ids::VECTOR_PATH_JOIN, "Join", y);
         }
         // ⭐⭐⭐ **Soldar** (plano 39, ideia do Enio) — colado no *Join* porque são o mesmo verbo em
         // dois sítios: aquele solda **duas pontas**, este solda **os cruzamentos**. Lidos juntos,
@@ -531,7 +513,7 @@ impl BodyCtx<'_> {
         // ⚠️ **Sem o piso de 2**, ao contrário do *Join*: um caminho sozinho pode ter
         // AUTO-cruzamento, e ali soldar tem o que fazer.
         if state::current_selection_count() >= 1 {
-            y = self.action_button(ph2d_editor_core::ids::VECTOR_PATH_WELD, "Weld", y);
+            y = self.action_button(crate::ids::VECTOR_PATH_WELD, "Weld", y);
         }
         y
     }

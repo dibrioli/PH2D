@@ -39,3 +39,14 @@ mod vector_tokens;
 pub use vector_tokens::*;
 mod vector_widget;
 pub use vector_widget::*;
+
+mod vector;
+pub use vector::*;
+mod vector_cut;
+pub use vector_cut::*;
+mod vector_frame;
+pub use vector_frame::*;
+mod vector_snap;
+pub use vector_snap::*;
+mod vector_width;
+pub use vector_width::*;

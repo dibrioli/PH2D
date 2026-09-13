@@ -28,14 +28,13 @@ use ph2d_editor_core::tool::PanelEvent;
 /// ⚠️ **Arrastar também SELECIONA** — o punho que o dedo pegou é o que a swatch edita, senão o
 /// artista arrasta um stop e pinta outro.
 pub(super) fn ramp_drag(host: &mut dyn PanelHostInternal, id: ph2d_a11y::NodeId) -> bool {
-    let Some(row) = (0..ph2d_editor_core::ids::MAX_FILTER_ROWS)
-        .find(|r| id == ph2d_editor_core::ids::filter_ramp_id(*r))
+    let Some(row) = (0..crate::ids::MAX_FILTER_ROWS).find(|r| id == crate::ids::filter_ramp_id(*r))
     else {
         return false;
     };
     if let Some((_parent, _ch, idx, x, _y)) = host
         .store_mut()
-        .take_curve_point_drag_if(|p| p == ph2d_editor_core::ids::filter_ramp_id(row))
+        .take_curve_point_drag_if(|p| p == crate::ids::filter_ramp_id(row))
     {
         crate::state::filters::set_selected_stop(row, idx);
         host.bus_mut()
@@ -53,7 +52,7 @@ pub(super) fn ramp_drag(host: &mut dyn PanelHostInternal, id: ph2d_a11y::NodeId)
 /// nenhum `Click` chega a sair (a shell lê a escolha pelo `picker_target`, como no Contour).
 pub(super) fn is_filter_button(id: ph2d_a11y::NodeId) -> bool {
     (0..ids::MAX_FILTER_KINDS).any(|k| id == ids::filter_add_id(k))
-        || (0..ph2d_editor_core::ids::MAX_FILTER_ROWS).any(|r| {
+        || (0..crate::ids::MAX_FILTER_ROWS).any(|r| {
             id == ids::filter_remove_id(r)
                 || id == ids::filter_up_id(r)
                 || id == ids::filter_down_id(r)
@@ -74,7 +73,7 @@ pub(super) fn filters_slider_event(
     host: &mut dyn PanelHostInternal,
     id: ph2d_a11y::NodeId,
 ) -> Option<bool> {
-    for row in 0..ph2d_editor_core::ids::MAX_FILTER_ROWS {
+    for row in 0..crate::ids::MAX_FILTER_ROWS {
         if id == ids::filter_radius_id(row) {
             return Some(super::forward_track(host, id, 0.0, |t| {
                 t * FILTER_RADIUS_MAX

@@ -48,7 +48,7 @@ fn hero_with_picker_on(row: usize, rgba: [u8; 4]) -> HeroScreen {
         },
     );
     hero.store
-        .set_picker_target(Some(ph2d_editor_core::ids::tokens_swatch_id(row)));
+        .set_picker_target(Some(ph2d_panel_tokens::ids::tokens_swatch_id(row)));
     hero
 }
 

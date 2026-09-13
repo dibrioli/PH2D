@@ -160,7 +160,7 @@ pub(super) fn dispatch(
     // hero.store aliases tools.active_mut() above).
     if needs_panel_reset {
         ph2d_editor_core::panel::with_registry_opt(|reg| {
-            if let Some(idx) = reg.find_by_panel_node_id(ph2d_panel_upscale::ids::UPS_PANEL) {
+            if let Some(idx) = reg.find_by_panel_node_id(ph2d_editor_core::ids::UPS_PANEL) {
                 reg.panels_mut()[idx].populate(&mut hero.store);
             }
         });

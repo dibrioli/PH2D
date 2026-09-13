@@ -56,7 +56,7 @@ impl BodyCtx<'_> {
         // o artista não lê.
         self.number_cell(
             "R°",
-            ph2d_editor_core::ids::VECTOR_TRANSFORM_R,
+            crate::ids::VECTOR_TRANSFORM_R,
             self.inner_x,
             self.inner_w,
             y,
@@ -72,7 +72,7 @@ impl BodyCtx<'_> {
         // `None` = a seleção não tem resposta (nada, ou seleção múltipla) e a linha não existe.
         if let Some(on) = state::resize_box() {
             y = self.checkbox_row(
-                ph2d_editor_core::ids::VECTOR_TRANSFORM_RESIZE_BOX,
+                crate::ids::VECTOR_TRANSFORM_RESIZE_BOX,
                 tr("panel.vector.transform.resize_box"),
                 on,
                 y,
@@ -86,7 +86,7 @@ impl BodyCtx<'_> {
         } else {
             "Set Center"
         };
-        self.action_button(ph2d_editor_core::ids::VECTOR_PIVOT_EDIT, label, y)
+        self.action_button(crate::ids::VECTOR_PIVOT_EDIT, label, y)
     }
 }
 

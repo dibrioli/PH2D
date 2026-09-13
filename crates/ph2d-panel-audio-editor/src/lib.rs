@@ -18,6 +18,7 @@
 mod clipped_hits;
 pub mod delivery_state;
 mod event;
+pub mod ids;
 pub mod loop_state;
 mod paint;
 mod paint_delivery;

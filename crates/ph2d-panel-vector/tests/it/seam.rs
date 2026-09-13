@@ -520,7 +520,7 @@ fn boolean_button_click_forwards_to_the_bus_for_the_shell() {
 #[test]
 fn arrange_buttons_forward_to_the_bus_for_the_shell() {
     for id in [
-        ph2d_editor_core::ids::VECTOR_ARRANGE_DUPLICATE,
+        ph2d_panel_vector::ids::VECTOR_ARRANGE_DUPLICATE,
         ph2d_tool_vector::ids::VECTOR_ARRANGE_TO_BACK,
         ph2d_tool_vector::ids::VECTOR_ARRANGE_BACKWARD,
         ph2d_tool_vector::ids::VECTOR_ARRANGE_FORWARD,
@@ -594,7 +594,7 @@ fn delete_node_button_click_forwards_to_the_bus_for_the_shell() {
 
     let outcome = host.apply_panel_event::<VectorPanel>(
         &mut panel_state,
-        WidgetEvent::Click(ph2d_editor_core::ids::VECTOR_VERT_DELETE),
+        WidgetEvent::Click(ph2d_panel_vector::ids::VECTOR_VERT_DELETE),
     );
     assert_eq!(
         outcome,
@@ -605,7 +605,7 @@ fn delete_node_button_click_forwards_to_the_bus_for_the_shell() {
     let forwarded = host.drained_actions().iter().any(|a| {
         matches!(
             a,
-            EditorAction::ToolPanelEvent(PanelEvent::Click(id)) if *id == ph2d_editor_core::ids::VECTOR_VERT_DELETE
+            EditorAction::ToolPanelEvent(PanelEvent::Click(id)) if *id == ph2d_panel_vector::ids::VECTOR_VERT_DELETE
         )
     });
     assert!(
@@ -1072,24 +1072,24 @@ fn every_envelope_command_button_reaches_the_bus_when_clicked() {
     ph2d_panel_vector::set_current_has_envelope(true);
     ph2d_panel_vector::set_current_envelope_presets(&["Arc", "Flag", "Wave"], Some(0), 0.5);
     for (id, name) in [
-        (ph2d_editor_core::ids::VECTOR_ENVELOPE_RUN, "Envelope"),
-        (ph2d_editor_core::ids::VECTOR_ENVELOPE_EXPAND, "Expand"),
-        (ph2d_editor_core::ids::VECTOR_ENVELOPE_RELEASE, "Release"),
+        (ph2d_panel_vector::ids::VECTOR_ENVELOPE_RUN, "Envelope"),
+        (ph2d_panel_vector::ids::VECTOR_ENVELOPE_EXPAND, "Expand"),
+        (ph2d_panel_vector::ids::VECTOR_ENVELOPE_RELEASE, "Release"),
         (
-            ph2d_editor_core::ids::VECTOR_ENVELOPE_PERSPECTIVE,
+            ph2d_panel_vector::ids::VECTOR_ENVELOPE_PERSPECTIVE,
             "Perspective",
         ),
-        (ph2d_editor_core::ids::VECTOR_ENVELOPE_MESH, "Mesh"),
-        (ph2d_editor_core::ids::VECTOR_ENVELOPE_PINS, "Pins"),
+        (ph2d_panel_vector::ids::VECTOR_ENVELOPE_MESH, "Mesh"),
+        (ph2d_panel_vector::ids::VECTOR_ENVELOPE_PINS, "Pins"),
         // Os presets (ADR-0129 Fatia C) — a lista vem PUBLICADA, então o fixture a publica; sem
         // isso o `paint` não desenha botão nenhum e o gate morre na 1ª asserção, que é a mesma
         // premissa de ESTADO do `set_current_has_envelope`.
         (
-            ph2d_editor_core::ids::vector_envelope_preset_id(0),
+            ph2d_panel_vector::ids::vector_envelope_preset_id(0),
             "preset 0",
         ),
         (
-            ph2d_editor_core::ids::vector_envelope_preset_id(2),
+            ph2d_panel_vector::ids::vector_envelope_preset_id(2),
             "preset 2",
         ),
     ] {
@@ -1148,19 +1148,19 @@ fn the_envelope_controls_are_not_offered_without_an_envelope() {
     let mut host = MockPanelHost::with_panel::<VectorPanel>();
     let mut panel_state = VectorPanelState;
     for (id, name) in [
-        (ph2d_editor_core::ids::VECTOR_ENVELOPE_EXPAND, "Expand"),
-        (ph2d_editor_core::ids::VECTOR_ENVELOPE_RELEASE, "Release"),
+        (ph2d_panel_vector::ids::VECTOR_ENVELOPE_EXPAND, "Expand"),
+        (ph2d_panel_vector::ids::VECTOR_ENVELOPE_RELEASE, "Release"),
         (
-            ph2d_editor_core::ids::VECTOR_ENVELOPE_PERSPECTIVE,
+            ph2d_panel_vector::ids::VECTOR_ENVELOPE_PERSPECTIVE,
             "Perspective",
         ),
-        (ph2d_editor_core::ids::VECTOR_ENVELOPE_MESH, "Mesh"),
-        (ph2d_editor_core::ids::VECTOR_ENVELOPE_PINS, "Pins"),
+        (ph2d_panel_vector::ids::VECTOR_ENVELOPE_MESH, "Mesh"),
+        (ph2d_panel_vector::ids::VECTOR_ENVELOPE_PINS, "Pins"),
         (
-            ph2d_editor_core::ids::vector_envelope_preset_id(0),
+            ph2d_panel_vector::ids::vector_envelope_preset_id(0),
             "preset 0",
         ),
-        (ph2d_editor_core::ids::VECTOR_ENVELOPE_BEND, "Bend"),
+        (ph2d_panel_vector::ids::VECTOR_ENVELOPE_BEND, "Bend"),
     ] {
         assert!(
             host.painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, id)
@@ -1172,7 +1172,7 @@ fn the_envelope_controls_are_not_offered_without_an_envelope() {
         host.painted_rect::<VectorPanel>(
             &mut panel_state,
             VIEWPORT,
-            ph2d_editor_core::ids::VECTOR_ENVELOPE_RUN
+            ph2d_panel_vector::ids::VECTOR_ENVELOPE_RUN
         )
         .is_some(),
         "o botao de CRIAR tem de existir sempre — e' a porta de entrada da feature"
@@ -1203,13 +1203,13 @@ fn every_blend_command_button_reaches_the_bus_when_clicked() {
     };
     const SEC: u128 = 1_000_000_000;
     for (id, name) in [
-        (ph2d_editor_core::ids::VECTOR_BLEND_RUN, "Blend"),
+        (ph2d_panel_vector::ids::VECTOR_BLEND_RUN, "Blend"),
         (
-            ph2d_editor_core::ids::VECTOR_BLEND_RESET_SPINE,
+            ph2d_panel_vector::ids::VECTOR_BLEND_RESET_SPINE,
             "Reset Spine",
         ),
-        (ph2d_editor_core::ids::VECTOR_BLEND_EXPAND, "Expand"),
-        (ph2d_editor_core::ids::VECTOR_BLEND_RELEASE, "Release"),
+        (ph2d_panel_vector::ids::VECTOR_BLEND_EXPAND, "Expand"),
+        (ph2d_panel_vector::ids::VECTOR_BLEND_RELEASE, "Release"),
     ] {
         let mut host = MockPanelHost::with_panel::<VectorPanel>();
         let mut panel_state = VectorPanelState;
@@ -1258,10 +1258,10 @@ fn the_bend_slider_reaches_the_bus_in_document_units() {
     for (track, want) in [(0.0_f32, -1.0_f64), (0.5, 0.0), (1.0, 1.0)] {
         let mut host = MockPanelHost::with_panel::<VectorPanel>();
         let mut panel_state = VectorPanelState;
-        host.set_slider_value(ph2d_editor_core::ids::VECTOR_ENVELOPE_BEND, track);
+        host.set_slider_value(ph2d_panel_vector::ids::VECTOR_ENVELOPE_BEND, track);
         let outcome = host.apply_panel_event::<VectorPanel>(
             &mut panel_state,
-            WidgetEvent::ValueChanged(ph2d_editor_core::ids::VECTOR_ENVELOPE_BEND),
+            WidgetEvent::ValueChanged(ph2d_panel_vector::ids::VECTOR_ENVELOPE_BEND),
         );
         assert_eq!(
             outcome,
@@ -1270,7 +1270,7 @@ fn the_bend_slider_reaches_the_bus_in_document_units() {
         );
         let got = host.drained_actions().into_iter().find_map(|a| match a {
             EditorAction::ToolPanelEvent(PanelEvent::SetValue(c, v))
-                if c == ph2d_editor_core::ids::VECTOR_ENVELOPE_BEND =>
+                if c == ph2d_panel_vector::ids::VECTOR_ENVELOPE_BEND =>
             {
                 Some(v)
             }
@@ -1309,7 +1309,7 @@ fn the_bend_slider_is_not_offered_without_an_active_preset() {
         host.painted_rect::<VectorPanel>(
             &mut panel_state,
             VIEWPORT,
-            ph2d_editor_core::ids::VECTOR_ENVELOPE_BEND
+            ph2d_panel_vector::ids::VECTOR_ENVELOPE_BEND
         )
         .is_none(),
         "o Bend foi pintado numa gaiola MANUAL — ele nao tem o que re-carimbar"
@@ -1319,7 +1319,7 @@ fn the_bend_slider_is_not_offered_without_an_active_preset() {
         host.painted_rect::<VectorPanel>(
             &mut panel_state,
             VIEWPORT,
-            ph2d_editor_core::ids::vector_envelope_preset_id(0)
+            ph2d_panel_vector::ids::vector_envelope_preset_id(0)
         )
         .is_some(),
         "os presets sumiram junto — a gaiola manual ficaria sem porta de volta"
@@ -1330,7 +1330,7 @@ fn the_bend_slider_is_not_offered_without_an_active_preset() {
         host.painted_rect::<VectorPanel>(
             &mut panel_state,
             VIEWPORT,
-            ph2d_editor_core::ids::VECTOR_ENVELOPE_BEND
+            ph2d_panel_vector::ids::VECTOR_ENVELOPE_BEND
         )
         .is_some(),
         "com preset ativo o Bend tem de existir"
@@ -1367,7 +1367,7 @@ fn the_pins_controls_and_the_cage_controls_are_exclusive() {
         host.painted_rect::<VectorPanel>(
             &mut panel_state,
             VIEWPORT,
-            ph2d_editor_core::ids::vector_envelope_preset_id(0)
+            ph2d_panel_vector::ids::vector_envelope_preset_id(0)
         )
         .is_some(),
         "os presets sumiram no gesto de gaiola"
@@ -1376,7 +1376,7 @@ fn the_pins_controls_and_the_cage_controls_are_exclusive() {
         host.painted_rect::<VectorPanel>(
             &mut panel_state,
             VIEWPORT,
-            ph2d_editor_core::ids::VECTOR_ENVELOPE_CLEAR_PINS
+            ph2d_panel_vector::ids::VECTOR_ENVELOPE_CLEAR_PINS
         )
         .is_none(),
         "Clear Pins apareceu num gesto que nao tem pinos"
@@ -1388,7 +1388,7 @@ fn the_pins_controls_and_the_cage_controls_are_exclusive() {
         host.painted_rect::<VectorPanel>(
             &mut panel_state,
             VIEWPORT,
-            ph2d_editor_core::ids::VECTOR_ENVELOPE_CLEAR_PINS
+            ph2d_panel_vector::ids::VECTOR_ENVELOPE_CLEAR_PINS
         )
         .is_some(),
         "Clear Pins nao foi oferecido no gesto Pinos"
@@ -1397,7 +1397,7 @@ fn the_pins_controls_and_the_cage_controls_are_exclusive() {
         host.painted_rect::<VectorPanel>(
             &mut panel_state,
             VIEWPORT,
-            ph2d_editor_core::ids::vector_envelope_preset_id(0)
+            ph2d_panel_vector::ids::vector_envelope_preset_id(0)
         )
         .is_none(),
         "um preset de GAIOLA foi oferecido no gesto Pinos"
@@ -1722,22 +1722,22 @@ fn every_expand_control_reaches_its_destination_when_clicked() {
         // perfil na seleção, e as duas metades são da shell. Panel-local deixaria a linha acesa
         // sobre uma forma que não mudou.
         (
-            ph2d_editor_core::ids::vector_width_preset_id(0),
+            ph2d_panel_vector::ids::vector_width_preset_id(0),
             "Profile Uniform",
             true,
         ),
         (
-            ph2d_editor_core::ids::vector_width_preset_id(1),
+            ph2d_panel_vector::ids::vector_width_preset_id(1),
             "Profile Taper",
             true,
         ),
         (
-            ph2d_editor_core::ids::vector_width_preset_id(2),
+            ph2d_panel_vector::ids::vector_width_preset_id(2),
             "Profile Both",
             true,
         ),
         (
-            ph2d_editor_core::ids::vector_width_preset_id(3),
+            ph2d_panel_vector::ids::vector_width_preset_id(3),
             "Profile Bulge",
             true,
         ),
@@ -1896,30 +1896,30 @@ fn every_text_on_path_control_reaches_the_bus_when_clicked() {
         // Texto SOLTO com a seleção certa: a porta de entrada AUTO...
         (
             false,
-            ph2d_editor_core::ids::VECTOR_TEXTPATH_LINK,
+            ph2d_panel_vector::ids::VECTOR_TEXTPATH_LINK,
             "Text on Path",
         ),
         // ...e o **Picker** (Enio 2026-07-23), oferecido sempre que há um texto solto (a fonte é o
         // texto em foco; o guia vem do clique). O botão só ARMA, mas o clique tem de chegar ao bus.
         (
             false,
-            ph2d_editor_core::ids::VECTOR_TEXTPATH_PICK,
+            ph2d_panel_vector::ids::VECTOR_TEXTPATH_PICK,
             "Pick Path",
         ),
         // Texto PRESO: o que se pode dizer sobre o vínculo.
         (
             true,
-            ph2d_editor_core::ids::VECTOR_TEXTPATH_FLIP_OFF,
+            ph2d_panel_vector::ids::VECTOR_TEXTPATH_FLIP_OFF,
             "This side",
         ),
         (
             true,
-            ph2d_editor_core::ids::VECTOR_TEXTPATH_FLIP,
+            ph2d_panel_vector::ids::VECTOR_TEXTPATH_FLIP,
             "Other side",
         ),
         (
             true,
-            ph2d_editor_core::ids::VECTOR_TEXTPATH_DETACH,
+            ph2d_panel_vector::ids::VECTOR_TEXTPATH_DETACH,
             "Detach from Path",
         ),
     ] {
@@ -1985,24 +1985,24 @@ fn the_text_on_path_section_offers_only_what_applies() {
     ph2d_panel_vector::set_current_textpath_can_link(false);
     ph2d_panel_vector::set_current_textpath(false, 0.0, false);
     assert!(
-        rect(ph2d_editor_core::ids::VECTOR_TEXTPATH_LINK).is_none(),
+        rect(ph2d_panel_vector::ids::VECTOR_TEXTPATH_LINK).is_none(),
         "sem a seleção que a auto-ligação exige, `Text on Path` nao pode ser oferecido"
     );
     assert!(
-        rect(ph2d_editor_core::ids::VECTOR_TEXTPATH_PICK).is_some(),
+        rect(ph2d_panel_vector::ids::VECTOR_TEXTPATH_PICK).is_some(),
         "o Picker é oferecido sempre que há um texto solto — não depende da seleção-de-dois"
     );
     assert!(
-        rect(ph2d_editor_core::ids::VECTOR_TEXTPATH_OFFSET).is_none(),
+        rect(ph2d_panel_vector::ids::VECTOR_TEXTPATH_OFFSET).is_none(),
         "nem o offset"
     );
 
     // Solto, com a seleção CERTA: as DUAS portas (auto + Picker), nunca Detach.
     ph2d_panel_vector::set_current_textpath_can_link(true);
-    assert!(rect(ph2d_editor_core::ids::VECTOR_TEXTPATH_LINK).is_some());
-    assert!(rect(ph2d_editor_core::ids::VECTOR_TEXTPATH_PICK).is_some());
+    assert!(rect(ph2d_panel_vector::ids::VECTOR_TEXTPATH_LINK).is_some());
+    assert!(rect(ph2d_panel_vector::ids::VECTOR_TEXTPATH_PICK).is_some());
     assert!(
-        rect(ph2d_editor_core::ids::VECTOR_TEXTPATH_DETACH).is_none(),
+        rect(ph2d_panel_vector::ids::VECTOR_TEXTPATH_DETACH).is_none(),
         "soltar um texto que nao esta preso nao quer dizer nada"
     );
 
@@ -2010,19 +2010,19 @@ fn the_text_on_path_section_offers_only_what_applies() {
     ph2d_panel_vector::set_current_textpath_can_link(true);
     ph2d_panel_vector::set_current_textpath(true, 0.5, true);
     assert!(
-        rect(ph2d_editor_core::ids::VECTOR_TEXTPATH_LINK).is_none()
-            && rect(ph2d_editor_core::ids::VECTOR_TEXTPATH_PICK).is_none(),
+        rect(ph2d_panel_vector::ids::VECTOR_TEXTPATH_LINK).is_none()
+            && rect(ph2d_panel_vector::ids::VECTOR_TEXTPATH_PICK).is_none(),
         "prender um texto ja' preso nao quer dizer nada"
     );
-    assert!(rect(ph2d_editor_core::ids::VECTOR_TEXTPATH_OFFSET).is_some());
-    assert!(rect(ph2d_editor_core::ids::VECTOR_TEXTPATH_DETACH).is_some());
+    assert!(rect(ph2d_panel_vector::ids::VECTOR_TEXTPATH_OFFSET).is_some());
+    assert!(rect(ph2d_panel_vector::ids::VECTOR_TEXTPATH_DETACH).is_some());
 
     // E num objeto que NAO e' texto a secao inteira some (incluindo o Picker).
     ph2d_panel_vector::set_current_text_visible(false);
     assert!(
-        rect(ph2d_editor_core::ids::VECTOR_TEXTPATH_LINK).is_none()
-            && rect(ph2d_editor_core::ids::VECTOR_TEXTPATH_PICK).is_none()
-            && rect(ph2d_editor_core::ids::VECTOR_TEXTPATH_OFFSET).is_none(),
+        rect(ph2d_panel_vector::ids::VECTOR_TEXTPATH_LINK).is_none()
+            && rect(ph2d_panel_vector::ids::VECTOR_TEXTPATH_PICK).is_none()
+            && rect(ph2d_panel_vector::ids::VECTOR_TEXTPATH_OFFSET).is_none(),
         "num retangulo selecionado a secao nao tem sujeito"
     );
     ph2d_panel_vector::set_current_textpath(false, 0.0, false);
@@ -2045,23 +2045,23 @@ fn every_pattern_on_path_control_reaches_the_bus_when_clicked() {
         // Motivo SOLTO com a seleção certa (dois caminhos): só a porta de entrada.
         (
             false,
-            ph2d_editor_core::ids::VECTOR_PATTERNPATH_LINK,
+            ph2d_panel_vector::ids::VECTOR_PATTERNPATH_LINK,
             "Pattern on Path",
         ),
         // Motivo PRESO: o que se pode dizer sobre o vínculo.
         (
             true,
-            ph2d_editor_core::ids::VECTOR_PATTERNPATH_FLIP_OFF,
+            ph2d_panel_vector::ids::VECTOR_PATTERNPATH_FLIP_OFF,
             "This side",
         ),
         (
             true,
-            ph2d_editor_core::ids::VECTOR_PATTERNPATH_FLIP,
+            ph2d_panel_vector::ids::VECTOR_PATTERNPATH_FLIP,
             "Other side",
         ),
         (
             true,
-            ph2d_editor_core::ids::VECTOR_PATTERNPATH_DETACH,
+            ph2d_panel_vector::ids::VECTOR_PATTERNPATH_DETACH,
             "Detach from Path",
         ),
     ] {
@@ -2101,7 +2101,7 @@ fn every_pattern_on_path_control_reaches_the_bus_when_clicked() {
     // (`can_pick`, sem `can_link`). O botão só ARMA na shell — mas o clique tem de chegar ao bus como
     // qualquer outro, senão o gesto de duas mãos nasce morto.
     {
-        let id = ph2d_editor_core::ids::VECTOR_PATTERNPATH_PICK;
+        let id = ph2d_panel_vector::ids::VECTOR_PATTERNPATH_PICK;
         ph2d_panel_vector::set_current_patternpath_can_link(false);
         ph2d_panel_vector::set_current_patternpath_can_pick(true);
         ph2d_panel_vector::set_current_patternpath(false, 0.0, 1.0, 1.0, 0.0, false, 0.0);
@@ -2157,53 +2157,53 @@ fn the_pattern_on_path_section_offers_only_what_applies() {
     ph2d_panel_vector::set_current_patternpath_can_pick(false);
     ph2d_panel_vector::set_current_patternpath(false, 0.0, 1.0, 1.0, 0.0, false, 0.0);
     assert!(
-        rect(ph2d_editor_core::ids::VECTOR_PATTERNPATH_LINK).is_none()
-            && rect(ph2d_editor_core::ids::VECTOR_PATTERNPATH_PICK).is_none()
-            && rect(ph2d_editor_core::ids::VECTOR_PATTERNPATH_SPACING).is_none(),
+        rect(ph2d_panel_vector::ids::VECTOR_PATTERNPATH_LINK).is_none()
+            && rect(ph2d_panel_vector::ids::VECTOR_PATTERNPATH_PICK).is_none()
+            && rect(ph2d_panel_vector::ids::VECTOR_PATTERNPATH_SPACING).is_none(),
         "sem vínculo nem seleção, a seção não tem o que oferecer"
     );
 
     // Seleção de UM (can_pick), sem vínculo: só o **Picker** — a porta explícita. A auto-ligação
     // (que quer DOIS) não é oferecida, e não há controles a afinar sem um vínculo.
     ph2d_panel_vector::set_current_patternpath_can_pick(true);
-    assert!(rect(ph2d_editor_core::ids::VECTOR_PATTERNPATH_PICK).is_some());
+    assert!(rect(ph2d_panel_vector::ids::VECTOR_PATTERNPATH_PICK).is_some());
     assert!(
-        rect(ph2d_editor_core::ids::VECTOR_PATTERNPATH_LINK).is_none(),
+        rect(ph2d_panel_vector::ids::VECTOR_PATTERNPATH_LINK).is_none(),
         "com UM selecionado a auto-ligação (que quer dois) não é oferecida"
     );
-    assert!(rect(ph2d_editor_core::ids::VECTOR_PATTERNPATH_SPACING).is_none());
+    assert!(rect(ph2d_panel_vector::ids::VECTOR_PATTERNPATH_SPACING).is_none());
     ph2d_panel_vector::set_current_patternpath_can_pick(false);
 
     // Seleção de dois (can_link), sem vínculo: só a porta de entrada AUTO (o Picker é da de-um).
     ph2d_panel_vector::set_current_patternpath_can_link(true);
-    assert!(rect(ph2d_editor_core::ids::VECTOR_PATTERNPATH_LINK).is_some());
+    assert!(rect(ph2d_panel_vector::ids::VECTOR_PATTERNPATH_LINK).is_some());
     assert!(
-        rect(ph2d_editor_core::ids::VECTOR_PATTERNPATH_PICK).is_none(),
+        rect(ph2d_panel_vector::ids::VECTOR_PATTERNPATH_PICK).is_none(),
         "com DOIS selecionados a porta é a auto-ligação, não o Picker (que é da seleção-de-um)"
     );
     assert!(
-        rect(ph2d_editor_core::ids::VECTOR_PATTERNPATH_SPACING).is_none(),
+        rect(ph2d_panel_vector::ids::VECTOR_PATTERNPATH_SPACING).is_none(),
         "sem vínculo não há Spacing a afinar"
     );
     assert!(
-        rect(ph2d_editor_core::ids::VECTOR_PATTERNPATH_DETACH).is_none(),
+        rect(ph2d_panel_vector::ids::VECTOR_PATTERNPATH_DETACH).is_none(),
         "soltar um motivo que não está preso não quer dizer nada"
     );
 
     // Preso: o inverso exato — os controles, nem a porta de entrada nem o Picker.
     ph2d_panel_vector::set_current_patternpath(true, 0.5, 0.8, 2.0, 0.5, true, 45.0);
     assert!(
-        rect(ph2d_editor_core::ids::VECTOR_PATTERNPATH_LINK).is_none()
-            && rect(ph2d_editor_core::ids::VECTOR_PATTERNPATH_PICK).is_none(),
+        rect(ph2d_panel_vector::ids::VECTOR_PATTERNPATH_LINK).is_none()
+            && rect(ph2d_panel_vector::ids::VECTOR_PATTERNPATH_PICK).is_none(),
         "prender um motivo já preso não quer dizer nada"
     );
-    assert!(rect(ph2d_editor_core::ids::VECTOR_PATTERNPATH_SPACING).is_some());
-    assert!(rect(ph2d_editor_core::ids::VECTOR_PATTERNPATH_START).is_some());
-    assert!(rect(ph2d_editor_core::ids::VECTOR_PATTERNPATH_END).is_some());
-    assert!(rect(ph2d_editor_core::ids::VECTOR_PATTERNPATH_SLIDE).is_some());
-    assert!(rect(ph2d_editor_core::ids::VECTOR_PATTERNPATH_OFFSET).is_some());
-    assert!(rect(ph2d_editor_core::ids::VECTOR_PATTERNPATH_ROTATION).is_some());
-    assert!(rect(ph2d_editor_core::ids::VECTOR_PATTERNPATH_DETACH).is_some());
+    assert!(rect(ph2d_panel_vector::ids::VECTOR_PATTERNPATH_SPACING).is_some());
+    assert!(rect(ph2d_panel_vector::ids::VECTOR_PATTERNPATH_START).is_some());
+    assert!(rect(ph2d_panel_vector::ids::VECTOR_PATTERNPATH_END).is_some());
+    assert!(rect(ph2d_panel_vector::ids::VECTOR_PATTERNPATH_SLIDE).is_some());
+    assert!(rect(ph2d_panel_vector::ids::VECTOR_PATTERNPATH_OFFSET).is_some());
+    assert!(rect(ph2d_panel_vector::ids::VECTOR_PATTERNPATH_ROTATION).is_some());
+    assert!(rect(ph2d_panel_vector::ids::VECTOR_PATTERNPATH_DETACH).is_some());
 
     ph2d_panel_vector::set_current_patternpath(false, 0.0, 1.0, 1.0, 0.0, false, 0.0);
     ph2d_panel_vector::set_current_patternpath_can_link(false);
@@ -2225,10 +2225,10 @@ fn the_rotation_slider_reaches_the_bus_in_degrees() {
     for (track, want) in [(0.0_f32, -180.0_f64), (0.5, 0.0), (1.0, 180.0)] {
         let mut host = MockPanelHost::with_panel::<VectorPanel>();
         let mut panel_state = VectorPanelState;
-        host.set_slider_value(ph2d_editor_core::ids::VECTOR_PATTERNPATH_ROTATION, track);
+        host.set_slider_value(ph2d_panel_vector::ids::VECTOR_PATTERNPATH_ROTATION, track);
         let outcome = host.apply_panel_event::<VectorPanel>(
             &mut panel_state,
-            WidgetEvent::ValueChanged(ph2d_editor_core::ids::VECTOR_PATTERNPATH_ROTATION),
+            WidgetEvent::ValueChanged(ph2d_panel_vector::ids::VECTOR_PATTERNPATH_ROTATION),
         );
         assert_eq!(
             outcome,
@@ -2237,7 +2237,7 @@ fn the_rotation_slider_reaches_the_bus_in_degrees() {
         );
         let got = host.drained_actions().into_iter().find_map(|a| match a {
             EditorAction::ToolPanelEvent(PanelEvent::SetValue(c, v))
-                if c == ph2d_editor_core::ids::VECTOR_PATTERNPATH_ROTATION =>
+                if c == ph2d_panel_vector::ids::VECTOR_PATTERNPATH_ROTATION =>
             {
                 Some(v)
             }
@@ -2272,7 +2272,7 @@ fn the_rotation_row_is_reachable_by_a_pointer() {
     let rects = host.paint::<VectorPanel>(&mut st, VIEWPORT);
     let r = rects
         .iter()
-        .find(|(n, _)| *n == ph2d_editor_core::ids::VECTOR_PATTERNPATH_ROTATION)
+        .find(|(n, _)| *n == ph2d_panel_vector::ids::VECTOR_PATTERNPATH_ROTATION)
         .map(|(_, r)| *r)
         .expect("a row Rotation tem de ser pintada com o vínculo vivo");
     // O caminho REAL do ponteiro: é isto que falha se o id não estiver registrado.
@@ -2296,14 +2296,14 @@ fn the_spacing_floor_reaches_the_bus() {
     for (track, want) in [(0.0_f32, 0.01_f64), (1.0, 4.0)] {
         let mut host = MockPanelHost::with_panel::<VectorPanel>();
         let mut panel_state = VectorPanelState;
-        host.set_slider_value(ph2d_editor_core::ids::VECTOR_PATTERNPATH_SPACING, track);
+        host.set_slider_value(ph2d_panel_vector::ids::VECTOR_PATTERNPATH_SPACING, track);
         let _ = host.apply_panel_event::<VectorPanel>(
             &mut panel_state,
-            WidgetEvent::ValueChanged(ph2d_editor_core::ids::VECTOR_PATTERNPATH_SPACING),
+            WidgetEvent::ValueChanged(ph2d_panel_vector::ids::VECTOR_PATTERNPATH_SPACING),
         );
         let got = host.drained_actions().into_iter().find_map(|a| match a {
             EditorAction::ToolPanelEvent(PanelEvent::SetValue(c, v))
-                if c == ph2d_editor_core::ids::VECTOR_PATTERNPATH_SPACING =>
+                if c == ph2d_panel_vector::ids::VECTOR_PATTERNPATH_SPACING =>
             {
                 Some(v)
             }
@@ -2334,10 +2334,10 @@ fn the_selection_reach_buttons_reach_the_bus_when_clicked() {
     const SEC: u128 = 1_000_000_000;
     for (id, name) in [
         (
-            ph2d_editor_core::ids::VECTOR_VERT_SEL_SUBPATH,
+            ph2d_panel_vector::ids::VECTOR_VERT_SEL_SUBPATH,
             "Select Subpath",
         ),
-        (ph2d_editor_core::ids::VECTOR_VERT_SEL_SAME, "Select Same"),
+        (ph2d_panel_vector::ids::VECTOR_VERT_SEL_SAME, "Select Same"),
     ] {
         let mut host = MockPanelHost::with_panel::<VectorPanel>();
         let mut panel_state = VectorPanelState;
@@ -2388,9 +2388,17 @@ fn the_node_ops_reach_the_bus_when_clicked() {
     };
     const SEC: u128 = 1_000_000_000;
     for (id, name, needs_two) in [
-        (ph2d_editor_core::ids::VECTOR_VERT_AVERAGE, "Average", false),
-        (ph2d_editor_core::ids::VECTOR_PATH_REVERSE, "Reverse", false),
-        (ph2d_editor_core::ids::VECTOR_PATH_JOIN, "Join", true),
+        (
+            ph2d_panel_vector::ids::VECTOR_VERT_AVERAGE,
+            "Average",
+            false,
+        ),
+        (
+            ph2d_panel_vector::ids::VECTOR_PATH_REVERSE,
+            "Reverse",
+            false,
+        ),
+        (ph2d_panel_vector::ids::VECTOR_PATH_JOIN, "Join", true),
     ] {
         let mut host = MockPanelHost::with_panel::<VectorPanel>();
         let mut panel_state = VectorPanelState;
@@ -2446,7 +2454,7 @@ fn the_join_button_is_not_offered_for_a_single_path() {
         host.painted_rect::<VectorPanel>(
             &mut panel_state,
             VIEWPORT,
-            ph2d_editor_core::ids::VECTOR_PATH_JOIN
+            ph2d_panel_vector::ids::VECTOR_PATH_JOIN
         )
         .is_none(),
         "o Join foi pintado com UM caminho selecionado -- ali quem responde e' o Close Path"
@@ -2578,8 +2586,8 @@ fn the_cut_buttons_only_appear_with_the_cut_tool_in_hand() {
             ..ph2d_tool_vector::VectorStyleSnapshot::default()
         }));
         for id in [
-            ph2d_editor_core::ids::VECTOR_CUT_APPLY,
-            ph2d_editor_core::ids::VECTOR_CUT_DISCARD,
+            ph2d_panel_vector::ids::VECTOR_CUT_APPLY,
+            ph2d_panel_vector::ids::VECTOR_CUT_DISCARD,
         ] {
             let painted = host
                 .painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, id)
@@ -2617,8 +2625,8 @@ fn the_cut_buttons_need_a_blade_to_exist() {
 
     ph2d_panel_vector::state::set_cut_line_exists(false);
     for id in [
-        ph2d_editor_core::ids::VECTOR_CUT_APPLY,
-        ph2d_editor_core::ids::VECTOR_CUT_DISCARD,
+        ph2d_panel_vector::ids::VECTOR_CUT_APPLY,
+        ph2d_panel_vector::ids::VECTOR_CUT_DISCARD,
     ] {
         assert!(
             host.painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, id)
@@ -2629,8 +2637,8 @@ fn the_cut_buttons_need_a_blade_to_exist() {
     // E o controle: com lâmina, aparecem (senão este gate seria verde por vácuo).
     ph2d_panel_vector::state::set_cut_line_exists(true);
     for id in [
-        ph2d_editor_core::ids::VECTOR_CUT_APPLY,
-        ph2d_editor_core::ids::VECTOR_CUT_DISCARD,
+        ph2d_panel_vector::ids::VECTOR_CUT_APPLY,
+        ph2d_panel_vector::ids::VECTOR_CUT_DISCARD,
     ] {
         assert!(
             host.painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, id)
@@ -2791,7 +2799,7 @@ fn the_enable_pair_and_the_apply_reach_the_bus() {
         (ph2d_tool_vector::ids::VECTOR_SYM_OFF, "Off"),
         (ph2d_tool_vector::ids::VECTOR_SYM_FUSE_ON, "Fuse On"),
         (ph2d_tool_vector::ids::VECTOR_SYM_FUSE_OFF, "Fuse Off"),
-        (ph2d_editor_core::ids::VECTOR_SYM_APPLY, "Apply"),
+        (ph2d_tool_vector::ids::VECTOR_SYM_APPLY, "Apply"),
     ] {
         let mut st = VectorPanelState;
         let mut tool = VectorTool::default();
@@ -2893,14 +2901,14 @@ fn the_apply_button_only_exists_when_something_is_live() {
     assert!(
         !none
             .iter()
-            .any(|(n, _)| *n == ph2d_editor_core::ids::VECTOR_SYM_APPLY),
+            .any(|(n, _)| *n == ph2d_tool_vector::ids::VECTOR_SYM_APPLY),
         "sem simetria viva o Apply não é oferecido"
     );
     ph2d_panel_vector::state_symmetry::set_symmetry_live_count(1);
     let some = symmetry_rects(&mut host, ph2d_symmetry::SymmetryKind::MirrorX);
     let r = some
         .iter()
-        .find(|(n, _)| *n == ph2d_editor_core::ids::VECTOR_SYM_APPLY)
+        .find(|(n, _)| *n == ph2d_tool_vector::ids::VECTOR_SYM_APPLY)
         .map(|(_, r)| *r)
         .expect("com simetria viva o Apply aparece");
     let events = host.click_at(r.x + r.w * 0.5, r.y + r.h * 0.5);

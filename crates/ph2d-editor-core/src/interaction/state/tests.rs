@@ -524,11 +524,12 @@ fn a_thumb_stays_lit_while_the_finger_drags_it() {
     );
 }
 
-/// ⭐ **Abrir o seletor de cor sobe-o à FRENTE — com o id que o desenho e o clique usam.**
+/// ⭐ **Abrir o seletor de cor põe-no no topo da ORDEM com o id com que ele é registado.**
 ///
-/// ⛔ Até 2026-09-13 o `set_picker_target` subia um `NodeId(380)` escrito à mão, e o seletor é pintado e
-/// recebe o clique por `ids::INSP_BLENDER_PICKER` (hash de slug): abri-lo por cima de outro painel
-/// flutuante deixava-o POR BAIXO. A outra metade é o censo «um nome, um valor» em `node_id_collisions`.
+/// ⛔ Até 2026-09-13 o `set_picker_target` subia um `NodeId(380)` escrito à mão — uma entrada fantasma: o
+/// seletor é registado e publicado por `ids::INSP_BLENDER_PICKER` (hash de slug). ⚠️ No ECRÃ nada estava
+/// errado (o seletor é pintado fora da ordem, depois de todo painel); o que este gate prende é a lista,
+/// para o próximo leitor dela. A outra metade é o censo «um nome, um valor» em `node_id_collisions`.
 #[test]
 fn opening_the_colour_picker_brings_the_panel_the_paint_uses_to_the_front() {
     let mut store = WidgetStore::with_capacity(4);
@@ -537,7 +538,7 @@ fn opening_the_colour_picker_brings_the_panel_the_paint_uses_to_the_front() {
     assert_eq!(
         store.panel_z_order().last(),
         Some(&crate::ids::INSP_BLENDER_PICKER),
-        "o seletor aberto não ficou por cima — a ordem é {:?}",
+        "o seletor aberto não está no topo da ordem com o id dele — a ordem é {:?}",
         store.panel_z_order()
     );
 }

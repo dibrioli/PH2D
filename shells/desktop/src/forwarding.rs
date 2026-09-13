@@ -547,7 +547,7 @@ mod tests {
         );
 
         // Um id qualquer que NÃO é o picker — o controle.
-        let other = WidgetEvent::ValueChanged(ph2d_editor_core::ids::VECTOR_ARRANGE_DUPLICATE);
+        let other = WidgetEvent::ValueChanged(ph2d_panel_vector::ids::VECTOR_ARRANGE_DUPLICATE);
         assert!(
             !expected_unhandled(&other),
             "a isencao alargou para o TIPO: o detector de seam morto ficou cego"

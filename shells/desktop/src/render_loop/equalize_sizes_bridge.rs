@@ -97,7 +97,7 @@ pub(super) fn dispatch(hero: &mut HeroScreen, tools: &mut ToolRegistry) -> Optio
     }
     if needs_panel_reset {
         ph2d_editor_core::panel::with_registry_opt(|reg| {
-            if let Some(idx) = reg.find_by_panel_node_id(ph2d_tool_equalize_sizes::ids::EQS_PANEL) {
+            if let Some(idx) = reg.find_by_panel_node_id(ph2d_editor_core::ids::EQS_PANEL) {
                 reg.panels_mut()[idx].populate(&mut hero.store);
             }
         });

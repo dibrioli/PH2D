@@ -5,7 +5,7 @@
 //! carregar.
 
 use ph2d_a11y::NodeId;
-use ph2d_editor_core::ids::{MAX_INSTANCE_APPLY_LEVELS, MAX_INSTANCE_AXIS_VALUES};
+use ph2d_editor_core::ids::MAX_INSTANCE_AXIS_VALUES;
 use ph2d_tool_registry::hash_node_id;
 
 /// ⭐ **Limpar as excepções SEM ALVO** (F5.3).
@@ -192,3 +192,18 @@ pub const INSP_INSTANCE_APPLY_LEVEL: [NodeId; MAX_INSTANCE_APPLY_LEVELS] = [
 pub fn instance_apply_level(id: NodeId) -> Option<usize> {
     INSP_INSTANCE_APPLY_LEVEL.iter().position(|c| *c == id)
 }
+
+// ── Desceu de `ph2d-editor-core/src/ids/inspector_instance.rs` em 2026-09-13 (2.ª passagem: a cerca com a
+//    `line/render-loop` prendia-os na fundação até às duas linhas se integrarem).
+
+/// ⭐⭐⭐ **Quantos DEGRAUS da escada do *Aplicar* o cartão endereça** (F5 critério 4).
+///
+/// ⚠️ **É um teto de TABELA DE IDS, e ele diz de que recurso é** — o mesmo do
+/// [`MAX_INSTANCE_AXIS_VALUES`]: os ids são `const` para o censo do
+/// `hit_indexed_ids_are_registered` os poder **ver**, e uma tabela `const` tem um tamanho.
+///
+/// ⛔ **Não é o limite de aninhamento do produto.** Uma cena com nove receitas encaixadas continua
+/// a funcionar; o que acontece é que o 9.º degrau fica **fora do cartão**, e a fileira diz quantos
+/// ficaram — ⛔ escrito, nunca truncado em silêncio. O *Aplicar ao mestre* do menu (o degrau mais
+/// externo) alcança-se sempre, porque não passa por esta tabela.
+pub const MAX_INSTANCE_APPLY_LEVELS: usize = 8;

@@ -57,14 +57,13 @@ pub enum FilterHit {
 
 /// Decodifica um id de painel para o controle da pilha que ele endereça.
 pub fn hit_of(id: ph2d_editor_core::NodeId) -> Option<FilterHit> {
-    use ph2d_editor_core::ids as vid;
     for k in 0..ph2d_panel_vector::ids::MAX_FILTER_KINDS {
         if id == ph2d_panel_vector::ids::filter_add_id(k) {
             #[allow(clippy::cast_possible_truncation)]
             return Some(FilterHit::Add(k as u8));
         }
     }
-    for r in 0..vid::MAX_FILTER_ROWS {
+    for r in 0..ph2d_panel_vector::ids::MAX_FILTER_ROWS {
         for m in 0..ph2d_panel_vector::ids::MAX_FILTER_MODES {
             if id == ph2d_panel_vector::ids::filter_mode_id(r, m) {
                 #[allow(clippy::cast_possible_truncation)]

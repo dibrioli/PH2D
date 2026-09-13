@@ -11,7 +11,6 @@
 //! and applies the stored `blender_picker_offset` + `panel_resize_delta`) —
 //! exactly the Inspector dock's move/resize recipe under a different id.
 
-use ph2d_editor_core::ids;
 use ph2d_editor_core::paint::{fill_rounded_rect, paint_text_centered, resolve};
 use ph2d_editor_core::screens::HeroScreen;
 use ph2d_editor_core::screens::layout::{EDGE_PAD, HIERARCHY_W, INSPECTOR_W, rail_w};
@@ -46,7 +45,8 @@ pub(super) fn draw_audio_overlay(
     text: &mut TextSystem,
 ) {
     if !hero.is_panel_visible("audio_editor") {
-        hero.store.clear_panel_rect(ids::AUDIO_OVERLAY_PANEL);
+        hero.store
+            .clear_panel_rect(ph2d_panel_audio_editor::ids::AUDIO_OVERLAY_PANEL);
         ph2d_app_audio::set_wave_view(None);
         return;
     }
@@ -65,14 +65,20 @@ pub(super) fn draw_audio_overlay(
     // the original bug.) Default position sits in the canvas, left of the docked
     // Audio Editor panel; from there it floats/resizes anywhere like the Gallery.
     let base = default_rect(viewport);
-    let off = hero.store.blender_picker_offset(ids::AUDIO_OVERLAY_PANEL);
-    let resize = hero.store.panel_resize_delta(ids::AUDIO_OVERLAY_PANEL);
+    let off = hero
+        .store
+        .blender_picker_offset(ph2d_panel_audio_editor::ids::AUDIO_OVERLAY_PANEL);
+    let resize = hero
+        .store
+        .panel_resize_delta(ph2d_panel_audio_editor::ids::AUDIO_OVERLAY_PANEL);
     let (rect, _, _) = clamp_panel_rect(base, off, resize, viewport);
-    hero.store.set_panel_rect(ids::AUDIO_OVERLAY_PANEL, rect);
+    hero.store
+        .set_panel_rect(ph2d_panel_audio_editor::ids::AUDIO_OVERLAY_PANEL, rect);
     // Body hit-barrier FIRST — clicks on the empty overlay body must not fall
     // through to the canvas tool. The handles below register AFTER, so (newest
     // wins in the hit-index) they still outrank this barrier.
-    hero.hit_index.register(ids::AUDIO_OVERLAY_PANEL, rect);
+    hero.hit_index
+        .register(ph2d_panel_audio_editor::ids::AUDIO_OVERLAY_PANEL, rect);
 
     // Frame surface + corner dots.
     fill_rounded_rect(
@@ -175,14 +181,16 @@ pub(super) fn draw_audio_overlay(
     // Register drag + resize handle hit rects into the hero hit-index so the
     // shared BlenderHit dispatch moves/resizes the overlay next frame.
     let drag = panel_drag_handle_rect(rect, PANEL_HEADER_H_DEFAULT, PANEL_HEADER_CLOSE_RESERVE);
-    hero.hit_index
-        .register(ids::AUDIO_OVERLAY_DRAG_HANDLE, drag);
     hero.hit_index.register(
-        ids::AUDIO_OVERLAY_RESIZE_HANDLE,
+        ph2d_panel_audio_editor::ids::AUDIO_OVERLAY_DRAG_HANDLE,
+        drag,
+    );
+    hero.hit_index.register(
+        ph2d_panel_audio_editor::ids::AUDIO_OVERLAY_RESIZE_HANDLE,
         panel_resize_handle_rect(rect),
     );
     hero.hit_index.register(
-        ids::AUDIO_OVERLAY_RESIZE_HANDLE_BL,
+        ph2d_panel_audio_editor::ids::AUDIO_OVERLAY_RESIZE_HANDLE_BL,
         panel_resize_handle_rect_bl(rect),
     );
 }

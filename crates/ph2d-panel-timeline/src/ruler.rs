@@ -153,11 +153,9 @@ pub(crate) fn paint(
         // but reading the wrong one would make the first drag frame jump.
         ctx.host
             .hit_index_mut()
-            .register(ph2d_editor_core::ids::TIMELINE_RULER, strip);
+            .register(crate::ids::TIMELINE_RULER, strip);
         let dragging = matches!(
-            ctx.host
-                .store()
-                .slider(ph2d_editor_core::ids::TIMELINE_RULER),
+            ctx.host.store().slider(crate::ids::TIMELINE_RULER),
             Some((SliderState::Dragging, _))
         );
         if !dragging
@@ -165,10 +163,8 @@ pub(crate) fn paint(
             && let Some(now) = clock.now
         {
             let v = ((now - view_start) / span).clamp(0.0, 1.0) as f32;
-            if let Some(InteractiveState::Slider { value, .. }) = ctx
-                .host
-                .store_mut()
-                .get_mut(ph2d_editor_core::ids::TIMELINE_RULER)
+            if let Some(InteractiveState::Slider { value, .. }) =
+                ctx.host.store_mut().get_mut(crate::ids::TIMELINE_RULER)
             {
                 *value = v;
             }

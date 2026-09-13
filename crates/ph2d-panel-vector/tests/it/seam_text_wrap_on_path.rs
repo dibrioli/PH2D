@@ -48,9 +48,12 @@ fn publish(on_path: bool) {
 
 /// Os três ids que a secção de refluxo pinta.
 const WRAP_ROWS: [(&str, ph2d_a11y::NodeId); 3] = [
-    ("Width:Auto", ph2d_editor_core::ids::VECTOR_TEXT_WRAP_AUTO),
-    ("Width:Fixed", ph2d_editor_core::ids::VECTOR_TEXT_WRAP_FIXED),
-    ("Wrap width", ph2d_editor_core::ids::VECTOR_TEXT_WRAP_W),
+    ("Width:Auto", ph2d_panel_vector::ids::VECTOR_TEXT_WRAP_AUTO),
+    (
+        "Width:Fixed",
+        ph2d_panel_vector::ids::VECTOR_TEXT_WRAP_FIXED,
+    ),
+    ("Wrap width", ph2d_panel_vector::ids::VECTOR_TEXT_WRAP_W),
 ];
 
 /// **Controle POSITIVO: fora de um caminho, as fileiras existem.**

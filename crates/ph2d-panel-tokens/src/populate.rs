@@ -6,7 +6,6 @@
 //! `architecture_panel_wiring_parity` existe para pegar, e derivar esta lista da tabela que o
 //! `paint` percorre é o que faz dela algo que ninguém pode esquecer.
 
-use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
 use ph2d_editor_core::widget::{ButtonState, TextInputState};
 use ph2d_tokens::{ColorToken, NumToken};
@@ -48,7 +47,7 @@ pub fn populate(store: &mut WidgetStore) {
     for row in 0..ColorToken::ALL.len() {
         // ⚠️ A swatch é alvo de PICKER, não botão: registá-la como botão faria o clique acender o
         // widget e **nunca abrir o picker** — a cor ficaria ineditável com todos os gates verdes.
-        store.register_picker_swatch(ids::tokens_swatch_id(row));
+        store.register_picker_swatch(crate::ids::tokens_swatch_id(row));
         button(store, crate::ids::tokens_reset_id(row));
         // O elo: um botao por linha, vivo em TODAS elas (qualquer token pode seguir qualquer
         // outro). Sem o registro ele seria pintado, hit-registrado e MORTO sob o rato.

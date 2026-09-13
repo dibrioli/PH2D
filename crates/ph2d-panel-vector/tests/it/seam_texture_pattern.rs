@@ -195,7 +195,7 @@ fn row(kind: u8) -> ph2d_panel_vector::TexturePatternRow {
 /// e o artista teria uma imagem repetida que não consegue tocar.
 #[test]
 fn every_pattern_section_control_is_reachable_and_reaches_the_bus() {
-    use ph2d_editor_core::ids::TexPatKnob as K;
+    use ph2d_panel_vector::ids::TexPatKnob as K;
     state::set_current_fill(Some(FillKind::Pattern), None);
     // ⭐⭐ **AS DUAS secções** (plano 35, wave F) — a do preenchimento e a do traço. ⚠️ E percorridas
     // pela MESMA lista que as pinta e regista (`TexPatKnob::ALL`): um knob novo entra neste gate
@@ -238,7 +238,7 @@ fn the_section_vanishes_for_a_shape_without_a_pattern() {
         host.painted_rect::<VectorPanel>(
             &mut st,
             VIEWPORT,
-            ph2d_panel_vector::texture_pattern::kid(0, ph2d_editor_core::ids::TexPatKnob::Width)
+            ph2d_panel_vector::texture_pattern::kid(0, ph2d_panel_vector::ids::TexPatKnob::Width)
         )
         .is_none(),
         "a seccao Pattern subiu para uma forma sem padrao"
@@ -253,7 +253,7 @@ fn the_section_vanishes_for_a_shape_without_a_pattern() {
                 VIEWPORT,
                 ph2d_panel_vector::texture_pattern::kid(
                     0,
-                    ph2d_editor_core::ids::TexPatKnob::Width
+                    ph2d_panel_vector::ids::TexPatKnob::Width
                 )
             )
             .is_some(),
@@ -276,7 +276,7 @@ fn the_offset_row_only_shows_for_brick_and_column() {
         host.painted_rect::<VectorPanel>(
             &mut st,
             VIEWPORT,
-            ph2d_panel_vector::texture_pattern::kid(0, ph2d_editor_core::ids::TexPatKnob::Offset),
+            ph2d_panel_vector::texture_pattern::kid(0, ph2d_panel_vector::ids::TexPatKnob::Offset),
         )
         .is_some()
     };
@@ -319,7 +319,7 @@ fn the_clamp_mode_hides_only_the_phase_which_is_the_one_it_does_not_read() {
         host.painted_rect::<VectorPanel>(&mut st, VIEWPORT, id)
             .is_some()
     };
-    use ph2d_editor_core::ids::TexPatKnob as K;
+    use ph2d_panel_vector::ids::TexPatKnob as K;
     use ph2d_panel_vector::texture_pattern::kid;
 
     // A FASE — e só ela — some no `Clamp`, e VOLTA fora dele (esconder não é apagar).
@@ -383,7 +383,7 @@ fn the_lock_checkbox_is_fed_by_the_published_state() {
         .collect::<Vec<_>>()
         .join("\n");
     let i = code
-        .find("kid(ph2d_editor_core::ids::TexPatKnob::Lock),")
+        .find("kid(crate::ids::TexPatKnob::Lock),")
         .expect("a caixa e' pintada");
     // ⚠️ A linha tem de ser EXACTAMENTE o campo publicado. Uma versão anterior deste gate procurava
     // a substring `p.lock_aspect` e **um `!p.lock_aspect` SOBREVIVEU** — a negação contém a agulha.
@@ -433,7 +433,7 @@ fn the_seam_hint_shows_only_where_it_has_a_subject() {
         let _ = host.painted_rect::<VectorPanel>(
             &mut st,
             VIEWPORT,
-            ph2d_panel_vector::texture_pattern::kid(0, ph2d_editor_core::ids::TexPatKnob::Source),
+            ph2d_panel_vector::texture_pattern::kid(0, ph2d_panel_vector::ids::TexPatKnob::Source),
         );
         ph2d_panel_vector::last_content_h()
     };
@@ -488,7 +488,7 @@ fn the_missing_art_hint_names_the_dead_link() {
         let _ = host.painted_rect::<VectorPanel>(
             &mut st,
             VIEWPORT,
-            ph2d_panel_vector::texture_pattern::kid(0, ph2d_editor_core::ids::TexPatKnob::Source),
+            ph2d_panel_vector::texture_pattern::kid(0, ph2d_panel_vector::ids::TexPatKnob::Source),
         );
         ph2d_panel_vector::last_content_h()
     };
@@ -523,7 +523,7 @@ fn the_missing_art_hint_sits_above_the_buttons_that_fix_it() {
         host.painted_rect::<VectorPanel>(
             &mut st,
             VIEWPORT,
-            ph2d_panel_vector::texture_pattern::kid(0, ph2d_editor_core::ids::TexPatKnob::Source),
+            ph2d_panel_vector::texture_pattern::kid(0, ph2d_panel_vector::ids::TexPatKnob::Source),
         )
         .expect("o botao da arte e' pintado")
         .y
@@ -574,7 +574,7 @@ fn the_hint_pushes_what_follows_it_through_every_line_it_wraps_to() {
             .expect("o botao e' pintado")
             .y
     };
-    use ph2d_editor_core::ids::TexPatKnob as K;
+    use ph2d_panel_vector::ids::TexPatKnob as K;
     use ph2d_panel_vector::texture_pattern::kid;
     // Uma FILEIRA: os dois botoes de arte sao consecutivos.
     let fileira = topo(kid(0, K::PickShape), false) - topo(kid(0, K::Source), false);
@@ -620,7 +620,7 @@ fn measure_where_the_hint_wraps() {
                 viewport,
                 ph2d_panel_vector::texture_pattern::kid(
                     0,
-                    ph2d_editor_core::ids::TexPatKnob::Source,
+                    ph2d_panel_vector::ids::TexPatKnob::Source,
                 ),
             )
             .map(|r| r.y)
@@ -672,12 +672,12 @@ fn a_pattern_with_no_art_yet_offers_both_doors_and_says_a_different_sentence() {
             topo(
                 &mut host,
                 &mut st,
-                ph2d_editor_core::ids::TexPatKnob::Source,
+                ph2d_panel_vector::ids::TexPatKnob::Source,
             ),
             topo(
                 &mut host,
                 &mut st,
-                ph2d_editor_core::ids::TexPatKnob::PickShape,
+                ph2d_panel_vector::ids::TexPatKnob::PickShape,
             ),
         )
     };
@@ -730,7 +730,7 @@ fn a_pattern_with_no_art_yet_offers_both_doors_and_says_a_different_sentence() {
 /// (`set_slider_value` + `ValueChanged`), e não o rectângulo pintado.
 #[test]
 fn every_pattern_slider_reaches_the_bus_when_it_is_dragged() {
-    use ph2d_editor_core::ids::TexPatKnob as K;
+    use ph2d_panel_vector::ids::TexPatKnob as K;
     const SLIDERS: [K; 8] = [
         K::Width,
         K::Height,

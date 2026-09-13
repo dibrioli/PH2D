@@ -45,7 +45,7 @@ impl crate::App {
                 vec_scene,
                 &self.vec.entities,
                 &sel,
-                ph2d_editor_core::ids::MAX_MORPH_STATES,
+                ph2d_panel_vector::ids::MAX_MORPH_STATES,
             ) {
                 eprintln!(
                     "[ph2d-vec] morph states: {} formas, {} transicoes",

@@ -122,3 +122,35 @@ pub fn vector_state_signal_remove_id(i: usize) -> NodeId {
 /// **Acrescenta** uma ligação vazia. Não é oferecido no teto — um botão que não faz nada é pior
 /// que um botão que falta, e o teto é visível porque as seis linhas estão na tela.
 pub const VECTOR_STATE_SIGNAL_ADD: NodeId = hash_node_id("vector.state.signal.add");
+
+// ── Desceu de `ph2d-editor-core/src/ids/chrome/vector_states.rs` em 2026-09-13 (2.ª passagem: a cerca com a
+//    `line/render-loop` prendia-os na fundação até às duas linhas se integrarem).
+
+/// A duração da transição, em segundos — o slider e o chip que o espelha.
+pub const VECTOR_STATE_DURATION: NodeId = hash_node_id("vector.state.duration");
+
+/// **O MODO DE PREVIEW** (W7r) — o interruptor que faz a UI desenhada responder ao rato.
+///
+/// ⚠️ **Um id só, e não um por papel:** o modo não escolhe um papel, ele entrega os papéis ao
+/// rato. Um chip por papel seria a segunda forma de pedir o que o botão *Show* já pede, e as duas
+/// discordariam no dia em que uma delas ganhasse um caso especial.
+/// **A MOLA** — o checkbox que troca *duração + curva* por *rigidez + amortecimento*.
+///
+/// ⚠️ **Ela TROCA as linhas, não as soma.** Rigidez e amortecimento respondem a mesma pergunta que
+/// duração e curva (*quanto tempo, e com que forma*), e oferecer as quatro pediria ao artista que
+/// mantivesse dois modelos de acordo. Só uma família vive de cada vez — o par
+/// `Width: Auto | Fixed` do texto, e o `Mass: Auto | Manual` do editor de áudio.
+pub const VECTOR_STATE_SPRING: NodeId = hash_node_id("vector.state.spring");
+
+pub const VECTOR_STATE_STIFFNESS: NodeId = hash_node_id("vector.state.stiffness");
+
+pub const VECTOR_STATE_DAMPING: NodeId = hash_node_id("vector.state.damping");
+
+pub const VECTOR_STATE_PREVIEW: NodeId = hash_node_id("vector.state.preview");
+
+/// **Mover o widget carregando TODOS os estados** (Enio, 2026-08-07).
+///
+/// ⚠️ Marcado, relocar o hospedeiro desloca a pose dele em cada estado gravado — o widget muda de
+/// lugar no canvas e continua **perfeitamente animado**. Desmarcado, mover re-autora só a pose
+/// atual, que é o que se quer quando a intenção é corrigir UM estado.
+pub const VECTOR_STATE_MOVE_ALL: NodeId = hash_node_id("vector.state.move.all");

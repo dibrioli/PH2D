@@ -24,7 +24,7 @@ pub(super) fn symmetry_controls(store: &mut WidgetStore) {
         ph2d_tool_vector::ids::VECTOR_SYM_ON,
         ph2d_tool_vector::ids::VECTOR_SYM_FUSE_OFF,
         ph2d_tool_vector::ids::VECTOR_SYM_FUSE_ON,
-        ph2d_editor_core::ids::VECTOR_SYM_APPLY,
+        ph2d_tool_vector::ids::VECTOR_SYM_APPLY,
     ]) {
         store.register(
             id,

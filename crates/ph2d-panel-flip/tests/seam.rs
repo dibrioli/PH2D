@@ -524,8 +524,8 @@ fn the_colorize_widgets_appear_only_in_colorize_mode() {
     let mut st = FlipPanelState::default();
     let colorize = [
         ids::FLIP_COLORIZE_SWATCH,
-        ph2d_editor_core::ids::FLIP_COLORIZE_APPLY,
-        ph2d_editor_core::ids::FLIP_COLORIZE_CLEAR,
+        ph2d_panel_flip::ids::FLIP_COLORIZE_APPLY,
+        ph2d_panel_flip::ids::FLIP_COLORIZE_CLEAR,
     ];
 
     // Modo Draw: o Colorize não existe na tela.
@@ -678,15 +678,15 @@ fn each_mode_shows_only_its_own_attributes() {
     // e como o Fill também o mostra, pô-lo em `colorize_only` proibiria o Fill de exibi-lo.)
     let colorize_only = [
         ("Colorize color", ids::FLIP_COLORIZE_SWATCH),
-        ("Colorize apply", ph2d_editor_core::ids::FLIP_COLORIZE_APPLY),
-        ("Colorize clear", ph2d_editor_core::ids::FLIP_COLORIZE_CLEAR),
+        ("Colorize apply", ph2d_panel_flip::ids::FLIP_COLORIZE_APPLY),
+        ("Colorize clear", ph2d_panel_flip::ids::FLIP_COLORIZE_CLEAR),
         ("Colorize bleed", ph2d_tool_flip::ids::FLIP_COLORIZE_BLEED),
     ];
     // O que o modo Colorize TEM de mostrar: os seus próprios + o Trap compartilhado.
     let colorize_expected = [
         ("Colorize color", ids::FLIP_COLORIZE_SWATCH),
-        ("Colorize apply", ph2d_editor_core::ids::FLIP_COLORIZE_APPLY),
-        ("Colorize clear", ph2d_editor_core::ids::FLIP_COLORIZE_CLEAR),
+        ("Colorize apply", ph2d_panel_flip::ids::FLIP_COLORIZE_APPLY),
+        ("Colorize clear", ph2d_panel_flip::ids::FLIP_COLORIZE_CLEAR),
         ("Colorize bleed", ph2d_tool_flip::ids::FLIP_COLORIZE_BLEED),
         ("Trap", ph2d_tool_flip::ids::FLIP_TRAP),
     ];

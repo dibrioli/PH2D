@@ -13,14 +13,14 @@ use ph2d_editor_core::widget::ButtonState;
 /// ali; o gate de seam clica **todos** eles, que é o que impede a lista de registro de ficar para
 /// trás da lista pintada.
 pub(crate) const ANCHOR_CHIPS: &[ph2d_a11y::NodeId] = &[
-    ph2d_editor_core::ids::VECTOR_ANCHOR_H_START,
-    ph2d_editor_core::ids::VECTOR_ANCHOR_H_CENTER,
-    ph2d_editor_core::ids::VECTOR_ANCHOR_H_END,
-    ph2d_editor_core::ids::VECTOR_ANCHOR_H_STRETCH,
-    ph2d_editor_core::ids::VECTOR_ANCHOR_V_START,
-    ph2d_editor_core::ids::VECTOR_ANCHOR_V_CENTER,
-    ph2d_editor_core::ids::VECTOR_ANCHOR_V_END,
-    ph2d_editor_core::ids::VECTOR_ANCHOR_V_STRETCH,
+    crate::ids::VECTOR_ANCHOR_H_START,
+    crate::ids::VECTOR_ANCHOR_H_CENTER,
+    crate::ids::VECTOR_ANCHOR_H_END,
+    crate::ids::VECTOR_ANCHOR_H_STRETCH,
+    crate::ids::VECTOR_ANCHOR_V_START,
+    crate::ids::VECTOR_ANCHOR_V_CENTER,
+    crate::ids::VECTOR_ANCHOR_V_END,
+    crate::ids::VECTOR_ANCHOR_V_STRETCH,
 ];
 
 pub(super) fn anchor_controls(store: &mut WidgetStore) {

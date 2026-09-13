@@ -47,8 +47,11 @@ fn arm_text() {
 #[test]
 fn both_width_chips_reach_the_bus() {
     for (id, name) in [
-        (ph2d_editor_core::ids::VECTOR_TEXT_WRAP_AUTO, "Width/Auto"),
-        (ph2d_editor_core::ids::VECTOR_TEXT_WRAP_FIXED, "Width/Fixed"),
+        (ph2d_panel_vector::ids::VECTOR_TEXT_WRAP_AUTO, "Width/Auto"),
+        (
+            ph2d_panel_vector::ids::VECTOR_TEXT_WRAP_FIXED,
+            "Width/Fixed",
+        ),
     ] {
         arm_text();
         let mut host = MockPanelHost::with_panel::<VectorPanel>();
@@ -93,7 +96,7 @@ fn the_width_slider_lives_only_in_fixed_mode() {
         host.painted_rect::<VectorPanel>(
             &mut panel_state,
             VIEWPORT,
-            ph2d_editor_core::ids::VECTOR_TEXT_WRAP_W
+            ph2d_panel_vector::ids::VECTOR_TEXT_WRAP_W
         )
         .is_none(),
         "em Auto o slider de largura NAO pode ser pintado - nao ha largura a editar"
@@ -104,7 +107,7 @@ fn the_width_slider_lives_only_in_fixed_mode() {
         host.painted_rect::<VectorPanel>(
             &mut panel_state,
             VIEWPORT,
-            ph2d_editor_core::ids::VECTOR_TEXT_WRAP_AUTO
+            ph2d_panel_vector::ids::VECTOR_TEXT_WRAP_AUTO
         )
         .is_some(),
         "a fileira Width tem de continuar pintada em Auto"
@@ -116,7 +119,7 @@ fn the_width_slider_lives_only_in_fixed_mode() {
         host.painted_rect::<VectorPanel>(
             &mut panel_state,
             VIEWPORT,
-            ph2d_editor_core::ids::VECTOR_TEXT_WRAP_W
+            ph2d_panel_vector::ids::VECTOR_TEXT_WRAP_W
         )
         .is_some(),
         "em Fixed o slider de largura TEM de ser pintado - senao a largura e' ineditavel"
@@ -137,10 +140,10 @@ fn dragging_the_width_slider_reaches_the_bus() {
     ph2d_panel_vector::set_current_text_wrap(Some(8.0));
     let mut host = MockPanelHost::with_panel::<VectorPanel>();
     let mut panel_state = VectorPanelState;
-    host.set_slider_value(ph2d_editor_core::ids::VECTOR_TEXT_WRAP_W, 0.75);
+    host.set_slider_value(ph2d_panel_vector::ids::VECTOR_TEXT_WRAP_W, 0.75);
     let outcome = host.apply_panel_event::<VectorPanel>(
         &mut panel_state,
-        WidgetEvent::ValueChanged(ph2d_editor_core::ids::VECTOR_TEXT_WRAP_W),
+        WidgetEvent::ValueChanged(ph2d_panel_vector::ids::VECTOR_TEXT_WRAP_W),
     );
     assert_eq!(
         outcome,
@@ -150,7 +153,7 @@ fn dragging_the_width_slider_reaches_the_bus() {
     assert!(
         host.drained_actions().into_iter().any(|a| matches!(
             a,
-            EditorAction::ToolPanelEvent(PanelEvent::SetValue(c, _)) if c == ph2d_editor_core::ids::VECTOR_TEXT_WRAP_W
+            EditorAction::ToolPanelEvent(PanelEvent::SetValue(c, _)) if c == ph2d_panel_vector::ids::VECTOR_TEXT_WRAP_W
         )),
         "arrastar o slider de largura nao chegou ao bus - o refluxo seria ineditavel"
     );

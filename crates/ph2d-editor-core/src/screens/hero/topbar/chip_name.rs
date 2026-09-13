@@ -2,7 +2,7 @@
 //! module stays under its LOC cap. Pure id→label lookup, used by the hover
 //! tooltip and any debug/a11y readout of a TopBar pill.
 
-use crate::screens::hero::ids;
+use crate::ids;
 use ph2d_a11y::NodeId;
 
 /// The display name for a TopBar chip id, or `None` if the id isn't a chip.

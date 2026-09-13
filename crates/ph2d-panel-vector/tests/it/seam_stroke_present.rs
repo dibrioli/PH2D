@@ -59,7 +59,7 @@ fn the_stroke_checkbox_is_reachable_and_reaches_the_bus_in_both_states() {
             .painted_rect::<VectorPanel>(
                 &mut panel_state,
                 VIEWPORT,
-                ph2d_editor_core::ids::VECTOR_STROKE_PRESENT,
+                ph2d_panel_vector::ids::VECTOR_STROKE_PRESENT,
             )
             .unwrap_or_else(|| panic!("a caixa ({tem}) nao foi PINTADA com area clicavel"));
         let (cx, cy) = (r.x + r.w * 0.5, r.y + r.h * 0.5);
@@ -67,7 +67,7 @@ fn the_stroke_checkbox_is_reachable_and_reaches_the_bus_in_both_states() {
         let evs = host.dispatch_pointer_event(pointer(PointerKind::Up, cx, cy, SEC + SEC / 100));
         assert!(
             evs.iter()
-                .any(|e| matches!(e, WidgetEvent::Click(c) if *c == ph2d_editor_core::ids::VECTOR_STROKE_PRESENT)),
+                .any(|e| matches!(e, WidgetEvent::Click(c) if *c == ph2d_panel_vector::ids::VECTOR_STROKE_PRESENT)),
             "o ponteiro sobre a caixa ({tem}) nao virou Click - ela esta' desenhada e nao existe \
              para o dispatcher (falta o `register` no populate)"
         );
@@ -77,7 +77,7 @@ fn the_stroke_checkbox_is_reachable_and_reaches_the_bus_in_both_states() {
         assert!(
             host.drained_actions().into_iter().any(|a| matches!(
                 a,
-                EditorAction::ToolPanelEvent(PanelEvent::Click(c)) if c == ph2d_editor_core::ids::VECTOR_STROKE_PRESENT
+                EditorAction::ToolPanelEvent(PanelEvent::Click(c)) if c == ph2d_panel_vector::ids::VECTOR_STROKE_PRESENT
             )),
             "o Click da caixa ({tem}) nao chegou ao bus - ela acende sob o rato e nao faz nada \
              (falta a linha na allowlist do event_clicks)"
@@ -94,12 +94,12 @@ fn the_stroke_checkbox_is_reachable_and_reaches_the_bus_in_both_states() {
 fn the_row_is_not_painted_without_an_answer_to_show() {
     state::set_stroke_present(None);
     assert!(
-        rect(ph2d_editor_core::ids::VECTOR_STROKE_PRESENT).is_none(),
+        rect(ph2d_panel_vector::ids::VECTOR_STROKE_PRESENT).is_none(),
         "a caixa foi pintada sem resposta publicada"
     );
     state::set_stroke_present(Some(false));
     assert!(
-        rect(ph2d_editor_core::ids::VECTOR_STROKE_PRESENT).is_some(),
+        rect(ph2d_panel_vector::ids::VECTOR_STROKE_PRESENT).is_some(),
         "e com resposta ela existe"
     );
     state::set_stroke_present(None);

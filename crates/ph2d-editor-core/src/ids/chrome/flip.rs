@@ -11,12 +11,6 @@ use super::{NodeId, hash_node_id};
 /// Flip panel outer rect id (for `z_order` + hit-barrier).
 pub const FLIP_PANEL: NodeId = hash_node_id("flip.panel");
 
-/// Apply: run the LazyBrush cut over the accumulated scribbles + the line-art, commit
-/// each region as a filled stroke, and clear the scribble buffer.
-pub const FLIP_COLORIZE_APPLY: NodeId = hash_node_id("flip.colorize.apply");
-/// Clear: drop the accumulated scribbles without colouring.
-pub const FLIP_COLORIZE_CLEAR: NodeId = hash_node_id("flip.colorize.clear");
-
 // ── Frame strip (bottom-docked `ph2d-panel-flip-frames`, ADR-0114 W3) ────────
 // The animator's inner loop: the cells of the active layer, the transport, Ghost
 // Frames, autokey and the tween. Bottom dock (its own band — the global timeline

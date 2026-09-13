@@ -45,12 +45,10 @@ import sys
 
 IDS_DIR = "crates/ph2d-editor-core/src/ids/"
 EC = "ph2d-editor-core"
-CERCA = [
-    "shells/desktop/src/render_loop/**",
-    "shells/desktop/src/app_state.rs",
-    "shells/desktop/src/vec_*.rs",
-    "crates/ph2d-app-vec/src/state.rs",
-]
+# ⛔ A CERCA ACABOU: as duas linhas (`line/render-loop` e `line/editor-core`) integraram-se em 13/09, e os
+# ids que ela prendia desceram na mesma integração. Uma rodada futura com linhas paralelas volta a
+# declará-la aqui, com os globs dos ficheiros da outra linha.
+CERCA: list[str] = []
 RE_IDENT = re.compile(r"\b[A-Za-z_][A-Za-z0-9_]*\b")
 
 

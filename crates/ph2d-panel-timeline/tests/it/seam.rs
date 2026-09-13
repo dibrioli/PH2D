@@ -32,7 +32,7 @@ fn play_button_click_raises_transport_event() {
 
     let outcome = host.apply_panel_event::<TimelinePanel>(
         &mut state,
-        WidgetEvent::Click(ph2d_editor_core::ids::TIMELINE_PLAY),
+        WidgetEvent::Click(ph2d_panel_timeline::ids::TIMELINE_PLAY),
     );
     assert_eq!(
         outcome,
@@ -41,7 +41,7 @@ fn play_button_click_raises_transport_event() {
     );
     assert_eq!(
         timeline_events(&mut host),
-        vec![PanelEvent::Click(ph2d_editor_core::ids::TIMELINE_PLAY)],
+        vec![PanelEvent::Click(ph2d_panel_timeline::ids::TIMELINE_PLAY)],
         "Play click must raise TimelinePanelEvent(Click(PLAY)) for the shell to map to TogglePlay"
     );
 }
@@ -88,16 +88,16 @@ fn time_chip_edit_raises_set_value() {
     let mut host = MockPanelHost::with_panel::<TimelinePanel>();
     let mut state = TimelinePanelState::default();
 
-    host.set_number_value(ph2d_editor_core::ids::TIMELINE_TIME_NUM, 1.5);
+    host.set_number_value(ph2d_panel_timeline::ids::TIMELINE_TIME_NUM, 1.5);
     let outcome = host.apply_panel_event::<TimelinePanel>(
         &mut state,
-        WidgetEvent::ValueChanged(ph2d_editor_core::ids::TIMELINE_TIME_NUM),
+        WidgetEvent::ValueChanged(ph2d_panel_timeline::ids::TIMELINE_TIME_NUM),
     );
     assert_eq!(outcome, EventOutcome::Consumed);
     assert_eq!(
         timeline_events(&mut host),
         vec![PanelEvent::SetValue(
-            ph2d_editor_core::ids::TIMELINE_TIME_NUM,
+            ph2d_panel_timeline::ids::TIMELINE_TIME_NUM,
             1.5
         )],
         "seconds-chip edit must carry the real value for the shell to Scrub to it"
@@ -182,17 +182,17 @@ fn ruler_scrub_maps_value_to_time_and_raises_scrub() {
         view_span_s: 10.0,
         ..TimelinePanelState::default()
     };
-    host.set_slider_value(ph2d_editor_core::ids::TIMELINE_RULER, 0.5);
+    host.set_slider_value(ph2d_panel_timeline::ids::TIMELINE_RULER, 0.5);
 
     let outcome = host.apply_panel_event::<TimelinePanel>(
         &mut state,
-        WidgetEvent::ValueChanged(ph2d_editor_core::ids::TIMELINE_RULER),
+        WidgetEvent::ValueChanged(ph2d_panel_timeline::ids::TIMELINE_RULER),
     );
     assert_eq!(outcome, EventOutcome::Consumed);
     assert_eq!(
         timeline_events(&mut host),
         vec![PanelEvent::SetValue(
-            ph2d_editor_core::ids::TIMELINE_RULER,
+            ph2d_panel_timeline::ids::TIMELINE_RULER,
             5.0
         )],
         "ruler scrub at 0.5 over a 10 s span must Scrub to 5 s"
@@ -237,13 +237,13 @@ fn snap_toggle_raises_toggle_event() {
     // Snap is registered on (default true); a Toggled event re-reads the store.
     let outcome = host.apply_panel_event::<TimelinePanel>(
         &mut state,
-        WidgetEvent::Toggled(ph2d_editor_core::ids::TIMELINE_SNAP),
+        WidgetEvent::Toggled(ph2d_panel_timeline::ids::TIMELINE_SNAP),
     );
     assert_eq!(outcome, EventOutcome::Consumed);
     assert_eq!(
         timeline_events(&mut host),
         vec![PanelEvent::Toggle(
-            ph2d_editor_core::ids::TIMELINE_SNAP,
+            ph2d_panel_timeline::ids::TIMELINE_SNAP,
             true
         )],
         "snap toggle must carry its on-state for the shell to SetFrameSnap"
@@ -257,10 +257,10 @@ fn record_toggle_raises_toggle_event() {
     let mut host = MockPanelHost::with_panel::<TimelinePanel>();
     let mut state = TimelinePanelState::default();
     // Turn it on in the store, then fire the event (dispatch re-reads the store).
-    host.set_toggle_on(ph2d_editor_core::ids::TIMELINE_RECORD, true);
+    host.set_toggle_on(ph2d_panel_timeline::ids::TIMELINE_RECORD, true);
     let outcome = host.apply_panel_event::<TimelinePanel>(
         &mut state,
-        WidgetEvent::Toggled(ph2d_editor_core::ids::TIMELINE_RECORD),
+        WidgetEvent::Toggled(ph2d_panel_timeline::ids::TIMELINE_RECORD),
     );
     assert_eq!(
         outcome,
@@ -270,7 +270,7 @@ fn record_toggle_raises_toggle_event() {
     assert_eq!(
         timeline_events(&mut host),
         vec![PanelEvent::Toggle(
-            ph2d_editor_core::ids::TIMELINE_RECORD,
+            ph2d_panel_timeline::ids::TIMELINE_RECORD,
             true
         )],
         "Record must reach the shell so it arms performing (SetPerforming)"

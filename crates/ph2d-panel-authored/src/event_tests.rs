@@ -24,7 +24,7 @@ use crate::state::{AuthoredIntent, drain_intents};
 /// referência não escapa dela.
 fn row_of(kind: WidgetKind) -> (ph2d_a11y::NodeId, String) {
     let key = "mode".to_string();
-    let id = ph2d_editor_core::ids::authored_row_id(&key);
+    let id = crate::ids::authored_row_id(&key);
     crate::rows::set_live_rows(Some(vec![crate::rows::Row {
         kind,
         label: key.clone(),

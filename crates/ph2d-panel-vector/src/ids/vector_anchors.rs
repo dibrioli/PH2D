@@ -30,3 +30,30 @@ use ph2d_tool_registry::hash_node_id;
 
 /// O cabeçalho da seção **Constraints** (só com um filho de moldura que NÃO flui selecionado).
 pub const VECTOR_SECTION_ANCHORS: NodeId = hash_node_id("vector.section.anchors");
+
+// ── Desceu de `ph2d-editor-core/src/ids/chrome/vector_anchors.rs` em 2026-09-13 (2.ª passagem: a cerca com a
+//    `line/render-loop` prendia-os na fundação até às duas linhas se integrarem).
+
+/// Horizontal — segue a aresta ESQUERDA (a mínima em X).
+pub const VECTOR_ANCHOR_H_START: NodeId = hash_node_id("vector.anchor.h.start");
+
+/// Horizontal — fica no meio.
+pub const VECTOR_ANCHOR_H_CENTER: NodeId = hash_node_id("vector.anchor.h.center");
+
+/// Horizontal — segue a aresta DIREITA.
+pub const VECTOR_ANCHOR_H_END: NodeId = hash_node_id("vector.anchor.h.end");
+
+/// Horizontal — **estica**: a esquerda fica, a direita acompanha.
+pub const VECTOR_ANCHOR_H_STRETCH: NodeId = hash_node_id("vector.anchor.h.stretch");
+
+/// Vertical — segue a aresta de CIMA (a máxima em Y, porque o documento é Y-up).
+pub const VECTOR_ANCHOR_V_START: NodeId = hash_node_id("vector.anchor.v.start");
+
+/// Vertical — fica no meio.
+pub const VECTOR_ANCHOR_V_CENTER: NodeId = hash_node_id("vector.anchor.v.center");
+
+/// Vertical — segue a aresta de BAIXO.
+pub const VECTOR_ANCHOR_V_END: NodeId = hash_node_id("vector.anchor.v.end");
+
+/// Vertical — **estica**: uma ponta fica, a outra acompanha.
+pub const VECTOR_ANCHOR_V_STRETCH: NodeId = hash_node_id("vector.anchor.v.stretch");

@@ -327,8 +327,11 @@ fn the_published_flow_mirrors_the_component() {
     );
     apply_layout_field(&mut sim, &map, &sel, LayoutField::Gap(1), 6.0);
     let f = selected_flow(&sim, &map, &sel).expect("flui");
-    assert_eq!(f.dir, ids::VECTOR_LAYOUT_DIR_WRAP);
-    assert_eq!(f.justify, ids::VECTOR_LAYOUT_JUSTIFY_BETWEEN);
+    assert_eq!(f.dir, ph2d_panel_vector::ids::VECTOR_LAYOUT_DIR_WRAP);
+    assert_eq!(
+        f.justify,
+        ph2d_panel_vector::ids::VECTOR_LAYOUT_JUSTIFY_BETWEEN
+    );
     assert_eq!(f.gap[1], 6.0);
 }
 
@@ -387,7 +390,7 @@ fn the_column_count_is_clamped_to_what_the_engine_can_index() {
 /// e uma porta larga demais roubaria o clique de outra seção.
 #[test]
 fn a_foreign_id_belongs_to_neither_door() {
-    let foreign = ids::VECTOR_FRAME_CLIP_ON;
+    let foreign = ph2d_panel_vector::ids::VECTOR_FRAME_CLIP_ON;
     assert!(layout_edit_for_id(foreign).is_none());
     assert!(layout_field_for_id(foreign).is_none());
 }
@@ -453,7 +456,7 @@ fn px_display() -> ph2d_editor_core::LengthDisplay {
 
 /// Um fluxo com valor DISTINTO em cada número — um campo trocado por outro é visível.
 fn distinct_flow() -> LayoutFlow {
-    let chip = ids::VECTOR_LAYOUT_DIR_ROW;
+    let chip = ph2d_panel_vector::ids::VECTOR_LAYOUT_DIR_ROW;
     LayoutFlow {
         dir: chip,
         gap: [1.0, 2.0],

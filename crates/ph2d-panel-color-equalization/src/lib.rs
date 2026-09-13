@@ -54,7 +54,7 @@ pub struct ColorEqualizationPanelState;
 impl Panel for ColorEqualizationPanel {
     type State = ColorEqualizationPanelState;
     const ID: &'static str = "color_equalization";
-    const NODE_ID: NodeId = ph2d_tool_color_equalization::ids::CEQ_PANEL;
+    const NODE_ID: NodeId = ph2d_editor_core::ids::CEQ_PANEL;
     const DEFAULT_VISIBLE: bool = false;
     const TITLE: &'static str = "Color Equalization";
     const ICON: ph2d_editor_core::icons::IconId =

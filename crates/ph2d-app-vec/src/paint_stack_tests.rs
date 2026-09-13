@@ -31,7 +31,6 @@ fn cena() -> (VecScene, Vec<u64>) {
 /// lista do tamanho de hoje faria o mesmo clique resolver diferente conforme a forma seleccionada.
 #[test]
 fn a_click_on_a_runtime_id_resolves_to_the_right_verb_and_index() {
-    use ph2d_editor_core::ids;
     assert_eq!(
         stack_verb_for_id(ph2d_panel_vector::ids::VECTOR_PAINT_ADD_FILL),
         Some(StackVerb::AddFill)
@@ -55,7 +54,7 @@ fn a_click_on_a_runtime_id_resolves_to_the_right_verb_and_index() {
         );
     }
     assert_eq!(
-        stack_verb_for_id(ids::VECTOR_OBJ_OPACITY),
+        stack_verb_for_id(ph2d_panel_vector::ids::VECTOR_OBJ_OPACITY),
         None,
         "um id que nao e' da pilha nao pode resolver nela"
     );

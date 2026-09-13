@@ -40,8 +40,8 @@ fn the_node_coordinate_rows_are_painted_and_what_is_typed_reaches_the_bus() {
     let mut panel_state = VectorPanelState;
 
     for (id, name) in [
-        (ph2d_editor_core::ids::VECTOR_VERT_X, "X"),
-        (ph2d_editor_core::ids::VECTOR_VERT_Y, "Y"),
+        (ph2d_panel_vector::ids::VECTOR_VERT_X, "X"),
+        (ph2d_panel_vector::ids::VECTOR_VERT_Y, "Y"),
     ] {
         assert!(
             host.painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, id)
@@ -53,7 +53,7 @@ fn the_node_coordinate_rows_are_painted_and_what_is_typed_reaches_the_bus() {
     // A faixa e o link do chip nascem no `paint` — digitar antes de pintar mede uma fixture que o
     // produto não tem.
     host.paint::<VectorPanel>(&mut panel_state, VIEWPORT);
-    let evs = host.type_into_number(ph2d_editor_core::ids::VECTOR_VERT_X, "30");
+    let evs = host.type_into_number(ph2d_panel_vector::ids::VECTOR_VERT_X, "30");
     for ev in evs {
         host.apply_panel_event::<VectorPanel>(&mut panel_state, ev);
     }
@@ -62,7 +62,7 @@ fn the_node_coordinate_rows_are_painted_and_what_is_typed_reaches_the_bus() {
         matches!(
             a,
             EditorAction::ToolPanelEvent(PanelEvent::SetValue(id, v))
-                if *id == ph2d_editor_core::ids::VECTOR_VERT_X && (*v - 30.0).abs() < 1e-9
+                if *id == ph2d_panel_vector::ids::VECTOR_VERT_X && (*v - 30.0).abs() < 1e-9
         )
     });
     assert!(
@@ -85,8 +85,8 @@ fn without_a_median_the_rows_are_not_offered() {
     let mut panel_state = VectorPanelState;
 
     for (id, name) in [
-        (ph2d_editor_core::ids::VECTOR_VERT_X, "X"),
-        (ph2d_editor_core::ids::VECTOR_VERT_Y, "Y"),
+        (ph2d_panel_vector::ids::VECTOR_VERT_X, "X"),
+        (ph2d_panel_vector::ids::VECTOR_VERT_Y, "Y"),
     ] {
         assert!(
             host.painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, id)
@@ -99,7 +99,7 @@ fn without_a_median_the_rows_are_not_offered() {
         host.painted_rect::<VectorPanel>(
             &mut panel_state,
             VIEWPORT,
-            ph2d_editor_core::ids::VECTOR_VERT_DELETE
+            ph2d_panel_vector::ids::VECTOR_VERT_DELETE
         )
         .is_some(),
         "o Delete Node tem de continuar pintado — se ele sumiu, a fixture não montou a seção e as \

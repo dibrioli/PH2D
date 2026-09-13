@@ -10,7 +10,6 @@
 //! roteado-para-lugar-nenhum.
 
 use ph2d_editor_core::action_bus::EditorAction;
-use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::tool::PanelEvent;
 use ph2d_editor_core::zones::Rect;
@@ -121,7 +120,7 @@ fn the_onion_settings_gear_paints_clicks_and_forwards_a_panel_click() {
     let regs = paint(&mut host, &mut state, transport(OnionSettings::default()));
     let r = regs
         .iter()
-        .find(|(w, _)| *w == ids::TIMELINE_ONION_SETTINGS)
+        .find(|(w, _)| *w == ph2d_panel_timeline::ids::TIMELINE_ONION_SETTINGS)
         .map(|(_, r)| *r)
         .expect("a engrenagem foi pintada mas nunca hit-registrada");
 
@@ -129,7 +128,7 @@ fn the_onion_settings_gear_paints_clicks_and_forwards_a_panel_click() {
     let evs = host.click_at(cx, cy);
     let click = evs
         .iter()
-        .find(|e| matches!(e, WidgetEvent::Click(t) if *t == ids::TIMELINE_ONION_SETTINGS))
+        .find(|e| matches!(e, WidgetEvent::Click(t) if *t == ph2d_panel_timeline::ids::TIMELINE_ONION_SETTINGS))
         .copied()
         .unwrap_or_else(|| panic!("o ponteiro caiu na engrenagem mas nenhum Click saiu — {evs:?}"));
 
@@ -138,7 +137,7 @@ fn the_onion_settings_gear_paints_clicks_and_forwards_a_panel_click() {
         matches!(
             a,
             EditorAction::TimelinePanelEvent(PanelEvent::Click(id))
-                if id == ids::TIMELINE_ONION_SETTINGS
+                if id == ph2d_panel_timeline::ids::TIMELINE_ONION_SETTINGS
         )
     });
     assert!(

@@ -143,7 +143,7 @@ impl BodyCtx<'_> {
         // efeitos). Sem simetria viva na seleção ele não é oferecido.
         if crate::state_symmetry::symmetry_live_count() > 0 {
             y = self.action_button_kind(
-                ph2d_editor_core::ids::VECTOR_SYM_APPLY,
+                ph2d_tool_vector::ids::VECTOR_SYM_APPLY,
                 tr("panel.vector.symmetry.apply"),
                 ph2d_editor_core::widget::ButtonKind::Accent,
                 y,

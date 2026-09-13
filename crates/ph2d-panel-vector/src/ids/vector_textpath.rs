@@ -25,3 +25,30 @@ pub const VECTOR_SECTION_TEXTPATH: NodeId = hash_node_id("vector.section.textpat
 
 /// O campo numérico gêmeo do [`VECTOR_TEXTPATH_OFFSET`].
 pub const VECTOR_TEXTPATH_OFFSET_NUM: NodeId = hash_node_id("vector.textpath.offset.num");
+
+// ── Desceu de `ph2d-editor-core/src/ids/chrome/vector_textpath.rs` em 2026-09-13 (2.ª passagem: a cerca com a
+//    `line/render-loop` prendia-os na fundação até às duas linhas se integrarem).
+
+/// **Text on Path** — prende o texto selecionado à outra forma selecionada. Só é oferecido com a
+/// seleção que o gesto exige (um texto + um caminho), fato que só a shell enxerga.
+pub const VECTOR_TEXTPATH_LINK: NodeId = hash_node_id("vector.textpath.link");
+
+/// **Pick Path** — a porta EXPLÍCITA do vínculo (Enio 2026-07-23): com o TEXTO em foco, apertar isto
+/// arma o pick e o clique seguinte no canvas escolhe o caminho-guia, sem a seleção de dois que o
+/// [`VECTOR_TEXTPATH_LINK`] exige.
+pub const VECTOR_TEXTPATH_PICK: NodeId = hash_node_id("vector.textpath.pick");
+
+/// **Detach** — solta o texto do caminho; ele volta a ser texto reto e o caminho fica.
+///
+/// Sem isto, prender seria porta de mão única — a mesma razão pela qual o envelope tem Release.
+pub const VECTOR_TEXTPATH_DETACH: NodeId = hash_node_id("vector.textpath.detach");
+
+/// **Other side** — põe o texto do outro lado da curva, a ler no sentido oposto.
+pub const VECTOR_TEXTPATH_FLIP: NodeId = hash_node_id("vector.textpath.flip");
+
+/// **This side** — o par exclusivo do [`VECTOR_TEXTPATH_FLIP`]. O lado é uma escolha entre DOIS,
+/// e um segmentado a mostra sem o artista ter de descobrir o que "desmarcado" significa.
+pub const VECTOR_TEXTPATH_FLIP_OFF: NodeId = hash_node_id("vector.textpath.flip.off");
+
+/// **Offset** — onde a 1ª linha começa, em FRAÇÃO do comprimento do caminho (`startOffset` do SVG).
+pub const VECTOR_TEXTPATH_OFFSET: NodeId = hash_node_id("vector.textpath.offset");

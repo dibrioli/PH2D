@@ -364,3 +364,22 @@ pub const INSP_PHYS_JOIN_KIND: [NodeId; 9] = [
     hash_node_id("insp_phys_join_kind_pulley"),
     hash_node_id("insp_phys_join_kind_custom"),
 ];
+
+// ── Desceu de `ph2d-editor-core/src/ids/inspector.rs` em 2026-09-13 (2.ª passagem: a cerca com a
+//    `line/render-loop` prendia-os na fundação até às duas linhas se integrarem).
+
+pub const INSP_RENDER_STRATEGY_INDIVIDUAL: NodeId = hash_node_id("insp_render_strategy_individual");
+
+pub const INSP_RENDER_STRATEGY_HANDPACKED: NodeId = hash_node_id("insp_render_strategy_handpacked");
+
+/// **«Show sheet on canvas»** — a grelha desdobra-se em células fantasma à volta da viva
+/// (Enio, 2026-08-23: *«você digita 8 quadros e não vê onde eles começam ou terminam»*).
+///
+/// ⚠️ **É VISTA, não documento**, e por isso o valor vive só no [`crate::interaction::WidgetStore`]
+/// e a shell lê-o direto — sem `EditorAction`, sem commit, sem undo, sem save. Um sprite com grelha
+/// desenha UMA célula, então nada no canvas diz onde os cortes caem; a folha aberta é a resposta, e
+/// ela é tão transitória quanto o olhar do artista.
+///
+/// ⛔ Nunca a promova a componente: ela reabriria com o projeto, e o artista veria uma cena que
+/// não montou.
+pub const INSP_SHEET_PREVIEW: NodeId = hash_node_id("insp_sheet_preview");

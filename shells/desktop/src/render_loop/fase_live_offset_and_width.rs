@@ -56,7 +56,7 @@ impl crate::App {
                             ph2d_vec_entities::transform::build(sim, &self.vec.entities)
                         });
                         hero.store.set_slider_value(
-                            ph2d_editor_core::ids::VECTOR_EXPAND_OFFSET,
+                            ph2d_panel_vector::ids::VECTOR_EXPAND_OFFSET,
                             ph2d_tool_vector::params::offset_frac_to_slider(spec.d / scale),
                         );
                         (spec.join, spec.side)
@@ -68,7 +68,7 @@ impl crate::App {
             };
             let offset_grabbed = matches!(
                 hero.store.active_id(),
-                Some(id) if id == ph2d_editor_core::ids::VECTOR_EXPAND_OFFSET
+                Some(id) if id == ph2d_panel_vector::ids::VECTOR_EXPAND_OFFSET
             );
             // O slider fala FRAÇÃO do tamanho da forma (−100%..+100%); o `d` de mundo nasce
             // de `fração × escala` (a porta única `vec_expand::offset_scale`, `ada45fac`).
@@ -76,7 +76,7 @@ impl crate::App {
             // churnar a cena, então a bbox das FONTES não se move durante o arrasto.
             let frac = hero
                 .store
-                .slider(ph2d_editor_core::ids::VECTOR_EXPAND_OFFSET)
+                .slider(ph2d_panel_vector::ids::VECTOR_EXPAND_OFFSET)
                 .map_or(ph2d_tool_vector::params::OFFSET_DEFAULT_FRAC, |(_, v)| {
                     ph2d_tool_vector::params::slider_to_offset_frac(v)
                 });
@@ -134,10 +134,10 @@ impl crate::App {
             }
             let grabbed = matches!(
                 hero.store.active_id(),
-                Some(id) if id == ph2d_editor_core::ids::VECTOR_EXPAND_W_START
-                    || id == ph2d_editor_core::ids::VECTOR_EXPAND_W_MID
-                    || id == ph2d_editor_core::ids::VECTOR_EXPAND_W_END
-                    || id == ph2d_editor_core::ids::VECTOR_EXPAND_W_POS
+                Some(id) if id == ph2d_panel_vector::ids::VECTOR_EXPAND_W_START
+                    || id == ph2d_panel_vector::ids::VECTOR_EXPAND_W_MID
+                    || id == ph2d_panel_vector::ids::VECTOR_EXPAND_W_END
+                    || id == ph2d_panel_vector::ids::VECTOR_EXPAND_W_POS
             );
             if grabbed && !sel.is_empty() {
                 let stops = crate::profile_live::preset_from_store(&hero.store).to_stops();

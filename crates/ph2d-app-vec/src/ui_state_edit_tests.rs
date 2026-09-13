@@ -445,7 +445,7 @@ fn every_curve_chip_resolves_and_nothing_else_does() {
         );
     }
     assert_eq!(
-        easing_pick_for_id(ph2d_editor_core::ids::VECTOR_STATE_DURATION),
+        easing_pick_for_id(ph2d_panel_vector::ids::VECTOR_STATE_DURATION),
         None,
         "um id que nao e' do seletor resolveu num pick"
     );

@@ -112,3 +112,15 @@ pub const TOKENS_DTCG_EXPORT: NodeId = hash_node_id("tokens.dtcg.export");
 /// cada vez e a primeira linha nomeia-o, então escrever num modo que ele não está a olhar é a
 /// mesma falha que o *Reset This Mode* evita ao só resetar o vigente.
 pub const TOKENS_DTCG_IMPORT: NodeId = hash_node_id("tokens.dtcg.import");
+
+// ── Desceu de `ph2d-editor-core/src/ids/chrome/tokens.rs` em 2026-09-13 (2.ª passagem: a cerca com a
+//    `line/render-loop` prendia-os na fundação até às duas linhas se integrarem).
+
+/// A swatch da linha `row` — **alvo de PICKER**, como a swatch de Fill do vetor.
+///
+/// ⚠️ Registá-la como botão faria o clique acender o widget e **nunca abrir o picker** — a cor
+/// ficaria ineditável com todos os gates verdes (a cicatriz que a lista de peças da W5b já pagou).
+#[must_use]
+pub fn tokens_swatch_id(row: usize) -> NodeId {
+    hash_node_id_runtime(&format!("tokens.swatch.{row}"))
+}

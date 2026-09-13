@@ -102,7 +102,7 @@ impl crate::App {
             // ECS e este é o bloco que tem `sim` e o mapa em mãos. A swatch é marcada como
             // picker-swatch no `paint.rs` do painel; o Down abre o picker por dispatch
             // genérico, e o que chega cá é só a escolha.
-            if hero.store.picker_target() == Some(ph2d_editor_core::ids::VECTOR_CONTOUR_TO)
+            if hero.store.picker_target() == Some(ph2d_panel_vector::ids::VECTOR_CONTOUR_TO)
                 && let Some((value, _, _, _)) = hero
                     .store
                     .blender_picker(ph2d_editor_core::ids::INSP_BLENDER_PICKER)

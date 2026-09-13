@@ -79,8 +79,12 @@ fn strategy_click(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
     if let WidgetEvent::Click(id) = ev
         && let Some(requested) = match id {
             ids::INSP_RENDER_STRATEGY_ATLAS => Some(RequestedSpriteStrategy::Atlas),
-            ids::INSP_RENDER_STRATEGY_INDIVIDUAL => Some(RequestedSpriteStrategy::Individual),
-            ids::INSP_RENDER_STRATEGY_HANDPACKED => Some(RequestedSpriteStrategy::HandPacked),
+            crate::ids::INSP_RENDER_STRATEGY_INDIVIDUAL => {
+                Some(RequestedSpriteStrategy::Individual)
+            }
+            crate::ids::INSP_RENDER_STRATEGY_HANDPACKED => {
+                Some(RequestedSpriteStrategy::HandPacked)
+            }
             _ => None,
         }
         && let Some(info) = state::current_inspector_sprite()

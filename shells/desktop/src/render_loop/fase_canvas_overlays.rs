@@ -38,7 +38,7 @@ impl crate::App {
             let (px, py) = self.last_pointer;
             let over_panel = hero
                 .store
-                .panel_rect(ph2d_editor_core::screens::hero::ids::SCULPT3D_PANEL)
+                .panel_rect(ph2d_editor_core::ids::SCULPT3D_PANEL)
                 .is_some_and(|r| r.contains(px, py));
             if !over_panel && let Some(mark) = scene.cursor_mark(px, py) {
                 use ph2d_vector::{Affine, Brush, Color, Stroke};

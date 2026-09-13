@@ -251,13 +251,13 @@ fn sheet_preview_row(
         return y;
     }
     let (_, value) = store
-        .checkbox(core_ids::INSP_SHEET_PREVIEW)
+        .checkbox(crate::ids::INSP_SHEET_PREVIEW)
         .unwrap_or((CheckboxState::Normal, CheckboxValue::Unchecked));
     let rect = Rect::new(x, y, w, cb_h);
-    hit_index.register(core_ids::INSP_SHEET_PREVIEW, rect);
+    hit_index.register(crate::ids::INSP_SHEET_PREVIEW, rect);
     paint_checkbox(
-        &Checkbox::new(core_ids::INSP_SHEET_PREVIEW, "Show sheet on canvas")
-            .visual(store.checkbox_visual(core_ids::INSP_SHEET_PREVIEW))
+        &Checkbox::new(crate::ids::INSP_SHEET_PREVIEW, "Show sheet on canvas")
+            .visual(store.checkbox_visual(crate::ids::INSP_SHEET_PREVIEW))
             .value(value),
         rect,
         scene,

@@ -74,3 +74,16 @@ pub const AUTHORED_RESIZE_HANDLE_BL: NodeId = hash_node_id("authored.resize_hand
 pub fn authored_option_id(key: &str, index: usize) -> NodeId {
     hash_node_id_runtime(&format!("authored.opt.{key}.{index}"))
 }
+
+// ── Desceu de `ph2d-editor-core/src/ids/chrome/authored.rs` em 2026-09-13 (2.ª passagem: a cerca com a
+//    `line/render-loop` prendia-os na fundação até às duas linhas se integrarem).
+
+/// O id da row de chave `key`.
+///
+/// ⚠️ O twin de runtime do [`hash_node_id`] — o mesmo FNV-1a, gateado a concordar com a `const fn`
+/// (`fnv_node_id_runtime_agrees_with_hash_node_id`). Duas funções de hash dariam um id no
+/// `populate` e outro no `paint`, e o controle nasceria morto sob o rato.
+#[must_use]
+pub fn authored_row_id(key: &str) -> NodeId {
+    hash_node_id_runtime(&format!("authored.row.{key}"))
+}

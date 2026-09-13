@@ -36,14 +36,13 @@ pub enum MorphCmd {
 /// **O comando que um `NodeId` pede**, ou `None` se ele não é de uma seta.
 #[must_use]
 pub fn morph_cmd_for_id(id: ph2d_editor_core::NodeId) -> Option<MorphCmd> {
-    use ph2d_editor_core::ids as i;
     if id == ph2d_panel_vector::ids::VECTOR_MORPH_STATES_MAKE {
         return Some(MorphCmd::MakeSet);
     }
     if id == ph2d_panel_vector::ids::VECTOR_MORPH_DISSOLVE {
         return Some(MorphCmd::Dissolve);
     }
-    for row in 0..i::MAX_MORPH_STATES {
+    for row in 0..ph2d_panel_vector::ids::MAX_MORPH_STATES {
         if id == ph2d_panel_vector::ids::morph_shape_play_id(row) {
             return Some(MorphCmd::Play { row });
         }

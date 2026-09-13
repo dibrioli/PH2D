@@ -49,7 +49,7 @@ pub(crate) fn dispatch(hero: &mut HeroScreen, toasts: &mut ToastQueue) -> bool {
     // abrir e a cor a não chegar a lado nenhum.
     if let Some(target) = hero.store.picker_target()
         && let Some(row) = (0..ColorToken::ALL.len())
-            .find(|&r| ph2d_editor_core::ids::tokens_swatch_id(r) == target)
+            .find(|&r| ph2d_panel_tokens::ids::tokens_swatch_id(r) == target)
         && let Some((value, _, _, _)) = hero
             .store
             .blender_picker(ph2d_editor_core::ids::INSP_BLENDER_PICKER)

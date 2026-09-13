@@ -24,7 +24,6 @@
 #![forbid(unsafe_code)]
 
 mod event;
-pub mod ids;
 mod paint;
 mod populate;
 pub mod state;
@@ -41,7 +40,7 @@ pub struct UpscalePanel;
 impl Panel for UpscalePanel {
     type State = UpscalePanelState;
     const ID: &'static str = "upscale";
-    const NODE_ID: NodeId = ids::UPS_PANEL;
+    const NODE_ID: NodeId = ph2d_editor_core::ids::UPS_PANEL;
     const DEFAULT_VISIBLE: bool = false;
     const TITLE: &'static str = "Upscale";
     const ICON: ph2d_editor_core::icons::IconId = ph2d_editor_core::icons::IconId::Upscale;

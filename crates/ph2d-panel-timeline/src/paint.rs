@@ -461,7 +461,7 @@ fn paint_chrome(ctx: &mut PaintCtx, theme: Theme, rect: Rect) -> f32 {
     );
     paint_panel_close_button(
         rect,
-        ph2d_editor_core::ids::TIMELINE_CLOSE,
+        crate::ids::TIMELINE_CLOSE,
         ctx.host.hit_index_mut(),
         ctx.scene,
         theme,

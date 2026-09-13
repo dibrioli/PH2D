@@ -44,3 +44,20 @@ pub const VECTOR_BOOL_SHAPE_INTERSECT: NodeId = hash_node_id("vector.bool.shape.
 
 /// **Exclude** como verbo desta forma.
 pub const VECTOR_BOOL_SHAPE_EXCLUDE: NodeId = hash_node_id("vector.bool.shape.exclude");
+
+// ── Desceu de `ph2d-editor-core/src/ids/chrome/vector_bool.rs` em 2026-09-13 (2.ª passagem: a cerca com a
+//    `line/render-loop` prendia-os na fundação até às duas linhas se integrarem).
+
+// ── A BOOLEANA VIVA (plano UI/UX W1) ─────────────────────────────────────────
+// O par decide **o que os oito botões acima FAZEM**: `Off` consome os operandos (o mundo de
+// sempre), `On` cria um GRUPO cujos filhos se combinam e continuam editáveis. Não é um nono
+// botão — é o modo dos oito, e por isso vive acima deles.
+pub const VECTOR_BOOL_LIVE_OFF: NodeId = hash_node_id("vector.bool.live.off");
+
+/// **Booleana viva — ligada.**
+pub const VECTOR_BOOL_LIVE_ON: NodeId = hash_node_id("vector.bool.live.on");
+
+/// **Consolidar** a booleana viva selecionada: o que está na tela vira caminhos comuns e o grupo
+/// morre. Oferecido só com um grupo booleano selecionado — um *Apply* que não aplica nada é pior
+/// que *Apply* nenhum.
+pub const VECTOR_BOOL_APPLY: NodeId = hash_node_id("vector.bool.apply");

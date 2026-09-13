@@ -201,7 +201,7 @@ fn the_two_chips_map_to_the_two_kinds_and_nothing_else_does() {
         None
     );
     assert_eq!(
-        kind_for_id(ph2d_editor_core::ids::VECTOR_STROKE_PRESENT),
+        kind_for_id(ph2d_panel_vector::ids::VECTOR_STROKE_PRESENT),
         None
     );
 }

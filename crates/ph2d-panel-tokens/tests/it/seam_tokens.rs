@@ -83,7 +83,7 @@ fn every_token_gets_a_row_whose_swatch_is_a_picker_target() {
     clear_color_overrides();
     let (mut h, mut st) = host();
     for row in 0..ColorToken::ALL.len() {
-        let id = ph2d_editor_core::ids::tokens_swatch_id(row);
+        let id = ph2d_panel_tokens::ids::tokens_swatch_id(row);
         assert!(
             h.painted_rect::<TokensPanel>(&mut st, VIEWPORT, id)
                 .is_some(),
@@ -218,7 +218,7 @@ fn a_closed_panel_drops_its_rect() {
     let _ = h.painted_rect::<TokensPanel>(
         &mut st,
         VIEWPORT,
-        ph2d_editor_core::ids::tokens_swatch_id(0),
+        ph2d_panel_tokens::ids::tokens_swatch_id(0),
     );
     assert!(
         h.store()
@@ -343,7 +343,7 @@ fn put(theme: Theme, token: ColorToken, colour: Color) {
 
 /// O topo da PRIMEIRA linha da lista — a régua que mede quanto o cabeçalho gastou.
 fn first_row_top() -> f32 {
-    rect_of(ph2d_editor_core::ids::tokens_swatch_id(0))
+    rect_of(ph2d_panel_tokens::ids::tokens_swatch_id(0))
         .expect("a linha 0 e' pintada sempre")
         .y
 }

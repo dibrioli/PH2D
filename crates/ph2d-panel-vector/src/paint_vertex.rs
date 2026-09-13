@@ -72,9 +72,9 @@ impl BodyCtx<'_> {
         if state::current_vertex_pos().is_some() {
             y = self.number_row(
                 "X",
-                ph2d_editor_core::ids::VECTOR_VERT_X,
+                crate::ids::VECTOR_VERT_X,
                 "Y",
-                ph2d_editor_core::ids::VECTOR_VERT_Y,
+                crate::ids::VECTOR_VERT_Y,
                 y,
             );
         }
@@ -83,11 +83,8 @@ impl BodyCtx<'_> {
         // existe — e estes dois são exatamente os que tornam uma forma de 40 nós trabalhável.
         // O `Ctrl+A` (todos os nós) fica na tecla: esse o artista tenta sozinho.
         let sel: [(ph2d_a11y::NodeId, &str); 2] = [
-            (
-                ph2d_editor_core::ids::VECTOR_VERT_SEL_SUBPATH,
-                "Select Subpath",
-            ),
-            (ph2d_editor_core::ids::VECTOR_VERT_SEL_SAME, "Select Same"),
+            (crate::ids::VECTOR_VERT_SEL_SUBPATH, "Select Subpath"),
+            (crate::ids::VECTOR_VERT_SEL_SAME, "Select Same"),
         ];
         let gap = Spacing::Xs.px();
         let w = ((self.inner_w - gap) / 2.0).max(1.0);
@@ -104,13 +101,13 @@ impl BodyCtx<'_> {
                 w,
                 gap,
                 [
-                    (ph2d_editor_core::ids::VECTOR_VERT_AVERAGE, "Average"),
-                    (ph2d_editor_core::ids::VECTOR_VERT_DELETE, "Delete Node"),
+                    (crate::ids::VECTOR_VERT_AVERAGE, "Average"),
+                    (crate::ids::VECTOR_VERT_DELETE, "Delete Node"),
                 ],
                 y,
             );
         } else {
-            y = self.action_button(ph2d_editor_core::ids::VECTOR_VERT_DELETE, "Delete Node", y);
+            y = self.action_button(crate::ids::VECTOR_VERT_DELETE, "Delete Node", y);
         }
         y
     }

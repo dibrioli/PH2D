@@ -55,3 +55,12 @@ pub const VECTOR_SYM_FUSE_OFF: NodeId = hash_node_id("vector.sym.fuse_off");
 
 /// Ver [`VECTOR_SYM_FUSE_OFF`].
 pub const VECTOR_SYM_FUSE_ON: NodeId = hash_node_id("vector.sym.fuse_on");
+
+// ── Desceu de `ph2d-editor-core/src/ids/chrome/vector_symmetry.rs` em 2026-09-13 (2.ª passagem: a cerca com a
+//    `line/render-loop` prendia-os na fundação até às duas linhas se integrarem).
+
+/// **Apply** — consolida as cópias em geometria de documento e desarma a simetria.
+///
+/// ⚠️ Oferecido só quando há simetria VIVA na seleção: sem ela não há o que consolidar, e um botão
+/// que não faz nada é pior que botão que falta.
+pub const VECTOR_SYM_APPLY: NodeId = hash_node_id("vector.sym.apply");

@@ -9,14 +9,12 @@
 //!
 //! All ids are derived via `hash_node_id("color_eq.<chip>")` (FNV-1a 64); the
 //! `node_id_collisions` census in `ph2d-editor-core/tests/it/` reads every
-//! literal of the workspace and catches hash collisions. ⚠️ `CEQ_PANEL` repeats
-//! the foundation's slug on purpose — one of the `SLUGS_REPETIDOS_TOLERADOS`.
+//! literal of the workspace and catches hash collisions. The panel ROOT id is not here: it is
+//! `ph2d_editor_core::ids::CEQ_PANEL`, which the foundation reads in its scroll dispatch and menu
+//! filter — one definition (the copy that lived here died in the 2026-09-13 integration).
 
 use ph2d_a11y::NodeId;
 use ph2d_tool_registry::hash_node_id;
-
-// ── Panel root ────────────────────────────────────────────────────
-pub const CEQ_PANEL: NodeId = hash_node_id("panel.color_equalization");
 
 // ── Sliders + paired numeric chips ────────────────────────────────
 // Track is normalized 0..1; the chip stores the displayed value in
@@ -184,7 +182,7 @@ mod tests {
     #[test]
     fn ids_are_distinct() {
         let all = [
-            CEQ_PANEL,
+            ph2d_editor_core::ids::CEQ_PANEL,
             CEQ_CLIP_LIMIT,
             CEQ_CLIP_LIMIT_NUM,
             CEQ_TILE_GRID,

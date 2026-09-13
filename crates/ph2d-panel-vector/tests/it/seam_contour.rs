@@ -56,17 +56,17 @@ fn addable() {
 fn every_contour_button_reaches_the_bus() {
     for (id, name, arm) in [
         (
-            ph2d_editor_core::ids::VECTOR_CONTOUR_ADD,
+            ph2d_panel_vector::ids::VECTOR_CONTOUR_ADD,
             "Add Contour",
             false,
         ),
         (
-            ph2d_editor_core::ids::VECTOR_CONTOUR_EXPAND,
+            ph2d_panel_vector::ids::VECTOR_CONTOUR_EXPAND,
             "Expand Contour",
             true,
         ),
         (
-            ph2d_editor_core::ids::VECTOR_CONTOUR_REMOVE,
+            ph2d_panel_vector::ids::VECTOR_CONTOUR_REMOVE,
             "Remove Contour",
             true,
         ),
@@ -127,25 +127,25 @@ fn the_section_shows_the_button_or_the_controls_never_both() {
         painted(
             &mut host,
             &mut panel_state,
-            ph2d_editor_core::ids::VECTOR_CONTOUR_ADD
+            ph2d_panel_vector::ids::VECTOR_CONTOUR_ADD
         ),
         "sem contour a secao tem de oferecer `Add Contour`"
     );
     for (id, name) in [
         (
-            ph2d_editor_core::ids::VECTOR_CONTOUR_TO,
+            ph2d_panel_vector::ids::VECTOR_CONTOUR_TO,
             "a swatch da cor-alvo",
         ),
         (
-            ph2d_editor_core::ids::VECTOR_CONTOUR_STEPS,
+            ph2d_panel_vector::ids::VECTOR_CONTOUR_STEPS,
             "o slider de Steps",
         ),
         (
-            ph2d_editor_core::ids::VECTOR_CONTOUR_EXPAND,
+            ph2d_panel_vector::ids::VECTOR_CONTOUR_EXPAND,
             "Expand Contour",
         ),
         (
-            ph2d_editor_core::ids::VECTOR_CONTOUR_REMOVE,
+            ph2d_panel_vector::ids::VECTOR_CONTOUR_REMOVE,
             "Remove Contour",
         ),
     ] {
@@ -160,33 +160,33 @@ fn the_section_shows_the_button_or_the_controls_never_both() {
         !painted(
             &mut host,
             &mut panel_state,
-            ph2d_editor_core::ids::VECTOR_CONTOUR_ADD
+            ph2d_panel_vector::ids::VECTOR_CONTOUR_ADD
         ),
         "`Add Contour` continuou pintado sobre uma forma que JA tem contour"
     );
     for (id, name) in [
         (
-            ph2d_editor_core::ids::VECTOR_CONTOUR_TO,
+            ph2d_panel_vector::ids::VECTOR_CONTOUR_TO,
             "a swatch da cor-alvo",
         ),
         (
-            ph2d_editor_core::ids::VECTOR_CONTOUR_STEPS,
+            ph2d_panel_vector::ids::VECTOR_CONTOUR_STEPS,
             "o slider de Steps",
         ),
         (
-            ph2d_editor_core::ids::VECTOR_CONTOUR_OFFSET,
+            ph2d_panel_vector::ids::VECTOR_CONTOUR_OFFSET,
             "o slider de Offset",
         ),
         (
-            ph2d_editor_core::ids::VECTOR_CONTOUR_ACCEL,
+            ph2d_panel_vector::ids::VECTOR_CONTOUR_ACCEL,
             "o slider de Accel",
         ),
         (
-            ph2d_editor_core::ids::VECTOR_CONTOUR_EXPAND,
+            ph2d_panel_vector::ids::VECTOR_CONTOUR_EXPAND,
             "Expand Contour",
         ),
         (
-            ph2d_editor_core::ids::VECTOR_CONTOUR_REMOVE,
+            ph2d_panel_vector::ids::VECTOR_CONTOUR_REMOVE,
             "Remove Contour",
         ),
     ] {
@@ -208,7 +208,7 @@ fn the_section_is_absent_when_there_is_nothing_to_say() {
     let mut panel_state = VectorPanelState;
     for (id, name) in [
         (ids::VECTOR_SECTION_CONTOUR, "o cabecalho"),
-        (ph2d_editor_core::ids::VECTOR_CONTOUR_ADD, "`Add Contour`"),
+        (ph2d_panel_vector::ids::VECTOR_CONTOUR_ADD, "`Add Contour`"),
     ] {
         assert!(
             host.painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, id)

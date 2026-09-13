@@ -46,11 +46,28 @@ fn declared_under_cfg_test(path: &Path, depth: u8) -> bool {
     if depth == 0 {
         return false;
     }
-    let Some(stem) = path.file_stem().and_then(|s| s.to_str()) else {
+    let Some(file_stem) = path.file_stem().and_then(|s| s.to_str()) else {
         return false;
     };
-    let Some(dir) = path.parent() else {
+    let Some(file_dir) = path.parent() else {
         return false;
+    };
+    // ⛔⛔ **`x/mod.rs` É o módulo `x`** — o nome dele é o do DIRECTÓRIO, e quem o declara vive um
+    // nível ACIMA. Até 2026-09-13 esta função procurava `mod mod;`, que não existe, e respondia
+    // «produção» para a árvore inteira: os 12 ficheiros de `interaction/dispatch/tests/` da
+    // `ph2d-editor-core` (declarados por `#[cfg(test)] mod tests;` em `dispatch/mod.rs`) e os de
+    // `ph2d-tool-painter/src/tool/paint/tests/` eram lidos como código de PRODUTO. Quem o apanhou foi
+    // a régua lexical desta crate, a contar «hello world» e «<missing>» como rótulos da interface.
+    let (stem, dir) = if file_stem == "mod" {
+        let (Some(name), Some(up)) = (
+            file_dir.file_name().and_then(|s| s.to_str()),
+            file_dir.parent(),
+        ) else {
+            return false;
+        };
+        (name, up)
+    } else {
+        (file_stem, file_dir)
     };
     // ⚠️ **O pai pode estar em TRÊS sítios, e o terceiro foi o que a `hr12` não via.** O
     // `<dir>/mod.rs` e o `<dir>.rs` um nível acima são os dois óbvios; o terceiro é um **IRMÃO

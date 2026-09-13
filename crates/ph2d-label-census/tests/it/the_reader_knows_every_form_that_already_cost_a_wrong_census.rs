@@ -83,7 +83,10 @@ fn what_never_paints_is_left_out() {
         fn f(x: &str, o: Option<u8>) {
             panic!("Boom it broke");
             let _ = o.expect("Must be set");
-            let _ = tr("panel.painter_layers.size");
+            // ⚠️ Uma chave de um prefixo que NÃO existe: o censo de chaves varre o repo inteiro, e a
+            //    1.ª redacção deste controlo (`panel.painter_layers.size`) foi lida como consumo real
+            //    pelo gate do painel Painter — o censo a acusar a fixtura dele próprio.
+            let _ = tr("exemplo.de.chave");
             let _ = hash_node_id("painter_size");
             let _ = x.starts_with("Prefix Words");
             let n = match x { "Scene Root" => 1, "Alpha Row" | "Beta Row" => 2, _ => 3 };
@@ -166,4 +169,21 @@ fn the_language_test_has_both_sides_of_every_border() {
     // caminhos
     assert!(!is_language("docs/design/icons/bone.svg"));
     assert!(!is_language("Cargo.toml"));
+}
+
+/// ⛔⛔ **Um escape do fonte NÃO é um caminho.** A 1.ª redacção deitava fora todo texto com `\`, e
+/// com ele todo rótulo que tivesse um `\u{…}`, um `\n` ou um `\"` — mudo, até a Hierarquia perder a
+/// frase do contador de entidades.
+#[test]
+fn a_source_escape_is_not_a_path_and_is_not_a_placeholder() {
+    assert!(is_language(
+        r"{entities} entities \u{00b7} {components} components"
+    ));
+    assert!(is_language(r"Line one\nLine two"));
+    assert!(is_language(r#"Say \"Hi\""#));
+    // o `\u{2026}` sozinho continua a não ser palavra
+    assert!(!is_language(r"\u{2026}"));
+    let src =
+        "fn f(a: u32, b: u32) { let t = format!(\"{a} entities \\u{00b7} {b} components\"); }";
+    assert_eq!(texts(src), ["{a} entities \\u{00b7} {b} components"]);
 }

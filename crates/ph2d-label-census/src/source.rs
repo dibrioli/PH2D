@@ -256,7 +256,8 @@ pub(crate) fn blank_cfg_test_items(code: &mut [char]) {
     let mut i = 0usize;
     while i < code.len() {
         if !mask[i]
-            && (starts_with_at(code, i, "#[cfg(test)]") || starts_with_at(code, i, "#[cfg(all(test"))
+            && (starts_with_at(code, i, "#[cfg(test)]")
+                || starts_with_at(code, i, "#[cfg(all(test"))
             && let Some(end) = item_end(code, &mask, i)
         {
             for ch in &mut code[i..end] {

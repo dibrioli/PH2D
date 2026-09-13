@@ -179,10 +179,36 @@ fn walk(dir: &Path, out: &mut Vec<PathBuf>) {
 ///   palavra de 3+ letras: `"{n} entities"` é uma frase;
 /// - um caminho de ficheiro não é língua.
 pub fn is_language(text: &str) -> bool {
+    // ⛔⛔ **Os escapes do FONTE saem antes de tudo.** O texto de um literal chega tal como está
+    //    escrito (`\u{00b7}`, `\n`, `\"`), e a 1.ª redacção desta função mandava para fora todo texto
+    //    com `\` por «parecer um caminho» — logo TODO rótulo com um escape sumia em silêncio. Quem o
+    //    apanhou foi a contagem da Hierarquia: `"{entities} entities \u{00b7} {components}
+    //    components"` não aparecia. E o `\u{…}` tem de sair ANTES dos marcadores, senão o `{00b7}` é
+    //    lido como um marcador de `format!`.
+    let mut unescaped = String::with_capacity(text.len());
+    let mut it = text.chars().peekable();
+    while let Some(c) = it.next() {
+        if c != '\\' {
+            unescaped.push(c);
+            continue;
+        }
+        match it.next() {
+            Some('u') if it.peek() == Some(&'{') => {
+                for d in it.by_ref() {
+                    if d == '}' {
+                        break;
+                    }
+                }
+                unescaped.push('·');
+            }
+            Some('"') => unescaped.push('"'),
+            Some(_) | None => unescaped.push(' '),
+        }
+    }
     let mut had_placeholder = false;
     let mut depth = 0usize;
-    let mut kept = String::with_capacity(text.len());
-    for c in text.chars() {
+    let mut kept = String::with_capacity(unescaped.len());
+    for c in unescaped.chars() {
         match c {
             '{' => {
                 depth += 1;
@@ -202,8 +228,7 @@ pub fn is_language(text: &str) -> bool {
         return false;
     }
     let key_like = u.contains('.')
-        && u
-            .chars()
+        && u.chars()
             .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_' || c == '.');
     if key_like {
         return false;

@@ -87,10 +87,22 @@ fn no_sub_drain_writes_the_bus_it_borrowed() {
          `HeroScreen` (`mem::take`), e o que um braço lhe empurrar some quando o dreno a devolve"
     );
     let body = drain_body();
-    assert_eq!(body.matches("std::mem::take(&mut hero.bus)").count(), 1, "a fila sai do `HeroScreen` uma vez");
-    let laco = body.find("for action in bus.drain()").expect("o laço drena a fila tomada");
-    let volta = body.find(".bus = bus;").expect("a fila volta ao `HeroScreen`");
-    assert_eq!(body.matches(".bus = bus;").count(), 1, "a fila volta uma vez");
+    assert_eq!(
+        body.matches("std::mem::take(&mut hero.bus)").count(),
+        1,
+        "a fila sai do `HeroScreen` uma vez"
+    );
+    let laco = body
+        .find("for action in bus.drain()")
+        .expect("o laço drena a fila tomada");
+    let volta = body
+        .find(".bus = bus;")
+        .expect("a fila volta ao `HeroScreen`");
+    assert_eq!(
+        body.matches(".bus = bus;").count(),
+        1,
+        "a fila volta uma vez"
+    );
     assert!(volta > laco, "a fila volta ANTES do laço que a drena");
 }
 
@@ -104,7 +116,11 @@ fn chain() -> Vec<String> {
             rest[..rest.find('(').expect("uma chamada")].to_string()
         })
         .collect();
-    assert!(names.len() >= 11, "a cadeia do dreno tem {} sub-drenos — abaixo do piso", names.len());
+    assert!(
+        names.len() >= 11,
+        "a cadeia do dreno tem {} sub-drenos — abaixo do piso",
+        names.len()
+    );
     names
 }
 
@@ -112,8 +128,13 @@ fn chain() -> Vec<String> {
 fn sub_drain_bodies() -> BTreeMap<String, String> {
     let mut out = BTreeMap::new();
     for (_, src) in sub_drain_files() {
-        for name in fn_names(&src).into_iter().filter(|n| n.starts_with("fase_bus_")) {
-            let body = fn_body(&src, &name).expect("o corpo abre e fecha").to_string();
+        for name in fn_names(&src)
+            .into_iter()
+            .filter(|n| n.starts_with("fase_bus_"))
+        {
+            let body = fn_body(&src, &name)
+                .expect("o corpo abre e fecha")
+                .to_string();
             out.insert(name, code_only(&body));
         }
     }
@@ -132,11 +153,15 @@ fn arm_key(pattern: &str) -> (String, bool) {
     let mut i = 0;
     while let Some(k) = pat[i..].find("::") {
         let at = i + k;
-        let start = pat[..at].rfind(|c: char| !(c.is_ascii_alphanumeric() || c == '_')).map_or(0, |p| p + 1);
+        let start = pat[..at]
+            .rfind(|c: char| !(c.is_ascii_alphanumeric() || c == '_'))
+            .map_or(0, |p| p + 1);
         let end = pat[at + 2..]
             .find(|c: char| !(c.is_ascii_alphanumeric() || c == '_'))
             .map_or(pat.len(), |p| at + 2 + p);
-        if bytes.get(start).is_some_and(u8::is_ascii_uppercase) && bytes.get(at + 2).is_some_and(u8::is_ascii_uppercase) {
+        if bytes.get(start).is_some_and(u8::is_ascii_uppercase)
+            && bytes.get(at + 2).is_some_and(u8::is_ascii_uppercase)
+        {
             parts.push(pat[start..end].to_string());
         }
         i = at + 2;
@@ -153,12 +178,18 @@ fn arms(body: &str) -> Vec<String> {
         let t = line.trim_start();
         let starts = t.starts_with("EditorAction::")
             || t.split_once(" @ ").is_some_and(|(a, b)| {
-                a.chars().all(|c| c.is_ascii_lowercase() || c == '_') && b.starts_with("EditorAction::")
+                a.chars().all(|c| c.is_ascii_lowercase() || c == '_')
+                    && b.starts_with("EditorAction::")
             });
         if starts {
             let rest = &body[from..];
             let seta = rest.find("=>").expect("um braço tem seta");
-            out.push(rest[..seta].split_whitespace().collect::<Vec<_>>().join(" "));
+            out.push(
+                rest[..seta]
+                    .split_whitespace()
+                    .collect::<Vec<_>>()
+                    .join(" "),
+            );
         }
         from += line.len();
     }
@@ -173,15 +204,21 @@ fn every_request_has_one_arm_across_the_chain() {
     let mut repetidos = Vec::new();
     let mut total = 0;
     for name in chain() {
-        let body = bodies
-            .get(&name)
-            .unwrap_or_else(|| panic!("a cadeia do dreno chama `{name}`, que não está nos ficheiros dos sub-drenos"));
+        let body = bodies.get(&name).unwrap_or_else(|| {
+            panic!("a cadeia do dreno chama `{name}`, que não está nos ficheiros dos sub-drenos")
+        });
         for arm in arms(body) {
             let (key, guarded) = arm_key(&arm);
-            assert!(key.starts_with("EditorAction::"), "um braço sem pedido legível: {arm}");
+            assert!(
+                key.starts_with("EditorAction::"),
+                "um braço sem pedido legível: {arm}"
+            );
             total += 1;
             if let Some(antes) = seen.insert(key.clone(), name.clone()) {
-                repetidos.push(format!("{key}{}: `{antes}` e `{name}`", if guarded { " (com guarda)" } else { "" }));
+                repetidos.push(format!(
+                    "{key}{}: `{antes}` e `{name}`",
+                    if guarded { " (com guarda)" } else { "" }
+                ));
             }
         }
     }

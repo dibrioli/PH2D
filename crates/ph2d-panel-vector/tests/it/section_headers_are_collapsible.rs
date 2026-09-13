@@ -53,10 +53,10 @@ fn painted_headers() -> BTreeSet<String> {
     found
 }
 
-/// Os identificadores dentro do array `VECTOR_SECTIONS` (que mora na `ph2d-editor-core`).
+/// Os identificadores dentro do array `VECTOR_SECTIONS` — que mora NESTA crate desde a auditoria
+/// A5b (2026-09-12): desceu da `ph2d-editor-core/src/ids/chrome/` para quem o lê.
 fn listed_sections() -> BTreeSet<String> {
-    let file = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../ph2d-editor-core/src/ids/chrome/vector_sections.rs");
+    let file = Path::new(env!("CARGO_MANIFEST_DIR")).join("src/ids/vector_sections.rs");
     let src = std::fs::read_to_string(&file).expect("a lista das seções");
     let start = src
         .find("pub const VECTOR_SECTIONS")

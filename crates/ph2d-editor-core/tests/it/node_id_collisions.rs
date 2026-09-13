@@ -112,13 +112,13 @@ const FORMAS_NAO_LITERAIS: &[(&str, &str, Especie, &str)] = &[
         "a leitura inversa do mesmo hash (`type_name` → nó); a mesma porta, gateada com a ida",
     ),
     (
-        "crates/ph2d-editor-core/src/ids/chrome/timeline.rs",
+        "crates/ph2d-panel-timeline/src/ids/timeline.rs",
         "dynamic_id",
         Especie::HashDeExpressao,
         "a SEMENTE por domínio das famílias dinâmicas da timeline; a separação entre domínios é o timeline_dynamic_ids_dont_collide_with_chrome_or_each_other",
     ),
     (
-        "crates/ph2d-editor-core/src/ids/chrome/timeline.rs",
+        "crates/ph2d-panel-timeline/src/ids/timeline.rs",
         "dynamic_id",
         Especie::FnvAMao,
         "o corpo da mesma semente: FNV sobre os bytes `u64` das partes (não é a lei de slug, é uma extensão dela); coberto pelo mesmo teste",

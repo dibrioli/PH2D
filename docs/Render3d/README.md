@@ -14,6 +14,7 @@ medição ao lado, para a implementação não começar por um palpite.
 | [`01_o_alvo_decomposto.md`](01_o_alvo_decomposto.md) | *«o que faz o PvZ:BfN ser bonito?»* — os oito ingredientes, separados |
 | [`02_o_estado_da_arte.md`](02_o_estado_da_arte.md) | *«o que a Unreal tem, e onde podemos ganhar?»* |
 | [`03_o_plano.md`](03_o_plano.md) | *«por onde se começa, e o que se mede em cada passo?»* |
+| ⭐ [`04_a_remedicao_contra_a_arvore.md`](04_a_remedicao_contra_a_arvore.md) | *«o que o estudo dizia que JÁ existia ainda é verdade?»* — ⛔ **três premissas caíram em 13/09** (o tonemap está em bypass · a `W1` sozinha não tem consumidor · **há** gerador de WGSL), e ⭐ **a ponte para WGSL está MEDIDA** |
 
 ## O resultado do estudo em três linhas
 

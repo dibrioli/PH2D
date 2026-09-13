@@ -25,7 +25,7 @@ Ordenados por **salto visual por unidade de trabalho**, que é a ordem em que se
 
 | # | ingrediente | o que muda na tela | temos hoje? |
 |---|---|---|---|
-| 1 | **Gestão de cor** — espaço linear, exposição, tonemapper (AgX/ACES) | ⭐⭐⭐ a diferença entre «parece de 2005» e «parece moderno» | ⚠️ **meio**: há `tonemap.wgsl` e `bloom.wgsl` no `ph2d-render`, sem exposição autorada nem espaço de trabalho declarado |
+| 1 | **Gestão de cor** — espaço linear, exposição, tonemapper (AgX/ACES) | ⭐⭐⭐ a diferença entre «parece de 2005» e «parece moderno» | ⚠️ **meio**: há `tonemap.wgsl` e `bloom.wgsl` no `ph2d-render`, sem exposição autorada nem espaço de trabalho declarado — ⛔ *remedido 13/09: o passe está em **bypass** (corta em 1) e o bake AgX nunca existiu, logo é **zero** ([`04`](04_a_remedicao_contra_a_arvore.md) §1)* |
 | 2 | **Luz indirecta (GI)** | ⭐⭐⭐ o maior contribuinte isolado; sem ela, sombra é preto e a peça flutua | ⛔ **não** — há um `env_ambient` constante no `ph2d-light` |
 | 3 | **Resposta de material que lê como MATÉRIA** (GGX + energia conservada + metalness) | ⭐⭐ um plástico deixa de ser «brilhante» e passa a ser plástico | ⛔ **não** — o `mesh.wgsl` faz matcap ou um rig analítico simples |
 | 4 | **Céu/ambiente como FONTE de luz** (IBL) | ⭐⭐ é o que põe cor no lado escuro sem o lavar | ⛔ não |

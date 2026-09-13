@@ -129,7 +129,10 @@ Já corrido durante a wave: as suítes das três crates do campo (`ph2d-field-ev
 
 ## 8. O relógio
 
-⏳ *(preencher: `measure_what_the_hull_cache_buys_on_the_clock`, a `load < 5`)*
+⏸️ **Adiado para o fim do plano, por ordem do dono (13/09).** A 1.ª corrida de
+`measure_what_the_hull_cache_buys_on_the_clock` ficou contaminada pela suíte desta linha (arrancou a
+`load 4,63` e correu a `37`–`60`; só as contagens valem, doc 12 §12.10.1) e a 2.ª nunca arrancou (a
+máquina estava a `67`). O `PAD_OF_REACH` fica em `0,08`.
 
 ## 9. As premissas que a MEDIÇÃO derrubou
 
@@ -151,7 +154,7 @@ Já corrido durante a wave: as suítes das três crates do campo (`ph2d-field-ev
 
 ## 10. ⏳ O que fica ABERTO
 
-- ⏳ `0,06` contra `0,08` do alcance — o relógio (§8).
+- ⏸️ `0,06` contra `0,08` do alcance — o relógio (§8), adiado para o fim do plano por ordem do dono.
 - ⏳ `FRAMES_KEPT = 3` e `PHASE = 0,3` foram medidos com a caixa; a política do casco serve mais regiões
   com menos fitas e pede reconferência.
 - ⏳ O cálculo dos cascos da CONSULTA (no `tiles.rs`) não tem contador próprio; o `GET_NS` só conta o

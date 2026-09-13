@@ -13,6 +13,10 @@ sério (**AgX** ou **ACES**), com a saída em sRGB.
 - **Porquê primeiro:** é a diferença entre «parece de 2005» e «parece moderno», e **tudo o que vem
   depois mede-se errado sem ela** — um bloom sobre valores que não são HDR é um borrão.
 - **Já temos:** `tonemap.wgsl` e `bloom.wgsl` no `ph2d-render`.
+  ⛔ **Remedido em 13/09 ([`04`](04_a_remedicao_contra_a_arvore.md) §1):** o tonemap está em
+  **bypass** e o `game_rt` é **partilhado com a arte 2D**; o modelador pinta **matcap** fora do HDR.
+  ⇒ a `W1` sozinha não tem consumidor honesto, e a primeira fatia que se vê é o modo *Render* do
+  modelador com `W1` + `W2`/`W3` mínimas juntas (`04` §4).
 - **Falta:** o espaço de trabalho **declarado**, a exposição como número do artista, e a escolha do
   tonemapper como chip.
 - **Régua:** uma rampa de luminância de `0` a `16` tem de sair monótona e sem clipping colorido; e o
@@ -26,6 +30,9 @@ padrão (ver `00` §3).
 
 - **A 1.ª medição da wave é a ponte para WGSL**, e ela tem três candidatos por medir: **Slang → SPIR-V**,
   **GLSL → `naga`**, ou um `GenWgsl` próprio. ⚠️ *Escolher sem medir os três é o erro que o §0 proíbe.*
+  ✅ **MEDIDA em 13/09 ([`04`](04_a_remedicao_contra_a_arvore.md) §2):** `WgslShaderGenerator` →
+  `naga` `glsl-in` valida (`5 598` linhas); a rota por SPIR-V reprova no fragmento; o `GenWgsl`
+  próprio não é preciso. ⚠️ Validar não é sombrear igual — o `MaterialXView` continua a ser a régua.
 - **Lobos mínimos para o alvo:** base difusa · especular GGX com **compensação de energia** ·
   metalness · **coat** · emissão. O `transmission` e o `fuzz` entram depois.
 - ⭐ **O `subsurface` já existe** (`sss.rs` + tabela pré-integrada) e passa a ser **uma entrada do

@@ -274,11 +274,16 @@ compilações por quadro:
 | pan 4 px | `10,9` | `3,2` | `2,1` | `1,6` |
 | zoom `+0,5` | `2,7` | `1,8` | `1,2` | `1,1` |
 
-⏳ *(a 2.ª corrida, a preencher)*
+⏸️ **A 2.ª corrida foi ADIADA para o fim do plano, por ordem do dono (13/09).** Ela nunca chegou a
+arrancar: o laço esperava duas leituras seguidas com `load1 < 4` e `load5 < 8`, e a máquina estava a
+`67` com outras linhas a correr. ⇒ o `PAD_OF_REACH` **fica em `0,08`**, que é o valor que as
+contagens da §12.10.1 já dão por melhor que a caixa em órbita, pan e zoom — o relógio só decide se
+`0,06` compra **mais**, nunca se o casco compra.
 
 ## §12.11 — ⏳ O que fica aberto
 
-- ⏳ **`0,06` contra `0,08` do alcance** — decide o relógio (§12.10).
+- ⏸️ **`0,06` contra `0,08` do alcance** — decide o relógio (§12.10), **adiado para o fim do plano
+  por ordem do dono (13/09)**; fica `0,08`.
 - ⏳ **`FRAMES_KEPT = 3` e `PHASE = 0,3` foram medidos com a CAIXA** (W89). A política do casco serve
   mais regiões com menos fitas, e os dois pedem reconferência contra ela. ⚠️ As sondas
   `how_many_frames_to_keep` e `cohort_dispersion` constroem a cache por `TapeCache::new()` — **passam a

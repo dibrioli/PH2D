@@ -63,6 +63,11 @@ Geradores instalados: **GLSL · MSL · OSL · MDL · Slang** (`libMaterialXGenSl
 ⇒ ⭐⭐ *Nós não escrevemos o modelo de material. Nós geramo-lo a partir do padrão, e a nossa parte é
 o que fazemos com ele.*
 
+⛔⛔ **REFUTADO em 13/09 ([`04`](04_a_remedicao_contra_a_arvore.md) §2):** o `PyMaterialXGenGlsl`
+traz **`WgslShaderGenerator`** e `VkShaderGenerator` — o censo acima listou MÓDULOS e a classe vive
+dentro de um deles. A rota medida que funciona é esse gerador → `naga` `glsl-in` (`5 598` linhas de
+WGSL validadas); as três saídas abaixo ficam como a redacção de 09/09.
+
 ⚠️ **Não há gerador de WGSL** em 1.39.5, e é o único buraco desta porta. Três saídas, por ordem de
 preço, e **nenhuma foi ainda medida** — é a primeira medição da implementação:
 1. **Slang** (que está instalado) compila para SPIR-V, e o `wgpu` come SPIR-V.

@@ -1,0 +1,17 @@
+# A sonda da PONTE para WGSL (docs/Render3d/04 §2). NÃO é membro do workspace — o `[workspace]`
+# vazio abaixo isola-a, e ela compila à parte:
+#
+#   CARGO_TARGET_DIR=/tmp/naga-probe cargo build --release \
+#     --manifest-path docs/Render3d/ferramentas/naga_probe/Cargo.toml
+#
+# ⚠️ O `glsl-in` puxa o `pp-rs`, que o cache do workspace não tem: a 1.ª compilação precisa de rede.
+[package]
+name = "naga-probe"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+naga = { version = "29.0.4", features = ["glsl-in", "spv-in", "wgsl-in", "wgsl-out"] }
+
+[workspace]

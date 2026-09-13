@@ -19,7 +19,16 @@
 //! distância em bytes — esta linha já teve dois arch-gates apodrecerem por medirem bytes.
 
 const DISPATCH: &str = include_str!("../../src/input_dispatch.rs");
-const RENDER: &str = include_str!("../../src/render_loop/mod.rs");
+
+/// O QUADRO pela ordem em que corre (`frame_text::render_frame`).
+///
+/// ⚠️ Desde a OBRA 2 da `line/render-loop` (2026-09-13) o desenho do gesto mora na fase
+/// `fase_vector_edit_overlay`; lido só no `render_loop/mod.rs`, o gate do paint reprovava sobre produto
+/// correcto. Os braços de press e o release continuam no `input_dispatch.rs`, que fica fora desta linha.
+fn render() -> &'static str {
+    static FRAME: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+    FRAME.get_or_init(crate::frame_text::render_frame)
+}
 
 /// A posição da 1ª ocorrência de `needle` em `src`, ou pânico com a razão — o **controle
 /// positivo**: um dono que se mudou vira falha alta, e não uma varredura vazia que passa.
@@ -114,8 +123,9 @@ fn the_release_routes_the_frozen_shape_to_its_own_selection() {
 /// **O desenho ramifica na MESMA forma** — o que se vê é o que decide.
 #[test]
 fn the_paint_draws_the_shape_the_gesture_froze() {
-    let at_paint = at(RENDER, "if let Some(m) = self.vec.marquee.as_ref()");
-    let window = &RENDER[at_paint..(at_paint + 1200).min(RENDER.len())];
+    let src = render();
+    let at_paint = at(src, "if let Some(m) = self.vec.marquee.as_ref()");
+    let window = &src[at_paint..(at_paint + 1200).min(src.len())];
     assert!(
         window.contains("m.shape"),
         "o desenho nao olha a forma congelada"

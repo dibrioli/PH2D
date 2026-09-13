@@ -16,10 +16,18 @@
 //! COSTURA: que a chamada de `draw_overlays` de fato pende do gate. Removê-lo compila e devolve a
 //! alça à deriva, sem nenhum teste de unidade notar.
 
-const SRC: &str = include_str!("../../src/render_loop/mod.rs");
+/// O QUADRO pela ordem em que corre (`frame_text::render_frame`).
+///
+/// ⚠️ Desde a OBRA 2 da `line/render-loop` (2026-09-13) o overlay de edição mora na fase
+/// `fase_vector_edit_overlay`; lido só no `render_loop/mod.rs`, este gate reprovava sobre produto correcto. A
+/// relação guard → chamada é a do texto que corre.
+fn src() -> &'static str {
+    static FRAME: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+    FRAME.get_or_init(crate::frame_text::render_frame)
+}
 
 fn at(needle: &str) -> usize {
-    SRC.find(needle).unwrap_or_else(|| {
+    src().find(needle).unwrap_or_else(|| {
         panic!(
             "`{needle}` sumiu do render_loop — se foi renomeado, atualize este gate (e confira que \
              sob um envelope os nós da forma não voltaram: `PH2D_BUILD_SMOKE=27`)"
@@ -31,13 +39,14 @@ fn at(needle: &str) -> usize {
 /// `is_envelope`.** Tirar o guard devolve as alças da forma derivada à tela (a alça à deriva).
 #[test]
 fn the_node_overlay_hangs_off_the_envelope_gate() {
+    let src = src();
     let sel = at("let envelope_selected");
-    let sel_end = SRC[sel..].find(';').expect("fim do binding") + sel;
+    let sel_end = src[sel..].find(';').expect("fim do binding") + sel;
     assert!(
-        SRC[sel..sel_end].contains("envelope_gesture::is_envelope"),
+        src[sel..sel_end].contains("envelope_gesture::is_envelope"),
         "`envelope_selected` não pergunta a `is_envelope` — se ele deixar de ver o container como \
          envelope, o overlay de nós volta a desenhar a forma DERIVADA:\n{}",
-        &SRC[sel..sel_end]
+        &src[sel..sel_end]
     );
     let guard = at("if !envelope_selected {");
     let call = at("ph2d_vec_render::draw_overlays(");
@@ -47,7 +56,7 @@ fn the_node_overlay_hangs_off_the_envelope_gate() {
          gaiola voltariam à tela (o handle longo do refit numa quina côncava = a alça à deriva)"
     );
     // Nada entre o guard e a chamada além de espaço/{ — a chamada é a PRIMEIRA coisa guardada.
-    let between = &SRC[guard + "if !envelope_selected {".len()..call];
+    let between = &src[guard + "if !envelope_selected {".len()..call];
     assert!(
         between.trim().is_empty(),
         "há código entre `if !envelope_selected {{` e o `draw_overlays` — o guard pode não estar a \

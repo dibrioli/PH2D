@@ -35,11 +35,14 @@ use ph2d_gpu::GpuContext;
 use std::collections::BTreeMap;
 
 mod compositor;
+mod flatten; // the LayerOp list → the GPU op list + its reusable scratch (LOC cap: sibling module)
 mod ops; // the op-list model + its pure queries (LOC cap: sibling module)
+mod readback; // the blocking test/verification readback (LOC cap: sibling module)
 
 #[cfg(test)]
 mod tests;
 
+pub use flatten::{GpuOpScratch, flatten_layer_ops};
 use ops::{COMBINE_BLOOM, COMBINE_GAUSSIAN, COMBINE_SHARPEN};
 pub use ops::{
     LayerMask, LayerOp, MAX_BLUR_HALF, SPATIAL_BLOOM, SPATIAL_CHROMA, SPATIAL_GAUSSIAN,
@@ -47,6 +50,7 @@ pub use ops::{
     motion_weights,
 };
 use ops::{distinct_layer_count, op_mask, validate_op_list};
+use readback::readback_rgba8;
 
 /// **As 22 leis de mistura**, extraídas quando ganharam o SEGUNDO consumidor (a pilha de FX raster
 /// do módulo vetorial, plano 24 W6). Prefixo de módulo — não parseia sozinho, de propósito.
@@ -645,238 +649,4 @@ struct WorkTex {
     #[allow(dead_code)] // kept alive; the view is what binds
     texture: wgpu::Texture,
     view: wgpu::TextureView,
-}
-
-/// Reusable scratch for the flattened GPU op-list. Construct once, reuse
-/// across frames: [`flatten_layer_ops`] clears and refills it without
-/// allocating once it is warm (HR-3 — `layers_no_alloc_hot_compose`).
-#[derive(Default)]
-pub struct GpuOpScratch {
-    ops: Vec<GpuOp>,
-    /// Per-adjustment params, parallel to the `OP_ADJUSTMENT` ops (each such op's
-    /// `layer_slot` indexes this). Reused across frames like `ops` (HR-3).
-    adj: Vec<AdjParamsGpu>,
-}
-
-impl GpuOpScratch {
-    #[must_use]
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    /// Number of compositor ops (`len()` historically meant the op count).
-    #[must_use]
-    pub fn len(&self) -> usize {
-        self.ops.len()
-    }
-
-    #[must_use]
-    pub fn is_empty(&self) -> bool {
-        self.ops.is_empty()
-    }
-
-    /// Backing op capacity — exposed for the no-alloc gate to assert stability.
-    #[doc(hidden)]
-    #[must_use]
-    pub fn capacity(&self) -> usize {
-        self.ops.capacity()
-    }
-}
-
-/// Flatten [`LayerOp`]s into `scratch`, resolving each layer key to its cached
-/// slice via `slot_of`. The hot per-frame CPU work; reuses `scratch`'s
-/// capacity so it does NOT allocate once warm (HR-3). A key `slot_of` resolves
-/// to (defaulting to 0 for an absent key) becomes the texture-array slice the
-/// shader samples. `composite` calls this with the live cache as the resolver.
-///
-/// A **mask** key resolves through `mask_slot_of`, which is deliberately
-/// fallible where `slot_of` is not: a mask the provider could not serve at
-/// canvas size degrades to *no mask* (the CPU reference's behaviour), rather
-/// than poisoning the whole composite. See [`LayerMask`].
-pub fn flatten_layer_ops(
-    ops: &[LayerOp],
-    slot_of: impl Fn(u64) -> u32,
-    mask_slot_of: impl Fn(u64) -> Option<u32>,
-    scratch: &mut GpuOpScratch,
-) {
-    /// `(mask_slot, flags)` for an op's optional mask + clipping flag.
-    fn coverage(
-        mask: Option<LayerMask>,
-        clipping: bool,
-        mask_slot_of: &impl Fn(u64) -> Option<u32>,
-    ) -> (u32, u32) {
-        let mut flags = if clipping { FLAG_CLIPPING } else { 0 };
-        let slot = match mask.and_then(|m| mask_slot_of(m.key).map(|s| (s, m.inverted))) {
-            Some((slot, inverted)) => {
-                if inverted {
-                    flags |= FLAG_MASK_INVERTED;
-                }
-                slot
-            }
-            None => NO_MASK_SLOT,
-        };
-        (slot, flags)
-    }
-
-    scratch.ops.clear();
-    scratch.adj.clear();
-    for op in ops {
-        let g = match op {
-            LayerOp::Layer {
-                key,
-                blend_mode,
-                opacity,
-                mask,
-                clipping,
-            } => {
-                let (mask_slot, flags) = coverage(*mask, *clipping, &mask_slot_of);
-                GpuOp {
-                    kind: OP_LAYER,
-                    layer_slot: slot_of(*key),
-                    blend_mode: *blend_mode as u32,
-                    // Clamp to [0,1] to match the CPU reference (compositor.rs
-                    // clamps layer.opacity before folding into source alpha); an
-                    // out-of-range opacity would otherwise diverge (audit LOW).
-                    opacity: opacity.clamp(0.0, 1.0),
-                    mask_slot,
-                    flags,
-                    _pad0: 0,
-                    _pad1: 0,
-                }
-            }
-            LayerOp::PushGroup => GpuOp {
-                kind: OP_PUSH_GROUP,
-                layer_slot: 0,
-                blend_mode: 0,
-                opacity: 1.0,
-                mask_slot: NO_MASK_SLOT,
-                flags: 0,
-                _pad0: 0,
-                _pad1: 0,
-            },
-            LayerOp::PopGroup {
-                blend_mode,
-                opacity,
-            } => GpuOp {
-                kind: OP_POP_GROUP,
-                layer_slot: 0,
-                blend_mode: *blend_mode as u32,
-                opacity: opacity.clamp(0.0, 1.0),
-                mask_slot: NO_MASK_SLOT,
-                flags: 0,
-                _pad0: 0,
-                _pad1: 0,
-            },
-            LayerOp::Adjustment {
-                kind,
-                params,
-                blend_mode,
-                opacity,
-                mask,
-            } => {
-                // The op's `layer_slot` indexes the params we stash in parallel.
-                let params_index = scratch.adj.len() as u32;
-                scratch.adj.push(AdjParamsGpu {
-                    kind: *kind as u32,
-                    p0: params[0],
-                    p1: params[1],
-                    p2: params[2],
-                });
-                let (mask_slot, flags) = coverage(*mask, false, &mask_slot_of);
-                GpuOp {
-                    kind: OP_ADJUSTMENT,
-                    layer_slot: params_index,
-                    blend_mode: *blend_mode as u32,
-                    opacity: opacity.clamp(0.0, 1.0),
-                    mask_slot,
-                    flags,
-                    _pad0: 0,
-                    _pad1: 0,
-                }
-            }
-            // Spatial adjustments are driven CPU-side as pass breaks; emit a
-            // no-op placeholder so GPU op indices mirror the `LayerOp` list 1:1
-            // (the segment compute loop ignores `OP_SPATIAL`). The kernel/params
-            // are read from the original op-list by the segmented orchestrator.
-            LayerOp::SpatialAdjustment { .. } => GpuOp {
-                kind: OP_SPATIAL,
-                layer_slot: 0,
-                blend_mode: 0,
-                opacity: 1.0,
-                mask_slot: NO_MASK_SLOT,
-                flags: 0,
-                _pad0: 0,
-                _pad1: 0,
-            },
-        };
-        scratch.ops.push(g);
-    }
-}
-
-/// Block-on-GPU readback of an `rgba8unorm` texture to a tight `w*h*4` buffer
-/// (strips the 256-byte row padding). Test/verification only.
-fn readback_rgba8(gpu: &GpuContext, texture: &wgpu::Texture, width: u32, height: u32) -> Vec<u8> {
-    if width == 0 || height == 0 {
-        return Vec::new();
-    }
-    let unpadded_bpr = width * 4;
-    let align = wgpu::COPY_BYTES_PER_ROW_ALIGNMENT;
-    let padded_bpr = unpadded_bpr.div_ceil(align) * align;
-    let buffer_size = (padded_bpr as u64) * (height as u64);
-    let staging = gpu.device.create_buffer(&wgpu::BufferDescriptor {
-        label: Some("ph2d-render layer_composite readback"),
-        size: buffer_size,
-        usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
-        mapped_at_creation: false,
-    });
-    let mut encoder = gpu
-        .device
-        .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("ph2d-render layer_composite readback encoder"),
-        });
-    encoder.copy_texture_to_buffer(
-        wgpu::TexelCopyTextureInfo {
-            texture,
-            mip_level: 0,
-            origin: wgpu::Origin3d::ZERO,
-            aspect: wgpu::TextureAspect::All,
-        },
-        wgpu::TexelCopyBufferInfo {
-            buffer: &staging,
-            layout: wgpu::TexelCopyBufferLayout {
-                offset: 0,
-                bytes_per_row: Some(padded_bpr),
-                rows_per_image: Some(height),
-            },
-        },
-        wgpu::Extent3d {
-            width,
-            height,
-            depth_or_array_layers: 1,
-        },
-    );
-    gpu.queue.submit([encoder.finish()]);
-
-    let (tx, rx) = std::sync::mpsc::channel();
-    staging.slice(..).map_async(wgpu::MapMode::Read, move |r| {
-        let _ = tx.send(r);
-    });
-    let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
-    // Check the map result: on failure (device lost / validation) return empty
-    // rather than letting `get_mapped_range` panic with an opaque "not mapped"
-    // message that hides the real cause (audit 2026-06-01 LOW; test-path only).
-    match rx.recv() {
-        Ok(Ok(())) => {}
-        _ => return Vec::new(),
-    }
-
-    let mapped = staging.slice(..).get_mapped_range();
-    let mut out = Vec::with_capacity((unpadded_bpr as usize) * (height as usize));
-    for row in 0..height as usize {
-        let start = row * padded_bpr as usize;
-        out.extend_from_slice(&mapped[start..start + unpadded_bpr as usize]);
-    }
-    drop(mapped);
-    staging.unmap();
-    out
 }

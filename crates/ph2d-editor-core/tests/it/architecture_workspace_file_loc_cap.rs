@@ -90,7 +90,6 @@ const FILE_OVERAGE_OK: &[(&str, usize)] = &[
     // ficheiro foi encontrado 74 acima do tecto **depois** de a wave estar verde nas corridas
     // dela: o gate vive noutra crate, e um fecho com filtro de nome nunca o alcança.
     ("ph2d-render/src/individual.rs", 708),
-    ("ph2d-render/src/layer_compositor/mod.rs", 882),
     ("ph2d-tool-bgremoval/src/algorithm/chroma/mod.rs", 704),
 ];
 

@@ -278,7 +278,11 @@ fn the_double_click_on_the_curve_inserts_a_point() {
 /// laço de render precisa de janela).
 #[test]
 fn the_render_loop_drains_the_pick_and_converts_the_anchor() {
-    let rl = shell("render_loop/mod.rs");
+    // ⚠️ **O drain mudou-se para a FASE do quadro que o lê** (OBRA 2 da `line/render-loop`,
+    // 2026-09-12): a `fase_timeline_view`, que consome tudo o que o chrome estacionou para a timeline
+    // antes do dreno das intents. O texto EMENDADO do quadro mantém a ORDEM (consumir < converter) e a
+    // janela do corpo; os outros gates deste ficheiro leem sítios que continuam no `mod.rs`.
+    let rl = crate::frame_text::render_frame();
     let take = rl
         .find("pending_motion_path_handle.take()")
         .expect("o drain não consome `pending_motion_path_handle` — o pick nunca chega ao doc");

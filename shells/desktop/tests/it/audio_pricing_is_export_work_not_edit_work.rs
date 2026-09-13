@@ -35,7 +35,13 @@ use std::time::Instant;
 /// wired `true` would leave every one of them green while the bug walked back in. This is the
 /// arch-gate idiom the line already uses for frame order
 /// (`the_z_projection_reads_the_tree_after_the_sync`): assert on the file that ships.
-const RENDER_LOOP: &str = include_str!("../../src/render_loop/mod.rs");
+///
+/// ⚠️ **Since the OBRA 2 of `line/render-loop` (2026-09-12) the frame is split into phases in other
+/// files** (`fase_*`), and the audio panels moved to `fase_audio_panels.rs`: the frame is read as the
+/// SPLICED text (`frame_text::render_frame`), which is the frame in the order it runs.
+fn render_loop() -> String {
+    crate::frame_text::render_frame()
+}
 
 /// **The pricing call is gated on somebody actually looking.**
 ///
@@ -45,16 +51,17 @@ const RENDER_LOOP: &str = include_str!("../../src/render_loop/mod.rs");
 /// would still pay the 1549 ms for rows nobody can see.
 #[test]
 fn the_edit_frame_only_prices_when_the_delivery_section_is_open() {
-    let call = RENDER_LOOP.find("editor_publish_platforms(").expect(
+    let frame = render_loop();
+    let call = frame.find("editor_publish_platforms(").expect(
         "`editor_publish_platforms` vanished from the render loop -- if it was renamed, \
                  update this gate, and check the visibility gate came with it",
     );
     let arg_start = call + "editor_publish_platforms(".len();
-    let arg_end = RENDER_LOOP[arg_start..]
+    let arg_end = frame[arg_start..]
         .find(')')
         .map(|i| arg_start + i)
         .expect("unbalanced call");
-    let arg = RENDER_LOOP[arg_start..arg_end].trim();
+    let arg = frame[arg_start..arg_end].trim();
 
     assert_ne!(
         arg, "true",
@@ -64,7 +71,7 @@ fn the_edit_frame_only_prices_when_the_delivery_section_is_open() {
     );
 
     // The gate is computed just above the call; both halves have to be in it.
-    let window = &RENDER_LOOP[call.saturating_sub(1_200)..arg_end];
+    let window = &frame[call.saturating_sub(1_200)..arg_end];
     assert!(
         window.contains("is_panel_visible(\"audio_editor\")"),
         "the gate does not ask whether the audio editor panel is even on screen"

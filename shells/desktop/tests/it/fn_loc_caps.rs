@@ -80,13 +80,20 @@ const FN_OVERAGE_OK: &[(&str, &str, usize, &str)] = &[
     ("project_load.rs", "project_load_from", 484, NASCEU),
     ("render_loop/autokey_pass.rs", "apply_samples", 317, NASCEU),
     ("render_loop/bgremoval_preview.rs", "dispatch", 333, NASCEU),
+    (
+        "render_loop/fase_audio_panels.rs",
+        "fase_audio_panels",
+        373,
+        "fase do quadro (OBRA 2): o mixer e o editor de áudio, verbatim; assunto da família `audio` \
+         que fica na shell porque as três features que o guardam são da shell",
+    ),
     ("render_loop/hierarchy.rs", "dispatch", 414, NASCEU),
     ("render_loop/image_edit.rs", "dispatch", 483, NASCEU),
     ("render_loop/inspector_commits.rs", "dispatch", 383, NASCEU),
     (
         "render_loop/mod.rs",
         "run_render_frame",
-        13515,
+        13145,
         "o QUADRO inteiro numa função; a OBRA 2 da `line/render-loop` parte-o em fases chamadas pela \
          mesma ordem, e cada fase que sai baixa este número no mesmo commit",
     ),

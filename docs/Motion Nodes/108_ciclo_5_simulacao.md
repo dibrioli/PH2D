@@ -335,7 +335,7 @@ meia dúzia de pixels. Três peças adjacentes do meio põem o quadro em pé.
 **O tutorial:** [`tutoriais/05_simulacao.pdf`](tutoriais/05_simulacao.pdf), 7 páginas, com a tabela
 «o que cada controlo faz» derivada da porta única (11 nós).
 
-### ⏳ W5 — A MEDIÇÃO (passo 5): a RESIDÊNCIA está feita, o RELÓGIO está bloqueado
+### ✅ W5 — A MEDIÇÃO (passo 5): a residência e o RELÓGIO (o relógio em 2026-09-13)
 
 #### ✅ A residência — e ela não é uma leitura de relógio
 
@@ -348,16 +348,72 @@ vale independentemente da carga da máquina:
 | `sim.step` · `sim.lifetime` · `sim.collide` · `motion.integrate` · as **seis** `force.*` | 🟢 a cadeia inteira |
 | `sim.zone` · `sim.spawn` | ⚪ não mensuráveis nesta cadeia (ver abaixo) |
 
-#### ⛔⛔ O RELÓGIO NÃO FOI MEDIDO, e escrever os números seria pior que não os ter
+#### ✅ O RELÓGIO — com a máquina calma, e o que a coluna de tempo de facto mede
 
-A corrida saiu a **`load 13,06`**, e a lei da casa é que *nenhuma leitura de relógio desta
-workstation vale nada acima de `load ~5`* (`CLAUDE.md` §5.0 — o mesmo binário já deu `11,36` e
-`5,50 ms` para o mesmo passe). O esperador ficou **25 minutos** à espera de calma e desistiu.
+⚠️ **A 1.ª tentativa (2026-09-10) saiu a `load 13,06`** e não entrou em doc nenhum: a máquina tinha
+três binários de teste órfãos de **outras** worktrees a correr, e 25 minutos de espera à mão não
+chegaram. ⭐ **Em 2026-09-13 a calma durou dois minutos, e só um VIGIA os apanha** —
+[`ferramentas/medir_quando_calmo.sh`](ferramentas/medir_quando_calmo.sh) exige **quatro amostras
+seguidas de `load` 1-min ≤ 4,5, a 30 s** (a barra do `CLAUDE.md` §5.0 é `~5`) e só então corre a
+sonda, duas vezes por lado da grelha, com o `/proc/loadavg` na primeira linha de cada corrida.
 
-⚠️ **A causa não é desta linha:** a máquina tinha três binários de teste de **outras worktrees**
-a correr — dois órfãos da `line/Vector` (`ph2d_poly2d`, reparentados ao init, **33 e 37 minutos**
-a ~270 % de CPU cada) e um da `line/3DModeling`. ⇒ *a medição fica pendente de uma máquina
-calma, e a tabela que a corrida imprimiu **não** entra neste doc.*
+⚠️⚠️ **O que a coluna de tempo mede é o cozimento de REFERÊNCIA na CPU** (`ph2d_nodegraph::cook::Cook`,
+mediana de 3 cozimentos **frios** por linha), e a coluna do dispositivo é a **residência** que o
+planeador declara — o mesmo par que as tabelas dos ciclos 1–4 já imprimiam sem o dizer por extenso.
+⛔ *O relógio do DISPOSITIVO deste grupo não foi cronometrado por sonda nenhuma*; o tecto dele é o
+da [auditoria 98](98_auditoria_de_performance_2026-09-01.md).
+
+⛔ **A `320 × 320` a linha de base oscila `0,55`–`0,99 ms`** entre corridas e engole o sinal, como no
+ciclo 4 ⇒ só se cita o **milhão**:
+
+`cargo test -p ph2d-app-motion --lib --release -- --ignored --nocapture measure_the_sim_group`
+com `PH2D_LADO=1000` · grelha `1000 × 1000` = **1 000 000** objectos · `load` 1-min **`3,57`**
+
+| nó | corrida 1 | corrida 2 | no device? |
+|---|---:|---:|:---|
+| *(só a grade)* | `3,18 ms` | `3,10 ms` | 🟢 |
+| `sim.step` | `7,65` | `7,87` | 🟢 |
+| `force.vortex` | `8,64` | `8,11` | 🟢 |
+| `force.attractor` | `8,73` | `7,92` | 🟢 |
+| `force.drag` | `8,57` | `9,46` | 🟢 |
+| `force.wind` | `9,59` | ~~`78,73`~~ ⚠️ | 🟢 |
+| **`force.buoyancy`** | **`10,52`** | **`10,45`** | 🟢 |
+| `sim.lifetime` | `11,14` | `10,83` | 🟢 |
+| `sim.collide` | `11,06` | `10,99` | 🟢 |
+| `motion.integrate` | `12,53` | `12,47` | 🟢 |
+| `force.curl` | `14,55` | `14,35` | 🟢 |
+| `sim.zone` · `sim.spawn` | ⚪ não medidos | — | ⚪ (ver abaixo) |
+
+⭐ **O grupo inteiro cabe num quadro a um milhão de objectos, e isto na CPU de REFERÊNCIA:**
+`7,6`–`14,6 ms` contra `16,67`, com dez dos doze reivindicados pelo dispositivo.
+
+⚠️ **O `78,73 ms` do `force.wind` na corrida 2 é um PICO, e quem o desmente é a própria tabela:** a
+corrida 1 da mesma árvore leu `9,59`, as duas de antes da cura leram `9,43`/`10,39`, e o código do
+nó não mudou. Uma leitura só, com as vizinhas a concordar, é a assinatura da família do §5.0 — o
+`load` 5-min estava a `13,91`, com outras linhas a compilar. ⛔ Não se cita.
+
+#### ⭐⭐ E a medição achou um nó em SÉRIE: o `force.buoyancy` custava `4,1×`
+
+A primeira corrida do dia (`load` 1-min `2,09`, **antes** da cura) leu o `force.buoyancy` a
+**`42,96`/`43,21 ms`** — `2,6` quadros — contra `7,6`–`15,8 ms` dos outros onze. O censo das portas
+paralelas, por crate inteira (ficheiros não-teste):
+
+| nó | porta paralela no mapa de CPU |
+|---|---|
+| `force.attractor` · `force.curl` · `force.drag` · `force.vortex` · `force.wind` | ✅ `par_build` |
+| **`force.buoyancy`** | ⛔ **nenhuma** — `(0..n).map(..).collect()` |
+
+⇒ o mapa passou ao `par_build`, que é **idêntico ao bit por contrato** (mapa puro por elemento, sem
+redução — o elemento `i` vai à fatia `i`): **`43,0 → 10,5 ms`**, e o nó cai no meio da banda.
+
+⚠️ **O que a cura NÃO diz, e fica escrito para ninguém o generalizar:**
+- *«em série ⇒ lento»* é **falso** como lei: `sim.step`, `sim.lifetime` e `sim.collide` também correm
+  em série e leem `7,6`–`11 ms`. ⛔ Não separei por medição quanto dos `4,1×` é o paralelismo e quanto
+  é o resto do laço; o número diz só que a cura que o censo apontava leva o nó à banda do grupo.
+- acordado pela sonda, o `waves` do nó vai a **`2`** senos por elemento (é o 8.º slider:
+  `1 + 3 × 0,413`), contra `1` no default ⇒ os `10,5 ms` são o nó a trabalhar, e o default custa menos.
+- os `23` testes da crate passam, e **nenhum atravessa o limiar paralelo pelo nome**: a identidade ao
+  bit vem do contrato auditado do `par_build`, o mesmo que os outros cinco declaram.
 
 #### ⭐⭐⭐ E a corrida devolveu um defeito do INSTRUMENTO PARTILHADO, que vale mais que a tabela
 
@@ -378,4 +434,33 @@ vácua nos dois sentidos. Mutação (a régua volta a ser só o proxy): ✗, e a
 presumia `repeticoes == 3`. Um chamador com outro número saía por *index out of bounds* — que é
 uma armadilha para o ciclo seguinte, não uma mensagem. Hoje é `ms[ms.len() / 2]`.
 
-### ⏳ W6 — o smoke do dono (passo 7)
+### ✅ W6 — o smoke do dono (passo 7) — 2026-09-10
+
+O dono seguiu o [`tutoriais/05_simulacao.pdf`](tutoriais/05_simulacao.pdf) com a cena `=113` e
+aprovou: *«SMoke OK»* ([handoff de 10/09](handoffs/HANDOFF_INTEGRACAO_line_motion_value_2026-09-10.md) §5).
+
+⏳ **A cena `=114`** (*peças que não se atravessam* — o `motion.collide` dentro da simulação) nasceu
+depois da aprovação e **não foi smokada**.
+
+### ⭐⭐ W7 — O COLISOR VAI PARA A FORMA, e as peças colidem SOZINHAS (ordem do dono)
+
+A pergunta nasceu na `=114` (10/09): *pôr o `Collide` na linha da simulação, sem referência à forma,
+não é contra-intuitivo?* — *«Vou preferir colocar na shape.»* A frase tinha duas leituras com
+**produtos diferentes na tela**, e em **2026-09-13** o dono escolheu com as duas à frente:
+
+| opção | na tela | preço |
+|---|---|---|
+| ✅ **Colidem sozinhas** (a escolhida) | liga-se «Colide» no cartão da forma, e dentro de qualquer simulação as peças deixam de se atravessar — **sem nó `Collide`** na linha | substrato: a simulação passa a resolver contactos no dispositivo |
+| a forma dá o tamanho, o nó colide | o `Collide` fica na linha e deixa de adivinhar o raio | horas |
+
+⭐ **O argumento técnico está no código, e é por isso que só a forma pode responder:** com o mesmo
+`size = 1`, um `Circle` do `source.shape` desenha **raio `1`** (a geometria nasce em raio 1 e a coluna
+`size` escala-a — `motion_shape_gen::publish`) e uma sprite desenha um quad de **lado** `1` ⇒ raio
+inscrito **`0,5`** (medido e registado no doc do `sim.collide`). O `motion.collide` usa
+`radius × max|size|` e o `sim.collide` (`Radius From: Sprite Size`) usa `min|size| / 2` — **nenhum dos
+dois sabe que mídia recebeu**, e numa forma o segundo reserva **metade** do raio desenhado.
+*Só quem desenha sabe o tamanho do que desenha.*
+
+⛔ **O preço é de substrato, e tem endereço:** no cozinhador de GPU o passe de grelha está preso ao
+**tipo de nó** de cada etapa (`kernels.grid(stage.ty)`, `ph2d-gpu-cook/src/lib.rs`), então *«a simulação
+resolve sozinha»* pede uma etapa que o planeador ainda não sabe emitir.

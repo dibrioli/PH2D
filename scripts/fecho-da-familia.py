@@ -255,13 +255,19 @@ def main() -> int:
 
     # ---- os campos de `App`/`AppGfx` que a familia toca, resolvidos ao TIPO
     tipos: dict[str, str] = {}
-    # ⚠️ O `AppGfx` e os tipos das ferramentas de imagem mudaram-se para dois irmãos do
+    # ⚠️ O `AppGfx`, os tipos das ferramentas de imagem e o `HeroLive` mudaram-se para irmãos do
     # `app_state.rs` (`line/loc-caps`, 2026-09-13): sem os ler, todo `gfx.<campo>` deixava de
     # resolver ao tipo e a régua errava A FAVOR. ⚠️ E lêem-se pela ORDEM que tinham no ficheiro
     # único: o `setdefault` fica com a PRIMEIRA declaração de um nome, e `physics` existe nas duas
     # structs (`AppGfx` antes da `App`) — outra ordem trocava-lhe o tipo em silêncio.
     campos_src = "\n".join(
-        lim.get(f, "") for f in ("app_state_gfx.rs", "app_state_image_tools.rs", "app_state.rs")
+        lim.get(f, "")
+        for f in (
+            "app_state_gfx.rs",
+            "app_state_image_tools.rs",
+            "app_state_hero_live.rs",
+            "app_state.rs",
+        )
     )
     for m in RE_CAMPO.finditer(campos_src):
         tipos.setdefault(m.group(1), m.group(2).strip())

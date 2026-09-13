@@ -657,14 +657,13 @@ mod winit_host;
 mod zorder_smoke;
 
 pub(crate) use app_state::{
-    App, AppGfx, HeroLive, ImageEditSnapshot, ImageEditTransaction, is_image_edit_tool,
-    palette_visible_tool_indices,
+    App, AppGfx, HeroLive, ImageEditSnapshot, ImageEditTransaction, commit_image_edit_transaction,
+    is_image_edit_tool, palette_visible_tool_indices,
 };
 
 // forwarding::* moved to input_dispatch.rs (PR 9b).
 // cursor_pos::live_cursor_in_window + image_import::import_images_grid
 // moved to input_handlers.rs (Wave 3.2 stage B).
-use input_log::log_input_event;
 // keymap::winit_to_editor_keycode moved to input_dispatch.rs (PR 9b).
 // theme::parse_theme_env moved to init.rs (PR 9c).
 use winit_host::LoggingHandler;
@@ -675,7 +674,7 @@ use ph2d_ecs::{Component, SimComponent, SimWorld, Transform};
 use ph2d_editor_core::paint::Paint;
 // NodeId surfaces in our `dragging` field; re-exported by ph2d-editor.
 use ph2d_editor_core::NodeId;
-use ph2d_host::{HostHandler, Lifecycle, Modifiers, PlatformHost};
+use ph2d_host::{HostHandler, Lifecycle, PlatformHost};
 use ph2d_input::InputState;
 use ph2d_render::SpriteRenderer;
 use std::time::Instant;
@@ -702,34 +701,8 @@ impl SimComponent for Velocity {}
 
 impl App {
     fn new() -> Self {
-        let gilrs = match gilrs::Gilrs::new() {
-            Ok(g) => {
-                let pads: Vec<String> = g
-                    .gamepads()
-                    .map(|(id, pad)| format!("[{:?}] {}", id, pad.name()))
-                    .collect();
-                if pads.is_empty() {
-                    println!("gilrs: initialized; no gamepads connected yet");
-                } else {
-                    println!("gilrs: detected {} gamepad(s):", pads.len());
-                    for p in &pads {
-                        println!("  {p}");
-                    }
-                }
-                Some(g)
-            }
-            Err(e) => {
-                eprintln!("gilrs init failed (continuing without gamepad): {e}");
-                None
-            }
-        };
-        // Phase 2.1/2.2: open the audio device (None = run silent). As cenas de smoke do áudio são
-        // lidas DENTRO da família (`ph2d_app_audio::smoke`, auditoria de arquitectura A1): o `FAMILY`
-        // dela declara-as ao registo, e é a crate que as lê.
-        let mut audio = ph2d_app_audio::AudioSystem::new();
-        if let Some(a) = audio.as_mut() {
-            a.stage_armed_smokes();
-        }
+        let gilrs = app_state::devices::init_gamepads();
+        let audio = app_state::devices::init_audio();
         Self {
             dock_seam_drag: None,
             window: None,
@@ -965,75 +938,6 @@ impl App {
         }
     }
 
-    /// Pump every queued gilrs event into the [`InputState`] and log
-    /// the salient ones. Press / release / axis-change all logged at
-    /// elapsed-ms timestamps so behavior is auditable from the
-    /// terminal without an explicit debug overlay.
-    fn pump_gamepad(&mut self) {
-        let Some(g) = self.gilrs.as_mut() else {
-            return;
-        };
-        // begin_frame snapshots last-frame held buttons so
-        // pressed()/released() return correct edge-trigger values.
-        self.input.begin_frame();
-        while let Some(gilrs::Event { event, .. }) = g.next_event() {
-            match event {
-                gilrs::EventType::Connected => {
-                    println!("[{:>6}ms] gamepad connected", self.handler.elapsed_ms());
-                }
-                gilrs::EventType::Disconnected => {
-                    println!("[{:>6}ms] gamepad disconnected", self.handler.elapsed_ms());
-                }
-                _ => {
-                    if let Some(translated) = gilrs_adapter::translate(event) {
-                        self.input.apply_event(translated);
-                        log_input_event(self.handler.elapsed_ms(), &translated);
-                    }
-                }
-            }
-        }
-    }
-
-    fn convert_modifiers(state: ModifiersState) -> Modifiers {
-        Modifiers {
-            shift: state.shift_key(),
-            ctrl: state.control_key(),
-            alt: state.alt_key(),
-            meta: state.super_key(),
-        }
-    }
-
-    fn timestamp_ns() -> u128 {
-        std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .map(|d| d.as_nanos())
-            .unwrap_or(0)
-    }
-
-    /// Snapshot `InputState` into the ScriptHost's `ph2d.input` table
-    /// so Luau can read held buttons / axis values via the canonical
-    /// `gamepad.held.<button>` and `gamepad.axis.<axis>` keys.
-    /// Cleared and rebuilt every frame — keys absent from this frame
-    /// resolve to `nil` on the Luau side (per the M8 ph2d_input
-    /// resolves test).
-    fn push_input_to_script(&self) {
-        let Some(gfx) = self.gfx.as_ref() else {
-            return;
-        };
-        let Some(host) = gfx.script.as_ref() else {
-            return;
-        };
-        host.clear_input();
-        for button in self.input.gamepad.iter_held() {
-            let key = format!("gamepad.held.{}", button.as_lua_key());
-            host.provide_input(&key, 1.0);
-        }
-        for (axis, value) in self.input.gamepad.iter_axes() {
-            let key = format!("gamepad.axis.{}", axis.as_lua_key());
-            host.provide_input(&key, value as f64);
-        }
-    }
-
     /// Per-frame render orchestration — body lifted to
     /// [`crate::render_loop`] (Wave 3.1 stage C). See its module docs
     /// for the rationale + the split-impl pattern.
@@ -1170,44 +1074,6 @@ impl ApplicationHandler for App {
 // OUTRA vez seriam duas respostas à mesma pergunta, e a que envelhece é a que o artista vê.
 pub(crate) use ph2d_image_import::EPS_PIXELS_PER_METER;
 
-/// When the image-edit undo slot is being overwritten by a new edit,
-/// release every pre-edit Individual texture across the previous
-/// transaction's entries (multi-sprite Apply leaves N entries; the
-/// single-sprite case degenerates to N=1). Atlas-backed pre-sources
-/// don't need release — they share the texture via the asset_db.
-/// No-op when the slot is empty.
-pub(crate) fn drop_undo_pre_sources_if_individual(
-    renderer: &mut SpriteRenderer,
-    slot: &mut Option<ImageEditTransaction>,
-) {
-    if let Some(prev) = slot.take() {
-        for entry in prev.entries {
-            if let ph2d_render::SpriteSource::Individual { texture_id } = entry.pre_source {
-                renderer.individual_mut().release(texture_id);
-            }
-        }
-    }
-}
-
-/// Commit `entries` (one per sprite the multi-sprite Apply touched) as
-/// the new undo transaction, releasing the previous transaction's
-/// pre-edit individual textures. No-op when `entries.is_empty()` (no
-/// sprite actually changed → nothing to undo). The transaction label
-/// comes from the first entry; per-drain code pushes the same label on
-/// every entry it appends, so all N entries agree by construction.
-pub(crate) fn commit_image_edit_transaction(
-    renderer: &mut SpriteRenderer,
-    slot: &mut Option<ImageEditTransaction>,
-    entries: Vec<ImageEditSnapshot>,
-) {
-    if entries.is_empty() {
-        return;
-    }
-    let label = entries[0].label;
-    drop_undo_pre_sources_if_individual(renderer, slot);
-    *slot = Some(ImageEditTransaction { entries, label });
-}
-
 pub(crate) use ph2d_image_import::MIN_SPRITE_SIZE;
 
 /// Query the live cursor position relative to `window` in physical
@@ -1248,42 +1114,5 @@ fn main() {
 }
 
 #[cfg(test)]
-mod theme_env_tests {
-    use crate::theme::resolve_theme;
-    use ph2d_tokens::{Theme, UiLook};
-
-    /// ⛔ **O default segue a aparência** — o smoke de 2026-09-04 abriu no `forge` com o
-    /// redesenho ligado porque esta função devolvia `Forge` sem perguntar.
-    #[test]
-    fn unset_defaults_to_the_looks_own_theme() {
-        assert_eq!(resolve_theme(None, UiLook::Classic), Theme::Forge);
-        assert_eq!(resolve_theme(None, UiLook::Redesign), Theme::Dark);
-        assert_eq!(
-            resolve_theme(None, UiLook::Redesign),
-            Theme::default_for(UiLook::Redesign),
-            "uma lei, duas portas"
-        );
-    }
-
-    /// Todo id das DUAS famílias resolve, em qualquer aparência — um nome explícito é uma escolha.
-    #[test]
-    fn every_theme_id_resolves_under_both_looks() {
-        for look in [UiLook::Classic, UiLook::Redesign] {
-            for theme in Theme::ALL {
-                assert_eq!(resolve_theme(Some(theme.id()), look), theme, "{look:?}");
-            }
-        }
-    }
-
-    #[test]
-    fn unknown_falls_back_to_the_looks_default() {
-        assert_eq!(
-            resolve_theme(Some("dracula"), UiLook::Classic),
-            Theme::Forge
-        );
-        assert_eq!(
-            resolve_theme(Some("dracula"), UiLook::Redesign),
-            Theme::Dark
-        );
-    }
-}
+#[path = "main_theme_env_tests.rs"]
+mod theme_env_tests;

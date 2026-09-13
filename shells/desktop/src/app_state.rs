@@ -12,7 +12,9 @@
 // ⚠️ Partir a `App` em sub-agregados por família é REAGRUPAR campos — fora da rodada da
 // `line/loc-caps` (as linhas paralelas compilam contra `self.<campo>`); a proposta está no handoff
 // dela. O que era assunto próprio já saiu para irmãos declarados abaixo: o `AppGfx`
-// (`app_state_gfx.rs`) e o que é das ferramentas de imagem (`app_state_image_tools.rs`).
+// (`app_state_gfx.rs`), o que é das ferramentas de imagem (`app_state_image_tools.rs`), os
+// dispositivos (`app_state_devices.rs`) e o estado por-quadro da ponte do hero
+// (`app_state_hero_live.rs`).
 
 use std::collections::BTreeMap;
 use std::sync::Arc;
@@ -50,34 +52,14 @@ pub(crate) use gfx::AppGfx;
 mod image_tools; // o que a `App` guarda para as ferramentas de imagem (LOC cap: sibling module)
 pub(crate) use image_tools::{
     BgremovalPreview, BgremovalPreviewGpu, ColorEqualizationPreview, ImageEditSnapshot,
-    ImageEditTransaction, PainterPreview, PainterPreviewGpu, UpscalePreview, is_image_edit_tool,
-    palette_visible_tool_indices,
+    ImageEditTransaction, PainterPreview, PainterPreviewGpu, UpscalePreview,
+    commit_image_edit_transaction, is_image_edit_tool, palette_visible_tool_indices,
 };
-
-/// Per-frame state owned by the live editor bridge (ADR-0025 M14.4a).
-pub(crate) struct HeroLive {
-    pub(crate) bridge: hero_bridge::EntityNodeMap,
-    pub(crate) walk_state: HierarchyWalkState,
-    /// Scratch buffer for `build_hierarchy_snapshot`'s DFS stack.
-    /// Preserved across frames so HR-3 zero-alloc invariant holds.
-    pub(crate) walk_scratch: Vec<(ph2d_ecs::Entity, u8, Option<ph2d_ecs::Entity>)>,
-    /// Reused per-frame snapshot. `build_hierarchy_snapshot` clears
-    /// the inner Vec without releasing capacity.
-    pub(crate) snapshot: HierarchySnapshot,
-    /// **A árvore relida no momento da projeção de z** (ADR-0110, BUGS #15).
-    ///
-    /// A trinca acima é a PUBLICAÇÃO do painel, feita no prólogo do frame — ou seja,
-    /// **antes** de `vec_entities::sync` dar entidade à forma recém-criada. A ordem de z
-    /// é a projeção da árvore e precisa lê-la **depois** do `sync`; então ela lê de novo,
-    /// com a MESMA função (`build_hierarchy_snapshot`) e scratch próprio.
-    ///
-    /// O scratch é próprio, e isso não é arrumação: sobrescrever a trinca do painel no
-    /// meio do frame descasaria a `bridge`, que já foi sincronizada com o snapshot do
-    /// prólogo. Duas leituras da mesma árvore, em instantes diferentes — não duas fontes.
-    pub(crate) z_walk_state: HierarchyWalkState,
-    pub(crate) z_walk_scratch: Vec<(ph2d_ecs::Entity, u8, Option<ph2d_ecs::Entity>)>,
-    pub(crate) z_snapshot: HierarchySnapshot,
-}
+#[path = "app_state_devices.rs"]
+pub(crate) mod devices; // o comando e o áudio: arranque e bombeio (LOC cap: sibling module)
+#[path = "app_state_hero_live.rs"]
+mod hero_live; // o estado por-quadro da ponte viva do editor (LOC cap: sibling module)
+pub(crate) use hero_live::HeroLive;
 
 pub(crate) struct App {
     /// Qual coluna docada está a ser redimensionada pelo arrasto da borda (`None` = nenhuma).

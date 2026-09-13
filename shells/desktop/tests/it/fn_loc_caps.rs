@@ -29,10 +29,12 @@ const FN_LOC_CAP: usize = 200;
 
 /// As funções que passam do tecto: `(ficheiro relativo a src/, função, LOC medido, razão)`.
 /// **Só descem.** Medidas pelo parser deste gate no nascimento dele (2026-09-12).
-const NASCEU: &str = "medido no nascimento do gate (2026-09-12); nenhuma linha o partiu ainda";
-const FN_OVERAGE_OK: &[(&str, &str, usize, &str)] = &[
-    ("main.rs", "new", 263, NASCEU),
-];
+const FN_OVERAGE_OK: &[(&str, &str, usize, &str)] = &[(
+    "main.rs",
+    "new",
+    237,
+    "o literal `Self { … }` são 233 linhas, um inicializador por campo da `App`: descer a 200 é reagrupar campos (a abertura do comando e do áudio já saiu, `line/loc-caps`)",
+)];
 
 fn src_root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("src")

@@ -1,11 +1,14 @@
 //! **O que a `App` guarda para as FERRAMENTAS DE IMAGEM** — a transação de undo de um Apply (uma
 //! entrada por sprite tocado), as caches de pré-visualização de cada ferramenta (aliases das
-//! genéricas) e o predicado que decide que ferramentas a paleta mostra no modo Image Tools.
+//! genéricas), o predicado que decide que ferramentas a paleta mostra no modo Image Tools, e as
+//! duas portas que gravam a transação (estas vieram do `main.rs`, pelo tecto de LOC dele).
 //! Irmão de `app_state.rs` pelo tecto de 600 LOC da shell.
 //!
 //! Corte mecânico: os tipos, os aliases e as funções saíram inteiros, verbatim. Os caminhos não
 //! mudam — o `app_state.rs` re-exporta-os (`crate::app_state::UpscalePreview`, …) e o `main.rs`
 //! re-exporta o que já re-exportava (`crate::ImageEditTransaction`, …).
+
+use ph2d_render::SpriteRenderer;
 
 /// One Apply pass — covers `entries.len()` sprites (1 for a single-sprite
 /// tool like Trim, N for a multi-sprite Apply like Color EQ over a
@@ -59,6 +62,44 @@ pub(crate) struct ImageEditSnapshot {
     pub(crate) post_individual_id: u32,
     /// Human-readable label for the toast: "Trim" / "Make square".
     pub(crate) label: &'static str,
+}
+
+/// When the image-edit undo slot is being overwritten by a new edit,
+/// release every pre-edit Individual texture across the previous
+/// transaction's entries (multi-sprite Apply leaves N entries; the
+/// single-sprite case degenerates to N=1). Atlas-backed pre-sources
+/// don't need release — they share the texture via the asset_db.
+/// No-op when the slot is empty.
+pub(crate) fn drop_undo_pre_sources_if_individual(
+    renderer: &mut SpriteRenderer,
+    slot: &mut Option<ImageEditTransaction>,
+) {
+    if let Some(prev) = slot.take() {
+        for entry in prev.entries {
+            if let ph2d_render::SpriteSource::Individual { texture_id } = entry.pre_source {
+                renderer.individual_mut().release(texture_id);
+            }
+        }
+    }
+}
+
+/// Commit `entries` (one per sprite the multi-sprite Apply touched) as
+/// the new undo transaction, releasing the previous transaction's
+/// pre-edit individual textures. No-op when `entries.is_empty()` (no
+/// sprite actually changed → nothing to undo). The transaction label
+/// comes from the first entry; per-drain code pushes the same label on
+/// every entry it appends, so all N entries agree by construction.
+pub(crate) fn commit_image_edit_transaction(
+    renderer: &mut SpriteRenderer,
+    slot: &mut Option<ImageEditTransaction>,
+    entries: Vec<ImageEditSnapshot>,
+) {
+    if entries.is_empty() {
+        return;
+    }
+    let label = entries[0].label;
+    drop_undo_pre_sources_if_individual(renderer, slot);
+    *slot = Some(ImageEditTransaction { entries, label });
 }
 
 /// Cached on-canvas preview bitmap for the Background-Removal tool.

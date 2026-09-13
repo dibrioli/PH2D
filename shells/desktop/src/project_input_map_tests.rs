@@ -94,11 +94,14 @@ fn the_map_is_not_part_of_the_undo_unit() {
 /// janela e o jogo a obedecer às novas.
 #[test]
 fn the_authored_map_has_exactly_one_holder() {
-    // ⚠️ O `AppGfx` mudou-se para o irmão `app_state_gfx.rs` (`line/loc-caps`, 2026-09-13): a
-    // agulha lê os DOIS ficheiros, senão um segundo dono escrito no agregado de GPU passava mudo.
+    // ⚠️ O `AppGfx`, os tipos das ferramentas de imagem e o `HeroLive` mudaram-se para irmãos do
+    // `app_state.rs` (`line/loc-caps`, 2026-09-13): a agulha lê TODAS as structs que moravam no
+    // ficheiro único, senão um segundo dono escrito numa delas passava mudo.
     let src = [
         include_str!("app_state.rs"),
         include_str!("app_state_gfx.rs"),
+        include_str!("app_state_image_tools.rs"),
+        include_str!("app_state_hero_live.rs"),
     ]
     .concat();
     // ⚠️ **A agulha tem sintaxe que so' o CODIGO tem.** Procurar `input_map` cru acusaria o

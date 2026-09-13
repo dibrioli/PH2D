@@ -29,13 +29,13 @@ const MARKER_WINDOW_LINES: usize = 20;
 const FILE_OVERAGE_OK: &[(&str, usize, &str)] = &[
     (
         "app_state.rs",
-        1037,
-        "a struct `App` sozinha são ~940 linhas (187 campos); descer a 600 é reagrupar campos — o `AppGfx` e as ferramentas de imagem já saíram (`line/loc-caps`)",
+        1019,
+        "a struct `App` sozinha são ~940 linhas (187 campos); descer a 600 é reagrupar campos — o `AppGfx`, as ferramentas de imagem, os dispositivos e o `HeroLive` já saíram (`line/loc-caps`)",
     ),
     (
         "main.rs",
-        1289,
-        "crate-root module hub — the 80+ `mod` declarations are an",
+        1118,
+        "a raiz: 618 linhas de declarações de `mod` e aliases, que não saem sem mudar o caminho de cada módulo — os dispositivos, o undo de imagem e os testes do tema já saíram (`line/loc-caps`)",
     ),
 ];
 

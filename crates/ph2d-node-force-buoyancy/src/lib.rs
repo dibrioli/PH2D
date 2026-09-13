@@ -45,6 +45,7 @@
 use ph2d_node_registry::{
     NodeRegistry, ParamUiHint, ParamUnit, ParamUnitDecl, ParamWidget, RegistryError,
 };
+use ph2d_nodegraph::attr::par_build;
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
 use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel};
@@ -316,30 +317,33 @@ impl NodeOp for ForceBuoyancy {
 
         let out = {
             let input = ctx.input(0);
-            let contrib: Vec<[f32; 2]> = (0..input.count())
-                .map(|i| {
-                    let p = vec2_at(input, "P", i, [0.0, 0.0]);
-                    let vel = vec2_at(input, "vel", i, [0.0, 0.0]);
+            // ⚠️ **PARALELO acima do limiar, e idêntico ao bit** — um mapa puro por elemento,
+            // sem redução nenhuma (o contrato do [`par_build`]). Era o ÚNICO dos seis `force.*`
+            // cujo mapa de CPU corria em série: na medição do ciclo 5 (doc 108 W5, 1 000 000
+            // objectos, `load` 2,09) ele leu `43,0`/`43,2 ms` contra `7,6`–`15,8 ms` dos outros
+            // cinco, que já usavam esta porta.
+            let contrib: Vec<[f32; 2]> = par_build(input.count(), |i| {
+                let p = vec2_at(input, "P", i, [0.0, 0.0]);
+                let vel = vec2_at(input, "vel", i, [0.0, 0.0]);
 
-                    // The sea at this instance's x, right now.
-                    let (surface, slope) = sea_at(p[0], t, level, amp, lambda, speed, waves);
+                // The sea at this instance's x, right now.
+                let (surface, slope) = sea_at(p[0], t, level, amp, lambda, speed, waves);
 
-                    // How much of it is under water: 0 dry, 1 fully submerged.
-                    let sub = ((surface - p[1]) / depth).clamp(0.0, 1.0);
-                    let w = sub * falloff_at(input, i);
+                // How much of it is under water: 0 dry, 1 fully submerged.
+                let sub = ((surface - p[1]) / depth).clamp(0.0, 1.0);
+                let w = sub * falloff_at(input, i);
 
-                    // Buoyancy is normal to the surface: n = normalize(−slope, 1). On the
-                    // flank of a wave that tilts the push downhill, into the trough.
-                    let inv_len = 1.0 / (slope * slope + 1.0).sqrt();
-                    // ⚠️ A densidade DESTE elemento — ver [`DENSITY_COL`]. Coluna
-                    // ausente ⇒ o param global, e a expressão é a de antes ao bit.
-                    let dens = density * scale_at(input, i);
-                    [
-                        (dens * -slope * inv_len - drag * vel[0]) * w,
-                        (dens * inv_len - drag * vel[1]) * w,
-                    ]
-                })
-                .collect();
+                // Buoyancy is normal to the surface: n = normalize(−slope, 1). On the
+                // flank of a wave that tilts the push downhill, into the trough.
+                let inv_len = 1.0 / (slope * slope + 1.0).sqrt();
+                // ⚠️ A densidade DESTE elemento — ver [`DENSITY_COL`]. Coluna
+                // ausente ⇒ o param global, e a expressão é a de antes ao bit.
+                let dens = density * scale_at(input, i);
+                [
+                    (dens * -slope * inv_len - drag * vel[0]) * w,
+                    (dens * inv_len - drag * vel[1]) * w,
+                ]
+            });
             add_accel(input, &contrib)
         };
         ctx.emit(out);

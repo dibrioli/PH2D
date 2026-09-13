@@ -34,7 +34,6 @@ const FN_OVERAGE_OK: &[(&str, &str, usize, &str)] = &[
     ("blend_smoke.rs", "blend_smoke", 205, NASCEU),
     ("build_smoke.rs", "build_smoke", 416, NASCEU),
     ("build_smoke_router.rs", "route", 441, NASCEU),
-    ("envelope_smoke.rs", "frame", 247, NASCEU),
     ("init.rs", "build_initial_state", 499, NASCEU),
     ("layout_live.rs", "lay_out", 206, NASCEU),
     ("main.rs", "new", 263, NASCEU),

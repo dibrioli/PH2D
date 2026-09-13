@@ -16,6 +16,17 @@ use crate::build_smoke::shape;
 
 /// Despacha o frame `f` da cena de envelope do nível `level` (11 ou 12).
 pub(crate) fn frame(app: &mut crate::App, f: u32, level: u32) {
+    match level {
+        27 => frame_star(app, f, level),
+        _ => frame_cage(app, f, level),
+    }
+}
+
+/// As duas cenas da GAIOLA — a elipse já deformada (`=11`) e o *warp group* (`=12`).
+///
+/// ⚠️ Saíram do [`frame`] pelo tecto de 200 LOC por função (`fn_loc_caps`), verbatim: os braços e
+/// os padrões `(f, level)` são os de antes, e um nível que não é deles cai no mesmo `_ => {}`.
+fn frame_cage(app: &mut crate::App, f: u32, level: u32) {
     let self_ = app;
     match (f, level) {
         // A cena do ENVELOPE (ADR-0129, Fatia B): UMA elipse, e a gaiola já vem PUXADA num
@@ -171,6 +182,15 @@ pub(crate) fn frame(app: &mut crate::App, f: u32, level: u32) {
                  e move/gira/escala o grupo inteiro -- sem cisalhar (a caixa e' a uniao)."
             );
         }
+        _ => {}
+    }
+}
+
+/// A cena da ESTRELA côncava envelopada na ORDEM DO PRODUTO (`=27`) — irmã das da gaiola, pelo
+/// mesmo tecto.
+fn frame_star(app: &mut crate::App, f: u32, level: u32) {
+    let self_ = app;
+    match (f, level) {
         // A cena do ENVELOPE sobre uma ESTRELA (o caso reportado pelo Enio, 2026-07-24): a fonte é
         // CÔNCAVA (uma estrela de 5 pontas), não uma elipse convexa. A gaiola envolve a BBOX (um
         // retângulo, igual à elipse), então a correção prova que a concavidade da FONTE não muda a

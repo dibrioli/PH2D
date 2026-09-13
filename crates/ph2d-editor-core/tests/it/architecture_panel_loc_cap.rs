@@ -66,15 +66,6 @@ const FN_OVERAGE_OK: &[(&str, &str, usize, &str)] = &[
     // threading `y: f32`) is now unblocked — it is paint/dispatch code with no
     // unit coverage, so each split lands with its own smoke, one panel at a time.
     // ──────────────────────────────────────────────────────────────────────────
-    // ph2d-panel-color-equalization populate: 200→203 after `cargo fmt --all`
-    // re-flowed long lines (solo Coord 2026-05-29). A data-spec populate; a
-    // split into a number_specs helper is the same deferred follow-up.
-    (
-        "ph2d-panel-color-equalization/src/populate.rs",
-        "populate",
-        203,
-        "fmt --all re-flow pushed it 200→203; data-spec populate, split deferred",
-    ),
     // Wave 10 / Etapa 5.2: long paint orchestrators that grew with the panel's
     // feature set. Splitting into per-section helpers is a follow-up Etapa (one
     // panel at a time, with smoke validation).

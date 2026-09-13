@@ -97,6 +97,14 @@ pub fn populate(store: &mut WidgetStore) {
         );
     }
 
+    register_slider_rows(store);
+}
+
+/// **As quinze fileiras slider + chip**, cada uma ligada pelo mapa afim do seu intervalo natural.
+///
+/// ⚠️ Saiu do [`populate`] pelo tecto de 200 LOC por função, verbatim; corre no mesmo sítio, depois
+/// dos botões e dos dropdowns.
+fn register_slider_rows(store: &mut WidgetStore) {
     // Per-row: (slider_id, chip_id, natural_default, min, max, integer).
     // `integer = true` rounds typed display before persisting (audit
     // finding #3, 2026-05-28) — for chips whose painter renders an

@@ -337,9 +337,38 @@ const fn profile_b(verb: Verb) -> Option<VerbProfile> {
         return None;
     }
     Some(VerbProfile {
-        strength_curve: StrengthCurve::Squared,
+        strength_curve: blender_strength_curve(verb),
         falloff: Some(Falloff::Smooth),
         reach: blender_reach(verb),
         ..VerbProfile::SILENT
     })
+}
+
+/// **A CURVA DA FORÇA É POR VERBO, e não por MODO — medido contra o oráculo em
+/// 2026-09-13.**
+///
+/// ⛔⛔ **Esta função nasceu de uma DIVERGÊNCIA que o `B` shipava**, e o número
+/// é este: com o slider a `0,4`, o oráculo move `0,200000` no agarrar e nós
+/// movíamos `0,071414` — exactamente `0,4² × 0,446` contra `0,4 × 0,5`.
+/// ⚠️ **À força CHEIA os dois eram indistinguíveis** (`4,6e-7` a `1,1e-6`, dentro
+/// do ruído de `f32`), porque `s² = s` em `1` — *um corpus todo na força máxima
+/// não testa a curva da força*, e o `B` viveu com ela desde o E13.
+///
+/// | família | curva | o que a fixture mostra |
+/// |---|---|---|
+/// | agarrar · gancho | **linear** | `agarrar_grelha8_vertativo_sim_forca04` |
+/// | polegar · empurrão | **quadrática** | `polegar_plano_forca05` (pico a `¼`) |
+/// | as restantes | **quadrática** | o E13, que é de onde esta linha veio |
+///
+/// ⚠️ **O que NÃO se mexe, e é deliberado:** o giro e a escala local não estão
+/// em corpus nenhum — ficam com a curva de sempre, e a ausência está dita aqui
+/// em vez de escondida num `_ =>` sem comentário.
+const fn blender_strength_curve(verb: Verb) -> StrengthCurve {
+    match verb {
+        // ⚠️ **Os dois que AGARRAM**: ali o deslocamento é o gesto, e a
+        // referência entrega-o linear no slider. Elevá-lo ao quadrado tirava
+        // metade do gesto ao artista a meio curso.
+        Verb::Move | Verb::SnakeHook => StrengthCurve::Linear,
+        _ => StrengthCurve::Squared,
+    }
 }

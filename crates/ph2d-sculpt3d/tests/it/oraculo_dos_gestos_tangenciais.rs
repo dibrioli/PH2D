@@ -28,7 +28,7 @@
 //! *Uma dívida sem censo de obsolescência vira licença.*
 
 use ph2d_mesh::{Face, Mesh};
-use ph2d_sculpt3d::{Brush, Dab, Falloff, RefMode, SculptStroke, Symmetry, Verb};
+use ph2d_sculpt3d::{Brush, Dab, Falloff, Grip, RefMode, SculptStroke, Symmetry, Verb};
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 
@@ -210,6 +210,11 @@ fn pincel(t: &Traco) -> Brush {
         verb: match t.s("gesto") {
             "polegar" => Verb::Thumb,
             "empurrao" => Verb::Nudge,
+            // ⭐ O agarrar entra só pela SONDA (ver
+            // [`sonda_do_agarrar_que_ja_shipamos`]): ele é um verbo que já
+            // shipa, e medi-lo aqui é a primeira vez que ele tem um lado
+            // aprovado.
+            "agarrar" => Verb::Move,
             g => panic!("gesto {g} nao e' desta bancada"),
         },
         // ⚠️ **O modo é o `B`**: estes dois verbos são da referência restrita e o
@@ -263,7 +268,15 @@ fn correr(t: &Traco) -> Mesh {
     let mut stroke = SculptStroke::default();
     stroke.begin(&mesh);
     for k in 1..t.caminho.len() {
-        let (centro, puxao) = if brush.verb == Verb::Thumb {
+        // ⚠️⚠️ **A pergunta é ao GRIP, e não ao VERBO — e isto foi um defeito
+        // desta bancada, medido:** com `verb == Thumb` no lugar desta linha, o
+        // agarrar (que é o mesmo grip) recebia o INCREMENTO em vez do total e
+        // lia `0,054` contra os `0,600` do oráculo. Eu estive a um passo de
+        // registar uma divergência de `11×` num verbo que já shipa — e o que a
+        // desfez foi o discriminador mais barato: o mesmo puxão total entregue
+        // em `1`, `2`, `4` e `12` eventos dá **`0,600000` nas quatro**.
+        // *Uma régua que pergunta pelo NOME erra na primeira família nova.*
+        let (centro, puxao) = if matches!(brush.verb.grip(), Grip::Hold) {
             (t.caminho[0], menos(t.caminho[k], t.caminho[0]))
         } else {
             (t.caminho[k], menos(t.caminho[k], t.caminho[k - 1]))
@@ -591,6 +604,162 @@ fn a_fraccao_do_raio_da_normal_muda_o_resultado_numa_superficie_curva() {
         pior > TOL * 100.0,
         "o knob da fracção do raio da normal é INERTE nesta superfície: {pior:.3e}"
     );
+}
+
+/// ⭐⭐⭐ **O AGARRAR QUE JÁ SHIPÁVAMOS, AGORA COM LADO APROVADO.**
+///
+/// ⚠️ **Estas fixtures são do [`Verb::Move`], que não é desta wave** — elas
+/// entram porque o oráculo as gravou e porque ninguém as tinha corrido: o
+/// agarrar existe há meses e **nunca** tinha sido comparado com a referência.
+/// Medido, ele fecha à força cheia dentro do ruído de `f32`.
+///
+/// ⛔⛔ **E foi assim que se achou a divergência da CURVA DA FORÇA** (a cura
+/// vive em `ref_profiles::blender_strength_curve`): o `B` elevava o slider ao
+/// quadrado em **todos** os verbos, e a referência fá-lo por verbo. Ver
+/// [`a_forca_do_agarrar_e_linear_e_a_do_polegar_nao`].
+///
+/// ⚠️ **As duas fixtures com a âncora em VÉRTICE ficam de fora** — essa opção
+/// não está implementada (espec §7.2), e compará-las hoje mediria a ausência
+/// dela, não a lei.
+#[test]
+fn o_agarrar_reproduz_o_oraculo() {
+    println!("  fixture                           |   desvio   | pico nosso | pico dele");
+    let mut pior = (0.0f32, "");
+    for nome in [
+        "agarrar_plano_alvo_geometria",
+        "agarrar_plano_silhueta_nao",
+        "agarrar_grelha8_vertativo_nao",
+    ] {
+        let t = traco(nome);
+        assert_eq!(t.f("vertice_activo"), 0.0, "{nome}: ancora em vertice");
+        assert_eq!(t.f("silhueta"), 0.0, "{nome}: silhueta ligada");
+        let malha = correr(&t);
+        let d = desvio(&t, &malha);
+        println!(
+            "  {nome:<33} | {d:10.3e} | {:10.6} | {:9.6}",
+            pico_nosso(&t, &malha),
+            t.f("max_deslocamento")
+        );
+        if d > pior.0 {
+            pior = (d, nome);
+        }
+    }
+    assert!(
+        pior.0 <= TOL,
+        "{}: desvio {:.3e} acima da barra {TOL:.0e}",
+        pior.1,
+        pior.0
+    );
+}
+
+/// ⭐⭐ **A CURVA DA FORÇA É POR VERBO — o agarrar é LINEAR e o polegar é
+/// QUADRÁTICO, no mesmo modo e no mesmo slider.**
+///
+/// ⚠️ **A régua é a RAZÃO, e não o valor absoluto**, porque a única fixture do
+/// agarrar a meia força traz também a âncora em vértice (que não temos). A
+/// razão é imune a isso: o oráculo mede `0,200000 / 0,500001 = 0,400`, ou seja
+/// **linear**; um motor quadrático daria `0,16`. E ao lado, o polegar dá `0,25`
+/// sobre `0,5` — *o mesmo slider, duas leis, e é isso que esta casa tinha
+/// escrito como uma só.*
+#[test]
+fn a_forca_do_agarrar_e_linear_e_a_do_polegar_nao() {
+    let razao_de = |nome: &str, forca: f32| {
+        let t = traco(nome);
+        let cheio = pico_nosso(&t, &correr(&t));
+        let mut brush = pincel(&t);
+        brush.strength = forca;
+        let mut mesh = superficie(t.s("superficie"));
+        let eye = olho(t.s("vista"));
+        let mut stroke = SculptStroke::default();
+        stroke.begin(&mesh);
+        for k in 1..t.caminho.len() {
+            let (centro, puxao) = if matches!(brush.verb.grip(), Grip::Hold) {
+                (t.caminho[0], menos(t.caminho[k], t.caminho[0]))
+            } else {
+                (t.caminho[k], menos(t.caminho[k], t.caminho[k - 1]))
+            };
+            stroke.dab(
+                &mut mesh,
+                &brush,
+                &Dab::pulling(centro, brush.radius, eye, no_plano_do_ecra(puxao, eye)),
+                Symmetry::default(),
+            );
+        }
+        let base = repouso(t.s("superficie"));
+        let mut meio = 0.0f32;
+        for i in 0..base.len() {
+            let d = menos(mesh.positions()[i], base[i]);
+            meio = meio.max((d[0] * d[0] + d[1] * d[1] + d[2] * d[2]).sqrt());
+        }
+        meio / cheio
+    };
+    let agarrar = razao_de("agarrar_plano_alvo_geometria", 0.4);
+    let polegar = razao_de("polegar_plano_origem", 0.5);
+    println!("  agarrar a 0,4 da forca: razao {agarrar:.6} (linear = 0,400)");
+    println!("  polegar a 0,5 da forca: razao {polegar:.6} (quadratica = 0,250)");
+    assert!(
+        (agarrar - 0.4).abs() <= 1e-3,
+        "o agarrar deveria ser LINEAR no slider: razao {agarrar:.6} (quadratico daria 0,16)"
+    );
+    assert!(
+        (polegar - 0.25).abs() <= 1e-3,
+        "o polegar deveria ser QUADRATICO: razao {polegar:.6}"
+    );
+}
+
+/// 🔬 **SONDA — o AGARRAR contra o oráculo, com as colunas todas.**
+#[test]
+#[ignore = "sonda"]
+fn sonda_do_agarrar_que_ja_shipamos() {
+    println!("  fixture                           |   desvio   | pico nosso | pico dele | forca");
+    for nome in [
+        "agarrar_plano_alvo_geometria",
+        "agarrar_plano_silhueta_nao",
+        "agarrar_grelha8_vertativo_nao",
+        "agarrar_grelha8_vertativo_sim_forca04",
+    ] {
+        let t = traco(nome);
+        let malha = correr(&t);
+        println!(
+            "  {nome:<33} | {:10.3e} | {:10.6} | {:9.6} | {:.2}",
+            desvio(&t, &malha),
+            pico_nosso(&t, &malha),
+            t.f("max_deslocamento"),
+            t.f("forca")
+        );
+    }
+    println!("  ⇒ se a linha de forca 0,4 divergir ~2,5x e as de forca 1,0 fecharem,");
+    println!("    a curva de forca do modo B e' por MODO onde a referencia a tem por VERBO.");
+
+    // ⭐ O discriminador: o MESMO puxão total, entregue em N eventos.
+    println!();
+    println!("  o mesmo puxao total (0,6) em N eventos:");
+    let t = traco("agarrar_plano_alvo_geometria");
+    for n in [1usize, 2, 4, 12] {
+        let mut mesh = superficie(t.s("superficie"));
+        let brush = pincel(&t);
+        let eye = olho(t.s("vista"));
+        let mut stroke = SculptStroke::default();
+        stroke.begin(&mesh);
+        for k in 1..=n {
+            let total = 0.6 * (k as f32 / n as f32);
+            stroke.dab(
+                &mut mesh,
+                &brush,
+                &Dab::pulling(t.caminho[0], brush.radius, eye, [total, 0.0, 0.0]),
+                Symmetry::default(),
+            );
+        }
+        let base = repouso(t.s("superficie"));
+        let mut pico = 0.0f32;
+        for i in 0..base.len() {
+            let d = menos(mesh.positions()[i], base[i]);
+            pico = pico.max((d[0] * d[0] + d[1] * d[1] + d[2] * d[2]).sqrt());
+        }
+        println!("    N = {n:>2}: pico {pico:.6}");
+    }
+    println!("  ⇒ se o pico CAIR com N, o gesto ancorado esta' a perder vertices da pegada");
+    println!("    a cada evento (a consulta e' na malha VIVA, e o gesto leva-os para fora).");
 }
 
 /// 🔬 **SONDA — onde mora o resíduo da esfera:** direcção ou magnitude?

@@ -77,7 +77,9 @@ fn the_pen_up_drains_the_pending_pull_before_it_closes_the_stroke() {
 
 #[test]
 fn the_frame_drains_the_pending_pull() {
-    let src = read("render_loop/mod.rs");
+    // ⚠️ **O QUADRO lê-se no texto EMENDADO** (OBRA 2, 2026-09-12): o dreno mudou-se para a fase
+    // `fase_sculpt3d_pre_frame.rs`, e o `mod.rs` sozinho já não o contém.
+    let src = crate::frame_text::render_frame();
     // ⚠️ **`flush_grab(scene)` e não `flush_grab()` desde 2026-09-11 (W2/L3-A2)**: a porta
     // virou função LIVRE e passou a RECEBER a cena — a shell é que a procura. O parêntese
     // vazio era a assinatura de método, e casá-lo agora deixaria o gate a medir nada.

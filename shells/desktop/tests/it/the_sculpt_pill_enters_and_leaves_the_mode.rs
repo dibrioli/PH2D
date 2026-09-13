@@ -10,7 +10,9 @@
 
 use std::fs;
 
-const FRAME: &str = "src/render_loop/mod.rs";
+// ⚠️ O quadro lê-se no texto EMENDADO (`frame_text::render_frame`) desde a OBRA 2 (2026-09-12): o
+// toggle e a doação mudaram-se para a fase `fase_sculpt3d_pre_frame.rs`, e a ORDEM entre eles só é
+// medível onde as duas linhas estão na ordem em que correm.
 const BRIDGE: &str = "../../crates/ph2d-app-sculpt3d/src/panel_bridge.rs";
 const MODE: &str = "../../crates/ph2d-app-sculpt3d/src/mode.rs";
 
@@ -61,7 +63,7 @@ fn the_pill_is_painted_registered_and_reaches_the_bus() {
 /// tinta acesa por um estado que o artista já mudou, um frame atrás do que ele vê.
 #[test]
 fn the_frame_fulfils_the_toggle_before_the_form_donates() {
-    let src = fs::read_to_string(FRAME).expect("o laço de frame existe");
+    let src = crate::frame_text::render_frame();
     let toggle = src
         .find("self.sculpt3d_apply_toggle()")
         .expect("o laço de frame cumpre o pedido do pill SCULPT");
@@ -292,7 +294,7 @@ fn the_panel_visibility_is_written_by_the_edge_of_the_clay() {
 /// fallback ganha sempre — que é exatamente o mundo que o Enio fotografou.
 #[test]
 fn the_brush_pattern_reads_the_live_layers_before_the_stored_image() {
-    let src = fs::read_to_string(FRAME).expect("o laço de frame existe");
+    let src = crate::frame_text::render_frame();
     // ⚠️ **O nome do campo mudou em 2026-09-11 (W2/L3-A2)**: os cinco pedidos da escultura
     // agruparam-se num `Sculpt3dRequests`, então é `sculpt3d_req.alpha_request`. *Um censo
     // textual é exactamente o gate que uma reagrupação de campos parte* — e é por isso que
@@ -340,7 +342,7 @@ fn the_brush_pattern_reads_the_live_layers_before_the_stored_image() {
 /// testemunha existir, é o laço de frame perguntar a ela.
 #[test]
 fn the_frame_only_re_authors_the_baked_light_when_the_lamp_moved() {
-    let src = fs::read_to_string(FRAME).expect("o laço de frame existe");
+    let src = crate::frame_text::render_frame();
     assert!(
         src.contains("if scene.take_rig_edge() {"),
         "o laço re-autora o rig dos objetos assados sem perguntar se a lâmpada MOVEU: uma cena \

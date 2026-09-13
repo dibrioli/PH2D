@@ -18,7 +18,6 @@
 // responsabilidade para caber no teto de LOC das crates, e esta fase vive agora no irmão.
 const BRIDGE: &str =
     include_str!("../../../../crates/ph2d-app-painter/src/painter_bridge_phases.rs");
-const LOOP: &str = include_str!("../../src/render_loop/mod.rs");
 const SCENE: &str = include_str!("../../../../crates/ph2d-app-sculpt3d/src/lib.rs");
 /// ⚠️ **O GESTO mora num arquivo irmão** (`sculpt3d/input.rs`), e as portas que
 /// este gate interroga moram lá. A separação é de responsabilidade — *o que a
@@ -147,15 +146,18 @@ fn the_consumer_does_not_know_what_a_mesh_is() {
 /// ele testaria a função que ninguém chama.
 #[test]
 fn the_frame_asks_the_module_to_donate() {
-    let call = LOOP
+    // ⚠️ O laço lê-se no texto EMENDADO (`frame_text::render_frame`) desde a OBRA 2 (2026-09-12):
+    // a doação mudou-se para a fase `fase_sculpt3d_pre_frame.rs`, e o `cfg` viajou com ela.
+    let frame = crate::frame_text::render_frame();
+    let call = frame
         .find("self.sculpt3d_donate_form();")
         .expect("o laço tem de chamar `sculpt3d_donate_form` — sem isso a doação nunca sai");
-    let before = &LOOP[..call];
+    let before = &frame[..call];
     let cfg = before
         .rfind("#[cfg(feature = \"sculpt3d\")]")
         .expect("a chamada tem de estar sob a feature — a promessa de removibilidade é literal");
     assert!(
-        LOOP[cfg..call].lines().count() <= 4,
+        frame[cfg..call].lines().count() <= 4,
         "o `cfg` tem de governar ESTA chamada, não uma linha distante dela"
     );
 }

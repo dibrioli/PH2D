@@ -48,7 +48,9 @@ fn the_refusal_precedes_every_mutation_of_the_session() {
 /// ficam verdes, porque a pendência de fato foi preenchida.
 #[test]
 fn the_frame_installs_what_the_load_parked() {
-    let src = source("render_loop/mod.rs");
+    // ⚠️ **O QUADRO lê-se no texto EMENDADO** (OBRA 2, 2026-09-12): a instalação mudou-se para a
+    // fase `fase_sculpt3d_pre_frame.rs`.
+    let src = crate::frame_text::render_frame();
     assert!(
         src.contains("self.sculpt3d_install_pending();"),
         "o frame precisa CHAMAR o instalador — a cena 3D nao nasce sem device, \

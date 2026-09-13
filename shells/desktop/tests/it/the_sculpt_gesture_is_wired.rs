@@ -126,8 +126,11 @@ fn every_3d_port_is_inert_without_a_scene() {
     // …e (c) quem as chama procura-a ANTES. ⚠️ O `sculpt_src()` não alcança o despacho (ele
     // lê só a família), então estes dois ficheiros são nomeados de propósito — é o preço de a
     // guarda ter mudado de lado.
+    // ⚠️ O dreno do puxão mudou-se do `render_loop/mod.rs` para a fase do quadro que é o assunto
+    // dele (OBRA 2, 2026-09-12): a agulha segue o SUJEITO, e o `source` continua a tirar os
+    // comentários antes de medir a janela.
     for (file, port) in [
-        ("render_loop/mod.rs", "flush_grab"),
+        ("render_loop/fase_sculpt3d_pre_frame.rs", "flush_grab"),
         ("input_dispatch.rs", "pointer_up"),
         ("input_dispatch.rs", "pointer_move"),
     ] {

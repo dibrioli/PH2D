@@ -28,8 +28,11 @@
 //! 4. ⭐⭐⭐ **O casco crescido por uma DISTÂNCIA domina a caixa** ([`Grow::Pad`]), nas 12 células
 //!    (2 tamanhos × 2 peças × 3 velocidades): a `δ = 0,08` serve as MESMAS arestas com **3× a 6×
 //!    menos compilações**; a `δ = 0,04` corta **`~25 %` das arestas**, e a `640×360` compila MENOS
-//!    que a caixa ao mesmo tempo. ⇒ a pergunta passa a ser **de onde o `δ` sai** — ver
-//!    [`measure_where_the_pad_should_come_from`].
+//!    que a caixa ao mesmo tempo.
+//! 5. ⭐⭐ **O `δ` sai do ALCANCE da peça, não do ladrilho** ([`measure_where_the_pad_should_come_from`]):
+//!    em fracção do alcance, acerto e arestas ficam estáveis entre zoom `0,4`/`0,8`/`1,6` e peça
+//!    `½`/`1`/`2×`; em ladrilhos o mesmo número dá `81 %` numa célula e `92 %` noutra. A `0,06`–`0,08`
+//!    do alcance o casco bate a caixa nas duas colunas em 16 de 18 células.
 //!
 //! ⚠️ **Tudo contagens** — vale com a máquina sob carga. O relógio só decide depois, a `load < 5`.
 //!
@@ -47,6 +50,8 @@
 //!     tests::hull_cache_probe::measure_what_a_hull_cache_would_buy --ignored --nocapture
 //! cargo test -p ph2d-field-render --profile ci-test --lib -- --exact \
 //!     tests::hull_cache_probe::measure_where_the_pad_should_come_from --ignored --nocapture
+//! cargo test -p ph2d-field-render --profile ci-test --lib -- --exact \
+//!     tests::hull_cache_probe::measure_whether_pan_and_zoom_keep_the_gain --ignored --nocapture
 //! ```
 
 use super::{ngon_probe, star_probe};
@@ -64,6 +69,12 @@ const FRAMES_KEPT: usize = 3;
 
 /// Quadros medidos por arrasto; o quadro `0` enche a cache do zero e não entra na conta.
 const FRAMES: usize = 12;
+
+/// Quanto a órbita do módulo roda por pixel de mão — o `ORBIT_RAD_PER_PX` de `ph2d-app-field3d`.
+const ORBIT_RAD_PER_PX: f32 = 0.01;
+
+/// Quanto um passo de roda aproxima — o `ZOOM_PER_STEP` de `ph2d-app-field3d`.
+const ZOOM_PER_STEP: f32 = 1.1;
 
 /// Uma região de um quadro, exactamente como o `tiles::tiled_trace` a pede.
 struct Query {
@@ -104,6 +115,8 @@ enum Grow {
     Scale(f32),
     /// Uma distância `δ` de mundo em cada lado, com a MESMA dispersão de fase (em fracção de `δ`).
     Pad(f32),
+    /// A mesma distância, mas em fracção do ALCANCE a partir do alvo do quadro — ver [`reach`].
+    PadOfReach(f32),
 }
 
 /// Qual das fitas que contêm a região é servida.
@@ -134,18 +147,24 @@ struct Piece {
     bbox: Aabb,
 }
 
-impl Piece {
-    /// A meia-diagonal da caixa da peça — o maior braço com que uma órbita em torno da origem move um
-    /// ponto dela.
-    fn reach(&self) -> f32 {
-        (0..3)
-            .map(|k| {
-                let h = 0.5 * (self.bbox.1[k] - self.bbox.0[k]);
-                h * h
-            })
-            .sum::<f32>()
-            .sqrt()
+/// ⭐ **O maior braço com que uma órbita em torno de `target` move um ponto da peça** — a distância
+/// do alvo ao canto mais afastado da caixa.
+///
+/// ⚠️ **É o ALVO, e não o centro da peça:** um pan leva o alvo para fora do centro, e uma órbita
+/// passa a varrer a peça com um braço maior. *O movimento de um arrasto é `braço × ângulo`, e o braço
+/// mede-se de onde a câmera gira.*
+fn reach(bbox: Aabb, target: [f32; 3]) -> f32 {
+    let mut far = 0.0f32;
+    for c in 0..8u8 {
+        let p = [
+            if c & 1 == 0 { bbox.0[0] } else { bbox.1[0] },
+            if c & 2 == 0 { bbox.0[1] } else { bbox.1[1] },
+            if c & 4 == 0 { bbox.0[2] } else { bbox.1[2] },
+        ];
+        let d = (0..3).map(|k| (p[k] - target[k]).powi(2)).sum::<f32>();
+        far = far.max(d);
     }
+    far.sqrt()
 }
 
 fn piece(ring: Vec<[f32; 2]>, half_height: f32) -> Piece {
@@ -258,33 +277,27 @@ fn carried(pts: &[[f32; 3]], from: Aabb, to: Aabb) -> Vec<[f32; 3]> {
 }
 
 /// A região crescida para a fita que vai para a cache, e os cantos que o casco dela usa.
-fn grown(q: &Query, g: Grow) -> (Aabb, Vec<[f32; 3]>) {
-    match g {
+fn grown(q: &Query, g: Grow, arm: f32) -> (Aabb, Vec<[f32; 3]>) {
+    let d = match g {
         Grow::Scale(f) => {
             let b = crate::tape_cache::inflate_phased(q.lo, q.hi, f, q.seed, crate::tape_cache::PHASE);
             let pts = carried(&q.pts, (q.lo, q.hi), b);
-            (b, pts)
+            return (b, pts);
         }
-        Grow::Pad(d) => {
-            // ⚠️ A fase é a do produto, lida da própria função: numa caixa unitária com `f = 2` o
-            // deslocamento do centro É o `u ∈ [−amp, amp]` de cada eixo.
-            let unit = crate::tape_cache::inflate_phased(
-                [-1.0; 3],
-                [1.0; 3],
-                2.0,
-                q.seed,
-                crate::tape_cache::PHASE,
-            );
-            let mut b = (q.lo, q.hi);
-            for k in 0..3 {
-                let u = 0.5 * (unit.0[k] + unit.1[k]);
-                b.0[k] = q.lo[k] - d + d * u;
-                b.1[k] = q.hi[k] + d + d * u;
-            }
-            // Os cantos NÃO se mexem: o casco herda a folga `δ` pela caixa (ver `hull_uv`).
-            (b, q.pts.clone())
-        }
+        Grow::Pad(d) => d,
+        Grow::PadOfReach(frac) => frac * arm,
+    };
+    // ⚠️ A fase é a do produto, lida da própria função: numa caixa unitária com `f = 2` o
+    // deslocamento do centro É o `u ∈ [−amp, amp]` de cada eixo.
+    let unit = crate::tape_cache::inflate_phased([-1.0; 3], [1.0; 3], 2.0, q.seed, crate::tape_cache::PHASE);
+    let mut b = (q.lo, q.hi);
+    for k in 0..3 {
+        let u = 0.5 * (unit.0[k] + unit.1[k]);
+        b.0[k] = q.lo[k] - d + d * u;
+        b.1[k] = q.hi[k] + d + d * u;
     }
+    // Os cantos NÃO se mexem: o casco herda a folga `δ` pela caixa (ver `hull_uv`).
+    (b, q.pts.clone())
 }
 
 fn box_inside(lo: [f32; 3], hi: [f32; 3], e: &Entry) -> bool {
@@ -315,6 +328,7 @@ impl Variant {
         let g = match self.grow {
             Grow::Scale(f) => format!("f {f:.2}"),
             Grow::Pad(d) => format!("δ {d:.3}"),
+            Grow::PadOfReach(r) => format!("δ {r:.2}A"),
         };
         let p = match self.pick {
             Pick::Oldest => "velha",
@@ -325,20 +339,16 @@ impl Variant {
     }
 }
 
-/// Um arrasto de [`FRAMES`] quadros a `graus` por quadro, com a lente a `half_extent`.
-fn drag(p: &Piece, (w, h): (u32, u32), half_extent: f32, graus: f32, v: Variant) -> Tally {
-    let plane = Screen::new(w, h, half_extent);
-    let margin = crate::Sharpness::for_frame(half_extent, w.min(h) as usize).normal;
+/// Um arrasto: uma câmera por quadro, a `0` enche a cache e não conta.
+fn drag(p: &Piece, (w, h): (u32, u32), cams: &[Orbit], v: Variant) -> Tally {
     let mut cache: Vec<Entry> = Vec::new();
     let mut t = Tally::default();
-    for i in 0..=FRAMES {
-        let cam = Orbit {
-            rotation: Orbit::from_yaw_pitch(0.72 + i as f32 * graus.to_radians(), 0.52).rotation,
-            half_extent,
-            ..Orbit::default()
-        };
+    for (i, cam) in cams.iter().enumerate() {
+        let plane = Screen::new(w, h, cam.half_extent);
+        let margin = crate::Sharpness::for_frame(cam.half_extent, w.min(h) as usize).normal;
+        let arm = reach(p.bbox, cam.target);
         let counting = i > 0;
-        for q in regions(p.bbox, &cam, plane, margin) {
+        for q in regions(p.bbox, cam, plane, margin) {
             let (qhull, honest) = hull_and_kept(&p.idx, q.lo, q.hi, &q.pts);
             let probe = if qhull.is_empty() {
                 box_uv_corners(q.lo, q.hi)
@@ -366,7 +376,7 @@ fn drag(p: &Piece, (w, h): (u32, u32), half_extent: f32, graus: f32, v: Variant)
                 }
                 e.kept
             } else {
-                let ((lo, hi), pts) = grown(&q, v.grow);
+                let ((lo, hi), pts) = grown(&q, v.grow, arm);
                 let (hull, kept) = match v.policy {
                     Policy::Box => (Vec::new(), p.idx.probe_cull(uv(lo), uv(hi))),
                     Policy::Hull => hull_and_kept(&p.idx, lo, hi, &pts),
@@ -392,6 +402,17 @@ fn drag(p: &Piece, (w, h): (u32, u32), half_extent: f32, graus: f32, v: Variant)
         cache.retain(|e| e.seen + FRAMES_KEPT > i);
     }
     t
+}
+
+/// A órbita dos smokes antigos: `graus` por quadro em torno do Y, a partir da vista por omissão.
+fn yaw_drag(half_extent: f32, graus: f32) -> Vec<Orbit> {
+    (0..=FRAMES)
+        .map(|i| Orbit {
+            rotation: Orbit::from_yaw_pitch(0.72 + i as f32 * graus.to_radians(), 0.52).rotation,
+            half_extent,
+            ..Orbit::default()
+        })
+        .collect()
 }
 
 fn row(t: &Tally) -> String {
@@ -442,8 +463,9 @@ fn measure_what_a_hull_cache_would_buy() {
     for size in [(426u32, 240u32), (640, 360)] {
         for (name, p) in &pieces {
             for graus in [1.0f32, 2.0, 4.0] {
+                let cams = yaw_drag(half, graus);
                 for var in variants {
-                    let t = drag(p, size, half, graus, var);
+                    let t = drag(p, size, &cams, var);
                     assert!(t.uses > 100, "{name}: o arrasto quase não pediu regiões ({})", t.uses);
                     println!(
                         "{:>3}x{:<3} | {name:11} | {graus:5.0} | {} | {}",
@@ -467,7 +489,7 @@ fn measure_what_a_hull_cache_would_buy() {
 ///   o zoom (`2 · half_extent · TILE / altura`).
 ///
 /// ⇒ a varredura muda as duas escalas **separadamente** — o zoom (`half_extent`) e o tamanho da peça
-/// — e exprime o `δ` em fracção do [`Piece::reach`], imprimindo ao lado quanto ele vale em ladrilhos.
+/// — e exprime o `δ` em fracção do [`reach`], imprimindo ao lado quanto ele vale em ladrilhos.
 /// *Se o melhor ponto ficar na mesma fracção do alcance em todas as linhas, é daí que o `δ` sai; se
 /// ficar no mesmo número de ladrilhos, é de lá.*
 #[test]
@@ -481,10 +503,11 @@ fn measure_where_the_pad_should_come_from() {
     for half_extent in [0.4f32, 0.8, 1.6] {
         for escala in [0.5f32, 1.0, 2.0] {
             let p = piece(ngon_probe(168, 0.6 * f64::from(escala)), 0.4 * escala);
-            let reach = p.reach();
+            let arm = reach(p.bbox, [0.0; 3]);
             // O ladrilho em MUNDO no plano do alvo: `2 · half_extent` cobre a altura do quadro.
             let tile_world = 2.0 * half_extent * tile / h as f32;
             for graus in [2.0f32, 4.0] {
+                let cams = yaw_drag(half_extent, graus);
                 let mut variants = vec![Variant {
                     policy: Policy::Box,
                     grow: Grow::Scale(crate::INFLATE),
@@ -493,15 +516,15 @@ fn measure_where_the_pad_should_come_from() {
                 for frac in [0.02f32, 0.04, 0.06, 0.08, 0.12] {
                     variants.push(Variant {
                         policy: Policy::Hull,
-                        grow: Grow::Pad(frac * reach),
+                        grow: Grow::Pad(frac * arm),
                         pick: Pick::Oldest,
                     });
                 }
                 for var in variants {
-                    let t = drag(&p, (w, h), half_extent, graus, var);
+                    let t = drag(&p, (w, h), &cams, var);
                     if t.uses < 100 {
                         println!(
-                            "{half_extent:4.1} | {escala:6.1} | {reach:7.3} | {graus:5.0} | {} | (a peça quase não aparece: {} regiões)",
+                            "{half_extent:4.1} | {escala:6.1} | {arm:7.3} | {graus:5.0} | {} | (a peça quase não aparece: {} regiões)",
                             var.label(),
                             t.uses
                         );
@@ -509,14 +532,114 @@ fn measure_where_the_pad_should_come_from() {
                     }
                     let per_tile = match var.grow {
                         Grow::Pad(d) => d / tile_world,
-                        Grow::Scale(_) => f32::NAN,
+                        Grow::Scale(_) | Grow::PadOfReach(_) => f32::NAN,
                     };
                     println!(
-                        "{half_extent:4.1} | {escala:6.1} | {reach:7.3} | {graus:5.0} | {} | {per_tile:10.2} | {}",
+                        "{half_extent:4.1} | {escala:6.1} | {arm:7.3} | {graus:5.0} | {} | {per_tile:10.2} | {}",
                         var.label(),
                         row(&t)
                     );
                 }
+            }
+        }
+    }
+}
+
+/// Um gesto de câmera, no ritmo da mão por quadro.
+#[derive(Clone, Copy)]
+enum Gesture {
+    /// Arrasto horizontal de `px` pixels de PREVIEW por quadro, com a lei do módulo
+    /// (`ORBIT_RAD_PER_PX`, `turn_local`).
+    Orbit(f32),
+    /// Pan horizontal de `px` pixels de PREVIEW por quadro, com a lei do módulo (`input_law::pan`).
+    Pan(f32),
+    /// `passos` de roda por quadro (positivo aproxima), com a lei do módulo (`input_law::zoom`).
+    Zoom(f32),
+}
+
+fn gesture_cams(g: Gesture, h: u32) -> Vec<Orbit> {
+    let mut cam = Orbit::default();
+    let mut out = Vec::with_capacity(FRAMES + 1);
+    for _ in 0..=FRAMES {
+        out.push(cam);
+        match g {
+            Gesture::Orbit(dx) => cam.turn_local([0.0, -dx, 0.0], dx.abs() * ORBIT_RAD_PER_PX),
+            Gesture::Pan(dx) => {
+                let k = cam.half_extent / (h as f32 * 0.5);
+                let (right, _, _) = cam.basis();
+                for (i, r) in right.iter().enumerate() {
+                    cam.target[i] -= r * dx * k;
+                }
+            }
+            Gesture::Zoom(steps) => cam.half_extent /= ZOOM_PER_STEP.powf(steps),
+        }
+    }
+    out
+}
+
+/// ⏳ **O GANHO SOBREVIVE AO PAN E AO ZOOM?** — a cache mede-se no gesto que o artista faz.
+///
+/// ⚠️ **O crescimento ABSOLUTO tem um ponto cego que a caixa escalada não tem:** a caixa `f` cresce
+/// com a região, e um zoom muda o tamanho de todas as regiões de uma vez; um pan move o ALVO, e com
+/// ele o braço da órbita. As varreduras anteriores só giraram a câmera. *Uma cache que ganha no
+/// gesto medido e perde no outro é uma troca, não uma cura.*
+#[test]
+#[ignore]
+fn measure_whether_pan_and_zoom_keep_the_gain() {
+    let (w, h) = (426u32, 240u32);
+    let pieces = [
+        ("círculo 168", piece(ngon_probe(168, 0.6), 0.4)),
+        ("estrela 168", piece(star_probe(168, 0.22, 0.6), 0.4)),
+    ];
+    let variants = [
+        Variant {
+            policy: Policy::Box,
+            grow: Grow::Scale(crate::INFLATE),
+            pick: Pick::Oldest,
+        },
+        Variant {
+            policy: Policy::Hull,
+            grow: Grow::PadOfReach(0.04),
+            pick: Pick::Oldest,
+        },
+        Variant {
+            policy: Policy::Hull,
+            grow: Grow::PadOfReach(0.06),
+            pick: Pick::Oldest,
+        },
+        Variant {
+            policy: Policy::Hull,
+            grow: Grow::PadOfReach(0.08),
+            pick: Pick::Oldest,
+        },
+    ];
+    let gestures = [
+        ("órbita 4 px", Gesture::Orbit(4.0)),
+        ("órbita 12 px", Gesture::Orbit(12.0)),
+        ("pan 4 px", Gesture::Pan(4.0)),
+        ("pan 12 px", Gesture::Pan(12.0)),
+        ("zoom +0,5", Gesture::Zoom(0.5)),
+        ("zoom −0,5", Gesture::Zoom(-0.5)),
+        ("zoom +1", Gesture::Zoom(1.0)),
+        ("zoom −1", Gesture::Zoom(-1.0)),
+    ];
+    println!(
+        "peça        | gesto        | variante               | acerto | compila/quadro | arestas servidas | ÷ sem cache"
+    );
+    for (name, p) in &pieces {
+        for (gname, g) in gestures {
+            let cams = gesture_cams(g, h);
+            for var in variants {
+                let t = drag(p, (w, h), &cams, var);
+                if t.uses < 100 {
+                    println!(
+                        "{name:11} | {gname:12} | {} | (a peça quase não aparece: {} regiões)",
+                        var.label(),
+                        t.uses
+                    );
+                    continue;
+                }
+                println!("{name:11} | {gname:12} | {} | {}", var.label(), row(&t));
             }
         }
     }

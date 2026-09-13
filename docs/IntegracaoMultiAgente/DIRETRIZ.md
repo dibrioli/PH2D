@@ -948,6 +948,8 @@ fechado**, não por micro-task (vide §6.6.A.2).
 
 1. **O inner loop está bom e não é onde o tempo vai:** `cargo check -p ph2d-host-desktop` depois de uma
    edição real custa **1,8 s** (na shell) a **3,3 s** (numa crate com 106 dependentes). O `-j` não o muda.
+   Depois da W2 e da refatoração final (13/09, ESTADO W2 §6): na shell, **0,88 s** incremental e **2,33 s** sem
+   incremental; o `--profile smoke` depois de uma edição, **4,7 s**.
 2. **O smoke é `cargo run -p ph2d-host-desktop --profile smoke`.** O `release` (`codegen-units = 1` + thin
    LTO) optimiza a shell de 306 k linhas num só thread: **161 s** por correcção; o `smoke` custa **3 s**.
    `--release` só para smoke de PERFORMANCE (tectos, milhões de objectos), e o passo do smoke diz quando.

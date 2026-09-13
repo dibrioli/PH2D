@@ -121,3 +121,7 @@ pub const FAMILY: AppFamily = AppFamily {
         max_level: smoke::scenes::CENAS,
     }],
 };
+
+/// A porta dos gates desta crate que medem que o QUADRO da shell chama a família.
+#[cfg(test)]
+mod shell_frame_tests;

@@ -379,29 +379,72 @@ fn the_bone_overlays_are_drawn_for_the_bone_the_finger_uses() {
     // ⚠️ **Aponta para FORA de propósito** (HOWTO §2.6): o sujeito deste gate é *«a SHELL chama a
     // lei no sítio certo do quadro»*, e o laço não se mudou. ⭐ Um `include_str!` falha em tempo de
     // COMPILAÇÃO se o caminho morrer — é a metade boa, ao contrário do gémeo em runtime.
-    let src = code_only(include_str!(
-        "../../../shells/desktop/src/render_loop/mod.rs"
-    ));
+    // ⚠️ E desde 13/09 o laço é o `mod.rs` MAIS as fases em que a `line/render-loop` o partiu: o
+    // `include_str!` do `mod.rs` passou a ler um índice sem os desenhos, e reprovou alto. A régua é
+    // POR FICHEIRO (a atribuição e o desenho moram na mesma fase), e vale para TODO ficheiro do
+    // quadro que desenhe — nunca só o primeiro.
+    let quadro = frame_files();
     for verbo in ["draw_influence(", "draw_limit("] {
-        let i = src
-            .find(verbo)
-            .unwrap_or_else(|| panic!("{verbo} sumiu do laço de desenho"));
-        let janela = &src[i..(i + 200).min(src.len())];
+        let casas: Vec<&(String, String)> =
+            quadro.iter().filter(|(_, s)| s.contains(verbo)).collect();
         assert!(
-            janela.contains("osso_focado"),
-            "{verbo} não recebe o osso da porta do dedo — os 200 chars seguintes são:\n{janela}"
+            !casas.is_empty(),
+            "{verbo} sumiu do laço de desenho (o `mod.rs` e {} fases lidos)",
+            quadro.len() - 1
         );
-        let antes = &src[..i];
-        let at = antes
-            .rfind("let osso_focado")
-            .unwrap_or_else(|| panic!("{verbo} usa `osso_focado` e nada o atribui antes"));
-        let atribuicao = &antes[at..];
-        assert!(
-            atribuicao.contains("bone_gesture::selected_bone("),
-            "o `osso_focado` que chega a {verbo} NÃO vem da porta do dedo — a atribuição é:\n{}",
-            atribuicao.lines().take(3).collect::<Vec<_>>().join("\n")
-        );
+        for (casa, src) in casas {
+            let i = src.find(verbo).expect("acabou de o achar");
+            let janela = &src[i..(i + 200).min(src.len())];
+            assert!(
+                janela.contains("osso_focado"),
+                "{verbo} em {casa} não recebe o osso da porta do dedo — os 200 chars seguintes são:\n{janela}"
+            );
+            let antes = &src[..i];
+            let at = antes
+                .rfind("let osso_focado")
+                .unwrap_or_else(|| panic!("{verbo} usa `osso_focado` e nada o atribui antes"));
+            let atribuicao = &antes[at..];
+            assert!(
+                atribuicao.contains("bone_gesture::selected_bone("),
+                "o `osso_focado` que chega a {verbo} NÃO vem da porta do dedo — a atribuição é:\n{}",
+                atribuicao.lines().take(3).collect::<Vec<_>>().join("\n")
+            );
+        }
     }
+}
+
+/// Piso de população do quadro: medido **125** fases em 2026-09-13. Uma varredura que perdesse as fases
+/// leria só o índice — e o gate acusaria «sumiu» sem dizer porquê.
+const PISO_FASES: usize = 100;
+
+/// **O QUADRO, ficheiro a ficheiro** — o `render_loop/mod.rs` e as `render_loop/fase_*.rs`, cada um sem
+/// comentários. ⚠️ Aponta para FORA de propósito (HOWTO §2.6): o sujeito é a SHELL. ⛔ Um
+/// `include_str!` de UMA fase repetiria o defeito na próxima partição — foi o código que se mudou,
+/// não o ficheiro.
+fn frame_files() -> Vec<(String, String)> {
+    let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../shells/desktop/src/render_loop");
+    let mut files: Vec<(String, String)> = std::fs::read_dir(&dir)
+        .unwrap_or_else(|e| panic!("o laço existe em {}: {e}", dir.display()))
+        .flatten()
+        .map(|e| e.file_name().to_string_lossy().into_owned())
+        .filter(|n| n == "mod.rs" || (n.starts_with("fase_") && n.ends_with(".rs")))
+        .map(|n| {
+            let src = std::fs::read_to_string(dir.join(&n)).expect("o ficheiro do quadro lê-se");
+            (n, code_only(&src))
+        })
+        .collect();
+    files.sort();
+    assert!(
+        files.iter().any(|(n, _)| n == "mod.rs"),
+        "o índice do quadro (`render_loop/mod.rs`) sumiu"
+    );
+    assert!(
+        files.len() > PISO_FASES,
+        "o quadro leu-se com {} ficheiros, abaixo do piso de {PISO_FASES} fases — a varredura perdeu-as",
+        files.len()
+    );
+    files
 }
 
 /// **O fonte sem comentários** — um censo textual que não os tira mente nos DOIS sentidos: uma nota

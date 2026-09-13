@@ -220,21 +220,10 @@ fn the_grid_that_feeds_the_chain_is_the_draft_grid() {
 /// gates dela em `field3d_export_job`.
 #[test]
 fn the_frame_drains_the_export_bench() {
-    let src = std::fs::read_to_string(
-        // ⚠️ **O SUJEITO deste gate é a SHELL** (ele mede que o laço/despacho dela CHAMA esta
-        // família), logo a raiz da varredura é a da shell e não a desta crate.
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("../../shells/desktop/src")
-            .join("render_loop/mod.rs"),
-    )
-    .expect("o loop existe");
-    // ⚠️ Comentários fora: a primeira versão do gate irmão reprovou sobre a PROSA que explica a
-    // regra, porque o texto que diz "chame isto" contém, por construção, a agulha.
-    let code: String = src
-        .lines()
-        .filter(|l| !l.trim_start().starts_with("//"))
-        .collect::<Vec<_>>()
-        .join("\n");
+    // ⚠️ **O SUJEITO deste gate é a SHELL** (ele mede que o laço dela CHAMA esta família), e o laço
+    // é o `mod.rs` MAIS as fases desde 13/09 — a porta [`crate::shell_frame_tests::frame_code`] lê os
+    // dois, sem comentários (a 1.ª versão do gate irmão reprovou sobre a PROSA que explica a regra).
+    let code = crate::shell_frame_tests::frame_code();
     assert!(
         code.contains("export_job::take_finished()"),
         "o quadro tem de tirar a resposta da bancada — sem isto o arquivo é escrito e o artista \

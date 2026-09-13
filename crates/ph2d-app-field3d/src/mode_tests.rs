@@ -120,20 +120,10 @@ fn the_two_edges_do_not_mask_each_other() {
 /// falta, devolvem exactamente o report do Enio.
 #[test]
 fn the_render_loop_actually_makes_the_modes_cede() {
-    let src = std::fs::read_to_string(
-        // ⚠️ **O SUJEITO deste gate é a SHELL** (ele mede que o laço/despacho dela CHAMA esta
-        // família), logo a raiz da varredura é a da shell e não a desta crate.
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("../../shells/desktop/src")
-            .join("render_loop/mod.rs"),
-    )
-    .expect("o loop existe");
-    // ⚠️ Comentários fora: a prosa que EXPLICA a lei cita os mesmos nomes que ela usa.
-    let code: String = src
-        .lines()
-        .filter(|l| !l.trim_start().starts_with("//"))
-        .collect::<Vec<_>>()
-        .join("\n");
+    // ⚠️ **O SUJEITO deste gate é a SHELL** (ele mede que o laço dela CHAMA esta família), e o laço é o
+    // `mod.rs` MAIS as fases desde 13/09 — a porta [`crate::shell_frame_tests::frame_code`] lê os dois,
+    // sem comentários (a prosa que EXPLICA a lei cita os mesmos nomes que ela usa).
+    let code = crate::shell_frame_tests::frame_code();
 
     for needed in [
         // 1. o loop pergunta quem tomou o canvas…

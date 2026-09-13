@@ -37,7 +37,7 @@ use ph2d_sculpt3d::{ClothFilterKind, ClothFilterProps, ClothFilterStep, SculptSt
 /// Uma cortina franzida — o material sobra e tem de pregar.
 ///
 /// ⚠️ **Cópia local do arnês do irmão, de propósito** (a mesma razão que o
-/// `sculpt3d_filter_cloth_tests` escreve): partilhar um gerador de fixtures entre
+/// `filter_cloth_tests` escreve): partilhar um gerador de fixtures entre
 /// ficheiros de teste é acoplamento por conveniência, e uma sonda tem de poder
 /// mudar a fixtura sem mexer num gate.
 fn cortina(n: usize) -> Mesh {

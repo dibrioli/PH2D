@@ -1,5 +1,5 @@
 //! ⭐ **OS GATES do caminho da EXTRACÇÃO** — o irmão de
-//! [`sculpt3d_history_retopo_extract`].
+//! `history_retopo_extract`.
 //!
 //! ⚠️ **Ele existe por causa do tecto de LOC do shell (HR-18)**, e o corte é o idioma da
 //! casa: o `mod tests` inline vai para o irmão **do assunto**. *O ficheiro do produto

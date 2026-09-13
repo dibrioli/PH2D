@@ -218,7 +218,7 @@ pub fn relight_stale(
 
 /// **O G-BUFFER virado IMAGEM** — a codificação com que a forma viaja no arquivo.
 ///
-/// ⚠️ **A escolha é MEDIDA, e o número está no gate** (`sculpt3d_bake_form_bytes`): guardar a forma
+/// ⚠️ **A escolha é MEDIDA, e o número está no gate** (`bake_form_bytes`): guardar a forma
 /// como `f32` custa **4× o disco** (16 MiB por sprite a 1024²) e o que ela compra é *nada que a luz
 /// enxergue* — baixar para 8 bits move o pixel aceso em **≤ 3 de 255** (pior caso medido, com
 /// ~0,25 de média). Não é um palpite sobre precisão: é o preço da precisão, pago pelo consumidor.
@@ -307,7 +307,7 @@ mod tests {
 
     /// **A FORMA SOBREVIVE À VIAGEM POR 8 BITS.**
     ///
-    /// ⚠️ A barra é a que a medição deu (`sculpt3d_bake_form_bytes`), não um número escolhido: um
+    /// ⚠️ A barra é a que a medição deu (`bake_form_bytes`), não um número escolhido: um
     /// canal erra no máximo meio degrau (`1/510`), e depois da renormalização o desvio angular fica
     /// abaixo de um grau. É o que faz de `≤ 3/255` no pixel aceso uma consequência e não uma
     /// esperança.

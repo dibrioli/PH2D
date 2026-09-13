@@ -220,3 +220,7 @@ pub(super) fn fit(
 pub(super) fn frame_of(plane: &PlaneFit) -> ([f32; 3], [f32; 3]) {
     tangent_frame(plane.normal)
 }
+
+#[cfg(test)]
+#[path = "stroke_surface_tests.rs"]
+mod tests;

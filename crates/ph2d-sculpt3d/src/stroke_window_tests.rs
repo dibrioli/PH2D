@@ -173,3 +173,50 @@ fn a_dab_that_moves_nothing_publishes_nothing() {
         stroke.last_gpu_dirty().len()
     );
 }
+
+/// **Um dab que não acha barro não faz TRABALHO** — devolve `0`, não publica
+/// janela e não mexe num bit da malha. A metade SEM espelho do gate de cima.
+///
+/// ⛔ **O gate de cima NOMEAVA este e ele NÃO EXISTIA** (medido 2026-09-13: o
+/// histórico do git não tem commit que o escreva, com o controlo positivo — o
+/// vizinho — a devolver o dele). ⚠️ E ele não repete o de cima: aquele mede as
+/// JANELAS; este mede também o que a chamada DEVOLVE e os BITS da malha, que é o
+/// que o chamador usa para decidir se sobe bytes e refita o octree.
+#[test]
+fn an_idempotent_dab_does_no_work() {
+    let mut mesh = sphere();
+    let mut stroke = SculptStroke::default();
+    stroke.begin(&mesh);
+    let brush = drawing_brush();
+    let moved = stroke.dab(
+        &mut mesh,
+        &brush,
+        &dab_on_the_plus_x_side(),
+        Symmetry::default(),
+    );
+    assert!(
+        moved > 0 && !stroke.last_moved().is_empty(),
+        "controlo: o 1º dab tem de mover barro para o 2º ter o que herdar ({moved})"
+    );
+
+    let antes = mesh.positions().to_vec();
+    let far = Dab::at([0.0, 9.0, 0.0], 0.5, [0.0, -1.0, 0.0]);
+    let n = stroke.dab(&mut mesh, &brush, &far, Symmetry::default());
+    assert_eq!(
+        n, 0,
+        "um dab longe do barro declarou {n} vértices de trabalho"
+    );
+    assert!(
+        stroke.last_moved().is_empty() && stroke.last_gpu_dirty().is_empty(),
+        "um dab longe do barro publicou janela ({} movidos, {} sujos)",
+        stroke.last_moved().len(),
+        stroke.last_gpu_dirty().len()
+    );
+    assert!(
+        antes
+            .iter()
+            .zip(mesh.positions())
+            .all(|(a, b)| a.map(f32::to_bits) == b.map(f32::to_bits)),
+        "um dab longe do barro mexeu num bit da malha"
+    );
+}

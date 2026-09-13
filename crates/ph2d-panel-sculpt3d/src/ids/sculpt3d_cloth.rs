@@ -51,7 +51,7 @@ pub const SCULPT3D_CLOTH_AREA: [NodeId; 3] = [
 
 /// **A FORMA ESPACIAL do peso da força do tecido** —
 /// `ph2d_sculpt3d::ClothForceFalloff::ALL`. ⚠️ O tamanho se CONTA: o censo
-/// `the_panel_offers_every_cloth_knob_the_engine_has` compara-o com o `ALL`.
+/// `the_panel_offers_every_cloth_mode_the_engine_has` compara-o com o `ALL`.
 pub const SCULPT3D_CLOTH_FORCE_FALLOFF: [NodeId; 2] = [
     hash_node_id("sculpt3d.cloth_force_falloff.0"),
     hash_node_id("sculpt3d.cloth_force_falloff.1"),

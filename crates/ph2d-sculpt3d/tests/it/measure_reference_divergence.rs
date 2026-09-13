@@ -15,7 +15,7 @@
 //!
 //! # ⚠️ E UM GATE mora aqui, contra a regra acima
 //!
-//! O [`in_s_mode_the_three_stragglers_reach_the_floor`] **afirma**, e ele está
+//! O [`in_s_mode_the_stamp_verbs_reach_the_floor`] **afirma**, e ele está
 //! neste arquivo por um motivo: ele precisa EXATAMENTE deste harness — a mesma
 //! malha, a mesma pegada, a mesma polaridade de máscara, os mesmos flags de
 //! fábrica por tool (o `_negative` do Flatten, o do Crease, o `pinch = 1`). Uma
@@ -846,7 +846,9 @@ fn does_the_accumulate_switch_do_anything_verb_by_verb() {
             // proxy congelado, e quatro dabs levantam ~0,07 sobre um raio de
             // 0,45: a distância normalizada anda 0,16 e a quártica mal cai. A
             // fixture tem de conter o fenômeno, e quem o contém é o CAMINHO —
-            // é o que o gate `the_disarmed_brush_exhausts_itself` já fazia.
+            // é o que o gate
+            // `the_disarmed_brush_exhausts_itself_and_the_accumulate_has_no_limit`
+            // já fazia.
             let step = ph2d_sculpt3d::min_spacing(R);
             let n = (1.0 / step).floor() as usize;
             for _ in 0..PASSES {

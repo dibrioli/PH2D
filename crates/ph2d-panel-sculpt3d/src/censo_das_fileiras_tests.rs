@@ -58,6 +58,26 @@ fn the_panel_offers_every_cloth_mode_the_engine_has() {
     );
 }
 
+/// **GATE — o painel oferece TODO motor de retopologia que o botão tem.**
+///
+/// ⛔ **O doc de `ids::SCULPT3D_RETOPO_MODE` NOMEAVA este gate e ele NÃO
+/// EXISTIA** — medido 2026-09-13: o histórico do git não tem um commit que o
+/// tenha escrito, com o controlo positivo (um gate vizinho) a devolver o dele. É
+/// a mesma forma que fez nascer este ficheiro, pela terceira vez. E o motor que
+/// ele guarda já pagou o defeito uma vez: o `Local` passou a wave inteira do
+/// pivô alcançável só por uma variável de ambiente.
+#[test]
+fn the_panel_offers_every_retopo_mode_the_engine_has() {
+    assert_eq!(
+        crate::ids::SCULPT3D_RETOPO_MODE.len(),
+        crate::state::RetopoMode::ALL.len(),
+        "o painel tem {} chips de motor de retopologia e o botao tem {} motores -- um \
+         motor sem id nasce inalcancavel, e um id sem motor e' um chip que aponta para nada",
+        crate::ids::SCULPT3D_RETOPO_MODE.len(),
+        crate::state::RetopoMode::ALL.len()
+    );
+}
+
 /// **GATE — cada rótulo é distinto, e nenhum é vazio.**
 ///
 /// ⚠️ Dois chips com o mesmo texto são um controlo que o artista não consegue

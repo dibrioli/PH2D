@@ -138,3 +138,78 @@ fn an_empty_document_reads_as_an_empty_scene() {
     assert!(pieces.is_empty());
     assert_eq!(active, 0);
 }
+
+/// **HR-14 — a FORMA do documento salvo é PINADA** — o gate que o doc do
+/// [`SCULPT_DOC_VERSION`] prometia.
+///
+/// ⛔ **Ele era NOMEADO e NÃO EXISTIA** (medido 2026-09-13: nenhum commit no
+/// histórico do git o escreveu). O doc dizia que ele *«transforma "lembre-se" em
+/// vermelho»*, e sem ele o «lembre-se» era tudo o que havia entre um campo novo
+/// na `ph2d-mesh` e o arquivo do artista lido como lixo bem-formado — o postcard
+/// é posicional e não avisa.
+///
+/// ⚠️ **A fixtura instancia TODO campo opcional do blob** (cor e máscara no nível
+/// e no detalhe, dois níveis, pose fora da origem) e AFIRMA-o antes de medir: um
+/// `Option` a `None` custa um byte de discriminante e deixa o golden cego a tudo
+/// o que mora dentro do `Some` — a lição que a `ph2d-field` pagou por três
+/// degraus (`the_shape_of_a_saved_modifier_stack_is_pinned`).
+///
+/// Quebrou? **Suba o `SCULPT_DOC_VERSION`** e só então re-pine, com a conta do
+/// degrau escrita ao lado. Re-pinar para seguir é apagar a prova.
+#[test]
+fn the_shape_of_a_saved_scene_is_pinned() {
+    let mut stack = Multires::new(shapes::octahedron(1.0));
+    stack.mesh_mut().colors_mut()[0] = [0.25, 0.5, 0.75];
+    stack.mesh_mut().masks_mut()[1] = 0.5;
+    assert!(stack.add_level(), "a fixtura precisa do 2º nível");
+    stack.mesh_mut().positions_mut()[0][1] += 0.25;
+    stack.mesh_mut().colors_mut()[2] = [0.75, 0.5, 0.25];
+    stack.mesh_mut().masks_mut()[3] = 0.25;
+    // ⚠️ O detalhe só guarda cor e máscara quando é RE-ENCODADO — um nível acabado de nascer
+    // tem `colors: None` por construção (`Multires::add_level`). Descer e voltar a subir é o
+    // gesto do artista que o escreve, e é o estado que um arquivo real carrega.
+    assert!(stack.lower().is_some(), "a fixtura desce ao nível 0");
+    assert!(stack.higher(), "e volta ao nível 1");
+    let pose = Pose::new([1.5, -2.0, 0.5], 2.0);
+    let data = stack.to_data();
+
+    // ⛔ Controlo: a fixtura instancia o que o golden diz defender.
+    assert!(data.levels.len() >= 2, "a fixtura perdeu o 2º nível");
+    for (i, nivel) in data.levels.iter().enumerate() {
+        assert!(
+            nivel.colors.is_some() && nivel.masks.is_some(),
+            "o nível {i} da fixtura não traz cor e máscara — o golden ficaria cego a elas"
+        );
+    }
+    assert!(
+        data.details
+            .iter()
+            .skip(1)
+            .all(|d| d.colors.is_some() && d.masks.is_some()),
+        "o detalhe da fixtura não traz cor e máscara — o golden ficaria cego a elas"
+    );
+
+    let bytes = encode(&[(data, pose.to_data())], 0);
+    assert_eq!(
+        bytes.len(),
+        // ⚠️ MEDIDO na criação do gate (2026-09-13), e a conta FECHA à mão — que é o que separa
+        // um golden de um número copiado da saída:
+        //
+        // | pedaço | bytes |
+        // |---|---:|
+        // | versão + nº de peças + peça activa (varints) | 3 |
+        // | nível 0: 6 posições (`f32` fixo) · 8 faces · cor e máscara `Some` | 73 + 65 + 74 + 26 = 238 |
+        // | nível 1: 18 posições · 32 faces · cor e máscara `Some` | 217 + 257 + 218 + 74 = 766 |
+        // | detalhe 0 (vazio: comprimento + dois `None`) · detalhe 1 (18 `xyz` + cor + máscara) | 3 + 509 |
+        // | nº de níveis + nº de detalhes + nível em mãos | 3 |
+        // | pose: translação + escala (`f32`) | 16 |
+        // | **total** | **1538** |
+        //
+        // ⚠️ Cada face custa **8** bytes e não 4: a `Face` é `[u32; 4]`, e o quarto índice de um
+        // triângulo é o sentinela `TRI`, que em varint custa 5.
+        1538,
+        "a forma serializada da cena mudou — suba SCULPT_DOC_VERSION, não re-pine este número"
+    );
+    let (back, _) = decode(&bytes).expect("ida e volta");
+    assert_eq!(back.len(), 1, "a peça voltou");
+}

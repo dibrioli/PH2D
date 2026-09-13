@@ -247,8 +247,9 @@ pub fn pointer_move(scene: &mut Sculpt3dScene, x: f32, y: f32) -> bool {
         // (o modelo tomba para a frente), que é `pitch += dy`.
         //
         // Os DOIS sinais estavam trocados e o smoke os pegou; o gate que os
-        // prende (`dragging_right_turns_the_model_right`) mede o modelo NA
-        // TELA em vez de argumentar sobre sinais, que foi como o erro entrou.
+        // prende (`dragging_right_turns_the_model_right_and_dragging_down_shows_its_top`,
+        // no `ph2d-mesh-render`) mede o modelo NA TELA em vez de argumentar sobre
+        // sinais, que foi como o erro entrou.
         Drag::Orbit => scene
             .camera
             .orbit(-dx * ORBIT_RAD_PER_PX, dy * ORBIT_RAD_PER_PX),

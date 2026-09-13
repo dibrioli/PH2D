@@ -146,7 +146,8 @@ pub const CLAY_PLANE_FRACTION: f32 = 0.1;
 /// referência declara graus-por-amostra, e quantas amostras cabem num
 /// centímetro de traço é decisão de cada motor. ⇒ o que é citável é *quanto o
 /// plano gira por dab*; *quanto ele gira por comprimento de traço* é uma
-/// grandeza NOSSA, e o gate `the_thumb_tilt_accumulates_with_the_stroke` mede a
+/// grandeza NOSSA, e o gate
+/// `the_thumb_tilt_grows_along_the_stroke_and_the_flatten_stays_put` mede a
 /// nossa em vez de a afirmar.
 pub const CLAY_THUMB_TILT_STEP_DEG: f32 = 0.8;
 

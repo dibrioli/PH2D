@@ -235,7 +235,7 @@ pub const SCULPT3D_UI_LEVEL: [NodeId; 2] = [
 
 /// **QUAL MOTOR DE RETOPOLOGIA** — os chips `Global` · `Local`.
 ///
-/// ⚠️ **O tamanho se CONTA e não se escolhe** — o seam
+/// ⚠️ **O tamanho se CONTA e não se escolhe** — o censo
 /// `the_panel_offers_every_retopo_mode_the_engine_has` compara este array com o
 /// `RetopoMode::ALL`, então um motor novo que não passe por aqui nasce
 /// inalcançável no painel e o gate fica vermelho em vez de o chip sumir em

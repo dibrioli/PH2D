@@ -49,8 +49,10 @@ pub struct Row {
     /// que torna a regra auditável: enfiado na closure, *qual é o nível desta
     /// row* deixaria de ser uma pergunta que alguém pode fazer à tabela — e é
     /// exatamente a pergunta que o gate de costura faz para varrer o conjunto de
-    /// Pro, e que o `no_pro_row_is_unarmed` faz para provar que esconder uma não
-    /// deixa o artista sem a ferramenta.
+    /// Pro, e que o `the_basic_level_never_hides_the_two_knobs_every_brush_has`
+    /// faz para provar que esconder uma não deixa o artista sem a ferramenta.
+    /// ⚠️ (Esta linha nomeava um gate que nunca existiu — a propriedade já tinha
+    /// gate, com outro nome, no `tests/it/seam.rs`; medido 2026-09-13.)
     pub level: UiLevel,
     /// **ONDE, na seção, esta row é desenhada.**
     ///

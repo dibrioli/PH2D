@@ -158,6 +158,16 @@ pub mod scenes;
 #[path = "scenes_router_tests.rs"]
 mod scenes_router_tests;
 
+/// ⭐⭐ **O contrato do EMPRÉSTIMO da cena**, gateado do lado da família — ver o cabeçalho.
+#[cfg(test)]
+#[path = "host_contract_tests.rs"]
+mod host_contract_tests;
+
+/// ⭐⭐ **Todo gate que a família NOMEIA existe** — o censo que teria apanhado os oito.
+#[cfg(test)]
+#[path = "named_gates_census_tests.rs"]
+mod named_gates_census_tests;
+
 /// O QUE A CENA DIZ ao artista — ver o módulo.
 #[path = "announce.rs"]
 mod announce_mod;

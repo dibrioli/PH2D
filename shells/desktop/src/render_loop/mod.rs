@@ -188,12 +188,15 @@ mod fase_pointer_subjects;
 mod fase_sculpt3d_pre_frame;
 /// Fase do quadro: a manutenção de sessão (Shape Builder, tween, Colorize, Gap Closure).
 mod fase_session_upkeep;
+/// O empréstimo do `gfx` do quadro: o destructure exaustivo do `AppGfx`, re-derivado por fase.
+mod frame_gfx;
 /// **Os nove quads do 9-slice** — irmão do `sim_extract`, que está no tecto de LOC.
 pub(crate) mod sheet_grid_overlay;
 pub(crate) mod sim_extract;
 mod sim_extract_sheet;
 mod sim_extract_slice;
 mod snapshots;
+use frame_gfx::FrameGfx;
 /// A sprite como FONTE DE LUZ (plano `docs/Sprite_projeto/18` W8) — lê o espelho pelo `SimRef` e
 /// devolve as instâncias que emitem. ⚠️ Irmão do `sim_extract` de propósito: ele está no tecto de LOC.
 pub(crate) mod sprite_emissive;
@@ -379,20 +382,13 @@ impl crate::App {
         let Some(gfx) = self.gfx.as_mut() else {
             return;
         };
-        let AppGfx {
-            // As guias do documento: lidas para desenhar e para alimentar o snap.
-            guides: doc_guides,
-            // Os ESTADOS de UI (plano UI/UX W7) e as MÁQUINAS que os mostram. Os dois viajam
-            // juntos por toda a autoria: gravar lê o mundo e escreve a tabela, mostrar lê a
-            // tabela e pede à máquina, e a máquina escreve o mundo de volta.
+        // O empréstimo do `gfx` do quadro: o padrão EXAUSTIVO do `AppGfx` mora em [`frame_gfx`].
+        let FrameGfx {
+            doc_guides,
             ui_states,
             ui_machines,
-            // A cena 3D é DESENHADA no `present`; aqui ela é lida por um assunto só — o bake do
-            // objeto misto (`docs/3D/02.2`), que precisa do mundo e do renderizador ao lado dela.
             #[cfg(feature = "sculpt3d")]
             sculpt3d,
-            // Os objetos que uma forma acende. NAO sao `cfg`-gated: a re-acendida deles roda sem o
-            // modulo 3D no build, que e' a promessa da rota A (`docs/3D/02.2`).
             baked_forms,
             baked_light,
             next_baked_form,
@@ -403,7 +399,6 @@ impl crate::App {
             camera,
             canvas_zoom,
             asset_db,
-            atlas_is_real: _,
             script,
             theme,
             zen,
@@ -418,46 +413,25 @@ impl crate::App {
             vello_pass,
             vector_scene,
             vec_scene,
-            // ADR-0114: cena Flip. A ponte objeto↔entidade é reconciliada todo
-            // frame (abaixo, ao lado do vetor). O RENDER é no present phase.
             flip,
-            // ADR-0114 W1: o rasterizador + a composição são usados no present.rs.
-            flip_render: _,
-            flip_compose: _,
-            flip_composite: _,
             text_system,
             hero_screen,
             hero_arena,
-            clipboard: _,
             prop_state,
             worklist,
             sort_scratch,
             sort_inputs,
             frame_order,
-            // ADR-0154 Fase 2 — o acumulador e a colagem são do PRESENTE; aqui só se enche o
-            // `band_doc_scenes` (a codificação do documento por faixa) porque é aqui que as
-            // entradas do `dispatch` existem.
             world_rt,
-            band_blit: _,
             band_doc_scenes,
             compositor_reads_world,
             hero_live,
             next_import_cell,
-            // A identidade estável do documento pintado é carimbada no SAVE (`project_painter`), que é
-            // o único momento em que ela precisa existir — o loop de render não a lê.
-            next_painted_doc: _,
-            // As folhas hand-packed: o loop de render não as lê. O que ele desenha é o COZIDO
-            // (`Sprite.source` + `region_rect`), que o import e o load já escreveram — é
-            // exatamente essa separação fonte-≠-cozido que faz o extract não mudar uma linha.
             sheets,
-            // ⚠️ Eram `_` até o BAKE existir: assar cria uma folha e a textura dela, então os dois
-            // mapas e o contador passam a ser ESCRITOS aqui. O comentário acima continua verdade
-            // para o desenho — o extract lê o cozido —, e é a autoria que precisa deles.
             sheet_textures,
             next_sheet_id,
             atlas_asset_map,
-            // ⭐⭐ A TAXONOMIA da biblioteca (wave A3) — publicada ao painel e mutada pelos verbos.
-            catalogs: asset_catalogs,
+            asset_catalogs,
             logical_texture_map,
             component_registry,
             editor_queue,
@@ -466,36 +440,14 @@ impl crate::App {
             name_type_id,
             sprite_type_id,
             image_edit_undo,
-            // ADR-0054 W0.T6: registries held but not yet consumed
-            // inside the render loop — W1 wires Open/Save user paths
-            // through `imageio_importers.find_for(...)`.
-            imageio_importers: _,
             imageio_exporters,
-            // Motion Nodes: cooked per frame by `motion_bridge` (M0.T10) into its
-            // reused instance buffer while the `motion` tool is active.
             motion,
-            // Global rigid physics: stepped per frame by `physics_bridge`
-            // (ADR-0131 W1) — reads RigidBody/Collider, writes Transform.
             physics,
-            // ⚠️ A cache da captura incremental (F2) **não é do quadro** — ela é lida e escrita
-            // pelo `post_frame_undo`, que corre depois disto. Listada por nome porque este padrão
-            // é exaustivo de propósito: um campo novo tem de ser CONSIDERADO aqui, não ignorado
-            // por um `..` que nunca mais ninguém relê.
-            undo_capture_cache: _,
-            // O alvo do `+` do Inspector (F3) — usado no fim deste mesmo quadro, ver abaixo.
             component_palette_target,
-            // ⚠️ **CONSIDERADO e deixado de fora**: a cache da biblioteca é lida no
-            // `capture_project_state`, que corre depois deste bloco e pega o `gfx` inteiro. Aqui
-            // ela não tem consumidor — e o `_` diz isso, ao contrário de um binding nomeado que
-            // parece um esquecimento.
-            library_cache: _,
-            // ⭐⭐⭐ **O VIDRO JATEADO** (2026-09-07) — o passe é do presente; aqui escrevem-se as
-            // duas cenas que ele separa e o interruptor do quadro.
-            frost: _,
             frost_doc_scene,
             frost_front_scene,
             frosting,
-        } = gfx;
+        } = FrameGfx::of(gfx);
         let Some(host) = self.host.as_ref() else {
             return;
         };

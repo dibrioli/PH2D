@@ -6,6 +6,19 @@ use super::{SrcRecord, bilinear_sample_premul, world_to_image};
 use ph2d_editor_core::{Toast, ToastQueue};
 use ph2d_render::SpriteRenderer;
 
+/// A caixa de união e a grelha de saída que o [`merge_grid`] devolve, com os nomes que o dreno usa.
+pub(super) struct MergeGrid {
+    pub(super) union_min_x: f32,
+    pub(super) union_max_x: f32,
+    pub(super) union_min_y: f32,
+    pub(super) union_max_y: f32,
+    pub(super) union_w_m: f32,
+    pub(super) union_h_m: f32,
+    pub(super) out_pm: f32,
+    pub(super) out_w: u32,
+    pub(super) out_h: u32,
+}
+
 /// Os passos 2 e 2.5: a caixa de união em metros — alinhada à grelha de pixels da fonte primária
 /// quando ela é axial — e o tamanho da saída; `None` depois do toast que diz porque não há saída.
 pub(super) fn merge_grid(
@@ -13,7 +26,7 @@ pub(super) fn merge_grid(
     project_pm: f32,
     renderer: &SpriteRenderer,
     toasts: &mut ToastQueue,
-) -> Option<(f32, f32, f32, f32, f32, f32, f32, u32, u32)> {
+) -> Option<MergeGrid> {
     // Step 2 — union bbox in world meters.
     let mut union_min_x = srcs
         .iter()
@@ -92,7 +105,7 @@ pub(super) fn merge_grid(
         )));
         return None;
     }
-    Some((
+    Some(MergeGrid {
         union_min_x,
         union_max_x,
         union_min_y,
@@ -102,7 +115,7 @@ pub(super) fn merge_grid(
         out_pm,
         out_w,
         out_h,
-    ))
+    })
 }
 
 /// O passo 3: o warp para trás e a composição «over» premultiplicada; devolve a saída e, no modo

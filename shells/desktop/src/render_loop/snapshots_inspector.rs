@@ -52,8 +52,11 @@ pub(super) fn publish(
         renderer,
         sheets,
     );
-    let (inspector_transform, inspector_visibility, inspector_name) =
-        identity(hero, sim, &inspector_selection);
+    let Identity {
+        inspector_transform,
+        inspector_visibility,
+        inspector_name,
+    } = identity(hero, sim, &inspector_selection);
     let sel = &inspector_selection; // W3 §7/§9 snapshots (§7 sibling module)
     let inspector_ordering = hero.gizmo.selection.and_then(|b| {
         ph2d_inspector_ordering::build_ordering_info(sim.world(), b, sel, selected_count)
@@ -82,13 +85,13 @@ pub(super) fn publish(
             hero.project.pixels_per_meter,
         )
     });
-    let (
+    let PhysicsSections {
         inspector_instance,
         inspector_properties,
         inspector_physics,
         inspector_joint,
         inspector_wheel,
-    ) = physics(
+    } = physics(
         hero,
         sim,
         asset_db,
@@ -106,14 +109,14 @@ pub(super) fn publish(
         wheel_body_pick,
         wheel_rope_pick,
     );
-    let (
+    let LateSections {
         inspector_anim,
         inspector_timer,
         inspector_action,
         inspector_audio,
         inspector_camera,
         inspector_visibility_section,
-    ) = late(
+    } = late(
         hero,
         sim,
         &inspector_selection,
@@ -168,9 +171,18 @@ pub(super) fn publish(
     }
 }
 
+/// As secções que o [`late`] constrói, com os nomes que a [`publish`] publica.
+struct LateSections {
+    inspector_anim: Option<ph2d_editor_core::InspectorAnimInfo>,
+    inspector_timer: Option<ph2d_editor_core::InspectorTimerInfo>,
+    inspector_action: Option<ph2d_editor_core::InspectorActionInfo>,
+    inspector_audio: Option<ph2d_editor_core::InspectorAudioInfo>,
+    inspector_camera: Option<ph2d_editor_core::InspectorCameraInfo>,
+    inspector_visibility_section: Option<ph2d_editor_core::InspectorVisibilitySectionInfo>,
+}
+
 /// As secções de componente opcional que vêm depois do player: animação, timers, acções, áudio, câmara, e a secção
 /// Visibility.
-#[allow(clippy::type_complexity)] // os seis valores, pela ordem em que o bloco os construía
 fn late(
     hero: &HeroScreen,
     sim: &mut SimWorld,
@@ -178,14 +190,7 @@ fn late(
     selected_count: usize,
     window_size: WindowSize,
     game_camera_preview: bool,
-) -> (
-    Option<ph2d_editor_core::InspectorAnimInfo>,
-    Option<ph2d_editor_core::InspectorTimerInfo>,
-    Option<ph2d_editor_core::InspectorActionInfo>,
-    Option<ph2d_editor_core::InspectorAudioInfo>,
-    Option<ph2d_editor_core::InspectorCameraInfo>,
-    Option<ph2d_editor_core::InspectorVisibilitySectionInfo>,
-) {
+) -> LateSections {
     let sel = inspector_selection;
     let inspector_anim = hero.gizmo.selection.and_then(|b| {
         crate::render_loop::inspector_anim::build_anim_info(sim.world(), b, selected_count)
@@ -228,19 +233,28 @@ fn late(
             selected_count,
         )
     });
-    (
+    LateSections {
         inspector_anim,
         inspector_timer,
         inspector_action,
         inspector_audio,
         inspector_camera,
         inspector_visibility_section,
-    )
+    }
+}
+
+/// As secções que o [`physics`] constrói, com os nomes que a [`publish`] publica.
+struct PhysicsSections {
+    inspector_instance: Option<ph2d_editor_core::screens::hero::InspectorInstanceInfo>,
+    inspector_properties: Option<ph2d_editor_core::screens::hero::InspectorPropertiesInfo>,
+    inspector_physics: Option<ph2d_editor_core::InspectorPhysicsInfo>,
+    inspector_joint: Option<ph2d_editor_core::InspectorJointInfo>,
+    inspector_wheel: Option<ph2d_editor_core::InspectorWheelInfo>,
 }
 
 /// O índice de assets publicado ao navegador, a secção COMPONENT e o cartão de propriedades, e a família da física:
 /// o corpo (com as contagens do Join, do Rig e das peças), a junta e a roda.
-#[allow(clippy::too_many_arguments, clippy::type_complexity)]
+#[allow(clippy::too_many_arguments)]
 fn physics(
     hero: &HeroScreen,
     sim: &mut SimWorld,
@@ -258,13 +272,7 @@ fn physics(
     joint_paste_targets: usize,
     wheel_body_pick: Option<u64>,
     wheel_rope_pick: Option<u64>,
-) -> (
-    Option<ph2d_editor_core::screens::hero::InspectorInstanceInfo>,
-    Option<ph2d_editor_core::screens::hero::InspectorPropertiesInfo>,
-    Option<ph2d_editor_core::InspectorPhysicsInfo>,
-    Option<ph2d_editor_core::InspectorJointInfo>,
-    Option<ph2d_editor_core::InspectorWheelInfo>,
-) {
+) -> PhysicsSections {
     let sel = inspector_selection;
     // ⭐⭐ **O ÍNDICE DE ASSETS** (plano `docs/Components/07`, wave A2) — a junção das duas fontes,
     // publicada para o navegador. ⚠️ Só com o painel ABERTO: é uma travessia do mundo, e pagá-la
@@ -400,26 +408,24 @@ fn physics(
             wheel_rope_pick == Some(b),
         )
     });
-    (
+    PhysicsSections {
         inspector_instance,
         inspector_properties,
         inspector_physics,
         inspector_joint,
         inspector_wheel,
-    )
+    }
+}
+
+/// O que o [`identity`] constrói, com os nomes que a [`publish`] publica.
+struct Identity {
+    inspector_transform: Option<ph2d_editor_core::InspectorTransformInfo>,
+    inspector_visibility: Option<ph2d_editor_core::InspectorVisibilityInfo>,
+    inspector_name: Option<ph2d_editor_core::InspectorNameInfo>,
 }
 
 /// O transform, a visibilidade (com o «Mixed» da multi-seleção) e o nome da seleção primária.
-#[allow(clippy::type_complexity)] // os três valores, pela ordem em que o bloco os construía
-fn identity(
-    hero: &HeroScreen,
-    sim: &SimWorld,
-    inspector_selection: &[u64],
-) -> (
-    Option<ph2d_editor_core::InspectorTransformInfo>,
-    Option<ph2d_editor_core::InspectorVisibilityInfo>,
-    Option<ph2d_editor_core::InspectorNameInfo>,
-) {
+fn identity(hero: &HeroScreen, sim: &SimWorld, inspector_selection: &[u64]) -> Identity {
     // M14.A: live Transform snapshot for the inspector. Same
     // ADR-0021 / HR-8 boundary as sprite snapshot — Inspector
     // never reads SimWorld; the host bridges. Lands on every
@@ -485,5 +491,9 @@ fn identity(
             name,
         })
     });
-    (inspector_transform, inspector_visibility, inspector_name)
+    Identity {
+        inspector_transform,
+        inspector_visibility,
+        inspector_name,
+    }
 }

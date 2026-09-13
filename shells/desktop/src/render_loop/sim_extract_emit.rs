@@ -344,7 +344,6 @@ fn spawn(
 
 /// A janela da região estreitada na UV da fonte (com o meio-texel do filtro) — fora de uma pré-visualização de
 /// ferramenta, cuja textura é o bake inteiro.
-#[allow(clippy::let_and_return)] // o bloco muda-se verbatim, com o `let` que o nomeia
 fn region_uv(
     atlas_uv: [f32; 4],
     region: Option<ph2d_ecs::SpriteRegion>,
@@ -353,7 +352,7 @@ fn region_uv(
     spr: &Sprite,
     atlas: &TextureAtlas,
 ) -> [f32; 4] {
-    let atlas_uv = if let Some(region) = region.filter(|_| override_for_entity.is_none()) {
+    if let Some(region) = region.filter(|_| override_for_entity.is_none()) {
         match src_dims {
             Some((sw, sh)) => {
                 // Half-texel size in the SAMPLED texture's UV
@@ -384,8 +383,7 @@ fn region_uv(
         }
     } else {
         atlas_uv
-    };
-    atlas_uv
+    }
 }
 
 /// A amostragem, a transformação de UV, a tinta em cascata e as flags empacotadas da instância.

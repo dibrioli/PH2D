@@ -128,7 +128,7 @@ pub(crate) fn drain_merge_sprites(
         return true;
     }
 
-    let Some((
+    let Some(warp::MergeGrid {
         union_min_x,
         union_max_x,
         union_min_y,
@@ -138,7 +138,7 @@ pub(crate) fn drain_merge_sprites(
         out_pm,
         out_w,
         out_h,
-    )) = warp::merge_grid(&srcs, project_pm, renderer, toasts)
+    }) = warp::merge_grid(&srcs, project_pm, renderer, toasts)
     else {
         return true;
     };

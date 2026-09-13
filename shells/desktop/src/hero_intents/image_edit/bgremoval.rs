@@ -289,7 +289,7 @@ fn spawn_islands(
         }
     }
 
-    let msg = if spawn_failed == 0 {
+    if spawn_failed == 0 {
         format!(
             "Bg Removal · {} island(s), {} spawned · Cmd+Z restores",
             islands.len(),
@@ -302,6 +302,5 @@ fn spawn_islands(
             spawned,
             spawn_failed
         )
-    };
-    msg
+    }
 }

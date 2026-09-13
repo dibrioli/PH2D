@@ -129,7 +129,7 @@ pub(super) fn draw_overlays(
     // They can stay in Vello because they don't need byte-for-byte
     // parity with anything. Gated on the preview being loaded so they
     // disappear in sync with the sprite-pipeline live preview.
-    if let Some(preview) = &*bgremoval_preview {
+    if let Some(preview) = bgremoval_preview {
         let entity = ph2d_ecs::Entity::from_bits(preview.entity_bits);
         // ⚠️ Pose de MUNDO — vide o doc do `sprite_image_to_screen_affine`.
         if let (Some(tr), Some(sprite)) = (

@@ -237,11 +237,12 @@ pub(crate) fn paint_joint_section(
     info: &InspectorJointInfo,
 ) -> f32 {
     let header_h = TypeToken::Md.px() + Spacing::Md.px(); // LITERAL-PX-OK: section header band height
-    let color_id = ids::INSP_LIVE_JOINT_COLOR;
+    let color_id = core_ids::INSP_LIVE_JOINT_COLOR;
     let rgba = store
         .widget_color(color_id)
         .unwrap_or([0x88, 0x88, 0x88, 0xff]); // LITERAL-COLOR-OK: neutral default section accent
-    let header = section_header(store, ids::INSP_LIVE_JOINT_SECTION, "Physics Joint").color(rgba);
+    let header =
+        section_header(store, core_ids::INSP_LIVE_JOINT_SECTION, "Physics Joint").color(rgba);
     let header_rect = Rect::new(x, y, w, header_h);
     paint_section_header(&header, header_rect, scene, text_system, theme);
     if let Some(circle_rect) = ph2d_editor_core::widget::color_circle_hit_rect(&header, header_rect)
@@ -255,7 +256,7 @@ pub(crate) fn paint_joint_section(
     //    repente por baixo de um chevron a rodar — as duas metades a discordar outra vez.
     let Some(fold) = SectionFold::begin(
         store,
-        ids::INSP_LIVE_JOINT_SECTION,
+        core_ids::INSP_LIVE_JOINT_SECTION,
         x,
         w,
         y + header_h,
@@ -281,8 +282,8 @@ pub(crate) fn paint_joint_section(
         w,
         yy,
         "Active",
-        crate::ids::INSP_JOINT_ACTIVE_GROUP,
-        &crate::ids::INSP_JOINT_ACTIVE,
+        ids::INSP_JOINT_ACTIVE_GROUP,
+        &ids::INSP_JOINT_ACTIVE,
         &SWITCH_LABELS,
         u8::from(info.active),
     );
@@ -313,8 +314,8 @@ pub(crate) fn paint_joint_section(
         w,
         yy,
         "Kind",
-        crate::ids::INSP_JOINT_KIND_GROUP,
-        &crate::ids::INSP_JOINT_KIND,
+        ids::INSP_JOINT_KIND_GROUP,
+        &ids::INSP_JOINT_KIND,
         &KIND_LABELS,
         info.kind_tag,
     );
@@ -351,11 +352,11 @@ pub(crate) fn paint_joint_section(
     // parâmetro. O Copy é sempre oferecido: a §12 só existe com um joint
     // selecionado, e todo joint tem propriedades a copiar.
     let copy_rect = Rect::new(x, yy, w, h);
-    let copy = Button::new(crate::ids::INSP_JOINT_COPY, "Copy Properties")
+    let copy = Button::new(ids::INSP_JOINT_COPY, "Copy Properties")
         .kind(ButtonKind::Default)
-        .visual(store.button_visual(crate::ids::INSP_JOINT_COPY));
+        .visual(store.button_visual(ids::INSP_JOINT_COPY));
     paint_button(&copy, copy_rect, scene, text_system, theme);
-    hit_index.register(crate::ids::INSP_JOINT_COPY, copy_rect);
+    hit_index.register(ids::INSP_JOINT_COPY, copy_rect);
     yy += h;
     // ⚠️ **O Paste só existe com algo copiado**, e a contagem entra no RÓTULO
     // quando ele vai tocar mais de um: o fan-out é o que o gesto tem de valioso,
@@ -366,20 +367,20 @@ pub(crate) fn paint_joint_section(
     if info.paste_targets > 0 {
         let label = paste_label(info.paste_targets);
         let paste_rect = Rect::new(x, yy, w, h);
-        let paste = Button::new(crate::ids::INSP_JOINT_PASTE, label)
+        let paste = Button::new(ids::INSP_JOINT_PASTE, label)
             .kind(ButtonKind::Default)
-            .visual(store.button_visual(crate::ids::INSP_JOINT_PASTE));
+            .visual(store.button_visual(ids::INSP_JOINT_PASTE));
         paint_button(&paste, paste_rect, scene, text_system, theme);
-        hit_index.register(crate::ids::INSP_JOINT_PASTE, paste_rect);
+        hit_index.register(ids::INSP_JOINT_PASTE, paste_rect);
         yy += h;
     }
 
     let btn_rect = Rect::new(x, yy, w, h);
-    let btn = Button::new(crate::ids::INSP_JOINT_REMOVE, "Delete Joint")
+    let btn = Button::new(ids::INSP_JOINT_REMOVE, "Delete Joint")
         .kind(ButtonKind::Default)
-        .visual(store.button_visual(crate::ids::INSP_JOINT_REMOVE));
+        .visual(store.button_visual(ids::INSP_JOINT_REMOVE));
     paint_button(&btn, btn_rect, scene, text_system, theme);
-    hit_index.register(crate::ids::INSP_JOINT_REMOVE, btn_rect);
+    hit_index.register(ids::INSP_JOINT_REMOVE, btn_rect);
     fold.finish(store, scene, hit_index, yy + h + SECTION_BOTTOM_PAD_PX)
 }
 
@@ -424,16 +425,16 @@ fn paint_kind_params(
             w,
             yy,
             limits_label(info.kind_tag),
-            crate::ids::INSP_JOINT_LIMITS_GROUP,
-            &crate::ids::INSP_JOINT_LIMITS,
+            ids::INSP_JOINT_LIMITS_GROUP,
+            &ids::INSP_JOINT_LIMITS,
             &SWITCH_LABELS,
             u8::from(info.limits_enabled),
         );
         if info.limits_enabled {
             let unit = limit_unit(info.kind_tag);
             for (label, id) in [
-                (format!("Min ({unit})"), crate::ids::INSP_JOINT_LIMIT_MIN),
-                (format!("Max ({unit})"), crate::ids::INSP_JOINT_LIMIT_MAX),
+                (format!("Min ({unit})"), ids::INSP_JOINT_LIMIT_MIN),
+                (format!("Max ({unit})"), ids::INSP_JOINT_LIMIT_MAX),
             ] {
                 yy = num_row(
                     scene,
@@ -461,7 +462,7 @@ fn paint_kind_params(
             w,
             yy,
             "Rest Length (m)",
-            crate::ids::INSP_JOINT_REST_LENGTH,
+            ids::INSP_JOINT_REST_LENGTH,
         );
     }
     // A solda que CEDE (W-SoftWeld). A chave vem ANTES da mola porque é ela quem
@@ -477,8 +478,8 @@ fn paint_kind_params(
             w,
             yy,
             "Weld",
-            crate::ids::INSP_JOINT_SOFT_GROUP,
-            &crate::ids::INSP_JOINT_SOFT,
+            ids::INSP_JOINT_SOFT_GROUP,
+            &ids::INSP_JOINT_SOFT,
             &SOFT_LABELS,
             u8::from(info.soft),
         );
@@ -489,8 +490,8 @@ fn paint_kind_params(
     // re-semeia a ESCALA deles.
     if kind_has_spring(info.kind_tag, info.soft) {
         for (label, id) in [
-            ("Stiffness", crate::ids::INSP_JOINT_STIFFNESS),
-            ("Damping", crate::ids::INSP_JOINT_DAMPING),
+            ("Stiffness", ids::INSP_JOINT_STIFFNESS),
+            ("Damping", ids::INSP_JOINT_DAMPING),
         ] {
             yy = num_row(
                 scene,
@@ -526,7 +527,7 @@ fn paint_kind_params(
             w,
             yy,
             label,
-            crate::ids::INSP_JOINT_MAX_LENGTH,
+            ids::INSP_JOINT_MAX_LENGTH,
         );
     }
     if info.kind_tag == KIND_PULLEY {
@@ -537,13 +538,13 @@ fn paint_kind_params(
         // corda, para não dar um puxão, e ali o desenho quase não muda.
         let rect = Rect::new(x, yy, w, ROW_H_PX);
         let btn = Button::new(
-            crate::ids::INSP_JOINT_ADD_WHEEL,
+            ids::INSP_JOINT_ADD_WHEEL,
             format!("Add Wheel ({} on this rope)", info.wheel_count),
         )
         .kind(ButtonKind::Default)
-        .visual(store.button_visual(crate::ids::INSP_JOINT_ADD_WHEEL));
+        .visual(store.button_visual(ids::INSP_JOINT_ADD_WHEEL));
         paint_button(&btn, rect, scene, text_system, theme);
-        hit_index.register(crate::ids::INSP_JOINT_ADD_WHEEL, rect);
+        hit_index.register(ids::INSP_JOINT_ADD_WHEEL, rect);
         yy += ROW_H_PX;
     }
     yy

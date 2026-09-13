@@ -159,11 +159,12 @@ pub(crate) fn paint_sampling_section(
     info: &InspectorSamplingInfo,
 ) -> f32 {
     let header_h = TypeToken::Md.px() + Spacing::Md.px(); // LITERAL-PX-OK: section header band height
-    let color_id = ids::INSP_LIVE_SAMPLING_COLOR;
+    let color_id = core_ids::INSP_LIVE_SAMPLING_COLOR;
     let rgba = store
         .widget_color(color_id)
         .unwrap_or([0x88, 0x88, 0x88, 0xff]); // LITERAL-COLOR-OK: neutral default section accent
-    let header = section_header(store, ids::INSP_LIVE_SAMPLING_SECTION, "Sampling").color(rgba);
+    let header =
+        section_header(store, core_ids::INSP_LIVE_SAMPLING_SECTION, "Sampling").color(rgba);
     let header_rect = Rect::new(x, y, w, header_h);
     paint_section_header(&header, header_rect, scene, text_system, theme);
     if let Some(circle_rect) = ph2d_editor_core::widget::color_circle_hit_rect(&header, header_rect)
@@ -177,7 +178,7 @@ pub(crate) fn paint_sampling_section(
     //    repente por baixo de um chevron a rodar — as duas metades a discordar outra vez.
     let Some(fold) = SectionFold::begin(
         store,
-        ids::INSP_LIVE_SAMPLING_SECTION,
+        core_ids::INSP_LIVE_SAMPLING_SECTION,
         x,
         w,
         y + header_h,
@@ -215,12 +216,12 @@ pub(crate) fn paint_sampling_section(
     // `Tabs` num painel estreito, e o adaptativo reflui. A alternativa (manter três abas) foi o que
     // produziu o `.min(2)` que mentia.
     let seg = SegmentedAdaptive::new(
-        ids::INSP_LIVE_SAMPLING_SECTION,
+        core_ids::INSP_LIVE_SAMPLING_SECTION,
         "Texture Filter",
         // ⚠️ **`zip` com o array INTEIRO e depois `filter_map`** — o par `(id, rótulo)` tem de ser
         // formado ANTES de descartar o buraco, senão o rótulo `n+1` casa com o id `n` e o segmento
         // passa a escrever o modo do vizinho (vide o doc de `FILTER_LABELS`).
-        crate::ids::INSP_SAMPLE_FILTER
+        ids::INSP_SAMPLE_FILTER
             .iter()
             .zip(FILTER_LABELS)
             .filter_map(|(&id, label)| label.map(|l| SegmentedOption::new(id, l)))
@@ -257,9 +258,9 @@ pub(crate) fn paint_sampling_section(
     );
     yy += label_h;
     let repeat_seg = SegmentedAdaptive::new(
-        ids::INSP_LIVE_SAMPLING_SECTION,
+        core_ids::INSP_LIVE_SAMPLING_SECTION,
         "Texture Repeat",
-        crate::ids::INSP_SAMPLE_REPEAT
+        ids::INSP_SAMPLE_REPEAT
             .iter()
             .zip(REPEAT_LABELS)
             .map(|(&id, label)| SegmentedOption::new(id, label))
@@ -295,8 +296,8 @@ pub(crate) fn paint_sampling_section(
         w,
         yy,
         "UV Scale",
-        crate::ids::INSP_SAMPLE_UV_SCALE_X,
-        crate::ids::INSP_SAMPLE_UV_SCALE_Y,
+        ids::INSP_SAMPLE_UV_SCALE_X,
+        ids::INSP_SAMPLE_UV_SCALE_Y,
     );
     yy = uv_pair_row(
         scene,
@@ -308,8 +309,8 @@ pub(crate) fn paint_sampling_section(
         w,
         yy,
         "UV Offset",
-        crate::ids::INSP_SAMPLE_UV_OFFSET_X,
-        crate::ids::INSP_SAMPLE_UV_OFFSET_Y,
+        ids::INSP_SAMPLE_UV_OFFSET_X,
+        ids::INSP_SAMPLE_UV_OFFSET_Y,
     );
 
     // ⛔ **AQUI ficava «Anti-halo: enabled (atlas-level)», e não volta como literal.** O doc de

@@ -82,8 +82,8 @@ pub(super) fn paint_part_face(
         w,
         yy,
         "Collider",
-        ids::INSP_LIVE_PHYSICS_COLOR,
-        &crate::ids::INSP_PHYS_SHAPE,
+        core_ids::INSP_LIVE_PHYSICS_COLOR,
+        &ids::INSP_PHYS_SHAPE,
         &super::physics::SHAPE_LABELS,
         info.shape_tag,
     );
@@ -99,12 +99,12 @@ pub(super) fn paint_part_face(
         info.shape_tag,
     );
     for (label, id) in [
-        ("Offset X (m)", crate::ids::INSP_PHYS_OFFSET_X),
-        ("Offset Y (m)", crate::ids::INSP_PHYS_OFFSET_Y),
+        ("Offset X (m)", ids::INSP_PHYS_OFFSET_X),
+        ("Offset Y (m)", ids::INSP_PHYS_OFFSET_Y),
         // A densidade de uma peça é REAL: ela contribui para a massa do corpo
         // composto. O toggle Auto|Manual do W-Mass fica de fora porque o
         // `MassOverride` é do CORPO — uma peça não tem massa própria a sobrepor.
-        ("Density", crate::ids::INSP_PHYS_DENSITY),
+        ("Density", ids::INSP_PHYS_DENSITY),
     ] {
         yy = num_row(
             scene,

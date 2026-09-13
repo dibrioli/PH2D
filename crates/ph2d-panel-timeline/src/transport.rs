@@ -24,6 +24,11 @@ use ph2d_tokens::{ColorToken, Density, ROW_H_PX, Radius, Spacing, StrokeToken, T
 
 use crate::ids;
 use crate::tab::Tab;
+use ph2d_editor_core::ids::{
+    TIMELINE_ADD_MARKER, TIMELINE_AUTOKEY, TIMELINE_FRAME_NUM, TIMELINE_GO_END, TIMELINE_GO_START,
+    TIMELINE_LOOP, TIMELINE_MOTION_PATH, TIMELINE_NEXT_FRAME, TIMELINE_PHYSICS, TIMELINE_PINGPONG,
+    TIMELINE_PLAY, TIMELINE_PREV_FRAME, TIMELINE_RECORD, TIMELINE_SNAP, TIMELINE_TIME_NUM,
+};
 
 pub(crate) const BTN_W: f32 = 30.0; // LITERAL-PX-OK: square transport icon-button
 const ADD_MARKER_W: f32 = 40.0; // LITERAL-PX-OK: "+M" add-marker button width
@@ -376,22 +381,8 @@ fn paint_item(
             // |< < >/|| > >| — jump to start, step back, play/pause, step forward,
             // jump to end. The skip glyphs bracket the frame-steppers, as every
             // transport does.
-            let mut x = icon_button(
-                ctx,
-                theme,
-                x,
-                y,
-                ph2d_editor_core::ids::TIMELINE_GO_START,
-                IconId::SkipBack,
-            ) + half;
-            x = icon_button(
-                ctx,
-                theme,
-                x,
-                y,
-                ph2d_editor_core::ids::TIMELINE_PREV_FRAME,
-                IconId::ChevronLeft,
-            ) + half;
+            let mut x = icon_button(ctx, theme, x, y, TIMELINE_GO_START, IconId::SkipBack) + half;
+            x = icon_button(ctx, theme, x, y, TIMELINE_PREV_FRAME, IconId::ChevronLeft) + half;
             let play_glyph = if snap.playing {
                 IconId::Pause
             } else {
@@ -406,31 +397,10 @@ fn paint_item(
             x = if crate::tab::rows(view.tab, snap) == crate::tab::Rows::Containers {
                 widgets::dead_icon_button(ctx, theme, x, y, play_glyph)
             } else {
-                icon_button(
-                    ctx,
-                    theme,
-                    x,
-                    y,
-                    ph2d_editor_core::ids::TIMELINE_PLAY,
-                    play_glyph,
-                )
+                icon_button(ctx, theme, x, y, TIMELINE_PLAY, play_glyph)
             } + half;
-            x = icon_button(
-                ctx,
-                theme,
-                x,
-                y,
-                ph2d_editor_core::ids::TIMELINE_NEXT_FRAME,
-                IconId::ChevronRight,
-            ) + half;
-            icon_button(
-                ctx,
-                theme,
-                x,
-                y,
-                ph2d_editor_core::ids::TIMELINE_GO_END,
-                IconId::SkipForward,
-            );
+            x = icon_button(ctx, theme, x, y, TIMELINE_NEXT_FRAME, IconId::ChevronRight) + half;
+            icon_button(ctx, theme, x, y, TIMELINE_GO_END, IconId::SkipForward);
         }
         // **I** — the active clip's keys, played backwards. Beside the transport it
         // reads as what it is: a thing you do to the whole clip, not to a selection.
@@ -458,7 +428,7 @@ fn paint_item(
             x,
             y,
             "panel.timeline.time_seconds",
-            ph2d_editor_core::ids::TIMELINE_TIME_NUM,
+            TIMELINE_TIME_NUM,
             snap.time_seconds,
             1.0 / fps,
             2,
@@ -470,7 +440,7 @@ fn paint_item(
             x,
             y,
             "panel.timeline.frame",
-            ph2d_editor_core::ids::TIMELINE_FRAME_NUM,
+            TIMELINE_FRAME_NUM,
             snap.frame as f64,
             1.0,
             0,
@@ -486,7 +456,7 @@ fn paint_item(
                 theme,
                 x,
                 y,
-                ph2d_editor_core::ids::TIMELINE_LOOP,
+                TIMELINE_LOOP,
                 ph2d_i18n::tr("panel.timeline.loop"),
                 snap.loop_range.is_some() && !snap.loop_ping_pong,
             );
@@ -497,7 +467,7 @@ fn paint_item(
                 theme,
                 x,
                 y,
-                ph2d_editor_core::ids::TIMELINE_PINGPONG,
+                TIMELINE_PINGPONG,
                 ph2d_i18n::tr("panel.timeline.ping_pong"),
                 snap.loop_range.is_some() && snap.loop_ping_pong,
             );
@@ -511,7 +481,7 @@ fn paint_item(
                 theme,
                 x,
                 y,
-                ph2d_editor_core::ids::TIMELINE_PHYSICS,
+                TIMELINE_PHYSICS,
                 ph2d_i18n::tr("panel.timeline.physics"),
                 snap.simulate_physics,
             );
@@ -522,7 +492,7 @@ fn paint_item(
                 theme,
                 x,
                 y,
-                ph2d_editor_core::ids::TIMELINE_AUTOKEY,
+                TIMELINE_AUTOKEY,
                 ph2d_i18n::tr("panel.timeline.autokey"),
                 snap.auto_key,
             );
@@ -535,7 +505,7 @@ fn paint_item(
                 theme,
                 x,
                 y,
-                ph2d_editor_core::ids::TIMELINE_RECORD,
+                TIMELINE_RECORD,
                 ph2d_i18n::tr("panel.timeline.record"),
                 snap.performing,
             );
@@ -550,7 +520,7 @@ fn paint_item(
                 theme,
                 x,
                 y,
-                ph2d_editor_core::ids::TIMELINE_MOTION_PATH,
+                TIMELINE_MOTION_PATH,
                 ph2d_i18n::tr("panel.timeline.motion_path"),
                 snap.position_is_path,
             );
@@ -561,7 +531,7 @@ fn paint_item(
                 theme,
                 x,
                 y,
-                ph2d_editor_core::ids::TIMELINE_SNAP,
+                TIMELINE_SNAP,
                 ph2d_i18n::tr("panel.timeline.snap"),
                 snap.frame_snap,
             );
@@ -580,19 +550,14 @@ fn paint_item(
 /// "+Track" convention (the affordance that ADDS something).
 fn add_marker_button(ctx: &mut PaintCtx, theme: Theme, x: f32, y: f32) {
     let rect = Rect::new(x, y, ADD_MARKER_W, ROW_H_PX);
-    let state = ctx
-        .host
-        .store()
-        .button_visual(ph2d_editor_core::ids::TIMELINE_ADD_MARKER);
+    let state = ctx.host.store().button_visual(TIMELINE_ADD_MARKER);
     let btn = Button::new(
-        ph2d_editor_core::ids::TIMELINE_ADD_MARKER,
+        TIMELINE_ADD_MARKER,
         ph2d_i18n::tr("panel.timeline.add_marker"),
     )
     .visual(state);
     paint_button(&btn, rect, ctx.scene, ctx.text_system, theme);
-    ctx.host
-        .hit_index_mut()
-        .register(ph2d_editor_core::ids::TIMELINE_ADD_MARKER, rect);
+    ctx.host.hit_index_mut().register(TIMELINE_ADD_MARKER, rect);
 }
 
 /// The bar's reusable pieces (icon-button, number chip, toggle, label) — a sibling module

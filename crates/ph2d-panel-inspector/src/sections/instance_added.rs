@@ -21,7 +21,7 @@ pub(crate) fn rows(info: &InspectorInstanceInfo) -> usize {
     let painted = info
         .added_rows
         .len()
-        .min(crate::ids::INSP_INSTANCE_APPLY_ADDED.len());
+        .min(ids::INSP_INSTANCE_APPLY_ADDED.len());
     painted + usize::from(buttonless(info) > 0)
 }
 
@@ -29,7 +29,7 @@ pub(crate) fn rows(info: &InspectorInstanceInfo) -> usize {
 fn buttonless(info: &InspectorInstanceInfo) -> usize {
     info.added_rows
         .len()
-        .saturating_sub(crate::ids::INSP_INSTANCE_APPLY_ADDED.len())
+        .saturating_sub(ids::INSP_INSTANCE_APPLY_ADDED.len())
 }
 
 /// Pinta um botão por peça acrescentada. Devolve o `y` de baixo.
@@ -47,7 +47,7 @@ pub(crate) fn paint(
     for (i, row) in info.added_rows.iter().enumerate() {
         // ⚠️ A tabela de ids tem tecto, e o `get` é o que impede um índice fora dela — o que sobra
         // é CONTADO na linha seguinte, nunca truncado em silêncio.
-        let Some(&id) = crate::ids::INSP_INSTANCE_APPLY_ADDED.get(i) else {
+        let Some(&id) = ids::INSP_INSTANCE_APPLY_ADDED.get(i) else {
             break;
         };
         let host = Rect::new(at.tx, ty, at.tw, at.line);

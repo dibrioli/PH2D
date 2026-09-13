@@ -27,11 +27,12 @@ pub(crate) fn paint_render_source_section(
     let row_gap = ph2d_tokens::control_gap_px();
     let row_h = line_font + row_gap;
     let header_h = TypeToken::Md.px() + Spacing::Md.px(); // LITERAL-PX-OK: section header band height
-    let color_id = ids::INSP_LIVE_RENDER_COLOR;
+    let color_id = core_ids::INSP_LIVE_RENDER_COLOR;
     let rgba = store
         .widget_color(color_id)
         .unwrap_or([0x88, 0x88, 0x88, 0xff]); // LITERAL-COLOR-OK: neutral default for unconfigured section accent
-    let header = section_header(store, ids::INSP_LIVE_RENDER_SECTION, "Render Source").color(rgba);
+    let header =
+        section_header(store, core_ids::INSP_LIVE_RENDER_SECTION, "Render Source").color(rgba);
     let header_rect = Rect::new(x, y, w, header_h);
     paint_section_header(&header, header_rect, scene, text_system, theme);
     if let Some(circle_rect) = ph2d_editor_core::widget::color_circle_hit_rect(&header, header_rect)
@@ -45,7 +46,7 @@ pub(crate) fn paint_render_source_section(
     //    repente por baixo de um chevron a rodar — as duas metades a discordar outra vez.
     let Some(fold) = SectionFold::begin(
         store,
-        ids::INSP_LIVE_RENDER_SECTION,
+        core_ids::INSP_LIVE_RENDER_SECTION,
         x,
         w,
         y + header_h,
@@ -144,7 +145,7 @@ pub(crate) fn paint_render_source_section(
 
     let reimport_h = 30.0_f32; // LITERAL-PX-OK: Reimport button height
     let btn_rect = Rect::new(x, cur_y, w, reimport_h);
-    let id = crate::ids::INSP_RENDER_SOURCE_REIMPORT;
+    let id = ids::INSP_RENDER_SOURCE_REIMPORT;
     let state = if !info.can_reimport {
         (ButtonState::Disabled, ph2d_editor_core::motion::SETTLED)
     } else {
@@ -244,17 +245,17 @@ fn paint_strategy_row(
             (
                 "Atlas",
                 matches!(info.source_kind, InspectorSpriteSource::Atlas { .. }),
-                ids::INSP_RENDER_STRATEGY_ATLAS,
+                core_ids::INSP_RENDER_STRATEGY_ATLAS,
             ),
             (
                 "Individual",
                 matches!(info.source_kind, InspectorSpriteSource::Individual { .. }),
-                ids::INSP_RENDER_STRATEGY_INDIVIDUAL,
+                core_ids::INSP_RENDER_STRATEGY_INDIVIDUAL,
             ),
             (
                 "Hand-packed",
                 matches!(info.source_kind, InspectorSpriteSource::HandPacked { .. }),
-                ids::INSP_RENDER_STRATEGY_HANDPACKED,
+                core_ids::INSP_RENDER_STRATEGY_HANDPACKED,
             ),
         ],
         scene,
@@ -399,7 +400,7 @@ fn paint_provenance(
     // cursor»*, e é ela que dá de graça o recorte do corpo e a oclusão por um painel de cima.
     // ⛔ Sem `populate`: quem consome este id é o caminho da QUEDA, não o de clique — a mesma
     // classe das *swatches* do picker, e o `HIT_PARITY_ALLOW` nomeia-a.
-    hit_index.register(crate::ids::INSP_RENDER_TEXTURE_SLOT, slot);
+    hit_index.register(ids::INSP_RENDER_TEXTURE_SLOT, slot);
     let mut cur_y = slot.y + slot.h + row_gap;
     // ⚠️ **O TAMANHO de origem fica ao lado da ranhura**, e não numa função irmã: as duas são a
     // mesma pergunta — *de onde vêm estes pixels, e que tamanho tinham* —, e separá-las custou ao
@@ -459,13 +460,13 @@ fn paint_region_rows(
     if !matches!(info.source_kind, InspectorSpriteSource::HandPacked { .. }) {
         let cb_h = 18.0_f32; // LITERAL-PX-OK: Checkbox visual height
         let re_value = store
-            .checkbox(crate::ids::INSP_REGION_ENABLED)
+            .checkbox(ids::INSP_REGION_ENABLED)
             .map_or(CheckboxValue::Unchecked, |(_, v)| v);
         let re_rect = Rect::new(x, cur_y, w, cb_h);
-        hit_index.register(crate::ids::INSP_REGION_ENABLED, re_rect);
+        hit_index.register(ids::INSP_REGION_ENABLED, re_rect);
         paint_checkbox(
-            &Checkbox::new(crate::ids::INSP_REGION_ENABLED, "Region")
-                .visual(store.checkbox_visual(crate::ids::INSP_REGION_ENABLED))
+            &Checkbox::new(ids::INSP_REGION_ENABLED, "Region")
+                .visual(store.checkbox_visual(ids::INSP_REGION_ENABLED))
                 .value(re_value),
             re_rect,
             scene,
@@ -487,7 +488,7 @@ fn paint_region_rows(
                 store,
                 Rect::new(x, cur_y, cell_w, field_h),
                 "X",
-                crate::ids::INSP_REGION_X,
+                ids::INSP_REGION_X,
                 label_font,
                 theme,
             );
@@ -498,7 +499,7 @@ fn paint_region_rows(
                 store,
                 Rect::new(x + cell_w + cell_gap, cur_y, cell_w, field_h),
                 "Y",
-                crate::ids::INSP_REGION_Y,
+                ids::INSP_REGION_Y,
                 label_font,
                 theme,
             );
@@ -511,7 +512,7 @@ fn paint_region_rows(
                 store,
                 Rect::new(x, cur_y, cell_w, field_h),
                 "W",
-                crate::ids::INSP_REGION_W,
+                ids::INSP_REGION_W,
                 label_font,
                 theme,
             );
@@ -522,20 +523,20 @@ fn paint_region_rows(
                 store,
                 Rect::new(x + cell_w + cell_gap, cur_y, cell_w, field_h),
                 "H",
-                crate::ids::INSP_REGION_H,
+                ids::INSP_REGION_H,
                 label_font,
                 theme,
             );
             cur_y += field_h + row_gap;
 
             let fc_value = store
-                .checkbox(crate::ids::INSP_REGION_FILTER_CLIP)
+                .checkbox(ids::INSP_REGION_FILTER_CLIP)
                 .map_or(CheckboxValue::Checked, |(_, v)| v);
             let fc_rect = Rect::new(x, cur_y, w, cb_h);
-            hit_index.register(crate::ids::INSP_REGION_FILTER_CLIP, fc_rect);
+            hit_index.register(ids::INSP_REGION_FILTER_CLIP, fc_rect);
             paint_checkbox(
-                &Checkbox::new(crate::ids::INSP_REGION_FILTER_CLIP, "Filter Clip")
-                    .visual(store.checkbox_visual(crate::ids::INSP_REGION_FILTER_CLIP))
+                &Checkbox::new(ids::INSP_REGION_FILTER_CLIP, "Filter Clip")
+                    .visual(store.checkbox_visual(ids::INSP_REGION_FILTER_CLIP))
                     .value(fc_value),
                 fc_rect,
                 scene,

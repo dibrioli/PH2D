@@ -50,7 +50,7 @@ const CHECK_H: f32 = 18.0; // LITERAL-PX-OK: altura visual do Checkbox
 pub(crate) fn mount_options(info: &InspectorAnchorInfo) -> Vec<DropdownOption<Option<usize>>> {
     let mut out = Vec::with_capacity(info.parent_anchors.len() + 1);
     out.push(DropdownOption::new(
-        crate::ids::INSP_MOUNT_NONE_OPT,
+        ids::INSP_MOUNT_NONE_OPT,
         None,
         MOUNT_NONE_LABEL,
     ));
@@ -60,7 +60,7 @@ pub(crate) fn mount_options(info: &InspectorAnchorInfo) -> Vec<DropdownOption<Op
     for (i, (name, &id)) in info
         .parent_anchors
         .iter()
-        .zip(crate::ids::INSP_MOUNT_OPT.iter())
+        .zip(ids::INSP_MOUNT_OPT.iter())
         .enumerate()
     {
         out.push(DropdownOption::new(id, Some(i), name.clone()));
@@ -109,18 +109,18 @@ pub(crate) fn paint_mount_row(
     let chip_x = x + LABEL_COL_W + Spacing::Md.px();
     let chip_w = (control_w - LABEL_COL_W - Spacing::Md.px()).max(0.0);
     let rect = Rect::new(chip_x, y, chip_w, h);
-    hit_index.register(crate::ids::INSP_MOUNT_PICK, rect);
+    hit_index.register(ids::INSP_MOUNT_PICK, rect);
 
     // ⚠️ **A verdade é do MODELO; o store só guarda se o popover está aberto.** Um índice vindo do
     // store sobreviveria à troca de seleção e mostraria a montagem do objeto anterior — a mesma
     // lei que o `open_anchor_row` já paga: *o seed é dono do VALOR, o dispatch é dono do ESTADO*.
     let open = matches!(
-        store.get(crate::ids::INSP_MOUNT_PICK),
+        store.get(ids::INSP_MOUNT_PICK),
         Some(InteractiveState::Dropdown { open: true, .. })
     );
-    let mut dd = Dropdown::new(crate::ids::INSP_MOUNT_PICK, "", mount_options(info))
+    let mut dd = Dropdown::new(ids::INSP_MOUNT_PICK, "", mount_options(info))
         .open(open)
-        .visual(store.dropdown_visual(crate::ids::INSP_MOUNT_PICK))
+        .visual(store.dropdown_visual(ids::INSP_MOUNT_PICK))
         .placeholder(mount_placeholder(info));
     if let Some(i) = info.mount_index() {
         dd.select(Some(i));
@@ -171,11 +171,11 @@ pub(crate) fn paint_mount_row(
         );
         cur_y += font + Spacing::Xs.px();
         let btn = Rect::new(x, cur_y, w, BTN_H);
-        hit_index.register(crate::ids::INSP_MOUNT_SNAP, btn);
+        hit_index.register(ids::INSP_MOUNT_SNAP, btn);
         paint_button(
-            &Button::new(crate::ids::INSP_MOUNT_SNAP, "Reset to Anchor")
+            &Button::new(ids::INSP_MOUNT_SNAP, "Reset to Anchor")
                 .kind(ButtonKind::Default)
-                .visual(store.button_visual(crate::ids::INSP_MOUNT_SNAP)),
+                .visual(store.button_visual(ids::INSP_MOUNT_SNAP)),
             btn,
             scene,
             text_system,
@@ -231,12 +231,12 @@ pub(crate) fn paint_visibility_rows(
     let mut cur_y = y;
     for (id, label, on) in [
         (
-            crate::ids::INSP_ANCHOR_VIS_EDITOR,
+            ids::INSP_ANCHOR_VIS_EDITOR,
             "Always show anchors",
             info.vis_in_editor,
         ),
         (
-            crate::ids::INSP_ANCHOR_VIS_RUNTIME,
+            ids::INSP_ANCHOR_VIS_RUNTIME,
             RUNTIME_BOX_LABEL,
             info.vis_at_runtime,
         ),
@@ -251,7 +251,7 @@ pub(crate) fn paint_visibility_rows(
             } else {
                 CheckboxValue::Unchecked
             });
-        if id == crate::ids::INSP_ANCHOR_VIS_RUNTIME {
+        if id == ids::INSP_ANCHOR_VIS_RUNTIME {
             cb = cb.state(CheckboxState::Disabled);
         }
         paint_checkbox(&cb, rect, scene, text_system, theme);

@@ -90,7 +90,7 @@ pub(super) fn region_grid(
     let grid_y = y + label_h;
     let gap = Spacing::Xs.px();
     for (i, &(col, row)) in REGION_CELLS.iter().enumerate() {
-        let id = crate::ids::INSP_SLICE_REGION[i];
+        let id = ids::INSP_SLICE_REGION[i];
         let rect = Rect::new(
             x + (CELL + gap) * col as f32,
             grid_y + (CELL + gap) * row as f32,
@@ -118,7 +118,7 @@ pub(super) fn region_grid(
     // entre dois ladrilhos (smoke do Enio). Com o miolo apagado ele mostra `-` e não age: quem
     // manda nisso é o `Fill Center`, e duas portas para o mesmo estado divergem.
     let mid = Rect::new(x + CELL + gap, grid_y + CELL + gap, CELL, CELL);
-    hit_index.register(crate::ids::INSP_SLICE_CENTRE, mid);
+    hit_index.register(ids::INSP_SLICE_CENTRE, mid);
     let mid_letter = if !info.fill_center {
         "-"
     } else if info.mixed.tile_modes {
@@ -127,9 +127,9 @@ pub(super) fn region_grid(
         REGION_LETTERS[usize::from(info.centre_tile_mode).min(REGION_LETTERS.len() - 1)]
     };
     paint_button(
-        &Button::new(crate::ids::INSP_SLICE_CENTRE, mid_letter)
+        &Button::new(ids::INSP_SLICE_CENTRE, mid_letter)
             .kind(ButtonKind::Default)
-            .visual(store.button_visual(crate::ids::INSP_SLICE_CENTRE)),
+            .visual(store.button_visual(ids::INSP_SLICE_CENTRE)),
         mid,
         scene,
         text_system,
@@ -142,8 +142,8 @@ pub(super) fn region_grid(
     let presets_x = x + (CELL + gap) * GRID as f32 + Spacing::Sm.px();
     let presets_w = (w - (presets_x - x)).max(0.0);
     for (i, (id, label)) in [
-        (crate::ids::INSP_SLICE_ALL_TILE, "Tile all"),
-        (crate::ids::INSP_SLICE_ALL_STRETCH, "Stretch all"),
+        (ids::INSP_SLICE_ALL_TILE, "Tile all"),
+        (ids::INSP_SLICE_ALL_STRETCH, "Stretch all"),
     ]
     .into_iter()
     .enumerate()

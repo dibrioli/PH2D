@@ -13,6 +13,7 @@
 //! Nunca do store, que guarda o visual. É a lei que a §11 pagou com um report: ler o store fazia o
 //! primeiro clique depois de trocar de objecto mandar o valor do objecto **anterior**.
 
+use crate::ids;
 use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetEvent};
 use ph2d_editor_core::panel::PanelHostInternal;
@@ -37,13 +38,13 @@ pub(crate) fn apply_audio_event(host: &mut dyn PanelHostInternal, ev: WidgetEven
     };
 
     if let WidgetEvent::Click(id) = ev {
-        let edit = if id == crate::ids::INSP_AUDIO_BROWSE {
+        let edit = if id == ids::INSP_AUDIO_BROWSE {
             AudioFieldEdit::Browse
-        } else if id == crate::ids::INSP_AUDIO_PREVIEW {
+        } else if id == ids::INSP_AUDIO_PREVIEW {
             AudioFieldEdit::Preview
-        } else if id == crate::ids::INSP_AUDIO_STOP {
+        } else if id == ids::INSP_AUDIO_STOP {
             AudioFieldEdit::StopPreview
-        } else if let Some(i) = crate::ids::INSP_AUDIO_BUS_OPT.iter().position(|&o| o == id) {
+        } else if let Some(i) = ids::INSP_AUDIO_BUS_OPT.iter().position(|&o| o == id) {
             close_bus_popover(host);
             AudioFieldEdit::Bus(u8::try_from(i).unwrap_or(0))
         } else {
@@ -55,12 +56,9 @@ pub(crate) fn apply_audio_event(host: &mut dyn PanelHostInternal, ev: WidgetEven
     }
 
     if let WidgetEvent::Toggled(id) = ev
-        && matches!(
-            id,
-            crate::ids::INSP_AUDIO_LOOP | crate::ids::INSP_AUDIO_AUTOPLAY
-        )
+        && matches!(id, ids::INSP_AUDIO_LOOP | ids::INSP_AUDIO_AUTOPLAY)
     {
-        let edit = if id == crate::ids::INSP_AUDIO_LOOP {
+        let edit = if id == ids::INSP_AUDIO_LOOP {
             AudioFieldEdit::Looping(!src.looping)
         } else {
             AudioFieldEdit::Autoplay(!src.autoplay)
@@ -70,7 +68,7 @@ pub(crate) fn apply_audio_event(host: &mut dyn PanelHostInternal, ev: WidgetEven
     }
 
     if let WidgetEvent::TextChanged(id) = ev
-        && id == crate::ids::INSP_AUDIO_SOUND
+        && id == ids::INSP_AUDIO_SOUND
     {
         let text = host.store().text(id).unwrap_or("").to_string();
         push(host, bits, AudioFieldEdit::Sound(text));
@@ -84,16 +82,14 @@ pub(crate) fn apply_audio_event(host: &mut dyn PanelHostInternal, ev: WidgetEven
         // ⚠️ **Um `if` por campo seria como o terceiro acaba a escrever no primeiro** — a mesma
         // razão que pôs os três campos de texto da tabela de acções numa porta só.
         let edit = match id {
-            crate::ids::INSP_AUDIO_VOLUME => AudioFieldEdit::VolumeDb(f),
-            crate::ids::INSP_AUDIO_PITCH => AudioFieldEdit::Pitch(f),
-            crate::ids::INSP_AUDIO_MAX_DIST => AudioFieldEdit::MaxDistance(f),
-            crate::ids::INSP_AUDIO_ATTENUATION => AudioFieldEdit::Attenuation(f),
-            crate::ids::INSP_AUDIO_RADIUS => AudioFieldEdit::Radius(f),
-            crate::ids::INSP_AUDIO_PANNING => AudioFieldEdit::Panning(f),
+            ids::INSP_AUDIO_VOLUME => AudioFieldEdit::VolumeDb(f),
+            ids::INSP_AUDIO_PITCH => AudioFieldEdit::Pitch(f),
+            ids::INSP_AUDIO_MAX_DIST => AudioFieldEdit::MaxDistance(f),
+            ids::INSP_AUDIO_ATTENUATION => AudioFieldEdit::Attenuation(f),
+            ids::INSP_AUDIO_RADIUS => AudioFieldEdit::Radius(f),
+            ids::INSP_AUDIO_PANNING => AudioFieldEdit::Panning(f),
             #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-            crate::ids::INSP_AUDIO_POLYPHONY => {
-                AudioFieldEdit::Polyphony(v.clamp(1.0, U8_TOP) as u8)
-            } // CLAMP-OK: a faixa é a do campo
+            ids::INSP_AUDIO_POLYPHONY => AudioFieldEdit::Polyphony(v.clamp(1.0, U8_TOP) as u8), // CLAMP-OK: a faixa é a do campo
             _ => return false,
         };
         push(host, bits, edit);
@@ -113,7 +109,7 @@ fn push(host: &mut dyn PanelHostInternal, entity_bits: u64, edit: AudioFieldEdit
 /// §12 e o seletor do verbo já pagam.
 fn close_bus_popover(host: &mut dyn PanelHostInternal) {
     if let Some(InteractiveState::Dropdown { open, .. }) =
-        host.store_mut().get_mut(crate::ids::INSP_AUDIO_BUS_PICK)
+        host.store_mut().get_mut(ids::INSP_AUDIO_BUS_PICK)
     {
         *open = false;
     }

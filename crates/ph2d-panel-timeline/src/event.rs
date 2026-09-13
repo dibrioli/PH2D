@@ -7,10 +7,17 @@
 //! `render_loop::timeline_bridge::intent_for_transport`). The close (X) button
 //! hides the panel directly through the host.
 
+use crate::event_stack_menus::{lane_menu_click, strip_menu_click};
 use crate::ids;
 use crate::state;
 use crate::{TimelinePanel, state::TimelinePanelState};
 use ph2d_a11y::NodeId;
+use ph2d_editor_core::ids::{
+    TIMELINE_ADD_MARKER, TIMELINE_AUTOKEY, TIMELINE_CLOSE, TIMELINE_FRAME_NUM, TIMELINE_GO_END,
+    TIMELINE_GO_START, TIMELINE_LOOP, TIMELINE_MOTION_PATH, TIMELINE_NEXT_FRAME,
+    TIMELINE_ONION_SETTINGS, TIMELINE_PHYSICS, TIMELINE_PINGPONG, TIMELINE_PLAY,
+    TIMELINE_PREV_FRAME, TIMELINE_RECORD, TIMELINE_RULER, TIMELINE_SNAP, TIMELINE_TIME_NUM,
+};
 /// How long a strip of an EMPTY clip is: a clip with no keys has no duration, and
 /// a strip of zero seconds paints as nothing and cannot be grabbed to fix.
 ///
@@ -30,15 +37,15 @@ use ph2d_timeline::TimelineIntent;
 /// maps transport ids to a Playhead command and "+Track" ids to a Bind of the
 /// selected sprite).
 fn is_button(id: NodeId) -> bool {
-    id == ph2d_editor_core::ids::TIMELINE_PLAY
-        || id == ph2d_editor_core::ids::TIMELINE_ADD_MARKER
-        || id == ph2d_editor_core::ids::TIMELINE_GO_START
-        || id == ph2d_editor_core::ids::TIMELINE_GO_END
-        || id == ph2d_editor_core::ids::TIMELINE_PREV_FRAME
-        || id == ph2d_editor_core::ids::TIMELINE_NEXT_FRAME
+    id == TIMELINE_PLAY
+        || id == TIMELINE_ADD_MARKER
+        || id == TIMELINE_GO_START
+        || id == TIMELINE_GO_END
+        || id == TIMELINE_PREV_FRAME
+        || id == TIMELINE_NEXT_FRAME
         // Onion Settings (ADR-0142 W3b): a plain button whose Click reaches the shell, which owns
         // the `hero.store` the settings card lives in (the panel cannot open hero chrome).
-        || id == ph2d_editor_core::ids::TIMELINE_ONION_SETTINGS
+        || id == TIMELINE_ONION_SETTINGS
         || ids::ADDPROP_BUTTONS.iter().any(|(bid, _)| *bid == id)
 }
 
@@ -47,23 +54,22 @@ fn is_button(id: NodeId) -> bool {
 /// (`source_container`), so it pushes its intent directly — see the dedicated
 /// arm in `apply_event`.
 fn is_chip(id: NodeId) -> bool {
-    id == ph2d_editor_core::ids::TIMELINE_TIME_NUM
-        || id == ph2d_editor_core::ids::TIMELINE_FRAME_NUM
+    id == TIMELINE_TIME_NUM || id == TIMELINE_FRAME_NUM
 }
 
 /// The transport toggles routed to the shell (Toggled → `PanelEvent::Toggle`).
 /// `TIMELINE_SPEED` is deliberately absent — it is a panel-local VIEW toggle,
 /// handled in `apply_event` without reaching the shell.
 fn is_toggle(id: NodeId) -> bool {
-    id == ph2d_editor_core::ids::TIMELINE_LOOP
-        || id == ph2d_editor_core::ids::TIMELINE_PINGPONG
-        || id == ph2d_editor_core::ids::TIMELINE_PHYSICS
-        || id == ph2d_editor_core::ids::TIMELINE_AUTOKEY
-        || id == ph2d_editor_core::ids::TIMELINE_RECORD
+    id == TIMELINE_LOOP
+        || id == TIMELINE_PINGPONG
+        || id == TIMELINE_PHYSICS
+        || id == TIMELINE_AUTOKEY
+        || id == TIMELINE_RECORD
         // Motion Path (ADR-0141): per-object, so it MUST reach the shell — the panel
         // has no selection; the shell resolves the entity and converts it.
-        || id == ph2d_editor_core::ids::TIMELINE_MOTION_PATH
-        || id == ph2d_editor_core::ids::TIMELINE_SNAP
+        || id == TIMELINE_MOTION_PATH
+        || id == TIMELINE_SNAP
 }
 
 pub(crate) fn apply_event(
@@ -80,13 +86,13 @@ pub(crate) fn apply_event(
     }
     match ev {
         // Close (X) — hide the panel (mirror of the other docked panels).
-        WidgetEvent::Click(id) if id == ph2d_editor_core::ids::TIMELINE_CLOSE => {
+        WidgetEvent::Click(id) if id == TIMELINE_CLOSE => {
             host.set_panel_visible(TimelinePanel::ID, false);
             EventOutcome::Consumed
         }
         // Ruler scrub: the slider value (0..1 over the visible span) maps back to
         // an absolute time via the span `paint` stored; forward it as a Scrub.
-        WidgetEvent::ValueChanged(id) if id == ph2d_editor_core::ids::TIMELINE_RULER => {
+        WidgetEvent::ValueChanged(id) if id == TIMELINE_RULER => {
             let v = host
                 .store()
                 .slider(id)
@@ -315,162 +321,6 @@ fn stack_event(
         }
         _ => None,
     }
-}
-
-/// The lane's right-click menu (ADR-0115 B5): how it blends, and whether it stays.
-///
-/// Same contract as `strip_menu_click` — read the PARKED request, confirm the lane
-/// still exists, spend the request. `Delete Lane` lives here rather than on the row
-/// because the row has no width for a third button; that is a layout fact, not a
-/// judgement about how often a lane gets deleted.
-fn lane_menu_click(
-    state: &mut TimelinePanelState,
-    id: ph2d_editor_core::NodeId,
-    host: &mut dyn PanelHostInternal,
-) -> Option<EventOutcome> {
-    use ph2d_editor_core::interaction::ContextMenuKind;
-    use ph2d_timeline::LaneMode;
-
-    if !ph2d_editor_core::ids::TIMELINE_LANE_MENU
-        .iter()
-        .any(|(r, _, _)| *r == id)
-    {
-        return None;
-    }
-    let req = host
-        .store()
-        .context_menu()
-        .or_else(|| host.store().last_context_menu());
-    let Some(ContextMenuKind::TimelineLane { lane }) = req.map(|r| r.kind) else {
-        return Some(EventOutcome::Consumed);
-    };
-    if lane < crate::state::current_snapshot().lanes.len() {
-        if id == ph2d_editor_core::ids::CTX_MENU_TL_LANE_RENAME {
-            // Rename opens the field instead of pushing an intent — the animator
-            // types, and Enter commits `RenameLane` (`clip_rename::commit`). It is the
-            // one menu item that is a gesture START, not a one-shot.
-            crate::clip_rename::open_lane(state, lane);
-        } else if id == ph2d_editor_core::ids::CTX_MENU_TL_LANE_DELETE {
-            state::push_intent(TimelineIntent::RemoveLane { lane });
-        } else {
-            // The two modes. `Additive` is named explicitly and `Override` is the
-            // fallback, so a row added to the table without an arm here lands on
-            // Override — which the seam test refuses to let pass silently.
-            let mode = if id == ph2d_editor_core::ids::CTX_MENU_TL_LANE_ADDITIVE {
-                LaneMode::Additive
-            } else {
-                LaneMode::Override
-            };
-            state::push_intent(TimelineIntent::SetLaneMode { lane, mode });
-        }
-    }
-    host.store_mut().close_context_menu();
-    host.store_mut().consume_last_context_menu();
-    Some(EventOutcome::Consumed)
-}
-
-/// The strip's right-click menu (ADR-0115 B6). `None` means "not one of ours".
-///
-/// Same two gotchas the track menu documents, for the same reasons: the Down that
-/// preceded this Click already CLOSED the menu (so read
-/// `context_menu().or_else(last_context_menu())` — reading only the open one
-/// ships a menu that does nothing), and the request is CONSUMED after it lands
-/// (so a later stray Click on the id cannot duplicate the strip a second time).
-///
-/// The request names the strip by its stable id, and the snapshot is asked to
-/// confirm it still exists: a strip deleted between the menu opening and the row
-/// being clicked resolves to nothing. The action expires with its target.
-fn strip_menu_click(
-    state: &mut TimelinePanelState,
-    id: ph2d_editor_core::NodeId,
-    host: &mut dyn PanelHostInternal,
-) -> Option<EventOutcome> {
-    use ph2d_editor_core::interaction::ContextMenuKind;
-    use ph2d_timeline::{StripId, StripLoop};
-
-    if !ph2d_editor_core::ids::TIMELINE_STRIP_MENU
-        .iter()
-        .any(|(r, _, _)| *r == id)
-    {
-        return None;
-    }
-    let req = host
-        .store()
-        .context_menu()
-        .or_else(|| host.store().last_context_menu());
-    let Some(ContextMenuKind::TimelineStrip { lane, strip }) = req.map(|r| r.kind) else {
-        return Some(EventOutcome::Consumed);
-    };
-    let id_ = StripId(strip);
-    let snap = crate::state::current_snapshot();
-    let live = snap
-        .lanes
-        .get(lane)
-        .is_some_and(|l| l.strips.iter().any(|s| s.id == id_));
-    // **Entering is not an edit**, so it does not raise an intent: it moves the panel's own
-    // view state, and the shell reads it before the next drain. It is also the one row that
-    // means nothing on a clip strip — `container` is `None` there, and the row goes inert
-    // rather than acting on the wrong thing.
-    if id == ph2d_editor_core::ids::CTX_MENU_TL_STRIP_ENTER {
-        if let Some(c) = snap
-            .lanes
-            .get(lane)
-            .and_then(|l| l.strips.iter().find(|s| s.id == id_))
-            .and_then(|s| s.container)
-        {
-            // The step remembers the STRIP, not just the container: the instance the
-            // animator means is the one under this very click, and it is what keeps the
-            // interior's ruler mapped (and scrubb-able) at every playhead time
-            // (`ph2d_timeline::entry_map`).
-            state::enter_container(ph2d_timeline::EnterStep {
-                container: c,
-                lane,
-                strip: Some(id_),
-            });
-            // A container's interior is the **Containers** tab's half — Arrange is always
-            // the scene (`tab::Tab::scene_root`). Entering is therefore a change of TAB, and
-            // walking in without it would leave the animator on a tab that has just stopped
-            // publishing the trail: the click would do nothing visible at all.
-            crate::state::set_tab(state, crate::tab::Tab::Containers);
-        }
-        host.store_mut().close_context_menu();
-        host.store_mut().consume_last_context_menu();
-        return Some(EventOutcome::Consumed);
-    }
-    if live {
-        let intent = if id == ph2d_editor_core::ids::CTX_MENU_TL_STRIP_DUPLICATE {
-            TimelineIntent::DuplicateStrip { lane, id: id_ }
-        } else if id == ph2d_editor_core::ids::CTX_MENU_TL_STRIP_DELETE {
-            TimelineIntent::RemoveStrip { lane, id: id_ }
-        } else if id == ph2d_editor_core::ids::CTX_MENU_TL_STRIP_RESET_SPEED {
-            TimelineIntent::SetStripSpeed {
-                lane,
-                id: id_,
-                speed: 1.0,
-            }
-        } else {
-            // The three source modes. Exhaustive over what remains of the table —
-            // and if a row is ever added without landing here, `strip_menu_click`
-            // would silently set Once, so the seam test proves each row raises the
-            // intent it names rather than merely raising SOMETHING.
-            let loop_mode = if id == ph2d_editor_core::ids::CTX_MENU_TL_STRIP_LOOP {
-                StripLoop::Loop
-            } else if id == ph2d_editor_core::ids::CTX_MENU_TL_STRIP_PINGPONG {
-                StripLoop::PingPong
-            } else {
-                StripLoop::Once
-            };
-            TimelineIntent::SetStripLoop {
-                lane,
-                id: id_,
-                loop_mode,
-            }
-        };
-        state::push_intent(intent);
-    }
-    host.store_mut().close_context_menu();
-    host.store_mut().consume_last_context_menu();
-    Some(EventOutcome::Consumed)
 }
 
 /// The clip stack's chrome (ADR-0115): "+ Lane", and each lane's mute and

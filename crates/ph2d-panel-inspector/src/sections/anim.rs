@@ -108,8 +108,8 @@ fn player_block(
     // As duas caixas, lado a lado.
     let half = (w - Spacing::Sm.px()) * 0.5;
     for (i, (id, label, on)) in [
-        (crate::ids::INSP_ANIM_PLAYING, "Playing", info.playing),
-        (crate::ids::INSP_ANIM_AUTOPLAY, "Autoplay", info.autoplay),
+        (ids::INSP_ANIM_PLAYING, "Playing", info.playing),
+        (ids::INSP_ANIM_AUTOPLAY, "Autoplay", info.autoplay),
     ]
     .into_iter()
     .enumerate()
@@ -147,7 +147,7 @@ fn player_block(
         w,
         cur_y,
         "Speed (x)",
-        &[crate::ids::INSP_ANIM_SPEED],
+        &[ids::INSP_ANIM_SPEED],
         0.1, // LITERAL-PX-OK: passo de scrub em MÚLTIPLOS de velocidade, não em pixels
     );
 
@@ -161,7 +161,7 @@ fn player_block(
         w,
         cur_y,
         "Direction override",
-        &crate::ids::INSP_ANIM_DIR_OVERRIDE,
+        &ids::INSP_ANIM_DIR_OVERRIDE,
         &["Inherit", "Fwd", "Rev", "PP", "PP Rev"],
         usize::from(info.direction_override_tag),
     );
@@ -175,7 +175,7 @@ fn player_block(
         w,
         cur_y,
         "Loop override",
-        &crate::ids::INSP_ANIM_LOOP_OVERRIDE,
+        &ids::INSP_ANIM_LOOP_OVERRIDE,
         &["Inherit", "On", "Off"],
         usize::from(info.loop_override_tag),
     );
@@ -208,7 +208,7 @@ fn player_block(
         );
         cur_y += font + Spacing::Xs.px();
         let track = Rect::new(x, cur_y, w, BAR_H);
-        hit_index.register(crate::ids::INSP_ANIM_FRAME_SCRUB, track);
+        hit_index.register(ids::INSP_ANIM_FRAME_SCRUB, track);
         // ⚠️ O retângulo de acerto **é** o da trilha, e tem de o ser: o despachante deriva o valor
         // de `(px - rect.x) / rect.w`, então um hit mais largo que o desenho poria o polegar noutro
         // sítio que não debaixo do dedo.
@@ -216,7 +216,7 @@ fn player_block(
             track,
             info.scrub_position().unwrap_or(0.0),
             ph2d_editor_core::widget::SliderOrientation::Horizontal,
-            store.slider_visual(crate::ids::INSP_ANIM_FRAME_SCRUB),
+            store.slider_visual(ids::INSP_ANIM_FRAME_SCRUB),
             scene,
             theme,
         );
@@ -242,7 +242,7 @@ fn player_block(
                 w,
                 cur_y,
                 "This frame ms (0 = use Frame ms)",
-                &[crate::ids::INSP_ANIM_FRAME_MS_THIS],
+                &[ids::INSP_ANIM_FRAME_MS_THIS],
                 10.0, // LITERAL-PX-OK: passo de scrub em MILISSEGUNDOS, não em pixels
             );
         }
@@ -263,11 +263,11 @@ fn player_block(
     }
 
     let rw = Rect::new(x, cur_y, w, BTN_H);
-    hit_index.register(crate::ids::INSP_ANIM_REWIND, rw);
+    hit_index.register(ids::INSP_ANIM_REWIND, rw);
     paint_button(
-        &Button::new(crate::ids::INSP_ANIM_REWIND, "Rewind")
+        &Button::new(ids::INSP_ANIM_REWIND, "Rewind")
             .kind(ButtonKind::Default)
-            .visual(store.button_visual(crate::ids::INSP_ANIM_REWIND)),
+            .visual(store.button_visual(ids::INSP_ANIM_REWIND)),
         rw,
         scene,
         text_system,
@@ -291,7 +291,7 @@ pub(crate) fn paint_anim_section(
     selected: usize,
 ) -> f32 {
     let header_h = TypeToken::Md.px() + Spacing::Md.px(); // LITERAL-PX-OK: banda do cabeçalho
-    let color_id = ids::INSP_LIVE_ANIM_COLOR;
+    let color_id = core_ids::INSP_LIVE_ANIM_COLOR;
     let rgba = store
         .widget_color(color_id)
         .unwrap_or([0x88, 0x88, 0x88, 0xff]); // LITERAL-COLOR-OK: acento neutro por omissão
@@ -300,7 +300,7 @@ pub(crate) fn paint_anim_section(
     } else {
         format!("Animation  ({})", info.rows.len())
     };
-    let header = section_header(store, ids::INSP_LIVE_ANIM_SECTION, &title).color(rgba);
+    let header = section_header(store, core_ids::INSP_LIVE_ANIM_SECTION, &title).color(rgba);
     let header_rect = Rect::new(x, y, w, header_h);
     paint_section_header(&header, header_rect, scene, text_system, theme);
     if let Some(circle_rect) = ph2d_editor_core::widget::color_circle_hit_rect(&header, header_rect)
@@ -309,7 +309,7 @@ pub(crate) fn paint_anim_section(
     }
     let Some(fold) = SectionFold::begin(
         store,
-        ids::INSP_LIVE_ANIM_SECTION,
+        core_ids::INSP_LIVE_ANIM_SECTION,
         x,
         w,
         y + header_h,
@@ -357,11 +357,11 @@ pub(crate) fn paint_anim_section(
         );
         cur_y += font + Spacing::Sm.px();
         let add = Rect::new(x, cur_y, w, BTN_H);
-        hit_index.register(crate::ids::INSP_ANIM_ADD_PLAYER, add);
+        hit_index.register(ids::INSP_ANIM_ADD_PLAYER, add);
         paint_button(
-            &Button::new(crate::ids::INSP_ANIM_ADD_PLAYER, "+ Add Animator")
+            &Button::new(ids::INSP_ANIM_ADD_PLAYER, "+ Add Animator")
                 .kind(ButtonKind::Default)
-                .visual(store.button_visual(crate::ids::INSP_ANIM_ADD_PLAYER)),
+                .visual(store.button_visual(ids::INSP_ANIM_ADD_PLAYER)),
             add,
             scene,
             text_system,

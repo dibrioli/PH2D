@@ -40,7 +40,7 @@ const CHECK_H: f32 = 18.0; // LITERAL-PX-OK: altura visual do Checkbox, igual à
 /// ⚠️ **A posição é a tag**, e `zip` com os ids: uma lista de rótulos mais curta perde as
 /// excedentes em vez de as pintar sem nome.
 pub(crate) fn bus_options(labels: &[String]) -> Vec<DropdownOption<u8>> {
-    crate::ids::INSP_AUDIO_BUS_OPT
+    ids::INSP_AUDIO_BUS_OPT
         .iter()
         .enumerate()
         .zip(labels.iter())
@@ -90,9 +90,9 @@ fn buttons(
 ) -> f32 {
     let seg = ph2d_editor_core::widget::segment_rects(Rect::new(x, y, w, BTN_H), 3);
     for (i, (id, label)) in [
-        (crate::ids::INSP_AUDIO_BROWSE, "Browse\u{2026}"),
-        (crate::ids::INSP_AUDIO_PREVIEW, "Preview"),
-        (crate::ids::INSP_AUDIO_STOP, "Stop"),
+        (ids::INSP_AUDIO_BROWSE, "Browse\u{2026}"),
+        (ids::INSP_AUDIO_PREVIEW, "Preview"),
+        (ids::INSP_AUDIO_STOP, "Stop"),
     ]
     .into_iter()
     .enumerate()
@@ -131,14 +131,14 @@ fn bus_row(
 ) -> f32 {
     let (control_w, dot) = ph2d_editor_core::widget::form_row_columns(x, w, y, ROW_H_PX);
     let rect = Rect::new(x, y, control_w, ROW_H_PX);
-    hit_index.register(crate::ids::INSP_AUDIO_BUS_PICK, rect);
+    hit_index.register(ids::INSP_AUDIO_BUS_PICK, rect);
     let open = matches!(
-        store.get(crate::ids::INSP_AUDIO_BUS_PICK),
+        store.get(ids::INSP_AUDIO_BUS_PICK),
         Some(InteractiveState::Dropdown { open: true, .. })
     );
-    let mut dd = Dropdown::new(crate::ids::INSP_AUDIO_BUS_PICK, "", bus_options(labels))
+    let mut dd = Dropdown::new(ids::INSP_AUDIO_BUS_PICK, "", bus_options(labels))
         .open(open)
-        .visual(store.dropdown_visual(crate::ids::INSP_AUDIO_BUS_PICK));
+        .visual(store.dropdown_visual(ids::INSP_AUDIO_BUS_PICK));
     dd.select(sel);
     paint_dropdown_chip(&dd, rect, scene, text_system, theme);
     // ⚠️ **O popover NÃO se pinta aqui** — ele sairia debaixo da secção seguinte. Ver
@@ -173,8 +173,8 @@ fn source_body(
         x,
         w,
         y,
-        crate::ids::INSP_AUDIO_SOUND,
-        TextInput::new(crate::ids::INSP_AUDIO_SOUND, "").placeholder("sound file\u{2026}"),
+        ids::INSP_AUDIO_SOUND,
+        TextInput::new(ids::INSP_AUDIO_SOUND, "").placeholder("sound file\u{2026}"),
     );
     cur_y = buttons(scene, text_system, theme, hit_index, store, x, w, cur_y);
 
@@ -229,17 +229,13 @@ fn source_body(
     }
 
     for (label, id, step) in [
-        ("Volume (dB)", crate::ids::INSP_AUDIO_VOLUME, 1.0), // LITERAL-PX-OK: passo em decibéis
-        ("Pitch", crate::ids::INSP_AUDIO_PITCH, 0.05), // LITERAL-PX-OK: passo do factor de tom
-        ("Max Distance (m)", crate::ids::INSP_AUDIO_MAX_DIST, 0.5), // LITERAL-PX-OK: passo em metros
-        ("Attenuation", crate::ids::INSP_AUDIO_ATTENUATION, 0.1), // LITERAL-PX-OK: passo do expoente
-        (
-            "Non-Spatialized Radius (m)",
-            crate::ids::INSP_AUDIO_RADIUS,
-            0.1,
-        ), // LITERAL-PX-OK: metros
-        ("Panning Strength", crate::ids::INSP_AUDIO_PANNING, 0.05), // LITERAL-PX-OK: passo da fracção
-        ("Max Polyphony", crate::ids::INSP_AUDIO_POLYPHONY, 1.0), // LITERAL-PX-OK: uma voz de cada vez
+        ("Volume (dB)", ids::INSP_AUDIO_VOLUME, 1.0), // LITERAL-PX-OK: passo em decibéis
+        ("Pitch", ids::INSP_AUDIO_PITCH, 0.05),       // LITERAL-PX-OK: passo do factor de tom
+        ("Max Distance (m)", ids::INSP_AUDIO_MAX_DIST, 0.5), // LITERAL-PX-OK: passo em metros
+        ("Attenuation", ids::INSP_AUDIO_ATTENUATION, 0.1), // LITERAL-PX-OK: passo do expoente
+        ("Non-Spatialized Radius (m)", ids::INSP_AUDIO_RADIUS, 0.1), // LITERAL-PX-OK: metros
+        ("Panning Strength", ids::INSP_AUDIO_PANNING, 0.05), // LITERAL-PX-OK: passo da fracção
+        ("Max Polyphony", ids::INSP_AUDIO_POLYPHONY, 1.0), // LITERAL-PX-OK: uma voz de cada vez
     ] {
         cur_y = super::anchors::field_row(
             scene,
@@ -271,8 +267,8 @@ fn source_body(
 
     let half = (w - Spacing::Sm.px()) * 0.5;
     for (i, (id, label, on)) in [
-        (crate::ids::INSP_AUDIO_LOOP, "Loop", src.looping),
-        (crate::ids::INSP_AUDIO_AUTOPLAY, "Autoplay", src.autoplay),
+        (ids::INSP_AUDIO_LOOP, "Loop", src.looping),
+        (ids::INSP_AUDIO_AUTOPLAY, "Autoplay", src.autoplay),
     ]
     .into_iter()
     .enumerate()
@@ -316,11 +312,11 @@ pub(crate) fn paint_audio_section(
     info: &InspectorAudioInfo,
 ) -> f32 {
     let header_h = TypeToken::Md.px() + Spacing::Md.px(); // LITERAL-PX-OK: banda do cabeçalho
-    let color_id = ids::INSP_LIVE_AUDIO_COLOR;
+    let color_id = core_ids::INSP_LIVE_AUDIO_COLOR;
     let rgba = store
         .widget_color(color_id)
         .unwrap_or([0x88, 0x88, 0x88, 0xff]); // LITERAL-COLOR-OK: acento neutro por omissão
-    let header = section_header(store, ids::INSP_LIVE_AUDIO_SECTION, "Audio").color(rgba);
+    let header = section_header(store, core_ids::INSP_LIVE_AUDIO_SECTION, "Audio").color(rgba);
     let header_rect = Rect::new(x, y, w, header_h);
     paint_section_header(&header, header_rect, scene, text_system, theme);
     if let Some(circle_rect) = ph2d_editor_core::widget::color_circle_hit_rect(&header, header_rect)
@@ -329,7 +325,7 @@ pub(crate) fn paint_audio_section(
     }
     let Some(fold) = SectionFold::begin(
         store,
-        ids::INSP_LIVE_AUDIO_SECTION,
+        core_ids::INSP_LIVE_AUDIO_SECTION,
         x,
         w,
         y + header_h,

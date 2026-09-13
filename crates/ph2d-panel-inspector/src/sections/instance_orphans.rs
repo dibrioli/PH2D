@@ -34,7 +34,7 @@ pub(crate) fn rows_height(
 pub(crate) fn dropless(info: &InspectorInstanceInfo) -> usize {
     info.orphan_rows
         .len()
-        .saturating_sub(crate::ids::INSP_INSTANCE_DROP_ORPHAN.len())
+        .saturating_sub(ids::INSP_INSTANCE_DROP_ORPHAN.len())
 }
 
 /// Quantas linhas de altura FIXA este bloco acrescenta: o aviso do tecto e o botão de limpar.
@@ -85,7 +85,7 @@ pub(crate) fn paint(
         //
         // ⚠️ O `✕` fica na PRIMEIRA linha do texto, e não centrado no bloco: numa linha embrulhada
         // ele desceria para o meio do parágrafo e deixaria de se ler como o botão daquela entrada.
-        if let Some(&id) = crate::ids::INSP_INSTANCE_DROP_ORPHAN.get(i) {
+        if let Some(&id) = ids::INSP_INSTANCE_DROP_ORPHAN.get(i) {
             let host = Rect::new(at.right - at.line, ty, at.line, at.line);
             hit_index.register(id, host);
             paint_icon_button(
@@ -119,13 +119,13 @@ pub(crate) fn paint(
     // inerte é ruído que o artista aprende a ignorar.
     if info.orphans() > 0 {
         let host = Rect::new(at.tx, ty, at.tw, at.line);
-        hit_index.register(crate::ids::INSP_INSTANCE_CLEAR_ORPHANS, host);
+        hit_index.register(ids::INSP_INSTANCE_CLEAR_ORPHANS, host);
         let button = Button::new(
-            crate::ids::INSP_INSTANCE_CLEAR_ORPHANS,
+            ids::INSP_INSTANCE_CLEAR_ORPHANS,
             format!("Clear {} unused override(s)", info.orphans()),
         )
         .kind(ButtonKind::Default)
-        .visual(store.button_visual(crate::ids::INSP_INSTANCE_CLEAR_ORPHANS));
+        .visual(store.button_visual(ids::INSP_INSTANCE_CLEAR_ORPHANS));
         paint_button(&button, host, scene, text_system, theme);
         ty += at.line;
     }

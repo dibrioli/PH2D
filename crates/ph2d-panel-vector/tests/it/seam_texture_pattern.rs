@@ -383,7 +383,7 @@ fn the_lock_checkbox_is_fed_by_the_published_state() {
         .collect::<Vec<_>>()
         .join("\n");
     let i = code
-        .find("kid(ids::TexPatKnob::Lock),")
+        .find("kid(ph2d_editor_core::ids::TexPatKnob::Lock),")
         .expect("a caixa e' pintada");
     // ⚠️ A linha tem de ser EXACTAMENTE o campo publicado. Uma versão anterior deste gate procurava
     // a substring `p.lock_aspect` e **um `!p.lock_aspect` SOBREVIVEU** — a negação contém a agulha.

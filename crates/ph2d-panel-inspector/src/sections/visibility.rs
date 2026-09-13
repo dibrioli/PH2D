@@ -147,18 +147,18 @@ pub(crate) fn paint_visibility_section(
     // marked collapsible). Bit `n` = layer `n+1`; absent component → ALL.
     yy = close_section(scene, theme, x, w, yy);
     let layer_header_h = TypeToken::Md.px() + Spacing::Md.px(); // LITERAL-PX-OK: section header band height
-    let layer_header = section_header(store, ids::INSP_VIS_LAYER_HEADER, "Visibility Layer")
-        .open_t(store.section_open_live(ids::INSP_VIS_LAYER_HEADER));
+    let layer_header = section_header(store, core_ids::INSP_VIS_LAYER_HEADER, "Visibility Layer")
+        .open_t(store.section_open_live(core_ids::INSP_VIS_LAYER_HEADER));
     let layer_header_rect = Rect::new(x, yy, w, layer_header_h);
     paint_section_header(&layer_header, layer_header_rect, scene, text_system, theme);
-    hit_index.register(ids::INSP_VIS_LAYER_HEADER, layer_header_rect);
+    hit_index.register(core_ids::INSP_VIS_LAYER_HEADER, layer_header_rect);
     yy += layer_header_h;
     // ⚠️ A grade de 32 bits e' ALTA, entao ela e' a sub-seccao onde a dobra do corpo mais se ve'.
     // O `begin` devolve `None` so' quando a seccao esta' fechada **e parada** — e' ai' que o corpo
     // nao e' percorrido de todo, exactamente o `if layer_collapsed` de sempre.
     match SectionFold::begin(
         store,
-        ids::INSP_VIS_LAYER_HEADER,
+        core_ids::INSP_VIS_LAYER_HEADER,
         x,
         w,
         yy,
@@ -168,12 +168,12 @@ pub(crate) fn paint_visibility_section(
         None => yy += row_gap,
         Some(fold) => {
             let grid = BitmaskGrid32::new(
-                ids::INSP_LIVE_VISIBILITY_SECTION,
+                core_ids::INSP_LIVE_VISIBILITY_SECTION,
                 "Visibility Layer",
-                crate::ids::INSP_VIS_LAYER_BIT,
+                ids::INSP_VIS_LAYER_BIT,
                 info.layer_mask,
             );
-            for (bit, id) in crate::ids::INSP_VIS_LAYER_BIT.iter().enumerate() {
+            for (bit, id) in ids::INSP_VIS_LAYER_BIT.iter().enumerate() {
                 hit_index.register(*id, BitmaskGrid32::cell_rect(x, yy, w, h, bit));
             }
             paint_bitmask_grid32(&grid, x, yy, w, h, scene, text_system, theme);
@@ -193,7 +193,7 @@ pub(crate) fn paint_visibility_section(
         w,
         yy,
         "Clip Children",
-        crate::ids::INSP_VIS_CLIP,
+        ids::INSP_VIS_CLIP,
         ["Disabled", "Clip", "Clip+Draw"],
         (!info.mixed.clip_mode).then_some(usize::from(info.clip_mode)),
     );
@@ -209,7 +209,7 @@ pub(crate) fn paint_visibility_section(
         w,
         yy,
         "Mask Interaction",
-        crate::ids::INSP_VIS_MASK,
+        ids::INSP_VIS_MASK,
         ["None", "Inside", "Outside"],
         (!info.mixed.mask_mode).then_some(usize::from(info.mask_mode)),
     );
@@ -226,16 +226,16 @@ pub(crate) fn paint_visibility_section(
             w,
             yy,
             "Mask Alpha Cutoff",
-            crate::ids::INSP_VIS_ALPHA_CUTOFF,
+            ids::INSP_VIS_ALPHA_CUTOFF,
         );
     }
 
     // Mask Source toggle — makes this sprite a Mask2D source (its silhouette
     // masks sibling VisibleInside/Outside responders).
     let src_rect = Rect::new(x, yy, w, h);
-    hit_index.register(crate::ids::INSP_VIS_MASK_SOURCE, src_rect);
-    let src_cb = Checkbox::new(crate::ids::INSP_VIS_MASK_SOURCE, "Mask Source (Mask2D)")
-        .visual(store.checkbox_visual(crate::ids::INSP_VIS_MASK_SOURCE))
+    hit_index.register(ids::INSP_VIS_MASK_SOURCE, src_rect);
+    let src_cb = Checkbox::new(ids::INSP_VIS_MASK_SOURCE, "Mask Source (Mask2D)")
+        .visual(store.checkbox_visual(ids::INSP_VIS_MASK_SOURCE))
         .value(if info.mask_source {
             CheckboxValue::Checked
         } else {
@@ -246,9 +246,9 @@ pub(crate) fn paint_visibility_section(
 
     // On-Screen Enabler toggle (presence of the component).
     let on_rect = Rect::new(x, yy, w, h);
-    hit_index.register(crate::ids::INSP_VIS_ON_SCREEN, on_rect);
-    let on_cb = Checkbox::new(crate::ids::INSP_VIS_ON_SCREEN, "On-Screen Enabler")
-        .visual(store.checkbox_visual(crate::ids::INSP_VIS_ON_SCREEN))
+    hit_index.register(ids::INSP_VIS_ON_SCREEN, on_rect);
+    let on_cb = Checkbox::new(ids::INSP_VIS_ON_SCREEN, "On-Screen Enabler")
+        .visual(store.checkbox_visual(ids::INSP_VIS_ON_SCREEN))
         .value(if info.on_screen {
             CheckboxValue::Checked
         } else {
@@ -271,26 +271,26 @@ pub(crate) fn paint_visibility_section(
             label_color,
         );
         yy += label_h;
-        let (sx, vx, bx, cx, ax) = read_number_input(store, crate::ids::INSP_VIS_RECT_X);
-        let (sy, vy, by, cy, ay) = read_number_input(store, crate::ids::INSP_VIS_RECT_Y);
-        let (sw, vw, bw, cw, aw) = read_number_input(store, crate::ids::INSP_VIS_RECT_W);
-        let (sh, vh, bh, ch, ah) = read_number_input(store, crate::ids::INSP_VIS_RECT_H);
+        let (sx, vx, bx, cx, ax) = read_number_input(store, ids::INSP_VIS_RECT_X);
+        let (sy, vy, by, cy, ay) = read_number_input(store, ids::INSP_VIS_RECT_Y);
+        let (sw, vw, bw, cw, aw) = read_number_input(store, ids::INSP_VIS_RECT_W);
+        let (sh, vh, bh, ch, ah) = read_number_input(store, ids::INSP_VIS_RECT_H);
         const RECT_STEP: f64 = 0.1; // LITERAL-PX-OK: enabler-rect editor nudge step
         let editor = Rect2Editor::new(
-            ids::INSP_LIVE_VISIBILITY_SECTION,
+            core_ids::INSP_LIVE_VISIBILITY_SECTION,
             "Enabler Rect",
-            NumberInput::new(crate::ids::INSP_VIS_RECT_X, "", vx)
+            NumberInput::new(ids::INSP_VIS_RECT_X, "", vx)
                 .step(RECT_STEP)
-                .visual((sx, store.hover_live(crate::ids::INSP_VIS_RECT_X))),
-            NumberInput::new(crate::ids::INSP_VIS_RECT_Y, "", vy)
+                .visual((sx, store.hover_live(ids::INSP_VIS_RECT_X))),
+            NumberInput::new(ids::INSP_VIS_RECT_Y, "", vy)
                 .step(RECT_STEP)
-                .visual((sy, store.hover_live(crate::ids::INSP_VIS_RECT_Y))),
-            NumberInput::new(crate::ids::INSP_VIS_RECT_W, "", vw)
+                .visual((sy, store.hover_live(ids::INSP_VIS_RECT_Y))),
+            NumberInput::new(ids::INSP_VIS_RECT_W, "", vw)
                 .step(RECT_STEP)
-                .visual((sw, store.hover_live(crate::ids::INSP_VIS_RECT_W))),
-            NumberInput::new(crate::ids::INSP_VIS_RECT_H, "", vh)
+                .visual((sw, store.hover_live(ids::INSP_VIS_RECT_W))),
+            NumberInput::new(ids::INSP_VIS_RECT_H, "", vh)
                 .step(RECT_STEP)
-                .visual((sh, store.hover_live(crate::ids::INSP_VIS_RECT_H))),
+                .visual((sh, store.hover_live(ids::INSP_VIS_RECT_H))),
         )
         // 2×2 grid: the Inspector column is too narrow for four number
         // inputs in one row (each would fall below NumberInput's usable
@@ -300,10 +300,10 @@ pub(crate) fn paint_visibility_section(
         let host = Rect::new(x, yy, w, editor_h);
         let field_rects = editor.field_rects(host);
         for (fr, id) in field_rects.iter().zip([
-            crate::ids::INSP_VIS_RECT_X,
-            crate::ids::INSP_VIS_RECT_Y,
-            crate::ids::INSP_VIS_RECT_W,
-            crate::ids::INSP_VIS_RECT_H,
+            ids::INSP_VIS_RECT_X,
+            ids::INSP_VIS_RECT_Y,
+            ids::INSP_VIS_RECT_W,
+            ids::INSP_VIS_RECT_H,
         ]) {
             hit_index.register(id, *fr);
         }

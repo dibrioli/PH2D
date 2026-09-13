@@ -48,19 +48,19 @@ pub(crate) use table::{PLAYER_CARDS, player_row_count};
 /// ⚠️ **Eram cinco até a F3** (ADR-0166): o `INSP_PLAYER_ADD` saiu com a face vazia que o continha.
 pub(crate) const PLAYER_BUTTON_TIPS: [(ph2d_a11y::NodeId, &str); 4] = [
     (
-        crate::ids::INSP_PLAYER_FIT,
+        ids::INSP_PLAYER_FIT,
         "Set Float Height from the collider, so he really hovers.",
     ),
     (
-        crate::ids::INSP_PLAYER_REMOVE,
+        ids::INSP_PLAYER_REMOVE,
         "Give the behaviour back: it becomes a plain body again.",
     ),
     (
-        crate::ids::INSP_PLAYER_CLEAR_RUN,
+        ids::INSP_PLAYER_CLEAR_RUN,
         "Throw away the recorded run. Playing with Physics on records a new one.",
     ),
     (
-        crate::ids::INSP_PLAYER_FIT_CROUCH,
+        ids::INSP_PLAYER_FIT_CROUCH,
         "Set Crouch Height to the lowest this body can really float at.",
     ),
 ];
@@ -79,12 +79,12 @@ pub(crate) fn paint_player_section(
 ) -> f32 {
     let header_h = TypeToken::Md.px() + Spacing::Md.px(); // LITERAL-PX-OK: section header band height
     let h = TypeToken::Md.px() + Spacing::Sm.px(); // LITERAL-PX-OK: control row height
-    let color_id = ids::INSP_LIVE_PLAYER_COLOR;
+    let color_id = core_ids::INSP_LIVE_PLAYER_COLOR;
     let rgba = store
         .widget_color(color_id)
         .unwrap_or([0x88, 0x88, 0x88, 0xff]); // LITERAL-COLOR-OK: neutral default section accent
     let header =
-        section_header(store, ids::INSP_LIVE_PLAYER_SECTION, "Platform Player").color(rgba);
+        section_header(store, core_ids::INSP_LIVE_PLAYER_SECTION, "Platform Player").color(rgba);
     let header_rect = Rect::new(x, y, w, header_h);
     paint_section_header(&header, header_rect, scene, text_system, theme);
     if let Some(circle_rect) = ph2d_editor_core::widget::color_circle_hit_rect(&header, header_rect)
@@ -94,7 +94,7 @@ pub(crate) fn paint_player_section(
     // ⚠️ **A DOBRA do corpo** — ver `SectionFold`, e o `t` no lugar do `is_collapsed`.
     let Some(fold) = SectionFold::begin(
         store,
-        ids::INSP_LIVE_PLAYER_SECTION,
+        core_ids::INSP_LIVE_PLAYER_SECTION,
         x,
         w,
         y + header_h,
@@ -132,8 +132,8 @@ pub(crate) fn paint_player_section(
         w,
         yy,
         "Body",
-        crate::ids::INSP_PLAYER_MODE,
-        &crate::ids::INSP_PLAYER_MODE_IDS,
+        ids::INSP_PLAYER_MODE,
+        &ids::INSP_PLAYER_MODE_IDS,
         &["Dynamic", "Kinematic", "Pure"],
         info.mode_tag,
     );
@@ -151,8 +151,8 @@ pub(crate) fn paint_player_section(
         w,
         yy,
         "Emit Signals",
-        crate::ids::INSP_PLAYER_EMIT,
-        &crate::ids::INSP_PLAYER_EMIT_IDS,
+        ids::INSP_PLAYER_EMIT,
+        &ids::INSP_PLAYER_EMIT_IDS,
         &["Off", "On"],
         u8::from(info.emits_signals),
     );
@@ -184,8 +184,8 @@ pub(crate) fn paint_player_section(
         w,
         yy,
         "Platform Lift",
-        crate::ids::INSP_PLAYER_LIFT_POLICY,
-        &crate::ids::INSP_PLAYER_LIFT_POLICY_IDS,
+        ids::INSP_PLAYER_LIFT_POLICY,
+        &ids::INSP_PLAYER_LIFT_POLICY_IDS,
         &["Full", "Up Only", "None"],
         info.platform_lift,
     );
@@ -202,8 +202,8 @@ pub(crate) fn paint_player_section(
         w,
         yy,
         "Walk Off Ledges",
-        crate::ids::INSP_PLAYER_WALK_OFF,
-        &crate::ids::INSP_PLAYER_WALK_OFF_IDS,
+        ids::INSP_PLAYER_WALK_OFF,
+        &ids::INSP_PLAYER_WALK_OFF_IDS,
         &["Yes", "Stop At Edge"],
         info.walk_off_ledges,
     );
@@ -220,8 +220,8 @@ pub(crate) fn paint_player_section(
             w,
             yy,
             "  ...When Crouching",
-            crate::ids::INSP_PLAYER_CROUCH_WALK_OFF,
-            &crate::ids::INSP_PLAYER_CROUCH_WALK_OFF_IDS,
+            ids::INSP_PLAYER_CROUCH_WALK_OFF,
+            &ids::INSP_PLAYER_CROUCH_WALK_OFF_IDS,
             &["Yes", "Stop At Edge"],
             info.crouch_walk_off_ledges,
         );
@@ -290,11 +290,11 @@ fn paint_verbs(
             "Fit to Collider".to_string()
         };
         let rect = Rect::new(x, yy, w, h);
-        let btn = Button::new(crate::ids::INSP_PLAYER_FIT, &label)
+        let btn = Button::new(ids::INSP_PLAYER_FIT, &label)
             .kind(ButtonKind::Default)
-            .visual(store.button_visual(crate::ids::INSP_PLAYER_FIT));
+            .visual(store.button_visual(ids::INSP_PLAYER_FIT));
         paint_button(&btn, rect, scene, text_system, theme);
-        hit_index.register(crate::ids::INSP_PLAYER_FIT, rect);
+        hit_index.register(ids::INSP_PLAYER_FIT, rect);
         yy += h + Spacing::Sm.px();
     }
 
@@ -322,11 +322,11 @@ fn paint_verbs(
             "Fit Crouch to Collider".to_string()
         };
         let rect = Rect::new(x, yy, w, h);
-        let btn = Button::new(crate::ids::INSP_PLAYER_FIT_CROUCH, &label)
+        let btn = Button::new(ids::INSP_PLAYER_FIT_CROUCH, &label)
             .kind(ButtonKind::Default)
-            .visual(store.button_visual(crate::ids::INSP_PLAYER_FIT_CROUCH));
+            .visual(store.button_visual(ids::INSP_PLAYER_FIT_CROUCH));
         paint_button(&btn, rect, scene, text_system, theme);
-        hit_index.register(crate::ids::INSP_PLAYER_FIT_CROUCH, rect);
+        hit_index.register(ids::INSP_PLAYER_FIT_CROUCH, rect);
         yy += h + Spacing::Sm.px();
     }
 
@@ -345,12 +345,12 @@ fn paint_verbs(
     // construção, e é isso que dispensa qualquer coordenação entre eles.
     let run_button = if info.recorded_run_seconds > 0.0 {
         Some((
-            crate::ids::INSP_PLAYER_CLEAR_RUN,
+            ids::INSP_PLAYER_CLEAR_RUN,
             format!("Clear Recorded Run ({:.1} s)", info.recorded_run_seconds),
         ))
     } else if info.discarded_run_seconds > 0.0 {
         Some((
-            crate::ids::INSP_PLAYER_RESTORE_RUN,
+            ids::INSP_PLAYER_RESTORE_RUN,
             format!(
                 "Restore Discarded Run ({:.1} s)",
                 info.discarded_run_seconds
@@ -370,11 +370,11 @@ fn paint_verbs(
     }
 
     let rect = Rect::new(x, yy, w, h);
-    let btn = Button::new(crate::ids::INSP_PLAYER_REMOVE, "Remove Platform Player")
+    let btn = Button::new(ids::INSP_PLAYER_REMOVE, "Remove Platform Player")
         .kind(ButtonKind::Default)
-        .visual(store.button_visual(crate::ids::INSP_PLAYER_REMOVE));
+        .visual(store.button_visual(ids::INSP_PLAYER_REMOVE));
     paint_button(&btn, rect, scene, text_system, theme);
-    hit_index.register(crate::ids::INSP_PLAYER_REMOVE, rect);
+    hit_index.register(ids::INSP_PLAYER_REMOVE, rect);
     yy + h + ph2d_tokens::control_gap_px()
 }
 
@@ -405,12 +405,12 @@ fn paint_cards(
     // Distance` vira o `snap_distance` E o `step_height` do controlador: é o
     // número mais vivo da seção, e esconder o card inteiro o levaria junto.
     const SPRING_ONLY: [ph2d_a11y::NodeId; 3] = [
-        crate::ids::INSP_PLAYER_FLOAT,
-        crate::ids::INSP_PLAYER_STIFFNESS,
-        crate::ids::INSP_PLAYER_DAMPING,
+        ids::INSP_PLAYER_FLOAT,
+        ids::INSP_PLAYER_STIFFNESS,
+        ids::INSP_PLAYER_DAMPING,
     ];
     let shown = |id: ph2d_a11y::NodeId| {
-        (push_is_live || id != crate::ids::INSP_PLAYER_REACT_PUSH)
+        (push_is_live || id != ids::INSP_PLAYER_REACT_PUSH)
             && (spring_is_live || !SPRING_ONLY.contains(&id))
     };
     for (title, card_id, rows) in PLAYER_CARDS {
@@ -426,7 +426,7 @@ fn paint_cards(
         //
         // ⚠️ Os valores AUTORADOS continuam no componente: esconder não apaga, e
         // voltar ao Kinematic devolve o card com os números que lá estavam.
-        if !reaction_is_live && card_id == crate::ids::INSP_PLAYER_CARD_REACT {
+        if !reaction_is_live && card_id == ids::INSP_PLAYER_CARD_REACT {
             continue;
         }
         let n = rows.iter().filter(|(_, id, _)| shown(*id)).count();

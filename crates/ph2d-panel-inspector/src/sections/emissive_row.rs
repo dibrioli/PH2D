@@ -41,14 +41,14 @@ pub(crate) fn paint_emissive_row(
     cur_y: f32,
 ) -> f32 {
     let (_, value) = store
-        .slider(crate::ids::INSP_SPRITE_EMISSIVE)
+        .slider(ids::INSP_SPRITE_EMISSIVE)
         .unwrap_or((SliderState::Normal, 0.0));
     let h = paint_slider_with_chip(
         Rect::new(x, cur_y, w, FIELD_H),
         "Emissive",
         value,
-        crate::ids::INSP_SPRITE_EMISSIVE,
-        crate::ids::INSP_SPRITE_EMISSIVE_CHIP,
+        ids::INSP_SPRITE_EMISSIVE,
+        ids::INSP_SPRITE_EMISSIVE_CHIP,
         store,
         hit_index,
         scene,

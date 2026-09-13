@@ -63,8 +63,8 @@ pub(crate) fn paint_join_gesture(
         w,
         y,
         "Join As",
-        ids::INSP_LIVE_PHYSICS_SECTION,
-        &crate::ids::INSP_PHYS_JOIN_KIND,
+        core_ids::INSP_LIVE_PHYSICS_SECTION,
+        &ids::INSP_PHYS_JOIN_KIND,
         &JOIN_KIND_LABELS,
         join_kind_tag,
     );
@@ -79,28 +79,25 @@ pub(crate) fn paint_join_gesture(
     // A LITERAL `hit_index.register` id, the only form
     // `architecture_panel_wiring_parity` can see.
     let rect = Rect::new(x, yy, w, ROW_H_PX);
-    let btn = Button::new(
-        crate::ids::INSP_PHYS_JOIN_DRAW,
-        draw_button_label(draw_armed),
-    )
-    .kind(ButtonKind::Default)
-    .visual(if draw_armed {
-        (ButtonState::Pressed, ph2d_editor_core::motion::SETTLED)
-    } else {
-        store.button_visual(crate::ids::INSP_PHYS_JOIN_DRAW)
-    });
+    let btn = Button::new(ids::INSP_PHYS_JOIN_DRAW, draw_button_label(draw_armed))
+        .kind(ButtonKind::Default)
+        .visual(if draw_armed {
+            (ButtonState::Pressed, ph2d_editor_core::motion::SETTLED)
+        } else {
+            store.button_visual(ids::INSP_PHYS_JOIN_DRAW)
+        });
     paint_button(&btn, rect, scene, text_system, theme);
-    hit_index.register(crate::ids::INSP_PHYS_JOIN_DRAW, rect);
+    hit_index.register(ids::INSP_PHYS_JOIN_DRAW, rect);
     yy += ph2d_tokens::row_pitch_px();
 
     if join_count >= 2 {
         let label = join_button_label(join_count);
         let rect = Rect::new(x, yy, w, ROW_H_PX);
-        let btn = Button::new(crate::ids::INSP_PHYS_JOIN, &label)
+        let btn = Button::new(ids::INSP_PHYS_JOIN, &label)
             .kind(ButtonKind::Default)
-            .visual(store.button_visual(crate::ids::INSP_PHYS_JOIN));
+            .visual(store.button_visual(ids::INSP_PHYS_JOIN));
         paint_button(&btn, rect, scene, text_system, theme);
-        hit_index.register(crate::ids::INSP_PHYS_JOIN, rect);
+        hit_index.register(ids::INSP_PHYS_JOIN, rect);
         yy += ph2d_tokens::row_pitch_px();
     }
     // **A TERCEIRA rota: o rig sai da HIERARQUIA** (W-Rig). Oferecida só quando há
@@ -109,11 +106,11 @@ pub(crate) fn paint_join_gesture(
     if rig_parts > 0 {
         let label = rig_button_label(rig_parts);
         let rect = Rect::new(x, yy, w, ROW_H_PX);
-        let btn = Button::new(crate::ids::INSP_PHYS_RIG, &label)
+        let btn = Button::new(ids::INSP_PHYS_RIG, &label)
             .kind(ButtonKind::Default)
-            .visual(store.button_visual(crate::ids::INSP_PHYS_RIG));
+            .visual(store.button_visual(ids::INSP_PHYS_RIG));
         paint_button(&btn, rect, scene, text_system, theme);
-        hit_index.register(crate::ids::INSP_PHYS_RIG, rect);
+        hit_index.register(ids::INSP_PHYS_RIG, rect);
         yy += ph2d_tokens::row_pitch_px();
     }
     yy

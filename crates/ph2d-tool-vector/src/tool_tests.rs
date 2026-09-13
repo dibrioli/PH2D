@@ -3,6 +3,7 @@
 //! `super::*` continua sendo o modulo `tool`.
 
 use super::*;
+use crate::ids;
 use crate::params::{WIDTH_MAX_PX, WIDTH_MIN_PX};
 use ph2d_a11y::NodeId;
 
@@ -26,7 +27,7 @@ fn authoring_a_width_arms_the_one_shot_and_a_colour_does_not() {
     let mut t = VectorTool::new();
     assert!(!t.take_width_authored(), "nasce desarmado");
 
-    Tool::handle_panel_event(&mut t, PanelEvent::SetValue(crate::ids::VECTOR_WIDTH, 0.7));
+    Tool::handle_panel_event(&mut t, PanelEvent::SetValue(ids::VECTOR_WIDTH, 0.7));
     assert!(t.take_width_authored(), "a largura foi autorada");
     assert!(
         !t.take_width_authored(),
@@ -47,9 +48,9 @@ fn authoring_a_width_arms_the_one_shot_and_a_colour_does_not() {
 #[test]
 fn width_slider_maps_normalized_to_px() {
     let mut t = VectorTool::new();
-    Tool::handle_panel_event(&mut t, PanelEvent::SetValue(crate::ids::VECTOR_WIDTH, 0.0));
+    Tool::handle_panel_event(&mut t, PanelEvent::SetValue(ids::VECTOR_WIDTH, 0.0));
     assert_eq!(t.stroke_width_px(), WIDTH_MIN_PX);
-    Tool::handle_panel_event(&mut t, PanelEvent::SetValue(crate::ids::VECTOR_WIDTH, 1.0));
+    Tool::handle_panel_event(&mut t, PanelEvent::SetValue(ids::VECTOR_WIDTH, 1.0));
     assert_eq!(t.stroke_width_px(), WIDTH_MAX_PX);
 }
 
@@ -75,22 +76,16 @@ fn set_fill_sets_colour_and_flags_apply() {
 fn opacity_sliders_set_fill_and_stroke_alpha_and_flag_apply() {
     let mut t = VectorTool::new();
     // Fill Opacity → 0 % = invisible (replaces the old "None" button).
-    Tool::handle_panel_event(
-        &mut t,
-        PanelEvent::SetValue(crate::ids::VECTOR_FILL_OPACITY, 0.0),
-    );
+    Tool::handle_panel_event(&mut t, PanelEvent::SetValue(ids::VECTOR_FILL_OPACITY, 0.0));
     assert_eq!(t.fill_rgba()[3], 0);
     assert!(t.take_apply_to_selected());
     // Fill Opacity → 100 %.
-    Tool::handle_panel_event(
-        &mut t,
-        PanelEvent::SetValue(crate::ids::VECTOR_FILL_OPACITY, 1.0),
-    );
+    Tool::handle_panel_event(&mut t, PanelEvent::SetValue(ids::VECTOR_FILL_OPACITY, 1.0));
     assert_eq!(t.fill_rgba()[3], 255);
     // Stroke Opacity → 50 % ≈ 128.
     Tool::handle_panel_event(
         &mut t,
-        PanelEvent::SetValue(crate::ids::VECTOR_STROKE_OPACITY, 0.5),
+        PanelEvent::SetValue(ids::VECTOR_STROKE_OPACITY, 0.5),
     );
     assert_eq!(t.stroke_rgba()[3], 128);
     assert!(t.take_apply_to_selected());
@@ -110,16 +105,16 @@ fn mode_buttons_switch_the_draw_mode() {
     let mut t = VectorTool::new();
     assert_eq!(t.mode(), DrawMode::Select); // default
     for (id, want) in [
-        (crate::ids::VECTOR_MODE_PEN, DrawMode::Pen),
-        (crate::ids::VECTOR_MODE_PENCIL, DrawMode::Pencil),
-        (crate::ids::VECTOR_MODE_NODE, DrawMode::Node),
-        (crate::ids::VECTOR_MODE_TEXT, DrawMode::Text),
+        (ids::VECTOR_MODE_PEN, DrawMode::Pen),
+        (ids::VECTOR_MODE_PENCIL, DrawMode::Pencil),
+        (ids::VECTOR_MODE_NODE, DrawMode::Node),
+        (ids::VECTOR_MODE_TEXT, DrawMode::Text),
         // O 5º pill: sem ele, desenhar uma forma deixava a fileira toda apagada.
-        (crate::ids::VECTOR_MODE_SHAPE, DrawMode::Shape),
-        (crate::ids::VECTOR_MODE_FRAME, DrawMode::Frame),
+        (ids::VECTOR_MODE_SHAPE, DrawMode::Shape),
+        (ids::VECTOR_MODE_FRAME, DrawMode::Frame),
         // O 8º pill (Pick Shapes / Blend): coleta formas na ordem de clique.
-        (crate::ids::VECTOR_MODE_PICKBLEND, DrawMode::PickBlend),
-        (crate::ids::VECTOR_MODE_SELECT, DrawMode::Select),
+        (ids::VECTOR_MODE_PICKBLEND, DrawMode::PickBlend),
+        (ids::VECTOR_MODE_SELECT, DrawMode::Select),
     ] {
         Tool::handle_panel_event(&mut t, PanelEvent::Click(id));
         assert_eq!(t.mode(), want);
@@ -135,7 +130,7 @@ fn mode_buttons_switch_the_draw_mode() {
 fn every_catalog_button_selects_its_shape_and_arms_the_gesture() {
     let mut t = VectorTool::new();
     for (i, d) in crate::shapes::SHAPES.iter().enumerate() {
-        Tool::handle_panel_event(&mut t, PanelEvent::Click(crate::ids::vector_shape_id(i)));
+        Tool::handle_panel_event(&mut t, PanelEvent::Click(ids::vector_shape_id(i)));
         assert_eq!(t.shape(), d.kind, "botao {i} nao escolheu {:?}", d.kind);
         assert_eq!(t.mode(), DrawMode::Shape, "escolher a forma arma o desenho");
         assert_eq!(t.draw_config().shape, d.kind, "o cfg espelha a forma");
@@ -152,7 +147,7 @@ fn a_shape_field_writes_the_active_shapes_parameter_and_is_per_shape() {
     // Campo 0 da estrela = Points (contagem: clampa e arredonda).
     Tool::handle_panel_event(
         &mut t,
-        PanelEvent::SetValue(crate::ids::vector_shape_field_id(0), 7.4),
+        PanelEvent::SetValue(ids::vector_shape_field_id(0), 7.4),
     );
     assert!(
         (t.draw_config().values[0] - 7.0).abs() < 1e-9,
@@ -160,7 +155,7 @@ fn a_shape_field_writes_the_active_shapes_parameter_and_is_per_shape() {
     );
     Tool::handle_panel_event(
         &mut t,
-        PanelEvent::SetValue(crate::ids::vector_shape_field_id(0), 9_999.0),
+        PanelEvent::SetValue(ids::vector_shape_field_id(0), 9_999.0),
     );
     assert!(
         (t.draw_config().values[0] - 60.0).abs() < 1e-9,
@@ -169,7 +164,7 @@ fn a_shape_field_writes_the_active_shapes_parameter_and_is_per_shape() {
     // Campo 2 da estrela = raio da ponta (px).
     Tool::handle_panel_event(
         &mut t,
-        PanelEvent::SetValue(crate::ids::vector_shape_field_id(2), 30.0),
+        PanelEvent::SetValue(ids::vector_shape_field_id(2), 30.0),
     );
     assert!((t.shape_values(ShapeKind::Star)[2] - 30.0).abs() < 1e-9);
     // O poligono NAO foi tocado (os valores sao por-forma).
@@ -183,18 +178,18 @@ fn a_shape_field_writes_the_active_shapes_parameter_and_is_per_shape() {
 fn stroke_cap_join_dash_arms() {
     use crate::params::{DASH_MAX, GAP_MAX, StrokeCap, StrokeJoin};
     let mut t = VectorTool::new();
-    Tool::handle_panel_event(&mut t, PanelEvent::Click(crate::ids::VECTOR_CAP_ROUND));
+    Tool::handle_panel_event(&mut t, PanelEvent::Click(ids::VECTOR_CAP_ROUND));
     assert_eq!(t.cap(), StrokeCap::Round);
     assert!(
         t.take_apply_to_selected(),
         "cap change restyles the selection"
     );
-    Tool::handle_panel_event(&mut t, PanelEvent::Click(crate::ids::VECTOR_JOIN_BEVEL));
+    Tool::handle_panel_event(&mut t, PanelEvent::Click(ids::VECTOR_JOIN_BEVEL));
     assert_eq!(t.join(), StrokeJoin::Bevel);
-    Tool::handle_panel_event(&mut t, PanelEvent::SetValue(crate::ids::VECTOR_DASH, 1.0));
+    Tool::handle_panel_event(&mut t, PanelEvent::SetValue(ids::VECTOR_DASH, 1.0));
     assert!((t.dash() - DASH_MAX).abs() < 1e-6);
     assert!(t.take_apply_to_selected());
-    Tool::handle_panel_event(&mut t, PanelEvent::SetValue(crate::ids::VECTOR_GAP, 1.0));
+    Tool::handle_panel_event(&mut t, PanelEvent::SetValue(ids::VECTOR_GAP, 1.0));
     assert!((t.gap() - GAP_MAX).abs() < 1e-6);
     assert!(
         t.take_apply_to_selected(),
@@ -220,7 +215,7 @@ fn markers_reach_the_style_and_flag_the_selection() {
     Tool::handle_panel_event(
         &mut t,
         PanelEvent::SetValue(
-            crate::ids::VECTOR_MARKER_END_DD,
+            ids::VECTOR_MARKER_END_DD,
             f64::from(Marker::Triangle.as_u8()),
         ),
     );
@@ -233,10 +228,7 @@ fn markers_reach_the_style_and_flag_the_selection() {
 
     Tool::handle_panel_event(
         &mut t,
-        PanelEvent::SetValue(
-            crate::ids::VECTOR_MARKER_START_DD,
-            f64::from(Marker::Bar.as_u8()),
-        ),
+        PanelEvent::SetValue(ids::VECTOR_MARKER_START_DD, f64::from(Marker::Bar.as_u8())),
     );
     assert_eq!(t.marker_start(), Marker::Bar);
 
@@ -254,13 +246,13 @@ fn every_marker_in_the_catalog_reaches_the_tool_and_junk_is_none() {
     for &m in ph2d_vec_scene::ALL_MARKERS {
         Tool::handle_panel_event(
             &mut t,
-            PanelEvent::SetValue(crate::ids::VECTOR_MARKER_START_DD, f64::from(m.as_u8())),
+            PanelEvent::SetValue(ids::VECTOR_MARKER_START_DD, f64::from(m.as_u8())),
         );
         assert_eq!(t.marker_start(), m, "{m:?} nao chegou na tool");
     }
     Tool::handle_panel_event(
         &mut t,
-        PanelEvent::SetValue(crate::ids::VECTOR_MARKER_START_DD, 250.0),
+        PanelEvent::SetValue(ids::VECTOR_MARKER_START_DD, 250.0),
     );
     assert_eq!(t.marker_start(), Marker::None, "discriminante desconhecido");
 }
@@ -290,11 +282,11 @@ fn ui_snapshot_round_trips_style() {
     let mut t = VectorTool::new();
     t.set_stroke_rgba([1, 2, 3, 255]);
     t.set_fill_rgba([4, 5, 6, 255]);
-    Tool::handle_panel_event(&mut t, PanelEvent::SetValue(crate::ids::VECTOR_WIDTH, 0.5));
+    Tool::handle_panel_event(&mut t, PanelEvent::SetValue(ids::VECTOR_WIDTH, 0.5));
     t.set_shape(ShapeKind::Polygon);
     Tool::handle_panel_event(
         &mut t,
-        PanelEvent::SetValue(crate::ids::vector_shape_field_id(0), 7.0),
+        PanelEvent::SetValue(ids::vector_shape_field_id(0), 7.0),
     );
     let s = t.ui_snapshot();
     assert_eq!(s.stroke, [1, 2, 3, 255]);
@@ -340,10 +332,7 @@ fn the_head_size_and_round_reach_the_tool_and_clamp_to_their_range() {
         !t.take_apply_to_selected(),
         "a tool nova nasce sem restyle pendente"
     );
-    Tool::handle_panel_event(
-        &mut t,
-        PanelEvent::SetValue(crate::ids::VECTOR_MARKER_SCALE, 2.5),
-    );
+    Tool::handle_panel_event(&mut t, PanelEvent::SetValue(ids::VECTOR_MARKER_SCALE, 2.5));
     assert!((t.marker_scale() - 2.5).abs() < 1e-9);
     assert!(
         t.take_apply_to_selected(),
@@ -351,31 +340,22 @@ fn the_head_size_and_round_reach_the_tool_and_clamp_to_their_range() {
          muda no painel e a seta continua igual na tela"
     );
 
-    Tool::handle_panel_event(
-        &mut t,
-        PanelEvent::SetValue(crate::ids::VECTOR_MARKER_ROUND, 0.75),
-    );
+    Tool::handle_panel_event(&mut t, PanelEvent::SetValue(ids::VECTOR_MARKER_ROUND, 0.75));
     assert!((t.marker_round() - 0.75).abs() < 1e-9);
     assert!(t.take_apply_to_selected());
 
     // A faixa satura nos dois extremos (o mesmo clamp que o `set_number_range` da caixa).
     Tool::handle_panel_event(
         &mut t,
-        PanelEvent::SetValue(crate::ids::VECTOR_MARKER_SCALE, 999.0),
+        PanelEvent::SetValue(ids::VECTOR_MARKER_SCALE, 999.0),
     );
     assert!((t.marker_scale() - crate::params::MARKER_SCALE.max).abs() < 1e-9);
-    Tool::handle_panel_event(
-        &mut t,
-        PanelEvent::SetValue(crate::ids::VECTOR_MARKER_SCALE, -5.0),
-    );
+    Tool::handle_panel_event(&mut t, PanelEvent::SetValue(ids::VECTOR_MARKER_SCALE, -5.0));
     assert!(
         (t.marker_scale() - crate::params::MARKER_SCALE.min).abs() < 1e-9,
         "uma cabeca de tamanho zero (ou negativo) e uma seta invisivel"
     );
-    Tool::handle_panel_event(
-        &mut t,
-        PanelEvent::SetValue(crate::ids::VECTOR_MARKER_ROUND, 9.0),
-    );
+    Tool::handle_panel_event(&mut t, PanelEvent::SetValue(ids::VECTOR_MARKER_ROUND, 9.0));
     assert!((t.marker_round() - crate::params::MARKER_ROUND.max).abs() < 1e-9);
 }
 
@@ -388,7 +368,7 @@ fn the_head_size_and_round_reach_the_tool_and_clamp_to_their_range() {
 fn both_ends_toggles_in_both_directions_and_stays_derived() {
     let mut t = VectorTool::new();
     let click = |t: &mut VectorTool| {
-        Tool::handle_panel_event(t, PanelEvent::Click(crate::ids::VECTOR_MARKER_BOTH));
+        Tool::handle_panel_event(t, PanelEvent::Click(ids::VECTOR_MARKER_BOTH));
     };
 
     // 1. Nasce sem ponta nenhuma ⇒ desligado.
@@ -422,7 +402,7 @@ fn both_ends_toggles_in_both_directions_and_stays_derived() {
     Tool::handle_panel_event(
         &mut t,
         PanelEvent::SetValue(
-            crate::ids::VECTOR_MARKER_END_DD,
+            ids::VECTOR_MARKER_END_DD,
             f64::from(Marker::Diamond.as_u8()),
         ),
     );
@@ -445,13 +425,10 @@ fn both_ends_mirrors_a_lone_start_marker_instead_of_clobbering_it() {
     let mut t = VectorTool::new();
     Tool::handle_panel_event(
         &mut t,
-        PanelEvent::SetValue(
-            crate::ids::VECTOR_MARKER_START_DD,
-            f64::from(Marker::Bar.as_u8()),
-        ),
+        PanelEvent::SetValue(ids::VECTOR_MARKER_START_DD, f64::from(Marker::Bar.as_u8())),
     );
     assert!(!t.both_ends());
-    Tool::handle_panel_event(&mut t, PanelEvent::Click(crate::ids::VECTOR_MARKER_BOTH));
+    Tool::handle_panel_event(&mut t, PanelEvent::Click(ids::VECTOR_MARKER_BOTH));
     assert!(t.both_ends());
     assert_eq!(t.marker_start(), Marker::Bar);
     assert_eq!(
@@ -498,9 +475,9 @@ fn each_width_source_chip_reaches_the_draw_config() {
         "o default tem de ser a fonte que não inventa geometria nenhuma"
     );
     for (id, want) in [
-        (crate::ids::VECTOR_PENCIL_W_SPEED, Ws::Speed),
-        (crate::ids::VECTOR_PENCIL_W_PRESSURE, Ws::Pressure),
-        (crate::ids::VECTOR_PENCIL_W_UNIFORM, Ws::Uniform),
+        (ids::VECTOR_PENCIL_W_SPEED, Ws::Speed),
+        (ids::VECTOR_PENCIL_W_PRESSURE, Ws::Pressure),
+        (ids::VECTOR_PENCIL_W_UNIFORM, Ws::Uniform),
     ] {
         Tool::handle_panel_event(&mut t, PanelEvent::Click(id));
         assert_eq!(t.draw_config().pencil_width_source, want, "chip {id:?}");
@@ -518,9 +495,9 @@ fn each_width_source_chip_reaches_the_draw_config() {
 #[test]
 fn picking_a_width_source_does_not_change_the_draw_mode() {
     let mut t = VectorTool::default();
-    Tool::handle_panel_event(&mut t, PanelEvent::Click(crate::ids::VECTOR_MODE_NODE));
+    Tool::handle_panel_event(&mut t, PanelEvent::Click(ids::VECTOR_MODE_NODE));
     let before = t.draw_config().mode;
-    Tool::handle_panel_event(&mut t, PanelEvent::Click(crate::ids::VECTOR_PENCIL_W_SPEED));
+    Tool::handle_panel_event(&mut t, PanelEvent::Click(ids::VECTOR_PENCIL_W_SPEED));
     assert_eq!(t.draw_config().mode, before);
 }
 
@@ -543,7 +520,7 @@ fn each_symmetry_chip_reaches_the_draw_config() {
         !t.draw_config().symmetry.on,
         "a simetria nasce DESARMADA — um modo que se arma sozinho muda a cena antes de o artista olhar"
     );
-    Tool::handle_panel_event(&mut t, PanelEvent::Click(crate::ids::VECTOR_SYM_ON));
+    Tool::handle_panel_event(&mut t, PanelEvent::Click(ids::VECTOR_SYM_ON));
     assert!(t.draw_config().symmetry.on, "o chip On arma");
     for k in K::ALL {
         let id = crate::params::symmetry_kind_id(*k);
@@ -555,11 +532,11 @@ fn each_symmetry_chip_reaches_the_draw_config() {
             "o painel pinta a partir do snapshot — ele tem de concordar com o config"
         );
     }
-    Tool::handle_panel_event(&mut t, PanelEvent::Click(crate::ids::VECTOR_SYM_FUSE_OFF));
+    Tool::handle_panel_event(&mut t, PanelEvent::Click(ids::VECTOR_SYM_FUSE_OFF));
     assert!(!t.draw_config().symmetry.fuse, "o par Fuse chega ao config");
-    Tool::handle_panel_event(&mut t, PanelEvent::Click(crate::ids::VECTOR_SYM_FUSE_ON));
+    Tool::handle_panel_event(&mut t, PanelEvent::Click(ids::VECTOR_SYM_FUSE_ON));
     assert!(t.draw_config().symmetry.fuse);
-    Tool::handle_panel_event(&mut t, PanelEvent::Click(crate::ids::VECTOR_SYM_OFF));
+    Tool::handle_panel_event(&mut t, PanelEvent::Click(ids::VECTOR_SYM_OFF));
     assert!(
         !t.draw_config().symmetry.on,
         "e o chip Off desarma — é ele que faz as cópias sumirem sem destruir nada"
@@ -579,7 +556,7 @@ fn each_symmetry_chip_reaches_the_draw_config() {
 #[test]
 fn a_frame_is_born_with_the_geometry_of_a_plain_rectangle() {
     let mut t = VectorTool::new();
-    Tool::handle_panel_event(&mut t, PanelEvent::Click(crate::ids::VECTOR_MODE_FRAME));
+    Tool::handle_panel_event(&mut t, PanelEvent::Click(ids::VECTOR_MODE_FRAME));
     let cfg = t.draw_config();
     let kind = cfg
         .mode
@@ -621,7 +598,7 @@ fn the_gesture_reads_the_parameters_of_the_kind_it_cooks() {
         "o controlo positivo: as duas formas TÊM de diferir no 1o campo, senao o teste passa vazio"
     );
 
-    Tool::handle_panel_event(&mut t, PanelEvent::Click(crate::ids::VECTOR_MODE_FRAME));
+    Tool::handle_panel_event(&mut t, PanelEvent::Click(ids::VECTOR_MODE_FRAME));
     assert_eq!(
         t.draw_config().values,
         t.shape_values(ShapeKind::RoundRect),
@@ -644,11 +621,11 @@ fn the_gesture_reads_the_parameters_of_the_kind_it_cooks() {
 fn authoring_the_frame_radius_lands_where_the_gesture_will_read_it() {
     let mut t = VectorTool::new();
     t.set_shape(ShapeKind::Rectangle); // o catálogo aponta para uma forma SEM raio
-    Tool::handle_panel_event(&mut t, PanelEvent::Click(crate::ids::VECTOR_MODE_FRAME));
+    Tool::handle_panel_event(&mut t, PanelEvent::Click(ids::VECTOR_MODE_FRAME));
 
     Tool::handle_panel_event(
         &mut t,
-        PanelEvent::SetValue(crate::ids::vector_shape_field_id(0), 8.0),
+        PanelEvent::SetValue(ids::vector_shape_field_id(0), 8.0),
     );
     assert!(
         t.shape_values(ShapeKind::RoundRect)[0] > 0.0,

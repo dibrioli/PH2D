@@ -134,11 +134,12 @@ pub(crate) fn paint_color_tint_section(
     //    Este ficheiro é anterior à porta e escrevia o `Spacing::Xs` (4) à mão.
     let row_gap = ph2d_tokens::control_gap_px();
     let header_h = TypeToken::Md.px() + Spacing::Md.px(); // LITERAL-PX-OK: section header band height
-    let color_id = ids::INSP_LIVE_COLOR_COLOR;
+    let color_id = core_ids::INSP_LIVE_COLOR_COLOR;
     let rgba = store
         .widget_color(color_id)
         .unwrap_or([0x88, 0x88, 0x88, 0xff]); // LITERAL-COLOR-OK: neutral default for unconfigured section accent
-    let header = section_header(store, ids::INSP_LIVE_COLOR_SECTION, "Color & Tint").color(rgba);
+    let header =
+        section_header(store, core_ids::INSP_LIVE_COLOR_SECTION, "Color & Tint").color(rgba);
     let header_rect = Rect::new(x, y, w, header_h);
     paint_section_header(&header, header_rect, scene, text_system, theme);
     if let Some(circle_rect) = ph2d_editor_core::widget::color_circle_hit_rect(&header, header_rect)
@@ -152,7 +153,7 @@ pub(crate) fn paint_color_tint_section(
     //    repente por baixo de um chevron a rodar — as duas metades a discordar outra vez.
     let Some(fold) = SectionFold::begin(
         store,
-        ids::INSP_LIVE_COLOR_SECTION,
+        core_ids::INSP_LIVE_COLOR_SECTION,
         x,
         w,
         y + header_h,
@@ -181,7 +182,7 @@ pub(crate) fn paint_color_tint_section(
     paint_tint_swatch_cell(
         Rect::new(x, cur_y, w, field_h),
         "Tint",
-        crate::ids::INSP_SPRITE_TINT_SWATCH,
+        ids::INSP_SPRITE_TINT_SWATCH,
         tint_seed,
         sp.as_ref().is_some_and(|s| s.mixed.tint),
         store,
@@ -200,7 +201,7 @@ pub(crate) fn paint_color_tint_section(
     paint_tint_swatch_cell(
         Rect::new(x, cur_y, w, field_h),
         "Self Tint",
-        crate::ids::INSP_SPRITE_SELF_TINT_SWATCH,
+        ids::INSP_SPRITE_SELF_TINT_SWATCH,
         self_seed,
         sp.as_ref().is_some_and(|s| s.mixed.self_tint),
         store,
@@ -228,14 +229,14 @@ pub(crate) fn paint_color_tint_section(
 
     // Opacity slider-with-chip.
     let (_, op_value) = store
-        .slider(crate::ids::INSP_SPRITE_OPACITY)
+        .slider(ids::INSP_SPRITE_OPACITY)
         .unwrap_or((SliderState::Normal, 1.0));
     let opacity_h = paint_slider_with_chip(
         Rect::new(x, cur_y, w, field_h),
         "Opacity",
         op_value,
-        crate::ids::INSP_SPRITE_OPACITY,
-        crate::ids::INSP_SPRITE_OPACITY_CHIP,
+        ids::INSP_SPRITE_OPACITY,
+        ids::INSP_SPRITE_OPACITY_CHIP,
         store,
         hit_index,
         scene,
@@ -247,13 +248,13 @@ pub(crate) fn paint_color_tint_section(
     // Tint Fill silhouette toggle.
     let cb_h = 18.0_f32; // LITERAL-PX-OK: matches Checkbox visual height
     let (_, tf_value) = store
-        .checkbox(crate::ids::INSP_SPRITE_TINT_FILL)
+        .checkbox(ids::INSP_SPRITE_TINT_FILL)
         .unwrap_or((CheckboxState::Normal, CheckboxValue::Unchecked));
     let tf_rect = Rect::new(x, cur_y, w, cb_h);
-    hit_index.register(crate::ids::INSP_SPRITE_TINT_FILL, tf_rect);
+    hit_index.register(ids::INSP_SPRITE_TINT_FILL, tf_rect);
     paint_checkbox(
-        &Checkbox::new(crate::ids::INSP_SPRITE_TINT_FILL, "Tint Fill")
-            .visual(store.checkbox_visual(crate::ids::INSP_SPRITE_TINT_FILL))
+        &Checkbox::new(ids::INSP_SPRITE_TINT_FILL, "Tint Fill")
+            .visual(store.checkbox_visual(ids::INSP_SPRITE_TINT_FILL))
             .value(tf_value),
         tf_rect,
         scene,
@@ -305,10 +306,10 @@ fn paint_per_corner_tab(
         .map(|s| s.per_corner_tint)
         .unwrap_or([[1.0, 1.0, 1.0, 1.0]; 4]); // WHITE = per-corner default (no gradient)
     let corner_ids = [
-        crate::ids::INSP_SPRITE_CORNER_TL,
-        crate::ids::INSP_SPRITE_CORNER_TR,
-        crate::ids::INSP_SPRITE_CORNER_BL,
-        crate::ids::INSP_SPRITE_CORNER_BR,
+        ids::INSP_SPRITE_CORNER_TL,
+        ids::INSP_SPRITE_CORNER_TR,
+        ids::INSP_SPRITE_CORNER_BL,
+        ids::INSP_SPRITE_CORNER_BR,
     ];
     let a11y = [
         "Top-left corner tint",
@@ -350,9 +351,9 @@ fn paint_per_corner_tab(
     // Equalize Corners — copies TL → the other three (spec §3.6).
     let btn_h = ROW_H_PX;
     let eq_rect = Rect::new(x, cur_y, w, btn_h);
-    let eq_state = store.button_visual(crate::ids::INSP_SPRITE_CORNER_EQUALIZE);
-    hit_index.register(crate::ids::INSP_SPRITE_CORNER_EQUALIZE, eq_rect);
-    let eq = Button::new(crate::ids::INSP_SPRITE_CORNER_EQUALIZE, "Equalize Corners")
+    let eq_state = store.button_visual(ids::INSP_SPRITE_CORNER_EQUALIZE);
+    hit_index.register(ids::INSP_SPRITE_CORNER_EQUALIZE, eq_rect);
+    let eq = Button::new(ids::INSP_SPRITE_CORNER_EQUALIZE, "Equalize Corners")
         .kind(ButtonKind::Default)
         .visual(eq_state);
     paint_button(&eq, eq_rect, scene, text_system, theme);

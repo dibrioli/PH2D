@@ -42,8 +42,8 @@ pub(super) fn paint_motor_rows(
         w,
         y,
         "Motor",
-        crate::ids::INSP_JOINT_MOTOR_GROUP,
-        &crate::ids::INSP_JOINT_MOTOR,
+        ids::INSP_JOINT_MOTOR_GROUP,
+        &ids::INSP_JOINT_MOTOR,
         &SWITCH_LABELS,
         u8::from(info.motor_enabled),
     );
@@ -60,8 +60,8 @@ pub(super) fn paint_motor_rows(
         w,
         yy,
         "Mode",
-        crate::ids::INSP_JOINT_MOTOR_MODE_GROUP,
-        &crate::ids::INSP_JOINT_MOTOR_MODE,
+        ids::INSP_JOINT_MOTOR_MODE_GROUP,
+        &ids::INSP_JOINT_MOTOR_MODE,
         &MOTOR_MODE_LABELS,
         info.motor_mode_tag,
     );
@@ -69,13 +69,10 @@ pub(super) fn paint_motor_rows(
     let (label, id) = if info.motor_mode_tag == MOTOR_MODE_POSITION {
         (
             format!("Target ({place_unit})"),
-            crate::ids::INSP_JOINT_MOTOR_TARGET,
+            ids::INSP_JOINT_MOTOR_TARGET,
         )
     } else {
-        (
-            format!("Speed ({rate_unit})"),
-            crate::ids::INSP_JOINT_MOTOR_SPEED,
-        )
+        (format!("Speed ({rate_unit})"), ids::INSP_JOINT_MOTOR_SPEED)
     };
     yy = num_row(
         scene,
@@ -99,7 +96,7 @@ pub(super) fn paint_motor_rows(
         w,
         yy,
         "Max Force",
-        crate::ids::INSP_JOINT_MOTOR_FORCE,
+        ids::INSP_JOINT_MOTOR_FORCE,
     )
 }
 
@@ -145,8 +142,8 @@ pub(super) fn paint_break_rows(
         w,
         y,
         "Breakable",
-        crate::ids::INSP_JOINT_BREAK_GROUP,
-        &crate::ids::INSP_JOINT_BREAK,
+        ids::INSP_JOINT_BREAK_GROUP,
+        &ids::INSP_JOINT_BREAK,
         &SWITCH_LABELS,
         u8::from(info.break_enabled),
     );
@@ -163,7 +160,7 @@ pub(super) fn paint_break_rows(
         w,
         yy,
         "Break Force (N)",
-        crate::ids::INSP_JOINT_BREAK_FORCE,
+        ids::INSP_JOINT_BREAK_FORCE,
     );
     if info.breaks_on_torque {
         yy = num_row(
@@ -176,7 +173,7 @@ pub(super) fn paint_break_rows(
             w,
             yy,
             "Break Torque (N.m)",
-            crate::ids::INSP_JOINT_BREAK_TORQUE,
+            ids::INSP_JOINT_BREAK_TORQUE,
         );
     }
     yy

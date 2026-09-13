@@ -137,12 +137,12 @@ pub(crate) fn paint_transform_section(
         hit_index,
         cur_y,
         pos_label,
-        crate::ids::INSP_TRANSFORM_POS_X,
+        ids::INSP_TRANSFORM_POS_X,
         "X",
         ColorToken::Danger,
         pos_step,
         Some((
-            crate::ids::INSP_TRANSFORM_POS_Y,
+            ids::INSP_TRANSFORM_POS_Y,
             "Y",
             ColorToken::Success,
             pos_step,
@@ -155,7 +155,7 @@ pub(crate) fn paint_transform_section(
         hit_index,
         cur_y,
         rot_label,
-        crate::ids::INSP_TRANSFORM_ROT,
+        ids::INSP_TRANSFORM_ROT,
         "",
         ColorToken::Text3,
         angle_step,
@@ -168,16 +168,11 @@ pub(crate) fn paint_transform_section(
         hit_index,
         cur_y,
         "Scale",
-        crate::ids::INSP_TRANSFORM_SCALE_X,
+        ids::INSP_TRANSFORM_SCALE_X,
         "X",
         ColorToken::Danger,
         0.1, // LITERAL-PX-OK: scale NumberInput step
-        Some((
-            crate::ids::INSP_TRANSFORM_SCALE_Y,
-            "Y",
-            ColorToken::Success,
-            0.1,
-        )), // LITERAL-PX-OK: scale NumberInput step
+        Some((ids::INSP_TRANSFORM_SCALE_Y, "Y", ColorToken::Success, 0.1)), // LITERAL-PX-OK: scale NumberInput step
     );
     cur_y += h_scale + row_gap;
     // Skew X/Y in degrees (ADR-0025-amendment-1). Authoring range is
@@ -189,12 +184,12 @@ pub(crate) fn paint_transform_section(
         hit_index,
         cur_y,
         skew_label,
-        crate::ids::INSP_TRANSFORM_SKEW_X,
+        ids::INSP_TRANSFORM_SKEW_X,
         "X",
         ColorToken::Danger,
         angle_step,
         Some((
-            crate::ids::INSP_TRANSFORM_SKEW_Y,
+            ids::INSP_TRANSFORM_SKEW_Y,
             "Y",
             ColorToken::Success,
             angle_step,
@@ -279,13 +274,14 @@ fn paint_header_and_begin_fold(
     // requested the swap.
     let header_h = TypeToken::Md.px() + Spacing::Md.px(); // LITERAL-PX-OK: section header band height
     let reset_size = header_h; // square icon button matching header height
-    let color_id = ids::INSP_LIVE_TRANSFORM_COLOR;
+    let color_id = core_ids::INSP_LIVE_TRANSFORM_COLOR;
     let rgba = store
         .widget_color(color_id)
         .unwrap_or([0x88, 0x88, 0x88, 0xff]); // LITERAL-COLOR-OK: neutral default for unconfigured section accent
     // Header rect spans the FULL panel width so paint_section_header
     // anchors the color dot at the right edge (panel border).
-    let header = section_header(store, ids::INSP_LIVE_TRANSFORM_SECTION, "Transform").color(rgba);
+    let header =
+        section_header(store, core_ids::INSP_LIVE_TRANSFORM_SECTION, "Transform").color(rgba);
     let header_rect = Rect::new(x, y, w, header_h);
     // Reserve for the color dot at the right edge (≈ Md pad + 14 px
     // dot diameter) — the reset icon slots just to the LEFT of it.
@@ -296,8 +292,8 @@ fn paint_header_and_begin_fold(
         hit_index.register(color_id, circle_rect);
     }
     let reset_rect = Rect::new(x + w - color_slot_w - reset_size, y, reset_size, reset_size);
-    let reset_state = store.button_visual(crate::ids::INSP_TRANSFORM_RESET);
-    hit_index.register(crate::ids::INSP_TRANSFORM_RESET, reset_rect);
+    let reset_state = store.button_visual(ids::INSP_TRANSFORM_RESET);
+    hit_index.register(ids::INSP_TRANSFORM_RESET, reset_rect);
     paint_icon_button(
         reset_rect,
         IconGlyph::Builtin(IconId::Reset),
@@ -317,7 +313,7 @@ fn paint_header_and_begin_fold(
     //    repente por baixo de um chevron a rodar — as duas metades a discordar outra vez.
     let Some(fold) = SectionFold::begin(
         store,
-        ids::INSP_LIVE_TRANSFORM_SECTION,
+        core_ids::INSP_LIVE_TRANSFORM_SECTION,
         x,
         w,
         y + header_h,

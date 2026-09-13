@@ -40,11 +40,12 @@ pub(crate) fn paint_wheel_section(
     info: &InspectorWheelInfo,
 ) -> f32 {
     let header_h = TypeToken::Md.px() + Spacing::Md.px(); // LITERAL-PX-OK: section header band height
-    let color_id = ids::INSP_LIVE_WHEEL_COLOR;
+    let color_id = core_ids::INSP_LIVE_WHEEL_COLOR;
     let rgba = store
         .widget_color(color_id)
         .unwrap_or([0x88, 0x88, 0x88, 0xff]); // LITERAL-COLOR-OK: neutral default section accent
-    let header = section_header(store, ids::INSP_LIVE_WHEEL_SECTION, "Pulley Wheel").color(rgba);
+    let header =
+        section_header(store, core_ids::INSP_LIVE_WHEEL_SECTION, "Pulley Wheel").color(rgba);
     let header_rect = Rect::new(x, y, w, header_h);
     paint_section_header(&header, header_rect, scene, text_system, theme);
     if let Some(circle_rect) = ph2d_editor_core::widget::color_circle_hit_rect(&header, header_rect)
@@ -58,7 +59,7 @@ pub(crate) fn paint_wheel_section(
     //    repente por baixo de um chevron a rodar — as duas metades a discordar outra vez.
     let Some(fold) = SectionFold::begin(
         store,
-        ids::INSP_LIVE_WHEEL_SECTION,
+        core_ids::INSP_LIVE_WHEEL_SECTION,
         x,
         w,
         y + header_h,
@@ -81,7 +82,7 @@ pub(crate) fn paint_wheel_section(
         w,
         yy,
         "Radius (m)",
-        crate::ids::INSP_WHEEL_RADIUS,
+        ids::INSP_WHEEL_RADIUS,
     );
     // **Out Radius** — o SEGUNDO diâmetro do eixo (W4). `0` é uma roldana comum;
     // qualquer outro valor faz dela um TAMBOR DIFERENCIAL, e a corda ganha
@@ -100,7 +101,7 @@ pub(crate) fn paint_wheel_section(
         w,
         yy,
         "Out Radius (m)",
-        crate::ids::INSP_WHEEL_RADIUS_OUT,
+        ids::INSP_WHEEL_RADIUS_OUT,
     );
     // **Differential** — o eixo de dois diâmetros é um TAMBOR ou uma talha de
     // WESTON (W-Weston), e a diferença é onde o segundo contato fica: no mesmo nó
@@ -129,8 +130,8 @@ pub(crate) fn paint_wheel_section(
                 w,
                 yy,
                 "Differential",
-                crate::ids::INSP_WHEEL_DIFF_GROUP,
-                &crate::ids::INSP_WHEEL_DIFF,
+                ids::INSP_WHEEL_DIFF_GROUP,
+                &ids::INSP_WHEEL_DIFF,
                 &DIFF_LABELS,
                 u8::from(info.weston),
             );
@@ -155,7 +156,7 @@ pub(crate) fn paint_wheel_section(
         w,
         yy,
         "Order",
-        crate::ids::INSP_WHEEL_ORDER,
+        ids::INSP_WHEEL_ORDER,
     );
     // **Motor** — esta roldana é um TAMBOR. Graus por segundo porque a grandeza é
     // ANGULAR, e é isso que faz o diâmetro ser o câmbio: a corda anda `ω·r`,
@@ -171,7 +172,7 @@ pub(crate) fn paint_wheel_section(
         w,
         yy,
         "Motor (\u{00b0}/s)",
-        crate::ids::INSP_WHEEL_MOTOR,
+        ids::INSP_WHEEL_MOTOR,
     );
     yy = seg_row(
         scene,
@@ -183,8 +184,8 @@ pub(crate) fn paint_wheel_section(
         w,
         yy,
         "Wrap",
-        crate::ids::INSP_WHEEL_WRAP_GROUP,
-        &crate::ids::INSP_WHEEL_WRAP,
+        ids::INSP_WHEEL_WRAP_GROUP,
+        &ids::INSP_WHEEL_WRAP,
         &WRAP_LABELS,
         info.wrap_tag,
     );
@@ -226,8 +227,8 @@ fn paint_break_rows(
         w,
         y,
         "Axle Breaks",
-        crate::ids::INSP_WHEEL_BREAK_GROUP,
-        &crate::ids::INSP_WHEEL_BREAK,
+        ids::INSP_WHEEL_BREAK_GROUP,
+        &ids::INSP_WHEEL_BREAK,
         &["Off", "On"],
         u8::from(info.break_enabled),
     );
@@ -244,7 +245,7 @@ fn paint_break_rows(
         w,
         yy,
         "Break Force (N)",
-        crate::ids::INSP_WHEEL_BREAK_FORCE,
+        ids::INSP_WHEEL_BREAK_FORCE,
     )
 }
 
@@ -323,11 +324,11 @@ fn paint_mount_row(
             brect,
             IconGlyph::Builtin(IconId::Trash),
             IconButtonStyle::Compact,
-            store.button_visual(crate::ids::INSP_WHEEL_UNMOUNT),
+            store.button_visual(ids::INSP_WHEEL_UNMOUNT),
             scene,
             theme,
         );
-        hit_index.register(crate::ids::INSP_WHEEL_UNMOUNT, brect);
+        hit_index.register(ids::INSP_WHEEL_UNMOUNT, brect);
         bx -= icon_w + gap;
     }
     let brect = Rect::new(bx, y + (h - icon_w) * 0.5, icon_w, icon_w);
@@ -338,12 +339,12 @@ fn paint_mount_row(
         if info.mount_pick_armed {
             (ButtonState::Pressed, ph2d_editor_core::motion::SETTLED)
         } else {
-            store.button_visual(crate::ids::INSP_WHEEL_MOUNT_PICK)
+            store.button_visual(ids::INSP_WHEEL_MOUNT_PICK)
         },
         scene,
         theme,
     );
-    hit_index.register(crate::ids::INSP_WHEEL_MOUNT_PICK, brect);
+    hit_index.register(ids::INSP_WHEEL_MOUNT_PICK, brect);
     y + h
 }
 
@@ -464,11 +465,11 @@ fn paint_rope_row(
         if info.rope_pick_armed {
             (ButtonState::Pressed, ph2d_editor_core::motion::SETTLED)
         } else {
-            store.button_visual(crate::ids::INSP_WHEEL_ROPE_PICK)
+            store.button_visual(ids::INSP_WHEEL_ROPE_PICK)
         },
         scene,
         theme,
     );
-    hit_index.register(crate::ids::INSP_WHEEL_ROPE_PICK, brect);
+    hit_index.register(ids::INSP_WHEEL_ROPE_PICK, brect);
     y + h
 }

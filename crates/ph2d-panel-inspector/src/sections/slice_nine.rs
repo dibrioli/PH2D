@@ -121,9 +121,9 @@ fn tiled_rows(
     );
     cur_y += label_h;
     let tm = SegmentedAdaptive::new(
-        ids::INSP_LIVE_SLICE_SECTION,
+        core_ids::INSP_LIVE_SLICE_SECTION,
         "Tile Mode",
-        crate::ids::INSP_SLICE_TILE_MODE
+        ids::INSP_SLICE_TILE_MODE
             .iter()
             .zip(TILE_MODE_LABELS)
             .map(|(&id, label)| SegmentedOption::new(id, label))
@@ -196,11 +196,11 @@ pub(crate) fn paint_slice_section(
     info: &InspectorSliceInfo,
 ) -> f32 {
     let header_h = TypeToken::Md.px() + Spacing::Md.px(); // LITERAL-PX-OK: banda do cabeçalho
-    let color_id = ids::INSP_LIVE_SLICE_COLOR;
+    let color_id = core_ids::INSP_LIVE_SLICE_COLOR;
     let rgba = store
         .widget_color(color_id)
         .unwrap_or([0x88, 0x88, 0x88, 0xff]); // LITERAL-COLOR-OK: acento neutro por omissão
-    let header = section_header(store, ids::INSP_LIVE_SLICE_SECTION, "9-Slice").color(rgba);
+    let header = section_header(store, core_ids::INSP_LIVE_SLICE_SECTION, "9-Slice").color(rgba);
     let header_rect = Rect::new(x, y, w, header_h);
     paint_section_header(&header, header_rect, scene, text_system, theme);
     if let Some(circle_rect) = ph2d_editor_core::widget::color_circle_hit_rect(&header, header_rect)
@@ -209,7 +209,7 @@ pub(crate) fn paint_slice_section(
     }
     let Some(fold) = SectionFold::begin(
         store,
-        ids::INSP_LIVE_SLICE_SECTION,
+        core_ids::INSP_LIVE_SLICE_SECTION,
         x,
         w,
         y + header_h,
@@ -239,10 +239,10 @@ pub(crate) fn paint_slice_section(
         CheckboxValue::Unchecked
     };
     let en_rect = Rect::new(x, cur_y, w, cb_h);
-    hit_index.register(crate::ids::INSP_SLICE_ENABLE, en_rect);
+    hit_index.register(ids::INSP_SLICE_ENABLE, en_rect);
     paint_checkbox(
-        &Checkbox::new(crate::ids::INSP_SLICE_ENABLE, "Enable 9-slice")
-            .visual(store.checkbox_visual(crate::ids::INSP_SLICE_ENABLE))
+        &Checkbox::new(ids::INSP_SLICE_ENABLE, "Enable 9-slice")
+            .visual(store.checkbox_visual(ids::INSP_SLICE_ENABLE))
             .value(en_value),
         en_rect,
         scene,
@@ -268,10 +268,7 @@ pub(crate) fn paint_slice_section(
         w,
         cur_y,
         "Borders L / T (px)",
-        [
-            crate::ids::INSP_SLICE_BORDER[0],
-            crate::ids::INSP_SLICE_BORDER[1],
-        ],
+        [ids::INSP_SLICE_BORDER[0], ids::INSP_SLICE_BORDER[1]],
         1.0,
     );
     cur_y = pair_row(
@@ -284,10 +281,7 @@ pub(crate) fn paint_slice_section(
         w,
         cur_y,
         "Borders R / B (px)",
-        [
-            crate::ids::INSP_SLICE_BORDER[2],
-            crate::ids::INSP_SLICE_BORDER[3],
-        ],
+        [ids::INSP_SLICE_BORDER[2], ids::INSP_SLICE_BORDER[3]],
         1.0,
     );
     cur_y = pair_row(
@@ -300,22 +294,19 @@ pub(crate) fn paint_slice_section(
         w,
         cur_y,
         "Size X / Y (m, 0 = sprite)",
-        [
-            crate::ids::INSP_SLICE_SIZE[0],
-            crate::ids::INSP_SLICE_SIZE[1],
-        ],
+        [ids::INSP_SLICE_SIZE[0], ids::INSP_SLICE_SIZE[1]],
         SIZE_STEP,
     );
 
     // Fill Center.
     let (_, fc_value) = store
-        .checkbox(crate::ids::INSP_SLICE_FILL_CENTER)
+        .checkbox(ids::INSP_SLICE_FILL_CENTER)
         .unwrap_or((CheckboxState::Normal, CheckboxValue::Checked));
     let fc_rect = Rect::new(x, cur_y, w, cb_h);
-    hit_index.register(crate::ids::INSP_SLICE_FILL_CENTER, fc_rect);
+    hit_index.register(ids::INSP_SLICE_FILL_CENTER, fc_rect);
     paint_checkbox(
-        &Checkbox::new(crate::ids::INSP_SLICE_FILL_CENTER, "Fill Center")
-            .visual(store.checkbox_visual(crate::ids::INSP_SLICE_FILL_CENTER))
+        &Checkbox::new(ids::INSP_SLICE_FILL_CENTER, "Fill Center")
+            .visual(store.checkbox_visual(ids::INSP_SLICE_FILL_CENTER))
             .value(fc_value),
         fc_rect,
         scene,
@@ -369,18 +360,15 @@ mod tests {
     /// `shells/desktop/tests/it/the_slice_section_offers_every_mode_the_engine_has.rs`.
     #[test]
     fn every_id_array_has_a_label_for_each_slot() {
-        assert_eq!(
-            crate::ids::INSP_SLICE_TILE_MODE.len(),
-            TILE_MODE_LABELS.len()
-        );
+        assert_eq!(ids::INSP_SLICE_TILE_MODE.len(), TILE_MODE_LABELS.len());
         // ⚠️ A contagem de regiões contra o MOTOR vive no gate da shell — aqui só a grelha.
         assert_eq!(
-            crate::ids::INSP_SLICE_REGION.len(),
+            ids::INSP_SLICE_REGION.len(),
             8,
             "a moldura 3x3 tem oito celulas"
         );
         assert_eq!(
-            crate::ids::INSP_SLICE_BORDER.len(),
+            ids::INSP_SLICE_BORDER.len(),
             4,
             "as bordas sao [l, t, r, b]"
         );

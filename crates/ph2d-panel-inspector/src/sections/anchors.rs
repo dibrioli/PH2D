@@ -140,7 +140,7 @@ fn anchor_list(
     for (i, (row, &id)) in info
         .rows
         .iter()
-        .zip(crate::ids::INSP_ANCHOR_ROW.iter())
+        .zip(ids::INSP_ANCHOR_ROW.iter())
         .enumerate()
     {
         let rect = Rect::new(x, cur_y, w, ROW_H);
@@ -229,8 +229,8 @@ fn anchor_editor(
     // Nome.
     let (control_w, name_dot) = ph2d_editor_core::widget::form_row_columns(x, w, cur_y, ROW_H_PX);
     let host = Rect::new(x, cur_y, control_w, ROW_H_PX);
-    hit_index.register(crate::ids::INSP_ANCHOR_NAME, host);
-    let (state, text, caret, sel_anchor) = match store.get(crate::ids::INSP_ANCHOR_NAME) {
+    hit_index.register(ids::INSP_ANCHOR_NAME, host);
+    let (state, text, caret, sel_anchor) = match store.get(ids::INSP_ANCHOR_NAME) {
         Some(InteractiveState::TextInput {
             state,
             text,
@@ -239,9 +239,9 @@ fn anchor_editor(
         }) => (*state, Some(text.as_str()), *caret, *selection_anchor),
         _ => (TextInputState::Normal, None, 0, None),
     };
-    let input = TextInput::new(crate::ids::INSP_ANCHOR_NAME, "")
+    let input = TextInput::new(ids::INSP_ANCHOR_NAME, "")
         .placeholder("anchor_name\u{2026}")
-        .visual((state, store.hover_live(crate::ids::INSP_ANCHOR_NAME)));
+        .visual((state, store.hover_live(ids::INSP_ANCHOR_NAME)));
     paint_text_input_with_buffer(
         &input,
         text,
@@ -265,7 +265,7 @@ fn anchor_editor(
         w,
         cur_y,
         "Position X / Y (px)",
-        &crate::ids::INSP_ANCHOR_POS,
+        &ids::INSP_ANCHOR_POS,
         PX_STEP,
     );
     cur_y = field_row(
@@ -278,7 +278,7 @@ fn anchor_editor(
         w,
         cur_y,
         "Rotation (deg)",
-        &[crate::ids::INSP_ANCHOR_ROT],
+        &[ids::INSP_ANCHOR_ROT],
         DEG_STEP,
     );
     cur_y = check_row(
@@ -291,7 +291,7 @@ fn anchor_editor(
         w,
         cur_y,
         "Bounds (makes it a Slice)",
-        crate::ids::INSP_ANCHOR_BOUNDS_ON,
+        ids::INSP_ANCHOR_BOUNDS_ON,
     );
     // ⚠️ Os campos da área só existem quando ela existe. Pintá-los sobre um Socket seria
     // oferecer quatro números que não vão a lado nenhum.
@@ -306,7 +306,7 @@ fn anchor_editor(
             w,
             cur_y,
             "Bounds X / Y / W / H (px)",
-            &crate::ids::INSP_ANCHOR_BOUNDS,
+            &ids::INSP_ANCHOR_BOUNDS,
             PX_STEP,
         );
         cur_y = check_row(
@@ -319,7 +319,7 @@ fn anchor_editor(
             w,
             cur_y,
             "Center (makes it a 9-slice Region)",
-            crate::ids::INSP_ANCHOR_CENTER_ON,
+            ids::INSP_ANCHOR_CENTER_ON,
         );
         if row.center.is_some() {
             cur_y = field_row(
@@ -332,17 +332,17 @@ fn anchor_editor(
                 w,
                 cur_y,
                 "Center X / Y / W / H (px)",
-                &crate::ids::INSP_ANCHOR_CENTER,
+                &ids::INSP_ANCHOR_CENTER,
                 PX_STEP,
             );
         }
     }
     let rm = Rect::new(x, cur_y, w, BTN_H);
-    hit_index.register(crate::ids::INSP_ANCHOR_REMOVE, rm);
+    hit_index.register(ids::INSP_ANCHOR_REMOVE, rm);
     paint_button(
-        &Button::new(crate::ids::INSP_ANCHOR_REMOVE, "x Remove Anchor")
+        &Button::new(ids::INSP_ANCHOR_REMOVE, "x Remove Anchor")
             .kind(ButtonKind::Default)
-            .visual(store.button_visual(crate::ids::INSP_ANCHOR_REMOVE)),
+            .visual(store.button_visual(ids::INSP_ANCHOR_REMOVE)),
         rm,
         scene,
         text_system,
@@ -366,7 +366,7 @@ pub(crate) fn paint_anchors_section(
     selected: usize,
 ) -> f32 {
     let header_h = TypeToken::Md.px() + Spacing::Md.px(); // LITERAL-PX-OK: banda do cabeçalho
-    let color_id = ids::INSP_LIVE_ANCHOR_COLOR;
+    let color_id = core_ids::INSP_LIVE_ANCHOR_COLOR;
     let rgba = store
         .widget_color(color_id)
         .unwrap_or([0x88, 0x88, 0x88, 0xff]); // LITERAL-COLOR-OK: acento neutro por omissão
@@ -375,7 +375,7 @@ pub(crate) fn paint_anchors_section(
     } else {
         format!("Sockets / Anchors  ({})", info.rows.len())
     };
-    let header = section_header(store, ids::INSP_LIVE_ANCHOR_SECTION, &title).color(rgba);
+    let header = section_header(store, core_ids::INSP_LIVE_ANCHOR_SECTION, &title).color(rgba);
     let header_rect = Rect::new(x, y, w, header_h);
     paint_section_header(&header, header_rect, scene, text_system, theme);
     if let Some(circle_rect) = ph2d_editor_core::widget::color_circle_hit_rect(&header, header_rect)
@@ -384,7 +384,7 @@ pub(crate) fn paint_anchors_section(
     }
     let Some(fold) = SectionFold::begin(
         store,
-        ids::INSP_LIVE_ANCHOR_SECTION,
+        core_ids::INSP_LIVE_ANCHOR_SECTION,
         x,
         w,
         y + header_h,
@@ -466,11 +466,11 @@ pub(crate) fn paint_anchors_section(
     );
 
     let add = Rect::new(x, cur_y, w, BTN_H);
-    hit_index.register(crate::ids::INSP_ANCHOR_ADD, add);
+    hit_index.register(ids::INSP_ANCHOR_ADD, add);
     paint_button(
-        &Button::new(crate::ids::INSP_ANCHOR_ADD, "+ Add Anchor")
+        &Button::new(ids::INSP_ANCHOR_ADD, "+ Add Anchor")
             .kind(ButtonKind::Default)
-            .visual(store.button_visual(crate::ids::INSP_ANCHOR_ADD)),
+            .visual(store.button_visual(ids::INSP_ANCHOR_ADD)),
         add,
         scene,
         text_system,

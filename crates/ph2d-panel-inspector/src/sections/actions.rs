@@ -65,7 +65,7 @@ fn list(
     for (i, (row, &id)) in info
         .rows
         .iter()
-        .zip(ids::INSP_ACTION_ROW.iter())
+        .zip(core_ids::INSP_ACTION_ROW.iter())
         .enumerate()
     {
         let rect = Rect::new(x, cur_y, w, ROW_H);
@@ -127,7 +127,7 @@ fn buttons(
     y: f32,
     info: &InspectorActionInfo,
 ) -> f32 {
-    let can_add = info.rows.len() < ids::INSP_ACTION_ROW.len();
+    let can_add = info.rows.len() < core_ids::INSP_ACTION_ROW.len();
     let can_remove = !info.rows.is_empty();
     let n = usize::from(can_add) + usize::from(can_remove);
     if n == 0 {
@@ -138,11 +138,11 @@ fn buttons(
     if can_add {
         let (rect, group) = seg[cell];
         cell += 1;
-        hit_index.register(crate::ids::INSP_ACTION_ADD, rect);
+        hit_index.register(ids::INSP_ACTION_ADD, rect);
         paint_button(
-            &Button::new(crate::ids::INSP_ACTION_ADD, "+ Add Action")
+            &Button::new(ids::INSP_ACTION_ADD, "+ Add Action")
                 .kind(ButtonKind::Default)
-                .visual(store.button_visual(crate::ids::INSP_ACTION_ADD))
+                .visual(store.button_visual(ids::INSP_ACTION_ADD))
                 .in_group(group),
             rect,
             scene,
@@ -152,11 +152,11 @@ fn buttons(
     }
     if can_remove {
         let (rect, group) = seg[cell];
-        hit_index.register(crate::ids::INSP_ACTION_REMOVE, rect);
+        hit_index.register(ids::INSP_ACTION_REMOVE, rect);
         paint_button(
-            &Button::new(crate::ids::INSP_ACTION_REMOVE, "x Remove Action")
+            &Button::new(ids::INSP_ACTION_REMOVE, "x Remove Action")
                 .kind(ButtonKind::Default)
-                .visual(store.button_visual(crate::ids::INSP_ACTION_REMOVE))
+                .visual(store.button_visual(ids::INSP_ACTION_REMOVE))
                 .in_group(group),
             rect,
             scene,
@@ -173,7 +173,7 @@ fn buttons(
 /// que o despacho lê com `position()`. ⚠️ `zip` com os rótulos do snapshot: uma lista de rótulos
 /// mais curta perde as excedentes em vez de as pintar sem nome.
 pub(crate) fn verb_options(labels: &[String]) -> Vec<DropdownOption<u8>> {
-    ids::INSP_ACTION_VERB
+    core_ids::INSP_ACTION_VERB
         .iter()
         .enumerate()
         .zip(labels.iter())
@@ -208,14 +208,14 @@ fn verb_row(
 ) -> f32 {
     let (control_w, dot) = ph2d_editor_core::widget::form_row_columns(x, w, y, ROW_H_PX);
     let rect = Rect::new(x, y, control_w, ROW_H_PX);
-    hit_index.register(crate::ids::INSP_ACTION_VERB_PICK, rect);
+    hit_index.register(ids::INSP_ACTION_VERB_PICK, rect);
     let open = matches!(
-        store.get(crate::ids::INSP_ACTION_VERB_PICK),
+        store.get(ids::INSP_ACTION_VERB_PICK),
         Some(InteractiveState::Dropdown { open: true, .. })
     );
-    let mut dd = Dropdown::new(crate::ids::INSP_ACTION_VERB_PICK, "", verb_options(labels))
+    let mut dd = Dropdown::new(ids::INSP_ACTION_VERB_PICK, "", verb_options(labels))
         .open(open)
-        .visual(store.dropdown_visual(crate::ids::INSP_ACTION_VERB_PICK));
+        .visual(store.dropdown_visual(ids::INSP_ACTION_VERB_PICK));
     dd.select(sel);
     paint_dropdown_chip(&dd, rect, scene, text_system, theme);
     // ⚠️ **O popover NÃO se pinta aqui** — ele sairia debaixo da secção seguinte. O rect vai ao
@@ -250,8 +250,8 @@ fn editor(
         x,
         w,
         y,
-        crate::ids::INSP_ACTION_ON,
-        TextInput::new(crate::ids::INSP_ACTION_ON, "").placeholder("on signal\u{2026}"),
+        ids::INSP_ACTION_ON,
+        TextInput::new(ids::INSP_ACTION_ON, "").placeholder("on signal\u{2026}"),
     );
     cur_y = super::anim_rows::text_row(
         scene,
@@ -262,9 +262,8 @@ fn editor(
         x,
         w,
         cur_y,
-        crate::ids::INSP_ACTION_TARGET,
-        TextInput::new(crate::ids::INSP_ACTION_TARGET, "")
-            .placeholder("target (empty = this object)"),
+        ids::INSP_ACTION_TARGET,
+        TextInput::new(ids::INSP_ACTION_TARGET, "").placeholder("target (empty = this object)"),
     );
     cur_y = verb_row(
         scene,
@@ -290,8 +289,8 @@ fn editor(
             x,
             w,
             cur_y,
-            crate::ids::INSP_ACTION_ARG,
-            TextInput::new(crate::ids::INSP_ACTION_ARG, "").placeholder("timer name (empty = all)"),
+            ids::INSP_ACTION_ARG,
+            TextInput::new(ids::INSP_ACTION_ARG, "").placeholder("timer name (empty = all)"),
         );
     }
     // ⚠️⚠️ **A LINHA QUE RESPONDE AO «não acontece nada».**
@@ -327,7 +326,7 @@ pub(crate) fn paint_action_section(
     selected: usize,
 ) -> f32 {
     let header_h = TypeToken::Md.px() + Spacing::Md.px(); // LITERAL-PX-OK: banda do cabeçalho
-    let color_id = ids::INSP_LIVE_ACTION_COLOR;
+    let color_id = core_ids::INSP_LIVE_ACTION_COLOR;
     let rgba = store
         .widget_color(color_id)
         .unwrap_or([0x88, 0x88, 0x88, 0xff]); // LITERAL-COLOR-OK: acento neutro por omissão
@@ -336,7 +335,7 @@ pub(crate) fn paint_action_section(
     } else {
         format!("Signal Actions  ({})", info.rows.len())
     };
-    let header = section_header(store, ids::INSP_LIVE_ACTION_SECTION, &title).color(rgba);
+    let header = section_header(store, core_ids::INSP_LIVE_ACTION_SECTION, &title).color(rgba);
     let header_rect = Rect::new(x, y, w, header_h);
     paint_section_header(&header, header_rect, scene, text_system, theme);
     if let Some(circle_rect) = ph2d_editor_core::widget::color_circle_hit_rect(&header, header_rect)
@@ -345,7 +344,7 @@ pub(crate) fn paint_action_section(
     }
     let Some(fold) = SectionFold::begin(
         store,
-        ids::INSP_LIVE_ACTION_SECTION,
+        core_ids::INSP_LIVE_ACTION_SECTION,
         x,
         w,
         y + header_h,

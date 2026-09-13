@@ -74,7 +74,12 @@ fn list(
     // ⚠️ **`zip` com o array de ids**: uma lista com mais timers do que ids (impossível enquanto o
     // gate `the_timer_row_ids_cover_the_model_cap` viver) perde os excedentes em vez de os pintar
     // uns sobre os outros.
-    for (i, (row, &id)) in info.rows.iter().zip(ids::INSP_TIMER_ROW.iter()).enumerate() {
+    for (i, (row, &id)) in info
+        .rows
+        .iter()
+        .zip(core_ids::INSP_TIMER_ROW.iter())
+        .enumerate()
+    {
         let rect = Rect::new(x, cur_y, w, ROW_H);
         hit_index.register(id, rect);
         ph2d_editor_core::widget::paint_row_stripe(
@@ -156,7 +161,7 @@ fn buttons(
 ) -> f32 {
     // ⚠️ **O `+` desaparece no tecto**, e não fica cinzento a mentir: o modelo não aceita mais, e
     // um botão que aceita o clique e não faz nada é o defeito que a DIRETIVA §2 nomeia.
-    let can_add = info.rows.len() < ids::INSP_TIMER_ROW.len();
+    let can_add = info.rows.len() < core_ids::INSP_TIMER_ROW.len();
     let can_remove = !info.rows.is_empty();
     // ⭐⭐ **`+ Add | x Remove` é UM par**, e por isso passa pela porta do grupo — a mesma pergunta
     // (*o que fazer com a lista*), a mesma fileira, o traço de um pixel entre as duas peças.
@@ -171,11 +176,11 @@ fn buttons(
     if can_add {
         let (rect, group) = seg[cell];
         cell += 1;
-        hit_index.register(crate::ids::INSP_TIMER_ADD, rect);
+        hit_index.register(ids::INSP_TIMER_ADD, rect);
         paint_button(
-            &Button::new(crate::ids::INSP_TIMER_ADD, "+ Add Timer")
+            &Button::new(ids::INSP_TIMER_ADD, "+ Add Timer")
                 .kind(ButtonKind::Default)
-                .visual(store.button_visual(crate::ids::INSP_TIMER_ADD))
+                .visual(store.button_visual(ids::INSP_TIMER_ADD))
                 .in_group(group),
             rect,
             scene,
@@ -185,11 +190,11 @@ fn buttons(
     }
     if can_remove {
         let (rect, group) = seg[cell];
-        hit_index.register(crate::ids::INSP_TIMER_REMOVE, rect);
+        hit_index.register(ids::INSP_TIMER_REMOVE, rect);
         paint_button(
-            &Button::new(crate::ids::INSP_TIMER_REMOVE, "x Remove Timer")
+            &Button::new(ids::INSP_TIMER_REMOVE, "x Remove Timer")
                 .kind(ButtonKind::Default)
-                .visual(store.button_visual(crate::ids::INSP_TIMER_REMOVE))
+                .visual(store.button_visual(ids::INSP_TIMER_REMOVE))
                 .in_group(group),
             rect,
             scene,
@@ -222,8 +227,8 @@ fn editor(
         x,
         w,
         y,
-        crate::ids::INSP_TIMER_NAME,
-        TextInput::new(crate::ids::INSP_TIMER_NAME, "").placeholder("timer_name\u{2026}"),
+        ids::INSP_TIMER_NAME,
+        TextInput::new(ids::INSP_TIMER_NAME, "").placeholder("timer_name\u{2026}"),
     );
 
     // ⚠️ **SEGUNDOS, e o passo é 0,1** — a unidade do artista. O componente guarda microssegundos
@@ -239,14 +244,14 @@ fn editor(
         w,
         cur_y,
         "Duration (seconds)",
-        &[crate::ids::INSP_TIMER_DURATION],
+        &[ids::INSP_TIMER_DURATION],
         0.1, // LITERAL-PX-OK: passo de scrub em SEGUNDOS, não em pixels
     );
 
     let half = (w - Spacing::Sm.px()) * 0.5;
     for (i, (id, label, on)) in [
-        (crate::ids::INSP_TIMER_REPEAT, "Repeat", row.repeat),
-        (crate::ids::INSP_TIMER_AUTOSTART, "Autostart", row.autostart),
+        (ids::INSP_TIMER_REPEAT, "Repeat", row.repeat),
+        (ids::INSP_TIMER_AUTOSTART, "Autostart", row.autostart),
     ]
     .into_iter()
     .enumerate()
@@ -285,8 +290,8 @@ fn editor(
         x,
         w,
         cur_y,
-        crate::ids::INSP_TIMER_SIGNAL,
-        TextInput::new(crate::ids::INSP_TIMER_SIGNAL, "").placeholder("signal_name (empty = mute)"),
+        ids::INSP_TIMER_SIGNAL,
+        TextInput::new(ids::INSP_TIMER_SIGNAL, "").placeholder("signal_name (empty = mute)"),
     );
 
     // ⚠️⚠️ **A LINHA QUE RESPONDE AO «nada acontece».** As três causas autoráveis do silêncio são
@@ -332,7 +337,7 @@ pub(crate) fn paint_timer_section(
     selected: usize,
 ) -> f32 {
     let header_h = TypeToken::Md.px() + Spacing::Md.px(); // LITERAL-PX-OK: banda do cabeçalho
-    let color_id = ids::INSP_LIVE_TIMER_COLOR;
+    let color_id = core_ids::INSP_LIVE_TIMER_COLOR;
     let rgba = store
         .widget_color(color_id)
         .unwrap_or([0x88, 0x88, 0x88, 0xff]); // LITERAL-COLOR-OK: acento neutro por omissão
@@ -341,7 +346,7 @@ pub(crate) fn paint_timer_section(
     } else {
         format!("Timers  ({})", info.rows.len())
     };
-    let header = section_header(store, ids::INSP_LIVE_TIMER_SECTION, &title).color(rgba);
+    let header = section_header(store, core_ids::INSP_LIVE_TIMER_SECTION, &title).color(rgba);
     let header_rect = Rect::new(x, y, w, header_h);
     paint_section_header(&header, header_rect, scene, text_system, theme);
     if let Some(circle_rect) = ph2d_editor_core::widget::color_circle_hit_rect(&header, header_rect)
@@ -350,7 +355,7 @@ pub(crate) fn paint_timer_section(
     }
     let Some(fold) = SectionFold::begin(
         store,
-        ids::INSP_LIVE_TIMER_SECTION,
+        core_ids::INSP_LIVE_TIMER_SECTION,
         x,
         w,
         y + header_h,

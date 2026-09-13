@@ -152,8 +152,8 @@ fn layer_row(
     let (control_w, dot) = ph2d_editor_core::widget::form_row_columns(x, w, y, h);
     let chip_w = (control_w - label_col_w - gap).max(0.0);
     let rect = Rect::new(chip_x, y, chip_w, h);
-    hit_index.register(crate::ids::INSP_ORDER_SORTING_LAYER, rect);
-    let (open, sel) = match store.get(crate::ids::INSP_ORDER_SORTING_LAYER) {
+    hit_index.register(ids::INSP_ORDER_SORTING_LAYER, rect);
+    let (open, sel) = match store.get(ids::INSP_ORDER_SORTING_LAYER) {
         Some(InteractiveState::Dropdown {
             open,
             selected_index,
@@ -161,9 +161,9 @@ fn layer_row(
         }) => (*open, selected_index.unwrap_or(fallback_idx)),
         _ => (false, fallback_idx),
     };
-    let visual = store.dropdown_visual(crate::ids::INSP_ORDER_SORTING_LAYER);
+    let visual = store.dropdown_visual(ids::INSP_ORDER_SORTING_LAYER);
     let label = LAYER_LABELS.get(sel).copied().unwrap_or("Default");
-    let dd = Dropdown::new(crate::ids::INSP_ORDER_SORTING_LAYER, "", layer_options())
+    let dd = Dropdown::new(ids::INSP_ORDER_SORTING_LAYER, "", layer_options())
         .selected(label)
         .open(open)
         .visual(visual);
@@ -180,7 +180,7 @@ pub(crate) fn layer_options() -> Vec<DropdownOption<&'static str>> {
     LAYER_LABELS
         .iter()
         .enumerate()
-        .map(|(i, name)| DropdownOption::new(crate::ids::INSP_ORDER_LAYER_OPT[i], *name, *name))
+        .map(|(i, name)| DropdownOption::new(ids::INSP_ORDER_LAYER_OPT[i], *name, *name))
         .collect()
 }
 
@@ -204,9 +204,9 @@ fn ysort_point_rows(
         NodeId(0),
         "",
         vec![
-            TabItem::new(crate::ids::INSP_ORDER_SP_CENTER, "Center"),
-            TabItem::new(crate::ids::INSP_ORDER_SP_PIVOT, "Pivot"),
-            TabItem::new(crate::ids::INSP_ORDER_SP_CUSTOM, "Custom"),
+            TabItem::new(ids::INSP_ORDER_SP_CENTER, "Center"),
+            TabItem::new(ids::INSP_ORDER_SP_PIVOT, "Pivot"),
+            TabItem::new(ids::INSP_ORDER_SP_CUSTOM, "Custom"),
         ],
     )
     .variant(TabsVariant::Segmented)
@@ -227,7 +227,7 @@ fn ysort_point_rows(
             x,
             w,
             cur_y,
-            crate::ids::INSP_ORDER_AXIS_X,
+            ids::INSP_ORDER_AXIS_X,
             "Axis X",
         );
         cur_y = number_row(
@@ -239,7 +239,7 @@ fn ysort_point_rows(
             x,
             w,
             cur_y,
-            crate::ids::INSP_ORDER_AXIS_Y,
+            ids::INSP_ORDER_AXIS_Y,
             "Axis Y",
         );
     }
@@ -259,11 +259,12 @@ pub(crate) fn paint_ordering_section(
     info: &InspectorOrderingInfo,
 ) -> f32 {
     let header_h = TypeToken::Md.px() + Spacing::Md.px(); // LITERAL-PX-OK: section header band height
-    let color_id = ids::INSP_LIVE_ORDERING_COLOR;
+    let color_id = core_ids::INSP_LIVE_ORDERING_COLOR;
     let rgba = store
         .widget_color(color_id)
         .unwrap_or([0x88, 0x88, 0x88, 0xff]); // LITERAL-COLOR-OK: neutral default section accent
-    let header = section_header(store, ids::INSP_LIVE_ORDERING_SECTION, "Ordering").color(rgba);
+    let header =
+        section_header(store, core_ids::INSP_LIVE_ORDERING_SECTION, "Ordering").color(rgba);
     let header_rect = Rect::new(x, y, w, header_h);
     paint_section_header(&header, header_rect, scene, text_system, theme);
     if let Some(circle_rect) = ph2d_editor_core::widget::color_circle_hit_rect(&header, header_rect)
@@ -277,7 +278,7 @@ pub(crate) fn paint_ordering_section(
     //    repente por baixo de um chevron a rodar — as duas metades a discordar outra vez.
     let Some(fold) = SectionFold::begin(
         store,
-        ids::INSP_LIVE_ORDERING_SECTION,
+        core_ids::INSP_LIVE_ORDERING_SECTION,
         x,
         w,
         y + header_h,
@@ -334,22 +335,22 @@ pub(crate) fn paint_ordering_section(
     // identically). Z as Relative pairs with it.
     yy = ni!(
         yy,
-        crate::ids::INSP_ORDER_Z_INDEX,
+        ids::INSP_ORDER_Z_INDEX,
         field_label("ph2d::ecs::ZIndexOverride", 1)
     );
     yy = cb!(
         yy,
-        crate::ids::INSP_ORDER_Z_RELATIVE,
+        ids::INSP_ORDER_Z_RELATIVE,
         field_label("ph2d::ecs::ZAsRelative", 1)
     );
     yy = cb!(
         yy,
-        crate::ids::INSP_ORDER_SHOW_BEHIND,
+        ids::INSP_ORDER_SHOW_BEHIND,
         marker_label("ph2d::ecs::ShowBehindParent")
     );
     yy = ni!(
         yy,
-        crate::ids::INSP_ORDER_ORDER_IN_LAYER,
+        ids::INSP_ORDER_ORDER_IN_LAYER,
         field_label("ph2d::ecs::OrderInLayer", 1)
     );
     yy = layer_row(
@@ -365,37 +366,29 @@ pub(crate) fn paint_ordering_section(
     );
     yy = cb!(
         yy,
-        crate::ids::INSP_ORDER_YSORT_ENABLED,
+        ids::INSP_ORDER_YSORT_ENABLED,
         field_label("ph2d::ecs::YSort", 1)
     );
-    if live(
-        store,
-        crate::ids::INSP_ORDER_YSORT_ENABLED,
-        info.y_sort_enabled,
-    ) {
+    if live(store, ids::INSP_ORDER_YSORT_ENABLED, info.y_sort_enabled) {
         yy = ysort_point_rows(scene, text_system, theme, hit_index, store, x, w, yy, info);
     }
     // ⚠️ A linha-mãe mostra o nome do COMPONENTE (a presença do `SortingGroup` é o que ela
     // liga) e a filha mostra o nome do CAMPO dele — duas perguntas, dois rótulos.
     yy = cb!(
         yy,
-        crate::ids::INSP_ORDER_SORTING_GROUP,
+        ids::INSP_ORDER_SORTING_GROUP,
         marker_label("ph2d::ecs::SortingGroup")
     );
-    if live(
-        store,
-        crate::ids::INSP_ORDER_SORTING_GROUP,
-        info.sorting_group,
-    ) {
+    if live(store, ids::INSP_ORDER_SORTING_GROUP, info.sorting_group) {
         yy = cb!(
             yy,
-            crate::ids::INSP_ORDER_SORT_AT_ROOT,
+            ids::INSP_ORDER_SORT_AT_ROOT,
             field_label("ph2d::ecs::SortingGroup", 1)
         );
     }
     yy = cb!(
         yy,
-        crate::ids::INSP_ORDER_TOP_LEVEL,
+        ids::INSP_ORDER_TOP_LEVEL,
         marker_label("ph2d::ecs::TopLevel")
     );
 

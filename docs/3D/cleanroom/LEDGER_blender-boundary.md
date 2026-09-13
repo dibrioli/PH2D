@@ -271,6 +271,7 @@ com atribuição.
 |---|---|---|
 | R-pré (1.ª passagem) | subagente R-pré despachado pela janela `9f820704-0d7e-4d96-847e-9cd720cbf178` | 2026-09-13 — ⛔ **REPROVADA, 4 achados** (versão 1) |
 | R-pré (2.ª passagem) | subagente R-pré **novo**, mesma janela | 2026-09-13 — ⛔ **REPROVADA, 4 achados** (versão 2) |
+| R-pré (3.ª passagem) | ⏳ **por despachar** — subagente NOVO, sobre a versão 3 | — |
 | R-pós | ⏳ | — |
 
 ### Auditoria R-pré — 2.ª passagem (2026-09-13) — ⛔ REPROVADA (versão 2), 4 achados
@@ -340,6 +341,40 @@ comentário do fonte enumerar os mesmos inteiros.
   ficheiro por escrito**, ou de trocar os caminhos por uma descrição. ⛔ Não "curar" o ledger sem
   essa decisão.
 
+### Versão 3 (2026-09-13) — as 4 curas da 2.ª passagem, e a cura do INSTRUMENTO
+
+⛔ **Escrita pelo E; ⏳ NÃO atestada — aguarda um R-pré NOVO.** A regra do arquivo fechado foi
+honrada: a reescrita saiu da compreensão, e o fonte só foi reaberto para confirmar **factos**
+(dois endereços de commit e a data/número de um defeito). Nenhuma linha nova cita o fonte.
+
+| # | o que o R pediu | o que a versão 3 tem |
+|---|---|---|
+| 1 ⛔ | apagar as **duas** apelações ao conjunto de testes do alvo; a linha sem fixture passa a `M` ou a `F` com o reticulado nomeado; o rótulo tem de **produzir** os números; e a lista de casos reconstruída a partir do NOSSO corpus | a tabela do §4.1 é hoje o **censo das nove malhas de repouso do nosso corpus**, na ordem delas — `esfera` · `grade` · `grade_pequena` · `grade_triangulada` · `grade_deslocada`/`grade_ruidosa` · `tubo` · `cupula` · `faixa`. As duas colunas de borda são **contadas** sobre as faces de cada `*.repouso.txt.gz` (⇒ `F` sobre `M`, recalculável por qualquer um do ficheiro), e a coluna `reticulado` traz o `L × C` de VÉRTICES de que a fórmula do perímetro (`2(L+C) − 4` · `2(L−1) + 2(C−1)`) **produz** os números. ⭐ Coluna nova, **o corpus confirma**: em cada peça os vértices que o traço de facto move são um múltiplo exacto da cadeia prevista (`165 = 33 × 5` · `15 = 5 × 3` · `128 = 32 × 4` · `96 = 32 × 3` · os dois `0` das recusas). ⚠️⚠️ **E a linha apagada não era só mal selada: estava ERRADA contra a nossa própria fixture** — ela dizia `6` vértices e `6` de `7` arestas ao lado do nome `faixa.repouso`, que tem `66`, `97` e `66`. *Uma linha copiada de outro corpus não descreve o nosso nem por acaso.* ⭐ E o §0 ganhou a cláusula: **o selo `D` nunca cobre nada lido dentro da árvore do alvo, ficheiro de teste incluído** |
+| 2 | guardar só o que uma fixture mostra ou o que NÓS exigimos; cair fora toda cláusula sobre o que o código do alvo guarda | §4.5: fica `O(arestas)` (`F`) + o relógio medido, e o cache passa a **exigência nossa** (`N`) com a frase *«esta espec não afirma o que o alvo guarda nem quando o deita fora»*. §17: o que fica é **observável** — o desenho acompanha o cursor, logo mostra A–D do vértice apontado agora —, e o custo virou *«A–D são `O(malha)`, logo o sobrevoo custa o pen-down»* com a instrução de produto marcada `N` (medir antes de copiar; chave `(vértice apontado, raio)`); ⛔ caiu *«recalcula a cada quadro»* e *«o alvo não tem cache»*. O §20.4 passou a dizer que nenhuma fixture toca o sobrevoo |
+| 3 | endereço nos dois `D` órfãos; uniformizar defeito e commit | §8.4 → commit público `c77bf9522` (2020-08-11, o que introduziu o controlo) · §10.6.3 → `2b2f3da72` (2020-10-18, o que introduziu o modo) · §8.2 `T84896` → **`#84896`** (o defeito existe no rastreador actual com esse número) · §11.2 passou de uma **data solta** a `b042b750d`, 2026-03-04, *que fecha* o defeito público #154678 ⇒ contados no ficheiro: **oito** commits citados, **oito** por hash de `9`, e **sete** defeitos, os sete na forma `#NNNNN` do rastreador actual |
+| 4 | as duas referências cruzadas | §4.5 `(§15)` → **`(§14.4)`** (o relógio) · §17 `§13.1#4` → **«o caso `4` da tabela do §13»** |
+
+#### ⭐⭐ A cura do INSTRUMENTO (o achado mais caro da 2.ª passagem), medida
+
+A vassoura casa **string literal**, e de-acentuar a mesma prosa PT escapava-lhe. ⇒ **toda entrada de
+prosa em português passou a ter também a forma SEM ACENTOS** (base64, como as outras):
+**`199` → `229`** entradas — as `30` acentuadas do bloco PT ganharam gémeo (as outras `6` do bloco
+não têm acento nenhum e já casavam). ⛔ Nenhuma entrada foi retirada e a regra de desenho do R fica
+intacta: só prosa de **comentário/TODO do fonte**, ⛔ nunca de manual, commit ou rastreador.
+
+**Controlo positivo corrido nos DOIS sentidos** sobre a **versão 1** (a reprovada, `23bb85670`) e
+sobre uma cópia dela **de-acentuada** (gerada fora da árvore, em `~/Referencias/…/draft/controlo/`):
+
+| vassoura | v1 acentuada | v1 de-acentuada |
+|---|---|---|
+| `199` (antes) | `exit 1`, **`6`** linhas | `exit 1`, **`2`** linhas — ⛔ `4` de `6` perdidas |
+| **`229`** (agora) | `exit 1`, **`6`** linhas | `exit 1`, **`6`** linhas ✅ |
+
+**Negativo:** a versão 3 + o directório inteiro das fixtures (`79` ficheiros) fecham `exit 0` sobre
+a vassoura de `229`.
+⚠️ **O limite NOMEADO continua a valer**: uma **paráfrase** escapa na mesma, e `113` das entradas
+têm forma de identificador (essas nunca dependeram de acento). *O sweep é a rede; quem julga é o R.*
+
 #### Histórico (`--git-history`), medido — para a decisão da integração
 
 `exit 1`. **36** commits produzem achados (~`136` linhas de patch + `9` de mensagem).
@@ -355,6 +390,10 @@ comentário do fonte enumerar os mesmos inteiros.
 reprovada de um patch) e remove **14 de 136**: ⛔ **não torna o sweep do histórico verde** — o
 histórico já está sujo **a montante**, no `main`, e isso não é desta linha. ⛔ E **não reescrever os
 commits do INC-4**: um commit que **remove** texto do alvo carrega-o no patch por construção.
+
+⛔⛔ **NADA DE HISTÓRICO FOI TOCADO, e a decisão é do DONO** (ordem à emenda da versão 3,
+2026-09-13): o squash acima **não foi feito** — ele fica como recomendação medida, para o handoff
+da linha. A emenda da versão 3 acrescenta **um** commit docs-only ao contador desta linha.
 
 ### Auditoria R-pré (2026-09-13) — ⛔ REPROVADA
 
@@ -421,13 +460,18 @@ reescrever, pôr o endereço ao lado de cada `(D)` restante.
 
 | versão | caminho | commit | estado |
 |---|---|---|---|
-| 1 | `docs/3D/cleanroom/SPEC_boundary_brush.md` | `23bb85670`, docs-only, `line/sculpt3d`, 2026-09-13 | ⛔ **REPROVADA** pelo R-pré (4 achados) |
-| 2 | o mesmo caminho | commit docs-only de 2026-09-13 (a reescrita) | ⏳ **aguarda R-pré NOVO** |
+| 1 | `docs/3D/cleanroom/SPEC_boundary_brush.md` | `23bb85670`, docs-only, `line/sculpt3d`, 2026-09-13 | ⛔ **REPROVADA** pelo R-pré, 1.ª passagem (4 achados) |
+| 2 | o mesmo caminho | `881e96d9e`, docs-only, 2026-09-13 | ⛔ **REPROVADA** pelo R-pré, 2.ª passagem (4 achados, **1 bloqueante**) |
+| 3 | o mesmo caminho | commit docs-only de 2026-09-13 (esta emenda) | ⏳ **aguarda R-pré NOVO** — ⛔ a janela não implementa |
 
 **Filtragem §4.3 executada** em 2026-09-13, secção a secção: cada frase responde *o que o programa
 FAZ*; cada número traz `F` (fórmula) · `M` (medido, com a fixture) · `D` (documentado pelos autores,
-com o endereço) · `N` (decisão nossa). **Sweep verde** sobre a espec, as `77` fixtures, o README
-delas e o texto do report final, com a vassoura de `163` entradas.
+com o endereço) · `N` (decisão nossa). **Sweep verde** sobre a espec, as fixtures, o README delas e
+o texto do report final — ⚠️ **e a vassoura que o mediu mudou duas vezes**: `163` (v1, **cega** à
+nossa língua) → `199` (v2, cega ao texto **sem acentos**) → **`229`** (v3). *Um «sweep verde» sem o
+número da vassoura ao lado não diz nada* — o verde da v1 e o da v3 são medições diferentes.
+⚠️ **E `D` deixou de poder vir do fonte, por cláusula escrita no §0 da espec** (versão 3): manual,
+commit e rastreador; ⛔ nunca um ficheiro lido dentro da árvore do alvo.
 
 ⚠️ **Citações verbatim na espec: ZERO.** Os factos que vêm do manual e das mensagens de commit
 públicas estão **re-ditos em palavras nossas** com o endereço ao lado (o direito de citação estava

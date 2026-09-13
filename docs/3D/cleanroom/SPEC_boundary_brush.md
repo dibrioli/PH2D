@@ -5,19 +5,20 @@ Alvo: Blender 5.2.1 LTS (binário /usr/bin/blender) · fonte lido: tag v5.2.0 ·
 Ledger: aberto em docs/3D/cleanroom/LEDGER_blender-boundary.md, 2026-09-13
 Patente (§8.1): buscado em 2026-09-13 — termos e resultado no ledger; nenhuma patente viva alcança o método
   (uma cerca NOMEADA fica: ⛔ nunca acrescentar «reposição de volume por inflação» ao modo de suavizar — §10.6)
-Filtragem §4.3: executada em 2026-09-13 · Sweep: ✅ VERDE em 2026-09-13 sobre a vassoura de **199**
-  entradas (o «verde» anterior, de 163, media só a língua do alvo — as entradas de prosa eram todas
-  em inglês e esta espec escreve-se em português; ver ledger). ⚠️ Verde CONTROLADO: as 6 linhas que
-  a versão anterior tinha são acusadas pela mesma vassoura (controlo positivo corrido), e o texto
-  novo não.
+Filtragem §4.3: executada em 2026-09-13 · Sweep: ✅ VERDE em 2026-09-13 sobre a vassoura de **229**
+  entradas. ⚠️ **A vassoura foi curada DUAS vezes e as duas curas foram do INSTRUMENTO, não do texto:**
+  de `163` para `199` (as entradas de prosa eram todas na língua do alvo e esta espec escreve-se em
+  português) e de `199` para **`229`** (⛔ **de-acentuar a mesma prosa matava `4` dos `6` achados** do
+  controlo positivo: agora cada entrada de prosa PT tem também a forma **sem acentos**).
+  ⚠️ Verde CONTROLADO **nos dois sentidos**: a versão 1 acusa `6` linhas acentuada **e** `6`
+  de-acentuada (era `6` e `2`); esta versão e o directório inteiro das fixtures (`79` ficheiros:
+  `61` traços + `7` séries + `9` repousos + o README + a régua) fecham `exit 0`.
 Auditoria §4.2 (R-pré): ⛔ REPROVADA **duas** vezes em 2026-09-13 — 1.ª passagem 4 achados (versão 1)
-  → reescrita (versão 2, este documento) → 2.ª passagem, subagente novo: ⛔ **REPROVADA, 4 achados**,
-  **um BLOQUEANTE** (§4.1: a tabela do censo de bordas são os casos do conjunto de testes do ALVO,
-  na ordem dele, e a linha do meio está selada `D` sem fixture — o `D` do §0 é manual/commit/rastreador).
-  ⏳ **AINDA NÃO ATESTADA. ⛔ A janela NÃO implementa a partir desta versão.**
-  As 4 curas da 1.ª passagem foram conferidas uma a uma e estão FEITAS; os 4 achados novos, a
-  instrução funcional de cada um e a medição do instrumento e do histórico estão no
-  LEDGER_blender-boundary.md §«Auditoria R-pré — 2.ª passagem».
+  → versão 2 → 2.ª passagem, subagente novo: ⛔ **REPROVADA, 4 achados**, **um BLOQUEANTE** (§4.1:
+  a tabela do censo de bordas era o conjunto de testes do ALVO) → **versão 3, este documento**.
+  ⏳ **AINDA NÃO ATESTADA. ⛔ A janela NÃO implementa a partir desta versão** — falta um R-pré NOVO.
+  As 4 curas da 1.ª passagem e os 4 achados da 2.ª estão FEITOS; a instrução funcional de cada um, a
+  medição do instrumento e a do histórico estão no LEDGER_blender-boundary.md.
 Mapa de leitura da literatura: nenhum paper. As fontes livres usadas são (a) o manual público do alvo,
   (b) as mensagens de commit públicas e (c) o rastreador de defeitos público — todas re-ditas em palavras
   nossas, com o endereço ao lado; e (d) a SAÍDA do binário sobre malhas NOSSAS (§19).
@@ -35,6 +36,14 @@ Descreve **o que o pincel de contorno faz**, fase a fase, com cada número acomp
 proveniência: **F** = derivado de fórmula/matemática, **M** = medido na saída do oráculo (com a
 fixture ao lado), **D** = documentado pelos autores em fonte pública (manual, mensagem de commit,
 rastreador), **N** = decisão nossa.
+
+⛔⛔ **O selo `D` NUNCA cobre nada que se leia DENTRO da árvore do alvo — ficheiro de teste
+incluído.** `D` é exclusivamente fonte pública **de fora do código**: manual, mensagem de commit,
+rastreador de defeitos, notas de lançamento. Um ficheiro de teste é código-fonte como outro
+qualquer, e um comentário dele é a expressão mais protegida que lá existe: o que se pode usar é o
+**facto**, e um facto entra aqui por **M** (uma corrida do nosso oráculo sobre malha nossa, com a
+fixture nomeada) ou por **F** (aritmética sobre um objecto que esta espec nomeia) — ⛔ **nunca**
+por `D`. *Sem esta cláusula o selo fica disponível para a próxima secção que tiver pressa.*
 
 ⚠️ **A decomposição em fases abaixo é NOSSA** — escolhida para descrever o comportamento. Não
 reproduz a organização do alvo, e o Implementador é livre de a repartir por ficheiros/funções como
@@ -107,21 +116,33 @@ torna o resultado função só do arrasto TOTAL e não do caminho (prova em §14
 
 ## §4 — Fase A: o que conta como contorno
 
-### §4.1 — A regra (F, confirmada por M)
+### §4.1 — A regra (F) e o censo do NOSSO corpus (F sobre M)
 
 Uma aresta é **aresta de borda** se tiver **menos de duas faces incidentes** — ou seja `0` ou `1`.
 ⚠️ Uma aresta solta (*wire*, zero faces) conta. Os dois vértices dela são **vértices de borda**.
 
-**Medido** nas fixtures de repouso (o alvo também tem testes públicos que afirmam o mesmo — D):
+**Censo das nove malhas de repouso do nosso corpus** (§19.1) — a lista, a escolha e a ordem são as
+das **nossas** fixtures. Cada `<peça>.repouso.txt.gz` traz as faces tal como o oráculo as guardou
+(**M**), e as duas colunas de borda são a regra acima **contada** sobre elas (**F**): qualquer um
+as recalcula do ficheiro. A coluna `reticulado` é o que **produz** os números — num reticulado
+`L × C` de VÉRTICES o perímetro tem `2(L + C) − 4` vértices e `2(L − 1) + 2(C − 1)` arestas.
 
-| peça | vértices de borda | arestas de borda | fixture |
-|---|---|---|---|
-| casca fechada (esfera) | `0` | `0` | `esfera.repouso` |
-| grelha `3×3` de quadrados | `8` (o perímetro) | `8` | — (teste público do alvo, D) |
-| tira de `2` quadrados (`3×2` vértices) | **todos os `6`** | `6` de `7` | `faixa.repouso` |
+| fixture de repouso | reticulado (de VÉRTICES) | v | arestas | **v de borda** | **arestas de borda** | o corpus confirma |
+|---|---|---|---|---|---|---|
+| `esfera.repouso` | casca fechada, `32 × 23` + `2` pólos | `738` | `1 504` | **`0`** | **`0`** | `esfera_agarrar_constante`: `0` movidos (§5.3) |
+| `grade.repouso` | `33 × 33` (`32 × 32` quads) | `1 089` | `2 112` | `128` = `2(33+33) − 4` | `128` = `4 × 32` | `grade_agarrar_constante`: `165 = 33 × 5` — a cadeia é **um** lado de `33`, porque ela pára nas quinas (§6.2, §7.3) |
+| `grade_pequena.repouso` | `5 × 5` (`4 × 4` quads) | `25` | `40` | `16` = `2(5+5) − 4` | `16` = `4 × 4` | `grade_pequena_dobrar_origem0`: `15 = 5 × 3` (§7.3) |
+| `grade_triangulada.repouso` | o mesmo `33 × 33`, `2 048` triângulos | `1 089` | `3 136` | `128` | `128` | ⭐ triangular **não** muda a borda, e muda o resultado `2,6×` (§13.2) |
+| `grade_deslocada.repouso` · `grade_ruidosa.repouso` | o mesmo `33 × 33` | `1 089` | `2 112` | `128` | `128` | §12.4 · §14.3 |
+| `tubo.repouso` | tubo aberto, `32 × 25` | `800` | `1 568` | `64` = **dois** aros de `32` | `64` | `tubo_dobrar_constante`: `128 = 32 × 4` — **um** aro só (§6.3) |
+| `cupula.repouso` | cúpula aberta, `32 × 12` + `1` pólo | `385` | `768` | `32` (o equador) | `32` | `cupula_*`: `96 = 32 × 3` (§13.3) |
+| `faixa.repouso` | tira de UMA fileira, `33 × 2` | `66` | `97` | **`66` — todos**, `= 2(33+2) − 4` | `66` de `97` | `faixa_agarrar_constante`: `0` movidos (§5.3) |
 
-⭐ **Numa tira de uma fileira TODO vértice é de borda** — e é isso que a torna o caso de recusa da
-§5.3.
+⭐ **Numa tira de uma fileira TODO vértice é de borda** (`2(L + 2) − 4 = 2L`, que é o reticulado
+inteiro) — e é isso que a torna o caso de recusa da §5.3.
+
+⚠️ **A última coluna é o que impede ler este censo como aritmética de papel:** em cada peça o número
+de vértices que o traço de facto move é um múltiplo exacto da cadeia que este censo prevê.
 
 ### §4.2 — Geometria ESCONDIDA também produz contorno (D + leitura)
 
@@ -147,8 +168,12 @@ pagaram este defeito e curaram-no exactamente assim.
 
 ### §4.5 — Custo
 
-O censo é `O(arestas)` e é **cacheado por malha** (invalidado quando a topologia muda). M: numa
-grelha de `263 169` vértices ele não aparece no relógio do traço (§15).
+O censo é `O(arestas)` (F). **M**: numa grelha de `263 169` vértices ele não aparece no relógio do
+traço — o traço INTEIRO, com o censo lá dentro, custa `0,0079 s` (§14.4).
+
+⇒ **N: nós contamos o censo UMA vez por malha e refazemo-lo quando a topologia muda.** É a nossa
+exigência, derivada do relógio acima; ⛔ esta espec **não afirma** o que o alvo guarda, nem quando
+o deita fora — isso é o código dele, e nenhuma fixture do corpus o mede.
 
 ---
 
@@ -341,7 +366,7 @@ mais e um degrau na borda da deformação.*
 - **Automáscara**: multiplica pelo factor da automáscara do traço. ⚠️ **Este pincel tem queda
   PRÓPRIA**, logo a automáscara não lhe chega pelo caminho comum dos outros pincéis e tem de ser
   aplicada aqui, explicitamente — os autores corrigiram exactamente esta omissão (D, defeito
-  público T84896). ⛔ **Não medido** (o harness desliga toda a automáscara): quem a ligar reconfere.
+  público #84896). ⛔ **Não medido** (o harness desliga toda a automáscara): quem a ligar reconfere.
 
 ### §8.3 — Queda AO LONGO do contorno — os quatro modos
 
@@ -388,7 +413,8 @@ Há **dois** raios em jogo e confundi-los é o erro caro:
 | profundidade da propagação (§7.3) e portanto `K` e o ponto-origem | `R × (1 + boundary_offset)` | a deformação entra mais fundo e o braço de alavanca cresce |
 | queda ao longo do contorno (§8.3) | **`R`**, sem offset | o troço de borda afectado **não muda** |
 
-É isso que os autores descrevem como *alongar o braço sem mexer na queda* (D). Medido: offset `1`
+É isso que os autores descrevem como *alongar o braço sem mexer na queda*
+(D — commit público `c77bf9522`, 2020-08-11, o que introduziu o controlo). Medido: offset `1`
 leva os anéis de `5` para `9` (`165 → 297` movidos) e o deslocamento máximo do `BEND` de `0,367`
 para `0,661`, enquanto o `EXPAND` mantém o máximo em `0,1` — *a lei do `EXPAND` não tem braço de
 alavanca, logo só a contagem de anéis se move* (`grade_{dobrar,expandir}_constante_origem1`).
@@ -563,8 +589,9 @@ P(v) = posição_actual(v) + (média(v) − posição_actual(v)) × (F × w)    
    mesmo arrasto, só variando o número de passos: `1 → 0,0681`, `2 → 0,0640`, `8 → 0,1372`,
    `16 → 0,1966` (soma dos deslocamentos `0,88 → 0,76 → 1,95 → 3,35`). ⛔ *Não é função do arrasto
    total*; é função do NÚMERO DE EVENTOS — veja §14.3.
-3. **Ele alisa ao LONGO do contorno, não através dele** (D: *só os vértices paralelos ao contorno
-   entram*). M, grelha regular plana: os vértices do meio de cada anel **não se movem** (a média dos
+3. **Ele alisa ao LONGO do contorno, não através dele** (D — commit público `2b2f3da72`,
+   2020-10-18, o que introduziu o modo: *só os vértices paralelos ao contorno entram*).
+   M, grelha regular plana: os vértices do meio de cada anel **não se movem** (a média dos
    dois vizinhos do mesmo anel é o próprio vértice); só as PONTAS das fileiras andam, e andam em
    `x̂` — a fileira contrai-se sobre si mesma (`grade_suavizar_constante`: `72` movidos, `u` na
    ponta `+0,1367 x̂`, `0` no meio).
@@ -602,8 +629,9 @@ lei: nas leis que rodam à volta de um ponto (`BEND`, `TWIST`), `P(v)` com ângu
 **não** é a posição actual se um passo anterior (ou uma passagem de simetria) já a moveu ⇒ a
 translação seria `P₀(v) − actual(v)`, **desfazendo** o trabalho já feito.
 
-⭐ Os autores pagaram exactamente este defeito, e a descrição pública dele (D, 2026-03-04, defeito
-#154678) é a melhor prova de que a cura é obrigatória: *a primeira passagem aplica uma translação
+⭐ Os autores pagaram exactamente este defeito, e a descrição pública dele
+(D — commit público `b042b750d`, 2026-03-04, que fecha o defeito público #154678)
+é a melhor prova de que a cura é obrigatória: *a primeira passagem aplica uma translação
 que as seguintes desfazem*. Eles também registam que **o `SMOOTH` é imune**, por ler a posição
 actual. ⇒ **gate nosso com duas passagens de simetria sobre vértices de peso zero.**
 
@@ -843,19 +871,24 @@ desta mesma linha. Aqui fica só a costura: *o modo escreve alvo, não posição
 
 ## §17 — A pré-visualização no cursor
 
-Enquanto o cursor passeia sobre a malha (sem carregar), o alvo:
-1. corre as fases **A–D** a cada quadro, com o raio do cursor;
-2. **desenha a cadeia** — os segmentos de borda alcançados — na cor do cursor do pincel;
-3. **desenha uma linha branca** do vértice âncora até ao **ponto-origem** (§7.4), que é o que diz ao
-   artista *até onde a deformação vai chegar*;
-4. **desenha um ponto** no ponto-origem.
+Enquanto o cursor passeia sobre a malha (sem carregar), o desenho **ACOMPANHA o cursor** — o que se
+vê é sempre o que as fases **A–D** dão para o vértice que está sob o cursor **agora**, com o raio do
+cursor. O que é desenhado:
 
-⚠️ Se não houver contorno ao alcance, **não se desenha nada** (o alvo trata a ausência como normal,
-não como erro). ⇒ **a pré-visualização é a resposta à recusa da §13.1#4**, e é ela que faz as
+1. **a cadeia** — os segmentos de borda alcançados — na cor do cursor do pincel;
+2. **uma linha branca** do vértice âncora até ao **ponto-origem** (§7.4), que é o que diz ao
+   artista *até onde a deformação vai chegar*;
+3. **um ponto** no ponto-origem.
+
+⚠️ Se não houver contorno ao alcance, **não se desenha nada** (a ausência é tratada como normal, não
+como erro). ⇒ **a pré-visualização é a resposta ao caso `4` da tabela do §13**, e é ela que faz as
 recusas da §5.3 serem legíveis em vez de misteriosas.
 
-⚠️⚠️ **Isto é `O(malha)` por QUADRO de sobrevoo** (§14.4) — o alvo recalcula tudo a cada quadro.
-⇒ **N: medir antes de copiar**; um cache por (vértice activo, raio) é óbvio e o alvo não o tem.
+⚠️⚠️ **O sobrevoo precisa do resultado de A–D para o vértice apontado, e A–D são `O(malha)`**
+(§14.4) — logo o custo dele é o do pen-down, e não o do passo de traço. ⇒ **N: medir antes de
+copiar; quantas vezes se recalcula é decisão NOSSA**, e a chave óbvia do primeiro cache é *(vértice
+apontado, raio)*. ⛔ Esta espec **não afirma** com que frequência o alvo recalcula nem se ele guarda
+alguma coisa entre quadros: não medimos o sobrevoo (§20) e nenhuma fixture do corpus o toca.
 
 ⭐⭐ **E há uma armadilha de harness aqui que nos mordeu:** o ponto de superfície sob o cursor só
 existe depois de um quadro de sobrevoo ter corrido. Um traço scriptado que chegue antes lê lixo —
@@ -945,7 +978,8 @@ caso, `~20 × ULP ≈ 5e-6`. ⇒ **barra sugerida: `1e-5` em posição absoluta*
 1. **Geometria escondida** como contorno (§4.2) — documentado, **sem fixture**.
 2. **Automáscara** (§8.2) — o harness desligou-a em todas as corridas.
 3. **Curva de queda AUTORADA** — só os quatro presets foram medidos.
-4. **Custo do pen-down isolado** (§14.4) e da pré-visualização por quadro (§17).
+4. **Custo do pen-down isolado** (§14.4) e o do sobrevoo (§17) — ⛔ nenhuma fixture do corpus
+   mede o sobrevoo, e é por isso que a §4.5 e a §17 só dizem o que **nós** exigimos.
 5. **Simetria radial** (§12.5) — defeito aberto do alvo; decisão nossa por tomar.
 6. **O solver de pano** (§16.3) — outra espec desta linha.
 7. As duas representações alternativas de malha (§1).

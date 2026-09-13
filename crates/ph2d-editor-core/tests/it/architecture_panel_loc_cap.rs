@@ -66,15 +66,6 @@ const FN_OVERAGE_OK: &[(&str, &str, usize, &str)] = &[
     // threading `y: f32`) is now unblocked — it is paint/dispatch code with no
     // unit coverage, so each split lands with its own smoke, one panel at a time.
     // ──────────────────────────────────────────────────────────────────────────
-    // Wave 10 / Etapa 5.2: long paint orchestrators that grew with the panel's
-    // feature set. Splitting into per-section helpers is a follow-up Etapa (one
-    // panel at a time, with smoke validation).
-    (
-        "ph2d-panel-hierarchy/src/paint.rs",
-        "paint_hierarchy_body",
-        252,
-        "Wave 10 paint orchestrator; ratcheted 384->364 quando a wave do hover lhe acrescentou UMA linha e o tecto foi pago por extracção em vez de tolerância: a caixa de renomear saiu para `paint_rename_input`. As tolerâncias encolhem, nunca crescem. Ratcheted 364->354 em 2026-08-30, e a descida foi PAGA POR OUTRA COISA: a coluna passou a ser ANCORADA (Enio, «fixar os painéis nas laterais»), e as três alças de arrasto/resize saíram — o censo de obsolescência deste próprio gate apanhou a folga a descrever um número que já não existia. Desceu de novo em 2026-08-30 quando os pontinhos de canto sairam: eles eram a affordance das alcas de resize, que esta coluna deixou de ter. 352 -> 296 na wave 18 (2026-09-06): a LISTRA da linha impar acrescentou-lhe uma chamada e o tecto foi pago por EXTRACCAO — as LINHAS DE PARENTESCO (80 linhas, as guias no estilo do Godot) sairam para `paint_parentage_lines`, funcao irma no mesmo ficheiro. E' o terceiro corte deste ficheiro pela mesma lei. 296 -> 289 na wave 23 (2026-09-07): a porta do RECUO acrescentou-lhe tres linhas e o tecto foi pago por EXTRACCAO pela QUARTA vez -- a profundidade de cada linha (que tem DUAS fontes: o registo vivo ou o `WidgetStore`) saiu para `row_depths`, funcao irma no mesmo ficheiro. 289 -> 253 na wave 27 (2026-09-07): o marcador `FRAME-RAW-OK` do indicador de arrasto acrescentou-lhe UMA linha e o tecto foi pago por EXTRACCAO pela QUINTA vez -- o bloco inteiro de «onde a linha arrastada vai pousar» saiu para `paint_drop_indicator`, e o corte devolveu 36 linhas por uma. 253 -> 252 em 2026-09-08: a Hierarquia passou a publicar o PROPRIO rect (a cura do report «as abas do painel esquerdo ficam travadas») e o `let rect = layout.hierarchy;` desta funcao deixou de ter objecto -- foi o CENSO DE OBSOLESCENCIA deste gate que cobrou o degrau, nao eu. As tolerancias encolhem, nunca crescem.",
-    ),
     // ⚠️ `ph2d-panel-hierarchy/src/event.rs::apply_event` ESTEVE aqui, tolerado a 216 — e a
     // entrada foi REMOVIDA em 2026-08-19, não subida para 219. O "Pack into Sheet" ia
     // acrescentar-lhe quatro linhas, e a tolerância do vizinho de cima diz, pela mão de quem a
@@ -104,6 +95,12 @@ const FN_OVERAGE_OK: &[(&str, &str, usize, &str)] = &[
     //    split deferred (needs smoke)»*. A LISTA de camadas saiu para `paint_layer_list.rs`, e a
     //    funcao ficou em **190**, sob o cap de 200. ⇒ o censo de obsolescencia cobrou a entrada no
     //    mesmo fecho. *Uma folga so' desce quando alguem lhe encosta.*
+    // ✅ **A LISTA ESVAZIOU em 2026-09-13 (`line/loc-caps`)**: as seis últimas tolerâncias —
+    //    `paint_hierarchy_body` e `paint_hierarchy_row` (Hierarquia), `apply_event_impl` (Inspector),
+    //    `paint_body_sections` (Equalize Sizes), `populate` (Color Equalization) e `paint` (Audio
+    //    Mixer) — saíram por corte: uma função-irmã cada, e o cabeçalho da Hierarquia inteiro para
+    //    `paint_head.rs`. Uma entrada nova aqui é uma função que voltou a passar o tecto, e a cura
+    //    continua a ser o corte.
 ];
 
 #[test]

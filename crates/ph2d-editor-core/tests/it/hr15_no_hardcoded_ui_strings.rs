@@ -63,7 +63,9 @@ const BASELINE: &[(&str, usize)] = &[
     // Wave 10 / Etapa 5.1: panel-* extension. Hardcoded placeholders
     // for chrome fields (name input, search) — replaced when Fluent
     // runtime ships. Path key is `<crate>/src/<rel>`.
-    ("ph2d-panel-hierarchy/src/paint.rs", 1),
+    // The search placeholder moved with the panel header to `paint_head.rs` (2026-09-13,
+    // `line/loc-caps`, function LOC cap); same one string, new file.
+    ("ph2d-panel-hierarchy/src/paint_head.rs", 1),
     // O `placeholder` da busca do NAVEGADOR DE ASSETS (plano `docs/Components/07`, wave A5).
     // ⚠️ Mesma forma e mesma dívida do irmão da Hierarquia, uma linha acima — é literalmente o
     // mesmo widget a fazer o mesmo trabalho no painel ao lado —, e cai com ele quando o `t!(…)`

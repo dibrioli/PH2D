@@ -5,6 +5,99 @@
 > (CLAUDE.md §0.7). Bloco de abertura: [`BLOCOS_ABERTURA_ARQUITETURA_2026-09-12.md`](BLOCOS_ABERTURA_ARQUITETURA_2026-09-12.md) §3;
 > auditoria: [`AUDITORIA_ARQUITETURA_2026-09-12.md`](AUDITORIA_ARQUITETURA_2026-09-12.md) A5 e A10.
 
+## §0 — Para o INTEGRADOR (leia isto primeiro; o resto é a prova)
+
+**Estado:** fechada, gate batched verde (§8), auditoria de 2 lentes aplicada (§9), **smoke aprovado pelo dono
+em 2026-09-13** (§10), binário do smoke compilado e `incremental/` reclamado (§11). `merge-base` = `main`
+(`e18e75307`, 0 commits atrás) · 16 commits · HEAD `016ba36cc` + o commit que acrescenta este §0.
+
+### 0.1 — Contra o que está em curso (medido 2026-09-13, `git merge-tree --write-tree`)
+
+Das 18 worktrees, **só a `line/render-loop` tem commits fora do `main`** (141, sobre o mesmo `e18e75307`) —
+é a linha com quem esta combinou a CERCA (§3). As outras 16 estão a 0 commits do `main`.
+
+| com | resultado | o que fazer |
+|---|---|---|
+| `line/render-loop` | **1 conflito textual**: `crates/ph2d-app-vec/src/vector_bridge.rs` (~l. 307). Esta linha só trocou `ph2d_editor_core::ids::VECTOR_WIDTH` → `ph2d_tool_vector::ids::VECTOR_WIDTH` no `width_dragging`; a `render-loop` APAGOU o `width_dragging` inteiro (morreu com a `History` do vetor). ⇒ **fique com o lado da `render-loop`** — o caminho reescrito some com o bloco. Mais o `stroke_paint.rs`, que o **Mergiraf resolveu sozinho** (reveja: `mergiraf review`). Os outros 14 ficheiros tocados pelas duas fundem limpo | resolver pelo lado dela; a ordem das duas fusões é indiferente (a segunda paga o mesmo conflito) |
+| `line/render-loop`, semântico | **0** linhas acrescentadas por ela nomeiam um id que desceu ou um caminho que saiu da fundação (sonda sobre `git diff -U0 e18e75307..line/render-loop`, as 6 formas de 0.2) | nada; a árvore combinada confirma por compilação |
+
+### 0.2 — ⚠️ O que NÃO é aditivo (API pública que saiu da `ph2d-editor-core`)
+
+- **1 242 nomes `pub` mudaram de crate** (ids de widget → 21 crates donas: `ph2d-panel-inspector` 386 ·
+  `ph2d-tool-vector` 174 · `ph2d-panel-vector` 131 · `ph2d-panel-sculpt3d` 117 · `ph2d-tool-painter` 92 ·
+  `ph2d-panel-timeline` 63 · `ph2d-panel-physics` 61 · `ph2d-tool-flip` 53 · …) e **30 foram apagados** (os
+  órfãos de `de89e15ca`, §9). Contados por nome declarado nos ficheiros tocados, antes contra depois.
+- `text_elide::paint_text_elided` / `paint_text_title_elided` → **`paint::`** (22 leitores já trocados).
+- `fnv_node_id_runtime` · `flip_fnv_node_id` · `asset_fnv_node_id` → a porta **`ph2d_tool_registry::hash_node_id_runtime`**.
+- `grid_snap::ids::GS_PANEL` (re-export) morreu → `ph2d_editor_core::ids::GS_PANEL`;
+  `widget::showcase::SECTION_IDS` deixou de ser `pub`.
+- ⇒ **Código NOVO de uma linha futura que nomeie o caminho antigo FALHA A COMPILAR** (alto, nunca mudo).
+  A cura é nomear o dono — `python3 scripts/censo-ids.py --lista FICA-EC` diz o que ficou; o resto está na
+  crate que o lê. ⛔ **Nunca repor uma fachada** para o fazer compilar: é a regra que esta linha pagou.
+
+### 0.3 — Contratos e contadores (prova, não memória)
+
+- Contratos congelados (§6 do `CLAUDE.md`): `git diff e18e75307 016ba36cc --` `ph2d-nodegraph/src/node.rs` ·
+  `ph2d-editor-core/src/tool.rs` · `ph2d-vector-doc` · `ph2d-vector-traits` · `ph2d-imageio/src/color.rs` =
+  **vazio**; os gates `architecture_*contract_surface` passaram na suíte de 22 709.
+- `PROJECT_SCHEMA` · `VEC_SCENE_SCHEMA_VERSION` · `FLIP_SCHEMA_VERSION` · `DOC_VERSION` · `FIELD_DOC_VERSION` ·
+  `register::<`: **0 linhas de código** no diff (as duas únicas menções são a tabela colada no §1).
+- `Cargo.lock`: nenhum pacote externo novo. `Cargo.toml`: **18 manifestos**, só arestas INTERNAS (lidas com
+  `tomllib`, base contra HEAD, por secção):
+  - `[dependencies] ph2d-tool-registry` (a porta do hash que os ids descidos chamam) em **16 painéis**:
+    asset-browser · authored · flip-frames · flip · grid-snap · hierarchy · inspector · model3d · padding ·
+    physics · sculpt3d · skeleton · timeline · tokens · vector · widget-lab — custo de build **zero**, todos já
+    a compilavam pela `ph2d-editor-core`;
+  - `ph2d-panel-skeleton → ph2d-tool-vector` (os quatro ids de osso do ponto fixo, §2);
+  - `[dev-dependencies]`: `ph2d-editor-core →` `ph2d-panel-flip` · `ph2d-panel-timeline` · `ph2d-panel-vector` ·
+    `ph2d-tool-painter` · `ph2d-tool-vector` (os testes da fundação que lêem ids que desceram) e
+    `ph2d-panel-sculpt3d → ph2d-panel-model3d`;
+  - **saiu** `ph2d-panel-equalize-sizes → ph2d-tool-registry` (sem uso depois de a fachada morrer; `cargo machete`
+    verde).
+  Todas permitidas pela lei de camadas; ⚠️ as dev-dependências da fundação para os painéis são o re-acoplamento
+  que o §5 mede para qualquer corte futuro dela.
+- ADR: nenhum. Contrato congelado encostado: nenhum.
+
+### 0.4 — ⭐ Os passos que ficam para DEPOIS das duas fusões (esta + `render-loop`), na árvore combinada
+
+1. **Descer os 227 ids que a cerca prendia** (§3, lista nominal no §12):
+   ```
+   python3 scripts/censo-ids.py --json target/prova/censo.json
+   python3 scripts/mover-ids.py target/prova/censo.json --plano
+   python3 scripts/mover-ids.py target/prova/censo.json --aplicar
+   python3 scripts/censo-ids.py --json target/prova/censo.json   # ponto fixo: DESCE tem de dar 0 (pode pedir 2 passagens, §2)
+   ```
+   ⚠️ O censo só os classifica `DESCE` se a `render-loop` tiver deixado de os nomear pelo caminho da fundação;
+   o que ela ainda nomear continua `FICA-CERCA` e não é defeito. O `DOC_FACHADA` que o script escreve nos
+   cabeçalhos é **nota provisória** — reescreva-a à mão (o texto diz isso).
+2. **A fachada `screens::hero::ids`**: trocar os 7 sítios da cerca (`render_loop/hierarchy_rename.rs` 2 ·
+   `inspector_strategy.rs` 3 · `mod.rs` 2) por `ph2d_editor_core::ids::…` e apagar o `pub use crate::ids;` do
+   `screens/hero.rs`.
+3. **Os três slugs repetidos** (`CEQ_PANEL` · `EQS_PANEL` · `UPS_PANEL`): trocar TODO leitor por
+   `ph2d_editor_core::ids::…`, apagar as cópias e as três linhas de `SLUGS_REPETIDOS_TOLERADOS` (a nota do gate
+   dá o `grep`).
+4. **A catraca A10** (`architecture_the_foundation_modules_form_a_dag`): a entrada `action_bus → screens` (24) só
+   se cura depois da fusão (os payloads do Inspector que a cerca nomeia por `screens::hero::`). ⚠️ Se a
+   `render-loop` mexeu em referências entre módulos da fundação, o gate pode reprovar pela metade «desceu —
+   desça o número»: **baixar o tecto é a cura certa**; subir nunca.
+5. Re-correr na árvore combinada: `node_id_collisions` (a `render-loop` pode ter trazido literais novos) ·
+   `the_painted_control_reaches_a_consumer` · o gate A10 · `the_shell_only_shrinks`.
+
+### 0.5 — Para o `CLAUDE.md` §5 (UMA linha; quem a escreve é o integrador, no primário — DIRETRIZ §1.5.9 item 8)
+
+Troque, no bullet *«As duas maiores crates do repo não eram nomeadas…»*, o parêntese da `ph2d-editor-core` por:
+
+> (**98 633** em `src/`, medido 13/09 — widgets, interaction e os ids que a própria fundação lê, e **27** gates
+> `architecture_*` entre os **112** ficheiros de `tests/it/`; ⭐ **A5b+A10 (12/09): 1 737 ids desceram para as
+> crates que os lêem e os módulos de topo formam um DAG com catraca de 7 arestas** — uma edição num id de painel
+> recompila 7–8 crates em vez de 61; [handoff](docs/IntegracaoMultiAgente/HANDOFF_INTEGRACAO_line_editor_core_2026-09-12.md))
+
+### 0.6 — Um defeito de PRODUTO pré-existente, reportado e não curado
+
+`INSP_BLENDER_PICKER` tem dois valores (`ids/menus.rs:179` hash · `interaction/state/chrome_ops.rs:604` um
+`NodeId(380)` local) ⇒ trazer o seletor de cor para a frente nunca funcionou. Curar muda o que se vê: decisão
+do Enio (§9 achado 11).
+
 ## §1 — Identidade
 
 | | |
@@ -121,6 +214,12 @@ uma passagem só deixa para trás o que as citações seguravam.*
 | `ph2d-panel-authored → ph2d-tool-registry` | idem | zero, idem |
 | `ph2d-panel-skeleton → ph2d-tool-registry` | idem | zero, idem |
 | `ph2d-panel-skeleton → ph2d-tool-vector` | os quatro ids de osso do ponto fixo | **só o próprio painel** passa a recompilar quando a ferramenta muda: os três dependentes dele (`panel-vector`, `panel-registry-init`, a shell) já compilavam a `tool-vector` |
+
+⚠️ **A tabela acima só nomeia as arestas que pediram argumento; a lista MEDIDA dos 18 manifestos está no
+§0.3** (lida com `tomllib`, base contra HEAD): a `ph2d-tool-registry` entrou em **16** painéis, não 3 (os
+outros 13 são o mesmo caso, custo zero pelo mesmo motivo); a fundação ganhou 5 dev-dependências para
+donas; a `ph2d-panel-sculpt3d` ganhou a `ph2d-panel-model3d` como dev; e a `ph2d-panel-equalize-sizes`
+**perdeu** a `ph2d-tool-registry`.
 
 ### `hash_node_id`: a opção escolhida e a recusada
 
@@ -491,6 +590,10 @@ funções da timeline que mudaram de ficheiro são idênticas sem os caminhos; o
 mesmos 145 ids na base e no HEAD; nenhuma família dinâmica ficou em duas cópias; o diff da cerca é vazio.
 
 ## §10 — O que o dono deve exercitar no smoke
+
+✅ **Smoke APROVADO pelo dono em 2026-09-13** («Smoke OK»), sobre `016ba36cc`, com o binário do §11 e os seis
+passos da resposta de fecho (escultura/transformar · Inspector · Hierarquia · Timeline · os três utilitários
+de imagem). ⚠️ Integrar não é aprovar: o `main` combinado smoka-se outra vez depois da fusão.
 
 Nada mudou de propósito — o smoke é a prova de que continua tudo igual, nos painéis cujos ids mudaram de
 casa. O modo de falha a procurar é o MUDO: um leitor reescrito para a cópia errada de um id compila e dá

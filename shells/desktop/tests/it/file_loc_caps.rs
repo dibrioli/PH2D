@@ -34,7 +34,7 @@ const FILE_OVERAGE_OK: &[(&str, usize, &str)] = &[
     ),
     (
         "input_dispatch.rs",
-        5877,
+        5829,
         "Onda 2C multi-select dispatch + hit_map routing +",
     ),
     (

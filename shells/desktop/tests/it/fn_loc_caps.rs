@@ -58,7 +58,7 @@ const FN_OVERAGE_OK: &[(&str, &str, usize, &str)] = &[
     (
         "input_dispatch/gizmo_drag.rs",
         "advance_gizmo_drag",
-        605,
+        478,
         NASCEU,
     ),
     ("layout_live.rs", "lay_out", 206, NASCEU),

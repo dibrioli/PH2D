@@ -480,145 +480,18 @@ impl App {
                         | ph2d_editor_core::GizmoDragKind::ScaleCorner { .. }
                         | ph2d_editor_core::GizmoDragKind::ScaleEdge { .. }
                 );
-                // ─── Multi-selection rotate / scale: ONE flat world-space
-                // group transform for the dragged sprite AND every extra
-                // (Onda 3, Enio 2026-06-08). Replaces the old primary-vs-
-                // extras split, which had two defects:
-                //
-                //  (1) The PRIMARY's global orbit used its LOCAL translation
-                //      (`drag.start_transform.translation`) against the WORLD
-                //      pivot, while the extras used their WORLD position
-                //      (`compose_snapshot`). A parented primary therefore
-                //      orbited from the wrong point → "alguns gizmos ficam
-                //      inconsistentes".
-                //  (2) Every sprite's LOCAL rotation got `+= delta`, so a
-                //      selected child of a selected parent ALSO inherited the
-                //      parent's `+delta` → it rotated 2·delta ("a rotação dos
-                //      filhos é incrementada pelo parentesco").
-                //
-                // Fix: compute each sprite's TARGET WORLD transform from its
-                // OWN start world transform (rotate/scale by the group delta
-                // around the global pivot, or in place for local-pivot mode),
-                // then convert that target back to LOCAL against the parent's
-                // CURRENT world transform. Writing ancestors before
-                // descendants (depth-sorted) means a selected child reads its
-                // selected parent's already-updated world this frame, so the
-                // parent's rotation flows through inheritance exactly once —
-                // the group transforms "como se não tivessem pais".
-                if !self.group_drag_starts.is_empty() && is_rot_or_scale {
-                    self.ramo_gizmo_escrita_grupo(drag, delta_rot, factor_x, factor_y);
-                } else if is_scale
-                    && let Some(start) = self.frame_resize_start.as_ref()
-                    && start.is_for(drag.entity_bits)
-                {
-                    // **UMA MOLDURA REDIMENSIONA; ela não ESCALA** (corolário do W3).
-                    //
-                    // ⚠️ E o `Transform` NÃO é escrito — é a metade que importa. A pose de um pai é
-                    // herdada por todo descendente (é isso que um grafo de cena é), então escrevê-la
-                    // ESTICA os filhos: a tipografia achata e a regra de âncora nunca corre, porque
-                    // a moldura não mudou de CAIXA, mudou de ESCALA. O `W`/`H` do painel já fazia o
-                    // certo; isto leva a alça à mesma porta.
-                    //
-                    // A razão é ABSOLUTA contra o `start_transform` (o gizmo recomputa-a a cada
-                    // `CursorMoved`), e é por isso que a porta repõe o instantâneo antes de escalar.
-                    let (ssx, ssy) = (drag.start_transform.scale[0], drag.start_transform.scale[1]);
-                    let fx = if ssx.abs() > 1e-6 {
-                        f64::from(new_t.scale[0] / ssx)
-                    } else {
-                        1.0
-                    };
-                    let fy = if ssy.abs() > 1e-6 {
-                        f64::from(new_t.scale[1] / ssy)
-                    } else {
-                        1.0
-                    };
-                    crate::vec_frame_resize::apply(
-                        &mut gfx.sim,
-                        &mut gfx.vec_scene,
-                        start,
-                        drag.pivot_world,
-                        fx,
-                        fy,
-                    );
-                } else if matches!(drag.kind, ph2d_editor_core::GizmoDragKind::Translate)
-                    && crate::layout_reorder::flow_parent(&gfx.sim, entity).is_some()
-                {
-                    // **DENTRO de um fluxo, arrastar é REORDENAR** (ADR-0153, corolário).
-                    //
-                    // ⚠️ E o `Transform` NÃO é escrito, o que é a metade que importa: a posição de
-                    // um filho colocado é derivada por frame, então a escrita seria invisível — e
-                    // ainda assim contaria, porque o undo deste editor regista por DIFF do mundo
-                    // ECS. O artista teria a forma a saltar de volta para a fila **e** um passo de
-                    // undo por cima.
-                    //
-                    // O cursor é lido em MUNDO porque a régua que decide o slot está em mundo (o
-                    // passe publica-a lá); converter de novo seria a segunda resposta a *"onde
-                    // está o dedo?"*.
-                    let window_size = crate::field_gizmo_host::scene_window_of(gfx);
-                    let cursor = gfx.camera.screen_to_world(drag.cursor_screen, window_size);
-                    crate::layout_reorder::drop_at(&mut gfx.sim, &self.layout_live, entity, cursor);
-                } else {
-                    // Single-selection (any kind) + multi-selection TRANSLATE.
-                    // Multi rotate/scale goes through the unified branch above,
-                    // so the primary's translation here is always
-                    // `new_t.translation` (the old in_local_multi /
-                    // in_global_xform cases only ever fired for multi
-                    // rotate/scale, now handled above).
-                    if let Some(mut t) = gfx.sim.world_mut().get_mut::<Transform>(entity) {
-                        t.translation =
-                            ph2d_core::Vec2::new(new_t.translation[0], new_t.translation[1]);
-                        t.rotation = new_t.rotation;
-                        t.scale = ph2d_core::Vec2::new(new_t.scale[0], new_t.scale[1]);
-                    }
-                    // **UMA PEÇA NÃO SAI DA FOLHA PELO ARRASTO** (Enio 2026-08-19).
-                    //
-                    // ⚠️ Confina-se DEPOIS de escrever, e não antes: o que o gizmo calcula é para
-                    // onde o dedo aponta, e essa é a resposta certa à pergunta dele. Torcer a
-                    // entrada faria a peça arrastar-se com um desvio — o dedo num sítio e a peça
-                    // noutro — enquanto corrigir a saída faz o que o artista lê: ela acompanha o
-                    // dedo e **encosta** na borda.
-                    //
-                    // ⚠️ E vale para rotação e escala também, não só para Translate: crescer uma
-                    // peça encostada à borda empurra-a para fora tanto quanto arrastá-la. A porta
-                    // é a mesma; ela não faz nada quando a entidade não é filha de uma folha.
-                    crate::sheet_bounds::confine(&mut gfx.sim, entity);
-                    // Multi-selection TRANSLATE: rigid-body shift — add the
-                    // dragged primary's world delta to every extra's start
-                    // translation, converted into each extra's LOCAL frame via
-                    // inverse-parent (Enio 2026-05-26: child of a rotated
-                    // parent in the group moved along the local axis, not
-                    // world). Rotate/scale never reach here (handled by the
-                    // unified branch above); MovePivot stays primary-only (its
-                    // own branch writes Sprite.anchor).
-                    if !self.group_drag_starts.is_empty()
-                        && matches!(drag.kind, ph2d_editor_core::GizmoDragKind::Translate)
-                    {
-                        let dx = new_t.translation[0] - drag.start_transform.translation[0];
-                        let dy = new_t.translation[1] - drag.start_transform.translation[1];
-                        for snap in self.group_drag_starts.iter().copied() {
-                            let extra_entity = ph2d_ecs::Entity::from_bits(snap.entity_bits);
-                            let st = snap.start_transform;
-                            let [dx_l, dy_l] =
-                                ph2d_editor_core::world_delta_to_local(snap.parent_world, dx, dy);
-                            if let Some(mut t) =
-                                gfx.sim.world_mut().get_mut::<Transform>(extra_entity)
-                            {
-                                t.translation = ph2d_core::Vec2::new(
-                                    st.translation[0] + dx_l,
-                                    st.translation[1] + dy_l,
-                                );
-                                t.rotation = st.rotation;
-                                t.scale = ph2d_core::Vec2::new(st.scale[0], st.scale[1]);
-                            }
-                            // ⚠️ **Cada extra confina-se sozinho.** Uma seleção múltipla pode ter
-                            // peças de folhas DIFERENTES (ou nenhuma): a fronteira é do pai de
-                            // cada uma, não do arrasto. Confinar o grupo como bloco rígido pararia
-                            // as cinco porque uma chegou à borda — e as outras quatro não têm nada
-                            // a ver com essa borda.
-                            crate::sheet_bounds::confine(&mut gfx.sim, extra_entity);
-                        }
-                    }
-                }
+                self.ramo_gizmo_escrita(
+                    crate::input_dispatch::gizmo_drag::escrita::EscritaDoGizmo {
+                        drag,
+                        entity,
+                        new_t,
+                        is_scale,
+                        factor_x,
+                        factor_y,
+                        delta_rot,
+                        is_rot_or_scale,
+                    },
+                );
             }
             // **As cópias seguem, DEPOIS de o mestre ter sido escrito.**
             //

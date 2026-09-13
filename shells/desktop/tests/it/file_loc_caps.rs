@@ -38,11 +38,6 @@ const FILE_OVERAGE_OK: &[(&str, usize, &str)] = &[
         "Onda 2C multi-select dispatch + hit_map routing +",
     ),
     (
-        "input_dispatch/gizmo_drag.rs",
-        717,
-        "~735 LOC — the keyed-handle-id multi-select rotate/scale/translate",
-    ),
-    (
         "main.rs",
         1289,
         "crate-root module hub — the 80+ `mod` declarations are an",

@@ -73,20 +73,9 @@ const FILE_OVERAGE_OK: &[(&str, usize)] = &[
     // tests; the tests moved to `cook_tests.rs` + `cook_scope_tests.rs`, so the
     // engine now sits at ~459 LOC under the plain 700 cap. Entry deleted rather
     // than raised, per this gate's own instruction.
-    // Ratcheted 969 -> 722 em 2026-08-21. A wave dos 16 bits (`docs/Sprite_projeto/18`)
-    // acrescentou-lhe o `readback_rgba8` e o ficheiro chegou a 1029; a LEITURA DE VOLTA inteira
-    // (`readback` / `_rgba8` / `_mip` / `replace_pixels*` / a fn livre `readback_texture`) saiu
-    // para `individual_read.rs`. É o TERCEIRO corte deste ficheiro por responsabilidade — o store
-    // possui, o `individual_entry` constrói, o `individual_read` lê de volta — e a tolerância
-    // desce com o corte, como este gate manda. Segue acima dos 700 simples: o que resta é o store
-    // + as cópias textura-a-textura, e o próximo que lhe tocar corta as cópias.
-    // Ratcheted 722 -> 709 em 2026-08-25 (doc 89, folha 17). O QUARTO corte: a cura do filtro
-    // por-nó em textura individual acrescentou-lhe a cache de bind groups por-amostragem e ele
-    // chegou a 796; a responsabilidade inteira — *com que sampler ela é lida* (`set_filter_mode`
-    // + `bind_group_for` + `ensure_sampler_bg`) — saiu para `individual_sampling.rs`. ⚠️ Este
-    // ficheiro foi encontrado 74 acima do tecto **depois** de a wave estar verde nas corridas
-    // dela: o gate vive noutra crate, e um fecho com filtro de nome nunca o alcança.
-    ("ph2d-render/src/individual.rs", 708),
+    // Retired 2026-09-13 (`line/loc-caps`): `ph2d-render/src/individual.rs` (708) caiu para 621 no
+    // QUINTO corte por responsabilidade — o tipo de erro saiu para `individual_error.rs`. Os quatro
+    // cortes anteriores (e porque cada um) estão no `git log` desta linha da tabela.
     ("ph2d-tool-bgremoval/src/algorithm/chroma/mod.rs", 704),
 ];
 

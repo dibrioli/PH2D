@@ -190,6 +190,8 @@ mod fase_autokey;
 mod fase_chrome_clock;
 /// Fase do quadro: a paleta de componentes.
 mod fase_component_palette;
+/// Fase do quadro: o converter em curvas.
+mod fase_convert_to_curves;
 /// Fase do quadro: os insumos do extract (passo, pré-visualizações, folha aberta, px/m, filtro).
 mod fase_extract_inputs;
 /// Fase do quadro: os pedidos do modelador 3D.
@@ -6787,24 +6789,9 @@ impl crate::App {
                 // O gesto foi o da ferramenta MOLDURA? A forma nasce igual e ganha o `VecFrame`.
                 vec_cfg.mode == ph2d_tool_vector::DrawMode::Frame,
             );
-            // "Convert to Curves": assa a(s) forma(s) viva(s) selecionada(s) em paths
-            // crus — o TEXTO explode num grupo por-letra; as PARAMÉTRICAS descartam o
-            // `VecShape` (a geometria já é a forma); e a pilha de EFEITOS é assada no cozido
-            // (ADR-0132). A porta única (`vec_convert::to_curves`) usa o MESMO bake do botão
-            // "Apply" da seção Effects. Re-seleciona o resultado.
-            if pending_vec_convert {
-                let sel: Vec<ph2d_vec_scene::VecPathId> = self.vec.pen.selected_paths().to_vec();
-                let xf = ph2d_vec_entities::transform::build(sim, &self.vec.entities);
-                let new_sel = crate::vec_convert::to_curves(
-                    sim,
-                    vec_scene,
-                    &mut self.vec.entities,
-                    &mut self.vec.pen,
-                    &xf,
-                    &sel,
-                );
-                self.vec.pen.select_many(&new_sel);
-            }
+            self.fase_convert_to_curves(fase_convert_to_curves::ConvertToCurvesIntents {
+                pending_vec_convert,
+            });
             // Habilita "Convert to Curves" pela porta ÚNICA (`vec_convert::is_convertible`) — a
             // MESMA que o conversor honra. Enumerar as fontes aqui foi o que apodreceu duas
             // vezes: o botão ficava desligado num caminho só-efeitos e depois num só-quinas,

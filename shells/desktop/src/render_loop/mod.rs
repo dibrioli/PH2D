@@ -192,6 +192,8 @@ mod fase_canvas_overlays;
 mod fase_chrome_clock;
 /// Fase do quadro: a paleta de componentes.
 mod fase_component_palette;
+/// Fase do quadro: o conector e os parametros de forma.
+mod fase_connector_and_shape_params;
 /// Fase do quadro: o converter em curvas.
 mod fase_convert_to_curves;
 /// Fase do quadro: a sincronizacao das entidades e as formas vivas.
@@ -5432,54 +5434,15 @@ impl crate::App {
             if let Some(deg) = pending_vec_rotate_by {
                 crate::input_dispatch::apply_vec_rotate_by(vec_scene, &self.vec.pen, deg);
             }
-            // Configs de texto: aplicam na SESSÃO viva; sem sessão, no objeto de TEXTO
-            // SELECIONADO (o texto segue editável no Select até virar curva). O
-            // `vec_text_sel` é a seleção corrente para o caminho do objeto.
-            let vec_text_sel: Vec<ph2d_vec_scene::VecPathId> =
-                self.vec.pen.selected_paths().to_vec();
-            // **O conector, pelo painel.** Editar um campo FIXA o valor (`None` → `Some`) em
-            // TODOS os conectores selecionados — é o que permite calibrar o diagrama inteiro
-            // de uma vez, em vez de linha por linha. A geometria não é escrita aqui: ela é
-            // função pura da relação, e o `connector_live::recook` deste mesmo frame (mais
-            // abaixo) a refaz. O undo global pega a mudança pelo diff do mundo ECS.
-            if let Some((id, v)) = pending_vec_connector {
-                crate::vec_connector_panel::edit_selected_connectors(
-                    sim,
-                    &self.vec.entities,
-                    &vec_text_sel,
-                    id,
-                    v,
-                );
-            }
-            // Live Shapes: os sliders de forma editam a forma VIVA selecionada — muda o
-            // parâmetro e RE-COZINHA in-place (id/estilo/pose preservados). Sem forma
-            // viva na seleção, o slider só moveu o default de desenho (a tool já o
-            // guardou) — é o que fecha o ciclo paramétrico: um polígono de 5 lados vira
-            // de 7 depois de desenhado.
-            if let Some((id, v)) = pending_vec_shape_param {
-                crate::vec_shape_params::edit_selected_shape(
-                    sim,
-                    vec_scene,
-                    &self.vec.entities,
-                    &vec_text_sel,
-                    // ⚠️ **O MESMO modo que a pintura leu**: armado para desenhar, a caixa move o
-                    // default do próximo traço e NÃO alcança a forma selecionada — senão digitar
-                    // *"Pontas"* na Estrela armada poria lados no Polígono que está na tela
-                    // (os slots são por índice). O espelho é do frame anterior, e isso basta:
-                    // trocar de modo e digitar não são o mesmo gesto.
-                    self.vec.draw_config.mode,
-                    self.vec.shape_armed,
-                    |kind, values| {
-                        crate::vec_shape_params::apply_shape_field(
-                            kind,
-                            values,
-                            id,
-                            v,
-                            vec_px_to_world,
-                        )
-                    },
-                );
-            }
+            let Some(vec_text_sel) = self.fase_connector_and_shape_params(
+                fase_connector_and_shape_params::ConnectorAndShapeParamsIntents {
+                    pending_vec_shape_param,
+                    pending_vec_connector,
+                },
+                vec_px_to_world,
+            ) else {
+                return;
+            };
             let Some(fase_text_fields::TextFieldsOut {
                 editing_session,
                 pending_vec_text_axis,

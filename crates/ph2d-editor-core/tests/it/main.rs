@@ -27,6 +27,7 @@ mod a_paired_row_breaks_before_its_name_disappears;
 mod a_panel_scrolls_by_dragging_its_body;
 mod a_ring_painted_as_a_fill_is_still_a_frame;
 mod a_row_of_many_fields_never_starves_them;
+mod vello_bin_budget_of_an_editor_frame;
 mod arch_color_space_typed;
 mod arch_mode_has_reconcile;
 mod arch_no_absolute_drag_pattern;

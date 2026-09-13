@@ -120,19 +120,22 @@ fn tab_and_select_all_reach_the_pen_in_node_mode() {
 /// **Os dois botões de alcance são drenados pela shell.** Eles chegam ao bus (há gate de seam no
 /// painel) e aqui prova-se que alguém os consome — um `ToolPanelEvent` que ninguém drena é um
 /// botão que acende e não faz nada.
+///
+/// ⚠️ O dreno é o QUADRO pela ordem em que corre (`frame_text::render_frame`): desde a OBRA 2 da `line/render-loop`
+/// (2026-09-13) a chamada que honra o botão mora numa fase, e o reconhecimento do id continua no dreno do barramento.
 #[test]
 fn the_selection_reach_buttons_are_drained_by_the_shell() {
-    const LOOP_SRC: &str = include_str!("../../src/render_loop/mod.rs");
+    let loop_src = crate::frame_text::render_frame();
     for (id, call) in [
         ("VECTOR_VERT_SEL_SUBPATH", "select_subpath_verts("),
         ("VECTOR_VERT_SEL_SAME", "select_verts_of_same_kind("),
     ] {
         assert!(
-            LOOP_SRC.contains(id),
+            loop_src.contains(id),
             "o `{id}` nao e' drenado -- o botao chega ao bus e morre la'"
         );
         assert!(
-            LOOP_SRC.contains(call),
+            loop_src.contains(call),
             "o dreno do `{id}` nao chama `{call}` -- o clique e' consumido e nao faz nada"
         );
     }

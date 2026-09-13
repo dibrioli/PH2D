@@ -97,7 +97,6 @@ const FILE_OVERAGE_OK: &[(&str, usize)] = &[
     ("ph2d-tool-color-equalization/src/gpu/auto_wb.rs", 748),
     ("ph2d-tool-color-equalization/src/gpu/tonal_batch.rs", 744),
     ("ph2d-tool-color-equalization/src/params.rs", 888),
-    ("ph2d-tool-equalize-sizes/src/algorithm.rs", 755),
     ("ph2d-tool-rasterize/src/algorithm.rs", 734),
 ];
 

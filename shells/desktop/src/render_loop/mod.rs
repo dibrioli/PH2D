@@ -250,6 +250,8 @@ mod fase_hierarchy_group_merge;
 mod fase_hierarchy_select_lock;
 /// Fase do quadro: o dreno de edicao de imagem e os desmontes do Apply.
 mod fase_image_edit_apply;
+/// Fase do quadro: as pontes das ferramentas de imagem.
+mod fase_image_tool_bridges;
 /// Fase do quadro: a entrada (carimbo coalescido, diagnóstico, gamepad, script, soltos).
 mod fase_input_and_drops;
 /// Fase do quadro: os commits do Inspector.
@@ -3438,75 +3440,16 @@ impl crate::App {
                     }
                 }
             }
-            // Padding panel ⟷ tool bridge — publishes the snapshot, draws
-            // the live (non-destructive) canvas-bounds preview, and returns
-            // the (selection, spec, pivot mode) to bake on Apply. Panel
-            // events themselves are routed earlier in the frame via
-            // `EditorAction::ToolPanelEvent` → `Tool::handle_panel_event`
-            // (ADR-0040 TG-C). Sibling `padding_bridge.rs`.
-            let padding_apply =
-                padding_bridge::dispatch(hero, tools, sim, camera, window_size, vector_scene);
-            // Bg Removal panel ⟷ tool bridge + on-canvas live preview
-            // — extracted to sibling `bgremoval_preview.rs` (HR-18 LOC).
-            // Panel events now flow through `EditorAction::ToolPanelEvent`
-            // (drained above into `handle_panel_event` → `apply_ui_edit`);
-            // the canvas-preview cache is gated on `BgRemovalTool::take_params_dirty`
-            // instead of a per-frame edits vector (ADR-0040 TG-B).
-            let bgremoval_apply_committed = bgremoval_preview::dispatch(
-                hero,
-                tools,
-                sim,
-                renderer,
-                asset_db,
-                atlas_asset_map,
-                camera,
-                window_size,
-                vector_scene,
-                &mut self.last_bgremoval_pushed_entity,
-                &mut self.bgremoval_preview,
-                &mut self.bgremoval_preview_gpu,
-                toasts,
-            );
-            // Color Equalization panel ⟷ tool bridge: drives panel
-            // visibility, refreshes the tool's source bitmap when the
-            // primary changes, publishes the snapshot the panel paints,
-            // and returns the multi-selection on Apply for the bake.
-            let color_equalization_apply = color_equalization_bridge::dispatch(
-                hero,
-                tools,
-                sim,
-                renderer,
-                asset_db,
-                atlas_asset_map,
-                camera,
-                window_size,
-                vector_scene,
-                &mut self.last_color_equalization_pushed_entity,
-                &mut self.color_equalization_previews,
-                toasts,
-            );
-            // Equalize Sizes panel ⟷ tool bridge — multi-sprite, no
-            // per-frame on-canvas preview (the visual effect is the
-            // Apply bake; an interim transform-only preview is future
-            // work). Returns the full `iter_selected()` on Apply for
-            // the cross-sprite `run_full_resolution_multi` bake.
-            let equalize_sizes_apply = equalize_sizes_bridge::dispatch(hero, tools);
-            // Upscale panel ⟷ tool bridge — sabor 3 with on-canvas
-            // live preview (algo + scale apply each frame the user
-            // moves the slider). Mirror of `color_equalization_bridge`.
-            let upscale_apply = upscale_bridge::dispatch(
-                hero,
-                tools,
-                sim,
-                renderer,
-                asset_db,
-                atlas_asset_map,
-                camera,
-                window_size,
-                vector_scene,
-                &mut self.last_upscale_pushed_entity,
-                &mut self.upscale_preview,
-            );
+            let Some(fase_image_tool_bridges::ImageToolBridgesOut {
+                padding_apply,
+                bgremoval_apply_committed,
+                color_equalization_apply,
+                equalize_sizes_apply,
+                upscale_apply,
+            }) = self.fase_image_tool_bridges(window_size)
+            else {
+                return;
+            };
             let Some(painter_apply_committed) = self.fase_painter_dispatch(window_size, viewport)
             else {
                 return;

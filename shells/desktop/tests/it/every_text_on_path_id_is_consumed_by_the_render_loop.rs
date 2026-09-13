@@ -30,8 +30,6 @@
 //! `VECTOR_TEXTPATH_OFFSET_NUM` existe em `ids/chrome/vector_textpath.rs` e ainda não chegou
 //! aqui — no dia em que chegar, a agulha do slider ficaria cega sem uma linha de aviso).
 
-use std::fs;
-
 /// Os ids que o painel manda para o barramento, e que a `render_loop` tem de ler.
 ///
 /// O Offset entra: ele é um `ValueChanged`, não um `Click`, e o modo de falha é o mesmo (o
@@ -70,13 +68,13 @@ fn consumes(src: &str, id: &str) -> bool {
     })
 }
 
+///
+/// ⚠️ A `render_loop` é o QUADRO pela ordem em que corre (`frame_text::render_frame`): desde a OBRA 2 da
+/// `line/render-loop` (2026-09-13) as portas do `vec_text_ride` moram na `fase_text_on_path`, e os ids continuam no
+/// dreno do barramento — só o texto EMENDADO tem os dois lados.
 #[test]
 fn every_text_on_path_id_is_read_by_the_render_loop() {
-    let src = fs::read_to_string(concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/src/render_loop/mod.rs"
-    ))
-    .expect("render_loop/mod.rs");
+    let src = crate::frame_text::render_frame();
 
     let missing: Vec<&str> = CONSUMED
         .iter()

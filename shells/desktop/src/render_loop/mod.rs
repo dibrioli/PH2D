@@ -344,6 +344,8 @@ mod fase_surface_resize;
 mod fase_texpat_gradient_align;
 /// Fase do quadro: os campos de texto.
 mod fase_text_fields;
+/// Fase do quadro: o texto no caminho.
+mod fase_text_on_path;
 /// Fase do quadro: o estilo do texto e o painel de texto.
 mod fase_text_panel;
 /// Fase do quadro: o relógio dos contêineres da timeline.
@@ -3761,55 +3763,11 @@ impl crate::App {
             {
                 eprintln!("[ph2d-vec] blend: solto (as formas-fonte ficam)");
             }
-            // ADR-0129: **Envelope** — envolve a seleção (1..N formas) num container com a gaiola em
-            // repouso. Síncrono (as formas já existem; o container não tem path), então age já.
-            // Plano 22: prender / soltar / trocar o lado. Um comando só por frame (é um
-            // clique), e todos passam pelas portas do `vec_text_ride` — que re-cozinham pela
-            // porta de sempre, para não haver uma segunda resposta a "como um texto vira
-            // geometria".
-            if let Some(v) = pending_textpath_offset {
-                let sel = self.vec.pen.selected_paths().to_vec();
-                crate::vec_text_ride::edit(sim, vec_scene, &self.vec.entities, &sel, |l| {
-                    l.start_offset = v as f32;
-                });
-            }
-            if let Some(cmd) = pending_textpath {
-                let sel = self.vec.pen.selected_paths().to_vec();
-                let done = match cmd {
-                    crate::vec_text_ride::TextPathCmd::Link => {
-                        crate::vec_text_ride::link(sim, vec_scene, &self.vec.entities, &sel)
-                    }
-                    crate::vec_text_ride::TextPathCmd::Detach => {
-                        crate::vec_text_ride::detach(sim, vec_scene, &self.vec.entities, &sel)
-                    }
-                    crate::vec_text_ride::TextPathCmd::Flip(v) => {
-                        crate::vec_text_ride::edit(sim, vec_scene, &self.vec.entities, &sel, |l| {
-                            l.flip = v;
-                        })
-                    }
-                };
-                if !done {
-                    eprintln!(
-                        "[ph2d-vec] text on path: selecione o TEXTO e um caminho (ou um texto \
-                         ja' preso, para soltar)"
-                    );
-                }
-            }
-            // Picker do texto (Enio 2026-07-23): o botão só ARMOU; aqui capturamos a FONTE — o texto
-            // em foco — para o clique seguinte no canvas escolher o guia. Capturamos o id agora porque
-            // esse clique pode mudar a seleção (ele ESCOLHE o guia, não deve virar a fonte).
-            if pending_text_pick {
-                let sel = self.vec.pen.selected_paths().to_vec();
-                if let Some((text, _, _)) =
-                    crate::vec_text_object::selected_text_object(sim, &self.vec.entities, &sel)
-                {
-                    self.vec.path_pick = Some(crate::vec_pick::PathPick::TextObject(text));
-                    eprintln!(
-                        "[ph2d-vec] text on path: pick armado -- clique no CAMINHO-guia (vazio = \
-                         desiste)"
-                    );
-                }
-            }
+            self.fase_text_on_path(fase_text_on_path::TextOnPathIntents {
+                pending_textpath,
+                pending_textpath_offset,
+                pending_text_pick,
+            });
             self.fase_contour_verbs(fase_contour_verbs::ContourVerbsIntents {
                 pending_contour,
                 pending_contour_steps,

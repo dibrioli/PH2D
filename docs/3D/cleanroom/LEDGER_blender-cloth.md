@@ -141,6 +141,7 @@ defaults do código em `damping`, `strength`, `spacing`, área e plasticidade. �
 | janela | session-id | data | motivo | declaração |
 |---|---|---|---|---|
 | I-1 (janela-mãe) | `1246816c-63cf-414b-842d-663a8baa86ca` | 2026-09-05 | abriu a obra e despachou este E | ⏳ a janela declara pelo **inbox**: *"nenhum conteúdo do fonte do alvo entrou no CONTEXTO desta janela (incluindo reports de subagentes e compactação); exposição via pesos do modelo não é atestável por construção — mitigada §7.3"* · **INC-1 (2026-09-05, via briefing do R-pré):** *«a janela I não abriu nenhum dos ficheiros quarentenados; leu apenas a listagem de nomes»* — e o R mediu que nenhum deles continha código (ver *Incidentes*) |
+| I-3 (reabertura pós-W2) | `9f820704-0d7e-4d96-847e-9cd720cbf178` | 2026-09-13 | assumiu `line/sculpt3d` na worktree recriada pelo integrador a partir do `main` `1d43da737` | declaração pelo **inbox** (entrada de 2026-09-13): não abriu o fonte, o ledger, a vassoura, a `TRIAGEM` nem o `ACHADO`; leu só o `README.md` de `cleanroom/` e nenhum `SPEC_*` · **INC-4 (2026-09-13):** exposição a nomes internos e fragmentos de uma linha em comentários NOSSOS, classificada **RELANCE** pelo R ⇒ **não queima** (ver *Incidentes* → INC-4) |
 
 ⛔⛔ **A I-1 está QUEIMADA como I para este módulo desde 2026-09-09 (INC-2, classificado SUBSTANCIAL
 pelo R).** Ela escreve o BLOCO-RETOMADA e **PARA**; a **I-2** assume a **MESMA** linha e retoma da
@@ -190,6 +191,7 @@ dívida, e ela é de **expressão, não de lei**: os dois sítios nomeados na pr
 | R-pré (emenda Q19 · Q20 · Q21) | subagente R-pré despachado pela janela-mãe `1246816c-63cf-414b-842d-663a8baa86ca` — contexto novo, independente do subagente que escreveu a emenda (transcript = zona contaminada — leu o fonte por shell) | 2026-09-07 — ✅ **ATESTADO no cabeçalho da espec**; veredictos em «R-pré da emenda Q19 … 2026-09-07». **ZERO achados de expressão · UMA higiene §4.2 · NOVE curas funcionais**, a maior delas a banda antiga a dividir os quocientes que a própria emenda tornou obsoletos. **Os três itens que o E deixou nomeados, conferidos:** (a) o censo do cabeçalho corre **silencioso** com o título renomeado, e o instrumento do I passa a ler `11`; (b) o `analise.json` tem mesmo `47` objectos com as chaves **do arnês** para `86` fixtures — ⛔ fica como está (é dado nosso, o sweep passa e o README já manda não acreditar nele), e o **índice derivado** é que é a fonte: `gera_indice.py` regenera-o byte-a-byte, 86 para 86; (c) o auto-teste do arnês vive **fora da árvore** e não é auditável daqui — o que o R-pré verificou é que a **regra registada** (`< 50` movidos ou mais de metade da malha) recusa exactamente os dois modos de falha que ela apanhou, porque a esfera tem `6 050` vértices e as corridas más deram `6 050` e `0` |
 | **R de INCIDENTE (INC-2)** | subagente-R despachado pela janela-mãe `1246816c-63cf-414b-842d-663a8baa86ca` — **contexto novo**, ⛔ não é o subagente-E de nenhuma emenda nem o R-pré que achou o item, e **viu os dois lados** (transcript = zona contaminada) | 2026-09-09 — ⛔ **classificou o INC-2 como SUBSTANCIAL** ⇒ a **I-1 queima**; **quarentena LIMPA** nas 6 regiões (comparação de expressão sobre `850` linhas · sweep verde · busca dirigida a zero); **sweep de memória §6.4 verde, nada revertido**; prescrição §7.3.d escrita. Bloco em *Incidentes* → **INC-2** |
 | **R de INCIDENTE (INC-3) + CENSO §4.2 da árvore** | subagente-R despachado pela janela-mãe `72723fbf-b300-4f42-9178-535bb37b3941` (elo **I-2**) — **contexto novo**, ⛔ não é o subagente-E de nenhuma emenda nem o R do INC-2, e **viu os dois lados** (fonte por shell; `Read` deny-listed para a sessão) | 2026-09-09 — ⛔ **INC-3 classificado RELANCE** (a I-2 **não** queima), com a leitura registada de que **o canal não muda o §6.2 e AGRAVA o §4.2**; **censo §4.2 da árvore rastreada: 64 ficheiros ⇒ 57 (a) · 7 (b) · 0 (c)**, com **três cegueiras medidas do detector** (a população real é ≥107); os **três** hits da vassoura são **REAIS** e são **uma nota copiada três vezes**; tarefa nº 1 do BLOCO-RETOMADA **confirmada** (2 de finalidade · 3 de facto) e a **TERCEIRA cópia da oração ACHADA fora do repo e apagada**; resíduo de atestado da Q23 **removido** e a **segunda metade do censo** (detector de CONTRADIÇÃO) escrita na espec, provada por mutação nos dois braços |
+| **R de INCIDENTE (INC-4)** | subagente-R despachado pela janela `9f820704-0d7e-4d96-847e-9cd720cbf178` (elo **I-3**) — **contexto novo**, ⛔ não é o subagente-E de nenhuma emenda nem o R do INC-2/INC-3, e **viu os dois lados** (fonte por shell; ficheiros de trabalho em `~/Referencias/blender-cloth/r-inc4-2026-09-13/`, zona contaminada, fora do repo e fora do scratchpad partilhado) | 2026-09-13 — ⛔ **INC-4 classificado RELANCE** (a I-3 **não** queima) · **sweep da família: 0 hits** sobre 379 ficheiros, com a **lacuna** de a vassoura cobrir **0 de 42** nomes do alvo da população · **quarentena LIVRE** (`fae47bbc8`, `b04f9d510` e a tabela por commitar de `stroke_surface_tests.rs`) · **plano de reescrita** `SPEC_reescrita_dos_comentarios_com_nomes_do_alvo.md` (94 sítios em 41 ficheiros, sweep verde, busca de 101 identificadores internos: 0) · achado fora da régua: **duas citações de comentário do alvo** e ~66 identificadores internos que a régua de 3+ palavras não vê |
 | R-pós | ⏳ | — |
 
 ### Auditoria R-pré — 2026-09-06 (emendas Q15 e Q16)
@@ -966,6 +968,116 @@ vocabulário do domínio, com os dois ficheiros de gate nomeados ao lado. Confer
 
 **Data:** 2026-09-09 · **R:** subagente-R desta linha (contexto novo; viu os dois lados por shell).
 **INC-3 FECHADO como RELANCE**, com um item de §4.2 aberto no censo abaixo.
+
+---
+
+### INC-4 (I-3, 2026-09-13) — um censo de NOMES DE GATE imprimiu nomes internos do alvo que vivem em comentários NOSSOS
+
+**Objecto (⛔ descrito, nunca reproduzido — §6.1).** A janela I-3 correu um censo de «nome `snake_case` de 3+
+palavras, entre crases, em linha de comentário, que não resolve para definição nenhuma da workspace nem para
+nome de fixture em `docs/`», sobre a família da escultura (`crates/ph2d-app-sculpt3d`, `-sculpt3d`, `-cloth`,
+`-panel-sculpt3d`, `-form-donation` e os `.rs` de `shells/desktop` com `sculpt` no caminho). O censo imprimiu,
+junto com os gates-fantasma que procurava, nomes internos do alvo e fragmentos de uma linha que **já estavam
+na nossa árvore rastreada**. Origem: **o nosso código**, não o fonte do alvo nem um report de subagente.
+
+**A população, MEDIDA por este R com a mesma régua (reproduzida por script, não confiada à memória da janela):**
+
+| grandeza | valor |
+|---|---|
+| ficheiros da família varridos | **379** |
+| definições da workspace usadas para descartar (fn/mod/struct/enum/type/const/static/let/campo/ficheiro) | 83 940 |
+| nomes distintos que a régua devolve · ocorrências | **72 · 154** |
+| … que existem como palavra no checkout do alvo (v5.2.0) | **42** |
+| … desses, **API pública** (declaração de propriedade no definidor RNA + uso no script de interface — lidos por este R) | **5** — e o 6.º nome público que a janela citou tem uma palavra só e fica **fora** da régua (também confirmado RNA) |
+| … desses, **nomes INTERNOS** (função, parâmetro, lista de itens de enum, função de interface em Python) | **37 nomes · 96 ocorrências · 94 sítios · 41 ficheiros** |
+| nomes NOSSOS ou da biblioteca padrão (prefixos pré-W2, nomes de gates mortos, `std`) | **30 nomes · 51 ocorrências** |
+
+A estimativa da janela (*~30 nomes em ~70 ocorrências*) é o mesmo objecto com a separação feita à mão; a
+diferença não é material para a régua.
+
+**Os fragmentos de uma linha, conferidos um a um** (todos dentro dos blocos dos sítios): uma guarda de retorno
+antecipado (2 sítios, a mesma frase) · uma chamada de restrição de faixa com argumentos (2 sítios) · uma
+negação de valor absoluto (2 sítios) · uma cadeia de **sete** nomes de etapa ligados por setas, em **4 linhas**
+de um único bloco · números de linha do fonte (**5**, em 4 blocos) · e, adjacente a um sítio, uma condição
+sobre uma bandeira do pincel (1). ⇒ **o maior trecho contíguo é uma LISTA DE NOMES em 4 linhas, não um corpo.**
+
+**Veredicto (§6.2): ⛔ RELANCE. A janela I-3 NÃO queima.** Cinco razões:
+
+1. **A régua do substancial não é alcançada pelo conteúdo.** Nenhum corpo de função, nenhum bloco de ~10+ linhas.
+   O item mais longo — a cadeia de setas — é uma **ordem de etapas** (facto de arquitectura, §4.1.1) escrita com
+   **nomes internos** (§4.2): o que é ⛔ ali são os nomes, e nome é item de árvore, não de janela.
+2. **Nenhum comentário do alvo foi lido.** Medido: todos os 6-gramas de palavras ASCII das linhas de comentário
+   a ±3 de cada um dos sítios dos 42 nomes (**2 358** sequências distintas) foram procurados no fonte do alvo
+   (`.cc/.hh/.h/.c/.py`): **0** ocorrências. É o que separa este incidente do INC-2, cuja espécie era a oração
+   de um comentário traduzida.
+3. **O canal é a árvore rastreada ⇒ a regra do INC-3 aplica-se sem excepção:** *relance no §6 e item de §4.2
+   com a cura na ÁRVORE, nunca na janela.* Queimar a I-3 não cura nada — a janela seguinte lê as mesmas linhas.
+4. **Finalidade da leitura: AUDITAR, não implementar.** O censo procurava citações de gates que não existem; os
+   comentários foram impressos como ruído do detector. *Ler para apagar não é ler para implementar* (INC-3 §3).
+5. **A agregação não soma um corpo.** 96 ocorrências espalhadas por 41 ficheiros são uma **dívida de estado**
+   da árvore (a distinção evento/estado do INC-3), não uma exposição substancial de uma vez.
+
+⚠️ **O que a agregação revela, e é registado:** um dos blocos expõe a **decomposição em etapas** de um tipo de
+filtro (a organização função-a-função que o §4.2 também proíbe). Continua abaixo do substancial; a cura é
+apagar a cadeia **sem substituto** (o facto que ela servia é só «esse tipo não passa pela restrição de faixa»).
+
+**Rastro (§6.4, corrido mesmo sendo relance — é barato):** o scratchpad da sessão da I-3 tem **0** ficheiros com
+qualquer dos 37 nomes (a cópia do censo foi apagada, como a janela declarou); `project-memory/` da worktree e do
+primário: **0** ficheiros. ⚠️ Os ficheiros de trabalho deste R vivem em `~/Referencias/blender-cloth/r-inc4-2026-09-13/`
+(zona contaminada) **de propósito**: o scratchpad desta sessão é o da janela I.
+
+**Sweep (§7.1).** `bash scripts/cleanroom-sweep.sh docs/3D/cleanroom/VASSOURA_blender-cloth.txt <379 ficheiros>`
+⇒ **exit 0, zero hits** (os três hits de 2026-09-09 foram curados). ⛔⛔ **Mas a vassoura NÃO cobre esta
+população:** decodificada em memória, **0 das 70 entradas** casa, por substring em qualquer sentido, **algum**
+dos 42 nomes do alvo da população. *O sweep verde aqui mede a família do pincel de tecido, não o motor de
+escultura.* ⇒ **Recomendação (a vassoura é artefacto de E; não reescrita por este R):** o próximo E desta linha
+acrescenta, em base64, os identificadores internos idiossincráticos do **motor de escultura** que o produto
+cita (os tipos do filtro de malha, a etapa de dureza, a construção do plano do pincel, a passada de simetria, o
+polegar, o vinco/bolha, a média de vizinhos, a inicialização por gesto do filtro) — numa vassoura própria da
+família da escultura ou nesta; e ⚠️ a régua de 3+ palavras deve entrar também como **segundo instrumento**,
+porque ela apanhou o que a vassoura não tem.
+
+**Quarentena (§6.3): LIVRE — tudo pode fundir.** Comparação de EXPRESSÃO das regiões escritas depois da
+exposição contra o que foi exposto:
+
+| região | veredicto | o que este R conferiu |
+|---|---|---|
+| `fae47bbc8` (17 ficheiros, 1 149 inserções) | ✅ LIVRE | assunto **disjunto**: contrato do empréstimo da cena ao host, censo dos modos de retopologia, golden de bytes do documento, **invariância da superfície MLS à rotação da base tangente** (álgebra das quádricas completas — paper, não alvo), dab idempotente, sete nomes de gate corrigidos e o censo de gates nomeados |
+| `b04f9d510` (1 ficheiro) | ✅ LIVRE | o censo passa a não calar uma citação que só aparece como prosa de definição; nenhuma lei |
+| tabela por commitar no cabeçalho de `crates/ph2d-sculpt3d/src/stroke_surface_tests.rs` | ✅ LIVRE | três números **medidos pelo nosso gate** (dois lados do produto e o mutante) e a razão da barra; nada do alvo |
+
+Instrumentos: sobre as **1 181** linhas acrescentadas — os 42 nomes do alvo: **0**; formas de fragmento (guarda
+de retorno, chamada de restrição, negação de absoluto, setas, números de linha do fonte, acesso à cache,
+prefixos de biblioteca, a palavra «Blender»): **0**; palavras de assunto (dureza, filtro de malha, restrição,
+centro de área, simetria, polegar, vinco, bolha, referência): **3** linhas, todas benignas (nota de fixture,
+rename de gate, caminho de ficheiro). Sweep da vassoura sobre os 17 ficheiros tocados: **exit 0**.
+
+**Plano de reescrita:** [`SPEC_reescrita_dos_comentarios_com_nomes_do_alvo.md`](SPEC_reescrita_dos_comentarios_com_nomes_do_alvo.md)
+— **94 sítios em 41 ficheiros**, agrupados por ficheiro e por **bloco** de comentário, com o facto em
+vocabulário de domínio e o que sai; mais os 7 sítios de API pública (Anexo A, ficam), as linhas **do mesmo
+ficheiro** fora da régua, e 18 ficheiros que só têm a dívida fora da régua (Anexo B). Verificação: sweep da
+vassoura **exit 0**; busca por palavra de **101** identificadores internos (os 37 da população + os achados
+fora da régua + três palavras internas sem sublinhado) no documento: **0**. O documento é o canal para a I-3:
+ele não contém expressão do alvo.
+
+**⛔ Achados FORA da régua do incidente (a mesma dívida, maior do que a régua vê):**
+
+- ⛔⛔ **Duas citações entre aspas de COMENTÁRIO DO ALVO**, em inglês, com número de linha:
+  `crates/ph2d-sculpt3d/src/brush_verb.rs:190-192` e `crates/ph2d-sculpt3d/src/stroke_plane.rs:391-392` —
+  cada frase citada **casa literalmente** num ficheiro do fonte do alvo. É a sub-espécie que o censo de
+  2026-09-09 mandou **APAGAR, não reescrever** (§4.2: *«a expressão mais protegida do arquivo»*). ⚠️ Podem ser
+  as mesmas daquele censo com as linhas deslocadas — o plano marca-as ⛔ APAGAR de qualquer forma.
+- **~66 identificadores internos** de 1–2 palavras, constantes/bandeiras em maiúsculas e chamadas com prefixo
+  de biblioteca (≈150 ocorrências, excluídos três nomes de `std`/`wgpu` e quatro de API pública), **15**
+  expressões de código de uma linha e **~20** números de linha do fonte **sem** nome de ficheiro, todos na
+  mesma família. ⇒ **a régua de 3+ palavras mede um PISO**, com cinco cegueiras: 1–2 palavras · maiúsculas ·
+  caminho `a::b` · token entre crases que atravessa duas linhas · número de linha nu.
+- ⚠️ **O gate `architecture_no_restricted_source_citations` continua cego a nomes de SÍMBOLO** (o ⏳ ABERTO de
+  2026-09-09): esta população — 37 nomes medidos, com a separação público/interno feita — é a semente de que
+  ele precisa.
+
+**Data:** 2026-09-13 · **R:** subagente-R do INC-4 (contexto novo; viu os dois lados por shell).
+**INC-4 FECHADO como RELANCE**, com o plano de reescrita entregue e a lacuna da vassoura anotada.
 
 ---
 

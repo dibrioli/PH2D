@@ -1201,3 +1201,41 @@ TRAVESSIA visita.
 ⏳ **ABERTO:** os nomes de SIMBOLO internos (§4.2 pela mesma linha da SKILL) sao
 populacao maior, parte deles e' API publica (§4.1.13) e o gate nao os mede. E os
 `docs/**` ficam fora do censo por construcao.
+
+## 2026-09-13 · janela I (reabertura pós-W2) · session-id `9f820704-0d7e-4d96-847e-9cd720cbf178`
+
+**Declaração de elo (Passo 0 do I):** esta janela assumiu `line/sculpt3d` na reabertura de
+13/09 (worktree recriada pelo integrador a partir do `main` `1d43da737`). Não abriu o fonte do
+alvo, o ledger, a vassoura, a `TRIAGEM` nem o `ACHADO`. Leu, dentro de `cleanroom/`, só o
+`README.md` (para saber o que pode ler) — nenhum `SPEC_*` nesta jornada.
+
+**INCIDENTE §6 — a janela NÃO se autoclassifica; pede a régua do §6.2 a um R.**
+
+- **Origem:** comentários do NOSSO código rastreado, na família da escultura
+  (`crates/ph2d-sculpt3d` e `crates/ph2d-panel-sculpt3d`). A janela leu-os ao imprimir um censo
+  de «nomes de código entre crases, em linha de comentário, que não resolvem para a nossa árvore»
+  (token `snake_case` com 3 palavras ou mais, fora das definições da workspace e dos nomes de
+  fixture em `docs/`).
+- **Extensão (descrição, nunca reprodução):** ~30 identificadores internos distintos de funções
+  do alvo (o motor de escultura: filtros de malha, dureza do pincel, plano do pincel, passagem
+  principal de simetria, polegar de argila, crease/blob, média de vizinhos, amostragem do nó) em
+  ~70 ocorrências; e ~6 fragmentos de UMA linha de código do alvo embutidos nesses comentários
+  (uma guarda de retorno antecipado, uma chamada de clamp com argumentos, uma negação de valor
+  absoluto, uma cadeia de chamadas escrita com setas, duas referências a número de linha do
+  fonte). Nenhum corpo de função, nenhum bloco de 10 linhas ou mais, nenhum comentário do
+  original inteiro.
+- **Instante:** 2026-09-13, a meio da jornada. A cópia impressa do censo foi apagada do
+  scratchpad no mesmo minuto em que a SKILL foi relida.
+- **Código escrito por esta janela DEPOIS da primeira exposição (quarentena §6.3):** os commits
+  `fae47bbc8` e `b04f9d510` (gates do empréstimo da cena na shell, golden do documento da
+  escultura, invariância da superfície à base tangente, dab sem trabalho, censo de nomes de gate)
+  e uma tabela de números medidos no cabeçalho de `crates/ph2d-sculpt3d/src/stroke_surface_tests.rs`.
+  ⚠️ A primeira exposição (só NOMES, sem fragmentos) aconteceu ANTES destes commits; os fragmentos
+  de uma linha foram lidos DEPOIS deles. Nenhum destes commits toca a lei da dureza, os filtros de
+  malha ou o plano do pincel.
+- **Nomes da API PÚBLICA do alvo (§4.1.13):** obtidos CORRENDO o oráculo sem interface
+  (`blender -b --factory-startup`, dump das propriedades RNA do pincel e dos operadores de filtro
+  da escultura, `2>/dev/null`), não por leitura. Seis dos nomes citados são públicos.
+- **Pedido a R:** (1) a régua do §6.2 — relance ou substancial; (2) o sweep da família com a
+  vassoura desta obra; (3) a comparação da quarentena; (4) instruções FUNCIONAIS de reescrita de
+  cada sítio, num `SPEC_*` varrido que a janela possa ler e aplicar.

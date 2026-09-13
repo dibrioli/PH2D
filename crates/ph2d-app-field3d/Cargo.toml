@@ -30,6 +30,10 @@ ph2d-field-eval    = { path = "../ph2d-field-eval" }
 ph2d-field-mesh    = { path = "../ph2d-field-mesh" }
 ph2d-field-profile = { path = "../ph2d-field-profile" }
 ph2d-field-render  = { path = "../ph2d-field-render" }
+# ⭐ O modo RENDER (`docs/Render3d/05`): o rig do documento, a lei do material e o olhar da cena.
+ph2d-light          = { path = "../ph2d-light" }
+ph2d-material       = { path = "../ph2d-material" }
+ph2d-view-transform = { path = "../ph2d-view-transform" }
 ph2d-i18n          = { path = "../ph2d-i18n" }
 ph2d-mesh          = { path = "../ph2d-mesh" }
 ph2d-panel-model3d = { path = "../ph2d-panel-model3d" }

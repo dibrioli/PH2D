@@ -399,6 +399,10 @@ fn viewport_pass(
         // o que o app fazia até à W82. Ela existe porque um report de *«piorou muito»* não diz
         // **qual** mudança o causou, e duas corridas dizem.
         let usa_cache = tape_cache_enabled();
+        // ⭐⭐⭐ **O modo e o olhar VIAJAM COM O PEDIDO** (`docs/Render3d/05`) — copiados aqui, e não
+        // lidos na thread: o estado do módulo não atravessa a fronteira, e um olhar lido depois
+        // podia já não ser o do pedido que este traçado responde.
+        let (shading, look) = (smoke.vps[i].shading, smoke.look);
         std::thread::spawn(move || {
             let t0 = std::time::Instant::now();
             // Abandonado a meio: não se manda nada, e quem esperava já mudou de pedido.
@@ -414,14 +418,35 @@ fn viewport_pass(
             ) else {
                 return;
             };
-            let rgba = shade(
-                &g,
-                &Matcap {
-                    side: matcap.side,
-                    rgb_linear: &matcap.rgb,
-                },
-                BACKGROUND,
-            );
+            let rgba = match shading {
+                crate::shading::Shading::Matcap => ph2d_field_render::shade_with(
+                    &g,
+                    &Matcap {
+                        side: matcap.side,
+                        rgb_linear: &matcap.rgb,
+                    },
+                    look,
+                    BACKGROUND,
+                ),
+                crate::shading::Shading::Render => {
+                    // ⚠️ **O material e o rig desta fatia são os PADRÕES** — o OpenPBR da nodedef e
+                    // o rig de omissão da `ph2d-light`. Material por objecto e o rig do documento são
+                    // os passos seguintes, nomeados no `docs/Render3d/05`.
+                    let lamps = crate::render_light::lamps(&ph2d_light::LightRig::default());
+                    let surface = ph2d_material::OpenPbr::default().prepare();
+                    ph2d_field_render::shade_render(
+                        &g,
+                        &cam,
+                        &surface,
+                        &ph2d_field_render::Lighting {
+                            lamps: &lamps,
+                            sky: &crate::render_light::StudioSky,
+                        },
+                        look,
+                        BACKGROUND,
+                    )
+                }
+            };
             // O receptor pode ter sumido (janela fechada): descartar é a resposta certa.
             let _ = tx.send(Ready {
                 rgba,

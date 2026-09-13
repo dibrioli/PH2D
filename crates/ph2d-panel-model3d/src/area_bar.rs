@@ -94,9 +94,22 @@ struct MenuPlan<'a> {
 /// construir a segunda porta faz o app ter **dois** sítios para o mesmo verbo, e o que apodrece é
 /// o que ninguém relê.
 ///
-/// ⚠️ **O orçamento medido é `3` chips** ([`ids::area_menu_button`]) e é usado `1`.
-fn menus(snap: &state::ModelSnapshot) -> [MenuPlan<'_>; 1] {
-    [MenuPlan {
+/// ⭐⭐⭐ **E o pulldown do SOMBREAMENTO** (`docs/Render3d/05`), o segundo:
+///
+/// | pulldown | rótulo | face | fileiras |
+/// |---|---|---|---|
+/// | 1 | *Shading* | o modo do viewport activo (`Matcap`/`Render`) | o modo · as vistas da cena · as exposições |
+///
+/// ⚠️ **Um pulldown e não três chips**, pela mesma medição da fila: com `2` de `3` usados, um terceiro
+/// chip cru já poria o iPad mini em duas linhas.
+///
+/// ⚠️ **O orçamento medido é `3` chips** ([`ids::area_menu_button`]) e são usados `2`.
+///
+/// ⚠️ **E o segundo só existe quando tem o que oferecer** — a mesma lei das fileiras do painel
+/// (*vazio ⇒ não é pintada*): um chip que abrisse um menu sem linhas custaria a largura de um
+/// controlo e não responderia a pergunta nenhuma.
+fn menus(snap: &state::ModelSnapshot) -> Vec<MenuPlan<'_>> {
+    let mut out = vec![MenuPlan {
         label: "panel.model3d.area.view",
         face: view_face(snap),
         rows: vec![
@@ -106,7 +119,35 @@ fn menus(snap: &state::ModelSnapshot) -> [MenuPlan<'_>; 1] {
                 crate::ids::model3d_camera_button as Family,
             ),
         ],
-    }]
+    }];
+    let shading: Vec<Row<'_>> = vec![
+        (
+            &snap.shadings[..],
+            crate::ids::model3d_shading_button as Family,
+        ),
+        (&snap.looks[..], crate::ids::model3d_look_button as Family),
+        (
+            &snap.exposures[..],
+            crate::ids::model3d_exposure_button as Family,
+        ),
+    ];
+    if shading.iter().any(|(chips, _)| !chips.is_empty()) {
+        out.push(MenuPlan {
+            label: "panel.model3d.area.shading",
+            face: shading_face(snap),
+            rows: shading,
+        });
+    }
+    out
+}
+
+/// A FACE do sombreamento — o modo do viewport activo, ou o matcap num retrato que ninguém publicou.
+fn shading_face(snap: &state::ModelSnapshot) -> &'static str {
+    if snap.shading_label.is_empty() {
+        "panel.model3d.shading.matcap"
+    } else {
+        snap.shading_label
+    }
 }
 
 /// ⭐⭐⭐ **OS CHIPS DO TRILHO QUE JÁ EXISTIAM, e a chave do verbo de cada um.**

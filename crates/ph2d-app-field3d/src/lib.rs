@@ -70,7 +70,9 @@ pub mod profile;
 pub mod profile_live;
 /// ADR-0161 W23 — o REGRESSO: um projeto carregado regenera cada escultura do arquivo que a nomeia.
 pub mod reload;
+pub mod render_light;
 pub mod scene;
+pub mod shading;
 /// ADR-0161 W100 — a PALETA de formas: o catálogo grande entra pelo modal genérico da casa.
 pub mod shape_palette;
 /// ADR-0161 W100 — o CATÁLOGO de formas: rótulo, família e construtor, uma linha por forma.

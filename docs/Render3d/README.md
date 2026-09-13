@@ -15,6 +15,7 @@ medição ao lado, para a implementação não começar por um palpite.
 | [`02_o_estado_da_arte.md`](02_o_estado_da_arte.md) | *«o que a Unreal tem, e onde podemos ganhar?»* |
 | [`03_o_plano.md`](03_o_plano.md) | *«por onde se começa, e o que se mede em cada passo?»* |
 | ⭐ [`04_a_remedicao_contra_a_arvore.md`](04_a_remedicao_contra_a_arvore.md) | *«o que o estudo dizia que JÁ existia ainda é verdade?»* — ⛔ **três premissas caíram em 13/09** (o tonemap está em bypass · a `W1` sozinha não tem consumidor · **há** gerador de WGSL), e ⭐ **a ponte para WGSL está MEDIDA** |
+| ⭐⭐⭐ [`05_o_modo_render_do_modelador.md`](05_o_modo_render_do_modelador.md) | **A 1.ª FATIA QUE SHIPA (13/09)** — o modo *Render* no modelador: o OpenPBR como lei de referência em CPU (port Apache-2.0, provado contra o MaterialX renderizado sem interface), o céu e o rig traduzidos com o `π` e o sinal de `y` gateados, e a exposição e a vista da cena. Traz as barras de cada gate, a tabela que justifica a vista existir, as recusas desta fatia e a armadilha do CORREDOR que fez 8 gates reprovarem sob `cargo test` |
 
 ## O resultado do estudo em três linhas
 

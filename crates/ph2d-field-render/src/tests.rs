@@ -5,6 +5,7 @@ use ph2d_field::{NodeId, Primitive, Xform};
 use ph2d_field_eval::hybrid::Registry;
 
 mod hull_cache_probe;
+mod shade_render_gates;
 
 fn sphere(radius: f32) -> FieldDoc {
     FieldDoc::new(

@@ -277,7 +277,12 @@ pub(crate) fn tiled_trace(
         };
         let before = spent();
         let r = body(t);
-        let custo = spent() - before;
+        // ⚠️ **`saturating_sub`, e não `-`:** estes são contadores GLOBAIS, e uma sonda vizinha pode
+        // repô-los enquanto este ladrilho corre. Medido em 2026-09-13: sob `cargo test` (threads no
+        // MESMO processo) a subtracção ficava negativa e o traçado entrava em **pânico** — um defeito
+        // que se lê como do produto e é do corredor. *Os gates de contagem desta crate correm por
+        // `nextest`, que dá um processo a cada um.*
+        let custo = spent().saturating_sub(before);
         TILE_MAX.fetch_max(custo, std::sync::atomic::Ordering::Relaxed);
         if RECORD_TILE_COSTS.load(std::sync::atomic::Ordering::Relaxed)
             && let Ok(mut v) = TILE_COSTS.lock()

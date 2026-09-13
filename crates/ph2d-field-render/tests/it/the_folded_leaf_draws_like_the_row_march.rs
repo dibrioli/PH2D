@@ -12,7 +12,9 @@
 //! LINHA, que não especializa nada. ⚠️ **O controlo é o gémeo sem o modificador**: as duas marchas já
 //! discordam num pixel ou dois de silhueta por amostragem, e a pergunta é se a dobra acrescenta a isso.
 
-use ph2d_field::{Blend, FieldDoc, FillRule, Node, NodeId, NodeKind, Op, Primitive, Profile, Unary, Xform};
+use ph2d_field::{
+    Blend, FieldDoc, FillRule, Node, NodeId, NodeKind, Op, Primitive, Profile, Unary, Xform,
+};
 use ph2d_field_eval::hybrid::Registry;
 use ph2d_field_render::{Gbuffer, Orbit, trace_by_rows_for_test, trace_cached_for_test};
 

@@ -180,6 +180,12 @@ pub fn publish_snapshot(
         // nas linhas do menu que ele abre.
         view_label: with_smoke(|s| crate::views::label_key(&s.vp().cam))
             .unwrap_or("viewport.model3d.view.user"),
+        // ⭐⭐⭐ **O SOMBREAMENTO** (`docs/Render3d/05`) — o modo do viewport ACTIVO e o olhar da
+        // CENA, com o aceso derivado do estado, nunca de um botão guardado.
+        shadings: crate::shading::shading_chips(with_smoke(|s| s.vp().shading).unwrap_or_default()),
+        looks: crate::shading::look_chips(with_smoke(|s| s.look).unwrap_or_default()),
+        exposures: crate::shading::exposure_chips(with_smoke(|s| s.look).unwrap_or_default()),
+        shading_label: with_smoke(|s| s.vp().shading.key()).unwrap_or(""),
     });
 }
 

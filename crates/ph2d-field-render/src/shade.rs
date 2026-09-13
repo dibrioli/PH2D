@@ -5,6 +5,7 @@
 //! conhecer matcap nenhum (ver o doc de [`super`]).
 
 use super::*;
+use ph2d_view_transform::Look;
 
 /// Os texels de um matcap, **em linear**, lado × lado, RGB.
 ///
@@ -64,11 +65,25 @@ impl Matcap<'_> {
     }
 }
 
-/// Colore o G-buffer com um matcap e devolve RGBA8 **pré-multiplicado**.
+/// Colore o G-buffer com um matcap e devolve RGBA8 **pré-multiplicado** — o olhar padrão.
+///
+/// ⚠️ É o [`shade_with`] com [`Look::default`], que dentro do branco é a identidade **ao bit**: um
+/// matcap é uma fotografia em `0..=1`, então este é exactamente o quadro que o módulo sempre pintou.
+#[must_use]
+pub fn shade(g: &Gbuffer, m: &Matcap<'_>, background: [u8; 4]) -> Vec<u8> {
+    shade_with(g, m, Look::default(), background)
+}
+
+/// Colore o G-buffer com um matcap **sob um olhar** (exposição e vista) e devolve RGBA8
+/// **pré-multiplicado**.
 ///
 /// A lei de amostragem é a do matcap: `uv = n.xy * 0.5 + 0.5`, com `n` em espaço de vista. É por
 /// isso que ela mora aqui, ao lado de quem produz essa normal — e não do outro lado do repositório,
 /// onde a convenção teria de ser re-afirmada num comentário.
+///
+/// ⚠️ **O olhar vale também para o matcap, como no Blender** (a *Color Management* dele pinta o
+/// modo sólido): a exposição e a vista são da CENA, e uma vista em matcap ao lado de uma em render
+/// que as ignorasse mostraria duas cenas diferentes (`docs/Render3d/05`).
 ///
 /// # ⚠️ Pré-multiplicado, e a resolução é em LINEAR
 ///
@@ -81,7 +96,7 @@ impl Matcap<'_> {
 ///   — é cinza-188. Fazer a média em sRGB escurece toda borda, que é o outro bug clássico e o mais
 ///   difícil de ver porque parece só "um contorno".
 #[must_use]
-pub fn shade(g: &Gbuffer, m: &Matcap<'_>, background: [u8; 4]) -> Vec<u8> {
+pub fn shade_with(g: &Gbuffer, m: &Matcap<'_>, look: Look, background: [u8; 4]) -> Vec<u8> {
     let bg_a = f32::from(background[3]) / 255.0;
     // O fundo, já pré-multiplicado e em linear — é ele que entra na média de um pixel de borda.
     let bg = [
@@ -105,9 +120,13 @@ pub fn shade(g: &Gbuffer, m: &Matcap<'_>, background: [u8; 4]) -> Vec<u8> {
         return out;
     }
 
-    for (i, px) in out.as_chunks_mut::<4>().0.iter_mut().enumerate() {
+    // ⭐ **As linhas em PARALELO**, como o modo render (medido 2026-09-13, `--release`, esfera a
+    // `640×360`): em série este passe custava `2,95 ms` contra `1,69` do render — o caminho mais
+    // antigo era o mais caro, e por uma razão que não é do matcap. A lei é **por pixel**, então os
+    // bytes são os mesmos (há gate de identidade).
+    out.par_chunks_mut(4).enumerate().for_each(|(i, px)| {
         if g.hit[i] {
-            let rgb = m.colour(g.normal[i]);
+            let rgb = look.apply(m.colour(g.normal[i]));
             write(px, [rgb[0], rgb[1], rgb[2], 1.0]);
         } else {
             // ⚠️ Copiado, e não passado pela conversão: um pixel de fundo puro tem de sair
@@ -116,7 +135,7 @@ pub fn shade(g: &Gbuffer, m: &Matcap<'_>, background: [u8; 4]) -> Vec<u8> {
             // costura mais difícil de ver que existe.
             px.copy_from_slice(&background);
         }
-    }
+    });
 
     // As bordas, resolvidas em COR — e não pela média das normais.
     //
@@ -129,7 +148,7 @@ pub fn shade(g: &Gbuffer, m: &Matcap<'_>, background: [u8; 4]) -> Vec<u8> {
         let mut acc = [0.0f32; 4];
         for k in 0..4 {
             let c = if e.hit[k] {
-                let rgb = m.colour(e.normal[k]);
+                let rgb = look.apply(m.colour(e.normal[k]));
                 [rgb[0], rgb[1], rgb[2], 1.0]
             } else {
                 bg

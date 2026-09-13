@@ -80,6 +80,13 @@ pub struct View {
     /// câmera. Um artista que trabalha em quatro vistas e pega no editor vetorial não quer voltar e
     /// encontrar uma.
     pub split: crate::layout::Split,
+    /// ⭐⭐⭐ **Como o viewport activo pinta a peça** (`docs/Render3d/05`).
+    ///
+    /// ⚠️ Pertence aqui pela mesma razão da câmera: um artista que pôs a peça em render e pegou no
+    /// editor vetorial quer voltar e encontrar o render.
+    pub shading: crate::shading::Shading,
+    /// ⭐⭐⭐ **O olhar da cena** — a exposição e a vista, que valem para todos os viewports.
+    pub look: ph2d_view_transform::Look,
 }
 
 impl Default for View {
@@ -88,6 +95,8 @@ impl Default for View {
     /// sem memória podiam divergir sem ninguém notar; há gate.
     fn default() -> Self {
         Self {
+            shading: crate::shading::Shading::default(),
+            look: ph2d_view_transform::Look::default(),
             split: crate::layout::Split::One,
             cam: Orbit::default(),
             manual: false,
@@ -113,6 +122,9 @@ impl View {
             gizmo_mode,
             gizmo_frame,
             isolated,
+            // ⭐⭐⭐ **O olhar da cena é VISTA** (`docs/Render3d/05`) — e o modo de pintar, que é do
+            // viewport, sai do activo como a câmera.
+            look,
             // ⚠️ Daqui para baixo, **cache do quadro ou gesto em curso** — nada disto atravessa.
             doc: _,
             seed: _,
@@ -161,6 +173,9 @@ impl View {
             split: *split,
             cam: s.vp().cam,
             manual: s.vp().manual,
+            // ⭐ O modo é do viewport ACTIVO, como a câmera; o olhar é da cena.
+            shading: s.vp().shading,
+            look: *look,
             gizmo_mode: *gizmo_mode,
             gizmo_frame: *gizmo_frame,
             isolated: *isolated,

@@ -4927,6 +4927,8 @@ dependencies = [
  "ph2d-field-render",
  "ph2d-i18n",
  "ph2d-label-census",
+ "ph2d-light",
+ "ph2d-material",
  "ph2d-mesh",
  "ph2d-mesh-render",
  "ph2d-panel-model3d",
@@ -4938,6 +4940,7 @@ dependencies = [
  "ph2d-tool-registry",
  "ph2d-vec-scene",
  "ph2d-vector",
+ "ph2d-view-transform",
  "ph2d-viewport3d",
  "postcard",
  "rfd",
@@ -5659,6 +5662,8 @@ dependencies = [
  "ph2d-color",
  "ph2d-field",
  "ph2d-field-eval",
+ "ph2d-material",
+ "ph2d-view-transform",
  "rayon",
 ]
 

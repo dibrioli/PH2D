@@ -115,10 +115,11 @@ pub fn ensure_viewports(smoke: &mut Smoke, n: usize) {
             }
             None => {
                 do_artista = i;
-                novos.push(crate::smoke::state::Viewport::new(
-                    cam_artista,
-                    manual_artista,
-                ));
+                let mut vp = crate::smoke::state::Viewport::new(cam_artista, manual_artista);
+                // ⭐ O modo de pintar é do viewport, e o do artista sobrevive a mudar a divisão
+                // (`docs/Render3d/05`). As vistas nomeadas nascem em matcap: existem para MEDIR.
+                vp.shading = smoke.vp().shading;
+                novos.push(vp);
             }
         }
     }

@@ -179,7 +179,12 @@ const fn uv(a: [f32; 3]) -> [f32; 2] {
 }
 
 fn box_uv_corners(lo: [f32; 3], hi: [f32; 3]) -> Vec<[f32; 2]> {
-    vec![[lo[0], lo[1]], [hi[0], lo[1]], [hi[0], hi[1]], [lo[0], hi[1]]]
+    vec![
+        [lo[0], lo[1]],
+        [hi[0], lo[1]],
+        [hi[0], hi[1]],
+        [lo[0], hi[1]],
+    ]
 }
 
 /// O casco que a especialização usaria para esta caixa e estes cantos, e as arestas que ela guarda
@@ -208,7 +213,8 @@ fn regions(bbox: Aabb, cam: &Orbit, plane: Screen, margin: f32) -> Vec<Query> {
         for tx in 0..w.div_ceil(tile) {
             let (x0, y0) = (tx * tile, ty * tile);
             let (x1, y1) = ((x0 + tile).min(w), (y0 + tile).min(h));
-            let Some((t_lo, t_hi)) = crate::tiles::tile_t_range(cam, plane, (x0, y0), (x1, y1), bbox)
+            let Some((t_lo, t_hi)) =
+                crate::tiles::tile_t_range(cam, plane, (x0, y0), (x1, y1), bbox)
             else {
                 continue;
             };
@@ -264,7 +270,8 @@ fn carried(pts: &[[f32; 3]], from: Aabb, to: Aabb) -> Vec<[f32; 3]> {
 fn grown(q: &Query, g: Grow, arm: f32) -> (Aabb, Vec<[f32; 3]>) {
     let d = match g {
         Grow::Scale(f) => {
-            let b = crate::tape_cache::inflate_phased(q.lo, q.hi, f, q.seed, crate::tape_cache::PHASE);
+            let b =
+                crate::tape_cache::inflate_phased(q.lo, q.hi, f, q.seed, crate::tape_cache::PHASE);
             let pts = carried(&q.pts, (q.lo, q.hi), b);
             return (b, pts);
         }
@@ -334,7 +341,9 @@ fn drag(p: &Piece, (w, h): (u32, u32), cams: &[Orbit], v: Variant) -> Tally {
             };
             let fits = |e: &Entry| {
                 box_inside(q.lo, q.hi, e)
-                    && (v.policy == Policy::Box || e.hull.is_empty() || hull_inside(&probe, &e.hull))
+                    && (v.policy == Policy::Box
+                        || e.hull.is_empty()
+                        || hull_inside(&probe, &e.hull))
             };
             let pos = match v.pick {
                 Pick::Oldest => cache.iter().position(fits),
@@ -443,7 +452,11 @@ fn measure_what_a_hull_cache_would_buy() {
                 let cams = yaw_drag(half, graus);
                 for var in variants {
                     let t = drag(p, size, &cams, var);
-                    assert!(t.uses > 100, "{name}: o arrasto quase não pediu regiões ({})", t.uses);
+                    assert!(
+                        t.uses > 100,
+                        "{name}: o arrasto quase não pediu regiões ({})",
+                        t.uses
+                    );
                     println!(
                         "{:>3}x{:<3} | {name:11} | {graus:5.0} | {} | {}",
                         size.0,
@@ -673,7 +686,10 @@ fn measure_what_the_hull_cache_buys_on_the_clock() {
     const RONDAS: usize = 3;
     let caches = || {
         [
-            ("caixa f 1,25", crate::TapeCache::with_inflate(crate::INFLATE)),
+            (
+                "caixa f 1,25",
+                crate::TapeCache::with_inflate(crate::INFLATE),
+            ),
             ("casco 0,06A", crate::TapeCache::with_pad_of_reach(0.06)),
             ("casco 0,08A", crate::TapeCache::with_pad_of_reach(0.08)),
             ("casco 0,10A", crate::TapeCache::with_pad_of_reach(0.10)),
@@ -703,17 +719,21 @@ fn measure_what_the_hull_cache_buys_on_the_clock() {
                     for (k, (_, c)) in cs.iter().enumerate() {
                         ph2d_field_eval::hybrid::FLOAT_TAPES.store(0, Ordering::Relaxed);
                         crate::TAPE_HITS.store(0, Ordering::Relaxed);
-                        for (i, cam) in path[QUADROS * ronda..QUADROS * (ronda + 1)].iter().enumerate()
+                        for (i, cam) in path[QUADROS * ronda..QUADROS * (ronda + 1)]
+                            .iter()
+                            .enumerate()
                         {
                             let t0 = std::time::Instant::now();
-                            let _ = crate::trace_cached_for_test(&doc, &reg, cam, w, h, false, Some(c));
+                            let _ =
+                                crate::trace_cached_for_test(&doc, &reg, cam, w, h, false, Some(c));
                             // ⚠️ A ronda 0 é o aquecimento, e o 1.º quadro de cada pedaço também sai.
                             if ronda > 0 && i > 0 {
                                 ms[k].push(t0.elapsed().as_secs_f64() * 1000.0);
                             }
                         }
                         if ronda > 0 {
-                            conta[k].0 += ph2d_field_eval::hybrid::FLOAT_TAPES.load(Ordering::Relaxed);
+                            conta[k].0 +=
+                                ph2d_field_eval::hybrid::FLOAT_TAPES.load(Ordering::Relaxed);
                             conta[k].1 += crate::TAPE_HITS.load(Ordering::Relaxed);
                         }
                     }

@@ -87,6 +87,24 @@ pub fn to_display(scene: [f32; 3], stops: f32, view: ViewTransform) -> [f32; 3] 
     }
 }
 
+/// **O olhar de uma vista 3D** — a exposição e a transformação, juntas porque viajam juntas.
+///
+/// ⚠️ O padrão (`0` stops, [`ViewTransform::Standard`]) é a **identidade** para toda luz dentro do
+/// branco: um quadro que nunca pediu olhar nenhum sai igual ao de antes.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct Look {
+    pub exposure_stops: f32,
+    pub view: ViewTransform,
+}
+
+impl Look {
+    /// [`to_display`] com este olhar.
+    #[must_use]
+    pub fn apply(self, scene: [f32; 3]) -> [f32; 3] {
+        to_display(scene, self.exposure_stops, self.view)
+    }
+}
+
 /// Luz sem sentido → luz nenhuma; luz infinita → a maior luz finita.
 fn sanitize(c: f32) -> f32 {
     if c.is_nan() || c <= 0.0 {

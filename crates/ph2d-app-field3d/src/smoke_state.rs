@@ -113,6 +113,13 @@ pub struct Viewport {
     /// continuar a girar **depois** de alguém a ter posto num ângulo é desfazer o gesto dele a cada
     /// quadro — a auto-demonstração deixa de ser um convite e passa a ser uma disputa.
     pub manual: bool,
+    /// ⭐⭐⭐ **Como este viewport pinta a peça** — matcap ou render (`docs/Render3d/05`).
+    ///
+    /// ⚠️ **Do viewport, e não do módulo**, como o *Viewport Shading* do Blender: numa divisão, as
+    /// vistas nomeadas existem para MEDIR (matcap) e a do artista para VER o material. Estado de
+    /// VISTA — não entra no undo nem no arquivo. Mudá-lo passa por [`Smoke::set_shading`], que larga
+    /// o pedido guardado: um modo novo sobre o traçado velho seria o congelador do `requested`.
+    pub shading: crate::shading::Shading,
     /// ⭐⭐⭐ **A CACHE DE FITAS É DO VIEWPORT** (W90) — e não do módulo.
     ///
     /// ⚠️ **Ela era do [`Smoke`], e com a divisão isso vira um defeito medido:** o tecto da cache é
@@ -181,6 +188,7 @@ impl Viewport {
             area: None,
             label: None,
             manual,
+            shading: crate::shading::Shading::default(),
             tapes: Arc::new(ph2d_field_render::TapeCache::new()),
         }
     }
@@ -309,6 +317,13 @@ pub struct Smoke {
     /// ⭐ **Em que referencial os eixos do gizmo apontam** — do mundo, ou do próprio objeto.
     /// Estado de **vista**, como o verbo.
     pub gizmo_frame: crate::gizmo::Frame,
+    /// ⭐⭐⭐ **O OLHAR DA CENA** — a exposição e a vista (`docs/Render3d/05`).
+    ///
+    /// ⚠️ **Da cena e não do viewport**, ao contrário do [`Viewport::shading`]: é a *Color
+    /// Management* do Blender, e duas vistas da mesma peça com exposições diferentes seriam duas
+    /// cenas. Estado de **vista** (não entra no undo nem no arquivo), e quem o muda é o
+    /// [`Smoke::set_look`], que larga o pedido guardado de **todos** os viewports.
+    pub look: ph2d_view_transform::Look,
     /// ⭐ **O nó ISOLADO** — mostrar só ele, ou `None` para a peça inteira (W38).
     ///
     /// ⚠️ **Estado de VISTA, e a lei é a do módulo irmão, lida e não re-decidida**
@@ -380,6 +395,35 @@ impl Smoke {
     pub fn vp_mut(&mut self) -> &mut Viewport {
         let i = self.active.min(self.vps.len() - 1);
         &mut self.vps[i]
+    }
+
+    /// ⭐⭐⭐ **Troca como o viewport activo pinta a peça**, e larga o pedido guardado dele.
+    ///
+    /// ⚠️ **As duas metades, e a segunda é a que se esquece:** sem largar o `requested`, o laço do
+    /// preview responde *«nada mudou»* — a câmera, o tamanho e o documento são os mesmos — e o quadro
+    /// fica no modo antigo até alguém tocar na peça. *Um cache que não conhece uma das entradas não é
+    /// um cache, é um congelador* — a lei que o doc do [`Viewport::requested`] já escreve, sobre o
+    /// smoke do *«slider disfuncional»*.
+    pub fn set_shading(&mut self, shading: crate::shading::Shading) {
+        let vp = self.vp_mut();
+        if vp.shading != shading {
+            vp.shading = shading;
+            vp.requested = None;
+        }
+    }
+
+    /// ⭐⭐⭐ **Troca o olhar da cena**, e larga o pedido guardado de **todos** os viewports.
+    ///
+    /// ⚠️ Todos, e não só o activo: o olhar é da cena, então numa divisão as outras três vistas
+    /// ficariam com a exposição anterior — duas cenas na mesma tela.
+    pub fn set_look(&mut self, look: ph2d_view_transform::Look) {
+        if self.look == look {
+            return;
+        }
+        self.look = look;
+        for vp in &mut self.vps {
+            vp.requested = None;
+        }
     }
 }
 

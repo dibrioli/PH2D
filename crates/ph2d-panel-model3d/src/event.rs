@@ -236,6 +236,27 @@ pub(crate) fn apply_event(
                 true
             }
         }
+        WidgetEvent::Click(id) if slot_in(id, crate::ids::model3d_shading_button).is_some() => {
+            let slot = slot_in(id, crate::ids::model3d_shading_button).unwrap_or(0);
+            slot < state::current().shadings.len() && {
+                state::push_intent(ModelIntent::SetShading { slot });
+                true
+            }
+        }
+        WidgetEvent::Click(id) if slot_in(id, crate::ids::model3d_look_button).is_some() => {
+            let slot = slot_in(id, crate::ids::model3d_look_button).unwrap_or(0);
+            slot < state::current().looks.len() && {
+                state::push_intent(ModelIntent::SetLook { slot });
+                true
+            }
+        }
+        WidgetEvent::Click(id) if slot_in(id, crate::ids::model3d_exposure_button).is_some() => {
+            let slot = slot_in(id, crate::ids::model3d_exposure_button).unwrap_or(0);
+            slot < state::current().exposures.len() && {
+                state::push_intent(ModelIntent::SetExposure { slot });
+                true
+            }
+        }
         WidgetEvent::Click(id) if id == crate::ids::MODEL3D_CLOSE => {
             host.set_panel_visible(Model3dPanel::ID, false);
             true

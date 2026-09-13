@@ -101,6 +101,28 @@ pub fn model3d_camera_button(slot: u32) -> NodeId {
     hash_node_id_runtime(&format!("model3d.camera.{slot}"))
 }
 
+/// ⭐⭐⭐ **O botão do MODO DE PINTAR** o viewport (Matcap · Render), pela posição.
+///
+/// ⚠️ **Três famílias próprias, e não uma** (esta, a vista e a exposição): as três fileiras vivem no
+/// MESMO pulldown, e partilhar a família faria o clique em «Render» trocar também a vista da
+/// posição `1`.
+#[must_use]
+pub fn model3d_shading_button(slot: u32) -> NodeId {
+    hash_node_id_runtime(&format!("model3d.shading.{slot}"))
+}
+
+/// ⭐⭐⭐ **O botão de uma VISTA da cena** (Standard · Neutral), pela posição.
+#[must_use]
+pub fn model3d_look_button(slot: u32) -> NodeId {
+    hash_node_id_runtime(&format!("model3d.look.{slot}"))
+}
+
+/// ⭐⭐⭐ **O botão de uma EXPOSIÇÃO**, pela posição na fileira dos stops.
+#[must_use]
+pub fn model3d_exposure_button(slot: u32) -> NodeId {
+    hash_node_id_runtime(&format!("model3d.exposure.{slot}"))
+}
+
 /// ⭐⭐⭐ **UM BOTÃO DE ESCOLHA** de uma linha de painel — a fileira `X / Y / Z` do eixo de um
 /// modificador (Enio, 2026-08-31).
 ///

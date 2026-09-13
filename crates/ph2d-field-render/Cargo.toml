@@ -23,6 +23,10 @@ ph2d-field-eval = { path = "../ph2d-field-eval" }
 # A porta sRGB da casa. ⚠️ Escrever a curva aqui seria a segunda resposta: a sRGB
 # tem JOELHO, e um `x^(1/2.2)` à mão erra no escuro — que é metade de um matcap.
 ph2d-color = { path = "../ph2d-color" }
+# ⭐ O modo RENDER (`docs/Render3d/05`): a lei do material e o olhar da cena — duas folhas sem
+# dependências, e é por isso que um traçador de CPU as pode puxar sem arrastar o `wgpu`.
+ph2d-material = { path = "../ph2d-material" }
+ph2d-view-transform = { path = "../ph2d-view-transform" }
 
 # rayon: a EXCEÇÃO é autorizada pela forma exata do ADR-0109, e um traçador é o
 # caso canônico dela — cada pixel é um GATHER puro contra uma árvore IMUTÁVEL,

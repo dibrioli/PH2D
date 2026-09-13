@@ -151,6 +151,23 @@ pub(super) fn apply(
                     s.vp_mut().manual = true;
                 });
             }
+            // ⭐⭐⭐ **O SOMBREAMENTO** (`docs/Render3d/05`) — estado de VISTA: não muda o mundo, não
+            // entra no undo. ⚠️ Mas muda o QUADRO, e por isso as duas portas largam o pedido
+            // guardado: um olhar novo sobre o traçado velho seria o congelador que o doc do
+            // `requested` já pagou.
+            ph2d_panel_model3d::ModelIntent::SetShading { slot } => {
+                if let Some(shading) = crate::shading::Shading::ALL.get(slot).copied() {
+                    crate::smoke::with_smoke(|s| s.set_shading(shading));
+                }
+            }
+            ph2d_panel_model3d::ModelIntent::SetLook { slot } => {
+                crate::smoke::with_smoke(|s| s.set_look(crate::shading::with_view(s.look, slot)));
+            }
+            ph2d_panel_model3d::ModelIntent::SetExposure { slot } => {
+                crate::smoke::with_smoke(|s| {
+                    s.set_look(crate::shading::with_exposure(s.look, slot));
+                });
+            }
             // ⭐ **Sair para um arquivo.** ⚠️ O pedido só é ANOTADO aqui: escrever um arquivo é
             // assunto do app (diálogo, toast) e esta função recebe o **mundo**. Ele atravessa pelo
             // mesmo caminho que o pedido de abrir o painel já usava.

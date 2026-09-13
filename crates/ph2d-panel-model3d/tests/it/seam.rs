@@ -55,6 +55,10 @@ fn scene_with_one_union() {
         last_trace_ms: 9.0,
         // A vista nao e o assunto deste gate; vazio faz o `area_bar` cair no rotulo generico.
         view_label: "",
+        shadings: Vec::new(),
+        looks: Vec::new(),
+        exposures: Vec::new(),
+        shading_label: "",
     });
 }
 
@@ -239,6 +243,10 @@ fn every_row_gets_its_own_band_none_stacked_on_another() {
         last_trace_ms: 0.0,
         // A vista nao e o assunto deste gate; vazio faz o `area_bar` cair no rotulo generico.
         view_label: "",
+        shadings: Vec::new(),
+        looks: Vec::new(),
+        exposures: Vec::new(),
+        shading_label: "",
     });
 
     let mut host = MockPanelHost::with_panel::<Model3dPanel>();
@@ -327,6 +335,10 @@ fn clicking_a_verb_reaches_the_gizmo_intent() {
         last_trace_ms: 0.0,
         // A vista nao e o assunto deste gate; vazio faz o `area_bar` cair no rotulo generico.
         view_label: "",
+        shadings: Vec::new(),
+        looks: Vec::new(),
+        exposures: Vec::new(),
+        shading_label: "",
     });
 
     let mut host = MockPanelHost::with_panel::<Model3dPanel>();
@@ -392,6 +404,10 @@ fn a_rail_chip_with_no_verb_behind_it_does_nothing() {
         last_trace_ms: 0.0,
         // A vista nao e o assunto deste gate; vazio faz o `area_bar` cair no rotulo generico.
         view_label: "",
+        shadings: Vec::new(),
+        looks: Vec::new(),
+        exposures: Vec::new(),
+        shading_label: "",
     });
 
     let mut host = MockPanelHost::with_panel::<Model3dPanel>();
@@ -453,6 +469,10 @@ fn the_axis_selector_is_its_own_family() {
         last_trace_ms: 0.0,
         // A vista nao e o assunto deste gate; vazio faz o `area_bar` cair no rotulo generico.
         view_label: "",
+        shadings: Vec::new(),
+        looks: Vec::new(),
+        exposures: Vec::new(),
+        shading_label: "",
     });
 
     let mut host = MockPanelHost::with_panel::<Model3dPanel>();
@@ -521,6 +541,10 @@ fn the_selectors_never_answer_for_each_other() {
         last_trace_ms: 0.0,
         // A vista nao e o assunto deste gate; vazio faz o `area_bar` cair no rotulo generico.
         view_label: "",
+        shadings: Vec::new(),
+        looks: Vec::new(),
+        exposures: Vec::new(),
+        shading_label: "",
     });
 
     let mut host = MockPanelHost::with_panel::<Model3dPanel>();
@@ -628,6 +652,10 @@ fn scene_with_one_position_row() {
         last_trace_ms: 0.0,
         // A vista nao e o assunto deste gate; vazio faz o `area_bar` cair no rotulo generico.
         view_label: "",
+        shadings: Vec::new(),
+        looks: Vec::new(),
+        exposures: Vec::new(),
+        shading_label: "",
     });
 }
 
@@ -964,6 +992,10 @@ fn every_painted_button_answers_a_real_click() {
         last_trace_ms: 0.0,
         // A vista nao e o assunto deste gate; vazio faz o `area_bar` cair no rotulo generico.
         view_label: "",
+        shadings: Vec::new(),
+        looks: Vec::new(),
+        exposures: Vec::new(),
+        shading_label: "",
     });
 
     let mut host = MockPanelHost::with_panel::<Model3dPanel>();
@@ -1040,6 +1072,10 @@ fn a_click_on_a_camera_chip_dispatches_that_exact_slot() {
         last_trace_ms: 0.0,
         // A vista nao e o assunto deste gate; vazio faz o `area_bar` cair no rotulo generico.
         view_label: "",
+        shadings: Vec::new(),
+        looks: Vec::new(),
+        exposures: Vec::new(),
+        shading_label: "",
     });
     let mut host = MockPanelHost::with_panel::<Model3dPanel>();
     let mut panel_state = Model3dPanelState;
@@ -1122,6 +1158,10 @@ fn a_click_on_a_verb_chip_dispatches_that_slot_and_never_the_group_op() {
         last_trace_ms: 0.0,
         // A vista nao e o assunto deste gate; vazio faz o `area_bar` cair no rotulo generico.
         view_label: "",
+        shadings: Vec::new(),
+        looks: Vec::new(),
+        exposures: Vec::new(),
+        shading_label: "",
     });
     let mut host = MockPanelHost::with_panel::<Model3dPanel>();
     let mut panel_state = Model3dPanelState;
@@ -1200,6 +1240,10 @@ fn a_click_on_a_character_chip_dispatches_that_slot_and_never_the_verb() {
         last_trace_ms: 0.0,
         // A vista nao e o assunto deste gate; vazio faz o `area_bar` cair no rotulo generico.
         view_label: "",
+        shadings: Vec::new(),
+        looks: Vec::new(),
+        exposures: Vec::new(),
+        shading_label: "",
     });
     let mut host = MockPanelHost::with_panel::<Model3dPanel>();
     let mut panel_state = Model3dPanelState;
@@ -1282,6 +1326,10 @@ fn scene_with_one_choice_row() {
         // literal e' da `line/3DModeling`: vazio, que e' a omissao que o doc do campo declara
         // -- *um retrato que ninguem publicou nao tem vista para nomear*.
         view_label: "",
+        shadings: Vec::new(),
+        looks: Vec::new(),
+        exposures: Vec::new(),
+        shading_label: "",
     });
 }
 
@@ -1398,6 +1446,10 @@ fn every_chip_family_dispatches_its_own_intent() {
         // literal e' da `line/3DModeling`: vazio, que e' a omissao que o doc do campo declara
         // -- *um retrato que ninguem publicou nao tem vista para nomear*.
         view_label: "",
+        shadings: cheia(2),
+        looks: cheia(2),
+        exposures: cheia(5),
+        shading_label: "",
     });
     /// `(nome, família de ids, quantos slots, a intenção que cada slot TEM de despachar)`.
     type Familia = (
@@ -1477,6 +1529,24 @@ fn every_chip_family_dispatches_its_own_intent() {
             2,
             |slot| ModelIntent::Camera { slot },
         ),
+        (
+            "shadings",
+            ph2d_panel_model3d::ids::model3d_shading_button,
+            2,
+            |slot| ModelIntent::SetShading { slot },
+        ),
+        (
+            "looks",
+            ph2d_panel_model3d::ids::model3d_look_button,
+            2,
+            |slot| ModelIntent::SetLook { slot },
+        ),
+        (
+            "exposures",
+            ph2d_panel_model3d::ids::model3d_exposure_button,
+            5,
+            |slot| ModelIntent::SetExposure { slot },
+        ),
     ];
     assert_eq!(
         familias.len(),
@@ -1545,6 +1615,10 @@ fn measure_what_the_lasso_row_costs() {
             // literal e' da `line/3DModeling`: vazio, que e' a omissao que o doc do campo declara
             // -- *um retrato que ninguem publicou nao tem vista para nomear*.
             view_label: "",
+            shadings: Vec::new(),
+            looks: Vec::new(),
+            exposures: Vec::new(),
+            shading_label: "",
         });
         let mut host = MockPanelHost::with_panel::<Model3dPanel>();
         host.set_panel_visible(Model3dPanel::ID, true);

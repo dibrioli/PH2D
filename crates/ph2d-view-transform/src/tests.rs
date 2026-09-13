@@ -75,6 +75,21 @@ fn the_neutral_view_is_the_oracles_at_every_lut_node() {
     );
 }
 
+/// ⭐ **O olhar padrão não muda nada dentro do branco**, ao bit — e o `Look` é a MESMA lei, não uma
+/// segunda redacção dela.
+#[test]
+fn the_default_look_changes_nothing_inside_white_and_is_the_same_law() {
+    for c in [[0.0, 0.18, 1.0], [0.5, 0.25, 0.125], [1.0; 3]] {
+        assert_eq!(Look::default().apply(c), c);
+    }
+    let look = Look {
+        exposure_stops: 1.5,
+        view: ViewTransform::Neutral,
+    };
+    let c = [0.3, 0.9, 2.0];
+    assert_eq!(look.apply(c), to_display(c, 1.5, ViewTransform::Neutral));
+}
+
 /// A `Standard` é o corte, e dentro do branco é a identidade **ao bit**.
 #[test]
 fn standard_is_the_identity_inside_white_and_the_clamp_outside() {

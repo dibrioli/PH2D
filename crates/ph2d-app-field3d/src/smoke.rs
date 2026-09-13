@@ -33,7 +33,7 @@ use std::sync::mpsc::{TryRecvError, channel};
 
 use ph2d_editor_core::zones::Rect as EditorRect;
 use ph2d_field::{Blend, FieldDoc, Node, NodeId, NodeKind, Op, Primitive, Profile, Xform};
-use ph2d_field_render::{Matcap, Orbit, shade};
+use ph2d_field_render::{Matcap, Orbit};
 use ph2d_vec_scene::{VecPath, VecVertex};
 use ph2d_vector::{ImageQuality, VectorScene};
 
@@ -134,7 +134,12 @@ fn boot() -> Option<Smoke> {
         matcap: Arc::new(load_matcap()),
         // ⭐ **Um viewport, que é o que o módulo sempre teve** — a divisão entra depois, e este
         // é o estado em que ela não existe.
-        vps: vec![crate::smoke::state::Viewport::new(v.cam, v.manual)],
+        vps: vec![{
+            let mut vp = crate::smoke::state::Viewport::new(v.cam, v.manual);
+            // ⭐ O modo de pintar volta com a vista (`docs/Render3d/05`).
+            vp.shading = v.shading;
+            vp
+        }],
         active: 0,
         // ⭐ **A divisão volta com a vista** (W95) — os viewports que ela pede são reconstruídos
         // logo a seguir, a partir da câmera lembrada.
@@ -156,6 +161,7 @@ fn boot() -> Option<Smoke> {
         gizmo_mode: v.gizmo_mode,
         lasso_subtracts: false,
         gizmo_frame: v.gizmo_frame,
+        look: v.look,
     };
     // ⭐ **A lista nasce já com a divisão lembrada** (W95). Ela seria reconciliada no primeiro
     // desenho de qualquer forma, mas então haveria um quadro em que o `split` diz «quatro» e a

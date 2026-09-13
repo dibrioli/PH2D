@@ -360,6 +360,112 @@ fn each_pulldown_wears_its_own_reading() {
     );
 }
 
+/// Quantos chips a ÁREA acrescenta à fila, e em quantas linhas ela cabe — a medição que o orçamento
+/// dos `3` chips pede, num sítio só.
+fn area_chips_and_lines(h: &HeroScreen, vp: Rect) -> (usize, usize) {
+    let bands = ph2d_editor_core::screens::layout::ChromeBands {
+        rail_w: 0.0,
+        top_bar_h: ph2d_editor_core::screens::hero::menu_bar::MENU_BAR_H,
+        tool_bar_h: tool_bar::tool_bar_h(RailButtonSize::Small, 1),
+        ..ph2d_editor_core::screens::layout::ChromeBands::DEFAULT
+    };
+    let area_w = ph2d_editor_core::screens::layout::HeroLayout::for_viewport_bands(
+        vp,
+        false,
+        bands,
+        ph2d_editor_core::screens::layout::CenterSplit::None,
+        ph2d_editor_core::screens::layout::DockSides::BOTH,
+    )
+    .draw_area
+    .w;
+    let (rail, over) = tool_bar::bar_split(&h.store, false, false, area_w);
+    let area_ids: Vec<_> = (0..ph2d_editor_core::ids::MAX_AREA_MENUS)
+        .map(ph2d_editor_core::ids::area_menu_button)
+        .collect();
+    let added = rail
+        .entries
+        .iter()
+        .chain(over.iter())
+        .filter(|e| e.node_id().is_some_and(|id| area_ids.contains(&id)))
+        .count();
+    let lines =
+        ph2d_editor_core::widget::horizontal_lines(&rail, area_w - 16.0, RailButtonSize::Small);
+    (added, lines)
+}
+
+/// ⭐⭐⭐ **O 2.º PULLDOWN — o SOMBREAMENTO** (`docs/Render3d/05`): ele aparece **quando há o que
+/// oferecer**, a face dele é a leitura do modo do viewport activo, e servir uma linha pede o modo ao
+/// shell — com o dedo, não com um `Click` fabricado.
+///
+/// ⚠️ **E a fila continua numa linha nos três tablets, agora com DOIS chips.** O orçamento medido é
+/// `3` (2026-09-01); este gate mede o que o desenho de facto gasta, e é ele que reprova no dia em que
+/// alguém acrescentar o terceiro sem medir.
+#[test]
+fn the_shading_pulldown_serves_the_render_mode_and_the_bar_is_still_one_line() {
+    let chip = |key, active| ModeChip { key, active };
+    let with_shading = ModelSnapshot {
+        shadings: vec![
+            chip("panel.model3d.shading.matcap", true),
+            chip("panel.model3d.shading.render", false),
+        ],
+        looks: vec![
+            chip("panel.model3d.look.standard", true),
+            chip("panel.model3d.look.neutral", false),
+        ],
+        exposures: vec![
+            chip("panel.model3d.exposure.minus2", false),
+            chip("panel.model3d.exposure.minus1", false),
+            chip("panel.model3d.exposure.zero", true),
+            chip("panel.model3d.exposure.plus1", false),
+            chip("panel.model3d.exposure.plus2", false),
+        ],
+        shading_label: "panel.model3d.shading.matcap",
+        ..snapshot_with_area_commands()
+    };
+    let (mut h, vp) = hero(1194.0, 834.0, true);
+    ph2d_panel_model3d::publish(with_shading.clone());
+    ph2d_panel_model3d::publish_area_bar(&mut h.store, true);
+    let _ = ph2d_panel_model3d::drain_intents();
+    paint(&mut h, vp);
+
+    let labels: Vec<&str> = h.store.area_menus().iter().map(|m| &*m.label).collect();
+    let faces: Vec<&str> = h.store.area_menus().iter().map(|m| &*m.face).collect();
+    assert_eq!(
+        labels,
+        vec!["View", "Shading"],
+        "a area nao publicou o 2.o pulldown"
+    );
+    assert_eq!(
+        faces,
+        vec!["Right", "Matcap"],
+        "a face do 2.o pulldown nao e' a leitura do modo do viewport"
+    );
+
+    open_area_menu(&mut h, vp, 1);
+    let row = h
+        .hit_index
+        .rect_for(ph2d_panel_model3d::ids::model3d_shading_button(1))
+        .expect("o `Render` nao foi pintado no menu aberto");
+    click_at(&mut h, row);
+    let intents = ph2d_panel_model3d::drain_intents();
+    assert!(
+        intents
+            .iter()
+            .any(|i| matches!(i, ModelIntent::SetShading { slot: 1 })),
+        "carregar no `Render` nao pediu o modo ao shell: {intents:?}"
+    );
+
+    for (name, w, ht) in TABLETS {
+        let (mut h, vp) = hero(w, ht, true);
+        ph2d_panel_model3d::publish(with_shading.clone());
+        ph2d_panel_model3d::publish_area_bar(&mut h.store, true);
+        let (added, lines) = area_chips_and_lines(&h, vp);
+        println!("{name:11} a area acrescenta {added} chip(s) e a fila cabe em {lines} linha(s)");
+        assert_eq!(added, 2, "{name}: o desenho usa DOIS chips de area");
+        assert_eq!(lines, 1, "{name}: a fila precisa de {lines} linhas");
+    }
+}
+
 /// ⭐⭐⭐ **A SAÍDA vive no menu do APP** — e as linhas dele aparecem DEPOIS das que já lá estavam.
 #[test]
 fn the_file_menu_serves_an_export_and_the_module_owns_it() {

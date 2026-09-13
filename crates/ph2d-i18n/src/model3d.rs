@@ -566,6 +566,24 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // O rodapé: o custo do último quadro, que é o que diz se a peça ainda é interativa.
         "panel.model3d.trace_cost" => "Trace",
         "panel.model3d.nodes" => "Nodes",
+        // ⭐⭐⭐ O SOMBREAMENTO (`docs/Render3d/05`) — o 2.º pulldown da área.
+        //
+        // ⚠️ **O rótulo diz o GRUPO e a face diz o ESTADO** (a mesma lei do `area.view`): o chip
+        // fechado lê `Matcap` ou `Render`, e o que ele abre é o sombreamento inteiro — o modo, a vista
+        // e a exposição.
+        "panel.model3d.area.shading" => "Shading",
+        // A luz do OLHO (a fotografia de sempre) contra a luz da CENA (material, lâmpadas, céu).
+        "panel.model3d.shading.matcap" => "Matcap",
+        "panel.model3d.shading.render" => "Render",
+        // As vistas — os nomes do Blender para as mesmas transformações.
+        "panel.model3d.look.standard" => "Standard",
+        "panel.model3d.look.neutral" => "Neutral",
+        // A exposição em stops: cada um dobra (ou divide ao meio) a luz da cena.
+        "panel.model3d.exposure.minus2" => "Exposure \u{2212}2",
+        "panel.model3d.exposure.minus1" => "Exposure \u{2212}1",
+        "panel.model3d.exposure.zero" => "Exposure 0",
+        "panel.model3d.exposure.plus1" => "Exposure +1",
+        "panel.model3d.exposure.plus2" => "Exposure +2",
         _ => return None,
     })
 }

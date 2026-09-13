@@ -79,6 +79,9 @@ const CHIP_FAMILIES: &[fn(u32) -> ph2d_a11y::NodeId] = &[
     crate::ids::model3d_act_button,
     crate::ids::model3d_view_button,
     crate::ids::model3d_camera_button,
+    crate::ids::model3d_shading_button,
+    crate::ids::model3d_look_button,
+    crate::ids::model3d_exposure_button,
 ];
 
 /// ⭐⭐ **Quantas famílias de chip o painel regista** — derivado da lista, nunca escrito à mão.

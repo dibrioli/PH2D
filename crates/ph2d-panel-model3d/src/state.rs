@@ -263,11 +263,31 @@ pub struct ModelSnapshot {
     /// ⚠️ Vazia por omissão — um retrato que ninguém publicou não tem vista para nomear, e o
     /// `area_bar` cai num rótulo genérico em vez de pedir `tr("")`.
     pub view_label: &'static str,
+    /// ⭐⭐⭐ **Como o viewport ACTIVO pinta a peça** (`docs/Render3d/05`) — Matcap ou Render.
+    ///
+    /// ⚠️ O `active` é **derivado do estado do viewport**, nunca de um botão guardado — a mesma lei
+    /// das [`Self::views`]. Vazio ⇒ o pulldown não tem esta fileira.
+    pub shadings: Vec<ModeChip>,
+    /// ⭐⭐⭐ **As vistas da cena** (`Standard`, `Neutral`) — o olhar vale para todos os viewports.
+    pub looks: Vec<ModeChip>,
+    /// ⭐⭐⭐ **As exposições**, em stops.
+    pub exposures: Vec<ModeChip>,
+    /// ⭐ **A chave i18n da FACE do pulldown do sombreamento** — o modo do viewport activo.
+    ///
+    /// ⚠️ Vazia por omissão, pela mesma razão do [`Self::view_label`]: o `area_bar` cai no matcap,
+    /// que é o que um viewport acabado de nascer de facto mostra.
+    pub shading_label: &'static str,
 }
 
 /// Uma edição que o painel pede e o shell executa.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum ModelIntent {
+    /// ⭐⭐⭐ **Trocar como o viewport activo pinta a peça** (`docs/Render3d/05`), pela **posição**.
+    SetShading { slot: usize },
+    /// ⭐⭐⭐ **Trocar a vista da cena** (`Standard` · `Neutral`), pela **posição**.
+    SetLook { slot: usize },
+    /// ⭐⭐⭐ **Trocar a exposição da cena**, pela **posição** na fileira dos stops.
+    SetExposure { slot: usize },
     /// Escrever uma dimensão do nó — a **posição** dela na lista do documento, e o valor.
     SetParam {
         entity: u64,

@@ -99,13 +99,10 @@ fn the_one_door_is_where_it_says_it_is() {
 /// afirma que o dreno do painel precede o dos sinais.
 #[test]
 fn the_authored_intent_queue_has_a_drain_and_it_runs_before_the_signal_drain() {
-    let src = std::fs::read_to_string(
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("src")
-            .join("render_loop")
-            .join("mod.rs"),
-    )
-    .expect("o render_loop sumiu");
+    // ⚠️ **O texto EMENDADO do quadro, e não o `mod.rs`** (OBRA 2 da `line/render-loop`, 2026-09-12): o
+    // virar do quadro de sinais mudou-se para a `fase_timeline_containers`, e a ORDEM que este gate afirma
+    // é a de execução — que é a posição dos literais no texto emendado, não num ficheiro só.
+    let src = crate::frame_text::render_frame();
 
     let drain = src
         .find("ph2d_panel_authored::drain_intents()")

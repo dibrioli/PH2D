@@ -17,8 +17,11 @@
 //!
 //! O gate lê o FONTE porque a função exige uma janela e um device — a mesma razão dos arch-gates
 //! irmãos desta shell.
-
-use std::path::Path;
+//!
+//! ⚠️ **Desde a OBRA 2 da `line/render-loop` (2026-09-12) o fonte lido é o texto EMENDADO do quadro**
+//! (`frame_text::render_frame`): o quadro partiu-se em fases noutros ficheiros, e o virar do quadro de
+//! sinais foi o primeiro marco a sair do `mod.rs` (para a `fase_timeline_containers`). No texto emendado
+//! a posição de um literal continua a ser a ordem em que ele CORRE — e é essa a lei deste gate.
 
 /// Os cinco marcos, na ordem em que TÊM de aparecer.
 const ORDER: &[(&str, &str)] = &[
@@ -43,8 +46,7 @@ const ORDER: &[(&str, &str)] = &[
 
 #[test]
 fn the_shell_turns_the_signal_frame_before_it_publishes_and_drains_after_both() {
-    let src = Path::new(env!("CARGO_MANIFEST_DIR")).join("src/render_loop/mod.rs");
-    let text = std::fs::read_to_string(&src).expect("read render_loop/mod.rs");
+    let text = crate::frame_text::render_frame();
 
     let mut at = Vec::new();
     for (needle, what) in ORDER {

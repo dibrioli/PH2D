@@ -269,8 +269,92 @@ com atribuição.
 
 | papel | id | data |
 |---|---|---|
-| R-pré | subagente R-pré despachado pela janela `9f820704-0d7e-4d96-847e-9cd720cbf178` | 2026-09-13 — ⛔ **REPROVADA, 4 achados** |
+| R-pré (1.ª passagem) | subagente R-pré despachado pela janela `9f820704-0d7e-4d96-847e-9cd720cbf178` | 2026-09-13 — ⛔ **REPROVADA, 4 achados** (versão 1) |
+| R-pré (2.ª passagem) | subagente R-pré **novo**, mesma janela | 2026-09-13 — ⛔ **REPROVADA, 4 achados** (versão 2) |
 | R-pós | ⏳ | — |
+
+### Auditoria R-pré — 2.ª passagem (2026-09-13) — ⛔ REPROVADA (versão 2), 4 achados
+
+**As 4 curas da 1.ª passagem foram conferidas UMA A UMA e estão FEITAS** (⛔ não refazer): a coluna
+das duas recusas é hoje argumento de **geometria** marcado `N`, e é argumento **diferente** do que o
+alvo guarda no fonte (conferi os dois lados) · os três sítios que citavam o que o alvo diz de si
+mesmo apoiam-se agora em medição ou em decisão nossa · o layout virou **classe de custo** e recusa
+por escrito prescrever o arranjo — e as três grandezas por-vértice que ele nomeia **já são o
+vocabulário da própria espec** (§2/§7/§8), logo não acrescentam nada que um leitor dela não tivesse ·
+a linha do sobrevoo está re-dita em estrutura nossa com o manual endereçado.
+⭐ **A proposta do §14.4 marcada `N` NÃO é para reabrir:** ela é derivável da própria espec (as fases
+fixadas no pen-down, §3 + a sublinearidade medida na tabela do §14.4), e a cadeia está registada
+acima. *Uma recusa medida responde uma pergunta; esta já respondeu.*
+
+**Verificação independente de TODO selo `D` (⛔ não refazer):** os **5** hashes de commit citados
+existem e o assunto de cada um bate com a afirmação; os **6** números de defeito existem e o conteúdo
+bate; as **2** citações curtas em itálico saem ambas de **mensagem de commit pública**; as **4**
+afirmações atribuídas ao manual estão na página pública. **Nenhum selo `D` vem do fonte — excepto os
+dois do achado 1.** Também limpo por inspecção: zero nome interno, zero texto de código, zero
+pseudo-código espelhado nas seis leis, no produto do peso, no predicado de região e na ordem das
+fases; e o conjunto de sinais do modo de laço invertido é **matemática + medição** (a tabela medida
+cobre um período inteiro, logo o resto sai por periodicidade) — ⛔ **não o "corrija"**, apesar de um
+comentário do fonte enumerar os mesmos inteiros.
+
+#### Os 4 achados da 2.ª passagem
+
+| # | onde | o que é | por que não pode |
+|---|---|---|---|
+| 1 ⛔ **BLOQUEIA** | §4.1, a tabela do censo de bordas | as **três** linhas são os **três casos do conjunto de testes unitários do alvo, na ordem dele**, com os valores esperados dele — e a linha do meio **não tem fixture nenhuma** e está selada `D` | o `D` do §0 é *manual / mensagem de commit / rastreador*: um ficheiro de teste **dentro da árvore do alvo** não é nenhum dos três (mesma espécie do achado 1 da 1.ª passagem). §4.1.6 só abona vector de teste **gerado a correr o oráculo**. ⚠️ Agravante: **o rótulo da linha não produz os números dela** — como está escrito conta quadrados, e os valores são os do reticulado de vértices um degrau menor ⇒ a linha não é medida nem derivável como está redigida |
+| 2 | §4.5 (o gatilho que invalida o cache do censo) · §17 (recalcular a cada quadro de sobrevoo · o alvo não ter cache de sobrevoo) | três frases que afirmam **o que o CÓDIGO do alvo tem**, não o que o programa FAZ, e **nenhuma é medida** — o próprio §20 lista os dois custos como abertos | §4.3 pergunta 1. O cache em si é inferência justa do relógio medido; o **gatilho**, o **por-quadro** e a **ausência** de cache não saem de fixture nenhuma do corpus. Espécie do achado 3 da 1.ª passagem, um nível acima |
+| 3 | §8.4 e §10.6.3 | dois selos `D` **sem endereço** — a 1.ª passagem prescreveu endereço a cada `D` restante e **cinco** receberam, **dois** não | §4.1.12 pede a fonte ao lado. ⚠️ Conferi: os dois estão **de facto** abonados por mensagem de commit pública, logo falta só o endereço. Dois menores da mesma família: um defeito citado com o prefixo do rastreador **antigo** enquanto os outros usam a forma actual, e um commit endereçado por **data** onde os outros cinco levam hash |
+| 4 | §4.5 → §15 · §17 → «§13.1#4» | duas referências cruzadas apontam ao sítio errado (o relógio vive no §14.4, não na tabela de opções; e o caso 4 é **linha** da tabela do §13, não subsecção) | não é §4.2 — mas o artefacto atravessa a parede e manda o Implementador ao sítio errado |
+
+#### O que cada achado pede (instrução FUNCIONAL)
+
+1. Apagar as **duas** apelações ao conjunto de testes do alvo (a do texto de entrada e o selo da
+   linha). A linha sem fixture ou (a) **passa a ser medida** numa corrida do nosso oráculo sobre uma
+   malha nossa, com o nome da fixture e o selo `M`, ou (b) **passa a `F`**, dita como aritmética
+   sobre um reticulado cuja contagem de vértices seja nomeada. Corrigir o rótulo para que os números
+   **decorram dele**. E **reconstruir a lista de casos a partir do NOSSO corpus**, para que a
+   escolha e a ordem das linhas venham das nossas fixtures. ⭐ Acrescentar **uma cláusula ao §0**:
+   o selo `D` nunca cobre nada lido **dentro da árvore do alvo**, ficheiro de teste incluído — sem
+   ela o mesmo selo fica disponível para a próxima secção.
+2. Guardar só o que uma fixture mostra ou o que **nós exigimos**, com a marca. A instrução de
+   produto (*medir antes de copiar; a chave óbvia do primeiro cache é o vértice apontado mais o
+   raio*) **sustenta-se sozinha** como `N`. ⛔ Cair fora toda cláusula que descreva o que o código do
+   alvo guarda ou deixa de guardar.
+3. Pôr o endereço ao lado dos dois `D`; uniformizar a forma de citar defeito e commit.
+4. Corrigir as duas referências.
+
+#### O instrumento, medido por mim (⚠️ o limite é MAIOR do que este ledger registava)
+
+- **Sweep da versão 2** sobre a espec **e** as fixtures: `exit 0`, vassoura de `199`.
+- **Controlo positivo corrido por mim** sobre a versão reprovada, extraída do commit anterior:
+  `exit 1`, **6** linhas — o verde da versão 2 é, portanto, controlado.
+- ⛔⛔ **Mas de-acentuar a MESMA prosa mata 4 dos 6 apanhados** (`exit 1` sobrevive em 2 linhas, e
+  essas duas sobrevivem por acidente — o trecho que casa não tem acento nenhum). Este ledger dizia
+  *«três controlos de-acentuados passaram limpos»*; o número real é **dois terços do instrumento**.
+  Medido também: só **30** das `199` entradas levam acento, e **113** de `199` têm forma de
+  identificador e não de prosa. Contra os três ficheiros do alvo a vassoura casa `104`/`24`/`5`
+  entradas ⇒ a cobertura de identificador é real e a metade de PROSA é fina. *O sweep é a rede;
+  quem julga é o R.*
+- ⚠️ **O próprio LEDGER é apanhado pela vassoura** (a tabela de cobertura nomeia os caminhos de
+  ficheiro do alvo). É **por desenho** (§6: o ledger carrega rastros, e o I nunca o abre) — mas
+  significa que a barra do R-pós *«zero hits sobre a árvore inteira»* precisa de **excluir este
+  ficheiro por escrito**, ou de trocar os caminhos por uma descrição. ⛔ Não "curar" o ledger sem
+  essa decisão.
+
+#### Histórico (`--git-history`), medido — para a decisão da integração
+
+`exit 1`. **36** commits produzem achados (~`136` linhas de patch + `9` de mensagem).
+
+| origem | commits | achados |
+|---|---|---|
+| **desta linha** (`main..HEAD`, 27 commits) | **5** | **27** |
+| — os **três** commits de docs do contorno (v1 · v2 · o report da 1.ª passagem) | 3 | **14** |
+| — os **dois** commits da reescrita do INC-4 (obra diferente, mesma linha) | 2 | 13 |
+| **já no `main`** (obra mais velha do sculpt3d/tecido) | 31 | 109 |
+
+⇒ **O squash dos três commits de docs do contorno vale a pena** (é barato e tira a redacção
+reprovada de um patch) e remove **14 de 136**: ⛔ **não torna o sweep do histórico verde** — o
+histórico já está sujo **a montante**, no `main`, e isso não é desta linha. ⛔ E **não reescrever os
+commits do INC-4**: um commit que **remove** texto do alvo carrega-o no patch por construção.
 
 ### Auditoria R-pré (2026-09-13) — ⛔ REPROVADA
 

@@ -10,10 +10,14 @@ Filtragem §4.3: executada em 2026-09-13 · Sweep: ✅ VERDE em 2026-09-13 sobre
   em inglês e esta espec escreve-se em português; ver ledger). ⚠️ Verde CONTROLADO: as 6 linhas que
   a versão anterior tinha são acusadas pela mesma vassoura (controlo positivo corrido), e o texto
   novo não.
-Auditoria §4.2 (R-pré): ⛔ REPROVADA em 2026-09-13 (4 achados) → **reescrita entregue no mesmo dia**
-  (versão 2, este documento). ⏳ **AGUARDA R-PRÉ NOVO — ainda NÃO ATESTADA.**
-  ⛔ A janela NÃO implementa a partir desta versão até esse atestado existir.
-  Os 4 achados e o que cada um virou estão no LEDGER_blender-boundary.md §«Auditoria R-pré».
+Auditoria §4.2 (R-pré): ⛔ REPROVADA **duas** vezes em 2026-09-13 — 1.ª passagem 4 achados (versão 1)
+  → reescrita (versão 2, este documento) → 2.ª passagem, subagente novo: ⛔ **REPROVADA, 4 achados**,
+  **um BLOQUEANTE** (§4.1: a tabela do censo de bordas são os casos do conjunto de testes do ALVO,
+  na ordem dele, e a linha do meio está selada `D` sem fixture — o `D` do §0 é manual/commit/rastreador).
+  ⏳ **AINDA NÃO ATESTADA. ⛔ A janela NÃO implementa a partir desta versão.**
+  As 4 curas da 1.ª passagem foram conferidas uma a uma e estão FEITAS; os 4 achados novos, a
+  instrução funcional de cada um e a medição do instrumento e do histórico estão no
+  LEDGER_blender-boundary.md §«Auditoria R-pré — 2.ª passagem».
 Mapa de leitura da literatura: nenhum paper. As fontes livres usadas são (a) o manual público do alvo,
   (b) as mensagens de commit públicas e (c) o rastreador de defeitos público — todas re-ditas em palavras
   nossas, com o endereço ao lado; e (d) a SAÍDA do binário sobre malhas NOSSAS (§19).

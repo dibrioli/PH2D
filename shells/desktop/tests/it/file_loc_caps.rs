@@ -33,11 +33,6 @@ const FILE_OVERAGE_OK: &[(&str, usize, &str)] = &[
         "AppGfx + App are the shell's two top-level aggregates —",
     ),
     (
-        "input_dispatch.rs",
-        951,
-        "Onda 2C multi-select dispatch + hit_map routing +",
-    ),
-    (
         "main.rs",
         1289,
         "crate-root module hub — the 80+ `mod` declarations are an",

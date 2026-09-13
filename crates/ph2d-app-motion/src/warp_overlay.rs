@@ -80,7 +80,14 @@ pub(super) const TANGENT_RGBA: [f32; 4] = [0.35, 0.78, 1.0, 0.9];
 /// sobre um pano de discos brancos. *Um manipulador que desaparece sobre o conteúdo que ele
 /// manipula é indistinguível de um que está por baixo, e o report que volta é o mesmo.*
 ///
-/// ⚠️ **A casa já tinha a cura, e o comentário dela nomeia este defeito:** o
+/// ⛔⛔ **E a premissa desta nota foi MEDIDA como falsa em 2026-09-13** (doc 109 §6): o gizmo **não**
+/// estava por cima — ele era desenhado na `fase_selection_highlight`, que corre ANTES da
+/// `fase_vector_overlays`, onde a arte viva do Motion é codificada na MESMA cena. No Vello quem
+/// pinta primeiro fica por baixo, e o report de 08/09 (*«está sendo desenhado por trás das
+/// shapes»*) descrevia exactamente isso. O casing abaixo continua a valer (ele também salva o traço
+/// sobre conteúdo claro), mas a cura da ORDEM é o sítio da chamada, e há gate a prendê-la.
+///
+/// ⚠️ **A casa já tinha uma cura para o OUTRO defeito, e o comentário dela nomeia-o:** o
 /// `draw_connector_handles` põe um anel branco em cada bolinha *«— sem o anel a bolinha some
 /// sobre um traço claro»*. Aqui o anel é ESCURO e não branco, porque o conteúdo sobre o qual este
 /// gizmo tem de ser lido é claro (uma folha de objectos) tanto quanto escuro (o fundo do canvas):

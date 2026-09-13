@@ -24,7 +24,6 @@ impl crate::App {
             flip,
             text_system,
             hero_screen,
-            motion,
             ..
         } = FrameGfx::of(gfx);
         // O bloco do quadro só chama esta fase com o `HeroScreen` vivo.
@@ -108,34 +107,13 @@ impl crate::App {
             // não são sombreados, e o retrato é publicado **uma vez só** (não é um `take`).
             // ⇒ *uma mudança de sítio sem uma medição do que o sítio garante é um palpite*,
             // e quem a repetir começa por instrumentar o quadro, não por mover a linha.
-            if let Some(v) = ph2d_app_motion::warp_gizmo::view() {
-                let port = ph2d_app_motion::warp_gizmo::param_port(motion, v.node);
-                ph2d_app_motion::warp_overlay::draw_warp_gizmo(
-                    true,
-                    &v,
-                    &port,
-                    camera,
-                    hero.view.center_split,
-                    surface.size(),
-                    vector_scene,
-                );
-            } else {
-                // ⚠️ **O outro lado da sonda, e ele é o que distingue os dois casos.** Sem
-                // esta linha, um `PH2D_WARP_DIAG=1` que não imprime nada lê-se como *«a sonda
-                // não está a correr»* — que é exactamente a ambiguidade que fez duas curas
-                // seguidas serem palpites.
-                ph2d_app_motion::warp_overlay::diag("nao ha' retrato publicado (`view()` = None)");
-            }
-            // **O gizmo do COLISOR da forma** (doc 109 §5): os contornos e as alças.
-            if let Some(v) = ph2d_app_motion::collider_gizmo::view() {
-                ph2d_app_motion::collider_gizmo_overlay::draw(
-                    &v,
-                    camera,
-                    hero.view.center_split,
-                    surface.size(),
-                    vector_scene,
-                );
-            }
+            // ⛔⛔ **OS GIZMOS DE NÓ MUDARAM-SE PARA A `fase_vector_overlays`** (doc 109 §6, report
+            // do dono 2026-09-13: *«o collider deve aparecer na frente da shape (z-index maior)»*).
+            // Esta fase corre ANTES da que codifica a arte das formas do Motion, e no Vello quem
+            // pinta primeiro fica por BAIXO: o gizmo desenhado aqui ficava atrás dos quadrados que
+            // ele manipula. ⚠️ A nota de 2026-09-08 do `warp_overlay` dizia *«o gizmo ESTÁ por
+            // cima»* e foi medida agora como falsa — a cura de então (o casing) tratou o sintoma.
+            // O gate `the_collider_outline_is_painted_after_the_shape_art` prende a ordem.
             anchor_overlay::draw_anchor_marks(
                 !hero
                     .store

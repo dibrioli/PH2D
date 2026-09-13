@@ -35,7 +35,7 @@
 //! content-revision rides in the cook fingerprint, so editing a slider re-cooks
 //! this node and only what is downstream of it.
 
-use ph2d_node_registry::{NodeRegistry, ParamUnit, ParamUnitDecl, RegistryError};
+use ph2d_node_registry::{NodeRegistry, RegistryError};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
@@ -601,6 +601,18 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: param::COLLIDER_RADIUS,
             default: 1.0,
         },
+        // **Ver o colisor** (report do dono, 2026-09-13) — LIGADO por omissão: quem liga o
+        // `Collide` quer ver o que declarou, e o botão é para o DESLIGAR quando a cena enche.
+        ParamSpec {
+            name: param::SHOW_COLLIDER,
+            default: 1.0,
+        },
+        // **Travar a rotação** (doc 109 §6) — DESLIGADO por omissão: o dono pediu a rotação
+        // destravada, e este botão é o que a prende quando ela não é o que se quer.
+        ParamSpec {
+            name: param::LOCK_ROTATION,
+            default: 0.0,
+        },
     ],
     lowerings: &[LoweringKind::Cpu],
 };
@@ -672,20 +684,6 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     Ok(())
 }
 
-/// **What each of this node's numbers IS** (doc 88, Wave A) — never how it is
-/// shown. A `Length` is stored in world METRES and the panel resolves the face
-/// the artist reads (`px` or `m`) from `ProjectSettings::display_unit`; a node
-/// that could pin one would be overriding a setting it does not own.
-///
-/// Only params whose value is a world COORDINATE or a world DISTANCE are declared
-/// here. A weight, a fraction, a rate and a count are left bare on purpose: a unit
-/// that is wrong is worse than a unit that is missing, because the artist can read
-/// a bare number but a mislabelled one teaches them something false.
-static PARAM_UNITS: &[ParamUnitDecl] = &[ParamUnitDecl {
-    param: "size",
-    unit: ParamUnit::Length,
-}];
-
 #[cfg(test)]
 #[path = "tests.rs"]
 mod tests;
@@ -696,4 +694,4 @@ mod fill_tests;
 
 mod collider;
 mod hints;
-use hints::{PARAM_GATES, PARAM_GATES_ABOVE, PARAM_GROUPS, PARAM_HINTS};
+use hints::{PARAM_GATES, PARAM_GATES_ABOVE, PARAM_GROUPS, PARAM_HINTS, PARAM_UNITS};

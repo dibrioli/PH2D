@@ -116,6 +116,12 @@ pub const COLLIDER_BOX_COLUMN: &str = "collider_box";
 /// e de `rot`). Ausente ⇒ `[0, 0]`: o colisor centrado em `P`, que é o que toda declaração anterior
 /// a esta coluna quer dizer.
 pub const COLLIDER_OFFSET_COLUMN: &str = "collider_offset";
+/// ⭐⭐ **O INVERSO DA INÉRCIA de rotação** (doc 109 §6 — report do dono, 2026-09-13: *«precisa
+/// destravar a rot. e colocar outro botão para travar rotação»*): `0` TRAVA a rotação da peça, e a
+/// coluna AUSENTE quer dizer *«deriva da forma»* (uma caixa `3·w / (hx² + hy²)`, um disco `2·w / r²`,
+/// com `w` a coluna `inv_mass`). É o irmão angular dela, e a razão
+/// de ser uma COLUNA é a mesma: quem desenha é quem sabe, e a declaração viaja com a peça.
+pub const INV_INERTIA_COLUMN: &str = "inv_inertia";
 
 /// As colunas de **ESCRITURAÇÃO** — aquelas cuja máquina de estado de um nó a
 /// jusante lê, e que por isso um escritor genérico não pode sobrescrever.

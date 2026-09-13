@@ -17,6 +17,8 @@ struct Corrida {
     inicio: PorMetade,
     fim: PorMetade,
     meia_direita: Option<[f32; 2]>,
+    /// O ÂNGULO de cada peça da direita no fim — vazio quando ninguém rodou (doc 109 §6).
+    rot_direita: Vec<f32>,
 }
 
 /// Monta a cena num `MotionState`, deixa `mexe` ajustar o grafo, publica as formas e corre.
@@ -42,6 +44,7 @@ fn corre(secs: f64, mexe: impl FnOnce(&mut MotionState, &[NodeId])) -> Corrida {
         inicio: vec![Vec::new(); sinks.len()],
         fim: vec![Vec::new(); sinks.len()],
         meia_direita: None,
+        rot_direita: Vec::new(),
     };
     for k in 0..=last {
         #[expect(clippy::cast_precision_loss, reason = "um indice de tique")]
@@ -70,6 +73,12 @@ fn corre(secs: f64, mexe: impl FnOnce(&mut MotionState, &[NodeId])) -> Corrida {
             {
                 c.meia_direita = Some([m0[0] * s0[0].abs(), m0[1] * s0[1].abs()]);
             }
+            if k == last
+                && i == 1
+                && let Some(Column::Scalar(r)) = s.get("rot")
+            {
+                c.rot_direita = r.clone();
+            }
         }
         state
             .pump
@@ -80,15 +89,25 @@ fn corre(secs: f64, mexe: impl FnOnce(&mut MotionState, &[NodeId])) -> Corrida {
     c
 }
 
-/// A pilha da DIREITA no fim de uma corrida com `params` escritos no cartão da forma dela.
-fn pilha_direita(params: &[(&'static str, f32)]) -> Vec<[f32; 2]> {
+/// Uma corrida com `params` escritos no cartão da forma da DIREITA.
+fn direita_com(params: &[(&'static str, f32)]) -> Corrida {
     corre(2.6, |state, formas| {
         for (nome, valor) in params {
             state.doc.graph.set_param(formas[1], *nome, *valor);
         }
     })
-    .fim[1]
-        .clone()
+}
+
+/// **A pilha da direita com a rotação TRAVADA** — a régua de geometria da cena.
+///
+/// ⚠️ **Travada de propósito:** desde o doc 109 §6 as peças TOMBAM, e um quadrado a 45° toca o
+/// vizinho pela quina — o vão típico de uma pilha que roda vai até à DIAGONAL, e uma barra de
+/// «encostado» medida sobre ela não separaria o encosto do ar que o dono fotografou. A rotação tem
+/// gate próprio (`the_pieces_tumble_unless_the_card_locks_the_rotation`).
+fn pilha_travada(params: &[(&'static str, f32)]) -> Vec<[f32; 2]> {
+    let mut todos = vec![(param::LOCK_ROTATION, 1.0)];
+    todos.extend_from_slice(params);
+    direita_com(&todos).fim[1].clone()
 }
 
 /// A distância de cada peça ao vizinho MAIS PRÓXIMO dela — uma por peça.
@@ -135,7 +154,8 @@ const PECAS: usize = (ROWS * COLS) as usize;
 /// ⚠️ **E o CONTROLO é a outra metade**, senão o gate ficava verde sobre duas taças a fazer o mesmo.
 #[test]
 fn only_the_half_whose_shape_collides_keeps_the_pieces_apart() {
-    let c = corre(2.6, |_, _| {});
+    // Com a rotação travada — ver [`pilha_travada`] para porquê.
+    let c = direita_com(&[(param::LOCK_ROTATION, 1.0)]);
     assert_eq!(c.fim.len(), 2, "a cena tem duas metades");
     for (i, metade) in c.fim.iter().enumerate() {
         assert_eq!(
@@ -228,8 +248,8 @@ fn the_scene_has_no_collide_node_and_only_the_right_shape_collides() {
 /// `Collider Radius` (incham).
 #[test]
 fn the_controls_the_announcement_names_do_what_it_says() {
-    let ligado = pilha_direita(&[]);
-    let desligado = pilha_direita(&[(param::COLLIDE, 0.0)]);
+    let ligado = pilha_travada(&[]);
+    let desligado = pilha_travada(&[(param::COLLIDE, 0.0)]);
     let (on, off) = (vizinho_mediano(&ligado), vizinho_mediano(&desligado));
     eprintln!("  Collide     on {on:.4} · off {off:.4}");
     assert!(off < on * 0.6, "desligar a caixa tem de desfazer a pilha");
@@ -238,7 +258,7 @@ fn the_controls_the_announcement_names_do_what_it_says() {
     let v: Vec<f32> = escalas
         .iter()
         .map(|k| {
-            vizinho_mediano(&pilha_direita(&[
+            vizinho_mediano(&pilha_travada(&[
                 (param::COLLIDER_WIDTH, *k),
                 (param::COLLIDER_HEIGHT, *k),
             ]))
@@ -250,7 +270,7 @@ fn the_controls_the_announcement_names_do_what_it_says() {
         "largura e altura juntas incham a pilha: {v:?}"
     );
 
-    let larga = pilha_direita(&[(param::COLLIDER_WIDTH, 1.6)]);
+    let larga = pilha_travada(&[(param::COLLIDER_WIDTH, 1.6)]);
     eprintln!(
         "  Width       1.0 -> largura {:.4} · 1.6 -> largura {:.4}",
         largura(&ligado),
@@ -263,8 +283,8 @@ fn the_controls_the_announcement_names_do_what_it_says() {
         largura(&ligado)
     );
 
-    let circulo = vizinho_mediano(&pilha_direita(&[(param::COLLIDER_SHAPE, 1.0)]));
-    let circulo_maior = vizinho_mediano(&pilha_direita(&[
+    let circulo = vizinho_mediano(&pilha_travada(&[(param::COLLIDER_SHAPE, 1.0)]));
+    let circulo_maior = vizinho_mediano(&pilha_travada(&[
         (param::COLLIDER_SHAPE, 1.0),
         (param::COLLIDER_RADIUS, 1.4),
     ]));
@@ -278,6 +298,37 @@ fn the_controls_the_announcement_names_do_what_it_says() {
         "o circulo toca os lados do quadrado: {circulo:.4} contra {lado:.4}"
     );
     assert!(circulo_maior > circulo * 1.2, "o raio incha a pilha");
+}
+
+/// ⭐⭐⭐ **AS PEÇAS TOMBAM — e o botão `Lock Rotation` prende-as** (doc 109 §6, report do dono:
+/// *«precisa destravar a rot. e colocar outro botão para travar rotação»*).
+///
+/// ⚠️ **As duas metades num gate**: *«tomba»* passa com uma cena que gira tudo sempre, e *«trava»*
+/// passa com uma que nunca gira. E travada a coluna do ângulo **nem nasce** — a cena sai como saía
+/// antes da rotação existir.
+#[test]
+fn the_pieces_tumble_unless_the_card_locks_the_rotation() {
+    let solta = direita_com(&[]);
+    let angulos = &solta.rot_direita;
+    assert_eq!(
+        angulos.len(),
+        PECAS,
+        "a metade que colide tem de trazer um angulo por peca"
+    );
+    let maior = angulos.iter().fold(0.0_f32, |m, a| m.max(a.abs()));
+    let tortas = angulos.iter().filter(|a| a.abs() > 5.0).count();
+    eprintln!("  rotacao │ maior {maior:.1}° · {tortas} de {PECAS} acima de 5°");
+    assert!(
+        maior > 15.0 && tortas >= 5,
+        "as pecas tem de TOMBAR ao cair umas sobre as outras: maior {maior:.1}°, {tortas} tortas"
+    );
+
+    let travada = direita_com(&[(param::LOCK_ROTATION, 1.0)]);
+    assert!(
+        travada.rot_direita.is_empty(),
+        "travada, a coluna do angulo nem nasce: {:?}",
+        &travada.rot_direita[..travada.rot_direita.len().min(4)]
+    );
 }
 
 /// O anúncio da cena, lido como TEXTO — para os nomes que o gate abaixo defende e os que o dono lê

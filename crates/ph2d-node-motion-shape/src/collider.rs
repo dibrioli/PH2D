@@ -33,7 +33,8 @@
 
 use super::param;
 use ph2d_nodegraph::attr::{
-    COLLIDER_BOX_COLUMN, COLLIDER_COLUMN, COLLIDER_OFFSET_COLUMN, Column, Stream,
+    COLLIDER_BOX_COLUMN, COLLIDER_COLUMN, COLLIDER_OFFSET_COLUMN, Column, INV_INERTIA_COLUMN,
+    Stream,
 };
 
 /// Os rótulos do `Collider Shape`. ⚠️ O índice é formato de arquivo — APPEND ONLY.
@@ -111,6 +112,12 @@ pub(crate) fn declare(published: Stream, param: impl Fn(&str) -> f32) -> Stream 
     // que toda declaração anterior a esta coluna já queria dizer.
     if centro.iter().any(|c| *c != [0.0, 0.0]) {
         out.set(COLLIDER_OFFSET_COLUMN, Column::Vec2(centro));
+    }
+    // ⭐⭐ **TRAVAR a rotação** (doc 109 §6): a coluna a `0` diz ao solver que esta peça não roda.
+    // ⚠️ Destravada NÃO se escreve nada — a ausência quer dizer *«deriva da forma»*, e escrever o
+    // valor derivado aqui seria a segunda resposta à mesma pergunta.
+    if param(param::LOCK_ROTATION) >= 0.5 {
+        out.set(INV_INERTIA_COLUMN, Column::Scalar(vec![0.0; n]));
     }
     out
 }

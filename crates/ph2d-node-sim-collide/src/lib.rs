@@ -462,57 +462,6 @@ fn element_restitution(rest: f32, randomness: f32, seed: u32, key: u32) -> f32 {
 const BOX_W: &str = "box_width";
 const BOX_H: &str = "box_height";
 
-/// **O CONTACTO COM A CAIXA SÓLIDA** — a única porta, portada termo a termo para o kernel.
-///
-/// `half` são as MEIAS extensões (a porta divide as inteiras uma vez, aqui em cima). O teste
-/// é o do rectângulo arredondado: leva a peça ao referencial da caixa, acha o ponto mais
-/// próximo DENTRO dela e mede.
-///
-/// ⚠️ **Os dois ramos são geometricamente diferentes e ambos necessários:**
-/// - **fora** — a distância ao ponto mais próximo decide, e a normal é a direcção dela. É
-///   isto que arredonda as quinas: uma peça na diagonal de um canto sai pela diagonal, não
-///   por uma das faces.
-/// - **dentro** — não há direcção «para fora» única, então sai pelo eixo de MENOR
-///   penetração. Sem este ramo uma peça que nasceu dentro da caixa ficaria presa, e é o
-///   mesmo problema que o centro exacto de um disco tem (e que o `[0, 1]` de lá resolve).
-///
-/// ⚠️ A caixa **CRESCE** pelo raio da peça, como o disco: o centro de uma peça de raio `r`
-/// nunca pode estar a menos de `r` da superfície.
-fn box_contact(
-    p: [f32; 2],
-    c: [f32; 2],
-    half: [f32; 2],
-    r: f32,
-    n: [f32; 2],
-) -> Option<([f32; 2], f32)> {
-    // `n` é a normal do plano — `(−sin, cos)` do `angle` —, então o co-seno e o seno saem
-    // dela sem recalcular trigonometria (e sem uma segunda resposta a «que ângulo é este?»).
-    let (cos, sin) = (n[1], -n[0]);
-    let (dx, dy) = (p[0] - c[0], p[1] - c[1]);
-    let (lx, ly) = (dx * cos + dy * sin, -dx * sin + dy * cos);
-    let (hw, hh) = (half[0].max(0.0), half[1].max(0.0));
-    let (qx, qy) = (lx.clamp(-hw, hw), ly.clamp(-hh, hh)); // CLAMP-OK: extensões da caixa
-    let (ex, ey) = (lx - qx, ly - qy);
-    let d2 = ex * ex + ey * ey;
-    let to_world = |v: [f32; 2]| [v[0] * cos - v[1] * sin, v[0] * sin + v[1] * cos];
-    if d2 > f32::EPSILON * f32::EPSILON {
-        let d = d2.sqrt();
-        if d >= r {
-            return None;
-        }
-        return Some((to_world([ex / d, ey / d]), r - d));
-    }
-    // Dentro: o eixo de menor penetração ganha. `signum` de zero é `1`, e o eixo exacto do
-    // centro de uma caixa tem o mesmo empate que o centro de um disco — qualquer saída serve.
-    let (px, py) = (hw - lx.abs(), hh - ly.abs());
-    let nl = if px < py {
-        [if lx < 0.0 { -1.0 } else { 1.0 }, 0.0]
-    } else {
-        [0.0, if ly < 0.0 { -1.0 } else { 1.0 }]
-    };
-    Some((to_world(nl), px.min(py) + r))
-}
-
 /// The whole node: resolve each element's contact, respond, write `P` and `vel` back.
 #[allow(clippy::too_many_arguments)]
 fn collide(
@@ -553,6 +502,12 @@ fn collide(
     let formas = (mode == RADIUS_AUTO)
         .then(|| ph2d_contact::colisores(s))
         .flatten();
+    // ⭐ Quanto cada peça RODA por unidade de binário (doc 109 §6) — `0` é a rotação travada.
+    let inv_inercia = formas.as_ref().map_or_else(
+        || vec![0.0; n],
+        |f| ph2d_contact::inv_inercias(s, f, &vec![1.0; n]),
+    );
+    let mut giro = vec![0.0_f32; n];
     // A identidade de cada elemento. ⚠️ Lida uma vez: um `get` por elemento seria a mesma
     // pergunta `n` vezes, e a coluna AUSENTE tem de cair na posição — não em zero, que daria
     // a todos a mesma sorte (a armadilha que o `HAS_id` do kernel evita do outro lado).
@@ -562,17 +517,31 @@ fn collide(
     };
     let (randomness, seed) = rnd;
     for i in 0..n {
-        // Um disco CENTRADO fica na porta de sempre, ao bit; o resto pousa pela forma inteira.
+        // Um disco CENTRADO que não roda fica na porta de sempre, ao bit; o resto pousa pela forma
+        // inteira, e pode RODAR (doc 109 §6).
         let forma = formas.as_ref().and_then(|f| f[i]).filter(|col| {
-            !matches!(col.forma, ph2d_contact::Forma::Disco(_)) || col.desvio != [0.0, 0.0]
+            !matches!(col.forma, ph2d_contact::Forma::Disco(_))
+                || col.desvio != [0.0, 0.0]
+                || inv_inercia[i] > 0.0
         });
-        let toque = match forma {
-            Some(col) => {
-                declared::contact_declared(shape, p[i], height, c, radius, plane_n, half, &col)
-            }
+        let (toque, girou) = match forma {
+            Some(col) => declared::toque(
+                shape,
+                p[i],
+                height,
+                c,
+                radius,
+                plane_n,
+                half,
+                &col,
+                inv_inercia[i],
+            ),
             None => {
                 let r = particle_radius(mode, fixed, scale, size[i], declarados[i]);
-                contact(shape, p[i], height, c, radius, r, plane_n, half)
+                (
+                    contact(shape, p[i], height, c, radius, r, plane_n, half),
+                    0.0,
+                )
             }
         };
         if let Some((normal, depth)) = toque {
@@ -591,12 +560,25 @@ fn collide(
                 // nothing, so reporting a contact there would say the node did something it
                 // did not — the channel describes what happened, not what was attempted.
                 hit[i] = hit[i].max(depth);
+                // ⭐ O que o contacto RODOU (doc 109 §6), onde a resposta de facto aterrou.
+                if girou.is_finite() {
+                    giro[i] += girou;
+                }
             }
         }
     }
     out.set("P", Column::Vec2(p));
     out.set("vel", Column::Vec2(v));
     out.set(HIT_COL, Column::Scalar(hit));
+    // ⚠️ A coluna do ângulo só se escreve se alguém de facto rodou: uma cena com a rotação travada
+    // (ou sem colisor declarado) sai como sempre saiu, sem coluna nova.
+    if giro.iter().any(|g| *g != 0.0) {
+        let mut rot = scalars(s, "rot", n);
+        for (i, r) in rot.iter_mut().enumerate() {
+            *r += giro[i];
+        }
+        out.set("rot", Column::Scalar(rot));
+    }
     out
 }
 
@@ -688,6 +670,10 @@ mod randomness_tests;
 #[cfg(test)]
 #[path = "box_tests.rs"]
 mod box_tests;
+
+#[path = "caixa.rs"]
+mod caixa;
+use caixa::box_contact;
 
 #[path = "declared.rs"]
 mod declared;

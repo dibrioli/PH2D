@@ -1,7 +1,9 @@
 //! Os gates do contacto no passo (doc 109 W2) — pela porta do produto, o [`crate::step`].
 
 use crate::step;
-use ph2d_nodegraph::attr::{COLLIDER_BOX_COLUMN, COLLIDER_COLUMN, Column, Stream};
+use ph2d_nodegraph::attr::{
+    COLLIDER_BOX_COLUMN, COLLIDER_COLUMN, Column, INV_INERTIA_COLUMN, Stream,
+};
 
 /// Duas peças em `x = ±meio`, com velocidades, relógio e (opcional) colisor de raio `r`.
 fn par(meio: f32, v: f32, r: Option<f32>) -> Stream {
@@ -94,6 +96,41 @@ fn two_boxes_rest_face_to_face_and_stop() {
     for (i, vi) in v.iter().enumerate() {
         assert!(vi[0].abs() < 1e-3, "a caixa {i} parou em x: {vi:?}");
     }
+}
+
+/// ⭐⭐⭐ **Uma caixa apanhada FORA DO CENTRO tomba** (doc 109 §6 — *«precisa destravar a rot»*), e a
+/// coluna `inv_inertia` a zero (o botão `Lock Rotation` do cartão) trava-a.
+///
+/// ⚠️ **As duas metades num gate:** *«roda»* passa com uma peça que gira sempre, e *«trava»* passa
+/// com uma que nunca gira. E travada **nem a coluna `rot` nasce** — uma cena sem rotação sai como
+/// sempre saiu.
+#[test]
+fn a_box_caught_off_centre_turns_unless_the_column_locks_it() {
+    let angulos = |travada: bool| -> Option<Vec<f32>> {
+        let s = Stream::new(2)
+            .with("P", Column::Vec2(vec![[0.0, 0.0], [0.9, 0.25]]))
+            .with("vel", Column::Vec2(vec![[0.0, 0.0], [0.0, 0.0]]))
+            .with("sim_t", Column::Scalar(vec![0.0, 0.0]))
+            // A prancha é um pino; a caixa livre pousa na ponta dela.
+            .with("inv_mass", Column::Scalar(vec![0.0, 1.0]))
+            .with(
+                COLLIDER_BOX_COLUMN,
+                Column::Vec2(vec![[1.0, 0.1], [0.25, 0.25]]),
+            );
+        let s = if travada {
+            s.with(INV_INERTIA_COLUMN, Column::Scalar(vec![0.0, 0.0]))
+        } else {
+            s
+        };
+        match step(&s, DT, 1.0, 0.0, 0.0, 1.0).get("rot") {
+            Some(Column::Scalar(v)) => Some(v.clone()),
+            _ => None,
+        }
+    };
+    let solta = angulos(false).expect("sem travar, o passo escreve o angulo");
+    assert_eq!(solta[0], 0.0, "o pino nao roda: {solta:?}");
+    assert!(solta[1].abs() > 1.0, "a caixa da ponta tombou: {solta:?}");
+    assert!(angulos(true).is_none(), "travada, nem a coluna `rot` nasce");
 }
 
 /// ⭐ **Uma peça sem colisor ATRAVESSA** — só as duas com colisor se afastam.

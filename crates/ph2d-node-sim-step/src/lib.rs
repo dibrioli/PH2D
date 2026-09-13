@@ -437,7 +437,8 @@ fn step(
         }
     }
     // ⭐⭐ O CONTACTO ENTRE PEÇAS (doc 109) — depois da integração, só onde há colisor declarado.
-    contact::resolve(state, &mut p, &mut vel, &w, |i| {
+    // Ele devolve o quanto cada peça RODOU (doc 109 §6), em graus.
+    let giro = contact::resolve(state, &mut p, &mut vel, &w, |i| {
         t_prev
             .as_ref()
             .map(|t| (playhead - t[i]).clamp(0.0, MAX_DT)) // CLAMP-OK: const bounds, min < max
@@ -470,8 +471,22 @@ fn step(
                 spin[i] = s;
                 rot[i] = r;
             }
+            // ⭐ E o que o CONTACTO rodou (doc 109 §6) soma-se ao mesmo ângulo.
+            if let Some(g) = giro.get(i).copied().filter(|g| g.is_finite()) {
+                rot[i] += g;
+            }
         }
         out.set(SPIN, Column::Scalar(spin));
+        out.set(ROT, Column::Scalar(rot));
+    } else if giro.iter().any(|g| *g != 0.0) {
+        // ⭐⭐ **Sem `spin` autorado, o contacto é o ÚNICO a girar** (doc 109 §6) — e só escreve a
+        // coluna quando de facto rodou alguém: uma pilha travada sai como sempre saiu.
+        let mut rot = scalar_col(state, ROT, n, 0.0).unwrap_or_else(|| vec![0.0; n]);
+        for (i, r) in rot.iter_mut().enumerate() {
+            if let Some(g) = giro.get(i).copied().filter(|g| g.is_finite()) {
+                *r += g;
+            }
+        }
         out.set(ROT, Column::Scalar(rot));
     }
 

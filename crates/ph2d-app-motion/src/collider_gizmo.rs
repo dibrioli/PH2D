@@ -1,17 +1,18 @@
 //! ⭐⭐ **O GIZMO DO COLISOR DA FORMA** — doc 109 §5, report do dono (2026-09-13): *«no mínimo
 //! precisamos de colliders circulares e retangulares […] e que tenham ajustes de tamanho com gizmo
-//! visível para o usuário»*.
+//! visível para o usuário»*, e o report seguinte: *«o collider deve aparecer na frente da shape
+//! (z-index maior) e visível em TODAS as formas. Coloque um botão no nó shape: Ver collider»*.
 //!
 //! ## O que se vê
 //!
-//! Com o cartão de um `source.shape` com `Collide` ligado seleccionado (e a tool Motion activa):
+//! Com a tool Motion activa, **toda** forma que tem `Collide` e `Show Collider` ligados pinta o
+//! contorno do colisor de cada peça que carimbou — seleccionada ou não, e **por cima da arte** (a
+//! fase que desenha o gizmo corre depois da que codifica as formas; há gate de ordem na shell).
 //!
-//! - **o CONTORNO do colisor em cada peça que essa forma carimbou** — a caixa girada com a peça, ou
-//!   o círculo —, no sítio onde a simulação o resolve: lido do stream do SINK pela mesma porta que o
-//!   solver pergunta (`ph2d_contact::colisores`), nunca recalculado aqui;
-//! - **as ALÇAS numa peça só — a mais próxima do cursor**: quatro cantos e quatro lados na caixa,
-//!   quatro pontos no círculo. ⚠️ Numa só porque o colisor é UM, da forma: a alça de uma cópia muda
-//!   todas, e vinte e cinco conjuntos de alças seriam vinte e cinco alvos para o mesmo número.
+//! As **ALÇAS** ficam numa peça só: a mais próxima do cursor, na forma SELECCIONADA. ⚠️ Numa só
+//! porque o colisor é UM, da forma — arrastar a alça de uma cópia muda todas, e vinte e cinco
+//! conjuntos de alças seriam vinte e cinco alvos para o mesmo número; e na seleccionada porque o
+//! arrasto edita os params DELA.
 //!
 //! ## O que o arrasto escreve
 //!
@@ -24,11 +25,11 @@
 //! para onde está o cursor»: agarrar a alça a meio do raio de agarre faria o colisor saltar por essa
 //! folga logo no primeiro pixel.
 //!
-//! ## Quem é peça desta forma
+//! ## Quem é peça de uma forma
 //!
-//! As linhas do sink com o MESMO `geometry_id` e a MESMA declaração local (as colunas do colisor, ao
-//! bit) que a saída do nó. ⚠️ Duas formas IGUAIS com o mesmo colisor são indistinguíveis por aqui —
-//! as duas acendem, e o arrasto edita a seleccionada, que é o que o cartão também faz.
+//! As linhas do sink dela com o MESMO `geometry_id` e a MESMA declaração local (as colunas do
+//! colisor, ao bit) que a saída do nó. ⚠️ Duas formas IGUAIS com o mesmo colisor são
+//! indistinguíveis por aqui — as duas acendem, e o arrasto edita a seleccionada.
 
 use crate::motion_bridge::params::param_value;
 use crate::motion_shape_gen::collider::ColliderFit;
@@ -40,12 +41,12 @@ use ph2d_nodegraph::attr::{
 };
 use ph2d_nodegraph::graph::{Graph, NodeId};
 
-/// **Quantos contornos o gizmo desenha, no máximo** — os MAIS PRÓXIMOS do cursor, então a
-/// vizinhança da mão está sempre inteira. ⚠️ O recurso é o tempo de CODIFICAR os caminhos no
-/// quadro; o número e a tabela estão na sonda `measure_the_outline_paint_cost`.
+/// **Quantos contornos o gizmo desenha, no máximo** — os MAIS PRÓXIMOS do cursor, somados sobre
+/// todas as formas, e a peça com alças nunca cai fora. ⚠️ O recurso é o tempo de CODIFICAR os
+/// caminhos no quadro; o número e a tabela estão na sonda `measure_the_outline_paint_cost`.
 pub const MAX_CONTORNOS: usize = 2048;
 
-/// **Uma peça desta forma**, no sítio onde o sink a entrega.
+/// **Uma peça**, no sítio onde o sink a entrega.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Peca {
     /// O índice da linha no stream do sink — o que o arrasto segura.
@@ -57,17 +58,33 @@ pub struct Peca {
     pub size: [f32; 2],
 }
 
-/// **O retrato do gizmo deste quadro** — tudo o que o pintor e o ponteiro precisam, já resolvido.
+/// **As peças de UMA forma** e o que o cartão dela diz.
 #[derive(Clone, Debug, PartialEq)]
-pub struct ColliderGizmoView {
+pub struct Grupo {
     pub node: NodeId,
     /// `Circle` (senão `Box`).
     pub circulo: bool,
     /// A caixa envolvente da geometria, em unidade de geometria — a base dos multiplicadores.
     pub fit: ColliderFit,
-    /// As peças desta forma, as mais próximas do cursor primeiro (a arrastada, se houver). A 1.ª
-    /// tem as alças.
     pub pecas: Vec<Peca>,
+}
+
+/// **O retrato do gizmo deste quadro** — tudo o que o pintor e o ponteiro precisam, já resolvido.
+#[derive(Clone, Debug, PartialEq)]
+pub struct ColliderGizmoView {
+    /// Uma entrada por forma que mostra o colisor.
+    pub grupos: Vec<Grupo>,
+    /// O grupo e a peça que têm as ALÇAS — a forma seleccionada, a peça mais próxima do cursor.
+    pub ativa: Option<(usize, usize)>,
+}
+
+impl ColliderGizmoView {
+    /// A peça com alças, se houver.
+    pub fn peca_ativa(&self) -> Option<(&Grupo, &Peca)> {
+        let (g, p) = self.ativa?;
+        let grupo = self.grupos.get(g)?;
+        Some((grupo, grupo.pecas.get(p)?))
+    }
 }
 
 /// **Uma alça**: a direcção dela no referencial do colisor, `x, y ∈ {−1, 0, 1}`. Numa caixa, um
@@ -140,7 +157,7 @@ pub fn hit(hs: &[Handle], world: [f32; 2], world_per_px: f32) -> Option<usize> {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Arrasto {
     pub node: NodeId,
-    /// A linha do sink agarrada — fica à frente das outras enquanto o arrasto dura.
+    /// A linha do sink agarrada — ela fica com as alças enquanto o arrasto dura.
     pub linha: usize,
     pub alca: Alca,
     pub circulo: bool,
@@ -190,13 +207,34 @@ pub fn edits(a: &Arrasto, world: [f32; 2]) -> Vec<(&'static str, f32)> {
     out
 }
 
-/// **A forma seleccionada, se tiver o colisor ligado.**
+/// **A forma seleccionada, se tiver o colisor ligado** — quem recebe as alças.
 pub fn selected_collider_shape(motion: &MotionState) -> Option<NodeId> {
     let nid = crate::motion_bridge::params::selected_motion_node().map(NodeId)?;
-    let n = motion.doc.graph.node(nid)?;
-    (n.type_name == ph2d_node_motion_shape::MANIFEST.name
-        && param_value(motion, nid, param::COLLIDE) >= 0.5)
-        .then_some(nid)
+    mostra_colisor(motion, nid).then_some(nid)
+}
+
+/// Este nó é uma forma que DECLARA e MOSTRA o colisor?
+fn mostra_colisor(motion: &MotionState, nid: NodeId) -> bool {
+    motion
+        .doc
+        .graph
+        .node(nid)
+        .is_some_and(|n| n.type_name == ph2d_node_motion_shape::MANIFEST.name)
+        && param_value(motion, nid, param::COLLIDE) >= 0.5
+        && param_value(motion, nid, param::SHOW_COLLIDER) >= 0.5
+}
+
+/// **Todas as formas que mostram o colisor** — a população do gizmo (report do dono: *«visível em
+/// todas as formas»*), na ordem do grafo.
+pub fn shapes_showing_collider(motion: &MotionState) -> Vec<NodeId> {
+    motion
+        .doc
+        .graph
+        .nodes()
+        .iter()
+        .map(|n| n.id)
+        .filter(|id| mostra_colisor(motion, *id))
+        .collect()
 }
 
 /// **O SINK a que a forma chega** — em largura, pelas arestas NÃO atrasadas.
@@ -229,15 +267,19 @@ pub fn sink_of(graph: &Graph, node: NodeId) -> Option<NodeId> {
     None
 }
 
-/// **As TOMADAS que este gizmo precisa**: a saída da forma (a declaração e a geometria) e o sink
-/// (as peças). Unidas às dos sinais e às do warp no `motion_bridge`, como aquelas.
+/// **As TOMADAS que este gizmo precisa**: por forma que mostra o colisor, a saída dela (a declaração
+/// e a geometria) e o sink (as peças). Unidas às dos sinais e às do warp no `motion_bridge`.
 pub fn taps_for(motion: &MotionState) -> Vec<NodeId> {
-    let Some(nid) = selected_collider_shape(motion) else {
-        return Vec::new();
-    };
-    let mut out = vec![nid];
-    if let Some(s) = sink_of(&motion.doc.graph, nid) {
-        out.push(s);
+    let mut out = Vec::new();
+    for nid in shapes_showing_collider(motion) {
+        if !out.contains(&nid) {
+            out.push(nid);
+        }
+        if let Some(s) = sink_of(&motion.doc.graph, nid)
+            && !out.contains(&s)
+        {
+            out.push(s);
+        }
     }
     out
 }
@@ -295,21 +337,8 @@ impl<'a> Declaracao<'a> {
     }
 }
 
-/// **Resolve o retrato a partir do estado** — a porta única, para o laço de render e o gate lerem a
-/// MESMA resposta. `pointer_world` ordena as peças (a mais próxima recebe as alças).
-///
-/// `None` quando: a tool não é a Motion · nenhuma forma com colisor está seleccionada · as tomadas
-/// ainda não trouxeram os streams · a caixa da geometria não foi medida · nenhuma peça do sink é
-/// desta forma.
-pub fn resolve(
-    motion: &MotionState,
-    tool_is_motion: bool,
-    pointer_world: Option<[f32; 2]>,
-) -> Option<ColliderGizmoView> {
-    if !tool_is_motion {
-        return None;
-    }
-    let node = selected_collider_shape(motion)?;
+/// As peças de UMA forma, sem cortar pelo tecto — `None` quando a forma não tem gizmo neste quadro.
+fn grupo_de(motion: &MotionState, node: NodeId) -> Option<Grupo> {
     let saida = tap(motion, node)?;
     if saida.count() == 0 {
         return None;
@@ -329,7 +358,7 @@ pub fn resolve(
         _ => None,
     };
     let decl = Declaracao::de(s);
-    let mut pecas: Vec<Peca> = (0..s.count())
+    let pecas: Vec<Peca> = (0..s.count())
         .filter(|&i| decl.linha(i) == alvo)
         .filter_map(|i| {
             Some(Peca {
@@ -340,35 +369,94 @@ pub fn resolve(
             })
         })
         .collect();
-    if pecas.is_empty() {
-        return None;
-    }
-    let preso = motion
-        .collider_drag
-        .filter(|a| a.node == node)
-        .map(|a| a.linha);
-    let chave = |q: &Peca| {
-        let c = q.colisor.centro(q.p);
-        let d = pointer_world.map_or(0.0, |w| (c[0] - w[0]).hypot(c[1] - w[1]));
-        (Some(q.linha) != preso, d)
-    };
-    let ordem = |a: &Peca, b: &Peca| {
-        let (ka, kb) = (chave(a), chave(b));
-        ka.0.cmp(&kb.0)
-            .then(ka.1.total_cmp(&kb.1))
-            .then(a.linha.cmp(&b.linha))
-    };
-    if pecas.len() > MAX_CONTORNOS {
-        pecas.select_nth_unstable_by(MAX_CONTORNOS - 1, ordem);
-        pecas.truncate(MAX_CONTORNOS);
-    }
-    pecas.sort_by(ordem);
-    Some(ColliderGizmoView {
+    (!pecas.is_empty()).then(|| Grupo {
         node,
         circulo: param_value(motion, node, param::COLLIDER_SHAPE) >= 0.5,
         fit,
         pecas,
     })
+}
+
+/// **Resolve o retrato a partir do estado** — a porta única, para o laço de render e o gate lerem a
+/// MESMA resposta. `pointer_world` escolhe a peça com alças e o que sobrevive ao tecto.
+///
+/// `None` quando: a tool não é a Motion · nenhuma forma mostra o colisor · as tomadas ainda não
+/// trouxeram os streams · nenhuma peça do sink é de uma dessas formas.
+pub fn resolve(
+    motion: &MotionState,
+    tool_is_motion: bool,
+    pointer_world: Option<[f32; 2]>,
+) -> Option<ColliderGizmoView> {
+    if !tool_is_motion {
+        return None;
+    }
+    let mut grupos: Vec<Grupo> = shapes_showing_collider(motion)
+        .into_iter()
+        .filter_map(|n| grupo_de(motion, n))
+        .collect();
+    if grupos.is_empty() {
+        return None;
+    }
+    let dist = |q: &Peca| {
+        let c = q.colisor.centro(q.p);
+        pointer_world.map_or(0.0, |w| (c[0] - w[0]).hypot(c[1] - w[1]))
+    };
+    // A peça com ALÇAS: a agarrada, senão a mais próxima do cursor na forma SELECCIONADA.
+    let preso = motion.collider_drag;
+    let alvo_node = preso
+        .map(|a| a.node)
+        .or_else(|| selected_collider_shape(motion));
+    let mut ativa = alvo_node.and_then(|node| {
+        let gi = grupos.iter().position(|g| g.node == node)?;
+        let pi = match preso.filter(|a| a.node == node) {
+            Some(a) => grupos[gi].pecas.iter().position(|q| q.linha == a.linha)?,
+            None => (0..grupos[gi].pecas.len()).min_by(|&x, &y| {
+                dist(&grupos[gi].pecas[x]).total_cmp(&dist(&grupos[gi].pecas[y]))
+            })?,
+        };
+        Some((gi, pi))
+    });
+    // O TECTO, somado sobre as formas: ficam as mais próximas do cursor, e a peça com alças nunca
+    // cai fora — ela é o alvo do gesto que está em curso.
+    let total: usize = grupos.iter().map(|g| g.pecas.len()).sum();
+    if total > MAX_CONTORNOS {
+        let mut todas: Vec<(usize, usize, f32)> = grupos
+            .iter()
+            .enumerate()
+            .flat_map(|(gi, g)| {
+                g.pecas
+                    .iter()
+                    .enumerate()
+                    .map(move |(pi, q)| (gi, pi, dist(q)))
+            })
+            .collect();
+        todas.select_nth_unstable_by(MAX_CONTORNOS - 1, |a, b| {
+            let chave = |t: &(usize, usize, f32)| (Some((t.0, t.1)) != ativa, t.2);
+            let (ka, kb) = (chave(a), chave(b));
+            ka.0.cmp(&kb.0).then(ka.1.total_cmp(&kb.1))
+        });
+        todas.truncate(MAX_CONTORNOS);
+        let mut fica: Vec<Vec<usize>> = vec![Vec::new(); grupos.len()];
+        for (gi, pi, _) in todas {
+            fica[gi].push(pi);
+        }
+        let antiga = ativa;
+        ativa = None;
+        for (gi, g) in grupos.iter_mut().enumerate() {
+            fica[gi].sort_unstable();
+            let mut i = 0;
+            g.pecas.retain(|_| {
+                let fica_esta = fica[gi].binary_search(&i).is_ok();
+                if antiga == Some((gi, i)) && fica_esta {
+                    ativa = Some((gi, fica[gi].binary_search(&i).unwrap_or(0)));
+                }
+                i += 1;
+                fica_esta
+            });
+        }
+        grupos.retain(|g| !g.pecas.is_empty());
+    }
+    Some(ColliderGizmoView { grupos, ativa })
 }
 
 /// O `geometry_id` da primeira linha, como o handle do store.
@@ -405,7 +493,7 @@ pub fn resolve_at(
 static VIEW: std::sync::Mutex<Option<ColliderGizmoView>> = std::sync::Mutex::new(None);
 
 /// Publica (ou limpa) o retrato deste quadro. ⚠️ Publicar de novo SUBSTITUI: largar a selecção limpa
-/// os contornos em vez de os deixar a pairar.
+/// as alças em vez de as deixar a pairar.
 pub fn publish(v: Option<ColliderGizmoView>) {
     if let Ok(mut slot) = VIEW.lock() {
         *slot = v;
@@ -423,20 +511,21 @@ pub fn pointer_down(motion: &mut MotionState, world: [f32; 2], world_per_px: f32
     let Some(v) = view() else {
         return false;
     };
-    let Some(peca) = v.pecas.first().copied() else {
+    let Some((grupo, peca)) = v.peca_ativa() else {
         return false;
     };
+    let (node, circulo, fit, peca) = (grupo.node, grupo.circulo, grupo.fit, *peca);
     let hs = handles(&peca);
     let Some(i) = hit(&hs, world, world_per_px) else {
         return false;
     };
-    let inicio = if v.circulo {
-        let r = param_value(motion, v.node, param::COLLIDER_RADIUS);
+    let inicio = if circulo {
+        let r = param_value(motion, node, param::COLLIDER_RADIUS);
         [r, r]
     } else {
         [
-            param_value(motion, v.node, param::COLLIDER_WIDTH),
-            param_value(motion, v.node, param::COLLIDER_HEIGHT),
+            param_value(motion, node, param::COLLIDER_WIDTH),
+            param_value(motion, node, param::COLLIDER_HEIGHT),
         ]
     };
     let eixo = match peca.colisor.forma {
@@ -444,11 +533,11 @@ pub fn pointer_down(motion: &mut MotionState, world: [f32; 2], world_per_px: f32
         Forma::Disco(_) => [1.0, 0.0],
     };
     motion.collider_drag = Some(Arrasto {
-        node: v.node,
+        node,
         linha: peca.linha,
         alca: hs[i].alca,
-        circulo: v.circulo,
-        fit: v.fit,
+        circulo,
+        fit,
         size: peca.size,
         eixo,
         ancora: world,

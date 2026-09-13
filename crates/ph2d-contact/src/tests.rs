@@ -1,4 +1,4 @@
-//! Os gates do contacto entre peças (doc 109 W2 e §5).
+//! Os gates do contacto entre peças (doc 109 W2, §5 e §6).
 
 use super::*;
 
@@ -22,6 +22,28 @@ fn discos(r: &[f32]) -> Vec<Option<Colisor>> {
     r.iter()
         .map(|&r| (r > 0.0).then(|| Colisor::disco(r)))
         .collect()
+}
+
+/// A inércia inversa DERIVADA de cada peça — o que o produto usa com a rotação destravada.
+fn inercias(c: &[Option<Colisor>], w: &[f32]) -> Vec<f32> {
+    c.iter()
+        .zip(w)
+        .map(|(c, w)| c.map_or(0.0, |c| c.inv_inercia(*w)))
+        .collect()
+}
+
+/// Uma corrida com a rotação TRAVADA — a lei de posição pura, que é o que os gates de geometria
+/// afirmam.
+fn corre(p: &mut [[f32; 2]], c: &[Option<Colisor>], w: &[f32]) {
+    let mut giro = vec![0.0; p.len()];
+    separate(p, &mut giro, c, w, &vec![0.0; p.len()], 8);
+}
+
+/// Uma corrida com a rotação DESTRAVADA; devolve o giro de cada peça, em graus.
+fn corre_girando(p: &mut [[f32; 2]], c: &[Option<Colisor>], w: &[f32]) -> Vec<f32> {
+    let mut giro = vec![0.0; p.len()];
+    separate(p, &mut giro, c, w, &inercias(c, w), 8);
+    giro
 }
 
 /// Uma nuvem APERTADA com o que a lei tem de saber tratar: discos e caixas (giradas e fora do
@@ -63,7 +85,7 @@ fn nuvem(n: u32) -> (Vec<[f32; 2]>, Vec<Option<Colisor>>, Vec<f32>) {
     (p, c, w)
 }
 
-/// ⭐⭐⭐ **A grelha dá OS MESMOS BITS que todos-os-pares** — com discos E caixas.
+/// ⭐⭐⭐ **A grelha dá OS MESMOS BITS que todos-os-pares** — com discos, caixas E rotação.
 ///
 /// ⚠️ Igualdade exacta e não tolerância: a promessa do cabeçalho é a ORDEM das somas, e uma ordem
 /// trocada dá um resultado a poucos ULP do certo — que uma tolerância engoliria e o gate não veria.
@@ -81,23 +103,39 @@ fn the_grid_gives_the_same_bits_as_all_pairs() {
             .any(|c| matches!(c.forma, Forma::Caixa { .. })),
         "a nuvem tem de ter caixas"
     );
-    let mut grelha = p0.clone();
-    let mut todos = p0.clone();
-    separate(&mut grelha, &c, &w, 8);
-    separate_all_pairs(&mut todos, &c, &w, 8);
-    // O controlo: a nuvem de facto se mexeu, senão a igualdade seria de duas identidades.
+    let inv = inercias(&c, &w);
+    let (mut grelha, mut todos) = (p0.clone(), p0.clone());
+    let (mut g_grelha, mut g_todos) = (vec![0.0; p0.len()], vec![0.0; p0.len()]);
+    separate(&mut grelha, &mut g_grelha, &c, &w, &inv, 8);
+    separate_all_pairs(&mut todos, &mut g_todos, &c, &w, &inv, 8);
+    // Os controlos: a nuvem mexeu-se, e alguém RODOU (senão a igualdade do giro seria de dois zeros).
     let mexeu = (0..p0.len()).filter(|&i| p0[i] != todos[i]).count();
     assert!(
         mexeu > 200,
         "a nuvem tinha de estar apertada: so' {mexeu} pecas se mexeram"
     );
+    assert!(
+        g_todos.iter().filter(|g| g.abs() > 1e-3).count() > 20,
+        "com a rotação destravada as caixas tinham de rodar: {:?}",
+        &g_todos[..8]
+    );
     for i in 0..p0.len() {
         assert_eq!(
-            (grelha[i][0].to_bits(), grelha[i][1].to_bits()),
-            (todos[i][0].to_bits(), todos[i][1].to_bits()),
-            "peca {i}: grelha {:?} contra todos-os-pares {:?}",
+            (
+                grelha[i][0].to_bits(),
+                grelha[i][1].to_bits(),
+                g_grelha[i].to_bits()
+            ),
+            (
+                todos[i][0].to_bits(),
+                todos[i][1].to_bits(),
+                g_todos[i].to_bits()
+            ),
+            "peca {i}: grelha {:?}/{} contra todos-os-pares {:?}/{}",
             grelha[i],
-            todos[i]
+            g_grelha[i],
+            todos[i],
+            g_todos[i]
         );
     }
 }
@@ -106,7 +144,7 @@ fn the_grid_gives_the_same_bits_as_all_pairs() {
 #[test]
 fn two_overlapping_pieces_settle_at_the_sum_of_their_radii() {
     let mut p = vec![[-0.1, 0.0], [0.1, 0.0]];
-    separate(&mut p, &discos(&[0.3, 0.6]), &[1.0, 1.0], 8);
+    corre(&mut p, &discos(&[0.3, 0.6]), &[1.0, 1.0]);
     assert!((dist(p[0], p[1]) - 0.9).abs() < 1e-4, "{p:?}");
     assert!(
         ((p[0][0] + p[1][0]) * 0.5).abs() < 1e-6,
@@ -122,7 +160,7 @@ fn two_overlapping_pieces_settle_at_the_sum_of_their_radii() {
 #[test]
 fn two_coincident_pieces_split_apart_in_opposite_directions() {
     let mut p = vec![[0.25, -0.5], [0.25, -0.5]];
-    separate(&mut p, &discos(&[0.5, 0.5]), &[1.0, 1.0], 8);
+    corre(&mut p, &discos(&[0.5, 0.5]), &[1.0, 1.0]);
     assert!((dist(p[0], p[1]) - 1.0).abs() < 1e-4, "{p:?}");
     assert!(
         ((p[0][0] + p[1][0]) * 0.5 - 0.25).abs() < 1e-6
@@ -136,7 +174,7 @@ fn two_coincident_pieces_split_apart_in_opposite_directions() {
 fn a_piece_without_a_collider_is_transparent() {
     let p0 = vec![[0.0, 0.0], [0.05, 0.0]];
     let mut p = p0.clone();
-    separate(&mut p, &discos(&[0.5, 0.0]), &[1.0, 1.0], 8);
+    corre(&mut p, &discos(&[0.5, 0.0]), &[1.0, 1.0]);
     assert_eq!(p, p0, "nenhuma das duas se mexe");
 }
 
@@ -144,7 +182,7 @@ fn a_piece_without_a_collider_is_transparent() {
 #[test]
 fn a_pinned_piece_does_not_move_and_the_other_goes_around_it() {
     let mut p = vec![[0.0, 0.0], [0.2, 0.0]];
-    separate(&mut p, &discos(&[0.5, 0.5]), &[0.0, 1.0], 8);
+    corre(&mut p, &discos(&[0.5, 0.5]), &[0.0, 1.0]);
     assert_eq!(p[0], [0.0, 0.0], "o pino ficou");
     assert!(
         (dist(p[0], p[1]) - 1.0).abs() < 1e-4,
@@ -157,7 +195,7 @@ fn a_pinned_piece_does_not_move_and_the_other_goes_around_it() {
 fn a_piece_with_no_neighbour_is_untouched_to_the_bit() {
     let p0 = vec![[0.123_456_7, -9.876_543], [50.0, 50.0]];
     let mut p = p0.clone();
-    separate(&mut p, &discos(&[0.4, 0.4]), &[1.0, 1.0], 8);
+    corre(&mut p, &discos(&[0.4, 0.4]), &[1.0, 1.0]);
     assert_eq!(p, p0);
 }
 
@@ -172,12 +210,11 @@ fn two_boxes_side_by_side_touch_face_to_face() {
         Some(Colisor::caixa([0.5, 1.0], SEM_GIRO)),
     ];
     let mut p = vec![[-0.1, 0.0], [0.1, 0.0]];
-    separate(&mut p, &c, &[1.0, 1.0], 8);
+    corre(&mut p, &c, &[1.0, 1.0]);
     assert!((p[1][0] - p[0][0] - 0.8).abs() < 1e-4, "{p:?}");
     assert_eq!((p[0][1], p[1][1]), (0.0, 0.0), "e nenhuma saiu na vertical");
     // O CONTROLO: os círculos à volta das duas afastá-las-iam muito mais.
-    let circulos =
-        c[0].map(|c| c.alcance()).unwrap_or(0.0) + c[1].map(|c| c.alcance()).unwrap_or(0.0);
+    let circulos = c[0].map_or(0.0, |c| c.alcance()) + c[1].map_or(0.0, |c| c.alcance());
     assert!(
         p[1][0] - p[0][0] < circulos * 0.5,
         "{p:?} contra {circulos}"
@@ -193,7 +230,7 @@ fn a_stacked_box_is_pushed_along_the_axis_of_least_overlap() {
         Some(Colisor::caixa([1.0, 0.5], SEM_GIRO)),
     ];
     let mut p = vec![[0.0, 0.0], [0.2, 0.9]];
-    separate(&mut p, &c, &[0.0, 1.0], 8);
+    corre(&mut p, &c, &[0.0, 1.0]);
     assert_eq!(p[0], [0.0, 0.0], "o pino ficou");
     assert!(
         (p[1][0] - 0.2).abs() < 1e-6 && (p[1][1] - 1.0).abs() < 1e-5,
@@ -211,7 +248,7 @@ fn a_turned_box_collides_along_its_own_axes() {
         Some(Colisor::caixa([1.0, 0.2], em_pe)),
     ];
     let mut p = vec![[-0.1, 0.0], [0.1, 0.0]];
-    separate(&mut p, &c, &[1.0, 1.0], 8);
+    corre(&mut p, &c, &[1.0, 1.0]);
     assert!(
         (p[1][0] - p[0][0] - 0.4).abs() < 1e-4,
         "em pe' sao 0,4 de largo: {p:?}"
@@ -226,7 +263,7 @@ fn a_disc_rests_on_the_face_of_a_box() {
         Some(Colisor::disco(0.2)),
     ];
     let mut p = vec![[0.0, 0.0], [0.9, 0.25]];
-    separate(&mut p, &c, &[0.0, 1.0], 8);
+    corre(&mut p, &c, &[0.0, 1.0]);
     assert!(
         (p[1][0] - 0.9).abs() < 1e-6 && (p[1][1] - 0.3).abs() < 1e-5,
         "{p:?}"
@@ -241,7 +278,7 @@ fn a_disc_that_entered_a_box_leaves_by_the_nearest_face() {
         Some(Colisor::disco(0.1)),
     ];
     let mut p = vec![[0.0, 0.0], [0.2, 0.4]];
-    separate(&mut p, &c, &[0.0, 1.0], 8);
+    corre(&mut p, &c, &[0.0, 1.0]);
     assert!(
         (p[1][0] - 0.2).abs() < 1e-6 && (p[1][1] - 0.6).abs() < 1e-5,
         "{p:?}"
@@ -257,11 +294,9 @@ fn two_coincident_boxes_split_apart_in_opposite_directions() {
         Some(Colisor::caixa([0.5, 1.0], SEM_GIRO)),
     ];
     let mut p = vec![[0.3, -0.2], [0.3, -0.2]];
-    separate(&mut p, &c, &[1.0, 1.0], 8);
-    assert!(
-        (p[1][0] - p[0][0]).abs() > 0.999 && (p[1][0] - p[0][0]).abs() < 1.0001,
-        "{p:?}"
-    );
+    corre(&mut p, &c, &[1.0, 1.0]);
+    let vao = (p[1][0] - p[0][0]).abs();
+    assert!((vao - 1.0).abs() < 1e-3, "{p:?}");
     assert!(
         ((p[0][0] + p[1][0]) * 0.5 - 0.3).abs() < 1e-6,
         "o meio do par ficou: {p:?}"
@@ -312,4 +347,88 @@ fn a_stream_without_collider_columns_answers_none() {
     );
     let c = colisores(&com).expect("declara");
     assert_eq!(c, vec![Some(Colisor::caixa([0.5, 0.5], SEM_GIRO)), None]);
+}
+
+// ── A ROTAÇÃO (doc 109 §6) ───────────────────────────────────────────────────────────
+
+/// ⭐⭐⭐ **Uma caixa apanhada FORA DO CENTRO roda** — e o `Lock Rotation` (a inércia a zero) trava-a
+/// sem lhe mudar mais nada de essencial.
+///
+/// A prancha é um pino largo; a caixa livre pousa na ponta dela, com metade de fora: o contacto
+/// acontece a um braço do centro, e é isso que a faz tombar.
+#[test]
+fn a_box_caught_off_centre_turns_and_the_lock_stops_it() {
+    let c = vec![
+        Some(Colisor::caixa([1.0, 0.1], SEM_GIRO)),
+        Some(Colisor::caixa([0.25, 0.25], SEM_GIRO)),
+    ];
+    let (w, p0) = ([0.0, 1.0], vec![[0.0, 0.0], [0.9, 0.25]]);
+
+    let mut solta = p0.clone();
+    let giro = corre_girando(&mut solta, &c, &w);
+    assert!(
+        giro[0] == 0.0,
+        "o pino nao roda (inercia inversa zero): {giro:?}"
+    );
+    assert!(
+        giro[1].abs() > 1.0,
+        "a caixa apanhada na ponta tem de TOMBAR: {giro:?}"
+    );
+
+    let mut travada = p0.clone();
+    corre(&mut travada, &c, &w);
+    assert!(
+        travada[1][1] > p0[1][1],
+        "travada ela continua a ser empurrada para cima: {travada:?}"
+    );
+}
+
+/// ⭐⭐⭐ **Uma caixa pousada DE CHAPA não roda** — e é isto que o recorte das faces compra: com o
+/// vértice mais fundo no lugar do meio do trecho, uma pilha parada tombava sozinha.
+#[test]
+fn a_box_resting_flat_on_another_does_not_turn() {
+    let c = vec![
+        Some(Colisor::caixa([1.0, 0.5], SEM_GIRO)),
+        Some(Colisor::caixa([0.4, 0.4], SEM_GIRO)),
+    ];
+    let mut p = vec![[0.0, 0.0], [0.0, 0.85]];
+    let giro = corre_girando(&mut p, &c, &[0.0, 1.0]);
+    assert!(
+        giro[1].abs() < 1e-3,
+        "de chapa o binario e' zero: {giro:?} · {p:?}"
+    );
+    assert!((p[1][1] - 0.9).abs() < 1e-4, "e ela assenta na face: {p:?}");
+}
+
+/// ⭐⭐ **A inércia inversa sai da FORMA e do peso** — e um pino (ou um colisor degenerado) nunca roda.
+#[test]
+fn the_inverse_inertia_comes_from_the_shape_and_a_pin_never_turns() {
+    // Caixa de meias `0,5`: `I = m(hx² + hy²)/3` ⇒ `invI = 3w / 0,5 = 6w`.
+    let caixa = Colisor::caixa([0.5, 0.5], SEM_GIRO);
+    assert!((caixa.inv_inercia(1.0) - 6.0).abs() < 1e-4);
+    assert!((caixa.inv_inercia(0.5) - 3.0).abs() < 1e-4);
+    // Disco de raio `0,5`: `I = m r²/2` ⇒ `invI = 2w / 0,25 = 8w`.
+    assert!((Colisor::disco(0.5).inv_inercia(1.0) - 8.0).abs() < 1e-4);
+    // Um pino não roda, aconteça o que acontecer.
+    assert_eq!(caixa.inv_inercia(0.0), 0.0);
+    assert_eq!(caixa.inv_inercia(f32::NAN), 0.0);
+}
+
+/// ⭐⭐ **A COLUNA manda: `0` trava, ausente DERIVA** — a porta que o cartão da forma usa para o
+/// botão `Lock Rotation`.
+#[test]
+fn the_inertia_column_locks_and_the_absent_one_derives() {
+    let base = Stream::new(2).with(
+        COLLIDER_BOX_COLUMN,
+        Column::Vec2(vec![[0.5, 0.5], [0.5, 0.5]]),
+    );
+    let c = colisores(&base).expect("declara");
+    let pesos = [1.0, 1.0];
+    let derivada = inv_inercias(&base, &c, &pesos);
+    assert!(
+        (derivada[0] - 6.0).abs() < 1e-4 && (derivada[1] - 6.0).abs() < 1e-4,
+        "{derivada:?}"
+    );
+    let travado = base.with(INV_INERTIA_COLUMN, Column::Scalar(vec![0.0, 0.0]));
+    assert_eq!(inv_inercias(&travado, &c, &pesos), vec![0.0, 0.0]);
 }

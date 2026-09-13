@@ -6,7 +6,8 @@
 
 use crate::{MANIFEST, NodeOp, NodeTypeId, SourceShape, param, shape_key};
 use ph2d_nodegraph::attr::{
-    COLLIDER_BOX_COLUMN, COLLIDER_COLUMN, COLLIDER_OFFSET_COLUMN, Column, Stream,
+    COLLIDER_BOX_COLUMN, COLLIDER_COLUMN, COLLIDER_OFFSET_COLUMN, Column, INV_INERTIA_COLUMN,
+    Stream,
 };
 use ph2d_nodegraph::cook::{Cook, OpResolver};
 use ph2d_nodegraph::graph::{Graph, NodeId};
@@ -142,6 +143,24 @@ fn a_centred_outline_writes_no_offset_and_a_negative_width_reads_as_zero() {
     assert_eq!(vec2(&s, COLLIDER_BOX_COLUMN), Some(vec![[0.0, 0.5]]));
 }
 
+/// ⭐⭐ **`Lock Rotation` escreve a inércia a ZERO; destravada não escreve nada** (doc 109 §6).
+///
+/// ⚠️ As duas metades num gate: *«trava»* passa com a coluna escrita sempre, e *«destravada não
+/// escreve»* passa com ela nunca escrita — e a ausência é o que diz ao solver *«deriva da forma»*.
+#[test]
+fn locking_the_rotation_writes_a_zero_inertia_column() {
+    let travada = cooked(|g, n| {
+        g.set_param(n, param::COLLIDE, 1.0);
+        g.set_param(n, param::LOCK_ROTATION, 1.0);
+    });
+    assert_eq!(escalar(&travada, INV_INERTIA_COLUMN), Some(vec![0.0]));
+    let solta = cooked(|g, n| g.set_param(n, param::COLLIDE, 1.0));
+    assert!(
+        solta.get(INV_INERTIA_COLUMN).is_none(),
+        "destravada, a coluna nao existe"
+    );
+}
+
 /// ⚠️ **Os params de colisão NÃO entram na chave de conteúdo** — senão cada clique na caixa
 /// re-internaria a geometria, e duas formas iguais com colisores diferentes deixariam de partilhar
 /// o `VecPath`.
@@ -149,7 +168,8 @@ fn a_centred_outline_writes_no_offset_and_a_negative_width_reads_as_zero() {
 fn the_collision_params_stay_out_of_the_content_key() {
     let base = |n: &str| MANIFEST.param_default(n).unwrap_or(0.0);
     let aceso = |n: &str| match n {
-        param::COLLIDE | param::COLLIDER_SHAPE => 1.0,
+        param::COLLIDE | param::COLLIDER_SHAPE | param::LOCK_ROTATION => 1.0,
+        param::SHOW_COLLIDER => 0.0,
         param::COLLIDER_WIDTH | param::COLLIDER_HEIGHT | param::COLLIDER_RADIUS => 1.7,
         _ => base(n),
     };

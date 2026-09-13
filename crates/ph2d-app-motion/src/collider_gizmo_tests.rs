@@ -23,6 +23,23 @@ fn alca(hs: &[Handle], x: i8, y: i8) -> Handle {
         .unwrap_or_else(|| panic!("sem a alca ({x}, {y})"))
 }
 
+/// Um retrato de uma forma só, com as peças dadas e as alças na primeira.
+fn retrato(pecas: Vec<Peca>) -> ColliderGizmoView {
+    let ativa = (!pecas.is_empty()).then_some((0, 0));
+    ColliderGizmoView {
+        grupos: vec![Grupo {
+            node: NodeId(1),
+            circulo: false,
+            fit: ColliderFit {
+                center: [0.0, 0.0],
+                half: [1.0, 1.0],
+            },
+            pecas,
+        }],
+        ativa,
+    }
+}
+
 /// ⭐ **As alças de uma caixa estão nos cantos e nos lados DELA, giradas com a peça.**
 #[test]
 fn the_box_handles_sit_on_its_corners_and_edges_turned_with_the_piece() {
@@ -140,18 +157,6 @@ fn dragging_the_rim_resizes_the_circle() {
 #[test]
 fn the_gizmo_paints_every_outline_and_the_handles_of_one_piece() {
     use ph2d_vector::VectorScene;
-    let v = ColliderGizmoView {
-        node: NodeId(1),
-        circulo: false,
-        fit: ColliderFit {
-            center: [0.0, 0.0],
-            half: [1.0, 1.0],
-        },
-        pecas: vec![
-            caixa_em([0.0, 0.0], [0.5, 0.5], SEM_GIRO),
-            caixa_em([2.0, 0.0], [0.5, 0.5], SEM_GIRO),
-        ],
-    };
     let segmentos = |v: &ColliderGizmoView| {
         let mut cena = VectorScene::new();
         crate::collider_gizmo_overlay::draw(
@@ -166,18 +171,26 @@ fn the_gizmo_paints_every_outline_and_the_handles_of_one_piece() {
         );
         cena.inner().encoding().n_path_segments
     };
-    let vazia = ColliderGizmoView {
-        pecas: Vec::new(),
-        ..v.clone()
-    };
-    let uma = ColliderGizmoView {
-        pecas: vec![v.pecas[0]],
-        ..v.clone()
-    };
-    assert_eq!(segmentos(&vazia), 0, "sem pecas nao ha tinta");
-    let (s1, s2) = (segmentos(&uma), segmentos(&v));
+    let uma = retrato(vec![caixa_em([0.0, 0.0], [0.5, 0.5], SEM_GIRO)]);
+    let duas = retrato(vec![
+        caixa_em([0.0, 0.0], [0.5, 0.5], SEM_GIRO),
+        caixa_em([2.0, 0.0], [0.5, 0.5], SEM_GIRO),
+    ]);
+    assert_eq!(segmentos(&retrato(Vec::new())), 0, "sem pecas nao ha tinta");
+    let (s1, s2) = (segmentos(&uma), segmentos(&duas));
     assert!(s1 > 0, "a peca com alcas pinta");
     assert!(s2 > s1, "a segunda peca tem contorno: {s1} contra {s2}");
+    // ⭐ E o contorno de uma peça SEM alças pesa o mesmo que o da que as tem — o traço forte é de
+    // todas (report do dono: *«na frente da shape»*). As alças são o que distingue uma.
+    let so_contornos = ColliderGizmoView {
+        ativa: None,
+        ..duas.clone()
+    };
+    let sem_alcas = segmentos(&so_contornos);
+    assert!(
+        sem_alcas > 0 && sem_alcas < s2,
+        "sem alcas pinta so' os contornos: {sem_alcas} contra {s2}"
+    );
 }
 
 /// **A SONDA DO CUSTO DA TINTA** — de onde sai o [`MAX_CONTORNOS`]: quanto custa codificar `n`
@@ -197,12 +210,7 @@ fn measure_the_outline_paint_cost() {
                 )
             })
             .collect();
-        let v = ColliderGizmoView {
-            node: NodeId(1),
-            circulo: false,
-            fit: ColliderFit::default(),
-            pecas,
-        };
+        let v = retrato(pecas);
         let mut tempos: Vec<f64> = (0..15)
             .map(|_| {
                 let mut cena = VectorScene::new();
@@ -231,10 +239,16 @@ fn measure_the_outline_paint_cost() {
 #[cfg(feature = "panel-motion-graph")]
 mod na_cena {
     use super::*;
+    use ph2d_node_motion_shape::param::{COLLIDE, SHOW_COLLIDER};
 
-    /// A `=114` montada pelo roteador, a forma pedida seleccionada, as tomadas armadas pela porta
-    /// do gizmo, as formas publicadas e UM quadro marchado na CPU.
-    fn cena(seleccionar_a_direita: bool) -> (MotionState, NodeId) {
+    /// A `=114` montada pelo roteador, `mexe` a ajustar os cartões, a forma pedida seleccionada, as
+    /// tomadas armadas pela porta do gizmo, as formas publicadas e UM quadro marchado na CPU.
+    ///
+    /// Devolve o estado e as duas formas (esquerda, direita).
+    fn cena(
+        seleccionar_a_direita: bool,
+        mexe: impl FnOnce(&mut MotionState, NodeId, NodeId),
+    ) -> (MotionState, NodeId, NodeId) {
         let mut m = MotionState::new();
         let sinks = crate::motion_demo_legend::monta("114", &mut m.doc, &m.registry).0;
         m.sinks = sinks;
@@ -246,9 +260,16 @@ mod na_cena {
             .filter(|n| n.type_name == "source.shape")
             .map(|n| n.id)
             .collect();
-        let colide = |id: &NodeId| param_value(&m, *id, param::COLLIDE) >= 0.5;
-        let direita = *formas.iter().find(|id| colide(id)).expect("a da direita");
-        let esquerda = *formas.iter().find(|id| !colide(id)).expect("a da esquerda");
+        let colide = |m: &MotionState, id: &NodeId| param_value(m, *id, COLLIDE) >= 0.5;
+        let direita = *formas
+            .iter()
+            .find(|id| colide(&m, id))
+            .expect("a da direita");
+        let esquerda = *formas
+            .iter()
+            .find(|id| !colide(&m, id))
+            .expect("a da esquerda");
+        mexe(&mut m, esquerda, direita);
         let alvo = if seleccionar_a_direita {
             direita
         } else {
@@ -260,23 +281,28 @@ mod na_cena {
         m.pump.clear_tap_fires();
         crate::motion_shape_gen::publish(&mut m, 0.0);
         crate::warp_gizmo_fixtures::marcha_na_cpu(&mut m);
-        (m, direita)
+        (m, esquerda, direita)
     }
 
     /// ⭐⭐⭐ **O gizmo acha AS 25 peças que a forma seleccionada carimbou**, cada uma com a caixa
-    /// dela, e a primeira é a mais próxima do cursor. Os CONTROLOS: fora da tool Motion, e com a
-    /// forma de `Collide` desligado seleccionada, não há gizmo.
+    /// dela, e as alças vão para a mais próxima do cursor. Os CONTROLOS: fora da tool Motion, e com
+    /// a forma de `Collide` desligado seleccionada, não há gizmo.
     #[test]
     fn the_gizmo_finds_every_piece_the_selected_shape_stamped() {
         let _t = crate::warp_gizmo_fixtures::trava();
-        let (m, direita) = cena(true);
+        let (m, _, direita) = cena(true, |_, _, _| {});
         assert_eq!(taps_for(&m).len(), 2, "a forma e o sink");
         let cursor = [2.3, -0.6];
         let v = resolve(&m, true, Some(cursor)).expect("o gizmo existe");
-        assert_eq!(v.node, direita);
-        assert!(!v.circulo, "Box e' o default");
-        assert_eq!(v.pecas.len(), 25, "as 25 pecas da taca da direita");
-        for q in &v.pecas {
+        assert_eq!(v.grupos.len(), 1, "so' a direita mostra colisor");
+        assert_eq!(v.grupos[0].node, direita);
+        assert!(!v.grupos[0].circulo, "Box e' o default");
+        assert_eq!(
+            v.grupos[0].pecas.len(),
+            25,
+            "as 25 pecas da taca da direita"
+        );
+        for q in &v.grupos[0].pecas {
             match q.colisor.forma {
                 Forma::Caixa { meia, .. } => {
                     assert!(perto(meia, [0.11, 0.11]), "a caixa do quadrado: {meia:?}");
@@ -284,9 +310,10 @@ mod na_cena {
                 Forma::Disco(_) => panic!("Box declara caixas"),
             }
         }
+        let (_, ativa) = v.peca_ativa().expect("a peca com alcas");
         let d = |q: &Peca| (q.p[0] - cursor[0]).hypot(q.p[1] - cursor[1]);
         assert!(
-            v.pecas.iter().all(|q| d(&v.pecas[0]) <= d(q)),
+            v.grupos[0].pecas.iter().all(|q| d(ativa) <= d(q)),
             "as alcas vao para a peca mais proxima do cursor"
         );
         assert!(
@@ -294,10 +321,60 @@ mod na_cena {
             "fora da tool Motion"
         );
 
-        let (sem, _) = cena(false);
+        // ⚠️ Com a ESQUERDA (sem `Collide`) seleccionada o retrato ainda existe — ele é de TODA
+        // forma que mostra o colisor (§5) —, mas ela não entra nele e ninguém recebe alças.
+        let (sem, esquerda, direita) = cena(false, |_, _, _| {});
+        let v = resolve(&sem, true, Some(cursor)).expect("a direita continua a mostrar");
+        assert_eq!(
+            v.grupos.iter().map(|g| g.node).collect::<Vec<_>>(),
+            vec![direita],
+            "a forma sem `Collide` nao entra no gizmo"
+        );
         assert!(
-            resolve(&sem, true, Some(cursor)).is_none(),
-            "a forma sem Collide nao tem gizmo"
+            v.peca_ativa().is_none(),
+            "e uma seleccionada sem colisor nao tem alcas"
+        );
+        let _ = esquerda;
+    }
+
+    /// ⭐⭐⭐ **O contorno é de TODAS as formas que o mostram, e as ALÇAS só da seleccionada**
+    /// (report do dono, 2026-09-13: *«visível em todas as formas»*).
+    ///
+    /// ⚠️ E o **botão** manda: `Show Collider` desligado na forma seleccionada tira-lhe o contorno
+    /// **e** as alças, mesmo com o `Collide` ligado — senão o botão seria decoração.
+    #[test]
+    fn every_shape_that_shows_its_collider_is_drawn_and_only_the_selected_one_has_handles() {
+        let _t = crate::warp_gizmo_fixtures::trava();
+        // As DUAS metades a colidir: a esquerda ganha `Collide`, como se o dono a tivesse ligado.
+        let (m, esquerda, direita) = cena(true, |m, esq, _| {
+            m.doc.graph.set_param(esq, COLLIDE, 1.0);
+        });
+        let v = resolve(&m, true, Some([2.0, -1.0])).expect("o gizmo existe");
+        let nos: Vec<NodeId> = v.grupos.iter().map(|g| g.node).collect();
+        assert!(
+            nos.contains(&esquerda) && nos.contains(&direita),
+            "as duas formas pintam o colisor: {nos:?}"
+        );
+        for g in &v.grupos {
+            assert_eq!(g.pecas.len(), 25, "cada metade traz as 25 pecas");
+        }
+        let (grupo, _) = v.peca_ativa().expect("ha' alcas");
+        assert_eq!(grupo.node, direita, "as alcas sao da forma SELECCIONADA");
+
+        // O botão desligado na seleccionada: sem contorno e sem alças; a outra continua.
+        let (m, esquerda, _) = cena(true, |m, esq, dir| {
+            m.doc.graph.set_param(esq, COLLIDE, 1.0);
+            m.doc.graph.set_param(dir, SHOW_COLLIDER, 0.0);
+        });
+        let v = resolve(&m, true, Some([2.0, -1.0])).expect("a esquerda continua");
+        assert_eq!(
+            v.grupos.iter().map(|g| g.node).collect::<Vec<_>>(),
+            vec![esquerda],
+            "o `Show Collider` desligado tira a forma do gizmo"
+        );
+        assert!(
+            v.peca_ativa().is_none(),
+            "e sem a seleccionada no retrato nao ha' alcas"
         );
     }
 
@@ -305,9 +382,10 @@ mod na_cena {
     #[test]
     fn a_handle_drag_writes_the_card_param_and_is_one_undo_step() {
         let _t = crate::warp_gizmo_fixtures::trava();
-        let (mut m, direita) = cena(true);
+        let (mut m, _, direita) = cena(true, |_, _, _| {});
         let v = resolve(&m, true, None).expect("o gizmo existe");
-        let lado = alca(&handles(&v.pecas[0]), 1, 0);
+        let (_, ativa) = v.peca_ativa().expect("a peca com alcas");
+        let lado = alca(&handles(ativa), 1, 0);
         publish(Some(v));
         assert!(
             pointer_down(&mut m, lado.world, 1e-3),

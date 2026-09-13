@@ -180,29 +180,35 @@ pub(super) fn pilha() {
   1. Carregue em PLAY. Sem isto nada cai.
   2. Olhe as duas tacas. A` ESQUERDA os 25 quadrados juntam-se no fundo e viram um
      BORRAO -- atravessam-se uns aos outros. A` DIREITA os mesmos 25 empilham-se
-     ENCOSTADOS, lado com lado, sem ar entre eles, e da' para os CONTAR.
+     ENCOSTADOS, sem ar entre eles, e TOMBAM uns sobre os outros como caixas a serio.
   3. No grafo, clique no cartao `Shape (Collide)` (e' a linha de BAIXO). Abra a seccao
      `Collision`: a caixa `Collide` esta' LIGADA. Desligue-a -- a pilha da direita volta
      a ser um borrao. Ligue-a outra vez.
      (i) Repare: nao ha' cartao `Collide` nenhum na linha da simulacao. O colisor e' da
          FORMA, e a simulacao respeita-o sozinha.
-  4. Com o cartao `Shape (Collide)` seleccionado, cada quadrado da direita ganha um
-     CONTORNO azul: e' o colisor dele, no sitio onde a simulacao o usa. O quadrado mais
-     perto do rato tem ALCAS -- quadradinhos nos cantos, losangos nos lados. Arraste um
-     LOSANGO para fora: o colisor alarga desse lado, TODOS os quadrados mudam juntos e
-     a pilha abre espaco. Um quadradinho de canto muda largura e altura ao mesmo tempo.
-     Carregue Ctrl+Z: o arrasto inteiro desfaz-se de uma vez.
-  5. No cartao, arraste `Collider Width`: e' o mesmo numero que o losango do lado
+  4. Cada quadrado da direita tem um CONTORNO azul POR CIMA dele: e' o colisor, no sitio
+     onde a simulacao o usa. Ele aparece em TODA forma com `Show Collider` ligado --
+     esteja o cartao seleccionado ou nao. Desligue `Show Collider`: os contornos somem e
+     a pilha continua a colidir. Ligue outra vez.
+  5. Com o cartao `Shape (Collide)` seleccionado, o quadrado mais perto do rato ganha
+     ALCAS -- quadradinhos nos cantos, losangos nos lados. Arraste um LOSANGO para fora:
+     o colisor alarga desse lado, TODOS os quadrados mudam juntos e a pilha abre espaco.
+     Um quadradinho de canto muda largura e altura ao mesmo tempo. Carregue Ctrl+Z: o
+     arrasto inteiro desfaz-se de uma vez.
+  6. No cartao, arraste `Collider Width`: e' o mesmo numero que o losango do lado
      mexeu. `Collider Height` faz o mesmo na altura. Com os dois em 1 o colisor e' o
      proprio quadrado.
-  6. Troque `Collider Shape` de `Box` para `Circle`: os contornos viram CIRCULOS, os
+  7. Ligue `Lock Rotation`: as pecas param de tombar e passam a so' deslizar, empilhadas
+     direitas. Desligue outra vez e elas voltam a virar de lado ao cair.
+  8. Troque `Collider Shape` de `Box` para `Circle`: os contornos viram CIRCULOS, os
      quadrados passam a rolar uns sobre os outros como moedas, e a linha
      `Collider Radius` aparece no lugar das duas de cima. Volte a `Box`.
 
   DEU ERRADO se: a pilha da direita for um borrao com `Collide` ligado; se os quadrados
-  da direita ficarem com AR entre eles com `Box`; se os contornos nao aparecerem com o
-  cartao seleccionado; se arrastar uma alca nao mudar o numero no cartao; se desligar a
-  caixa nao mudar nada; ou se aparecer um cartao `Collide` na linha da simulacao."
+  da direita ficarem com AR entre eles com `Box`; se os contornos ficarem POR BAIXO dos
+  quadrados, ou nao aparecerem com `Show Collider` ligado; se arrastar uma alca nao mudar
+  o numero no cartao; se as pecas nunca tombarem com `Lock Rotation` desligado; ou se
+  aparecer um cartao `Collide` na linha da simulacao."
     );
 }
 

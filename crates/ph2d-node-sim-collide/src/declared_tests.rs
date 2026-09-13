@@ -1,7 +1,9 @@
 //! Os gates da peça que declarou uma FORMA (doc 109 §5) — pela porta do nó, o [`super::collide`].
 
 use super::{RADIUS_AUTO, RADIUS_FIXED, SHAPE_BOWL, SHAPE_BOX, SHAPE_DISC, SHAPE_PLANE, collide};
-use ph2d_nodegraph::attr::{COLLIDER_BOX_COLUMN, COLLIDER_OFFSET_COLUMN, Column, Stream};
+use ph2d_nodegraph::attr::{
+    COLLIDER_BOX_COLUMN, COLLIDER_OFFSET_COLUMN, Column, INV_INERTIA_COLUMN, Stream,
+};
 
 /// Uma peça em `p`, parada, com a caixa de meias `meia` e (opcional) giro e centro deslocado.
 fn caixa(p: [f32; 2], meia: [f32; 2], graus: f32, desvio: Option<[f32; 2]>) -> Stream {
@@ -120,6 +122,67 @@ fn a_declared_box_rests_on_a_disc_and_on_a_box_by_its_face() {
         RADIUS_AUTO,
     );
     assert!((na_caixa[1] - 0.75).abs() < 1e-5, "{na_caixa:?}");
+}
+
+/// ⭐⭐⭐ **Uma caixa INCLINADA roda no chão; de chapa, não** (doc 109 §6 — *«precisa destravar a
+/// rot»*). O ponto do contacto é o do SUPORTE: numa caixa deitada ele é o meio da face (binário
+/// zero) e numa inclinada é a quina (binário que a deita).
+///
+/// ⚠️ **E o `Lock Rotation` (a coluna a zero) trava-a**: nem roda, nem a coluna `rot` nasce.
+#[test]
+fn a_tilted_box_turns_on_the_floor_and_flat_or_locked_does_not() {
+    let passo_de = |graus: f32, travada: bool| -> (Option<f32>, f32) {
+        let mut s = caixa([0.0, -2.1], [0.5, 0.25], graus, None);
+        if travada {
+            s = s.with(INV_INERTIA_COLUMN, Column::Scalar(vec![0.0]));
+        }
+        let out = collide(
+            &s,
+            SHAPE_PLANE,
+            -2.0,
+            [0.0, 0.0],
+            2.0,
+            0.0,
+            0.0,
+            (RADIUS_AUTO, 0.25, 1.0),
+            PLANO,
+            (0.0, 0),
+            [0.0, 0.0],
+        );
+        let y = match out.get("P") {
+            Some(Column::Vec2(v)) => v[0][1],
+            _ => panic!("sem P"),
+        };
+        let rot = match out.get("rot") {
+            Some(Column::Scalar(v)) => Some(v[0]),
+            _ => None,
+        };
+        (rot, y)
+    };
+    let angulo = |graus: f32, travada: bool| passo_de(graus, travada).0;
+    let inclinada = angulo(20.0, false).expect("o angulo sai no stream");
+    assert!(
+        (inclinada - 20.0).abs() > 0.05,
+        "a quina da' binario: {inclinada}"
+    );
+    // ⚠️ O ângulo é comparado com o de ENTRADA, e não com a ausência da coluna: ela vem no stream
+    // (é o giro autorado da peça) e o nó copia-a — o que este gate mede é se ela MUDOU.
+    assert_eq!(
+        angulo(0.0, false),
+        Some(0.0),
+        "de chapa o binario e' zero: a peca nao roda"
+    );
+    assert_eq!(angulo(20.0, true), Some(20.0), "travada nao roda");
+
+    // ⭐⭐⭐ **A correcção REPARTE-SE entre empurrar e rodar** (doc 109 §6): com a rotação livre a
+    // caixa sobe MENOS do que travada, porque parte do empurrão virou giro. ⚠️ É este gate que
+    // apanha a massa efectiva apagada (`k = 1`): sem ela as duas subiriam exactamente o mesmo, e o
+    // resto do teste continuaria verde — medido, essa mutação SOBREVIVEU a tudo o resto.
+    let (livre, travada) = (passo_de(20.0, false).1, passo_de(20.0, true).1);
+    assert!(
+        travada > livre + 1e-4,
+        "travada sobe {travada}, livre sobe {livre} — o empurrao tem de repartir-se"
+    );
 }
 
 /// ⭐⭐ **Na taça a caixa cabe INTEIRA** — os quatro cantos dentro do círculo, depois das varreduras.

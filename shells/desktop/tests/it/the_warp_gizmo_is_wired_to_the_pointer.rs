@@ -30,8 +30,8 @@ fn the_view_is_published_once_per_frame_gated_by_the_motion_tool() {
     // (`ph2d_app_motion::warp_gizmo::…`) e o `cargo fmt` partiu-a em quatro linhas. Uma agulha
     // que casa uma linha inteira mede a FORMATAÇÃO junto com a lei; achatar mede só a lei.
     // ⚠️ O QUADRO emendado (`frame_text::render_frame`), e não o `render_loop/mod.rs` (OBRA 2 da `line/render-loop`,
-    // 2026-09-13): a publicação ainda mora no `mod.rs`, mas o desenho mudou-se para a `fase_selection_highlight` e a
-    // publicação é a próxima a sair — os dois testes deste par leem a mesma lente.
+    // 2026-09-13): a publicação ainda mora no `mod.rs`, e o desenho mudou-se para a `fase_vector_overlays`
+    // (doc 109 §6 — ele tem de vir DEPOIS da arte) — os dois testes deste par leem a mesma lente.
     let s = crate::frame_text::render_frame()
         .replace('\n', " ")
         .split_whitespace()
@@ -47,7 +47,7 @@ fn the_view_is_published_once_per_frame_gated_by_the_motion_tool() {
 /// **E ELE É DESENHADO.**
 #[test]
 fn the_published_view_is_actually_drawn() {
-    // ⚠️ O QUADRO emendado: o desenho do retrato mudou-se para a `fase_selection_highlight` (P5k).
+    // ⚠️ O QUADRO emendado: o desenho do retrato vive na `fase_vector_overlays`, logo a seguir à arte.
     let s = crate::frame_text::render_frame();
     assert!(
         s.contains("warp_overlay::draw_warp_gizmo("),
@@ -112,6 +112,37 @@ fn the_collider_gizmo_is_wired_like_the_warp() {
         s[at.saturating_sub(400)..at].contains("&& on_canvas"),
         "o `down` do colisor tem de exigir `on_canvas`"
     );
+}
+
+/// ⭐⭐⭐ **O CONTORNO DO COLISOR É PINTADO DEPOIS DA ARTE DAS FORMAS** — o *z-index* que o dono
+/// pediu (2026-09-13: *«o collider deve aparecer na frente da shape»*), lido na ORDEM do quadro.
+///
+/// ⚠️ **A régua é o quadro emendado, não a ordem dos ficheiros** — e foi ela que apanhou o defeito:
+/// com o desenho na `fase_selection_highlight`, o gizmo era pintado em `484 970` e a arte em
+/// `623 773`, ou seja **por baixo** dela. Hoje as duas chamadas vivem na `fase_vector_overlays`, a
+/// tinta do gizmo logo a seguir à da arte; inverter isso é o defeito que este gate apanha, e nenhum
+/// gate de geometria o vê.
+#[test]
+fn the_collider_outline_is_painted_after_the_shape_art() {
+    let s = crate::frame_text::render_frame();
+    let arte = s
+        .find("motion_shape_gen::encode(")
+        .expect("a arte das formas é codificada no quadro");
+    // ⚠️ **O gizmo de WARP entra no mesmo gate**: ele tinha o MESMO defeito (report de 2026-09-08,
+    // *«está sendo desenhado por trás das shapes»*), curado então com casing sobre uma nota —
+    // *«o gizmo ESTÁ por cima»* — que esta régua mediu como falsa.
+    for (nome, agulha) in [
+        ("o contorno do colisor", "collider_gizmo_overlay::draw("),
+        ("o gizmo de warp", "warp_overlay::draw_warp_gizmo("),
+    ] {
+        let gizmo = s
+            .find(agulha)
+            .unwrap_or_else(|| panic!("{nome} é desenhado no quadro"));
+        assert!(
+            arte < gizmo,
+            "{nome} tem de ser pintado DEPOIS da arte (arte em {arte}, gizmo em {gizmo})"
+        );
+    }
 }
 
 /// **O `down` do warp vem ANTES do do field e do genérico.**

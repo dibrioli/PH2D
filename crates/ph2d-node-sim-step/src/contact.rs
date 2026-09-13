@@ -12,6 +12,13 @@
 //! `rot` dela (doc 109 §5) —, lido pela porta `ph2d_contact::colisores`; e o peso é o `inv_mass`,
 //! para um pino ser obstáculo.
 //!
+//! ## E a ROTAÇÃO (doc 109 §6)
+//!
+//! Report do dono: *«precisa destravar a rot»*. A correcção reparte-se entre mover e rodar pela
+//! massa efectiva no PONTO do contacto, e o quanto cada peça rodou volta daqui em GRAUS para o
+//! [`super::step`] somar à coluna `rot`. Quem trava é a coluna `inv_inertia` a `0` — o botão
+//! `Lock Rotation` do cartão da forma.
+//!
 //! ## A velocidade: só se CANCELA a aproximação
 //!
 //! ⚠️ **Sem isto a pilha RESPIRA:** a velocidade continuaria a empurrar a peça para dentro da
@@ -23,6 +30,9 @@
 //! Duas peças que NASCEM sobrepostas separam-se em posição e **não** ganham velocidade — somar
 //! `Δp / dt` inteiro faria delas uma explosão. É a regra do `sim.collide`: *só se responde a quem se
 //! move PARA DENTRO*.
+//!
+//! ⛔ **A rotação não tem velocidade angular** — ela é projecção de posição, como o afastamento. Uma
+//! peça roda enquanto toca e não continua a girar no ar (doc 109 §6, nomeado).
 
 use ph2d_nodegraph::attr::Stream;
 
@@ -32,23 +42,26 @@ use ph2d_nodegraph::attr::Stream;
 /// mais nenhum knob.
 pub(crate) const VARREDURAS: usize = 8;
 
-/// Separa as peças com colisor e cancela a aproximação delas. `dt(i)` é o passo daquela peça.
+/// Separa as peças com colisor, cancela a aproximação delas e devolve **quanto cada uma rodou**, em
+/// graus (vazio quando ninguém declara colisor). `dt(i)` é o passo daquela peça.
 pub(crate) fn resolve(
     state: &Stream,
     p: &mut [[f32; 2]],
     vel: &mut [[f32; 2]],
     pesos: &[f32],
     dt: impl Fn(usize) -> f32,
-) {
+) -> Vec<f32> {
     let n = p.len();
     let Some(colisores) = ph2d_contact::colisores(state) else {
-        return;
+        return Vec::new();
     };
     if colisores.len() != n {
-        return;
+        return Vec::new();
     }
+    let inv_inercia = ph2d_contact::inv_inercias(state, &colisores, pesos);
+    let mut giro = vec![0.0_f32; n];
     let antes = p.to_vec();
-    ph2d_contact::separate(p, &colisores, pesos, VARREDURAS);
+    ph2d_contact::separate(p, &mut giro, &colisores, pesos, &inv_inercia, VARREDURAS);
     for i in 0..n {
         let d = [p[i][0] - antes[i][0], p[i][1] - antes[i][1]];
         let len = d[0].hypot(d[1]);
@@ -67,6 +80,7 @@ pub(crate) fn resolve(
             vel[i] = v;
         }
     }
+    giro
 }
 
 #[cfg(test)]

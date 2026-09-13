@@ -11,7 +11,9 @@
 //! fazia com que acrescentar um param exigisse duas viagens ao `lib.rs`.
 
 use super::{KIND_LABELS, ShapeKind, param};
-use ph2d_node_registry::{ParamGate, ParamGateAbove, ParamGroup, ParamUiHint, ParamWidget};
+use ph2d_node_registry::{
+    ParamGate, ParamGateAbove, ParamGroup, ParamUiHint, ParamUnit, ParamUnitDecl, ParamWidget,
+};
 
 /// The param rows: a real dropdown for the shape family (the segmented `Enum`
 /// widget the Vector panel uses for Cap/Join), then the geometry sliders. Every
@@ -311,7 +313,44 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
         step: 0.01,
         widget: ParamWidget::Slider,
     },
+    // ⭐⭐ **VER o colisor** (report do dono, 2026-09-13: *«coloque um botão no nó shape: Ver
+    // collider»*) — o contorno de cada peça desta forma, por cima da arte.
+    ParamUiHint {
+        param: param::SHOW_COLLIDER,
+        label: "Show Collider",
+        min: 0.0,
+        max: 1.0,
+        step: 1.0,
+        widget: ParamWidget::Toggle,
+    },
+    // ⭐⭐ **TRAVAR a rotação** (doc 109 §6 — *«precisa destravar a rot. e colocar outro botão para
+    // travar rotação»*): desligado elas tombam, ligado só deslizam.
+    ParamUiHint {
+        param: param::LOCK_ROTATION,
+        label: "Lock Rotation",
+        min: 0.0,
+        max: 1.0,
+        step: 1.0,
+        widget: ParamWidget::Toggle,
+    },
 ];
+
+/// **What each of this node's numbers IS** (doc 88, Wave A) — never how it is
+/// shown. A `Length` is stored in world METRES and the panel resolves the face
+/// the artist reads (`px` or `m`) from `ProjectSettings::display_unit`; a node
+/// that could pin one would be overriding a setting it does not own.
+///
+/// Only params whose value is a world COORDINATE or a world DISTANCE are declared
+/// here. A weight, a fraction, a rate and a count are left bare on purpose: a unit
+/// that is wrong is worse than a unit that is missing, because the artist can read
+/// a bare number but a mislabelled one teaches them something false.
+///
+/// ⚠️ Irmã das hints pelo tecto de LOC do `lib.rs` e por ASSUNTO: as duas dizem como um número
+/// se LÊ, e nenhuma delas é o `NodeOp`.
+pub(crate) static PARAM_UNITS: &[ParamUnitDecl] = &[ParamUnitDecl {
+    param: param::SIZE,
+    unit: ParamUnit::Length,
+}];
 
 /// **A secção «Collision»** — os do colisor juntos, depois de tudo o que desenha a forma (os params
 /// sem grupo vêm antes de toda secção, que é onde os essenciais moram).
@@ -321,6 +360,8 @@ pub(crate) static PARAM_GROUPS: &[ParamGroup] = &[
     ParamGroup::new(param::COLLIDER_WIDTH, "Collision"),
     ParamGroup::new(param::COLLIDER_HEIGHT, "Collision"),
     ParamGroup::new(param::COLLIDER_RADIUS, "Collision"),
+    ParamGroup::new(param::SHOW_COLLIDER, "Collision"),
+    ParamGroup::new(param::LOCK_ROTATION, "Collision"),
 ];
 
 /// **Per-kind visibility** — a param appears only when `kind` is one of the listed
@@ -610,6 +651,16 @@ pub(crate) static PARAM_GATES_ABOVE: &[ParamGateAbove] = &[
     },
     ParamGateAbove {
         param: param::COLLIDER_RADIUS,
+        when: param::COLLIDE,
+        above: 0.0,
+    },
+    ParamGateAbove {
+        param: param::SHOW_COLLIDER,
+        when: param::COLLIDE,
+        above: 0.0,
+    },
+    ParamGateAbove {
+        param: param::LOCK_ROTATION,
         when: param::COLLIDE,
         above: 0.0,
     },

@@ -58,6 +58,38 @@ impl crate::App {
             // memoizada e são pequenos.
             self.motion_shell.leaf_images.end_frame();
         }
+        // ⭐⭐⭐ **OS GIZMOS DE NÓ, LOGO A SEGUIR À ARTE QUE ELES MANIPULAM** (doc 109 §6 — report do
+        // dono, 2026-09-13: *«o collider deve aparecer na frente da shape (z-index maior)»*).
+        //
+        // ⚠️ **O sítio É a resposta**: no Vello quem pinta depois fica por cima, e estas duas linhas
+        // moravam na `fase_selection_highlight`, que corre ANTES desta — o gizmo ficava ATRÁS dos
+        // quadrados que ele manipula. Medido no quadro emendado (`arte em 623773, gizmo em 484970`),
+        // e é o mesmo defeito que o report de 08/09 do gizmo de warp já tinha dado.
+        if let Some(v) = ph2d_app_motion::warp_gizmo::view() {
+            let port = ph2d_app_motion::warp_gizmo::param_port(motion, v.node);
+            ph2d_app_motion::warp_overlay::draw_warp_gizmo(
+                true,
+                &v,
+                &port,
+                camera,
+                hero.view.center_split,
+                surface.size(),
+                vector_scene,
+            );
+        } else {
+            // ⚠️ O outro lado da sonda: sem esta linha, um `PH2D_WARP_DIAG=1` que não imprime nada
+            // lê-se como *«a sonda não está a correr»*.
+            ph2d_app_motion::warp_overlay::diag("nao ha' retrato publicado (`view()` = None)");
+        }
+        if let Some(v) = ph2d_app_motion::collider_gizmo::view() {
+            ph2d_app_motion::collider_gizmo_overlay::draw(
+                &v,
+                camera,
+                hero.view.center_split,
+                surface.size(),
+                vector_scene,
+            );
+        }
         // O **overlay** do Blend Object (ADR-0128): os passos virtuais + as fontes de cima
         // reempilhadas, na ordem de z (a última fonte por cima do último passo). Desenha depois
         // do `dispatch` (que já pôs as fontes no z da cena, embaixo); o overlay reestabelece a

@@ -1,9 +1,20 @@
-//! **O DESENHO do gizmo do colisor da forma** (doc 109 §5) — os contornos em todas as peças e as
-//! alças numa.
+//! **O DESENHO do gizmo do colisor da forma** (doc 109 §5) — o contorno em cada peça de cada forma
+//! que o mostra, e as alças numa.
 //!
 //! A geometria vive em [`super::collider_gizmo`]; aqui mora só tinta, com o vocabulário do gizmo de
 //! warp — as MESMAS constantes, porque *um manipulador que o artista já aprendeu não reaprende a cor
 //! nem o tamanho da alça*: cor, casing escuro, quadrado para canto e losango para lado.
+//!
+//! ⭐⭐ **À FRENTE da arte, e com o traço FORTE** (report do dono, 2026-09-13: *«o collider deve
+//! aparecer na frente da shape (z-index maior)»*) — e eram **duas** coisas:
+//!
+//! - **a ORDEM**: esta tinta é chamada na `fase_vector_overlays`, logo a seguir à codificação das
+//!   formas do Motion e na MESMA cena. Chamada de onde estava (a `fase_selection_highlight`, que
+//!   corre ANTES), o contorno ficava por BAIXO dos quadrados — medido, e o gate
+//!   `the_collider_outline_is_painted_after_the_shape_art` prende-o;
+//! - **o PESO**: a 1.ª redacção pintava as peças sem alças com o traço fino e apagado dos braços do
+//!   warp. Hoje todo contorno leva o traço forte com casing, e o que distingue a peça com alças é
+//!   ter alças.
 //!
 //! ## ⚠️ Tudo em pixels de TELA
 //!
@@ -12,7 +23,7 @@
 
 use super::collider_gizmo::{ColliderGizmoView, Peca, handles};
 use super::warp_overlay::{
-    ARM_PX, CASE_PX, CASE_RGBA, CORNER_PX, HANDLE_RGBA, OUTLINE_PX, TANGENT_PX, TANGENT_RGBA,
+    CASE_PX, CASE_RGBA, CORNER_PX, HANDLE_RGBA, OUTLINE_PX, TANGENT_PX, TANGENT_RGBA,
 };
 use ph2d_contact::Forma;
 use ph2d_host::WindowSize;
@@ -30,9 +41,6 @@ pub fn draw(
     full_window: WindowSize,
     vector_scene: &mut VectorScene,
 ) {
-    let Some(ativa) = v.pecas.first() else {
-        return;
-    };
     // ⚠️ A janela da CENA, pela porta única — ver `warp_gizmo::scene_window`.
     let to_screen =
         camera.world_to_screen_affine(super::warp_gizmo::scene_window(center_split, full_window));
@@ -40,32 +48,38 @@ pub fn draw(
     let case = Brush::Solid(Color::new(CASE_RGBA));
     let dim = Brush::Solid(Color::new(TANGENT_RGBA));
     let brush = Brush::Solid(Color::new(HANDLE_RGBA));
-    let traca = |scene: &mut VectorScene, path: &BezPath, px: f64, cor: &Brush| {
-        scene.inner_mut().stroke(
-            &Stroke::new(px + CASE_PX * 2.0),
-            Affine::IDENTITY,
-            &case,
-            None,
-            path,
-        );
-        scene
-            .inner_mut()
-            .stroke(&Stroke::new(px), Affine::IDENTITY, cor, None, path);
+
+    // ── os CONTORNOS de todas as peças de todas as formas, num caminho só ──
+    let mut contornos = BezPath::new();
+    let mut houve = false;
+    for grupo in &v.grupos {
+        for peca in &grupo.pecas {
+            contorno(&mut contornos, peca, &pt);
+            houve = true;
+        }
+    }
+    if !houve {
+        return;
+    }
+    vector_scene.inner_mut().stroke(
+        &Stroke::new(OUTLINE_PX + CASE_PX * 2.0),
+        Affine::IDENTITY,
+        &case,
+        None,
+        &contornos,
+    );
+    vector_scene.inner_mut().stroke(
+        &Stroke::new(OUTLINE_PX),
+        Affine::IDENTITY,
+        &brush,
+        None,
+        &contornos,
+    );
+
+    // ── as ALÇAS, na peça da forma seleccionada ──
+    let Some((_, ativa)) = v.peca_ativa() else {
+        return;
     };
-
-    // ── as OUTRAS peças: o contorno, mais fino e apagado ──
-    let mut outras = BezPath::new();
-    for peca in &v.pecas[1..] {
-        contorno(&mut outras, peca, &pt);
-    }
-    if !v.pecas[1..].is_empty() {
-        traca(vector_scene, &outras, ARM_PX, &dim);
-    }
-
-    // ── a peça com as ALÇAS ──
-    let mut dela = BezPath::new();
-    contorno(&mut dela, ativa, &pt);
-    traca(vector_scene, &dela, OUTLINE_PX, &brush);
     for h in handles(ativa) {
         let c = pt(h.world);
         let mut marca = BezPath::new();

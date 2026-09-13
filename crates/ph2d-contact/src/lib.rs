@@ -9,27 +9,48 @@
 //!
 //! ## As peças têm FORMA — disco ou caixa (doc 109 §5)
 //!
-//! Report do dono no mesmo dia, com foto: *«collider impreciso, o collider não é gerado conforme a
-//! forma da Shape»*. Um quadrado declarado como o disco à volta dele deixava `41 %` de ar entre
-//! peças que o olho lê como caixas. Um [`Colisor`] é um [`Forma::Disco`] ou uma [`Forma::Caixa`]
-//! orientada, com o centro deslocado de `P` quando a arte não está centrada na origem da peça.
+//! Report do dono, com foto: *«collider impreciso, o collider não é gerado conforme a forma da
+//! Shape»*. Um quadrado declarado como o disco à volta dele deixava `41 %` de ar entre peças que o
+//! olho lê como caixas. Um [`Colisor`] é um [`Forma::Disco`] ou uma [`Forma::Caixa`] orientada, com
+//! o centro deslocado de `P` quando a arte não está centrada na origem da peça.
 //!
 //! - **disco × disco** — a lei de sempre, termo a termo.
 //! - **caixa × caixa** — o teorema do eixo separador: quatro eixos, e o de MENOR sobreposição dá a
-//!   normal e a profundidade. Nada mais — sem variedade de contacto, porque nada aqui roda.
+//!   normal e a profundidade.
 //! - **disco × caixa** — o ponto da caixa mais próximo do centro do disco; com o centro já DENTRO,
 //!   a face de menor penetração (a lei do `SHAPE_BOX` do `sim.collide`).
 //!
-//! ⚠️ **Nada aqui produz rotação.** Uma caixa pousada numa quina fica na quina: a resposta angular
-//! é um corpo rígido, e o que este solver projecta são POSIÇÕES (doc 109 §5, aberto).
+//! ## E as peças RODAM (doc 109 §6)
+//!
+//! Report do dono no dia seguinte: *«precisa destravar a rot. e colocar outro botão para travar
+//! rotação»*. Todo contacto sabe agora **ONDE** toca ([`Contacto::ponto`]), e a correcção reparte-se
+//! entre mover e RODAR, na forma canónica do PBD de corpo rígido:
+//!
+//! ```text
+//!   r = ponto − centro          (o braço)
+//!   c = r × n                   (a alavanca da normal naquele braço)
+//!   k = w + invI · c²           (a massa efectiva do contacto, por peça)
+//!   λ = penetração / (k_a + k_b)
+//!   Δp = n · λ · w              Δθ = c · λ · invI
+//! ```
+//!
+//! ⚠️ **`invI = 0` TRAVA a rotação e devolve a lei anterior**: `k = w`, `λ = pen / (w_a + w_b)` e
+//! `Δp = n · pen · w / (w_a + w_b)` — o que a versão sem rotação fazia, termo a termo.
+//!
+//! ⚠️⚠️ **O ponto de contacto de duas caixas é o MEIO do trecho que penetra**, e não o vértice mais
+//! fundo: uma caixa pousada de chapa sobre outra tem dois vértices à mesma profundidade, e escolher
+//! um deles daria binário a uma pilha parada — ela tombava sozinha, sem ninguém lhe tocar. O trecho
+//! sai do recorte da face incidente contra a de referência (Sutherland–Hodgman de dois pontos).
+//!
+//! ⛔ **O que isto NÃO é:** não há velocidade ANGULAR. A rotação é uma projecção de posição, como o
+//! afastamento — uma peça roda enquanto está em contacto e não continua a girar no ar. É o que
+//! separa isto de um corpo rígido a sério, e está nomeado no doc 109 §6.
 //!
 //! ## A lei do par é calculada na ordem do PAR
 //!
 //! Cada par resolve-se sempre do índice MENOR para o MAIOR, e o maior recebe a normal simétrica —
 //! os dois lados de um contacto são **exactamente** opostos, e dois centros coincidentes separam-se
-//! em sentidos contrários sem desempate nenhum a inventar. Para dois discos isto dá os mesmos bits
-//! da redacção que calculava de cada lado: `b − a = −(a − b)` e a divisão pelo mesmo `d` são
-//! exactas em IEEE-754.
+//! em sentidos contrários sem desempate nenhum a inventar.
 //!
 //! ## Porque é uma folha
 //!
@@ -53,19 +74,26 @@
 //!
 //! Um elemento só entra com **colisor válido e posição finita**. Os outros não empurram nem são
 //! empurrados — é a declaração ausente vista por dentro. Um peso `w = 0` (o `inv_mass` do
-//! `motion.pin_constraint`) é um **obstáculo**: não se move e os outros contornam-no.
+//! `motion.pin_constraint`) é um **obstáculo**: não se move, não roda, e os outros contornam-no.
 
 use std::collections::BTreeMap;
 
 use ph2d_nodegraph::attr::{
-    COLLIDER_BOX_COLUMN, COLLIDER_COLUMN, COLLIDER_OFFSET_COLUMN, Column, SIZE_IDENTITY, Stream,
-    par_build,
+    COLLIDER_BOX_COLUMN, COLLIDER_COLUMN, COLLIDER_OFFSET_COLUMN, Column, INV_INERTIA_COLUMN,
+    SIZE_IDENTITY, Stream, par_build,
 };
 
+mod par;
 mod trig;
 
+pub use par::{contato, disco_caixa};
+
 /// Abaixo disto dois centros coincidem e a normal não existe (o `EPS` do `motion.collide`).
-const EPS: f32 = 1e-9;
+pub(crate) const EPS: f32 = 1e-9;
+
+/// Radianos → graus, que é a unidade da coluna `rot` (a única unidade de ângulo autorada do app).
+/// Público porque o `sim.collide` faz a mesma conta do lado dele, e duas cópias divergiriam.
+pub const GRAUS: f32 = 180.0 / std::f32::consts::PI;
 
 /// **A forma de um colisor, já em unidades de MUNDO.**
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -82,6 +110,26 @@ pub struct Colisor {
     pub forma: Forma,
     /// O centro do colisor menos o `P` da peça, em mundo. `[0, 0]` na arte centrada.
     pub desvio: [f32; 2],
+}
+
+/// **Um contacto**: a normal unitária de `a` para `b`, a profundidade, e ONDE eles se tocam.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Contacto {
+    pub normal: [f32; 2],
+    pub penetracao: f32,
+    /// O ponto de MUNDO onde a força age — o braço da rotação sai dele.
+    pub ponto: [f32; 2],
+}
+
+impl Contacto {
+    /// **A ALAVANCA deste contacto sobre uma peça centrada em `centro`** — `(ponto − centro) × n`.
+    /// Zero quando a normal passa pelo centro: ali o contacto só empurra, nunca roda.
+    pub fn braco(&self, centro: [f32; 2]) -> f32 {
+        cruz(
+            [self.ponto[0] - centro[0], self.ponto[1] - centro[1]],
+            self.normal,
+        )
+    }
 }
 
 impl Colisor {
@@ -113,6 +161,30 @@ impl Colisor {
         }
     }
 
+    /// **O mesmo colisor, girado `graus` à volta da origem da peça** — o que uma varredura precisa
+    /// depois de a anterior ter rodado a peça. `0` devolve-o intocado, ao bit.
+    pub fn girado(&self, graus: f32) -> Self {
+        if graus == 0.0 {
+            return *self;
+        }
+        let e = eixo_de(graus);
+        let gira = |v: [f32; 2]| [v[0] * e[0] - v[1] * e[1], v[0] * e[1] + v[1] * e[0]];
+        Self {
+            forma: match self.forma {
+                Forma::Disco(r) => Forma::Disco(r),
+                Forma::Caixa { meia, eixo } => Forma::Caixa {
+                    meia,
+                    eixo: gira(eixo),
+                },
+            },
+            desvio: if self.desvio == [0.0, 0.0] {
+                self.desvio
+            } else {
+                gira(self.desvio)
+            },
+        }
+    }
+
     /// **O ALCANCE**: o raio do círculo centrado em `P` que contém o colisor inteiro — o que decide
     /// o lado da grelha.
     pub fn alcance(&self) -> f32 {
@@ -134,6 +206,54 @@ impl Colisor {
             Forma::Disco(r) => r,
             Forma::Caixa { meia, eixo } => {
                 meia[0] * dot(eixo, n).abs() + meia[1] * dot(perp(eixo), n).abs()
+            }
+        }
+    }
+
+    /// **O INVERSO DA INÉRCIA de rotação desta forma**, para uma peça de massa inversa `w`
+    /// (doc 109 §6): uma caixa de meias `h` tem `I = m·(hx² + hy²)/3`, um disco de raio `r` tem
+    /// `I = m·r²/2`. Um obstáculo (`w = 0`) não roda; um colisor degenerado também não.
+    pub fn inv_inercia(&self, w: f32) -> f32 {
+        if !w.is_finite() || w <= 0.0 {
+            return 0.0;
+        }
+        let i = match self.forma {
+            Forma::Disco(r) => 2.0 * w / (r * r),
+            Forma::Caixa { meia, .. } => 3.0 * w / (meia[0] * meia[0] + meia[1] * meia[1]),
+        };
+        if i.is_finite() { i } else { 0.0 }
+    }
+
+    /// **O PONTO do colisor mais avançado na direcção `−n`** — é ali que uma parede plana o toca, e
+    /// é dele que sai o braço da rotação (doc 109 §6).
+    ///
+    /// ⚠️⚠️ **Com uma face PARALELA à parede devolve o MEIO dela**, e isso é a metade que importa:
+    /// ali os dois cantos tocam à mesma profundidade, e escolher um deles daria binário a uma peça
+    /// pousada de chapa — ela tombava sozinha, sem ninguém lhe tocar. *O suporte é um CONJUNTO, e o
+    /// representante honesto dele é o meio.*
+    ///
+    /// ⛔ E o centro NÃO serve: `centro − n · suporte` cai sempre debaixo do centro, com braço zero —
+    /// uma caixa inclinada nunca se endireitava (medido, `sim.collide` a `20°`).
+    pub fn ponto_de_suporte(&self, p: [f32; 2], n: [f32; 2]) -> [f32; 2] {
+        /// Abaixo disto o eixo é paralelo à parede (`1e-4` ≈ `0,006°` de desvio).
+        const PARALELO: f32 = 1e-4;
+        let c = self.centro(p);
+        match self.forma {
+            Forma::Disco(r) => [c[0] - n[0] * r, c[1] - n[1] * r],
+            Forma::Caixa { meia, eixo } => {
+                let v = perp(eixo);
+                let comp = |e: [f32; 2], m: f32| {
+                    let d = dot(e, n);
+                    if d.abs() <= PARALELO {
+                        0.0
+                    } else if d > 0.0 {
+                        -m
+                    } else {
+                        m
+                    }
+                };
+                let (a, b) = (comp(eixo, meia[0]), comp(v, meia[1]));
+                [c[0] + eixo[0] * a + v[0] * b, c[1] + eixo[1] * a + v[1] * b]
             }
         }
     }
@@ -174,12 +294,17 @@ impl Colisor {
     }
 }
 
-fn dot(a: [f32; 2], b: [f32; 2]) -> f32 {
+pub(crate) fn dot(a: [f32; 2], b: [f32; 2]) -> f32 {
     a[0] * b[0] + a[1] * b[1]
 }
 
+/// A componente `z` de `a × b` — a alavanca de um braço contra uma normal.
+pub(crate) fn cruz(a: [f32; 2], b: [f32; 2]) -> f32 {
+    a[0] * b[1] - a[1] * b[0]
+}
+
 /// O eixo `y` de uma caixa cujo eixo `x` é `e`.
-fn perp(e: [f32; 2]) -> [f32; 2] {
+pub(crate) fn perp(e: [f32; 2]) -> [f32; 2] {
     [0.0 - e[1], e[0]]
 }
 
@@ -280,135 +405,39 @@ pub fn colisores(s: &Stream) -> Option<Vec<Option<Colisor>>> {
     )
 }
 
-/// **O contacto de um par**: a normal unitária de `a` para `b` e a profundidade, ou `None` se não
-/// se tocam. `eixo_x` escolhe o eixo de dois centros de disco COINCIDENTES (`true` ⇒ `x`, senão
-/// `y`) — o desempate do `motion.collide`, que o solver tira da paridade do par.
-pub fn contato(
-    a: &Colisor,
-    pa: [f32; 2],
-    b: &Colisor,
-    pb: [f32; 2],
-    eixo_x: bool,
-) -> Option<([f32; 2], f32)> {
-    let (ca, cb) = (a.centro(pa), b.centro(pb));
-    match (a.forma, b.forma) {
-        (Forma::Disco(ra), Forma::Disco(rb)) => discos(ca, ra, cb, rb, eixo_x),
-        (Forma::Caixa { meia: ma, eixo: ea }, Forma::Caixa { meia: mb, eixo: eb }) => {
-            caixas(ca, ma, ea, cb, mb, eb)
-        }
-        // O ponto da caixa mais próximo dá a normal da CAIXA para o DISCO.
-        (Forma::Caixa { meia, eixo }, Forma::Disco(r)) => disco_caixa(cb, r, ca, meia, eixo),
-        (Forma::Disco(r), Forma::Caixa { meia, eixo }) => {
-            disco_caixa(ca, r, cb, meia, eixo).map(|(n, d)| ([-n[0], -n[1]], d))
-        }
-    }
+/// **Quanto cada peça RODA por unidade de binário** (doc 109 §6) — a coluna
+/// [`INV_INERTIA_COLUMN`] quando ela existe (`0` = travada pelo cartão), senão derivada da forma e
+/// do peso. A porta única: o `sim.step` e o `sim.collide` perguntam a mesma coisa.
+pub fn inv_inercias(s: &Stream, colisores: &[Option<Colisor>], pesos: &[f32]) -> Vec<f32> {
+    let coluna = escalares(s, INV_INERTIA_COLUMN);
+    (0..colisores.len())
+        .map(|i| match coluna.and_then(|v| v.get(i)) {
+            Some(x) if x.is_finite() => x.max(0.0),
+            _ => colisores[i].map_or(0.0, |c| c.inv_inercia(*pesos.get(i).unwrap_or(&1.0))),
+        })
+        .collect()
 }
 
-fn discos(ca: [f32; 2], ra: f32, cb: [f32; 2], rb: f32, eixo_x: bool) -> Option<([f32; 2], f32)> {
-    let min_dist = ra + rb;
-    let min_d2 = min_dist * min_dist;
-    let dx = cb[0] - ca[0];
-    let dy = cb[1] - ca[1];
-    let d2 = dx * dx + dy * dy;
-    if d2 >= min_d2 {
-        return None;
-    }
-    Some(if d2 > EPS {
-        let d = d2.sqrt();
-        ([dx / d, dy / d], min_dist - d)
-    } else if eixo_x {
-        ([1.0, 0.0], min_dist)
-    } else {
-        ([0.0, 1.0], min_dist)
-    })
-}
-
-/// **Duas caixas orientadas** — o eixo separador de menor sobreposição, e a normal a apontar de
-/// `a` para `b`. Um centro exactamente sobre o eixo aponta para `+eixo`, e o simétrico do outro lado
-/// do par separa os dois.
-fn caixas(
-    ca: [f32; 2],
-    ma: [f32; 2],
-    ea: [f32; 2],
-    cb: [f32; 2],
-    mb: [f32; 2],
-    eb: [f32; 2],
-) -> Option<([f32; 2], f32)> {
-    let d = [cb[0] - ca[0], cb[1] - ca[1]];
-    let (va, vb) = (perp(ea), perp(eb));
-    let mut melhor: Option<([f32; 2], f32)> = None;
-    for eixo in [ea, va, eb, vb] {
-        let dist = dot(d, eixo);
-        let ra = ma[0] * dot(ea, eixo).abs() + ma[1] * dot(va, eixo).abs();
-        let rb = mb[0] * dot(eb, eixo).abs() + mb[1] * dot(vb, eixo).abs();
-        let sobra = ra + rb - dist.abs();
-        if sobra <= 0.0 {
-            return None;
-        }
-        if melhor.is_none_or(|(_, s)| sobra < s) {
-            let n = if dist < 0.0 {
-                [-eixo[0], -eixo[1]]
-            } else {
-                eixo
-            };
-            melhor = Some((n, sobra));
-        }
-    }
-    melhor
-}
-
-/// **Um disco contra uma caixa** — a normal da CAIXA para o DISCO e a profundidade.
-///
-/// ⚠️ Os dois ramos são geometricamente diferentes e ambos necessários: **fora**, a distância ao
-/// ponto mais próximo decide e arredonda as quinas; **dentro**, não há direcção «para fora» única, e
-/// sai-se pela face de MENOR penetração (sem este ramo, um disco que atravessou a face num tique
-/// grande ficaria preso).
-pub fn disco_caixa(
-    cd: [f32; 2],
-    r: f32,
-    cc: [f32; 2],
-    meia: [f32; 2],
-    eixo: [f32; 2],
-) -> Option<([f32; 2], f32)> {
-    let v = perp(eixo);
-    let d = [cd[0] - cc[0], cd[1] - cc[1]];
-    let (lx, ly) = (dot(d, eixo), dot(d, v));
-    let (hx, hy) = (meia[0], meia[1]);
-    let (qx, qy) = (lx.clamp(-hx, hx), ly.clamp(-hy, hy)); // CLAMP-OK: meias validadas >= 0
-    let (ex, ey) = (lx - qx, ly - qy);
-    let e2 = ex * ex + ey * ey;
-    let mundo = |l: [f32; 2]| [l[0] * eixo[0] + l[1] * v[0], l[0] * eixo[1] + l[1] * v[1]];
-    if e2 > EPS {
-        let e = e2.sqrt();
-        if e >= r {
-            return None;
-        }
-        return Some((mundo([ex / e, ey / e]), r - e));
-    }
-    let (px, py) = (hx - lx.abs(), hy - ly.abs());
-    let nl = if px < py {
-        [if lx < 0.0 { -1.0 } else { 1.0 }, 0.0]
-    } else {
-        [0.0, if ly < 0.0 { -1.0 } else { 1.0 }]
-    };
-    Some((mundo(nl), px.min(py) + r))
-}
-
-/// Afasta as peças sobrepostas, `varreduras` vezes. `p` é reescrito no sítio.
+/// Afasta as peças sobrepostas, `varreduras` vezes. `p` é reescrito no sítio, e `giro` ACUMULA em
+/// GRAUS o quanto cada peça rodou (doc 109 §6) — o chamador soma-o à coluna `rot`.
 ///
 /// # Panics
 ///
-/// Se `colisores` ou `pesos` não tiverem o comprimento de `p` — três colunas de uma mesma corrente
-/// com comprimentos diferentes não são uma pergunta com resposta.
+/// Se `giro`, `colisores`, `pesos` ou `inv_inercia` não tiverem o comprimento de `p` — colunas de
+/// uma mesma corrente com comprimentos diferentes não são uma pergunta com resposta.
 pub fn separate(
     p: &mut [[f32; 2]],
+    giro: &mut [f32],
     colisores: &[Option<Colisor>],
     pesos: &[f32],
+    inv_inercia: &[f32],
     varreduras: usize,
 ) {
     let n = p.len();
+    assert_eq!(giro.len(), n, "um giro por peca");
     assert_eq!(colisores.len(), n, "um colisor por peca");
     assert_eq!(pesos.len(), n, "um peso por peca");
+    assert_eq!(inv_inercia.len(), n, "uma inercia por peca");
     let ativo: Vec<bool> = (0..n).map(|i| ativo(p[i], colisores[i].as_ref())).collect();
     let alcance_max = (0..n)
         .filter(|&i| ativo[i])
@@ -420,8 +449,12 @@ pub fn separate(
     let lado = 2.0 * alcance_max;
     for _ in 0..varreduras {
         let foto = p.to_vec();
+        // As formas COMO ESTÃO: o que as varreduras anteriores rodaram já conta.
+        let agora: Vec<Option<Colisor>> = (0..n)
+            .map(|i| colisores[i].map(|c| c.girado(giro[i])))
+            .collect();
         let grelha = grelha(&foto, &ativo, lado);
-        let novas: Vec<Option<[f32; 2]>> = par_build(n, |k| {
+        let novas: Vec<Option<([f32; 2], f32)>> = par_build(n, |k| {
             if !ativo[k] {
                 return None;
             }
@@ -435,13 +468,17 @@ pub fn separate(
                 }
             }
             parceiros.sort_unstable();
-            corrigida(k, parceiros.into_iter(), &foto, colisores, pesos, &ativo)
+            corrigida(
+                k,
+                parceiros.into_iter(),
+                &foto,
+                &agora,
+                pesos,
+                inv_inercia,
+                &ativo,
+            )
         });
-        for (k, nova) in novas.into_iter().enumerate() {
-            if let Some(q) = nova {
-                p[k] = q;
-            }
-        }
+        aplica(p, giro, novas);
     }
 }
 
@@ -451,29 +488,42 @@ pub fn separate(
 /// chama.
 pub fn separate_all_pairs(
     p: &mut [[f32; 2]],
+    giro: &mut [f32],
     colisores: &[Option<Colisor>],
     pesos: &[f32],
+    inv_inercia: &[f32],
     varreduras: usize,
 ) {
     let n = p.len();
+    assert_eq!(giro.len(), n, "um giro por peca");
     assert_eq!(colisores.len(), n, "um colisor por peca");
     assert_eq!(pesos.len(), n, "um peso por peca");
+    assert_eq!(inv_inercia.len(), n, "uma inercia por peca");
     let ativo: Vec<bool> = (0..n).map(|i| ativo(p[i], colisores[i].as_ref())).collect();
     for _ in 0..varreduras {
         let foto = p.to_vec();
-        let novas: Vec<Option<[f32; 2]>> = (0..n)
+        let agora: Vec<Option<Colisor>> = (0..n)
+            .map(|i| colisores[i].map(|c| c.girado(giro[i])))
+            .collect();
+        let novas: Vec<Option<([f32; 2], f32)>> = (0..n)
             .map(|k| {
                 if ativo[k] {
-                    corrigida(k, 0..n, &foto, colisores, pesos, &ativo)
+                    corrigida(k, 0..n, &foto, &agora, pesos, inv_inercia, &ativo)
                 } else {
                     None
                 }
             })
             .collect();
-        for (k, nova) in novas.into_iter().enumerate() {
-            if let Some(q) = nova {
-                p[k] = q;
-            }
+        aplica(p, giro, novas);
+    }
+}
+
+/// Escreve o que uma varredura produziu.
+fn aplica(p: &mut [[f32; 2]], giro: &mut [f32], novas: Vec<Option<([f32; 2], f32)>>) {
+    for (k, nova) in novas.into_iter().enumerate() {
+        if let Some((q, g)) = nova {
+            p[k] = q;
+            giro[k] += g;
         }
     }
 }
@@ -501,25 +551,22 @@ fn grelha(foto: &[[f32; 2]], ativo: &[bool], lado: f32) -> BTreeMap<(i64, i64), 
     g
 }
 
-/// A posição de `k` depois desta varredura, ou `None` se nada lhe tocou. Os `parceiros` têm de vir
-/// em ordem CRESCENTE — ver o cabeçalho.
+/// A posição e o giro de `k` depois desta varredura, ou `None` se nada lhe tocou. Os `parceiros` têm
+/// de vir em ordem CRESCENTE — ver o cabeçalho.
 fn corrigida(
     k: usize,
     parceiros: impl Iterator<Item = usize>,
     foto: &[[f32; 2]],
     colisores: &[Option<Colisor>],
     pesos: &[f32],
+    inv_inercia: &[f32],
     ativo: &[bool],
-) -> Option<[f32; 2]> {
+) -> Option<([f32; 2], f32)> {
     let mut delta = [0.0_f32; 2];
+    let mut giro = 0.0_f32;
     let mut contatos = 0_u32;
     for j in parceiros {
         if j == k || !ativo[j] {
-            continue;
-        }
-        // Dois obstáculos (ou dois pesos infinitos) não têm correcção a repartir.
-        let soma_w = pesos[k] + pesos[j];
-        if soma_w <= 0.0 {
             continue;
         }
         let (lo, hi) = (k.min(j), k.max(j));
@@ -527,19 +574,28 @@ fn corrigida(
             continue;
         };
         // O par na ordem do PAR (ver o cabeçalho): a normal vai do menor para o maior.
-        let Some((n, penetracao)) = contato(&clo, foto[lo], &chi, foto[hi], (lo + hi) % 2 == 0)
-        else {
+        let Some(c) = contato(&clo, foto[lo], &chi, foto[hi], (lo + hi) % 2 == 0) else {
             continue;
         };
-        // A parte da penetração que cabe a `k`: `w_k / (w_k + w_j)`.
-        let empurra = penetracao * (pesos[k] / soma_w);
-        if k == lo {
-            delta[0] -= n[0] * empurra;
-            delta[1] -= n[1] * empurra;
+        // A massa efectiva de cada lado no PONTO do contacto (doc 109 §6).
+        let braco = |i: usize, col: &Colisor| c.braco(col.centro(foto[i]));
+        let (bk, bj) = if k == lo {
+            (braco(lo, &clo), braco(hi, &chi))
         } else {
-            delta[0] += n[0] * empurra;
-            delta[1] += n[1] * empurra;
+            (braco(hi, &chi), braco(lo, &clo))
+        };
+        let massa = |w: f32, inv_i: f32, b: f32| w + inv_i * b * b;
+        let soma = massa(pesos[k], inv_inercia[k], bk) + massa(pesos[j], inv_inercia[j], bj);
+        // Dois obstáculos (ou dois pesos infinitos) não têm correcção a repartir.
+        if soma <= 0.0 {
+            continue;
         }
+        let lambda = c.penetracao / soma;
+        let sinal = if k == lo { -1.0 } else { 1.0 };
+        let empurra = lambda * pesos[k] * sinal;
+        delta[0] += c.normal[0] * empurra;
+        delta[1] += c.normal[1] * empurra;
+        giro += bk * lambda * inv_inercia[k] * sinal * GRAUS;
         contatos += 1;
     }
     (contatos > 0).then(|| {
@@ -548,7 +604,10 @@ fn corrigida(
             reason = "uma contagem de contatos de uma peca, muito abaixo de 2^24"
         )]
         let inv = 1.0 / contatos as f32;
-        [foto[k][0] + delta[0] * inv, foto[k][1] + delta[1] * inv]
+        (
+            [foto[k][0] + delta[0] * inv, foto[k][1] + delta[1] * inv],
+            giro * inv,
+        )
     })
 }
 

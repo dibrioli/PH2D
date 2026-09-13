@@ -175,6 +175,16 @@ pub const COLLIDER_WIDTH: &str = "collider_width";
 pub const COLLIDER_HEIGHT: &str = "collider_height";
 /// `Circle`: o RAIO como fracção do círculo que toca os lados maiores da caixa envolvente.
 pub const COLLIDER_RADIUS: &str = "collider_radius";
+/// **VER o colisor no canvas** (report do dono, 2026-09-13: *«coloque um botão no nó shape: Ver
+/// collider»*). Ligado, o contorno do colisor de cada peça desta forma é pintado POR CIMA da arte —
+/// esteja o cartão seleccionado ou não. As ALÇAS continuam a ser da forma seleccionada, porque
+/// arrastar edita os params DELA.
+pub const SHOW_COLLIDER: &str = "show_collider";
+/// **TRAVAR a rotação** (doc 109 §6 — report do dono, 2026-09-13: *«precisa destravar a rot. e
+/// colocar outro botão para travar rotação»*). Desligado (o default) as peças TOMBAM no contacto;
+/// ligado, elas só deslizam. Escreve a coluna `inv_inertia` a `0` — o *Freeze Rotation* de um corpo
+/// rígido, dito no vocabulário desta casa.
+pub const LOCK_ROTATION: &str = "lock_rotation";
 
 /// **As duas colunas que o SHELL publica** com a geometria — a caixa envolvente do contorno de
 /// preenchimento, em unidade de geometria — e que o nó **retira sempre**, depois de declarar.

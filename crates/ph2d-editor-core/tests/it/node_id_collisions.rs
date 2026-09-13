@@ -175,10 +175,10 @@ const FORMAS_NAO_LITERAIS: &[(&str, &str, Especie, &str)] = &[
         "linha do menu de vistas = hash da CHAVE i18n da vista; só é hit-registada com o menu aberto",
     ),
     (
-        "shells/desktop/src/render_loop/mod.rs",
-        "run_render_frame",
+        "shells/desktop/src/render_loop/fase_image_tools_mode_and_pills.rs",
+        "fase_image_tools_mode_and_pills",
         Especie::HashDeExpressao,
-        "pill da ferramenta activa = hash do `manifest.id`, como os image_actions. ⚠️ A line/render-loop parte esta função em fases: o integrador reescreve a FUNÇÃO desta linha",
+        "pill da ferramenta activa = hash do `manifest.id`, como os image_actions (mudou-se do `run_render_frame` com a fase, integração de 13/09)",
     ),
     (
         "crates/ph2d-app-motion/src/motion_bridge_color.rs",

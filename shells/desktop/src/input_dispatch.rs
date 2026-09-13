@@ -258,9 +258,9 @@ pub(crate) fn vec_bool_op_for_id(
     .map(|(_, op)| op)
 }
 
-/// Retype the Pen's SELECTED vertex (panel Vertex buttons), recording ONE undo
-/// step iff it actually changed. Free fn (mirror of [`apply_vec_boolean`]) so the
-/// render_loop drain can call it with the destructured shell refs.
+/// Retype the Pen's SELECTED vertex (panel Vertex buttons). The undo step is the global one,
+/// by diff (`App::post_frame_undo`), so it exists iff the kind changed. Free fn (mirror of
+/// [`apply_vec_boolean`]) so the render_loop drain can call it with the destructured shell refs.
 pub(crate) fn apply_vec_vertex_kind(
     scene: &mut ph2d_vec_scene::VecScene,
     pen: &mut ph2d_vec_edit::PenTool,
@@ -274,19 +274,16 @@ pub(crate) fn apply_vec_vertex_kind(
 // `on_press_corner`, roteado no `on_mouse_input` acima). O SINAL do `corner_radius` agora é
 // escrito pelo arrasto, não por um botão.
 
-/// Delete the Pen's SELECTED vertex (panel "Delete Node" button / Delete key),
-/// recording ONE undo step iff it removed anything. Free fn (mirror of
-/// [`apply_vec_boolean`]) so the render_loop drain can call it with destructured
-/// refs. Returns whether anything was deleted.
+/// Delete the Pen's SELECTED vertex (panel "Delete Node" button / Delete key). The
+/// undo step is the global one, by diff (`App::post_frame_undo`), so it exists iff
+/// something was removed. Free fn (mirror of [`apply_vec_boolean`]) so the
+/// render_loop drain can call it with destructured refs. Returns whether anything
+/// was deleted.
 pub(crate) fn apply_vec_delete_vertex(
     scene: &mut ph2d_vec_scene::VecScene,
     pen: &mut ph2d_vec_edit::PenTool,
 ) -> bool {
-    if pen.delete_selected_vertex(scene) {
-        true
-    } else {
-        false
-    }
+    pen.delete_selected_vertex(scene)
 }
 
 /// Map a Vector-panel Vertex-type button `NodeId` to its `VertexKind` (`None` for

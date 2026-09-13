@@ -213,10 +213,10 @@ fn um_ciclo(
     }
     let mut cor = BTreeMap::new();
     for v in tops {
-        if !cor.contains_key(v.as_str()) {
-            if let Some(c) = dfs(v, &adj, &mut cor, &mut Vec::new()) {
-                return Some(c);
-            }
+        if !cor.contains_key(v.as_str())
+            && let Some(c) = dfs(v, &adj, &mut cor, &mut Vec::new())
+        {
+            return Some(c);
         }
     }
     None

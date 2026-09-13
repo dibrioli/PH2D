@@ -274,3 +274,73 @@ alheio em curso. ⇒ **decisão do Enio**, com as três saídas e o preço de ca
 R-pré, não antes.* O ciclo certo é **draft fora da árvore → R-pré → cura → commit ÚNICO**; o que
 correu aqui foi *commit → R-pré → cura → 2.º commit*, e é a diferença entre um histórico limpo e um
 histórico com registo de incidente. ⚠️ Esta obra **não** pode voltar atrás; as irmãs ainda podem.
+
+#### INC-U1 — a MEDIÇÃO em TODA a obra da linha (R-pré 2.ª passagem, 2026-09-13)
+
+⛔⛔ **O `38` acima é o tamanho do alvo `unblocked` visto de dentro do alvo `unblocked`, e as duas
+saídas que o quadro de cima orça (deixar · squash da linha) foram orçadas contra ele.** Corrido o
+sweep em `--git-history` **por alvo**, no range `main..HEAD` (as 25 commits desta linha):
+
+| alvo | linhas de patch com achado | `−` remoção | `+` adição | quem as carrega |
+|---|---|---|---|---|
+| `blender-cloth` | **201** | 200 | 1 | `ec47dc846` **187** · `cb279c0cb` 13 · cleanroom 1 |
+| `blender-pull` | **90** | 74 | 13 | `ec47dc846` **73** · cleanroom 14 · `cb279c0cb` 3 |
+| `blender-unblocked` | **81** | 56 | 24 | `ec47dc846` **36** · `de143530f` 19 · `9efef37ba` 19 · outros 7 |
+| `blender-boundary` | **27** | 17 | 8 | `ec47dc846` 12 · `23bb85670` 7 · `881e96d9e` 6 · outros 2 |
+| `blender-pose` | **16** | 7 | 8 | `3ea4f7576` 7 · `ef681891f` 5 · `ec47dc846` 2 · outros 2 |
+| `quadwild` | **0** | 0 | 0 | — |
+| **total** | **415** | **354** | **54** | `crates/**` **328** · `docs/3D/cleanroom/**` **87** |
+
+⭐⭐ **Três leituras, e cada uma muda a decisão:**
+
+1. **O problema é `11×` maior que o medido, e mora noutro sítio.** `328` das `415` linhas vivem em
+   patches de `crates/**`, e **`327` delas são as linhas `−` da cura do INC-4** (`ec47dc846`, os
+   173 blocos de comentário reescritos, mais o resíduo `cb279c0cb`). ⇒ *a cura que limpou a árvore
+   pôs no histórico, de uma vez, tudo o que ela apagou.* ⛔ **O squash dos commits de docs não lhe
+   toca**: ele alcança no máximo as `87` de `docs/3D/cleanroom/**`, e `de143530f`+`9efef37ba` são
+   `38` dessas.
+2. ⛔⛔ **E o texto acusado JÁ ESTÁ no histórico do `main`, como ADIÇÃO.** Mesmo sweep, range `main`
+   (sem esta linha): `cloth` **409** `+` · `pull` **865** `+` · `unblocked` **201** `+` ·
+   `boundary` **65** `+` — **1 540 adições**, escritas ao longo de meses pelas linhas que
+   redigiram aqueles comentários. ⇒ **reescrever o histórico DESTA linha não cura nada**: ela só
+   contém as **remoções**; as adições são anteriores a ela e estão em `main` desde sempre.
+   *Uma reescrita de ramo que deixa a origem intacta compra a aparência da cura e nenhum byte dela.*
+3. **A saída «squash da linha» fica com o preço invertido.** Ela custa a rastreabilidade dos
+   achados (como o quadro de cima já dizia) e compra `≤ 87` de `415` linhas desta linha e `0` das
+   `1 540` do `main`. ⇒ ⏳ **decisão do Enio, com a pergunta agora certa:** *o que se faz com o
+   histórico do REPO*, não com o desta linha — e a resposta honesta pode ser **declarar**, não
+   reescrever (o registo é defesa; o escondido é a acusação pronta — §6).
+
+⚠️ **Duas cegueiras do instrumento, medidas ao correr isto:** a coluna `+` de `main` inclui
+**falsos positivos do nosso próprio vocabulário** — entradas de vassoura que casam com símbolos
+públicos nossos (um factor de sobreposição de espaçamento, uma chave de i18n, um nome de directório
+de painel, um identificador de raio de fronteira num teste de campo). *Uma vassoura com entrada
+genérica reprova a nossa própria árvore e enterra o achado verdadeiro no meio dela.* E o sweep de
+árvore com as vassouras irmãs sobre `crates docs shells scripts` está **vermelho** (`41`/`73`/`6`/
+`370`/`83`/`6` linhas), com a maioria em `docs/**` — que o §5 do `CLAUDE.md` declara **fora do
+censo por construção** — e um resíduo em doc-comments de `crates/**` que é a dívida de **nomes de
+SÍMBOLO** já nomeada como ABERTA no fecho de 13/09.
+
+---
+
+## §3.R-pré (2.ª passagem) — 2026-09-13 · ⛔ **NÃO ATESTADA**
+
+Subagente R-pré novo, contexto independente do que escreveu a espec **e** do que escreveu a
+reescrita. Leu os dois lados. Veredito contra o §4.2: **3 achados, 1 SUBSTANCIAL.**
+
+**O que foi CONFIRMADO (cura a cura, com o instrumento corrido por terceiro):**
+
+| cura | veredito |
+|---|---|
+| Achado 1 — o bloco da §3.2 | ✅ **APAGADO**, conferido contra `b1026c9e8` |
+| Achado 2 — o bloco da §5.2 | ✅ **REESCRITO em forma fechada**; o desvio inerte está na nota de custo e declara-se optimização |
+| Achado 3 — os 4 sítios de prosa | ✅ **RE-DITOS como REQUISITO** nos quatro (§3.6 as duas constantes · §3.7 a invariante de saída · §3.7 a lei da máscara saturada · §6.3 a derivação + o requisito de transformar direcção como direcção). ⭐ Os quatro ficaram **mais fortes** do que eram: três deles passaram a dar o MECANISMO em vez do argumento dos autores |
+| Controlo positivo | ✅ **CORRIDO PELO R**, não aceite do autor: a vassoura de 196 sobre `b1026c9e8` dá **19** linhas (5 + 8 + 6, na repartição declarada); sobre `HEAD` dá **0**. Sweep de `HEAD` sobre a espec + as 60 fixtures: **exit 0** |
+
+⛔ **O que a emenda NÃO alcançou — e é a mesma espécie, em secções que ela não tocou** (a lição que
+a obra irmã `blender-pose` já pagou na EMENDA 2): a acusação era *«prosa de comentário traduzida»*,
+e a cura foi aplicada **aos quatro endereços acusados**. A espécie maior — **descrever o PROGRAMA
+em vez do comportamento** — continua viva em dois sítios que ninguém nomeou, e a §3.1 é
+**byte-idêntica** à redacção reprovada. Os achados estão no report ao I, em termos funcionais.
+
+⚠️ **Esta espec fica BLOQUEADA para implementação** até a 3.ª redacção e um R-pré novo sobre ela.

@@ -398,6 +398,8 @@ mod fase_vector_morph_verbs;
 mod fase_vector_overlays;
 /// Fase do quadro: o despacho do painel vectorial e a tinta do traco.
 mod fase_vector_panel_dispatch;
+/// Fase do quadro: a escala do desenho vectorial.
+mod fase_vector_scale;
 /// Fase do quadro: a moldura, o layout, o z e as ancoras da seleccao.
 mod fase_vector_selection_frame_panel;
 /// Fase do quadro: a pele, os estados, o z-index e o layout publicados.
@@ -3632,21 +3634,9 @@ impl crate::App {
             if frame_prof_on() {
                 FRAME_PROF_DISPATCH_US.with(|c| c.set(self.last_dispatch_us));
             }
-            // ADR-0108 cutover: the Vector drawing tool. `AppGfx.vec_scene` is
-            // document artwork — render it into the shared Vello scene EVERY
-            // frame (not gated on the active tool; no per-tool branch). The
-            // `vector_bridge` reflects the active tool's Style into the shell
-            // Pen + recolours the selection; the edit gizmos draw ONLY while the
-            // Vector tool is active (mirror of how the pen input is gated).
-            let vector_active = tools
-                .active()
-                .is_some_and(|t| t.id() == ph2d_editor_core::ToolId::new("vector"));
-            // World units per screen pixel (1px delta) — lets the bridge convert
-            // the tool's px stroke width into the selected path's world width.
-            let vw0 = camera.screen_to_world((0.0, 0.0), window_size);
-            let vw1 = camera.screen_to_world((1.0, 0.0), window_size);
-            let vec_px_to_world =
-                (((vw1[0] - vw0[0]).powi(2) + (vw1[1] - vw0[1]).powi(2)).sqrt()) as f64;
+            let Some((vector_active, vec_px_to_world)) = self.fase_vector_scale(window_size) else {
+                return;
+            };
             self.fase_blend_and_morph(fase_blend_and_morph::BlendAndMorphIntents {
                 pending_create_blend,
                 pending_expand_blend,

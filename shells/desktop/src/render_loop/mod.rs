@@ -198,6 +198,8 @@ mod fase_frame_profile_report;
 mod fase_game_camera;
 /// Fase do quadro: a entrada (carimbo coalescido, diagnóstico, gamepad, script, soltos).
 mod fase_input_and_drops;
+/// Fase do quadro: o chrome legado (o ramo sem `HeroScreen`).
+mod fase_legacy_chrome;
 /// Fase do quadro: o modal de imagem nova (Cmd/Ctrl+N) cria a tela escolhida.
 mod fase_new_image_modal;
 /// Fase do quadro: a receita aberta (a marca, o pedido de palco, a trava e o pedido do Cancel).
@@ -506,7 +508,6 @@ impl crate::App {
             toasts,
             jobs,
             tools,
-            layout,
             vello_pass,
             vector_scene,
             vec_scene,
@@ -11324,40 +11325,7 @@ impl crate::App {
             // events are logged, not acted on).
             hero_arena.reset();
         } else {
-            layout.paint(vector_scene, &mut paint_ctx);
-
-            // Tool palette in the CREATE zone (top-right). Hidden in Zen
-            // mode by virtue of `tool_palette_rects` returning empty.
-            // This branch is the legacy no-hero (demo) path, so there is
-            // no Image Tools mode → `mode_on = false`. Map slots through
-            // the SAME `palette_visible_tool_indices` the click hit-test
-            // uses so the two never drift (image tools filtered out when
-            // off — no icon, no hit zone).
-            let visible = crate::palette_visible_tool_indices(tools, false);
-            let palette_rects = layout.tool_palette_rects(visible.len());
-            let active_id = tools.active().map(|t| t.id());
-            let palette_icons: Vec<(EditorRect, &str, bool)> = palette_rects
-                .iter()
-                .zip(visible.iter())
-                .map(|(r, &i)| {
-                    let tool = &tools.tools()[i];
-                    let is_active = active_id.as_ref() == Some(&tool.id());
-                    (*r, tool.label(), is_active)
-                })
-                .collect();
-            ph2d_editor_core::paint_tool_palette_icons(
-                paint_ctx.text,
-                vector_scene,
-                &palette_icons,
-                paint_ctx.theme,
-            );
-
-            // Legacy `FloatingPanel` paint retired (2026-05-17). Same
-            // rationale as the live-mode branch above. Tool palette
-            // chrome above remains because it's the click entrypoint
-            // to switch tools; the per-tool panel itself is gone.
-            toasts.paint(vector_scene, &mut paint_ctx);
-            jobs.paint_below(toasts.len(), vector_scene, &mut paint_ctx);
+            self.fase_legacy_chrome(viewport);
         }
 
         self.fase_ui_burst_paint();

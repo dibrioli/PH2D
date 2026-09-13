@@ -45,7 +45,7 @@ use super::fixtures::{
 /// enumeração que aqui viveu apodreceu no dia previsível, e a cena `=14` abriu com o canvas em
 /// branco porque ninguém lhe acrescentou o `"14"`. *O censo mede os predicados; ele não pede a
 /// ninguém que se lembre de uma lista.*
-pub const CENAS: u32 = 39;
+pub const CENAS: u32 = 40;
 
 /// **A env do roteador, lida DENTRO da crate.**
 ///
@@ -445,6 +445,12 @@ pub(crate) mod surface;
 /// **A CENA DO POLEGAR** (`=30`) — irmã da [`strip`] pela mesma linha de corte.
 #[path = "scenes_thumb.rs"]
 pub(crate) mod thumb;
+
+/// **OS DOIS GESTOS TANGENCIAIS** (`=40`) — ver [`tangenciais`]. ⚠️ O nome não é
+/// `thumb` porque esse já é do *Clay Thumb*, que é outra ferramenta: aqui vivem
+/// o polegar que espalma e o empurrão que varre.
+#[path = "scenes_tangenciais.rs"]
+pub(crate) mod tangenciais;
 /// **A CENA DOS QUATRO VIEWPORTS** (`=38`) — irmã da [`cloth_filter`] pela mesma
 /// linha de corte: cada arquivo é a história de uma wave.
 #[path = "scenes_viewports.rs"]

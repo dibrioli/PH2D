@@ -53,7 +53,16 @@ pub(crate) fn smoke_mesh() -> ph2d_mesh::Mesh {
     if alcance::alcance_scene() {
         return alcance::duas_pecas_vizinhas();
     }
-    if cavity_scene() || filter::filter_scene() || quad::quad_scene() {
+    // ⭐ **A `=40` abre na MESMA enrugada, e a razão é a mesma da `=34` vista de
+    // outro lado:** os dois gestos tangenciais movem o barro NO PLANO da
+    // superfície, e numa esfera lisa isso não muda a silhueta nem quase a luz —
+    // o dono não teria como separar *funcionou* de *não fez nada*. As cristas
+    // são a marca que o gesto arrasta.
+    if cavity_scene()
+        || filter::filter_scene()
+        || quad::quad_scene()
+        || tangenciais::tangenciais_scene()
+    {
         return wrinkled_sphere();
     }
     // ⚠️ **A `=16` abre DENSA, e a densidade é o que o smoke julga.** O tamanho

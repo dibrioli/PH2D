@@ -127,111 +127,23 @@ pub(crate) fn run(
     );
 }
 
-/// The pure core of the pass: given each selected sprite's sampled pose, key what
-/// left its curve and bracket the undo step. Separated from [`run`] (which owns
-/// the `HeroScreen`/`World` sampling) so the frame logic — the diff, the
-/// auto-create, the bracket — is testable headless.
-#[allow(clippy::too_many_arguments)] // the frame's inputs; bundling them hides them
-pub(crate) fn apply_samples(
-    timeline: &mut TimelineState,
-    playhead: &Playhead,
+/// O laço de [`apply_samples`]: cada pose amostrada contra a sua curva (ou o quadro anterior),
+/// com o pino da pose deslocada; devolve a primeira recusa do quadro.
+#[allow(clippy::too_many_arguments)]
+fn diff_each_sample(
+    timeline: &TimelineState,
     samples: &[(u64, PoseSample)],
-    drag_now: bool,
-    armed: bool,
-    performing: bool,
     ak: &mut AutokeyState,
-    toasts: &mut ph2d_editor_core::ToastQueue,
-) {
-    // **Which scene the diff believes in** — the same split the manual K has
-    // (`key_authoring_solo` vs `key_value_for`): in the KEYS view the apply solos
-    // the active clip at the CLIP playhead, so the pass must author on that clock
-    // and against that curve. Before this split, ONE strip in a lane flipped every
-    // question here to the stack's blend at the TIMELINE clock — a clock the solo
-    // apply was not driving — and auto-key on the Keys tab died in a wall of
-    // "does not play here" toasts (Enio, 2026-07-22). The caller passes the
-    // matching playhead (clip in keys mode, timeline otherwise).
-    let solo = timeline.keys_mode;
-    // Inside a container the diff believes in the CONTAINER's blend, at the container
-    // clock (Enio, 2026-07-22) — the third view. The scratch is primed ROOTED there
-    // (`container_open`), so the root-aware `shown_value`/`key_home`/`key_value_in_active_clip`
-    // read the container's lanes, not the scene's. `None` primes the scene (root None),
-    // exactly as before.
-    let root = timeline.container_open;
-    // The stack's scratch must describe THIS instant before anything asks it where
-    // a key lands or whether a pose is reachable. In production the apply built it
-    // a moment ago at this very playhead, so this costs a compare — but the pass no
-    // longer DEPENDS on that having happened, which is the difference between right
-    // and accidentally right. Solo never consults the scratch (there is no blend),
-    // and priming it with the CLIP clock would poison it for everyone else.
-    if !solo {
-        timeline.doc.prime_rooted(root, playhead.time());
-    }
-
-    // Whether this frame CAPTURES the pose into keys.
-    //  - Paused: ordinary auto-key (`armed`) — a UI edit off the curve keys.
-    //  - Playing: ONLY performing, and ONLY with a live gizmo drag. The pose
-    //    changes every played frame because the animation drives it, not the
-    //    user — so capturing the passive pose would mint a key per frame (the
-    //    "autoplay creates keyframes" bug). Requiring an active drag makes that
-    //    impossible: a plain Play, even with AutoKey armed, never records.
-    // The baseline still advances below regardless, so pausing mid-play never
-    // misreads the settled pose as a jump.
-    let playing = playhead.is_playing();
-    let capturing = if playing {
-        performing && drag_now
-    } else {
-        armed
-    };
-    let fps = timeline.doc.fps_display;
-    // **The author's clock is the apply's clock, CUT included** (seed == sample).
-    // The apply cuts every clock at the view's authored duration before anything
-    // else (`apply_active_clip` / the empty-stack lane of `apply_from_doc_except`
-    // cut by the clip; `stack_frames` cuts frame 0 by the scene/container and each
-    // strip by `cut_source`). Past the cut the pose is FROZEN at `curve(cut)`, so
-    // a diff that reads `curve(raw)` sees a phantom delta and mints a key per
-    // scrubbed frame, at a time the apply never samples (the 2026-07-23 superbug).
-    // THIS cut is the SOLE correctness boundary — and stays so now that the playhead
-    // clamp upstream is GONE (removed 2026-07-25: the playhead is free so the transport
-    // can drive physics past the authored end). The playhead routinely runs past the cut;
-    // the evaluator freezes the pose at `curve(cut)`, so the diff never sees a phantom
-    // delta. The autokey correctness never depended on the clamp — only on this cut.
-    // Which cut mirrors which apply:
-    //  - Keys/solo, and Arrange with an EMPTY stack: the active clip's own cut.
-    //  - A real stack / container: the view's frame-0 cut. The diff there reads
-    //    the primed scratch (already cut per strip), and `key_home`'s stacked
-    //    branch debug-asserts the clock it is handed matches the scratch's own —
-    //    so hand it the same one.
-    // All cuts are `t.min(len)`, so within the authored range (and with nothing
-    // authored) `t_cut == playhead.time()` and this is byte-identical to before.
-    let t_raw = playhead.time();
-    let t_cut = if solo || (root.is_none() && timeline.doc.stack().is_empty()) {
-        timeline.doc.clip_cut(timeline.doc.active_index(), t_raw)
-    } else if let Some(c) = root {
-        timeline.doc.container_cut(c, t_raw)
-    } else {
-        timeline.doc.cut_scene(t_raw)
-    };
-    let t = ph2d_timeline::snap_time(
-        RationalTime::from_seconds(t_cut),
-        fps,
-        timeline.flags.frame_snap,
-    );
-
-    // The fresh-object default: Position is a motion path (the After Effects
-    // default). An object already in one mode keeps it — `position_key_mode`
-    // resolves that; this is only the fallback for one with no position animation
-    // yet, and the per-object toggle marks it otherwise (ADR-0141).
-    let default_path = true;
-
-    // Diff each sprite against its curve (bound) or last frame (unbound), and
-    // rebuild the baseline in one pass. The diff reads the document BEFORE any
-    // upsert, so the whole selection is judged against one consistent state.
-    let mut to_key: Vec<(u64, PropKind, f32, RationalTime)> = Vec::new();
-    // Motion-path anchors to author (Path mode): `(entity, [x, y], key time)`.
-    // Separate from `to_key` because an anchor is 2D geometry, keyed through
-    // `key_the_path`, not a scalar upsert.
-    let mut to_path: Vec<(u64, [f32; 2], RationalTime)> = Vec::new();
-    let mut next_baseline: BTreeMap<u64, PoseSample> = BTreeMap::new();
+    to_key: &mut Vec<(u64, PropKind, f32, RationalTime)>,
+    to_path: &mut Vec<(u64, [f32; 2], RationalTime)>,
+    next_baseline: &mut BTreeMap<u64, PoseSample>,
+    t_cut: f64,
+    t: RationalTime,
+    solo: bool,
+    playing: bool,
+    capturing: bool,
+    default_path: bool,
+) -> Option<ph2d_timeline::KeyRefusal> {
     // The first refusal this frame, if any (they share a cause far more often than
     // not — one stack, one playhead).
     let mut refused_now: Option<ph2d_timeline::KeyRefusal> = None;
@@ -398,6 +310,128 @@ pub(crate) fn apply_samples(
         }
         next_baseline.insert(entity, pose);
     }
+    refused_now
+}
+
+/// The pure core of the pass: given each selected sprite's sampled pose, key what
+/// left its curve and bracket the undo step. Separated from [`run`] (which owns
+/// the `HeroScreen`/`World` sampling) so the frame logic — the diff, the
+/// auto-create, the bracket — is testable headless.
+#[allow(clippy::too_many_arguments)] // the frame's inputs; bundling them hides them
+pub(crate) fn apply_samples(
+    timeline: &mut TimelineState,
+    playhead: &Playhead,
+    samples: &[(u64, PoseSample)],
+    drag_now: bool,
+    armed: bool,
+    performing: bool,
+    ak: &mut AutokeyState,
+    toasts: &mut ph2d_editor_core::ToastQueue,
+) {
+    // **Which scene the diff believes in** — the same split the manual K has
+    // (`key_authoring_solo` vs `key_value_for`): in the KEYS view the apply solos
+    // the active clip at the CLIP playhead, so the pass must author on that clock
+    // and against that curve. Before this split, ONE strip in a lane flipped every
+    // question here to the stack's blend at the TIMELINE clock — a clock the solo
+    // apply was not driving — and auto-key on the Keys tab died in a wall of
+    // "does not play here" toasts (Enio, 2026-07-22). The caller passes the
+    // matching playhead (clip in keys mode, timeline otherwise).
+    let solo = timeline.keys_mode;
+    // Inside a container the diff believes in the CONTAINER's blend, at the container
+    // clock (Enio, 2026-07-22) — the third view. The scratch is primed ROOTED there
+    // (`container_open`), so the root-aware `shown_value`/`key_home`/`key_value_in_active_clip`
+    // read the container's lanes, not the scene's. `None` primes the scene (root None),
+    // exactly as before.
+    let root = timeline.container_open;
+    // The stack's scratch must describe THIS instant before anything asks it where
+    // a key lands or whether a pose is reachable. In production the apply built it
+    // a moment ago at this very playhead, so this costs a compare — but the pass no
+    // longer DEPENDS on that having happened, which is the difference between right
+    // and accidentally right. Solo never consults the scratch (there is no blend),
+    // and priming it with the CLIP clock would poison it for everyone else.
+    if !solo {
+        timeline.doc.prime_rooted(root, playhead.time());
+    }
+
+    // Whether this frame CAPTURES the pose into keys.
+    //  - Paused: ordinary auto-key (`armed`) — a UI edit off the curve keys.
+    //  - Playing: ONLY performing, and ONLY with a live gizmo drag. The pose
+    //    changes every played frame because the animation drives it, not the
+    //    user — so capturing the passive pose would mint a key per frame (the
+    //    "autoplay creates keyframes" bug). Requiring an active drag makes that
+    //    impossible: a plain Play, even with AutoKey armed, never records.
+    // The baseline still advances below regardless, so pausing mid-play never
+    // misreads the settled pose as a jump.
+    let playing = playhead.is_playing();
+    let capturing = if playing {
+        performing && drag_now
+    } else {
+        armed
+    };
+    let fps = timeline.doc.fps_display;
+    // **The author's clock is the apply's clock, CUT included** (seed == sample).
+    // The apply cuts every clock at the view's authored duration before anything
+    // else (`apply_active_clip` / the empty-stack lane of `apply_from_doc_except`
+    // cut by the clip; `stack_frames` cuts frame 0 by the scene/container and each
+    // strip by `cut_source`). Past the cut the pose is FROZEN at `curve(cut)`, so
+    // a diff that reads `curve(raw)` sees a phantom delta and mints a key per
+    // scrubbed frame, at a time the apply never samples (the 2026-07-23 superbug).
+    // THIS cut is the SOLE correctness boundary — and stays so now that the playhead
+    // clamp upstream is GONE (removed 2026-07-25: the playhead is free so the transport
+    // can drive physics past the authored end). The playhead routinely runs past the cut;
+    // the evaluator freezes the pose at `curve(cut)`, so the diff never sees a phantom
+    // delta. The autokey correctness never depended on the clamp — only on this cut.
+    // Which cut mirrors which apply:
+    //  - Keys/solo, and Arrange with an EMPTY stack: the active clip's own cut.
+    //  - A real stack / container: the view's frame-0 cut. The diff there reads
+    //    the primed scratch (already cut per strip), and `key_home`'s stacked
+    //    branch debug-asserts the clock it is handed matches the scratch's own —
+    //    so hand it the same one.
+    // All cuts are `t.min(len)`, so within the authored range (and with nothing
+    // authored) `t_cut == playhead.time()` and this is byte-identical to before.
+    let t_raw = playhead.time();
+    let t_cut = if solo || (root.is_none() && timeline.doc.stack().is_empty()) {
+        timeline.doc.clip_cut(timeline.doc.active_index(), t_raw)
+    } else if let Some(c) = root {
+        timeline.doc.container_cut(c, t_raw)
+    } else {
+        timeline.doc.cut_scene(t_raw)
+    };
+    let t = ph2d_timeline::snap_time(
+        RationalTime::from_seconds(t_cut),
+        fps,
+        timeline.flags.frame_snap,
+    );
+
+    // The fresh-object default: Position is a motion path (the After Effects
+    // default). An object already in one mode keeps it — `position_key_mode`
+    // resolves that; this is only the fallback for one with no position animation
+    // yet, and the per-object toggle marks it otherwise (ADR-0141).
+    let default_path = true;
+
+    // Diff each sprite against its curve (bound) or last frame (unbound), and
+    // rebuild the baseline in one pass. The diff reads the document BEFORE any
+    // upsert, so the whole selection is judged against one consistent state.
+    let mut to_key: Vec<(u64, PropKind, f32, RationalTime)> = Vec::new();
+    // Motion-path anchors to author (Path mode): `(entity, [x, y], key time)`.
+    // Separate from `to_key` because an anchor is 2D geometry, keyed through
+    // `key_the_path`, not a scalar upsert.
+    let mut to_path: Vec<(u64, [f32; 2], RationalTime)> = Vec::new();
+    let mut next_baseline: BTreeMap<u64, PoseSample> = BTreeMap::new();
+    let refused_now = diff_each_sample(
+        timeline,
+        samples,
+        ak,
+        &mut to_key,
+        &mut to_path,
+        &mut next_baseline,
+        t_cut,
+        t,
+        solo,
+        playing,
+        capturing,
+        default_path,
+    );
     ak.baseline = next_baseline;
 
     // Say it once. On the rising edge, again if the REASON changes, and re-armed

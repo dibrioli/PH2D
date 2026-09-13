@@ -45,7 +45,6 @@ const FN_OVERAGE_OK: &[(&str, &str, usize, &str)] = &[
     ("layout_live.rs", "lay_out", 206, NASCEU),
     ("main.rs", "new", 263, NASCEU),
     ("project_load.rs", "project_load_from", 484, NASCEU),
-    ("render_loop/autokey_pass.rs", "apply_samples", 317, NASCEU),
     ("render_loop/bgremoval_preview.rs", "dispatch", 333, NASCEU),
     (
         "render_loop/fase_audio_panels.rs",

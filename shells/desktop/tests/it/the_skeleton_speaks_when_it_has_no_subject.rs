@@ -11,7 +11,12 @@
 //! outra metade: *o dreno pergunta-a, e pergunta-a nos DOIS caminhos de evento* — um clique e um
 //! campo numérico chegam por portas diferentes, e alimentar só uma deixa metade da seção calada.
 
-const LOOP: &str = include_str!("../../src/render_loop/mod.rs");
+/// O QUADRO pela ordem em que corre (`frame_text::render_frame`).
+///
+/// ⚠️ Desde a OBRA 2 da `line/render-loop` (2026-09-13) o braço que fala mora na `fase_bone_smart_and_knobs`, e as duas
+/// alimentações continuam no dreno do barramento: só o texto EMENDADO tem as três.
+static LOOP: std::sync::LazyLock<String> =
+    std::sync::LazyLock::new(crate::frame_text::render_frame);
 
 /// **O fonte sem comentários** — um censo textual que não os tira mente nos dois sentidos: uma nota
 /// que cita a chamada conta como chamada, e uma chamada comentada conta como viva.
@@ -28,7 +33,7 @@ fn code_only(src: &str) -> String {
 /// ⭐⭐⭐ **O braço que fala lê a pergunta DERIVADA, e não uma lista.**
 #[test]
 fn the_arm_that_speaks_reads_the_derived_question() {
-    let src = code_only(LOOP);
+    let src = code_only(&LOOP);
     assert!(
         src.contains("} else if pending_bone_needs_focus {"),
         "o braço «nenhum osso em foco» deixou de ler a pergunta derivada — se ele voltou a uma \
@@ -48,7 +53,7 @@ fn the_arm_that_speaks_reads_the_derived_question() {
 /// seção usa.
 #[test]
 fn both_event_paths_feed_it() {
-    let src = code_only(LOOP);
+    let src = code_only(&LOOP);
     let feeds: Vec<&str> = src
         .lines()
         .filter(|l| l.contains("pending_bone_needs_focus |="))

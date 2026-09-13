@@ -28,12 +28,6 @@
 //! sem ela trocaria um sub-aplicar silencioso por uma conversão em massa silenciosa, que é pior.
 //! ⛔ Quando a confirmação existir, estes três saem desta lista.
 
-use std::path::{Path, PathBuf};
-
-fn drain_source() -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR")).join("src/render_loop/mod.rs")
-}
-
 /// Os verbos que **não** espalham, cada um com a razão pela qual isso é uma decisão.
 ///
 /// ⚠️ As entradas de `Name`/`Signal` não são exceções de produto: um nome é por-entidade por
@@ -73,7 +67,9 @@ const DOES_NOT_FAN_OUT: &[(&str, &str)] = &[
 /// O corpo do dreno, sem comentários — vários deles **citam** `inspector_selection` a explicar a
 /// regra, e um comentário não espalha nada.
 fn drain_body() -> String {
-    let src = std::fs::read_to_string(drain_source()).expect("ler o dreno");
+    // ⚠️ O QUADRO pela ordem em que corre (`frame_text::render_frame`): desde a OBRA 2 da `line/render-loop` (2026-09-13)
+    // o dreno do barramento mora na `fase_bus_drain`, e o `render_loop/mod.rs` sozinho já não o tem.
+    let src = crate::frame_text::render_frame();
     src.lines()
         .map(|l| l.split("//").next().unwrap_or(""))
         .collect::<Vec<_>>()

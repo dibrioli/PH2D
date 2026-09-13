@@ -21,7 +21,11 @@
 //! apodrece — o Ctrl+V do editor de nós colava duas vezes porque um dispatch
 //! duplicado *"nunca tinha importado enquanto todos os verbos eram idempotentes"*.
 
-const SRC: &str = include_str!("../../src/render_loop/mod.rs");
+/// O QUADRO pela ordem em que corre (`frame_text::render_frame`).
+///
+/// ⚠️ Desde a OBRA 2 da `line/render-loop` (2026-09-13) o braço da §14 mora na `fase_bus_drain` e a chamada ao
+/// `snapshots::publish` na `fase_snapshots_publish`: o `render_loop/mod.rs` sozinho já não tem nenhum dos dois.
+static SRC: std::sync::LazyLock<String> = std::sync::LazyLock::new(crate::frame_text::render_frame);
 
 /// **O fonte sem os COMENTÁRIOS** — o que uma asserção NEGATIVA tem de ler.
 ///

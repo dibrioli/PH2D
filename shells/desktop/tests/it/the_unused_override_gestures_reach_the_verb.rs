@@ -38,7 +38,16 @@ fn code_of(rel: &str) -> String {
 /// o `clear_orphans`.
 #[test]
 fn each_unused_override_gesture_has_its_own_arm_and_its_own_door() {
-    let body = code_of("render_loop/mod.rs");
+    // ⚠️ O dreno lê-se no QUADRO pela ordem em que corre (`frame_text::render_frame`), sem comentários como o `code_of`:
+    // desde a OBRA 2 da `line/render-loop` (2026-09-13) o dreno do barramento mora na `fase_bus_drain`.
+    let body: String = crate::frame_text::render_frame()
+        .lines()
+        .map(|l| match l.find("//") {
+            Some(i) => &l[..i],
+            None => l,
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
     for (action, door) in [
         (
             "EditorAction::InspectorClearUnusedOverrides",

@@ -12,13 +12,14 @@
 //! ⛔ Ele é textual porque o braço vive dentro do laço de quadro da `render_loop`, cuja função tem
 //! ~35 argumentos e um `AppGfx` com uma surface de janela real.
 
-use std::path::Path;
-
-/// O corpo do ficheiro sem comentários — senão o censo lê o que o código DIZ sobre si.
-fn code_of(rel: &str) -> String {
-    let p = Path::new(env!("CARGO_MANIFEST_DIR")).join("src").join(rel);
-    let body = std::fs::read_to_string(&p).unwrap_or_else(|e| panic!("{}: {e}", p.display()));
-    body.lines()
+/// O QUADRO pela ordem em que corre (`frame_text::render_frame`), sem comentários — senão o censo lê o que o código
+/// DIZ sobre si.
+///
+/// ⚠️ Desde a OBRA 2 da `line/render-loop` (2026-09-13) o dreno do barramento mora na `fase_bus_drain`: o
+/// `render_loop/mod.rs` sozinho já não tem o braço.
+fn frame_code() -> String {
+    crate::frame_text::render_frame()
+        .lines()
         .map(|l| match l.find("//") {
             Some(i) => &l[..i],
             None => l,
@@ -32,7 +33,7 @@ fn code_of(rel: &str) -> String {
 /// **Mutação que deve sangrar:** o braço do `EditPrefab` a pedir `Verb::Place`.
 #[test]
 fn the_hierarchy_edit_prefab_row_asks_for_the_open_verb() {
-    let body = code_of("render_loop/mod.rs");
+    let body = frame_code();
     // ⚠️ **A âncora é só o nome da variante** — a 1.ª redacção procurava `EditPrefab { row }` e o
     // `cargo fmt` partiu o braço em quatro linhas no minuto seguinte. *Um censo ancorado na
     // formatação mede o `rustfmt`, não o código.*

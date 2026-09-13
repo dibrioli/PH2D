@@ -53,7 +53,11 @@ impl BodyCtx<'_> {
         if collapsed {
             return y;
         }
-        for (row, fx) in stack.iter().enumerate().take(ids::MAX_FILTER_ROWS) {
+        for (row, fx) in stack
+            .iter()
+            .enumerate()
+            .take(ph2d_editor_core::ids::MAX_FILTER_ROWS)
+        {
             // Um `kind` sem spec publicada não é desenhável (a shell publica a tabela inteira; um
             // buraco aqui seria um card sem nome e sem controles).
             let Some(spec) = fst::kind_spec(fx.kind) else {
@@ -63,7 +67,7 @@ impl BodyCtx<'_> {
         }
         // Os "Add": um por tipo PUBLICADO pelo motor. Um tipo novo aparece aqui sem este arquivo
         // saber que ele existe.
-        if stack.len() < ids::MAX_FILTER_ROWS {
+        if stack.len() < ph2d_editor_core::ids::MAX_FILTER_ROWS {
             for (kind, spec) in fst::kinds().iter().enumerate().take(ids::MAX_FILTER_KINDS) {
                 let label = format!("Add {}", spec.name);
                 y = self.action_button(ids::filter_add_id(kind), &label, y);

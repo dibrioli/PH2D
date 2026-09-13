@@ -17,7 +17,7 @@ use ph2d_editor_core::tool::PanelEvent;
 use ph2d_editor_core::zones::Rect;
 use ph2d_host::{PointerButton, PointerEvent, PointerKind, PointerSource};
 use ph2d_panel_vector::state::VectorPanelState;
-use ph2d_panel_vector::{StrokePaintKind, VectorPanel, ids, state};
+use ph2d_panel_vector::{StrokePaintKind, VectorPanel, state};
 use ph2d_ui_testkit::MockPanelHost;
 
 const VIEWPORT: Rect = Rect {
@@ -123,7 +123,7 @@ fn the_stroke_type_row_is_absent_without_a_stroke() {
     // ficaria verde sobre um painel que perdeu as duas.
     state::set_stroke_present(Some(false));
     assert!(
-        rect(ids::VECTOR_STROKE_PRESENT).is_some(),
+        rect(ph2d_editor_core::ids::VECTOR_STROKE_PRESENT).is_some(),
         "a caixa Stroke desapareceu junto - sao duas perguntas diferentes"
     );
     state::set_stroke_present(None);
@@ -150,7 +150,7 @@ fn lei() -> ph2d_panel_vector::TexturePatternRow {
 /// ⚠️ **E sem padrão nenhum NENHUMA das duas secções sobe.**
 #[test]
 fn no_pattern_means_no_section_at_all() {
-    use ph2d_panel_vector::ids::TexPatKnob as K;
+    use ph2d_editor_core::ids::TexPatKnob as K;
     use ph2d_panel_vector::texture_pattern::kid;
     limpa();
     for id in [
@@ -178,7 +178,7 @@ fn no_pattern_means_no_section_at_all() {
 /// verde sobre um painel que pinta as duas secções sempre — o ruído que a lei do `Option` proíbe.
 #[test]
 fn the_stroke_pattern_section_rises_only_for_the_stroke() {
-    use ph2d_panel_vector::ids::TexPatKnob as K;
+    use ph2d_editor_core::ids::TexPatKnob as K;
     use ph2d_panel_vector::texture_pattern::kid;
     limpa();
     state::set_stroke_present(Some(true));
@@ -206,7 +206,7 @@ fn the_stroke_pattern_section_rises_only_for_the_stroke() {
 /// do gesto, sem nada guardado.
 #[test]
 fn no_control_is_shared_between_the_two_sections() {
-    use ph2d_panel_vector::ids::TexPatKnob as K;
+    use ph2d_editor_core::ids::TexPatKnob as K;
     use ph2d_panel_vector::texture_pattern::{kid, texpat_knob_of};
     let mut vistos = std::collections::BTreeSet::new();
     for slot in 0..ph2d_panel_vector::ids::TEXPAT_SLOTS {
@@ -226,7 +226,10 @@ fn no_control_is_shared_between_the_two_sections() {
     }
     // CONTROLO: um id de FORA não é reclamado por esta família — senão o resolvedor engoliria o
     // clique do vizinho e a secção passaria a consumir gestos que não são dela.
-    assert_eq!(texpat_knob_of(ids::VECTOR_STROKE_PRESENT), None);
+    assert_eq!(
+        texpat_knob_of(ph2d_editor_core::ids::VECTOR_STROKE_PRESENT),
+        None
+    );
     assert_eq!(
         texpat_knob_of(ph2d_tool_vector::ids::VECTOR_STROKE_KIND_PATTERN),
         None

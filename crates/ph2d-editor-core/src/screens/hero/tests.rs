@@ -629,7 +629,7 @@ fn grid_settings_publishes_scroll_bounds_and_wheel_advances_scroll() {
     let mut scene = VectorScene::new();
     let mut text = TextSystem::without_system_fonts();
     paint_hero_screen(&mut hero, ipad12_viewport(), &mut scene, &mut text);
-    let gs_id = crate::grid_snap::ids::GS_PANEL;
+    let gs_id = crate::ids::GS_PANEL;
     let content_h = hero
         .store
         .panel_content_h(gs_id)

@@ -17,7 +17,8 @@ use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::EventOutcome;
 use ph2d_editor_core::tool::Tool; // brings `handle_panel_event` into scope
-use ph2d_panel_equalize_sizes::{EqualizeSizesPanel, ids, state::EqualizeSizesPanelState};
+use ph2d_panel_equalize_sizes::EqualizeSizesPanel;
+use ph2d_panel_equalize_sizes::state::EqualizeSizesPanelState;
 use ph2d_tool_equalize_sizes::params::TargetMode;
 use ph2d_tool_equalize_sizes::tool::EqualizeSizesTool;
 use ph2d_ui_testkit::MockPanelHost;
@@ -42,10 +43,10 @@ fn fixed_w_chip_edit_reaches_tool_params() {
     // A scrub/type commits the chip's stored value, then the dispatch
     // emits `ValueChanged(id)`. Simulate both. 512 is well under the
     // `EQS_MAX_FIXED_DIM` (4096) cap so the post-condition is exact.
-    host.set_number_value(ids::EQS_FIXED_W, 512.0);
+    host.set_number_value(ph2d_tool_equalize_sizes::ids::EQS_FIXED_W, 512.0);
     let outcome = host.apply_panel_event::<EqualizeSizesPanel>(
         &mut panel_state,
-        WidgetEvent::ValueChanged(ids::EQS_FIXED_W),
+        WidgetEvent::ValueChanged(ph2d_tool_equalize_sizes::ids::EQS_FIXED_W),
     );
 
     assert_eq!(
@@ -100,7 +101,7 @@ fn grid_mode_button_click_flips_tool_target_mode() {
 
     let outcome = host.apply_panel_event::<EqualizeSizesPanel>(
         &mut panel_state,
-        WidgetEvent::Click(ids::EQS_MODE_GRID),
+        WidgetEvent::Click(ph2d_tool_equalize_sizes::ids::EQS_MODE_GRID),
     );
     assert_eq!(
         outcome,

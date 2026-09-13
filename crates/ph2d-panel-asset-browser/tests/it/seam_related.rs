@@ -86,7 +86,7 @@ fn each_relation_item_writes_its_own_question_with_the_right_anchor() {
     ] {
         let (mut host, mut st) = open_host();
         ph2d_panel_asset_browser::state::probe_set_painted(vec![HOUSE]);
-        stage_card_menu(&mut host, ids::asset_cell_id(0));
+        stage_card_menu(&mut host, ph2d_editor_core::ids::asset_cell_id(0));
         let out = host.apply_panel_event::<AssetBrowserPanel>(&mut st, WidgetEvent::Click(id));
         assert_eq!(out, EventOutcome::Consumed, "{want:?} morto sob o dedo");
         assert_eq!(
@@ -203,7 +203,7 @@ fn the_clear_button_drops_the_filter() {
 fn a_menu_without_a_subject_sets_no_question() {
     let (mut host, mut st) = open_host();
     ph2d_panel_asset_browser::state::probe_set_painted(Vec::new());
-    stage_card_menu(&mut host, ids::asset_cell_id(0));
+    stage_card_menu(&mut host, ph2d_editor_core::ids::asset_cell_id(0));
     let out = host.apply_panel_event::<AssetBrowserPanel>(
         &mut st,
         WidgetEvent::Click(ph2d_editor_core::ids::CTX_MENU_ASSET_USES),

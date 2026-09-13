@@ -83,7 +83,7 @@ fn every_token_gets_a_row_whose_swatch_is_a_picker_target() {
     clear_color_overrides();
     let (mut h, mut st) = host();
     for row in 0..ColorToken::ALL.len() {
-        let id = ids::tokens_swatch_id(row);
+        let id = ph2d_editor_core::ids::tokens_swatch_id(row);
         assert!(
             h.painted_rect::<TokensPanel>(&mut st, VIEWPORT, id)
                 .is_some(),
@@ -215,14 +215,22 @@ fn a_closed_panel_drops_its_rect() {
     clear_color_overrides();
     let (mut h, mut st) = host();
     // Aberto: o rect é publicado (o controle — sem ele o gate abaixo é verde por vácuo).
-    let _ = h.painted_rect::<TokensPanel>(&mut st, VIEWPORT, ids::tokens_swatch_id(0));
+    let _ = h.painted_rect::<TokensPanel>(
+        &mut st,
+        VIEWPORT,
+        ph2d_editor_core::ids::tokens_swatch_id(0),
+    );
     assert!(
-        h.store().panel_rect(ids::TOKENS_PANEL).is_some(),
+        h.store()
+            .panel_rect(ph2d_editor_core::ids::TOKENS_PANEL)
+            .is_some(),
         "o painel aberto nao publicou o proprio rect"
     );
     h.paint_hidden::<TokensPanel>(&mut st, VIEWPORT);
     assert!(
-        h.store().panel_rect(ids::TOKENS_PANEL).is_none(),
+        h.store()
+            .panel_rect(ph2d_editor_core::ids::TOKENS_PANEL)
+            .is_none(),
         "o painel fechado deixou o rect para tras — a roda rolaria um painel que nao esta' na tela"
     );
 }
@@ -335,7 +343,7 @@ fn put(theme: Theme, token: ColorToken, colour: Color) {
 
 /// O topo da PRIMEIRA linha da lista — a régua que mede quanto o cabeçalho gastou.
 fn first_row_top() -> f32 {
-    rect_of(ids::tokens_swatch_id(0))
+    rect_of(ph2d_editor_core::ids::tokens_swatch_id(0))
         .expect("a linha 0 e' pintada sempre")
         .y
 }

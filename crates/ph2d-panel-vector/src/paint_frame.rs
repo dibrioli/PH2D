@@ -26,7 +26,6 @@
 use ph2d_i18n::tr;
 use ph2d_tool_vector::frames::DEVICE_PRESETS;
 
-use crate::ids;
 use crate::paint_sections::BodyCtx;
 use crate::state;
 
@@ -55,12 +54,12 @@ impl BodyCtx<'_> {
             tr("panel.vector.frame.panel"),
             &[
                 (
-                    ids::VECTOR_FRAME_PANEL_OFF,
+                    ph2d_editor_core::ids::VECTOR_FRAME_PANEL_OFF,
                     tr("panel.vector.frame.panel.off"),
                     !panel_open,
                 ),
                 (
-                    ids::VECTOR_FRAME_PANEL_ON,
+                    ph2d_editor_core::ids::VECTOR_FRAME_PANEL_ON,
                     tr("panel.vector.frame.panel.on"),
                     panel_open,
                 ),

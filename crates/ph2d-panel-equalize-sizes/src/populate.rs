@@ -24,7 +24,6 @@
 //! every frame; the panel paints the live `snapshot.grid_unit` as
 //! read-only info text in Grid mode.
 
-use crate::ids;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetStore, format_number};
 use ph2d_editor_core::widget::{ButtonState, SliderOrientation, SliderState, TextInputState};
 use ph2d_tool_equalize_sizes::params::EqualizeSizesUiSnapshot;
@@ -33,18 +32,18 @@ pub fn populate(store: &mut WidgetStore) {
     // Every plain button (modes, algorithm, toggles incl. Arrange,
     // Cancel/Apply).
     for id in [
-        ids::EQS_MODE_MAX,
-        ids::EQS_MODE_FIXED,
-        ids::EQS_MODE_GRID,
-        ids::EQS_ARRANGE_ON_GRID,
-        ids::EQS_UPSCALE_IF_SMALLER,
-        ids::EQS_RASTERIZE_AFTER,
-        ids::EQS_ALG_LANCZOS,
-        ids::EQS_ALG_NEAREST,
-        ids::EQS_ALG_EPX,
-        ids::EQS_CANCEL,
-        ids::EQS_APPLY,
-        ids::EQS_RESET,
+        ph2d_tool_equalize_sizes::ids::EQS_MODE_MAX,
+        ph2d_tool_equalize_sizes::ids::EQS_MODE_FIXED,
+        ph2d_tool_equalize_sizes::ids::EQS_MODE_GRID,
+        ph2d_tool_equalize_sizes::ids::EQS_ARRANGE_ON_GRID,
+        ph2d_tool_equalize_sizes::ids::EQS_UPSCALE_IF_SMALLER,
+        ph2d_tool_equalize_sizes::ids::EQS_RASTERIZE_AFTER,
+        ph2d_tool_equalize_sizes::ids::EQS_ALG_LANCZOS,
+        ph2d_tool_equalize_sizes::ids::EQS_ALG_NEAREST,
+        ph2d_tool_equalize_sizes::ids::EQS_ALG_EPX,
+        ph2d_tool_equalize_sizes::ids::EQS_CANCEL,
+        ph2d_tool_equalize_sizes::ids::EQS_APPLY,
+        ph2d_tool_equalize_sizes::ids::EQS_RESET,
     ] {
         store.register(
             id,
@@ -59,8 +58,8 @@ pub fn populate(store: &mut WidgetStore) {
     // stepper click→step affordance is the canon for every chip.
     let defaults = EqualizeSizesUiSnapshot::default();
     for (chip_id, default_px) in [
-        (ids::EQS_FIXED_W, defaults.fixed_w),
-        (ids::EQS_FIXED_H, defaults.fixed_h),
+        (ph2d_tool_equalize_sizes::ids::EQS_FIXED_W, defaults.fixed_w),
+        (ph2d_tool_equalize_sizes::ids::EQS_FIXED_H, defaults.fixed_h),
     ] {
         store.register(
             chip_id,
@@ -97,7 +96,7 @@ pub fn populate(store: &mut WidgetStore) {
     // event handler against the live `snapshot.grid_unit / 2`.
     let default_offset = defaults.grid_offset as f64;
     store.register(
-        ids::EQS_GRID_OFFSET,
+        ph2d_tool_equalize_sizes::ids::EQS_GRID_OFFSET,
         InteractiveState::Slider {
             state: SliderState::Normal,
             value: 0.0,
@@ -105,7 +104,7 @@ pub fn populate(store: &mut WidgetStore) {
         },
     );
     store.register(
-        ids::EQS_GRID_OFFSET_NUM,
+        ph2d_tool_equalize_sizes::ids::EQS_GRID_OFFSET_NUM,
         InteractiveState::NumberInput {
             state: TextInputState::Normal,
             value: default_offset,
@@ -126,27 +125,35 @@ mod tests {
         let mut store = WidgetStore::with_capacity(32);
         populate(&mut store);
         for id in [
-            ids::EQS_MODE_MAX,
-            ids::EQS_MODE_FIXED,
-            ids::EQS_MODE_GRID,
-            ids::EQS_ARRANGE_ON_GRID,
-            ids::EQS_UPSCALE_IF_SMALLER,
-            ids::EQS_RASTERIZE_AFTER,
-            ids::EQS_ALG_LANCZOS,
-            ids::EQS_ALG_NEAREST,
-            ids::EQS_ALG_EPX,
-            ids::EQS_CANCEL,
-            ids::EQS_APPLY,
+            ph2d_tool_equalize_sizes::ids::EQS_MODE_MAX,
+            ph2d_tool_equalize_sizes::ids::EQS_MODE_FIXED,
+            ph2d_tool_equalize_sizes::ids::EQS_MODE_GRID,
+            ph2d_tool_equalize_sizes::ids::EQS_ARRANGE_ON_GRID,
+            ph2d_tool_equalize_sizes::ids::EQS_UPSCALE_IF_SMALLER,
+            ph2d_tool_equalize_sizes::ids::EQS_RASTERIZE_AFTER,
+            ph2d_tool_equalize_sizes::ids::EQS_ALG_LANCZOS,
+            ph2d_tool_equalize_sizes::ids::EQS_ALG_NEAREST,
+            ph2d_tool_equalize_sizes::ids::EQS_ALG_EPX,
+            ph2d_tool_equalize_sizes::ids::EQS_CANCEL,
+            ph2d_tool_equalize_sizes::ids::EQS_APPLY,
         ] {
             assert!(store.button_state(id).is_some(), "button {id:?} missing");
         }
-        for id in [ids::EQS_FIXED_W, ids::EQS_FIXED_H, ids::EQS_GRID_OFFSET_NUM] {
+        for id in [
+            ph2d_tool_equalize_sizes::ids::EQS_FIXED_W,
+            ph2d_tool_equalize_sizes::ids::EQS_FIXED_H,
+            ph2d_tool_equalize_sizes::ids::EQS_GRID_OFFSET_NUM,
+        ] {
             assert!(
                 store.number_value(id).is_some(),
                 "number chip {id:?} missing"
             );
         }
-        assert!(store.slider(ids::EQS_GRID_OFFSET).is_some());
+        assert!(
+            store
+                .slider(ph2d_tool_equalize_sizes::ids::EQS_GRID_OFFSET)
+                .is_some()
+        );
     }
 
     #[test]
@@ -157,6 +164,6 @@ mod tests {
         // opposite of the old `offset_chip_marked_no_stepper` test.
         let mut store = WidgetStore::with_capacity(32);
         populate(&mut store);
-        assert!(!store.is_chip_no_stepper(ids::EQS_GRID_OFFSET_NUM));
+        assert!(!store.is_chip_no_stepper(ph2d_tool_equalize_sizes::ids::EQS_GRID_OFFSET_NUM));
     }
 }

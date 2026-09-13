@@ -94,11 +94,11 @@ impl VectorTool {
             // ⚠️ **É isto que dá o «nenhum seleccionado»**: fora do `DrawMode::Bone` nenhum dos dois
             // está armado, e a fileira acende-se pelo MODO — numa cena sem ossos, o artista abre o
             // painel pelo menu e **nada** está aceso até ele carregar em *Create*.
-            PanelEvent::Click(id) if id == ids::VECTOR_BONE_ACT_CREATE => {
+            PanelEvent::Click(id) if id == crate::ids::VECTOR_BONE_ACT_CREATE => {
                 self.mode = DrawMode::Bone;
                 self.bone_action = crate::params::BoneAction::Create;
             }
-            PanelEvent::Click(id) if id == ids::VECTOR_BONE_ACT_TRANSFORM => {
+            PanelEvent::Click(id) if id == crate::ids::VECTOR_BONE_ACT_TRANSFORM => {
                 self.mode = DrawMode::Bone;
                 self.bone_action = crate::params::BoneAction::Transform;
             }
@@ -108,10 +108,10 @@ impl VectorTool {
             // pintada quando há uma coisa PRESA, logo já se está no assunto — e trocar de modo aqui
             // arrancaria o artista do que ele estava a fazer para responder a uma pergunta de
             // qualidade de desenho.
-            PanelEvent::Click(id) if id == ids::VECTOR_BONE_DEFORM_FAST => {
+            PanelEvent::Click(id) if id == crate::ids::VECTOR_BONE_DEFORM_FAST => {
                 self.set_skin_deform(crate::params::SkinDeform::Fast);
             }
-            PanelEvent::Click(id) if id == ids::VECTOR_BONE_DEFORM_SMOOTH => {
+            PanelEvent::Click(id) if id == crate::ids::VECTOR_BONE_DEFORM_SMOOTH => {
                 self.set_skin_deform(crate::params::SkinDeform::Smooth);
             }
             PanelEvent::Click(id) if id == crate::ids::VECTOR_MODE_PENCIL => {

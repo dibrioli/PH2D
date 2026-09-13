@@ -103,7 +103,7 @@ impl crate::App {
             // (é a lei do modo *Criar*), e o arrasto da âncora nunca acontece. *Uma sonda que não
             // escolhe o verbo mede o outro gesto.*
             48 => self.probe_click(
-                ph2d_editor_core::ids::VECTOR_BONE_ACT_TRANSFORM,
+                ph2d_tool_vector::ids::VECTOR_BONE_ACT_TRANSFORM,
                 "Transform",
             ),
             49 => self.probe_what_is_reachable(),
@@ -295,7 +295,7 @@ impl crate::App {
             35 => self.probe_click(ph2d_editor_core::ids::VECTOR_MODE_BONE, "o pill Bone"),
             42..=47 => self.probe_scroll_panel(),
             48 => self.probe_click(
-                ph2d_editor_core::ids::VECTOR_BONE_ACT_TRANSFORM,
+                ph2d_tool_vector::ids::VECTOR_BONE_ACT_TRANSFORM,
                 "Transform",
             ),
             50 => self.probe_pick_a_bone_without_anchor(),

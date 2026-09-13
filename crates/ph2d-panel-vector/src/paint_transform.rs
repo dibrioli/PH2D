@@ -3,7 +3,6 @@
 //! `paint_sections` to keep that file under the 600-LOC panel cap; it's an
 //! `impl BodyCtx` block over there.
 
-use crate::ids;
 use crate::paint_sections::BodyCtx;
 use crate::state;
 use ph2d_i18n::tr;
@@ -55,7 +54,13 @@ impl BodyCtx<'_> {
         // honesto: sem isto o sufixo da seção reivindicaria também a rotação, que é em GRAUS.
         // Um campo que se auto-rotula é mais barato que uma exceção escrita num doc-comment que
         // o artista não lê.
-        self.number_cell("R°", ids::VECTOR_TRANSFORM_R, self.inner_x, self.inner_w, y);
+        self.number_cell(
+            "R°",
+            ph2d_editor_core::ids::VECTOR_TRANSFORM_R,
+            self.inner_x,
+            self.inner_w,
+            y,
+        );
         y += self.row_h + self.row_gap;
         // **Resize Box** (plano UI/UX W3b) — o que a ALÇA do gizmo faz a este objeto: reescrever
         // a caixa, ou escalar a pose (que é herdada pelos filhos — o certo para objeto de game).
@@ -67,7 +72,7 @@ impl BodyCtx<'_> {
         // `None` = a seleção não tem resposta (nada, ou seleção múltipla) e a linha não existe.
         if let Some(on) = state::resize_box() {
             y = self.checkbox_row(
-                ids::VECTOR_TRANSFORM_RESIZE_BOX,
+                ph2d_editor_core::ids::VECTOR_TRANSFORM_RESIZE_BOX,
                 tr("panel.vector.transform.resize_box"),
                 on,
                 y,
@@ -81,7 +86,7 @@ impl BodyCtx<'_> {
         } else {
             "Set Center"
         };
-        self.action_button(ids::VECTOR_PIVOT_EDIT, label, y)
+        self.action_button(ph2d_editor_core::ids::VECTOR_PIVOT_EDIT, label, y)
     }
 }
 

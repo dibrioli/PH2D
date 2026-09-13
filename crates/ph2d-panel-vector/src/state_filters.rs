@@ -20,7 +20,8 @@
 
 use std::cell::{Cell, RefCell};
 
-use crate::ids::{MAX_FILTER_ROWS, MAX_FILTER_STOPS};
+use crate::ids::MAX_FILTER_STOPS;
+use ph2d_editor_core::ids::MAX_FILTER_ROWS;
 
 /// Quantas amostras o bar de preview carrega. Não é resolução de imagem: é o número de fatias que o
 /// trilho pinta, e acima disto o olho não distingue (a barra tem ~200 px).

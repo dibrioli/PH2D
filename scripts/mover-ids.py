@@ -776,11 +776,9 @@ DOC_RAIZ = """//! Os `NodeId` de widget que esta crate LÊ — declarados AQUI, 
 """
 
 DOC_FACHADA = """//!
-//! ⚠️ **Sem re-exportações desde {data}** (auditoria A5b). Este módulo dizia que os ids ficavam na
-//! `ph2d-editor-core` porque *«o layout, o z-order walk e o `node_id_collisions` os referenciam»*: os
-//! dois primeiros são os ids que a fundação LÊ, e esses ficaram lá; o terceiro passou a ser um censo
-//! DERIVADO dos literais da workspace. O resto desceu para a crate que o lê — e com UMA definição e
-//! zero re-exportações, o «fork da verdade» que a nota temia deixou de poder existir.
+//! ⚠️ **Sem re-exportações desde {data}** (auditoria A5b) — ⛔ NOTA PROVISÓRIA, reescreva-a à mão: o
+//! cabeçalho acima descreve a re-exportação que morreu, e só quem lê este ficheiro sabe dizer de
+//! onde cada id vem agora (fundação, ferramenta, ou este painel).
 """
 
 

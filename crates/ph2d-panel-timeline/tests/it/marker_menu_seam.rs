@@ -9,8 +9,8 @@
 
 use ph2d_editor_core::interaction::{ContextMenuKind, ContextMenuRequest, WidgetEvent};
 use ph2d_editor_core::panel::{EventOutcome, PanelHostInternal};
+use ph2d_panel_timeline::TimelinePanel;
 use ph2d_panel_timeline::state::TimelinePanelState;
-use ph2d_panel_timeline::{TimelinePanel, ids};
 use ph2d_ui_testkit::MockPanelHost;
 
 /// Park a `TimelineMarker { index }` menu request the way the production Down does:
@@ -32,7 +32,7 @@ fn rename_marker_menu_click_arms_the_label_editor() {
 
     let outcome = host.apply_panel_event::<TimelinePanel>(
         &mut state,
-        WidgetEvent::Click(ids::CTX_MENU_TL_RENAME_MARKER),
+        WidgetEvent::Click(ph2d_editor_core::ids::CTX_MENU_TL_RENAME_MARKER),
     );
     assert_eq!(
         outcome,
@@ -60,7 +60,7 @@ fn set_signal_menu_click_arms_the_signal_editor() {
 
     let outcome = host.apply_panel_event::<TimelinePanel>(
         &mut state,
-        WidgetEvent::Click(ids::CTX_MENU_TL_SET_SIGNAL),
+        WidgetEvent::Click(ph2d_editor_core::ids::CTX_MENU_TL_SET_SIGNAL),
     );
     assert_eq!(outcome, EventOutcome::Consumed);
     assert_eq!(
@@ -81,7 +81,7 @@ fn delete_marker_menu_click_removes_that_marker() {
 
     let outcome = host.apply_panel_event::<TimelinePanel>(
         &mut state,
-        WidgetEvent::Click(ids::CTX_MENU_TL_DELETE_MARKER),
+        WidgetEvent::Click(ph2d_editor_core::ids::CTX_MENU_TL_DELETE_MARKER),
     );
     assert_eq!(outcome, EventOutcome::Consumed);
     assert_eq!(
@@ -105,7 +105,7 @@ fn every_marker_menu_row_is_handled_by_the_panel() {
     // without a `marker_menu::route` arm is a painted menu item that silently does
     // nothing. Drive each one through the real seam and demand the panel consume it.
     let _ = ph2d_panel_timeline::drain_intents();
-    for (id, label, _) in ids::TIMELINE_MARKER_MENU {
+    for (id, label, _) in ph2d_editor_core::ids::TIMELINE_MARKER_MENU {
         let mut host = MockPanelHost::with_panel::<TimelinePanel>();
         let mut state = TimelinePanelState::default();
         park_marker_menu(&mut host, 0);

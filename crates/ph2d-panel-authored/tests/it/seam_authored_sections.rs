@@ -21,7 +21,7 @@ use ph2d_editor_core::widget::WidgetKind;
 use ph2d_editor_core::zones::Rect;
 use ph2d_host::{PointerButton, PointerEvent, PointerKind, PointerSource};
 use ph2d_panel_authored::state::AuthoredPanelState;
-use ph2d_panel_authored::{AuthoredPanel, ids, rows};
+use ph2d_panel_authored::{AuthoredPanel, rows};
 use ph2d_ui_testkit::MockPanelHost;
 
 const VIEWPORT: Rect = Rect {
@@ -62,7 +62,7 @@ fn two_sections() -> Vec<rows::Row> {
         kind,
         label: key.to_string(),
         key: key.to_string(),
-        id: ids::authored_row_id(key),
+        id: ph2d_editor_core::ids::authored_row_id(key),
         rgba: None,
         icon: None,
         icon_id: None,
@@ -72,7 +72,7 @@ fn two_sections() -> Vec<rows::Row> {
 }
 
 fn key_id(k: &str) -> ph2d_a11y::NodeId {
-    ids::authored_row_id(k)
+    ph2d_editor_core::ids::authored_row_id(k)
 }
 
 /// Um host com o painel aberto, **na ORDEM do app**.

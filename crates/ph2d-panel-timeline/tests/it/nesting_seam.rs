@@ -381,17 +381,17 @@ fn scrubbing_inside_a_container_seeks_the_local_second() {
         tab: ph2d_panel_timeline::tab::Tab::Arrange, // a régua deste gate É a do Arrange
         ..TimelinePanelState::default()
     };
-    host.set_slider_value(ids::TIMELINE_RULER, 0.5);
+    host.set_slider_value(ph2d_editor_core::ids::TIMELINE_RULER, 0.5);
     let _ = host.apply_panel_event::<TimelinePanel>(
         &mut state,
-        WidgetEvent::ValueChanged(ids::TIMELINE_RULER),
+        WidgetEvent::ValueChanged(ph2d_editor_core::ids::TIMELINE_RULER),
     );
     let events = timeline_events(&mut host);
     ph2d_panel_timeline::state::set_current_timeline(None);
     assert_eq!(
         events,
         vec![ph2d_editor_core::tool::PanelEvent::SetValue(
-            ids::TIMELINE_RULER,
+            ph2d_editor_core::ids::TIMELINE_RULER,
             4.0
         )],
         "o eixo é o relógio do container: 0,5 sobre 8 s é o segundo 4 DELE, cru"
@@ -409,16 +409,16 @@ fn scrubbing_at_the_scene_root_still_seeks_the_raw_second() {
         tab: ph2d_panel_timeline::tab::Tab::Arrange, // a régua deste gate É a do Arrange
         ..TimelinePanelState::default()
     };
-    host.set_slider_value(ids::TIMELINE_RULER, 0.5);
+    host.set_slider_value(ph2d_editor_core::ids::TIMELINE_RULER, 0.5);
     let _ = host.apply_panel_event::<TimelinePanel>(
         &mut state,
-        WidgetEvent::ValueChanged(ids::TIMELINE_RULER),
+        WidgetEvent::ValueChanged(ph2d_editor_core::ids::TIMELINE_RULER),
     );
     let events = timeline_events(&mut host);
     assert_eq!(
         events,
         vec![ph2d_editor_core::tool::PanelEvent::SetValue(
-            ids::TIMELINE_RULER,
+            ph2d_editor_core::ids::TIMELINE_RULER,
             4.0
         )]
     );
@@ -444,17 +444,17 @@ fn inside_a_container_the_scrub_always_seeks_the_local_second() {
         tab: ph2d_panel_timeline::tab::Tab::Arrange,
         ..TimelinePanelState::default()
     };
-    host.set_slider_value(ids::TIMELINE_RULER, 0.5);
+    host.set_slider_value(ph2d_editor_core::ids::TIMELINE_RULER, 0.5);
     let _ = host.apply_panel_event::<TimelinePanel>(
         &mut state,
-        WidgetEvent::ValueChanged(ids::TIMELINE_RULER),
+        WidgetEvent::ValueChanged(ph2d_editor_core::ids::TIMELINE_RULER),
     );
     let events = timeline_events(&mut host);
     ph2d_panel_timeline::state::set_current_timeline(None);
     assert_eq!(
         events,
         vec![ph2d_editor_core::tool::PanelEvent::SetValue(
-            ids::TIMELINE_RULER,
+            ph2d_editor_core::ids::TIMELINE_RULER,
             4.0
         )],
         "sem mapa a régua ainda arrasta — o relógio do container não depende de um inverso"
@@ -650,17 +650,17 @@ fn the_keys_ruler_scrubs_raw_inside_a_container() {
         tab: Tab::Keys,
         ..TimelinePanelState::default()
     };
-    host.set_slider_value(ids::TIMELINE_RULER, 0.5);
+    host.set_slider_value(ph2d_editor_core::ids::TIMELINE_RULER, 0.5);
     let _ = host.apply_panel_event::<TimelinePanel>(
         &mut state,
-        WidgetEvent::ValueChanged(ids::TIMELINE_RULER),
+        WidgetEvent::ValueChanged(ph2d_editor_core::ids::TIMELINE_RULER),
     );
     let events = timeline_events(&mut host);
     set_current_timeline(None);
     assert_eq!(
         events,
         vec![ph2d_editor_core::tool::PanelEvent::SetValue(
-            ids::TIMELINE_RULER,
+            ph2d_editor_core::ids::TIMELINE_RULER,
             4.0
         )],
         "na Keys o segundo 4 da régua É o segundo 4 do clip — engolir o gesto congela o playhead"

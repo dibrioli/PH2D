@@ -4,7 +4,6 @@
 //! `ph2d_editor_core::grid_snap::panel::paint_rows` during ADR-0029
 //! Phase C.4.
 
-use crate::ids;
 use crate::layout::{LABEL_COL_W, LABEL_FONT_SIZE, ROW_H};
 use crate::state::{meters_to_display, unit_suffix_paren};
 use ph2d_editor_core::NodeId;
@@ -169,7 +168,7 @@ pub(crate) fn paint_origin_rows(
     let suffix = unit_suffix_paren();
     let y = paint_number_row_from_state(
         &format!("Origin X{suffix}"),
-        ids::GS_CFG_ORIGIN_X,
+        ph2d_editor_core::grid_snap::ids::GS_CFG_ORIGIN_X,
         meters_to_display(origin[0]),
         x,
         w,
@@ -182,7 +181,7 @@ pub(crate) fn paint_origin_rows(
     );
     paint_number_row_from_state(
         &format!("Origin Y{suffix}"),
-        ids::GS_CFG_ORIGIN_Y,
+        ph2d_editor_core::grid_snap::ids::GS_CFG_ORIGIN_Y,
         meters_to_display(origin[1]),
         x,
         w,
@@ -282,7 +281,7 @@ pub(crate) fn paint_show_overlay_row(
 ) {
     paint_labeled_toggle(
         "Show grid",
-        ids::GS_SHOW_OVERLAY,
+        ph2d_editor_core::grid_snap::ids::GS_SHOW_OVERLAY,
         state.show_overlay,
         row,
         scene,
@@ -307,14 +306,14 @@ pub(crate) fn paint_opacity_slider_row(
     // Gallery slider uses, so this matches every other slider in the
     // app. (Was a one-off label + bare `paint_slider`.)
     let value = store
-        .slider(ids::GS_OPACITY_SLIDER)
+        .slider(ph2d_editor_core::grid_snap::ids::GS_OPACITY_SLIDER)
         .map(|(_, v)| v)
         .unwrap_or(state.opacity);
     ph2d_editor_core::widget::paint_slider_with_chip(
         row,
         "Opacity",
         value,
-        ids::GS_OPACITY_SLIDER,
+        ph2d_editor_core::grid_snap::ids::GS_OPACITY_SLIDER,
         ph2d_editor_core::NodeId(0),
         store,
         hit_index,

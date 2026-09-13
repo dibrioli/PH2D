@@ -21,7 +21,6 @@ use ph2d_editor_core::interaction::ContextMenuKind;
 use ph2d_editor_core::panel::{EventOutcome, PanelHostInternal};
 use ph2d_timeline::TimelineIntent;
 
-use crate::ids;
 use crate::state::{self, MarkerRename, TimelinePanelState};
 
 /// O índice de marker que a requisição de menu parqueada nomeia, se houver uma.
@@ -72,13 +71,13 @@ pub(crate) fn route(
     host: &mut dyn PanelHostInternal,
     id: ph2d_a11y::NodeId,
 ) -> Option<EventOutcome> {
-    if id == ids::CTX_MENU_TL_RENAME_MARKER {
+    if id == ph2d_editor_core::ids::CTX_MENU_TL_RENAME_MARKER {
         return Some(open_editor(state, host, false));
     }
-    if id == ids::CTX_MENU_TL_SET_SIGNAL {
+    if id == ph2d_editor_core::ids::CTX_MENU_TL_SET_SIGNAL {
         return Some(open_editor(state, host, true));
     }
-    if id == ids::CTX_MENU_TL_DELETE_MARKER {
+    if id == ph2d_editor_core::ids::CTX_MENU_TL_DELETE_MARKER {
         return Some(delete_marker(host));
     }
     None

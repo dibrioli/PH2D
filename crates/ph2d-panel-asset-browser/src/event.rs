@@ -243,7 +243,7 @@ fn chip_index(table: &[ph2d_a11y::NodeId], id: ph2d_a11y::NodeId) -> Option<usiz
 /// O asset que este id de célula desenhou **neste quadro**.
 fn cell_target_of(id: ph2d_a11y::NodeId) -> Option<AssetRef> {
     (0..ids::MAX_ASSET_CELLS)
-        .find(|i| ids::asset_cell_id(*i) == id)
+        .find(|i| ph2d_editor_core::ids::asset_cell_id(*i) == id)
         .and_then(crate::paint::cell_target)
 }
 

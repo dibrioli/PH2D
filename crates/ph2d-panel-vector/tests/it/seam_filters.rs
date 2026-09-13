@@ -353,7 +353,7 @@ fn dragging_a_stop_handle_works_on_the_real_gradient_map_card() {
         cy,
         SEC + SEC / 100,
     )));
-    let ramp = ph2d_panel_vector::ids::filter_ramp_id(0);
+    let ramp = ph2d_editor_core::ids::filter_ramp_id(0);
     assert!(
         evs.iter()
             .any(|e| matches!(e, WidgetEvent::ValueChanged(c) if *c == ramp)),
@@ -405,7 +405,7 @@ fn both_handles_of_the_two_stop_default_are_draggable_including_the_right_edge()
             cy,
             SEC + SEC / 100,
         )));
-        let ramp = ph2d_panel_vector::ids::filter_ramp_id(0);
+        let ramp = ph2d_editor_core::ids::filter_ramp_id(0);
         assert!(
             evs.iter()
                 .any(|e| matches!(e, WidgetEvent::ValueChanged(c) if *c == ramp)),
@@ -462,7 +462,7 @@ fn dragging_a_stop_handle_reaches_the_bus_with_a_new_position() {
         cy,
         SEC + SEC / 100,
     )));
-    let ramp = ph2d_panel_vector::ids::filter_ramp_id(0);
+    let ramp = ph2d_editor_core::ids::filter_ramp_id(0);
     assert!(
         evs.iter()
             .any(|e| matches!(e, WidgetEvent::ValueChanged(c) if *c == ramp)),

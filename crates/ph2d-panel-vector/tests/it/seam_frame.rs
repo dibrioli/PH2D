@@ -15,7 +15,7 @@ use ph2d_editor_core::tool::PanelEvent;
 use ph2d_editor_core::zones::Rect;
 use ph2d_host::{PointerButton, PointerEvent, PointerKind, PointerSource};
 use ph2d_panel_vector::state::VectorPanelState;
-use ph2d_panel_vector::{VectorPanel, ids, state};
+use ph2d_panel_vector::{VectorPanel, state};
 use ph2d_tool_vector::frames::DEVICE_PRESETS;
 use ph2d_ui_testkit::MockPanelHost;
 
@@ -83,8 +83,14 @@ fn the_frame_pill_is_reachable_and_reaches_the_bus() {
 fn the_frame_controls_are_reachable_and_reach_the_bus() {
     state::set_frame_clip(Some(true));
     state::set_frame_present(true);
-    click_reaches_bus(ids::VECTOR_FRAME_CLIP_OFF, "o chip Clip=Off");
-    click_reaches_bus(ids::VECTOR_FRAME_CLIP_ON, "o chip Clip=On");
+    click_reaches_bus(
+        ph2d_editor_core::ids::VECTOR_FRAME_CLIP_OFF,
+        "o chip Clip=Off",
+    );
+    click_reaches_bus(
+        ph2d_editor_core::ids::VECTOR_FRAME_CLIP_ON,
+        "o chip Clip=On",
+    );
     for p in DEVICE_PRESETS {
         click_reaches_bus(p.id, p.label);
     }
@@ -102,8 +108,14 @@ fn the_frame_controls_are_reachable_and_reach_the_bus() {
 fn the_show_as_panel_switch_is_reachable_and_reaches_the_bus() {
     state::set_frame_clip(Some(true));
     state::set_frame_present(true);
-    click_reaches_bus(ids::VECTOR_FRAME_PANEL_OFF, "o chip Show as Panel=Off");
-    click_reaches_bus(ids::VECTOR_FRAME_PANEL_ON, "o chip Show as Panel=On");
+    click_reaches_bus(
+        ph2d_editor_core::ids::VECTOR_FRAME_PANEL_OFF,
+        "o chip Show as Panel=Off",
+    );
+    click_reaches_bus(
+        ph2d_editor_core::ids::VECTOR_FRAME_PANEL_ON,
+        "o chip Show as Panel=On",
+    );
     state::set_frame_clip(None);
     state::set_frame_present(false);
 }
@@ -121,9 +133,9 @@ fn the_switch_shows_whether_the_panel_is_open() {
     for open in [false, true] {
         state::set_frame_panel_open(open);
         let lit = if open {
-            ids::VECTOR_FRAME_PANEL_ON
+            ph2d_editor_core::ids::VECTOR_FRAME_PANEL_ON
         } else {
-            ids::VECTOR_FRAME_PANEL_OFF
+            ph2d_editor_core::ids::VECTOR_FRAME_PANEL_OFF
         };
         assert!(
             host.painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, lit)
@@ -146,10 +158,10 @@ fn the_frame_section_is_absent_without_a_frame() {
     let mut host = MockPanelHost::with_panel::<VectorPanel>();
     let mut panel_state = VectorPanelState;
     for id in [
-        ids::VECTOR_FRAME_CLIP_OFF,
-        ids::VECTOR_FRAME_CLIP_ON,
-        ids::VECTOR_FRAME_PANEL_OFF,
-        ids::VECTOR_FRAME_PANEL_ON,
+        ph2d_editor_core::ids::VECTOR_FRAME_CLIP_OFF,
+        ph2d_editor_core::ids::VECTOR_FRAME_CLIP_ON,
+        ph2d_editor_core::ids::VECTOR_FRAME_PANEL_OFF,
+        ph2d_editor_core::ids::VECTOR_FRAME_PANEL_ON,
     ]
     .into_iter()
     .chain(DEVICE_PRESETS.iter().map(|p| p.id))

@@ -79,7 +79,9 @@ pub(crate) fn paint(state: &mut AssetBrowserState, ctx: &mut PaintCtx) {
     if !ctx.host.panel_visible(AssetBrowserPanel::ID) {
         // Limpeza simétrica do rect: sem ela o `panel_at` continua a devolver este painel depois
         // de fechado, e a roda do rato de um painel por baixo vai parar a um painel invisível.
-        ctx.host.store_mut().clear_panel_rect(ids::ASSET_PANEL);
+        ctx.host
+            .store_mut()
+            .clear_panel_rect(ph2d_editor_core::ids::ASSET_PANEL);
         // ⛔ E os cartões deixam de existir para o despachante — senão um `Down` no sítio onde o
         // painel ESTAVA arrancaria um arrasto de um cartão que já ninguém pinta.
         ctx.host
@@ -102,22 +104,36 @@ pub(crate) fn paint(state: &mut AssetBrowserState, ctx: &mut PaintCtx) {
         }
     };
     let viewport = ctx.viewport;
-    let off = ctx.host.store().blender_picker_offset(ids::ASSET_PANEL);
-    let resize = ctx.host.store().panel_resize_delta(ids::ASSET_PANEL);
+    let off = ctx
+        .host
+        .store()
+        .blender_picker_offset(ph2d_editor_core::ids::ASSET_PANEL);
+    let resize = ctx
+        .host
+        .store()
+        .panel_resize_delta(ph2d_editor_core::ids::ASSET_PANEL);
     let (rect, clamped_off, clamped_resize) = clamp_panel_rect(base, off, resize, viewport);
     {
         let store = ctx.host.store_mut();
         if (clamped_off.0 - off.0).abs() > f32::EPSILON
             || (clamped_off.1 - off.1).abs() > f32::EPSILON
         {
-            store.set_blender_picker_offset(ids::ASSET_PANEL, clamped_off.0, clamped_off.1);
+            store.set_blender_picker_offset(
+                ph2d_editor_core::ids::ASSET_PANEL,
+                clamped_off.0,
+                clamped_off.1,
+            );
         }
         if (clamped_resize.0 - resize.0).abs() > f32::EPSILON
             || (clamped_resize.1 - resize.1).abs() > f32::EPSILON
         {
-            store.set_panel_resize_delta(ids::ASSET_PANEL, clamped_resize.0, clamped_resize.1);
+            store.set_panel_resize_delta(
+                ph2d_editor_core::ids::ASSET_PANEL,
+                clamped_resize.0,
+                clamped_resize.1,
+            );
         }
-        store.set_panel_rect(ids::ASSET_PANEL, rect);
+        store.set_panel_rect(ph2d_editor_core::ids::ASSET_PANEL, rect);
     }
     paint_chrome(ctx, rect);
     let controls_bottom = paint_controls(state, ctx, rect);
@@ -317,7 +333,10 @@ fn paint_grid(
     let x = rect.x + col_w + pad();
     let body_h = (rect.y + rect.h - body_top - pad()).max(0.0);
     let body = Rect::new(rect.x + col_w, body_top, rect.w - col_w, body_h);
-    let scroll = ctx.host.store().panel_scroll(ids::ASSET_PANEL);
+    let scroll = ctx
+        .host
+        .store()
+        .panel_scroll(ph2d_editor_core::ids::ASSET_PANEL);
 
     let q = Query {
         text: ctx
@@ -412,7 +431,7 @@ fn paint_grid(
         if cy + card_h < body.y || cy > body.y + body.h {
             continue;
         }
-        let id = ids::asset_cell_id(i);
+        let id = ph2d_editor_core::ids::asset_cell_id(i);
         painted_cells.insert(id, i);
         // ⛔⛔ **`register_if_absent`, e não `register` — a auditoria apanhou-me a usar o segundo.**
         // O `register` SUBSTITUI sempre, então o `state: Normal` deste quadro apagaria o `Pressed`
@@ -473,10 +492,10 @@ fn paint_grid(
     // A barra, e o clamp da rolagem.
     // ⚠️ **O irmão da coluna passa pela MESMA porta** — ele já era consistente, e ler o rect de
     // quem pintou é o que o impede de deixar de o ser.
-    let visual = ctx
-        .host
-        .store()
-        .scrollbar_visual_for(ASSET_BROWSER_SCROLLBAR_ID, Some(ids::ASSET_PANEL));
+    let visual = ctx.host.store().scrollbar_visual_for(
+        ASSET_BROWSER_SCROLLBAR_ID,
+        Some(ph2d_editor_core::ids::ASSET_PANEL),
+    );
     if let Some(thumb) = paint_scrollbar(body, scroll, content_h, body_h, visual, ctx.scene, theme)
     {
         ctx.host
@@ -484,11 +503,11 @@ fn paint_grid(
             .register(ASSET_BROWSER_SCROLLBAR_ID, thumb);
     }
     let store = ctx.host.store_mut();
-    store.set_panel_content_h(ids::ASSET_PANEL, content_h);
-    store.set_panel_visible_h(ids::ASSET_PANEL, body_h);
+    store.set_panel_content_h(ph2d_editor_core::ids::ASSET_PANEL, content_h);
+    store.set_panel_visible_h(ph2d_editor_core::ids::ASSET_PANEL, body_h);
     let max_scroll = (content_h - body_h).max(0.0);
-    if store.panel_scroll(ids::ASSET_PANEL) > max_scroll {
-        store.set_panel_scroll(ids::ASSET_PANEL, max_scroll);
+    if store.panel_scroll(ph2d_editor_core::ids::ASSET_PANEL) > max_scroll {
+        store.set_panel_scroll(ph2d_editor_core::ids::ASSET_PANEL, max_scroll);
     }
 }
 

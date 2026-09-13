@@ -208,11 +208,11 @@ fn one_shape_offers_no_button_at_all() {
         "o botao foi pintado com UMA forma escolhida -- ele so' pode recusar em silencio"
     );
     // E acima do tecto medido também não: ali a frase diz o número.
-    set_morph_states_state(Some(can_make(ids::MAX_MORPH_STATES + 1)));
+    set_morph_states_state(Some(can_make(ph2d_editor_core::ids::MAX_MORPH_STATES + 1)));
     assert!(
         painted(ids::VECTOR_MORPH_STATES_MAKE).is_none(),
         "o botao foi pintado acima do tecto de {} formas",
-        ids::MAX_MORPH_STATES
+        ph2d_editor_core::ids::MAX_MORPH_STATES
     );
     clear();
 }
@@ -284,14 +284,18 @@ fn the_preview_toggle_is_alive_and_reaches_the_bus() {
     let mut host = MockPanelHost::with_panel::<VectorPanel>();
     let mut ps = VectorPanelState;
     let r = host
-        .painted_rect::<VectorPanel>(&mut ps, VIEWPORT, ids::VECTOR_MORPH_PREVIEW)
+        .painted_rect::<VectorPanel>(
+            &mut ps,
+            VIEWPORT,
+            ph2d_editor_core::ids::VECTOR_MORPH_PREVIEW,
+        )
         .expect("o botao «Preview» nao foi PINTADO com area clicavel");
     let (cx, cy) = (r.x + r.w * 0.5, r.y + r.h * 0.5);
     host.dispatch_pointer_event(pointer(PointerKind::Down, cx, cy, SEC));
     let evs = host.dispatch_pointer_event(pointer(PointerKind::Up, cx, cy, SEC + SEC / 100));
     assert!(
         evs.iter()
-            .any(|e| matches!(e, WidgetEvent::Click(c) if *c == ids::VECTOR_MORPH_PREVIEW)),
+            .any(|e| matches!(e, WidgetEvent::Click(c) if *c == ph2d_editor_core::ids::VECTOR_MORPH_PREVIEW)),
         "o ponteiro sobre o interruptor nao virou Click -- falta o `register` no populate"
     );
     for ev in evs {
@@ -300,7 +304,7 @@ fn the_preview_toggle_is_alive_and_reaches_the_bus() {
     assert!(
         host.drained_actions().into_iter().any(|a| matches!(
             a,
-            EditorAction::ToolPanelEvent(PanelEvent::Click(c)) if c == ids::VECTOR_MORPH_PREVIEW
+            EditorAction::ToolPanelEvent(PanelEvent::Click(c)) if c == ph2d_editor_core::ids::VECTOR_MORPH_PREVIEW
         )),
         "o Click nao chegou ao bus -- o interruptor acende sob o rato e nao liga modo nenhum"
     );
@@ -317,7 +321,7 @@ fn the_way_out_stays_clickable_while_the_mode_runs() {
     clear();
     set_morph_states_state(Some(machine_previewing()));
     assert!(
-        painted(ids::VECTOR_MORPH_PREVIEW).is_some(),
+        painted(ph2d_editor_core::ids::VECTOR_MORPH_PREVIEW).is_some(),
         "com a preview LIGADA o interruptor tem de continuar pintado e clicavel"
     );
     clear();
@@ -330,7 +334,7 @@ fn a_selection_without_a_machine_offers_no_preview_toggle() {
     clear();
     set_morph_states_state(Some(can_make(3)));
     assert!(
-        painted(ids::VECTOR_MORPH_PREVIEW).is_none(),
+        painted(ph2d_editor_core::ids::VECTOR_MORPH_PREVIEW).is_none(),
         "o interruptor foi pintado sobre uma seleccao que ainda nao tem maquina nenhuma"
     );
     clear();

@@ -4,7 +4,6 @@
 //! `ph2d_editor_core::grid_snap::panel::paint_helpers` during ADR-0029
 //! Phase C.4. Internal-only — re-exported via `crate::paint`.
 
-use crate::ids;
 use ph2d_editor_core::NodeId;
 use ph2d_editor_core::grid_snap::{GridKind, GridSnapState};
 use ph2d_editor_core::interaction::{HitIndex, InteractiveState, WidgetStore};
@@ -85,9 +84,9 @@ pub(crate) fn paint_snap_top_toggle(
     } else {
         ButtonKind::Default
     };
-    let btn = Button::new(ids::GS_SNAP_ENABLED, label).kind(kind);
+    let btn = Button::new(ph2d_editor_core::grid_snap::ids::GS_SNAP_ENABLED, label).kind(kind);
     paint_button(&btn, rect, scene, text_system, theme);
-    hit_index.register(ids::GS_SNAP_ENABLED, rect);
+    hit_index.register(ph2d_editor_core::grid_snap::ids::GS_SNAP_ENABLED, rect);
     // Suppress unused-store warning while the snap state lives on the
     // Toggle in store too (canonical InteractiveState).
     let _ = store;
@@ -147,23 +146,51 @@ pub(crate) fn paint_kind_button_grid(
     state: &GridSnapState,
 ) -> f32 {
     let entries: [(GridKind, &str, NodeId); 9] = [
-        (GridKind::Square, "Square", ids::GS_KIND_OPT_SQUARE),
-        (GridKind::Hex, "Hex", ids::GS_KIND_OPT_HEX),
-        (GridKind::Iso, "Iso", ids::GS_KIND_OPT_ISO),
+        (
+            GridKind::Square,
+            "Square",
+            ph2d_editor_core::grid_snap::ids::GS_KIND_OPT_SQUARE,
+        ),
+        (
+            GridKind::Hex,
+            "Hex",
+            ph2d_editor_core::grid_snap::ids::GS_KIND_OPT_HEX,
+        ),
+        (
+            GridKind::Iso,
+            "Iso",
+            ph2d_editor_core::grid_snap::ids::GS_KIND_OPT_ISO,
+        ),
         (
             GridKind::StaggeredSquare,
             "Stag Sq",
-            ids::GS_KIND_OPT_STAGGERED_SQ,
+            ph2d_editor_core::grid_snap::ids::GS_KIND_OPT_STAGGERED_SQ,
         ),
         (
             GridKind::StaggeredHex,
             "Stag Hex",
-            ids::GS_KIND_OPT_STAGGERED_HEX,
+            ph2d_editor_core::grid_snap::ids::GS_KIND_OPT_STAGGERED_HEX,
         ),
-        (GridKind::Tri, "Tri", ids::GS_KIND_OPT_TRI),
-        (GridKind::Quadtree, "Quadtree", ids::GS_KIND_OPT_QUADTREE),
-        (GridKind::Voronoi, "Voronoi", ids::GS_KIND_OPT_VORONOI),
-        (GridKind::Chunks, "Chunks", ids::GS_KIND_OPT_CHUNKS),
+        (
+            GridKind::Tri,
+            "Tri",
+            ph2d_editor_core::grid_snap::ids::GS_KIND_OPT_TRI,
+        ),
+        (
+            GridKind::Quadtree,
+            "Quadtree",
+            ph2d_editor_core::grid_snap::ids::GS_KIND_OPT_QUADTREE,
+        ),
+        (
+            GridKind::Voronoi,
+            "Voronoi",
+            ph2d_editor_core::grid_snap::ids::GS_KIND_OPT_VORONOI,
+        ),
+        (
+            GridKind::Chunks,
+            "Chunks",
+            ph2d_editor_core::grid_snap::ids::GS_KIND_OPT_CHUNKS,
+        ),
     ];
     let cols = 3.0_f32; // LITERAL-PX-OK: kind-button grid column count (math constant)
     let gap = Spacing::Xs.px();
@@ -211,22 +238,30 @@ pub(crate) fn paint_target_button_stack(
     let h = ROW_H_PX;
     let _gap = Spacing::Xs.px();
     let entries: [(SnapTarget, &str, NodeId); 5] = [
-        (SnapTarget::Center, "Center", ids::GS_SNAP_CENTER),
+        (
+            SnapTarget::Center,
+            "Center",
+            ph2d_editor_core::grid_snap::ids::GS_SNAP_CENTER,
+        ),
         (
             SnapTarget::Intersection,
             "Intersection",
-            ids::GS_SNAP_INTERSECTION,
+            ph2d_editor_core::grid_snap::ids::GS_SNAP_INTERSECTION,
         ),
-        (SnapTarget::Corner, "Corner", ids::GS_SNAP_TARGET_OPT_CORNER),
+        (
+            SnapTarget::Corner,
+            "Corner",
+            ph2d_editor_core::grid_snap::ids::GS_SNAP_TARGET_OPT_CORNER,
+        ),
         (
             SnapTarget::CenterAndIntersection,
             "Center + Intersection",
-            ids::GS_SNAP_TARGET_OPT_CENTER_AND_INTERSECTION,
+            ph2d_editor_core::grid_snap::ids::GS_SNAP_TARGET_OPT_CENTER_AND_INTERSECTION,
         ),
         (
             SnapTarget::CenterIntersectionAndCorners,
             "Center + Intersection + Corners",
-            ids::GS_SNAP_TARGET_OPT_CENTER_INTERSECTION_AND_CORNERS,
+            ph2d_editor_core::grid_snap::ids::GS_SNAP_TARGET_OPT_CENTER_INTERSECTION_AND_CORNERS,
         ),
     ];
     let _cy = y;
@@ -293,9 +328,9 @@ pub(crate) fn paint_neighborhood_button_row(
             let n = neighborhood_for_active_kind(state);
             (
                 "Von4",
-                ids::GS_CFG_NEIGHBORHOOD_4,
+                ph2d_editor_core::grid_snap::ids::GS_CFG_NEIGHBORHOOD_4,
                 "Moore8",
-                ids::GS_CFG_NEIGHBORHOOD_8,
+                ph2d_editor_core::grid_snap::ids::GS_CFG_NEIGHBORHOOD_8,
                 if matches!(n, SquareNeighborhood::Moore8) {
                     1
                 } else {
@@ -305,9 +340,9 @@ pub(crate) fn paint_neighborhood_button_row(
         }
         NeighborhoodFamily::Tri => (
             "Edge3",
-            ids::GS_CFG_TRI_EDGE3,
+            ph2d_editor_core::grid_snap::ids::GS_CFG_TRI_EDGE3,
             "Vertex12",
-            ids::GS_CFG_TRI_VERTEX12,
+            ph2d_editor_core::grid_snap::ids::GS_CFG_TRI_VERTEX12,
             if matches!(state.tri_cfg.neighborhood, TriNeighborhood::Vertex12) {
                 1
             } else {
@@ -441,15 +476,42 @@ pub(crate) fn set_neighborhood_for_active_kind(
 /// registration) and the chip → option resolve in apply_event.
 pub(crate) fn kind_option_ids_in_order() -> [(GridKind, NodeId); 9] {
     [
-        (GridKind::Square, ids::GS_KIND_OPT_SQUARE),
-        (GridKind::Hex, ids::GS_KIND_OPT_HEX),
-        (GridKind::Iso, ids::GS_KIND_OPT_ISO),
-        (GridKind::StaggeredSquare, ids::GS_KIND_OPT_STAGGERED_SQ),
-        (GridKind::StaggeredHex, ids::GS_KIND_OPT_STAGGERED_HEX),
-        (GridKind::Tri, ids::GS_KIND_OPT_TRI),
-        (GridKind::Quadtree, ids::GS_KIND_OPT_QUADTREE),
-        (GridKind::Voronoi, ids::GS_KIND_OPT_VORONOI),
-        (GridKind::Chunks, ids::GS_KIND_OPT_CHUNKS),
+        (
+            GridKind::Square,
+            ph2d_editor_core::grid_snap::ids::GS_KIND_OPT_SQUARE,
+        ),
+        (
+            GridKind::Hex,
+            ph2d_editor_core::grid_snap::ids::GS_KIND_OPT_HEX,
+        ),
+        (
+            GridKind::Iso,
+            ph2d_editor_core::grid_snap::ids::GS_KIND_OPT_ISO,
+        ),
+        (
+            GridKind::StaggeredSquare,
+            ph2d_editor_core::grid_snap::ids::GS_KIND_OPT_STAGGERED_SQ,
+        ),
+        (
+            GridKind::StaggeredHex,
+            ph2d_editor_core::grid_snap::ids::GS_KIND_OPT_STAGGERED_HEX,
+        ),
+        (
+            GridKind::Tri,
+            ph2d_editor_core::grid_snap::ids::GS_KIND_OPT_TRI,
+        ),
+        (
+            GridKind::Quadtree,
+            ph2d_editor_core::grid_snap::ids::GS_KIND_OPT_QUADTREE,
+        ),
+        (
+            GridKind::Voronoi,
+            ph2d_editor_core::grid_snap::ids::GS_KIND_OPT_VORONOI,
+        ),
+        (
+            GridKind::Chunks,
+            ph2d_editor_core::grid_snap::ids::GS_KIND_OPT_CHUNKS,
+        ),
     ]
 }
 

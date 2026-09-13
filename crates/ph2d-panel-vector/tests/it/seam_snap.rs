@@ -13,8 +13,8 @@ use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::tool::PanelEvent;
 use ph2d_editor_core::zones::Rect;
 use ph2d_host::{PointerButton, PointerEvent, PointerKind, PointerSource};
+use ph2d_panel_vector::VectorPanel;
 use ph2d_panel_vector::state::VectorPanelState;
-use ph2d_panel_vector::{VectorPanel, ids};
 use ph2d_ui_testkit::MockPanelHost;
 
 const VIEWPORT: Rect = Rect {
@@ -45,16 +45,16 @@ fn pointer(kind: PointerKind, x: f32, y: f32, t: u128) -> PointerEvent {
 #[test]
 fn every_snap_option_reaches_the_bus() {
     for (id, name) in [
-        (ids::VECTOR_SNAP_OFF, "Shapes/Off"),
-        (ids::VECTOR_SNAP_ON, "Shapes/On"),
-        (ids::VECTOR_SNAP_PATH_OFF, "Path/Off"),
-        (ids::VECTOR_SNAP_PATH_ON, "Path/On"),
-        (ids::VECTOR_SNAP_CROSS_OFF, "Cross/Off"),
-        (ids::VECTOR_SNAP_CROSS_ON, "Cross/On"),
-        (ids::VECTOR_SNAP_GUIDES_OFF, "Guides/Off"),
-        (ids::VECTOR_SNAP_GUIDES_ON, "Guides/On"),
-        (ids::VECTOR_RULERS_OFF, "Rulers/Off"),
-        (ids::VECTOR_RULERS_ON, "Rulers/On"),
+        (ph2d_editor_core::ids::VECTOR_SNAP_OFF, "Shapes/Off"),
+        (ph2d_editor_core::ids::VECTOR_SNAP_ON, "Shapes/On"),
+        (ph2d_editor_core::ids::VECTOR_SNAP_PATH_OFF, "Path/Off"),
+        (ph2d_editor_core::ids::VECTOR_SNAP_PATH_ON, "Path/On"),
+        (ph2d_editor_core::ids::VECTOR_SNAP_CROSS_OFF, "Cross/Off"),
+        (ph2d_editor_core::ids::VECTOR_SNAP_CROSS_ON, "Cross/On"),
+        (ph2d_editor_core::ids::VECTOR_SNAP_GUIDES_OFF, "Guides/Off"),
+        (ph2d_editor_core::ids::VECTOR_SNAP_GUIDES_ON, "Guides/On"),
+        (ph2d_editor_core::ids::VECTOR_RULERS_OFF, "Rulers/Off"),
+        (ph2d_editor_core::ids::VECTOR_RULERS_ON, "Rulers/On"),
     ] {
         let mut host = MockPanelHost::with_panel::<VectorPanel>();
         let mut panel_state = VectorPanelState;
@@ -101,18 +101,42 @@ fn the_snap_section_stacks_five_independent_rows() {
             .expect("a linha e' pintada")
     };
     // As três linhas empilham: cada uma num `y` próprio, e nenhuma some.
-    let shapes = rect(&mut host, &mut panel_state, ids::VECTOR_SNAP_ON);
-    let path = rect(&mut host, &mut panel_state, ids::VECTOR_SNAP_PATH_ON);
-    let cross = rect(&mut host, &mut panel_state, ids::VECTOR_SNAP_CROSS_ON);
-    let guides = rect(&mut host, &mut panel_state, ids::VECTOR_SNAP_GUIDES_ON);
-    let rulers = rect(&mut host, &mut panel_state, ids::VECTOR_RULERS_ON);
+    let shapes = rect(
+        &mut host,
+        &mut panel_state,
+        ph2d_editor_core::ids::VECTOR_SNAP_ON,
+    );
+    let path = rect(
+        &mut host,
+        &mut panel_state,
+        ph2d_editor_core::ids::VECTOR_SNAP_PATH_ON,
+    );
+    let cross = rect(
+        &mut host,
+        &mut panel_state,
+        ph2d_editor_core::ids::VECTOR_SNAP_CROSS_ON,
+    );
+    let guides = rect(
+        &mut host,
+        &mut panel_state,
+        ph2d_editor_core::ids::VECTOR_SNAP_GUIDES_ON,
+    );
+    let rulers = rect(
+        &mut host,
+        &mut panel_state,
+        ph2d_editor_core::ids::VECTOR_RULERS_ON,
+    );
     assert!(
         shapes.y < path.y && path.y < cross.y && cross.y < guides.y && guides.y < rulers.y,
         "as CINCO linhas ocupam alturas distintas: \
          {shapes:?} {path:?} {cross:?} {guides:?} {rulers:?}"
     );
     // E o par Off/On de uma linha são dois retângulos, não um: o estado é escolhível.
-    let path_off = rect(&mut host, &mut panel_state, ids::VECTOR_SNAP_PATH_OFF);
+    let path_off = rect(
+        &mut host,
+        &mut panel_state,
+        ph2d_editor_core::ids::VECTOR_SNAP_PATH_OFF,
+    );
     assert!(
         (path_off.x - path.x).abs() > 1.0 && (path_off.y - path.y).abs() < 1.0,
         "Off e On da linha Path sao lado a lado: {path_off:?} vs {path:?}"

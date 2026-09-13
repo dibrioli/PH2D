@@ -29,7 +29,9 @@ pub(crate) fn paint(state: &mut FlipPanelState, ctx: &mut PaintCtx) {
     if !ctx.host.panel_visible(FlipPanel::ID) {
         // Stale-rect cleanup so `panel_at` stops returning FLIP_PANEL once the
         // tool is deactivated.
-        ctx.host.store_mut().clear_panel_rect(ids::FLIP_PANEL);
+        ctx.host
+            .store_mut()
+            .clear_panel_rect(ph2d_editor_core::ids::FLIP_PANEL);
         set_last_content_h(0.0);
         set_last_visible_h(0.0);
         return;
@@ -40,7 +42,9 @@ pub(crate) fn paint(state: &mut FlipPanelState, ctx: &mut PaintCtx) {
     let snap = state::current_style();
     let layers = state::current_layers();
 
-    ctx.host.store_mut().set_panel_rect(ids::FLIP_PANEL, rect);
+    ctx.host
+        .store_mut()
+        .set_panel_rect(ph2d_editor_core::ids::FLIP_PANEL, rect);
 
     // Dark-glass surface + corner accents — identical chrome to the Inspector.
     paint_panel_surface(rect, ctx.scene, theme);
@@ -79,7 +83,11 @@ pub(crate) fn paint(state: &mut FlipPanelState, ctx: &mut PaintCtx) {
     let body_h = (rect.y + rect.h - body_top - PANEL_HEAD_PAD).max(0.0);
 
     // Clip the body region + shift content up by `scroll_y`.
-    let scroll_y = ctx.host.store().panel_scroll(ids::FLIP_PANEL).max(0.0);
+    let scroll_y = ctx
+        .host
+        .store()
+        .panel_scroll(ph2d_editor_core::ids::FLIP_PANEL)
+        .max(0.0);
     let clip = rect_to_vello(Rect::new(rect.x, body_top, rect.w, body_h));
     ctx.scene.push_clip(&clip);
     let body_top_y = body_top - scroll_y;
@@ -158,11 +166,11 @@ pub(crate) fn paint(state: &mut FlipPanelState, ctx: &mut PaintCtx) {
         store.register_picker_swatch(ids::FLIP_STROKE_SWATCH);
         store.register_picker_swatch(ids::FLIP_FILL_SWATCH);
         store.register_picker_swatch(ids::FLIP_COLORIZE_SWATCH);
-        store.set_panel_content_h(ids::FLIP_PANEL, content_h);
-        store.set_panel_visible_h(ids::FLIP_PANEL, body_h);
+        store.set_panel_content_h(ph2d_editor_core::ids::FLIP_PANEL, content_h);
+        store.set_panel_visible_h(ph2d_editor_core::ids::FLIP_PANEL, body_h);
         let max_scroll = (content_h - body_h).max(0.0);
-        if store.panel_scroll(ids::FLIP_PANEL) > max_scroll {
-            store.set_panel_scroll(ids::FLIP_PANEL, max_scroll);
+        if store.panel_scroll(ph2d_editor_core::ids::FLIP_PANEL) > max_scroll {
+            store.set_panel_scroll(ph2d_editor_core::ids::FLIP_PANEL, max_scroll);
         }
     }
     set_last_content_h(content_h);

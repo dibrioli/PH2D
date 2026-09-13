@@ -161,9 +161,9 @@ fn opening_a_layer_paints_its_three_properties() {
     publica(vec![traco(2.0)]);
     state::close_open_layer();
     let props = [
-        (ids::VECTOR_PAINT_WIDTH, "a largura"),
-        (ids::VECTOR_PAINT_OPACITY, "a opacidade"),
-        (ids::VECTOR_PAINT_BLEND, "a mistura"),
+        (ph2d_editor_core::ids::VECTOR_PAINT_WIDTH, "a largura"),
+        (ph2d_editor_core::ids::VECTOR_PAINT_OPACITY, "a opacidade"),
+        (ph2d_editor_core::ids::VECTOR_PAINT_BLEND, "a mistura"),
     ];
     for (id, what) in props {
         let mut host = MockPanelHost::with_panel::<VectorPanel>();
@@ -202,17 +202,17 @@ fn the_layers_width_and_opacity_reach_the_bus() {
     // A LARGURA — campo numérico, o valor viaja como o do Z-index (a mesma porta).
     let mut host = MockPanelHost::with_panel::<VectorPanel>();
     let mut st = VectorPanelState;
-    host.set_number_value(ids::VECTOR_PAINT_WIDTH, 7.0);
+    host.set_number_value(ph2d_editor_core::ids::VECTOR_PAINT_WIDTH, 7.0);
     host.apply_panel_event::<VectorPanel>(
         &mut st,
-        WidgetEvent::ValueChanged(ids::VECTOR_PAINT_WIDTH),
+        WidgetEvent::ValueChanged(ph2d_editor_core::ids::VECTOR_PAINT_WIDTH),
     );
     let larguras: Vec<f64> = host
         .drained_actions()
         .into_iter()
         .filter_map(|a| match a {
             EditorAction::ToolPanelEvent(PanelEvent::SetValue(id, v))
-                if id == ids::VECTOR_PAINT_WIDTH =>
+                if id == ph2d_editor_core::ids::VECTOR_PAINT_WIDTH =>
             {
                 Some(v)
             }
@@ -228,17 +228,17 @@ fn the_layers_width_and_opacity_reach_the_bus() {
     // A OPACIDADE — slider, o valor viaja como TRACK `0..1`.
     let mut host = MockPanelHost::with_panel::<VectorPanel>();
     let mut st = VectorPanelState;
-    host.set_slider_value(ids::VECTOR_PAINT_OPACITY, 0.25);
+    host.set_slider_value(ph2d_editor_core::ids::VECTOR_PAINT_OPACITY, 0.25);
     host.apply_panel_event::<VectorPanel>(
         &mut st,
-        WidgetEvent::ValueChanged(ids::VECTOR_PAINT_OPACITY),
+        WidgetEvent::ValueChanged(ph2d_editor_core::ids::VECTOR_PAINT_OPACITY),
     );
     let tracks: Vec<f64> = host
         .drained_actions()
         .into_iter()
         .filter_map(|a| match a {
             EditorAction::ToolPanelEvent(PanelEvent::SetValue(id, v))
-                if id == ids::VECTOR_PAINT_OPACITY =>
+                if id == ph2d_editor_core::ids::VECTOR_PAINT_OPACITY =>
             {
                 Some(v)
             }
@@ -271,9 +271,11 @@ fn the_width_field_shows_the_open_layers_width() {
     state::toggle_open_layer(0);
     let mut host = MockPanelHost::with_panel::<VectorPanel>();
     let mut st = VectorPanelState;
-    host.set_number_value(ids::VECTOR_PAINT_WIDTH, 1.0);
-    host.painted_rect::<VectorPanel>(&mut st, VIEWPORT, ids::VECTOR_PAINT_WIDTH);
-    let visto = host.store().number_value(ids::VECTOR_PAINT_WIDTH);
+    host.set_number_value(ph2d_editor_core::ids::VECTOR_PAINT_WIDTH, 1.0);
+    host.painted_rect::<VectorPanel>(&mut st, VIEWPORT, ph2d_editor_core::ids::VECTOR_PAINT_WIDTH);
+    let visto = host
+        .store()
+        .number_value(ph2d_editor_core::ids::VECTOR_PAINT_WIDTH);
     assert_eq!(
         visto,
         Some(9.0),
@@ -352,7 +354,7 @@ fn the_layer_blend_chip_opens_and_the_pick_reaches_the_bus() {
     let mut host = MockPanelHost::with_panel::<VectorPanel>();
     let mut st = VectorPanelState;
     let r = host
-        .painted_rect::<VectorPanel>(&mut st, VIEWPORT, ids::VECTOR_PAINT_BLEND)
+        .painted_rect::<VectorPanel>(&mut st, VIEWPORT, ph2d_editor_core::ids::VECTOR_PAINT_BLEND)
         .expect("o chip de mistura da camada tem de ser pintado");
     let (cx, cy) = (r.x + r.w * 0.5, r.y + r.h * 0.5);
     host.dispatch_pointer_event(pointer(PointerKind::Down, cx, cy, SEC));
@@ -363,7 +365,7 @@ fn the_layer_blend_chip_opens_and_the_pick_reaches_the_bus() {
     let _ = host.drained_actions();
     assert!(
         matches!(
-            host.store().get(ids::VECTOR_PAINT_BLEND),
+            host.store().get(ph2d_editor_core::ids::VECTOR_PAINT_BLEND),
             Some(ph2d_editor_core::interaction::InteractiveState::Dropdown { open: true, .. })
         ),
         "o chip de mistura da camada nao abriu — ele esta' morto sob o dedo"
@@ -382,7 +384,7 @@ fn the_layer_blend_chip_opens_and_the_pick_reaches_the_bus() {
         .into_iter()
         .filter_map(|a| match a {
             EditorAction::ToolPanelEvent(PanelEvent::SetValue(id, v))
-                if id == ids::VECTOR_PAINT_BLEND =>
+                if id == ph2d_editor_core::ids::VECTOR_PAINT_BLEND =>
             {
                 Some(v)
             }
@@ -411,8 +413,8 @@ fn the_layers_offset_reaches_the_bus_on_both_axes() {
     publica(vec![tinta()]);
     state::toggle_open_layer(0);
     for (id, valor, eixo) in [
-        (ids::VECTOR_PAINT_DX, 3.0, "x"),
-        (ids::VECTOR_PAINT_DY, -2.5, "y"),
+        (ph2d_editor_core::ids::VECTOR_PAINT_DX, 3.0, "x"),
+        (ph2d_editor_core::ids::VECTOR_PAINT_DY, -2.5, "y"),
     ] {
         let mut host = MockPanelHost::with_panel::<VectorPanel>();
         let mut st = VectorPanelState;
@@ -447,7 +449,10 @@ fn the_offset_pair_shows_on_a_fill_layer_where_the_width_does_not() {
     state::toggle_open_layer(0);
     let mut host = MockPanelHost::with_panel::<VectorPanel>();
     let mut st = VectorPanelState;
-    for (id, what) in [(ids::VECTOR_PAINT_DX, "o X"), (ids::VECTOR_PAINT_DY, "o Y")] {
+    for (id, what) in [
+        (ph2d_editor_core::ids::VECTOR_PAINT_DX, "o X"),
+        (ph2d_editor_core::ids::VECTOR_PAINT_DY, "o Y"),
+    ] {
         assert!(
             host.painted_rect::<VectorPanel>(&mut st, VIEWPORT, id)
                 .is_some(),
@@ -455,8 +460,12 @@ fn the_offset_pair_shows_on_a_fill_layer_where_the_width_does_not() {
         );
     }
     assert!(
-        host.painted_rect::<VectorPanel>(&mut st, VIEWPORT, ids::VECTOR_PAINT_WIDTH)
-            .is_none(),
+        host.painted_rect::<VectorPanel>(
+            &mut st,
+            VIEWPORT,
+            ph2d_editor_core::ids::VECTOR_PAINT_WIDTH
+        )
+        .is_none(),
         "a largura foi pintada num preenchimento — o controlo nao tem sujeito"
     );
     state::close_open_layer();
@@ -475,13 +484,15 @@ fn the_offset_fields_show_the_open_layers_offset() {
     state::toggle_open_layer(0);
     let mut host = MockPanelHost::with_panel::<VectorPanel>();
     let mut st = VectorPanelState;
-    host.set_number_value(ids::VECTOR_PAINT_DX, 0.0);
-    host.set_number_value(ids::VECTOR_PAINT_DY, 0.0);
-    host.painted_rect::<VectorPanel>(&mut st, VIEWPORT, ids::VECTOR_PAINT_DX);
+    host.set_number_value(ph2d_editor_core::ids::VECTOR_PAINT_DX, 0.0);
+    host.set_number_value(ph2d_editor_core::ids::VECTOR_PAINT_DY, 0.0);
+    host.painted_rect::<VectorPanel>(&mut st, VIEWPORT, ph2d_editor_core::ids::VECTOR_PAINT_DX);
     assert_eq!(
         (
-            host.store().number_value(ids::VECTOR_PAINT_DX),
-            host.store().number_value(ids::VECTOR_PAINT_DY)
+            host.store()
+                .number_value(ph2d_editor_core::ids::VECTOR_PAINT_DX),
+            host.store()
+                .number_value(ph2d_editor_core::ids::VECTOR_PAINT_DY)
         ),
         (Some(4.0), Some(-1.5)),
         "o par nao foi semeado da camada aberta"
@@ -506,17 +517,17 @@ fn the_cad_offset_and_its_corner_reach_the_bus() {
 
     let mut host = MockPanelHost::with_panel::<VectorPanel>();
     let mut st = VectorPanelState;
-    host.set_number_value(ids::VECTOR_PAINT_DILATE, -1.5);
+    host.set_number_value(ph2d_editor_core::ids::VECTOR_PAINT_DILATE, -1.5);
     host.apply_panel_event::<VectorPanel>(
         &mut st,
-        WidgetEvent::ValueChanged(ids::VECTOR_PAINT_DILATE),
+        WidgetEvent::ValueChanged(ph2d_editor_core::ids::VECTOR_PAINT_DILATE),
     );
     let sent: Vec<f64> = host
         .drained_actions()
         .into_iter()
         .filter_map(|a| match a {
             EditorAction::ToolPanelEvent(PanelEvent::SetValue(c, v))
-                if c == ids::VECTOR_PAINT_DILATE =>
+                if c == ph2d_editor_core::ids::VECTOR_PAINT_DILATE =>
             {
                 Some(v)
             }
@@ -582,10 +593,15 @@ fn the_offset_field_shows_the_open_layers_dilate() {
     state::toggle_open_layer(0);
     let mut host = MockPanelHost::with_panel::<VectorPanel>();
     let mut st = VectorPanelState;
-    host.set_number_value(ids::VECTOR_PAINT_DILATE, 0.0);
-    host.painted_rect::<VectorPanel>(&mut st, VIEWPORT, ids::VECTOR_PAINT_DILATE);
+    host.set_number_value(ph2d_editor_core::ids::VECTOR_PAINT_DILATE, 0.0);
+    host.painted_rect::<VectorPanel>(
+        &mut st,
+        VIEWPORT,
+        ph2d_editor_core::ids::VECTOR_PAINT_DILATE,
+    );
     assert_eq!(
-        host.store().number_value(ids::VECTOR_PAINT_DILATE),
+        host.store()
+            .number_value(ph2d_editor_core::ids::VECTOR_PAINT_DILATE),
         Some(3.25),
         "o campo nao foi semeado da camada aberta"
     );

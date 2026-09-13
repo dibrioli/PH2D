@@ -17,12 +17,12 @@
 //! [`crate::paint_sections`] and follow the y-cursor convention
 //! (each helper takes `y_in: f32` and returns `y_out: f32`).
 
+use crate::BgRemovalPanel;
 use crate::paint_sections::{
     paint_apply_cta, paint_auto_protect_subject, paint_eyedropper_swatches, paint_grow_shrink,
     paint_islands, paint_protect_brush, paint_slider_rows,
 };
 use crate::state::{self, BgRemovalPanelState, set_last_content_h, set_last_visible_h};
-use crate::{BgRemovalPanel, ids};
 use ph2d_editor_core::paint::rect_to_vello;
 use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::widget::panel_chrome::{
@@ -40,7 +40,9 @@ pub(crate) fn paint(_state: &mut BgRemovalPanelState, ctx: &mut PaintCtx) {
     if !ctx.host.panel_visible(BgRemovalPanel::ID) {
         // Symmetric stale-rect cleanup so `panel_at` stops returning
         // BGR_PANEL once the tool is deactivated.
-        ctx.host.store_mut().clear_panel_rect(ids::BGR_PANEL);
+        ctx.host
+            .store_mut()
+            .clear_panel_rect(ph2d_editor_core::ids::BGR_PANEL);
         return;
     }
 
@@ -49,7 +51,9 @@ pub(crate) fn paint(_state: &mut BgRemovalPanelState, ctx: &mut PaintCtx) {
     let snapshot = state::current_snapshot();
 
     // Publish the rect so wheel/click dispatch can route to this panel.
-    ctx.host.store_mut().set_panel_rect(ids::BGR_PANEL, rect);
+    ctx.host
+        .store_mut()
+        .set_panel_rect(ph2d_editor_core::ids::BGR_PANEL, rect);
 
     // Dark-glass surface + corner accent.
     paint_panel_surface(rect, ctx.scene, theme);
@@ -99,7 +103,10 @@ pub(crate) fn paint(_state: &mut BgRemovalPanelState, ctx: &mut PaintCtx) {
     let body_top = rect.y + PANEL_TITLE_BASELINE + title_size + Spacing::Md.px();
     let body_h = (rect.y + rect.h - body_top - PANEL_HEAD_PAD).max(0.0);
     let body_rect = Rect::new(rect.x, body_top, rect.w, body_h);
-    let scroll = ctx.host.store().panel_scroll(ids::BGR_PANEL);
+    let scroll = ctx
+        .host
+        .store()
+        .panel_scroll(ph2d_editor_core::ids::BGR_PANEL);
 
     ctx.scene.push_clip(&rect_to_vello(body_rect));
     let y_after = paint_body_sections(
@@ -275,10 +282,10 @@ fn paint_scrollbar_and_publish(
             .register(BG_REMOVAL_SCROLLBAR_ID, thumb);
     }
     let store = ctx.host.store_mut();
-    store.set_panel_content_h(ids::BGR_PANEL, content_h);
-    store.set_panel_visible_h(ids::BGR_PANEL, body_h);
+    store.set_panel_content_h(ph2d_editor_core::ids::BGR_PANEL, content_h);
+    store.set_panel_visible_h(ph2d_editor_core::ids::BGR_PANEL, body_h);
     let max_scroll = (content_h - body_h).max(0.0);
-    if store.panel_scroll(ids::BGR_PANEL) > max_scroll {
-        store.set_panel_scroll(ids::BGR_PANEL, max_scroll);
+    if store.panel_scroll(ph2d_editor_core::ids::BGR_PANEL) > max_scroll {
+        store.set_panel_scroll(ph2d_editor_core::ids::BGR_PANEL, max_scroll);
     }
 }

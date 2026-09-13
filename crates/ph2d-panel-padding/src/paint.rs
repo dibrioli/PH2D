@@ -47,7 +47,9 @@ pub(crate) fn paint(_state: &mut PaddingPanelState, ctx: &mut PaintCtx) {
     if !ctx.host.panel_visible(PaddingPanel::ID) {
         // Symmetric stale-rect cleanup so `panel_at` stops returning
         // PAD_PANEL once the tool is deactivated.
-        ctx.host.store_mut().clear_panel_rect(ids::PAD_PANEL);
+        ctx.host
+            .store_mut()
+            .clear_panel_rect(ph2d_editor_core::ids::PAD_PANEL);
         return;
     }
 
@@ -56,7 +58,9 @@ pub(crate) fn paint(_state: &mut PaddingPanelState, ctx: &mut PaintCtx) {
     let snapshot = state::current_snapshot();
 
     // Publish the rect so wheel/click dispatch can route to this panel.
-    ctx.host.store_mut().set_panel_rect(ids::PAD_PANEL, rect);
+    ctx.host
+        .store_mut()
+        .set_panel_rect(ph2d_editor_core::ids::PAD_PANEL, rect);
 
     // Dark-glass surface + corner accents — identical chrome to the
     // Inspector / Bg Removal panels. BL gripper paintado pra dar
@@ -112,7 +116,10 @@ pub(crate) fn paint(_state: &mut PaddingPanelState, ctx: &mut PaintCtx) {
     let body_top = rect.y + PANEL_TITLE_BASELINE + title_size + Spacing::Md.px();
     let body_h = (rect.y + rect.h - body_top - PANEL_HEAD_PAD).max(0.0);
     let body_rect = Rect::new(rect.x, body_top, rect.w, body_h);
-    let scroll = ctx.host.store().panel_scroll(ids::PAD_PANEL);
+    let scroll = ctx
+        .host
+        .store()
+        .panel_scroll(ph2d_editor_core::ids::PAD_PANEL);
 
     ctx.scene.push_clip(&rect_to_vello(body_rect));
     let y_after = paint_body_sections(
@@ -306,10 +313,10 @@ fn paint_scrollbar_and_publish(
             .register(PADDING_SCROLLBAR_ID, thumb);
     }
     let store = ctx.host.store_mut();
-    store.set_panel_content_h(ids::PAD_PANEL, content_h);
-    store.set_panel_visible_h(ids::PAD_PANEL, body_h);
+    store.set_panel_content_h(ph2d_editor_core::ids::PAD_PANEL, content_h);
+    store.set_panel_visible_h(ph2d_editor_core::ids::PAD_PANEL, body_h);
     let max_scroll = (content_h - body_h).max(0.0);
-    if store.panel_scroll(ids::PAD_PANEL) > max_scroll {
-        store.set_panel_scroll(ids::PAD_PANEL, max_scroll);
+    if store.panel_scroll(ph2d_editor_core::ids::PAD_PANEL) > max_scroll {
+        store.set_panel_scroll(ph2d_editor_core::ids::PAD_PANEL, max_scroll);
     }
 }

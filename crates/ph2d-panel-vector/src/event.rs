@@ -62,52 +62,52 @@ fn track_slider_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> Opti
         return None;
     };
     // O Bend é BIPOLAR: o track `0..1` vira `-1..1` aqui, na fronteira.
-    if id == ids::VECTOR_ENVELOPE_BEND {
+    if id == ph2d_editor_core::ids::VECTOR_ENVELOPE_BEND {
         return Some(forward_track(host, id, 0.5, |t| t.mul_add(2.0, -1.0)));
     }
     // O track de um parâmetro de efeito é NORMALIZADO `0..1`; a faixa real é do EFEITO e viaja
     // no snapshot. Quem reconverte é a shell, que a conhece — aqui o que se garante é que o
     // número que sai é o track, sem fingir ser outra coisa.
-    if fx::param_of(id).is_some() || id == ids::VECTOR_BLEND_STEPS {
+    if fx::param_of(id).is_some() || id == ph2d_editor_core::ids::VECTOR_BLEND_STEPS {
         return Some(forward_track(host, id, 0.0, |t| t));
     }
-    if id == ids::VECTOR_MORPH_T {
+    if id == ph2d_editor_core::ids::VECTOR_MORPH_T {
         return Some(forward_track(host, id, 0.5, |t| t));
     }
     // O Offset do texto em caminho é uma FRAÇÃO do comprimento (o `startOffset` do SVG): track
     // e valor de documento são o MESMO número, então a fronteira não converte nada. É o único
     // slider do painel em que isso é verdade, e é o que torna o campo legível — `0.50` é meio
     // caminho, em qualquer curva.
-    if id == ids::VECTOR_TEXTPATH_OFFSET {
+    if id == ph2d_editor_core::ids::VECTOR_TEXTPATH_OFFSET {
         return Some(forward_track(host, id, 0.0, |t| t));
     }
     // Pattern on Path: o Start é FRAÇÃO (track == valor, como o Offset do texto); o Spacing mapeia
     // o track `0..1` na faixa `SPACING_MIN..SPACING_MAX` — a MESMA fronteira que o `scale`/`offset`
     // do chip no `populate` usa, senão o slider e o campo numérico divergiriam.
-    if id == ids::VECTOR_PATTERNPATH_START {
+    if id == ph2d_editor_core::ids::VECTOR_PATTERNPATH_START {
         return Some(forward_track(host, id, 0.0, |t| t));
     }
-    if id == ids::VECTOR_PATTERNPATH_END {
+    if id == ph2d_editor_core::ids::VECTOR_PATTERNPATH_END {
         return Some(forward_track(host, id, 1.0, |t| t));
     }
     // Slide é o CENTRO do trecho (fração, track == valor); o drain re-centra a janela.
-    if id == ids::VECTOR_PATTERNPATH_SLIDE {
+    if id == ph2d_editor_core::ids::VECTOR_PATTERNPATH_SLIDE {
         return Some(forward_track(host, id, 0.5, |t| t));
     }
-    if id == ids::VECTOR_PATTERNPATH_SPACING {
+    if id == ph2d_editor_core::ids::VECTOR_PATTERNPATH_SPACING {
         return Some(forward_track(host, id, 0.5, |t| {
             t.mul_add(crate::SPACING_MAX - crate::SPACING_MIN, crate::SPACING_MIN)
         }));
     }
     // Offset: BIPOLAR `−OFFSET_MAX..OFFSET_MAX` (o mesmo mapa do Bend), `0.5` = zero.
-    if id == ids::VECTOR_PATTERNPATH_OFFSET {
+    if id == ph2d_editor_core::ids::VECTOR_PATTERNPATH_OFFSET {
         return Some(forward_track(host, id, 0.5, |t| {
             t.mul_add(2.0 * crate::OFFSET_MAX, -crate::OFFSET_MAX)
         }));
     }
     // Rotation: BIPOLAR em GRAUS `−ROTATION_MAX..ROTATION_MAX`, `0.5` = deitado na curva. O mesmo
     // mapa do Offset — e o MESMO que o `populate` dá ao chip, senão slider e campo divergiriam.
-    if id == ids::VECTOR_PATTERNPATH_ROTATION {
+    if id == ph2d_editor_core::ids::VECTOR_PATTERNPATH_ROTATION {
         return Some(forward_track(host, id, 0.5, crate::rotation_from_track));
     }
     // ⭐ Os sliders do PINCEL (plano 36, W4) — irmãos dos do padrão, e pela mesma porta.
@@ -130,7 +130,9 @@ fn track_slider_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> Opti
     }
     // O arrasto de um punho da rampa chega como `ValueChanged` do TRILHO (o pai que cada
     // `CurvePoint` carrega) — antes dos sliders, porque não é um slider.
-    if (0..ids::MAX_FILTER_ROWS).any(|r| id == ids::filter_ramp_id(r)) {
+    if (0..ph2d_editor_core::ids::MAX_FILTER_ROWS)
+        .any(|r| id == ph2d_editor_core::ids::filter_ramp_id(r))
+    {
         return Some(filters::ramp_drag(host, id));
     }
     if let Some(consumed) = filters::filters_slider_event(host, id) {
@@ -149,11 +151,11 @@ const FORWARDED_TRACK_SLIDERS: &[ph2d_a11y::NodeId] = &[
     ph2d_tool_vector::ids::VECTOR_PENCIL_STABILIZER,
     // A DURAÇÃO da transição de estado (W7): o track vai cru e a shell o multiplica pela régua
     // — a mesma que o painel usa para encher o trilho.
-    ids::VECTOR_STATE_DURATION,
+    ph2d_editor_core::ids::VECTOR_STATE_DURATION,
     // A MOLA: rigidez e amortecimento seguem a mesma rota — track cru, e a shell aplica a régua
     // afim. Um braço próprio aqui seria um corpo copiado com um `unwrap_or` a divergir.
-    ids::VECTOR_STATE_STIFFNESS,
-    ids::VECTOR_STATE_DAMPING,
+    ph2d_editor_core::ids::VECTOR_STATE_STIFFNESS,
+    ph2d_editor_core::ids::VECTOR_STATE_DAMPING,
 ];
 
 /// É este id uma linha de algum dos dois popovers de mistura?
@@ -197,7 +199,7 @@ pub(crate) fn apply_event(
         // Rotation field (R) — a RELATIVE scrub: the panel owns the per-gesture
         // accumulator, so forward the DELTA since the last report (degrees). The
         // shell rotates the selected path incrementally about its bbox center.
-        WidgetEvent::ValueChanged(id) if id == ids::VECTOR_TRANSFORM_R => {
+        WidgetEvent::ValueChanged(id) if id == ph2d_editor_core::ids::VECTOR_TRANSFORM_R => {
             let cur = host.store().number_value(id).unwrap_or(0.0);
             let delta = cur - crate::state::rot_last();
             crate::state::set_rot_last(cur);
@@ -243,22 +245,22 @@ pub(crate) fn apply_event(
         // Sliders de TEXTO (track 0..1) + opacidade/dash/gradiente — o mesmo formato do
         // Width. Os parâmetros de FORMA não passam aqui: são caixas numéricas (acima).
         WidgetEvent::ValueChanged(id)
-            if id == ids::VECTOR_TEXT_SIZE
-                || id == ids::VECTOR_TEXT_WEIGHT
-                || id == ids::VECTOR_TEXT_LINE_HEIGHT
-                || id == ids::VECTOR_TEXT_TRACKING
-                || id == ids::VECTOR_TEXT_WRAP_W
+            if id == ph2d_editor_core::ids::VECTOR_TEXT_SIZE
+                || id == ph2d_editor_core::ids::VECTOR_TEXT_WEIGHT
+                || id == ph2d_editor_core::ids::VECTOR_TEXT_LINE_HEIGHT
+                || id == ph2d_editor_core::ids::VECTOR_TEXT_TRACKING
+                || id == ph2d_editor_core::ids::VECTOR_TEXT_WRAP_W
                 || id == ph2d_tool_vector::ids::VECTOR_STROKE_OPACITY
                 || id == ph2d_tool_vector::ids::VECTOR_FILL_OPACITY
                 // ⭐ A opacidade do OBJECTO (estudo 42 item 2) — mesmo formato de track `0..1`, e
                 // ⚠️ **outro sujeito**: as duas de cima são a tinta da ferramenta, esta é a forma
                 // selecionada. Elas convivem, e o id é o que as separa.
-                || id == ids::VECTOR_OBJ_OPACITY
+                || id == ph2d_editor_core::ids::VECTOR_OBJ_OPACITY
                 || id == ph2d_tool_vector::ids::VECTOR_DASH
                 || id == ph2d_tool_vector::ids::VECTOR_GAP
-                || id == ids::VECTOR_GRAD_ANGLE
-                || id == ids::VECTOR_GRAD_INFLUENCE
-                || id == ids::VECTOR_GRAD_JITTER =>
+                || id == ph2d_editor_core::ids::VECTOR_GRAD_ANGLE
+                || id == ph2d_editor_core::ids::VECTOR_GRAD_INFLUENCE
+                || id == ph2d_editor_core::ids::VECTOR_GRAD_JITTER =>
         {
             let track = host.store().slider(id).map(|(_, v)| v).unwrap_or(0.5);
             host.bus_mut()
@@ -360,7 +362,7 @@ pub(crate) fn apply_event(
                 .push(EditorAction::ToolPanelEvent(PanelEvent::Click(id)));
             true
         }
-        WidgetEvent::Click(id) if id == ids::VECTOR_CLOSE => {
+        WidgetEvent::Click(id) if id == ph2d_editor_core::ids::VECTOR_CLOSE => {
             seam_reset_button(host, id);
             host.bus_mut().push(EditorAction::CancelActiveTool);
             true
@@ -561,14 +563,14 @@ fn is_shell_owned_number(id: ph2d_a11y::NodeId) -> bool {
         || id == ph2d_tool_vector::ids::VECTOR_TRANSFORM_Y
         || id == ph2d_tool_vector::ids::VECTOR_TRANSFORM_W
         || id == ph2d_tool_vector::ids::VECTOR_TRANSFORM_H
-        || id == ids::VECTOR_ARRANGE_Z
-        || id == ids::VECTOR_VERT_X
-        || id == ids::VECTOR_VERT_Y
+        || id == ph2d_editor_core::ids::VECTOR_ARRANGE_Z
+        || id == ph2d_editor_core::ids::VECTOR_VERT_X
+        || id == ph2d_editor_core::ids::VECTOR_VERT_Y
         // ⭐⭐⭐ **Os números do OSSO, pela TABELA** ([`ids::VECTOR_BONE_FIELDS`]) — eles moram num
         // componente da entidade, logo são da shell. Fora daqui o campo aceita teclas e **não fala
         // com ninguém** — a forma mais cara de um controlo nascer morto, porque parece vivo (o
         // Z-index pagou-a uma vez, e o *Add IK* pagou-a na família ao lado em 2026-09-07).
-        || ids::VECTOR_BONE_FIELDS.contains(&id)
+        || ph2d_editor_core::ids::VECTOR_BONE_FIELDS.contains(&id)
         || crate::populate::layout::LAYOUT_FIELDS.contains(&id)
 }
 

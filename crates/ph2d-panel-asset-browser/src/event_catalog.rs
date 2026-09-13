@@ -38,8 +38,8 @@ pub(crate) fn apply(
                 .push(EditorAction::AssetCatalogVerb(CatalogVerb::New { parent }));
             EventOutcome::Consumed
         }
-        WidgetEvent::Click(id) if ids::catalog_row_index(id).is_some() => {
-            if let Some(i) = ids::catalog_row_index(id)
+        WidgetEvent::Click(id) if ph2d_editor_core::ids::catalog_row_index(id).is_some() => {
+            if let Some(i) = ph2d_editor_core::ids::catalog_row_index(id)
                 && let Some(pick) = crate::state::painted_row_at(i)
             {
                 state.pick = pick;

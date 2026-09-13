@@ -30,15 +30,15 @@ use ph2d_timeline::TimelineIntent;
 /// maps transport ids to a Playhead command and "+Track" ids to a Bind of the
 /// selected sprite).
 fn is_button(id: NodeId) -> bool {
-    id == ids::TIMELINE_PLAY
-        || id == ids::TIMELINE_ADD_MARKER
-        || id == ids::TIMELINE_GO_START
-        || id == ids::TIMELINE_GO_END
-        || id == ids::TIMELINE_PREV_FRAME
-        || id == ids::TIMELINE_NEXT_FRAME
+    id == ph2d_editor_core::ids::TIMELINE_PLAY
+        || id == ph2d_editor_core::ids::TIMELINE_ADD_MARKER
+        || id == ph2d_editor_core::ids::TIMELINE_GO_START
+        || id == ph2d_editor_core::ids::TIMELINE_GO_END
+        || id == ph2d_editor_core::ids::TIMELINE_PREV_FRAME
+        || id == ph2d_editor_core::ids::TIMELINE_NEXT_FRAME
         // Onion Settings (ADR-0142 W3b): a plain button whose Click reaches the shell, which owns
         // the `hero.store` the settings card lives in (the panel cannot open hero chrome).
-        || id == ids::TIMELINE_ONION_SETTINGS
+        || id == ph2d_editor_core::ids::TIMELINE_ONION_SETTINGS
         || ids::ADDPROP_BUTTONS.iter().any(|(bid, _)| *bid == id)
 }
 
@@ -47,22 +47,23 @@ fn is_button(id: NodeId) -> bool {
 /// (`source_container`), so it pushes its intent directly — see the dedicated
 /// arm in `apply_event`.
 fn is_chip(id: NodeId) -> bool {
-    id == ids::TIMELINE_TIME_NUM || id == ids::TIMELINE_FRAME_NUM
+    id == ph2d_editor_core::ids::TIMELINE_TIME_NUM
+        || id == ph2d_editor_core::ids::TIMELINE_FRAME_NUM
 }
 
 /// The transport toggles routed to the shell (Toggled → `PanelEvent::Toggle`).
 /// `TIMELINE_SPEED` is deliberately absent — it is a panel-local VIEW toggle,
 /// handled in `apply_event` without reaching the shell.
 fn is_toggle(id: NodeId) -> bool {
-    id == ids::TIMELINE_LOOP
-        || id == ids::TIMELINE_PINGPONG
-        || id == ids::TIMELINE_PHYSICS
-        || id == ids::TIMELINE_AUTOKEY
-        || id == ids::TIMELINE_RECORD
+    id == ph2d_editor_core::ids::TIMELINE_LOOP
+        || id == ph2d_editor_core::ids::TIMELINE_PINGPONG
+        || id == ph2d_editor_core::ids::TIMELINE_PHYSICS
+        || id == ph2d_editor_core::ids::TIMELINE_AUTOKEY
+        || id == ph2d_editor_core::ids::TIMELINE_RECORD
         // Motion Path (ADR-0141): per-object, so it MUST reach the shell — the panel
         // has no selection; the shell resolves the entity and converts it.
-        || id == ids::TIMELINE_MOTION_PATH
-        || id == ids::TIMELINE_SNAP
+        || id == ph2d_editor_core::ids::TIMELINE_MOTION_PATH
+        || id == ph2d_editor_core::ids::TIMELINE_SNAP
 }
 
 pub(crate) fn apply_event(
@@ -79,13 +80,13 @@ pub(crate) fn apply_event(
     }
     match ev {
         // Close (X) — hide the panel (mirror of the other docked panels).
-        WidgetEvent::Click(id) if id == ids::TIMELINE_CLOSE => {
+        WidgetEvent::Click(id) if id == ph2d_editor_core::ids::TIMELINE_CLOSE => {
             host.set_panel_visible(TimelinePanel::ID, false);
             EventOutcome::Consumed
         }
         // Ruler scrub: the slider value (0..1 over the visible span) maps back to
         // an absolute time via the span `paint` stored; forward it as a Scrub.
-        WidgetEvent::ValueChanged(id) if id == ids::TIMELINE_RULER => {
+        WidgetEvent::ValueChanged(id) if id == ph2d_editor_core::ids::TIMELINE_RULER => {
             let v = host
                 .store()
                 .slider(id)
@@ -330,7 +331,10 @@ fn lane_menu_click(
     use ph2d_editor_core::interaction::ContextMenuKind;
     use ph2d_timeline::LaneMode;
 
-    if !ids::TIMELINE_LANE_MENU.iter().any(|(r, _, _)| *r == id) {
+    if !ph2d_editor_core::ids::TIMELINE_LANE_MENU
+        .iter()
+        .any(|(r, _, _)| *r == id)
+    {
         return None;
     }
     let req = host
@@ -341,18 +345,18 @@ fn lane_menu_click(
         return Some(EventOutcome::Consumed);
     };
     if lane < crate::state::current_snapshot().lanes.len() {
-        if id == ids::CTX_MENU_TL_LANE_RENAME {
+        if id == ph2d_editor_core::ids::CTX_MENU_TL_LANE_RENAME {
             // Rename opens the field instead of pushing an intent — the animator
             // types, and Enter commits `RenameLane` (`clip_rename::commit`). It is the
             // one menu item that is a gesture START, not a one-shot.
             crate::clip_rename::open_lane(state, lane);
-        } else if id == ids::CTX_MENU_TL_LANE_DELETE {
+        } else if id == ph2d_editor_core::ids::CTX_MENU_TL_LANE_DELETE {
             state::push_intent(TimelineIntent::RemoveLane { lane });
         } else {
             // The two modes. `Additive` is named explicitly and `Override` is the
             // fallback, so a row added to the table without an arm here lands on
             // Override — which the seam test refuses to let pass silently.
-            let mode = if id == ids::CTX_MENU_TL_LANE_ADDITIVE {
+            let mode = if id == ph2d_editor_core::ids::CTX_MENU_TL_LANE_ADDITIVE {
                 LaneMode::Additive
             } else {
                 LaneMode::Override
@@ -384,7 +388,10 @@ fn strip_menu_click(
     use ph2d_editor_core::interaction::ContextMenuKind;
     use ph2d_timeline::{StripId, StripLoop};
 
-    if !ids::TIMELINE_STRIP_MENU.iter().any(|(r, _, _)| *r == id) {
+    if !ph2d_editor_core::ids::TIMELINE_STRIP_MENU
+        .iter()
+        .any(|(r, _, _)| *r == id)
+    {
         return None;
     }
     let req = host
@@ -404,7 +411,7 @@ fn strip_menu_click(
     // view state, and the shell reads it before the next drain. It is also the one row that
     // means nothing on a clip strip — `container` is `None` there, and the row goes inert
     // rather than acting on the wrong thing.
-    if id == ids::CTX_MENU_TL_STRIP_ENTER {
+    if id == ph2d_editor_core::ids::CTX_MENU_TL_STRIP_ENTER {
         if let Some(c) = snap
             .lanes
             .get(lane)
@@ -431,11 +438,11 @@ fn strip_menu_click(
         return Some(EventOutcome::Consumed);
     }
     if live {
-        let intent = if id == ids::CTX_MENU_TL_STRIP_DUPLICATE {
+        let intent = if id == ph2d_editor_core::ids::CTX_MENU_TL_STRIP_DUPLICATE {
             TimelineIntent::DuplicateStrip { lane, id: id_ }
-        } else if id == ids::CTX_MENU_TL_STRIP_DELETE {
+        } else if id == ph2d_editor_core::ids::CTX_MENU_TL_STRIP_DELETE {
             TimelineIntent::RemoveStrip { lane, id: id_ }
-        } else if id == ids::CTX_MENU_TL_STRIP_RESET_SPEED {
+        } else if id == ph2d_editor_core::ids::CTX_MENU_TL_STRIP_RESET_SPEED {
             TimelineIntent::SetStripSpeed {
                 lane,
                 id: id_,
@@ -446,9 +453,9 @@ fn strip_menu_click(
             // and if a row is ever added without landing here, `strip_menu_click`
             // would silently set Once, so the seam test proves each row raises the
             // intent it names rather than merely raising SOMETHING.
-            let loop_mode = if id == ids::CTX_MENU_TL_STRIP_LOOP {
+            let loop_mode = if id == ph2d_editor_core::ids::CTX_MENU_TL_STRIP_LOOP {
                 StripLoop::Loop
-            } else if id == ids::CTX_MENU_TL_STRIP_PINGPONG {
+            } else if id == ph2d_editor_core::ids::CTX_MENU_TL_STRIP_PINGPONG {
                 StripLoop::PingPong
             } else {
                 StripLoop::Once

@@ -55,7 +55,7 @@ pub(crate) fn populate(store: &mut WidgetStore) {
     // The ruler is scrubbed as a horizontal slider (1D drag over its strip; the
     // panel paints the ticks/playhead itself and reads the slider value on drag).
     store.register(
-        ids::TIMELINE_RULER,
+        ph2d_editor_core::ids::TIMELINE_RULER,
         InteractiveState::Slider {
             state: SliderState::Normal,
             value: 0.0,
@@ -64,12 +64,12 @@ pub(crate) fn populate(store: &mut WidgetStore) {
     );
     // The X. Its handler has always been in `event.rs`; this line is what lets a
     // click reach it.
-    button(store, ids::TIMELINE_CLOSE);
-    button(store, ids::TIMELINE_GO_START);
-    button(store, ids::TIMELINE_PREV_FRAME);
-    button(store, ids::TIMELINE_PLAY);
-    button(store, ids::TIMELINE_NEXT_FRAME);
-    button(store, ids::TIMELINE_GO_END);
+    button(store, ph2d_editor_core::ids::TIMELINE_CLOSE);
+    button(store, ph2d_editor_core::ids::TIMELINE_GO_START);
+    button(store, ph2d_editor_core::ids::TIMELINE_PREV_FRAME);
+    button(store, ph2d_editor_core::ids::TIMELINE_PLAY);
+    button(store, ph2d_editor_core::ids::TIMELINE_NEXT_FRAME);
+    button(store, ph2d_editor_core::ids::TIMELINE_GO_END);
     button(store, ids::TIMELINE_ADD_TRACK);
     // The clip stack (ADR-0115). EVERY lane slot is registered, not just the ones a
     // fresh document uses: the store is populated ONCE at install, and a lane added
@@ -89,12 +89,12 @@ pub(crate) fn populate(store: &mut WidgetStore) {
     for id in ids::TIMELINE_LANE_ADD_STRIP {
         button(store, id);
     }
-    button(store, ids::TIMELINE_ADD_MARKER);
+    button(store, ph2d_editor_core::ids::TIMELINE_ADD_MARKER);
     for (id, _) in ids::ADDPROP_BUTTONS {
         button(store, id);
     }
-    number(store, ids::TIMELINE_TIME_NUM);
-    number(store, ids::TIMELINE_FRAME_NUM);
+    number(store, ph2d_editor_core::ids::TIMELINE_TIME_NUM);
+    number(store, ph2d_editor_core::ids::TIMELINE_FRAME_NUM);
     number(store, ids::TIMELINE_LENGTH_NUM);
     // **The Dur(s) box shows the content's DERIVED end until a duration is
     // authored, so typing that same number must still author it** (Enio,
@@ -114,16 +114,16 @@ pub(crate) fn populate(store: &mut WidgetStore) {
     for id in ids::TIMELINE_LANE_ROW {
         store.register(id, InteractiveState::Plain);
     }
-    toggle(store, ids::TIMELINE_LOOP, false);
-    toggle(store, ids::TIMELINE_PINGPONG, false);
-    toggle(store, ids::TIMELINE_PHYSICS, false);
-    toggle(store, ids::TIMELINE_AUTOKEY, false);
-    toggle(store, ids::TIMELINE_RECORD, false);
+    toggle(store, ph2d_editor_core::ids::TIMELINE_LOOP, false);
+    toggle(store, ph2d_editor_core::ids::TIMELINE_PINGPONG, false);
+    toggle(store, ph2d_editor_core::ids::TIMELINE_PHYSICS, false);
+    toggle(store, ph2d_editor_core::ids::TIMELINE_AUTOKEY, false);
+    toggle(store, ph2d_editor_core::ids::TIMELINE_RECORD, false);
     // Motion Path (ADR-0141): without this the switch is painted but never a
     // registered `Toggle`, so the store neither mirrors its value nor emits a click
     // — painted, hit-registered, and DEAD under the mouse.
-    toggle(store, ids::TIMELINE_MOTION_PATH, false);
-    toggle(store, ids::TIMELINE_SNAP, true);
+    toggle(store, ph2d_editor_core::ids::TIMELINE_MOTION_PATH, false);
+    toggle(store, ph2d_editor_core::ids::TIMELINE_SNAP, true);
     toggle(store, ids::TIMELINE_SPEED, false);
     // Onion (ADR-0142): dois toggles de vista — on/off + modo (Keys/Frames).
     toggle(store, ids::TIMELINE_ONION, false);
@@ -131,7 +131,7 @@ pub(crate) fn populate(store: &mut WidgetStore) {
     // Onion Settings (ADR-0142 W3b): the gear that opens the floating card. A plain Button, so
     // its Click reaches `event.rs` — without this it is painted, hit-registered, and dead under
     // the mouse ([[feedback_widget_is_done_when_a_test_clicks_it]]).
-    button(store, ids::TIMELINE_ONION_SETTINGS);
+    button(store, ph2d_editor_core::ids::TIMELINE_ONION_SETTINGS);
 
     // The view tabs. Each is a plain Button — which is what makes its Click reach
     // `apply_event` at all: `dispatch_pointer`'s Down only makes a hit ACTIVE when

@@ -49,12 +49,12 @@ impl BodyCtx<'_> {
         });
         let track = self
             .store
-            .slider(ids::VECTOR_BLEND_STEPS)
+            .slider(ph2d_editor_core::ids::VECTOR_BLEND_STEPS)
             .map_or_else(|| blend_steps_to_track(BLEND_STEPS_DEFAULT), |(_, v)| v);
         let steps = blend_steps_from_track(f64::from(track));
         y = self.slider_row(
             "Steps",
-            ids::VECTOR_BLEND_STEPS,
+            ph2d_editor_core::ids::VECTOR_BLEND_STEPS,
             ph2d_tool_vector::ids::VECTOR_BLEND_STEPS_NUM,
             track,
             f64::from(steps),
@@ -74,10 +74,13 @@ impl BodyCtx<'_> {
         //   o objeto morre) ou *desisto do blend* (os passos somem, as fontes ficam). Nenhuma é um
         //   MODO — cada uma acontece e acabou —, então são `action_button`, não um par segmentado.
         let commands: [(ph2d_a11y::NodeId, &str); 4] = [
-            (ids::VECTOR_BLEND_RUN, "Blend"),
-            (ids::VECTOR_BLEND_RESET_SPINE, "Reset Spine"),
-            (ids::VECTOR_BLEND_EXPAND, "Expand"),
-            (ids::VECTOR_BLEND_RELEASE, "Release"),
+            (ph2d_editor_core::ids::VECTOR_BLEND_RUN, "Blend"),
+            (
+                ph2d_editor_core::ids::VECTOR_BLEND_RESET_SPINE,
+                "Reset Spine",
+            ),
+            (ph2d_editor_core::ids::VECTOR_BLEND_EXPAND, "Expand"),
+            (ph2d_editor_core::ids::VECTOR_BLEND_RELEASE, "Release"),
         ];
         for (id, label) in commands {
             y = self.action_button(id, label, y);
@@ -104,14 +107,14 @@ impl BodyCtx<'_> {
         if collapsed {
             return y;
         }
-        let mut y = self.action_button(ids::VECTOR_MORPH_RUN, "Morph", y);
+        let mut y = self.action_button(ph2d_editor_core::ids::VECTOR_MORPH_RUN, "Morph", y);
         let t = self
             .store
-            .slider(ids::VECTOR_MORPH_T)
+            .slider(ph2d_editor_core::ids::VECTOR_MORPH_T)
             .map_or(MORPH_T_DEFAULT, |(_, v)| v);
         y = self.slider_row(
             "Morph t",
-            ids::VECTOR_MORPH_T,
+            ph2d_editor_core::ids::VECTOR_MORPH_T,
             ph2d_tool_vector::ids::VECTOR_MORPH_T_NUM,
             t,
             f64::from(t),

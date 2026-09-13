@@ -1,11 +1,11 @@
 //! `NodeId`s dos widgets do painel da cena 3D.
 //!
-//! Como em todo crate de painel, os ids continuam definidos na editor-core
-//! (`ph2d_editor_core::ids`) — o layout, o walk de z-order e o arch-test
-//! `node_id_collisions` os referenciam, e redefini-los aqui bifurcaria a fonte
-//! da verdade. Isto é um re-export de conveniência.
-
-pub use ph2d_editor_core::ids::SCULPT3D_PANEL;
+//! ⚠️ **Uma definição e ZERO re-exportações** (auditoria A5b, 2026-09-12). Os ids que só este painel
+//! lê moram aqui, partidos por assunto; os que a `ph2d-editor-core` também lê (o corpo do painel,
+//! que o *z-order walk* percorre) ficaram lá, e quem os usa nomeia `ph2d_editor_core::ids::X` —
+//! nunca por este módulo. Ele re-exportava a fundação «para não bifurcar a fonte da verdade»: com uma
+//! definição só não há o que bifurcar, e o censo de colisões (`node_id_collisions`) lê os literais da
+//! workspace inteira, não uma lista na fundação.
 
 mod inspector;
 pub use inspector::*;

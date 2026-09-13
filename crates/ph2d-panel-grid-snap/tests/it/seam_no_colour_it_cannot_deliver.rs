@@ -24,8 +24,8 @@
 //! este ficheiro ficaria verde sobre um painel que deixou de desenhar a secção inteira.
 
 use ph2d_editor_core::zones::Rect;
+use ph2d_panel_grid_snap::GridSnapPanel;
 use ph2d_panel_grid_snap::state::GridSnapPanelState;
-use ph2d_panel_grid_snap::{GridSnapPanel, ids};
 use ph2d_ui_testkit::MockPanelHost;
 
 const VIEWPORT: Rect = Rect {
@@ -44,8 +44,14 @@ fn the_grid_panel_offers_no_colour_it_cannot_deliver() {
     // ⚠️ Metade JUSTA primeiro: a secção Display tem de estar viva. Sem isto, um painel que
     // deixasse de a pintar por inteiro passaria — e o gate estaria a medir a sua própria fixtura.
     for (name, id) in [
-        ("Show overlay", ids::GS_SHOW_OVERLAY),
-        ("Opacity", ids::GS_OPACITY_SLIDER),
+        (
+            "Show overlay",
+            ph2d_editor_core::grid_snap::ids::GS_SHOW_OVERLAY,
+        ),
+        (
+            "Opacity",
+            ph2d_editor_core::grid_snap::ids::GS_OPACITY_SLIDER,
+        ),
     ] {
         assert!(
             regs.iter().any(|(w, r)| *w == id && r.w > 0.0 && r.h > 0.0),
@@ -55,7 +61,9 @@ fn the_grid_panel_offers_no_colour_it_cannot_deliver() {
     }
 
     assert!(
-        !regs.iter().any(|(w, _)| *w == ids::GS_COLOR_PICKER),
+        !regs
+            .iter()
+            .any(|(w, _)| *w == ph2d_editor_core::grid_snap::ids::GS_COLOR_PICKER),
         "o selector de cor do Grid voltou a ser registado. O canvas lê dele SÓ o alfa \
          (`grid_line_color` deriva o RGB do fundo — lei do Enio, 2026-07-02), e o alfa já tem o \
          slider Opacity. Um quadradinho que pinta um vermelho que a grade nunca vai ter é a \

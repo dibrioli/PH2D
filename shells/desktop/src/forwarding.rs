@@ -421,7 +421,7 @@ pub fn cursor_over_hero_panel(gfx: Option<&AppGfx>, x: f32, y: f32) -> bool {
         || inside(MOTION_PARAMS_PANEL)
         || inside(HIER_PANEL)
         || inside(GAL_PANEL)
-        || inside(ph2d_editor_core::grid_snap::ids::GS_PANEL)
+        || inside(ph2d_editor_core::ids::GS_PANEL)
         || inside(BGR_PANEL)
         || inside(PAD_PANEL)
         || inside(CEQ_PANEL)

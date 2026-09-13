@@ -43,7 +43,9 @@ pub(crate) fn paint(_state: &mut GridSnapPanelState, ctx: &mut PaintCtx) {
         // Symmetric stale-rect cleanup (mirrors GAL_PANEL): without
         // this, `panel_at` keeps returning GS_PANEL after the panel
         // was hidden.
-        ctx.host.store_mut().clear_panel_rect(ids::GS_PANEL);
+        ctx.host
+            .store_mut()
+            .clear_panel_rect(ph2d_editor_core::ids::GS_PANEL);
         return;
     }
     // Resolve the persisted panel rect — Phase C.4 keeps it on the
@@ -52,8 +54,14 @@ pub(crate) fn paint(_state: &mut GridSnapPanelState, ctx: &mut PaintCtx) {
     let viewport = ctx.viewport;
     let base_rect = current_or_default_rect(ctx, viewport);
 
-    let gs_off = ctx.host.store().blender_picker_offset(ids::GS_PANEL);
-    let gs_resize = ctx.host.store().panel_resize_delta(ids::GS_PANEL);
+    let gs_off = ctx
+        .host
+        .store()
+        .blender_picker_offset(ph2d_editor_core::ids::GS_PANEL);
+    let gs_resize = ctx
+        .host
+        .store()
+        .panel_resize_delta(ph2d_editor_core::ids::GS_PANEL);
     let (gs_rect, gs_clamped_off, gs_clamped_resize) =
         clamp_panel_rect(base_rect, gs_off, gs_resize, viewport);
     {
@@ -61,14 +69,22 @@ pub(crate) fn paint(_state: &mut GridSnapPanelState, ctx: &mut PaintCtx) {
         if (gs_clamped_off.0 - gs_off.0).abs() > f32::EPSILON
             || (gs_clamped_off.1 - gs_off.1).abs() > f32::EPSILON
         {
-            store.set_blender_picker_offset(ids::GS_PANEL, gs_clamped_off.0, gs_clamped_off.1);
+            store.set_blender_picker_offset(
+                ph2d_editor_core::ids::GS_PANEL,
+                gs_clamped_off.0,
+                gs_clamped_off.1,
+            );
         }
         if (gs_clamped_resize.0 - gs_resize.0).abs() > f32::EPSILON
             || (gs_clamped_resize.1 - gs_resize.1).abs() > f32::EPSILON
         {
-            store.set_panel_resize_delta(ids::GS_PANEL, gs_clamped_resize.0, gs_clamped_resize.1);
+            store.set_panel_resize_delta(
+                ph2d_editor_core::ids::GS_PANEL,
+                gs_clamped_resize.0,
+                gs_clamped_resize.1,
+            );
         }
-        store.set_panel_rect(ids::GS_PANEL, gs_rect);
+        store.set_panel_rect(ph2d_editor_core::ids::GS_PANEL, gs_rect);
     }
 
     // Publish the active DisplayUnit + pixels_per_meter into the
@@ -127,8 +143,14 @@ fn paint_body(
         ph2d_editor_core::widget::panel_chrome::panel_resize_handle_rect_bl(rect);
     {
         let hit_index = ctx.host.hit_index_mut();
-        hit_index.register(ids::GS_DRAG_HANDLE, drag_handle_rect);
-        hit_index.register(ids::GS_RESIZE_HANDLE_BL, resize_handle_bl_rect);
+        hit_index.register(
+            ph2d_editor_core::grid_snap::ids::GS_DRAG_HANDLE,
+            drag_handle_rect,
+        );
+        hit_index.register(
+            ph2d_editor_core::grid_snap::ids::GS_RESIZE_HANDLE_BL,
+            resize_handle_bl_rect,
+        );
     }
 
     let inner_x = rect.x + pad();
@@ -160,14 +182,17 @@ fn paint_body(
     );
     {
         let hit_index = ctx.host.hit_index_mut();
-        hit_index.register(ids::GS_CLOSE, close_rect);
+        hit_index.register(ph2d_editor_core::grid_snap::ids::GS_CLOSE, close_rect);
     }
 
     // Body rect — sits below the title row, above the corner dot.
     let body_top = title_y + close_size + row_gap() * 2.0;
     let body_h = (rect.y + rect.h - body_top - pad()).max(0.0);
     let body_rect = Rect::new(rect.x, body_top, rect.w, body_h);
-    let scroll = ctx.host.store().panel_scroll(ids::GS_PANEL);
+    let scroll = ctx
+        .host
+        .store()
+        .panel_scroll(ph2d_editor_core::ids::GS_PANEL);
 
     ctx.scene.push_clip(&rect_to_vello(body_rect));
     let mut y = body_top - scroll;
@@ -245,13 +270,22 @@ fn paint_body(
         // on TOP of the z-order so they win over any body widget that
         // scrolled into the header / corner regions (DIRETRIZ panel-
         // chrome canon, 2026-05-24).
-        hit_index.register(ids::GS_DRAG_HANDLE, drag_handle_rect);
-        hit_index.register(ids::GS_RESIZE_HANDLE, panel_resize_handle_rect(rect));
-        hit_index.register(ids::GS_RESIZE_HANDLE_BL, resize_handle_bl_rect);
+        hit_index.register(
+            ph2d_editor_core::grid_snap::ids::GS_DRAG_HANDLE,
+            drag_handle_rect,
+        );
+        hit_index.register(
+            ph2d_editor_core::grid_snap::ids::GS_RESIZE_HANDLE,
+            panel_resize_handle_rect(rect),
+        );
+        hit_index.register(
+            ph2d_editor_core::grid_snap::ids::GS_RESIZE_HANDLE_BL,
+            resize_handle_bl_rect,
+        );
         // Re-register close AFTER drag/resize so scrolled body widgets
         // behind the title can't shadow it.
         hit_index.register(
-            ids::GS_CLOSE,
+            ph2d_editor_core::grid_snap::ids::GS_CLOSE,
             ph2d_editor_core::widget::panel_chrome::panel_close_button_rect(rect),
         );
     }
@@ -263,12 +297,12 @@ fn paint_body(
     // Publish content_h / visible_h to the store + clamp scroll.
     {
         let store = ctx.host.store_mut();
-        store.set_panel_content_h(ids::GS_PANEL, content_h);
-        store.set_panel_visible_h(ids::GS_PANEL, body_h);
+        store.set_panel_content_h(ph2d_editor_core::ids::GS_PANEL, content_h);
+        store.set_panel_visible_h(ph2d_editor_core::ids::GS_PANEL, body_h);
         let max_scroll = (content_h - body_h).max(0.0);
-        let cur = store.panel_scroll(ids::GS_PANEL);
+        let cur = store.panel_scroll(ph2d_editor_core::ids::GS_PANEL);
         if cur > max_scroll {
-            store.set_panel_scroll(ids::GS_PANEL, max_scroll);
+            store.set_panel_scroll(ph2d_editor_core::ids::GS_PANEL, max_scroll);
         }
     }
 }
@@ -302,54 +336,69 @@ fn sync_meter_inputs_to_display_unit_impl(state: &GridSnapState, store: &mut Wid
         GridKind::Iso | GridKind::Quadtree | GridKind::Voronoi => None,
     };
     if let Some(m) = cell_size_m {
-        store.set_number_value(ids::GS_CFG_CELL_SIZE, meters_to_display(m));
+        store.set_number_value(
+            ph2d_editor_core::grid_snap::ids::GS_CFG_CELL_SIZE,
+            meters_to_display(m),
+        );
     }
     store.set_number_value(
-        ids::GS_CFG_ISO_TILE_W,
+        ph2d_editor_core::grid_snap::ids::GS_CFG_ISO_TILE_W,
         meters_to_display(state.iso_cfg.tile_w),
     );
     store.set_number_value(
-        ids::GS_CFG_ISO_TILE_H,
+        ph2d_editor_core::grid_snap::ids::GS_CFG_ISO_TILE_H,
         meters_to_display(state.iso_cfg.tile_h),
     );
     store.set_number_value(
-        ids::GS_CFG_QT_BOUNDS_MIN_X,
+        ph2d_editor_core::grid_snap::ids::GS_CFG_QT_BOUNDS_MIN_X,
         meters_to_display(state.quadtree_cfg.bounds.min[0]),
     );
     store.set_number_value(
-        ids::GS_CFG_QT_BOUNDS_MIN_Y,
+        ph2d_editor_core::grid_snap::ids::GS_CFG_QT_BOUNDS_MIN_Y,
         meters_to_display(state.quadtree_cfg.bounds.min[1]),
     );
     store.set_number_value(
-        ids::GS_CFG_QT_BOUNDS_MAX_X,
+        ph2d_editor_core::grid_snap::ids::GS_CFG_QT_BOUNDS_MAX_X,
         meters_to_display(state.quadtree_cfg.bounds.max[0]),
     );
     store.set_number_value(
-        ids::GS_CFG_QT_BOUNDS_MAX_Y,
+        ph2d_editor_core::grid_snap::ids::GS_CFG_QT_BOUNDS_MAX_Y,
         meters_to_display(state.quadtree_cfg.bounds.max[1]),
     );
     store.set_number_value(
-        ids::GS_CFG_VORONOI_BOUNDS_MIN_X,
+        ph2d_editor_core::grid_snap::ids::GS_CFG_VORONOI_BOUNDS_MIN_X,
         meters_to_display(state.voronoi_cfg.bounds.min[0]),
     );
     store.set_number_value(
-        ids::GS_CFG_VORONOI_BOUNDS_MIN_Y,
+        ph2d_editor_core::grid_snap::ids::GS_CFG_VORONOI_BOUNDS_MIN_Y,
         meters_to_display(state.voronoi_cfg.bounds.min[1]),
     );
     store.set_number_value(
-        ids::GS_CFG_VORONOI_BOUNDS_MAX_X,
+        ph2d_editor_core::grid_snap::ids::GS_CFG_VORONOI_BOUNDS_MAX_X,
         meters_to_display(state.voronoi_cfg.bounds.max[0]),
     );
     store.set_number_value(
-        ids::GS_CFG_VORONOI_BOUNDS_MAX_Y,
+        ph2d_editor_core::grid_snap::ids::GS_CFG_VORONOI_BOUNDS_MAX_Y,
         meters_to_display(state.voronoi_cfg.bounds.max[1]),
     );
-    store.set_number_value(ids::GS_PROBE_A_X, meters_to_display(state.probe_a[0]));
-    store.set_number_value(ids::GS_PROBE_A_Y, meters_to_display(state.probe_a[1]));
-    store.set_number_value(ids::GS_PROBE_B_X, meters_to_display(state.probe_b[0]));
-    store.set_number_value(ids::GS_PROBE_B_Y, meters_to_display(state.probe_b[1]));
     store.set_number_value(
-        ids::GS_CFG_SNAP_MAGNETISM_RADIUS,
+        ph2d_editor_core::grid_snap::ids::GS_PROBE_A_X,
+        meters_to_display(state.probe_a[0]),
+    );
+    store.set_number_value(
+        ph2d_editor_core::grid_snap::ids::GS_PROBE_A_Y,
+        meters_to_display(state.probe_a[1]),
+    );
+    store.set_number_value(
+        ph2d_editor_core::grid_snap::ids::GS_PROBE_B_X,
+        meters_to_display(state.probe_b[0]),
+    );
+    store.set_number_value(
+        ph2d_editor_core::grid_snap::ids::GS_PROBE_B_Y,
+        meters_to_display(state.probe_b[1]),
+    );
+    store.set_number_value(
+        ph2d_editor_core::grid_snap::ids::GS_CFG_SNAP_MAGNETISM_RADIUS,
         meters_to_display(state.snap_magnetism_radius),
     );
 }

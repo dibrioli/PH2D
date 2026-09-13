@@ -64,8 +64,13 @@ fn scroll_after_a_wheel(n: usize, scroll: f32) -> (f32, f32, bool) {
     let _ = host.paint::<crate::TimelinePanel>(&mut state, VIEWPORT);
     if scroll != 0.0 {
         // O que o despachante põe no store para uma roda SIMPLES: zoom 0, pan 0, scroll = delta.
-        host.store_mut()
-            .add_timeline_wheel(ids::TIMELINE_PANEL, 0.0, 0.0, scroll, 800.0);
+        host.store_mut().add_timeline_wheel(
+            ph2d_editor_core::ids::TIMELINE_PANEL,
+            0.0,
+            0.0,
+            scroll,
+            800.0,
+        );
     }
     let hits = host.paint::<crate::TimelinePanel>(&mut state, VIEWPORT);
     let bar = hits.iter().any(|(id, _)| *id == ids::TIMELINE_SCROLLBAR);

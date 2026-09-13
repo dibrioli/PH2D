@@ -3,7 +3,6 @@
 //! Ported verbatim from `ph2d_editor_core::grid_snap::panel::paint_kinds`
 //! during ADR-0029 Phase C.4.
 
-use crate::ids;
 use crate::layout::ROW_H;
 use crate::paint_helpers::{
     NeighborhoodFamily, paint_labeled_segmented_row, paint_neighborhood_button_row,
@@ -73,7 +72,7 @@ pub(crate) fn paint_square_cfg(
 ) -> f32 {
     y = paint_number_row(
         &format!("Cell size{}", unit_suffix_paren()),
-        ids::GS_CFG_CELL_SIZE,
+        ph2d_editor_core::grid_snap::ids::GS_CFG_CELL_SIZE,
         x,
         w,
         y,
@@ -85,7 +84,7 @@ pub(crate) fn paint_square_cfg(
     );
     y = paint_number_row_from_state(
         &format!("Major every{}", unit_suffix_paren()),
-        ids::GS_CFG_SPACING_MAJOR,
+        ph2d_editor_core::grid_snap::ids::GS_CFG_SPACING_MAJOR,
         crate::state::meters_to_display(state.square_cfg.spacing_major),
         x,
         w,
@@ -125,7 +124,7 @@ pub(crate) fn paint_hex_cfg(
 ) -> f32 {
     y = paint_number_row(
         &format!("Cell size{}", unit_suffix_paren()),
-        ids::GS_CFG_CELL_SIZE,
+        ph2d_editor_core::grid_snap::ids::GS_CFG_CELL_SIZE,
         x,
         w,
         y,
@@ -148,8 +147,11 @@ pub(crate) fn paint_hex_cfg(
     y = paint_labeled_segmented_row(
         "Orientation",
         &[
-            ("Pointy", ids::GS_CFG_HEX_POINTY),
-            ("Flat", ids::GS_CFG_HEX_FLAT),
+            (
+                "Pointy",
+                ph2d_editor_core::grid_snap::ids::GS_CFG_HEX_POINTY,
+            ),
+            ("Flat", ph2d_editor_core::grid_snap::ids::GS_CFG_HEX_FLAT),
         ],
         orient_idx,
         x,
@@ -170,10 +172,22 @@ pub(crate) fn paint_hex_cfg(
     paint_labeled_segmented_row(
         "Offset",
         &[
-            ("OddR", ids::GS_CFG_HEX_OFFSET_ODDR),
-            ("EvenR", ids::GS_CFG_HEX_OFFSET_EVENR),
-            ("OddQ", ids::GS_CFG_HEX_OFFSET_ODDQ),
-            ("EvenQ", ids::GS_CFG_HEX_OFFSET_EVENQ),
+            (
+                "OddR",
+                ph2d_editor_core::grid_snap::ids::GS_CFG_HEX_OFFSET_ODDR,
+            ),
+            (
+                "EvenR",
+                ph2d_editor_core::grid_snap::ids::GS_CFG_HEX_OFFSET_EVENR,
+            ),
+            (
+                "OddQ",
+                ph2d_editor_core::grid_snap::ids::GS_CFG_HEX_OFFSET_ODDQ,
+            ),
+            (
+                "EvenQ",
+                ph2d_editor_core::grid_snap::ids::GS_CFG_HEX_OFFSET_EVENQ,
+            ),
         ],
         offset_idx,
         x,
@@ -202,7 +216,7 @@ pub(crate) fn paint_iso_cfg(
     let suffix = unit_suffix_paren();
     y = paint_number_row(
         &format!("Tile width{suffix}"),
-        ids::GS_CFG_ISO_TILE_W,
+        ph2d_editor_core::grid_snap::ids::GS_CFG_ISO_TILE_W,
         x,
         w,
         y,
@@ -214,7 +228,7 @@ pub(crate) fn paint_iso_cfg(
     );
     y = paint_number_row(
         &format!("Tile height{suffix}"),
-        ids::GS_CFG_ISO_TILE_H,
+        ph2d_editor_core::grid_snap::ids::GS_CFG_ISO_TILE_H,
         x,
         w,
         y,
@@ -253,7 +267,7 @@ pub(crate) fn paint_staggered_sq_cfg(
 ) -> f32 {
     y = paint_number_row(
         &format!("Cell size{}", unit_suffix_paren()),
-        ids::GS_CFG_CELL_SIZE,
+        ph2d_editor_core::grid_snap::ids::GS_CFG_CELL_SIZE,
         x,
         w,
         y,
@@ -271,8 +285,14 @@ pub(crate) fn paint_staggered_sq_cfg(
     y = paint_labeled_segmented_row(
         "Parity",
         &[
-            ("Odd rows", ids::GS_CFG_STAGGER_PARITY_ODD),
-            ("Even rows", ids::GS_CFG_STAGGER_PARITY_EVEN),
+            (
+                "Odd rows",
+                ph2d_editor_core::grid_snap::ids::GS_CFG_STAGGER_PARITY_ODD,
+            ),
+            (
+                "Even rows",
+                ph2d_editor_core::grid_snap::ids::GS_CFG_STAGGER_PARITY_EVEN,
+            ),
         ],
         parity_idx,
         x,
@@ -312,7 +332,7 @@ pub(crate) fn paint_tri_cfg(
 ) -> f32 {
     y = paint_number_row(
         &format!("Edge length{}", unit_suffix_paren()),
-        ids::GS_CFG_CELL_SIZE,
+        ph2d_editor_core::grid_snap::ids::GS_CFG_CELL_SIZE,
         x,
         w,
         y,
@@ -351,7 +371,7 @@ pub(crate) fn paint_quadtree_cfg(
 ) -> f32 {
     y = paint_number_row(
         "Max / leaf",
-        ids::GS_CFG_QT_MAX_PER_LEAF,
+        ph2d_editor_core::grid_snap::ids::GS_CFG_QT_MAX_PER_LEAF,
         x,
         w,
         y,
@@ -363,7 +383,7 @@ pub(crate) fn paint_quadtree_cfg(
     );
     y = paint_number_row(
         "Max depth",
-        ids::GS_CFG_QT_MAX_DEPTH,
+        ph2d_editor_core::grid_snap::ids::GS_CFG_QT_MAX_DEPTH,
         x,
         w,
         y,
@@ -375,10 +395,10 @@ pub(crate) fn paint_quadtree_cfg(
     );
     y = paint_aabb_rows(
         "QT bounds",
-        ids::GS_CFG_QT_BOUNDS_MIN_X,
-        ids::GS_CFG_QT_BOUNDS_MIN_Y,
-        ids::GS_CFG_QT_BOUNDS_MAX_X,
-        ids::GS_CFG_QT_BOUNDS_MAX_Y,
+        ph2d_editor_core::grid_snap::ids::GS_CFG_QT_BOUNDS_MIN_X,
+        ph2d_editor_core::grid_snap::ids::GS_CFG_QT_BOUNDS_MIN_Y,
+        ph2d_editor_core::grid_snap::ids::GS_CFG_QT_BOUNDS_MAX_X,
+        ph2d_editor_core::grid_snap::ids::GS_CFG_QT_BOUNDS_MAX_Y,
         state.quadtree_cfg.bounds.min,
         state.quadtree_cfg.bounds.max,
         x,
@@ -392,7 +412,7 @@ pub(crate) fn paint_quadtree_cfg(
     );
     y = paint_number_row_from_state(
         "Demo points",
-        ids::GS_CFG_QT_DEMO_POINTS,
+        ph2d_editor_core::grid_snap::ids::GS_CFG_QT_DEMO_POINTS,
         state.quadtree_cfg.demo_point_count as f64,
         x,
         w,
@@ -405,7 +425,7 @@ pub(crate) fn paint_quadtree_cfg(
     );
     paint_number_row_from_state(
         "Demo seed",
-        ids::GS_CFG_QT_DEMO_SEED,
+        ph2d_editor_core::grid_snap::ids::GS_CFG_QT_DEMO_SEED,
         state.quadtree_cfg.demo_rng_seed as f64,
         x,
         w,
@@ -432,7 +452,7 @@ pub(crate) fn paint_voronoi_cfg(
 ) -> f32 {
     y = paint_number_row(
         "Seed count",
-        ids::GS_CFG_VORONOI_SEED_COUNT,
+        ph2d_editor_core::grid_snap::ids::GS_CFG_VORONOI_SEED_COUNT,
         x,
         w,
         y,
@@ -444,7 +464,7 @@ pub(crate) fn paint_voronoi_cfg(
     );
     y = paint_number_row(
         "RNG seed",
-        ids::GS_CFG_VORONOI_RNG_SEED,
+        ph2d_editor_core::grid_snap::ids::GS_CFG_VORONOI_RNG_SEED,
         x,
         w,
         y,
@@ -456,7 +476,7 @@ pub(crate) fn paint_voronoi_cfg(
     );
     y = paint_number_row(
         "Lloyd iters",
-        ids::GS_CFG_VORONOI_LLOYD_ITERS,
+        ph2d_editor_core::grid_snap::ids::GS_CFG_VORONOI_LLOYD_ITERS,
         x,
         w,
         y,
@@ -468,10 +488,10 @@ pub(crate) fn paint_voronoi_cfg(
     );
     y = paint_aabb_rows(
         "Voronoi bounds",
-        ids::GS_CFG_VORONOI_BOUNDS_MIN_X,
-        ids::GS_CFG_VORONOI_BOUNDS_MIN_Y,
-        ids::GS_CFG_VORONOI_BOUNDS_MAX_X,
-        ids::GS_CFG_VORONOI_BOUNDS_MAX_Y,
+        ph2d_editor_core::grid_snap::ids::GS_CFG_VORONOI_BOUNDS_MIN_X,
+        ph2d_editor_core::grid_snap::ids::GS_CFG_VORONOI_BOUNDS_MIN_Y,
+        ph2d_editor_core::grid_snap::ids::GS_CFG_VORONOI_BOUNDS_MAX_X,
+        ph2d_editor_core::grid_snap::ids::GS_CFG_VORONOI_BOUNDS_MAX_Y,
         state.voronoi_cfg.bounds.min,
         state.voronoi_cfg.bounds.max,
         x,
@@ -486,9 +506,12 @@ pub(crate) fn paint_voronoi_cfg(
     // Reseed button.
     let reseed_rect = Rect::new(x, y, w, ROW_H);
     let btn = Button {
-        id: ids::GS_CFG_VORONOI_RESEED,
+        id: ph2d_editor_core::grid_snap::ids::GS_CFG_VORONOI_RESEED,
         label: "Reseed (next RNG)".to_string(),
-        state: button_state(store, ids::GS_CFG_VORONOI_RESEED),
+        state: button_state(
+            store,
+            ph2d_editor_core::grid_snap::ids::GS_CFG_VORONOI_RESEED,
+        ),
         kind: ButtonKind::Default,
         // Neutro: este sítio ainda não adere ao eixo do hover (ver `ph2d_editor_core::motion`).
         hover_t: 1.0,
@@ -499,7 +522,10 @@ pub(crate) fn paint_voronoi_cfg(
         },
     };
     paint_button(&btn, reseed_rect, scene, text_system, theme);
-    hit_index.register(ids::GS_CFG_VORONOI_RESEED, reseed_rect);
+    hit_index.register(
+        ph2d_editor_core::grid_snap::ids::GS_CFG_VORONOI_RESEED,
+        reseed_rect,
+    );
     y + ph2d_tokens::row_pitch_px()
 }
 
@@ -517,7 +543,7 @@ pub(crate) fn paint_chunks_cfg(
 ) -> f32 {
     y = paint_number_row(
         &format!("Cell size{}", unit_suffix_paren()),
-        ids::GS_CFG_CELL_SIZE,
+        ph2d_editor_core::grid_snap::ids::GS_CFG_CELL_SIZE,
         x,
         w,
         y,
@@ -529,7 +555,7 @@ pub(crate) fn paint_chunks_cfg(
     );
     y = paint_number_row(
         "Chunk size (cells)",
-        ids::GS_CFG_CHUNKS_SIZE,
+        ph2d_editor_core::grid_snap::ids::GS_CFG_CHUNKS_SIZE,
         x,
         w,
         y,

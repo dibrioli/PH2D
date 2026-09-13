@@ -12,7 +12,7 @@ use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::tool::PanelEvent;
 use ph2d_editor_core::zones::Rect;
 use ph2d_panel_vector::state::VectorPanelState;
-use ph2d_panel_vector::{VectorPanel, ids, state};
+use ph2d_panel_vector::{VectorPanel, state};
 use ph2d_ui_testkit::MockPanelHost;
 
 const VIEWPORT: Rect = Rect {
@@ -108,7 +108,7 @@ fn the_z_field_answers_a_pointer() {
     let mut host = MockPanelHost::with_panel::<VectorPanel>();
     let mut st = VectorPanelState;
     let r = host
-        .painted_rect::<VectorPanel>(&mut st, VIEWPORT, ids::VECTOR_ARRANGE_Z)
+        .painted_rect::<VectorPanel>(&mut st, VIEWPORT, ph2d_editor_core::ids::VECTOR_ARRANGE_Z)
         .expect("o campo Z tem de ser pintado com um Z publicado");
     let evs = host.click_at(r.x + r.w * 0.5, r.y + r.h * 0.5);
     assert!(
@@ -135,17 +135,17 @@ fn the_typed_z_reaches_the_bus() {
     let mut host = MockPanelHost::with_panel::<VectorPanel>();
     let mut st = VectorPanelState;
     // O que o teclado deixa no store antes de o dispatch emitir o `ValueChanged`.
-    host.set_number_value(ids::VECTOR_ARRANGE_Z, 5.0);
+    host.set_number_value(ph2d_editor_core::ids::VECTOR_ARRANGE_Z, 5.0);
     host.apply_panel_event::<VectorPanel>(
         &mut st,
-        WidgetEvent::ValueChanged(ids::VECTOR_ARRANGE_Z),
+        WidgetEvent::ValueChanged(ph2d_editor_core::ids::VECTOR_ARRANGE_Z),
     );
     let sent: Vec<f64> = host
         .drained_actions()
         .into_iter()
         .filter_map(|a| match a {
             EditorAction::ToolPanelEvent(PanelEvent::SetValue(id, v))
-                if id == ids::VECTOR_ARRANGE_Z =>
+                if id == ph2d_editor_core::ids::VECTOR_ARRANGE_Z =>
             {
                 Some(v)
             }

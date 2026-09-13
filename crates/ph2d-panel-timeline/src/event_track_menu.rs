@@ -150,35 +150,35 @@ pub(crate) fn route(
     host: &mut dyn PanelHostInternal,
     id: ph2d_a11y::NodeId,
 ) -> Option<EventOutcome> {
-    if id == ids::CTX_MENU_TL_AUTO_ORIENT {
+    if id == ph2d_editor_core::ids::CTX_MENU_TL_AUTO_ORIENT {
         return Some(auto_orient(host));
     }
-    if id == ids::CTX_MENU_TL_DELETE_TRACK {
+    if id == ph2d_editor_core::ids::CTX_MENU_TL_DELETE_TRACK {
         return Some(delete_track(host));
     }
-    if id == ids::CTX_MENU_TL_TO_PATH {
+    if id == ph2d_editor_core::ids::CTX_MENU_TL_TO_PATH {
         return Some(convert(host, true));
     }
-    if id == ids::CTX_MENU_TL_TO_AXES {
+    if id == ph2d_editor_core::ids::CTX_MENU_TL_TO_AXES {
         return Some(convert(host, false));
     }
     // Extrapolation: the two cascade rows open the submenu; the four leaves set it.
-    if id == ids::CTX_MENU_TL_EXTRAP_PRE {
+    if id == ph2d_editor_core::ids::CTX_MENU_TL_EXTRAP_PRE {
         return Some(open_extrap(host, ids::TL_EXTRAP_SIDE_PRE));
     }
-    if id == ids::CTX_MENU_TL_EXTRAP_POST {
+    if id == ph2d_editor_core::ids::CTX_MENU_TL_EXTRAP_POST {
         return Some(open_extrap(host, ids::TL_EXTRAP_SIDE_POST));
     }
-    if id == ids::CTX_MENU_TL_EXTRAP_HOLD {
+    if id == ph2d_editor_core::ids::CTX_MENU_TL_EXTRAP_HOLD {
         return Some(set_extrap(host, Extrap::Hold));
     }
-    if id == ids::CTX_MENU_TL_EXTRAP_LOOP {
+    if id == ph2d_editor_core::ids::CTX_MENU_TL_EXTRAP_LOOP {
         return Some(set_extrap(host, Extrap::Loop));
     }
-    if id == ids::CTX_MENU_TL_EXTRAP_PINGPONG {
+    if id == ph2d_editor_core::ids::CTX_MENU_TL_EXTRAP_PINGPONG {
         return Some(set_extrap(host, Extrap::PingPong));
     }
-    if id == ids::CTX_MENU_TL_EXTRAP_CONTINUE {
+    if id == ph2d_editor_core::ids::CTX_MENU_TL_EXTRAP_CONTINUE {
         return Some(set_extrap(host, Extrap::Continue));
     }
     None

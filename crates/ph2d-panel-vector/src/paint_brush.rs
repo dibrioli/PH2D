@@ -54,7 +54,7 @@ impl BodyCtx<'_> {
         // botão disser sempre a mesma coisa. *Um controlo que não distingue "escolher" de "trocar"
         // manda o artista adivinhar em que estado está.*
         y = self.action_button(
-            ids::VECTOR_BRUSH_PICK_SHAPE,
+            ph2d_editor_core::ids::VECTOR_BRUSH_PICK_SHAPE,
             if b.has_art {
                 crate::art_vocabulary::CHANGE
             } else {

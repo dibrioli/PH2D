@@ -1,9 +1,11 @@
-//! Os ids que este painel usa — **re-exportados** da `ph2d-editor-core`, nunca redefinidos.
+//! Os ids que este painel usa.
 //!
-//! ⚠️ Uma segunda definição do mesmo id (mesmo com o mesmo hash) seria a segunda resposta a *"qual
-//! é o id desta row?"*, e o `node_id_collisions` só vê a que mora na foundational.
-
-pub use ph2d_editor_core::ids::{AUTHORED_PANEL, authored_row_id};
+//! ⚠️ **Uma definição e ZERO re-exportações** (auditoria A5b, 2026-09-12). Os ids que só este painel
+//! lê moram aqui; os que a `ph2d-editor-core` também lê (o corpo do painel, que o *z-order walk*
+//! percorre) ficaram lá, e quem os usa nomeia `ph2d_editor_core::ids::X` — nunca por este módulo.
+//! A regra que ele seguia continua certa — *uma segunda definição do mesmo id seria a segunda
+//! resposta a «qual é o id desta row?»* — e é ela que proíbe a re-exportação: o censo de colisões
+//! (`node_id_collisions`) lê os literais da workspace inteira, não só os da fundação.
 
 mod authored;
 pub use authored::*;

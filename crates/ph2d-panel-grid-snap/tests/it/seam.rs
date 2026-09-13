@@ -18,8 +18,8 @@
 use ph2d_editor_core::grid_snap::GridKind;
 use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::{EventOutcome, PanelHostInternal};
+use ph2d_panel_grid_snap::GridSnapPanel;
 use ph2d_panel_grid_snap::state::GridSnapPanelState;
-use ph2d_panel_grid_snap::{GridSnapPanel, ids};
 use ph2d_ui_testkit::MockPanelHost;
 
 /// Clicking the Hex grid-KIND option must flip the canvas-renderer
@@ -40,7 +40,7 @@ fn kind_hex_click_reaches_grid_snap_state() {
 
     let outcome = host.apply_panel_event::<GridSnapPanel>(
         &mut panel_state,
-        WidgetEvent::Click(ids::GS_KIND_OPT_HEX),
+        WidgetEvent::Click(ph2d_editor_core::grid_snap::ids::GS_KIND_OPT_HEX),
     );
 
     assert_eq!(
@@ -72,10 +72,10 @@ fn opacity_slider_reaches_grid_snap_state() {
 
     // A drag writes the slider's stored value first, then dispatch emits
     // ValueChanged. Simulate both.
-    host.set_slider_value(ids::GS_OPACITY_SLIDER, 0.5);
+    host.set_slider_value(ph2d_editor_core::grid_snap::ids::GS_OPACITY_SLIDER, 0.5);
     let outcome = host.apply_panel_event::<GridSnapPanel>(
         &mut panel_state,
-        WidgetEvent::ValueChanged(ids::GS_OPACITY_SLIDER),
+        WidgetEvent::ValueChanged(ph2d_editor_core::grid_snap::ids::GS_OPACITY_SLIDER),
     );
 
     assert_eq!(

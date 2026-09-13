@@ -6,7 +6,6 @@
 //! correspondência entre os dois arquivos.
 
 use super::{button, slider_chip, slider_chip_int};
-use crate::ids;
 use ph2d_editor_core::interaction::WidgetStore;
 use ph2d_tool_vector::params::{
     BLEND_STEPS_DEFAULT, MAX_BLEND_STEPS, MORPH_T_DEFAULT, MORPH_T_STEP, blend_steps_to_track,
@@ -34,7 +33,7 @@ pub(super) fn populate_blend(store: &mut WidgetStore) {
     let steps_scale = (MAX_BLEND_STEPS - 1) as f32;
     slider_chip_int(
         store,
-        ids::VECTOR_BLEND_STEPS,
+        ph2d_editor_core::ids::VECTOR_BLEND_STEPS,
         ph2d_tool_vector::ids::VECTOR_BLEND_STEPS_NUM,
         blend_steps_to_track(BLEND_STEPS_DEFAULT),
         f64::from(BLEND_STEPS_DEFAULT),
@@ -47,21 +46,21 @@ pub(super) fn populate_blend(store: &mut WidgetStore) {
         f64::from(MAX_BLEND_STEPS),
         1.0,
     );
-    button(store, ids::VECTOR_BLEND_RUN);
+    button(store, ph2d_editor_core::ids::VECTOR_BLEND_RUN);
     // **Reset Spine** — volta o spine editado (modo Node) ao automático. Registrar aqui é o que o
     // torna clicável (pintar + hit-rect não basta — a classe de bug dos botões do vetor).
-    button(store, ids::VECTOR_BLEND_RESET_SPINE);
+    button(store, ph2d_editor_core::ids::VECTOR_BLEND_RESET_SPINE);
     // **Expand** / **Release** (ADR-0128 Fase D) — o mesmo motivo: sem registro, sao pintura.
-    button(store, ids::VECTOR_BLEND_EXPAND);
-    button(store, ids::VECTOR_BLEND_RELEASE);
+    button(store, ph2d_editor_core::ids::VECTOR_BLEND_EXPAND);
+    button(store, ph2d_editor_core::ids::VECTOR_BLEND_RELEASE);
     // **MORPH** — o irmão animável do Blend: uma forma só, e o `t` dela é keyável. O slider é a
     // autoria ao vivo (o artista estaciona a forma onde ela fica bem e aperta K).
-    button(store, ids::VECTOR_MORPH_RUN);
+    button(store, ph2d_editor_core::ids::VECTOR_MORPH_RUN);
     // O `t` já É a fração do caminho, então o mapa track→display é a IDENTIDADE (escala 1, offset
     // 0) — e contínuo, não inteiro: é o que faz o morph deslizar entre as formas.
     slider_chip(
         store,
-        ids::VECTOR_MORPH_T,
+        ph2d_editor_core::ids::VECTOR_MORPH_T,
         ph2d_tool_vector::ids::VECTOR_MORPH_T_NUM,
         MORPH_T_DEFAULT,
         f64::from(MORPH_T_DEFAULT),

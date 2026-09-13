@@ -111,7 +111,7 @@ fn easing_controls(store: &mut WidgetStore) {
     }
     // **O MODO DE PREVIEW** (W7r): o interruptor que entrega o rato aos papéis.
     store.register(
-        ids::VECTOR_STATE_PREVIEW,
+        ph2d_editor_core::ids::VECTOR_STATE_PREVIEW,
         InteractiveState::Button {
             state: ButtonState::Normal,
         },
@@ -121,7 +121,7 @@ fn easing_controls(store: &mut WidgetStore) {
     // — o que atravessa o barramento é um `Click`, e quem decide o DESENHO é o `checkbox_row`.
     // Duas convenções de registo para a mesma caixa dariam dois caminhos de evento.
     store.register(
-        ids::VECTOR_STATE_MOVE_ALL,
+        ph2d_editor_core::ids::VECTOR_STATE_MOVE_ALL,
         InteractiveState::Button {
             state: ButtonState::Normal,
         },
@@ -130,7 +130,7 @@ fn easing_controls(store: &mut WidgetStore) {
     // `MAX_DURATION_S` é o que faz o trilho `0..1` e o número em SEGUNDOS serem o mesmo valor —
     // sem ele o artista arrastaria o trilho e leria um número que não é o dele.
     store.register(
-        ids::VECTOR_STATE_DURATION,
+        ph2d_editor_core::ids::VECTOR_STATE_DURATION,
         ph2d_editor_core::interaction::InteractiveState::Slider {
             state: ph2d_editor_core::widget::SliderState::Normal,
             value: STATE_DURATION_DEFAULT_S / STATE_DURATION_MAX_S,
@@ -149,7 +149,7 @@ fn easing_controls(store: &mut WidgetStore) {
         },
     );
     store.link_slider_number_mapped(
-        ids::VECTOR_STATE_DURATION,
+        ph2d_editor_core::ids::VECTOR_STATE_DURATION,
         ids::VECTOR_STATE_DURATION_NUM,
         STATE_DURATION_MAX_S,
         0.0,
@@ -159,21 +159,21 @@ fn easing_controls(store: &mut WidgetStore) {
     // o pintar é do estado publicado. É o mesmo protocolo das linhas de duração, que também não
     // são pintadas com a preview ligada.
     store.register(
-        ids::VECTOR_STATE_SPRING,
+        ph2d_editor_core::ids::VECTOR_STATE_SPRING,
         InteractiveState::Button {
             state: ButtonState::Normal,
         },
     );
     for (slider, num, lo, hi, def) in [
         (
-            ids::VECTOR_STATE_STIFFNESS,
+            ph2d_editor_core::ids::VECTOR_STATE_STIFFNESS,
             ids::VECTOR_STATE_STIFFNESS_NUM,
             SPRING_STIFFNESS_MIN,
             SPRING_STIFFNESS_MAX,
             SPRING_STIFFNESS_DEFAULT,
         ),
         (
-            ids::VECTOR_STATE_DAMPING,
+            ph2d_editor_core::ids::VECTOR_STATE_DAMPING,
             ids::VECTOR_STATE_DAMPING_NUM,
             SPRING_DAMPING_MIN,
             SPRING_DAMPING_MAX,

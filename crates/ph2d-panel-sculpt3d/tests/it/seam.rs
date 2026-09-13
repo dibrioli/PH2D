@@ -2406,7 +2406,7 @@ fn every_filter_law_is_pickable_and_writes_its_own() {
         // ser clicável nesta fixture.
         let alvo = onde(&painted, ids::SCULPT3D_FILTER_KIND[0]).y;
         let scroll = (onde(&painted, chip).y - alvo).max(0.0);
-        host.set_panel_scroll(ids::SCULPT3D_PANEL, scroll);
+        host.set_panel_scroll(ph2d_editor_core::ids::SCULPT3D_PANEL, scroll);
         let painted = host.paint::<Sculpt3dPanel>(&mut state, VIEWPORT);
         let rect = onde(&painted, chip);
         let evs = host.click_at(rect.x + rect.w * 0.5, rect.y + rect.h * 0.5);

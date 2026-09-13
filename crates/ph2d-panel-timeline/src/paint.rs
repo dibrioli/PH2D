@@ -79,7 +79,9 @@ fn release_everything_a_hidden_panel_must_not_hold(
 ) {
     // Symmetric stale-rect cleanup so `panel_at` stops returning the panel
     // (and `dispatch_wheel` stops zooming its time axis) once it is hidden.
-    ctx.host.store_mut().clear_panel_rect(ids::TIMELINE_PANEL);
+    ctx.host
+        .store_mut()
+        .clear_panel_rect(ph2d_editor_core::ids::TIMELINE_PANEL);
     ctx.host.store_mut().clear_timeline_canvas();
     // Drop any in-flight gesture: hiding the panel mid-drag must not leave a
     // marquee to resolve (or repaint) when it comes back — nor an undo
@@ -133,7 +135,7 @@ pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
     let rect = rect0;
     ctx.host
         .store_mut()
-        .set_panel_rect(ids::TIMELINE_PANEL, rect);
+        .set_panel_rect(ph2d_editor_core::ids::TIMELINE_PANEL, rect);
     // Resize grippers FIRST, so every later hit (close button, lanes, keys) wins
     // over the border strips where they overlap.
     register_resize_grips(ctx, rect);
@@ -164,7 +166,7 @@ pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
     // over the label names still scrolls the rows.
     ctx.host
         .store_mut()
-        .set_timeline_canvas(ids::TIMELINE_PANEL, g.region);
+        .set_timeline_canvas(ph2d_editor_core::ids::TIMELINE_PANEL, g.region);
 
     // Measure the scroll range, then clamp the model into it.
     state.graph_h = graph::clamp_graph_h(state.graph_h);
@@ -322,7 +324,7 @@ fn paint_label_splitter(ctx: &mut PaintCtx, theme: Theme, region: Rect, x: f32, 
     ctx.host.store_mut().register(
         ids::TIMELINE_LABEL_SPLIT,
         InteractiveState::TimelineSurface {
-            parent: ids::TIMELINE_PANEL,
+            parent: ph2d_editor_core::ids::TIMELINE_PANEL,
             kind: TimelineHitKind::LabelSplitter,
             canvas: grip,
         },
@@ -459,7 +461,7 @@ fn paint_chrome(ctx: &mut PaintCtx, theme: Theme, rect: Rect) -> f32 {
     );
     paint_panel_close_button(
         rect,
-        ids::TIMELINE_CLOSE,
+        ph2d_editor_core::ids::TIMELINE_CLOSE,
         ctx.host.hit_index_mut(),
         ctx.scene,
         theme,
@@ -472,7 +474,7 @@ fn register_resize_grips(ctx: &mut PaintCtx, rect: Rect) {
         ctx.host.store_mut().register(
             id,
             InteractiveState::TimelineSurface {
-                parent: ids::TIMELINE_PANEL,
+                parent: ph2d_editor_core::ids::TIMELINE_PANEL,
                 kind: TimelineHitKind::ResizeEdge { edges },
                 canvas: rect,
             },

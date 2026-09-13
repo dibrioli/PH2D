@@ -365,21 +365,21 @@ fn the_gap_chips_follow_the_flow_and_the_cross_one_follows_wrap() {
     state::set_frame_clip(Some(true));
     state::set_frame_present(true);
     for (dir, cross_expected) in [
-        (ids::VECTOR_LAYOUT_DIR_ROW, false),
-        (ids::VECTOR_LAYOUT_DIR_WRAP, true),
+        (ph2d_editor_core::ids::VECTOR_LAYOUT_DIR_ROW, false),
+        (ph2d_editor_core::ids::VECTOR_LAYOUT_DIR_WRAP, true),
     ] {
         state::set_layout_flow(Some(state::LayoutFlow {
             size: [
-                ids::VECTOR_LAYOUT_SIZE_W_FIXED,
-                ids::VECTOR_LAYOUT_SIZE_H_FIXED,
+                ph2d_editor_core::ids::VECTOR_LAYOUT_SIZE_W_FIXED,
+                ph2d_editor_core::ids::VECTOR_LAYOUT_SIZE_H_FIXED,
             ],
             min: [0.0; 2],
             max: [0.0; 2],
             dir,
             gap: [0.0, 0.0],
             pad: [0.0; 4],
-            align: ids::VECTOR_LAYOUT_ALIGN_START,
-            justify: ids::VECTOR_LAYOUT_JUSTIFY_START,
+            align: ph2d_editor_core::ids::VECTOR_LAYOUT_ALIGN_START,
+            justify: ph2d_editor_core::ids::VECTOR_LAYOUT_JUSTIFY_START,
             columns: 2.0,
         }));
         let mut host = MockPanelHost::with_panel::<VectorPanel>();
@@ -450,16 +450,16 @@ fn every_token_slot_is_alive_and_lists_its_own_table() {
     state::set_frame_present(true);
     state::set_layout_flow(Some(state::LayoutFlow {
         size: [
-            ids::VECTOR_LAYOUT_SIZE_W_FIXED,
-            ids::VECTOR_LAYOUT_SIZE_H_FIXED,
+            ph2d_editor_core::ids::VECTOR_LAYOUT_SIZE_W_FIXED,
+            ph2d_editor_core::ids::VECTOR_LAYOUT_SIZE_H_FIXED,
         ],
         min: [0.0; 2],
         max: [0.0; 2],
-        dir: ids::VECTOR_LAYOUT_DIR_WRAP,
+        dir: ph2d_editor_core::ids::VECTOR_LAYOUT_DIR_WRAP,
         gap: [0.0, 0.0],
         pad: [0.0; 4],
-        align: ids::VECTOR_LAYOUT_ALIGN_START,
-        justify: ids::VECTOR_LAYOUT_JUSTIFY_START,
+        align: ph2d_editor_core::ids::VECTOR_LAYOUT_ALIGN_START,
+        justify: ph2d_editor_core::ids::VECTOR_LAYOUT_JUSTIFY_START,
         columns: 2.0,
     }));
 

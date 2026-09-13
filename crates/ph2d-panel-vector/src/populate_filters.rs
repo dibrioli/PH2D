@@ -34,7 +34,7 @@ pub(super) fn populate_filters(store: &mut WidgetStore) {
     for kind in 0..ids::MAX_FILTER_KINDS {
         button(store, ids::filter_add_id(kind));
     }
-    for row in 0..ids::MAX_FILTER_ROWS {
+    for row in 0..ph2d_editor_core::ids::MAX_FILTER_ROWS {
         // O cabeçalho do card: reordenar, desarmar, apagar.
         //
         // ⚠️ **A swatch de cor NÃO entra aqui.** Ela é alvo de PICKER (`register_picker_swatch`,

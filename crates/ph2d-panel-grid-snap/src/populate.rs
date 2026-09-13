@@ -26,23 +26,23 @@ pub(crate) fn populate(store: &mut WidgetStore) {
 
     // Panel chrome — Blender drag/resize handles same as Widget Gallery.
     store.register(
-        ids::GS_DRAG_HANDLE,
+        ph2d_editor_core::grid_snap::ids::GS_DRAG_HANDLE,
         InteractiveState::BlenderHit {
-            parent: ids::GS_PANEL,
+            parent: ph2d_editor_core::ids::GS_PANEL,
             kind: BlenderHitKind::DragHandle,
         },
     );
     store.register(
-        ids::GS_RESIZE_HANDLE,
+        ph2d_editor_core::grid_snap::ids::GS_RESIZE_HANDLE,
         InteractiveState::BlenderHit {
-            parent: ids::GS_PANEL,
+            parent: ph2d_editor_core::ids::GS_PANEL,
             kind: BlenderHitKind::ResizeHandle,
         },
     );
     store.register(
-        ids::GS_RESIZE_HANDLE_BL,
+        ph2d_editor_core::grid_snap::ids::GS_RESIZE_HANDLE_BL,
         InteractiveState::BlenderHit {
-            parent: ids::GS_PANEL,
+            parent: ph2d_editor_core::ids::GS_PANEL,
             kind: BlenderHitKind::ResizeHandleBl,
         },
     );
@@ -55,45 +55,45 @@ pub(crate) fn populate(store: &mut WidgetStore) {
     // active option is painted with `ButtonState::Pressed` driven
     // from `state` at paint time.
     for id in [
-        ids::GS_CLOSE,
+        ph2d_editor_core::grid_snap::ids::GS_CLOSE,
         // Kind group (9 options).
-        ids::GS_KIND_OPT_SQUARE,
-        ids::GS_KIND_OPT_HEX,
-        ids::GS_KIND_OPT_ISO,
-        ids::GS_KIND_OPT_STAGGERED_SQ,
-        ids::GS_KIND_OPT_STAGGERED_HEX,
-        ids::GS_KIND_OPT_TRI,
-        ids::GS_KIND_OPT_QUADTREE,
-        ids::GS_KIND_OPT_VORONOI,
-        ids::GS_KIND_OPT_CHUNKS,
+        ph2d_editor_core::grid_snap::ids::GS_KIND_OPT_SQUARE,
+        ph2d_editor_core::grid_snap::ids::GS_KIND_OPT_HEX,
+        ph2d_editor_core::grid_snap::ids::GS_KIND_OPT_ISO,
+        ph2d_editor_core::grid_snap::ids::GS_KIND_OPT_STAGGERED_SQ,
+        ph2d_editor_core::grid_snap::ids::GS_KIND_OPT_STAGGERED_HEX,
+        ph2d_editor_core::grid_snap::ids::GS_KIND_OPT_TRI,
+        ph2d_editor_core::grid_snap::ids::GS_KIND_OPT_QUADTREE,
+        ph2d_editor_core::grid_snap::ids::GS_KIND_OPT_VORONOI,
+        ph2d_editor_core::grid_snap::ids::GS_KIND_OPT_CHUNKS,
         // Target group (5 SnapTarget modes).
-        ids::GS_SNAP_CENTER,
-        ids::GS_SNAP_INTERSECTION,
-        ids::GS_SNAP_TARGET_OPT_CORNER,
-        ids::GS_SNAP_TARGET_OPT_CENTER_AND_INTERSECTION,
-        ids::GS_SNAP_TARGET_OPT_CENTER_INTERSECTION_AND_CORNERS,
+        ph2d_editor_core::grid_snap::ids::GS_SNAP_CENTER,
+        ph2d_editor_core::grid_snap::ids::GS_SNAP_INTERSECTION,
+        ph2d_editor_core::grid_snap::ids::GS_SNAP_TARGET_OPT_CORNER,
+        ph2d_editor_core::grid_snap::ids::GS_SNAP_TARGET_OPT_CENTER_AND_INTERSECTION,
+        ph2d_editor_core::grid_snap::ids::GS_SNAP_TARGET_OPT_CENTER_INTERSECTION_AND_CORNERS,
         // Neighborhood groups (Square family Von4/Moore8; Tri Edge3/Vertex12).
-        ids::GS_CFG_NEIGHBORHOOD_4,
-        ids::GS_CFG_NEIGHBORHOOD_8,
-        ids::GS_CFG_TRI_EDGE3,
-        ids::GS_CFG_TRI_VERTEX12,
+        ph2d_editor_core::grid_snap::ids::GS_CFG_NEIGHBORHOOD_4,
+        ph2d_editor_core::grid_snap::ids::GS_CFG_NEIGHBORHOOD_8,
+        ph2d_editor_core::grid_snap::ids::GS_CFG_TRI_EDGE3,
+        ph2d_editor_core::grid_snap::ids::GS_CFG_TRI_VERTEX12,
         // Hex Orientation (Pointy / Flat) segmented group.
-        ids::GS_CFG_HEX_POINTY,
-        ids::GS_CFG_HEX_FLAT,
+        ph2d_editor_core::grid_snap::ids::GS_CFG_HEX_POINTY,
+        ph2d_editor_core::grid_snap::ids::GS_CFG_HEX_FLAT,
         // Hex Offset (OddR / EvenR / OddQ / EvenQ) segmented group.
-        ids::GS_CFG_HEX_OFFSET_ODDR,
-        ids::GS_CFG_HEX_OFFSET_EVENR,
-        ids::GS_CFG_HEX_OFFSET_ODDQ,
-        ids::GS_CFG_HEX_OFFSET_EVENQ,
+        ph2d_editor_core::grid_snap::ids::GS_CFG_HEX_OFFSET_ODDR,
+        ph2d_editor_core::grid_snap::ids::GS_CFG_HEX_OFFSET_EVENR,
+        ph2d_editor_core::grid_snap::ids::GS_CFG_HEX_OFFSET_ODDQ,
+        ph2d_editor_core::grid_snap::ids::GS_CFG_HEX_OFFSET_EVENQ,
         // Stagger parity (Odd / Even) segmented group.
-        ids::GS_CFG_STAGGER_PARITY_ODD,
-        ids::GS_CFG_STAGGER_PARITY_EVEN,
-        ids::GS_CFG_VORONOI_RESEED,
+        ph2d_editor_core::grid_snap::ids::GS_CFG_STAGGER_PARITY_ODD,
+        ph2d_editor_core::grid_snap::ids::GS_CFG_STAGGER_PARITY_EVEN,
+        ph2d_editor_core::grid_snap::ids::GS_CFG_VORONOI_RESEED,
         // Layer-order group (In front / Behind).
-        ids::GS_LAYER_IN_FRONT,
-        ids::GS_LAYER_BEHIND,
+        ph2d_editor_core::grid_snap::ids::GS_LAYER_IN_FRONT,
+        ph2d_editor_core::grid_snap::ids::GS_LAYER_BEHIND,
         // Color swatch — clickable; opens BlenderColorPicker.
-        ids::GS_COLOR_PICKER,
+        ph2d_editor_core::grid_snap::ids::GS_COLOR_PICKER,
     ] {
         store.register(
             id,
@@ -104,14 +104,14 @@ pub(crate) fn populate(store: &mut WidgetStore) {
     }
     // Toggles — start values match GridSnapState::default().
     store.register(
-        ids::GS_SNAP_ENABLED,
+        ph2d_editor_core::grid_snap::ids::GS_SNAP_ENABLED,
         InteractiveState::Toggle {
             state: ToggleState::Normal,
             on: false,
         },
     );
     store.register(
-        ids::GS_SHOW_OVERLAY,
+        ph2d_editor_core::grid_snap::ids::GS_SHOW_OVERLAY,
         InteractiveState::Toggle {
             state: ToggleState::Normal,
             on: true,
@@ -119,7 +119,7 @@ pub(crate) fn populate(store: &mut WidgetStore) {
     );
     // Opacity slider — value matches GridSnapState::default().opacity.
     store.register(
-        ids::GS_OPACITY_SLIDER,
+        ph2d_editor_core::grid_snap::ids::GS_OPACITY_SLIDER,
         InteractiveState::Slider {
             state: SliderState::Normal,
             value: 0.75, // LITERAL-PX-OK: default opacity (normalized 0..1, not a UI metric)
@@ -158,101 +158,131 @@ pub(crate) fn populate(store: &mut WidgetStore) {
 /// paint reads the live store on first frame without divergence.
 fn default_number_specs(defaults: &GridSnapState) -> Vec<(NodeId, f64)> {
     vec![
-        (ids::GS_CFG_CELL_SIZE, defaults.square_cfg.cell_size as f64),
-        (ids::GS_CFG_ISO_TILE_W, defaults.iso_cfg.tile_w as f64),
-        (ids::GS_CFG_ISO_TILE_H, defaults.iso_cfg.tile_h as f64),
         (
-            ids::GS_CFG_QT_MAX_PER_LEAF,
+            ph2d_editor_core::grid_snap::ids::GS_CFG_CELL_SIZE,
+            defaults.square_cfg.cell_size as f64,
+        ),
+        (
+            ph2d_editor_core::grid_snap::ids::GS_CFG_ISO_TILE_W,
+            defaults.iso_cfg.tile_w as f64,
+        ),
+        (
+            ph2d_editor_core::grid_snap::ids::GS_CFG_ISO_TILE_H,
+            defaults.iso_cfg.tile_h as f64,
+        ),
+        (
+            ph2d_editor_core::grid_snap::ids::GS_CFG_QT_MAX_PER_LEAF,
             defaults.quadtree_cfg.max_points_per_leaf as f64,
         ),
         (
-            ids::GS_CFG_QT_MAX_DEPTH,
+            ph2d_editor_core::grid_snap::ids::GS_CFG_QT_MAX_DEPTH,
             defaults.quadtree_cfg.max_depth as f64,
         ),
         (
-            ids::GS_CFG_VORONOI_SEED_COUNT,
+            ph2d_editor_core::grid_snap::ids::GS_CFG_VORONOI_SEED_COUNT,
             defaults.voronoi_cfg.seed_count as f64,
         ),
         (
-            ids::GS_CFG_VORONOI_RNG_SEED,
+            ph2d_editor_core::grid_snap::ids::GS_CFG_VORONOI_RNG_SEED,
             defaults.voronoi_cfg.rng_seed as f64,
         ),
         (
-            ids::GS_CFG_VORONOI_LLOYD_ITERS,
+            ph2d_editor_core::grid_snap::ids::GS_CFG_VORONOI_LLOYD_ITERS,
             defaults.voronoi_cfg.lloyd_iterations as f64,
         ),
         (
-            ids::GS_CFG_CHUNKS_SIZE,
+            ph2d_editor_core::grid_snap::ids::GS_CFG_CHUNKS_SIZE,
             defaults.chunks_cfg.chunk_size_cells as f64,
         ),
         // Universal extras — values mirror the active kind's *Cfg
         // on each frame (apply_event keeps store in sync).
-        (ids::GS_CFG_ORIGIN_X, 0.0),
-        (ids::GS_CFG_ORIGIN_Y, 0.0),
+        (ph2d_editor_core::grid_snap::ids::GS_CFG_ORIGIN_X, 0.0),
+        (ph2d_editor_core::grid_snap::ids::GS_CFG_ORIGIN_Y, 0.0),
         (
-            ids::GS_CFG_SPACING_MAJOR,
+            ph2d_editor_core::grid_snap::ids::GS_CFG_SPACING_MAJOR,
             defaults.square_cfg.spacing_major as f64,
         ),
         // Grid color RGB — alpha stays implicit (controlled by the
         // opacity slider).
-        (ids::GS_CFG_COLOR_R, defaults.color_rgba[0] as f64),
-        (ids::GS_CFG_COLOR_G, defaults.color_rgba[1] as f64),
-        (ids::GS_CFG_COLOR_B, defaults.color_rgba[2] as f64),
+        (
+            ph2d_editor_core::grid_snap::ids::GS_CFG_COLOR_R,
+            defaults.color_rgba[0] as f64,
+        ),
+        (
+            ph2d_editor_core::grid_snap::ids::GS_CFG_COLOR_G,
+            defaults.color_rgba[1] as f64,
+        ),
+        (
+            ph2d_editor_core::grid_snap::ids::GS_CFG_COLOR_B,
+            defaults.color_rgba[2] as f64,
+        ),
         // Snap subdivisions (sub-grid factor; rendering unaffected).
         (
-            ids::GS_CFG_SNAP_SUBDIVISIONS,
+            ph2d_editor_core::grid_snap::ids::GS_CFG_SNAP_SUBDIVISIONS,
             defaults.snap_subdivisions as f64,
         ),
         // Snap magnetism radius (world meters; 0 disables the gate).
         (
-            ids::GS_CFG_SNAP_MAGNETISM_RADIUS,
+            ph2d_editor_core::grid_snap::ids::GS_CFG_SNAP_MAGNETISM_RADIUS,
             meters_to_display(defaults.snap_magnetism_radius),
         ),
         // Inspect probes A / B (X, Y) — user-editable from the panel.
-        (ids::GS_PROBE_A_X, defaults.probe_a[0] as f64),
-        (ids::GS_PROBE_A_Y, defaults.probe_a[1] as f64),
-        (ids::GS_PROBE_B_X, defaults.probe_b[0] as f64),
-        (ids::GS_PROBE_B_Y, defaults.probe_b[1] as f64),
+        (
+            ph2d_editor_core::grid_snap::ids::GS_PROBE_A_X,
+            defaults.probe_a[0] as f64,
+        ),
+        (
+            ph2d_editor_core::grid_snap::ids::GS_PROBE_A_Y,
+            defaults.probe_a[1] as f64,
+        ),
+        (
+            ph2d_editor_core::grid_snap::ids::GS_PROBE_B_X,
+            defaults.probe_b[0] as f64,
+        ),
+        (
+            ph2d_editor_core::grid_snap::ids::GS_PROBE_B_Y,
+            defaults.probe_b[1] as f64,
+        ),
         // Quadtree bounds + demo seeds.
         (
-            ids::GS_CFG_QT_BOUNDS_MIN_X,
+            ph2d_editor_core::grid_snap::ids::GS_CFG_QT_BOUNDS_MIN_X,
             defaults.quadtree_cfg.bounds.min[0] as f64,
         ),
         (
-            ids::GS_CFG_QT_BOUNDS_MIN_Y,
+            ph2d_editor_core::grid_snap::ids::GS_CFG_QT_BOUNDS_MIN_Y,
             defaults.quadtree_cfg.bounds.min[1] as f64,
         ),
         (
-            ids::GS_CFG_QT_BOUNDS_MAX_X,
+            ph2d_editor_core::grid_snap::ids::GS_CFG_QT_BOUNDS_MAX_X,
             defaults.quadtree_cfg.bounds.max[0] as f64,
         ),
         (
-            ids::GS_CFG_QT_BOUNDS_MAX_Y,
+            ph2d_editor_core::grid_snap::ids::GS_CFG_QT_BOUNDS_MAX_Y,
             defaults.quadtree_cfg.bounds.max[1] as f64,
         ),
         (
-            ids::GS_CFG_QT_DEMO_POINTS,
+            ph2d_editor_core::grid_snap::ids::GS_CFG_QT_DEMO_POINTS,
             defaults.quadtree_cfg.demo_point_count as f64,
         ),
         (
-            ids::GS_CFG_QT_DEMO_SEED,
+            ph2d_editor_core::grid_snap::ids::GS_CFG_QT_DEMO_SEED,
             defaults.quadtree_cfg.demo_rng_seed as f64,
         ),
         // Voronoi bounds.
         (
-            ids::GS_CFG_VORONOI_BOUNDS_MIN_X,
+            ph2d_editor_core::grid_snap::ids::GS_CFG_VORONOI_BOUNDS_MIN_X,
             defaults.voronoi_cfg.bounds.min[0] as f64,
         ),
         (
-            ids::GS_CFG_VORONOI_BOUNDS_MIN_Y,
+            ph2d_editor_core::grid_snap::ids::GS_CFG_VORONOI_BOUNDS_MIN_Y,
             defaults.voronoi_cfg.bounds.min[1] as f64,
         ),
         (
-            ids::GS_CFG_VORONOI_BOUNDS_MAX_X,
+            ph2d_editor_core::grid_snap::ids::GS_CFG_VORONOI_BOUNDS_MAX_X,
             defaults.voronoi_cfg.bounds.max[0] as f64,
         ),
         (
-            ids::GS_CFG_VORONOI_BOUNDS_MAX_Y,
+            ph2d_editor_core::grid_snap::ids::GS_CFG_VORONOI_BOUNDS_MAX_Y,
             defaults.voronoi_cfg.bounds.max[1] as f64,
         ),
     ]

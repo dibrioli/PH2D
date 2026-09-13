@@ -16,7 +16,7 @@
 //! leitura é medida contra fontes reais; aqui mede-se o consumidor.
 
 use crate::state::VectorPanelState;
-use crate::{TextAxisSlot, VectorPanel, ids};
+use crate::{TextAxisSlot, VectorPanel};
 use ph2d_editor_core::zones::Rect;
 use ph2d_ui_testkit::MockPanelHost;
 
@@ -60,11 +60,11 @@ fn a_static_font_paints_no_weight_row() {
     // ⚠️ Metade JUSTA: sem ela, uma secção TEXT inteiramente morta passaria — e o gate estaria a
     // medir a própria fixtura em vez do produto.
     assert!(
-        painted(ids::VECTOR_TEXT_SIZE),
+        painted(ph2d_editor_core::ids::VECTOR_TEXT_SIZE),
         "a secção TEXT não pintou nem o Size — ela está morta, e este gate não mede nada"
     );
     assert!(
-        !painted(ids::VECTOR_TEXT_WEIGHT),
+        !painted(ph2d_editor_core::ids::VECTOR_TEXT_WEIGHT),
         "a fileira Weight foi pintada para uma fonte ESTÁTICA. Sem `fvar` o skrifa ignora a \
          localização de eixo: o slider arrasta e a letra não muda — um controlo morto que nenhum \
          gate de registo apanha."
@@ -82,13 +82,13 @@ fn a_static_font_paints_no_weight_row() {
 fn a_weight_only_variable_font_keeps_its_weight_row() {
     publish_font(true, 0);
     assert!(
-        painted(ids::VECTOR_TEXT_WEIGHT),
+        painted(ph2d_editor_core::ids::VECTOR_TEXT_WEIGHT),
         "a fileira Weight sumiu numa fonte VARIÁVEL só de peso. É a espécie mais comum, e é \
          exactamente o caso em que a regra da secção AXES (`axes.is_empty()`) esconde um controlo \
          vivo e correcto — as duas perguntas não são a mesma."
     );
     assert!(
-        !painted(ids::vector_text_axis_id(0)),
+        !painted(ph2d_editor_core::ids::vector_text_axis_id(0)),
         "a secção AXES pintou uma fileira sem eixo extra nenhum publicado"
     );
 }
@@ -98,9 +98,13 @@ fn a_weight_only_variable_font_keeps_its_weight_row() {
 #[test]
 fn a_font_with_weight_and_more_shows_both_sections() {
     publish_font(true, 2);
-    assert!(painted(ids::VECTOR_TEXT_WEIGHT), "Weight sumiu na embutida");
     assert!(
-        painted(ids::vector_text_axis_id(0)) && painted(ids::vector_text_axis_id(1)),
+        painted(ph2d_editor_core::ids::VECTOR_TEXT_WEIGHT),
+        "Weight sumiu na embutida"
+    );
+    assert!(
+        painted(ph2d_editor_core::ids::vector_text_axis_id(0))
+            && painted(ph2d_editor_core::ids::vector_text_axis_id(1)),
         "os eixos extras não foram pintados"
     );
 }

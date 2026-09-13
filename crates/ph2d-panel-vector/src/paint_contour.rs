@@ -45,22 +45,22 @@ impl BodyCtx<'_> {
             return y;
         }
         if !cst::present() {
-            return self.action_button(ids::VECTOR_CONTOUR_ADD, "Add Contour", y);
+            return self.action_button(ph2d_editor_core::ids::VECTOR_CONTOUR_ADD, "Add Contour", y);
         }
         // Steps — quantos anéis. O controle-assinatura: é ele que distingue este efeito do
         // Offset da seção Expand, que é o caso `steps = 1` sem rampa de cor.
         let steps = self
             .store
-            .number_value(ids::VECTOR_CONTOUR_STEPS_NUM)
+            .number_value(ph2d_editor_core::ids::VECTOR_CONTOUR_STEPS_NUM)
             .unwrap_or_else(cst::steps);
         let steps_track = self
             .store
-            .slider(ids::VECTOR_CONTOUR_STEPS)
+            .slider(ph2d_editor_core::ids::VECTOR_CONTOUR_STEPS)
             .map_or_else(|| steps_to_track(cst::steps()), |(_, v)| v);
         y = self.slider_row(
             "Steps",
-            ids::VECTOR_CONTOUR_STEPS,
-            ids::VECTOR_CONTOUR_STEPS_NUM,
+            ph2d_editor_core::ids::VECTOR_CONTOUR_STEPS,
+            ph2d_editor_core::ids::VECTOR_CONTOUR_STEPS_NUM,
             steps_track,
             steps,
             &format!("{}", steps.round() as i64),
@@ -71,16 +71,16 @@ impl BodyCtx<'_> {
         // de seleção (a razão que a seção Expand já paga no mesmo painel).
         let d_pct = self
             .store
-            .number_value(ids::VECTOR_CONTOUR_OFFSET_NUM)
+            .number_value(ph2d_editor_core::ids::VECTOR_CONTOUR_OFFSET_NUM)
             .unwrap_or_else(|| cst::d_frac() * PERCENT);
         let d_track = self
             .store
-            .slider(ids::VECTOR_CONTOUR_OFFSET)
+            .slider(ph2d_editor_core::ids::VECTOR_CONTOUR_OFFSET)
             .map_or_else(|| d_to_track(cst::d_frac()), |(_, v)| v);
         y = self.slider_row(
             "Offset",
-            ids::VECTOR_CONTOUR_OFFSET,
-            ids::VECTOR_CONTOUR_OFFSET_NUM,
+            ph2d_editor_core::ids::VECTOR_CONTOUR_OFFSET,
+            ph2d_editor_core::ids::VECTOR_CONTOUR_OFFSET_NUM,
             d_track,
             d_pct,
             &format!("{d_pct:.1}"),
@@ -91,16 +91,16 @@ impl BodyCtx<'_> {
         // afim do store — quem os casa é o `event.rs`. Ver `populate_contour`.
         let accel = self
             .store
-            .number_value(ids::VECTOR_CONTOUR_ACCEL_NUM)
+            .number_value(ph2d_editor_core::ids::VECTOR_CONTOUR_ACCEL_NUM)
             .unwrap_or_else(cst::accel);
         let accel_track = self
             .store
-            .slider(ids::VECTOR_CONTOUR_ACCEL)
+            .slider(ph2d_editor_core::ids::VECTOR_CONTOUR_ACCEL)
             .map_or_else(|| accel_to_track(cst::accel()), |(_, v)| v);
         y = self.slider_row(
             "Accel",
-            ids::VECTOR_CONTOUR_ACCEL,
-            ids::VECTOR_CONTOUR_ACCEL_NUM,
+            ph2d_editor_core::ids::VECTOR_CONTOUR_ACCEL,
+            ph2d_editor_core::ids::VECTOR_CONTOUR_ACCEL_NUM,
             accel_track,
             accel,
             &format!("{accel:.2}"),
@@ -134,8 +134,16 @@ impl BodyCtx<'_> {
         // As duas saídas, e elas fazem coisas OPOSTAS: uma entrega os anéis como formas de
         // verdade, a outra os apaga. Ficam nesta ordem porque Expand é a que se procura (é o
         // que se faz com um contour pronto) e Remove é a que se lamenta ter clicado.
-        y = self.action_button(ids::VECTOR_CONTOUR_EXPAND, "Expand Contour", y);
-        self.action_button(ids::VECTOR_CONTOUR_REMOVE, "Remove Contour", y)
+        y = self.action_button(
+            ph2d_editor_core::ids::VECTOR_CONTOUR_EXPAND,
+            "Expand Contour",
+            y,
+        );
+        self.action_button(
+            ph2d_editor_core::ids::VECTOR_CONTOUR_REMOVE,
+            "Remove Contour",
+            y,
+        )
     }
 
     /// A fileira da cor-alvo: rótulo + swatch que abre o picker OKLCH partilhado.
@@ -161,10 +169,15 @@ impl BodyCtx<'_> {
             swatch_w,
             self.row_h,
         );
-        let swatch = ColorSwatch::new(ids::VECTOR_CONTOUR_TO, "Contour target color", cst::to())
-            .size(SwatchSize::Md);
+        let swatch = ColorSwatch::new(
+            ph2d_editor_core::ids::VECTOR_CONTOUR_TO,
+            "Contour target color",
+            cst::to(),
+        )
+        .size(SwatchSize::Md);
         paint_color_swatch(&swatch, rect, self.scene, self.theme);
-        self.hit_index.register(ids::VECTOR_CONTOUR_TO, rect);
+        self.hit_index
+            .register(ph2d_editor_core::ids::VECTOR_CONTOUR_TO, rect);
         y + self.row_h + self.row_gap
     }
 }

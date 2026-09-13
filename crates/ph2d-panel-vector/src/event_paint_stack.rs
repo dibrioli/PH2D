@@ -65,14 +65,14 @@ pub(super) fn value_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> 
     let WidgetEvent::ValueChanged(id) = ev else {
         return None;
     };
-    if id == ids::VECTOR_PAINT_WIDTH
-        || id == ids::VECTOR_PAINT_DX
-        || id == ids::VECTOR_PAINT_DY
-        || id == ids::VECTOR_PAINT_DILATE
+    if id == ph2d_editor_core::ids::VECTOR_PAINT_WIDTH
+        || id == ph2d_editor_core::ids::VECTOR_PAINT_DX
+        || id == ph2d_editor_core::ids::VECTOR_PAINT_DY
+        || id == ph2d_editor_core::ids::VECTOR_PAINT_DILATE
     {
         return Some(super::forward_number(host, id));
     }
-    if id == ids::VECTOR_PAINT_OPACITY {
+    if id == ph2d_editor_core::ids::VECTOR_PAINT_OPACITY {
         let track = host.store().slider(id).map(|(_, v)| v).unwrap_or(1.0);
         host.bus_mut()
             .push(EditorAction::ToolPanelEvent(PanelEvent::SetValue(

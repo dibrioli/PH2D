@@ -11,7 +11,6 @@
 //! This is the same pattern future tool panels will follow — the panel
 //! crate stays a pure widget bag; semantics live with the tool.
 
-use crate::ids;
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetEvent};
@@ -81,7 +80,7 @@ fn is_bgr_slider(id: NodeId) -> bool {
         || id == ph2d_tool_bgremoval::ids::BGR_REFINE
         || id == ph2d_tool_bgremoval::ids::BGR_GROW
         || id == ph2d_tool_bgremoval::ids::BGR_BRUSH_SIZE
-        || id == ids::BGR_MIN_ISLAND_PX
+        || id == ph2d_tool_bgremoval::ids::BGR_MIN_ISLAND_PX
 }
 
 fn is_bgr_number(id: NodeId) -> bool {
@@ -90,7 +89,7 @@ fn is_bgr_number(id: NodeId) -> bool {
         || id == ph2d_tool_bgremoval::ids::BGR_REFINE_NUM
         || id == ph2d_tool_bgremoval::ids::BGR_GROW_NUM
         || id == ph2d_tool_bgremoval::ids::BGR_BRUSH_SIZE_NUM
-        || id == ids::BGR_MIN_ISLAND_PX_NUM
+        || id == ph2d_tool_bgremoval::ids::BGR_MIN_ISLAND_PX_NUM
 }
 
 fn is_bgr_click(id: NodeId) -> bool {
@@ -104,8 +103,8 @@ fn is_bgr_click(id: NodeId) -> bool {
         || id == ph2d_tool_bgremoval::ids::BGR_PROTECT
         || id == ph2d_tool_bgremoval::ids::BGR_PROTECT_CLEAR
         || id == ph2d_tool_bgremoval::ids::BGR_SHOW_MASK
-        || id == ids::BGR_SEPARATE_ISLANDS
-        || id == ids::BGR_AUTO_PROTECT_SUBJECT
+        || id == ph2d_tool_bgremoval::ids::BGR_SEPARATE_ISLANDS
+        || id == ph2d_tool_bgremoval::ids::BGR_AUTO_PROTECT_SUBJECT
         || id == ph2d_tool_bgremoval::ids::BGR_ADD_AREA
         || id == ph2d_tool_bgremoval::ids::BGR_ADD_AREA_CLEAR
 }

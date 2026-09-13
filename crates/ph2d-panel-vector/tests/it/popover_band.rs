@@ -21,7 +21,7 @@ use ph2d_editor_core::screens::hero::{HERO_VIEWPORT_H, HERO_VIEWPORT_W};
 use ph2d_editor_core::screens::paint_hero_screen;
 use ph2d_editor_core::zones::Rect;
 use ph2d_panel_vector::state::TokenBindings;
-use ph2d_panel_vector::{VectorPanel, ids, state};
+use ph2d_panel_vector::{VectorPanel, state};
 use ph2d_text::TextSystem;
 use ph2d_vector::VectorScene;
 use std::sync::Once;
@@ -61,7 +61,8 @@ fn paint_frame(hero: &mut HeroScreen) {
 /// tela — e é a POSIÇÃO DO CHIP que decide para que lado o popover abre).
 fn first_row_at(scroll: f32) -> (Rect, HeroScreen) {
     let mut hero = hero_with_vector_panel();
-    hero.store.set_panel_scroll(ids::VECTOR_PANEL, scroll);
+    hero.store
+        .set_panel_scroll(ph2d_editor_core::ids::VECTOR_PANEL, scroll);
     paint_frame(&mut hero);
     match hero
         .store

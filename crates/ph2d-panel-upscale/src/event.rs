@@ -17,7 +17,6 @@
 //! `slider_to_scale`). Out-of-range chip input ("999") is clamped by
 //! the dispatch's `apply_chip_value_with_mirror` re-sync.
 
-use crate::ids;
 use crate::state::UpscalePanelState;
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::action_bus::EditorAction;
@@ -40,9 +39,9 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
         // forwarded as a `PanelEvent::Click` so the tool routes to
         // `apply_ui_edit(SetAlgorithm(_))`.
         WidgetEvent::Click(id)
-            if id == ids::UPS_ALGO_LANCZOS3
-                || id == ids::UPS_ALGO_NEAREST
-                || id == ids::UPS_ALGO_EPX =>
+            if id == ph2d_tool_upscale::tool::ids::UPS_ALGO_LANCZOS3
+                || id == ph2d_tool_upscale::tool::ids::UPS_ALGO_NEAREST
+                || id == ph2d_tool_upscale::tool::ids::UPS_ALGO_EPX =>
         {
             reset_button(host, id);
             host.bus_mut()
@@ -52,31 +51,31 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
         // Scale slider value changed (drag, OR mirror from chip commit
         // / stepper / drag-scrub via `link_slider_number_mapped`).
         // Forward the canonical track value.
-        WidgetEvent::ValueChanged(id) if id == ids::UPS_SCALE => {
+        WidgetEvent::ValueChanged(id) if id == ph2d_tool_upscale::tool::ids::UPS_SCALE => {
             let track = host
                 .store()
-                .slider(ids::UPS_SCALE)
+                .slider(ph2d_tool_upscale::tool::ids::UPS_SCALE)
                 .map(|(_, v)| v)
                 .unwrap_or(0.0);
             host.bus_mut()
                 .push(EditorAction::ToolPanelEvent(PanelEvent::SetValue(
-                    ids::UPS_SCALE,
+                    ph2d_tool_upscale::tool::ids::UPS_SCALE,
                     track as f64,
                 )));
             true
         }
         // Chip ValueChanged — dispatch already mirrored to the slider,
         // which fires its own ValueChanged handled above. Swallow.
-        WidgetEvent::ValueChanged(id) if id == ids::UPS_SCALE_NUM => true,
+        WidgetEvent::ValueChanged(id) if id == ph2d_tool_upscale::tool::ids::UPS_SCALE_NUM => true,
         // Apply — bake at full resolution.
-        WidgetEvent::Click(id) if id == ids::UPS_APPLY => {
+        WidgetEvent::Click(id) if id == ph2d_tool_upscale::tool::ids::UPS_APPLY => {
             reset_button(host, id);
             host.bus_mut()
                 .push(EditorAction::ToolPanelEvent(PanelEvent::Click(id)));
             true
         }
         // Reset-all — algorithm + scale back to defaults.
-        WidgetEvent::Click(id) if id == ids::UPS_RESET => {
+        WidgetEvent::Click(id) if id == ph2d_tool_upscale::tool::ids::UPS_RESET => {
             reset_button(host, id);
             host.bus_mut()
                 .push(EditorAction::ToolPanelEvent(PanelEvent::Click(id)));
@@ -84,7 +83,7 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
         }
         // Cancel — abandon + deactivate. Shell switches back to the
         // default tool, hiding the panel.
-        WidgetEvent::Click(id) if id == ids::UPS_CANCEL => {
+        WidgetEvent::Click(id) if id == ph2d_tool_upscale::tool::ids::UPS_CANCEL => {
             reset_button(host, id);
             host.bus_mut().push(EditorAction::CancelActiveTool);
             true

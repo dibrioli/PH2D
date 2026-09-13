@@ -192,7 +192,11 @@ fn the_duration_slider_is_alive_and_reaches_the_bus() {
     let mut host = MockPanelHost::with_panel::<VectorPanel>();
     let mut panel_state = VectorPanelState;
     let r = host
-        .painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, ids::VECTOR_STATE_DURATION)
+        .painted_rect::<VectorPanel>(
+            &mut panel_state,
+            VIEWPORT,
+            ph2d_editor_core::ids::VECTOR_STATE_DURATION,
+        )
         .expect("o slider de duracao nao foi PINTADO");
     let cy = r.y + r.h * 0.5;
     // ⚠️ O Down cai num ponto e o Move noutro: um Move para o MESMO x não move o valor, e o gate
@@ -212,7 +216,7 @@ fn the_duration_slider_is_alive_and_reaches_the_bus() {
     )));
     assert!(
         evs.iter()
-            .any(|e| matches!(e, WidgetEvent::ValueChanged(c) if *c == ids::VECTOR_STATE_DURATION)),
+            .any(|e| matches!(e, WidgetEvent::ValueChanged(c) if *c == ph2d_editor_core::ids::VECTOR_STATE_DURATION)),
         "arrastar a duracao nao produziu ValueChanged — ela esta' desenhada e nao existe para o \
          dispatcher (falta o `register` no populate)"
     );
@@ -223,7 +227,7 @@ fn the_duration_slider_is_alive_and_reaches_the_bus() {
         host.drained_actions().into_iter().any(|a| matches!(
             a,
             EditorAction::ToolPanelEvent(PanelEvent::SetValue(c, _))
-                if c == ids::VECTOR_STATE_DURATION
+                if c == ph2d_editor_core::ids::VECTOR_STATE_DURATION
         )),
         "arrastar a duracao nao chegou ao bus — o numero autorado nunca alcanca o documento"
     );
@@ -240,13 +244,13 @@ fn the_preview_switch_is_alive_and_reaches_the_bus() {
     clear();
     click_reaches_bus(
         with_preview([true, true, false, false], Some(false)),
-        ids::VECTOR_STATE_PREVIEW,
+        ph2d_editor_core::ids::VECTOR_STATE_PREVIEW,
         "o interruptor de Preview",
     );
     // E ele continua clicável LIGADO — senao entra-se no modo e nao se sai por ele.
     click_reaches_bus(
         with_preview([true, true, false, false], Some(true)),
-        ids::VECTOR_STATE_PREVIEW,
+        ph2d_editor_core::ids::VECTOR_STATE_PREVIEW,
         "o interruptor de Preview LIGADO",
     );
     clear();
@@ -261,13 +265,17 @@ fn the_preview_switch_is_alive_and_reaches_the_bus() {
 fn a_scene_with_no_poses_offers_no_preview_switch() {
     clear();
     assert!(
-        rect_under(with_preview([false; 4], None), ids::VECTOR_STATE_PREVIEW).is_none(),
+        rect_under(
+            with_preview([false; 4], None),
+            ph2d_editor_core::ids::VECTOR_STATE_PREVIEW
+        )
+        .is_none(),
         "o interruptor foi pintado numa cena sem pose: um clique que nao pode fazer nada"
     );
     assert!(
         rect_under(
             with_preview([true, false, false, false], Some(false)),
-            ids::VECTOR_STATE_PREVIEW
+            ph2d_editor_core::ids::VECTOR_STATE_PREVIEW
         )
         .is_some(),
         "o interruptor sumiu numa cena COM pose — a preview fica inalcancavel"
@@ -286,14 +294,14 @@ fn the_preview_closes_authoring_while_it_runs() {
     clear();
     let on = with_preview([true, true, false, false], Some(true));
     assert!(
-        rect_under(on.clone(), ids::VECTOR_STATE_PREVIEW).is_some(),
+        rect_under(on.clone(), ph2d_editor_core::ids::VECTOR_STATE_PREVIEW).is_some(),
         "o unico controlo que TEM de sobreviver e' o proprio interruptor"
     );
     for (id, what) in [
         (ids::vector_state_record_id(0), "Rec"),
         (ids::vector_state_apply_id(0), "Show"),
         (ids::vector_state_clear_id(0), "Clear"),
-        (ids::VECTOR_STATE_DURATION, "a duracao"),
+        (ph2d_editor_core::ids::VECTOR_STATE_DURATION, "a duracao"),
     ] {
         assert!(
             rect_under(on.clone(), id).is_none(),
@@ -305,7 +313,7 @@ fn the_preview_closes_authoring_while_it_runs() {
     for (id, what) in [
         (ids::vector_state_record_id(0), "Rec"),
         (ids::vector_state_apply_id(0), "Show"),
-        (ids::VECTOR_STATE_DURATION, "a duracao"),
+        (ph2d_editor_core::ids::VECTOR_STATE_DURATION, "a duracao"),
     ] {
         assert!(
             rect_under(off.clone(), id).is_some(),
@@ -325,12 +333,12 @@ fn the_move_all_switch_is_alive_and_reaches_the_bus() {
     clear();
     click_reaches_bus(
         with_all([true, false, false, false], Some(false), Some(false)),
-        ids::VECTOR_STATE_MOVE_ALL,
+        ph2d_editor_core::ids::VECTOR_STATE_MOVE_ALL,
         "o interruptor de Move All States",
     );
     click_reaches_bus(
         with_all([true, false, false, false], Some(false), Some(true)),
-        ids::VECTOR_STATE_MOVE_ALL,
+        ph2d_editor_core::ids::VECTOR_STATE_MOVE_ALL,
         "o interruptor de Move All States MARCADO",
     );
     clear();
@@ -341,13 +349,17 @@ fn the_move_all_switch_is_alive_and_reaches_the_bus() {
 fn a_host_with_no_states_offers_no_move_all_switch() {
     clear();
     assert!(
-        rect_under(with_all([false; 4], None, None), ids::VECTOR_STATE_MOVE_ALL).is_none(),
+        rect_under(
+            with_all([false; 4], None, None),
+            ph2d_editor_core::ids::VECTOR_STATE_MOVE_ALL
+        )
+        .is_none(),
         "a caixa foi pintada num hospedeiro sem estado: nao ha' o que carregar"
     );
     assert!(
         rect_under(
             with_all([true, false, false, false], Some(false), Some(false)),
-            ids::VECTOR_STATE_MOVE_ALL
+            ph2d_editor_core::ids::VECTOR_STATE_MOVE_ALL
         )
         .is_some(),
         "a caixa sumiu num hospedeiro COM estado — relocar o widget volta a perder a animacao"

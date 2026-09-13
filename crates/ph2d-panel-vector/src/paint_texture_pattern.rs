@@ -34,7 +34,7 @@ const SECOES: [(ph2d_a11y::NodeId, &str); 2] = [
 
 /// O id do controlo `knob` da secção da tinta `slot` — o atalho local da fábrica do editor-core.
 #[must_use]
-pub fn kid(slot: usize, knob: ids::TexPatKnob) -> ph2d_a11y::NodeId {
+pub fn kid(slot: usize, knob: ph2d_editor_core::ids::TexPatKnob) -> ph2d_a11y::NodeId {
     ids::texpat_id(slot, knob)
 }
 
@@ -44,9 +44,9 @@ pub fn kid(slot: usize, knob: ids::TexPatKnob) -> ph2d_a11y::NodeId {
 /// passar por aqui e a shell resolve o SLOT por aqui. Três listas escritas à mão divergiriam no
 /// primeiro knob novo, e a que o artista vê é a que envelhece.
 #[must_use]
-pub fn texpat_knob_of(id: ph2d_a11y::NodeId) -> Option<(usize, ids::TexPatKnob)> {
+pub fn texpat_knob_of(id: ph2d_a11y::NodeId) -> Option<(usize, ph2d_editor_core::ids::TexPatKnob)> {
     (0..ids::TEXPAT_SLOTS).find_map(|slot| {
-        ids::TexPatKnob::ALL
+        ph2d_editor_core::ids::TexPatKnob::ALL
             .iter()
             .find(|k| kid(slot, **k) == id)
             .map(|k| (slot, *k))
@@ -75,11 +75,15 @@ impl BodyCtx<'_> {
         y = self.missing_art_hint(p.art, y);
         // A ARTE — trocar a imagem sem trocar a lei. ⚠️ O mesmo botão que o chip *Pattern* aciona
         // quando a forma ainda não tem padrão: uma porta, dois gatilhos.
-        y = self.action_button(kid(ids::TexPatKnob::Source), "Source...", y);
+        y = self.action_button(
+            kid(ph2d_editor_core::ids::TexPatKnob::Source),
+            "Source...",
+            y,
+        );
         // ⭐ **A ARTE pode ser uma FORMA do documento** (W7) — o modelo do Figma. O gesto é o de
         // duas mãos que a casa já tem: aperta, e o clique seguinte no canvas escolhe.
         y = self.action_button(
-            kid(ids::TexPatKnob::PickShape),
+            kid(ph2d_editor_core::ids::TexPatKnob::PickShape),
             crate::art_vocabulary::USE,
             y,
         );
@@ -115,7 +119,7 @@ impl BodyCtx<'_> {
                 .iter()
                 .map(|(i, l)| {
                     (
-                        kid(ids::TexPatKnob::Tile(*i as u8)),
+                        kid(ph2d_editor_core::ids::TexPatKnob::Tile(*i as u8)),
                         *l,
                         usize::from(p.kind) == *i,
                     )
@@ -128,12 +132,18 @@ impl BodyCtx<'_> {
         // **fixo** em meio passo (é isso que a torna colmeia): oferecê-lo ali seria um knob que o
         // modelo ignora.
         if matches!(p.kind, 1 | 2) {
-            let denom = self.live_number(kid(ids::TexPatKnob::OffsetNum), p.offset_denom);
-            let track = self.live_track(kid(ids::TexPatKnob::Offset), denom_track(p.offset_denom));
+            let denom = self.live_number(
+                kid(ph2d_editor_core::ids::TexPatKnob::OffsetNum),
+                p.offset_denom,
+            );
+            let track = self.live_track(
+                kid(ph2d_editor_core::ids::TexPatKnob::Offset),
+                denom_track(p.offset_denom),
+            );
             y = self.slider_row(
                 "Offset",
-                kid(ids::TexPatKnob::Offset),
-                kid(ids::TexPatKnob::OffsetNum),
+                kid(ph2d_editor_core::ids::TexPatKnob::Offset),
+                kid(ph2d_editor_core::ids::TexPatKnob::OffsetNum),
                 track,
                 denom,
                 &format!("1/{}", denom.round() as i64),
@@ -160,14 +170,14 @@ impl BodyCtx<'_> {
                 (
                     0usize,
                     "Shift X",
-                    kid(ids::TexPatKnob::ShiftX),
-                    kid(ids::TexPatKnob::ShiftXNum),
+                    kid(ph2d_editor_core::ids::TexPatKnob::ShiftX),
+                    kid(ph2d_editor_core::ids::TexPatKnob::ShiftXNum),
                 ),
                 (
                     1,
                     "Shift Y",
-                    kid(ids::TexPatKnob::ShiftY),
-                    kid(ids::TexPatKnob::ShiftYNum),
+                    kid(ph2d_editor_core::ids::TexPatKnob::ShiftY),
+                    kid(ph2d_editor_core::ids::TexPatKnob::ShiftYNum),
                 ),
             ] {
                 let pct = self.live_number(nid, p.shift_pct[axis]);
@@ -179,12 +189,18 @@ impl BodyCtx<'_> {
         // O ÂNGULO do PADRÃO (não o da forma). ⚠️ Ele vale em TODOS os modos: no `Clamp` roda a
         // cópia enquadrada.
 
-        let angle = self.live_number(kid(ids::TexPatKnob::AngleNum), p.angle_deg);
-        let angle_track = self.live_track(kid(ids::TexPatKnob::Angle), angle_track(p.angle_deg));
+        let angle = self.live_number(
+            kid(ph2d_editor_core::ids::TexPatKnob::AngleNum),
+            p.angle_deg,
+        );
+        let angle_track = self.live_track(
+            kid(ph2d_editor_core::ids::TexPatKnob::Angle),
+            angle_track(p.angle_deg),
+        );
         y = self.slider_row(
             "Angle",
-            kid(ids::TexPatKnob::Angle),
-            kid(ids::TexPatKnob::AngleNum),
+            kid(ph2d_editor_core::ids::TexPatKnob::Angle),
+            kid(ph2d_editor_core::ids::TexPatKnob::AngleNum),
             angle_track,
             angle,
             &format!("{angle:.0}"),
@@ -196,7 +212,7 @@ impl BodyCtx<'_> {
             .iter()
             .map(|(i, l)| {
                 (
-                    kid(ids::TexPatKnob::Mode(*i as u8)),
+                    kid(ph2d_editor_core::ids::TexPatKnob::Mode(*i as u8)),
                     *l,
                     usize::from(p.mode) == *i,
                 )
@@ -273,14 +289,14 @@ impl BodyCtx<'_> {
             (
                 0usize,
                 "Width",
-                kid(ids::TexPatKnob::Width),
-                kid(ids::TexPatKnob::WidthNum),
+                kid(ph2d_editor_core::ids::TexPatKnob::Width),
+                kid(ph2d_editor_core::ids::TexPatKnob::WidthNum),
             ),
             (
                 1,
                 "Height",
-                kid(ids::TexPatKnob::Height),
-                kid(ids::TexPatKnob::HeightNum),
+                kid(ph2d_editor_core::ids::TexPatKnob::Height),
+                kid(ph2d_editor_core::ids::TexPatKnob::HeightNum),
             ),
         ] {
             let v = self.live_number(nid, p.size[axis]);
@@ -291,7 +307,7 @@ impl BodyCtx<'_> {
         // *àquelas duas linhas*, e um controlo que descreve o que está acima dele lê-se onde
         // está.
         y = self.checkbox_row(
-            kid(ids::TexPatKnob::Lock),
+            kid(ph2d_editor_core::ids::TexPatKnob::Lock),
             tr("panel.vector.texpat.lock"),
             p.lock_aspect,
             y,
@@ -311,14 +327,14 @@ impl BodyCtx<'_> {
             (
                 0usize,
                 "Gap X",
-                kid(ids::TexPatKnob::Gap),
-                kid(ids::TexPatKnob::GapNum),
+                kid(ph2d_editor_core::ids::TexPatKnob::Gap),
+                kid(ph2d_editor_core::ids::TexPatKnob::GapNum),
             ),
             (
                 1,
                 "Gap Y",
-                kid(ids::TexPatKnob::GapY),
-                kid(ids::TexPatKnob::GapYNum),
+                kid(ph2d_editor_core::ids::TexPatKnob::GapY),
+                kid(ph2d_editor_core::ids::TexPatKnob::GapYNum),
             ),
         ] {
             let v = self.live_number(nid, p.gap[axis]);
@@ -327,7 +343,7 @@ impl BodyCtx<'_> {
         }
         // ⚠️ Depois dos dois que ele liga, pela mesma lei do cadeado do tamanho.
         y = self.checkbox_row(
-            kid(ids::TexPatKnob::GapLink),
+            kid(ph2d_editor_core::ids::TexPatKnob::GapLink),
             tr("panel.vector.texpat.gap_link"),
             p.link_gap,
             y,

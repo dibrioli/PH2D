@@ -14,7 +14,6 @@
 //!   commit round-trip — no manual mirror in `event.rs` anymore.
 //! - Cancel + Apply buttons.
 
-use crate::ids;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetStore, format_number};
 use ph2d_editor_core::widget::{ButtonState, SliderOrientation, SliderState, TextInputState};
 use ph2d_tool_upscale::params::{
@@ -24,12 +23,12 @@ use ph2d_tool_upscale::params::{
 pub fn populate(store: &mut WidgetStore) {
     // Algorithm segmented buttons + Cancel + Apply: five Buttons.
     for id in [
-        ids::UPS_ALGO_LANCZOS3,
-        ids::UPS_ALGO_NEAREST,
-        ids::UPS_ALGO_EPX,
-        ids::UPS_APPLY,
-        ids::UPS_CANCEL,
-        ids::UPS_RESET,
+        ph2d_tool_upscale::tool::ids::UPS_ALGO_LANCZOS3,
+        ph2d_tool_upscale::tool::ids::UPS_ALGO_NEAREST,
+        ph2d_tool_upscale::tool::ids::UPS_ALGO_EPX,
+        ph2d_tool_upscale::tool::ids::UPS_APPLY,
+        ph2d_tool_upscale::tool::ids::UPS_CANCEL,
+        ph2d_tool_upscale::tool::ids::UPS_RESET,
     ] {
         store.register(
             id,
@@ -47,7 +46,7 @@ pub fn populate(store: &mut WidgetStore) {
     // `apply_chip_value_with_mirror`.
     let track = scale_to_slider(DEFAULT_SCALE_FACTOR);
     store.register(
-        ids::UPS_SCALE,
+        ph2d_tool_upscale::tool::ids::UPS_SCALE,
         InteractiveState::Slider {
             state: SliderState::Normal,
             value: track,
@@ -56,7 +55,7 @@ pub fn populate(store: &mut WidgetStore) {
     );
     let factor = DEFAULT_SCALE_FACTOR as f64;
     store.register(
-        ids::UPS_SCALE_NUM,
+        ph2d_tool_upscale::tool::ids::UPS_SCALE_NUM,
         InteractiveState::NumberInput {
             state: TextInputState::Normal,
             value: factor,
@@ -67,8 +66,8 @@ pub fn populate(store: &mut WidgetStore) {
         },
     );
     store.link_slider_number_mapped(
-        ids::UPS_SCALE,
-        ids::UPS_SCALE_NUM,
+        ph2d_tool_upscale::tool::ids::UPS_SCALE,
+        ph2d_tool_upscale::tool::ids::UPS_SCALE_NUM,
         SCALE_FULL_SCALE - MIN_SCALE_FACTOR,
         MIN_SCALE_FACTOR,
     );
@@ -78,15 +77,15 @@ pub fn populate(store: &mut WidgetStore) {
     // at the canonical tooltip width; no out-of-font glyphs (use ASCII
     // and `\u{00b7}` middot only — see no_tofu_glyphs gate).
     store.set_tooltip(
-        ids::UPS_ALGO_LANCZOS3,
+        ph2d_tool_upscale::tool::ids::UPS_ALGO_LANCZOS3,
         "Lanczos3 \u{00b7} smooth gradients \u{00b7} photos / illustrations \u{00b7} default",
     );
     store.set_tooltip(
-        ids::UPS_ALGO_NEAREST,
+        ph2d_tool_upscale::tool::ids::UPS_ALGO_NEAREST,
         "Nearest \u{00b7} keeps hard pixel edges \u{00b7} pixel art / tile sprites",
     );
     store.set_tooltip(
-        ids::UPS_ALGO_EPX,
+        ph2d_tool_upscale::tool::ids::UPS_ALGO_EPX,
         "EPX \u{00b7} edge-directed pixel-art upscale \u{00b7} any whole factor 1x-16x",
     );
 }
@@ -100,17 +99,24 @@ mod tests {
         let mut store = WidgetStore::with_capacity(16);
         populate(&mut store);
         for id in [
-            ids::UPS_ALGO_LANCZOS3,
-            ids::UPS_ALGO_NEAREST,
-            ids::UPS_ALGO_EPX,
-            ids::UPS_APPLY,
-            ids::UPS_CANCEL,
+            ph2d_tool_upscale::tool::ids::UPS_ALGO_LANCZOS3,
+            ph2d_tool_upscale::tool::ids::UPS_ALGO_NEAREST,
+            ph2d_tool_upscale::tool::ids::UPS_ALGO_EPX,
+            ph2d_tool_upscale::tool::ids::UPS_APPLY,
+            ph2d_tool_upscale::tool::ids::UPS_CANCEL,
         ] {
             assert!(store.button_state(id).is_some(), "button {id:?} missing");
         }
-        assert!(store.slider(ids::UPS_SCALE).is_some(), "slider missing");
         assert!(
-            store.number_value(ids::UPS_SCALE_NUM).is_some(),
+            store
+                .slider(ph2d_tool_upscale::tool::ids::UPS_SCALE)
+                .is_some(),
+            "slider missing"
+        );
+        assert!(
+            store
+                .number_value(ph2d_tool_upscale::tool::ids::UPS_SCALE_NUM)
+                .is_some(),
             "scale chip missing"
         );
     }
@@ -121,10 +127,14 @@ mod tests {
         populate(&mut store);
         // Slider lives in track space (0..1).
         let expected_track = scale_to_slider(DEFAULT_SCALE_FACTOR);
-        let (_, v) = store.slider(ids::UPS_SCALE).unwrap();
+        let (_, v) = store
+            .slider(ph2d_tool_upscale::tool::ids::UPS_SCALE)
+            .unwrap();
         assert!((v - expected_track).abs() < f32::EPSILON);
         // Chip lives in natural unit (factor in [1, 16]).
-        let chip_v = store.number_value(ids::UPS_SCALE_NUM).unwrap();
+        let chip_v = store
+            .number_value(ph2d_tool_upscale::tool::ids::UPS_SCALE_NUM)
+            .unwrap();
         assert!((chip_v - DEFAULT_SCALE_FACTOR as f64).abs() < f64::EPSILON);
     }
 
@@ -136,14 +146,15 @@ mod tests {
         let mut store = WidgetStore::with_capacity(8);
         populate(&mut store);
         assert_eq!(
-            store.linked_number(ids::UPS_SCALE),
-            Some(ids::UPS_SCALE_NUM)
+            store.linked_number(ph2d_tool_upscale::tool::ids::UPS_SCALE),
+            Some(ph2d_tool_upscale::tool::ids::UPS_SCALE_NUM)
         );
         assert_eq!(
-            store.linked_slider(ids::UPS_SCALE_NUM),
-            Some(ids::UPS_SCALE)
+            store.linked_slider(ph2d_tool_upscale::tool::ids::UPS_SCALE_NUM),
+            Some(ph2d_tool_upscale::tool::ids::UPS_SCALE)
         );
-        let (scale, offset) = store.linked_slider_mapping(ids::UPS_SCALE_NUM);
+        let (scale, offset) =
+            store.linked_slider_mapping(ph2d_tool_upscale::tool::ids::UPS_SCALE_NUM);
         let expected_scale = SCALE_FULL_SCALE - MIN_SCALE_FACTOR;
         let expected_offset = MIN_SCALE_FACTOR;
         assert!(

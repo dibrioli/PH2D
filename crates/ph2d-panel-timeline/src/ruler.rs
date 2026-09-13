@@ -153,9 +153,11 @@ pub(crate) fn paint(
         // but reading the wrong one would make the first drag frame jump.
         ctx.host
             .hit_index_mut()
-            .register(ids::TIMELINE_RULER, strip);
+            .register(ph2d_editor_core::ids::TIMELINE_RULER, strip);
         let dragging = matches!(
-            ctx.host.store().slider(ids::TIMELINE_RULER),
+            ctx.host
+                .store()
+                .slider(ph2d_editor_core::ids::TIMELINE_RULER),
             Some((SliderState::Dragging, _))
         );
         if !dragging
@@ -163,8 +165,10 @@ pub(crate) fn paint(
             && let Some(now) = clock.now
         {
             let v = ((now - view_start) / span).clamp(0.0, 1.0) as f32;
-            if let Some(InteractiveState::Slider { value, .. }) =
-                ctx.host.store_mut().get_mut(ids::TIMELINE_RULER)
+            if let Some(InteractiveState::Slider { value, .. }) = ctx
+                .host
+                .store_mut()
+                .get_mut(ph2d_editor_core::ids::TIMELINE_RULER)
             {
                 *value = v;
             }
@@ -406,7 +410,7 @@ fn paint_markers(
         ctx.host.store_mut().register(
             id,
             InteractiveState::TimelineSurface {
-                parent: ids::TIMELINE_PANEL,
+                parent: ph2d_editor_core::ids::TIMELINE_PANEL,
                 kind: TimelineHitKind::Marker { index },
                 canvas: hit,
             },
@@ -436,7 +440,7 @@ fn register_brace(ctx: &mut PaintCtx, id: ph2d_a11y::NodeId, edge: u8, rect: Rec
     ctx.host.store_mut().register(
         id,
         InteractiveState::TimelineSurface {
-            parent: ids::TIMELINE_PANEL,
+            parent: ph2d_editor_core::ids::TIMELINE_PANEL,
             kind: TimelineHitKind::LoopBrace { edge },
             canvas: rect,
         },

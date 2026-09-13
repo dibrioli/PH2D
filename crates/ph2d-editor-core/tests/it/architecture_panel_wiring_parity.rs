@@ -558,6 +558,16 @@ fn table_driven_chips_are_registered_too() {
     let root = crates_root();
     let pending: BTreeSet<(&str, &str)> = TABLE_PARITY_PENDING.iter().copied().collect();
     let (control_tables, inside, members) = control_tables(&root);
+    // ⚠️ **A metade justa.** A população lê-se de todo `.rs` cujo caminho passa por um `ids` — e
+    // desde a auditoria A5b (2026-09-12) eles vivem nas crates donas, não só na fundação. Uma
+    // varredura partida devolveria zero tabelas, todo `continue` abaixo saltaria, e o gate ficaria
+    // verde a medir nada (HOWTO §2.7). Medido: 181 tabelas `[NodeId; N]` antes e depois da descida.
+    assert!(
+        control_tables.len() >= 160,
+        "a sonda só achou {} tabela(s) `[NodeId; N]` nas declarações de ids (medido 2026-09-12: \
+         181) — ela quebrou, não o produto",
+        control_tables.len()
+    );
 
     let mut global_registered: BTreeSet<String> = BTreeSet::new();
     for rel in GLOBAL_REGISTRATION_FILES {

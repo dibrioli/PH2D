@@ -148,7 +148,7 @@ pub(crate) fn paint(
         // esteve — o mesmo contrato que o `clear_panel_rect` do painel fechado.
         ctx.host
             .store_mut()
-            .clear_sub_scroll_region(ids::ASSET_CATALOG_COL);
+            .clear_sub_scroll_region(ph2d_editor_core::ids::ASSET_CATALOG_COL);
         return 0.0;
     }
     let theme = ctx.host.theme();
@@ -195,7 +195,10 @@ pub(crate) fn paint(
     let list_top = new_rect.y + row_h + Spacing::Xs.px();
     let list_rect = Rect::new(col.x, list_top, col.w, (col.y + col.h - list_top).max(0.0));
     let content_h = row_h * list.len() as f32;
-    let scroll = ctx.host.store().panel_scroll(ids::ASSET_CATALOG_COL);
+    let scroll = ctx
+        .host
+        .store()
+        .panel_scroll(ph2d_editor_core::ids::ASSET_CATALOG_COL);
 
     ctx.scene.push_clip(&rect_to_vello(list_rect));
     ctx.host.hit_index_mut().push_clip(list_rect);
@@ -205,7 +208,7 @@ pub(crate) fn paint(
     let renaming = state.renaming.map(|r| r.id);
     let mut rename_y: Option<f32> = None;
     for (i, r) in list.iter().enumerate() {
-        if i >= ids::MAX_CATALOG_ROWS {
+        if i >= ph2d_editor_core::ids::MAX_CATALOG_ROWS {
             break;
         }
         let y = list_rect.y + row_h * i as f32 - scroll;
@@ -217,7 +220,7 @@ pub(crate) fn paint(
         if y + row_h < list_rect.y || y > list_rect.y + list_rect.h {
             continue;
         }
-        let id = ids::catalog_row_id(i);
+        let id = ph2d_editor_core::ids::catalog_row_id(i);
         let row = Rect::new(list_rect.x, y, list_rect.w, row_h);
         ctx.host.store_mut().register_if_absent(
             id,
@@ -288,7 +291,7 @@ pub(crate) fn paint(
     // têm de projectar pela mesma porta.*
     let visual = ctx.host.store().scrollbar_visual_for(
         ph2d_editor_core::widget::ASSET_CATALOG_SCROLLBAR_ID,
-        Some(ids::ASSET_CATALOG_COL),
+        Some(ph2d_editor_core::ids::ASSET_CATALOG_COL),
     );
     if let Some(thumb) = ph2d_editor_core::widget::paint_scrollbar(
         list_rect,
@@ -304,10 +307,10 @@ pub(crate) fn paint(
             .register(ph2d_editor_core::widget::ASSET_CATALOG_SCROLLBAR_ID, thumb);
     }
     let store = ctx.host.store_mut();
-    store.set_panel_content_h(ids::ASSET_CATALOG_COL, content_h);
-    store.set_panel_visible_h(ids::ASSET_CATALOG_COL, list_rect.h);
+    store.set_panel_content_h(ph2d_editor_core::ids::ASSET_CATALOG_COL, content_h);
+    store.set_panel_visible_h(ph2d_editor_core::ids::ASSET_CATALOG_COL, list_rect.h);
     // ⭐ **Onde ela está**, para a roda a achar antes do painel que a contém.
-    store.set_sub_scroll_region(ids::ASSET_CATALOG_COL, list_rect);
+    store.set_sub_scroll_region(ph2d_editor_core::ids::ASSET_CATALOG_COL, list_rect);
 
     // A fronteira entre a coluna e a grade — uma linha, não uma sombra: ela diz onde uma região
     // acaba sem competir com o realce da escolhida.

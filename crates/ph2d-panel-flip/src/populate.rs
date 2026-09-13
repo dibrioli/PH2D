@@ -221,8 +221,8 @@ fn fill_and_colorize(store: &mut WidgetStore) {
     // Colorize (C2): modo + Apply/Clear. Registrados sempre, pintados só no modo
     // Colorize; a swatch usa o dispatch de picker (register_picker_swatch no paint).
     button(store, ph2d_tool_flip::ids::FLIP_MODE_COLORIZE);
-    button(store, ids::FLIP_COLORIZE_APPLY);
-    button(store, ids::FLIP_COLORIZE_CLEAR);
+    button(store, ph2d_editor_core::ids::FLIP_COLORIZE_APPLY);
+    button(store, ph2d_editor_core::ids::FLIP_COLORIZE_CLEAR);
     // Trace (Shift & Trace): modo + Reset. Registrados sempre, pintados só no modo Trace.
     button(store, ph2d_tool_flip::ids::FLIP_MODE_TRACE);
     button(store, ids::FLIP_TRACE_RESET);

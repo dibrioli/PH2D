@@ -44,7 +44,7 @@ fn row(key: &str, kind: WidgetKind, options: &[&str]) -> rows::Row {
         kind,
         label: key.to_string(),
         key: key.to_string(),
-        id: ids::authored_row_id(key),
+        id: ph2d_editor_core::ids::authored_row_id(key),
         rgba: None,
         icon: None,
         icon_id: None,
@@ -76,7 +76,11 @@ fn marked_third_then_shrunk(kind: WidgetKind) -> (MockPanelHost, AuthoredPanelSt
     // este clique no chip a fixture procuraria uma opção que o painel (corretamente) não pintou.
     if kind.defers_a_popover() {
         let chip = h
-            .painted_rect::<AuthoredPanel>(&mut st, VIEWPORT, ids::authored_row_id("mode"))
+            .painted_rect::<AuthoredPanel>(
+                &mut st,
+                VIEWPORT,
+                ph2d_editor_core::ids::authored_row_id("mode"),
+            )
             .expect("o chip nao foi pintado");
         click(&mut h, &mut st, chip, SEC);
     }
@@ -86,7 +90,10 @@ fn marked_third_then_shrunk(kind: WidgetKind) -> (MockPanelHost, AuthoredPanelSt
     click(&mut h, &mut st, r, 2 * SEC);
     // A PREMISSA do gate, declarada: sem ela o resto mede um controle que nunca foi marcado.
     assert_eq!(
-        rows::selected_of(h.store().get(ids::authored_row_id("mode"))),
+        rows::selected_of(
+            h.store()
+                .get(ph2d_editor_core::ids::authored_row_id("mode"))
+        ),
         Some(2),
         "o clique na terceira opcao nao a marcou — a fixture nao contem o fenomeno"
     );
@@ -111,8 +118,11 @@ fn the_marked_option_is_one_the_row_can_offer() {
         WidgetKind::Dropdown,
     ] {
         let (h, _st) = marked_third_then_shrunk(kind);
-        let marked = rows::selected_of(h.store().get(ids::authored_row_id("mode")))
-            .expect("uma row de lista tem de reportar uma escolha");
+        let marked = rows::selected_of(
+            h.store()
+                .get(ph2d_editor_core::ids::authored_row_id("mode")),
+        )
+        .expect("uma row de lista tem de reportar uma escolha");
         assert!(
             marked < 2,
             "{kind:?}: o store marca a opcao {marked} e a row so oferece 2 — o indice sobreviveu ao \
@@ -134,7 +144,10 @@ fn a_list_with_no_children_neither_panics_nor_invents_a_choice() {
     rows::set_live_rows(Some(vec![row("mode", WidgetKind::Tabs, &[])]));
     let _ = h.paint::<AuthoredPanel>(&mut st, VIEWPORT);
     assert_eq!(
-        rows::selected_of(h.store().get(ids::authored_row_id("mode"))),
+        rows::selected_of(
+            h.store()
+                .get(ph2d_editor_core::ids::authored_row_id("mode"))
+        ),
         Some(1),
         "com zero opcoes a marca tem de ficar onde estava — nao ha indice valido a escolher"
     );
@@ -150,14 +163,22 @@ fn a_list_with_no_children_neither_panics_nor_invents_a_choice() {
 #[test]
 fn what_the_strip_lights_is_what_the_click_reports() {
     let (mut h, mut st) = marked_third_then_shrunk(WidgetKind::Tabs);
-    let stored = rows::selected_of(h.store().get(ids::authored_row_id("mode"))).unwrap_or(0);
+    let stored = rows::selected_of(
+        h.store()
+            .get(ph2d_editor_core::ids::authored_row_id("mode")),
+    )
+    .unwrap_or(0);
     let items: Vec<TabItem> = ["A", "B"]
         .iter()
-        .map(|o| TabItem::new(ids::AUTHORED_PANEL, (*o).to_string()))
+        .map(|o| TabItem::new(ph2d_editor_core::ids::AUTHORED_PANEL, (*o).to_string()))
         .collect();
-    let lit = Tabs::new(ids::authored_row_id("mode"), "mode", items)
-        .selected(stored)
-        .selected;
+    let lit = Tabs::new(
+        ph2d_editor_core::ids::authored_row_id("mode"),
+        "mode",
+        items,
+    )
+    .selected(stored)
+    .selected;
     assert_eq!(
         lit, stored,
         "a faixa acende a aba {lit} e o painel reporta a {stored} — o clamp do widget e o indice \

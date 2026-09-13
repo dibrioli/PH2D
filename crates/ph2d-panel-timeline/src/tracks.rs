@@ -177,7 +177,7 @@ pub(crate) fn paint_rows(
     ctx.host.store_mut().register(
         ids::TIMELINE_LANES,
         InteractiveState::TimelineSurface {
-            parent: ids::TIMELINE_PANEL,
+            parent: ph2d_editor_core::ids::TIMELINE_PANEL,
             kind: TimelineHitKind::Lane,
             canvas: lane,
         },
@@ -233,7 +233,7 @@ pub(crate) fn paint_rows(
         ctx.host.store_mut().register(
             row_id,
             InteractiveState::TimelineSurface {
-                parent: ids::TIMELINE_PANEL,
+                parent: ph2d_editor_core::ids::TIMELINE_PANEL,
                 kind: TimelineHitKind::Row {
                     target: track.target.get(),
                     // Só o painel conhece o `PropKind` da row, e é ele que decide qual
@@ -331,7 +331,7 @@ fn paint_lane_keys(
         ctx.host.store_mut().register(
             id,
             InteractiveState::TimelineSurface {
-                parent: ids::TIMELINE_PANEL,
+                parent: ph2d_editor_core::ids::TIMELINE_PANEL,
                 kind: TimelineHitKind::Key {
                     target: track.target.get(),
                     key: k.id.get(),
@@ -489,7 +489,7 @@ fn paint_twirl(
     ctx.host.store_mut().register(
         id,
         InteractiveState::TimelineSurface {
-            parent: ids::TIMELINE_PANEL,
+            parent: ph2d_editor_core::ids::TIMELINE_PANEL,
             kind: TimelineHitKind::Twirl { target },
             canvas: hit,
         },

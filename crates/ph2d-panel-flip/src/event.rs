@@ -187,8 +187,8 @@ pub(crate) fn apply_event(
                 || id == ids::FLIP_EDIT_DELETE
                 // Colorize (C2): Apply roda o corte, Clear descarta os rabiscos — os dois
                 // mexem no buffer transiente do shell + no documento (não na tool).
-                || id == ids::FLIP_COLORIZE_APPLY
-                || id == ids::FLIP_COLORIZE_CLEAR
+                || id == ph2d_editor_core::ids::FLIP_COLORIZE_APPLY
+                || id == ph2d_editor_core::ids::FLIP_COLORIZE_CLEAR
                 // Trace: o Reset limpa os deslocamentos, que são SESSÃO do shell.
                 || id == ids::FLIP_TRACE_RESET =>
         {

@@ -54,24 +54,6 @@ pub const VECTOR_BONE_LENGTH: NodeId = hash_node_id("vector.bone.length");
 /// desenhado dez vezes maior deforma-se igual.
 pub const VECTOR_BONE_STRENGTH: NodeId = hash_node_id("vector.bone.strength");
 
-/// **Criar** — arrastar faz um osso; carregar num osso apenas o selecciona (é assim que se escolhe
-/// onde ramificar).
-pub const VECTOR_BONE_ACT_CREATE: NodeId = hash_node_id("vector.bone.action.create");
-
-/// **Transformar** — arrastar posa o que está sob o cursor (girar · deslocar · força · IK), e
-/// ⛔ nunca cria.
-pub const VECTOR_BONE_ACT_TRANSFORM: NodeId = hash_node_id("vector.bone.action.transform");
-
-/// **Fast** — um afim por triângulo da malha guardada. É o desenho de sempre, **byte-idêntico**.
-pub const VECTOR_BONE_DEFORM_FAST: NodeId = hash_node_id("vector.bone.deform.fast");
-
-/// ⭐⭐⭐ **Smooth** — a malha é refinada NO QUADRO até o desvio caber em meio pixel de ecrã.
-///
-/// ⚠️ Ele responde ao report de 2026-09-10 (*«ao dobrar a articulação temos arestas retas»*), e a
-/// aresta reta é o erro de aproximar um campo curvo por um afim. Medido: `9,84 px → 0,41 px` numa
-/// dobra de `150°`, pagando `216 → 3 456` triângulos.
-pub const VECTOR_BONE_DEFORM_SMOOTH: NodeId = hash_node_id("vector.bone.deform.smooth");
-
 /// ⭐⭐⭐ **Add IK** — dá a este osso uma ÂNCORA: um alvo que a corrente persegue a cada quadro.
 ///
 /// ⚠️ Só é pintado num osso que ainda **não** tem uma — duas âncoras a puxar a mesma corrente é

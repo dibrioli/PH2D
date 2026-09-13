@@ -14,7 +14,6 @@
 //! `posterize_options`, `quantize_options`, `lut_options_for_slot`) +
 //! the histogram constant `HISTOGRAM_BARS`.
 
-use crate::ids;
 use crate::state::{self, PendingDropdownPopover};
 use ph2d_editor_core::interaction::{HitIndex, InteractiveState, WidgetStore};
 use ph2d_editor_core::paint::{paint_text, resolve};
@@ -119,13 +118,13 @@ pub(crate) fn paint_lut_section(
     let lut_half = ((layout.inner_w - lut_gap) * 0.5).max(0.0);
     let lut_slots = [
         (
-            ids::CEQ_LUT_1_DROPDOWN,
+            ph2d_tool_color_equalization::ids::CEQ_LUT_1_DROPDOWN,
             snapshot.lut_preset_1,
             "LUT 1",
             1_u8,
         ),
         (
-            ids::CEQ_LUT_2_DROPDOWN,
+            ph2d_tool_color_equalization::ids::CEQ_LUT_2_DROPDOWN,
             snapshot.lut_preset_2,
             "LUT 2",
             2_u8,
@@ -209,13 +208,14 @@ pub(crate) fn paint_posterize_quantize_section(
     );
     let chip_y = y_in + mini_label_h + label_gap;
     let post_open = matches!(
-        store.get(ids::CEQ_POSTERIZE_DROPDOWN),
+        store.get(ph2d_tool_color_equalization::ids::CEQ_POSTERIZE_DROPDOWN),
         Some(InteractiveState::Dropdown { open: true, .. })
     );
-    let post_visual = store.dropdown_visual(ids::CEQ_POSTERIZE_DROPDOWN);
+    let post_visual =
+        store.dropdown_visual(ph2d_tool_color_equalization::ids::CEQ_POSTERIZE_DROPDOWN);
     let post_chip_rect = Rect::new(layout.inner_x, chip_y, half, layout.row_h);
     let post_dd = Dropdown::new(
-        ids::CEQ_POSTERIZE_DROPDOWN,
+        ph2d_tool_color_equalization::ids::CEQ_POSTERIZE_DROPDOWN,
         "Posterize".to_string(),
         posterize_options(),
     )
@@ -223,7 +223,10 @@ pub(crate) fn paint_posterize_quantize_section(
     .visual(post_visual)
     .open(post_open);
     paint_dropdown_chip(&post_dd, post_chip_rect, scene, text_system, theme);
-    hit_index.register(ids::CEQ_POSTERIZE_DROPDOWN, post_chip_rect);
+    hit_index.register(
+        ph2d_tool_color_equalization::ids::CEQ_POSTERIZE_DROPDOWN,
+        post_chip_rect,
+    );
     if post_open {
         state::push_pending_popover(PendingDropdownPopover {
             slot: 3,
@@ -255,14 +258,20 @@ pub(crate) fn paint_posterize_quantize_section(
         let dith_btn_state = if dith_active {
             (ButtonState::Pressed, ph2d_editor_core::motion::SETTLED)
         } else {
-            store.button_visual(ids::CEQ_POSTERIZE_DITHERING)
+            store.button_visual(ph2d_tool_color_equalization::ids::CEQ_POSTERIZE_DITHERING)
         };
         let dith_label = if dith_active { "Dither: On" } else { "Dither" };
-        let dith_button = Button::new(ids::CEQ_POSTERIZE_DITHERING, dith_label)
-            .kind(dith_kind)
-            .visual(dith_btn_state);
+        let dith_button = Button::new(
+            ph2d_tool_color_equalization::ids::CEQ_POSTERIZE_DITHERING,
+            dith_label,
+        )
+        .kind(dith_kind)
+        .visual(dith_btn_state);
         paint_button(&dith_button, dith_rect, scene, text_system, theme);
-        hit_index.register(ids::CEQ_POSTERIZE_DITHERING, dith_rect);
+        hit_index.register(
+            ph2d_tool_color_equalization::ids::CEQ_POSTERIZE_DITHERING,
+            dith_rect,
+        );
     }
 
     let mut y = chip_y + layout.row_h + layout.row_gap;
@@ -277,11 +286,11 @@ pub(crate) fn paint_posterize_quantize_section(
     // over a stage that never runs.
     if snapshot.dither_stage_runs() {
         let dither_strength_track = store
-            .slider(ids::CEQ_POSTERIZE_DITHER_STRENGTH)
+            .slider(ph2d_tool_color_equalization::ids::CEQ_POSTERIZE_DITHER_STRENGTH)
             .map(|(_, v)| v)
             .unwrap_or(snapshot.posterize_dither_strength01);
         let dither_strength_chip = store
-            .number_value(ids::CEQ_POSTERIZE_DITHER_STRENGTH_NUM)
+            .number_value(ph2d_tool_color_equalization::ids::CEQ_POSTERIZE_DITHER_STRENGTH_NUM)
             .unwrap_or(snapshot.posterize_dither_strength as f64);
         let dither_strength_display = format!("{:.2}", snapshot.posterize_dither_strength);
         let used = paint_slider_with_chip_layout_adaptive(
@@ -290,8 +299,8 @@ pub(crate) fn paint_posterize_quantize_section(
             dither_strength_track,
             dither_strength_chip,
             Some(&dither_strength_display),
-            ids::CEQ_POSTERIZE_DITHER_STRENGTH,
-            ids::CEQ_POSTERIZE_DITHER_STRENGTH_NUM,
+            ph2d_tool_color_equalization::ids::CEQ_POSTERIZE_DITHER_STRENGTH,
+            ph2d_tool_color_equalization::ids::CEQ_POSTERIZE_DITHER_STRENGTH_NUM,
             layout.label_col_w,
             layout.chip_w,
             store,
@@ -303,11 +312,11 @@ pub(crate) fn paint_posterize_quantize_section(
         y += used + layout.row_gap;
 
         let dither_grain_track = store
-            .slider(ids::CEQ_POSTERIZE_DITHER_GRAIN)
+            .slider(ph2d_tool_color_equalization::ids::CEQ_POSTERIZE_DITHER_GRAIN)
             .map(|(_, v)| v)
             .unwrap_or(snapshot.posterize_dither_grain01);
         let dither_grain_chip = store
-            .number_value(ids::CEQ_POSTERIZE_DITHER_GRAIN_NUM)
+            .number_value(ph2d_tool_color_equalization::ids::CEQ_POSTERIZE_DITHER_GRAIN_NUM)
             .unwrap_or(snapshot.posterize_dither_grain as f64);
         let dither_grain_display = format!("{}", snapshot.posterize_dither_grain);
         let used = paint_slider_with_chip_layout_adaptive(
@@ -316,8 +325,8 @@ pub(crate) fn paint_posterize_quantize_section(
             dither_grain_track,
             dither_grain_chip,
             Some(&dither_grain_display),
-            ids::CEQ_POSTERIZE_DITHER_GRAIN,
-            ids::CEQ_POSTERIZE_DITHER_GRAIN_NUM,
+            ph2d_tool_color_equalization::ids::CEQ_POSTERIZE_DITHER_GRAIN,
+            ph2d_tool_color_equalization::ids::CEQ_POSTERIZE_DITHER_GRAIN_NUM,
             layout.label_col_w,
             layout.chip_w,
             store,
@@ -342,13 +351,14 @@ pub(crate) fn paint_posterize_quantize_section(
     );
     y += mini_label_h + label_gap;
     let quant_open = matches!(
-        store.get(ids::CEQ_QUANTIZE_DROPDOWN),
+        store.get(ph2d_tool_color_equalization::ids::CEQ_QUANTIZE_DROPDOWN),
         Some(InteractiveState::Dropdown { open: true, .. })
     );
-    let quant_visual = store.dropdown_visual(ids::CEQ_QUANTIZE_DROPDOWN);
+    let quant_visual =
+        store.dropdown_visual(ph2d_tool_color_equalization::ids::CEQ_QUANTIZE_DROPDOWN);
     let quant_chip_rect = Rect::new(layout.inner_x, y, layout.inner_w, layout.row_h);
     let quant_dd = Dropdown::new(
-        ids::CEQ_QUANTIZE_DROPDOWN,
+        ph2d_tool_color_equalization::ids::CEQ_QUANTIZE_DROPDOWN,
         "Quantize".to_string(),
         quantize_options(),
     )
@@ -356,7 +366,10 @@ pub(crate) fn paint_posterize_quantize_section(
     .visual(quant_visual)
     .open(quant_open);
     paint_dropdown_chip(&quant_dd, quant_chip_rect, scene, text_system, theme);
-    hit_index.register(ids::CEQ_QUANTIZE_DROPDOWN, quant_chip_rect);
+    hit_index.register(
+        ph2d_tool_color_equalization::ids::CEQ_QUANTIZE_DROPDOWN,
+        quant_chip_rect,
+    );
     if quant_open {
         state::push_pending_popover(PendingDropdownPopover {
             slot: 4,
@@ -386,24 +399,29 @@ pub(crate) fn paint_auto_buttons_section(
     let half = ((layout.inner_w - auto_gap) * 0.5).max(0.0);
     let auto_buttons = [
         (
-            ids::CEQ_AUTO_LEVELS,
+            ph2d_tool_color_equalization::ids::CEQ_AUTO_LEVELS,
             snapshot.auto_levels,
             "Auto Levels",
             "Auto Levels: On",
         ),
         (
-            ids::CEQ_AUTO_CONTRAST,
+            ph2d_tool_color_equalization::ids::CEQ_AUTO_CONTRAST,
             snapshot.auto_contrast,
             "Auto Contrast",
             "Auto Contrast: On",
         ),
         (
-            ids::CEQ_AUTO_COLORS,
+            ph2d_tool_color_equalization::ids::CEQ_AUTO_COLORS,
             snapshot.auto_colors,
             "Auto Colors",
             "Auto Colors: On",
         ),
-        (ids::CEQ_AUTO_WB, snapshot.auto_wb, "Auto WB", "Auto WB: On"),
+        (
+            ph2d_tool_color_equalization::ids::CEQ_AUTO_WB,
+            snapshot.auto_wb,
+            "Auto WB",
+            "Auto WB: On",
+        ),
     ];
     for (i, (id, on, off_label, on_label)) in auto_buttons.iter().enumerate() {
         let col = (i % 2) as f32;
@@ -445,12 +463,15 @@ pub(crate) fn paint_apply_cta_section(
     y_in: f32,
 ) -> f32 {
     let reset_rect = Rect::new(layout.inner_x, y_in, layout.inner_w, layout.row_h);
-    let reset_state = store.button_visual(ids::CEQ_RESET);
-    let reset = Button::new(ids::CEQ_RESET, "Reset to Defaults")
-        .kind(ButtonKind::Default)
-        .visual(reset_state);
+    let reset_state = store.button_visual(ph2d_tool_color_equalization::ids::CEQ_RESET);
+    let reset = Button::new(
+        ph2d_tool_color_equalization::ids::CEQ_RESET,
+        "Reset to Defaults",
+    )
+    .kind(ButtonKind::Default)
+    .visual(reset_state);
     paint_button(&reset, reset_rect, scene, text_system, theme);
-    hit_index.register(ids::CEQ_RESET, reset_rect);
+    hit_index.register(ph2d_tool_color_equalization::ids::CEQ_RESET, reset_rect);
     let mut y = y_in + layout.row_h + layout.row_gap;
 
     // ⭐⭐ `Cancel | Apply` é UM par (wave 20) — ver o irmão no `ph2d-panel-padding`.
@@ -458,20 +479,20 @@ pub(crate) fn paint_apply_cta_section(
         Rect::new(layout.inner_x, y, layout.inner_w, layout.row_h),
         2,
     );
-    let cancel_state = store.button_visual(ids::CEQ_CANCEL);
-    let cancel = Button::new(ids::CEQ_CANCEL, "Cancel")
+    let cancel_state = store.button_visual(ph2d_tool_color_equalization::ids::CEQ_CANCEL);
+    let cancel = Button::new(ph2d_tool_color_equalization::ids::CEQ_CANCEL, "Cancel")
         .kind(ButtonKind::Default)
         .visual(cancel_state)
         .in_group(seg[0].1);
     paint_button(&cancel, seg[0].0, scene, text_system, theme);
-    hit_index.register(ids::CEQ_CANCEL, seg[0].0);
-    let apply_state = store.button_visual(ids::CEQ_APPLY);
-    let apply = Button::new(ids::CEQ_APPLY, "Apply")
+    hit_index.register(ph2d_tool_color_equalization::ids::CEQ_CANCEL, seg[0].0);
+    let apply_state = store.button_visual(ph2d_tool_color_equalization::ids::CEQ_APPLY);
+    let apply = Button::new(ph2d_tool_color_equalization::ids::CEQ_APPLY, "Apply")
         .kind(ButtonKind::Accent)
         .visual(apply_state)
         .in_group(seg[1].1);
     paint_button(&apply, seg[1].0, scene, text_system, theme);
-    hit_index.register(ids::CEQ_APPLY, seg[1].0);
+    hit_index.register(ph2d_tool_color_equalization::ids::CEQ_APPLY, seg[1].0);
     y += layout.row_h;
     y
 }
@@ -482,9 +503,9 @@ pub(crate) fn paint_apply_cta_section(
 /// (level value `0`); rest mirror `ids::CEQ_POSTERIZE_LEVELS`. Labels
 /// match the legacy panel's "Off", "2 Levels", "3 Levels"… text.
 pub(crate) fn posterize_options() -> Vec<DropdownOption<u32>> {
-    ids::CEQ_POSTERIZE_OPTS
+    ph2d_tool_color_equalization::ids::CEQ_POSTERIZE_OPTS
         .iter()
-        .zip(ids::CEQ_POSTERIZE_LEVELS.iter())
+        .zip(ph2d_tool_color_equalization::ids::CEQ_POSTERIZE_LEVELS.iter())
         .map(|(id, &level)| {
             let label = if level == 0 {
                 "Off".to_string()
@@ -499,9 +520,9 @@ pub(crate) fn posterize_options() -> Vec<DropdownOption<u32>> {
 /// Build the Quantize dropdown's flat option list. Index 0 = Off; rest
 /// mirror `ids::CEQ_QUANTIZE_COLORS`. Labels read "256 Colors" etc.
 pub(crate) fn quantize_options() -> Vec<DropdownOption<u32>> {
-    ids::CEQ_QUANTIZE_OPTS
+    ph2d_tool_color_equalization::ids::CEQ_QUANTIZE_OPTS
         .iter()
-        .zip(ids::CEQ_QUANTIZE_COLORS.iter())
+        .zip(ph2d_tool_color_equalization::ids::CEQ_QUANTIZE_COLORS.iter())
         .map(|(id, &colors)| {
             let label = if colors == 0 {
                 "Off".to_string()
@@ -523,8 +544,8 @@ pub(crate) fn quantize_options() -> Vec<DropdownOption<u32>> {
 /// row clip.
 pub(crate) fn lut_options_for_slot(slot: u8) -> Vec<DropdownOption<LutPreset>> {
     let opt_ids = match slot {
-        1 => &ids::CEQ_LUT_1_OPTS,
-        _ => &ids::CEQ_LUT_2_OPTS,
+        1 => &ph2d_tool_color_equalization::ids::CEQ_LUT_1_OPTS,
+        _ => &ph2d_tool_color_equalization::ids::CEQ_LUT_2_OPTS,
     };
     LutPreset::ALL
         .iter()

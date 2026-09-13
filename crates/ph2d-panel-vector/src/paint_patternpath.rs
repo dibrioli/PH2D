@@ -40,9 +40,17 @@ impl BodyCtx<'_> {
             // dois selecionados, a outra um), então nunca aparecem juntas. Um botão que recusa é
             // pior que um que falta: cada porta é oferecida só na seleção em que funciona.
             if state::pp_can_link() {
-                return self.action_button(ids::VECTOR_PATTERNPATH_LINK, "Pattern on Path", y);
+                return self.action_button(
+                    ph2d_editor_core::ids::VECTOR_PATTERNPATH_LINK,
+                    "Pattern on Path",
+                    y,
+                );
             }
-            return self.action_button(ids::VECTOR_PATTERNPATH_PICK, "Pick Path", y);
+            return self.action_button(
+                ph2d_editor_core::ids::VECTOR_PATTERNPATH_PICK,
+                "Pick Path",
+                y,
+            );
         }
         // Spacing — o controle-assinatura (quão densas as cópias). Track `0..1` → valor `0.25..4.0`
         // (o mapa vive na fronteira, `event::track_slider_event`, e é o mesmo do Bend bipolar).
@@ -52,11 +60,11 @@ impl BodyCtx<'_> {
             .unwrap_or_else(state::pp_spacing);
         let sp_track = self
             .store
-            .slider(ids::VECTOR_PATTERNPATH_SPACING)
+            .slider(ph2d_editor_core::ids::VECTOR_PATTERNPATH_SPACING)
             .map_or_else(|| spacing_track(state::pp_spacing()), |(_, v)| v);
         y = self.slider_row(
             "Spacing",
-            ids::VECTOR_PATTERNPATH_SPACING,
+            ph2d_editor_core::ids::VECTOR_PATTERNPATH_SPACING,
             ids::VECTOR_PATTERNPATH_SPACING_NUM,
             sp_track,
             spacing,
@@ -67,7 +75,7 @@ impl BodyCtx<'_> {
         // texto: `0.50` é meio caminho em qualquer curva).
         let start_track = self
             .store
-            .slider(ids::VECTOR_PATTERNPATH_START)
+            .slider(ph2d_editor_core::ids::VECTOR_PATTERNPATH_START)
             .map_or_else(|| state::pp_start() as f32, |(_, v)| v);
         let start = self
             .store
@@ -75,7 +83,7 @@ impl BodyCtx<'_> {
             .unwrap_or_else(state::pp_start);
         y = self.slider_row(
             "Start",
-            ids::VECTOR_PATTERNPATH_START,
+            ph2d_editor_core::ids::VECTOR_PATTERNPATH_START,
             ids::VECTOR_PATTERNPATH_START_NUM,
             start_track,
             start,
@@ -85,7 +93,7 @@ impl BodyCtx<'_> {
         // End — o fim do trecho, FRAÇÃO (track == valor). `[Start, End]` é onde as cópias caem.
         let end_track = self
             .store
-            .slider(ids::VECTOR_PATTERNPATH_END)
+            .slider(ph2d_editor_core::ids::VECTOR_PATTERNPATH_END)
             .map_or_else(|| state::pp_end() as f32, |(_, v)| v);
         let end = self
             .store
@@ -93,7 +101,7 @@ impl BodyCtx<'_> {
             .unwrap_or_else(state::pp_end);
         y = self.slider_row(
             "End",
-            ids::VECTOR_PATTERNPATH_END,
+            ph2d_editor_core::ids::VECTOR_PATTERNPATH_END,
             ids::VECTOR_PATTERNPATH_END_NUM,
             end_track,
             end,
@@ -107,7 +115,7 @@ impl BodyCtx<'_> {
         let slide = (state::pp_start() + state::pp_end()) * 0.5;
         y = self.slider_row(
             "Slide",
-            ids::VECTOR_PATTERNPATH_SLIDE,
+            ph2d_editor_core::ids::VECTOR_PATTERNPATH_SLIDE,
             ids::VECTOR_PATTERNPATH_SLIDE_NUM,
             slide as f32,
             slide,
@@ -122,11 +130,11 @@ impl BodyCtx<'_> {
             .unwrap_or_else(state::pp_offset);
         let off_track = self
             .store
-            .slider(ids::VECTOR_PATTERNPATH_OFFSET)
+            .slider(ph2d_editor_core::ids::VECTOR_PATTERNPATH_OFFSET)
             .map_or_else(|| offset_track(state::pp_offset()), |(_, v)| v);
         y = self.slider_row(
             "Offset",
-            ids::VECTOR_PATTERNPATH_OFFSET,
+            ph2d_editor_core::ids::VECTOR_PATTERNPATH_OFFSET,
             ids::VECTOR_PATTERNPATH_OFFSET_NUM,
             off_track,
             off,
@@ -142,14 +150,14 @@ impl BodyCtx<'_> {
             .unwrap_or_else(state::pp_rotation);
         let rot_track = self
             .store
-            .slider(ids::VECTOR_PATTERNPATH_ROTATION)
+            .slider(ph2d_editor_core::ids::VECTOR_PATTERNPATH_ROTATION)
             .map_or_else(
                 || crate::rotation_to_track(state::pp_rotation()).clamp(0.0, 1.0),
                 |(_, v)| v,
             );
         y = self.slider_row(
             "Rotation",
-            ids::VECTOR_PATTERNPATH_ROTATION,
+            ph2d_editor_core::ids::VECTOR_PATTERNPATH_ROTATION,
             ids::VECTOR_PATTERNPATH_ROTATION_NUM,
             rot_track,
             rot,
@@ -159,11 +167,23 @@ impl BodyCtx<'_> {
         // O lado é um par exclusivo (deste / do outro), não um checkbox — a mesma razão do texto.
         let flip = state::pp_flip();
         let sides: [(ph2d_a11y::NodeId, &str, bool); 2] = [
-            (ids::VECTOR_PATTERNPATH_FLIP_OFF, "This side", !flip),
-            (ids::VECTOR_PATTERNPATH_FLIP, "Other side", flip),
+            (
+                ph2d_editor_core::ids::VECTOR_PATTERNPATH_FLIP_OFF,
+                "This side",
+                !flip,
+            ),
+            (
+                ph2d_editor_core::ids::VECTOR_PATTERNPATH_FLIP,
+                "Other side",
+                flip,
+            ),
         ];
         y = self.segmented("Side", &sides, y);
-        self.action_button(ids::VECTOR_PATTERNPATH_DETACH, "Detach from Path", y)
+        self.action_button(
+            ph2d_editor_core::ids::VECTOR_PATTERNPATH_DETACH,
+            "Detach from Path",
+            y,
+        )
     }
 }
 

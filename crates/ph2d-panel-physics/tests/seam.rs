@@ -599,7 +599,7 @@ fn the_panel_publishes_its_rect() {
     host.paint::<PhysicsPanel>(&mut state, VIEWPORT);
     let rect = host
         .store()
-        .panel_rect(ids::PHYSICS_PANEL)
+        .panel_rect(ph2d_editor_core::ids::PHYSICS_PANEL)
         .expect("the physics panel never published its rect — dispatch cannot route to it");
     assert!(
         rect.w > 0.0 && rect.h > 0.0,

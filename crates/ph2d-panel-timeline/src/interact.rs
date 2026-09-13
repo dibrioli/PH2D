@@ -27,7 +27,6 @@ use ph2d_timeline::{AnimTarget, TimelineIntent, TimelineViewSnapshot};
 
 use crate::anchor_drag;
 use crate::box_select;
-use crate::ids;
 use crate::key_drag;
 use crate::loop_drag;
 use crate::marker_drag;
@@ -55,7 +54,7 @@ pub(crate) fn process(
     if let Some(w) = ctx
         .host
         .store_mut()
-        .take_timeline_wheel(ids::TIMELINE_PANEL)
+        .take_timeline_wheel(ph2d_editor_core::ids::TIMELINE_PANEL)
     {
         view::apply_wheel(state, time_x, w);
     }

@@ -19,3 +19,6 @@ mod vector_pencil;
 pub use vector_pencil::*;
 mod vector_symmetry;
 pub use vector_symmetry::*;
+
+mod vector_bone;
+pub use vector_bone::*;

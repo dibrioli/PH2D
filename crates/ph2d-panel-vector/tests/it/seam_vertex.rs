@@ -14,8 +14,8 @@ use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::tool::PanelEvent;
 use ph2d_editor_core::zones::Rect;
 use ph2d_host::{PointerButton, PointerEvent, PointerKind, PointerSource};
+use ph2d_panel_vector::VectorPanel;
 use ph2d_panel_vector::state::VectorPanelState;
-use ph2d_panel_vector::{VectorPanel, ids};
 use ph2d_tool_vector::{VertexSel, VertexType};
 use ph2d_ui_testkit::MockPanelHost;
 
@@ -53,7 +53,7 @@ fn every_vertex_chip_reaches_the_bus_in_both_faces() {
             (ph2d_tool_vector::ids::VECTOR_VERT_CORNER, "Corner"),
             (ph2d_tool_vector::ids::VECTOR_VERT_SMOOTH, "Smooth"),
             (ph2d_tool_vector::ids::VECTOR_VERT_SYMMETRIC, "Symm"),
-            (ids::VECTOR_VERT_DELETE, "Delete Node"),
+            (ph2d_editor_core::ids::VECTOR_VERT_DELETE, "Delete Node"),
         ] {
             ph2d_panel_vector::set_selected_vertex_type(Some(sel));
             let mut host = MockPanelHost::with_panel::<VectorPanel>();
@@ -99,7 +99,7 @@ fn no_selected_vertex_hides_the_whole_section() {
     let mut panel_state = VectorPanelState;
     for (id, name) in [
         (ph2d_tool_vector::ids::VECTOR_VERT_CORNER, "Corner"),
-        (ids::VECTOR_VERT_DELETE, "Delete Node"),
+        (ph2d_editor_core::ids::VECTOR_VERT_DELETE, "Delete Node"),
     ] {
         assert!(
             host.painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, id)

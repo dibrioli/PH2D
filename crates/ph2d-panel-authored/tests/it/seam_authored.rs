@@ -212,7 +212,7 @@ fn folding_a_section_shrinks_the_reported_height() {
         .expect("o cabecalho nao publicou retangulo de hit");
     let open_h = h
         .store()
-        .panel_content_h(ids::AUTHORED_PANEL)
+        .panel_content_h(ph2d_editor_core::ids::AUTHORED_PANEL)
         .expect("o painel nao publicou a altura do conteudo");
 
     let (cx, cy) = (hr.x + hr.w * 0.5, hr.y + hr.h * 0.5);
@@ -223,7 +223,7 @@ fn folding_a_section_shrinks_the_reported_height() {
     h.painted_rect::<AuthoredPanel>(&mut st, VIEWPORT, header.id);
     let folded_h = h
         .store()
-        .panel_content_h(ids::AUTHORED_PANEL)
+        .panel_content_h(ph2d_editor_core::ids::AUTHORED_PANEL)
         .expect("o painel nao publicou a altura do conteudo");
 
     assert!(

@@ -26,7 +26,7 @@ use crate::paint_sections::{
     posterize_options, quantize_options,
 };
 use crate::state::{self, set_last_content_h, set_last_visible_h};
-use crate::{ColorEqualizationPanel, ColorEqualizationPanelState, ids};
+use crate::{ColorEqualizationPanel, ColorEqualizationPanelState};
 use ph2d_editor_core::paint::rect_to_vello;
 use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::widget::panel_chrome::{
@@ -48,7 +48,9 @@ const HISTOGRAM_H: f32 = 64.0; // LITERAL-PX-OK: panel grid metric (histogram st
 
 pub(crate) fn paint(_state: &mut ColorEqualizationPanelState, ctx: &mut PaintCtx) {
     if !ctx.host.panel_visible(ColorEqualizationPanel::ID) {
-        ctx.host.store_mut().clear_panel_rect(ids::CEQ_PANEL);
+        ctx.host
+            .store_mut()
+            .clear_panel_rect(ph2d_tool_color_equalization::ids::CEQ_PANEL);
         return;
     }
 
@@ -56,7 +58,9 @@ pub(crate) fn paint(_state: &mut ColorEqualizationPanelState, ctx: &mut PaintCtx
     let theme = ctx.host.theme();
     let snapshot = state::current_snapshot();
 
-    ctx.host.store_mut().set_panel_rect(ids::CEQ_PANEL, rect);
+    ctx.host
+        .store_mut()
+        .set_panel_rect(ph2d_tool_color_equalization::ids::CEQ_PANEL, rect);
     paint_panel_surface(rect, ctx.scene, theme);
     // BL resize gripper dot — sem isso o usuário não vê affordance
     // do BL handle (que já é hit-registrado abaixo). Enio 2026-05-26.
@@ -91,7 +95,7 @@ pub(crate) fn paint(_state: &mut ColorEqualizationPanelState, ctx: &mut PaintCtx
     // X close button → CEQ_CANCEL (same handler as bottom Cancel).
     ph2d_editor_core::widget::panel_chrome::paint_panel_close_button(
         rect,
-        ids::CEQ_CANCEL,
+        ph2d_tool_color_equalization::ids::CEQ_CANCEL,
         ctx.host.hit_index_mut(),
         ctx.scene,
         theme,
@@ -105,7 +109,10 @@ pub(crate) fn paint(_state: &mut ColorEqualizationPanelState, ctx: &mut PaintCtx
     let body_top = rect.y + PANEL_TITLE_BASELINE + title_size + Spacing::Md.px();
     let body_h = (rect.y + rect.h - body_top - PANEL_HEAD_PAD).max(0.0);
     let body_rect = Rect::new(rect.x, body_top, rect.w, body_h);
-    let scroll = ctx.host.store().panel_scroll(ids::CEQ_PANEL);
+    let scroll = ctx
+        .host
+        .store()
+        .panel_scroll(ph2d_tool_color_equalization::ids::CEQ_PANEL);
 
     ctx.scene.push_clip(&rect_to_vello(body_rect));
     let y_after = paint_body_sections(ctx, &snapshot, layout, theme, body_top - scroll);
@@ -127,7 +134,7 @@ pub(crate) fn paint(_state: &mut ColorEqualizationPanelState, ctx: &mut PaintCtx
     // Re-register close at end-of-frame so scrolled body widgets
     // behind the title can't shadow it (canon — vide panel_chrome doc).
     ctx.host.hit_index_mut().register(
-        ids::CEQ_CANCEL,
+        ph2d_tool_color_equalization::ids::CEQ_CANCEL,
         ph2d_editor_core::widget::panel_chrome::panel_close_button_rect(rect),
     );
 }
@@ -241,11 +248,11 @@ fn paint_scrollbar_and_publish(
             .register(COLOR_EQUALIZATION_SCROLLBAR_ID, thumb);
     }
     let store = ctx.host.store_mut();
-    store.set_panel_content_h(ids::CEQ_PANEL, content_h);
-    store.set_panel_visible_h(ids::CEQ_PANEL, body_h);
+    store.set_panel_content_h(ph2d_tool_color_equalization::ids::CEQ_PANEL, content_h);
+    store.set_panel_visible_h(ph2d_tool_color_equalization::ids::CEQ_PANEL, body_h);
     let max_scroll = (content_h - body_h).max(0.0);
-    if store.panel_scroll(ids::CEQ_PANEL) > max_scroll {
-        store.set_panel_scroll(ids::CEQ_PANEL, max_scroll);
+    if store.panel_scroll(ph2d_tool_color_equalization::ids::CEQ_PANEL) > max_scroll {
+        store.set_panel_scroll(ph2d_tool_color_equalization::ids::CEQ_PANEL, max_scroll);
     }
 }
 
@@ -265,13 +272,13 @@ fn paint_pending_popovers(ctx: &mut PaintCtx) {
             1 | 2 => {
                 let (chip_id, label, selected) = if p.slot == 1 {
                     (
-                        ids::CEQ_LUT_1_DROPDOWN,
+                        ph2d_tool_color_equalization::ids::CEQ_LUT_1_DROPDOWN,
                         "LUT 1",
                         snapshot_for_popover.lut_preset_1,
                     )
                 } else {
                     (
-                        ids::CEQ_LUT_2_DROPDOWN,
+                        ph2d_tool_color_equalization::ids::CEQ_LUT_2_DROPDOWN,
                         "LUT 2",
                         snapshot_for_popover.lut_preset_2,
                     )
@@ -297,7 +304,7 @@ fn paint_pending_popovers(ctx: &mut PaintCtx) {
             }
             3 => {
                 let dd = Dropdown::new(
-                    ids::CEQ_POSTERIZE_DROPDOWN,
+                    ph2d_tool_color_equalization::ids::CEQ_POSTERIZE_DROPDOWN,
                     "Posterize".to_string(),
                     posterize_options(),
                 )
@@ -321,7 +328,7 @@ fn paint_pending_popovers(ctx: &mut PaintCtx) {
             }
             4 => {
                 let dd = Dropdown::new(
-                    ids::CEQ_QUANTIZE_DROPDOWN,
+                    ph2d_tool_color_equalization::ids::CEQ_QUANTIZE_DROPDOWN,
                     "Quantize".to_string(),
                     quantize_options(),
                 )

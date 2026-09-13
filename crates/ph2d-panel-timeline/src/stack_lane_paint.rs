@@ -191,7 +191,7 @@ fn paint_lane(
         ctx.host.store_mut().register(
             ids::TIMELINE_LANE_ROW[index],
             InteractiveState::TimelineSurface {
-                parent: ids::TIMELINE_PANEL,
+                parent: ph2d_editor_core::ids::TIMELINE_PANEL,
                 kind: TimelineHitKind::LaneHeader { lane: index },
                 canvas: row,
             },
@@ -576,7 +576,7 @@ fn put_strip_hit(ctx: &mut PaintCtx, row: Rect, rect: Rect, lane: usize, strip: 
     ctx.host.store_mut().register(
         id,
         InteractiveState::TimelineSurface {
-            parent: ids::TIMELINE_PANEL,
+            parent: ph2d_editor_core::ids::TIMELINE_PANEL,
             kind: TimelineHitKind::Strip { lane, strip, edge },
             canvas: row,
         },

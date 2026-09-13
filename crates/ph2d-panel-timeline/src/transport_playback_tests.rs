@@ -75,12 +75,12 @@ fn the_play_button_is_dead_on_the_containers_list_and_alive_everywhere_else() {
     for (tab, inside, expect_play) in cases {
         let hits = painted_hits(tab, inside);
         assert_eq!(
-            hits.contains(&ids::TIMELINE_PLAY),
+            hits.contains(&ph2d_editor_core::ids::TIMELINE_PLAY),
             expect_play,
             "play em {tab:?} (inside={inside}) devia ser vivo={expect_play}"
         );
         assert!(
-            hits.contains(&ids::TIMELINE_GO_START),
+            hits.contains(&ph2d_editor_core::ids::TIMELINE_GO_START),
             "controle positivo: o resto do transporte segue clicável em {tab:?}"
         );
     }

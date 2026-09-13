@@ -7843,6 +7843,7 @@ dependencies = [
  "ph2d-skeleton",
  "ph2d-tokens",
  "ph2d-tool-registry",
+ "ph2d-tool-vector",
  "ph2d-ui-testkit",
 ]
 

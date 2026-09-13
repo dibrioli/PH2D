@@ -146,7 +146,7 @@ fn a_double_click_on_a_component_card_pushes_the_instantiate_action() {
     ph2d_panel_asset_browser::state::probe_set_painted(vec![AssetRef::Component { stable_id: 77 }]);
     let out = host.apply_panel_event::<AssetBrowserPanel>(
         &mut st,
-        WidgetEvent::DoubleClick(ids::asset_cell_id(0)),
+        WidgetEvent::DoubleClick(ph2d_editor_core::ids::asset_cell_id(0)),
     );
     assert_eq!(
         out,
@@ -172,7 +172,7 @@ fn a_double_click_on_an_image_card_does_nothing_on_purpose() {
     ph2d_panel_asset_browser::state::probe_set_painted(vec![AssetRef::Texture { asset: [7; 32] }]);
     let out = host.apply_panel_event::<AssetBrowserPanel>(
         &mut st,
-        WidgetEvent::DoubleClick(ids::asset_cell_id(0)),
+        WidgetEvent::DoubleClick(ph2d_editor_core::ids::asset_cell_id(0)),
     );
     assert_eq!(out, EventOutcome::Ignored);
     assert_eq!(host.bus().len(), 0, "uma imagem nao devia pedir nada");
@@ -186,7 +186,7 @@ fn a_cell_the_grid_did_not_paint_instantiates_nothing() {
     ph2d_panel_asset_browser::state::probe_set_painted(Vec::new());
     let out = host.apply_panel_event::<AssetBrowserPanel>(
         &mut st,
-        WidgetEvent::DoubleClick(ids::asset_cell_id(3)),
+        WidgetEvent::DoubleClick(ph2d_editor_core::ids::asset_cell_id(3)),
     );
     assert_eq!(out, EventOutcome::Ignored);
     assert_eq!(host.bus().len(), 0);
@@ -343,7 +343,7 @@ fn every_asset_card_menu_entry_dispatches_something() {
     use ph2d_editor_core::screens::hero::menu_rows::menu_rows;
 
     let rows = menu_rows(ContextMenuKind::AssetCard {
-        cell: ids::asset_cell_id(0),
+        cell: ph2d_editor_core::ids::asset_cell_id(0),
     });
     assert!(
         !rows.is_empty(),
@@ -356,7 +356,7 @@ fn every_asset_card_menu_entry_dispatches_something() {
         ph2d_panel_asset_browser::state::probe_set_painted(vec![AssetRef::Component {
             stable_id: 77,
         }]);
-        stage_card_menu(&mut host, ids::asset_cell_id(0));
+        stage_card_menu(&mut host, ph2d_editor_core::ids::asset_cell_id(0));
         let before = format!("{st:?}");
         let out = host.apply_panel_event::<AssetBrowserPanel>(&mut st, WidgetEvent::Click(*id));
         let touched_the_world = !host.bus().is_empty();
@@ -426,7 +426,7 @@ fn an_image_card_dispatches_every_verb_too_because_the_shell_is_who_refuses() {
         assert!(
             ph2d_editor_core::screens::hero::menu_rows::menu_rows(
                 ph2d_editor_core::interaction::ContextMenuKind::AssetCard {
-                    cell: ids::asset_cell_id(0),
+                    cell: ph2d_editor_core::ids::asset_cell_id(0),
                 },
             )
             .iter()
@@ -437,7 +437,7 @@ fn an_image_card_dispatches_every_verb_too_because_the_shell_is_who_refuses() {
         ph2d_panel_asset_browser::state::probe_set_painted(vec![AssetRef::Texture {
             asset: [9; 32],
         }]);
-        stage_card_menu(&mut host, ids::asset_cell_id(0));
+        stage_card_menu(&mut host, ph2d_editor_core::ids::asset_cell_id(0));
         let out = host.apply_panel_event::<AssetBrowserPanel>(&mut st, WidgetEvent::Click(id));
         assert_eq!(out, EventOutcome::Consumed, "{verb:?} morto numa imagem");
         let drained: Vec<_> = host.bus_mut().drain().collect();
@@ -461,7 +461,7 @@ fn an_image_card_dispatches_every_verb_too_because_the_shell_is_who_refuses() {
 fn a_card_menu_whose_cell_no_longer_paints_anything_does_nothing() {
     let (mut host, mut st) = open_host();
     ph2d_panel_asset_browser::state::probe_set_painted(Vec::new());
-    stage_card_menu(&mut host, ids::asset_cell_id(0));
+    stage_card_menu(&mut host, ph2d_editor_core::ids::asset_cell_id(0));
     let out = host.apply_panel_event::<AssetBrowserPanel>(
         &mut st,
         WidgetEvent::Click(ph2d_editor_core::ids::CTX_MENU_ASSET_REMOVE),
@@ -514,7 +514,7 @@ fn every_catalog_row_menu_entry_does_something() {
     use ph2d_editor_core::screens::hero::menu_rows::menu_rows;
 
     let rows = menu_rows(ContextMenuKind::CatalogRow {
-        row: ids::catalog_row_id(2),
+        row: ph2d_editor_core::ids::catalog_row_id(2),
     });
     assert!(
         !rows.is_empty(),
@@ -525,7 +525,7 @@ fn every_catalog_row_menu_entry_does_something() {
     for (id, label, _) in rows {
         let (mut host, mut st) = open_host();
         stage_one_catalog();
-        stage_catalog_menu(&mut host, ids::catalog_row_id(2));
+        stage_catalog_menu(&mut host, ph2d_editor_core::ids::catalog_row_id(2));
         let out = host.apply_panel_event::<AssetBrowserPanel>(&mut st, WidgetEvent::Click(*id));
         if out != EventOutcome::Consumed || (host.bus().is_empty() && st.renaming.is_none()) {
             dead.push(label);
@@ -551,14 +551,14 @@ fn the_menu_over_a_fixed_row_does_nothing() {
     // tivesse efeito nenhum — *uma fixtura sem o fenómeno passa em qualquer lei.*
     stage_one_catalog();
     assert_eq!(
-        ph2d_panel_asset_browser::catalog_row_pick(ids::catalog_row_id(0)),
+        ph2d_panel_asset_browser::catalog_row_pick(ph2d_editor_core::ids::catalog_row_id(0)),
         Some(ph2d_panel_asset_browser::CatalogPick::All),
         "o censo do quadro não chegou — este gate mediria nada"
     );
     for row in [0usize, 1] {
         let (mut host, mut st) = open_host();
         stage_one_catalog();
-        stage_catalog_menu(&mut host, ids::catalog_row_id(row));
+        stage_catalog_menu(&mut host, ph2d_editor_core::ids::catalog_row_id(row));
         let out = host.apply_panel_event::<AssetBrowserPanel>(
             &mut st,
             WidgetEvent::Click(ph2d_editor_core::ids::CTX_MENU_CATALOG_DELETE),
@@ -584,7 +584,7 @@ fn deleting_the_chosen_catalog_returns_the_grid_to_all() {
     let (mut host, mut st) = open_host();
     let id = stage_one_catalog();
     st.pick = CatalogPick::One(id);
-    stage_catalog_menu(&mut host, ids::catalog_row_id(2));
+    stage_catalog_menu(&mut host, ph2d_editor_core::ids::catalog_row_id(2));
     let out = host.apply_panel_event::<AssetBrowserPanel>(
         &mut st,
         WidgetEvent::Click(ph2d_editor_core::ids::CTX_MENU_CATALOG_DELETE),
@@ -616,7 +616,7 @@ fn rename_opens_the_field_and_the_name_only_travels_on_submit() {
 
     let (mut host, mut st) = open_host();
     let id = stage_one_catalog();
-    stage_catalog_menu(&mut host, ids::catalog_row_id(2));
+    stage_catalog_menu(&mut host, ph2d_editor_core::ids::catalog_row_id(2));
     host.apply_panel_event::<AssetBrowserPanel>(
         &mut st,
         WidgetEvent::Click(ph2d_editor_core::ids::CTX_MENU_CATALOG_RENAME),
@@ -675,7 +675,7 @@ fn renaming_to_the_same_name_dispatches_nothing() {
 
     let (mut host, mut st) = open_host();
     let id = stage_one_catalog();
-    stage_catalog_menu(&mut host, ids::catalog_row_id(2));
+    stage_catalog_menu(&mut host, ph2d_editor_core::ids::catalog_row_id(2));
     host.apply_panel_event::<AssetBrowserPanel>(
         &mut st,
         WidgetEvent::Click(ph2d_editor_core::ids::CTX_MENU_CATALOG_RENAME),
@@ -704,7 +704,7 @@ fn renaming_to_the_same_name_dispatches_nothing() {
     // devolve `None` tanto para «nome igual» como para «catálogo não encontrado», e sem este
     // controlo a cláusula `text == current` estava a ser creditada por uma ausência. Mesma
     // fixtura, texto diferente ⇒ tem de despachar.
-    stage_catalog_menu(&mut host, ids::catalog_row_id(2));
+    stage_catalog_menu(&mut host, ph2d_editor_core::ids::catalog_row_id(2));
     host.apply_panel_event::<AssetBrowserPanel>(
         &mut st,
         WidgetEvent::Click(ph2d_editor_core::ids::CTX_MENU_CATALOG_RENAME),
@@ -734,7 +734,7 @@ fn renaming_to_the_same_name_dispatches_nothing() {
 fn escape_abandons_the_rename() {
     let (mut host, mut st) = open_host();
     stage_one_catalog();
-    stage_catalog_menu(&mut host, ids::catalog_row_id(2));
+    stage_catalog_menu(&mut host, ph2d_editor_core::ids::catalog_row_id(2));
     host.apply_panel_event::<AssetBrowserPanel>(
         &mut st,
         WidgetEvent::Click(ph2d_editor_core::ids::CTX_MENU_CATALOG_RENAME),
@@ -962,7 +962,7 @@ fn the_catalog_scrollbar_thumb_is_grabbable_where_it_is_drawn() {
         .expect("a barra da coluna não foi registada com 60 catálogos");
     let first_row = rects
         .iter()
-        .find(|(i, _)| *i == ids::catalog_row_id(0))
+        .find(|(i, _)| *i == ph2d_editor_core::ids::catalog_row_id(0))
         .map(|(_, r)| *r)
         .expect("a coluna não pintou linha nenhuma");
     assert!(

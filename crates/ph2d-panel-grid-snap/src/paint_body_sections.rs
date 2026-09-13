@@ -6,7 +6,6 @@
 //! splits: each helper takes `&mut PaintCtx`, the live `GridSnapState`,
 //! geometry params, and a `y_in: f32` cursor; returns `y_out: f32`.
 
-use crate::ids;
 use crate::layout::{ROW_H, row_gap};
 use crate::paint_helpers::{
     paint_kind_button_grid, paint_labeled_segmented_row, paint_section_label,
@@ -106,7 +105,7 @@ pub(crate) fn paint_target_section(
         );
         y = paint_number_row_from_state(
             "Subdivisions",
-            ids::GS_CFG_SNAP_SUBDIVISIONS,
+            ph2d_editor_core::grid_snap::ids::GS_CFG_SNAP_SUBDIVISIONS,
             state.snap_subdivisions as f64,
             inner_x,
             inner_w,
@@ -120,7 +119,7 @@ pub(crate) fn paint_target_section(
         let mag_label = format!("Magnetism radius{}", unit_suffix_paren());
         y = paint_number_row_from_state(
             &mag_label,
-            ids::GS_CFG_SNAP_MAGNETISM_RADIUS,
+            ph2d_editor_core::grid_snap::ids::GS_CFG_SNAP_MAGNETISM_RADIUS,
             meters_to_display(state.snap_magnetism_radius),
             inner_x,
             inner_w,
@@ -212,8 +211,11 @@ pub(crate) fn paint_display_section(
         y = paint_labeled_segmented_row(
             "Layer",
             &[
-                ("In front", ids::GS_LAYER_IN_FRONT),
-                ("Behind", ids::GS_LAYER_BEHIND),
+                (
+                    "In front",
+                    ph2d_editor_core::grid_snap::ids::GS_LAYER_IN_FRONT,
+                ),
+                ("Behind", ph2d_editor_core::grid_snap::ids::GS_LAYER_BEHIND),
             ],
             layer_idx,
             inner_x,

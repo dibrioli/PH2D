@@ -36,7 +36,7 @@ const GLYPH_BASELINE_RATIO: f64 = 0.34; // LITERAL-PX-OK: baseline offset ÷ gly
 /// Paint the open font dropdown popover for `chip_rect`. No-op wiring is handled by
 /// the caller (only invoked when the chip is open).
 pub(crate) fn paint(ctx: &mut PaintCtx, chip_rect: Rect, theme: Theme) {
-    let id = ids::VECTOR_TEXT_FONT_DD;
+    let id = ph2d_editor_core::ids::VECTOR_TEXT_FONT_DD;
     let n = state::with_font_previews(<[state::FontPreview]>::len);
     if n == 0 {
         // Lazy build: the shell scans + parses the system fonts only now, on the
@@ -259,14 +259,16 @@ pub(crate) fn apply_event(
         open,
         selected_index,
         ..
-    }) = host.store_mut().get_mut(ids::VECTOR_TEXT_FONT_DD)
+    }) = host
+        .store_mut()
+        .get_mut(ph2d_editor_core::ids::VECTOR_TEXT_FONT_DD)
     {
         *open = false;
         *selected_index = Some(i);
     }
     host.bus_mut()
         .push(EditorAction::ToolPanelEvent(PanelEvent::SelectOption(
-            ids::VECTOR_TEXT_FONT_DD,
+            ph2d_editor_core::ids::VECTOR_TEXT_FONT_DD,
             i.to_string(),
         )));
     true

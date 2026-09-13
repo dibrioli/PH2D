@@ -32,7 +32,7 @@ impl BodyCtx<'_> {
         let tem_traco = state::stroke_present().unwrap_or(false);
         if let Some(on) = state::stroke_present() {
             y = self.checkbox_row(
-                ids::VECTOR_STROKE_PRESENT,
+                ph2d_editor_core::ids::VECTOR_STROKE_PRESENT,
                 tr("panel.vector.stroke.present"),
                 on,
                 y,

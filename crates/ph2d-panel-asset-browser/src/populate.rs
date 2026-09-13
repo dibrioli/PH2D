@@ -21,14 +21,14 @@ pub(crate) fn populate(store: &mut WidgetStore) {
     store.register(
         ids::ASSET_DRAG_HANDLE,
         InteractiveState::BlenderHit {
-            parent: ids::ASSET_PANEL,
+            parent: ph2d_editor_core::ids::ASSET_PANEL,
             kind: BlenderHitKind::DragHandle,
         },
     );
     store.register(
         ids::ASSET_RESIZE_HANDLE_BL,
         InteractiveState::BlenderHit {
-            parent: ids::ASSET_PANEL,
+            parent: ph2d_editor_core::ids::ASSET_PANEL,
             kind: BlenderHitKind::ResizeHandleBl,
         },
     );

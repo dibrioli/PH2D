@@ -74,15 +74,21 @@ fn click_reaches_bus(id: ph2d_a11y::NodeId, what: &str) {
 #[test]
 fn the_two_live_chips_are_reachable_and_reach_the_bus() {
     state::set_bool_group_selected(false);
-    click_reaches_bus(ids::VECTOR_BOOL_LIVE_OFF, "o chip Live=Off");
-    click_reaches_bus(ids::VECTOR_BOOL_LIVE_ON, "o chip Live=On");
+    click_reaches_bus(
+        ph2d_editor_core::ids::VECTOR_BOOL_LIVE_OFF,
+        "o chip Live=Off",
+    );
+    click_reaches_bus(ph2d_editor_core::ids::VECTOR_BOOL_LIVE_ON, "o chip Live=On");
 }
 
 /// **O Apply está vivo sob o ponteiro — quando é oferecido.**
 #[test]
 fn the_apply_button_is_reachable_when_offered() {
     state::set_bool_group_selected(true);
-    click_reaches_bus(ids::VECTOR_BOOL_APPLY, "o botao Apply Boolean");
+    click_reaches_bus(
+        ph2d_editor_core::ids::VECTOR_BOOL_APPLY,
+        "o botao Apply Boolean",
+    );
     state::set_bool_group_selected(false);
 }
 
@@ -102,15 +108,23 @@ fn the_apply_button_appears_only_with_a_live_boolean_selected() {
 
     state::set_bool_group_selected(false);
     assert!(
-        host.painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, ids::VECTOR_BOOL_APPLY)
-            .is_none(),
+        host.painted_rect::<VectorPanel>(
+            &mut panel_state,
+            VIEWPORT,
+            ph2d_editor_core::ids::VECTOR_BOOL_APPLY
+        )
+        .is_none(),
         "o Apply foi pintado SEM booleana viva selecionada — um botao que nao aplica nada"
     );
 
     state::set_bool_group_selected(true);
     assert!(
-        host.painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, ids::VECTOR_BOOL_APPLY)
-            .is_some(),
+        host.painted_rect::<VectorPanel>(
+            &mut panel_state,
+            VIEWPORT,
+            ph2d_editor_core::ids::VECTOR_BOOL_APPLY
+        )
+        .is_some(),
         "o Apply nao foi pintado COM booleana viva selecionada — o gesto nao tem saida"
     );
     state::set_bool_group_selected(false);

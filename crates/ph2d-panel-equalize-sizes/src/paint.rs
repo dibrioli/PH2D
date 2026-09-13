@@ -16,8 +16,8 @@
 //! - Every painter is the SHARED source-of-truth from
 //!   `panel_chrome` / `widget` — no panel-local widget look.
 
+use crate::EqualizeSizesPanel;
 use crate::state::{self, EqualizeSizesPanelState, set_last_content_h, set_last_visible_h};
-use crate::{EqualizeSizesPanel, ids};
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::{HitIndex, InteractiveState, WidgetStore};
 use ph2d_editor_core::paint::{paint_text, paint_text_centered, rect_to_vello, resolve};
@@ -43,7 +43,9 @@ pub(crate) fn paint(_state: &mut EqualizeSizesPanelState, ctx: &mut PaintCtx) {
     if !ctx.host.panel_visible(EqualizeSizesPanel::ID) {
         // Symmetric stale-rect cleanup so `panel_at` stops returning
         // EQS_PANEL once the tool is deactivated.
-        ctx.host.store_mut().clear_panel_rect(ids::EQS_PANEL);
+        ctx.host
+            .store_mut()
+            .clear_panel_rect(ph2d_tool_equalize_sizes::ids::EQS_PANEL);
         return;
     }
 
@@ -52,7 +54,9 @@ pub(crate) fn paint(_state: &mut EqualizeSizesPanelState, ctx: &mut PaintCtx) {
     let snapshot = state::current_snapshot();
 
     // Publish the rect so wheel/click dispatch can route to this panel.
-    ctx.host.store_mut().set_panel_rect(ids::EQS_PANEL, rect);
+    ctx.host
+        .store_mut()
+        .set_panel_rect(ph2d_tool_equalize_sizes::ids::EQS_PANEL, rect);
 
     paint_panel_surface(rect, ctx.scene, theme);
 
@@ -83,7 +87,7 @@ pub(crate) fn paint(_state: &mut EqualizeSizesPanelState, ctx: &mut PaintCtx) {
     // chrome, not inside the scrollable body).
     ph2d_editor_core::widget::panel_chrome::paint_panel_close_button(
         rect,
-        ids::EQS_CANCEL,
+        ph2d_tool_equalize_sizes::ids::EQS_CANCEL,
         ctx.host.hit_index_mut(),
         ctx.scene,
         theme,
@@ -98,7 +102,10 @@ pub(crate) fn paint(_state: &mut EqualizeSizesPanelState, ctx: &mut PaintCtx) {
     let body_top = rect.y + PANEL_TITLE_BASELINE + title_size + Spacing::Md.px();
     let body_h = (rect.y + rect.h - body_top - PANEL_HEAD_PAD).max(0.0);
     let body_rect = Rect::new(rect.x, body_top, rect.w, body_h);
-    let scroll = ctx.host.store().panel_scroll(ids::EQS_PANEL);
+    let scroll = ctx
+        .host
+        .store()
+        .panel_scroll(ph2d_tool_equalize_sizes::ids::EQS_PANEL);
 
     ctx.scene.push_clip(&rect_to_vello(body_rect));
     let y_after = paint_body_sections(
@@ -118,7 +125,7 @@ pub(crate) fn paint(_state: &mut EqualizeSizesPanelState, ctx: &mut PaintCtx) {
     paint_scrollbar_and_publish(ctx, body_rect, content_h, body_h, scroll, theme);
 
     ctx.host.hit_index_mut().register(
-        ids::EQS_CANCEL,
+        ph2d_tool_equalize_sizes::ids::EQS_CANCEL,
         ph2d_editor_core::widget::panel_chrome::panel_close_button_rect(rect),
     );
 }
@@ -146,17 +153,17 @@ fn paint_body_sections(
         &[
             (
                 "Max",
-                ids::EQS_MODE_MAX,
+                ph2d_tool_equalize_sizes::ids::EQS_MODE_MAX,
                 snapshot.target_mode == TargetMode::MaxOfSelection,
             ),
             (
                 "Fixed",
-                ids::EQS_MODE_FIXED,
+                ph2d_tool_equalize_sizes::ids::EQS_MODE_FIXED,
                 snapshot.target_mode == TargetMode::Fixed,
             ),
             (
                 "Grid",
-                ids::EQS_MODE_GRID,
+                ph2d_tool_equalize_sizes::ids::EQS_MODE_GRID,
                 snapshot.target_mode == TargetMode::GridUnit,
             ),
         ],
@@ -179,7 +186,7 @@ fn paint_body_sections(
             let used_w = paint_labeled_chip(
                 Rect::new(inner_x, y, half, row_h),
                 "W",
-                ids::EQS_FIXED_W,
+                ph2d_tool_equalize_sizes::ids::EQS_FIXED_W,
                 snapshot.fixed_w as f64,
                 store,
                 hit_index,
@@ -190,7 +197,7 @@ fn paint_body_sections(
             let used_h = paint_labeled_chip(
                 Rect::new(inner_x + half + chip_gap, y, half, row_h),
                 "H",
-                ids::EQS_FIXED_H,
+                ph2d_tool_equalize_sizes::ids::EQS_FIXED_H,
                 snapshot.fixed_h as f64,
                 store,
                 hit_index,
@@ -227,11 +234,11 @@ fn paint_body_sections(
             // right under the slider as in the legacy `EqualizeModal`.
             let max_off = (snapshot.grid_unit / 2).max(1);
             let track = store
-                .slider(ids::EQS_GRID_OFFSET)
+                .slider(ph2d_tool_equalize_sizes::ids::EQS_GRID_OFFSET)
                 .map(|(_, v)| v)
                 .unwrap_or_else(|| snapshot.grid_offset as f32 / max_off as f32);
             let chip_value = store
-                .number_value(ids::EQS_GRID_OFFSET_NUM)
+                .number_value(ph2d_tool_equalize_sizes::ids::EQS_GRID_OFFSET_NUM)
                 .unwrap_or(snapshot.grid_offset as f64);
             // Canonical chip width — 72 px (was 32, user 2026-05-24).
             let chip_w = ph2d_editor_core::widget::NUMBER_INPUT_MIN_W_PX;
@@ -242,8 +249,8 @@ fn paint_body_sections(
                 track,
                 chip_value,
                 Some(&display),
-                ids::EQS_GRID_OFFSET,
-                ids::EQS_GRID_OFFSET_NUM,
+                ph2d_tool_equalize_sizes::ids::EQS_GRID_OFFSET,
+                ph2d_tool_equalize_sizes::ids::EQS_GRID_OFFSET_NUM,
                 LABEL_COL_W,
                 chip_w,
                 store,
@@ -275,7 +282,7 @@ fn paint_body_sections(
             paint_toggle_button(
                 Rect::new(inner_x, y, inner_w, row_h),
                 "Arrange on Grid (1 per cell)",
-                ids::EQS_ARRANGE_ON_GRID,
+                ph2d_tool_equalize_sizes::ids::EQS_ARRANGE_ON_GRID,
                 snapshot.arrange_on_grid,
                 store,
                 hit_index,
@@ -297,7 +304,7 @@ fn paint_body_sections(
     paint_toggle_button(
         Rect::new(inner_x, y, inner_w, row_h),
         "Upscale if smaller",
-        ids::EQS_UPSCALE_IF_SMALLER,
+        ph2d_tool_equalize_sizes::ids::EQS_UPSCALE_IF_SMALLER,
         upscale_on,
         store,
         hit_index,
@@ -314,17 +321,17 @@ fn paint_body_sections(
             &[
                 (
                     "Lanczos",
-                    ids::EQS_ALG_LANCZOS,
+                    ph2d_tool_equalize_sizes::ids::EQS_ALG_LANCZOS,
                     snapshot.upscale_algorithm == UpscaleAlgorithm::Lanczos3,
                 ),
                 (
                     "Nearest",
-                    ids::EQS_ALG_NEAREST,
+                    ph2d_tool_equalize_sizes::ids::EQS_ALG_NEAREST,
                     snapshot.upscale_algorithm == UpscaleAlgorithm::Nearest,
                 ),
                 (
                     "EPX",
-                    ids::EQS_ALG_EPX,
+                    ph2d_tool_equalize_sizes::ids::EQS_ALG_EPX,
                     snapshot.upscale_algorithm == UpscaleAlgorithm::Epx,
                 ),
             ],
@@ -343,7 +350,7 @@ fn paint_body_sections(
     paint_toggle_button(
         Rect::new(inner_x, y, inner_w, row_h),
         "Rasterize after",
-        ids::EQS_RASTERIZE_AFTER,
+        ph2d_tool_equalize_sizes::ids::EQS_RASTERIZE_AFTER,
         snapshot.rasterize_after,
         store,
         hit_index,
@@ -397,11 +404,11 @@ fn paint_scrollbar_and_publish(
             .register(EQUALIZE_SIZES_SCROLLBAR_ID, thumb);
     }
     let store = ctx.host.store_mut();
-    store.set_panel_content_h(ids::EQS_PANEL, content_h);
-    store.set_panel_visible_h(ids::EQS_PANEL, body_h);
+    store.set_panel_content_h(ph2d_tool_equalize_sizes::ids::EQS_PANEL, content_h);
+    store.set_panel_visible_h(ph2d_tool_equalize_sizes::ids::EQS_PANEL, body_h);
     let max_scroll = (content_h - body_h).max(0.0);
-    if store.panel_scroll(ids::EQS_PANEL) > max_scroll {
-        store.set_panel_scroll(ids::EQS_PANEL, max_scroll);
+    if store.panel_scroll(ph2d_tool_equalize_sizes::ids::EQS_PANEL) > max_scroll {
+        store.set_panel_scroll(ph2d_tool_equalize_sizes::ids::EQS_PANEL, max_scroll);
     }
 }
 

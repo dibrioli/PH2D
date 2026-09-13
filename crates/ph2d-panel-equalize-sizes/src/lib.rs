@@ -17,7 +17,6 @@
 #![forbid(unsafe_code)]
 
 mod event;
-pub mod ids;
 mod paint;
 mod paint_actions;
 mod populate;
@@ -39,7 +38,7 @@ impl Panel for EqualizeSizesPanel {
     type State = EqualizeSizesPanelState;
 
     const ID: &'static str = "equalize_sizes";
-    const NODE_ID: NodeId = ids::EQS_PANEL;
+    const NODE_ID: NodeId = ph2d_tool_equalize_sizes::ids::EQS_PANEL;
     const DEFAULT_VISIBLE: bool = false;
     const TITLE: &'static str = "Equalize Sizes";
     const ICON: ph2d_editor_core::icons::IconId = ph2d_editor_core::icons::IconId::EqualizeSizes;

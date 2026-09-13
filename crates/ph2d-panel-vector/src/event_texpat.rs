@@ -18,7 +18,7 @@ pub(super) fn texpat_slider_event(
     host: &mut dyn PanelHostInternal,
     id: ph2d_a11y::NodeId,
 ) -> Option<bool> {
-    use crate::ids::TexPatKnob as K;
+    use ph2d_editor_core::ids::TexPatKnob as K;
     let (_slot, knob) = crate::paint_sections::texture_pattern::texpat_knob_of(id)?;
     // ⚠️ Os mapas são os MESMOS que o `populate` dá ao chip numérico e que o `paint` usa para o
     // track — a fronteira única. Três cópias divergiriam no dia em que uma faixa mudasse.

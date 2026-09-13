@@ -31,7 +31,6 @@ mod card; // the titled row-box shared by the brush panel technique sections
 mod dropdown_popover;
 mod event;
 mod event_brush_forward;
-pub mod ids;
 mod number_field;
 mod paint;
 mod paint_adjust;

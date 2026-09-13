@@ -10,29 +10,28 @@
 //! que decide se o clique é possível é a PINTURA (sem hit-rect não há Click).
 
 use super::{button, slider_chip};
-use crate::ids;
 use ph2d_editor_core::interaction::WidgetStore;
 
 /// Os widgets da seção Envelope: criar, e as duas saídas (materializar / desfazer).
 pub(super) fn populate_envelope(store: &mut WidgetStore) {
-    button(store, ids::VECTOR_ENVELOPE_RUN);
-    button(store, ids::VECTOR_ENVELOPE_EXPAND);
-    button(store, ids::VECTOR_ENVELOPE_RELEASE);
-    button(store, ids::VECTOR_ENVELOPE_PERSPECTIVE);
-    button(store, ids::VECTOR_ENVELOPE_MESH);
-    button(store, ids::VECTOR_ENVELOPE_PINS);
-    button(store, ids::VECTOR_ENVELOPE_CLEAR_PINS);
+    button(store, ph2d_editor_core::ids::VECTOR_ENVELOPE_RUN);
+    button(store, ph2d_editor_core::ids::VECTOR_ENVELOPE_EXPAND);
+    button(store, ph2d_editor_core::ids::VECTOR_ENVELOPE_RELEASE);
+    button(store, ph2d_editor_core::ids::VECTOR_ENVELOPE_PERSPECTIVE);
+    button(store, ph2d_editor_core::ids::VECTOR_ENVELOPE_MESH);
+    button(store, ph2d_editor_core::ids::VECTOR_ENVELOPE_PINS);
+    button(store, ph2d_editor_core::ids::VECTOR_ENVELOPE_CLEAR_PINS);
     // Os presets: o TETO de botões, sempre. O `paint` desenha só os que o shell publicou, então
     // registrar de menos aqui deixaria um preset novo clicável-e-morto e registrar de mais é
     // inerte. É o padrão do catálogo de formas e das pontas de traço.
-    for i in 0..ids::MAX_ENVELOPE_PRESETS {
-        button(store, ids::vector_envelope_preset_id(i));
+    for i in 0..ph2d_editor_core::ids::MAX_ENVELOPE_PRESETS {
+        button(store, ph2d_editor_core::ids::vector_envelope_preset_id(i));
     }
     // O Bend é bipolar: track `0..1` → `-1..1`. O campo mostra o VALOR (não o track), com o mesmo
     // passo que o slider anda.
     slider_chip(
         store,
-        ids::VECTOR_ENVELOPE_BEND,
+        ph2d_editor_core::ids::VECTOR_ENVELOPE_BEND,
         ph2d_tool_vector::ids::VECTOR_ENVELOPE_BEND_NUM,
         BEND_DEFAULT_TRACK,
         f64::from(ph2d_ecs_default_bend()),

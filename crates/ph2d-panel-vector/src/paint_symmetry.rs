@@ -23,7 +23,6 @@ use ph2d_symmetry::{MAX_SEGMENTS, MIN_SEGMENTS, SymmetryKind};
 use ph2d_tool_vector::VectorStyleSnapshot;
 use ph2d_tool_vector::params::symmetry_kind_id;
 
-use crate::ids;
 use crate::paint_sections::BodyCtx;
 
 /// O `scale` do slider de Segments: o track anda `0..=1` e a contagem `MIN..=MAX`.
@@ -144,7 +143,7 @@ impl BodyCtx<'_> {
         // efeitos). Sem simetria viva na seleção ele não é oferecido.
         if crate::state_symmetry::symmetry_live_count() > 0 {
             y = self.action_button_kind(
-                ids::VECTOR_SYM_APPLY,
+                ph2d_editor_core::ids::VECTOR_SYM_APPLY,
                 tr("panel.vector.symmetry.apply"),
                 ph2d_editor_core::widget::ButtonKind::Accent,
                 y,

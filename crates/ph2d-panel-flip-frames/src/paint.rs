@@ -22,7 +22,9 @@ pub(crate) fn paint(state: &mut FlipStripState, ctx: &mut PaintCtx) {
     if !ctx.host.panel_visible(FlipFramesPanel::ID) {
         // Limpa o rect publicado, senão o `panel_at` continua devolvendo a tira
         // depois de trocar de tool (e ela comeria cliques do canvas).
-        ctx.host.store_mut().clear_panel_rect(ids::FLIP_STRIP_PANEL);
+        ctx.host
+            .store_mut()
+            .clear_panel_rect(ph2d_editor_core::ids::FLIP_STRIP_PANEL);
         return;
     }
     let snap = state::current_flip_strip();
@@ -54,7 +56,7 @@ pub(crate) fn paint(state: &mut FlipStripState, ctx: &mut PaintCtx) {
 
     ctx.host
         .store_mut()
-        .set_panel_rect(ids::FLIP_STRIP_PANEL, rect);
+        .set_panel_rect(ph2d_editor_core::ids::FLIP_STRIP_PANEL, rect);
     paint_panel_surface(rect, ctx.scene, theme);
     paint_panel_corner_dot(rect, ctx.scene, theme);
     paint_panel_corner_dot_bl(rect, ctx.scene, theme);

@@ -94,7 +94,7 @@ pub(super) fn paint_duration_handle(
     ctx.host.store_mut().register(
         ids::TIMELINE_DUR_HANDLE,
         InteractiveState::TimelineSurface {
-            parent: ids::TIMELINE_PANEL,
+            parent: ph2d_editor_core::ids::TIMELINE_PANEL,
             kind: TimelineHitKind::DurationHandle,
             canvas: hit,
         },

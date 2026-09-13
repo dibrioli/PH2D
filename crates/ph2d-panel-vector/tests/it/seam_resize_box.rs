@@ -12,7 +12,7 @@ use ph2d_editor_core::tool::PanelEvent;
 use ph2d_editor_core::zones::Rect;
 use ph2d_host::{PointerButton, PointerEvent, PointerKind, PointerSource};
 use ph2d_panel_vector::state::VectorPanelState;
-use ph2d_panel_vector::{VectorPanel, ids, state};
+use ph2d_panel_vector::{VectorPanel, state};
 use ph2d_ui_testkit::MockPanelHost;
 
 const VIEWPORT: Rect = Rect {
@@ -67,7 +67,7 @@ fn the_resize_box_checkbox_is_reachable_and_reaches_the_bus_in_both_states() {
             .painted_rect::<VectorPanel>(
                 &mut panel_state,
                 VIEWPORT,
-                ids::VECTOR_TRANSFORM_RESIZE_BOX,
+                ph2d_editor_core::ids::VECTOR_TRANSFORM_RESIZE_BOX,
             )
             .unwrap_or_else(|| panic!("o checkbox ({checked}) nao foi PINTADO com area clicavel"));
         let (cx, cy) = (r.x + r.w * 0.5, r.y + r.h * 0.5);
@@ -75,7 +75,7 @@ fn the_resize_box_checkbox_is_reachable_and_reaches_the_bus_in_both_states() {
         let evs = host.dispatch_pointer_event(pointer(PointerKind::Up, cx, cy, SEC + SEC / 100));
         assert!(
             evs.iter().any(
-                |e| matches!(e, WidgetEvent::Click(c) if *c == ids::VECTOR_TRANSFORM_RESIZE_BOX)
+                |e| matches!(e, WidgetEvent::Click(c) if *c == ph2d_editor_core::ids::VECTOR_TRANSFORM_RESIZE_BOX)
             ),
             "o ponteiro sobre o checkbox ({checked}) nao virou Click — ele esta' desenhado e nao \
              existe para o dispatcher (falta o `register` no populate)"
@@ -87,7 +87,7 @@ fn the_resize_box_checkbox_is_reachable_and_reaches_the_bus_in_both_states() {
             host.drained_actions().into_iter().any(|a| matches!(
                 a,
                 EditorAction::ToolPanelEvent(PanelEvent::Click(c))
-                    if c == ids::VECTOR_TRANSFORM_RESIZE_BOX
+                    if c == ph2d_editor_core::ids::VECTOR_TRANSFORM_RESIZE_BOX
             )),
             "o Click do checkbox ({checked}) nao chegou ao bus — ele acende sob o mouse e nao faz \
              nada (falta a linha na allowlist do event_clicks)"
@@ -105,12 +105,12 @@ fn the_row_is_not_painted_without_an_answer_to_show() {
     clear();
     state::set_current_transform(Some([0.0, 0.0, 100.0, 40.0]));
     assert!(
-        rect(ids::VECTOR_TRANSFORM_RESIZE_BOX).is_none(),
+        rect(ph2d_editor_core::ids::VECTOR_TRANSFORM_RESIZE_BOX).is_none(),
         "o checkbox foi pintado sem resposta publicada (selecao multipla teria um controlo sem \
          sujeito)"
     );
     // E o controlo: com a resposta, ele existe.
     arm(Some(true));
-    assert!(rect(ids::VECTOR_TRANSFORM_RESIZE_BOX).is_some());
+    assert!(rect(ph2d_editor_core::ids::VECTOR_TRANSFORM_RESIZE_BOX).is_some());
     clear();
 }

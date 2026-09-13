@@ -36,7 +36,7 @@ impl BodyCtx<'_> {
         if collapsed {
             return y;
         }
-        y = self.action_button(ids::VECTOR_ENVELOPE_RUN, "Envelope", y);
+        y = self.action_button(ph2d_editor_core::ids::VECTOR_ENVELOPE_RUN, "Envelope", y);
         if state::has_envelope() {
             // QUAL mapa a gaiola aplica (ADR-0129 §4). Não é um knob de intensidade: os dois
             // divergem no miolo (projetivo mantém as retas retas; o Coons de lados retos é
@@ -47,9 +47,21 @@ impl BodyCtx<'_> {
             y = self.segmented(
                 "Cage",
                 &[
-                    (ids::VECTOR_ENVELOPE_PERSPECTIVE, "Persp", mode == 0),
-                    (ids::VECTOR_ENVELOPE_MESH, "Mesh", mode == 1),
-                    (ids::VECTOR_ENVELOPE_PINS, "Pins", mode == 2),
+                    (
+                        ph2d_editor_core::ids::VECTOR_ENVELOPE_PERSPECTIVE,
+                        "Persp",
+                        mode == 0,
+                    ),
+                    (
+                        ph2d_editor_core::ids::VECTOR_ENVELOPE_MESH,
+                        "Mesh",
+                        mode == 1,
+                    ),
+                    (
+                        ph2d_editor_core::ids::VECTOR_ENVELOPE_PINS,
+                        "Pins",
+                        mode == 2,
+                    ),
                 ],
                 y,
             );
@@ -58,7 +70,11 @@ impl BodyCtx<'_> {
                 // gaiola). O que ele tem é uma saída: sem `Clear Pins` um pino mal pregado seria
                 // permanente — apagar UM exige um gesto que compete com "clicar no vazio prega", e
                 // essa disputa é decisão de UX, não encanamento.
-                y = self.action_button(ids::VECTOR_ENVELOPE_CLEAR_PINS, "Clear Pins", y);
+                y = self.action_button(
+                    ph2d_editor_core::ids::VECTOR_ENVELOPE_CLEAR_PINS,
+                    "Clear Pins",
+                    y,
+                );
             } else {
                 y = self.envelope_presets(y);
             }
@@ -66,8 +82,8 @@ impl BodyCtx<'_> {
             // canônico, que é quem costura o AccessKit — e nomear o `NodeId` aqui é o idioma que o
             // gate `every_widget_file_wires_a11y` reconhece nos irmãos desta pasta.
             let commands: [(ph2d_a11y::NodeId, &str); 2] = [
-                (ids::VECTOR_ENVELOPE_EXPAND, "Expand"),
-                (ids::VECTOR_ENVELOPE_RELEASE, "Release"),
+                (ph2d_editor_core::ids::VECTOR_ENVELOPE_EXPAND, "Expand"),
+                (ph2d_editor_core::ids::VECTOR_ENVELOPE_RELEASE, "Release"),
             ];
             for (id, label) in commands {
                 y = self.action_button(id, label, y);
@@ -99,14 +115,24 @@ impl BodyCtx<'_> {
         let mut i = 0;
         while i + 1 < labels.len() {
             let pair: [(ph2d_a11y::NodeId, &str); 2] = [
-                (ids::vector_envelope_preset_id(i), labels[i]),
-                (ids::vector_envelope_preset_id(i + 1), labels[i + 1]),
+                (
+                    ph2d_editor_core::ids::vector_envelope_preset_id(i),
+                    labels[i],
+                ),
+                (
+                    ph2d_editor_core::ids::vector_envelope_preset_id(i + 1),
+                    labels[i + 1],
+                ),
             ];
             y = self.row2(w, gap, pair, y);
             i += 2;
         }
         if i < labels.len() {
-            y = self.action_button(ids::vector_envelope_preset_id(i), labels[i], y);
+            y = self.action_button(
+                ph2d_editor_core::ids::vector_envelope_preset_id(i),
+                labels[i],
+                y,
+            );
         }
         if active.is_some() {
             let bend = state::envelope_bend();
@@ -115,7 +141,7 @@ impl BodyCtx<'_> {
             let track = ((bend + 1.0) / 2.0) as f32;
             y = self.slider_row(
                 "Bend",
-                ids::VECTOR_ENVELOPE_BEND,
+                ph2d_editor_core::ids::VECTOR_ENVELOPE_BEND,
                 ph2d_tool_vector::ids::VECTOR_ENVELOPE_BEND_NUM,
                 track,
                 bend,

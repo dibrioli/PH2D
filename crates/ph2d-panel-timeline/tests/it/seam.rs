@@ -30,8 +30,10 @@ fn play_button_click_raises_transport_event() {
     let mut host = MockPanelHost::with_panel::<TimelinePanel>();
     let mut state = TimelinePanelState::default();
 
-    let outcome =
-        host.apply_panel_event::<TimelinePanel>(&mut state, WidgetEvent::Click(ids::TIMELINE_PLAY));
+    let outcome = host.apply_panel_event::<TimelinePanel>(
+        &mut state,
+        WidgetEvent::Click(ph2d_editor_core::ids::TIMELINE_PLAY),
+    );
     assert_eq!(
         outcome,
         EventOutcome::Consumed,
@@ -39,7 +41,7 @@ fn play_button_click_raises_transport_event() {
     );
     assert_eq!(
         timeline_events(&mut host),
-        vec![PanelEvent::Click(ids::TIMELINE_PLAY)],
+        vec![PanelEvent::Click(ph2d_editor_core::ids::TIMELINE_PLAY)],
         "Play click must raise TimelinePanelEvent(Click(PLAY)) for the shell to map to TogglePlay"
     );
 }
@@ -86,15 +88,18 @@ fn time_chip_edit_raises_set_value() {
     let mut host = MockPanelHost::with_panel::<TimelinePanel>();
     let mut state = TimelinePanelState::default();
 
-    host.set_number_value(ids::TIMELINE_TIME_NUM, 1.5);
+    host.set_number_value(ph2d_editor_core::ids::TIMELINE_TIME_NUM, 1.5);
     let outcome = host.apply_panel_event::<TimelinePanel>(
         &mut state,
-        WidgetEvent::ValueChanged(ids::TIMELINE_TIME_NUM),
+        WidgetEvent::ValueChanged(ph2d_editor_core::ids::TIMELINE_TIME_NUM),
     );
     assert_eq!(outcome, EventOutcome::Consumed);
     assert_eq!(
         timeline_events(&mut host),
-        vec![PanelEvent::SetValue(ids::TIMELINE_TIME_NUM, 1.5)],
+        vec![PanelEvent::SetValue(
+            ph2d_editor_core::ids::TIMELINE_TIME_NUM,
+            1.5
+        )],
         "seconds-chip edit must carry the real value for the shell to Scrub to it"
     );
 }
@@ -177,16 +182,19 @@ fn ruler_scrub_maps_value_to_time_and_raises_scrub() {
         view_span_s: 10.0,
         ..TimelinePanelState::default()
     };
-    host.set_slider_value(ids::TIMELINE_RULER, 0.5);
+    host.set_slider_value(ph2d_editor_core::ids::TIMELINE_RULER, 0.5);
 
     let outcome = host.apply_panel_event::<TimelinePanel>(
         &mut state,
-        WidgetEvent::ValueChanged(ids::TIMELINE_RULER),
+        WidgetEvent::ValueChanged(ph2d_editor_core::ids::TIMELINE_RULER),
     );
     assert_eq!(outcome, EventOutcome::Consumed);
     assert_eq!(
         timeline_events(&mut host),
-        vec![PanelEvent::SetValue(ids::TIMELINE_RULER, 5.0)],
+        vec![PanelEvent::SetValue(
+            ph2d_editor_core::ids::TIMELINE_RULER,
+            5.0
+        )],
         "ruler scrub at 0.5 over a 10 s span must Scrub to 5 s"
     );
 }
@@ -227,12 +235,17 @@ fn snap_toggle_raises_toggle_event() {
     let mut state = TimelinePanelState::default();
 
     // Snap is registered on (default true); a Toggled event re-reads the store.
-    let outcome = host
-        .apply_panel_event::<TimelinePanel>(&mut state, WidgetEvent::Toggled(ids::TIMELINE_SNAP));
+    let outcome = host.apply_panel_event::<TimelinePanel>(
+        &mut state,
+        WidgetEvent::Toggled(ph2d_editor_core::ids::TIMELINE_SNAP),
+    );
     assert_eq!(outcome, EventOutcome::Consumed);
     assert_eq!(
         timeline_events(&mut host),
-        vec![PanelEvent::Toggle(ids::TIMELINE_SNAP, true)],
+        vec![PanelEvent::Toggle(
+            ph2d_editor_core::ids::TIMELINE_SNAP,
+            true
+        )],
         "snap toggle must carry its on-state for the shell to SetFrameSnap"
     );
 }
@@ -244,9 +257,11 @@ fn record_toggle_raises_toggle_event() {
     let mut host = MockPanelHost::with_panel::<TimelinePanel>();
     let mut state = TimelinePanelState::default();
     // Turn it on in the store, then fire the event (dispatch re-reads the store).
-    host.set_toggle_on(ids::TIMELINE_RECORD, true);
-    let outcome = host
-        .apply_panel_event::<TimelinePanel>(&mut state, WidgetEvent::Toggled(ids::TIMELINE_RECORD));
+    host.set_toggle_on(ph2d_editor_core::ids::TIMELINE_RECORD, true);
+    let outcome = host.apply_panel_event::<TimelinePanel>(
+        &mut state,
+        WidgetEvent::Toggled(ph2d_editor_core::ids::TIMELINE_RECORD),
+    );
     assert_eq!(
         outcome,
         EventOutcome::Consumed,
@@ -254,7 +269,10 @@ fn record_toggle_raises_toggle_event() {
     );
     assert_eq!(
         timeline_events(&mut host),
-        vec![PanelEvent::Toggle(ids::TIMELINE_RECORD, true)],
+        vec![PanelEvent::Toggle(
+            ph2d_editor_core::ids::TIMELINE_RECORD,
+            true
+        )],
         "Record must reach the shell so it arms performing (SetPerforming)"
     );
 }
@@ -299,7 +317,7 @@ fn delete_track_menu_click_raises_an_unbind_for_that_row() {
 
     let outcome = host.apply_panel_event::<TimelinePanel>(
         &mut state,
-        WidgetEvent::Click(ids::CTX_MENU_TL_DELETE_TRACK),
+        WidgetEvent::Click(ph2d_editor_core::ids::CTX_MENU_TL_DELETE_TRACK),
     );
     assert_eq!(
         outcome,
@@ -374,7 +392,7 @@ fn a_delete_for_a_row_gone_from_the_snapshot_expires_quietly() {
 
     let outcome = host.apply_panel_event::<TimelinePanel>(
         &mut state,
-        WidgetEvent::Click(ids::CTX_MENU_TL_DELETE_TRACK),
+        WidgetEvent::Click(ph2d_editor_core::ids::CTX_MENU_TL_DELETE_TRACK),
     );
     assert_eq!(outcome, EventOutcome::Consumed);
     assert!(

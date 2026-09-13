@@ -19,7 +19,7 @@ use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::EventOutcome;
 use ph2d_editor_core::tool::Tool; // brings `handle_panel_event` into scope
-use ph2d_panel_color_equalization::{ColorEqualizationPanel, ColorEqualizationPanelState, ids};
+use ph2d_panel_color_equalization::{ColorEqualizationPanel, ColorEqualizationPanelState};
 use ph2d_tool_color_equalization::ColorEqualizationTool;
 use ph2d_tool_color_equalization::params::{BRIGHTNESS_MAX, BRIGHTNESS_MIN};
 use ph2d_ui_testkit::MockPanelHost;
@@ -45,10 +45,10 @@ fn brightness_slider_drag_reaches_tool_params() {
 
     // A pointer drag writes the slider's stored value, then the dispatch
     // emits ValueChanged(id). Simulate both.
-    host.set_slider_value(ids::CEQ_BRIGHTNESS, 1.0);
+    host.set_slider_value(ph2d_tool_color_equalization::ids::CEQ_BRIGHTNESS, 1.0);
     let outcome = host.apply_panel_event::<ColorEqualizationPanel>(
         &mut panel_state,
-        WidgetEvent::ValueChanged(ids::CEQ_BRIGHTNESS),
+        WidgetEvent::ValueChanged(ph2d_tool_color_equalization::ids::CEQ_BRIGHTNESS),
     );
     assert_eq!(
         outcome,
@@ -94,10 +94,10 @@ fn brightness_slider_low_end_projects_to_min() {
     let mut panel_state = ColorEqualizationPanelState;
     let mut tool = ColorEqualizationTool::default();
 
-    host.set_slider_value(ids::CEQ_BRIGHTNESS, 0.0);
+    host.set_slider_value(ph2d_tool_color_equalization::ids::CEQ_BRIGHTNESS, 0.0);
     let outcome = host.apply_panel_event::<ColorEqualizationPanel>(
         &mut panel_state,
-        WidgetEvent::ValueChanged(ids::CEQ_BRIGHTNESS),
+        WidgetEvent::ValueChanged(ph2d_tool_color_equalization::ids::CEQ_BRIGHTNESS),
     );
     assert_eq!(
         outcome,

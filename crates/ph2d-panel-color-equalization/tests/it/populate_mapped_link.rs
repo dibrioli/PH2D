@@ -18,8 +18,6 @@ use ph2d_tool_color_equalization::params::{
     TILE_GRID_DEFAULT, TILE_GRID_MAX, TILE_GRID_MIN,
 };
 
-use ph2d_panel_color_equalization::ids;
-
 fn populated_store() -> WidgetStore {
     let mut store = WidgetStore::with_capacity(64);
     ColorEqualizationPanel::populate(&mut store);
@@ -86,8 +84,8 @@ fn clip_limit_pair_uses_correct_mapping() {
     assert_pair(
         &s,
         "CLIP_LIMIT",
-        ids::CEQ_CLIP_LIMIT,
-        ids::CEQ_CLIP_LIMIT_NUM,
+        ph2d_tool_color_equalization::ids::CEQ_CLIP_LIMIT,
+        ph2d_tool_color_equalization::ids::CEQ_CLIP_LIMIT_NUM,
         CLIP_LIMIT_DEFAULT,
         CLIP_LIMIT_MIN,
         CLIP_LIMIT_MAX,
@@ -100,8 +98,8 @@ fn tile_grid_pair_uses_correct_mapping() {
     assert_pair(
         &s,
         "TILE_GRID",
-        ids::CEQ_TILE_GRID,
-        ids::CEQ_TILE_GRID_NUM,
+        ph2d_tool_color_equalization::ids::CEQ_TILE_GRID,
+        ph2d_tool_color_equalization::ids::CEQ_TILE_GRID_NUM,
         TILE_GRID_DEFAULT as f32,
         TILE_GRID_MIN as f32,
         TILE_GRID_MAX as f32,
@@ -114,8 +112,8 @@ fn exposure_pair_uses_bipolar_mapping() {
     assert_pair(
         &s,
         "EXPOSURE",
-        ids::CEQ_EXPOSURE,
-        ids::CEQ_EXPOSURE_NUM,
+        ph2d_tool_color_equalization::ids::CEQ_EXPOSURE,
+        ph2d_tool_color_equalization::ids::CEQ_EXPOSURE_NUM,
         EXPOSURE_DEFAULT,
         EXPOSURE_MIN,
         EXPOSURE_MAX,
@@ -128,8 +126,8 @@ fn brightness_pair_uses_bipolar_mapping() {
     assert_pair(
         &s,
         "BRIGHTNESS",
-        ids::CEQ_BRIGHTNESS,
-        ids::CEQ_BRIGHTNESS_NUM,
+        ph2d_tool_color_equalization::ids::CEQ_BRIGHTNESS,
+        ph2d_tool_color_equalization::ids::CEQ_BRIGHTNESS_NUM,
         BRIGHTNESS_DEFAULT,
         BRIGHTNESS_MIN,
         BRIGHTNESS_MAX,
@@ -143,8 +141,8 @@ fn contrast_pair_uses_offset_mapping() {
     assert_pair(
         &s,
         "CONTRAST",
-        ids::CEQ_CONTRAST,
-        ids::CEQ_CONTRAST_NUM,
+        ph2d_tool_color_equalization::ids::CEQ_CONTRAST,
+        ph2d_tool_color_equalization::ids::CEQ_CONTRAST_NUM,
         CONTRAST_DEFAULT,
         CONTRAST_MIN,
         CONTRAST_MAX,
@@ -158,8 +156,8 @@ fn sharpen_radius_pair_uses_offset_mapping() {
     assert_pair(
         &s,
         "SHARPEN_RADIUS",
-        ids::CEQ_SHARPEN_RADIUS,
-        ids::CEQ_SHARPEN_RADIUS_NUM,
+        ph2d_tool_color_equalization::ids::CEQ_SHARPEN_RADIUS,
+        ph2d_tool_color_equalization::ids::CEQ_SHARPEN_RADIUS_NUM,
         SHARPEN_RADIUS_DEFAULT,
         SHARPEN_RADIUS_MIN,
         SHARPEN_RADIUS_MAX,
@@ -172,8 +170,8 @@ fn posterize_dither_grain_pair_uses_integer_mapping() {
     assert_pair(
         &s,
         "POSTERIZE_DITHER_GRAIN",
-        ids::CEQ_POSTERIZE_DITHER_GRAIN,
-        ids::CEQ_POSTERIZE_DITHER_GRAIN_NUM,
+        ph2d_tool_color_equalization::ids::CEQ_POSTERIZE_DITHER_GRAIN,
+        ph2d_tool_color_equalization::ids::CEQ_POSTERIZE_DITHER_GRAIN_NUM,
         POSTERIZE_DITHER_GRAIN_DEFAULT as f32,
         POSTERIZE_DITHER_GRAIN_MIN as f32,
         POSTERIZE_DITHER_GRAIN_MAX as f32,
@@ -189,17 +187,23 @@ fn chip_seed_in_natural_space_not_storage_space() {
     // display_override showed "+0.00" — typing parsed text was then
     // written to the slider 1:1 as if it were 0..1 storage.
     let s = populated_store();
-    let brightness_chip = s.number_value(ids::CEQ_BRIGHTNESS_NUM).expect("chip");
+    let brightness_chip = s
+        .number_value(ph2d_tool_color_equalization::ids::CEQ_BRIGHTNESS_NUM)
+        .expect("chip");
     assert!(
         (brightness_chip - BRIGHTNESS_DEFAULT as f64).abs() < 1e-5,
         "brightness chip must seed at natural default ({BRIGHTNESS_DEFAULT}), got {brightness_chip}"
     );
-    let exposure_chip = s.number_value(ids::CEQ_EXPOSURE_NUM).expect("chip");
+    let exposure_chip = s
+        .number_value(ph2d_tool_color_equalization::ids::CEQ_EXPOSURE_NUM)
+        .expect("chip");
     assert!(
         (exposure_chip - EXPOSURE_DEFAULT as f64).abs() < 1e-5,
         "exposure chip must seed at natural default ({EXPOSURE_DEFAULT}), got {exposure_chip}"
     );
-    let clip_chip = s.number_value(ids::CEQ_CLIP_LIMIT_NUM).expect("chip");
+    let clip_chip = s
+        .number_value(ph2d_tool_color_equalization::ids::CEQ_CLIP_LIMIT_NUM)
+        .expect("chip");
     assert!(
         (clip_chip - CLIP_LIMIT_DEFAULT as f64).abs() < 1e-5,
         "clip_limit chip must seed at natural default ({CLIP_LIMIT_DEFAULT}), got {clip_chip}"

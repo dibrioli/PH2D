@@ -10,7 +10,6 @@
 //! never re-runs.
 
 use crate::ColorEqualizationPanelState;
-use crate::ids;
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetEvent};
@@ -31,26 +30,65 @@ fn slider_for_widget(id: NodeId) -> Option<NodeId> {
     // touches populate + paint + this table (and the tool's
     // `handle_panel_event` + `apply_ui_edit`).
     let pairs: &[(NodeId, NodeId)] = &[
-        (ids::CEQ_CLIP_LIMIT, ids::CEQ_CLIP_LIMIT_NUM),
-        (ids::CEQ_TILE_GRID, ids::CEQ_TILE_GRID_NUM),
-        (ids::CEQ_EXPOSURE, ids::CEQ_EXPOSURE_NUM),
-        (ids::CEQ_TEMPERATURE, ids::CEQ_TEMPERATURE_NUM),
-        (ids::CEQ_TINT, ids::CEQ_TINT_NUM),
-        (ids::CEQ_BRIGHTNESS, ids::CEQ_BRIGHTNESS_NUM),
-        (ids::CEQ_CONTRAST, ids::CEQ_CONTRAST_NUM),
-        (ids::CEQ_VIBRANCE, ids::CEQ_VIBRANCE_NUM),
-        (ids::CEQ_SATURATION, ids::CEQ_SATURATION_NUM),
-        (ids::CEQ_SHARPEN_AMOUNT, ids::CEQ_SHARPEN_AMOUNT_NUM),
-        (ids::CEQ_SHARPEN_RADIUS, ids::CEQ_SHARPEN_RADIUS_NUM),
-        (ids::CEQ_LUT_INTENSITY, ids::CEQ_LUT_INTENSITY_NUM),
-        (ids::CEQ_LUT_MIX, ids::CEQ_LUT_MIX_NUM),
         (
-            ids::CEQ_POSTERIZE_DITHER_STRENGTH,
-            ids::CEQ_POSTERIZE_DITHER_STRENGTH_NUM,
+            ph2d_tool_color_equalization::ids::CEQ_CLIP_LIMIT,
+            ph2d_tool_color_equalization::ids::CEQ_CLIP_LIMIT_NUM,
         ),
         (
-            ids::CEQ_POSTERIZE_DITHER_GRAIN,
-            ids::CEQ_POSTERIZE_DITHER_GRAIN_NUM,
+            ph2d_tool_color_equalization::ids::CEQ_TILE_GRID,
+            ph2d_tool_color_equalization::ids::CEQ_TILE_GRID_NUM,
+        ),
+        (
+            ph2d_tool_color_equalization::ids::CEQ_EXPOSURE,
+            ph2d_tool_color_equalization::ids::CEQ_EXPOSURE_NUM,
+        ),
+        (
+            ph2d_tool_color_equalization::ids::CEQ_TEMPERATURE,
+            ph2d_tool_color_equalization::ids::CEQ_TEMPERATURE_NUM,
+        ),
+        (
+            ph2d_tool_color_equalization::ids::CEQ_TINT,
+            ph2d_tool_color_equalization::ids::CEQ_TINT_NUM,
+        ),
+        (
+            ph2d_tool_color_equalization::ids::CEQ_BRIGHTNESS,
+            ph2d_tool_color_equalization::ids::CEQ_BRIGHTNESS_NUM,
+        ),
+        (
+            ph2d_tool_color_equalization::ids::CEQ_CONTRAST,
+            ph2d_tool_color_equalization::ids::CEQ_CONTRAST_NUM,
+        ),
+        (
+            ph2d_tool_color_equalization::ids::CEQ_VIBRANCE,
+            ph2d_tool_color_equalization::ids::CEQ_VIBRANCE_NUM,
+        ),
+        (
+            ph2d_tool_color_equalization::ids::CEQ_SATURATION,
+            ph2d_tool_color_equalization::ids::CEQ_SATURATION_NUM,
+        ),
+        (
+            ph2d_tool_color_equalization::ids::CEQ_SHARPEN_AMOUNT,
+            ph2d_tool_color_equalization::ids::CEQ_SHARPEN_AMOUNT_NUM,
+        ),
+        (
+            ph2d_tool_color_equalization::ids::CEQ_SHARPEN_RADIUS,
+            ph2d_tool_color_equalization::ids::CEQ_SHARPEN_RADIUS_NUM,
+        ),
+        (
+            ph2d_tool_color_equalization::ids::CEQ_LUT_INTENSITY,
+            ph2d_tool_color_equalization::ids::CEQ_LUT_INTENSITY_NUM,
+        ),
+        (
+            ph2d_tool_color_equalization::ids::CEQ_LUT_MIX,
+            ph2d_tool_color_equalization::ids::CEQ_LUT_MIX_NUM,
+        ),
+        (
+            ph2d_tool_color_equalization::ids::CEQ_POSTERIZE_DITHER_STRENGTH,
+            ph2d_tool_color_equalization::ids::CEQ_POSTERIZE_DITHER_STRENGTH_NUM,
+        ),
+        (
+            ph2d_tool_color_equalization::ids::CEQ_POSTERIZE_DITHER_GRAIN,
+            ph2d_tool_color_equalization::ids::CEQ_POSTERIZE_DITHER_GRAIN_NUM,
         ),
     ];
     pairs
@@ -65,10 +103,10 @@ fn slider_for_widget(id: NodeId) -> Option<NodeId> {
 /// → typed edit via the parallel `CEQ_*_OPTS` arrays in
 /// `handle_panel_event`.
 fn is_dropdown_option(id: NodeId) -> bool {
-    ids::CEQ_LUT_1_OPTS.contains(&id)
-        || ids::CEQ_LUT_2_OPTS.contains(&id)
-        || ids::CEQ_POSTERIZE_OPTS.contains(&id)
-        || ids::CEQ_QUANTIZE_OPTS.contains(&id)
+    ph2d_tool_color_equalization::ids::CEQ_LUT_1_OPTS.contains(&id)
+        || ph2d_tool_color_equalization::ids::CEQ_LUT_2_OPTS.contains(&id)
+        || ph2d_tool_color_equalization::ids::CEQ_POSTERIZE_OPTS.contains(&id)
+        || ph2d_tool_color_equalization::ids::CEQ_QUANTIZE_OPTS.contains(&id)
 }
 
 /// All buttons + toggles that need to forward `Click` (and `Toggle`,
@@ -77,13 +115,13 @@ fn is_dropdown_option(id: NodeId) -> bool {
 /// panel event. Option clicks are forwarded by `is_dropdown_option`
 /// above.
 const FORWARD_CLICK_IDS: &[NodeId] = &[
-    ids::CEQ_APPLY,
-    ids::CEQ_RESET,
-    ids::CEQ_AUTO_LEVELS,
-    ids::CEQ_AUTO_CONTRAST,
-    ids::CEQ_AUTO_COLORS,
-    ids::CEQ_AUTO_WB,
-    ids::CEQ_POSTERIZE_DITHERING,
+    ph2d_tool_color_equalization::ids::CEQ_APPLY,
+    ph2d_tool_color_equalization::ids::CEQ_RESET,
+    ph2d_tool_color_equalization::ids::CEQ_AUTO_LEVELS,
+    ph2d_tool_color_equalization::ids::CEQ_AUTO_CONTRAST,
+    ph2d_tool_color_equalization::ids::CEQ_AUTO_COLORS,
+    ph2d_tool_color_equalization::ids::CEQ_AUTO_WB,
+    ph2d_tool_color_equalization::ids::CEQ_POSTERIZE_DITHERING,
 ];
 
 pub(crate) fn apply_event(
@@ -154,7 +192,7 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
                 .push(EditorAction::ToolPanelEvent(PanelEvent::Toggle(id, false)));
             true
         }
-        WidgetEvent::Click(id) if id == ids::CEQ_CANCEL => {
+        WidgetEvent::Click(id) if id == ph2d_tool_color_equalization::ids::CEQ_CANCEL => {
             reset_button(host, id);
             host.bus_mut().push(EditorAction::CancelActiveTool);
             true

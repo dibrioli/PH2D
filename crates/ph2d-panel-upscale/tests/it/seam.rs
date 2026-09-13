@@ -18,8 +18,8 @@ use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::EventOutcome;
 use ph2d_editor_core::tool::Tool; // brings `handle_panel_event` into scope
+use ph2d_panel_upscale::UpscalePanel;
 use ph2d_panel_upscale::state::UpscalePanelState;
-use ph2d_panel_upscale::{UpscalePanel, ids};
 use ph2d_tool_upscale::UpscaleTool;
 use ph2d_tool_upscale::params::{UpscaleAlgorithm, slider_to_scale};
 use ph2d_ui_testkit::MockPanelHost;
@@ -44,10 +44,10 @@ fn scale_slider_drag_reaches_tool_params() {
 
     // A drag writes the slider's stored track value, then the dispatch
     // emits ValueChanged. Simulate both. track=1.0 → full scale.
-    host.set_slider_value(ids::UPS_SCALE, 1.0);
+    host.set_slider_value(ph2d_tool_upscale::tool::ids::UPS_SCALE, 1.0);
     let outcome = host.apply_panel_event::<UpscalePanel>(
         &mut panel_state,
-        WidgetEvent::ValueChanged(ids::UPS_SCALE),
+        WidgetEvent::ValueChanged(ph2d_tool_upscale::tool::ids::UPS_SCALE),
     );
 
     assert_eq!(
@@ -106,7 +106,7 @@ fn algorithm_segment_click_reaches_tool_params() {
 
     let outcome = host.apply_panel_event::<UpscalePanel>(
         &mut panel_state,
-        WidgetEvent::Click(ids::UPS_ALGO_NEAREST),
+        WidgetEvent::Click(ph2d_tool_upscale::tool::ids::UPS_ALGO_NEAREST),
     );
     assert_eq!(
         outcome,
@@ -141,8 +141,10 @@ fn apply_button_arms_the_bake() {
     let mut panel_state = UpscalePanelState;
     let mut tool = UpscaleTool::default();
 
-    let outcome = host
-        .apply_panel_event::<UpscalePanel>(&mut panel_state, WidgetEvent::Click(ids::UPS_APPLY));
+    let outcome = host.apply_panel_event::<UpscalePanel>(
+        &mut panel_state,
+        WidgetEvent::Click(ph2d_tool_upscale::tool::ids::UPS_APPLY),
+    );
     assert_eq!(
         outcome,
         EventOutcome::Consumed,

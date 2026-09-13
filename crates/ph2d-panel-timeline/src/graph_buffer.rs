@@ -97,7 +97,7 @@ fn paint_buffer_chip(
     ctx.host.store_mut().register(
         id,
         InteractiveState::TimelineSurface {
-            parent: ids::TIMELINE_PANEL,
+            parent: ph2d_editor_core::ids::TIMELINE_PANEL,
             kind: TimelineHitKind::GraphBufferButton { target, action },
             canvas: rect,
         },

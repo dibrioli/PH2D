@@ -9,8 +9,8 @@
 use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::tool::PanelEvent;
 use ph2d_editor_core::zones::Rect;
+use ph2d_panel_vector::VectorPanel;
 use ph2d_panel_vector::state::VectorPanelState;
-use ph2d_panel_vector::{VectorPanel, ids};
 use ph2d_tool_vector::{VertexSel, VertexType};
 use ph2d_ui_testkit::MockPanelHost;
 
@@ -39,7 +39,10 @@ fn the_node_coordinate_rows_are_painted_and_what_is_typed_reaches_the_bus() {
     let mut host = MockPanelHost::with_panel::<VectorPanel>();
     let mut panel_state = VectorPanelState;
 
-    for (id, name) in [(ids::VECTOR_VERT_X, "X"), (ids::VECTOR_VERT_Y, "Y")] {
+    for (id, name) in [
+        (ph2d_editor_core::ids::VECTOR_VERT_X, "X"),
+        (ph2d_editor_core::ids::VECTOR_VERT_Y, "Y"),
+    ] {
         assert!(
             host.painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, id)
                 .is_some(),
@@ -50,7 +53,7 @@ fn the_node_coordinate_rows_are_painted_and_what_is_typed_reaches_the_bus() {
     // A faixa e o link do chip nascem no `paint` — digitar antes de pintar mede uma fixture que o
     // produto não tem.
     host.paint::<VectorPanel>(&mut panel_state, VIEWPORT);
-    let evs = host.type_into_number(ids::VECTOR_VERT_X, "30");
+    let evs = host.type_into_number(ph2d_editor_core::ids::VECTOR_VERT_X, "30");
     for ev in evs {
         host.apply_panel_event::<VectorPanel>(&mut panel_state, ev);
     }
@@ -59,7 +62,7 @@ fn the_node_coordinate_rows_are_painted_and_what_is_typed_reaches_the_bus() {
         matches!(
             a,
             EditorAction::ToolPanelEvent(PanelEvent::SetValue(id, v))
-                if *id == ids::VECTOR_VERT_X && (*v - 30.0).abs() < 1e-9
+                if *id == ph2d_editor_core::ids::VECTOR_VERT_X && (*v - 30.0).abs() < 1e-9
         )
     });
     assert!(
@@ -81,7 +84,10 @@ fn without_a_median_the_rows_are_not_offered() {
     let mut host = MockPanelHost::with_panel::<VectorPanel>();
     let mut panel_state = VectorPanelState;
 
-    for (id, name) in [(ids::VECTOR_VERT_X, "X"), (ids::VECTOR_VERT_Y, "Y")] {
+    for (id, name) in [
+        (ph2d_editor_core::ids::VECTOR_VERT_X, "X"),
+        (ph2d_editor_core::ids::VECTOR_VERT_Y, "Y"),
+    ] {
         assert!(
             host.painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, id)
                 .is_none(),
@@ -90,8 +96,12 @@ fn without_a_median_the_rows_are_not_offered() {
     }
     // CONTROLE: a seção Vertex continua lá — o que some são as duas fileiras, não a seção.
     assert!(
-        host.painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, ids::VECTOR_VERT_DELETE)
-            .is_some(),
+        host.painted_rect::<VectorPanel>(
+            &mut panel_state,
+            VIEWPORT,
+            ph2d_editor_core::ids::VECTOR_VERT_DELETE
+        )
+        .is_some(),
         "o Delete Node tem de continuar pintado — se ele sumiu, a fixture não montou a seção e as \
          duas asserções acima estavam a varrer o vazio"
     );

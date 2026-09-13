@@ -70,15 +70,24 @@ impl BodyCtx<'_> {
         // ⚠️ E eles só existem quando há mediana: um índice que já não descreve vértice nenhum
         // sai da conta, e sem conta não há número a mostrar.
         if state::current_vertex_pos().is_some() {
-            y = self.number_row("X", ids::VECTOR_VERT_X, "Y", ids::VECTOR_VERT_Y, y);
+            y = self.number_row(
+                "X",
+                ph2d_editor_core::ids::VECTOR_VERT_X,
+                "Y",
+                ph2d_editor_core::ids::VECTOR_VERT_Y,
+                y,
+            );
         }
         // **A ESCALA da seleção** (plano 25 §6, W3b): dois alcances que o retângulo não dá.
         // São BOTÕES e não atalhos porque um atalho que ninguém descobre é uma feature que não
         // existe — e estes dois são exatamente os que tornam uma forma de 40 nós trabalhável.
         // O `Ctrl+A` (todos os nós) fica na tecla: esse o artista tenta sozinho.
         let sel: [(ph2d_a11y::NodeId, &str); 2] = [
-            (ids::VECTOR_VERT_SEL_SUBPATH, "Select Subpath"),
-            (ids::VECTOR_VERT_SEL_SAME, "Select Same"),
+            (
+                ph2d_editor_core::ids::VECTOR_VERT_SEL_SUBPATH,
+                "Select Subpath",
+            ),
+            (ph2d_editor_core::ids::VECTOR_VERT_SEL_SAME, "Select Same"),
         ];
         let gap = Spacing::Xs.px();
         let w = ((self.inner_w - gap) / 2.0).max(1.0);
@@ -95,13 +104,13 @@ impl BodyCtx<'_> {
                 w,
                 gap,
                 [
-                    (ids::VECTOR_VERT_AVERAGE, "Average"),
-                    (ids::VECTOR_VERT_DELETE, "Delete Node"),
+                    (ph2d_editor_core::ids::VECTOR_VERT_AVERAGE, "Average"),
+                    (ph2d_editor_core::ids::VECTOR_VERT_DELETE, "Delete Node"),
                 ],
                 y,
             );
         } else {
-            y = self.action_button(ids::VECTOR_VERT_DELETE, "Delete Node", y);
+            y = self.action_button(ph2d_editor_core::ids::VECTOR_VERT_DELETE, "Delete Node", y);
         }
         y
     }

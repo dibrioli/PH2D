@@ -37,7 +37,7 @@
 //! inert-but-hidden both fail.
 
 use ph2d_editor_core::zones::Rect;
-use ph2d_panel_color_equalization::{ColorEqualizationPanel, ColorEqualizationPanelState, ids};
+use ph2d_panel_color_equalization::{ColorEqualizationPanel, ColorEqualizationPanelState};
 use ph2d_tool_color_equalization::lut_presets::LutPreset;
 use ph2d_tool_color_equalization::params::{
     CLIP_LIMIT_MAX, CLIP_LIMIT_MIN, ColorEqualizationUiSnapshot,
@@ -78,7 +78,7 @@ fn the_tile_grid_row_is_reachable_exactly_when_clahe_runs() {
             ..ColorEqualizationUiSnapshot::default()
         };
         let ids_hit = reachable(snap);
-        let painted = ids_hit.contains(&ids::CEQ_TILE_GRID);
+        let painted = ids_hit.contains(&ph2d_tool_color_equalization::ids::CEQ_TILE_GRID);
         let runs = stage::clahe_runs(clip);
         assert_eq!(
             painted, runs,
@@ -87,14 +87,14 @@ fn the_tile_grid_row_is_reachable_exactly_when_clahe_runs() {
         );
         // The chip travels with its slider — one control, one fate.
         assert_eq!(
-            ids_hit.contains(&ids::CEQ_TILE_GRID_NUM),
+            ids_hit.contains(&ph2d_tool_color_equalization::ids::CEQ_TILE_GRID_NUM),
             runs,
             "clip_limit={clip}: the Tile Grid CHIP and its slider disagree"
         );
         // Control: Clip itself is the stage's on-switch and must never
         // vanish, or the artist loses the way back.
         assert!(
-            ids_hit.contains(&ids::CEQ_CLIP_LIMIT),
+            ids_hit.contains(&ph2d_tool_color_equalization::ids::CEQ_CLIP_LIMIT),
             "clip_limit={clip}: Clip is the CLAHE on-switch and must stay reachable"
         );
     }
@@ -117,7 +117,7 @@ fn the_lut_mix_row_is_reachable_exactly_when_two_cubes_are_blended() {
                     ..ColorEqualizationUiSnapshot::default()
                 };
                 let ids_hit = reachable(snap);
-                let painted = ids_hit.contains(&ids::CEQ_LUT_MIX);
+                let painted = ids_hit.contains(&ph2d_tool_color_equalization::ids::CEQ_LUT_MIX);
                 let runs = stage::lut_blend_runs(intensity, a, b);
                 assert_eq!(
                     painted, runs,
@@ -125,7 +125,7 @@ fn the_lut_mix_row_is_reachable_exactly_when_two_cubes_are_blended() {
                      but the blend that consumes lut_mix runs={runs}"
                 );
                 assert_eq!(
-                    ids_hit.contains(&ids::CEQ_LUT_MIX_NUM),
+                    ids_hit.contains(&ph2d_tool_color_equalization::ids::CEQ_LUT_MIX_NUM),
                     runs,
                     "presets=({a:?},{b:?}) intensity={intensity}: chip and slider disagree"
                 );
@@ -150,10 +150,10 @@ fn the_dither_rows_are_reachable_exactly_when_the_dither_pass_runs() {
             let ids_hit = reachable(snap);
             let pass_runs = stage::dither_runs(levels, dithering);
             for id in [
-                ids::CEQ_POSTERIZE_DITHER_STRENGTH,
-                ids::CEQ_POSTERIZE_DITHER_STRENGTH_NUM,
-                ids::CEQ_POSTERIZE_DITHER_GRAIN,
-                ids::CEQ_POSTERIZE_DITHER_GRAIN_NUM,
+                ph2d_tool_color_equalization::ids::CEQ_POSTERIZE_DITHER_STRENGTH,
+                ph2d_tool_color_equalization::ids::CEQ_POSTERIZE_DITHER_STRENGTH_NUM,
+                ph2d_tool_color_equalization::ids::CEQ_POSTERIZE_DITHER_GRAIN,
+                ph2d_tool_color_equalization::ids::CEQ_POSTERIZE_DITHER_GRAIN_NUM,
             ] {
                 assert_eq!(
                     ids_hit.contains(&id),
@@ -166,13 +166,13 @@ fn the_dither_rows_are_reachable_exactly_when_the_dither_pass_runs() {
             // The toggle is one door up: it only needs a Posterize stage
             // to modify.
             assert_eq!(
-                ids_hit.contains(&ids::CEQ_POSTERIZE_DITHERING),
+                ids_hit.contains(&ph2d_tool_color_equalization::ids::CEQ_POSTERIZE_DITHERING),
                 stage::posterize_runs(levels),
                 "levels={levels}: the Dither toggle and the Posterize stage disagree"
             );
             // Control: Posterize is the on-switch and never vanishes.
             assert!(
-                ids_hit.contains(&ids::CEQ_POSTERIZE_DROPDOWN),
+                ids_hit.contains(&ph2d_tool_color_equalization::ids::CEQ_POSTERIZE_DROPDOWN),
                 "levels={levels}: Posterize is the on-switch and must stay reachable"
             );
         }
@@ -186,13 +186,31 @@ fn the_dither_rows_are_reachable_exactly_when_the_dither_pass_runs() {
 fn the_panel_as_it_is_born_offers_no_inert_control() {
     let ids_hit = reachable(ColorEqualizationUiSnapshot::default());
     for (id, name) in [
-        (ids::CEQ_TILE_GRID, "Tile Grid"),
-        (ids::CEQ_TILE_GRID_NUM, "Tile Grid chip"),
-        (ids::CEQ_LUT_MIX, "LUT Mix"),
-        (ids::CEQ_LUT_MIX_NUM, "LUT Mix chip"),
-        (ids::CEQ_POSTERIZE_DITHERING, "Dither toggle"),
-        (ids::CEQ_POSTERIZE_DITHER_STRENGTH, "Dither Strength"),
-        (ids::CEQ_POSTERIZE_DITHER_GRAIN, "Dither Grain"),
+        (
+            ph2d_tool_color_equalization::ids::CEQ_TILE_GRID,
+            "Tile Grid",
+        ),
+        (
+            ph2d_tool_color_equalization::ids::CEQ_TILE_GRID_NUM,
+            "Tile Grid chip",
+        ),
+        (ph2d_tool_color_equalization::ids::CEQ_LUT_MIX, "LUT Mix"),
+        (
+            ph2d_tool_color_equalization::ids::CEQ_LUT_MIX_NUM,
+            "LUT Mix chip",
+        ),
+        (
+            ph2d_tool_color_equalization::ids::CEQ_POSTERIZE_DITHERING,
+            "Dither toggle",
+        ),
+        (
+            ph2d_tool_color_equalization::ids::CEQ_POSTERIZE_DITHER_STRENGTH,
+            "Dither Strength",
+        ),
+        (
+            ph2d_tool_color_equalization::ids::CEQ_POSTERIZE_DITHER_GRAIN,
+            "Dither Grain",
+        ),
     ] {
         assert!(
             !ids_hit.contains(&id),
@@ -201,9 +219,15 @@ fn the_panel_as_it_is_born_offers_no_inert_control() {
     }
     // And the panel is not empty — the on-switches are all there.
     for (id, name) in [
-        (ids::CEQ_CLIP_LIMIT, "Clip"),
-        (ids::CEQ_LUT_INTENSITY, "LUT Intensity"),
-        (ids::CEQ_POSTERIZE_DROPDOWN, "Posterize"),
+        (ph2d_tool_color_equalization::ids::CEQ_CLIP_LIMIT, "Clip"),
+        (
+            ph2d_tool_color_equalization::ids::CEQ_LUT_INTENSITY,
+            "LUT Intensity",
+        ),
+        (
+            ph2d_tool_color_equalization::ids::CEQ_POSTERIZE_DROPDOWN,
+            "Posterize",
+        ),
     ] {
         assert!(
             ids_hit.contains(&id),

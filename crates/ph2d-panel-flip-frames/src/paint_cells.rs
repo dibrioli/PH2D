@@ -172,7 +172,7 @@ fn paint_cell(
     ctx.host.store_mut().register(
         id,
         InteractiveState::FlipStripSurface {
-            parent: ids::FLIP_STRIP_PANEL,
+            parent: ph2d_editor_core::ids::FLIP_STRIP_PANEL,
             kind: FlipStripHitKind::Cell {
                 index: u16::try_from(i).unwrap_or(u16::MAX),
             },
@@ -256,7 +256,7 @@ fn paint_cell(
         ctx.host.store_mut().register(
             eid,
             InteractiveState::FlipStripSurface {
-                parent: ids::FLIP_STRIP_PANEL,
+                parent: ph2d_editor_core::ids::FLIP_STRIP_PANEL,
                 kind: FlipStripHitKind::HoldEdge {
                     index: u16::try_from(i).unwrap_or(u16::MAX),
                 },

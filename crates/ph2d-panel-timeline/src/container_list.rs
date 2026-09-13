@@ -226,7 +226,7 @@ fn paint_row(
     ctx.host.store_mut().register(
         ids::TIMELINE_CONT_ROW[index],
         InteractiveState::TimelineSurface {
-            parent: ids::TIMELINE_PANEL,
+            parent: ph2d_editor_core::ids::TIMELINE_PANEL,
             kind: TimelineHitKind::ContainerRow { index },
             canvas: row,
         },

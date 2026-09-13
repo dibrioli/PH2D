@@ -95,8 +95,16 @@ pub(crate) fn body(r: &mut RowCtx, y: f32) -> f32 {
             tr("panel.vector.bone.transform"),
         ];
         let acoes: [(NodeId, &str, bool); 2] = [
-            (ids::VECTOR_BONE_ACT_CREATE, rotulos[0], aceso(armado, 0)),
-            (ids::VECTOR_BONE_ACT_TRANSFORM, rotulos[1], aceso(armado, 1)),
+            (
+                ph2d_tool_vector::ids::VECTOR_BONE_ACT_CREATE,
+                rotulos[0],
+                aceso(armado, 0),
+            ),
+            (
+                ph2d_tool_vector::ids::VECTOR_BONE_ACT_TRANSFORM,
+                rotulos[1],
+                aceso(armado, 1),
+            ),
         ];
         y = r.segmented(tr("panel.vector.bone.action"), &acoes, y);
     }
@@ -132,12 +140,12 @@ pub(crate) fn body(r: &mut RowCtx, y: f32) -> f32 {
         let escolhido = state::skin_deform();
         let modos: [(NodeId, &str, bool); 2] = [
             (
-                ids::VECTOR_BONE_DEFORM_FAST,
+                ph2d_tool_vector::ids::VECTOR_BONE_DEFORM_FAST,
                 tr("panel.vector.bone.deform.fast"),
                 escolhido == 0,
             ),
             (
-                ids::VECTOR_BONE_DEFORM_SMOOTH,
+                ph2d_tool_vector::ids::VECTOR_BONE_DEFORM_SMOOTH,
                 tr("panel.vector.bone.deform.smooth"),
                 escolhido == 1,
             ),

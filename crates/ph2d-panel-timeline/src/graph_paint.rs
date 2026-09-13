@@ -158,7 +158,7 @@ fn paint_height_grip(
     ctx.host.store_mut().register(
         id,
         InteractiveState::TimelineSurface {
-            parent: ids::TIMELINE_PANEL,
+            parent: ph2d_editor_core::ids::TIMELINE_PANEL,
             kind: TimelineHitKind::GraphResize,
             canvas: strip,
         },
@@ -299,7 +299,7 @@ fn paint_anchors(
         ctx.host.store_mut().register(
             id,
             InteractiveState::TimelineSurface {
-                parent: ids::TIMELINE_PANEL,
+                parent: ph2d_editor_core::ids::TIMELINE_PANEL,
                 kind: TimelineHitKind::CurveAnchor {
                     target,
                     key: k.id.get(),
@@ -369,7 +369,7 @@ fn paint_handles(
             ctx.host.store_mut().register(
                 id,
                 InteractiveState::TimelineSurface {
-                    parent: ids::TIMELINE_PANEL,
+                    parent: ph2d_editor_core::ids::TIMELINE_PANEL,
                     kind: TimelineHitKind::CurveHandle {
                         target,
                         key: k0.id.get(),
@@ -514,7 +514,7 @@ fn paint_speed_handles(
             ctx.host.store_mut().register(
                 id,
                 InteractiveState::TimelineSurface {
-                    parent: ids::TIMELINE_PANEL,
+                    parent: ph2d_editor_core::ids::TIMELINE_PANEL,
                     kind: TimelineHitKind::CurveHandle {
                         target,
                         key: k0.id.get(),

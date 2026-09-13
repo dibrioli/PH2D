@@ -122,7 +122,7 @@ fn paint_lock(ctx: &mut PaintCtx, theme: Theme, rect: Rect, locked: bool) {
     ctx.host.store_mut().register(
         ids::TIMELINE_SUMMARY_LOCK,
         InteractiveState::TimelineSurface {
-            parent: ids::TIMELINE_PANEL,
+            parent: ph2d_editor_core::ids::TIMELINE_PANEL,
             kind: TimelineHitKind::SummaryLock,
             canvas: rect,
         },
@@ -182,7 +182,7 @@ fn paint_column(
     ctx.host.store_mut().register(
         id,
         InteractiveState::TimelineSurface {
-            parent: ids::TIMELINE_PANEL,
+            parent: ph2d_editor_core::ids::TIMELINE_PANEL,
             kind: TimelineHitKind::SummaryKey { t_bits: c.t_bits() },
             canvas: lane,
         },

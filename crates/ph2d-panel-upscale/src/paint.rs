@@ -92,7 +92,7 @@ pub(crate) fn paint(_state: &mut UpscalePanelState, ctx: &mut PaintCtx) {
     // chrome, not inside the scrollable body).
     ph2d_editor_core::widget::panel_chrome::paint_panel_close_button(
         rect,
-        ids::UPS_CANCEL,
+        ph2d_tool_upscale::tool::ids::UPS_CANCEL,
         ctx.host.hit_index_mut(),
         ctx.scene,
         theme,
@@ -126,7 +126,7 @@ pub(crate) fn paint(_state: &mut UpscalePanelState, ctx: &mut PaintCtx) {
     paint_scrollbar_and_publish(ctx, body_rect, content_h, body_h, scroll, theme);
 
     ctx.host.hit_index_mut().register(
-        ids::UPS_CANCEL,
+        ph2d_tool_upscale::tool::ids::UPS_CANCEL,
         ph2d_editor_core::widget::panel_chrome::panel_close_button_rect(rect),
     );
 }
@@ -154,17 +154,17 @@ fn paint_body_sections(
         (
             "Lanczos3",
             snapshot.algorithm == UpscaleAlgorithm::Lanczos3,
-            ids::UPS_ALGO_LANCZOS3,
+            ph2d_tool_upscale::tool::ids::UPS_ALGO_LANCZOS3,
         ),
         (
             "Nearest",
             snapshot.algorithm == UpscaleAlgorithm::Nearest,
-            ids::UPS_ALGO_NEAREST,
+            ph2d_tool_upscale::tool::ids::UPS_ALGO_NEAREST,
         ),
         (
             "EPX",
             snapshot.algorithm == UpscaleAlgorithm::Epx,
-            ids::UPS_ALGO_EPX,
+            ph2d_tool_upscale::tool::ids::UPS_ALGO_EPX,
         ),
     ];
     let seg_rect = Rect::new(inner_x, y, inner_w, row_h);
@@ -194,7 +194,7 @@ fn paint_body_sections(
     // here — which is what this line used to do — is the most expensive
     // shape of a dead control: the artist confirms it and is wrong.
     let track = store
-        .slider(ids::UPS_SCALE)
+        .slider(ph2d_tool_upscale::tool::ids::UPS_SCALE)
         .map(|(_, v)| v)
         .unwrap_or_else(|| scale_to_slider(snapshot.scale_factor));
     let factor_display = format!("{:.2}×", effective_factor(snapshot.algorithm, track));
@@ -204,8 +204,8 @@ fn paint_body_sections(
         track,
         track as f64,
         Some(&factor_display),
-        ids::UPS_SCALE,
-        ids::UPS_SCALE_NUM,
+        ph2d_tool_upscale::tool::ids::UPS_SCALE,
+        ph2d_tool_upscale::tool::ids::UPS_SCALE_NUM,
         LABEL_COL_W,
         chip_w,
         store,
@@ -252,31 +252,31 @@ fn paint_body_sections(
 
     // ── Reset (ghost, full width) row ──────────────────────────────
     let reset_rect = Rect::new(inner_x, y, inner_w, row_h);
-    let reset_state = store.button_visual(ids::UPS_RESET);
-    let reset = Button::new(ids::UPS_RESET, "Reset to Defaults")
+    let reset_state = store.button_visual(ph2d_tool_upscale::tool::ids::UPS_RESET);
+    let reset = Button::new(ph2d_tool_upscale::tool::ids::UPS_RESET, "Reset to Defaults")
         .kind(ButtonKind::Default)
         .visual(reset_state);
     paint_button(&reset, reset_rect, scene, text_system, theme);
-    hit_index.register(ids::UPS_RESET, reset_rect);
+    hit_index.register(ph2d_tool_upscale::tool::ids::UPS_RESET, reset_rect);
     y += row_h + row_gap;
 
     // ── Cancel (ghost) + Apply (accent CTA) row ────────────────────
     // ⭐⭐ `Cancel | Apply` é UM par (wave 20) — ver o irmão no `ph2d-panel-padding`.
     let seg = ph2d_editor_core::widget::segment_rects(Rect::new(inner_x, y, inner_w, row_h), 2);
-    let cancel_state = store.button_visual(ids::UPS_CANCEL);
-    let cancel = Button::new(ids::UPS_CANCEL, "Cancel")
+    let cancel_state = store.button_visual(ph2d_tool_upscale::tool::ids::UPS_CANCEL);
+    let cancel = Button::new(ph2d_tool_upscale::tool::ids::UPS_CANCEL, "Cancel")
         .kind(ButtonKind::Default)
         .visual(cancel_state)
         .in_group(seg[0].1);
     paint_button(&cancel, seg[0].0, scene, text_system, theme);
-    hit_index.register(ids::UPS_CANCEL, seg[0].0);
-    let apply_state = store.button_visual(ids::UPS_APPLY);
-    let apply = Button::new(ids::UPS_APPLY, "Apply")
+    hit_index.register(ph2d_tool_upscale::tool::ids::UPS_CANCEL, seg[0].0);
+    let apply_state = store.button_visual(ph2d_tool_upscale::tool::ids::UPS_APPLY);
+    let apply = Button::new(ph2d_tool_upscale::tool::ids::UPS_APPLY, "Apply")
         .kind(ButtonKind::Accent)
         .visual(apply_state)
         .in_group(seg[1].1);
     paint_button(&apply, seg[1].0, scene, text_system, theme);
-    hit_index.register(ids::UPS_APPLY, seg[1].0);
+    hit_index.register(ph2d_tool_upscale::tool::ids::UPS_APPLY, seg[1].0);
     y += row_h;
     y
 }

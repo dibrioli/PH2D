@@ -55,9 +55,21 @@ fn addable() {
 #[test]
 fn every_contour_button_reaches_the_bus() {
     for (id, name, arm) in [
-        (ids::VECTOR_CONTOUR_ADD, "Add Contour", false),
-        (ids::VECTOR_CONTOUR_EXPAND, "Expand Contour", true),
-        (ids::VECTOR_CONTOUR_REMOVE, "Remove Contour", true),
+        (
+            ph2d_editor_core::ids::VECTOR_CONTOUR_ADD,
+            "Add Contour",
+            false,
+        ),
+        (
+            ph2d_editor_core::ids::VECTOR_CONTOUR_EXPAND,
+            "Expand Contour",
+            true,
+        ),
+        (
+            ph2d_editor_core::ids::VECTOR_CONTOUR_REMOVE,
+            "Remove Contour",
+            true,
+        ),
         (ids::VECTOR_CONTOUR_JOIN_MITER, "Corner: Miter", true),
         (ids::VECTOR_CONTOUR_JOIN_ROUND, "Corner: Round", true),
         (ids::VECTOR_CONTOUR_JOIN_BEVEL, "Corner: Bevel", true),
@@ -112,14 +124,30 @@ fn the_section_shows_the_button_or_the_controls_never_both() {
         h.painted_rect::<VectorPanel>(s, VIEWPORT, id).is_some()
     };
     assert!(
-        painted(&mut host, &mut panel_state, ids::VECTOR_CONTOUR_ADD),
+        painted(
+            &mut host,
+            &mut panel_state,
+            ph2d_editor_core::ids::VECTOR_CONTOUR_ADD
+        ),
         "sem contour a secao tem de oferecer `Add Contour`"
     );
     for (id, name) in [
-        (ids::VECTOR_CONTOUR_TO, "a swatch da cor-alvo"),
-        (ids::VECTOR_CONTOUR_STEPS, "o slider de Steps"),
-        (ids::VECTOR_CONTOUR_EXPAND, "Expand Contour"),
-        (ids::VECTOR_CONTOUR_REMOVE, "Remove Contour"),
+        (
+            ph2d_editor_core::ids::VECTOR_CONTOUR_TO,
+            "a swatch da cor-alvo",
+        ),
+        (
+            ph2d_editor_core::ids::VECTOR_CONTOUR_STEPS,
+            "o slider de Steps",
+        ),
+        (
+            ph2d_editor_core::ids::VECTOR_CONTOUR_EXPAND,
+            "Expand Contour",
+        ),
+        (
+            ph2d_editor_core::ids::VECTOR_CONTOUR_REMOVE,
+            "Remove Contour",
+        ),
     ] {
         assert!(
             !painted(&mut host, &mut panel_state, id),
@@ -129,16 +157,38 @@ fn the_section_shows_the_button_or_the_controls_never_both() {
 
     armed();
     assert!(
-        !painted(&mut host, &mut panel_state, ids::VECTOR_CONTOUR_ADD),
+        !painted(
+            &mut host,
+            &mut panel_state,
+            ph2d_editor_core::ids::VECTOR_CONTOUR_ADD
+        ),
         "`Add Contour` continuou pintado sobre uma forma que JA tem contour"
     );
     for (id, name) in [
-        (ids::VECTOR_CONTOUR_TO, "a swatch da cor-alvo"),
-        (ids::VECTOR_CONTOUR_STEPS, "o slider de Steps"),
-        (ids::VECTOR_CONTOUR_OFFSET, "o slider de Offset"),
-        (ids::VECTOR_CONTOUR_ACCEL, "o slider de Accel"),
-        (ids::VECTOR_CONTOUR_EXPAND, "Expand Contour"),
-        (ids::VECTOR_CONTOUR_REMOVE, "Remove Contour"),
+        (
+            ph2d_editor_core::ids::VECTOR_CONTOUR_TO,
+            "a swatch da cor-alvo",
+        ),
+        (
+            ph2d_editor_core::ids::VECTOR_CONTOUR_STEPS,
+            "o slider de Steps",
+        ),
+        (
+            ph2d_editor_core::ids::VECTOR_CONTOUR_OFFSET,
+            "o slider de Offset",
+        ),
+        (
+            ph2d_editor_core::ids::VECTOR_CONTOUR_ACCEL,
+            "o slider de Accel",
+        ),
+        (
+            ph2d_editor_core::ids::VECTOR_CONTOUR_EXPAND,
+            "Expand Contour",
+        ),
+        (
+            ph2d_editor_core::ids::VECTOR_CONTOUR_REMOVE,
+            "Remove Contour",
+        ),
     ] {
         assert!(
             painted(&mut host, &mut panel_state, id),
@@ -158,7 +208,7 @@ fn the_section_is_absent_when_there_is_nothing_to_say() {
     let mut panel_state = VectorPanelState;
     for (id, name) in [
         (ids::VECTOR_SECTION_CONTOUR, "o cabecalho"),
-        (ids::VECTOR_CONTOUR_ADD, "`Add Contour`"),
+        (ph2d_editor_core::ids::VECTOR_CONTOUR_ADD, "`Add Contour`"),
     ] {
         assert!(
             host.painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, id)

@@ -97,7 +97,7 @@ fn scroll_that_reaches_the_undo() -> Option<(f32, Rect)> {
 
     // Quanto é preciso rolar para a caixa pousar no meio da tela — clampado à faixa que existe.
     let want = (at_zero.y - VIEWPORT.h * 0.5).clamp(0.0, max);
-    h.set_panel_scroll(ids::TOKENS_PANEL, want);
+    h.set_panel_scroll(ph2d_editor_core::ids::TOKENS_PANEL, want);
     let r = h.painted_rect::<TokensPanel>(&mut st, VIEWPORT, ids::TOKENS_RESET_ALL)?;
     (r.w > 0.0 && r.h > 0.0 && r.y + r.h > VIEWPORT.y && r.y < VIEWPORT.y + VIEWPORT.h)
         .then_some((want, r))

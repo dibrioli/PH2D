@@ -27,8 +27,8 @@
 //! saber a diferença»* (`state_textpath.rs`). Aqui ela vale para um slider.
 
 use ph2d_editor_core::zones::Rect;
+use ph2d_panel_vector::VectorPanel;
 use ph2d_panel_vector::state::VectorPanelState;
-use ph2d_panel_vector::{VectorPanel, ids};
 use ph2d_ui_testkit::MockPanelHost;
 
 const VIEWPORT: Rect = Rect {
@@ -48,9 +48,9 @@ fn publish(on_path: bool) {
 
 /// Os três ids que a secção de refluxo pinta.
 const WRAP_ROWS: [(&str, ph2d_a11y::NodeId); 3] = [
-    ("Width:Auto", ids::VECTOR_TEXT_WRAP_AUTO),
-    ("Width:Fixed", ids::VECTOR_TEXT_WRAP_FIXED),
-    ("Wrap width", ids::VECTOR_TEXT_WRAP_W),
+    ("Width:Auto", ph2d_editor_core::ids::VECTOR_TEXT_WRAP_AUTO),
+    ("Width:Fixed", ph2d_editor_core::ids::VECTOR_TEXT_WRAP_FIXED),
+    ("Wrap width", ph2d_editor_core::ids::VECTOR_TEXT_WRAP_W),
 ];
 
 /// **Controle POSITIVO: fora de um caminho, as fileiras existem.**

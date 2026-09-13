@@ -35,12 +35,12 @@ impl BodyCtx<'_> {
             tr("panel.vector.bool.live"),
             &[
                 (
-                    ids::VECTOR_BOOL_LIVE_OFF,
+                    ph2d_editor_core::ids::VECTOR_BOOL_LIVE_OFF,
                     tr("panel.vector.bool.live.off"),
                     !live,
                 ),
                 (
-                    ids::VECTOR_BOOL_LIVE_ON,
+                    ph2d_editor_core::ids::VECTOR_BOOL_LIVE_ON,
                     tr("panel.vector.bool.live.on"),
                     live,
                 ),
@@ -101,7 +101,7 @@ impl BodyCtx<'_> {
         // Apply da simetria e dos dois botões do corte.
         if crate::state::bool_group_selected() {
             y = self.action_button_kind(
-                ids::VECTOR_BOOL_APPLY,
+                ph2d_editor_core::ids::VECTOR_BOOL_APPLY,
                 tr("panel.vector.bool.apply"),
                 ButtonKind::Accent,
                 y,

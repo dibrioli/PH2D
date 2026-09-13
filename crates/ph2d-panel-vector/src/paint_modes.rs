@@ -22,7 +22,6 @@
 #[path = "paint_text_sections.rs"]
 mod text_sections;
 
-use crate::ids;
 use crate::paint_sections::BodyCtx;
 use crate::paint_sections::LABEL_COL_W;
 use crate::state;
@@ -223,8 +222,14 @@ impl BodyCtx<'_> {
             w,
             gap,
             [
-                (ids::VECTOR_CUT_APPLY, tr("panel.vector.cut.apply")),
-                (ids::VECTOR_CUT_DISCARD, tr("panel.vector.cut.discard")),
+                (
+                    ph2d_editor_core::ids::VECTOR_CUT_APPLY,
+                    tr("panel.vector.cut.apply"),
+                ),
+                (
+                    ph2d_editor_core::ids::VECTOR_CUT_DISCARD,
+                    tr("panel.vector.cut.discard"),
+                ),
             ],
             y,
         )

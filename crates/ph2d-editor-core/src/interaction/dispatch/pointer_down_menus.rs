@@ -220,7 +220,7 @@ pub(super) fn handle_down_menus(
                 && *p != crate::ids::EQS_PANEL
                 && *p != crate::ids::PAINTER_LAYERS_PANEL
                 && *p != crate::ids::TIMELINE_PANEL
-                && *p != crate::grid_snap::ids::GS_PANEL
+                && *p != crate::ids::GS_PANEL
                 // ⭐ A biblioteca de assets pela mesma lei: é superfície de operação, não de
                 // anotação. Sem esta linha, o botão direito ao lado de um cartão oferecia
                 // *«Create note»* dentro do navegador.

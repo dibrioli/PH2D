@@ -12,7 +12,6 @@
 //! re-statement of it. A stage that stops running takes its knobs off
 //! the panel in the same edit.
 
-use crate::ids;
 use ph2d_a11y::NodeId;
 use ph2d_tool_color_equalization::params::{
     ColorEqualizationUiSnapshot, brightness_to_slider, clip_limit_to_slider, contrast_to_slider,
@@ -51,8 +50,8 @@ pub(crate) fn build_slider_rows(snapshot: &ColorEqualizationUiSnapshot) -> [Slid
     [
         SliderRow {
             label: "Clip",
-            slider_id: ids::CEQ_CLIP_LIMIT,
-            chip_id: ids::CEQ_CLIP_LIMIT_NUM,
+            slider_id: ph2d_tool_color_equalization::ids::CEQ_CLIP_LIMIT,
+            chip_id: ph2d_tool_color_equalization::ids::CEQ_CLIP_LIMIT_NUM,
             snap_track: clip_limit_to_slider(snapshot.clip_limit),
             snap_chip: snapshot.clip_limit as f64,
             chip_display: format!("{:.2}", snapshot.clip_limit),
@@ -62,8 +61,8 @@ pub(crate) fn build_slider_rows(snapshot: &ColorEqualizationUiSnapshot) -> [Slid
         },
         SliderRow {
             label: "Tile Grid",
-            slider_id: ids::CEQ_TILE_GRID,
-            chip_id: ids::CEQ_TILE_GRID_NUM,
+            slider_id: ph2d_tool_color_equalization::ids::CEQ_TILE_GRID,
+            chip_id: ph2d_tool_color_equalization::ids::CEQ_TILE_GRID_NUM,
             snap_track: tile_grid_to_slider(snapshot.tile_grid_size),
             snap_chip: snapshot.tile_grid_size as f64,
             chip_display: snapshot.tile_grid_size.to_string(),
@@ -76,8 +75,8 @@ pub(crate) fn build_slider_rows(snapshot: &ColorEqualizationUiSnapshot) -> [Slid
         },
         SliderRow {
             label: "Exposure",
-            slider_id: ids::CEQ_EXPOSURE,
-            chip_id: ids::CEQ_EXPOSURE_NUM,
+            slider_id: ph2d_tool_color_equalization::ids::CEQ_EXPOSURE,
+            chip_id: ph2d_tool_color_equalization::ids::CEQ_EXPOSURE_NUM,
             snap_track: exposure_to_slider(snapshot.exposure),
             snap_chip: snapshot.exposure as f64,
             chip_display: format!("{:+.2} EV", snapshot.exposure),
@@ -85,8 +84,8 @@ pub(crate) fn build_slider_rows(snapshot: &ColorEqualizationUiSnapshot) -> [Slid
         },
         SliderRow {
             label: "Temperature",
-            slider_id: ids::CEQ_TEMPERATURE,
-            chip_id: ids::CEQ_TEMPERATURE_NUM,
+            slider_id: ph2d_tool_color_equalization::ids::CEQ_TEMPERATURE,
+            chip_id: ph2d_tool_color_equalization::ids::CEQ_TEMPERATURE_NUM,
             snap_track: temperature_to_slider(snapshot.temperature),
             snap_chip: snapshot.temperature as f64,
             chip_display: format!("{:+.2}", snapshot.temperature),
@@ -94,8 +93,8 @@ pub(crate) fn build_slider_rows(snapshot: &ColorEqualizationUiSnapshot) -> [Slid
         },
         SliderRow {
             label: "Tint",
-            slider_id: ids::CEQ_TINT,
-            chip_id: ids::CEQ_TINT_NUM,
+            slider_id: ph2d_tool_color_equalization::ids::CEQ_TINT,
+            chip_id: ph2d_tool_color_equalization::ids::CEQ_TINT_NUM,
             snap_track: tint_to_slider(snapshot.tint),
             snap_chip: snapshot.tint as f64,
             chip_display: format!("{:+.2}", snapshot.tint),
@@ -103,8 +102,8 @@ pub(crate) fn build_slider_rows(snapshot: &ColorEqualizationUiSnapshot) -> [Slid
         },
         SliderRow {
             label: "Brightness",
-            slider_id: ids::CEQ_BRIGHTNESS,
-            chip_id: ids::CEQ_BRIGHTNESS_NUM,
+            slider_id: ph2d_tool_color_equalization::ids::CEQ_BRIGHTNESS,
+            chip_id: ph2d_tool_color_equalization::ids::CEQ_BRIGHTNESS_NUM,
             snap_track: brightness_to_slider(snapshot.brightness),
             snap_chip: snapshot.brightness as f64,
             chip_display: format!("{:+.2}", snapshot.brightness),
@@ -112,8 +111,8 @@ pub(crate) fn build_slider_rows(snapshot: &ColorEqualizationUiSnapshot) -> [Slid
         },
         SliderRow {
             label: "Contrast",
-            slider_id: ids::CEQ_CONTRAST,
-            chip_id: ids::CEQ_CONTRAST_NUM,
+            slider_id: ph2d_tool_color_equalization::ids::CEQ_CONTRAST,
+            chip_id: ph2d_tool_color_equalization::ids::CEQ_CONTRAST_NUM,
             snap_track: contrast_to_slider(snapshot.contrast),
             snap_chip: snapshot.contrast as f64,
             chip_display: format!("{:.2}", snapshot.contrast),
@@ -121,8 +120,8 @@ pub(crate) fn build_slider_rows(snapshot: &ColorEqualizationUiSnapshot) -> [Slid
         },
         SliderRow {
             label: "Vibrance",
-            slider_id: ids::CEQ_VIBRANCE,
-            chip_id: ids::CEQ_VIBRANCE_NUM,
+            slider_id: ph2d_tool_color_equalization::ids::CEQ_VIBRANCE,
+            chip_id: ph2d_tool_color_equalization::ids::CEQ_VIBRANCE_NUM,
             snap_track: vibrance_to_slider(snapshot.vibrance),
             snap_chip: snapshot.vibrance as f64,
             chip_display: format!("{:+.2}", snapshot.vibrance),
@@ -130,8 +129,8 @@ pub(crate) fn build_slider_rows(snapshot: &ColorEqualizationUiSnapshot) -> [Slid
         },
         SliderRow {
             label: "Saturation",
-            slider_id: ids::CEQ_SATURATION,
-            chip_id: ids::CEQ_SATURATION_NUM,
+            slider_id: ph2d_tool_color_equalization::ids::CEQ_SATURATION,
+            chip_id: ph2d_tool_color_equalization::ids::CEQ_SATURATION_NUM,
             snap_track: saturation_to_slider(snapshot.saturation),
             snap_chip: snapshot.saturation as f64,
             chip_display: format!("{:+.2}", snapshot.saturation),
@@ -139,8 +138,8 @@ pub(crate) fn build_slider_rows(snapshot: &ColorEqualizationUiSnapshot) -> [Slid
         },
         SliderRow {
             label: "Sharpen",
-            slider_id: ids::CEQ_SHARPEN_AMOUNT,
-            chip_id: ids::CEQ_SHARPEN_AMOUNT_NUM,
+            slider_id: ph2d_tool_color_equalization::ids::CEQ_SHARPEN_AMOUNT,
+            chip_id: ph2d_tool_color_equalization::ids::CEQ_SHARPEN_AMOUNT_NUM,
             snap_track: sharpen_amount_to_slider(snapshot.sharpen_amount),
             snap_chip: snapshot.sharpen_amount as f64,
             chip_display: format!("{:.2}", snapshot.sharpen_amount),
@@ -148,8 +147,8 @@ pub(crate) fn build_slider_rows(snapshot: &ColorEqualizationUiSnapshot) -> [Slid
         },
         SliderRow {
             label: "Radius",
-            slider_id: ids::CEQ_SHARPEN_RADIUS,
-            chip_id: ids::CEQ_SHARPEN_RADIUS_NUM,
+            slider_id: ph2d_tool_color_equalization::ids::CEQ_SHARPEN_RADIUS,
+            chip_id: ph2d_tool_color_equalization::ids::CEQ_SHARPEN_RADIUS_NUM,
             snap_track: sharpen_radius_to_slider(snapshot.sharpen_radius),
             snap_chip: snapshot.sharpen_radius as f64,
             chip_display: format!("{:.2}", snapshot.sharpen_radius),
@@ -157,8 +156,8 @@ pub(crate) fn build_slider_rows(snapshot: &ColorEqualizationUiSnapshot) -> [Slid
         },
         SliderRow {
             label: "LUT Intensity",
-            slider_id: ids::CEQ_LUT_INTENSITY,
-            chip_id: ids::CEQ_LUT_INTENSITY_NUM,
+            slider_id: ph2d_tool_color_equalization::ids::CEQ_LUT_INTENSITY,
+            chip_id: ph2d_tool_color_equalization::ids::CEQ_LUT_INTENSITY_NUM,
             snap_track: lut_intensity_to_slider(snapshot.lut_intensity),
             snap_chip: snapshot.lut_intensity as f64,
             chip_display: format!("{:.2}", snapshot.lut_intensity),
@@ -168,8 +167,8 @@ pub(crate) fn build_slider_rows(snapshot: &ColorEqualizationUiSnapshot) -> [Slid
         },
         SliderRow {
             label: "LUT Mix",
-            slider_id: ids::CEQ_LUT_MIX,
-            chip_id: ids::CEQ_LUT_MIX_NUM,
+            slider_id: ph2d_tool_color_equalization::ids::CEQ_LUT_MIX,
+            chip_id: ph2d_tool_color_equalization::ids::CEQ_LUT_MIX_NUM,
             snap_track: lut_mix_to_slider(snapshot.lut_mix),
             snap_chip: snapshot.lut_mix as f64,
             chip_display: format!("{:.2}", snapshot.lut_mix),

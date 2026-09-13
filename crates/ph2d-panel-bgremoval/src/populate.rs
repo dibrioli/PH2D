@@ -6,7 +6,6 @@
 //! position — the stored value is what dispatch mutates on drag and what
 //! [`crate::event`] reads on `ValueChanged`).
 
-use crate::ids;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
 use ph2d_editor_core::widget::{ButtonState, SliderOrientation, SliderState, TextInputState};
 use ph2d_tool_bgremoval::params::{BgRemovalUiSnapshot, MIN_ISLAND_PIXELS_FULL_SCALE};
@@ -31,12 +30,12 @@ pub fn populate(store: &mut WidgetStore) {
         // "Separate Islands" toggle — legacy parity. When on, an Apply
         // pass also splits the result into one sprite per connected
         // component (see `ph2d_tool_bgremoval::algorithm::islands`).
-        ids::BGR_SEPARATE_ISLANDS,
+        ph2d_tool_bgremoval::ids::BGR_SEPARATE_ISLANDS,
         // "Detect subject" toggle — edge-aware silhouette upgrade
         // (Enio 2026-05-26). Without this register the dispatcher
         // doesn't recognise the id as a clickable button and the
         // click is silently dropped.
-        ids::BGR_AUTO_PROTECT_SUBJECT,
+        ph2d_tool_bgremoval::ids::BGR_AUTO_PROTECT_SUBJECT,
         // "Add area" toggle + its Clear button (Enio 2026-05-26) —
         // symmetric to the eyedropper: arm → single click → flood-
         // fill writes the connected same-colour region into the
@@ -119,8 +118,8 @@ pub fn populate(store: &mut WidgetStore) {
         let min_display = (d.min_island_pixels01 * min_scale) + 1.0;
         register_slider_chip_pair(
             store,
-            ids::BGR_MIN_ISLAND_PX,
-            ids::BGR_MIN_ISLAND_PX_NUM,
+            ph2d_tool_bgremoval::ids::BGR_MIN_ISLAND_PX,
+            ph2d_tool_bgremoval::ids::BGR_MIN_ISLAND_PX_NUM,
             d.min_island_pixels01,
             min_display as f64,
         );
@@ -130,8 +129,8 @@ pub fn populate(store: &mut WidgetStore) {
         // the painter rounded to "50" — split-brain. The variant
         // rounds the typed display before persisting.
         store.link_slider_number_mapped_integer(
-            ids::BGR_MIN_ISLAND_PX,
-            ids::BGR_MIN_ISLAND_PX_NUM,
+            ph2d_tool_bgremoval::ids::BGR_MIN_ISLAND_PX,
+            ph2d_tool_bgremoval::ids::BGR_MIN_ISLAND_PX_NUM,
             min_scale,
             1.0,
         );

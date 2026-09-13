@@ -11,11 +11,11 @@
 //! carregar.
 
 use ph2d_a11y::NodeId;
-use ph2d_editor_core::ids::{
+use ph2d_tool_registry::hash_node_id;
+use ph2d_tool_vector::ids::{
     VECTOR_BONE_ACT_CREATE, VECTOR_BONE_ACT_TRANSFORM, VECTOR_BONE_DEFORM_FAST,
     VECTOR_BONE_DEFORM_SMOOTH,
 };
-use ph2d_tool_registry::hash_node_id;
 
 /// Os dois segmentos, **índice-alinhados** com [`ph2d_tool_vector::BoneAction::ALL`]. ⚠️ Alinhar
 /// por índice é o que impede a lista do painel e a do vocabulário de divergirem em silêncio.

@@ -16,7 +16,6 @@
 //!    ([`paint_protect_brush`])
 //! 6. Reset row + Cancel/Apply CTA row ([`paint_apply_cta`])
 
-use crate::ids;
 use ph2d_editor_core::interaction::{HitIndex, WidgetStore};
 use ph2d_editor_core::widget::panel_chrome::paint_segmented_group_adaptive;
 use ph2d_editor_core::widget::{
@@ -159,7 +158,7 @@ pub(crate) fn paint_islands(
     let islands_state = if snapshot.separate_islands {
         (ButtonState::Pressed, ph2d_editor_core::motion::SETTLED)
     } else {
-        store.button_visual(ids::BGR_SEPARATE_ISLANDS)
+        store.button_visual(ph2d_tool_bgremoval::ids::BGR_SEPARATE_ISLANDS)
     };
     let islands_kind = if snapshot.separate_islands {
         ButtonKind::Accent
@@ -167,16 +166,19 @@ pub(crate) fn paint_islands(
         ButtonKind::Default
     };
     let islands_rect = Rect::new(inner_x, y, inner_w, row_h);
-    let islands_btn = Button::new(ids::BGR_SEPARATE_ISLANDS, "Separate islands")
-        .kind(islands_kind)
-        .visual(islands_state);
+    let islands_btn = Button::new(
+        ph2d_tool_bgremoval::ids::BGR_SEPARATE_ISLANDS,
+        "Separate islands",
+    )
+    .kind(islands_kind)
+    .visual(islands_state);
     paint_button(&islands_btn, islands_rect, scene, text_system, theme);
-    hit_index.register(ids::BGR_SEPARATE_ISLANDS, islands_rect);
+    hit_index.register(ph2d_tool_bgremoval::ids::BGR_SEPARATE_ISLANDS, islands_rect);
     y += row_h + row_gap;
 
     if snapshot.separate_islands {
         let min_v = store
-            .slider(ids::BGR_MIN_ISLAND_PX)
+            .slider(ph2d_tool_bgremoval::ids::BGR_MIN_ISLAND_PX)
             .map(|(_, v)| v)
             .unwrap_or(snapshot.min_island_pixels01);
         let min_count =
@@ -189,8 +191,8 @@ pub(crate) fn paint_islands(
             min_v,
             min_count as f64,
             Some(&min_display),
-            ids::BGR_MIN_ISLAND_PX,
-            ids::BGR_MIN_ISLAND_PX_NUM,
+            ph2d_tool_bgremoval::ids::BGR_MIN_ISLAND_PX,
+            ph2d_tool_bgremoval::ids::BGR_MIN_ISLAND_PX_NUM,
             LABEL_COL_W,
             chip_w,
             store,
@@ -298,10 +300,14 @@ pub(crate) fn paint_eyedropper_swatches(
             }
             let rect = Rect::new(sx, y, swatch_px, swatch_px);
             let rgba = [color[0], color[1], color[2], 255];
-            let sw = ColorSwatch::new(ids::BGR_SWATCHES[i], "Extra bg colour", rgba)
-                .size(SwatchSize::Sm);
+            let sw = ColorSwatch::new(
+                ph2d_editor_core::ids::BGR_SWATCHES[i],
+                "Extra bg colour",
+                rgba,
+            )
+            .size(SwatchSize::Sm);
             paint_color_swatch(&sw, rect, scene, theme);
-            hit_index.register(ids::BGR_SWATCHES[i], rect);
+            hit_index.register(ph2d_editor_core::ids::BGR_SWATCHES[i], rect);
             sx += swatch_px + swatch_gap;
             col += 1;
         }
@@ -334,7 +340,7 @@ pub(crate) fn paint_auto_protect_subject(
     let btn_state = if on {
         (ButtonState::Pressed, ph2d_editor_core::motion::SETTLED)
     } else {
-        store.button_visual(ids::BGR_AUTO_PROTECT_SUBJECT)
+        store.button_visual(ph2d_tool_bgremoval::ids::BGR_AUTO_PROTECT_SUBJECT)
     };
     let btn_kind = if on {
         ButtonKind::Accent
@@ -342,11 +348,14 @@ pub(crate) fn paint_auto_protect_subject(
         ButtonKind::Default
     };
     let rect = Rect::new(inner_x, y, inner_w, row_h);
-    let btn = Button::new(ids::BGR_AUTO_PROTECT_SUBJECT, "Detect subject")
-        .kind(btn_kind)
-        .visual(btn_state);
+    let btn = Button::new(
+        ph2d_tool_bgremoval::ids::BGR_AUTO_PROTECT_SUBJECT,
+        "Detect subject",
+    )
+    .kind(btn_kind)
+    .visual(btn_state);
     paint_button(&btn, rect, scene, text_system, theme);
-    hit_index.register(ids::BGR_AUTO_PROTECT_SUBJECT, rect);
+    hit_index.register(ph2d_tool_bgremoval::ids::BGR_AUTO_PROTECT_SUBJECT, rect);
     y += row_h + row_gap;
     y
 }

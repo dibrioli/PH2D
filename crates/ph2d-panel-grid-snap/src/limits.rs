@@ -73,9 +73,24 @@ const _: () = assert!(SNAP_SUBDIVISIONS.0 <= SNAP_SUBDIVISIONS.1);
 /// promessa de cobertura que não existe é pior que cobertura nenhuma — ela faz a próxima varredura
 /// pular a linha.
 pub(crate) const DECLARED: [(ph2d_editor_core::NodeId, (f64, f64, f64)); 5] = [
-    (crate::ids::GS_CFG_VORONOI_LLOYD_ITERS, LLOYD_ITERATIONS),
-    (crate::ids::GS_CFG_COLOR_R, COLOR_COMPONENT),
-    (crate::ids::GS_CFG_COLOR_G, COLOR_COMPONENT),
-    (crate::ids::GS_CFG_COLOR_B, COLOR_COMPONENT),
-    (crate::ids::GS_CFG_SNAP_SUBDIVISIONS, SNAP_SUBDIVISIONS),
+    (
+        ph2d_editor_core::grid_snap::ids::GS_CFG_VORONOI_LLOYD_ITERS,
+        LLOYD_ITERATIONS,
+    ),
+    (
+        ph2d_editor_core::grid_snap::ids::GS_CFG_COLOR_R,
+        COLOR_COMPONENT,
+    ),
+    (
+        ph2d_editor_core::grid_snap::ids::GS_CFG_COLOR_G,
+        COLOR_COMPONENT,
+    ),
+    (
+        ph2d_editor_core::grid_snap::ids::GS_CFG_COLOR_B,
+        COLOR_COMPONENT,
+    ),
+    (
+        ph2d_editor_core::grid_snap::ids::GS_CFG_SNAP_SUBDIVISIONS,
+        SNAP_SUBDIVISIONS,
+    ),
 ];

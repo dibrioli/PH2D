@@ -118,8 +118,8 @@ impl BodyCtx<'_> {
         self.segmented(
             "Scribbles",
             [
-                (ids::FLIP_COLORIZE_APPLY, "Apply", false),
-                (ids::FLIP_COLORIZE_CLEAR, "Clear", false),
+                (ph2d_editor_core::ids::FLIP_COLORIZE_APPLY, "Apply", false),
+                (ph2d_editor_core::ids::FLIP_COLORIZE_CLEAR, "Clear", false),
             ],
             y,
         )

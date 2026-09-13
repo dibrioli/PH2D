@@ -103,7 +103,7 @@ pub const PANEL_Z_ORDER_FALLBACK: &[ph2d_a11y::NodeId] = &[
     ids::LAB_PANEL,
     ids::AUDIO_MIXER_PANEL,
     ids::AUDIO_EDITOR_PANEL,
-    crate::grid_snap::ids::GS_PANEL,
+    ids::GS_PANEL,
 ];
 
 /// Top-level hero paint orchestrator. Clears + re-populates the

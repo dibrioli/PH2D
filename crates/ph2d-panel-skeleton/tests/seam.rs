@@ -450,8 +450,11 @@ fn both_segments_of_create_and_transform_reach_the_tool() {
     publica_tudo();
     modo_osso(0);
     for (id, nome) in [
-        (ids::VECTOR_BONE_ACT_CREATE, "Create"),
-        (ids::VECTOR_BONE_ACT_TRANSFORM, "Transform"),
+        (ph2d_tool_vector::ids::VECTOR_BONE_ACT_CREATE, "Create"),
+        (
+            ph2d_tool_vector::ids::VECTOR_BONE_ACT_TRANSFORM,
+            "Transform",
+        ),
     ] {
         let acoes = clica(id, nome);
         assert!(
@@ -494,7 +497,8 @@ fn the_create_transform_group_is_the_door_and_starts_with_nothing_lit() {
 
     // ⚠️ **Uma cena SEM ossos**: o painel abre-se pelo menu, e a porta tem de estar lá.
     assert!(
-        pintado(ids::VECTOR_BONE_ACT_CREATE) && pintado(ids::VECTOR_BONE_ACT_TRANSFORM),
+        pintado(ph2d_tool_vector::ids::VECTOR_BONE_ACT_CREATE)
+            && pintado(ph2d_tool_vector::ids::VECTOR_BONE_ACT_TRANSFORM),
         "a porta do modo Osso não é pintada numa cena sem ossos — o artista abre o painel pelo menu \
          e não tem gesto nenhum que crie o primeiro"
     );
@@ -503,7 +507,8 @@ fn the_create_transform_group_is_the_door_and_starts_with_nothing_lit() {
     // este arnês só vê o retângulo. *Um gate que afirmasse a cor aqui mediria o instrumento.*
     state::set_current_bone_tool(Some(1));
     assert!(
-        pintado(ids::VECTOR_BONE_ACT_CREATE) && pintado(ids::VECTOR_BONE_ACT_TRANSFORM),
+        pintado(ph2d_tool_vector::ids::VECTOR_BONE_ACT_CREATE)
+            && pintado(ph2d_tool_vector::ids::VECTOR_BONE_ACT_TRANSFORM),
         "com um osso escolhido os dois segmentos continuam a ser oferecidos"
     );
     state::set_current_bone_tool(None);
@@ -521,8 +526,8 @@ fn both_segments_of_the_deform_row_reach_the_tool() {
     publica_tudo();
     state::set_current_skinned_image(true);
     for (id, nome) in [
-        (ids::VECTOR_BONE_DEFORM_FAST, "Fast"),
-        (ids::VECTOR_BONE_DEFORM_SMOOTH, "Smooth"),
+        (ph2d_tool_vector::ids::VECTOR_BONE_DEFORM_FAST, "Fast"),
+        (ph2d_tool_vector::ids::VECTOR_BONE_DEFORM_SMOOTH, "Smooth"),
     ] {
         let acoes = clica(id, nome);
         assert!(
@@ -560,8 +565,10 @@ fn the_deform_row_asks_about_the_scene_and_not_about_the_selection() {
         host.painted_rect::<SkeletonPanel>(&mut st, VIEWPORT, id)
             .is_some()
     };
-    let fileira =
-        || pintado(ids::VECTOR_BONE_DEFORM_FAST) && pintado(ids::VECTOR_BONE_DEFORM_SMOOTH);
+    let fileira = || {
+        pintado(ph2d_tool_vector::ids::VECTOR_BONE_DEFORM_FAST)
+            && pintado(ph2d_tool_vector::ids::VECTOR_BONE_DEFORM_SMOOTH)
+    };
     limpa();
     state::set_current_skinned_image(false);
     assert!(

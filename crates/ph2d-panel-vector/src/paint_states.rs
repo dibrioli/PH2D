@@ -87,7 +87,7 @@ impl BodyCtx<'_> {
         // tabela de papéis abaixo é a segunda pergunta.
         if let Some(on) = s.move_all {
             y = self.checkbox_row(
-                ids::VECTOR_STATE_MOVE_ALL,
+                ph2d_editor_core::ids::VECTOR_STATE_MOVE_ALL,
                 tr("panel.vector.states.move_all"),
                 on,
                 y,
@@ -128,7 +128,7 @@ impl BodyCtx<'_> {
         // modelos de acordo, e a cena obedeceria a um deles sem dizer qual — é o par
         // `Width: Auto | Fixed` do texto e o `Mass: Auto | Manual` do editor de áudio.
         y = self.checkbox_row(
-            ids::VECTOR_STATE_SPRING,
+            ph2d_editor_core::ids::VECTOR_STATE_SPRING,
             tr("panel.vector.states.spring"),
             s.spring.is_some(),
             y,
@@ -142,7 +142,7 @@ impl BodyCtx<'_> {
         let track = (s.duration_s / MAX_DURATION_S).clamp(0.0, 1.0);
         y = self.slider_row(
             tr("panel.vector.states.duration"),
-            ids::VECTOR_STATE_DURATION,
+            ph2d_editor_core::ids::VECTOR_STATE_DURATION,
             ids::VECTOR_STATE_DURATION_NUM,
             track,
             f64::from(s.duration_s),
@@ -167,7 +167,7 @@ impl BodyCtx<'_> {
         let track = |v: f32, lo: f32, hi: f32| ((v - lo) / (hi - lo)).clamp(0.0, 1.0);
         let y = self.slider_row(
             tr("panel.vector.states.stiffness"),
-            ids::VECTOR_STATE_STIFFNESS,
+            ph2d_editor_core::ids::VECTOR_STATE_STIFFNESS,
             ids::VECTOR_STATE_STIFFNESS_NUM,
             track(stiffness, MIN_STIFFNESS, MAX_STIFFNESS),
             f64::from(stiffness),
@@ -176,7 +176,7 @@ impl BodyCtx<'_> {
         );
         self.slider_row(
             tr("panel.vector.states.damping"),
-            ids::VECTOR_STATE_DAMPING,
+            ph2d_editor_core::ids::VECTOR_STATE_DAMPING,
             ids::VECTOR_STATE_DAMPING_NUM,
             track(damping, MIN_DAMPING, MAX_DAMPING),
             f64::from(damping),
@@ -224,19 +224,25 @@ impl BodyCtx<'_> {
     /// É a mesma escolha dos toggles do rail.
     fn preview_row(&mut self, on: bool, y: f32) -> f32 {
         let rect = Rect::new(self.inner_x, y, self.inner_w, self.row_h);
-        let st = self.store.button_visual(ids::VECTOR_STATE_PREVIEW);
+        let st = self
+            .store
+            .button_visual(ph2d_editor_core::ids::VECTOR_STATE_PREVIEW);
         // ⚠️ O *ligado* é o **KIND**, não o `ButtonState`: o `ButtonState` descreve o rato (hover,
         // press) e o kind descreve o que o botão É. Escrever *ligado* no `ButtonState` faria o
         // aceso desaparecer no instante em que o cursor passasse por cima dele.
-        let btn = Button::new(ids::VECTOR_STATE_PREVIEW, tr("panel.vector.states.preview"))
-            .kind(if on {
-                ButtonKind::Accent
-            } else {
-                ButtonKind::Default
-            })
-            .visual(st);
+        let btn = Button::new(
+            ph2d_editor_core::ids::VECTOR_STATE_PREVIEW,
+            tr("panel.vector.states.preview"),
+        )
+        .kind(if on {
+            ButtonKind::Accent
+        } else {
+            ButtonKind::Default
+        })
+        .visual(st);
         paint_button(&btn, rect, self.scene, self.text_system, self.theme);
-        self.hit_index.register(ids::VECTOR_STATE_PREVIEW, rect);
+        self.hit_index
+            .register(ph2d_editor_core::ids::VECTOR_STATE_PREVIEW, rect);
         let y = y + self.row_h + Spacing::Xs.px();
         if on {
             // ⚠️ A porta de saída é ANUNCIADA. Um modo que toma o rato e não diz como se sai é um

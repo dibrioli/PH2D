@@ -32,7 +32,7 @@
 
 use ph2d_editor_core::zones::Rect;
 use ph2d_panel_equalize_sizes::{
-    EqualizeSizesPanel, EqualizeSizesPanelState, ids, set_current_equalize_sizes_snapshot,
+    EqualizeSizesPanel, EqualizeSizesPanelState, set_current_equalize_sizes_snapshot,
 };
 use ph2d_tool_equalize_sizes::params::{EqualizeSizesUiSnapshot, TargetMode};
 use ph2d_ui_testkit::MockPanelHost;
@@ -62,13 +62,22 @@ fn painted_rects(mode: TargetMode, width: f32) -> Vec<(ph2d_a11y::NodeId, Rect)>
 fn the_mode_row_never_invades_the_row_below_it() {
     // Os widgets que cada modo desenha na faixa condicional, e o toggle que vem logo a seguir —
     // o par que o Enio viu embolado.
-    let below = ids::EQS_UPSCALE_IF_SMALLER;
+    let below = ph2d_tool_equalize_sizes::ids::EQS_UPSCALE_IF_SMALLER;
     let mut failures: Vec<String> = Vec::new();
     for (mode, conditional) in [
-        (TargetMode::Fixed, vec![ids::EQS_FIXED_W, ids::EQS_FIXED_H]),
+        (
+            TargetMode::Fixed,
+            vec![
+                ph2d_tool_equalize_sizes::ids::EQS_FIXED_W,
+                ph2d_tool_equalize_sizes::ids::EQS_FIXED_H,
+            ],
+        ),
         (
             TargetMode::GridUnit,
-            vec![ids::EQS_GRID_OFFSET, ids::EQS_GRID_OFFSET_NUM],
+            vec![
+                ph2d_tool_equalize_sizes::ids::EQS_GRID_OFFSET,
+                ph2d_tool_equalize_sizes::ids::EQS_GRID_OFFSET_NUM,
+            ],
         ),
         (TargetMode::MaxOfSelection, vec![]),
     ] {
@@ -115,7 +124,10 @@ fn the_mode_row_never_invades_the_row_below_it() {
 fn fixed_mode_paints_both_fields_at_every_width() {
     for width in [220.0_f32, 260.0, 300.0, 340.0, 420.0] {
         let rects = painted_rects(TargetMode::Fixed, width);
-        for id in [ids::EQS_FIXED_W, ids::EQS_FIXED_H] {
+        for id in [
+            ph2d_tool_equalize_sizes::ids::EQS_FIXED_W,
+            ph2d_tool_equalize_sizes::ids::EQS_FIXED_H,
+        ] {
             let hit = rects.iter().find(|(rid, _)| *rid == id);
             assert!(
                 hit.is_some_and(|(_, r)| r.w > 0.0 && r.h > 0.0),

@@ -35,7 +35,7 @@ use ph2d_ui_testkit::MockPanelHost;
 /// desconhecido**, que é a única forma honesta de não mentir sobre o que se sabe.
 fn name_of(id: ph2d_editor_core::NodeId) -> String {
     for (n, k) in [
-        ("ASSET_PANEL", ids::ASSET_PANEL),
+        ("ASSET_PANEL", ph2d_editor_core::ids::ASSET_PANEL),
         ("ASSET_SEARCH", ids::ASSET_SEARCH),
         ("ASSET_SIZE", ids::ASSET_SIZE),
         ("ASSET_CLOSE", ids::ASSET_CLOSE),
@@ -45,7 +45,10 @@ fn name_of(id: ph2d_editor_core::NodeId) -> String {
         ("ASSET_CATALOG_NEW", ids::ASSET_CATALOG_NEW),
         ("ASSET_CATALOG_ALL", ids::ASSET_CATALOG_ALL),
         ("ASSET_CATALOG_UNASSIGNED", ids::ASSET_CATALOG_UNASSIGNED),
-        ("ASSET_CATALOG_COL", ids::ASSET_CATALOG_COL),
+        (
+            "ASSET_CATALOG_COL",
+            ph2d_editor_core::ids::ASSET_CATALOG_COL,
+        ),
         ("ASSET_CATALOG_RENAME", ids::ASSET_CATALOG_RENAME),
         ("ASSET_RELATED_CLEAR", ids::ASSET_RELATED_CLEAR),
         (
@@ -67,10 +70,14 @@ fn name_of(id: ph2d_editor_core::NodeId) -> String {
             return format!("ASSET_SORT[{i}]");
         }
     }
-    if let Some(i) = (0..ids::MAX_ASSET_CELLS).find(|i| ids::asset_cell_id(*i) == id) {
+    if let Some(i) =
+        (0..ids::MAX_ASSET_CELLS).find(|i| ph2d_editor_core::ids::asset_cell_id(*i) == id)
+    {
         return format!("cartao[{i}]");
     }
-    if let Some(i) = (0..ids::MAX_CATALOG_ROWS).find(|i| ids::catalog_row_id(*i) == id) {
+    if let Some(i) = (0..ph2d_editor_core::ids::MAX_CATALOG_ROWS)
+        .find(|i| ph2d_editor_core::ids::catalog_row_id(*i) == id)
+    {
         return format!("linha de catalogo[{i}]");
     }
     format!("DESCONHECIDO {id:?}")
@@ -197,7 +204,7 @@ fn no_painted_control_escapes_the_panel() {
     let (host, _st, rects) = painted();
     let panel = host
         .store()
-        .panel_rect(ids::ASSET_PANEL)
+        .panel_rect(ph2d_editor_core::ids::ASSET_PANEL)
         .expect("o painel publica o proprio rect");
     let mut outside = Vec::new();
     for (id, r) in &rects {
@@ -238,7 +245,7 @@ fn every_painted_control_that_takes_a_click_is_routed() {
             || id == ids::ASSET_SIZE
             // As células: `DoubleClick` (instanciar) e o arrasto. O `Click` só as selecciona no
             // sentido de arrancar um arrasto, e isso vive no despacho do ponteiro.
-            || (0..ids::MAX_ASSET_CELLS).any(|i| ids::asset_cell_id(i) == id)
+            || (0..ids::MAX_ASSET_CELLS).any(|i| ph2d_editor_core::ids::asset_cell_id(i) == id)
     };
     // ⛔⛔ **O membro JÁ ESCOLHIDO de uma fileira de rádio sai — e a lista é DERIVADA do estado.**
     //

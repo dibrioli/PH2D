@@ -120,8 +120,8 @@ inventada. Contagens do registry em 2026-09-05.
 > ⚠️ **Estado em 2026-09-13.** O ciclo **5** fechou: o smoke foi aprovado em 10/09 e o relógio mediu-se
 > com a máquina calma ([doc 108](108_ciclo_5_simulacao.md) W5 — e a medição achou e curou um nó em
 > série, o `force.buoyancy`, `4,1×`). ⭐ **Antes do 6 entra uma ORDEM DO DONO sobre o 5:** o colisor
-> vai para a forma e as peças **colidem sozinhas** dentro da simulação (doc 108 W7). ⏳ A cena `=114`
-> não foi smokada.
+> vai para a forma e as peças **colidem sozinhas** dentro da simulação (doc 108 W7 · plano no
+> [doc 109](109_o_colisor_na_forma.md)). ⏳ A cena `=114` não foi smokada.
 >
 > ⚠️ **Estado em 2026-09-09 (fim do dia).** Os ciclos **3** e **4** fecharam com o smoke do
 > dono aprovado, e o **5** abriu ([doc 108](108_ciclo_5_simulacao.md)).

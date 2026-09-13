@@ -463,4 +463,6 @@ dois sabe que mídia recebeu**, e numa forma o segundo reserva **metade** do rai
 
 ⛔ **O preço é de substrato, e tem endereço:** no cozinhador de GPU o passe de grelha está preso ao
 **tipo de nó** de cada etapa (`kernels.grid(stage.ty)`, `ph2d-gpu-cook/src/lib.rs`), então *«a simulação
-resolve sozinha»* pede uma etapa que o planeador ainda não sabe emitir.
+resolve sozinha»* pede uma etapa que o planeador ainda não sabe emitir. ⭐ **E para peças que são
+FORMAS esse passe nem correria:** um documento com `source.shape` já cozinha inteiro na CPU. O plano,
+o estado da arte com fonte e as waves: [doc 109](109_o_colisor_na_forma.md).

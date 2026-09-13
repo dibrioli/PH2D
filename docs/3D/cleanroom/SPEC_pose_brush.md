@@ -8,7 +8,7 @@
 | **Licença** | **GPL-2.0-or-later** (`COPYING` da raiz, lido 2026-09-13) · **Degrau: T2** |
 | **Ledger** | [`LEDGER_blender-pose.md`](LEDGER_blender-pose.md), aberto 2026-09-13 (⛔ o Implementador não o abre) |
 | **Patente (§8.1)** | buscado 2026-09-13 — termos e tabela no ledger. ⭐ **Nenhuma patente viva alcança o método.** A mais próxima (máscara topológica + linha de acção do *Transpose*, **US 9 460 556 B2**, Pixologic) está **EXPIRADA** por falta de anuidade ⇒ literatura livre. Duas cercas nomeadas: ⛔ nunca implementar «derreter de volta a uma pose de repouso por comparação com uma pose atractora» (US 8 704 828 B1, Pixar, viva até 2031) · ⛔ nunca implementar um modo elástico por Kelvinlet dentro deste pincel (US 10 586 401 B2, Pixar, viva até 2038) |
-| **Filtragem §4.3** | executada 2026-09-13 (v2) · **Sweep:** verde em 2026-09-13, **com controlo positivo** — a vassoura cobre agora as **duas línguas** e acusa `5` achados na v1 desta espec, `0` nesta |
+| **Filtragem §4.3** | executada 2026-09-13 (v3) · **Sweep:** verde em 2026-09-13, **com controlo positivo** — a vassoura cobre agora as **duas línguas** e acusa `5` achados na v1 desta espec, `0` nesta |
 | **Auditoria §4.2 (R-pré)** | ⛔ a **v1 NÃO foi atestada** (6 achados, 4 substanciais); esta é a **v2**, reescrita pela regra do arquivo fechado. ⛔ **2.ª passagem (R-pré independente, 2026-09-13): NÃO ATESTA — 5 achados, ZERO substanciais.** As **6** curas da v1 estão **confirmadas uma a uma contra o fonte**; o que sobra é higiene (4 × §4.2 **menor** + 1 funcional), tudo em secções que a emenda **não** tocou, cada uma uma edição de uma linha e **nenhuma** a pedir medição nova. Veredictos no [ledger](LEDGER_blender-pose.md). ⏳ Aguarda a 3.ª passagem — condição para abrir a janela que implementa |
 | **Mapa de leitura da literatura** | não há paper. A literatura livre é: (a) as **issues públicas** do rastreador do alvo, citadas por número no §15 — são a fonte da sabedoria dos autores (§4.1.12); (b) a documentação de utilizador pública do alvo (factos, nunca o *wording*); (c) a patente expirada acima. ⛔ **A PULAR:** qualquer *code search*, espelho de fonte, ou o repositório do alvo |
 | **Denylist de URLs** | `projects.blender.org/blender/blender` (e `/src/`, `/raw/`, `/commit/`) · `github.com/blender/blender` e espelhos · `developer.blender.org/D*` (revisões diferenciais = diffs) · qualquer *grep.app* / *searchcode* / *sourcegraph* sobre o alvo. ⭐ **PERMITIDO:** `projects.blender.org/blender/blender/issues/<n>` (texto de utilizadores e triagem — é o que o §15 cita) e `docs.blender.org` (manual, para FACTOS) |
@@ -30,7 +30,7 @@ caneta) **troca de deformação** em vez de trocar o sinal da força.
 |---|---|---|
 | **girar/torcer** (omissão) | **roda** a cadeia para seguir o arrasto | **torce** cada segmento em torno do próprio eixo, pelo movimento horizontal do ponteiro |
 | **escalar/transladar** | **escala** ao longo do segmento | **translada** rigidamente |
-| **espremer/esticar** | escala no eixo do segmento, com volume compensado nos outros dois | ⛔ **nada** — não há ramo para a inversão neste modo |
+| **espremer/esticar** | escala no eixo do segmento, com volume compensado nos outros dois | ⛔ **nada** — o modificador não muda a saída neste modo |
 
 ⚠️ **Os nomes acima são os NOSSOS** (e os que as fixtures usam no campo `modo`). O alvo expõe os
 mesmos três na ordem desta tabela; a correspondência é posicional e está no cabeçalho de cada
@@ -94,8 +94,9 @@ falam deles, e são os nomes que a nossa implementação deve usar. As faixas e 
 
 ### §1.4 — ⚠️ As duas omissões que dependem de quem pergunta
 
-**Ancorado** e **trava de rotação** são `false` na estrutura de dados **crua**, mas o
-pincel que o artista de facto activa vem de uma biblioteca de pincéis distribuída com o alvo, e nela
+**Ancorado** e **trava de rotação** têm duas respostas conforme a pergunta seja *«qual é o valor
+neutro?»* ou *«com o que é que o artista se depara?»*. O pincel que ele de facto activa vem de uma
+biblioteca de pincéis distribuída com o alvo, e nela
 **ancorado chega LIGADO** (observado no dump de configuração de todas as 69 fixtures: ancorado
 `True`, trava de rotação `False`).
 ⇒ **Para nós a decisão é de produto:** o comportamento que o artista conhece é o **ancorado**.
@@ -150,7 +151,13 @@ espelhada válida de `C`»* (§12.1 — a comparação é estrita e em `f32`):
 |---|---|---|
 | **visitados** | os vértices alcançáveis a partir da semente por uma cadeia de vizinhos em que **todos os elos anteriores** satisfazem `dentro` | cada um recebe **peso `1`** |
 | **interior** | os visitados que satisfazem `dentro` | são os únicos por onde a travessia continua |
-| **franja** | os visitados que **não** satisfazem `dentro` — o primeiro anel para lá do raio | os que passam no **teste de lado** (§2.5) entram na **média que dá o pivô** (§2.3) |
+| **franja** | os visitados que **não** satisfazem `dentro` — o primeiro anel para lá do raio | os que passam no **teste de lado** (§2.5) **contra `C`** entram na **média que dá o pivô** (§2.3) |
+
+⚠️⚠️ **O segundo argumento do teste de lado é `C`, o ponto de aplicação** — e isso é
+**load-bearing**, não anotação: a franja decide o pivô, o pivô decide a deformação inteira (§12.1),
+e o §11.3 (cursor sobre o plano de espelho) **só é verdade com esta ligação**. ⛔ Note que o mesmo
+teste é usado no §3.1 com **outro** segundo argumento — lá é o **alvo corrente** do crescimento,
+não `C`.
 
 ⚠️ Cada vértice entra nos conjuntos **uma vez só**; a ordem de visita é FIFO e importa apenas para
 o desempate do §2.3.
@@ -187,7 +194,17 @@ que, com esta opção desligada, **cada** movimento de câmara volta a pagar a c
 engasga a cada zoom/pan; o de [#127259](https://projects.blender.org/blender/blender/issues/127259)
 é o mesmo custo numa malha densa. §13.
 
-### §2.5 — O teste de lado (usado em §2.2, §3 e em mais lado nenhum)
+### §2.5 — O teste de lado
+
+⚠️ **É um predicado de DOIS argumentos, e o segundo muda conforme quem o usa** — enunciá-lo sem
+dizer qual é deixa a espec ambígua exactamente onde ela decide o pivô:
+
+| usado em | `p` | `q` |
+|---|---|---|
+| §2.2 — acumular a franja que dá o pivô | o vértice da franja | **`C`**, o ponto de aplicação |
+| §3.1 — acumular a frente de crescimento | o vértice recém-alcançado | o **alvo corrente** do crescimento |
+
+⛔ Em mais lado nenhum.
 
 Dado um ponto `p` e um pivô `q`, para **cada eixo de simetria activo** `i`:
 
@@ -195,7 +212,7 @@ Dado um ponto `p` e um pivô `q`, para **cada eixo de simetria activo** `i`:
 - se `p[i] · q[i] < 0` ⇒ **reprova**.
 
 Passa se nenhum eixo reprovar. Com simetria desligada **passa sempre**.
-⚠️ O primeiro ramo é o que faz o pivô exactamente **sobre** o plano de simetria escolher
+⚠️ A primeira cláusula é o que faz o pivô exactamente **sobre** o plano de simetria escolher
 determinadamente o lado negativo.
 
 ### §2.6 — O desvio da origem
@@ -271,17 +288,21 @@ Cada segmento leva, **independentemente**, `N` = **suavizações do peso** itera
 substitui o peso de cada vértice pela **média simples dos pesos dos vizinhos** — ⚠️ **o próprio
 vértice não entra na média**, e as **ligações artificiais de §2.4 não entram** na vizinhança aqui.
 
-⚠️ **Um vértice sem vizinhos** (solto) recebe, nesta rotina, uma média de um conjunto vazio.
-Não há guarda neste caminho (existe uma variante com guarda, que este uso não chama). ⇒ malha com
-vértices soltos é caso a evitar; ver §11.4.
+⚠️ **Um vértice sem vizinhos** (solto) recebe, nesta fase, a média de um conjunto vazio — o alvo
+não a protege. ⇒ malha com vértices soltos é caso a evitar; a nossa divergência deliberada está
+prescrita no §11.4.
 
-⚠️⚠️ **Determinismo — o achado que muda a nossa implementação:** no alvo esta suavização corre
-**por partição espacial, em paralelo, escrevendo no mesmo arranjo** que está a ler. Dentro de uma
-partição o passo é Jacobi limpo; **através da fronteira entre partições, um vizinho pode já ter sido
-reescrito nesta mesma iteração** — o resultado depende da partição e do escalonamento das threads.
-⇒ **A nossa implementação faz Jacobi limpo (determinístico)**, e a paridade com o oráculo é exacta
-só quando a região cabe numa partição. Nas 69 fixtures publicadas ela cabe (malhas de 1 298 e 4 930
-vértices), e é por isso que a paridade medida fecha a `~1e-7` (§12).
+⚠️⚠️ **Determinismo — o achado que muda a nossa implementação.** ⛔ **A saída desta fase no alvo
+não é reprodutível quando a região excede uma partição da estrutura espacial de aceleração** — logo
+**a paridade não é asserível nesse regime**. Abaixo desse limiar ela é exacta, e isso está medido:
+nas 69 fixturas publicadas a região cabe (malhas de `1 298` e `4 930` vértices) e a paridade fecha
+a `~1e-7` (§12).
+
+⇒ **DECISÃO NOSSA:** a nossa implementação faz **Jacobi limpo** — cada iteração lê só o estado da
+iteração anterior — e é portanto **determinística em toda a malha**, incluindo o regime em que o
+alvo não o é. ⚠️ Isso é uma escolha, não uma cópia: acima do limiar as duas saídas podem divergir
+**sem que nenhuma esteja errada**, e um gate de paridade escrito nesse regime mede a partição do
+oráculo, não a nossa lei.
 
 ---
 
@@ -312,7 +333,8 @@ nesta configuração:
 | **cabeça** `cabeça_i` | `O⁻ + d · comprimento_i` | o mesmo avanço, medido a partir da origem **ANTIGA** |
 | **alvo do seguinte** | `origem_i` | a origem deste é o alvo do próximo |
 
-⚠️⚠️ **A cabeça e a origem guardadas NÃO ficam à distância `comprimento_i` uma da outra** — elas
+⚠️⚠️ **A cabeça e a origem que o segmento leva para o evento seguinte NÃO ficam à distância
+`comprimento_i` uma da outra** — elas
 são medidas a partir de origens diferentes (`O⁻` e `T`), e a separação delas vale
 `|2·comprimento_i − ‖T − O⁻‖|`. Isto é **invisível em todos os modos menos um**: a cabeça só é lida
 pelo referencial do espremer/esticar (§6), e é lá — e só lá — que a inconsistência chega a pixel.
@@ -352,8 +374,8 @@ ponteiro**, partindo da configuração em que o evento anterior a deixou.
 
 ⚠️ **Os outros modos NÃO têm esta memória:** torção (§5.2), translação (§5.3) e espremer/esticar
 (§5.5) escrevem sempre a partir do estado **inicial**, logo são funções fechadas do deslocamento do
-arrasto. O modo de escala (§5.4) herda a memória **só quando a trava de rotação está desligada**,
-porque aí ele chama esta rotina.
+arrasto. O modo de escala (§5.4) herda a memória **só quando a trava de rotação está desligada** —
+que é exactamente o caso em que ele também roda (§5.4).
 
 ⚠️ **Para nós isto é uma DECISÃO, não um detalhe a copiar cegamente:** a dependência da taxa de
 eventos significa que o mesmo gesto dá poses diferentes conforme a carga da máquina. Reproduzi-la é
@@ -415,7 +437,8 @@ vértice acompanha.
 ### §5.4 — Escala
 
 1. Se a **trava de rotação** estiver **desligada**, resolver primeiro a cadeia como em §5.1 (com a
-   âncora conforme o controlo) — a rotação entra como parte do gesto de escala;
+   âncora conforme o controlo). ⇒ **com a trava desligada o gesto roda e escala; com ela ligada,
+   escala sem rodar**;
 2. seja `plano` o plano que passa pela **cabeça inicial do segmento 0** com normal
    `normalizar(cabeça_inicial_0 − origem_inicial_0)`, e `δ` a **distância com sinal** de `T` a esse
    plano;
@@ -450,7 +473,7 @@ inicial já espelhadas para `a`, `R` a rotação do segmento (também espelhada)
 `F` o referencial local:
 
 ```
-X(p)  =  T(Õ) · F · [ R · S · T(Õ − Õ₀) ] · F⁻¹ · T(−Õ) · p
+X_{i,a}(p)  =  T(Õ) · F · [ R · S · T(Õ − Õ₀) ] · F⁻¹ · T(−Õ) · p
 ```
 
 — isto é: leva-se `p` ao referencial do pivô, aplica-se lá dentro *rotação, escala e a translação
@@ -483,10 +506,15 @@ conjugação da rotação pela mesma reflexão.
 Para cada vértice `v`, com `p₀(v)` a posição dele **no início do traço**:
 
 ```
-deslocamento(v) = Σ_i  peso_i(v) · [ P₄_i,a(v) · M_i,a(v) · P₄⁻¹_i,a(v) · p₀(v)  −  p₀(v) ]
+deslocamento(v) = Σ_i  peso_i(v) · [ X_{i,a(v)}(p₀(v))  −  p₀(v) ]
 ```
 
-onde `a(v)` é a área de simetria do vértice (§6). Depois: `deslocamento(v) ×= factor(v)` (§9).
+onde `X_{i,a}` é o mapa afim do §6 e `a(v)` o **octante de espelho** do vértice. Depois:
+`deslocamento(v) ×= factor(v)` (§9).
+
+⚠️ **A espec não prescreve como `X_{i,a}` é armazenado nem factorizado** — só o que ele faz. A
+composição do §6 é uma *lei*, e agrupar os factores (ou pré-multiplicá-los por octante, ou não os
+pré-multiplicar de todo) é escolha de quem implementa.
 
 ### §7.2 — ⚠️ O que cada modo de facto escreve
 
@@ -599,18 +627,17 @@ espremer/esticar há a guarda de `1e-5` (§5.5).
 ### §11.3 — ⭐ Cursor exactamente sobre o plano de espelho
 
 Com simetria em X e o cursor em `x = 0`, o parceiro espelhado da semente **é a própria semente**, e
-o teste de lado (§2.5, primeiro ramo) reprova toda a franja com `x > 0`. O alvo produz então um
+o teste de lado (§2.5, primeira cláusula) reprova toda a franja com `x > 0`. O alvo produz então um
 deslocamento **quase nulo** (`max = 0,001` em `figura_girar_cabeca_no_plano_simetria_x`) e o
 resultado é **descontínuo** na posição do cursor: deslocar o cursor de `1e-6` muda a saída em
 `2,4e-1`. ⇒ **caso a evitar, e a nomear na UI** se alguém o atingir.
 
 ### §11.4 — Vértices soltos e malha vazia
 
-- Vértice sem nenhuma face: não é alcançado pela travessia (peso `0`) mas **entra na suavização
-  §4 sem guarda** ⇒ caminho para valor indefinido. **Não reproduzir**: a nossa suavização deve
-  deixar um vértice sem vizinhos com o peso que tinha.
-- Se não houver vértice nenhum ao alcance, **a cadeia não é construída e o traço não faz nada**
-  (retorno silencioso).
+- Vértice sem nenhuma face: a travessia não o alcança (peso `0`), mas a suavização do §4 **calcula
+  para ele a média de um conjunto vazio** ⇒ o peso dele fica indefinido. ⛔ **Divergência
+  deliberada:** a nossa suavização deixa um vértice sem vizinhos com o peso que tinha.
+- Se nenhum vértice estiver ao alcance, **o traço inteiro não move nada, e sem aviso**.
 
 ### §11.5 — Malha de várias peças com «só conectado» desligado
 

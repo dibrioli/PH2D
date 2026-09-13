@@ -357,6 +357,41 @@ numa linha**.
 R-pré nomeou** (§2.4, §3, §5.1, §5.2, §8); corrida sobre a versão 2, sai **limpa**.
 *Sem esse controlo, o verde da versão 2 não valeria mais do que o verde da versão 1.*
 
+### ⛔⛔ EMENDA 2 — a 2.ª passagem do R-pré também NÃO atestou (5 achados, ZERO substanciais)
+
+As **seis** curas da emenda 1 foram conferidas uma a uma contra o fonte e **confirmadas**. O que
+sobrou foi higiene do §4.2 — quatro edições de uma linha e uma cláusula — mas ⚠️⚠️ **a leitura que
+importa é sobre o MÉTODO:**
+
+> ⛔⛔ **Uma cura que varre os SÍTIOS NOMEADOS deixa a ESPÉCIE viva nos que ninguém nomeou.**
+> Os quatro achados de §4.2 da 2.ª passagem eram **a mesma espécie** que a emenda 1 curou —
+> *descrever o PROGRAMA em vez do COMPORTAMENTO* — vivos em **três secções que a emenda não tocou**
+> (zero hunks no diff dela). ⇒ ao aplicar um lote de achados, **varra o documento inteiro à procura
+> da espécie**, não só dos endereços.
+
+⭐ **E a varredura da espécie pagou:** além dos 5 endereços do R, ela apanhou **mais 6** por conta
+própria (o modo sem ramo de inversão · o valor «cru» da estrutura de dados · a rotina irmã citada
+pelo grafo de chamadas · «cabeça e origem **guardadas**» · o vértice solto «sem guarda» · o
+«retorno silencioso»), e **duas** referências a *ramo* que eram do nosso próprio texto e liam-se
+como código do alvo.
+
+| # | achado do R | cura |
+|---|---|---|
+| 1 | §4 — parêntesis a afirmar o inventário de código (existe uma variante alternativa; este caminho não a usa) | **apagado** — não tem conteúdo observável; a degenerescência já está na frase anterior e a nossa divergência no §11.4 |
+| 2 | §4 — o parágrafo do determinismo descrevia a **estrutura de execução** | reescrito como observável (*«a saída não é reprodutível acima de uma partição ⇒ a paridade não é asserível nesse regime»*) + o Jacobi limpo declarado **DECISÃO NOSSA**. A metade medida fica |
+| 3 | §7.1 — a soma usava dois símbolos nunca definidos, que eram a decomposição de **armazenamento** do alvo | um símbolo só, o mapa que o §6 define; a factorização fica **ao implementador**, e a espec di-lo |
+| 4 | §5.4 — oração de **finalidade** no passo 1 | trocada pelo observável (*«desligada roda e escala; ligada, escala sem rodar»*) |
+| 5 | **funcional** — o teste de lado é um predicado de **dois** argumentos e a espec só ligava o segundo num dos dois sítios | §2.5 ganha a **tabela dos dois usos** (`C` no §2.2 · alvo corrente no §3.1) e o §2.2 nomeia-o. ⚠️ Não é cosmético: a franja decide o pivô, o pivô decide a deformação (§12.1), e o §11.3 **pressupunha** essa ligação sem a enunciar |
+
+⚠️⚠️ **E a lição de instrumento desta obra, que fica escrita:**
+
+> ⭐ **SWEEP VERDE É NECESSÁRIO E NUNCA SUFICIENTE.**
+> Os `5` achados da 2.ª passagem **não movem o sweep** — a vassoura de `137` entradas não apanha
+> nenhum deles, e nem podia: eles não são tradução de prosa do alvo, são *a nossa própria voz a
+> descrever o programa*. A parede tem **duas** metades e só uma é automatizável: o sweep prova que
+> não houve **colagem nem tradução**; que o documento descreve **comportamento** é juízo, e custa
+> uma leitura humana (ou de um R independente) **a cada versão**.
+
 ### Medições novas desta emenda
 
 | pergunta | experiência | veredito |

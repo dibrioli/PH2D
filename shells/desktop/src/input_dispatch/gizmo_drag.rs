@@ -5,8 +5,11 @@
 //! enough that keeping them inline tipped the window-event dispatch hub
 //! past 600 LOC. The begin/end of a drag still live in the MouseInput
 //! arm; only the per-move advance moved here.
-// Tecto de LOC NUMERADO em `tests/it/file_loc_caps.rs` — ~735 LOC — the keyed-handle-id multi-select rotate/scale/translate
-// advance paths are inherently large; a finer per-path split is a desktop-gizmo follow-up.
+// O tecto de LOC numerado que este ficheiro tinha (~735 LOC em `tests/it/file_loc_caps.rs`) SAIU na
+// `line/input-dispatch` (2026-09-13): a divisão por caminho que esta nota adiava foi feita — o
+// `advance_gizmo_drag` ficou com o prelúdio e os dois braços, e os corpos vivem em `gizmo_drag_calculo.rs`
+// (pivô, `new_t`, factores) e `gizmo_drag_escrita.rs` (grupo, moldura, fluxo, simples). O histórico abaixo
+// descreve braços que moram agora no segundo.
 // +12 (gold-standard joint anchor): the joint tail — REMOVED again by W-J2; the
 // anchor dots open `ph2d_app_physics::joint_anchor_drag`, which writes one side's local.
 // +43 (frame resize): the snapshot install + the `else if` arm that resizes a frame's
@@ -14,7 +17,7 @@
 // arm is the branch and the ratio, nothing else — the same shape as the flow-reorder
 // arm below it.
 
-use crate::{App, Transform};
+use crate::App;
 
 /// A escrita do arrasto (grupo, moldura, fluxo, simples) — ramos do `advance_gizmo_drag`.
 #[path = "gizmo_drag_escrita.rs"]
@@ -154,66 +157,7 @@ impl App {
             // só na ida.
             let drag = ph2d_editor_core::live_anchor(drag, ctrl);
             if matches!(drag.kind, ph2d_editor_core::GizmoDragKind::MovePivot) {
-                // TOOL_PIVOT: relocate the pivot to the cursor while the
-                // sprite's quad stays world-fixed (compensating anchor).
-                // CTRL snaps to the quad center / corners / edge mids +
-                // the content-bbox center (`content_center`).
-                let window_size = crate::field_gizmo_host::scene_window_of(gfx);
-                let entity = ph2d_ecs::Entity::from_bits(drag.entity_bits);
-                let raw_world = gfx.camera.screen_to_world(drag.cursor_screen, window_size);
-                let target = if ctrl {
-                    let half_world = gfx
-                        .sim
-                        .world()
-                        .get::<ph2d_render::Sprite>(entity)
-                        .map(|s| {
-                            [
-                                s.size[0] * drag.start_transform.scale[0] * 0.5,
-                                s.size[1] * drag.start_transform.scale[1] * 0.5,
-                            ]
-                        })
-                        .unwrap_or([0.0, 0.0]);
-                    let cands = ph2d_editor_core::pivot_snap_candidates(
-                        drag.pivot_world,
-                        drag.start_transform.rotation,
-                        half_world,
-                    );
-                    // Snap when within ~14 px of a candidate, converted
-                    // to world units at the current zoom.
-                    let thresh = 14.0 * gfx.camera.height_world / window_size.height as f32;
-                    let mut best = raw_world;
-                    let mut best_d2 = thresh * thresh;
-                    let consider = |c: [f32; 2], best: &mut [f32; 2], best_d2: &mut f32| {
-                        let dx = c[0] - raw_world[0];
-                        let dy = c[1] - raw_world[1];
-                        let d2 = dx * dx + dy * dy;
-                        if d2 <= *best_d2 {
-                            *best_d2 = d2;
-                            *best = c;
-                        }
-                    };
-                    for c in cands {
-                        consider(c, &mut best, &mut best_d2);
-                    }
-                    if let Some(cc) = content_center {
-                        consider(cc, &mut best, &mut best_d2);
-                    }
-                    best
-                } else {
-                    raw_world
-                };
-                let (new_translation, new_anchor) = ph2d_editor_core::move_pivot_transform(
-                    drag.start_transform,
-                    drag.pivot_world,
-                    target,
-                    drag.parent_world,
-                );
-                if let Some(mut t) = gfx.sim.world_mut().get_mut::<Transform>(entity) {
-                    t.translation = ph2d_core::Vec2::new(new_translation[0], new_translation[1]);
-                }
-                if let Some(mut s) = gfx.sim.world_mut().get_mut::<ph2d_render::Sprite>(entity) {
-                    s.anchor = new_anchor;
-                }
+                self.ramo_gizmo_mover_pivo(drag, ctrl, content_center);
             } else {
                 self.ramo_gizmo_calcular(drag, is_scale_drag, vec_scale_snap, vec_cfg);
             }

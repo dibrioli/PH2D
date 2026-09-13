@@ -196,6 +196,52 @@ não aparecia no censo. O controlo `a_source_escape_is_not_a_path_and_is_not_a_p
 - **`ph2d_i18n::tr_with`:** uma frase com peças do código mora INTEIRA na tabela, com marcadores
   nomeados — colar `format!("{n} {}", tr(…))` fixaria a ordem das palavras no código.
 
+## §2-quinquies — ✅ O INSPECTOR fala pela tabela, e a régua corrigiu-se DUAS vezes no caminho (2026-09-13)
+
+> Mesma jornada, segunda volta: o painel seguinte da fila do §4. O mecanismo, as armadilhas e as sete
+> premissas refutadas estão no
+> [handoff do Inspector](../handoffs/HANDOFF_INTEGRACAO_line_UIUX_2026-09-13_INSPECTOR.md).
+
+| população | ponto fixo (§2-bis) | lexical de 13/09 | lexical CORRIGIDA | hoje |
+|---|---:|---:|---:|---:|
+| `ph2d-panel-inspector` | 116 | 582 | **626** | **1** (o `Panel::TITLE`) |
+| `ph2d-panel-painter-layers` | 166 | 376 | 383 | **2** (`TITLE` · `RGB`) |
+| `ph2d-panel-hierarchy` | — | 6 | 8 | **2** (`TITLE` · a entidade de amostra) |
+| `ph2d-editor-core` | 32 | 641 | **692** | 692 (dívida ao número, por ficheiro) |
+| todas as crates de UI | 445 | 5 035 | — | **4 638** |
+
+⛔⛔ **Os dois pontos cegos que a régua ainda tinha, e nenhum era pequeno:**
+
+1. **A palavra GRITADA.** `is_language` só aceitava um token *Capitalizado*, e os títulos dos cards da
+   §14 (`"LEG"`, `"WALK"`, `"FORGIVENESS"`) saíam em silêncio — com eles, **+151** no repo: o trilho
+   esquerdo inteiro da `editor-core` (`"BRUSH"`, `"PICK"`, `"ERASE"`…, +26), os módulos do topo
+   (+13), os títulos de card do Painter (`MODE`, `TOOL`, `OPERATION`). ⇒ uma palavra só de letras
+   maiúsculas, três ou mais, é língua; `SCREAMING_CASE`, `UV` e `RGBA16` continuam fora.
+2. **A BARRA numa frase.** Todo texto com `/` era lido como caminho, e isso apagava **treze** rótulos
+   da §14 (`"Speed (m/s)"`, `"Wall Slide (m/s)"`…), a legenda do 9-slice (`"Corners F fixed
+   (on/off)…"`), o `"Swap A / B"` e o `"Line / Neighbors"` da grelha. ⇒ um caminho não tem espaço.
+   ⚠️ **Quem os apanhou não foi a régua: foi o COMPILADOR**, porque a tabela deles já era `TextKey` e
+   os treze ficaram a ser `&str` no meio dela.
+
+⭐⭐⭐ **A chave TIPADA é o que torna a migração de um painel verificável.** Metade do vocabulário do
+Inspector mora em tabelas `const` (tipos de junta, cards da §14, modos de mistura), onde o `tr` não
+compila (E0015). Guardada como `&str`, **uma chave e um texto são o mesmo tipo**: o consumidor que se
+esquece de traduzir compila, passa em todo teste que não leia o pixel, e pinta
+`panel.inspector.joint.pin` no ecrã. Com [`ph2d_i18n::TextKey`](../../../crates/ph2d-i18n/src/lib.rs)
+o esquecimento é **erro de compilação** — 40 tabelas trocadas de tipo, ~50 sítios de consumo
+obrigados a `.map(TextKey::tr)` ou `.tr()`, e zero hipótese de um rótulo cru chegar à tela.
+
+✅ **O que a volta entregou:** 626 → **1**; **602 chaves** `panel.inspector.<secção>.<nome>` em duas
+tabelas irmãs (a §14 Platform Player mora em `inspector_player.rs`, cortada pelo tecto de 700 linhas
+da workspace); **46 frases** com peças do código por `tr_with` (marcadores nomeados, precisão
+formatada antes); as **sete** entradas do Inspector na baseline antiga do HR-15 apagadas, com a
+dívida a sair do binário e não só do alcance do scanner; e um gate por crate igual ao do Painter,
+mais a metade nova *«uma chave mora em UMA tabela, e a §14 na dela»*.
+
+⚠️ **E a dívida da `editor-core` SUBIU, por correcção da régua** (`641 → 692`): +46 de palavras
+gritadas e +3 de frases com barra, com a conta escrita ficheiro a ficheiro no próprio gate. *Uma
+correcção da medição, nunca licença para crescer.*
+
 ## §3 — Por que esta linha MEDIU e não CUROU
 
 ⛔ **Não é preguiça, é o custo de merge.** Curar os `418` (§2-bis; a §2 dizia `108`) toca **19 crates**, e onze delas são de

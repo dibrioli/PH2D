@@ -194,6 +194,11 @@ um ficheiro velho abre o app com um painel fechado, e apagá-lo é o reset.
 da árvore de `9bdf86631` (o commit desta nota só toca este ficheiro). Aprovar o smoke **não** é ordem de
 integrar (CLAUDE.md §0.7): a linha continua parada à espera dela.
 
+⚠️ **A LINHA CONTINUOU no mesmo dia, por ordem do dono («siga»), e há um SEGUNDO handoff:**
+[`HANDOFF_INTEGRACAO_line_UIUX_2026-09-13_INSPECTOR.md`](HANDOFF_INTEGRACAO_line_UIUX_2026-09-13_INSPECTOR.md)
+— o painel **Inspector** (`626 → 1`), a chave TIPADA (`ph2d_i18n::TextKey`) e **duas correcções da
+régua** que mudam os números deste documento para baixo. *Quem integrar lê os dois, nesta ordem.*
+
 ## 8 — ⏳ ABERTO (não corrigir na integração)
 
 | item | de quem depende |

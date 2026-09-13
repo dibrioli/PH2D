@@ -34,8 +34,9 @@ fn code_only(src: &str) -> String {
 #[test]
 fn the_arm_that_speaks_reads_the_derived_question() {
     let src = code_only(&LOOP);
+    // ⚠️ Desde a `line/render-bodies` a pergunta é um campo do `DrainOut` que o bloco do esqueleto lê (`pd.`).
     assert!(
-        src.contains("} else if pending_bone_needs_focus {"),
+        src.contains("} else if pd.pending_bone_needs_focus {"),
         "o braço «nenhum osso em foco» deixou de ler a pergunta derivada — se ele voltou a uma \
          disjunção escrita à mão, os controlos que vierem a seguir morrem calados, que é o report \
          de 2026-09-07"

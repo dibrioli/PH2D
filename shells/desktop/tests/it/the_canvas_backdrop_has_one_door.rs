@@ -85,9 +85,16 @@ fn no_shell_file_writes_the_canvas_backdrop_by_hand() {
 
 #[test]
 fn the_sprite_layer_clear_comes_from_the_door() {
-    let p = shell_src().join("render_loop").join("mod.rs");
+    // ⚠️ O QUADRO pela ordem em que corre (`frame_text::render_frame`), só as linhas de CÓDIGO (a lei do `code_of`):
+    // desde a `line/render-bodies` (2026-09-13) o chão do quadro mora na `fase_frame_canvas` e o `render_loop/mod.rs` é
+    // o índice — lido pelo caminho, este gate reprovou alto sobre o quadro certo.
+    let quadro: String = crate::frame_text::render_frame()
+        .lines()
+        .filter(|l| !l.trim_start().starts_with("//"))
+        .collect::<Vec<_>>()
+        .join("\n");
     assert!(
-        code_of(&p).contains("canvas_clear::canvas_clear_rgb"),
+        quadro.contains("canvas_clear::canvas_clear_rgb"),
         "o `clear` da camada de sprites tem de sair da porta"
     );
 }

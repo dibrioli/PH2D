@@ -37,11 +37,6 @@ const FILE_OVERAGE_OK: &[(&str, usize, &str)] = &[
         1289,
         "crate-root module hub — the 80+ `mod` declarations are an",
     ),
-    (
-        "render_loop/mod.rs",
-        1604,
-        "frame orchestrator — heavy phases already extracted to",
-    ),
 ];
 
 fn collect_rs(root: &Path) -> Vec<PathBuf> {

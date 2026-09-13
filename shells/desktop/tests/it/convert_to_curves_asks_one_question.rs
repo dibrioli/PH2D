@@ -11,20 +11,21 @@
 //! como esta política falhou. A semântica está nos gates de `vec_convert::tests`, que rodam a
 //! conversão de verdade sobre cada fonte.
 
-use std::fs;
-
-fn src(name: &str) -> String {
-    fs::read_to_string(format!("{}/src/{name}", env!("CARGO_MANIFEST_DIR")))
-        .unwrap_or_else(|e| panic!("{name}: {e}"))
-}
-
 /// O BOTÃO se oferece pela porta única — e não por uma lista de componentes re-enumerada no
 /// `render_loop`. Um `convertible` escrito à mão ali é como as duas regressões nasceram.
 #[test]
 fn the_convert_button_asks_the_single_door() {
-    let render_loop = src("render_loop/mod.rs");
+    // ⚠️⚠️ O QUADRO pela ordem em que corre (`frame_text::render_frame`), SEM COMENTÁRIOS, e a agulha é a CHAMADA. Até
+    // à `line/render-bodies` (2026-09-13) este gate lia o `render_loop/mod.rs` inteiro, e a porta só lá estava num
+    // COMENTÁRIO (`// … pela porta ÚNICA (`vec_convert::is_convertible`)`): a chamada tinha-se mudado para a
+    // `fase_selection_mirror_convert_envelope` na OBRA 2, e o gate ficou verde sobre a prosa que explica a regra.
+    let render_loop: String = crate::frame_text::render_frame()
+        .lines()
+        .filter(|l| !l.trim_start().starts_with("//"))
+        .collect::<Vec<_>>()
+        .join("\n");
     assert!(
-        render_loop.contains("vec_convert::is_convertible"),
+        render_loop.contains("vec_convert::is_convertible("),
         "o `convertible` do render_loop deixou de usar `vec_convert::is_convertible`. Se ele \
          voltou a enumerar as fontes (VecShape / effects / …), a resposta do BOTÃO e a do \
          CONVERSOR divergem outra vez — e o sintoma é um botão desligado sobre algo que o \

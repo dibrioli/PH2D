@@ -52,7 +52,6 @@ const FN_OVERAGE_OK: &[(&str, &str, usize, &str)] = &[
         "o QUADRO inteiro numa função; a OBRA 2 da `line/render-loop` parte-o em fases chamadas pela \
          mesma ordem, e cada fase que sai baixa este número no mesmo commit",
     ),
-    ("render_loop/present.rs", "run_present_phase", 484, NASCEU),
     ("render_loop/snapshots.rs", "publish", 1068, NASCEU),
 ];
 

@@ -132,14 +132,14 @@ fora da silhueta. ⚠️ **O 9-slice e a folha desdobrada** desenham-se sem defo
 Emissivo · vidro do prefab (`present_frost::lift`) · fantasmas de onion · picking (hoje o quad de
 repouso) · *View All*. Cada um: ou lê a malha, ou é uma lacuna **nomeada** com o que custa curá-la.
 
-### W4 — o orçamento, re-medido
+### W4 — o orçamento, re-medido — ✅ FEITA (2026-09-13): `8 738` → **`1 543`** peças, do TEMPO do quadro
 
 Sem o Vello, uma peça é um vértice: o `SKIN_FRAME_PIECES` (derivado do buffer do Vello) deixa de
 descrever o recurso deste caminho. ⇒ medir o custo de CPU por peça (deformar + costurar + enviar) e
 o de GPU, e escrever o tecto do recurso que sobra. ⛔ Nunca deixar o número de um caminho morto a
 limitar o vivo (§0.0).
 
-### W5 — o smoke que ENSINA a ordem
+### W5 — o smoke que ENSINA a ordem — ✅ FEITA (2026-09-13): a barra que atravessa o braço pintado, e o olho
 
 A cena do osso ganha uma sobreposição (o braço pintado atrás de outra peça) e o olho da Hierarquia a
 esconder a imagem presa — as duas coisas que a camada de hoje faz ao contrário.

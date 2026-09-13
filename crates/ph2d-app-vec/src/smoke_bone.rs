@@ -41,6 +41,37 @@ pub fn armed() -> bool {
     std::env::var_os("PH2D_VEC_BONE_SMOKE").is_some()
 }
 
+/// ⭐ **O rectângulo do BRAÇO PINTADO** — `(centro, tamanho)` em metros de mundo, com a imagem de
+/// `IMG_W × IMG_H` pixels à escala do projecto.
+///
+/// ⚠️ **Uma porta, e não dois literais:** a peça que ensina a ORDEM tem de SOBREPOR esta imagem, e o
+/// gate mede-o. Com a posição escrita duas vezes, mover a imagem deixaria a barra ao lado — e a cena
+/// passava a ensinar nada, em silêncio.
+#[must_use]
+pub fn painted_arm_rect(ppm: f32) -> ([f32; 2], [f32; 2]) {
+    (
+        [5.5, 2.5],
+        [f64::from(IMG_W) as f32 / ppm, f64::from(IMG_H) as f32 / ppm],
+    )
+}
+
+/// ⭐ **A BARRA QUE PASSA POR CIMA do braço pintado** — `(canto mínimo, canto máximo)`.
+///
+/// ⚠️ **Derivada do rectângulo da imagem** (`15 %` do lado à direita do centro, `12 %` de
+/// meia-largura, e mais alta que ela): atravessa-o em qualquer `pixels_per_meter`, e a imagem
+/// continua a ver-se dos dois lados. Uma barra que a tapasse inteira mostraria um buraco, não uma
+/// ordem.
+#[must_use]
+pub fn overlap_bar(ppm: f32) -> ([f32; 2], [f32; 2]) {
+    let (c, s) = painted_arm_rect(ppm);
+    let meio = c[0] + s[0] * 0.15;
+    let meia_largura = s[0] * 0.12;
+    (
+        [meio - meia_largura, c[1] - s[1]],
+        [meio + meia_largura, c[1] + s[1]],
+    )
+}
+
 /// O 1.º tempo: a arte e os três esqueletos.
 pub fn build(
     scene: &mut ph2d_vec_scene::VecScene,
@@ -86,14 +117,15 @@ pub fn build(
     let img = match renderer.acquire_individual(IMG_W, IMG_H, &px) {
         Ok(texture_id) => {
             let pixels_id = assets.insert_image_rgba8(IMG_W, IMG_H, px);
+            let (centro, tamanho) = painted_arm_rect(ppm);
             let (_, bits) = ph2d_image_import::spawn_sprite(
                 sim,
                 ph2d_image_import::PackedSource::Individual {
                     texture_id,
                     pixels_id,
                 },
-                ph2d_core::Vec2::new(5.5, 2.5),
-                [f64::from(IMG_W) as f32 / ppm, f64::from(IMG_H) as f32 / ppm],
+                ph2d_core::Vec2::new(centro[0], centro[1]),
+                tamanho,
                 "Painted arm",
             );
             let raiz = cadeia(sim, [3.6, 2.5], [7.4, 2.5], 3);
@@ -104,6 +136,21 @@ pub fn build(
             None
         }
     };
+    // ⭐⭐⭐ **A PEÇA QUE ENSINA A ORDEM** (plano `docs/Skeleton/03`, W5): uma barra que ATRAVESSA o
+    // braço pintado e nasce DEPOIS dele ⇒ desenha-se À FRENTE, e a imagem vê-se dos dois lados.
+    //
+    // ⛔⛔ **Até 2026-09-13 a imagem presa era uma camada do Vello por CIMA do quadro:** ela
+    // aparecia à frente desta barra, de toda a arte do documento e do vidro da receita aberta —
+    // *e nenhuma cena mostrava isso*, porque em repouso a arte deformada e a original coincidem.
+    let (barra_min, barra_max) = overlap_bar(ppm);
+    let em_mundo = |p: [f32; 2]| [f64::from(p[0]), f64::from(p[1])];
+    scene.push_path(shape(
+        ShapeKind::RoundRect,
+        em_mundo(barra_min),
+        em_mundo(barra_max),
+        &[0.25],
+        [90, 120, 220],
+    ));
     st.bone_smoke_img = img;
     st.bone_smoke_pend = Some([(braco, a), (tentaculo, t), (folha, f)]);
     st.bone_smoke_step = 1;
@@ -165,6 +212,11 @@ pub fn bind(
             } else {
                 "NAO prendeu -- PARE, a 2a midia nao montou"
             }
+        );
+        // ⭐ A ORDEM e o OLHO — as duas coisas que a camada do Vello fazia ao contrário (plano 03, W5).
+        eprintln!(
+            "[vec-bone-smoke] a barra AZUL passa por CIMA do braco pintado (a imagem esta' na ordem \
+             do quadro), e o olho da linha «Painted arm» na Hierarquia esconde-a"
         );
     }
     let mut presas = 0;
@@ -346,4 +398,33 @@ fn arm_pixels() -> Vec<u8> {
         }
     }
     px
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{overlap_bar, painted_arm_rect};
+
+    /// ⭐⭐ **A peça que ensina a ORDEM tem de ATRAVESSAR a imagem — e não a tapar.**
+    ///
+    /// ⚠️ A cena existe para mostrar que a imagem presa está na ORDEM do quadro (até 2026-09-13 ela
+    /// era desenhada por cima de tudo). Uma barra ao lado não distingue as duas coisas, e uma que a
+    /// tapasse inteira também não. Vale em qualquer `pixels_per_meter` porque a barra é DERIVADA.
+    #[test]
+    fn the_bar_that_teaches_order_crosses_the_painted_arm_without_hiding_it() {
+        for ppm in [50.0_f32, 100.0, 200.0] {
+            let (c, s) = painted_arm_rect(ppm);
+            let (min, max) = overlap_bar(ppm);
+            let (ax0, ax1) = (c[0] - s[0] * 0.5, c[0] + s[0] * 0.5);
+            let (ay0, ay1) = (c[1] - s[1] * 0.5, c[1] + s[1] * 0.5);
+            assert!(
+                min[0] > ax0 && max[0] < ax1,
+                "ppm {ppm}: a barra {min:?}..{max:?} nao deixa a imagem ver-se dos dois lados \
+                 ({ax0}..{ax1})"
+            );
+            assert!(
+                min[1] < ay0 && max[1] > ay1,
+                "ppm {ppm}: a barra nao atravessa a imagem de cima a baixo"
+            );
+        }
+    }
 }

@@ -28,12 +28,9 @@ ph2d-vec-scene = { path = "../ph2d-vec-scene" }
 # alto, que é a metade boa; a irmã perigosa é o `#[cfg(feature)]` que fica falso em silêncio.
 ph2d-poly2d = { path = "../ph2d-poly2d", features = ["serde"] }
 ph2d-render = { path = "../ph2d-render" }
-# ⚠️ Só as duas constantes do buffer do Vello de onde o `SKIN_FRAME_PIECES` foi derivado: o desenho
-# da pele pelo Vello saiu na W2 do plano 03 (2026-09-13), e a W4 troca o número pelo do caminho vivo
-# — e com ele esta aresta.
-ph2d-vector = { path = "../ph2d-vector" }
-# E mais uma invisível: a lei de deformação da pele. (O `ph2d-asset` saiu com a cache de imagens do
-# Vello: a malha desenha-se com a textura da própria sprite.)
+# ⚠️ A lei de deformação da pele. (O `ph2d-asset` saiu com a cache de imagens do Vello, e a
+# `ph2d-vector` com o orçamento derivado do buffer dele — a W4 derivou-o do TEMPO do quadro, que esta
+# crate mede sozinha: a malha desenha-se com a textura da própria sprite.)
 ph2d-vec-skin = { path = "../ph2d-vec-skin" }
 postcard = { version = "1", features = ["use-std"] }
 

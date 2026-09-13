@@ -47,7 +47,8 @@ fn make_target(gpu: &GpuContext) -> wgpu::Texture {
 
 fn readback(gpu: &GpuContext, texture: &wgpu::Texture) -> Vec<u8> {
     let unpadded = W * 4;
-    let padded = unpadded.div_ceil(wgpu::COPY_BYTES_PER_ROW_ALIGNMENT) * wgpu::COPY_BYTES_PER_ROW_ALIGNMENT;
+    let padded =
+        unpadded.div_ceil(wgpu::COPY_BYTES_PER_ROW_ALIGNMENT) * wgpu::COPY_BYTES_PER_ROW_ALIGNMENT;
     let staging = gpu.device.create_buffer(&wgpu::BufferDescriptor {
         label: Some("sprite mesh gate staging"),
         size: u64::from(padded * H),
@@ -205,6 +206,112 @@ fn pintou(px: &[u8]) -> usize {
         .count()
 }
 
+/// `(mínimo, mediana)` do quadro em ms, com o trabalho da GPU **esperado** — um `submit` volta antes
+/// de a placa ter feito coisa alguma. Inclui o que o quadro paga por uma malha: a recolha, a costura
+/// da tira, o envio dos vértices e o desenho.
+///
+/// ⚠️⚠️ **O MÍNIMO é a leitura que sobrevive a esta workstation:** a carga de FUNDO (o editor, o
+/// rust-analyzer, o sccache, as outras sessões) fica em `~7` sem ninguém compilar, e o `CLAUDE.md`
+/// §5.0 diz que acima de `~5` nenhum relógio daqui vale nada. O mínimo é o custo quando o
+/// escalonador deu o núcleo; a mediana ao lado diz quanto a máquina estava a roubar.
+fn quadro_ms(
+    gpu: &GpuContext,
+    renderer: &mut SpriteRenderer,
+    inst: RenderInstance,
+    malha: Option<&SpriteMesh>,
+    alvo: &wgpu::TextureView,
+    rondas: u32,
+) -> (f64, f64) {
+    let mut present = PresentWorld::new();
+    match malha {
+        Some(m) => present.world_mut().spawn((inst, m.clone())),
+        None => present.world_mut().spawn(inst),
+    };
+    let cam = Camera2d::new([0.0, 0.0], 4.0);
+    let janela = WindowSize::new(W, H);
+    let mut desenhar = |renderer: &mut SpriteRenderer| {
+        renderer.render(alvo, &mut present, &cam, janela, wgpu::Color::BLACK);
+        gpu.device
+            .poll(wgpu::PollType::wait_indefinitely())
+            .expect("poll");
+    };
+    desenhar(renderer);
+    let mut ms = Vec::with_capacity(rondas as usize);
+    for _ in 0..rondas {
+        let t = std::time::Instant::now();
+        desenhar(renderer);
+        ms.push(t.elapsed().as_secs_f64() * 1e3);
+    }
+    ms.sort_by(|a, b| a.partial_cmp(b).expect("sem NaN no relogio"));
+    (ms[0], ms[ms.len() / 2])
+}
+
+/// ⏱️ **SONDA (`--ignored`) — O QUE UMA MALHA CUSTA POR QUADRO** (plano `docs/Skeleton/03`, W4).
+///
+/// O orçamento de peças da pele (`ph2d_skeleton_live::skin_image::SKIN_FRAME_PIECES`) foi derivado
+/// do buffer do Vello, que este caminho já não gasta. Do lado do desenho o recurso que sobra é o
+/// TEMPO do quadro, e é o que esta sonda mede: o mesmo instante desenhado como quad e como malha de
+/// `N` triângulos, com a GPU esperada.
+///
+/// ⚠️ **O alvo é `64×64`**: o que se mede é o custo por VÉRTICE mais o do quadro (recolher, costurar
+/// `5N − 2` vértices, enviar, desenhar) — o preenchimento é o mesmo nas duas colunas, porque a área
+/// coberta é a mesma.
+///
+/// ⚠️ **Acima de `load ~5` uma leitura de relógio desta workstation não vale nada** (`CLAUDE.md`
+/// §5.0) — a carga é impressa ao lado. Corre com:
+/// `cargo test -p ph2d-render --test it -- --ignored --nocapture measure_the_frame_cost`
+#[test]
+#[ignore = "sonda de GPU: imprime a tabela do custo, sem barra"]
+fn measure_the_frame_cost_of_a_mesh_sprite() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("sem GPU headless — nada medido");
+        return;
+    };
+    let atlas = TextureAtlas::new(&gpu, 256);
+    let mut renderer = SpriteRenderer::new(gpu.clone(), wgpu::TextureFormat::Rgba8Unorm, atlas, 64);
+    let tex = renderer
+        .acquire_individual(16, 16, &textura(16, 255))
+        .expect("textura");
+    let inst = instancia(tex);
+    let alvo = make_target(&gpu);
+    let view = alvo.create_view(&wgpu::TextureViewDescriptor::default());
+    let carga = std::fs::read_to_string("/proc/loadavg").unwrap_or_default();
+    println!(
+        "carga: {}",
+        carga
+            .split_whitespace()
+            .take(3)
+            .collect::<Vec<_>>()
+            .join(" ")
+    );
+    const RONDAS: u32 = 60;
+    let quad = quadro_ms(&gpu, &mut renderer, inst, None, &view, RONDAS);
+    println!("ms: MINIMO/mediana de {RONDAS} corridas (a media sob contencao mede o vizinho)");
+    println!("{:>8} | {:>15} | {:>9}", "pecas", "quadro", "vs quad");
+    println!(
+        "{:>8} | {:>6.3}/{:<8.3} | {:>9}",
+        "quad", quad.0, quad.1, "—"
+    );
+    for (cols, rows) in [
+        (1_u32, 1_u32),
+        (8, 8),
+        (24, 24),
+        (48, 48),
+        (72, 72),
+        (96, 96),
+    ] {
+        let m = grelha(&inst, cols, rows);
+        let pecas = m.tris.len();
+        let ms = quadro_ms(&gpu, &mut renderer, inst, Some(&m), &view, RONDAS);
+        println!(
+            "{pecas:>8} | {:>6.3}/{:<8.3} | {:>8.2}x",
+            ms.0,
+            ms.1,
+            ms.0 / quad.0.max(f64::MIN_POSITIVE)
+        );
+    }
+}
+
 /// ⭐⭐ **Uma malha de 2 triângulos em repouso É o quad**, com âncora deslocada, tinta, opacidade e
 /// espelhamento — a conversão `local → quad_pos` e a herança das propriedades.
 #[test]
@@ -222,7 +329,10 @@ fn a_two_triangle_mesh_at_rest_is_the_quad_with_tint_opacity_and_flip() {
     let inst = instancia(tex);
     let quad = desenha(&gpu, &mut renderer, inst, None);
     let malha = desenha(&gpu, &mut renderer, inst, Some(grelha(&inst, 1, 1)));
-    assert!(pintou(&quad) > 1_000, "o quad nao pintou nada — a comparacao seria vacua");
+    assert!(
+        pintou(&quad) > 1_000,
+        "o quad nao pintou nada — a comparacao seria vacua"
+    );
     let (n, pior) = diferenca(&quad, &malha);
     assert_eq!(
         (n, pior > 1),
@@ -251,7 +361,10 @@ fn a_translucent_image_in_a_fine_mesh_at_rest_has_no_seams() {
     let inst = instancia(tex);
     let quad = desenha(&gpu, &mut renderer, inst, None);
     let malha = desenha(&gpu, &mut renderer, inst, Some(grelha(&inst, 8, 8)));
-    assert!(pintou(&quad) > 1_000, "o quad nao pintou nada — a comparacao seria vacua");
+    assert!(
+        pintou(&quad) > 1_000,
+        "o quad nao pintou nada — a comparacao seria vacua"
+    );
     let (n, pior) = diferenca(&quad, &malha);
     assert_eq!(
         n, 0,

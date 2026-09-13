@@ -76,16 +76,15 @@ pub struct RefineOptions {
     /// correcta: área conservada ao cêntimo, zero triângulos saltados, zero arestas com mais de
     /// dois donos.
     ///
-    /// ⭐ **E o custo de CPU está MEDIDO** (máquina calma, `load 3,25` — acima de `~5` uma leitura
-    /// de relógio desta workstation não vale nada):
+    /// ⭐ **E o custo está MEDIDO dos dois lados** (2026-09-13, W4 do plano `docs/Skeleton/03`;
+    /// `load 3,7`–`3,9`, o MÍNIMO de 40/60 corridas — acima de `load ~5` uma leitura de relógio
+    /// desta workstation não vale nada). Por peça ENTREGUE, num quadro com `Smooth`: **`1,08 µs`**
+    /// (descodificar a malha `0,134` · deformar e montar `0,200` no `Fast` · recolher, costurar,
+    /// enviar e desenhar `0,039`). ⇒ o tecto do produto é uma FATIA do quadro dividida por esse
+    /// número: `ph2d_skeleton_live::skin_image::SKIN_FRAME_PIECES`.
     ///
-    /// | peças por imagem | deformar | encodar | soma |
-    /// |---:|---:|---:|---:|
-    /// | `216` (o `Fast`) | `0,004 ms` | `0,016 ms` | **`0,1 %`** de um quadro |
-    /// | `864` (o orçamento de omissão) | `~0,18` | `~0,08` | **`~1,6 %`** |
-    /// | `7 776` | `1,6`–`2,0` | `0,735` | **`10`–`16 %`** |
-    ///
-    /// ⛔ **A GPU continua por medir**, e é a metade que decide.
+    /// ⛔ A tabela anterior (`deformar`/`encodar`, até `10`–`16 %` a `7 776` peças) media o caminho
+    /// do **Vello**, que a W2 retirou.
     pub max_pieces: usize,
 }
 
@@ -96,8 +95,8 @@ impl Default for RefineOptions {
             tolerance_px: 0.5,
             // ⚠️ **O neutro desta folha, NÃO o tecto do produto:** a folha não sabe o que é um
             // quadro nem um renderer. O produto substitui-o pela parte da malha no orçamento do
-            // QUADRO (`ph2d_skeleton_live::skin_image::SKIN_FRAME_PIECES`, derivado do buffer fixo
-            // do Vello e medido em 2026-09-13).
+            // QUADRO (`ph2d_skeleton_live::skin_image::SKIN_FRAME_PIECES`, hoje derivado do TEMPO
+            // do quadro com o custo por peça MEDIDO — W4 do plano `docs/Skeleton/03`).
             max_pieces: 1024,
         }
     }

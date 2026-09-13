@@ -157,41 +157,53 @@ pub fn joints_in_image(
         .collect()
 }
 
-/// Palavras da DISTRIBUIÇÃO POR BINS por peça — o limite de cima do intervalo que a sonda de GPU
-/// `ph2d-render::skin_pieces_gpu_cost` deu: numa cena só com a pele o quadro desenhou `17 496`
-/// peças (sobram `≥ 3,98` palavras cada) e ficou em branco a `21 600` (sobravam `1,14`).
-const BINNING_WORDS_PER_PIECE: u32 = 4;
+/// Um quadro de 60 fps, em microssegundos — o RECURSO de que o orçamento da pele é uma fatia.
+const QUADRO_60FPS_US: usize = 16_667;
 
-/// ⭐⭐⭐ **O ORÇAMENTO DE PEÇAS DA PELE DE IMAGEM, POR QUADRO.**
+/// ⚠️ **A fatia do quadro que a pele pode gastar — e é a única ESCOLHA desta constante.** A pele é
+/// uma coisa entre muitas no quadro (a arte do documento pelo Vello, o chrome, os passes de luz, o
+/// resto das sprites); `1/10` deixa-lhe uma fatia visível sem lhe dar o quadro. Quem quiser medir
+/// outra fatia tem o `PH2D_SKIN_PIECES`.
+const FATIA_DA_PELE: usize = 10;
+
+/// O custo MEDIDO de uma peça ENTREGUE com `Smooth`, em nanossegundos (a tabela do
+/// [`SKIN_FRAME_PIECES`]).
+const CUSTO_POR_PECA_NS: usize = 1_080;
+
+/// ⭐⭐⭐ **O ORÇAMENTO DE PEÇAS DA PELE DE IMAGEM, POR QUADRO** — derivado do recurso deste caminho:
+/// o TEMPO do quadro.
 ///
-/// ⚠️⚠️ **O número é o do caminho que a W2 do plano 03 retirou** (2026-09-13). Ele saiu do buffer
-/// FIXO de informação por desenho do Vello ([`ph2d_vector::VELLO_BIN_DATA_WORDS`], `1 << 18`), onde
-/// uma peça gastava [`ph2d_vector::CLIPPED_IMAGE_INFO_WORDS`] (`11`) mais a distribuição por bins
-/// (até `4`) e passar do buffer deixava **o quadro inteiro em branco** — metade dele para a pele deu
-/// `8 738` peças:
+/// ⚠️⚠️ **O número de antes era do VELLO, e descrevia outro caminho.** Até 2026-09-13 a pele era uma
+/// camada do Vello e o tecto saía do buffer fixo de informação por desenho dele (`1 << 18` palavras,
+/// `11` + bins por peça ⇒ metade dele dava `8 738` peças, e passar do buffer deixava o quadro
+/// **em branco**). Desde a W2 do plano 03 a pele é uma malha no passe de sprites: aquele buffer já
+/// não é gasto por ela, e `8 738` peças custariam hoje **`9,4 ms`** — mais de metade de um quadro de
+/// 60 fps. *§0.0: o número de um caminho morto não limita o vivo.*
 ///
-/// | quem gastava o buffer | medido (2026-09-13) |
-/// |---|---|
-/// | o chrome do editor, painéis de omissão | `109` palavras (`0,04 %`) |
-/// | o chrome, TODOS os painéis abertos | `~1 190` (`0,45 %`) |
-/// | uma peça da pele | `11` + bins `1,14`–`3,98` |
-/// | uma cena só com a pele | desenha `17 496` peças · em branco a `21 600` |
+/// ⭐ **O que UMA peça custa, medido** (W4, 2026-09-13; `load 3,7`–`3,9`, o MÍNIMO de 40/60 corridas
+/// — as sondas são [`tests::measure_the_cpu_cost_of_a_skinned_frame`] e a
+/// `ph2d-render::sprite_mesh_gpu::measure_the_frame_cost_of_a_mesh_sprite`):
 ///
-/// Desde a W2 uma peça é um triângulo de uma malha no passe de sprites e **não gasta esse buffer**.
-/// ⏳ **A W4 mede o recurso do caminho vivo** — CPU por peça (deformar, refinar, costurar, enviar) e
-/// GPU — e troca este número pelo dela (§0.0: o número de um caminho morto não limita o vivo). Até
-/// lá ele fica por ser o único tecto medido, e a tabela de CPU do
-/// [`ph2d_poly2d::RefineOptions::max_pieces`] já diz que a `7 776` peças a CPU custa `10`–`16 %` de
-/// um quadro.
+/// | o que o quadro faz por peça | µs |
+/// |---|---:|
+/// | descodificar a malha guardada (postcard, **por quadro**) | `0,134` |
+/// | `Fast`: descodificar + deformar + montar o `SpriteMesh` | `0,200` |
+/// | recolher + costurar a tira + enviar + DESENHAR (GPU esperada) | `0,039` |
+/// | **`Smooth`: o quadro inteiro, por peça ENTREGUE** | **`1,08`** |
 ///
-/// ⚠️ **Este é o tecto; quem decide o refinamento é a TOLERÂNCIA.** Até 2026-09-13 havia um tecto
-/// de `1 024` peças POR IMAGEM, escolhido *«do lado seguro»* de um intervalo que ninguém tinha
-/// medido — e ele passava por cima dela: a `k = 2` o `Smooth` entregava `3,5 px` numa dobra forte
-/// contra os `0,5 px` pedidos.
-pub const SKIN_FRAME_PIECES: usize = (ph2d_vector::VELLO_BIN_DATA_WORDS
-    / 2
-    / (ph2d_vector::CLIPPED_IMAGE_INFO_WORDS + BINNING_WORDS_PER_PIECE))
-    as usize;
+/// ⇒ `16,667 ms ÷ 10 ÷ 1,08 µs` = **`1 543` peças**. ⚠️ **Este é o tecto; quem decide o refinamento
+/// é a TOLERÂNCIA** — dentro dele o `Smooth` refina só o que a dobra pedir.
+pub const SKIN_FRAME_PIECES: usize = QUADRO_60FPS_US * 1_000 / FATIA_DA_PELE / CUSTO_POR_PECA_NS;
+
+/// ⛔⛔ **A OUTRA PONTA DO TECTO, verificada na COMPILAÇÃO.** Um tecto apertado de mais deixa de
+/// refinar uma malha comum: a malha guardada do smoke tem `~200` peças e um `k = 2` entrega `~800`
+/// — abaixo de `1 000` o `Smooth` fica inerte, que é a doença do tecto de `1 024` POR IMAGEM que
+/// este número substituiu. Uma fatia mais fina (ou um custo por peça maior, medido outra vez) tem
+/// de PARAR a build aqui, e não passar em silêncio.
+const _: () = assert!(
+    SKIN_FRAME_PIECES >= 1_000,
+    "o orcamento da pele nao chega para refinar uma malha comum (k = 2)"
+);
 
 /// ⭐⭐⭐ **OS NÚMEROS DO `Smooth`**: a tolerância da `ph2d-poly2d` e o orçamento do QUADRO.
 ///

@@ -8364,7 +8364,6 @@ dependencies = [
  "ph2d-vec-entities",
  "ph2d-vec-scene",
  "ph2d-vec-skin",
- "ph2d-vector",
  "postcard",
 ]
 

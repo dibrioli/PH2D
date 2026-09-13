@@ -1980,9 +1980,34 @@ errado:
   e uma malha por fantasma na fatia `extra` — que hoje limpa as marcas de propósito.
 - O `sprite_world_to_uv_unclamped` fora da malha responde pela lei do quad de repouso: um traço de
   pincel que sai da silhueta posada é mapeado como se a imagem repousasse.
-- O `SKIN_FRAME_PIECES` ainda é o número do Vello (W4) · a cena que ensina a ordem e o olho (W5).
 - **9-slice e folha desdobrada:** a malha só conhece o quad da sprite; essas desenham-se sem
   deformar, com aviso único no stderr.
+
+**W4 — o orçamento, RE-MEDIDO.** O `SKIN_FRAME_PIECES` era `8 738`, derivado do buffer fixo do Vello
+— um recurso que este caminho já não gasta. Medido o que sobra (sondas
+`measure_the_cpu_cost_of_a_skinned_frame` e `measure_the_frame_cost_of_a_mesh_sprite`, `load 3,7`–`3,9`,
+o **mínimo** de 40/60 corridas — a carga de FUNDO desta workstation é `~7` sem ninguém compilar, e
+uma média sob contenção mede o vizinho):
+
+| o que o quadro faz por peça | µs |
+|---|---:|
+| descodificar a malha guardada (postcard, **por quadro**) | `0,134` |
+| `Fast`: descodificar + deformar + montar o `SpriteMesh` | `0,200` |
+| recolher + costurar a tira + enviar + DESENHAR (GPU esperada) | `0,039` |
+| **`Smooth`: o quadro inteiro, por peça ENTREGUE** | **`1,08`** |
+
+⇒ as `8 738` peças do número velho custariam **`9,4 ms`** — mais de metade de um quadro de 60 fps. O
+tecto novo é **`1 543`**, derivado de `16,667 ms ÷ 10 ÷ 1,08 µs`; ⚠️ **a FATIA (`1/10`) é a única
+escolha** e está nomeada, o resto é medição. Gate nas duas pontas (cabe na fatia · ainda refina um
+`k = 2`), e a `ph2d-vector` saiu das dependências da `ph2d-skeleton-live` com o número que ela
+sustentava.
+
+**W5 — a cena que ENSINA.** A cena do osso (`PH2D_VEC_BONE_SMOKE=1`) ganha uma **barra azul** que
+atravessa o braço pintado e nasce DEPOIS dele ⇒ desenha-se à frente: é a prova, à vista, de que a
+imagem presa está na ORDEM do quadro. ⚠️ **A barra é DERIVADA do rectângulo da imagem** (uma porta,
+`overlap_bar`), com gate — escrita como dois literais, mover a imagem deixaria a barra ao lado e a
+cena passaria a ensinar nada, em silêncio. E a linha *«Painted arm»* na Hierarquia tem o **olho**:
+fechá-lo esconde a imagem presa, que a camada do Vello continuava a desenhar.
 
 ## ⛔ Recusas MEDIDAS deste módulo — não as reconstrua
 

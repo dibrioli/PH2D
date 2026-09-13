@@ -18,6 +18,24 @@ pub struct VectorScene {
     inner: Scene,
 }
 
+/// ⭐⭐ **O buffer FIXO de informação por desenho do Vello, em palavras — de UM QUADRO inteiro.**
+///
+/// `vello_encoding::BufferSizes::new` fixa-o à mão (*«hand picked to accommodate the vello test
+/// scenes as well as paris-30k»*), e o `render` subtrai-lhe a informação de todos os desenhos da
+/// cena: passar dele dá a volta a um `u32` — pânico em debug, **quadro em branco** em release. É a
+/// grandeza de onde qualquer orçamento de «muitos desenhos» tem de sair (gate contra o próprio
+/// `vello_encoding` em `atlas_probe_pieces_tests`).
+pub const VELLO_BIN_DATA_WORDS: u32 = 1 << 18;
+
+/// ⭐ **Palavras de informação de UM recorte com uma imagem dentro** — `push_clip` +
+/// [`VectorScene::draw_stable_image_transformed`] + `pop_layer`, medido pelo `Resolver` (gate
+/// `a_skin_piece_costs_eleven_vello_bin_info_words_and_the_cost_is_linear`).
+///
+/// ⚠️ **NÃO inclui a distribuição por bins**, que o Vello escreve no RESTO do mesmo buffer e depende
+/// de quantos bins cada desenho toca — a sonda de GPU `skin_pieces_gpu_cost` pô-la entre `1,14` e
+/// `3,98` palavras por peça.
+pub const CLIPPED_IMAGE_INFO_WORDS: u32 = 11;
+
 /// Uma imagem RGBA já preparada como recurso **ESTÁVEL** do Vello — construída UMA vez e
 /// redesenhada em vários frames.
 ///

@@ -61,10 +61,14 @@ pub struct RefineOptions {
     /// ⛔⛔⛔ **O TECTO É DO NÚMERO DE PEÇAS, e não do `k`** — e a diferença foi um report do dono
     /// (*«Smooth bugado quebrando a forma»*, 2026-09-10, com foto).
     ///
-    /// **O recurso é a CAMADA DE RECORTE do renderer**: cada triângulo é um `push_clip` do Vello,
-    /// que dimensiona os buffers dele por heurística e **degrada em SILÊNCIO** quando eles estouram
-    /// — geometria certa, imagem partida. Um tecto no `k` não é um tecto nesse recurso: ele é
-    /// **quadrático** nele, e a malha de partida pode ter qualquer tamanho.
+    /// ⛔⛔ **A 1.ª redacção deste doc atribuía o limite à CAMADA DE RECORTE do Vello, e a medição
+    /// de 2026-09-13 refutou-a:** o que partia a imagem era o ATLAS — a pele desenhava cada peça
+    /// pela porta crua, que guardava uma cópia inteira da imagem por peça (`7 776` peças perdiam
+    /// `5 651`). Curado isso, o recurso que sobra é o buffer FIXO de informação por desenho do
+    /// Vello, que é do QUADRO inteiro — e quem conhece o quadro é o chamador: o produto passa aqui a
+    /// PARTE desta malha do orçamento do quadro (`ph2d_skeleton_live::skin_image::SKIN_FRAME_PIECES`).
+    /// Um tecto no `k` não é um tecto nesse recurso: ele é **quadrático** nele, e a malha de partida
+    /// pode ter qualquer tamanho.
     ///
     /// ⚠️⚠️ **A experiência que o dono correu sem saber é a prova:** com o braço quase RECTO (`2°`)
     /// o desvio já é `0,499 px`, logo o `k` saltava para o tecto e desenhava **7 776** recortes —
@@ -90,10 +94,10 @@ impl Default for RefineOptions {
         Self {
             // Meio pixel: abaixo disto o anti-aliasing da própria arte é mais largo que o erro.
             tolerance_px: 0.5,
-            // ⚠️ **NÃO MEDIDO, e dito em voz alta:** o limite do renderer é de GPU e não há aqui
-            // como o medir sem ecrã. O que se sabe é o intervalo que o smoke do dono deu — `216`
-            // desenha, `7 776` parte — e este número fica **do lado seguro** dele, com o botão
-            // `PH2D_SKIN_PIECES` a existir para o fechar numa corrida só.
+            // ⚠️ **O neutro desta folha, NÃO o tecto do produto:** a folha não sabe o que é um
+            // quadro nem um renderer. O produto substitui-o pela parte da malha no orçamento do
+            // QUADRO (`ph2d_skeleton_live::skin_image::SKIN_FRAME_PIECES`, derivado do buffer fixo
+            // do Vello e medido em 2026-09-13).
             max_pieces: 1024,
         }
     }

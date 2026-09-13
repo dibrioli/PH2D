@@ -33,7 +33,7 @@ mod atlas_probe_tests;
 #[cfg(test)]
 mod atlas_probe_pieces_tests;
 
-pub use scene::{StableImage, VectorScene};
+pub use scene::{CLIPPED_IMAGE_INFO_WORDS, StableImage, VELLO_BIN_DATA_WORDS, VectorScene};
 pub use vector_network::{
     ProceduralFillImage, build_region_path, draw_variable_width_stroke, draw_vector_network,
     draw_vector_network_with_fills, oklch_to_color, variable_width_band,

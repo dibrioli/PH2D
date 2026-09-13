@@ -129,17 +129,42 @@ pub fn joints_in_image(
         .collect()
 }
 
-/// ⭐⭐⭐ **OS NÚMEROS DO `Smooth`, com o orçamento afinável por FORA.**
+/// Palavras da DISTRIBUIÇÃO POR BINS por peça — o limite de cima do intervalo que a sonda de GPU
+/// `ph2d-render::skin_pieces_gpu_cost` deu: numa cena só com a pele o quadro desenhou `17 496`
+/// peças (sobram `≥ 3,98` palavras cada) e ficou em branco a `21 600` (sobravam `1,14`).
+const BINNING_WORDS_PER_PIECE: u32 = 4;
+
+/// ⭐⭐⭐ **O ORÇAMENTO DE PEÇAS DA PELE DE IMAGEM, POR QUADRO** — derivado do recurso, não escolhido.
 ///
-/// ⚠️⚠️ **O `PH2D_SKIN_PIECES` existe por causa de um report que eu não consigo reproduzir sem
-/// ecrã** (*«Smooth bugado quebrando a forma»*, dono, 2026-09-10). O recurso é a **camada de
-/// recorte** do renderer, que é GPU: aqui mede-se a MALHA (área conservada ao cêntimo, zero peças
-/// saltadas, zero arestas com mais de dois donos — tudo verde) e **não** se mede o que o Vello
-/// aguenta.
+/// O Vello guarda a informação de todo desenho de um quadro num buffer FIXO
+/// ([`ph2d_vector::VELLO_BIN_DATA_WORDS`], `1 << 18`), e passar dele deixa **o quadro inteiro em
+/// branco** em release (pânico em debug) — painéis incluídos. Uma peça gasta
+/// [`ph2d_vector::CLIPPED_IMAGE_INFO_WORDS`] (`11`) mais a distribuição por bins (até `4`):
 ///
-/// ⇒ o intervalo conhecido vem do smoke dele: `216` peças desenham, `7 776` partem. Este botão
-/// fecha-o **numa corrida só**, em vez de custar uma volta de report por tentativa. *Um smoke que
-/// MEDE vale mais que um smoke que pergunta.*
+/// | quem gasta o buffer | medido (2026-09-13) |
+/// |---|---|
+/// | o chrome do editor, painéis de omissão | `109` palavras (`0,04 %`) |
+/// | o chrome, TODOS os painéis abertos | `~1 190` (`0,45 %`) |
+/// | uma peça da pele | `11` + bins `1,14`–`3,98` |
+/// | uma cena só com a pele | desenha `17 496` peças · em branco a `21 600` |
+///
+/// ⇒ **METADE do buffer para a pele** (`8 738` peças); a outra metade fica para a arte do canvas,
+/// que **não foi medida** — e é por isso que é metade, e não `99 %`.
+///
+/// ⚠️ **Este é o tecto; quem decide o refinamento é a TOLERÂNCIA.** Até 2026-09-13 havia um tecto
+/// de `1 024` peças POR IMAGEM, escolhido *«do lado seguro»* de um intervalo que ninguém tinha
+/// medido — e ele passava por cima dela: a `k = 2` o `Smooth` entregava `3,5 px` numa dobra forte
+/// contra os `0,5 px` pedidos (§0.0: nunca deixe um palpite definir o produto).
+pub const SKIN_FRAME_PIECES: usize = (ph2d_vector::VELLO_BIN_DATA_WORDS
+    / 2
+    / (ph2d_vector::CLIPPED_IMAGE_INFO_WORDS + BINNING_WORDS_PER_PIECE))
+    as usize;
+
+/// ⭐⭐⭐ **OS NÚMEROS DO `Smooth`**: a tolerância da `ph2d-poly2d` e o orçamento do QUADRO.
+///
+/// ⚠️ **`PH2D_SKIN_PIECES=<n>` afina o orçamento do QUADRO**, e não de uma imagem — ele existe desde
+/// o report *«Smooth bugado quebrando a forma»* (dono, 2026-09-10), cuja causa se mediu depois
+/// (a porta crua enchia o atlas, F6-e). *Um smoke que MEDE vale mais que um smoke que pergunta.*
 #[must_use]
 pub fn refine_options() -> ph2d_poly2d::RefineOptions {
     static PECAS: std::sync::OnceLock<Option<usize>> = std::sync::OnceLock::new();
@@ -149,11 +174,34 @@ pub fn refine_options() -> ph2d_poly2d::RefineOptions {
             .and_then(|v| v.trim().parse::<usize>().ok())
             .filter(|n| *n > 0)
     });
-    let base = ph2d_poly2d::RefineOptions::default();
-    escolhido.map_or(base, |max_pieces| ph2d_poly2d::RefineOptions {
-        max_pieces,
-        ..base
-    })
+    ph2d_poly2d::RefineOptions {
+        max_pieces: escolhido.unwrap_or(SKIN_FRAME_PIECES),
+        ..ph2d_poly2d::RefineOptions::default()
+    }
+}
+
+/// ⭐ **A parte do orçamento do quadro que cabe a uma imagem** — proporcional à malha que ela guarda,
+/// e nunca abaixo dela (a malha guardada é o desenho mínimo; não há como desenhá-la com menos).
+///
+/// ⚠️ **Proporcional dá o MESMO `k` a todas**, logo a mesma qualidade: o `k` sai de
+/// `√(parte / triângulos)`, e a razão é a mesma para todas as imagens do quadro.
+fn parte_do_orcamento(triangulos: usize, guardadas: usize, orcamento: usize) -> usize {
+    let parte = orcamento.saturating_mul(triangulos) / guardadas.max(1);
+    parte.max(triangulos)
+}
+
+/// ⛔ **Uma vez por processo**, e nunca calado (DIRETIVA §2: zero no-op silencioso): as malhas
+/// GUARDADAS deste quadro já passam do orçamento, e não há refinamento a cortar — o desenho mínimo
+/// não cabe, e o Vello pode deixar o quadro em branco.
+fn avisa_malhas_acima_do_orcamento(guardadas: usize, orcamento: usize) {
+    static AVISADO: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+    if !AVISADO.swap(true, std::sync::atomic::Ordering::Relaxed) {
+        eprintln!(
+            "[bone] as imagens presas deste quadro guardam {guardadas} pecas e o orcamento do \
+             quadro e' {orcamento} (PH2D_SKIN_PIECES) — acima dele o Vello pode deixar o quadro em \
+             branco"
+        );
+    }
 }
 
 /// ⭐⭐⭐ **O CAMPO DE DEFORMAÇÃO desta imagem** — a régua da imagem mais a pele.
@@ -244,11 +292,20 @@ pub fn draw_skinned_images(
         .filter(|er| er.get::<Sprite>().is_some())
         .filter_map(|er| er.get::<ph2d_ecs::SpritePixels>().map(|p| (er.id(), p.0)))
         .collect();
+    // ⭐⭐⭐ **As malhas PRIMEIRO: o orçamento é do QUADRO, e reparte-se pelo que cada imagem guarda.**
+    // Um tecto por imagem deixaria N imagens presas multiplicá-lo até ao buffer fixo do Vello
+    // (`SKIN_FRAME_PIECES`) — e ali o quadro inteiro fica em branco, painéis incluídos.
+    let malhas: Vec<(Entity, ph2d_asset::AssetId, Mesh2d)> = alvos
+        .into_iter()
+        .filter_map(|(e, id)| Some((e, id, mesh_of(sim, e)?)))
+        .collect();
+    let guardadas: usize = malhas.iter().map(|(_, _, m)| m.tris.len()).sum();
+    let orcamento = smooth.map_or(SKIN_FRAME_PIECES, |o| o.max_pieces);
+    if guardadas > orcamento {
+        avisa_malhas_acima_do_orcamento(guardadas, orcamento);
+    }
     let mut feitas = 0;
-    for (e, id) in alvos {
-        let Some(mesh) = mesh_of(sim, e) else {
-            continue;
-        };
+    for (e, id, mesh) in malhas {
         let Some((p2l, pele)) = deform_field(sim, e, mesh.size) else {
             continue;
         };
@@ -277,12 +334,13 @@ pub fn draw_skinned_images(
                 Some(o) => {
                     let escala = to_screen.determinant().abs().sqrt().max(f64::MIN_POSITIVE);
                     let antes = mesh.tris.len();
+                    let parte = parte_do_orcamento(antes, guardadas, o.max_pieces);
                     let (m, p, k) = ph2d_poly2d::refine_posed(
                         &mesh,
                         &mut campo,
                         ph2d_poly2d::RefineOptions {
                             tolerance_px: o.tolerance_px / escala,
-                            ..o
+                            max_pieces: parte,
                         },
                     );
                     // ⚠️ **O diagnóstico da família** (`PH2D_BONE_LOG=1`): sem ele um report de
@@ -290,7 +348,8 @@ pub fn draw_skinned_images(
                     // que se revelou a grandeza que importa.
                     if std::env::var_os("PH2D_BONE_LOG").is_some() {
                         eprintln!(
-                            "[bone] pele suave: {antes} -> {} pecas (k={k}, orcamento {})",
+                            "[bone] pele suave: {antes} -> {} pecas (k={k}, parte {parte} de um \
+                             orcamento de quadro {})",
                             m.tris.len(),
                             o.max_pieces
                         );

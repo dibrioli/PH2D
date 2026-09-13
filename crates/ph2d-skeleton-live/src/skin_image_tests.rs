@@ -282,6 +282,100 @@ fn a_skinned_image_is_one_atlas_resident_however_many_pieces_and_frames() {
     );
 }
 
+/// ⭐⭐⭐ **O ORÇAMENTO DO `Smooth` É DO QUADRO, e reparte-se pelas imagens presas.**
+///
+/// ⛔⛔ O Vello guarda a informação de todo desenho de um quadro num buffer FIXO
+/// ([`ph2d_vector::VELLO_BIN_DATA_WORDS`]), e passar dele deixa o **quadro inteiro em branco** —
+/// painéis incluídos. Um tecto por IMAGEM não o protege: N imagens presas multiplicam-no.
+///
+/// ⚠️ **A fixtura escolhe o orçamento para as duas leis darem respostas diferentes:** com
+/// `B = 9 t` (`t` triângulos por imagem), um tecto por imagem deixa cada uma refinar a `k = 3` e o
+/// quadro emite `18 t > B`; repartido, cada uma recebe `4,5 t` e fica em `k = 2` (`8 t ≤ B`). ⚠️ E
+/// as duas têm de refinar — um orçamento que coubesse por dar tudo a uma e nada à outra passaria na
+/// primeira metade.
+#[test]
+fn the_smooth_pieces_of_all_skinned_images_share_one_frame_budget() {
+    let mut sim = ph2d_ecs::SimWorld::default();
+    let raiz = crate::bone::create(&mut sim, None, [-2.0, 0.0], [0.0, 0.0]).expect("raiz");
+    let raiz = ph2d_ecs::Entity::from_bits(raiz);
+    let ponta = crate::bone::create(&mut sim, Some(raiz), [0.0, 0.0], [2.0, 0.0]).expect("ponta");
+    let (w, h) = (40_u32, 20_u32);
+    let db = ph2d_asset::AssetDb::new();
+    // Duas artes DIFERENTES ⇒ dois ids do atlas ⇒ as peças de cada uma contam-se à parte.
+    let mut ids_das_artes = Vec::new();
+    for tom in [200_u8, 90] {
+        let mut rgba = vec![0u8; (w * h * 4) as usize];
+        for y in 4..16 {
+            for x in 2..38 {
+                let i = (y * w as usize + x) * 4;
+                rgba[i] = tom;
+                rgba[i + 3] = 255;
+            }
+        }
+        let id = db.insert_image_rgba8(w, h, rgba.clone());
+        let e = sim
+            .world_mut()
+            .spawn((
+                Transform::IDENTITY,
+                sprite(4.0, 2.0, 0.0, 0.0),
+                ph2d_ecs::SpritePixels(id),
+            ))
+            .id();
+        assert!(crate::skin_live::bind_image(
+            &mut sim,
+            e,
+            &rgba,
+            [w, h],
+            ph2d_poly2d::GridOptions::default(),
+            Some(raiz),
+        ));
+        ids_das_artes.push(id);
+    }
+    sim.world_mut()
+        .get_mut::<Transform>(ph2d_ecs::Entity::from_bits(ponta))
+        .expect("Transform da ponta")
+        .rotation = 1.0;
+
+    let cam = ph2d_vector::Affine::scale(50.0);
+    let mut cache = SkinImageCache::default();
+    let mut desenha = |modo: Option<ph2d_poly2d::RefineOptions>| {
+        let mut cena = ph2d_vector::VectorScene::new();
+        assert_eq!(
+            draw_skinned_images(&sim, &db, &mut cache, cam, &mut cena, modo),
+            2,
+            "as duas imagens presas tinham de ser desenhadas"
+        );
+        let mut por_id: std::collections::BTreeMap<u64, usize> = std::collections::BTreeMap::new();
+        for id in cena.probe_image_ids() {
+            *por_id.entry(id).or_default() += 1;
+        }
+        por_id.into_values().collect::<Vec<usize>>()
+    };
+
+    let fast = desenha(None);
+    assert_eq!(fast.len(), 2, "fixtura: as duas artes tinham de ter ids distintos");
+    assert_eq!(fast[0], fast[1], "fixtura: as duas malhas tinham de ter o mesmo tamanho");
+    let t = fast[0];
+    assert!(t > 1, "fixtura: a malha guardada tem de ter mais de um triangulo");
+
+    let orcamento = 9 * t;
+    let suave = desenha(Some(ph2d_poly2d::RefineOptions {
+        tolerance_px: 1e-3,
+        max_pieces: orcamento,
+    }));
+    let total: usize = suave.iter().sum();
+    assert!(
+        total <= orcamento,
+        "o quadro emitiu {total} pecas contra um orcamento de {orcamento} ({suave:?}) — o tecto \
+         esta' a ser aplicado POR IMAGEM, e N imagens presas multiplicam-no ate' o Vello deixar o \
+         quadro em branco"
+    );
+    assert!(
+        suave.iter().all(|&n| n > t),
+        "o orcamento coube por nao refinar uma das imagens ({suave:?} contra {t} no Fast)"
+    );
+}
+
 /// **A malha, já POSADA** — os vértices de repouso levados pela pele para onde eles estão agora.
 ///
 /// ⚠️⚠️ **Ela vive aqui, no ARNÊS, desde 2026-09-10**, e a mudança diz o que a wave fez: no produto

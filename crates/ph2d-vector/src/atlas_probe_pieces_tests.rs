@@ -207,11 +207,34 @@ fn palavras_de_informacao(pecas: usize, w: u32, h: u32) -> u32 {
 /// nunca afrouxado.
 #[test]
 fn a_skin_piece_costs_eleven_vello_bin_info_words_and_the_cost_is_linear() {
-    assert_eq!(palavras_de_informacao(1, 320, 96), 11, "uma peca deixou de custar 11 palavras");
+    assert_eq!(
+        palavras_de_informacao(1, 320, 96),
+        CLIPPED_IMAGE_INFO_WORDS,
+        "uma peca deixou de custar `CLIPPED_IMAGE_INFO_WORDS` palavras — reconte o orcamento"
+    );
     assert_eq!(
         palavras_de_informacao(7_776, 320, 96),
-        7_776 * 11,
+        7_776 * CLIPPED_IMAGE_INFO_WORDS,
         "o custo por peca deixou de ser linear — ha' um termo por cena escondido"
+    );
+}
+
+/// ⭐⭐ **A CONSTANTE É A DO VELLO, lida no próprio `vello_encoding`.**
+///
+/// ⚠️ O Vello fixa o buffer à mão dentro de uma função, sem constante pública. Uma subida de
+/// `vello` que o mude reprova aqui — e todo orçamento que sai dele tem de ser recontado.
+#[test]
+fn the_bin_data_words_constant_is_the_one_vello_allocates() {
+    let config = vello_encoding::RenderConfig::new(
+        &vello_encoding::Layout::default(),
+        64,
+        64,
+        &vello::peniko::Color::TRANSPARENT,
+    );
+    assert_eq!(
+        config.buffer_sizes.bin_data.len(),
+        VELLO_BIN_DATA_WORDS,
+        "o `vello_encoding` deixou de alocar `VELLO_BIN_DATA_WORDS` palavras de bin_data"
     );
 }
 

@@ -206,6 +206,8 @@ mod fase_hero_chrome_tail;
 mod fase_hierarchy_dispatch;
 /// Fase do quadro: agrupar, recolher e fundir sprites.
 mod fase_hierarchy_group_merge;
+/// Fase do quadro: a trava do Painter na seleccao da Hierarquia.
+mod fase_hierarchy_select_lock;
 /// Fase do quadro: o dreno de edicao de imagem e os desmontes do Apply.
 mod fase_image_edit_apply;
 /// Fase do quadro: a entrada (carimbo coalescido, diagnóstico, gamepad, script, soltos).
@@ -9849,39 +9851,11 @@ impl crate::App {
                 vector_scene.fill_rect(VRect::new(x0, y0, x0 + 1.0, y1), border);
                 vector_scene.fill_rect(VRect::new(x1 - 1.0, y0, x1, y1), border);
             }
-            // Hierarchy intent dispatch phase — camera reset +
-            // view-focus + 9 hierarchy intents (visibility_toggle /
-            // reparent / duplicate / add_child / reset_transform /
-            // delete / row_click / rename_seed / rename_commit).
-            // Extracted to sibling `hierarchy.rs` as a free fn (Wave
-            // 3.2 stage A).
-            // **A TRAVA DO PAINTER, na porta da HIERARQUIA** (Enio, 2026-08-19). Enquanto o
-            // Painter tem um documento aberto, clicar noutra linha não troca a sprite debaixo do
-            // pincel: recusa, e o aviso diz por onde sair.
-            //
-            // ⚠️ A intenção é **consumida** (posta a `None`), não saltada: deixá-la viva faria a
-            // mesma recusa repetir-se no quadro seguinte, e o artista veria o aviso a piscar.
-            if let Some(intent) = hierarchy_select_intent {
-                let locked = ph2d_app_painter::painter_lock::locked_entity(tools, hero);
-                let (target, additive) = match intent {
-                    hierarchy::HierarchySelectIntent::Row { row, modifier } => (
-                        hero_live.as_ref().and_then(|l| l.bridge.entity_for(row)),
-                        !matches!(
-                            modifier,
-                            ph2d_editor_core::action_bus::SelectModifier::Replace
-                        ),
-                    ),
-                    // Um intervalo é aditivo por definição.
-                    hierarchy::HierarchySelectIntent::Range { .. } => (None, true),
-                };
-                if ph2d_app_painter::painter_lock::decide(locked, target, additive)
-                    == ph2d_app_painter::painter_lock::Decision::Refuse
-                {
-                    toasts.push(Toast::warning(ph2d_app_painter::painter_lock::REFUSAL));
-                    hierarchy_select_intent = None;
-                    self.title_dirty = true;
-                }
-            }
+            let Some(hierarchy_select_intent) =
+                self.fase_hierarchy_select_lock(hierarchy_select_intent)
+            else {
+                return;
+            };
             self.fase_recipe_and_asset_verbs(fase_recipe_and_asset_verbs::RecipeVerbIntents {
                 catalog_verbs,
                 swap_variant,

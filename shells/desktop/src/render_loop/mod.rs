@@ -513,6 +513,13 @@ impl Drop for PaintFrameTimer {
 #[cfg(feature = "panel-audio-mixer")]
 const _: () = assert!(ph2d_audio::SUB_BUS_COUNT == ph2d_panel_audio_mixer::SUB_BUS_COUNT);
 
+/// Qual dos três números da ÂNCORA o campo escreveu (no MÓDULO: viaja nas intenções de uma fase de outro ficheiro).
+#[derive(Clone, Copy, PartialEq)]
+enum IkKnob {
+    Mix,
+    Softness,
+    Chain,
+}
 impl crate::App {
     pub(super) fn run_render_frame(&mut self) {
         let player_input = self.fase_pointer_subjects();
@@ -1180,13 +1187,6 @@ impl crate::App {
             let mut pending_bone_bind = false;
             let mut pending_bone_release: Option<crate::skeleton_live::Keep> = None;
             let mut pending_bone_knob: Option<(bool, f64)> = None;
-            /// Qual dos três números da ÂNCORA o campo escreveu.
-            #[derive(Clone, Copy, PartialEq)]
-            enum IkKnob {
-                Mix,
-                Softness,
-                Chain,
-            }
             let mut pending_ik_add = false;
             let mut pending_ik_remove = false;
             // ⭐ O lado da dobra que o artista escolheu neste quadro, se escolheu.

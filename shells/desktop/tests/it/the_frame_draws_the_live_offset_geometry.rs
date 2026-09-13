@@ -90,13 +90,27 @@ fn the_dispatch_is_handed_the_live_geometry() {
     );
 }
 
+/// A posição de `head` seguido de `tail` com SÓ espaço em branco entre os dois, ou pânico com a razão.
+///
+/// ⚠️ A agulha antiga era `"self.offset_live\n                .recook("` — dezasseis espaços de INDENTAÇÃO dentro
+/// dela, e o cozimento mudou-se para a `fase_vector_live_recooks` com a cadeia noutra coluna (P4l): o gate reprovou
+/// sobre o quadro certo. A régua é a do `frame_text::find_chain`, partilhada com o gate irmão da largura viva.
+fn at_chain(head: &str, tail: &str) -> usize {
+    crate::frame_text::find_chain(src(), head, tail).unwrap_or_else(|| {
+        panic!(
+            "`{head}` seguido de `{tail}` sumiu do render_loop — se foi renomeado, atualize este gate (e \
+             confira que o Offset vivo ainda chega à tela: `PH2D_BUILD_SMOKE=17`)"
+        )
+    })
+}
+
 /// **O cozimento roda DEPOIS do `sync` e ANTES do desenho.** Antes do `sync`, a forma nova não
 /// tem entidade e o `VecOffset` dela é invisível; depois do desenho, o frame pinta a resposta
 /// do frame anterior.
 #[test]
 fn the_cook_runs_after_the_sync_and_before_the_draw() {
     let sync = at("ph2d_vec_entities::entities::sync(");
-    let cook = at("self.offset_live\n                .recook(");
+    let cook = at_chain("self.offset_live", ".recook(");
     let draw = at("ph2d_vec_render::dispatch(");
     assert!(
         sync < cook,

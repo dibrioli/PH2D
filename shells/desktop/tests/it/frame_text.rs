@@ -82,6 +82,43 @@ pub fn render_frame() -> String {
     splice(&frame_body(), &phases(), 0)
 }
 
+/// A posição da 1.ª ocorrência de `head` seguida de `tail` com SÓ espaço em branco entre as duas.
+///
+/// ⚠️ **Uma agulha que carrega INDENTAÇÃO mede a CASA, não a chamada.** O `rustfmt` parte uma cadeia conforme a
+/// coluna (`self.offset_live\n                .recook(`), e a coluna muda quando o corpo muda de casa para uma fase:
+/// dois gates reprovaram sobre o quadro certo (P4k, a largura viva; P4l, o Offset vivo). A régua mora aqui, UMA vez.
+pub fn find_chain(s: &str, head: &str, tail: &str) -> Option<usize> {
+    let mut from = 0;
+    while let Some(i) = s[from..].find(head) {
+        let p = from + i;
+        if s[p + head.len()..].trim_start().starts_with(tail) {
+            return Some(p);
+        }
+        from = p + head.len();
+    }
+    None
+}
+
+/// **As duas metades da régua da cadeia:** acha a chamada em qualquer coluna (e numa linha só), e NÃO a acha quando
+/// a cabeça aparece sem a cauda — senão uma agulha relaxada passaria sobre um nome solto.
+#[test]
+fn a_chain_is_found_in_any_column_and_only_with_its_tail() {
+    let fundo = "a();\n        self.x\n            .recook(s);\n";
+    let raso = "a(); self.x.recook(s);";
+    assert_eq!(
+        find_chain(fundo, "self.x", ".recook("),
+        fundo.find("self.x")
+    );
+    assert_eq!(find_chain(raso, "self.x", ".recook("), raso.find("self.x"));
+    // a 1.ª cabeça sem cauda é saltada, e a seguinte com cauda é a resposta
+    let dois = "self.x.live();\nself.x\n    .recook(s);";
+    assert_eq!(find_chain(dois, "self.x", ".recook("), dois.rfind("self.x"));
+    assert_eq!(
+        find_chain("self.x.live(); self.x. recook(s);", "self.x", ".recook("),
+        None
+    );
+}
+
 fn splice(text: &str, phases: &BTreeMap<String, String>, depth: usize) -> String {
     assert!(
         depth < 8,

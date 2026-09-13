@@ -302,6 +302,8 @@ mod fase_vector_guides_and_build;
 mod fase_vector_layout_recook;
 /// Fase do quadro: a simetria, o lapis e a geometria viva fundida.
 mod fase_vector_live_geometry;
+/// Fase do quadro: as etiquetas, a vista do pen e as recozeduras vivas.
+mod fase_vector_live_recooks;
 /// Fase do quadro: os verbos do Morph.
 mod fase_vector_morph_verbs;
 /// Fase do quadro: os overlays vectoriais do quadro.
@@ -7647,79 +7649,11 @@ impl crate::App {
                     &mut self.vec.blend_overlay,
                 );
             }
-            // **Rótulos:** o texto que pertence a uma forma (ou a um conector) e a segue. A pose
-            // é uma função pura do hospedeiro — como a rota do conector é da relação dele.
-            //
-            // **DEPOIS do `recook`, e isso não é arrumação:** a âncora do rótulo de um conector é
-            // o meio da rota, e a rota deste frame acabou de ser escrita ali em cima. Antes do
-            // `recook` o rótulo penderia da polilinha do frame ANTERIOR — e arrastaria a forma
-            // sempre um quadro atrás da linha. (E depois do `build`, pela mesma razão: os afins
-            // das formas-alvo já são os deste frame.)
-            //
-            // O `upkeep_pending` vem primeiro: um rótulo nasce VAZIO, e é a 1ª letra que cria o
-            // objeto — o vínculo tem de estar pendurado antes do passe procurar por ele.
-            let text_id = self.vec.text_edit.as_ref().and_then(|e| e.id);
-            crate::label_live::upkeep_pending(
-                sim,
-                &self.vec.entities,
-                &mut self.vec.label_pending,
-                text_id,
-                self.vec.text_edit.is_some(),
-            );
-            crate::label_live::upkeep(
-                sim,
-                vec_scene,
-                &self.vec.entities,
-                &mut vec_xf,
-                text_id,
-                &mut self.vec.label_poses,
-            );
-            self.vec.pen.set_view(vec_view.clone());
-            self.vec.pen.set_xforms(vec_xf.clone());
-            // Seleção casada nos dois sentidos: clique na Hierarquia chega no canvas,
-            // clique no canvas acende a linha (e a do grupo, se cheio). A seleção do
-            // gizmo é COMPARTILHADA com os sprites — só o subconjunto vetorial é nosso.
-            crate::vec_selection::sync_selection(
-                &mut hero.gizmo,
-                sim,
-                vec_scene,
-                &self.vec.entities,
-                &mut self.vec.pen,
-                &mut self.vec.sel,
-                vector_active,
-            );
-
-            // Motion drift fix (2026-07-25 continuação): sob o split da tool Motion a CENA
-            // renderiza num sub-retângulo (present.rs, `CenterSplit::scene_viewport`) e as
-            // instâncias/grade projetam com as dims DA CENA (a porta única). As formas VETORIAIS
-            // ficaram de fora daquele fix e projetavam a JANELA CHEIA — então um `motion.path`
-            // andava numa cópia da curva deslocada+encolhida (o report do Enio: "objetos afastados
-            // do path, com drift em relação ao canvas"). Projetá-las com as MESMAS dims casa a
-            // curva desenhada com os walkers. Fora do split = janela cheia, byte-idêntico.
-            let cam_affine =
-                camera.world_to_screen_affine(ph2d_app_motion::field_gizmo::scene_camera_window(
-                    hero.view.center_split,
-                    window_size,
-                ));
-            // A SONDA (`PH2D_PAN_DIAG=1`): a cena do Vello é construída AQUI, com o
-            // mundo→tela já aplicado na CPU; as sprites recebem a câmera noutro ponto do
-            // quadro. Guardar o centro daqui é o que permite comparar os dois instantes.
-            ph2d_pan_diag::note_vello_camera(camera.center);
-            // A geometria DERIVADA deste frame — hoje, os offsets vivos. Cozida aqui (depois
-            // do `sync`, senão uma forma recém-criada ainda não tem entidade e o componente
-            // dela não seria encontrado) e desenhada pelo `dispatch` no z de cada forma.
-            self.offset_live
-                .recook(vec_scene, sim, &self.vec.entities, &vec_xf);
-            // O Pattern Along Path vivo (plano 23): as cópias de um motivo ao longo de um guia,
-            // cozidas aqui e desenhadas no z do motivo — a fonte nunca é tocada.
-            self.pattern_live.recook(vec_scene, sim, &self.vec.entities);
-            // ⭐ O offset de CAD de cada camada (v22). ⚠️ Só precisa da CENA: a distância é LOCAL,
-            // então a pose não entra na chave — é isso que faz o memo sobreviver ao arrasto.
-            self.paint_dilate_live.recook(vec_scene);
-            // O Contour vivo (pesquisa 20 #9): os anéis concêntricos + a rampa de cor, cozidos
-            // aqui e desenhados no z da fonte — que entra na lista junto com eles.
-            self.contour_live
-                .recook(vec_scene, sim, &self.vec.entities, &vec_xf);
+            let Some((cam_affine, vec_xf, vec_view)) =
+                self.fase_vector_live_recooks(window_size, vector_active, vec_view, vec_xf)
+            else {
+                return;
+            };
             let Some((vec_live, vec_view, mut vec_xf)) =
                 self.fase_vector_live_geometry(window_size, drawing, vec_view, vec_xf)
             else {

@@ -49,19 +49,13 @@ fn at(needle: &str) -> usize {
 /// mudou-se para a `fase_vector_live_geometry`, com outra indentação, e o gate reprovou sobre o quadro certo).
 /// *Uma agulha que carrega indentação mede a CASA, não a chamada.*
 fn at_chain(head: &str, tail: &str) -> usize {
-    let s = src();
-    let mut from = 0;
-    while let Some(i) = s[from..].find(head) {
-        let p = from + i;
-        if s[p + head.len()..].trim_start().starts_with(tail) {
-            return p;
-        }
-        from = p + head.len();
-    }
-    panic!(
-        "`{head}` seguido de `{tail}` sumiu do render_loop — se foi renomeado, atualize este gate (e confira \
-         que a largura viva ainda chega à tela: `PH2D_BUILD_SMOKE=41`)"
-    )
+    // A régua mora UMA vez (`frame_text::find_chain`), partilhada com o gate irmão do Offset vivo (P4l).
+    crate::frame_text::find_chain(src(), head, tail).unwrap_or_else(|| {
+        panic!(
+            "`{head}` seguido de `{tail}` sumiu do render_loop — se foi renomeado, atualize este gate (e \
+             confira que a largura viva ainda chega à tela: `PH2D_BUILD_SMOKE=41`)"
+        )
+    })
 }
 
 /// **Arrastar um dos quatro sliders ARMA o perfil na seleção.** Sem esta costura os knobs

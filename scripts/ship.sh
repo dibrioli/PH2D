@@ -110,7 +110,7 @@ done
 # `incremental/` é o que faz o `cargo check -p` do inner loop voar no dia
 # seguinte; um `export` no topo o mataria junto. A §2 protege essa metade
 # explicitamente ("o `cargo check -p` do inner loop fica em paz, de propósito").
-# ⚠️⚠️ **O `nextest` CANCELA na primeira falha, e este script não oferecia a saída** — o irmão
+# ⚠️⚠️ **O `nextest` CANCELAVA na primeira falha (até 10/09), e este script não oferecia a saída** — o irmão
 # `nextest-impacted.sh` aprendeu-a e este não, que é a mesma doença de *«uma regra fora do caminho
 # de quem a executa é uma regra que não existe»*. Medido na integração de 2026-09-10: uma flake de
 # carga já catalogada (`flip_smooth::…::orcamento`, §5.0) reprovou ao teste **6 148 de 22 612** e
@@ -119,7 +119,12 @@ done
 #
 #   NO_FAIL_FAST=1 ./scripts/ship.sh   # corre tudo e lista TODAS as falhas
 #
-# ⛔ **Fica OPT-IN de propósito:** o veredito de push tem de ser o do CI, e o CI cancela.
+# ⚠️ **Numa árvore actual isto é REDUNDANTE** (medido 13/09): desde 10/09 o `fail-fast = false` vive
+# no `[profile.default]` do `.config/nextest.toml`, e é esse o perfil que corre AQUI e no CI (o
+# `spike.yml` passa `--cargo-profile ci-test` e nunca `--profile`) — os dois correm tudo e listam
+# todas as falhas. A frase que estava aqui («fica opt-in: o CI cancela») envelheceu nesse dia e
+# ensinava a ler um ✗ local como «o resto não correu». O `NO_FAIL_FAST=1` fica só para árvores
+# mais velhas que o `.config/nextest.toml` (o mesmo que o `nextest-impacted.sh` já diz).
 FAIL_MODE=()
 if [ -n "${NO_FAIL_FAST:-}" ]; then
     FAIL_MODE=(--no-fail-fast)

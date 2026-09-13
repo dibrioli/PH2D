@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """nextest-list-diff.py — prova que uma reorganização de testes não perde nenhum.
 
-Compara duas saídas de `cargo nextest list --workspace --cargo-profile ci-test`
+Compara duas saídas de `cargo nextest list --workspace --cargo-profile ci-test --run-ignored all`
 (antes e depois) pelo NOME do teste, tolerando o que uma reorganização muda de
 propósito:
 
@@ -21,9 +21,9 @@ como perda + novo — foi o que o auto-teste apanhou em 11/09). O relatório sep
 Sai 0 só se ONLY-A estiver vazio. Um mesmo nome em dois sítios conta 2× (a
 contagem também tem de bater).
 
-Uso:  cargo nextest list --workspace --cargo-profile ci-test > /tmp/antes.txt
+Uso:  cargo nextest list --workspace --cargo-profile ci-test --run-ignored all > /tmp/antes.txt
       … reorganização …
-      cargo nextest list --workspace --cargo-profile ci-test > /tmp/depois.txt
+      cargo nextest list --workspace --cargo-profile ci-test --run-ignored all > /tmp/depois.txt
       python3 scripts/nextest-list-diff.py /tmp/antes.txt /tmp/depois.txt [--depth 2]
 
 ⚠️ Corra as duas listas na MESMA árvore de dependências (mesmo `Cargo.lock`) e sem

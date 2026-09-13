@@ -68,7 +68,12 @@ num() {  # num <rótulo> "<arquivo> [arquivo2 ...]" <regex>
     [ "${base:-—}" = "—" ] && base=""
   done
   [ -z "$aqui" ] && aqui="—"; [ -z "$base" ] && base="—"
-  if [ "$aqui" = "$base" ]; then marca="  "; else marca="⚠ "; fi
+  if [ "$aqui" = "—" ] && [ "$base" = "—" ]; then
+    # ⛔ «—» dos DOIS lados não é «intocado», é SONDA CEGA: a const mudou de ficheiro e nenhum
+    # candidato a tem. Medido 13/09: o VEC_SCENE_SCHEMA e o registo do ph2d-ecs liam assim, sem ⚠,
+    # e uma colisão entre duas linhas passava por «ninguém mexeu».
+    marca="✗ "; CEGO="${CEGO:+$CEGO, }$rot"
+  elif [ "$aqui" = "$base" ]; then marca="  "; else marca="⚠ "; fi
   printf "  %s%-34s %6s   (base: %s)\n" "$marca" "$rot" "$aqui" "$base"
 }
 
@@ -80,9 +85,11 @@ TRI_A=$(grep -hoE '\([0-9]+, *[0-9]+, *[0-9]+\)' shells/desktop/src/project_sche
 TRI_B=$(git show "$MB:shells/desktop/src/project_schema_tests.rs" 2>/dev/null | grep -hoE '\([0-9]+, *[0-9]+, *[0-9]+\)' | head -1)
 [ "$TRI_A" = "$TRI_B" ] && M="  " || M="⚠ "
 printf "  %s%-34s %6s   (base: %s)\n" "$M" "  └ tripla do gate" "${TRI_A:-—}" "${TRI_B:-—}"
-num "VEC_SCENE_SCHEMA"      "crates/ph2d-vec-scene/src/lib.rs"           'VEC_SCENE_SCHEMA_VERSION: u32 = [0-9]+'
+num "VEC_SCENE_SCHEMA"      "crates/ph2d-vec-scene/src/schema.rs crates/ph2d-vec-scene/src/lib.rs" 'VEC_SCENE_SCHEMA_VERSION: u32 = [0-9]+'
 num "FLIP_SCHEMA"           "crates/ph2d-flip/src/lib.rs"                'FLIP_SCHEMA_VERSION: u32 = [0-9]+'
 num "DOC_VERSION (timeline)" "crates/ph2d-timeline/src/doc.rs"           'DOC_VERSION: u32 = [0-9]+'
+# o 4.º número que SOMA entre linhas e funde MUDO (CLAUDE.md §5 3D Modeling): não estava aqui.
+num "FIELD_DOC_VERSION"     "crates/ph2d-field/src/lib.rs"               'FIELD_DOC_VERSION: u32 = [0-9]+'
 if git diff --name-only "$MB"..HEAD | grep -qE 'shells/desktop/src/project'; then
   echo "  ⚠️  esta linha TOCA project*.rs — a escada e a tripla moram em arquivos IRMÃOS;"
   echo "      um degrau escrito no arquivo errado funde LIMPO e evapora."
@@ -90,7 +97,7 @@ fi
 
 echo
 echo "▸ REGISTRO DE COMPONENTES — o contador é TRÊS, cada um roda só na suíte da própria crate"
-num "ph2d-ecs"    "crates/ph2d-ecs/src/scene/registry.rs" 'reg\.len\(\), *[0-9]+'
+num "ph2d-ecs"    "crates/ph2d-ecs/src/scene/registry_tests.rs crates/ph2d-ecs/src/scene/registry.rs" 'reg\.len\(\), *[0-9]+'
 num "ph2d-render (espelho)" "crates/ph2d-render/src/registry.rs" 'reg\.len\(\), *[0-9]+'
 num "ph2d-script (espelho)" "crates/ph2d-script/src/registry.rs" 'reg\.len\(\), *[0-9]+'
 
@@ -154,6 +161,12 @@ done < <(git diff --name-only "$MB"..HEAD)
 [ "$over" -eq 0 ] && echo "    nenhum arquivo da linha passa do teto"
 
 echo "───────────────────────────────────────────────────────────────────────────────"
+if [ -n "${CEGO:-}" ]; then
+  echo "  ✗ SONDA CEGA em: $CEGO — a const mudou de ficheiro e nenhum candidato a tem."
+  echo "    Corrija o caminho NESTE script: um «—» dos dois lados lia-se «ninguém mexeu» (13/09)."
+fi
 echo "  ⚠️ Isto é o MAPA, não o gate. O gate mecânico é scripts/foundational-integrate.sh;"
 echo "     o que exige julgamento (mesmo-símbolo, decisão de produto) continua leitura humana."
 echo
+[ -n "${CEGO:-}" ] && exit 2
+exit 0

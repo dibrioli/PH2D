@@ -25,11 +25,12 @@ export CARGO_INCREMENTAL=0
 
 BASE="${BASE:-origin/main}"
 
-# ⚠️ **O `nextest` CANCELA na primeira falha, e o CLAUDE.md §5.0 manda usar `--no-fail-fast`** —
-# mas quem executa a regra é ESTE script, e ele não a oferecia: uma corrida que tropeça numa das
-# flakes de relógio conhecidas deixa **7 mil** testes por correr, e quem lê o resultado não fica a
-# saber se o resto está verde. *Uma regra fora do caminho de quem a executa é uma regra que não
-# existe* — a mesma lição que pôs o `CARGO_INCREMENTAL=0` aqui dentro.
+# ⚠️ **O `nextest` CANCELAVA na primeira falha** — até 10/09; desde então `fail-fast = false` é o
+# default do `.config/nextest.toml`, logo numa árvore actual o `NO_FAIL_FAST` é redundante e fica
+# para as forkadas antes disso. Quem executa a regra é ESTE script: uma corrida que tropeçava numa
+# flake de relógio deixava **7 mil** testes por correr, e quem lia o resultado não sabia se o resto
+# estava verde. *Uma regra fora do caminho de quem a executa é uma regra que não existe* — a mesma
+# lição que pôs o `CARGO_INCREMENTAL=0` aqui dentro.
 #
 #   NO_FAIL_FAST=1 ./scripts/nextest-impacted.sh   # corre tudo e lista TODAS as falhas
 FAIL_MODE=()
@@ -133,6 +134,13 @@ EXPR="$EXPR + test(/^transform_determinism::/)"
 # workspace inteira nunca pertence ao fecho de dependências de quem o viola. *Um
 # selector de impacto por dependências é cego a toda regra global.*
 EXPR="$EXPR + test(/^architecture_workspace_file_loc_cap::/) + test(/^file_loc_caps::/)"
+# ⛔ E os DOIS globais que a mesma cegueira escondia (medido 13/09): o tecto da SHELL
+# (`the_shell_only_shrinks`, o número que SOMA entre linhas) e o censo de ficheiros fora do build
+# (`architecture_no_orphan_source_file`) vivem na `ph2d-editor-core`, que é DEPENDÊNCIA da shell e
+# das famílias, nunca dependente — um diff na shell ou numa família não os seleccionava.
+# Os três filtros desta rede casam 7 testes reais (`cargo nextest list`, 13/09): um filtro que casa
+# ZERO é um gate verde que não correu.
+EXPR="$EXPR + test(/^architecture_the_shell_only_shrinks::/) + test(/^architecture_no_orphan_source_file::/)"
 
 echo "[nextest-impacted] changed: $(echo "$CHANGED" | tr '\n' ' ')"
 echo "[nextest-impacted] -E '$EXPR'"

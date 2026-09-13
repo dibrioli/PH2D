@@ -27,14 +27,20 @@ if [[ "$HERE" == "$PRIMARY" ]]; then
     echo "  Integrate FROM a line worktree (Worktrees/line-<módulo>/)." >&2
     exit 1
 fi
-if [[ "$BRANCH" != line/* ]]; then
-    echo "✗ HEAD is '$BRANCH', not a line/* branch — refusing to integrate." >&2
+if [[ "$BRANCH" != line/* && "$BRANCH" != integ/* ]]; then
+    echo "✗ HEAD is '$BRANCH', not a line/* or integ/* branch — refusing to integrate." >&2
     exit 1
 fi
 # Primary must be clean and on main (--ff-only lands there).
-if [[ -n "$(git -C "$PRIMARY" status --porcelain)" ]]; then
-    echo "✗ Primary checkout ($PRIMARY) is dirty — refusing." >&2
-    echo "  A dirty primary means someone is coding in main (DIRETRIZ §1.5.1 violation)." >&2
+# ⚠️ `project-memory/` fica FORA desta pergunta: `~/.claude/projects/<key>/memory` é symlink para
+# ela, logo TODA sessão viva suja o primário ao aprender algo (medido 13/09: 22 entradas, todas
+# ali). Contá-la fazia o script recusar SEMPRE, a acusar «alguém a codar no main» — falso. Sujo
+# FORA dela continua a ser a violação do §1.5.1.
+PRIMARY_DIRTY="$(git -C "$PRIMARY" status --porcelain -- . ':(exclude)project-memory')"
+if [[ -n "$PRIMARY_DIRTY" ]]; then
+    echo "✗ Primary checkout ($PRIMARY) is dirty outside project-memory/ — refusing." >&2
+    echo "$PRIMARY_DIRTY" | sed 's/^/    /' >&2
+    echo "  Code changes in the primary mean someone is working in main (DIRETRIZ §1.5.1 violation)." >&2
     exit 1
 fi
 if [[ "$(git -C "$PRIMARY" symbolic-ref --short HEAD)" != "main" ]]; then
@@ -58,8 +64,13 @@ if ! git rebase main; then
                               then `cargo check -p <sua-crate>`, `git add Cargo.lock`
     • *-registry-init/      → NEVER by hand: accept either side, re-run the sync
     • icons.rs (IconId)     → keep BOTH variants, alphabetical
-A conflict in code OUTSIDE your module's files means an isolation violation
-(concurrent same-symbol edit in foundational) — STOP and report (ADR-0107).
+Everything else is the integrator's to resolve — by the index STAGES (`git show :1:<f>` base ·
+`:2:` ours · `:3:` theirs), never by the markers. Numbered lists / ratchets: `merge=text` in
+"$(git rev-parse --git-common-dir)/info/attributes" while integrating (Mergiraf can DROP one
+side's deletion in a list and still print «Solved» — 13/09), with a count assert.
+Same-symbol DESIGN collision (two lines rewrote the same core fn) → STOP, report to Enio (ADR-0107).
+⚠️ A rebase WITHOUT conflicts is not proof either: compare every rebased commit with its original
+(per-file multiset of +/- lines, positive control) — DIRETRIZ §1.5.5.
 Resolve, `git rebase --continue`, then re-run this script.
 EOF
     exit 1
@@ -99,18 +110,21 @@ cargo test -q -p ph2d-tool-registry-init -p ph2d-node-registry-init -p ph2d-app-
 
 # ---------- 4. combined-tree BUILD gate (the ADR-0107 core) ----------
 # Foundational touched anywhere? → the whole workspace must still compile.
-# Only self-isolated drop-crates (crates/ph2d-{tool,node,panel}-<slug>/) + docs/
-# are exempt (physical isolation already guarantees them).
+# Only docs/ is exempt. ⚠️ As drop-crates deixaram de estar isoladas de quem as LÊ (medido 13/09):
+# desde a W2, 7 famílias `ph2d-app-*` dependem de `ph2d-tool-*`, 8 de `ph2d-panel-*` e 1 de
+# `ph2d-node-*` — um `check -p` na crate mudada não compila os leitores, e é neles que a quebra aparece.
 CHANGED="$(git diff --name-only main...HEAD)"
-FOUNDATIONAL_TOUCH="$(echo "$CHANGED" \
-    | grep -vE '^(crates/ph2d-(tool|node|panel)-[a-z0-9_-]+/|docs/)' || true)"
+FOUNDATIONAL_TOUCH="$(echo "$CHANGED" | grep -vE '^docs/' || true)"
 echo "▸ [4/5] combined-tree build gate"
 if [[ -n "$FOUNDATIONAL_TOUCH" ]]; then
-    echo "    foundational touched → cargo check --workspace"
+    echo "    code touched → CARGO_BUILD_WARNINGS=deny cargo check --workspace --all-targets"
     echo "$FOUNDATIONAL_TOUCH" | sed 's/^/      · /'
-    cargo check --workspace
+    # `--all-targets` + avisos como ERRO (a paridade do ship.sh/CI): um `dead_code` que só existe na
+    # árvore COMBINADA — cada linha apagou os usos DELA e o último morreu na fusão — passava por
+    # aqui verde e só o ship.sh o via (13/09, dois casos).
+    CARGO_BUILD_WARNINGS=deny cargo check --workspace --all-targets
 else
-    echo "    drop-crate only → isolated; checking changed crates"
+    echo "    docs only → nothing to compile"
     CRATES="$(echo "$CHANGED" | sed -n 's#^crates/\([^/]*\)/.*#-p \1#p' | sort -u | tr '\n' ' ')"
     # shellcheck disable=SC2086
     [[ -n "$CRATES" ]] && cargo check $CRATES || echo "    (no crate changes to check)"
@@ -123,7 +137,7 @@ BASE=main bash scripts/nextest-impacted.sh
 echo "▸ merge --ff-only into main"
 if git -C "$PRIMARY" merge --ff-only "$BRANCH"; then
     echo "✓ $BRANCH integrated into main. Green combined tree landed."
-    echo "  (If you close the LAST integration of the journey: ship.sh + push + babysit CI — §1.5.4)"
+    echo "  Ship/push: SÓ por ordem EXPLÍCITA do Enio (CLAUDE.md §0.7) — nunca como passo seguinte automático."
 else
     echo "✗ --ff-only failed: another line landed after your rebase." >&2
     echo "  That is the serialization working — just re-run this script (rebase+retest)." >&2

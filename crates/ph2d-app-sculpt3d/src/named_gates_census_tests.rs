@@ -133,19 +133,28 @@ fn definidos(raiz: &Path, todos: &[PathBuf]) -> BTreeSet<String> {
         let Ok(texto) = fs::read_to_string(f) else {
             panic!("{}: ilegível", relativo(raiz, f));
         };
-        let b = texto.as_bytes();
-        for chave in ["fn ", "mod "] {
-            for (i, _) in texto.match_indices(chave) {
-                if i > 0 && is_ident(b[i - 1]) {
-                    continue;
-                }
-                let nome: String = texto[i + chave.len()..]
-                    .bytes()
-                    .take_while(|&c| is_ident(c))
-                    .map(char::from)
-                    .collect();
-                if !nome.is_empty() {
-                    out.insert(nome);
+        for linha in texto.lines() {
+            // ⚠️ **Uma DEFINIÇÃO não mora num comentário.** Uma prosa que diga «a `fn x` que…»
+            // tornaria `x` definido e calaria a citação dele — o mesmo furo que este censo
+            // existe para fechar, visto do outro lado da régua.
+            let t = linha.trim_start();
+            if t.starts_with("//") || t.starts_with('*') {
+                continue;
+            }
+            let b = linha.as_bytes();
+            for chave in ["fn ", "mod "] {
+                for (i, _) in linha.match_indices(chave) {
+                    if i > 0 && is_ident(b[i - 1]) {
+                        continue;
+                    }
+                    let nome: String = linha[i + chave.len()..]
+                        .bytes()
+                        .take_while(|&c| is_ident(c))
+                        .map(char::from)
+                        .collect();
+                    if !nome.is_empty() {
+                        out.insert(nome);
+                    }
                 }
             }
         }

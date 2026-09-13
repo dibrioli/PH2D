@@ -44,6 +44,13 @@ fn the_hover_pick_happens_exactly_once() {
     total += crate::input_text::dispatch()
         .matches("pick_hovered_object(")
         .count();
+    // ⚠️ E os FILHOS `#[path]` do `snapshots.rs` (`line/render-bodies`): o publicador partiu-se em filhos, e uma
+    // contagem só no pai ficaria cega a um segundo pick escrito num deles.
+    total += crate::rust_src::path_children(
+        &Path::new(env!("CARGO_MANIFEST_DIR")).join("src/render_loop/snapshots.rs"),
+    )
+    .matches("pick_hovered_object(")
+    .count();
     assert_eq!(
         total, 1,
         "o realce passou a ser picado {total} vezes por quadro — os consumidores estão em pontos \
@@ -96,7 +103,11 @@ fn both_consumers_read_the_one_field() {
 /// mapa vivo fundido — e acenderia a linha de um objecto que o clique não pega.
 #[test]
 fn the_hierarchy_does_not_pick_the_canvas() {
-    let snap = shell("src/render_loop/snapshots.rs");
+    // ⚠️ O pai E os filhos `#[path]` (`line/render-bodies`): o assunto partiu-se em filhos, e uma ausência lida só
+    // no pai fica verde sobre o código que se mudou para um deles.
+    let snap = crate::rust_src::with_path_children(
+        &Path::new(env!("CARGO_MANIFEST_DIR")).join("src/render_loop/snapshots.rs"),
+    );
     assert!(
         !snap.contains("pick_all_at_world"),
         "o publicador da Hierarquia ganhou um pick próprio — ele não tem o mapa vivo FUNDIDO à \

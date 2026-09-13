@@ -13,7 +13,10 @@ use std::fs;
 /// **O gizmo é PUBLICADO** — sem isto o ramo volta a ser o `return None` de sempre.
 #[test]
 fn the_gizmo_pass_publishes_a_view_for_a_group_or_an_empty() {
-    let src = fs::read_to_string("src/render_loop/snapshots.rs").expect("snapshots.rs");
+    // ⚠️ O pai E os filhos `#[path]` (`line/render-bodies`): o assunto partiu-se em filhos, e uma ausência lida só
+    // no pai fica verde sobre o código que se mudou para um deles.
+    let src =
+        crate::rust_src::with_path_children(std::path::Path::new("src/render_loop/snapshots.rs"));
     assert!(
         src.contains("group_gizmo_view::view("),
         "build_view deixou de publicar a caixa de um grupo/vazio — um objeto sem geometria volta \
@@ -52,7 +55,10 @@ fn the_paint_pass_draws_the_empty_object_ring() {
 /// *mudar o modelo re-pergunta o que cada gate ainda mede.*
 #[test]
 fn the_extract_asks_whether_the_entity_is_on_the_canvas() {
-    let src = fs::read_to_string("src/render_loop/sim_extract.rs").expect("sim_extract.rs");
+    // ⚠️ O pai E os filhos `#[path]` (`line/render-bodies`): o assunto partiu-se em filhos, e uma ausência lida só
+    // no pai fica verde sobre o código que se mudou para um deles.
+    let src =
+        crate::rust_src::with_path_children(std::path::Path::new("src/render_loop/sim_extract.rs"));
     assert!(
         src.contains("off_canvas::draws_this_frame("),
         "o extract deixou de perguntar se a entidade esta' na cena — uma receita que seja um \

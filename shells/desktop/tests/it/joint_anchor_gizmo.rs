@@ -175,8 +175,11 @@ fn the_position_commit_reseats_the_anchor_through_the_door() {
     // O QUADRO emendado (as fases no sítio da chamada, pela ordem em que correm) — desde a OBRA 2 da
     // `line/render-loop` (2026-09-12) este bloco sai do `render_loop/mod.rs` para uma fase.
     let src = crate::frame_text::render_frame();
+    // ⚠️ A agulha é a CAPTURA inteira (`… = transform_edit.map(`): desde a `line/render-bodies` o bloco que chama a fase
+    // escreve `let joint_pivot_commit = self.fase_inspector_commits(…)?;`, e no texto emendado essa linha vem ANTES do
+    // corpo da fase — o nome sozinho casava a chamada e deixava de exigir a captura (auditoria do fecho).
     assert!(
-        src.contains("let joint_pivot_commit ="),
+        src.contains("let joint_pivot_commit = transform_edit.map("),
         "the Position commit no longer captures the joint pivot"
     );
     // ⭐⭐ **O bloco QUE CONSOME o pivô, delimitado pelas suas próprias chavetas** — e não uma

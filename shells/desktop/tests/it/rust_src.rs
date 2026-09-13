@@ -248,3 +248,50 @@ fn strip_test_modules(src: &str) -> String {
     }
     out
 }
+
+/// Os filhos que um ficheiro da shell declara por `#[path = "…"]`, recursivamente e concatenados — o texto que um gate
+/// de CAMINHO deixa de ver quando o assunto do ficheiro se parte em filhos (`line/render-bodies`: o `snapshots.rs` e o
+/// `sim_extract.rs`). ⚠️ Uma AUSÊNCIA lida só no pai fica VERDE sobre o código que se mudou para um filho, e uma
+/// contagem exacta fica cega a uma segunda ocorrência escrita num deles (auditoria do fecho da linha).
+pub fn path_children(path: &std::path::Path) -> String {
+    let src = std::fs::read_to_string(path).unwrap_or_else(|e| panic!("{}: {e}", path.display()));
+    let dir = path.parent().expect("um ficheiro da shell mora numa pasta");
+    let mut out = String::new();
+    for line in src.lines() {
+        if let Some(rest) = line.trim_start().strip_prefix("#[path = \"")
+            && let Some(end) = rest.find("\"]")
+        {
+            out.push_str(&with_path_children(&dir.join(&rest[..end])));
+            out.push('\n');
+        }
+    }
+    out
+}
+
+/// O ficheiro e os filhos `#[path]` dele (ver [`path_children`]).
+pub fn with_path_children(path: &std::path::Path) -> String {
+    let src = std::fs::read_to_string(path).unwrap_or_else(|e| panic!("{}: {e}", path.display()));
+    format!("{src}\n{}", path_children(path))
+}
+
+/// **A lente dos filhos lê os filhos, e só eles:** o `snapshots.rs` parte-se em filhos `#[path]`, e o texto de cada um
+/// tem de chegar à lente — senão uma ausência medida por ela fica verde sobre nada.
+#[test]
+fn the_path_lens_reads_the_children() {
+    let pai = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src/render_loop/snapshots.rs");
+    let filhos = path_children(&pai);
+    for marca in ["fn sprite_info(", "fn identity(", "fn global_view("] {
+        assert!(
+            filhos.contains(marca),
+            "a lente dos filhos não chega a `{marca}` — um filho `#[path]` ficou de fora"
+        );
+    }
+    assert!(
+        !filhos.contains("fn publish_hierarchy("),
+        "o pai entrou na lente dos FILHOS"
+    );
+    assert!(
+        with_path_children(&pai).contains("fn publish_hierarchy("),
+        "a lente inteira perdeu o pai"
+    );
+}

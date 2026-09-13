@@ -304,9 +304,9 @@ ph2d-vec-render = { path = "../../crates/ph2d-vec-render" }
 # porque `632` linhas delas prendiam `99 845` da família `motion` — o `motion_object_bake` chama o
 # `brush::resolve` dentro de um laço. ⚠️ O TIPO vive lá; o CAMPO fica na `App`.
 ph2d-vec-art-live = { path = "../../crates/ph2d-vec-art-live" }
-# ⭐ As outras duas folhas que a `motion` destrancou (W2 Fase C): a redução a miniatura (lei pura,
-# ZERO deps, três consumidores) e a sonda do drift de pan.
-ph2d-thumbnail = { path = "../../crates/ph2d-thumbnail" }
+# ⭐ A outra folha que a `motion` destrancou (W2 Fase C): a sonda do drift de pan. ⚠️ A irmã dela,
+# a redução a miniatura (`ph2d-thumbnail`), SAIU daqui em 2026-09-13: o último leitor na shell eram
+# as leis dos assets, que se mudaram para `ph2d-app-components` (o `cargo machete` acusou-a).
 ph2d-pan-diag = { path = "../../crates/ph2d-pan-diag" }
 # ADR-0108 Fase 1.1: máquinas de edição interativa (Pen agora) sobre a cena nova.
 ph2d-vec-edit = { path = "../../crates/ph2d-vec-edit" }

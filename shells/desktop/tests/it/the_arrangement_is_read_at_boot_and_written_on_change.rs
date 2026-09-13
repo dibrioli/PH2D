@@ -55,9 +55,14 @@ fn the_arrangement_is_installed_before_the_first_frame() {
 /// ⇒ *um detector no caminho de um gesto só vê os gestos que passam por ele; o quadro vê todos,
 /// porque é onde o estado assenta.* O gate afirma as duas metades: **está no quadro** e **não está
 /// no hook**.
+///
+/// ⚠️ **«O quadro» é o texto EMENDADO, não um ficheiro** (OBRA 2 da `line/render-loop`, 2026-09-13): a
+/// pintura do hero e a gravação da arrumação mudaram-se para a fase `fase_hero_paint`, e lido só no
+/// `render_loop/mod.rs` este gate reprovava sobre produto correcto. O controlo positivo continua a ser
+/// o que diz que ele mede o sítio certo.
 #[test]
 fn the_arrangement_is_detected_on_the_frame_and_not_on_the_pointer_hook() {
-    let frame = src("src/render_loop/mod.rs");
+    let frame = crate::frame_text::render_frame();
     assert!(
         frame.contains("layout_persist::save_if_changed(hero)"),
         "ninguém grava a arrumação no quadro — a borda de uma coluna e a largada de uma aba não \

@@ -79,7 +79,8 @@ pub(crate) fn collect_sorted_instances(
         let mut inst = *inst;
         crate::sprite_mesh::clear_mesh_tag(&mut inst);
         if let Some(malha) = malha {
-            inst.flip_uv |= meshes.push(malha, inst.anchor, inst.size) << RenderInstance::MESH_SHIFT;
+            inst.flip_uv |=
+                meshes.push(malha, inst.anchor, inst.size) << RenderInstance::MESH_SHIFT;
         }
         scratch.push(inst);
     }

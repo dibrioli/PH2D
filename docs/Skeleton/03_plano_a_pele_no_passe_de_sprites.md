@@ -127,7 +127,7 @@ ele emitiu — o rank, a visibilidade e as propriedades vêm do `emit::sprite` p
 espelha a POSIÇÃO e a UV é a do quad (`SpriteMesh::uv_at`), senão uma sprite espelhada lia a tinta
 fora da silhueta. ⚠️ **O 9-slice e a folha desdobrada** desenham-se sem deformar, com aviso.
 
-### W3 — os outros consumidores de instâncias
+### W3 — os outros consumidores de instâncias — ✅ FEITA (2026-09-13), menos o onion (nomeado, com o preço, na [fila F6-i](01_a_fila.md))
 
 Emissivo · vidro do prefab (`present_frost::lift`) · fantasmas de onion · picking (hoje o quad de
 repouso) · *View All*. Cada um: ou lê a malha, ou é uma lacuna **nomeada** com o que custa curá-la.

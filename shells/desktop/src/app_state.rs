@@ -388,12 +388,12 @@ pub(crate) struct App {
     /// ⚠️ Vive aqui, e não numa `Vec` local, por HR-3: com uma sprite emissora em cena o passe corre
     /// **todo frame**, e uma `Vec` nova por frame seria uma alocação no laço quente. Vazio (e
     /// portanto grátis) em toda cena que não tenha um emissor — que são todas, por omissão.
-    pub(crate) emissive_instances: Vec<ph2d_render::RenderInstance>,
+    pub(crate) emissive_instances: ph2d_render::LiftedInstances,
     /// As peças RASTER da receita aberta — retidas pelo fundo e desenhadas acima do vidro.
     ///
     /// ⚠️ Vive aqui pelo mesmo motivo do vizinho: é lixo de quadro, e re-alocá-lo por quadro seria
     /// uma alocação por frame para uma lista quase sempre vazia.
-    pub(crate) frost_instances: Vec<ph2d_render::RenderInstance>,
+    pub(crate) frost_instances: ph2d_render::LiftedInstances,
     /// Where the last blast went off and how big it was, plus how many ticks of
     /// flash it has left. Purely for the overlay: an explosion is instantaneous, so
     /// without a decaying mark the only visible trace is bodies that moved — the

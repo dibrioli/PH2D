@@ -29,9 +29,8 @@
 //! ⛔ **Sem receita aberta nada disto corre**, e o quadro é o de sempre — a mesma cerca do
 //! `present_bands`.
 
-use ph2d_ecs::{Entity, MasterEditing, PresentWorld, SimRef, SimWorld};
+use ph2d_ecs::{Entity, MasterEditing, PresentWorld, SimWorld};
 use ph2d_host::WindowSize;
-use ph2d_render::RenderInstance;
 use ph2d_vector::Color as VelloColor;
 use std::collections::BTreeSet;
 
@@ -46,26 +45,23 @@ use std::collections::BTreeSet;
 /// ⛔ Devolve vazio quando não há receita aberta, e aí o chamador passa `None` — o caminho de
 /// sempre não paga uma varredura para responder *«ninguém»*… ele paga esta, que é `O(instâncias)`
 /// e corre uma vez por quadro. *A alternativa seria a shell perguntar duas vezes.*
+///
+/// ⚠️ **Pela porta que leva a MALHA junto** (`LiftedInstances::collect_from`, plano
+/// `docs/Skeleton/03` W3): uma imagem presa ao esqueleto da receita sobe deformada, como está na
+/// cena — uma cópia só do `RenderInstance` subia o quad de repouso.
 pub(super) fn lift(
     sim: &SimWorld,
     present: &mut PresentWorld,
-    out: &mut Vec<RenderInstance>,
+    out: &mut ph2d_render::LiftedInstances,
 ) -> BTreeSet<Entity> {
-    out.clear();
     let mut held = BTreeSet::new();
-    let mut q = present.world_mut().query::<(&RenderInstance, &SimRef)>();
-    // ⚠️ Recolhe primeiro e consulta o `sim` depois — os dois mundos são distintos, e a query
-    // segura o `present` emprestado. É o mesmo laço do `sprite_emissive::collect`.
-    let candidates: Vec<(RenderInstance, Entity)> = q
-        .iter(present.world())
-        .map(|(inst, sim_ref)| (*inst, sim_ref.0))
-        .collect();
-    for (inst, entity) in candidates {
-        if sim.world().get::<MasterEditing>(entity).is_some() {
+    out.collect_from(present, |entity, _| {
+        let sobe = sim.world().get::<MasterEditing>(entity).is_some();
+        if sobe {
             held.insert(entity);
-            out.push(inst);
         }
-    }
+        sobe
+    });
     held
 }
 
@@ -87,8 +83,8 @@ pub(super) struct Gear<'a> {
     pub doc_scene: &'a ph2d_vector::VectorScene,
     /// A RECEITA, sozinha — o que fica nítido acima do vidro.
     pub front_scene: &'a ph2d_vector::VectorScene,
-    /// As peças raster da receita, retidas pelo fundo.
-    pub instances: &'a [RenderInstance],
+    /// As peças raster da receita, retidas pelo fundo — com as malhas delas.
+    pub instances: &'a ph2d_render::LiftedInstances,
     /// O quadro já está intercalado? Então o acumulador já está cheio.
     pub banded: bool,
     /// A cor de fundo do canvas, em **luz linear** — a mesma que o passe de sprite usa.
@@ -126,7 +122,7 @@ pub(super) fn glass(gpu: &ph2d_gpu::GpuContext, g: Gear<'_>) {
     // atravessar o MESMO AgX que o resto da cena, senão as cópias e a receita ficam de cores
     // diferentes.
     if !g.instances.is_empty() {
-        g.renderer.render_instances_only(
+        g.renderer.render_lifted_instances(
             g.game_rt.view(),
             g.camera,
             g.window_size,

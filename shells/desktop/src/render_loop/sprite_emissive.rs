@@ -38,8 +38,7 @@
 //! ser desenhada pelo caminho de sempre. Sem nenhuma sprite a emitir, a lista sai vazia, o passe não
 //! corre, e o quadro é **byte-idêntico** — há gate.
 
-use ph2d_ecs::{PresentWorld, SimRef, SimWorld, SpriteEmissive};
-use ph2d_render::RenderInstance;
+use ph2d_ecs::{PresentWorld, SimWorld, SpriteEmissive};
 
 /// Os parâmetros do halo. **Não são autorados** — o componente tem um knob só (a intensidade), e
 /// estes descrevem o *carácter* da emissão, que é a mesma para todas as sprites.
@@ -92,35 +91,37 @@ pub(crate) fn bloom_params() -> ph2d_render::BloomParams {
 /// ⚠️ **Multiplica só o RGB, nunca o alfa.** O alfa é *cobertura*: escalá-lo faria uma sprite
 /// meio-transparente virar opaca ao emitir, e o halo apareceria com a forma errada. O que passa do
 /// branco é a cor; a forma continua a ser a que o artista desenhou.
-pub(crate) fn collect(sim: &SimWorld, present: &mut PresentWorld, out: &mut Vec<RenderInstance>) {
-    out.clear();
-    let mut q = present.world_mut().query::<(&RenderInstance, &SimRef)>();
-    // ⚠️ Recolhe primeiro e consulta o `sim` depois: a query segura o `present` emprestado, e os
-    // dois mundos são distintos — mas manter as duas leituras separadas é o que torna este laço
-    // legível e imune a um futuro em que eles deixem de o ser.
-    let candidates: Vec<(RenderInstance, ph2d_ecs::Entity)> = q
-        .iter(present.world())
-        .map(|(inst, sim_ref)| (*inst, sim_ref.0))
-        .collect();
-    for (mut inst, sim_entity) in candidates {
+///
+/// ⚠️ **Pela porta que leva a MALHA junto** (`LiftedInstances::collect_from`, plano
+/// `docs/Skeleton/03` W3): o halo de uma imagem presa ao esqueleto sai da imagem DEFORMADA — uma
+/// cópia só do `RenderInstance` brilhava com o quad de repouso. O `sim` é lido DENTRO da varredura
+/// do `present`: são dois mundos de tipos distintos, e o compilador recusa-o no dia em que o
+/// deixarem de ser.
+pub(crate) fn collect(
+    sim: &SimWorld,
+    present: &mut PresentWorld,
+    out: &mut ph2d_render::LiftedInstances,
+) {
+    out.collect_from(present, |sim_entity, inst| {
         let Some(em) = sim.world().get::<SpriteEmissive>(sim_entity).copied() else {
-            continue;
+            return false;
         };
-        let k = em.clamped();
         if !em.emits() {
-            continue;
+            return false;
         }
+        let k = em.clamped();
         inst.tint[0] *= k;
         inst.tint[1] *= k;
         inst.tint[2] *= k;
-        out.push(inst);
-    }
+        true
+    });
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ph2d_ecs::{GlobalTransform, Transform};
+    use ph2d_ecs::{GlobalTransform, SimRef, Transform};
+    use ph2d_render::{LiftedInstances, RenderInstance};
 
     /// Uma instância mínima com um `tint` reconhecível.
     ///
@@ -170,7 +171,7 @@ mod tests {
     #[test]
     fn a_sprite_without_the_component_does_not_emit() {
         let (sim, mut present) = world_pair(None, [1.0, 1.0, 1.0, 1.0]);
-        let mut out = Vec::new();
+        let mut out = LiftedInstances::default();
         collect(&sim, &mut present, &mut out);
         assert!(out.is_empty(), "uma sprite sem `SpriteEmissive` nao emite");
     }
@@ -180,7 +181,7 @@ mod tests {
     #[test]
     fn an_intensity_of_zero_does_not_emit() {
         let (sim, mut present) = world_pair(Some(SpriteEmissive(0.0)), [1.0, 1.0, 1.0, 1.0]);
-        let mut out = Vec::new();
+        let mut out = LiftedInstances::default();
         collect(&sim, &mut present, &mut out);
         assert!(out.is_empty());
     }
@@ -189,14 +190,15 @@ mod tests {
     #[test]
     fn the_colour_is_scaled_and_the_alpha_is_not() {
         let (sim, mut present) = world_pair(Some(SpriteEmissive(4.0)), [1.0, 0.5, 0.25, 0.5]);
-        let mut out = Vec::new();
+        let mut out = LiftedInstances::default();
         collect(&sim, &mut present, &mut out);
         assert_eq!(out.len(), 1);
-        assert_eq!(out[0].tint[0], 4.0);
-        assert_eq!(out[0].tint[1], 2.0);
-        assert_eq!(out[0].tint[2], 1.0);
+        assert_eq!(out.instances()[0].tint[0], 4.0);
+        assert_eq!(out.instances()[0].tint[1], 2.0);
+        assert_eq!(out.instances()[0].tint[2], 1.0);
         assert_eq!(
-            out[0].tint[3], 0.5,
+            out.instances()[0].tint[3],
+            0.5,
             "o alfa e' COBERTURA — escala-lo faria o halo sair com a forma errada"
         );
     }
@@ -205,12 +207,12 @@ mod tests {
     #[test]
     fn an_absurd_intensity_is_clamped_instead_of_saturating() {
         let (sim, mut present) = world_pair(Some(SpriteEmissive(1.0e9)), [1.0, 1.0, 1.0, 1.0]);
-        let mut out = Vec::new();
+        let mut out = LiftedInstances::default();
         collect(&sim, &mut present, &mut out);
         assert_eq!(out.len(), 1);
-        assert_eq!(out[0].tint[0], ph2d_ecs::EMISSIVE_MAX);
+        assert_eq!(out.instances()[0].tint[0], ph2d_ecs::EMISSIVE_MAX);
         assert!(
-            out[0].tint[0].is_finite(),
+            out.instances()[0].tint[0].is_finite(),
             "um tint infinito atravessa o blur e apaga o quadro"
         );
     }
@@ -221,7 +223,10 @@ mod tests {
     #[test]
     fn the_buffer_is_cleared_so_frames_do_not_accumulate() {
         let (sim, mut present) = world_pair(Some(SpriteEmissive(2.0)), [1.0, 1.0, 1.0, 1.0]);
-        let mut out = vec![instance([9.0, 9.0, 9.0, 9.0]); 3];
+        let mut out = LiftedInstances::default();
+        for _ in 0..3 {
+            out.push(instance([9.0, 9.0, 9.0, 9.0]), None);
+        }
         collect(&sim, &mut present, &mut out);
         assert_eq!(out.len(), 1, "o lixo do quadro anterior ficou na lista");
     }

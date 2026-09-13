@@ -128,7 +128,8 @@ pub use layer_compositor::{
 pub use motion_fx::{BloomParams, DirtMask, MotionFx, dirt_scale_offset};
 pub use picking::{
     WorldBbox, pick_sprite_at_world, pick_sprites_at_world, pick_sprites_in_world_rect,
-    selection_bbox_world, sprite_world_to_uv, sprite_world_to_uv_unclamped,
+    scene_sprites_bbox_world, selection_bbox_world, sprite_world_to_uv,
+    sprite_world_to_uv_unclamped,
 };
 pub use pipeline::SpritePipeline;
 pub use premul::{
@@ -139,7 +140,7 @@ pub use registry::register_render_components;
 pub use renderer::SpriteRenderer;
 pub use sprite::{GpuTexRun, QuadVertex, RenderInstance, Sprite, SpriteSource};
 pub use sprite_collect::sort_render_order;
-pub use sprite_mesh::SpriteMesh;
+pub use sprite_mesh::{LiftedInstances, SpriteMesh};
 pub use world_rt::WorldRt;
 // The wrapper enum + the canonical load path (`load_sprite` +
 // `LoadError`, ADR-0070-amendment-2 §4) are re-exported at crate root —

@@ -20,6 +20,14 @@
 //! desenhada duas vezes — que é o que o caminho do Vello (um recorte por triângulo) não conseguia
 //! (`tests/it/skin_pieces_gpu_cost.rs`).
 //!
+//! # ⭐⭐ Quem mais precisa de saber que uma sprite é uma malha (W3)
+//!
+//! A malha vive num componente AO LADO da instância, então todo consumidor que COPIA a instância ou
+//! lê o quad dela via a sprite em repouso: o vidro do prefab e o emissivo copiam-na
+//! ([`LiftedInstances`]), e o picking e as caixas lêem o quad (`crate::picking`). ⇒ as duas perguntas
+//! *«isto desenha-se como malha?»* ([`drawn_mesh`]) e *«que texel está debaixo deste ponto?»*
+//! ([`uv_under`]) moram AQUI, uma vez, para o desenho e para quem aponta.
+//!
 //! # ⚠️ Divergência DECLARADA: a tinta por canto
 //!
 //! O shader calcula a tinta por canto POR VÉRTICE (bilinear sobre o `quad_uv`) e interpola-a. O
@@ -27,6 +35,7 @@
 //! verdadeiro. Com a tinta por canto uniforme — quase toda sprite — os dois coincidem.
 
 use crate::sprite::{QuadVertex, RenderInstance};
+use ph2d_ecs::{Entity, PresentWorld, SimRef};
 use ph2d_gpu::GpuContext;
 
 /// ⭐ **A malha de uma sprite, posada** — componente de APRESENTAÇÃO, na mesma entidade da
@@ -39,12 +48,31 @@ use ph2d_gpu::GpuContext;
 /// - `tris`: triângulos por índice em `local`/`uv`.
 ///
 /// ⚠️ **Se a malha não puder ser desenhada** (comprimentos diferentes, `size` zero, nenhum triângulo
-/// válido), a instância desenha o QUAD de repouso — visível, nunca calada.
-#[derive(bevy_ecs::component::Component, Clone, Debug, Default, PartialEq)]
+/// válido), a instância desenha o QUAD de repouso — visível, nunca calada. A pergunta é
+/// [`drawn_mesh`].
+#[derive(bevy_ecs::component::Component, Debug, Default, PartialEq)]
 pub struct SpriteMesh {
     pub local: Vec<[f32; 2]>,
     pub uv: Vec<[f32; 2]>,
     pub tris: Vec<[u32; 3]>,
+}
+
+/// ⚠️ **`Clone` à mão por causa do `clone_from`:** o derivado recria os três `Vec` a cada cópia, e o
+/// [`LiftedInstances`] copia malhas A CADA QUADRO para buffers reusados (HR-3).
+impl Clone for SpriteMesh {
+    fn clone(&self) -> Self {
+        Self {
+            local: self.local.clone(),
+            uv: self.uv.clone(),
+            tris: self.tris.clone(),
+        }
+    }
+
+    fn clone_from(&mut self, source: &Self) {
+        self.local.clone_from(&source.local);
+        self.uv.clone_from(&source.uv);
+        self.tris.clone_from(&source.tris);
+    }
 }
 
 impl SpriteMesh {
@@ -62,6 +90,191 @@ impl SpriteMesh {
     #[must_use]
     pub fn uv_at(local: [f32; 2], anchor: [f32; 2], size: [f32; 2]) -> Option<[f32; 2]> {
         quad_pos(local, anchor, size).map(|q| [q[0] + 0.5, 0.5 - q[1]])
+    }
+
+    /// Os triângulos que o passe DESENHA, em local — os de índices dentro da malha, pela ordem da
+    /// tira (a mesma regra do [`stitch`], que salta os outros).
+    pub(crate) fn triangles(&self) -> impl DoubleEndedIterator<Item = [usize; 3]> + '_ {
+        let n = self.local.len().min(self.uv.len());
+        self.tris
+            .iter()
+            .map(|t| [t[0] as usize, t[1] as usize, t[2] as usize])
+            .filter(move |t| t.iter().all(|&i| i < n))
+    }
+}
+
+/// ⭐⭐ **A malha que o passe de sprites DESENHA no lugar do quad desta instância — ou `None`, e aí
+/// desenha-se o quad.**
+///
+/// ⚠️ **Uma pergunta, dois consumidores:** o [`MeshFrame::push`] (o desenho) e o `crate::picking`
+/// (quem aponta). Uma malha que o picking lesse e o passe recusasse seria apontável onde não se vê.
+#[must_use]
+pub(crate) fn drawn_mesh(mesh: Option<&SpriteMesh>, size: [f32; 2]) -> Option<&SpriteMesh> {
+    let m = mesh?;
+    let quad_ok = quad_pos([0.0, 0.0], [0.0, 0.0], size).is_some();
+    (quad_ok && m.local.len() == m.uv.len() && m.triangles().next().is_some()).then_some(m)
+}
+
+/// A margem de arredondamento de um peso baricêntrico em `f32` — duas subtracções e uma divisão, a
+/// poucos ULP. Sem ela um ponto SOBRE a aresta partilhada por dois triângulos podia não pertencer a
+/// nenhum dos dois, e o picking teria uma fenda que o desenho não tem.
+const BORDA_BARICENTRICA: f32 = 8.0 * f32::EPSILON;
+
+/// Os pesos baricêntricos de `p` no triângulo `t`, com a borda INCLUÍDA; `None` fora dele ou num
+/// triângulo sem área (que o rasterizador não desenha).
+fn barycentric(p: [f32; 2], t: [[f32; 2]; 3]) -> Option<[f32; 3]> {
+    let [a, b, c] = t;
+    let menos = |x: [f32; 2], y: [f32; 2]| [x[0] - y[0], x[1] - y[1]];
+    let cruz = |u: [f32; 2], v: [f32; 2]| u[0] * v[1] - u[1] * v[0];
+    let area = cruz(menos(b, a), menos(c, a));
+    if area.is_nan() || area.abs() < f32::MIN_POSITIVE {
+        return None;
+    }
+    let w1 = cruz(menos(p, a), menos(c, a)) / area;
+    let w2 = cruz(menos(b, a), menos(p, a)) / area;
+    let w0 = 1.0 - w1 - w2;
+    [w0, w1, w2]
+        .iter()
+        .all(|&w| w >= -BORDA_BARICENTRICA)
+        .then_some([w0, w1, w2])
+}
+
+/// ⭐ **Os três vértices LOCAIS de um triângulo da malha** (os índices já vieram de
+/// [`SpriteMesh::triangles`]).
+pub(crate) fn corners(mesh: &SpriteMesh, t: [usize; 3]) -> [[f32; 2]; 3] {
+    [mesh.local[t[0]], mesh.local[t[1]], mesh.local[t[2]]]
+}
+
+/// ⭐⭐ **O ponto LOCAL `p` cai sobre a malha posada?**
+#[must_use]
+pub(crate) fn covers(mesh: &SpriteMesh, p: [f32; 2]) -> bool {
+    mesh.triangles()
+        .any(|t| barycentric(p, corners(mesh, t)).is_some())
+}
+
+/// ⭐⭐ **A UV DE REPOUSO debaixo do ponto LOCAL `p`** — interpolada no triângulo posado que o
+/// contém; `None` fora da malha.
+///
+/// ⚠️ **Numa dobra que sobrepõe a malha a si mesma, ganha o triângulo desenhado POR ÚLTIMO** — é o
+/// que fica à vista, porque a tira desenha-os pela ordem e o de cima cobre o de baixo.
+#[must_use]
+pub(crate) fn uv_under(mesh: &SpriteMesh, p: [f32; 2]) -> Option<[f32; 2]> {
+    mesh.triangles().rev().find_map(|t| {
+        let w = barycentric(p, corners(mesh, t))?;
+        let uv = [mesh.uv[t[0]], mesh.uv[t[1]], mesh.uv[t[2]]];
+        Some([
+            w[0] * uv[0][0] + w[1] * uv[1][0] + w[2] * uv[2][0],
+            w[0] * uv[0][1] + w[1] * uv[1][1] + w[2] * uv[2][1],
+        ])
+    })
+}
+
+/// ⭐⭐ **INSTÂNCIAS COPIADAS DA CENA, cada uma com a malha que tinha** — o que o vidro do prefab e o
+/// emissivo re-desenham em isolamento ([`crate::SpriteRenderer::render_lifted_instances`]).
+///
+/// ⛔ **Uma cópia do `RenderInstance` sozinha perde a malha**, que vive noutro componente da mesma
+/// entidade: até à W3 do plano 03 uma imagem presa ao esqueleto aparecia DEFORMADA na cena e em
+/// REPOUSO no halo emissivo e por cima do vidro da receita aberta.
+///
+/// ⚠️ **Reusado entre quadros** (HR-3): o `clear` guarda a capacidade, e as malhas copiam-se por
+/// `clone_from` para os `Vec` do quadro anterior.
+#[derive(Default)]
+pub struct LiftedInstances {
+    instances: Vec<RenderInstance>,
+    /// `(índice em instances, malha)`; só as primeiras `n_meshes` são deste quadro.
+    meshes: Vec<(usize, SpriteMesh)>,
+    n_meshes: usize,
+}
+
+impl LiftedInstances {
+    pub fn clear(&mut self) {
+        self.instances.clear();
+        self.n_meshes = 0;
+    }
+
+    /// Acrescenta uma instância, com a malha dela quando ela tem uma.
+    pub fn push(&mut self, inst: RenderInstance, mesh: Option<&SpriteMesh>) {
+        if let Some(m) = mesh {
+            let i = self.instances.len();
+            match self.meshes.get_mut(self.n_meshes) {
+                Some(slot) => {
+                    slot.0 = i;
+                    slot.1.clone_from(m);
+                }
+                None => self.meshes.push((i, m.clone())),
+            }
+            self.n_meshes += 1;
+        }
+        self.instances.push(inst);
+    }
+
+    /// ⭐⭐ **A porta dos consumidores:** limpa, e recolhe da cena cada instância que `keep` aceita —
+    /// `keep` recebe a entidade da SIMULAÇÃO e pode alterar a cópia (o emissivo multiplica a tinta) —,
+    /// COM a malha dela. Um consumidor que passe por aqui não pode esquecer a malha.
+    pub fn collect_from(
+        &mut self,
+        present: &mut PresentWorld,
+        mut keep: impl FnMut(Entity, &mut RenderInstance) -> bool,
+    ) {
+        self.clear();
+        let mut q = present
+            .world_mut()
+            .query::<(&RenderInstance, &SimRef, Option<&SpriteMesh>)>();
+        for (inst, sim_ref, malha) in q.iter(present.world()) {
+            let mut copia = *inst;
+            if keep(sim_ref.0, &mut copia) {
+                self.push(copia, malha);
+            }
+        }
+    }
+
+    #[must_use]
+    pub fn instances(&self) -> &[RenderInstance] {
+        &self.instances
+    }
+
+    #[must_use]
+    pub fn len(&self) -> usize {
+        self.instances.len()
+    }
+
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.instances.is_empty()
+    }
+
+    /// A malha que a instância `index` levou, se levou.
+    #[must_use]
+    pub fn mesh_of(&self, index: usize) -> Option<&SpriteMesh> {
+        self.meshes()
+            .iter()
+            .find(|(i, _)| *i == index)
+            .map(|(_, m)| m)
+    }
+
+    pub(crate) fn meshes(&self) -> &[(usize, SpriteMesh)] {
+        &self.meshes[..self.n_meshes]
+    }
+}
+
+/// ⭐ **Marca cada instância de uma fatia isolada com a malha que ela levou, e limpa a marca das
+/// outras** — ANTES da ordenação, porque os índices são os da fatia.
+///
+/// ⛔ Uma fatia crua (`meshes` vazio, o glow do Motion) sai toda sem marca: uma marca herdada
+/// indexaria as malhas de OUTRA chamada de render.
+pub(crate) fn tag_lifted(
+    scratch: &mut [RenderInstance],
+    frame: &mut MeshFrame,
+    meshes: &[(usize, SpriteMesh)],
+) {
+    frame.clear();
+    for inst in scratch.iter_mut() {
+        clear_mesh_tag(inst);
+    }
+    for (i, m) in meshes {
+        if let Some(inst) = scratch.get_mut(*i) {
+            inst.flip_uv |= frame.push(m, inst.anchor, inst.size) << RenderInstance::MESH_SHIFT;
+        }
     }
 }
 
@@ -83,7 +296,7 @@ impl MeshFrame {
     /// Acumula `malha` convertida para o quad desta instância e devolve a marca (`1..`), ou `0`
     /// se ela não puder ser desenhada.
     pub(crate) fn push(&mut self, malha: &SpriteMesh, anchor: [f32; 2], size: [f32; 2]) -> u32 {
-        if malha.local.len() != malha.uv.len() {
+        if drawn_mesh(Some(malha), size).is_none() {
             return 0;
         }
         self.work.clear();

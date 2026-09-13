@@ -31,7 +31,7 @@ pub(super) struct FxGear<'a> {
     pub present: &'a mut ph2d_ecs::PresentWorld,
     /// O scratch das instâncias emissivas — vive no `App` porque é lixo de quadro, e re-alocá-lo
     /// por quadro seria uma alocação por frame para uma lista quase sempre vazia.
-    pub instances: &'a mut Vec<ph2d_render::RenderInstance>,
+    pub instances: &'a mut ph2d_render::LiftedInstances,
 }
 
 /// Corre os dois passes, nesta ordem.
@@ -50,7 +50,7 @@ pub(super) fn run(gpu: &ph2d_gpu::GpuContext, g: FxGear<'_>) {
     //   quadro é byte-idêntico ao de antes desta feature existir (há gate).
     super::sprite_emissive::collect(g.sim, g.present, g.instances);
     if !g.instances.is_empty() {
-        g.renderer.render_instances_only(
+        g.renderer.render_lifted_instances(
             g.motion_fx.rt_view(),
             g.camera,
             g.window_size,

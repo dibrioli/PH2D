@@ -42,28 +42,12 @@ pub(crate) fn drain_view_focus(
             tr("shell.view.view_camera_origin")
         }
         ViewFocusKind::All => {
-            // Walk PresentWorld for every sprite's bbox and fit
-            // camera around the union. 10% pad so handles + the bbox
-            // stroke have room.
-            let mut q = present
-                .world_mut()
-                .query::<(&ph2d_ecs::GlobalTransform, &ph2d_render::RenderInstance)>();
-            let mut min_x = f32::INFINITY;
-            let mut min_y = f32::INFINITY;
-            let mut max_x = f32::NEG_INFINITY;
-            let mut max_y = f32::NEG_INFINITY;
-            let mut count = 0u32;
-            for (gt, ri) in q.iter(present.world()) {
-                let p = gt.translation();
-                let hw = ri.size[0] * 0.5;
-                let hh = ri.size[1] * 0.5;
-                min_x = min_x.min(p.x - hw);
-                min_y = min_y.min(p.y - hh);
-                max_x = max_x.max(p.x + hw);
-                max_y = max_y.max(p.y + hh);
-                count += 1;
-            }
-            if count > 0 {
+            // Fit the camera around the union of every sprite's DRAWN box — the picking law
+            // (`ph2d_render::scene_sprites_bbox_world`: anchor, basis, and the mesh of a skinned
+            // image), not the pivot-centred quad this branch used to rebuild by hand. 10% pad so
+            // handles + the bbox stroke have room.
+            if let Some(b) = ph2d_render::scene_sprites_bbox_world(present.world_mut()) {
+                let (min_x, min_y, max_x, max_y) = (b.min[0], b.min[1], b.max[0], b.max[1]);
                 let cx = (min_x + max_x) * 0.5;
                 let cy = (min_y + max_y) * 0.5;
                 let span_x = max_x - min_x;

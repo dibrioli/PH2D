@@ -192,3 +192,153 @@ fn a_mesh_that_cannot_be_drawn_leaves_the_quad_and_no_vertices() {
     );
     assert!(malhas.vertices.is_empty() && malhas.ranges.is_empty());
 }
+
+fn triangulo(local: Vec<[f32; 2]>) -> SpriteMesh {
+    SpriteMesh {
+        local,
+        uv: vec![[0.0, 1.0], [1.0, 1.0], [0.0, 0.0]],
+        tris: vec![[0, 1, 2]],
+    }
+}
+
+/// ⭐⭐⭐ **Uma instância COPIADA leva a malha que tinha, e um conjunto REUSADO nunca devolve a malha
+/// do quadro anterior.**
+///
+/// ⛔ O defeito que isto fecha (plano 03, W3): o vidro do prefab e o emissivo copiavam só o
+/// `RenderInstance` e desenhavam o quad de repouso de uma imagem presa ao esqueleto. ⚠️ E a metade do
+/// reuso: o conjunto guarda as malhas em buffers que sobrevivem ao `clear`, e um slot velho lido
+/// depois de um `clear` desenharia a pose de um quadro que já passou.
+///
+/// (Mutações: o `push` a ignorar a malha ⇒ RED; o `clear` sem `n_meshes = 0` ⇒ RED na metade do
+/// reuso.)
+#[test]
+fn a_lifted_instance_carries_its_mesh_and_reuse_never_returns_last_frames_mesh() {
+    let mut conjunto = LiftedInstances::default();
+    let velha = triangulo(vec![[0.0, 0.0], [9.0, 0.0], [0.0, 9.0]]);
+    conjunto.push(instancia(), Some(&velha));
+    conjunto.clear();
+    let nova = triangulo(vec![[0.0, 0.0], [1.0, 0.0], [0.0, 1.0]]);
+    conjunto.push(instancia(), None);
+    conjunto.push(instancia(), Some(&nova));
+    assert_eq!(conjunto.len(), 2);
+    assert_eq!(
+        conjunto.mesh_of(0),
+        None,
+        "a instancia sem malha herdou a malha do quadro anterior"
+    );
+    assert_eq!(
+        conjunto.mesh_of(1),
+        Some(&nova),
+        "a instancia com malha nao a levou, ou levou a do quadro anterior"
+    );
+    assert_eq!(conjunto.meshes().len(), 1);
+}
+
+/// ⭐⭐ **A porta dos consumidores recolhe o que `keep` aceita — COM a malha, e com a cópia alterada.**
+///
+/// ⚠️ É a porta por onde o vidro do prefab e o emissivo passam: um consumidor que a use não pode
+/// esquecer a malha, e a alteração que ele faz (o emissivo multiplica a tinta) chega à cópia.
+#[test]
+fn collect_from_lifts_what_keep_accepts_with_its_mesh() {
+    let mut sim = ph2d_ecs::SimWorld::default();
+    let sobe = sim.world_mut().spawn_empty().id();
+    let fica = sim.world_mut().spawn_empty().id();
+    let mut present = ph2d_ecs::PresentWorld::new();
+    let malha = quadrado();
+    present
+        .world_mut()
+        .spawn((ph2d_ecs::SimRef(sobe), instancia(), malha.clone()));
+    present
+        .world_mut()
+        .spawn((ph2d_ecs::SimRef(fica), instancia(), quadrado()));
+    let mut conjunto = LiftedInstances::default();
+    conjunto.push(instancia(), None);
+    conjunto.collect_from(&mut present, |e, inst| {
+        inst.opacity = 0.25;
+        e == sobe
+    });
+    assert_eq!(
+        conjunto.len(),
+        1,
+        "so' a entidade aceite sobe, e o lixo do quadro anterior sai"
+    );
+    assert_eq!(
+        conjunto.instances()[0].opacity,
+        0.25,
+        "a alteracao do keep nao chegou a' copia"
+    );
+    assert_eq!(
+        conjunto.mesh_of(0),
+        Some(&malha),
+        "a instancia levantada perdeu a malha"
+    );
+}
+
+/// ⭐⭐ **Uma fatia levantada desenha-se com as malhas dela; uma fatia CRUA limpa toda marca.**
+///
+/// (Mutação: o `tag_lifted` sem o laço das malhas ⇒ RED; sem o laço que limpa ⇒ RED na marca herdada.)
+#[test]
+fn tag_lifted_marks_each_lifted_mesh_and_a_raw_slice_carries_none() {
+    let mut conjunto = LiftedInstances::default();
+    conjunto.push(instancia(), None);
+    conjunto.push(instancia(), Some(&quadrado()));
+    let mut scratch = conjunto.instances().to_vec();
+    scratch[0].flip_uv |= 5 << RenderInstance::MESH_SHIFT;
+    let mut frame = MeshFrame::default();
+    tag_lifted(&mut scratch, &mut frame, conjunto.meshes());
+    let marcas: Vec<u32> = scratch
+        .iter()
+        .map(|i| RenderInstance::unpack_mesh(i.flip_uv))
+        .collect();
+    assert_eq!(
+        marcas,
+        vec![0, 1],
+        "sem malha · com a malha dela (a marca herdada saiu)"
+    );
+    assert_eq!(frame.ranges, vec![(0, 5 * 2 - 2)]);
+    tag_lifted(&mut scratch, &mut frame, &[]);
+    assert!(
+        scratch
+            .iter()
+            .all(|i| RenderInstance::unpack_mesh(i.flip_uv) == 0)
+            && frame.ranges.is_empty(),
+        "uma fatia crua levou uma marca de malha"
+    );
+}
+
+/// ⭐⭐⭐ **O ponto sobre a malha POSADA lê a UV de REPOUSO debaixo dele; fora dela, nada — e a malha
+/// que o passe recusaria não é malha para ninguém.**
+///
+/// ⚠️ A malha da fixtura está POSADA para fora do quad de repouso (um triângulo em `x = 3..5` de um
+/// quad `2×2` centrado): é o caso em que o quad e a malha discordam, e o único que distingue quem lê
+/// qual.
+///
+/// (Mutação: o `uv_under` a devolver a UV do 1.º vértice em vez da interpolada ⇒ RED.)
+#[test]
+fn a_point_on_the_posed_mesh_reads_the_rest_uv_under_it() {
+    let m = triangulo(vec![[3.0, 0.0], [5.0, 0.0], [3.0, 2.0]]);
+    let uv = uv_under(&m, [4.0, 0.0]).expect("o meio da base esta' na malha");
+    assert!(
+        (uv[0] - 0.5).abs() < 1e-6 && (uv[1] - 1.0).abs() < 1e-6,
+        "o meio da base leu {uv:?} — a UV de repouso ali e' (0,5 · 1)"
+    );
+    assert!(
+        covers(&m, [3.0, 2.0]),
+        "um vertice pertence a' malha (a borda conta)"
+    );
+    assert!(
+        !covers(&m, [0.0, 0.0]) && uv_under(&m, [0.0, 0.0]).is_none(),
+        "o centro do quad de REPOUSO nao e' malha posada"
+    );
+    assert!(drawn_mesh(Some(&m), [2.0, 2.0]).is_some());
+    let mut torta = m.clone();
+    torta.uv.pop();
+    assert!(
+        drawn_mesh(Some(&torta), [2.0, 2.0]).is_none(),
+        "uma malha que o passe recusa nao pode ser apontavel"
+    );
+    assert!(
+        drawn_mesh(Some(&m), [0.0, 2.0]).is_none(),
+        "com size nulo o passe desenha o quad, nao a malha"
+    );
+}

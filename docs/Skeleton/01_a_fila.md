@@ -1950,12 +1950,36 @@ de canto dá cada centro de pixel a UM triângulo.
   fantasma rouba a malha à base) · sem a comparação do quad (`2` malhas) · `v` do `uv_at` invertido ·
   tecto por imagem (`288` peças contra `144`) · a guarda de volta ao extract · a chamada apagada.
 
-⏳ **ABERTO, e nomeado (W3–W5 do plano):**
-- **Quem COPIA a instância perde a malha** (lido no código): o vidro do prefab
-  (`present_frost::lift`), o emissivo (`sprite_emissive::collect`) e os fantasmas do onion
-  (`timeline_onion`) copiam o `RenderInstance` sem o `SpriteMesh` ⇒ desenham o quad de repouso.
-- **Quem lê o quad de repouso:** o picking (`ph2d-render::picking`) e o *View All*
-  (`hero_intents/view.rs`, que também ignora a âncora e a base).
+**W3 — os outros consumidores** (`ph2d-render` + shell). Uma malha vive num componente AO LADO da
+instância, então quem COPIAVA a instância ou lia o QUAD de repouso desenhava ou apontava o sítio
+errado:
+
+- **Quem copia leva a malha.** O vidro do prefab (`present_frost::lift`) e o emissivo
+  (`sprite_emissive::collect`) passam por `LiftedInstances::collect_from` — a instância COM a
+  `SpriteMesh` — e desenham por `render_lifted_instances`, que marca cada cópia com a malha dela
+  antes da ordenação. ⚠️ As malhas copiam-se por `clone_from` para buffers reusados, e o `Clone` da
+  `SpriteMesh` passou a ser à mão por isso. O glow do Motion continua pelo `render_instances_only`.
+- **Quem aponta lê o que é desenhado.** Os pickings, a caixa do gizmo, o laço e a UV do pintor
+  perguntam a MESMA regra do desenho (`sprite_mesh::drawn_mesh`) e testam os triângulos POSADOS;
+  numa dobra que sobrepõe a malha ganha o triângulo desenhado por último, e fora da malha o
+  `sprite_world_to_uv` devolve `None`.
+- ⭐ **O *View All* já estava errado antes da malha:** a shell reconstruía à mão um quad centrado no
+  PIVÔ, sem âncora nem base. Hoje lê `scene_sprites_bbox_world`, a caixa do que é desenhado.
+- Os testes do picking saíram para `picking_tests.rs` (corte mecânico, `13` testes contados antes e
+  depois) para o ficheiro caber no tecto de `700` com a malha.
+- **Oito mutações, oito RED:** o `push` a ignorar a malha · o `clear` sem repor as malhas (a
+  instância sem malha herdava a do quadro anterior) · o `tag_lifted` sem o laço · a UV do 1.º
+  vértice em vez da interpolada · o `drawn_mesh` sem comparar comprimentos (apanhado pelo gate da
+  W1) · e o picking, a caixa e a UV a ignorarem a malha.
+
+⏳ **ABERTO, e nomeado:**
+- ⛔ **Os fantasmas do onion desenham o quad de repouso.** O fantasma é a instância viva com a pose
+  de `t` (`timeline_onion::ghost_instance`), e a deformação de uma imagem presa depende das poses
+  dos OSSOS em `t`, que o fantasma não avalia. Curar custa três peças: a pose de mundo de cada osso
+  em `t` (o `pose_at` composto pela hierarquia), uma pele que aceite essa pose em vez da do mundo,
+  e uma malha por fantasma na fatia `extra` — que hoje limpa as marcas de propósito.
+- O `sprite_world_to_uv_unclamped` fora da malha responde pela lei do quad de repouso: um traço de
+  pincel que sai da silhueta posada é mapeado como se a imagem repousasse.
 - O `SKIN_FRAME_PIECES` ainda é o número do Vello (W4) · a cena que ensina a ordem e o olho (W5).
 - **9-slice e folha desdobrada:** a malha só conhece o quad da sprite; essas desenham-se sem
   deformar, com aviso único no stderr.

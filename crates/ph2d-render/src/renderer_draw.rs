@@ -144,12 +144,27 @@ impl SpriteRenderer {
     ) {
         self.scratch.clear();
         self.scratch.extend_from_slice(instances);
-        // ⛔ Uma fatia de fora não traz malhas: uma marca herdada (o emissivo e o vidro do prefab
-        // copiam instâncias da cena) indexaria as malhas de OUTRA chamada.
-        self.mesh_frame.clear();
-        for inst in &mut self.scratch {
-            crate::sprite_mesh::clear_mesh_tag(inst);
-        }
+        // ⛔ Uma fatia crua não traz malhas: uma marca herdada indexaria as malhas de OUTRA chamada.
+        crate::sprite_mesh::tag_lifted(&mut self.scratch, &mut self.mesh_frame, &[]);
+        crate::sprite_collect::sort_render_order(&mut self.scratch);
+        self.draw_scratch(target, camera, window, clear_color, None, scene_viewport);
+    }
+
+    /// ⭐⭐ [`render_instances_only`](Self::render_instances_only) para instâncias COPIADAS DA CENA com
+    /// as malhas delas ([`crate::LiftedInstances`]) — o vidro do prefab e o emissivo. Uma imagem presa
+    /// ao esqueleto desenha-se aqui deformada, como na cena (plano `docs/Skeleton/03`, W3).
+    pub fn render_lifted_instances(
+        &mut self,
+        target: &wgpu::TextureView,
+        camera: &Camera2d,
+        window: WindowSize,
+        clear_color: wgpu::Color,
+        lifted: &crate::LiftedInstances,
+        scene_viewport: Option<[f32; 4]>,
+    ) {
+        self.scratch.clear();
+        self.scratch.extend_from_slice(lifted.instances());
+        crate::sprite_mesh::tag_lifted(&mut self.scratch, &mut self.mesh_frame, lifted.meshes());
         crate::sprite_collect::sort_render_order(&mut self.scratch);
         self.draw_scratch(target, camera, window, clear_color, None, scene_viewport);
     }

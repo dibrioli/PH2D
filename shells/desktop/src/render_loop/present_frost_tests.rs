@@ -3,11 +3,12 @@
 //! ⚠️ O passe de GPU não é alcançável daqui (ele precisa de um adapter, e os gates de GPU deste
 //! repo são `#[ignore]`) — o que se prende aqui é a **partição**, que é onde o defeito visível
 //! nasce: uma peça em nenhum dos dois lados desaparece do ecrã, e uma peça nos DOIS ganha um halo
-//! do próprio borrão.
+//! do próprio borrão. ⚠️ Que a peça sobe COM a malha dela prova-se na porta que o `lift` usa
+//! (`ph2d-render`, `LiftedInstances::collect_from`).
 
 use super::lift;
 use ph2d_ecs::{Entity, GlobalTransform, MasterEditing, PresentWorld, SimRef, SimWorld, Transform};
-use ph2d_render::RenderInstance;
+use ph2d_render::{LiftedInstances, RenderInstance};
 
 /// Uma instância mínima com um `z_order` reconhecível.
 ///
@@ -59,11 +60,11 @@ fn scene() -> (SimWorld, PresentWorld, Entity, Entity) {
 /// A lista de retenção e a lista de desenho saem da mesma varredura de propósito: se divergissem,
 /// uma peça ficaria retida e nunca desenhada (some do ecrã) ou desenhada duas vezes (halo).
 ///
-/// **Mutação que deve sangrar:** o `held.insert` ou o `out.push` sozinhos.
+/// **Mutação que deve sangrar:** o `held.insert` sozinho, ou o `sobe` devolvido como `true`.
 #[test]
 fn only_the_open_recipe_rises_above_the_glass() {
     let (sim, mut present, peca, alheia) = scene();
-    let mut out = Vec::new();
+    let mut out = LiftedInstances::default();
     let held = lift(&sim, &mut present, &mut out);
     assert!(held.contains(&peca), "a peca da receita nao foi retida");
     assert!(
@@ -76,7 +77,8 @@ fn only_the_open_recipe_rises_above_the_glass() {
         "a lista de cima tem de ter exactamente a peca"
     );
     assert_eq!(
-        out[0].z_order, 7,
+        out.instances()[0].z_order,
+        7,
         "a instancia levantada nao e' a da peca da receita"
     );
 }
@@ -93,7 +95,7 @@ fn without_an_open_recipe_nobody_rises() {
         GlobalTransform::from_transform(Transform::default()),
         instance(0),
     ));
-    let mut out = Vec::new();
+    let mut out = LiftedInstances::default();
     assert!(lift(&sim, &mut present, &mut out).is_empty());
     assert!(out.is_empty());
 }
@@ -104,11 +106,14 @@ fn without_an_open_recipe_nobody_rises() {
 #[test]
 fn the_lifted_list_does_not_accumulate_across_frames() {
     let (sim, mut present, _, _) = scene();
-    let mut out = vec![instance(99), instance(98)];
+    let mut out = LiftedInstances::default();
+    out.push(instance(99), None);
+    out.push(instance(98), None);
     lift(&sim, &mut present, &mut out);
     assert_eq!(
         out.len(),
         1,
-        "a lista do quadro anterior sobreviveu: {out:?}"
+        "a lista do quadro anterior sobreviveu: {:?}",
+        out.instances()
     );
 }

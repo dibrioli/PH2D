@@ -39,7 +39,8 @@ fn the_ui_burst_is_wired_at_all_four_ends() {
             "o RELOGIO: sem ele a faisca nasce e fica parada para sempre",
         ),
         (
-            "render_loop/mod.rs",
+            // O desenho mudou-se para a fase própria dele (OBRA 2 da `line/render-loop`, 2026-09-12).
+            "render_loop/fase_ui_burst_paint.rs",
             "crate::ui_burst_paint::paint(&self.ui_burst,",
             "o DESENHO: sem ele a lei corre e ninguem ve' nada",
         ),

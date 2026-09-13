@@ -240,6 +240,8 @@ mod fase_timeline_containers;
 mod fase_timeline_drain;
 /// Fase do quadro: a vista da timeline (amostragem, intents estacionadas, espelhos do painel).
 mod fase_timeline_view;
+/// Fase do quadro: a poeira de impacto (as faíscas por cima do chrome).
+mod fase_ui_burst_paint;
 /// O empréstimo do `gfx` do quadro: o destructure exaustivo do `AppGfx`, re-derivado por fase.
 mod frame_gfx;
 /// **Os nove quads do 9-slice** — irmão do `sim_extract`, que está no tecto de LOC.
@@ -11358,13 +11360,7 @@ impl crate::App {
             jobs.paint_below(toasts.len(), vector_scene, &mut paint_ctx);
         }
 
-        // ⭐⭐⭐ **A POEIRA DE IMPACTO** (estudo de UI viva, D2) — por CIMA de tudo, porque ela é a
-        // confirmação do gesto que acabou de acontecer e nada do chrome a deve tapar.
-        //
-        // ⚠️ **Fora do `if` acima de propósito**: aquele ramo é o do modo com chrome completo, e uma
-        // faísca é confirmação de um gesto que existe nos dois. ⛔ Uma cópia dentro de cada ramo
-        // seria a segunda lei a manter em sincronia com a primeira.
-        crate::ui_burst_paint::paint(&self.ui_burst, vector_scene);
+        self.fase_ui_burst_paint();
 
         // Paint + present + title — extracted to `present.rs` sibling
         // method (Wave 3.2 stage A). Re-acquires self.gfx + self.host

@@ -23,7 +23,6 @@
 //! resposta.*
 
 const EXTRACT: &str = include_str!("../../src/render_loop/sim_extract.rs");
-const LOOP: &str = include_str!("../../src/render_loop/mod.rs");
 
 /// **O fonte sem comentários** — sem isto, uma nota que cita a chamada conta como chamada.
 fn code_only(src: &str) -> String {
@@ -103,7 +102,9 @@ fn the_frame_draws_the_deformed_image_before_the_bones() {
 /// mede que o dreno lê o selector certo.
 #[test]
 fn the_bind_verb_reaches_both_media() {
-    let src = code_only(LOOP);
+    // ⚠️ O dreno do *Bind* lê-se no QUADRO pela ordem em que corre (`frame_text::render_frame`): desde a OBRA 2 da
+    // `line/render-loop` (2026-09-13) ele mora na `fase_skeleton_verbs`, e a selecção do gizmo continua no `mod.rs`.
+    let src = code_only(&crate::frame_text::render_frame());
     let i = src
         .find("if pending_bone_bind {")
         .expect("o dreno do *Bind* deixou de existir");

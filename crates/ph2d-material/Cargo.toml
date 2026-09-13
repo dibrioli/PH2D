@@ -1,0 +1,19 @@
+[package]
+name = "ph2d-material"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# ⛔ ZERO dependências de produção: esta é a lei de REFERÊNCIA do OpenPBR (o port Apache-2.0 do
+# MaterialX 1.39.5), e quem sombreia com ela é um traçador de CPU. O gémeo de GPU é o WGSL GERADO pelo
+# próprio MaterialX (`docs/Render3d/04` §2), com gate de paridade contra esta crate — nunca uma
+# segunda redacção à mão.
+[dependencies]
+
+[lints]
+workspace = true

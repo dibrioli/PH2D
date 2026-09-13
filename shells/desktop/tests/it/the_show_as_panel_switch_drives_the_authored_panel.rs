@@ -19,14 +19,26 @@
 
 const SRC: &str = include_str!("../../src/render_loop/mod.rs");
 
+/// O QUADRO pela ordem em que corre (`frame_text::render_frame`).
+///
+/// ⚠️ Desde a OBRA 2 da `line/render-loop` (2026-09-13) o quadro vive em FASES: o braço do chip continua no
+/// dreno do `render_loop/mod.rs`, e a publicação do estado do interruptor mudou-se para a
+/// `fase_vector_selection_frame_panel`. As janelas abaixo são medidas no texto EMENDADO, onde as duas metades
+/// estão pela ordem de execução.
+///
 /// Controle positivo: se a varredura não achar o arquivo do produto, todo gate abaixo seria verde
 /// por vácuo.
-fn body() -> &'static str {
+fn body() -> String {
     assert!(
         SRC.len() > 10_000,
         "o fonte do render_loop nao foi lido — os gates abaixo seriam verdes por vacuo"
     );
-    SRC
+    let frame = crate::frame_text::render_frame();
+    assert!(
+        frame.len() > 10_000,
+        "o texto do quadro nao foi montado — os gates abaixo seriam verdes por vacuo"
+    );
+    frame
 }
 
 /// **O clique nos chips escreve a visibilidade do painel autorado.**
@@ -76,7 +88,8 @@ fn the_switch_reads_back_the_same_visibility() {
 /// forma: *este literal aparece aqui?*
 #[test]
 fn the_visibility_key_is_never_spelled_out() {
-    let s = body();
+    // ⚠️ As DUAS lentes: o `mod.rs` inteiro (o que mora fora do corpo do quadro) e o quadro emendado (as fases).
+    let s = format!("{SRC}\n{}", body());
     assert!(
         !s.contains("\"authored\""),
         "a chave do painel autorado foi escrita a' mao neste arquivo — use `visibility_key()`, \

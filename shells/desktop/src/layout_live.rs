@@ -314,63 +314,16 @@ impl LayoutLive {
             who: None,
         });
 
-        // Os filhos, em largura, na ordem da HIERARQUIA — é ela que o artista vê e reordena.
-        let mut queue: Vec<(Entity, usize)> = vec![(frame, 0)];
-        while let Some((parent, parent_idx)) = queue.pop() {
-            let Some(kids) = w.get::<ph2d_ecs::Children>(parent) else {
-                continue;
-            };
-            for &kid in kids.iter() {
-                // ⚠️ **O fora-do-fluxo sai da FATIA, e não do motor** — o *Absolute position* do
-                // Figma. Um nó que o motor nunca vê fica exactamente com a pose que o artista lhe
-                // deu, e continua a andar com o pai e a ser recortado por ele (ele não deixou de
-                // ser filho na hierarquia). Dizê-lo ao motor em vez disto pediria um inset — quatro
-                // números derivados que ninguém autorou, para reproduzir a posição que já existe.
-                if w.get::<VecLayoutAbsolute>(kid).is_some() {
-                    continue;
-                }
-                let flows_here = w.get::<VecLayout>(kid).is_some();
-                // ⚠️ **Uma moldura que FLUI mede-se e move-se por SI, nunca pela sub-árvore.**
-                //
-                // Os filhos dela viram nós próprios, com transformação própria; incluí-los aqui
-                // aplicaria a deles DUAS vezes — a do pai a mover a sub-árvore inteira, e a
-                // própria — e a cada frame os netos fugiriam mais para fora da moldura. Um nó que
-                // NÃO flui é o oposto: nada lá dentro é nó, então ele carrega a sub-árvore toda.
-                let paths = if flows_here {
-                    own_paths(sim, scene, kid).unwrap_or_default()
-                } else {
-                    ph2d_vec_entities::entities::subtree_paths(sim, scene, kid)
-                };
-                if paths.is_empty() {
-                    continue;
-                }
-                let items = world_of_all(scene, xforms, live, &paths);
-                let Some(bbox) = bbox_of(&items) else {
-                    continue;
-                };
-                let measured = [bbox.1[0] - bbox.0[0], bbox.1[1] - bbox.0[1]];
-                let (size, min, max) = size_of(w.get::<VecLayoutSize>(kid), flows_here, measured);
-                nodes.push(Node {
-                    parent: Some(parent_idx),
-                    frame: w
-                        .get::<VecLayout>(kid)
-                        .map(|l| frame_style(l, crate::vec_bindings::bound_gap(sim, kid, tok))),
-                    item: item_style(w.get::<VecLayoutItem>(kid)),
-                    size,
-                    min,
-                    max,
-                });
-                let idx = nodes.len() - 1;
-                collected.push(Collected {
-                    paths,
-                    bbox,
-                    who: Some((kid, parent)),
-                });
-                if flows_here {
-                    queue.push((kid, idx));
-                }
-            }
-        }
+        collect_flow_children(
+            sim,
+            scene,
+            xforms,
+            live,
+            frame,
+            tok,
+            &mut nodes,
+            &mut collected,
+        );
         if nodes.len() < 2 {
             return; // uma moldura sem filhos não coloca nada
         }
@@ -569,6 +522,9 @@ pub(crate) mod scroll;
 #[path = "layout_live_style.rs"]
 mod style;
 use style::{frame_style, item_style, size_of};
+#[path = "layout_live_collect.rs"]
+mod collect; // os filhos em largura, antes do motor (LOC cap: sibling module)
+use collect::collect_flow_children;
 
 #[cfg(test)]
 #[path = "layout_live_tests.rs"]

@@ -188,6 +188,8 @@ mod fase_chrome_clock;
 mod fase_input_and_drops;
 /// Fase do quadro: o que está sob o cursor (a 1.ª do `run_render_frame`).
 mod fase_pointer_subjects;
+/// Fase do quadro: a re-acendida dos objetos assados — FORA da feature `sculpt3d`, de propósito.
+mod fase_relight_baked_forms;
 /// Fase do quadro: o objeto misto do sculpt3d (bake, alpha por imagem, luz a re-autorar).
 #[cfg(feature = "sculpt3d")]
 mod fase_sculpt3d_bake;
@@ -397,6 +399,7 @@ impl crate::App {
         self.fase_sculpt3d_donation_smoke();
         #[cfg(feature = "sculpt3d")]
         self.fase_sculpt3d_bake();
+        self.fase_relight_baked_forms();
         let Some(gfx) = self.gfx.as_mut() else {
             return;
         };
@@ -408,8 +411,6 @@ impl crate::App {
             ui_machines,
             #[cfg(feature = "sculpt3d")]
             sculpt3d,
-            baked_forms,
-            baked_light,
             surface,
             renderer,
             sim,
@@ -468,17 +469,6 @@ impl crate::App {
         let Some(host) = self.host.as_ref() else {
             return;
         };
-
-        // **A RE-ACENDIDA, e ela NÃO está atrás da feature.** É esta linha que torna a promessa da
-        // rota A (`docs/3D/02.2`) verificável em vez de prosa: um objeto assado que voltou de um
-        // arquivo acende **sem o módulo 3D no build**. Quase sempre não faz nada — com o rig parado
-        // custa um carimbo por objeto, sem tocar a GPU, e num projeto sem nada assado o mapa é vazio.
-        ph2d_form_donation::baked_form::relight_stale(
-            baked_forms,
-            surface.gpu(),
-            renderer,
-            baked_light,
-        );
 
         // Mask smoke (`PH2D_MASK_SMOKE=1`): the same dance for the mask coverage law (doc 25 §13.9).
         // Nothing but the canvas is staged — the artist picks the rail chip, so the scene shows the

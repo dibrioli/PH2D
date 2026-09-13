@@ -23,33 +23,86 @@ use sculpt_source::{function_body, project_family_fn, source};
 /// A asserção é sobre a linha do `render_loop` que chama o passe: ela tem de estar **fora** de todo
 /// bloco `cfg` de escultura. Mutação: mover a chamada para dentro do `if let Some(scene)` gateado
 /// (o lugar mais natural do mundo, e onde ela morava antes desta wave) ⇒ RED.
+///
+/// ⚠️⚠️ **O SUJEITO mudou-se para uma FASE em 2026-09-12** (OBRA 2 da `line/render-loop`): a
+/// re-acendida é a `fase_relight_baked_forms`, e a pergunta passou a ter **QUATRO portas** — a
+/// chamada da fase no quadro, o `mod` da fase, a `fn` da fase e a chamada dentro dela. ⛔ O texto
+/// emendado do quadro (`frame_text`) NÃO serve de régua aqui: a emenda carrega o CORPO de cada fase e
+/// larga os atributos da chamada, do `mod` e da `fn` — exactamente três das quatro portas. E a 4.ª
+/// ganhou a metade que a régua antiga não via: um `#[cfg]` NU à frente do statement (sem bloco) não
+/// abre chaves, e a contagem de profundidade lia-o como livre.
 #[test]
 fn the_relight_is_not_behind_the_sculpt_feature() {
-    let body = function_body(&source("render_loop/mod.rs"), "run_render_frame");
+    const FASE: &str = "fase_relight_baked_forms";
     let call = "ph2d_form_donation::baked_form::relight_stale(";
+
+    // (1) A chamada da fase no quadro.
+    let quadro = function_body(&source("render_loop/mod.rs"), "run_render_frame");
+    let chamada = format!("self.{FASE}(");
+    assert_eq!(
+        quadro.matches(&chamada).count(),
+        1,
+        "o quadro tem de chamar a fase da re-acendida UMA vez — sem ela um objeto reaberto nunca acende"
+    );
+    let em = quadro.find(&chamada).expect("contada acima");
+    not_gated_right_before(&quadro, em, "a chamada da fase no `run_render_frame`");
+
+    // (2) O `mod` da fase.
+    let modrs = source("render_loop/mod.rs");
+    let decl = modrs
+        .find(&format!("mod {FASE};"))
+        .expect("o `mod` da fase da re-acendida existe");
+    not_gated_right_before(&modrs, decl, "o `mod` da fase");
+
+    // (3) Nada no ficheiro da fase, antes da `fn`, a gateia (a `fn`, o `impl`, um `#![cfg]`).
+    let fase = source(&format!("render_loop/{FASE}.rs"));
+    let fn_at = fase
+        .find(&format!("fn {FASE}("))
+        .expect("a `fn` da fase existe");
+    assert!(
+        !fase[..fn_at].contains("cfg("),
+        "a `fn {FASE}` (ou o `impl`/o ficheiro dela) esta' atras de um `cfg` -- um objeto assado \
+         deixaria de acender no build sem o modulo 3D, em silencio, com toda a suite verde"
+    );
+
+    // (4) A chamada à re-acendida dentro da fase: nem com um atributo à frente…
+    let body = function_body(&fase, FASE);
     let at = body
         .find(call)
-        .expect("o frame precisa CHAMAR a re-acendida — sem ela um objeto reaberto nunca acende");
-
-    // O último `#[cfg(feature = "sculpt3d")]` ANTES da chamada abre um bloco; se a chamada estiver
-    // dentro dele, ela cai junto com a feature. A pergunta é estrutural, então contamos chaves.
+        .expect("a fase precisa CHAMAR a re-acendida — sem ela um objeto reaberto nunca acende");
+    not_gated_right_before(&body, at, "a chamada a' re-acendida");
+    // …nem DENTRO de um bloco gateado. O último `#[cfg(feature = "sculpt3d")]` ANTES da chamada abre
+    // um bloco; se a chamada estiver dentro dele, ela cai junto com a feature. A pergunta é
+    // estrutural, então contamos chaves.
     let before = &body[..at];
-    let Some(cfg_at) = before.rfind("#[cfg(feature = \"sculpt3d\")]") else {
-        return; // nenhum `cfg` de escultura antes dela: a chamada é livre por construção
-    };
-    let depth: i32 = before[cfg_at..]
-        .chars()
-        .map(|c| match c {
-            '{' => 1,
-            '}' => -1,
-            _ => 0,
-        })
-        .sum();
+    if let Some(cfg_at) = before.rfind("#[cfg(feature = \"sculpt3d\")]") {
+        let depth: i32 = before[cfg_at..]
+            .chars()
+            .map(|c| match c {
+                '{' => 1,
+                '}' => -1,
+                _ => 0,
+            })
+            .sum();
+        assert!(
+            depth <= 0,
+            "a re-acendida esta' DENTRO de um bloco `cfg(feature = \"sculpt3d\")` (profundidade \
+             {depth}) -- um objeto assado deixaria de acender no build sem o modulo 3D, em silencio, \
+             com toda a suite verde"
+        );
+    }
+}
+
+/// Entre o fim do statement ou item anterior (`;`, `{`, `}`) e `at` não há `cfg(`: um atributo gateia
+/// o que vem logo a seguir a ele. `src` já vem sem comentários (o [`source`] tira-os).
+fn not_gated_right_before(src: &str, at: usize, o_que: &str) {
+    let inicio = src[..at].rfind([';', '{', '}']).map_or(0, |p| p + 1);
+    let janela = &src[inicio..at];
     assert!(
-        depth <= 0,
-        "a re-acendida esta' DENTRO de um bloco `cfg(feature = \"sculpt3d\")` (profundidade \
-         {depth}) -- um objeto assado deixaria de acender no build sem o modulo 3D, em silencio, \
-         com toda a suite verde"
+        !janela.contains("cfg("),
+        "{o_que} esta' atras de um `cfg` (`{}`) -- um objeto assado deixaria de acender no build sem \
+         o modulo 3D, em silencio, com toda a suite verde",
+        janela.trim()
     );
 }
 

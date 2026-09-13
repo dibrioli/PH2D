@@ -221,10 +221,17 @@ fn the_stabiliser_filters_screen_px_and_the_press_seeds_the_hand() {
     );
 
     // ── o braço do PRESS: a semente mora nele ──
-    let press = window(
-        at("DrawMode::Pencil {"),
-        "\n                    // Modo Connect",
+    //
+    // ⛔ **O fim é o comentário do braço SEGUINTE, nunca a coluna dele** (`line/input-dispatch`, 2026-09-13).
+    // A agulha levava os 20 espaços do `on_mouse_input`, e o `window` cai no fim do texto quando ela não casa:
+    // com o press mudado para um ramo, a janela esticaria até ao fim do despacho em SILÊNCIO e a semente
+    // passaria a ser achada em qualquer sítio. Por isso o fim tem de EXISTIR depois do press.
+    let from = at("DrawMode::Pencil {");
+    assert!(
+        SRC[from..].contains("// Modo Connect"),
+        "o fim da janela do press do lapis (o braco do Connect) sumiu — a janela mediria o resto do despacho"
     );
+    let press = window(from, "// Modo Connect");
     assert!(
         press.contains("self.vec.pencil") && press.contains(".on_press("),
         "controle positivo: a janela do press nao contem o proprio press"

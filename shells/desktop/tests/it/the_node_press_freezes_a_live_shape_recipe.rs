@@ -39,10 +39,16 @@ fn the_node_arm_freezes_the_recipe_through_the_hit_door() {
         .find("None if node_mode =>")
         .expect("o braco `None if node_mode` do ADR-0112 mudou de forma");
     // A janela é o braço: até o próximo braço do `match` (`None =>`, o do Pen).
+    //
+    // ⛔ **O fim é o BRAÇO, nunca a coluna** (`line/input-dispatch`, 2026-09-13). A agulha levava os 28 espaços
+    // do `on_mouse_input` e caía em `unwrap_or(src.len())`: quando o braço se mudasse para um ramo com outra
+    // indentação, ela deixaria de casar e a janela esticaria até ao FIM do despacho EM SILÊNCIO — as três
+    // perguntas abaixo passariam a achar as suas agulhas em qualquer sítio depois do braço. Agora o fim é o
+    // próximo `None => {` a qualquer indentação, e a falta dele reprova.
     let end = src[node_arm..]
-        .find("\n                            None => {")
+        .find("None => {")
         .map(|o| node_arm + o)
-        .unwrap_or(src.len());
+        .expect("o braco seguinte (`None =>`, o do Pen) sumiu — a janela do braco do Node ficaria sem fim");
     let arm = &src[node_arm..end];
 
     // ⚠️ Os alvos são as CHAMADAS (`self.vec.pen.…`), não os nomes: a 1ª versão deste gate

@@ -7,7 +7,7 @@
 
 | | |
 |---|---|
-| **Malhas de entrada** | ⭐ **nossas**, geradas pelo próprio harness: grelha plana `64×64` de lado `3,0` (4 225 vértices) · grelha plana `8×8` de lado `3,0` (81 vértices) · esfera UV `96×64` de raio `1` (6 082 vértices) · dois «telhados» `128×128` de lado `3,0` (16 641 vértices), com a cumeeira ao longo de `Y` em `x = ∓1` e abas a `30°`. ⛔ Nenhum asset do alvo |
+| **Malhas de entrada** | ⭐ **nossas**, geradas pelo próprio harness: grelha plana `64×64` de lado `3,0` (**4 225** vértices, 4 096 faces) · grelha plana `8×8` de lado `3,0` (**81** vértices, 64 faces) · esfera UV `96×64` de raio `1` (**6 050** vértices, 6 144 faces) · dois «telhados» `128×128` de lado `3,0` (**16 641** vértices, 16 384 faces), com a cumeeira ao longo de `Y` em `x = ∓1` e abas a `30°`. ⛔ Nenhum asset do alvo |
 | **Quem calculou** | o binário do alvo (5.2.1 LTS, hash de build `9e2066aef7ef`), corrido pelo E **fora da árvore** (`~/Referencias/blender-pull/oracle/`, ⛔ negado ao I) com um traço scriptado; o preset do binário é activado **só para existir um pincel do tipo certo** (a API não deixa criar+activar um de raiz), e **todos** os parâmetros que decidem o resultado são reescritos e gravados no cabeçalho de cada fixture |
 | **Estatuto legal** | ⭐ **dados** — «the output from the Program is covered only if its contents constitute a work based on the Program» (GPLv2 §0): posições de vértices de uma malha nossa não são |
 | **Regenerar** | ⛔ acto de **E**, nunca do I (o harness vive na zona negada). O I pede pelo Enio, como emenda |
@@ -15,14 +15,42 @@
 
 ## Formato
 
+- `<superficie>.malha.txt.gz` — ⭐ **a malha de ENTRADA** (acrescentada em 2026-09-13, a pedido de
+  quem constrói a bancada: sem topologia só as grelhas eram reconstruíveis). Molde da obra irmã
+  [`../pose/`](../pose/README.md): cabeçalho `superficie` · `vertices N` · `faces M`, depois `N`
+  linhas `v x y z` e `M` linhas `f i j k [l]`. Os índices são **posicionais** — `i` é o índice do
+  vértice na ordem em que as posições aparecem, que é a ordem do harness.
+  ⚠️ **Uma face pode ter 3 OU 4 índices:** a esfera traz os leques triangulares dos pólos
+  (`6 144` faces, das quais as dos dois pólos são triângulos); as quatro grelhas são só quads.
+  *Um parser que assuma quatro índices lê a esfera errada.*
 - `<superficie>.repouso.txt.gz` — as posições de repouso, **uma por superfície**, partilhadas:
   cabeçalho `vertices N`, depois `N` linhas `r x y z`.
+  ⭐ **O bloco `v` da malha e o bloco `r` do repouso são o MESMO conteúdo, linha a linha** — e isso
+  é **verificado na geração** (o gerador aborta se divergirem), não prometido. Use qualquer um dos
+  dois; existem os dois porque o repouso foi entregue primeiro e a bancada já o consome.
 - `<tag>.deformado.txt.gz` — cabeçalho de `20` chaves, depois `caminho N` + `N` linhas `c x y z`
   (o percurso do cursor, em espaço de objecto), depois `vertices M` + `M` linhas `d x y z`
   (as posições **depois** do traço). Os índices de vértice batem com os do `.repouso` da mesma
   superfície.
 - Todas as chaves e etiquetas estão em **vocabulário do domínio** — ⛔ nenhum nome interno do alvo
   entra aqui (SKILL §5).
+
+### ⚠️ A topologia do `telhado_dir` é EMPRESTADA do `telhado_esq` — e a prova está aqui
+
+A corrida que gravou o telhado da direita **não gravou as faces dele** (só o da esquerda as tem).
+⛔ Em vez de as declarar iguais por parecerem iguais, o empréstimo foi **justificado e depois
+re-conferido**:
+
+| evidência | valor |
+|---|---|
+| mesmo número de vértices | `16 641` nos dois |
+| ⭐ **`XY` idêntico vértice a vértice** | `True` (igualdade exacta do array inteiro) ⇒ **a ordem dos vértices é a mesma**, logo a topologia também |
+| as duas peças **são** diferentes (controlo) | `max |Δz| = 1,1547` — a cumeeira muda de sítio |
+| ⭐ re-conferência estrutural | a aresta mais longa que a lista de faces emprestada implica **sobre as posições do próprio telhado da direita** é `0,054127` — **o mesmo número** que no da esquerda |
+
+⇒ a última linha é o que torna isto medição e não fé: com uma topologia errada, um `z` que difere
+até `1,15` faria a aresta máxima disparar. *Emprestar é legítimo; emprestar sem o controlo que
+falharia se o empréstimo estivesse errado, não.*
 
 ⚠️ **Leia sempre o cabeçalho da fixture, nunca esta prosa** — o cabeçalho é a fonte.
 As omissões comuns a quase todas: raio `0,35` em espaço de objecto · força `1,0` · curva *suave* ·
@@ -72,6 +100,13 @@ comportamentos — a espec §9.2 e §12.1 dizem o que isso significa e o que fal
 
 ## Verificar
 
-As posições são `%.6f` em espaço de objecto. O parser é trivial (linhas `r`/`c`/`d`); o gate do
-produto compara o nosso resultado com a coluna `d` da fixture, sobre a malha de `.repouso`,
-com a barra que a espec §10 deriva — ⛔ **nunca um epsilon de conforto**.
+As posições são `%.6f` em espaço de objecto. O parser é trivial (linhas `v`/`f` na malha,
+`r` no repouso, `c`/`d` na fixture); o gate do produto carrega a malha de `<superficie>.malha.txt.gz`,
+corre o gesto ao longo das linhas `c`, e compara com as linhas `d`, com a barra que a espec §10
+deriva — ⛔ **nunca um epsilon de conforto**.
+
+⚠️ **Uma correcção, para quem já leu este ficheiro:** até 2026-09-13 esta página dizia que a esfera
+tinha **`6 082`** vértices. **São `6 050`.** O número tinha sido copiado do README da obra irmã do
+tecido — cuja esfera é gerada com outros parâmetros — em vez de ser lido da malha desta obra.
+*Um número copiado de um documento vizinho é um palpite com cara de medição*; os cinco números da
+tabela de proveniência são agora os que o gerador imprime.

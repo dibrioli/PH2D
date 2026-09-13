@@ -225,7 +225,27 @@ reprovar não aprova nada.*
 
 ## Fixtures
 
-`docs/3D/cleanroom/fixtures/pull/` — 62 traços + 5 malhas de repouso, chaves e etiquetas em
-vocabulário do domínio, proveniência da ENTRADA e da SAÍDA no README de lá. ⚠️ **Dez medem ZERO de
-propósito** (as cinco do alvo «simulação» e as cinco da silhueta): elas são a prova de que aqueles
-comportamentos **não foram exibidos**.
+`docs/3D/cleanroom/fixtures/pull/` — 62 traços + 5 malhas de repouso + **5 malhas de entrada com
+topologia**, chaves e etiquetas em vocabulário do domínio, proveniência da ENTRADA e da SAÍDA no
+README de lá. ⚠️ **Dez medem ZERO de propósito** (as cinco do alvo «simulação» e as cinco da
+silhueta): elas são a prova de que aqueles comportamentos **não foram exibidos**.
+
+### Emenda de 2026-09-13 — a topologia (pedida por quem constrói a bancada)
+
+A 1.ª entrega deu **só posições**. ⛔ Sem faces, apenas as grelhas eram reconstruíveis (a topologia
+de uma grelha deriva-se), e a **esfera** e os **telhados** ficavam inalcançáveis — *precisamente as
+superfícies que provam a lei em superfície curva*. ⇒ acrescentados cinco
+`<superficie>.malha.txt.gz` no molde da obra irmã (`v x y z` + `f i j k [l]`).
+
+| conferido | como |
+|---|---|
+| o bloco `v` **é** o bloco `r` do `.repouso` | igualdade linha a linha, e o gerador **aborta** se divergir |
+| índices no alcance · zero órfãos · cabeçalho = contagem real | re-lido por um parser independente do gerador |
+| a esfera tem faces de **3 e de 4** lados | `192` triângulos (leques dos pólos) + `5 952` quads |
+| a topologia do `telhado_dir` é **emprestada** | a corrida dele não gravou faces; o empréstimo é justificado (`XY` idêntico vértice a vértice ⇒ mesma ordem) e **re-conferido** com o controlo que falharia se estivesse errado (aresta máxima `0,054127` sobre as posições **dele**, o mesmo número do gémeo, com o `z` a diferir até `1,1547`) |
+
+⚠️ **E uma correcção de número:** o README das fixtures dizia que a esfera tinha `6 082` vértices;
+são **`6 050`**. O valor fora **copiado** do README da obra irmã do tecido — cuja esfera usa outros
+parâmetros — em vez de lido desta malha. *Um número copiado de um documento vizinho é um palpite
+com cara de medição.* Os cinco números da tabela de proveniência passam a ser os que o gerador
+imprime.

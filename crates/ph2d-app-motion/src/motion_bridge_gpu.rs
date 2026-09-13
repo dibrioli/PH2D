@@ -146,10 +146,15 @@ pub(super) const RECUSA_COLISOR: &str =
     "CPU: uma peca declara colisor pelo nome -- o dispositivo ainda nao resolve contatos (doc 109)";
 
 pub(super) fn graph_declares_collider(graph: &Graph) -> bool {
+    use ph2d_nodegraph::attr::{COLLIDER_BOX_COLUMN, COLLIDER_COLUMN, COLLIDER_OFFSET_COLUMN};
+    // As TRÊS colunas da declaração (doc 109 §5): a caixa e o centro também só a CPU resolve.
     graph.node_text_params().values().any(|params| {
-        params
-            .values()
-            .any(|v| v.trim() == ph2d_nodegraph::attr::COLLIDER_COLUMN)
+        params.values().any(|v| {
+            matches!(
+                v.trim(),
+                COLLIDER_COLUMN | COLLIDER_BOX_COLUMN | COLLIDER_OFFSET_COLUMN
+            )
+        })
     })
 }
 

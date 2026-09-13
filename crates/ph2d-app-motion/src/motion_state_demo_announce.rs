@@ -179,21 +179,29 @@ pub(super) fn pilha() {
 
   1. Carregue em PLAY. Sem isto nada cai.
   2. Olhe as duas tacas. A` ESQUERDA os 25 quadrados juntam-se no fundo e viram um
-     BORRAO -- atravessam-se uns aos outros. A` DIREITA os mesmos 25 empilham-se e
-     da' para os CONTAR.
+     BORRAO -- atravessam-se uns aos outros. A` DIREITA os mesmos 25 empilham-se
+     ENCOSTADOS, lado com lado, sem ar entre eles, e da' para os CONTAR.
   3. No grafo, clique no cartao `Shape (Collide)` (e' a linha de BAIXO). Abra a seccao
      `Collision`: a caixa `Collide` esta' LIGADA. Desligue-a -- a pilha da direita volta
      a ser um borrao. Ligue-a outra vez.
      (i) Repare: nao ha' cartao `Collide` nenhum na linha da simulacao. O colisor e' da
          FORMA, e a simulacao respeita-o sozinha.
-  4. Arraste `Collider Scale`: os quadrados reclamam mais ou menos espaco e a pilha
-     incha ou assenta.
-  5. Troque `Collider Fit` de `Around` para `Inside`. Com `Around` os quadrados deixam
-     FOLGA entre eles (o circulo passa pelos cantos); com `Inside` ENCOSTAM pelos lados
-     e os cantos entram um bocadinho uns nos outros.
-     >>> Diga qual das duas prefere como PADRAO.
+  4. Com o cartao `Shape (Collide)` seleccionado, cada quadrado da direita ganha um
+     CONTORNO azul: e' o colisor dele, no sitio onde a simulacao o usa. O quadrado mais
+     perto do rato tem ALCAS -- quadradinhos nos cantos, losangos nos lados. Arraste um
+     LOSANGO para fora: o colisor alarga desse lado, TODOS os quadrados mudam juntos e
+     a pilha abre espaco. Um quadradinho de canto muda largura e altura ao mesmo tempo.
+     Carregue Ctrl+Z: o arrasto inteiro desfaz-se de uma vez.
+  5. No cartao, arraste `Collider Width`: e' o mesmo numero que o losango do lado
+     mexeu. `Collider Height` faz o mesmo na altura. Com os dois em 1 o colisor e' o
+     proprio quadrado.
+  6. Troque `Collider Shape` de `Box` para `Circle`: os contornos viram CIRCULOS, os
+     quadrados passam a rolar uns sobre os outros como moedas, e a linha
+     `Collider Radius` aparece no lugar das duas de cima. Volte a `Box`.
 
-  DEU ERRADO se: a pilha da direita for um borrao com `Collide` ligado; se desligar a
+  DEU ERRADO se: a pilha da direita for um borrao com `Collide` ligado; se os quadrados
+  da direita ficarem com AR entre eles com `Box`; se os contornos nao aparecerem com o
+  cartao seleccionado; se arrastar uma alca nao mudar o numero no cartao; se desligar a
   caixa nao mudar nada; ou se aparecer um cartao `Collide` na linha da simulacao."
     );
 }

@@ -1,7 +1,7 @@
 //! Os gates do contacto no passo (doc 109 W2) — pela porta do produto, o [`crate::step`].
 
 use crate::step;
-use ph2d_nodegraph::attr::{COLLIDER_COLUMN, Column, Stream};
+use ph2d_nodegraph::attr::{COLLIDER_BOX_COLUMN, COLLIDER_COLUMN, Column, Stream};
 
 /// Duas peças em `x = ±meio`, com velocidades, relógio e (opcional) colisor de raio `r`.
 fn par(meio: f32, v: f32, r: Option<f32>) -> Stream {
@@ -73,6 +73,26 @@ fn an_approach_is_cancelled_not_reflected() {
             vi[0].abs() < 1e-3,
             "a peca {i} parou em x, sem ressalto: {vi:?}"
         );
+    }
+}
+
+/// ⭐⭐ **Duas CAIXAS encostam pela FACE e param** — a distância é a soma das meias larguras, não a
+/// dos círculos à volta delas (o `41 %` de ar do report do doc 109 §5), e a aproximação é cancelada.
+#[test]
+fn two_boxes_rest_face_to_face_and_stop() {
+    let s = Stream::new(2)
+        .with("P", Column::Vec2(vec![[-0.3, 0.0], [0.3, 0.0]]))
+        .with("vel", Column::Vec2(vec![[1.0, 0.0], [-1.0, 0.0]]))
+        .with("sim_t", Column::Scalar(vec![0.0, 0.0]))
+        .with(
+            COLLIDER_BOX_COLUMN,
+            Column::Vec2(vec![[0.5, 2.0], [0.5, 2.0]]),
+        );
+    let out = step(&s, DT, 1.0, 0.0, 0.0, 1.0);
+    let (p, v) = (col(&out, "P"), col(&out, "vel"));
+    assert!(((p[1][0] - p[0][0]) - 1.0).abs() < 1e-4, "{p:?}");
+    for (i, vi) in v.iter().enumerate() {
+        assert!(vi[0].abs() < 1e-3, "a caixa {i} parou em x: {vi:?}");
     }
 }
 

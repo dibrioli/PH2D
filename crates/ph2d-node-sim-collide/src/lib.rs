@@ -549,6 +549,10 @@ fn collide(
         _ => vec![0.0; n],
     };
     let (mode, fixed, scale) = part;
+    // ⭐⭐ A FORMA declarada (doc 109 §5): uma caixa, ou um disco fora do centro, não cabe num raio.
+    let formas = (mode == RADIUS_AUTO)
+        .then(|| ph2d_contact::colisores(s))
+        .flatten();
     // A identidade de cada elemento. ⚠️ Lida uma vez: um `get` por elemento seria a mesma
     // pergunta `n` vezes, e a coluna AUSENTE tem de cair na posição — não em zero, que daria
     // a todos a mesma sorte (a armadilha que o `HAS_id` do kernel evita do outro lado).
@@ -558,8 +562,20 @@ fn collide(
     };
     let (randomness, seed) = rnd;
     for i in 0..n {
-        let r = particle_radius(mode, fixed, scale, size[i], declarados[i]);
-        if let Some((normal, depth)) = contact(shape, p[i], height, c, radius, r, plane_n, half) {
+        // Um disco CENTRADO fica na porta de sempre, ao bit; o resto pousa pela forma inteira.
+        let forma = formas.as_ref().and_then(|f| f[i]).filter(|col| {
+            !matches!(col.forma, ph2d_contact::Forma::Disco(_)) || col.desvio != [0.0, 0.0]
+        });
+        let toque = match forma {
+            Some(col) => {
+                declared::contact_declared(shape, p[i], height, c, radius, plane_n, half, &col)
+            }
+            None => {
+                let r = particle_radius(mode, fixed, scale, size[i], declarados[i]);
+                contact(shape, p[i], height, c, radius, r, plane_n, half)
+            }
+        };
+        if let Some((normal, depth)) = toque {
             let (mut pi, mut vi) = (p[i], v[i]);
             #[expect(clippy::cast_sign_loss, reason = "uma identidade e' um inteiro >= 0")]
             #[expect(clippy::cast_possible_truncation, reason = "idem")]
@@ -672,3 +688,10 @@ mod randomness_tests;
 #[cfg(test)]
 #[path = "box_tests.rs"]
 mod box_tests;
+
+#[path = "declared.rs"]
+mod declared;
+
+#[cfg(test)]
+#[path = "declared_tests.rs"]
+mod declared_tests;

@@ -22,11 +22,11 @@
 //! não se sobrepõem sozinhas; uma taça junta-as todas no mesmo ponto baixo.
 //!
 //! ⚠️ **A taça pousa cada peça pelo colisor dela** (`Radius From: Auto`, o default do
-//! `sim.collide`): à direita pelo raio, à esquerda — que não declarou nada — pelo centro.
+//! `sim.collide`): à direita pela FACE da caixa, à esquerda — que não declarou nada — pelo centro.
 //!
-//! ⚠️ **A forma é um QUADRADO de propósito:** é a forma em que `Around` (o círculo pelos cantos,
-//! `√2`) e `Inside` (o círculo pelos lados, `1`) diferem, e o default do `Collider Fit` decide-se
-//! no smoke com as duas imagens (doc 109 §4).
+//! ⚠️ **A forma é um QUADRADO de propósito:** é a forma em que o círculo à volta (a 1.ª redacção,
+//! `√2 · LADO`) deixava `41 %` de ar, e o dono viu-o na foto (doc 109 §5). A caixa declarada é o
+//! próprio quadrado, e a pilha encosta.
 //!
 //! ⚠️ **Ela precisa de Play** — é uma simulação, como a `=99` e a `=113`.
 

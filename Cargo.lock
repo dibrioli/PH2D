@@ -5001,6 +5001,7 @@ dependencies = [
  "ph2d-audio-decode",
  "ph2d-audio-spectral",
  "ph2d-color",
+ "ph2d-contact",
  "ph2d-core",
  "ph2d-curve",
  "ph2d-ecs",
@@ -7367,6 +7368,7 @@ dependencies = [
 name = "ph2d-node-sim-collide"
 version = "0.0.0"
 dependencies = [
+ "ph2d-contact",
  "ph2d-node-registry",
  "ph2d-node-registry-init",
  "ph2d-nodegraph",

@@ -3,13 +3,14 @@
 //!
 //! Todo motor faz num `step` duas coisas: integra e resolve contatos. Este nó fazia a primeira;
 //! a segunda passa a correr aqui, **depois** da integração, sobre as peças que declaram colisor
-//! (a coluna [`COLLIDER_COLUMN`], escrita por quem desenha). Sem a coluna nada aqui corre, e o
-//! passo é o de sempre.
+//! (as colunas `collider` / `collider_box`, escritas por quem desenha). Sem nenhuma das duas nada
+//! aqui corre, e o passo é o de sempre.
 //!
 //! ## A posição: a lei da folha `ph2d-contact`
 //!
-//! O raio de mundo é `collider × max(|sx|, |sy|)` — o disco que CONTÉM a arte, a lei do
-//! `motion.collide` —, e o peso é o `inv_mass`, para um pino ser obstáculo.
+//! Cada peça é o colisor que DECLAROU — um disco ou uma caixa, escalado pelo `size` e girado pelo
+//! `rot` dela (doc 109 §5) —, lido pela porta `ph2d_contact::colisores`; e o peso é o `inv_mass`,
+//! para um pino ser obstáculo.
 //!
 //! ## A velocidade: só se CANCELA a aproximação
 //!
@@ -23,12 +24,12 @@
 //! `Δp / dt` inteiro faria delas uma explosão. É a regra do `sim.collide`: *só se responde a quem se
 //! move PARA DENTRO*.
 
-use ph2d_nodegraph::attr::{COLLIDER_COLUMN, Column, SIZE_IDENTITY, Stream};
+use ph2d_nodegraph::attr::Stream;
 
 /// **Varreduras por passo.** É o default que o `motion.collide` shipa, medido na tabela dele
 /// (`measure_packing_and_order_dependence`: a folga mínima de uma nuvem apertada sobe de `0,050`
-/// com Gauss–Seidel para `0,270` com este esquema a 8). ⏳ A medição NA PILHA (a cena da W3) é o que
-/// o confirma ou move; e os `substeps` da zona multiplicam-no sem mais nenhum knob.
+/// com Gauss–Seidel para `0,270` com este esquema a 8); e os `substeps` da zona multiplicam-no sem
+/// mais nenhum knob.
 pub(crate) const VARREDURAS: usize = 8;
 
 /// Separa as peças com colisor e cancela a aproximação delas. `dt(i)` é o passo daquela peça.
@@ -40,21 +41,14 @@ pub(crate) fn resolve(
     dt: impl Fn(usize) -> f32,
 ) {
     let n = p.len();
-    let Some(Column::Scalar(colisor)) = state.get(COLLIDER_COLUMN) else {
+    let Some(colisores) = ph2d_contact::colisores(state) else {
         return;
     };
-    if colisor.len() != n {
+    if colisores.len() != n {
         return;
     }
-    let size = match state.get("size") {
-        Some(Column::Vec2(v)) if v.len() == n => v.clone(),
-        _ => vec![SIZE_IDENTITY; n],
-    };
-    let raios: Vec<f32> = (0..n)
-        .map(|i| colisor[i] * size[i][0].abs().max(size[i][1].abs()))
-        .collect();
     let antes = p.to_vec();
-    ph2d_contact::separate(p, &raios, pesos, VARREDURAS);
+    ph2d_contact::separate(p, &colisores, pesos, VARREDURAS);
     for i in 0..n {
         let d = [p[i][0] - antes[i][0], p[i][1] - antes[i][1]];
         let len = d[0].hypot(d[1]);

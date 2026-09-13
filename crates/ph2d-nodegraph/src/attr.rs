@@ -105,6 +105,17 @@ pub const TINT_MASK_COLUMN: &str = "tint_mask";
 /// sprite (raio inscrito `size/2`) ou uma forma vectorial (raio `size`), e a razão entre as duas
 /// é da mídia e da geometria. Declarada aqui porque tem dois lados que nascem na mesma obra.
 pub const COLLIDER_COLUMN: &str = "collider";
+/// ⭐⭐ **A CAIXA de colisão** (doc 109 §5 — report do dono, 2026-09-13: *«o collider não é gerado
+/// conforme a forma da Shape»*): as MEIAS extensões `[hx, hy]` na unidade da geometria do
+/// elemento, antes da escala (`size`) e da rotação (`rot`). Presente e válida (finitas, `≥ 0`, uma
+/// delas `> 0`), ela é o colisor do elemento e a [`COLLIDER_COLUMN`] não é lida; ausente — ou
+/// `[0, 0]`, que é o que a união do `motion.combine` preenche —, o elemento é um disco ou não
+/// colide. A porta que a lê é a `ph2d_contact::colisores`.
+pub const COLLIDER_BOX_COLUMN: &str = "collider_box";
+/// **O CENTRO do colisor** relativo à origem do elemento, na unidade da geometria (antes de `size`
+/// e de `rot`). Ausente ⇒ `[0, 0]`: o colisor centrado em `P`, que é o que toda declaração anterior
+/// a esta coluna quer dizer.
+pub const COLLIDER_OFFSET_COLUMN: &str = "collider_offset";
 
 /// As colunas de **ESCRITURAÇÃO** — aquelas cuja máquina de estado de um nó a
 /// jusante lê, e que por isso um escritor genérico não pode sobrescrever.

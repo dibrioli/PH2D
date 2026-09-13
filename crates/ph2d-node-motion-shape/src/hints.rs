@@ -263,7 +263,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
         widget: ParamWidget::Slider,
     },
     // ⭐⭐ **O COLISOR** (doc 109 — ordem do dono: *«colidem sozinhas»*). Um toggle, e não uma
-    // sentinela no raio: um `Collider Scale` de zero é um colisor PONTUAL, não a ausência dele.
+    // sentinela no tamanho: um `Collider Width` de zero é uma caixa sem largura, não a ausência dela.
     ParamUiHint {
         param: param::COLLIDE,
         label: "Collide",
@@ -272,21 +272,40 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
         step: 1.0,
         widget: ParamWidget::Toggle,
     },
+    // ⭐⭐ **A FORMA do colisor** (doc 109 §5 — report do dono: *«no mínimo colliders circulares e
+    // retangulares que tentam se adaptar às dimensões da shape»*).
     ParamUiHint {
-        param: param::COLLIDER_FIT,
-        label: "Collider Fit",
+        param: param::COLLIDER_SHAPE,
+        label: "Collider Shape",
         min: 0.0,
         max: 1.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: super::collider::FIT_LABELS,
+            labels: super::collider::SHAPE_LABELS,
         },
     },
-    // ⚠️ **`0..2` é a faixa CONFORTÁVEL do arrasto, não um recurso**: o dobro do contorno já
-    // afasta as peças à vista, e nada no solver deixa de honrar um número maior.
+    // ⚠️ **`0..2` é a faixa CONFORTÁVEL do arrasto, não um recurso**: `1` é a caixa envolvente da
+    // forma, o dobro já afasta as peças à vista, e nada no solver deixa de honrar um número maior —
+    // a alça do canvas escreve além dele.
     ParamUiHint {
-        param: param::COLLIDER_SCALE,
-        label: "Collider Scale",
+        param: param::COLLIDER_WIDTH,
+        label: "Collider Width",
+        min: 0.0,
+        max: 2.0,
+        step: 0.01,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: param::COLLIDER_HEIGHT,
+        label: "Collider Height",
+        min: 0.0,
+        max: 2.0,
+        step: 0.01,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: param::COLLIDER_RADIUS,
+        label: "Collider Radius",
         min: 0.0,
         max: 2.0,
         step: 0.01,
@@ -294,12 +313,14 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
 ];
 
-/// **A secção «Collision»** — os três do colisor juntos, depois de tudo o que desenha a forma
-/// (os params sem grupo vêm antes de toda secção, que é onde os essenciais moram).
+/// **A secção «Collision»** — os do colisor juntos, depois de tudo o que desenha a forma (os params
+/// sem grupo vêm antes de toda secção, que é onde os essenciais moram).
 pub(crate) static PARAM_GROUPS: &[ParamGroup] = &[
     ParamGroup::new(param::COLLIDE, "Collision"),
-    ParamGroup::new(param::COLLIDER_FIT, "Collision"),
-    ParamGroup::new(param::COLLIDER_SCALE, "Collision"),
+    ParamGroup::new(param::COLLIDER_SHAPE, "Collision"),
+    ParamGroup::new(param::COLLIDER_WIDTH, "Collision"),
+    ParamGroup::new(param::COLLIDER_HEIGHT, "Collision"),
+    ParamGroup::new(param::COLLIDER_RADIUS, "Collision"),
 ];
 
 /// **Per-kind visibility** — a param appears only when `kind` is one of the listed
@@ -502,6 +523,23 @@ pub(crate) static PARAM_GATES: &[ParamGate] = &[
         when: param::KIND,
         values: &[ShapeKind::Square as i32, ShapeKind::Rectangle as i32],
     },
+    // O TAMANHO do colisor mostra só os números que a forma escolhida lê (doc 109 §5): largura e
+    // altura na caixa, raio no círculo. O `Collide` desligado esconde os três (`PARAM_GATES_ABOVE`).
+    ParamGate {
+        param: param::COLLIDER_WIDTH,
+        when: param::COLLIDER_SHAPE,
+        values: &[super::collider::SHAPE_BOX],
+    },
+    ParamGate {
+        param: param::COLLIDER_HEIGHT,
+        when: param::COLLIDER_SHAPE,
+        values: &[super::collider::SHAPE_BOX],
+    },
+    ParamGate {
+        param: param::COLLIDER_RADIUS,
+        when: param::COLLIDER_SHAPE,
+        values: &[super::collider::SHAPE_CIRCLE],
+    },
 ];
 
 /// **A FAMÍLIA DO TRAÇO aparece com o traço** — a visibilidade que o `ParamGate` por-espécie
@@ -554,14 +592,24 @@ pub(crate) static PARAM_GATES_ABOVE: &[ParamGateAbove] = &[
         when: param::STROKE_WIDTH,
         above: 0.0,
     },
-    // O ajuste e a escala do colisor só existem com ele ligado — desligado, a coluna nem é escrita.
+    // A forma e o tamanho do colisor só existem com ele ligado — desligado, nenhuma coluna é escrita.
     ParamGateAbove {
-        param: param::COLLIDER_FIT,
+        param: param::COLLIDER_SHAPE,
         when: param::COLLIDE,
         above: 0.0,
     },
     ParamGateAbove {
-        param: param::COLLIDER_SCALE,
+        param: param::COLLIDER_WIDTH,
+        when: param::COLLIDE,
+        above: 0.0,
+    },
+    ParamGateAbove {
+        param: param::COLLIDER_HEIGHT,
+        when: param::COLLIDE,
+        above: 0.0,
+    },
+    ParamGateAbove {
+        param: param::COLLIDER_RADIUS,
         when: param::COLLIDE,
         above: 0.0,
     },

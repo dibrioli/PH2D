@@ -39,9 +39,9 @@ pub struct VecPathStore {
     next: u32,
     /// As chaves PEDIDAS neste quadro — o que a [`Self::sweep`] preserva.
     live: std::collections::BTreeSet<String>,
-    /// **Os dois raios de colisão por handle** (doc 109) — medidos UMA vez por geometria e
-    /// largados com ela, nas duas portas que largam geometria.
-    radii: BTreeMap<u32, [f32; 2]>,
+    /// **A caixa envolvente de colisão por handle** (doc 109 §5) — medida UMA vez por geometria e
+    /// largada com ela, nas duas portas que largam geometria.
+    fits: BTreeMap<u32, super::collider::ColliderFit>,
 }
 
 impl VecPathStore {
@@ -50,18 +50,25 @@ impl VecPathStore {
         self.by_handle.get(&handle)
     }
 
-    /// **`[around, inside]` desta geometria** (doc 109), medidos da primeira vez que alguém
-    /// pergunta. Um handle sem geometria responde `[0, 0]` — um colisor pontual, nunca inventado.
-    pub fn collider_radii(&mut self, handle: u32) -> [f32; 2] {
-        if let Some(r) = self.radii.get(&handle) {
-            return *r;
+    /// **A caixa envolvente desta geometria, para colidir** (doc 109 §5), medida da primeira vez
+    /// que alguém pergunta. Um handle sem geometria responde a caixa vazia — um colisor que não
+    /// colide, nunca inventado.
+    pub fn collider_fit(&mut self, handle: u32) -> super::collider::ColliderFit {
+        if let Some(f) = self.fits.get(&handle) {
+            return *f;
         }
-        let r = self
+        let f = self
             .by_handle
             .get(&handle)
-            .map_or([0.0, 0.0], super::collider::measure);
-        self.radii.insert(handle, r);
-        r
+            .map_or_else(Default::default, super::collider::measure);
+        self.fits.insert(handle, f);
+        f
+    }
+
+    /// A mesma caixa, **só se já foi medida** — para quem lê com `&self` (o gizmo do cartão, que
+    /// corre depois do `publish` que a mediu neste quadro).
+    pub fn measured_collider_fit(&self, handle: u32) -> Option<super::collider::ColliderFit> {
+        self.fits.get(&handle).copied()
     }
 
     /// Intern a shape under its content key, building it once. Returns the handle
@@ -130,7 +137,7 @@ impl VecPathStore {
     /// reclamado» é «fuga».
     pub fn forget(&mut self, handle: u32) {
         self.by_handle.remove(&handle);
-        self.radii.remove(&handle);
+        self.fits.remove(&handle);
     }
 
     /// **Esquece as geometrias COM CHAVE que ninguém pediu neste quadro** e devolve os
@@ -150,7 +157,7 @@ impl VecPathStore {
         });
         for h in &dropped {
             self.by_handle.remove(h);
-            self.radii.remove(h);
+            self.fits.remove(h);
         }
         self.live.clear();
         dropped

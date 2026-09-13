@@ -586,11 +586,19 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             default: 0.0,
         },
         ParamSpec {
-            name: param::COLLIDER_FIT,
+            name: param::COLLIDER_SHAPE,
             default: 0.0,
         },
         ParamSpec {
-            name: param::COLLIDER_SCALE,
+            name: param::COLLIDER_WIDTH,
+            default: 1.0,
+        },
+        ParamSpec {
+            name: param::COLLIDER_HEIGHT,
+            default: 1.0,
+        },
+        ParamSpec {
+            name: param::COLLIDER_RADIUS,
             default: 1.0,
         },
     ],

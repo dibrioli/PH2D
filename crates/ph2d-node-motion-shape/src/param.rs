@@ -159,19 +159,25 @@ pub const FILL_A: &str = "fill_a";
 pub const ROTATION: &str = "rotation";
 
 /// ⭐⭐ **O COLISOR QUE A FORMA DECLARA** (doc 109 — ordem do dono, 2026-09-13: *«colidem
-/// sozinhas»*). `collide = 0` ⇒ a coluna `collider` não é escrita ⇒ o stream de sempre.
+/// sozinhas»*). `collide = 0` ⇒ nenhuma coluna de colisor é escrita ⇒ o stream de sempre.
 ///
-/// ⚠️ **Os três ficam FORA de [`ALL`], de propósito:** não mudam a geometria, e entrar na chave
+/// ⚠️ **Os cinco ficam FORA de [`ALL`], de propósito:** não mudam a geometria, e entrar na chave
 /// de conteúdo re-internaria um `VecPath` a cada clique na caixa — o custo que a normalização do
 /// `size` existe para evitar.
 pub const COLLIDE: &str = "collide";
-/// `0` Around (o menor círculo à volta do contorno) · `1` Inside (o maior dentro dele).
+/// **A FORMA do colisor** (doc 109 §5 — report do dono: *«no mínimo colliders circulares e
+/// retangulares que tentam se adaptar às dimensões da shape»*): `0` Box · `1` Circle.
 /// ⚠️ O índice é formato de arquivo — APPEND ONLY.
-pub const COLLIDER_FIT: &str = "collider_fit";
-/// Multiplicador do raio escolhido (`1` = o contorno).
-pub const COLLIDER_SCALE: &str = "collider_scale";
+pub const COLLIDER_SHAPE: &str = "collider_shape";
+/// `Box`: a LARGURA como fracção da largura da forma (`1` = a caixa envolvente do contorno).
+pub const COLLIDER_WIDTH: &str = "collider_width";
+/// `Box`: a ALTURA como fracção da altura da forma.
+pub const COLLIDER_HEIGHT: &str = "collider_height";
+/// `Circle`: o RAIO como fracção do círculo que toca os lados maiores da caixa envolvente.
+pub const COLLIDER_RADIUS: &str = "collider_radius";
 
-/// **As duas colunas que o SHELL publica** com a geometria (os dois raios, em unidade de
-/// geometria) — e que o nó **retira sempre**, depois de escolher. Nenhum nó a jusante as vê.
-pub const COLLIDER_AROUND_COL: &str = "collider_around";
-pub const COLLIDER_INSIDE_COL: &str = "collider_inside";
+/// **As duas colunas que o SHELL publica** com a geometria — a caixa envolvente do contorno de
+/// preenchimento, em unidade de geometria — e que o nó **retira sempre**, depois de declarar.
+/// Nenhum nó a jusante as vê.
+pub const COLLIDER_FIT_CENTER_COL: &str = "collider_fit_center";
+pub const COLLIDER_FIT_HALF_COL: &str = "collider_fit_half";

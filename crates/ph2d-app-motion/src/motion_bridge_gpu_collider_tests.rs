@@ -68,11 +68,20 @@ fn only_the_exact_collider_name_sends_the_document_to_the_cpu() {
 
     m.doc
         .graph
-        .set_text_param(drive, "column", "collider_around");
+        .set_text_param(drive, "column", "collider_fit_half");
     assert!(
         !graph_declares_collider(&m.doc.graph),
         "um nome PARECIDO nao conta"
     );
+
+    // As outras duas colunas da declaração (doc 109 §5) contam como o raio.
+    for nome in ["collider_box", "collider_offset"] {
+        m.doc.graph.set_text_param(drive, "column", nome);
+        assert!(
+            graph_declares_collider(&m.doc.graph),
+            "`{nome}` e' declaracao"
+        );
+    }
 
     m.doc.graph.set_text_param(drive, "column", " collider ");
     assert!(

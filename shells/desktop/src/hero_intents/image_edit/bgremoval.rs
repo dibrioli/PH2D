@@ -211,6 +211,35 @@ pub(crate) fn drain_bgremoval(
         }
     }
 
+    let msg = spawn_islands(
+        &islands,
+        island_world_centre,
+        bake_premul,
+        px_per_m,
+        &base_name,
+        sim,
+        renderer,
+        asset_db,
+        toasts,
+    );
+    toasts.push(Toast::success(msg));
+    *last_bgremoval_pushed_entity = None;
+    true
+}
+
+/// As ilhas `[1..]` do [`drain_bgremoval`] viram sprites novas no centro delas; devolve o texto do toast que as conta.
+#[allow(clippy::too_many_arguments)]
+fn spawn_islands(
+    islands: &[ph2d_tool_bgremoval::IslandPayload],
+    island_world_centre: impl Fn(u32, u32, u32, u32) -> [f32; 2],
+    bake_premul: impl Fn(u32, u32, Vec<u8>) -> ph2d_render::SpriteImage,
+    px_per_m: f32,
+    base_name: &str,
+    sim: &mut SimWorld,
+    renderer: &mut SpriteRenderer,
+    asset_db: &AssetDb,
+    toasts: &mut ToastQueue,
+) -> String {
     // Spawn islands[1..] as new sprites at their respective centres.
     let mut spawned = 0usize;
     let mut spawn_failed = 0usize;
@@ -274,7 +303,5 @@ pub(crate) fn drain_bgremoval(
             spawn_failed
         )
     };
-    toasts.push(Toast::success(msg));
-    *last_bgremoval_pushed_entity = None;
-    true
+    msg
 }

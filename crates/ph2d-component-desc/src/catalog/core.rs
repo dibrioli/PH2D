@@ -55,7 +55,7 @@
 
 use crate::{
     ComponentCategory as C, ComponentDesc as D, FieldDesc, FieldKind as K, ObjectKinds as O,
-    Propagation,
+    Propagation, RefKind,
 };
 
 /// Um campo simples que segue o mestre e não é referência — o caso esmagadoramente comum.
@@ -138,6 +138,23 @@ const CLIP_CHILDREN: &[FieldDesc] = &[f(1, "Mode", K::Enum), f(2, "Alpha Cutoff"
 
 /// Um marcador de tamanho zero: a **presença** é o valor.
 const MARKER: &[FieldDesc] = &[f(1, "Present", K::Marker)];
+
+/// **`Tags`** — as tags DIRECTAS do objecto (TOP-20 #9, `docs/Components/08_plano_tags.md`).
+///
+/// ⚠️ **`Ref` + [`RefKind::Tag`], e não `Text`:** o controlo é um *picker* (chips + a busca dobrada),
+/// e o que ele guarda é uma IDENTIDADE da árvore do projecto — descrevê-lo como texto prometeria uma
+/// caixa onde se escreve o nome, e renomear a tag desligaria o objecto.
+///
+/// ⚠️ **`Propagate` (decisão do dono D4):** a tag da receita chega às cópias, e a cópia pode ter a
+/// sua própria lista — um override por campo como outro qualquer. O `TagId` não se remapeia ao
+/// copiar (ver [`RefKind::Tag`]).
+const TAGS: &[FieldDesc] = &[FieldDesc {
+    field_id: 1,
+    name: "Tags",
+    kind: K::Ref,
+    policy: Propagation::Propagate,
+    is_ref: Some(RefKind::Tag),
+}];
 
 /// Ordenado por `canonical_name` (gate `the_catalog_is_sorted_and_unique`).
 pub const DESCS: &[D] = &[
@@ -265,6 +282,10 @@ pub const DESCS: &[D] = &[
     ),
     // ⇒ a porta é a row *Emissive* do §Render Source, pintada em toda sprite (ausente **é** `EMISSIVE_OFF`).
     D::intrinsic("ph2d::ecs::SpriteEmissive", "Emissive", C::Rendering, &[]),
+    // ⭐⭐⭐ **As TAGS** (TOP-20 #9). `C::Identity` porque dizem O QUE o objecto é (a secção nasce
+    // logo abaixo da *Identity*), e `O::ANY` porque o objecto vazio que o artista usa como
+    // *«o cérebro da cena»* e um grupo são tão marcáveis quanto uma sprite.
+    D::authored("ph2d::ecs::Tags", "Tags", C::Identity, O::ANY, TAGS),
     D::authored(
         "ph2d::ecs::TextureFilter",
         "Texture Filter",

@@ -1,0 +1,28 @@
+[package]
+name = "ph2d-label-fold"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+[dependencies]
+# ⭐ **As três ICU da MESMA família (2.3), e as duas primeiras já estão no programa** — o `parley`
+# puxa o `icu_normalizer` (`compiled_data`) e o `icu_properties` pelo `ph2d-text`. ⚠️ Versão
+# alinhada de propósito: uma `icu_properties` de outra versão seria uma segunda cópia das tabelas
+# Unicode no binário, e o resolver não dá erro nenhum por isso.
+#
+# ⚠️ `default-features = false` + `compiled_data`: os dados vêm cozidos no binário (sem ficheiros a
+# carregar em runtime) e nada mais — nem `serde`, nem `datagen`.
+icu_normalizer = { version = "2.3", default-features = false, features = ["compiled_data"] }
+icu_properties = { version = "2.3", default-features = false, features = ["compiled_data"] }
+# ⭐ **O ÚNICO pacote externo novo**, e é ele que dá o *case folding* COMPLETO: com
+# `str::to_lowercase` o `ß` e o `SS` ficariam tags diferentes (`docs/Components/08_plano_tags.md`
+# §2.1).
+icu_casemap = { version = "2.3", default-features = false, features = ["compiled_data"] }
+
+[lints]
+workspace = true

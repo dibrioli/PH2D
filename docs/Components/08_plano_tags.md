@@ -263,8 +263,16 @@ Bat A/B (`Flying`), Dragon (`Boss`), Statue (`Statue`), Hero (`Player`). ⚠️ 
 um componente alheio inserido no Goblin A (muda a ordem de arquétipo) e um restore do snapshot (bits
 novos).
 
-**Os oráculos com cabeçalho** — a saída das duas sondas do §1.1 e as 63 linhas do ficheiro de catálogos
-do Blender (os dois gémeos lá dentro).
+**Os oráculos com cabeçalho** — a saída da sonda v2 do Blender
+([`blender_tags_hierarchy_probe.py`](ferramentas/blender_tags_hierarchy_probe.py)) **sobre a cena
+acima**, em quatro estágios (`BASE` · `RENAME` · `MOVE` · `CYCLE`) mais a linha `CASE`, gravada em
+[`crates/ph2d-ecs/tests/it/fixtures/blender_tags_hierarchy.txt`](../../crates/ph2d-ecs/tests/it/fixtures/blender_tags_hierarchy.txt).
+
+⚠️ **Correcção à 1.ª redacção (W1, 2026-09-13): as 63 linhas do ficheiro de catálogos NÃO vêm
+para cá.** Aquele ficheiro é um DADO distribuído com o programa, não a SAÍDA de uma entrada nossa
+(CLAUDE.md §0.9 — a porta livre é a saída). O que o gate precisa é do FENÓMENO medido nele (2 de 63
+caminhos duplicados, com UUIDs diferentes), e esse está reproduzido numa fixture nossa, com o gémeo
+dobrado que a D2 acrescenta (`a_document_with_twins_merges_them_and_keeps_every_member`).
 
 ### §5.2 — Os gates, por wave (escritos ANTES da porta, vistos VERMELHOS contra um *stub*)
 
@@ -278,13 +286,14 @@ do Blender (os dois gémeos lá dentro).
    `main`.
 5. `creating_a_tag_that_exists_folded_returns_the_existing_one` — `Enemy` e `énemy`.
 6. `renaming_or_moving_a_tag_never_touches_a_member` — no `ph2d-ecs`, com a fixture.
-7. `moving_a_tag_inside_itself_is_refused` · `a_rename_that_collides_with_a_sibling_is_refused`.
-8. `deleting_a_tag_takes_its_subtree_and_the_membership_in_one_gesture`.
-9. `a_restored_tree_never_recycles_an_id` (a lei do `CatalogTree`) · `a_document_with_twins_merges_them_and_keeps_every_member` — com o ficheiro do Blender.
-10. `the_hierarchy_is_the_one_blender_measures` — `Enemy` alcança o objecto só de `Flying` (`all_objects`).
-11. `the_query_order_is_the_identity_not_the_archetype` · `tags_bytes_do_not_depend_on_insertion_order`.
-12. `only_the_door_reads_tags` — censo sem comentários/strings, com **piso de população** (HOWTO §2.7).
-13. `the_tree_sorts_by_folded_segment` — `Ártico` antes de `Zebra`; o pai sempre antes dos filhos.
+7. `moving_a_tag_carries_its_subtree_and_refuses_a_cycle` · `a_rename_that_collides_with_a_sibling_is_refused_and_a_new_spelling_is_not` · `the_cycle_verdicts_are_the_ones_blender_measures` (os dois vereditos contra o oráculo).
+8. `deleting_a_tag_takes_its_subtree_and_the_membership_in_one_gesture` · `scrubbing_only_stamps_the_objects_it_changes`.
+9. `a_restored_tree_never_recycles_an_id` (a lei do `CatalogTree`) · `a_document_with_twins_merges_them_and_says_where_each_went` (a árvore) · `a_document_with_twins_merges_them_and_keeps_every_member` (a pertença) — com o fenómeno medido no ficheiro do Blender, reproduzido numa fixture nossa (§5.1).
+10. `the_hierarchy_is_the_one_blender_measures` — conjunto a conjunto nos três estágios do oráculo · `the_blender_keeps_three_spellings_and_the_owner_asked_for_one` (a divergência D2 nas duas metades).
+11. `the_query_order_is_the_identity_not_the_archetype` (com o controlo de que a perturbação perturba, e um piso de 7 linhas na captura) · `tags_bytes_do_not_depend_on_insertion_order`.
+12. `only_the_door_reads_tags` — censo sem comentários/strings, com **piso de população** (HOWTO §2.7) · `the_stripper_keeps_code_and_drops_comments_strings_and_chars` (o controlo do instrumento).
+13. `the_tree_sorts_by_folded_level` — `Ártico` antes de `Zebra`; o pai sempre antes dos filhos.
+    **E as leis da porta que a W1 acrescentou:** `belonging_reaches_the_subtree_and_never_the_sibling_root` · `a_tag_that_no_longer_exists_reaches_nobody` · `a_refused_gesture_does_not_move_the_revision`.
 
 **W2 — consumidores, documento, schema:**
 14. `a_signal_to_a_tag_reaches_the_whole_subtree_and_the_sibling_root_stays`.
@@ -315,27 +324,69 @@ Cada gate diz, no doc-comment, a mutação que o sangra; os de W1/W2 são corrid
 
 ### §6.1 — A sonda Rust (`measure_tag_scan`, `--release`, mediana de 25)
 
-**O modelo aprovado** (conjunto de ids por objecto + expansão da subárvore dentro da medição):
+**A PORTA REAL** (W1 — `ph2d_ecs::tags::tagged` sobre a `TagTree` já com a chave guardada, §6.1-bis;
+load `2,77`):
 
 | objectos | com tags | acertos | consulta por tag | alvo por NOME, hoje |
 |---:|---:|---:|---:|---:|
-| 100 | 100 | 67 | 0,0007 ms | 0,0011 ms |
-| 1 000 | 1 000 | 667 | 0,0045 ms | 0,0029 ms |
-| 10 000 | 10 000 | 6 667 | 0,0428 ms | 0,0235 ms |
-| 100 000 | 10 000 | 6 667 | **0,0432 ms** | 0,2361 ms |
-| 100 000 | 100 000 | 66 667 | **0,4464 ms** | 0,2473 ms |
+| 100 | 10 | 7 | 0,0004 ms | 0,0018 ms |
+| 100 | 100 | 67 | 0,0013 ms | 0,0018 ms |
+| 1 000 | 100 | 67 | 0,0013 ms | 0,0050 ms |
+| 1 000 | 1 000 | 667 | 0,0059 ms | 0,0030 ms |
+| 10 000 | 1 000 | 667 | 0,0059 ms | 0,0241 ms |
+| 10 000 | 10 000 | 6 667 | 0,0565 ms | 0,0253 ms |
+| 100 000 | 10 000 | 6 667 | **0,0565 ms** | 0,2332 ms |
+| 100 000 | 100 000 | 66 667 | **0,5624 ms** | 0,2548 ms |
 
-⚠️ **Load `4,98` ao arrancar e ao acabar** — no limite do §5.0, e a corrida esperou por ele (um laço
-que só arranca abaixo de `5`). Uma corrida anterior do MESMO modelo, a load `30,55`, deu a mesma forma
-com o dobro dos tempos (`0,0690` e `0,8535 ms`) — é carga, não o modelo.
+⇒ **a varredura cabe** — o pior caso é `3,4 %` de um quadro de `16,7 ms`, e o custo mora nos ACERTOS
+(a ordenação por identidade), não nos objectos: 100 000 objectos com 10 000 marcados custam o mesmo
+que 10 000 com 10 000. O teste irmão `the_probe_reaches_the_subtree_and_not_the_sibling_root` fixa a
+lei da sonda (`20` de `30`).
 
-**O modelo da 1.ª redacção** (strings por prefixo), a load `1,38`, para comparação: `0,0638 ms` a
-100 000/10 000 e `1,4702 ms` no pior caso — o conjunto de ids é o mais barato dos dois.
+⚠️ **A 1.ª redacção desta tabela mediu um SUCEDÂNEO** (um componente local e a expansão da subárvore
+escrita à mão, load `4,98`): `0,0432` e `0,4464 ms` nas duas linhas a negrito. A porta real custa
+~`25 %` mais no pior caso — a query leva o `Option<&StableId>` e a subárvore é a da árvore verdadeira —,
+e a decisão *«sem índice»* **mantém-se**. *Uma sonda que mede um sucedâneo para sempre mede outro
+programa.* Uma corrida do sucedâneo a load `30,55` deu o dobro dos tempos com a mesma forma (carga,
+não o modelo); o modelo por strings da 1.ª redacção dava `1,4702 ms` no pior caso (load `1,38`).
 
-⇒ **a varredura cabe** — o pior caso é `2,7 %` de um quadro de `16,7 ms` (`0,4464 ms`), e o custo
-mora nos ACERTOS (a ordenação), não nos objectos: 100 000 objectos com 10 000 marcados custam o
-mesmo que 10 000 com 10 000. O teste irmão `the_probe_reaches_the_subtree_and_not_the_sibling_root`
-fixa a lei da sonda (`20` de `30`).
+### §6.1-bis — A ÁRVORE a crescer (`measure_tag_tree_scale`), e a cura que ela PEDIU
+
+A tabela de cima tem **4 tags**. Esta pergunta o que as portas custam com a árvore a crescer, com três
+relógios porque são três chamadores de frequência diferente: o `restore` (o LOAD), a `subtree` (cada
+consulta de `tagged`) e o `belongs` (o filtro da física, **a cada evento de colisão**).
+
+**Antes** — a árvore dobrava os caminhos a CADA comparação (load `2,57`):
+
+| tags | `restore` | `subtree(Raiz 0)` | `belongs`, 1 objecto |
+|---:|---:|---:|---:|
+| 10 | 0,060 ms | 0,00248 ms | 0,00248 ms |
+| 73 | 6,451 ms | 0,01793 ms | 0,01803 ms |
+| 584 | **2 461 ms** | 0,13742 ms | 0,13743 ms |
+
+⛔ **Pior que quadrático** (`8×` as tags, `107×` o tempo): cada tag lida procurava o gémeo dobrando a
+árvore inteira, e abrir um projecto com 584 tags custava **dois segundos e meio**. A linha de 2 048 não
+acabou em minutos e foi interrompida. O `belongs` era linear em chamadas à ICU.
+
+**Depois** — cada entrada guarda a sua chave dobrada, escrita só pelas portas que mudam a árvore; o
+`restore` indexa num mapa local; a subárvore é um intervalo contíguo; o `belongs` pergunta
+`TagTree::reaches` sem construir conjunto (load `1,37`):
+
+| tags | `restore` | `subtree(Raiz 0)` | `belongs`, melhor caso | `belongs`, a ÚLTIMA tag |
+|---:|---:|---:|---:|---:|
+| 10 | 0,012 ms | 0,00021 ms | 0,00004 ms | 0,00004 ms |
+| 73 | 0,057 ms | 0,00057 ms | 0,00002 ms | 0,00004 ms |
+| 584 | **0,522 ms** | 0,00059 ms | 0,00002 ms | 0,00028 ms |
+| 2 336 | 2,302 ms | 0,00063 ms | 0,00002 ms | 0,00096 ms |
+| 9 344 | 9,242 ms | 0,00066 ms | 0,00002 ms | **0,00387 ms** |
+
+⇒ **o load de 584 tags passa de `2 461` a `0,522 ms` (~`4 700×`)** e cresce ~linearmente; nenhuma
+consulta chama a ICU. ⚠️ **O pior caso do `belongs` continua LINEAR nas tags** (as duas procuras por
+id): `3,9 µs` a 9 344 tags, logo 100 eventos de colisão filtrados num quadro custam `0,39 ms`
+(`2,3 %`). ⛔ Um mapa `id → posição` tirava-o, e é estado derivado que cada reordenação invalidaria;
+**a medição não o pede** — uma árvore real tem dezenas a centenas de tags (`0,28 µs` a 584).
+⚠️ A coluna do melhor caso sozinha escondia isto: a 1.ª versão da sonda media uma tag do início da
+ordem, que as duas procuras acham à primeira.
 
 ### §6.2 — As cenas `PH2D_TAGS_SMOKE=1..2` (W4; família `components`, `max_level` contado)
 
@@ -366,5 +417,15 @@ fixa a lei da sonda (`20` de `30`).
 ⚠️ **O custo na shell é uma linha por fase** (o dreno do barramento, a publicação do snapshot, o
 campo do `ProjectState`, a chamada da migração) — as leis e as pontes vivem nas folhas e na família.
 A catraca `the_shell_only_shrinks` tem folga depois da 5.ª rodada (191 016 contra 196 990).
-⚠️ **E as ICU passam a entrar no fecho de dependências do `ph2d-ecs`**: o custo de um `check` frio
-dessa crate mede-se na W1, com a tabela ao lado, antes de o aceitar.
+⚠️ **E as ICU passam a entrar no fecho de dependências do `ph2d-ecs`** — MEDIDO na W1 antes de o
+aceitar (`check` a frio num `CARGO_TARGET_DIR` vazio, `date +%s%N`, 2026-09-13):
+
+| `check` a frio | ms | load (antes / depois) |
+|---|---:|---|
+| `ph2d-label-fold` sozinha (as três ICU) | 3 954 | 1,29 / — |
+| `ph2d-ecs` **sem** `ph2d-tags` | 18 354 | — / 8,21 (as duas corridas em série) |
+| `ph2d-ecs` **com** `ph2d-tags` | 18 589 | 3,59 / 4,93 |
+
+⇒ **`+235 ms` (`+1,3 %`), dentro do ruído a esta carga.** A cadeia das ICU (~4 s) é mais curta do
+que a do `bevy_ecs` que o `ph2d-ecs` já espera, então compila em paralelo e não alonga o caminho
+crítico. Aceite.

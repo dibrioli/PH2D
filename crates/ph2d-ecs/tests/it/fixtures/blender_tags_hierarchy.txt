@@ -1,0 +1,29 @@
+# ORÁCULO — a hierarquia das coleções do Blender sobre a fixture NOSSA do plano de Tags.
+#
+# Produzido por: Blender 5.2.1 LTS (GPL — só a SAÍDA; nenhum fonte lido, CLAUDE.md §0.9),
+#   sem interface, em 2026-09-13, na workstation, com:
+#   blender -b --factory-startup --python docs/Components/ferramentas/blender_tags_hierarchy_probe.py
+#   (sonda v2; filtrada por `grep -E '^(BLENDER|ALL|CYCLE|CASE)'`).
+# Cena: Enemy › Flying › Boss, raízes irmãs Statue e Player; Goblin A/B em Enemy, Bat A/B em
+#   Flying, Dragon em Boss, Statue em Statue, Hero em Player (docs/Components/08_plano_tags.md §5.1).
+# Consumida por: crates/ph2d-ecs/tests/it/the_hierarchy_is_the_one_blender_measures.rs
+# ⚠️ Não editar à mão: re-correr a sonda e colar a saída por baixo deste cabeçalho.
+BLENDER 5.2.1 LTS
+ALL BASE Enemy = Bat A,Bat B,Dragon,Goblin A,Goblin B
+ALL BASE Enemy/Flying = Bat A,Bat B,Dragon
+ALL BASE Enemy/Flying/Boss = Dragon
+ALL BASE Player = Hero
+ALL BASE Statue = Statue
+ALL RENAME Monster = Bat A,Bat B,Dragon,Goblin A,Goblin B
+ALL RENAME Monster/Flying = Bat A,Bat B,Dragon
+ALL RENAME Monster/Flying/Boss = Dragon
+ALL RENAME Player = Hero
+ALL RENAME Statue = Statue
+ALL MOVE Boss = Dragon
+ALL MOVE Monster = Bat A,Bat B,Goblin A,Goblin B
+ALL MOVE Monster/Flying = Bat A,Bat B
+ALL MOVE Player = Hero
+ALL MOVE Statue = Statue
+CYCLE monster_into_boss ok
+CYCLE flying_into_its_own_child refused Error: Collection 'Flying' already in collection 'Boss'
+CASE Inimigo | inimigo | inímigo

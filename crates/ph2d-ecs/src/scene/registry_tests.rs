@@ -188,7 +188,10 @@ fn register_ecs_components_populates_registry() {
     //   peca<->entidade e o load duplicaria as linhas. ⚠️ A `line/quadextract` escreveu `80`
     //   (do `79` do merge-base dela, de 04/09) e o valor certo NAO estava em nenhum dos dois
     //   lados -- 677 commits entraram no main entretanto. *Conte o DELTA, nunca o literal.*
-    assert_eq!(reg.len(), 85);
+    // ⚠️ **2026-09-13: `85` -> `86`, delta +1** -- o `Tags` (TOP-20 #9). Quem integrar conta o
+    //   DELTA, nunca o literal.
+    assert_eq!(reg.len(), 86);
+    assert!(reg.get_by_name("ph2d::ecs::Tags").is_some());
     assert!(reg.get_by_name("ph2d::ecs::Sculpt3dPieceRef").is_some());
     assert!(reg.get_by_name("ph2d::ecs::AudioSource2D").is_some());
     assert!(reg.get_by_name("ph2d::ecs::AudioListener2D").is_some());

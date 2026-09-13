@@ -694,4 +694,10 @@ pub enum RefKind {
     VecPath,
     /// Um asset, por `LogicalId` (F6).
     Asset,
+    /// ⭐ **Uma tag da árvore do projecto**, por `TagId` (TOP-20 #9).
+    ///
+    /// ⚠️ **Não se remapeia ao copiar, e é a decisão:** o `TagId` é do DOCUMENTO, não da subárvore
+    /// copiada — a cópia de um inimigo continua a ser inimiga (decisão do dono D4). O remapeador da
+    /// F4 só olha `Object`, e é esta variante própria que o impede de a confundir com um objecto.
+    Tag,
 }

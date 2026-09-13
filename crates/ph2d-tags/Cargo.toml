@@ -1,0 +1,22 @@
+[package]
+name = "ph2d-tags"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# ⛔ **Folha: sem ECS, sem serde, sem I/O** — o molde exacto da `ph2d-asset-index`. Quem grava a
+# árvore é a família dos componentes (o formato vive lá, com a versão dentro dos bytes), e quem
+# guarda a PERTENÇA de um objecto é o `ph2d-ecs` (`docs/Components/08_plano_tags.md` §2.1).
+[dependencies]
+# A álgebra dos caminhos, partilhada com os catálogos da biblioteca.
+ph2d-label-path = { path = "../ph2d-label-path" }
+# ⭐ A decisão do dono D2: *«maiúscula não importa, letra acentuada não importa»* — a porta ÚNICA.
+ph2d-label-fold = { path = "../ph2d-label-fold" }
+
+[lints]
+workspace = true

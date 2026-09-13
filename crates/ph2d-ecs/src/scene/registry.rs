@@ -373,6 +373,10 @@ pub fn register_ecs_components(reg: &mut ComponentRegistry) {
     // Trava e group-lock: markers que o Hierarchy edita e que o save/undo precisa
     // preservar (sem eles, `world_to_snapshot` os descartava em silêncio).
     reg.register_default::<crate::Locked>("ph2d::ecs::Locked");
+    // ⭐⭐⭐ **AS TAGS de um objecto** (TOP-20 #9). CONFIG inteira: ids da árvore do projecto, e a
+    // hierarquia vive na árvore. Sem o registo, o artista marca, grava, reabre, e o objecto volta
+    // SEM tags — nada some da tela e nada dá erro, e o sinal por tag simplesmente deixa de o atingir.
+    reg.register_default::<crate::Tags>("ph2d::ecs::Tags");
     reg.register_default::<crate::GroupedChildren>("ph2d::ecs::GroupedChildren");
     // ADR-0110: a referência que faz de um path vetorial uma entidade. Sem ela um
     // save do mundo perderia o vínculo path↔entidade e o load duplicaria as formas.

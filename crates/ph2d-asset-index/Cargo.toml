@@ -10,6 +10,9 @@ authors.workspace = true
 [lib]
 
 [dependencies]
+# ⭐ A álgebra dos caminhos de catálogo mora numa folha PARTILHADA com as tags
+# (`docs/Components/08_plano_tags.md` §2.1) — zero dependências, então esta crate continua folha.
+ph2d-label-path = { path = "../ph2d-label-path" }
 
 [lints]
 workspace = true

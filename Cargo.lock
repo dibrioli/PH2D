@@ -2812,6 +2812,28 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dfa686283ad6dd069f105e5ab091b04c62850d3e4cf5d67debad1933f55023df"
 
 [[package]]
+name = "icu_casemap"
+version = "2.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f2edfd120d8445de853cf53a1abec916f638f933a70a6f4bf8f7e2d7b7f884e9"
+dependencies = [
+ "icu_casemap_data",
+ "icu_collections",
+ "icu_locale_core",
+ "icu_properties",
+ "icu_provider",
+ "potential_utf",
+ "writeable",
+ "zerovec",
+]
+
+[[package]]
+name = "icu_casemap_data"
+version = "2.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "059fcda0fc8d33effc6633a8cf0d8a3c17caf7d7c91918fba9918744f501e4e8"
+
+[[package]]
 name = "icu_collections"
 version = "2.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2819,6 +2841,7 @@ checksum = "fa68d21081c4a05d5a901a1c62add574c77048b6a1c67be3b50ce0b60d4ca513"
 dependencies = [
  "displaydoc",
  "potential_utf",
+ "serde",
  "utf8_iter",
  "yoke",
  "zerofrom",
@@ -5222,6 +5245,9 @@ dependencies = [
 [[package]]
 name = "ph2d-asset-index"
 version = "0.0.0"
+dependencies = [
+ "ph2d-label-path",
+]
 
 [[package]]
 name = "ph2d-asset-ktx2"
@@ -5386,6 +5412,7 @@ dependencies = [
  "ph2d-render",
  "ph2d-stroke-width",
  "ph2d-symmetry",
+ "ph2d-tags",
  "ph2d-warp-style",
  "postcard",
  "serde",
@@ -6141,6 +6168,19 @@ dependencies = [
  "postcard",
  "serde",
 ]
+
+[[package]]
+name = "ph2d-label-fold"
+version = "0.0.0"
+dependencies = [
+ "icu_casemap",
+ "icu_normalizer",
+ "icu_properties",
+]
+
+[[package]]
+name = "ph2d-label-path"
+version = "0.0.0"
 
 [[package]]
 name = "ph2d-light"
@@ -8279,6 +8319,14 @@ dependencies = [
 [[package]]
 name = "ph2d-table"
 version = "0.0.0"
+
+[[package]]
+name = "ph2d-tags"
+version = "0.0.0"
+dependencies = [
+ "ph2d-label-fold",
+ "ph2d-label-path",
+]
 
 [[package]]
 name = "ph2d-text"

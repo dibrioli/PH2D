@@ -83,7 +83,9 @@ mod tests {
         //   registou no ECS (ADR-0150, o mesh na Hierarquia). ⛔ Ela NAO tocou neste ficheiro, e o
         //   fecho dela nao o podia ver: e' exactamente a cegueira que a nota acima descreve. O `86`
         //   foi CONTADO -- o gate imprimiu `left: 86`.
-        assert_eq!(reg.len(), 86);
+        // ⚠️ **2026-09-13: `86` -> `87`, delta +1** -- o `Tags` que a `line/components` registou no
+        //   ECS (TOP-20 #9). Quem integrar conta o DELTA, nunca o literal.
+        assert_eq!(reg.len(), 87);
         assert!(reg.get_by_name("ph2d::render::Sprite").is_some());
         assert!(reg.get_by_name("ph2d::ecs::SpriteEmissive").is_some());
         assert!(reg.get_by_name("ph2d::ecs::SliceNine").is_some());

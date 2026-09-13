@@ -1,6 +1,5 @@
 //! ⭐ **A SONDA DA CONSULTA POR TAG** — quanto custa perguntar *«quem pertence à tag `Enemy`, com os
-//! descendentes dela?»* varrendo o mundo, ANTES de a feature existir
-//! (`docs/Components/08_plano_tags.md` §6).
+//! descendentes dela?»* varrendo o mundo (`docs/Components/08_plano_tags.md` §6).
 //!
 //! ```text
 //! cargo test -p ph2d-ecs --release --test it measure_tag_scan -- --include-ignored --nocapture
@@ -16,32 +15,46 @@
 //! `stable_id.rs` diz porquê: *um mapa seria estado derivado a manter coerente com o mundo depois de
 //! todo restore do undo*. A consulta por tag tem a MESMA escolha à frente: varrer a cada sinal, ou
 //! manter um índice (o Godot mantém um por `SceneTree`). ⛔ Esta sonda mede se a varredura cabe no
-//! orçamento **antes** de se escolher — e compara-a com a varredura por nome que já shipa.
+//! orçamento — e compara-a com a varredura por nome que já shipa.
 //!
-//! # ⚠️ O MODELO que ela mede é o das decisões do dono (2026-09-13), não o da 1.ª redacção
+//! # ⚠️ Desde a W1 ela mede a PORTA REAL, não um sucedâneo
 //!
-//! A 1.ª versão desta sonda casava STRINGS por prefixo de segmento (`enemy` apanhava
-//! `enemy.flying.boss`). O dono escolheu o modelo do Blender — **a pertença é uma IDENTIDADE e a
-//! hierarquia vive na árvore** — ⇒ um objecto carrega um conjunto de ids, e a consulta expande
-//! primeiro a SUBÁRVORE da tag pedida e depois varre. O componente aqui é um SUCEDÂNEO local
-//! (`SondaTags(BTreeSet<u64>)`); a W1 troca-o pela porta real e a sonda fica.
+//! A 1.ª versão (antes do código) usava um componente local e uma expansão de subárvore escrita à
+//! mão, e foi com ela que o plano §6.1 decidiu *«sem índice»*. A W1 trocou os dois pela porta que
+//! shipa — [`tagged`] e a [`TagTree`] com a dobra —, então o número passa a incluir o que o sucedâneo
+//! não pagava: a expansão da subárvore com a dobra ICU **em cada consulta**. *Uma sonda que mede um
+//! sucedâneo para sempre mede outro programa.*
 
-use bevy_ecs::component::Component;
+use ph2d_ecs::tags::{Tags, tagged};
 use ph2d_ecs::{Entity, Name, StableId, World, entity_of_stable_id, stable_id_for_name};
-use std::collections::BTreeSet;
+use ph2d_tags::{TagId, TagTree};
 use std::time::Instant;
 
 const ITERS: usize = 25;
 
-/// A árvore da sonda: `1 = Enemy`, `2 = Enemy/Flying`, `3 = Enemy/Flying/Boss`, `4 = Statue` (raiz
-/// irmã). A subárvore de `Enemy` é `{1, 2, 3}`.
-const ENEMY: u64 = 1;
-const FLYING: u64 = 2;
-const BOSS: u64 = 3;
-const STATUE: u64 = 4;
+/// A árvore da sonda: `Enemy` › `Flying` › `Boss`, e a raiz irmã `Statue`.
+struct Arvore {
+    tree: TagTree,
+    enemy: TagId,
+    flying: TagId,
+    boss: TagId,
+    statue: TagId,
+}
 
-#[derive(Component)]
-struct SondaTags(BTreeSet<u64>);
+fn arvore() -> Arvore {
+    let mut tree = TagTree::new();
+    let boss = tree.create("Enemy/Flying/Boss").expect("cria");
+    let enemy = tree.find("Enemy").expect("ancestral");
+    let flying = tree.find("Enemy/Flying").expect("ancestral");
+    let statue = tree.create("Statue").expect("cria");
+    Arvore {
+        tree,
+        enemy,
+        flying,
+        boss,
+        statue,
+    }
+}
 
 fn load_average() -> f64 {
     std::fs::read_to_string("/proc/loadavg")
@@ -55,74 +68,57 @@ fn median(mut v: Vec<f64>) -> f64 {
     v[v.len() / 2]
 }
 
-/// A expansão da árvore da sonda — o que o `TagTree::subtree` fará. ⚠️ Fica DENTRO da medição: a
-/// porta real expande a cada consulta, porque guardar a expansão seria o índice que se recusa.
-fn subarvore(q: u64) -> BTreeSet<u64> {
-    match q {
-        ENEMY => BTreeSet::from([ENEMY, FLYING, BOSS]),
-        FLYING => BTreeSet::from([FLYING, BOSS]),
-        other => BTreeSet::from([other]),
-    }
-}
-
 /// `n` objectos com nome e identidade; um em cada `k` tem tags, repartidas por três casos — o que
 /// pertence à raiz, o que pertence por HIERARQUIA, e a raiz IRMÃ que não pode casar.
-fn povoar(world: &mut World, n: u32, k: u32) {
+fn povoar(world: &mut World, a: &Arvore, n: u32, k: u32) {
     for i in 0..n {
         let mut e = world.spawn((Name::new(format!("obj{i}")), StableId(u64::from(i) + 1)));
         if i % k == 0 {
             let tag = match (i / k) % 3 {
-                0 => ENEMY,
-                1 => BOSS,
-                _ => STATUE,
+                0 => a.enemy,
+                1 => a.boss,
+                _ => a.statue,
             };
-            e.insert(SondaTags(BTreeSet::from([tag])));
+            e.insert(Tags::from_ids([tag]));
         }
     }
 }
 
-/// A porta proposta, varrendo: quem pertence à subárvore de `q`, na ordem da IDENTIDADE.
-fn consulta(world: &mut World, q: u64) -> Vec<Entity> {
-    let alvo = subarvore(q);
-    let mut hits: Vec<(u64, Entity)> = world
-        .query::<(Entity, &SondaTags, &StableId)>()
-        .iter(world)
-        .filter(|(_, t, _)| !t.0.is_disjoint(&alvo))
-        .map(|(e, _, s)| (s.0, e))
-        .collect();
-    hits.sort_unstable_by_key(|(id, _)| *id);
-    hits.into_iter().map(|(_, e)| e).collect()
+fn consulta(world: &World, a: &Arvore, q: TagId) -> Vec<Entity> {
+    tagged(world, &a.tree, q)
 }
 
 #[test]
 fn the_probe_reaches_the_subtree_and_not_the_sibling_root() {
+    let a = arvore();
     let mut w = World::new();
-    povoar(&mut w, 30, 1);
+    povoar(&mut w, &a, 30, 1);
     assert_eq!(
-        consulta(&mut w, ENEMY).len(),
+        consulta(&w, &a, a.enemy).len(),
         20,
         "10 na raiz + 10 por hierarquia"
     );
-    assert_eq!(consulta(&mut w, FLYING).len(), 10, "so' os Boss");
-    assert_eq!(consulta(&mut w, STATUE).len(), 10, "a raiz irma' e' dela");
+    assert_eq!(consulta(&w, &a, a.flying).len(), 10, "so' os Boss");
+    assert_eq!(consulta(&w, &a, a.statue).len(), 10, "a raiz irma' e' dela");
 }
 
 #[test]
 #[ignore = "mede um relogio -- corra com --include-ignored --nocapture numa maquina calma"]
 fn measure_tag_scan() {
+    let a = arvore();
     println!("load {:.2}", load_average());
     println!("| N | com tags | acertos | consulta por tag (ms) | alvo por NOME, hoje (ms) |");
     println!("|---:|---:|---:|---:|---:|");
     for &n in &[100u32, 1_000, 10_000, 100_000] {
         for &k in &[10u32, 1] {
             let mut world = World::new();
-            povoar(&mut world, n, k);
-            let _ = consulta(&mut world, ENEMY);
+            povoar(&mut world, &a, n, k);
+            let _ = consulta(&world, &a, a.enemy);
             let mut por_tag = Vec::with_capacity(ITERS);
             let mut acertos = 0;
             for _ in 0..ITERS {
                 let t = Instant::now();
-                let h = consulta(&mut world, ENEMY);
+                let h = consulta(&world, &a, a.enemy);
                 por_tag.push(t.elapsed().as_secs_f64() * 1e3);
                 acertos = std::hint::black_box(h).len();
             }
@@ -142,6 +138,109 @@ fn measure_tag_scan() {
                 median(por_nome)
             );
         }
+    }
+    // ⚠️ E o que o sucedâneo não pagava, à parte: só a expansão da subárvore, com a dobra.
+    let mut expande = Vec::with_capacity(ITERS);
+    for _ in 0..ITERS {
+        let t = Instant::now();
+        std::hint::black_box(a.tree.subtree(a.enemy));
+        expande.push(t.elapsed().as_secs_f64() * 1e3);
+    }
+    println!(
+        "subtree(Enemy) numa arvore de 4 tags: {:.5} ms",
+        median(expande)
+    );
+    println!("load {:.2}", load_average());
+}
+
+/// Uma árvore de `n` tags em três níveis (`Raiz r/Filha c/Neta g`, 8 filhas e 8 netas por raiz), dada
+/// como um DOCUMENTO — a forma em que o load a recebe.
+fn documento(n: usize) -> Vec<ph2d_tags::Tag> {
+    let mut out = Vec::with_capacity(n);
+    let mut id = 1u64;
+    'fora: for r in 0.. {
+        for c in 0..8 {
+            for g in 0..8 {
+                if out.len() >= n {
+                    break 'fora;
+                }
+                out.push(ph2d_tags::Tag {
+                    id: TagId(id),
+                    path: format!("Raiz {r}/Filha {c}/Neta {g}"),
+                });
+                id += 1;
+            }
+        }
+    }
+    out
+}
+
+/// ⭐⭐ **O que a porta custa quando a ÁRVORE cresce** — a pergunta que a tabela de cima não faz (ela
+/// tem 4 tags). Três relógios, porque são três chamadores com frequências diferentes:
+///
+/// - `restore` — o LOAD de um projecto (uma vez por abertura);
+/// - `subtree` — cada consulta de `tagged` (uma por sinal por tag);
+/// - `belongs` — o filtro da física (uma por evento de colisão com filtro, W2).
+///
+/// ⚠️ A árvore de `n` tags do `documento` materializa também os ancestrais (`Raiz r`, `Raiz r/Filha
+/// c`), então a coluna `tags` é a contagem REAL depois do `restore`, não o `n` pedido.
+#[test]
+#[ignore = "mede um relogio -- corra com --include-ignored --nocapture numa maquina calma"]
+fn measure_tag_tree_scale() {
+    println!("load {:.2}", load_average());
+    println!(
+        "| n pedido | tags | restore (ms) | subtree(Raiz 0) (ms) | belongs, 1 objecto (ms) | belongs, a ULTIMA tag (ms) |"
+    );
+    println!("|---:|---:|---:|---:|---:|---:|");
+    for &n in &[8usize, 64, 512, 2048, 8192] {
+        let doc = documento(n);
+        let iters = if n >= 512 { 5 } else { ITERS };
+        let mut restaura = Vec::with_capacity(iters);
+        let mut tree = TagTree::new();
+        for _ in 0..iters {
+            let d = doc.clone();
+            let t = Instant::now();
+            let (arvore, _) = TagTree::restore(d, 0);
+            restaura.push(t.elapsed().as_secs_f64() * 1e3);
+            tree = arvore;
+        }
+        let raiz = tree.find("Raiz 0").expect("a raiz 0 existe");
+        let neta = tree.find("Raiz 0/Filha 0/Neta 0").expect("a neta existe");
+        let objecto = Tags::from_ids([neta]);
+        // ⚠️ O PIOR caso da porta: as duas procuras por id são lineares, e a tag e a raiz dela no
+        // FIM da ordem da árvore são as que cada procura mais demora a achar. A coluna ao lado (a
+        // neta da `Raiz 0`) é o melhor caso, e sem esta a tabela mostrava só esse.
+        let ultima = tree.tags().last().expect("a arvore nao e' vazia").clone();
+        let raiz_da_ultima = tree
+            .find(ultima.path.split('/').next().expect("um nivel"))
+            .expect("a raiz dela existe");
+        let objecto_do_fim = Tags::from_ids([ultima.id]);
+        let mut expande = Vec::with_capacity(ITERS);
+        let mut pertence = Vec::with_capacity(ITERS);
+        let mut pertence_fim = Vec::with_capacity(ITERS);
+        for _ in 0..ITERS {
+            let t = Instant::now();
+            std::hint::black_box(tree.subtree(raiz));
+            expande.push(t.elapsed().as_secs_f64() * 1e3);
+            let t = Instant::now();
+            std::hint::black_box(ph2d_ecs::tags::belongs(&objecto, &tree, raiz));
+            pertence.push(t.elapsed().as_secs_f64() * 1e3);
+            let t = Instant::now();
+            let sim = ph2d_ecs::tags::belongs(&objecto_do_fim, &tree, raiz_da_ultima);
+            pertence_fim.push(t.elapsed().as_secs_f64() * 1e3);
+            assert!(
+                std::hint::black_box(sim),
+                "a ultima tag pertence a raiz dela"
+            );
+        }
+        println!(
+            "| {n} | {} | {:.3} | {:.5} | {:.5} | {:.5} |",
+            tree.tags().len(),
+            median(restaura),
+            median(expande),
+            median(pertence),
+            median(pertence_fim)
+        );
     }
     println!("load {:.2}", load_average());
 }

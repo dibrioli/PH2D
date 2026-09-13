@@ -218,3 +218,34 @@ fn a_parent_is_always_immediately_followed_by_its_children() {
         "o irmão `A-x` meteu-se entre o pai e o filho — a árvore desenha-se errada"
     );
 }
+
+/// ⛔⛔⛔ **Renomear um catálogo para cima de um irmão que JÁ EXISTE é recusado** — defeito latente
+/// achado ao extrair a álgebra de caminhos (2026-09-13, `docs/Components/08_plano_tags.md` §5.2 gate 4).
+///
+/// O `rename` não conferia se o caminho novo já estava ocupado, e o resto da árvore compara POR
+/// CAMINHO: dois gémeos `"Personagens"` ⇒ a UI desenha duas linhas iguais, o escopo de um alcança o
+/// outro, e **apagar um apaga os dois** — os assets do irmão inocente saem da gaveta sem ninguém ter
+/// tocado nele. ⚠️ O Blender distribui dois gémeos no próprio ficheiro de catálogos (medido: 2 de 63),
+/// e é exactamente a forma que esta árvore não sabe ler.
+///
+/// **Mutação que deve sangrar:** tirar a conferência de ocupação do `rename`.
+#[test]
+fn renaming_a_catalog_onto_an_existing_sibling_is_refused() {
+    let mut t = CatalogTree::new();
+    let personagens = t.create("Personagens");
+    let cenarios = t.create("Cenários");
+    t.assign(prefab(1), personagens);
+    t.assign(prefab(2), cenarios);
+
+    assert!(
+        !t.rename(cenarios, "Personagens"),
+        "renomear para cima de um irmão existente criou gémeos"
+    );
+    assert_eq!(t.catalogs().len(), 2);
+    t.delete(cenarios);
+    assert_eq!(
+        t.catalog_of(&prefab(1)),
+        Some(personagens),
+        "apagar um catálogo levou o irmão que tinha o mesmo caminho"
+    );
+}

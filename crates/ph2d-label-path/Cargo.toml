@@ -1,0 +1,18 @@
+[package]
+name = "ph2d-label-path"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# ⛔ **Zero dependências, de propósito.** Esta folha é a álgebra de um caminho de texto; a POLÍTICA de
+# comparação (exacta nos catálogos, dobrada nas tags) chega como parâmetro, e é por isso que a
+# `ph2d-asset-index` pode usá-la sem herdar as tabelas Unicode da `ph2d-label-fold`.
+[dependencies]
+
+[lints]
+workspace = true

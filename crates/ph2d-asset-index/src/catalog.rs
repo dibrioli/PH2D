@@ -21,19 +21,34 @@
 //! ⚠️ **E a identidade NÃO é o caminho** — é o `id`. Renomear *«Personagens»* não pode desligar
 //! todos os assets que estão lá dentro, e é por isso que a atribuição guarda o id e nunca o texto.
 //!
+//! # ⭐ A álgebra do caminho mora numa folha PARTILHADA (2026-09-13)
+//!
+//! [`ph2d_label_path`] — as tags (`docs/Components/08_plano_tags.md`) guardam a hierarquia da mesma
+//! maneira, e a regra mais traiçoeira daqui (*um prefixo de texto não é um prefixo de caminho*)
+//! passaria a existir em duas cópias. ⚠️ **A comparação continua a ser a de sempre**: o texto EXACTO
+//! para a identidade, minúsculas para a ordem. As tags dobram acentos (decisão do dono D2); os
+//! catálogos não, e mudá-los é decisão dele, não um efeito colateral da extracção.
+//!
 //! # A cerca
 //!
 //! ⛔ Esta crate continua **folha**: sem serde, sem ECS, sem I/O. Quem grava é o shell
 //! (`project_catalogs.rs`), e é lá que vive a versão do formato.
 
 use crate::{AssetRef, CatalogId};
+use ph2d_label_path as path;
 use std::collections::BTreeMap;
 
 /// O separador de níveis de um caminho de catálogo.
 ///
 /// ⚠️ **Ele é o formato, não uma escolha de apresentação** — a árvore da UI é derivada de o
-/// dividir, e mudá-lo reinterpreta todo caminho já gravado.
-pub const SEP: char = '/';
+/// dividir, e mudá-lo reinterpreta todo caminho já gravado. Mora em [`ph2d_label_path::SEP`], que
+/// as tags partilham.
+pub const SEP: char = path::SEP;
+
+/// A comparação de IDENTIDADE dos catálogos: o texto exacto, como sempre foi.
+fn exacta(s: &str) -> String {
+    s.to_string()
+}
 
 /// Um catálogo. ⚠️ O `path` é a HIERARQUIA; o `id` é a IDENTIDADE.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -48,13 +63,13 @@ impl Catalog {
     /// O rótulo que a linha mostra — o último nível do caminho.
     #[must_use]
     pub fn label(&self) -> &str {
-        self.path.rsplit(SEP).next().unwrap_or(&self.path)
+        path::label(&self.path)
     }
 
     /// A que profundidade esta linha é desenhada (`0` = raiz).
     #[must_use]
     pub fn depth(&self) -> usize {
-        self.path.matches(SEP).count()
+        path::depth(&self.path)
     }
 }
 
@@ -182,7 +197,7 @@ impl CatalogTree {
     ///
     /// Devolve o id do catálogo pedido — o existente, se o caminho já lá estava.
     pub fn create(&mut self, path: &str) -> CatalogId {
-        let path = normalise(path);
+        let path = path::normalise(path);
         if let Some(c) = self.catalogs.iter().find(|c| c.path == path) {
             return c.id;
         }
@@ -217,8 +232,10 @@ impl CatalogTree {
     /// ⚠️ **As atribuições não se tocam:** elas guardam o `id`, e o id não muda. *Renomear uma
     /// gaveta não esvazia a gaveta.*
     ///
-    /// `false` se o id não existe, se o nome novo é vazio, ou se ele contém o separador (um nome
-    /// com `/` seria um segundo gesto — mover — escondido dentro de renomear).
+    /// `false` se o id não existe, se o nome novo é vazio, se ele contém o separador (um nome
+    /// com `/` seria um segundo gesto — mover — escondido dentro de renomear), ou ⛔ **se o caminho
+    /// novo já é de OUTRO catálogo** — ver o gate `renaming_a_catalog_onto_an_existing_sibling_is_refused`:
+    /// o resto desta árvore compara por caminho, e dois gémeos apagavam-se juntos.
     pub fn rename(&mut self, id: CatalogId, new_label: &str) -> bool {
         let label = new_label.trim();
         if label.is_empty() || label.contains(SEP) {
@@ -227,23 +244,26 @@ impl CatalogTree {
         let Some(old) = self.get(id).map(|c| c.path.clone()) else {
             return false;
         };
-        let parent = match old.rsplit_once(SEP) {
-            Some((p, _)) => format!("{p}{SEP}"),
-            None => String::new(),
+        let new_path = match path::parent(&old) {
+            Some(p) => format!("{p}{SEP}{label}"),
+            None => label.to_string(),
         };
-        let new_path = format!("{parent}{label}");
         if new_path == old {
             return true;
         }
+        if self
+            .catalogs
+            .iter()
+            .any(|c| c.id != id && c.path == new_path)
+        {
+            return false;
+        }
         self.touch();
-        // ⚠️ **Só o próprio e os DESCENDENTES**, e a fronteira é o separador: sem ele, renomear
-        // `"Hero"` reescreveria `"Heroine"` — um prefixo de texto não é um prefixo de caminho.
-        let child_prefix = format!("{old}{SEP}");
+        // ⚠️ **Só o próprio e os DESCENDENTES**, e a fronteira é o separador — a porta partilhada
+        // compara nível a nível, então renomear `"Hero"` nunca reescreve `"Heroine"`.
         for c in &mut self.catalogs {
-            if c.path == old {
-                c.path = new_path.clone();
-            } else if let Some(rest) = c.path.strip_prefix(&child_prefix) {
-                c.path = format!("{new_path}{SEP}{rest}");
+            if let Some(novo) = path::rebase(&c.path, &old, &new_path, exacta) {
+                c.path = novo;
             }
         }
         sort_as_a_tree(&mut self.catalogs);
@@ -255,14 +275,13 @@ impl CatalogTree {
     /// ⚠️ **Nunca apaga um asset**, e a distinção é a que o report do Enio sobre a biblioteca
     /// pagou: um catálogo é uma etiqueta, e tirar a etiqueta não é deitar fora o que ela nomeava.
     pub fn delete(&mut self, id: CatalogId) {
-        let Some(path) = self.get(id).map(|c| c.path.clone()) else {
+        let Some(raiz) = self.get(id).map(|c| c.path.clone()) else {
             return;
         };
-        let child_prefix = format!("{path}{SEP}");
         let doomed: Vec<CatalogId> = self
             .catalogs
             .iter()
-            .filter(|c| c.path == path || c.path.starts_with(&child_prefix))
+            .filter(|c| path::is_self_or_descendant(&c.path, &raiz, exacta))
             .map(|c| c.id)
             .collect();
         self.touch();
@@ -303,14 +322,13 @@ impl CatalogTree {
     /// todo navegador faz, e o que uma comparação de igualdade não daria.
     #[must_use]
     pub fn scope_of(&self, id: CatalogId) -> CatalogScope {
-        let Some(path) = self.get(id).map(|c| c.path.clone()) else {
+        let Some(raiz) = self.get(id).map(|c| c.path.clone()) else {
             return CatalogScope::All;
         };
-        let child_prefix = format!("{path}{SEP}");
         CatalogScope::These(
             self.catalogs
                 .iter()
-                .filter(|c| c.path == path || c.path.starts_with(&child_prefix))
+                .filter(|c| path::is_self_or_descendant(&c.path, &raiz, exacta))
                 .map(|c| c.id)
                 .collect(),
         )
@@ -359,33 +377,16 @@ impl CatalogTree {
 /// filhos dele. Com a comparação de texto isso é falso: `'-'` (0x2D) é menor que `'/'` (0x2F),
 /// então `"A-x"` cai **entre** `"A"` e `"A/B"` — o filho aparece indentado debaixo de um irmão.
 ///
-/// ⇒ a chave é a **sequência de níveis**, comparada nível a nível: `["a"] < ["a","b"] < ["a-x"]`.
-/// Um pai é um prefixo do filho, e um prefixo é sempre menor.
+/// ⇒ a chave é a **sequência de níveis** ([`ph2d_label_path::tree_order_key`]), comparada nível a
+/// nível: `["a"] < ["a","b"] < ["a-x"]`. Um pai é um prefixo do filho, e um prefixo é sempre menor.
 ///
 /// ⚠️ **Em minúsculas, que é a convenção desta casa** (a grade ordena por `name.to_lowercase()`).
-/// ⛔ Ela NÃO é uma colação de Unicode: `"Ártico"` continua a vir depois de `"Zebra"`, porque uma
-/// ordenação com acentos exige uma tabela que este repo não tem — e inventá-la aqui poria uma
-/// política de idioma numa crate folha. *A ordenação da grade tem exactamente a mesma dívida, e é
-/// melhor terem a mesma que terem duas.*
+/// ⛔ Ela NÃO é uma colação de Unicode: `"Ártico"` continua a vir depois de `"Zebra"`. A porta que
+/// dobra acentos existe desde 2026-09-13 (`ph2d-label-fold`, das tags), e adoptá-la AQUI mudaria a
+/// ordem da biblioteca e da grade — é decisão do dono, não da extracção. *A ordenação da grade tem
+/// exactamente a mesma dívida, e é melhor terem a mesma que terem duas.*
 fn sort_as_a_tree(catalogs: &mut [Catalog]) {
-    catalogs.sort_by_cached_key(|c| {
-        c.path
-            .split(SEP)
-            .map(str::to_lowercase)
-            .collect::<Vec<String>>()
-    });
-}
-
-/// Um caminho sem espaços nas pontas de cada nível e sem níveis vazios.
-///
-/// ⚠️ Sem isto, `"A//B"` e `"A/ B"` criariam níveis que a UI desenha como linhas em branco, e
-/// `"A/"` criaria um filho sem nome que ninguém consegue escolher nem apagar.
-fn normalise(path: &str) -> String {
-    path.split(SEP)
-        .map(str::trim)
-        .filter(|p| !p.is_empty())
-        .collect::<Vec<_>>()
-        .join(&SEP.to_string())
+    catalogs.sort_by_cached_key(|c| path::tree_order_key(&c.path, str::to_lowercase));
 }
 
 #[cfg(test)]

@@ -1,0 +1,23 @@
+[package]
+name = "ph2d-view-transform"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# ⛔ ZERO dependências de produção, e é o ponto: esta é a lei que o modelador (que sombreia na CPU)
+# e um passe de GPU (o gémeo em WGSL, com gate de paridade) vão responder IGUAL. Uma lei que puxasse
+# o `wgpu` ou a cena não serviria aos dois.
+[dependencies]
+
+[dev-dependencies]
+# O oráculo entrega sRGB CODIFICADO, e a comparação faz-se na mesma unidade — pela porta do repo,
+# nunca por um `x^(1/2.4)` escrito à mão no gate (o sRGB tem joelho).
+ph2d-color = { path = "../ph2d-color" }
+
+[lints]
+workspace = true

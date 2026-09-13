@@ -67,15 +67,17 @@ fn main() -> ExitCode {
             return ExitCode::from(1);
         }
     };
-    let wgsl =
-        match naga::back::wgsl::write_string(&module, &info, naga::back::wgsl::WriterFlags::empty())
-        {
-            Ok(s) => s,
-            Err(e) => {
-                println!("{path}: FRONTEND OK · VALIDACAO OK · WGSL-OUT ERRO: {e}");
-                return ExitCode::from(1);
-            }
-        };
+    let wgsl = match naga::back::wgsl::write_string(
+        &module,
+        &info,
+        naga::back::wgsl::WriterFlags::empty(),
+    ) {
+        Ok(s) => s,
+        Err(e) => {
+            println!("{path}: FRONTEND OK · VALIDACAO OK · WGSL-OUT ERRO: {e}");
+            return ExitCode::from(1);
+        }
+    };
     println!(
         "{path}: FRONTEND OK ({parse_ms:.1} ms) · VALIDACAO OK · WGSL {} linhas · {} funcoes · {} globais",
         wgsl.lines().count(),

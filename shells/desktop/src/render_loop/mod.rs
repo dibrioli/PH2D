@@ -346,7 +346,7 @@ mod fase_signal_outbox;
 mod fase_sim_extract;
 /// Fase do quadro: os verbos do esqueleto.
 mod fase_skeleton_verbs;
-/// Fase do quadro: a publicacao dos instantaneos.
+/// Fase do quadro: a publicação dos instantâneos.
 mod fase_snapshots_publish;
 /// Fase do quadro: a estrategia de origem e o re-assento do pivo.
 mod fase_source_strategy_and_joint_pivot;

@@ -222,6 +222,8 @@ mod fase_sculpt3d_pre_frame;
 mod fase_session_upkeep;
 /// Fase do quadro: o outbox de sinais (os produtores que faltavam e o dreno).
 mod fase_signal_outbox;
+/// Fase do quadro: o extract (propagação, emissão das sprites e a ordem total do quadro).
+mod fase_sim_extract;
 /// Fase do quadro: as cenas do Sprite Inspector (9-slice, âncoras, montagem, Animation).
 mod fase_sprite_inspector_smokes;
 /// Fase do quadro: as cenas dos pixels da sprite (`.ase`, dither, emissiva).
@@ -476,6 +478,7 @@ impl crate::App {
         self.fase_physics_step(player_input);
         self.fase_signal_outbox(anim_signals, timer_signals);
         self.fase_open_recipe();
+        self.fase_sim_extract(dt, preview_overrides, sheet_preview, ppm, default_filter);
         let Some(gfx) = self.gfx.as_mut() else {
             return;
         };
@@ -505,10 +508,6 @@ impl crate::App {
             text_system,
             hero_screen,
             hero_arena,
-            prop_state,
-            worklist,
-            sort_scratch,
-            sort_inputs,
             frame_order,
             band_doc_scenes,
             hero_live,
@@ -534,24 +533,6 @@ impl crate::App {
             frosting,
             ..
         } = FrameGfx::of(gfx);
-
-        sim_extract::run(
-            dt,
-            sim,
-            present,
-            renderer,
-            prop_state,
-            worklist,
-            sort_scratch,
-            sort_inputs,
-            &preview_overrides,
-            ppm,
-            camera.cull_mask,
-            default_filter,
-            ph2d_ecs::RepeatMode::Disabled,
-            sheet_preview,
-            frame_order,
-        );
 
         // Sprite-layer clear color = backdrop visible in the canvas
         // area through the transparent regions of `vello_rt`. Live

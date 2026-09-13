@@ -112,7 +112,10 @@ mod painter_curve_input;
 pub(crate) mod painter_falloff_input;
 mod painter_grid_erase; // os modificadores que o CanvasPointer nao carrega
 pub(crate) mod protect_brush;
+// Só os testes do eixo espectral o leem por `super::` — os métodos de áudio já o têm no próprio ficheiro.
 use despacho_clique_roldana::select_wheel_at;
+#[cfg(all(test, feature = "panel-audio-editor"))]
+use despacho_metodos_picks_e_arrastos::freq_at_y;
 
 /// Deslocamento diagonal de um paste/duplicate, em pixels de tela (o zoom converte
 /// para world) — a cópia não nasce exatamente sob o original.
@@ -1706,18 +1709,6 @@ fn resize_cursor_for_edges(edges: u8) -> winit::window::CursorIcon {
 #[cfg(test)]
 #[path = "input_dispatch/despacho_testes_cursor.rs"]
 mod cursor_tests;
-
-/// Map a screen `y` inside the overlay to a **frequency**, as a fraction of Nyquist.
-///
-/// Frequency runs UP the spectrogram (DC at the bottom, Nyquist at the top) — the DAW
-/// convention, and the one the picture is drawn in. Screen y runs DOWN. Getting this
-/// inversion wrong would select a band and repair its mirror image: a fix that removes the
-/// wrong sound and swears it did what you asked.
-#[cfg(feature = "panel-audio-editor")]
-fn freq_at_y(view: &ph2d_app_audio::WaveView, y: f32) -> f32 {
-    let r = view.rect;
-    (1.0 - (y - r.y) / r.h.max(1.0)).clamp(0.0, 1.0)
-}
 
 #[cfg(all(test, feature = "panel-audio-editor"))]
 #[path = "input_dispatch/despacho_testes_espectro.rs"]

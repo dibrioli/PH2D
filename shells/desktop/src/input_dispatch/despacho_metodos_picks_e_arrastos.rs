@@ -567,3 +567,15 @@ impl crate::App {
         true
     }
 }
+
+/// Map a screen `y` inside the overlay to a **frequency**, as a fraction of Nyquist.
+///
+/// Frequency runs UP the spectrogram (DC at the bottom, Nyquist at the top) — the DAW
+/// convention, and the one the picture is drawn in. Screen y runs DOWN. Getting this
+/// inversion wrong would select a band and repair its mirror image: a fix that removes the
+/// wrong sound and swears it did what you asked.
+#[cfg(feature = "panel-audio-editor")]
+pub(super) fn freq_at_y(view: &ph2d_app_audio::WaveView, y: f32) -> f32 {
+    let r = view.rect;
+    (1.0 - (y - r.y) / r.h.max(1.0)).clamp(0.0, 1.0)
+}

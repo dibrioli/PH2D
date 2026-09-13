@@ -374,4 +374,57 @@ impl crate::App {
         }
         false
     }
+
+    /// A cena de escultura (a divisão `Ctrl+Alt+Q` antes do resto) e o modelador 3D tomam as teclas deles antes do
+    /// store.
+    pub(super) fn ramo_teclas_3d(
+        &mut self,
+        physical_key: PhysicalKey,
+        state: ElementState,
+    ) -> bool {
+        // ADR-0150 W2: a cena 3D toma as teclas dela ANTES do store.
+        //
+        // ⚠️ **A justificativa que morava aqui ENVELHECEU, e a nota virou o bug.** Ela
+        // dizia *"inerte (e portanto invisível) sem cena armada — num run normal
+        // `sculpt3d` é `None`"*, o que era verdade enquanto o módulo vivia atrás de uma
+        // variável de ambiente, e ficou **falso no dia do pill** (W-Pill, 2026-08-10):
+        // num run normal a cena passa a existir ao primeiro clique, e **sair do modo
+        // nunca a destrói**. Como este `return` corre ANTES do `handler.on_key` logo
+        // abaixo, uma porta que só perguntava *"a cena existe?"* passou a comer os dez
+        // dígitos e ~26 letras de todo painel do app, para sempre.
+        //
+        // Quem responde agora é [`Self::sculpt3d_keys_live`] (dentro da porta), pela
+        // MESMA pergunta que o ponteiro daquela cena já fazia. *Quem move o número que
+        // tornava uma nota verdadeira tem de reconferir a nota.*
+        // ⭐⭐⭐ **`Ctrl+Alt+Q` — a divisão do canvas da ESCULTURA**, a mesma tecla (e a mesma
+        // lei dos três modificadores por nome) do módulo de modelagem.
+        //
+        // ⚠️ **Ela corre ANTES do `sculpt3d_key`, e a ordem é a cura**: aquele tem um catch-all
+        // (`if ctrl { … return false }`) que engole todo `Ctrl+` que não seja o desfazer, e foi
+        // ele que matou a primeira redacção desta tecla (report do Enio, 2026-09-08).
+        #[cfg(feature = "sculpt3d")]
+        if state == ElementState::Pressed
+            && let PhysicalKey::Code(code) = physical_key
+            && self.sculpt3d_quad_key(code)
+        {
+            return true;
+        }
+        #[cfg(feature = "sculpt3d")]
+        if state == ElementState::Pressed
+            && let PhysicalKey::Code(code) = physical_key
+            && self.sculpt3d_key(
+                code,
+                self.modifiers.control_key(),
+                self.modifiers.shift_key(),
+            )
+        {
+            return true;
+        }
+        // ⭐ **AS TECLAS DO MODELADOR 3D, numa porta só** — ver
+        // [`keyboard_field3d`](super::keyboard_field3d).
+        if self.field3d_keys(physical_key, state) {
+            return true;
+        }
+        false
+    }
 }

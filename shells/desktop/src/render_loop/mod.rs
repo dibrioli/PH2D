@@ -214,6 +214,8 @@ mod fase_new_image_modal;
 mod fase_open_recipe;
 /// Fase do quadro: as cenas do pincel do Painter (taper, tinta molhada).
 mod fase_painter_brush_smokes;
+/// Fase do quadro: ligar, rigar e assar a fisica.
+mod fase_physics_join_rig_bake;
 /// Fase do quadro: o passo da física (dispatch, flash, readout do player, juntas que cederam).
 mod fase_physics_step;
 /// Fase do quadro: o que está sob o cursor (a 1.ª do `run_render_frame`).
@@ -10722,139 +10724,12 @@ impl crate::App {
                     &mut self.physics.joint_draw,
                 );
             }
-            if join_chain {
-                let (made, last) = ph2d_app_physics::joint_draw::join_chain(
-                    sim,
-                    &inspector_selection,
-                    ph2d_app_physics::joint::kind_of(self.physics.join_kind),
-                );
-                // Select the LAST joint so §12 (Physics Joint) appears
-                // immediately — the Kind selector and tuning are right there.
-                // Otherwise the bodies stay selected (§11) and the joint is only
-                // reachable by hunting for it in the Hierarchy by hand, which is
-                // why creating anything but a Pin felt impossible. On a chain it
-                // is the link that closes; showing one of the N is more honest
-                // than showing none.
-                if let Some(j) = last {
-                    hero.gizmo.selection = Some(j.to_bits());
-                    hero.gizmo.extra_selection.clear();
-                }
-                if made > 1 {
-                    toasts.push(ph2d_editor_core::Toast::info(format!(
-                        "Chained {} bodies with {made} joints",
-                        made + 1
-                    )));
-                }
-            }
-            // W-Rig: a TERCEIRA rota de criação — a única que não pede ao artista
-            // que redescreva uma estrutura que ele já desenhou. Depois do
-            // `join_chain` porque as duas escrevem joints, e a ordem entre elas
-            // num mesmo frame só importaria se o artista tivesse clicado nas duas
-            // (ele não pode: são dois botões).
-            if rig_now {
-                let roots: Vec<u64> = hero.gizmo.iter_selected().collect();
-                let plan = ph2d_app_physics::joint_rig::plan(sim, &roots);
-                let out = ph2d_app_physics::joint_rig::apply(
-                    sim,
-                    &plan,
-                    ph2d_app_physics::joint::kind_of(self.physics.join_kind),
-                    editor_queue,
-                    component_registry,
-                );
-                // ⚠️ O flush mora DENTRO do gerador, entre dar corpo e ligar: a
-                // emenda mede o `Collider` que a primeira metade acabou de
-                // enfileirar. Aqui fica só o deck de toasts, que é deste laço.
-                if let Some(e) = out.error {
-                    toasts.push(ph2d_editor_core::Toast::error(format!(
-                        "Rig commit failed: {e}"
-                    )));
-                }
-                let (bodies, joints, last) = (out.bodies, out.joints, out.last);
-                // Seleciona o ÚLTIMO joint, pelo motivo que o `join_chain`
-                // documenta: a §12 abre na hora, com o Kind e a afinação à mão —
-                // e afinar UM e carimbar o resto é o gesto que a W-JointCopy
-                // acabou de tornar barato.
-                if let Some(j) = last {
-                    hero.gizmo.selection = Some(j.to_bits());
-                    hero.gizmo.extra_selection.clear();
-                }
-                if joints > 0 {
-                    toasts.push(ph2d_editor_core::Toast::info(format!(
-                        "Rigged {bodies} new bodies with {joints} joints"
-                    )));
-                }
-            }
-            // W4 - bake the selection's simulated motion into curves. After the
-            // joint work above because a baked body stops being simulated, and
-            // the frame's other physics edits should land on the body as the
-            // artist authored it.
-            if let Some(bits) = bake_request {
-                let entities: Vec<ph2d_ecs::Entity> = bits
-                    .iter()
-                    .map(|&b| ph2d_ecs::Entity::from_bits(b))
-                    .collect();
-                let (start, end) =
-                    ph2d_app_physics::bake::bake_range(&self.timeline.doc, &self.playhead);
-                let outcome = ph2d_app_physics::bake::bake_selection(
-                    &mut self.timeline,
-                    physics,
-                    sim,
-                    &entities,
-                    start,
-                    end,
-                    self.fixed_step.fixed_dt(),
-                    self.bake_channels,
-                    &mut self.player_tape,
-                    editor_queue,
-                    component_registry,
-                );
-                if outcome.unmappable {
-                    toasts.push(ph2d_editor_core::Toast::info(
-                        "Cannot bake here: this clip does not play exactly once",
-                    ));
-                } else if outcome.refused {
-                    toasts.push(ph2d_editor_core::Toast::info(
-                        "Finish the current edit before baking",
-                    ));
-                } else if outcome.already_baked {
-                    toasts.push(ph2d_editor_core::Toast::info(
-                        "Already baked - the timeline drives these bodies now",
-                    ));
-                } else if outcome.is_empty() {
-                    toasts.push(ph2d_editor_core::Toast::info(
-                        "Nothing to bake: nothing moved",
-                    ));
-                } else {
-                    // Back to the top, because that is where the animation the
-                    // artist just made begins - and because the kind change only
-                    // reaches rapier at tick 0 (`reconcile_structure`
-                    // re-describes a body at rest), so this is also what makes
-                    // the hand-over take effect.
-                    //
-                    // ⚠️ PAUSE as well, and the rewind alone is not enough:
-                    // `Playhead::rewind` preserves the play state by design, and
-                    // `advance_ticks` runs EARLIER in the frame than
-                    // `ph2d_app_physics::bridge::dispatch::dispatch`. Still playing, the clock is
-                    // already past 0 by the time the bridge looks, `at_rest` is
-                    // never true again, and the flip never reaches rapier: the
-                    // body keeps falling as Dynamic and the curve is discarded -
-                    // exactly the "clicks Bake, nothing changes" failure the
-                    // hand-over exists to prevent.
-                    self.playhead.rewind();
-                    self.playhead.pause();
-                    // The window mirrors the button: a partial range (W-BakeRange)
-                    // reads "2.0-5.0s", the common full-range bake just "5.0s".
-                    let window = if start > 0.0 {
-                        format!("{start:.1}-{end:.1}s")
-                    } else {
-                        format!("{end:.1}s")
-                    };
-                    toasts.push(ph2d_editor_core::Toast::info(format!(
-                        "Baked {window} - {} bodies, {} tracks - now Kinematic",
-                        outcome.bodies, outcome.tracks
-                    )));
-                }
-            }
+            self.fase_physics_join_rig_bake(fase_physics_join_rig_bake::PhysicsCreateIntents {
+                bake_request,
+                join_chain,
+                rig_now,
+                inspector_selection,
+            });
             self.fase_autokey();
             self.fase_hierarchy_group_merge(fase_hierarchy_group_merge::HierarchyMergeIntents {
                 group_row,

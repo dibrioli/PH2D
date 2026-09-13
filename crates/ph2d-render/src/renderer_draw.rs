@@ -92,6 +92,7 @@ impl SpriteRenderer {
         // (extracted to keep this file under its LOC cap; M0.T11).
         crate::sprite_collect::collect_sorted_instances(
             &mut self.scratch,
+            &mut self.mesh_frame,
             present,
             extra,
             rank_window,
@@ -143,6 +144,12 @@ impl SpriteRenderer {
     ) {
         self.scratch.clear();
         self.scratch.extend_from_slice(instances);
+        // ⛔ Uma fatia de fora não traz malhas: uma marca herdada (o emissivo e o vidro do prefab
+        // copiam instâncias da cena) indexaria as malhas de OUTRA chamada.
+        self.mesh_frame.clear();
+        for inst in &mut self.scratch {
+            crate::sprite_mesh::clear_mesh_tag(inst);
+        }
         crate::sprite_collect::sort_render_order(&mut self.scratch);
         self.draw_scratch(target, camera, window, clear_color, None, scene_viewport);
     }
@@ -187,6 +194,8 @@ impl SpriteRenderer {
         let count = self
             .instance_buffer
             .upload(&self.gpu, self.scratch.as_slice());
+        self.mesh_buffer
+            .upload(&self.gpu, self.mesh_frame.vertices.as_slice());
 
         // W3 §8: does this frame contain any ClipChildren group or Mask2D /
         // MaskInteraction role? The common case (neither) takes the exact
@@ -301,7 +310,13 @@ impl SpriteRenderer {
                         bound_blend = Some(run.blend);
                     }
                     pass.set_bind_group(1, bg, &[]);
-                    pass.draw(0..4, run.start..run.end);
+                    crate::sprite_mesh::draw_run(
+                        &mut pass,
+                        run,
+                        &self.quad_buffer,
+                        self.mesh_buffer.buffer(),
+                        &self.mesh_frame.ranges,
+                    );
                 }
             }
             // GPU-resident extra (ADR-0126): the instance vertex buffer IS the
@@ -355,6 +370,7 @@ impl SpriteRenderer {
                 &self.frame_bind_group,
                 &self.quad_buffer,
                 self.instance_buffer.buffer(),
+                (self.mesh_buffer.buffer(), &self.mesh_frame.ranges),
                 &self.runs,
                 material_bg,
             );
@@ -373,6 +389,7 @@ impl SpriteRenderer {
                 &self.frame_bind_group,
                 &self.quad_buffer,
                 self.instance_buffer.buffer(),
+                (self.mesh_buffer.buffer(), &self.mesh_frame.ranges),
                 &self.runs,
                 material_bg,
             );

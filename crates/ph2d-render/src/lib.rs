@@ -75,6 +75,7 @@ pub mod renderer;
 pub mod sink_style;
 pub mod sprite;
 mod sprite_collect;
+mod sprite_mesh;
 /// Sprite Inspector v2 — W0 frozen (schema v3 baseline). The W1
 /// schema bump v3→v4 + ABI changes live behind this module. See
 /// [`docs/HANDOFF_sprite_inspector_v2.md`](../../../docs/HANDOFF_sprite_inspector_v2.md)
@@ -138,6 +139,7 @@ pub use registry::register_render_components;
 pub use renderer::SpriteRenderer;
 pub use sprite::{GpuTexRun, QuadVertex, RenderInstance, Sprite, SpriteSource};
 pub use sprite_collect::sort_render_order;
+pub use sprite_mesh::SpriteMesh;
 pub use world_rt::WorldRt;
 // The wrapper enum + the canonical load path (`load_sprite` +
 // `LoadError`, ADR-0070-amendment-2 §4) are re-exported at crate root —

@@ -51,6 +51,7 @@ fn compute_runs_groups_consecutive_same_texture() {
                 clip_role: 0,
                 mask_role: 0,
                 blend: 0,
+                mesh: 0,
             },
             DrawRun {
                 texture_id: 7,
@@ -61,6 +62,7 @@ fn compute_runs_groups_consecutive_same_texture() {
                 clip_role: 0,
                 mask_role: 0,
                 blend: 0,
+                mesh: 0,
             },
             DrawRun {
                 texture_id: 12,
@@ -71,9 +73,24 @@ fn compute_runs_groups_consecutive_same_texture() {
                 clip_role: 0,
                 mask_role: 0,
                 blend: 0,
+                mesh: 0,
             },
         ]
     );
+}
+
+/// ⭐ **Uma instância desenhada como MALHA é um run só dela** — mesmo com a textura, a amostragem e a
+/// mistura iguais às das vizinhas. Fundida num run de quads, ela seria desenhada como quad (ou as
+/// vizinhas como a malha dela).
+#[test]
+fn a_mesh_instance_is_its_own_run_even_with_the_same_texture() {
+    let mut com_malha = inst(7);
+    com_malha.flip_uv |= 1 << RenderInstance::MESH_SHIFT;
+    let scratch = [inst(7), com_malha, inst(7)];
+    let mut runs = Vec::new();
+    compute_runs(&scratch, &mut runs);
+    let resumo: Vec<(u32, u32, u32)> = runs.iter().map(|r| (r.start, r.end, r.mesh)).collect();
+    assert_eq!(resumo, vec![(0, 1, 0), (1, 2, 1), (2, 3, 0)]);
 }
 
 #[test]

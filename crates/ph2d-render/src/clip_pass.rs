@@ -17,6 +17,9 @@
 //! leak into a later group's test (the marks accumulate but the refs
 //! differ). Extracted from `renderer.rs` to keep `render()` readable
 //! (handoff §1.6).
+//!
+//! ⭐ **Every run is drawn through [`crate::sprite_mesh::draw_run`]** — a sprite drawn as a mesh
+//! marks, clips and is clipped like the quad it replaces (2026-09-13).
 
 use crate::pipeline::SpritePipeline;
 use crate::renderer::DrawRun;
@@ -29,7 +32,8 @@ use crate::sprite::RenderInstance;
 /// §1.3). `resolve_material` maps a run to its material bind group (atlas
 /// per-sampling or individual texture), returning `None` for a texture id
 /// that vanished before render — that run is skipped, matching the normal
-/// pass.
+/// pass. `meshes` is the mesh vertex buffer of this render call and the range
+/// of each mesh (`crate::sprite_mesh`).
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn encode_clip_groups<'a>(
     encoder: &mut wgpu::CommandEncoder,
@@ -39,9 +43,11 @@ pub(crate) fn encode_clip_groups<'a>(
     frame_bg: &wgpu::BindGroup,
     quad_buf: &wgpu::Buffer,
     instance_buf: &wgpu::Buffer,
+    meshes: (&wgpu::Buffer, &[(u32, u32)]),
     runs: &[DrawRun],
     resolve_material: impl Fn(u32, u32) -> Option<&'a wgpu::BindGroup>,
 ) {
+    let (mesh_buf, mesh_ranges) = meshes;
     let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
         label: Some("ph2d-render clip pass"),
         color_attachments: &[Some(wgpu::RenderPassColorAttachment {
@@ -100,15 +106,18 @@ pub(crate) fn encode_clip_groups<'a>(
         let clip_and_draw = span
             .iter()
             .any(|r| r.clip_role == RenderInstance::CLIP_ROLE_MASK_CLIP_AND_DRAW);
+        let draw = |pass: &mut wgpu::RenderPass<'_>, run: &DrawRun| {
+            if let Some(bg) = resolve_material(run.texture_id, run.sampling) {
+                pass.set_bind_group(1, bg, &[]);
+                crate::sprite_mesh::draw_run(pass, run, quad_buf, mesh_buf, mesh_ranges);
+            }
+        };
 
         // 1. MARK — write the silhouette into the stencil (no color).
         pass.set_pipeline(&pipe.mark_pipeline);
         pass.set_stencil_reference(stencil_ref);
         for run in span.iter().filter(is_mask) {
-            if let Some(bg) = resolve_material(run.texture_id, run.sampling) {
-                pass.set_bind_group(1, bg, &[]);
-                pass.draw(0..4, run.start..run.end);
-            }
+            draw(&mut pass, run);
         }
 
         pass.set_pipeline(&pipe.test_pipeline);
@@ -118,18 +127,12 @@ pub(crate) fn encode_clip_groups<'a>(
         //    parent is an invisible mould.
         if clip_and_draw {
             for run in span.iter().filter(is_mask) {
-                if let Some(bg) = resolve_material(run.texture_id, run.sampling) {
-                    pass.set_bind_group(1, bg, &[]);
-                    pass.draw(0..4, run.start..run.end);
-                }
+                draw(&mut pass, run);
             }
         }
         // 3. Members — clipped to the silhouette.
         for run in span.iter().filter(is_member) {
-            if let Some(bg) = resolve_material(run.texture_id, run.sampling) {
-                pass.set_bind_group(1, bg, &[]);
-                pass.draw(0..4, run.start..run.end);
-            }
+            draw(&mut pass, run);
         }
     }
 }
@@ -150,9 +153,11 @@ pub(crate) fn encode_mask_pass<'a>(
     frame_bg: &wgpu::BindGroup,
     quad_buf: &wgpu::Buffer,
     instance_buf: &wgpu::Buffer,
+    meshes: (&wgpu::Buffer, &[(u32, u32)]),
     runs: &[DrawRun],
     resolve_material: impl Fn(u32, u32) -> Option<&'a wgpu::BindGroup>,
 ) {
+    let (mesh_buf, mesh_ranges) = meshes;
     let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
         label: Some("ph2d-render mask pass"),
         color_attachments: &[Some(wgpu::RenderPassColorAttachment {
@@ -185,7 +190,7 @@ pub(crate) fn encode_mask_pass<'a>(
         for run in runs.iter().filter(|r| r.mask_role == role) {
             if let Some(bg) = resolve_material(run.texture_id, run.sampling) {
                 pass.set_bind_group(1, bg, &[]);
-                pass.draw(0..4, run.start..run.end);
+                crate::sprite_mesh::draw_run(pass, run, quad_buf, mesh_buf, mesh_ranges);
             }
         }
     };

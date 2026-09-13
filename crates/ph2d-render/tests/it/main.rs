@@ -47,6 +47,7 @@ mod render_instance_pod_size_v4;
 mod skin_pieces_gpu_cost;
 mod smoke_fixture_renderable;
 mod spatial_weights_parity;
+mod sprite_mesh_gpu;
 mod sprite_premul;
 mod sprite_versioned_postcard;
 mod sprite_wgsl_valid;

@@ -54,6 +54,10 @@ pub(crate) struct DrawRun {
     /// run binds the matching blend pipeline; index `0` (Mix) is the
     /// zero-regression default. Only honored by the normal pass.
     pub(crate) blend: u8,
+    /// Mesh tag (`RenderInstance::unpack_mesh`): `0` = the unit quad; `n > 0` = the `n`-th mesh of
+    /// this render call (`crate::sprite_mesh`). Part of the run key so a mesh never merges with the
+    /// quads around it — it draws its own vertex range.
+    pub(crate) mesh: u32,
 }
 
 pub struct SpriteRenderer {
@@ -101,6 +105,10 @@ pub struct SpriteRenderer {
     /// efeito responde por quem a escreveu, não pelo produto.* Só diagnóstico: nada no
     /// desenho o lê.
     applied_subrect: Option<[f32; 4]>,
+    /// ⭐ As malhas da chamada de render em curso (`crate::sprite_mesh`) — preenchidas pela recolha.
+    mesh_frame: crate::sprite_mesh::MeshFrame,
+    /// O buffer de vértices dessas malhas, o gémeo do `instance_buffer`.
+    mesh_buffer: crate::sprite_mesh::MeshVertexBuffer,
 }
 
 /// The `Stencil8` texture + its view + the size it was allocated for.
@@ -170,6 +178,7 @@ impl SpriteRenderer {
         // descriptor so both samplers match from frame 0. Subsequent
         // changes go through `set_filter_mode` which drives both.
         let individual = IndividualTextureStore::new(&gpu);
+        let mesh_buffer = crate::sprite_mesh::MeshVertexBuffer::new(&gpu);
 
         Self {
             gpu,
@@ -192,6 +201,8 @@ impl SpriteRenderer {
             // Allocated lazily on the first clipped frame.
             clip_stencil: None,
             applied_subrect: None,
+            mesh_frame: crate::sprite_mesh::MeshFrame::default(),
+            mesh_buffer,
         }
     }
 
@@ -564,9 +575,11 @@ fn compute_runs(scratch: &[RenderInstance], runs: &mut Vec<DrawRun>) {
             RenderInstance::clip_role(i.clip_meta),
             RenderInstance::mask_role(i.clip_meta),
             RenderInstance::unpack_blend(i.flip_uv),
+            RenderInstance::unpack_mesh(i.flip_uv),
         )
     };
-    let emit = |runs: &mut Vec<DrawRun>, k: (u32, u32, u32, u8, u8, u8), start: u32, end: u32| {
+    type Key = (u32, u32, u32, u8, u8, u8, u32);
+    let emit = |runs: &mut Vec<DrawRun>, k: Key, start: u32, end: u32| {
         runs.push(DrawRun {
             texture_id: k.0,
             sampling: k.1,
@@ -576,6 +589,7 @@ fn compute_runs(scratch: &[RenderInstance], runs: &mut Vec<DrawRun>) {
             clip_role: k.3,
             mask_role: k.4,
             blend: k.5,
+            mesh: k.6,
         });
     };
     let mut start = 0u32;

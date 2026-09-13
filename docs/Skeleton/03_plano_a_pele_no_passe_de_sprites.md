@@ -55,8 +55,84 @@ amostrados são os mesmos.
 
 ---
 
-## §4 — As waves
+## §4 — O mecanismo, verificado no código antes de ser escolhido
 
-⏳ **Em escrita** — dependem do mapa do passe de sprites (campos da instância e o que o shader faz
-com cada um · a partição das chamadas de desenho · os grupos de recorte · os passes que consomem
-instâncias · o mecanismo de «desenho extra», se existir).
+⭐⭐⭐ **O shader de sprites JÁ desenha uma malha, sem pipeline nova.** O `vs_main` calcula tudo a
+partir de dois atributos por vértice e da instância: `local = anchor + quad_pos · size` →
+`world = world_pos + basis · local`, e a UV sai de `quad_uv` (espelhada, repetida, `uv_xform`,
+`mix(atlas_uv)`); a tinta por canto interpola sobre o `quad_uv` NÃO espelhado. ⇒ um vértice da
+malha leva
+
+- `quad_uv` = a sua coordenada **de repouso** na imagem (`0..1`, `v = 0` em cima — a convenção do
+  `QUAD_STRIP`);
+- `quad_pos` = a posição **posada** no quad normalizado da sprite, `(local − anchor) ÷ size`, com o
+  `anchor` e o `size` **da instância**;
+
+e o shader devolve a posição posada e o texel certo, com tinta, opacidade, mistura,
+pré-multiplicação, repetição, tinta por canto e o shader de marca do recorte — **tudo o que uma sprite
+tem, sem uma linha de WGSL**.
+
+| facto | onde |
+|---|---|
+| as 10 pipelines são `TriangleStrip`, sem culling | `ph2d-render/src/pipeline.rs` `build_variant` |
+| ⇒ uma lista de `N` triângulos entra como tira com degenerados de ligação: `5N − 2` vértices, zero pipelines novas | |
+| o shader lê só os bits **0–4** do `flip_uv` (`&1`, `&2`, `&4`, `(>>3)&3`); a CPU desempacota a mistura com `& 0b111` | `sprite.wgsl` · `instance.rs::unpack_blend` |
+| ⇒ os bits **8–31** do `flip_uv` levam a marca de malha **só da CPU**, sem mudar o layout da instância de nenhuma sprite | |
+| as chamadas partem-se em runs por `(texture_id, sampling, clip_group, clip_role, mask_role, blend)` e cada run é `draw(0..4, start..end)` | `renderer.rs::compute_runs` · `renderer_draw.rs` · `clip_pass.rs` |
+| a sprite é ordenada por rank e filtrada pela janela de banda na recolha | `sprite_collect.rs` |
+
+⛔⛔ **E um QUINTO defeito, latente, achado ao conferir a repouso:** o quad usa
+`Sprite::resolve_anchor(ppm)`, que soma `size/2` quando a sprite **não está centrada** e o
+**offset** (px → m); o `skin_image::pixel_to_local` usa o `anchor` **cru** ⇒ uma sprite com
+*Centered* desligado ou com *Offset* **salta de sítio ao ser presa**. O smoke não o mostra (a imagem
+importada nasce centrada e sem offset).
+
+---
+
+## §5 — As waves
+
+### W1 — o primitivo: `SpriteMesh` no passe de sprites (`ph2d-render`, foundational, aditivo)
+
+- Componente de apresentação `SpriteMesh { local, uv, tris }` (posições posadas em metros LOCAIS da
+  sprite, UVs de repouso, triângulos).
+- A **recolha** converte `local → quad_pos` com o `anchor`/`size` da própria instância, costura a
+  tira, acumula um buffer de vértices de malha **por chamada de render** e escreve a marca
+  `(índice + 1) << 8` no `flip_uv`. ⛔ **Instâncias que chegam de fora** (`extra`, o
+  `render_instances_only`) **saem sem marca** — não há malha para elas, e uma marca herdada
+  indexaria a malha de outra chamada.
+- `compute_runs` parte na marca; o laço de desenho, o recorte e a máscara trocam o buffer do slot 0
+  e desenham o intervalo da malha.
+- **Gates:** a costura dá `5N − 2` vértices e as janelas não-degeneradas são os triângulos de
+  entrada · o run parte na malha · a marca sai das instâncias de fora · a volta `local → quad_pos →
+  anchor + quad_pos·size` devolve o `local`, **com sprite não-centrada e com offset** · ⭐ GPU: uma
+  malha de 2 triângulos em repouso **é o quad ao pixel**, com tinta, opacidade e espelhamento · ⭐⭐
+  GPU: arte **translúcida** numa malha fina em repouso **é o quad** (a lei que o caminho do Vello
+  reprovava com `10 580` px).
+
+### W2 — a extracção emite a sprite presa com a malha (shell + `ph2d-skeleton-live`)
+
+- A guarda `!skinned_image` sai: a sprite presa passa pelo `emit::sprite` (rank, visibilidade,
+  propriedades) e ganha o `SpriteMesh` posado (`Fast` = a malha guardada; `Smooth` = refinada contra a
+  tolerância em pixels de ecrã).
+- `pixel_to_local` passa a usar o `resolve_anchor` (o quinto defeito).
+- O `draw_skinned_images` do Vello sai do quadro; o doc falso da `skinned_image` e o gate de texto
+  que o «confirmava» são reescritos contra a lei nova.
+- **Gates:** a sprite presa tem rank · escondida não emite · tinta/opacidade chegam à instância · a
+  malha em repouso coincide com o quad com *Centered* desligado e *Offset*.
+
+### W3 — os outros consumidores de instâncias
+
+Emissivo · vidro do prefab (`present_frost::lift`) · fantasmas de onion · picking (hoje o quad de
+repouso) · *View All*. Cada um: ou lê a malha, ou é uma lacuna **nomeada** com o que custa curá-la.
+
+### W4 — o orçamento, re-medido
+
+Sem o Vello, uma peça é um vértice: o `SKIN_FRAME_PIECES` (derivado do buffer do Vello) deixa de
+descrever o recurso deste caminho. ⇒ medir o custo de CPU por peça (deformar + costurar + enviar) e
+o de GPU, e escrever o tecto do recurso que sobra. ⛔ Nunca deixar o número de um caminho morto a
+limitar o vivo (§0.0).
+
+### W5 — o smoke que ENSINA a ordem
+
+A cena do osso ganha uma sobreposição (o braço pintado atrás de outra peça) e o olho da Hierarquia a
+esconder a imagem presa — as duas coisas que a camada de hoje faz ao contrário.

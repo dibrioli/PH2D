@@ -278,7 +278,7 @@ impl RenderInstance {
     // fragment shader (`shaders/sprite.wgsl`) decodes the SAME masks —
     // keep these constants and the WGSL `& Nu` literals in lockstep.
     // Bits 3-4 = repeat; bits 5-7 = blend tag (CPU-only, shader ignores);
-    // bits 8..31 reserved (must be 0) for future per-instance flags.
+    // bits 8..31 = mesh tag (CPU-only, shader ignores — `MESH_SHIFT`).
     /// `flip_uv` bit 0 — mirror the sampled texture U (logical flip_x).
     pub const FLIP_X_BIT: u32 = 1 << 0;
     /// `flip_uv` bit 1 — mirror the sampled texture V (logical flip_y).
@@ -330,6 +330,24 @@ impl RenderInstance {
     /// Unpack the blend-mode tag (`0..=5`) from a `flip_uv` flags word.
     pub const fn unpack_blend(flip_uv: u32) -> u8 {
         ((flip_uv >> Self::BLEND_SHIFT) & 0b111) as u8
+    }
+
+    /// Bit offset of the **mesh tag** packed into [`Self::flip_uv`] (bits 8–31). **CPU-only**: the
+    /// WGSL reads only bits 0–4 (`&1`, `&2`, `&4`, `(>>3)&3`, verified 2026-09-13). `0` = the
+    /// instance draws the unit quad; `n > 0` = it draws the `n`-th mesh the collect accumulated
+    /// for **this** render call (`crate::sprite_mesh`).
+    ///
+    /// ⚠️ **Only the collect writes it**, from a [`crate::SpriteMesh`] on the same present entity.
+    /// A tag arriving on an instance from anywhere else is cleared: it would index the mesh of
+    /// another render call.
+    pub const MESH_SHIFT: u32 = 8;
+
+    /// The bits of the mesh tag in [`Self::flip_uv`].
+    pub const MESH_MASK: u32 = !0u32 << Self::MESH_SHIFT;
+
+    /// Unpack the mesh tag (`0` = quad) from a `flip_uv` flags word.
+    pub const fn unpack_mesh(flip_uv: u32) -> u32 {
+        flip_uv >> Self::MESH_SHIFT
     }
 
     /// Default [`Self::sampling`] key — `Inherit/Inherit`, i.e. the

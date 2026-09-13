@@ -45,18 +45,27 @@ use ph2d_ecs::PresentWorld;
 /// ⚠️ **E ela é uma RETENÇÃO, não uma ocultação:** quem a passa fica obrigado a desenhar essas
 /// entidades noutra passagem. *A alternativa — desenhar duas vezes e deixar a nítida por cima —
 /// deixa o borrão da peça a escapar por fora da silhueta dela, como um halo.*
+///
+/// ⭐⭐⭐ **`meshes` são as malhas desta chamada** (`crate::sprite_mesh`): uma instância cuja entidade
+/// traz um [`crate::SpriteMesh`] recebe a marca da malha dela no `flip_uv`, e o desenho troca-lhe o
+/// quad pela malha. ⛔ **Toda outra instância sai SEM marca** — as da cena sem malha e, sobretudo, o
+/// `extra`, que chega de fora e indexaria a malha de outra chamada.
 pub(crate) fn collect_sorted_instances(
     scratch: &mut Vec<RenderInstance>,
+    meshes: &mut crate::sprite_mesh::MeshFrame,
     present: &mut PresentWorld,
     extra: &[RenderInstance],
     rank_window: Option<(u32, u32)>,
     held_back: Option<&std::collections::BTreeSet<ph2d_ecs::Entity>>,
 ) {
     scratch.clear();
-    let mut q = present
-        .world_mut()
-        .query::<(&RenderInstance, Option<&ph2d_ecs::SimRef>)>();
-    for (inst, sim_ref) in q.iter(present.world()) {
+    meshes.clear();
+    let mut q = present.world_mut().query::<(
+        &RenderInstance,
+        Option<&ph2d_ecs::SimRef>,
+        Option<&crate::SpriteMesh>,
+    )>();
+    for (inst, sim_ref, malha) in q.iter(present.world()) {
         if let Some((lo, hi)) = rank_window
             && (inst.z_order < lo || inst.z_order >= hi)
         {
@@ -67,9 +76,18 @@ pub(crate) fn collect_sorted_instances(
         {
             continue;
         }
-        scratch.push(*inst);
+        let mut inst = *inst;
+        crate::sprite_mesh::clear_mesh_tag(&mut inst);
+        if let Some(malha) = malha {
+            inst.flip_uv |= meshes.push(malha, inst.anchor, inst.size) << RenderInstance::MESH_SHIFT;
+        }
+        scratch.push(inst);
     }
+    let de_fora = scratch.len();
     scratch.extend_from_slice(extra);
+    for inst in &mut scratch[de_fora..] {
+        crate::sprite_mesh::clear_mesh_tag(inst);
+    }
     sort_render_order(scratch);
 }
 

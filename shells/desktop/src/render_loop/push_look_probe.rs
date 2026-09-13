@@ -210,6 +210,11 @@ fn probe_push_render_and_look() {
     );
     save(&mut t, &dir, "9b_filter_stroke_smooth", size);
 
+    blob_cross_and_smear(dir, size);
+}
+
+/// As cenas 10–13 do [`probe_push_render_and_look`]: a bolha, a cruz e o smear do Enio.
+fn blob_cross_and_smear(dir: String, size: u32) {
     // 10. **ENIO'S BLOB** (2026-07-16) — the shape the report is actually about, and the one the slab above
     //     cannot show. The slab's border is axis-aligned, so the ball's argmax pattern along it is regular
     //     and the staircase has nothing to climb; the photographs are *a blob with high relief and a CURVED

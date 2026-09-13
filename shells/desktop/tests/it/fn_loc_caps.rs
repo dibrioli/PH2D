@@ -83,12 +83,6 @@ const FN_OVERAGE_OK: &[(&str, &str, usize, &str)] = &[
          mesma ordem, e cada fase que sai baixa este número no mesmo commit",
     ),
     ("render_loop/present.rs", "run_present_phase", 484, NASCEU),
-    (
-        "render_loop/push_look_probe.rs",
-        "probe_push_render_and_look",
-        314,
-        NASCEU,
-    ),
     ("render_loop/sim_extract.rs", "run", 491, NASCEU),
     ("render_loop/snapshots.rs", "publish", 1068, NASCEU),
 ];

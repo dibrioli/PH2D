@@ -259,4 +259,119 @@ impl crate::App {
         }
         false
     }
+
+    /// A digitação do texto vetorial, o Delete dos traços do Flip no Edit, e as teclas nuas do vetor (booleanas,
+    /// Delete da forma, `T` do modo Text).
+    pub(super) fn ramo_teclas_texto_flip_e_vetor(
+        &mut self,
+        physical_key: PhysicalKey,
+        state: ElementState,
+        repeat: bool,
+        text: &Option<winit::keyboard::SmolStr>,
+    ) -> bool {
+        // Texto vetorial: enquanto uma sessão de digitação está ativa (modo Text +
+        // clicou no canvas), as teclas vão pro TEXTO — antes dos atalhos de forma e
+        // do forward pros widgets. Ctrl/Super passam (Ctrl+Z etc. seguem globais).
+        if self.vector_keys_live()
+            && self.vec_text_editing()
+            && state == ElementState::Pressed
+            && !self.modifiers.control_key()
+            && !self.modifiers.super_key()
+        {
+            if let PhysicalKey::Code(code) = physical_key {
+                match code {
+                    KeyCode::Backspace => {
+                        self.vec_text_backspace();
+                        return true;
+                    }
+                    KeyCode::Escape => {
+                        self.vec_text_finish();
+                        return true;
+                    }
+                    KeyCode::Enter | KeyCode::NumpadEnter => {
+                        self.vec_text_newline();
+                        return true;
+                    }
+                    _ => {}
+                }
+            }
+            if let Some(s) = text.as_ref() {
+                let mut typed = false;
+                for ch in s.chars() {
+                    if !ch.is_control() {
+                        self.vec_text_append(ch);
+                        typed = true;
+                    }
+                }
+                if typed {
+                    return true;
+                }
+            }
+        }
+
+        // ADR-0114 W6 — Edit Mode do Flip: Delete/Backspace apaga os TRAÇOS selecionados.
+        //
+        // **E CONSOME a tecla** (o `return`), que é o ponto: o objeto Flip continua
+        // selecionado como ENTIDADE, e a cadeia da Hierarquia apaga a entidade
+        // selecionada. Sem o consumo, apagar um traço apagaria o desenho inteiro junto —
+        // uma tecla, dois efeitos, e o segundo é catastrófico. (Mesmo padrão do bloco
+        // vetorial logo abaixo, que consome pelo mesmo motivo.)
+        if self.flip_wants_edit()
+            && state == ElementState::Pressed
+            && !repeat
+            && self.modifiers.is_empty()
+            // Um campo de texto FOCADO (o rename de camada, §4.C) fica com Backspace/Delete
+            // para editar o texto — senão apagar uma letra do nome apagaria os traços
+            // selecionados. Mesma guarda que os atalhos de tecla-única já usam.
+            && !self.text_entry_focused()
+            && matches!(
+                physical_key,
+                PhysicalKey::Code(KeyCode::Delete | KeyCode::Backspace)
+            )
+            && self.flip_delete_selected()
+        {
+            return true;
+        }
+
+        // ADR-0108 Fase 1: modo vetorial (flag PH2D_VEC_PEN) — U/I/D/X fazem a
+        // booleana (Union/Intersect/Difference/Exclude) das 2 últimas regiões
+        // fechadas; Delete/Backspace apaga o path
+        // selecionado. Modo de teste dedicado (a pill/menu real entra no cutover,
+        // Fase R). Só sem modificadores, pra não colidir com atalhos.
+        if self.vector_keys_live()
+            && state == ElementState::Pressed
+            && !repeat
+            && self.modifiers.is_empty()
+            && let PhysicalKey::Code(code) = physical_key
+        {
+            let op = match code {
+                KeyCode::KeyU => Some(ph2d_vec_boolean::PathfinderOp::Union),
+                KeyCode::KeyI => Some(ph2d_vec_boolean::PathfinderOp::Intersect),
+                KeyCode::KeyD => Some(ph2d_vec_boolean::PathfinderOp::Subtract),
+                KeyCode::KeyX => Some(ph2d_vec_boolean::PathfinderOp::Exclude),
+                _ => None,
+            };
+            if let Some(op) = op {
+                self.vec_boolean(op);
+                return true;
+            }
+            // Mesma regra de área do bloco de clipboard acima: com o mouse SOBRE a
+            // timeline, Delete apaga o KEYFRAME (o bloco da timeline pega no fall-through),
+            // não a forma. Sobre o canvas, apaga a forma/vértice.
+            if matches!(code, KeyCode::Delete | KeyCode::Backspace)
+                && !self.cursor_over_timeline()
+                && self.vec_delete_selected_vertex_or_path()
+            {
+                return true;
+            }
+            // Texto vetorial: `T` entra/sai do modo Text (atalho-padrão de ferramenta
+            // de texto). Enquanto uma sessão de texto está ATIVA, o `T` é capturado
+            // antes daqui (vira a letra digitada) — este ramo só troca o modo.
+            if code == KeyCode::KeyT {
+                self.vec_text_toggle_mode();
+                return true;
+            }
+        }
+        false
+    }
 }

@@ -68,9 +68,16 @@ ph2d-painter-effects = { path = "../ph2d-painter-effects" }
 # que está aqui; quem alimenta o evento é a shell.
 winit = "0.30"
 # ⭐ A fatia do painel que a família importa. `ph2d-panel-flip` publica a tira e as camadas;
-# `-frames` é o painel de quadros. Os dois são OPCIONAIS aqui pelo mesmo motivo que na shell.
-ph2d-panel-flip = { path = "../ph2d-panel-flip", optional = true }
-ph2d-panel-flip-frames = { path = "../ph2d-panel-flip-frames", optional = true }
+# `-frames` é o painel de quadros.
+# ⛔⛔ **NÃO são opcionais, e já foram** (integração de 2026-09-13): a descida dos ids da A5b pôs
+# nestas duas crates os ids que a família LÊ sem `cfg` nenhum (`layers.rs`, `strip.rs`, as swatches
+# do `bridge.rs`, os testes da tira) — antes eles moravam no `ph2d-editor-core`, que está sempre
+# presente. Com a dependência opcional a crate tinha **75 erros SOZINHA** e compilava verde em toda
+# build da workspace (a shell liga as duas features por omissão). Constante que o código lê sem
+# condição pede dependência sem condição; o que continua opcional é a PUBLICAÇÃO para o painel,
+# pelas features abaixo. O `scripts/check-standalone-optional.sh` (passo do `ship.sh`) é o portão.
+ph2d-panel-flip = { path = "../ph2d-panel-flip" }
+ph2d-panel-flip-frames = { path = "../ph2d-panel-flip-frames" }
 # O corte LazyBrush do Colorize (o `squeeze_from_bleed` e o solver).
 ph2d-flip-colorize = { path = "../ph2d-flip-colorize" }
 # O MUNDO do ECS: o `SimWorld`/`Entity`/`Transform` que a ponte de entidades e os dois gizmos
@@ -96,8 +103,11 @@ ph2d-vec-entities = { path = "../ph2d-vec-entities" }
 #
 # ⇒ os dois `cfg` que governam código desta família (`strip_drag.rs` e `bridge.rs`) têm de
 # ter aqui a feature que os acende, e a shell tem de a repassar.
-panel-flip = ["dep:ph2d-panel-flip"]
-panel-flip-frames = ["dep:ph2d-panel-flip-frames"]
+# ⚠️ Desde 2026-09-13 elas acendem só a PUBLICAÇÃO para o painel (os instantâneos da tira, das
+# camadas e do estilo): as duas crates do painel são dependências fixas, porque os ids que a família
+# lê sem `cfg` moram nelas (ver `[dependencies]`).
+panel-flip = []
+panel-flip-frames = []
 
 [lints]
 workspace = true

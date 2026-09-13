@@ -69,6 +69,14 @@ run_optional "cargo-audit (CVE scan)" cargo-audit cargo audit
 # red after the push. Same engine + config as spike.yml.
 run_optional "typos (project-wide typo scan)" typos typos
 
+# ── crates com dependência INTERNA opcional compilam SOZINHAS? ──────────
+# ⛔ **Nenhum passo deste script vê isto, e é por construção:** o clippy e o nextest correm sobre a
+# WORKSPACE, onde o cargo unifica as features — a shell liga `panel-flip` por omissão —, e uma crate
+# que nomeia a dependência opcional fora do `cfg` dela compila verde. Medido na integração de
+# 2026-09-13: o `ph2d-app-flip` tinha 75 erros sozinho e este script passou 12 de 12; quem os achou
+# foi um `cargo nextest run -p` de uma crate só. A lista sai dos manifestos, com piso.
+run "crates com dependência opcional compilam sozinhas" bash scripts/check-standalone-optional.sh
+
 # ── índices DERIVADOS: em dia? ──────────────────────────────────────────
 # ⚠️ Estes índices existem porque a alternativa (lista mantida à mão) envelhece na
 # primeira semana — foi o que aconteceu com a tabela "Estado por-wave" do tracker

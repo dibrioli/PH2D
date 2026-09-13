@@ -100,6 +100,12 @@ const DOWNCAST_ALLOWLIST: &[&str] = &[
     // no `PainterTool` concreto e activa o pincel; o bloco mudou-se verbatim para a fase — a MESMA
     // excepção de classe da entrada do `mod.rs`, sem downcast novo.
     "src/render_loop/fase_use_as_brush.rs",
+    // ⚠️ **O `fase_hierarchy_dispatch.rs` HERDOU um downcast do `render_loop/mod.rs`** (OBRA 2 da
+    // `line/render-loop`, 2026-09-12): ao duplicar uma sprite que o Painter está a pintar, o fork assa a
+    // tinta pelo `PainterTool` concreto (`has_unbaked_edits` + `auto_commit_painter`) antes de dar à cópia
+    // uma textura própria; o bloco mudou-se verbatim para a fase — a MESMA excepção de classe da entrada
+    // do `mod.rs`, sem downcast novo.
+    "src/render_loop/fase_hierarchy_dispatch.rs",
     // Pointer forwarder: the colour-picker eyedropper samples the active PainterTool's layer COMPOSITE
     // (`sample_composite_at_uv`) + reads `repeat_image()` to walk the Repeat-Image neighbour tiles —
     // a Painter-specific affordance integrating the eyedropper with the layer system. Same exception

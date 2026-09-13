@@ -202,6 +202,8 @@ mod fase_frame_profile_report;
 mod fase_game_camera;
 /// Fase do quadro: o fim do ramo hero (toasts, barras de trabalho, a arena do quadro).
 mod fase_hero_chrome_tail;
+/// Fase do quadro: o despacho da Hierarquia.
+mod fase_hierarchy_dispatch;
 /// Fase do quadro: agrupar, recolher e fundir sprites.
 mod fase_hierarchy_group_merge;
 /// Fase do quadro: o dreno de edicao de imagem e os desmontes do Apply.
@@ -934,7 +936,7 @@ impl crate::App {
             let mut duplicate_row: Option<NodeId> = None;
             // Set by `hierarchy::dispatch` to `(source_bits, new_bits)` when a sprite is duplicated, so
             // we can fork the copy onto its own texture (independent object) post-dispatch.
-            let mut duplicate_made: Option<(u64, u64)> = None;
+            let duplicate_made: Option<(u64, u64)> = None;
             let mut add_child_row: Option<NodeId> = None;
             // ⭐⭐ **Agrupar / desagrupar** (2026-08-30): `(linha clicada, agrupar?)`. Um slot só para
             // os dois verbos — eles são o mesmo gesto com o sinal trocado, e dois slots deixariam
@@ -3461,6 +3463,9 @@ impl crate::App {
                 crate::input_dispatch::fill_drag::fill_drag_armed(),
                 // O funil de leitura de textura desta shell, entregue como fecho: a crate da
                 // família não conhece o `texture_edit` nem o `SourceRead` dele.
+                // PRECISION-READONLY: o fecho só entrega os pixels ao canvas de TRABALHO do Painter; a
+                // escrita de volta na sprite é o Apply (`hero_intents::image_edit::painter`), por
+                // `commit_edited_texture`, que avisa por dentro.
                 |entity, sim, renderer, asset_db, atlas_asset_map| {
                     crate::hero_intents::texture_edit::read_sprite_source(
                         entity,
@@ -10026,100 +10031,30 @@ impl crate::App {
                     self.title_dirty = true;
                 }
             }
-            if hierarchy::dispatch(
-                view_focus_kind,
-                visibility_toggle_row,
-                lock_toggle_row,
-                group_toggle_row,
-                reparent_intent,
-                duplicate_row,
-                add_child_row,
-                add_root,
-                reset_transform_row,
-                revert_to_master_row,
-                instance_verb_row,
-                instance_verb_stable_id,
-                asset_card_verb,
-                atlas_asset_map,
-                delete_row,
-                hierarchy_row_click,
-                hierarchy_select_intent,
-                rename_seed_row,
-                rename_commit,
-                hero,
-                hero_live,
-                sim,
-                present,
-                camera,
-                toasts,
+            self.fase_hierarchy_dispatch(
+                fase_hierarchy_dispatch::HierarchyIntents {
+                    visibility_toggle_row,
+                    lock_toggle_row,
+                    group_toggle_row,
+                    reparent_intent,
+                    duplicate_row,
+                    duplicate_made,
+                    add_child_row,
+                    add_root,
+                    reset_transform_row,
+                    revert_to_master_row,
+                    instance_verb_row,
+                    instance_verb_stable_id,
+                    asset_card_verb,
+                    delete_row,
+                    hierarchy_row_click,
+                    hierarchy_select_intent,
+                    rename_seed_row,
+                    rename_commit,
+                    view_focus_kind,
+                },
                 window_size,
-                vec_scene,
-                &mut self.vec.entities,
-                &mut self.vec.pen,
-                &mut duplicate_made,
-                component_registry,
-                &mut self.instance_echo,
-            ) {
-                self.title_dirty = true;
-            }
-            // ⭐⭐⭐ **O *Duplicate* de uma PEÇA da escultura** (ADR-0150, 2026-09-04): a cópia
-            // profunda **deixa cair** o `Sculpt3dPieceRef` — copiar o id daria duas entidades
-            // sobre a mesma peça (`instance_docs::DROPPED`) —, então a linha nova nasceria vazia.
-            // ⇒ regista-se um PEDIDO, e o `sculpt3d::entities::sync` do quadro seguinte duplica a
-            // peça e põe o `ref` novo na cópia. *A cena está emprestada neste ponto do laço.*
-            #[cfg(feature = "sculpt3d")]
-            if let Some((src_bits, new_bits)) = duplicate_made
-                && let Some(piece) = sim
-                    .world()
-                    .get::<ph2d_ecs::Sculpt3dPieceRef>(ph2d_ecs::Entity::from_bits(src_bits))
-            {
-                self.sculpt3d.dup = Some((piece.0, new_bits));
-            }
-            // A duplicated sprite copies the source's `Sprite` component verbatim, so it SHARES the
-            // source pixels — and if the source is being painted, the unbaked paint+mask never reaches
-            // either entity (the working state is dropped on the next rebind, losing the paint from
-            // both). When the source has live paint: bake it so the original persists, then give the
-            // copy its OWN texture (a deep copy of the now-painted result) so it is a fully independent
-            // object (Enio 2026-06-24). A non-painted duplicate keeps the shared source — Atlas/Individual
-            // both fork on the next edit, so they stay independent in practice and keep atlas batching.
-            if let Some((src_bits, new_bits)) = duplicate_made
-                && self.last_painter_pushed_entity == Some(src_bits)
-                && let Some(painter) = tools.active_mut().and_then(|t| {
-                    t.as_any_mut()
-                        .downcast_mut::<ph2d_tool_painter::PainterTool>()
-                })
-                && painter.has_unbaked_edits()
-            {
-                crate::hero_intents::auto_commit_painter(
-                    src_bits,
-                    sim,
-                    renderer,
-                    asset_db,
-                    atlas_asset_map,
-                    painter,
-                    toasts,
-                );
-                self.last_painter_pushed_entity = None; // bridge re-pushes the freshly-baked source
-                let src = ph2d_ecs::Entity::from_bits(src_bits);
-                let copy = ph2d_ecs::Entity::from_bits(new_bits);
-                if let Some(read) = crate::hero_intents::texture_edit::read_sprite_source(
-                    src,
-                    sim,
-                    renderer,
-                    asset_db,
-                    atlas_asset_map,
-                ) {
-                    let _ = crate::hero_intents::texture_edit::commit_edited_texture(
-                        copy,
-                        sim,
-                        renderer,
-                        asset_db,
-                        &read.image,
-                        read.old_size_world,
-                        toasts,
-                    );
-                }
-            }
+            );
             let Some(joint_pivot_commit) =
                 self.fase_inspector_commits(fase_inspector_commits::InspectorIntents {
                     reimport_entity,

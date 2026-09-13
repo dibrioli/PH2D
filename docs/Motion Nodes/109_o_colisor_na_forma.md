@@ -58,6 +58,11 @@ substrato novo.
 
 ## §2 — O desenho
 
+> ⚠️ **A §2.1/§2.2 descrevem o colisor como um DISCO (`Collider Fit` · `Collider Scale`), e o
+> report do dono do mesmo dia refê-lo: o colisor tem FORMA — caixa ou círculo — e uma alça no canvas.
+> O desenho em vigor é o [§5](#5--o-colisor-tem-forma-caixa-e-círculo-e-uma-alça-no-canvas-report-do-dono-2026-09-13);
+> a coluna, a porta, o passo e a recusa desta secção continuam valendo.
+
 ### §2.1 — A declaração é uma COLUNA, e a ausência dela é o «desligado»
 
 `collider` (escalar, por elemento): **o raio de colisão na unidade da geometria do elemento**. O
@@ -177,9 +182,117 @@ em `P`) media `93 %` — a pilha respirava contra a gravidade; com a aproximaç�
 
 ## §4 — Aberto, com o que o decide
 
-- ⏳ **O default do `Collider Fit`** — `Around` garante que a arte nunca se sobrepõe e deixa folga
-  nas diagonais de um quadrado e entre as pontas de uma estrela; `Inside` encosta pelo miolo e deixa
-  as pontas entrarem. Decide-se no smoke da W3, com as duas imagens.
-- ⏳ **O contorno exacto** (em vez de um círculo) — o que o Cinema 4D chama *Convex Hull*; §9 do
-  [handoff de 10/09](handoffs/HANDOFF_INTEGRACAO_line_motion_value_2026-09-10.md) já o nomeava
+- ✅ ~~**O default do `Collider Fit`**~~ — **dissolvido pelo report do dono** (§5): nenhum dos dois
+  círculos é a forma, e o `Collider Fit` saiu. O colisor é uma caixa ou um círculo adaptados à forma.
+- ⏳ **O contorno exacto** (depois da caixa e do círculo) — o que o Cinema 4D chama *Convex Hull*; §9
+  do [handoff de 10/09](handoffs/HANDOFF_INTEGRACAO_line_motion_value_2026-09-10.md) já o nomeava
   como inexistente em todo o repo.
+
+---
+
+## §5 — O colisor tem FORMA: caixa e círculo, e uma alça no canvas (report do dono, 2026-09-13)
+
+> *«collider impreciso, o collider não é gerado conforme a forma da Shape. No mínimo precisamos de
+> colliders circulares e retangulares que tentam se adaptar às dimensões da shape e que tenham
+> ajustes de tamanho com gizmo visível para o usuário»* — com a foto da `=114` e uma seta num vão
+> entre dois quadrados.
+
+### §5.1 — O que a foto mede
+
+O colisor da W1 era sempre um DISCO, e o default `Around` é o círculo pelos cantos. Num quadrado de
+meio-lado `0,11` ele declarava raio `0,156`, e a pilha assentava com **`0,3094`** entre centros onde o
+lado é `0,22` — **`141 %` do lado, `41 %` de ar**. O `Inside` (`0,2162`, `98 %`) encostava pelos lados e
+deixava os cantos entrarem. *Nenhum dos dois é a forma*: um disco não descreve um quadrado.
+
+### §5.2 — O desenho
+
+| peça | o quê |
+|---|---|
+| **fundação** | duas colunas reservadas ao lado do `collider`: **`collider_box`** (as MEIAS extensões, `Vec2`, unidade de geometria) e **`collider_offset`** (o centro relativo à origem da peça). A caixa válida GANHA ao raio; `[0, 0]`/`0` — o que a união do `motion.combine` preenche — é «não declara» |
+| **o shell** | mede a **caixa envolvente** do contorno de preenchimento (Bernstein, `64` amostras por curva) uma vez por geometria e publica centro + meias; o nó retira-as sempre |
+| **o cartão** (`Collision`) | `Collide` · **`Collider Shape`** `Box` (default) / `Circle` · `Collider Width` + `Collider Height` (só com `Box`) · `Collider Radius` (só com `Circle`) — multiplicadores, `1` = a forma. ⛔ `Collider Fit` e `Collider Scale` SAÍRAM (nunca chegaram ao `main`) |
+| **as duas formas** | `Box` = a caixa envolvente · `Circle` = o círculo que toca os lados MAIORES dela (num círculo é ele próprio, num quadrado o inscrito). As duas centram-se no meio da caixa: uma estrela de 5 pontas não está centrada na origem |
+| **a porta** | `ph2d_contact::declarado` / `colisores` — lê as três colunas mais `size` e `rot` e devolve o colisor de MUNDO. **Três** clientes: `sim.step`, `sim.collide` e o gizmo |
+| **o solver** | disco × disco (ao bit o de antes) · caixa × caixa pelo eixo separador (4 eixos, o de menor sobreposição) · disco × caixa pelo ponto mais próximo, e pela face de menor penetração com o centro dentro. O par calcula-se sempre do índice menor para o maior, e o maior recebe o simétrico |
+| **o `sim.collide`** (`Auto`) | plano pelo SUPORTE da forma · disco e caixa sólidos pela porta do par · taça pelo CANTO mais longe. Um disco centrado continua no caminho de sempre, **ao bit** |
+| **o dispositivo** | a recusa para a CPU cobre as três colunas pelo nome |
+| **o gizmo** | com o cartão da forma seleccionado (tool Motion): o contorno do colisor em cada peça que ela carimbou, lido do SINK pela porta do solver; oito alças (quatro no círculo) na peça MAIS PRÓXIMA do cursor; o arrasto escreve os params do cartão pela porta do slider, simétrico à volta do centro, e é **um** passo de undo |
+
+⚠️ **As caixas giram com a peça, mas nada aqui PRODUZ rotação** — o solver projecta posições, e uma
+caixa pousada numa quina fica na quina. É o corpo rígido, e fica aberto (§5.5).
+
+### §5.3 — Medido
+
+**A `=114`** (vão típico = mediana da distância ao vizinho mais próximo, `2,6 s`; lado `2 · 0,11 = 0,22`):
+
+| cartão da direita | vão típico | |
+|---|---:|---|
+| `Collide` desligado | `0,0000` | borrão |
+| **`Box` (o default)** | **`0,2192`** | **`100 %` do lado** — era `141 %` |
+| `Width` + `Height` `0,6` · `1,0` · `1,4` | `0,1318` · `0,2192` · `0,3071` | monótono |
+| só `Width` `1,0` → `1,6` | largura da pilha `1,280` → `1,437` | a pilha ALARGA |
+| `Circle` | `0,2162` (`98 %`) | toca os lados |
+| `Circle` + `Radius 1,4` | `0,3064` | |
+
+⭐ **A barra de CIMA entrou no gate** (`only_the_half_whose_shape_collides_keeps_the_pieces_apart`,
+`≤ 1,15 × lado`): sem ela o gate ficava verde sobre o defeito da foto.
+
+**O custo da tinta do gizmo** (`measure_the_outline_paint_cost`, perfil `dev`, a `load 6,3` — ⚠️ acima
+da barra de `5` do `CLAUDE.md` §5.0, logo é um TECTO e não uma medida):
+
+| contornos | codificar |
+|---:|---:|
+| 256 | 0,212 ms |
+| 1 024 | 0,815 ms |
+| 2 048 | 1,587 ms |
+| 4 096 | 3,172 ms |
+| 16 384 | 12,686 ms |
+
+⇒ `MAX_CONTORNOS = 2048`, os mais próximos do cursor: ~`10 %` de um quadro no perfil mais lento, e a
+vizinhança da mão fica sempre inteira.
+
+**Paridade na placa:** `gpu_cpu_parity_sim` **30 de 30** — o `sim.collide` mudou o caminho de CPU, e
+um disco centrado continua nele ao bit.
+
+**Mutações — 15 de 15 mortas**, cada uma pelo gate nomeado:
+
+| mutação | quem a mata |
+|---|---|
+| a caixa ignora a altura · o círculo toca o lado MENOR · o centro nunca é escrito | os gates do `declare` (`ph2d-node-motion-shape`) |
+| o raio do eixo separador sem o eixo da caixa | `a_turned_box_collides_along_its_own_axes` |
+| o eixo de MAIOR sobreposição | `a_stacked_box_is_pushed_along_the_axis_of_least_overlap` |
+| o índice maior empurrado para o mesmo lado | `two_boxes_side_by_side_touch_face_to_face` |
+| o disco dentro sai pela face de MAIOR penetração | `a_disc_that_entered_a_box_leaves_by_the_nearest_face` |
+| a porta nunca lê a caixa | `the_declaration_door_reads_box_first_then_radius_and_carries_the_offset` |
+| o plano sem o suporte · `Auto` não lê a forma | `a_declared_box_rests_on_the_floor_by_its_face` |
+| a taça pelo canto mais PERTO | `a_declared_box_fits_whole_inside_the_bowl` |
+| a alça sem o sinal do lado | `dragging_a_box_edge_resizes_that_axis_from_where_it_was` |
+| o arrasto sem o `begin` do undo | `a_handle_drag_writes_the_card_param_and_is_one_undo_step` |
+| as alças na peça mais LONGE | `the_gizmo_finds_every_piece_the_selected_shape_stamped` |
+| a shell sem o `up` do colisor | `the_collider_gizmo_is_wired_like_the_warp` |
+
+⚠️ **O `delayed` saltado no `sink_of` do colisor NÃO tem gate, e não é defeito:** o passeio é em
+largura com memória de visitados, então ele acha o sink mesmo seguindo a aresta atrasada — saltá-la diz
+*«o fio de estado não é o caminho do stream»* e poupa a volta ao laço, mas nenhuma resposta muda.
+
+**Suítes:** `ph2d-app-motion` 1071 · 122 ignorados · `ph2d-contact` 15 · `source.shape` 18 ·
+`sim.collide` 55 · `sim.step` 26 · `ph2d-node-registry-init` 146 · arquitectura 65 · costura da shell 8 ·
+clippy `-D warnings` em 7 crates · fmt · typos.
+
+### §5.4 — Armadilhas que a construção pagou
+
+- ⛔ **O `sink_of` do gizmo de warp não serve numa simulação**: ele segue a PRIMEIRA aresta de cada nó,
+  e a zona tem duas saídas — a primeira é a entrada atrasada do laço (`zone → wind`), e o passeio dava
+  a volta ao laço até ao limite de passos. O do colisor anda em largura e não segue as atrasadas.
+- ⚠️ **A estrela do manifesto tem SEIS pontas** e é simétrica nos dois eixos (centro medido
+  `[1e-16, 0]`): a fixtura do centro deslocado precisou de `sides = 5` — a de omissão não tem o fenómeno.
+- ⚠️ **O `Graph::set_param` recusa um não-finito à entrada**: a guarda do nó existe para o valor
+  CONDUZIDO por fio, e por isso não se testa pelo grafo.
+
+### §5.5 — Aberto
+
+- ⏳ **O smoke do dono** da `=114` com as alças.
+- ⏳ **Rotação por contacto** (corpo rígido) — uma caixa em quina fica em quina.
+- ⏳ **O contorno exacto** (casco convexo) — o terceiro colisor, depois da caixa e do círculo.
+- ⏳ **Centro e ângulo do colisor como params** — hoje o centro é o meio da forma e o ângulo o da peça.
+- ⏳ **W4** (o `motion.integrate`) e ⏸️ **W5** (o dispositivo), inalterados.

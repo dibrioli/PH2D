@@ -841,7 +841,12 @@ cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-render-loop && cargo run -
   ⚠️ **Tudo o que a cauda precisa está pronto e nada é perdido:** as metas `meta_p7a/b/c.json` com o `ret_struct`, os
   gates que ela partiria JÁ re-apontados e commitados (o commit de preparação, provado contra o `mod.rs`), o `pre_p7a.sh`
   que troca a entrada do `mod.rs` pela da fase na allowlist de downcast (o `mod.rs` ficará sem downcast nenhum), e as
-  provas de mutação dela (`mut_p7a.sh`, `mut_p7c.sh`) — no scratchpad desta sessão, e descritos aqui para quem a retomar.
+  provas de mutação dela (`mut_p7a.sh`, `mut_p7c.sh`), mais o driver inteiro (`run_phases2.sh` · `extract_phase.py` ·
+  `verbatim.py --selftest` · `mutlib.sh` · `prescan_gates.py` · `brace_preflight.py` · `header_bind_scan.py` ·
+  `evasion_probe2.py` + `evasion_accepted.txt`) e os logs do fecho (`fecho/`). ⚠️ **Vivem em
+  `Worktrees/line-render-loop/.cauda-render-loop/`, NÃO versionados** (1 608 ficheiros, 51 MB, copiados do scratchpad
+  da sessão — que mora num `tmpfs` e morreria no desligar). ⛔ **Antes de `git worktree remove` desta árvore, copie
+  essa pasta para fora** — ela é a única cópia, e o `remove` só a apaga com `--force`.
 - ⚠️ **A prova de fim de linha dá `ONLY-A = 8`, não `0`, e os 8 são DE PROPÓSITO** (`nextest list --workspace
   --cargo-profile ci-test` sobre o HEAD final contra o merge-base: 22 700 → 22 704 testes, 17 `MOVED`, 12 `ONLY-B`).
   São os testes que mediam SÓ a pilha `ph2d_vec_edit::History`, que morreu no `dcfa2ec4d` (A9: ~40 portas escreviam-na e

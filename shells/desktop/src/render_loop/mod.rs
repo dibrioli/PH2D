@@ -188,6 +188,8 @@ mod fase_audio_panels;
 mod fase_authored_controls_and_ui_states;
 /// Fase do quadro: o AutoKey.
 mod fase_autokey;
+/// Fase do quadro: o IK e os limites do osso.
+mod fase_bone_ik_and_limits;
 /// Fase do quadro: os smart bones e os numeros do osso.
 mod fase_bone_smart_and_knobs;
 /// Fase do quadro: as sobreposicoes do canvas.
@@ -4306,33 +4308,18 @@ impl crate::App {
             let mudos_antes = crate::skeleton_smart::governed_controls(sim).len();
             if let Some(bits) = osso_selecionado {
                 let osso = ph2d_ecs::Entity::from_bits(bits);
-                if pending_ik_add {
-                    match crate::skeleton_goal::add(sim, osso) {
-                        Some(_) => eprintln!(
-                            "[ph2d-vec] osso: ancora de IK criada na ponta -- arraste o LOSANGO e a                              corrente segue-o, para sempre (a timeline anima-o como qualquer objecto)"
-                        ),
-                        None => eprintln!(
-                            "[ph2d-vec] osso: este osso ja' tem ancora -- so' pode haver uma por corrente"
-                        ),
-                    }
-                }
-                if pending_ik_remove {
-                    crate::skeleton_goal::remove(sim, osso, &mut self.preview_drive);
-                }
-                if let Some(lado) = pending_ik_bend
-                    && let Some(mut g) = sim.world_mut().get_mut::<ph2d_skeleton_ecs::IkGoal>(osso)
-                {
-                    g.bend = lado;
-                }
-                // ⭐⭐⭐ **O LIMITE DE ÂNGULO** — os dois verbos e os dois extremos.
-                if pending_limit_add && !crate::bone_limit::add_limit(sim, osso) {
-                    eprintln!(
-                        "[ph2d-vec] osso: esta junta ja' tem limite -- so' pode haver um por osso"
-                    );
-                }
-                if pending_limit_remove {
-                    crate::bone_limit::remove_limit(sim, osso);
-                }
+                let Some(osso) = self.fase_bone_ik_and_limits(
+                    fase_bone_ik_and_limits::BoneIkAndLimitsIntents {
+                        pending_ik_add,
+                        pending_ik_remove,
+                        pending_ik_bend,
+                        pending_limit_add,
+                        pending_limit_remove,
+                    },
+                    osso,
+                ) else {
+                    return;
+                };
                 self.fase_bone_smart_and_knobs(
                     fase_bone_smart_and_knobs::BoneSmartAndKnobsIntents {
                         pending_ik_knob,

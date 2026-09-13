@@ -1,0 +1,58 @@
+//! **Fase do quadro: O IK E OS LIMITES DO OSSO** — acrescentar, tirar e dobrar a âncora de IK, e acrescentar e tirar o limite de ângulo (OBRA 2 da `line/render-loop`, 2026-09-13).
+
+use super::*;
+
+/// Os pedidos que o dreno do barramento recolheu neste quadro para esta fase.
+pub(super) struct BoneIkAndLimitsIntents {
+    pub(super) pending_ik_add: bool,
+    pub(super) pending_ik_remove: bool,
+    pub(super) pending_ik_bend: Option<ph2d_skeleton::BendSide>,
+    pub(super) pending_limit_add: bool,
+    pub(super) pending_limit_remove: bool,
+}
+
+impl crate::App {
+    /// Ver o cabeçalho do módulo.
+    pub(super) fn fase_bone_ik_and_limits(
+        &mut self,
+        intents: BoneIkAndLimitsIntents,
+        osso: ph2d_ecs::Entity,
+    ) -> Option<ph2d_ecs::Entity> {
+        // O `gfx` re-derivado; os guardas do quadro já correram na `fase_chrome_clock`.
+        let gfx = self.gfx.as_mut()?;
+        let FrameGfx { sim, .. } = FrameGfx::of(gfx);
+        let BoneIkAndLimitsIntents {
+            pending_ik_add,
+            pending_ik_remove,
+            pending_ik_bend,
+            pending_limit_add,
+            pending_limit_remove,
+        } = intents;
+        if pending_ik_add {
+            match crate::skeleton_goal::add(sim, osso) {
+                Some(_) => eprintln!(
+                    "[ph2d-vec] osso: ancora de IK criada na ponta -- arraste o LOSANGO e a                              corrente segue-o, para sempre (a timeline anima-o como qualquer objecto)"
+                ),
+                None => eprintln!(
+                    "[ph2d-vec] osso: este osso ja' tem ancora -- so' pode haver uma por corrente"
+                ),
+            }
+        }
+        if pending_ik_remove {
+            crate::skeleton_goal::remove(sim, osso, &mut self.preview_drive);
+        }
+        if let Some(lado) = pending_ik_bend
+            && let Some(mut g) = sim.world_mut().get_mut::<ph2d_skeleton_ecs::IkGoal>(osso)
+        {
+            g.bend = lado;
+        }
+        // ⭐⭐⭐ **O LIMITE DE ÂNGULO** — os dois verbos e os dois extremos.
+        if pending_limit_add && !crate::bone_limit::add_limit(sim, osso) {
+            eprintln!("[ph2d-vec] osso: esta junta ja' tem limite -- so' pode haver um por osso");
+        }
+        if pending_limit_remove {
+            crate::bone_limit::remove_limit(sim, osso);
+        }
+        Some(osso)
+    }
+}

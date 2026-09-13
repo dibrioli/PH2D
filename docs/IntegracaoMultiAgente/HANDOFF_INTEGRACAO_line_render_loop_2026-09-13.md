@@ -2,7 +2,8 @@
 
 > Modo L. Branch `line/render-loop`, worktree `Worktrees/line-render-loop`. **Nada integrado, nada enviado.**
 > Leitor: o agente INTEGRADOR (e a próxima LLM que tocar no quadro).
-> ⭐ **A obra está INTEIRA:** as três fases da cauda (P7a–P7c) correram depois da decisão do dono (13/09).
+> ⭐ **A obra está INTEIRA:** as três fases da cauda (P7a–P7c) correram depois da decisão do dono (13/09), e o
+> **re-smoke do dono voltou OK** (13/09 — o §11.10: os verbos dos painéis, os instantâneos e o prefab aberto).
 > ⛔⛔ **Leia o §12 antes de integrar:** o tecto da shell (`architecture_the_shell_only_shrinks`) reprova nesta árvore
 > POR DESENHO — o dono **autorizou subi-lo para caber a separação**, e quem o reconta é o INTEGRADOR, sobre a árvore
 > combinada (o gate proíbe uma linha de o escrever).
@@ -835,7 +836,7 @@ cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-render-loop && cargo run -
 7. **Física** — `env PH2D_PHYSICS_SMOKE=6` (junta + Play) e o painel de mundo (`W`).
 8. **3D** — pill **MODEL** (acrescentar forma, gizmo, vistas) e `env PH2D_SCULPT3D_SMOKE=34`.
 9. **Timeline / UI States** — Play, scrub, uma transição de estado de UI com *Preview*.
-10. ⭐ **A CAUDA — correu DEPOIS do smoke aprovado, e é o que o dono re-smoka.** A P7a levou o dreno de TODO clique de
+10. ⭐ **A CAUDA — correu DEPOIS do smoke aprovado, e o dono re-smokou-a: ✅ OK (13/09).** A P7a levou o dreno de TODO clique de
     painel: no Inspector mudar um campo com DOIS objectos seleccionados (tem de espalhar pelos dois); na Hierarquia
     renomear, olho, cadeado, apagar, duplicar e *Edit Prefab* (e o mesmo *Edit Prefab* pelo cartão do Inspector);
     os verbos das sheets e das image tools pelas linhas da Hierarquia. A P7c publica os instantâneos: seleccionar

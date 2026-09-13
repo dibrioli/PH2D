@@ -254,6 +254,8 @@ mod fase_node_and_arrange_verbs;
 mod fase_open_recipe;
 /// Fase do quadro: as cenas do pincel do Painter (taper, tinta molhada).
 mod fase_painter_brush_smokes;
+/// Fase do quadro: os efeitos, o spine, os passos e a booleana.
+mod fase_path_effects_spine_bool;
 /// Fase do quadro: a forma do caminho e as tintas.
 mod fase_path_shape_and_paint;
 /// Fase do quadro: as edicoes de joint, player e roldana.
@@ -4558,70 +4560,17 @@ impl crate::App {
                     }
                 }
             }
-            // ADR-0132: a pilha de efeitos do caminho selecionado. Os dois passam pela MESMA
-            // `sole_path`, entao o que a secao PINTA e o que o clique ESCREVE nao podem divergir.
-            if pending_fx_add.is_some()
-                || pending_fx_button.is_some()
-                || pending_fx_param.is_some()
-                || pending_fx_apply
-            {
-                let sel = self.vec.pen.selected_paths().to_vec();
-                if let Some(pid) = crate::fx_bridge::sole_path(&sel) {
-                    crate::fx_bridge_dispatch::apply(
-                        vec_scene,
-                        pid,
-                        pending_fx_add,
-                        pending_fx_button,
-                        pending_fx_param,
-                        pending_fx_apply,
-                    );
-                }
-            }
-            // ADR-0128 C2b: Reset Spine — volta o(s) blend(s) selecionado(s) ao spine automático.
-            if pending_reset_spine
-                && crate::blend_live::reset_spine(
-                    sim,
-                    &self.vec.entities,
-                    &self.vec.pen,
-                    &mut self.vec.blend_spines,
-                )
-            {
-                eprintln!("[ph2d-vec] blend: spine resetado ao automático");
-            }
-            // Arrastar o slider Steps retuna o blend SELECIONADO ao vivo (o recook lê
-            // `VecBlend.steps`). Sem blend selecionado, é o valor de criação do próximo Blend.
-            if let Some(steps) = pending_blend_steps {
-                crate::blend_live::set_selected_steps(
-                    sim,
-                    &self.vec.entities,
-                    &self.vec.pen,
-                    steps,
-                );
-            }
-            if let Some(op) = pending_vec_bool {
-                // **Um clique, três destinos** (`bool_gesture`): re-mirar um grupo booleano que a
-                // seleção já habita · criar um, com o modo `Live` ligado · ou o caminho
-                // destrutivo de sempre. ⚠️ A ordem é a lei: sem o primeiro, clicar "Intersect"
-                // sobre um grupo vivo com o modo desligado CONSUMIRIA os operandos, e o artista
-                // perderia a arte no gesto que ele fez para trocar a operação.
-                let sel: Vec<ph2d_vec_scene::VecPathId> = self.vec.pen.selected_paths().to_vec();
-                let live_mode = ph2d_panel_vector::state::bool_live_on();
-                let has_group =
-                    crate::bool_gesture::group_of_selection(sim, &self.vec.entities, &sel)
-                        .is_some();
-                if has_group || live_mode {
-                    crate::bool_gesture::arm(
-                        sim,
-                        vec_scene,
-                        &self.vec.entities,
-                        &sel,
-                        crate::bool_live::code_of_op(op),
-                    );
-                } else {
-                    let xf = ph2d_vec_entities::transform::build(sim, &self.vec.entities);
-                    crate::input_dispatch::apply_vec_boolean(vec_scene, &mut self.vec.pen, &xf, op);
-                }
-            }
+            self.fase_path_effects_spine_bool(
+                fase_path_effects_spine_bool::PathEffectsSpineBoolIntents {
+                    pending_vec_bool,
+                    pending_reset_spine,
+                    pending_blend_steps,
+                    pending_fx_add,
+                    pending_fx_button,
+                    pending_fx_param,
+                    pending_fx_apply,
+                },
+            );
             self.fase_live_offset_and_width(
                 fase_live_offset_and_width::LiveOffsetAndWidthIntents {
                     pending_width_preset,

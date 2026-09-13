@@ -257,6 +257,9 @@ mod fase_sculpt3d_pre_frame;
 /// Fase do quadro: o osso em foco no painel do esqueleto.
 #[cfg(feature = "panel-vector")]
 mod fase_selection_mirror_bone_focus;
+/// Fase do quadro: o converter e o envelope no painel.
+#[cfg(feature = "panel-vector")]
+mod fase_selection_mirror_convert_envelope;
 /// Fase do quadro: os efeitos e os presets de envelope no painel.
 #[cfg(feature = "panel-vector")]
 mod fase_selection_mirror_effects_envelope;
@@ -6808,22 +6811,9 @@ impl crate::App {
             // sempre sem erro nenhum. [[feedback_a_condition_that_enumerates_its_readers_rots]]
             #[cfg(feature = "panel-vector")]
             {
-                let convertible = self.vec.pen.selected_paths().iter().any(|id| {
-                    crate::vec_convert::is_convertible(sim, &self.vec.entities, vec_scene, *id)
-                });
-                ph2d_panel_vector::set_current_convertible(convertible);
-                // ADR-0129: Expand/Release só são OFERECIDOS quando a seleção é de fato um
-                // envelope. A pergunta é a MESMA porta que decide a seleção (selecionar-só-o-
-                // container) e executa o dissolve — três consumidores, uma resposta.
-                let sel_bits: Vec<u64> = self
-                    .vec
-                    .pen
-                    .selected_paths()
-                    .iter()
-                    .filter_map(|id| self.vec.entities.get(id).copied())
-                    .collect();
-                let env_container = crate::envelope_live::sole_container(sim, &sel_bits);
-                ph2d_panel_vector::set_current_has_envelope(env_container.is_some());
+                let Some(env_container) = self.fase_selection_mirror_convert_envelope() else {
+                    return;
+                };
                 self.fase_selection_mirror_skin();
                 self.fase_selection_mirror_bone_focus();
                 let Some(sel) = self.fase_selection_mirror_path_links() else {

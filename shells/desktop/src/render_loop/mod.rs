@@ -242,6 +242,8 @@ mod fase_frame_profile_report;
 mod fase_game_camera;
 /// Fase do quadro: a supressao do gizmo e a moldura do modelador 3D.
 mod fase_gizmo_suppression_and_field3d_frame;
+/// Fase do quadro: a receita aberta e as vistas do gizmo.
+mod fase_gizmo_views_and_prefab;
 /// Fase do quadro: o fim do ramo hero (toasts, barras de trabalho, a arena do quadro).
 mod fase_hero_chrome_tail;
 /// Fase do quadro: a pintura do ecra hero.
@@ -702,7 +704,6 @@ impl crate::App {
             atlas_asset_map,
             asset_catalogs,
             component_registry,
-            motion,
             physics,
             ..
         } = FrameGfx::of(gfx);
@@ -946,106 +947,9 @@ impl crate::App {
                 // O registo — ver o parâmetro na assinatura do `publish`.
                 component_registry,
             );
-            // ⭐⭐⭐ **A RECEITA VEM AO ARTISTA** (Enio, 2026-09-07) — servido AQUI porque é a linha
-            // acima que publica a caixa dela, e é dessa caixa que o deslocamento sai. ⚠️ O gizmo
-            // deste quadro já foi projectado com a pose ANTIGA, então ele desenha um quadro
-            // atrasado; o desenho do mundo (que é encodado mais abaixo) já usa a nova. *Um quadro
-            // de 16 ms, contra a alternativa de reconstruir a vista inteira só para o esconder.*
-            crate::prefab_stage::run(
-                &mut self.prefab_stage_pending,
-                &mut self.prefab_stage,
-                hero,
-                ph2d_editor_core::zones::Rect::new(
-                    0.0,
-                    0.0,
-                    window_size.width as f32,
-                    window_size.height as f32,
-                ),
-                window_size,
-                camera,
-                sim,
-                &mut self.preview_drive,
-            );
-            // Flip W7.5/§4.A: os gizmos do modo Edit — só na tool Flip em modo Edit. Os
-            // dois campos próprios no `GizmoStateGroup` (append-only) são MUTUAMENTE
-            // EXCLUSIVOS por `is_instanced`: a `pose_view` só publica quando o quadro
-            // visível é uma INSTÂNCIA (rotate/escala da pose), a `selection_view` só
-            // quando é arte EXCLUSIVA com seleção (rotate/escala assado na geometria).
-            // O painter os desenha keyed (`FlipPose`/`FlipSelection`), sem interior — a
-            // seleção de traço do Edit continua dona do canvas.
-            let flip_edit_mode = tools
-                .active()
-                .is_some_and(|t| t.id() == ph2d_editor_core::ToolId::new("flip"))
-                && matches!(
-                    self.flip_state.style.map(|s| s.mode),
-                    Some(ph2d_tool_flip::FlipMode::Edit)
-                );
-            hero.gizmo.pose_view = flip_edit_mode
-                .then(|| {
-                    ph2d_app_flip::pose_gizmo::pose_view(
-                        sim,
-                        flip,
-                        &self.flip_state.entities,
-                        ph2d_app_flip::pose_gizmo::PoseViewInputs {
-                            playhead: &self.playhead,
-                            active_layer: self.flip_state.active_layer,
-                            last_pointer: self.last_pointer,
-                        },
-                        camera,
-                        window_size,
-                    )
-                })
-                .flatten();
-            hero.gizmo.selection_view = flip_edit_mode
-                .then(|| {
-                    ph2d_app_flip::selection_gizmo::selection_view(
-                        sim,
-                        flip,
-                        &self.flip_state.entities,
-                        ph2d_app_flip::selection_gizmo::SelectionViewInputs {
-                            playhead: &self.playhead,
-                            active_layer: self.flip_state.active_layer,
-                            last_pointer: self.last_pointer,
-                        },
-                        camera,
-                        window_size,
-                    )
-                })
-                .flatten();
-            // Motion Nodes: o gizmo de canvas de um FIELD ESPACIAL (`field.box`, …) — só com
-            // a tool Motion ativa + um field espacial selecionado no grafo. Slot próprio
-            // (`field_view`), desenhado keyed (`MotionField`) ⇒ o gizmo de sprite (`view`)
-            // fica INTOCADO e os dois nunca coexistem por modalidade da tool. `tools` é o
-            // local (não `self.motion_tool_active()`, que re-emprestaria `self.gfx`), espelho
-            // do `flip_edit_mode` acima.
-            let motion_tool_active = tools
-                .active()
-                .is_some_and(|t| t.id() == ph2d_editor_core::ToolId::new("motion"));
-            // As dims da CENA (o sub-retângulo do split, `CenterSplit::scene_viewport`) — o
-            // gizmo é pintado e arrastado com ELAS, casando com o `set_viewport` do render
-            // (present.rs). É o fix do drift crônico: sob o split a cena renderiza na banda
-            // e o chrome projetava a janela cheia. Fora do split = janela cheia (no-op).
-            let (scene_w, scene_h) =
-                ph2d_app_motion::field_gizmo::scene_window_wh(hero.view.center_split, window_size);
-            hero.gizmo.field_view = motion_tool_active
-                .then(|| {
-                    ph2d_app_motion::field_gizmo::field_view(
-                        motion,
-                        camera,
-                        scene_w,
-                        scene_h,
-                        self.last_pointer,
-                    )
-                })
-                .flatten();
-            // **O gizmo dos DEFORMADORES DE QUADRILÁTERO** (Corner Pin + Bezier Warp) —
-            // publicado no mesmo sítio e pela mesma modalidade do field: só com a tool
-            // Motion activa. ⚠️ Publicar de novo SUBSTITUI, então largar a selecção limpa
-            // as alças em vez de as deixar a pairar.
-            ph2d_app_motion::warp_gizmo::publish(ph2d_app_motion::warp_gizmo::resolve(
-                motion,
-                motion_tool_active,
-            ));
+            let Some(motion_tool_active) = self.fase_gizmo_views_and_prefab(window_size) else {
+                return;
+            };
             let Some(fase_bus_drain::DrainOut {
                 pending_image_tool_activation,
                 visibility_toggle_row,

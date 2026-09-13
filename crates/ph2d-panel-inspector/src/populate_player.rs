@@ -19,6 +19,7 @@
 use crate::ids;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetStore, format_number};
 use ph2d_editor_core::widget::TextInputState;
+use ph2d_i18n::tr;
 
 use crate::populate::register_button_ids;
 
@@ -35,65 +36,58 @@ fn populate_player_chips(store: &mut WidgetStore) {
     register_button_ids(store, &ids::INSP_PLAYER_MODE_IDS);
     store.set_tooltip(
         ids::INSP_PLAYER_MODE_IDS[0],
-        "The floating capsule: impulses, a spring leg, the solver owns the pose.",
+        tr("panel.inspector.player.the_floating_capsule_impulses_a"),
     );
     store.set_tooltip(
         ids::INSP_PLAYER_MODE_IDS[1],
-        "The controller: the pose is written, the world only says how much fit.",
+        tr("panel.inspector.player.the_controller_the_pose_is"),
     );
     store.set_tooltip(
         ids::INSP_PLAYER_MODE_IDS[2],
-        "Classic platformer: the same controller, but the physical world is \
-         scenery. Everything stops him and he moves nothing.",
+        tr("panel.inspector.player.classic_platformer_the_same_controller"),
     );
     // O mesmo, para o chip da saída de sinais (A3).
     register_button_ids(store, &ids::INSP_PLAYER_EMIT_IDS);
     store.set_tooltip(
         ids::INSP_PLAYER_EMIT_IDS[0],
-        "Nobody hears him: he lands and jumps in silence.",
+        tr("panel.inspector.player.nobody_hears_him_he_lands"),
     );
     store.set_tooltip(
         ids::INSP_PLAYER_EMIT_IDS[1],
-        "Publish what he does as signals (player.landed, player.jumped.wall, ...).",
+        tr("panel.inspector.player.publish_what_he_does_as"),
     );
     // O mesmo, para o chip da política de plataforma (`W-Leave`).
     register_button_ids(store, &ids::INSP_PLAYER_LIFT_POLICY_IDS);
     store.set_tooltip(
         ids::INSP_PLAYER_LIFT_POLICY_IDS[0],
-        "Jump height is measured against the PLATFORM: a rising lift launches \
-         him higher, a descending one almost cancels the jump.",
+        tr("panel.inspector.player.jump_height_is_measured_against"),
     );
     store.set_tooltip(
         ids::INSP_PLAYER_LIFT_POLICY_IDS[1],
-        "A rising platform still launches him; a descending one stops stealing \
-         the jump. The authored height is delivered in the world.",
+        tr("panel.inspector.player.a_rising_platform_still_launches"),
     );
     store.set_tooltip(
         ids::INSP_PLAYER_LIFT_POLICY_IDS[2],
-        "The platform never changes the jump: the authored height is always \
-         measured against the world.",
+        tr("panel.inspector.player.the_platform_never_changes_the"),
     );
     // O mesmo, para os dois chips da trava de beirada (`W-Brink`).
     register_button_ids(store, &ids::INSP_PLAYER_WALK_OFF_IDS);
     store.set_tooltip(
         ids::INSP_PLAYER_WALK_OFF_IDS[0],
-        "He walks off ledges, like every character before this option existed.",
+        tr("panel.inspector.player.he_walks_off_ledges_like"),
     );
     store.set_tooltip(
         ids::INSP_PLAYER_WALK_OFF_IDS[1],
-        "He stops at the edge instead of walking off it. Jumping off still \
-         works, and so does being carried off by a platform or a belt. A gap \
-         wider than his leg can span reads as a ledge, so he stops there too.",
+        tr("panel.inspector.player.he_stops_at_the_edge"),
     );
     register_button_ids(store, &ids::INSP_PLAYER_CROUCH_WALK_OFF_IDS);
     store.set_tooltip(
         ids::INSP_PLAYER_CROUCH_WALK_OFF_IDS[0],
-        "Crouching does not change it: he walks off ledges if standing does.",
+        tr("panel.inspector.player.crouching_does_not_change_it"),
     );
     store.set_tooltip(
         ids::INSP_PLAYER_CROUCH_WALK_OFF_IDS[1],
-        "Crouched, he stops at the edge -- the sneak-to-the-brink move. It only \
-         tightens: it cannot give back what standing already refuses.",
+        tr("panel.inspector.player.crouched_he_stops_at_the"),
     );
 }
 
@@ -129,11 +123,11 @@ pub(super) fn populate_player(store: &mut WidgetStore) {
     // novo nascer explicado.
     for (_, _, rows) in crate::sections::player::PLAYER_CARDS {
         for (_, id, tip) in rows {
-            store.set_tooltip(*id, *tip);
+            store.set_tooltip(*id, tip.tr());
         }
     }
     for (id, tip) in crate::sections::player::PLAYER_BUTTON_TIPS {
-        store.set_tooltip(id, tip);
+        store.set_tooltip(id, tip.tr());
     }
     for (id, value, min, max, step) in [
         // Metros. O piso NÃO é zero por acaso: uma perna de comprimento zero é

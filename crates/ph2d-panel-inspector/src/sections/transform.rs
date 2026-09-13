@@ -3,6 +3,7 @@
 
 use super::*;
 use ph2d_editor_core::widget::SectionFold;
+use ph2d_i18n::tr;
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn paint_transform_section(
@@ -128,8 +129,12 @@ pub(crate) fn paint_transform_section(
     let angle_step = step_for(angle);
     let unit = current_display_unit();
     let (pos_label, pos_step) = match unit {
-        ph2d_editor_core::project::DisplayUnit::Meters => ("Position (m)", 0.01_f64), // LITERAL-PX-OK: NumberInput step
-        ph2d_editor_core::project::DisplayUnit::Pixels => ("Position (px)", 1.0_f64),
+        ph2d_editor_core::project::DisplayUnit::Meters => {
+            (tr("panel.inspector.transform.position_m"), 0.01_f64)
+        } // LITERAL-PX-OK: NumberInput step
+        ph2d_editor_core::project::DisplayUnit::Pixels => {
+            (tr("panel.inspector.transform.position_px"), 1.0_f64)
+        }
     };
     let h_pos = paint_row(
         scene,
@@ -167,7 +172,7 @@ pub(crate) fn paint_transform_section(
         text_system,
         hit_index,
         cur_y,
-        "Scale",
+        tr("panel.inspector.transform.scale"),
         ids::INSP_TRANSFORM_SCALE_X,
         "X",
         ColorToken::Danger,
@@ -280,8 +285,12 @@ fn paint_header_and_begin_fold(
         .unwrap_or([0x88, 0x88, 0x88, 0xff]); // LITERAL-COLOR-OK: neutral default for unconfigured section accent
     // Header rect spans the FULL panel width so paint_section_header
     // anchors the color dot at the right edge (panel border).
-    let header =
-        section_header(store, core_ids::INSP_LIVE_TRANSFORM_SECTION, "Transform").color(rgba);
+    let header = section_header(
+        store,
+        core_ids::INSP_LIVE_TRANSFORM_SECTION,
+        tr("panel.inspector.transform.transform"),
+    )
+    .color(rgba);
     let header_rect = Rect::new(x, y, w, header_h);
     // Reserve for the color dot at the right edge (≈ Md pad + 14 px
     // dot diameter) — the reset icon slots just to the LEFT of it.
@@ -340,10 +349,14 @@ fn paint_header_and_begin_fold(
 #[must_use]
 fn labels_for(angle: ph2d_editor_core::project::DisplayAngle) -> (&'static str, &'static str) {
     match angle {
-        ph2d_editor_core::project::DisplayAngle::Degrees => {
-            ("Rotation (\u{00b0})", "Skew (\u{00b0})")
-        }
-        ph2d_editor_core::project::DisplayAngle::Radians => ("Rotation (rad)", "Skew (rad)"),
+        ph2d_editor_core::project::DisplayAngle::Degrees => (
+            tr("panel.inspector.transform.rotation"),
+            tr("panel.inspector.transform.skew"),
+        ),
+        ph2d_editor_core::project::DisplayAngle::Radians => (
+            tr("panel.inspector.transform.rotation_rad"),
+            tr("panel.inspector.transform.skew_rad"),
+        ),
     }
 }
 

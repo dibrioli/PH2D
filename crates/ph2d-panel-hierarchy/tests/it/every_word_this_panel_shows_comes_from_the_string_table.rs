@@ -84,8 +84,8 @@ fn every_named_exception_still_shelters_a_real_literal() {
 #[test]
 fn every_hierarchy_key_exists_on_both_sides() {
     let repo = repo_root();
-    let used = keys::keys_used(&repo, PREFIX, TABLE);
-    let declared = keys::keys_declared(&repo, TABLE, PREFIX);
+    let used = keys::keys_used(&repo, PREFIX, &[TABLE]);
+    let declared = keys::keys_declared(&repo, &[TABLE], PREFIX);
     // ⛔ Controlo de vacuidade: dois conjuntos vazios concordam.
     assert!(
         declared.len() >= 3 && used.len() >= 3,

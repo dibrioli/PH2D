@@ -11,6 +11,8 @@
 use super::slice_nine::hint;
 use super::*;
 use ph2d_editor_core::screens::hero::InspectorSliceInfo;
+use ph2d_i18n::TextKey;
+use ph2d_i18n::tr;
 
 const CELL: f32 = 26.0; // LITERAL-PX-OK: lado de uma célula da grelha 3x3
 /// Lado da grelha, em células. Não é uma medida de desenho: é a aridade do 9-slice.
@@ -59,8 +61,7 @@ pub fn is_corner_cell(i: usize) -> bool {
 /// cantos são fixos e só ligam/desligam, e que o miolo não tem `blank` (isso é o `Fill Center`).
 /// A terceira ressalva que ela teve por um dia — «em Tiled, S repete» — **deixou de ser
 /// precisa**: o `Tiled` foi retirado, e agora a letra diz sempre o que a região faz.
-const REGION_LEGEND: &str = "Corners F fixed (on/off). Edges + centre: S stretch, R repeat, \
-                             M mirror, - blank.";
+const REGION_LEGEND: TextKey = TextKey::new("panel.inspector.slice.corners_f_fixed_on_off");
 
 /// A grelha 3×3 dos modos por-região. Devolve o `y` seguinte.
 #[allow(clippy::too_many_arguments)]
@@ -80,7 +81,7 @@ pub(super) fn region_grid(
     paint_text(
         text_system,
         scene,
-        "Per-region tiling",
+        tr("panel.inspector.slice.per_region_tiling"),
         x,
         y + (label_h - label_font) * 0.5,
         label_font,
@@ -142,8 +143,14 @@ pub(super) fn region_grid(
     let presets_x = x + (CELL + gap) * GRID as f32 + Spacing::Sm.px();
     let presets_w = (w - (presets_x - x)).max(0.0);
     for (i, (id, label)) in [
-        (ids::INSP_SLICE_ALL_TILE, "Tile all"),
-        (ids::INSP_SLICE_ALL_STRETCH, "Stretch all"),
+        (
+            ids::INSP_SLICE_ALL_TILE,
+            tr("panel.inspector.slice.tile_all"),
+        ),
+        (
+            ids::INSP_SLICE_ALL_STRETCH,
+            tr("panel.inspector.slice.stretch_all"),
+        ),
     ]
     .into_iter()
     .enumerate()
@@ -161,5 +168,14 @@ pub(super) fn region_grid(
         );
     }
     let legend_y = grid_y + grid_h + Spacing::Xs.px();
-    legend_y + hint(scene, text_system, theme, x, w, legend_y, REGION_LEGEND)
+    legend_y
+        + hint(
+            scene,
+            text_system,
+            theme,
+            x,
+            w,
+            legend_y,
+            REGION_LEGEND.tr(),
+        )
 }

@@ -31,6 +31,8 @@
 use super::*;
 use ph2d_editor_core::screens::hero::{InspectorTimerInfo, InspectorTimerRow};
 use ph2d_editor_core::widget::SectionFold;
+use ph2d_i18n::tr;
+use ph2d_i18n::tr_with;
 
 const BTN_H: f32 = 30.0; // LITERAL-PX-OK: altura de botão do Inspector, igual à da §11
 const CHECK_H: f32 = 18.0; // LITERAL-PX-OK: altura visual do Checkbox, igual à da §11
@@ -44,9 +46,19 @@ const ROW_H: f32 = ph2d_tokens::ROW_H_PX;
 /// branco: um timer sem nome de sinal cumpre o período e cala-se, e isso é uma escolha legítima
 /// que tem de se ler como escolha.
 fn summary(row: &InspectorTimerRow) -> String {
-    let repeat = if row.repeat { "repeats" } else { "once" };
+    let repeat = if row.repeat {
+        tr("panel.inspector.timers.repeats")
+    } else {
+        tr("panel.inspector.timers.once")
+    };
     if row.is_mute() {
-        format!("{:.2}s \u{b7} {repeat} \u{b7} mute", row.duration_s)
+        tr_with(
+            "panel.inspector.timers.summary_mute",
+            &[
+                ("s", &format!("{:.2}", row.duration_s)),
+                ("repeat", &repeat),
+            ],
+        )
     } else {
         format!(
             "{:.2}s \u{b7} {repeat} \u{b7} \u{2192} {}",
@@ -178,10 +190,13 @@ fn buttons(
         cell += 1;
         hit_index.register(ids::INSP_TIMER_ADD, rect);
         paint_button(
-            &Button::new(ids::INSP_TIMER_ADD, "+ Add Timer")
-                .kind(ButtonKind::Default)
-                .visual(store.button_visual(ids::INSP_TIMER_ADD))
-                .in_group(group),
+            &Button::new(
+                ids::INSP_TIMER_ADD,
+                tr("panel.inspector.timers.plus_add_timer"),
+            )
+            .kind(ButtonKind::Default)
+            .visual(store.button_visual(ids::INSP_TIMER_ADD))
+            .in_group(group),
             rect,
             scene,
             text_system,
@@ -192,10 +207,13 @@ fn buttons(
         let (rect, group) = seg[cell];
         hit_index.register(ids::INSP_TIMER_REMOVE, rect);
         paint_button(
-            &Button::new(ids::INSP_TIMER_REMOVE, "x Remove Timer")
-                .kind(ButtonKind::Default)
-                .visual(store.button_visual(ids::INSP_TIMER_REMOVE))
-                .in_group(group),
+            &Button::new(
+                ids::INSP_TIMER_REMOVE,
+                tr("panel.inspector.timers.x_remove_timer"),
+            )
+            .kind(ButtonKind::Default)
+            .visual(store.button_visual(ids::INSP_TIMER_REMOVE))
+            .in_group(group),
             rect,
             scene,
             text_system,
@@ -228,7 +246,8 @@ fn editor(
         w,
         y,
         ids::INSP_TIMER_NAME,
-        TextInput::new(ids::INSP_TIMER_NAME, "").placeholder("timer_name\u{2026}"),
+        TextInput::new(ids::INSP_TIMER_NAME, "")
+            .placeholder(tr("panel.inspector.timers.timer_name")),
     );
 
     // ⚠️ **SEGUNDOS, e o passo é 0,1** — a unidade do artista. O componente guarda microssegundos
@@ -243,15 +262,23 @@ fn editor(
         x,
         w,
         cur_y,
-        "Duration (seconds)",
+        tr("panel.inspector.timers.duration_seconds"),
         &[ids::INSP_TIMER_DURATION],
         0.1, // LITERAL-PX-OK: passo de scrub em SEGUNDOS, não em pixels
     );
 
     let half = (w - Spacing::Sm.px()) * 0.5;
     for (i, (id, label, on)) in [
-        (ids::INSP_TIMER_REPEAT, "Repeat", row.repeat),
-        (ids::INSP_TIMER_AUTOSTART, "Autostart", row.autostart),
+        (
+            ids::INSP_TIMER_REPEAT,
+            tr("panel.inspector.timers.repeat"),
+            row.repeat,
+        ),
+        (
+            ids::INSP_TIMER_AUTOSTART,
+            tr("panel.inspector.timers.autostart"),
+            row.autostart,
+        ),
     ]
     .into_iter()
     .enumerate()
@@ -291,17 +318,20 @@ fn editor(
         w,
         cur_y,
         ids::INSP_TIMER_SIGNAL,
-        TextInput::new(ids::INSP_TIMER_SIGNAL, "").placeholder("signal_name (empty = mute)"),
+        TextInput::new(ids::INSP_TIMER_SIGNAL, "")
+            .placeholder(tr("panel.inspector.timers.signal_name_empty_mute")),
     );
 
     // ⚠️⚠️ **A LINHA QUE RESPONDE AO «nada acontece».** As três causas autoráveis do silêncio são
     // invisíveis a olho — e cada uma delas já produziu um report. Ela nomeia a que está em vigor.
     let aviso = if row.duration_s <= 0.0 {
-        Some("This timer never fires: duration is zero.")
+        Some(tr("panel.inspector.timers.this_timer_never_fires_duration"))
     } else if !row.autostart {
-        Some("This timer never starts: Autostart is off.")
+        Some(tr(
+            "panel.inspector.timers.this_timer_never_starts_autostart",
+        ))
     } else if row.is_mute() {
-        Some("This timer runs but says nothing: the signal name is empty.")
+        Some(tr("panel.inspector.timers.this_timer_runs_but_says"))
     } else {
         None
     };
@@ -342,9 +372,12 @@ pub(crate) fn paint_timer_section(
         .widget_color(color_id)
         .unwrap_or([0x88, 0x88, 0x88, 0xff]); // LITERAL-COLOR-OK: acento neutro por omissão
     let title = if info.rows.is_empty() {
-        String::from("Timers")
+        String::from(tr("panel.inspector.timers.timers"))
     } else {
-        format!("Timers  ({})", info.rows.len())
+        tr_with(
+            "panel.inspector.timers.title_count",
+            &[("n", &info.rows.len())],
+        )
     };
     let header = section_header(store, core_ids::INSP_LIVE_TIMER_SECTION, &title).color(rgba);
     let header_rect = Rect::new(x, y, w, header_h);
@@ -374,7 +407,7 @@ pub(crate) fn paint_timer_section(
         paint_text(
             text_system,
             scene,
-            "Multiple selected \u{b7} timer edits apply to the active object only.",
+            tr("panel.inspector.timers.multiple_selected_timer_edits_apply"),
             x,
             cur_y,
             font,
@@ -388,7 +421,7 @@ pub(crate) fn paint_timer_section(
         paint_text(
             text_system,
             scene,
-            "No timers yet.",
+            tr("panel.inspector.timers.no_timers_yet"),
             x,
             cur_y,
             font,

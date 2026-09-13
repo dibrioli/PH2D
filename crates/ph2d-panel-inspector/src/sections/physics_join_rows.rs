@@ -15,14 +15,25 @@
 
 use super::rows::seg_row;
 use super::*;
+use ph2d_i18n::TextKey;
+use ph2d_i18n::tr;
+use ph2d_i18n::tr_with;
 
 /// Join-kind labels, indexed by `JointKind` tag — the TYPE the next
 /// *Join Selected Bodies* (or canvas draw) creates. Same order as §12's
 /// `KIND_LABELS`, and it must list every kind that one does: this is the selector
 /// that decides what gets CREATED, so a kind missing here is a kind the artist
 /// cannot reach at all.
-const JOIN_KIND_LABELS: [&str; 9] = [
-    "Pin", "Spring", "Rope", "Weld", "Slider", "Rod", "Wheel", "Pulley", "Custom",
+const JOIN_KIND_LABELS: [TextKey; 9] = [
+    TextKey::new("panel.inspector.physics.pin"),
+    TextKey::new("panel.inspector.physics.spring"),
+    TextKey::new("panel.inspector.physics.rope"),
+    TextKey::new("panel.inspector.physics.weld"),
+    TextKey::new("panel.inspector.physics.slider"),
+    TextKey::new("panel.inspector.physics.rod"),
+    TextKey::new("panel.inspector.physics.wheel"),
+    TextKey::new("panel.inspector.physics.pulley"),
+    TextKey::new("panel.inspector.physics.custom"),
 ];
 
 /// Paint the joint-creation gesture: the "Join As" kind selector (Pin/Spring/
@@ -62,10 +73,10 @@ pub(crate) fn paint_join_gesture(
         x,
         w,
         y,
-        "Join As",
+        tr("panel.inspector.physics.join_as"),
         core_ids::INSP_LIVE_PHYSICS_SECTION,
         &ids::INSP_PHYS_JOIN_KIND,
-        &JOIN_KIND_LABELS,
+        &JOIN_KIND_LABELS.map(TextKey::tr),
         join_kind_tag,
     );
     // **DUAS rotas de criação, e cada uma aparece onde faz sentido.**
@@ -121,11 +132,11 @@ pub(crate) fn paint_join_gesture(
 /// ⚠️ **"Cancel Joint Drawing", nao "Cancel Joint"**: nao existe joint nenhum
 /// para cancelar — o gesto ainda nao criou nada, e nomear uma coisa que nao esta
 /// la faria o artista procurar o que ele desfez. O que sai do ar e o MODO.
-const fn draw_button_label(armed: bool) -> &'static str {
+fn draw_button_label(armed: bool) -> &'static str {
     if armed {
-        "Cancel Joint Drawing"
+        tr("panel.inspector.physics.cancel_joint_drawing")
     } else {
-        "Draw Joint on Canvas"
+        tr("panel.inspector.physics.draw_joint_on_canvas")
     }
 }
 
@@ -140,9 +151,12 @@ const fn draw_button_label(armed: bool) -> &'static str {
 /// baixo enquanto mora na de cima é pior que comentário nenhum.
 fn join_button_label(join_count: u8) -> String {
     if join_count > 2 {
-        format!("Chain {join_count} Selected Bodies")
+        tr_with(
+            "panel.inspector.physics.chain_bodies",
+            &[("join_count", &join_count)],
+        )
     } else {
-        "Join Selected Bodies".to_string()
+        tr("panel.inspector.physics.join_selected_bodies").to_string()
     }
 }
 
@@ -155,7 +169,10 @@ fn join_button_label(join_count: u8) -> String {
 /// vai acontecer sem ter de desfazer para descobrir.
 #[must_use]
 pub fn rig_button_label(rig_parts: u8) -> String {
-    format!("Rig {rig_parts} Parts from Hierarchy")
+    tr_with(
+        "panel.inspector.physics.rig_parts",
+        &[("rig_parts", &rig_parts)],
+    )
 }
 
 #[cfg(test)]

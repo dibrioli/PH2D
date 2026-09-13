@@ -17,6 +17,7 @@ use ph2d_editor_core::widget::{
     scrollbar_track_rect,
 };
 use ph2d_editor_core::zones::Rect;
+use ph2d_i18n::tr;
 use ph2d_text::TextSystem;
 use ph2d_vector::VectorScene;
 
@@ -108,15 +109,34 @@ pub(crate) fn paint_deferred_popovers(
     region: Rect,
 ) {
     if let Some((sel_idx, chip)) = take_pending_dropdown_chip() {
-        let labels = ["Front", "Side", "Top"];
-        let selected_label = labels.get(sel_idx).copied().unwrap_or("Front");
+        let labels = [
+            tr("panel.inspector.sample.front"),
+            tr("panel.inspector.sample.side"),
+            tr("panel.inspector.sample.top"),
+        ];
+        let selected_label = labels
+            .get(sel_idx)
+            .copied()
+            .unwrap_or(tr("panel.inspector.sample.front"));
         let dd = Dropdown::new(
             ids::INSP_SAMPLE_DROPDOWN,
-            "View",
+            tr("panel.inspector.sample.view"),
             vec![
-                DropdownOption::new(ids::INSP_SAMPLE_DD_OPT_A, "front", "Front"),
-                DropdownOption::new(ids::INSP_SAMPLE_DD_OPT_B, "side", "Side"),
-                DropdownOption::new(ids::INSP_SAMPLE_DD_OPT_C, "top", "Top"),
+                DropdownOption::new(
+                    ids::INSP_SAMPLE_DD_OPT_A,
+                    "front",
+                    tr("panel.inspector.sample.front"),
+                ),
+                DropdownOption::new(
+                    ids::INSP_SAMPLE_DD_OPT_B,
+                    "side",
+                    tr("panel.inspector.sample.side"),
+                ),
+                DropdownOption::new(
+                    ids::INSP_SAMPLE_DD_OPT_C,
+                    "top",
+                    tr("panel.inspector.sample.top"),
+                ),
             ],
         )
         .selected(selected_label)
@@ -137,8 +157,7 @@ pub(crate) fn paint_deferred_popovers(
     if let Some((sel_idx, chip)) = state_popovers::take_pending_ordering_dd() {
         let label = sections::ordering::LAYER_LABELS
             .get(sel_idx)
-            .copied()
-            .unwrap_or("Default");
+            .map_or(tr("panel.inspector.ordering.default"), |k| k.tr());
         let dd = Dropdown::new(
             crate::ids::INSP_ORDER_SORTING_LAYER,
             "",

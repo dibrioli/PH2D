@@ -9,12 +9,21 @@ use super::*;
 use ph2d_editor_core::screens::hero::InspectorBlendInfo;
 use ph2d_editor_core::widget::SectionFold;
 use ph2d_editor_core::widget::{SegmentedAdaptive, SegmentedOption, paint_segmented_adaptive};
+use ph2d_i18n::TextKey;
+use ph2d_i18n::tr;
 
 /// Blend-mode segmented labels, indexed by `BlendMode::tag()` (0..5).
 /// Hardcoded here (not from `ph2d_ecs::BlendMode`) so the panel crate
 /// stays loose-coupled from `ph2d-ecs` — the snapshot carries only the
 /// resolved tag. English per HR-15 (i18n migrates in W7).
-const BLEND_LABELS: [&str; 6] = ["Mix", "Add", "Subtract", "Multiply", "Screen", "Premult"];
+const BLEND_LABELS: [TextKey; 6] = [
+    TextKey::new("panel.inspector.material.mix"),
+    TextKey::new("panel.inspector.material.add"),
+    TextKey::new("panel.inspector.material.subtract"),
+    TextKey::new("panel.inspector.material.multiply"),
+    TextKey::new("panel.inspector.material.screen"),
+    TextKey::new("panel.inspector.material.premult"),
+];
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn paint_material_blend_section(
@@ -33,8 +42,12 @@ pub(crate) fn paint_material_blend_section(
     let rgba = store
         .widget_color(color_id)
         .unwrap_or([0x88, 0x88, 0x88, 0xff]); // LITERAL-COLOR-OK: neutral default section accent
-    let header =
-        section_header(store, core_ids::INSP_LIVE_BLEND_SECTION, "Material & Blend").color(rgba);
+    let header = section_header(
+        store,
+        core_ids::INSP_LIVE_BLEND_SECTION,
+        tr("panel.inspector.material.material_and_blend"),
+    )
+    .color(rgba);
     let header_rect = Rect::new(x, y, w, header_h);
     paint_section_header(&header, header_rect, scene, text_system, theme);
     if let Some(circle_rect) = ph2d_editor_core::widget::color_circle_hit_rect(&header, header_rect)
@@ -74,7 +87,7 @@ pub(crate) fn paint_material_blend_section(
     paint_text(
         text_system,
         scene,
-        "Blend Mode",
+        tr("panel.inspector.material.blend_mode"),
         x,
         yy + (label_h - label_font) * 0.5,
         label_font,
@@ -84,11 +97,11 @@ pub(crate) fn paint_material_blend_section(
     yy += label_h;
     let seg = SegmentedAdaptive::new(
         core_ids::INSP_LIVE_BLEND_SECTION,
-        "Blend Mode",
+        tr("panel.inspector.material.blend_mode"),
         ids::INSP_SAMPLE_BLEND
             .iter()
             .zip(BLEND_LABELS)
-            .map(|(&id, label)| SegmentedOption::new(id, label))
+            .map(|(&id, label)| SegmentedOption::new(id, label.tr()))
             .collect(),
     )
     // ⚠️ **Índice fora de alcance = nenhum aceso**, que é como este widget diz «misto». A flag
@@ -119,7 +132,7 @@ pub(crate) fn paint_material_blend_section(
     paint_text(
         text_system,
         scene,
-        "Material: Default \u{00b7} shader runtime pending",
+        tr("panel.inspector.material.material_default_shader_runtime_pending"),
         x,
         yy + (h - label_font) * 0.5,
         label_font,

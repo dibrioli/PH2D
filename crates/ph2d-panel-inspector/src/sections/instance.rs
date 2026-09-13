@@ -19,6 +19,8 @@
 
 use super::*;
 use ph2d_editor_core::screens::hero::InspectorInstanceInfo;
+use ph2d_i18n::tr;
+use ph2d_i18n::tr_with;
 
 /// A margem de dentro do cartão — o que separa o texto da borda dele.
 const CARD_PAD: f32 = 8.0; // LITERAL-PX-OK: inset do cartão, irmão do BODY_PAD do corpo
@@ -195,7 +197,10 @@ pub(crate) fn paint_instance_card(
         paint_text(
             text_system,
             scene,
-            &format!("+{} deeper", info.apply_levels_beyond),
+            &tr_with(
+                "panel.inspector.instance.deeper",
+                &[("n", &info.apply_levels_beyond)],
+            ),
             tx + Spacing::Sm.px(),
             ty,
             small,
@@ -275,9 +280,12 @@ fn paint_head(
     // nomeia um sítio inalcançável ensina que a feature está partida*.
     let host = Rect::new(tx, ty, tw, line);
     hit_index.register(ids::INSP_INSTANCE_OPEN_PREFAB, host);
-    let button = Button::new(ids::INSP_INSTANCE_OPEN_PREFAB, "Edit Prefab".to_string())
-        .kind(ButtonKind::Default)
-        .visual(store.button_visual(ids::INSP_INSTANCE_OPEN_PREFAB));
+    let button = Button::new(
+        ids::INSP_INSTANCE_OPEN_PREFAB,
+        tr("panel.inspector.instance.edit_prefab").to_string(),
+    )
+    .kind(ButtonKind::Default)
+    .visual(store.button_visual(ids::INSP_INSTANCE_OPEN_PREFAB));
     paint_button(&button, host, scene, text_system, theme);
     ty + line
 }

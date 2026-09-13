@@ -19,6 +19,7 @@
 
 use super::*;
 use ph2d_editor_core::widget::{SliderState, paint_slider_with_chip};
+use ph2d_i18n::tr;
 
 /// Altura do campo, igual à das outras linhas com chip.
 const FIELD_H: f32 = 24.0; // LITERAL-PX-OK: mesma altura de campo do resto do Inspector
@@ -45,7 +46,7 @@ pub(crate) fn paint_emissive_row(
         .unwrap_or((SliderState::Normal, 0.0));
     let h = paint_slider_with_chip(
         Rect::new(x, cur_y, w, FIELD_H),
-        "Emissive",
+        tr("panel.inspector.render_source.emissive"),
         value,
         ids::INSP_SPRITE_EMISSIVE,
         ids::INSP_SPRITE_EMISSIVE_CHIP,

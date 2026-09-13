@@ -4,6 +4,8 @@
 use super::render_source_precision::paint_precision_row;
 use super::*;
 use ph2d_editor_core::widget::SectionFold;
+use ph2d_i18n::tr;
+use ph2d_i18n::tr_with;
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn paint_render_source_section(
@@ -31,8 +33,12 @@ pub(crate) fn paint_render_source_section(
     let rgba = store
         .widget_color(color_id)
         .unwrap_or([0x88, 0x88, 0x88, 0xff]); // LITERAL-COLOR-OK: neutral default for unconfigured section accent
-    let header =
-        section_header(store, core_ids::INSP_LIVE_RENDER_SECTION, "Render Source").color(rgba);
+    let header = section_header(
+        store,
+        core_ids::INSP_LIVE_RENDER_SECTION,
+        tr("panel.inspector.render_source.render_source"),
+    )
+    .color(rgba);
     let header_rect = Rect::new(x, y, w, header_h);
     paint_section_header(&header, header_rect, scene, text_system, theme);
     if let Some(circle_rect) = ph2d_editor_core::widget::color_circle_hit_rect(&header, header_rect)
@@ -152,9 +158,12 @@ pub(crate) fn paint_render_source_section(
         store.button_visual(id)
     };
     hit_index.register(id, btn_rect);
-    let btn = Button::new(id, "Reimport at current px/m")
-        .kind(ButtonKind::Default)
-        .visual(state);
+    let btn = Button::new(
+        id,
+        tr("panel.inspector.render_source.reimport_at_current_px_m"),
+    )
+    .kind(ButtonKind::Default)
+    .visual(state);
     paint_button(&btn, btn_rect, scene, text_system, theme);
     fold.finish(
         store,
@@ -199,7 +208,7 @@ fn paint_strategy_row(
     paint_text(
         text_system,
         scene,
-        "Strategy",
+        tr("panel.inspector.render_source.strategy"),
         x,
         cur_y,
         label_font,
@@ -223,7 +232,7 @@ fn paint_strategy_row(
         paint_text(
             text_system,
             scene,
-            "From the asset pipeline \u{00b7} read-only",
+            tr("panel.inspector.render_source.from_the_asset_pipeline_read"),
             x,
             cur_y,
             label_font,
@@ -243,17 +252,17 @@ fn paint_strategy_row(
         Rect::new(x, cur_y, strategy_w, ROW_H_PX),
         &[
             (
-                "Atlas",
+                tr("panel.inspector.render_source.atlas"),
                 matches!(info.source_kind, InspectorSpriteSource::Atlas { .. }),
                 core_ids::INSP_RENDER_STRATEGY_ATLAS,
             ),
             (
-                "Individual",
+                tr("panel.inspector.render_source.individual"),
                 matches!(info.source_kind, InspectorSpriteSource::Individual { .. }),
                 crate::ids::INSP_RENDER_STRATEGY_INDIVIDUAL,
             ),
             (
-                "Hand-packed",
+                tr("panel.inspector.render_source.hand_packed"),
                 matches!(info.source_kind, InspectorSpriteSource::HandPacked { .. }),
                 crate::ids::INSP_RENDER_STRATEGY_HANDPACKED,
             ),
@@ -349,24 +358,35 @@ fn paint_provenance(
     // Cleaner phrasing — strategy name + key/id separated by middle dot (the only ASCII-safe
     // non-ASCII glyph allowed in UI strings; vide no_tofu_glyphs gate).
     let detail = match info.source_kind {
-        InspectorSpriteSource::Atlas { key } => format!("Atlas \u{00b7} key {key}"),
-        InspectorSpriteSource::Individual { texture_id } => {
-            format!("Individual \u{00b7} texture {texture_id}")
+        InspectorSpriteSource::Atlas { key } => {
+            tr_with("panel.inspector.render_source.atlas_key", &[("key", &key)])
         }
+        InspectorSpriteSource::Individual { texture_id } => tr_with(
+            "panel.inspector.render_source.individual_texture",
+            &[("texture_id", &texture_id)],
+        ),
         // ⚠️ O NOME, não os índices: é por ele que o artista reencontra o desenho no Aseprite. Os
         // números só aparecem se o rótulo faltar (uma folha que o projeto trouxe mas a sessão não
         // tem), e aí eles são a informação honesta que sobra.
         InspectorSpriteSource::HandPacked { sheet, region } => match &info.sheet_label {
-            Some(label) => format!("Hand-packed \u{00b7} {label}"),
-            None => format!("Hand-packed \u{00b7} sheet {sheet} \u{00b7} region {region}"),
+            Some(label) => tr_with(
+                "panel.inspector.render_source.hand_packed_label",
+                &[("label", &label)],
+            ),
+            None => tr_with(
+                "panel.inspector.render_source.hand_packed_sheet_region",
+                &[("sheet", &sheet), ("region", &region)],
+            ),
         },
         // W2.T2: tier-cooked KTX2 — read-only marker, no key/id shown.
-        InspectorSpriteSource::CookedTexture => "Cooked texture".to_string(),
+        InspectorSpriteSource::CookedTexture => {
+            tr("panel.inspector.render_source.cooked_texture").to_string()
+        }
     };
     paint_text(
         text_system,
         scene,
-        STORAGE_LABEL,
+        STORAGE_LABEL.tr(),
         x,
         y,
         label_font,
@@ -409,7 +429,7 @@ fn paint_provenance(
         paint_text(
             text_system,
             scene,
-            SOURCE_SIZE_LABEL,
+            SOURCE_SIZE_LABEL.tr(),
             x,
             cur_y,
             label_font,
@@ -419,7 +439,10 @@ fn paint_provenance(
         paint_text(
             text_system,
             scene,
-            &format!("{pw} \u{00d7} {ph} px"),
+            &tr_with(
+                "panel.inspector.render_source.size_px",
+                &[("pw", &pw), ("ph", &ph)],
+            ),
             x,
             cur_y + label_font + row_gap,
             label_font,
@@ -465,9 +488,12 @@ fn paint_region_rows(
         let re_rect = Rect::new(x, cur_y, w, cb_h);
         hit_index.register(ids::INSP_REGION_ENABLED, re_rect);
         paint_checkbox(
-            &Checkbox::new(ids::INSP_REGION_ENABLED, "Region")
-                .visual(store.checkbox_visual(ids::INSP_REGION_ENABLED))
-                .value(re_value),
+            &Checkbox::new(
+                ids::INSP_REGION_ENABLED,
+                tr("panel.inspector.render_source.region"),
+            )
+            .visual(store.checkbox_visual(ids::INSP_REGION_ENABLED))
+            .value(re_value),
             re_rect,
             scene,
             text_system,
@@ -535,9 +561,12 @@ fn paint_region_rows(
             let fc_rect = Rect::new(x, cur_y, w, cb_h);
             hit_index.register(ids::INSP_REGION_FILTER_CLIP, fc_rect);
             paint_checkbox(
-                &Checkbox::new(ids::INSP_REGION_FILTER_CLIP, "Filter Clip")
-                    .visual(store.checkbox_visual(ids::INSP_REGION_FILTER_CLIP))
-                    .value(fc_value),
+                &Checkbox::new(
+                    ids::INSP_REGION_FILTER_CLIP,
+                    tr("panel.inspector.render_source.filter_clip"),
+                )
+                .visual(store.checkbox_visual(ids::INSP_REGION_FILTER_CLIP))
+                .value(fc_value),
                 fc_rect,
                 scene,
                 text_system,

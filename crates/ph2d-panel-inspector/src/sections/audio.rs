@@ -31,6 +31,8 @@ use super::*;
 use ph2d_editor_core::screens::hero::{InspectorAudioInfo, InspectorAudioSource};
 use ph2d_editor_core::widget::SectionFold;
 use ph2d_editor_core::widget::{Dropdown, DropdownOption, paint_dropdown_chip};
+use ph2d_i18n::tr;
+use ph2d_i18n::tr_with;
 
 const BTN_H: f32 = 30.0; // LITERAL-PX-OK: altura de botão do Inspector, igual à das irmãs
 const CHECK_H: f32 = 18.0; // LITERAL-PX-OK: altura visual do Checkbox, igual à das irmãs
@@ -90,9 +92,9 @@ fn buttons(
 ) -> f32 {
     let seg = ph2d_editor_core::widget::segment_rects(Rect::new(x, y, w, BTN_H), 3);
     for (i, (id, label)) in [
-        (ids::INSP_AUDIO_BROWSE, "Browse\u{2026}"),
-        (ids::INSP_AUDIO_PREVIEW, "Preview"),
-        (ids::INSP_AUDIO_STOP, "Stop"),
+        (ids::INSP_AUDIO_BROWSE, tr("panel.inspector.audio.browse")),
+        (ids::INSP_AUDIO_PREVIEW, tr("panel.inspector.audio.preview")),
+        (ids::INSP_AUDIO_STOP, tr("panel.inspector.audio.stop")),
     ]
     .into_iter()
     .enumerate()
@@ -174,7 +176,8 @@ fn source_body(
         w,
         y,
         ids::INSP_AUDIO_SOUND,
-        TextInput::new(ids::INSP_AUDIO_SOUND, "").placeholder("sound file\u{2026}"),
+        TextInput::new(ids::INSP_AUDIO_SOUND, "")
+            .placeholder(tr("panel.inspector.audio.sound_file")),
     );
     cur_y = buttons(scene, text_system, theme, hit_index, store, x, w, cur_y);
 
@@ -188,7 +191,7 @@ fn source_body(
             x,
             w,
             cur_y,
-            "No sound file yet \u{2014} use Browse to pick one.",
+            tr("panel.inspector.audio.no_sound_file_yet_use"),
             ColorToken::Text3,
         );
     } else if src.file_missing {
@@ -199,7 +202,7 @@ fn source_body(
             x,
             w,
             cur_y,
-            "That file is gone \u{2014} pick it again.",
+            tr("panel.inspector.audio.that_file_is_gone_pick"),
             ColorToken::Danger,
         );
     }
@@ -211,7 +214,7 @@ fn source_body(
             x,
             w,
             cur_y,
-            "Nothing plays this: Autoplay is off and no Signal Action targets it.",
+            tr("panel.inspector.audio.nothing_plays_this_autoplay_is"),
             ColorToken::Warn,
         );
     }
@@ -223,19 +226,47 @@ fn source_body(
             x,
             w,
             cur_y,
-            "No Audio Listener 2D in the scene \u{2014} sound plays with no position.",
+            tr("panel.inspector.audio.no_audio_listener_2d_in"),
             ColorToken::Warn,
         );
     }
 
     for (label, id, step) in [
-        ("Volume (dB)", ids::INSP_AUDIO_VOLUME, 1.0), // LITERAL-PX-OK: passo em decibéis
-        ("Pitch", ids::INSP_AUDIO_PITCH, 0.05),       // LITERAL-PX-OK: passo do factor de tom
-        ("Max Distance (m)", ids::INSP_AUDIO_MAX_DIST, 0.5), // LITERAL-PX-OK: passo em metros
-        ("Attenuation", ids::INSP_AUDIO_ATTENUATION, 0.1), // LITERAL-PX-OK: passo do expoente
-        ("Non-Spatialized Radius (m)", ids::INSP_AUDIO_RADIUS, 0.1), // LITERAL-PX-OK: metros
-        ("Panning Strength", ids::INSP_AUDIO_PANNING, 0.05), // LITERAL-PX-OK: passo da fracção
-        ("Max Polyphony", ids::INSP_AUDIO_POLYPHONY, 1.0), // LITERAL-PX-OK: uma voz de cada vez
+        (
+            tr("panel.inspector.audio.volume_db"),
+            ids::INSP_AUDIO_VOLUME,
+            1.0,
+        ), // LITERAL-PX-OK: passo em decibéis
+        (
+            tr("panel.inspector.audio.pitch"),
+            ids::INSP_AUDIO_PITCH,
+            0.05,
+        ), // LITERAL-PX-OK: passo do factor de tom
+        (
+            tr("panel.inspector.audio.max_distance_m"),
+            ids::INSP_AUDIO_MAX_DIST,
+            0.5,
+        ), // LITERAL-PX-OK: passo em metros
+        (
+            tr("panel.inspector.audio.attenuation"),
+            ids::INSP_AUDIO_ATTENUATION,
+            0.1,
+        ), // LITERAL-PX-OK: passo do expoente
+        (
+            tr("panel.inspector.audio.non_spatialized_radius_m"),
+            ids::INSP_AUDIO_RADIUS,
+            0.1,
+        ), // LITERAL-PX-OK: metros
+        (
+            tr("panel.inspector.audio.panning_strength"),
+            ids::INSP_AUDIO_PANNING,
+            0.05,
+        ), // LITERAL-PX-OK: passo da fracção
+        (
+            tr("panel.inspector.audio.max_polyphony"),
+            ids::INSP_AUDIO_POLYPHONY,
+            1.0,
+        ), // LITERAL-PX-OK: uma voz de cada vez
     ] {
         cur_y = super::anchors::field_row(
             scene,
@@ -267,8 +298,16 @@ fn source_body(
 
     let half = (w - Spacing::Sm.px()) * 0.5;
     for (i, (id, label, on)) in [
-        (ids::INSP_AUDIO_LOOP, "Loop", src.looping),
-        (ids::INSP_AUDIO_AUTOPLAY, "Autoplay", src.autoplay),
+        (
+            ids::INSP_AUDIO_LOOP,
+            tr("panel.inspector.audio.loop"),
+            src.looping,
+        ),
+        (
+            ids::INSP_AUDIO_AUTOPLAY,
+            tr("panel.inspector.audio.autoplay"),
+            src.autoplay,
+        ),
     ]
     .into_iter()
     .enumerate()
@@ -316,7 +355,12 @@ pub(crate) fn paint_audio_section(
     let rgba = store
         .widget_color(color_id)
         .unwrap_or([0x88, 0x88, 0x88, 0xff]); // LITERAL-COLOR-OK: acento neutro por omissão
-    let header = section_header(store, core_ids::INSP_LIVE_AUDIO_SECTION, "Audio").color(rgba);
+    let header = section_header(
+        store,
+        core_ids::INSP_LIVE_AUDIO_SECTION,
+        tr("panel.inspector.audio.audio"),
+    )
+    .color(rgba);
     let header_rect = Rect::new(x, y, w, header_h);
     paint_section_header(&header, header_rect, scene, text_system, theme);
     if let Some(circle_rect) = ph2d_editor_core::widget::color_circle_hit_rect(&header, header_rect)
@@ -344,7 +388,7 @@ pub(crate) fn paint_audio_section(
             x,
             w,
             cur_y,
-            "Multiple selected \u{b7} audio edits apply to the active object only.",
+            tr("panel.inspector.audio.multiple_selected_audio_edits_apply"),
             ColorToken::Warn,
         );
     }
@@ -360,21 +404,21 @@ pub(crate) fn paint_audio_section(
             x,
             w,
             cur_y,
-            "These are the scene's ears \u{2014} sound is heard from here.",
+            tr("panel.inspector.audio.these_are_the_scene_s"),
             ColorToken::Text2,
         );
         if info.listener_count > 1 {
             // ⚠️ **Ele NOMEIA qual manda**, em vez de recusar: uma cena a meio de ser montada pode
             // ter dois, e recusar tornaria o produto mudo enquanto o artista pensa.
             let texto = if info.is_active_listener {
-                format!(
-                    "The scene has {} listeners \u{b7} this is the one in use.",
-                    info.listener_count
+                tr_with(
+                    "panel.inspector.audio.listeners_this_one",
+                    &[("n", &info.listener_count)],
                 )
             } else {
-                format!(
-                    "The scene has {} listeners \u{b7} another one is in use, not this.",
-                    info.listener_count
+                tr_with(
+                    "panel.inspector.audio.listeners_another_one",
+                    &[("n", &info.listener_count)],
                 )
             };
             cur_y = warn(

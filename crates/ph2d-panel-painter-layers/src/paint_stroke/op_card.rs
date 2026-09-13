@@ -23,7 +23,8 @@ pub(super) fn operation_card(
 ) -> f32 {
     let header_h = Spacing::Xl3.px();
     let pad = Spacing::Lg.px();
-    let card = Card::new(ph2d_tool_painter::ids::PAINTER_STROKE_OP_CARD).title("OPERATION");
+    let card = Card::new(ph2d_tool_painter::ids::PAINTER_STROKE_OP_CARD)
+        .title(tr("panel.painter_layers.stroke.card_operation"));
     let seg = SegmentedAdaptive::new(
         ph2d_tool_painter::ids::PAINTER_STROKE_OP,
         tr("panel.painter_layers.stroke.shape_operation"),

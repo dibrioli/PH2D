@@ -9,6 +9,8 @@ use super::joint::SWITCH_LABELS;
 use super::rows::seg_row;
 use super::*;
 use ph2d_editor_core::screens::hero::InspectorJointInfo;
+use ph2d_i18n::TextKey;
+use ph2d_i18n::tr;
 
 /// **The PAIR cluster** (W-J8): the two body rows, the swap, and Collide
 /// Connected.
@@ -47,10 +49,10 @@ pub(super) fn paint_pair_rows(
         x,
         w,
         yy,
-        "Anchor B",
+        tr("panel.inspector.joint.anchor_b"),
         ids::INSP_JOINT_ANCHOR_B_GROUP,
         &ids::INSP_JOINT_ANCHOR_B,
-        &ANCHOR_B_LABELS,
+        &ANCHOR_B_LABELS.map(TextKey::tr),
         u8::from(info.world_anchored),
     );
     let h = ROW_H_PX;
@@ -59,7 +61,7 @@ pub(super) fn paint_pair_rows(
     // joint whose Body A was deleted is *exactly* when an artist wants to swap so
     // the surviving end becomes A. Gating it on `bound` would remove the button
     // from the case it is most useful in.
-    let btn = Button::new(ids::INSP_JOINT_SWAP, "Swap A / B")
+    let btn = Button::new(ids::INSP_JOINT_SWAP, tr("panel.inspector.joint.swap_a_b"))
         .kind(ButtonKind::Default)
         .visual(store.button_visual(ids::INSP_JOINT_SWAP));
     paint_button(&btn, btn_rect, scene, text_system, theme);
@@ -74,16 +76,19 @@ pub(super) fn paint_pair_rows(
         x,
         w,
         yy,
-        "Collide",
+        tr("panel.inspector.joint.collide"),
         ids::INSP_JOINT_COLLIDE_GROUP,
         &ids::INSP_JOINT_COLLIDE,
-        &SWITCH_LABELS,
+        &SWITCH_LABELS.map(TextKey::tr),
         u8::from(info.collide_connected),
     )
 }
 
 /// Os dois destinos possíveis do lado B — objeto ou cenário (W-JointWorld).
-const ANCHOR_B_LABELS: [&str; 2] = ["Object", "World"];
+const ANCHOR_B_LABELS: [TextKey; 2] = [
+    TextKey::new("panel.inspector.joint.object"),
+    TextKey::new("panel.inspector.joint.world"),
+];
 
 /// The two per-body rows: the label ("Body A"/"Body B"), the CURRENT body's
 /// name, and an eyedropper to re-pick it. Its own fn for the 200-LOC panel-fn
@@ -114,13 +119,13 @@ fn paint_body_rows(
     let gap = Spacing::Xs.px();
     for (slot_label, name, id, armed) in [
         (
-            "Body A",
+            tr("panel.inspector.joint.body_a"),
             &info.body_a_name,
             ids::INSP_JOINT_PICK_A,
             info.pick_armed == 1,
         ),
         (
-            "Body B",
+            tr("panel.inspector.joint.body_b"),
             &info.body_b_name,
             ids::INSP_JOINT_PICK_B,
             info.pick_armed == 2,
@@ -141,7 +146,11 @@ fn paint_body_rows(
         // cenário, e dizer "(missing)" ali chamaria de quebrado um joint que
         // está segurando (W-JointWorld).
         let world_b = info.world_anchored && id == ids::INSP_JOINT_PICK_B;
-        let shown = if world_b { "World" } else { display_name(name) };
+        let shown = if world_b {
+            tr("panel.inspector.joint.world")
+        } else {
+            display_name(name)
+        };
         let name_x = x + label_w;
         let name_w = (w - label_w - icon_w - gap).max(0.0);
         paint_text(
@@ -195,5 +204,9 @@ fn paint_body_rows(
 /// The joint stores a hash, and a hash is not something to show a person —
 /// but neither is an empty gap where a name should be.
 fn display_name(name: &str) -> &str {
-    if name.is_empty() { "(missing)" } else { name }
+    if name.is_empty() {
+        tr("panel.inspector.joint.missing")
+    } else {
+        name
+    }
 }

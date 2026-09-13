@@ -17,6 +17,8 @@ ph2d-tool-registry = { path = "../ph2d-tool-registry" }
 # Folha PURA (zero dependências), então não puxa nada para o painel.
 ph2d-component-desc = { path = "../ph2d-component-desc" }
 ph2d-editor-core = { path = "../ph2d-editor-core" }
+# HR-15: todo texto que o painel pinta sai da tabela de strings (`panel.inspector.*`, 2026-09-13).
+ph2d-i18n        = { path = "../ph2d-i18n" }
 ph2d-a11y        = { path = "../ph2d-a11y" }
 ph2d-tokens      = { path = "../ph2d-tokens" }
 ph2d-text        = { path = "../ph2d-text" }
@@ -31,6 +33,8 @@ ph2d-ui-testkit = { path = "../ph2d-ui-testkit" }
 # pede um `PointerEvent`, e um `WidgetEvent::Click` sintético **pula a checagem de
 # focabilidade** — que é exactamente onde um chip pintado e hit-registado morre sob o dedo.
 ph2d-host = { path = "../ph2d-host" }
+# O gate `every_word_this_panel_shows_comes_from_the_string_table`: a régua lexical partilhada.
+ph2d-label-census = { path = "../ph2d-label-census" }
 
 [lints]
 workspace = true

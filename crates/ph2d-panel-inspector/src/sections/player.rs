@@ -20,6 +20,9 @@ use super::rows::{card_frame, num_row, seg_row};
 use super::*;
 use ph2d_editor_core::screens::hero::InspectorPlayerInfo;
 use ph2d_editor_core::widget::SectionFold;
+use ph2d_i18n::TextKey;
+use ph2d_i18n::tr;
+use ph2d_i18n::tr_with;
 
 /// Uma row: **rótulo · id · a dica de hover**.
 ///
@@ -27,7 +30,7 @@ use ph2d_editor_core::widget::SectionFold;
 /// este módulo já paga em toda lista: uma row nova nasce com dica, ou não nasce.
 /// Uma tabela paralela de tooltips é a que fica incompleta em silêncio — o
 /// controle continua pintado e o artista continua sem saber o que ele faz.
-pub(crate) type PlayerRow = (&'static str, ph2d_a11y::NodeId, &'static str);
+pub(crate) type PlayerRow = (TextKey, ph2d_a11y::NodeId, TextKey);
 
 /// A tabela dos cards da §14 — irmã por RESPONSABILIDADE (ver o topo dela).
 ///
@@ -46,22 +49,22 @@ pub(crate) use table::{PLAYER_CARDS, player_row_count};
 /// cabe uma tupla de row.
 ///
 /// ⚠️ **Eram cinco até a F3** (ADR-0166): o `INSP_PLAYER_ADD` saiu com a face vazia que o continha.
-pub(crate) const PLAYER_BUTTON_TIPS: [(ph2d_a11y::NodeId, &str); 4] = [
+pub(crate) const PLAYER_BUTTON_TIPS: [(ph2d_a11y::NodeId, TextKey); 4] = [
     (
         ids::INSP_PLAYER_FIT,
-        "Set Float Height from the collider, so he really hovers.",
+        TextKey::new("panel.inspector.player.set_float_height_from_the"),
     ),
     (
         ids::INSP_PLAYER_REMOVE,
-        "Give the behaviour back: it becomes a plain body again.",
+        TextKey::new("panel.inspector.player.give_the_behaviour_back_it"),
     ),
     (
         ids::INSP_PLAYER_CLEAR_RUN,
-        "Throw away the recorded run. Playing with Physics on records a new one.",
+        TextKey::new("panel.inspector.player.throw_away_the_recorded_run"),
     ),
     (
         ids::INSP_PLAYER_FIT_CROUCH,
-        "Set Crouch Height to the lowest this body can really float at.",
+        TextKey::new("panel.inspector.player.set_crouch_height_to_the"),
     ),
 ];
 
@@ -83,8 +86,12 @@ pub(crate) fn paint_player_section(
     let rgba = store
         .widget_color(color_id)
         .unwrap_or([0x88, 0x88, 0x88, 0xff]); // LITERAL-COLOR-OK: neutral default section accent
-    let header =
-        section_header(store, core_ids::INSP_LIVE_PLAYER_SECTION, "Platform Player").color(rgba);
+    let header = section_header(
+        store,
+        core_ids::INSP_LIVE_PLAYER_SECTION,
+        tr("panel.inspector.player.platform_player"),
+    )
+    .color(rgba);
     let header_rect = Rect::new(x, y, w, header_h);
     paint_section_header(&header, header_rect, scene, text_system, theme);
     if let Some(circle_rect) = ph2d_editor_core::widget::color_circle_hit_rect(&header, header_rect)
@@ -131,10 +138,14 @@ pub(crate) fn paint_player_section(
         x,
         w,
         yy,
-        "Body",
+        tr("panel.inspector.player.body"),
         ids::INSP_PLAYER_MODE,
         &ids::INSP_PLAYER_MODE_IDS,
-        &["Dynamic", "Kinematic", "Pure"],
+        &[
+            tr("panel.inspector.player.dynamic"),
+            tr("panel.inspector.player.kinematic"),
+            tr("panel.inspector.player.pure"),
+        ],
         info.mode_tag,
     );
 
@@ -150,10 +161,13 @@ pub(crate) fn paint_player_section(
         x,
         w,
         yy,
-        "Emit Signals",
+        tr("panel.inspector.player.emit_signals"),
         ids::INSP_PLAYER_EMIT,
         &ids::INSP_PLAYER_EMIT_IDS,
-        &["Off", "On"],
+        &[
+            tr("panel.inspector.player.off"),
+            tr("panel.inspector.player.on"),
+        ],
         u8::from(info.emits_signals),
     );
 
@@ -183,10 +197,14 @@ pub(crate) fn paint_player_section(
         x,
         w,
         yy,
-        "Platform Lift",
+        tr("panel.inspector.player.platform_lift"),
         ids::INSP_PLAYER_LIFT_POLICY,
         &ids::INSP_PLAYER_LIFT_POLICY_IDS,
-        &["Full", "Up Only", "None"],
+        &[
+            tr("panel.inspector.player.full"),
+            tr("panel.inspector.player.up_only"),
+            tr("panel.inspector.player.none"),
+        ],
         info.platform_lift,
     );
 
@@ -201,10 +219,13 @@ pub(crate) fn paint_player_section(
         x,
         w,
         yy,
-        "Walk Off Ledges",
+        tr("panel.inspector.player.walk_off_ledges"),
         ids::INSP_PLAYER_WALK_OFF,
         &ids::INSP_PLAYER_WALK_OFF_IDS,
-        &["Yes", "Stop At Edge"],
+        &[
+            tr("panel.inspector.player.yes"),
+            tr("panel.inspector.player.stop_at_edge"),
+        ],
         info.walk_off_ledges,
     );
     // ⚠️ **Só com o AGACHAR autorado** — sem ele a `walk_for` devolve a config
@@ -219,10 +240,13 @@ pub(crate) fn paint_player_section(
             x,
             w,
             yy,
-            "  ...When Crouching",
+            tr("panel.inspector.player.when_crouching"),
             ids::INSP_PLAYER_CROUCH_WALK_OFF,
             &ids::INSP_PLAYER_CROUCH_WALK_OFF_IDS,
-            &["Yes", "Stop At Edge"],
+            &[
+                tr("panel.inspector.player.yes"),
+                tr("panel.inspector.player.stop_at_edge"),
+            ],
             info.crouch_walk_off_ledges,
         );
     }
@@ -285,9 +309,12 @@ fn paint_verbs(
     // desta função já honra.
     if info.min_float_known && info.spring_is_live {
         let label = if info.float_height <= info.min_float_height {
-            format!("Fit to Collider (needs > {:.2} m)", info.min_float_height)
+            tr_with(
+                "panel.inspector.player.fit_needs",
+                &[("min", &format!("{:.2}", info.min_float_height))],
+            )
         } else {
-            "Fit to Collider".to_string()
+            tr("panel.inspector.player.fit_to_collider").to_string()
         };
         let rect = Rect::new(x, yy, w, h);
         let btn = Button::new(ids::INSP_PLAYER_FIT, &label)
@@ -314,12 +341,12 @@ fn paint_verbs(
     // agachar* com *consertar o que ele mede*.
     if info.min_float_known && info.crouch_height > 0.0 {
         let label = if info.crouch_height <= info.min_float_height {
-            format!(
-                "Fit Crouch to Collider (needs > {:.2} m)",
-                info.min_float_height
+            tr_with(
+                "panel.inspector.player.fit_crouch_needs",
+                &[("min", &format!("{:.2}", info.min_float_height))],
             )
         } else {
-            "Fit Crouch to Collider".to_string()
+            tr("panel.inspector.player.fit_crouch_to_collider").to_string()
         };
         let rect = Rect::new(x, yy, w, h);
         let btn = Button::new(ids::INSP_PLAYER_FIT_CROUCH, &label)
@@ -346,14 +373,17 @@ fn paint_verbs(
     let run_button = if info.recorded_run_seconds > 0.0 {
         Some((
             ids::INSP_PLAYER_CLEAR_RUN,
-            format!("Clear Recorded Run ({:.1} s)", info.recorded_run_seconds),
+            tr_with(
+                "panel.inspector.player.clear_run",
+                &[("s", &format!("{:.1}", info.recorded_run_seconds))],
+            ),
         ))
     } else if info.discarded_run_seconds > 0.0 {
         Some((
             ids::INSP_PLAYER_RESTORE_RUN,
-            format!(
-                "Restore Discarded Run ({:.1} s)",
-                info.discarded_run_seconds
+            tr_with(
+                "panel.inspector.player.restore_run",
+                &[("s", &format!("{:.1}", info.discarded_run_seconds))],
             ),
         ))
     } else {
@@ -370,9 +400,12 @@ fn paint_verbs(
     }
 
     let rect = Rect::new(x, yy, w, h);
-    let btn = Button::new(ids::INSP_PLAYER_REMOVE, "Remove Platform Player")
-        .kind(ButtonKind::Default)
-        .visual(store.button_visual(ids::INSP_PLAYER_REMOVE));
+    let btn = Button::new(
+        ids::INSP_PLAYER_REMOVE,
+        tr("panel.inspector.player.remove_platform_player"),
+    )
+    .kind(ButtonKind::Default)
+    .visual(store.button_visual(ids::INSP_PLAYER_REMOVE));
     paint_button(&btn, rect, scene, text_system, theme);
     hit_index.register(ids::INSP_PLAYER_REMOVE, rect);
     yy + h + ph2d_tokens::control_gap_px()
@@ -430,7 +463,8 @@ fn paint_cards(
             continue;
         }
         let n = rows.iter().filter(|(_, id, _)| shown(*id)).count();
-        let (ix, iw, mut ry, next_y) = card_frame(scene, text_system, theme, x, w, yy, title, n);
+        let (ix, iw, mut ry, next_y) =
+            card_frame(scene, text_system, theme, x, w, yy, title.tr(), n);
         for (label, id, _tip) in rows {
             if !shown(*id) {
                 continue;
@@ -444,7 +478,7 @@ fn paint_cards(
                 ix,
                 iw,
                 ry,
-                label,
+                label.tr(),
                 *id,
             );
         }
@@ -503,22 +537,45 @@ fn paint_live_readout(
     };
 
     let Some(l) = live else {
-        line("Live", "not simulating", scene, text_system);
+        line(
+            tr("panel.inspector.player.live"),
+            tr("panel.inspector.player.not_simulating"),
+            scene,
+            text_system,
+        );
         return yy;
     };
     // ⚠️ **A tabela é a outra metade do `FootingKind::tag`**, e a ordem dela É o
     // mapeamento: um índice fora dela seria uma postura que este build não
     // conhece, e nomeá-la de qualquer coisa é como um readout passa a mentir.
-    const POSTURE: [&str; 3] = ["air", "steep", "ground"];
-    let posture = POSTURE.get(l.footing_tag as usize).copied().unwrap_or("?");
-    line("Posture", posture, scene, text_system);
+    const POSTURE: [TextKey; 3] = [
+        TextKey::new("panel.inspector.player.posture_air"),
+        TextKey::new("panel.inspector.player.posture_steep"),
+        TextKey::new("panel.inspector.player.posture_ground"),
+    ];
+    let posture = POSTURE.get(l.footing_tag as usize).map_or("?", |k| k.tr());
     line(
-        "Facing",
-        if l.facing < 0.0 { "left" } else { "right" },
+        tr("panel.inspector.player.posture"),
+        posture,
+        scene,
+        text_system,
+    );
+    line(
+        tr("panel.inspector.player.facing"),
+        if l.facing < 0.0 {
+            tr("panel.inspector.player.facing_left")
+        } else {
+            tr("panel.inspector.player.facing_right")
+        },
         scene,
         text_system,
     );
     let speed = format!("{:.2}, {:.2} m/s", l.velocity[0], l.velocity[1]);
-    line("Speed", &speed, scene, text_system);
+    line(
+        tr("panel.inspector.player.speed"),
+        &speed,
+        scene,
+        text_system,
+    );
     yy
 }

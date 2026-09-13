@@ -8,12 +8,19 @@ use ph2d_editor_core::interaction::InteractiveState;
 use ph2d_editor_core::screens::hero::InspectorOrderingInfo;
 use ph2d_editor_core::widget::SectionFold;
 use ph2d_editor_core::widget::{Dropdown, DropdownOption, paint_dropdown_chip};
+use ph2d_i18n::TextKey;
+use ph2d_i18n::tr;
 
 /// Canonical project sorting layers (spec §5.2 default set). Value ==
 /// label so the dropdown's `selected` matches by name. Custom project
 /// layer lists are a follow-up (no Project Settings UI yet).
-pub(crate) const LAYER_LABELS: [&str; 5] =
-    ["Background", "Midground", "Default", "Foreground", "UI"];
+pub(crate) const LAYER_LABELS: [TextKey; 5] = [
+    TextKey::new("panel.inspector.ordering.background"),
+    TextKey::new("panel.inspector.ordering.midground"),
+    TextKey::new("panel.inspector.ordering.default"),
+    TextKey::new("panel.inspector.ordering.foreground"),
+    TextKey::new("panel.inspector.ordering.ui"),
+];
 
 /// ⭐ **O rótulo de um CAMPO, lido do descritor** (ADR-0166 · plano F0 — a §7 é a seção
 /// piloto).
@@ -140,7 +147,7 @@ fn layer_row(
     paint_text(
         text_system,
         scene,
-        "Sorting Layer",
+        tr("panel.inspector.ordering.sorting_layer"),
         x,
         y + (h - TypeToken::Sm.px()) * 0.5,
         TypeToken::Sm.px(),
@@ -162,7 +169,9 @@ fn layer_row(
         _ => (false, fallback_idx),
     };
     let visual = store.dropdown_visual(ids::INSP_ORDER_SORTING_LAYER);
-    let label = LAYER_LABELS.get(sel).copied().unwrap_or("Default");
+    let label = LAYER_LABELS
+        .get(sel)
+        .map_or(tr("panel.inspector.ordering.default"), |k| k.tr());
     let dd = Dropdown::new(ids::INSP_ORDER_SORTING_LAYER, "", layer_options())
         .selected(label)
         .open(open)
@@ -180,7 +189,7 @@ pub(crate) fn layer_options() -> Vec<DropdownOption<&'static str>> {
     LAYER_LABELS
         .iter()
         .enumerate()
-        .map(|(i, name)| DropdownOption::new(ids::INSP_ORDER_LAYER_OPT[i], *name, *name))
+        .map(|(i, name)| DropdownOption::new(ids::INSP_ORDER_LAYER_OPT[i], name.tr(), name.tr()))
         .collect()
 }
 
@@ -204,9 +213,18 @@ fn ysort_point_rows(
         NodeId(0),
         "",
         vec![
-            TabItem::new(ids::INSP_ORDER_SP_CENTER, "Center"),
-            TabItem::new(ids::INSP_ORDER_SP_PIVOT, "Pivot"),
-            TabItem::new(ids::INSP_ORDER_SP_CUSTOM, "Custom"),
+            TabItem::new(
+                ids::INSP_ORDER_SP_CENTER,
+                tr("panel.inspector.ordering.center"),
+            ),
+            TabItem::new(
+                ids::INSP_ORDER_SP_PIVOT,
+                tr("panel.inspector.ordering.pivot"),
+            ),
+            TabItem::new(
+                ids::INSP_ORDER_SP_CUSTOM,
+                tr("panel.inspector.ordering.custom"),
+            ),
         ],
     )
     .variant(TabsVariant::Segmented)
@@ -228,7 +246,7 @@ fn ysort_point_rows(
             w,
             cur_y,
             ids::INSP_ORDER_AXIS_X,
-            "Axis X",
+            tr("panel.inspector.ordering.axis_x"),
         );
         cur_y = number_row(
             scene,
@@ -240,7 +258,7 @@ fn ysort_point_rows(
             w,
             cur_y,
             ids::INSP_ORDER_AXIS_Y,
-            "Axis Y",
+            tr("panel.inspector.ordering.axis_y"),
         );
     }
     cur_y
@@ -263,8 +281,12 @@ pub(crate) fn paint_ordering_section(
     let rgba = store
         .widget_color(color_id)
         .unwrap_or([0x88, 0x88, 0x88, 0xff]); // LITERAL-COLOR-OK: neutral default section accent
-    let header =
-        section_header(store, core_ids::INSP_LIVE_ORDERING_SECTION, "Ordering").color(rgba);
+    let header = section_header(
+        store,
+        core_ids::INSP_LIVE_ORDERING_SECTION,
+        tr("panel.inspector.ordering.ordering"),
+    )
+    .color(rgba);
     let header_rect = Rect::new(x, y, w, header_h);
     paint_section_header(&header, header_rect, scene, text_system, theme);
     if let Some(circle_rect) = ph2d_editor_core::widget::color_circle_hit_rect(&header, header_rect)

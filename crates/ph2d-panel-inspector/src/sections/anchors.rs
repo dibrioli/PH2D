@@ -18,6 +18,8 @@ use super::*;
 use ph2d_editor_core::screens::hero::InspectorAnchorInfo;
 use ph2d_editor_core::widget::SectionFold;
 use ph2d_editor_core::widget::section_cards::close_section;
+use ph2d_i18n::tr;
+use ph2d_i18n::tr_with;
 
 const FIELD_H: f32 = 24.0; // LITERAL-PX-OK: altura de campo do Inspector
 const BTN_H: f32 = 30.0; // LITERAL-PX-OK: altura de botão do Inspector
@@ -195,7 +197,10 @@ fn anchor_list(
         let kind = if row.riders == 0 {
             row.kind_label().to_string()
         } else {
-            format!("{} \u{b7} {} riding", row.kind_label(), row.riders)
+            tr_with(
+                "panel.inspector.anchors.kind_riding",
+                &[("kind", &row.kind_label()), ("n", &row.riders)],
+            )
         };
         paint_text(
             text_system,
@@ -240,7 +245,7 @@ fn anchor_editor(
         _ => (TextInputState::Normal, None, 0, None),
     };
     let input = TextInput::new(ids::INSP_ANCHOR_NAME, "")
-        .placeholder("anchor_name\u{2026}")
+        .placeholder(tr("panel.inspector.anchors.anchor_name"))
         .visual((state, store.hover_live(ids::INSP_ANCHOR_NAME)));
     paint_text_input_with_buffer(
         &input,
@@ -264,7 +269,7 @@ fn anchor_editor(
         x,
         w,
         cur_y,
-        "Position X / Y (px)",
+        tr("panel.inspector.anchors.position_x_y_px"),
         &ids::INSP_ANCHOR_POS,
         PX_STEP,
     );
@@ -277,7 +282,7 @@ fn anchor_editor(
         x,
         w,
         cur_y,
-        "Rotation (deg)",
+        tr("panel.inspector.anchors.rotation_deg"),
         &[ids::INSP_ANCHOR_ROT],
         DEG_STEP,
     );
@@ -290,7 +295,7 @@ fn anchor_editor(
         x,
         w,
         cur_y,
-        "Bounds (makes it a Slice)",
+        tr("panel.inspector.anchors.bounds_makes_it_a_slice"),
         ids::INSP_ANCHOR_BOUNDS_ON,
     );
     // ⚠️ Os campos da área só existem quando ela existe. Pintá-los sobre um Socket seria
@@ -305,7 +310,7 @@ fn anchor_editor(
             x,
             w,
             cur_y,
-            "Bounds X / Y / W / H (px)",
+            tr("panel.inspector.anchors.bounds_x_y_w_h"),
             &ids::INSP_ANCHOR_BOUNDS,
             PX_STEP,
         );
@@ -318,7 +323,7 @@ fn anchor_editor(
             x,
             w,
             cur_y,
-            "Center (makes it a 9-slice Region)",
+            tr("panel.inspector.anchors.center_makes_it_a_9"),
             ids::INSP_ANCHOR_CENTER_ON,
         );
         if row.center.is_some() {
@@ -331,7 +336,7 @@ fn anchor_editor(
                 x,
                 w,
                 cur_y,
-                "Center X / Y / W / H (px)",
+                tr("panel.inspector.anchors.center_x_y_w_h"),
                 &ids::INSP_ANCHOR_CENTER,
                 PX_STEP,
             );
@@ -340,9 +345,12 @@ fn anchor_editor(
     let rm = Rect::new(x, cur_y, w, BTN_H);
     hit_index.register(ids::INSP_ANCHOR_REMOVE, rm);
     paint_button(
-        &Button::new(ids::INSP_ANCHOR_REMOVE, "x Remove Anchor")
-            .kind(ButtonKind::Default)
-            .visual(store.button_visual(ids::INSP_ANCHOR_REMOVE)),
+        &Button::new(
+            ids::INSP_ANCHOR_REMOVE,
+            tr("panel.inspector.anchors.x_remove_anchor"),
+        )
+        .kind(ButtonKind::Default)
+        .visual(store.button_visual(ids::INSP_ANCHOR_REMOVE)),
         rm,
         scene,
         text_system,
@@ -371,9 +379,12 @@ pub(crate) fn paint_anchors_section(
         .widget_color(color_id)
         .unwrap_or([0x88, 0x88, 0x88, 0xff]); // LITERAL-COLOR-OK: acento neutro por omissão
     let title = if info.rows.is_empty() {
-        String::from("Sockets / Anchors")
+        String::from(tr("panel.inspector.anchors.sockets_anchors"))
     } else {
-        format!("Sockets / Anchors  ({})", info.rows.len())
+        tr_with(
+            "panel.inspector.anchors.title_count",
+            &[("n", &info.rows.len())],
+        )
     };
     let header = section_header(store, core_ids::INSP_LIVE_ANCHOR_SECTION, &title).color(rgba);
     let header_rect = Rect::new(x, y, w, header_h);
@@ -416,7 +427,7 @@ pub(crate) fn paint_anchors_section(
         paint_text(
             text_system,
             scene,
-            "This object's anchors",
+            tr("panel.inspector.anchors.this_object_s_anchors"),
             x,
             cur_y,
             font,
@@ -430,7 +441,7 @@ pub(crate) fn paint_anchors_section(
         paint_text(
             text_system,
             scene,
-            "No anchors on this sprite.",
+            tr("panel.inspector.anchors.no_anchors_on_this_sprite"),
             x,
             cur_y,
             font,
@@ -468,9 +479,12 @@ pub(crate) fn paint_anchors_section(
     let add = Rect::new(x, cur_y, w, BTN_H);
     hit_index.register(ids::INSP_ANCHOR_ADD, add);
     paint_button(
-        &Button::new(ids::INSP_ANCHOR_ADD, "+ Add Anchor")
-            .kind(ButtonKind::Default)
-            .visual(store.button_visual(ids::INSP_ANCHOR_ADD)),
+        &Button::new(
+            ids::INSP_ANCHOR_ADD,
+            tr("panel.inspector.anchors.plus_add_anchor"),
+        )
+        .kind(ButtonKind::Default)
+        .visual(store.button_visual(ids::INSP_ANCHOR_ADD)),
         add,
         scene,
         text_system,

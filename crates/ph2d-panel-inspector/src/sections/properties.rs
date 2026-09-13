@@ -16,6 +16,8 @@
 
 use super::*;
 use ph2d_editor_core::screens::hero::InspectorPropertiesInfo;
+use ph2d_i18n::TextKey;
+use ph2d_i18n::tr_with;
 
 /// Que fatia da largura o NOME da propriedade leva.
 ///
@@ -37,7 +39,7 @@ const CARD_PAD: f32 = 8.0; // LITERAL-PX-OK: inset do cartão, irmão do BODY_PA
 /// porque é o painel que o portão da HR-15 varre. Pô-lo em `screens/hero/variant_axes.rs` era uma
 /// string de UI numa camada fora do alcance do gate — *uma regra fora do caminho de quem executa
 /// não existe*. ⏳ Ele migra com os irmãos deste ficheiro quando o Fluent chegar.
-const FLAT_AXIS_LABEL: &str = "Variant";
+const FLAT_AXIS_LABEL: TextKey = TextKey::new("panel.inspector.properties.variant");
 
 /// O título do cartão — a palavra, sem o nome.
 ///
@@ -48,7 +50,7 @@ const FLAT_AXIS_LABEL: &str = "Variant";
 /// ⚠️ **Quem lhe acrescenta o nome é o [`card_title`]**, e o nome é o do objecto SELECIONADO
 /// (Enio, 2026-08-31) — ver o doc de `InspectorPropertiesInfo::source_name`, que também guarda a
 /// decisão anterior e por que ela virou.
-const CARD_TITLE: &str = "Properties";
+const CARD_TITLE: TextKey = TextKey::new("panel.inspector.properties.properties");
 
 /// ⭐ **A frase do título** — uma porta, porque a ALTURA e o DESENHO têm de ler a mesma.
 ///
@@ -56,8 +58,8 @@ const CARD_TITLE: &str = "Properties";
 /// cópias de uma frase são duas frases no dia em que uma mudar.
 fn card_title(info: &InspectorPropertiesInfo) -> String {
     match info.source_name.as_deref() {
-        Some(n) => format!("{CARD_TITLE} of \u{201c}{n}\u{201d}"),
-        None => CARD_TITLE.to_string(),
+        Some(n) => tr_with("panel.inspector.properties.title_of", &[("n", &n)]),
+        None => CARD_TITLE.tr().to_string(),
     }
 }
 
@@ -124,7 +126,7 @@ pub(crate) fn paint_properties_card(
         };
         let label_w = (tw * AXIS_LABEL_FRACTION).min(AXIS_LABEL_MAX_PX);
         let axis_label = if ax.name.is_empty() {
-            FLAT_AXIS_LABEL
+            FLAT_AXIS_LABEL.tr()
         } else {
             ax.name.as_str()
         };
@@ -206,7 +208,10 @@ pub(crate) fn paint_properties_card(
         paint_text(
             text_system,
             scene,
-            &format!("{} more not shown", info.beyond),
+            &tr_with(
+                "panel.inspector.properties.more_not_shown",
+                &[("n", &info.beyond)],
+            ),
             tx,
             ty,
             small,

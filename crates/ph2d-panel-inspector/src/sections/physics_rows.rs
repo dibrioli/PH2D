@@ -8,19 +8,32 @@
 
 use super::rows::{num_row, seg_row};
 use super::*;
+use ph2d_i18n::TextKey;
+use ph2d_i18n::tr;
 
 /// Mass-source toggle labels, indexed by `mass_manual as u8`: `0` Auto (mass is
 /// density×area, the Density row) · `1` Manual (an explicit mass in kg, the Mass row).
-const MASS_MODE_LABELS: [&str; 2] = ["Auto", "Manual"];
+const MASS_MODE_LABELS: [TextKey; 2] = [
+    TextKey::new("panel.inspector.physics.auto"),
+    TextKey::new("panel.inspector.physics.manual"),
+];
 
 /// Combine-rule labels, indexed by `CombineRule` tag: how two colliders'
 /// friction/restitution merge on contact (Unity's `PhysicMaterial` combine).
 /// `Max` makes a superball bounce off any floor; `Average` (tag 0) is the default.
-const COMBINE_LABELS: [&str; 4] = ["Average", "Min", "Multiply", "Max"];
+const COMBINE_LABELS: [TextKey; 4] = [
+    TextKey::new("panel.inspector.physics.average"),
+    TextKey::new("panel.inspector.physics.min"),
+    TextKey::new("panel.inspector.physics.multiply"),
+    TextKey::new("panel.inspector.physics.max"),
+];
 
 /// Damping-mode toggle labels, indexed by `DampMode` tag: `0` Combine (adds to the
 /// world default drag) · `1` Replace (ignores it — Unity's absolute per-body drag).
-const DAMP_MODE_LABELS: [&str; 2] = ["Combine", "Replace"];
+const DAMP_MODE_LABELS: [TextKey; 2] = [
+    TextKey::new("panel.inspector.physics.combine"),
+    TextKey::new("panel.inspector.physics.replace"),
+];
 
 /// The **Dynamic-only** damping rows: linear + angular drag, and the mode that says
 /// how they meet the world default drag (Combine adds, Replace ignores) (W-Damping).
@@ -44,8 +57,14 @@ pub(super) fn paint_damping_rows(
 ) -> f32 {
     let mut yy = y;
     for (label, id) in [
-        ("Linear Damping", ids::INSP_PHYS_LINEAR_DAMPING),
-        ("Angular Damping", ids::INSP_PHYS_ANGULAR_DAMPING),
+        (
+            tr("panel.inspector.physics.linear_damping"),
+            ids::INSP_PHYS_LINEAR_DAMPING,
+        ),
+        (
+            tr("panel.inspector.physics.angular_damping"),
+            ids::INSP_PHYS_ANGULAR_DAMPING,
+        ),
     ] {
         yy = num_row(
             scene,
@@ -69,10 +88,10 @@ pub(super) fn paint_damping_rows(
         x,
         w,
         yy,
-        "Damp Mode",
+        tr("panel.inspector.physics.damp_mode"),
         ids::INSP_LIVE_PHYSICS_DAMPMODE,
         &ids::INSP_PHYS_DAMPMODE,
-        &DAMP_MODE_LABELS,
+        &DAMP_MODE_LABELS.map(TextKey::tr),
         damp_mode_tag,
     )
 }
@@ -101,8 +120,14 @@ pub(super) fn paint_material_rows(
 ) -> f32 {
     let mut yy = y;
     for (label, id) in [
-        ("Bounce", ids::INSP_PHYS_RESTITUTION),
-        ("Friction", ids::INSP_PHYS_FRICTION),
+        (
+            tr("panel.inspector.physics.bounce"),
+            ids::INSP_PHYS_RESTITUTION,
+        ),
+        (
+            tr("panel.inspector.physics.friction"),
+            ids::INSP_PHYS_FRICTION,
+        ),
     ] {
         yy = num_row(
             scene,
@@ -121,13 +146,13 @@ pub(super) fn paint_material_rows(
     // each, sitting right under the value it governs.
     for (label, group, ids, tag) in [
         (
-            "Bounce Combine",
+            tr("panel.inspector.physics.bounce_combine"),
             ids::INSP_LIVE_PHYSICS_REST_COMBINE,
             &ids::INSP_PHYS_REST_COMBINE,
             restitution_combine_tag,
         ),
         (
-            "Friction Combine",
+            tr("panel.inspector.physics.friction_combine"),
             ids::INSP_LIVE_PHYSICS_FRIC_COMBINE,
             &ids::INSP_PHYS_FRIC_COMBINE,
             friction_combine_tag,
@@ -145,7 +170,7 @@ pub(super) fn paint_material_rows(
             label,
             group,
             ids,
-            &COMBINE_LABELS,
+            &COMBINE_LABELS.map(TextKey::tr),
             tag,
         );
     }
@@ -192,16 +217,19 @@ pub(super) fn paint_mass_source(
             x,
             w,
             yy,
-            "Mass",
+            tr("panel.inspector.physics.mass"),
             ids::INSP_LIVE_PHYSICS_MASSMODE,
             &ids::INSP_PHYS_MASSMODE,
-            &MASS_MODE_LABELS,
+            &MASS_MODE_LABELS.map(TextKey::tr),
             u8::from(mass_manual),
         );
         let (label, id) = if mass_manual {
-            ("Mass (kg)", ids::INSP_PHYS_MASS)
+            (tr("panel.inspector.physics.mass_kg"), ids::INSP_PHYS_MASS)
         } else {
-            ("Density", ids::INSP_PHYS_DENSITY)
+            (
+                tr("panel.inspector.physics.density"),
+                ids::INSP_PHYS_DENSITY,
+            )
         };
         yy = num_row(
             scene,
@@ -225,7 +253,7 @@ pub(super) fn paint_mass_source(
             x,
             w,
             yy,
-            "Density",
+            tr("panel.inspector.physics.density"),
             ids::INSP_PHYS_DENSITY,
         );
     }
@@ -240,20 +268,24 @@ const LAYER_LABELS: [&str; 8] = ["0", "1", "2", "3", "4", "5", "6", "7"];
 
 /// Sensor toggle labels, indexed by `is_sensor as u8`: `0` a solid collider,
 /// `1` a sensor (trigger).
-const SENSOR_LABELS: [&str; 2] = ["Solid", "Sensor"];
+const SENSOR_LABELS: [TextKey; 2] = [
+    TextKey::new("panel.inspector.physics.solid"),
+    TextKey::new("panel.inspector.physics.sensor"),
+];
 
 /// One-way toggle labels, indexed by `one_way as u8`: `0` an ordinary solid collider,
 /// `1` a jump-through platform (solid only from its local +Y side).
-const ONEWAY_LABELS: [&str; 2] = ["Off", "On"];
+const ONEWAY_LABELS: [TextKey; 2] = [
+    TextKey::new("panel.inspector.physics.off"),
+    TextKey::new("panel.inspector.physics.on"),
+];
 
 /// Wall-material labels, indexed by `no_wall_cling as u8`: `0` — a ausência do
 /// marcador, o caso comum — é PAREDE; `1` a mão não a segura (`W-WallMaterial`).
-const WALLMAT_LABELS: [&str; 2] = ["On", "Off"];
-
-/// Force-frame labels, indexed by `world_axes as u8`: `0` the zone's own frame (turn
-/// the sensor and the wind turns with it), `1` pinned to world axes (the zone turns,
-/// the blow does not).
-const FORCE_AXES_LABELS: [&str; 2] = ["Zone", "World"];
+const WALLMAT_LABELS: [TextKey; 2] = [
+    TextKey::new("panel.inspector.physics.on"),
+    TextKey::new("panel.inspector.physics.off"),
+];
 
 /// The per-collider COLLISION rules: which layer it is on, whether it is solid or a
 /// trigger, and then the one question that follows from THAT answer — a solid collider
@@ -272,7 +304,7 @@ const FORCE_AXES_LABELS: [&str; 2] = ["Zone", "World"];
 /// here so `paint_physics_section` stays under the panel's 200-LOC fn cap; the
 /// selections read straight off the snapshot, so only the force numbers are synced.
 ///
-/// ⚠️ **O bloco de ZONA saiu daqui** (W-PartFace) para o irmão [`paint_area_rows`],
+/// ⚠️ **O bloco de ZONA saiu daqui** (W-PartFace) para o irmão [`physics_area_rows::paint_area_rows`](super::physics_area_rows::paint_area_rows),
 /// e o corte é o que o doc acima já desenhava: estas três rows dizem *como este
 /// COLLIDER participa de uma colisão*, e as da zona dizem *o que esta ÁREA faz a
 /// quem está dentro dela* — perguntas diferentes com respostas de escopo
@@ -302,17 +334,17 @@ pub(super) fn paint_collision_rows(
     // is a world rule and lives in the Physics panel; a body only says where it belongs.
     for (label, group, opts, labels, sel) in [
         (
-            "Layer",
+            tr("panel.inspector.physics.layer"),
             ids::INSP_LIVE_PHYSICS_LAYER,
             &ids::INSP_PHYS_LAYER[..],
             &LAYER_LABELS[..],
             layer,
         ),
         (
-            "Trigger",
+            tr("panel.inspector.physics.trigger"),
             ids::INSP_LIVE_PHYSICS_SENSOR,
             &ids::INSP_PHYS_SENSOR[..],
-            &SENSOR_LABELS[..],
+            &SENSOR_LABELS.map(TextKey::tr),
             u8::from(is_sensor),
         ),
     ] {
@@ -343,10 +375,10 @@ pub(super) fn paint_collision_rows(
             x,
             w,
             yy,
-            "One-Way",
+            tr("panel.inspector.physics.one_way"),
             ids::INSP_LIVE_PHYSICS_ONEWAY,
             &ids::INSP_PHYS_ONEWAY,
-            &ONEWAY_LABELS,
+            &ONEWAY_LABELS.map(TextKey::tr),
             u8::from(one_way),
         );
     }
@@ -371,15 +403,18 @@ pub(super) fn paint_collision_rows(
         x,
         w,
         yy,
-        "Wall Cling",
+        tr("panel.inspector.physics.wall_cling"),
         ids::INSP_LIVE_PHYSICS_WALLMAT,
         &ids::INSP_PHYS_WALLMAT,
-        &WALLMAT_LABELS,
+        &WALLMAT_LABELS.map(TextKey::tr),
         u8::from(no_wall_cling),
     );
     for (label, id) in [
-        ("Grip", ids::INSP_PHYS_WALK_GRIP),
-        ("Belt (m/s)", ids::INSP_PHYS_WALK_BELT),
+        (tr("panel.inspector.physics.grip"), ids::INSP_PHYS_WALK_GRIP),
+        (
+            tr("panel.inspector.physics.belt_m_s"),
+            ids::INSP_PHYS_WALK_BELT,
+        ),
     ] {
         yy = num_row(
             scene,
@@ -412,8 +447,14 @@ pub(super) fn paint_collision_rows(
     // `door_close`), e um campo que trocasse de significado tornaria o caso de
     // uso inteiro inexprimível.
     for (id, placeholder) in [
-        (ids::INSP_PHYS_SIGNAL, "Signal on hit\u{2026}"),
-        (ids::INSP_PHYS_SIGNAL_LEAVE, "Signal on leave\u{2026}"),
+        (
+            ids::INSP_PHYS_SIGNAL,
+            tr("panel.inspector.physics.signal_on_hit"),
+        ),
+        (
+            ids::INSP_PHYS_SIGNAL_LEAVE,
+            tr("panel.inspector.physics.signal_on_leave"),
+        ),
     ] {
         yy = signal_row(
             scene,
@@ -477,100 +518,4 @@ fn signal_row(
     );
     ph2d_editor_core::widget::paint_decorator_dot(scene, theme, dot);
     y + ROW_H_PX
-}
-
-/// **O que esta ÁREA faz a quem está dentro dela** — o bloco de zona, irmão do
-/// [`paint_collision_rows`] (W-PartFace).
-///
-/// Só faz sentido num collider **sensor**, e o chamador é quem decide isso: um
-/// corpo sólido não tem zona, e uma **peça** não tem zona alguma (a ponte não lê
-/// efetor nenhum de uma peça — ver o doc do irmão).
-#[allow(clippy::too_many_arguments)]
-pub(super) fn paint_area_rows(
-    scene: &mut VectorScene,
-    text_system: &mut TextSystem,
-    theme: Theme,
-    hit_index: &mut HitIndex,
-    store: &WidgetStore,
-    x: f32,
-    w: f32,
-    y: f32,
-    force_world_axes: bool,
-) -> f32 {
-    let mut yy = y;
-    {
-        // A SENSOR: what force does this area apply to whatever is inside it? Wind,
-        // an updraft, a conveyor. Newtons, so it is resisted by mass — the number an
-        // artist tunes against a body's own weight.
-        // Force is what the area PUSHES with; Drag is what it RESISTS with. Together
-        // they are the difference between wind (push, no resistance) and water.
-        for (label, id) in [
-            ("Force X (N)", ids::INSP_PHYS_FORCE_X),
-            ("Force Y (N)", ids::INSP_PHYS_FORCE_Y),
-        ] {
-            yy = num_row(
-                scene,
-                text_system,
-                theme,
-                hit_index,
-                store,
-                x,
-                w,
-                yy,
-                label,
-                id,
-            );
-        }
-        // In WHOSE axes are those two numbers? Directly under them, and deliberately
-        // ABOVE everything else in this branch: it governs the FORCE and nothing else.
-        // That is geometry rather than a scope someone chose — a 2D torque is a scalar
-        // about Z and an in-plane rotation is about Z, so there is nothing to turn; drag
-        // is isotropic; buoyancy measures its surface from GRAVITY (water is level even
-        // in a tilted pool); and shape drag pushes along each edge normal of the BODY.
-        // Painted below the others, the row would read as qualifying all of them.
-        yy = seg_row(
-            scene,
-            text_system,
-            theme,
-            hit_index,
-            store,
-            x,
-            w,
-            yy,
-            "Force Axes",
-            ids::INSP_LIVE_PHYSICS_FORCE_AXES,
-            &ids::INSP_PHYS_FORCE_AXES,
-            &FORCE_AXES_LABELS,
-            u8::from(force_world_axes),
-        );
-        // Then the PUSH block closes with the two rows that qualify it: the spin the area
-        // imprints, and how much of both survives the trip to the edge.
-        //
-        // ⚠️ Falloff sits directly under Torque, and ABOVE Drag, because that is exactly
-        // the boundary of what it weighs: the force and the torque — the two PUSHES —
-        // and nothing below. Drag, Fluid Density and Shape Drag describe a MEDIUM, and a
-        // medium does not thin out near its own edge (the water at the side of the pool
-        // is just as wet). Painted below them the row would read as governing all six.
-        for (label, id) in [
-            ("Torque (N·m)", ids::INSP_PHYS_AREA_TORQUE),
-            ("Falloff", ids::INSP_PHYS_AREA_FALLOFF),
-            ("Drag", ids::INSP_PHYS_AREA_DRAG),
-            ("Fluid Density", ids::INSP_PHYS_AREA_DENSITY),
-            ("Shape Drag", ids::INSP_PHYS_AREA_FORM_DRAG),
-        ] {
-            yy = num_row(
-                scene,
-                text_system,
-                theme,
-                hit_index,
-                store,
-                x,
-                w,
-                yy,
-                label,
-                id,
-            );
-        }
-    }
-    yy
 }

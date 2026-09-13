@@ -37,6 +37,8 @@ mod vector;
 /// table. The Fluent migration will widen this to `String` (formatted
 /// with arguments) at that point.
 mod chrome;
+mod inspector;
+mod inspector_player;
 mod model3d;
 mod painter_layers;
 mod sculpt3d;
@@ -327,6 +329,8 @@ pub fn tr(key: &str) -> &'static str {
         // (`ph2d_i18n::tr_with`): colar o número no código fixaria a ordem das palavras.
         "panel.hierarchy.title" => "Hierarchy",
         "panel.hierarchy.add" => "Add",
+        // o selo de TIPO de uma linha sem selo próprio — palavra gritada que a 1.ª régua não via
+        "panel.hierarchy.badge.entity" => "ENT",
         "panel.hierarchy.search" => "Search\u{2026}",
         "panel.hierarchy.count.entities" => "{entities} entities",
         "panel.hierarchy.count.entities_components" => {
@@ -462,6 +466,8 @@ pub fn tr(key: &str) -> &'static str {
             .or_else(|| model3d::tr(k))
             .or_else(|| chrome::tr(k))
             .or_else(|| painter_layers::tr(k))
+            .or_else(|| inspector::tr(k))
+            .or_else(|| inspector_player::tr(k))
             .unwrap_or_else(|| leak_key(k)),
     }
 }
@@ -485,6 +491,33 @@ pub fn tr_with(key: &str, args: &[(&str, &dyn std::fmt::Display)]) -> String {
         }
     }
     out
+}
+
+/// ⭐⭐ **Uma CHAVE guardada numa tabela `const`** — o rótulo de um segmentado, a linha de um card.
+///
+/// O [`tr`] não é `const fn`, logo uma tabela `const [&str; N]` de rótulos não o pode chamar, e a
+/// tabela passa a guardar CHAVES. ⛔ Guardadas como `&str`, uma chave e um texto são o MESMO tipo: o
+/// consumidor que se esquece de traduzir compila, passa em todo teste que não leia o pixel, e pinta
+/// `panel.inspector.joint.pin` no ecrã. Com `TextKey` esse esquecimento é **erro de compilação** — o
+/// `seg_row(…, &[&str])` não aceita `[TextKey; N]` até alguém escrever `.map(TextKey::tr)`.
+///
+/// ⚠️ A tabela continua `const` de propósito: há contagens derivadas dela em tempo de compilação
+/// (`PLAYER_ROW_COUNT` do Inspector), que uma função no lugar da tabela partiria.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct TextKey(&'static str);
+
+impl TextKey {
+    /// A chave, tal como está na tabela (`"panel.inspector.joint.pin"`).
+    #[must_use]
+    pub const fn new(key: &'static str) -> Self {
+        Self(key)
+    }
+
+    /// O texto que a chave diz — o mesmo [`tr`], com a chave desconhecida a pintar-se crua.
+    #[must_use]
+    pub fn tr(self) -> &'static str {
+        tr(self.0)
+    }
 }
 
 /// Stub for the unknown-key path: leak the input into a `&'static`
@@ -517,6 +550,17 @@ mod tests {
         assert_eq!(tr("panel.vector.category"), "Category");
         assert_eq!(tr("panel.vector.shape.no_params"), "No parameters");
         assert_eq!(tr("panel.vector.group.iso"), "3D");
+    }
+
+    #[test]
+    fn a_text_key_says_what_its_key_says() {
+        const TITLE: TextKey = TextKey::new("panel.timeline.title");
+        assert_eq!(TITLE.tr(), tr("panel.timeline.title"));
+        assert_eq!(TITLE.tr(), "Timeline");
+        assert_eq!(
+            TextKey::new("tool.nonexistent.bar").tr(),
+            "tool.nonexistent.bar"
+        );
     }
 
     #[test]

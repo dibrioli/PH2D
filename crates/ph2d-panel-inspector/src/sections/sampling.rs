@@ -21,6 +21,8 @@ use super::*;
 use ph2d_editor_core::screens::hero::InspectorSamplingInfo;
 use ph2d_editor_core::widget::SectionFold;
 use ph2d_editor_core::widget::{SegmentedAdaptive, SegmentedOption, paint_segmented_adaptive};
+use ph2d_i18n::TextKey;
+use ph2d_i18n::tr;
 
 /// **Um rótulo por TAG de `ph2d_ecs::FilterMode`, indexado pela tag `0..=6` — `None` = a tag não é
 /// oferecida.**
@@ -44,19 +46,24 @@ use ph2d_editor_core::widget::{SegmentedAdaptive, SegmentedOption, paint_segment
 /// `anisotropy_clamp > 1` sem os três filtros `Linear`, e *ampliar por ponto* é o que aquele nome
 /// promete. O sampler dela é campo a campo o da `3 Near+Mip` — dois segmentos com nomes diferentes
 /// e o mesmo desenho, que é a doença que a §4 desta seção já mediu com os rótulos repetidos.
-pub const FILTER_LABELS: [Option<&str>; 7] = [
-    Some("Inherit"),
-    Some("Nearest"),
-    Some("Linear"),
-    Some("Near+Mip"),
-    Some("Lin+Mip"),
+pub const FILTER_LABELS: [Option<TextKey>; 7] = [
+    Some(TextKey::new("panel.inspector.sampling.inherit")),
+    Some(TextKey::new("panel.inspector.sampling.nearest")),
+    Some(TextKey::new("panel.inspector.sampling.linear")),
+    Some(TextKey::new("panel.inspector.sampling.near_plus_mip")),
+    Some(TextKey::new("panel.inspector.sampling.lin_plus_mip")),
     // ⛔ 5 — `Near+Aniso`, RETIRADO. ⚠️ Não reaproveite o slot: a tag é o formato de arquivo.
     None,
-    Some("Lin+Aniso"),
+    Some(TextKey::new("panel.inspector.sampling.lin_plus_aniso")),
 ];
 
 /// **Um rótulo por variante de `ph2d_ecs::RepeatMode`**, na ordem das tags `0..=3`.
-pub const REPEAT_LABELS: [&str; 4] = ["Inherit", "Clamp", "Repeat", "Mirror"];
+pub const REPEAT_LABELS: [TextKey; 4] = [
+    TextKey::new("panel.inspector.sampling.inherit"),
+    TextKey::new("panel.inspector.sampling.clamp"),
+    TextKey::new("panel.inspector.sampling.repeat"),
+    TextKey::new("panel.inspector.sampling.mirror"),
+];
 
 /// **O índice que significa «nenhum segmento aceso»** — a afordância de divergência.
 ///
@@ -163,8 +170,12 @@ pub(crate) fn paint_sampling_section(
     let rgba = store
         .widget_color(color_id)
         .unwrap_or([0x88, 0x88, 0x88, 0xff]); // LITERAL-COLOR-OK: neutral default section accent
-    let header =
-        section_header(store, core_ids::INSP_LIVE_SAMPLING_SECTION, "Sampling").color(rgba);
+    let header = section_header(
+        store,
+        core_ids::INSP_LIVE_SAMPLING_SECTION,
+        tr("panel.inspector.sampling.sampling"),
+    )
+    .color(rgba);
     let header_rect = Rect::new(x, y, w, header_h);
     paint_section_header(&header, header_rect, scene, text_system, theme);
     if let Some(circle_rect) = ph2d_editor_core::widget::color_circle_hit_rect(&header, header_rect)
@@ -204,7 +215,7 @@ pub(crate) fn paint_sampling_section(
     paint_text(
         text_system,
         scene,
-        "Texture Filter",
+        tr("panel.inspector.sampling.texture_filter"),
         x,
         yy + (label_h - label_font) * 0.5,
         label_font,
@@ -217,14 +228,14 @@ pub(crate) fn paint_sampling_section(
     // produziu o `.min(2)` que mentia.
     let seg = SegmentedAdaptive::new(
         core_ids::INSP_LIVE_SAMPLING_SECTION,
-        "Texture Filter",
+        tr("panel.inspector.sampling.texture_filter"),
         // ⚠️ **`zip` com o array INTEIRO e depois `filter_map`** — o par `(id, rótulo)` tem de ser
         // formado ANTES de descartar o buraco, senão o rótulo `n+1` casa com o id `n` e o segmento
         // passa a escrever o modo do vizinho (vide o doc de `FILTER_LABELS`).
         ids::INSP_SAMPLE_FILTER
             .iter()
             .zip(FILTER_LABELS)
-            .filter_map(|(&id, label)| label.map(|l| SegmentedOption::new(id, l)))
+            .filter_map(|(&id, label)| label.map(|l| SegmentedOption::new(id, l.tr())))
             .collect(),
     )
     .selected(if info.mixed.filter {
@@ -249,7 +260,7 @@ pub(crate) fn paint_sampling_section(
     paint_text(
         text_system,
         scene,
-        "Texture Repeat",
+        tr("panel.inspector.sampling.texture_repeat"),
         x,
         yy + (label_h - label_font) * 0.5,
         label_font,
@@ -259,11 +270,11 @@ pub(crate) fn paint_sampling_section(
     yy += label_h;
     let repeat_seg = SegmentedAdaptive::new(
         core_ids::INSP_LIVE_SAMPLING_SECTION,
-        "Texture Repeat",
+        tr("panel.inspector.sampling.texture_repeat"),
         ids::INSP_SAMPLE_REPEAT
             .iter()
             .zip(REPEAT_LABELS)
-            .map(|(&id, label)| SegmentedOption::new(id, label))
+            .map(|(&id, label)| SegmentedOption::new(id, label.tr()))
             .collect(),
     )
     .selected(if info.mixed.repeat {
@@ -295,7 +306,7 @@ pub(crate) fn paint_sampling_section(
         x,
         w,
         yy,
-        "UV Scale",
+        tr("panel.inspector.sampling.uv_scale"),
         ids::INSP_SAMPLE_UV_SCALE_X,
         ids::INSP_SAMPLE_UV_SCALE_Y,
     );
@@ -308,7 +319,7 @@ pub(crate) fn paint_sampling_section(
         x,
         w,
         yy,
-        "UV Offset",
+        tr("panel.inspector.sampling.uv_offset"),
         ids::INSP_SAMPLE_UV_OFFSET_X,
         ids::INSP_SAMPLE_UV_OFFSET_Y,
     );
@@ -327,7 +338,7 @@ mod tests {
     /// **A lista OFERECIDA, na ordem em que o pintor a monta** — a mesma expressão do
     /// `paint_sampling_section`, para o teste falar da mesma coisa que o ecrã.
     fn oferecidos() -> Vec<&'static str> {
-        FILTER_LABELS.iter().flatten().copied().collect()
+        FILTER_LABELS.iter().flatten().map(|k| k.tr()).collect()
     }
 
     /// **Cada tag acende o SEU segmento** — a identidade que o `.min(2)` quebrava, agora contada
@@ -343,12 +354,14 @@ mod tests {
     fn every_offered_filter_tag_lights_the_segment_that_carries_its_own_label() {
         let offered = oferecidos();
         for (tag, label) in FILTER_LABELS.iter().enumerate() {
-            let Some(label) = label else { continue };
+            let Some(label) = label.map(|k| k.tr()) else {
+                continue;
+            };
             let t = u8::try_from(tag).expect("as tags cabem num u8");
             let i = filter_selected_index(t);
             assert_eq!(
                 offered.get(i).copied(),
-                Some(*label),
+                Some(label),
                 "a tag {tag} («{label}») acende o segmento {i} («{}») — foi assim que as tags 3 e \
                  5 (que o renderer desenha com pixel duro) acenderam «Linear» durante meses",
                 offered.get(i).copied().unwrap_or("<fora de alcance>")

@@ -15,12 +15,19 @@
 #[path = "joint_cards.rs"]
 mod cards;
 use cards::{paint_break_rows, paint_motor_rows};
+use ph2d_i18n::TextKey;
+use ph2d_i18n::tr;
+use ph2d_i18n::tr_with;
 
 #[path = "joint_custom.rs"]
 mod custom;
 use custom::{paint_axis_rows, paint_motor_axis_row};
 
-use super::rows::{num_row, seg_row};
+#[path = "joint_kind_rows.rs"]
+mod kind_rows;
+use kind_rows::paint_kind_params;
+
+use super::rows::seg_row;
 use super::*;
 use ph2d_editor_core::screens::hero::InspectorJointInfo;
 use ph2d_editor_core::widget::SectionFold;
@@ -28,8 +35,16 @@ use ph2d_editor_core::widget::SectionFold;
 /// Joint-kind labels, indexed by the tag the snapshot carries. Hardcoded here
 /// (not read from `ph2d-physics-ecs`) so the panel stays loose-coupled, like
 /// every sibling section. English per HR-15.
-const KIND_LABELS: [&str; 9] = [
-    "Pin", "Spring", "Rope", "Weld", "Slider", "Rod", "Wheel", "Pulley", "Custom",
+const KIND_LABELS: [TextKey; 9] = [
+    TextKey::new("panel.inspector.joint.pin"),
+    TextKey::new("panel.inspector.joint.spring"),
+    TextKey::new("panel.inspector.joint.rope"),
+    TextKey::new("panel.inspector.joint.weld"),
+    TextKey::new("panel.inspector.joint.slider"),
+    TextKey::new("panel.inspector.joint.rod"),
+    TextKey::new("panel.inspector.joint.wheel"),
+    TextKey::new("panel.inspector.joint.pulley"),
+    TextKey::new("panel.inspector.joint.custom"),
 ];
 
 /// The two Pin-only switches. A two-option segmented IS a switch, and it is
@@ -38,7 +53,10 @@ const KIND_LABELS: [&str; 9] = [
 /// `pub(super)` because the pair cluster next door speaks the same two words —
 /// one list, so an "On"/"Enabled" drift between two halves of one section is not
 /// a thing that can happen.
-pub(super) const SWITCH_LABELS: [&str; 2] = ["Off", "On"];
+pub(super) const SWITCH_LABELS: [TextKey; 2] = [
+    TextKey::new("panel.inspector.joint.off"),
+    TextKey::new("panel.inspector.joint.on"),
+];
 
 /// **O rótulo do botão Paste** (W-JointCopy) — porta pública porque o gate lê
 /// dela, e não de uma segunda cópia da regra: um rótulo afirmado num teste que
@@ -51,9 +69,9 @@ pub(super) const SWITCH_LABELS: [&str; 2] = ["Off", "On"];
 #[must_use]
 pub fn paste_label(targets: usize) -> String {
     if targets > 1 {
-        format!("Paste to {targets} Joints")
+        tr_with("panel.inspector.joint.paste_to", &[("targets", &targets)])
     } else {
-        "Paste Properties".to_string()
+        tr("panel.inspector.joint.paste_properties").to_string()
     }
 }
 
@@ -109,11 +127,11 @@ const fn kind_has_limits(kind_tag: u8) -> bool {
 /// *limited*; a Wheel's range is its suspension **travel**, which is the word
 /// the artist is looking for — the same "same id, different label" the Rope and
 /// the Rod already share for their one number.
-const fn limits_label(kind_tag: u8) -> &'static str {
+fn limits_label(kind_tag: u8) -> &'static str {
     if kind_tag == KIND_WHEEL {
-        "Travel"
+        tr("panel.inspector.joint.travel")
     } else {
-        "Limits"
+        tr("panel.inspector.joint.limits")
     }
 }
 
@@ -138,7 +156,10 @@ const fn kind_has_spring(kind_tag: u8, soft: bool) -> bool {
 /// **Rigid · Soft** — os dois estados de uma solda, e não um Off/On genérico: o
 /// artista escolhe entre duas coisas que uma solda PODE SER, do jeito que o
 /// `Solid | Sensor` e o `Discrete | Continuous` da §11 já falam.
-const SOFT_LABELS: [&str; 2] = ["Rigid", "Soft"];
+const SOFT_LABELS: [TextKey; 2] = [
+    TextKey::new("panel.inspector.joint.rigid"),
+    TextKey::new("panel.inspector.joint.soft"),
+];
 
 /// **Este tipo pode PARTIR sob carga?** Todos, hoje.
 ///
@@ -204,7 +225,10 @@ pub(crate) fn motor_units(info: &InspectorJointInfo) -> (&'static str, &'static 
 pub(crate) const AXIS_ROTATION: u8 = 2;
 
 /// Velocity · Position — the two things a motor can be told.
-const MOTOR_MODE_LABELS: [&str; 2] = ["Velocity", "Position"];
+const MOTOR_MODE_LABELS: [TextKey; 2] = [
+    TextKey::new("panel.inspector.joint.velocity"),
+    TextKey::new("panel.inspector.joint.position"),
+];
 /// Tag of the Position (servo) mode, named because the painter branches on it.
 const MOTOR_MODE_POSITION: u8 = 1;
 
@@ -241,8 +265,12 @@ pub(crate) fn paint_joint_section(
     let rgba = store
         .widget_color(color_id)
         .unwrap_or([0x88, 0x88, 0x88, 0xff]); // LITERAL-COLOR-OK: neutral default section accent
-    let header =
-        section_header(store, core_ids::INSP_LIVE_JOINT_SECTION, "Physics Joint").color(rgba);
+    let header = section_header(
+        store,
+        core_ids::INSP_LIVE_JOINT_SECTION,
+        tr("panel.inspector.joint.physics_joint"),
+    )
+    .color(rgba);
     let header_rect = Rect::new(x, y, w, header_h);
     paint_section_header(&header, header_rect, scene, text_system, theme);
     if let Some(circle_rect) = ph2d_editor_core::widget::color_circle_hit_rect(&header, header_rect)
@@ -281,10 +309,10 @@ pub(crate) fn paint_joint_section(
         x,
         w,
         yy,
-        "Active",
+        tr("panel.inspector.joint.active"),
         ids::INSP_JOINT_ACTIVE_GROUP,
         &ids::INSP_JOINT_ACTIVE,
-        &SWITCH_LABELS,
+        &SWITCH_LABELS.map(TextKey::tr),
         u8::from(info.active),
     );
 
@@ -313,10 +341,10 @@ pub(crate) fn paint_joint_section(
         x,
         w,
         yy,
-        "Kind",
+        tr("panel.inspector.joint.kind"),
         ids::INSP_JOINT_KIND_GROUP,
         &ids::INSP_JOINT_KIND,
-        &KIND_LABELS,
+        &KIND_LABELS.map(TextKey::tr),
         info.kind_tag,
     );
 
@@ -352,9 +380,12 @@ pub(crate) fn paint_joint_section(
     // parâmetro. O Copy é sempre oferecido: a §12 só existe com um joint
     // selecionado, e todo joint tem propriedades a copiar.
     let copy_rect = Rect::new(x, yy, w, h);
-    let copy = Button::new(ids::INSP_JOINT_COPY, "Copy Properties")
-        .kind(ButtonKind::Default)
-        .visual(store.button_visual(ids::INSP_JOINT_COPY));
+    let copy = Button::new(
+        ids::INSP_JOINT_COPY,
+        tr("panel.inspector.joint.copy_properties"),
+    )
+    .kind(ButtonKind::Default)
+    .visual(store.button_visual(ids::INSP_JOINT_COPY));
     paint_button(&copy, copy_rect, scene, text_system, theme);
     hit_index.register(ids::INSP_JOINT_COPY, copy_rect);
     yy += h;
@@ -376,178 +407,15 @@ pub(crate) fn paint_joint_section(
     }
 
     let btn_rect = Rect::new(x, yy, w, h);
-    let btn = Button::new(ids::INSP_JOINT_REMOVE, "Delete Joint")
-        .kind(ButtonKind::Default)
-        .visual(store.button_visual(ids::INSP_JOINT_REMOVE));
+    let btn = Button::new(
+        ids::INSP_JOINT_REMOVE,
+        tr("panel.inspector.joint.delete_joint"),
+    )
+    .kind(ButtonKind::Default)
+    .visual(store.button_visual(ids::INSP_JOINT_REMOVE));
     paint_button(&btn, btn_rect, scene, text_system, theme);
     hit_index.register(ids::INSP_JOINT_REMOVE, btn_rect);
     fold.finish(store, scene, hit_index, yy + h + SECTION_BOTTOM_PAD_PX)
-}
-
-/// **Os parâmetros do TIPO escolhido** — limites, mola e comprimento.
-///
-/// Fn própria pelo cap de 200 LOC da seção e porque a família cresce por tipo:
-/// o Wheel trouxe a primeira combinação de DUAS famílias (curso + mola), que foi
-/// o que transformou a cadeia `else if` daqui em perguntas independentes.
-#[allow(clippy::too_many_arguments)]
-fn paint_kind_params(
-    scene: &mut VectorScene,
-    text_system: &mut TextSystem,
-    theme: Theme,
-    hit_index: &mut HitIndex,
-    store: &WidgetStore,
-    x: f32,
-    w: f32,
-    y: f32,
-    info: &InspectorJointInfo,
-) -> f32 {
-    let mut yy = y;
-    // **O Custom descreve os EIXOS**, e essa é a família inteira dele: ele não
-    // usa o par de limites único (a unidade seria de qual eixo?) nem um
-    // comprimento. Módulo irmão pelo cap de LOC.
-    if info.kind_tag == KIND_CUSTOM {
-        yy = paint_axis_rows(scene, text_system, theme, hit_index, store, x, w, yy, info);
-    }
-    // ⚠️ **Perguntas INDEPENDENTES, não uma cadeia `else if`** — o
-    // [`KIND_WHEEL`] é o primeiro tipo que quer DUAS famílias de linha (o curso,
-    // que era do Pin/Slider, e a mola, que era da Spring), e numa cadeia ele
-    // teria de escolher uma. A cadeia também já era frágil pelo outro lado: o
-    // comentário do [`KIND_ROPE`] registra que um Weld herdaria o "Max Length"
-    // de um `else` nu. Cada família agora se oferece sozinha.
-    if kind_has_limits(info.kind_tag) {
-        yy = seg_row(
-            scene,
-            text_system,
-            theme,
-            hit_index,
-            store,
-            x,
-            w,
-            yy,
-            limits_label(info.kind_tag),
-            ids::INSP_JOINT_LIMITS_GROUP,
-            &ids::INSP_JOINT_LIMITS,
-            &SWITCH_LABELS,
-            u8::from(info.limits_enabled),
-        );
-        if info.limits_enabled {
-            let unit = limit_unit(info.kind_tag);
-            for (label, id) in [
-                (format!("Min ({unit})"), ids::INSP_JOINT_LIMIT_MIN),
-                (format!("Max ({unit})"), ids::INSP_JOINT_LIMIT_MAX),
-            ] {
-                yy = num_row(
-                    scene,
-                    text_system,
-                    theme,
-                    hit_index,
-                    store,
-                    x,
-                    w,
-                    yy,
-                    &label,
-                    id,
-                );
-            }
-        }
-    }
-    if info.kind_tag == KIND_SPRING {
-        yy = num_row(
-            scene,
-            text_system,
-            theme,
-            hit_index,
-            store,
-            x,
-            w,
-            yy,
-            "Rest Length (m)",
-            ids::INSP_JOINT_REST_LENGTH,
-        );
-    }
-    // A solda que CEDE (W-SoftWeld). A chave vem ANTES da mola porque é ela quem
-    // a revela — a mesma ordem do `Limits` e do seu Min/Max.
-    if info.kind_tag == KIND_WELD {
-        yy = seg_row(
-            scene,
-            text_system,
-            theme,
-            hit_index,
-            store,
-            x,
-            w,
-            yy,
-            "Weld",
-            ids::INSP_JOINT_SOFT_GROUP,
-            &ids::INSP_JOINT_SOFT,
-            &SOFT_LABELS,
-            u8::from(info.soft),
-        );
-    }
-    // A mola: da Spring (que PENDURA um corpo), do Wheel (cuja suspensão
-    // SUSTENTA um) e da solda MOLE (cujo ÂNGULO cede). Mesmos dois campos,
-    // mesmos dois ids — é a mesma coisa física, e por isso a troca de tipo
-    // re-semeia a ESCALA deles.
-    if kind_has_spring(info.kind_tag, info.soft) {
-        for (label, id) in [
-            ("Stiffness", ids::INSP_JOINT_STIFFNESS),
-            ("Damping", ids::INSP_JOINT_DAMPING),
-        ] {
-            yy = num_row(
-                scene,
-                text_system,
-                theme,
-                hit_index,
-                store,
-                x,
-                w,
-                yy,
-                label,
-                id,
-            );
-        }
-    }
-    if info.kind_tag == KIND_ROPE || info.kind_tag == KIND_ROD || info.kind_tag == KIND_PULLEY {
-        // O MESMO id, rótulo diferente: numa corda o número é um TETO, numa
-        // barra é o comprimento em si, e numa polia é a corda INTEIRA (a soma
-        // dos dois ramos). Um segundo id seria um segundo lugar para o mesmo
-        // campo do componente.
-        let label = match info.kind_tag {
-            KIND_ROD => "Length (m)",
-            KIND_PULLEY => "Rope Length (m)",
-            _ => "Max Length (m)",
-        };
-        yy = num_row(
-            scene,
-            text_system,
-            theme,
-            hit_index,
-            store,
-            x,
-            w,
-            yy,
-            label,
-            ids::INSP_JOINT_MAX_LENGTH,
-        );
-    }
-    if info.kind_tag == KIND_PULLEY {
-        // **Acrescentar uma roldana** (pedido 4). O botão mora aqui — na seção da
-        // CORDA — porque é a corda que possui a lista, e porque é onde o artista
-        // está quando pensa *"esta corda precisa de mais uma"*. A contagem no
-        // rótulo é o que torna o clique VISÍVEL: a roldana nova nasce SOBRE a
-        // corda, para não dar um puxão, e ali o desenho quase não muda.
-        let rect = Rect::new(x, yy, w, ROW_H_PX);
-        let btn = Button::new(
-            ids::INSP_JOINT_ADD_WHEEL,
-            format!("Add Wheel ({} on this rope)", info.wheel_count),
-        )
-        .kind(ButtonKind::Default)
-        .visual(store.button_visual(ids::INSP_JOINT_ADD_WHEEL));
-        paint_button(&btn, rect, scene, text_system, theme);
-        hit_index.register(ids::INSP_JOINT_ADD_WHEEL, rect);
-        yy += ROW_H_PX;
-    }
-    yy
 }
 
 #[cfg(test)]

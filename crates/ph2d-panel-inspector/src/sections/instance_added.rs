@@ -15,6 +15,7 @@
 
 use super::*;
 use ph2d_editor_core::screens::hero::InspectorInstanceInfo;
+use ph2d_i18n::tr_with;
 
 /// Quantas linhas de altura FIXA este bloco acrescenta.
 pub(crate) fn rows(info: &InspectorInstanceInfo) -> usize {
@@ -69,7 +70,10 @@ pub(crate) fn paint(
         paint_text(
             text_system,
             scene,
-            &format!("+{left_out} more \u{2014} use Apply to Master on the row"),
+            &tr_with(
+                "panel.inspector.instance.added_more",
+                &[("left_out", &left_out)],
+            ),
             at.tx + Spacing::Sm.px(),
             ty,
             at.small,

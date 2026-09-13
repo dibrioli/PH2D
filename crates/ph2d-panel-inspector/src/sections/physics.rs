@@ -14,13 +14,20 @@ use super::rows::num_row;
 use super::*;
 use ph2d_editor_core::screens::hero::InspectorPhysicsInfo;
 use ph2d_editor_core::widget::SectionFold;
+use ph2d_i18n::TextKey;
+use ph2d_i18n::tr;
+use ph2d_i18n::tr_with;
 
 /// Collider-shape labels, indexed by `ColliderShape` tag.
 ///
 /// ⚠️ `pub(super)` porque a face de PEÇA (W-PartFace) pinta o MESMO seletor: a
 /// forma de uma peça é a mesma pergunta que a forma de um corpo, e uma segunda
 /// tabela de rótulos divergiria no dia em que a quarta forma chegasse.
-pub(super) const SHAPE_LABELS: [&str; 3] = ["Ball", "Box", "Capsule"];
+pub(super) const SHAPE_LABELS: [TextKey; 3] = [
+    TextKey::new("panel.inspector.physics.ball"),
+    TextKey::new("panel.inspector.physics.box"),
+    TextKey::new("panel.inspector.physics.capsule"),
+];
 
 /// The Bake button's label, carrying the window it would cover.
 ///
@@ -37,9 +44,18 @@ pub(super) const SHAPE_LABELS: [&str; 3] = ["Ball", "Box", "Capsule"];
 /// to know that before clicking.
 pub fn bake_label(start: f32, end: f32) -> String {
     if start > 0.0 {
-        format!("Bake {start:.1}-{end:.1}s to Timeline")
+        tr_with(
+            "panel.inspector.physics.bake_range",
+            &[
+                ("start", &format!("{start:.1}")),
+                ("end", &format!("{end:.1}")),
+            ],
+        )
     } else {
-        format!("Bake {end:.1}s to Timeline")
+        tr_with(
+            "panel.inspector.physics.bake_to",
+            &[("end", &format!("{end:.1}"))],
+        )
     }
 }
 
@@ -70,8 +86,12 @@ pub(crate) fn paint_physics_section(
     let rgba = store
         .widget_color(color_id)
         .unwrap_or([0x88, 0x88, 0x88, 0xff]); // LITERAL-COLOR-OK: neutral default section accent
-    let header =
-        section_header(store, core_ids::INSP_LIVE_PHYSICS_SECTION, "Physics Body").color(rgba);
+    let header = section_header(
+        store,
+        core_ids::INSP_LIVE_PHYSICS_SECTION,
+        tr("panel.inspector.physics.physics_body"),
+    )
+    .color(rgba);
     let header_rect = Rect::new(x, y, w, header_h);
     paint_section_header(&header, header_rect, scene, text_system, theme);
     if let Some(circle_rect) = ph2d_editor_core::widget::color_circle_hit_rect(&header, header_rect)
@@ -167,14 +187,29 @@ pub(super) fn paint_shape_dims(
     shape_tag: u8,
 ) -> f32 {
     let rows: &[(&str, ph2d_editor_core::NodeId)] = match shape_tag {
-        SHAPE_BALL => &[("Radius (m)", ids::INSP_PHYS_RADIUS)],
+        SHAPE_BALL => &[(
+            tr("panel.inspector.physics.radius_m"),
+            ids::INSP_PHYS_RADIUS,
+        )],
         SHAPE_CAPSULE => &[
-            ("Radius (m)", ids::INSP_PHYS_RADIUS),
-            ("Half Height (m)", ids::INSP_PHYS_CAP_HALF_H),
+            (
+                tr("panel.inspector.physics.radius_m"),
+                ids::INSP_PHYS_RADIUS,
+            ),
+            (
+                tr("panel.inspector.physics.half_height_m"),
+                ids::INSP_PHYS_CAP_HALF_H,
+            ),
         ],
         _ => &[
-            ("Half Width (m)", ids::INSP_PHYS_HALF_X),
-            ("Half Height (m)", ids::INSP_PHYS_HALF_Y),
+            (
+                tr("panel.inspector.physics.half_width_m"),
+                ids::INSP_PHYS_HALF_X,
+            ),
+            (
+                tr("panel.inspector.physics.half_height_m"),
+                ids::INSP_PHYS_HALF_Y,
+            ),
         ],
     };
     let mut yy = y;

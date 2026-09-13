@@ -24,6 +24,17 @@
 /// A tradução de uma chave `panel.painter_layers.*`, ou `None` se ela não é daqui.
 pub(crate) fn tr(key: &str) -> Option<&'static str> {
     Some(match key {
+        // ⚠️ À MÃO, fora dos marcadores (o `aplicar` só reescreve o que está entre eles): os títulos
+        //    GRITADOS dos cards, que a 1.ª redacção da régua lexical não via (2026-09-13).
+        "panel.painter_layers.deform.card_mode" => "MODE",
+        "panel.painter_layers.impasto.card_tool" => "TOOL",
+        "panel.painter_layers.selection.card_operation" => "OPERATION",
+        "panel.painter_layers.stroke.card_operation" => "OPERATION",
+        // ⚠️ E as frases com BARRA, que a régua lia como caminho (2026-09-13).
+        "panel.painter_layers.selection.convert_merge_simplify" => {
+            "Convert / merge / simplify selection curve"
+        }
+        "panel.painter_layers.selection.card_expand_contract" => "EXPAND / CONTRACT",
         // ph2d-migrar-texto:begin
         "panel.painter_layers.layers.brush" => "Brush",
         "panel.painter_layers.layers.layers" => "Layers",

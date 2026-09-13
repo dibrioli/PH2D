@@ -11,6 +11,7 @@ use ph2d_editor_core::screens::hero::InspectorVisibilitySectionInfo;
 use ph2d_editor_core::widget::SectionFold;
 use ph2d_editor_core::widget::section_cards::close_section;
 use ph2d_editor_core::widget::{SegmentedAdaptive, SegmentedOption, paint_segmented_adaptive};
+use ph2d_i18n::tr;
 
 /// Label-above row with a single NumberInput. Returns the next `y`.
 /// Mirrors §9 Sampling's `uv_pair_row` but for one value (cutoff, a rect
@@ -147,8 +148,12 @@ pub(crate) fn paint_visibility_section(
     // marked collapsible). Bit `n` = layer `n+1`; absent component → ALL.
     yy = close_section(scene, theme, x, w, yy);
     let layer_header_h = TypeToken::Md.px() + Spacing::Md.px(); // LITERAL-PX-OK: section header band height
-    let layer_header = section_header(store, core_ids::INSP_VIS_LAYER_HEADER, "Visibility Layer")
-        .open_t(store.section_open_live(core_ids::INSP_VIS_LAYER_HEADER));
+    let layer_header = section_header(
+        store,
+        core_ids::INSP_VIS_LAYER_HEADER,
+        tr("panel.inspector.visibility.visibility_layer"),
+    )
+    .open_t(store.section_open_live(core_ids::INSP_VIS_LAYER_HEADER));
     let layer_header_rect = Rect::new(x, yy, w, layer_header_h);
     paint_section_header(&layer_header, layer_header_rect, scene, text_system, theme);
     hit_index.register(core_ids::INSP_VIS_LAYER_HEADER, layer_header_rect);
@@ -169,7 +174,7 @@ pub(crate) fn paint_visibility_section(
         Some(fold) => {
             let grid = BitmaskGrid32::new(
                 core_ids::INSP_LIVE_VISIBILITY_SECTION,
-                "Visibility Layer",
+                tr("panel.inspector.visibility.visibility_layer"),
                 ids::INSP_VIS_LAYER_BIT,
                 info.layer_mask,
             );
@@ -192,9 +197,13 @@ pub(crate) fn paint_visibility_section(
         x,
         w,
         yy,
-        "Clip Children",
+        tr("panel.inspector.visibility.clip_children"),
         ids::INSP_VIS_CLIP,
-        ["Disabled", "Clip", "Clip+Draw"],
+        [
+            tr("panel.inspector.visibility.disabled"),
+            tr("panel.inspector.visibility.clip"),
+            tr("panel.inspector.visibility.clip_plus_draw"),
+        ],
         (!info.mixed.clip_mode).then_some(usize::from(info.clip_mode)),
     );
 
@@ -208,9 +217,13 @@ pub(crate) fn paint_visibility_section(
         x,
         w,
         yy,
-        "Mask Interaction",
+        tr("panel.inspector.visibility.mask_interaction"),
         ids::INSP_VIS_MASK,
-        ["None", "Inside", "Outside"],
+        [
+            tr("panel.inspector.visibility.none"),
+            tr("panel.inspector.visibility.inside"),
+            tr("panel.inspector.visibility.outside"),
+        ],
         (!info.mixed.mask_mode).then_some(usize::from(info.mask_mode)),
     );
 
@@ -225,7 +238,7 @@ pub(crate) fn paint_visibility_section(
             x,
             w,
             yy,
-            "Mask Alpha Cutoff",
+            tr("panel.inspector.visibility.mask_alpha_cutoff"),
             ids::INSP_VIS_ALPHA_CUTOFF,
         );
     }
@@ -234,26 +247,32 @@ pub(crate) fn paint_visibility_section(
     // masks sibling VisibleInside/Outside responders).
     let src_rect = Rect::new(x, yy, w, h);
     hit_index.register(ids::INSP_VIS_MASK_SOURCE, src_rect);
-    let src_cb = Checkbox::new(ids::INSP_VIS_MASK_SOURCE, "Mask Source (Mask2D)")
-        .visual(store.checkbox_visual(ids::INSP_VIS_MASK_SOURCE))
-        .value(if info.mask_source {
-            CheckboxValue::Checked
-        } else {
-            CheckboxValue::Unchecked
-        });
+    let src_cb = Checkbox::new(
+        ids::INSP_VIS_MASK_SOURCE,
+        tr("panel.inspector.visibility.mask_source_mask2d"),
+    )
+    .visual(store.checkbox_visual(ids::INSP_VIS_MASK_SOURCE))
+    .value(if info.mask_source {
+        CheckboxValue::Checked
+    } else {
+        CheckboxValue::Unchecked
+    });
     paint_checkbox(&src_cb, src_rect, scene, text_system, theme);
     yy += h + row_gap;
 
     // On-Screen Enabler toggle (presence of the component).
     let on_rect = Rect::new(x, yy, w, h);
     hit_index.register(ids::INSP_VIS_ON_SCREEN, on_rect);
-    let on_cb = Checkbox::new(ids::INSP_VIS_ON_SCREEN, "On-Screen Enabler")
-        .visual(store.checkbox_visual(ids::INSP_VIS_ON_SCREEN))
-        .value(if info.on_screen {
-            CheckboxValue::Checked
-        } else {
-            CheckboxValue::Unchecked
-        });
+    let on_cb = Checkbox::new(
+        ids::INSP_VIS_ON_SCREEN,
+        tr("panel.inspector.visibility.on_screen_enabler"),
+    )
+    .visual(store.checkbox_visual(ids::INSP_VIS_ON_SCREEN))
+    .value(if info.on_screen {
+        CheckboxValue::Checked
+    } else {
+        CheckboxValue::Unchecked
+    });
     paint_checkbox(&on_cb, on_rect, scene, text_system, theme);
     yy += h + row_gap;
 
@@ -263,7 +282,7 @@ pub(crate) fn paint_visibility_section(
         paint_text(
             text_system,
             scene,
-            "Enabler Rect",
+            tr("panel.inspector.visibility.enabler_rect"),
             x,
             yy + (label_h - label_font) * 0.5,
             label_font,
@@ -278,7 +297,7 @@ pub(crate) fn paint_visibility_section(
         const RECT_STEP: f64 = 0.1; // LITERAL-PX-OK: enabler-rect editor nudge step
         let editor = Rect2Editor::new(
             core_ids::INSP_LIVE_VISIBILITY_SECTION,
-            "Enabler Rect",
+            tr("panel.inspector.visibility.enabler_rect"),
             NumberInput::new(ids::INSP_VIS_RECT_X, "", vx)
                 .step(RECT_STEP)
                 .visual((sx, store.hover_live(ids::INSP_VIS_RECT_X))),

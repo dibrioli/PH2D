@@ -286,7 +286,10 @@ pub(crate) fn apply_event(
         if let Some(entry) = state::live_entry_for(id) {
             *host.selection_mut() = Some(HeroSelection {
                 label: entry.name.clone(),
-                kind: entry.badge.clone().unwrap_or_else(|| "ENT".to_string()),
+                kind: entry
+                    .badge
+                    .clone()
+                    .unwrap_or_else(|| ph2d_i18n::tr("panel.hierarchy.badge.entity").to_string()),
                 world_pos: (0.0, 0.0),
             });
             return EventOutcome::Consumed;

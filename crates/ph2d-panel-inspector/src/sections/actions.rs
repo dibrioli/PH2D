@@ -26,6 +26,8 @@ use super::*;
 use ph2d_editor_core::screens::hero::{InspectorActionInfo, InspectorActionRow};
 use ph2d_editor_core::widget::SectionFold;
 use ph2d_editor_core::widget::{Dropdown, DropdownOption, paint_dropdown_chip};
+use ph2d_i18n::tr;
+use ph2d_i18n::tr_with;
 
 const BTN_H: f32 = 30.0; // LITERAL-PX-OK: altura de botão do Inspector, igual à das irmãs
 /// A linha de uma lista é a linha do app — pela porta, nunca por um literal que coincide.
@@ -35,12 +37,15 @@ const ROW_H: f32 = ph2d_tokens::ROW_H_PX;
 fn summary(row: &InspectorActionRow, verbs: &[String]) -> String {
     let verbo = verbs.get(row.verb_tag as usize).map_or("?", String::as_str);
     let alvo = if row.target_is_self() {
-        "(this object)"
+        tr("panel.inspector.actions.this_object")
     } else {
         row.target.as_str()
     };
     if row.never_fires() {
-        format!("never fires \u{b7} {verbo} \u{b7} {alvo}")
+        tr_with(
+            "panel.inspector.actions.never_fires",
+            &[("verbo", &verbo), ("alvo", &alvo)],
+        )
     } else {
         format!("{} \u{2192} {verbo} \u{b7} {alvo}", row.on)
     }
@@ -140,10 +145,13 @@ fn buttons(
         cell += 1;
         hit_index.register(ids::INSP_ACTION_ADD, rect);
         paint_button(
-            &Button::new(ids::INSP_ACTION_ADD, "+ Add Action")
-                .kind(ButtonKind::Default)
-                .visual(store.button_visual(ids::INSP_ACTION_ADD))
-                .in_group(group),
+            &Button::new(
+                ids::INSP_ACTION_ADD,
+                tr("panel.inspector.actions.plus_add_action"),
+            )
+            .kind(ButtonKind::Default)
+            .visual(store.button_visual(ids::INSP_ACTION_ADD))
+            .in_group(group),
             rect,
             scene,
             text_system,
@@ -154,10 +162,13 @@ fn buttons(
         let (rect, group) = seg[cell];
         hit_index.register(ids::INSP_ACTION_REMOVE, rect);
         paint_button(
-            &Button::new(ids::INSP_ACTION_REMOVE, "x Remove Action")
-                .kind(ButtonKind::Default)
-                .visual(store.button_visual(ids::INSP_ACTION_REMOVE))
-                .in_group(group),
+            &Button::new(
+                ids::INSP_ACTION_REMOVE,
+                tr("panel.inspector.actions.x_remove_action"),
+            )
+            .kind(ButtonKind::Default)
+            .visual(store.button_visual(ids::INSP_ACTION_REMOVE))
+            .in_group(group),
             rect,
             scene,
             text_system,
@@ -251,7 +262,8 @@ fn editor(
         w,
         y,
         ids::INSP_ACTION_ON,
-        TextInput::new(ids::INSP_ACTION_ON, "").placeholder("on signal\u{2026}"),
+        TextInput::new(ids::INSP_ACTION_ON, "")
+            .placeholder(tr("panel.inspector.actions.on_signal")),
     );
     cur_y = super::anim_rows::text_row(
         scene,
@@ -263,7 +275,8 @@ fn editor(
         w,
         cur_y,
         ids::INSP_ACTION_TARGET,
-        TextInput::new(ids::INSP_ACTION_TARGET, "").placeholder("target (empty = this object)"),
+        TextInput::new(ids::INSP_ACTION_TARGET, "")
+            .placeholder(tr("panel.inspector.actions.target_empty_this_object")),
     );
     cur_y = verb_row(
         scene,
@@ -290,7 +303,8 @@ fn editor(
             w,
             cur_y,
             ids::INSP_ACTION_ARG,
-            TextInput::new(ids::INSP_ACTION_ARG, "").placeholder("timer name (empty = all)"),
+            TextInput::new(ids::INSP_ACTION_ARG, "")
+                .placeholder(tr("panel.inspector.actions.timer_name_empty_all")),
         );
     }
     // ⚠️⚠️ **A LINHA QUE RESPONDE AO «não acontece nada».**
@@ -299,7 +313,7 @@ fn editor(
         paint_text(
             text_system,
             scene,
-            "This action never runs: it has no signal name.",
+            tr("panel.inspector.actions.this_action_never_runs_it"),
             x,
             cur_y,
             font,
@@ -331,9 +345,12 @@ pub(crate) fn paint_action_section(
         .widget_color(color_id)
         .unwrap_or([0x88, 0x88, 0x88, 0xff]); // LITERAL-COLOR-OK: acento neutro por omissão
     let title = if info.rows.is_empty() {
-        String::from("Signal Actions")
+        String::from(tr("panel.inspector.actions.signal_actions"))
     } else {
-        format!("Signal Actions  ({})", info.rows.len())
+        tr_with(
+            "panel.inspector.actions.title_count",
+            &[("n", &info.rows.len())],
+        )
     };
     let header = section_header(store, core_ids::INSP_LIVE_ACTION_SECTION, &title).color(rgba);
     let header_rect = Rect::new(x, y, w, header_h);
@@ -360,7 +377,7 @@ pub(crate) fn paint_action_section(
         paint_text(
             text_system,
             scene,
-            "Multiple selected \u{b7} action edits apply to the active object only.",
+            tr("panel.inspector.actions.multiple_selected_action_edits_apply"),
             x,
             cur_y,
             font,
@@ -374,7 +391,7 @@ pub(crate) fn paint_action_section(
         paint_text(
             text_system,
             scene,
-            "No actions yet.",
+            tr("panel.inspector.actions.no_actions_yet"),
             x,
             cur_y,
             font,

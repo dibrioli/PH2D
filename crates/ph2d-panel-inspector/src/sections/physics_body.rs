@@ -15,13 +15,20 @@
 use super::rows::{num_row, seg_row};
 use super::*;
 use ph2d_editor_core::screens::hero::InspectorPhysicsInfo;
+use ph2d_i18n::TextKey;
+use ph2d_i18n::tr;
+use ph2d_i18n::tr_with;
 
 use super::physics::{SHAPE_LABELS, bake_label, paint_shape_dims};
 
 /// Body-kind labels, indexed by `BodyKind` tag. Hardcoded (not read from
 /// `ph2d-physics-ecs`) so the panel stays loose-coupled — the snapshot
 /// carries only the tag. English per HR-15, like every sibling section.
-const KIND_LABELS: [&str; 3] = ["Dynamic", "Static", "Kinematic"];
+const KIND_LABELS: [TextKey; 3] = [
+    TextKey::new("panel.inspector.physics.dynamic"),
+    TextKey::new("panel.inspector.physics.static"),
+    TextKey::new("panel.inspector.physics.kinematic"),
+];
 
 /// Tag for the Dynamic body kind — the only kind with simulated motion to bake.
 const KIND_DYNAMIC: u8 = 0;
@@ -29,19 +36,32 @@ const KIND_DYNAMIC: u8 = 0;
 /// CCD toggle labels, indexed by `ccd as u8`: `0` discrete (rapier's default),
 /// `1` continuous (sweeps the motion so a fast body does not tunnel). Unity's own
 /// vocabulary for the same control.
-const CCD_LABELS: [&str; 2] = ["Discrete", "Continuous"];
+const CCD_LABELS: [TextKey; 2] = [
+    TextKey::new("panel.inspector.physics.discrete"),
+    TextKey::new("panel.inspector.physics.continuous"),
+];
 
 /// Lock-rotation toggle labels, indexed by `lock_rotation as u8`: `0` free
 /// (rapier's default), `1` locked (the orientation is pinned — Freeze Rotation).
-const LOCKROT_LABELS: [&str; 2] = ["Free", "Locked"];
+const LOCKROT_LABELS: [TextKey; 2] = [
+    TextKey::new("panel.inspector.physics.free"),
+    TextKey::new("panel.inspector.physics.locked"),
+];
 
 /// Freeze-Position (X and Y) toggle labels, indexed by the flag: `0` free
 /// (rapier's default), `1` locked (that translation axis is pinned).
-const FREEZE_POS_LABELS: [&str; 2] = ["Free", "Locked"];
+const FREEZE_POS_LABELS: [TextKey; 2] = [
+    TextKey::new("panel.inspector.physics.free"),
+    TextKey::new("panel.inspector.physics.locked"),
+];
 
 /// Bake channel selector labels, indexed by the tag: `0` the whole pose,
 /// `1` position only, `2` rotation only.
-const BAKE_CH_LABELS: [&str; 3] = ["All", "Position", "Rotation"];
+const BAKE_CH_LABELS: [TextKey; 3] = [
+    TextKey::new("panel.inspector.physics.all"),
+    TextKey::new("panel.inspector.physics.position"),
+    TextKey::new("panel.inspector.physics.rotation"),
+];
 
 /// Pinta as rows de um corpo e devolve o `y` final da seção.
 #[allow(clippy::too_many_arguments)]
@@ -66,10 +86,10 @@ pub(super) fn paint_body_face(
         x,
         w,
         yy,
-        "Body",
+        tr("panel.inspector.physics.body"),
         core_ids::INSP_LIVE_PHYSICS_SECTION,
         &ids::INSP_PHYS_KIND,
-        &KIND_LABELS,
+        &KIND_LABELS.map(TextKey::tr),
         info.kind_tag,
     );
     yy = seg_row(
@@ -81,10 +101,10 @@ pub(super) fn paint_body_face(
         x,
         w,
         yy,
-        "Collider",
+        tr("panel.inspector.physics.collider"),
         core_ids::INSP_LIVE_PHYSICS_COLOR,
         &ids::INSP_PHYS_SHAPE,
-        &SHAPE_LABELS,
+        &SHAPE_LABELS.map(TextKey::tr),
         info.shape_tag,
     );
 
@@ -113,9 +133,9 @@ pub(super) fn paint_body_face(
         let font = TypeToken::Sm.px();
         let n = info.part_count;
         let label = if n == 1 {
-            "+ 1 more shape from a child".to_string()
+            tr("panel.inspector.physics.plus_1_more_shape_from").to_string()
         } else {
-            format!("+ {n} more shapes from children")
+            tr_with("panel.inspector.physics.more_shapes", &[("n", &n)])
         };
         paint_text(
             text_system,
@@ -134,8 +154,14 @@ pub(super) fn paint_body_face(
     // Dynamic-only), so it sits with the shape dimensions rather than the dynamics
     // block. The overlay draws the outline here so the offset is visible.
     for (label, id) in [
-        ("Offset X (m)", ids::INSP_PHYS_OFFSET_X),
-        ("Offset Y (m)", ids::INSP_PHYS_OFFSET_Y),
+        (
+            tr("panel.inspector.physics.offset_x_m"),
+            ids::INSP_PHYS_OFFSET_X,
+        ),
+        (
+            tr("panel.inspector.physics.offset_y_m"),
+            ids::INSP_PHYS_OFFSET_Y,
+        ),
     ] {
         yy = num_row(
             scene,
@@ -211,7 +237,7 @@ pub(super) fn paint_body_face(
     // colapsá-los numa função só faria a face de peça pintar sete knobs mudos.
     // A ORDEM na tela não muda — one-way e zona são mutuamente exclusivos.
     if info.is_sensor {
-        yy = super::physics_rows::paint_area_rows(
+        yy = super::physics_area_rows::paint_area_rows(
             scene,
             text_system,
             theme,
@@ -248,13 +274,28 @@ fn paint_dynamics_rows(
 ) -> f32 {
     let mut yy = y;
     for (label, id) in [
-        ("Gravity Scale", ids::INSP_PHYS_GRAVITY_SCALE),
-        ("Init Vel X (m/s)", ids::INSP_PHYS_LINVEL_X),
-        ("Init Vel Y (m/s)", ids::INSP_PHYS_LINVEL_Y),
-        ("Init Spin (deg/s)", ids::INSP_PHYS_ANGVEL),
+        (
+            tr("panel.inspector.physics.gravity_scale"),
+            ids::INSP_PHYS_GRAVITY_SCALE,
+        ),
+        (
+            tr("panel.inspector.physics.init_vel_x_m_s"),
+            ids::INSP_PHYS_LINVEL_X,
+        ),
+        (
+            tr("panel.inspector.physics.init_vel_y_m_s"),
+            ids::INSP_PHYS_LINVEL_Y,
+        ),
+        (
+            tr("panel.inspector.physics.init_spin_deg_s"),
+            ids::INSP_PHYS_ANGVEL,
+        ),
         // Dominance (collision priority): a higher value bulldozes lower ones.
         // Dynamic-only like the rest — a non-dynamic body is already at the max.
-        ("Dominance", ids::INSP_PHYS_DOMINANCE),
+        (
+            tr("panel.inspector.physics.dominance"),
+            ids::INSP_PHYS_DOMINANCE,
+        ),
     ] {
         yy = num_row(
             scene,
@@ -317,10 +358,10 @@ fn paint_body_actions(
             x,
             w,
             yy,
-            "Collision",
+            tr("panel.inspector.physics.collision"),
             ids::INSP_LIVE_PHYSICS_CCD,
             &ids::INSP_PHYS_CCD,
-            &CCD_LABELS,
+            &CCD_LABELS.map(TextKey::tr),
             u8::from(info.ccd),
         );
         // Freeze Rotation: pin the orientation so the body slides/falls but never
@@ -335,10 +376,10 @@ fn paint_body_actions(
             x,
             w,
             yy,
-            "Rotation",
+            tr("panel.inspector.physics.rotation"),
             ids::INSP_LIVE_PHYSICS_LOCKROT,
             &ids::INSP_PHYS_LOCKROT,
-            &LOCKROT_LABELS,
+            &LOCKROT_LABELS.map(TextKey::tr),
             u8::from(info.lock_rotation),
         );
         // Freeze Position X / Y: pin a translation axis so the body is held to a
@@ -353,10 +394,10 @@ fn paint_body_actions(
             x,
             w,
             yy,
-            "Freeze X",
+            tr("panel.inspector.physics.freeze_x"),
             ids::INSP_LIVE_PHYSICS_LOCKX,
             &ids::INSP_PHYS_LOCKX,
-            &FREEZE_POS_LABELS,
+            &FREEZE_POS_LABELS.map(TextKey::tr),
             u8::from(info.lock_x),
         );
         yy = seg_row(
@@ -368,10 +409,10 @@ fn paint_body_actions(
             x,
             w,
             yy,
-            "Freeze Y",
+            tr("panel.inspector.physics.freeze_y"),
             ids::INSP_LIVE_PHYSICS_LOCKY,
             &ids::INSP_PHYS_LOCKY,
-            &FREEZE_POS_LABELS,
+            &FREEZE_POS_LABELS.map(TextKey::tr),
             u8::from(info.lock_y),
         );
         // Per-body damping (drag): linear + angular + Combine|Replace mode. Dynamic-
@@ -397,10 +438,10 @@ fn paint_body_actions(
             x,
             w,
             yy,
-            "Bake",
+            tr("panel.inspector.physics.bake"),
             ids::INSP_PHYS_BAKE_CH_GROUP,
             &ids::INSP_PHYS_BAKE_CH,
-            &BAKE_CH_LABELS,
+            &BAKE_CH_LABELS.map(TextKey::tr),
             info.bake_channels_tag,
         );
     }
@@ -477,7 +518,11 @@ fn paint_body_actions(
         hit_index.register(ids::INSP_PHYS_BAKE, r);
     }
 
-    let r = paint_at(ids::INSP_PHYS_REMOVE, "Remove Physics Body", &mut yy);
+    let r = paint_at(
+        ids::INSP_PHYS_REMOVE,
+        tr("panel.inspector.physics.remove_physics_body"),
+        &mut yy,
+    );
     hit_index.register(ids::INSP_PHYS_REMOVE, r);
     yy - Spacing::Sm.px() + SECTION_BOTTOM_PAD_PX
 }

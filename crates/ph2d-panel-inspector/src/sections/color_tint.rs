@@ -3,6 +3,7 @@
 
 use super::*;
 use ph2d_editor_core::widget::SectionFold;
+use ph2d_i18n::tr;
 
 /// Paint one labeled tint swatch (label left, swatch right) inside
 /// `cell`. The swatch fill reads `widget_color(swatch_id)` (kept in
@@ -138,8 +139,12 @@ pub(crate) fn paint_color_tint_section(
     let rgba = store
         .widget_color(color_id)
         .unwrap_or([0x88, 0x88, 0x88, 0xff]); // LITERAL-COLOR-OK: neutral default for unconfigured section accent
-    let header =
-        section_header(store, core_ids::INSP_LIVE_COLOR_SECTION, "Color & Tint").color(rgba);
+    let header = section_header(
+        store,
+        core_ids::INSP_LIVE_COLOR_SECTION,
+        tr("panel.inspector.color_tint.color_and_tint"),
+    )
+    .color(rgba);
     let header_rect = Rect::new(x, y, w, header_h);
     paint_section_header(&header, header_rect, scene, text_system, theme);
     if let Some(circle_rect) = ph2d_editor_core::widget::color_circle_hit_rect(&header, header_rect)
@@ -181,7 +186,7 @@ pub(crate) fn paint_color_tint_section(
         .unwrap_or([0xff, 0xff, 0xff, 0xff]); // LITERAL-COLOR-OK: WHITE = tint default
     paint_tint_swatch_cell(
         Rect::new(x, cur_y, w, field_h),
-        "Tint",
+        tr("panel.inspector.color_tint.tint"),
         ids::INSP_SPRITE_TINT_SWATCH,
         tint_seed,
         sp.as_ref().is_some_and(|s| s.mixed.tint),
@@ -200,7 +205,7 @@ pub(crate) fn paint_color_tint_section(
         .unwrap_or([0xff, 0xff, 0xff, 0xff]); // LITERAL-COLOR-OK: WHITE = self_tint default
     paint_tint_swatch_cell(
         Rect::new(x, cur_y, w, field_h),
-        "Self Tint",
+        tr("panel.inspector.color_tint.self_tint"),
         ids::INSP_SPRITE_SELF_TINT_SWATCH,
         self_seed,
         sp.as_ref().is_some_and(|s| s.mixed.self_tint),
@@ -233,7 +238,7 @@ pub(crate) fn paint_color_tint_section(
         .unwrap_or((SliderState::Normal, 1.0));
     let opacity_h = paint_slider_with_chip(
         Rect::new(x, cur_y, w, field_h),
-        "Opacity",
+        tr("panel.inspector.color_tint.opacity"),
         op_value,
         ids::INSP_SPRITE_OPACITY,
         ids::INSP_SPRITE_OPACITY_CHIP,
@@ -253,9 +258,12 @@ pub(crate) fn paint_color_tint_section(
     let tf_rect = Rect::new(x, cur_y, w, cb_h);
     hit_index.register(ids::INSP_SPRITE_TINT_FILL, tf_rect);
     paint_checkbox(
-        &Checkbox::new(ids::INSP_SPRITE_TINT_FILL, "Tint Fill")
-            .visual(store.checkbox_visual(ids::INSP_SPRITE_TINT_FILL))
-            .value(tf_value),
+        &Checkbox::new(
+            ids::INSP_SPRITE_TINT_FILL,
+            tr("panel.inspector.color_tint.tint_fill"),
+        )
+        .visual(store.checkbox_visual(ids::INSP_SPRITE_TINT_FILL))
+        .value(tf_value),
         tf_rect,
         scene,
         text_system,
@@ -292,7 +300,7 @@ fn paint_per_corner_tab(
     paint_text(
         text_system,
         scene,
-        "Per-Corner Tint (vertex gradient)",
+        tr("panel.inspector.color_tint.per_corner_tint_vertex_gradient"),
         x,
         y + (label_h - label_font) * 0.5,
         label_font,
@@ -312,10 +320,10 @@ fn paint_per_corner_tab(
         ids::INSP_SPRITE_CORNER_BR,
     ];
     let a11y = [
-        "Top-left corner tint",
-        "Top-right corner tint",
-        "Bottom-left corner tint",
-        "Bottom-right corner tint",
+        tr("panel.inspector.color_tint.top_left_corner_tint"),
+        tr("panel.inspector.color_tint.top_right_corner_tint"),
+        tr("panel.inspector.color_tint.bottom_left_corner_tint"),
+        tr("panel.inspector.color_tint.bottom_right_corner_tint"),
     ];
     // TL, TR, BL, BR positions in a 2×2 grid.
     let positions = [
@@ -353,9 +361,12 @@ fn paint_per_corner_tab(
     let eq_rect = Rect::new(x, cur_y, w, btn_h);
     let eq_state = store.button_visual(ids::INSP_SPRITE_CORNER_EQUALIZE);
     hit_index.register(ids::INSP_SPRITE_CORNER_EQUALIZE, eq_rect);
-    let eq = Button::new(ids::INSP_SPRITE_CORNER_EQUALIZE, "Equalize Corners")
-        .kind(ButtonKind::Default)
-        .visual(eq_state);
+    let eq = Button::new(
+        ids::INSP_SPRITE_CORNER_EQUALIZE,
+        tr("panel.inspector.color_tint.equalize_corners"),
+    )
+    .kind(ButtonKind::Default)
+    .visual(eq_state);
     paint_button(&eq, eq_rect, scene, text_system, theme);
     cur_y += btn_h + Spacing::Sm.px();
     cur_y

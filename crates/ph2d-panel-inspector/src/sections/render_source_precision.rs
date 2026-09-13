@@ -10,6 +10,7 @@
 
 use super::*;
 use ph2d_editor_core::screens::hero::{InspectorSpriteInfo, InspectorSpriteSource};
+use ph2d_i18n::tr;
 
 #[allow(clippy::too_many_arguments)]
 pub(super) fn paint_precision_row(
@@ -27,7 +28,7 @@ pub(super) fn paint_precision_row(
     paint_text(
         text_system,
         scene,
-        "Format",
+        tr("panel.inspector.render_source.format"),
         x,
         cur_y,
         label_font,
@@ -81,9 +82,9 @@ pub(super) fn paint_precision_row(
         // *«Hand-packed · folha · região»*. O doc desta função argumenta exatamente que *uma
         // consequência que só aparece depois do clique lê-se como bug*; faltava aplicá-lo aqui.
         let consequence = if matches!(info.source_kind, InspectorSpriteSource::HandPacked { .. }) {
-            "RGBA16 doubles memory, forces Individual, and leaves the sheet"
+            tr("panel.inspector.render_source.rgba16_doubles_memory_forces_individual")
         } else {
-            "RGBA16 doubles memory and forces Individual"
+            tr("panel.inspector.render_source.rgba16_doubles_memory_and_forces")
         };
         paint_text(
             text_system,

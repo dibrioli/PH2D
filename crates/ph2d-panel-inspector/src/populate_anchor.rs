@@ -9,6 +9,7 @@
 
 use ph2d_editor_core::interaction::{InteractiveState, WidgetStore, format_number};
 use ph2d_editor_core::widget::{CheckboxState, CheckboxValue, DropdownState, TextInputState};
+use ph2d_i18n::tr;
 
 use super::populate::register_button_ids;
 
@@ -87,8 +88,7 @@ pub(crate) fn populate_anchors(store: &mut WidgetStore) {
     );
     store.set_tooltip(
         crate::ids::INSP_ANCHOR_VIS_RUNTIME,
-        "Parked: this app has no game runtime yet, so there is no runtime for anchors to show in. \
-         The setting is kept in the file so saved projects still load.",
+        tr("panel.inspector.anchors.parked_this_app_has_no"),
     );
     for id in crate::ids::INSP_ANCHOR_POS
         .iter()

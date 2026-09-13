@@ -12,19 +12,34 @@
 use super::rows::{num_row, seg_row};
 use super::*;
 use ph2d_editor_core::screens::hero::InspectorJointInfo;
+use ph2d_i18n::TextKey;
+use ph2d_i18n::tr;
+use ph2d_i18n::tr_with;
 
 /// Os três eixos, na ordem em que o array os guarda e a tela os lista.
 ///
 /// ⚠️ **A UNIDADE é do EIXO, não do tipo** — e é a diferença que o `Custom`
 /// introduziu: nos sete presets o grau de liberdade livre é uma propriedade do
 /// tipo, aqui ele é escolhido.
-const AXIS_ROWS: [(&str, &str); 3] = [("X", "m"), ("Y", "m"), ("Rotation", "deg")];
+const AXIS_ROWS: [(TextKey, &str); 3] = [
+    (TextKey::new("panel.inspector.joint.axis_x"), "m"),
+    (TextKey::new("panel.inspector.joint.axis_y"), "m"),
+    (TextKey::new("panel.inspector.joint.rotation"), "deg"),
+];
 
 /// Free / Limited / Locked.
-const AXIS_MODE_LABELS: [&str; 3] = ["Free", "Limited", "Locked"];
+const AXIS_MODE_LABELS: [TextKey; 3] = [
+    TextKey::new("panel.inspector.joint.free"),
+    TextKey::new("panel.inspector.joint.limited"),
+    TextKey::new("panel.inspector.joint.locked"),
+];
 
 /// X / Y / Rotation — para o seletor de eixo do motor.
-const AXIS_LABELS: [&str; 3] = ["X", "Y", "Rotation"];
+const AXIS_LABELS: [TextKey; 3] = [
+    TextKey::new("panel.inspector.joint.axis_x"),
+    TextKey::new("panel.inspector.joint.axis_y"),
+    TextKey::new("panel.inspector.joint.rotation"),
+];
 
 /// Pinta os três eixos e devolve o `y` seguinte.
 #[allow(clippy::too_many_arguments)]
@@ -50,10 +65,10 @@ pub(super) fn paint_axis_rows(
             x,
             w,
             yy,
-            name,
+            name.tr(),
             ids::INSP_JOINT_AXIS_GROUP[i],
             &ids::INSP_JOINT_AXIS_MODE[i],
-            &AXIS_MODE_LABELS,
+            &AXIS_MODE_LABELS.map(TextKey::tr),
             info.axis_mode_tag[i],
         );
         // ⚠️ **O par só existe no modo `Limited`.** Ele é o único em que o
@@ -62,8 +77,14 @@ pub(super) fn paint_axis_rows(
         // knob que não pode fazer nada.
         if info.axis_mode_tag[i] == MODE_LIMITED {
             for (label, id) in [
-                (format!("  Min ({unit})"), ids::INSP_JOINT_AXIS_MIN[i]),
-                (format!("  Max ({unit})"), ids::INSP_JOINT_AXIS_MAX[i]),
+                (
+                    tr_with("panel.inspector.joint.axis_min_unit", &[("unit", &unit)]),
+                    ids::INSP_JOINT_AXIS_MIN[i],
+                ),
+                (
+                    tr_with("panel.inspector.joint.axis_max_unit", &[("unit", &unit)]),
+                    ids::INSP_JOINT_AXIS_MAX[i],
+                ),
             ] {
                 yy = num_row(
                     scene,
@@ -108,10 +129,10 @@ pub(super) fn paint_motor_axis_row(
         x,
         w,
         y,
-        "Motor Axis",
+        tr("panel.inspector.joint.motor_axis"),
         ids::INSP_JOINT_MOTOR_AXIS_GROUP,
         &ids::INSP_JOINT_MOTOR_AXIS,
-        &AXIS_LABELS,
+        &AXIS_LABELS.map(TextKey::tr),
         info.motor_axis_tag,
     )
 }

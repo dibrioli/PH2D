@@ -24,6 +24,8 @@
 use super::*;
 use ph2d_editor_core::screens::hero::InspectorAnimInfo;
 use ph2d_editor_core::widget::SectionFold;
+use ph2d_i18n::tr;
+use ph2d_i18n::tr_with;
 
 const BTN_H: f32 = 30.0; // LITERAL-PX-OK: altura de botão do Inspector
 const CHECK_H: f32 = 18.0; // LITERAL-PX-OK: altura visual do Checkbox
@@ -108,8 +110,16 @@ fn player_block(
     // As duas caixas, lado a lado.
     let half = (w - Spacing::Sm.px()) * 0.5;
     for (i, (id, label, on)) in [
-        (ids::INSP_ANIM_PLAYING, "Playing", info.playing),
-        (ids::INSP_ANIM_AUTOPLAY, "Autoplay", info.autoplay),
+        (
+            ids::INSP_ANIM_PLAYING,
+            tr("panel.inspector.animation.playing"),
+            info.playing,
+        ),
+        (
+            ids::INSP_ANIM_AUTOPLAY,
+            tr("panel.inspector.animation.autoplay"),
+            info.autoplay,
+        ),
     ]
     .into_iter()
     .enumerate()
@@ -146,7 +156,7 @@ fn player_block(
         x,
         w,
         cur_y,
-        "Speed (x)",
+        tr("panel.inspector.animation.speed_x"),
         &[ids::INSP_ANIM_SPEED],
         0.1, // LITERAL-PX-OK: passo de scrub em MÚLTIPLOS de velocidade, não em pixels
     );
@@ -160,9 +170,15 @@ fn player_block(
         x,
         w,
         cur_y,
-        "Direction override",
+        tr("panel.inspector.animation.direction_override"),
         &ids::INSP_ANIM_DIR_OVERRIDE,
-        &["Inherit", "Fwd", "Rev", "PP", "PP Rev"],
+        &[
+            tr("panel.inspector.animation.inherit"),
+            tr("panel.inspector.animation.fwd"),
+            tr("panel.inspector.animation.rev"),
+            "PP",
+            tr("panel.inspector.animation.pp_rev"),
+        ],
         usize::from(info.direction_override_tag),
     );
     cur_y = segmented_row(
@@ -174,9 +190,13 @@ fn player_block(
         x,
         w,
         cur_y,
-        "Loop override",
+        tr("panel.inspector.animation.loop_override"),
         &ids::INSP_ANIM_LOOP_OVERRIDE,
-        &["Inherit", "On", "Off"],
+        &[
+            tr("panel.inspector.animation.inherit"),
+            tr("panel.inspector.animation.on"),
+            tr("panel.inspector.animation.off"),
+        ],
         usize::from(info.loop_override_tag),
     );
 
@@ -195,7 +215,10 @@ fn player_block(
     // no mesmo dia: o `Sprite::frame` é escrito pelo TIQUE a cada avanço, e um widget que se
     // lembra do que mostrou mente assim que outra pessoa mexe no facto.
     if let Some((step, span)) = info.progress() {
-        let text = format!("Frame {} / {span}", step + 1);
+        let text = tr_with(
+            "panel.inspector.animation.frame_of",
+            &[("n", &(step + 1)), ("span", &span)],
+        );
         paint_text(
             text_system,
             scene,
@@ -241,7 +264,7 @@ fn player_block(
                 x,
                 w,
                 cur_y,
-                "This frame ms (0 = use Frame ms)",
+                tr("panel.inspector.animation.this_frame_ms_0_use"),
                 &[ids::INSP_ANIM_FRAME_MS_THIS],
                 10.0, // LITERAL-PX-OK: passo de scrub em MILISSEGUNDOS, não em pixels
             );
@@ -252,7 +275,7 @@ fn player_block(
         paint_text(
             text_system,
             scene,
-            "This sprite has no animation with that name, or the grid shrank under it.",
+            tr("panel.inspector.animation.this_sprite_has_no_animation"),
             x,
             cur_y,
             font,
@@ -265,9 +288,12 @@ fn player_block(
     let rw = Rect::new(x, cur_y, w, BTN_H);
     hit_index.register(ids::INSP_ANIM_REWIND, rw);
     paint_button(
-        &Button::new(ids::INSP_ANIM_REWIND, "Rewind")
-            .kind(ButtonKind::Default)
-            .visual(store.button_visual(ids::INSP_ANIM_REWIND)),
+        &Button::new(
+            ids::INSP_ANIM_REWIND,
+            tr("panel.inspector.animation.rewind"),
+        )
+        .kind(ButtonKind::Default)
+        .visual(store.button_visual(ids::INSP_ANIM_REWIND)),
         rw,
         scene,
         text_system,
@@ -296,9 +322,12 @@ pub(crate) fn paint_anim_section(
         .widget_color(color_id)
         .unwrap_or([0x88, 0x88, 0x88, 0xff]); // LITERAL-COLOR-OK: acento neutro por omissão
     let title = if info.rows.is_empty() {
-        String::from("Animation")
+        String::from(tr("panel.inspector.animation.animation"))
     } else {
-        format!("Animation  ({})", info.rows.len())
+        tr_with(
+            "panel.inspector.animation.title_count",
+            &[("n", &info.rows.len())],
+        )
     };
     let header = section_header(store, core_ids::INSP_LIVE_ANIM_SECTION, &title).color(rgba);
     let header_rect = Rect::new(x, y, w, header_h);
@@ -333,7 +362,7 @@ pub(crate) fn paint_anim_section(
         paint_text(
             text_system,
             scene,
-            "Multiple selected \u{b7} animation edits apply to the active object only.",
+            tr("panel.inspector.animation.multiple_selected_animation_edits_apply"),
             x,
             cur_y,
             font,
@@ -348,7 +377,7 @@ pub(crate) fn paint_anim_section(
         paint_text(
             text_system,
             scene,
-            "This sprite does not play animations yet.",
+            tr("panel.inspector.animation.this_sprite_does_not_play"),
             x,
             cur_y,
             font,
@@ -359,9 +388,12 @@ pub(crate) fn paint_anim_section(
         let add = Rect::new(x, cur_y, w, BTN_H);
         hit_index.register(ids::INSP_ANIM_ADD_PLAYER, add);
         paint_button(
-            &Button::new(ids::INSP_ANIM_ADD_PLAYER, "+ Add Animator")
-                .kind(ButtonKind::Default)
-                .visual(store.button_visual(ids::INSP_ANIM_ADD_PLAYER)),
+            &Button::new(
+                ids::INSP_ANIM_ADD_PLAYER,
+                tr("panel.inspector.animation.plus_add_animator"),
+            )
+            .kind(ButtonKind::Default)
+            .visual(store.button_visual(ids::INSP_ANIM_ADD_PLAYER)),
             add,
             scene,
             text_system,

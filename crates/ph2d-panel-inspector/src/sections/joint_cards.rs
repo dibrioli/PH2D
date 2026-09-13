@@ -8,6 +8,8 @@
 use super::rows::{num_row, seg_row};
 use super::*;
 use ph2d_editor_core::screens::hero::InspectorJointInfo;
+use ph2d_i18n::tr;
+use ph2d_i18n::tr_with;
 
 /// **The Motor card** — offered to every driven kind (`kind_has_motor`).
 ///
@@ -41,10 +43,10 @@ pub(super) fn paint_motor_rows(
         x,
         w,
         y,
-        "Motor",
+        tr("panel.inspector.joint.motor"),
         ids::INSP_JOINT_MOTOR_GROUP,
         &ids::INSP_JOINT_MOTOR,
-        &SWITCH_LABELS,
+        &SWITCH_LABELS.map(TextKey::tr),
         u8::from(info.motor_enabled),
     );
     if !info.motor_enabled {
@@ -59,20 +61,26 @@ pub(super) fn paint_motor_rows(
         x,
         w,
         yy,
-        "Mode",
+        tr("panel.inspector.joint.mode"),
         ids::INSP_JOINT_MOTOR_MODE_GROUP,
         &ids::INSP_JOINT_MOTOR_MODE,
-        &MOTOR_MODE_LABELS,
+        &MOTOR_MODE_LABELS.map(TextKey::tr),
         info.motor_mode_tag,
     );
     let (rate_unit, place_unit) = motor_units(info);
     let (label, id) = if info.motor_mode_tag == MOTOR_MODE_POSITION {
         (
-            format!("Target ({place_unit})"),
+            tr_with(
+                "panel.inspector.joint.target_unit",
+                &[("unit", &place_unit)],
+            ),
             ids::INSP_JOINT_MOTOR_TARGET,
         )
     } else {
-        (format!("Speed ({rate_unit})"), ids::INSP_JOINT_MOTOR_SPEED)
+        (
+            tr_with("panel.inspector.joint.speed_unit", &[("unit", &rate_unit)]),
+            ids::INSP_JOINT_MOTOR_SPEED,
+        )
     };
     yy = num_row(
         scene,
@@ -95,7 +103,7 @@ pub(super) fn paint_motor_rows(
         x,
         w,
         yy,
-        "Max Force",
+        tr("panel.inspector.joint.max_force"),
         ids::INSP_JOINT_MOTOR_FORCE,
     )
 }
@@ -141,10 +149,10 @@ pub(super) fn paint_break_rows(
         x,
         w,
         y,
-        "Breakable",
+        tr("panel.inspector.joint.breakable"),
         ids::INSP_JOINT_BREAK_GROUP,
         &ids::INSP_JOINT_BREAK,
-        &SWITCH_LABELS,
+        &SWITCH_LABELS.map(TextKey::tr),
         u8::from(info.break_enabled),
     );
     if !info.break_enabled {
@@ -159,7 +167,7 @@ pub(super) fn paint_break_rows(
         x,
         w,
         yy,
-        "Break Force (N)",
+        tr("panel.inspector.joint.break_force_n"),
         ids::INSP_JOINT_BREAK_FORCE,
     );
     if info.breaks_on_torque {
@@ -172,7 +180,7 @@ pub(super) fn paint_break_rows(
             x,
             w,
             yy,
-            "Break Torque (N.m)",
+            tr("panel.inspector.joint.break_torque_n_m"),
             ids::INSP_JOINT_BREAK_TORQUE,
         );
     }

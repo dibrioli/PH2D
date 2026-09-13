@@ -36,7 +36,7 @@ pub fn hierarchy_label_for_id(id: NodeId) -> Option<&'static str> {
 /// Best-effort 3-letter "kind" badge for the selection tag.
 /// Placeholder fixture has a single Scene Root; pilot replaces.
 pub fn hierarchy_kind_for_label(_label: &str) -> &'static str {
-    "ENT"
+    ph2d_i18n::tr("panel.hierarchy.badge.entity")
 }
 
 /// 2026-05-26: lock-toggle companion (per hierarchy row). Mirrors

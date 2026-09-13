@@ -152,7 +152,7 @@ pub(crate) fn paint_selection_section(
             content_w,
             y,
             NodeId(0),
-            "Convert / merge / simplify selection curve",
+            tr("panel.painter_layers.selection.convert_merge_simplify"),
             &[
                 (
                     ph2d_tool_painter::ids::PAINTER_SEL_CONVERT,
@@ -253,7 +253,8 @@ fn operation_card(
 ) -> f32 {
     let header_h = Spacing::Xl3.px();
     let pad = Spacing::Lg.px();
-    let card = Card::new(ph2d_tool_painter::ids::PAINTER_SEL_OP_CARD).title("OPERATION");
+    let card = Card::new(ph2d_tool_painter::ids::PAINTER_SEL_OP_CARD)
+        .title(tr("panel.painter_layers.selection.card_operation"));
     let seg = SegmentedAdaptive::new(
         ph2d_tool_painter::ids::PAINTER_SEL_OP,
         tr("panel.painter_layers.selection.boolean_operation"),
@@ -321,8 +322,8 @@ fn offset_card(
     let header_h = Spacing::Xl3.px();
     let pad = Spacing::Lg.px();
     let gap = Spacing::Xs.px(); // matches the slider row's trailing gap
-    let card =
-        Card::new(ph2d_tool_painter::ids::PAINTER_SEL_OFFSET_CARD).title("EXPAND / CONTRACT");
+    let card = Card::new(ph2d_tool_painter::ids::PAINTER_SEL_OFFSET_CARD)
+        .title(tr("panel.painter_layers.selection.card_expand_contract"));
     // Momentary buttons — nothing selected (usize::MAX), like the old inline group.
     let seg = SegmentedAdaptive::new(
         NodeId(0),

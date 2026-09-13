@@ -275,7 +275,8 @@ fn mode_card(
 ) -> f32 {
     let header_h = Spacing::Xl3.px();
     let pad = Spacing::Lg.px();
-    let card = Card::new(ph2d_tool_painter::ids::PAINTER_DEFORM_MODE_CARD).title("MODE");
+    let card = Card::new(ph2d_tool_painter::ids::PAINTER_DEFORM_MODE_CARD)
+        .title(tr("panel.painter_layers.deform.card_mode"));
     let seg = SegmentedAdaptive::new(
         ph2d_tool_painter::ids::PAINTER_DEFORM_MODE,
         tr("panel.painter_layers.deform.deform_mode"),

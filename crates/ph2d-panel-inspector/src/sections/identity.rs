@@ -2,6 +2,7 @@
 //! architecture_panel_loc_cap). Logic verbatim; behavior unchanged.
 
 use super::*;
+use ph2d_i18n::tr;
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn paint_entity_name_row(
@@ -29,7 +30,7 @@ pub(crate) fn paint_entity_name_row(
         _ => (TextInputState::Normal, None, 0, None),
     };
     let input = TextInput::new(core_ids::INSP_ENTITY_NAME, "")
-        .placeholder("Name\u{2026}")
+        .placeholder(tr("panel.inspector.identity.name"))
         .visual((state, store.hover_live(core_ids::INSP_ENTITY_NAME)));
     paint_text_input_with_buffer(
         &input,
@@ -69,9 +70,12 @@ pub(crate) fn paint_visibility_row(
     };
     let host = Rect::new(x, y, w, row_h);
     hit_index.register(ids::INSP_VISIBILITY_CHECK, host);
-    let checkbox = Checkbox::new(ids::INSP_VISIBILITY_CHECK, "Visible")
-        .visual(store.checkbox_visual(ids::INSP_VISIBILITY_CHECK))
-        .value(value);
+    let checkbox = Checkbox::new(
+        ids::INSP_VISIBILITY_CHECK,
+        tr("panel.inspector.identity.visible"),
+    )
+    .visual(store.checkbox_visual(ids::INSP_VISIBILITY_CHECK))
+    .value(value);
     paint_checkbox(&checkbox, host, scene, text_system, theme);
     y + row_h + SECTION_BOTTOM_PAD_PX
 }

@@ -17,6 +17,8 @@
 //! estas aparecem porque os criam.
 
 use super::*;
+use ph2d_i18n::tr;
+use ph2d_i18n::tr_with;
 
 /// Pinta as portas e devolve o `y` final da seção.
 #[allow(clippy::too_many_arguments)]
@@ -39,7 +41,7 @@ pub(super) fn paint_empty_face(
     paint_text(
         text_system,
         scene,
-        "Not simulated \u{00b7} add a body to make it fall and collide",
+        tr("panel.inspector.physics.not_simulated_add_a_body"),
         x,
         yy + (h - label_font) * 0.5,
         label_font,
@@ -48,9 +50,12 @@ pub(super) fn paint_empty_face(
     );
     yy += h;
     let btn_rect = Rect::new(x, yy, w, h);
-    let btn = Button::new(ids::INSP_PHYS_ADD, "Add Physics Body")
-        .kind(ButtonKind::Default)
-        .visual(store.button_visual(ids::INSP_PHYS_ADD));
+    let btn = Button::new(
+        ids::INSP_PHYS_ADD,
+        tr("panel.inspector.physics.add_physics_body"),
+    )
+    .kind(ButtonKind::Default)
+    .visual(store.button_visual(ids::INSP_PHYS_ADD));
     paint_button(&btn, btn_rect, scene, text_system, theme);
     hit_index.register(ids::INSP_PHYS_ADD, btn_rect);
     yy += h;
@@ -63,7 +68,10 @@ pub(super) fn paint_empty_face(
         let rect = Rect::new(x, yy, w, h);
         let btn = Button::new(
             ids::INSP_PHYS_ADD_SHAPE,
-            format!("Add Shape to {}", info.part_owner),
+            tr_with(
+                "panel.inspector.physics.add_shape_to",
+                &[("owner", &info.part_owner)],
+            ),
         )
         .kind(ButtonKind::Default)
         .visual(store.button_visual(ids::INSP_PHYS_ADD_SHAPE));
@@ -124,8 +132,14 @@ pub(super) fn paint_part_doors(
     let mut yy = y;
     let h = ROW_H_PX;
     for (id, label) in [
-        (ids::INSP_PHYS_ADD, "Make Independent Body"),
-        (ids::INSP_PHYS_REMOVE, "Remove Shape"),
+        (
+            ids::INSP_PHYS_ADD,
+            tr("panel.inspector.physics.make_independent_body"),
+        ),
+        (
+            ids::INSP_PHYS_REMOVE,
+            tr("panel.inspector.physics.remove_shape"),
+        ),
     ] {
         let rect = Rect::new(x, yy, w, h);
         let btn = Button::new(id, label)

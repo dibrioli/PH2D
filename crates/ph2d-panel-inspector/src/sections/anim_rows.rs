@@ -8,6 +8,7 @@
 
 use super::*;
 use ph2d_editor_core::screens::hero::InspectorAnimInfo;
+use ph2d_i18n::tr;
 
 const BTN_H: f32 = 30.0; // LITERAL-PX-OK: altura de botão do Inspector
 // ⭐ **A linha de uma LISTA e a linha do app** (wave 17): o `22.0` a mao coincidia com o
@@ -35,7 +36,7 @@ pub(crate) fn paint_library(
     paint_text(
         text_system,
         scene,
-        "This sprite's animations",
+        tr("panel.inspector.animation.this_sprite_s_animations"),
         x,
         cur_y,
         font,
@@ -48,7 +49,7 @@ pub(crate) fn paint_library(
         paint_text(
             text_system,
             scene,
-            "No animations yet.",
+            tr("panel.inspector.animation.no_animations_yet"),
             x,
             cur_y,
             font,
@@ -120,7 +121,7 @@ pub(crate) fn paint_library(
                     row.from.max(row.to)
                 )
             } else {
-                String::from("out of grid")
+                String::from(tr("panel.inspector.animation.out_of_grid"))
             };
             let summary_color = if row.fits(info.cells) {
                 resolve(ColorToken::Text3, theme)
@@ -158,9 +159,12 @@ pub(crate) fn paint_library(
     let add = Rect::new(x, cur_y, w, BTN_H);
     hit_index.register(ids::INSP_ANIM_ADD, add);
     paint_button(
-        &Button::new(ids::INSP_ANIM_ADD, "+ Add Animation")
-            .kind(ButtonKind::Default)
-            .visual(store.button_visual(ids::INSP_ANIM_ADD)),
+        &Button::new(
+            ids::INSP_ANIM_ADD,
+            tr("panel.inspector.animation.plus_add_animation"),
+        )
+        .kind(ButtonKind::Default)
+        .visual(store.button_visual(ids::INSP_ANIM_ADD)),
         add,
         scene,
         text_system,
@@ -171,9 +175,12 @@ pub(crate) fn paint_library(
         let rm = Rect::new(x, cur_y, w, BTN_H);
         hit_index.register(ids::INSP_ANIM_REMOVE, rm);
         paint_button(
-            &Button::new(ids::INSP_ANIM_REMOVE, "x Remove Animation")
-                .kind(ButtonKind::Default)
-                .visual(store.button_visual(ids::INSP_ANIM_REMOVE)),
+            &Button::new(
+                ids::INSP_ANIM_REMOVE,
+                tr("panel.inspector.animation.x_remove_animation"),
+            )
+            .kind(ButtonKind::Default)
+            .visual(store.button_visual(ids::INSP_ANIM_REMOVE)),
             rm,
             scene,
             text_system,
@@ -188,10 +195,10 @@ pub(crate) fn paint_library(
 /// painel não vê o motor; o gate da shell prende os dois, como no `kind_label` da §12.
 fn ph2d_ecs_dir_label(tag: u8) -> &'static str {
     match tag {
-        1 => "Reverse",
-        2 => "Ping-Pong",
-        3 => "Ping-Pong Rev",
-        _ => "Forward",
+        1 => tr("panel.inspector.animation.reverse"),
+        2 => tr("panel.inspector.animation.ping_pong"),
+        3 => tr("panel.inspector.animation.ping_pong_rev"),
+        _ => tr("panel.inspector.animation.forward"),
     }
 }
 
@@ -219,7 +226,8 @@ fn editor(
         w,
         cur_y,
         ids::INSP_ANIM_NAME,
-        TextInput::new(ids::INSP_ANIM_NAME, "").placeholder("animation_name\u{2026}"),
+        TextInput::new(ids::INSP_ANIM_NAME, "")
+            .placeholder(tr("panel.inspector.animation.animation_name")),
     );
 
     cur_y = super::anchors::field_row(
@@ -231,7 +239,7 @@ fn editor(
         x,
         w,
         cur_y,
-        "From / To (cell)",
+        tr("panel.inspector.animation.from_to_cell"),
         &[ids::INSP_ANIM_FROM, ids::INSP_ANIM_TO],
         1.0,
     );
@@ -244,7 +252,7 @@ fn editor(
         x,
         w,
         cur_y,
-        "Frame ms / Repeat (0 = forever)",
+        tr("panel.inspector.animation.frame_ms_repeat_0_forever"),
         &[ids::INSP_ANIM_FRAME_MS, ids::INSP_ANIM_REPEAT],
         1.0,
     );
@@ -256,7 +264,7 @@ fn editor(
         paint_text(
             text_system,
             scene,
-            "\u{2022} this animation has per-frame timing (imported)",
+            tr("panel.inspector.animation.this_animation_has_per_frame"),
             x,
             cur_y,
             TypeToken::Sm.px(),
@@ -274,7 +282,7 @@ fn editor(
         x,
         w,
         cur_y,
-        "Hold ms / Repeat delay ms",
+        tr("panel.inspector.animation.hold_ms_repeat_delay_ms"),
         &[ids::INSP_ANIM_HOLD_MS, ids::INSP_ANIM_DELAY_MS],
         10.0, // LITERAL-PX-OK: passo de scrub em MILISSEGUNDOS, não em pixels
     );
@@ -284,7 +292,7 @@ fn editor(
     paint_text(
         text_system,
         scene,
-        "Direction",
+        tr("panel.inspector.animation.direction"),
         x,
         cur_y,
         font,
@@ -297,7 +305,15 @@ fn editor(
     let cw = ((w - gap * (n - 1.0)) / n).max(0.0);
     for (i, (&id, label)) in ids::INSP_ANIM_DIR
         .iter()
-        .zip(["Fwd", "Rev", "PP", "PP Rev"].iter())
+        .zip(
+            [
+                tr("panel.inspector.animation.fwd"),
+                tr("panel.inspector.animation.rev"),
+                "PP",
+                tr("panel.inspector.animation.pp_rev"),
+            ]
+            .iter(),
+        )
         .enumerate()
     {
         let rect = Rect::new(x + (cw + gap) * i as f32, cur_y, cw, ROW_H_PX);
@@ -327,7 +343,7 @@ fn editor(
     paint_text(
         text_system,
         scene,
-        "Signals (empty = silent)",
+        tr("panel.inspector.animation.signals_empty_silent"),
         x,
         cur_y,
         font,
@@ -345,7 +361,8 @@ fn editor(
         w,
         cur_y,
         ids::INSP_ANIM_SIGNAL_FINISH,
-        TextInput::new(ids::INSP_ANIM_SIGNAL_FINISH, "").placeholder("on finish\u{2026}"),
+        TextInput::new(ids::INSP_ANIM_SIGNAL_FINISH, "")
+            .placeholder(tr("panel.inspector.animation.on_finish")),
     );
     text_row(
         scene,
@@ -357,7 +374,8 @@ fn editor(
         w,
         cur_y,
         ids::INSP_ANIM_SIGNAL_LOOP,
-        TextInput::new(ids::INSP_ANIM_SIGNAL_LOOP, "").placeholder("on loop\u{2026}"),
+        TextInput::new(ids::INSP_ANIM_SIGNAL_LOOP, "")
+            .placeholder(tr("panel.inspector.animation.on_loop")),
     )
 }
 

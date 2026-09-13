@@ -15,6 +15,7 @@ use ph2d_editor_core::widget::panel_chrome::{
     PANEL_HEAD_PAD, PANEL_TITLE_BASELINE, paint_panel_title,
 };
 use ph2d_editor_core::zones::Rect;
+use ph2d_i18n::tr;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Spacing, Theme, TypeToken};
 use ph2d_vector::VectorScene;
@@ -38,7 +39,7 @@ pub(crate) fn paint_panel_head(
     // antes dos DOIS, senão ele passa por baixo do `+`. É a mesma reserva que a Hierarquia usa.
     let title_size = paint_panel_title(
         rect,
-        "Inspector",
+        tr("panel.inspector.panel.inspector"),
         ph2d_editor_core::widget::panel_chrome::PANEL_HEADER_ADD_RESERVE,
         scene,
         text_system,
@@ -67,10 +68,12 @@ pub(crate) fn paint_panel_head(
     if crate::state::current_inspector_transform().is_some() {
         let add_rect = ph2d_editor_core::widget::panel_chrome::panel_header_add_button_rect(rect);
         hit_index.register(crate::ids::INSP_ADD_COMPONENT, add_rect);
-        let add_btn =
-            ph2d_editor_core::widget::Button::new(crate::ids::INSP_ADD_COMPONENT, "Add Component")
-                .icon_only(ph2d_editor_core::icons::IconId::Add)
-                .visual(store.button_visual(crate::ids::INSP_ADD_COMPONENT));
+        let add_btn = ph2d_editor_core::widget::Button::new(
+            crate::ids::INSP_ADD_COMPONENT,
+            tr("panel.inspector.panel.add_component"),
+        )
+        .icon_only(ph2d_editor_core::icons::IconId::Add)
+        .visual(store.button_visual(crate::ids::INSP_ADD_COMPONENT));
         ph2d_editor_core::widget::paint_button(&add_btn, add_rect, scene, text_system, theme);
     }
 

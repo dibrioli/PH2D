@@ -33,6 +33,7 @@ use ph2d_editor_core::screens::hero::{
 use ph2d_editor_core::widget::SectionFold;
 use ph2d_editor_core::widget::section_cards::close_section;
 use ph2d_editor_core::widget::{BitmaskGrid32, paint_bitmask_grid32};
+use ph2d_i18n::tr;
 
 const CHECK_H: f32 = 18.0; // LITERAL-PX-OK: altura visual do Checkbox, igual à das irmãs
 
@@ -120,7 +121,7 @@ fn camera_body(
             x,
             w,
             cur_y,
-            "Active is off \u{2014} this camera never takes the view.",
+            tr("panel.inspector.camera.active_is_off_this_camera"),
             ColorToken::Warn,
         );
     } else if !info.is_active_camera && info.camera_count > 1 {
@@ -131,7 +132,7 @@ fn camera_body(
             x,
             w,
             cur_y,
-            "Another camera commands \u{2014} raise Priority to take the view.",
+            tr("panel.inspector.camera.another_camera_commands_raise_priority"),
             ColorToken::Warn,
         );
     }
@@ -141,13 +142,21 @@ fn camera_body(
     // *O gate do número mágico é que o disse — a primeira redacção partilhava `0,1` entre metros e
     // uma contagem.*
     for (label, ids3, step) in [
-        ("Height (m)", &[ids::INSP_CAMERA_HEIGHT][..], 0.5), // LITERAL-PX-OK: passo em metros
         (
-            "Offset (m)",
+            tr("panel.inspector.camera.height_m"),
+            &[ids::INSP_CAMERA_HEIGHT][..],
+            0.5,
+        ), // LITERAL-PX-OK: passo em metros
+        (
+            tr("panel.inspector.camera.offset_m"),
             &[ids::INSP_CAMERA_OFFSET_X, ids::INSP_CAMERA_OFFSET_Y][..],
             0.1, // LITERAL-PX-OK: passo em metros
         ),
-        ("Priority", &[ids::INSP_CAMERA_PRIORITY][..], 1.0), // LITERAL-PX-OK: uma prioridade de cada vez
+        (
+            tr("panel.inspector.camera.priority"),
+            &[ids::INSP_CAMERA_PRIORITY][..],
+            1.0,
+        ), // LITERAL-PX-OK: uma prioridade de cada vez
     ] {
         cur_y = super::anchors::field_row(
             scene,
@@ -173,7 +182,7 @@ fn camera_body(
         store,
         Rect::new(x, cur_y, half, CHECK_H),
         ids::INSP_CAMERA_ACTIVE,
-        "Active",
+        tr("panel.inspector.camera.active"),
         cam.active,
     );
     // ⭐⭐⭐ **O interruptor da PRÉ-VISUALIZAÇÃO** — a metade que a W2 deixou por entregar.
@@ -185,7 +194,7 @@ fn camera_body(
         store,
         Rect::new(x + half + Spacing::Sm.px(), cur_y, half, CHECK_H),
         ids::INSP_CAMERA_PREVIEW,
-        "Look Through",
+        tr("panel.inspector.camera.look_through"),
         info.preview_on,
     );
     cur_y + CHECK_H + ph2d_tokens::control_gap_px()
@@ -214,7 +223,8 @@ fn follow_body(
         w,
         y,
         ids::INSP_CAMERA_TARGET,
-        TextInput::new(ids::INSP_CAMERA_TARGET, "").placeholder("object name\u{2026}"),
+        TextInput::new(ids::INSP_CAMERA_TARGET, "")
+            .placeholder(tr("panel.inspector.camera.object_name")),
     );
 
     if !f.target.trim().is_empty() && !f.target_found {
@@ -225,29 +235,29 @@ fn follow_body(
             x,
             w,
             cur_y,
-            "Nothing in the scene has that name \u{2014} the camera stays put.",
+            tr("panel.inspector.camera.nothing_in_the_scene_has"),
             ColorToken::Danger,
         );
     }
 
     for (label, ids2, step) in [
         (
-            "Damping (1/s)",
+            tr("panel.inspector.camera.damping_1_s"),
             [ids::INSP_CAMERA_DAMP_X, ids::INSP_CAMERA_DAMP_Y],
             0.5, // LITERAL-PX-OK: passo em 1/s
         ),
         (
-            "Dead Zone",
+            tr("panel.inspector.camera.dead_zone"),
             [ids::INSP_CAMERA_DEAD_X, ids::INSP_CAMERA_DEAD_Y],
             0.05, // LITERAL-PX-OK: fracção da meia-janela
         ),
         (
-            "Lookahead (s)",
+            tr("panel.inspector.camera.lookahead_s"),
             [ids::INSP_CAMERA_LOOK_X, ids::INSP_CAMERA_LOOK_Y],
             0.05, // LITERAL-PX-OK: passo em segundos
         ),
         (
-            "Follow Offset (m)",
+            tr("panel.inspector.camera.follow_offset_m"),
             [ids::INSP_CAMERA_FOLLOW_OFF_X, ids::INSP_CAMERA_FOLLOW_OFF_Y],
             0.1, // LITERAL-PX-OK: passo em metros
         ),
@@ -291,13 +301,19 @@ fn limits_body(
             x,
             w,
             cur_y,
-            "Limits are smaller than the view \u{2014} the camera pins to their centre.",
+            tr("panel.inspector.camera.limits_are_smaller_than_the"),
             ColorToken::Warn,
         );
     }
     for (label, ids2) in [
-        ("Min (m)", [ids::INSP_CAMERA_MIN_X, ids::INSP_CAMERA_MIN_Y]),
-        ("Max (m)", [ids::INSP_CAMERA_MAX_X, ids::INSP_CAMERA_MAX_Y]),
+        (
+            tr("panel.inspector.camera.min_m"),
+            [ids::INSP_CAMERA_MIN_X, ids::INSP_CAMERA_MIN_Y],
+        ),
+        (
+            tr("panel.inspector.camera.max_m"),
+            [ids::INSP_CAMERA_MAX_X, ids::INSP_CAMERA_MAX_Y],
+        ),
     ] {
         cur_y = super::anchors::field_row(
             scene,
@@ -335,8 +351,12 @@ fn cull_mask(
     let row_gap = Spacing::Xs.px();
     let mut yy = close_section(scene, theme, x, w, y);
     let header_h = TypeToken::Md.px() + Spacing::Md.px(); // LITERAL-PX-OK: banda do cabeçalho
-    let header = section_header(store, ids::INSP_CAMERA_CULL_HEADER, "Cull Mask")
-        .open_t(store.section_open_live(ids::INSP_CAMERA_CULL_HEADER));
+    let header = section_header(
+        store,
+        ids::INSP_CAMERA_CULL_HEADER,
+        tr("panel.inspector.camera.cull_mask"),
+    )
+    .open_t(store.section_open_live(ids::INSP_CAMERA_CULL_HEADER));
     let header_rect = Rect::new(x, yy, w, header_h);
     paint_section_header(&header, header_rect, scene, text_system, theme);
     hit_index.register(ids::INSP_CAMERA_CULL_HEADER, header_rect);
@@ -354,7 +374,7 @@ fn cull_mask(
         Some(fold) => {
             let grid = BitmaskGrid32::new(
                 core_ids::INSP_LIVE_CAMERA_SECTION,
-                "Cull Mask",
+                tr("panel.inspector.camera.cull_mask"),
                 ids::INSP_CAMERA_CULL_BIT,
                 mask,
             );
@@ -386,7 +406,12 @@ pub(crate) fn paint_camera_section(
     let rgba = store
         .widget_color(color_id)
         .unwrap_or([0x88, 0x88, 0x88, 0xff]); // LITERAL-COLOR-OK: acento neutro por omissão
-    let header = section_header(store, core_ids::INSP_LIVE_CAMERA_SECTION, "Camera").color(rgba);
+    let header = section_header(
+        store,
+        core_ids::INSP_LIVE_CAMERA_SECTION,
+        tr("panel.inspector.camera.camera"),
+    )
+    .color(rgba);
     let header_rect = Rect::new(x, y, w, header_h);
     paint_section_header(&header, header_rect, scene, text_system, theme);
     if let Some(circle_rect) = ph2d_editor_core::widget::color_circle_hit_rect(&header, header_rect)
@@ -414,7 +439,7 @@ pub(crate) fn paint_camera_section(
             x,
             w,
             cur_y,
-            "Editing the primary selection only.",
+            tr("panel.inspector.camera.editing_the_primary_selection_only"),
             ColorToken::Text3,
         );
     }

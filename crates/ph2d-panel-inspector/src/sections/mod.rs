@@ -30,6 +30,7 @@ pub(crate) use ph2d_editor_core::widget::{
     paint_slider_with_chip, paint_tabs, paint_text_input_with_buffer,
 };
 pub(crate) use ph2d_editor_core::zones::Rect;
+use ph2d_i18n::TextKey;
 pub(crate) use ph2d_text::TextSystem;
 pub(crate) use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, Theme, TypeToken};
 pub(crate) use ph2d_vector::{Color as VelloColor, VectorScene};
@@ -62,6 +63,7 @@ mod joint_pair_rows;
 mod material_blend;
 pub(crate) mod ordering;
 mod physics;
+mod physics_area_rows;
 /// A face de CORPO do §11 — as rows de quem tem `RigidBody` + `Collider`.
 /// Irmã do `physics.rs` pelos caps de painel: com TRÊS faces, `physics.rs` fica
 /// sendo o cabeçalho e o roteador.
@@ -159,7 +161,7 @@ pub(crate) fn text_h(
 pub(crate) const SLOT_BORDER_PX: f32 = 1.0;
 
 /// O rótulo da ranhura da textura. ⏳ Migra com os irmãos quando o Fluent chegar (HR-15).
-pub(crate) const STORAGE_LABEL: &str = "Storage";
+pub(crate) const STORAGE_LABEL: TextKey = TextKey::new("panel.inspector.render_source.storage");
 
 /// O rótulo do tamanho de origem. ⏳ Migra com os irmãos quando o Fluent chegar (HR-15).
-pub(crate) const SOURCE_SIZE_LABEL: &str = "Source";
+pub(crate) const SOURCE_SIZE_LABEL: TextKey = TextKey::new("panel.inspector.render_source.source");

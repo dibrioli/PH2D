@@ -18,13 +18,17 @@ use super::*;
 use ph2d_editor_core::screens::hero::InspectorSliceInfo;
 use ph2d_editor_core::widget::SectionFold;
 use ph2d_editor_core::widget::{SegmentedAdaptive, SegmentedOption, paint_segmented_adaptive};
+use ph2d_i18n::TextKey;
+use ph2d_i18n::tr;
 
 /// Rótulos do Tile Mode global, tags `0..=1` de `SliceTileMode`.
-pub const TILE_MODE_LABELS: [&str; 2] = ["Continuous", "Whole"];
+pub const TILE_MODE_LABELS: [TextKey; 2] = [
+    TextKey::new("panel.inspector.slice.continuous"),
+    TextKey::new("panel.inspector.slice.whole"),
+];
 
 /// A dica do Tile Mode: é aqui que mora a cura da emenda rente à borda.
-const WHOLE_HINT: &str = "Whole = entire tiles, so the last one meets the border. \
-                          Mirror always uses whole tiles.";
+const WHOLE_HINT: TextKey = TextKey::new("panel.inspector.slice.whole_entire_tiles_so_the");
 /// **Nenhum segmento aceso** — a afordância de divergência numa seleção múltipla.
 const NOTHING_LIT: usize = usize::MAX;
 
@@ -112,7 +116,7 @@ fn tiled_rows(
     paint_text(
         text_system,
         scene,
-        "Tile Mode",
+        tr("panel.inspector.slice.tile_mode"),
         x,
         cur_y + (label_h - label_font) * 0.5,
         label_font,
@@ -122,11 +126,11 @@ fn tiled_rows(
     cur_y += label_h;
     let tm = SegmentedAdaptive::new(
         core_ids::INSP_LIVE_SLICE_SECTION,
-        "Tile Mode",
+        tr("panel.inspector.slice.tile_mode"),
         ids::INSP_SLICE_TILE_MODE
             .iter()
             .zip(TILE_MODE_LABELS)
-            .map(|(&id, label)| SegmentedOption::new(id, label))
+            .map(|(&id, label)| SegmentedOption::new(id, label.tr()))
             .collect(),
     )
     .selected(if info.mixed.tile_mode {
@@ -148,7 +152,7 @@ fn tiled_rows(
     // ⚠️ **A emenda rente ao canto tem NOME aqui** (smoke do Enio, 2026-08-22). Ela não é um
     // defeito de textura: é o último ladrilho cortado a meio, e o utilizador não tem como
     // adivinhar que o remédio se chama «Whole». Uma linha diz onde ele está.
-    cur_y + hint(scene, text_system, theme, x, w, cur_y, WHOLE_HINT)
+    cur_y + hint(scene, text_system, theme, x, w, cur_y, WHOLE_HINT.tr())
 }
 
 /// Uma dica de rodapé, na cor terciária. **Devolve a altura que ela de facto ocupou.**
@@ -241,9 +245,12 @@ pub(crate) fn paint_slice_section(
     let en_rect = Rect::new(x, cur_y, w, cb_h);
     hit_index.register(ids::INSP_SLICE_ENABLE, en_rect);
     paint_checkbox(
-        &Checkbox::new(ids::INSP_SLICE_ENABLE, "Enable 9-slice")
-            .visual(store.checkbox_visual(ids::INSP_SLICE_ENABLE))
-            .value(en_value),
+        &Checkbox::new(
+            ids::INSP_SLICE_ENABLE,
+            tr("panel.inspector.slice.enable_9_slice"),
+        )
+        .visual(store.checkbox_visual(ids::INSP_SLICE_ENABLE))
+        .value(en_value),
         en_rect,
         scene,
         text_system,
@@ -267,7 +274,7 @@ pub(crate) fn paint_slice_section(
         x,
         w,
         cur_y,
-        "Borders L / T (px)",
+        tr("panel.inspector.slice.borders_l_t_px"),
         [ids::INSP_SLICE_BORDER[0], ids::INSP_SLICE_BORDER[1]],
         1.0,
     );
@@ -280,7 +287,7 @@ pub(crate) fn paint_slice_section(
         x,
         w,
         cur_y,
-        "Borders R / B (px)",
+        tr("panel.inspector.slice.borders_r_b_px"),
         [ids::INSP_SLICE_BORDER[2], ids::INSP_SLICE_BORDER[3]],
         1.0,
     );
@@ -293,7 +300,7 @@ pub(crate) fn paint_slice_section(
         x,
         w,
         cur_y,
-        "Size X / Y (m, 0 = sprite)",
+        tr("panel.inspector.slice.size_x_y_m_0"),
         [ids::INSP_SLICE_SIZE[0], ids::INSP_SLICE_SIZE[1]],
         SIZE_STEP,
     );
@@ -305,9 +312,12 @@ pub(crate) fn paint_slice_section(
     let fc_rect = Rect::new(x, cur_y, w, cb_h);
     hit_index.register(ids::INSP_SLICE_FILL_CENTER, fc_rect);
     paint_checkbox(
-        &Checkbox::new(ids::INSP_SLICE_FILL_CENTER, "Fill Center")
-            .visual(store.checkbox_visual(ids::INSP_SLICE_FILL_CENTER))
-            .value(fc_value),
+        &Checkbox::new(
+            ids::INSP_SLICE_FILL_CENTER,
+            tr("panel.inspector.slice.fill_center"),
+        )
+        .visual(store.checkbox_visual(ids::INSP_SLICE_FILL_CENTER))
+        .value(fc_value),
         fc_rect,
         scene,
         text_system,

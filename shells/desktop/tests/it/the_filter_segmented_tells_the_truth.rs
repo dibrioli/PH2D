@@ -109,7 +109,9 @@ fn the_filter_segmented_offers_exactly_the_modes_that_render_differently() {
 #[test]
 fn the_position_in_the_segmented_is_the_tag_itself() {
     for (i, label) in FILTER_LABELS.iter().enumerate() {
-        let Some(label) = label else { continue };
+        let Some(label) = label.map(|k| k.tr()) else {
+            continue;
+        };
         let tag = u8::try_from(i).expect("as tags cabem num u8");
         assert_eq!(
             FilterMode::from_tag(tag).tag() as usize,
@@ -131,8 +133,10 @@ fn the_position_in_the_segmented_is_the_tag_itself() {
 #[test]
 fn the_filter_segmented_tells_the_truth_about_what_renders() {
     for (i, label) in FILTER_LABELS.iter().enumerate() {
-        let Some(label) = label else { continue };
-        if *label == "Inherit" {
+        let Some(label) = label.map(|k| k.tr()) else {
+            continue;
+        };
+        if label == "Inherit" {
             continue;
         }
         let tag = u8::try_from(i).expect("as tags cabem num u8");
@@ -164,9 +168,9 @@ fn the_filter_segmented_tells_the_truth_about_what_renders() {
 #[test]
 fn no_two_filter_segments_carry_the_same_label() {
     let mut seen: Vec<&str> = Vec::new();
-    for label in FILTER_LABELS.iter().flatten() {
+    for label in FILTER_LABELS.iter().flatten().map(|k| k.tr()) {
         assert!(
-            !seen.contains(label),
+            !seen.contains(&label),
             "o rotulo «{label}» aparece duas vezes no segmentado de Texture Filter — o artista \
              nao consegue distinguir os dois modos, e o que ele escolhe passa a ser sorte"
         );

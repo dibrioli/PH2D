@@ -17,6 +17,7 @@ use ph2d_editor_core::interaction::{HitIndex, WidgetStore};
 use ph2d_editor_core::paint::stroke_rounded_rect;
 use ph2d_editor_core::widget::section_cards::close_section;
 use ph2d_editor_core::zones::Rect;
+use ph2d_i18n::tr;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{Radius, Spacing, StrokeToken};
 use ph2d_vector::VectorScene;
@@ -439,9 +440,9 @@ pub(crate) fn publish_and_finish(
 ) {
     if !f.any_section {
         let placeholder = if f.has_selection {
-            "No properties yet for the selected entity."
+            tr("panel.inspector.panel.no_properties_yet_for_the")
         } else {
-            "Select an entity in the Hierarchy to inspect its properties."
+            tr("panel.inspector.panel.select_an_entity_in_the")
         };
         let line_h = TypeToken::Sm.px() + Spacing::Xs.px();
         let center_y = f.content_top + (f.content_bottom - f.content_top) * 0.5 - line_h * 0.5;

@@ -19,13 +19,22 @@ use super::rows::{num_row, seg_row};
 use super::*;
 use ph2d_editor_core::screens::hero::InspectorWheelInfo;
 use ph2d_editor_core::widget::SectionFold;
+use ph2d_i18n::TextKey;
+use ph2d_i18n::tr;
 
 /// Os chips do lado — a ordem de `WrapSide::ALL`, que é a ordem dos tags.
-const WRAP_LABELS: [&str; 3] = ["Auto", "Over", "Under"];
+const WRAP_LABELS: [TextKey; 3] = [
+    TextKey::new("panel.inspector.wheel.auto"),
+    TextKey::new("panel.inspector.wheel.over"),
+    TextKey::new("panel.inspector.wheel.under"),
+];
 
 /// Os chips do eixo de dois diâmetros (W-Weston) — o tag é `u8::from(weston)`,
 /// então a ordem aqui É a do booleano.
-const DIFF_LABELS: [&str; 2] = ["Drum", "Weston"];
+const DIFF_LABELS: [TextKey; 2] = [
+    TextKey::new("panel.inspector.wheel.drum"),
+    TextKey::new("panel.inspector.wheel.weston"),
+];
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn paint_wheel_section(
@@ -44,8 +53,12 @@ pub(crate) fn paint_wheel_section(
     let rgba = store
         .widget_color(color_id)
         .unwrap_or([0x88, 0x88, 0x88, 0xff]); // LITERAL-COLOR-OK: neutral default section accent
-    let header =
-        section_header(store, core_ids::INSP_LIVE_WHEEL_SECTION, "Pulley Wheel").color(rgba);
+    let header = section_header(
+        store,
+        core_ids::INSP_LIVE_WHEEL_SECTION,
+        tr("panel.inspector.wheel.pulley_wheel"),
+    )
+    .color(rgba);
     let header_rect = Rect::new(x, y, w, header_h);
     paint_section_header(&header, header_rect, scene, text_system, theme);
     if let Some(circle_rect) = ph2d_editor_core::widget::color_circle_hit_rect(&header, header_rect)
@@ -81,7 +94,7 @@ pub(crate) fn paint_wheel_section(
         x,
         w,
         yy,
-        "Radius (m)",
+        tr("panel.inspector.wheel.radius_m"),
         ids::INSP_WHEEL_RADIUS,
     );
     // **Out Radius** — o SEGUNDO diâmetro do eixo (W4). `0` é uma roldana comum;
@@ -100,7 +113,7 @@ pub(crate) fn paint_wheel_section(
         x,
         w,
         yy,
-        "Out Radius (m)",
+        tr("panel.inspector.wheel.out_radius_m"),
         ids::INSP_WHEEL_RADIUS_OUT,
     );
     // **Differential** — o eixo de dois diâmetros é um TAMBOR ou uma talha de
@@ -129,10 +142,10 @@ pub(crate) fn paint_wheel_section(
                 x,
                 w,
                 yy,
-                "Differential",
+                tr("panel.inspector.wheel.differential"),
                 ids::INSP_WHEEL_DIFF_GROUP,
                 &ids::INSP_WHEEL_DIFF,
-                &DIFF_LABELS,
+                &DIFF_LABELS.map(TextKey::tr),
                 u8::from(info.weston),
             );
         }
@@ -155,7 +168,7 @@ pub(crate) fn paint_wheel_section(
         x,
         w,
         yy,
-        "Order",
+        tr("panel.inspector.wheel.order"),
         ids::INSP_WHEEL_ORDER,
     );
     // **Motor** — esta roldana é um TAMBOR. Graus por segundo porque a grandeza é
@@ -171,7 +184,7 @@ pub(crate) fn paint_wheel_section(
         x,
         w,
         yy,
-        "Motor (\u{00b0}/s)",
+        tr("panel.inspector.wheel.motor_s"),
         ids::INSP_WHEEL_MOTOR,
     );
     yy = seg_row(
@@ -183,10 +196,10 @@ pub(crate) fn paint_wheel_section(
         x,
         w,
         yy,
-        "Wrap",
+        tr("panel.inspector.wheel.wrap"),
         ids::INSP_WHEEL_WRAP_GROUP,
         &ids::INSP_WHEEL_WRAP,
-        &WRAP_LABELS,
+        &WRAP_LABELS.map(TextKey::tr),
         info.wrap_tag,
     );
     yy = paint_break_rows(scene, text_system, theme, hit_index, store, x, w, yy, info);
@@ -226,10 +239,13 @@ fn paint_break_rows(
         x,
         w,
         y,
-        "Axle Breaks",
+        tr("panel.inspector.wheel.axle_breaks"),
         ids::INSP_WHEEL_BREAK_GROUP,
         &ids::INSP_WHEEL_BREAK,
-        &["Off", "On"],
+        &[
+            tr("panel.inspector.wheel.off"),
+            tr("panel.inspector.wheel.on"),
+        ],
         u8::from(info.break_enabled),
     );
     if !info.break_enabled {
@@ -244,7 +260,7 @@ fn paint_break_rows(
         x,
         w,
         yy,
-        "Break Force (N)",
+        tr("panel.inspector.wheel.break_force_n"),
         ids::INSP_WHEEL_BREAK_FORCE,
     )
 }
@@ -287,7 +303,7 @@ fn paint_mount_row(
     paint_text(
         text_system,
         scene,
-        "Mounted On",
+        tr("panel.inspector.wheel.mounted_on"),
         x,
         text_y,
         font,
@@ -302,7 +318,7 @@ fn paint_mount_row(
         if mounted {
             info.mount_name.as_str()
         } else {
-            "(scenery)"
+            tr("panel.inspector.wheel.scenery")
         },
         x + label_w,
         text_y,
@@ -385,7 +401,7 @@ fn paint_gear_readout(
     paint_text(
         text_system,
         scene,
-        "Gear",
+        tr("panel.inspector.wheel.gear"),
         x,
         text_y,
         font,
@@ -429,7 +445,7 @@ fn paint_rope_row(
     paint_text(
         text_system,
         scene,
-        "Rope",
+        tr("panel.inspector.wheel.rope"),
         x,
         text_y,
         font,
@@ -442,7 +458,7 @@ fn paint_rope_row(
         if info.bound {
             info.rope_name.as_str()
         } else {
-            "(no rope)"
+            tr("panel.inspector.wheel.no_rope")
         },
         x + label_w,
         text_y,

@@ -24,12 +24,14 @@
 //! ⚠️ **A ZONA fica de fora pelo mesmo teste:** a ponte não lê `AreaEffector` nem
 //! nenhum irmão de uma peça, então marcar *Trigger* numa peça a faz atravessar
 //! (isso o solver honra) mas os sete números de zona não teriam leitor. Por isso
-//! o bloco de área virou função própria (`physics_rows::paint_area_rows`) e só a
+//! o bloco de área virou função própria (`physics_area_rows::paint_area_rows`) e só a
 //! face de CORPO a chama.
 
 use super::rows::{num_row, seg_row};
 use super::*;
 use ph2d_editor_core::screens::hero::InspectorPhysicsInfo;
+use ph2d_i18n::tr;
+use ph2d_i18n::tr_with;
 
 /// Pinta a face de peça e devolve o `y` final da seção.
 #[allow(clippy::too_many_arguments)]
@@ -53,11 +55,11 @@ pub(super) fn paint_part_face(
     let head = if info.part_owner.is_empty() {
         // Um collider sem corpo nenhum acima: honesto, e o contorno concorda (ele
         // também não o desenha). Não é a mesma coisa que "ainda não é físico".
-        "Shape with no body above it \u{00b7} not simulated".to_string()
+        tr("panel.inspector.physics.shape_with_no_body_above").to_string()
     } else {
-        format!(
-            "Shape of {} \u{00b7} simulated as part of it",
-            info.part_owner
+        tr_with(
+            "panel.inspector.physics.shape_of",
+            &[("owner", &info.part_owner)],
         )
     };
     paint_text(
@@ -81,10 +83,10 @@ pub(super) fn paint_part_face(
         x,
         w,
         yy,
-        "Collider",
+        tr("panel.inspector.physics.collider"),
         core_ids::INSP_LIVE_PHYSICS_COLOR,
         &ids::INSP_PHYS_SHAPE,
-        &super::physics::SHAPE_LABELS,
+        &super::physics::SHAPE_LABELS.map(TextKey::tr),
         info.shape_tag,
     );
     yy = super::physics::paint_shape_dims(
@@ -99,12 +101,21 @@ pub(super) fn paint_part_face(
         info.shape_tag,
     );
     for (label, id) in [
-        ("Offset X (m)", ids::INSP_PHYS_OFFSET_X),
-        ("Offset Y (m)", ids::INSP_PHYS_OFFSET_Y),
+        (
+            tr("panel.inspector.physics.offset_x_m"),
+            ids::INSP_PHYS_OFFSET_X,
+        ),
+        (
+            tr("panel.inspector.physics.offset_y_m"),
+            ids::INSP_PHYS_OFFSET_Y,
+        ),
         // A densidade de uma peça é REAL: ela contribui para a massa do corpo
         // composto. O toggle Auto|Manual do W-Mass fica de fora porque o
         // `MassOverride` é do CORPO — uma peça não tem massa própria a sobrepor.
-        ("Density", ids::INSP_PHYS_DENSITY),
+        (
+            tr("panel.inspector.physics.density"),
+            ids::INSP_PHYS_DENSITY,
+        ),
     ] {
         yy = num_row(
             scene,

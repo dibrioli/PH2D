@@ -15,6 +15,7 @@
 
 use super::*;
 use ph2d_editor_core::screens::hero::InspectorInstanceInfo;
+use ph2d_i18n::tr_with;
 
 /// **A altura das linhas de órfão**, com o orçamento de quebra que o pintor vai usar.
 pub(crate) fn rows_height(
@@ -106,7 +107,10 @@ pub(crate) fn paint(
         paint_text(
             text_system,
             scene,
-            &format!("+{left_out} without a button \u{2014} Clear removes those too"),
+            &tr_with(
+                "panel.inspector.instance.orphans_more",
+                &[("left_out", &left_out)],
+            ),
             at.tx + Spacing::Sm.px(),
             ty,
             at.small,
@@ -122,7 +126,10 @@ pub(crate) fn paint(
         hit_index.register(ids::INSP_INSTANCE_CLEAR_ORPHANS, host);
         let button = Button::new(
             ids::INSP_INSTANCE_CLEAR_ORPHANS,
-            format!("Clear {} unused override(s)", info.orphans()),
+            tr_with(
+                "panel.inspector.instance.clear_orphans",
+                &[("n", &info.orphans())],
+            ),
         )
         .kind(ButtonKind::Default)
         .visual(store.button_visual(ids::INSP_INSTANCE_CLEAR_ORPHANS));

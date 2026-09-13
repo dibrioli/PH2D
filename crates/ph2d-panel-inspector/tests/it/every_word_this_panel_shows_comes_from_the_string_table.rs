@@ -1,0 +1,170 @@
+//! ⭐⭐⭐ **NENHUMA PALAVRA DO INSPECTOR É ESCRITA NO FONTE** — o HR-15, com a régua que vê o painel
+//! INTEIRO.
+//!
+//! > `CLAUDE.md` §0.3: *«UI canônica: zero hex, zero `f32` literal de UI, **zero string
+//! > hardcoded** — tudo via tokens / i18n (HR-15).»*
+//!
+//! # Por que este painel
+//!
+//! Era o maior painel fora da tabela depois do Painter: **582** literais com cara de língua pela
+//! régua lexical, que passaram a **626** quando a própria régua se corrigiu duas vezes a meio da
+//! migração (as palavras GRITADAS dos títulos dos cards · as frases com uma BARRA, `"Speed (m/s)"`).
+//! O gate antigo do HR-15 via **11** deles — só os `.placeholder("…")`.
+//!
+//! # ⭐ As tabelas `const` guardam `TextKey`, nunca `&str`
+//!
+//! Metade do vocabulário do painel mora em tabelas `const` (os tipos de junta, os cards da §14, os
+//! modos de mistura), onde o `tr` não compila. Guardada como `&str`, uma chave e um texto são o mesmo
+//! tipo, e um consumidor que se esquecesse de traduzir pintaria `panel.inspector.joint.pin` com a
+//! suíte verde. Como `ph2d_i18n::TextKey`, o esquecimento é erro de compilação — e foi o compilador
+//! que achou os treze rótulos `(m/s)` que a régua ainda não via.
+//!
+//! # A régua é a da `ph2d-label-census`, e este gate é POR CRATE
+//!
+//! Uma catraca global com a dívida das outras crates dentro poria a próxima linha vermelha por causa
+//! de um gate desta (`CLAUDE.md` §0.2). Este fala só deste painel, a ZERO, com as excepções nomeadas
+//! e o mecanismo de cada uma.
+
+use std::path::{Path, PathBuf};
+
+use ph2d_label_census::{keys, language_literals};
+
+const PREFIX: &str = "panel.inspector.";
+/// ⚠️ **Duas tabelas, um vocabulário**: a §14 Platform Player mora num irmão por SECÇÃO
+/// (`inspector_player.rs`), cortado pelo tecto de 700 linhas da workspace.
+const TABLES: &[&str] = &[
+    "crates/ph2d-i18n/src/inspector.rs",
+    "crates/ph2d-i18n/src/inspector_player.rs",
+];
+
+/// ⭐ As excepções, **com o mecanismo** — `(ficheiro relativo a src/, texto exacto, porquê)`.
+const NOT_LANGUAGE: &[(&str, &str, &str)] = &[(
+    "lib.rs",
+    "Inspector",
+    "o `Panel::TITLE` e' um `const &'static str` que o registo le para a ABA, e o `tr` nao e' \
+     `const fn`. Fazer as abas falarem pela tabela e' mudar o contrato do painel nos 26 que o \
+     implementam -- obra propria, nomeada no handoff, a mesma excepcao do Painter e da Hierarquia.",
+)];
+
+fn src_root() -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("src")
+}
+
+fn repo_root() -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .and_then(Path::parent)
+        .expect("crates/<crate>/ tem dois pais")
+        .to_path_buf()
+}
+
+/// ⭐⭐⭐ **O painel não escreve palavras no fonte.**
+#[test]
+fn every_word_this_panel_shows_comes_from_the_string_table() {
+    let intrusos: Vec<String> = language_literals(&src_root())
+        .into_iter()
+        .filter(|l| {
+            !NOT_LANGUAGE
+                .iter()
+                .any(|(f, t, _)| l.rel == *f && l.text == *t)
+        })
+        .map(|l| format!("{}:{} · {:?}", l.rel, l.line, l.text))
+        .collect();
+    assert!(
+        intrusos.is_empty(),
+        "estes textos com cara de língua estão escritos no fonte do Inspector e nunca chegam à \
+         tabela de strings (HR-15):\n  {}\n\nA cura é uma chave `{PREFIX}<secção>.<nome>` em \
+         `{TABLES:?}` e um `tr(\"…\")` no sítio (uma frase com peças do código: `tr_with`; dentro de \
+         uma tabela `const`: `TextKey::new(\"…\")`). ⚠️ Se o texto NÃO é língua, a cura é uma linha \
+         em `NOT_LANGUAGE` **com o mecanismo** — nunca sem ele.",
+        intrusos.join("\n  ")
+    );
+}
+
+/// ⭐ **A METADE JUSTA: cada excepção ainda descreve alguma coisa?** — e é ela o controlo de
+/// vacuidade: uma régua partida devolve zero literais e lê-se como aprovada, mas não acha as
+/// excepções.
+#[test]
+fn every_named_exception_still_shelters_a_real_literal() {
+    let hits = language_literals(&src_root());
+    for (file, text, why) in NOT_LANGUAGE {
+        assert!(
+            why.len() > 40,
+            "a excepção `{file}` · {text:?} não diz o mecanismo — uma lista sem mecanismo é uma \
+             licença"
+        );
+        assert!(
+            hits.iter().any(|l| l.rel == *file && l.text == *text),
+            "a excepção `{file}` · {text:?} já não abriga literal nenhum (ou a régua ficou cega) — \
+             apague a linha, senão ela fica aberta para o próximo texto que caia ali"
+        );
+    }
+}
+
+/// ⭐⭐⭐ **Uma chave com erro de escrita pinta o identificador cru** (e vaza, por quadro); uma
+/// declarada e não usada é uma órfã. Os dois lados.
+#[test]
+fn every_inspector_key_exists_on_both_sides() {
+    let repo = repo_root();
+    let used = keys::keys_used(&repo, PREFIX, TABLES);
+    let declared = keys::keys_declared(&repo, TABLES, PREFIX);
+    // ⛔ Controlo de vacuidade: um caminho errado dá dois conjuntos vazios, que concordam. O piso
+    //    é o vocabulário medido na migração de 2026-09-13 menos folga para o painel encolher.
+    assert!(
+        declared.len() >= 450 && used.len() >= 450,
+        "o censo achou {} declaradas e {} usadas — está a ler o sítio errado",
+        declared.len(),
+        used.len()
+    );
+    let sem_traducao: Vec<String> = used
+        .iter()
+        .filter(|(k, _)| !declared.contains(*k))
+        .map(|(k, f)| format!("{k}  (usada em {f})"))
+        .collect();
+    assert!(
+        sem_traducao.is_empty(),
+        "estas chaves são usadas e NÃO existem em `{TABLES:?}` — o `tr` pinta o identificador cru:\n  \
+         {}",
+        sem_traducao.join("\n  ")
+    );
+    let orfas: Vec<&String> = declared.iter().filter(|k| !used.contains_key(*k)).collect();
+    assert!(
+        orfas.is_empty(),
+        "estas chaves estão na tabela e ninguém as usa — apague-as:\n  {orfas:?}"
+    );
+}
+
+/// ⭐ **Uma chave mora em UMA tabela, e a §14 mora na dela.** Com o vocabulário partido por secção, a
+/// mesma chave nas duas metades é um braço MORTO na segunda (a cadeia do `tr` pára na primeira), e o
+/// censo de dois lados não o vê — um conjunto não conta repetições.
+#[test]
+fn every_inspector_key_lives_in_exactly_one_table() {
+    let repo = repo_root();
+    let geral = keys::keys_declared(&repo, &TABLES[..1], PREFIX);
+    let player = keys::keys_declared(&repo, &TABLES[1..], PREFIX);
+    assert!(
+        geral.len() >= 250 && player.len() >= 150,
+        "o censo achou {} e {} chaves — uma das metades está a ser lida no sítio errado",
+        geral.len(),
+        player.len()
+    );
+    let nas_duas: Vec<&String> = geral.intersection(&player).collect();
+    assert!(
+        nas_duas.is_empty(),
+        "estas chaves estão nas DUAS tabelas do Inspector: {nas_duas:?}"
+    );
+    // ⚠️ **O prefixo da §14 é DERIVADO, nunca escrito** — um literal `panel.inspector.player.` neste
+    //    ficheiro é lido pelo censo como uma chave EM USO, e o gate acusa-se a si próprio (aconteceu
+    //    na 1.ª corrida desta metade).
+    let seccao = format!("{PREFIX}player.");
+    let fora: Vec<&String> = geral
+        .iter()
+        .filter(|k| k.starts_with(&seccao))
+        .chain(player.iter().filter(|k| !k.starts_with(&seccao)))
+        .collect();
+    assert!(
+        fora.is_empty(),
+        "estas chaves estão na tabela da secção ERRADA (a §14 mora em `{}`): {fora:?}",
+        TABLES[1]
+    );
+}

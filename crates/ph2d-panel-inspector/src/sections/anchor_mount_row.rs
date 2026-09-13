@@ -30,6 +30,9 @@
 use super::*;
 use ph2d_editor_core::screens::hero::InspectorAnchorInfo;
 use ph2d_editor_core::widget::{Dropdown, DropdownOption, paint_dropdown_chip};
+use ph2d_i18n::TextKey;
+use ph2d_i18n::tr;
+use ph2d_i18n::tr_with;
 
 /// O rótulo da opção «não montar». ⚠️ É também o que o chip mostra quando nada está montado.
 pub(crate) const MOUNT_NONE_LABEL: &str = "\u{2014}";
@@ -71,7 +74,7 @@ pub(crate) fn mount_options(info: &InspectorAnchorInfo) -> Vec<DropdownOption<Op
 /// O que o chip mostra quando **nada** está escolhido — «—», ou o nome perdido.
 pub(crate) fn mount_placeholder(info: &InspectorAnchorInfo) -> String {
     match (&info.mount, info.mount_dangling()) {
-        (Some(name), true) => format!("{name}  (missing)"),
+        (Some(name), true) => tr_with("panel.inspector.anchors.mount_missing", &[("name", &name)]),
         _ => String::from(MOUNT_NONE_LABEL),
     }
 }
@@ -98,7 +101,7 @@ pub(crate) fn paint_mount_row(
     paint_text(
         text_system,
         scene,
-        "Rides Parent Anchor",
+        tr("panel.inspector.anchors.rides_parent_anchor"),
         x,
         y + (h - font) * 0.5,
         font,
@@ -137,7 +140,7 @@ pub(crate) fn paint_mount_row(
         paint_text(
             text_system,
             scene,
-            "The parent has no anchor with that name.",
+            tr("panel.inspector.anchors.the_parent_has_no_anchor"),
             x,
             cur_y,
             font,
@@ -158,7 +161,10 @@ pub(crate) fn paint_mount_row(
     if info.is_off_anchor() {
         cur_y += Spacing::Xs.px();
         let [ox, oy] = info.mount_offset;
-        let label = format!("Off anchor by {ox:.0}, {oy:.0} px");
+        let label = tr_with(
+            "panel.inspector.anchors.off_anchor_by",
+            &[("ox", &format!("{ox:.0}")), ("oy", &format!("{oy:.0}"))],
+        );
         paint_text(
             text_system,
             scene,
@@ -173,9 +179,12 @@ pub(crate) fn paint_mount_row(
         let btn = Rect::new(x, cur_y, w, BTN_H);
         hit_index.register(ids::INSP_MOUNT_SNAP, btn);
         paint_button(
-            &Button::new(ids::INSP_MOUNT_SNAP, "Reset to Anchor")
-                .kind(ButtonKind::Default)
-                .visual(store.button_visual(ids::INSP_MOUNT_SNAP)),
+            &Button::new(
+                ids::INSP_MOUNT_SNAP,
+                tr("panel.inspector.anchors.reset_to_anchor"),
+            )
+            .kind(ButtonKind::Default)
+            .visual(store.button_visual(ids::INSP_MOUNT_SNAP)),
             btn,
             scene,
             text_system,
@@ -199,7 +208,8 @@ pub(crate) fn paint_mount_row(
 ///
 /// ⛔ **O campo FICA no modelo** (`ph2d_ecs::AnchorVisibility::at_runtime`): apagá-lo partiria
 /// todo ficheiro já gravado. O que sai é a **promessa**, não o dado.
-pub(crate) const RUNTIME_BOX_LABEL: &str = "Show anchors at runtime (no game runtime yet)";
+pub(crate) const RUNTIME_BOX_LABEL: TextKey =
+    TextKey::new("panel.inspector.anchors.show_anchors_at_runtime_no");
 
 /// **As duas caixas de VISIBILIDADE**, do dono das âncoras (Enio, 2026-08-23). Devolve o `y`.
 ///
@@ -232,12 +242,12 @@ pub(crate) fn paint_visibility_rows(
     for (id, label, on) in [
         (
             ids::INSP_ANCHOR_VIS_EDITOR,
-            "Always show anchors",
+            tr("panel.inspector.anchors.always_show_anchors"),
             info.vis_in_editor,
         ),
         (
             ids::INSP_ANCHOR_VIS_RUNTIME,
-            RUNTIME_BOX_LABEL,
+            RUNTIME_BOX_LABEL.tr(),
             info.vis_at_runtime,
         ),
     ] {

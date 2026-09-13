@@ -3,6 +3,7 @@
 
 use super::*;
 use ph2d_editor_core::widget::SectionFold;
+use ph2d_i18n::tr;
 
 /// W2 Sprite Inspector v2 — Sprite Sheet section (anatomia §03 §3.4).
 /// HFrames / VFrames / Frame integer NumberInputs. Renders today: the
@@ -32,8 +33,12 @@ pub(crate) fn paint_sprite_sheet_section(
     let rgba = store
         .widget_color(color_id)
         .unwrap_or([0x88, 0x88, 0x88, 0xff]); // LITERAL-COLOR-OK: neutral default for unconfigured section accent
-    let header =
-        section_header(store, core_ids::INSP_LIVE_SHEET_SECTION, "Sprite Sheet").color(rgba);
+    let header = section_header(
+        store,
+        core_ids::INSP_LIVE_SHEET_SECTION,
+        tr("panel.inspector.sprite_sheet.sprite_sheet"),
+    )
+    .color(rgba);
     let header_rect = Rect::new(x, y, w, header_h);
     paint_section_header(&header, header_rect, scene, text_system, theme);
     if let Some(circle_rect) = ph2d_editor_core::widget::color_circle_hit_rect(&header, header_rect)
@@ -110,9 +115,12 @@ pub(crate) fn paint_sprite_sheet_section(
     let ce_rect = Rect::new(x, cur_y, w, cb_h);
     hit_index.register(ids::INSP_SPRITE_CENTERED, ce_rect);
     paint_checkbox(
-        &Checkbox::new(ids::INSP_SPRITE_CENTERED, "Centered")
-            .visual(store.checkbox_visual(ids::INSP_SPRITE_CENTERED))
-            .value(ce_value),
+        &Checkbox::new(
+            ids::INSP_SPRITE_CENTERED,
+            tr("panel.inspector.sprite_sheet.centered"),
+        )
+        .visual(store.checkbox_visual(ids::INSP_SPRITE_CENTERED))
+        .value(ce_value),
         ce_rect,
         scene,
         text_system,
@@ -124,7 +132,7 @@ pub(crate) fn paint_sprite_sheet_section(
         text_system,
         hit_index,
         cur_y,
-        "Offset X",
+        tr("panel.inspector.sprite_sheet.offset_x"),
         ids::INSP_SPRITE_OFFSET_X,
     );
     cur_y += field_h + row_gap;
@@ -133,7 +141,7 @@ pub(crate) fn paint_sprite_sheet_section(
         text_system,
         hit_index,
         cur_y,
-        "Offset Y",
+        tr("panel.inspector.sprite_sheet.offset_y"),
         ids::INSP_SPRITE_OFFSET_Y,
     );
     cur_y += field_h + row_gap;
@@ -150,9 +158,12 @@ pub(crate) fn paint_sprite_sheet_section(
     let fx_rect = Rect::new(x, cur_y, flip_half, flip_row_h);
     hit_index.register(ids::INSP_SPRITE_FLIP_X, fx_rect);
     paint_checkbox(
-        &Checkbox::new(ids::INSP_SPRITE_FLIP_X, "Flip H")
-            .visual(store.checkbox_visual(ids::INSP_SPRITE_FLIP_X))
-            .value(fx_value),
+        &Checkbox::new(
+            ids::INSP_SPRITE_FLIP_X,
+            tr("panel.inspector.sprite_sheet.flip_h"),
+        )
+        .visual(store.checkbox_visual(ids::INSP_SPRITE_FLIP_X))
+        .value(fx_value),
         fx_rect,
         scene,
         text_system,
@@ -164,9 +175,12 @@ pub(crate) fn paint_sprite_sheet_section(
     let fy_rect = Rect::new(x + flip_half + flip_gap, cur_y, flip_half, flip_row_h);
     hit_index.register(ids::INSP_SPRITE_FLIP_Y, fy_rect);
     paint_checkbox(
-        &Checkbox::new(ids::INSP_SPRITE_FLIP_Y, "Flip V")
-            .visual(store.checkbox_visual(ids::INSP_SPRITE_FLIP_Y))
-            .value(fy_value),
+        &Checkbox::new(
+            ids::INSP_SPRITE_FLIP_Y,
+            tr("panel.inspector.sprite_sheet.flip_v"),
+        )
+        .visual(store.checkbox_visual(ids::INSP_SPRITE_FLIP_Y))
+        .value(fy_value),
         fy_rect,
         scene,
         text_system,
@@ -179,7 +193,7 @@ pub(crate) fn paint_sprite_sheet_section(
         text_system,
         hit_index,
         cur_y,
-        "H Frames",
+        tr("panel.inspector.sprite_sheet.h_frames"),
         ids::INSP_SPRITE_HFRAMES,
     );
     cur_y += field_h + row_gap;
@@ -188,7 +202,7 @@ pub(crate) fn paint_sprite_sheet_section(
         text_system,
         hit_index,
         cur_y,
-        "V Frames",
+        tr("panel.inspector.sprite_sheet.v_frames"),
         ids::INSP_SPRITE_VFRAMES,
     );
     cur_y += field_h + row_gap;
@@ -197,7 +211,7 @@ pub(crate) fn paint_sprite_sheet_section(
         text_system,
         hit_index,
         cur_y,
-        "Frame",
+        tr("panel.inspector.sprite_sheet.frame"),
         ids::INSP_SPRITE_FRAME,
     );
     cur_y += field_h + row_gap;
@@ -256,9 +270,12 @@ fn sheet_preview_row(
     let rect = Rect::new(x, y, w, cb_h);
     hit_index.register(crate::ids::INSP_SHEET_PREVIEW, rect);
     paint_checkbox(
-        &Checkbox::new(crate::ids::INSP_SHEET_PREVIEW, "Show sheet on canvas")
-            .visual(store.checkbox_visual(crate::ids::INSP_SHEET_PREVIEW))
-            .value(value),
+        &Checkbox::new(
+            crate::ids::INSP_SHEET_PREVIEW,
+            tr("panel.inspector.sprite_sheet.show_sheet_on_canvas"),
+        )
+        .visual(store.checkbox_visual(crate::ids::INSP_SHEET_PREVIEW))
+        .value(value),
         rect,
         scene,
         text_system,

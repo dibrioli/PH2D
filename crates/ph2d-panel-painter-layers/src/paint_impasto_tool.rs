@@ -36,7 +36,8 @@ pub(crate) fn paint_tool_card(
     y: f32,
     brush: &BrushSettings,
 ) -> f32 {
-    let card = Card::new(ph2d_tool_painter::ids::PAINTER_IMPASTO_TOOL).title("TOOL");
+    let card = Card::new(ph2d_tool_painter::ids::PAINTER_IMPASTO_TOOL)
+        .title(tr("panel.painter_layers.impasto.card_tool"));
     let labels = [
         tr("panel.painter_layers.impasto.deposit"),
         tr("panel.painter_layers.impasto.knife"),

@@ -71,11 +71,19 @@ fn the_ring_is_centred_on_the_reprojected_hit() {
 /// motivo pelo qual o `flip_cursor` sempre desenhou assim.
 #[test]
 fn the_ring_is_stroked_in_screen_space() {
-    let src = source("src/render_loop/mod.rs");
+    // O QUADRO emendado (OBRA 2 da `line/render-loop`): o bloco do anel mudou-se para a `fase_canvas_overlays` (P5l).
+    let src = crate::frame_text::render_frame();
     let at = src
         .find("O ANEL DO PINCEL 3D")
         .expect("o bloco do anel sumiu do render_loop");
-    let block = &src[at..(at + 2000).min(src.len())];
+    // ⚠️ Só o CÓDIGO da janela (o `//` e o que vem depois dele saem): o bloco cita `Affine::IDENTITY` e o painel num
+    // COMENTÁRIO, e uma agulha casada na prosa ficava verde com a chamada trocada — achado na prova de mutação da P5l.
+    // A âncora continua a ser o comentário do bloco; o que ela abre é que se lê sem prosa.
+    let block: String = src[at..(at + 2000).min(src.len())]
+        .lines()
+        .map(|l| l.split("//").next().unwrap_or(""))
+        .collect::<Vec<_>>()
+        .join("\n");
     assert!(
         block.contains("Affine::IDENTITY"),
         "o anel é traçado sob um afim de mundo — no Vello isso MULTIPLICA a \
@@ -89,11 +97,19 @@ fn the_ring_is_stroked_in_screen_space() {
 /// uma mira sobre o chrome promete um gesto que o clique não faz.
 #[test]
 fn the_ring_does_not_float_over_the_panel() {
-    let src = source("src/render_loop/mod.rs");
+    // O QUADRO emendado (OBRA 2 da `line/render-loop`): o bloco do anel mudou-se para a `fase_canvas_overlays` (P5l).
+    let src = crate::frame_text::render_frame();
     let at = src
         .find("O ANEL DO PINCEL 3D")
         .expect("o bloco do anel sumiu do render_loop");
-    let block = &src[at..(at + 2000).min(src.len())];
+    // ⚠️ Só o CÓDIGO da janela (o `//` e o que vem depois dele saem): o bloco cita `Affine::IDENTITY` e o painel num
+    // COMENTÁRIO, e uma agulha casada na prosa ficava verde com a chamada trocada — achado na prova de mutação da P5l.
+    // A âncora continua a ser o comentário do bloco; o que ela abre é que se lê sem prosa.
+    let block: String = src[at..(at + 2000).min(src.len())]
+        .lines()
+        .map(|l| l.split("//").next().unwrap_or(""))
+        .collect::<Vec<_>>()
+        .join("\n");
     assert!(
         block.contains("over_panel") && block.contains("SCULPT3D_PANEL"),
         "o anel é desenhado sem perguntar se o cursor está sobre o painel"

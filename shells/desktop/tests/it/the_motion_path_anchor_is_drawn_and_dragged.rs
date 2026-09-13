@@ -24,7 +24,9 @@ fn shell(path: &str) -> String {
 /// trajetória apareceria para todo objeto animado do documento, que é espaguete.
 #[test]
 fn the_render_loop_draws_the_trajectory_for_the_selected_object() {
-    let rl = shell("render_loop/mod.rs");
+    // O QUADRO emendado (OBRA 2 da `line/render-loop`): o desenho da trajetória mudou-se para a `fase_canvas_overlays`
+    // (P5l), e o toggle mora no dreno, que é a próxima grande a sair — os dois leem a mesma lente.
+    let rl = crate::frame_text::render_frame();
     assert!(
         rl.contains("motion_path_overlay::draw"),
         "a `render_loop` não chama `motion_path_overlay::draw` — a trajetória existe no \
@@ -51,7 +53,9 @@ fn the_render_loop_draws_the_trajectory_for_the_selected_object() {
 /// nada, e nenhum teste de unidade pega (o laço de evento precisa do `App` + janela).
 #[test]
 fn the_toggle_converts_the_selected_objects_position_mode() {
-    let rl = shell("render_loop/mod.rs");
+    // O QUADRO emendado (OBRA 2 da `line/render-loop`): o desenho da trajetória mudou-se para a `fase_canvas_overlays`
+    // (P5l), e o toggle mora no dreno, que é a próxima grande a sair — os dois leem a mesma lente.
+    let rl = crate::frame_text::render_frame();
     let guard = rl.find("TIMELINE_MOTION_PATH").unwrap_or_else(|| {
         panic!(
             "a `render_loop` não trata o toggle Motion Path — ele é per-objeto e precisa \

@@ -31,12 +31,13 @@ fn shell(rel: &str) -> String {
 /// construção, um segundo pick contra outro estado do quadro.
 #[test]
 fn the_hover_pick_happens_exactly_once() {
-    let mut total = 0;
-    for rel in [
-        "src/render_loop/mod.rs",
-        "src/render_loop/snapshots.rs",
-        "src/input_dispatch.rs",
-    ] {
+    // ⚠️ **O QUADRO lê-se no texto EMENDADO** (OBRA 2, 2026-09-12): o pick mudou-se para a fase
+    // `fase_pointer_subjects.rs`, e contar só no `mod.rs` leria ZERO picks — um gate de contagem
+    // exacta que passa a medir o ficheiro errado reprova alto, mas um de ausência ficaria verde.
+    let mut total = crate::frame_text::render_frame()
+        .matches("pick_hovered_object(")
+        .count();
+    for rel in ["src/render_loop/snapshots.rs", "src/input_dispatch.rs"] {
         total += shell(rel).matches("pick_hovered_object(").count();
     }
     assert_eq!(
@@ -52,7 +53,7 @@ fn the_hover_pick_happens_exactly_once() {
 /// por outro caminho (o `hot_id` cru, a seleção, o primeiro da lista). O campo é o contrato.
 #[test]
 fn both_consumers_read_the_one_field() {
-    let frame = shell("src/render_loop/mod.rs");
+    let frame = crate::frame_text::render_frame();
     // ⚠️ **A âncora é a PORTA, não a forma da atribuição.** A 1.ª versão casava com
     // `self.hovered_object = hovered` — a linha exacta que existia — e expirou no mesmo dia, ao
     // estender o realce a todos os objectos. *Uma âncora que copia a implementação de uma lei
@@ -113,11 +114,18 @@ fn the_hierarchy_does_not_pick_the_canvas() {
 /// composto. *Uma agulha que acusa o inocente é pior que não haver agulha.*
 #[test]
 fn the_object_pick_composite_exists_once() {
-    let offenders: Vec<String> = ["src/input_dispatch.rs", "src/render_loop/mod.rs"]
-        .iter()
-        .filter(|rel| shell(rel).contains("hits.extend(ph2d_render::pick_sprites_at_world("))
-        .map(|rel| (*rel).to_string())
-        .collect();
+    // ⚠️ **A varredura é a `src/` inteira menos a PORTA** (OBRA 2, 2026-09-12). Ela olhava dois
+    // ficheiros (`input_dispatch.rs` e `render_loop/mod.rs`), e o quadro está a partir-se em fases
+    // noutros ficheiros: uma AUSÊNCIA medida numa lista fixa fica verde por vácuo no dia em que o
+    // código sai dela — o composto nasceria numa `fase_*` e ninguém o via.
+    let mut offenders: Vec<String> = Vec::new();
+    walk_shell_src(&mut |rel, src| {
+        if rel != "src/hover_highlight.rs"
+            && src.contains("hits.extend(ph2d_render::pick_sprites_at_world(")
+        {
+            offenders.push(rel);
+        }
+    });
     assert!(
         offenders.is_empty(),
         "estes sítios montam um segundo composto de pick — a porta é \
@@ -152,7 +160,7 @@ fn the_object_pick_composite_exists_once() {
 /// dava resposta só onde ela já era mais fácil.
 #[test]
 fn the_highlight_has_no_mode_gate() {
-    let frame = shell("src/render_loop/mod.rs");
+    let frame = crate::frame_text::render_frame();
     let at = frame
         .find("if let Some(bits) = self.hovered_object")
         .expect("o sítio que desenha o contorno desapareceu");
@@ -271,7 +279,7 @@ fn walk_shell_src(f: &mut dyn FnMut(String, String)) {
 /// seguintes — um clique viraria um zumbido, e o artista desligaria a feature inteira.
 #[test]
 fn the_ui_sound_channel_is_drained_with_take() {
-    let frame = shell("src/render_loop/mod.rs");
+    let frame = crate::frame_text::render_frame();
     assert!(
         frame.contains("if let Some(what) = self.pending_ui_sound.take()"),
         "o canal do som deixou de ser drenado com `take` — um clique viraria um zumbido"

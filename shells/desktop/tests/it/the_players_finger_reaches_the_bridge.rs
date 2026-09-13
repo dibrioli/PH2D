@@ -96,7 +96,9 @@ fn observation_block(src: &str) -> (usize, usize) {
 /// um build que compila, e o pulo seria a metade esquecida.
 #[test]
 fn the_whole_finger_is_handed_to_the_physics_dispatch() {
-    let src = read("src/render_loop/mod.rs");
+    // ⚠️ **O QUADRO lê-se no texto EMENDADO** (OBRA 2, 2026-09-12): a resolução mudou-se para a fase
+    // `fase_pointer_subjects.rs`, que continua a ser o topo do quadro — é o que a agulha afirma.
+    let src = crate::frame_text::render_frame();
     // ⚠️ **RE-ANCORADO DUAS vezes.** (W5) a porta passou a ser `App::resolve_player_input`;
     // (W2/L2 Fase C, 2026-09-12) ela deixou de ser um método e passou a ser
     // `ph2d_app_physics::player_input::resolve_player_input`, uma função livre sobre os três tipos
@@ -157,7 +159,7 @@ fn the_input_is_handed_over_before_the_hold_early_out() {
 fn the_files_the_gate_reads_are_the_ones_that_carry_the_wire() {
     assert!(read("src/input_dispatch/keyboard.rs").contains("winit_to_input_keycode"));
     assert!(
-        read("src/render_loop/mod.rs").contains("ph2d_app_physics::bridge::dispatch::dispatch(")
+        crate::frame_text::render_frame().contains("ph2d_app_physics::bridge::dispatch::dispatch(")
     );
     assert!(
         read("../../crates/ph2d-app-physics/src/bridge/dispatch.rs")

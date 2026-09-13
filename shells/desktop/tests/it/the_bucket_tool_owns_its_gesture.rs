@@ -19,7 +19,13 @@
 //! As asserções afirmam RELAÇÃO, nunca distância no fonte.
 
 const DISPATCH: &str = include_str!("../../src/input_dispatch.rs");
-const LOOP: &str = include_str!("../../src/render_loop/mod.rs");
+/// **O QUADRO, pela ordem em que corre** — desde a OBRA 2 (2026-09-12) ele está partido em fases
+/// noutros ficheiros (`fase_*`), e uma agulha do quadro lê-se no texto EMENDADO: o `mod.rs` sozinho
+/// já não contém o realce do Balde (mudou-se para `fase_pointer_subjects.rs`), e a ORDEM
+/// upkeep→realce só é medível onde as duas linhas estão na ordem em que correm.
+fn frame() -> String {
+    crate::frame_text::render_frame()
+}
 // ⛔⛔ **DUAS fontes desde a Fase C (W2/L4), e a partição é por SUJEITO.** A lei do balde saiu para
 // `ph2d-app-vec` e a ponte `impl App` ficou — logo metade das agulhas deste gate mede um ficheiro e
 // metade mede o outro. *Uma agulha segue o sujeito, nunca o ficheiro* (HOWTO §2.9).
@@ -45,8 +51,16 @@ fn at(src: &str, needle: &str, onde: &str) -> usize {
 fn the_scanner_finds_what_it_scans_for() {
     at(DISPATCH, "ph2d_tool_vector::DrawMode::Bucket", "o dispatch");
     at(DISPATCH, "self.apply_bucket()", "o dispatch");
-    at(LOOP, "self.refresh_bucket_hover(pointer);", "o render_loop");
-    at(LOOP, "ph2d_vec_render::draw_bucket_face(", "o render_loop");
+    at(
+        &frame(),
+        "self.refresh_bucket_hover(pointer);",
+        "o render_loop",
+    );
+    at(
+        &frame(),
+        "ph2d_vec_render::draw_bucket_face(",
+        "o render_loop",
+    );
     at(BUCKET, "fn refresh_bucket_hover(", "a ponte do vec_bucket");
     // ⭐ E a metade NOVA: sem esta linha, um `include_str!` a apontar para um ficheiro que existe
     //    mas mudou de conteúdo deixaria as asserções de AUSÊNCIA verdes sobre nada.
@@ -138,8 +152,16 @@ fn the_filled_shape_is_born_behind_the_lines() {
         corpo.contains("VecBucketFill::new(seed, ancoras)"),
         "a receita (as ancoras + a semente) nao e' presa a' entidade — o preenchimento nao seria vivo"
     );
-    let sync = at(LOOP, "ph2d_vec_entities::entities::sync(", "o render_loop");
-    let arma = at(LOOP, "crate::vec_bucket::arm_new_fills(", "o render_loop");
+    let sync = at(
+        &frame(),
+        "ph2d_vec_entities::entities::sync(",
+        "o render_loop",
+    );
+    let arma = at(
+        &frame(),
+        "crate::vec_bucket::arm_new_fills(",
+        "o render_loop",
+    );
     assert!(
         sync < arma,
         "o `arm_new_fills` corre ANTES do `sync` — a entidade ainda nao existe"
@@ -153,8 +175,12 @@ fn the_filled_shape_is_born_behind_the_lines() {
 /// nunca correria.
 #[test]
 fn the_upkeep_runs_in_every_tool_not_only_in_the_bucket() {
-    let up = at(LOOP, "self.bucket_upkeep();", "o render_loop");
-    let hover = at(LOOP, "self.refresh_bucket_hover(pointer);", "o render_loop");
+    let up = at(&frame(), "self.bucket_upkeep();", "o render_loop");
+    let hover = at(
+        &frame(),
+        "self.refresh_bucket_hover(pointer);",
+        "o render_loop",
+    );
     assert!(
         up < hover,
         "o upkeep tem de correr ANTES do realce, que le a rede dele"

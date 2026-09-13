@@ -18,7 +18,12 @@
 //! vezes por medir bytes.
 
 const DISPATCH: &str = include_str!("../../src/input_dispatch.rs");
-const LOOP: &str = include_str!("../../src/render_loop/mod.rs");
+/// **O QUADRO, pela ordem em que corre** — desde a OBRA 2 (2026-09-12) partido em fases (`fase_*`)
+/// noutros ficheiros; o realce do Trim mudou-se para `fase_pointer_subjects.rs`, e o `mod.rs` sozinho
+/// já não o contém. A agulha lê-se no texto emendado.
+fn frame() -> String {
+    crate::frame_text::render_frame()
+}
 const TRIM: &str = include_str!("../../src/vec_trim.rs");
 
 fn at(src: &str, needle: &str, onde: &str) -> usize {
@@ -35,8 +40,16 @@ fn at(src: &str, needle: &str, onde: &str) -> usize {
 fn the_scanner_finds_what_it_scans_for() {
     at(DISPATCH, "ph2d_tool_vector::DrawMode::Trim", "o dispatch");
     at(DISPATCH, "crate::vec_trim::apply(", "o dispatch");
-    at(LOOP, "self.refresh_trim_hover(pointer);", "o render_loop");
-    at(LOOP, "ph2d_vec_render::draw_trim_piece(", "o render_loop");
+    at(
+        &frame(),
+        "self.refresh_trim_hover(pointer);",
+        "o render_loop",
+    );
+    at(
+        &frame(),
+        "ph2d_vec_render::draw_trim_piece(",
+        "o render_loop",
+    );
     at(TRIM, "fn trim_hit_at(", "o vec_trim");
 }
 

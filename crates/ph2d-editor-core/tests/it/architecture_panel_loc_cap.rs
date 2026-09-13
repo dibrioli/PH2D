@@ -54,7 +54,8 @@ const FN_OVERAGE_OK: &[(&str, &str, usize, &str)] = &[
     // asked for). Until today the brace walker toggled a char-literal flag on
     // every `'`, so a prose apostrophe in a `//` comment ("doesn't") or a
     // lifetime tick (`&'a`) closed a function early and UNDER-counted it. Every
-    // number below is now a real measurement:
+    // number below is now a real measurement (⚠️ 2026-09-13: «below» is EMPTY — the
+    // `line/loc-caps` cut the last entries; this note stays as the census's history):
     //   · 3 entries were deleted — their fns are, and were, under the cap
     //     (grid-snap populate = 126, inspector color_tint = 124,
     //      painter-layers paint_adjustment_params = 54).
@@ -68,8 +69,9 @@ const FN_OVERAGE_OK: &[(&str, &str, usize, &str)] = &[
     // ──────────────────────────────────────────────────────────────────────────
     // ⚠️ `ph2d-panel-hierarchy/src/event.rs::apply_event` ESTEVE aqui, tolerado a 216 — e a
     // entrada foi REMOVIDA em 2026-08-19, não subida para 219. O "Pack into Sheet" ia
-    // acrescentar-lhe quatro linhas, e a tolerância do vizinho de cima diz, pela mão de quem a
-    // pagou, *«as tolerâncias encolhem, nunca crescem»*. O bloco do menu de contexto saiu para
+    // acrescentar-lhe quatro linhas, e a tolerância do vizinho de cima (o `paint_hierarchy_row`,
+    // cortado e apagado em 2026-09-13) dizia, pela mão de quem a pagou, *«as tolerâncias
+    // encolhem, nunca crescem»*. O bloco do menu de contexto saiu para
     // `try_context_menu_row`, a mãe caiu para dentro do teto, e a tolerância deixou de ter
     // objeto. *A cura de um teto estourado é o corte; subir o número é adiar com juros.*
     // ⭐⭐⭐ **A tolerância do inspector `paint_inspector` (203) está GONE, e ela própria o previu:**

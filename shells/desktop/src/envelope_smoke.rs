@@ -14,7 +14,7 @@ use ph2d_vec_scene::ShapeKind;
 
 use crate::build_smoke::shape;
 
-/// Despacha o frame `f` da cena de envelope do nível `level` (11 ou 12).
+/// Despacha o frame `f` da cena de envelope do nível `level` (11, 12 ou 27).
 pub(crate) fn frame(app: &mut crate::App, f: u32, level: u32) {
     match level {
         27 => frame_star(app, f, level),

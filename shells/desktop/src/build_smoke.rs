@@ -166,9 +166,11 @@ impl crate::App {
             // Seleciona as três e entra no Build — o estado em que o Enio começa a testar.
             //
             // ⚠️ Gate `level <= 6`, NÃO catch-all. Este arm é do Shape Builder (a cena default
-            // `3 =>`, 3 formas, níveis 1-6). Os níveis de OBJETO vetorial (7-11) têm cena própria e
-            // NÃO querem Build: 7/8/9 já têm seu `8 if level == N` acima; 10 (morph) fica no Select
-            // que a cena deixou; 11 (envelope) fica no NODE que o frame 4 armou — e é o Build deste
+            // `3 =>`, 3 formas, níveis 1-6). As cenas de OBJETO vetorial têm cena própria e NÃO
+            // querem Build — e desde a `line/loc-caps` (2026-09-13) nem chegam a este `match`: o
+            // blend (7/8/9) e os objetos (10, 15-19) saem antes, para `build_smoke_blend_scenes` /
+            // `build_smoke_object_scenes` (o morph, 10, fica no Select que a cena deixou), e o
+            // envelope (11) sai pelo roteador e fica no NODE que o frame 4 armou — era o Build deste
             // arm, quando era catch-all, que engolia esse Node e sumia com a gaiola (a alça só
             // aparece no Node). Adicionar um nível novo sem cena de Build? ele cai em `_ => {}`.
             8 if level <= 6 => {

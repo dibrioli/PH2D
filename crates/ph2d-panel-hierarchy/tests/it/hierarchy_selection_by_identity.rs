@@ -19,8 +19,16 @@
 //!
 //! This test traps the regression at its narrowest point: a grep on
 //! `paint.rs`. Cheap to run, impossible to circumvent by accident.
+//!
+//! ⚠️ The panel HEADER (title, count, Add, search) moved to the sibling `paint_head.rs`
+//! (`line/loc-caps`, 2026-09-13): the grep reads BOTH files, otherwise a label-keyed comparison
+//! written in the header would pass mute. (Concatenating is sound here — every check below is an
+//! ABSENCE, not an order.)
 
-const PAINT_SRC: &str = include_str!("../../src/paint.rs");
+const PAINT_SRC: &str = concat!(
+    include_str!("../../src/paint.rs"),
+    include_str!("../../src/paint_head.rs")
+);
 
 #[test]
 fn paint_does_not_compare_entry_name_to_selection_label() {

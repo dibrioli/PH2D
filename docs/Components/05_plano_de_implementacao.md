@@ -3153,7 +3153,7 @@ destrava controllers → **7–8** o olhar e o corpo → **9–12** conteúdo di
 | 6 | `ActionMap` + `ActionState` | ✅ **FEITO** pelo Input Map (`ph2d-input::ActionState`). ⏳ Faltam os **âmbitos com prioridade** — bloqueados no `shells/game`/R1, adiado pelo Enio |
 | **7** | **`GameCamera` + `CameraFollow` + `CameraLimits`** | ⏳ **NÃO EXISTEM** — *«a maior lacuna do PH2D e de metade da indústria»* |
 | 8 | `SpriteFrames` + `AnimatedSprite` | ✅ **FEITO** pela §11 Animation (`SpriteAnimator` · `AnimationTag` · `SpriteAnimations`). ⛔ O `SpriteFrames` da spec é **recusa medida** — o pool é a grelha que a sprite já tem |
-| **9** | **`Tags`** | ⏳ **NÃO EXISTE** |
+| **9** | **`Tags`** | ⏳ **NÃO EXISTE** — ⭐ **plano escrito e medido em 2026-09-13**: [`08_plano_tags.md`](08_plano_tags.md) (oráculos Godot + Blender corridos, sonda de custo, 4 waves, 4 decisões do dono) |
 | 10 | `PrefabAsset` (fluxo) + `PrefabRef` | ✅ **FEITO** — F4/F5 + o *Edit Prefab* de 07/09; o `PrefabRef` vive em `ph2d-asset/src/prefab.rs` |
 | 11–20 | `Spawner` · `Lifetime` · `TopDownPlayer` · `ProjectileMotion` · `StateMachine` · `ScriptProperties` · `Tilemap*` · `ParticleEmitter` · `SequencePlayer` · HUD | ⏳ **NENHUM existe** na árvore |
 

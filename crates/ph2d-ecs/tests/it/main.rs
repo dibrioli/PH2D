@@ -13,6 +13,7 @@ mod end_to_end_m14;
 mod generate_transform_v1_fixtures;
 mod measure_incremental_capture;
 mod measure_restore;
+mod measure_tag_scan;
 mod named_anchor_caps;
 mod nesting_sorts_as_a_block;
 mod no_untracked_writes_in_the_sim_crates;

@@ -20,6 +20,12 @@
 //! teste de unidade alcança aquele `eprintln`.
 
 const SRC: &str = include_str!("../../src/render_loop/mod.rs");
+/// ⚠️ **A SOMA e o DIVISOR moram noutro ficheiro que a LINHA** desde a OBRA 2 da `line/render-loop`
+/// (2026-09-12): o acumulador corre ao lado do batimento da ferramenta, que é a fase
+/// `fase_fixed_step_clocks`; o `eprintln` do `[frame]` continua no fim do quadro, no `mod.rs`. Cada gate
+/// lê o ficheiro do SEU sujeito — a propriedade do de baixo é *a soma e o divisor no MESMO bloco*, e
+/// esse bloco está inteiro na fase.
+const ACCUMULATE: &str = include_str!("../../src/render_loop/fase_fixed_step_clocks.rs");
 
 /// O divisor é IMPRESSO ao lado do tempo que ele divide.
 ///
@@ -59,7 +65,7 @@ fn the_stamp_line_prints_how_many_deliveries_it_averages() {
 /// fora do bloco `if st > 0`.
 #[test]
 fn the_divisor_is_counted_where_the_sum_is() {
-    let block = SRC
+    let block = ACCUMULATE
         .split("FRAME_PROF_STAMP_SUM_US.with")
         .nth(1)
         .expect("a soma da janela de stamps existe");

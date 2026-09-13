@@ -248,6 +248,8 @@ mod fase_timeline_drain;
 mod fase_timeline_view;
 /// Fase do quadro: a poeira de impacto (as faíscas por cima do chrome).
 mod fase_ui_burst_paint;
+/// Fase do quadro: o Use as Paper / Granulation da Hierarquia.
+mod fase_use_as_paper;
 /// O empréstimo do `gfx` do quadro: o destructure exaustivo do `AppGfx`, re-derivado por fase.
 mod frame_gfx;
 /// **Os nove quads do 9-slice** — irmão do `sim_extract`, que está no tecto de LOC.
@@ -11103,89 +11105,7 @@ impl crate::App {
                 }
                 self.title_dirty = true;
             }
-            // Hierarchy "Use as Watercolor Paper / Granulation" → read the row's pixels as luminance and
-            // install them as the watercolor paper (Grain slot, canvas-anchored), turning the render-path
-            // on so the wash granulates against the layer. Granulation wins if both fired in one frame.
-            // Mirror of the "Use as Brush Grain" path above (`docs/Painter/10…` §5).
-            let use_as_paper_intent = use_as_granulation_row
-                .map(|r| (r, true))
-                .or(use_as_paper_row.map(|r| (r, false)));
-            if let Some((row, as_granulation)) = use_as_paper_intent
-                && let Some(live) = hero_live.as_ref()
-                && let Some(bits) = live.bridge.entity_for(row)
-            {
-                let on_active_doc = self.last_painter_pushed_entity == Some(bits);
-                // Luminance: the active painter doc composites its layers (a Group of textures folds in);
-                // a different flat sprite reads its baked texture (Rec.601, mirror of the file-load path).
-                let lum_wh: Option<(Vec<u8>, u32, u32)> = if on_active_doc {
-                    tools.set_active(&ph2d_editor_core::ToolId::new("painter"));
-                    tools
-                        .active_mut()
-                        .and_then(|t| {
-                            t.as_any_mut()
-                                .downcast_mut::<ph2d_tool_painter::PainterTool>()
-                        })
-                        .and_then(|p| p.composite_to_lum())
-                } else {
-                    let entity = ph2d_ecs::Entity::from_bits(bits);
-                    crate::hero_intents::texture_edit::read_sprite_source(
-                        entity,
-                        sim,
-                        renderer,
-                        asset_db,
-                        atlas_asset_map,
-                    )
-                    .map(|src| {
-                        let (w, h) = (src.image.width, src.image.height);
-                        let lum: Vec<u8> = src
-                            .image
-                            .pixels
-                            .as_chunks::<4>()
-                            .0
-                            .iter()
-                            .map(|p| {
-                                ((u32::from(p[0]) * 77
-                                    + u32::from(p[1]) * 150
-                                    + u32::from(p[2]) * 29)
-                                    >> 8) as u8
-                            })
-                            .collect();
-                        (lum, w, h)
-                    })
-                };
-                match lum_wh {
-                    Some((lum, w, h)) => {
-                        tools.set_active(&ph2d_editor_core::ToolId::new("painter"));
-                        if let Some(painter) = tools.active_mut().and_then(|t| {
-                            t.as_any_mut()
-                                .downcast_mut::<ph2d_tool_painter::PainterTool>()
-                        }) {
-                            if as_granulation {
-                                painter.use_layers_as_granulation(lum, w, h);
-                                toasts.push(ph2d_editor_core::Toast::success(
-                                    "Watercolor granulation set from layer",
-                                ));
-                            } else {
-                                painter.use_layers_as_watercolor_paper(lum, w, h);
-                                toasts.push(ph2d_editor_core::Toast::success(
-                                    "Watercolor paper set from layer",
-                                ));
-                            }
-                        }
-                    }
-                    None => {
-                        let what = if as_granulation {
-                            "Granulation"
-                        } else {
-                            "Watercolor Paper"
-                        };
-                        toasts.push(ph2d_editor_core::Toast::warning(format!(
-                            "Use as {what}: select an image sprite"
-                        )));
-                    }
-                }
-                self.title_dirty = true;
-            }
+            self.fase_use_as_paper(use_as_paper_row, use_as_granulation_row);
             self.fase_image_edit_apply(
                 fase_image_edit_apply::ImageEditIntents {
                     trim_entities,

@@ -90,6 +90,11 @@ const DOWNCAST_ALLOWLIST: &[&str] = &[
     // corpo que a contém — a contagem de downcasts da shell não mudou (12). ⛔ Não é uma excepção
     // nova: o quadro partiu-se em fases, e a licença segue o SUJEITO, como a entrada da precisão.
     "src/render_loop/fase_sculpt3d_bake.rs",
+    // ⚠️ **O `fase_use_as_paper.rs` HERDOU os downcasts do `render_loop/mod.rs`** (OBRA 2 da
+    // `line/render-loop`, 2026-09-12): o *Use as Watercolor Paper / Granulation* da Hierarquia instala
+    // a imagem no `PainterTool` concreto (slot Grain), e o bloco mudou-se verbatim para a fase — a
+    // MESMA excepção de classe que a entrada do `mod.rs` acima documenta, sem downcast novo.
+    "src/render_loop/fase_use_as_paper.rs",
     // Pointer forwarder: the colour-picker eyedropper samples the active PainterTool's layer COMPOSITE
     // (`sample_composite_at_uv`) + reads `repeat_image()` to walk the Repeat-Image neighbour tiles —
     // a Painter-specific affordance integrating the eyedropper with the layer system. Same exception

@@ -15,7 +15,12 @@
 //! `DrawMode::Shape` com uma forma viva selecionada. O que os separa é a ORDEM dos gestos, e é isso
 //! que o latch guarda.
 
-const SRC: &str = include_str!("../../src/render_loop/mod.rs");
+/// O QUADRO pela ordem em que corre (`frame_text::render_frame`).
+///
+/// ⚠️ Desde a OBRA 2 da `line/render-loop` (2026-09-13) o quadro vive em FASES: acender, apagar e a pintura mudaram-se
+/// para a `fase_shape_fields`, e a escrita continua no dreno do `render_loop/mod.rs`. «O desarme antes do arme» é uma
+/// ordem de EXECUÇÃO, e só o texto emendado a tem.
+static SRC: std::sync::LazyLock<String> = std::sync::LazyLock::new(crate::frame_text::render_frame);
 
 /// As quatro pontas: acender · apagar · a pintura · a escrita.
 #[test]
@@ -29,16 +34,22 @@ fn the_latch_is_armed_disarmed_and_read_by_both_routes() {
             "APAGAR — a selecção que muda desarma (desenhar selecciona a forma nova)",
             "if alvo_vivo != self.vec.shape_armed_target {",
         ),
-        (
-            "A PINTURA — o que a shell publica ao painel sai da porta com o latch",
-            "self.vec.shape_armed,\n                );",
-        ),
     ] {
         assert!(
             SRC.contains(agulha),
             "ponta desligada ({o_que}): `{agulha}` nao existe no render_loop"
         );
     }
+    // A PINTURA — o que a shell publica ao painel sai da porta com o latch como ÚLTIMO argumento. ⚠️ A agulha era
+    // `"self.vec.shape_armed,\n                );"`, com INDENTAÇÃO dentro, e a publicação mudou-se para a fase noutra
+    // coluna (P5a). A régua da cadeia (`frame_text::find_chain`) só aceita espaço entre o latch e o `);` — e a rota
+    // de ESCRITA, que passa o mesmo latch seguido do fecho `|kind, values|`, não casa: as duas pontas continuam
+    // separadas.
+    assert!(
+        crate::frame_text::find_chain(&SRC, "self.vec.shape_armed,", ");").is_some(),
+        "ponta desligada (A PINTURA — o que a shell publica ao painel sai da porta com o latch): o latch nao e' o \
+         ultimo argumento de nenhuma publicacao no render_loop"
+    );
     // A ESCRITA é a ponta perigosa e tem de receber o MESMO latch: os slots do painel são por
     // ÍNDICE, então pintar a Estrela armada e escrever no Polígono selecionado põe *lados* onde o
     // artista digitou *pontas*, sem erro nenhum.

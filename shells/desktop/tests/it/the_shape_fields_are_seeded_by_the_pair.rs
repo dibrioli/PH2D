@@ -20,7 +20,12 @@
 //! É a mesma classe do `MARKER_TARGET` das pontas — uma memo cuja chave é ESTREITA demais para
 //! distinguir dois estados que o artista distingue.
 
-const SRC: &str = include_str!("../../src/render_loop/mod.rs");
+/// O QUADRO pela ordem em que corre (`frame_text::render_frame`).
+///
+/// ⚠️ Desde a OBRA 2 da `line/render-loop` (2026-09-13) o quadro vive em FASES: o par, a comparação, a semente e o
+/// catálogo mudaram-se para a `fase_shape_fields`. As relações *antes de* deste gate são de EXECUÇÃO, e o censo da
+/// janela entre o par e a semente tem de ler o texto que corre — lido só no `mod.rs`, ele acharia a janela vazia.
+static SRC: std::sync::LazyLock<String> = std::sync::LazyLock::new(crate::frame_text::render_frame);
 
 /// A memo comparada é o PAR, e ela vem da porta única.
 #[test]

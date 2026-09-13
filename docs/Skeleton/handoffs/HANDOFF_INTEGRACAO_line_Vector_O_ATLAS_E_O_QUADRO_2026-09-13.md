@@ -12,8 +12,8 @@
 |---|---|
 | branch | `line/Vector` |
 | merge-base com `main` | `1d43da737` (o `main` enviado, CI verde) |
-| HEAD | ver §10 (o commit de fecho) |
-| commits | **6** |
+| HEAD | o commit de docs que traz este parágrafo (o último de código é `411768603`) |
+| commits | **8** (7 de trabalho + 1 de docs: `8fa3035f5` atlas · `35a88bce6` a porta do Vello · `2466f7a30` a sonda de palavras · `f98a93af2` fila · `2f4ef9f28` a sonda do chrome · `83b8b1e52` o orçamento por quadro · `411768603` o fecho) |
 | `shells/desktop` | **zero** linhas tocadas |
 | contadores partilhados | **zero** (`PROJECT_SCHEMA`, `VEC_SCENE_SCHEMA`, `FLIP_SCHEMA`, `DOC_VERSION`, os três registos) — ver §3 |
 | contrato congelado (§6) | **intocado** · zero ADR |
@@ -233,7 +233,25 @@ SUPERFÍCIE DE COLISÃO — line/Vector contra main
 
 ### O smoke compilado
 
-(colado a seguir ao build)
+`target/*/incremental` reclamado antes (`19 GB`). Depois do commit `411768603`, na worktree:
+
+```text
+=== build 1
+    Finished `smoke` profile [optimized] target(s) in 1m 09s
+=== build 2
+    Finished `smoke` profile [optimized] target(s) in 0.29s
+```
+
+Zero linhas `Compiling` na 2.ª. O comando entregue ao dono é o mesmo pacote, perfil e árvore:
+
+```text
+cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-Vector && env PH2D_VEC_BONE_SMOKE=1 PH2D_BONE_LOG=1 cargo run -p ph2d-host-desktop --profile smoke
+```
+
+⚠️ **O que o smoke do dono pode e não pode ver:** a imagem do smoke é `320×96`, logo o defeito do
+`Fast` com arte grande (§4.1, última linha) **não aparece nela** — esse lado está provado pelo gate e
+pela sonda, não pela cena. O que ele vê é o `Smooth` numa dobra forte: antes partia a forma, agora
+tem de a manter; e o log `[bone] pele suave:` diz quantas peças e que parte do orçamento.
 
 ---
 

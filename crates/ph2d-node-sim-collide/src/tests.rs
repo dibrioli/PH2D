@@ -35,7 +35,7 @@ fn collide_pt(
         radius,
         restitution,
         friction,
-        (RADIUS_POINT, 0.0, 0.0),
+        (RADIUS_AUTO, 0.0, 0.0),
         flat(),
         (0.0, 0),
         [0.0, 0.0],
@@ -344,7 +344,7 @@ fn a_point_sinks_by_half_its_height_and_a_disc_rests_on_top() {
         );
         read(&out).0[1]
     };
-    let point = fall((RADIUS_POINT, 0.0, 0.0));
+    let point = fall((RADIUS_AUTO, 0.0, 0.0));
     let disc = fall((RADIUS_SIZE, 0.0, 1.0));
     assert_eq!(point, -2.0, "the point rests its CENTRE on the floor…");
     assert_eq!(
@@ -366,25 +366,61 @@ fn a_point_sinks_by_half_its_height_and_a_disc_rests_on_top() {
 /// the floor — hovering by three quarters of a unit, with nothing on screen to explain it.
 #[test]
 fn the_radius_is_the_circle_inscribed_in_the_sprite() {
-    assert_eq!(particle_radius(RADIUS_SIZE, 0.0, 1.0, [1.0, 1.0]), 0.5);
+    assert_eq!(particle_radius(RADIUS_SIZE, 0.0, 1.0, [1.0, 1.0], 0.0), 0.5);
     assert_eq!(
-        particle_radius(RADIUS_SIZE, 0.0, 1.0, [2.0, 0.5]),
+        particle_radius(RADIUS_SIZE, 0.0, 1.0, [2.0, 0.5], 0.0),
         0.25,
         "a wide flat sprite is caught by its SHORT side, or it hovers"
     );
     assert_eq!(
-        particle_radius(RADIUS_SIZE, 0.0, 1.0, [0.5, 2.0]),
+        particle_radius(RADIUS_SIZE, 0.0, 1.0, [0.5, 2.0], 0.0),
         0.25,
         "…and so is a tall thin one: the inscribed circle does not care which way it is long"
     );
     // A mirrored sprite is the same size, not a negative one.
-    assert_eq!(particle_radius(RADIUS_SIZE, 0.0, 1.0, [-3.0, 3.0]), 1.5);
+    assert_eq!(particle_radius(RADIUS_SIZE, 0.0, 1.0, [-3.0, 3.0], 0.0), 1.5);
     // `size_scale` reaches the circle AROUND a square sprite for whoever wants it.
-    let circumscribed = particle_radius(RADIUS_SIZE, 0.0, std::f32::consts::SQRT_2, [2.0, 2.0]);
+    let circumscribed =
+        particle_radius(RADIUS_SIZE, 0.0, std::f32::consts::SQRT_2, [2.0, 2.0], 0.0);
     assert!((circumscribed - std::f32::consts::SQRT_2).abs() < 1e-6);
     // And it can never come out negative, however the sliders are dragged.
-    assert_eq!(particle_radius(RADIUS_SIZE, 0.0, -5.0, [1.0, 1.0]), 0.0);
-    assert_eq!(particle_radius(RADIUS_FIXED, -5.0, 1.0, [1.0, 1.0]), 0.0);
+    assert_eq!(particle_radius(RADIUS_SIZE, 0.0, -5.0, [1.0, 1.0], 0.0), 0.0);
+    assert_eq!(particle_radius(RADIUS_FIXED, -5.0, 1.0, [1.0, 1.0], 0.0), 0.0);
+}
+
+/// ⭐⭐ **`Auto` pousa a peça pelo colisor que ela DECLAROU** (doc 109), e só `Auto` o lê.
+///
+/// ⚠️ As duas metades num gate: *«usa a declaração»* passa com os três modos a lê-la, e *«os outros
+/// modos a ignoram»* passa com ninguém a lê-la.
+#[test]
+fn auto_rests_a_piece_on_the_collider_it_declared_and_only_auto_reads_it() {
+    // Colisor 0,5 numa peça de `size` [1, 2] ⇒ raio 0,5 × max(1, 2) = 1.
+    let s = sized([0.0, -2.2], [0.0, -1.0], [1.0, 2.0]).with(
+        ph2d_nodegraph::attr::COLLIDER_COLUMN,
+        Column::Scalar(vec![0.5]),
+    );
+    let pousa = |part: (i32, f32, f32)| {
+        read(&collide(
+            &s,
+            SHAPE_PLANE,
+            -2.0,
+            [0.0, 0.0],
+            2.0,
+            0.0,
+            0.0,
+            part,
+            flat(),
+            (0.0, 0),
+            [0.0, 0.0],
+        ))
+        .0[1]
+    };
+    let auto = pousa((RADIUS_AUTO, 9.0, 9.0));
+    assert!((auto - -1.0).abs() < 1e-6, "Auto: o centro 1 acima do chao, medido {auto}");
+    let fixo = pousa((RADIUS_FIXED, 0.25, 9.0));
+    assert!((fixo - -1.75).abs() < 1e-6, "Fixed ignora a declaracao: {fixo}");
+    let sprite = pousa((RADIUS_SIZE, 9.0, 1.0));
+    assert!((sprite - -1.5).abs() < 1e-6, "Sprite Size tambem: {sprite}");
 }
 
 /// **`Point` is the point collider, to the BIT** — the default, so a document that never touches
@@ -411,7 +447,7 @@ fn the_point_mode_is_the_collider_that_shipped_before_it() {
             2.0,
             0.4,
             0.2,
-            (RADIUS_POINT, 1.3, 2.5),
+            (RADIUS_AUTO, 1.3, 2.5),
             flat(),
             (0.0, 0),
             [0.0, 0.0],

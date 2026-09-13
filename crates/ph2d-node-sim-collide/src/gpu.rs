@@ -51,6 +51,11 @@ pub(super) const GPU_KERNEL: GpuKernel = GpuKernel {
         \x20   sc_r = max(params.particle_radius, 0.0);\n\
         } else if (i32(round(params.radius_from)) == SC_R_SIZE) {\n\
         \x20   sc_r = max(min(abs(sc_size.x), abs(sc_size.y)) * 0.5 * params.size_scale, 0.0);\n\
+        } else {\n\
+        \x20   // Auto: o colisor que a peca DECLAROU (doc 109) -- `particle_radius` termo a termo.\n\
+        \x20   // Coluna ausente = a identidade 0, e `max(0 * m, 0)` e' o 0 do colisor pontual.\n\
+        \x20   let sc_dec = read_collider(i);\n\
+        \x20   if (abs(sc_dec) <= SC_F32_MAX) { sc_r = max(sc_dec * max(abs(sc_size.x), abs(sc_size.y)), 0.0); }\n\
         }\n\
         var sc_hit = false;\n\
         var sc_n = vec2<f32>(0.0, 1.0);\n\
@@ -185,6 +190,16 @@ pub(super) const GPU_KERNEL: GpuKernel = GpuKernel {
             dim: Dim::Vec2,
             access: ColumnAccess::Read,
             identity: [1.0; 4],
+            port: 0,
+        },
+        // O colisor DECLARADO (doc 109). Só-leitura, e AUSENTE ⇒ `ReadIdentity` ⇒ nenhum buffer
+        // (`codegen::plan_bindings`) — que é todo stream de hoje, e é por isso que ele não gasta
+        // orçamento de `max_storage_buffers_per_shader_stage` onde não existe.
+        ColumnBinding {
+            column: ph2d_nodegraph::attr::COLLIDER_COLUMN,
+            dim: Dim::Scalar,
+            access: ColumnAccess::Read,
+            identity: [0.0; 4],
             port: 0,
         },
         // The contact channel. `ReadWrite` with identity 0, never `Write`: see [`HIT_COL`] —

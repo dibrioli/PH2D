@@ -126,6 +126,37 @@ pub(super) fn graph_has_live_vector_source(graph: &Graph, reg: &NodeRegistry) ->
         .any(|n| reg.is_live_vector_source(NodeTypeId::of(n.type_name.as_str())))
 }
 
+/// ⭐⭐ **Um documento que escreve o colisor PELO NOME cozinha na CPU** (doc 109 W2).
+///
+/// O contacto entre peças mora no `sim.step` de CPU e o dispositivo ainda **não** o resolve (W5, sem
+/// cliente). Deixar a coluna `collider` chegar a um `sim.step` no dispositivo daria a MESMA cena com
+/// uma pilha na CPU e um borrão na placa — sem erro nenhum.
+///
+/// ⚠️ **Quem a escreve:** o `source.shape` com `Collide` — já recusado pela porta da forma viva, logo
+/// acima — e **qualquer nó que escreva uma coluna pelo NOME** (o canal `Custom…` do `motion.drive`
+/// escreve a que o artista digitar). Esse recua para a CPU sozinho, mas numa rota HÍBRIDA a coluna
+/// que ele escreveu antes da fronteira atravessa-a e chega ao dispositivo.
+///
+/// ⚠️ **A pergunta é sobre o NOME e não sobre o nó**, de propósito: uma lista de «nós que escrevem por
+/// nome» envelheceria no dia do próximo. O preço de um falso positivo (um texto que diga
+/// exactamente `collider` noutro sentido) é cozinhar na CPU, nunca uma cena errada.
+/// A frase da recusa — uma constante, para o gate que prova a LIGAÇÃO ler a frase do produto e não
+/// uma cópia dela.
+pub(super) const RECUSA_COLISOR: &str =
+    "CPU: uma peca declara colisor pelo nome -- o dispositivo ainda nao resolve contactos (doc 109)";
+
+pub(super) fn graph_declares_collider(graph: &Graph) -> bool {
+    graph.node_text_params().values().any(|params| {
+        params
+            .values()
+            .any(|v| v.trim() == ph2d_nodegraph::attr::COLLIDER_COLUMN)
+    })
+}
+
+#[cfg(test)]
+#[path = "motion_bridge_gpu_collider_tests.rs"]
+mod collider_tests;
+
 /// Os relógios que o device marcha: um tique vira `sub` sub-passadas.
 ///
 /// ⚠️ **O TIQUE não se subdivide, só o PLAYHEAD** — e as duas metades disso são load-bearing.
@@ -233,6 +264,10 @@ pub(super) fn cook_gpu(
             motion,
             "CPU: o grafo traz uma FORMA vectorial viva (source.shape)",
         );
+    }
+    // Doc 109: o contacto entre peças ainda só existe na CPU — ver [`graph_declares_collider`].
+    if graph_declares_collider(&motion.doc.graph) {
+        return fell(motion, RECUSA_COLISOR);
     }
     // A `source.object` that resolves to a live VECTOR publishes a `geometry_id`
     // external (ADR-0154 reused for objects, so a stamped vector stays crisp). The

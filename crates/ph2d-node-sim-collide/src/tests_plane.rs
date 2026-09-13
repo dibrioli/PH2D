@@ -20,7 +20,7 @@ fn settle(p: [f32; 2], v: [f32; 2], angle: f32, offset: f32, fr: f32) -> ([f32; 
         0.0,
         0.0,
         fr,
-        (RADIUS_POINT, 0.0, 0.0),
+        (RADIUS_AUTO, 0.0, 0.0),
         plane_normal(angle),
         (0.0, 0),
         [0.0, 0.0],
@@ -125,7 +125,7 @@ fn a_particle_slides_down_a_ramp_and_stands_still_on_a_floor() {
                 0.0,
                 0.0,
                 0.05,
-                (RADIUS_POINT, 0.0, 0.0),
+                (RADIUS_AUTO, 0.0, 0.0),
                 plane_normal(angle),
                 (0.0, 0),
                 [0.0, 0.0],
@@ -237,7 +237,7 @@ fn the_tilt_composes_with_the_particle_radius() {
         p[0] * n[0] + p[1] * n[1]
     };
     assert!(
-        rest((RADIUS_POINT, 0.0, 0.0)).abs() < 2e-5,
+        rest((RADIUS_AUTO, 0.0, 0.0)).abs() < 2e-5,
         "a point rests ON the ramp"
     );
     assert!(
@@ -262,7 +262,7 @@ fn a_disc_and_a_bowl_are_blind_to_the_tilt() {
                 1.0,
                 0.3,
                 0.2,
-                (RADIUS_POINT, 0.0, 0.0),
+                (RADIUS_AUTO, 0.0, 0.0),
                 plane_normal(angle),
                 (0.0, 0),
                 [0.0, 0.0],
@@ -306,7 +306,7 @@ fn probe_ramp_symmetry() {
                 0.0,
                 0.0,
                 0.05,
-                (RADIUS_POINT, 0.0, 0.0),
+                (RADIUS_AUTO, 0.0, 0.0),
                 n,
                 (0.0, 0),
                 [0.0, 0.0],

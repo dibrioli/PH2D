@@ -75,9 +75,10 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
         max: 2.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            // Reads as a sentence, and "Point" names the default HONESTLY: what the
-            // collider did before it could know how big anything was.
-            labels: &["Point", "Fixed", "Sprite Size"],
+            // Reads as a sentence. ⚠️ The default is "Auto" and not "Point" since doc 109: it
+            // is the radius the piece DECLARED (a shape with Collide on), and a point only where
+            // nothing was declared — "Point" would lie the moment a shape says how big it is.
+            labels: &["Auto", "Fixed", "Sprite Size"],
         },
     },
     ParamUiHint {

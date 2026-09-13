@@ -28,7 +28,7 @@ fn bounced(s: &Stream, randomness: f32, seed: u32) -> Vec<f32> {
         0.0,
         REST,
         0.0,
-        (RADIUS_POINT, 0.0, 0.0),
+        (RADIUS_AUTO, 0.0, 0.0),
         plane_normal(0.0),
         (randomness, seed),
         [0.0, 0.0],

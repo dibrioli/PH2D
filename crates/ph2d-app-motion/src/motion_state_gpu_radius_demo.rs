@@ -10,7 +10,8 @@
 //! que acontece sem ele:
 //!
 //! ```text
-//!   ESQUERDA   Radius From = Point         os discos afundam, cada um pela sua metade
+//!   ESQUERDA   Radius From = Auto          os discos afundam, cada um pela sua metade
+//!              (nenhum declara colisor, então `Auto` é o ponto — o nome era `Point` até ao doc 109)
 //!   DIREITA    Radius From = Sprite Size   os discos POUSAM, e as bordas de baixo alinham
 //! ```
 //!
@@ -163,7 +164,7 @@ pub(super) fn build_gpu_radius_demo_document(
         Some(zone)
     };
 
-    // 0 = Point (o colisor de ontem) · 2 = Sprite Size (o desta wave).
+    // 0 = Auto (sem colisor declarado: o ponto de ontem) · 2 = Sprite Size (o desta wave).
     let left = half(-4.6, 0.0, 200.0)?;
     let right = half(2.4, 2.0, 620.0)?;
 

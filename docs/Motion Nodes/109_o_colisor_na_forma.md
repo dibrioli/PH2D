@@ -124,6 +124,38 @@ drop-crate; copiar a lei seria a segunda resposta à mesma pergunta.
 ⚠️ **Enquanto a W5 não existir, só fontes que recusam o dispositivo podem escrever `collider`** —
 senão a mesma cena daria pilha na CPU e borrão no dispositivo. Isto é **gate**, não nota.
 
+---
+
+## §3-bis — O que já está feito (2026-09-13)
+
+### ✅ W1 — a forma declara (`e597e82c7`)
+
+Coluna `ph2d_nodegraph::attr::COLLIDER_COLUMN`; no `source.shape` os params `collide` ·
+`collider_fit` · `collider_scale` (fora da `shape_key`) numa secção **Collision**; o shell mede
+`around`/`inside` no contorno de preenchimento e o nó escolhe e **retira** as colunas de raio.
+Medido: `Circle` `[1, 1]` · `Square` `[√2, 1]`. **4 de 4 mutações mortas.**
+
+### ✅ W2 — a simulação resolve (`1ddd33333` + a W2b/W2c)
+
+- **`ph2d-contact`** — a grelha dá **os mesmos bits** que todos-os-pares (os parceiros somados em
+  ordem crescente de índice). ⛔⛔ **E o gate dessa igualdade NÃO prova a lei do par:** os dois
+  caminhos chamam a mesma função por par, e a mutação do eixo dos centros coincidentes SOBREVIVEU a
+  ele — as duas peças eram empurradas para o mesmo lado e nunca se separavam. Gate próprio escrito.
+- **`sim.step`** — separa as peças com colisor depois da integração e **só cancela a aproximação**
+  (nunca acrescenta velocidade: duas peças que nascem sobrepostas separam-se paradas).
+- **`sim.collide`** — o modo 0 chama-se **`Auto`** (era `Point`): pousa a peça pelo colisor que ela
+  declarou, e sem declaração é o ponto **ao bit**. O WGSL faz o mesmo termo a termo, e a coluna
+  **ausente não gasta buffer** (`codegen::plan_bindings` dá `ReadIdentity`). Paridade na placa:
+  **30 de 30**. ⚠️ O ramo com a coluna PRESENTE no dispositivo não é exercitado por teste nenhum —
+  por construção ela não chega lá. O tutorial 05 foi regenerado com o rótulo novo.
+- **A recusa para a CPU** — `graph_declares_collider`: todo documento com o nome `collider` num text
+  param cozinha na CPU. ⚠️ **O buraco que ela fecha é real:** o canal `Custom…` do `motion.drive`
+  escreve qualquer coluna pelo nome e recua sozinho para a CPU, mas numa rota HÍBRIDA a coluna
+  atravessa a fronteira e chegaria a um `sim.step` na placa. Gate da pergunta + gate da LIGAÇÃO na
+  placa (`the_bridge_cooks_a_document_that_names_the_collider_on_the_cpu`).
+- **Mutações: 8 de 8 mortas** (4 na W2a, 4 na W2b/W2c — entre elas desligar a chamada no `cook_gpu`,
+  que só o gate da placa apanha).
+
 ## §4 — Aberto, com o que o decide
 
 - ⏳ **O default do `Collider Fit`** — `Around` garante que a arte nunca se sobrepõe e deixa folga

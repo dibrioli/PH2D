@@ -132,7 +132,7 @@ fn every_shape_that_responds_reports_a_strictly_positive_depth() {
 #[test]
 fn the_channel_exists_whatever_the_radius_mode_is() {
     for part in [
-        (RADIUS_POINT, 0.0f32, 0.0f32),
+        (RADIUS_AUTO, 0.0f32, 0.0f32),
         (RADIUS_FIXED, 0.25, 1.0),
         (RADIUS_SIZE, 0.0, 1.0),
     ] {

@@ -139,7 +139,7 @@ fn the_box_pushes_out_where_a_chain_of_planes_pushes_in() {
         0.0,
         0.0,
         0.0,
-        (RADIUS_POINT, 0.0, 0.0),
+        (RADIUS_AUTO, 0.0, 0.0),
         plane_normal(0.0),
         (0.0, 0),
         HALF,

@@ -137,7 +137,11 @@ pub const SHAPE_BOX: i32 = 3;
 
 /// **A point** — the collider as it was before the radius existed. The default, so a document
 /// that never touches this control collides exactly what it collided yesterday.
-pub const RADIUS_POINT: i32 = 0;
+///
+/// ⚠️ **Desde o doc 109 este modo chama-se `Auto`**: uma peça que DECLAROU colisor (uma forma com
+/// `Collide` ligado) pousa pelo raio dela, e só onde nada foi declarado ele é o ponto de sempre —
+/// que é toda cena anterior, ao bit. Ver [`particle_radius`].
+pub const RADIUS_AUTO: i32 = 0;
 /// One radius in world units, the same for every element.
 pub const RADIUS_FIXED: i32 = 1;
 /// The element's OWN size: the circle inscribed in the sprite the renderer draws.
@@ -279,11 +283,19 @@ pub const MANIFEST: NodeManifest = NodeManifest {
 /// An **absent `size` column is `[1, 1]`** on both paths — `SIZE_IDENTITY`, which is *also* the
 /// shell's `default_size`, so it is literally the quad the renderer draws there (one number, not
 /// two). The `abs` is because a mirrored sprite is the same size, not a negative one.
-pub fn particle_radius(mode: i32, fixed: f32, scale: f32, size: [f32; 2]) -> f32 {
+///
+/// ⭐⭐ **`Auto` (o modo 0) é o colisor que a peça DECLAROU** (doc 109 — ordem do dono: *«colidem
+/// sozinhas»*): `collider × max(|sx|, |sy|)`, o disco que contém a arte, a mesma lei do `sim.step`.
+/// Só quem desenha sabe que tamanho tem, e um recipiente não pode pousar pelo centro uma peça que
+/// disse ter raio. **Sem a coluna a declaração lê `0`**, e `0 × m` com `max(0)` é o `0.0` literal
+/// que este modo sempre devolveu — o colisor pontual ao bit.
+pub fn particle_radius(mode: i32, fixed: f32, scale: f32, size: [f32; 2], collider: f32) -> f32 {
     match mode {
         RADIUS_FIXED => fixed.max(0.0),
         RADIUS_SIZE => (size[0].abs().min(size[1].abs()) * 0.5 * scale).max(0.0),
-        // Point (and any value a hand-edited document invents): no radius at all.
+        // Auto (and any value a hand-edited document invents): the DECLARED radius, and a point
+        // where the piece declared none. A non-finite declaration is not one.
+        _ if collider.is_finite() => (collider * size[0].abs().max(size[1].abs())).max(0.0),
         _ => 0.0,
     }
 }
@@ -530,6 +542,12 @@ fn collide(
     // Read unconditionally: `Point` ignores it, and a branch here would be a second place that
     // decides what the radius mode means.
     let size = sizes(s, n);
+    // O colisor que cada peça DECLAROU (doc 109), `0` onde a coluna não existe — ver
+    // [`particle_radius`]. Lido uma vez, pela mesma razão do `size`.
+    let declarados = match s.get(ph2d_nodegraph::attr::COLLIDER_COLUMN) {
+        Some(Column::Scalar(v)) if v.len() == n => v.clone(),
+        _ => vec![0.0; n],
+    };
     let (mode, fixed, scale) = part;
     // A identidade de cada elemento. ⚠️ Lida uma vez: um `get` por elemento seria a mesma
     // pergunta `n` vezes, e a coluna AUSENTE tem de cair na posição — não em zero, que daria
@@ -540,7 +558,7 @@ fn collide(
     };
     let (randomness, seed) = rnd;
     for i in 0..n {
-        let r = particle_radius(mode, fixed, scale, size[i]);
+        let r = particle_radius(mode, fixed, scale, size[i], declarados[i]);
         if let Some((normal, depth)) = contact(shape, p[i], height, c, radius, r, plane_n, half) {
             let (mut pi, mut vi) = (p[i], v[i]);
             #[expect(clippy::cast_sign_loss, reason = "uma identidade e' um inteiro >= 0")]

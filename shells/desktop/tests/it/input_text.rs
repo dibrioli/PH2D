@@ -136,11 +136,17 @@ pub fn dispatch() -> String {
 /// **Onde acaba um item de `impl`** em `rest`: o 1.º irmão em QUALQUER visibilidade ou o fecho do `impl` — um fim por
 /// UMA visibilidade cairia noutro ficheiro do `dispatch()` (os métodos que saíram são `pub(super)`) e esticaria mudo.
 pub fn fim_do_item(rest: &str) -> usize {
-    ["\n    fn ", "\n    pub fn ", "\n    pub(crate) fn ", "\n    pub(super) fn ", "\n}\n"]
-        .iter()
-        .filter_map(|b| rest.find(b))
-        .min()
-        .unwrap_or(rest.len())
+    [
+        "\n    fn ",
+        "\n    pub fn ",
+        "\n    pub(crate) fn ",
+        "\n    pub(super) fn ",
+        "\n}\n",
+    ]
+    .iter()
+    .filter_map(|b| rest.find(b))
+    .min()
+    .unwrap_or(rest.len())
 }
 
 /// O `keyboard.rs` tal como corre.

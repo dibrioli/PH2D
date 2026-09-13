@@ -5,8 +5,9 @@
 //! [`crate::App::pick_hovered_object`], que precisa de uma `HeroScreen` com store — há gate de
 //! FONTE sobre ela em `tests/the_highlight_has_one_source.rs`.
 
-use super::hover_outline_world;
-use ph2d_ecs::{Entity, SimWorld, VecBoolGroup};
+use super::{hover_outline_of, hover_outline_world};
+use ph2d_ecs::{Entity, FlipObjectRef, Name, PresentWorld, SimWorld, Transform, VecBoolGroup};
+use ph2d_flip::{FlipDoc, FlipStroke, Hold, KeyKind};
 use ph2d_vec_entities::entities::VecEntityMap;
 use ph2d_vec_render::LiveGeometry;
 use ph2d_vec_scene::{VecPath, VecScene, VecXforms, rectangle};
@@ -112,4 +113,80 @@ fn an_object_with_no_shape_outlines_nothing() {
         Entity::from_bits(u64::from(ghost)).to_bits(),
     );
     assert!(world.is_empty(), "um objecto que não existe contornou algo");
+}
+
+/// Um objecto Flip com um traço de `(-2,-1)` a `(2,1)` — meia-extensão `(2,1)` —, pousado em
+/// `(10,5)` e girado 90°.
+fn flip_object_turned_a_quarter() -> (SimWorld, FlipDoc, u64) {
+    let mut doc = FlipDoc::new();
+    let oid = doc.push_object("Obj");
+    let obj = doc.object_mut(oid).unwrap();
+    let layer = obj.add_layer("L");
+    let drawing = obj
+        .insert_frame(layer, 0, Hold::Implicit, KeyKind::Keyframe)
+        .unwrap();
+    let mut stroke = FlipStroke::new();
+    stroke.push_default(ph2d_core::Vec2::new(-2.0, -1.0));
+    stroke.push_default(ph2d_core::Vec2::new(2.0, 1.0));
+    obj.drawing_mut(drawing).unwrap().strokes.push(stroke);
+    let mut sim = SimWorld::default();
+    let e = sim
+        .world_mut()
+        .spawn((
+            Transform {
+                translation: ph2d_core::Vec2::new(10.0, 5.0),
+                rotation: std::f32::consts::FRAC_PI_2,
+                ..Transform::IDENTITY
+            },
+            Name::new("Obj"),
+            FlipObjectRef(oid.0),
+        ))
+        .id();
+    (sim, doc, e.to_bits())
+}
+
+/// ⭐ **A ARTE DO FLIP É CONTORNADA — pela caixa que o gizmo dela desenha, girada com ela.**
+///
+/// ⛔ Até 2026-09-13 a porta respondia por vetor e sprite, e a arte do Flip saía com contorno VAZIO
+/// (smoke do dono na integração de 13/09: *«o objeto flip não recebe o contorno»*) — o pick achava-a,
+/// a linha da Hierarquia acendia e o canvas ficava mudo.
+///
+/// ⚠️ **Girada, e a rotação é a metade do gate:** sem rotação a caixa orientada e a alinhada aos
+/// eixos coincidem, e uma porta que a esquecesse passaria. A 90° a meia-extensão troca de eixo —
+/// `(9,3)..(11,7)` contra os `(8,4)..(12,6)` de uma caixa que a ignorasse.
+#[test]
+fn a_flip_object_outlines_the_box_its_gizmo_draws() {
+    let (sim, doc, bits) = flip_object_turned_a_quarter();
+    let mut present = PresentWorld::new();
+    let outline = hover_outline_of(
+        &sim,
+        &VecScene::new(),
+        &VecEntityMap::new(),
+        &LiveGeometry::new(),
+        &doc,
+        &mut present,
+        bits,
+    );
+    assert_eq!(
+        outline.len(),
+        1,
+        "a arte do Flip não foi contornada — com o pick a achá-la, a linha da Hierarquia acende e \
+         o canvas fica mudo (smoke do dono, 13/09)"
+    );
+    let path = &outline[0];
+    assert!(
+        path.closed && path.verts.len() == 4,
+        "o contorno do Flip não é uma caixa fechada de quatro cantos"
+    );
+    for want in [[9.0, 3.0], [11.0, 3.0], [11.0, 7.0], [9.0, 7.0]] {
+        assert!(
+            path.verts
+                .iter()
+                .any(|v| (v.anchor[0] - want[0]).abs() < 1e-4
+                    && (v.anchor[1] - want[1]).abs() < 1e-4),
+            "falta o canto {want:?} — a 90° a caixa vai de (9,3) a (11,7), e uma que ignorasse a \
+             rotação iria de (8,4) a (12,6); cantos: {:?}",
+            path.verts.iter().map(|v| v.anchor).collect::<Vec<_>>()
+        );
+    }
 }

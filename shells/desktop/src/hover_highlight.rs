@@ -191,26 +191,54 @@ impl crate::App {
         let Some(gfx) = self.gfx.as_mut() else {
             return Vec::new();
         };
-        let vector = hover_outline_world(
+        hover_outline_of(
             &gfx.sim,
             &gfx.vec_scene,
             &self.vec.entities,
             &self.vec.live_drawn,
+            &gfx.flip,
+            &mut gfx.present,
             bits,
-        );
-        if !vector.is_empty() {
-            return vector;
-        }
-        ph2d_render::selection_bbox_world(gfx.present.world_mut(), bits)
-            .map(|b| {
-                let (c, h) = b.center_half();
-                vec![ph2d_vec_scene::rectangle(
-                    [f64::from(c[0] - h[0]), f64::from(c[1] - h[1])],
-                    [f64::from(c[0] + h[0]), f64::from(c[1] + h[1])],
-                )]
-            })
-            .unwrap_or_default()
+        )
     }
+}
+
+/// **O contorno das TRÊS famílias que o pick acha, pela MESMA ordem** — o vetor contorna o desenho
+/// dele; o Flip e a sprite, a caixa de mundo que o gizmo deles desenha. Função LIVRE para um gate
+/// sem janela a alcançar (`hover_highlight_tests`).
+///
+/// ⛔ **Até 2026-09-13 respondia por DUAS** (smoke do dono na integração de 13/09: *«o objeto flip
+/// não recebe o contorno»*). O [`pick_objects_at`] já achava a arte do Flip — a linha da Hierarquia
+/// acendia e o canvas ficava mudo —, e o doc do [`crate::App::resolve_hover_outline`] já dizia «a
+/// arte do Flip»: *um produtor com N fontes e um consumidor que responde por N−1 ficam verdes cada
+/// um sozinho*.
+pub(crate) fn hover_outline_of(
+    sim: &ph2d_ecs::SimWorld,
+    scene: &ph2d_vec_scene::VecScene,
+    map: &ph2d_vec_entities::entities::VecEntityMap,
+    live: &ph2d_vec_render::LiveGeometry,
+    flip: &ph2d_flip::FlipDoc,
+    present: &mut ph2d_ecs::PresentWorld,
+    bits: u64,
+) -> Vec<ph2d_vec_scene::VecPath> {
+    let vector = hover_outline_world(sim, scene, map, live, bits);
+    if !vector.is_empty() {
+        return vector;
+    }
+    if let Some(outline) =
+        ph2d_app_flip::gizmo_view::outline_world(sim, flip, ph2d_ecs::Entity::from_bits(bits))
+    {
+        return vec![outline];
+    }
+    ph2d_render::selection_bbox_world(present.world_mut(), bits)
+        .map(|b| {
+            let (c, h) = b.center_half();
+            vec![ph2d_vec_scene::rectangle(
+                [f64::from(c[0] - h[0]), f64::from(c[1] - h[1])],
+                [f64::from(c[0] + h[0]), f64::from(c[1] + h[1])],
+            )]
+        })
+        .unwrap_or_default()
 }
 
 /// **A GEOMETRIA QUE O CONTORNO DESENHA** — em MUNDO, para o objecto apontado.

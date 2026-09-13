@@ -25,6 +25,7 @@ use ph2d_render::Camera2d;
 use ph2d_flip_entities::entities::FlipEntityMap;
 use ph2d_flip_entities::transform::object_xform;
 use ph2d_vec_entities::transform::world_transform;
+use ph2d_vec_scene::{VecPath, VecVertex};
 
 /// Raio de captura do traço, em pixels de tela — a arte Flip é pega por proximidade
 /// (uma nuvem de linhas não tem interior). Igual ao vetor.
@@ -60,6 +61,71 @@ pub fn anchor_half(sim: &SimWorld, doc: &FlipDoc, entity: Entity) -> Option<([f3
     Some((anchor, half))
 }
 
+/// A caixa de MUNDO de um objeto Flip — centro, meia-extensão, pivô e rotação. ⚠️ **UMA conta
+/// para dois leitores:** o [`view`] publica-a ao gizmo e o [`outline_world`] contorna-a no realce;
+/// duas contas descreveriam o mesmo objecto de duas maneiras e divergiriam no primeiro objecto
+/// girado.
+struct WorldBox {
+    center: [f32; 2],
+    half: [f32; 2],
+    pivot: [f32; 2],
+    rotation: f32,
+}
+
+fn world_box(sim: &SimWorld, doc: &FlipDoc, entity: Entity) -> Option<WorldBox> {
+    let (anchor, half_intrinsic) = anchor_half(sim, doc, entity)?;
+    let wt = world_transform(sim, entity);
+    let (sx, sy) = (wt.scale.x, wt.scale.y);
+    let half = [
+        (half_intrinsic[0] * sx).abs(),
+        (half_intrinsic[1] * sy).abs(),
+    ];
+    // Invariante idêntica à do sprite: quad center = pivot + R·(anchor ⊙ scale).
+    let (ax, ay) = (anchor[0] * sx, anchor[1] * sy);
+    let (sin_r, cos_r) = libm::sincosf(wt.rotation); // T1.3.5 bit-idêntico cross-OS
+    Some(WorldBox {
+        center: [
+            wt.translation.x + ax * cos_r - ay * sin_r,
+            wt.translation.y + ax * sin_r + ay * cos_r,
+        ],
+        half,
+        pivot: [wt.translation.x, wt.translation.y],
+        rotation: wt.rotation,
+    })
+}
+
+/// ⭐ **O CONTORNO DO REALCE DE PROVENIÊNCIA** (estudo de UI viva, C2) de um objeto Flip — a
+/// MESMA caixa orientada que o gizmo desenha, em MUNDO: os quatro cantos da [`view`] rodados à
+/// volta do centro dela, como o `paint_gizmo_outline` os roda. `None` se a entidade não é um
+/// objeto Flip ou não tem arte.
+///
+/// ⛔ **Até 2026-09-13 ninguém o perguntava:** o realce contornava formas vetoriais e sprites, e
+/// passar o rato sobre a arte do Flip não contornava nada — com o pick a achá-la, a linha da
+/// Hierarquia acendia e o canvas ficava mudo (smoke do dono na integração de 13/09: *«o objeto
+/// flip não recebe o contorno, mas funciona corretamente para sprites e vetores»*).
+#[must_use]
+pub fn outline_world(sim: &SimWorld, doc: &FlipDoc, entity: Entity) -> Option<VecPath> {
+    let b = world_box(sim, doc, entity)?;
+    let (sin_r, cos_r) = libm::sincosf(b.rotation);
+    let corner = |lx: f32, ly: f32| {
+        VecVertex::corner([
+            f64::from(b.center[0] + lx * cos_r - ly * sin_r),
+            f64::from(b.center[1] + lx * sin_r + ly * cos_r),
+        ])
+    };
+    let [hx, hy] = b.half;
+    Some(VecPath {
+        verts: vec![
+            corner(-hx, -hy),
+            corner(hx, -hy),
+            corner(hx, hy),
+            corner(-hx, hy),
+        ],
+        closed: true,
+        ..VecPath::default()
+    })
+}
+
 /// A `GizmoView` de um objeto Flip — o mesmo `bbox_world` + `pivot` + `rotation` que
 /// um sprite publica, para que `paint_sprite_gizmo` desenhe e registre as alças.
 /// A pose vem do `SimWorld` (`Transform` ∘ cadeia de pais).
@@ -73,24 +139,13 @@ pub fn view(
     last_pointer: (f32, f32),
     pivot_tool_active: bool,
 ) -> Option<GizmoView> {
-    let (anchor, half_intrinsic) = anchor_half(sim, doc, entity)?;
-    let wt = world_transform(sim, entity);
-    let (sx, sy) = (wt.scale.x, wt.scale.y);
-    let half = [
-        (half_intrinsic[0] * sx).abs(),
-        (half_intrinsic[1] * sy).abs(),
-    ];
-    // Invariante idêntica à do sprite: quad center = pivot + R·(anchor ⊙ scale).
-    let (ax, ay) = (anchor[0] * sx, anchor[1] * sy);
-    let (sin_r, cos_r) = libm::sincosf(wt.rotation); // T1.3.5 bit-idêntico cross-OS
-    let cx = wt.translation.x + ax * cos_r - ay * sin_r;
-    let cy = wt.translation.y + ax * sin_r + ay * cos_r;
+    let b = world_box(sim, doc, entity)?;
     Some(GizmoView {
-        bbox_min_world: [cx - half[0], cy - half[1]],
-        bbox_max_world: [cx + half[0], cy + half[1]],
-        pivot_world: [wt.translation.x, wt.translation.y],
+        bbox_min_world: [b.center[0] - b.half[0], b.center[1] - b.half[1]],
+        bbox_max_world: [b.center[0] + b.half[0], b.center[1] + b.half[1]],
+        pivot_world: b.pivot,
         pivot_tool_active,
-        rotation: wt.rotation,
+        rotation: b.rotation,
         camera_center: camera.center,
         camera_height_world: camera.height_world,
         window_w: window_size.width as f32,
@@ -387,5 +442,67 @@ mod tests {
             pick_in_world_rect(&sim, &doc, &map, [15.0, 15.0], [25.0, 25.0]),
             vec![e.to_bits()]
         );
+    }
+
+    /// ⭐ **O contorno do realce É a caixa do gizmo — girada como o gizmo a gira.**
+    ///
+    /// ⚠️ O [`outline_world`] e a [`view`] leem a MESMA `world_box`; este gate prende a outra
+    /// metade, o que o pintor faz com a view: os cantos rodados à volta do CENTRO da caixa (o
+    /// `paint_gizmo_outline`). ⚠️ **Girado 90°, e não em repouso:** sem rotação a caixa orientada e
+    /// a alinhada aos eixos coincidem, e um contorno que ignorasse a rotação ficaria verde.
+    #[test]
+    fn the_hover_outline_is_the_gizmo_box_turned_with_the_object() {
+        let (doc, mut sim, _, _, e) = doc_with_segment([-2.0, -1.0], [2.0, 1.0]);
+        sim.world_mut().entity_mut(e).insert(Transform {
+            translation: ph2d_core::Vec2::new(10.0, 5.0),
+            rotation: std::f32::consts::FRAC_PI_2,
+            ..Transform::IDENTITY
+        });
+        let ws = WindowSize {
+            width: 800,
+            height: 600,
+        };
+        let v = view(&sim, &doc, e, &Camera2d::default(), ws, (0.0, 0.0), false).unwrap();
+        // Os cantos que o `paint_gizmo_outline` desenha para esta view, em MUNDO e pela mesma ordem.
+        let cx = (v.bbox_min_world[0] + v.bbox_max_world[0]) * 0.5;
+        let cy = (v.bbox_min_world[1] + v.bbox_max_world[1]) * 0.5;
+        let hx = (v.bbox_max_world[0] - v.bbox_min_world[0]) * 0.5;
+        let hy = (v.bbox_max_world[1] - v.bbox_min_world[1]) * 0.5;
+        let (s, c) = (v.rotation.sin(), v.rotation.cos());
+        let gizmo: Vec<[f32; 2]> = [(-hx, -hy), (hx, -hy), (hx, hy), (-hx, hy)]
+            .iter()
+            .map(|&(lx, ly)| [cx + lx * c - ly * s, cy + lx * s + ly * c])
+            .collect();
+        let path = outline_world(&sim, &doc, e).expect("um objeto Flip com arte tem contorno");
+        assert!(path.closed && path.verts.len() == 4);
+        let anchors: Vec<[f64; 2]> = path.verts.iter().map(|v| v.anchor).collect();
+        for (p, g) in anchors.iter().zip(&gizmo) {
+            assert!(
+                (p[0] - f64::from(g[0])).abs() < 1e-4 && (p[1] - f64::from(g[1])).abs() < 1e-4,
+                "o contorno {anchors:?} não é a caixa que o gizmo desenha {gizmo:?}"
+            );
+        }
+        // E o valor, à mão: a 90° a meia-extensão (2,1) troca de eixo.
+        let min_x = anchors.iter().map(|p| p[0]).fold(f64::MAX, f64::min);
+        let max_x = anchors.iter().map(|p| p[0]).fold(f64::MIN, f64::max);
+        let min_y = anchors.iter().map(|p| p[1]).fold(f64::MAX, f64::min);
+        let max_y = anchors.iter().map(|p| p[1]).fold(f64::MIN, f64::max);
+        assert!(
+            (min_x - 9.0).abs() < 1e-4
+                && (max_x - 11.0).abs() < 1e-4
+                && (min_y - 3.0).abs() < 1e-4
+                && (max_y - 7.0).abs() < 1e-4,
+            "a caixa girada 90° vai de (9,3) a (11,7) — mediu ({min_x},{min_y})..({max_x},{max_y}); \
+             uma caixa sem rotação iria de (8,4) a (12,6)"
+        );
+    }
+
+    /// Uma entidade que não é objeto Flip não tem contorno Flip — a porta do realce na shell cai
+    /// então para a caixa da sprite.
+    #[test]
+    fn an_entity_that_is_not_a_flip_object_has_no_flip_outline() {
+        let (doc, mut sim, _, _, _) = doc_with_segment([0.0, 0.0], [1.0, 1.0]);
+        let other = sim.world_mut().spawn(Transform::IDENTITY).id();
+        assert!(outline_world(&sim, &doc, other).is_none());
     }
 }

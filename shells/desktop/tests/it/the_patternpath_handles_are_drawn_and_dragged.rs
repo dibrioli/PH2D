@@ -17,9 +17,13 @@ fn shell(path: &str) -> String {
 /// O DESENHO das fichas está costurado no overlay, gateado pela política de modo (Select-only), e
 /// FORA do bloco `if overlay.edit` (falso no Select) — provado pela ordem contra as alças do
 /// conector, a mesma técnica do gate do texto.
+///
+/// ⚠️ Desde a OBRA 2 da `line/render-loop` (2026-09-13) o desenho mora na fase `fase_vector_tool_handles`: o
+/// gate lê o QUADRO emendado (`frame_text::render_frame`), e a ORDEM contra as alças do conector é a de
+/// execução — que é a que a propriedade afirma.
 #[test]
 fn the_render_loop_draws_the_handles_gated_on_select_mode() {
-    let rl = shell("render_loop/mod.rs");
+    let rl = crate::frame_text::render_frame();
     assert!(
         rl.contains("overlay.patternpath_handles"),
         "o desenho das alças não é gateado por `overlay.patternpath_handles` — apareceriam fora do Select"

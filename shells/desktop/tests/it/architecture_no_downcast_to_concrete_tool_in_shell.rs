@@ -112,6 +112,12 @@ const DOWNCAST_ALLOWLIST: &[&str] = &[
     // o bloco mudou-se verbatim para a fase — a MESMA excepção de classe da entrada do `mod.rs`, sem downcast
     // novo.
     "src/render_loop/fase_gizmo_suppression_and_field3d_frame.rs",
+    // ⚠️ **O `fase_vector_tool_handles.rs` HERDOU dois downcasts do `render_loop/mod.rs`** (OBRA 2 da
+    // `line/render-loop`, 2026-09-13): os drenos da escolha de tipo de alça do menu de botão direito (o ponto do
+    // *Falloff* e o da curva *Curve/Free Hand*) escrevem no `PainterTool` concreto — são a MESMA excepção da
+    // entrada do `mod.rs` («PainterTool downcasts for the right-click handle-kind»), mudada verbatim para a
+    // fase, sem downcast novo.
+    "src/render_loop/fase_vector_tool_handles.rs",
     // Pointer forwarder: the colour-picker eyedropper samples the active PainterTool's layer COMPOSITE
     // (`sample_composite_at_uv`) + reads `repeat_image()` to walk the Repeat-Image neighbour tiles —
     // a Painter-specific affordance integrating the eyedropper with the layer system. Same exception

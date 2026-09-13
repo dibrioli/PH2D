@@ -23,9 +23,13 @@ fn shell(path: &str) -> String {
 }
 
 /// O DESENHO da alça está costurado no overlay, e gateado pela política de modo (Select-only).
+///
+/// ⚠️ Desde a OBRA 2 da `line/render-loop` (2026-09-13) o desenho mora na fase `fase_vector_tool_handles`: o
+/// gate lê o QUADRO emendado (`frame_text::render_frame`), e a ORDEM contra as alças do conector é a de
+/// execução — que é a que a propriedade afirma.
 #[test]
 fn the_render_loop_draws_the_handle_gated_on_select_mode() {
-    let rl = shell("render_loop/mod.rs");
+    let rl = crate::frame_text::render_frame();
     // Desenha pelo renderer dedicado…
     assert!(
         rl.contains("draw_text_handle"),

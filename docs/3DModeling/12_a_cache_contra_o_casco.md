@@ -215,9 +215,66 @@ nextest imprime `error: test run failed` quando um teste REPROVA — quatro muta
 classificadas como «NÃO COMPILOU». *Uma régua de mutação que confunde vermelho de teste com vermelho
 de compilação não prova nada nos dois sentidos.*
 
+## §12.9-bis — ⛔⛔ O defeito que a auditoria achou: a folha debaixo de uma OPERAÇÃO que dobra
+
+⚠️ **Anterior a esta wave** (a W56 escreveu a especialização por região; a W79 fez do espelho numa
+operação um gesto do produto; nenhum gate os juntou) — e a cache do casco **herdava-o**, porque os
+cascos saem do mesmo mapa.
+
+**O mecanismo.** A especialização leva a caixa do mundo ao plano de cada folha pelo mapa
+`affine::local_maps`, que descia compondo só **poses**; o `specialised_leaf` desistia só debaixo dos
+modificadores **da própria folha**. Um espelho, uma matriz ou uma torção numa **operação** dobram os
+filhos — e a região da cópia dobrada chegava à folha num sítio onde a especialização guardou as
+arestas de outra região.
+
+**A lente que o apanhou** foi a pergunta da auditoria *«quem decide que uma folha é especializada, e
+o que essa regra não vê?»* — e o `grep` que respondeu: o gate da W56 põe a matriz **na folha**, que ali
+é a raiz. Nenhuma fixture punha uma folha de perfil debaixo de uma operação que remapeia.
+
+**Vermelho antes da cura** — com a fixture que contém o fenómeno, e são as duas condições que a W56
+já tinha pago: uma elipse **fina e densa** (numa forma de quatro arestas o corte guarda tudo) e regiões
+**centradas na cópia dobrada** (numa região ao acaso o corte guarda quase todas as arestas):
+
+| gate | espelho na operação | matriz na operação |
+|---|---:|---:|
+| `the_specialisation_gives_up_under_a_remapping_ancestor` (o documento, dentro da região) | `0,496` | `0,496` |
+| `the_folded_leaf_draws_like_the_row_march` (a imagem, contra a marcha por linha) | **`84` px** | **`586` px** |
+| o gémeo sem o modificador (o controlo) | `0` px | `0` px |
+
+⭐ **A cura é a regra que a folha já seguia, levada à descida:** debaixo de um nó com um modificador que
+remapeia, os filhos ficam **sem mapa**, e quem pergunta por ele — a especialização e os cascos da
+cache — desiste. Um só sítio, dois leitores. Os dois gates ficam verdes, e as suítes das três crates do
+campo vão a **732/732**.
+
+⚠️ **O preço, declarado:** uma folha de perfil debaixo de uma dobra deixa de ser especializada — ela é
+**certa e mais lenta**, exactamente como já era debaixo de um modificador próprio. Calcular a
+pré-imagem de cada dobra é a wave que a W56 já nomeava («é possível e é uma wave própria»), agora com o
+alcance maior.
+
 ## §12.10 — ⏳ O relógio
 
-*(a preencher: `measure_what_the_hull_cache_buys_on_the_clock`, a `load < 5`)*
+`measure_what_the_hull_cache_buys_on_the_clock`: caixa `f 1,25` contra casco `0,06`/`0,08`/`0,10` do
+alcance, **intercaladas ronda a ronda no mesmo processo**, cada cache a continuar o SEU arrasto, com as
+leis de câmera do módulo e o quadro de movimento (sem anti-serrilhado).
+
+### §12.10.1 — ⛔ A 1.ª corrida NÃO VALE — e as contagens dela valem
+
+O laço que esperava por `load < 5` disparou a **`4,63`**, no mesmo segundo em que a MINHA suíte das três
+crates arrancou: a média de 1 minuto ainda não a tinha visto. A medição correu toda a **`37`–`60`**. *Um
+laço que espera pela máquina calma dispara no instante em que a nossa própria corrida começa* ⇒ a 2.ª
+exige duas leituras calmas seguidas (1 min `< 4` **e** 5 min `< 8`) e nada meu a correr ao lado.
+
+⚠️ **As colunas de CONTAGEM não dependem da carga**, e são do produto (o traçado real compila só as
+fatias que algum raio alcança, então são menores que as da simulação do §12.7). `426×240`, círculo,
+compilações por quadro:
+
+| gesto | caixa `f 1,25` | casco `0,06` | casco `0,08` | casco `0,10` |
+|---|---:|---:|---:|---:|
+| órbita 4 px | `32,2` | `19,5` | `10,9` | `6,7` |
+| pan 4 px | `10,9` | `3,2` | `2,1` | `1,6` |
+| zoom `+0,5` | `2,7` | `1,8` | `1,2` | `1,1` |
+
+⏳ *(a 2.ª corrida, a preencher)*
 
 ## §12.11 — ⏳ O que fica aberto
 
@@ -228,6 +285,9 @@ de compilação não prova nada nos dois sentidos.*
   medir o casco**, e as tabelas nos doc-comments delas continuam a ser as da caixa.
 - ⏳ **O custo do teste de casco no `get`** entra no `GET_NS`; o cálculo dos cascos da CONSULTA corre
   fora dele (no `tiles.rs`) e não tem contador próprio.
+- ⏳ **A pré-imagem de cada dobra** (§12.9-bis) — uma folha de perfil debaixo de uma operação que
+  remapeia é hoje certa e **não especializada**. Especializá-la outra vez é calcular a pré-imagem de cada
+  um dos seis modificadores que dobram; sem preço medido.
 
 ## ⛔ Recusas MEDIDAS
 

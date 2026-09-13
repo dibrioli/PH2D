@@ -68,6 +68,22 @@ compilar (alto), não em silêncio.
 ⚠️ **Variável de ambiente nova:** `PH2D_FIELD_TAPE_BOX=1` volta à cache da W82 (a caixa). É bissecção,
 não configuração.
 
+## 3-bis. ⛔⛔ UM DEFEITO ANTERIOR, achado na auditoria e CURADO — a folha debaixo de uma operação que dobra
+
+**Visível ao artista:** um contorno desenhado (extrusão, polígono, torno) debaixo de uma **operação**
+com espelho, matriz, radial, afunilamento, torção ou dobra saía com pixels errados na
+pré-visualização — medido **`84`** (espelho) e **`586`** (matriz) contra `0` do gémeo sem o
+modificador, e `0,496` de desacordo no documento dentro da região. A W56 escreveu a especialização por
+região, a W79 fez do espelho na operação um gesto do produto, e **nenhum gate os juntava**: o da W56 põe
+a matriz na própria folha, que ali é a raiz.
+
+**A cura** (`affine::local_maps`, `bef750696`): a descida pára debaixo de um nó com modificador que
+remapeia; os filhos ficam sem mapa, e a especialização e os cascos da cache desistem neles. ⚠️ **Preço
+declarado:** essas folhas passam a ser certas e **não especializadas** (mais lentas), como já eram debaixo
+de um modificador próprio. Gates novos: `the_specialisation_gives_up_under_a_remapping_ancestor`
+(`ph2d-field-eval`) e `the_folded_leaf_draws_like_the_row_march` (`ph2d-field-render/tests/it`), os dois
+vistos **vermelhos antes** da cura. Detalhe: doc 12 §12.9-bis.
+
 ## 4. Contratos congelados encostados
 
 **Nenhum.** `NodeOp`/`OpResolver`/`NodeManifest` e `Tool`/`RasterEditTool`/`CanvasPaintTool`/`PanelEvent`
@@ -127,6 +143,11 @@ Já corrido durante a wave: as suítes das três crates do campo (`ph2d-field-ev
 4. ⛔ *(minha)* *«a folga normaliza-se pelo ladrilho»* — pelo ladrilho, a mesma folga dá `81,5 %` e
    `91,8 %` em duas células; pelo **alcance** a partir do alvo, as nove células ficam na mesma faixa.
 5. ⛔ *(minha)* *«os gates de imagem prendem a política de serviço»* — a M2 sobreviveu a todos.
+6. ⛔ *«a especialização desiste debaixo de todo modificador que remapeia — há gate»* — o gate da W56 põe
+   o modificador **na própria folha**; debaixo de uma **operação** que dobra, a folha era especializada
+   no espaço errado (§3-bis).
+7. ⛔ *(minha)* *«esperar por `load < 5` dá uma máquina calma»* — o laço disparou a `4,63` no segundo em
+   que a minha própria suíte arrancou, e a 1.ª corrida do relógio mediu a `37`–`60` (doc 12 §12.10.1).
 
 ## 10. ⏳ O que fica ABERTO
 
@@ -135,6 +156,10 @@ Já corrido durante a wave: as suítes das três crates do campo (`ph2d-field-ev
   com menos fitas e pede reconferência.
 - ⏳ O cálculo dos cascos da CONSULTA (no `tiles.rs`) não tem contador próprio; o `GET_NS` só conta o
   teste de contenção.
+- ⏳ **A pré-imagem de cada dobra** — uma folha de perfil debaixo de uma operação que remapeia deixou de
+  ser especializada (§3-bis): certa e mais lenta. Especializá-la de novo é calcular a pré-imagem do
+  espelho, da matriz, do radial, do afunilamento, da torção e da dobra — a wave que a W56 já nomeava, e
+  sem preço medido ainda.
 
 Os outros abertos do módulo não mudaram (doc 06 §13.0): a marcha, a mistura N-ária, o tecto de `round`
 da estrela, o `SLABS`.
@@ -152,7 +177,20 @@ Elas mandam reconstruir trabalho já pago:
 
 ## 12. O que SMOKAR
 
-⏳ *(preencher com o comando exacto e o binário deixado compilado — §13)*
+⭐ **Esta wave não muda a imagem, de propósito** — a cache escolhe que fita serve, e os gates dizem
+que a forma não mexe um pixel. O que se confere é que **nada regrediu** e que a mão **não pesa mais**:
+
+1. `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-3DModeling && cargo run -p ph2d-host-desktop --profile smoke`
+2. Clicar a pill **MODEL** no topo; criar duas ou três formas pela paleta (`A` ou *+ Add shape…*),
+   escolher uma forma **desenhada** (`+ Extrude` sobre um contorno do editor vetorial) se houver.
+3. Girar a peça com o botão esquerdo, deslocar com o do meio, aproximar e afastar com a roda — devagar
+   e depressa.
+4. **Tem de acontecer:** a peça sai **igual à de antes** e a vista acompanha a mão.
+5. **Deu errado se:** aparecer um buraco, um risco ou uma face a piscar durante o movimento que some
+   ao parar — isso é uma fita servida onde não vale. Para comparar com o comportamento antigo, o mesmo
+   comando com `env PH2D_FIELD_TAPE_BOX=1` antes do `cargo` volta à cache de antes.
+
+⏳ *(o binário deixado compilado, com a 2.ª saída colada, fica no §13)*
 
 ## 13. Higiene do fecho
 

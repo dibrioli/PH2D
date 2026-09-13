@@ -314,6 +314,96 @@ um implementador a abrir aquele ficheiro**.
 
 ---
 
+### Auditoria R-pré — 2026-09-13 (espec v3, **3.ª passagem**)
+
+| papel | id | data |
+|---|---|---|
+| R-pré (3.ª passagem) | subagente R-pré **novo**, despachado pela janela-mãe `9f820704-0d7e-4d96-847e-9cd720cbf178` (elo **I-3**) — ⛔ não é o E nem nenhum dos dois R-pré anteriores; contexto novo; viu os dois lados (fonte por shell, `Read` deny-listed) | 2026-09-13 — ⛔ **NÃO ATESTA: 7 achados, 1 SUBSTANCIAL** |
+
+**Sweep (§7.1):** `✓ limpo`, **137** entradas, `exit 0` sobre a espec + as 85 fixturas.
+⚠️ **Pela terceira vez, nenhum dos achados move a vassoura** — e desta vez nem por tradução: os dois
+que importam são *factos correctos mal enquadrados*. O sweep continua necessário e nunca suficiente.
+
+#### ⛔ SUBSTANCIAL — a §5.1 manda preservar uma grandeza SEM CONSUMIDOR, e a consequência que ela afirma é FALSA
+
+A álgebra está **certa** (a separação entre cabeça e origem vale `|2·comprimento − ‖T − O⁻‖|`,
+re-derivada aqui). O que está errado é a frase seguinte, que a 2.ª passagem elogiou como *«um facto
+novo e correcto»*: **não é verdade que a inconsistência chegue a pixel num dos modos.** Conferido no
+fonte, dos dois lados:
+
+- o **único** modo que lê a cabeça (o referencial do espremer/esticar, §6) **não resolve a cadeia** —
+  ele só toma emprestado o quociente de escala; ali cabeça e origem são as **iniciais**, sempre;
+- os modos que **resolvem** a cadeia (girar; escalar com a trava de rotação desligada) **nunca leem**
+  a cabeça — o referencial deles é a identidade.
+
+⇒ a cabeça, como a §5.1 a escreve, é **só-escrita**: nenhuma das 69 fixturas pode distinguir uma
+implementação que a "corrija", e a espec não oferece nenhuma. A frase *«diverge nesse modo e em mais
+nenhum»* prescreve reproduzir um artefacto interno do alvo por uma razão que não existe — que é a
+espécie deste documento (descrever o programa) vestida de facto.
+⚠️ **E há um caminho que a torna verdadeira, e é o caminho ERRADO:** a §5.5 diz apenas que o
+quociente é *«o mesmo de §5.4»*, e o §5.4 abre com o passo de resolver a cadeia. Quem importar esse
+passo passa a escrever a cabeça **e** a ler — e aí diverge do alvo. A cerca está hoje num parêntesis
+da §5.1-bis, três secções à frente.
+⭐ **Lição de método:** *verificar a ÁLGEBRA de um facto não é verificar que ele tem CONSUMIDOR.*
+
+#### ⛔ A espécie ainda vive — §7.2 é a decomposição de ARMAZENAMENTO do alvo, com um símbolo que a espec nunca define
+
+O símbolo da 1.ª coluna da tabela do §7.2 aparece **uma só vez no documento inteiro** (conferido por
+grep): no cabeçalho dessa tabela. O que as duas colunas repartem é exactamente o par de matrizes por
+segmento-e-octante que o alvo guarda — ⇒ é o **achado B3 da 2.ª passagem, vivo uma secção adiante**,
+numa secção que **nenhuma das duas emendas tocou** (zero *hunks* em `v1 → HEAD`). Agrava:
+
+- **contradiz a frase que a emenda 2 acabou de acrescentar ao §7.1** (*a espec não prescreve como o
+  mapa é armazenado nem factorizado*);
+- é **redundante**: a tabela de duas linhas do §6 já diz a mesma coisa como lei.
+
+Endereços secundários da mesma espécie: §10 (*«reconstroem-se as 8×n matrizes»* — contagem de
+armazenamento onde o §6 dá um mapa), §13 (*«o alvo já o faz»*), §7.3 no **título** (o requisito
+enunciado por um passo de código **ausente**, com as aspas que a A5 já tinha apanhado como sinal — o
+corpo dessa secção **foi** curado, o título não), e a cauda do 1.º ponto do §1.3 (o inventário dos
+factores que *outros* pincéis do alvo aplicam; o observável é a 1.ª metade da frase).
+
+#### Proveniência (§4.3 · §4.1.12) — 4 sítios, todos de uma linha
+
+| # | sítio | o que falta |
+|---|---|---|
+| **C1** | **§1.3**, título | promete *«(medido — a ausência é o facto)»* para **cinco** ausências e o corpus mede **uma** (a pressão, com fixtura e número). Dureza · direcção *Add/Subtract* · forma de atenuação **não têm eixo nenhum** na tabela de cobertura do §14. Ou se medem (o arnês existe) ou se diz quais são medidas e quais são afirmadas — o §17 só gateia a medida, que é a metade honesta |
+| **C2** | **§15**, parágrafo final | atribui uma motivação de produto **aos autores** sem nomear o canal, enquanto **todas** as outras linhas da secção trazem o link. O canal é lícito (§4.1.12) — falta dizê-lo |
+| **C3** | **§16**, 1.º ponto | *«(verificado)»* não é fórmula, nem medição, nem decisão nossa. O facto é **verdadeiro** (conferido), e o observável já existe: o corpus fecha a `~1e-7` contra uma lei que não tem esse termo |
+| **C4** | **§4**, determinismo | a metade *abaixo* do limiar está citada; a metade *acima* (o alvo não é reprodutível) não cita as corridas de **repetibilidade** que o oráculo produziu e que este ledger regista |
+
+#### Funcional — 2 referências penduradas
+
+⚠️ **§2.3** fala da *«média do passo 4»* e **§12.1** do *«teste do §2.2 passo 3»* — e o §2.2 **não tem
+passos numerados** desde a emenda 1, que os substituiu pelos três conjuntos precisamente para matar a
+forma espelhada. As duas referências são **irresolúveis** para quem implementa e são o **fóssil da
+decomposição que foi removida**. Uma palavra cada.
+
+#### ⛔ Conferido e LIMPO — não reabrir
+
+- **§2.2 / §2.5, o 2.º argumento do teste de lado** (adendo C da missão): **conferido no fonte — é o
+  ponto de aplicação**, e entrou **legitimamente**: é o algoritmo (§4.1.11), e a consequência dele
+  tem fixtura com número (§11.3). ✅
+- **§3.1** em forma de atribuições: conferido contra o fonte — é a **matemática** de uma propagação de
+  máximo por Jacobi com o teste de lado sobre os recém-alcançados, não um espelho com intermediários
+  removíveis; não há forma fechada a preferir. Deixar como está.
+- **§6**: a regra do octante e a regra das **duas** inversões re-derivadas e **exactas**.
+- **§2.3** (origem de recurso), **§3.2** (as duas regras de paragem, o retrocesso dos pesos e o
+  *«`A` da última varredura, pesos da anterior»*), **§5.4** (o plano pela cabeça inicial), **§5.5**
+  (a guarda), **§3** (o tecto de um segmento), **§5.2** (a constante, medida): **exactos**.
+
+#### A leitura de método desta passagem
+
+> ⛔⛔ **A varredura da espécie acerta onde a espécie tem NOME e falha onde ela veste a roupa de um
+> FACTO.** A emenda 2 fez o que a 2.ª passagem mandou — varreu o documento inteiro e apanhou mais
+> seis por conta própria — e mesmo assim ficaram as **duas** formas que não se parecem com
+> «descrição de programa»: uma **tabela de factos correctos cuja ORGANIZAÇÃO é a do armazenamento do
+> alvo**, e uma **álgebra correcta com uma consequência inventada**.
+> ⇒ o teste que falta não é *«isto descreve o programa?»* — é **«que fixtura reprova se eu escrever
+> o CONTRÁRIO disto?»**. As duas sobreviventes não têm nenhuma, e por isso passaram três filtragens.
+
+---
+
 ## Espec
 
 | versão | caminho | rascunho | filtragem §4.3 | sweep | data |

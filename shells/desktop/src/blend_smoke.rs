@@ -170,45 +170,7 @@ impl crate::App {
             // FLUEM ao longo do arco (não pela reta). É o que a edição no modo Node faz ao vivo:
             // selecione o objeto, modo Node, arraste os pontos do spine e os passos re-fluem.
             8 if level == 3 => {
-                let ids: Vec<u64> = self
-                    .gfx
-                    .as_ref()
-                    .expect("gfx")
-                    .vec_scene
-                    .paths()
-                    .iter()
-                    .map(|p| p.id)
-                    .collect();
-                self.vec_set_draw_mode(ph2d_tool_vector::DrawMode::Select);
-                let Some(gfx) = self.gfx.as_mut() else { return };
-                let xf = ph2d_vec_entities::transform::build(&gfx.sim, &self.vec.entities);
-                let mut made = crate::blend_live::create(&mut gfx.vec_scene, &xf, &ids, 6);
-                if let Some((spine, blend)) = made.as_mut() {
-                    blend.spine_authored = true; // o artista "editou" a curva
-                    // Curva o spine num arco: pontas nos centros das fontes, pico acima do meio.
-                    if let Some(p) = gfx.vec_scene.path_mut(*spine)
-                        && p.verts.len() == 2
-                    {
-                        let (a, b) = (p.verts[0].anchor, p.verts[1].anchor);
-                        let peak = [(a[0] + b[0]) * 0.5, (a[1] + b[1]) * 0.5 + 3.0];
-                        p.verts = [a, peak, b].map(ph2d_vec_scene::VecVertex::corner).to_vec();
-                    }
-                }
-                if let Some((spine, _)) = &made {
-                    self.vec.pen.select_many(&[*spine]);
-                }
-                self.vec.blend_pending = made;
-                // Entra em modo Node: o spine sobe para o TOPO (acima das formas e dos passos) e
-                // aparece com as âncoras — pronto para arrastar (ADR-0128). Em Select ele ficaria
-                // no z dele (traço sutil), possivelmente sob as formas.
-                self.vec_set_draw_mode(ph2d_tool_vector::DrawMode::Node);
-                self.any_input_this_frame = true;
-                eprintln!(
-                    "[blend-smoke] SPINE editavel: 6 passos ao longo de um ARCO autorado, em modo \
-                     Node (o spine no TOPO, com ancoras). Arraste um ponto INTERIOR e os passos \
-                     re-fluem; arraste uma PONTA e a FORMA daquela ponta se move junto (editar a \
-                     curva no Node = mover a forma no Select), a curva toda se adapta (ADR-0128)."
-                );
+                self.blend_smoke_arc_spine();
             }
             // Pick Shapes (C2b): entra no modo Pick. NÃO cria o blend — o artista clica as formas
             // na ordem que quiser (a linha azul mostra a cadeia se formando) e aperta Blend.
@@ -257,5 +219,52 @@ impl crate::App {
             }
             _ => {}
         }
+    }
+
+    /// **O SPINE editável** (`=3`, frame 8): cria o blend e entrega-o com um spine CURVO e AUTORADO,
+    /// já em modo Node.
+    ///
+    /// ⚠️ Saiu do [`Self::blend_smoke`] pelo tecto de 200 LOC por função (`fn_loc_caps`), verbatim —
+    /// o `return` de dentro devolvia do smoke, e este braço era o último trabalho dele no quadro.
+    fn blend_smoke_arc_spine(&mut self) {
+        let ids: Vec<u64> = self
+            .gfx
+            .as_ref()
+            .expect("gfx")
+            .vec_scene
+            .paths()
+            .iter()
+            .map(|p| p.id)
+            .collect();
+        self.vec_set_draw_mode(ph2d_tool_vector::DrawMode::Select);
+        let Some(gfx) = self.gfx.as_mut() else { return };
+        let xf = ph2d_vec_entities::transform::build(&gfx.sim, &self.vec.entities);
+        let mut made = crate::blend_live::create(&mut gfx.vec_scene, &xf, &ids, 6);
+        if let Some((spine, blend)) = made.as_mut() {
+            blend.spine_authored = true; // o artista "editou" a curva
+            // Curva o spine num arco: pontas nos centros das fontes, pico acima do meio.
+            if let Some(p) = gfx.vec_scene.path_mut(*spine)
+                && p.verts.len() == 2
+            {
+                let (a, b) = (p.verts[0].anchor, p.verts[1].anchor);
+                let peak = [(a[0] + b[0]) * 0.5, (a[1] + b[1]) * 0.5 + 3.0];
+                p.verts = [a, peak, b].map(ph2d_vec_scene::VecVertex::corner).to_vec();
+            }
+        }
+        if let Some((spine, _)) = &made {
+            self.vec.pen.select_many(&[*spine]);
+        }
+        self.vec.blend_pending = made;
+        // Entra em modo Node: o spine sobe para o TOPO (acima das formas e dos passos) e
+        // aparece com as âncoras — pronto para arrastar (ADR-0128). Em Select ele ficaria
+        // no z dele (traço sutil), possivelmente sob as formas.
+        self.vec_set_draw_mode(ph2d_tool_vector::DrawMode::Node);
+        self.any_input_this_frame = true;
+        eprintln!(
+            "[blend-smoke] SPINE editavel: 6 passos ao longo de um ARCO autorado, em modo \
+                     Node (o spine no TOPO, com ancoras). Arraste um ponto INTERIOR e os passos \
+                     re-fluem; arraste uma PONTA e a FORMA daquela ponta se move junto (editar a \
+                     curva no Node = mover a forma no Select), a curva toda se adapta (ADR-0128)."
+        );
     }
 }

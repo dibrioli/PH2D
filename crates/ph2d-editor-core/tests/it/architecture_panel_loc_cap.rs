@@ -105,17 +105,6 @@ const FN_OVERAGE_OK: &[(&str, &str, usize, &str)] = &[
     //    funcao ficou em **190**, sob o cap de 200. ⇒ o censo de obsolescencia cobrou a entrada no
     //    mesmo fecho. *Uma folga so' desce quando alguem lhe encosta.*
     (
-        "ph2d-panel-equalize-sizes/src/paint.rs",
-        "paint_body_sections",
-        237,
-        "unmasked by the 2026-07-10 parser fix; ratcheted 249 -> 237 em 2026-08-20 quando a \
-         correccao do layout do modo Fixed o empurrou para 253 e as duas linhas de ACCAO sairam \
-         para o IRMAO `paint_actions.rs`. ⚠️ A primeira tentativa extraiu-as no MESMO ficheiro: \
-         curou este tecto e empurrou o do FICHEIRO para 608 contra 600 — os dois tetos medem \
-         grandezas diferentes, e o corte que cura ambos e' para o irmao. Split por seccao continua \
-         diferido (needs smoke)",
-    ),
-    (
         "ph2d-panel-audio-mixer/src/paint.rs",
         "paint",
         203,

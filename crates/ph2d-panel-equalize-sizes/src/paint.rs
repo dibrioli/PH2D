@@ -175,6 +175,119 @@ fn paint_body_sections(
     );
     y += row_h + row_gap;
 
+    y = paint_mode_rows(
+        snapshot,
+        inner_x,
+        inner_w,
+        row_h,
+        row_gap,
+        y,
+        store,
+        hit_index,
+        scene,
+        text_system,
+        theme,
+    );
+
+    y += row_gap;
+
+    // ── Section: Upscale if smaller (accent toggle) ─────────────────
+    let upscale_on = snapshot.upscale_if_smaller;
+    paint_toggle_button(
+        Rect::new(inner_x, y, inner_w, row_h),
+        "Upscale if smaller",
+        ph2d_tool_equalize_sizes::ids::EQS_UPSCALE_IF_SMALLER,
+        upscale_on,
+        store,
+        hit_index,
+        scene,
+        text_system,
+        theme,
+    );
+    y += row_h + row_gap;
+
+    if upscale_on {
+        let alg_row = Rect::new(inner_x, y, inner_w, row_h);
+        paint_radio_row(
+            alg_row,
+            &[
+                (
+                    "Lanczos",
+                    ph2d_tool_equalize_sizes::ids::EQS_ALG_LANCZOS,
+                    snapshot.upscale_algorithm == UpscaleAlgorithm::Lanczos3,
+                ),
+                (
+                    "Nearest",
+                    ph2d_tool_equalize_sizes::ids::EQS_ALG_NEAREST,
+                    snapshot.upscale_algorithm == UpscaleAlgorithm::Nearest,
+                ),
+                (
+                    "EPX",
+                    ph2d_tool_equalize_sizes::ids::EQS_ALG_EPX,
+                    snapshot.upscale_algorithm == UpscaleAlgorithm::Epx,
+                ),
+            ],
+            store,
+            hit_index,
+            scene,
+            text_system,
+            theme,
+        );
+        y += row_h + row_gap;
+    }
+
+    y += row_gap;
+
+    // ── Section: Rasterize after (accent toggle) ────────────────────
+    paint_toggle_button(
+        Rect::new(inner_x, y, inner_w, row_h),
+        "Rasterize after",
+        ph2d_tool_equalize_sizes::ids::EQS_RASTERIZE_AFTER,
+        snapshot.rasterize_after,
+        store,
+        hit_index,
+        scene,
+        text_system,
+        theme,
+    );
+    y += row_h + row_gap;
+
+    y += row_gap;
+
+    // As duas linhas de AÇÃO moram num IRMÃO — ver [`crate::paint_actions`].
+    crate::paint_actions::paint_action_rows(
+        scene,
+        text_system,
+        theme,
+        store,
+        hit_index,
+        inner_x,
+        inner_w,
+        row_h,
+        row_gap,
+        y,
+    )
+}
+
+/// **As linhas que dependem do modo** — os dois campos do `Fixed`, e a célula, o `Offset`, o tamanho
+/// final e o *Arrange on Grid* do `Grid` (o `Max` não tem nenhuma).
+///
+/// ⚠️ Saiu do [`paint_body_sections`] pelo tecto de 200 LOC por função, verbatim: recebe o `y` e
+/// devolve-o avançado pelo que cada modo de facto pintou.
+#[allow(clippy::too_many_arguments)]
+fn paint_mode_rows(
+    snapshot: &EqualizeSizesUiSnapshot,
+    inner_x: f32,
+    inner_w: f32,
+    row_h: f32,
+    row_gap: f32,
+    mut y: f32,
+    store: &WidgetStore,
+    hit_index: &mut HitIndex,
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+) -> f32 {
     // ── Mode-conditional rows ───────────────────────────────────────
     match snapshot.target_mode {
         TargetMode::Fixed => {
@@ -296,85 +409,7 @@ fn paint_body_sections(
             // No extra row — preview text (Final size: …) is optional v2.
         }
     }
-
-    y += row_gap;
-
-    // ── Section: Upscale if smaller (accent toggle) ─────────────────
-    let upscale_on = snapshot.upscale_if_smaller;
-    paint_toggle_button(
-        Rect::new(inner_x, y, inner_w, row_h),
-        "Upscale if smaller",
-        ph2d_tool_equalize_sizes::ids::EQS_UPSCALE_IF_SMALLER,
-        upscale_on,
-        store,
-        hit_index,
-        scene,
-        text_system,
-        theme,
-    );
-    y += row_h + row_gap;
-
-    if upscale_on {
-        let alg_row = Rect::new(inner_x, y, inner_w, row_h);
-        paint_radio_row(
-            alg_row,
-            &[
-                (
-                    "Lanczos",
-                    ph2d_tool_equalize_sizes::ids::EQS_ALG_LANCZOS,
-                    snapshot.upscale_algorithm == UpscaleAlgorithm::Lanczos3,
-                ),
-                (
-                    "Nearest",
-                    ph2d_tool_equalize_sizes::ids::EQS_ALG_NEAREST,
-                    snapshot.upscale_algorithm == UpscaleAlgorithm::Nearest,
-                ),
-                (
-                    "EPX",
-                    ph2d_tool_equalize_sizes::ids::EQS_ALG_EPX,
-                    snapshot.upscale_algorithm == UpscaleAlgorithm::Epx,
-                ),
-            ],
-            store,
-            hit_index,
-            scene,
-            text_system,
-            theme,
-        );
-        y += row_h + row_gap;
-    }
-
-    y += row_gap;
-
-    // ── Section: Rasterize after (accent toggle) ────────────────────
-    paint_toggle_button(
-        Rect::new(inner_x, y, inner_w, row_h),
-        "Rasterize after",
-        ph2d_tool_equalize_sizes::ids::EQS_RASTERIZE_AFTER,
-        snapshot.rasterize_after,
-        store,
-        hit_index,
-        scene,
-        text_system,
-        theme,
-    );
-    y += row_h + row_gap;
-
-    y += row_gap;
-
-    // As duas linhas de AÇÃO moram num IRMÃO — ver [`crate::paint_actions`].
-    crate::paint_actions::paint_action_rows(
-        scene,
-        text_system,
-        theme,
-        store,
-        hit_index,
-        inner_x,
-        inner_w,
-        row_h,
-        row_gap,
-        y,
-    )
+    y
 }
 
 fn paint_scrollbar_and_publish(

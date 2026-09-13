@@ -18,7 +18,7 @@
 use std::fs;
 
 fn key_input() -> String {
-    fs::read_to_string("src/input_dispatch/keyboard.rs").expect("o key_input da shell")
+    crate::input_text::keyboard()
 }
 
 /// ⚠️ **O irmão para onde a guarda foi cortada** (teto de LOC, HR-18). Este gate re-ancorou-se no

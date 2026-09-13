@@ -195,8 +195,8 @@ fn the_focus_edge_opens_raises_and_arms() {
 /// unidade não alcança.
 #[test]
 fn the_bone_creation_site_absorbs_the_focus_edge() {
-    const DISPATCH: &str = include_str!("../../src/input_dispatch.rs");
-    let src = code_only(DISPATCH);
+    let dispatch = crate::input_text::dispatch();
+    let src = code_only(&dispatch);
     let linhas: Vec<&str> = src.lines().collect();
     let nascimento = linhas
         .iter()
@@ -221,8 +221,8 @@ fn the_bone_creation_site_absorbs_the_focus_edge() {
 /// positiva (o press decide, e decide certo) é gateada no módulo do gesto.
 #[test]
 fn the_release_never_asks_the_selection_who_the_parent_is() {
-    const DISPATCH: &str = include_str!("../../src/input_dispatch.rs");
-    let src = code_only(DISPATCH);
+    let dispatch = crate::input_text::dispatch();
+    let src = code_only(&dispatch);
     let linhas: Vec<&str> = src.lines().collect();
     let up = linhas
         .iter()
@@ -252,7 +252,7 @@ fn the_release_never_asks_the_selection_who_the_parent_is() {
 /// criar · adoptar. A metade do *o que a porta responde* é gateada no módulo dela.
 #[test]
 fn the_release_splices_through_the_same_door_the_preview_asked() {
-    const DISPATCH: &str = include_str!("../../src/input_dispatch.rs");
+    let dispatch = crate::input_text::dispatch();
     // ⛔⛔ **A AGULHA SEGUE O SUJEITO, E EU APONTEI-A PARA ONDE O FICHEIRO FOI** (W2 Fase C).
     //
     // A 1.ª correcção desta fatia mandou este `PICK` para
@@ -265,7 +265,7 @@ fn the_release_splices_through_the_same_door_the_preview_asked() {
     // morph). *Re-apontar uma agulha é perguntar para onde foi o SUJEITO dela, nunca para onde foi
     // o ficheiro* — e aqui o ficheiro partiu-se em dois, com o sujeito de cada metade diferente.
     const PREVIEW: &str = include_str!("../../src/skeleton_app_bridge.rs");
-    let src = code_only(DISPATCH);
+    let src = code_only(&dispatch);
     let linhas: Vec<&str> = src.lines().collect();
     let up = linhas
         .iter()

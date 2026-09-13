@@ -36,7 +36,7 @@
 //! ⚠️ Ele afirma uma **relação posicional**, nunca uma distância em bytes — a lição dos dois
 //! arch-gates que a `line/Vector` levou vermelhos ao `main` em 2026-07-23.
 
-const SRC: &str = include_str!("../../src/input_dispatch.rs");
+static SRC: std::sync::LazyLock<String> = std::sync::LazyLock::new(crate::input_text::dispatch);
 
 /// O corpo de `on_close_request`, do `fn` até o fim do `match` que ele é.
 ///

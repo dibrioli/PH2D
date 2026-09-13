@@ -28,7 +28,7 @@
 //! `dispatch` recebe e exige que seja esse o valor guardado — se alguém renomear o binding, o
 //! gate acompanha; se alguém guardar OUTRO mapa, ele sangra.
 
-const INPUT: &str = include_str!("../../src/input_dispatch.rs");
+static INPUT: std::sync::LazyLock<String> = std::sync::LazyLock::new(crate::input_text::dispatch);
 
 /// O QUADRO pela ordem em que corre (`frame_text::render_frame`).
 ///
@@ -117,7 +117,7 @@ fn every_pick_door_is_handed_the_drawn_map() {
     let mut seen = 0usize;
     for door in PICK_DOORS {
         let mut from = 0usize;
-        while let Some((end, args)) = args_of(INPUT, door, from) {
+        while let Some((end, args)) = args_of(&INPUT, door, from) {
             from = end + 1;
             seen += 1;
             assert!(

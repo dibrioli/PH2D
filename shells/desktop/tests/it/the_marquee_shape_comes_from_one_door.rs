@@ -18,7 +18,8 @@
 //! ⚠️ As asserções afirmam uma RELAÇÃO ou um CONTEÚDO dentro de uma janela sintática, nunca uma
 //! distância em bytes — esta linha já teve dois arch-gates apodrecerem por medirem bytes.
 
-const DISPATCH: &str = include_str!("../../src/input_dispatch.rs");
+static DISPATCH: std::sync::LazyLock<String> =
+    std::sync::LazyLock::new(crate::input_text::dispatch);
 
 /// O QUADRO pela ordem em que corre (`frame_text::render_frame`).
 ///
@@ -103,7 +104,7 @@ fn the_one_door_composes_the_sticky_chip_with_the_modifier() {
 /// **O release ramifica na forma que o press congelou** — e as duas rotas existem.
 #[test]
 fn the_release_routes_the_frozen_shape_to_its_own_selection() {
-    let take = at(DISPATCH, "if let Some(m) = self.vec.marquee.take()");
+    let take = at(&DISPATCH, "if let Some(m) = self.vec.marquee.take()");
     let window = &DISPATCH[take..(take + 2600).min(DISPATCH.len())];
     assert!(
         window.contains("m.shape"),

@@ -54,6 +54,7 @@ mod fn_loc_caps;
 mod frame_text;
 mod geometric_tools_keep_their_precision;
 mod handle_scenes_start_paused;
+mod input_text;
 mod joint_anchor_gizmo;
 mod joint_draw_gesture;
 mod measure_painter_bridge_phases;

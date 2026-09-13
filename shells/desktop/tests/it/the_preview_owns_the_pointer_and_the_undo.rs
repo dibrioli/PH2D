@@ -54,7 +54,7 @@ fn body_of<'a>(src: &'a str, fn_sig: &str, what: &str) -> &'a str {
 /// adiante (aqueles são modais sobre o Vector, este é modal sobre o editor inteiro).
 #[test]
 fn the_preview_consumes_the_click_before_any_tool() {
-    let src = read("src/input_dispatch.rs");
+    let src = crate::input_text::dispatch();
     let handler = body_of(
         &src,
         "pub(crate) fn on_mouse_input",
@@ -134,7 +134,7 @@ fn the_gizmo_is_not_published_while_the_preview_runs() {
 /// apresentação dele pela mesma razão: olhar de perto não é editar.
 #[test]
 fn the_pointer_move_feeds_the_preview_without_consuming_it() {
-    let src = read("src/input_dispatch.rs");
+    let src = crate::input_text::dispatch();
     let moved = at(
         &src,
         "pub(crate) fn on_cursor_moved",
@@ -221,7 +221,7 @@ fn escape_leaves_the_preview_before_any_other_escape() {
     // 2026-07-27: com a cadeia atrás de uma porta, um gate que só olha para DENTRO dela fica
     // verde sobre um teclado que nunca a consulta. E a POSIÇÃO da chamada é a lei que o corte
     // preservou — depois dos atalhos da timeline, antes de o Painter reivindicar as teclas.
-    let kb = read("src/input_dispatch/keyboard.rs");
+    let kb = crate::input_text::keyboard();
     let call = at(
         &kb,
         "self.escape_key(",

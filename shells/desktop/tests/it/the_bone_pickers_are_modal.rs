@@ -15,7 +15,8 @@
 //! `the_node_ops_are_wired.rs::the_guide_press_precedes_the_others`, cuja 1.ª versão comparava com a
 //! declaração e não podia estar certa.
 
-const DISPATCH: &str = include_str!("../../src/input_dispatch.rs");
+static DISPATCH: std::sync::LazyLock<String> =
+    std::sync::LazyLock::new(crate::input_text::dispatch);
 
 /// **O fonte sem comentários** — um censo textual que não os tira mede as duas coisas ao mesmo
 /// tempo, e mente nos DOIS sentidos: uma nota que cita a chamada conta como chamada, e uma chamada
@@ -33,7 +34,7 @@ fn code_only(src: &str) -> String {
 /// ⭐⭐⭐ **O pick do ALVO precede o gesto que CRIA um osso.**
 #[test]
 fn the_smart_bone_target_pick_precedes_the_bone_gesture() {
-    let src = code_only(DISPATCH);
+    let src = code_only(&DISPATCH);
     let pick = src
         .find("self.smart_pick_click(")
         .expect("o pick do alvo é despachado — sem esta chamada ele nunca é modal");
@@ -59,7 +60,7 @@ fn the_smart_bone_target_pick_precedes_the_bone_gesture() {
 /// certo só esticava a janela até ao bloco seguinte.
 #[test]
 fn the_target_pick_consumes_the_press() {
-    let src = code_only(DISPATCH);
+    let src = code_only(&DISPATCH);
     let at = src
         .find("self.smart_pick_click(")
         .expect("o pick do alvo é despachado");
@@ -85,7 +86,7 @@ fn the_target_pick_consumes_the_press() {
 /// vocabulário nasceria fora dela, calado.
 #[test]
 fn the_target_pick_guard_asks_no_tool_and_no_mode() {
-    let src = code_only(DISPATCH);
+    let src = code_only(&DISPATCH);
     let at = src
         .find("self.skeleton.smart_pick.is_some()")
         .expect("a guarda modal do pick do alvo");
@@ -110,7 +111,7 @@ fn the_target_pick_guard_asks_no_tool_and_no_mode() {
 /// morto.*
 #[test]
 fn the_bone_handles_are_grabbed_before_the_tool_takes_the_canvas() {
-    let src = code_only(DISPATCH);
+    let src = code_only(&DISPATCH);
     let arm = src
         .find("self.bone_handle_at((evt.x, evt.y))")
         .expect("o arm das alças de osso é despachado — sem ele elas acendem e não pegam");
@@ -131,7 +132,7 @@ fn the_bone_handles_are_grabbed_before_the_tool_takes_the_canvas() {
 /// até ao próximo `return;` estica-se até ao bloco seguinte quando o certo é apagado.
 #[test]
 fn the_bone_handle_arm_consumes_the_press() {
-    let src = code_only(DISPATCH);
+    let src = code_only(&DISPATCH);
     let linhas: Vec<&str> = src.lines().collect();
     let i = linhas
         .iter()
@@ -158,7 +159,7 @@ fn the_bone_handle_arm_consumes_the_press() {
 /// seguia o rato para sempre, sem botão nenhum apertado*.
 #[test]
 fn the_bone_handle_is_released_in_every_mode_it_can_be_grabbed_in() {
-    let src = code_only(DISPATCH);
+    let src = code_only(&DISPATCH);
     let solta = src
         .find("self.skeleton.bone_pose = None;")
         .expect("o Up que liberta a alça vive neste ficheiro");

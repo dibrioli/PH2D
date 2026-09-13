@@ -29,7 +29,7 @@ fn read(path: &str) -> String {
 /// PROPRIEDADE.
 #[test]
 fn the_walk_keys_are_observed_without_being_consumed() {
-    let src = read("src/input_dispatch/keyboard.rs");
+    let src = crate::input_text::keyboard();
     let (open, call) = observation_block(&src);
     assert!(
         !src[open..call].contains("return"),
@@ -56,7 +56,7 @@ fn the_walk_keys_are_observed_without_being_consumed() {
 /// sem modificador e solta com o Ctrl preso nunca seria desarmada.
 #[test]
 fn a_modifier_chord_never_reaches_the_player() {
-    let src = read("src/input_dispatch/keyboard.rs");
+    let src = crate::input_text::keyboard();
     let (open, call) = observation_block(&src);
     let block = &src[open..call];
     for probe in ["control_key()", "alt_key()", "super_key()"] {
@@ -157,7 +157,7 @@ fn the_input_is_handed_over_before_the_hold_early_out() {
 /// gate que lê fonte.
 #[test]
 fn the_files_the_gate_reads_are_the_ones_that_carry_the_wire() {
-    assert!(read("src/input_dispatch/keyboard.rs").contains("winit_to_input_keycode"));
+    assert!(crate::input_text::keyboard().contains("winit_to_input_keycode"));
     assert!(
         crate::frame_text::render_frame().contains("ph2d_app_physics::bridge::dispatch::dispatch(")
     );

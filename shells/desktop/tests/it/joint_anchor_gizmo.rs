@@ -17,7 +17,7 @@ use std::fs;
 /// resolution to the guard that consumes the flag. This is where a Down on either
 /// anchor dot becomes a drag.
 fn joint_anchor_down_block() -> String {
-    let src = fs::read_to_string("src/input_dispatch.rs").expect("input_dispatch.rs");
+    let src = crate::input_text::dispatch();
     let start = src
         .find("let anchor_hit = hit_id.and_then(")
         .expect("the joint-anchor Down branch is gone");
@@ -123,7 +123,7 @@ fn grabbing_an_anchor_selects_its_joint() {
 /// state exists, the gesture does not.
 #[test]
 fn the_move_dispatch_advances_the_anchor_drag() {
-    let src = fs::read_to_string("src/input_dispatch.rs").expect("input_dispatch.rs");
+    let src = crate::input_text::dispatch();
     assert!(
         src.contains("self.advance_joint_anchor_drag();"),
         "no Move site advances the joint-anchor drag"
@@ -147,7 +147,7 @@ fn the_move_dispatch_advances_the_anchor_drag() {
 /// into `gizmo_drag.rs` goes red here.
 #[test]
 fn the_generic_translate_does_not_reseed_a_joints_anchors() {
-    let src = fs::read_to_string("src/input_dispatch/gizmo_drag.rs").expect("gizmo_drag.rs");
+    let src = crate::input_text::gizmo_drag_file();
     // Strip comments: the removal is a fact about CODE, and a doc-comment that
     // explains why the tail is gone must not read as the tail being back.
     let code: String = src

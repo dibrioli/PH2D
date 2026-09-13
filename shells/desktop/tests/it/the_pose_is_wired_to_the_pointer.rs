@@ -11,10 +11,9 @@
 //! `the_dispatch_is_handed_the_live_geometry`. Afirma-se *quem é chamado*, *com
 //! que argumentos*, e relações de ORDEM que nenhum formato move.
 
-use std::fs;
-
+/// O `input_dispatch.rs` reconstituído, os ramos emendados onde correm (`input_text`, 2026-09-13).
 fn dispatch_src() -> String {
-    fs::read_to_string("src/input_dispatch.rs").expect("input_dispatch.rs")
+    crate::input_text::dispatch()
 }
 
 /// Igual ao irmão da mão, e a remoção de comentários é load-bearing pela mesma

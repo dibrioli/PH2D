@@ -18,11 +18,6 @@ fn manifest() -> String {
     fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/Cargo.toml")).expect("Cargo.toml")
 }
 
-fn src(name: &str) -> String {
-    fs::read_to_string(format!("{}/src/{name}", env!("CARGO_MANIFEST_DIR")))
-        .unwrap_or_else(|e| panic!("{name}: {e}"))
-}
-
 /// **O arquivo de projeto inteiro, como FAMÍLIA** — todo `src/project*.rs` que não é suíte.
 ///
 /// ⚠️ **Um arch-gate ancorado num NOME de arquivo é um proxy que expira**, e este expirou: a
@@ -81,7 +76,7 @@ fn the_shell_compiles_the_tokens_panel_into_its_registry() {
 /// sem abridor próprio é feature que ninguém alcança.
 #[test]
 fn the_t_key_toggles_the_tokens_panel() {
-    let s = src("input_handlers.rs");
+    let s = crate::input_text::handlers();
     let at = s
         .find("KeyCode::KeyT =>")
         .expect("o braço da tecla T mudou de forma — reancore este gate");

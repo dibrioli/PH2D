@@ -130,11 +130,7 @@ fn every_live_host_that_rewrites_verts_is_named_by_the_radius_handle_policy() {
 /// [[feedback_two_doors_to_the_same_question_diverge]]
 #[test]
 fn the_grab_side_asks_the_same_question_as_the_paint_side() {
-    let dispatch = fs::read_to_string(concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/src/input_dispatch.rs"
-    ))
-    .expect("input_dispatch.rs");
+    let dispatch = crate::input_text::dispatch();
     assert!(
         dispatch.contains("corner_handles::has_derived_verts"),
         "o lado que AGARRA a alça deixou de chamar `corner_handles::has_derived_verts` — as \

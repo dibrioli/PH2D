@@ -22,7 +22,8 @@
 /// *sync → adopção da lâmina → settle* é de EXECUÇÃO, e só o texto emendado a tem.
 static LOOP_SRC: std::sync::LazyLock<String> =
     std::sync::LazyLock::new(crate::frame_text::render_frame);
-const DISPATCH: &str = include_str!("../../src/input_dispatch.rs");
+static DISPATCH: std::sync::LazyLock<String> =
+    std::sync::LazyLock::new(crate::input_text::dispatch);
 
 /// A posição da 1ª ocorrência de `needle` em `src`, ou pânico com a razão.
 /// A PONTE do vetor, INTEIRA — o pai mais os irmãos que o teto de 600 LOC (HR-18) obriga a
@@ -83,7 +84,7 @@ fn the_three_node_ops_are_drained_by_the_shell() {
 /// flag e deixava as duas pontas coincidentes como dois vértices distintos.
 #[test]
 fn the_close_button_goes_through_the_welding_door() {
-    let f = at(DISPATCH, "pub(crate) fn apply_vec_toggle_closed(");
+    let f = at(&DISPATCH, "pub(crate) fn apply_vec_toggle_closed(");
     // A janela é o CORPO da função: o `}` em coluna zero que a fecha. (Até 2026-09-12 fechava no
     // `history.push_undo(pre)`, que morreu com a `History` do vetor.)
     let end = at(&DISPATCH[f..], "\n}\n") + f;
@@ -122,7 +123,7 @@ fn the_cut_mode_draws_with_the_pen_and_owns_no_press_branch() {
         "o modo Corte ganhou um ramo de press proprio -- ele deixaria de desenhar pela caneta"
     );
     // E o press da caneta ARMA a adoção da lâmina.
-    let pen = at(DISPATCH, "let click = self.vec.pen.on_press(");
+    let pen = at(&DISPATCH, "let click = self.vec.pen.on_press(");
     let window = &DISPATCH[pen..at(&DISPATCH[pen..], "Some(kind) => {") + pen];
     for (needle, why) in [
         ("DrawMode::Cut", "a adocao nao e' gateada no modo Corte"),
@@ -361,10 +362,7 @@ fn each_pending_snap_toggle_lands_on_its_own_field() {
 /// linha já carregaram em 23/07).
 #[test]
 fn the_guide_gesture_runs_before_any_tool_claims_the_pointer() {
-    let src = std::fs::read_to_string(
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src/input_dispatch.rs"),
-    )
-    .expect("input_dispatch.rs");
+    let src = crate::input_text::dispatch();
     let guide = src
         .find("self.guide_pointer_down(")
         .expect("o press de guia é despachado");
@@ -432,10 +430,7 @@ fn fn_body(src: &str, name: &str, next: &[&str]) -> String {
 /// *"sem isto a mão não segue o cursor — ela pega e fica onde estava."*
 #[test]
 fn each_phase_of_the_guide_drag_is_wired_to_the_door_that_delivers_it() {
-    let src = std::fs::read_to_string(
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src/input_dispatch.rs"),
-    )
-    .expect("input_dispatch.rs");
+    let src = crate::input_text::dispatch();
     let moved = fn_body(
         &src,
         "pub(crate) fn on_cursor_moved(",

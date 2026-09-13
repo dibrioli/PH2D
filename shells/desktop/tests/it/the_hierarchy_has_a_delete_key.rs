@@ -23,7 +23,7 @@ const CHAIN: &str = include_str!("../../src/input_dispatch/keyboard_hierarchy.rs
 /// **A cadeia é CHAMADA** — sem este fio ela é código morto e o report volta inteiro.
 #[test]
 fn the_keyboard_calls_the_hierarchy_chain() {
-    let kb = fs::read_to_string("src/input_dispatch/keyboard.rs").expect("keyboard.rs");
+    let kb = crate::input_text::keyboard();
     // ⚠️ **A ASSERÇÃO É A INSTRUÇÃO INTEIRA, e a razão foi medida:** a 1.ª redacção procurava só a
     // chamada, e a mutação `if false && self.hierarchy_key_chain(...)` **SOBREVIVEU** — a cadeia
     // morta com o gate verde. *Um gate textual não distingue uma chamada viva de uma desactivada;

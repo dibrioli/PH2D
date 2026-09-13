@@ -24,7 +24,8 @@
 /// O teclado da escultura.
 const KEYS: &str = include_str!("../../../../crates/ph2d-app-sculpt3d/src/keys.rs");
 /// Onde os guardas das teclas NUAS moram.
-const DISPATCH: &str = include_str!("../../src/input_dispatch.rs");
+static DISPATCH: std::sync::LazyLock<String> =
+    std::sync::LazyLock::new(crate::input_text::dispatch);
 
 /// O corpo do braço do `Delete`, do `if` até ao `return true`.
 fn arm() -> &'static str {

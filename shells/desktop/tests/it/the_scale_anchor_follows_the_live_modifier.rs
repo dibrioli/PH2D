@@ -22,14 +22,12 @@
 //! `the_dispatch_is_handed_the_live_geometry` (2026-07-23) é que um proxy posicional expira na
 //! wave seguinte. O que se afirma é *qual pergunta é feita* e *onde a resposta pousa*.
 
-use std::fs;
-
 fn drag_src() -> String {
-    fs::read_to_string("src/input_dispatch/gizmo_drag.rs").expect("gizmo_drag.rs")
+    crate::input_text::gizmo_drag_file()
 }
 
 fn open_src() -> String {
-    fs::read_to_string("src/input_dispatch.rs").expect("input_dispatch.rs")
+    crate::input_text::dispatch()
 }
 
 /// **(1) O avanço do arrasto pergunta a âncora deste frame.**

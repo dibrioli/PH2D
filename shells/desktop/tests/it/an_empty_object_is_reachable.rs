@@ -85,7 +85,7 @@ fn the_extract_asks_whether_the_entity_is_on_the_canvas() {
 /// apanhar um filho ao tentar arrastar o pai.
 #[test]
 fn the_click_dispatch_starts_the_cycle_on_the_selection() {
-    let src = fs::read_to_string("src/input_dispatch.rs").expect("input_dispatch.rs");
+    let src = crate::input_text::dispatch();
     assert!(
         src.contains("pick_order::start_on_selection("),
         "o clique deixou de comecar o ciclo na selecao — arrastar um grupo volta a pegar um filho"

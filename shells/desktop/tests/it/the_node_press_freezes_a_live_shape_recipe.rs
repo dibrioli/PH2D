@@ -23,14 +23,8 @@
 //!
 //! Dep-free (std only).
 
-use std::fs;
-
 fn dispatch() -> String {
-    fs::read_to_string(concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/src/input_dispatch.rs"
-    ))
-    .expect("input_dispatch.rs")
+    crate::input_text::dispatch()
 }
 
 /// **A chamada existe, e a pergunta é feita pela PORTA.**

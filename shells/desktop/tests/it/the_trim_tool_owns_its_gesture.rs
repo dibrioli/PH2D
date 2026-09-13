@@ -17,7 +17,8 @@
 //! As asserções afirmam RELAÇÃO, nunca distância no fonte — esta linha já perdeu arch-gates duas
 //! vezes por medir bytes.
 
-const DISPATCH: &str = include_str!("../../src/input_dispatch.rs");
+static DISPATCH: std::sync::LazyLock<String> =
+    std::sync::LazyLock::new(crate::input_text::dispatch);
 /// **O QUADRO, pela ordem em que corre** — desde a OBRA 2 (2026-09-12) partido em fases (`fase_*`)
 /// noutros ficheiros; o realce do Trim mudou-se para `fase_pointer_subjects.rs`, e o `mod.rs` sozinho
 /// já não o contém. A agulha lê-se no texto emendado.
@@ -38,8 +39,8 @@ fn at(src: &str, needle: &str, onde: &str) -> usize {
 /// **Controle positivo:** as âncoras existem. Um scanner que não acha nada passaria em silêncio.
 #[test]
 fn the_scanner_finds_what_it_scans_for() {
-    at(DISPATCH, "ph2d_tool_vector::DrawMode::Trim", "o dispatch");
-    at(DISPATCH, "crate::vec_trim::apply(", "o dispatch");
+    at(&DISPATCH, "ph2d_tool_vector::DrawMode::Trim", "o dispatch");
+    at(&DISPATCH, "crate::vec_trim::apply(", "o dispatch");
     at(
         &frame(),
         "self.refresh_trim_hover(pointer);",
@@ -57,13 +58,13 @@ fn the_scanner_finds_what_it_scans_for() {
 #[test]
 fn the_press_never_falls_through_to_the_drawing_chain() {
     let arm = at(
-        DISPATCH,
+        &DISPATCH,
         "self.vec.draw_config.mode == ph2d_tool_vector::DrawMode::Trim",
         "o dispatch",
     );
-    let apply = at(DISPATCH, "crate::vec_trim::apply(", "o dispatch");
+    let apply = at(&DISPATCH, "crate::vec_trim::apply(", "o dispatch");
     let corner = at(
-        DISPATCH,
+        &DISPATCH,
         "if self.vec.draw_config.mode.is_corner_tool() {",
         "o dispatch",
     );
@@ -88,12 +89,12 @@ fn the_press_never_falls_through_to_the_drawing_chain() {
 #[test]
 fn the_click_consumes_the_highlighted_piece_and_does_not_recompute_it() {
     let arm = at(
-        DISPATCH,
+        &DISPATCH,
         "self.vec.draw_config.mode == ph2d_tool_vector::DrawMode::Trim",
         "o dispatch",
     );
     let corner = at(
-        DISPATCH,
+        &DISPATCH,
         "if self.vec.draw_config.mode.is_corner_tool() {",
         "o dispatch",
     );
@@ -112,11 +113,11 @@ fn the_click_consumes_the_highlighted_piece_and_does_not_recompute_it() {
 #[test]
 fn a_live_shape_freezes_its_recipe_before_the_cut() {
     let arm = at(
-        DISPATCH,
+        &DISPATCH,
         "self.vec.draw_config.mode == ph2d_tool_vector::DrawMode::Trim",
         "o dispatch",
     );
-    let apply = at(DISPATCH, "crate::vec_trim::apply(", "o dispatch");
+    let apply = at(&DISPATCH, "crate::vec_trim::apply(", "o dispatch");
     assert!(
         DISPATCH[arm..apply].contains("freeze_shape_recipe("),
         "sem congelar a receita, o `recook_into` come o corte no quadro seguinte"

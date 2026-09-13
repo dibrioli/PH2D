@@ -9,7 +9,8 @@
 //! FONTE. Cada um traz um **controle positivo** — um ficheiro renomeado deixaria a varredura vazia
 //! e o gate passaria por vácuo, que é a falha silenciosa que o `keyboard.rs` partido já produziu.
 
-const INPUT_HANDLERS: &str = include_str!("../../src/input_handlers.rs");
+static INPUT_HANDLERS: std::sync::LazyLock<String> =
+    std::sync::LazyLock::new(crate::input_text::handlers);
 const MAIN: &str = include_str!("../../src/main.rs");
 const GLUE: &str = include_str!("../../src/global_palette_input.rs");
 

@@ -23,10 +23,9 @@
 //! posicional expira na wave seguinte. Afirma-se *quem é chamado*, *com que
 //! argumentos*, e (no caso 3) uma **relação de ordem** que nenhum formato move.
 
-use std::fs;
-
+/// O `input_dispatch.rs` reconstituído, os ramos emendados onde correm (`input_text`, 2026-09-13).
 fn dispatch_src() -> String {
-    fs::read_to_string("src/input_dispatch.rs").expect("input_dispatch.rs")
+    crate::input_text::dispatch()
 }
 
 /// O corpo do `fn on_mouse_input`, do `{` de abertura até o fim do arquivo (o

@@ -37,9 +37,13 @@ fn the_hover_pick_happens_exactly_once() {
     let mut total = crate::frame_text::render_frame()
         .matches("pick_hovered_object(")
         .count();
-    for rel in ["src/render_loop/snapshots.rs", "src/input_dispatch.rs"] {
-        total += shell(rel).matches("pick_hovered_object(").count();
-    }
+    total += shell("src/render_loop/snapshots.rs")
+        .matches("pick_hovered_object(")
+        .count();
+    // O `input_dispatch.rs` reconstituído (`input_text`): os ramos que saíram dele contam no sítio da chamada.
+    total += crate::input_text::dispatch()
+        .matches("pick_hovered_object(")
+        .count();
     assert_eq!(
         total, 1,
         "o realce passou a ser picado {total} vezes por quadro — os consumidores estão em pontos \

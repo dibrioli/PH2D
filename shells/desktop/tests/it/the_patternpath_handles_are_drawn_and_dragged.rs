@@ -7,13 +7,6 @@
 //! unidade alcança a `render_loop` (ela precisa de janela e GPU). Quando o único consumidor é o
 //! desenho do shell, a prova é sobre o FONTE.
 
-use std::fs;
-
-fn shell(path: &str) -> String {
-    fs::read_to_string(format!("{}/src/{path}", env!("CARGO_MANIFEST_DIR")))
-        .unwrap_or_else(|e| panic!("ler {path}: {e}"))
-}
-
 /// O DESENHO das fichas está costurado no overlay, gateado pela política de modo (Select-only), e
 /// FORA do bloco `if overlay.edit` (falso no Select) — provado pela ordem contra as alças do
 /// conector, a mesma técnica do gate do texto.
@@ -52,7 +45,7 @@ fn the_render_loop_draws_the_handles_gated_on_select_mode() {
 /// (limpa). O press é irmão do `vec_textpath_handle_down` e vem ANTES do picking/gizmo genérico.
 #[test]
 fn the_render_loop_wires_the_handle_gesture() {
-    let disp = shell("input_dispatch.rs");
+    let disp = crate::input_text::dispatch();
     for (needle, what) in [
         (
             "vec_patternpath_handle_down",

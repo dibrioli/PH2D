@@ -94,11 +94,7 @@ fn the_motion_key_block_asks_whether_the_keys_are_live() {
 /// para trás.
 #[test]
 fn both_doors_are_built_from_the_one_focus_question() {
-    let src = fs::read_to_string(concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/src/input_dispatch.rs"
-    ))
-    .expect("input_dispatch.rs legível");
+    let src = crate::input_text::dispatch();
     for door in ["vector_keys_live", "motion_keys_live"] {
         let at = src
             .find(&format!("fn {door}(&self) -> bool {{"))

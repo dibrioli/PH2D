@@ -37,7 +37,7 @@ fn the_convert_button_asks_the_single_door() {
 /// barra) — que foi como o Enio o encontrou: *"nao funciona diretamente nos vertex das shapes"*.
 #[test]
 fn the_corner_gesture_freezes_a_live_shape_recipe() {
-    let dispatch = src("input_dispatch.rs");
+    let dispatch = crate::input_text::dispatch();
     assert!(
         dispatch.contains("vec_convert::freeze_shape_recipe"),
         "o press das ferramentas de quina deixou de congelar a receita da forma viva. Sem isso \

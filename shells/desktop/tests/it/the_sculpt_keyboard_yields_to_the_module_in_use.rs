@@ -126,7 +126,7 @@ fn the_donation_switch_survives_outside_the_clay() {
 /// exatamente no gesto que o Enio descreveu (*"logo que ele for aberto"*).
 #[test]
 fn a_tool_in_hand_wins_the_bare_keys() {
-    let src = fs::read_to_string("src/input_dispatch.rs").expect("input_dispatch.rs");
+    let src = crate::input_text::dispatch();
     // ⚠️ **A PORTA MUDOU DE CASA em 2026-09-04, e o gate seguiu-a** — as três perguntas saíram
     // para a `sculpt3d_keys_dead_reason`, que devolve **por que** as teclas estão mortas (o
     // report *«corrija o deletar com a tecla del»*: a tecla morria num guarda e nenhum dizia

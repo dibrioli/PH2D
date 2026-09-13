@@ -13,13 +13,6 @@
 //! ⚠️ **Cada asserção nomeia o que faltou.** Um gate que deixa de encontrar por uma
 //! mudança de forma passa a guardar nada, e um gate que não vê nada passa sempre.
 
-use std::fs;
-
-fn shell(path: &str) -> String {
-    fs::read_to_string(format!("{}/src/{path}", env!("CARGO_MANIFEST_DIR")))
-        .unwrap_or_else(|e| panic!("ler {path}: {e}"))
-}
-
 /// O DESENHO está costurado no laço de render, e recebe a SELEÇÃO — sem ela a
 /// trajetória apareceria para todo objeto animado do documento, que é espaguete.
 #[test]
@@ -90,7 +83,7 @@ fn the_toggle_converts_the_selected_objects_position_mode() {
 /// release (limpa + FECHA o undo).
 #[test]
 fn the_dispatch_wires_press_move_and_release() {
-    let disp = shell("input_dispatch.rs");
+    let disp = crate::input_text::dispatch();
     for (needle, what) in [
         (
             "self.motion_path_anchor_down(evt.x, evt.y)",
@@ -132,7 +125,7 @@ fn the_dispatch_wires_press_move_and_release() {
 /// uma feature no meio ([[feedback_a_gate_anchored_on_a_byte_distance_is_a_proxy_that_expires]]).
 #[test]
 fn the_anchor_press_runs_before_the_generic_picking() {
-    let disp = shell("input_dispatch.rs");
+    let disp = crate::input_text::dispatch();
     let press = disp
         .find("self.motion_path_anchor_down(evt.x, evt.y)")
         .expect("o press da âncora");
@@ -166,7 +159,7 @@ fn the_anchor_press_runs_before_the_generic_picking() {
 /// estável e ERRADO: a curva nova na tela, o objeto andando os números da velha.
 #[test]
 fn the_drag_writes_through_the_documents_single_door() {
-    let disp = shell("input_dispatch.rs");
+    let disp = crate::input_text::dispatch();
     assert!(
         disp.contains("move_path_anchor(target, i, a)"),
         "o arrasto de ÂNCORA não escreve por `TimelineDoc::move_path_anchor` — se ele \
@@ -193,7 +186,7 @@ fn the_drag_writes_through_the_documents_single_door() {
 /// do ponteiro (precisa de `App`+janela).
 #[test]
 fn the_secondary_click_opens_the_anchor_handle_menu() {
-    let disp = shell("input_dispatch.rs");
+    let disp = crate::input_text::dispatch();
     let call = disp
         .find("self.motion_path_open_anchor_menu(evt.x, evt.y)")
         .expect("o Secondary-Down não abre o menu da âncora");
@@ -242,7 +235,7 @@ fn the_secondary_click_opens_the_anchor_handle_menu() {
 /// tempo do duplo-clique).
 #[test]
 fn the_double_click_on_the_curve_inserts_a_point() {
-    let disp = shell("input_dispatch.rs");
+    let disp = crate::input_text::dispatch();
     let dclick = disp
         .find("self.motion_path_curve_double_click(evt.x, evt.y)")
         .expect("o duplo-clique no caminho não está no dispatch do ponteiro");

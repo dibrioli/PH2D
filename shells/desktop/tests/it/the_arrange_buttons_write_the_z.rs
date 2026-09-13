@@ -17,11 +17,6 @@
 
 use std::fs;
 
-fn src(name: &str) -> String {
-    fs::read_to_string(format!("{}/src/{name}", env!("CARGO_MANIFEST_DIR")))
-        .unwrap_or_else(|e| panic!("{name}: {e}"))
-}
-
 /// O mesmo, para um ficheiro que já vive numa crate-folha (`line/shell-folhas`, 12/09).
 ///
 /// ⚠️ **Ele falha ALTO se o caminho mentir**, e é essa a metade que importa: o irmão acima
@@ -87,7 +82,7 @@ fn the_reorder_click_lands_on_the_z_door() {
 /// uma segunda resposta à espera de que alguém a chame.
 #[test]
 fn the_scene_order_door_is_gone_from_the_shell() {
-    let s = src("input_dispatch.rs");
+    let s = crate::input_text::dispatch();
     assert!(
         !s.contains("fn apply_vec_reorder"),
         "o `apply_vec_reorder` (que escreve na ordem do VETOR da cena) voltou a existir"

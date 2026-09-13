@@ -18,7 +18,8 @@
 //!
 //! As asserções afirmam RELAÇÃO, nunca distância no fonte.
 
-const DISPATCH: &str = include_str!("../../src/input_dispatch.rs");
+static DISPATCH: std::sync::LazyLock<String> =
+    std::sync::LazyLock::new(crate::input_text::dispatch);
 /// **O QUADRO, pela ordem em que corre** — desde a OBRA 2 (2026-09-12) ele está partido em fases
 /// noutros ficheiros (`fase_*`), e uma agulha do quadro lê-se no texto EMENDADO: o `mod.rs` sozinho
 /// já não contém o realce do Balde (mudou-se para `fase_pointer_subjects.rs`), e a ORDEM
@@ -49,8 +50,12 @@ fn at(src: &str, needle: &str, onde: &str) -> usize {
 /// **Controle positivo:** as âncoras existem. Um scanner que não acha nada passaria em silêncio.
 #[test]
 fn the_scanner_finds_what_it_scans_for() {
-    at(DISPATCH, "ph2d_tool_vector::DrawMode::Bucket", "o dispatch");
-    at(DISPATCH, "self.apply_bucket()", "o dispatch");
+    at(
+        &DISPATCH,
+        "ph2d_tool_vector::DrawMode::Bucket",
+        "o dispatch",
+    );
+    at(&DISPATCH, "self.apply_bucket()", "o dispatch");
     at(
         &frame(),
         "self.refresh_bucket_hover(pointer);",
@@ -74,11 +79,11 @@ fn the_scanner_finds_what_it_scans_for() {
 #[test]
 fn the_press_is_consumed_so_it_never_falls_into_drawing() {
     let modo = at(
-        DISPATCH,
+        &DISPATCH,
         "if self.vec.draw_config.mode == ph2d_tool_vector::DrawMode::Bucket {",
         "o dispatch",
     );
-    let aplica = at(DISPATCH, "self.apply_bucket()", "o dispatch");
+    let aplica = at(&DISPATCH, "self.apply_bucket()", "o dispatch");
     let ret = DISPATCH[aplica..]
         .find("return;")
         .map(|i| i + aplica)
@@ -102,7 +107,7 @@ fn the_press_is_consumed_so_it_never_falls_into_drawing() {
         i - linha
     };
     let guarda = at(
-        DISPATCH,
+        &DISPATCH,
         "if self.vec.bucket_face.is_some() && self.gfx.is_some() {",
         "o dispatch",
     );

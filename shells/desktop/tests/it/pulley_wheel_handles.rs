@@ -239,7 +239,7 @@ fn the_mounted_axle_snaps_and_the_snapped_point_is_what_lands() {
 /// clique é consumido pela seleção e o pick fica armado para sempre.
 #[test]
 fn the_rope_eyedropper_arms_a_modal_pick_against_the_route() {
-    let src = fs::read_to_string("src/input_dispatch.rs").expect("input_dispatch.rs");
+    let src = crate::input_text::dispatch();
     // Controle positivo: o irmão de MONTAGEM tem de estar aqui, senão este gate
     // está lendo o arquivo errado e não pode falhar pelo motivo que alega.
     assert!(

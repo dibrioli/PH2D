@@ -67,7 +67,7 @@ fn the_published_view_is_actually_drawn() {
 /// geometria.
 #[test]
 fn all_three_pointer_ends_are_wired() {
-    let s = src("input_dispatch.rs");
+    let s = crate::input_text::dispatch();
     for needle in [
         "self.warp_gizmo_down(",
         "self.warp_gizmo_move(",
@@ -84,7 +84,7 @@ fn all_three_pointer_ends_are_wired() {
 /// A ordem no arquivo É a precedência.
 #[test]
 fn the_warp_grab_is_tried_before_the_generic_gizmo() {
-    let s = src("input_dispatch.rs");
+    let s = crate::input_text::dispatch();
     let warp = s.find("self.warp_gizmo_down(").expect("o warp está lá");
     let field = s.find("self.field_gizmo_down(").expect("o field está lá");
     assert!(
@@ -155,7 +155,7 @@ fn paint_and_grab_project_through_the_same_door() {
 /// widget sob o cursor), e não uma nova.
 #[test]
 fn the_grab_only_applies_over_the_canvas() {
-    let s = src("input_dispatch.rs");
+    let s = crate::input_text::dispatch();
     let at = s.find("self.warp_gizmo_down(").expect("o warp está lá");
     // A condição do `if` que precede a chamada — 400 chars para trás cobrem-na de sobra.
     let window = &s[at.saturating_sub(400)..at];

@@ -37,7 +37,7 @@
 use std::fs;
 
 fn source() -> String {
-    fs::read_to_string("src/input_dispatch.rs").expect("input_dispatch.rs")
+    crate::input_text::dispatch()
 }
 
 /// Todas as chamadas da porta, uma string por chamada (do nome até o `);`).

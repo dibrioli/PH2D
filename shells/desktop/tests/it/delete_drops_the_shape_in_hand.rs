@@ -24,7 +24,8 @@
 const CHAIN: &str = include_str!("../../src/input_dispatch/keyboard_painter.rs");
 /// A cadeia mora em `keyboard_painter.rs` (cortada por assunto); o `keyboard.rs` é quem a CHAMA, e as
 /// duas metades precisam de gate — ver o controle positivo abaixo.
-const KEYBOARD: &str = include_str!("../../src/input_dispatch/keyboard.rs");
+static KEYBOARD: std::sync::LazyLock<String> =
+    std::sync::LazyLock::new(crate::input_text::keyboard);
 
 /// A cadeia do Delete no Painter está na ordem: âncora → figura → falloff.
 ///

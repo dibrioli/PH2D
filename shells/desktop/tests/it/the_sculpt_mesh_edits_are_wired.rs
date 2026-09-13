@@ -7,7 +7,7 @@
 //! [`sculpt_source`], porque duas cópias dos helpers divergiriam.
 
 use crate::sculpt_source;
-use sculpt_source::{arm_with, braced_block, call_args, function_body, sculpt_src, source};
+use sculpt_source::{arm_with, braced_block, call_args, function_body, sculpt_src};
 
 #[test]
 fn the_gpu_is_handed_the_window_that_answers_for_every_channel() {
@@ -264,7 +264,7 @@ fn the_redo_shortcut_redoes_instead_of_undoing_one_more() {
     );
 
     // A outra metade: quem chama entrega o modificador.
-    let keyboard = source("input_dispatch/keyboard.rs");
+    let keyboard = crate::input_text::code_only(&crate::input_text::keyboard());
     let call = call_args(&keyboard, "self.sculpt3d_key");
     assert!(
         call.contains("shift_key()"),

@@ -23,7 +23,8 @@
 //! cuja âncora se mudou de arquivo passa por vácuo — a cicatriz que o `keyboard.rs` acabou de deixar,
 //! e que é pior que o defeito, porque ele volta a passar no dia em que a propriedade quebrar.
 
-const DISPATCH: &str = include_str!("../../src/input_dispatch.rs");
+static DISPATCH: std::sync::LazyLock<String> =
+    std::sync::LazyLock::new(crate::input_text::dispatch);
 const GRID_ERASE: &str = include_str!("../../src/input_dispatch/painter_grid_erase.rs");
 
 /// O Down secundário é reivindicado pelo Grid Stamp.

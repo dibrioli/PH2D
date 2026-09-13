@@ -18,10 +18,8 @@
 //! `the_dispatch_is_handed_the_live_geometry` (2026-07-23) é que um proxy posicional expira na
 //! wave seguinte. O que se afirma é *que pergunta é feita* e *o que o braço faz com a resposta*.
 
-use std::fs;
-
 fn source() -> String {
-    fs::read_to_string("src/input_dispatch/gizmo_drag.rs").expect("gizmo_drag.rs")
+    crate::input_text::gizmo_drag_file()
 }
 
 /// O corpo do braço do fluxo: da pergunta até o `} else {` que abre o caminho de sempre.

@@ -25,6 +25,10 @@ use std::path::Path;
 /// próximo movimento** — e o `panic` nomeia as duas, senão uma ausência lê-se como um caminho mal
 /// escrito.
 fn src(rel: &str) -> String {
+    // O `input_dispatch.rs` lê-se reconstituído (os ramos correm no sítio da chamada).
+    if rel == "input_dispatch.rs" {
+        return crate::input_text::dispatch();
+    }
     let raiz = Path::new(env!("CARGO_MANIFEST_DIR"));
     let tentativas = [
         raiz.join("src").join(rel),

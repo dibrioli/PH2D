@@ -17,7 +17,7 @@
 //! Esta linha já perdeu arch-gates por medir bytes no fonte (integração de 2026-07-23) e, nesta
 //! jornada, por uma agulha que o `rustfmt` quebrou em duas linhas quando um argumento novo entrou.
 
-const SRC: &str = include_str!("../../src/input_dispatch.rs");
+static SRC: std::sync::LazyLock<String> = std::sync::LazyLock::new(crate::input_text::dispatch);
 
 /// A posição da 1ª ocorrência, com a mensagem que nomeia o que se perdeu.
 fn at(needle: &str) -> usize {

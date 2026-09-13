@@ -17,11 +17,7 @@
 use std::fs;
 
 fn keyboard_src() -> String {
-    fs::read_to_string(concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/src/input_dispatch/keyboard.rs"
-    ))
-    .expect("keyboard.rs legível")
+    crate::input_text::keyboard()
 }
 
 /// A guarda do `if` que ENVOLVE uma chamada: da linha do `if` mais próximo acima dela até

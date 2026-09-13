@@ -16,7 +16,7 @@ fn read(path: &str) -> String {
 /// um deles, ou a janela não se mexe, ou ela **cola-se ao cursor para sempre**.
 #[test]
 fn the_drag_is_wired_at_all_three_points() {
-    let src = read("src/input_dispatch.rs");
+    let src = crate::input_text::dispatch();
     for (needle, what) in [
         (
             "self.arm_input_map_drag_if_on_handle(",
@@ -43,7 +43,7 @@ fn the_drag_is_wired_at_all_three_points() {
 /// baixo dela — e o artista veria o canvas a fugir enquanto arruma a janela.
 #[test]
 fn dragging_the_window_consumes_the_motion() {
-    let src = read("src/input_dispatch.rs");
+    let src = crate::input_text::dispatch();
     let at = src
         .find("if self.input_map_drag_move(")
         .expect("o CursorMoved consulta o arrasto");
@@ -62,7 +62,7 @@ fn dragging_the_window_consumes_the_motion() {
 /// agarrar. A ordem é a decisão, e ela tem de estar escrita.
 #[test]
 fn the_input_map_claims_the_down_before_the_fill_modal() {
-    let src = read("src/input_dispatch.rs");
+    let src = crate::input_text::dispatch();
     let ours = src
         .find("self.arm_input_map_drag_if_on_handle(")
         .expect("o nosso arma");

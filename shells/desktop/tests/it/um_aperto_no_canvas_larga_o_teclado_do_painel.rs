@@ -48,8 +48,8 @@ fn corpo_do_on_mouse_input(fonte: &str) -> &str {
 /// a chamada, nunca alargar este gate.
 #[test]
 fn a_soltura_do_foco_corre_antes_de_quem_toma_o_aperto_e_devolve_cedo() {
-    let fonte = include_str!("../../src/input_dispatch.rs");
-    let corpo = corpo_do_on_mouse_input(fonte);
+    let fonte = crate::input_text::dispatch();
+    let corpo = corpo_do_on_mouse_input(&fonte);
 
     let soltura = corpo.find("forward_blur_to_hero(").unwrap_or_else(|| {
         panic!(
@@ -83,7 +83,8 @@ fn a_soltura_do_foco_corre_antes_de_quem_toma_o_aperto_e_devolve_cedo() {
 /// solta — e o defeito voltava só para uma parte da moldura, que é a forma dele mais cara de achar.
 #[test]
 fn a_soltura_usa_a_mesma_regua_de_chrome_que_o_consumidor() {
-    let corpo = corpo_do_on_mouse_input(include_str!("../../src/input_dispatch.rs"));
+    let fonte = crate::input_text::dispatch();
+    let corpo = corpo_do_on_mouse_input(&fonte);
     let bloco = &corpo[corpo
         .find("forward_blur_to_hero(")
         .expect("sem soltura não há régua a conferir")

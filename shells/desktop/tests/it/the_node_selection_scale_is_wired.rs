@@ -15,8 +15,10 @@
 //! terceiro por ancorar na *primeira ocorrência* de um nome que uma feature irmã passou a usar
 //! antes.
 
-const DISPATCH: &str = include_str!("../../src/input_dispatch.rs");
-const KEYBOARD: &str = include_str!("../../src/input_dispatch/keyboard.rs");
+static DISPATCH: std::sync::LazyLock<String> =
+    std::sync::LazyLock::new(crate::input_text::dispatch);
+static KEYBOARD: std::sync::LazyLock<String> =
+    std::sync::LazyLock::new(crate::input_text::keyboard);
 
 /// A posição da 1ª ocorrência de `needle` em `src`, ou pânico com a razão.
 fn at(src: &str, needle: &str) -> usize {
@@ -35,11 +37,11 @@ fn at(src: &str, needle: &str) -> usize {
 #[test]
 fn a_press_on_empty_canvas_opens_the_marquee_before_the_node_press() {
     let block = at(
-        DISPATCH,
+        &DISPATCH,
         "// **Modo Node: o press no VAZIO abre o retângulo",
     );
     let arm = at(&DISPATCH[block..], "self.vec.marquee = Some(") + block;
-    let node_press = at(DISPATCH, "self.vec.pen.on_press_node(");
+    let node_press = at(&DISPATCH, "self.vec.pen.on_press_node(");
     assert!(
         block < node_press && arm < node_press,
         "o ramo do marquee corre DEPOIS do `on_press_node` -- ele ja' desselecionou, e o Shift \
@@ -71,7 +73,7 @@ fn the_marquee_release_adds_with_shift_and_deselects_on_a_bare_click() {
     // reprovou uma vez por ancorar em `Some((start, cur))`, que a wave do LAÇO trocou por
     // `Some(m)` quando o gesto passou a carregar a forma. O `at` panica com a razão — é o
     // controle positivo, e é o que torna isto uma falha alta em vez de uma varredura vazia.
-    let take = at(DISPATCH, "self.vec.marquee.take()");
+    let take = at(&DISPATCH, "self.vec.marquee.take()");
     let call = at(&DISPATCH[take..], "box_select_with(") + take;
     let window = &DISPATCH[take..call];
     assert!(
@@ -95,7 +97,7 @@ fn the_marquee_release_adds_with_shift_and_deselects_on_a_bare_click() {
 /// a que estas teclas se refiram, e o `Tab` do app tem outros donos.
 #[test]
 fn tab_and_select_all_reach_the_pen_in_node_mode() {
-    let block = at(KEYBOARD, "// **A ESCALA DA SELEÇÃO DE NÓS**");
+    let block = at(&KEYBOARD, "// **A ESCALA DA SELEÇÃO DE NÓS**");
     let end = at(&KEYBOARD[block..], "// Arrow keys nudge the selection") + block;
     let window = &KEYBOARD[block..end];
     assert!(

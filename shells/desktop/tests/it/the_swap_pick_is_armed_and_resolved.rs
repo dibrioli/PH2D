@@ -49,7 +49,7 @@ fn the_swap_arms_the_modal_pick_and_the_click_resolves_it() {
         s.contains("path_pick = Some(crate::vec_pick::PathPick::InstanceMain("),
         "o Swap deixou de armar o pick modal: o botão acende e não leva a lado nenhum"
     );
-    let d = src("input_dispatch.rs");
+    let d = crate::input_text::dispatch();
     let at = d
         .find("crate::vec_pick::PathPick::InstanceMain(")
         .expect("o clique do pick não resolve o Swap — o pick fica armado para sempre");

@@ -24,7 +24,7 @@
 //! bytes"* / *"a menos de 1200"* — janelas que uma feature vizinha legítima estoura
 //! ([[feedback_a_gate_anchored_on_a_byte_distance_is_a_proxy_that_expires]]).
 
-const SRC: &str = include_str!("../../src/input_dispatch.rs");
+static SRC: std::sync::LazyLock<String> = std::sync::LazyLock::new(crate::input_text::dispatch);
 
 /// A posição da 1ª ocorrência, com uma mensagem que nomeia o que se perdeu.
 fn at(needle: &str) -> usize {

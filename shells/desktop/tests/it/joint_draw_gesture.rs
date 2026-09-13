@@ -11,7 +11,7 @@ use std::fs;
 
 /// O bloco do gesto no handler de ponteiro: do arm até o fim do braço de Up.
 fn gesture_block() -> String {
-    let src = fs::read_to_string("src/input_dispatch.rs").expect("input_dispatch.rs");
+    let src = crate::input_text::dispatch();
     let start = src
         .find("if self.physics.joint_draw_armed")
         .expect("o arm do gesto de desenhar sumiu do handler de ponteiro");
@@ -55,7 +55,7 @@ fn the_press_the_move_and_the_release_are_all_wired() {
 /// eyedropper, definido ACIMA do handler ([[feedback_a_gate_anchored_on_a_byte_distance_is_a_proxy_that_expires]]).
 #[test]
 fn the_gesture_is_modal_and_precedes_the_generic_picking() {
-    let src = fs::read_to_string("src/input_dispatch.rs").expect("input_dispatch.rs");
+    let src = crate::input_text::dispatch();
     // O corpo do dispatch de ponteiro, onde a ORDEM entre os candidatos importa.
     let dispatch = &src[src
         .find("pub(crate) fn on_mouse_input")

@@ -28,7 +28,12 @@ use std::path::Path;
 /// si, não o que ele FAZ.*
 fn body_of(rel: &str, signature: &str) -> String {
     let p = Path::new(env!("CARGO_MANIFEST_DIR")).join("src").join(rel);
-    let raw = std::fs::read_to_string(&p).unwrap_or_else(|e| panic!("{}: {e}", p.display()));
+    // O `input_dispatch.rs` lê-se reconstituído (os ramos correm no sítio da chamada).
+    let raw = if rel == "input_dispatch.rs" {
+        crate::input_text::dispatch()
+    } else {
+        std::fs::read_to_string(&p).unwrap_or_else(|e| panic!("{}: {e}", p.display()))
+    };
     let src: String = raw
         .lines()
         .map(|l| match l.find("//") {

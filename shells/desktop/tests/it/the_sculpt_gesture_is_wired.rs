@@ -134,7 +134,12 @@ fn every_3d_port_is_inert_without_a_scene() {
         ("input_dispatch.rs", "pointer_up"),
         ("input_dispatch.rs", "pointer_move"),
     ] {
-        let d = source(file);
+        // O `input_dispatch.rs` lê-se reconstituído (os ramos correm no sítio da chamada).
+        let d = if file == "input_dispatch.rs" {
+            crate::input_text::code_only(&crate::input_text::dispatch())
+        } else {
+            source(file)
+        };
         let call = d
             .find(&format!("ph2d_app_sculpt3d::{port}"))
             .unwrap_or_else(|| panic!("`{file}` deixou de chamar a porta `{port}`"));
@@ -149,7 +154,8 @@ fn every_3d_port_is_inert_without_a_scene() {
 
 #[test]
 fn the_shell_takes_the_3d_keys_before_the_widget_store_sees_them() {
-    let body = function_body(&source("input_dispatch/keyboard.rs"), "key_input");
+    let keyboard = crate::input_text::code_only(&crate::input_text::keyboard());
+    let body = function_body(&keyboard, "key_input");
     let hook = body
         .find("sculpt3d_key(")
         .expect("as teclas da cena 3D têm de estar costuradas");

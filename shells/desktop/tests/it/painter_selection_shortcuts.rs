@@ -11,7 +11,6 @@
 use std::fs;
 
 const CHAIN: &str = "shells/desktop/src/input_dispatch/keyboard_painter.rs";
-const CALLER: &str = "shells/desktop/src/input_dispatch/keyboard.rs";
 /// Onde mora a ORDEM entre quem consome Enter/Esc — o irmão que o teto de LOC criou, e cujo
 /// doc-header declara que essas teclas *"viajam juntas"* exatamente para a ordem não se perder.
 const ESCAPES: &str = "shells/desktop/src/input_dispatch/keyboard_escapes.rs";
@@ -73,7 +72,7 @@ fn the_chain_demands_ctrl_and_reserves_plain_ctrl_i() {
 /// **Mutação que sangra:** apagar a chamada, ou movê-la para antes do `painter_delete_chain`.
 #[test]
 fn the_chain_is_called_after_the_delete_chain() {
-    let src = read(CALLER);
+    let src = crate::input_text::keyboard();
     let del = src
         .find("self.painter_delete_chain(")
         .expect("a cadeia do Delete e chamada");
@@ -136,7 +135,7 @@ fn the_floating_patch_decides_enter_and_escape_before_the_owners_that_touch_the_
 /// **Mutação que sangra:** apagar o `self.escape_key(` do despachante.
 #[test]
 fn the_dispatcher_still_runs_the_whole_ending_chain() {
-    let src = read(CALLER);
+    let src = crate::input_text::keyboard();
     assert!(
         src.contains("self.escape_key("),
         "o despachante chama a cadeia de encerramento (senao Enter/Esc nao alcancam ninguem)"

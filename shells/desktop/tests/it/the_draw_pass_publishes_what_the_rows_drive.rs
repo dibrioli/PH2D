@@ -66,12 +66,12 @@ fn the_opacity_lands_after_the_tokens() {
 /// clique consome o press, e o vínculo nunca nasce.
 #[test]
 fn the_pick_click_binds() {
-    const DISPATCH: &str = include_str!("../../src/input_dispatch.rs");
-    assert!(DISPATCH.len() > 10_000, "controle positivo");
-    let arm = DISPATCH
+    let dispatch = crate::input_text::dispatch();
+    assert!(dispatch.len() > 10_000, "controle positivo");
+    let arm = dispatch
         .find("PathPick::WidgetBind(widget)")
         .expect("o braco do pick de vinculo sumiu do dispatch");
-    let window = &DISPATCH[arm..(arm + 400).min(DISPATCH.len())];
+    let window = &dispatch[arm..(arm + 400).min(dispatch.len())];
     assert!(
         window.contains("vec_widget_edit::bind("),
         "o clique do conta-gotas nao prende nada"

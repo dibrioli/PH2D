@@ -15,13 +15,6 @@
 //! que deixa de encontrar por uma mudança de forma passa a guardar nada, e um gate que não vê
 //! nada passa sempre.
 
-use std::fs;
-
-fn shell(path: &str) -> String {
-    fs::read_to_string(format!("{}/src/{path}", env!("CARGO_MANIFEST_DIR")))
-        .unwrap_or_else(|e| panic!("ler {path}: {e}"))
-}
-
 /// O DESENHO da alça está costurado no overlay, e gateado pela política de modo (Select-only).
 ///
 /// ⚠️ Desde a OBRA 2 da `line/render-loop` (2026-09-13) o desenho mora na fase `fase_vector_tool_handles`: o
@@ -70,7 +63,7 @@ fn the_render_loop_draws_the_handle_gated_on_select_mode() {
 /// picking/gizmo. O move e o release seguem a mesma família do conector.
 #[test]
 fn the_render_loop_wires_the_handle_gesture() {
-    let disp = shell("input_dispatch.rs");
+    let disp = crate::input_text::dispatch();
     for (needle, what) in [
         (
             "vec_textpath_handle_down",

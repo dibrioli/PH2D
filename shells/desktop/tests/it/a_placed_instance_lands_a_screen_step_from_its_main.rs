@@ -21,11 +21,6 @@
 
 use std::fs;
 
-fn src(name: &str) -> String {
-    fs::read_to_string(format!("{}/src/{name}", env!("CARGO_MANIFEST_DIR")))
-        .unwrap_or_else(|e| panic!("{name}: {e}"))
-}
-
 /// O sítio que despacha o verbo deriva o degrau da CÂMARA, pela porta do paste.
 ///
 /// ⛔⛔ **RE-ANCORADO em 2026-09-07 (F4.6c), e a razão é a que este ficheiro já escrevia.** A
@@ -75,7 +70,7 @@ fn the_place_step_comes_from_the_camera_not_from_a_constant() {
 /// existe para impedir.
 #[test]
 fn there_is_exactly_one_paste_gap_in_the_shell() {
-    let s = src("input_dispatch.rs");
+    let s = crate::input_text::dispatch();
     assert_eq!(
         s.matches("const PASTE_OFFSET_PX").count(),
         1,

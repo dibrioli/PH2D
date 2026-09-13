@@ -252,6 +252,28 @@ pub(crate) fn paint(_state: &mut AudioMixerState, ctx: &mut PaintCtx) {
     let content_h = (final_y + scroll) - body_top + bottom_pad;
     ctx.scene.pop_layer();
 
+    paint_scrollbar_and_publish(ctx, body_rect, content_h, body_h, scroll, theme);
+
+    // Re-register the close button at end-of-frame so scrolled body widgets can't
+    // shadow it (panel_chrome canon).
+    ctx.host
+        .hit_index_mut()
+        .register(AMIX_CLOSE, panel_close_button_rect(rect));
+}
+
+/// **A barra de rolagem e as alturas publicadas** — só há barra quando o conteúdo transborda, e o
+/// que sobra de rolagem depois de publicar é aparado.
+///
+/// ⚠️ Saiu do [`paint`] pelo tecto de 200 LOC por função, verbatim; corre no mesmo sítio, antes de
+/// o botão de fechar se re-registar.
+fn paint_scrollbar_and_publish(
+    ctx: &mut PaintCtx,
+    body_rect: Rect,
+    content_h: f32,
+    body_h: f32,
+    scroll: f32,
+    theme: Theme,
+) {
     // Scrollbar (only if the content overflows) + publish content/visible heights
     // so wheel dispatch can clamp; then clamp any leftover over-scroll.
     if scrollbar_is_needed(content_h, body_h) {
@@ -272,12 +294,6 @@ pub(crate) fn paint(_state: &mut AudioMixerState, ctx: &mut PaintCtx) {
     if store.panel_scroll(AMIX_PANEL) > max_scroll {
         store.set_panel_scroll(AMIX_PANEL, max_scroll);
     }
-
-    // Re-register the close button at end-of-frame so scrolled body widgets can't
-    // shadow it (panel_chrome canon).
-    ctx.host
-        .hit_index_mut()
-        .register(AMIX_CLOSE, panel_close_button_rect(rect));
 }
 
 /// Paint one channel strip in its column: label · pan · fader (standard

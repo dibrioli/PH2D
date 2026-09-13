@@ -104,14 +104,6 @@ const FN_OVERAGE_OK: &[(&str, &str, usize, &str)] = &[
     //    split deferred (needs smoke)»*. A LISTA de camadas saiu para `paint_layer_list.rs`, e a
     //    funcao ficou em **190**, sob o cap de 200. ⇒ o censo de obsolescencia cobrou a entrada no
     //    mesmo fecho. *Uma folga so' desce quando alguem lhe encosta.*
-    (
-        "ph2d-panel-audio-mixer/src/paint.rs",
-        "paint",
-        203,
-        "unmasked by the 2026-07-10 parser fix; a fileira de strips SAIU em 2026-08-15 (222 -> 212, \
-         medido DEPOIS do rustfmt, que re-expande a chamada) \
-         quando a fiacao do store lhe custou uma linha — as tolerancias encolhem, nunca crescem Ratcheted em 2026-08-30 quando a coluna passou a ser ANCORADA e as tres alcas de arrasto/resize sairam deste painel (elas re-registavam os ids do Inspector, que partilha o dock). Desceu de novo em 2026-08-30 quando os pontinhos de canto sairam: eles eram a affordance das alcas de resize, que esta coluna deixou de ter.",
-    ),
 ];
 
 #[test]

@@ -56,12 +56,6 @@ const FN_OVERAGE_OK: &[(&str, &str, usize, &str)] = &[
     ),
     ("init.rs", "build_initial_state", 499, NASCEU),
     (
-        "input_dispatch.rs",
-        "on_cursor_moved",
-        214,
-        "o `input_dispatch.rs` fica FORA da `line/render-loop` (a OBRA 2 parte só o quadro)",
-    ),
-    (
         "input_dispatch/gizmo_drag.rs",
         "advance_gizmo_drag",
         708,

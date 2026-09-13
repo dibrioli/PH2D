@@ -3,12 +3,13 @@
 //!
 //! # O defeito, medido
 //!
-//! A fundação é o maior leque do repo: 43 crates dependem dela, e cada edição a `src/` recompila-as.
-//! Parti-la em crates é a cura óbvia — e é **inexprimível** enquanto os módulos dependerem uns dos
-//! outros nos DOIS sentidos: um módulo que usa outro e é usado por ele não vira crate própria sem
-//! um ciclo de dependências. A auditoria mediu três pares (`widget ↔ interaction` 73/165,
-//! `screens ↔ interaction` 162/22, `interaction ↔ ids` 90/10); medido pela ÁRVORE de módulos, depois
-//! da descida dos ids (A5b), era **UM ciclo de 23 módulos com 1 191 referências** — e o
+//! A fundação é o maior leque do repo: **57** crates dependem dela (a auditoria contava 43), e uma
+//! edição de UMA linha na `src/` recompila **61** (medido 2026-09-12, `cargo test --no-run --workspace
+//! --profile ci-test`). Parti-la em crates é a cura óbvia — e é **inexprimível** enquanto os módulos
+//! dependerem uns dos outros nos DOIS sentidos: um módulo que usa outro e é usado por ele não vira
+//! crate própria sem um ciclo de dependências. A auditoria mediu três pares (`widget ↔ interaction`
+//! 73/165, `screens ↔ interaction` 162/22, `interaction ↔ ids` 90/10); medido pela ÁRVORE de módulos,
+//! depois da descida dos ids (A5b), era **UM ciclo de 23 módulos com 1 188 referências** — e o
 //! `interaction ↔ ids` já tinha morrido com ela.
 //!
 //! As curas por ASSUNTO desta auditoria (um TIPO desce para o módulo dono do conceito, uma LEI desce
@@ -21,16 +22,21 @@
 //!
 //! # O que conta como aresta
 //!
+//! O leitor mora em [`crate::foundation_module_tree`] (dep-free, pelo tecto de LOC), e o doc dele
+//! lista as formas que vê e as que NÃO vê. Em resumo:
+//!
 //! - **O módulo de topo de um ficheiro** lê-se da ÁRVORE, a partir do `lib.rs` e seguindo `#[path]` —
 //!   nunca do nome do ficheiro: o `motion_tests.rs` é do `motion`, o `action_bus_queue.rs` do
 //!   `action_bus`.
-//! - **Uma referência** é `crate::X`, cada `X` de `crate::{X, …}`, e uma cadeia `super::…::X` que
-//!   sobe até à raiz — só em CÓDIGO (comentários e literais de string em branco).
+//! - **Uma referência** é `crate::X`, cada `X` de `crate::{X, …}`, e uma cadeia `super::…::X` (ou
+//!   `super::…::{X, …}`) que sobe até à raiz — só em CÓDIGO (comentários e literais em branco).
 //! - **Os testes contam.** Um `#[cfg(test)]` que chama o módulo de cima também impede o corte: numa
 //!   crate partida, esse teste teria de ver a crate de cima, e a de cima dependeria dele.
-//! - **Uma re-exportação do `lib.rs` vê-se através:** `crate::Toast` é aresta para o `toast`. ⚠️ Sem
-//!   isto, esconder uma aresta atrás de um `pub use` na raiz passava — que é exactamente a cura que
-//!   esta auditoria proíbe.
+//! - **Uma re-exportação do `lib.rs` vê-se através, em TODA forma** (qualquer visibilidade, atributos
+//!   à frente, `crate::` à frente, grupos aninhados): `crate::Toast` é aresta para o `toast`. ⚠️ Sem
+//!   isto, esconder uma aresta atrás de um `use` na raiz passava — que é exactamente a cura que esta
+//!   auditoria proíbe. ⛔ E uma GLOB de módulo de topo na raiz REPROVA: ela esconde arestas que o
+//!   leitor não sabe nomear.
 //!
 //! # A catraca
 //!
@@ -40,6 +46,8 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
+
+use crate::foundation_module_tree::{arvore, reexportacoes, referencias};
 
 /// ⛔ **A catraca — só encolhe.** Tectos medidos em 2026-09-12, com este leitor.
 const ARESTAS_TOLERADAS: &[(&str, &str, usize, &str)] = &[
@@ -115,351 +123,23 @@ fn src_root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("src")
 }
 
-fn is_ident(b: u8) -> bool {
-    b.is_ascii_alphanumeric() || b == b'_'
-}
-
-/// Comentários (e, com `strings = true`, literais de string e de carácter) em branco, com os
-/// offsets e as quebras de linha preservados.
-fn blank(src: &str, strings: bool) -> String {
-    let b = src.as_bytes();
-    let n = b.len();
-    let mut out = b.to_vec();
-    let apaga = |out: &mut Vec<u8>, a: usize, e: usize| {
-        for x in out.iter_mut().take(e.min(n)).skip(a) {
-            if *x != b'\n' {
-                *x = b' ';
-            }
-        }
-    };
-    let mut i = 0;
-    while i < n {
-        let c = b[i];
-        if c == b'/' && i + 1 < n && b[i + 1] == b'/' {
-            let e = src[i..].find('\n').map_or(n, |x| i + x);
-            apaga(&mut out, i, e);
-            i = e;
-        } else if c == b'/' && i + 1 < n && b[i + 1] == b'*' {
-            let (mut depth, mut j) = (1, i + 2);
-            while j < n && depth > 0 {
-                if b[j] == b'/' && j + 1 < n && b[j + 1] == b'*' {
-                    depth += 1;
-                    j += 2;
-                } else if b[j] == b'*' && j + 1 < n && b[j + 1] == b'/' {
-                    depth -= 1;
-                    j += 2;
-                } else {
-                    j += 1;
-                }
-            }
-            apaga(&mut out, i, j);
-            i = j;
-        } else if c == b'r'
-            && i + 1 < n
-            && (b[i + 1] == b'"' || b[i + 1] == b'#')
-            && (i == 0 || !is_ident(b[i - 1]))
-        {
-            let mut j = i + 1;
-            while j < n && b[j] == b'#' {
-                j += 1;
-            }
-            if j < n && b[j] == b'"' {
-                let fecho = format!("\"{}", "#".repeat(j - i - 1));
-                let e = src[j + 1..]
-                    .find(&fecho)
-                    .map_or(n, |x| j + 1 + x + fecho.len());
-                if strings {
-                    apaga(&mut out, i, e);
-                }
-                i = e;
-            } else {
-                i += 1;
-            }
-        } else if c == b'"' {
-            let mut j = i + 1;
-            while j < n && b[j] != b'"' {
-                if b[j] == b'\\' {
-                    j += 1;
-                }
-                j += 1;
-            }
-            let e = (j + 1).min(n);
-            if strings {
-                apaga(&mut out, i, e);
-            }
-            i = e;
-        } else if c == b'\'' {
-            // Um literal de carácter (`'x'`, `'\n'`, `'é'`) — ou um tempo de vida (`'a`), que não fecha.
-            let e = if i + 1 < n && b[i + 1] == b'\\' {
-                src[i + 2..].find('\'').map(|x| i + 2 + x + 1)
-            } else {
-                src[i + 1..].chars().next().and_then(|ch| {
-                    let fim = i + 1 + ch.len_utf8();
-                    (fim < n && b[fim] == b'\'').then_some(fim + 1)
-                })
-            };
-            match e {
-                Some(e) => {
-                    if strings {
-                        apaga(&mut out, i, e);
-                    }
-                    i = e;
-                }
-                None => i += 1,
-            }
-        } else {
-            i += 1;
-        }
-    }
-    String::from_utf8(out).expect("só bytes ASCII foram escritos")
-}
-
-fn ident_at(s: &str, i: usize) -> Option<&str> {
-    let b = s.as_bytes();
-    let e = (i..b.len()).find(|&k| !is_ident(b[k])).unwrap_or(b.len());
-    (e > i && !b[i].is_ascii_digit()).then(|| &s[i..e])
-}
-
-/// Os `{ … }` de cada `mod NOME {` inline — o que está dentro deles é um nível mais fundo.
-fn inline_mods(cod: &str) -> Vec<(usize, usize)> {
-    let b = cod.as_bytes();
-    let mut out = Vec::new();
-    let mut i = 0;
-    while let Some(p) = cod[i..].find("mod ") {
-        let at = i + p;
-        i = at + 4;
-        if at > 0 && is_ident(b[at - 1]) {
-            continue;
-        }
-        let Some(nome) = ident_at(cod, at + 4) else {
-            continue;
-        };
-        let mut j = at + 4 + nome.len();
-        while j < b.len() && b[j].is_ascii_whitespace() {
-            j += 1;
-        }
-        if j < b.len() && b[j] == b'{' {
-            let mut depth = 0usize;
-            for (k, &ch) in b.iter().enumerate().skip(j) {
-                if ch == b'{' {
-                    depth += 1;
-                } else if ch == b'}' {
-                    depth -= 1;
-                    if depth == 0 {
-                        out.push((j, k));
-                        break;
-                    }
-                }
-            }
-        }
-    }
-    out
-}
-
-/// `(ficheiro, caminho de módulo)` de todo ficheiro que a árvore alcança a partir do `lib.rs`.
-fn arvore(src: &Path) -> Vec<(PathBuf, Vec<String>)> {
-    let lib = src.join("lib.rs");
-    let mut out = vec![(lib.clone(), Vec::new())];
-    let mut fila = vec![(lib, Vec::<String>::new())];
-    let mut vistos = BTreeSet::new();
-    while let Some((f, caminho)) = fila.pop() {
-        if !vistos.insert(f.clone()) {
-            continue;
-        }
-        let texto = std::fs::read_to_string(&f).unwrap_or_default();
-        let sem_coment = blank(&texto, false);
-        let cod = blank(&texto, true);
-        let dentro = inline_mods(&cod);
-        let dir = f.parent().expect("dir").to_path_buf();
-        let nome_f = f.file_name().and_then(|x| x.to_str()).unwrap_or("");
-        let sob = if nome_f == "lib.rs" || nome_f == "mod.rs" {
-            dir.clone()
-        } else {
-            dir.join(nome_f.trim_end_matches(".rs"))
-        };
-        let b = cod.as_bytes();
-        let mut i = 0;
-        while let Some(p) = cod[i..].find("mod ") {
-            let at = i + p;
-            i = at + 4;
-            if (at > 0 && is_ident(b[at - 1])) || dentro.iter().any(|&(a, e)| at > a && at < e) {
-                continue;
-            }
-            let Some(nome) = ident_at(&cod, at + 4) else {
-                continue;
-            };
-            let mut j = at + 4 + nome.len();
-            while j < b.len() && b[j].is_ascii_whitespace() {
-                j += 1;
-            }
-            if j >= b.len() || b[j] != b';' {
-                continue;
-            }
-            // Os atributos das linhas logo acima (e da mesma linha): o `#[path = "…"]`.
-            let ini_linha = cod[..at].rfind('\n').map_or(0, |x| x + 1);
-            let mut attrs_ini = ini_linha;
-            while attrs_ini > 0 {
-                let prev = sem_coment[..attrs_ini - 1].rfind('\n').map_or(0, |x| x + 1);
-                if sem_coment[prev..attrs_ini - 1]
-                    .trim_start()
-                    .starts_with("#[")
-                {
-                    attrs_ini = prev;
-                } else {
-                    break;
-                }
-            }
-            let attrs = &sem_coment[attrs_ini..at];
-            let alvo = attrs.find("#[path").and_then(|k| {
-                let r = &attrs[k..];
-                let a = r.find('"')? + 1;
-                let e = r[a..].find('"')? + a;
-                Some(dir.join(&r[a..e]))
-            });
-            let cands = match alvo {
-                Some(p) => vec![p],
-                None => vec![
-                    sob.join(format!("{nome}.rs")),
-                    sob.join(nome).join("mod.rs"),
-                ],
-            };
-            if let Some(c) = cands.into_iter().find(|c| c.is_file()) {
-                let mut filho = caminho.clone();
-                filho.push(nome.to_owned());
-                out.push((c.clone(), filho.clone()));
-                fila.push((c, filho));
-            }
-        }
-    }
-    out
-}
-
-/// `nome re-exportado na raiz → módulo de topo` (os `pub use módulo::…` do `lib.rs`).
-fn reexportacoes(lib: &str, tops: &BTreeSet<String>) -> BTreeMap<String, String> {
-    let cod = blank(lib, true);
-    let mut out = BTreeMap::new();
-    for stmt in cod.split(';') {
-        let t = stmt.trim();
-        let Some(corpo) = t.strip_prefix("pub use ") else {
-            continue;
-        };
-        let corpo: String = corpo.split_whitespace().collect::<Vec<_>>().join(" ");
-        let topo = corpo.split("::").next().unwrap_or("").trim();
-        if !tops.contains(topo) {
-            continue;
-        }
-        let resto = corpo[topo.len()..].trim_start_matches("::");
-        let itens: Vec<String> = if let Some(g) = resto.rfind('{') {
-            resto[g + 1..]
-                .trim_end_matches('}')
-                .split(',')
-                .map(str::to_owned)
-                .collect()
-        } else {
-            vec![resto.to_owned()]
-        };
-        for it in itens {
-            let it = it.trim();
-            let nome = it
-                .rsplit(" as ")
-                .next()
-                .unwrap_or(it)
-                .rsplit("::")
-                .next()
-                .unwrap_or(it)
-                .trim();
-            if !nome.is_empty() && nome != "*" && nome != "self" {
-                out.insert(nome.to_owned(), topo.to_owned());
-            }
-        }
-    }
-    out
-}
-
 /// `(de, para) → (referências, sítios de exemplo)`.
 type Arestas = BTreeMap<(String, String), (usize, Vec<String>)>;
 
-fn referencias(texto: &str, caminho: &[String]) -> Vec<(usize, String)> {
-    let cod = blank(texto, true);
-    let b = cod.as_bytes();
-    let dentro = inline_mods(&cod);
-    let mut out = Vec::new();
-    let precede = |at: usize| at > 0 && (is_ident(b[at - 1]) || b[at - 1] == b':');
-    let mut i = 0;
-    while let Some(p) = cod[i..].find("crate::") {
-        let at = i + p;
-        i = at + 7;
-        if precede(at) {
-            continue;
-        }
-        if b.get(at + 7) == Some(&b'{') {
-            let mut depth = 0usize;
-            let mut k = at + 7;
-            let mut fim = b.len();
-            while k < b.len() {
-                if b[k] == b'{' {
-                    depth += 1;
-                } else if b[k] == b'}' {
-                    depth -= 1;
-                    if depth == 0 {
-                        fim = k;
-                        break;
-                    }
-                }
-                k += 1;
-            }
-            let mut nivel = 0usize;
-            let mut item_ini = at + 8;
-            for (q, &ch) in b.iter().enumerate().take(fim + 1).skip(at + 8) {
-                match ch {
-                    b'{' => nivel += 1,
-                    b'}' if nivel > 0 => nivel -= 1,
-                    b',' | b'}' if nivel == 0 => {
-                        let bruto = &cod[item_ini..q];
-                        let off = item_ini + (bruto.len() - bruto.trim_start().len());
-                        if let Some(nome) = ident_at(&cod, off) {
-                            out.push((at, nome.to_owned()));
-                        }
-                        item_ini = q + 1;
-                    }
-                    _ => {}
-                }
-            }
-        } else if let Some(nome) = ident_at(&cod, at + 7) {
-            out.push((at, nome.to_owned()));
-        }
-    }
-    let mut i = 0;
-    while let Some(p) = cod[i..].find("super::") {
-        let at = i + p;
-        i = at + 7;
-        if precede(at) {
-            continue;
-        }
-        let mut n = 0;
-        let mut k = at;
-        while cod[k..].starts_with("super::") {
-            n += 1;
-            k += 7;
-        }
-        i = k;
-        let profundidade =
-            caminho.len() + dentro.iter().filter(|&&(a, e)| at > a && at < e).count();
-        if n == profundidade {
-            if let Some(nome) = ident_at(&cod, k) {
-                out.push((at, nome.to_owned()));
-            }
-        }
-    }
-    out
+struct Grafo {
+    tops: BTreeSet<String>,
+    ficheiros: usize,
+    arestas: Arestas,
+    via_reexport: usize,
+    globs_na_raiz: Vec<String>,
 }
 
-fn grafo() -> (BTreeSet<String>, usize, Arestas, usize) {
+fn grafo() -> Grafo {
     let src = src_root();
     let arv = arvore(&src);
     let tops: BTreeSet<String> = arv.iter().filter_map(|(_, c)| c.first().cloned()).collect();
     let lib = std::fs::read_to_string(src.join("lib.rs")).expect("lib.rs");
-    let reexp = reexportacoes(&lib, &tops);
+    let (reexp, globs_na_raiz) = reexportacoes(&lib, &tops);
     let mut arestas = Arestas::new();
     let mut via_reexport = 0;
     for (f, caminho) in &arv {
@@ -482,7 +162,13 @@ fn grafo() -> (BTreeSet<String>, usize, Arestas, usize) {
             }
         }
     }
-    (tops, arv.len(), arestas, via_reexport)
+    Grafo {
+        tops,
+        ficheiros: arv.len(),
+        arestas,
+        via_reexport,
+        globs_na_raiz,
+    }
 }
 
 /// Um ciclo no grafo sem as arestas de `fora`, se houver.
@@ -545,31 +231,39 @@ fn toleradas() -> BTreeSet<(String, String)> {
 
 #[test]
 fn the_foundation_modules_form_a_dag() {
-    let (tops, ficheiros, arestas, via_reexport) = grafo();
-    let total: usize = arestas.values().map(|(n, _)| n).sum();
+    let g = grafo();
+    let total: usize = g.arestas.values().map(|(n, _)| n).sum();
     assert!(
-        tops.len() >= PISO_MODULOS,
+        g.tops.len() >= PISO_MODULOS,
         "li {} módulos de topo (piso {PISO_MODULOS})",
-        tops.len()
+        g.tops.len()
     );
     assert!(
-        ficheiros >= PISO_FICHEIROS,
-        "a árvore alcançou {ficheiros} ficheiros (piso {PISO_FICHEIROS})"
+        g.ficheiros >= PISO_FICHEIROS,
+        "a árvore alcançou {} ficheiros (piso {PISO_FICHEIROS})",
+        g.ficheiros
     );
     assert!(
         total >= PISO_REFERENCIAS,
         "li {total} referências entre módulos (piso {PISO_REFERENCIAS})"
     );
     assert!(
-        via_reexport >= PISO_VIA_REEXPORT,
-        "li {via_reexport} referências através de um `pub use` do lib.rs (piso {PISO_VIA_REEXPORT}) — \
-         o leitor deixou de ver através da raiz, e uma fachada lá passaria a esconder uma aresta"
+        g.via_reexport >= PISO_VIA_REEXPORT,
+        "li {} referências através de uma re-exportação do lib.rs (piso {PISO_VIA_REEXPORT}) — \
+         o leitor deixou de ver através da raiz, e uma fachada lá passaria a esconder uma aresta",
+        g.via_reexport
     );
-    if let Some(ciclo) = um_ciclo(&tops, &arestas, &toleradas()) {
+    assert!(
+        g.globs_na_raiz.is_empty(),
+        "o lib.rs põe na raiz uma GLOB de módulo de topo ({:?}) — ela esconde arestas que o leitor \
+         não sabe nomear: nomeie os itens um a um (ou, melhor, não os ponha na raiz)",
+        g.globs_na_raiz
+    );
+    if let Some(ciclo) = um_ciclo(&g.tops, &g.arestas, &toleradas()) {
         let passos: Vec<String> = ciclo
             .windows(2)
             .map(|p| {
-                let (n, ex) = &arestas[&(p[0].clone(), p[1].clone())];
+                let (n, ex) = &g.arestas[&(p[0].clone(), p[1].clone())];
                 format!("{} → {} ({n}: {})", p[0], p[1], ex.join(", "))
             })
             .collect();
@@ -583,11 +277,13 @@ fn the_foundation_modules_form_a_dag() {
     }
     // A tabela medida — a `--success-output` do nextest mostra-a, e é ela que o handoff cola.
     println!(
-        "módulos {} · ficheiros {ficheiros} · referências {total} · através de re-exportação {via_reexport}",
-        tops.len()
+        "módulos {} · ficheiros {} · referências {total} · através de re-exportação {}",
+        g.tops.len(),
+        g.ficheiros,
+        g.via_reexport
     );
-    for ((a, b), (n, _)) in &arestas {
-        let volta = arestas.get(&(b.clone(), a.clone())).map_or(0, |x| x.0);
+    for ((a, b), (n, _)) in &g.arestas {
+        let volta = g.arestas.get(&(b.clone(), a.clone())).map_or(0, |x| x.0);
         if volta > 0 {
             println!("  {a} → {b}: {n} (volta {volta})");
         }
@@ -595,7 +291,8 @@ fn the_foundation_modules_form_a_dag() {
     let cresceram: Vec<String> = ARESTAS_TOLERADAS
         .iter()
         .filter_map(|(a, b, tecto, _)| {
-            let n = arestas
+            let n = g
+                .arestas
                 .get(&((*a).to_owned(), (*b).to_owned()))
                 .map_or(0, |x| x.0);
             (n > *tecto).then(|| format!("{a} → {b}: {n} referências, tecto {tecto}"))
@@ -610,11 +307,12 @@ fn the_foundation_modules_form_a_dag() {
 
 #[test]
 fn the_ratchet_only_describes_what_is_still_true() {
-    let (tops, _, arestas, _) = grafo();
+    let g = grafo();
     let todas = toleradas();
     for (a, b, tecto, porque) in ARESTAS_TOLERADAS {
         assert!(!porque.trim().is_empty(), "`{a} → {b}` tolerada sem motivo");
-        let n = arestas
+        let n = g
+            .arestas
             .get(&((*a).to_owned(), (*b).to_owned()))
             .map_or(0, |x| x.0);
         assert!(
@@ -628,42 +326,123 @@ fn the_ratchet_only_describes_what_is_still_true() {
         let mut com_ela = todas.clone();
         com_ela.retain(|e| e != &((*a).to_owned(), (*b).to_owned()));
         assert!(
-            um_ciclo(&tops, &arestas, &com_ela).is_some(),
+            um_ciclo(&g.tops, &g.arestas, &com_ela).is_some(),
             "`{a} → {b}` já não fecha ciclo nenhum — ela deixou de ser dívida: apague a linha"
         );
     }
+}
+
+fn nomes(src: &str, caminho: &[&str]) -> Vec<String> {
+    let c: Vec<String> = caminho.iter().map(|s| (*s).to_owned()).collect();
+    referencias(src, &c).into_iter().map(|(_, n)| n).collect()
 }
 
 /// ⚠️ **E o leitor sabe dizer «não» — e «sim».**
 #[test]
 fn the_reader_sees_what_it_claims_to_see() {
     // Uma aresta que desce, e que tem de estar lá: sem ela o leitor partiu-se e mede nada.
-    let (_, _, arestas, _) = grafo();
+    let g = grafo();
     for (a, b) in [
         ("widget", "paint"),
         ("screens", "interaction"),
         ("toast", "progress"),
     ] {
         assert!(
-            arestas.contains_key(&(a.to_owned(), b.to_owned())),
+            g.arestas.contains_key(&(a.to_owned(), b.to_owned())),
             "sentinela: o leitor não viu `{a} → {b}`"
         );
     }
     // Comentários e strings não contam; grupos e cadeias de `super` contam.
     let src = "// crate::screens::x\nlet s = \"crate::widget\";\nuse crate::{paint::A, zones::{B, C}};\nfn f() { super::super::motion::g(); }\n";
-    let nomes: Vec<String> = referencias(src, &["a".to_owned(), "b".to_owned()])
-        .into_iter()
-        .map(|(_, n)| n)
-        .collect();
-    assert_eq!(
-        nomes,
-        vec!["paint".to_owned(), "zones".to_owned(), "motion".to_owned()]
-    );
+    assert_eq!(nomes(src, &["a", "b"]), ["paint", "zones", "motion"]);
     // Dentro de um `mod tests { … }` inline, a raiz fica um `super` mais longe.
     let src = "mod tests {\n    use super::super::widget::W;\n    use super::paint::P;\n}\n";
-    let nomes: Vec<String> = referencias(src, &["a".to_owned()])
+    assert_eq!(nomes(src, &["a"]), ["widget"]);
+}
+
+/// ⚠️ **As formas que a auditoria de fecho (2026-09-12) achou CEGAS.** Nenhuma aparecia na árvore
+/// desse dia — e é exactamente por isso que cada uma tem sentinela: no dia em que aparecer, o leitor
+/// tem de a ver, e um leitor que não a vê fica verde.
+#[test]
+fn the_reader_sees_the_forms_the_closing_audit_named() {
+    // Um GRUPO depois de uma cadeia de `super` que chega à raiz.
+    assert_eq!(
+        nomes("use super::{widget::W, paint};\n", &["a"]),
+        ["widget", "paint"]
+    );
+    // Uma GLOB da raiz faz o caminho solto contar — e só no escopo dela.
+    let src =
+        "use super::*;\nfn f() { widget::W::new(); }\nmod tests {\n    fn g() { zones::Z; }\n}\n";
+    assert_eq!(nomes(src, &["a"]), ["widget"]);
+    let src = "mod tests {\n    use crate::*;\n    fn g() { paint::P; }\n}\nfn f() { zones::Z; }\n";
+    assert_eq!(nomes(src, &["a"]), ["paint"]);
+    // `'\''` fecha no SEU fecho: a aspa que vem a seguir não abre um literal falso que engula código.
+    let src = "const Q: [char; 2] = ['\\'','\"'];\nuse crate::paint::P;\nconst S: &str = \"x\";\n";
+    assert_eq!(nomes(src, &["a"]), ["paint"]);
+    // Um literal cru de BYTES com uma aspa dentro não sai no meio dela.
+    let src = "const B: &[u8] = br#\"x\" crate::widget \"#;\nuse crate::paint::P;\nconst S: &str = \"x\";\n";
+    assert_eq!(nomes(src, &["a"]), ["paint"]);
+
+    // As re-exportações da raiz em toda forma — e o que está dentro de um `mod { }` não é da raiz.
+    let tops: BTreeSet<String> = [
+        "toast", "progress", "zones", "paint", "widget", "screens", "ruler",
+    ]
+    .iter()
+    .map(|s| (*s).to_owned())
+    .collect();
+    let lib = "pub(crate) use toast::A;\n#[doc(inline)]\npub use progress::B;\npub use crate::zones::C;\n\
+               use paint::{D, text::{E as F}};\npub use ruler::{self as regua};\npub use widget::*;\n\
+               pub mod m {\n    pub use screens::G;\n}\npub use ph2d_x as y;\n";
+    let (raiz, globs) = reexportacoes(lib, &tops);
+    let esperado: BTreeMap<String, String> = [
+        ("A", "toast"),
+        ("B", "progress"),
+        ("C", "zones"),
+        ("D", "paint"),
+        ("F", "paint"),
+        ("regua", "ruler"),
+    ]
+    .iter()
+    .map(|(a, b)| ((*a).to_owned(), (*b).to_owned()))
+    .collect();
+    assert_eq!(raiz, esperado);
+    assert_eq!(globs, ["widget"]);
+
+    // A árvore: um doc-comment e uma linha em branco entre o `#[path]` e o `mod`, e `mod x;` dentro
+    // de um `mod { }` inline (com e sem `#[path]`).
+    let src = Path::new(env!("CARGO_TARGET_TMPDIR"))
+        .join("dag_leitor_arvore")
+        .join("src");
+    let _ = std::fs::remove_dir_all(&src);
+    for (f, texto) in [
+        (
+            "lib.rs",
+            "#[path = \"longe/a_impl.rs\"]\n/// um doc-comment no meio\n\nmod a;\nmod b {\n    mod c;\n    #[path = \"d_impl.rs\"]\n    mod d;\n}\n",
+        ),
+        ("longe/a_impl.rs", ""),
+        ("b/c.rs", ""),
+        ("b/d_impl.rs", ""),
+    ] {
+        let p = src.join(f);
+        std::fs::create_dir_all(p.parent().expect("dir")).expect("tmp");
+        std::fs::write(&p, texto).expect("tmp");
+    }
+    let mut vistos: Vec<(String, Vec<String>)> = arvore(&src)
         .into_iter()
-        .map(|(_, n)| n)
+        .map(|(f, c)| {
+            let rel = f.strip_prefix(&src).expect("dentro").display().to_string();
+            (rel, c)
+        })
         .collect();
-    assert_eq!(nomes, vec!["widget".to_owned()]);
+    vistos.sort();
+    let caminho = |s: &[&str]| s.iter().map(|x| (*x).to_owned()).collect::<Vec<_>>();
+    assert_eq!(
+        vistos,
+        vec![
+            ("b/c.rs".to_owned(), caminho(&["b", "c"])),
+            ("b/d_impl.rs".to_owned(), caminho(&["b", "d"])),
+            ("lib.rs".to_owned(), caminho(&[])),
+            ("longe/a_impl.rs".to_owned(), caminho(&["a"])),
+        ]
+    );
 }

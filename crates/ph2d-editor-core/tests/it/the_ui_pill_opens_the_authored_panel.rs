@@ -12,8 +12,9 @@
 //!    O repo já pagou esta exacta lição quando o TOK nasceu de um `cp` do PHYS.
 
 use ph2d_a11y::NodeId;
+use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::WidgetEvent;
-use ph2d_editor_core::screens::hero::{HeroScreen, chrome, fixture, ids};
+use ph2d_editor_core::screens::hero::{HeroScreen, chrome, fixture};
 
 fn fresh() -> HeroScreen {
     HeroScreen::new(NodeId(1))

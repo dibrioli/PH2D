@@ -44,7 +44,7 @@ use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 
 use ph2d_a11y::NodeId;
-use ph2d_editor_core::screens::hero::ids;
+use ph2d_editor_core::ids;
 use ph2d_tool_registry::hash_node_id_runtime;
 
 use crate::cfg_test_modules::is_declared_under_cfg_test;
@@ -61,8 +61,11 @@ use crate::cfg_test_modules::is_declared_under_cfg_test;
 /// `shells/desktop/src/render_loop/{color_equalization,equalize_sizes,upscale}_bridge.rs` nomeiam a
 /// CÓPIA (`ph2d_tool_color_equalization::ids::CEQ_PANEL`, `ph2d_tool_equalize_sizes::ids::EQS_PANEL`,
 /// `ph2d_panel_upscale::ids::UPS_PANEL`), e apagá-la sem editar esses ficheiros pediria uma fachada.
-/// ⇒ o integrador troca os três caminhos por `ph2d_editor_core::ids::…` depois das duas fusões,
-/// apaga as cópias, e apaga estas linhas.
+/// ⚠️ **A cerca não é o único leitor das cópias** (medido 2026-09-12, auditoria de fecho): o `NODE_ID`
+/// do `lib.rs` e o `paint.rs` dos três painéis também as nomeiam, e um teste do
+/// `ph2d-tool-color-equalization/src/ids.rs` também. ⇒ depois das duas fusões o integrador troca TODO
+/// leitor (`grep -rn 'ids::CEQ_PANEL\|ids::EQS_PANEL\|ids::UPS_PANEL'`) por `ph2d_editor_core::ids::…`,
+/// apaga as cópias e apaga estas linhas — e o compilador aponta cada leitor que ficar para trás.
 const SLUGS_REPETIDOS_TOLERADOS: &[(&str, usize, &str)] = &[
     (
         "panel.color_equalization",

@@ -9,8 +9,9 @@
 //! cargo test -p ph2d-host-desktop --release --bins sculpt3d::mode::tests -- --ignored --nocapture
 //! ```
 
+use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::InteractiveState;
-use ph2d_editor_core::screens::hero::{HeroScreen, ids};
+use ph2d_editor_core::screens::hero::HeroScreen;
 use ph2d_editor_core::widget::ButtonState;
 use ph2d_mesh::shapes::uv_sphere;
 

@@ -155,7 +155,7 @@ fn clear_live_reverts_to_fixture_behavior() {
 
 #[test]
 fn fixture_click_still_works_in_live_mode_for_unknown_id() {
-    use ph2d_editor_core::screens::hero::ids::HIER_PLAYER;
+    use ph2d_editor_core::ids::HIER_PLAYER;
 
     let mut hero = setup_hero();
     let mut state = HierarchyState::default();
@@ -181,7 +181,7 @@ fn fixture_click_still_works_in_live_mode_for_unknown_id() {
 /// caught that bug.
 #[test]
 fn sync_overwrites_widget_store_hierarchy_order() {
-    use ph2d_editor_core::screens::hero::ids::HIER_PLAYER;
+    use ph2d_editor_core::ids::HIER_PLAYER;
 
     let mut hero = setup_hero();
     // After `HeroScreen::new`, the panel's `populate` seeded the

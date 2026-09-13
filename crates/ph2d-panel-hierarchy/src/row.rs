@@ -3,10 +3,10 @@
 //! in Phase C.2; logic unchanged.
 
 use ph2d_editor_core::icons::IconId;
+use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::HitIndex;
 use ph2d_editor_core::paint::{paint_icon, paint_text, resolve};
 use ph2d_editor_core::screens::hero::fixture;
-use ph2d_editor_core::screens::hero::ids;
 use ph2d_editor_core::widget::{Tag, TagState, TagTone, paint_tag};
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;

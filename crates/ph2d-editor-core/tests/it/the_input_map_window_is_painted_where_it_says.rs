@@ -14,8 +14,9 @@
 //! ⚠️ *Um gate que só lê o modelo nunca vê um pintor a mentir sobre ele.*
 
 use ph2d_a11y::NodeId;
+use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::{HitIndex, InteractiveState, WidgetStore};
-use ph2d_editor_core::screens::hero::{chrome, ids};
+use ph2d_editor_core::screens::hero::chrome;
 use ph2d_editor_core::widget::TextInputState;
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;

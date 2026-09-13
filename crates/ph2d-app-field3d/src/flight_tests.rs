@@ -200,7 +200,7 @@ fn the_trip_never_overshoots_its_destination() {
             motion.set_character(character);
             motion.set_reduced_motion(reduced);
             let spring = motion.law(super::ROLE).expect("a viagem tem lei sempre");
-            let id = ph2d_editor_core::screens::hero::ids::model3d_view_travel(0);
+            let id = ph2d_editor_core::ids::model3d_view_travel(0);
             motion.animate(id, 0.0, super::ROLE);
             motion.animate(id, 1.0, super::ROLE);
             let mut worst = 0.0_f32;

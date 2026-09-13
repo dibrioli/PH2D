@@ -1,11 +1,11 @@
 //! **Ids das operações BOOLEANAS do vetor** — as oito do Pathfinder e o modo VIVO delas.
 //!
 //! Irmão de `vector.rs` pelo teto de LOC (HR-18), cortado por ASSUNTO: aqui vive *o que COMBINA
-//! formas*, e lá o que descreve UMA forma. O `pub use` no `mod.rs` mantém todo caminho de
-//! chamador intacto.
+//! formas*, e lá o que descreve UMA forma. O `pub use` do `ids.rs` desta crate junta os dois num
+//! espaço de nomes só.
 //!
 //! ⚠️ **Desceu de `ph2d-editor-core/src/ids/chrome/vector_bool.rs` em 2026-09-12** (auditoria de arquitectura
-//! A5b): quem LÊ estes ids mora nesta crate, e a fundação que 43 crates recompilam deixou de os
+//! A5b): quem LÊ estes ids mora nesta crate, e a fundação que 60 crates recompilam deixou de os
 //! carregar.
 
 use ph2d_a11y::NodeId;

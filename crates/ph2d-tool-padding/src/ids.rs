@@ -1,7 +1,7 @@
 //! Os `NodeId` de widget que esta crate LÊ — declarados AQUI, e não na `ph2d-editor-core`.
 //!
 //! ⭐ **Desceram da fundação em 2026-09-12** (auditoria de arquitectura A5b): em 30 dias, 221 dos 437
-//! commits à `ph2d-editor-core/src` tocaram `ids/`, e cada um recompilava as 43 crates que dependem
+//! commits à `ph2d-editor-core/src` tocaram `ids/`, e cada um recompilava as 60 crates que dependem
 //! dela. O dono de um id é a crate MAIS BAIXA que todo leitor dele vê (`scripts/censo-ids.py`), e
 //! um ficheiro de ids — um ASSUNTO — desce inteiro.
 //!

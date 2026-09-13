@@ -6,8 +6,8 @@
 
 use ph2d_editor_core::HeroScreen;
 use ph2d_editor_core::NodeId;
+use ph2d_editor_core::ids::CTX_MENU_SHOW_GRID;
 use ph2d_editor_core::interaction::WidgetEvent;
-use ph2d_editor_core::screens::hero::ids::CTX_MENU_SHOW_GRID;
 use ph2d_editor_core::zones::Rect;
 use ph2d_editor_core::{GridConfig, GridView};
 
@@ -68,7 +68,7 @@ fn view_button_cycles_through_three_modes() {
     ph2d_editor_core::test_support::ensure_panel_registry();
     use ph2d_editor_core::ViewFocusKind;
     use ph2d_editor_core::action_bus::EditorAction;
-    use ph2d_editor_core::screens::hero::ids::TOOL_HOME;
+    use ph2d_editor_core::ids::TOOL_HOME;
 
     let mut hero = HeroScreen::new(NodeId(1));
     assert!(hero.bus.is_empty());

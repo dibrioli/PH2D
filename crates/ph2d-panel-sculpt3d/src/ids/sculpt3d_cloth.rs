@@ -1,9 +1,9 @@
 //! ⭐⭐⭐ **OS IDS DO TECIDO** — o pincel de tecido, o filtro de tecido e os dois
 //! controlos que o report de 2026-09-08 pediu.
 //!
-//! Irmão (`#[path]`) do [`super::sculpt3d`], cortado por ASSUNTO. ⚠️ **O `pub use
-//! sculpt3d::*` do `chrome/mod.rs` continua a ser a única porta** — nenhum
-//! caminho de chamador muda, e `ids::SCULPT3D_CLOTH_MASS` resolve como sempre.
+//! Irmão do [`super::sculpt3d`], cortado por ASSUNTO: um `mod` próprio mais o
+//! `pub use sculpt3d_cloth::*` do `ids.rs` desta crate, que junta os filhos num
+//! espaço de nomes só — `crate::ids::SCULPT3D_CLOTH_MASS` resolve como o irmão.
 //!
 //! ⚠️ **A família do tecido é a maior deste painel e a mais nova** (`23` ids
 //! entre chips, pistas e interruptores), e é a única cuja pergunta de
@@ -16,7 +16,7 @@
 //! `ph2d-editor-core/tests/`, e nenhum fechamento por `--bins` o alcança.
 //!
 //! ⚠️ **Desceu de `ph2d-editor-core/src/ids/chrome/sculpt3d_cloth.rs` em 2026-09-12** (auditoria de arquitectura
-//! A5b): quem LÊ estes ids mora nesta crate, e a fundação que 43 crates recompilam deixou de os
+//! A5b): quem LÊ estes ids mora nesta crate, e a fundação que 60 crates recompilam deixou de os
 //! carregar.
 
 use ph2d_a11y::NodeId;

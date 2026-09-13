@@ -78,10 +78,6 @@
 //!   morto que passa —, que é a direcção segura para um gate que shipa verde.
 //! - **Um `_ => false` que consome sem responder**: se o painel tiver um braço
 //!   que compara o id e não faz nada, lê como vivo. A pergunta é *alcance*.
-//! - **Ids de módulos de `ids` que não são DIRECTÓRIO** (`<crate>/src/ids.rs` sozinho, como o da
-//!   `ph2d-tool-color-equalization`). A população é todo `src/ids/**` — o da fundação e o das
-//!   crates donas para onde a auditoria A5b (2026-09-12) desceu 1 734 ids; medi-la só na fundação
-//!   faria a população cair com cada id que desce, sem um controlo a morrer.
 //!
 //! ⚠️ **Controlo POSITIVO dentro do instrumento.** A catraca abaixo tem de
 //! continuar a ser DETECTADA (secção *stale*), e os ids de `KNOWN_LIVE`
@@ -353,10 +349,14 @@ fn is_test_path(rel: &str) -> bool {
         || f.ends_with("_tests.rs")
 }
 
-/// ⚠️ **Todo `src/ids/`, não só o da fundação**: desde a A5b (2026-09-12) o id mora na crate que o
-/// lê, e o gate continua a medir a MESMA população — só que em 21 casas em vez de uma.
+/// ⚠️ **Todo módulo de ids, não só o da fundação**: desde a A5b (2026-09-12) o id mora na crate que o
+/// lê, e o gate continua a medir a MESMA população — só que em 21 casas em vez de uma; medi-la só na
+/// fundação faria a população cair com cada id que desce, sem um controlo a morrer.
+/// ⚠️ **E um módulo de ids que não é DIRECTÓRIO conta igual** (`<crate>/src/ids.rs`,
+/// `grid_snap/ids.rs`): é a convenção do `node_id_collisions`, e os dois gates têm de ver a MESMA
+/// população — a auditoria de fecho da A5b mediu 136 ids que este via e aquele não.
 fn is_ids_dir(rel: &str) -> bool {
-    rel.contains("/src/ids/")
+    rel.contains("/ids/") || rel.ends_with("/ids.rs")
 }
 
 fn stem(rel: &str) -> &str {
@@ -952,7 +952,7 @@ fn the_painted_control_reaches_a_consumer() {
     }
     assert!(
         ids.len() >= MIN_IDS,
-        "a sonda so' achou {} `pub const X: NodeId` em `*/src/ids/**` \
+        "a sonda so' achou {} `pub const X: NodeId` em módulos de ids (`*/ids/**`, `*/ids.rs`) \
          (baseline 2026-08-30: {MIN_IDS}). Num corpus vazio este gate seria verde para sempre.",
         ids.len()
     );

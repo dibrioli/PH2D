@@ -19,9 +19,10 @@
 
 use bumpalo::Bump;
 use ph2d_a11y::NodeId;
+use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::{ContextMenuKind, HitIndex, WidgetEvent, dispatch_pointer};
 use ph2d_editor_core::screens::hero::menu_bar::{self, MENUS};
-use ph2d_editor_core::screens::hero::{HeroScreen, ids, menu_rows::menu_rows};
+use ph2d_editor_core::screens::hero::{HeroScreen, menu_rows::menu_rows};
 use ph2d_editor_core::screens::layout::{CenterSplit, ChromeBands, DockSides, HeroLayout};
 use ph2d_editor_core::zones::Rect;
 use ph2d_host::{PointerButton, PointerEvent, PointerKind, PointerSource};

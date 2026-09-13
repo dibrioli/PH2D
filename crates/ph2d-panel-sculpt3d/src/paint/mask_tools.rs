@@ -18,6 +18,7 @@ use ph2d_tokens::Spacing;
 
 use super::body::{MASK_LABELS, paint_one_row};
 use super::widgets::{command, labelled_seg};
+use crate::ids;
 use crate::rows;
 use crate::state::Sculpt3dSnapshot;
 
@@ -83,7 +84,7 @@ pub(super) fn paint_mask_tools(
         ctx,
         tr("panel.sculpt3d.transform"),
         crate::ids::SCULPT3D_SEC_BRUSH,
-        &crate::ids::SCULPT3D_TRANSFORM,
+        &ids::SCULPT3D_TRANSFORM,
         &labels,
         armed,
         x,

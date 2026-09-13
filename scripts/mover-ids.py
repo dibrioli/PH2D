@@ -653,7 +653,7 @@ def move_definicoes(mundo: Mundo, palco: Palco, pk, precisa_do_dono, rel):
             head = cabecalho(s).rstrip("\n")
             head += ("\n//!\n" if head else "") + (
                 f"//! ⚠️ **Desceu de `ph2d-editor-core/src/ids/{relsrc}` em {DATA}** (auditoria de arquitectura\n"
-                f"//! A5b): quem LÊ estes ids mora nesta crate, e a fundação que 43 crates recompilam deixou de os\n"
+                f"//! A5b): quem LÊ estes ids mora nesta crate, e a fundação que 60 crates recompilam deixou de os\n"
                 f"//! carregar.\n"
             )
             destino = os.path.join(pk[dono]["dir"], "src/ids", stem + ".rs")
@@ -766,7 +766,7 @@ def raizes(mundo: Mundo, palco: Palco, pk, stems):
 DOC_RAIZ = """//! Os `NodeId` de widget que esta crate LÊ — declarados AQUI, e não na `ph2d-editor-core`.
 //!
 //! ⭐ **Desceram da fundação em {data}** (auditoria de arquitectura A5b): em 30 dias, 221 dos 437
-//! commits à `ph2d-editor-core/src` tocaram `ids/`, e cada um recompilava as 43 crates que dependem
+//! commits à `ph2d-editor-core/src` tocaram `ids/`, e cada um recompilava as 60 crates que dependem
 //! dela. O dono de um id é a crate MAIS BAIXA que todo leitor dele vê (`scripts/censo-ids.py`), e
 //! um ficheiro de ids — um ASSUNTO — desce inteiro.
 //!

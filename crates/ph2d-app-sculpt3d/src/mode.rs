@@ -130,9 +130,8 @@ pub fn sync_pill(
     use ph2d_editor_core::interaction::InteractiveState;
     use ph2d_editor_core::widget::ButtonState;
     let on = scene.is_some_and(Sculpt3dScene::clay_on_screen);
-    if let Some(InteractiveState::Button { state }) = hero
-        .store
-        .get_mut(ph2d_editor_core::screens::hero::ids::TOPBAR_SCULPT3D)
+    if let Some(InteractiveState::Button { state }) =
+        hero.store.get_mut(ph2d_editor_core::ids::TOPBAR_SCULPT3D)
     {
         *state = if on {
             ButtonState::Pressed

@@ -12,9 +12,10 @@
 
 use bumpalo::Bump;
 use ph2d_a11y::NodeId;
+use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::interaction::dispatch::dispatch_key;
-use ph2d_editor_core::screens::hero::{HeroScreen, chrome, ids};
+use ph2d_editor_core::screens::hero::{HeroScreen, chrome};
 use ph2d_host::{KeyEvent, KeyKind, Modifiers};
 
 fn hero() -> HeroScreen {

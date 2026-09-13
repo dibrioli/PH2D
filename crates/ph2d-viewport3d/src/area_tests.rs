@@ -28,9 +28,8 @@ use ph2d_editor_core::zones::Rect as EditorRect;
 #[test]
 fn the_module_lives_inside_the_rulers_and_the_four_pieces_stay_there() {
     let viewport = EditorRect::new(0.0, 0.0, 1366.0, 1024.0);
-    let mut hero = ph2d_editor_core::screens::hero::HeroScreen::new(
-        ph2d_editor_core::screens::hero::ids::NodeId(1),
-    );
+    let mut hero =
+        ph2d_editor_core::screens::hero::HeroScreen::new(ph2d_editor_core::ids::NodeId(1));
 
     // A área de desenho que um quadro real resolve, e o que sobra dela depois das réguas — pela
     // MESMA porta que o produto usa (`ruler::content`), nunca por um `- 20.0` escrito aqui.

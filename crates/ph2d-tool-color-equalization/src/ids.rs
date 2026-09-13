@@ -1,14 +1,16 @@
 //! Widget `NodeId`s for the Color Equalization panel.
 //!
 //! Defined here in the tool crate (NOT in `ph2d-editor-core::ids`) so the
-//! fan-out path (DIRETRIZ §3.8) stays pure: the new tool drops its own
-//! pasta + the panel crate-irmão re-exports these via `pub use`. Tool's
-//! `handle_panel_event` matches against `crate::ids::*`; the panel's
-//! `populate` / `event` consume `ph2d_tool_color_equalization::ids::*`.
+//! fan-out path (DIRETRIZ §3.8) stays pure. Tool's `handle_panel_event`
+//! matches against `crate::ids::*`; the panel's `populate` / `event` consume
+//! `ph2d_tool_color_equalization::ids::*`. ⚠️ **Uma definição e nenhuma
+//! re-exportação** (auditoria A5b, 2026-09-12): a fachada `pub use` do painel
+//! crate-irmão morreu, e quem usa um destes ids nomeia-o aqui.
 //!
-//! All ids are derived via `hash_node_id("color_eq.<chip>")` (FNV-1a 64);
-//! the [`node_id_collisions`] arch test in `ph2d-tool-registry` catches
-//! accidental hash collisions across the project.
+//! All ids are derived via `hash_node_id("color_eq.<chip>")` (FNV-1a 64); the
+//! `node_id_collisions` census in `ph2d-editor-core/tests/it/` reads every
+//! literal of the workspace and catches hash collisions. ⚠️ `CEQ_PANEL` repeats
+//! the foundation's slug on purpose — one of the `SLUGS_REPETIDOS_TOLERADOS`.
 
 use ph2d_a11y::NodeId;
 use ph2d_tool_registry::hash_node_id;

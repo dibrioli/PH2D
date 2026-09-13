@@ -10,8 +10,9 @@
 //!    sobre um painel que a tecla `W` abriu.
 
 use ph2d_a11y::NodeId;
+use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::WidgetEvent;
-use ph2d_editor_core::screens::hero::{HeroScreen, chrome, fixture, ids};
+use ph2d_editor_core::screens::hero::{HeroScreen, chrome, fixture};
 
 fn hero() -> HeroScreen {
     HeroScreen::new(NodeId(1))

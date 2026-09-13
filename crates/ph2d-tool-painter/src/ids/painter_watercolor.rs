@@ -7,7 +7,7 @@
 //! `is_param_field`). Split into its own file like `painter_shape.rs` to keep the ids tidy.
 //!
 //! ⚠️ **Desceu de `ph2d-editor-core/src/ids/chrome/painter_watercolor.rs` em 2026-09-12** (auditoria de arquitectura
-//! A5b): quem LÊ estes ids mora nesta crate, e a fundação que 43 crates recompilam deixou de os
+//! A5b): quem LÊ estes ids mora nesta crate, e a fundação que 60 crates recompilam deixou de os
 //! carregar.
 
 use ph2d_a11y::NodeId;

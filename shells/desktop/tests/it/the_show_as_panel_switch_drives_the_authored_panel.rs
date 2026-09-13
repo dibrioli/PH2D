@@ -107,8 +107,9 @@ fn the_visibility_key_is_never_spelled_out() {
 /// em silêncio, que é a cicatriz do painel de física do W2b.
 #[test]
 fn the_ui_pill_writes_the_key_the_panel_answers() {
+    use ph2d_editor_core::ids;
     use ph2d_editor_core::interaction::WidgetEvent;
-    use ph2d_editor_core::screens::hero::{HeroScreen, chrome, ids};
+    use ph2d_editor_core::screens::hero::{HeroScreen, chrome};
 
     let mut hero = HeroScreen::new(ph2d_editor_core::NodeId(1));
     let key = ph2d_panel_authored::visibility_key();

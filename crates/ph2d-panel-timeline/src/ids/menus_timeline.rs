@@ -9,7 +9,7 @@
 //! they are tables and not hand-listed consts, and a gate walks each one.
 //!
 //! ⚠️ **Desceu de `ph2d-editor-core/src/ids/menus_timeline.rs` em 2026-09-12** (auditoria de arquitectura
-//! A5b): quem LÊ estes ids mora nesta crate, e a fundação que 43 crates recompilam deixou de os
+//! A5b): quem LÊ estes ids mora nesta crate, e a fundação que 60 crates recompilam deixou de os
 //! carregar.
 
 /// Wire encoding of the extrapolation SIDE, carried in

@@ -8,8 +8,8 @@
 //! ⛔ Este gate afirma o que o painel PROMETE, não o que o disco faz: quem grava é o shell, que é
 //! quem tem o disco. A metade de lá tem os gates dela em `shells/desktop/src/project_io_tests.rs`.
 
+use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::WidgetEvent;
-use ph2d_editor_core::screens::hero::ids;
 use ph2d_editor_core::{HeroScreen, NodeId};
 
 fn hero() -> HeroScreen {

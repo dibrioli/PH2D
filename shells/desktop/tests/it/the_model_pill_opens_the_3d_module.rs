@@ -14,8 +14,9 @@
 //! divergência ali alterna um painel que ninguém pinta — em silêncio, porque uma chave desconhecida
 //! só lê como `false`.
 
+use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetEvent};
-use ph2d_editor_core::screens::hero::{HeroScreen, chrome, fixture, ids};
+use ph2d_editor_core::screens::hero::{HeroScreen, chrome, fixture};
 
 /// O pill **existe no top bar e está registado** — sem o registro ele desenha e nasce morto sob o
 /// mouse (a nota que `topbar/mod.rs` já carrega para os vizinhos).

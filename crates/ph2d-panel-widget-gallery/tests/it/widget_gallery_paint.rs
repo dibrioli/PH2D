@@ -25,9 +25,9 @@
 
 use ph2d_editor_core::HeroScreen;
 use ph2d_editor_core::NodeId;
+use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::{ErasedPanel, Panel, PanelRegistry};
-use ph2d_editor_core::screens::hero::ids;
 use ph2d_editor_core::screens::hero::{HERO_VIEWPORT_H, HERO_VIEWPORT_W};
 use ph2d_editor_core::screens::paint_hero_screen;
 use ph2d_editor_core::zones::Rect;

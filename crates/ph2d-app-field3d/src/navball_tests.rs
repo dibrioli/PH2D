@@ -365,9 +365,8 @@ fn a_floating_window_on_the_edge_still_pushes() {
 #[test]
 fn the_product_feeds_the_gizmo_the_drawing_area() {
     let viewport = EditorRect::new(0.0, 0.0, 1366.0, 1024.0);
-    let mut hero = ph2d_editor_core::screens::hero::HeroScreen::new(
-        ph2d_editor_core::screens::hero::ids::NodeId(1),
-    );
+    let mut hero =
+        ph2d_editor_core::screens::hero::HeroScreen::new(ph2d_editor_core::ids::NodeId(1));
 
     // (a) com um quadro publicado, a área é a DE DESENHO.
     let drawing = ph2d_editor_core::zones::Rect::new(308.0, 28.0, 754.0, 996.0);

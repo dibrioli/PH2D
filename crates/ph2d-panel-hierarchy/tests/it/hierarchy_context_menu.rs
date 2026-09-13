@@ -5,9 +5,9 @@
 use ph2d_editor_core::HeroScreen;
 use ph2d_editor_core::NodeId;
 use ph2d_editor_core::action_bus::{EditorAction, HierRequest};
+use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::{ContextMenuKind, ContextMenuRequest, WidgetEvent};
 use ph2d_editor_core::panel::{ErasedPanel, EventOutcome, Panel, PanelRegistry};
-use ph2d_editor_core::screens::hero::ids;
 use ph2d_panel_hierarchy::{HierarchyPanel, HierarchyState};
 use std::sync::Once;
 

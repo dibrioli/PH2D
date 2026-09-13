@@ -10,6 +10,8 @@
 
 #[path = "../common/cfg_test_modules.rs"]
 mod cfg_test_modules;
+#[path = "../common/foundation_module_tree.rs"]
+mod foundation_module_tree;
 #[path = "../common/hero_sources.rs"]
 mod hero_sources;
 

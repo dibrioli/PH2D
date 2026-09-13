@@ -7,7 +7,7 @@
 //! estou mais no modo wet"*), plus the W3 curated knob rows (painted only while armed).
 //!
 //! ⚠️ **Desceu de `ph2d-editor-core/src/ids/chrome/painter_wetpaint.rs` em 2026-09-12** (auditoria de arquitectura
-//! A5b): quem LÊ estes ids mora nesta crate, e a fundação que 43 crates recompilam deixou de os
+//! A5b): quem LÊ estes ids mora nesta crate, e a fundação que 60 crates recompilam deixou de os
 //! carregar.
 
 use ph2d_a11y::NodeId;

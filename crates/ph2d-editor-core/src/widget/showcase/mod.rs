@@ -54,7 +54,7 @@ pub use state::{
 mod notes;
 pub use notes::paint_one_note;
 
-pub use crate::ids::SECTION_IDS;
+use crate::ids::SECTION_IDS;
 
 /// TreeView leaf NodeIds — the two leaves under the Lists section's
 /// "Layers" tree.

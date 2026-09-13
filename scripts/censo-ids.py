@@ -10,7 +10,7 @@ e para onde ele pode descer.
 # A pergunta (auditoria de arquitectura 2026-09-12, A5b)
 
 Um id que só UM painel lê (e as crates que dependem desse painel) não tem razão para morar na
-fundação que 43 crates recompilam. O que decide é o LEITOR, e o leitor lê-se no CÓDIGO:
+fundação que 60 crates recompilam. O que decide é o LEITOR, e o leitor lê-se no CÓDIGO:
 
 1. ⛔ **prosa não é leitura** (HOWTO §2.12) — comentários e strings saem antes de contar;
 2. ⛔ **um `pub use` não é leitura** — o `ids.rs` de cada painel re-exporta dezenas de ids que
@@ -683,9 +683,9 @@ def main() -> int:
         print(f"  {p:<34}{n:>5}")
     cerca = [k for k in publicos if res[k][0] == "FICA-CERCA"]
     print(f"\nFICA-CERCA: {len(cerca)} (dono seria: {dict(collections.Counter(res[k][1] for k in cerca))})")
-    hom = {n: sorted(fs) for n, fs in homonimos.items()}
-    print(f"homónimos (nome de ids/ definido fora): {len(hom)}")
-    for n, fs in sorted(hom.items())[:40]:
+    por_nome = {n: sorted(fs) for n, fs in homonimos.items()}
+    print(f"homónimos (nome de ids/ definido fora): {len(por_nome)}")
+    for n, fs in sorted(por_nome.items())[:40]:
         print(f"  {n}: {fs[:3]}")
     if a.lista:
         for k in sorted(itens):

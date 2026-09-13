@@ -1,12 +1,10 @@
 //! Widget `NodeId`s for the Upscale panel.
 //!
 //! Unlike the older bgremoval / padding panels (whose IDs lived in
-//! `ph2d_editor_core::ids` for legacy reasons), the Upscale panel
-//! derives its IDs via [`hash_node_id`] right here in the satellite —
-//! no slot in editor-core needs to be allocated, keeping the tool
-//! drop-in (ADR-0040 §3.8). The tool crate (`ph2d_tool_upscale::tool`)
-//! re-derives the same hashes from the same string keys; both sides
-//! match by construction because the hash is deterministic.
+//! `ph2d_editor_core::ids` until the A5b audit moved them to their owners),
+//! the Upscale ids never needed a slot in editor-core: the tool crate
+//! derives the control ids via [`hash_node_id`] in `ph2d_tool_upscale::tool::ids`,
+//! and this crate keeps only the panel root (ADR-0040 §3.8).
 //!
 //! ⚠️ **Uma definição e ZERO re-exportações** (auditoria A5b, 2026-09-12): os ids dos controlos, que a
 //! ferramenta declara em `ph2d_tool_upscale::tool::ids`, deixaram de ser re-exportados daqui — quem os

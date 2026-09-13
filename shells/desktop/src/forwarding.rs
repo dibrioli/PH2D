@@ -384,7 +384,7 @@ pub fn cursor_over_hero_panel(gfx: Option<&AppGfx>, x: f32, y: f32) -> bool {
     let Some(hero) = gfx.hero_screen.as_ref() else {
         return false;
     };
-    use ph2d_editor_core::screens::hero::ids::{
+    use ph2d_editor_core::ids::{
         AUDIO_EDITOR_PANEL, AUDIO_MIXER_PANEL, AUTHORED_PANEL, BGR_PANEL, CEQ_PANEL, EQS_PANEL,
         FLIP_PANEL, FLIP_STRIP_PANEL, GAL_PANEL, HIER_PANEL, INSP_PANEL, LAB_PANEL, MODEL3D_PANEL,
         MOTION_PARAMS_PANEL, PAD_PANEL, PAINTER_LAYERS_PANEL, PHYSICS_PANEL, SCULPT3D_PANEL,
@@ -500,11 +500,11 @@ pub fn cursor_over_hero_panel(gfx: Option<&AppGfx>, x: f32, y: f32) -> bool {
 /// O que sobra aqui é outra pergunta: **que rectângulos o gizmo de navegação deve contornar**
 /// (`render_loop`, W50). O gate `every_chrome_backdrop_is_known_to_the_scene` guarda-a.
 pub const CHROME_BACKDROPS: [ph2d_editor_core::NodeId; 5] = [
-    ph2d_editor_core::screens::hero::ids::RAIL_BACKDROP,
+    ph2d_editor_core::ids::RAIL_BACKDROP,
     ph2d_editor_core::ids::MENUBAR_BACKDROP,
-    ph2d_editor_core::screens::hero::ids::TOPBAR_LEFT_BACKDROP,
-    ph2d_editor_core::screens::hero::ids::TOPBAR_RIGHT_BACKDROP,
-    ph2d_editor_core::screens::hero::ids::TOPBAR_IMAGE_TOOLS_BACKDROP,
+    ph2d_editor_core::ids::TOPBAR_LEFT_BACKDROP,
+    ph2d_editor_core::ids::TOPBAR_RIGHT_BACKDROP,
+    ph2d_editor_core::ids::TOPBAR_IMAGE_TOOLS_BACKDROP,
 ];
 
 /// ADR-0029 Phase C.2: resolve canvas-picked entity bits to a live

@@ -1,13 +1,11 @@
 //! Tool-owned `NodeId`s for panel controls that route semantics
 //! through [`super::tool::BgRemovalTool::handle_panel_event`].
 //!
-//! The bulk of the bgremoval panel ids live in `ph2d_editor_core::ids`
-//! (`BGR_*`) for historical reasons. This module hosts ids added after
-//! that centralization: declaring them in the tool crate (instead of
-//! editor-core) lets a single feature land without editing the shared
-//! ids file, which removes a contention point with parallel agents.
-//! The panel crate re-exports these alongside its `editor-core` re-exports
-//! so `crate::ids::BGR_*` stays the single namespace inside the panel.
+//! ⚠️ **Todos os ids do painel de bgremoval moram aqui** (auditoria A5b, 2026-09-12): os `BGR_*` que
+//! viviam em `ph2d_editor_core::ids` desceram para o submódulo `bgremoval` deste módulo, e o módulo
+//! `ids` do painel — que re-exportava a fundação e esta crate como um espaço de nomes só — morreu.
+//! O painel e a shell nomeiam `ph2d_tool_bgremoval::ids::…`; nenhuma crate re-exporta estes ids.
+//! Os declarados directamente abaixo são os que já nasceram na ferramenta, depois da centralização.
 //!
 //! All NodeIds use [`hash_node_id`] (FNV-1a 64-bit, `const fn`), the same
 //! mechanism the editor-core ids use, so collision detection at registry

@@ -25,8 +25,9 @@ const MODE: &str = "../../crates/ph2d-app-sculpt3d/src/mode.rs";
 #[test]
 fn the_pill_is_painted_registered_and_reaches_the_bus() {
     use ph2d_editor_core::action_bus::EditorAction;
+    use ph2d_editor_core::ids;
     use ph2d_editor_core::interaction::{InteractiveState, WidgetEvent};
-    use ph2d_editor_core::screens::hero::{HeroScreen, chrome, fixture, ids};
+    use ph2d_editor_core::screens::hero::{HeroScreen, chrome, fixture};
 
     assert!(
         fixture::topbar_clusters()
@@ -186,7 +187,10 @@ fn the_scene_never_takes_a_click_that_belongs_to_the_chrome() {
 /// continuam declarados mesmo já não sendo pintados por ninguém. *Um piso contado sobre DECLARAÇÕES
 /// não nota que as declarações deixaram de ter consumidor.*
 ///
-/// ⇒ hoje a varredura é da **árvore inteira** de ids, e a lista já não é a porta da cena 3D — é a
+/// ⇒ hoje a varredura é da **árvore inteira** de ids — e desde a A5b (2026-09-12), que desceu os ids
+/// para as crates que os lêem, a árvore inteira é a de TODAS as crates, não a da fundação (a 1.ª
+/// redacção depois da descida ainda lia só `ph2d-editor-core/src/ids`, e repetia um nível acima o
+/// defeito deste parágrafo). A lista já não é a porta da cena 3D — é a
 /// lista de obstáculos que o gizmo de navegação contorna (a porta é
 /// `chrome_hit::pointer_over_chrome`, ver `the_scene_asks_the_one_chrome_door.rs`).
 ///
@@ -204,15 +208,23 @@ fn every_chrome_backdrop_is_known_to_the_scene() {
         .split_once("];")
         .expect("a lista não fecha: o bloco a conferir é o literal, não o arquivo")
         .0;
-    let root = "../../crates/ph2d-editor-core/src/ids";
+    // ⚠️ Desde a A5b (2026-09-12) um id mora na crate que o lê: a árvore de ids é a de TODAS as
+    // crates (`*/src/ids/**` e `*/src/**/ids.rs`, a convenção do `node_id_collisions`) — um
+    // `*_BACKDROP` nascido num painel ficaria fora de uma varredura só da fundação.
     let mut files = Vec::new();
-    let mut stack = vec![std::path::PathBuf::from(root)];
+    let mut stack = vec![std::path::PathBuf::from("../../crates")];
     while let Some(dir) = stack.pop() {
-        for entry in fs::read_dir(&dir).expect("os ids da moldura existem") {
+        for entry in fs::read_dir(&dir).expect("as crates existem") {
             let path = entry.expect("entrada legível").path();
+            let rel = path.to_string_lossy().replace('\\', "/");
             if path.is_dir() {
-                stack.push(path);
-            } else if path.extension().is_some_and(|e| e == "rs") {
+                if !rel.ends_with("/target") {
+                    stack.push(path);
+                }
+            } else if rel.ends_with(".rs")
+                && rel.contains("/src/")
+                && (rel.contains("/ids/") || rel.ends_with("/ids.rs"))
+            {
                 files.push(path);
             }
         }

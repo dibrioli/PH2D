@@ -40,13 +40,6 @@ const FN_OVERAGE_OK: &[(&str, &str, usize, &str)] = &[
     ("main.rs", "new", 263, NASCEU),
     ("project_load.rs", "project_load_from", 484, NASCEU),
     (
-        "render_loop/fase_audio_panels.rs",
-        "fase_audio_panels",
-        373,
-        "fase do quadro (OBRA 2): o mixer e o editor de áudio, verbatim; assunto da família `audio` \
-         que fica na shell porque as três features que o guardam são da shell",
-    ),
-    (
         "render_loop/fase_bus_drain.rs",
         "fase_bus_drain",
         2401,

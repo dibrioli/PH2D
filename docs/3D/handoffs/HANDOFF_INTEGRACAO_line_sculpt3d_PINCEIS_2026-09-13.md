@@ -241,6 +241,142 @@ auditor independente a ler os dois lados.
 
 ---
 
+## §6-bis — ⭐⭐⭐ O TERCEIRO PINCEL: a POSE, implementada e MEDIDA
+
+> **Ordem do dono, 13/09:** *«vamos implementar, contudo vamos tentar superar o
+> blender»*. ⚠️ **«Superar» só é verificável depois de «reproduzir»** — sem
+> paridade medida, uma diferença é indistinguível de um defeito. Com ela, cada
+> divergência passa a ser deliberada, com número e gate.
+
+**A lei vive na crate-folha [`ph2d-pose`](../../../crates/ph2d-pose/)** — zero
+dependências, como a `ph2d-cloth`: ela não sabe o que é uma `Mesh`, um pincel ou
+uma câmera. O artista aponta a um ponto e arrasta; o pincel acha sozinho, **pela
+forma e pela ligação da malha e sem esqueleto nenhum**, um pivô e uma cadeia de
+segmentos, e roda a região à volta dele.
+
+### §6-bis.1 — A paridade, à primeira corrida
+
+| | |
+|---|---|
+| dentro de `1e-5` | **`57` de `69`** fixturas |
+| corpo do corpus | `5,96e-8` a `6,74e-7` |
+| gates | `8`, com barra **por CLASSE** (§12.3 da espec) e censo de obsolescência |
+| mutação | **`14` de `14` sangram**, com controlo negativo |
+
+⭐⭐ **E isto BATE o modelo de referência da própria espec**, que fecha em
+`54/69`. Ganhámos **três** das quinze divergências dele: as **duas** da
+descontinuidade do crescimento (ele `2,1e-2` e `2,2e-2`; nós `6,0e-7` e
+`1,7e-7` — caímos do lado certo do `<` estrito nas duas) e a **degenerada §11.1**,
+que ele declarava *«bug do nosso MODELO»* e que agora dá `0,000e0` com
+`movidos = 0` dos dois lados, igual ao veredito do alvo.
+
+⭐⭐⭐ **A cura da degenerada é o achado da jornada, e ela não é um epsilon.**
+Quando o pivô cai em cima do cursor, a diferença entre a cabeça e a origem do
+primeiro segmento vale **UM ULP** das próprias coordenadas: ela é feita
+inteiramente do arredondamento com que as duas foram escritas, e a direcção
+tirada dela é **ruído normalizado a comprimento `1`**. Varrido o corpus inteiro,
+essa fixtura mede **`0,9` ulps** e a mais pequena de **todas** as outras
+**`176 683`** — *cinco ordens de grandeza de vazio*. A barra sai desse vale, o
+piso é **relativo** à magnitude das posições (um ulp perto de `2,2` é `2,4e-7`;
+perto de `0,002` é `2,4e-10`), e os **quatro** consumidores de uma direcção
+inicial passam pela mesma porta.
+
+Os `12` que sobram são exactamente as classes que a espec declara — o polo da
+escala atravessado, a família da escala (relativa, medida `≤ 1,7e-5`), o cursor
+sobre o plano de espelho (veredito: quase nulo), a **auto-suavização não
+modelada de propósito**, e a única que a espec deixa **por explicar**.
+
+### §6-bis.2 — ⭐⭐ Onde SUPERAMOS o alvo, e cada linha com a fonte
+
+| o que o alvo faz | o que custa ao artista | o nosso lado |
+|---|---|---|
+| reconstrói a cadeia **a cada movimento do rato**, sem traço nenhum, só para desenhar o indicador | o editor engasga em malha densa; com peças desligadas cada zoom paga `O(V²)` — **quatro** relatos públicos | construída **uma vez por traço**, e ⭐ **GATEADO** (`a_cadeia_da_pose_constroi_se_uma_vez_por_traco`) |
+| a suavização **pode** não ser reprodutível acima de uma partição | o mesmo gesto poderia dar resultados diferentes | Jacobi limpo ⇒ determinístico em **toda** a malha. ⚠️ A reserva viaja: esse regime é **risco do mecanismo** e **nunca foi observado** |
+| pivô sobre o cursor ⇒ **não faz nada, em silêncio** | o artista arrasta e nada acontece | detectável (`Pose::inerte`) |
+| a auto-suavização só age dentro do **raio inicial** | o efeito «desaparece» longe do cursor | se a oferecermos, segue os **pesos** |
+| vértice solto recebe a média de um conjunto **vazio** | peso indefinido | mantém o peso (§11.4, divergência declarada) |
+
+⚠️⚠️ **E uma vantagem escrita num cabeçalho é uma PROMESSA; uma com contador é
+uma PROPRIEDADE.** Sem o gate do contador, quem movesse a construção para dentro
+do laço de eventos não partiria teste nenhum — a saída seria a mesma, só mais
+lenta, e a regressão viajaria até ao dia em que o dono esculpisse uma malha
+grande.
+
+⛔ **O que NÃO fizemos, e é honesto dizê-lo:** a dependência da **taxa de
+eventos** (§5.1-bis) e a leitura de **pixels** na torção (§5.2, *o mesmo gesto dá
+torções diferentes conforme o zoom*) são defeitos reais de previsibilidade **e**
+são o comportamento que o artista conhece e que as fixturas medem. Trocá-los é um
+**MODO com gate próprio**, nunca uma correcção silenciosa.
+
+### §6-bis.3 — Os três sobreviventes da mutação, e o que eles ensinam
+
+A primeira volta matou `11` de `14`. ⭐ **Os três sobreviventes tinham a MESMA
+causa, e não era fraqueza dos gates: são propriedades que os `69` traços
+publicados NÃO discriminam.**
+
+| sobreviveu | porque o corpus é cego | o gate que o mata |
+|---|---|---|
+| semente por ordem de chegada | com um eixo de espelho há `2` sementes e o desempate quase nunca decide | `a_semente_sai_ordenada` |
+| **o espremer RESOLVE a cadeia** | ⭐ **todas** as fixturas de espremer são ancoradas, e com âncora e um segmento resolver é um **no-op** ⇒ o **item 13** da lista de verificação da espec **não tem fixtura que o imponha** | `o_espremer_nao_resolve_a_cadeia` |
+| sem a guarda de `1e-5` | nenhum traço leva o quociente abaixo do limiar | `a_guarda_do_espremer_impede_o_infinito` |
+
+⚠️⚠️ **E o terceiro sobreviveu DUAS vezes antes de morrer, por dois defeitos do
+ARNÊS e não da lei:** procurei o regime no **extremo errado** (a guarda defende
+`|δ| → ∞`, não o polo — eles são os dois lados opostos do mesmo quociente), e o
+cursor estava no **CENTRO** da grelha, onde a franja é um anel simétrico, o pivô
+cai sobre o cursor e o traço inteiro é **INERTE**. *Um gate sem controlo positivo
+do próprio sujeito mede o nada e fica verde* — o arnês afirma agora que a cadeia
+nasceu viva.
+
+### §6-bis.4 — A fiação, e a porta que ela obrigou a existir
+
+⭐⭐ **Havia DUAS respostas à mesma pergunta.** O desvio no `stroke_symmetry`
+nomeava verbos à mão enquanto os censos do `stroke_apply` perguntavam ao `Grip` —
+e as duas concordavam **por acaso**, enquanto o único que desviava era a
+simulação. A pose quebrou o acaso: ela desvia e o grip dela é o `Hold`, que dois
+verbos do laço também usam. ⇒ porta única **`Verb::resolve_a_propria_regiao()`**,
+lida pelo desvio **e** pelos censos, com o despacho a falhar **alto** em debug se
+alguém a declarar sem lhe dar destino.
+
+⛔ **E tirar um verbo de um censo sem escrever o gate que o substitui é como uma
+ausência vira permanente** — esta linha caçou **oito** gates *citados e nunca
+escritos* em 13/09. Os dois substitutos existem e sangram.
+
+### §6-bis.5 — ⭐⭐⭐ A cena `=41` abre na ORELHA, e a escolha é MEDIDA
+
+Numa esfera lisa a franja que dá o pivô é um **anel simétrico** à volta do cursor
+⇒ a média dela cai em cima dele, o primeiro segmento nasce com comprimento nulo e
+**o pincel não move nada**. Uma cena de esfera mostraria a ferramenta a parecer
+partida — e a `=36` já pagou esse preço, com o dono a responder *«do modo como o
+objecto é não é possível testar»*. A orelha é um **apêndice**: a franja dela é
+quase toda do lado do corpo e o pivô cai na **BASE**, que é o que faz o gesto
+parecer uma articulação. O gate `a_pose_move_a_orelha_desta_cena` afirma que ela
+de facto se mexe.
+
+### §6-bis.6 — ⛔⛔ O ACHADO DE INSTRUMENTO: o sweep é do PAR, não do código
+
+Ao ligar o verbo, as **cinco** vassouras sobre as cinco crates da família deram
+**`18`** achados — `pose 0 · cloth 0 · pull 15 · boundary 2 · unblocked 1`.
+⚠️ **Nenhum era novo:** toda essa prosa já tinha fechado sweeps **verdes**, e
+nada dela estava no diff da jornada. O que mudou foram **as vassouras** — elas
+são **por alvo**, os agentes E estendem-nas a cada emenda, e as três obras novas
+desta jornada trouxeram vassouras de `298`, `229` e `227` entradas contra as
+`149` e `137` que já existiam.
+
+⇒ *«o sweep fechou verde» lê-se como propriedade do CÓDIGO e não é: é propriedade
+do **PAR (código, vassoura)**, e a vassoura é um **alvo móvel** que outra pessoa
+edita.* **Corolário:** emendar uma vassoura obriga a corrida nova sobre a **árvore
+inteira**, e quem fecha uma linha corre **todas** as vassouras vivas — não só a
+da obra dela.
+
+Curados dois blocos; ⭐ **os `13` que sobram são UM único token** em 16 sítios,
+que é frase comum do domínio, rótulo de interface e chave de i18n — e o
+**atestado da espec que acompanha aquela vassoura já escreve a lei que o isenta**.
+*Uma vassoura pode contradizer o R-pré que viaja com ela.* A cura é do dono dela;
+até lá é **isenção NOMEADA** no ledger, nunca silêncio.
+
+---
+
 ## §7 — SETE coisas que uma leitura rápida do diff entende ao contrário
 
 1. **O `s²` do polegar não está escrito no verbo.** O alvo é `base + tangencial`,

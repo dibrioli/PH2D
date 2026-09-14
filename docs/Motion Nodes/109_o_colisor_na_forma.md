@@ -540,16 +540,28 @@ não é *«como estava»*, é **gelo**, e gelo é um pedido.
 
 ### §7.6 — A cena `=115`, e o que ela mede
 
-`PH2D_GPU_COOK_DEMO=115` — quatro bolas iguais, e em cada par muda **um** número do cartão da forma
-(a rampa, o chão, a gravidade e o relógio são os mesmos nós com os mesmos números, com gate:
-`only_the_shape_card_differs_between_the_halves_of_a_pair`).
+`PH2D_GPU_COOK_DEMO=115` — seis bolas em três fileiras, e em cada par muda **um** número do cartão
+da forma (a rampa, o chão, a taça, a gravidade e o relógio são os mesmos nós com os mesmos números
+**dentro de cada par**, com gate: `only_the_shape_card_differs_between_the_halves_of_a_pair`).
 
-| quadrante | medido em 2 s |
-|---|---|
-| rampa, `Friction 0` | andou `1,60` · rodou **`−0,0°`** |
-| rampa, `Friction 1` | andou `1,08` · rodou **`279,6°`** — `0,97×` o rolamento puro (`288°`) |
-| queda, `Bounciness 0` | pico `−2,130` = pousada no chão (`−2,35 + R`) |
-| queda, `Bounciness 0,9` | pico **`−1,117`** — sobe `1,01` |
+| fileira | par | medido |
+|---|---|---|
+| rampa (peça × MUNDO) | `Friction 0` | andou `1,60` · rodou **`−0,0°`** |
+| | `Friction 1` | andou `1,08` · rodou **`307,5°`** — `0,97×` o rolamento puro (`316°`) |
+| queda (peça × MUNDO) | `Bounciness 0` | pico `0,200` = pousada no chão (`0 + R`) |
+| | `Bounciness 0,9` | pico **`0,572`** — sobe `0,372`, metade da queda |
+| taça (peça × **PEÇA**) | `Friction 0` | 16 bolas, giro total **`0,0°`**, monte `1,562` de largo |
+| | `Friction 1` | as mesmas 16, giro total **`469,9°`** (maior `77,5°`), monte `1,392` |
+
+⭐⭐⭐ **A terceira fileira é a resposta ao 3.º report** (*«as propriedades entre as próprias shapes
+não funcionam»*), e a decisão que a torna uma afirmação honesta é **a taça ser ESCORREGADIA nas duas
+metades**: `μ` contra a parede é `√(0 · μ_bola) = 0` dos dois lados, logo **todo** o giro medido
+nasce de bola contra bola. ⛔ Com um obstáculo áspero metade da rotação viria da parede e o gate
+ficaria verde sem provar nada sobre o par de peças.
+
+⚠️ **E as bolas NASCEM DENTRO da taça** (gate próprio, `1,033` contra o limite de `1,090`): um
+recipiente projecta para dentro tudo o que nasce fora, e a cena abriria com um SALTO a cada volta do
+laço — a armadilha que a `=114` já nomeia por escrito.
 
 ⚠️ **A bola leva um TRACEJADO no contorno**, e ele é a razão de ela ser desenhada assim: *um círculo
 liso rodado é indistinguível de um círculo parado.* Uma cena que demonstra rotação tem de desenhar
@@ -558,6 +570,20 @@ uma coisa cuja rotação se veja.
 ⚠️ **A cena `=114` não regride**: o vão típico da pilha continua em `0,2192` (`100 %` do lado) e as
 peças continuam a tombar (`54,0°` de máximo, `18` de `25` acima de `5°`, contra `49,4°`/`22` antes
 do atrito). *O que mudou foi elas deixarem de escorregar umas sobre as outras.*
+
+⛔⛔ **E porque o 3.º report era JUSTO mesmo com a lei a funcionar.** Medido na `=114` variando só o
+`Friction` do cartão:
+
+| colisor | `Friction 0` | `0,5` (o default) | `1` |
+|---|---|---|---|
+| **Circle** | `0°` de giro, monte `2,220` de largo | `730°`, `1,819` | `869°`, `1,665` |
+| **Box** | `685°`, `2,258` | `601°`, `1,906` | `636°`, `1,960` |
+
+⇒ *entre peças a lei age* — e **onde o dono iria olhar ela era invisível**: a `=114` é uma pilha de
+**quadrados** (colisor `Box`, o default), e ali o `Friction` mexe `±8 %` num giro que a metade
+NORMAL já produz sozinha. Some-se a isso o default `0,5`, que não deixa nenhum estado «desligado»
+com que comparar. *Um controlo cujo default já faz a coisa, numa cena onde ele quase não pesa,
+lê-se exactamente como um controlo que não funciona.* A cura foi dar-lhe o A/B que faltava.
 
 ### §7.7 — Aberto, com o mecanismo
 
@@ -568,5 +594,8 @@ do atrito). *O que mudou foi elas deixarem de escorregar umas sobre as outras.*
   posição, e uma peça roda enquanto toca. O que MUDOU é que uma bola contra um obstáculo agora
   ganha `spin` de verdade — as duas metades do app já não dizem a mesma coisa sobre isto, e
   unificá-las é uma wave própria.
+- ⏳ **Entre CAIXAS o `Friction` quase não pesa** (tabela acima): o encaixe geométrico de duas faces
+  planas já impede o deslize, e o que sobra para o atrito é pouco. Não está errado — está **medido e
+  nomeado**, e quem quiser mudá-lo tem de dizer que recurso é que o limita.
 - ⏳ **Não há atrito de ROLAMENTO** (o que faz uma bola a rolar parar sozinha num plano): com
   `angular_damping = 1` (o default) ela rola para sempre num chão infinito. É um param, não uma lei.

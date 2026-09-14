@@ -212,33 +212,42 @@ pub(super) fn pilha() {
     );
 }
 
-/// **DE QUE A PEÇA É FEITA** (`=115`) — o MATERIAL: atrito e salto (doc 109 §7).
+/// **DE QUE A PEÇA É FEITA** (`=115`) — o MATERIAL: atrito e salto, contra o mundo E entre
+/// as próprias formas (doc 109 §7).
 ///
 /// ⚠️ **Precisa de Play**, como a `=113` e a `=114`.
 pub(super) fn material() {
     eprintln!(
-        "[cena 115] DE QUE A PECA E' FEITA. Quatro bolas iguais. Em cada par muda UM
-  numero no cartao da forma -- a rampa, o chao e a gravidade sao os mesmos.
+        "[cena 115] DE QUE A PECA E' FEITA. Seis bolas. Em cada par muda UM numero no
+  cartao da forma -- a rampa, o chao, a taca e a gravidade sao os mesmos.
 
   1. Carregue em PLAY. Sem isto nada cai.
-  2. Olhe a fileira de CIMA, as duas rampas. A bola da ESQUERDA escorrega ate' abaixo
-     SEM VIRAR: o tracejado do contorno dela fica sempre na mesma posicao. A da DIREITA
-     ROLA -- o tracejado gira, como uma roda. E' a mesma rampa e a mesma bola.
+  2. Fileira de CIMA, as duas rampas. A bola da ESQUERDA escorrega ate' abaixo SEM
+     VIRAR: o tracejado do contorno fica sempre na mesma posicao. A da DIREITA ROLA --
+     o tracejado gira, como uma roda. E' a mesma rampa e a mesma bola.
   3. No grafo, clique no cartao `Friction 1: ROLA` e abra a seccao `Collision`. A linha
      `Friction` esta' em 1,00. Arraste-a ate' 0: a bola passa a escorregar sem virar,
      igual a` da esquerda. Volte a 1 e ela volta a rolar.
      (i) `Friction` nao e' so' `quanto trava`: e' a UNICA coisa que faz um circulo rodar.
          Um empurrao que passa pelo centro da bola nunca a faz girar.
-  4. Olhe a fileira de BAIXO, as duas quedas. A bola da ESQUERDA cai e morre onde bate.
-     A da DIREITA SALTA, e cada salto e' mais baixo que o anterior.
-  5. Clique no cartao `Bounciness 0,9: SALTA` e arraste a linha `Bounciness` ate' 0: ela
-     passa a morrer no chao. Suba para 0,9 outra vez.
-  6. Experimente misturar: ponha `Friction` a 0 na bola que salta -- ela continua a
+  4. Fileira do MEIO, as duas quedas. A bola da ESQUERDA cai e morre onde bate. A da
+     DIREITA SALTA, e cada salto e' mais baixo que o anterior. Clique no cartao
+     `Bounciness 0,9: SALTA` e arraste `Bounciness` ate' 0: ela passa a morrer no chao.
+  5. Fileira de BAIXO, as duas tacas: 16 bolinhas a cair em cascata. ESTA fileira e'
+     sobre o material de uma bola contra OUTRA BOLA -- as duas tacas sao
+     ESCORREGADIAS, entao tudo o que se ve vem das bolas entre si. A` ESQUERDA elas
+     escorregam umas nas outras sem NENHUMA virar. A` DIREITA rolam umas nas outras: os
+     tracejados giram.
+  6. Clique no cartao `Entre bolas, Friction 1: ROLAM umas nas outras` e arraste
+     `Friction` ate' 0: os tracejados congelam e o monte fica mais espalhado. Volte a 1.
+  7. Experimente misturar: ponha `Friction` a 0 na bola que salta -- ela continua a
      saltar, mas deixa de rodar ao tocar no chao.
 
   DEU ERRADO se: as duas bolas de cima fizerem a mesma coisa; se a da direita escorregar
-  sem o tracejado girar; se mexer em `Friction` ou `Bounciness` nao mudar nada; se alguma
-  bola atravessar a rampa ou o chao; ou se a bola que salta nunca parar de saltar."
+  sem o tracejado girar; se nas tacas de baixo os dois montes ficarem iguais; se mexer em
+  `Friction` ou `Bounciness` nao mudar nada; se alguma bola atravessar a rampa, o chao ou
+  a taca; se as bolinhas SALTAREM para dentro da taca no instante em que a cena comeca;
+  ou se a bola que salta nunca parar de saltar."
     );
 }
 

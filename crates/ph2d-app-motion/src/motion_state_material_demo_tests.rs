@@ -8,13 +8,33 @@ use super::*;
 use crate::motion_state::MotionState;
 use ph2d_nodegraph::attr::Column;
 
-/// O que uma corrida devolve por quadrante: onde a bola começou e acabou, e o ÂNGULO dela no fim.
+/// O que uma corrida devolve por quadrante: a nuvem no princípio e no fim, e os ÂNGULOS no fim.
 struct Corrida {
-    inicio: Vec<[f32; 2]>,
-    fim: Vec<[f32; 2]>,
-    /// O `y` mais alto que a bola alcançou DEPOIS do primeiro toque — a régua do salto.
+    inicio: Vec<Vec<[f32; 2]>>,
+    fim: Vec<Vec<[f32; 2]>>,
+    /// O `y` mais alto que a peça 0 alcançou DEPOIS do primeiro toque — a régua do salto.
     pico_depois_do_toque: Vec<f32>,
-    rot: Vec<f32>,
+    rot: Vec<Vec<f32>>,
+}
+
+impl Corrida {
+    /// O ângulo da peça 0 (as fileiras de cima têm uma bola só).
+    fn rot0(&self, i: usize) -> f32 {
+        self.rot[i].first().copied().unwrap_or(0.0)
+    }
+    /// Quanto a nuvem toda rodou, em módulo — a régua das taças.
+    fn giro_total(&self, i: usize) -> f32 {
+        self.rot[i].iter().map(|a| a.abs()).sum()
+    }
+    /// A largura da nuvem no fim.
+    fn largura(&self, i: usize) -> f32 {
+        let (lo, hi) = self.fim[i]
+            .iter()
+            .fold((f32::MAX, f32::MIN), |(lo, hi), q| {
+                (lo.min(q[0]), hi.max(q[0]))
+            });
+        hi - lo
+    }
 }
 
 /// Monta a cena, deixa `mexe` ajustar os cartões e corre `secs` segundos.
@@ -33,18 +53,18 @@ fn corre(secs: f64, mexe: impl FnOnce(&mut MotionState, &[NodeId])) -> Corrida {
         .filter(|n| n.type_name == "source.shape")
         .map(|n| n.id)
         .collect();
-    assert_eq!(formas.len(), 4, "quatro bolas");
+    assert_eq!(formas.len(), 6, "seis quadrantes");
     mexe(&mut state, &formas);
     crate::motion_shape_gen::publish(&mut state, 0.0);
     let last = (secs * 60.0) as u64;
     let n = sinks.len();
     let mut c = Corrida {
-        inicio: vec![[0.0; 2]; n],
-        fim: vec![[0.0; 2]; n],
+        inicio: vec![Vec::new(); n],
+        fim: vec![Vec::new(); n],
         pico_depois_do_toque: vec![f32::MIN; n],
-        rot: vec![0.0; n],
+        rot: vec![Vec::new(); n],
     };
-    // O `y` mínimo já visto por quadrante: o pico só conta DEPOIS de a bola ter descido.
+    // O `y` mínimo já visto por quadrante: o pico só conta DEPOIS de a peça ter descido.
     let mut fundo = vec![f32::MAX; n];
     for k in 0..=last {
         #[expect(clippy::cast_precision_loss, reason = "um indice de tique")]
@@ -57,28 +77,27 @@ fn corre(secs: f64, mexe: impl FnOnce(&mut MotionState, &[NodeId])) -> Corrida {
                 .expect("cozinha")[0]
                 .as_stream()
                 .clone();
-            if let Some(Column::Vec2(v)) = s.get("P")
-                && let Some(p) = v.first()
-            {
+            if let Some(Column::Vec2(v)) = s.get("P") {
                 if k == 0 {
-                    c.inicio[i] = *p;
+                    c.inicio[i] = v.clone();
                 }
                 if k == last {
-                    c.fim[i] = *p;
+                    c.fim[i] = v.clone();
                 }
-                fundo[i] = fundo[i].min(p[1]);
-                if p[1] < fundo[i] + 1e-4 {
-                    // Ainda a descer (ou no ponto mais baixo): o salto conta a partir daqui.
-                    c.pico_depois_do_toque[i] = p[1];
-                } else {
-                    c.pico_depois_do_toque[i] = c.pico_depois_do_toque[i].max(p[1]);
+                if let Some(p) = v.first() {
+                    fundo[i] = fundo[i].min(p[1]);
+                    if p[1] < fundo[i] + 1e-4 {
+                        c.pico_depois_do_toque[i] = p[1];
+                    } else {
+                        c.pico_depois_do_toque[i] = c.pico_depois_do_toque[i].max(p[1]);
+                    }
                 }
             }
-            if k == last
-                && let Some(Column::Scalar(r)) = s.get("rot")
-                && let Some(a) = r.first()
-            {
-                c.rot[i] = *a;
+            if k == last {
+                c.rot[i] = match s.get("rot") {
+                    Some(Column::Scalar(r)) => r.clone(),
+                    _ => Vec::new(),
+                };
             }
         }
         state
@@ -95,6 +114,8 @@ const RAMPA_GELO: usize = 0;
 const RAMPA_ATRITO: usize = 1;
 const QUEDA_MORTA: usize = 2;
 const QUEDA_VIVA: usize = 3;
+const TACA_GELO: usize = 4;
+const TACA_ATRITO: usize = 5;
 
 /// ⭐⭐⭐ **A RESPOSTA AO REPORT, NA CENA** (*«os círculos não rotacionam com a colisão»*): a mesma
 /// bola na mesma rampa RODA com `Friction 1` e NÃO roda com `Friction 0`.
@@ -104,8 +125,8 @@ const QUEDA_VIVA: usize = 3;
 #[test]
 fn the_ball_with_friction_rolls_and_the_icy_one_does_not() {
     let c = corre(2.0, |_, _| {});
-    let (gelo, rola) = (c.rot[RAMPA_GELO], c.rot[RAMPA_ATRITO]);
-    let desceu = |i: usize| c.inicio[i][0] - c.fim[i][0];
+    let (gelo, rola) = (c.rot0(RAMPA_GELO), c.rot0(RAMPA_ATRITO));
+    let desceu = |i: usize| c.inicio[i][0][0] - c.fim[i][0][0];
     eprintln!(
         "  rampa │ gelo {gelo:.1}° (andou {:.2}) · atrito {rola:.1}° (andou {:.2})",
         desceu(RAMPA_GELO),
@@ -143,18 +164,18 @@ fn the_ball_with_friction_rolls_and_the_icy_one_does_not() {
 #[test]
 fn what_it_turns_is_what_rolling_asks_for() {
     let c = corre(2.0, |_, _| {});
-    let andou = (c.inicio[RAMPA_ATRITO][0] - c.fim[RAMPA_ATRITO][0])
-        .hypot(c.inicio[RAMPA_ATRITO][1] - c.fim[RAMPA_ATRITO][1]);
+    let (a, b) = (c.inicio[RAMPA_ATRITO][0], c.fim[RAMPA_ATRITO][0]);
+    let andou = (a[0] - b[0]).hypot(a[1] - b[1]);
     let pedido = andou / RAIO * ph2d_contact::GRAUS;
-    let razao = c.rot[RAMPA_ATRITO] / pedido;
+    let razao = c.rot0(RAMPA_ATRITO) / pedido;
     eprintln!(
         "  rolamento │ andou {andou:.3} · pedia {pedido:.0}° · rodou {:.0}° ({razao:.2}x)",
-        c.rot[RAMPA_ATRITO]
+        c.rot0(RAMPA_ATRITO)
     );
     assert!(
         (0.65..=1.35).contains(&razao),
         "o giro tem de ser o ARCO que a bola andou: pedia {pedido:.0}°, rodou {:.0}°",
-        c.rot[RAMPA_ATRITO]
+        c.rot0(RAMPA_ATRITO)
     );
 }
 
@@ -162,19 +183,21 @@ fn what_it_turns_is_what_rolling_asks_for() {
 #[test]
 fn the_bouncy_ball_comes_back_up_and_the_dead_one_stays_down() {
     let c = corre(2.0, |_, _| {});
-    let sobe = |i: usize| c.pico_depois_do_toque[i] - c.fim[i][1].min(c.pico_depois_do_toque[i]);
     let (morta, viva) = (
         c.pico_depois_do_toque[QUEDA_MORTA],
         c.pico_depois_do_toque[QUEDA_VIVA],
     );
     eprintln!("  salto │ Bounciness 0 pico {morta:.3} · 0,9 pico {viva:.3} (chao {CHAO_Y})");
-    let _ = sobe;
     assert!(
         morta < CHAO_Y + RAIO + 0.05,
         "com `Bounciness 0` a bola tem de MORRER no chao, e subiu ate' {morta:.3}"
     );
+    // ⚠️ **A barra sai da MEDIÇÃO e não do valor autorado:** a queda é de `0,75` e o salto medido
+    // sobe `0,372` acima da pousada — metade da altura, e não os `81 %` que `0,9²` sugere, porque
+    // o embate dura um tique inteiro de gravidade. *Uma barra derivada de `restitution²` mediria a
+    // conta de cabeça em vez do que a cena faz.*
     assert!(
-        viva > CHAO_Y + RAIO + 0.4,
+        viva > CHAO_Y + RAIO + 0.25,
         "com `Bounciness 0,9` ela tem de SALTAR, e o pico foi {viva:.3}"
     );
 }
@@ -192,12 +215,12 @@ fn the_two_material_sliders_do_what_the_announcement_says() {
             .graph
             .set_param(formas[RAMPA_ATRITO], param::FRICTION, 0.0);
     });
-    eprintln!("  Friction 1 -> 0 │ rot {}°", travado.rot[RAMPA_ATRITO]);
+    eprintln!("  Friction 1 -> 0 │ rot {}°", travado.rot0(RAMPA_ATRITO));
     // A mesma barra de ruído do gate acima — ver o mecanismo lá.
     assert!(
-        travado.rot[RAMPA_ATRITO].abs() < 1e-3,
+        travado.rot0(RAMPA_ATRITO).abs() < 1e-3,
         "arrastar `Friction` a 0 tem de parar a rotacao, e sobrou {}°",
-        travado.rot[RAMPA_ATRITO]
+        travado.rot0(RAMPA_ATRITO)
     );
 
     // `Bounciness` a 0 na bola que saltava: ela passa a morrer no chão.
@@ -238,13 +261,17 @@ fn only_the_shape_card_differs_between_the_halves_of_a_pair() {
             })
             .collect()
     };
-    for p in ["friction", "restitution"] {
+    // ⚠️ **Por PAR, e não globalmente**: a taça é ice nas duas metades e a rampa é áspera nas
+    // duas — o que a lei proíbe é o mundo mudar DENTRO de um par, que é onde a comparação vive.
+    for p in ["restitution", "friction"] {
         let v = numero("sim.collide", p);
-        assert_eq!(v.len(), 4, "quatro obstaculos");
-        assert!(
-            v.windows(2).all(|w| w[0] == w[1]),
-            "o `{p}` do obstaculo tem de ser o MESMO nos quatro: {v:?}"
-        );
+        assert_eq!(v.len(), 6, "seis obstaculos");
+        for par in v.chunks(2) {
+            assert!(
+                par[0] == par[1],
+                "o `{p}` do obstaculo tem de ser o MESMO nas duas metades de um par: {v:?}"
+            );
+        }
     }
     let dur = numero("sim.zone", "duration");
     assert!(
@@ -280,7 +307,11 @@ fn every_row_the_announcement_names_is_on_the_card() {
         ph2d_editor_core::ProjectSettings::default(),
         &mut snap,
     );
-    for titulo in ["Friction 1: ROLA", "Bounciness 0,9: SALTA"] {
+    for titulo in [
+        "Friction 1: ROLA",
+        "Bounciness 0,9: SALTA",
+        "Entre bolas, Friction 1: ROLAM umas nas outras",
+    ] {
         let v = snap
             .nodes
             .iter()
@@ -308,6 +339,96 @@ fn every_row_the_announcement_names_is_on_the_card() {
         assert!(
             ANUNCIO.contains(titulo),
             "o anuncio tem de nomear o cartao `{titulo}`"
+        );
+    }
+}
+
+// ───────────────────── A terceira fileira: o material ENTRE SHAPES ─────────────────────
+
+/// ⭐⭐⭐ **O MATERIAL VALE ENTRE AS PRÓPRIAS SHAPES** — 3.º report do dono (2026-09-13:
+/// *«as propriedades entre as próprias shapes não funcionam»*).
+///
+/// ⚠️⚠️ **A taça é ESCORREGADIA nas duas metades**, e é isso que torna este gate uma afirmação
+/// sobre peça-contra-peça: com um obstáculo áspero, metade da rotação viria da parede e o gate
+/// ficaria verde sem provar nada sobre o par de bolas. Aqui `μ` contra a parede é `√(0 · μ) = 0`
+/// nos dois lados, logo **todo** o giro medido nasce de bola contra bola.
+#[test]
+fn the_material_acts_between_the_shapes_themselves() {
+    // ⛔⛔ **A PREMISSA PRIMEIRO, e ela é metade do gate.** Sem esta linha, dar atrito à parede
+    // deixava tudo abaixo VERDE — e o que estaria a ser medido era o mundo a rodar as bolas, não
+    // as bolas umas às outras. *Um gate que não prende a própria premissa afirma outra coisa.*
+    // (Medido: a mutação que põe a taça áspera SOBREVIVEU a todos os outros gates desta cena.)
+    {
+        let mut m = MotionState::new();
+        let _ = build(&mut m.doc, &m.registry).expect("a cena monta");
+        let atritos: Vec<f32> = m
+            .doc
+            .graph
+            .nodes()
+            .iter()
+            .filter(|n| n.type_name == "sim.collide")
+            .map(|n| {
+                m.doc
+                    .graph
+                    .node_param_overrides(n.id)
+                    .and_then(|o| o.get("friction").copied())
+                    .unwrap_or(f32::NAN)
+            })
+            .collect();
+        assert_eq!(
+            (atritos[TACA_GELO], atritos[TACA_ATRITO]),
+            (0.0, 0.0),
+            "as duas tacas tem de ser ESCORREGADIAS para o giro medido ser de bola contra bola: \
+             {atritos:?}"
+        );
+    }
+    let c = corre(2.2, |_, _| {});
+    let (gelo, atrito) = (c.giro_total(TACA_GELO), c.giro_total(TACA_ATRITO));
+    eprintln!(
+        "  entre bolas │ gelo {gelo:.1}° (largura {:.3}) · atrito {atrito:.1}°          (maior {:.1}°, largura {:.3})",
+        c.largura(TACA_GELO),
+        c.rot[TACA_ATRITO]
+            .iter()
+            .fold(0.0_f32, |m, a| m.max(a.abs())),
+        c.largura(TACA_ATRITO)
+    );
+    assert_eq!(
+        c.fim[TACA_GELO].len(),
+        c.fim[TACA_ATRITO].len(),
+        "as duas tacas tem de ter as MESMAS bolas"
+    );
+    assert!(
+        c.fim[TACA_ATRITO].len() >= 9,
+        "uma bola so' nunca toca noutra: {} pecas",
+        c.fim[TACA_ATRITO].len()
+    );
+    assert!(
+        gelo.abs() < 1.0,
+        "com `Friction 0` entre bolas nada pode rodar, e rodou {gelo}°"
+    );
+    assert!(
+        atrito > 200.0,
+        "com `Friction 1` as bolas tem de ROLAR umas nas outras, e o giro total foi {atrito}°"
+    );
+}
+
+/// ⭐⭐ **E as bolas NASCEM DENTRO da taça** — a armadilha que a `=114` nomeia por escrito: um
+/// recipiente projecta para dentro tudo o que nasce fora, e a cena abriria com um SALTO antes da
+/// queda, a cada volta do laço.
+#[test]
+fn every_ball_of_the_third_row_starts_inside_its_bowl() {
+    let c = corre(0.0, |_, _| {});
+    for (i, x) in [(TACA_GELO, -VAO), (TACA_ATRITO, VAO)] {
+        let longe = c.inicio[i]
+            .iter()
+            .map(|q| (q[0] - x - TACA[0]).hypot(q[1] - TACA[1]))
+            .fold(0.0_f32, f32::max);
+        let cabe = TACA_R - TACA_RAIO;
+        eprintln!("  taca {i} │ a mais longe nasce a {longe:.3}, e cabe ate' {cabe:.3}");
+        assert!(
+            longe < cabe,
+            "uma bola nasce FORA da taca ({longe:.3} contra {cabe:.3}) e sera' projectada para \
+             dentro no primeiro tique"
         );
     }
 }

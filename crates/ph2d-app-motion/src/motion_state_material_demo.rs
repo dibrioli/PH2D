@@ -35,23 +35,33 @@ use ph2d_node_registry::NodeRegistry;
 use ph2d_nodegraph::graph::NodeId;
 
 /// O raio da bola (o `size` do `source.shape`: a geometria do círculo nasce em raio 1).
-const RAIO: f32 = 0.22;
+const RAIO: f32 = 0.2;
 /// A inclinação da rampa, em graus. ⚠️ **Suave de propósito:** a `30°` a bola sai do quadrante
 /// antes de o laço reiniciar, e o par deixa de se comparar lado a lado.
 const RAMPA_GRAUS: f32 = 12.0;
 /// Onde a superfície da rampa passa, na vertical do quadrante.
-const RAMPA_Y: f32 = 0.7;
+const RAMPA_Y: f32 = 1.05;
 /// A que distância do centro do quadrante a bola é largada — do lado de CIMA da rampa.
-const PARTIDA_X: f32 = 0.95;
-/// O chão da fileira de baixo, e de que altura a bola cai nele.
-const CHAO_Y: f32 = -2.35;
-const QUEDA_Y: f32 = -0.85;
+const PARTIDA_X: f32 = 0.9;
+/// O chão da fileira do meio, e de que altura a bola cai nele.
+const CHAO_Y: f32 = 0.0;
+const QUEDA_Y: f32 = 0.95;
+/// A taça da fileira de baixo: onde ela está, que raio tem, e a grelha de bolas que cai dentro.
+const TACA: [f32; 2] = [0.0, -1.8];
+const TACA_R: f32 = 1.2;
+const TACA_LADO: f32 = 4.0;
+const TACA_VAO: f32 = 0.28;
+/// O raio das bolas da taça — menores que as de cima, para caberem muitas.
+const TACA_RAIO: f32 = 0.11;
+/// Onde a grelha nasce, relativa ao centro da taça: ALTA e DE LADO, para elas caírem em
+/// cascata por uma parede e esfregarem umas nas outras a descer.
+const TACA_PARTIDA: [f32; 2] = [0.28, 0.34];
 
 /// Quanto as duas colunas se afastam.
 const VAO: f32 = 2.3;
 /// A linha de cada fileira no grafo.
-const LINHA_RAMPA: f32 = 120.0;
-const LINHA_CHAO: f32 = 700.0;
+const LINHA: f32 = 120.0;
+const ALTURA_DA_LINHA: f32 = 260.0;
 
 /// A gravidade (`force.wind` para baixo, sem rajada — o doc dele diz que assim ele **é**
 /// gravidade), e o relógio do laço.
@@ -59,10 +69,11 @@ const GRAVIDADE: f32 = 4.0;
 const DURACAO: f32 = 2.2;
 const PAUSA: f32 = 0.6;
 
-/// O atrito da RAMPA e do CHÃO — o mesmo nos quatro quadrantes, de propósito: o que muda é a peça.
+/// O atrito da RAMPA e do CHÃO — o mesmo nos quatro quadrantes de cima, de propósito: o que muda
+/// é a peça.
 ///
-/// ⚠️ **`1` na rampa para o par do atrito ser sobre a BOLA**: com um obstáculo escorregadio
-/// `√(μ_rampa · μ_bola)` seria pequeno nos dois lados e a cena mostraria duas bolas a deslizar.
+/// ⚠️ **`1` para o par do atrito ser sobre a BOLA**: com um obstáculo escorregadio
+/// `√(μ_mundo · μ_bola)` seria pequeno nos dois lados e a cena mostraria duas bolas a deslizar.
 const ATRITO_DO_MUNDO: f32 = 1.0;
 
 /// **A NORMAL de um plano inclinado `graus`** — pela MESMA porta que o solver usa para girar um
@@ -89,44 +100,78 @@ fn superficie_em(n: [f32; 2], offset: f32, x: f32) -> f32 {
     (offset - x * n[0]) / n[1]
 }
 
+/// O que um quadrante encena.
+#[derive(Clone, Copy, PartialEq)]
+enum Cena {
+    /// Uma bola numa rampa — o material da peça contra o MUNDO.
+    Rampa,
+    /// Uma bola a cair no chão — idem, na outra propriedade.
+    Queda,
+    /// ⭐⭐ **Uma taça de bolas — o material de uma peça contra OUTRA PEÇA** (3.º report do dono,
+    /// 2026-09-13: *«as propriedades entre as próprias shapes não funcionam»*).
+    ///
+    /// ⚠️ **A taça é ESCORREGADIA nas duas metades** (`friction = 0`), e é isso que torna o par
+    /// honesto: com um obstáculo áspero a diferença que se vê seria metade do mundo e metade das
+    /// peças, e o quadrante não estaria a dizer o que promete. Aqui o ÚNICO atrito em jogo é o
+    /// de bola contra bola.
+    ///
+    /// ⚠️ **E uma taça, não um chão** — pela mesma razão que a `=114`: num plano as peças
+    /// espalham-se e quase não se tocam; uma taça junta-as todas no mesmo ponto baixo.
+    Taca,
+}
+
 /// Um quadrante: o que ele mostra, e qual é o número que o separa do irmão.
 struct Quadrante {
     x: f32,
-    rampa: bool,
+    cena: Cena,
     atrito: f32,
     salto: f32,
     rotulo: &'static str,
 }
 
-fn quadrantes() -> [Quadrante; 4] {
+fn quadrantes() -> [Quadrante; 6] {
     [
         Quadrante {
             x: -VAO,
-            rampa: true,
+            cena: Cena::Rampa,
             atrito: 0.0,
             salto: 0.0,
             rotulo: "Friction 0: desliza sem virar",
         },
         Quadrante {
             x: VAO,
-            rampa: true,
+            cena: Cena::Rampa,
             atrito: 1.0,
             salto: 0.0,
             rotulo: "Friction 1: ROLA",
         },
         Quadrante {
             x: -VAO,
-            rampa: false,
+            cena: Cena::Queda,
             atrito: 0.5,
             salto: 0.0,
             rotulo: "Bounciness 0: morre onde cai",
         },
         Quadrante {
             x: VAO,
-            rampa: false,
+            cena: Cena::Queda,
             atrito: 0.5,
             salto: 0.9,
             rotulo: "Bounciness 0,9: SALTA",
+        },
+        Quadrante {
+            x: -VAO,
+            cena: Cena::Taca,
+            atrito: 0.0,
+            salto: 0.0,
+            rotulo: "Entre bolas, Friction 0: escorregam",
+        },
+        Quadrante {
+            x: VAO,
+            cena: Cena::Taca,
+            atrito: 1.0,
+            salto: 0.0,
+            rotulo: "Entre bolas, Friction 1: ROLAM umas nas outras",
         },
     ]
 }
@@ -136,22 +181,23 @@ pub(super) fn captions() -> Vec<Caption> {
     quadrantes()
         .iter()
         .map(|q| {
-            let y = if q.rampa {
-                RAMPA_Y - 1.05
-            } else {
-                CHAO_Y - 0.35
+            let y = match q.cena {
+                Cena::Rampa => RAMPA_Y + 0.5,
+                Cena::Queda => CHAO_Y - 0.3,
+                Cena::Taca => TACA[1] - TACA_R - 0.3,
             };
             Caption::new([q.x, y], q.rotulo)
         })
         .collect()
 }
 
-/// Monta os quatro quadrantes. Devolve os sinks pela ordem de [`quadrantes`].
+/// Monta os seis quadrantes. Devolve os sinks pela ordem de [`quadrantes`].
 pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeId>> {
     use ph2d_nodegraph::graph::{Edge, Pos};
 
     // ⚠️ Os índices de enum são PERGUNTADOS ao registo, nunca digitados — a porta da cena `=113`.
     let plano = super::sim_demo::indice_de(reg, "sim.collide", "shape", "Plane")?;
+    let taca = super::sim_demo::indice_de(reg, "sim.collide", "shape", "Bowl")?;
     let circulo = super::sim_demo::indice_de(reg, "source.shape", "kind", "Circle")?;
     let colisor_redondo =
         super::sim_demo::indice_de(reg, "source.shape", param::COLLIDER_SHAPE, "Circle")?;
@@ -163,7 +209,15 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
         let g = &mut doc.graph;
         let forma = g.add_node("source.shape");
         g.set_param(forma, param::KIND, circulo);
-        g.set_param(forma, param::SIZE, RAIO);
+        g.set_param(
+            forma,
+            param::SIZE,
+            if q.cena == Cena::Taca {
+                TACA_RAIO
+            } else {
+                RAIO
+            },
+        );
         g.set_param(forma, param::COLLIDE, 1.0);
         // O colisor É o círculo que a arte desenha — o índice PERGUNTADO ao registo, como o `kind`.
         g.set_param(forma, param::COLLIDER_SHAPE, colisor_redondo);
@@ -175,20 +229,18 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
         g.set_param(forma, param::DASH, 2.0);
         g.set_param(forma, param::DASH_GAP, 2.0);
 
-        let (offset, partida) = if q.rampa {
-            let off = offset_de(n, [q.x, RAMPA_Y]);
-            let x = q.x + PARTIDA_X;
-            let y = superficie_em(n, off, x);
-            // Pousada na rampa, com uma folga que o primeiro tique fecha.
-            (off, [x + n[0] * RAIO, y + n[1] * RAIO + 0.02])
-        } else {
-            (CHAO_Y, [q.x, QUEDA_Y])
-        };
+        // ⭐ **A TAÇA precisa de muitas bolas** — uma peça só nunca toca noutra, e o quadrante
+        // que promete *«entre bolas»* estaria a mostrar o mesmo que a fileira de cima.
+        let carimbo = (q.cena == Cena::Taca).then(|| {
+            let grid = g.add_node("motion.grid");
+            g.set_param(grid, "rows", TACA_LADO);
+            g.set_param(grid, "cols", TACA_LADO);
+            g.set_param(grid, "gap_x", TACA_VAO);
+            g.set_param(grid, "gap_y", TACA_VAO);
+            (grid, g.add_node("motion.duplicator"))
+        });
 
         let alto = g.add_node("motion.transform");
-        g.set_param(alto, "offset_x", partida[0]);
-        g.set_param(alto, "offset_y", partida[1]);
-
         let zone = g.add_node("sim.zone");
         g.set_param(zone, "mode", em_laco);
         g.set_param(zone, "duration", DURACAO);
@@ -200,45 +252,83 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
         g.set_param(vento, "gust", 0.0);
 
         let passo = g.add_node("sim.step");
-
-        let chao = g.add_node("sim.collide");
-        g.set_param(chao, "shape", plano);
-        g.set_param(chao, "height", offset);
-        g.set_param(chao, "angle", if q.rampa { RAMPA_GRAUS } else { 0.0 });
-        // ⚠️ **Os mesmos números nos quatro**: o que muda é a peça, nunca o mundo.
-        g.set_param(chao, "friction", ATRITO_DO_MUNDO);
-        g.set_param(chao, "restitution", 0.0);
-
+        let mundo = g.add_node("sim.collide");
         let out = g.add_node("motion.output");
 
+        match q.cena {
+            Cena::Rampa => {
+                let off = offset_de(n, [q.x, RAMPA_Y]);
+                let x = q.x + PARTIDA_X;
+                let y = superficie_em(n, off, x);
+                // Pousada na rampa, com uma folga que o primeiro tique fecha.
+                g.set_param(alto, "offset_x", x + n[0] * RAIO);
+                g.set_param(alto, "offset_y", y + n[1] * RAIO + 0.02);
+                g.set_param(mundo, "shape", plano);
+                g.set_param(mundo, "height", off);
+                g.set_param(mundo, "angle", RAMPA_GRAUS);
+                g.set_param(mundo, "friction", ATRITO_DO_MUNDO);
+            }
+            Cena::Queda => {
+                g.set_param(alto, "offset_x", q.x);
+                g.set_param(alto, "offset_y", QUEDA_Y);
+                g.set_param(mundo, "shape", plano);
+                g.set_param(mundo, "height", CHAO_Y);
+                g.set_param(mundo, "friction", ATRITO_DO_MUNDO);
+            }
+            Cena::Taca => {
+                g.set_param(alto, "offset_x", q.x + TACA[0] + TACA_PARTIDA[0]);
+                g.set_param(alto, "offset_y", TACA[1] + TACA_PARTIDA[1]);
+                g.set_param(mundo, "shape", taca);
+                g.set_param(mundo, "center_x", q.x + TACA[0]);
+                g.set_param(mundo, "center_y", TACA[1]);
+                g.set_param(mundo, "radius", TACA_R);
+                // ⚠️ **ESCORREGADIA nas duas metades** — ver [`Cena::Taca`]: é o que faz deste
+                // par uma pergunta sobre o material ENTRE PEÇAS e não sobre o mundo.
+                g.set_param(mundo, "friction", 0.0);
+            }
+        }
+        g.set_param(mundo, "restitution", 0.0);
+
         #[expect(clippy::cast_precision_loss, reason = "um indice de quadrante")]
-        let y_linha = if q.rampa { LINHA_RAMPA } else { LINHA_CHAO } + (i % 2) as f32 * 250.0;
-        for (k, no) in [forma, alto, zone].into_iter().enumerate() {
+        let y_linha =
+            LINHA + (i / 2) as f32 * (ALTURA_DA_LINHA * 2.0) + (i % 2) as f32 * ALTURA_DA_LINHA;
+        let fila: Vec<NodeId> = carimbo
+            .map(|(grid, dup)| vec![forma, grid, dup, alto, zone])
+            .unwrap_or_else(|| vec![forma, alto, zone]);
+        for (k, no) in fila.into_iter().enumerate() {
             #[expect(clippy::cast_precision_loss, reason = "um indice de cartao")]
             let x = 40.0 + k as f32 * 176.0;
             g.set_pos(no, Pos { x, y: y_linha });
         }
-        for (k, no) in [vento, passo, chao, out].into_iter().enumerate() {
+        for (k, no) in [vento, passo, mundo, out].into_iter().enumerate() {
             #[expect(clippy::cast_precision_loss, reason = "um indice de cartao")]
             let x = 40.0 + k as f32 * 176.0;
             g.set_pos(
                 no,
                 Pos {
                     x,
-                    y: y_linha + 125.0,
+                    y: y_linha + 120.0,
                 },
             );
         }
         // ⚠️ A aresta `zone -> vento` é `delayed`: é a entrada de estado que fecha o laço.
-        for (a, ap, b, bp, delayed) in [
-            (forma, 0, alto, 0, false),
+        let mut arestas = vec![
             (alto, 0, zone, 0, false),
             (zone, 0, vento, 0, true),
             (vento, 0, passo, 0, false),
-            (passo, 0, chao, 0, false),
-            (chao, 0, zone, 1, false),
+            (passo, 0, mundo, 0, false),
+            (mundo, 0, zone, 1, false),
             (zone, 0, out, 0, false),
-        ] {
+        ];
+        match carimbo {
+            Some((grid, dup)) => {
+                arestas.push((forma, 0, dup, 0, false));
+                arestas.push((grid, 0, dup, 1, false));
+                arestas.push((dup, 0, alto, 0, false));
+            }
+            None => arestas.push((forma, 0, alto, 0, false)),
+        }
+        for (a, ap, b, bp, delayed) in arestas {
             g.connect(Edge {
                 from: (a, ap),
                 to: (b, bp),

@@ -2666,7 +2666,7 @@ fn the_specialisation_gives_up_under_a_remapping_ancestor() {
         let full = crate::Engine::from(crate::compile(&doc));
         let mut full_eval = crate::Engine::new_float_slice_eval();
         let full_tape = full.ez_float_slice_tape();
-        let mut s = 0x0A7C_E57u64;
+        let mut s = 0x00A7_CE57_u64;
         let mut rnd = move || {
             s = s.wrapping_mul(6_364_136_223_846_793_005).wrapping_add(1);
             (s >> 33) as f32 / u32::MAX as f32

@@ -30,25 +30,32 @@ pub struct Table {
 
 /// ⭐ **O OpenPBR de um material autorado** — a tradução, num sítio só.
 ///
-/// ⚠️ **Os campos que não se autoram ficam no padrão da nodedef** (o verniz, a emissão, a difusa
-/// especular): um material com três números não é um OpenPBR diferente, é o mesmo com três números
-/// escolhidos. *Inventar valores para os outros doze seria escrever um material que ninguém pediu.*
+/// ⚠️ **Os campos que não se autoram ficam no padrão da nodedef** (o verniz, a difusa especular, o
+/// IOR): um material com cinco números não é um OpenPBR diferente, é o mesmo com cinco números
+/// escolhidos. *Inventar valores para os outros dez seria escrever um material que ninguém pediu.*
+///
+/// ⭐⭐ **A EMISSÃO entrou em 2026-09-14** (`docs/Render3d/05` §20), e a razão é o inverso da regra
+/// acima: ela **já era paga** — a [`ph2d_material::Surface::emission`] corria por amostra e somava
+/// `[0,0,0]`, `4,6 %` do relógio de sombreamento — e nenhum controlo lhe chegava. *Uma capacidade
+/// viva sem botão nenhum é o defeito de que o §5.1 do `CLAUDE.md` fala, não uma poupança.*
 #[must_use]
 pub fn surface_of(m: FieldMaterial) -> ph2d_material::Surface {
     ph2d_material::OpenPbr {
         base_color: m.base_color,
         base_metalness: m.metalness,
         specular_roughness: m.roughness,
+        emission_luminance: m.emission,
+        emission_color: m.emission_color,
         ..ph2d_material::OpenPbr::default()
     }
     .prepare()
 }
 
-/// ⭐⭐⭐ **A TRAVESSIA sRGB → LINEAR DA COR BASE, e o seu par** — num sítio só.
+/// ⭐⭐⭐ **A TRAVESSIA sRGB → LINEAR DE UMA COR AUTORADA, e o seu par** — num sítio só.
 ///
 /// # ⚠️ Por que é uma porta, e não duas linhas onde cada uma é precisa
 ///
-/// O documento guarda a cor base em **linear** (é isso que o OpenPBR integra) e o selector de cor da
+/// O documento guarda as cores em **linear** (é isso que o OpenPBR integra) e o selector de cor da
 /// casa fala **sRGB8** (é isso que um humano escolhe). A conversão é precisa em **dois** sítios
 /// distantes — a construção da linha do painel ([`crate::scene_panel::param_rows`]) e o dreno do
 /// pedido ([`crate::scene_intents`]) —, e escrita duas vezes seriam duas curvas: o dia em que uma
@@ -62,14 +69,19 @@ pub fn surface_of(m: FieldMaterial) -> ph2d_material::Surface {
 /// mede, sobre os 256 bytes.
 ///
 /// ⛔ **A curva não é local:** ela é a do [`ph2d_color::srgb`], que é a mesma que o resto do app usa.
+///
+/// ⚠️⚠️ **O nome deixou de dizer «base» em 14/09**, e isso é a lei e não arrumação: com o brilho
+/// próprio (§20) há **duas** cores autoradas a atravessar aqui, e uma porta chamada `base_color_*`
+/// convida a segunda a escrever a conversão outra vez ao lado. *Uma lei escrita em dois sítios ainda
+/// não é uma lei — só uma PORTA é.*
 #[must_use]
-pub fn base_color_srgb8(linear: [f32; 3]) -> [u8; 3] {
+pub fn colour_srgb8(linear: [f32; 3]) -> [u8; 3] {
     linear.map(ph2d_color::srgb::linear_to_srgb_byte)
 }
 
-/// O outro sentido de [`base_color_srgb8`] — o que o artista apontou, no espaço do documento.
+/// O outro sentido de [`colour_srgb8`] — o que o artista apontou, no espaço do documento.
 #[must_use]
-pub fn base_color_from_srgb8(srgb: [u8; 3]) -> [f32; 3] {
+pub fn colour_from_srgb8(srgb: [u8; 3]) -> [f32; 3] {
     srgb.map(ph2d_color::srgb::srgb_to_linear_byte)
 }
 
@@ -229,3 +241,9 @@ pub(crate) fn sync(sim: &mut ph2d_ecs::SimWorld, doc_mudou: bool) {
         }
     });
 }
+
+/// ⏱️⭐ **A EMISSÃO** — o que um brilho pinta e o que a chamada custa. Irmão por assunto: ele mede
+/// uma capacidade do motor que o painel ainda não alcança.
+#[cfg(test)]
+#[path = "emission_tests.rs"]
+mod emission_tests;

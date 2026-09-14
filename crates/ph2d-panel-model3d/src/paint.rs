@@ -75,7 +75,7 @@ pub(crate) fn paint(_state: &mut Model3dPanelState, ctx: &mut PaintCtx) {
         // ⚠️ **E o selector de cor fecha com o painel** — ver [`close_a_stranded_picker`]. Sem
         // isto, fechar o painel com ele aberto deixaria o selector a flutuar sobre o canvas a
         // editar uma amostra que já não é pintada por ninguém.
-        close_a_stranded_picker(ctx, None);
+        close_a_stranded_picker(ctx, &[]);
         return;
     }
 
@@ -202,14 +202,20 @@ pub(crate) fn paint(_state: &mut Model3dPanelState, ctx: &mut PaintCtx) {
         y = crate::paint_rows::paint_row(ctx, row, slot as u32, x, w, y);
     }
     // ⭐⭐⭐ **O SELECTOR SEGUE O SUJEITO** — ver [`close_a_stranded_picker`].
-    close_a_stranded_picker(
-        ctx,
-        snapshot
-            .rows
-            .iter()
-            .find(|r| r.swatch.is_some())
-            .map(|r| crate::ids::model3d_color_swatch(r.entity)),
-    );
+    // ⚠️ **As amostras são contadas NA MESMA FAIXA que foi pintada** (`take(MAX_ROWS)`): uma linha
+    // cortada pelo tecto não é desenhada, logo declará-la aqui manteria vivo um selector que já não
+    // tem amostra nenhuma — exactamente o que esta lei existe para fechar.
+    let amostras: Vec<ph2d_a11y::NodeId> = snapshot
+        .rows
+        .iter()
+        .take(MAX_ROWS)
+        .filter(|r| r.swatch.is_some())
+        .filter_map(|r| match r.param {
+            ph2d_field::Param::Material(k) => Some(crate::ids::model3d_color_swatch(r.entity, k)),
+            _ => None,
+        })
+        .collect();
+    close_a_stranded_picker(ctx, &amostras);
     y = paint_footer(ctx, &snapshot, x, w, y);
     // ⚠️ O `+ scroll` desfaz o deslocamento: a altura do conteúdo é do CONTEÚDO, e não de onde ele
     // calhou de ser desenhado. Sem ele o `max_scroll` encolheria a cada rolagem e o painel
@@ -317,11 +323,11 @@ fn paint_chip_rows(ctx: &mut PaintCtx, snapshot: &ModelSnapshot, x: f32, w: f32,
 ///
 /// ⚠️ **Uma porta, dois leitores** (o caminho normal e a saída antecipada do painel fechado) — a
 /// mesma lei escrita duas vezes seria a lei escrita em nenhum, e o terceiro leitor nasceria surdo.
-fn close_a_stranded_picker(ctx: &mut PaintCtx, agora: Option<ph2d_a11y::NodeId>) {
-    let anterior = state::remember_swatch(agora);
-    if let Some(orfa) = anterior
-        && Some(orfa) != agora
-        && ctx.host.store().picker_target() == Some(orfa)
+fn close_a_stranded_picker(ctx: &mut PaintCtx, agora: &[ph2d_a11y::NodeId]) {
+    let anterior = state::remember_swatches(agora);
+    if let Some(alvo) = ctx.host.store().picker_target()
+        && anterior.contains(&alvo)
+        && !agora.contains(&alvo)
     {
         ctx.host.store_mut().set_picker_target(None);
     }

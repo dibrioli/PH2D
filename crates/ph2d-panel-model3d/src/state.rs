@@ -17,8 +17,8 @@ thread_local! {
     static CURRENT: RefCell<Option<ModelSnapshot>> = const { RefCell::new(None) };
     static INTENTS: RefCell<Vec<ModelIntent>> = const { RefCell::new(Vec::new()) };
     static LAST_CONTENT_H: Cell<f32> = const { Cell::new(0.0) };
-    /// ⭐⭐ **A amostra de cor que a última pintura desenhou** — ver [`remember_swatch`].
-    static LAST_SWATCH: Cell<Option<ph2d_a11y::NodeId>> = const { Cell::new(None) };
+    /// ⭐⭐ **As amostras de cor que a última pintura desenhou** — ver [`remember_swatches`].
+    static LAST_SWATCH: RefCell<Vec<ph2d_a11y::NodeId>> = const { RefCell::new(Vec::new()) };
     /// ⭐⭐⭐ **O módulo tem o canvas?** — ver [`set_armed`].
     static ARMED: Cell<bool> = const { Cell::new(false) };
 }
@@ -148,6 +148,11 @@ pub struct ParamRow {
     /// ⚠️ **TRÊS bytes e não quatro:** um material desta peça não tem alfa, e carregar um que o
     /// documento não guarda seria prometer uma transparência que nada honra. A amostra pinta-se
     /// opaca.
+    ///
+    /// ⚠️ **QUAL cor esta linha é lê-se no [`ParamRow::param`]** — a linha é a **âncora**, isto é, o
+    /// primeiro canal (`Material(0)` a base, `Material(6)` a da emissão desde o §20). ⛔ Guardar o
+    /// índice aqui ao lado dos bytes seria a segunda resposta à mesma pergunta, e a que diverge no
+    /// dia da terceira cor.
     pub swatch: Option<[u8; 3]>,
     /// ⭐⭐⭐ **A NOTA a pintar ANTES desta linha** — *sobre o quê* ela escreve, quando isso não é
     /// óbvio.
@@ -340,14 +345,23 @@ pub enum ModelIntent {
         param: ph2d_field::Param,
         value: f32,
     },
-    /// ⭐⭐⭐ **Escrever a COR BASE do nó**, em sRGB8 — ver [`ParamRow::swatch`].
+    /// ⭐⭐⭐ **Escrever UMA COR do nó**, em sRGB8 — ver [`ParamRow::swatch`].
     ///
     /// ⛔ **Não são três [`ModelIntent::SetParam`], e a diferença é a TRAVESSIA.** O documento guarda
     /// a cor em **linear**, o selector da casa fala **sRGB8**, e quem converte tem de ser **um**
     /// sítio só — senão a curva fica escrita duas vezes e um dia as duas divergem na terceira casa.
     /// Esse sítio é o shell, que já é quem sabe em que três números do nó a cor mora; o painel
     /// entrega o que o artista apontou e não faz colorimetria nenhuma.
-    SetColor { entity: u64, srgb: [u8; 3] },
+    ///
+    /// ⚠️ **`field` é a ÂNCORA — o índice do primeiro canal** (`0` a cor base, `6` a da emissão desde
+    /// o §20 do `docs/Render3d/05`), e os outros dois são `field + 1` e `field + 2`. ⛔ Ele **não** é
+    /// um enum de «que cor»: a lista de cores de um material é do documento, e um segundo vocabulário
+    /// aqui envelheceria na primeira cor nova.
+    SetColor {
+        entity: u64,
+        field: u8,
+        srgb: [u8; 3],
+    },
     /// Trocar o verbo do gizmo, pela **posição** no seletor.
     SetGizmoMode { slot: usize },
     /// Trocar o referencial dos eixos, pela **posição** no seletor.
@@ -412,13 +426,18 @@ pub fn drain_intents() -> Vec<ModelIntent> {
     INTENTS.with(|q| std::mem::take(&mut *q.borrow_mut()))
 }
 
-/// ⭐⭐ **Anota a amostra de cor desta pintura e devolve a da anterior** — `None` quando não há.
+/// ⭐⭐ **Anota as amostras de cor desta pintura e devolve as da anterior** — vazio quando não há.
 ///
 /// ⚠️ **Isto NÃO é um espelho do documento**, que é o que o [`Model3dPanelState`] recusa por
 /// escrito: é a memória do que **este painel desenhou**, que nenhuma outra coisa sabe. O consumidor
 /// é a lei *«o selector segue o sujeito»* do `paint` — ver `crate::paint::close_a_stranded_picker`.
-pub(crate) fn remember_swatch(id: Option<ph2d_a11y::NodeId>) -> Option<ph2d_a11y::NodeId> {
-    LAST_SWATCH.with(|c| c.replace(id))
+///
+/// ⚠️⚠️ **Um CONJUNTO, e não uma amostra** (`docs/Render3d/05` §20): desde o brilho próprio a mesma
+/// folha publica **duas** cores, e uma memória de uma só responderia *«a amostra aberta já não é
+/// pintada»* sempre que a outra fosse desenhada depois dela — fechando o selector no quadro
+/// seguinte a abri-lo, sem nada ter mudado.
+pub(crate) fn remember_swatches(ids: &[ph2d_a11y::NodeId]) -> Vec<ph2d_a11y::NodeId> {
+    LAST_SWATCH.with(|c| std::mem::replace(&mut *c.borrow_mut(), ids.to_vec()))
 }
 
 pub(crate) fn set_last_content_h(h: f32) {

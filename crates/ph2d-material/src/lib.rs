@@ -207,9 +207,25 @@ impl Surface {
     }
 
     /// A **emissão** — a luz que a própria superfície dá, e que o verniz filtra pelo Fresnel dele.
+    ///
+    /// # ⭐ A guarda do zero, e porque ela é `== 0.0` e não `<= 0.0`
+    ///
+    /// Esta chamada corre **por amostra** e, com o material de omissão, faz um `forward_facing`, um
+    /// `dot`, um `clamp` e um `powf(5)` para somar `[0,0,0]` — medido em `docs/Render3d/05` §8:
+    /// **`4,6 %`** do relógio de sombreamento a produzir nada.
+    ///
+    /// ⚠️ **`== 0.0` é a única forma de a guarda ser byte-idêntica para TODA entrada.** Com
+    /// `luminance == 0` o `scale3` zera as três componentes e tudo a jusante é uma multiplicação por
+    /// zero, logo o resultado é `[0,0,0]` por construção — a guarda **observa** a álgebra, não a
+    /// muda. ⛔ Um `<= 0.0` **mudaria** a resposta para uma luminância negativa, e esta crate é o
+    /// **port fiel** do GLSL de referência: uma entrada fora da faixa da nodedef é assunto de quem
+    /// autora, e não desta lei.
     #[must_use]
     pub fn emission(&self, n: Rgb, v: Rgb) -> Rgb {
         let m = &self.m;
+        if m.emission_luminance == 0.0 {
+            return [0.0; 3];
+        }
         let uncoated = bsdf::scale3(m.emission_color, m.emission_luminance);
         let nf = bsdf::forward_facing(n, v);
         let ndv = bsdf::dot(nf, v).clamp(bsdf::EPS, 1.0);

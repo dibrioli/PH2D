@@ -276,7 +276,7 @@ pub(super) fn apply(
                     with_smoke(|s| s.lasso_subtracts = slot == 1);
                 }
             }
-            // ⭐⭐⭐ **A COR BASE** (Enio, 2026-09-14) — a travessia sRGB → linear, e três escritas.
+            // ⭐⭐⭐ **UMA COR** (Enio, 2026-09-14) — a travessia sRGB → linear, e três escritas.
             //
             // ⚠️ **As três correm no MESMO quadro, e é isso que as torna UM passo de undo**: o
             // registo é por **diff** uma vez por quadro (`App::post_frame_undo`), então o que
@@ -285,14 +285,22 @@ pub(super) fn apply(
             //
             // ⚠️ **A recusa de um canal não aborta os outros**, como em todo `set_param` deste
             // dreno: o retrato publicado logo abaixo devolve a amostra à cor que ficou.
-            ph2d_panel_model3d::ModelIntent::SetColor { entity, srgb } => {
-                let cor = crate::materials::base_color_from_srgb8(srgb);
+            //
+            // ⚠️ **`field` é a ÂNCORA e os canais são `field + k`** — ver
+            // [`ph2d_panel_model3d::ModelIntent::SetColor`]. ⛔ Um `0` escrito aqui à mão faria a cor
+            // da emissão aterrar na cor base: *a mesma escrita, o sujeito errado, e sem erro nenhum.*
+            ph2d_panel_model3d::ModelIntent::SetColor {
+                entity,
+                field,
+                srgb,
+            } => {
+                let cor = crate::materials::colour_from_srgb8(srgb);
                 for alvo in crate::scene::panel::material_reach(world, selection, entity) {
                     for (k, v) in cor.into_iter().enumerate() {
                         let _ = ph2d_field_ecs::set_param(
                             world,
                             alvo,
-                            ph2d_field::Param::Material(k as u8),
+                            ph2d_field::Param::Material(field + k as u8),
                             v,
                         );
                     }

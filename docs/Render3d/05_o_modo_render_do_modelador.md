@@ -1087,3 +1087,177 @@ que caminho do produto o gate percorre.*
 
 ⚠️ **E o `Surfaces::of` foi APAGADO**: o `mix_of` tomou-lhe os dois chamadores, e um método que
 ninguém chama é **lixo**, não um morto a ligar (`CLAUDE.md` §5.0).
+
+---
+
+## §20 — ⭐⭐⭐ UMA PEÇA QUE DÁ LUZ: o brilho próprio (2026-09-14)
+
+A `Surface::emission` do OpenPBR **já era paga por amostra** e somava `[0,0,0]`: a §8 mediu `12,18 ns`
+de `265,64 ns`, **`4,6 %`** do relógio de sombreamento a produzir nada, e escreveu a cura — *«uma
+guarda `emission_luminance > 0`»*.
+
+⭐⭐ **Havia uma segunda saída, e ela não estava escrita:** a lei está paga e **ninguém lhe chegava**.
+O `materials::surface_of` escrevia `3` dos `15` números do OpenPBR, e a emissão era um dos `12` que
+ficavam no padrão da nodedef — *uma capacidade viva sem botão nenhum* (`CLAUDE.md` §5.1, o pincel de
+tecido antes da fileira de chips).
+
+⇒ **as duas foram feitas**: a guarda ficou, e o que ela protege passou a ser autorável.
+
+---
+
+### §20.1 — A medição que escolheu a faixa (`emission_tests`, sonda)
+
+Esfera de omissão a `640×360`, olhar do produto (`Neutral`, `0` stops), verde médio na peça:
+
+| luminância | verde médio | Δ desde o ponto anterior | pixels em branco chapado |
+|---|---|---|---|
+| `0,00` | `188,31` | — | `0` |
+| `0,05` | `195,73` | `+7,42` | `0` |
+| `0,25` | `218,25` | `+15,93` | `0` |
+| `0,50` | `235,26` | `+17,00` | `0` |
+| **`1,00`** | **`245,98`** | `+10,72` | `0` |
+| `2,00` | `250,39` | `+4,42` | `0` |
+| `8,00` | `253,77` | `+1,05` | `0` |
+| `16,00` | `254,53` | `+0,76` | `26 380` |
+| `32,00` | `254,77` | `+0,24` | `61 492` |
+| `64,00` | `254,77` | **`0,00`** | `61 492` |
+
+⭐ **A ponta do slider é `1`, e ela é MEDIDA:** `0 → 1` move `57,67` dos `66,46` bytes que a grandeza
+tem para dar — **`86,8 %`** de toda a excursão possível. O `2` compra mais `6,6 %`, e **acima de `32`
+a saída é bit a bit a mesma**: o olhar satura e o número deixa de ser observável.
+
+⚠️ **O campo numérico continua aberto**, como em toda linha de material (`Span::SoftFromZero(1.0)`):
+o que a medição fecha é o **curso do dedo**, não o que a peça pode afirmar sobre si.
+
+⚠️ **E `0,05` já move `7` bytes** — isto é, o controlo é grosso perto do zero. *Um brilho não tem
+ponto morto: ele começa a ver-se no primeiro centésimo.*
+
+---
+
+### §20.2 — ⛔ A guarda é `== 0.0`, e não `<= 0.0`
+
+Com `luminance == 0` o `scale3` zera as três componentes e **tudo a jusante é uma multiplicação por
+zero** — a guarda **observa** a álgebra, não a muda. Um `<= 0.0` **mudaria** a resposta para uma
+luminância negativa, e a `ph2d-material` é o **port fiel** do GLSL de referência: uma entrada fora da
+faixa da nodedef é assunto de quem autora, não desta lei.
+
+⛔⛔ **E o PREÇO da guarda não tem gate, por medição.** Um gate sobre a resposta é cego ao preço
+(`CLAUDE.md` §5.0), e a cura que a wave anterior usou — um contador (`POINT_TAPES`) — **não serve
+aqui**: aquele conta uma **compilação de fita**, que é rara; este contaria uma **amostra**, e um
+`fetch_add` partilhado por 32 threads sobre `26 100` pixels custa mais do que a comparação que a
+guarda poupa. *Um instrumento mais caro que o defeito que mede é um defeito novo.* ⇒ a régua do preço
+é a sonda, e está declarada como tal.
+
+---
+
+### §20.3 — ⭐⭐ O painel: uma linha nova, e uma que só existe às vezes
+
+| linha | quando aparece |
+|---|---|
+| **Emission** (`Material(5)`) | sempre, numa folha |
+| **Emission Color** (`Material(6)`, amostra) | **só com a luminância acima de zero** |
+
+⭐⭐⭐ **A cor do brilho MULTIPLICA a luminância**, logo a zero varrer o selector não muda um bit do
+quadro. Publicá-la ali seria **o knob morto na espécie mais cara** do `CLAUDE.md` §5.0 — *o consumidor
+que projecta o valor fora*: o fio está inteiro, o valor chega, e a matemática descarta-o.
+
+⚠️ **Quem esconde é a APRESENTAÇÃO, e a porta de escrita NÃO se estreita:** o `set_param` continua a
+aceitar `Material(6..=8)`. Sem isso, um pedido guardado de um quadro atrás — o selector ainda aberto
+quando a luminância vai a zero — cairia em silêncio, que é a mesma família do §13.2.
+
+⚠️ **`MATERIAL_FIELDS` deixou de ser «quantas linhas»**: ele é **quantas posições a escrita aceita**
+(`9`), e o `params_of` publica **até** isso. Um gate que os confundia foi corrigido nesta wave
+(`scene_gesture_tests`) — ele exigia exactamente `MATERIAL_FIELDS` linhas, que é precisamente o que a
+lei da W34 proíbe.
+
+---
+
+### §20.4 — ⛔⛔ O selector é UM, e agora há DUAS amostras na mesma forma
+
+O id da amostra passou a ser o par `(entidade, campo)`. Sem o campo, abrir o selector na cor base e
+carregar na amostra do brilho deixaria as **duas** a responder *«aberto em mim»*: a segunda leria a
+cor escolhida para a primeira e escrevê-la-ia por cima, **em silêncio**. É o mecanismo do §12.3 um
+nível abaixo — *o sujeito de um id flutuante é o par `(quem, qual)`, e não um dos dois*.
+
+⚠️ **E a lei «o selector segue o sujeito» passou a lembrar um CONJUNTO.** Ela guardava *a* amostra da
+última pintura; com duas, uma memória de uma só responderia *«a aberta já não é pintada»* sempre que a
+outra fosse desenhada depois dela — **fechando o selector no quadro seguinte a abri-lo**, sem nada ter
+mudado. Hoje guarda a lista, e o conjunto é contado **na mesma faixa que foi pintada** (`take(MAX_ROWS)`).
+
+⚠️ **E a porta da travessia sRGB↔linear mudou de nome** (`base_color_srgb8` → `colour_srgb8`): com duas
+cores autoradas, uma porta chamada `base_color_*` convida a segunda a escrever a conversão outra vez ao
+lado. *Uma lei escrita em dois sítios ainda não é uma lei — só uma PORTA é.*
+
+---
+
+### §20.5 — ⛔⛔ O TETO DE LINHAS NÃO SUBIU, e a razão é uma RÉGUA CORRIGIDA
+
+O gate que dimensiona a família de widgets do painel (`polygon_rows_tests`) contava **`params_of`** — e
+isso deixou de ser o número de linhas em **14/09**, quando a amostra de cor dobrou três params numa
+linha. Ele lia `2N + 19` onde o painel pinta `2N + 15`.
+
+⚠️ **Ele errava a FAVOR**, o que o torna invisível: *uma régua conservadora não avisa no dia em que
+deixa de descrever o que mede.* Corrigida para contar no **produtor das linhas** (`param_rows`), e no
+**pior estado** (brilho aceso, que publica a amostra extra):
+
+| vértices | linhas, brilho apagado | linhas, brilho aceso |
+|---|---|---|
+| `3` | `20` | `21` |
+| `16` | `46` | `47` |
+| **`27`** (o teto) | `68` | **`69`** |
+
+⭐ **A família estava sobre-provisionada em exactamente `2`** — os dois canais dobrados que a régua
+velha contava —, e o brilho consumiu essa folga. O `MAX_ROWS` fica em **`69`**, com **zero** de folga
+medida, e o `MAX_POLYGON_VERTICES` não perde um vértice.
+
+⚠️ **E o literal `15` do gate continua `15` por DUAS correcções de sinal oposto** (`−4` canais
+dobrados, `+1` linha de brilho). *Um número que não se mexe enquanto a grandeza muda é a forma mais
+silenciosa de um gate deixar de descrever o que mede* — o que o prende é a nota, não a coincidência.
+
+---
+
+### §20.6 — O arquivo: `PROJECT_SCHEMA` **128 → 129**
+
+O `FieldMaterial` passou de `5` para `9` números. O postcard é **posicional e sem comprimento**: um
+blob v128 tem `20` bytes e este binário pede `36`, então um material gravado antes desta wave sairia
+com *«Hit the end of buffer»* **no meio da travessia dos componentes**, porque o `ComponentBlob` é
+opaco ao parse do `ProjectFile`. O degrau transforma isso num **erro de versão**.
+
+⚠️ **O `FIELD_DOC_VERSION` NÃO se mexe**, o que parece estranho num degrau que fala de material: o
+documento do campo é **geometria** — é ele que a marcha compila —, e uma cor não muda uma distância.
+
+⛔ **Conte o DELTA (`+1`) contra a árvore em que a linha aterrar**, nunca o literal (`CLAUDE.md` §5.0).
+
+---
+
+### §20.7 — Os gates (5) e as mutações (8/8)
+
+| gate | o que ele prende |
+|---|---|
+| `a_glow_carries_the_authored_colour_into_the_law` | a travessia `FieldMaterial → OpenPbr`, com a **cor** e não só a luminância |
+| `no_glow_is_exactly_black_and_a_coat_still_filters_one` | a guarda é legítima **e** não come o caminho aceso — com o ramo do verniz dentro |
+| `the_colour_of_the_glow_only_exists_while_the_glow_does` | a lei da W34 sobre o par de amostras, e as duas cores distintas |
+| `each_colour_of_a_shape_has_its_own_picker` | o id é o par `(quem, qual)` |
+| `a_glow_colour_reaches_the_document_without_touching_the_base` | o dreno escreve em `field + k`, e não em `k` |
+
+⚠️ **A mutação mais perigosa é a do dreno** (`field + k` → `k`): a cor do brilho aterraria na **cor
+base** — a peça mudava de cor e o brilho ficava branco, **sem erro nenhum**. É a redacção mais natural,
+porque era o que lá estava antes.
+
+⚠️ **E a prova de mutação do teto de linhas precisou de CONTROLO no próprio filtro:** a primeira
+corrida passou `--exact one_more_vertex_would_not_fit` sem o caminho do módulo, casou **zero** testes,
+e o `0 passed` leu-se como *«sangrou»*. *Um filtro que casa zero imprime a mesma coisa que um gate que
+morre* — é a lição que a `project-memory` já registava, paga outra vez.
+
+---
+
+### §20.8 — ⏳ O que fica aberto
+
+- **O material continua sem ALFA** (§12.7) — e agora com uma pergunta a mais: um brilho é aditivo e a
+  transparência é multiplicativa, então as duas não se resolvem na mesma wave.
+- **Os outros `10` números do OpenPBR** que a lei honra e nenhum controlo alcança — o **verniz** (5),
+  o `specular_weight`/`specular_color`/`specular_ior` e a `base_diffuse_roughness`. ⚠️ **Nenhum é
+  como a emissão:** eles não estão a ser **pagos a zero**, e a pergunta deles é de produto (*quantos
+  knobs um modelador quer ver?*), não de dívida.
+- **O brilho não ILUMINA a vizinhança** — ele acende a própria superfície e mais nada. Um emissor que
+  ilumina é *global illumination*, que este traçador não faz e cujo preço não foi medido.

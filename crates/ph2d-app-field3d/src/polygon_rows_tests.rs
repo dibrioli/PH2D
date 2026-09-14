@@ -35,9 +35,18 @@ fn poligono(n: u32) -> Primitive {
     }
 }
 
-/// Quantas linhas o painel mostra para um nó com esta forma — **contadas na cena**, que é onde o
-/// artista as vê, e não em [`ph2d_field::dims`], que só conhece a forma.
-fn linhas_do_painel(p: Primitive) -> usize {
+/// Quantas linhas o painel mostra para um nó com esta forma — **contadas no produtor das linhas**.
+///
+/// ⛔⛔ **Ela contava `params_of` e isso deixou de ser a mesma grandeza em 2026-09-14**: a amostra de
+/// cor (§12 do `docs/Render3d/05`) **dobra** três params numa linha, e a de emissão dobra outros
+/// três. Um censo sobre os params lê `2N + 19` onde o painel pinta `2N + 15`. ⚠️ Ele erra a **favor**
+/// — o que o torna invisível, e é exactamente por isso que esta nota existe: *uma régua conservadora
+/// não avisa no dia em que deixa de descrever o que mede.*
+///
+/// ⚠️ **`aceso` é o PIOR caso e é ele que a família tem de aguentar:** com brilho a cor da emissão é
+/// publicada e o nó tem **uma linha a mais**. Uma família dimensionada no estado apagado deixaria a
+/// última linha sem controlo exactamente no gesto que a fez aparecer.
+fn linhas_do_painel(p: Primitive, aceso: bool) -> usize {
     use ph2d_field::{FieldDoc, Node, NodeId, NodeKind, Xform};
     let doc = FieldDoc::new(
         vec![Node::new(Xform::IDENTITY, NodeKind::Leaf(p))],
@@ -46,7 +55,11 @@ fn linhas_do_painel(p: Primitive) -> usize {
     .expect("a peça");
     let mut sim = ph2d_ecs::SimWorld::new();
     let root = ph2d_field_ecs::spawn_doc(sim.world_mut(), &doc, "peça");
-    ph2d_field_ecs::params_of(sim.world(), root).len()
+    if aceso {
+        ph2d_field_ecs::set_param(sim.world_mut(), root, ph2d_field::Param::Material(5), 1.0)
+            .expect("o brilho");
+    }
+    crate::scene::panel::param_rows(sim.world(), &[root], 1.0).len()
 }
 
 /// ⭐⭐⭐ **O POLÍGONO NO TETO AINDA CABE NO PAINEL** — e a folga que sobra é impressa.
@@ -56,11 +69,15 @@ fn linhas_do_painel(p: Primitive) -> usize {
 #[test]
 fn every_row_of_the_biggest_polygon_fits_the_registered_family() {
     let teto = ph2d_panel_model3d::MAX_ROWS;
-    println!("  vértices | linhas do painel | de {teto}");
+    println!("  vértices | apagado | aceso | de {teto}");
     for n in [MIN_POLYGON_VERTICES, 8, 16, MAX_POLYGON_VERTICES] {
-        println!("{n:>10} | {:>16} |", linhas_do_painel(poligono(n)));
+        println!(
+            "{n:>10} | {:>7} | {:>5} |",
+            linhas_do_painel(poligono(n), false),
+            linhas_do_painel(poligono(n), true)
+        );
     }
-    let no_teto = linhas_do_painel(poligono(MAX_POLYGON_VERTICES));
+    let no_teto = linhas_do_painel(poligono(MAX_POLYGON_VERTICES), true);
     assert!(
         no_teto <= teto,
         "um polígono de {MAX_POLYGON_VERTICES} vértices pede {no_teto} linhas e a família do painel \
@@ -85,7 +102,10 @@ fn every_row_of_the_biggest_polygon_fits_the_registered_family() {
 fn one_more_vertex_would_not_fit() {
     let teto = ph2d_panel_model3d::MAX_ROWS;
     let (a, b) = (MIN_POLYGON_VERTICES, MAX_POLYGON_VERTICES);
-    let (la, lb) = (linhas_do_painel(poligono(a)), linhas_do_painel(poligono(b)));
+    let (la, lb) = (
+        linhas_do_painel(poligono(a), true),
+        linhas_do_painel(poligono(b), true),
+    );
     let declive = (lb - la) / (b - a) as usize;
     assert_eq!(
         declive, 2,
@@ -93,9 +113,15 @@ fn one_more_vertex_would_not_fit() {
          a recta abaixo passa a estar errada, e com ela o teto"
     );
     let extras = lb - 2 * b as usize;
-    // ⚠️ **`15` desde 2026-09-13, e eram `10`:** o material por objecto (`docs/Render3d/05`)
-    // acrescentou **5** linhas a toda folha, e o `MAX_ROWS` subiu com elas em vez de o polígono
-    // encolher — ver a nota daquele const para o preço medido da subida.
+    // ⚠️⚠️ **`15` em 2026-09-14 também, e é OUTRO quinze.** A régua desta wave passou a contar
+    // LINHAS onde contava params (ver [`linhas_do_painel`]): as duas amostras de cor dobram `6`
+    // params em `2` linhas (`−4`), e o brilho próprio acrescenta `+1` — o número não se mexeu e a
+    // grandeza mudou. ⛔ *Duas correcções de sinal oposto no mesmo literal é a forma mais silenciosa
+    // de um gate deixar de descrever o que mede;* o que prende o valor é a nota, não a coincidência.
+    //
+    // ⭐ **E é por isso que o `MAX_ROWS` NÃO subiu nesta wave:** a família estava sobre-provisionada
+    // em exactamente `2` (a régua velha contava os canais dobrados), e o brilho consumiu essa folga.
+    // Hoje o polígono no teto pede `69` de `69` — **zero** de folga, medido.
     assert_eq!(
         extras, 15,
         "um nó deixou de ter 15 linhas além dos `2N` dos vértices — a conta do teto muda com isto"

@@ -574,4 +574,32 @@
 ///
 /// ⛔ **Sem degrau de migração** (a mesma decisão do Enio de 26/08).
 /// ⚠️ **A tripla NÃO o vê** (17.ª vez): os bytes mudaram dentro de um `ComponentBlob`.
-pub(crate) const PROJECT_SCHEMA: u32 = 140;
+/// # `140 → 141` — o MATERIAL de uma forma ganha o BRILHO PRÓPRIO (`docs/Render3d/05` §20)
+///
+/// O `ph2d::field::FieldMaterial` passou de `5` para `9` números: `emission: f32` e
+/// `emission_color: [f32; 3]` foram **apendados** aos três da cor base, à rugosidade e ao metal.
+///
+/// ⚠️⚠️ **Apendar campos é aditivo NUM sentido só, e nem esse.** O postcard é **posicional e sem
+/// comprimento**: um blob v128 tem `5 × 4 = 20` bytes e este binário pede `36`, então a leitura de
+/// um material gravado antes desta wave sai com *«Hit the end of buffer»* — e, pior, o `ComponentBlob`
+/// é **opaco ao parse do `ProjectFile`**, logo o erro chegaria no meio da travessia dos componentes
+/// em vez de no cabeçalho. O degrau transforma isso num **erro de versão**, que é a frase que diz ao
+/// dono o que aconteceu.
+///
+/// ⛔ **Sem degrau de migração**, pela mesma decisão do Enio de 26/08 (*«não há projetos salvos»*) —
+/// e aqui com a razão extra de que o componente é `register_default`: a ausência dele **já** é o
+/// material de omissão, logo uma peça anterior a 13/09 (quando ele nasceu) nunca o carrega.
+///
+/// ⚠️ **A tripla NÃO vê este degrau** — é a **décima oitava** vez, e pela razão de sempre: os
+/// componentes viajam em `ComponentBlob`s, que para ela são opacos.
+///
+/// ⚠️ **E o `FIELD_DOC_VERSION` NÃO se mexe**, o que parece estranho num degrau que fala de
+/// material: o documento do campo é **geometria** — é ele que a marcha compila —, e uma cor não muda
+/// uma distância. *Os dois números medem coisas diferentes, e subir o errado esconderia o certo.*
+///
+/// ⚠️⚠️ **Este degrau foi RE-CONTADO na integração de 2026-09-17.** A `line/3DModeling` escreveu-o
+/// como `128 → 129` sobre o `main` em que ela nasceu; quando ela aterrou, o `main` estava em `140`
+/// (a `line/components` e a `line/Vector` puseram doze degraus no meio). ⛔ *O valor certo não
+/// estava em nenhum dos dois lados do conflito* — ele CONTA-SE contra a árvore em que se aterra, e
+/// a tripla do ficheiro irmão sobe no mesmo commit.
+pub(crate) const PROJECT_SCHEMA: u32 = 141;

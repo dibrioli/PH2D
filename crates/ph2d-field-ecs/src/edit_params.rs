@@ -223,6 +223,10 @@ pub(super) const MATERIAL_KEYS: [&str; ph2d_field::MATERIAL_FIELDS as usize] = [
     "field.dim.base_b",
     "field.dim.roughness",
     "field.dim.metalness",
+    "field.dim.emission",
+    "field.dim.emission_r",
+    "field.dim.emission_g",
+    "field.dim.emission_b",
 ];
 
 /// As chaves i18n dos três ângulos.
@@ -401,21 +405,34 @@ pub fn params_of(world: &World, entity: Entity) -> Vec<(Param, Dim)> {
             .get::<crate::FieldMaterial>(entity)
             .copied()
             .unwrap_or_default();
-        out.extend((0..ph2d_field::MATERIAL_FIELDS).filter_map(|k| {
-            Some((
-                Param::Material(k),
-                Dim {
-                    key: MATERIAL_KEYS[k as usize],
-                    value: m.get(k)?,
-                    // ⭐ **Do zero a um, e as duas pontas são do MODELO** — uma rugosidade acima de
-                    // `1` não é mais áspera e um metal a `2` não é mais metal. ⚠️ `SoftFromZero` e
-                    // não `Wall`: o campo numérico continua sem tecto (uma cor base em HDR é uma
-                    // afirmação legítima sobre a peça), e o que este número fecha é o **curso do
-                    // slider**.
-                    span: Span::SoftFromZero(1.0),
-                },
-            ))
-        }));
+        // ⭐⭐⭐ **A COR DO BRILHO só existe enquanto houver brilho** (`docs/Render3d/05` §20) — ela
+        // MULTIPLICA a luminância, logo com `emission == 0` varrer o selector de cor não muda um
+        // bit do quadro. *Um controlo cujo efeito é sempre zero é um controlo morto com aparência
+        // de vivo*, e é a mesma lei da W34 que o raio de junção e a resolução já honram.
+        //
+        // ⚠️ **Quem esconde é a APRESENTAÇÃO, e a porta de escrita não se estreita:** o `set_param`
+        // continua a aceitar `Material(6..=8)`, senão um pedido guardado de um quadro atrás — o
+        // selector ainda aberto quando a luminância vai a zero — cairia em silêncio.
+        let visivel = |k: u8| k < 6 || m.emission > 0.0;
+        out.extend(
+            (0..ph2d_field::MATERIAL_FIELDS)
+                .filter(|k| visivel(*k))
+                .filter_map(|k| {
+                    Some((
+                        Param::Material(k),
+                        Dim {
+                            key: MATERIAL_KEYS[k as usize],
+                            value: m.get(k)?,
+                            // ⭐ **Do zero a um, e as duas pontas são do MODELO** — uma rugosidade acima de
+                            // `1` não é mais áspera e um metal a `2` não é mais metal. ⚠️ `SoftFromZero` e
+                            // não `Wall`: o campo numérico continua sem tecto (uma cor base em HDR é uma
+                            // afirmação legítima sobre a peça), e o que este número fecha é o **curso do
+                            // slider**.
+                            span: Span::SoftFromZero(1.0),
+                        },
+                    ))
+                }),
+        );
     }
     // ⭐⭐ **A RESOLUÇÃO do contorno vivo** (W55) — logo depois do que a forma mede, e antes do que
     // se fez a ela.

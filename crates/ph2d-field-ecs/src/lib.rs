@@ -135,6 +135,23 @@ pub struct FieldMaterial {
     pub roughness: f32,
     /// `0` dieléctrico (plástico, cerâmica), `1` metal.
     pub metalness: f32,
+    /// ⭐⭐⭐ **A LUZ QUE A PRÓPRIA FORMA DÁ** — o `emission_luminance` do OpenPBR.
+    ///
+    /// `0` é uma superfície que só devolve a luz que recebe; acima disso ela **acrescenta**
+    /// radiância, e a peça acende-se sem lâmpada nenhuma.
+    ///
+    /// ⚠️ **A ponta útil é `1` e foi MEDIDA** (`docs/Render3d/05` §20): com o olhar do produto e a
+    /// esfera de omissão, `0 → 1` move o verde médio de `188` para `246` — **`87 %`** de toda a
+    /// excursão possível —, `2` compra mais `7 %`, e acima de `32` a saída é **bit a bit a mesma**.
+    /// *A faixa do slider é do modelo; o campo numérico continua aberto.*
+    pub emission: f32,
+    /// A cor dessa luz, em **linear** e por canal — o `emission_color`.
+    ///
+    /// ⚠️ **Ela multiplica a [`Self::emission`]**, logo com luminância `0` é **inerte**: é por isso
+    /// que a linha dela só é publicada acima de zero (`edit_params::params_of`), e não porque um
+    /// painel mais curto seja mais bonito. *Um controlo cujo efeito é sempre zero é um controlo
+    /// morto com aparência de vivo.*
+    pub emission_color: [f32; 3],
 }
 
 impl Default for FieldMaterial {
@@ -143,6 +160,8 @@ impl Default for FieldMaterial {
             base_color: [0.8; 3],
             roughness: 0.3,
             metalness: 0.0,
+            emission: 0.0,
+            emission_color: [1.0; 3],
         }
     }
 }
@@ -158,6 +177,8 @@ impl FieldMaterial {
             0..=2 => Some(self.base_color[field as usize]),
             3 => Some(self.roughness),
             4 => Some(self.metalness),
+            5 => Some(self.emission),
+            6..=8 => Some(self.emission_color[field as usize - 6]),
             _ => None,
         }
     }
@@ -168,6 +189,8 @@ impl FieldMaterial {
             0..=2 => self.base_color[field as usize] = value,
             3 => self.roughness = value,
             4 => self.metalness = value,
+            5 => self.emission = value,
+            6..=8 => self.emission_color[field as usize - 6] = value,
             _ => return false,
         }
         true

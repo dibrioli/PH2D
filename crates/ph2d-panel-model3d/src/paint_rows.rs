@@ -54,8 +54,12 @@ pub(crate) fn paint_row(
     }
     // ⭐⭐⭐ **UMA COR NÃO É UM NÚMERO** — ver [`ParamRow::swatch`] (Enio, 2026-09-14). Mesma lei da
     // escolha logo abaixo: substitui o controle, não o acompanha.
-    if let Some(rgb) = row.swatch {
-        return paint_swatch(ctx, row, rgb, x, w, y);
+    // ⚠️ **O CAMPO da cor sai do próprio `param` da linha**, e não de um índice guardado ao lado da
+    // amostra: a âncora **é** o primeiro canal, e duas respostas à mesma pergunta divergem no dia em
+    // que uma terceira cor entrar. ⛔ E uma amostra sobre um param que **não** é material cai para o
+    // controlo normal — inexprimível hoje, e melhor do que uma cor inventada.
+    if let (Some(rgb), ph2d_field::Param::Material(campo)) = (row.swatch, row.param) {
+        return paint_swatch(ctx, row, campo, rgb, x, w, y);
     }
     // ⭐⭐⭐ **UMA ESCOLHA NÃO É UM SLIDER** — ver [`ParamRow::choices`] (Enio, 2026-08-31). Ela
     // substitui o controle, e não o acompanha: o mesmo facto em dois controlos é duas verdades.
@@ -269,7 +273,15 @@ fn paint_choice(ctx: &mut PaintCtx, row: &ParamRow, slot: u32, x: f32, w: f32, y
 /// ⚠️ **E o «mudou?» pergunta-se em sRGB8** — ver [`ParamRow::swatch`]. Sem essa comparação a
 /// função pediria uma edição **por quadro** enquanto o selector estivesse aberto: um passo de undo
 /// por quadro, sobre uma cor que ninguém mexeu.
-fn paint_swatch(ctx: &mut PaintCtx, row: &ParamRow, rgb: [u8; 3], x: f32, w: f32, y: f32) -> f32 {
+fn paint_swatch(
+    ctx: &mut PaintCtx,
+    row: &ParamRow,
+    campo: u8,
+    rgb: [u8; 3],
+    x: f32,
+    w: f32,
+    y: f32,
+) -> f32 {
     use ph2d_editor_core::widget::{ColorSwatch, SwatchSize, paint_color_swatch};
 
     let theme = ctx.host.theme();
@@ -290,7 +302,7 @@ fn paint_swatch(ctx: &mut PaintCtx, row: &ParamRow, rgb: [u8; 3], x: f32, w: f32
     // ⛔⛔ **O id vem da ENTIDADE, e é o único deste painel que vem** — ver
     // [`crate::ids::model3d_color_swatch`]. Com o id da posição, escolher outra forma com o
     // selector aberto escreveria a cor da anterior na nova, em silêncio.
-    let id = crate::ids::model3d_color_swatch(row.entity);
+    let id = crate::ids::model3d_color_swatch(row.entity, campo);
     let aberto = {
         let store = ctx.host.store_mut();
         store.register_picker_swatch(id);
@@ -302,6 +314,7 @@ fn paint_swatch(ctx: &mut PaintCtx, row: &ParamRow, rgb: [u8; 3], x: f32, w: f32
                 if nova != rgb {
                     crate::state::push_intent(crate::state::ModelIntent::SetColor {
                         entity: row.entity,
+                        field: campo,
                         srgb: nova,
                     });
                 }

@@ -42,6 +42,15 @@ use ph2d_editor_core::widget::{ButtonState, SliderOrientation, SliderState, Text
 /// ⚠️ **E os dois gates da `polygon_rows_tests` prendem-no pelos DOIS lados**: o polígono no teto
 /// tem de caber, e o vértice seguinte **não** pode caber. *Uma tolerância que só se defende de um
 /// lado não descreve nada.*
+///
+/// ⭐⭐ **Em 2026-09-14 ele NÃO subiu, e a razão é uma régua corrigida** (`docs/Render3d/05` §20): o
+/// brilho próprio acrescentou uma linha a toda folha e o gate ficou verde na mesma, porque a régua
+/// contava **params** e o painel pinta **linhas** — as duas amostras de cor dobram `6` params em
+/// `2` linhas. A família estava sobre-provisionada em exactamente `2`, e o brilho consumiu essa
+/// folga: hoje o polígono no teto pede **`69` de `69`**, medido no produtor das linhas.
+///
+/// ⛔ **Zero de folga é o estado correcto de um teto DERIVADO**, e não um aviso: ele é a maior forma
+/// mais o que toda folha tem. A linha seguinte move-o com a conta ao lado, como esta moveu.
 pub const MAX_ROWS: usize = 69;
 
 /// Quantos botões uma linha de **escolha** pode oferecer.

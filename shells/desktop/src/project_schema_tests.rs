@@ -542,7 +542,15 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // ninguem, ou um filho escolhido pelo `StableId` dele). Outro campo APENDADO ⇒ a mesma
         // razao do 139. ⚠️ **A tripla NAO ve^ este degrau** (17.a vez): bytes dentro de um
         // `ComponentBlob`.
-        (140, 13, 22),
+        // PROJECT 140→141: o `ph2d::field::FieldMaterial` ganhou `emission` + `emission_color`
+        // (o brilho proprio, `docs/Render3d/05` §20) -- quatro `f32` APENDADOS a um componente
+        // registado, e o postcard e' posicional E sem comprimento: um blob v128 tem 20 bytes onde
+        // este binario pede 36.
+        // ⚠️ **A tripla NAO ve^ este degrau** — a 18.a vez (a escada conta-as), e pela
+        // razao de sempre: os bytes vivem dentro de um `ComponentBlob`, que para ela e' opaco.
+        // ⚠️ E o `FIELD_DOC_VERSION` NAO se mexe, apesar de o degrau falar de material: o documento
+        // do campo e' GEOMETRIA, e uma cor nao muda uma distancia.
+        (141, 13, 22),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

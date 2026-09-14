@@ -324,10 +324,31 @@ fn every_node_shows_position_then_rotation_then_what_it_measures() {
             .all(|p| matches!(p, Param::Material(_))),
         "depois da pose há as dimensões e depois o material, e mais nada: {params:?}"
     );
+    // ⚠️⚠️ **`MATERIAL_FIELDS` é o que a ESCRITA aceita, e não o que a folha OFERECE** desde o
+    // brilho próprio (`docs/Render3d/05` §20): a cor da emissão (`6..=8`) multiplica a luminância,
+    // logo com ela a zero — que é o material de omissão desta fixtura — as três linhas seriam
+    // controlos cujo efeito é sempre nulo, e não são publicadas. ⇒ a barra é **derivada** do estado
+    // da peça, e não uma segunda cópia da contagem.
+    //
+    // ⛔ Escrever `MATERIAL_FIELDS` aqui deixava este gate a exigir exactamente o que a lei da W34
+    // proíbe: *o painel oferece o que o gesto faz*, e um gesto sobre uma cor inerte não faz nada.
+    let material: Vec<u8> = params[6 + dims..]
+        .iter()
+        .filter_map(|p| match p {
+            Param::Material(k) => Some(*k),
+            _ => None,
+        })
+        .collect();
     assert_eq!(
-        params[6 + dims..].len(),
-        ph2d_field::MATERIAL_FIELDS as usize,
-        "uma FOLHA oferece os {} números do material: {params:?}",
+        material,
+        (0..material.len() as u8).collect::<Vec<_>>(),
+        "os números do material saem CONTÍGUOS e desde o zero — um buraco no meio faria a tabela de \
+         chaves e a porta de escrita indexarem coisas diferentes: {params:?}"
+    );
+    assert!(
+        !material.is_empty() && material.len() < ph2d_field::MATERIAL_FIELDS as usize,
+        "uma FOLHA com o brilho APAGADO publica menos do que as {} posições que a escrita aceita — \
+         a cor da emissão multiplica a luminância, e a zero ela é um controlo inerte: {params:?}",
         ph2d_field::MATERIAL_FIELDS
     );
     // E a operação **tem** escala, senão o gate não distinguiria «não há escala» de «não há nós».

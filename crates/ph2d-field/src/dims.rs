@@ -111,8 +111,8 @@ pub enum Param {
     /// a mesma lei da W34 que o resto do painel honra: *o painel oferece exactamente o que o gesto
     /// faz*.
     Seam(u8),
-    /// ⭐⭐⭐ **UM NÚMERO DO MATERIAL desta forma** — a cor base (`0`, `1`, `2`), a rugosidade (`3`) e
-    /// o metal (`4`).
+    /// ⭐⭐⭐ **UM NÚMERO DO MATERIAL desta forma** — a cor base (`0`, `1`, `2`), a rugosidade (`3`),
+    /// o metal (`4`), o **brilho próprio** (`5`) e a cor dele (`6`, `7`, `8`).
     ///
     /// # ⚠️ Porque um material é um `Param` como os outros, e não uma superfície à parte
     ///
@@ -133,10 +133,15 @@ pub enum Param {
 
 /// Quantos números um material tem — ver [`Param::Material`].
 ///
-/// ⚠️ **Derivado por quem o lê**, e não escrito em cada sítio: o `params_of` publica esta quantidade
-/// de linhas e o `set_param` recusa acima dela. Dois literais divergiriam no dia em que um sexto
-/// número entrasse, e o sintoma seria uma linha pintada que a escrita recusa.
-pub const MATERIAL_FIELDS: u8 = 5;
+/// ⚠️ **Derivado por quem o lê**, e não escrito em cada sítio: o `params_of` publica **até** esta
+/// quantidade de linhas e o `set_param` recusa acima dela. Dois literais divergiriam no dia em que
+/// um número novo entrasse, e o sintoma seria uma linha pintada que a escrita recusa.
+///
+/// ⚠️⚠️ **«até», e não «exactamente»:** desde o brilho próprio (`docs/Render3d/05` §20) a cor da
+/// emissão (`6..=8`) **só é publicada** quando a luminância é maior que zero — ela multiplica-a,
+/// logo abaixo disso é inerte. *A porta de ESCRITA continua a aceitar as nove posições*: quem esconde
+/// é a apresentação, e um pedido guardado de um quadro atrás tem de continuar a poder aterrar.
+pub const MATERIAL_FIELDS: u8 = 9;
 
 /// ⭐ **O que uma grandeza admite** — a forma da faixa, e de que recurso vem cada ponta.
 ///

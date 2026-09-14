@@ -253,12 +253,17 @@ fn the_panel_shows_the_dimensions_of_what_is_selected() {
             // **não** viram linha — eles são a mesma cor do `Material(0)`, que é publicado como
             // **amostra** (ver o gate `a_colour_is_one_row_and_it_carries_the_swatch` abaixo).
             //
-            // ⚠️ **O `params_of` continua a oferecer os CINCO** — a dobra é da apresentação, e o
-            // gate `scene_gesture_tests` mede o outro lado. *Se os dois censos concordarem em
-            // cinco, alguém desfez a dobra sem ler este comentário.*
+            // ⚠️ **O `params_of` continua a oferecer os canais** — a dobra é da apresentação, e o
+            // gate `scene_gesture_tests` mede o outro lado. *Se os dois censos concordarem na
+            // contagem, alguém desfez a dobra sem ler este comentário.*
+            //
+            // ⭐⭐ **E o BRILHO PRÓPRIO fecha a secção** (`docs/Render3d/05` §20) — ⚠️ **sem a cor
+            // dele**, que só é publicada acima de zero: ela multiplica a luminância, e a zero seria
+            // um controlo cujo efeito é sempre nulo.
             "field.dim.base_color",
             "field.dim.roughness",
             "field.dim.metalness",
+            "field.dim.emission",
         ],
         "uma caixa tem a POSE (posição e rotação), CINCO dimensões e o MATERIAL, nesta ordem"
     );

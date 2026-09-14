@@ -20,7 +20,7 @@ use ph2d_ecs::SimWorld;
 use ph2d_field::{FieldDoc, NodeId, Primitive, Xform};
 
 /// Uma peça de UMA folha — uma esfera. A cor é da folha, e é ela que o painel mostra.
-fn a_ball() -> (SimWorld, Entity) {
+pub(super) fn a_ball() -> (SimWorld, Entity) {
     let mut sim = SimWorld::new();
     let doc = FieldDoc::new(
         vec![ph2d_field_eval::leaf(
@@ -46,7 +46,7 @@ fn a_ball() -> (SimWorld, Entity) {
 /// isso **comia o pedido que o gate acabara de empurrar** — o `the_colour_intent_reaches_the_document`
 /// leu a cor de omissão e acusou uma costura partida que estava inteira. *Um arnês que limpa a fila
 /// mede o programa em que ninguém pediu nada.*
-fn rows_of(sim: &mut SimWorld, e: Entity) -> Vec<ph2d_panel_model3d::ParamRow> {
+pub(super) fn rows_of(sim: &mut SimWorld, e: Entity) -> Vec<ph2d_panel_model3d::ParamRow> {
     crate::scene::sync_scene_and_birth(sim, None, &[e], 0.0, &crate::scene::no_drawing());
     ph2d_panel_model3d::state::current().rows
 }
@@ -60,7 +60,7 @@ fn rows_of(sim: &mut SimWorld, e: Entity) -> Vec<ph2d_panel_model3d::ParamRow> {
 /// **SEGUE** o documento — senão ele passaria sobre uma amostra congelada no valor de omissão.
 ///
 /// **Mutações que devem sangrar:** apagar o `filter` dos canais `1 | 2`; devolver `None` no
-/// `swatch`; trocar `base_color_srgb8` por uma conversão linear (a peça a `0,8` leria `204` em vez
+/// `swatch`; trocar `colour_srgb8` por uma conversão linear (a peça a `0,8` leria `204` em vez
 /// de `231`).
 #[test]
 fn a_colour_is_one_row_and_it_carries_the_swatch() {
@@ -136,6 +136,8 @@ fn the_colour_intent_reaches_the_document() {
     let (mut sim, folha) = a_ball();
     let _ = rows_of(&mut sim, folha);
     ph2d_panel_model3d::state::push_intent_for_test(ph2d_panel_model3d::ModelIntent::SetColor {
+        // ⚠️ A ÂNCORA da cor BASE — a da emissão (`6`) tem gates próprios no `emission_tests`.
+        field: 0,
         entity: folha.to_bits(),
         srgb: [255, 0, 128],
     });
@@ -154,7 +156,7 @@ fn the_colour_intent_reaches_the_document() {
         .expect("escrever a cor materializa o material");
     assert_eq!(
         m.base_color,
-        crate::materials::base_color_from_srgb8([255, 0, 128]),
+        crate::materials::colour_from_srgb8([255, 0, 128]),
         "os três canais do componente não são os três que o artista apontou"
     );
 }
@@ -174,8 +176,8 @@ fn the_colour_intent_reaches_the_document() {
 fn the_round_trip_through_the_document_is_exact() {
     let mau: Vec<u8> = (0u8..=255)
         .filter(|&b| {
-            let ida = crate::materials::base_color_from_srgb8([b, b, b]);
-            crate::materials::base_color_srgb8(ida) != [b, b, b]
+            let ida = crate::materials::colour_from_srgb8([b, b, b]);
+            crate::materials::colour_srgb8(ida) != [b, b, b]
         })
         .collect();
     assert!(
@@ -234,7 +236,7 @@ fn cores(sim: &SimWorld, folhas: &[Entity]) -> Vec<[u8; 3]> {
     folhas
         .iter()
         .map(|&f| {
-            crate::materials::base_color_srgb8(
+            crate::materials::colour_srgb8(
                 sim.world()
                     .get::<ph2d_field_ecs::FieldMaterial>(f)
                     .copied()
@@ -279,6 +281,8 @@ fn a_group_offers_the_material_of_the_shapes_under_it_and_painting_it_paints_the
 
     // ── E o pedido pinta as TRÊS ──
     ph2d_panel_model3d::state::push_intent_for_test(ph2d_panel_model3d::ModelIntent::SetColor {
+        // ⚠️ A ÂNCORA da cor BASE — a da emissão (`6`) tem gates próprios no `emission_tests`.
+        field: 0,
         entity: cor.entity,
         srgb: [255, 0, 128],
     });
@@ -406,6 +410,8 @@ fn a_request_from_a_stale_selection_paints_only_its_own_shape() {
     let (mut sim, _grupo, folhas) = three_balls();
     // O pedido é da folha 0; a selecção de AGORA é a 1 e a 2 — a 0 não está nela.
     ph2d_panel_model3d::state::push_intent_for_test(ph2d_panel_model3d::ModelIntent::SetColor {
+        // ⚠️ A ÂNCORA da cor BASE — a da emissão (`6`) tem gates próprios no `emission_tests`.
+        field: 0,
         entity: folhas[0].to_bits(),
         srgb: [255, 0, 128],
     });

@@ -154,9 +154,17 @@ pub fn model3d_choice_button(row: u32, cell: u32) -> NodeId {
 ///
 /// *É o mesmo defeito que o `card_swatch_id` do Motion documenta — ali vinte cartões a partilhar o
 /// id do param; aqui duas selecções a partilhar o id da linha.*
+///
+/// # ⚠️ E o `campo` entrou em 14/09 pela MESMA razão que a entidade
+///
+/// Com o brilho próprio (`docs/Render3d/05` §20) uma folha tem **duas** cores — a base e a da
+/// emissão —, e o selector continua a ser **um**. Sem o campo no id, abrir o selector numa amostra e
+/// carregar na outra deixaria as duas a responder *«aberto em mim»*: a segunda leria a cor escolhida
+/// para a primeira e escrevê-la-ia por cima, **em silêncio**. *O sujeito de um id flutuante é o par
+/// `(quem, qual)`, e não um dos dois.*
 #[must_use]
-pub fn model3d_color_swatch(entity: u64) -> NodeId {
-    hash_node_id_runtime(&format!("model3d.color.swatch.{entity}"))
+pub fn model3d_color_swatch(entity: u64, field: u8) -> NodeId {
+    hash_node_id_runtime(&format!("model3d.color.swatch.{entity}.{field}"))
 }
 
 /// O **slider do raio** do nó `node` da arena.

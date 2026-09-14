@@ -530,6 +530,16 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // no Blender, no Substance e no Houdini. *Um sinónimo local obriga a traduzir de cabeça.*
         "field.dim.roughness" => "Roughness",
         "field.dim.metalness" => "Metalness",
+        // ⭐⭐⭐ **O BRILHO PRÓPRIO** (`docs/Render3d/05` §20). ⚠️ **"Emission" e não "Glow"**: é a
+        // palavra do OpenPBR e a que o Blender, o Substance e o Houdini escrevem — *um sinónimo
+        // local obriga a traduzir de cabeça*, que é a mesma razão escrita no `roughness` acima.
+        "field.dim.emission" => "Emission",
+        // ⚠️ **A linha é a cor inteira** (a amostra), e as três dos canais só existem para a porta
+        // de escrita — elas nunca são pintadas, pela mesma dobra da cor base.
+        "field.dim.emission_color" => "Emission Color",
+        "field.dim.emission_r" => "Emission Color R",
+        "field.dim.emission_g" => "Emission Color G",
+        "field.dim.emission_b" => "Emission Color B",
         // ⭐⭐ **O SEGUNDO NÚMERO de uma junta** (W145). ⚠️ **"Seam Width" e não "Width"**: a
         // coluna já tem larguras da FORMA, e duas palavras iguais para grandezas de sujeitos
         // diferentes é o defeito que o `field.dim.joint` acima existe para não repetir.

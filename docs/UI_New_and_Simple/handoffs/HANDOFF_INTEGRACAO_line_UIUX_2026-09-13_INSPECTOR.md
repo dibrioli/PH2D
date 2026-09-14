@@ -859,3 +859,46 @@ para `>= 30`, reprovou por UM outra vez. ⛔ **A cura não é adivinhar o próxi
 para apanhar *um* defeito — o censo ficar verde por não medir nada — e um `>= 20` apanha-o com a
 mesma força sem acusar a próxima poda legítima. *Um piso calibrado numa população que está a ser
 podada acusa o vivo, e a segunda vez que isso acontece é dado, não azar.*
+
+### 14.15 — ⛔ CORRECÇÃO ao §14.14: as três que ficaram também eram rows, e o furo era da RÉGUA
+
+O dono leu o §14.14 e perguntou o óbvio — ***«porque colocar as 3 opções no modal de
+componentes?»***. A resposta certa era *«não se coloca»*: **as catorze** do vetor são rows ou
+gestos, e o que me fez deixar três foi um **defeito do instrumento**, não uma decisão de produto.
+
+**O furo, em uma linha:** a varredura procurava `insert(NomeDoTipo` e as três são escritas **por
+variável**.
+
+| componente | o que a régua procurava | o que o código faz | onde |
+|---|---|---|---|
+| `VecBindings` | `insert(VecBindings` | `em.insert(b)` | `bindings::set_selected_binding` — as rows de TOKEN do painel |
+| `VecLayout` | `insert(VecLayout` | `em.insert(l)` | `vec_layout_edit::write_layout` — o controlo de Auto Layout |
+| `VecStrokeProfile` | `insert(VecStrokeProfile` | `em.insert(v.clone())` | `profile_live::arm` — ⭐ *«a MESMA porta dos quatro sliders e das alças de canvas»*, escrito no doc do `width_handles` |
+
+⭐⭐⭐ **E a régua tinha a prova do próprio erro à vista:** para os três ela reportou
+*«nenhum criador de produção»* **e** encontrou um `remove::<…>` a duas linhas do `insert` que não
+via. ⇒ ***quando um censo diz «ninguém escreve isto» sobre um componente que alguém REMOVE, o
+defeito é do censo*** — o idioma da presença-override tem sempre as duas metades (`insert` quando
+há valor, `remove` no neutro), e ver só uma delas é a assinatura do furo. É a irmã exacta da lei que
+o §14.12 já tinha pago (*um censo por nome de campo mede a fronteira, não a cobertura*).
+
+⚠️ **O que a correcção NÃO muda:** a poda do `core` e da `image` (§14.13) foi decidida por outro
+instrumento — os **gates de presença** da shell (*a row é pintada sem o componente?*) —, que não tem
+este furo. E o `Bone` continua a ficar, pela medição do `impl Default`.
+
+**Estado final da paleta:** *Show all* **26** (era **85** em 13/09), *Empty aplicável* **15**,
+*Image aplicável* **26** — e ⭐ para uma imagem o aplicável passou a ser **igual** ao total: não
+sobra nada que não sirva.
+
+#### ⚠️ E isso partiu DOIS gates, por a premissa deles ter dissolvido
+
+`the_whole_gesture_opens_filters_and_reveals` e `the_box_goes_both_ways` provam que o *Show all*
+**revela** o inaplicável. O sujeito deles era uma SPRITE, e a população inaplicável de uma sprite
+**era a família do vetor** — com ela fora da paleta, `26` de `26` aplicam-se e os dois gates
+reprovaram a dizer *«o Show all não revelou nada»* sobre produto correcto.
+
+⛔ **A cura não é baixar a asserção — é medir o fenómeno onde ele existe:** os dois passam a correr
+sobre um **objecto vazio**, onde as ofertas `IMAGE`-only continuam inaplicáveis. E o gate ficou
+**mais forte**: ele agora nomeia o que reapareceu (o *9-Slice*, escondido na metade de cima e
+revelado **com a razão** na de baixo). *Um gate cujo sujeito deixou de ter o fenómeno não afirma
+nada — troca-se o sujeito, nunca a barra.*

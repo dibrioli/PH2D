@@ -26,6 +26,26 @@ fn image(sim: &mut SimWorld) -> u64 {
         .to_bits()
 }
 
+/// ⭐⭐ **Um objecto VAZIO — e ele é o sujeito de dois destes gates desde 2026-09-14.**
+///
+/// ⚠️ **A fixtura era uma SPRITE, e a varredura completa do catálogo dissolveu a premissa dela:**
+/// o *Show all* revela *«o que não é para este tipo de objecto»*, e para uma imagem essa população
+/// ERA a família do vetor. Com as catorze do vetor a saírem da paleta (todas têm porta no painel
+/// do vetor ou no gesto que as cria), uma imagem passou a ter **zero** inaplicáveis — `26` de `26`
+/// ofertas —, e os dois gates reprovaram a dizer *«o Show all não revelou nada»* sobre um produto
+/// correcto.
+///
+/// ⛔ **A cura não é baixar a asserção: é medir o fenómeno onde ele existe.** Num objecto sem
+/// sprite as ofertas `IMAGE`-only (Blend Mode · Texture Filter · 9-Slice · …) continuam
+/// inaplicáveis, que é exactamente o que estes dois gates provam. *Um gate cujo sujeito deixou de
+/// ter o fenómeno não afirma nada — troca-se o SUJEITO, nunca a barra.*
+fn vazio(sim: &mut SimWorld) -> u64 {
+    sim.world_mut()
+        .spawn((Transform::IDENTITY, ph2d_ecs::Name::new("Object")))
+        .id()
+        .to_bits()
+}
+
 fn labels(hero: &HeroScreen) -> Vec<String> {
     hero.store
         .command_palette_model()
@@ -48,7 +68,7 @@ fn labels(hero: &HeroScreen) -> Vec<String> {
 #[test]
 fn the_whole_gesture_opens_filters_and_reveals() {
     let mut sim = SimWorld::new();
-    let bits = image(&mut sim);
+    let bits = vazio(&mut sim);
     let reg = registry();
     let mut hero = HeroScreen::new(NodeId(1));
     let mut target: Option<u64> = None;
@@ -58,8 +78,8 @@ fn the_whole_gesture_opens_filters_and_reveals() {
     assert!(hero.store.command_palette_open());
     let closed = labels(&hero);
     assert!(
-        closed.iter().any(|l| l.starts_with("9-Slice")),
-        "uma imagem tem de receber 9-Slice"
+        !closed.iter().any(|l| l.starts_with("9-Slice")),
+        "um objecto SEM sprite nao pode oferecer 9-Slice com a caixa desligada: {closed:?}"
     );
     assert!(
         !closed
@@ -84,6 +104,12 @@ fn the_whole_gesture_opens_filters_and_reveals() {
         open.iter().any(|l| l.contains("not for this object type")),
         "o Show all tem de REVELAR o inaplicavel, com a razao: {open:?}"
     );
+    // ⭐ E o que ele revela é NOMEÁVEL: o 9-Slice, que a metade de cima provou estar escondido.
+    assert!(
+        open.iter()
+            .any(|l| l.starts_with("9-Slice") && l.contains("not for this object type")),
+        "o 9-Slice tem de reaparecer sob o Show all, COM a razao: {open:?}"
+    );
     assert!(
         open.len() > closed.len(),
         "o Show all nao revelou nada ({} -> {})",
@@ -99,7 +125,7 @@ fn the_whole_gesture_opens_filters_and_reveals() {
 #[test]
 fn the_box_goes_both_ways() {
     let mut sim = SimWorld::new();
-    let bits = image(&mut sim);
+    let bits = vazio(&mut sim);
     let reg = registry();
     let mut hero = HeroScreen::new(NodeId(1));
     let mut target: Option<u64> = None;

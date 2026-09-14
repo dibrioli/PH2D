@@ -32,7 +32,8 @@
 //! menor esforço escolheu a resposta*), e aqui a causa estava confessada no próprio ficheiro.
 //!
 //! A pergunta a sério é: **o neutro deste tipo, pendurado numa forma que JÁ EXISTE, quer dizer
-//! alguma coisa?** Corrida item a item, **11 de 14** caíram do outro lado, e por quatro mecanismos:
+//! alguma coisa?** Corrida item a item, **as 14** caíram do outro lado, por quatro mecanismos —
+//! e o helper `v` (*«o que o `+` oferece»*) foi **apagado**, porque deixou de ter quem o use:
 //!
 //! | mecanismo | quem |
 //! |---|---|
@@ -41,21 +42,22 @@
 //! | é **derivado** de uma lista/knob do painel, e o neutro é o que ele REMOVE | `VecFilter` · `VecLayoutItem` · `VecLayoutSize` · `VecLayoutAbsolute` · `VecPatternRotation` · `VecWidgetValue` |
 //! | é adoptado no **NASCIMENTO** do traço, e pendurá-lo depois contradiz o produto | `VecSymmetry` (ordem do dono: *«não deve fazer simetria de formas que já existem previamente»*) · `VecCutPath` (⛔ e armá-lo **mata a lâmina anterior**: não é inerte, é destrutivo) |
 //!
-//! ⭐ **E as TRÊS que ficam, ficam por medição, não por inércia:** `VecBindings`, `VecLayout` e
-//! `VecStrokeProfile` não têm **um único** escritor de produção (só `remove`) ⇒ a paleta é
-//! literalmente a única porta delas. *O mesmo instrumento que manda podar onze manda NÃO podar
-//! três* — e é isso que responde à intenção declarada mais acima («a paleta é a superfície de
-//! descoberta»): ela continua a sê-lo, exactamente para as que não têm outra.
+//! ⛔⛔ **E TRÊS delas quase escaparam, por um furo na RÉGUA — não no produto.** A 1.ª passagem
+//! concluiu que `VecBindings`, `VecLayout` e `VecStrokeProfile` *«não têm um único escritor de
+//! produção»* e deixou-as na paleta. A varredura procurava `insert(NomeDoTipo` e **as três são
+//! escritas por variável** — `em.insert(b)` · `em.insert(l)` · `em.insert(v.clone())` —, cada uma
+//! a duas linhas de um `remove::<…>` que a régua **via**. ⇒ *quando um censo diz «ninguém escreve
+//! isto» sobre um componente que alguém REMOVE, o defeito é do censo*: o idioma da presença tem
+//! sempre as duas metades, e ver só uma delas é a assinatura do furo.
+//!
+//! ⚠️ **A intenção declarada mais acima («a paleta é a superfície de descoberta») fica sem objecto
+//! aqui, e isso é o achado e não um efeito colateral:** ela supunha que havia componentes do vetor
+//! sem porta própria. Medido, não há **nenhum** — quem desenha alcança os catorze pelo painel do
+//! vetor, que é onde ele trabalha.
 //!
 //! ⚠️ **Dois helpers intrínsecos, e a diferença é load-bearing:** [`g`] é *não há neutro*
 //! (o tipo não tem `Default`); [`i`] é *há neutro e ele é o que o artista não quer*.
 use crate::{ComponentCategory as C, ComponentDesc as D, ObjectKinds as O};
-
-/// Um `Vec*` que o `+` OFERECE: tem `Default`, logo a paleta consegue construí-lo no ponto
-/// neutro. Sempre `Vector`, sempre sobre um caminho, ainda sem campos descritos.
-const fn v(canonical_name: &'static str, display_name: &'static str) -> D {
-    D::authored(canonical_name, display_name, C::Vector, O::VECTOR, &[])
-}
 
 /// Um `Vec*` que chega com o GESTO — **não tem `Default`**, e a lista abaixo não foi
 /// escolhida: ela é a saída do compilador ao converter os registradores para
@@ -78,7 +80,8 @@ const fn i(canonical_name: &'static str, display_name: &'static str) -> D {
 /// Ordenado por `canonical_name` (gate `the_catalog_is_sorted_and_unique`).
 pub const DESCS: &[D] = &[
     g("ph2d::ecs::VecAnchors", "Anchors"),
-    v("ph2d::ecs::VecBindings", "Bindings"),
+    // ⇒ as rows de TOKEN do painel escrevem-no (`bindings::set_selected_binding`), com o idioma da presença: vazio ⇒ `remove`.
+    i("ph2d::ecs::VecBindings", "Bindings"),
     g("ph2d::ecs::VecBlend", "Blend"),
     g("ph2d::ecs::VecBoolGroup", "Boolean Group"),
     g("ph2d::ecs::VecBoolOp", "Boolean Op"),
@@ -97,7 +100,8 @@ pub const DESCS: &[D] = &[
     // um hash de nome) ⇒ `RefKind::VecPath` quando o campo for descrito, e entra no remap da
     // F4 como as juntas da física.
     g("ph2d::ecs::VecLabel", "Label"),
-    v("ph2d::ecs::VecLayout", "Auto Layout"),
+    // ⇒ o controlo de Auto Layout do painel escreve-o (`vec_layout_edit::write_layout`: `Some` ⇒ `insert`, `None` ⇒ `remove`).
+    i("ph2d::ecs::VecLayout", "Auto Layout"),
     // ⇒ a caixa *Absolute* do painel de layout: presença = bandeira, e ela alterna (`vec_layout_edit`).
     i("ph2d::ecs::VecLayoutAbsolute", "Layout Absolute"),
     // ⇒ row do painel de layout, com o idioma da presença escrito ao lado dela: *«o neutro DESTACA: um componente que não faz nada não viaja no arquivo»* — a paleta escreveria exactamente o neutro que o painel remove.
@@ -113,7 +117,8 @@ pub const DESCS: &[D] = &[
     i("ph2d::ecs::VecPatternRotation", "Pattern Rotation"),
     g("ph2d::ecs::VecResizeBox", "Resize Box"),
     g("ph2d::ecs::VecShape", "Shape"),
-    v("ph2d::ecs::VecStrokeProfile", "Stroke Profile"),
+    // ⇒ os QUATRO sliders de largura e as alças de canvas passam os dois pela MESMA porta (`profile_live::arm`), que o anexa com os stops e o **destaca** no neutro — anexá-lo pela paleta dá um perfil que o painel apaga no toque seguinte.
+    i("ph2d::ecs::VecStrokeProfile", "Stroke Profile"),
     // ⇒ é adoptado no NASCIMENTO do traço (o eixo de sessão é capturado em LOCAL), e a exigência do dono é explícita: *«não deve fazer simetria de formas que já existem previamente»*.
     i("ph2d::ecs::VecSymmetry", "Symmetry"),
     g("ph2d::ecs::VecTextPath", "Text on Path"),
@@ -129,31 +134,28 @@ pub const DESCS: &[D] = &[
 mod tests {
     use super::DESCS;
 
-    /// ⭐⭐ **O vetor oferece as três que NÃO têm outra porta — e mais nenhuma.**
+    /// ⭐⭐ **O vetor não oferece NADA na paleta, e a lista vazia é a afirmação.**
     ///
     /// ⚠️⚠️ **Esta família é o caso mais puro do defeito**, e a causa estava escrita no cabeçalho
     /// deste ficheiro antes de alguém a ler como tal: a divisão entre oferecido e não-oferecido era
     /// *«a saída do compilador ao converter os registadores para `register_default`»* — ou seja,
     /// **quem classificou foi o `Default`**, não uma pergunta sobre o artista. A varredura de
-    /// 2026-09-14 correu a pergunta a sério e **11 das 14** caíram do outro lado.
+    /// 2026-09-14 correu a pergunta a sério e **as catorze** caíram do outro lado: cada uma tem
+    /// uma porta no painel do vetor ou no gesto que a cria.
     ///
-    /// ⭐ **E as três que ficam ficam por MEDIÇÃO:** `VecBindings`, `VecLayout` e
-    /// `VecStrokeProfile` não têm **um único** escritor de produção (só `remove`) — a paleta é
-    /// literalmente a única porta delas, e podá-las tornaria as features inalcançáveis. *É o mesmo
-    /// instrumento a dizer «tira» a onze e «não tires» a três.*
+    /// ⛔ **Três delas quase ficaram, por um furo na RÉGUA** (ver o cabeçalho): a varredura
+    /// procurava `insert(NomeDoTipo` e elas são escritas por variável, a duas linhas de um
+    /// `remove::<…>` que ela via. *Um censo que diz «ninguém escreve isto» sobre um componente que
+    /// alguém REMOVE está a medir mal.*
     ///
     /// ⚠️ **A lista é a afirmação.** Uma entrada nova aqui responde: *o neutro deste tipo, pendurado
     /// numa forma que já existe, quer dizer alguma coisa?* Se o que falta à paleta é o CONTEXTO (a
     /// escala, o outro lado do par, o instante do nascimento), é `i` e esta lista não cresce.
     ///
-    /// (Mutação: devolver o `VecSymmetry` a `v` ⇒ RED, nomeando-o.)
+    /// (Mutação: trocar o `i` do `VecSymmetry` por `D::authored(..., O::VECTOR, &[])` ⇒ RED.)
     #[test]
     fn the_vector_family_offers_only_what_has_no_other_door() {
-        const PORTAS: [&str; 3] = [
-            "ph2d::ecs::VecBindings",
-            "ph2d::ecs::VecLayout",
-            "ph2d::ecs::VecStrokeProfile",
-        ];
+        const PORTAS: [&str; 0] = [];
         let offered: Vec<&str> = DESCS
             .iter()
             .filter(|d| d.is_offered())
@@ -163,7 +165,7 @@ mod tests {
             offered,
             PORTAS.to_vec(),
             "a paleta do VETOR tem de oferecer exatamente estas tres.\n\
-             Antes de acrescentar uma quarta: o NEUTRO dela, pendurado numa forma que ja' existe, \
+             Antes de acrescentar a primeira: o NEUTRO dela, pendurado numa forma que ja' existe, \
              quer dizer alguma coisa? Se o que falta a' paleta e' o CONTEXTO — a escala da \
              seleccao, qual dos dois e' o guia, o instante do nascimento do traco —, entao a porta \
              e' o gesto e o helper e' o `i`."

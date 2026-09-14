@@ -652,6 +652,77 @@ chega aos gates que vivem em `tests/`*).
 
 ---
 
+## §18 — ⛔⛔⛔ *«não vejo efeito com density»* — o pincel estava CERTO, a RÉGUA e o ROTEIRO é que não
+
+Report do dono sobre o smoke do §17. Reproduzido dab a dab (sonda
+`diag_o_percurso_do_dono`, o percurso dele na `=14`):
+
+| passo | vértices |
+|---|---|
+| a cena abre | `128` |
+| 8 dabs de `Draw` no detalhe **fino** | `822` |
+| 10 dabs de `Density` no detalhe **grosso** | **`399`** (`−51 %`) |
+| 10 dabs de `Density` no detalhe **médio** | `396 → 396` — **zero** |
+
+⇒ **o pincel funciona.** O que falhou foram três coisas minhas.
+
+### 1. ⛔ A minha régua afirmava a DIRECÇÃO e nunca a MAGNITUDE
+
+O gate do §17 dizia `depois < antes`. Com ele **verde**, a colheita medida era de
+`34` vértices em `3 386` — **`1 %`**, invisível a olho nu, e eu escrevi no
+handoff *«a colheita é modesta»* como se fosse uma nota de rodapé.
+
+⇒ o gate novo é uma **fracção**, com a barra tirada do percurso do próprio dono
+(`−51 %` medido, barra em **`−25 %`**, margem de `2×`). *Uma régua que só vê o
+SINAL não vê a MAGNITUDE* — a mesma família do `edge_max` cego ao quad fino e da
+contagem cega a **quais** vértices se movem.
+
+### 2. ⛔⛔ O meu roteiro levava-o a um estado em que o passe NÃO CORRE
+
+O passo `(12)` mandava usar o `Density` *«depois de ter adensado no passo (3)»* —
+mas entre os dois estão o passo **(9)**, que **desliga** o modo (`P`), e o
+**(10)**, que monta uma pilha de multiresolução (`K`) sobre a qual o passe
+**recusa** com a pilha montada. ⇒ *seguindo o roteiro em ordem, no passo (12) o
+modo está desarmado ou a recusar*, e o artista vê exactamente o que o dono viu.
+
+⚠️ **É a espécie de defeito que o `CLAUDE.md` §5.0 nomeia como pior que uma cena
+ausente** — a ausente não é acreditada. O passo `(12)` passou a ser
+**auto-contido**: ele reconstrói o estado que precisa (`J` · `P` · `U` fino ·
+adensar · `Density` · `U` grosso) e **diz o `U` em maiúsculas**, porque sem ele o
+pincel não tem o que fazer.
+
+### 3. ⭐⭐⭐ E o pincel era MUDO sobre a própria inércia
+
+Há **três** razões diferentes para o passe não correr — o modo desligado · a
+pilha montada · não haver aresta fora da faixa — e o artista vê as três
+**iguais**: nada acontece. *Foi assim que o report nasceu.*
+
+⇒ `queixa_do_passe`: uma linha de log **por traço** (não por dab), **só** para os
+verbos sem lei por-vértice. ⛔ Num `Draw` um passe que não parte nada é o caso
+**normal** — ele esculpe à mesma —, e uma linha por dab seria um log que ninguém
+lê. Gate na shell a contar as **três** chamadas: *a que faltar é um pincel que
+parece partido e não diz porquê*.
+
+### ⚠️⚠️ E um CONTROLO NEGATIVO meu era VÁCUO, provado por mutação
+
+A primeira redacção do controlo *«o `Draw` fica calado»* usava uma esfera densa
+com o detalhe grosso — onde o `Draw` **colapsa**, logo ele nunca chegava ao
+caminho da queixa. Tornar a queixa **universal** (a mutação) **não o reprovava**.
+
+⇒ *um controlo negativo tem de percorrer o MESMO caminho que a metade positiva*,
+senão está a afirmar sobre código que não corre. Ele usa agora o caminho do modo
+**desligado**, que é onde a queixa nasce.
+
+### Mutações (3 de 3 sangram, depois de o controlo ser corrigido)
+
+| # | mutação | quem sangra |
+|---|---|---|
+| M16 | a queixa cala-se | `quando_a_densidade_nao_faz_nada_ela_diz_porque` |
+| M17 | a queixa passa a valer para TODO verbo | o mesmo, pelo **controlo negativo** |
+| M18 | `MAX_PASSES = 0` no colapso (a colheita volta a um punhado) | `a_densidade_tira_uma_fraccao_visivel_e_nao_um_punhado` |
+
+---
+
 ## §12 — Smoke
 
 ```

@@ -400,7 +400,8 @@ pub fn key(
         // colapso retirar o que o refino pôs, e sem o número de antes o
         // artista não tem contra o que comparar.
         eprintln!(
-            "[sculpt3d] detalhe: {d} -- a aresta alvo e' uma fracao do PINCEL,                  entao pincel pequeno detalha fino ({} vertices / {} faces agora)",
+            "[sculpt3d] detalhe: {d} -- a malha inteira nesta densidade teria ~{} triangulos.                  O pincel diz ONDE; este numero diz QUAO FINO, e nao muda com o zoom                  ({} vertices / {} faces agora)",
+            ph2d_mesh::tris_for_detail(scene.dyntopo.detail).round() as u64,
             scene.mesh().vert_count(),
             scene.mesh().face_count()
         );

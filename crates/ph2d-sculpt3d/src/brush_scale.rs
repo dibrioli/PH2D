@@ -108,21 +108,6 @@ impl Brush {
         self.verb == crate::Verb::Boundary
     }
 
-    /// **Este pincel oferece o controlo da DENSIDADE?**
-    ///
-    /// ⚠️ **A pergunta é ao PREDICADO, nunca ao nome do verbo** — o
-    /// [`crate::Verb::sem_lei_por_vertice`] é quem sabe quem não tem lei
-    /// por-vértice, e é ele que o passe de topologia consulta. Comparar com
-    /// `Verb::Density` aqui seria a segunda resposta à mesma pergunta, que é
-    /// como um chip nasce a aparecer no pincel errado.
-    ///
-    /// ⭐ É o **único** ajuste próprio deste pincel: raio, força e curva não
-    /// têm onde agir nele.
-    #[must_use]
-    pub fn offers_density_controls(&self) -> bool {
-        self.verb.sem_lei_por_vertice()
-    }
-
     /// **E a TRAVA DE ROTAÇÃO?**
     ///
     /// ⭐⭐ **Só no modo de escala, e isso é LEI e não arrumação:** ela decide se

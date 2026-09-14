@@ -7,6 +7,7 @@
 //! precisamente o T-vértice, e a contagem de vértices estaria *certa*.
 
 use super::*;
+use crate::edge_target;
 use crate::{Face, Mesh, shapes};
 
 /// Uma esfera triangulada — a fixture do produto (o `uv_sphere` nasce em quads,

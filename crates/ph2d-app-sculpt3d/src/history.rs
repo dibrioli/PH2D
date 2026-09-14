@@ -481,11 +481,39 @@ impl Sculpt3dScene {
     /// por-índice para desfazer, e a foto tem de ser tirada antes do primeiro
     /// dab. Ver o `dyn_before`.
     pub(super) fn open_dyntopo_stroke(&mut self) {
-        self.dyn_before = self
-            .dyntopo
-            .armed
-            .then(|| Box::new(self.mesh().clone()))
-            .filter(|_| self.level_count() == 1);
+        // ⭐⭐ **A foto é tirada para quem MEXE na topologia, e desde 14/09 isso
+        // inclui quem corre SEM o interruptor** (ordem do dono sobre o pincel de
+        // densidade). *Perguntar só pelo interruptor deixaria um traço que muda
+        // a contagem sem nada para o `Ctrl+Z` devolver.*
+        let livre = self.brush.verb.corre_sem_o_interruptor();
+        if (!self.dyntopo.armed && !livre) || self.level_count() != 1 {
+            self.dyn_before = None;
+            return;
+        }
+        self.dyn_before = Some(Box::new(self.mesh().clone()));
+        // ⛔⛔ **E QUEM CORRE SEM O INTERRUPTOR HERDA O TRABALHO QUE ELE FAZIA.**
+        // Os dois motores recusam quads por GEOMETRIA (`Refine::NotTriangles` —
+        // partir a aresta de um quad devolve um triângulo e um pentágono), e
+        // quem os triangulava era o `toggle_dyntopo`. Sem esta linha o pincel
+        // seria um **no-op silencioso** em toda peça que ainda é de quads: uma
+        // primitiva acabada de nascer, ou a saída do botão de retopologia.
+        //
+        // ⚠️ **DEPOIS da foto, de propósito:** triangular muda a malha, e o
+        // gesto inteiro — triangular *mais* adensar — tem de desfazer num passo
+        // só. Antes da foto, o `Ctrl+Z` devolveria a malha já triangulada.
+        if livre && !self.dyntopo.armed {
+            let added = self
+                .obj_mut()
+                .map_or(0, |o| o.stack.mesh_mut().triangulate());
+            if added > 0 {
+                self.mesh_rebuilt();
+                eprintln!(
+                    "[sculpt3d] {} triangulou {added} faces -- os dois motores de \
+                     topologia recusam quads, e o Ctrl+Z devolve a malha de antes",
+                    self.brush.verb.label()
+                );
+            }
+        }
     }
 
     /// Fecha o traço e guarda o desfazer.
@@ -498,7 +526,16 @@ impl Sculpt3dScene {
         if let Some(before) = self
             .dyn_before
             .take()
-            .filter(|b| b.vert_count() != self.mesh().vert_count())
+            // ⚠️⚠️ **A pergunta é sobre a TOPOLOGIA e não só sobre os VÉRTICES**,
+            // e a segunda metade chegou em 14/09: triangular um quad parte uma
+            // face em duas **sem criar um vértice**, logo um traço que só
+            // triangulou lia `vert_count` igual e saía sem entrada nenhuma — o
+            // `Ctrl+Z` não devolvia os quads. *Duas grandezas estavam a ser
+            // lidas como uma.*
+            .filter(|b| {
+                b.vert_count() != self.mesh().vert_count()
+                    || b.face_count() != self.mesh().face_count()
+            })
         {
             self.record(StrokeUndo::Remeshed(before));
             return;

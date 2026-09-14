@@ -290,17 +290,6 @@ pub const SCULPT3D_DYN_DETAIL: NodeId = hash_node_id("sculpt3d.dyn_detail");
 /// Ver [`SCULPT3D_DYN_DETAIL`].
 pub const SCULPT3D_DYN_DETAIL_NUM: NodeId = hash_node_id("sculpt3d.dyn_detail_num");
 
-/// **AS DUAS DIRECÇÕES DO PINCEL DE DENSIDADE** — os chips `Equalise` · `Thin Only`.
-///
-/// ⚠️ **O tamanho se CONTA e não se escolhe**, como o do motor de retopologia: o
-/// censo `the_panel_offers_every_density_mode_the_brush_has` compara este array
-/// com o `DensityModo::ALL`, então um modo novo que não passe por aqui nasce
-/// inalcançável e o gate fica vermelho em vez de o chip sumir em silêncio.
-pub const SCULPT3D_DENSITY_MODE: [NodeId; 2] = [
-    hash_node_id("sculpt3d.density_mode.0"),
-    hash_node_id("sculpt3d.density_mode.1"),
-];
-
 /// Desce um nível de multiresolução.
 pub const SCULPT3D_LEVEL_DOWN: NodeId = hash_node_id("sculpt3d.level_down");
 

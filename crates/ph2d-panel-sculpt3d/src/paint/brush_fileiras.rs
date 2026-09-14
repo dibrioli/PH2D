@@ -79,47 +79,6 @@ pub(super) fn paint_boundary_rows(
     ) + Spacing::Sm.px()
 }
 
-/// **A FILEIRA DO PINCEL DE DENSIDADE — as duas direcções.**
-///
-/// ⚠️⚠️ **Ela nasceu de um report do dono** (2026-09-14: *«por que não pode
-/// aumentar a densidade também?»*), e a resposta é que ele **pode** — o pincel
-/// acrescenta a bandeira de colapso ao passe de topologia e **não** retira a de
-/// partir; quem decide o partir é este ajuste (espec §3.2, a tabela-verdade).
-/// ⛔ Sem ela o artista alcança **UMA** das duas direcções, e a que faltava é a
-/// que só tem efeito em metade do curso do slider de detalhe — *um pincel que
-/// só age em metade dos ajustes é um pincel que se conclui estar partido*.
-///
-/// ⭐ É a **única** fileira própria deste pincel: ele não tem lei por-vértice,
-/// logo raio, força e curva não têm onde agir.
-pub(super) fn paint_density_rows(
-    ctx: &mut PaintCtx,
-    snap: &Sculpt3dSnapshot,
-    x: f32,
-    w: f32,
-    y: f32,
-) -> f32 {
-    if !snap.ui.brush.offers_density_controls() {
-        return y;
-    }
-    let modos = ph2d_sculpt3d::DensityModo::ALL;
-    let selected = modos
-        .iter()
-        .position(|&m| m == snap.ui.brush.density_modo)
-        .unwrap_or(0);
-    let labels: Vec<&str> = modos.iter().map(|m| m.label()).collect();
-    labelled_seg(
-        ctx,
-        tr("panel.sculpt3d.density_mode"),
-        crate::ids::SCULPT3D_SEC_BRUSH,
-        &crate::ids::SCULPT3D_DENSITY_MODE,
-        &labels,
-        selected,
-        x,
-        w,
-        y,
-    ) + Spacing::Sm.px()
-}
-
 /// **A FILEIRA E AS DUAS CAIXAS DO PINCEL DE POSE.**
 ///
 /// ⚠️ **A fileira de modos NÃO é um luxo: sem ela o artista alcança UM dos três

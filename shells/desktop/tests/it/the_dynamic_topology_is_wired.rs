@@ -143,21 +143,38 @@ fn arming_says_what_it_did_and_the_refusal_is_named() {
     assert!(detail.contains("K::KeyU"), "o detalhe tem tecla própria");
 }
 
-/// **O ALVO É UMA FRAÇÃO DO PINCEL, e a conta é feita UMA vez.**
+/// ⭐⭐⭐ **O ALVO SAI DA PEÇA E NUNCA DO PINCEL, e a conta é feita UMA vez.**
 ///
-/// ⚠️ Duas contas divergem no dia em que uma delas ganhar um caso especial, e a
-/// forma como isso aparece é um log que diz um número e uma geometria que usa
-/// outro.
+/// ⛔⛔ **Este gate dizia o CONTRÁRIO até 2026-09-14** — chamava-se *«o alvo é
+/// uma FRAÇÃO DO PINCEL»* e afirmava `edge_target(radius, …)`. Quem o desmentiu
+/// foi o dono: *«a densidade da malha deve ser independente do zoom»*. E o
+/// mecanismo é directo: o `Brush::radius` é **derivado do raio em PIXELS através
+/// da câmera**, a cada dab, logo o zoom entrava no alvo. Medido na cena `=14`,
+/// mesmo pincel e mesmo slider: alvo `0,0415` · `0,0953` · `0,2029` às
+/// distâncias `1,5` · `3` · `6` — **`4,9×` só por aproximar ou afastar**.
+///
+/// ⭐ A cura é ancorar na **ÁREA DA SUPERFÍCIE**, que é a mesma que o botão de
+/// retopologia já tinha escrita para o mesmo defeito (*o `Quad Size` absoluto,
+/// refutado com foto*). ⇒ *o pincel diz ONDE, o slider diz QUÃO FINO.*
+///
+/// ⚠️ **A conta continua a ser UMA**: duas divergem no dia em que uma ganhar um
+/// caso especial, e a forma como isso aparece é um log que diz um número e uma
+/// geometria que usa outro.
 #[test]
-fn the_edge_target_is_derived_once_from_the_brush_radius() {
+fn the_edge_target_comes_from_the_piece_never_from_the_brush() {
     let src = sculpt_src();
     let body = function_body(&src, "refine_for_dab");
     assert!(
-        body.contains("edge_target(radius, self.dyntopo.detail)"),
-        "o alvo sai da porta única, contra o raio do dab"
+        body.contains("edge_target_for_mesh("),
+        "o alvo não sai da porta ancorada na peça — sem ela o zoom volta a \
+         decidir a densidade"
+    );
+    assert!(
+        !body.contains("edge_target(radius"),
+        "o alvo voltou a sair do RAIO do pincel, que é derivado da câmera"
     );
     assert_eq!(
-        src.matches("edge_target(").count(),
+        src.matches("edge_target_for_mesh(").count(),
         1,
         "e há UMA chamada no cluster: uma segunda seria a segunda resposta"
     );
@@ -231,33 +248,26 @@ fn the_arming_question_is_a_parse_and_not_a_list() {
 /// não é, e é a que a cura fecha — medido, ela levava a peça de `830` para
 /// `1 331` vértices num gesto que não move um único vértice.
 ///
-/// As quatro metades:
+/// As três metades:
 /// 1. a porta **recebe** o verbo;
 /// 2. ela lê as **duas** colunas (refino e colapso são leis independentes);
-/// 3. ela passa ao refino o **ajuste do pincel** — e é aí que vive a resposta ao
-///    report de 14/09 (*«por que não pode aumentar a densidade também?»*): o
-///    pincel de densidade **acrescenta** a bandeira de colapso e **não retira**
-///    a de partir, que segue o ajuste (espec §3.2);
-/// 4. o chamador passa o verbo **e** o ajuste do pincel **armado**, nunca um
-///    literal.
+/// 3. o chamador passa o verbo do pincel **armado**, nunca um literal.
 #[test]
 fn the_dyntopo_door_asks_the_verb() {
     let src = sculpt_src();
     let body = function_body(&src, "refine_for_dab");
     assert!(
-        body.contains("verbo.refina_no_dyntopo(densidade)")
-            && body.contains("verbo.colapsa_no_dyntopo()"),
-        "a porta do dyntopo não consulta as DUAS colunas do verbo, com o ajuste \
-         de densidade no refino — sem isso ela responde «este gesto passou pelo \
-         carimbo?», que é a pergunta errada"
+        body.contains("verbo.refina_no_dyntopo()") && body.contains("verbo.colapsa_no_dyntopo()"),
+        "a porta do dyntopo não consulta as DUAS colunas do verbo — sem isso ela \
+         responde «este gesto passou pelo carimbo?», que é a pergunta errada"
     );
     // ⚠️ **O chamador passa o verbo E o ajuste do pincel ARMADO** (`brush.*`), e
     // não os campos de `self.brush`: entre os dois está o `armed_brush`, que é
     // quem resolve os modificadores do gesto. *Duas respostas para «o que está
     // na mão» divergem no dia do primeiro modificador que troca de verbo.*
     assert!(
-        src.contains("self.refine_for_dab(brush.verb, brush.density_modo,"),
-        "o chamador não passa o verbo e o ajuste do pincel armado à porta do dyntopo"
+        src.contains("self.refine_for_dab(brush.verb,"),
+        "o chamador não passa o verbo do pincel armado à porta do dyntopo"
     );
 }
 
@@ -279,10 +289,21 @@ fn the_dyntopo_pass_names_every_reason_it_did_nothing() {
     let body = function_body(&src, "refine_for_dab");
     let queixas = body.matches("self.queixa_do_passe(").count();
     assert_eq!(
-        queixas, 3,
+        queixas, 2,
         "a porta do dyntopo tem {queixas} queixas e as razões do silêncio são \
-         TRÊS (desligada · pilha montada · nada fora da faixa) — a que faltar é \
+         DUAS (pilha montada · a malha já está no ponto pedido) — a que faltar é \
          um pincel que parece partido e não diz porquê"
+    );
+    // ⚠️⚠️ **Eram TRÊS e passaram a DUAS em 2026-09-14, e a que saiu não foi
+    // apagada: ela ficou INALCANÇÁVEL.** Por ordem do dono o pincel de densidade
+    // corre sem o interruptor, e a queixa só falava por quem não tem lei
+    // por-vértice — ou seja, exactamente por quem já não passa naquele ramo.
+    // *Uma queixa que ninguém pode disparar faz o censo dizer três onde a
+    // verdade é duas.*
+    assert!(
+        !body.contains("DESLIGADA"),
+        "a queixa do modo desligado voltou — ela é inalcançável desde que a \
+         densidade corre sem o interruptor"
     );
     // ⚠️ E ela é **por traço e não por dab** — um dab corre por movimento do
     // ponteiro, e uma queixa por dab é um log que ninguém lê.

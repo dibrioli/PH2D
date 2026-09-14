@@ -273,16 +273,6 @@ pub struct Brush {
     /// Os controlos próprios do pincel de CONTORNO — ⚠️ **quatro, e é a espec
     /// que os conta**. Só o [`crate::Verb::Boundary`] os lê.
     pub boundary: crate::boundary_controlos::BoundaryControlos,
-    /// **AS DUAS DIRECÇÕES DO PINCEL DE DENSIDADE** — ⛔ só o
-    /// [`crate::Verb::Density`] o lê, e ele é o ÚNICO ajuste próprio daquele
-    /// pincel (todo o resto — raio, força, curva — não tem lei por-vértice onde
-    /// agir, ver [`crate::Verb::sem_lei_por_vertice`]).
-    ///
-    /// ⚠️ **Ele vive no PINCEL e não na cena, ao contrário do alvo**, e a
-    /// escolha é da espec §9.8: existe um pedido público aberto para tirar os
-    /// ajustes de topologia da cena dele e os pôr no pincel. *Não copiámos o
-    /// modelo que a referência está a caminho de abandonar.*
-    pub density_modo: crate::DensityModo,
     /// **SÓ AS FACES DE FRENTE** — a opção de pincel *"Front Faces Only"* da
     /// referência (rótulo público: é o que o artista vê na tela dela).
     ///
@@ -613,10 +603,6 @@ impl Default for Brush {
             grab_active_vertex: false,
             pose: PoseControlos::default(),
             boundary: crate::boundary_controlos::BoundaryControlos::default(),
-            // ⚠️ **IGUALAR de omissão** — ver o doc do enum: é o ajuste de
-            // refino que a referência ship, e é a metade do report do dono
-            // (*«por que não pode aumentar a densidade também?»*).
-            density_modo: crate::DensityModo::default(),
             // ⚠️ **DERIVADO do verbo, como o `accumulate` e o `falloff` logo
             // acima** — e pela mesma razão: um literal aqui seria o MESMO fato
             // em dois lugares, e no dia em que a tabela do verbo mudasse ele

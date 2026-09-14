@@ -45,16 +45,24 @@ pub static TOPOLOGY: &[Row] = &[
     // três valores com nome: é o atalho, como o `[`/`]` do raio é o da pista
     // dele.
     //
-    // ⚠️ **A FAIXA NÃO É ESCOLHIDA — é o domínio da lei**
-    // ([`ph2d_mesh::edge_target`], que faz `detail.clamp(0.0, 1.0)`):
-    // `aresta_alvo = raio × √((1,1 − d) × 0,2)`, logo `0` pede
-    // `0,469 × raio` (o mais grosso que a lei exprime) e `1` pede
-    // `0,141 × raio` — uma faixa de **3,3×**. ⛔ Um tecto mais apertado aqui
-    // seria um limite sem recurso nomeado.
+    // ⭐⭐⭐ **ELE PEDE UMA CONTAGEM, E NÃO DEPENDE DO ZOOM** — ordem do dono
+    // (14/09): *«a densidade da malha deve ser independente do zoom»*. A pista
+    // percorre `MIN_TRIS`..`MAX_TRIS` **geometricamente**
+    // ([`ph2d_mesh::tris_for_detail`]), e o alvo de aresta sai daí contra a
+    // **ÁREA DA SUPERFÍCIE** da peça — que é propriedade da forma, não da
+    // tesselação nem da vista.
     //
-    // ⚠️ E ele é uma **FRACÇÃO contra o raio do pincel**, nunca um comprimento:
-    // é isso que impede o número de mudar de significado quando o artista troca
-    // de pincel — a mesma razão escrita no [`ph2d_app_sculpt3d`] que o guarda.
+    // ⚠️ **A faixa não é escolhida, e cada ponta tem o recurso NOMEADO:** o
+    // extremo grosso é o joelho de volume medido (`~200` triângulos, o
+    // `MIN_QUADS` do botão de retopologia em triângulos) e o fino é o **relógio
+    // do dab** (cada passe faz um `rebuild` inteiro; a `100 000` triângulos ele
+    // come `~35 %` do orçamento de `8 ms`). As duas tabelas estão nos docs das
+    // constantes.
+    //
+    // ⛔ **A âncora era o RAIO DO PINCEL até 14/09**, e o raio é derivado do
+    // raio em PIXELS através da câmera: medido, o mesmo pincel e o mesmo ponto
+    // da pista davam `4,9×` de alvo diferente só por aproximar ou afastar.
+    // *O pincel diz ONDE; esta pista diz QUÃO FINO.*
     Row {
         label: "panel.sculpt3d.dyn_detail",
         slider: crate::ids::SCULPT3D_DYN_DETAIL,

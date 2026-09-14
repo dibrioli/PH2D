@@ -390,17 +390,16 @@ fn group_chip_ui(
         ui.brush.cloth_area = ph2d_sculpt3d::ClothArea::ALL[i];
     } else if let Some(i) = index_of(&crate::ids::SCULPT3D_CLOTH_FORCE_FALLOFF, id) {
         ui.brush.cloth_force_falloff = ph2d_sculpt3d::ClothForceFalloff::ALL[i];
-    } else if let Some(i) = index_of(&crate::ids::SCULPT3D_MATCAP, id) {
+    } else {
         // A opção `0` é o rig do artista e as seguintes são os matcaps, o mesmo
         // deslocamento que o pintor usa. `checked_sub` e não `- 1`: a opção zero
         // não é o material `-1`, é a AUSÊNCIA de matcap.
+        //
+        // ⚠️ **É o ÚLTIMO braço, e é ele que devolve `None` para um id alheio** —
+        // a fileira da densidade viveu aqui entre dois reports do mesmo dia e
+        // saiu por ordem do dono, deixando este no fim outra vez.
+        let i = index_of(&crate::ids::SCULPT3D_MATCAP, id)?;
         ui.matcap = i.checked_sub(1).map(|k| u8::try_from(k).unwrap_or(u8::MAX));
-    } else {
-        // ⭐ **AS DUAS DIRECÇÕES DO PINCEL DE DENSIDADE** — sem re-armar nada,
-        // pela razão dos irmãos acima: escolher se ele também adensa é uma
-        // escolha sobre o pincel que já está na mão, não a troca dele.
-        let i = index_of(&crate::ids::SCULPT3D_DENSITY_MODE, id)?;
-        ui.brush.density_modo = ph2d_sculpt3d::DensityModo::ALL[i];
     }
     Some(ui)
 }

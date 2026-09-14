@@ -43,6 +43,8 @@ mod cotangent;
 mod curvature;
 mod curvature_dirs;
 mod dyntopo;
+/// **Quanto deve medir uma aresta** — as duas leis do alvo. Ver [`dyntopo_alvo`].
+mod dyntopo_alvo;
 mod dyntopo_flip;
 mod edges;
 mod export;
@@ -86,7 +88,10 @@ pub use curvature::{
     curvature_at, curvature_of, curvature_pair_at, recompute_curvature, world_curvature_at,
 };
 pub use curvature_dirs::{PrincipalDir, principal_dirs};
-pub use dyntopo::{Birth, Refine, edge_target, refine_in_sphere, refine_in_sphere_sized};
+pub use dyntopo::{Birth, Refine, refine_in_sphere, refine_in_sphere_sized};
+pub use dyntopo_alvo::{
+    MAX_TRIS, MIN_TRIS, edge_for_tri_count, edge_target, edge_target_for_mesh, tris_for_detail,
+};
 pub use dyntopo_flip::relax_valence;
 pub use edges::Edges;
 pub use export::{ExportPiece, MeshFormat, triangle_count, write_obj, write_ply, write_stl};

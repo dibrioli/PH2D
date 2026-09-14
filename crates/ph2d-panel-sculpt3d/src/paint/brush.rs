@@ -16,9 +16,7 @@ use ph2d_sculpt3d::{Alpha, Falloff, Verb};
 use ph2d_tokens::Spacing;
 
 use super::body::paint_one_row;
-use super::brush_fileiras::{
-    paint_boundary_rows, paint_cloth_rows, paint_density_rows, paint_pose_rows,
-};
+use super::brush_fileiras::{paint_boundary_rows, paint_cloth_rows, paint_pose_rows};
 use super::mask_tools::paint_mask_tools;
 use super::widgets::{command, labelled_seg, toggle};
 
@@ -362,6 +360,5 @@ fn paint_per_verb_switches(
     let y = paint_cloth_rows(ctx, snap, x, w, y);
     let y = paint_pose_rows(ctx, snap, x, w, y);
     let y = paint_boundary_rows(ctx, snap, x, w, y);
-    let y = paint_density_rows(ctx, snap, x, w, y);
     paint_mask_tools(ctx, snap, x, w, y)
 }

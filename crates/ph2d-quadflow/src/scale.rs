@@ -332,27 +332,16 @@ pub fn mean_edge(mesh: &Mesh) -> f32 {
 }
 
 /// **A ÁREA da superfície** — a régua do teto.
+///
+/// ⚠️⚠️ **O corpo MUDOU-SE para a [`ph2d_mesh::Mesh::surface_area`] em
+/// 2026-09-14, e isto é uma delegação e não uma cópia.** A densidade dinâmica
+/// passou a ancorar o alvo dela na área pela **mesma** razão que este botão já
+/// tinha escrita (*«ancorar na ÁREA torna o botão idempotente»*), e duas somas
+/// de triângulos em duas crates seriam a segunda resposta à mesma pergunta —
+/// que é como a de baixo envelhece.
 #[must_use]
 pub fn surface_area(mesh: &Mesh) -> f32 {
-    let p = mesh.positions();
-    let mut sum = 0.0f64;
-    for f in mesh.faces() {
-        let v = f.verts();
-        for k in 1..v.len() - 1 {
-            let (a, b, c) = (p[v[0] as usize], p[v[k] as usize], p[v[k + 1] as usize]);
-            let (u, w) = (
-                [b[0] - a[0], b[1] - a[1], b[2] - a[2]],
-                [c[0] - a[0], c[1] - a[1], c[2] - a[2]],
-            );
-            let n = [
-                u[1].mul_add(w[2], -(u[2] * w[1])),
-                u[2].mul_add(w[0], -(u[0] * w[2])),
-                u[0].mul_add(w[1], -(u[1] * w[0])),
-            ];
-            sum += f64::from(n[0].mul_add(n[0], n[1].mul_add(n[1], n[2] * n[2])).sqrt()) * 0.5;
-        }
-    }
-    sum as f32
+    mesh.surface_area()
 }
 
 /// **A FAIXA LEGAL do lado do quad para ESTA malha** — `(mais fino, mais grosso)`.

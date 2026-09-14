@@ -482,7 +482,7 @@ fn the_pair_of_refine_and_collapse_settles_and_below_two_it_does_not() {
 fn settles(min_over_max: f32) -> bool {
     let mut m = tri_sphere(12, 18);
     let (centre, radius) = ([0.0, 0.0, 1.0], 0.6);
-    let emax = dyntopo::edge_target(radius, 1.0);
+    let emax = crate::edge_target(radius, 1.0);
     let mut births = Vec::new();
     let mut remap = Remap::default();
     let mut counts = Vec::new();

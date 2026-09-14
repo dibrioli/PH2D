@@ -160,7 +160,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.sculpt3d.sym.z" => "Z",
         "panel.sculpt3d.dyntopo" => "Dynamic Topology",
         "panel.sculpt3d.dyn_detail" => "Detail",
-        "panel.sculpt3d.density_mode" => "Density",
         "panel.sculpt3d.level" => "Level",
         "panel.sculpt3d.subdivide" => "Subdivide",
         "panel.sculpt3d.reverse" => "Reverse",

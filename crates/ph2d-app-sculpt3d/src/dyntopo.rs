@@ -37,17 +37,22 @@
 //!    achatar a pilha em silêncio.
 
 use ph2d_mesh::{
-    Collapse, Refine, collapse_in_sphere, collapse_target, edge_target, refine_in_sphere,
+    Collapse, Refine, collapse_in_sphere, collapse_target, edge_target_for_mesh, refine_in_sphere,
 };
 
 use super::Sculpt3dScene;
 
 /// O estado autorado do modo.
 ///
-/// ⚠️ **`detail` é uma FRAÇÃO, não um comprimento** — quem o transforma em
-/// alvo de aresta é o [`edge_target`], contra o raio do pincel. Guardar um
-/// comprimento aqui daria ao artista um número que muda de significado quando
-/// ele troca de pincel.
+/// ⚠️ **`detail` é uma FRAÇÃO, não um comprimento** — quem o transforma em alvo
+/// de aresta é o [`edge_target_for_mesh`], contra a **ÁREA DA SUPERFÍCIE** da
+/// peça. Guardar um comprimento aqui daria ao artista um número que muda de
+/// significado de peça para peça.
+///
+/// ⚠️⚠️ **A âncora era o RAIO DO PINCEL e mudou em 2026-09-14** (ordem do dono:
+/// *«a densidade da malha deve ser independente do zoom»*): aquele raio é
+/// derivado do raio em PIXELS **através da câmera**, logo o zoom entrava no
+/// alvo — `4,9×` medido. *O pincel diz ONDE, este número diz QUÃO FINO.*
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub(super) struct Dyntopo {
     pub(super) armed: bool,
@@ -153,15 +158,26 @@ impl Sculpt3dScene {
     pub(super) fn refine_for_dab(
         &mut self,
         verbo: ph2d_sculpt3d::Verb,
-        densidade: ph2d_sculpt3d::DensityModo,
         centre: [f32; 3],
         radius: f32,
     ) -> bool {
-        if !self.dyntopo.armed {
-            self.queixa_do_passe(
-                verbo,
-                "a topologia dinamica esta' DESLIGADA -- aperte P para ligar",
-            );
+        // ⭐⭐⭐ **O INTERRUPTOR NÃO ALCANÇA QUEM NÃO TEM TRAÇO** — ordem do dono
+        // (14/09): *«independente se Dynamic topology está ligado ou não,
+        // Density faz o seu trabalho. Dynamic topology é para os outros
+        // pincéis.»*
+        //
+        // ⚠️ **DIVERGÊNCIA DECLARADA da referência** (espec §3.2, 1.ª linha da
+        // tabela-verdade: o modo de detalhe em *Manual* desarma o passe inteiro,
+        // este pincel incluído). O argumento é dele e é bom: aquele interruptor
+        // responde *«o meu traço também muda a topologia?»*, e este verbo **não
+        // tem traço**.
+        //
+        // ⛔ **A queixa do modo desligado MORREU com esta linha**, e não por
+        // descuido: ela só falava por quem não tem lei por-vértice
+        // ([`queixa_do_passe`]) — ou seja, exactamente por quem já não passa por
+        // aqui. *Uma queixa inalcançável é pior que nenhuma: ela faz o censo
+        // dizer três onde a verdade é duas.*
+        if !self.dyntopo.armed && !verbo.corre_sem_o_interruptor() {
             return false;
         }
         // ⭐⭐⭐ **A PERGUNTA É AO VERBO, e até 2026-09-14 ela não era feita.**
@@ -180,7 +196,7 @@ impl Sculpt3dScene {
         // dela não é, e é a que esta linha cura: a **MÁSCARA** não move um
         // vértice, e medido nesta cena ela levava a peça de `830` para `1 331`
         // vértices.
-        if !verbo.refina_no_dyntopo(densidade) && !verbo.colapsa_no_dyntopo() {
+        if !verbo.refina_no_dyntopo() && !verbo.colapsa_no_dyntopo() {
             return false;
         }
         // ⚠️ **Recusa com a pilha montada** (ver o cabeçalho). Silenciosa aqui
@@ -192,7 +208,18 @@ impl Sculpt3dScene {
             );
             return false;
         }
-        let target = edge_target(radius, self.dyntopo.detail);
+        // ⭐⭐⭐ **O ALVO SAI DA PEÇA, NUNCA DO PINCEL** — ordem do dono
+        // (*«a densidade da malha deve ser independente do zoom»*, 14/09) e o
+        // mecanismo está em [`ph2d_mesh::edge_target_for_mesh`]: o
+        // `Brush::radius` é derivado do raio em PIXELS **através da câmera** a
+        // cada dab, logo o zoom entrava no alvo — medido, `4,9×` de alvo só por
+        // aproximar ou afastar, com o mesmo pincel e o mesmo slider.
+        //
+        // ⚠️ **O raio continua a decidir a REGIÃO**, e é essa a separação que a
+        // cura compra: *o pincel diz ONDE, o slider diz QUÃO FINO.* Enquanto as
+        // duas perguntas partilhavam um número, mexer numa mexia na outra.
+        let target =
+            edge_target_for_mesh(self.objects[self.active].stack.mesh(), self.dyntopo.detail);
         // A peça ativa — a MESMA que o `sculpt_at` acabou de escolher pelo
         // `pick_active`, e é por isso que o índice basta aqui.
         //
@@ -239,7 +266,7 @@ impl Sculpt3dScene {
                 ),
                 Collapse::Done { .. }
             );
-        let done = verbo.refina_no_dyntopo(densidade)
+        let done = verbo.refina_no_dyntopo()
             && matches!(
                 refine_in_sphere(mesh, centre, radius, target, &mut births, &mut region),
                 Refine::Done { .. }
@@ -279,7 +306,8 @@ impl Sculpt3dScene {
             self.queixa_do_passe(
                 verbo,
                 "a malha aqui ja' esta' no ponto que o Detail pede -- mova o \
-                 slider (ou a tecla U), ou aumente o pincel com ], e passe de novo",
+                 slider (ou a tecla U) para pedir outra densidade, ou aumente o \
+                 pincel com ] para alcancar mais peca",
             );
             return false;
         }

@@ -17,9 +17,16 @@
 //! # O alvo de aresta é DERIVADO do raio, e a fórmula é a da referência
 //!
 //! `d2Max = radius² × (1.1 − detail) × 0.2` (`SculptBase.js::dynamicTopology`).
-//! Ou seja: o detalhe que o artista escolhe é uma **fração do pincel**, nunca um
-//! comprimento de mundo — um pincel pequeno detalha fino e um grande detalha
-//! grosso, que é o que a mão espera. Ver [`edge_target`].
+//! Ou seja: ali o detalhe é uma **fração do pincel** — um pincel pequeno detalha
+//! fino e um grande detalha grosso. Ver [`edge_target`].
+//!
+//! ⛔⛔ **E o PRODUTO desta casa deixou de usar essa lei em 2026-09-14, por
+//! ordem do dono:** *«a densidade da malha deve ser independente do zoom»*. O
+//! nosso `Brush::radius` é derivado do raio em PIXELS **através da câmera**,
+//! logo uma fração dele carrega a vista lá para dentro — medido, **`4,9×` de
+//! alvo só por aproximar ou afastar**. O alvo do produto é hoje o
+//! [`edge_target_for_mesh`], ancorado na **ÁREA DA SUPERFÍCIE**. ⚠️ A função de
+//! baixo **fica**: ela é a lei da referência e é o que as bancadas medem.
 //!
 //! # Duas recusas, e as duas são geometria
 //!
@@ -88,23 +95,6 @@ pub enum Refine {
     Enough,
     /// A malha tem quads. Ver o cabeçalho.
     NotTriangles,
-}
-
-/// **O alvo de comprimento de aresta**, em unidades de OBJETO.
-///
-/// `detail` anda em `[0, 1]`: `0` é o mais grosso, `1` o mais fino. A fórmula é
-/// a do `SculptBase.js` (`d2Max = radius² × (1.1 − sub) × 0.2`), tirada da raiz
-/// para virar comprimento — a razão de a raiz vir aqui e não no chamador é que
-/// **o quadrado é detalhe do laço**, e um alvo em comprimento é o que se pode
-/// comparar com uma aresta num log ou num gate.
-///
-/// Os extremos, para quem for reafinar: `detail = 0` dá `0,469 × raio` e
-/// `detail = 1` dá `0,141 × raio` — o mais fino que a referência oferece é
-/// cerca de **um sétimo do pincel**.
-#[must_use]
-pub fn edge_target(radius: f32, detail: f32) -> f32 {
-    let d = detail.clamp(0.0, 1.0);
-    radius * ((1.1 - d) * 0.2).sqrt()
 }
 
 /// Quantos passes um único dab pode gastar.

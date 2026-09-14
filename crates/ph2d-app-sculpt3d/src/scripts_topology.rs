@@ -133,33 +133,33 @@ pub(crate) fn for_scene(mesh: &ph2d_mesh::Mesh) {
              [sculpt3d]   (12) O PINCEL DA DENSIDADE -- `Density`, no fim da fileira. Ele nao\n\
              [sculpt3d]        esculpe NADA: ele so' muda de quantos triangulos a malha e' feita\n\
              [sculpt3d]        ali, e a forma fica.\n\
-             [sculpt3d]        ATENCAO: este passo comeca do ZERO, porque os passos (9) e (10)\n\
-             [sculpt3d]        deixam o modo desligado ou com a pilha montada. Faca assim:\n\
-             [sculpt3d]          a) Ctrl+Z ate' voltar ao inicio. Se voce fez o (10), aperte J\n\
-             [sculpt3d]             (ele reverte a subdivisao).\n\
-             [sculpt3d]          b) Aperte P ate' o log dizer LIGADA.\n\
-             [sculpt3d]          c) Abra o painel (crase) e escolha `Density` no fim da fileira.\n\
-             [sculpt3d]        A seccao `Topology` do painel tem agora um slider `Detail`\n\
-             [sculpt3d]        (novo em 14/09 -- eram tres botoes grosso/medio/fino, e a tecla\n\
-             [sculpt3d]        U continua a passar por eles). Ele diz QUAO FINA voce quer a\n\
-             [sculpt3d]        malha debaixo do pincel, e vale para todos os pinceis.\n\
-             [sculpt3d]        E o `Density` tem UM ajuste proprio, `Density`, com dois botoes:\n\
-             [sculpt3d]          `Equalise`  -> leva a malha AO que o slider pede, nos dois\n\
-             [sculpt3d]                         sentidos: adensa onde esta' grossa e afina onde\n\
-             [sculpt3d]                         esta' fina. E' o de fabrica.\n\
-             [sculpt3d]          `Thin Only` -> so' AFINA, e nunca acrescenta.\n\
-             [sculpt3d]          d) ADENSAR: com `Equalise` e o slider no MAXIMO, passe o pincel\n\
-             [sculpt3d]             numa zona grossa. Os triangulos ali tem de ficar MENORES e a\n\
-             [sculpt3d]             forma nao pode mudar. Medido nesta cena: 128 -> 719 vertices.\n\
-             [sculpt3d]          e) AFINAR: arraste o slider para perto do ZERO e passe de novo\n\
-             [sculpt3d]             na mesma zona. Agora ela tem de ALIVIAR. Medido: 822 -> 400.\n\
-             [sculpt3d]          f) Escolha `Thin Only`, ponha o slider no MAXIMO e passe outra\n\
-             [sculpt3d]             vez: agora nada acontece -- nesse ajuste ele nunca acrescenta.\n\
+             [sculpt3d]        ⭐ Ele NAO precisa do `P` (a topologia dinamica). Aquele\n\
+             [sculpt3d]        interruptor e' para os OUTROS pinceis -- ele responde *«o meu\n\
+             [sculpt3d]        traco tambem muda a malha?»*, e este pincel nao tem traco.\n\
+             [sculpt3d]        a) Ctrl+Z ate' voltar ao inicio. Se voce fez o (10), aperte J\n\
+             [sculpt3d]           (ele reverte a subdivisao) -- com a pilha montada ele RECUSA,\n\
+             [sculpt3d]           e o log diz isso.\n\
+             [sculpt3d]        b) Abra o painel (crase) e escolha `Density` no fim da fileira.\n\
+             [sculpt3d]        Na seccao `Topology` ha' o slider `Detail`: ele diz QUAO FINA voce\n\
+             [sculpt3d]        quer a malha, e o log imprime quantos triangulos a peca inteira\n\
+             [sculpt3d]        teria nessa densidade. A tecla U continua a passar por tres\n\
+             [sculpt3d]        pontos com nome.\n\
+             [sculpt3d]        c) ADENSAR: ponha o slider no MAXIMO e passe o pincel numa zona.\n\
+             [sculpt3d]           Os triangulos ali tem de ficar MENORES e a forma nao pode\n\
+             [sculpt3d]           mudar. Medido nesta cena: 128 -> 719 vertices.\n\
+             [sculpt3d]        d) AFINAR: arraste o slider para perto do ZERO e passe de novo na\n\
+             [sculpt3d]           mesma zona. Agora ela tem de ALIVIAR.\n\
+             [sculpt3d]        e) ⭐ O ZOOM NAO MANDA NA DENSIDADE: aproxime ou afaste (roda do\n\
+             [sculpt3d]           rato) e passe o pincel outra vez, no mesmo ponto do slider. Os\n\
+             [sculpt3d]           triangulos tem de sair do MESMO tamanho. O que muda com o zoom\n\
+             [sculpt3d]           e' QUANTA peca o pincel alcanca, nao o tamanho deles.\n\
+             [sculpt3d]           (Antes de 14/09 mudava: o mesmo slider dava 4,9x de diferenca\n\
+             [sculpt3d]            de um extremo de zoom ao outro.)\n\
              [sculpt3d]        -> Se a FORMA mudar em qualquer um dos tres, e' reprovacao.\n\
-             [sculpt3d]        -> E quando ele NAO faz nada, ele DIZ PORQUE no log -- o modo\n\
-             [sculpt3d]           desligado, a pilha montada, ou a malha ja' estar no ponto que\n\
-             [sculpt3d]           o slider pede. Se voce nao ve efeito, a linha do log diz o\n\
-             [sculpt3d]           que falta.\n\
+             [sculpt3d]        -> Ctrl+Z desfaz o gesto INTEIRO num passo.\n\
+             [sculpt3d]        -> E quando ele NAO faz nada, ele DIZ PORQUE no log -- a pilha de\n\
+             [sculpt3d]           multiresolucao montada, ou a malha ja' estar no ponto que o\n\
+             [sculpt3d]           slider pede.\n\
              [sculpt3d]        (A borda de uma peca aberta ele nao afina -- e' uma escolha
              [sculpt3d]         nossa, para o contorno nao mudar de forma sozinho.)"
         );

@@ -5,6 +5,9 @@
 > **Ficheiros:** 351 (`+8 799 / −17`) — dos quais **336 são fixtures e especs de clean-room**
 > **Contadores partilhados:** ⭐ **zero** — ver §3, com a prova
 >
+> ⭐ **E ele cobre também a jornada de 2026-09-14 — o OSSO** (o indicador do
+> pincel de pose, por ordem do dono): §6-ter, e a tabela do portão no §11.
+>
 > ⚠️ **Este handoff cobre a jornada dos PINCÉIS.** O fecho anterior de hoje
 > (gates prometidos e a parede clean-room) está em
 > [`HANDOFF_INTEGRACAO_line_sculpt3d_2026-09-13.md`](HANDOFF_INTEGRACAO_line_sculpt3d_2026-09-13.md)
@@ -377,6 +380,177 @@ até lá é **isenção NOMEADA** no ledger, nunca silêncio.
 
 ---
 
+## §6-ter — ⭐⭐⭐ O OSSO: o indicador do pincel de pose (2026-09-14)
+
+> **Ordem do dono:** *«no blender temos um gizmo do pincel que mostra como se
+> fosse um bone de modo ao usuário perceber a área de atualização do pincel»*.
+
+### §6-ter.1 — Porquê ele, e porquê só neste verbo
+
+O anel do cursor descreve **mal** este pincel, e não por descuido: os outros 26
+verbos têm atenuação radial, então o círculo **é** a pegada. A pose não tem —
+espec §13: *«nenhuma parte da malha é excluída pelo raio»* —, e um vértice a dez
+raios do cursor pode mover-se por inteiro porque a região cresce pela **ligação**
+da malha. ⇒ *o anel mostra um círculo onde a ferramenta pensa num membro*, e a
+pergunta que o verbo levanta — **onde é que ele vai achar a dobradiça?** — só
+tinha resposta depois de arrastar e desfazer.
+
+O que se desenha é a **cadeia**: uma silhueta octaédrica de armadura por
+segmento, larga junto da dobradiça e afilada para a mão, com anéis nas juntas e
+um anel cheio na dobradiça mais funda.
+
+⭐ **A figura diz DE QUE LADO está a articulação sem uma seta**, e é isso que
+uma linha entre dois pontos não pode dizer (ela é simétrica). Gate:
+`a_silhueta_e_mais_larga_junto_da_dobradica`.
+
+### §6-ter.2 — ⭐⭐ O indicador NÃO é uma segunda versão da lei
+
+A cabeça de cada osso é a **imagem da cabeça inicial pelo mapa do próprio
+segmento** (§6), que é exactamente a função por que passa todo vértice daquele
+segmento — [`ph2d_pose::Cadeia::ossos`].
+
+⛔ **O atalho plausível — `origem + rot·(cabeça₀ − origem₀)` — concorda com a lei
+em quatro das cinco deformações**, e é por isso que ele entraria sem ninguém ver:
+no espremer/esticar a rotação é a identidade e a escala vive numa base **local ao
+segmento**, e o atalho desenharia um osso do tamanho original enquanto a peça
+estica. Gate com o controlo negativo lá dentro:
+`o_osso_e_a_lei_aplicada_a_cabeca_e_nao_o_atalho`.
+
+⚠️⚠️ **E o octante é o da ÂNCORA, não o `0`.** As reflexões do §6 cancelam-se em
+pares (`bit != (âncora[eixo] < 0)`), logo o mapa não reflectido é o do octante em
+que a âncora vive — com simetria ligada e o cursor em coordenada negativa, o
+octante `0` é o mapa do **outro lado** e o osso apareceria espelhado longe da
+mão. Gate: `o_osso_fica_do_lado_da_ancora_com_simetria`.
+
+⭐ **Uma porta só serve o sobrevoo e o traço** ([`SculptStroke::pose_ossos`]):
+durante o gesto ela devolve os ossos **vivos** (de graça — a cadeia já existe e
+já está resolvida), fora dele a cadeia que o pen-down construiria. *Duas funções
+— uma «em repouso» e outra «a mexer» — seriam duas respostas à mesma pergunta, e
+a que o artista vê é a que envelhece.* Gates:
+`o_indicador_da_o_mesmo_osso_que_o_traco_constroi` (a anti-mentira) e
+`o_osso_vivo_segue_o_arrasto` (que existe porque o primeiro **não o pode dar**:
+com arrasto nulo a cadeia viva e uma reconstruída dão a mesma figura, logo a
+mutação que trocasse uma pela outra sobreviveria).
+
+### §6-ter.3 — ⭐⭐⭐ O custo, que é onde o alvo perde
+
+O alvo reconstrói a cadeia inteira **a cada movimento do rato**, sem traço
+nenhum, só para desenhar este indicador — quatro relatos públicos. Aqui são três
+coisas distintas, cada uma com número:
+
+| o que custa | como é pago | gate |
+|---|---|---|
+| a **adjacência** (`O(faces)`; com peças desligadas, `O(V²)`) | uma vez por gesto, guardada | `o_indicador_nao_reconstroi_quando_nada_muda` (contador `adjacencias`) |
+| a **cadeia** | só quando a **chave** muda, e a chave traz **exactamente** o que a §2–§3 lê | `a_suavizacao_do_peso_nao_move_o_osso_e_a_chave_sabe_disso` |
+| o **ritmo** | o alvo paga por EVENTO de ponteiro (~16/quadro a 1 kHz); aqui uma vez por **quadro**, e acima do orçamento nem isso | o orçamento em quadros |
+
+**MEDIDO no perfil do smoke (`release`), na malha da própria cena `=41`
+(`24 386` vértices):**
+
+| segmentos | 1.ª construção | quadro repetido | quadros de silêncio |
+|---|---|---|---|
+| **1** (omissão) | `2,88 ms` | `0,37 µs` | `2` |
+| `3` | `5,96 ms` | `0,23 µs` | `4` |
+| `20` (tecto do painel) | `22,69 ms` | `0,74 µs` | `14` |
+
+⇒ por omissão o osso segue o cursor a **~30 Hz**; no tecto do painel uma
+construção sozinha passa o quadro, e o orçamento converte *«o editor arrasta»* em
+*«o indicador demora»* — a troca certa para uma figura que descreve um gesto que
+**ainda não aconteceu**.
+
+⚠️ **O orçamento conta QUADROS, não relógio de parede** (`ORCAMENTO_POR_QUADRO =
+1,67 ms`, um décimo de um quadro de 60 fps; o silêncio é `ceil(custo /
+orçamento)` chamadas). O relógio entra **só** a medir o que a construção custou —
+o número que se auto-calibra ao perfil. *Com um temporizador de parede o gate
+«dentro de N quadros ele reconstrói» seria mais um membro da família de flakes
+sob fan-out.*
+
+### §6-ter.4 — ⛔ Um defeito meu que só a sonda apanhou: `456 µs` para não fazer nada
+
+A primeira redacção corria o `mais_proximo_global` (`O(V)`) **e** alocava um
+`vec![false; V]` **antes** de comparar a chave ⇒ um quadro de sobrevoo **parado**
+custava `456 µs` na malha da cena (`2,7 %` de um quadro), mais uma alocação da
+malha inteira por quadro.
+
+⭐ A cura é reconstruir a chave com o **eleito anterior** (`O(1)`: se ele continua
+onde estava e o resto bate, o eleito de hoje é o mesmo) e comparar a **struct
+inteira** — `456 µs → 7,4 µs` no perfil de teste, `0,37 µs` no do smoke.
+*Uma cache que faz o trabalho caro antes de perguntar se precisa dele não é uma
+cache.* ⚠️ E a comparação é de struct inteira de propósito: uma lista de `&&`
+escrita à mão é onde um campo novo da chave é esquecido.
+
+### §6-ter.5 — ⭐ O §11.1 deixa de ser uma promessa
+
+A tabela do `ph2d-pose` prometia *«o caso é detectável e deve ser avisado»*. Ele
+é avisado agora: quando o pivô cai em cima do cursor, o indicador desenha **só um
+anel vermelho sobre o cursor e nenhum osso** — porque *uma figura que desenhasse
+um osso de comprimento zero diria que há uma dobradiça ali, que é o contrário do
+facto*. O alvo cala-se neste caso.
+
+### §6-ter.6 — Os TRÊS vermelhos que o portão apanhou, e os dois que já lá estavam
+
+1. **`the_brush_radius_is_screen_pixels_converted_against_the_camera`** e
+   **`the_pick_compares_in_world_and_the_brush_crosses_the_scale`** — os dois
+   ancoravam no **corpo** do `armed_brush`, e a conversão saiu para
+   `armed_brush_on` quando o indicador passou a precisar dela para uma peça que
+   **não é a activa** (ao sobrevoar, o cursor pode estar sobre outra). *Um gate
+   ancorado num corpo de função expira quando o corpo muda de casa, e a lei não
+   se moveu — ela ganhou um segundo leitor.* Re-apontados, mais uma asserção
+   nova: o delegado **não pode** ter uma segunda cópia da conta.
+2. ⭐⭐ **`a_stroke_belongs_to_the_piece_it_started_on`** — este é **substantivo**:
+   ele conta os consumidores de `self.pick(x, y)` e exige que só o `aim` mova a
+   peça activa. O indicador é `&mut self` (a cache vive no traço) ⇒ seria o
+   **primeiro** consumidor capaz de trocar de peça a meio de uma pincelada, que é
+   o **pânico** que aquele gate existe para impedir. ⇒ a escolha da peça saiu
+   para `pose_gizmo_alvo(&self, …)`: *a prova volta a ser do compilador, não de
+   uma linha de texto*. O censo passa a `3`, com o terceiro **nomeado**.
+3. ⛔ **Dois `clippy::assertions_on_constants` PRÉ-EXISTENTES** (as cenas `=40` e
+   `=41`, da jornada anterior) — e o clippy tinha razão: os dois lados são
+   constantes. Viraram `const { assert!(…) }`, que é **mais forte** (erro de
+   compilação). ⚠️⚠️ **E o `cargo check` é CEGO a isto:** com o limiar mutado
+   para `9999`, `cargo check --all-targets` fecha **verde** e só o `cargo test`
+   devolve o `E0080` — *um `const` de dentro de uma função só é avaliado quando
+   ela é CONSTRUÍDA*. Membro novo da família do `--bins` que não alcança `tests/`.
+4. ⛔ **O `ph2d-pose` inteiro estava por formatar** (18 ficheiros, da jornada
+   anterior) — latente para o `ship.sh`, que corre `fmt --check`. Corrido, e a
+   varredura re-corrida **depois** dele: *o `rustfmt` já partiu réguas textuais
+   deste repo três vezes.*
+
+### §6-ter.7 — Prova de mutação: `9` de `9` sangram
+
+| mutação | quem sangra |
+|---|---|
+| a chave curto-circuitada | `o_indicador_nao_reconstroi_quando_nada_muda` |
+| `segmentos` fora da chave | `a_suavizacao_do_peso_…` (o controlo positivo) |
+| o `begin` não esquece | `um_traco_novo_faz_o_indicador_esquecer_a_adjacencia` |
+| sem a guarda de verbo | `nenhum_outro_verbo_paga_o_indicador` |
+| a sessão viva ignorada | `o_osso_vivo_segue_o_arrasto` |
+| o osso pelo **atalho** | `o_osso_e_a_lei_aplicada_a_cabeca_e_nao_o_atalho` |
+| octante `0` em vez do da âncora | `o_osso_fica_do_lado_da_ancora_com_simetria` |
+| a silhueta simétrica | `a_silhueta_e_mais_larga_junto_da_dobradica` |
+| a cintura sem piso | `a_cintura_tem_piso_em_pixels` |
+
+### §6-ter.8 — ⏳ ABERTO, com o instrumento de cada item
+
+- **A região não é pintada, só a cadeia.** O osso mostra a EXTENSÃO do membro;
+  *quais vértices* e *com que peso* é outra superfície (o canal por-vértice do
+  device já existe — é o do padrão do pincel) e ela **colide** com o preview do
+  alpha. Preço não medido; a pergunta é de produto.
+- **Não há interruptor.** O anel do cursor também não tem, e a coerência é
+  deliberada; o alvo tem um. Decisão de produto.
+- **O indicador fica desactualizado** se a malha mudar sem passar por um gesto
+  **e** o vértice sob o cursor ficar exactamente onde estava (um desfazer que não
+  toque a região apontada). É o indicador, nunca a deformação — o pen-down
+  constrói sempre de raiz.
+- ⚠️ **Uma flake de carga NOVA, por promover:**
+  `the_cost_of_a_gated_stroke_follows_the_footprint_not_the_canvas`
+  (`ph2d-tool-painter`) reprovou no fan-out de `14 398` e passou **3 de 3**
+  sozinha a `load 27`–`40`. ⚠️ A **irmã de ficheiro** dela
+  (`the_mask_stroke_cost_does_not_follow_the_canvas`) já está na lista do
+  `CLAUDE.md` §5.0 — *é exactamente assim que a lista envelhece*.
+
+---
+
 ## §7 — SETE coisas que uma leitura rápida do diff entende ao contrário
 
 1. **O `s²` do polegar não está escrito no verbo.** O alvo é `base + tangencial`,
@@ -505,13 +679,42 @@ no `Nudge`; e com o `Strength` a meio o efeito do `Thumb` cai para **um quarto**
 agarrar a meia força passa a mover metade (§5.1) — vale a pena olhar para ele na
 cena `=28`.
 
+**A cena do PINCEL DE POSE (`=41`), com o OSSO:**
+
+```
+cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-sculpt3d && env PH2D_SCULPT3D_SMOKE=41 cargo run -p ph2d-host-desktop --profile smoke
+```
+
+⭐ **O passo (2) do roteiro é o novo e é o que muda o gesto:** escolher `Pose` e
+**passar o rato sem carregar** — aparece o osso, com a bolinha cheia na
+dobradiça, e passear ao longo da orelha mostra a dobradiça a MUDAR de sítio. O
+passo (4) põe `Segments` em `3` e são **três ossos em fila**.
+
 ⚠️ **Rode uma vez SEM env var** — é a metade que prova a inércia.
 
 ---
 
 ## §11 — O portão do fecho
 
-| passo | resultado |
+⚠️ **A tabela abaixo é a do fecho de 13/09. O fecho de 14/09 (o OSSO, §6-ter)
+re-correu o portão inteiro:**
+
+| passo | resultado (2026-09-14) |
+|---|---|
+| `scripts/nextest-impacted.sh` (1× sobre o diff acumulado) | ✅ **14 398 testes, 0 falhas** (`75,5 s`, `load 40`) |
+| clippy `--workspace --all-targets` com `-D warnings` | ✅ limpo (2 avisos PRÉ-EXISTENTES curados — §6-ter.6) |
+| `cargo fmt --all -- --check` | ✅ limpo (18 ficheiros por formatar da jornada anterior, corridos; a varredura re-corrida **depois**) |
+| prova de mutação | ✅ **9 de 9 sangram** (§6-ter.7) |
+| 3 vermelhos de gate, 1 deles substantivo | ✅ curados na CAUSA, não no gate (§6-ter.6) |
+
+⚠️ **Quatro reprovas foram da família de flakes de carga**, todas verdes `3 de 3`
+sozinhas (`load 27`–`92`) e todas com o conjunto a MUDAR entre corridas da mesma
+árvore: `measure_brush_kernel` · `the_cost_of_sampling_a_path_is_flat_in_its_anchors` ·
+`a_long_stroke_is_bounded_by_the_redundancy_floor_not_by_a_budget` · e a **nova**
+`the_cost_of_a_gated_stroke_follows_the_footprint_not_the_canvas`, que fica para
+promover (§6-ter.8).
+
+| passo | resultado (2026-09-13) |
 |---|---|
 | `scripts/nextest-impacted.sh` (1× sobre o diff acumulado) | ✅ **14 370 testes, 0 falhas** (`71,0 s`) |
 | clippy `--all-targets --all-features` nas 5 crates tocadas + shell | ✅ limpo (4 avisos curados — ver abaixo) |

@@ -455,3 +455,221 @@ fn measure_what_material_per_object_costs_the_shading() {
 /// [`field3d_render_light_lobe_tests`](self::lobe).
 #[path = "render_light_lobe_tests.rs"]
 mod lobe;
+
+/// ⏱️ **SONDA — quanto do MATERIAL este céu deixa ver** (a `W3` do [plano](../../../docs/Render3d/03_o_plano.md)).
+///
+/// # A pergunta
+///
+/// O plano diz que a `W3` é *«o que faz o metal existir»*. Antes de a construir, a premissa mede-se:
+/// **sob o céu de hoje — uma rampa linear de duas cores — o que é que o artista vê quando mexe no
+/// `Metalness` e no `Roughness`?**
+///
+/// Três réguas, todas em BYTES sobre os pixels da peça (logo independentes do relógio e da carga):
+///
+/// 1. **o deslocamento** — `|Δ|` médio e máximo contra o material de referência;
+/// 2. **a repartição** — quanto da luz é a LÂMPADA e quanto é o CÉU (o céu trocado por preto, e a
+///    lâmpada apagada);
+/// 3. ⭐ **a ESTRUTURA** — o `|∇²|` médio do verde sobre os pixels de miolo. *Um espelho sob um
+///    estúdio a sério tem arestas; sob uma rampa não tem nada para reflectir, e a rampa filtrada
+///    continua a ser uma rampa.*
+#[test]
+#[ignore = "sonda de medição: imprime uma tabela, não afirma nada"]
+fn measure_how_much_of_the_material_this_sky_lets_through() {
+    use ph2d_field_render::{Lighting, Orbit, shade_render, trace};
+    use ph2d_view_transform::Look;
+
+    /// Um céu APAGADO — a metade da repartição que isola a lâmpada.
+    struct Black;
+    impl ph2d_material::Environment for Black {
+        fn radiance(&self, _d: [f32; 3], _a: f32) -> [f32; 3] {
+            [0.0; 3]
+        }
+        fn irradiance(&self, _n: [f32; 3]) -> [f32; 3] {
+            [0.0; 3]
+        }
+    }
+
+    const BG: [u8; 4] = [12, 34, 56, 200];
+    let (w, h) = (640, 360);
+    let cam = Orbit::default();
+    let doc = ph2d_field::FieldDoc::new(
+        vec![ph2d_field_eval::leaf(
+            ph2d_field::Primitive::Sphere { radius: 0.6 },
+            ph2d_field::Xform::IDENTITY,
+        )],
+        ph2d_field::NodeId(0),
+    )
+    .expect("esfera");
+    let reg = ph2d_field_eval::hybrid::Registry::new();
+    let g = trace(&doc, &reg, &cam, w, h);
+    let acesas = lamps(&ph2d_light::LightRig::default());
+    let apagadas: Vec<ph2d_field_render::Lamp> = Vec::new();
+
+    let pinta = |m: ph2d_material::OpenPbr,
+                 lamps: &[ph2d_field_render::Lamp],
+                 sky: &(dyn ph2d_material::Environment + Sync)| {
+        let so = [m.prepare()];
+        let surface = ph2d_field_render::Surfaces {
+            all: &so,
+            owners: None,
+        };
+        let light = Lighting { lamps, sky };
+        shade_render(&g, &cam, &surface, &light, Look::default(), BG)
+    };
+
+    // A média do verde sobre a peça.
+    let media = |px: &[u8]| -> f64 {
+        let (mut s, mut n) = (0.0_f64, 0_usize);
+        for (i, p) in px.as_chunks::<4>().0.iter().enumerate() {
+            if g.hit[i] {
+                s += f64::from(p[1]);
+                n += 1;
+            }
+        }
+        s / n as f64
+    };
+    // `|Δ|` médio e máximo sobre os TRÊS canais, só onde há peça.
+    let delta = |a: &[u8], b: &[u8]| -> (f64, u32) {
+        let (mut s, mut mx, mut n) = (0.0_f64, 0_u32, 0_usize);
+        let (ca, cb) = (a.as_chunks::<4>().0, b.as_chunks::<4>().0);
+        for i in 0..ca.len() {
+            if !g.hit[i] {
+                continue;
+            }
+            n += 1;
+            for c in 0..3 {
+                let d = u32::from(ca[i][c].abs_diff(cb[i][c]));
+                s += f64::from(d);
+                mx = mx.max(d);
+            }
+        }
+        (s / (3 * n) as f64, mx)
+    };
+    // ⭐ A ESTRUTURA: `|∇²|` do verde, só onde os quatro vizinhos também são peça.
+    let estrutura = |px: &[u8]| -> f64 {
+        let c = px.as_chunks::<4>().0;
+        let (mut s, mut n) = (0.0_f64, 0_usize);
+        let (w, h) = (w as usize, h as usize);
+        for y in 1..h - 1 {
+            for x in 1..w - 1 {
+                let i = y * w + x;
+                let viz = [i - 1, i + 1, i - w, i + w];
+                if !g.hit[i] || viz.iter().any(|&j| !g.hit[j]) {
+                    continue;
+                }
+                let lap =
+                    viz.iter().map(|&j| f64::from(c[j][1])).sum::<f64>() - 4.0 * f64::from(c[i][1]);
+                s += lap.abs();
+                n += 1;
+            }
+        }
+        s / n as f64
+    };
+
+    let prata = |rough: f32, metal: f32| ph2d_material::OpenPbr {
+        base_metalness: metal,
+        base_color: [0.95, 0.95, 0.95],
+        specular_roughness: rough,
+        ..ph2d_material::OpenPbr::default()
+    };
+
+    println!("esfera {w}x{h} · céu de hoje (rampa linear) + a lâmpada de omissão\n");
+    println!("METAL (metalness 1, base 0,95) — varrendo a rugosidade contra a referência 0,30");
+    println!("rugosidade ·  média · |Δ| médio · |Δ| máx · estrutura |∇²|");
+    let ref_metal = pinta(prata(0.30, 1.0), &acesas, &StudioSky);
+    for r in [0.05_f32, 0.10, 0.20, 0.30, 0.50, 0.70, 1.00] {
+        let px = pinta(prata(r, 1.0), &acesas, &StudioSky);
+        let (dm, dx) = delta(&px, &ref_metal);
+        println!(
+            "     {r:.2} · {:6.1} · {dm:9.2} · {dx:6} · {:9.3}",
+            media(&px),
+            estrutura(&px)
+        );
+    }
+
+    println!("\nDIELÉCTRICO (metalness 0, base 0,95) — o mesmo varrimento, referência 0,30");
+    let ref_diel = pinta(prata(0.30, 0.0), &acesas, &StudioSky);
+    for r in [0.05_f32, 0.30, 1.00] {
+        let px = pinta(prata(r, 0.0), &acesas, &StudioSky);
+        let (dm, dx) = delta(&px, &ref_diel);
+        println!(
+            "     {r:.2} · {:6.1} · {dm:9.2} · {dx:6} · {:9.3}",
+            media(&px),
+            estrutura(&px)
+        );
+    }
+
+    println!("\nMETALNESS 0 → 1, à mesma rugosidade");
+    for r in [0.05_f32, 0.30, 1.00] {
+        let (dm, dx) = delta(
+            &pinta(prata(r, 0.0), &acesas, &StudioSky),
+            &pinta(prata(r, 1.0), &acesas, &StudioSky),
+        );
+        println!("     rugosidade {r:.2} · |Δ| médio {dm:6.2} · máx {dx}");
+    }
+
+    println!(
+        "\nO TAMANHO DO REALCE — quantos pixels se movem mais de 8 bytes ao ir de 0,30 a 0,05"
+    );
+    for (nome, metal) in [("dieléctrico", 0.0_f32), ("metal", 1.0)] {
+        let a = pinta(prata(0.30, metal), &acesas, &StudioSky);
+        let b = pinta(prata(0.05, metal), &acesas, &StudioSky);
+        let (ca, cb) = (a.as_chunks::<4>().0, b.as_chunks::<4>().0);
+        let mut n = 0_usize;
+        let mut peca = 0_usize;
+        for i in 0..ca.len() {
+            if !g.hit[i] {
+                continue;
+            }
+            peca += 1;
+            if (0..3).any(|c| ca[i][c].abs_diff(cb[i][c]) > 8) {
+                n += 1;
+            }
+        }
+        println!(
+            "  {nome:12} · {n} de {peca} pixels ({:.2} %)",
+            100.0 * n as f64 / peca as f64
+        );
+    }
+
+    // ⭐⭐ **O CONTROLO DA RÉGUA DA ESTRUTURA** — um céu com uma ARESTA. Sem ele, um `|∇²|` que lê o
+    // mesmo número em tudo é indistinguível de uma régua CEGA (`CLAUDE.md` §5.0).
+    struct Aresta;
+    impl ph2d_material::Environment for Aresta {
+        fn radiance(&self, d: [f32; 3], _a: f32) -> [f32; 3] {
+            if d[1] > 0.2 { [3.0; 3] } else { [0.05; 3] }
+        }
+        fn irradiance(&self, _n: [f32; 3]) -> [f32; 3] {
+            [0.4; 3]
+        }
+    }
+    println!("\nCONTROLO DA RÉGUA — o mesmo material sob um céu com ARESTA (não pré-filtrado)");
+    println!("material   · estrutura sob a rampa · sob a aresta");
+    for (nome, m) in [
+        ("metal 0,05", prata(0.05, 1.0)),
+        ("metal 1,00", prata(1.00, 1.0)),
+        ("dieléctrico", prata(0.30, 0.0)),
+    ] {
+        println!(
+            "{nome:12} · {:19.3} · {:12.3}",
+            estrutura(&pinta(m, &acesas, &StudioSky)),
+            estrutura(&pinta(m, &acesas, &Aresta)),
+        );
+    }
+
+    println!("\nDE ONDE VEM A LUZ (média do verde na peça)");
+    println!("material        · tudo · só a lâmpada · só o céu");
+    for (nome, m) in [
+        ("metal 0,05", prata(0.05, 1.0)),
+        ("metal 0,30", prata(0.30, 1.0)),
+        ("metal 1,00", prata(1.00, 1.0)),
+        ("dieléctrico   ", prata(0.30, 0.0)),
+    ] {
+        println!(
+            "{nome:15} · {:4.0} · {:12.0} · {:8.0}",
+            media(&pinta(m, &acesas, &StudioSky)),
+            media(&pinta(m, &acesas, &Black)),
+            media(&pinta(m, &apagadas, &StudioSky)),
+        );
+    }
+}

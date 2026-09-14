@@ -145,6 +145,7 @@ linha que decide alguma coisa (`+54 %` de pixels cortados a `0` stops, `−13 %`
 | **AgX** | ⛔ **licença**: não há neste disco um AgX cuja licença permissiva se leia no artefacto (`04` §3). O oráculo dele corre-se à mesma |
 | **exposição contínua** | os chips dão `±2` stops, que é o que o smoke do plano pede; um slider de vista pede um alcance medido e um sítio no painel |
 | **sombras, oclusão, luz indirecta a sério** | são as `W4` e `W5` do [plano](03_o_plano.md) |
+| ~~**o céu como fonte com forma**~~ | ⭐ **a `W3` abriu em 14/09** — ver §24; o céu continua analítico (sem mapa de ambiente) |
 
 ## §8 — ⏳ O que fica aberto
 
@@ -152,6 +153,10 @@ linha que decide alguma coisa (`+54 %` de pixels cortados a `0` stops, `−13 %`
   planalto sem forma. ⚠️ **É decisão do dono**, e o cálculo está fechado: na `Standard` a peça só
   deixa de cortar a `−1` stop (`118` px, `0,2 %`); a `Neutral` não corta em exposição nenhuma. As
   duas saídas são *a vista de omissão passa a `Neutral`* ou *a exposição de omissão desce um stop*.
+  ⚠️⚠️ **E em 14/09 isto deixou de ser cosmético (§24.7):** o estúdio leva o corte de `5 180` para
+  `7 972` pixels na `Standard` a `0` stops — e para **`0`** na `Neutral`, em todas as vinte
+  configurações medidas. *Pôr uma fonte no céu é exactamente o que torna obrigatória a vista que não
+  corta.*
 - ~~**A radiância do céu é avaliada na direcção ESPELHADA**~~ — ✅ **CURADA em 14/09, ver §16.**
   O diagnóstico abaixo fica, porque é ele que explica a cura: para um lóbulo largo a média do céu
   linear está na direcção média do lóbulo, não na espelhada. ⚠️⚠️ **A redacção anterior dizia que o
@@ -1721,3 +1726,272 @@ régua de geometria que os separe, então o que resta é proibir o pintor **pelo
 comentários (este ficheiro cita o nome proibido em prosa), lê o ficheiro por `include_str!` (que falha
 a **compilar** se ele mudar de sítio) e tem **controlo do próprio censo**: o ficheiro tem de conter o
 pintor que corta, senão uma varredura partida leria `0` culpadas e passaria.
+
+---
+
+## §24 — ⭐⭐⭐ O CÉU GANHA UMA FONTE: o estúdio (2026-09-14)
+
+O material fechou na §22 com as `15` entradas do OpenPBR autoráveis. A `W3` do
+[plano](03_o_plano.md) diz que o passo seguinte é *«o céu como FONTE de luz … é o que faz o metal
+existir»*. **Antes de construir, a premissa foi medida** — e ela veio mais afiada do que a frase do
+plano.
+
+---
+
+### §24.1 — ⛔⛔ A premissa, em bytes: um ESPELHO e um pedaço de GIZ tinham o mesmo contraste
+
+Sonda [`measure_how_much_of_the_material_this_sky_lets_through`](../../crates/ph2d-app-field3d/src/render_light_tests.rs),
+esfera a `640×360`, `61 804` pixels de peça, tudo em bytes (logo independente do relógio e da carga):
+
+| material | média | estrutura `\|∇²\|` do verde | quanto vem da LÂMPADA |
+|---|---:|---:|---:|
+| metal, rugosidade `0,05` | `153,9` | **`1,074`** | `2` de `154` |
+| metal, rugosidade `0,30` | `164,2` | `1,078` | `49` de `164` |
+| metal, rugosidade `1,00` | `212,0` | **`1,085`** | `146` de `212` |
+| dieléctrico, rugosidade `0,30` | `209,6` | `1,022` | `143` de `210` |
+
+⭐⭐⭐ **A linha de cima e a de baixo são a mesma peça.** Um espelho e um baço têm o **mesmo** contraste
+local, e a razão é dupla: a rampa `A + B·y` filtrada por um lóbulo largo **continua a ser uma rampa**
+(não há nada para reflectir), e uma luz direccional é um **delta**, que um espelho reflecte num
+conjunto de medida nula — `2` bytes de `154`. *O metal deste app era uma bola cinzenta com um
+gradiente.*
+
+⚠️ **E o controlo que o dono mais usa era o mais invisível.** Num dieléctrico, arrastar o `Roughness`
+de `0,30` a `0,05` movia `1 122` de `61 804` pixels (**`1,82 %`**), com `\|Δ\|` médio de **`0,53`
+bytes** sobre a peça inteira — e a §22 tinha acabado de lhe dar mais nove controlos para arrastar.
+
+⚠️⚠️ **A régua da estrutura tem CONTROLO, e sem ele ela não afirma nada:** um `\|∇²\|` que lê `1,07` em
+tudo é indistinguível de uma régua **cega**. Sob um céu sintético com **aresta** ela lê `2,405` no
+espelho (`2,24×`), `1,614` no metal baço e `1,221` no dieléctrico. *Ela vê, e vê mais no espelho, que
+é o sentido certo.*
+
+---
+
+### §24.2 — ⛔⛔ A recusa medida que existe sobre isto respondeu a OUTRA pergunta
+
+O [`ph2d_light::ENV_SLOPE`](../../crates/ph2d-light/src/lib.rs) carrega, por extenso:
+
+> *«um ambiente de três zonas (céu, horizonte claro, chão) — a forma de um HDRI de estúdio — dá
+> contraste cima/baixo de **1,83×** contra os **2,20×** deste, precisa de um terceiro coeficiente e
+> ainda deixa **0,0042** de resíduo. O ambiente mais rico mede pior justamente na coisa para a qual
+> o termo existe.»*
+
+⚠️ **Ela foi medida sobre a IRRADIÂNCIA** — quão bem o modelo reproduz a luz que uma **difusa**
+recebe — e sobre isso continua a valer inteira. *Uma recusa medida responde UMA pergunta*
+(`CLAUDE.md` §5.0): nada nela mede o que um **espelho** vê, e a rampa ganha aquela comparação por ser
+lisa **exactamente pela razão** por que perde esta.
+
+⇒ **a rampa fica, com a lei dela intacta e byte a byte** (gate `with_no_box_the_sky_is_the_one_it_replaces`,
+sobre `3 000` direcções × `5` rugosidades), e o que se acrescenta é uma **forma** por cima.
+
+---
+
+### §24.3 — A lei, em duas decisões que não são números escolhidos
+
+O estúdio é `rampa + caixa de luz`, em [`ph2d_app_field3d::studio`](../../crates/ph2d-app-field3d/src/studio.rs).
+
+1. ⭐ **O EIXO da caixa é o eixo da PRÓPRIA RAMPA** (`+y` em espaço de vista). O céu já é claro em
+   cima e escuro em baixo; a caixa **afia** esse eixo em vez de trazer uma direcção nova. ⇒ **zero**
+   constantes de direcção. E ela é da **cor média do próprio céu** (`ENV_BASE`) ⇒ **zero** constantes
+   de cor.
+2. ⭐ **A ENERGIA sai do ambiente, não se soma a ele** — a caixa leva uma fracção `f` da energia total
+   do céu e o termo constante desce `f`. A radiância média sobre a esfera fica **igual** (gate, sobre
+   `150 000` direcções, nas duas perguntas do `Environment`), e **o chão escurece de graça**, porque a
+   energia dele é que subiu.
+
+⚠️ Nada disto toca a [`ph2d-light`](../../crates/ph2d-light/): **zero linhas** naquela crate, logo a
+tinta e a escultura não podem ser afectadas por esta wave.
+
+---
+
+### §24.4 — ⭐⭐⭐ O pré-filtro é uma TABELA, e a forma fechada foi construída, medida e deitada fora
+
+O `Environment` pede a radiância **já pré-filtrada** para um lóbulo GGX de rugosidade `α`. Para a
+rampa isso é exacto e fechado (o `lobe_shrink` da §16); para uma calote, não é.
+
+**O caminho elegante foi percorrido inteiro.** Uma gaussiana esférica (SG) convolvida com outra fecha
+em álgebra (o produto de duas SG é uma SG), e o `λ` do núcleo pode ser escolhido para ter
+**exactamente o primeiro momento** do pré-filtro GGX — porque `lobe_shrink` **é** esse momento
+(`Σ(N·L)²/Σ(N·L) = E[ω·R]`) e uma SG tem o dela na função de **Langevin** `L(λ) = coth λ − 1/λ`. Com
+`λ(α) = L⁻¹(lobe_shrink(α))` as duas metades do céu concordam em **toda função linear**.
+
+| medição | resultado |
+|---|---|
+| a **álgebra** (produto de duas SG) contra a quadratura, `200 000` direcções | **`2,7e-6`** ✅ |
+| o **MODELO** (núcleo SG) contra o pré-filtro GGX de verdade | **`5 %` a `28 %`** na faixa útil ⛔ |
+| o **melhor `λ` possível**, por varredura de `400` pontos em `5` ordens de grandeza | ainda **`44,8 %`** a `α = 0,1` ⛔ |
+
+⛔⛔ **Nenhum `λ` cura, e a razão é estrutural: a cauda do GGX é pesada e a de uma gaussiana não é.**
+⚠️ E o pior pedaço é onde o material de omissão vive: **`α` é o QUADRADO da rugosidade**
+(`isotropic_alpha`), logo a rugosidade de omissão `0,3` cai em `α = 0,09`.
+
+⇒ **a tabela**, construída pela **definição** que o `mx_environment_prefilter` escreve (`N = V = R`,
+amostragem por importância, peso `N·L`):
+
+```text
+m(α, ψ) = Σ (N·L) · caixa(ω_L) / Σ (N·L)
+```
+
+⭐ *Não há aproximação para declarar: a lei do produto e o oráculo dela são a mesma conta, e o gate
+mede só a RESOLUÇÃO* (a tabela contra uma quadratura `390×` mais densa, em pontos que caem **entre**
+as células).
+
+⚠️ **Os dois eixos são deformados, cada um pela sua razão:** o da rugosidade é `√α` (a rugosidade que
+o artista arrasta) e o do ângulo é `√(1 − cos ψ)`, que é proporcional a `ψ` junto do pico — o passo
+sai `~0,22°` em toda a faixa. *Uma tabela uniforme em `cos ψ` teria `10°` de passo onde a caixa tem
+`25°` de raio, e seria uma calote de seis degraus.* ⛔ E nenhum dos dois eixos precisa de um `acos` em
+tempo de execução: só de dois `sqrt`.
+
+---
+
+### §24.5 — ⭐⭐⭐ E a FORMA certa não é a gaussiana: é o DISCO. A aresta é o efeito.
+
+Com a tabela a fazer o pré-filtro, **a forma da caixa passou a ser livre** — e a medição escolheu
+outra. Estrutura no espelho, sob a mesma energia:
+
+| forma | estrutura `\|∇²\|` | ganho |
+|---|---:|---:|
+| rampa nua | `1,074` | — |
+| **gaussiana esférica** | `1,171` | `+9 %` |
+| **disco com bordo esbatido** | `1,434` | **`+34 %`** |
+
+⭐⭐⭐ *Uma gaussiana não tem aresta nenhuma, e a aresta é o efeito.* Uma caixa de luz real é um
+rectângulo de bordo nítido, e é isso que um cromado mostra. ⇒ o argumento inteiro a favor da SG — que
+ela pré-filtra em forma fechada — tinha deixado de valer duas secções antes.
+
+⚠️⚠️ **E a LARGURA do bordo não é um gosto: é a resolução da tabela.** Interpolar um `smoothstep` de
+largura `W` com passo `h` erra `0,75·(h/W)²`; com `h ≈ 0,22°` e a barra do gate sai `W ≥ 5,8°`. A
+primeira redacção pôs `3°` *«≈ 3 células»* e o gate **reprovou com `4,95e-2`** — vinte e cinco vezes a
+barra, e sempre no bordo. *Uma aresta mais dura do que a tabela representa não é uma aresta: é o
+degrau da tabela a passar por uma.* ⇒ `SOFTBOX_RIM_DEG = 6,0`.
+
+---
+
+### §24.6 — De onde saem os dois números da caixa
+
+Varredura de `20` configurações contra as réguas do **produto**
+([`measure_which_softbox_the_rulers_choose`](../../crates/ph2d-app-field3d/src/studio_tests.rs)),
+medidas na vista que **não corta** (ver §24.7). `mérito` = quanto a caixa move um **espelho** a
+dividir por quanto ela move **giz**:
+
+| raio | `f` | estrut. espelho | moveu o espelho | moveu o giz | moveu a OMISSÃO | mérito | branco `Std 0` |
+|---:|---:|---:|---:|---:|---:|---:|---:|
+| — | — | `1,077` | — | — | — | — | `5 180` |
+| `12°` | `0,20` | `1,240` | `19,5` B | `7,8` B | `8,4` B | `2,49` | `7 995` |
+| `18°` | `0,20` | `1,263` | `20,1` B | `7,7` B | `8,2` B | `2,63` | `8 035` |
+| **`25°`** | **`0,20`** | **`1,268`** | **`21,0` B** | **`7,4` B** | **`7,9` B** | `2,85` | `7 972` |
+| `35°` | `0,20` | `1,248` | `22,4` B | `6,9` B | `7,4` B | `3,26` | `7 748` |
+| `25°` | `0,35` | `1,285` | `37,0` B | `13,8` B | `14,6` B | `2,69` | `9 268` |
+| `25°` | `0,50` | `1,361` | `55,0` B | `21,4` B | `22,4` B | `2,57` | `10 164` |
+| `25°` | `0,65` | `1,408` | `74,4` B | `29,9` B | `30,6` B | `2,49` | `10 815` |
+
+⭐ **A FRACÇÃO é decidida pela peça que o dono já aprovou:** ela tem de continuar a parecer-se com ela
+própria. A `f = 0,20` o material de omissão move-se **`7,9` bytes** (`3 %`); a `0,35` move-se `14,6`
+e a `0,65` move-se `30,6`. ⇒ `SOFTBOX_SHARE = 0,20`.
+
+⭐ **O RAIO é decidido pela estrutura**, que é a razão de a caixa existir, e ela tem o máximo em `25°`
+— a `12°` a caixa toca poucos pixels e a `50°` ela quase não tem bordo. ⇒ `SOFTBOX_RADIUS_DEG = 25`.
+
+⭐ **Os dois juntos fazem a caixa `5,4×` mais clara do que o céu à volta dela** (`20 %` da energia em
+`4,7 %` da esfera). ⚠️ Um estúdio real é muito mais contrastado do que isto; o que prende o número
+aqui é que a energia **sai do ambiente**, logo uma caixa muito clara é uma sala muito escura — e a
+sala é o que ilumina a difusa.
+
+---
+
+### §24.7 — ⛔⛔ Uma afirmação minha, derrubada na primeira corrida: o BRANCO CHAPADO **sobe**
+
+O cabeçalho do módulo dizia, quando foi escrito: *«a média fica igual, logo o `8,4 %` de branco
+chapado do §8 não pode piorar por acumulação»*. **Falso.** Média constante é uma afirmação sobre a
+**MÉDIA**; o corte é uma afirmação sobre o **PICO**, e concentrar energia é precisamente subir o pico.
+
+| vista | branco chapado, rampa nua | com a caixa |
+|---|---:|---:|
+| `Standard`, `0` stops | `5 180` | **`7 972`** |
+| `Standard`, `−1` stop | `114` | `115` |
+| **`Neutral`**, `0` stops | **`0`** | **`0`** |
+
+⭐⭐⭐ **A `Neutral` corta ZERO pixels nas vinte configurações medidas** — a caixa de luz e a gestão de
+cor são o mesmo assunto: *pôr uma fonte no céu é exactamente o que torna obrigatória a vista que não
+corta*. A escolha da omissão continua a ser **do dono** (§8), e esta wave é a medição que a torna
+urgente.
+
+⚠️ **E é por isso que as constantes da §24.6 foram escolhidas na `Neutral`:** sob a `Standard` um
+planalto saturado tem `∇² = 0`, logo o corte **esconde** o efeito que a régua devia medir. *A régua
+estaria a ser lida através do defeito que ela acusa.*
+
+---
+
+### §24.8 — ⏱️ O preço
+
+| | medido |
+|---|---|
+| construir a tabela (`49 × 513`, `512` amostras/célula) | **`27,6 ms`**, uma vez, no 1.º quadro de Render |
+| o sombreamento, rampa nua → com a caixa | `1,634` → `1,737 ms` (**`+0,103`**, `+6,3 %`) |
+| sobre um quadro de `16,7 ms` | **`+0,6 %`** |
+
+*(`--release`, mínimo de `5`/`7` corridas, `load 2,2–3,0`, com o `/proc/loadavg` impresso ao lado —
+`CLAUDE.md` §5.0. ⚠️ **As medianas do sombreamento sobrepõem-se** (`1,782` contra `1,751`): a `0,1 ms`
+o efeito só é legível no mínimo.)*
+
+⚠️⚠️ **A construção custava `110 ms` e a cura foi uma CONSTANTE DOBRADA DENTRO DO LAÇO:** a forma
+resolvia `to_radians().cos()` **duas vezes** em cada uma das `12,9` milhões de avaliações. Hoje as
+duas fronteiras resolvem-se uma vez por tabela (`Profile`) e a construção custa **`4×` menos**. *É a
+mesma forma que a memória [`a_constant_folded_into_a_tree`](../../project-memory/feedback_a_constant_folded_into_a_tree_is_recomputed_wherever_the_tree_is.md)
+já regista, noutro subsistema.*
+
+⭐⭐ **E a contagem de amostras saiu da única régua que o dono vê: PIXELS.** Contra uma tabela de
+`8 192` amostras, a de `512` devolve `\|Δ\|` médio de **`0,041` byte** e pior caso `3` bytes sobre oito
+materiais. A régua intermédia dizia outra coisa — `7,4e-3` de desvio contra a definição, **vinte e
+cinco vezes** o que a primeira redacção da barra pedia — e subir para `2 048` compra `0,034` de um
+byte por `4×` o preço da construção. ⇒ a barra do gate é `1e-2`, **com um controlo ao lado** (uma
+caixa `10°` maior sai a `0,1+`), senão uma barra larga não afirmaria nada.
+
+---
+
+### §24.9 — Os gates (6 + 1 partido ao meio) e as mutações (7/7)
+
+| gate | o que ele prende |
+|---|---|
+| `the_table_is_the_prefilter_it_claims_to_be` | a tabela contra a **definição**, `390×` mais densa, entre células — **com controlo de forma** |
+| `the_diffuse_table_is_the_cosine_convolution` | a outra pergunta do `Environment`, contra a própria definição (`9,8e-7`) |
+| `a_box_as_wide_as_the_sky_is_the_sky` | ⭐ uma caixa de `180°` devolve o ambiente — é o que mantém o *furnace test* de pé sem uma linha nova |
+| `with_no_box_the_sky_is_the_one_it_replaces` | **ao BIT**, nas duas perguntas, sobre `3 000` direcções |
+| `the_box_redistributes_the_sky_it_does_not_add_to_it` | a média sobre a esfera não se mexe, na radiância **e** na irradiância |
+| `the_box_brightens_the_zenith_and_darkens_the_floor` | o zénite sobe, o chão desce — a metade que diz *de onde* veio a energia |
+
+⚠️⚠️ **E o `the_sky_honours_the_lobe_width_it_is_handed` PARTIU-SE, de propósito, e a forma como
+partiu é o achado.** A redacção anterior media a lei do lóbulo **contra a fórmula da rampa** e
+afirmava, no equador, a **invariância** em `α`. Com uma caixa em `+y`, um lóbulo largo avaliado no
+equador **arrasta a caixa para dentro da média** ⇒ aquela igualdade passou a ser falsa — e passou a
+sê-lo porque a lei ficou **mais forte**: hoje o `α` entra por **dois** caminhos independentes (o
+encolhimento da rampa e a linha da tabela). ⇒ o gate parte-se em duas metades, **cada uma sobre o céu
+de que ela fala**: a lei exacta sobre a rampa nua, a dependência sobre o céu do produto — e a metade
+nova afirma o **contrário** da antiga no equador.
+
+⚠️ **O oráculo da forma é RE-ESCRITO no gate, de propósito:** se ele chamasse a `Softbox` do produto,
+uma mutação na forma passaria pelos dois lados ao mesmo tempo. É essa separação que mata a mutação
+`[2]`.
+
+**7/7 mutações** — a caixa a somar-se em vez de sair do ambiente · a linha da tabela fixa (o `α`
+deitado fora, que mata em dois ficheiros diferentes) · o bordo a virar degrau · a irradiância a
+ignorar a caixa · a tabela sem normalização · o eixo do ângulo sem deformação · o `up = dir[1]`.
+⚠️ Com **controlo do próprio filtro** antes de mutar (`6 passed` limpo), senão um filtro que casa zero
+imprime o mesmo que um gate que morre.
+
+---
+
+### §24.10 — ⏳ O que fica aberto
+
+- ⛔ **A vista de omissão** — §8, e agora com a medição que a torna urgente (§24.7). **Decisão do dono.**
+- **A caixa é UMA, e no eixo da rampa.** Uma segunda caixa (o preenchimento, o `rim`) custa **uma
+  segunda tabela** e uma direcção que já não sai da rampa — isto é, a primeira constante de direcção
+  desta lei. *Não é trabalho a fazer: é uma decisão a tomar primeiro.*
+- **O tamanho da caixa não é autorável**, e o preço está nomeado: a tabela é construída para UMA
+  forma, logo um raio autorado é um **terceiro eixo** nela (ou uma reconstrução de `27,6 ms` por
+  mexida no slider).
+- **O rig continua a ser o de omissão** — o modelador não tem controlo de luz nenhum, e a §7 declara
+  porquê. ⚠️ Esta wave torna a ausência mais visível: agora que há uma caixa no céu, mover a **chave**
+  é o gesto seguinte que um artista procura.
+- ⏳ O que a `W3` do plano ainda não faz: o céu continua **analítico** (não há mapa de ambiente), e a
+  `W4`/`W5` (sombras e luz indirecta) não começaram.

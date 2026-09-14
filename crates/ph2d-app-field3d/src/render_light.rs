@@ -104,30 +104,28 @@ pub fn lobe_shrink(alpha: f32) -> f32 {
 }
 
 /// **O céu de estúdio**, em espaço de vista.
+///
+/// ⭐⭐⭐ **A LEI MUDOU-SE para o [`crate::studio`] em 2026-09-14, e este tipo é a porta dela.** Até
+/// então o céu era só a rampa `A + B·y`; hoje ele tem uma **caixa de luz** — e a medição que o
+/// justifica (um espelho e um pedaço de giz tinham o mesmo contraste local) está no cabeçalho de lá.
+///
+/// ⚠️ **A rampa não se mexeu**: com a caixa desligada o céu devolve os mesmos bits que este ficheiro
+/// devolvia, e há gate a afirmá-lo (`with_no_box_the_sky_is_the_one_it_replaces`).
+///
+/// ⛔⛔ **O `alpha` já chegou aqui e foi DEITADO FORA** (`_alpha`), que é a segunda espécie de
+/// controlo morto do `CLAUDE.md` §5.0 — *o consumidor que projecta o valor fora*: o fio está
+/// inteiro, o valor chega, e quem o recebe descarta-o. ⚠️ Nenhuma sonda de *«quem lê este campo?»* o
+/// vê, porque ele **é** lido — está na assinatura. Hoje ele escolhe a linha da tabela.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct StudioSky;
 
 impl ph2d_material::Environment for StudioSky {
     fn radiance(&self, dir: [f32; 3], alpha: f32) -> [f32; 3] {
-        // O `ENV_SLOPE` da `ph2d-light` já vem convolvido com o lóbulo cosseno (`(2/3)·k`); a
-        // radiância quer o `k` cru.
-        const RAW: f32 = 1.5;
-        // ⭐⭐⭐ **A ALTURA É A DA DIRECÇÃO MÉDIA DO LÓBULO** — ver [`lobe_shrink`] e o topo deste
-        // ficheiro.
-        //
-        // ⛔⛔ **O `alpha` chegava aqui e era DEITADO FORA** (`_alpha`), e isso é a segunda espécie
-        // de controlo morto do `CLAUDE.md` §5.0 — *o consumidor que projecta o valor fora*: o fio
-        // está inteiro, o valor chega, e quem o recebe descarta-o. ⚠️ Nenhuma sonda de *«quem lê
-        // este campo?»* o vê, porque ele **é** lido — está na assinatura.
-        let up = lobe_shrink(alpha) * dir[1];
-        [0, 1, 2].map(|i| {
-            ph2d_light::AMBIENT * (ph2d_light::ENV_BASE[i] + RAW * ph2d_light::ENV_SLOPE[i] * up)
-        })
+        crate::studio::Studio::of_the_product().radiance(dir, alpha)
     }
 
     fn irradiance(&self, n: [f32; 3]) -> [f32; 3] {
-        // Vista (`y` para cima) → canvas (`y` para baixo).
-        ph2d_light::env_ambient([n[0], -n[1], n[2]])
+        crate::studio::Studio::of_the_product().irradiance(n)
     }
 }
 

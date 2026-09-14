@@ -158,25 +158,37 @@ fn the_closed_form_of_the_lobe_agrees_with_the_quadrature() {
 /// parâmetro deitado fora). *Um gate sobre a lei é cego a um consumidor que a ignora*, e essa é a
 /// espécie de morto que o `CLAUDE.md` §5.0 chama de *«o consumidor que projecta o valor fora»*.
 ///
-/// ⚠️ **A régua é o TERMO DA ALTURA, e o gate mede-o pelo par**: num céu avaliado no equador
-/// (`dir.y = 0`) o encolhimento é invisível por construção, então o gate lá afirma a **invariância** —
-/// sem essa metade, um `radiance` que ignorasse o `dir` inteiro também passaria.
+/// ⚠️ **A régua é o TERMO DA ALTURA, e o gate mede-o pelo par.**
 ///
-/// **Mutação que deve sangrar:** voltar a `let up = dir[1];`.
+/// ⚠️⚠️ **E ele PARTIU-SE em 2026-09-14, quando o céu ganhou a caixa de luz — de propósito, e a
+/// forma como partiu é o achado.** A redacção anterior media a lei do lóbulo **contra a fórmula da
+/// rampa** e afirmava, no equador, a **invariância** em `alpha`. Com uma caixa em `+y`, um lóbulo
+/// largo avaliado no equador **arrasta a caixa para dentro da média** ⇒ aquela igualdade passou a ser
+/// falsa, e passou a ser falsa porque a lei ficou MAIS forte: hoje o `alpha` entra por **dois**
+/// caminhos independentes (o encolhimento da rampa e a linha da tabela).
+///
+/// ⇒ o gate parte-se em duas metades, cada uma sobre o céu de que ela fala:
+/// a lei EXACTA da rampa sobre a [`crate::studio::Studio::bare_ramp`] (onde ela é a lei inteira), e
+/// a **dependência** sobre o céu do produto, agora nos dois eixos.
+///
+/// **Mutações que devem sangrar:** voltar a `let up = dir[1];` · passar `1.0` fixo à tabela.
 #[test]
 fn the_sky_honours_the_lobe_width_it_is_handed() {
     use ph2d_material::Environment;
     let alto = [0.0, 1.0, 0.0];
     let equador = [0.0, 0.0, 1.0];
-    let liso = StudioSky.radiance(alto, 0.0);
-    let rugoso = StudioSky.radiance(alto, 1.0);
+    let a = ph2d_light::AMBIENT;
+    let rampa = crate::studio::Studio::bare_ramp();
+
+    // ── A lei EXACTA, sobre a rampa nua ──────────────────────────────────────────────────────
+    let liso = rampa.radiance(alto, 0.0);
+    let rugoso = rampa.radiance(alto, 1.0);
     assert!(
         rugoso[1] < liso[1],
         "um lóbulo largo apontado ao topo tem de ler um céu MAIS ESCURO do que um espelho — a média \
          dele desce para o equador ({rugoso:?} contra {liso:?})"
     );
     // ⭐ **E o quanto é o que a lei promete**, não um valor qualquer.
-    let a = ph2d_light::AMBIENT;
     let esperado = [0, 1, 2].map(|i| {
         a * (ph2d_light::ENV_BASE[i] + 1.5 * ph2d_light::ENV_SLOPE[i] * super::lobe_shrink(1.0))
     });
@@ -186,18 +198,36 @@ fn the_sky_honours_the_lobe_width_it_is_handed() {
             "o canal {i} não é o céu na direcção média do lóbulo"
         );
     }
-    // ⛔ **No equador o encolhimento é invisível** — e tem de ser: `c·0 = 0`. É este assert que
-    // impede o gate de passar sobre um `radiance` que ignorasse a direcção.
+    // ⛔ **No equador o encolhimento da RAMPA é invisível** — e tem de ser: `c·0 = 0`. É este assert
+    // que impede a metade de cima de passar sobre um `radiance` que ignorasse a direcção.
     assert_eq!(
-        StudioSky.radiance(equador, 0.0),
-        StudioSky.radiance(equador, 1.0),
-        "no equador a largura do lóbulo não pode mudar nada"
+        rampa.radiance(equador, 0.0),
+        rampa.radiance(equador, 1.0),
+        "no equador a largura do lóbulo não pode mudar a rampa"
     );
-    // ⭐ E o caminho de omissão: um material liso lê **exactamente** o que lia antes.
+    // ⭐ E o caminho de omissão: um material liso lê **exactamente** o que lia antes da cura.
     assert_eq!(liso, {
         let up = alto[1];
         [0, 1, 2].map(|i| a * (ph2d_light::ENV_BASE[i] + 1.5 * ph2d_light::ENV_SLOPE[i] * up))
     });
+
+    // ── A DEPENDÊNCIA, sobre o céu do produto ────────────────────────────────────────────────
+    // ⭐ No topo a caixa está toda dentro do espelho, e alargar o lóbulo dilui-a: o céu escurece.
+    assert!(
+        StudioSky.radiance(alto, 1.0)[1] < StudioSky.radiance(alto, 0.0)[1],
+        "o céu do produto deixou de escurecer com a largura do lóbulo no topo"
+    );
+    // ⭐⭐ E no EQUADOR, onde a rampa é cega por construção, o céu do produto **tem** de se mover —
+    // um lóbulo largo apanha a caixa que um espelho não vê. *É a metade que a caixa acrescentou.*
+    let (eq_liso, eq_rugoso) = (
+        StudioSky.radiance(equador, 0.0)[1],
+        StudioSky.radiance(equador, 1.0)[1],
+    );
+    assert!(
+        eq_rugoso > eq_liso * 1.05,
+        "no equador um lóbulo largo tem de arrastar a caixa para dentro da média ({eq_liso} → \
+         {eq_rugoso})"
+    );
 }
 
 /// O céu como ele era **antes** de honrar a largura do lóbulo — o controlo desta medição.

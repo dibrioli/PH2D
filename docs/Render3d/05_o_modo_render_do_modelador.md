@@ -1455,3 +1455,146 @@ cru. *Compara-se o que a lei RESPONDE, não o que ela guarda.*
   transparência** — ela é a `transmission_*`, que a fatia do port deixou de fora com motivo escrito.
 - **O `coat_roughness_anisotropy`** não existe na crate (o traçador não tem tangentes), e por isso não
   é um knob por construir — é uma ausência declarada.
+
+---
+
+## §22 — ⭐⭐⭐ O MATERIAL FECHA: as últimas cinco entradas, e a ordem que passa a ser permanente (2026-09-14)
+
+Depois do verniz, o `surface_of` escrevia `10` das `15` entradas do OpenPBR. As cinco que faltavam —
+`base_weight`, `base_diffuse_roughness`, `specular_weight`, `specular_color`, `specular_ior` — eram as
+únicas que a lei honrava e nenhum controlo alcançava.
+
+⚠️ **E elas não são como o verniz:** nenhuma tem um peso que as desligue, logo cada linha que ganhem é
+uma linha que o painel mostra **sempre**. *O preço de as autorar não era o mesmo, e por isso a medição
+também não podia ser.*
+
+---
+
+### §22.1 — A medição, e o que ela partiu em dois
+
+Esfera a `640×360`, olhar do produto, contra o material de omissão de cada lado:
+
+| entrada | valor | **dieléctrico**: pior Δ · px ≥2 | **metal**: pior Δ · px ≥2 |
+|---|---|---|---|
+| `base_weight` | `0` | **`224`** · `61 804` | **`255`** · `61 804` |
+| `base_diffuse_roughness` | `1` | `39` · `53 914` | **`0` · `0`** |
+| `specular_weight` | `0` | `17` · `22 381` | **`255`** · `61 804` |
+| `specular_color` | `[1; 0,6; 0,2]` | `51` · `51 787` | `5` · `6 410` |
+| `specular_ior` | `1,0` | `17` · `22 381` | **`0` · `0`** |
+
+⭐⭐⭐ **DUAS delas são EXACTAMENTE inertes num metal** — `0` bytes em `61 804` pixels, não «pouco».
+A rugosidade da difusa e o IOR alimentam o lóbulo **dieléctrico**, que o `base_metalness` mistura para
+fora: `mix3(dieléctrico, metal, 1)` é `dieléctrico × 0 + metal × 1`, e `x × 0` é zero por construção.
+
+⇒ **a lei da W34 aplica-se pela terceira vez neste painel, e pela primeira com um predicado que não é
+um peso a zero:** a cor do brilho morre com a luminância, os quatro do verniz morrem com o peso dele,
+e estes dois morrem com o **metal a um**. *O que decide não é a forma do predicado — é o efeito ser
+sempre nulo.*
+
+⚠️ **E o `specular_weight` muda de NATUREZA com o vizinho de cima:** num dieléctrico mal se vê (`4`
+bytes a meio curso), num metal ele **é** o brilho da peça. *Um gate posto no lado fraco de um número
+que muda de natureza mede o lado que não importa* — o gate dele corre no metal.
+
+---
+
+### §22.2 — ⭐⭐ A ORDEM passa a ser a da NODEDEF, e é agora que ela se arruma
+
+Até aqui a ordem das posições era a **ordem de chegada das waves** (a cor, o brilho, o verniz). Com
+estas cinco, o `base_weight` teria aterrado **depois** do escurecimento do verniz.
+
+⇒ as `23` posições foram **re-numeradas** para a ordem em que o `ND_open_pbr_surface_surfaceshader`
+declara as entradas — a mesma do `pub struct OpenPbr` e da linha `D` da fixture do oráculo:
+
+| faixa | o quê |
+|---|---|
+| `0`–`5` | a **base**: peso, cor (âncora `1`), rugosidade da difusa, metal |
+| `6`–`11` | o **realce**: peso, cor (âncora `7`), rugosidade, IOR |
+| `12`–`18` | o **verniz**: peso, cor (âncora `13`), rugosidade, IOR, escurecimento |
+| `19`–`22` | o **brilho próprio**: luminância, cor (âncora `20`) |
+
+⭐ **É agora ou nunca:** *uma ordem de chegada é permanente no dia em que a lista fecha* — e esta
+fechou. São as `15` entradas do OpenPBR, e não há mais nenhuma para apender.
+
+⛔⛔ **E a re-numeração tem um modo de falha MUDO que mordeu TRÊS vezes:** uma lista de índices
+escrita à mão (`for peso in [5u8, 9]`, `for k in [3u8, 4]`) sobrevive a uma re-numeração **sem erro de
+compilação** e passa a medir outra coisa. No `polygon_rows_tests` ela punha o **metal** a `1` — que
+*esconde* duas linhas em vez de abrir quatro —, e quem a apanhou foi o gate do outro lado, a ler `18`
+onde esperava `25`. *A cura é contar do produto, nunca de uma lista ao lado dele.*
+
+---
+
+### §22.3 — ⭐⭐⭐ E o `surface_of` deixou de poder esquecer um campo
+
+O literal do `OpenPbr` passou a ser **exaustivo** — sem `..Default::default()`. ⇒ apagar uma linha
+dele é **erro de compilação**, e as cinco mutações da wave tiveram de mudar de forma: em vez de
+apagar o campo, elas **congelam-no no neutro**, que é a forma que o defeito teria de tomar para
+chegar ao main.
+
+⭐ *Uma lei que o compilador prende não precisa de gate* — e o gate que fica
+(`every_number_a_material_has_reaches_the_law`) guarda a direcção **oposta**: um número novo no
+`FieldMaterial` que ninguém ligue.
+
+---
+
+### §22.4 — ✅ A CERCA que a §8 pediu existe, e o mecanismo dela era outro
+
+A §8 mediu que o multi-scatter da difusa tem um **polo** (`base_color ≈ 5,981` com
+`base_diffuse_roughness = 1`; a `6,0` a indirecta devolve `[−676, −716, −813]`) e escreveu a cerca:
+*«a porta que deixar autorar `base_color` coage a `0..1`»*. Com a rugosidade da difusa a tornar-se
+autorável, **este é o dia** — e o gate existe agora
+(`no_material_a_gesture_can_produce_returns_negative_light`): `20 000` materiais de um LCG de semente
+fixa, cada número na faixa que o slider oferece, e nenhum devolve luz negativa ou não-finita.
+
+⭐ **Medido ao escrevê-lo: o polo continua INALCANÇÁVEL, e não pela razão que eu esperava.** O
+suspeito era o `base_weight`, que multiplica a cor base e **tem campo numérico aberto** — mas ele
+escala a indirecta **linearmente** (`1 → 8` dá `0,36 → 2,80`, sempre positiva). O polo exige a **cor**
+acima de `~6`, e a única porta que a escreve é o selector, que fala `sRGB8`.
+
+⛔ **E a prova de que a varredura não é fraca é uma mutação na própria CERCA:** levantar a coerção a
+`0..1` põe o gate vermelho com `[15,2, −1,0, 3,6]`. *Um gate de ausência tem de mostrar que alcança a
+presença.*
+
+⚠️ **Achado de lado:** a `base_diffuse_roughness` **não toca a luz do céu** — as três amostras
+(`0`, `0,5`, `1`) dão a indirecta bit a bit igual. Ela é um termo da luz **directa**, e um gate que só
+a medisse na indirecta estaria a olhar para o lado.
+
+---
+
+### §22.5 — O teto de linhas e o arquivo
+
+- **`MAX_ROWS` `74 → 79`** (`2 × 27 + 25`), medido no produtor das linhas e no pior estado — brilho e
+  verniz acesos, **com o metal abaixo de `1`**, que é quando as duas linhas só-dieléctricas aparecem.
+  ⭐ E o material **fechou**: este teto deixa de crescer por aí.
+- **`PROJECT_SCHEMA` `130 → 131`** — ⚠️ e aqui não é só apendar: os campos foram **re-ordenados**, o
+  que põe a rugosidade onde morava o peso da base. ⛔ Conte o DELTA (`+3` desde o `main`).
+
+---
+
+### §22.6 — Os gates (4) e as mutações (10/10)
+
+| gate | o que ele prende |
+|---|---|
+| `the_last_five_openpbr_inputs_reach_the_law_and_move_the_answer` | as cinco atravessam **e** movem a radiância — o peso do realce medido no **metal** |
+| `the_two_dielectric_only_numbers_are_exactly_inert_on_a_metal` | os **mesmos bits** num metal, **e** a linha a sumir — só ela, e só ali |
+| `the_surface_ior_has_the_same_physical_range_as_the_coats` | os dois IOR têm a mesma cerca física |
+| `no_material_a_gesture_can_produce_returns_negative_light` | o polo do multi-scatter, sobre `20 000` materiais |
+
+⚠️⚠️ **Uma mutação SOBREVIVEU à primeira redacção, e o buraco era do gate:** mover a âncora da cor do
+realce de `7` para `6` deixava a linha do `specular_weight` com o **rótulo** da cor, e o gate — que
+comparava só as chaves — continuava verde. *Um gate que lê só o rótulo não sabe sobre que número ele
+está escrito.* Hoje ele compara o par `(param, chave)`.
+
+---
+
+### §22.7 — ⏳ O que fica aberto
+
+- ⭐ **Do material, NADA.** As `15` entradas do OpenPBR são autoráveis, e o que a fatia do port deixou
+  de fora (`transmission_*`, `subsurface_*`, `fuzz_*`, `thin_film_*`, `geometry_opacity`, as
+  anisotropias) **não existe na crate** — são ausências declaradas com motivo, e não knobs por
+  construir.
+- **A ALFA** continua a ser a única coisa que o §12.7 pedia e ninguém entregou: ela é a
+  `geometry_opacity`, está fora do port, e num traçador exige que a marcha continue **através** da
+  peça. *É uma wave de motor, não de painel.*
+- **O painel tem `10` linhas de material com tudo apagado**, e `15` com tudo aceso. ⏸️ **Se isso for
+  denso demais é veredito do dono** — a cura conhecida são **secções recolhíveis**, que este painel
+  não tem e que o Motion já nomeou como a resposta ao mesmo problema.

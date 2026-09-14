@@ -46,17 +46,21 @@ pub struct Table {
 #[must_use]
 pub fn surface_of(m: FieldMaterial) -> ph2d_material::Surface {
     ph2d_material::OpenPbr {
+        base_weight: m.base_weight,
         base_color: m.base_color,
+        base_diffuse_roughness: m.base_diffuse_roughness,
         base_metalness: m.metalness,
+        specular_weight: m.specular_weight,
+        specular_color: m.specular_color,
         specular_roughness: m.roughness,
-        emission_luminance: m.emission,
-        emission_color: m.emission_color,
+        specular_ior: m.specular_ior,
         coat_weight: m.coat,
-        coat_roughness: m.coat_roughness,
         coat_color: m.coat_color,
+        coat_roughness: m.coat_roughness,
         coat_ior: m.coat_ior,
         coat_darkening: m.coat_darkening,
-        ..ph2d_material::OpenPbr::default()
+        emission_luminance: m.emission,
+        emission_color: m.emission_color,
     }
     .prepare()
 }
@@ -263,3 +267,8 @@ mod emission_tests;
 #[cfg(test)]
 #[path = "coat_tests.rs"]
 mod coat_tests;
+
+/// ⏱️⭐ **AS CINCO QUE SOBRAM** do OpenPBR — a sonda que mede se elas ganham linha.
+#[cfg(test)]
+#[path = "base_specular_tests.rs"]
+mod base_specular_tests;

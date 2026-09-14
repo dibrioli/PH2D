@@ -111,10 +111,10 @@ pub enum Param {
     /// a mesma lei da W34 que o resto do painel honra: *o painel oferece exactamente o que o gesto
     /// faz*.
     Seam(u8),
-    /// ⭐⭐⭐ **UM NÚMERO DO MATERIAL desta forma** — a cor base (`0`, `1`, `2`), a rugosidade (`3`),
-    /// o metal (`4`), o **brilho próprio** (`5`) e a cor dele (`6`, `7`, `8`), e o **verniz**:
-    /// o peso (`9`), a rugosidade (`10`), a cor (`11`, `12`, `13`), o IOR (`14`) e o escurecimento
-    /// que ele causa na base (`15`).
+    /// ⭐⭐⭐ **UM NÚMERO DO MATERIAL desta forma** — as `15` entradas do OpenPBR, **na ordem da
+    /// nodedef**: a base (`0`..`5`), o realce (`6`..`11`), o verniz (`12`..`18`) e o brilho próprio
+    /// (`19`..`22`). ⇒ a tabela vive em [`ph2d_field_ecs::FieldMaterial::get`], que é quem a lê e a
+    /// escreve.
     ///
     /// # ⚠️ Porque um material é um `Param` como os outros, e não uma superfície à parte
     ///
@@ -145,7 +145,7 @@ pub enum Param {
 /// mesma lei sob o peso (`9`). *A porta de ESCRITA continua a aceitar as dezasseis posições*: quem
 /// esconde é a apresentação, e um pedido guardado de um quadro atrás tem de continuar a poder
 /// aterrar.
-pub const MATERIAL_FIELDS: u8 = 16;
+pub const MATERIAL_FIELDS: u8 = 23;
 
 /// ⭐ **O que uma grandeza admite** — a forma da faixa, e de que recurso vem cada ponta.
 ///

@@ -248,25 +248,30 @@ fn the_panel_shows_the_dimensions_of_what_is_selected() {
             // ⭐⭐⭐ **E o MATERIAL, depois do que a forma mede** (`docs/Render3d/05`) — ver
             // `ph2d_field::Param::Material`.
             //
-            // ⭐⭐⭐ **TRÊS linhas e não cinco** (Enio, 2026-09-14: *«em vez de 3 sliders de RGB,
-            // deveríamos ter uma caixa seletora de cor»*): os canais `Material(1)` e `Material(2)`
-            // **não** viram linha — eles são a mesma cor do `Material(0)`, que é publicado como
-            // **amostra** (ver o gate `a_colour_is_one_row_and_it_carries_the_swatch` abaixo).
+            // ⭐⭐⭐ **AS `15` ENTRADAS DO OpenPBR, NA ORDEM DA NODEDEF** — a base, o realce, o
+            // verniz, o brilho próprio. ⚠️ **A ordem não é escolhida**: ela é a do
+            // `ND_open_pbr_surface_surfaceshader`, que é também a do `pub struct OpenPbr` e a da
+            // linha `D` da fixture do oráculo (`docs/Render3d/05` §22).
             //
-            // ⚠️ **O `params_of` continua a oferecer os canais** — a dobra é da apresentação, e o
-            // gate `scene_gesture_tests` mede o outro lado. *Se os dois censos concordarem na
-            // contagem, alguém desfez a dobra sem ler este comentário.*
+            // ⚠️ **Cada COR é UMA linha** (Enio, 2026-09-14: *«em vez de 3 sliders de RGB,
+            // deveríamos ter uma caixa seletora de cor»*): os canais seguidores de cada âncora
+            // **não** viram linha. O `params_of` continua a oferecê-los — a dobra é da
+            // apresentação, e o `scene_gesture_tests` mede o outro lado. *Se os dois censos
+            // concordarem na contagem, alguém desfez a dobra sem ler este comentário.*
             //
-            // ⭐⭐ **E o BRILHO PRÓPRIO fecha a secção** (`docs/Render3d/05` §20) — ⚠️ **sem a cor
-            // dele**, que só é publicada acima de zero: ela multiplica a luminância, e a zero seria
-            // um controlo cujo efeito é sempre nulo.
+            // ⛔ **E o que NÃO está nesta lista é o que é inerte aqui:** a cor do brilho (sem
+            // brilho), os quatro números do verniz (sem verniz). ⭐ As duas linhas só-dieléctricas
+            // (`Diffuse Roughness` e `IOR`) **estão**, porque o metal de omissão é `0`.
+            "field.dim.base_weight",
             "field.dim.base_color",
-            "field.dim.roughness",
+            "field.dim.base_diffuse_roughness",
             "field.dim.metalness",
-            "field.dim.emission",
-            // ⭐⭐ **E o VERNIZ fecha** (§21) — ⚠️ **sozinho**: os outros quatro números dele são
-            // misturados por este peso, logo a zero são inertes e não são publicados.
+            "field.dim.specular_weight",
+            "field.dim.specular_color",
+            "field.dim.roughness",
+            "field.dim.specular_ior",
             "field.dim.coat",
+            "field.dim.emission",
         ],
         "uma caixa tem a POSE (posição e rotação), CINCO dimensões e o MATERIAL, nesta ordem"
     );

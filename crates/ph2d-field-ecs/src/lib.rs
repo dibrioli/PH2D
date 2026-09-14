@@ -129,12 +129,69 @@ pub struct FieldMods {
 /// escrita em dois sítios ainda não é uma constante — a segunda é a que envelhece.*
 #[derive(Component, Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 pub struct FieldMaterial {
+    /// Quanto da camada **base** (a difusa) contribui — o `base_weight`.
+    ///
+    /// ⚠️ **É o número que mais move o quadro de todos**: a `0` a peça perde a cor e fica só com o
+    /// realce (`224` bytes no pior pixel num dieléctrico, `255` num metal). *Ele não é um knob de
+    /// afinação — é o interruptor da tinta.*
+    pub base_weight: f32,
     /// A cor difusa, em **linear** e por canal.
     pub base_color: [f32; 3],
-    /// `0` espelho, `1` completamente difuso.
-    pub roughness: f32,
+    /// A rugosidade da **difusa** (o termo de Oren-Nayar do OpenPBR) — `0` é lambertiana.
+    ///
+    /// ⛔⛔ **Ela é EXACTAMENTE inerte num metal** (`metalness == 1`), medido: `0` bytes em `61 804`
+    /// pixels. O lóbulo difuso é misturado para fora por `base_metalness`, e `x × 0` é zero por
+    /// construção. ⇒ a linha dela **não é publicada** ali.
+    pub base_diffuse_roughness: f32,
     /// `0` dieléctrico (plástico, cerâmica), `1` metal.
     pub metalness: f32,
+    /// Quanto do **realce** contribui — o `specular_weight`.
+    ///
+    /// ⚠️ **Ele muda de natureza com o metal:** num dieléctrico mal se vê (`4` bytes a meio curso),
+    /// num metal ele **é** o brilho da peça (`255` a zero). *Um número fraco e um número dominante,
+    /// no mesmo slider, conforme o vizinho de cima.*
+    pub specular_weight: f32,
+    /// A cor do realce, em **linear** e por canal — o `specular_color`.
+    pub specular_color: [f32; 3],
+    /// `0` espelho, `1` completamente difuso — o `specular_roughness`.
+    pub roughness: f32,
+    /// O índice de refracção da superfície.
+    ///
+    /// ⛔⛔ **Também EXACTAMENTE inerte num metal** (um metal não refracta), e por isso segue a mesma
+    /// lei da [`Self::base_diffuse_roughness`]. ⚠️ Num dieléctrico ele é o mais fraco dos cinco
+    /// (`6`–`17` bytes), e a faixa dele é **física** como a do verniz: `1` (o vácuo) a `2,5`.
+    pub specular_ior: f32,
+    /// ⭐⭐⭐ **O VERNIZ** — o `coat_weight` do OpenPBR, a película transparente por cima de tudo o
+    /// resto: a laca de um carro, o verniz de uma madeira, o brilho molhado de um plástico.
+    ///
+    /// ⚠️ **Ele é um SEGUNDO realce, não um realce mais forte:** a base continua com a rugosidade
+    /// dela e o verniz põe um lóbulo próprio por cima — é isso que faz uma superfície baça parecer
+    /// envernizada em vez de simplesmente polida. Medido (`docs/Render3d/05` §21): a `0,1` já move
+    /// `7` bytes em `50 182` pixels, e a `1` move `63`.
+    ///
+    /// ⭐ **Os outros quatro números dele são inertes com este a zero** (o `prepare` mistura-os todos
+    /// por `coat_weight`), e é por isso que as linhas deles só são publicadas acima de zero.
+    pub coat: f32,
+    /// A cor do verniz, em **linear** e por canal — o `coat_color`, que é uma TINTA: ela multiplica o
+    /// que atravessa a película, logo um verniz âmbar amarela a peça por baixo dele.
+    ///
+    /// ⚠️ É o número do verniz que mais move o quadro: **`120` bytes** no pior pixel.
+    pub coat_color: [f32; 3],
+    /// A rugosidade do verniz — `0` é uma laca de espelho, `1` é um acabamento acetinado.
+    pub coat_roughness: f32,
+    /// O índice de refracção do verniz.
+    ///
+    /// ⚠️⚠️ **A faixa dele NÃO sai da régua, e sim da FÍSICA** (`docs/Render3d/05` §21): varrido até
+    /// `20` o quadro nunca pára de se mexer, logo *«onde deixa de ser observável»* não responde aqui.
+    /// O piso é `1` — a luz não atravessa nada mais depressa do que o vácuo — e o tecto é `2,5`,
+    /// acima do diamante (`2,42`), que é o mais alto dos materiais transparentes conhecidos.
+    pub coat_ior: f32,
+    /// Quanto o verniz **escurece** a base por baixo dele — `1` é o físico, `0` desliga o efeito.
+    ///
+    /// ⚠️ **O Blender não expõe este**, e nós expomos: medido, ele move `29` bytes no pior pixel, e
+    /// a lei desta casa é que um número vivo tem controlo. *Uma referência é um oráculo do que a
+    /// LEI faz, não um censo do que um painel deve ter.*
+    pub coat_darkening: f32,
     /// ⭐⭐⭐ **A LUZ QUE A PRÓPRIA FORMA DÁ** — o `emission_luminance` do OpenPBR.
     ///
     /// `0` é uma superfície que só devolve a luz que recebe; acima disso ela **acrescenta**
@@ -152,52 +209,26 @@ pub struct FieldMaterial {
     /// painel mais curto seja mais bonito. *Um controlo cujo efeito é sempre zero é um controlo
     /// morto com aparência de vivo.*
     pub emission_color: [f32; 3],
-    /// ⭐⭐⭐ **O VERNIZ** — o `coat_weight` do OpenPBR, a película transparente por cima de tudo o
-    /// resto: a laca de um carro, o verniz de uma madeira, o brilho molhado de um plástico.
-    ///
-    /// ⚠️ **Ele é um SEGUNDO realce, não um realce mais forte:** a base continua com a rugosidade
-    /// dela e o verniz põe um lóbulo próprio por cima — é isso que faz uma superfície baça parecer
-    /// envernizada em vez de simplesmente polida. Medido (`docs/Render3d/05` §21): a `0,1` já move
-    /// `7` bytes em `50 182` pixels, e a `1` move `63`.
-    ///
-    /// ⭐ **Os outros quatro números dele são inertes com este a zero** (o `prepare` mistura-os todos
-    /// por `coat_weight`), e é por isso que as linhas deles só são publicadas acima de zero.
-    pub coat: f32,
-    /// A rugosidade do verniz — `0` é uma laca de espelho, `1` é um acabamento acetinado.
-    pub coat_roughness: f32,
-    /// A cor do verniz, em **linear** e por canal — o `coat_color`, que é uma TINTA: ela multiplica o
-    /// que atravessa a película, logo um verniz âmbar amarela a peça por baixo dele.
-    ///
-    /// ⚠️ É o número do verniz que mais move o quadro: **`120` bytes** no pior pixel.
-    pub coat_color: [f32; 3],
-    /// O índice de refracção do verniz.
-    ///
-    /// ⚠️⚠️ **A faixa dele NÃO sai da régua, e sim da FÍSICA** (`docs/Render3d/05` §21): varrido até
-    /// `20` o quadro nunca pára de se mexer, logo *«onde deixa de ser observável»* não responde aqui.
-    /// O piso é `1` — a luz não atravessa nada mais depressa do que o vácuo — e o tecto é `2,5`,
-    /// acima do diamante (`2,42`), que é o mais alto dos materiais transparentes conhecidos.
-    pub coat_ior: f32,
-    /// Quanto o verniz **escurece** a base por baixo dele — `1` é o físico, `0` desliga o efeito.
-    ///
-    /// ⚠️ **O Blender não expõe este**, e nós expomos: medido, ele move `29` bytes no pior pixel, e
-    /// a lei desta casa é que um número vivo tem controlo. *Uma referência é um oráculo do que a
-    /// LEI faz, não um censo do que um painel deve ter.*
-    pub coat_darkening: f32,
 }
 
 impl Default for FieldMaterial {
     fn default() -> Self {
         Self {
+            base_weight: 1.0,
             base_color: [0.8; 3],
-            roughness: 0.3,
+            base_diffuse_roughness: 0.0,
             metalness: 0.0,
-            emission: 0.0,
-            emission_color: [1.0; 3],
+            specular_weight: 1.0,
+            specular_color: [1.0; 3],
+            roughness: 0.3,
+            specular_ior: 1.5,
             coat: 0.0,
-            coat_roughness: 0.0,
             coat_color: [1.0; 3],
+            coat_roughness: 0.0,
             coat_ior: 1.6,
             coat_darkening: 1.0,
+            emission: 0.0,
+            emission_color: [1.0; 3],
         }
     }
 }
@@ -207,19 +238,36 @@ impl FieldMaterial {
     ///
     /// ⚠️ **Uma tabela e não um `match` por chamador:** a leitura e a escrita têm de concordar sobre
     /// qual número é o `3`, e a única forma de não divergirem é serem irmãs no mesmo ficheiro.
+    ///
+    /// # ⭐⭐⭐ A ORDEM É A DA NODEDEF, e não uma escolha
+    ///
+    /// As posições seguem a ordem em que o `ND_open_pbr_surface_surfaceshader` declara as entradas —
+    /// a mesma do `pub struct OpenPbr` e da linha `D` da fixture do oráculo. ⚠️ **É esta ordem que o
+    /// painel pinta**, então ela é o que o artista lê de cima para baixo: *a base, o realce, o
+    /// verniz, o brilho próprio* — cada família junta, e a cor de cada uma logo a seguir ao peso dela.
+    ///
+    /// ⛔ **Ela foi RE-NUMERADA em 14/09**, quando as últimas cinco entradas entraram: até aí a ordem
+    /// era a das waves (a cor, o brilho, o verniz), e o `base_weight` teria aterrado **depois** do
+    /// escurecimento do verniz. *Uma ordem de chegada é permanente no dia em que a lista fecha* — e
+    /// esta fechou: são as `15` entradas do OpenPBR, e não há mais nenhuma para apender.
     #[must_use]
     pub fn get(&self, field: u8) -> Option<f32> {
         match field {
-            0..=2 => Some(self.base_color[field as usize]),
-            3 => Some(self.roughness),
-            4 => Some(self.metalness),
-            5 => Some(self.emission),
-            6..=8 => Some(self.emission_color[field as usize - 6]),
-            9 => Some(self.coat),
-            10 => Some(self.coat_roughness),
-            11..=13 => Some(self.coat_color[field as usize - 11]),
-            14 => Some(self.coat_ior),
-            15 => Some(self.coat_darkening),
+            0 => Some(self.base_weight),
+            1..=3 => Some(self.base_color[field as usize - 1]),
+            4 => Some(self.base_diffuse_roughness),
+            5 => Some(self.metalness),
+            6 => Some(self.specular_weight),
+            7..=9 => Some(self.specular_color[field as usize - 7]),
+            10 => Some(self.roughness),
+            11 => Some(self.specular_ior),
+            12 => Some(self.coat),
+            13..=15 => Some(self.coat_color[field as usize - 13]),
+            16 => Some(self.coat_roughness),
+            17 => Some(self.coat_ior),
+            18 => Some(self.coat_darkening),
+            19 => Some(self.emission),
+            20..=22 => Some(self.emission_color[field as usize - 20]),
             _ => None,
         }
     }
@@ -227,16 +275,21 @@ impl FieldMaterial {
     /// Escreve um dos números. `false` quando a posição não existe.
     pub fn set(&mut self, field: u8, value: f32) -> bool {
         match field {
-            0..=2 => self.base_color[field as usize] = value,
-            3 => self.roughness = value,
-            4 => self.metalness = value,
-            5 => self.emission = value,
-            6..=8 => self.emission_color[field as usize - 6] = value,
-            9 => self.coat = value,
-            10 => self.coat_roughness = value,
-            11..=13 => self.coat_color[field as usize - 11] = value,
-            14 => self.coat_ior = value,
-            15 => self.coat_darkening = value,
+            0 => self.base_weight = value,
+            1..=3 => self.base_color[field as usize - 1] = value,
+            4 => self.base_diffuse_roughness = value,
+            5 => self.metalness = value,
+            6 => self.specular_weight = value,
+            7..=9 => self.specular_color[field as usize - 7] = value,
+            10 => self.roughness = value,
+            11 => self.specular_ior = value,
+            12 => self.coat = value,
+            13..=15 => self.coat_color[field as usize - 13] = value,
+            16 => self.coat_roughness = value,
+            17 => self.coat_ior = value,
+            18 => self.coat_darkening = value,
+            19 => self.emission = value,
+            20..=22 => self.emission_color[field as usize - 20] = value,
             _ => return false,
         }
         true

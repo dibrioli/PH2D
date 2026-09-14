@@ -69,31 +69,38 @@ fn a_colour_is_one_row_and_it_carries_the_swatch() {
     let rows = rows_of(&mut sim, folha);
     let cor: Vec<&ph2d_panel_model3d::ParamRow> =
         rows.iter().filter(|r| r.swatch.is_some()).collect();
+    // ⚠️ **DUAS amostras no material de omissão, e não uma** desde 14/09 (§22): a cor base e a do
+    // REALCE, que é sempre viva. As outras duas (o verniz, o brilho) só aparecem com o peso delas
+    // acima de zero, e têm gates próprios nos ficheiros irmãos.
+    // ⚠️⚠️ **O par `(param, chave)`, e não só a chave** — uma mutação que moveu a âncora do realce
+    // de `7` para `6` **sobreviveu** à primeira redacção: a linha do `specular_weight` recebia o
+    // rótulo da cor e a lista de chaves continuava a bater. *Um gate que lê só o rótulo não sabe
+    // sobre que número ele está escrito.*
     assert_eq!(
-        cor.len(),
-        1,
-        "a cor base tem de ser UMA linha-amostra e são {}: {:?}",
-        cor.len(),
-        rows.iter().map(|r| r.key).collect::<Vec<_>>()
+        cor.iter().map(|r| (r.param, r.key)).collect::<Vec<_>>(),
+        vec![
+            (ph2d_field::Param::Material(1), "field.dim.base_color"),
+            (ph2d_field::Param::Material(7), "field.dim.specular_color"),
+        ],
+        "as amostras do material de omissão mudaram: {:?}",
+        rows.iter().map(|r| (r.param, r.key)).collect::<Vec<_>>()
     );
-    assert_eq!(cor[0].param, ph2d_field::Param::Material(0), "a âncora");
-    assert_eq!(cor[0].key, "field.dim.base_color");
     // ⛔ **E os outros dois canais NÃO são linha** — senão o artista teria a amostra *e* dois
     // sliders do mesmo facto, que é a lei que o `ParamRow::swatch` declara.
     assert!(
         !rows
             .iter()
-            .any(|r| matches!(r.param, ph2d_field::Param::Material(1 | 2))),
+            .any(|r| matches!(r.param, ph2d_field::Param::Material(2 | 3))),
         "os canais verde e azul continuam a ser linhas próprias: {:?}",
         rows.iter().map(|r| r.key).collect::<Vec<_>>()
     );
     // ⚠️ **E o resto do material continua lá** — a dobra é dos três canais, não da secção.
     assert!(
         rows.iter()
-            .any(|r| r.param == ph2d_field::Param::Material(3))
+            .any(|r| r.param == ph2d_field::Param::Material(10))
             && rows
                 .iter()
-                .any(|r| r.param == ph2d_field::Param::Material(4)),
+                .any(|r| r.param == ph2d_field::Param::Material(5)),
         "a rugosidade e o metal desapareceram com a dobra"
     );
 
@@ -107,9 +114,9 @@ fn a_colour_is_one_row_and_it_carries_the_swatch() {
     );
 
     // ⭐⭐ **E ela SEGUE o documento.** Sem esta metade, uma amostra congelada no default passaria.
-    ph2d_field_ecs::set_param(sim.world_mut(), folha, ph2d_field::Param::Material(1), 0.0)
-        .expect("o verde");
     ph2d_field_ecs::set_param(sim.world_mut(), folha, ph2d_field::Param::Material(2), 0.0)
+        .expect("o verde");
+    ph2d_field_ecs::set_param(sim.world_mut(), folha, ph2d_field::Param::Material(3), 0.0)
         .expect("o azul");
     let rows = rows_of(&mut sim, folha);
     let agora = rows
@@ -136,8 +143,8 @@ fn the_colour_intent_reaches_the_document() {
     let (mut sim, folha) = a_ball();
     let _ = rows_of(&mut sim, folha);
     ph2d_panel_model3d::state::push_intent_for_test(ph2d_panel_model3d::ModelIntent::SetColor {
-        // ⚠️ A ÂNCORA da cor BASE — a da emissão (`6`) tem gates próprios no `emission_tests`.
-        field: 0,
+        // ⚠️ A ÂNCORA da cor BASE — as outras três têm gates próprios nos ficheiros irmãos.
+        field: 1,
         entity: folha.to_bits(),
         srgb: [255, 0, 128],
     });
@@ -271,7 +278,12 @@ fn a_group_offers_the_material_of_the_shapes_under_it_and_painting_it_paints_the
         .expect("⛔ um grupo escolhido não ofereceu a cor das formas debaixo dele");
     assert_eq!(cor.key, "field.dim.base_color");
     // ⭐ **E os outros números do material vêm com ela** — a secção é uma, não um controlo solto.
-    for k in [3u8, 4] {
+    //
+    // ⛔⛔ **Eram `[3, 4]` até 14/09** (a rugosidade e o metal), e a re-numeração para a ordem da
+    // nodedef transformou o `3` num CANAL DOBRADO da cor base — que não tem linha nenhuma. *Uma
+    // lista de índices escrita à mão sobrevive a uma re-numeração sem erro de compilação*, e foi a
+    // terceira vez nesta wave (a outra está no `polygon_rows_tests`).
+    for k in [10u8, 5] {
         assert!(
             rows.iter()
                 .any(|r| r.param == ph2d_field::Param::Material(k)),
@@ -281,8 +293,8 @@ fn a_group_offers_the_material_of_the_shapes_under_it_and_painting_it_paints_the
 
     // ── E o pedido pinta as TRÊS ──
     ph2d_panel_model3d::state::push_intent_for_test(ph2d_panel_model3d::ModelIntent::SetColor {
-        // ⚠️ A ÂNCORA da cor BASE — a da emissão (`6`) tem gates próprios no `emission_tests`.
-        field: 0,
+        // ⚠️ A ÂNCORA da cor BASE — as outras três têm gates próprios nos ficheiros irmãos.
+        field: 1,
         entity: cor.entity,
         srgb: [255, 0, 128],
     });
@@ -380,7 +392,7 @@ fn the_note_says_how_many_shapes_and_whether_they_differ() {
     ph2d_field_ecs::set_param(
         sim.world_mut(),
         folhas[2],
-        ph2d_field::Param::Material(1),
+        ph2d_field::Param::Material(2),
         0.0,
     )
     .expect("o verde");
@@ -410,8 +422,8 @@ fn a_request_from_a_stale_selection_paints_only_its_own_shape() {
     let (mut sim, _grupo, folhas) = three_balls();
     // O pedido é da folha 0; a selecção de AGORA é a 1 e a 2 — a 0 não está nela.
     ph2d_panel_model3d::state::push_intent_for_test(ph2d_panel_model3d::ModelIntent::SetColor {
-        // ⚠️ A ÂNCORA da cor BASE — a da emissão (`6`) tem gates próprios no `emission_tests`.
-        field: 0,
+        // ⚠️ A ÂNCORA da cor BASE — as outras três têm gates próprios nos ficheiros irmãos.
+        field: 1,
         entity: folhas[0].to_bits(),
         srgb: [255, 0, 128],
     });

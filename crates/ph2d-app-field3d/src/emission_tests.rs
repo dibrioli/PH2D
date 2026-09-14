@@ -256,37 +256,43 @@ fn the_colour_of_the_glow_only_exists_while_the_glow_does() {
             .collect()
     };
     let rows = super::colour_row_tests::rows_of(&mut sim, folha);
+    // ⚠️ **A da base e a do REALCE** — as duas sempre vivas (§22). O que este gate mede é que a do
+    // BRILHO não está entre elas.
     assert_eq!(
         amostras(&rows),
-        vec![ph2d_field::Param::Material(0)],
-        "com o brilho apagado o painel tem de ter UMA amostra — a da cor base: {:?}",
+        vec![
+            ph2d_field::Param::Material(1),
+            ph2d_field::Param::Material(7)
+        ],
+        "com o brilho apagado o painel tem de ter as duas amostras sempre vivas: {:?}",
         rows.iter().map(|r| r.key).collect::<Vec<_>>()
     );
     assert!(
         rows.iter()
-            .any(|r| r.param == ph2d_field::Param::Material(5)),
+            .any(|r| r.param == ph2d_field::Param::Material(19)),
         "a linha do BRILHO não é publicada — ela é o controlo que abre a cor dele, e sem ela a \
          emissão é inalcançável por gesto nenhum"
     );
 
     // ⭐ **Acender.** A partir daqui a cor deixa de ser inerte, e a segunda amostra aparece.
-    ph2d_field_ecs::set_param(sim.world_mut(), folha, ph2d_field::Param::Material(5), 1.0)
+    ph2d_field_ecs::set_param(sim.world_mut(), folha, ph2d_field::Param::Material(19), 1.0)
         .expect("o brilho");
     let rows = super::colour_row_tests::rows_of(&mut sim, folha);
     assert_eq!(
         amostras(&rows),
         vec![
-            ph2d_field::Param::Material(0),
-            ph2d_field::Param::Material(6)
+            ph2d_field::Param::Material(1),
+            ph2d_field::Param::Material(7),
+            ph2d_field::Param::Material(20)
         ],
-        "com o brilho aceso o painel tem de ter DUAS amostras, nesta ordem: {:?}",
+        "com o brilho aceso o painel tem de ter TRÊS amostras, nesta ordem: {:?}",
         rows.iter().map(|r| r.key).collect::<Vec<_>>()
     );
     // ⛔ **E os canais seguidores continuam dobrados** — as duas cores, não só a base.
     assert!(
         !rows
             .iter()
-            .any(|r| matches!(r.param, ph2d_field::Param::Material(1 | 2 | 7 | 8))),
+            .any(|r| matches!(r.param, ph2d_field::Param::Material(2 | 3 | 21 | 22))),
         "um canal solto voltou a ser linha: {:?}",
         rows.iter().map(|r| r.key).collect::<Vec<_>>()
     );
@@ -295,8 +301,9 @@ fn the_colour_of_the_glow_only_exists_while_the_glow_does() {
     let cores: Vec<[u8; 3]> = rows.iter().filter_map(|r| r.swatch).collect();
     assert_eq!(
         cores,
-        vec![[231, 231, 231], [255, 255, 255]],
-        "as duas amostras não mostram as duas cores do material"
+        vec![[231, 231, 231], [255, 255, 255], [255, 255, 255]],
+        "as três amostras não mostram as três cores do material — a base é `0,8` linear (`231`) e \
+         as outras duas nascem brancas"
     );
 }
 
@@ -312,8 +319,8 @@ fn the_colour_of_the_glow_only_exists_while_the_glow_does() {
 /// **Mutação que deve sangrar:** tirar o `field` do [`ph2d_panel_model3d::ids::model3d_color_swatch`].
 #[test]
 fn each_colour_of_a_shape_has_its_own_picker() {
-    let base = ph2d_panel_model3d::ids::model3d_color_swatch(7, 0);
-    let brilho = ph2d_panel_model3d::ids::model3d_color_swatch(7, 6);
+    let base = ph2d_panel_model3d::ids::model3d_color_swatch(7, 1);
+    let brilho = ph2d_panel_model3d::ids::model3d_color_swatch(7, 20);
     assert_ne!(
         base, brilho,
         "as duas amostras da MESMA forma partilham o id do selector — abrir uma e tocar na outra \
@@ -323,7 +330,7 @@ fn each_colour_of_a_shape_has_its_own_picker() {
     // desatenta do par podia desfazer.
     assert_ne!(
         base,
-        ph2d_panel_model3d::ids::model3d_color_swatch(8, 0),
+        ph2d_panel_model3d::ids::model3d_color_swatch(8, 1),
         "duas formas partilham o id da amostra da cor base"
     );
 }
@@ -339,12 +346,12 @@ fn each_colour_of_a_shape_has_its_own_picker() {
 fn a_glow_colour_reaches_the_document_without_touching_the_base() {
     let _ = ph2d_panel_model3d::drain_intents();
     let (mut sim, folha) = super::colour_row_tests::a_ball();
-    ph2d_field_ecs::set_param(sim.world_mut(), folha, ph2d_field::Param::Material(5), 1.0)
+    ph2d_field_ecs::set_param(sim.world_mut(), folha, ph2d_field::Param::Material(19), 1.0)
         .expect("o brilho");
     let _ = super::colour_row_tests::rows_of(&mut sim, folha);
     ph2d_panel_model3d::state::push_intent_for_test(ph2d_panel_model3d::ModelIntent::SetColor {
         entity: folha.to_bits(),
-        field: 6,
+        field: 20,
         srgb: [255, 0, 128],
     });
     let _ = super::colour_row_tests::rows_of(&mut sim, folha);

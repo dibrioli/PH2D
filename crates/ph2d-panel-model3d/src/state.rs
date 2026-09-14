@@ -150,7 +150,7 @@ pub struct ParamRow {
     /// opaca.
     ///
     /// ⚠️ **QUAL cor esta linha é lê-se no [`ParamRow::param`]** — a linha é a **âncora**, isto é, o
-    /// primeiro canal (`Material(0)` a base, `Material(6)` a da emissão desde o §20). ⛔ Guardar o
+    /// primeiro canal (`Material(1)` a base, `Material(20)` a da emissão desde o §20). ⛔ Guardar o
     /// índice aqui ao lado dos bytes seria a segunda resposta à mesma pergunta, e a que diverge no
     /// dia da terceira cor.
     pub swatch: Option<[u8; 3]>,

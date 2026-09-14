@@ -62,8 +62,14 @@ fn linhas_do_painel(p: Primitive, tudo_aceso: bool) -> usize {
     let mut sim = ph2d_ecs::SimWorld::new();
     let root = ph2d_field_ecs::spawn_doc(sim.world_mut(), &doc, "peça");
     if tudo_aceso {
-        // O brilho (`5`) e o verniz (`9`) — os dois pesos que abrem sub-linhas.
-        for peso in [5u8, 9] {
+        // O verniz (`12`) e o brilho (`19`) — os dois pesos que abrem sub-linhas.
+        //
+        // ⛔⛔ **Eram `5` e `9` até 14/09, e a re-numeração para a ordem da nodedef transformou-os
+        // em `metalness` e num canal da cor do realce** — isto é, a sonda passaria a pôr o METAL a
+        // `1`, que **esconde** duas linhas em vez de abrir quatro. *Uma lista de índices escrita à
+        // mão sobrevive a uma re-numeração sem erro de compilação, e mede o contrário do que diz.*
+        // O que a apanhou foi o gate do lado de lá (`extras`), que leu `18` onde espera `25`.
+        for peso in [12u8, 19] {
             ph2d_field_ecs::set_param(
                 sim.world_mut(),
                 root,
@@ -135,14 +141,16 @@ fn one_more_vertex_would_not_fit() {
     // | `15` | os cinco números do material (13/09) |
     // | `15` | a régua passou a contar LINHAS e não params (`−4` canais dobrados) **e** o brilho
     //   próprio acrescentou `+1` — ⛔ *duas correcções de sinal oposto no mesmo literal* |
-    // | **`20`** | o verniz: `+1` sempre (o peso) e `+4` com ele aceso (rugosidade, cor, IOR,
+    // | `20` | o verniz: `+1` sempre (o peso) e `+4` com ele aceso (rugosidade, cor, IOR,
     //   escurecimento) |
+    // | **`25`** | as últimas cinco entradas do OpenPBR: peso da base, rugosidade da difusa, peso e
+    //   cor do realce, e o IOR — ⭐ e o material FECHOU, logo este número deixa de crescer por aí |
     //
     // ⛔ *Um número que não se mexe enquanto a grandeza muda é a forma mais silenciosa de um gate
     // deixar de descrever o que mede* — o que o prende é esta tabela, não o literal.
     assert_eq!(
-        extras, 20,
-        "um nó deixou de ter 20 linhas além dos `2N` dos vértices — a conta do teto muda com isto"
+        extras, 25,
+        "um nó deixou de ter 25 linhas além dos `2N` dos vértices — a conta do teto muda com isto"
     );
     let seguinte = 2 * (b as usize + 1) + extras;
     assert!(

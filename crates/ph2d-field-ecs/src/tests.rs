@@ -424,8 +424,8 @@ fn a_duplicate_carries_every_optional_component_of_a_node() {
     // ⭐⭐⭐ **E o MATERIAL** (`docs/Render3d/05`): duplicar uma peça VERMELHA tem de dar outra
     // vermelha. Sem a linha no `copy_optional` a cópia cai no material de omissão, e a diferença
     // entre as duas só aparece no modo *Render* — longe do gesto que a causou.
-    crate::set_param(&mut world, leaf, ph2d_field::Param::Material(0), 0.9).expect("a cor base");
-    crate::set_param(&mut world, leaf, ph2d_field::Param::Material(4), 1.0).expect("o metal");
+    crate::set_param(&mut world, leaf, ph2d_field::Param::Material(1), 0.9).expect("a cor base");
+    crate::set_param(&mut world, leaf, ph2d_field::Param::Material(5), 1.0).expect("o metal");
 
     let copy = crate::duplicate(&mut world, leaf, [0.5, 0.0, 0.0]).expect("duplicou");
     assert_eq!(

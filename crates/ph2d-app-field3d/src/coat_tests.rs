@@ -282,33 +282,43 @@ fn the_coat_numbers_only_exist_while_the_coat_does() {
     assert_eq!(
         apagado,
         vec![
+            "field.dim.base_weight",
             "field.dim.base_color",
-            "field.dim.roughness",
+            "field.dim.base_diffuse_roughness",
             "field.dim.metalness",
-            "field.dim.emission",
+            "field.dim.specular_weight",
+            "field.dim.specular_color",
+            "field.dim.roughness",
+            "field.dim.specular_ior",
             "field.dim.coat",
+            "field.dim.emission",
         ],
-        "com tudo apagado a secção do material tem CINCO linhas — a cor do brilho e os quatro \
+        "com tudo apagado a secção do material tem DEZ linhas — a cor do brilho e os quatro \
          números do verniz são inertes ali"
     );
 
-    ph2d_field_ecs::set_param(sim.world_mut(), folha, ph2d_field::Param::Material(9), 1.0)
+    ph2d_field_ecs::set_param(sim.world_mut(), folha, ph2d_field::Param::Material(12), 1.0)
         .expect("o verniz");
     let aceso = chaves(&super::colour_row_tests::rows_of(&mut sim, folha));
     assert_eq!(
         aceso,
         vec![
+            "field.dim.base_weight",
             "field.dim.base_color",
-            "field.dim.roughness",
+            "field.dim.base_diffuse_roughness",
             "field.dim.metalness",
-            "field.dim.emission",
+            "field.dim.specular_weight",
+            "field.dim.specular_color",
+            "field.dim.roughness",
+            "field.dim.specular_ior",
             "field.dim.coat",
-            "field.dim.coat_roughness",
             "field.dim.coat_color",
+            "field.dim.coat_roughness",
             "field.dim.coat_ior",
             "field.dim.coat_darkening",
+            "field.dim.emission",
         ],
-        "com o verniz aceso saem mais QUATRO linhas, nesta ordem"
+        "com o verniz aceso saem mais QUATRO linhas, no meio da secção e na ordem da nodedef"
     );
     // ⛔ **E o brilho continua apagado** — os dois pesos são independentes, e um `visivel` escrito
     // com um `||` a mais acenderia os dois de uma vez.
@@ -330,7 +340,7 @@ fn the_coat_numbers_only_exist_while_the_coat_does() {
 fn the_coat_colour_is_a_swatch_and_the_ior_is_not_a_fraction() {
     let _ = ph2d_panel_model3d::drain_intents();
     let (mut sim, folha) = super::colour_row_tests::a_ball();
-    ph2d_field_ecs::set_param(sim.world_mut(), folha, ph2d_field::Param::Material(9), 1.0)
+    ph2d_field_ecs::set_param(sim.world_mut(), folha, ph2d_field::Param::Material(12), 1.0)
         .expect("o verniz");
     let rows = super::colour_row_tests::rows_of(&mut sim, folha);
 
@@ -341,25 +351,26 @@ fn the_coat_colour_is_a_swatch_and_the_ior_is_not_a_fraction() {
     assert_eq!(
         amostras,
         vec![
-            (ph2d_field::Param::Material(0), [231, 231, 231]),
-            (ph2d_field::Param::Material(11), [255, 255, 255]),
+            (ph2d_field::Param::Material(1), [231, 231, 231]),
+            (ph2d_field::Param::Material(7), [255, 255, 255]),
+            (ph2d_field::Param::Material(13), [255, 255, 255]),
         ],
         "a cor do verniz tem de ser uma AMOSTRA, e a de omissão é branca"
     );
     // ⚠️ **Três amostras na mesma forma, três selectores** — a lei do par `(quem, qual)`.
-    let ids: Vec<_> = [0u8, 6, 11]
+    let ids: Vec<_> = [1u8, 7, 13, 20]
         .iter()
         .map(|k| ph2d_panel_model3d::ids::model3d_color_swatch(folha.to_bits(), *k))
         .collect();
     assert_eq!(
         ids.iter().collect::<std::collections::BTreeSet<_>>().len(),
-        3,
-        "duas das três amostras da mesma forma partilham o id do selector"
+        4,
+        "duas das quatro amostras da mesma forma partilham o id do selector"
     );
 
     let ior = rows
         .iter()
-        .find(|r| r.param == ph2d_field::Param::Material(14))
+        .find(|r| r.param == ph2d_field::Param::Material(17))
         .expect("a linha do IOR");
     assert!(
         (ior.lo - 1.0).abs() < 1.0e-6,
@@ -374,7 +385,7 @@ fn the_coat_colour_is_a_swatch_and_the_ior_is_not_a_fraction() {
     // ⛔ **E os vizinhos continuam fracções** — sem esta metade, um `Range` posto em todos passaria.
     let rug = rows
         .iter()
-        .find(|r| r.param == ph2d_field::Param::Material(10))
+        .find(|r| r.param == ph2d_field::Param::Material(16))
         .expect("a rugosidade do verniz");
     assert!(
         rug.lo.abs() < 1.0e-6 && matches!(rug.bound, ph2d_field::Bound::Soft(_)),

@@ -20,12 +20,12 @@ use ph2d_editor_core::widget::{ButtonState, SliderOrientation, SliderState, Text
 /// e ninguém saberia porquê; por isso o `paint` **conta** e o rodapé diz quantos não coube. O gate
 /// `rows_beyond_the_family_are_reported_not_dropped` prende isso.
 ///
-/// ⭐⭐⭐ **E ELE É DERIVADO DA MAIOR FORMA, desde 2026-09-13** — hoje `2 × 27 + 20`:
+/// ⭐⭐⭐ **E ELE É DERIVADO DA MAIOR FORMA, desde 2026-09-13** — hoje `2 × 27 + 25`:
 ///
 /// | parcela | de onde vem |
 /// |---|---|
 /// | `2 × MAX_POLYGON_VERTICES` | um polígono tem **duas** linhas por vértice, e `27` é o teto dele |
-/// | `+ 20` | o que **todo** nó tem além dos vértices, no PIOR estado: `3` de posição, `3` de rotação, o filete, o raio de junção, a resolução do contorno… e as **10** do material com o brilho e o verniz acesos |
+/// | `+ 25` | o que **todo** nó tem além dos vértices, no PIOR estado: `3` de posição, `3` de rotação, o filete, o raio de junção, a resolução do contorno… e as **15** do material com o brilho e o verniz acesos e o metal abaixo de `1` |
 ///
 /// ⚠️ **Ele era `64`, escrito «na primeira vez» e sem medição** — e a nota dele dizia, por escrito,
 /// *«quando um documento real passar disto, o número muda com uma medição atrás»*. O material por
@@ -40,23 +40,26 @@ use ph2d_editor_core::widget::{ButtonState, SliderOrientation, SliderState, Text
 /// params em `2`. A família estava sobre-provisionada em exactamente `2`, e o brilho consumiu essa
 /// folga.
 ///
-/// ⭐⭐⭐ **E no VERNIZ ele subiu, `69 → 74`, com a medição ao lado** (§21): `2 × 27 + 20`, onde os
-/// `20` são o que toda folha tem no **pior estado** — com o brilho *e* o verniz acesos, que é quando
-/// mais linhas coexistem. Medido no produtor das linhas:
+/// ⭐⭐⭐ **E no VERNIZ ele subiu, `69 → 74`** (§21), e nas ÚLTIMAS CINCO ENTRADAS do OpenPBR
+/// **`74 → 79`** (§22) — as duas com a medição ao lado. O pior estado é o brilho *e* o verniz
+/// acesos, com o metal abaixo de `1` (que é quando as duas linhas só-dieléctricas aparecem):
 ///
 /// | vértices | tudo apagado | tudo aceso |
 /// |---|---|---|
-/// | `3` | `21` | `26` |
-/// | `16` | `47` | `52` |
-/// | **`27`** | `69` | **`74`** |
+/// | `3` | `26` | `31` |
+/// | `16` | `52` | `57` |
+/// | **`27`** | `74` | **`79`** |
 ///
-/// ⭐ **O preço MEDIDO da subida:** cada linha regista `6` widgets, logo `69 → 74` custa **`30`
-/// widgets e 5 `String`** no store, uma vez, no arranque — o mesmo que a subida anterior.
+/// ⭐ **O preço MEDIDO de cada subida:** cada linha regista `6` widgets, logo cinco linhas custam
+/// **`30` widgets e 5 `String`** no store, uma vez, no arranque — o mesmo nas três.
+///
+/// ⛔⛔ **E o material FECHOU: são as `15` entradas do OpenPBR, e não há mais nenhuma para
+/// apender.** *Este teto deixa de crescer por material.*
 ///
 /// ⛔⛔ **A alternativa era baixar o `MAX_POLYGON_VERTICES` de `27` para `24`**: tirar três vértices
 /// ao artista porque uma peça passou a poder ser envernizada. *Um teto de registo cujo recurso é
 /// memória a mandar num teto de FORMA é o caminho lento a definir o rápido* (`CLAUDE.md` §0.0).
-pub const MAX_ROWS: usize = 74;
+pub const MAX_ROWS: usize = 79;
 
 /// Quantos botões uma linha de **escolha** pode oferecer.
 ///

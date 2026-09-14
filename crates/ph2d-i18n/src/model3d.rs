@@ -528,8 +528,26 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "field.dim.base_color" => "Base Color",
         // ⚠️ **"Roughness" e não "Gloss"**: é a palavra do OpenPBR, e é ela que o artista encontra
         // no Blender, no Substance e no Houdini. *Um sinónimo local obriga a traduzir de cabeça.*
+        // ⚠️ **"Roughness" e não "Specular Roughness"**: é a rugosidade que o artista pensa quando
+        // pensa em rugosidade, e a do verniz nomeia-se por oposição a esta. *O nome longo fica para
+        // quem precisa de se distinguir.*
         "field.dim.roughness" => "Roughness",
         "field.dim.metalness" => "Metalness",
+        // ⭐⭐ **AS CINCO ÚLTIMAS ENTRADAS DO OpenPBR** (`docs/Render3d/05` §22).
+        //
+        // ⚠️ **"Base Weight" e não "Opacity"**: ele não torna a peça transparente — tira a camada
+        // difusa e deixa o realce. *Um nome emprestado de outra grandeza é o defeito mais caro desta
+        // tabela.*
+        "field.dim.base_weight" => "Base Weight",
+        // ⚠️ **"Diffuse Roughness" sem o "Base"**: a coluna do rótulo tem ~14 caracteres, e a palavra
+        // que distingue é a do meio. É a mesma poda do `Coat IOR`.
+        "field.dim.base_diffuse_roughness" => "Diffuse Roughness",
+        "field.dim.specular_weight" => "Specular Weight",
+        "field.dim.specular_color" => "Specular Color",
+        "field.dim.specular_r" => "Specular Color R",
+        "field.dim.specular_g" => "Specular Color G",
+        "field.dim.specular_b" => "Specular Color B",
+        "field.dim.specular_ior" => "IOR",
         // ⭐⭐⭐ **O BRILHO PRÓPRIO** (`docs/Render3d/05` §20). ⚠️ **"Emission" e não "Glow"**: é a
         // palavra do OpenPBR e a que o Blender, o Substance e o Houdini escrevem — *um sinónimo
         // local obriga a traduzir de cabeça*, que é a mesma razão escrita no `roughness` acima.

@@ -289,10 +289,11 @@ pub fn param_rows(
     // ⚠️ **Os seguidores derivam da âncora** (`+1` e `+2`) em vez de serem listados: uma segunda
     // lista teria de ser reescrita a cada cor nova, e o dia em que as duas discordassem a linha
     // pintaria uma cor e escreveria noutra.
-    const CORES: [(u8, &str); 3] = [
-        (0, "field.dim.base_color"),
-        (6, "field.dim.emission_color"),
-        (11, "field.dim.coat_color"),
+    const CORES: [(u8, &str); 4] = [
+        (1, "field.dim.base_color"),
+        (7, "field.dim.specular_color"),
+        (13, "field.dim.coat_color"),
+        (20, "field.dim.emission_color"),
     ];
     let ancora = |p: ph2d_field::Param| match p {
         ph2d_field::Param::Material(k) => CORES.iter().find(|(a, _)| *a == k).copied(),

@@ -554,7 +554,10 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // `coat`, `coat_roughness`, `coat_color`, `coat_ior`, `coat_darkening`. Mesmo mecanismo do
         // degrau anterior, um dia depois: 36 bytes contra 64.
         // ⚠️ **A tripla NAO ve^ este degrau** — a SEXTA vez.
-        (142, 13, 22),
+        // PROJECT 142→143: o mesmo `FieldMaterial` fechou com as ultimas CINCO entradas do
+        // OpenPBR (§22) e os campos foram RE-ORDENADOS para a ordem da nodedef — uma quebra de
+        // layout mais severa do que apendar. ⭐ E' o ultimo degrau que o material pede.
+        (143, 13, 22),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

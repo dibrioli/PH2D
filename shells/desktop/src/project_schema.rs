@@ -615,4 +615,17 @@
 ///
 /// ⛔ **Sem degrau de migração**, pela decisão do Enio de 26/08 — e aqui com a razão extra de que o
 /// componente e' `register_default`: uma peça anterior a 13/09 não carrega material nenhum.
-pub(crate) const PROJECT_SCHEMA: u32 = 142;
+///
+/// # `142 → 143` — o MATERIAL FECHA: as ultimas cinco entradas do OpenPBR (`docs/Render3d/05` §22)
+///
+/// O `ph2d::field::FieldMaterial` passou de `16` para `23` numeros — `base_weight`,
+/// `base_diffuse_roughness`, `specular_weight`, `specular_color: [f32; 3]` e `specular_ior` —, e
+/// ⚠️⚠️ **os campos foram RE-ORDENADOS para a ordem da nodedef**, o que e' uma quebra de layout
+/// muito mais severa do que apendar: um blob v130 lido por este binario poe a rugosidade onde mora
+/// o peso da base. *Postcard nao tem nome de campo para reclamar.*
+///
+/// ⛔ **Sem degrau de migração**, pela decisão do Enio de 26/08.
+///
+/// ⭐ **E este e' o ULTIMO degrau que o material pede:** sao as `15` entradas do OpenPBR, e nao ha
+/// mais nenhuma para apender.
+pub(crate) const PROJECT_SCHEMA: u32 = 143;

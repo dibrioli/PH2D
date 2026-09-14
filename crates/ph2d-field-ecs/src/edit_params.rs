@@ -218,22 +218,29 @@ pub(super) const POS_KEYS: [&str; 3] = ["field.dim.pos_x", "field.dim.pos_y", "f
 /// lei daria um `params_of` a entrar em pânico no índice, e uma mais longa pintaria uma linha que a
 /// escrita recusa.
 pub(super) const MATERIAL_KEYS: [&str; ph2d_field::MATERIAL_FIELDS as usize] = [
+    "field.dim.base_weight",
     "field.dim.base_r",
     "field.dim.base_g",
     "field.dim.base_b",
-    "field.dim.roughness",
+    "field.dim.base_diffuse_roughness",
     "field.dim.metalness",
+    "field.dim.specular_weight",
+    "field.dim.specular_r",
+    "field.dim.specular_g",
+    "field.dim.specular_b",
+    "field.dim.roughness",
+    "field.dim.specular_ior",
+    "field.dim.coat",
+    "field.dim.coat_r",
+    "field.dim.coat_g",
+    "field.dim.coat_b",
+    "field.dim.coat_roughness",
+    "field.dim.coat_ior",
+    "field.dim.coat_darkening",
     "field.dim.emission",
     "field.dim.emission_r",
     "field.dim.emission_g",
     "field.dim.emission_b",
-    "field.dim.coat",
-    "field.dim.coat_roughness",
-    "field.dim.coat_r",
-    "field.dim.coat_g",
-    "field.dim.coat_b",
-    "field.dim.coat_ior",
-    "field.dim.coat_darkening",
 ];
 
 /// ⭐⭐⭐ **A FAIXA de um número do material** — e **quinze dos dezasseis são a mesma**.
@@ -259,7 +266,7 @@ pub(super) const MATERIAL_KEYS: [&str; ph2d_field::MATERIAL_FIELDS as usize] = [
 #[must_use]
 fn material_span(field: u8) -> Span {
     match field {
-        14 => Span::Range { min: 1.0, max: 2.5 },
+        11 | 17 => Span::Range { min: 1.0, max: 2.5 },
         _ => Span::SoftFromZero(1.0),
     }
 }
@@ -452,8 +459,16 @@ pub fn params_of(world: &World, entity: Entity) -> Vec<(Param, Dim)> {
         // ⭐⭐ **E o VERNIZ obedece à mesma lei** (§21): os quatro números dele são misturados por
         // `coat_weight` no `prepare`, logo com o peso a zero **nenhum** deles move um bit.
         let visivel = |k: u8| match k {
-            6..=8 => m.emission > 0.0,
-            10..=15 => m.coat > 0.0,
+            // ⛔⛔ **EXACTAMENTE inertes num METAL** (`docs/Render3d/05` §22): a rugosidade da
+            // difusa e o IOR alimentam o lóbulo dieléctrico, que o `base_metalness` mistura para
+            // fora — e `x × 0` é zero por construção. Medido: `0` bytes em `61 804` pixels.
+            //
+            // ⚠️ **`< 1,0` e não `< 1`, isto é: a cerca é o ponto EXACTO.** A `0,999` eles ainda
+            // movem um milésimo do quadro, e esconder um controlo que ainda faz alguma coisa seria
+            // o defeito oposto — *o painel que mente por ser curto demais*.
+            4 | 11 => m.metalness < 1.0,
+            13..=18 => m.coat > 0.0,
+            20..=22 => m.emission > 0.0,
             _ => true,
         };
         out.extend(

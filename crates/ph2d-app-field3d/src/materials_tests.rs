@@ -87,14 +87,14 @@ fn each_leaf_wears_its_own_material() {
     ph2d_field_ecs::set_param(
         sim.world_mut(),
         folhas[0],
-        ph2d_field::Param::Material(1),
+        ph2d_field::Param::Material(2),
         0.0,
     )
     .expect("o verde");
     ph2d_field_ecs::set_param(
         sim.world_mut(),
         folhas[0],
-        ph2d_field::Param::Material(2),
+        ph2d_field::Param::Material(3),
         0.0,
     )
     .expect("o azul");
@@ -132,7 +132,7 @@ fn changing_a_number_refreshes_the_surfaces_and_not_the_geometry() {
     ph2d_field_ecs::set_param(
         sim.world_mut(),
         folhas[0],
-        ph2d_field::Param::Material(3),
+        ph2d_field::Param::Material(10),
         0.9,
     )
     .expect("a rugosidade");
@@ -224,7 +224,7 @@ fn dragging_a_colour_compiles_no_tape_at_all() {
     ph2d_field_ecs::set_param(
         sim.world_mut(),
         folhas[0],
-        ph2d_field::Param::Material(3),
+        ph2d_field::Param::Material(10),
         0.9,
     )
     .expect("a rugosidade");
@@ -381,8 +381,8 @@ fn every_number_a_material_has_reaches_the_law() {
     for k in 0..ph2d_field::MATERIAL_FIELDS {
         let mut outro = base;
         let antes = outro.get(k).expect("a posição existe");
-        // Longe do que lá está, e dentro da faixa de todas elas (o IOR vive em `1..=2,5`).
-        let novo = if k == 14 {
+        // Longe do que lá está, e dentro da faixa de todas elas (os DOIS IOR vivem em `1..=2,5`).
+        let novo = if k == 11 || k == 17 {
             if antes > 1.75 { 1.1 } else { 2.4 }
         } else if antes > 0.5 {
             0.1
@@ -398,6 +398,77 @@ fn every_number_a_material_has_reaches_the_law() {
             d > 1.0e-3,
             "o número {k} do material ({antes} → {novo}) NÃO move a radiância ({referencia:?} → \
              {agora:?}) — ele chega ao documento, ao arquivo e ao painel, e morre no `surface_of`"
+        );
+    }
+}
+
+/// ⭐⭐⭐ **NENHUM MATERIAL QUE UM GESTO PRODUZ DEVOLVE LUZ NEGATIVA** — a cerca que o `docs/Render3d/05`
+/// §8 nomeou e nunca gateou.
+///
+/// # ⛔⛔ O defeito que ela vigia, e porque ele é do MODELO e não nosso
+///
+/// O multi-scatter da difusa do OpenPBR tem um **polo**: com `base_diffuse_roughness = 1` o
+/// denominador zera em `base_color ≈ 5,981`, e a `6,0` a indirecta devolve `[−676, −716, −813]`. É
+/// uma propriedade do **GLSL de referência**, que esta crate porta fielmente — ⛔ *«melhorar» a
+/// fórmula seria deixar de ser a referência.*
+///
+/// A §8 escreveu a cerca: *«a porta que deixar autorar `base_color` coage a `0..1`»*. A porta existe
+/// (o selector de cor, §12) e a `base_diffuse_roughness` passou a ser autorável em 14/09 (§22) —
+/// **este é o gate que faltava**, e ele mede o espaço inteiro que um gesto alcança, não o par que a
+/// nota nomeia.
+///
+/// # ⚠️ A varredura é DETERMINÍSTICA, e cobre as 23 posições
+///
+/// Um LCG de semente fixa dá `20 000` materiais, cada número uniforme **na faixa que o slider
+/// oferece** (`0..1`, ou `1..2,5` nos dois IOR). ⭐ *Um gate aleatório com semente fixa é
+/// reproduzível como um literal e cobre o que uma tabela escrita à mão nunca cobriria* — e a mesma
+/// varredura acorda sozinha quando um número novo entrar, porque ela é derivada do
+/// `MATERIAL_FIELDS`.
+///
+/// ⚠️ **E ela mede `direct`, `indirect` E `emission`** — o polo mora na indirecta, e um gate que só
+/// olhasse a luz directa estaria a olhar para o lado.
+///
+/// ⭐ **Medido ao escrevê-la: o polo continua INALCANÇÁVEL pelo produto**, e por uma razão que a §8
+/// não tinha. O suspeito era o `base_weight`, que multiplica a cor base e **tem campo numérico
+/// aberto** — mas ele escala a indirecta **linearmente** (`1 → 8` dá `0,36 → 2,80`, sempre
+/// positiva). O polo exige a **cor** acima de `~6`, e a única porta que a escreve é o selector, que
+/// fala `sRGB8`. ⇒ *a cerca da §8 estava certa e o mecanismo dela era outro.*
+///
+/// ⛔ **E a prova de que esta varredura não é fraca é uma mutação na própria CERCA:** levantar a
+/// coerção a `0..1` (`u × 8`) põe-na vermelha com `[15,2, −1,0, 3,6]`. *Um gate de ausência tem de
+/// mostrar que alcança a presença.*
+#[test]
+fn no_material_a_gesture_can_produce_returns_negative_light() {
+    use ph2d_field_ecs::FieldMaterial;
+
+    let mut estado = 0x2026_0914_u64;
+    let mut proximo = || {
+        estado = estado
+            .wrapping_mul(6_364_136_223_846_793_005)
+            .wrapping_add(1_442_695_040_888_963_407);
+        ((estado >> 33) as f32) / ((1u64 << 31) as f32)
+    };
+    let n = [0.0_f32, 0.3, 0.953_939_2];
+    let v = [0.0_f32, 0.0, 1.0];
+    for _ in 0..20_000 {
+        let mut m = FieldMaterial::default();
+        for k in 0..ph2d_field::MATERIAL_FIELDS {
+            let u = proximo();
+            // As faixas são as do `material_span`: fracções, e os dois IOR físicos.
+            let valor = if k == 11 || k == 17 { 1.0 + u * 1.5 } else { u };
+            assert!(m.set(k, valor), "a posição {k} recusou a escrita");
+        }
+        let s = crate::materials::surface_of(m);
+        let luz = {
+            let d = s.direct(n, v, [0.4, 0.6, 0.692_820_3], [3.0; 3]);
+            let i = s.indirect(n, v, &crate::render_light::StudioSky);
+            let e = s.emission(n, v);
+            [0, 1, 2].map(|c| d[c] + i[c] + e[c])
+        };
+        assert!(
+            luz.iter().all(|c| c.is_finite() && *c >= 0.0),
+            "um material que os sliders produzem devolveu luz NEGATIVA ou não-finita: {luz:?} de \
+             {m:?}"
         );
     }
 }

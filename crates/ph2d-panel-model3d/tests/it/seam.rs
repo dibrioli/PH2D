@@ -1660,10 +1660,10 @@ const A_COR_DA_PECA: [u8; 3] = [180, 40, 220];
 fn scene_with_one_colour_row_row() -> ParamRow {
     ParamRow {
         entity: THE_UNION,
-        param: ph2d_field::Param::Material(0),
+        param: ph2d_field::Param::Material(1),
         key: "field.dim.base_color",
         // ⚠️ O `value` continua a ser o do canal ÂNCORA, e é ignorado por quem pinta uma amostra:
-        // a cor viaja no `swatch`. Ele fica honesto na mesma — a linha É o `Param::Material(0)`, e
+        // a cor viaja no `swatch`. Ele fica honesto na mesma — a linha É o `Param::Material(1)`, e
         // é esse número que ela ancora.
         value: 0.5,
         lo: 0.0,
@@ -1689,7 +1689,7 @@ fn scene_with_one_colour_row() {
 /// O rect da amostra no ecrã, depois de uma pintura.
 fn swatch_rect(host: &mut MockPanelHost) -> ph2d_editor_core::zones::Rect {
     host.hit_index_mut()
-        .rect_for(ph2d_panel_model3d::ids::model3d_color_swatch(THE_UNION, 0))
+        .rect_for(ph2d_panel_model3d::ids::model3d_color_swatch(THE_UNION, 1))
         .expect(
             "a linha de cor não registou a amostra no índice de acerto — ela é decoração, e o \
              `Down` nunca a alcança",
@@ -1723,7 +1723,7 @@ fn clicking_the_swatch_opens_the_house_colour_picker() {
     let _ = host.click_at(r.x + r.w * 0.5, r.y + r.h * 0.5);
     assert_eq!(
         host.store().picker_target(),
-        Some(ph2d_panel_model3d::ids::model3d_color_swatch(THE_UNION, 0)),
+        Some(ph2d_panel_model3d::ids::model3d_color_swatch(THE_UNION, 1)),
         "clicar na amostra não abriu o selector — ou ela não foi registada como amostra de \
          selector, ou o rect dela não chegou ao índice de acerto"
     );
@@ -1731,7 +1731,7 @@ fn clicking_the_swatch_opens_the_house_colour_picker() {
     // deixou em vez de num cinzento qualquer.
     assert_eq!(
         host.store()
-            .widget_color(ph2d_panel_model3d::ids::model3d_color_swatch(THE_UNION, 0)),
+            .widget_color(ph2d_panel_model3d::ids::model3d_color_swatch(THE_UNION, 1)),
         Some([A_COR_DA_PECA[0], A_COR_DA_PECA[1], A_COR_DA_PECA[2], 255]),
         "o selector abriu sobre uma cor que não é a da peça"
     );
@@ -1769,9 +1769,10 @@ fn what_the_picker_writes_becomes_one_edit_and_only_when_it_changed() {
         drain_intents(),
         vec![ModelIntent::SetColor {
             entity: THE_UNION,
-            // ⚠️ **`0` é a ÂNCORA da cor BASE** — a fixtura publica só ela. A âncora da emissão
-            // (`6`) tem gate próprio no `emission_tests`, e o que este mede é a costura.
-            field: 0,
+            // ⚠️ **`1` é a ÂNCORA da cor BASE** — a fixtura publica só ela (a posição `0` é o
+            // `base_weight`). As outras três âncoras têm gates próprios no `emission_tests`, no
+            // `coat_tests` e no `base_specular_tests`; o que este mede é a costura.
+            field: 1,
             srgb: ESCOLHIDA,
         }],
         "o que o selector escreveu não chegou ao documento — a linha continua a semear a amostra \
@@ -1811,7 +1812,7 @@ fn what_the_picker_writes_becomes_one_edit_and_only_when_it_changed() {
     // ⭐ E o selector continua aberto: ler não o fecha.
     assert_eq!(
         host.store().picker_target(),
-        Some(ph2d_panel_model3d::ids::model3d_color_swatch(THE_UNION, 0)),
+        Some(ph2d_panel_model3d::ids::model3d_color_swatch(THE_UNION, 1)),
         "ler a cor fechou o selector — o artista perderia a roda a meio de a usar"
     );
 }
@@ -1872,7 +1873,7 @@ fn choosing_another_shape_does_not_paint_it_with_the_previous_colour() {
 /// ⭐ **A linha-amostra NÃO regista o controlo de número da linha** — as formas são exclusivas.
 ///
 /// ⚠️ É a mesma lei do [`a_choice_row_paints_no_slider_to_grab`], e a discordância aqui seria pior:
-/// o slider da linha escreve `Param::Material(0)` sozinho, isto é, **só o vermelho** — o artista
+/// o slider da linha escreve `Param::Material(1)` sozinho, isto é, **só o vermelho** — o artista
 /// veria a peça avermelhar ao arrastar um controlo que não diz de que canal é.
 #[test]
 fn a_colour_row_paints_no_slider_to_grab() {

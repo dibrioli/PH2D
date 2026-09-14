@@ -14,9 +14,17 @@
 //! escrito* — e uma struct não se parte em dois ficheiros, então a única linha
 //! de corte honesta aqui é esta.
 //!
-//! ⚠️ **Nenhum número muda.** O bloco foi movido inteiro; a prova é o gate
-//! `the_factory_brush_is_the_verb_it_declares` e os censos de defaults que já
-//! existiam.
+//! ⚠️ **Nenhum número muda.** O bloco foi movido inteiro, e a prova são os
+//! censos de defaults que já existiam — entre eles o
+//! [`super::verb::defaults::tests::the_factory_strength_is_the_table_and_nothing_else`]
+//! e o [`super::verb::defaults::tests::the_accumulate_delegation_changed_nothing`].
+//!
+//! ⚠️⚠️ **E esta linha já foi uma MENTIRA:** a 1.ª redacção citava aqui um gate
+//! `the_factory_brush_is_the_verb_it_declares` que **nunca existiu**, e quem a
+//! apanhou foi o censo `every_gate_the_sculpt_family_names_exists`, escrito em
+//! 13/09 depois de esta família ter oito citações dessas. *Uma promessa de gate
+//! lê-se exactamente como um gate, e a diferença só aparece no dia em que ele
+//! devia sangrar.*
 
 use super::*;
 

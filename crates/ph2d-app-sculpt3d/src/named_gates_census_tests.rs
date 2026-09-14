@@ -63,7 +63,14 @@ const PREFIXOS: [&str; 21] = [
 ];
 
 /// `(nome, onde a memória vive, porque é prosa e não endereço)`.
-const MEMORIAS: [(&str, &str, &str); 3] = [
+const MEMORIAS: [(&str, &str, &str); 4] = [
+    (
+        "the_factory_brush_is_the_verb_it_declares",
+        "crates/ph2d-sculpt3d/src/brush_default.rs",
+        "o gate que eu INVENTEI ao cortar o ficheiro em 2026-09-14, e que este \
+         censo apanhou na mesma hora — a nota regista a recaída e nomeia os \
+         censos que de facto defendem a propriedade",
+    ),
     (
         "a_filtering_verb_reads_nothing_from_the_dab",
         "crates/ph2d-sculpt3d/src/brush_verb_filter.rs",

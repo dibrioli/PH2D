@@ -158,7 +158,16 @@ o mesmo defeito, mas é produto vivo e a fixture que o decide existe: está em �
 | `blender-pull` (polegar · empurrão · 4 opções) | `SPEC_pull_brushes.md` | ✅ **atestada** (1.ª passagem) | ⭐ **sim** (esta jornada) |
 | `blender-unblocked` (Density · 2 de multires · projecção) | `SPEC_unblocked_brushes.md` | ✅ **atestada** (3.ª passagem) | ⬜ não |
 | `blender-boundary` | `SPEC_boundary_brush.md` | ✅ **atestada** (3.ª passagem) | ⬜ não |
-| `blender-pose` | `SPEC_pose_brush.md` | ✅ **atestada (5.ª passagem)** — 6 · 5 · 7 · 5 achados e depois verde. ⏳ Ficam **2** de redacção, **não bloqueantes e ZERO §4.2**, que o próprio R declarou **não retentores** do atestado; a emenda 6 aplica-os | ⬜ não |
+| `blender-pose` | `SPEC_pose_brush.md` | ✅ **atestada (5.ª passagem)** — 6 · 5 · 7 · 5 achados e depois verde; os **2** que sobravam (redacção, não bloqueantes, ZERO §4.2) estão **curados na emenda 6**, que o cabeçalho regista **a seguir** ao veredito | ⬜ não |
+
+⭐ **A emenda 6 foi CONFERIDA CONTRA O DIFF por esta janela, não aceite pela
+palavra de quem a escreveu** — que é o que a lei do escopo mínimo existe para
+tornar barato: `2` ficheiros, `5` hunks, `24` linhas na espec, **zero fixtura
+tocada**, e as duas curas são à letra as que o atestado prescreveu. ⭐⭐ **E a
+cadeia de consistência fechou sozinha:** o censo subiu de `10` para `11` linhas
+**e a contagem citada na lista de verificação subiu com ele** — *num documento
+onde um número vive em dois sítios, é a segunda cópia que diz se a emenda foi
+feita a sério.*
 
 ⚠️⚠️ **O padrão que as CINCO passagens do Pose mediram, e ele é do MÉTODO:** em
 **três** delas seguidas a emenda curou **o endereço nomeado** e a mesma redacção

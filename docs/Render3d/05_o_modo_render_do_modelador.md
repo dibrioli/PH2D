@@ -1166,7 +1166,10 @@ guarda poupa. *Um instrumento mais caro que o defeito que mede é um defeito nov
 
 ---
 
-### §20.3 — ⭐⭐ O painel: uma linha nova, e uma que só existe às vezes
+### §20.3 — ⭐⭐ O painel: uma linha nova, e uma que fica TRAVADA
+
+> ⛔⛔ **CORRIGIDO PELA §23 (14/09, ordem do dono): a linha não desaparece — ela fica VISÍVEL e
+> INACTIVA.** O que segue descreve a primeira versão, em que ela era escondida.
 
 | linha | quando aparece |
 |---|---|
@@ -1348,7 +1351,9 @@ de ser uma constante e passou a ser uma **tabela de um caso**. *Quinze dos dezas
 
 ---
 
-### §21.3 — O painel: uma linha sempre, quatro só com verniz
+### §21.3 — O painel: uma linha viva, quatro TRAVADAS sem verniz
+
+> ⛔⛔ **CORRIGIDO PELA §23** — as quatro não desaparecem: ficam visíveis e inactivas.
 
 | linha | quando aparece |
 |---|---|
@@ -1471,6 +1476,8 @@ também não podia ser.*
 ---
 
 ### §22.1 — A medição, e o que ela partiu em dois
+
+> ⛔⛔ **CORRIGIDO PELA §23** — as duas só-dieléctricas não desaparecem num metal: ficam **travadas**.
 
 Esfera a `640×360`, olhar do produto, contra o material de omissão de cada lado:
 
@@ -1598,3 +1605,81 @@ está escrito.* Hoje ele compara o par `(param, chave)`.
 - **O painel tem `10` linhas de material com tudo apagado**, e `15` com tudo aceso. ⏸️ **Se isso for
   denso demais é veredito do dono** — a cura conhecida são **secções recolhíveis**, que este painel
   não tem e que o Motion já nomeou como a resposta ao mesmo problema.
+
+---
+
+## §23 — ⛔⛔ UM CONTROLO INERTE NÃO DESAPARECE: ELE FICA TRAVADO (ordem do dono, 2026-09-14)
+
+Enio, depois do smoke da §22: *«os slideres que só aparecem sob uma condição específica não devem
+desaparecer, mas apenas serem inativados, mas sempre visíveis»*.
+
+---
+
+### §23.1 — ⛔⛔ A lei já estava escrita nesta casa, e eu apliquei a OUTRA
+
+As três waves do material esconderam linhas inertes invocando a **W34** — *o painel oferece
+exactamente o que o gesto faz*. Ela proíbe **pintar um controlo** que não pode ser honrado. ⚠️ **Ela
+não manda apagar a linha** — e a lei que responde a *o que fazer então* estava escrita, por extenso,
+no `ph2d_field::Span::Locked`, desde a trava de cardan:
+
+> *«É diferente de "não aparece". O valor continua a ser um facto que o artista precisa de ler — e
+> esconder a linha faria o painel saltar de tamanho a cada travessia. O que ela perde é o
+> **controle**: quem a recebe pinta um facto, não um slider.»*
+
+⇒ **eu tinha o mecanismo certo à mão, com o motivo certo escrito ao lado, e usei o outro.** *Duas
+leis que se leem parecidas, e a diferença entre elas é o painel a saltar debaixo do dedo.*
+
+---
+
+### §23.2 — O que muda
+
+| estado | antes | agora |
+|---|---|---|
+| a cor do brilho, sem brilho | some | **visível, travada** |
+| os quatro do verniz, sem verniz | somem | **visíveis, travados** |
+| a rugosidade da difusa e o IOR, num metal | somem | **visíveis, travados** |
+
+⭐⭐⭐ **E a contagem de linhas de um nó deixou de depender do ESTADO da peça:** um polígono no teto
+pede `79` linhas com tudo apagado e `79` com tudo aceso. *O painel não muda de altura quando o
+artista acende o verniz*, que é literalmente o que a nota do `Span::Locked` previa.
+
+⚠️ **O `MAX_ROWS` não se mexe** (`79`): ele já estava dimensionado pelo pior caso, e o pior caso
+passou a ser **o único** caso.
+
+---
+
+### §23.3 — ⭐⭐ Uma AMOSTRA travada continua a ser uma amostra
+
+O despacho de uma linha testava `live` **antes** do ramo da cor, logo uma amostra travada caía no
+`paint_fact` e o artista via um **número** (`0,8`) onde estava uma cor. ⇒ *a linha deixava de saltar
+de sítio e passava a saltar de ESPÉCIE, que é a mesma queixa noutra escala.*
+
+Hoje o ramo da cor vem primeiro, e uma amostra travada pinta-se **apagada**
+(`SwatchState::Disabled`). ⛔ **As três metades saem juntas, e cada uma sozinha é um defeito
+diferente:** sem o `register_picker_swatch` o selector não a reconhece · sem o `hit_index` ela não é
+clicável · sem o `Disabled` ela **parece** clicável. *Uma amostra que parece viva e não responde é o
+controlo morto na forma que o artista mais depressa lê como avaria.*
+
+---
+
+### §23.4 — Os gates, e as duas coisas que o arnês ensinou
+
+| gate | o que ele prende |
+|---|---|
+| `the_coat_numbers_are_locked_while_the_coat_is_off` | `15` linhas em qualquer estado, e **quais** estão vivas |
+| `the_colour_of_the_glow_is_locked_while_the_glow_is_off` | as quatro amostras, e o `live` de cada uma |
+| `the_two_dielectric_only_numbers_are_exactly_inert_on_a_metal` | a lista **não muda de tamanho**; muda o `live` |
+| `every_row_of_the_biggest_polygon_fits_the_registered_family` | ⭐ **a contagem é a mesma nos dois estados** |
+| `a_locked_swatch_is_painted_and_unreachable` | a costura: sem rect no índice de acerto, **e** desenhada |
+
+⭐ **O `tudo_aceso` da sonda do teto mudou de papel:** era o *pior caso*, e é hoje o **controlo** da
+lei. *Sem essa asserção ele seria um knob morto dentro da própria bancada que caça knobs mortos.*
+
+⚠️⚠️ **E a primeira redacção do gate da costura tinha uma TAUTOLOGIA:** ela repetia a asserção
+anterior com o sinal trocado e chamava-lhe *«continua a ser desenhada»*. *Uma asserção que reafirma a
+anterior mede zero e lê-se como cobertura* — é o mesmo defeito que o gate do L-System pagou ao medir
+a linha **reservada** em vez da pintada. A régua certa é a **geometria da picture**, contra o controlo
+de pintar sem a linha.
+
+**7/7 mutações** — entre elas a que faz uma linha travada voltar a **esconder-se**, que é a que
+guarda a ordem do dono.

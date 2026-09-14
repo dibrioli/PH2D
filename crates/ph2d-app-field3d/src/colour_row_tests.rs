@@ -69,9 +69,9 @@ fn a_colour_is_one_row_and_it_carries_the_swatch() {
     let rows = rows_of(&mut sim, folha);
     let cor: Vec<&ph2d_panel_model3d::ParamRow> =
         rows.iter().filter(|r| r.swatch.is_some()).collect();
-    // ⚠️ **DUAS amostras no material de omissão, e não uma** desde 14/09 (§22): a cor base e a do
-    // REALCE, que é sempre viva. As outras duas (o verniz, o brilho) só aparecem com o peso delas
-    // acima de zero, e têm gates próprios nos ficheiros irmãos.
+    // ⚠️ **QUATRO amostras, sempre** — as quatro cores do material (§22). Duas nascem vivas (a base
+    // e a do realce) e duas nascem **travadas** (a do verniz e a do brilho): o que o estado da peça
+    // muda é o `live`, nunca a presença — ordem do Enio, 14/09.
     // ⚠️⚠️ **O par `(param, chave)`, e não só a chave** — uma mutação que moveu a âncora do realce
     // de `7` para `6` **sobreviveu** à primeira redacção: a linha do `specular_weight` recebia o
     // rótulo da cor e a lista de chaves continuava a bater. *Um gate que lê só o rótulo não sabe
@@ -81,8 +81,10 @@ fn a_colour_is_one_row_and_it_carries_the_swatch() {
         vec![
             (ph2d_field::Param::Material(1), "field.dim.base_color"),
             (ph2d_field::Param::Material(7), "field.dim.specular_color"),
+            (ph2d_field::Param::Material(13), "field.dim.coat_color"),
+            (ph2d_field::Param::Material(20), "field.dim.emission_color"),
         ],
-        "as amostras do material de omissão mudaram: {:?}",
+        "as amostras do material mudaram: {:?}",
         rows.iter().map(|r| (r.param, r.key)).collect::<Vec<_>>()
     );
     // ⛔ **E os outros dois canais NÃO são linha** — senão o artista teria a amostra *e* dois

@@ -447,44 +447,49 @@ pub fn params_of(world: &World, entity: Entity) -> Vec<(Param, Dim)> {
             .get::<crate::FieldMaterial>(entity)
             .copied()
             .unwrap_or_default();
-        // ⭐⭐⭐ **A COR DO BRILHO só existe enquanto houver brilho** (`docs/Render3d/05` §20) — ela
-        // MULTIPLICA a luminância, logo com `emission == 0` varrer o selector de cor não muda um
-        // bit do quadro. *Um controlo cujo efeito é sempre zero é um controlo morto com aparência
-        // de vivo*, e é a mesma lei da W34 que o raio de junção e a resolução já honram.
+        // ⭐⭐⭐ **UM NÚMERO INERTE NÃO DESAPARECE — ELE FICA TRAVADO** (ordem do Enio, 2026-09-14:
+        // *«os slideres que só aparecem sob uma condição específica não devem desaparecer, mas
+        // apenas serem inativados, mas sempre visíveis»*).
         //
-        // ⚠️ **Quem esconde é a APRESENTAÇÃO, e a porta de escrita não se estreita:** o `set_param`
-        // continua a aceitar `Material(6..=8)`, senão um pedido guardado de um quadro atrás — o
-        // selector ainda aberto quando a luminância vai a zero — cairia em silêncio.
+        // ⛔⛔ **A lei já estava escrita nesta casa, e eu apliquei a OUTRA.** O [`Span::Locked`] diz,
+        // por extenso: *«é diferente de "não aparece" — o valor continua a ser um facto que o
+        // artista precisa de ler, e esconder a linha faria o painel saltar de tamanho a cada
+        // travessia»*. A W34 (*o painel oferece exactamente o que o gesto faz*) proíbe **pintar um
+        // controlo** que não pode ser honrado; ela **não** manda apagar a linha. *Duas leis que se
+        // leem parecidas, e a diferença entre elas é o painel a saltar debaixo do dedo.*
         //
-        // ⭐⭐ **E o VERNIZ obedece à mesma lei** (§21): os quatro números dele são misturados por
-        // `coat_weight` no `prepare`, logo com o peso a zero **nenhum** deles move um bit.
-        let visivel = |k: u8| match k {
-            // ⛔⛔ **EXACTAMENTE inertes num METAL** (`docs/Render3d/05` §22): a rugosidade da
-            // difusa e o IOR alimentam o lóbulo dieléctrico, que o `base_metalness` mistura para
-            // fora — e `x × 0` é zero por construção. Medido: `0` bytes em `61 804` pixels.
-            //
-            // ⚠️ **`< 1,0` e não `< 1`, isto é: a cerca é o ponto EXACTO.** A `0,999` eles ainda
-            // movem um milésimo do quadro, e esconder um controlo que ainda faz alguma coisa seria
-            // o defeito oposto — *o painel que mente por ser curto demais*.
-            4 | 11 => m.metalness < 1.0,
-            13..=18 => m.coat > 0.0,
-            20..=22 => m.emission > 0.0,
-            _ => true,
+        // ⚠️ **O que cada uma destas condições significa** — todas medidas (`docs/Render3d/05`
+        // §20–§22), e todas com o mesmo mecanismo: o número é multiplicado por algo que é zero.
+        //
+        // | posições | inertes quando | porquê |
+        // |---|---|---|
+        // | `4`, `11` | `metalness == 1` | alimentam o lóbulo **dieléctrico**, que o metal mistura para fora |
+        // | `13`–`18` | `coat == 0` | o `prepare` mistura os quatro do verniz pelo peso dele |
+        // | `20`–`22` | `emission == 0` | a cor **multiplica** a luminância |
+        //
+        // ⚠️ **A porta de ESCRITA não se estreita** — o `set_param` continua a aceitar as 23
+        // posições. Travar é da apresentação; um pedido guardado de um quadro atrás tem de poder
+        // aterrar.
+        let inerte = |k: u8| match k {
+            4 | 11 => m.metalness >= 1.0,
+            13..=18 => m.coat <= 0.0,
+            20..=22 => m.emission <= 0.0,
+            _ => false,
         };
-        out.extend(
-            (0..ph2d_field::MATERIAL_FIELDS)
-                .filter(|k| visivel(*k))
-                .filter_map(|k| {
-                    Some((
-                        Param::Material(k),
-                        Dim {
-                            key: MATERIAL_KEYS[k as usize],
-                            value: m.get(k)?,
-                            span: material_span(k),
-                        },
-                    ))
-                }),
-        );
+        out.extend((0..ph2d_field::MATERIAL_FIELDS).filter_map(|k| {
+            Some((
+                Param::Material(k),
+                Dim {
+                    key: MATERIAL_KEYS[k as usize],
+                    value: m.get(k)?,
+                    span: if inerte(k) {
+                        Span::Locked
+                    } else {
+                        material_span(k)
+                    },
+                },
+            ))
+        }));
     }
     // ⭐⭐ **A RESOLUÇÃO do contorno vivo** (W55) — logo depois do que a forma mede, e antes do que
     // se fez a ela.

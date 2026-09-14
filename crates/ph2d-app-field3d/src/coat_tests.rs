@@ -260,71 +260,83 @@ fn every_coat_number_reaches_the_law_and_moves_the_answer() {
     );
 }
 
-/// ⭐⭐⭐ **OS QUATRO NÚMEROS DO VERNIZ SÓ EXISTEM ENQUANTO HOUVER VERNIZ** — a lei da W34, a terceira
-/// vez neste painel (o raio de junção, a cor do brilho, e agora isto).
+/// ⭐⭐⭐ **OS QUATRO NÚMEROS DO VERNIZ FICAM TRAVADOS ENQUANTO NÃO HOUVER VERNIZ** — visíveis e
+/// inactivos, nunca escondidos.
 ///
-/// ⚠️ **E a prova de que a lei é a certa está no gate acima**: com o peso a zero, mexer em qualquer
-/// dos quatro **não move um bit** — o `prepare` mistura-os todos por `coat_weight`. *A régua da
-/// visibilidade e a régua do efeito são a mesma pergunta feita de dois lados.*
+/// # ⛔⛔ Esta era «só existem», e a ordem do dono corrigiu-a (14/09)
 ///
-/// **Mutações que devem sangrar:** apagar o braço `10..=15` do `visivel` · trocá-lo por `6..=8`.
+/// Enio: *«os slideres que só aparecem sob uma condição específica não devem desaparecer, mas apenas
+/// serem inativados, mas sempre visíveis»*. ⚠️ **A lei já estava escrita nesta casa** — o
+/// [`ph2d_field::Span::Locked`] diz, por extenso, que *«é diferente de "não aparece": o valor
+/// continua a ser um facto que o artista precisa de ler, e esconder a linha faria o painel saltar de
+/// tamanho a cada travessia»*. O que eu apliquei foi a W34 (*o painel oferece exactamente o que o
+/// gesto faz*), que proíbe **pintar um controlo** que não pode ser honrado e **não** manda apagar a
+/// linha.
+///
+/// ⚠️ **E a prova de que a lei do efeito é a certa está no gate acima**: com o peso a zero, mexer em
+/// qualquer dos quatro **não move um bit** — o `prepare` mistura-os todos por `coat_weight`. *A régua
+/// da travagem e a régua do efeito são a mesma pergunta feita de dois lados.*
+///
+/// **Mutações que devem sangrar:** apagar o braço `13..=18` do `inerte` · trocá-lo por `20..=22`.
 #[test]
-fn the_coat_numbers_only_exist_while_the_coat_does() {
+fn the_coat_numbers_are_locked_while_the_coat_is_off() {
     let _ = ph2d_panel_model3d::drain_intents();
     let (mut sim, folha) = super::colour_row_tests::a_ball();
-    let chaves = |rows: &[ph2d_panel_model3d::ParamRow]| -> Vec<&'static str> {
-        rows.iter()
+    let vivas = |sim: &mut ph2d_ecs::SimWorld| -> Vec<(&'static str, bool)> {
+        super::colour_row_tests::rows_of(sim, folha)
+            .iter()
             .filter(|r| matches!(r.param, ph2d_field::Param::Material(_)))
-            .map(|r| r.key)
+            .map(|r| (r.key, r.live))
             .collect()
     };
-    let apagado = chaves(&super::colour_row_tests::rows_of(&mut sim, folha));
+    let do_verniz = [
+        "field.dim.coat_color",
+        "field.dim.coat_roughness",
+        "field.dim.coat_ior",
+        "field.dim.coat_darkening",
+    ];
+    let apagado = vivas(&mut sim);
+    // ⭐ **As `15` linhas estão lá, e as do verniz estão TRAVADAS.**
     assert_eq!(
-        apagado,
-        vec![
-            "field.dim.base_weight",
-            "field.dim.base_color",
-            "field.dim.base_diffuse_roughness",
-            "field.dim.metalness",
-            "field.dim.specular_weight",
-            "field.dim.specular_color",
-            "field.dim.roughness",
-            "field.dim.specular_ior",
-            "field.dim.coat",
-            "field.dim.emission",
-        ],
-        "com tudo apagado a secção do material tem DEZ linhas — a cor do brilho e os quatro \
-         números do verniz são inertes ali"
+        apagado.len(),
+        15,
+        "a secção do material tem de ter as 15 linhas em qualquer estado: {apagado:?}"
+    );
+    for k in do_verniz {
+        assert_eq!(
+            apagado.iter().find(|(c, _)| *c == k).map(|(_, v)| *v),
+            Some(false),
+            "a linha `{k}` tinha de estar VISÍVEL e TRAVADA com o verniz a zero: {apagado:?}"
+        );
+    }
+    // ⛔ **E as outras continuam vivas** — trava o que morreu, e mais nada.
+    assert!(
+        apagado
+            .iter()
+            .filter(|(c, _)| !do_verniz.contains(c) && *c != "field.dim.emission_color")
+            .all(|(_, v)| *v),
+        "travar o verniz travou linha alheia: {apagado:?}"
     );
 
     ph2d_field_ecs::set_param(sim.world_mut(), folha, ph2d_field::Param::Material(12), 1.0)
         .expect("o verniz");
-    let aceso = chaves(&super::colour_row_tests::rows_of(&mut sim, folha));
+    let aceso = vivas(&mut sim);
+    for k in do_verniz {
+        assert_eq!(
+            aceso.iter().find(|(c, _)| *c == k).map(|(_, v)| *v),
+            Some(true),
+            "a linha `{k}` continua travada com o verniz aceso: {aceso:?}"
+        );
+    }
+    // ⛔ **E o brilho continua travado** — os dois pesos são independentes, e um `||` a mais no
+    // `inerte` destravaria os dois de uma vez.
     assert_eq!(
-        aceso,
-        vec![
-            "field.dim.base_weight",
-            "field.dim.base_color",
-            "field.dim.base_diffuse_roughness",
-            "field.dim.metalness",
-            "field.dim.specular_weight",
-            "field.dim.specular_color",
-            "field.dim.roughness",
-            "field.dim.specular_ior",
-            "field.dim.coat",
-            "field.dim.coat_color",
-            "field.dim.coat_roughness",
-            "field.dim.coat_ior",
-            "field.dim.coat_darkening",
-            "field.dim.emission",
-        ],
-        "com o verniz aceso saem mais QUATRO linhas, no meio da secção e na ordem da nodedef"
-    );
-    // ⛔ **E o brilho continua apagado** — os dois pesos são independentes, e um `visivel` escrito
-    // com um `||` a mais acenderia os dois de uma vez.
-    assert!(
-        !aceso.contains(&"field.dim.emission_color"),
-        "acender o verniz acendeu a cor do BRILHO: os dois pesos deixaram de ser independentes"
+        aceso
+            .iter()
+            .find(|(c, _)| *c == "field.dim.emission_color")
+            .map(|(_, v)| *v),
+        Some(false),
+        "acender o verniz destravou a cor do BRILHO: os dois pesos deixaram de ser independentes"
     );
 }
 
@@ -348,12 +360,15 @@ fn the_coat_colour_is_a_swatch_and_the_ior_is_not_a_fraction() {
         .iter()
         .filter_map(|r| r.swatch.map(|c| (r.param, c)))
         .collect();
+    // ⚠️ **QUATRO amostras, sempre** — as quatro cores do material. O que muda com o estado é o
+    // `live` de cada uma, e isso tem gate próprio.
     assert_eq!(
         amostras,
         vec![
             (ph2d_field::Param::Material(1), [231, 231, 231]),
             (ph2d_field::Param::Material(7), [255, 255, 255]),
             (ph2d_field::Param::Material(13), [255, 255, 255]),
+            (ph2d_field::Param::Material(20), [255, 255, 255]),
         ],
         "a cor do verniz tem de ser uma AMOSTRA, e a de omissão é branca"
     );

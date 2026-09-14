@@ -234,65 +234,71 @@ fn no_glow_is_exactly_black_and_a_coat_still_filters_one() {
     }
 }
 
-/// ⭐⭐⭐ **A COR DO BRILHO SÓ EXISTE ENQUANTO HOUVER BRILHO** — a lei da W34 sobre o par de amostras.
+/// ⭐⭐⭐ **A COR DO BRILHO FICA TRAVADA ENQUANTO NÃO HOUVER BRILHO** — visível e inactiva.
 ///
-/// # ⚠️ Porque a ausência é a resposta certa, e não um painel mais curto
+/// # ⚠️ Porque a travagem é a resposta certa, e não a ausência
 ///
 /// `emission_color` **multiplica** a luminância. A zero, varrer o selector de cor não muda um bit do
-/// quadro — e um controlo cujo efeito é sempre nulo é exactamente o *knob morto* que o `CLAUDE.md`
-/// §5.0 descreve na espécie mais cara: *o consumidor que projecta o valor fora*.
+/// quadro — e um controlo cujo efeito é sempre nulo é o *knob morto* do `CLAUDE.md` §5.0 na espécie
+/// mais cara: *o consumidor que projecta o valor fora*.
 ///
-/// **Mutações que devem sangrar:** apagar o `filter(visivel)` do `params_of` (a amostra aparece
-/// apagada) · publicar a cor da emissão sempre · trocar a âncora `6` por `0` na tabela `CORES` (as
-/// duas amostras mostram a cor base).
+/// ⛔⛔ **Mas a cura disso é TRAVAR, não ESCONDER** (ordem do Enio, 14/09) — e a lei já estava escrita
+/// no [`ph2d_field::Span::Locked`]: *«esconder a linha faria o painel saltar de tamanho a cada
+/// travessia»*.
+///
+/// **Mutações que devem sangrar:** apagar o braço `20..=22` do `inerte` · trocar a âncora `20` por
+/// `1` na tabela `CORES` (as duas amostras mostram a cor base).
 #[test]
-fn the_colour_of_the_glow_only_exists_while_the_glow_does() {
+fn the_colour_of_the_glow_is_locked_while_the_glow_is_off() {
     let _ = ph2d_panel_model3d::drain_intents();
     let (mut sim, folha) = super::colour_row_tests::a_ball();
-    let amostras = |rows: &[ph2d_panel_model3d::ParamRow]| -> Vec<ph2d_field::Param> {
+    let amostras = |rows: &[ph2d_panel_model3d::ParamRow]| -> Vec<(ph2d_field::Param, bool)> {
         rows.iter()
             .filter(|r| r.swatch.is_some())
-            .map(|r| r.param)
+            .map(|r| (r.param, r.live))
             .collect()
     };
     let rows = super::colour_row_tests::rows_of(&mut sim, folha);
-    // ⚠️ **A da base e a do REALCE** — as duas sempre vivas (§22). O que este gate mede é que a do
-    // BRILHO não está entre elas.
+    // ⭐ **As QUATRO cores do material estão sempre cá** — a base e a do realce vivas, a do verniz e
+    // a do brilho travadas.
     assert_eq!(
         amostras(&rows),
         vec![
-            ph2d_field::Param::Material(1),
-            ph2d_field::Param::Material(7)
+            (ph2d_field::Param::Material(1), true),
+            (ph2d_field::Param::Material(7), true),
+            (ph2d_field::Param::Material(13), false),
+            (ph2d_field::Param::Material(20), false),
         ],
-        "com o brilho apagado o painel tem de ter as duas amostras sempre vivas: {:?}",
+        "as quatro amostras, e quais delas estão vivas: {:?}",
         rows.iter().map(|r| r.key).collect::<Vec<_>>()
     );
     assert!(
         rows.iter()
-            .any(|r| r.param == ph2d_field::Param::Material(19)),
-        "a linha do BRILHO não é publicada — ela é o controlo que abre a cor dele, e sem ela a \
-         emissão é inalcançável por gesto nenhum"
+            .any(|r| r.param == ph2d_field::Param::Material(19) && r.live),
+        "a linha do BRILHO tem de estar VIVA — ela é o controlo que destrava a cor dele"
     );
 
-    // ⭐ **Acender.** A partir daqui a cor deixa de ser inerte, e a segunda amostra aparece.
+    // ⭐ **Acender destrava a cor, e só ela.**
     ph2d_field_ecs::set_param(sim.world_mut(), folha, ph2d_field::Param::Material(19), 1.0)
         .expect("o brilho");
     let rows = super::colour_row_tests::rows_of(&mut sim, folha);
     assert_eq!(
         amostras(&rows),
         vec![
-            ph2d_field::Param::Material(1),
-            ph2d_field::Param::Material(7),
-            ph2d_field::Param::Material(20)
+            (ph2d_field::Param::Material(1), true),
+            (ph2d_field::Param::Material(7), true),
+            (ph2d_field::Param::Material(13), false),
+            (ph2d_field::Param::Material(20), true),
         ],
-        "com o brilho aceso o painel tem de ter TRÊS amostras, nesta ordem: {:?}",
+        "acender o brilho tinha de destravar a cor dele, e nada mais: {:?}",
         rows.iter().map(|r| r.key).collect::<Vec<_>>()
     );
-    // ⛔ **E os canais seguidores continuam dobrados** — as duas cores, não só a base.
+    // ⛔ **E os canais seguidores continuam dobrados** — as quatro cores, não só a base.
     assert!(
-        !rows
-            .iter()
-            .any(|r| matches!(r.param, ph2d_field::Param::Material(2 | 3 | 21 | 22))),
+        !rows.iter().any(|r| matches!(
+            r.param,
+            ph2d_field::Param::Material(2 | 3 | 8 | 9 | 14 | 15 | 21 | 22)
+        )),
         "um canal solto voltou a ser linha: {:?}",
         rows.iter().map(|r| r.key).collect::<Vec<_>>()
     );
@@ -301,9 +307,13 @@ fn the_colour_of_the_glow_only_exists_while_the_glow_does() {
     let cores: Vec<[u8; 3]> = rows.iter().filter_map(|r| r.swatch).collect();
     assert_eq!(
         cores,
-        vec![[231, 231, 231], [255, 255, 255], [255, 255, 255]],
-        "as três amostras não mostram as três cores do material — a base é `0,8` linear (`231`) e \
-         as outras duas nascem brancas"
+        vec![
+            [231, 231, 231],
+            [255, 255, 255],
+            [255, 255, 255],
+            [255, 255, 255]
+        ],
+        "as quatro amostras não mostram as quatro cores do material"
     );
 }
 

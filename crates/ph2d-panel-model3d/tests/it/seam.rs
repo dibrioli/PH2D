@@ -1894,3 +1894,73 @@ fn a_colour_row_paints_no_slider_to_grab() {
         );
     }
 }
+
+/// ⭐⭐⭐ **UMA AMOSTRA TRAVADA É VISÍVEL E MORTA SOB O DEDO** — ordem do Enio, 2026-09-14:
+/// *«os slideres que só aparecem sob uma condição específica não devem desaparecer, mas apenas serem
+/// inativados, mas sempre visíveis»*.
+///
+/// # ⛔⛔ As duas metades, e porque nenhuma basta
+///
+/// *Visível* sem *morta* é a pior das três: o artista clica, o selector abre, a roda move-se e **nada
+/// no documento a recebe** — o `CLAUDE.md` §5.0 chama-lhe *o consumidor que projecta o valor fora*.
+/// *Morta* sem *visível* é o que a ordem do dono acabou de proibir.
+///
+/// ⇒ este gate pinta as duas e compara: a **viva** regista-se no índice de acerto e abre o selector;
+/// a **travada** não tem rect nenhum, e o mesmo clique não abre coisa nenhuma.
+///
+/// ⚠️ **Ele mede o `rect_for`, que é o que o `Down` consulta** — e não a picture. *Um gate que
+/// olhasse só os pixels veria as duas amostras desenhadas e chamaria isso de igual.*
+#[test]
+fn a_locked_swatch_is_painted_and_unreachable() {
+    let mut host = MockPanelHost::new();
+    let mut state = Model3dPanelState;
+    let viewport = ph2d_editor_core::zones::Rect::new(0.0, 0.0, 320.0, 480.0);
+    host.set_panel_visible(Model3dPanel::ID, true);
+
+    // ── A viva: regista-se, e o clique abre o selector ──
+    scene_with_one_colour_row();
+    let _ = host.paint::<Model3dPanel>(&mut state, viewport);
+    let rect = swatch_rect(&mut host);
+    assert!(
+        rect.w > 0.0 && rect.h > 0.0,
+        "a amostra viva tem de ocupar área"
+    );
+
+    // ── A travada: a MESMA linha com `live: false` ──
+    publish(ModelSnapshot {
+        rows: vec![ParamRow {
+            live: false,
+            ..scene_with_one_colour_row_row()
+        }],
+        node_count: 1,
+        ..ModelSnapshot::default()
+    });
+    let _ = host.paint::<Model3dPanel>(&mut state, viewport);
+    assert!(
+        host.hit_index_mut()
+            .rect_for(ph2d_panel_model3d::ids::model3d_color_swatch(THE_UNION, 1))
+            .is_none(),
+        "uma amostra TRAVADA continua registada no índice de acerto — ela abre o selector e escreve \
+         num número que o painel diz estar inactivo"
+    );
+    // ⭐⭐⭐ **E ELA CONTINUA A SER DESENHADA** — a metade que a ordem do dono pede, e a única que um
+    // `rect_for` **não pode** medir (ele é sobre o índice de acerto, que é justamente o que ela
+    // perdeu).
+    //
+    // ⚠️⚠️ **A 1.ª redacção deste bloco era uma TAUTOLOGIA**: ela repetia a asserção de cima com o
+    // sinal trocado e chamava-lhe *«continua a ser desenhada»*. *Uma asserção que reafirma a
+    // anterior mede zero e lê-se como cobertura* — é o mesmo defeito que o gate do L-System pagou ao
+    // medir a linha RESERVADA em vez da pintada. ⇒ a régua é a **geometria da picture**.
+    let (_, com) = host.paint_and_count_geometry::<Model3dPanel>(&mut state, viewport);
+    publish(ModelSnapshot {
+        rows: Vec::new(),
+        node_count: 1,
+        ..ModelSnapshot::default()
+    });
+    let (_, sem) = host.paint_and_count_geometry::<Model3dPanel>(&mut state, viewport);
+    assert!(
+        com > sem,
+        "a amostra travada não desenhou nada ({com} segmentos contra {sem} sem a linha) — ela \
+         desapareceu, que é exactamente o que a ordem do dono proíbe"
+    );
+}

@@ -324,14 +324,14 @@ fn every_node_shows_position_then_rotation_then_what_it_measures() {
             .all(|p| matches!(p, Param::Material(_))),
         "depois da pose há as dimensões e depois o material, e mais nada: {params:?}"
     );
-    // ⚠️⚠️ **`MATERIAL_FIELDS` é o que a ESCRITA aceita, e não o que a folha OFERECE** desde o
-    // brilho próprio (`docs/Render3d/05` §20): a cor da emissão (`6..=8`) multiplica a luminância,
-    // logo com ela a zero — que é o material de omissão desta fixtura — as três linhas seriam
-    // controlos cujo efeito é sempre nulo, e não são publicadas. ⇒ a barra é **derivada** do estado
-    // da peça, e não uma segunda cópia da contagem.
+    // ⭐⭐⭐ **UMA FOLHA PUBLICA AS `MATERIAL_FIELDS` POSIÇÕES, SEMPRE** (ordem do Enio, 14/09:
+    // *«não devem desaparecer, mas apenas serem inativados, mas sempre visíveis»*).
     //
-    // ⛔ Escrever `MATERIAL_FIELDS` aqui deixava este gate a exigir exactamente o que a lei da W34
-    // proíbe: *o painel oferece o que o gesto faz*, e um gesto sobre uma cor inerte não faz nada.
+    // ⛔⛔ **Esta asserção já disse o CONTRÁRIO duas vezes no mesmo dia**, e as três redacções são a
+    // história de um erro meu: primeiro exigia exactamente `MATERIAL_FIELDS` (e reprovou quando a
+    // cor do brilho passou a ser escondida), depois exigia **menos** (a lei da W34 aplicada onde a
+    // do [`ph2d_field::Span::Locked`] é que valia), e agora exige **todas**. *A lei de esconder e a
+    // de travar leem-se parecidas, e a diferença entre elas é o painel a saltar debaixo do dedo.*
     let material: Vec<u8> = params[6 + dims..]
         .iter()
         .filter_map(|p| match p {
@@ -339,25 +339,13 @@ fn every_node_shows_position_then_rotation_then_what_it_measures() {
             _ => None,
         })
         .collect();
-    // ⛔⛔ **A 1.ª redacção exigia que eles fossem CONTÍGUOS, e isso era uma propriedade da forma
-    // de ONTEM, não uma lei.** Com o verniz (§21) o material de omissão publica `0..5` e `9` — um
-    // buraco onde mora a cor do brilho —, e isso não parte nada: a tabela de chaves e a porta de
-    // escrita são indexadas pelo **`k`**, não pela posição na lista. *Uma asserção escrita sobre o
-    // estado em que a fixtura calhou de estar reprova a wave seguinte sem nomear defeito nenhum.*
-    //
-    // ⚠️ **O que é lei é a ORDEM**: as linhas saem pela ordem dos campos, e é dela que o artista
-    // lê *«a cor, depois o que ela faz à luz, depois o verniz por cima de tudo»*.
-    assert!(
-        material.windows(2).all(|w| w[0] < w[1]),
-        "os números do material saem FORA de ordem — a secção deixa de se ler de cima para baixo: \
-         {params:?}"
-    );
-    assert!(
-        !material.is_empty() && material.len() < ph2d_field::MATERIAL_FIELDS as usize,
-        "uma FOLHA com o brilho e o verniz APAGADOS publica menos do que as {} posições que a \
-         escrita aceita — a cor da emissão e os quatro números do verniz são inertes ali: {params:?}",
+    assert_eq!(
+        material,
+        (0..ph2d_field::MATERIAL_FIELDS).collect::<Vec<_>>(),
+        "uma FOLHA publica as {} posições do material, na ordem da nodedef: {params:?}",
         ph2d_field::MATERIAL_FIELDS
     );
+
     // E a operação **tem** escala, senão o gate não distinguiria «não há escala» de «não há nós».
     let ops: Vec<Param> = ph2d_field_ecs::params_of(world, root)
         .into_iter()

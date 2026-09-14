@@ -43,15 +43,14 @@ fn poligono(n: u32) -> Primitive {
 /// — o que o torna invisível, e é exactamente por isso que esta nota existe: *uma régua conservadora
 /// não avisa no dia em que deixa de descrever o que mede.*
 ///
-/// ⚠️ **`tudo_aceso` é o PIOR caso e é ele que a família tem de aguentar:** com o brilho acima de
-/// zero a cor da emissão é publicada, e com o verniz acima de zero saem mais **quatro** linhas
-/// (§21). Uma família dimensionada no estado apagado deixaria as últimas sem controlo exactamente no
-/// gesto que as fez aparecer.
+/// ⭐⭐⭐ **E desde 14/09 `tudo_aceso` NÃO muda a contagem** — ele mudou de papel: era o *pior caso*,
+/// e é hoje o **controlo** da lei que o dono mandou (*«não devem desaparecer, mas apenas serem
+/// inativados, mas sempre visíveis»*). O que o estado da peça muda é o `live` de cada linha, e a
+/// altura do painel deixou de depender dele.
 ///
-/// ⚠️⚠️ **E o PIOR CASO tem de ser RECONFERIDO a cada número novo do material** — ele não é uma
-/// propriedade da forma, é o estado em que mais linhas coexistem. *Uma lista de «o que acender»
-/// escrita à mão é a segunda resposta à pergunta que o `params_of` já responde*, e é por isso que
-/// esta função acende **pelos pesos**, que são os únicos que decidem visibilidade.
+/// ⚠️ **Ele acende pelos PESOS** (`12` e `19`), que são os únicos que decidem o `live` — *uma lista
+/// de «o que acender» escrita à mão é a segunda resposta à pergunta que o `params_of` já responde*,
+/// e ela já mordeu nesta wave.
 fn linhas_do_painel(p: Primitive, tudo_aceso: bool) -> usize {
     use ph2d_field::{FieldDoc, Node, NodeId, NodeKind, Xform};
     let doc = FieldDoc::new(
@@ -95,6 +94,22 @@ fn every_row_of_the_biggest_polygon_fits_the_registered_family() {
             "{n:>10} | {:>12} | {:>10} |",
             linhas_do_painel(poligono(n), false),
             linhas_do_painel(poligono(n), true)
+        );
+    }
+    // ⭐⭐⭐ **E AS DUAS COLUNAS SÃO IGUAIS DESDE 14/09** — é assim que se lê, aqui, a ordem do dono
+    // (*«não devem desaparecer, mas apenas serem inativados, mas sempre visíveis»*): a **contagem de
+    // linhas de um nó deixou de depender do estado da peça**, e o painel não muda de altura quando
+    // o artista acende o verniz.
+    //
+    // ⚠️ **Sem esta asserção o parâmetro `tudo_aceso` desta sonda seria um knob morto** — ele
+    // continuaria a existir e a não mudar nada, que é exactamente o defeito que este módulo caça nos
+    // painéis. Aqui ele passa a ser o **controlo** de uma lei.
+    for n in [MIN_POLYGON_VERTICES, MAX_POLYGON_VERTICES] {
+        assert_eq!(
+            linhas_do_painel(poligono(n), false),
+            linhas_do_painel(poligono(n), true),
+            "a contagem de linhas de um nó de {n} vértices MUDOU com o estado do material — o painel \
+             volta a saltar de tamanho debaixo do dedo"
         );
     }
     let no_teto = linhas_do_painel(poligono(MAX_POLYGON_VERTICES), true);

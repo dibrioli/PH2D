@@ -261,38 +261,61 @@ fn the_two_dielectric_only_numbers_are_exactly_inert_on_a_metal() {
         );
     }
 
-    // ⭐ **E a outra metade: a linha some, e só ali.** Sem isto, uma lei certa com um painel que a
+    // ⭐ **E a outra metade: a linha TRAVA, e só ali.** Sem isto, uma lei certa com um painel que a
     // ignora leria exactamente igual.
+    //
+    // ⚠️ **TRAVA e não some** — ordem do Enio (14/09): *«não devem desaparecer, mas apenas serem
+    // inativados, mas sempre visíveis»*.
     let _ = ph2d_panel_model3d::drain_intents();
     let (mut sim, folha) = super::colour_row_tests::a_ball();
-    let chaves = |sim: &mut ph2d_ecs::SimWorld| -> Vec<&'static str> {
+    let vivas = |sim: &mut ph2d_ecs::SimWorld| -> Vec<(&'static str, bool)> {
         super::colour_row_tests::rows_of(sim, folha)
             .iter()
-            .map(|r| r.key)
+            .map(|r| (r.key, r.live))
             .collect()
     };
     let so_dielectricas = ["field.dim.base_diffuse_roughness", "field.dim.specular_ior"];
-    let antes = chaves(&mut sim);
+    let antes = vivas(&mut sim);
     for k in so_dielectricas {
-        assert!(
-            antes.contains(&k),
-            "a linha `{k}` tem de existir num DIELÉCTRICO (o metal de omissão é `0`): {antes:?}"
+        assert_eq!(
+            antes.iter().find(|(c, _)| *c == k).map(|(_, v)| *v),
+            Some(true),
+            "a linha `{k}` tem de estar VIVA num DIELÉCTRICO (o metal de omissão é `0`): {antes:?}"
         );
     }
     ph2d_field_ecs::set_param(sim.world_mut(), folha, ph2d_field::Param::Material(5), 1.0)
         .expect("o metal");
-    let depois = chaves(&mut sim);
-    for k in so_dielectricas {
-        assert!(
-            !depois.contains(&k),
-            "a linha `{k}` continua publicada num METAL, onde ela é exactamente inerte: {depois:?}"
-        );
-    }
-    // ⛔ **E o resto do material continua lá** — some o que morreu, e mais nada.
+    let depois = vivas(&mut sim);
     assert_eq!(
         depois.len(),
-        antes.len() - 2,
-        "o metal escondeu mais (ou menos) do que as duas linhas inertes: {antes:?} → {depois:?}"
+        antes.len(),
+        "o metal fez a lista MUDAR DE TAMANHO — e o que ele muda é o `live`: {antes:?} → {depois:?}"
+    );
+    for k in so_dielectricas {
+        assert_eq!(
+            depois.iter().find(|(c, _)| *c == k).map(|(_, v)| *v),
+            Some(false),
+            "a linha `{k}` continua viva num METAL, onde ela é exactamente inerte: {depois:?}"
+        );
+    }
+    // ⛔ **E trava o que morreu, e mais nada** — as duas, e as que já estavam travadas.
+    let travadas: Vec<&str> = depois
+        .iter()
+        .filter(|(_, v)| !*v)
+        .map(|(c, _)| *c)
+        .collect();
+    assert_eq!(
+        travadas,
+        vec![
+            "field.dim.base_diffuse_roughness",
+            "field.dim.specular_ior",
+            "field.dim.coat_color",
+            "field.dim.coat_roughness",
+            "field.dim.coat_ior",
+            "field.dim.coat_darkening",
+            "field.dim.emission_color",
+        ],
+        "o metal travou mais (ou menos) do que as duas linhas só-dieléctricas"
     );
 }
 

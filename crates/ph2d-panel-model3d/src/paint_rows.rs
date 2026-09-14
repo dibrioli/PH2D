@@ -46,20 +46,27 @@ pub(crate) fn paint_row(
         Some(nota) => crate::paint::paint_note(ctx, nota, x, w, y),
         None => y,
     };
+    // ⭐⭐⭐ **UMA COR NÃO É UM NÚMERO** — ver [`ParamRow::swatch`] (Enio, 2026-09-14). Mesma lei da
+    // escolha logo abaixo: substitui o controle, não o acompanha.
+    //
+    // ⚠️ **O CAMPO da cor sai do próprio `param` da linha**, e não de um índice guardado ao lado da
+    // amostra: a âncora **é** o primeiro canal, e duas respostas à mesma pergunta divergem no dia em
+    // que uma terceira cor entrar. ⛔ E uma amostra sobre um param que **não** é material cai para o
+    // controlo normal — inexprimível hoje, e melhor do que uma cor inventada.
+    //
+    // ⛔⛔ **Ela vem ANTES do teste de `live`, e a ordem é a ordem do report** (Enio, 2026-09-14:
+    // *«não devem desaparecer, mas apenas serem inativados»*): uma amostra TRAVADA continua a ser
+    // uma **amostra**, apagada. Depois do teste de `live` ela caía no [`paint_fact`] e o artista via
+    // um **número** (`0,8`) onde estava uma cor — *a linha deixava de saltar de sítio e passava a
+    // saltar de ESPÉCIE, que é a mesma queixa noutra escala.*
+    if let (Some(rgb), ph2d_field::Param::Material(campo)) = (row.swatch, row.param) {
+        return paint_swatch(ctx, row, campo, rgb, x, w, y);
+    }
     // ⭐ **Uma linha que não pode agir não é pintada como se pudesse** — ver [`ParamRow::live`]. Ela
     // sai daqui como facto e **não regista nada** no índice de acerto, então não há slider a agarrar
     // nem campo a receber texto: é a mesma lei do [`paint_note`], neste mesmo arquivo.
     if !row.live {
         return paint_fact(ctx, row, x, w, y);
-    }
-    // ⭐⭐⭐ **UMA COR NÃO É UM NÚMERO** — ver [`ParamRow::swatch`] (Enio, 2026-09-14). Mesma lei da
-    // escolha logo abaixo: substitui o controle, não o acompanha.
-    // ⚠️ **O CAMPO da cor sai do próprio `param` da linha**, e não de um índice guardado ao lado da
-    // amostra: a âncora **é** o primeiro canal, e duas respostas à mesma pergunta divergem no dia em
-    // que uma terceira cor entrar. ⛔ E uma amostra sobre um param que **não** é material cai para o
-    // controlo normal — inexprimível hoje, e melhor do que uma cor inventada.
-    if let (Some(rgb), ph2d_field::Param::Material(campo)) = (row.swatch, row.param) {
-        return paint_swatch(ctx, row, campo, rgb, x, w, y);
     }
     // ⭐⭐⭐ **UMA ESCOLHA NÃO É UM SLIDER** — ver [`ParamRow::choices`] (Enio, 2026-08-31). Ela
     // substitui o controle, e não o acompanha: o mesmo facto em dois controlos é duas verdades.
@@ -303,6 +310,16 @@ fn paint_swatch(
     // [`crate::ids::model3d_color_swatch`]. Com o id da posição, escolher outra forma com o
     // selector aberto escreveria a cor da anterior na nova, em silêncio.
     let id = crate::ids::model3d_color_swatch(row.entity, campo);
+    // ⭐⭐⭐ **UMA AMOSTRA TRAVADA NÃO ABRE O SELECTOR, e nem sequer se REGISTA** — ordem do Enio
+    // (14/09): ela fica **visível e inactiva**.
+    //
+    // ⛔⛔ **As três metades têm de sair juntas, e cada uma sozinha é um defeito diferente:** sem o
+    // `register_picker_swatch` o selector não a reconhece; sem o `hit_index` ela não é clicável;
+    // sem o `SwatchState::Disabled` ela **parece** clicável. *Uma amostra que parece viva e não
+    // responde é o controlo morto na forma que o artista mais rapidamente lê como avaria.*
+    if !row.live {
+        return paint_dead_swatch(ctx, row, id, rgb, x, w, y);
+    }
     let aberto = {
         let store = ctx.host.store_mut();
         store.register_picker_swatch(id);
@@ -374,5 +391,48 @@ fn paint_fact(ctx: &mut PaintCtx, row: &ParamRow, x: f32, w: f32, y: f32) -> f32
         (w - ph2d_editor_core::widget::property_label_col_w(x, w)).max(0.0),
         dim,
     );
+    y + ph2d_tokens::row_pitch_px()
+}
+
+/// ⭐⭐⭐ **UMA AMOSTRA TRAVADA** — a cor continua à vista, e o gesto não existe.
+///
+/// Ordem do Enio (2026-09-14): *«os slideres que só aparecem sob uma condição específica não devem
+/// desaparecer, mas apenas serem inativados, mas sempre visíveis»*. Numa linha de cor isso quer dizer
+/// **a amostra apagada**, e não o número que ela dobra — ver o doc do [`paint_row`].
+///
+/// ⛔ **Ela não regista NADA** (nem o `register_picker_swatch`, nem o `hit_index`): é a mesma lei do
+/// [`paint_fact`], que é o irmão desta função para as linhas que são um número.
+fn paint_dead_swatch(
+    ctx: &mut PaintCtx,
+    row: &ParamRow,
+    id: ph2d_a11y::NodeId,
+    rgb: [u8; 3],
+    x: f32,
+    w: f32,
+    y: f32,
+) -> f32 {
+    use ph2d_editor_core::widget::{ColorSwatch, SwatchSize, SwatchState, paint_color_swatch};
+
+    let theme = ctx.host.theme();
+    let font = TypeToken::Sm.px();
+    let dim = resolve(ColorToken::Text2, theme);
+    let baseline = y + (ROW_H_PX - font) * 0.5;
+    paint_text_block(
+        ctx.text_system,
+        ctx.scene,
+        tr(row.key),
+        x,
+        baseline,
+        font,
+        LABEL_COL_W,
+        dim,
+    );
+    let gutter = Rect::new(x + LABEL_COL_W, y, (w - LABEL_COL_W).max(0.0), ROW_H_PX);
+    // ⚠️ **O id é o VERDADEIRO, e ele não é registado em lado nenhum** — o widget precisa de um, e
+    // inventar outro faria duas identidades para a mesma amostra no dia em que ela acordasse.
+    let swatch = ColorSwatch::new(id, tr(row.key), [rgb[0], rgb[1], rgb[2], 255])
+        .size(SwatchSize::Md)
+        .state(SwatchState::Disabled);
+    paint_color_swatch(&swatch, gutter, ctx.scene, theme);
     y + ph2d_tokens::row_pitch_px()
 }

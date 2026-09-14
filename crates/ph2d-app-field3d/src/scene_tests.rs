@@ -259,9 +259,10 @@ fn the_panel_shows_the_dimensions_of_what_is_selected() {
             // apresentação, e o `scene_gesture_tests` mede o outro lado. *Se os dois censos
             // concordarem na contagem, alguém desfez a dobra sem ler este comentário.*
             //
-            // ⛔ **E o que NÃO está nesta lista é o que é inerte aqui:** a cor do brilho (sem
-            // brilho), os quatro números do verniz (sem verniz). ⭐ As duas linhas só-dieléctricas
-            // (`Diffuse Roughness` e `IOR`) **estão**, porque o metal de omissão é `0`.
+            // ⭐⭐⭐ **AS `15` ESTÃO SEMPRE CÁ** (ordem do Enio, 14/09: *«não devem desaparecer, mas
+            // apenas serem inativados, mas sempre visíveis»*). O que muda com o estado da peça é o
+            // [`ph2d_panel_model3d::ParamRow::live`], e não a presença da linha — ver o gate
+            // `the_coat_numbers_are_locked_while_the_coat_is_off`.
             "field.dim.base_weight",
             "field.dim.base_color",
             "field.dim.base_diffuse_roughness",
@@ -271,7 +272,12 @@ fn the_panel_shows_the_dimensions_of_what_is_selected() {
             "field.dim.roughness",
             "field.dim.specular_ior",
             "field.dim.coat",
+            "field.dim.coat_color",
+            "field.dim.coat_roughness",
+            "field.dim.coat_ior",
+            "field.dim.coat_darkening",
             "field.dim.emission",
+            "field.dim.emission_color",
         ],
         "uma caixa tem a POSE (posição e rotação), CINCO dimensões e o MATERIAL, nesta ordem"
     );

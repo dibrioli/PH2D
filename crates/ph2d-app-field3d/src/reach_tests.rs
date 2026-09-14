@@ -384,6 +384,12 @@ fn armed<R>(f: impl FnOnce() -> R) -> R {
 #[path = "reach_camera_tests.rs"]
 mod camera;
 
+/// ⭐⭐ A costura dos chips de SOMBREAMENTO — ver [`shading`]. Irmão do [`camera`] e pela mesma
+/// razão: *uma lei de alcançabilidade tem uma régua por espécie de gesto*, e estas três fileiras são
+/// estado de **vista**.
+#[path = "reach_shading_tests.rs"]
+mod shading;
+
 /// ⭐⭐⭐ **TODA LINHA DE TODA FORMA TEM RÓTULO** — o censo que faltava (auditoria de 06/09).
 ///
 /// # ⛔⛔ O buraco, e por que ele é pior do que parece

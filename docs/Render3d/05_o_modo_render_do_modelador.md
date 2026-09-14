@@ -395,9 +395,7 @@ onde estava, e o `MAX_ROWS` passa a ser **derivado da maior forma**: `2 × 27 + 
 - **Uma silhueta entre duas peças de cores diferentes** recebe a cor de quem o centro do pixel
   apanhou (as quatro sub-amostras da borda não guardam ponto). É a mesma aproximação que a direcção
   de vista já faz, e está declarada no `shade_render`.
-- **O custo por quadro do `Owners`** numa peça grande **não foi medido** — a sonda mediu a
-  RESOLUÇÃO (`1,6 ms` a 16 folhas), não a **construção** (um JIT por folha a cada mudança de
-  geometria, isto é, a cada quadro de um arrasto). É a primeira medição da wave seguinte.
+- ~~**O custo por quadro do `Owners`**~~ — ✅ **MEDIDO em 14/09, e não é o tecto.** Ver §14.
 - **Um material num GRUPO** não existe: quem o traçado sabe nomear por pixel é a folha. Herdar do
   grupo é modelo novo.
 
@@ -518,3 +516,144 @@ sair do selector) e *cunhar o id pela posição* (§12.3).
   folha.
 - **O selector abre no canto do canvas**, e não junto da amostra. É onde a casa o põe para todos os
   painéis; movê-lo é decisão da UI, não deste módulo.
+
+
+---
+
+## §13 — ⭐⭐ A LEI DO ALCANCE CHEGA ÀS TRÊS FILEIRAS NOVAS (2026-09-14)
+
+O §8 nomeava este buraco: a lei-mãe da **W34** (*«o painel oferece exactamente o que o gesto faz»*)
+não cobria o **sombreamento**, o **olhar** e a **exposição**. Cobre agora —
+[`reach_shading_tests.rs`](../../crates/ph2d-app-field3d/src/reach_shading_tests.rs).
+
+### §13.1 — ⚠️ Porque não foi uma linha na tabela que já existia
+
+A W34 mede *«a intenção muda o DOCUMENTO»*, e só varre fileiras que **dependem da selecção**. Estas
+três não são nem uma coisa nem outra: elas são **estado de VISTA** — não entram no undo, não viajam
+no ficheiro, e não precisam de nada escolhido. ⇒ medi-las por aquela régua daria as três **mudas**, e
+a conclusão errada seria **apagar os botões**.
+
+⭐ É a mesma partição que o irmão [`reach_camera_tests.rs`](../../crates/ph2d-app-field3d/src/reach_camera_tests.rs)
+já tinha pago, com a frase dele: *uma lei de alcançabilidade tem uma régua por espécie de gesto*. A
+régua aqui é o **estado do viewport e da cena**.
+
+### §13.2 — ⛔⛔ E a metade que quase ninguém escreve: o PEDIDO GUARDADO
+
+O traçado é caro, então o módulo guarda o pedido que serviu e reaproveita-o enquanto nada mudar. O
+laço compara **a câmera, o tamanho e o documento** — e **um olhar novo não move nenhum dos três**. Sem
+um `forget_requests` explícito, o quadro seguinte devolve o desenho antigo: o chip acende, o estado
+muda, e **a peça não muda de aparência**.
+
+⚠️ O artista lê isso como *«o botão não faz nada»*, e **as três leis de estado ficam todas verdes por
+cima**. É a espécie de morto que o `CLAUDE.md` §5.0 chama de *«o consumidor que projecta o valor
+fora»*: o fio está inteiro, o valor chega, e quem o recebe descarta-o — e **nenhuma sonda de registo
+o vê**, porque o chip *é* registado.
+
+⇒ o gate `changing_how_it_is_painted_drops_the_frame_that_was_already_traced` **encena um quadro já
+servido** antes de cada chip. ⚠️ Sem essa encenação ele mediria um campo que já era `None` — *e
+passaria a afirmar nada*, que é a forma de gate vazio que este repo já pagou várias vezes.
+
+### §13.3 — ⭐⭐ A CRUZ: as duas fileiras escrevem o MESMO `Look`
+
+A vista e a exposição são **campos da mesma struct**, e cada fileira escreve um só. Um chip de
+exposição que reescrevesse a vista (ou o contrário) apagaria a escolha do vizinho **em silêncio**.
+
+⇒ o gate **cruza** as duas: escolhe uma vista fora da omissão e só depois varre as cinco exposições,
+afirmando a cada passo que a vista continua onde ficou. A mutação `with_exposure → with_view` sangra
+exactamente aí.
+
+### §13.4 — ⚠️ E a ordem de varredura tem uma razão
+
+As fileiras são varridas com **o modo de omissão por ÚLTIMO**. Um despacho com um `if != actual { … }`
+a mais deixaria o chip do estado em vigor mudo, e um gate que só pedisse *o modo que não é o de
+partida* passaria por cima disso.
+
+### §13.5 — Os gates, e as quatro mutações que sangraram
+
+| gate | o que ele prende |
+|---|---|
+| `every_shading_chip_paints_the_piece_the_way_it_says` | o chip põe o viewport no modo que nomeia, **e o aceso segue** |
+| `every_look_chip_changes_the_scene_look_and_leaves_its_neighbour_alone` | §13.3, com a cruz |
+| `changing_how_it_is_painted_drops_the_frame_that_was_already_traced` | §13.2, nos **três** chips e em **todos** os viewports |
+
+⭐ **4/4 sangraram:** `SetShading` a ignorar o slot · `SetExposure` a escrever a vista · `set_shading`
+sem largar o pedido · `set_look` sem largar os pedidos.
+
+⚠️ **O pedido é largado em TODOS os viewports** no caso do olhar, e só no activo no caso do
+sombreamento — porque o olhar é **da cena** e o sombreamento é **do viewport** (§12 da tabela deste
+doc, e o doc do `crate::shading`). O gate afirma a versão forte (nenhum viewport fica com pedido),
+que é a que vale para os três.
+
+
+---
+
+## §14 — ⏱️ O CUSTO DE CONSTRUIR A TABELA, MEDIDO (2026-09-14)
+
+A §11.6 deixou isto escrito como *«a primeira medição da wave seguinte»*: a sonda de 13/09 mediu a
+**RESOLUÇÃO** (*«de quem é este pixel?»*, `1,6 ms` a 16 folhas) com as fitas **já compiladas**, e o
+doc dela dizia-o por escrito. O que faltava medir era a **CONSTRUÇÃO** — um JIT por folha, que corre
+a cada mudança de geometria, isto é, **a cada quadro de um arrasto do gizmo**.
+
+### §14.1 — A tabela
+
+Sonda [`measure_what_building_the_table_costs_per_frame`](../../crates/ph2d-app-field3d/src/materials_tests.rs),
+grelha de esferas em união, **mínimo de 7 corridas com a mediana ao lado**:
+
+| folhas | `Table::build` MIN | p50 | `Owners::new` | `leaves()` | % de um quadro de 16,7 ms |
+|---:|---:|---:|---:|---:|---:|
+| `1` | `0,000` | `0,000` | `0,008` | `0,000` | `0,00 %` |
+| `2` | `0,017` | `0,017` | `0,015` | `0,000` | `0,10 %` |
+| `4` | `0,032` | `0,032` | `0,030` | `0,001` | `0,19 %` |
+| `8` | `0,061` | `0,062` | `0,061` | `0,001` | `0,37 %` |
+| `16` | `0,122` | `0,125` | `0,120` | `0,003` | `0,73 %` |
+| `32` | `0,243` | `0,248` | `0,240` | `0,005` | `1,46 %` |
+| `64` | **`0,479`** | `0,486` | `0,472` | `0,010` | **`2,87 %`** |
+
+⭐ **Linear, a `7,5 µs` por folha.** ⇒ o custo chega a `10 %` de um quadro por volta das **`223`
+folhas**, e a um quadro inteiro por volta das **`2 230`**. Nenhuma peça deste módulo se aproxima
+disso — e o quadro de **movimento** já custa `26,7 ms` (§8), de que a marcha é `80 %`.
+
+⇒ **a construção não é o tecto, e não há cura a fazer.** *Medir antes de limitar, e não optimizar o
+que não é o tecto* (`CLAUDE.md` §0.0).
+
+⚠️ **`98 %` do custo é o `Owners::new`** (a compilação das fitas); o `leaves()` — a travessia do
+mundo mais um `FieldDoc` por folha — é `2 %`. Quem quiser mexer neste número mexe no JIT, não na
+travessia.
+
+⚠️⚠️ **A medição foi feita com a máquina a `load 45`, e vale mesmo assim** — o mínimo e a mediana de
+7 corridas concordam a menos de `2 %`. *A carga de fundo desta workstation nunca desce abaixo de
+`~7`, e «esperar pela calma» não chega: mede-se o MÍNIMO de N, com a mediana ao lado.*
+
+### §14.2 — ⭐⭐ A metade que a medição mostrou já estar certa: os dois ritmos
+
+O `sync` chama `Table::build` **só quando o documento muda**, e mudar uma COR **não muda o
+documento** (o material é um componente à parte; o `FieldDoc` cozido é a geometria). ⇒
+
+| gesto | o que corre | custo a 64 folhas |
+|---|---|---|
+| arrastar o **gizmo** | `Table::build` (o JIT) | `0,479 ms` |
+| arrastar a **cor** | `refresh_authored` | `0,010 ms` |
+
+**`48×` mais barato**, e é essa a razão de a tabela ter duas metades.
+
+### §14.3 — ⛔⛔ E o gate que defendia isso media a RESPOSTA
+
+O `changing_a_number_refreshes_the_surfaces_and_not_the_geometry` afirma que o dono **responde o
+mesmo** depois de um número mudar. Isso sai certo **mesmo que alguém troque o `refresh_authored` por
+um `Table::build` inteiro** — a geometria é a mesma, logo o dono responde o mesmo, e o quadro passa a
+pagar um JIT por folha a cada pixel de arrasto do selector de cor.
+
+*É a mesma lei que o `Owners::at_counting` já existia para servir:* **um gate sobre a RESPOSTA é cego
+ao PREÇO**. ⇒ `dragging_a_colour_compiles_no_tape_at_all`, sobre o **trabalho**.
+
+⭐⭐ **E a régua não existia — foi escrita nesta wave.** O contador da casa (`hybrid::FLOAT_TAPES`,
+W70) conta a fita do **traçado**; a que a `Owners` compila é a do **PONTO** (`Field::new →
+PointTape::build`), e não tinha contador nenhum. A 1.ª redacção do gate leu o contador errado e mediu
+**zero de zero** — ⚠️ **quem a apanhou foi o PISO**, que afirma que o lado caro compila pelo menos uma
+fita por folha. *Uma régua que lê zero nos dois lados é verde e não afirma nada.*
+
+⇒ [`ph2d_field_eval::POINT_TAPES`], o gémeo, com o mesmo `#[doc(hidden)]` e a mesma frase do irmão:
+*um custo que nenhuma sonda conta é um custo que nenhuma mutação mata*.
+
+⚠️ **Ele corre por `nextest`** — o §9 deste doc mede o que acontece a um contador global sob `cargo
+test`, em que as threads se vêem umas às outras.

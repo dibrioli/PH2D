@@ -157,6 +157,26 @@ impl Viewport {
         self.frame.is_some()
     }
 
+    /// ⚠️ **Só para o gate**: encena um quadro **JÁ SERVIDO** — a vista guarda o pedido que acabou
+    /// de desenhar.
+    ///
+    /// É o estado em que o [`Viewport::requested`] é perigoso: o laço do preview compara a câmera, o
+    /// tamanho e o documento, e um olhar novo **não move nenhum dos três**. Sem ele encenado, um
+    /// gate sobre o `forget_requests` mede um campo que já era `None` — *e passa a afirmar nada*.
+    #[cfg(test)]
+    #[doc(hidden)]
+    pub fn probe_remember_a_served_request(&mut self, doc: ph2d_field::FieldDoc) {
+        self.requested = Some((self.cam, 64, 64, doc, false));
+    }
+
+    /// ⚠️ **Só para o gate**: esta vista ainda tem um pedido guardado? Ver
+    /// [`Viewport::probe_remember_a_served_request`].
+    #[cfg(test)]
+    #[doc(hidden)]
+    pub fn probe_has_request(&self) -> bool {
+        self.requested.is_some()
+    }
+
     // ⛔⛔ **NÃO acrescente aqui um `probe_frame_id`.** Ele existiu, e uma mutação SOBREVIVEU-lhe:
     // perguntar ao ESTADO se o handle guardado mudou fica verde quando alguém acrescenta, ao lado,
     // um desenho pela porta crua — o handle continua o mesmo e a cena cunha uma residente nova por

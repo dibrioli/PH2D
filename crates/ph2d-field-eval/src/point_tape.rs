@@ -76,6 +76,25 @@ pub(crate) struct PointTape {
     raiz: u32,
 }
 
+/// ⭐⭐ **Quantas fitas de PONTO foram compiladas** — o gémeo do
+/// [`crate::hybrid::FLOAT_TAPES`], para o caminho que o [`crate::Field`] usa.
+///
+/// # ⚠️ Porque ele nasceu, e o que a ausência dele deixou passar
+///
+/// O `FLOAT_TAPES` conta a fita do **traçado** (a da [`crate::hybrid::Hybrid`]); esta é a do
+/// **ponto** — a que o `Field::new` compila, e que a `Owners` compila **uma por folha**. Um gate
+/// escrito contra o contador errado leu **zero de zero** e o piso dele apanhou-o: *uma régua que
+/// mede zero nos dois lados é verde e não afirma nada.*
+///
+/// ⚠️ **É a mesma frase que o doc do `FLOAT_TAPES` já escrevia**, sobre a mesma família de defeito:
+/// *um custo que nenhuma sonda conta é um custo que nenhuma mutação mata*. A montagem desta fita é
+/// um **JIT**, e ela corre por folha a cada mudança de geometria.
+///
+/// ⚠️ **Sob `cargo test` ele vê-se entre threads** — ver `docs/Render3d/05` §9. Quem o lê corre por
+/// `nextest`, que dá um processo por teste.
+#[doc(hidden)]
+pub static POINT_TAPES: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+
 impl PointTape {
     /// Achata a subárvore alcançável a partir de `root`.
     ///
@@ -83,6 +102,7 @@ impl PointTape {
     /// pilha de perfis encadeados é funda; trocar uma recursão por outra herdaria o estouro em vez
     /// de o deixar para trás.
     pub(crate) fn build(ctx: &Context, root: Node) -> Self {
+        POINT_TAPES.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         let mut slot: BTreeMap<Node, u32> = BTreeMap::new();
         let mut code: Vec<Instr> = Vec::new();
         // `false` = ainda por expandir · `true` = filhos prontos, emite-se agora.

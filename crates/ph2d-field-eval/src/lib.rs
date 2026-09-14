@@ -363,6 +363,10 @@ pub fn leaf(p: Primitive, xform: Xform) -> Node {
 mod affine;
 mod point_tape;
 use affine::Affine;
+/// ⭐⭐ **O contador de fitas de PONTO** — ver [`point_tape::POINT_TAPES`]. Público porque o
+/// instrumento de um custo só serve a quem o paga, e quem o paga é o consumidor (a `Owners`, a
+/// tabela de materiais do modelador).
+pub use point_tape::POINT_TAPES;
 mod hull;
 pub use hull::{probe_hull_uv, probe_in_hull};
 /// ⭐⭐⭐ Os cascos de uma região, por folha — ver [`region_hulls`].

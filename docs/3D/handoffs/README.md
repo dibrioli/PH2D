@@ -8,8 +8,11 @@
 > um handoff descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os
 > para responder *"por que isto ficou assim?"* — nunca para decidir a próxima ação.
 
-**37 handoffs** (= ficheiros na pasta, conferido) · **18** marcados **◆** — mas
-⚠️ **só `14` são de facto citados pelo `CLAUDE.md`**, medido em 2026-09-07 assim:
+**44 handoffs** (= ficheiros na pasta, conferido) · **20** marcados **◆** — mas
+⚠️ **só `21` são de facto citados pelo `CLAUDE.md`**, re-derivado em 2026-09-14
+(ele dizia `37 · 18 · 14`, medido em 2026-09-07: *sete* handoffs entraram entre as
+duas datas e ninguém reconciliou a conta — ⛔ **é exactamente o que o parágrafo
+abaixo avisa que acontece**), assim:
 
 ```
 for f in docs/3D/handoffs/*.md; do grep -q "$(basename $f)" CLAUDE.md && echo "$f"; done | wc -l
@@ -67,6 +70,7 @@ linhas marcadas, não desta).
 | 2026-09-11 | ▣ | [HANDOFF_INTEGRACAO_line_app_sculpt3d_FASE_B_2026-09-11.md](HANDOFF_INTEGRACAO_line_app_sculpt3d_FASE_B_2026-09-11.md) | integração (W2/L3) | a família sai da shell — **Fase B, o corte**: 112 ficheiros em `ph2d-app-sculpt3d`, zero sextos métodos no `AppHost`, e o roteador sai da catraca. O §6 tem as nove armadilhas e o §11 os quatro abertos — ⚠️ o quarto (o gate do empréstimo da cena) **fechou em 2026-09-13**. Estava fora deste índice até 2026-09-13 |
 | 2026-09-13 | ★ ◆ | [HANDOFF_INTEGRACAO_line_sculpt3d_2026-09-13.md](HANDOFF_INTEGRACAO_line_sculpt3d_2026-09-13.md) | integração | ⭐⭐⭐ **Os oito gates que a família prometia e nunca existiram** (seis escritos, dois reapontados, e o censo que reprova a recaída) · ⛔⛔ **o INCIDENTE INC-4 da parede clean-room**, tratado pelo protocolo: RELANCE por um R independente, 173 blocos de comentário reescritos sem nomes internos do alvo, e a vassoura emendada. ⚠️ O §7 traz **sete** coisas que uma leitura rápida do diff entende ao contrário |
 | 2026-09-13 | ★ ◆ | [HANDOFF_INTEGRACAO_line_sculpt3d_PINCEIS_2026-09-13.md](HANDOFF_INTEGRACAO_line_sculpt3d_PINCEIS_2026-09-13.md) | integração | ⭐⭐⭐ **Os pincéis que faltavam começam a chegar** — o POLEGAR e o EMPURRÃO, que são a MESMA conta e não trazem grip novo, com paridade `4,5e-7`–`1,31e-6` contra o oráculo e barra DERIVADA. ⛔⛔ **Duas leis que já shipavam foram corrigidas:** a curva da força do modo `B` é por VERBO (o agarrar da referência é LINEAR) e a pegada do gesto ancorado CONGELA no pen-down. ⚠️ O §9 tem as **duas decisões do dono** (a patente viva que lê sobre o que já shipamos; o histórico do repo) e o §6 o achado de método: **o sweep da parede era cego a TRADUÇÃO**
+| 2026-09-14 | ★ ◆ | [HANDOFF_INTEGRACAO_line_sculpt3d_CONTORNO_2026-09-14.md](HANDOFF_INTEGRACAO_line_sculpt3d_CONTORNO_2026-09-14.md) | integração | ⭐⭐⭐ **O PINCEL DE CONTORNO** — crate-folha `ph2d-boundary` (zero deps), o 28.º verbo, cena `=42`, e **51 de 61** traços do oráculo dentro da barra, com as 10 excepções sob censo de obsolescência. ⭐⭐ **A espec ATESTADA foi REFUTADA por medição**: a fórmula do `n̂` da §9.1 concorda em toda peça CENTRADA na origem, e quatro fixturas deslocadas dizem outra coisa — *o ponto cego era do CORPUS, não do auditor*. ⛔⛔ **E a cena `=42` não movia um vértice por `721` vértices ÓRFÃOS na fixtura** (o cursor é o ponto mais alto da peça, e passou a ser o pólo da metade deitada fora): a cura é a porta `ph2d_mesh::compact_for_faces`, cuja lei já estava escrita — **privada** dentro do importador de OBJ. ⚠️ O §8 tem **sete** coisas que uma leitura rápida do diff entende ao contrário, e o §10 nomeia um achado de vassoura que é **do R** e não do implementador
 
 ---
 

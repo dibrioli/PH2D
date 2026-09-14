@@ -272,3 +272,4 @@ os censos da crate antes de dar o corte por fechado.
   com vértices na junta sobe a `0,064`; com a arte alta sobe a `10,47`. *Um gate cuja fixtura não
   produz o fenómeno mede outro programa, e passa verde a dizê-lo.*
 
+- [[feedback_a_never_used_warning_measures_visibility_not_the_law]] — um `never used` apanhou um roteiro de smoke sem chamador, e ficaria mudo se a fn fosse `pub`: escreva o censo com PISO

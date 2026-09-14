@@ -332,3 +332,52 @@ paridade mexe-se com a medição do autor dela ao lado, não de passagem noutra 
 
 ⏳ **O RELÓGIO continua por ler** (§3): a workstation esteve a `load 26–75` toda a jornada. A sonda
 `probe_the_price_of_driving_one_param` está escrita, corrigida e à espera de máquina calma.
+
+
+---
+
+## §7 — Report do dono: *«usando shape (exemplo: star) fps cai para 27»* (2026-09-14)
+
+Observado no smoke da `=116`. **Reproduzido, medido, e a causa NÃO é a que o código faz supor.**
+
+⚠️ **A cena passou a saber fazê-lo** (`PH2D_FIO_FORMA=<kind>`, um knob de DIAGNÓSTICO): sem uma
+porta assim o report do dono não é reproduzível por mais ninguém, e a forma é **argumento** de
+[`build_com`] — um ramo de ambiente dentro da lei tornaria o caso inalcançável de um teste, e foi um
+teste que precisou dele primeiro.
+
+### O que o app diz sozinho
+
+```text
+[motion-route] CPU: o grafo traz uma FORMA vectorial viva (source.shape)
+[frame] total=39,77ms (~25 fps) | cpu-encode=39,80ms | acquire=0,05ms
+```
+
+### As três medições, lado a lado
+
+| caso | rota | cook | quadro | fps |
+|---|---|---|---|---|
+| quads, como a cena shipa | dispositivo | 2,87 ms | **16,92 ms** | 59 |
+| quads, **forçados** à CPU (`PH2D_MOTION_DRIVEN_GPU=0`) | CPU | — | **16,68 ms** | 60 |
+| **estrelas** (`PH2D_FIO_FORMA=5`) | CPU (forma viva) | 4,49 ms | **39,77 ms** | **25** |
+
+⭐⭐⭐ **A leitura óbvia está ERRADA, e a segunda linha é o controlo que a derruba.** O código tem uma
+recusa declarada — *«o grafo traz uma FORMA vectorial viva»* — e é tentador concluir que os 27 fps
+são a queda para a CPU. **Não são:** as MESMAS 102 400 peças forçadas à CPU seguram `60 fps`. A
+rota custa uns milissegundos; o que custa `~31 ms` é outra coisa.
+
+### E não é o que eu supus também
+
+| hipótese | medida | veredito |
+|---|---|---|
+| *«o carimbo multiplica a contagem (`formas × pontos`)»* | `102 400` **nos dois casos** | ⛔ refutada |
+| *«o cozimento fica caro»* | `2,87 → 4,49 ms` (`+1,6`) | ⛔ refutada (4% do quadro) |
+| **o DESENHO** | `39,80 ms` de encode com `4,49` de cook ⇒ **`~35 ms` fora do cozimento** | ✅ é aqui |
+
+⇒ **Cada estrela é ARTE DESENHADA — um caminho com pontos, construído e codificado a cada quadro**,
+contra um quad com uma textura. A 102 400 delas, isso é o quadro inteiro.
+
+⏳ **A cura já tem nome e número na fila:** é o item **10** do [doc 103 §5](103_dinamica_dos_ciclos.md)
+— *«o CARIMBO NO DISPOSITIVO (`source.shape` + `motion.duplicator`)»* —, que está **deliberadamente
+no fim** porque é wave de substrato (toca o planeador, por onde todos os ciclos passam). ⚠️ E o §0.0
+manda reconferir a nota de quem move o número: a W1a mexeu no planeador, e **não** desbloqueia isto
+— o que ali falta é a forma chegar ao dispositivo como coisa desenhável, não um param.

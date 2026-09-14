@@ -48,7 +48,22 @@ pub(super) fn captions() -> Vec<Caption> {
 }
 
 /// Monta a cena. Devolve o sink.
+///
+/// ⚠️ A forma vem da env aqui e é ARGUMENTO em [`build_com`]: um ramo de ambiente dentro da lei
+/// torna a cena inalcançável de um teste — e foi um teste que precisou dela primeiro.
 pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeId>> {
+    let forma = std::env::var("PH2D_FIO_FORMA")
+        .ok()
+        .and_then(|v| v.parse::<f32>().ok());
+    build_com(doc, reg, forma)
+}
+
+/// A cena, com a FORMA escolhida por quem chama — ver [`build`].
+pub(super) fn build_com(
+    doc: &mut MotionDoc,
+    reg: &NodeRegistry,
+    forma_kind: Option<f32>,
+) -> Option<Vec<NodeId>> {
     use ph2d_nodegraph::graph::{Edge, Pos};
 
     let g = &mut doc.graph;
@@ -78,6 +93,42 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
     // ⭐ **O FIO** — o assunto da cena. É esta linha, e só esta, que até à W1a mandava as 102 400
     // peças para a CPU.
     g.drive_param(escala, "amount", (lfo, 0)).ok()?;
+
+    // ⭐⭐ **O CASO DO DONO, reproduzível** (report de 2026-09-14: *«usando shape (exemplo: star)
+    // fps cai para 27»*). Com `PH2D_FIO_FORMA=<índice do kind>` as peças passam a ser uma FORMA
+    // carimbada em vez do quad de omissão.
+    //
+    // ⚠️ **É um knob de DIAGNÓSTICO e não um modo da cena**: a `=116` ensina onde a cena corre, e
+    // uma forma muda a resposta por DOIS motivos que nada têm a ver com o fio (o `source.shape`
+    // declara-se fonte vectorial viva e recusa o grafo antes de planear; o `motion.duplicator` é
+    // CPU-only). *Sem uma porta assim, o report do dono não é reproduzível por ninguém.*
+    if let Some(kind) = forma_kind {
+        let forma = g.add_node("source.shape");
+        g.set_param(forma, "kind", kind);
+        let carimbo = g.add_node("motion.duplicator");
+        g.connect(Edge {
+            from: (forma, 0),
+            to: (carimbo, 0),
+            delayed: false,
+        })
+        .ok()?;
+        g.connect(Edge {
+            from: (escala, 0),
+            to: (carimbo, 1),
+            delayed: false,
+        })
+        .ok()?;
+        // O carimbo entra ENTRE a escala e a saída: o fio continua a comandar o tamanho.
+        g.disconnect(saida, 0);
+        g.connect(Edge {
+            from: (carimbo, 0),
+            to: (saida, 0),
+            delayed: false,
+        })
+        .ok()?;
+        g.set_pos(forma, Pos { x: -60.0, y: 200.0 });
+        g.set_pos(carimbo, Pos { x: 40.0, y: 0.0 });
+    }
 
     for (no, x, y) in [
         (grelha, -260.0, 0.0),

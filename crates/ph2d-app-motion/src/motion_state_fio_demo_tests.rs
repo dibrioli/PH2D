@@ -110,3 +110,44 @@ fn the_cloth_actually_breathes() {
         "o tamanho nao mexeu entre dois instantes ({a} e {b}) -- o fio nao esta' a comandar nada"
     );
 }
+
+/// **SONDA — o que a FORMA custa na cena do dono** (report de 2026-09-14: *«usando shape (exemplo:
+/// star) fps cai para 27»*).
+///
+/// ⚠️ A pergunta que ela responde e que o relógio do app não separa: **quantos elementos a cena
+/// passa a ter**. O carimbo emite `formas × pontos`, e uma contagem que decuplica explica um custo
+/// que *«estrelas são caras»* não explica.
+///
+/// ```text
+/// cargo test -p ph2d-app-motion --lib --release probe_what_the_shape_costs -- --ignored --nocapture
+/// ```
+#[test]
+#[ignore = "sonda de medicao — corra em RELEASE"]
+fn probe_what_the_shape_costs() {
+    eprintln!("\n  caso                   | elementos | cook      | rota");
+    eprintln!("  -----------------------|-----------|-----------|------------");
+    for (rotulo, forma) in [("quads (o de omissão)", None), ("estrelas", Some(5.0))] {
+        let mut m = MotionState::new();
+        let sink = *build_com(&mut m.doc, &m.registry, forma)
+            .expect("a cena monta")
+            .first()
+            .expect("um sink");
+        crate::motion_shape_gen::publish(&mut m, 0.0);
+        let t = std::time::Instant::now();
+        let saida = m
+            .pump
+            .cook
+            .cook(&m.doc.graph, &m.registry, sink, 0.0)
+            .expect("coze");
+        let ms = t.elapsed().as_secs_f64() * 1e3;
+        let n = saida[0].as_stream().count();
+        let dirigidos = crate::motion_bridge::gpu::valores_dirigidos(&mut m, 0.0);
+        let no_device =
+            ph2d_gpu_cook::plan_driven(&m.doc.graph, &m.registry, &m.registry, sink, &dirigidos)
+                .is_fully_gpu();
+        eprintln!(
+            "  {rotulo:<22} | {n:>9} | {ms:>6.2} ms | {}",
+            if no_device { "dispositivo" } else { "⛔ CPU" }
+        );
+    }
+}

@@ -749,6 +749,11 @@ O roteiro dos **7** passos é impresso pelo próprio app ao abrir, e o passo
 > *«apenas no grosso vi alguma coisa acontecendo. Porque não temos um slider neste pincel para
 > definir a densidade da malha. Por que não pode aumentar a densidade também?»*
 
+> ⚠️⚠️ **LEIA A §20 ANTES DE ACREDITAR NO QUE VEM A SEGUIR.** Duas coisas desta secção foram
+> **retiradas pelo dono no mesmo dia**: o ajuste `DensityModo` (*«não precisamos do modo Thin Only»*)
+> e a âncora do slider no raio do pincel (*«a densidade da malha deve ser independente do zoom»*). O
+> que fica de pé aqui é a **leitura errada da espec** que o report expôs, e a tabela medida.
+
 São **três observações e as três estavam certas**, cada uma sobre uma coisa diferente. A primeira é a
 **consequência** da terceira; a segunda é um buraco de superfície que existia desde que o modo nasceu.
 
@@ -886,3 +891,171 @@ argumentos.
    afina. Hoje diz *«a malha aqui já está no ponto que o `Detail` pede»*, porque com o ajuste de
    omissão chegar ali quer mesmo dizer isso. As **três** razões continuam a ser três, com gate a
    contá-las.
+
+
+---
+
+## §20 — ⭐⭐⭐ TRÊS ORDENS DO DONO NO MESMO DIA, e as duas últimas mudaram a ÂNCORA de duas coisas
+
+**Reports (2026-09-14, a seguir ao da §19):**
+
+> *«Não precisamos do modo Thin Only. Deve ser sempre Equalise. Independente se Dynamic topology
+> está ligado ou não, Density faz o seu trabalho. Dynamic topology é para os outros pincéis.»*
+>
+> *«A densidade da malha deve ser independente do zoom.»*
+
+### §20.1 — O `Thin Only` SAIU, e com ele a coluna volta a ser função só do verbo
+
+O `DensityModo` viveu **doze horas**, entre dois reports do mesmo dia. Ele nasceu certo — o primeiro
+report expôs que eu lera a tabela-verdade da espec §3.2 pela metade — e morreu por **veredito de
+produto**: a metade que só afina não é produto.
+
+⚠️ **O que fica registado é o CICLO da premissa.** O gate
+`as_duas_colunas_coincidem_hoje_e_isso_nao_e_uma_lei` existia a dizer exactamente isso, **reprovou**
+quando o ajuste as separou, foi reescrito com a morte da premissa no diff — e **voltou** quando o
+ajuste saiu. *Uma premissa que morre e renasce em doze horas é a melhor prova de que ela tinha de
+estar num gate e não num comentário.*
+
+⛔ **A recusa medida da espec continua de pé e é OUTRA pergunta:** *«fazer o `Density` também
+subdividir»* é sobre o pincel **FORÇAR** o partir onde o ajuste da cena o desliga. Nós não temos
+esse ajuste — nem o queremos, pela ordem acima —, logo não há nada que ele possa forçar.
+
+### §20.2 — ⭐⭐ Ele corre SEM o interruptor, e isso tinha uma peça escondida
+
+`Verb::corre_sem_o_interruptor()`, **derivado** de `sem_lei_por_vertice()` — quem não tem lei
+por-vértice não tem nada a ganhar com um interruptor que responde *«o meu traço também muda a
+topologia?»*.
+
+⚠️ **DIVERGÊNCIA DECLARADA da referência:** a espec §3.2 tem o desarme na **primeira linha** da
+tabela-verdade (o modo de detalhe em *Manual* desliga o passe inteiro, este pincel incluído). O
+argumento do dono vence: aquele interruptor é sobre traços, e este verbo não tem traço.
+
+⛔⛔ **E a peça que quase ficou por fazer: a TRIANGULAÇÃO.** Os dois motores recusam quads por
+geometria (`Refine::NotTriangles` — partir a aresta de um quad devolve um triângulo e um pentágono),
+e quem os triangulava era o `toggle_dyntopo`. Sem herdar esse trabalho, o pincel seria um **no-op
+silencioso** em toda peça que ainda é de quads — uma primitiva acabada de nascer, ou a saída do
+botão de retopologia. ⇒ ela corre no **pen-down**, **depois da foto do desfazer**, para o gesto
+inteiro (triangular *mais* adensar) desfazer num passo só.
+
+⛔ **E o registo do desfazer tinha de mudar com isso:** ele filtrava por `vert_count`, e **triangular
+um quad parte uma face em duas sem criar um vértice** — um traço que só triturou lia contagem igual e
+saía **sem entrada nenhuma**. *Duas grandezas estavam a ser lidas como uma.*
+
+⚠️ **As razões do silêncio passaram de TRÊS para DUAS**, e a que saiu não foi apagada: ficou
+**inalcançável**. A queixa do modo desligado só falava por quem não tem lei por-vértice — ou seja,
+exactamente por quem já não passa naquele ramo. *Curar um defeito pode APAGAR uma queixa, e um censo
+que continue a contar três fica a mentir para o lado seguro.*
+
+### §20.3 — ⭐⭐⭐ A densidade deixou de depender do ZOOM, e o defeito estava medido
+
+O alvo de aresta saía do `Brush::radius`, que é **derivado do raio em PIXELS através da câmera** a
+cada dab (`armed_brush_on`). Medido na cena `=14`, mesma peça, mesmo pincel (`160 px`), mesmo slider
+(`0,5`):
+
+| distância da câmera | raio em mundo | alvo VELHO | alvo NOVO | mediana na esfera |
+|---|---|---|---|---|
+| 1,5 | 0,1198 | **0,0415** | `0,0804` | `0,0601` |
+| 3,0 | 0,2752 | 0,0953 | `0,0804` | `0,0539` |
+| 6,0 | 0,5858 | **0,2029** | `0,0804` | `0,0543` |
+
+⇒ **`4,9×` de alvo só por aproximar ou afastar**, e a cura leva a dispersão do alvo a **zero** e a da
+densidade alcançada a **`±11 %`** (o resíduo é a discretização: uma aresta parte-se ao meio ou não se
+parte).
+
+⭐⭐ **A cura não é uma invenção — é a mesma que esta casa já tinha escrito para o mesmo defeito.**
+Quando o `Quad Size` absoluto do botão de retopologia foi refutado com foto pelo dono, a lição ficou
+no código: *«um mesmo `0,02` é destrutivo numa malha grossa e conservador numa fina: o número não era
+da malha»*, e a cura foi **ancorar na ÁREA**. O alvo da topologia dinâmica tinha a mesma doença uma
+âncora acima, e leva a mesma cura:
+
+```
+tris   = MIN_TRIS · (MAX_TRIS/MIN_TRIS)^detalhe        (geométrico)
+aresta = √( 4·área / (√3 · tris) )                     (triângulo equilátero)
+```
+
+⚠️ **Os dois extremos têm o RECURSO NOMEADO, e nenhum foi escolhido:**
+
+* **`MIN_TRIS = 200`** é o `MIN_QUADS` do botão **em triângulos** — aquele saiu de uma varredura de
+  volume medida (`96` faces guardam 91 % · `40` guardam 68 % · `23` guardam 50 % ⇒ joelho em ~`100`),
+  e a pergunta é a mesma nos dois sítios. *Escrever um segundo número seria duas medições da mesma
+  grandeza.*
+* **`MAX_TRIS = 100 000`** é o **relógio do dab**: cada passe termina num `rebuild` inteiro, e a
+  tabela do módulo mede-o — `97 922` vértices custam `5,50 ms` contra um orçamento de `8`. Numa malha
+  fechada os triângulos são ~`2×` os vértices, logo `100 000` triângulos são ~`50 000` vértices,
+  `~2,8 ms`, **35 %** do orçamento. *É o ponto mais fino ainda confortável, não aquele em que o
+  relógio ainda se aguenta.*
+
+⭐ **E a área virou uma PORTA** (`ph2d_mesh::Mesh::surface_area`): ela vivia na `ph2d-quadflow`, e o
+segundo consumidor chegou de outra crate. *Duas somas de triângulos em duas crates seriam a segunda
+resposta à mesma pergunta* — hoje a quadflow delega.
+
+⚠️⚠️ **E isto muda o que o PINCEL significa, de propósito:** o doc antigo dizia *«um pincel pequeno
+detalha fino e um grande detalha grosso, que é o que a mão espera»*. Isso é a *fração do pincel* da
+referência (espec §3.4); o que fica é a *detalhe CONSTANTE* dela, que é a que não muda com a vista.
+⇒ **o pincel diz ONDE, o slider diz QUÃO FINO.** Enquanto as duas perguntas partilhavam um número,
+mexer numa mexia na outra.
+
+### §20.4 — Os gates, e as provas de mutação (6 de 6 sangram)
+
+| gate | o que morre sem ele |
+|---|---|
+| `a_densidade_leva_a_malha_ao_alvo_nos_dois_sentidos` | as duas direcções, medidas na malha |
+| `so_quem_nao_tem_lei_por_vertice_corre_sem_o_interruptor` | a porta nova alcançar verbo a mais (varredura + piso de população) |
+| `a_densidade_corre_com_o_interruptor_desligado` | **quatro** metades: ela trabalha · tritura os quads · o controlo (o `Draw` **não** trabalha) · o `Ctrl+Z` devolve tudo |
+| ⭐ `a_densidade_nao_depende_do_zoom` | o report inteiro: alvo idêntico (igualdade) + densidade alcançada na banda medida |
+| ⭐ `a_densidade_nao_depende_do_tamanho_da_peca` | a outra invariância que ancorar na área compra — e **só ela** apanha a área cravada numa constante |
+| `a_pista_do_detalhe_chega_ao_motor` | o ponto cego do §5.0 — as três metades, e só a terceira sangra com o alvo cravado |
+| `as_duas_colunas_coincidem_hoje_e_isso_nao_e_uma_lei` | o ciclo da premissa ficar invisível no diff |
+| `the_edge_target_comes_from_the_piece_never_from_the_brush` | a âncora voltar ao raio, na shell |
+
+**Mutações:** (1) o interruptor volta a prender toda a gente · (2) ninguém tritura a peça · (3) o
+desfazer volta a perguntar só pelos vértices · (4) o alvo volta a sair do raio · (5) a área vira
+constante · (6) a densidade deixa de partir. **Todas sangram.**
+
+⚠️⚠️ **E DUAS delas exigiram correcção do MÉTODO, as duas já registadas neste repo:**
+
+* **A (3) SOBREVIVEU à primeira tentativa** porque o meu gate media o desfazer sobre um dab que
+  **também** mudava a contagem de vértices — reverter a metade `face_count` deixava-o verde. *Um
+  gate que não contém o caso não afirma nada sobre ele.* O arranjo que o contém saiu de uma medição
+  desta linha: com a câmera perto, o pincel de `160 px` vale `0,12` de mundo contra arestas de
+  `~0,3` — **menor que um triângulo** —, logo o dab não parte nem funde e a única coisa que acontece
+  é a triangulação. ⚠️ A minha primeira tentativa foi escolher um ponto do slider por aritmética
+  sobre a aresta *média*, e mediu `+21` vértices: **numa esfera UV as arestas encolhem para zero nos
+  pólos**, logo não existe posição do slider em que nada parta E nada funda. *O caso não era um
+  número; era a geometria do alcance.*
+* **A (4) NÃO CHEGOU A APLICAR-SE** na primeira corrida — o `cargo fmt` reformatara a linha e o
+  filtro casou `0×` — e o teste imprimiu `ok`. *Uma mutação que não entra lê-se exactamente como uma
+  que sobreviveu*; é a terceira vez que este repo a paga, e a cura é o `assert` de contagem no
+  próprio filtro, que aqui apanhou.
+
+### §20.5 — ⛔ O ARNÊS estava a medir outro programa
+
+`um_dab` fazia `aim` + `stroke.begin` + `sculpt_at` + `close_stroke` — e **não** chamava o
+`open_dyntopo_stroke`, que é o que o pen-down do produto faz. Consequência: a foto da malha de antes
+**nunca era tirada**, logo o `close_stroke` nunca gravava a entrada `Remeshed` e **nenhum gate desta
+linha cobria o desfazer de um traço que muda a topologia**. *Um arnês a que falta um passo do produto
+mede outro programa* — e o que ele media aqui era um pincel sem desfazer.
+
+### §20.6 — ⛔ Três tectos de LOC, curados por CORTE
+
+| ficheiro | antes | depois |
+|---|---|---|
+| `ph2d-panel-sculpt3d/src/paint/brush.rs` | `623` | `367` + `brush_fileiras.rs` |
+| `ph2d-mesh/src/dyntopo.rs` | `825` | `690` + `dyntopo_alvo.rs` |
+| `ph2d-app-sculpt3d/src/dyntopo_tests.rs` | `827` | `180` + `densidade_tests.rs` + `densidade_ancora_tests.rs` |
+
+Os três cortes são de **responsabilidade** e nenhum entrou no `FILE_OVERAGE_OK`: *as fileiras
+próprias de cada pincel* contra *a moldura do pincel*; *quanto deve medir uma aresta* contra *como se
+parte uma malha*; *o que o pincel faz* contra *de onde vem o número que ele persegue*.
+
+### §20.7 — ⚠️ Três coisas que uma leitura rápida do diff entende ao contrário
+
+1. **O `edge_target` da `ph2d-mesh` NÃO morreu** — ele é a lei da referência e é o que as bancadas de
+   paridade medem. O que mudou é que o **produto** já não o chama.
+2. **A contagem final continua a variar com o zoom, e isso é o CERTO.** Um pincel de `160 px` cobre
+   menos peça quando a câmera se aproxima — isso é o pincel a dizer ONDE. O que não pode variar é a
+   densidade *onde ele tocou*, e é isso que o gate mede. *Uma régua global mediria as duas perguntas
+   somadas e não saberia qual delas se mexeu.*
+3. **Zoom muito perto pode deixar o pincel menor que um triângulo**, e aí não há o que pegar — o log
+   diz-o, e a cura do artista é o `]`. Com a lei antiga isto não acontecia porque o alvo encolhia
+   junto; é o preço declarado de a densidade deixar de depender da vista.

@@ -739,3 +739,150 @@ cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-sculpt3d && env PH2D_SCULP
 O roteiro dos **7** passos é impresso pelo próprio app ao abrir, e o passo
 **(1)** é o INDICADOR: passar o rato **sem carregar** perto da boca. ⚠️ Rode também
 **uma vez sem a env var** — é a metade que prova a inércia.
+
+---
+
+## §19 — ⭐⭐⭐ *«apenas no grosso vi alguma coisa acontecendo»* — o pincel TEM as duas direcções, e a espec dizia-o numa tabela que eu li pela metade
+
+**Report do dono (2026-09-14, o SEGUNDO sobre este pincel):**
+
+> *«apenas no grosso vi alguma coisa acontecendo. Porque não temos um slider neste pincel para
+> definir a densidade da malha. Por que não pode aumentar a densidade também?»*
+
+São **três observações e as três estavam certas**, cada uma sobre uma coisa diferente. A primeira é a
+**consequência** da terceira; a segunda é um buraco de superfície que existia desde que o modo nasceu.
+
+### §19.1 — ⛔⛔ O erro foi MEU e estava numa LEITURA, não no código: a tabela-verdade da espec
+
+O [`Verb::refina_no_dyntopo`] afirmava, **com o comentário ao lado**, que
+
+> *«a densidade NUNCA acrescenta superfície, e é lei e não omissão: ela liga o colapso e **não** liga
+> o partir. Um pincel que também subdividisse é outro produto.»*
+
+A espec `SPEC_unblocked_brushes.md` §3.2 diz outra coisa, e di-lo numa tabela-verdade de três linhas:
+o pincel **ACRESCENTA a bandeira de colapso** ao modo do passe — ele não **RETIRA** a de partir, que
+continua a ser do ajuste de *método de refino*:
+
+| *Detailing* | o ajuste de refino pede… | **colapsar** corre? | **partir** corre? |
+|---|---|---|---|
+| Manual | (qualquer) | não | não |
+| ≠ Manual | partir | **SIM** (é este pincel a pedi-lo) | sim |
+| ≠ Manual | colapsar | sim | não |
+| ≠ Manual | partir + colapsar | sim | sim |
+
+E ela **mede as duas células na mesma malha grossa**: `81 → 81` com o ajuste em «só colapsar», e
+**`81 → 101`** com «partir + colapsar» — *duas leituras do mesmo pincel, com o ajuste diferente*.
+
+⚠️ **A recusa medida da espec continua de pé, e é OUTRA pergunta.** A linha *«fazer o `Density`
+também subdividir»* da tabela de recusas é sobre o pincel **FORÇAR** o partir, como ele força o
+colapso. Ele não força — ele **obedece**. A célula (b) do gate novo é exactamente esse controlo.
+
+⭐⭐⭐ **A leitura que fica:** *um gate pode pinar a leitura errada de uma espec tão bem como pina um
+defeito, e o que o separa de uma medição é ninguém ter corrido a outra célula.* O gate anterior
+chamava-se `a_densidade_afina_a_malha_e_nunca_a_engrossa` e tinha um controlo positivo a sério
+(o `Draw` no mesmo arranjo) — ele só nunca correu o mesmo pincel com o outro ajuste, porque **o outro
+ajuste não existia**.
+
+### §19.2 — ⭐⭐ O ajuste vive no PINCEL, e não na cena — espec §9.8
+
+O alvo guarda-o na cena. A §9.8 da espec regista que **existe um pedido público aberto** para o tirar
+de lá e o pôr no pincel, e escreve que *«a nossa casa já está do lado certo dessa mudança»*.
+⛔ **Não copiámos o modelo que a referência está a caminho de abandonar:**
+[`ph2d_sculpt3d::DensityModo`] é um campo do `Brush`, com dois valores:
+
+| | o que faz | corresponde a |
+|---|---|---|
+| **`Equalise`** (omissão) | leva a malha **ao** alvo nos dois sentidos | *partir + colapsar* |
+| `Thin Only` | só colapsa, nunca acrescenta | *só colapsar* |
+
+⭐ **A omissão é `Equalise` por DUAS razões que apontam ao mesmo lado:** é o ajuste que a referência
+ship, e é a que responde ao report — com o pincel só a afinar, **ele só tem o que fazer quando o alvo
+pedido está mais grosso que a malha**, e em toda a outra metade do curso ele é indistinguível de uma
+ferramenta partida. *É literalmente a frase do dono: «apenas no grosso vi alguma coisa acontecendo».*
+
+### §19.3 — ⭐⭐ O slider: a superfície que faltava, e a nota que a barrava tinha a premissa expirada
+
+O alvo de densidade existia desde que o modo nasceu e era alcançável **só pela tecla `U`**, em **três
+degraus** (*grosso · médio · fino*), com o doc da tabela a justificar-se assim:
+
+> *«três e não um slider contínuo, porque a UI aqui é o teclado (a aba Topologia é wave de UI)»*
+
+A premissa **expirou** quando a secção *Topology* do painel ganhou os knobs do remesh — e ninguém
+releu a nota. Hoje é uma **pista contínua** (`panel.sculpt3d.dyn_detail`, `Place::AfterDyntopo`,
+colada ao interruptor que a arma), e a tecla `U` fica como **atalho** a ciclar os três valores com
+nome, exactamente a relação que o `[`/`]` tem com a pista do raio.
+
+⛔ **Os dois NÃO coexistem como superfícies:** os três chips foram **apagados** (`SCULPT3D_DETAIL`
+morreu, `SCULPT3D_DYN_DETAIL` nasceu). Eles escreviam o mesmo número, e duas superfícies sobre um
+valor só divergem no dia em que uma ganhar clamp e a outra não.
+
+⚠️ **A faixa não é escolhida — é o domínio da lei:** o `ph2d_mesh::edge_target` faz
+`detail.clamp(0.0, 1.0)` e devolve `raio × √((1,1 − d) × 0,2)`, logo `0` pede `0,469 × raio` e `1`
+pede `0,141 × raio`. Uma faixa de **3,3×**, e um tecto mais apertado seria um limite sem recurso.
+
+### §19.4 — ⭐ O que a sonda mede, no percurso do próprio dono (cena `=14`)
+
+`diag_o_percurso_do_dono`, malha da cena (`128` vértices), dab a dab:
+
+| gesto | ajuste | pista | vértices |
+|---|---|---|---|
+| 8 dabs de `Draw` | — | fino | `128 → 822` |
+| 10 dabs de `Density` | `Equalise` | grosso | `822 → **400**` (−51 %) |
+| 10 dabs de `Density` | `Equalise` | médio | `400 → 419 → **409**` — ⭐ ele **ACRESCENTOU** e assentou |
+| 10 dabs de `Density` | `Thin Only` | grosso | `409 → 386` |
+| 10 dabs de `Density` | `Thin Only` | fino | `386 → 386` — **zero**, e é a lei daquele ajuste |
+
+⭐⭐ **E o gesto NOVO, a partir da malha CRUA e sem `Draw` nenhum** — `Equalise` na pista no máximo:
+`128 → 239 → **719**` em dois dabs, a assentar em `682`. *Adensar uma zona sem lhe mexer na forma
+passou a ser um gesto que existe.*
+
+⚠️ **A linha do médio é o report inteiro numa célula:** antes desta wave ela lia `396 → 396` — zero —,
+e é exactamente o que o dono viu.
+
+### §19.5 — Os gates, e o que cada um impede
+
+| gate | onde | o que morre sem ele |
+|---|---|---|
+| `a_densidade_colapsa_sempre_e_parte_conforme_o_ajuste` | `ph2d-sculpt3d` | a tabela-verdade da espec, célula a célula — incluindo a recusa (`Afinar` separa as duas colunas) |
+| `o_ajuste_de_densidade_so_alcanca_a_densidade` | `ph2d-sculpt3d` | o ajuste novo alcançar verbo a mais (varredura, não leitura) |
+| `so_a_mascara_se_afasta_do_comportamento_de_hoje` | `ph2d-sculpt3d` | ⚠️ **a densidade SAIU desta lista** — no ajuste de omissão ela faz o que os outros 27 fazem |
+| `a_densidade_obedece_a_tabela_verdade_do_passe` | `ph2d-app-sculpt3d` | as quatro células medidas na malha, com o `Draw` como controlo positivo |
+| ⭐ `a_pista_do_detalhe_chega_ao_motor` | `ph2d-app-sculpt3d` | **o ponto cego do §5.0**: um slider pintado, registado e vivo cujo número nunca sai do painel — as três metades são ida · volta · **duas posições dão malhas diferentes** |
+| `every_density_control_is_clickable_where_it_is_drawn` | `ph2d-panel-sculpt3d` | a fileira nascer morta sob o ponteiro (a fixtura arma `Density`, porque a genérica arma `Crease`) |
+| `a_fileira_da_densidade_e_ausente_com_outro_pincel` | `ph2d-panel-sculpt3d` | a metade oposta — dois chips a aparecer em 28 ferramentas que não os leem |
+| `cada_chip_de_densidade_arma_o_seu_modo` | `ph2d-panel-sculpt3d` | o **dreno de um braço só**: um `ALL[0]` cravado deixa o 2.º chip pintado e a mentir |
+| `the_panel_offers_every_density_mode_the_brush_has` | `ph2d-panel-sculpt3d` | um modo novo nascer inalcançável |
+| `the_dyntopo_door_asks_the_verb` | `shells/desktop` | a porta deixar de receber o ajuste, ou o chamador passar um literal |
+
+**Provas de mutação: 6 de 6 sangram.**
+
+1. `refina_no_dyntopo` ignora o ajuste → **3** gates (2 na crate + a tabela-verdade no app).
+2. `parte_arestas_longas` sempre verdade → `o_ajuste_de_densidade_so_alcanca_a_densidade`.
+3. `offers_density_controls` → `false` → `every_density_control_is_clickable_where_it_is_drawn`.
+4. o 2.º chip arma `ALL[0]` → `cada_chip_de_densidade_arma_o_seu_modo`.
+5. `apply_ui` crava `0.5` → `a_pista_do_detalhe_chega_ao_motor` (metade 2).
+6. o passe crava `edge_target(radius, 0.5)` → `a_pista_do_detalhe_chega_ao_motor` (metade 3).
+
+⭐ **As duas últimas são o par que justifica a terceira metade daquele gate:** a mutação 6 deixa as
+metades 1 e 2 **verdes** — o campo é escrito e publicado, e o motor ignora-o.
+
+### §19.6 — ⛔ Um teto de LOC ficou vermelho, e foi curado por CORTE
+
+`ph2d-panel-sculpt3d/src/paint/brush.rs` chegou a **`623`** contra o teto de `600` ao ganhar a
+fileira nova. ⛔ **Nada foi para o `FILE_OVERAGE_OK`:** as quatro fileiras **próprias de cada pincel**
+(contorno · densidade · pose · tecido) saíram para o irmão `paint/brush_fileiras.rs`
+(`623 → 367` + `283`), e o corte é de **responsabilidade** — lá fica *a moldura do pincel*, aqui *o
+vocabulário próprio de cada ferramenta*, que é a lista que cresce um bloco por pincel novo.
+⚠️ Nenhum pixel muda de sítio: as quatro são chamadas na mesma ordem, do mesmo sítio, com os mesmos
+argumentos.
+
+### §19.7 — ⚠️ Duas coisas que uma leitura rápida do diff entende ao contrário
+
+1. **O `Density` NÃO passou a subdividir «como o `Draw`».** Ele continua sem lei por-vértice: não
+   move um vértice, não acumula, não tem curva. O que ele faz é **pedir ao passe de topologia** que
+   leve a malha ao alvo — e a diferença com o `Draw` é que aquele *também* deposita barro.
+2. **A queixa do passe não desapareceu — ela ENCOLHEU, e o texto dela mudou com isso.** Ela dizia
+   *«não há aresta fora da faixa aqui — baixe o detalhe com U»*, que é conselho de um pincel que só
+   afina. Hoje diz *«a malha aqui já está no ponto que o `Detail` pede»*, porque com o ajuste de
+   omissão chegar ali quer mesmo dizer isso. As **três** razões continuam a ser três, com gate a
+   contá-las.

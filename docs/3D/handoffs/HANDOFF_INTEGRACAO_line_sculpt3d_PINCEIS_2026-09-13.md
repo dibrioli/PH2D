@@ -158,13 +158,34 @@ o mesmo defeito, mas é produto vivo e a fixture que o decide existe: está em �
 | `blender-pull` (polegar · empurrão · 4 opções) | `SPEC_pull_brushes.md` | ✅ **atestada** (1.ª passagem) | ⭐ **sim** (esta jornada) |
 | `blender-unblocked` (Density · 2 de multires · projecção) | `SPEC_unblocked_brushes.md` | ✅ **atestada** (3.ª passagem) | ⬜ não |
 | `blender-boundary` | `SPEC_boundary_brush.md` | ✅ **atestada** (3.ª passagem) | ⬜ não |
-| `blender-pose` | `SPEC_pose_brush.md` | ⏳ **4 passagens** (6 · 5 · 7 · 5 achados) — ⭐ a 4.ª deu o **§4.2 por LIMPO**: os 5 que sobram são de PROMESSA e proveniência, **nenhum bloqueante**; a emenda 5 foi despachada e falta-lhe a passagem que a atesta | ⬜ não |
+| `blender-pose` | `SPEC_pose_brush.md` | ✅ **atestada (5.ª passagem)** — 6 · 5 · 7 · 5 achados e depois verde. ⏳ Ficam **2** de redacção, **não bloqueantes e ZERO §4.2**, que o próprio R declarou **não retentores** do atestado; a emenda 6 aplica-os | ⬜ não |
 
-⚠️⚠️ **O padrão que as quatro passagens do Pose mediram, e ele é do MÉTODO:** em
+⚠️⚠️ **O padrão que as CINCO passagens do Pose mediram, e ele é do MÉTODO:** em
 **três** delas seguidas a emenda curou **o endereço nomeado** e a mesma redacção
 sobreviveu noutro sítio — incluindo em **títulos** que nenhuma emenda tocou. ⇒ a
 instrução que fica para toda emenda futura é *cure pela FORMA da frase (um
 `grep` pela promessa), nunca pelo endereço*.
+⭐⭐ **E a 5.ª passagem é a PROVA de que a instrução funciona, com número:** mandada
+varrer pela forma em vez dos cinco endereços, a emenda **achou uma afirmação sem
+fixtura que o próprio auditor não tinha visto** (o censo passou de `6` para `10`
+linhas, e o R re-mediu as quatro novas nos cabeçalhos das 69: **honestas, zero
+fabricadas**). *Uma varredura por forma encontra o que a lista de achados não
+continha; uma por endereço nunca pode.*
+⚠️ **E a espécie da promessa reapareceu pela QUARTA vez seguida, agora numa
+ABERTURA em vez de um título** — a §8 rotula de «observável» exactamente a
+proposição que a cura do §7.2 acabou de declarar **não observável**, três secções
+antes. ⭐ O R mediu porquê ela nunca poderia ter sido apanhada pelo corpus: as `5`
+fixturas de simetria correm todas numa malha **exactamente espelhada** (`0` de
+`4 930` vértices sem parceiro) ⇒ os dois lados da proposição dão a mesma saída
+**por construção**. *Uma fixtura simétrica não pode refutar uma lei sobre simetria.*
+
+⛔⛔ **E a lei que esta ronda deixa para toda emenda a uma espec JÁ ATESTADA:**
+*toda linha nova é população nova a auditar.* A 5.ª passagem recusou herdar o
+«§4.2 limpo» da 4.ª e varreu as **111** linhas da emenda anterior de raiz — foi
+isso que tornou o atestado honesto. ⇒ uma emenda pós-atestado é de **escopo
+mínimo declarado** (aqui: duas linhas mais a linha do censo), e o cabeçalho
+regista **o que mudou depois do atestado** — *um atestado que cobre uma versão
+que já não existe é pior que nenhum.*
 
 ⛔ **ACHADO DE PROTOCOLO para o R-PÓS, e ele não é desta espec:** o §7.2 põe a
 barra do fechamento em *«zero hits sobre a árvore inteira»*, e o **§6 obriga o

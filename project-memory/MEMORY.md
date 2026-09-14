@@ -156,7 +156,8 @@
 - [Oráculo (10)](reference_topic_oracle_discipline.md)
 - [fixture (6)](reference_topic_fixture_discipline.md)
 - [onde os objetos NASCEM](feedback_where_new_objects_are_born_is_the_fixture_your_gates_are_missing.md)
-- [Protocolo de auditoria (6)](reference_topic_audit_protocol.md)
+- ⭐⭐ [Cure pela FORMA da promessa, nunca pelo endereço nomeado — 3 emendas seguidas curaram a lista e a redacção sobreviveu noutro sítio; varrida por forma, ela achou o que o auditor não vira](feedback_cure_by_the_form_of_the_promise_not_by_the_named_address.md)
+- [Protocolo de auditoria (8) — ⛔ num artefacto ATESTADO toda linha nova é população nova; herdar o veredito anterior não é 2.ª lente](reference_topic_audit_protocol.md)
 - [Física do impasto/sculpt (8)](reference_topic_impasto_physics.md)
 - 📚 [Auditoria (famílias — 2 saltos): mais 9 lições, uma linha cada, verbatim](reference_topic_audit_lessons.md)
 

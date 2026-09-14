@@ -222,7 +222,7 @@ pub(super) fn paint_enum_row(
         inner_w,
         resolve(ColorToken::Text2, theme),
     );
-    y += TypeToken::Sm.px() + Spacing::Xs.px();
+    y += TypeToken::Sm.px() + ph2d_tokens::control_gap_px();
     let k = row.labels.len().min(MAX_ENUM_OPTIONS);
     // Up to 4 buttons across, then wrap; a single option → 1.
     let cols = k.clamp(1, 4); // CLAMP-OK: segmented column count (option-count layout, not a UI metric)
@@ -280,7 +280,7 @@ pub(super) fn paint_channels_row(
         inner_w,
         resolve(ColorToken::Text2, theme),
     );
-    y += TypeToken::Sm.px() + Spacing::Xs.px();
+    y += TypeToken::Sm.px() + ph2d_tokens::control_gap_px();
     let n = row.channels.len(); // Custom is the n-th button
     let k = (n + 1).min(MAX_ENUM_OPTIONS);
     let cols = k.clamp(1, 4); // CLAMP-OK: segmented column count, not a UI metric
@@ -329,7 +329,7 @@ pub(super) fn paint_channels_row(
                 inner_w,
                 resolve(ColorToken::Text2, theme),
             );
-            y += TypeToken::Sm.px() + Spacing::Xs.px();
+            y += TypeToken::Sm.px() + ph2d_tokens::control_gap_px();
             let ecols = ext.clamp(1, 4); // CLAMP-OK: segmented column count
             let egap = Spacing::Sm.px();
             let _ew = ((inner_w - egap * (ecols as f32 - 1.0)) / ecols as f32).max(1.0);
@@ -398,7 +398,7 @@ pub(super) fn paint_source_row(
         inner_w,
         resolve(ColorToken::Text2, theme),
     );
-    y += TypeToken::Sm.px() + Spacing::Xs.px();
+    y += TypeToken::Sm.px() + ph2d_tokens::control_gap_px();
     let n = row.options.len().min(MAX_ENUM_OPTIONS);
     if n > 0 {
         paint_text_elided(
@@ -411,7 +411,7 @@ pub(super) fn paint_source_row(
             inner_w,
             resolve(ColorToken::Text2, theme),
         );
-        y += TypeToken::Sm.px() + Spacing::Xs.px();
+        y += TypeToken::Sm.px() + ph2d_tokens::control_gap_px();
         let cols = n.clamp(1, 4); // CLAMP-OK: segmented column count, not a UI metric
         let gap = Spacing::Xs.px();
         let jrows: Vec<usize> = (0..n.div_ceil(cols))
@@ -435,7 +435,7 @@ pub(super) fn paint_source_row(
             hit_index.register(bid, brect);
         }
         let seg_rows = n.div_ceil(cols) as f32;
-        y += seg_rows * ROW_H_PX + (seg_rows - 1.0) * gap + Spacing::Xs.px();
+        y += seg_rows * ROW_H_PX + (seg_rows - 1.0) * gap + ph2d_tokens::control_gap_px();
     }
     // The raw text field for a name not (yet) in the list — the honest escape.
     let used = paint_text_row(

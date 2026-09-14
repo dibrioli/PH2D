@@ -199,7 +199,7 @@ impl RowCtx<'_> {
             self.inner_w,
             resolve(ColorToken::Text2, self.theme),
         );
-        y += font + Spacing::Xs.px();
+        y += font + ph2d_tokens::control_gap_px();
         let segs: Vec<(&str, bool, NodeId)> =
             opts.iter().map(|(id, lbl, on)| (*lbl, *on, *id)).collect();
         let used = paint_segmented_group_adaptive(

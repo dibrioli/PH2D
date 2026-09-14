@@ -306,7 +306,7 @@ fn editor(
             theme,
         );
     }
-    cur_y += CHECK_H + Spacing::Sm.px();
+    cur_y += CHECK_H + ph2d_tokens::control_gap_px();
 
     cur_y = super::anim_rows::text_row(
         scene,
@@ -347,7 +347,7 @@ fn editor(
             w,
             resolve(ColorToken::Warn, theme),
         );
-        cur_y += font + Spacing::Sm.px();
+        cur_y += font + ph2d_tokens::control_gap_px();
     }
     cur_y
 }
@@ -414,7 +414,7 @@ pub(crate) fn paint_timer_section(
             w,
             resolve(ColorToken::Warn, theme),
         );
-        cur_y += font + Spacing::Sm.px();
+        cur_y += font + ph2d_tokens::control_gap_px();
     }
 
     if info.rows.is_empty() {
@@ -428,7 +428,7 @@ pub(crate) fn paint_timer_section(
             w,
             resolve(ColorToken::Text3, theme),
         );
-        cur_y += font + Spacing::Sm.px();
+        cur_y += font + ph2d_tokens::control_gap_px();
     } else {
         cur_y = list(
             scene,

@@ -243,7 +243,7 @@ fn paint_jitter_slider(
         label_h,
         resolve(ColorToken::Text2, theme),
     );
-    y += label_h + Spacing::Xs.px();
+    y += label_h + ph2d_tokens::control_gap_px();
     // ⚠️ Ver o irmão no `audio-mixer/paint_widgets.rs`: a altura da PISTA ganha nome para não
     //    se ler como um vão quando reaparece na cauda.
     let track_h = Spacing::Md.px();

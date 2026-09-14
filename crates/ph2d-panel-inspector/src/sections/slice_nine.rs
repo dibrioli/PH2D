@@ -256,7 +256,7 @@ pub(crate) fn paint_slice_section(
         text_system,
         theme,
     );
-    cur_y += cb_h + Spacing::Sm.px();
+    cur_y += cb_h + ph2d_tokens::control_gap_px();
 
     // Desligado: a seção não tem mais nada a mostrar. O «Remove» só aparece quando há de facto
     // autoria guardada para remover — sem componente, não há.
@@ -323,7 +323,7 @@ pub(crate) fn paint_slice_section(
         text_system,
         theme,
     );
-    cur_y += cb_h + Spacing::Sm.px();
+    cur_y += cb_h + ph2d_tokens::control_gap_px();
 
     // A grelha por-região e o Tile Mode valem nos DOIS modos de nove quads.
     //

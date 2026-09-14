@@ -287,7 +287,7 @@ fn paint_params(mut y: f32, x: f32, w: f32, loaded: bool, ctx: &mut Ctx) -> f32 
             TypeToken::Xs.px(),
             resolve(text_tone(loaded), ctx.theme),
         );
-        y += label_h + Spacing::Xs.px();
+        y += label_h + ph2d_tokens::control_gap_px();
 
         let id = AEDIT_FX_PARAMS[i];
         let track = Rect::new(x, y, w, Spacing::Md.px());

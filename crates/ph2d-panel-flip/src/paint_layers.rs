@@ -138,7 +138,7 @@ pub(crate) fn layers_section(
         m.inner_w,
         resolve(ColorToken::Text2, theme),
     );
-    y += label_font + Spacing::Xs.px();
+    y += label_font + ph2d_tokens::control_gap_px();
 
     // Toolbar: Add | Duplicate | Delete (§4.C). Um loop sobre os três botões — a largura de
     // coluna sai de `.len()` (não de um `3.0` solto), e a regra "precisa de camada ativa"

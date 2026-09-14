@@ -186,3 +186,103 @@ fn a_function_named_row_gap_delegates_instead_of_choosing_a_rung() {
         offenders.join("\n  ")
     );
 }
+
+/// ⭐⭐⭐ **A TERCEIRA metade: o passo vertical de uma pilha pergunta a porta — seja qual for a
+/// ALTURA que ele soma.**
+///
+/// ⛔ **Censo de 2026-09-14: 53 sítios respondiam a esta pergunta, com TRÊS respostas** —
+/// `Sm` (6) em 26 · `Xs` (4) em 25 · `Md` (8) em 2. **27 deles no Inspector**, que é o painel que
+/// o dono tem aberto o dia inteiro, e a lei diz **3** (`control_gap_px`) desde 2026-09-07:
+/// *«entre grupos de botões temos um espaçamento, entre sliders outro espaçamento. Para ambos
+/// vamos colocar o padrão de espaçamento de 3 px»*.
+///
+/// # ⚠️ Porque as outras réguas desta casa não os viam — são três cegueiras diferentes
+///
+/// | régua | o que ela procura | porque falhou |
+/// |---|---|---|
+/// | [`the_row_pitch_is_never_written_at_the_painting_site`] | `ROW_H_PX + Spacing::` | exige que a altura seja a da LINHA; estes somam `font`, `cb_h`, `BTN_H`, `CHECK_H`, `BAR_H`, `STRIP_H`… |
+/// | `the_tail_of_a_block_is_one_answer` | `y + … + Spacing::` **sem `;`** | estes são INSTRUÇÕES (`y += …;`), não a cauda que sai da função |
+/// | `every_stack_of_rows_asks_the_rhythm` | um FICHEIRO que empilha chama alguma porta | é por **ficheiro**: quem chama a porta uma vez sai do censo com dez sítios ainda a escrever o degrau à mão |
+///
+/// ⇒ *três censos sobre a mesma grandeza, e a interseção deles tinha 53 sítios lá dentro.* É a
+/// sexta vez que esta jornada paga a forma **um censo que conhece uma forma da pergunta é cego às
+/// outras** — e a cura é sempre a mesma: a régua passa a ser a PERGUNTA (*este cursor vertical
+/// avança um vão?*), nunca a sintaxe de um caso.
+///
+/// # ⭐ A resposta não foi escolhida: ela já estava escrita na secção mais NOVA
+///
+/// O [`sections/actions.rs`] do Inspector (a *Signal Actions*, 2026-09-10) escreve
+/// `cur_y += font + ph2d_tokens::control_gap_px();` em três sítios. ⇒ a pergunta *«o que fica
+/// depois de uma linha de texto numa secção?»* já tinha dono nesta casa; os 53 são os sítios
+/// escritos **antes** de a porta existir. *Quando o código novo e o velho discordam, o novo é a
+/// lei e o velho é a dívida — e o censo é o que os torna comparáveis.*
+///
+/// ⚠️ **A asserção não é «chama o `control_gap_px`»: é «chama UMA das três».** Qual delas é a
+/// resposta do sítio — uma lista pede o `list_row_gap_px`, uma fronteira de cartão pede o
+/// `section_gap_px` —, e é isso que impede este gate de empurrar o número errado para uma
+/// superfície que responde a outra pergunta.
+///
+/// ⛔ **Um `y += Spacing::Md.px();` SOZINHO não é acusado**, e a ausência é a decisão: ali não há
+/// altura nenhuma a somar, logo ele é um RECUO (o ar dentro de uma caixa), que é outra grandeza e
+/// ainda não tem porta. *Alargar esta régua até lá fabricaria dívida sobre uma pergunta que
+/// ninguém fez.*
+///
+/// (Mutação: repor um `+ Spacing::Sm.px()` em qualquer um dos 53 ⇒ RED, nomeando ficheiro e linha.)
+#[test]
+fn the_vertical_step_of_a_stack_asks_the_door() {
+    const RUNGS_DE_VAO: &[&str] = &["Xxs", "Xs", "Sm", "Md", "Lg"];
+    const CURSORES: &[&str] = &["y", "cur_y", "yy", "new_y"];
+    let root = repo_root();
+    let mut offenders = Vec::new();
+    for p in ui_sources() {
+        let Ok(src) = fs::read_to_string(&p) else {
+            continue;
+        };
+        let rel = p
+            .strip_prefix(&root)
+            .unwrap_or(&p)
+            .to_string_lossy()
+            .replace('\\', "/");
+        for (n, line) in src.lines().enumerate() {
+            let t = line.trim();
+            if t.starts_with("//") || !t.ends_with(';') {
+                continue;
+            }
+            let Some((cursor, resto)) = t.split_once("+=") else {
+                continue;
+            };
+            if !CURSORES.contains(&cursor.trim()) {
+                continue;
+            }
+            // ⚠️ **A altura tem de existir**: `y += Spacing::X.px();` sozinho é um RECUO.
+            let Some((altura, degrau)) = resto.rsplit_once("+ Spacing::") else {
+                continue;
+            };
+            if altura.trim().is_empty() || !RUNGS_DE_VAO.iter().any(|r| degrau.starts_with(r)) {
+                continue;
+            }
+            // ⛔ **Um degrau MULTIPLICADO não é «qual degrau é o vão» — é uma geometria composta.**
+            // O 1.º falso positivo desta régua foi o separador do menu de contexto:
+            // `y += 1.0 + Spacing::Xs.px() * 2.0;` é *um fio de 1 px com recuo em cima e em baixo*,
+            // ou seja a ALTURA do separador, e não o vão que vem depois de alguma coisa. Acusá-lo
+            // mandaria trocar uma composição correcta por um número que responde a outra pergunta.
+            if degrau
+                .split_once(".px()")
+                .is_some_and(|(_, resto)| resto.trim_start().starts_with('*'))
+            {
+                continue;
+            }
+            offenders.push(format!("{rel}:{}: {t}", n + 1));
+        }
+    }
+    assert!(
+        offenders.is_empty(),
+        "{} sitio(s) somam um degrau da escada ao avancar o cursor vertical, em vez de perguntar \
+         a porta da grandeza. Cada um e' uma segunda resposta a uma pergunta que ja' tem uma:\n  \
+         {}\n\nQual das tres o sitio pede e' a resposta DELE: `ph2d_tokens::control_gap_px()` (3) \
+         entre dois controlos de uma seccao · `list_row_gap_px()` (1) entre duas linhas de uma \
+         LISTA · `section_gap_px()` (8) de um cartao de seccao para o seguinte.",
+        offenders.len(),
+        offenders.join("\n  ")
+    );
+}

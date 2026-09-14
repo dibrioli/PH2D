@@ -368,7 +368,7 @@ fn paint_per_corner_tab(
     .kind(ButtonKind::Default)
     .visual(eq_state);
     paint_button(&eq, eq_rect, scene, text_system, theme);
-    cur_y += btn_h + Spacing::Sm.px();
+    cur_y += btn_h + ph2d_tokens::control_gap_px();
     cur_y
 }
 

@@ -328,7 +328,7 @@ fn paint_verbs(
             .visual(store.button_visual(ids::INSP_PLAYER_FIT));
         paint_button(&btn, rect, scene, text_system, theme);
         hit_index.register(ids::INSP_PLAYER_FIT, rect);
-        yy += h + Spacing::Sm.px();
+        yy += h + ph2d_tokens::control_gap_px();
     }
 
     // **O MESMO piso, uma perna abaixo** (W18) — o espelho exato do botão acima,
@@ -360,7 +360,7 @@ fn paint_verbs(
             .visual(store.button_visual(ids::INSP_PLAYER_FIT_CROUCH));
         paint_button(&btn, rect, scene, text_system, theme);
         hit_index.register(ids::INSP_PLAYER_FIT_CROUCH, rect);
-        yy += h + Spacing::Sm.px();
+        yy += h + ph2d_tokens::control_gap_px();
     }
 
     // **A CORRIDA GRAVADA** (W17) — o mesmo desenho do botão acima: *o aviso mora
@@ -402,7 +402,7 @@ fn paint_verbs(
             .visual(store.button_visual(id));
         paint_button(&btn, rect, scene, text_system, theme);
         hit_index.register(id, rect);
-        yy += h + Spacing::Sm.px();
+        yy += h + ph2d_tokens::control_gap_px();
     }
 
     let rect = Rect::new(x, yy, w, h);

@@ -175,7 +175,7 @@ pub(crate) fn paint_mount_row(
             w,
             resolve(ColorToken::Text3, theme),
         );
-        cur_y += font + Spacing::Xs.px();
+        cur_y += font + ph2d_tokens::control_gap_px();
         let btn = Rect::new(x, cur_y, w, BTN_H);
         hit_index.register(ids::INSP_MOUNT_SNAP, btn);
         paint_button(
@@ -265,7 +265,7 @@ pub(crate) fn paint_visibility_rows(
             cb = cb.state(CheckboxState::Disabled);
         }
         paint_checkbox(&cb, rect, scene, text_system, theme);
-        cur_y += cb_h + Spacing::Xs.px();
+        cur_y += cb_h + ph2d_tokens::control_gap_px();
     }
     cur_y + ph2d_tokens::control_gap_px()
 }

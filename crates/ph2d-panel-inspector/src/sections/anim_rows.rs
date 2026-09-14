@@ -43,7 +43,7 @@ pub(crate) fn paint_library(
         w,
         resolve(ColorToken::Text3, theme),
     );
-    cur_y += font + Spacing::Xs.px();
+    cur_y += font + ph2d_tokens::control_gap_px();
 
     if info.rows.is_empty() {
         paint_text(
@@ -56,7 +56,7 @@ pub(crate) fn paint_library(
             w,
             resolve(ColorToken::Text3, theme),
         );
-        cur_y += font + Spacing::Sm.px();
+        cur_y += font + ph2d_tokens::control_gap_px();
     } else {
         // ⚠️ `zip` com o array de ids: uma biblioteca com mais tags do que ids (impossível
         // enquanto o gate `the_anim_row_ids_cover_the_model_cap` viver) perde as excedentes em
@@ -170,7 +170,7 @@ pub(crate) fn paint_library(
         text_system,
         theme,
     );
-    cur_y += BTN_H + Spacing::Xs.px();
+    cur_y += BTN_H + ph2d_tokens::control_gap_px();
     if !info.rows.is_empty() {
         let rm = Rect::new(x, cur_y, w, BTN_H);
         hit_index.register(ids::INSP_ANIM_REMOVE, rm);
@@ -271,7 +271,7 @@ fn editor(
             w,
             resolve(ColorToken::Warn, theme),
         );
-        cur_y += TypeToken::Sm.px() + Spacing::Xs.px();
+        cur_y += TypeToken::Sm.px() + ph2d_tokens::control_gap_px();
     }
     cur_y = super::anchors::field_row(
         scene,
@@ -299,7 +299,7 @@ fn editor(
         w,
         resolve(ColorToken::Text2, theme),
     );
-    cur_y += font + Spacing::Xs.px();
+    cur_y += font + ph2d_tokens::control_gap_px();
     let gap = Spacing::Xs.px();
     let n = ids::INSP_ANIM_DIR.len() as f32;
     let cw = ((w - gap * (n - 1.0)) / n).max(0.0);
@@ -350,7 +350,7 @@ fn editor(
         w,
         resolve(ColorToken::Text2, theme),
     );
-    cur_y += font + Spacing::Xs.px();
+    cur_y += font + ph2d_tokens::control_gap_px();
     cur_y = text_row(
         scene,
         text_system,

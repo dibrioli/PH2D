@@ -145,7 +145,7 @@ fn player_block(
             theme,
         );
     }
-    cur_y += CHECK_H + Spacing::Sm.px();
+    cur_y += CHECK_H + ph2d_tokens::control_gap_px();
 
     cur_y = super::anchors::field_row(
         scene,
@@ -229,7 +229,7 @@ fn player_block(
             w,
             resolve(ColorToken::Text2, theme),
         );
-        cur_y += font + Spacing::Xs.px();
+        cur_y += font + ph2d_tokens::control_gap_px();
         let track = Rect::new(x, cur_y, w, BAR_H);
         hit_index.register(ids::INSP_ANIM_FRAME_SCRUB, track);
         // ⚠️ O retângulo de acerto **é** o da trilha, e tem de o ser: o despachante deriva o valor
@@ -243,7 +243,7 @@ fn player_block(
             scene,
             theme,
         );
-        cur_y += BAR_H + Spacing::Sm.px();
+        cur_y += BAR_H + ph2d_tokens::control_gap_px();
         // **A DURAÇÃO DESTA CÉLULA** (spec §8.12, pedido do Enio: *«se não tiver um parâmetro de
         // duração para cada quadro, crie»*).
         //
@@ -282,7 +282,7 @@ fn player_block(
             w,
             resolve(ColorToken::Danger, theme),
         );
-        cur_y += font + Spacing::Xs.px();
+        cur_y += font + ph2d_tokens::control_gap_px();
     }
 
     let rw = Rect::new(x, cur_y, w, BTN_H);
@@ -369,7 +369,7 @@ pub(crate) fn paint_anim_section(
             w,
             resolve(ColorToken::Warn, theme),
         );
-        cur_y += font + Spacing::Sm.px();
+        cur_y += font + ph2d_tokens::control_gap_px();
     }
 
     // ⛔ Sem tocador, UM botão — e mais nada. Ver o doc do módulo.
@@ -384,7 +384,7 @@ pub(crate) fn paint_anim_section(
             w,
             resolve(ColorToken::Text3, theme),
         );
-        cur_y += font + Spacing::Sm.px();
+        cur_y += font + ph2d_tokens::control_gap_px();
         let add = Rect::new(x, cur_y, w, BTN_H);
         hit_index.register(ids::INSP_ANIM_ADD_PLAYER, add);
         paint_button(

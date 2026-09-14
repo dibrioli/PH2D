@@ -140,7 +140,7 @@ pub fn paint_context_menu(
                 y += Spacing::Xs.px();
                 let row = Rect::new(rect.x + pad, y, rect.w - pad * 2.0, 1.0);
                 paint_divider(div, row, scene, theme);
-                y += 1.0 + Spacing::Xs.px();
+                y += 1.0 + ph2d_tokens::control_gap_px();
             }
         }
     }

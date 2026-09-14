@@ -29,7 +29,7 @@ impl BodyCtx<'_> {
             self.inner_w,
             resolve(ColorToken::Text2, self.theme),
         );
-        y += label_font + Spacing::Xs.px();
+        y += label_font + ph2d_tokens::control_gap_px();
         y
     }
 
@@ -175,7 +175,7 @@ impl BodyCtx<'_> {
                 self.inner_w,
                 resolve(ColorToken::Text2, self.theme),
             );
-            y += sd_font + Spacing::Xs.px();
+            y += sd_font + ph2d_tokens::control_gap_px();
         }
         let block = block_cells(
             Rect::new(self.inner_x, y, self.inner_w, 0.0),

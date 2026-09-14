@@ -83,7 +83,7 @@ pub(crate) fn paint_loop_section(
         TypeToken::Xs.px(),
         resolve(ColorToken::Text2, theme),
     );
-    y += label_h + Spacing::Xs.px();
+    y += label_h + ph2d_tokens::control_gap_px();
     let track = Rect::new(x, y, w, Spacing::Md.px());
     if has_loop {
         let mut slider =
@@ -107,7 +107,7 @@ pub(crate) fn paint_loop_section(
             theme,
         );
     }
-    y += Spacing::Md.px() + Spacing::Sm.px();
+    y += Spacing::Md.px() + ph2d_tokens::control_gap_px();
 
     // **Crossfade Loop** — bake the seam into the audio.
     //

@@ -388,7 +388,7 @@ fn paint_strip(
     pan.set_value(strip.pan.clamp(0.0, 1.0));
     paint_slider(&pan, pan_rect, scene, theme);
     hit_index.register(strip.pan_id, pan_rect);
-    y += Spacing::Md.px() + Spacing::Sm.px();
+    y += Spacing::Md.px() + ph2d_tokens::control_gap_px();
 
     // Tone — a thin full-column horizontal low-pass cutoff Slider (open = 1.0).
     let tone_rect = Rect::new(col_x, y, col_w, Spacing::Md.px());
@@ -397,7 +397,7 @@ fn paint_strip(
     tone.set_value(strip.tone.clamp(0.0, 1.0));
     paint_slider(&tone, tone_rect, scene, theme);
     hit_index.register(strip.tone_id, tone_rect);
-    y += Spacing::Md.px() + Spacing::Sm.px();
+    y += Spacing::Md.px() + ph2d_tokens::control_gap_px();
 
     // Low Cut — a thin full-column horizontal high-pass cutoff Slider (off = 0.0,
     // full left). Mirror of the Tone row directly below it.
@@ -407,7 +407,7 @@ fn paint_strip(
     lowcut.set_value(strip.lowcut.clamp(0.0, 1.0));
     paint_slider(&lowcut, lowcut_rect, scene, theme);
     hit_index.register(strip.lowcut_id, lowcut_rect);
-    y += Spacing::Md.px() + Spacing::Sm.px();
+    y += Spacing::Md.px() + ph2d_tokens::control_gap_px();
 
     // Fader + meter cluster, centered in the column. The fader carries a tick at
     // the unity (0 dB) position so the dB taper reads at a glance.
@@ -430,7 +430,7 @@ fn paint_strip(
     paint_level_meter(&m, meter_rect, scene, theme);
     // Click the meter to clear its latched clip cap.
     hit_index.register(strip.meter_id, meter_rect);
-    y += STRIP_H + Spacing::Sm.px();
+    y += STRIP_H + ph2d_tokens::control_gap_px();
 
     // dB readout — the current fader gain in dB (or "-inf" at the bottom).
     let readout = if strip.gain_pos <= 0.0 {
@@ -447,7 +447,7 @@ fn paint_strip(
         TypeToken::Xs.px(),
         resolve(ColorToken::Text2, theme),
     );
-    y += TypeToken::Xs.px() + Spacing::Sm.px();
+    y += TypeToken::Xs.px() + ph2d_tokens::control_gap_px();
 
     // Mute (+ solo on sub-buses) button row. Master gets a full-width Mute; a
     // sub-bus splits the row into M | S (the mixer-console convention).

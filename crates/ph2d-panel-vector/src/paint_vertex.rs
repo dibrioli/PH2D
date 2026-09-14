@@ -59,7 +59,7 @@ impl BodyCtx<'_> {
             );
             self.hit_index.register(*id, rect);
         }
-        y += self.row_h + Spacing::Xs.px();
+        y += self.row_h + ph2d_tokens::control_gap_px();
         // **ONDE o nó está** — o último buraco de uma wave chamada PRECISÃO: dava para arrastar e
         // encaixar um nó, não para DIZER onde ele vai.
         //

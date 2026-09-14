@@ -152,7 +152,7 @@ pub(crate) fn paint_spectral_section(
             theme,
         ),
     );
-    y += label_h + Spacing::Xs.px();
+    y += label_h + ph2d_tokens::control_gap_px();
     let track = Rect::new(x, y, w, Spacing::Md.px());
     let mut slider =
         Slider::new(AEDIT_SPEC_AMOUNT, "Amount").orientation(SliderOrientation::Horizontal);

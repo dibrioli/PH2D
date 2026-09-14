@@ -264,7 +264,7 @@ fn paint_ducking(ctx: &mut Ctx, y: f32) -> f32 {
             ctx.store,
             ctx.hit_index,
         );
-        y += MUTE_H + Spacing::Sm.px();
+        y += MUTE_H + ph2d_tokens::control_gap_px();
         y = slider_row(ctx, y, "Depth", AMIX_DUCK_DEPTH, snapshot::duck_depth());
         y = end_fold(ctx, fold, y);
     }

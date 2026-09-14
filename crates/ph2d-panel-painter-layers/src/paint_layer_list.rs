@@ -13,7 +13,7 @@ use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::panel_chrome::PANEL_HEAD_PAD;
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
-use ph2d_tokens::{ColorToken, Spacing, TypeToken};
+use ph2d_tokens::{ColorToken, TypeToken};
 use ph2d_tool_painter::ids::{PainterLayerWidget, painter_layer_widget_id};
 
 /// ⭐⭐ **A LISTA DE CAMADAS** — cortada do [`paint`] em 2026-09-09 pelo tecto de LOC (264/200), e o
@@ -106,7 +106,7 @@ pub(crate) fn paint_layer_rows(
                 content_w,
                 resolve(ColorToken::Text2, theme),
             );
-            y += font + Spacing::Md.px();
+            y += font + ph2d_tokens::control_gap_px();
         }
     }
     (y, painter_row_ids, ghost)

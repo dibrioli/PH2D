@@ -434,7 +434,7 @@ pub(crate) fn paint_anchors_section(
             w,
             resolve(ColorToken::Text3, theme),
         );
-        cur_y += font + Spacing::Xs.px();
+        cur_y += font + ph2d_tokens::control_gap_px();
     }
 
     if info.rows.is_empty() {
@@ -448,7 +448,7 @@ pub(crate) fn paint_anchors_section(
             w,
             resolve(ColorToken::Text3, theme),
         );
-        cur_y += font + Spacing::Sm.px();
+        cur_y += font + ph2d_tokens::control_gap_px();
     } else {
         cur_y = anchor_list(
             scene,
@@ -490,7 +490,7 @@ pub(crate) fn paint_anchors_section(
         text_system,
         theme,
     );
-    cur_y += BTN_H + Spacing::Sm.px();
+    cur_y += BTN_H + ph2d_tokens::control_gap_px();
 
     if let Some(row) = info.rows.get(selected) {
         cur_y = close_section(scene, theme, x, w, cur_y);

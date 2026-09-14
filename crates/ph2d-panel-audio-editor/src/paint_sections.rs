@@ -453,7 +453,7 @@ fn paint_transport_section(
         theme,
     );
     scene.pop_layer();
-    y += name_h + Spacing::Sm.px();
+    y += name_h + ph2d_tokens::control_gap_px();
 
     // Position / duration readout.
     let time_line = format!("{} / {}", fmt_time(t.pos), fmt_time(t.dur));
@@ -465,7 +465,7 @@ fn paint_transport_section(
         TypeToken::Xs.px(),
         resolve(ColorToken::Text2, theme),
     );
-    y += TypeToken::Xs.px() + Spacing::Md.px();
+    y += TypeToken::Xs.px() + ph2d_tokens::control_gap_px();
 
     // ⭐⭐ **As QUATRO fileiras do transporte são um corpo só** (`1 · 2 · 2 · 1`) — Enio,
     //    2026-09-06: *«na vertical ainda tem muito espaço ainda»*. Elas fazem a mesma coisa

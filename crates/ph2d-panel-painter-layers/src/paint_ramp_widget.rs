@@ -132,7 +132,7 @@ pub(crate) fn paint_color_ramp_section(
     // Gradient bar + a colour-filled draggable handle per stop.
     let bar = Rect::new(x, y, content_w, BAR_H);
     paint_ramp_bar(ctx, theme, bar, ids, view, sel);
-    y += BAR_H + MARK_R + Spacing::Sm.px();
+    y += BAR_H + MARK_R + ph2d_tokens::control_gap_px();
 
     // Bottom row: editable index + position chips + the final-colour box (edits the selected stop).
     y = paint_ramp_bottom(ctx, theme, x, content_w, y, ids, view, sel);

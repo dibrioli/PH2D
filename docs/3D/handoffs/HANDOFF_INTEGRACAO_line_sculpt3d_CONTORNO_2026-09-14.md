@@ -535,10 +535,134 @@ grosso, que é a armadilha que o plano nomeia para o estudo.
 
 ---
 
+## §17 — ⭐⭐⭐ O *Density* — o primeiro dos quatro pincéis desbloqueados, e o único verbo que NÃO MOVE UM VÉRTICE
+
+Primeira entrada de [`SPEC_unblocked_brushes.md`](../cleanroom/SPEC_unblocked_brushes.md) §3,
+a que a própria espec classifica como **T0 no motor, T2 na semântica** — o motor
+(colapsar arestas curtas numa esfera) já vivia no repo, portado do SculptGL com
+atribuição; o que vem da espec é *quem é este pincel*.
+
+### ⭐⭐ Ele caiu exactamente na porta que a jornada anterior construiu
+
+O `Density` **liga o colapso e não liga o partir** — que é, à letra, a segunda
+coluna que o [§16](#§16) acabara de criar para curar a máscara. *Uma porta cujo
+segundo consumidor chega no mesmo dia e não pede uma linha de mudança é um
+desenho; uma que ele contorna era um remendo.*
+
+⭐ E ele **matou a premissa de um gate que eu tinha acabado de escrever**: o
+`as_duas_colunas_ainda_coincidem_e_isso_nao_e_uma_lei` dizia *«elas coincidem
+hoje em todos os verbos, e isto reprova no dia em que alguém as separar»*. O dia
+foi o seguinte, e não foi o estudo — foi este pincel. O gate reprovou, foi
+reescrito com o nome novo (`as_duas_colunas_separam_se_em_exactamente_um_verbo`),
+e **a morte da premissa ficou visível no diff**, que é para isso que ele existia.
+
+### As duas leis, e porque são duas
+
+| | |
+|---|---|
+| **ele liga o colapso** | onde o pincel passa, a malha afina |
+| **ele NÃO liga o partir** | ele **nunca acrescenta** superfície |
+
+⚠️ *Um gate que só verificasse a primeira passaria com um pincel que também
+subdivide, que é **outro produto**.* Medido (um dab, raio `160 px`):
+
+| arranjo | verbo | vértices |
+|---|---|---|
+| malha fina (`48×72`), alvo grosso | `Density` | **`3 386 → 3 352`** |
+| malha grossa (`8×12`), alvo fino | `Density` | **`86 → 86`** |
+| a MESMA, alvo fino | `Draw` | **`86 → 359`** (o controlo) |
+
+### ⛔ Ele não tem lei por-vértice, e isso partiu SEIS censos — cada um com razão
+
+`Verb::sem_lei_por_vertice()` é a porta nova, irmã do `resolve_a_propria_regiao`.
+O corte: *aqueles têm lei própria **noutro sítio**; este não tem lei nenhuma
+sobre posições.*
+
+Ao nascer, o verbo reprovou **seis** gates, e as mensagens deles são a descrição
+correcta dele: *«dab inerte»* · *«não tocou nada»* · *«o dab não fez nada em
+canal nenhum»* · *«deu EXATAMENTE o mesmo resultado com e sem alpha»*. ⭐ **Cada
+um é um piso de população a fazer o trabalho dele**, e a cura foi **por PORTA,
+nunca por nome**:
+
+- **quatro** já filtravam por `writes_through_applicator()` ⇒ bastou essa porta
+  passar a ter **duas metades** (*há duas maneiras de não haver aplicador a
+  julgar*);
+- **um** varria `Verb::ALL` sem filtro ⇒ ganhou a mesma filtragem **mais um piso
+  de população**, senão a filtragem esvazia o censo em silêncio;
+- **um** era uma contagem de perfis `B` ⇒ o `Density` não tem perfil de
+  referência, e por uma razão **mais forte** que a das irmãs: às outras faltam
+  **números**, a esta falta **grandeza**. Não há força nem curva de queda a
+  herdar de ninguém.
+
+### ⛔⛔ Uma mutação SOBREVIVEU, e o que ela expôs foi uma segunda resposta
+
+Apagar o desvio do `stroke_symmetry` deixava o gate *«não move um vértice»*
+**verde**: o `stroke_target` tem um braço `Verb::Density => live` — a resposta
+defensiva *«e se alguém chegar aqui mesmo assim?»*, a mesma que o tecido e a pose
+têm. *Duas respostas à mesma pergunta, e a de baixo mascarava a de cima.*
+
+⇒ a régua passou a ser a **JANELA DO TRAÇO**: o `dab_core` fotografa (`capture`)
+todo vértice ao alcance **antes** de decidir o que fazer com ele, logo um
+`touched` não-vazio prova que a cadeia de peso correu mesmo quando ela não move
+nada. Com a mutação, o gate lê *«a densidade fotografou **35** vértices»*.
+
+### ⛔ DECISÃO DE PRODUTO por decidir, e ela é observável
+
+O nosso colapso recusa mexer numa aresta em que *algum dos quatro vértices está
+na beira* — mais duro que o alvo, que em vez de recusar **escolhe o
+sobrevivente** (espec §3.8, que declara isto decisão de produto com duas frases e
+sem terceira saída). **Shipa a conservadora**, e o que o artista vê é *«o pincel
+não afina a borda»*. ⇒ é também o que explica a colheita modesta da primeira
+linha da tabela (`34` vértices).
+
+### A tecla: ele NÃO entra na fila do `L`
+
+A fila dos pretendentes continua em **oito**. Ele fica de fora por uma razão de
+espécie diferente: as oito são **gestos de forma** que se alternam enquanto se
+esculpe; este não esculpe, e só faz alguma coisa com o passe de topologia
+**armado** ⇒ uma tecla nua seria **inerte na configuração de fábrica**. A
+vizinhança dele no teclado é o `P` e o `U`, não a fileira de pincéis — registado
+para a decisão não ter de o redescobrir.
+
+### Mutações (2 de 2 sangram, depois de a régua ser corrigida)
+
+| # | mutação | quem sangra |
+|---|---|---|
+| M14 | a densidade passa a refinar também | **2** censos de unidade **e** o gate de cena |
+| M15 | ela volta a cair no `dab_core` | o gate de cena, pela metade nova (`touched`) |
+
+### ⛔⛔ E TRÊS vermelhos só a varredura IMPACTADA os viu
+
+Todos vivem em `tests/it/` de **outras** crates, que nenhum `cargo test --lib` da
+crate editada alcança — a família que o `CLAUDE.md` §2 nomeia (*o `--bins` não
+chega aos gates que vivem em `tests/`*).
+
+1. ⭐ **O verbo novo não tinha CHIP.** O `SCULPT3D_VERB` é um array de ids
+   **escrito à mão** e o gate `every_verb_has_a_chip_that_selects_it` compara-o
+   com `Verb::ALL` — leu `28` contra `29`. *Sem ele o pincel existe, tem lei,
+   tem gates e o artista não lhe chega.* (O irmão
+   `every_painted_control_is_clickable_where_it_is_drawn` caiu por
+   `index out of bounds` no mesmo array: **um defeito, dois relatos**.)
+2. ⚠️ **O tecto de LOC do `brush_verb.rs`** — `719` contra `700`, estourado pelo
+   doc do verbo novo. ⛔ **Curado por CORTE e nunca por uma entrada nova no
+   `FILE_OVERAGE_OK`**: a lei do gesto (`grip` + `anchors`) saiu para o irmão
+   `brush_verb_grip.rs`, e o corte é melhor do que o ficheiro era — ela passa a
+   ler-se inteira num sítio, em vez de ser o rabo de uma tabela de nomes.
+   `719 → 636`.
+
+---
+
 ## §12 — Smoke
 
 ```
 cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-sculpt3d && env PH2D_SCULPT3D_SMOKE=42 cargo run -p ph2d-host-desktop --profile smoke
+```
+
+E a **`=14`** para as duas metades da topologia dinâmica — o passo **(11)** é a
+máscara (§16) e o **(12)** o `Density` (§17):
+
+```
+cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-sculpt3d && env PH2D_SCULPT3D_SMOKE=14 cargo run -p ph2d-host-desktop --profile smoke
 ```
 
 O roteiro dos **7** passos é impresso pelo próprio app ao abrir, e o passo

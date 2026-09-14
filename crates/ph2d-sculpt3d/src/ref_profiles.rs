@@ -113,6 +113,11 @@ const fn profile_s(verb: Verb) -> Option<VerbProfile> {
         // a recomendação está marcada **como nossa** — ⛔ não como observação
         // do alvo, cuja proveniência era circular.
         Verb::Pose | Verb::Boundary => return None,
+        // ⛔ **A DENSIDADE também não tem perfil `s`, e por uma razão MAIS
+        // FORTE que a das irmãs:** ela não tem lei por-vértice nenhuma, logo
+        // não há força nem queda a herdar de ninguém. O que ela lê é o raio
+        // (para a região do passe de topologia), e esse já vem do pincel.
+        Verb::Density => return None,
         // `Brush.js:11-16` — `_radius 50 · _intensity 0.5 · _clay true ·
         // _accumulate true`. A tool `Brush` do original é a nossa **Draw E
         // Clay** (o `_clay` é um checkbox dela, ligado de fábrica).
@@ -350,7 +355,15 @@ const fn profile_b(verb: Verb) -> Option<VerbProfile> {
     // responderia é dado do alvo que ninguém leu. ⇒ oferecer um chip `B` aqui
     // venderia como «os números dela» aquilo que a própria espec declara ser
     // **recomendação nossa**.
-    if matches!(verb, Verb::Cloth | Verb::Pose | Verb::Boundary) {
+    // ⛔⛔ **E a DENSIDADE não o oferece por uma razão MAIS FORTE que as duas de
+    // cima, que é o que a torna fácil de errar:** as outras não têm `B` porque
+    // faltam **números**; esta não tem porque não há **grandeza**. Ela não move
+    // um vértice, logo não há força nem curva de queda a herdar de referência
+    // nenhuma — um chip `B` aqui ofereceria um modo para uma lei inexistente.
+    if matches!(
+        verb,
+        Verb::Cloth | Verb::Pose | Verb::Boundary | Verb::Density
+    ) {
         return None;
     }
     Some(VerbProfile {

@@ -216,7 +216,23 @@ fn invert_changes_the_result_of_exactly_the_verbs_that_have_an_opposite() {
             .fold(0.0, f32::max)
     };
 
-    for verb in Verb::ALL {
+    // ⚠️ **A varredura é por LEI e não por lista** — [`Verb::writes_through_applicator`]
+    // tira quem não tem aplicador por-vértice a julgar. Sem ela, um verbo cuja
+    // lei **não é sobre posições** (a densidade mexe na topologia) reprova aqui
+    // com *«o dab não fez nada em canal nenhum»*, que é exactamente a frase
+    // certa sobre ele — e o piso de população abaixo é o que impede a filtragem
+    // de esvaziar o censo em silêncio.
+    let populacao: Vec<Verb> = Verb::ALL
+        .into_iter()
+        .filter(|v| v.writes_through_applicator())
+        .collect();
+    assert!(
+        populacao.len() >= 25,
+        "o censo varreu só {} verbos — a filtragem partiu-se, não o catálogo \
+         encolheu: {populacao:?}",
+        populacao.len()
+    );
+    for verb in populacao {
         // A pose de repouso é a da malha que ESTE verbo recebe — tirá-la fora do
         // laço a amarraria a uma fixture só, e a comparação seria contra a
         // malha errada em quem lê o anel.

@@ -138,3 +138,151 @@ fn a_mascara_continua_a_pintar_o_canal() {
         "a máscara deixou de pintar ({antes:.4} -> {depois:.4})"
     );
 }
+
+/// Uma cena com a malha e o detalhe pedidos, e o passe **armado**.
+fn cena_com(
+    device: &wgpu::Device,
+    verb: Verb,
+    malha: ph2d_mesh::Mesh,
+    detalhe: f32,
+    raio_px: f32,
+) -> Sculpt3dScene {
+    let mut s = Sculpt3dScene::new(device, malha, 1.0);
+    s.note_canvas(ph2d_editor_core::zones::Rect::new(0.0, 0.0, 900.0, 700.0));
+    s.brush.verb = verb;
+    // ⚠️⚠️ **O raio do pincel vive em PIXELS DE ECRÃ, e o `Brush::radius` é
+    // DERIVADO dele a cada dab** (`armed_brush_on` reescreve-o com
+    // `world_radius_for_screen_px`). *Escrever `s.brush.radius` aqui não teria
+    // efeito nenhum* — a primeira redacção deste arnês fê-lo e a fixtura não
+    // continha o fenómeno, com `3 386 -> 3 386` a ler-se como «o pincel é
+    // inerte» quando o que estava inerte era o arnês.
+    s.radius_px = raio_px;
+    let (ligado, _) = s.toggle_dyntopo();
+    assert!(ligado, "o dyntopo tinha de ligar");
+    s.dyntopo.detail = detalhe;
+    s
+}
+
+/// ⭐⭐⭐ **A DENSIDADE AFINA A MALHA, E NUNCA A ENGROSSA.**
+///
+/// São **duas leis, não uma** (espec §3.2): *ele liga o colapso* **e** *ele não
+/// liga o partir*. ⚠️ Um gate que só verificasse a primeira passaria com um
+/// pincel que **também subdivide**, que é outro produto — e é por isso que a
+/// segunda metade corre sobre uma malha GROSSA, onde partir teria o que fazer.
+///
+/// **Medido** (um dab, raio `160 px`):
+///
+/// | arranjo | verbo | vértices |
+/// |---|---|---|
+/// | malha fina (`48×72`), alvo grosso | `Density` | **`3 386 → 3 352`** |
+/// | malha grossa (`8×12`), alvo fino | `Density` | **`86 → 86`** — ele nunca acrescenta |
+/// | a MESMA, alvo fino | `Draw` | **`86 → 359`** — o controlo |
+///
+/// ⚠️ **A colheita da primeira linha é modesta (`34` vértices) e isso é a
+/// NOSSA lei, não um defeito:** o nosso colapso tem quatro recusas
+/// (`ph2d-mesh/src/collapse.rs`), entre elas *«algum dos quatro vértices está na
+/// beira»* — mais dura que a do alvo, que em vez de recusar **escolhe o
+/// sobrevivente**. A espec §3.8 declara isso uma **decisão de produto** com duas
+/// frases e sem terceira saída, e o que shipa é a conservadora: *o `Density`
+/// respeita as recusas que o nosso colapso já tem, e no bordo ele simplesmente
+/// não come*.
+#[test]
+#[ignore]
+fn a_densidade_afina_a_malha_e_nunca_a_engrossa() {
+    let gpu = gpu_or_skip!();
+
+    // (a) MALHA FINA, alvo GROSSO — há aresta curta de sobra, logo o colapso
+    // tem o que comer.
+    let fina = || ph2d_mesh::shapes::uv_sphere(48, 72, 1.0);
+    let mut s = cena_com(&gpu.device, Verb::Density, fina(), 0.15, 160.0);
+    let antes = vertices(&s);
+    um_dab(&mut s);
+    let depois = vertices(&s);
+    assert!(
+        depois < antes,
+        "a densidade não afinou nada ({antes} -> {depois}) — todo o efeito dela \
+         é sobre o passe de topologia, e sem isto ela é um pincel inerte"
+    );
+
+    // (b) MALHA GROSSA, alvo FINO — aqui **partir** teria muito o que fazer, e
+    // é isto que separa este pincel de um que também subdivide.
+    let grossa = || ph2d_mesh::shapes::uv_sphere(8, 12, 1.0);
+    let mut s = cena_com(&gpu.device, Verb::Density, grossa(), 1.0, 160.0);
+    let antes = vertices(&s);
+    um_dab(&mut s);
+    let depois = vertices(&s);
+    assert!(
+        depois <= antes,
+        "a densidade ACRESCENTOU superfície ({antes} -> {depois}) — ela liga o \
+         colapso e NÃO liga o partir"
+    );
+
+    // ⭐ **O controlo positivo da metade (b):** o mesmo arranjo com um verbo que
+    // liga as duas metades **cresce**. Sem ele, o `<=` acima ficaria verde sobre
+    // um passe que nunca dispara.
+    let mut s = cena_com(&gpu.device, Verb::Draw, grossa(), 1.0, 160.0);
+    let antes = vertices(&s);
+    um_dab(&mut s);
+    let depois = vertices(&s);
+    assert!(
+        depois > antes,
+        "o desenho não subdividiu a malha grossa ({antes} -> {depois}) — sem \
+         isto a metade (b) não afirma nada"
+    );
+}
+
+/// ⭐⭐ **COM O PASSE DESARMADO ELA É INTEIRAMENTE INERTE, e o `0` é exacto.**
+///
+/// Espec §3.1: a diferença máxima de posição é **`0` exactamente**, não
+/// «pequena» — ela não desloca vértice nenhum, e a única metade que ela arma
+/// está fora de jogo. É o análogo do *Detailing* em **Manual** do alvo.
+#[test]
+#[ignore]
+fn com_o_passe_desarmado_a_densidade_nao_move_um_vertice() {
+    let gpu = gpu_or_skip!();
+    let mut s = Sculpt3dScene::new(&gpu.device, ph2d_mesh::shapes::uv_sphere(48, 72, 1.0), 1.0);
+    s.note_canvas(ph2d_editor_core::zones::Rect::new(0.0, 0.0, 900.0, 700.0));
+    s.brush.verb = Verb::Density;
+    // ⚠️ **SEM `toggle_dyntopo`**: é esta ausência que o gate mede.
+    let antes = s.objects[s.active].stack.mesh().positions().to_vec();
+    um_dab(&mut s);
+    let depois = s.objects[s.active].stack.mesh().positions().to_vec();
+
+    assert_eq!(antes.len(), depois.len(), "a contagem não pode mudar");
+    let pior = antes
+        .iter()
+        .zip(&depois)
+        .map(|(a, b)| {
+            (a[0] - b[0])
+                .abs()
+                .max((a[1] - b[1]).abs())
+                .max((a[2] - b[2]).abs())
+        })
+        .fold(0.0f32, f32::max);
+    assert_eq!(
+        pior, 0.0,
+        "a densidade moveu barro com o passe desarmado (pior delta {pior:e}) — \
+         ela não tem lei por-vértice nenhuma"
+    );
+
+    // ⛔⛔ **E ela nem CHEGA A OLHAR para um vértice — esta metade é a que
+    // discrimina, e a primeira redacção não a tinha.**
+    //
+    // ⚠️ Medido por mutação: apagar o desvio do `stroke_symmetry` deixava o
+    // `assert_eq!(pior, 0.0)` acima **verde**, porque o `stroke_target` tem um
+    // braço `Verb::Density => live` — a resposta defensiva para *«e se alguém
+    // chegar aqui mesmo assim?»*, a mesma que o tecido e a pose têm. *Duas
+    // respostas à mesma pergunta, e a de baixo mascarava a de cima.*
+    //
+    // ⇒ a régua passa a ser a JANELA DO TRAÇO: o `dab_core` fotografa (`capture`)
+    // todo vértice ao alcance antes de decidir o que fazer com ele, logo um
+    // `touched` não-vazio prova que a cadeia de peso correu — mesmo quando ela
+    // não move nada.
+    assert!(
+        s.stroke.touched().is_empty(),
+        "a densidade fotografou {} vértices — ela desvia ANTES do laço \
+         por-vértice, e um `touched` não-vazio quer dizer que a cadeia de peso \
+         correu à mesma",
+        s.stroke.touched().len()
+    );
+}

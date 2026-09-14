@@ -129,7 +129,18 @@ pub(crate) fn for_scene(mesh: &ph2d_mesh::Mesh) {
              [sculpt3d]        nao tem porque criar triangulos. Antes desta correccao um unico
              [sculpt3d]        toque levava a peca de 830 para 1331 vertices.
              [sculpt3d]        Volte ao `Draw` e esculpa: a malha volta a adensar. Se a mascara
-             [sculpt3d]        adensar, ou se o desenho parar de adensar, e' reprovacao."
+             [sculpt3d]        adensar, ou se o desenho parar de adensar, e' reprovacao.
+             [sculpt3d]   (12) O PINCEL QUE SO' AFINA -- `Density`, no fim da fileira (novo):
+             [sculpt3d]        depois de ter adensado uma zona no passo (3), escolha `Density`,
+             [sculpt3d]        aperte U ate' GROSSO e passe por cima dessa zona.
+             [sculpt3d]        -> A malha AFINA onde voce passa, e a FORMA fica. Ele nunca
+             [sculpt3d]           acrescenta: numa zona ja' grossa ele nao faz nada, por mais
+             [sculpt3d]           que voce insista -- e' isso que o separa do `Draw`.
+             [sculpt3d]        -> Com o modo DESLIGADO (P) ele nao faz absolutamente nada: ele
+             [sculpt3d]           nao move um unico vertice, todo o efeito dele e' sobre a
+             [sculpt3d]           malha.
+             [sculpt3d]        (A borda de uma peca aberta ele nao afina -- e' uma escolha
+             [sculpt3d]         nossa, para o contorno nao mudar de forma sozinho.)"
         );
     }
 

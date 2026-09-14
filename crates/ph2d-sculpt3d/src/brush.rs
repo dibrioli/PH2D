@@ -5,7 +5,6 @@
 //! ferramenta está na mão.** Um traço é uma lista de dabs contra UM brush.
 
 use crate::falloff::Falloff;
-use crate::grip::{Amount, Grip};
 use crate::pose_controlos::PoseControlos;
 use crate::{Alpha, AlphaStencil};
 

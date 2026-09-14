@@ -118,6 +118,24 @@ impl SculptStroke {
         // um dab que não move nada de herdar a janela do anterior.
         self.call_moved.clear();
         self.call_refreshed.clear();
+        // ⛔⛔ **A DENSIDADE SAI ANTES DE TUDO, e não é uma optimização.**
+        //
+        // Ela não tem lei por-vértice nenhuma ([`Verb::sem_lei_por_vertice`]):
+        // todo o efeito dela é sobre o passe de TOPOLOGIA, que já correu antes
+        // deste `dab` (é o braço do carimbo que o chama). Deixá-la seguir
+        // daqui faria-a herdar a cadeia de peso inteira — a dureza, a curva de
+        // queda, a força — e mover barro que a espec mede em **zero
+        // exactamente**, não «pequeno».
+        //
+        // ⚠️ **A janela do undo fica VAZIA de propósito, e isso é correcto
+        // aqui** (ao contrário do que era na pose): um gesto que não escreve
+        // posição nenhuma não tem posições a repor. Quem desfaz uma mudança de
+        // topologia é a entrada `Remeshed`, que o arm do dyntopo já usa — a
+        // malha inteira, porque os índices de depois não descrevem os de antes.
+        if brush.verb.sem_lei_por_vertice() {
+            self.last_paints_mask = false;
+            return 0;
+        }
         // ⚠️⚠️ **O TECIDO DESVIA AQUI, e antes do espelho de propósito:** ele é
         // dono da própria expansão de simetria, porque cada cópia tem a SUA
         // região — duas regiões em lados opostos da peça não partilham vértice

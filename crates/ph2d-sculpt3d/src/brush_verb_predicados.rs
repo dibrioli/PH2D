@@ -36,7 +36,12 @@ impl Verb {
     /// um segundo controle sobre a mesma pergunta.
     #[must_use]
     pub fn accumulates(self) -> bool {
-        matches!(self.grip(), Grip::Stamp) && self != Self::Layer
+        matches!(self.grip(), Grip::Stamp)
+            && self != Self::Layer
+            // ⛔ **E a DENSIDADE, que é carimbo e não tem o que acumular:** ela
+            // não move um vértice. Oferecer o interruptor seria um controlo que
+            // aparece e não faz nada.
+            && !self.sem_lei_por_vertice()
     }
 
     /// Este verbo escreve na MÁSCARA em vez da posição?
@@ -178,9 +183,17 @@ impl Verb {
     /// redação foi inserida entre o atributo do `uses_neighbours` e a assinatura
     /// dele, e o atributo mudou de dono em silêncio. É a armadilha que este repo
     /// já tinha registada; quem a apanhou foi o clippy, não uma leitura.
+    /// ⚠️⚠️ **E ela passou a ter DUAS metades em 2026-09-14**, quando chegou um
+    /// verbo que não desvia para lei nenhuma — ele simplesmente **não tem lei
+    /// por-vértice** ([`Self::sem_lei_por_vertice`]). *A pergunta que os censos
+    /// fazem é «há aqui um aplicador por-vértice a julgar?», e há duas maneiras
+    /// de a resposta ser não.* Os seis censos que reprovaram ao ele nascer
+    /// disseram-no à letra — *«dab inerte»*, *«não tocou nada»*, *«o dab não fez
+    /// nada em canal nenhum»* —, e cada um deles é um piso de população a fazer
+    /// o trabalho dele.
     #[must_use]
     pub fn writes_through_applicator(self) -> bool {
-        !self.resolve_a_propria_regiao()
+        !self.resolve_a_propria_regiao() && !self.sem_lei_por_vertice()
     }
 
     /// **Este verbo DESVIA antes do laço por-vértice e é dono da própria
@@ -238,9 +251,30 @@ impl Verb {
     /// refino e o colapso são **leis independentes** que por acaso vivem na
     /// mesma porta: um verbo pode querer relaxar densidade sem criar detalhe.
     /// *Uma tabela com uma coluna só obriga quem a lê a escolher por ela.*
+    /// **Este verbo NÃO TEM LEI POR-VÉRTICE?** — a porta que tira a densidade
+    /// do `dab_core`.
+    ///
+    /// ⭐ Irmão do [`Self::resolve_a_propria_regiao`] e o corte é claro: aqueles
+    /// têm lei própria **noutro sítio** (um solver, uma cadeia de mapas, uma
+    /// borda); este **não tem lei nenhuma sobre posições**. Todo o efeito dele é
+    /// sobre o passe de TOPOLOGIA.
+    ///
+    /// ⚠️ **Porta e não um `matches!` no sítio de uso, pela razão dos irmãos:**
+    /// o desvio do traço pergunta para NÃO CORRER a cadeia de peso, e o painel
+    /// pergunta para não oferecer os controlos dela. Duas cópias divergiriam num
+    /// pincel que mostra uma força que ninguém lê.
+    #[must_use]
+    pub fn sem_lei_por_vertice(self) -> bool {
+        matches!(self, Self::Density)
+    }
+
     #[must_use]
     pub fn refina_no_dyntopo(self) -> bool {
-        !self.anchors() && self != Self::Mask
+        // ⛔ **A DENSIDADE NUNCA ACRESCENTA SUPERFÍCIE, e é lei e não omissão:**
+        // ela liga o colapso e **não** liga o partir. *Um pincel que também
+        // subdividisse é outro produto*, e é por isso que esta linha existe
+        // separada da de baixo — as duas colunas deixam de coincidir aqui.
+        self != Self::Density && !self.anchors() && self != Self::Mask
     }
 
     /// **Este verbo COLAPSA arestas curtas em Dynamic Topology?**
@@ -260,19 +294,28 @@ impl Verb {
 mod dyntopo_tests {
     use super::Verb;
 
-    /// ⭐⭐⭐ **A MÁSCARA É A ÚNICA CORRECÇÃO QUE ESTA TABELA FAZ.**
+    /// ⭐⭐⭐ **SÓ DOIS VERBOS SE AFASTAM DO COMPORTAMENTO DE HOJE, E POR RAZÕES
+    /// DE ESPÉCIE DIFERENTE.**
     ///
     /// ⚠️⚠️ **É isto que impede a tabela de virar um palpite disfarçado de lei.**
     /// O que cada verbo *deve* fazer é pergunta de **ORÁCULO**
     /// (`docs/3D/22_plano_quem_subdivide_no_dyntopo.md`), e este censo afirma
-    /// que o commit que a introduziu **mudou exactamente um comportamento**:
-    /// todos os outros verbos leem o que já liam.
+    /// que os únicos desvios são:
+    ///
+    /// | verbo | as duas colunas | que espécie de entrada isto é |
+    /// |---|---|---|
+    /// | **Mask** | `false` · `false` | ⛔ **uma CORRECÇÃO** — ele não move um vértice, e adensava a malha (`830 → 1 331`) |
+    /// | **Density** | `false` · **`true`** | ⭐ **a LEI de um verbo novo** — ele existe para colapsar, e nunca acrescenta |
+    ///
+    /// ⚠️ **As duas espécies leem-se iguais numa lista** — *«dois verbos fora do
+    /// padrão»* —, e não são a mesma coisa: apagar a primeira é reabrir um
+    /// defeito, apagar a segunda é apagar um pincel. É por isso que este gate as
+    /// nomeia **em separado** em vez de contar duas.
     ///
     /// ⇒ o dia em que o estudo existir, é **este gate** que muda, célula a
-    /// célula, e a mudança fica visível no diff em vez de se diluir num `match`
-    /// que ninguém recontou.
+    /// célula, e a mudança fica visível no diff.
     #[test]
-    fn o_mask_e_a_unica_correccao_que_esta_tabela_faz() {
+    fn so_dois_verbos_se_afastam_do_comportamento_de_hoje() {
         let mut corrigidos = Vec::new();
         for v in Verb::ALL {
             // O comportamento de HOJE: o refino tem um chamador só — o braço do
@@ -284,10 +327,22 @@ mod dyntopo_tests {
         }
         assert_eq!(
             corrigidos,
-            ["Mask"],
-            "esta tabela mudou o comportamento de outro verbo além da máscara. \
-             Se foi o ESTUDO a chegar, reescreva este gate célula a célula com a \
-             tabela medida ao lado; se não foi, é uma regressão"
+            ["Mask", "Density"],
+            "esta tabela mudou o comportamento de um verbo além da máscara e da \
+             densidade. Se foi o ESTUDO a chegar, reescreva este gate célula a \
+             célula com a tabela medida ao lado; se não foi, é uma regressão"
+        );
+        // ⚠️ **E as DUAS espécies, em separado** — ver a tabela no doc: a
+        // máscara é uma correcção (ela não podia adensar), a densidade é a LEI
+        // de um pincel (ele existe para colapsar).
+        assert!(
+            !Verb::Mask.refina_no_dyntopo() && !Verb::Mask.colapsa_no_dyntopo(),
+            "a máscara não pode mexer na topologia por nenhuma das metades"
+        );
+        assert!(
+            !Verb::Density.refina_no_dyntopo() && Verb::Density.colapsa_no_dyntopo(),
+            "a densidade LIGA o colapso e NÃO liga o partir — um pincel que \
+             também subdividisse é outro produto"
         );
     }
 
@@ -321,20 +376,30 @@ mod dyntopo_tests {
         }
     }
 
-    /// ⚠️ **As duas colunas coincidem hoje em TODOS os verbos**, e isso é um
-    /// facto sobre o produto de hoje (as duas leis vivem numa porta só), **não**
-    /// uma lei. Este gate existe para o dia em que o estudo as separar: ele
-    /// reprova, e quem o apagar tem de escrever o que passou a ser verdade.
+    /// ⭐⭐⭐ **AS DUAS COLUNAS SEPARAM-SE EM EXACTAMENTE UM VERBO: a DENSIDADE.**
+    ///
+    /// ⚠️ **Este gate nasceu a dizer o contrário**, e a mudança é o registo: até
+    /// 14/09 elas coincidiam em todos os verbos, e ele dizia *«isso é um facto
+    /// sobre o produto de hoje, não uma lei — este gate reprova no dia em que
+    /// alguém as separar»*. O dia chegou, e não foi o estudo: foi o pincel de
+    /// **densidade**, que **liga o colapso e não liga o partir**.
+    ///
+    /// ⭐ *Um gate escrito para reprovar no dia em que a premissa dele morre é o
+    /// que torna a morte dela visível no diff* — em vez de a coincidência se
+    /// desfazer num `match` que ninguém recontou.
     #[test]
-    fn as_duas_colunas_ainda_coincidem_e_isso_nao_e_uma_lei() {
-        for v in Verb::ALL {
-            assert_eq!(
-                v.refina_no_dyntopo(),
-                v.colapsa_no_dyntopo(),
-                "`{}` separou as duas colunas — se foi o estudo, apague este \
-                 gate e escreva a tabela medida",
-                v.label()
-            );
-        }
+    fn as_duas_colunas_separam_se_em_exactamente_um_verbo() {
+        let separados: Vec<&str> = Verb::ALL
+            .into_iter()
+            .filter(|v| v.refina_no_dyntopo() != v.colapsa_no_dyntopo())
+            .map(Verb::label)
+            .collect();
+        assert_eq!(
+            separados,
+            ["Density"],
+            "as duas colunas separaram-se noutro verbo. Se foi o ESTUDO a \
+             chegar, reescreva este gate com a tabela medida ao lado; se não \
+             foi, é uma regressão"
+        );
     }
 }

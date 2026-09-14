@@ -192,7 +192,15 @@ fn o_indicador_nao_reconstroi_quando_nada_muda() {
         .copied()
         .max_by(|a, c| a[0].total_cmp(&c[0]))
         .expect("a malha tem vértices");
-    let _ = s.boundary_contorno(&malha, &b, Symmetry::default(), outro);
+    // ⚠️⚠️ **E o controlo positivo tem de contar QUADROS também.** A primeira
+    // redacção chamava-o **uma** vez e reprovou na suíte cheia (e só lá): uma
+    // construção que passe do orçamento compra `ceil(custo/orçamento)` quadros
+    // de silêncio, e sob fan-out ela passa. *Um gate que afirma «isto
+    // reconstrói» com uma chamada só está a medir o relógio da máquina, que é
+    // exactamente o que o orçamento existe para tirar da frente.*
+    for _ in 0..60 {
+        let _ = s.boundary_contorno(&malha, &b, Symmetry::default(), outro);
+    }
     assert!(
         s.boundary_previa.construcoes >= 2,
         "mover o cursor tem de reconstruir"

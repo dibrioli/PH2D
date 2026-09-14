@@ -868,6 +868,25 @@ fn every_verb_is_reachable_from_the_keyboard() {
         // ⇒ a fila de pretendentes passa de sete para **oito**, e o `L` continua
         // a ser UM. **A escolha é do Enio.**
         "Boundary",
+        // ⚠️⚠️ **A DENSIDADE, e ela NÃO é a nona pretendente ao `L` — ela está
+        // fora da fila, e a razão é de espécie diferente das oito.**
+        //
+        // ⭐ As oito disputam uma tecla porque são **gestos de forma**: o artista
+        // alterna entre elas enquanto esculpe. Este não esculpe — ele **não move
+        // um único vértice** ([`ph2d_sculpt3d::Verb::sem_lei_por_vertice`]), e
+        // só faz alguma coisa com o passe de topologia **armado**. ⇒ uma tecla
+        // nua para ele seria inerte na configuração de fábrica (o dyntopo nasce
+        // desligado), que é exactamente a objecção que já pesou contra o
+        // contorno, **mais forte**: o contorno é mudo numa peça sem borda, este
+        // é mudo em toda a peça até alguém premir `P`.
+        //
+        // ⚠️ E ele é um verbo de **manutenção da malha**, não de escultura: a
+        // vizinhança dele no teclado é o `P` (armar) e o `U` (detalhe), não a
+        // fileira de pincéis. *Se um dia ele ganhar tecla, é dessa família que
+        // ela sai* — registado para a decisão não ter de redescobrir isto.
+        //
+        // ⇒ a fila dos pretendentes ao `L` continua em **oito**.
+        "Density",
     ];
     let keys = function_body(&sculpt_src(), "key");
     // ⚠️ **O gate COLETA em vez de abortar no primeiro, e isso não é estilo.**

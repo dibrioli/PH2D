@@ -433,11 +433,41 @@ pub enum Verb {
     /// A lei inteira vive na crate-folha [`ph2d_boundary`], medida contra `61`
     /// traços do oráculo; a espec é `docs/3D/cleanroom/SPEC_boundary_brush.md`.
     Boundary,
+    /// ⭐⭐ **A DENSIDADE — o único verbo que NÃO MOVE UM VÉRTICE.**
+    ///
+    /// Ele não tem lei por-vértice nenhuma: **todo** o efeito dele é sobre o
+    /// passe de TOPOLOGIA. Onde o pincel passa, a malha **afina** — as arestas
+    /// curtas colapsam e a densidade desce —, e a forma fica.
+    ///
+    /// ⛔ **Ele LIGA o colapso e NÃO liga o partir**, e são duas leis, não uma:
+    /// um teste que só afirmasse a primeira passaria com um pincel que também
+    /// subdivide, que é **outro produto**. Ele nunca ACRESCENTA superfície.
+    ///
+    /// ⚠️ **Ele desvia antes do `dab_core`** ([`Self::sem_lei_por_vertice`]):
+    /// um verbo novo que caísse lá herdaria a cadeia de peso — a dureza, a
+    /// curva de queda, a força — que aqui **não existe**. Medido na espec com o
+    /// passe desarmado: `0` vértices movidos de `1 681`, e a diferença máxima de
+    /// posição é `0` exactamente, não «pequeno».
+    ///
+    /// ⚠️ **Com o passe de topologia DESARMADO ele é inteiramente inerte**, e
+    /// isso é a lei e não uma cerca: a única metade que ele arma está fora de
+    /// jogo. É o análogo do *Detailing* em **Manual** do alvo.
+    ///
+    /// ⛔ **DECISÃO DE PRODUTO por decidir, e ela é observável:** o nosso
+    /// colapso recusa mexer numa aresta em que *algum dos quatro vértices está
+    /// na beira* — mais duro que o alvo, que em vez de recusar **escolhe o
+    /// sobrevivente**. O que shipa é a opção conservadora (espec §3.8), e o que
+    /// o artista vê é *«o pincel não afina a borda»*. A outra saída herda o
+    /// cuidado de mover-ou-não o sobrevivente, e custa re-medir o ponto fixo do
+    /// nosso par partir/colapsar.
+    ///
+    /// A espec é `docs/3D/cleanroom/SPEC_unblocked_brushes.md` §3.
+    Density,
 }
 
 impl Verb {
     /// Todos, na ordem em que a UI os lista.
-    pub const ALL: [Self; 28] = [
+    pub const ALL: [Self; 29] = [
         Self::Draw,
         Self::Inflate,
         Self::Smooth,
@@ -466,6 +496,7 @@ impl Verb {
         Self::Nudge,
         Self::Pose,
         Self::Boundary,
+        Self::Density,
     ];
 
     /// O nome que a UI mostra.
@@ -498,6 +529,7 @@ impl Verb {
             Self::Layer => "Layer",
             Self::Pose => "Pose",
             Self::Boundary => "Boundary",
+            Self::Density => "Density",
             Self::Thumb => "Thumb",
             Self::Nudge => "Nudge",
         }
@@ -579,87 +611,11 @@ impl Verb {
             _ => None,
         }
     }
-
-    /// **Como este verbo consome o gesto** — ver [`Grip`]. A porta única de que
-    /// [`Self::anchors`] é uma leitura, e sobre a qual o kernel e o shell fazem
-    /// perguntas diferentes.
-    #[must_use]
-    pub fn grip(self) -> Grip {
-        match self {
-            Self::Cloth => Grip::Simulate,
-            Self::Move => Grip::Hold,
-            Self::SnakeHook => Grip::Hook,
-            // ⭐⭐ **OS DOIS GESTOS TANGENCIAIS NÃO TRAZEM GRIP NOVO**, e é o
-            // achado que os torna baratos: o que os separa um do outro é
-            // exactamente o que já separa o agarrar do gancho — de que pose a
-            // pegada é medida e se o puxão é o TOTAL ou o INCREMENTO. A conta
-            // do deslocamento é a mesma nos dois.
-            Self::Thumb => Grip::Hold,
-            Self::Nudge => Grip::Hook,
-            // ⭐ **A POSE também não traz grip novo.** Ela precisa exactamente
-            // do que o `Hold` já promete — a pegada presa no pen-down e o
-            // `pull` como deslocamento **TOTAL** desde então —, porque a lei
-            // dela é função do arrasto acumulado e não de um incremento
-            // (`T = C + G·s`). ⚠️ E o `Hold` traz de graça a outra metade de
-            // que ela precisa: *não percorre o caminho*, e um traço de pose
-            // resolve-se **uma vez por evento**, nunca por passo de espaçamento.
-            Self::Pose => Grip::Hold,
-            // ⭐ **O contorno também não traz grip novo.** Ele precisa do que o
-            // `Hold` já promete — a pegada presa no pen-down e o `pull` como
-            // deslocamento **TOTAL** —, porque a lei dele é função do arrasto
-            // acumulado (§14.2: o resultado não depende do caminho nem do número
-            // de eventos). ⚠️ E o `Hold` traz de graça a outra metade: *não
-            // percorre o caminho*, e as fases A–E do contorno são **fotografadas
-            // no pen-down**.
-            Self::Boundary => Grip::Hold,
-            Self::Twist => Grip::Turn(Amount::Angle),
-            Self::LocalScale => Grip::Turn(Amount::Fraction),
-            // O CARIMBO: a faixa compõe sobre a lista de dabs como o Draw.
-            Self::ClayStrips => Grip::Stamp,
-            Self::Mask => Grip::Paint,
-            _ => Grip::Stamp,
-        }
-    }
-
-    /// **Este verbo PEGA uma âncora no pen-down** em vez de carimbar? — uma
-    /// leitura de [`Self::grip`] em vez de um segundo predicado.
-    ///
-    /// Os três grips que não são [`Grip::Stamp`] têm em comum que o primeiro
-    /// toque **escolhe um ponto e não move nada**: o barro só anda quando o dedo
-    /// anda, porque no instante do pen-down o gesto ainda vale zero (o puxão, o
-    /// incremento, o ângulo varrido, a fração de escala).
-    ///
-    /// ⚠️ **O nome era `pulls()`, e ele passou a MENTIR quando o
-    /// [`Grip::Turn`] chegou** — um redemoinho não puxa nada. O que a pergunta
-    /// sempre quis dizer é *este verbo tem âncora?*, e é essa a palavra que
-    /// sobrevive a um quinto grip.
-    ///
-    /// ⚠️ **Ela era `!matches!(grip, Stamp)`, e o quinto grip a tornou FALSA:**
-    /// o [`Grip::Paint`] também não carimba geometria, e um verbo de máscara
-    /// não tem âncora nenhuma. A pergunta passou a ser feita pelo lado
-    /// POSITIVO — quem de fato pega um ponto no pen-down —, que é a forma que
-    /// sobrevive ao sexto grip em vez de o adotar em silêncio.
-    /// ⛔⛔ **E O SEXTO GRIP CHEGOU SEM RESPONDER A ESTA PERGUNTA — report do
-    /// dono, 2026-09-05: *«não funciona, nada aconteceu ao pintar»*.** O
-    /// [`Grip::Simulate`] entrou sem entrar nesta lista, então o pen-down do
-    /// tecido caía no `else` (`sculpt_at`) e a âncora do dedo nunca era tomada;
-    /// no arrasto, o `hook_step` sai no primeiro `if` porque `self.grab` é
-    /// `None`, e **nada acontece**. O parágrafo acima previu exatamente esta
-    /// classe e ainda assim ela passou: *uma lista pelo lado positivo obriga o
-    /// grip novo a declarar-se, e nada obriga QUEM O ESCREVE a ler a lista.*
-    ///
-    /// ⇒ o que fecha a classe é o gate
-    /// `the_sculpt_pen_down_arms_what_the_drag_needs` (shell), que confere as
-    /// DUAS metades: todo grip que o arrasto conduz a partir da âncora tem de
-    /// aparecer aqui.
-    #[must_use]
-    pub fn anchors(self) -> bool {
-        matches!(
-            self.grip(),
-            Grip::Hold | Grip::Hook | Grip::Turn(_) | Grip::Simulate
-        )
-    }
 }
+/// ⭐ **COMO O GESTO É CONDUZIDO** — o [`Grip`] de cada verbo. Ver [`grip_por_verbo`].
+#[path = "brush_verb_grip.rs"]
+mod grip_por_verbo;
+
 /// **OS DEFAULTS** — com que números um verbo nasce. Ver [`defaults`].
 #[path = "brush_verb_defaults.rs"]
 mod defaults;

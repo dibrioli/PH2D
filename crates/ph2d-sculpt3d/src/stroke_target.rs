@@ -116,6 +116,12 @@ impl SculptStroke {
             // *«e se alguém chegar aqui mesmo assim?»*; um `unreachable!()`
             // trocaria um no-op por um panic no caminho do ponteiro.
             Verb::Pose | Verb::Boundary => live,
+            // ⛔⛔ **INALCANÇÁVEL, e a razão é a mais forte das três:** a
+            // densidade não tem alvo por-vértice porque **não tem lei
+            // por-vértice** — o `SculptStroke::dab` devolve antes deste laço
+            // existir ([`Verb::sem_lei_por_vertice`]). Não mover nada é a
+            // resposta correcta para *«e se alguém chegar aqui mesmo assim?»*.
+            Verb::Density => live,
             // `Brush.js:57-91` — `deform = intensidade · raio · 0,1`, e o peso
             // inteiro (curva × intensidade × máscara × alpha) chega no `w`.
             Verb::Draw => add(live, n_area, reach * w),

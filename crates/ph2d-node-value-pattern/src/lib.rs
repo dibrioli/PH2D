@@ -476,7 +476,10 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "interp",
-        label: "Interp",
+        // ⚠️ **`Interpolation`, não `Interp`** (ciclo 6 W3): o `value.table` pergunta a MESMA coisa
+        // com a MESMA chave e as MESMAS duas opções, e escrevia a palavra por extenso. *Uma chave é
+        // o que o código guarda; um rótulo é o que o artista lê, e é o rótulo que tem de ser um só.*
+        label: "Interpolation",
         min: 0.0,
         max: 1.0,
         step: 1.0,

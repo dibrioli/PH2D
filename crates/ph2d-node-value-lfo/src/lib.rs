@@ -431,7 +431,9 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: "phase_stagger",
-        label: "Stagger",
+        // ⚠️ **`Phase Stagger`** (ciclo 6 W3): o `pulse.beat` pergunta a MESMA coisa — a fase
+        // POR LINHA — e escrevia o nome inteiro. Três nós, uma palavra.
+        label: "Phase Stagger",
         min: 0.0,
         max: 2.0,
         step: 0.02,

@@ -394,8 +394,12 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         min: 0.0,
         max: 3.0,
         step: 1.0,
+        // ⚠️ **`Step` e não `Stepped`** (ciclo 6 W3): os outros dois nós que perguntam *«como é que
+        // eu interpolo?»* — `value.pattern` e `value.table` — escrevem `Step`, e o artista lê a
+        // MESMA palavra para a MESMA coisa. ⛔ Só o valor guardado é um índice, então trocar a
+        // palavra não toca em documento nenhum.
         widget: ParamWidget::Enum {
-            labels: &["Linear", "Stepped", "Smooth", "Smoother"],
+            labels: &["Linear", "Step", "Smooth", "Smoother"],
         },
     },
     ParamUiHint {

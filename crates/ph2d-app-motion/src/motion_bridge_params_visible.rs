@@ -16,7 +16,7 @@ use ph2d_nodegraph::graph::NodeId;
 use ph2d_nodegraph::node::NodeTypeId;
 
 /// As três tabelas do tipo, lidas UMA vez.
-pub(super) struct Visibility {
+pub(crate) struct Visibility {
     /// A condição é o valor de outro param **f32 arredondado a inteiro** — exato para um
     /// `Enum` (que guarda o índice): é o que faz um `source.shape` mostrar só os controles
     /// da espécie escolhida.
@@ -36,7 +36,7 @@ pub(super) struct Visibility {
 
 impl Visibility {
     /// Lê as três tabelas do registry. Um tipo sem entrada nenhuma não gateia nada.
-    pub(super) fn of(reg: &NodeRegistry, id: NodeTypeId) -> Self {
+    pub(crate) fn of(reg: &NodeRegistry, id: NodeTypeId) -> Self {
         Self {
             gates: reg.param_gates(id),
             text: reg.param_gates_text(id),
@@ -46,7 +46,7 @@ impl Visibility {
 
     /// `param` aparece? `value_of` dá o valor atual de outro param, `has_text` diz se um
     /// text param está presente e não vazio.
-    pub(super) fn shows(
+    pub(crate) fn shows(
         &self,
         param: &str,
         value_of: &impl Fn(&str) -> f32,

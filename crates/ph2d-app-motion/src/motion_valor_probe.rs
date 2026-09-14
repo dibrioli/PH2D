@@ -58,6 +58,22 @@ fn the_value_vocabulary() {
     crate::motion_ciclo_probe::vocabulario(&grupo());
 }
 
+/// ⭐⭐⭐ **O VOCABULÁRIO PELO EIXO DO ARTISTA** — rótulo, e as palavras do enum (ciclo 6, W3).
+#[test]
+#[ignore = "sonda de auditoria — corra à mão"]
+fn the_vocabulary_the_artist_reads() {
+    crate::motion_ciclo_probe::vocabulario_do_artista(&grupo());
+}
+
+/// ⚠️ **O MESMO, sobre o CATÁLOGO INTEIRO** — uma lei de vocabulário não é do grupo, é do app.
+#[test]
+#[ignore = "sonda de auditoria — corra à mão"]
+fn the_vocabulary_of_the_whole_catalogue() {
+    let m = crate::motion_state::MotionState::new();
+    let todos: Vec<&'static str> = m.registry.manifests().map(|man| man.name).collect();
+    crate::motion_ciclo_probe::vocabulario_do_artista(&todos);
+}
+
 /// ⚠️ **AS DUAS FAMÍLIAS ESTÃO VIVAS, e o grupo cresce com elas.**
 ///
 /// ⛔ Sem este piso, um prefixo mal escrito ou um registo que mudasse de nome deixava as cinco

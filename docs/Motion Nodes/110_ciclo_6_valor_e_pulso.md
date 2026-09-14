@@ -124,7 +124,7 @@ Hoje cada amostra reconstrói a árvore e **lê** a saída.
 
 ---
 
-## §4 — O VOCABULÁRIO (sonda `the_value_vocabulary`): 6 divergências
+## §4 — O VOCABULÁRIO (sonda `the_value_vocabulary`): 5 divergências
 
 Mesma chave, rótulos diferentes — o artista vê dois nomes para a mesma pergunta:
 
@@ -156,8 +156,12 @@ o sintoma.*
    paridade num adapter real. ⛔ E a medição diz que isso ainda **não muda rota nenhuma**: a faixa
    acaba nos CONSUMIDORES (`sim.spawn` recusa a porta · `motion.strobe`/`motion.step` sem kernel),
    os três nomeados com mecanismo no §8.6.
-3. **W3 — o cartão e o vocabulário**: as 6 divergências do §4, os três cartões vazios, e os params
-   que o cartão não alcança.
+3. ⏳ **W3 — o cartão e o vocabulário** — **a metade (a) FEITA** (§9): o vocabulário pelo eixo do
+   ARTISTA (três curas), o **censo do ALCANCE** (`0` params enterrados no catálogo inteiro), os três
+   cartões vazios **decididos**, e a catraca de vocabulário **recusada com o número**. ⏳ Fica a
+   W3b: as três chaves partilhadas por perguntas diferentes (§9.7).
+   ⚠️ **E o §4 dizia `6` divergências com `5` na tabela** — *o número escreve-se da sonda, não da
+   memória*.
 4. **W4 — o poder que falta**, nó a nó, contra o estado da arte (a folha 15 da conferência + as
    referências), que é o passo 2 do protocolo por nó.
 5. **W5 — a MEDIÇÃO** (passo 5) e **W6 — o TUTORIAL em PDF** (passos 6 e 7, o smoke do dono).
@@ -517,3 +521,117 @@ gate `the_chain_that_opened_the_wave_is_blocked_by_the_spawn_and_no_longer_by_th
 ⇒ **os nove kernels são o PRÉ-REQUISITO, não o ganho** — e é assim que a W2 fica escrita: nenhuma
 cadeia do produto mudou de rota hoje, e os três bloqueadores que sobram têm mecanismo, endereço e
 dono.
+
+---
+
+## §9 — W3a: o VOCABULÁRIO e o ALCANCE — dois instrumentos novos, três curas e uma recusa
+
+> Ordem do dono, 2026-09-14: *«continuar o grupo.»*
+
+### §9.1 — ⛔⛔ A sonda do §4 agrupa pela CHAVE, e por isso é cega a metade do problema
+
+Três nós perguntam *«como é que eu interpolo?»* e a
+[`the_value_vocabulary`](../../crates/ph2d-app-motion/src/motion_valor_probe.rs) só via dois:
+
+| nó | chave | rótulo | opções |
+|---|---|---|---|
+| `value.pattern` | `interp` | **Interp** | Step · Linear |
+| `value.table` | `interp` | **Interpolation** | Step · Linear |
+| `value.map_range` | **`interpolation`** | **Interpolation** | Linear · **Stepped** · Smooth · Smoother |
+
+⇒ **uma chave é o que o código guarda; um rótulo é o que o artista lê**, e uma tabela indexada por
+chave nunca põe o `map_range` ao lado dos outros dois. A sonda nova
+(`the_vocabulary_the_artist_reads`) imprime **três** listas, porque são três defeitos:
+*um rótulo/várias chaves* · *uma chave/vários rótulos* · **as PALAVRAS de um enum**.
+
+### §9.2 — As três curas (rótulos e palavras — zero risco para documento gravado)
+
+| o que o artista via | cura |
+|---|---|
+| `Interp` (pattern) contra `Interpolation` (table, map_range) | pattern passa a dizer **Interpolation** |
+| `Stepped` (map_range) contra `Step` (pattern, table) — a MESMA coisa | map_range passa a dizer **Step** |
+| `Stagger` (lfo, time) contra `Phase Stagger` (beat) | os três dizem **Phase Stagger** |
+
+⚠️ **Só o ÍNDICE é guardado**, então trocar a palavra de um enum não toca em nenhum documento.
+
+### §9.3 — ⛔ A acusação do §4 contra o `value.attribute` era FALSA, e a isenção é derivada
+
+O §4 marcava *«o `mode` do `value.attribute` não tem hint nenhum — a única entrada da tabela sem
+rótulo»*. Ele **não tem, de propósito**: o picker `Read` é um `ParamWidget::Channels { mode_param:
+"mode" }` e escreve os dois, e uma row própria para o `mode` seria a segunda superfície a decidir a
+mesma coisa. ⇒ a sonda passou a **derivar** a isenção do widget que dobra o vizinho (o `Channels`
+e o `Color`), nunca de uma lista de nomes. *Um censo que acusa o legítimo é apagado na primeira
+semana.*
+
+### §9.4 — ⭐⭐⭐ O instrumento que faltava: o CENSO DO ALCANCE
+
+O retrato do ciclo diz *quantos params o cartão pinta agora* — e um `1 de 4` lê-se igual nas duas
+leituras opostas: *o nó está bem gateado* ou *três controlos estão enterrados onde a mão não chega*.
+⛔ **Nenhuma sonda deste repo fazia a segunda pergunta.** A caça aos knobs mortos de 30/08 segue o
+valor até ao efeito (*o painel escreve onde · quem lê · o leitor decide?*); esta vem **antes** dela:
+*o artista consegue sequer CHEGAR ao controlo?*
+
+[`motion_param_reach`](../../crates/ph2d-app-motion/src/motion_param_reach.rs) resolve um **ponto
+fixo** sobre o grafo dos gates — para cada param escondido, existe alguma atribuição dos params que
+o gateiam, dentro da faixa que o hint deles declara e só se ESSES forem eles próprios alcançáveis,
+que o revele? A resposta sai do **mesmo predicado que o cartão usa** (`Visibility::shows`), nunca de
+uma segunda cópia da lei.
+
+**Resultado sobre o catálogo INTEIRO: `0` params enterrados**, e a resposta ao §2 achado 4 é
+*«correctamente gateado»* (`value.instance_field` e `value.math` escondem o que pertence a outro
+modo).
+
+⚠️⚠️ **E ela mentiu DUAS vezes antes de dizer a verdade — as duas apanhadas por verificação, não por
+sorte:**
+
+1. **Acusou onze params do `source.shape`.** Ela lia `hint.max` para a faixa, e o hint do `Shape`
+   declara `min: 0, max: 0` deixando a faixa ao widget (`Enum { labels }`) — o censo via um selector
+   de **uma** opção e dava por enterrado tudo o que pende das outras. *A faixa de um `Enum` são as
+   LABELS.*
+2. **Acusou o `source.shape::collider_radius`.** A busca era **gulosa**: escolhia um valor para cada
+   `when` de cada vez, e o `shows` é uma **conjunção** — com os outros `when` no default, nenhum
+   valor do primeiro satisfaz. Aquele param precisa de `Collide` ligado **E** de
+   `Collider Shape = Circle` ao mesmo tempo. *Uma condição com duas metades não se verifica uma
+   metade de cada vez.*
+
+⚠️ **O piso de população é metade do gate**: ele lê `0 acusados` quando está são, que é exactamente
+o que lê quando está partido. `nos ≥ 100` · `params ≥ 400` · `com_gate ≥ 20`. **Prova de mutação:**
+apontar o `ParamGate` do `collider_radius` a um índice que o selector de duas opções não alcança
+acusa-o de imediato.
+
+### §9.5 — ⛔⛔ A RECUSA: não há catraca de vocabulário, e o número diz porquê
+
+A tentação seguinte era uma catraca sobre *«um rótulo, várias chaves»*. Corrida sobre o catálogo
+inteiro ela acusa **~40 grupos**, e quase todos são legítimos — o `Count` de nove geradores e o
+`Count` de um contador são perguntas diferentes que a mesma palavra serve bem; o
+`motion.bezier_warp` tem **quatro** *In X* e está certo. ⇒ uma catraca de 40 entradas **não é um
+gate, é uma licença** (`CLAUDE.md` §5.0), e decidir se dois nós fazem a *mesma pergunta* é
+semântica, não sintaxe. *A sonda fica; o gate não nasce.*
+
+⭐ **O que É gateável, e nasceu:** dentro de **uma secção de um nó**, dois controlos não podem ter o
+mesmo nome — ali estão lado a lado sob o mesmo título e o artista não tem como os distinguir.
+`two_controls_in_one_section_never_share_a_name`, com piso de população (`≥ 400` params rotulados)
+e prova de mutação (dois *Attack* na secção *Envelope* do `pulse.adsr` acusam).
+
+### §9.6 — Os três cartões VAZIOS: decididos, não assumidos
+
+`value.cursor` · `pulse.level` · `pulse.sample_hold` pintam **zero** controlos. O §2 mandava
+**decidir**. Medido: os três são nós cuja resposta inteira é o FIO, e o cartão **nomeia os fios**
+desde 2026-08-27 (`paint_port_label`, report do dono) — entradas sempre, saídas quando há mais de
+uma, e o `value.cursor` é justamente um dos **três** nós do catálogo com duas saídas.
+
+⇒ **um cartão vazio é legítimo quando a interface inteira do nó são as portas, e elas têm nome.**
+⚠️ A metade que segura isto vive no painel (`the_card_painter_actually_calls_it`); se um dia os
+rótulos de porta ficarem condicionais, estes três passam a cartões em branco.
+
+### §9.7 — O que fica para a W3b
+
+⏳ As **três chaves partilhadas por perguntas diferentes** (`clamp` em `value.map_range`/`value.mix`,
+`step` em `value.quantize`/`pulse.counter`, `value` em `value.number`/`value.table`). O precedente
+da casa é o `substeps` — *pergunta diferente ⇒ chave diferente* —, **mas ali a chave era LOAD-BEARING**
+(o `SUBSTEPS_PARAM` é lido por um consumidor partilhado, a bomba, e duas leis compunham-se em
+silêncio). Aqui **nenhum consumidor partilhado lê estas três por nome**: cada `eval` lê a sua, e o
+par `(nó, nome)` é inequívoco. ⇒ renomear custaria o valor autorado de todo documento gravado
+(um override desconhecido cai no default, em silêncio) e compraria zero. **Fica declarado, não
+curado** — e o dia em que uma destas chaves ganhar um consumidor partilhado, ela vira um `substeps`
+e a cura passa a ser obrigatória.

@@ -262,9 +262,18 @@ pub fn vocabulario(grupo: &[&str]) {
                 .push((*nome).to_string());
         }
     }
+    // ⛔⛔ **Um param DOBRADO no widget de outro não é um param sem rótulo.** O `value.attribute`
+    // declara `mode` e nunca lhe dá hint — de propósito: o picker `Read` (`ParamWidget::Channels`)
+    // escreve os dois, e uma row própria para o `mode` seria a segunda superfície a decidir a mesma
+    // coisa. A 1.ª redacção desta sonda acusava-o de *«(sem hint)»* e mandava consertar o que já
+    // estava certo. ⇒ a isenção é **DERIVADA** do widget que o dobra, nunca uma lista de nomes.
+    let dobrados = dobrados_por_outro_widget(&m, grupo);
     eprintln!("\n  param partilhado          | rótulo(s) | quem");
     eprintln!("  --------------------------|-----------|------");
     for (param, rotulos) in &tabela {
+        if dobrados.contains(*param) {
+            continue;
+        }
         let quantos: usize = rotulos.values().map(Vec::len).sum();
         if quantos < 2 {
             continue; // um nó só não tem com quem divergir
@@ -284,3 +293,133 @@ pub fn vocabulario(grupo: &[&str]) {
 pub use crate::motion_ciclo_preco::{
     cook_com, porque_nao_medir, quem_o_despertar_nao_acorda, tabela,
 };
+
+// ---------------------------------------------------------------------------------------------
+// 5-bis. O VOCABULÁRIO PELO OUTRO EIXO — o que o ARTISTA lê.
+// ---------------------------------------------------------------------------------------------
+
+/// ⭐⭐⭐ **O MESMO VOCABULÁRIO, agrupado pelo RÓTULO e pelas PALAVRAS DO ENUM.**
+///
+/// ⛔⛔ **A [`vocabulario`] agrupa pela CHAVE, e por isso é cega a metade do problema.** Medido no
+/// grupo do ciclo 6: três nós perguntam *«como é que eu interpolo?»* e a sonda por chave só vê dois
+/// deles — o `value.map_range` escreve `interpolation` onde o `value.pattern` e o `value.table`
+/// escrevem `interp`, logo eles **nunca se encontram** numa tabela indexada por chave. *Uma chave é
+/// o que o código escreve; um rótulo é o que o artista lê, e é o rótulo que tem de ser um só.*
+///
+/// Ela imprime **três** listas, porque são três defeitos diferentes:
+///
+/// 1. **um RÓTULO, várias chaves** — o artista lê a mesma palavra e o grafo guarda coisas
+///    diferentes (pode estar certo: dois nós podem ter *Mode* sem ser o mesmo modo);
+/// 2. **uma CHAVE, vários rótulos** — a lista que a [`vocabulario`] já dava, repetida aqui para o
+///    leitor não ter de correr duas sondas;
+/// 3. ⚠️ **as PALAVRAS de um enum** — o caso mais fino, e o que nenhuma das duas via: dois nós com
+///    o mesmo rótulo podem oferecer `Step` num e `Stepped` no outro para a MESMA coisa.
+///
+/// ```text
+/// cargo test -p ph2d-app-motion --lib -- --ignored --nocapture the_vocabulary_the_artist_reads
+/// ```
+pub fn vocabulario_do_artista(grupo: &[&str]) {
+    use std::collections::{BTreeMap, BTreeSet};
+    let m = MotionState::new();
+    // rótulo → (chave → quem) · chave → (rótulo → quem) · palavra de enum → quem a oferece
+    let mut por_rotulo: BTreeMap<String, BTreeMap<&str, Vec<String>>> = BTreeMap::new();
+    let mut por_chave: BTreeMap<&str, BTreeMap<String, Vec<String>>> = BTreeMap::new();
+    let mut palavras: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
+    for nome in grupo {
+        let tid = ph2d_nodegraph::node::NodeTypeId::of(nome);
+        for h in m.registry.param_ui(tid).unwrap_or(&[]) {
+            por_rotulo
+                .entry(h.label.to_string())
+                .or_default()
+                .entry(h.param)
+                .or_default()
+                .push((*nome).to_string());
+            por_chave
+                .entry(h.param)
+                .or_default()
+                .entry(h.label.to_string())
+                .or_default()
+                .push((*nome).to_string());
+            if let ph2d_node_registry::ParamWidget::Enum { labels } = h.widget {
+                for w in labels {
+                    palavras
+                        .entry((*w).to_string())
+                        .or_default()
+                        .insert(format!("{nome}::{}", h.label));
+                }
+            }
+        }
+    }
+
+    eprintln!("\n  (1) UM RÓTULO, VÁRIAS CHAVES -- o artista lê a mesma palavra");
+    eprintln!("  rótulo               | chave            | quem");
+    eprintln!("  ---------------------|------------------|------");
+    for (rotulo, chaves) in &por_rotulo {
+        if chaves.len() < 2 {
+            continue;
+        }
+        for (chave, quem) in chaves {
+            eprintln!("⚠️  {rotulo:<19} | {chave:<16} | {}", quem.join(", "));
+        }
+    }
+
+    eprintln!("\n  (2) UMA CHAVE, VÁRIOS RÓTULOS -- o grafo guarda o mesmo e a tela diz outra coisa");
+    eprintln!("  chave                | rótulo           | quem");
+    eprintln!("  ---------------------|------------------|------");
+    for (chave, rotulos) in &por_chave {
+        if rotulos.len() < 2 {
+            continue;
+        }
+        for (rotulo, quem) in rotulos {
+            eprintln!("⚠️  {chave:<19} | {rotulo:<16} | {}", quem.join(", "));
+        }
+    }
+
+    // ⚠️ As palavras que se leem como VARIANTES uma da outra (mesmo prefixo de 4 letras, texto
+    // diferente) -- `Step`/`Stepped`, `Smooth`/`Smoother`. ⛔ Não é um dicionário: é um sinal para
+    // um humano olhar, e por isso a sonda imprime e NÃO reprova.
+    eprintln!("\n  (3) PALAVRAS DE ENUM que se leem como variantes uma da outra");
+    eprintln!("  palavra              | outra            | quem as oferece");
+    eprintln!("  ---------------------|------------------|------");
+    let lista: Vec<&String> = palavras.keys().collect();
+    for (i, a) in lista.iter().enumerate() {
+        for b in lista.iter().skip(i + 1) {
+            let (p, q) = (a.to_lowercase(), b.to_lowercase());
+            if p.len() >= 4 && q.len() >= 4 && p != q && (q.starts_with(&p) || p.starts_with(&q)) {
+                eprintln!(
+                    "⚠️  {a:<19} | {b:<16} | {} / {}",
+                    palavras[*a].iter().cloned().collect::<Vec<_>>().join(", "),
+                    palavras[*b].iter().cloned().collect::<Vec<_>>().join(", ")
+                );
+            }
+        }
+    }
+    eprintln!();
+}
+
+/// **Os params que o widget de OUTRO param já escreve** — o `mode_param` de um
+/// [`ParamWidget::Channels`] e os quatro canais de um [`ParamWidget::Color`].
+///
+/// ⚠️ Derivado do registry, nunca uma lista: o dia em que um widget novo dobrar um vizinho, ele
+/// entra aqui por declarar-se, e não por alguém se lembrar.
+fn dobrados_por_outro_widget(m: &MotionState, grupo: &[&str]) -> std::collections::BTreeSet<String> {
+    use ph2d_node_registry::ParamWidget;
+    let mut fora = std::collections::BTreeSet::new();
+    for nome in grupo {
+        let tid = ph2d_nodegraph::node::NodeTypeId::of(nome);
+        for h in m.registry.param_ui(tid).unwrap_or(&[]) {
+            match h.widget {
+                ParamWidget::Channels { mode_param, .. } => {
+                    fora.insert(mode_param.to_string());
+                }
+                ParamWidget::Color { channels } => {
+                    for c in channels {
+                        fora.insert((*c).to_string());
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+    fora
+}

@@ -53,6 +53,8 @@ mod face;
 mod feature_dirs;
 mod feature_edges;
 mod holes;
+/// **Onde um vértice pousa no limite da subdivisão** — ver [`limit_point`].
+mod limit_point;
 mod manifold;
 mod merge;
 mod mesh;
@@ -102,6 +104,7 @@ pub use feature_edges::{
     FEATURE_EDGE_MIN_COS, FeatureEdge, FeatureEdgeReport, boundary_feature_edges, feature_edges,
 };
 pub use holes::{HoleFill, fill_holes};
+pub use limit_point::{LimitPoint, limit_point};
 pub use manifold::{
     DoubledReport, ManifoldReport, border_edges, drop_doubled_faces, drop_extra_faces,
     non_manifold_edges, split_non_manifold,

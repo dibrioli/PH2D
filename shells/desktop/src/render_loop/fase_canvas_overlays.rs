@@ -85,7 +85,7 @@ impl crate::App {
         // blackboard; `enabled`/`mode` stay owned by the transport toggles.
         crate::onion_modal::read_into(&hero.store, &mut self.timeline.onion);
         self.onion_ghosts.clear();
-        timeline_onion::collect_onion_ghosts(
+        ph2d_timeline_onion::collect_onion_ghosts(
             &self.timeline.onion,
             sim,
             present,

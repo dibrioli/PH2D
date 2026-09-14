@@ -1,3 +1,9 @@
+//! ⭐⭐ **O MOTOR do onion da timeline, fora da shell** (2026-09-14). Ele não é composição: nada
+//! aqui pergunta pela `App` — só por crates irmãs (`ph2d-ecs`, `-render`, `-timeline`,
+//! `-skeleton-live`, `-poly2d`, `-vec-entities`) —, e a shell fica com a CHAMADA, que é a fase do
+//! quadro onde ela pertence. Foi a cura NOMEADA e MEDIDA do tecto `the_shell_only_shrinks`, que as
+//! waves do pincel tinham deixado com **uma** linha de folga.
+//!
 //! **O onion da timeline — poses-fantasma do objeto animado** (ADR-0142).
 //!
 //! Para autorar pose-a-pose o animador precisa VER onde o objeto estava e estará. Este
@@ -21,11 +27,11 @@ use ph2d_timeline::{TimelineDoc, animated_entities, entity_key_times, world_pose
 // As configurações do onion (`OnionSettings`/`OnionMode`) moram em `ph2d-timeline` (dados
 // puros), para o `TimelineState`, o `apply_intent`, o snapshot e o painel compartilharem a
 // MESMA língua (ADR-0142 W3). Aqui fica o MOTOR de fantasmas (silhueta em `RenderInstance`).
-pub(crate) use ph2d_timeline::{OnionMode, OnionSettings};
+pub use ph2d_timeline::{OnionMode, OnionSettings};
 
 /// Piso de opacidade de um fantasma — o mais distante ainda tem de ser visível. Espelha o
 /// `GHOST_MIN_ALPHA` do onion do Flip.
-pub(crate) const GHOST_MIN_ALPHA: f32 = 0.06;
+pub const GHOST_MIN_ALPHA: f32 = 0.06;
 
 /// A opacidade de um fantasma a `k` quadros de distância, de um total de `n`: o mais
 /// próximo (`k=1`) recebe `opacity` cheia, o mais distante desvanece, com piso
@@ -195,7 +201,7 @@ fn ghost_mesh(
 ///
 /// ⚠️ **Os dois são a mesma entidade em toda cena SEM rig, e por isso a distinção não existia.** Num
 /// personagem riggado eles separam-se: desenha-se a imagem, e quem leva keys são os ossos.
-pub(crate) struct GhostTarget {
+pub struct GhostTarget {
     /// A entidade DESENHADA (a que dá a pose do fantasma e a malha, se tiver pele).
     pub entity: u64,
     /// Os campos de sprite do vivo — textura, uv, tamanho, anchor.
@@ -209,7 +215,7 @@ pub(crate) struct GhostTarget {
 ///
 /// ⭐ **A malha de repouso é descodificada UMA vez por alvo** (os bytes opacos da pele custam
 /// `0,134 µs` por peça, medidos na W4) e posada uma vez por instante — não uma vez por par.
-pub(crate) fn build_ghosts(
+pub fn build_ghosts(
     settings: &OnionSettings,
     sim: &SimWorld,
     doc: &TimelineDoc,
@@ -366,7 +372,7 @@ fn ghost_targets(
 /// `snapshots::publish`: agrupá-los numa struct aqui só mudaria o sítio onde eles são escritos (a
 /// fase que chama tem-nos todos soltos na mão, e o `gfx` está emprestado ao redor).
 #[allow(clippy::too_many_arguments)]
-pub(crate) fn collect_onion_ghosts(
+pub fn collect_onion_ghosts(
     settings: &OnionSettings,
     sim: &SimWorld,
     present: &mut PresentWorld,
@@ -398,5 +404,5 @@ pub(crate) fn collect_onion_ghosts(
 }
 
 #[cfg(test)]
-#[path = "timeline_onion_tests.rs"]
+#[path = "tests.rs"]
 mod timeline_onion_tests;

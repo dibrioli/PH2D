@@ -1,0 +1,31 @@
+[package]
+name = "ph2d-timeline-onion"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[dependencies]
+# O motor de fantasmas: a pose vem da timeline, a silhueta é uma `RenderInstance`, e uma
+# arte presa ao esqueleto ghosta como MALHA — daí as três crates de pele.
+ph2d-ecs = { path = "../ph2d-ecs" }
+ph2d-render = { path = "../ph2d-render" }
+ph2d-timeline = { path = "../ph2d-timeline" }
+ph2d-skeleton-live = { path = "../ph2d-skeleton-live" }
+ph2d-skeleton-ecs = { path = "../ph2d-skeleton-ecs" }
+ph2d-poly2d = { path = "../ph2d-poly2d" }
+ph2d-vec-entities = { path = "../ph2d-vec-entities" }
+
+[dev-dependencies]
+# ⚠️ As fixturas constroem curvas e uma `RenderInstance` zerada — as duas viajam com os
+# testes, e nenhuma delas entra no caminho do produto.
+ph2d-anim = { path = "../ph2d-anim" }
+bytemuck = { version = "1", features = ["derive"] }
+ph2d-core = { path = "../ph2d-core" }
+ph2d-affine = { path = "../ph2d-affine" }
+ph2d-skeleton = { path = "../ph2d-skeleton" }
+
+[lints]
+workspace = true

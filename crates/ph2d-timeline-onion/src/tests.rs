@@ -565,5 +565,5 @@ fn in_keys_mode_the_instants_of_a_rig_come_from_its_bones() {
 /// ⭐ O RELÓGIO do onion — irmão deste ficheiro pelo teto de 600 LOC, e sub-módulo de propósito:
 /// ele herda as fixturas daqui (`rig_com_pele`, `settings`, `PPM`), que é o molde do
 /// `skin_at_time_tests` da W7.
-#[path = "timeline_onion_clock_tests.rs"]
+#[path = "clock_tests.rs"]
 mod relogio;

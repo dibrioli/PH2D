@@ -15,7 +15,7 @@ use ph2d_ecs::{Name, Transform};
 use ph2d_render::Sprite;
 use ph2d_timeline::{PropKind, TimelineDoc};
 
-use crate::render_loop::timeline_onion::OnionMode;
+use ph2d_timeline_onion::OnionMode;
 
 /// Modo Frames: X com ease-in-out (o espaçamento conta o ritmo) + rotação linear, 0..4 s.
 fn author_mover(doc: &mut TimelineDoc, bits: u64, x0: f32, x1: f32, rot: f32) {

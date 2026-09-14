@@ -5921,6 +5921,7 @@ dependencies = [
  "ph2d-tags",
  "ph2d-text",
  "ph2d-timeline",
+ "ph2d-timeline-onion",
  "ph2d-timeline-preview",
  "ph2d-token-math",
  "ph2d-tokens",
@@ -8490,6 +8491,24 @@ dependencies = [
  "postcard",
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "ph2d-timeline-onion"
+version = "0.0.0"
+dependencies = [
+ "bytemuck",
+ "ph2d-affine",
+ "ph2d-anim",
+ "ph2d-core",
+ "ph2d-ecs",
+ "ph2d-poly2d",
+ "ph2d-render",
+ "ph2d-skeleton",
+ "ph2d-skeleton-ecs",
+ "ph2d-skeleton-live",
+ "ph2d-timeline",
+ "ph2d-vec-entities",
 ]
 
 [[package]]

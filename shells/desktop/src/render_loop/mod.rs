@@ -81,7 +81,6 @@ mod padding_bridge;
 pub(crate) mod timeline_bridge;
 /// **A AUTORIA de uma chave** — irmão do `timeline_bridge` por teto de LOC (HR-18).
 mod timeline_bridge_keys;
-pub(crate) mod timeline_onion;
 #[cfg(test)]
 #[path = "timeline_presets_menu_tests.rs"]
 mod timeline_presets_menu_tests;

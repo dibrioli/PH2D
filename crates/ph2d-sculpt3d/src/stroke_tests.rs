@@ -84,7 +84,53 @@ fn dab_for(verb: Verb, center: [f32; 3], radius: f32) -> Dab {
 /// [`Verb::Smooth`] — 150× menos, e abaixo da barra de `1e-4` que o anti-vácuo
 /// afirma. *Não é o verbo parado: é o verbo a preservar uma forma que já está
 /// lisa*, que é precisamente a razão de ele existir.
+/// ⭐⭐ **Uma esfera com a CALOTE DE CIMA ABERTA** — a única fixtura deste
+/// ficheiro que tem BORDA.
+///
+/// ⚠️ **O [`Verb::Boundary`] não tem o que deformar numa malha fechada**, e isso
+/// não é um defeito: é o caso `1` da tabela de bordas da espec, medido no corpus
+/// (`0` vértices movidos numa casca). Dar-lhe a esfera lisa faria o anti-vácuo
+/// dos gates deste ficheiro apontar para o **verbo** quando o problema é a
+/// **fixtura** — foi exactamente o que aconteceu ao acrescentá-lo.
+///
+/// ⚠️⚠️ **Onde cortar é uma escolha MEDIDA, e as duas primeiras falharam:**
+/// o contacto dos gates é `[0, 0, 1]` e o puxão deles é `[0, r/2, 0]`, e o
+/// avanço deste pincel é a **projecção** do puxão na direcção do ponto-origem.
+///
+/// | corte | o que acontece |
+/// |---|---|
+/// | `z > 0,9` | a borda fica **ao redor do contacto**, a direcção do avanço sai quase `−z`, o puxão é `+y` ⇒ **`s ≈ 0`** e o dab não faz nada |
+/// | `y > 0,9` | a borda fica junto do pólo, a `0,9` do contacto — **fora do raio** `0,6` da busca da âncora ⇒ **recusa** |
+/// | **`y > 0,5`** | a borda é um paralelo a `0,52` do contacto (dentro do raio) e a coluna desce em `y` ⇒ o puxão tem projecção |
+///
+/// *Uma fixtura que não contém o fenómeno reprova apontando para o verbo.*
+/// ⚠️ **A COMPACTAÇÃO não é arrumação.** Escolher faces não tira posições do
+/// pool, e a calota deitada fora deixaria os vértices dela como **órfãos**:
+/// nenhuma face os cita, logo o `from_parts` aceita-os calado, e toda busca por
+/// *«o vértice mais próximo daqui»* pode aterrar num deles. Aqui o contacto está
+/// longe da calota e o raio da busca não lá chega — mas a cena `=42`, que faz o
+/// mesmo corte a `y <= 0`, aterrava no pólo da metade que não existe e recusava
+/// o traço inteiro. *A porta é a [`ph2d_mesh::compact_for_faces`].*
+fn sphere_with_open_cap() -> Mesh {
+    let cheia = shapes::uv_sphere(32, 48, 1.0);
+    let pos = cheia.positions().to_vec();
+    let escolhidas: Vec<ph2d_mesh::Face> = cheia
+        .faces()
+        .iter()
+        .filter(|f| f.verts().iter().all(|&v| pos[v as usize][1] <= 0.5))
+        .copied()
+        .collect();
+    let (pos, faces) = {
+        let (p, f, _) = ph2d_mesh::compact_for_faces(&pos, &escolhidas);
+        (p, f)
+    };
+    Mesh::from_parts(pos, faces).expect("a casca aberta é construída aqui")
+}
+
 fn mesh_for(verb: Verb) -> Mesh {
+    if verb == Verb::Boundary {
+        return sphere_with_open_cap();
+    }
     if verb.uses_neighbours() {
         // Forma exacta, superfície RUGOSA — o que um alisamento conserta. (A
         // irmã `uv_sphere_shuffled` é o contrário: forma exacta, ESPAÇAMENTO

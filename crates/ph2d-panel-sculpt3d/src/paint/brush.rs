@@ -358,7 +358,58 @@ fn paint_per_verb_switches(
     };
     let y = paint_cloth_rows(ctx, snap, x, w, y);
     let y = paint_pose_rows(ctx, snap, x, w, y);
+    let y = paint_boundary_rows(ctx, snap, x, w, y);
     paint_mask_tools(ctx, snap, x, w, y)
+}
+
+/// **AS DUAS FILEIRAS DO PINCEL DE CONTORNO.**
+///
+/// ⚠️⚠️ **Elas são DUAS perguntas diferentes e é fácil lê-las como uma:** a
+/// primeira escolhe **o que a borda faz** (dobrar, expandir, inflar, agarrar,
+/// torcer, alisar) e a segunda **como isso esmorece AO LONGO da borda**. Uma
+/// terceira, a curva do pincel, gradua a profundidade **para dentro** da peça —
+/// e essa já vive na secção do pincel, partilhada com todos os verbos.
+///
+/// ⛔ **Sem a primeira o artista alcança UM dos seis gestos**, que é o defeito
+/// que o pincel de tecido pagou: *um motor vivo sem botão nenhum.*
+fn paint_boundary_rows(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32, y: f32) -> f32 {
+    if !snap.ui.brush.offers_boundary_controls() {
+        return y;
+    }
+    let modos = ph2d_sculpt3d::BoundaryModo::ALL;
+    let selected = modos
+        .iter()
+        .position(|&m| m == snap.ui.brush.boundary.modo)
+        .unwrap_or(0);
+    let labels: Vec<&str> = modos.iter().map(|m| m.label()).collect();
+    let y = labelled_seg(
+        ctx,
+        tr("panel.sculpt3d.boundary_mode"),
+        crate::ids::SCULPT3D_SEC_BRUSH,
+        &crate::ids::SCULPT3D_BOUNDARY_MODE,
+        &labels,
+        selected,
+        x,
+        w,
+        y,
+    );
+    let quedas = ph2d_sculpt3d::BoundaryQueda::ALL;
+    let selected = quedas
+        .iter()
+        .position(|&q| q == snap.ui.brush.boundary.queda_no_contorno)
+        .unwrap_or(0);
+    let labels: Vec<&str> = quedas.iter().map(|q| q.label()).collect();
+    labelled_seg(
+        ctx,
+        tr("panel.sculpt3d.boundary_falloff"),
+        crate::ids::SCULPT3D_SEC_BRUSH,
+        &crate::ids::SCULPT3D_BOUNDARY_FALLOFF,
+        &labels,
+        selected,
+        x,
+        w,
+        y,
+    ) + Spacing::Sm.px()
 }
 
 /// **A FILEIRA E AS DUAS CAIXAS DO PINCEL DE POSE.**

@@ -132,6 +132,7 @@ impl SculptStroke {
             let n = match brush.verb {
                 Verb::Cloth => self.cloth_dab(mesh, brush, dab, sym),
                 Verb::Pose => self.pose_dab(mesh, brush, dab, sym),
+                Verb::Boundary => self.boundary_dab(mesh, brush, dab, sym),
                 // ⚠️ Quem acrescentar um verbo à porta sem lhe dar destino cai
                 // aqui — e cai **alto** em debug, em vez de não mover nada em
                 // silêncio.

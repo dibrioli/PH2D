@@ -851,6 +851,23 @@ fn every_verb_is_reachable_from_the_keyboard() {
         // ⇒ a fila de pretendentes passa de seis para **sete**, e o `L`
         // continua a ser UM. **A escolha é do Enio.**
         "Pose",
+        // ⚠️ **O CONTORNO, e ele é o pretendente MAIS FRACO de todos ao `L` que
+        // sobra** — o que o torna fácil de decidir e vale a pena registar:
+        //
+        // ⭐ ele só faz alguma coisa numa malha com **borda aberta**, e numa
+        // malha fechada ele é **mudo por construção** (o caso `1` da tabela de
+        // bordas da espec, medido: `0` vértices movidos numa casca). ⇒ uma tecla
+        // nua para ele seria uma tecla que, na maioria das peças que este app
+        // gera — esferas, cubos, toros —, **não faz nada quando premida**. *Uma
+        // tecla que às vezes é inerte ensina que o atalho está partido.*
+        //
+        // ⚠️ E há uma segunda razão, da mesma família da do tecido: ele é um
+        // gesto de FORMA, do tipo que se escolhe uma vez e se usa por minutos,
+        // não um verbo de retoque que se alterna a cada dois traços.
+        //
+        // ⇒ a fila de pretendentes passa de sete para **oito**, e o `L` continua
+        // a ser UM. **A escolha é do Enio.**
+        "Boundary",
     ];
     let keys = function_body(&sculpt_src(), "key");
     // ⚠️ **O gate COLETA em vez de abortar no primeiro, e isso não é estilo.**

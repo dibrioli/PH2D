@@ -44,6 +44,10 @@ mod cloth;
 #[path = "rows_pose.rs"]
 mod pose;
 
+/// O número do pincel de CONTORNO — ver [`boundary`].
+#[path = "rows_boundary.rs"]
+mod boundary;
+
 /// ⭐ Os quatro números do FILTRO de tecido, e a *Quality* do pincel — ver o doc
 /// do módulo. ⚠️ **Irmão do [`cloth`] por SUJEITO**: os números do filtro não são
 /// os do pincel, e a pergunta de visibilidade deles é outra.
@@ -493,6 +497,9 @@ static BRUSH: &[Row] = &[
     pose::POSE_SEGMENTS,
     pose::POSE_OFFSET,
     pose::POSE_SMOOTHINGS,
+    // ⭐ **O único NÚMERO do contorno** — os outros dois controlos próprios
+    // dele são fileiras de chips; ver `paint::brush` e `event`.
+    boundary::BOUNDARY_OFFSET,
     // ⭐⭐⭐ **A *Quality* do pincel** — as varreduras que o ALVO FIXA em `5`.
     // Ver `Brush::cloth_sweeps` para a tabela do que ela compra.
     cloth_filter::CLOTH_SWEEPS,

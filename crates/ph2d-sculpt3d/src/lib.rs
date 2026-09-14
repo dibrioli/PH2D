@@ -46,6 +46,8 @@ pub mod auto_smooth;
 mod footprint;
 pub use footprint::{Blade, Footprint, Strip, rounded_box};
 
+/// Os controlos próprios do pincel de CONTORNO — ver [`boundary_controlos`].
+pub mod boundary_controlos;
 mod brush;
 /// **OS CINCO TIPOS DO FILTRO DE TECIDO** (espec §7) — ver [`cloth_filter_kind`].
 mod cloth_filter_kind;
@@ -60,6 +62,12 @@ mod falloff;
 /// **A LEI QUE UM ARRASTO DE FILTRO APLICA** — a uniao das duas familias.
 mod filter_law;
 mod grip;
+pub use boundary_controlos::BoundaryControlos;
+/// ⭐ **Os dois selectores do contorno, re-exportados.** O painel escolhe entre
+/// eles e não precisa de conhecer a crate da lei — a mesma forma com que ele já
+/// lê o `ClothMode` e o `PoseModo`.
+pub use ph2d_boundary::{Modo as BoundaryModo, QuedaNoContorno as BoundaryQueda};
+
 /// Os controlos próprios do pincel de POSE — ver [`pose_controlos`].
 pub mod pose_controlos;
 pub use pose_controlos::PoseControlos;

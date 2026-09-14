@@ -173,6 +173,11 @@ mod host_contract_tests;
 #[path = "named_gates_census_tests.rs"]
 mod named_gates_census_tests;
 
+/// ⭐⭐ **Toda cena que escreve um roteiro tem quem o imprima** — o censo que teria apanhado a `=42`.
+#[cfg(test)]
+#[path = "scenes_announce_census_tests.rs"]
+mod scenes_announce_census_tests;
+
 /// O QUE A CENA DIZ ao artista — ver o módulo.
 #[path = "announce.rs"]
 mod announce_mod;

@@ -375,6 +375,12 @@ fn group_chip_ui(
         // tecido: escolher COMO a pose deforma é uma escolha sobre o pincel que
         // já está na mão, não a troca dele.
         ui.brush.pose.modo = ph2d_sculpt3d::PoseModo::ALL[i];
+    } else if let Some(i) = index_of(&crate::ids::SCULPT3D_BOUNDARY_MODE, id) {
+        // ⚠️ **Sem re-armar nada**, pela mesma razão dos irmãos: escolher COMO a
+        // borda deforma é uma escolha sobre o pincel que já está na mão.
+        ui.brush.boundary.modo = ph2d_sculpt3d::BoundaryModo::ALL[i];
+    } else if let Some(i) = index_of(&crate::ids::SCULPT3D_BOUNDARY_FALLOFF, id) {
+        ui.brush.boundary.queda_no_contorno = ph2d_sculpt3d::BoundaryQueda::ALL[i];
     } else if let Some(i) = index_of(&crate::ids::SCULPT3D_CLOTH_MODE, id) {
         // ⚠️ **Sem re-armar nada:** escolher COMO o tecido deforma é uma escolha
         // sobre o pincel que já está na mão, não a troca dele — a mesma razão do

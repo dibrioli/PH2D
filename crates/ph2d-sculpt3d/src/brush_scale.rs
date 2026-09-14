@@ -97,6 +97,17 @@ impl Brush {
         self.verb == crate::Verb::Pose
     }
 
+    /// **Este pincel oferece os controlos do CONTORNO?**
+    ///
+    /// ⚠️ São **três** superfícies aqui (modo, queda no contorno, deslocamento
+    /// da origem) e a espec conta **quatro** controlos próprios no alvo — o
+    /// quarto é o alvo de deformação, que depende do solver de pano e é outra
+    /// espec. *A ausência é declarada, não esquecida.*
+    #[must_use]
+    pub fn offers_boundary_controls(&self) -> bool {
+        self.verb == crate::Verb::Boundary
+    }
+
     /// **E a TRAVA DE ROTAÇÃO?**
     ///
     /// ⭐⭐ **Só no modo de escala, e isso é LEI e não arrumação:** ela decide se

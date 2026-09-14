@@ -5380,6 +5380,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-boundary"
+version = "0.0.0"
+dependencies = [
+ "miniz_oxide 0.8.9",
+]
+
+[[package]]
 name = "ph2d-chrome-sync"
 version = "0.0.0"
 
@@ -8319,6 +8326,7 @@ version = "0.0.0"
 dependencies = [
  "libm",
  "miniz_oxide 0.8.9",
+ "ph2d-boundary",
  "ph2d-cloth",
  "ph2d-mesh",
  "ph2d-painter-brush",

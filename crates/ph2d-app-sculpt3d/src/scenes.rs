@@ -45,7 +45,7 @@ use super::fixtures::{
 /// enumeração que aqui viveu apodreceu no dia previsível, e a cena `=14` abriu com o canvas em
 /// branco porque ninguém lhe acrescentou o `"14"`. *O censo mede os predicados; ele não pede a
 /// ninguém que se lembre de uma lista.*
-pub const CENAS: u32 = 41;
+pub const CENAS: u32 = 42;
 
 /// **A env do roteador, lida DENTRO da crate.**
 ///
@@ -451,6 +451,12 @@ pub(crate) mod thumb;
 /// simétrico, o pivô cai em cima do cursor e o pincel não move nada.
 #[path = "scenes_pose.rs"]
 pub(crate) mod pose;
+
+/// **O PINCEL DE CONTORNO** (`=42`) — ver [`boundary`]. ⚠️ Ela abre numa TIGELA
+/// e não numa peça fechada, e a escolha é MEDIDA: sem borda aberta este pincel
+/// não move um único vértice.
+#[path = "scenes_boundary.rs"]
+pub(crate) mod boundary;
 /// **OS DOIS GESTOS TANGENCIAIS** (`=40`) — ver [`tangenciais`]. ⚠️ O nome não é
 /// `thumb` porque esse já é do *Clay Thumb*, que é outra ferramenta: aqui vivem
 /// o polegar que espalma e o empurrão que varre.

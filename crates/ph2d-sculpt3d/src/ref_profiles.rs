@@ -112,7 +112,7 @@ const fn profile_s(verb: Verb) -> Option<VerbProfile> {
         // âncora, trava) nascem dos defaults declarados em [`ph2d_pose`], onde
         // a recomendação está marcada **como nossa** — ⛔ não como observação
         // do alvo, cuja proveniência era circular.
-        Verb::Pose => return None,
+        Verb::Pose | Verb::Boundary => return None,
         // `Brush.js:11-16` — `_radius 50 · _intensity 0.5 · _clay true ·
         // _accumulate true`. A tool `Brush` do original é a nossa **Draw E
         // Clay** (o `_clay` é um checkbox dela, ligado de fábrica).
@@ -350,7 +350,7 @@ const fn profile_b(verb: Verb) -> Option<VerbProfile> {
     // responderia é dado do alvo que ninguém leu. ⇒ oferecer um chip `B` aqui
     // venderia como «os números dela» aquilo que a própria espec declara ser
     // **recomendação nossa**.
-    if matches!(verb, Verb::Cloth | Verb::Pose) {
+    if matches!(verb, Verb::Cloth | Verb::Pose | Verb::Boundary) {
         return None;
     }
     Some(VerbProfile {
@@ -393,7 +393,7 @@ const fn blender_strength_curve(verb: Verb) -> StrengthCurve {
         // directo —, e está escrita para que o dia em que alguém lhe der um
         // perfil não a eleve ao quadrado em silêncio. *Este repo já pagou essa
         // confusão uma vez, com a suíte inteira verde.*
-        Verb::Move | Verb::SnakeHook | Verb::Pose => StrengthCurve::Linear,
+        Verb::Move | Verb::SnakeHook | Verb::Pose | Verb::Boundary => StrengthCurve::Linear,
         _ => StrengthCurve::Squared,
     }
 }

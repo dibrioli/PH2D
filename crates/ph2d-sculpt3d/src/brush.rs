@@ -271,6 +271,9 @@ pub struct Brush {
     /// num dos consumidores. O raio, a força e a curva **não** entram aqui —
     /// esses são partilhados e já existem no pincel.
     pub pose: PoseControlos,
+    /// Os controlos próprios do pincel de CONTORNO — ⚠️ **quatro, e é a espec
+    /// que os conta**. Só o [`crate::Verb::Boundary`] os lê.
+    pub boundary: crate::boundary_controlos::BoundaryControlos,
     /// **SÓ AS FACES DE FRENTE** — a opção de pincel *"Front Faces Only"* da
     /// referência (rótulo público: é o que o artista vê na tela dela).
     ///
@@ -600,6 +603,7 @@ impl Default for Brush {
             // malha grossa (ver o doc da porta).
             grab_active_vertex: false,
             pose: PoseControlos::default(),
+            boundary: crate::boundary_controlos::BoundaryControlos::default(),
             // ⚠️ **DERIVADO do verbo, como o `accumulate` e o `falloff` logo
             // acima** — e pela mesma razão: um literal aqui seria o MESMO fato
             // em dois lugares, e no dia em que a tabela do verbo mudasse ele

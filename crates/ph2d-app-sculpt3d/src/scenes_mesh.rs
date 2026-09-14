@@ -69,6 +69,14 @@ pub(crate) fn smoke_mesh() -> ph2d_mesh::Mesh {
     if pose::pose_scene() {
         return eared_sphere();
     }
+    // ⭐⭐ **A `=42` abre numa TIGELA, e a escolha é MEDIDA pela mesma régua:**
+    // o pincel de contorno só existe onde a malha **acaba**. Numa casca fechada
+    // não há aresta de borda, a busca da âncora falha e o traço **não move um
+    // único vértice** — medido no corpus do oráculo. A tigela é meia esfera com
+    // a boca aberta: a borda é a boca, e é de lá que tudo sai.
+    if boundary::boundary_scene() {
+        return boundary::tigela();
+    }
     // ⭐ **A `=40` abre na MESMA enrugada, e a razão é a mesma da `=34` vista de
     // outro lado:** os dois gestos tangenciais movem o barro NO PLANO da
     // superfície, e numa esfera lisa isso não muda a silhueta nem quase a luz —

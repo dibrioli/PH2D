@@ -1,0 +1,37 @@
+[package]
+name = "ph2d-boundary"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+# A lei do pincel de CONTORNO — clean-room sob
+# `docs/3D/cleanroom/SPEC_boundary_brush.md` (atestada à 3.ª passagem do R-pré).
+# O artista aponta para perto de uma BORDA ABERTA da malha e arrasta; a borda
+# inteira — ou um troço dela — deforma-se, com a deformação a esmorecer para
+# dentro da peça.
+#
+# ZERO dependências, de propósito — a mesma disciplina da `ph2d-cloth`, da
+# `ph2d-pose` e da `ph2d-arclen`: ela não sabe o que é uma `Mesh`, um pincel,
+# uma câmera ou um evento de ponteiro.
+#
+# ⛔⛔ **E ela NÃO depende da `ph2d-pose` para a aritmética de vectores, apesar de
+# a repetir.** As duas são clean-room de ESPECS diferentes, e o `vetor.rs` de lá
+# carrega guardas que são LEI daquela espec (o piso de ULP do
+# `direccao_entre_posicoes`, a identidade do `Rot::entre`). Partilhá-lo faria uma
+# emenda a uma espec mover os números da outra — o que é precisamente o que a
+# parede existe para impedir. *Somar três `f32` é vocabulário; a guarda em cima
+# deles é que é a lei.*
+
+[lib]
+
+[dependencies]
+
+# Só o ARNÊS de paridade precisa de inflar os `.gz` das fixtures.
+[dev-dependencies]
+miniz_oxide = "0.8"
+
+[lints]
+workspace = true

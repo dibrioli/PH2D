@@ -115,7 +115,7 @@ impl SculptStroke {
             // deste laço existir. Não mover nada é a resposta correcta para
             // *«e se alguém chegar aqui mesmo assim?»*; um `unreachable!()`
             // trocaria um no-op por um panic no caminho do ponteiro.
-            Verb::Pose => live,
+            Verb::Pose | Verb::Boundary => live,
             // `Brush.js:57-91` — `deform = intensidade · raio · 0,1`, e o peso
             // inteiro (curva × intensidade × máscara × alpha) chega no `w`.
             Verb::Draw => add(live, n_area, reach * w),

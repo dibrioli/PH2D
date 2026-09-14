@@ -45,6 +45,14 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // deforma?* — e só uma delas é desenhada de cada vez, porque cada uma
         // pergunta ao seu verbo.
         "panel.sculpt3d.pose_mode" => "Deformation",
+        // ⚠️ **«Deformation» outra vez, e é de propósito:** é a MESMA pergunta
+        // que a pose faz — *o que este pincel faz com o gesto* —, e os dois
+        // nunca aparecem juntos (cada fileira só é pintada com o seu verbo na
+        // mão). *Dois rótulos diferentes para a mesma pergunta é que seriam
+        // duas coisas a aprender.*
+        "panel.sculpt3d.boundary_mode" => "Deformation",
+        "panel.sculpt3d.boundary_falloff" => "Falloff along the edge",
+        "panel.sculpt3d.boundary_offset" => "Origin offset",
         "panel.sculpt3d.pose_segments" => "Segments",
         // ⚠️ **«do cursor» está no rótulo de propósito:** o número é em raios de
         // pincel e o que ele afasta é o PIVÔ, não a região. Sem isso ele lê-se

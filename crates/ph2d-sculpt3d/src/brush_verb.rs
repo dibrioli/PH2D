@@ -415,11 +415,29 @@ pub enum Verb {
     /// A lei inteira vive na crate-folha [`ph2d_pose`], medida contra `69`
     /// traços do oráculo; a espec é `docs/3D/cleanroom/SPEC_pose_brush.md`.
     Pose,
+    /// ⭐⭐⭐ **CONTORNO** — a borda ABERTA da malha deforma-se, e a deformação
+    /// esmorece **para dentro** da peça.
+    ///
+    /// ⚠️⚠️ **Ele é o segundo verbo sem atenuação radial, e por outra razão que
+    /// a pose:** aqui a região não cresce a partir do cursor — ela cresce a
+    /// partir da **BORDA**. O cursor só escolhe *que troço de borda*; a partir
+    /// dela a onda entra pela malha em anéis, e o `deslocamento_da_origem`
+    /// alonga-a ainda mais. ⇒ *a região que este pincel toca não está contida na
+    /// esfera do raio*, e ele desvia antes do `dab_core` como o [`Self::Cloth`]
+    /// e a [`Self::Pose`].
+    ///
+    /// ⛔ **Numa malha fechada ele não faz nada** — não há borda —, e há **duas**
+    /// recusas geométricas em que ele recusa o traço inteiro (a quina de uma
+    /// grelha, e uma tira de uma fileira onde todo vizinho é de borda).
+    ///
+    /// A lei inteira vive na crate-folha [`ph2d_boundary`], medida contra `61`
+    /// traços do oráculo; a espec é `docs/3D/cleanroom/SPEC_boundary_brush.md`.
+    Boundary,
 }
 
 impl Verb {
     /// Todos, na ordem em que a UI os lista.
-    pub const ALL: [Self; 27] = [
+    pub const ALL: [Self; 28] = [
         Self::Draw,
         Self::Inflate,
         Self::Smooth,
@@ -447,6 +465,7 @@ impl Verb {
         Self::Thumb,
         Self::Nudge,
         Self::Pose,
+        Self::Boundary,
     ];
 
     /// O nome que a UI mostra.
@@ -478,6 +497,7 @@ impl Verb {
             Self::SurfaceSmooth => "Surface Smooth",
             Self::Layer => "Layer",
             Self::Pose => "Pose",
+            Self::Boundary => "Boundary",
             Self::Thumb => "Thumb",
             Self::Nudge => "Nudge",
         }
@@ -584,6 +604,14 @@ impl Verb {
             // que ela precisa: *não percorre o caminho*, e um traço de pose
             // resolve-se **uma vez por evento**, nunca por passo de espaçamento.
             Self::Pose => Grip::Hold,
+            // ⭐ **O contorno também não traz grip novo.** Ele precisa do que o
+            // `Hold` já promete — a pegada presa no pen-down e o `pull` como
+            // deslocamento **TOTAL** —, porque a lei dele é função do arrasto
+            // acumulado (§14.2: o resultado não depende do caminho nem do número
+            // de eventos). ⚠️ E o `Hold` traz de graça a outra metade: *não
+            // percorre o caminho*, e as fases A–E do contorno são **fotografadas
+            // no pen-down**.
+            Self::Boundary => Grip::Hold,
             Self::Twist => Grip::Turn(Amount::Angle),
             Self::LocalScale => Grip::Turn(Amount::Fraction),
             // O CARIMBO: a faixa compõe sobre a lista de dabs como o Draw.

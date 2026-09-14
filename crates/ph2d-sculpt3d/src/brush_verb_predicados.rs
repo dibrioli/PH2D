@@ -128,6 +128,12 @@ impl Verb {
                 // ⇒ *«honra o Ctrl» aqui quer dizer «o Ctrl é observável», e é
                 // exactamente isso que este predicado pergunta.*
                 | Self::Pose
+                // ⭐ **O contorno honra o Ctrl, e também não é uma negação de
+                // força:** ele **ENCAIXA o ângulo** em décimos, nos dois modos
+                // que rodam. Medido no corpus: o mesmo traço curto dá um valor
+                // **diferente e MAIOR** com a inversão, que é a assinatura de
+                // uma truncagem sobre um factor negativo.
+                | Self::Boundary
         )
     }
 
@@ -201,6 +207,6 @@ impl Verb {
     /// medem o que cada um de facto promete.
     #[must_use]
     pub fn resolve_a_propria_regiao(self) -> bool {
-        matches!(self, Self::Cloth | Self::Pose)
+        matches!(self, Self::Cloth | Self::Pose | Self::Boundary)
     }
 }

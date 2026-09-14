@@ -251,6 +251,23 @@ pub struct SculptStroke {
     /// não partiria teste nenhum — a saída seria a mesma, só mais lenta. Ver
     /// [`super::pose_simetria_tests`].
     pub(crate) pose_construcoes: u32,
+    /// A sessão do pincel de CONTORNO — ver [`stroke_boundary`]. Nasce no
+    /// pen-down, morre no `begin`.
+    ///
+    /// ⚠️ **Ela guarda VÁRIAS passagens**, uma por combinação de eixos de
+    /// espelho: a espec manda cada passagem **refazer as fases A–E do zero**
+    /// para a região dela, com uma âncora nova a partir do ponto reflectido.
+    boundary: Option<stroke_boundary::BoundarySessao>,
+    /// O rascunho das posições que o contorno escreve — reutilizado entre
+    /// eventos para o traço não alocar a malha inteira por movimento.
+    boundary_saida: Vec<[f32; 3]>,
+    /// Quantas vezes a estrutura do contorno foi construída **neste** traço.
+    ///
+    /// ⭐ Mesmo papel do irmão da pose: as fases A–E são `O(malha)` e a espec
+    /// manda fotografá-las no pen-down. *Sem um contador, quem as movesse para
+    /// dentro do laço de eventos não partiria teste nenhum — a saída seria a
+    /// mesma, só mais lenta.*
+    pub(crate) boundary_construcoes: u32,
     /// ⭐⭐ **O INDICADOR da pose** — o osso que se vê ANTES de premir, com a
     /// adjacência guardada e o orçamento que o impede de arrastar o editor.
     /// Ver [`super::pose_previa`], que é onde a tabela medida está.
@@ -441,6 +458,10 @@ impl SculptStroke {
         // ⚠️ A cadeia da pose é do TRAÇO: um traço novo acha o pivô outra vez.
         self.pose = None;
         self.pose_construcoes = 0;
+        // ⚠️ E a do CONTORNO pela mesma razão: o censo de bordas e a cadeia são
+        // do TRAÇO, e um traço novo aponta outra borda.
+        self.boundary = None;
+        self.boundary_construcoes = 0;
         // ⚠️⚠️ **E o INDICADOR esquece TUDO, adjacência incluída** — este é o
         // único momento em que a malha pode ter mudado de uma forma que a chave
         // dele não vê (as ligações entre peças dependem das POSIÇÕES, e lê-las
@@ -457,6 +478,12 @@ impl SculptStroke {
 #[path = "stroke_cloth_num.rs"]
 pub mod stroke_cloth_num;
 
+/// ⭐ **A ponte do pincel de CONTORNO** — ver [`stroke_boundary`]. Terceiro
+/// irmão do [`stroke_cloth`] e do [`stroke_pose`] no papel (os três desviam
+/// antes do `dab_core`) e com razão própria: a simetria dele são **passagens
+/// que refazem as fases A–E**, e não uma região espelhada.
+#[path = "stroke_boundary.rs"]
+mod stroke_boundary;
 #[path = "stroke_cloth.rs"]
 mod stroke_cloth;
 /// ⭐ **O FILTRO de tecido** (espec §7) — o mesmo solver na peça inteira, sem

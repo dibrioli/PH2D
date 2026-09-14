@@ -103,9 +103,13 @@ pub(crate) const GPU_KERNEL: GpuKernel = GpuKernel {
         // column, and a pulse-born element is born at the row that FIRED — arithmetic the
         // device cannot reach without a prefix scan it was never given. Absent column ⇒ the
         // plan claims the node exactly as it always has (the device path this wave ships is
-        // byte-identical); present ⇒ the frame recedes to the CPU, which is where the pulse
-        // family already lives. The alternative is a device answer with every pulse-birth
-        // silently MISSING, and nothing on screen to say so.
+        // byte-identical); present ⇒ the frame recedes to the CPU.
+        //
+        // ⛔⛔ **The clause «which is where the pulse family already lives» is FALSE since
+        // 2026-09-14** — the cycle-6 W2 put all nine `pulse.*` on the device, and this refusal
+        // is now the LAST thing standing between a metronome and a device-resident simulation.
+        // What holds it is the birth COUNT being a function of the pulse column's content,
+        // which `CountLawCtx` forbids asking (a readback). See the module header.
         ColumnBinding {
             column: PULSE_COL,
             dim: Dim::Scalar,

@@ -73,12 +73,27 @@
 //! — which is what makes "unconnected = the world before it" true of the *ids* too, and not just
 //! of the count.
 //!
-//! ⚠️ **The pulse path is CPU**, and it costs nothing that anybody had: none of the six `pulse.*`
-//! nodes has a GPU kernel (they are events per LINE, not maps per texel), so the chain feeding
-//! this port is already a device boundary. The refusal is declared where the plan can see it —
-//! a `ColumnAccess::RefuseIfPresent` binding on port 1 (ADR-0127 D3) — because a kernel that
-//! quietly ignored the port would answer the artist's graph with every pulse-birth MISSING and
-//! nothing on screen to say so.
+//! ⚠️ **The pulse path is CPU**, and the refusal is declared where the plan can see it — a
+//! `ColumnAccess::RefuseIfPresent` binding on port 1 (ADR-0127 D3) — because a kernel that quietly
+//! ignored the port would answer the artist's graph with every pulse-birth MISSING and nothing on
+//! screen to say so.
+//!
+//! ⛔⛔ **This paragraph used to carry a SECOND justification, and it is FALSE since 2026-09-14:**
+//! *«it costs nothing that anybody had: none of the six `pulse.*` nodes has a GPU kernel … so the
+//! chain feeding this port is already a device boundary»*. The cycle-6 W2 gave **all nine** of them
+//! kernels (they were nine, not six, on the day that sentence was written), and the measurement
+//! that opened that wave was exactly this chain: `grid → pulse.beat → sim.spawn` recused at
+//! `sim.spawn:0`, i.e. the WHOLE simulation on the CPU. `CLAUDE.md` §0.0 — *whoever moves the
+//! number that made something unreachable has to re-check the note.*
+//!
+//! ⚠️ **What still holds the refusal is the OTHER leg, and it is structural:** a pulse-born element
+//! is born at the row that FIRED, so how many are born is a function of the pulse column's
+//! CONTENT — and [`CountLawCtx`](ph2d_nodegraph::gpu::CountLawCtx) forbids that in writing (*«a law
+//! may only ask how WIDE its inputs are, never what is in them (that would be a readback, and the
+//! readback is measured-negative)»*). Dispatch size is host-known; a data-dependent birth count is
+//! not. ⇒ curing this is a **substrate** wave (a device-side count / indirect dispatch), not a
+//! missing kernel. Gate:
+//! `the_chain_that_opened_the_wave_is_blocked_by_the_spawn_and_no_longer_by_the_metronome`.
 
 mod hash;
 mod kernel;

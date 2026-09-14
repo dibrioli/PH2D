@@ -312,6 +312,7 @@ impl GpuCook {
                         stage.node,
                         manifest,
                         playhead,
+                        dt,
                         &inputs,
                         *port,
                     )?;
@@ -472,6 +473,7 @@ impl GpuCook {
                     manifest,
                     window,
                     playhead,
+                    dt,
                     &inputs,
                     base.clone(),
                     grid_spec.zip(grid_buffers.as_ref()),

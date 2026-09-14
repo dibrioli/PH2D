@@ -42,6 +42,7 @@ use ph2d_node_registry::{NodeRegistry, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
+use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel};
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
@@ -135,6 +136,124 @@ pub const MANIFEST: NodeManifest = NodeManifest {
         },
     ],
     lowerings: &[LoweringKind::Cpu],
+};
+
+/// ⭐ **O KERNEL** (ADR-0126) — a porta WGSL do [`step`], **inteiramente no dispositivo**.
+///
+/// ⚠️⚠️ **Ele só existe porque o `dt` passou a ser UNIFORM** (ciclo 6 W2): o envelope avança a
+/// idade em `age + dt`, e até esta wave o módulo gerado não tinha o passo do relógio — o
+/// `motion.integrate` deriva o dele de uma coluna de estado que a CPU **também** escreve, e dar uma
+/// a este nó mudaria a lei da CPU. *O bloqueador era o substrato e não a lei, que é exactamente a
+/// espécie de limite que o §0.0 manda medir em vez de aceitar.*
+///
+/// ⚠️ **O `bias` de Schlick é portado com as DUAS guardas de não-finito do Rust**, e elas não são
+/// decoração: `f32::clamp` devolve **NaN** para um valor NaN (ele prende a FAIXA, não a sanidade),
+/// então o nó já tinha a queda para o neutro escrita — e um `clamp` da WGSL sobre NaN é
+/// implementation-defined. Sem o porte das guardas, um param ilegível sairia como NaN para a tela
+/// numa rota e como `0`/`0,5` na outra.
+///
+/// ⚠️ **A coluna `pulse` é `Consume`**: o [`step`] da CPU emite `v` + `adsr_age` + `adsr_on` e larga
+/// o disparo — sem isto o pulso viajava numa corrente de VALOR.
+const GPU_KERNEL: GpuKernel = GpuKernel {
+    wgsl: "\
+        let ad_fire = read_pulse_pulse(i) > 0.5;\n\
+        let ad_was = read_state_adsr_on(i) > 0.5;\n\
+        let ad_total = max(params.delay, 0.0) + max(params.attack, 0.0)\n\
+        \x20   + max(params.decay, 0.0) + max(params.hold, 0.0) + max(params.release, 0.0);\n\
+        var ad_age = 0.0;\n\
+        var ad_on = false;\n\
+        // O disparo zera a idade. A meio de um envelope isso so' acontece com `retrigger`.\n\
+        if (ad_fire && (!ad_was || params.retrigger > 0.5)) {\n\
+        \x20   ad_age = 0.0;\n\
+        \x20   ad_on = true;\n\
+        } else if (ad_was) {\n\
+        \x20   ad_age = read_state_adsr_age(i) + params.dt;\n\
+        \x20   ad_on = true;\n\
+        }\n\
+        // Acabou: volta ao par de zeros de um grafo recem-montado.\n\
+        if (ad_on && ad_age >= ad_total) {\n\
+        \x20   ad_age = 0.0;\n\
+        \x20   ad_on = false;\n\
+        }\n\
+        write_v(i, select(0.0, adsr_level(ad_age), ad_on));\n\
+        write_adsr_age(i, ad_age);\n\
+        write_adsr_on(i, select(0.0, 1.0, ad_on));\n",
+    wgsl_lib: "\
+        // O gemeo do `bias` de Schlick, com as duas guardas de nao-finito do Rust.\n\
+        // `!(abs(x) <= f32::MAX)` responde a NaN e a +-inf de uma vez.\n\
+        fn adsr_bias(u_in: f32, b_in: f32) -> f32 {\n\
+        \x20   var u = 0.0;\n\
+        \x20   if (abs(u_in) <= 3.4028235e38) { u = clamp(u_in, 0.0, 1.0); }\n\
+        \x20   var b = 0.5;\n\
+        \x20   if (abs(b_in) <= 3.4028235e38) { b = clamp(b_in, 0.001, 0.999); }\n\
+        \x20   return u / ((1.0 / b - 2.0) * (1.0 - u) + 1.0);\n\
+        }\n\
+        // O gemeo de `Envelope::level`: funcao PURA da idade -- e' isso que torna o scrub exacto.\n\
+        fn adsr_level(age: f32) -> f32 {\n\
+        \x20   let d = max(params.delay, 0.0);\n\
+        \x20   let a = max(params.attack, 0.0);\n\
+        \x20   let dec = max(params.decay, 0.0);\n\
+        \x20   let s = clamp(params.sustain, 0.0, 1.0);\n\
+        \x20   let h = max(params.hold, 0.0);\n\
+        \x20   let r = max(params.release, 0.0);\n\
+        \x20   var t = age - d;\n\
+        \x20   if (t < 0.0) { return 0.0; }\n\
+        \x20   if (t < a) { return adsr_bias(t / a, params.attack_shape); }\n\
+        \x20   t = t - a;\n\
+        \x20   if (t < dec) {\n\
+        \x20       let u = adsr_bias(t / dec, params.release_shape);\n\
+        \x20       return 1.0 + (s - 1.0) * u;\n\
+        \x20   }\n\
+        \x20   t = t - dec;\n\
+        \x20   if (t < h) { return s; }\n\
+        \x20   t = t - h;\n\
+        \x20   if (t < r) { return s * (1.0 - adsr_bias(t / r, params.release_shape)); }\n\
+        \x20   return 0.0;\n\
+        }\n",
+    bindings: &[
+        ColumnBinding {
+            column: PULSE_COL,
+            dim: Dim::Scalar,
+            access: ColumnAccess::Consume,
+            identity: [0.0; 4],
+            port: 0,
+        },
+        ColumnBinding {
+            column: VALUE_COL,
+            dim: Dim::Scalar,
+            access: ColumnAccess::Write,
+            identity: [0.0; 4],
+            port: 0,
+        },
+        ColumnBinding {
+            column: AGE_COL,
+            dim: Dim::Scalar,
+            access: ColumnAccess::ReadWrite,
+            identity: [0.0; 4],
+            port: 1,
+        },
+        ColumnBinding {
+            column: ON_COL,
+            dim: Dim::Scalar,
+            access: ColumnAccess::ReadWrite,
+            identity: [0.0; 4],
+            port: 1,
+        },
+    ],
+    params: &[
+        "delay",
+        "attack",
+        "decay",
+        "sustain",
+        "hold",
+        "release",
+        "attack_shape",
+        "release_shape",
+        "retrigger",
+    ],
+    count_law: None,
+    variant_by_param: None,
+    applicable: None,
 };
 
 /// Tudo o que o artista autorou, em segundos e níveis.
@@ -290,6 +409,7 @@ impl NodeOp for PulseAdsr {
 /// `ph2d-node-registry-init::register_all_nodes`.
 pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register(Box::new(PulseAdsr))?;
+    reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
     reg.register_ui(
         MANIFEST.id,
         ph2d_node_registry::NodeUiManifest {

@@ -37,6 +37,14 @@ use ph2d_nodegraph::node::NodeManifest;
 /// `cargo test` instead, over every kernel the registry actually carries.
 pub const UNIFORM_BYTES: u64 = 128;
 
+/// Onde o primeiro param começa: `count` (u32) + `playhead` (f32) + `dt` (f32).
+///
+/// ⚠️ **Escrito UMA vez porque ele é lido em quatro sítios desta função**, e o dia em que um campo
+/// novo entrar no prefixo é o dia em que três deles ficariam para trás — em silêncio, a escrever
+/// um param por cima do campo seguinte e a ler lixo plausível. O gémeo dele é o `struct
+/// KernelParams` de `codegen::kernel_module`, e os dois movem-se juntos.
+const PARAMS_AT: usize = 12;
+
 impl GpuCook {
     /// Encode one kernel stage: resolve/compile the pipeline for the inputs'
     /// column sets, allocate output columns, write the uniform, dispatch, and
@@ -62,6 +70,9 @@ impl GpuCook {
         manifest: &'static NodeManifest,
         window: SourceWindow,
         playhead: f64,
+        // `dt`: o passo do relógio RAIZ — a MESMA expressão do `EvalCtx::dt` da CPU, calculada uma
+        // vez pelo sequenciador. Entra no uniform logo a seguir ao `playhead` (ver `PARAMS_AT`).
+        dt: f64,
         inputs: &[GpuStream],
         base: GpuStream,
         grid: Option<(&GridSpec, &GridBuffers)>,
@@ -122,13 +133,14 @@ impl GpuCook {
         let mut uni = [0u8; UNIFORM_BYTES as usize];
         uni[0..4].copy_from_slice(&count.to_le_bytes());
         uni[4..8].copy_from_slice(&(playhead as f32).to_le_bytes());
+        uni[8..12].copy_from_slice(&(dt as f32).to_le_bytes());
         for (k, name) in kernel.params.iter().enumerate() {
             let v = resolve_param(graph, node, manifest, name, &self.driven);
-            let at = 8 + k * 4;
+            let at = PARAMS_AT + k * 4;
             uni[at..at + 4].copy_from_slice(&v.to_le_bytes());
         }
         if let Some(key_port) = gather_port {
-            let at = 8 + kernel.params.len() * 4;
+            let at = PARAMS_AT + kernel.params.len() * 4;
             uni[at..at + 4].copy_from_slice(&gather_prev_n(inputs, key_port).to_le_bytes());
         }
         // The generator's window, in the layout `kernel_module` declared — the
@@ -138,7 +150,8 @@ impl GpuCook {
         // is total rather than true-by-luck.
         let has_window = codegen::declares_window(kernel.count_law.is_some(), &port_names);
         let has_src_n = codegen::declares_src_n(kernel.count_law.is_some(), &port_names);
-        let window_at = 8 + kernel.params.len() * 4 + usize::from(gather_port.is_some()) * 4;
+        let window_at =
+            PARAMS_AT + kernel.params.len() * 4 + usize::from(gather_port.is_some()) * 4;
         if has_window {
             uni[window_at..window_at + 4].copy_from_slice(&window.first.to_le_bytes());
             uni[window_at + 4..window_at + 8].copy_from_slice(&window.age_first.to_le_bytes());

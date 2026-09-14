@@ -315,6 +315,16 @@ fn probe_where_the_pulse_seam_falls() {
         liga(m, (sp, 0), (o, 0));
         o
     });
+    // (2-bis) **O CONTROLO da linha acima**: o mesmo `sim.spawn` com a porta de pulso SOLTA.
+    // Sem ele, «o spawn caiu» lê-se como culpa do metrónomo — e pode ser do próprio spawn.
+    mede("grid -> sim.spawn (porta de pulso SOLTA) -> output", &|m| {
+        let g = m.doc.graph.add_node("motion.grid".to_string());
+        let sp = m.doc.graph.add_node("sim.spawn".to_string());
+        let o = m.doc.graph.add_node("motion.output".to_string());
+        liga(m, (g, 0), (sp, 0));
+        liga(m, (sp, 0), (o, 0));
+        o
+    });
     // (3) O consumidor que o artista alcança primeiro — e que NÃO tem kernel.
     mede("grid -> threshold -> strobe(pulse) -> output", &|m| {
         let g = m.doc.graph.add_node("motion.grid".to_string());

@@ -149,8 +149,10 @@ o sintoma.*
    fonte, zero passes a mais), e a porta ≠ 0 vira o **complemento de um `Compact`**. Gates de
    paridade bit-a-bit já nomeados, contrato **não congelado** (`gpu.rs` é side-metadata).
    ⇒ *Sem ela, todo o resto deste ciclo assenta num caminho que custa 50×.*
-2. **W2 — a família `pulse.*` no dispositivo** (9 de 9 fora hoje), ou a razão nomeada e o preço
-   medido para cada uma que fique.
+2. ✅ **W2 — a família `pulse.*` no dispositivo** — **FEITA** (§8): **9 de 9** com kernel e
+   paridade num adapter real. ⛔ E a medição diz que isso ainda **não muda rota nenhuma**: a faixa
+   acaba nos CONSUMIDORES (`sim.spawn` recusa a porta · `motion.strobe`/`motion.step` sem kernel),
+   os três nomeados com mecanismo no §8.6.
 3. **W3 — o cartão e o vocabulário**: as 6 divergências do §4, os três cartões vazios, e os params
    que o cartão não alcança.
 4. **W4 — o poder que falta**, nó a nó, contra o estado da arte (a folha 15 da conferência + as
@@ -381,3 +383,134 @@ contra um quad com uma textura. A 102 400 delas, isso é o quadro inteiro.
 no fim** porque é wave de substrato (toca o planeador, por onde todos os ciclos passam). ⚠️ E o §0.0
 manda reconferir a nota de quem move o número: a W1a mexeu no planeador, e **não** desbloqueia isto
 — o que ali falta é a forma chegar ao dispositivo como coisa desenhável, não um param.
+
+---
+
+## §8 — W2 FEITA: os **nove** `pulse.*` no dispositivo — e o que isso ainda NÃO compra
+
+> Ordem do dono, 2026-09-14: *«seguir o plano … agora: 9 nós de pulso.»*
+
+### §8.1 — A medição veio primeiro, e mudou a pergunta
+
+A W2 pedia *«a família `pulse.*` no dispositivo (9 de 9 fora hoje), **ou** a razão nomeada e o preço
+medido para cada uma que fique»*. Antes de escrever um kernel (§0.0), a sonda
+`probe_where_the_pulse_seam_falls` perguntou ao planeador **onde é a costura**:
+
+| cadeia | stages | onde a CPU ainda coze |
+|---|---|---|
+| `grid → scale → output` (o controlo) | 3 | — (tudo no dispositivo) |
+| `grid → beat → sim.spawn(pulse) → output` | **1** | **`sim.spawn:0`** |
+| `grid → sim.spawn` (**porta de pulso solta**) | 3 | — (tudo no dispositivo) |
+| `grid → threshold → strobe(pulse) → output` | **1** | **`motion.strobe:0`** |
+
+⭐⭐⭐ **A linha 2 com a linha 3 é o achado:** o `sim.spawn` **tem** kernel e é reivindicado — até
+lhe ligarem um metrónomo. *Um nó sem kernel não custa o que ele custa: custa a SIMULAÇÃO inteira*,
+que é o caminho medido em `50,9×` pela [auditoria 98](98_auditoria_de_performance_2026-09-01.md).
+
+### §8.2 — Os nove kernels (ADR-0126 — side-metadata; `NodeManifest` intocado)
+
+| nó | o que o kernel é | a lei de borda que ele teve de portar |
+|---|---|---|
+| `pulse.level` | máscara `0/1` | a coluna `pulse` é **`Consume`**: a `level` da CPU **larga** o pulso |
+| `pulse.signal` | **`GpuKernel::PASSTHROUGH`** | o NOME vive num `text_param` e não viaja na corrente |
+| `pulse.compare` | Schmitt + referência por linha | a referência é **`ReadBroadcast`** (desligada ⇒ params · `1` ⇒ todo o campo · `N` ⇒ por linha) |
+| `pulse.on_change` | duas colunas de estado | `direction` ilegível cai no **NEUTRO**, não na variante `0` |
+| `pulse.sample_hold` | amostrador por borda | as DUAS portas de pulso em `ReadBroadcast` (um gatilho global vale para o campo) |
+| `pulse.threshold` | Schmitt sobre um CANAL + abrandador | NaN no `channel` escolhe **X** e ±inf escolhe **Size** (`f32::NAN as i32` vale `0` em Rust) |
+| `pulse.counter` | aritmética Euclidiana inteira | `rem_euclid`/`div_euclid` portados; o **carry** é porta ≠ 0 ⇒ o planeador recua |
+| `pulse.beat` | metrónomo por linha | uma linha **sem história** dispara ⇒ `!HAS_state_beat_cycle` no meio da condição |
+| `pulse.adsr` | envelope puro na idade | o `bias` de Schlick com as **duas** guardas de não-finito (`f32::clamp` devolve NaN para NaN) |
+
+⚠️ **Todo selector repete o arredondamento do Rust** (`f32::round` = meio para LONGE do zero; o
+`round` da WGSL é **meio-par**). Um enum escolhido pelo braço errado responde *plausível*.
+
+⚠️ **E um param chamado `count` colide com o uniform de contagem**: o corpo escreve
+`params.count_` (o `wgsl_field` dá ao param colidente um campo próprio). Sem o sublinhado a placa
+recusa o módulo inteiro — foi assim que este defeito apareceu, no `pulse.beat`.
+
+### §8.3 — ⭐⭐⭐ O `dt` passou a ser UNIFORM, e isso dissolveu DUAS recusas no mesmo dia
+
+O `pulse.adsr` avança `age + dt` e o abrandador do `pulse.threshold` conta `cool − dt`. O módulo
+gerado **não tinha `dt`**: o `motion.integrate` deriva o dele de uma coluna de estado (`sim_t`) que
+a CPU **também** escreve, e dar uma a estes dois mudaria a lei da CPU.
+
+⛔ A saída barata era um `applicable` a recuar acima do neutro — e o `pulse.threshold` shipou assim
+durante meia wave. A saída **certa** custou quatro sítios: `codegen::kernel_module` declara
+`dt: f32` a seguir ao `playhead`, o `encode` escreve-o em `uni[8..12]` e os params passam a começar
+em **`PARAMS_AT = 12`** (uma constante, porque o deslocamento é lido em **quatro** sítios daquela
+função). *O bloqueador era o SUBSTRATO e não a lei — que é exactamente a espécie de limite que o
+§0.0 manda medir em vez de aceitar.*
+
+⚠️ Um campo opcional teria custado uma declaração nova no `GpuKernel`, que é construído
+**literalmente em ~50 crates-nó**; quatro bytes num uniform de slot custam zero.
+
+### §8.4 — Os gates, e as DUAS metades que este commit precisou
+
+`gpu_cpu_parity_pulse` — **11 testes**, adapter real, `6` voltas com o estado a atravessar o `pre`:
+
+- **a não-vacuidade**: a coluna da CPU tem de ter **disparado E ficado calada** — senão «as duas
+  rotas concordam» é a afirmação vazia de duas colunas de zeros;
+- ⛔⛔ **o FIO DA NAVALHA, com número**: um nó de pulso é uma **comparação**, e uma comparação não
+  tem ε. Medido, **`3` de `384`** amostras discordam — `v_cpu = 0,5000009` contra
+  `v_dev = 0,49999955` (delta `1,34e-6`, o ε que toda a família `value.*` já declara) com o limiar
+  `0,5` **exactamente entre os dois**. A régua é **ESTRUTURAL**
+  (`min(v_cpu, v_dev) ≤ limiar ≤ max(…)`), logo não há constante para afrouxar: uma linha que
+  discordasse com os dois valores do **mesmo lado** é defeito de lei e reprova.
+
+⚠️ **E três correcções que foram da RÉGUA, não do produto:**
+
+1. os cinco primeiros gates reprovaram na volta **1** com divergência `1,0` — faltava o
+   `cook.advance_tick`, que é o que **publica** o `pre` do lado da CPU (o device publica o dele
+   sozinho). *A régua estava a medir a régua.*
+2. a mensagem de erro imprimia as **oito primeiras** linhas com a divergência na **39.ª** — *uma
+   mensagem que mostra o princípio de um vector prova que o princípio está bem.*
+3. ⛔⛔ a fixture do abrandador era **VAZIA**, e foi uma **prova de mutação** que o disse: com o
+   gatilho sobre uma grelha ESTÁTICA o abrandador nunca chega a abrandar, e a mutação que zera o
+   `dt` no uniform **sobreviveu**. O campo passou a ser um oscilador a `8 Hz` e o controlo é
+   **comparativo** (`debounce = 0` dispara MAIS: `42` contra `40`). Com isso, a mutação mata os dois.
+
+### §8.5 — ⛔⛔⛔ Um `var<storage, read>` que o corpo não lê é APAGADO do layout, e só rebenta no 2.º tique
+
+O `pulse.threshold` declarou `thr_cool` como `ReadWrite` enquanto o corpo só o escrevia. O layout do
+bind group é **derivado do shader**, e a naga **apaga** um buffer que nada referencia — o
+sequenciador, esse, monta as entradas a partir da DECLARAÇÃO. Resultado: `7` entradas contra `6` no
+layout, e a wgpu recusa em `create_bind_group`.
+
+⚠️⚠️ **No primeiro tique isto PASSA**: a coluna de estado ainda não existe, nenhum buffer é ligado.
+*Um erro de declaração que só acorda quando a coluna nasce é o pior sítio para o pôr.*
+
+⭐ A lição **já estava escrita neste repo**, no `reduce_stage.rs` (*«an unread binding is absent from
+the reflected layout»*) — e não havia nada que a tornasse executável. Agora há:
+`todo_read_declarado_e_lido`, dentro do `every_registered_kernel_validates_across_the_whole_presence_space`,
+que corre sobre **todo** kernel do registry × **toda** máscara de presença. Prova de mutação: repor
+o `ReadWrite` acusa `pulse.threshold mask 100000`.
+
+⚠️ **E ele apanhou de imediato a MESMA forma no `motion.spring`**, pré-existente — a companheira de
+`gather` (`id` na porta de estado) não tem leitor quando o gather está desligado. Essa fica
+**isenta com PROVA, não com indulgência**: a presença que a exigiria (estado com `id`, base sem) não
+é produzível — a porta de estado é alimentada por um `pre` da própria saída, e a saída herda as
+colunas da porta 0. *A varredura é exaustiva sobre `2^n` máscaras, e nem toda máscara é um estado
+que a máquina alcança.*
+
+### §8.6 — ⛔⛔ O QUE ISTO AINDA NÃO COMPRA, medido
+
+Com os nove kernels, as **três** cadeias medidas no §8.1 têm exactamente a mesma rota de antes. A
+faixa do pulso não acaba no produtor — ela acaba no **consumidor**, e os três estão fechados:
+
+| consumidor | estado | o bloqueador, nomeado |
+|---|---|---|
+| `sim.spawn` | tem kernel, **recusa a porta** | o nascimento por pulso nasce **na linha que disparou** ⇒ a contagem é função do CONTEÚDO da entrada, e o `CountLawCtx` proíbe olhar para ele por escrito (seria um *readback*). **Wave de substrato.** |
+| `motion.strobe` | **sem kernel** | é nó do **ciclo 7** (Aparência/Fx) pela fila do doc 103 |
+| `motion.step` | **sem kernel** | idem, sem ciclo atribuído |
+| a rota do **param dirigido** | CPU **por desenho** | a W1a resolve o condutor na CPU e entrega o NÚMERO (§6) |
+
+⚠️⚠️ **E a recusa do `sim.spawn` tinha a justificação ESCRITA que esta wave dissolveu:** *«none of
+the six `pulse.*` nodes has a GPU kernel … so the chain feeding this port is already a device
+boundary»* — eram **nove** e não seis, e hoje todos têm. O comentário foi corrigido no próprio
+ficheiro (§0.0: *quem move o número que tornava algo inalcançável tem de reconferir a nota*), e o
+gate `the_chain_that_opened_the_wave_is_blocked_by_the_spawn_and_no_longer_by_the_metronome`
+**reprova no dia em que alguém curar o spawn**, obrigando a reescrever a nota.
+
+⇒ **os nove kernels são o PRÉ-REQUISITO, não o ganho** — e é assim que a W2 fica escrita: nenhuma
+cadeia do produto mudou de rota hoje, e os três bloqueadores que sobram têm mecanismo, endereço e
+dono.

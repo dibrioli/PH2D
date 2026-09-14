@@ -175,6 +175,37 @@ tem de existir para uma cadeia com carimbo continuar no dispositivo* — e a res
 uma **contagem derivada** no planeador, não um kernel. ⛔ Otimizar o laço da CPU primeiro é
 exactamente o erro que o §0.0 nomeia.
 
+#### ⭐⭐⭐ O item `10` tem uma SEGUNDA metade, e ela foi MEDIDA em 2026-09-14
+
+Report do dono sobre a cena `=116`: *«usando shape (exemplo: star) fps cai para 27»*. Reproduzido e
+medido ([doc 110 §7](110_ciclo_6_valor_e_pulso.md)):
+
+| caso | rota | cook | quadro | fps |
+|---|---|---|---|---|
+| quads, como a cena shipa | dispositivo | 2,87 ms | **16,92 ms** | 59 |
+| quads, **forçados** à CPU | CPU | — | **16,68 ms** | 60 |
+| **estrelas** (`PH2D_FIO_FORMA=5`) | CPU (forma viva) | 4,49 ms | **39,77 ms** | **25** |
+
+⛔⛔ **A leitura óbvia está ERRADA, e a 2.ª linha é o controlo que a derruba.** O app imprime
+*«CPU: o grafo traz uma FORMA vectorial viva (source.shape)»* e é tentador concluir que os 27 fps
+são a queda de rota — **não são**: as MESMAS 102 400 peças forçadas à CPU seguram `60 fps`. Duas
+hipóteses minhas caíram na mesma medição (a contagem **não** multiplica — `102 400` nos dois casos;
+o cozimento sobe `+1,6 ms`, `4 %` do quadro), e os **`~35 ms`** que sobram estão no **DESENHO**:
+cada estrela é um caminho vectorial construído e codificado a cada quadro (`cpu-encode = 39,80 ms`),
+contra um quad que é uma textura.
+
+⇒ **o `10` são DUAS perguntas, e a fila tem de as separar:**
+
+1. **A CONTAGEM no planeador** — o que este §5.1 já dizia: uma cadeia com carimbo deixar de derrubar
+   o dispositivo. É a metade que a auditoria 98 mede em `50,9×`.
+2. **A FORMA como coisa DESENHÁVEL no dispositivo** — o que o report da estrela mede, e que a `1`
+   **não** compra: mesmo com a rota curada, `102 400` caminhos vectoriais continuam a ser
+   codificados um a um pela CPU. A cura aqui é de RENDER (instanciar a geometria assada), não de
+   cook.
+
+⚠️ **E o §0.0 aplicou-se a mim no mesmo dia:** a W1a do ciclo 6 mexeu no planeador e **não**
+desbloqueia nenhuma das duas — o que ali falta é a forma chegar ao dispositivo, não um param.
+
 ⚠️ **O ciclo 1 carrega o SUBSTRATO** (o cartão passa a hospedar params e o painel sai) — é a única
 vez; os ciclos 2+ só pagam o grupo deles. ⚠️ **A ordem dos 2..9 pode mudar** por decisão do Enio;
 a do 1 não, porque o resto assenta nela.

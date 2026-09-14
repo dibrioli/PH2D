@@ -54,6 +54,11 @@ fn registry() -> NodeRegistry {
     ph2d_node_pulse_on_change::register(&mut reg).unwrap();
     ph2d_node_pulse_sample_hold::register(&mut reg).unwrap();
     ph2d_node_pulse_signal::register(&mut reg).unwrap();
+    ph2d_node_pulse_threshold::register(&mut reg).unwrap();
+    ph2d_node_pulse_counter::register(&mut reg).unwrap();
+    ph2d_node_pulse_beat::register(&mut reg).unwrap();
+    ph2d_node_pulse_adsr::register(&mut reg).unwrap();
+    ph2d_node_motion_oscillator::register(&mut reg).unwrap();
     reg
 }
 
@@ -436,4 +441,318 @@ fn a_value_on_the_knife_edge_is_the_only_place_the_two_routes_can_disagree() {
          NENHUM limiar ({RISE} / {FALL}) fica entre os dois -- isto nao e' o fio da navalha, \
          e' um defeito de lei no kernel"
     );
+}
+
+/// ⭐⭐ **O GATILHO SOBRE UM CANAL DE TRANSFORME** — o irmão do `compare` que lê a geometria.
+///
+/// ⚠️ O canal é **Y**, que é o default do nó, e a grelha dá-lhe um campo que sobe e desce.
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn parity_pulse_threshold() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    let voltas = paridade(
+        &gpu,
+        &reg,
+        "pulse.threshold",
+        |g| {
+            let grid = g.add_node("motion.grid");
+            g.set_param(grid, "rows", 8.0);
+            g.set_param(grid, "cols", 8.0);
+            let th = g.add_node("pulse.threshold");
+            // O campo da grelha e' estatico, entao o gatilho arma no 1.º tique e cala-se: com
+            // `Both` a coluna tem `1`s e `0`s de verdade ao longo das voltas.
+            g.set_param(th, "channel", 1.0);
+            g.set_param(th, "rise", 0.0111);
+            g.set_param(th, "fall", -0.3333);
+            g.set_param(th, "edge", 2.0);
+            liga(g, (grid, 0), (th, 0), false);
+            liga(g, (th, 0), (th, 1), true);
+            th
+        },
+        "pulse",
+    );
+    nao_e_vazio("pulse.threshold", &voltas);
+}
+
+/// ⭐⭐ **E COM `debounce > 0` ELE CONTINUA NO DISPOSITIVO** — o espaço de params INTEIRO.
+///
+/// ⛔ **Este gate afirmava o CONTRÁRIO durante meia wave**, e a nota fica: o kernel nasceu com um
+/// `applicable: Some(|p| !(p("debounce") > 0.0))`, porque o abrandador conta um relógio para trás
+/// e o módulo gerado não tinha `dt`. A cura não foi afinar a recusa — foi pôr o **`dt` no uniform**
+/// (`codegen::kernel_module` + `PARAMS_AT`), e a recusa evaporou. *Um `applicable` é uma dívida
+/// datada: ele diz o que o SUBSTRATO não sabia no dia em que foi escrito, e nada sobre o nó.*
+///
+/// ⚠️ A régua varre a faixa do param em vez de olhar para um valor: um `applicable` reintroduzido
+/// com a comparação invertida passaria num ponto só.
+#[test]
+fn a_debounced_threshold_is_still_claimed_across_the_whole_param_range() {
+    let reg = registry();
+    for debounce in [0.0_f32, 0.001, 0.25, 2.0, 60.0] {
+        let mut g = Graph::new();
+        let grid = g.add_node("motion.grid");
+        let th = g.add_node("pulse.threshold");
+        liga(&mut g, (grid, 0), (th, 0), false);
+        liga(&mut g, (th, 0), (th, 1), true);
+        g.set_param(th, "debounce", debounce);
+        assert!(
+            plan(&g, &reg, &reg, th).is_fully_gpu(),
+            "com `debounce = {debounce}` o no' tem de continuar no dispositivo -- o `dt` e' uniform \
+             desde o ciclo 6 W2"
+        );
+    }
+}
+
+/// ⭐⭐ **O CONTADOR** — aritmética inteira Euclidiana, nos três modos de limite.
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn parity_pulse_counter() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    // ⚠️ **Os TRÊS modos**, porque cada um é uma lei diferente (`rem_euclid` · `clamp` · o
+    // triângulo) e um kernel que portasse só o primeiro passaria num gate de um modo só.
+    for (modo, nome) in [(0.0, "Wrap"), (1.0, "Clamp"), (2.0, "Zigzag")] {
+        let voltas = paridade(
+            &gpu,
+            &reg,
+            &format!("pulse.counter({nome})"),
+            |g| {
+                let src = fonte(g);
+                let cmp = g.add_node("pulse.compare");
+                g.set_param(cmp, "rise", 0.4321);
+                g.set_param(cmp, "fall", 0.1777);
+                g.set_param(cmp, "edge", 2.0);
+                liga(g, (src, 0), (cmp, 0), false);
+                liga(g, (cmp, 0), (cmp, 1), true);
+                let ct = g.add_node("pulse.counter");
+                g.set_param(ct, "count_max", 3.0);
+                g.set_param(ct, "mode", modo);
+                liga(g, (cmp, 0), (ct, 0), false);
+                liga(g, (ct, 0), (ct, 1), true);
+                ct
+            },
+            "v",
+        );
+        let andou = voltas
+            .iter()
+            .any(|v| v.iter().zip(&voltas[0]).any(|(a, b)| (a - b).abs() > 0.5));
+        assert!(
+            andou,
+            "{nome}: a contagem nunca andou em {VOLTAS} voltas -- a fixture nao dispara"
+        );
+    }
+}
+
+/// ⛔⛔ **E COM O CARRY LIGADO ELE RECUA** — a porta ≠ 0, que é a metade (b) da W1.
+///
+/// ⚠️ **Um estágio de GPU produz UM buffer** (`GpuStage` guarda um `node`, nunca um `(nó, porta)`),
+/// e sem esta recusa um consumidor do `carry` receberia a porta **0**: a corrente errada, em
+/// silêncio. A recusa já existia no planeador e **nomeava este nó**; o que faltava era o kernel
+/// para ela proteger — logo é agora que ela passa a ter efeito, e é agora que ela precisa de gate.
+#[test]
+fn a_counter_with_its_carry_wired_is_refused_by_the_planner() {
+    let reg = registry();
+    let monta = |carry: bool| {
+        let mut g = Graph::new();
+        let grid = g.add_node("motion.grid");
+        let bt = g.add_node("pulse.beat");
+        liga(&mut g, (grid, 0), (bt, 0), false);
+        liga(&mut g, (bt, 0), (bt, 1), true);
+        let ct = g.add_node("pulse.counter");
+        liga(&mut g, (bt, 0), (ct, 0), false);
+        liga(&mut g, (ct, 0), (ct, 1), true);
+        if carry {
+            let ct2 = g.add_node("pulse.counter");
+            // A porta 1 do PRIMEIRO contador -- o divisor de relógio clássico.
+            liga(&mut g, (ct, 1), (ct2, 0), false);
+            liga(&mut g, (ct2, 0), (ct2, 1), true);
+            let s = ct2;
+            return (g, s);
+        }
+        (g, ct)
+    };
+    let (g, sink) = monta(false);
+    assert!(
+        plan(&g, &reg, &reg, sink).is_fully_gpu(),
+        "com o carry solto a cadeia e' do dispositivo"
+    );
+    let (g, sink) = monta(true);
+    assert!(
+        !plan(&g, &reg, &reg, sink).is_fully_gpu(),
+        "com o carry LIGADO o planeador tem de recuar -- um estagio produz UM buffer"
+    );
+}
+
+/// ⭐⭐⭐ **O METRÓNOMO — e com ele a cadeia que a W2 mediu passa a ser do dispositivo.**
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn parity_pulse_beat() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    let voltas = paridade(
+        &gpu,
+        &reg,
+        "pulse.beat",
+        |g| {
+            let grid = g.add_node("motion.grid");
+            g.set_param(grid, "rows", 8.0);
+            g.set_param(grid, "cols", 8.0);
+            let bt = g.add_node("pulse.beat");
+            // ⚠️ Um período que NÃO é múltiplo do tique (`1/60`): com um período redondo toda
+            // batida cai em cima de uma amostra, que é o fio da navalha do §8 — e ali a régua é
+            // outra. Aqui mede-se a LEI.
+            g.set_param(bt, "period", 0.0537);
+            // Uma fase por linha: sem ela as 64 linhas são a mesma coluna repetida.
+            g.set_param(bt, "phase_stagger", 0.0031);
+            liga(g, (grid, 0), (bt, 0), false);
+            liga(g, (bt, 0), (bt, 1), true);
+            bt
+        },
+        "pulse",
+    );
+    nao_e_vazio("pulse.beat", &voltas);
+}
+
+/// ⛔⛔⛔ **A CADEIA QUE ABRIU A W2 CONTINUA BLOQUEADA — e por OUTRA coisa. Este gate é o registo.**
+///
+/// A medição que abriu a wave mediu `grid → beat → sim.spawn(pulse) → output` com a fronteira em
+/// **`sim.spawn:0`**: a simulação inteira na CPU por causa do metrónomo. Com os nove `pulse.*` no
+/// dispositivo, o metrónomo deixou de ser a causa — **e a cadeia continua a recuar**, porque o
+/// `sim.spawn` declara um `ColumnAccess::RefuseIfPresent` sobre a coluna `pulse` da porta 1.
+///
+/// ⚠️⚠️ **A justificação ESCRITA daquela recusa era *«a família `pulse.*` não tem kernel nenhum,
+/// logo a cadeia que alimenta esta porta já é uma fronteira»* — e esta wave dissolveu-a.** O que
+/// segura a recusa hoje é a OUTRA perna, que estava no mesmo comentário: um nascimento por pulso
+/// nasce **na linha que disparou**, e a contagem disso é dado — mas o `CountLawCtx` proíbe por
+/// escrito olhar para o CONTEÚDO de uma entrada (*«a law may only ask how WIDE its inputs are»*),
+/// porque isso seria um readback. ⇒ **é uma wave de substrato**, não um kernel que falte.
+///
+/// ⚠️ **Este gate reprova no dia em que alguém curar o `sim.spawn`** — e é isso que ele existe para
+/// fazer: obrigar quem o curar a vir aqui apagar a nota que deixou de ser verdade.
+#[test]
+fn the_chain_that_opened_the_wave_is_blocked_by_the_spawn_and_no_longer_by_the_metronome() {
+    let mut reg = registry();
+    ph2d_node_motion_output::register(&mut reg).unwrap();
+    ph2d_node_sim_spawn::register(&mut reg).unwrap();
+    let monta = |com_pulso: bool| {
+        let mut g = Graph::new();
+        let grid = g.add_node("motion.grid");
+        let sp = g.add_node("sim.spawn");
+        let out = g.add_node("motion.output");
+        liga(&mut g, (grid, 0), (sp, 0), false);
+        if com_pulso {
+            let bt = g.add_node("pulse.beat");
+            liga(&mut g, (grid, 0), (bt, 0), false);
+            liga(&mut g, (bt, 0), (bt, 1), true);
+            liga(&mut g, (bt, 0), (sp, 1), false);
+        }
+        liga(&mut g, (sp, 0), (out, 0), false);
+        (g, out)
+    };
+    // ⚠️ **O CONTROLO vem primeiro, e é ele que nomeia o culpado.** Sem a porta de pulso fiada o
+    // `sim.spawn` É do dispositivo — logo o que recua não é o spawn nem o metrónomo: é a PORTA.
+    let (g, out) = monta(false);
+    let plano = plan(&g, &reg, &reg, out);
+    assert!(
+        plano.is_fully_gpu(),
+        "sem a porta de pulso a cadeia e' do dispositivo: {:?}",
+        plano.boundaries
+    );
+    assert!(plano.stages.len() >= 3, "{:?}", plano.stages.len());
+
+    let (g, out) = monta(true);
+    let plano = plan(&g, &reg, &reg, out);
+    assert!(
+        !plano.is_fully_gpu(),
+        "o `sim.spawn` RECUSA a porta `pulse` (nascimento na linha que disparou) -- se isto passou \
+         a ser verdade, a recusa foi curada e a nota deste gate tem de ser reescrita"
+    );
+
+    // ⭐ **E o metrónomo, esse, já é do dispositivo** — a metade que esta wave comprou, afirmada
+    // sozinha para que a recusa do spawn não a esconda.
+    let mut g = Graph::new();
+    let grid = g.add_node("motion.grid");
+    let bt = g.add_node("pulse.beat");
+    liga(&mut g, (grid, 0), (bt, 0), false);
+    liga(&mut g, (bt, 0), (bt, 1), true);
+    assert!(
+        plan(&g, &reg, &reg, bt).is_fully_gpu(),
+        "o `pulse.beat` tem kernel desde a W2 -- esta e' a metade que a wave comprou"
+    );
+}
+
+/// ⭐⭐ **O ABRANDADOR do `pulse.threshold`** — a outra metade que o `dt` uniform destravou.
+///
+/// ⛔⛔ **A 1.ª redacção deste gate era VAZIA, e foi uma prova de mutação que o disse:** ela punha o
+/// gatilho sobre uma grelha ESTÁTICA, que arma no primeiro tique e nunca mais cruza o limiar —
+/// logo o abrandador nunca chegava a abrandar, e a mutação que zera o `dt` no uniform **sobreviveu**
+/// (o relógio nunca precisava de descer). *Um controlo de «disparou e calou-se» é satisfeito por um
+/// disparo único, que é exactamente o caso que não testa nada.*
+///
+/// ⇒ o campo passa a ser um `motion.oscillator` RÁPIDO (também do dispositivo, logo sem costura), e
+/// o controlo é **comparativo**: a mesma cadeia com `debounce = 0` tem de disparar **MAIS**. Sem
+/// essa metade, «as duas rotas concordam» volta a ser a afirmação vazia de duas colunas que nunca
+/// chegam à janela de silêncio.
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn parity_pulse_threshold_with_a_debounce() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    // Um campo que atravessa o limiar VÁRIAS vezes dentro das `VOLTAS`: `8 Hz` a `1/60 s` dá uma
+    // volta completa a cada `7,5` tiques, e com `edge = Both` isso são dois cruzamentos por volta.
+    let monta = |debounce: f32| {
+        move |g: &mut Graph| {
+            let grid = g.add_node("motion.grid");
+            g.set_param(grid, "rows", 8.0);
+            g.set_param(grid, "cols", 8.0);
+            let osc = g.add_node("motion.oscillator");
+            g.set_param(osc, "channel", 1.0); // Y
+            g.set_param(osc, "amplitude", 1.0);
+            g.set_param(osc, "frequency", 8.0);
+            g.set_param(osc, "phase_stagger", 0.017);
+            liga(g, (grid, 0), (osc, 0), false);
+            let th = g.add_node("pulse.threshold");
+            g.set_param(th, "channel", 1.0);
+            g.set_param(th, "rise", 0.1111);
+            g.set_param(th, "fall", -0.1111);
+            g.set_param(th, "edge", 2.0);
+            g.set_param(th, "debounce", debounce);
+            liga(g, (osc, 0), (th, 0), false);
+            liga(g, (th, 0), (th, 1), true);
+            th
+        }
+    };
+    // Duas voltas de silêncio a `1/60 s` — curto o suficiente para as `VOLTAS` o atravessarem,
+    // longo o suficiente para engolir cruzamentos a `8 Hz`.
+    let com = paridade(
+        &gpu,
+        &reg,
+        "pulse.threshold(debounce)",
+        monta(0.033),
+        "pulse",
+    );
+    nao_e_vazio("pulse.threshold(debounce)", &com);
+
+    // ⚠️ **O CONTROLO que prova que o abrandador ABRANDA** (e, com ele, que o `dt` desce o relógio).
+    let sem = paridade(&gpu, &reg, "pulse.threshold(sem debounce)", monta(0.0), "pulse");
+    let conta = |v: &[Vec<f32>]| v.iter().flatten().filter(|&&x| x > 0.5).count();
+    let (a, b) = (conta(&com), conta(&sem));
+    assert!(
+        a < b,
+        "com `debounce` dispararam {a} e sem ele {b} -- o abrandador nao engoliu nada, logo este \
+         gate nao testa o relogio que o `dt` faz descer"
+    );
+    eprintln!("\n  abrandador: {a} disparos com `debounce`, {b} sem -- engoliu {}\n", b - a);
 }

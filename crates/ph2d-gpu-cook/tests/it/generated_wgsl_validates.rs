@@ -87,6 +87,15 @@ fn every_registered_kernel_validates_across_the_whole_presence_space() {
                 },
             );
             validate(&format!("{} mask {mask:b}", manifest.name), &src);
+            todo_read_declarado_e_lido(
+                &format!("{} mask {mask:b}", manifest.name),
+                &src,
+                kernel
+                    .bindings
+                    .iter()
+                    .find(|b| b.access.is_gather_key())
+                    .map(|b| b.column),
+            );
             validated += 1;
         }
     }
@@ -317,5 +326,61 @@ fn the_lowering_validates_for_all_256_column_subsets_and_every_style() {
                 validate(&format!("lowering mask {mask:08b} style {style:?}"), &src);
             }
         }
+    }
+}
+
+/// ⛔⛔⛔ **TODO `var<storage, read>` QUE O MÓDULO DECLARA TEM DE SER LIDO PELO CORPO** — e a
+/// razão é um crash de dispositivo que **nenhum** validador apanha.
+///
+/// O layout do bind group é **derivado do shader** (`pipeline.get_bind_group_layout(0)`), e a naga
+/// **apaga** do layout um buffer que nada referencia. O sequenciador, esse, monta as entradas a
+/// partir do `plan_bindings` — que só olha para a DECLARAÇÃO. Resultado: `N` entradas contra
+/// `N−1` no layout, e a wgpu recusa em `create_bind_group`.
+///
+/// ⚠️⚠️ **E o defeito é INVISÍVEL no primeiro tique.** Uma coluna de estado que ainda não nasceu
+/// não liga buffer nenhum, então a corrida arranca verde e rebenta na volta seguinte — foi assim
+/// que ele apareceu (`pulse.threshold` declarava `thr_cool` como `ReadWrite` e o corpo só o
+/// escrevia). *Uma declaração a mais lê-se como inofensiva e é um crash com atraso de um quadro.*
+///
+/// ⚠️ A régua é textual porque a pergunta é textual: o módulo gerado escreve **sempre** o helper
+/// `fn read_<sufixo>(...)`, logo o nome aparece uma vez por definição — **duas ou mais** significa
+/// que alguém o chama.
+fn todo_read_declarado_e_lido(label: &str, src: &str, chave_do_gather: Option<&str>) {
+    for linha in src.lines() {
+        let Some(resto) = linha.trim().strip_prefix("@group(0) @binding(") else {
+            continue;
+        };
+        if !resto.contains("var<storage, read>") {
+            continue;
+        }
+        let Some(nome) = resto
+            .split("var<storage, read> in_")
+            .nth(1)
+            .and_then(|r| r.split(':').next())
+        else {
+            continue;
+        };
+        // ⚠️⚠️ **A COMPANHEIRA DO GATHER é a excepção, e ela tem PROVA, não indulgência.**
+        // Um kernel com `GatherKey` (ADR-0130) liga a MESMA coluna `id` na porta de estado só
+        // para o `gather_prev_first()` a ler — e quando o gather está DESLIGADO (a `id` da porta
+        // base ausente) o codegen não gera aquele helper, logo o leitor fica sem chamador.
+        //
+        // ⛔ A presença que isso exigiria — **o estado com `id` e a base sem** — não é produzível
+        // pelo sequenciador: a porta de estado de um `motion.integrate`/`motion.spring` é
+        // alimentada por um `pre` da própria saída do nó, e a saída herda as colunas da porta 0
+        // (a base). Sem `id` na base não há `id` na saída, logo não há `id` no estado. *A
+        // varredura desta sonda é exaustiva sobre 2^n máscaras, e nem toda máscara é um estado
+        // que a máquina alcança.*
+        if chave_do_gather.is_some_and(|c| nome.trim() == c || nome.trim().ends_with(&format!("_{c}"))) {
+            continue;
+        }
+        let leitor = format!("read_{}", nome.trim());
+        assert!(
+            src.matches(&leitor).count() >= 2,
+            "{label}: o modulo declara `in_{}` e o corpo nunca chama `{leitor}(` -- a naga apaga \
+             esse buffer do layout derivado e o bind group do sequenciador fica com uma entrada a \
+             mais (crash em `create_bind_group`, e SO' no tique em que a coluna nasce)",
+            nome.trim()
+        );
     }
 }

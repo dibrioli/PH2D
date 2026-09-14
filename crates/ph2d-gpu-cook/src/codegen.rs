@@ -9,7 +9,7 @@
 //!
 //! Contract seen by a kernel body (documented on [`GpuKernel`]):
 //! - `i` — the element index (one invocation per element, `0..params.count`);
-//! - `params.count`, `params.playhead`, `params.<name>` per declared param;
+//! - `params.count`, `params.playhead`, `params.dt`, `params.<name>` per declared param;
 //! - `read_<col>(i)` — the bound port's column value, or the binding's declared
 //!   identity when that stream lacks the column (generated as a constant
 //!   function, the same absent-column fallback the CPU nodes apply);
@@ -378,7 +378,12 @@ pub fn kernel_module(
     // check refuses those kernels up front (`crate::plan`). A gather also carries
     // `gather_prev_n` (the prior state's element count) — CPU-known, so a uniform
     // rather than `arrayLength` (the pool rounds buffers to a pow2 class).
-    src.push_str("struct KernelParams {\n    count: u32,\n    playhead: f32,\n");
+    // ⭐ **`dt` é UNIFORM desde o ciclo 6 W2**, logo a seguir ao `playhead` e antes dos params:
+    // o passo do relógio RAIZ, a mesma expressão do `EvalCtx::dt` da CPU. Ele é incondicional de
+    // propósito — um campo opcional exigiria uma declaração nova no `GpuKernel`, que é construído
+    // literalmente em ~50 crates-nó, e o custo de quatro bytes num uniform de slot é zero.
+    // ⚠️ O deslocamento dos params passa a ser `12 + k*4`, e o `encode` lê-o do mesmo sítio.
+    src.push_str("struct KernelParams {\n    count: u32,\n    playhead: f32,\n    dt: f32,\n");
     for p in kernel.params {
         src.push_str(&format!("    {}: f32,\n", wgsl_field(p)));
     }

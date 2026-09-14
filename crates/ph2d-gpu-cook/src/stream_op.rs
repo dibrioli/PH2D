@@ -237,6 +237,7 @@ impl GpuCook {
         node: NodeId,
         manifest: &'static NodeManifest,
         playhead: f64,
+        dt: f64,
         inputs: &[GpuStream],
         port: usize,
     ) -> Result<GpuStream, GpuCookError> {
@@ -283,6 +284,7 @@ impl GpuCook {
             manifest,
             SourceWindow::of_count(n as usize),
             playhead,
+            dt,
             inputs,
             src.clone(),
             None,

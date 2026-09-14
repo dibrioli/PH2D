@@ -57,6 +57,7 @@ use ph2d_node_registry::{NodeRegistry, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
+use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel};
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
@@ -135,6 +136,138 @@ pub const MANIFEST: NodeManifest = NodeManifest {
         },
     ],
     lowerings: &[LoweringKind::Cpu],
+};
+
+/// ⭐ **O KERNEL** (ADR-0126) — a porta WGSL do [`step`], **inteiramente no dispositivo**.
+///
+/// ⚠️⚠️ **Ele nasceu a cobrir só o `debounce = 0`, e a recusa dissolveu no mesmo dia.** O
+/// [`debounce_one`] conta um relógio para trás (`cool − dt`) e o módulo gerado **não tinha `dt`**;
+/// a saída óbvia era um `applicable` a recuar para a CPU acima do neutro. Em vez disso o `dt`
+/// passou a ser **uniform** (ciclo 6 W2) — *o bloqueador era o substrato e não a lei, que é
+/// exactamente a espécie de limite que o §0.0 manda medir em vez de aceitar.*
+///
+/// ⚠️ **NaN no `channel` escolhe X, e ±inf escolhe Size** — não é capricho: `f32::NAN as i32` vale
+/// `0` em Rust (a conversão float→int é definida e satura), e `±inf` satura nos extremos, que caem
+/// no braço `_`. Os dois estão escritos porque um `round` da WGSL (meio-par) sobre um NaN cairia
+/// no `_` e narrava o nó para o canal errado, em silêncio.
+///
+/// ⚠️ **As três colunas lidas são `Consume`**: o [`step`] da CPU emite `pulse` + `armed` +
+/// `thr_cool` e larga a geometria. Sem isto um `P` viajava numa corrente de PULSO.
+const GPU_KERNEL: GpuKernel = GpuKernel {
+    wgsl: "\
+        let th_c = thr_channel(params.channel);\n\
+        let th_p = read_in_P(i);\n\
+        var th_v = read_in_size(i).x;\n\
+        if (th_c == 0) { th_v = th_p.x; }\n\
+        else if (th_c == 1) { th_v = th_p.y; }\n\
+        else if (th_c == 2) { th_v = read_in_rot(i); }\n\
+        // A banda nunca inverte -- o `fall.min(rise)` do `step_one`.\n\
+        let th_fall = min(params.fall, params.rise);\n\
+        let th_was = read_state_armed(i) > 0.5;\n\
+        let th_now = select(th_v >= params.rise, th_v > th_fall, th_was);\n\
+        let th_rose = th_now && !th_was;\n\
+        let th_fell = !th_now && th_was;\n\
+        let th_e = thr_edge(params.edge);\n\
+        let th_fire = (th_e == 0 && th_rose) || (th_e == 1 && th_fell)\n\
+        \x20   || (th_e == 2 && (th_rose || th_fell));\n\
+        write_armed(i, select(0.0, 1.0, th_now));\n\
+        // O ABRANDADOR, o gemeo do `debounce_one`. `NaN.max(0.0)` vale `0.0` em Rust; o `max`\n\
+        // da WGSL nao promete isso, dai o `select`.\n\
+        let th_deb = select(0.0, params.debounce, params.debounce >= 0.0);\n\
+        let th_cool0 = read_state_thr_cool(i) - params.dt;\n\
+        var th_out = 0.0;\n\
+        var th_cool = th_cool0;\n\
+        if (th_cool0 <= 0.0) {\n\
+        \x20   th_out = select(0.0, 1.0, th_fire);\n\
+        \x20   th_cool = select(0.0, th_deb, th_out > 0.5);\n\
+        }\n\
+        write_pulse(i, th_out);\n\
+        write_thr_cool(i, th_cool);\n",
+    wgsl_lib: "\
+        // Rust `f32::round` = meio para LONGE do zero; o `round` da WGSL e' meio-par.\n\
+        fn thr_round(x: f32) -> f32 {\n\
+        \x20   return select(ceil(x - 0.5), floor(x + 0.5), x >= 0.0);\n\
+        }\n\
+        // O gemeo de `channel_get`: 0 X . 1 Y . 2 Rotation . o resto Size.\n\
+        // `!(x == x)` e' o teste de NaN (toda comparacao com NaN e' falsa) -- e ele vem PRIMEIRO\n\
+        // porque `f32::NAN as i32` vale ZERO em Rust, enquanto +-inf satura nos extremos.\n\
+        fn thr_channel(x: f32) -> i32 {\n\
+        \x20   if (!(x == x)) { return 0; }\n\
+        \x20   let r = thr_round(x);\n\
+        \x20   if (r == 0.0) { return 0; }\n\
+        \x20   if (r == 1.0) { return 1; }\n\
+        \x20   if (r == 2.0) { return 2; }\n\
+        \x20   return 3;\n\
+        }\n\
+        // O gemeo de `EdgeDir::from_param`: `1` Fall, `2` Both, o resto Rise.\n\
+        fn thr_edge(x: f32) -> i32 {\n\
+        \x20   let r = thr_round(x);\n\
+        \x20   if (r == 1.0) { return 1; }\n\
+        \x20   if (r == 2.0) { return 2; }\n\
+        \x20   return 0;\n\
+        }\n",
+    bindings: &[
+        ColumnBinding {
+            column: "P",
+            dim: Dim::Vec2,
+            access: ColumnAccess::Consume,
+            identity: [0.0; 4],
+            port: 0,
+        },
+        ColumnBinding {
+            column: "rot",
+            dim: Dim::Scalar,
+            access: ColumnAccess::Consume,
+            identity: [0.0; 4],
+            port: 0,
+        },
+        ColumnBinding {
+            // ⚠️ A identidade do `size` é a escala UNITÁRIA, não zero — um limiar de tamanho
+            // sobre um gerador nu lê `1`, e não um falso «abaixo de todo limiar».
+            column: "size",
+            dim: Dim::Vec2,
+            access: ColumnAccess::Consume,
+            identity: [1.0, 1.0, 0.0, 0.0],
+            port: 0,
+        },
+        ColumnBinding {
+            column: PULSE_COL,
+            dim: Dim::Scalar,
+            access: ColumnAccess::Write,
+            identity: [0.0; 4],
+            port: 0,
+        },
+        ColumnBinding {
+            column: ARMED_COL,
+            dim: Dim::Scalar,
+            access: ColumnAccess::ReadWrite,
+            identity: [0.0; 4],
+            port: 1,
+        },
+        ColumnBinding {
+            // ⛔⛔ **Esta binding foi `Write` durante meia wave, e a troca é um CRASH que só aparece
+            // no SEGUNDO tique.** Enquanto o kernel só reivindicava `debounce = 0`, o corpo nunca
+            // LIA este relógio — e um `var<storage, read>` que nada referencia é **apagado pela
+            // naga do layout derivado**, enquanto o sequenciador continua a pôr o buffer no bind
+            // group (`7` entradas contra `6`, e a placa recusa). No primeiro tique passava, porque
+            // a coluna ainda não existe na corrente de estado e nenhum buffer é ligado.
+            // *Um erro de declaração que só acorda quando a coluna nasce é o pior sítio para o
+            // pôr* — daí o gate `todo_read_declarado_e_lido` do `generated_wgsl_validates`.
+            column: COOL_COL,
+            dim: Dim::Scalar,
+            access: ColumnAccess::ReadWrite,
+            identity: [0.0; 4],
+            port: 1,
+        },
+    ],
+    params: &["channel", "rise", "fall", "edge", "debounce"],
+    count_law: None,
+    variant_by_param: None,
+    // ⚠️ **Sem `applicable`: o kernel cobre o espaço de params INTEIRO.** Ele nasceu com um
+    // `!(d > 0.0)` — o `debounce` precisa do `dt`, e o módulo gerado não o tinha —, e a wave que
+    // pôs o `dt` no uniform dissolveu essa recusa no mesmo dia. *Um `applicable` é uma dívida
+    // datada, não uma propriedade do nó.*
+    applicable: None,
 };
 
 /// Direction selector for [`fire`].
@@ -271,6 +404,7 @@ impl NodeOp for PulseThreshold {
 /// `ph2d-node-registry-init::register_all_nodes`.
 pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register(Box::new(PulseThreshold))?;
+    reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
     reg.register_ui(
         MANIFEST.id,
         ph2d_node_registry::NodeUiManifest {

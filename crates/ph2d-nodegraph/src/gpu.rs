@@ -142,7 +142,7 @@ pub type ApplicableFn = fn(&dyn Fn(&str) -> f32) -> bool;
 /// side (ADR-0126). The sequencer wraps [`Self::wgsl`] in a generated module:
 ///
 /// ```wgsl
-/// // generated: uniforms (count, playhead, one f32 per declared param) +
+/// // generated: uniforms (count, playhead, dt, one f32 per declared param) +
 /// // one storage binding per present column + read_/write_ helpers.
 /// @compute @workgroup_size(256)
 /// fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
@@ -153,7 +153,9 @@ pub type ApplicableFn = fn(&dyn Fn(&str) -> f32) -> bool;
 /// ```
 ///
 /// Inside the body the kernel sees: `i` (the element index), `params.count` /
-/// `params.playhead` / `params.<name>` for each entry of [`Self::params`], and
+/// `params.playhead` / **`params.dt`** (the ROOT clock's step, the same expression
+/// as the CPU's `EvalCtx::dt` — `0.0` on the first cook after a seed) /
+/// `params.<name>` for each entry of [`Self::params`], and
 /// `read_<column>(i)` / `write_<column>(i, v)` for each of [`Self::bindings`]
 /// (an absent readable column reads its identity; an absent
 /// [`ColumnAccess::ReadWriteExisting`] column's write is a no-op). HR-5

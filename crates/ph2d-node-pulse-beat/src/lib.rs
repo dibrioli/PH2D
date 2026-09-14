@@ -36,6 +36,7 @@ use ph2d_node_registry::{NodeRegistry, ParamUnit, ParamUnitDecl, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
+use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel};
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
@@ -142,6 +143,96 @@ fn seconds_per_beat(mode: f32, period: f32, bpm: f32) -> f32 {
     if mode >= 0.5 { 60.0 / bpm } else { period }
 }
 
+/// ⭐⭐⭐ **O KERNEL** (ADR-0126) — a porta WGSL do [`step`], **inteiramente no dispositivo**.
+///
+/// ⚠️⚠️ **Este é o nó que a medição da W2 nomeou.** Antes dele, a cadeia
+/// `grid → beat → sim.spawn(pulse) → output` tinha a fronteira em **`sim.spawn:0`**: o `sim.spawn`
+/// TEM kernel e caía na mesma, porque a porta `pulse` dele vinha de um nó que o planeador não
+/// podia reivindicar. *Um metrónomo sem kernel não custa o metrónomo: custa a simulação inteira*
+/// — o caminho que a [auditoria 98] mede em `50,9×`.
+///
+/// ⚠️ **Nada é lido da porta 0.** O [`eval`] da CPU só lhe pergunta o COMPRIMENTO, e a saída dele
+/// é um stream novo; ligar uma coluna aqui seria o kernel a ler o que a lei não lê.
+///
+/// ⚠️⚠️ **DIVERGÊNCIA DECLARADA — o índice do ciclo é um `floor`, e o `playhead` do dispositivo é
+/// `f32`.** A [`cycle_index`] da CPU divide em `f64` de propósito (*«horas de execução ficam
+/// exactas»*); o uniform do módulo gerado carrega o instante em `f32`. As duas rotas só podem
+/// discordar quando `t` cai **dentro de um ULP** do instante de uma batida — e aí discordam por um
+/// TIQUE inteiro, não por ε, porque a saída é uma comparação (`prev ≠ k`) e uma comparação não tem
+/// ε. É a mesma família do *fio da navalha* que o `gpu_cpu_parity_pulse` mede no `pulse.compare`, e
+/// a CPU continua a ser o caminho canónico (ADR-0126).
+///
+/// ⚠️ **Uma linha SEM história dispara**, e é preciso dizê-lo em WGSL: o `prev.get(i) != Some(k)`
+/// da CPU é verdadeiro tanto quando o índice mudou como quando a coluna **não existe** — daí o
+/// `!HAS_state_beat_cycle` no meio da condição. Sem ele, o primeiro tique de cada linha lia a
+/// identidade `0`, e uma cena que arrancasse com `k = 0` nascia **muda**.
+const GPU_KERNEL: GpuKernel = GpuKernel {
+    wgsl: "\
+        let bt_raw = select(params.period, 60.0 / params.bpm, params.time_mode >= 0.5);\n\
+        // `f32::max(MIN)` do Rust devolve MIN para NaN; o `max` da WGSL nao promete isso.\n\
+        let bt_per = select(BEAT_MIN_PERIOD, bt_raw, bt_raw >= BEAT_MIN_PERIOD);\n\
+        let bt_shift = f32(i) * params.phase_stagger;\n\
+        let bt_k = floor((params.playhead - params.offset - bt_shift) / bt_per);\n\
+        // `primed` e' GLOBAL -- o elemento 0, como o `v.first()` da CPU.\n\
+        let bt_primed = read_state_beat_primed(0u) > 0.5;\n\
+        let bt_fire = !bt_primed || !HAS_state_beat_cycle\n\
+        \x20   || read_state_beat_cycle(i) != bt_k;\n\
+        // ⚠️ **`params.count_`, com o sublinhado:** o param deste nó chama-se `count`, que é o
+\
+        // nome do uniform de CONTAGEM que o módulo gerado já traz — o `wgsl_field` dá ao param
+\
+        // colidente um campo próprio. Sem o sublinhado o corpo compara um `u32` de elementos com
+\
+        // `0.5`, e a placa recusa o módulo inteiro (foi assim que este defeito apareceu).
+\
+        let bt_win = params.count_ < 0.5\n\
+        \x20   || (bt_k >= 0.0 && bt_k < bt_round(params.count_));\n\
+        write_pulse(i, select(0.0, 1.0, bt_fire && bt_win));\n\
+        write_beat_cycle(i, bt_k);\n\
+        write_beat_primed(i, 1.0);\n",
+    wgsl_lib: "\
+        // O gemeo de [`MIN_PERIOD`]. Os dois literais movem-se juntos ou a paridade acusa.\n\
+        const BEAT_MIN_PERIOD: f32 = 1e-3;\n\
+        // Rust `f32::round` = meio para LONGE do zero; o `round` da WGSL e' meio-par.\n\
+        fn bt_round(x: f32) -> f32 {\n\
+        \x20   return select(ceil(x - 0.5), floor(x + 0.5), x >= 0.0);\n\
+        }\n",
+    bindings: &[
+        ColumnBinding {
+            column: PULSE_COL,
+            dim: Dim::Scalar,
+            access: ColumnAccess::Write,
+            identity: [0.0; 4],
+            port: 0,
+        },
+        ColumnBinding {
+            column: CYCLE_COL,
+            dim: Dim::Scalar,
+            access: ColumnAccess::ReadWrite,
+            identity: [0.0; 4],
+            port: 1,
+        },
+        ColumnBinding {
+            column: PRIMED_COL,
+            dim: Dim::Scalar,
+            access: ColumnAccess::ReadWrite,
+            identity: [0.0; 4],
+            port: 1,
+        },
+    ],
+    params: &[
+        "period",
+        "offset",
+        "time_mode",
+        "bpm",
+        "phase_stagger",
+        "count",
+    ],
+    count_law: None,
+    variant_by_param: None,
+    applicable: None,
+};
+
 /// **A JANELA DE ATIVIDADE** — a batida de índice `k` conta?
 ///
 /// `count = 0` é **sem janela**: toda batida conta, que é o metrónomo eterno que
@@ -233,6 +324,7 @@ impl NodeOp for PulseBeat {
 /// `ph2d-node-registry-init::register_all_nodes`.
 pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register(Box::new(PulseBeat))?;
+    reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
     reg.register_ui(
         MANIFEST.id,
         ph2d_node_registry::NodeUiManifest {

@@ -40,6 +40,7 @@ use ph2d_node_registry::{NodeRegistry, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
+use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel};
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
@@ -130,6 +131,125 @@ pub const MANIFEST: NodeManifest = NodeManifest {
         },
     ],
     lowerings: &[LoweringKind::Cpu],
+};
+
+/// ⭐ **O KERNEL** (ADR-0126) — a porta WGSL do [`step`], para a saída **`out`**.
+///
+/// ⚠️⚠️ **Ele não calcula o CARRY, e isso não é uma lacuna — é a fronteira do substrato.** Um
+/// estágio de GPU produz **um** buffer: o `GpuStage` guarda um `node`, nunca um `(nó, porta)`, e o
+/// planeador **recusa** qualquer nó cuja porta ≠ 0 esteja ligada (a metade (b) da W1, doc 102 §W1).
+/// Logo: carry ligado ⇒ o nó recua para a CPU inteiro, e a resposta continua certa; carry solto ⇒
+/// o dispositivo reivindica-o. *A recusa já existia e nomeava este nó pelo nome — o que não havia
+/// era o kernel para ela proteger.*
+///
+/// ⚠️ **A aritmética é INTEIRA dos dois lados** (Euclidiana, HR-5: zero transcendentes). O `%` e o
+/// `/` da WGSL sobre `i32` têm exactamente o sinal e o truncamento do Rust, então `rem_euclid` e
+/// `div_euclid` portam-se em duas linhas cada.
+///
+/// ⚠️ **FRONTEIRA DECLARADA:** a CPU conta em `i64` e o dispositivo em `i32`, mas a coluna de
+/// estado é `f32` nos DOIS — logo o tique deixa de ser representável a `2²⁴` muito antes de
+/// qualquer um dos inteiros transbordar. *A largura do inteiro não é o recurso; a da coluna é.*
+///
+/// ⚠️ Cada selector repete a lei de borda do Rust: `f32::NAN as i64` vale `0` (a conversão
+/// float→int satura, e o NaN vai a zero) e `NaN.max(0.0)` vale `0.0`. Um `round` da WGSL
+/// (meio-par) ou um `max` com NaN responderiam outra coisa, plausível.
+const GPU_KERNEL: GpuKernel = GpuKernel {
+    wgsl: "\
+        let ct_p = read_pulse_pulse(i);\n\
+        let ct_rise = ct_p > 0.5 && read_state_count_prev(i) <= 0.5;\n\
+        let ct_prev = read_state_count_tick(i);\n\
+        // `step` e' inteiro e pode ser NEGATIVO -- contar para tras e' a capacidade.\n\
+        let ct_counted = select(ct_prev, ct_prev + ct_round(params.step), ct_rise);\n\
+        // Reset por NIVEL, e ele GANHA de uma contagem simultanea (TD Count CHOP).\n\
+        let ct_reset = read_reset_pulse(i) > 0.5;\n\
+        let ct_to = ct_round(params.reset_to);\n\
+        let ct_t = select(ct_counted, select(0.0, ct_to, ct_to >= 0.0), ct_reset);\n\
+        let ct_n = max(ct_int(params.count_max), 1);\n\
+        write_v(i, f32(ct_shown(ct_int(ct_t), ct_n, ct_mode_of(params.mode))));\n\
+        write_count_tick(i, ct_t);\n\
+        write_count_prev(i, ct_p);\n",
+    wgsl_lib: "\
+        // Rust `f32::round` = meio para LONGE do zero; o `round` da WGSL e' meio-par.\n\
+        fn ct_round(x: f32) -> f32 {\n\
+        \x20   return select(ceil(x - 0.5), floor(x + 0.5), x >= 0.0);\n\
+        }\n\
+        // O gemeo de `<f32> as i64`: NaN vale ZERO, e os extremos saturam.\n\
+        fn ct_int(x: f32) -> i32 {\n\
+        \x20   if (!(x == x)) { return 0; }\n\
+        \x20   return i32(clamp(ct_round(x), -16777216.0, 16777216.0));\n\
+        }\n\
+        // `i64::rem_euclid` / `div_euclid` para divisor POSITIVO: o `%` e o `/` da WGSL\n\
+        // tem o sinal do dividendo e truncam para zero, como os do Rust.\n\
+        fn ct_rem_e(a: i32, n: i32) -> i32 {\n\
+        \x20   let r = a % n;\n\
+        \x20   return select(r, r + n, r < 0);\n\
+        }\n\
+        fn ct_div_e(a: i32, n: i32) -> i32 {\n\
+        \x20   let q = a / n;\n\
+        \x20   return select(q, q - 1, (a % n) < 0);\n\
+        }\n\
+        // O gemeo de `LimitMode::from_param`: `1` Clamp, `2` Zigzag, o resto Wrap.\n\
+        fn ct_mode_of(x: f32) -> i32 {\n\
+        \x20   let r = ct_round(x);\n\
+        \x20   if (r == 1.0) { return 1; }\n\
+        \x20   if (r == 2.0) { return 2; }\n\
+        \x20   return 0;\n\
+        }\n\
+        // O gemeo de `displayed`.\n\
+        fn ct_shown(tick: i32, n: i32, mode: i32) -> i32 {\n\
+        \x20   if (mode == 1) { return clamp(tick, 0, n - 1); }\n\
+        \x20   if (mode == 2) {\n\
+        \x20       if (n == 1) { return 0; }\n\
+        \x20       let period = 2 * (n - 1);\n\
+        \x20       let m = ct_rem_e(tick, period);\n\
+        \x20       return select(period - m, m, m < n);\n\
+        \x20   }\n\
+        \x20   return ct_rem_e(tick, n);\n\
+        }\n",
+    bindings: &[
+        ColumnBinding {
+            column: PULSE_COL,
+            dim: Dim::Scalar,
+            access: ColumnAccess::Consume,
+            identity: [0.0; 4],
+            port: 0,
+        },
+        ColumnBinding {
+            column: VALUE_COL,
+            dim: Dim::Scalar,
+            access: ColumnAccess::Write,
+            identity: [0.0; 4],
+            port: 0,
+        },
+        ColumnBinding {
+            column: TICK_COL,
+            dim: Dim::Scalar,
+            access: ColumnAccess::ReadWrite,
+            identity: [0.0; 4],
+            port: 1,
+        },
+        ColumnBinding {
+            column: PREV_COL,
+            dim: Dim::Scalar,
+            access: ColumnAccess::ReadWrite,
+            identity: [0.0; 4],
+            port: 1,
+        },
+        ColumnBinding {
+            // ⚠️ `Read` e NÃO `ReadBroadcast`: o `scalar_col` da CPU enche com `0` e **não**
+            // segura um reset de comprimento `1` sobre o campo. A lei do broadcast é do
+            // `pulse_at`, que este nó não usa nesta porta.
+            column: PULSE_COL,
+            dim: Dim::Scalar,
+            access: ColumnAccess::Read,
+            identity: [0.0; 4],
+            port: 2,
+        },
+    ],
+    params: &["count_max", "mode", "reset_to", "step"],
+    count_law: None,
+    variant_by_param: None,
+    applicable: None,
 };
 
 /// What happens to the count at the top of its range (TD Count CHOP limit modes).
@@ -364,6 +484,7 @@ impl NodeOp for PulseCounter {
 /// `ph2d-node-registry-init::register_all_nodes`.
 pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register(Box::new(PulseCounter))?;
+    reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
     reg.register_ui(
         MANIFEST.id,
         ph2d_node_registry::NodeUiManifest {

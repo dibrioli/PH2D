@@ -33,6 +33,7 @@ pub struct Segmento {
 /// fama de desempenho do pincel (§10, §13, quatro relatos públicos). A cadeia é
 /// a mesma do princípio ao fim do traço; construí-la uma vez não é optimização,
 /// é ler a §10.
+#[derive(Clone, Debug)]
 pub struct Cadeia {
     pub segmentos: Vec<Segmento>,
     /// `n_segmentos × n_vertices`, em linha por segmento.

@@ -5,6 +5,7 @@
 //! ferramenta está na mão.** Um traço é uma lista de dabs contra UM brush.
 
 use crate::falloff::Falloff;
+use crate::pose_controlos::PoseControlos;
 use crate::grip::{Amount, Grip};
 use crate::{Alpha, AlphaStencil};
 
@@ -261,6 +262,15 @@ pub struct Brush {
     /// ⚠️ **Ela só muda o PEN-DOWN**, e mais nada: escolhido o ponto, o gesto
     /// segue idêntico. Por isso ela vive aqui e não numa lei de kernel.
     pub grab_active_vertex: bool,
+    /// **OS SEIS CONTROLOS PRÓPRIOS DO PINCEL DE POSE** — ⛔ só o
+    /// [`crate::Verb::Pose`] os lê.
+    ///
+    /// ⚠️ Eles vivem agrupados num tipo da crate da lei, e não soltos aqui, de
+    /// propósito: são **seis** e crescem juntos, e uma struct de pincel com
+    /// seis campos soltos que só um verbo lê é onde o sétimo nasce esquecido
+    /// num dos consumidores. O raio, a força e a curva **não** entram aqui —
+    /// esses são partilhados e já existem no pincel.
+    pub pose: PoseControlos,
     /// **SÓ AS FACES DE FRENTE** — a opção de pincel *"Front Faces Only"* da
     /// referência (rótulo público: é o que o artista vê na tela dela).
     ///
@@ -589,6 +599,7 @@ impl Default for Brush {
             // ⚠️ **Desligada, como na referência** — e a diferença só se vê em
             // malha grossa (ver o doc da porta).
             grab_active_vertex: false,
+            pose: PoseControlos::default(),
             // ⚠️ **DERIVADO do verbo, como o `accumulate` e o `falloff` logo
             // acima** — e pela mesma razão: um literal aqui seria o MESMO fato
             // em dois lugares, e no dia em que a tabela do verbo mudasse ele

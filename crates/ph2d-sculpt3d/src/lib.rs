@@ -60,6 +60,9 @@ mod falloff;
 /// **A LEI QUE UM ARRASTO DE FILTRO APLICA** — a uniao das duas familias.
 mod filter_law;
 mod grip;
+/// Os controlos próprios do pincel de POSE — ver [`pose_controlos`].
+pub mod pose_controlos;
+pub use pose_controlos::PoseControlos;
 /// **O CAMPO ELÁSTICO** — os Kelvinlets regularizados (de Goes & James 2017),
 /// que são o `l-mode` da família que agarra. Ver [`kelvinlet`].
 pub mod kelvinlet;

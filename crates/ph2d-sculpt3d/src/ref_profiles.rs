@@ -106,6 +106,13 @@ const fn profile_s(verb: Verb) -> Option<VerbProfile> {
         // proíbe por nome (*«um l-mode inventado traria a autoridade que não
         // tem»*). Ele nasce com o material de fábrica do `stroke_cloth`.
         Verb::Cloth => return None,
+        // ⛔ **A POSE também não tem perfil `s`, e pela mesma razão:** o
+        // SculptGL não tem pincel de pose, logo não há número a LER. Os
+        // controlos próprios dela (modo, segmentos, desvio, suavizações,
+        // âncora, trava) nascem dos defaults declarados em [`ph2d_pose`], onde
+        // a recomendação está marcada **como nossa** — ⛔ não como observação
+        // do alvo, cuja proveniência era circular.
+        Verb::Pose => return None,
         // `Brush.js:11-16` — `_radius 50 · _intensity 0.5 · _clay true ·
         // _accumulate true`. A tool `Brush` do original é a nossa **Draw E
         // Clay** (o `_clay` é um checkbox dela, ligado de fábrica).
@@ -333,7 +340,17 @@ const fn profile_b(verb: Verb) -> Option<VerbProfile> {
     // portado a lei de força da referência vestiria de referência uma escolha
     // nossa, que é o que o §4 do plano proíbe por nome; e um dropdown de uma
     // opção é um controlo morto.
-    if matches!(verb, Verb::Cloth) {
+    // ⛔⛔ **A POSE também não o oferece, e por uma razão DIFERENTE da do
+    // tecido — que é precisamente porque ela precisa de estar escrita.** O
+    // tecido não tem `B` porque a lei dele é um paper e não há segunda leitura
+    // a escolher; a pose **é** ferramenta da referência restrita, e o que falta
+    // são os **DEFAULTS**: a §1.4 da espec mediu que a proveniência que os
+    // sustentava era **circular** (o cabeçalho de cada fixtura é a ENTRADA do
+    // harness, não uma observação do que o alvo traz de origem), e o canal que
+    // responderia é dado do alvo que ninguém leu. ⇒ oferecer um chip `B` aqui
+    // venderia como «os números dela» aquilo que a própria espec declara ser
+    // **recomendação nossa**.
+    if matches!(verb, Verb::Cloth | Verb::Pose) {
         return None;
     }
     Some(VerbProfile {
@@ -368,7 +385,15 @@ const fn blender_strength_curve(verb: Verb) -> StrengthCurve {
         // ⚠️ **Os dois que AGARRAM**: ali o deslocamento é o gesto, e a
         // referência entrega-o linear no slider. Elevá-lo ao quadrado tirava
         // metade do gesto ao artista a meio curso.
-        Verb::Move | Verb::SnakeHook => StrengthCurve::Linear,
+        // ⚠️ **E a POSE é a terceira, com o número ao lado:** a força dela
+        // multiplica o deslocamento do arrasto e entra **linearmente** (espec
+        // §1.2), medido pelo par de fixturas de torção a forças `1,0` e `0,5`,
+        // que dão o mesmo `k` por pixel. ⛔ Esta linha é inerte hoje — a pose
+        // não oferece perfil `B` (acima) e a lei dela lê `brush.strength`
+        // directo —, e está escrita para que o dia em que alguém lhe der um
+        // perfil não a eleve ao quadrado em silêncio. *Este repo já pagou essa
+        // confusão uma vez, com a suíte inteira verde.*
+        Verb::Move | Verb::SnakeHook | Verb::Pose => StrengthCurve::Linear,
         _ => StrengthCurve::Squared,
     }
 }

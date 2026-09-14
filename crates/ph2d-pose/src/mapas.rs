@@ -23,6 +23,7 @@ use crate::vetor::{add, cruz, direccao_entre_posicoes, escalar, normalizar, pont
 use crate::{Controlos, Deformacao};
 
 /// O mapa afim de um segmento num octante.
+#[derive(Clone, Debug)]
 pub struct Mapa {
     origem: V3,
     origem_inicial: V3,

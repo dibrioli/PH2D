@@ -149,6 +149,16 @@ fn constante(_p: f32) -> f32 {
 /// excepção, as 19 grandezas que a definem. ⛔ E um valor desconhecido **PARA**
 /// em vez de cair num default: uma curva lida como «a de omissão» por engano
 /// mede outra lei e lê-se como erro nosso.
+/// ⛔ Um valor desconhecido **PARA** em vez de cair na de omissão: uma curva
+/// lida como «a de sempre» por engano mede outra lei e lê-se como erro nosso.
+fn curva_de(t: &Traco) -> fn(f32) -> f32 {
+    match t.s("curva") {
+        "smooth" => ph2d_pose::suave,
+        "constante" | "constant" => constante,
+        c => panic!("curva desconhecida: {c}"),
+    }
+}
+
 fn controlos(t: &Traco) -> Controlos {
     Controlos {
         modo: match t.s("modo") {
@@ -164,11 +174,6 @@ fn controlos(t: &Traco) -> Controlos {
         trava_rotacao: t.b("trava_rotacao"),
         raio: t.f("raio"),
         forca: t.f("forca"),
-        curva: match t.s("curva") {
-            "smooth" => ph2d_pose::suave,
-            "constante" | "constant" => constante,
-            c => panic!("curva desconhecida: {c}"),
-        },
         invertido: t.b("invertido"),
         simetria: [t.b("simetria_x"), false, false],
         so_conectado: t.b("so_conectado"),
@@ -198,7 +203,7 @@ fn correr(nome: &str) -> Corrida {
     );
 
     let escondido = vec![false; sup.pos.len()];
-    let mut viz = Vizinhanca::construir(sup.pos.len(), &sup.faces, &escondido);
+    let mut viz = Vizinhanca::construir(sup.pos.len(), sup.faces.iter().map(Vec::as_slice), &escondido);
     if !ctrl.so_conectado {
         viz.ligar_pecas(&sup.pos, ctrl.distancia_max_entre_pecas);
     }
@@ -226,13 +231,14 @@ fn correr(nome: &str) -> Corrida {
     let mut pose = Pose::comecar(&viz, &sup.pos, &escondido, eleito, c0, &ctrl);
 
     let ppu = t.f("pixels_por_unidade");
+    let curva = curva_de(&t);
     let mut saida = Vec::new();
     for ponto in &t.caminho {
         let ev = ph2d_pose::Evento {
             arrasto: [ponto[0] - c0[0], ponto[1] - c0[1], ponto[2] - c0[2]],
             dx_pixels: (ponto[0] - c0[0]) * ppu,
         };
-        pose.evento(&ctrl, &ev);
+        pose.evento(&ctrl, &ev, &curva);
     }
     pose.posicoes(&ctrl, &sup.pos, fatores, &mut saida);
 
@@ -323,7 +329,7 @@ fn sonda_o_vale_do_comprimento_do_primeiro_segmento() {
         let sup = superficie(t.s("superficie"));
         let ctrl = controlos(&t);
         let escondido = vec![false; sup.pos.len()];
-        let viz = Vizinhanca::construir(sup.pos.len(), &sup.faces, &escondido);
+        let viz = Vizinhanca::construir(sup.pos.len(), sup.faces.iter().map(Vec::as_slice), &escondido);
         let c0 = t.caminho[0];
         let eleito =
             ph2d_pose::cadeia::mais_proximo_global(&sup.pos, &escondido, c0).expect("malha");

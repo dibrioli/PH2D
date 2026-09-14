@@ -123,8 +123,23 @@ impl SculptStroke {
         // região — duas regiões em lados opostos da peça não partilham vértice
         // nenhum, e uma sessão só resolveria um sistema desconexo. Ver
         // [`super::stroke_cloth`].
-        if brush.verb == Verb::Cloth {
-            let n = self.cloth_dab(mesh, brush, dab, sym);
+        if brush.verb.resolve_a_propria_regiao() {
+            // ⭐ **A porta diz SE desvia; o despacho diz PARA ONDE.** Manter as
+            // duas coisas numa condição só foi o que deixou o desvio a nomear
+            // verbos enquanto os censos perguntavam ao grip — duas respostas à
+            // mesma pergunta, que concordavam por acaso enquanto havia um único
+            // caso.
+            let n = match brush.verb {
+                Verb::Cloth => self.cloth_dab(mesh, brush, dab, sym),
+                Verb::Pose => self.pose_dab(mesh, brush, dab, sym),
+                // ⚠️ Quem acrescentar um verbo à porta sem lhe dar destino cai
+                // aqui — e cai **alto** em debug, em vez de não mover nada em
+                // silêncio.
+                outro => {
+                    debug_assert!(false, "{outro:?} declara resolver a própria região e não tem destino");
+                    0
+                }
+            };
             self.call_moved.extend_from_slice(&self.moved);
             self.call_refreshed
                 .extend_from_slice(self.region.refreshed());

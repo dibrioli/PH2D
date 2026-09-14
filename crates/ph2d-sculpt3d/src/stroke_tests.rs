@@ -207,7 +207,18 @@ fn a_masked_vertex_is_not_moved_by_any_verb() {
 
 #[test]
 fn every_verb_inherits_symmetry_from_the_one_place_it_is_expanded() {
-    for verb in Verb::ALL {
+    // ⚠️ **A população é derivada, não escrita:** este censo mede o conjunto
+    // TOCADO, que é um plano por-slot do laço por-vértice — quem
+    // [`Verb::resolve_a_propria_regiao`] desvia antes dele e nunca o preenche,
+    // logo aqui ele leria `0` tocados e o gate mediria a ausência do laço em vez
+    // da simetria. ⛔ **Não é uma isenção:** a simetria dos dois que desviam é
+    // medida onde ela de facto vive — o tecido no `stroke_cloth_tests`, a pose
+    // em [`super::super::pose_simetria_tests`] e, contra o oráculo, nas três
+    // fixturas `_simetria_x` da bancada da `ph2d-pose`.
+    for verb in Verb::ALL
+        .into_iter()
+        .filter(|v| v.writes_through_applicator())
+    {
         let mut mesh = sphere();
         let b = Brush {
             verb,

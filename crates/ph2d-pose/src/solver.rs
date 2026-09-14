@@ -18,7 +18,7 @@
 
 use crate::cadeia::Cadeia;
 use crate::vetor::{add, escalar, normalizar, ponto, sub, Rot, V3};
-use crate::{Controlos, Deformacao};
+use crate::{Controlos, Curva, Deformacao};
 
 /// O que muda de um evento para o outro.
 pub struct Evento {
@@ -44,7 +44,7 @@ pub struct Evento {
 const RAD_POR_PIXEL: f32 = 0.020_000;
 
 /// Resolve a cadeia para o estado deste evento.
-pub fn resolver(cadeia: &mut Cadeia, ctrl: &Controlos, ev: &Evento) {
+pub fn resolver(cadeia: &mut Cadeia, ctrl: &Controlos, ev: &Evento, curva: Curva<'_>) {
     // §1.3 — a força efectiva é `força × pluma_de_simetria`, e a pluma vale `1`
     // a menos que a opção de esbatimento da simetria esteja ligada.
     // ⚠️ A **pressão da caneta NÃO entra aqui**, e está medido: a fixtura com
@@ -54,7 +54,7 @@ pub fn resolver(cadeia: &mut Cadeia, ctrl: &Controlos, ev: &Evento) {
 
     match ctrl.deformacao() {
         Deformacao::Rodar => resolver_corrente(cadeia, alvo, ctrl.ancorado),
-        Deformacao::Torcer => torcer(cadeia, ctrl, ev, s),
+        Deformacao::Torcer => torcer(cadeia, ev, s, curva),
         Deformacao::Escalar => {
             // §5.4 passo 1 — ⚠️ com a trava **desligada** o gesto roda **e**
             // escala; com ela ligada, escala sem rodar.
@@ -124,7 +124,7 @@ fn resolver_corrente(cadeia: &mut Cadeia, alvo_inicial: V3, ancorado: bool) {
 }
 
 /// §5.2 — a torção. As posições de cabeça e origem **não** se mexem.
-fn torcer(cadeia: &mut Cadeia, ctrl: &Controlos, ev: &Evento, s: f32) {
+fn torcer(cadeia: &mut Cadeia, ev: &Evento, s: f32, curva: Curva<'_>) {
     let n = cadeia.segmentos.len().max(1) as f32;
     // `(x_no_primeiro_evento − x_agora)` ⇒ o simétrico do deslocamento.
     let angulo = -ev.dx_pixels * s * RAD_POR_PIXEL;
@@ -135,7 +135,7 @@ fn torcer(cadeia: &mut Cadeia, ctrl: &Controlos, ev: &Evento, s: f32) {
         };
         // A curva de atenuação avaliada no **índice do segmento**, não numa
         // distância — este é o único controlo do pincel que a lê.
-        let atenuacao = (ctrl.curva)(1.0 - i as f32 / n);
+        let atenuacao = curva(1.0 - i as f32 / n);
         // ⚠️ A rotação guardada é a **INVERSA** da rotação do segmento.
         seg.rot = Rot::eixo_angulo(eixo, -(angulo * atenuacao));
     }

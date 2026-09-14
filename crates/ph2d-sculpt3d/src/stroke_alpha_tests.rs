@@ -271,7 +271,16 @@ fn the_alpha_carves_variation_where_the_falloff_alone_is_flat() {
 /// exatamente sobre a única ferramenta cuja saída é outro canal.
 #[test]
 fn every_verb_reads_the_alpha() {
-    for verb in Verb::ALL {
+    // ⚠️ **O alpha é um peso POR-VÉRTICE amostrado na pegada do dab**, e entra
+    // pela linha única do laço. Quem [`Verb::resolve_a_propria_regiao`] não tem
+    // pegada de dab nenhuma — a pose escolhe a região pela LIGAÇÃO da malha e
+    // não tem atenuação radial —, logo não há onde o carimbo ser amostrado.
+    // ⛔ Isto é uma ausência **estrutural**, não um chip morto: o painel destes
+    // verbos não oferece alpha.
+    for verb in Verb::ALL
+        .into_iter()
+        .filter(|v| v.writes_through_applicator())
+    {
         let mut snap: [Vec<f32>; 2] = [Vec::new(), Vec::new()];
         for (k, armed) in [false, true].into_iter().enumerate() {
             let mut mesh = sphere();

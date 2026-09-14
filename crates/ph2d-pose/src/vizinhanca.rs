@@ -31,7 +31,15 @@ impl Vizinhanca {
     /// ⚠️ **Sem fixtura:** o corpus do oráculo nunca esconde nada (§12.4 não a
     /// lista porque a §14 não tem eixo de ocultação). A regra está escrita da
     /// forma que o resto da lei pressupõe — *declarada, não medida*.
-    pub fn construir(n_vertices: usize, faces: &[Vec<u32>], escondido: &[bool]) -> Vizinhanca {
+    /// ⭐ `faces` é um iterador de **anéis** (`&[u32]`), não uma estrutura
+    /// concreta: a malha da escultura guarda triângulos e quads num
+    /// `[u32; 4]` com sentinela e a bancada lê-os de um ficheiro — pedir uma
+    /// `Vec<Vec<u32>>` obrigaria um dos dois a copiar a malha inteira por
+    /// traço só para atravessar esta porta.
+    pub fn construir<'f, I>(n_vertices: usize, faces: I, escondido: &[bool]) -> Vizinhanca
+    where
+        I: IntoIterator<Item = &'f [u32]>,
+    {
         let oculto = |v: u32| escondido.get(v as usize).copied().unwrap_or(false);
         let mut listas: Vec<Vec<u32>> = vec![Vec::new(); n_vertices];
         for anel in faces {

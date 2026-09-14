@@ -109,6 +109,13 @@ impl SculptStroke {
             // mesmo assim?»*: não mover nada. ⚠️ Um `unreachable!()` aqui
             // trocaria um no-op por um panic no caminho do ponteiro.
             Verb::Cloth => live,
+            // ⛔⛔ **INALCANÇÁVEL pela MESMA razão, e a resposta é a mesma:** a
+            // pose não tem alvo por-vértice — ela tem uma cadeia de mapas
+            // afins, e o `SculptStroke::dab` desvia para o `stroke_pose` antes
+            // deste laço existir. Não mover nada é a resposta correcta para
+            // *«e se alguém chegar aqui mesmo assim?»*; um `unreachable!()`
+            // trocaria um no-op por um panic no caminho do ponteiro.
+            Verb::Pose => live,
             // `Brush.js:57-91` — `deform = intensidade · raio · 0,1`, e o peso
             // inteiro (curva × intensidade × máscara × alpha) chega no `w`.
             Verb::Draw => add(live, n_area, reach * w),

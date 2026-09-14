@@ -119,6 +119,15 @@ impl Verb {
                 // alvo), e o adaptador lê-o do `Brush::invert`. ⛔ A lei VBD
                 // anterior não o lia, e é por isso que esta linha não existia.
                 | Self::Cloth
+                // ⭐⭐ **A POSE honra o Ctrl, e de uma maneira que nenhum outro
+                // verbo desta lista usa: ele NÃO nega a força — ele TROCA DE
+                // DEFORMAÇÃO.** Girar vira torcer, escalar vira transladar. ⚠️ E
+                // num dos três modos (espremer/esticar) ele **não muda nada**,
+                // porque ali não há segunda deformação para escolher — medido:
+                // a fixtura invertida é idêntica **ao bit** à normal.
+                // ⇒ *«honra o Ctrl» aqui quer dizer «o Ctrl é observável», e é
+                // exactamente isso que este predicado pergunta.*
+                | Self::Pose
         )
     }
 
@@ -165,6 +174,33 @@ impl Verb {
     /// já tinha registada; quem a apanhou foi o clippy, não uma leitura.
     #[must_use]
     pub fn writes_through_applicator(self) -> bool {
-        !matches!(self.grip(), Grip::Simulate)
+        !self.resolve_a_propria_regiao()
+    }
+
+    /// **Este verbo DESVIA antes do laço por-vértice e é dono da própria
+    /// região?**
+    ///
+    /// ⭐⭐ **É a porta ÚNICA da pergunta, e ela nasceu porque havia duas
+    /// respostas.** O desvio no `stroke_symmetry` nomeava verbos à mão enquanto
+    /// os censos do `stroke_apply` perguntavam ao [`Grip`] — e as duas
+    /// concordavam **por acaso**, enquanto o único que desviava era a simulação.
+    /// A pose quebrou o acaso: ela desvia e o grip dela é o [`Grip::Hold`], que
+    /// dois verbos do laço também usam. *Duas respostas à mesma pergunta
+    /// divergem no dia do terceiro caso, e este foi esse dia.*
+    ///
+    /// ⚠️ **Os dois que respondem `true` fazem-no por razões DIFERENTES**, e
+    /// isso é o que impede de derivar esta resposta do grip:
+    /// - o **tecido** tem um solver, e cada cópia de simetria tem a sua região —
+    ///   duas regiões em lados opostos da peça não partilham vértice nenhum;
+    /// - a **pose** tem uma cadeia de mapas afins que **já resolve os oito
+    ///   octantes de espelho numa passagem só**, e não tem atenuação radial
+    ///   nenhuma: a região dela cresce pela **ligação** da malha, não pelo raio.
+    ///
+    /// ⛔ *Nada aqui diz que eles são excepções toleradas:* cada um tem os
+    /// próprios gates — `stroke_cloth_tests` e a bancada da `ph2d-pose` — e eles
+    /// medem o que cada um de facto promete.
+    #[must_use]
+    pub fn resolve_a_propria_regiao(self) -> bool {
+        matches!(self, Self::Cloth | Self::Pose)
     }
 }

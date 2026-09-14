@@ -49,7 +49,7 @@ const CURSOR: V3 = [0.5, 0.1, 0.0];
 fn traco(ctrl: &Controlos, arrasto: V3) -> (Vec<V3>, Vec<Segmento>) {
     let (pos, faces) = grelha(24);
     let escondido = vec![false; pos.len()];
-    let viz = Vizinhanca::construir(pos.len(), &faces, &escondido);
+    let viz = Vizinhanca::construir(pos.len(), faces.iter().map(Vec::as_slice), &escondido);
     let cursor = CURSOR;
     let eleito = crate::cadeia::mais_proximo_global(&pos, &escondido, cursor).expect("malha");
     let mut pose = Pose::comecar(&viz, &pos, &escondido, eleito, cursor, ctrl);
@@ -67,6 +67,7 @@ fn traco(ctrl: &Controlos, arrasto: V3) -> (Vec<V3>, Vec<Segmento>) {
                 arrasto: [arrasto[0] * t, arrasto[1] * t, arrasto[2] * t],
                 dx_pixels: arrasto[0] * t * 100.0,
             },
+            &crate::suave,
         );
     }
     let mut saida = Vec::new();

@@ -398,11 +398,28 @@ pub enum Verb {
     /// facto usou em cada evento — ele reamostra a superfície VIVA, que se
     /// deforma debaixo do traço. Ver a espec §6.3.
     Nudge,
+    /// **A POSE** — o pincel que acha sozinho uma **articulação enterrada** na
+    /// forma e dobra a região à volta dela, como um braço. Sem esqueleto.
+    ///
+    /// ⚠️⚠️ **É o verbo que MENOS se parece com os outros 26, e a diferença não
+    /// é de grau:** todos eles são um núcleo por-vértice atenuado pela distância
+    /// ao cursor, e este **não tem atenuação radial nenhuma**. Um vértice a dez
+    /// raios de distância pode mover-se por inteiro, porque a região é escolhida
+    /// pela **ligação** da malha e não pela vizinhança no espaço — a cadeia
+    /// cresce por arestas, pára no raio, e o primeiro anel para lá dele dá o
+    /// **pivô**. ⇒ ele **desvia antes do `dab_core`**, como o [`Self::Cloth`],
+    /// e por uma razão própria: a lei dele já resolve os **oito octantes de
+    /// espelho numa passagem só** (a simetria vive nos mapas afins), logo passar
+    /// pela expansão de espelho genérica aplicá-la-ia duas vezes.
+    ///
+    /// A lei inteira vive na crate-folha [`ph2d_pose`], medida contra `69`
+    /// traços do oráculo; a espec é `docs/3D/cleanroom/SPEC_pose_brush.md`.
+    Pose,
 }
 
 impl Verb {
     /// Todos, na ordem em que a UI os lista.
-    pub const ALL: [Self; 26] = [
+    pub const ALL: [Self; 27] = [
         Self::Draw,
         Self::Inflate,
         Self::Smooth,
@@ -429,6 +446,7 @@ impl Verb {
         Self::Cloth,
         Self::Thumb,
         Self::Nudge,
+        Self::Pose,
     ];
 
     /// O nome que a UI mostra.
@@ -459,6 +477,7 @@ impl Verb {
             Self::SlideRelax => "Slide Relax",
             Self::SurfaceSmooth => "Surface Smooth",
             Self::Layer => "Layer",
+            Self::Pose => "Pose",
             Self::Thumb => "Thumb",
             Self::Nudge => "Nudge",
         }
@@ -557,6 +576,14 @@ impl Verb {
             // do deslocamento é a mesma nos dois.
             Self::Thumb => Grip::Hold,
             Self::Nudge => Grip::Hook,
+            // ⭐ **A POSE também não traz grip novo.** Ela precisa exactamente
+            // do que o `Hold` já promete — a pegada presa no pen-down e o
+            // `pull` como deslocamento **TOTAL** desde então —, porque a lei
+            // dela é função do arrasto acumulado e não de um incremento
+            // (`T = C + G·s`). ⚠️ E o `Hold` traz de graça a outra metade de
+            // que ela precisa: *não percorre o caminho*, e um traço de pose
+            // resolve-se **uma vez por evento**, nunca por passo de espaçamento.
+            Self::Pose => Grip::Hold,
             Self::Twist => Grip::Turn(Amount::Angle),
             Self::LocalScale => Grip::Turn(Amount::Fraction),
             // O CARIMBO: a faixa compõe sobre a lista de dabs como o Draw.

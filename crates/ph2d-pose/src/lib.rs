@@ -87,17 +87,22 @@ pub enum Deformacao {
 
 /// A curva de atenuação, avaliada em `[0,1]`.
 ///
-/// ⭐ **É um ponteiro de função, e isso é uma decisão:** o vocabulário das curvas
-/// já vive na crate que o possui (`ph2d-sculpt3d::falloff`, com doze leis).
-/// Copiá-lo para aqui seria escrever a mesma lei em dois sítios — o defeito de
-/// que este repo tem memória escrita. ⇒ **quem chama passa a sua**; esta crate
-/// só a avalia.
-pub type Curva = fn(f32) -> f32;
+/// ⭐⭐ **Ela entra no EVENTO, não nos controlos, e isso é uma decisão de
+/// desenho:** o vocabulário das curvas já vive na crate que o possui
+/// (`ph2d-sculpt3d::falloff`, doze leis) e copiá-lo para aqui seria escrever a
+/// mesma lei em dois sítios. ⚠️ **E um ponteiro de função não chegava:** uma
+/// das doze é a curva **AUTORADA pelo artista**, que é dado e não código — ela
+/// não cabe num `fn(f32) -> f32`. *Uma API que só sabe exprimir onze das doze
+/// opções entrega a décima segunda como silêncio.*
+///
+/// ⛔ O argumento é `1 − i/n` (o **índice do segmento**, §5.2), e essa lei fica
+/// aqui: quem passa a curva não tem de saber onde ela é amostrada.
+pub type Curva<'a> = &'a dyn Fn(f32) -> f32;
 
 /// A curva de omissão do pincel: `3p² − 2p³`.
 ///
-/// ⚠️ Existe aqui **só** para o `Default` ter um valor neutro. ⛔ Não acrescente
-/// as outras nove: elas têm dono.
+/// ⚠️ Existe aqui **só** para os testes e para quem não tem curva própria.
+/// ⛔ Não acrescente as outras onze: elas têm dono.
 pub fn suave(p: f32) -> f32 {
     p * p * (3.0 - 2.0 * p)
 }
@@ -119,9 +124,6 @@ pub struct Controlos {
     pub raio: f32,
     /// ⚠️ Entra **linearmente**, não ao quadrado.
     pub forca: f32,
-    /// ⚠️ **Só o modo de torção a usa**, e o argumento dela é o **índice do
-    /// segmento**, não uma distância (§5.2).
-    pub curva: Curva,
     pub invertido: bool,
     pub simetria: [bool; 3],
     /// Ligado, a travessia não atravessa peças desligadas (§2.4).
@@ -146,7 +148,6 @@ impl Default for Controlos {
             trava_rotacao: false,
             raio: 0.25,
             forca: 1.0,
-            curva: suave,
             invertido: false,
             simetria: [false; 3],
             so_conectado: true,
@@ -170,6 +171,7 @@ impl Controlos {
 }
 
 /// Um traço de pose, do primeiro evento ao último.
+#[derive(Clone, Debug)]
 pub struct Pose {
     cadeia: Cadeia,
     mapas: Vec<mapas::Mapa>,
@@ -208,8 +210,8 @@ impl Pose {
 
     /// Cada evento: actualiza-se o arrasto, resolve-se a cadeia (§5) e os mapas
     /// (§6) passam a valer para o novo deslocamento.
-    pub fn evento(&mut self, ctrl: &Controlos, ev: &Evento) {
-        solver::resolver(&mut self.cadeia, ctrl, ev);
+    pub fn evento(&mut self, ctrl: &Controlos, ev: &Evento, curva: Curva<'_>) {
+        solver::resolver(&mut self.cadeia, ctrl, ev, curva);
         self.mapas = mapas::construir(&self.cadeia, ctrl);
     }
 

@@ -233,6 +233,24 @@ pub struct SculptStroke {
     /// ⚠️ Ela nasce no pen-down do filtro e morre no `begin` como as outras — é
     /// isso que a impede de sobreviver a um traço.
     cloth_filter: Option<ph2d_cloth::verlet_gesto::PincelTecido>,
+    /// A sessão do pincel de POSE — ver [`stroke_pose`]. Nasce no pen-down,
+    /// morre no `begin`.
+    ///
+    /// ⭐⭐ **Ela existir é a nossa vantagem medida sobre o alvo:** a cadeia é a
+    /// mesma do princípio ao fim do traço (espec §10), e guardá-la é ler a
+    /// espec, não optimizar.
+    pose: Option<stroke_pose::PoseSessao>,
+    /// O rascunho das posições que a pose devolve — reutilizado entre eventos
+    /// para o traço não alocar a malha inteira a cada movimento do ponteiro.
+    pose_saida: Vec<[f32; 3]>,
+    /// Quantas vezes a cadeia da pose foi construída **neste** traço.
+    ///
+    /// ⭐⭐ **Ele existe para GATEAR a vantagem, não para diagnosticar.** A
+    /// construção é `O(V)` na malha inteira e o alvo repete-a a cada movimento
+    /// do rato; sem um contador, quem a movesse para dentro do laço de eventos
+    /// não partiria teste nenhum — a saída seria a mesma, só mais lenta. Ver
+    /// [`super::pose_simetria_tests`].
+    pub(crate) pose_construcoes: u32,
     /// ⭐ **O filtro de tecido deste gesto colide?** — fotografado no pen-down.
     ///
     /// ⚠️ **Uma bandeira e não uma leitura das propriedades a cada passo**: a
@@ -412,6 +430,9 @@ impl SculptStroke {
         self.cloth_ref.clear();
         // ⚠️ E a do FILTRO pela mesma razão: ela é do gesto, não do programa.
         self.cloth_filter = None;
+        // ⚠️ A cadeia da pose é do TRAÇO: um traço novo acha o pivô outra vez.
+        self.pose = None;
+        self.pose_construcoes = 0;
     }
 }
 
@@ -424,6 +445,12 @@ pub mod stroke_cloth_num;
 
 #[path = "stroke_cloth.rs"]
 mod stroke_cloth;
+/// ⭐ **A ponte do pincel de POSE** — ver [`stroke_pose`]. Irmão do
+/// [`stroke_cloth`] no papel (os dois desviam antes do `dab_core`) e não na
+/// razão: o tecido porque cada cópia de simetria tem a **sua** região; a pose
+/// porque a lei dela **já resolve os oito octantes numa passagem só**.
+#[path = "stroke_pose.rs"]
+mod stroke_pose;
 /// ⭐ **O FILTRO de tecido** (espec §7) — o mesmo solver na peça inteira, sem
 /// pincel. Irmão do [`stroke_cloth_ref`], e o corte é o GESTO: lá um traço com
 /// carimbo, aqui um arrasto que não toca a malha.
@@ -541,6 +568,10 @@ mod tests;
 #[cfg(test)]
 #[path = "stroke_cloth_tests.rs"]
 mod cloth_tests;
+/// Os gates da FIAÇÃO da pose — ver [`super::pose_simetria_tests`].
+#[cfg(test)]
+#[path = "pose_simetria_tests.rs"]
+mod pose_simetria_tests;
 
 #[cfg(test)]
 #[path = "stroke_cloth_filter_tests.rs"]

@@ -63,9 +63,37 @@ impl<'a> Surfaces<'a> {
     /// peça que já mudou entre o traçado e o sombreamento (eles correm em threads diferentes). Uma
     /// indexação crua entraria em pânico **no meio de um quadro**; pintar com o primeiro material é
     /// uma resposta que o artista lê como «ainda não actualizou», que é o que de facto aconteceu.
-    fn of(&self, p: [f32; 3]) -> &Surface {
-        let i = self.owners.and_then(|o| o.at(p)).unwrap_or(0);
-        self.all.get(i).unwrap_or(&self.all[0])
+    ///
+    /// ⛔ **O irmão `of`, que devolvia só o dono, foi APAGADO em 14/09** — o `mix_of` tomou-lhe os
+    /// dois chamadores, e um método que ninguém chama é **lixo**, não um morto a ligar.
+    /// ⭐⭐⭐ **OS DOIS MATERIAIS QUE DISPUTAM ESTE PONTO, e o peso do segundo** — a fronteira de cor,
+    /// suavizada.
+    ///
+    /// # ⛔⛔ Porque ela existe: a fronteira de COR não é uma silhueta
+    ///
+    /// O anti-serrilhado deste ficheiro corre nas [`Gbuffer::edges`] — pixels em que umas
+    /// sub-amostras acertam a peça e outras não. Uma fronteira **entre dois materiais** no meio da
+    /// peça não é nenhuma dessas: ali **todas** as sub-amostras acertam, não há registo de borda, e
+    /// a cor muda de um pixel para o outro **a pique**. Medido: um degrau de até `236` bytes numa
+    /// banda de `1`–`2` px — *a peça fica com o contorno liso e uma escada por dentro*.
+    ///
+    /// ⇒ [`ph2d_field_eval::owners::Owners::mix_at`], cuja largura de transição sai da **geometria**
+    /// e não de um número escolhido.
+    ///
+    /// ⚠️ **`t == 0` é o caminho de sempre**, e ele cobre os dois casos que dominam: uma peça de um
+    /// material só (`owners: None`) e todo pixel longe de uma fronteira. *O custo desta lei mora nos
+    /// `0,5 %` de pixels que estão em cima dela.*
+    fn mix_of(&self, p: [f32; 3], pixel_world: f32) -> (&Surface, &Surface, f32) {
+        let rede = self.all.first().unwrap_or(&self.all[0]);
+        let Some(o) = self.owners else {
+            return (rede, rede, 0.0);
+        };
+        let (a, b, t) = o.mix_at(p, pixel_world);
+        (
+            self.all.get(a).unwrap_or(rede),
+            self.all.get(b).unwrap_or(rede),
+            t,
+        )
     }
 }
 
@@ -121,6 +149,9 @@ pub fn shade_render(
         return out;
     }
     let screen = Screen::new(g.width, g.height, cam.half_extent);
+    // ⭐ **A largura da transição entre dois materiais, em MUNDO** — a única coisa que o
+    // [`Surfaces::mix_of`] não pode adivinhar. Ver [`ph2d_field_eval::owners::Owners::mix_at`].
+    let pixel_world = BOUNDARY_PIXELS * 2.0 * cam.half_extent / w.min(h).max(1) as f32;
     let write = |px: &mut [u8], c: [f32; 4]| {
         px[0] = ph2d_color::srgb::linear_to_srgb_byte(c[0]);
         px[1] = ph2d_color::srgb::linear_to_srgb_byte(c[1]);
@@ -134,12 +165,15 @@ pub fn shade_render(
             if g.hit[i] {
                 // ⭐⭐⭐ **O MATERIAL sai do PONTO** — ver [`Surfaces`]. Numa peça de um material só
                 // isto é uma leitura de `all[0]` e mais nada.
-                let c = radiance(
-                    surfaces.of(g.point[i]),
+                let v = view_direction(cam, &screen, x, y);
+                let c = mixed_radiance(
+                    surfaces,
+                    g.point[i],
+                    pixel_world,
                     light,
                     look,
                     g.normal[i],
-                    view_direction(cam, &screen, x, y),
+                    v,
                 );
                 write(px, [c[0], c[1], c[2], 1.0]);
             } else {
@@ -165,11 +199,18 @@ pub fn shade_render(
         // não guarda os pontos das sub-amostras. ⛔ Numa silhueta entre DUAS peças de cores
         // diferentes isto pinta a borda com a cor da que o centro apanhou — declarado, e é a mesma
         // aproximação que a direcção de vista já faz.
-        let surface = surfaces.of(g.point[i]);
         let mut acc = [0.0f32; 4];
         for k in 0..4 {
             let c = if e.hit[k] {
-                let rgb = radiance(surface, light, look, e.normal[k], v);
+                let rgb = mixed_radiance(
+                    surfaces,
+                    g.point[i],
+                    pixel_world,
+                    light,
+                    look,
+                    e.normal[k],
+                    v,
+                );
                 [rgb[0], rgb[1], rgb[2], 1.0]
             } else {
                 bg
@@ -181,4 +222,68 @@ pub fn shade_render(
         write(&mut out[i * 4..i * 4 + 4], acc);
     }
     out
+}
+
+/// ⭐⭐⭐ **QUANTOS PIXELS A FRONTEIRA ENTRE DOIS MATERIAIS LEVA A MUDAR** — medido, com a tabela.
+///
+/// # ⚠️ Porque não é `1`, que é o que a forma fechada dá
+///
+/// O [`ph2d_field_eval::owners::Owners::mix_at`] converte a diferença de campos numa distância
+/// supondo que se anda **perpendicular à fronteira** (`|∇d| ≈ 2`). Mas quem percorre os pixels anda
+/// **ao longo da superfície visível**, e o ângulo entre as duas direcções encolhe o passo efectivo —
+/// a rampa sai mais estreita do que um pixel e volta a ler-se como degrau.
+///
+/// ⭐ **O factor é a correcção desse ângulo, e foi VARRIDO** (duas esferas, uma vermelha e uma azul,
+/// `640×360`; a coluna é quanto a COR acrescenta ao degrau, já subtraído o controlo de duas folhas
+/// da mesma cor, e só sobre vizinhos que são vizinhos **na superfície**):
+///
+/// | factor | união dura | união suave |
+/// |---:|---:|---:|
+/// | `0` (sem a lei) | `+166` | `+191` |
+/// | `1` (a forma fechada crua) | `+84` | `+148` |
+/// | `1,5` | `+48` | `+109` |
+/// | **`2`** ⬅ | **`+34`** | **`+95`** |
+/// | `3` | `+16` | `+75` |
+/// | `4` | `+2` | `+51` |
+///
+/// ⚠️ **O joelho está em `2`**, e acima dele o que se compra é **desfoque**: a fronteira deixa de ser
+/// uma aresta suavizada e passa a ser um degradê de N pixels entre duas cores. *Mais suave nem sempre
+/// é melhor — uma fronteira de material tem de continuar a ler-se como fronteira.*
+///
+/// # ⏳ E o que uma cura COMPLETA faria
+///
+/// A correcta é a derivada de `d` no ECRÃ (`t = ½ − d / (2·|∂d/∂pixel|)`), que dispensa este factor
+/// por medir o ângulo em cada pixel. Ela pede o **gradiente** dos dois campos (seis avaliações por
+/// pixel de fronteira, que são `~0,5 %` dos pixels) e fica **nomeada**, não construída.
+///
+/// ⛔ **E a cura de raiz é outra: sub-amostrar o DONO.** O padrão `ROOK` já re-marcha quatro
+/// sub-amostras num pixel de silhueta — mas o [`EdgePixel`] guarda **normais**, não pontos, e a
+/// marcha não conhece donos. Dar-lhos é o *id-buffer*, que esta linha **mediu e recusou**.
+const BOUNDARY_PIXELS: f32 = 2.0;
+
+/// ⭐⭐ **A luz de um ponto, com a fronteira entre dois materiais SUAVIZADA** — ver
+/// [`Surfaces::mix_of`].
+///
+/// ⚠️ **Sombreia DUAS vezes e mistura o resultado**, e não os materiais: é isso que uma
+/// super-amostragem convergiria a dar, e misturar os *parâmetros* de dois OpenPBR não é misturar a
+/// luz que eles devolvem — um metal e um dieléctrico a meio caminho não são um meio-metal.
+///
+/// ⛔ **E ela só paga o dobro onde há fronteira** (`t > 0`): fora dela, e numa peça de um material
+/// só, é uma chamada e mais nada.
+fn mixed_radiance(
+    surfaces: &Surfaces<'_>,
+    p: [f32; 3],
+    pixel_world: f32,
+    light: &Lighting<'_>,
+    look: Look,
+    n: [f32; 3],
+    v: [f32; 3],
+) -> [f32; 3] {
+    let (a, b, t) = surfaces.mix_of(p, pixel_world);
+    let ca = radiance(a, light, look, n, v);
+    if t <= 0.0 {
+        return ca;
+    }
+    let cb = radiance(b, light, look, n, v);
+    [0, 1, 2].map(|i| ca[i] + (cb[i] - ca[i]) * t)
 }

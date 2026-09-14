@@ -393,9 +393,9 @@ onde estava, e o `MAX_ROWS` passa a ser **derivado da maior forma**: `2 × 27 + 
 ### §11.6 — ⏳ O que fica aberto
 
 - ~~**A cor escolhe-se por TRÊS NÚMEROS**~~ — ✅ **PAGA em 14/09**, ver §12.
-- **Uma silhueta entre duas peças de cores diferentes** recebe a cor de quem o centro do pixel
-  apanhou (as quatro sub-amostras da borda não guardam ponto). É a mesma aproximação que a direcção
-  de vista já faz, e está declarada no `shade_render`.
+- ~~**Uma silhueta entre duas peças de cores diferentes**~~ — ⭐ **a fronteira INTERIOR foi curada em
+  14/09 (§19)**; a da silhueta continua a ser a do centro do pixel, e está declarada no
+  `shade_render`.
 - ~~**O custo por quadro do `Owners`**~~ — ✅ **MEDIDO em 14/09, e não é o tecto.** Ver §14.
 - ~~**Um material num GRUPO** não existe~~ — ✅ **EXISTE desde 14/09, e sem modelo novo: ver §18.**
 
@@ -979,3 +979,111 @@ responsabilidade, nunca uma entrada no `FILE_OVERAGE_OK`* — e os dois ficaram 
 ⚠️ **E os testes foram CONFERIDOS depois de mudarem de ficheiro** (`nextest list`): mover código parte
 gates em duas espécies e **só uma avisa** — um ficheiro que nenhum `mod` declara não é compilado, e as
 suítes ficam verdes com os testes ausentes.
+
+
+---
+
+## §19 — ⭐⭐⭐ A FRONTEIRA ENTRE DUAS CORES DEIXA DE SER UMA ESCADA (2026-09-14)
+
+A §11.6 declarava esta enquanto ela era invisível. A §12 (a caixa de cor) e a §18 (pintar várias
+formas) tornaram-na o gesto normal: **duas formas, duas cores, uma peça**.
+
+### §19.1 — ⛔⛔ Ela NÃO é a silhueta, e é por isso que ninguém a suavizava
+
+O anti-serrilhado do traçado corre nas [`Gbuffer::edges`] — pixels em que **algumas** sub-amostras
+acertam a peça e outras não. Uma fronteira **entre dois materiais** no meio da peça não é nenhuma
+dessas: ali **todas** as sub-amostras acertam, **não há registo de borda nenhum**, e a cor muda de um
+pixel para o outro a pique.
+
+⇒ *a peça ficava com o contorno liso e uma escada por dentro.*
+
+### §19.2 — ⭐⭐ A cura é um escalar, e a largura sai da geometria
+
+A fronteira é onde `|f_dono| = |f_rival|`. Andando `s` perpendicular a ela, uma distância cresce `~s`
+e a outra decresce `~s` ⇒ a diferença `d` varia `2s`. Logo:
+
+```text
+t = máx(0, ½ − d / (2 · largura))
+```
+
+⇒ [`Owners::mix_at`](../../crates/ph2d-field-eval/src/owners.rs), e o sombreamento **pinta duas vezes
+e mistura o resultado**. ⚠️ O resultado, e **não os materiais**: um metal e um dieléctrico a meio
+caminho não são um meio-metal, e o que uma super-amostragem convergiria a dar é a mistura das **luzes**.
+
+⛔ **E só paga o dobro onde há fronteira** (`t > 0`): fora dela, e numa peça de um material só, é uma
+chamada e mais nada.
+
+### §19.3 — ⛔⛔ A margem da bola era a da MARCHA, e isso tornava a lei MUDA
+
+O filtro da bola à frente usa a margem com que o **ponto** foi produzido (`~2e-4`). Mas a pergunta
+aqui não é *«quem pode GANHAR?»* — é *«quem pode estar a menos de uma LARGURA de ganhar?»*, e uma
+largura mede `4,4e-3`, **vinte vezes mais**.
+
+⇒ medido, no pior pixel de uma união dura o rival vinha **filtrado** e a mistura lia `(0, 0, 0,0)` —
+*o segundo melhor era o próprio dono*. A cura é uma linha, e sem ela a lei inteira não fazia nada
+naquele caso.
+
+### §19.4 — ⚠️ A RÉGUA CORRIGIU-SE TRÊS VEZES ANTES DO PRODUTO
+
+| # | o que ela media de errado | a cura |
+|---|---|---|
+| 1 | **duas coisas**: numa união dura o maior salto é o **vinco**, onde a normal muda a pique e a luz dá um degrau **legítimo** — lia `236` bytes e atribuía-os à cor | a diferença contra um **controlo** (a mesma peça com as duas folhas do mesmo material) |
+| 2 | **a população errada**: no pior pixel os dois pontos estão a **`16,3` px** um do outro em 3D — eles não são vizinhos **na superfície** | só vizinhos que o são também na superfície |
+| 3 | e foi ela que mostrou o §19.3, ao não se mexer numa união dura | — |
+
+*Uma régua que mede duas coisas não mede nenhuma.*
+
+### §19.5 — O factor, com a tabela ao lado
+
+A forma fechada supõe que se anda **perpendicular à fronteira**; quem percorre pixels anda **ao longo
+da superfície visível**, e o ângulo entre as duas encolhe o passo. ⇒ o factor é a correcção desse
+ângulo, e foi **varrido** (duas esferas, vermelha e azul, `640×360`; a coluna é quanto a **cor**
+acrescenta ao degrau, já subtraído o controlo e só sobre vizinhos de superfície):
+
+| factor | união dura | união suave |
+|---:|---:|---:|
+| `0` (sem a lei) | `+166` | `+191` |
+| `1` (a forma fechada crua) | `+84` | `+148` |
+| `1,5` | `+48` | `+109` |
+| **`2`** ⬅ | **`+34`** | **`+95`** |
+| `3` | `+16` | `+75` |
+| `4` | `+2` | `+51` |
+
+⚠️ **O joelho está em `2`**, e acima dele o que se compra é **desfoque**: a fronteira deixa de ser uma
+aresta suavizada e passa a ser um degradê de N pixels. *Mais suave nem sempre é melhor — uma fronteira
+de material tem de continuar a ler-se como fronteira.*
+
+### §19.6 — ⏳ O que fica, e com que endereço
+
+- **A derivada no ECRÃ** (`t = ½ − d / (2·|∂d/∂pixel|)`) dispensa o factor por medir o ângulo em cada
+  pixel. Pede o **gradiente** dos dois campos — seis avaliações nos `~0,5 %` de pixels de fronteira.
+  **Nomeada, não construída.**
+- ⛔ **A cura de raiz é sub-amostrar o DONO**, e está **bloqueada por desenho**: o padrão `ROOK` já
+  re-marcha quatro sub-amostras num pixel de silhueta, mas o `EdgePixel` guarda **normais, não
+  pontos**, e a marcha **não conhece donos**. Dar-lhos é o *id-buffer*, que esta linha **mediu e
+  recusou**.
+- **Onde a superfície SALTA em profundidade** (um vinco visto de raspão) a diferença de cor entre
+  vizinhos é tão legítima como a de dois pixels em lados opostos da silhueta. *Nenhuma mistura por
+  ponto pode, ou deve, curar isso.*
+
+### §19.7 — Os gates (4) e as mutações (6/6)
+
+| gate | o que ele prende |
+|---|---|
+| `the_mix_is_half_on_the_boundary_and_zero_away_from_it` | empate ⇒ `½` · longe ⇒ `0` · monótona · **e do lado da OUTRA folha** |
+| `the_width_drives_the_ramp_and_the_ball_filter_follows_it` | §19.3 |
+| `the_ramp_reaches_zero_while_the_rival_is_still_in_play` | separa *«a mistura desce»* de *«o filtro deixou de ver o rival»* |
+| `the_boundary_between_two_colours_is_not_a_step` | a costura, **no pixel**, com o controlo e o piso |
+
+⛔⛔ **E DUAS mutações sobreviveram à primeira redacção, pela MESMA causa: os pontos da fixtura não
+estavam SOBRE a superfície** — e fora dela o filtro deixa passar **uma** folha só, o `mix_at` devolve
+*«não há rival»* **antes** da conta, e o gate mede um caminho que o produto nunca percorre. *É a lei
+que o topo daquele ficheiro já escrevia, à letra, e a 1.ª redacção violou-a.*
+
+⚠️ **E uma terceira asserção era INSATISFAZÍVEL numa esfera**: a bola envolvente de uma esfera **é** a
+superfície dela, logo *«a rampa acabou»* e *«o filtro deixou de ver»* são a **mesma condição**. Ela
+vive numa fixtura de **CAIXA**, cuja bola é folgada. *A forma da fixtura não é um detalhe — ela decide
+que caminho do produto o gate percorre.*
+
+⚠️ **E o `Surfaces::of` foi APAGADO**: o `mix_of` tomou-lhe os dois chamadores, e um método que
+ninguém chama é **lixo**, não um morto a ligar (`CLAUDE.md` §5.0).

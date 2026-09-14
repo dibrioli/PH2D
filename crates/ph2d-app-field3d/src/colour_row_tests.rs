@@ -425,3 +425,206 @@ fn a_request_from_a_stale_selection_paints_only_its_own_shape() {
     );
     assert_eq!(c[1], c[2], "e a outra também não");
 }
+
+/// ⭐⭐⭐ **A FRONTEIRA ENTRE DUAS CORES NÃO É UM DEGRAU** — a costura, medida no PIXEL.
+///
+/// # ⚠️ A régua, e as TRÊS vezes que ela se corrigiu antes do produto
+///
+/// 1. **Ela media duas coisas.** A 1.ª redacção contava saltos grandes entre vizinhos da peça — e
+///    numa união dura o maior é o **vinco**, onde a normal muda a pique e a luz dá um degrau
+///    **legítimo**. Lia `236` bytes e atribuía-os à cor. ⇒ a régua passou a ser a **DIFERENÇA contra
+///    um controlo** (a mesma peça com as duas folhas do mesmo material).
+/// 2. **Ela media a população errada.** No pior pixel de uma união dura os dois pontos estão a
+///    **`16,3` px** um do outro em 3D: eles **não são vizinhos na superfície** — a peça salta em
+///    profundidade. ⇒ só entram vizinhos que o são também na superfície.
+/// 3. **E o filtro da bola era o da marcha.** Ver
+///    [`ph2d_field_eval::owners::Owners::mix_at`] — sem a margem da LARGURA a lei era muda numa
+///    união dura, e a régua mostrava-a a não mexer.
+///
+/// # A barra
+///
+/// Medido com a lei desligada: a cor acrescenta `+166` (dura) e `+191` (suave). Com ela: `+34` e
+/// `+95`. ⇒ a barra é **`120`**, que mora no vale entre as duas populações e deixa margem ao lado
+/// suave, que é o pior.
+///
+/// ⚠️ **Não é um gate de relógio** — ele conta bytes de uma imagem determinística, logo não flaka sob
+/// carga.
+#[test]
+fn the_boundary_between_two_colours_is_not_a_step() {
+    for (nome, blend, barra) in [
+        ("dura", ph2d_field::Blend::Sharp, 120),
+        ("suave", ph2d_field::Blend::Exact { radius: 0.25 }, 120),
+    ] {
+        let controlo = colour_boundary_step(blend, [[1.0, 0.0, 0.0], [1.0, 0.0, 0.0]]);
+        let duas = colour_boundary_step(blend, [[1.0, 0.0, 0.0], [0.0, 0.0, 1.0]]);
+        let acrescenta = duas - controlo;
+        // ⛔ **O PISO do controlo**: sem ele, uma cadeia que devolvesse uma imagem chapada leria
+        // `0 − 0 = 0` e passaria a medir nada.
+        assert!(
+            controlo > 10,
+            "a mistura {nome}: o controlo leu {controlo} — a imagem está chapada e este gate não \
+             está a medir nada"
+        );
+        assert!(
+            acrescenta < barra,
+            "⛔ a mistura {nome}: a COR acrescenta {acrescenta} bytes ao degrau (controlo \
+             {controlo}, duas cores {duas}) — a fronteira entre dois materiais voltou a ser uma \
+             escada. A barra é {barra}, e sem a lei isto lê `+166`/`+191`."
+        );
+    }
+}
+
+/// ⏱️ **SONDA — a fronteira de COR entre duas formas**, que a §11 tornou alcançável.
+///
+/// # ⚠️ Porque ela não é a mesma coisa que a silhueta
+///
+/// O anti-serrilhado do traçado corre nas **bordas** — pixels em que **algumas** sub-amostras acertam
+/// a peça e outras não (`Gbuffer::edges`). Uma fronteira de **cor** no meio da peça não é nenhuma
+/// dessas: ali **todas** as sub-amostras acertam, logo não há registo de borda nenhum.
+///
+/// # ⛔⛔ E a 1.ª redacção desta régua media DUAS coisas
+///
+/// Ela contava *«saltos grandes entre pixels vizinhos da peça»* — e numa união **dura** o maior
+/// desses saltos é o **vinco**, onde a normal muda a pique e a luz dá um degrau **legítimo**. A
+/// régua lia `236` bytes e atribuía-os à cor; o número era quase todo sombreamento, e por isso ela
+/// não se mexeu quando a cor foi curada.
+///
+/// ⇒ a régua é a **DIFERENÇA contra um controlo**: a mesma peça, a mesma luz, com as duas folhas do
+/// **mesmo** material. O que sobra depois de subtrair o controlo é o degrau que a COR acrescenta.
+/// *Uma régua que mede duas coisas não mede nenhuma.*
+#[test]
+#[ignore = "sonda de medição: imprime uma tabela, não afirma nada"]
+fn measure_the_colour_boundary_between_two_shapes() {
+    println!("mistura ·  cores iguais (controlo) ·  cores diferentes ·  o que a COR acrescenta");
+    for (nome, blend) in [
+        ("dura ", ph2d_field::Blend::Sharp),
+        ("suave", ph2d_field::Blend::Exact { radius: 0.25 }),
+    ] {
+        let controlo = colour_boundary_step(blend, [[1.0, 0.0, 0.0], [1.0, 0.0, 0.0]]);
+        let duas = colour_boundary_step(blend, [[1.0, 0.0, 0.0], [0.0, 0.0, 1.0]]);
+        println!(
+            "{nome}   · {controlo:24} · {duas:17} · {:+}",
+            duas - controlo
+        );
+    }
+}
+
+/// O maior salto de cor entre vizinhos **do meio da peça** — a régua que a sonda acima usa duas
+/// vezes, com e sem a cor a mudar.
+fn colour_boundary_step(blend: ph2d_field::Blend, cores: [[f32; 3]; 2]) -> i32 {
+    use ph2d_field_render::{Lighting, Orbit, shade_render, trace};
+    let (w, h) = (640usize, 360usize);
+    let cam = Orbit::default();
+    let reg = ph2d_field_eval::hybrid::Registry::new();
+    let bola = |x: f32| ph2d_field::Node {
+        xform: Xform::at(x, 0.0, 0.0),
+        kind: ph2d_field::NodeKind::Leaf(Primitive::Sphere { radius: 0.35 }),
+        mods: Vec::new(),
+        verb: None,
+    };
+    let doc = FieldDoc::new(
+        vec![
+            bola(-0.22),
+            bola(0.22),
+            ph2d_field::Node {
+                xform: Xform::IDENTITY,
+                kind: ph2d_field::NodeKind::Combine {
+                    op: ph2d_field::Op::Union(blend),
+                    children: vec![NodeId(0), NodeId(1)],
+                },
+                mods: Vec::new(),
+                verb: None,
+            },
+        ],
+        NodeId(2),
+    )
+    .expect("duas bolas");
+    let g = trace(&doc, &reg, &cam, w as u32, h as u32);
+    let postas: Vec<FieldDoc> = (0..2)
+        .map(|i| FieldDoc::new(vec![doc.nodes()[i].clone()], NodeId(0)).expect("a folha"))
+        .collect();
+    let owners = ph2d_field_eval::owners::Owners::new(
+        &postas,
+        &reg,
+        ph2d_field_render::hit_tolerance(cam.half_extent, w.min(h) as f32),
+    );
+    let so: Vec<ph2d_material::Surface> = cores
+        .into_iter()
+        .map(|base_color| {
+            crate::materials::surface_of(ph2d_field_ecs::FieldMaterial {
+                base_color,
+                ..ph2d_field_ecs::FieldMaterial::default()
+            })
+        })
+        .collect();
+    let px = shade_render(
+        &g,
+        &cam,
+        &ph2d_field_render::Surfaces {
+            all: &so,
+            owners: Some(&owners),
+        },
+        &Lighting {
+            lamps: &crate::render_light::lamps(&ph2d_light::LightRig::default()),
+            sky: &crate::render_light::StudioSky,
+        },
+        crate::shading::OPENING_LOOK,
+        [0, 0, 0, 0],
+    );
+    let c = px.as_chunks::<4>().0;
+    let (mut pior, mut onde) = (0i32, (0usize, 0usize));
+    for y in 0..h {
+        for x in 0..w - 1 {
+            let (i, j) = (y * w + x, y * w + x + 1);
+            if !g.hit[i] || !g.hit[j] {
+                continue;
+            }
+            // ⛔⛔ **SÓ ONDE A SUPERFÍCIE É CONTÍNUA** — a terceira correcção desta régua.
+            //
+            // No pior pixel de uma união dura os dois pontos estão a **16,3 px** um do outro em 3D:
+            // eles **não são vizinhos na superfície**. Ali a peça salta em profundidade (um vinco
+            // visto de raspão), e a diferença de cor entre os dois é tão legítima como a de dois
+            // pixels em lados opostos da silhueta — *nenhuma mistura por PONTO pode, ou deve, curar
+            // isso*. O que a cura desta wave endireita é a fronteira **sobre** a superfície.
+            let salto = {
+                let (a, b) = (g.point[i], g.point[j]);
+                ((a[0] - b[0]).powi(2) + (a[1] - b[1]).powi(2) + (a[2] - b[2]).powi(2)).sqrt()
+            };
+            if salto > 2.0 * (2.0 * cam.half_extent / w.min(h) as f32) {
+                continue;
+            }
+            let d = (0..3)
+                .map(|k| i32::from(c[j][k]) - i32::from(c[i][k]))
+                .max_by_key(|v| v.abs())
+                .unwrap_or(0)
+                .abs();
+            if d > pior {
+                pior = d;
+                onde = (x, y);
+            }
+        }
+    }
+    if std::env::var("PH2D_BOUNDARY_WHERE").is_ok() {
+        let (x, y) = onde;
+        let (i, j) = (y * w + x, y * w + x + 1);
+        let largura = 2.0 * cam.half_extent / w.min(h) as f32;
+        println!(
+            "      pior em ({x},{y}) · {:?} → {:?} · mix esq {:?} · mix dir {:?} · px mundo {largura:.5} \
+             · SALTO 3D {:.5} ({:.1} px)",
+            &c[i][..3],
+            &c[j][..3],
+            owners.mix_at(g.point[i], largura),
+            owners.mix_at(g.point[j], largura),
+            {
+                let (a, b) = (g.point[i], g.point[j]);
+                ((a[0] - b[0]).powi(2) + (a[1] - b[1]).powi(2) + (a[2] - b[2]).powi(2)).sqrt()
+            },
+            {
+                let (a, b) = (g.point[i], g.point[j]);
+                ((a[0] - b[0]).powi(2) + (a[1] - b[1]).powi(2) + (a[2] - b[2]).powi(2)).sqrt()
+                    / largura
+            },
+        );
+    }
+    pior
+}

@@ -145,3 +145,196 @@ fn a_piece_without_leaves_has_no_owner() {
     assert!(owners.is_empty());
     assert_eq!(owners.at([0.0; 3]), None);
 }
+
+/// Um ponto **SOBRE a superfície** da esfera da esquerda, ao ângulo `phi` (rad) medido do eixo `x`.
+///
+/// ⛔⛔ **Ele existe porque a 1.ª redacção dos dois gates abaixo escrevia pontos à mão e NENHUM caía
+/// na superfície** — e as duas mutações que eles deviam matar **sobreviveram**. A razão é o filtro:
+/// fora da superfície, a bola à frente deixa passar **uma** folha só, o `mix_at` devolve *«não há
+/// rival»* antes de chegar à conta, e o gate mede um caminho que o produto nunca percorre.
+///
+/// *É a lei que o topo deste ficheiro já escrevia, à letra: **o ponto é posto sobre a superfície,
+/// não procurado** — e a 1.ª redacção destes dois violou-a.*
+fn on_left_sphere(phi: f32, x: f32, r: f32) -> [f32; 3] {
+    [x + r * phi.cos(), 0.0, r * phi.sin()]
+}
+
+/// ⭐⭐⭐ **A MISTURA É `½` NA FRONTEIRA E `0` LONGE DELA** — a lei do [`Owners::mix_at`].
+///
+/// # ⚠️ As três coisas que ela tem de fazer, e nenhuma basta sozinha
+///
+/// | afirmação | o que cai sem ela |
+/// |---|---|
+/// | **empate ⇒ `½`** | a fronteira não é suavizada de todo |
+/// | **longe ⇒ `0`** | a peça inteira sai misturada, e cada material perde a cor |
+/// | **monótona** | a rampa vai e vem, e o degrau reaparece noutro sítio |
+///
+/// ⚠️ **O ponto é posto NO PLANO MÉDIO das duas esferas**, e não procurado: é lá que a lei diz `½`, e
+/// uma varredura que não lá caísse mediria outra coisa.
+#[test]
+fn the_mix_is_half_on_the_boundary_and_zero_away_from_it() {
+    let reg = Registry::new();
+    // Duas esferas que se tocam: o plano médio é `x = 0`.
+    let docs = [ball_at(-0.3, 0.35), ball_at(0.3, 0.35)];
+    let owners = Owners::new(&docs, &reg, MARGEM);
+    const LARGURA: f32 = 0.01;
+
+    // O vinco: onde a superfície da esquerda toca a da direita. `cos φ = 0,3/0,35`.
+    let phi_vinco = (0.3f32 / 0.35).acos();
+    // ⭐ **No vinco, empate** — as duas distâncias são iguais por simetria.
+    let (a, b, t) = owners.mix_at(on_left_sphere(phi_vinco, -0.3, 0.35), LARGURA);
+    assert_ne!(a, b, "no plano médio há duas folhas em disputa");
+    assert!(
+        (t - 0.5).abs() < 1.0e-3,
+        "a fronteira tem de dar meio a meio e deu {t}"
+    );
+
+    // ⛔ **Longe dela, zero** — senão a peça inteira sai misturada. O pólo da esquerda.
+    let (_, _, t) = owners.mix_at(
+        on_left_sphere(std::f32::consts::FRAC_PI_2, -0.3, 0.35),
+        LARGURA,
+    );
+    assert!(
+        t <= 0.0,
+        "um ponto no pólo de uma esfera não pode ter mistura nenhuma e teve {t}"
+    );
+
+    // ⭐⭐ **E é MONÓTONA a afastar-se** — sem isto a rampa vai e vem e o degrau só muda de sítio.
+    let mut anterior = f32::INFINITY;
+    // ⛔⛔ **A rampa TEM de chegar a zero com o rival ainda em jogo** — é isso que separa «a mistura
+    // desce» de «o filtro deixou de ver o rival». ⚠️ **E numa ESFERA as duas coisas coincidem por
+    // geometria**: a bola envolvente de uma esfera **é** a superfície dela, logo `|f_rival| ≤ width`
+    // e *«dentro da bola mais width»* são a MESMA condição, e a asserção seria insatisfazível. ⇒ ela
+    // vive na fixtura da CAIXA, cuja bola é folgada — ver
+    // [`the_ramp_reaches_zero_while_the_rival_is_still_in_play`].
+    let mut houve_rival_com_zero = false;
+    for k in 0..=20 {
+        // ⚠️ **Ao longo da SUPERFÍCIE**, afastando-se do vinco — é por lá que os pixels andam.
+        let phi = phi_vinco + k as f32 * 0.01;
+        let (a, b, t) = owners.mix_at(on_left_sphere(phi, -0.3, 0.35), LARGURA);
+        assert!(
+            t <= anterior + 1.0e-6,
+            "a mistura subiu ao afastar-se do vinco (φ = {phi})"
+        );
+        if a != b && t <= 0.0 {
+            houve_rival_com_zero = true;
+        }
+        anterior = t;
+    }
+    assert!(
+        anterior <= 0.0,
+        "a rampa não chegou a zero dentro de duas larguras"
+    );
+    let _ = houve_rival_com_zero; // ver a nota acima: numa esfera isto não é observável.
+    // ⛔⛔ **E o mesmo do lado da OUTRA esfera** — o que mata a mutação «o segundo melhor é o
+    // primeiro». Ali o dono é a folha `1`, que é visitada **depois** da `0` no percurso: quem
+    // escrever o desempate sem guardar o anterior perde o rival exactamente neste lado, e no outro
+    // não. *Uma lei de ordem tem de ser medida nas duas ordens.*
+    // ⚠️ **Um pouco PASSADO o vinco**, e não em cima dele: no vinco as duas empatam e o desempate
+    // devolve a primeira nos dois lados — o gate não distinguiria as ordens. Aqui a folha `1` ganha
+    // de facto, e ela é visitada **depois** da `0`.
+    let espelhado = on_left_sphere(phi_vinco + 0.02, -0.3, 0.35);
+    let (a, b, t) = owners.mix_at([-espelhado[0], 0.0, espelhado[2]], LARGURA);
+    assert_eq!(a, 1, "do lado direito o dono é a folha da direita");
+    assert_ne!(
+        b, a,
+        "⛔ do lado direito o rival desapareceu — quem ganha é visitado DEPOIS, e um desempate que \
+         não guarde o anterior perde-o exactamente aqui (e não do outro lado)"
+    );
+    assert!(
+        t > 0.0,
+        "a um passo do vinco a mistura ainda tem de estar viva e deu {t}"
+    );
+}
+
+/// ⭐⭐ **A LARGURA MANDA NA RAMPA** — dobrar a largura dobra o alcance da mistura.
+///
+/// ⛔⛔ **E a MARGEM DA BOLA segue a largura, não a da marcha** — foi isto que fez a 1.ª versão desta
+/// porta ser **muda** numa união dura: o rival vinha filtrado pela bola à frente (cuja margem é a
+/// tolerância do ponto, uns `2e-4`) e a mistura respondia *«não há rival»* a um pixel da fronteira.
+/// *A pergunta do filtro aqui não é «quem pode GANHAR?», é «quem pode estar a menos de uma LARGURA
+/// de ganhar?».*
+///
+/// **Mutação que deve sangrar:** `self.visit(p, self.margin, …)` no `mix_at`.
+#[test]
+fn the_width_drives_the_ramp_and_the_ball_filter_follows_it() {
+    let reg = Registry::new();
+    let docs = [ball_at(-0.3, 0.35), ball_at(0.3, 0.35)];
+    let owners = Owners::new(&docs, &reg, MARGEM);
+    // ⚠️ **Um ponto SOBRE a superfície**, um pouco depois do vinco: ali ele já está **fora** da bola
+    // da esfera rival por mais do que a tolerância da marcha — que é exactamente a configuração em
+    // que o filtro decide, e a que a 1.ª redacção deste gate não tinha.
+    let p = on_left_sphere((0.3f32 / 0.35).acos() + 0.035, -0.3, 0.35);
+    let fina = owners.mix_at(p, 0.002).2;
+    let larga = owners.mix_at(p, 0.02).2;
+    assert!(
+        fina <= 0.0,
+        "com a rampa fina este ponto já devia estar fora dela e deu {fina}"
+    );
+    assert!(
+        larga > 0.1,
+        "⛔ com a rampa larga o ponto tem de estar dentro dela e deu {larga} — quase sempre é o \
+         FILTRO da bola, que precisa de seguir a largura e não a tolerância da marcha"
+    );
+    // ⚠️ E o dono nunca muda com a largura: ela mexe no PESO, nunca na resposta.
+    assert_eq!(owners.mix_at(p, 0.002).0, owners.mix_at(p, 0.02).0);
+    assert_eq!(owners.at(p), Some(owners.mix_at(p, 0.02).0));
+}
+
+/// ⭐⭐⭐ **A RAMPA CHEGA A ZERO COM O RIVAL AINDA EM JOGO** — o que separa *«a mistura desce»* de
+/// *«o filtro deixou de ver o rival»*.
+///
+/// # ⛔⛔ Porque ela precisa de uma CAIXA e não de uma esfera
+///
+/// A bola envolvente de uma **esfera** é a própria superfície dela: `|f_rival| ≤ width` e *«dentro da
+/// bola mais `width`»* são a **mesma condição**, e a asserção seria insatisfazível — a mutação «a
+/// mistura nunca desce» passaria, porque o `mix_at` sai por *«não há rival»* **antes** da conta.
+///
+/// ⭐ Numa **caixa** a bola é folgada (ela envolve os cantos), logo o rival continua a ser visitado
+/// muito depois de a rampa ter acabado — e é aí que a conta é observável.
+///
+/// *A forma da fixtura não é um detalhe: ela decide QUE CAMINHO do produto o gate percorre.*
+///
+/// **Mutação que deve sangrar:** `(bi, si, 0.5)` — uma mistura presa a meio.
+#[test]
+fn the_ramp_reaches_zero_while_the_rival_is_still_in_play() {
+    let reg = Registry::new();
+    let caixa = |x: f32| {
+        FieldDoc::new(
+            vec![crate::leaf(
+                Primitive::Box {
+                    half: [0.3; 3],
+                    round: 0.0,
+                    chamfer: 0.0,
+                },
+                Xform::at(x, 0.0, 0.0),
+            )],
+            NodeId(0),
+        )
+        .expect("a caixa posta")
+    };
+    let docs = [caixa(-0.3), caixa(0.3)];
+    let owners = Owners::new(&docs, &reg, MARGEM);
+    const LARGURA: f32 = 0.01;
+
+    // Percorre a face de cima (`z = 0,3`) da caixa da esquerda, a afastar-se do plano `x = 0`.
+    let mut houve = false;
+    let mut anterior = f32::INFINITY;
+    for k in 0..=40 {
+        let x = -(k as f32) * 0.005;
+        let (a, b, t) = owners.mix_at([x, 0.0, 0.3], LARGURA);
+        assert!(
+            t <= anterior + 1.0e-6,
+            "a rampa subiu ao afastar-se (x = {x})"
+        );
+        if a != b && t <= 0.0 {
+            houve = true;
+        }
+        anterior = t;
+    }
+    assert!(
+        houve,
+        "⛔ o varrimento nunca passou por um ponto COM rival e SEM mistura — sem ele, uma mistura \
+         presa em `½` passa neste gate"
+    );
+}

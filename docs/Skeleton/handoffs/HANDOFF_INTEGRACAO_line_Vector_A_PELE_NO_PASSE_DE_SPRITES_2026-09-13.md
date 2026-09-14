@@ -42,6 +42,7 @@ As cinco waves:
 | **W9** | **o gémeo do Flip da W6, fechado SEM report**: a condição da caixa de objecto passa a ser *«nenhuma ferramenta AUTORA no canvas»*, e o terceiro `if` por família morre |
 | **W10** | **o pincel segue a arte DOBRADA**: a porta de canvas (`ph2d_render::mesh_uv`) e o Painter a consultá-la — as duas portas que sabiam da malha não tinham chamador de produto |
 | **W11** | **o pincel PAGA a deformação**: o dab nasce como a elipse que a malha endireita, e sai redondo no ECRÃ |
+| **W11b** | **a matriz nascia numa BASE MISTA** (2.º report: *«sem melhorias»*) — as duas metades tinham gate e a JUNÇÃO não, porque as fixturas das duas eram alinhadas aos eixos |
 
 ---
 
@@ -199,6 +200,12 @@ pela segunda vez no dia, porque o arch-gate exigia a MENÇÃO da porta e não a 
 devolvia `1,0000006` e `0,39999998` em repouso — *«byte a byte» não é uma promessa que uma raiz
 quadrada cumpra: é um `if`*.
 
+**W11b** (`ph2d-render`): **a JUNÇÃO** — a matriz publicada é a que a malha faz, e a elipse que a
+lei do pincel tira dela volta REDONDA ao ecrã. A fixtura nasce da resposta (escolhe-se a deformação
+de ecrã, constrói-se o triângulo que a produz). **Duas mutações, duas RED**, a primeira sendo o
+próprio erro do report. ⚠️ A crate ganhou um **dev-dep** para a lei canónica do pincel — a forma dos
+dois que ela já tinha.
+
 ---
 
 ## §6 — Coisas que uma leitura rápida do diff entende ao contrário
@@ -241,6 +248,11 @@ quadrada cumpra: é um `if`*.
 12. **O `ghost_instance` passou a ler a pose de MUNDO, e isso fechou uma nota antiga de graça:** o
    ADR-0142 dizia *«rigs parenteados são wave futura»* porque ele lia o `pose_at` LOCAL. Para uma
    raiz as duas respostas são as mesmas — os nove gates do onion passam sem uma linha mudada.
+23. **A W11b não é «um sinal trocado»: é uma BASE.** A `2×2` tinha linhas em `y`-para-cima e
+   colunas em `v`-para-baixo; a conjugação pelo espelho nega os termos fora da diagonal, o que é
+   invisível numa deformação DIAGONAL e espelha uma RODADA. ⛔ E as fixturas das duas metades eram
+   alinhadas aos eixos — *uma fixtura alinhada aos eixos não mede uma base*.
+
 21. **A W11 não muda o pincel de ninguém:** com a arte em repouso (ou sem malha) a `canvas_warp`
    devolve o spec do artista **ao bit**, por um `if` explícito — e é isso que mantém os goldens e a
    paridade do Painter de pé.

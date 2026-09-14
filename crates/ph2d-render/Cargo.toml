@@ -72,6 +72,12 @@ rect_packer = "0.2"
 # `ph2d-painter-effects` dev-dep below, which the Bloom / Shadows-Highlights gates use. No cycle:
 # ph2d-tool-painter does not depend on ph2d-render.
 ph2d-tool-painter = { path = "../ph2d-tool-painter" }
+# ⭐⭐⭐ A JUNÇÃO da deformação da malha com a lei do pincel (`sprite_mesh::warp_under` →
+# `canvas_warp::warped_dab`): cada metade tem gate próprio na sua crate e é a JUNÇÃO que erra — a
+# 1.ª redacção publicou a `2×2` numa base MISTA (linhas com `y` para cima, colunas com `v` para
+# baixo) e as duas passaram, porque as fixturas das duas eram alinhadas aos eixos. Mesma forma dos
+# dev-deps acima: o gate reconcilia contra a lei CANÓNICA em vez de a re-implementar.
+ph2d-painter-brush = { path = "../ph2d-painter-brush" }
 # …and the `CanvasPaintTool` / `RasterEditTool` traits the gate paints its fixture through.
 ph2d-editor-core = { path = "../ph2d-editor-core" }
 # O gate de paridade das precisões (`precision_parity_gpu.rs`, plano `docs/Sprite_projeto/18` W2)

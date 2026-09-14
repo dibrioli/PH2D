@@ -158,7 +158,14 @@ impl PainterTool {
             brush.dab_flatten,
             brush.dab_angle_deg,
         );
-        brush.radius_px *= w.radius_scale;
+        // ⚠️ **A cerca é a que o MOTOR já aceita do artista** (`BRUSH_SIZE_MAX_PX`), e o recurso é
+        // nomeado: o custo de um dab cresce com o raio ao QUADRADO, e uma compressão de `50×` num
+        // triângulo quase colapsado pediria um disco que a cache de carimbo nunca viu. ⛔ Não é um
+        // palpite de segurança — é o mesmo número que o slider do painel já entrega ao motor.
+        brush.radius_px = (brush.radius_px * w.radius_scale).clamp(
+            super::brush_ranges::BRUSH_SIZE_MIN_PX,
+            super::brush_ranges::BRUSH_SIZE_MAX_PX,
+        );
         brush.dab_flatten = w.flatten;
         brush.dab_angle_deg = w.angle_deg;
         brush

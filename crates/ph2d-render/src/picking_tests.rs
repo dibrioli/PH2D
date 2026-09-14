@@ -547,3 +547,83 @@ fn the_canvas_port_reports_the_local_deformation_and_it_is_dimensionless() {
         "o triangulo comprime x a metade: {warp:?}"
     );
 }
+
+/// ⭐⭐⭐ **A JUNÇÃO: a deformação que esta crate publica, levada pela lei do PINCEL, devolve um
+/// DISCO no ecrã** — e o caso que a revela é a arte **RODADA**, não só comprimida.
+///
+/// ⛔⛔ **As duas metades tinham gate e a junção não** (report do dono, 2026-09-14: *«sem
+/// melhorias»*, com a mesma lasca dentro do anel redondo). A `2×2` saía numa base **MISTA** — as
+/// linhas em coordenadas locais (`y` para CIMA) e as colunas em coordenadas de imagem (`v` para
+/// BAIXO) —, o que nega os termos fora da diagonal: uma arte **rodada** recebia a elipse espelhada,
+/// esticada na diagonal errada. ⚠️ **As fixturas das duas metades eram alinhadas aos eixos**, onde
+/// os termos fora da diagonal são zero e o erro é invisível.
+///
+/// A fixtura nasce da própria resposta: escolhe-se a deformação de ECRÃ `S` (rodar `40°` e
+/// comprimir `3×`), constrói-se o triângulo que a produz, e mede-se a ida e a volta.
+#[test]
+fn the_published_deformation_makes_the_brush_round_on_screen() {
+    // `S`: ecrã por imagem, com o `y` do ECRÃ (para baixo) nos dois lados.
+    let (c, s) = (40.0_f32.to_radians().cos(), 40.0_f32.to_radians().sin());
+    let sm = [[c / 3.0, -s], [s / 3.0, c]];
+    let size = [2.0_f32, 2.0];
+    // `J = D·S·diag(sw, sh)` — a inversa da lei que a porta aplica (`D` = o espelho do `y`).
+    let j = [
+        [sm[0][0] * size[0], sm[0][1] * size[1]],
+        [-sm[1][0] * size[0], -sm[1][1] * size[1]],
+    ];
+    // Cantos `uv` `(0,0) (1,0) (0,1)` ⇒ `B = I` ⇒ `A = J`, com o `P₀` no repouso do `uv` `(0,0)`.
+    let p0 = [-size[0] * 0.5, size[1] * 0.5];
+    let mesh = crate::SpriteMesh {
+        local: vec![
+            p0,
+            [p0[0] + j[0][0], p0[1] + j[1][0]],
+            [p0[0] + j[0][1], p0[1] + j[1][1]],
+        ],
+        uv: vec![[0.0, 0.0], [1.0, 0.0], [0.0, 1.0]],
+        tris: vec![[0, 1, 2]],
+    };
+    let centro = [
+        (mesh.local[0][0] + mesh.local[1][0] + mesh.local[2][0]) / 3.0,
+        (mesh.local[0][1] + mesh.local[1][1] + mesh.local[2][1]) / 3.0,
+    ];
+    let mut sim = ph2d_ecs::SimWorld::new();
+    let mut present = PresentWorld::new();
+    let e = fresh_sim_entity(&mut sim);
+    let bits = spawn_at(&mut present, e, 0.0, 0.0, size);
+    give_mesh(&mut present, e, mesh);
+
+    let crate::MeshUv::Use { warp, .. } = crate::mesh_uv(present.world_mut(), bits, centro, true)
+    else {
+        panic!("o centroide tinha de cair sobre o triangulo");
+    };
+    for (i, linha) in warp.iter().enumerate() {
+        for (k, got) in linha.iter().enumerate() {
+            assert!(
+                (got - sm[i][k]).abs() < 1e-4,
+                "a deformacao publicada nao e' a que a malha faz: {warp:?} contra {sm:?}"
+            );
+        }
+    }
+
+    // …e a lei do PINCEL sobre ela tem de devolver um disco: os dois semi-eixos da elipse pintada,
+    // levados ao ecrã por `S`, medem o mesmo `1`.
+    let d = ph2d_painter_brush::canvas_warp::warped_dab(warp, 0.0, 0);
+    let [ec, es] = ph2d_painter_brush::texture::rotate_by_degrees(d.angle_deg);
+    let (maior, menor) = (d.radius_scale, d.radius_scale * (1.0 - d.flatten));
+    let leva = |v: [f32; 2]| {
+        [
+            sm[0][0] * v[0] + sm[0][1] * v[1],
+            sm[1][0] * v[0] + sm[1][1] * v[1],
+        ]
+    };
+    for (nome, v) in [
+        ("maior", leva([ec * maior, es * maior])),
+        ("menor", leva([-es * menor, ec * menor])),
+    ] {
+        let l = (v[0] * v[0] + v[1] * v[1]).sqrt();
+        assert!(
+            (l - 1.0).abs() < 3e-2,
+            "o eixo {nome} chegou ao ecra' com {l}, e um disco pede 1 ({d:?})"
+        );
+    }
+}

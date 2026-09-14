@@ -2294,6 +2294,32 @@ que o motor captura ao abrir, e é a mesma fotografia que o pincel de tecido tir
 obstáculos). Um traço LONGO que atravesse regiões de compressão diferentes usa a do princípio. Para
 seguir por dab, o caminho está medido: a deformação tem de viajar no `StrokePoint`, como a pressão.
 
+**W11b — «SEM MELHORIAS»: a matriz nascia numa BASE MISTA, e as duas metades passavam** (2.º report
+com foto, 2026-09-14). A W11 tinha as duas leis certas e o **join** errado.
+
+⛔⛔ **O defeito:** o `warp_under` devolvia `j · diag(1/sw, −1/sh)` — as **linhas** em coordenadas
+LOCAIS (`y` para CIMA) e as **colunas** em coordenadas de imagem (`v` para BAIXO). Numa base mista a
+conjugação pelo espelho do `y` **nega os termos fora da diagonal**: `E = D·T·D`. Para uma
+deformação diagonal (comprimir num eixo) `E = T` e nada se vê; para uma **rodada** — que é
+exactamente o leque da foto — a elipse sai **espelhada**, esticada na diagonal errada. A tinta
+continuava uma lasca, e o dono leu o que havia para ler: *«sem melhorias»*.
+
+⚠️⚠️ **E as duas metades tinham gate:** a da malha (`the_canvas_port_reports_the_local_deformation`)
+e a do pincel (`the_painted_ellipse_comes_back_round_on_screen`). **As fixturas das duas eram
+ALINHADAS AOS EIXOS** — `posed_arm` só translada, o outro comprime em `x` — e ali os termos fora da
+diagonal são zero. *Duas metades verdes não fazem uma junção verde, e uma fixtura alinhada aos eixos
+não mede uma base.*
+
+⇒ o gate novo é a **JUNÇÃO**, e a fixtura nasce da resposta: escolhe-se a deformação de ECRÃ
+(`rodar 40° + comprimir 3×`), **constrói-se o triângulo que a produz**, e mede-se a ida (a matriz
+publicada é a escolhida) e a volta (os dois semi-eixos da elipse pintada chegam ao ecrã com o mesmo
+comprimento). Ele vive na `ph2d-render`, que ganhou um dev-dep para a **lei canónica** do pincel em
+vez de a re-implementar — a forma dos dois dev-deps que aquela crate já tinha. **Duas mutações, duas
+RED**, a primeira sendo o próprio erro do report.
+
+⚠️ E o raio composto passou a ter cerca: a que o **motor já aceita do artista**
+(`BRUSH_SIZE_MAX_PX`), com o recurso nomeado — o custo de um dab cresce com o raio ao QUADRADO.
+
 ## ⛔ Recusas MEDIDAS deste módulo — não as reconstrua
 
 > ⚠️ **As seis de 2026-09-07/08 entraram aqui na auditoria de 08/09** — elas viviam só em prosa e em

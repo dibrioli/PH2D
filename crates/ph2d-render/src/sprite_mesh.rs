@@ -202,10 +202,16 @@ pub(crate) fn warp_under(mesh: &SpriteMesh, p: [f32; 2], size: [f32; 2]) -> Opti
                 a[1][0] * inv[0][1] + a[1][1] * inv[1][1],
             ],
         ];
-        // ÷ o jacobiano do quad de repouso, `diag(sw, −sh)`.
+        // ⚠️⚠️ **As DUAS pontas na mesma base, e é aqui que a 1.ª redacção errou:** as LINHAS de `j`
+        // estão em coordenadas locais (`y` para CIMA) e as COLUNAS em `uv` (`v` para BAIXO). A
+        // resposta tem de estar em coordenadas de ECRÃ nos dois lados — senão a matriz nasce numa
+        // base MISTA, que nega os termos fora da diagonal: uma arte RODADA recebia a elipse
+        // espelhada, esticada na diagonal errada (report do dono: *«sem melhorias»*).
+        // ⛔ E as fixturas alinhadas aos eixos **não o viam**: ali os termos fora da diagonal são
+        // zero. ⇒ `D · j · diag(1/sw, 1/sh)`, com `D` a espelhar a linha do `y`.
         Some([
-            [j[0][0] / size[0], -j[0][1] / size[1]],
-            [j[1][0] / size[0], -j[1][1] / size[1]],
+            [j[0][0] / size[0], j[0][1] / size[1]],
+            [-j[1][0] / size[0], -j[1][1] / size[1]],
         ])
     })
 }

@@ -657,3 +657,109 @@ fn measure_what_the_lobe_cure_changes_in_the_pixel() {
         );
     }
 }
+
+/// ⏱️ **SONDA — o que o MATERIAL POR OBJECTO custa ao sombreamento**, por número de folhas.
+///
+/// # ⚠️ A pergunta que eu mexi e não tinha reconferido (`CLAUDE.md` §0.0)
+///
+/// A [`measure_what_the_render_mode_costs_and_paints`] mede o modo Render com **um** material
+/// (`owners: None`) — o caminho de omissão. Mas desde 13/09 o sombreamento resolve **um dono por
+/// pixel** quando a peça tem mais de uma folha, e isso é trabalho novo dentro do laço mais quente do
+/// quadro. *Quem acrescenta um custo ao caminho quente mede-o no caminho quente, e não numa sonda ao
+/// lado.*
+///
+/// ⚠️ A sonda de 13/09 mediu a resolução **isolada** (`1,6 ms` a 16 folhas sobre `26 100` px). Isto é
+/// outra coisa: o `shade_render` inteiro, com e sem donos, sobre a mesma peça.
+#[test]
+#[ignore = "sonda de medição: imprime uma tabela, não afirma nada"]
+fn measure_what_material_per_object_costs_the_shading() {
+    use ph2d_field_render::{Lighting, Orbit, shade_render, trace};
+    use std::time::Instant;
+
+    const BG: [u8; 4] = [0, 0, 0, 0];
+    let (w, h) = (640u32, 360u32);
+    let cam = Orbit::default();
+    let reg = ph2d_field_eval::hybrid::Registry::new();
+    let lamps = lamps(&ph2d_light::LightRig::default());
+    let olhar = crate::shading::OPENING_LOOK;
+    let carga = std::fs::read_to_string("/proc/loadavg").unwrap_or_default();
+    println!("load: {}", carga.split_whitespace().next().unwrap_or("?"));
+    println!("folhas ·  peça px ·  sem donos ·  com donos ·  delta ·  % de um quadro");
+    for k in [2usize, 4, 8, 16] {
+        let lado = (k as f32).sqrt().ceil() as usize;
+        let passo = 0.9 / lado as f32;
+        let mut nodes: Vec<ph2d_field::Node> = (0..k)
+            .map(|i| ph2d_field::Node {
+                xform: ph2d_field::Xform::at(
+                    ((i % lado) as f32 - (lado - 1) as f32 * 0.5) * passo,
+                    ((i / lado) as f32 - (lado - 1) as f32 * 0.5) * passo,
+                    0.0,
+                ),
+                kind: ph2d_field::NodeKind::Leaf(ph2d_field::Primitive::Sphere {
+                    radius: passo * 0.45,
+                }),
+                mods: Vec::new(),
+                verb: None,
+            })
+            .collect();
+        nodes.push(ph2d_field::Node {
+            xform: ph2d_field::Xform::IDENTITY,
+            kind: ph2d_field::NodeKind::Combine {
+                op: ph2d_field::Op::Union(ph2d_field::Blend::Sharp),
+                children: (0..k).map(|i| ph2d_field::NodeId(i as u32)).collect(),
+            },
+            mods: Vec::new(),
+            verb: None,
+        });
+        let doc = ph2d_field::FieldDoc::new(nodes, ph2d_field::NodeId(k as u32)).expect("a grelha");
+        let g = trace(&doc, &reg, &cam, w, h);
+        let px = g.hit.iter().filter(|b| **b).count();
+
+        // As folhas postas no mundo, como a `materials::Table` as constrói.
+        let postas: Vec<ph2d_field::FieldDoc> = (0..k)
+            .map(|i| {
+                ph2d_field::FieldDoc::new(vec![doc.nodes()[i].clone()], ph2d_field::NodeId(0))
+                    .expect("a folha")
+            })
+            .collect();
+        let owners = ph2d_field_eval::owners::Owners::new(
+            &postas,
+            &reg,
+            ph2d_field_render::hit_tolerance(cam.half_extent, w.min(h) as f32),
+        );
+        let so: Vec<ph2d_material::Surface> = (0..k)
+            .map(|i| {
+                crate::materials::surface_of(ph2d_field_ecs::FieldMaterial {
+                    base_color: [i as f32 / k as f32, 0.5, 0.8],
+                    ..ph2d_field_ecs::FieldMaterial::default()
+                })
+            })
+            .collect();
+        let light = Lighting {
+            lamps: &lamps,
+            sky: &StudioSky,
+        };
+        // ⚠️ A mediana de 5, com um aquecimento antes — e o MÍNIMO ao lado, porque esta máquina não
+        // desce de `load ~7` (a nota do `project-memory`).
+        let med = |owners: Option<&ph2d_field_eval::owners::Owners>| -> (f64, f64) {
+            let s = ph2d_field_render::Surfaces { all: &so, owners };
+            let _ = shade_render(&g, &cam, &s, &light, olhar, BG);
+            let mut v: Vec<f64> = (0..5)
+                .map(|_| {
+                    let t = Instant::now();
+                    let _ = shade_render(&g, &cam, &s, &light, olhar, BG);
+                    t.elapsed().as_secs_f64() * 1e3
+                })
+                .collect();
+            v.sort_by(f64::total_cmp);
+            (v[0], v[v.len() / 2])
+        };
+        let (sem, _) = med(None);
+        let (com, _) = med(Some(&owners));
+        println!(
+            "{k:6} · {px:8} · {sem:9.3} · {com:9.3} · {:6.3} · {:6.1} %",
+            com - sem,
+            com / 16.7 * 100.0
+        );
+    }
+}

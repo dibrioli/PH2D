@@ -854,3 +854,45 @@ ignorasse o `dir` inteiro também passaria.
 ⛔⛔ **E o oráculo do céu (§2) continua cego a isto, por construção:** ele corre sobre um céu
 **constante**, e num céu constante a espelhada e a média do lóbulo são iguais. *O gate desta lei tinha
 de ser escrito de novo, e não estendido.*
+
+
+---
+
+## §17 — ⏱️ O que o MATERIAL POR OBJECTO custa ao sombreamento (2026-09-14)
+
+⚠️ **Uma obrigação do `CLAUDE.md` §0.0 que estava por cumprir:** a §11 acrescentou uma resolução de
+**dono por pixel** dentro do laço mais quente do quadro, e a única medição que existia era a da
+resolução **isolada** (`1,6 ms` a 16 folhas sobre `26 100` px). *Quem acrescenta um custo ao caminho
+quente mede-o no caminho quente, e não numa sonda ao lado.*
+
+Sonda [`measure_what_material_per_object_costs_the_shading`](../../crates/ph2d-app-field3d/src/render_light_tests.rs)
+— o `shade_render` inteiro, com e sem donos, sobre a mesma peça (`640×360`, mínimo de 5):
+
+| folhas | peça px | sem donos | com donos | delta | % de um quadro |
+|---:|---:|---:|---:|---:|---:|
+| `2` | `12 024` | `1,558` | `1,469` | `≤ ruído` | `8,8 %` |
+| `4` | `26 469` | `2,689` | `2,895` | `0,207` | `17,3 %` |
+| `8` | `22 290` | `3,125` | `3,444` | `0,319` | `20,6 %` |
+| `16` | `26 059` | `4,453` | `5,475` | **`1,021`** | `32,8 %` |
+
+⇒ **`+1,0 ms` a 16 folhas** — `23 %` do sombreamento, `6 %` de um quadro. O sombreamento continua
+**abaixo da marcha**, que o §8 mede em `80 %` do quadro de movimento. *Não é o tecto, e não há cura a
+fazer.*
+
+⚠️ **A linha de `2` folhas lê negativo** (`−0,089`): é ruído a `load 23`, e está escrita assim de
+propósito — *um delta menor que o ruído reporta-se como ruído, não como ganho*.
+
+### §17.1 — E o que a mesma corrida disse sobre a decisão do olhar
+
+A [`measure_what_the_render_mode_costs_and_paints`], corrida depois da §15.5:
+
+| exposição | `Standard` — pixels brancos | `Neutral` |
+|---:|---:|---:|
+| `−2` | `0` | `0` |
+| `−1` | `114` | `0` |
+| `0` | `5 180` (`8,4 %`) | **`0`** |
+| `+1` | `37 177` | **`0`** |
+| `+2` | `52 467` (`85 %`) | **`0`** |
+
+⭐ A `Neutral` não corta em **exposição nenhuma** — é isso que ela compra, e o `+2` é onde a diferença
+deixa de ser subtil: `85 %` da peça em branco chapado contra zero.

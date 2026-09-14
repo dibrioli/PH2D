@@ -253,3 +253,34 @@ fn the_dyntopo_door_asks_the_verb() {
         "o chamador não passa o verbo do pincel armado à porta do dyntopo"
     );
 }
+
+/// ⭐⭐⭐ **AS TRÊS RAZÕES DO SILÊNCIO SÃO TRÊS, E CADA UMA É DITA.**
+///
+/// ⛔ **Report do dono, 2026-09-14: *«não vejo efeito com density»*.** O pincel
+/// estava certo; o que faltava era ele DIZER porque não fez nada. Um verbo cujo
+/// efeito inteiro é sobre a topologia **parece partido** sempre que o passe não
+/// corre, e as três razões — o modo desligado · a pilha de multiresolução
+/// montada · não haver aresta fora da faixa — **o artista vê iguais**: nada
+/// acontece.
+///
+/// ⚠️ **A régua é a CONTAGEM de chamadas, e não «a função existe»:** apagar uma
+/// das três deixaria as outras duas a funcionar e a terceira muda, que é
+/// exactamente a forma que este report tem.
+#[test]
+fn the_dyntopo_pass_names_every_reason_it_did_nothing() {
+    let src = sculpt_src();
+    let body = function_body(&src, "refine_for_dab");
+    let queixas = body.matches("self.queixa_do_passe(").count();
+    assert_eq!(
+        queixas, 3,
+        "a porta do dyntopo tem {queixas} queixas e as razões do silêncio são \
+         TRÊS (desligada · pilha montada · nada fora da faixa) — a que faltar é \
+         um pincel que parece partido e não diz porquê"
+    );
+    // ⚠️ E ela é **por traço e não por dab** — um dab corre por movimento do
+    // ponteiro, e uma queixa por dab é um log que ninguém lê.
+    assert!(
+        src.contains("dyn_queixa_dita"),
+        "a queixa não tem a trava de uma-por-traço"
+    );
+}

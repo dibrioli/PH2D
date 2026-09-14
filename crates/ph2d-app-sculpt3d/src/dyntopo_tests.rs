@@ -286,3 +286,145 @@ fn com_o_passe_desarmado_a_densidade_nao_move_um_vertice() {
         s.stroke.touched().len()
     );
 }
+
+/// **SONDA:** o percurso do dono na `=14` — adensar com o `Draw` e depois afinar
+/// com o `Density`, dab a dab.
+#[test]
+#[ignore]
+fn diag_o_percurso_do_dono() {
+    let gpu = gpu_or_skip!();
+    // A malha da própria cena `=14`.
+    let malha = ph2d_mesh::shapes::uv_sphere(10, 14, 1.0);
+    let mut s = Sculpt3dScene::new(&gpu.device, malha, 1.0);
+    s.note_canvas(ph2d_editor_core::zones::Rect::new(0.0, 0.0, 900.0, 700.0));
+    let (ligado, tri) = s.toggle_dyntopo();
+    assert!(ligado);
+    println!("cena =14: {} verts (triangulou {tri} faces)", vertices(&s));
+
+    s.brush.verb = Verb::Draw;
+    s.dyntopo.detail = 1.0;
+    for i in 0..8 {
+        um_dab(&mut s);
+        println!("  Draw fino dab {i}: {} verts", vertices(&s));
+    }
+    s.brush.verb = Verb::Density;
+    for detalhe in [0.15f32, 0.5] {
+        s.dyntopo.detail = detalhe;
+        for i in 0..10 {
+            um_dab(&mut s);
+            println!(
+                "  Density detalhe {detalhe} dab {i}: {} verts",
+                vertices(&s)
+            );
+        }
+    }
+}
+
+/// ⭐⭐⭐ **ELA TIRA UMA FRACÇÃO VISÍVEL, e não um punhado de vértices.**
+///
+/// ⛔⛔ **Este gate nasceu de um report do dono — *«não vejo efeito com
+/// density»* — e o que falhou foi a RÉGUA, não o pincel.** O gate irmão
+/// afirmava `depois < antes`: uma **direcção**. Com ele verde, a colheita
+/// medida era de `34` vértices em `3 386` — **1 %**, que é invisível a olho nu.
+/// *Uma régua que só vê o SINAL não vê a MAGNITUDE*, e é a mesma família do
+/// `edge_max` cego ao quad fino e da contagem cega a QUAIS vértices se movem.
+///
+/// ⇒ a barra é uma **fracção**, e ela sai do percurso do próprio dono medido
+/// dab a dab: com o detalhe em `grosso`, dez toques levam a peça de `822` para
+/// `399` vértices (**−51 %**). A barra fica em `−25 %`, com margem de `2×`.
+#[test]
+#[ignore]
+fn a_densidade_tira_uma_fraccao_visivel_e_nao_um_punhado() {
+    let gpu = gpu_or_skip!();
+    // O percurso do dono: a malha da `=14`, adensada com o `Draw` no fino.
+    let mut s = Sculpt3dScene::new(&gpu.device, ph2d_mesh::shapes::uv_sphere(10, 14, 1.0), 1.0);
+    s.note_canvas(ph2d_editor_core::zones::Rect::new(0.0, 0.0, 900.0, 700.0));
+    assert!(s.toggle_dyntopo().0);
+    s.brush.verb = Verb::Draw;
+    s.dyntopo.detail = 1.0;
+    for _ in 0..8 {
+        um_dab(&mut s);
+    }
+    let adensada = vertices(&s);
+    assert!(
+        adensada > 700,
+        "o arranjo não adensou o suficiente para a pergunta ter sentido: {adensada}"
+    );
+
+    // ⚠️ **E o detalhe em GROSSO é parte do gesto, não do arnês:** o alvo de
+    // aresta é `raio × f(detalhe)`, logo num detalhe fino não há o que colapsar.
+    // É exactamente isto que a queixa do passe diz ao artista.
+    s.brush.verb = Verb::Density;
+    s.dyntopo.detail = 0.15;
+    for _ in 0..10 {
+        um_dab(&mut s);
+    }
+    let afinada = vertices(&s);
+    let fraccao = 1.0 - (afinada as f32) / (adensada as f32);
+    assert!(
+        fraccao >= 0.25,
+        "a densidade tirou só {:.1} % ({adensada} -> {afinada}) — uma colheita \
+         que o dono não vê é indistinguível de um pincel partido",
+        fraccao * 100.0
+    );
+}
+
+/// ⭐⭐⭐ **QUANDO ELA NÃO FAZ NADA, ELA DIZ PORQUÊ.**
+///
+/// ⛔ Um verbo cujo efeito inteiro é sobre a topologia **parece partido** sempre
+/// que o passe não corre, e há **três** razões diferentes que o artista vê
+/// **iguais**: nada acontece. *Foi assim que o report nasceu.*
+///
+/// ⚠️ **O controlo negativo está dentro:** um `Draw` que não parte nada é o caso
+/// **normal** (a malha já tem a densidade pedida ali) e tem de ficar **calado** —
+/// senão o log enche-se e deixa de ser lido.
+#[test]
+#[ignore]
+fn quando_a_densidade_nao_faz_nada_ela_diz_porque() {
+    let gpu = gpu_or_skip!();
+
+    // (a) O modo DESLIGADO — a razão mais comum, e a que o dono encontrou.
+    let mut s = Sculpt3dScene::new(&gpu.device, ph2d_mesh::shapes::uv_sphere(24, 36, 1.0), 1.0);
+    s.note_canvas(ph2d_editor_core::zones::Rect::new(0.0, 0.0, 900.0, 700.0));
+    s.brush.verb = Verb::Density;
+    um_dab(&mut s);
+    assert!(
+        s.dyn_queixa_dita,
+        "a densidade ficou muda com o modo desligado — o artista vê um pincel \
+         partido e não tem como saber que falta o `P`"
+    );
+
+    // (b) ARMADA mas sem nada a colapsar (detalhe fino numa malha grossa).
+    let mut s = Sculpt3dScene::new(&gpu.device, ph2d_mesh::shapes::uv_sphere(10, 14, 1.0), 1.0);
+    s.note_canvas(ph2d_editor_core::zones::Rect::new(0.0, 0.0, 900.0, 700.0));
+    assert!(s.toggle_dyntopo().0);
+    s.brush.verb = Verb::Density;
+    s.dyntopo.detail = 1.0;
+    um_dab(&mut s);
+    assert!(
+        s.dyn_queixa_dita,
+        "a densidade ficou muda sem aresta ao alcance — é a razão mais difícil \
+         de adivinhar de fora, porque depende do DETALHE e não do pincel"
+    );
+
+    // ⭐ **O CONTROLO NEGATIVO: o desenho no MESMO caminho fica CALADO.**
+    //
+    // ⚠️⚠️ **A primeira redacção deste controlo era VÁCUO, e uma mutação
+    // provou-o:** ela usava uma esfera densa com o detalhe grosso, onde o
+    // `Draw` **colapsa** — logo ele nunca chegava ao caminho da queixa, e
+    // tornar a queixa universal não o reprovava. *Um controlo negativo tem de
+    // percorrer o MESMO caminho que a metade positiva*, senão ele está a
+    // afirmar sobre código que não corre.
+    //
+    // ⇒ ele usa agora o caminho (a) — o modo **desligado** —, que é onde a
+    // queixa de facto nasce.
+    let mut s = Sculpt3dScene::new(&gpu.device, ph2d_mesh::shapes::uv_sphere(24, 36, 1.0), 1.0);
+    s.note_canvas(ph2d_editor_core::zones::Rect::new(0.0, 0.0, 900.0, 700.0));
+    s.brush.verb = Verb::Draw;
+    um_dab(&mut s);
+    assert!(
+        !s.dyn_queixa_dita,
+        "o desenho queixou-se — um passe que não corre é o caso NORMAL nele (ele \
+         esculpe na mesma), e uma linha por dab é um log que ninguém lê"
+    );
+}

@@ -39,6 +39,7 @@ impl Sculpt3dScene {
             dyn_births: Vec::new(),
             dyn_remap: ph2d_mesh::Remap::default(),
             dyn_region: ph2d_mesh::RegionScratch::default(),
+            dyn_queixa_dita: false,
             slots: Vec::new(),
             camera,
             renderer: MeshRenderer::new(device, ph2d_render::GameRt::FORMAT),

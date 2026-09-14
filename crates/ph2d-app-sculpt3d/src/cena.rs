@@ -84,6 +84,20 @@ pub struct Sculpt3dScene {
     /// tornaria uma alocação por movimento do mouse, que é o que o
     /// [`ph2d_mesh::RegionScratch`] existe para evitar.
     pub(crate) dyn_region: ph2d_mesh::RegionScratch,
+    /// ⭐⭐ **A QUEIXA DO PASSE DE TOPOLOGIA JÁ FOI DITA NESTE TRAÇO?**
+    ///
+    /// ⚠️ **Report do dono, 2026-09-14: *«não vejo efeito com density»*.** Ele
+    /// tinha razão e o pincel estava certo — o que faltava era o pincel DIZER
+    /// porque não fez nada. Um verbo cujo efeito inteiro é sobre a topologia
+    /// **parece partido** sempre que o passe não corre, e há três razões
+    /// diferentes para isso (o modo desligado · a pilha de multiresolução
+    /// montada · não haver aresta curta ao alcance) que o artista vê **iguais**:
+    /// nada acontece.
+    ///
+    /// ⚠️ **Uma vez por TRAÇO, e não por dab** — um dab corre por movimento do
+    /// ponteiro, e uma queixa por dab seria um log que ninguém lê. Reposta no
+    /// pen-down.
+    pub(crate) dyn_queixa_dita: bool,
     /// **A TABELA DE SLOTS DO DEVICE** — quem mora em cada índice do
     /// renderizador. Ver [`slots`], que é onde a lei dela está escrita.
     pub(crate) slots: Vec<ObjectId>,

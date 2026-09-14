@@ -124,6 +124,25 @@ impl Sculpt3dScene {
     /// deposita o barro na malha grossa e adensa em cima — o detalhe nasce um
     /// dab atrasado, e o traço fica com a silhueta do que a malha era, não do
     /// que ela é.
+    /// ⭐⭐ **O PINCEL DIZ PORQUE NÃO FEZ NADA** — uma vez por traço.
+    ///
+    /// ⚠️ **Report do dono, 2026-09-14: *«não vejo efeito com density»*.** O
+    /// pincel estava certo e a queixa também: um verbo cujo efeito inteiro é
+    /// sobre a topologia **parece partido** sempre que o passe não corre, e há
+    /// **três** razões diferentes que o artista vê **iguais** — nada acontece.
+    ///
+    /// ⛔ Só para quem não tem outra forma de se mostrar
+    /// ([`ph2d_sculpt3d::Verb::sem_lei_por_vertice`]): num `Draw` um passe que
+    /// não parte nada é o caso **normal** (a malha já tem a densidade pedida
+    /// ali), e uma linha de log por dab seria um log que ninguém lê.
+    fn queixa_do_passe(&mut self, verbo: ph2d_sculpt3d::Verb, motivo: &str) {
+        if !verbo.sem_lei_por_vertice() || self.dyn_queixa_dita {
+            return;
+        }
+        self.dyn_queixa_dita = true;
+        eprintln!("[sculpt3d] {} nao mudou a malha: {motivo}", verbo.label());
+    }
+
     pub(super) fn refine_for_dab(
         &mut self,
         verbo: ph2d_sculpt3d::Verb,
@@ -131,6 +150,10 @@ impl Sculpt3dScene {
         radius: f32,
     ) -> bool {
         if !self.dyntopo.armed {
+            self.queixa_do_passe(
+                verbo,
+                "a topologia dinamica esta' DESLIGADA -- aperte P para ligar",
+            );
             return false;
         }
         // ⭐⭐⭐ **A PERGUNTA É AO VERBO, e até 2026-09-14 ela não era feita.**
@@ -155,6 +178,10 @@ impl Sculpt3dScene {
         // ⚠️ **Recusa com a pilha montada** (ver o cabeçalho). Silenciosa aqui
         // de propósito: a mensagem sai no ARM, uma vez, em vez de por dab.
         if self.level_count() > 1 {
+            self.queixa_do_passe(
+                verbo,
+                "ha' uma pilha de multiresolucao montada -- J reverte-a",
+            );
             return false;
         }
         let target = edge_target(radius, self.dyntopo.detail);
@@ -229,6 +256,18 @@ impl Sculpt3dScene {
         }
         self.dyn_births = births;
         if !done && !cut {
+            // ⚠️ **A razão mais provável, e a mais difícil de adivinhar de
+            // fora:** o alvo de aresta é `raio × f(detalhe)`, logo um detalhe
+            // FINO pede arestas curtas e não há nada a colapsar. Medido no
+            // percurso do dono: com o detalhe em `grosso` a peça vai de `822`
+            // para `399` vértices em dez toques; em `medio`, ela lê
+            // `396 -> 396` — **zero**, e o artista vê a mesma coisa que veria
+            // com o pincel partido.
+            self.queixa_do_passe(
+                verbo,
+                "nao ha' aresta fora da faixa aqui -- baixe o detalhe com U \
+                 (ou aumente o pincel com ]) e passe de novo",
+            );
             return false;
         }
         // A malha tem faces novas: o upload incremental não as descreve.

@@ -264,6 +264,9 @@ pub fn pointer_down(
             // velha, isso é um pânico no primeiro dab.
             scene.aim(pos.0, pos.1);
             scene.stroke.begin(scene.objects[scene.active].stack.mesh());
+            // A queixa do passe de topologia é UMA POR TRAÇO — ver
+            // [`super::cena::Sculpt3dScene::dyn_queixa_dita`].
+            scene.dyn_queixa_dita = false;
             // ⭐⭐ **A LISTA DE COLISORES é montada AQUI, uma vez, na pose
             // deste instante** (espec §5.6 cláusula 1) — as OUTRAS peças da
             // cena. ⇒ *uma peça que se mova durante o traço não se move para

@@ -130,15 +130,24 @@ pub(crate) fn for_scene(mesh: &ph2d_mesh::Mesh) {
              [sculpt3d]        toque levava a peca de 830 para 1331 vertices.
              [sculpt3d]        Volte ao `Draw` e esculpa: a malha volta a adensar. Se a mascara
              [sculpt3d]        adensar, ou se o desenho parar de adensar, e' reprovacao.
-             [sculpt3d]   (12) O PINCEL QUE SO' AFINA -- `Density`, no fim da fileira (novo):
-             [sculpt3d]        depois de ter adensado uma zona no passo (3), escolha `Density`,
-             [sculpt3d]        aperte U ate' GROSSO e passe por cima dessa zona.
-             [sculpt3d]        -> A malha AFINA onde voce passa, e a FORMA fica. Ele nunca
-             [sculpt3d]           acrescenta: numa zona ja' grossa ele nao faz nada, por mais
-             [sculpt3d]           que voce insista -- e' isso que o separa do `Draw`.
-             [sculpt3d]        -> Com o modo DESLIGADO (P) ele nao faz absolutamente nada: ele
-             [sculpt3d]           nao move um unico vertice, todo o efeito dele e' sobre a
-             [sculpt3d]           malha.
+             [sculpt3d]   (12) O PINCEL QUE SO' AFINA -- `Density`, no fim da fileira (novo).
+             [sculpt3d]        ATENCAO: este passo comeca do ZERO, porque os passos (9) e (10)
+             [sculpt3d]        deixam o modo desligado ou com a pilha montada. Faca assim:
+             [sculpt3d]          a) Ctrl+Z ate' voltar ao inicio. Se voce fez o (10), aperte J
+             [sculpt3d]             (ele reverte a subdivisao).
+             [sculpt3d]          b) Aperte P ate' o log dizer LIGADA, e U ate' dizer FINO.
+             [sculpt3d]          c) Com `Draw`, esculpa uma zona ate' ela ficar bem densa.
+             [sculpt3d]          d) Abra o painel (crase), escolha `Density`, e aperte U ate'
+             [sculpt3d]             dizer GROSSO. ATENCAO: SEM este U ele nao tem o que fazer.
+             [sculpt3d]          e) Passe por cima daquela zona, varias vezes.
+             [sculpt3d]        -> A malha AFINA onde voce passa, e a FORMA fica. Medido: dez
+             [sculpt3d]           passadas levam a peca de 822 para 399 vertices.
+             [sculpt3d]        -> Ele NUNCA acrescenta: insista numa zona ja' grossa e nada
+             [sculpt3d]           acontece. E' isso que o separa do `Draw`.
+             [sculpt3d]        -> E quando ele NAO faz nada, ele DIZ PORQUE no log -- o modo
+             [sculpt3d]           desligado, a pilha montada, ou nao haver aresta fora da
+             [sculpt3d]           faixa ali. Se voce nao ve efeito, a linha do log diz o que
+             [sculpt3d]           falta.
              [sculpt3d]        (A borda de uma peca aberta ele nao afina -- e' uma escolha
              [sculpt3d]         nossa, para o contorno nao mudar de forma sozinho.)"
         );

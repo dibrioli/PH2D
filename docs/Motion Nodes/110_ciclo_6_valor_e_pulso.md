@@ -70,6 +70,9 @@ envelhece em silêncio no dia em que um nó da família nasce — a lei que o ci
 **O que ele já diz, sem uma linha de código escrita:**
 
 1. ⛔ **A família `pulse.*` está FORA do dispositivo — 9 de 9.** Nenhum kernel registado.
+   ✅ **FECHADO pela W2 (§8): hoje são `9` de `9` COM kernel.** ⚠️ Esta tabela é a fotografia de
+   2026-09-14 **antes** da wave e fica assim de propósito — re-escrevê-la apagaria o retrato de que
+   o §8 é a resposta. *Corra a sonda antes de citar a coluna.*
 2. ⛔ **Três `value.*` também**: `cursor` · `number` · `table`. ⚠️ O `value.number` é **uma
    constante**, o nó mais simples do catálogo.
 3. ⚠️ **Três cartões estão VAZIOS** (`value.cursor` · `pulse.level` · `pulse.sample_hold`): zero

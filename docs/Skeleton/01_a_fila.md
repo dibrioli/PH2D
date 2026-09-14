@@ -2467,6 +2467,41 @@ report novo que a tabela das alavancas não explique.
 UV) fica em `2,15` em **toda** densidade de malha — ali o que varia ao longo do dab é a própria
 dobra, e a malha fina não a salva.
 
+**W14 — O AUTOKEY GRAVA A POSE QUE A MÃO FEZ, e não só o osso debaixo do dedo** (2026-09-14,
+escolhido como fase seguinte depois de o dono recusar a W13).
+
+⛔⛔ **O defeito, medido no passe antes de tocar em código:** a população que o `autokey_pass`
+amostrava era a **SELECÇÃO** (`hero.gizmo.iter_selected()`). Puxar a PONTA de uma corrente é
+cinemática inversa — a corrente **inteira** dobra —, e agarrar um osso **não** o selecciona
+([`despacho_clique_select`](../../shells/desktop/src/input_dispatch/despacho_clique_select.rs):
+o gesto escreve `bone_pose` e devolve). ⇒ a pose que o artista acabou de fazer ia para a animação
+**por um osso só**, e o resto dela perdia-se no primeiro instante em que o apply voltasse a escrever
+pelas curvas. **Gate red-first, e o número foi `(2, 3)`**: numa corrente de dois ossos dobrada
+inteira, a raiz ficou com as suas duas chaves de sempre e só a ponta recebeu a nova.
+
+⭐⭐ **A população certa já era CALCULADA:** a `timeline_bridge::maos_do_quadro` nasceu na **W8** para
+o apply *não* escrever por cima da mão, e é exactamente a mesma pergunta — *uma porta com um
+consumidor só estava a metade do trabalho que sabia fazer*. A cura é a população passar a ser
+**selecção ∪ mão**, sem repetidos, com a selecção à frente.
+
+⚠️⚠️ **E ela NÃO espalha chaves pelo esqueleto — quem filtra é o DIFF**, e isso tem gate próprio
+(uma corrente de TRÊS com só dois movidos: `(2, 3, 3)`). *A mão diz «olha também para estes», nunca
+«cunha estes».* Sem esse gate a cura seria indistinguível do defeito OPOSTO — vinte ossos, vinte
+faixas novas por arrasto.
+
+⭐ **A decisão de quem o passe olha saiu para uma PORTA** (`autokey_pass::populacao`), e não por
+gosto: com a lista construída em linha, **duas mutações sobreviveram** (apagar o filtro de repetidos
+e perder a mão do GIZMO — que a selecção cobre **por acaso**, e por acaso não é uma lei). Com a porta
+extraída e gateada, **cinco de cinco RED**.
+
+⭐⭐ **E a quinta apanhou uma lei que vivia SEM gate desde 2026-09-08:** *pré-visualização não é
+autoria* — um osso que um motor conduz (o osso inteligente, a âncora de IK) escreve pose **entre** o
+apply e este passe, e cunhar dali faria uma chave da saída do motor. O filtro existia; nada o
+protegia. Hoje o gate exige que ele salte o conduzido **mesmo estando na mão**.
+
+⚠️ **O `run` passou a receber `&SimWorld`** (era `&World`): a mão precisa de perguntar pela cadeia de
+ossos. É uma mudança de assinatura interna da shell.
+
 ## ⛔ Recusas MEDIDAS deste módulo — não as reconstrua
 
 > ⚠️ **As seis de 2026-09-07/08 entraram aqui na auditoria de 08/09** — elas viviam só em prosa e em

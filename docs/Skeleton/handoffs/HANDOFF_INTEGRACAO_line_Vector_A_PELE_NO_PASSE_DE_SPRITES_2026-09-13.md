@@ -45,6 +45,8 @@ As cinco waves:
 | **W11b** | **a matriz nascia numa BASE MISTA** (2.º report: *«sem melhorias»*) — as duas metades tinham gate e a JUNÇÃO não, porque as fixturas das duas eram alinhadas aos eixos |
 | **W12** | **a deformação debaixo de um dab mede-se AO TAMANHO DO DAB** (3.º report: *«quase bom … talvez artefato inevitável»*) — uma malha é afim por TRIÂNGULO, e perguntar num PONTO dava ao dab inteiro a deformação de um pedaço dele |
 | **W12b** | **o motor do onion SAIU da shell** — a cura nomeada do tecto `the_shell_only_shrinks`, que as waves do pincel tinham deixado com UMA linha de folga |
+| **W13** | **o diagnóstico completo do *«só fica redondo onde não temos deformação»*** — a régua da W12 era cega a uma marca AMASSADA; a cura foi medida (grelha amostrada) e **RECUSADA pelo dono** |
+| **W14** | **o AutoKey grava a pose que a MÃO fez** — a população era a SELECÇÃO, e agarrar um osso não o selecciona: a pose feita com IK ia para a animação por um osso só |
 
 ---
 
@@ -232,6 +234,13 @@ as amostras fora da malha respondem pela facete que deixaram · e o fio (a DERIV
 3. ⛔ **Um gate só com o raio grande não pina o raio de amostragem** — amostrar a METADE do raio
    melhora os dabs grandes na mesma, e só a coluna do raio PEQUENO a apanha (ganho **zero** ali).
 
+**W14** (a shell): a pose que a mão fez entra INTEIRA (red-first `(2, 3)`) · um osso que a mão segura
+e que **não se moveu** não cunha nada (`(2, 3, 3)`) · e a porta `populacao` com os três casos dela
+(selecção ∪ mão sem repetidos · a mão do GIZMO sem estar na selecção · o conduzido por um MOTOR
+saltado mesmo estando na mão). **Cinco mutações, cinco RED** — ⚠️ **duas só morreram depois de a
+população sair para uma PORTA**, e a quinta apanhou uma lei (*pré-visualização não é autoria*) que
+vivia **sem gate** desde a auditoria de 2026-09-08.
+
 **W12b** (a mudança de crate): ⛔ **o `every_member_inherits_the_workspace_lints` apanhou a armadilha
 do HOWTO à primeira** — a crate nova não herdava os lints da workspace, logo o `unsafe` ficava
 PERMITIDO nela em todo alvo. Prova exacta do movimento: **`15` testes antes, `15` depois**
@@ -401,7 +410,7 @@ PERMITIDO nela em todo alvo. Prova exacta do movimento: **`15` testes antes, `15
 | ⚠️ **DUAS caixas de sprite** | a do gizmo sai do `sheet_grid_overlay::gizmo_box(sprite, …)` (o quad) e a do `ph2d_editor_core::gizmo` sai do `ph2d_render::selection_bbox_world` (que a W3 tornou ciente da malha): numa imagem presa e DOBRADA elas discordam. Hoje só a segunda é lida (o *View All* e o contorno do realce) |
 | ⚠️ **Vermelho PRÉ-EXISTENTE, não desta linha** | `ph2d-preview-drive/src/lib.rs:493` — clippy `len` sem `is_empty`. A crate é intocada por esta linha (último commit dela: `21c403c20`, 12/09) |
 | ⏳ **O onion no Arrange com PILHA** | o `clip_time` responde `None` quando o clip activo toca **zero ou duas** vezes ali ⇒ nenhum fantasma. É a resposta honesta (não existe um «agora» de que o passado seja vizinho) e **não** foi smokada: uma pilha com uma strip só devolve o tempo local, que é o caso comum |
-| ⏳ **O AutoKey de um osso key só o SELECCIONADO** | com a corrente inteira congelada durante o arrasto, quem a IK moveu não recebe chave — o `autokey_pass` amostra `gizmo.iter_selected()`. É o modelo do Blender (keya-se o osso escolhido), mas **não foi medido contra ele** |
+| ✅ **O AutoKey de um osso keyava só o SELECCIONADO** | **FECHADO pela W14**, e a redacção antiga estava a ser generosa: não é *«o modelo do Blender»*, é **perda de dados** — agarrar um osso **não** o selecciona, logo a pose feita com IK podia ir para a animação por um osso só, ou por **nenhum**. Medido red-first: `(2, 3)` numa corrente de dois dobrada inteira. A população passou a ser **selecção ∪ mão** (a porta `autokey_pass::populacao`), com o DIFF a impedir que isso espalhe chaves |
 | ⏳ **O tecto da shell tem `1 016` linhas de folga** | a W12b moveu `1 014` (o motor do onion). A próxima candidata **não** está medida — e o tecto é a grandeza que soma entre linhas sem ninguém a contar (`CLAUDE.md` §5.0) |
 | ⏳ como no handoff anterior | o mapa dobra sobre si em dobras fortes · F4 *«undo tem poucos passos»* |
 
@@ -475,6 +484,12 @@ fechado.
 
 ⚠️ **E o que a W11 acrescenta:** com o braço bem DOBRADO, o risco pintado tem de sair com a
 **espessura do anel do cursor** — e não uma lasca fina onde o leque comprime a arte.
+
+⚠️ **E o que a W14 acrescenta (a fase seguinte, escolhida pelo dono):** com *Window → Timeline*
+aberta e o **AutoKey** ligado, puxe a **PONTA** do braço com a ferramenta **Bone** — a corrente
+inteira dobra. Ao largar, **todos** os ossos que se moveram têm de ter chave (a linha de cada um na
+timeline ganha um losango). ⛔ Até 2026-09-14 só o osso **seleccionado** a recebia, e a pose
+desaparecia ao arrastar o cursor do tempo para longe e voltar.
 
 ⚠️ **E o que a W12 acrescenta, que é o que o 3.º report pedia:** repita o toque com o pincel **bem
 grande** (o anel a cobrir vários triângulos da arte dobrada). A marca tem de sair redonda **também

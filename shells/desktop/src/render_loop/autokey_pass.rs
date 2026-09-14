@@ -99,7 +99,10 @@ pub(crate) fn run(
     ak: &mut AutokeyState,
     toasts: &mut ph2d_editor_core::ToastQueue,
     hero: &HeroScreen,
-    world: &World,
+    // ⭐ **O mundo chega como `SimWorld` e não como `&World`** porque a população deste passe deixou
+    // de ser só a selecção: quem a MÃO segura sai da [`super::timeline_bridge::maos_do_quadro`], e
+    // ela precisa de perguntar pela cadeia de ossos.
+    sim: &ph2d_ecs::SimWorld,
     preview: &ph2d_preview_drive::PreviewDrive,
     skeleton: &ph2d_app_skeleton::state::SkeletonState,
 ) {
@@ -124,15 +127,53 @@ pub(crate) fn run(
     // ⚠️ *Pré-visualização não é autoria*, e o ledger já sabia exactamente quem está sob condução —
     // faltava alguém perguntar-lhe. ⛔ Não é o `dragging_entity`: aquele salta quem a MÃO segura,
     // este salta quem um motor escreve, e as duas populações não se intersectam.
-    let samples: Vec<(u64, PoseSample)> = hero
-        .gizmo
-        .iter_selected()
-        .filter(|e| !preview.drives(*e))
-        .map(|e| (e, sample_pose(world, e)))
+    let samples: Vec<(u64, PoseSample)> = populacao(hero, skeleton, sim, preview)
+        .into_iter()
+        .map(|e| (e, sample_pose(sim.world(), e)))
         .collect();
     apply_samples(
         timeline, playhead, &samples, drag_now, armed, performing, ak, toasts,
     );
+}
+
+/// ⭐⭐⭐ **DE QUEM ESTE PASSE OLHA A POSE: a SELECÇÃO mais o que a MÃO segura.**
+///
+/// ⛔⛔ **A selecção sozinha perdia a pose que o artista acabou de fazer** (report do dono,
+/// 2026-09-14). Puxar a PONTA de uma corrente é cinemática inversa: a corrente **inteira** dobra —
+/// e agarrar um osso **não** o selecciona (o `despacho_clique_select` escreve `bone_pose` e
+/// devolve). Com a selecção sozinha, a animação ficava com **um osso** da pose e o resto perdia-se
+/// no primeiro instante em que o apply voltasse a escrever pelas curvas.
+///
+/// ⭐ **A população certa já era CALCULADA** — a [`super::timeline_bridge::maos_do_quadro`] nasceu
+/// na W8 para o apply *não* escrever por cima da mão, e é exactamente a mesma pergunta. *Uma porta
+/// com um consumidor só estava a metade do trabalho que sabia fazer.*
+///
+/// ⚠️ **Isto NÃO espalha chaves pelo esqueleto:** quem filtra é o DIFF do [`apply_samples`] — um
+/// osso cuja pose é a da curva não cunha nada. A mão diz *«olha também para estes»*, nunca
+/// *«cunha estes»*.
+///
+/// ⚠️ **A ordem é a da SELECÇÃO primeiro** (é o que o diff e a primeira recusa do quadro esperam), a
+/// mão a seguir, **sem repetidos** — o osso agarrado costuma estar nas duas listas.
+///
+/// ⛔ **Menos quem um MOTOR está a conduzir** (auditoria de 2026-09-08): a invariante do cabeçalho
+/// deste ficheiro exige que ninguém escreva pose **entre** o apply e este passe, e os passes do
+/// esqueleto (o osso inteligente, a âncora de IK) escrevem exactamente aí — a chave nasceria feita
+/// da saída do motor. *Pré-visualização não é autoria.*
+#[must_use]
+pub(crate) fn populacao(
+    hero: &HeroScreen,
+    skeleton: &ph2d_app_skeleton::state::SkeletonState,
+    sim: &ph2d_ecs::SimWorld,
+    preview: &ph2d_preview_drive::PreviewDrive,
+) -> Vec<u64> {
+    let maos = super::timeline_bridge::maos_do_quadro(Some(hero), skeleton, sim);
+    let mut fora: Vec<u64> = Vec::new();
+    for e in hero.gizmo.iter_selected().chain(maos.iter().copied()) {
+        if !preview.drives(e) && !fora.contains(&e) {
+            fora.push(e);
+        }
+    }
+    fora
 }
 
 /// O laço de [`apply_samples`]: cada pose amostrada contra a sua curva (ou o quadro anterior),

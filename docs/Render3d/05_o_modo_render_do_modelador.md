@@ -152,7 +152,8 @@ linha que decide alguma coisa (`+54 %` de pixels cortados a `0` stops, `−13 %`
   planalto sem forma. ⚠️ **É decisão do dono**, e o cálculo está fechado: na `Standard` a peça só
   deixa de cortar a `−1` stop (`118` px, `0,2 %`); a `Neutral` não corta em exposição nenhuma. As
   duas saídas são *a vista de omissão passa a `Neutral`* ou *a exposição de omissão desce um stop*.
-- ⏳ **A radiância do céu é avaliada na direcção ESPELHADA**, e para um lóbulo largo a média do céu
+- ~~**A radiância do céu é avaliada na direcção ESPELHADA**~~ — ✅ **CURADA em 14/09, ver §16.**
+  O diagnóstico abaixo fica, porque é ele que explica a cura: para um lóbulo largo a média do céu
   linear está na direcção média do lóbulo, não na espelhada. ⚠️⚠️ **A redacção anterior dizia que o
   erro «não foi medido» e que ele «é da forma do céu, não do material» — as duas metades estavam
   erradas.** Medido em 13/09 contra a média GGX numérica (`65 536` amostras, peso `N·L`), o erro é
@@ -755,3 +756,101 @@ afirmar no dia em que a omissão se mexe, sem uma linha do gate mudar.* ⇒ os t
 
 ⭐ É a mesma família do `§0.0`: *quem move o número que tornava algo inalcançável tem de reconferir a
 nota* — aqui, quem move a omissão tem de reconferir as fixturas que a pressupunham.
+
+
+---
+
+## §16 — ⭐⭐⭐ O CÉU PASSA A SER LIDO NA DIRECÇÃO MÉDIA DO LÓBULO (2026-09-14)
+
+O §8 leva esta desde 13/09, e com a frase que a marcou para hoje: *«ela torna-se visível no dia em
+que houver material por objecto»*. ⭐ **Esse dia foi ontem** (§12) — o metal passou a ser autorável.
+*Quem move o número que tornava algo inalcançável tem de reconferir a nota* (`CLAUDE.md` §0.0).
+
+### §16.1 — ⛔⛔ O defeito era um PARÂMETRO DEITADO FORA
+
+```rust
+fn radiance(&self, dir: [f32; 3], _alpha: f32) -> [f32; 3]
+```
+
+O `Environment::radiance` recebe a **largura do lóbulo** — a assinatura do MaterialX di-lo por
+escrito (*«já pré-filtrada para um lóbulo GGX de rugosidade `alpha`»*) — e o céu de estúdio
+**descartava-a**.
+
+⚠️ É a segunda espécie de controlo morto do `CLAUDE.md` §5.0: *o consumidor que projecta o valor
+fora*. O fio está inteiro, o valor chega, e quem o recebe ignora-o — **e nenhuma sonda de «quem lê
+este campo?» o vê, porque ele *é* lido**: está na assinatura.
+
+### §16.2 — ⭐⭐ A cura é UM ESCALAR, e é EXACTA
+
+Este céu é **linear na altura** (`L(ω) = A + B·ω.y`), e a média de uma função linear sobre uma
+distribuição é a função avaliada na **direcção média** dela. A distribuição do pré-filtro é simétrica
+em torno da espelhada `R` ⇒ a componente perpendicular cancela e sobra `E[ω] = c(α)·R`:
+
+```text
+média(A + B·ω.y) = A + B · c(α) · R.y
+```
+
+⚠️ **É a convolução em harmónicos esféricos, não uma heurística:** uma função de grau `1` convolvida
+com um núcleo simétrico é a mesma função de grau `1`, escalada pelo coeficiente de grau `1` do núcleo
+— e `c(α)` **é** esse coeficiente.
+
+A forma fechada, integrada da amostragem de importância do GGX com `N = V = R` (a suposição do
+*split-sum*, que é a do `mx_environment_prefilter`), com `a = α²`, `k = a−1`, `m = a+1`, `L = ln(2a/m)`:
+
+```text
+c(α) = [ k(3a+1) − 4am·L ] / { k · [ 2a·L − 2a + m ] }
+```
+
+⭐ **Dois controlos que não são coincidência:** `c(0) = 1` (o lóbulo colapsa na espelhada) e
+`c(1) = 2/3` — que é **exactamente** o `(2/3)·k` do lóbulo cosseno que o `ENV_SLOPE` da `ph2d-light`
+já carrega, e que este ficheiro desfaz com o `RAW`. *A rugosidade máxima do GGX é o hemisfério
+cosseno, e as duas metades da casa chegam ao mesmo número por caminhos diferentes.*
+
+⚠️ **A vizinhança de `a = 1` é singularidade REMOVÍVEL e numericamente instável** (numerador e
+denominador vão os dois a zero como `k³`): abaixo de `|k| = 1e-3` devolve-se o limite, com desvio
+`< 1e-4`. ⛔ **E o gate varre essa vizinhança de propósito** — sem esses pontos ele ficaria verde
+sobre a única região onde a forma fechada não se pode usar crua.
+
+### §16.3 — ⛔⛔ E porque a cura NÃO mora na `ph2d-material`
+
+A razão de sempre vale (*ela é o port fiel do GLSL, e «melhorar» uma fórmula ali deixa de ser a
+referência*), mas há uma mais forte: **«avaliar na direcção média» só é EXACTO porque ESTE céu é
+linear.** Sobre um céu com feições a lei é outra. Escrevê-la na crate do material seria prometer, a
+quem trouxer o céu seguinte, uma exactidão que ela não tem.
+
+### §16.4 — O que muda no pixel, por material
+
+Sonda [`measure_what_the_lobe_cure_changes_in_the_pixel`](../../crates/ph2d-app-field3d/src/render_light_tests.rs)
+— a mesma esfera, a mesma luz, os dois céus:
+
+| material | pixels que mudam | `|Δ|` p50 | p95 | max |
+|---|---:|---:|---:|---:|
+| omissão (dieléctrico, `r 0,30`) | `13 %` | `0` | `1` | `1` |
+| metal polido (`metal 1`, `r 0,10`) | `9 %` | `0` | `1` | `1` |
+| metal escovado (`metal 1`, `r 0,50`) | `88 %` | `2` | `11` | `15` |
+| **metal fosco** (`metal 1`, `r 1,00`) | `97 %` | `4` | **`22`** | **`32`** |
+
+⭐⭐ **A previsão do §8 bate**: ele dizia *«no pixel, hoje, é ruído: `p50 = 0`, `p95 = 1`»* e *«num
+METAL a rugosidade `1` custa `p95 = 23` e `max = 33`»*. Medido: `1` e `22`/`32`.
+
+⇒ **a cura é cirúrgica**: o material de omissão fica onde estava (a peça que o dono já aprovou não se
+mexe), e o que se endireita é exactamente o que passou a ser alcançável ontem.
+
+### §16.5 — Os gates, e porque são DOIS
+
+| gate | o que ele prende |
+|---|---|
+| `the_closed_form_of_the_lobe_agrees_with_the_quadrature` | a **lei**: a forma fechada contra a quadratura do ponto médio (`2¹⁶` intervalos), barra `2e-4`, mais os dois controlos e a **monotonia** |
+| `the_sky_honours_the_lobe_width_it_is_handed` | a **costura**: que alguém a chama |
+
+⛔ **O primeiro sozinho é cego ao defeito que esta wave curou** — a lei podia estar certa e o
+parâmetro continuar a ser deitado fora, que era exactamente o estado anterior. *Um gate sobre a lei é
+cego a um consumidor que a ignora.*
+
+⚠️ **E o segundo mede o par**: num céu avaliado no **equador** o encolhimento é invisível por
+construção (`c·0 = 0`), então ali ele afirma a **invariância** — sem essa metade, um `radiance` que
+ignorasse o `dir` inteiro também passaria.
+
+⛔⛔ **E o oráculo do céu (§2) continua cego a isto, por construção:** ele corre sobre um céu
+**constante**, e num céu constante a espelhada e a média do lóbulo são iguais. *O gate desta lei tinha
+de ser escrito de novo, e não estendido.*

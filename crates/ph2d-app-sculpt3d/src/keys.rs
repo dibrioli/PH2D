@@ -395,13 +395,23 @@ pub fn key(
     // O DETALHE — três degraus com nome. Ver `DETAIL_STEPS`.
     if code == K::KeyU {
         let d = scene.cycle_detail();
+        // ⚠️⚠️ **O log NOMEIA de qual dos DOIS sliders ele falou.** Desde a ordem
+        // do dono de 14/09 há um `Detail` da CENA (a topologia dinâmica, que
+        // governa o traço dos outros pincéis) e um do PINCEL de densidade — e
+        // uma linha que não os separasse deixaria o artista sem saber em qual
+        // acabou de mexer.
+        let dono = if scene.brush.offers_density_controls() {
+            scene.brush.verb.label()
+        } else {
+            "Dynamic Topology"
+        };
         // ⚠️ **A contagem entra aqui porque este é o gesto que a MUDA nos
         // dois sentidos**: baixar o detalhe e voltar a passar o pincel faz o
         // colapso retirar o que o refino pôs, e sem o número de antes o
         // artista não tem contra o que comparar.
         eprintln!(
-            "[sculpt3d] detalhe: {d} -- a malha inteira nesta densidade teria ~{} triangulos.                  O pincel diz ONDE; este numero diz QUAO FINO, e nao muda com o zoom                  ({} vertices / {} faces agora)",
-            ph2d_mesh::tris_for_detail(scene.dyntopo.detail).round() as u64,
+            "[sculpt3d] detalhe do {dono}: {d} -- a malha inteira nesta densidade teria                  ~{} triangulos. O pincel diz ONDE; este numero diz QUAO FINO, e nao muda                  com o zoom ({} vertices / {} faces agora)",
+            ph2d_mesh::tris_for_detail(scene.detalhe_do_gesto(&scene.brush)).round() as u64,
             scene.mesh().vert_count(),
             scene.mesh().face_count()
         );

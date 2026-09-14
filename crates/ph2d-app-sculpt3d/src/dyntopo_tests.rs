@@ -167,6 +167,14 @@ fn cena_com(
     let (ligado, _) = s.toggle_dyntopo();
     assert!(ligado, "o dyntopo tinha de ligar");
     s.dyntopo.detail = detalhe;
+    // ⚠️⚠️ **OS DOIS sliders levam o mesmo valor, e é de propósito.** Desde a
+    // ordem do dono de 14/09 há um `Detail` da CENA (a topologia dinâmica) e um
+    // do PINCEL de densidade; um arnês que só escrevesse um deixaria metade dos
+    // gates a medir o **default** do outro. ⭐ *Quem prova que cada verbo lê o
+    // SEU é o gate dedicado* (`cada_gesto_le_o_seu_proprio_slider`), que os põe
+    // em valores DIFERENTES — aqui eles concordam para que todos os outros
+    // gates continuem a medir a densidade que pedem.
+    s.brush.density_detail = detalhe;
     s
 }
 

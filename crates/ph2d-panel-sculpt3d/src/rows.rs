@@ -133,6 +133,42 @@ static BRUSH: &[Row] = &[
         level: UiLevel::Basic,
         place: Place::Knobs,
     },
+    // ⭐⭐⭐ **O `Detail` DO PINCEL DE DENSIDADE, logo abaixo do raio** — ordem do
+    // dono (14/09): *«deixe o slider Detail para o dynamic Retopology e coloque
+    // outro slider Detail exclusivo para o pincel, nas propriedades do
+    // pincel»*.
+    //
+    // ⚠️ **Ele fica COLADO ao raio de propósito:** para este pincel os dois são
+    // a ferramenta inteira — *o raio diz ONDE, este diz QUÃO FINO* —, e separá-los
+    // por um knob que ele não lê faria o artista procurar o segundo.
+    //
+    // ⚠️⚠️ **Há DOIS controlos com o rótulo `Detail` neste painel, e é de
+    // propósito:** o da secção *Topology* governa a **topologia dinâmica** (o
+    // traço dos outros pincéis) e este governa este pincel, que não tem traço. ⛔
+    // Eles **não** são duas superfícies sobre um valor — a armadilha que os três
+    // chips pagaram nesta mesma wave: são **dois campos**, um na cena e outro no
+    // `Brush`, e quem escolhe entre eles é a
+    // [`ph2d_sculpt3d::Brush::offers_density_controls`], a mesma porta que este
+    // `show` consulta. *Um slider visível a governar outra coisa é o que essa
+    // porta única existe para impedir.*
+    //
+    // ⚠️ A faixa e a unidade são as MESMAS do irmão (uma contagem de triângulos
+    // ancorada na ÁREA, logo independente do zoom e do tamanho da peça): *dois
+    // sliders, uma régua*.
+    Row {
+        label: "panel.sculpt3d.density_detail",
+        slider: crate::ids::SCULPT3D_DENSITY_DETAIL,
+        chip: crate::ids::SCULPT3D_DENSITY_DETAIL_NUM,
+        min: 0.0,
+        max: 1.0,
+        step: 0.05, // LITERAL-PX-OK: fracao do curso, nao metrica de layout
+        decimals: 2,
+        get: |u| u.brush.density_detail,
+        set: |u, v| u.brush.density_detail = v,
+        show: |u| u.brush.offers_density_controls(),
+        level: UiLevel::Basic,
+        place: Place::Knobs,
+    },
     Row {
         label: "panel.sculpt3d.strength",
         slider: crate::ids::SCULPT3D_STRENGTH,

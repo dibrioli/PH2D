@@ -140,10 +140,14 @@ pub(crate) fn for_scene(mesh: &ph2d_mesh::Mesh) {
              [sculpt3d]           (ele reverte a subdivisao) -- com a pilha montada ele RECUSA,\n\
              [sculpt3d]           e o log diz isso.\n\
              [sculpt3d]        b) Abra o painel (crase) e escolha `Density` no fim da fileira.\n\
-             [sculpt3d]        Na seccao `Topology` ha' o slider `Detail`: ele diz QUAO FINA voce\n\
-             [sculpt3d]        quer a malha, e o log imprime quantos triangulos a peca inteira\n\
-             [sculpt3d]        teria nessa densidade. A tecla U continua a passar por tres\n\
-             [sculpt3d]        pontos com nome.\n\
+             [sculpt3d]        ⭐ O `Detail` DELE fica nas PROPRIEDADES DO PINCEL, logo abaixo\n\
+             [sculpt3d]        do `Radius` -- sao os dois controlos da ferramenta: o raio diz\n\
+             [sculpt3d]        ONDE e o Detail diz QUAO FINO. O log imprime quantos triangulos\n\
+             [sculpt3d]        a peca inteira teria nessa densidade.\n\
+             [sculpt3d]        ⚠️ Ha' um SEGUNDO `Detail` na seccao `Topology`, e ele e' de\n\
+             [sculpt3d]        OUTRA coisa: da topologia dinamica, que governa o traco dos\n\
+             [sculpt3d]        outros pinceis. Mexer num nao mexe no outro -- e a tecla U cicla\n\
+             [sculpt3d]        o do gesto que voce tem na mao (o log diz de qual falou).\n\
              [sculpt3d]        c) ADENSAR: ponha o slider no MAXIMO e passe o pincel numa zona.\n\
              [sculpt3d]           Os triangulos ali tem de ficar MENORES e a forma nao pode\n\
              [sculpt3d]           mudar. Medido nesta cena: 128 -> 719 vertices.\n\

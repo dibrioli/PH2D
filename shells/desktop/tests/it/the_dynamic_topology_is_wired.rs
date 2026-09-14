@@ -178,6 +178,28 @@ fn the_edge_target_comes_from_the_piece_never_from_the_brush() {
         1,
         "e há UMA chamada no cluster: uma segunda seria a segunda resposta"
     );
+    // ⭐⭐ **E a ESCOLHA entre os dois sliders é feita numa porta só.** Ordem do
+    // dono (14/09): o `Detail` da secção *Topology* governa a topologia dinâmica
+    // e o das propriedades do pincel governa a densidade. ⚠️ **Dois sítios a
+    // escolher entre dois sliders é como a tecla `U` passa a mexer no errado** —
+    // e ela é o segundo consumidor desta porta.
+    let escolha = function_body(&src, "detalhe_do_gesto");
+    assert!(
+        escolha.contains("brush.offers_density_controls()"),
+        "a escolha entre os dois sliders não pergunta ao PINCEL — é a mesma \
+         porta que o painel consulta para oferecer a pista, e duas respostas \
+         dariam um slider visível a governar outra coisa"
+    );
+    // ⚠️ **E o PASSE não lê nenhum dos dois directamente:** ele pergunta à
+    // porta. Um `self.dyntopo.detail` aqui dentro seria o pincel de densidade a
+    // seguir o slider da topologia dinâmica — exactamente a partilha que a ordem
+    // do dono desfez. ⛔ A régua é o CORPO da função e não o cluster: o ficheiro
+    // inteiro tem leituras legítimas (a tecla `U` escreve, o retrato publica).
+    assert!(
+        !body.contains("self.dyntopo.detail") && !body.contains("brush.density_detail"),
+        "o passe lê um dos dois sliders directamente — a escolha entre eles tem \
+         de viver na porta, senão a tecla `U` e o passe podem discordar"
+    );
 }
 
 /// **TODA CENA QUE EXISTE ARMA O MÓDULO.**
@@ -265,9 +287,12 @@ fn the_dyntopo_door_asks_the_verb() {
     // não os campos de `self.brush`: entre os dois está o `armed_brush`, que é
     // quem resolve os modificadores do gesto. *Duas respostas para «o que está
     // na mão» divergem no dia do primeiro modificador que troca de verbo.*
+    // ⚠️ **Desde 14/09 ele passa o PINCEL inteiro**, e não o verbo solto: a porta
+    // precisa de escolher entre os DOIS sliders de `Detail` (o da cena e o do
+    // pincel de densidade), e um verbo solto não sabe responder a isso.
     assert!(
-        src.contains("self.refine_for_dab(brush.verb,"),
-        "o chamador não passa o verbo do pincel armado à porta do dyntopo"
+        src.contains("self.refine_for_dab(&brush, hit.point)"),
+        "o chamador não passa o pincel armado à porta do dyntopo"
     );
 }
 

@@ -273,6 +273,27 @@ pub struct Brush {
     /// Os controlos próprios do pincel de CONTORNO — ⚠️ **quatro, e é a espec
     /// que os conta**. Só o [`crate::Verb::Boundary`] os lê.
     pub boundary: crate::boundary_controlos::BoundaryControlos,
+    /// **O ALVO DE DENSIDADE DESTE PINCEL** — uma fracção em `0..=1`, e ⛔ só o
+    /// [`crate::Verb::Density`] a lê ([`Brush::offers_density_controls`]).
+    ///
+    /// ⭐⭐⭐ **ORDEM DO DONO (2026-09-14): *«deixe o slider Detail para o
+    /// dynamic Retopology e coloque outro slider Detail exclusivo para o
+    /// pincel, nas propriedades do pincel»*.** É a consequência directa da ordem
+    /// anterior dele — *«Dynamic topology é para os outros pincéis»* —, e ela
+    /// separa duas perguntas que partilhavam um número: *quão fina a malha fica
+    /// debaixo de um TRAÇO* (o ajuste da cena) contra *quão fina eu quero esta
+    /// zona AGORA* (este pincel).
+    ///
+    /// ⚠️ **Ele é do PINCEL e não da cena**, e é isso que faz a espec §9.8 —
+    /// *«existe um pedido público aberto para tirar os ajustes de topologia da
+    /// cena e os pôr no pincel»* — deixar de ser uma nota e passar a ser o
+    /// produto.
+    ///
+    /// ⚠️ **A UNIDADE é a mesma dos dois**: uma contagem de triângulos pela
+    /// escada do [`ph2d_mesh::tris_for_detail`], ancorada na ÁREA da peça —
+    /// logo independente do zoom e do tamanho do modelo. *Dois sliders, uma
+    /// régua.*
+    pub density_detail: f32,
     /// **SÓ AS FACES DE FRENTE** — a opção de pincel *"Front Faces Only"* da
     /// referência (rótulo público: é o que o artista vê na tela dela).
     ///
@@ -603,6 +624,10 @@ impl Default for Brush {
             grab_active_vertex: false,
             pose: PoseControlos::default(),
             boundary: crate::boundary_controlos::BoundaryControlos::default(),
+            // O MEIO da faixa, o mesmo ponto em que o ajuste da cena nasce: os
+            // dois medem a mesma grandeza e o artista não tem porque encontrar
+            // dois valores diferentes na primeira vez que olha.
+            density_detail: 0.5, // LITERAL-PX-OK: fracao do curso, nao metrica de layout
             // ⚠️ **DERIVADO do verbo, como o `accumulate` e o `falloff` logo
             // acima** — e pela mesma razão: um literal aqui seria o MESMO fato
             // em dois lugares, e no dia em que a tabela do verbo mudasse ele

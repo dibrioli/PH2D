@@ -112,20 +112,32 @@ impl Sculpt3dScene {
     /// O rótulo do degrau atual — **a mesma tabela que a tecla percorre**, e é
     /// isso que impede o log de dizer "médio" enquanto o motor usa outro número.
     pub(super) fn detail_label(&self) -> &'static str {
+        let actual = self.detalhe_do_gesto(&self.brush);
         DETAIL_STEPS
             .iter()
-            .find(|(d, _)| (d - self.dyntopo.detail).abs() < 1e-6)
+            .find(|(d, _)| (d - actual).abs() < 1e-6)
             .map_or("custom", |(_, l)| l)
     }
 
     /// O degrau seguinte do detalhe. Devolve o rótulo para o log.
+    ///
+    /// ⚠️⚠️ **Ele cicla o número que o GESTO EM MÃOS lê, e não sempre o da
+    /// cena** — desde que o pincel de densidade ganhou alvo próprio (ordem do
+    /// dono, 14/09) há **dois** sliders, e um atalho que escrevesse sempre no da
+    /// cena seria uma tecla que não mexe no controlo que está à vista. A escolha
+    /// vem da MESMA porta que o passe usa ([`Sculpt3dScene::detalhe_do_gesto`]).
     pub(super) fn cycle_detail(&mut self) -> &'static str {
+        let actual = self.detalhe_do_gesto(&self.brush);
         let at = DETAIL_STEPS
             .iter()
-            .position(|(d, _)| (d - self.dyntopo.detail).abs() < 1e-6)
+            .position(|(d, _)| (d - actual).abs() < 1e-6)
             .unwrap_or(0);
         let (d, label) = DETAIL_STEPS[(at + 1) % DETAIL_STEPS.len()];
-        self.dyntopo.detail = d;
+        if self.brush.offers_density_controls() {
+            self.brush.density_detail = d;
+        } else {
+            self.dyntopo.detail = d;
+        }
         label
     }
 
@@ -155,12 +167,41 @@ impl Sculpt3dScene {
         eprintln!("[sculpt3d] {} nao mudou a malha: {motivo}", verbo.label());
     }
 
+    /// **QUE DENSIDADE ESTE GESTO PEDE?** — a porta que escolhe entre os DOIS
+    /// sliders.
+    ///
+    /// ⭐⭐⭐ **ORDEM DO DONO (14/09): *«deixe o slider Detail para o dynamic
+    /// Retopology e coloque outro slider Detail exclusivo para o pincel»*.** São
+    /// duas perguntas que partilhavam um número — *quão fina a malha fica
+    /// debaixo de um TRAÇO* contra *quão fina eu quero esta zona AGORA* — e
+    /// separá-las é a consequência directa da ordem anterior (*«Dynamic topology
+    /// é para os outros pincéis»*).
+    ///
+    /// ⚠️ **A escolha é feita AQUI e em lugar nenhum mais.** Ela vive numa porta
+    /// e não num `if` no sítio de uso porque tem um segundo consumidor: a tecla
+    /// `U`, que cicla **o mesmo número que o gesto em mãos lê**. *Dois sítios a
+    /// escolher entre dois sliders é como o atalho passa a mexer no slider
+    /// errado.*
+    ///
+    /// ⚠️ **Quem responde é o PINCEL** ([`ph2d_sculpt3d::Brush::offers_density_controls`]),
+    /// que é a mesma porta que o painel consulta para oferecer a pista — senão
+    /// haveria um slider visível a governar outra coisa.
+    pub(super) fn detalhe_do_gesto(&self, brush: &ph2d_sculpt3d::Brush) -> f32 {
+        if brush.offers_density_controls() {
+            brush.density_detail
+        } else {
+            self.dyntopo.detail
+        }
+    }
+
     pub(super) fn refine_for_dab(
         &mut self,
-        verbo: ph2d_sculpt3d::Verb,
+        brush: &ph2d_sculpt3d::Brush,
         centre: [f32; 3],
-        radius: f32,
     ) -> bool {
+        let verbo = brush.verb;
+        let radius = brush.radius;
+        let detalhe = self.detalhe_do_gesto(brush);
         // ⭐⭐⭐ **O INTERRUPTOR NÃO ALCANÇA QUEM NÃO TEM TRAÇO** — ordem do dono
         // (14/09): *«independente se Dynamic topology está ligado ou não,
         // Density faz o seu trabalho. Dynamic topology é para os outros
@@ -218,8 +259,7 @@ impl Sculpt3dScene {
         // ⚠️ **O raio continua a decidir a REGIÃO**, e é essa a separação que a
         // cura compra: *o pincel diz ONDE, o slider diz QUÃO FINO.* Enquanto as
         // duas perguntas partilhavam um número, mexer numa mexia na outra.
-        let target =
-            edge_target_for_mesh(self.objects[self.active].stack.mesh(), self.dyntopo.detail);
+        let target = edge_target_for_mesh(self.objects[self.active].stack.mesh(), detalhe);
         // A peça ativa — a MESMA que o `sculpt_at` acabou de escolher pelo
         // `pick_active`, e é por isso que o índice basta aqui.
         //

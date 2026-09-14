@@ -108,6 +108,30 @@ impl Brush {
         self.verb == crate::Verb::Boundary
     }
 
+    /// **ESTE PINCEL TRAZ O PRÓPRIO ALVO DE DENSIDADE?**
+    ///
+    /// ⭐⭐ **A porta ÚNICA, e ela tem DOIS consumidores de crates diferentes:**
+    /// o painel pergunta para **oferecer** a pista
+    /// ([`Brush::density_detail`]) e o passe de topologia pergunta para saber
+    /// **qual dos dois números ler** — o deste pincel ou o ajuste da cena.
+    /// *Duas cópias divergiriam num slider que aparece e governa outra coisa.*
+    ///
+    /// ⚠️ **A pergunta é ao PREDICADO do verbo**
+    /// ([`crate::Verb::sem_lei_por_vertice`]), nunca ao nome: quem não tem lei
+    /// por-vértice tem a densidade como **único** efeito, logo é quem tem o que
+    /// pedir. Comparar com `Verb::Density` aqui seria a segunda resposta à mesma
+    /// pergunta.
+    ///
+    /// ⚠️ Ela responde hoje o mesmo que a
+    /// [`crate::Verb::corre_sem_o_interruptor`], e as duas **perguntas** são
+    /// diferentes — *«tem alvo próprio?»* contra *«precisa do interruptor?»*.
+    /// Elas coincidem porque a mesma propriedade responde às duas; o dia em que
+    /// uma delas mudar, muda sozinha.
+    #[must_use]
+    pub fn offers_density_controls(&self) -> bool {
+        self.verb.sem_lei_por_vertice()
+    }
+
     /// **E a TRAVA DE ROTAÇÃO?**
     ///
     /// ⭐⭐ **Só no modo de escala, e isso é LEI e não arrumação:** ela decide se

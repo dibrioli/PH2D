@@ -290,6 +290,25 @@ pub const SCULPT3D_DYN_DETAIL: NodeId = hash_node_id("sculpt3d.dyn_detail");
 /// Ver [`SCULPT3D_DYN_DETAIL`].
 pub const SCULPT3D_DYN_DETAIL_NUM: NodeId = hash_node_id("sculpt3d.dyn_detail_num");
 
+/// **O ALVO DE DENSIDADE DO PINCEL** — a pista e o chip, nas propriedades dele.
+///
+/// ⭐⭐⭐ **ORDEM DO DONO (2026-09-14): *«deixe o slider Detail para o dynamic
+/// Retopology e coloque outro slider Detail exclusivo para o pincel, nas
+/// propriedades do pincel»*.** São **DOIS** controlos com o mesmo rótulo e
+/// assuntos diferentes, e é de propósito: o [`SCULPT3D_DYN_DETAIL`] governa o
+/// traço dos outros pincéis (a topologia dinâmica) e este governa o pincel de
+/// densidade, que não tem traço nenhum.
+///
+/// ⚠️ **Eles NÃO são duas superfícies sobre um valor** — a armadilha que os três
+/// chips pagaram nesta mesma wave: são **dois campos**, um na cena e outro no
+/// pincel, e a porta que escolhe entre eles é a
+/// `Brush::offers_density_controls`. *A regra que os separa é a que também
+/// decide qual deles a tecla `U` cicla.*
+pub const SCULPT3D_DENSITY_DETAIL: NodeId = hash_node_id("sculpt3d.density_detail");
+
+/// Ver [`SCULPT3D_DENSITY_DETAIL`].
+pub const SCULPT3D_DENSITY_DETAIL_NUM: NodeId = hash_node_id("sculpt3d.density_detail_num");
+
 /// Desce um nível de multiresolução.
 pub const SCULPT3D_LEVEL_DOWN: NodeId = hash_node_id("sculpt3d.level_down");
 

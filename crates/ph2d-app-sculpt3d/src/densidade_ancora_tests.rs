@@ -37,12 +37,20 @@ fn a_pista_do_detalhe_chega_ao_motor() {
     let mut s = Sculpt3dScene::new(&gpu.device, ph2d_mesh::shapes::uv_sphere(10, 14, 1.0), 1.0);
     s.note_canvas(ph2d_editor_core::zones::Rect::new(0.0, 0.0, 900.0, 700.0));
 
-    // (1) IDA — o retrato publica o que a cena tem.
+    // (1) IDA — o retrato publica o que a cena tem. ⚠️ **Os DOIS**: o da cena
+    // (a topologia dinâmica) e o do PINCEL de densidade, que desde a ordem do
+    // dono de 14/09 são campos diferentes.
     s.dyntopo.detail = 0.15;
+    s.brush.density_detail = 0.35;
+    let retrato = s.panel_snapshot(false).ui;
     assert!(
-        (s.panel_snapshot(false).ui.dyn_detail - 0.15).abs() < 1e-6,
-        "o retrato não publica o detalhe da cena — a pista nasceria a mostrar \
+        (retrato.dyn_detail - 0.15).abs() < 1e-6,
+        "o retrato não publica o detalhe da CENA — a pista nasceria a mostrar \
          outro número que o do motor"
+    );
+    assert!(
+        (retrato.brush.density_detail - 0.35).abs() < 1e-6,
+        "o retrato não publica o detalhe do PINCEL"
     );
 
     // (2) VOLTA — a cena escreve o que o painel mandou.
@@ -54,11 +62,17 @@ fn a_pista_do_detalhe_chega_ao_motor() {
     // em vez da lei*.
     let mut ui = s.panel_snapshot(false).ui;
     ui.dyn_detail = 0.9;
+    ui.brush.density_detail = 0.8;
     s.apply_panel_intent(ph2d_panel_sculpt3d::Sculpt3dIntent::SetUi(ui));
     assert!(
         (s.dyntopo.detail - 0.9).abs() < 1e-6,
-        "a pista não chega ao campo da cena: {} — um slider morto",
+        "a pista da CENA não chega ao campo dela: {} — um slider morto",
         s.dyntopo.detail
+    );
+    assert!(
+        (s.brush.density_detail - 0.8).abs() < 1e-6,
+        "a pista do PINCEL não chega ao campo dele: {} — um slider morto",
+        s.brush.density_detail
     );
 
     // (3) ⭐ **E O NÚMERO CHEGA AO MOTOR:** o mesmo gesto, na mesma malha, com
@@ -81,6 +95,147 @@ fn a_pista_do_detalhe_chega_ao_motor() {
         fino > grosso,
         "as duas pontas da pista dão a mesma malha ({grosso} e {fino}) — o \
          número não atravessa até ao motor"
+    );
+}
+
+/// ⭐⭐⭐ **CADA GESTO LÊ O SEU PRÓPRIO SLIDER** — ordem do dono, e o gate que a
+/// torna observável.
+///
+/// *«Deixe o slider Detail para o dynamic Retopology e coloque outro slider
+/// Detail exclusivo para o pincel, nas propriedades do pincel.»* (14/09)
+///
+/// São **dois campos** — um na CENA (`Dyntopo::detail`, que governa o traço dos
+/// outros pincéis) e um no PINCEL (`Brush::density_detail`) —, e a porta que
+/// escolhe entre eles é a `Brush::offers_density_controls`, a mesma que o painel
+/// consulta para oferecer a pista.
+///
+/// ⚠️⚠️ **A régua põe os dois em valores OPOSTOS e mede a MALHA**, que é a única
+/// forma de apanhar a troca: com os dois iguais — que é como todo o resto do
+/// arnês os deixa — um `if` invertido daria exactamente o mesmo resultado. *Dois
+/// números iguais não distinguem duas leis.*
+///
+/// ⛔ E ele varre os **dois sentidos**: um gate que só medisse a densidade
+/// ficaria verde se ela lesse o seu e o `Draw` lesse o dela também.
+#[test]
+#[ignore]
+fn cada_gesto_le_o_seu_proprio_slider() {
+    let gpu = gpu_or_skip!();
+
+    // A DENSIDADE segue o slider DELA, e ignora o da cena.
+    let mut s = cena_com(
+        &gpu.device,
+        Verb::Density,
+        ph2d_mesh::shapes::uv_sphere(24, 36, 1.0),
+        0.5,
+        160.0,
+    );
+    // ⚠️ O da cena vai para o EXTREMO OPOSTO: se o passe o lesse, a malha iria
+    // para o outro lado e a asserção de baixo cairia.
+    s.dyntopo.detail = 0.0;
+    s.brush.density_detail = 1.0;
+    let fino = ph2d_mesh::edge_target_for_mesh(s.mesh(), 1.0);
+    assert!(
+        (s.detalhe_do_gesto(&s.brush.clone()) - 1.0).abs() < 1e-6,
+        "a densidade leu o slider da CENA — ela tem o próprio"
+    );
+    for _ in 0..8 {
+        um_dab(&mut s);
+    }
+    let raio = s.armed_brush([0.0, 1.0, 0.0]).radius;
+    let centro = s
+        .pick_active(CENTRE.0, CENTRE.1)
+        .map_or([0.0, 1.0, 0.0], |h| h.point);
+    let m = aresta_mediana_na_esfera(&s, centro, raio);
+    assert!(
+        m > 0.0 && m < fino * 2.0,
+        "a densidade não perseguiu o alvo do slider DELA (mediana {m:.4} contra \
+         alvo {fino:.4}) — ela está a ler o número da cena"
+    );
+
+    // ⭐ **O CONTROLO, no sentido oposto:** um verbo de traço segue o slider da
+    // CENA e ignora o do pincel de densidade.
+    let mut s = cena_com(
+        &gpu.device,
+        Verb::Draw,
+        ph2d_mesh::shapes::uv_sphere(10, 14, 1.0),
+        0.5,
+        160.0,
+    );
+    s.dyntopo.detail = 1.0;
+    s.brush.density_detail = 0.0;
+    assert!(
+        (s.detalhe_do_gesto(&s.brush.clone()) - 1.0).abs() < 1e-6,
+        "um verbo de traço leu o slider do pincel de densidade"
+    );
+    let antes = vertices(&s);
+    um_dab(&mut s);
+    assert!(
+        vertices(&s) > antes,
+        "o desenho não adensou ({antes} -> {}) — com o slider da CENA no fino \
+         ele tem de partir; se ele lesse o `0,0` do outro, não partiria nada",
+        vertices(&s)
+    );
+}
+
+/// ⭐⭐ **E A TECLA `U` CICLA O SLIDER DO GESTO EM MÃOS — nunca o outro.**
+///
+/// ⛔⛔ **Este gate nasceu de uma mutação SOBREVIVENTE:** cravar o `cycle_detail`
+/// a escrever sempre em `self.dyntopo.detail` passava a suíte inteira. O atalho
+/// mexeria num slider e o artista veria **o outro** parado — e o gesto dele não
+/// mudaria de densidade nenhuma. *Um atalho que escreve no controlo errado é
+/// indistinguível de um atalho morto, e nenhum gate de fiação o vê: ele está
+/// ligado.*
+///
+/// ⚠️ **As duas metades, e nenhuma basta:** a que escreve e a que **NÃO** toca
+/// no vizinho. Sem a segunda, um `cycle_detail` que escrevesse nos DOIS ficaria
+/// verde — e aí mexer no atalho com um pincel na mão estragaria o ajuste do
+/// outro.
+#[test]
+#[ignore]
+fn a_tecla_do_detalhe_cicla_o_slider_do_gesto_em_maos() {
+    let gpu = gpu_or_skip!();
+
+    // Com a DENSIDADE na mão: escreve no slider dela, e o da cena fica quieto.
+    let mut s = cena_com(
+        &gpu.device,
+        Verb::Density,
+        ph2d_mesh::shapes::uv_sphere(10, 14, 1.0),
+        0.5,
+        160.0,
+    );
+    s.dyntopo.detail = 0.15;
+    s.brush.density_detail = 0.5;
+    s.cycle_detail();
+    assert!(
+        (s.brush.density_detail - 0.5).abs() > 1e-6,
+        "a tecla não mexeu no slider do PINCEL com ele na mão"
+    );
+    assert!(
+        (s.dyntopo.detail - 0.15).abs() < 1e-6,
+        "a tecla mexeu no slider da CENA com a densidade na mão — ela estragou \
+         o ajuste do vizinho: {}",
+        s.dyntopo.detail
+    );
+
+    // ⭐ **O CONTROLO, no sentido oposto.**
+    let mut s = cena_com(
+        &gpu.device,
+        Verb::Draw,
+        ph2d_mesh::shapes::uv_sphere(10, 14, 1.0),
+        0.5,
+        160.0,
+    );
+    s.dyntopo.detail = 0.5;
+    s.brush.density_detail = 0.15;
+    s.cycle_detail();
+    assert!(
+        (s.dyntopo.detail - 0.5).abs() > 1e-6,
+        "a tecla não mexeu no slider da CENA com um verbo de traço na mão"
+    );
+    assert!(
+        (s.brush.density_detail - 0.15).abs() < 1e-6,
+        "a tecla mexeu no slider do PINCEL de densidade com o Draw na mão: {}",
+        s.brush.density_detail
     );
 }
 

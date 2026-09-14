@@ -263,8 +263,32 @@ pub fn param_rows(
         }
     };
     let mut secao = secao;
-    ph2d_field_ecs::params_of(world, e)
-        .into_iter()
+    let numeros = ph2d_field_ecs::params_of(world, e);
+    // ⭐⭐⭐ **OS TRÊS CANAIS DA COR BASE SÃO UMA LINHA SÓ** (Enio, 2026-09-14: *«em vez de 3 sliders
+    // de RGB, deveríamos ter uma caixa seletora de cor»*) — ver [`ph2d_panel_model3d::ParamRow::swatch`].
+    //
+    // ⚠️ **A dobra é da APRESENTAÇÃO, e o `params_of` não muda.** Ele responde *«que números tem
+    // este nó?»*, e a resposta continua a ser cinco: a porta de escrita `Param::Material(0..2)`
+    // continua a existir, continua gateada, e é por ela que esta cura escreve. *Colapsar na fonte
+    // tornaria a cor inalcançável por toda a maquinaria que já a alcança.*
+    //
+    // ⚠️ **Os três valores saem da MESMA lista** que dá as outras linhas — não do componente. Ler o
+    // `FieldMaterial` aqui seria a segunda fonte para os mesmos números, e a que diverge no dia em
+    // que o `params_of` passar a derivar algum deles.
+    let canal = |k: u8| {
+        numeros
+            .iter()
+            .find(|(p, _)| *p == ph2d_field::Param::Material(k))
+            .map_or(0.0, |(_, d)| d.value)
+    };
+    let cor = crate::materials::base_color_srgb8([canal(0), canal(1), canal(2)]);
+    numeros
+        .iter()
+        .cloned()
+        // ⛔ **Os canais 1 e 2 saem ANTES do `secao`**, que é uma máquina de estados sobre a
+        // sequência: chamá-lo para uma linha que não é publicada partiria a secção do material em
+        // duas — a segunda com cabeçalho repetido — no dia em que a ordem mudasse.
+        .filter(|(p, _)| !matches!(p, ph2d_field::Param::Material(1 | 2)))
         .map(|(param, d)| {
             use ph2d_field::{Bound, Span};
             let (lo, bound) = match d.span {
@@ -328,10 +352,19 @@ pub fn param_rows(
                 // dela não é um gesto que a vista possa oferecer. `Hard`, logo digitar clampa.
                 Span::Choice(nomes) => (0.0, Bound::Hard(nomes.len().saturating_sub(1) as f32)),
             };
+            // ⭐⭐⭐ **O canal 0 é a ÂNCORA da cor** — a linha que ele publica é a amostra.
+            //
+            // ⚠️ **O rótulo é outro, e tem de ser**: `field.dim.base_r` diz *«Base Color R»*, que
+            // nomeia um canal. A linha deixou de ser um canal.
+            let cor_base = param == ph2d_field::Param::Material(0);
             ph2d_panel_model3d::ParamRow {
                 entity: e.to_bits(),
                 param,
-                key: d.key,
+                key: if cor_base {
+                    "field.dim.base_color"
+                } else {
+                    d.key
+                },
                 value: d.value,
                 lo,
                 bound,
@@ -344,6 +377,7 @@ pub fn param_rows(
                     Span::Choice(nomes) => nomes,
                     _ => &[],
                 },
+                swatch: cor_base.then_some(cor),
             }
         })
         .collect()

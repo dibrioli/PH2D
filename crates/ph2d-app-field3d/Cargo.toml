@@ -30,6 +30,10 @@ ph2d-field-eval    = { path = "../ph2d-field-eval" }
 ph2d-field-mesh    = { path = "../ph2d-field-mesh" }
 ph2d-field-profile = { path = "../ph2d-field-profile" }
 ph2d-field-render  = { path = "../ph2d-field-render" }
+# ⭐ A TRAVESSIA sRGB ↔ linear da cor base (`materials::base_color_srgb8`). O documento guarda a cor
+# em linear e o selector da casa fala sRGB8; a curva é uma só, e é esta — uma cópia local seria uma
+# segunda curva a divergir na terceira casa.
+ph2d-color          = { path = "../ph2d-color" }
 # ⭐ O modo RENDER (`docs/Render3d/05`): o rig do documento, a lei do material e o olhar da cena.
 ph2d-light          = { path = "../ph2d-light" }
 ph2d-material       = { path = "../ph2d-material" }

@@ -139,7 +139,7 @@ linha que decide alguma coisa (`+54 %` de pixels cortados a `0` stops, `−13 %`
 
 | ausência | razão |
 |---|---|
-| ~~**material por objecto**~~ | ✅ **FECHOU em 13/09** — ver §11. Ficou o que ele **não** tem: a cor escolhe-se por três números e não por uma amostra de cor |
+| ~~**material por objecto**~~ | ✅ **FECHOU em 13/09** — ver §11; e a cor passou a escolher-se **vendo-a** em 14/09, §12 |
 | **o rig do DOCUMENTO** | o rig vive dentro da cena da escultura (`ph2d_app_sculpt3d::cena`), fora do alcance do modelador; esta fatia usa o rig de omissão da `ph2d-light` |
 | **anisotropia, transmissão, subsuperfície, fuzz, película fina** | cada uma é uma closure com gate próprio; com peso zero a composição gerada dá-lhes contribuição **zero**, e os campos **não existem** na struct (um campo que a lei não lê é um controlo morto) |
 | **AgX** | ⛔ **licença**: não há neste disco um AgX cuja licença permissiva se leia no artefacto (`04` §3). O oráculo dele corre-se à mesma |
@@ -391,9 +391,7 @@ onde estava, e o `MAX_ROWS` passa a ser **derivado da maior forma**: `2 × 27 + 
 
 ### §11.6 — ⏳ O que fica aberto
 
-- **A cor escolhe-se por TRÊS NÚMEROS**, e uma cor escolhe-se **vendo-a**. A casa tem `ColorSwatch` e
-  um selector de cor; o que falta é uma variante de row que os hospede. ⚠️ *Dívida nomeada, não
-  esquecimento* — os três números compram hoje o que faltava: a cor ser **autorável** e **persistir**.
+- ~~**A cor escolhe-se por TRÊS NÚMEROS**~~ — ✅ **PAGA em 14/09**, ver §12.
 - **Uma silhueta entre duas peças de cores diferentes** recebe a cor de quem o centro do pixel
   apanhou (as quatro sub-amostras da borda não guardam ponto). É a mesma aproximação que a direcção
   de vista já faz, e está declarada no `shade_render`.
@@ -402,3 +400,121 @@ onde estava, e o `MAX_ROWS` passa a ser **derivado da maior forma**: `2 × 27 + 
   geometria, isto é, a cada quadro de um arrasto). É a primeira medição da wave seguinte.
 - **Um material num GRUPO** não existe: quem o traçado sabe nomear por pixel é a folha. Herdar do
   grupo é modelo novo.
+
+
+---
+
+## §12 — ⭐⭐⭐ A COR ESCOLHE-SE VENDO-A (2026-09-14)
+
+> Enio: *«Em vez de 3 sliders de RGB, deveríamos ter uma caixa seletora de cor»*.
+
+A §11.6 nomeava esta dívida por escrito. Está paga: os três canais dobram-se numa **amostra** que
+abre o selector de cor da casa — roda OKLCH, canais RGB/HSV/OKLCH, hexadecimal, paletas e
+conta-gotas.
+
+### §12.1 — ⭐⭐ O selector NÃO foi construído: ele já existia, e entra-se nele por DUAS linhas
+
+A casa tem **um** selector de cor (`BlenderColorPicker`, flutuante sobre o canvas) e um caminho
+genérico de entrada no `pointer_down`: quem regista o id da sua amostra em
+`WidgetStore::register_picker_swatch` e mantém `widget_color(id)` em dia ganha-o inteiro. É o mesmo
+caminho do traço do Flip, do preenchimento do vetor e da tinta do Painter.
+
+⛔ **Um segundo selector neste painel seria uma segunda resposta à mesma pergunta, e a que
+envelhece.** O que esta wave escreveu foi a **linha-amostra** (`ParamRow::swatch`) e a travessia de
+espaço de cor — não colorimetria, não widget, não janela.
+
+### §12.2 — ⚠️ A travessia sRGB ↔ linear é UMA porta, e o ida-e-volta tem de fechar AO BIT
+
+| lado | espaço | porquê |
+|---|---|---|
+| o documento (`FieldMaterial::base_color`) | **linear** | é o que o OpenPBR integra |
+| o selector | **sRGB8** | é o que um humano escolhe |
+
+A conversão é precisa em **dois** sítios distantes — a construção da linha (`scene_panel::param_rows`)
+e o dreno do pedido (`scene_intents`). Escrita duas vezes seriam **duas curvas**, e o dia em que uma
+ganhasse um `clamp` diferente a cor **derivaria a cada abertura do selector**. ⇒ uma porta:
+`materials::base_color_srgb8` e o par dela.
+
+⛔⛔ **E o ida-e-volta ser exacto não é uma curiosidade de colorimetria:** o painel pergunta *«a cor
+mudou?»* comparando **bytes**. Um único byte que não voltasse ao mesmo valor faria essa comparação
+ser sempre verdadeira naquela cor ⇒ **um pedido de edição por quadro** enquanto o selector estivesse
+aberto, e um passo de desfazer por cada largar de botão. Gate sobre os **256** bytes, pelo caminho do
+produto (`f32` do componente incluído): `the_round_trip_through_the_document_is_exact`.
+
+⚠️ **E a comparação é em sRGB8 e não em linear**, pela razão que o `motion_bridge_color` já tinha
+escrito: comparar os lineares faria **abrir** o selector sobre uma cor que não é um ida-e-volta
+exacto de 8 bits **gravar uma quantização** — uma edição que o artista não fez, embrulhada num passo
+de undo.
+
+### §12.3 — ⛔⛔ O id da amostra é o ÚNICO deste painel cunhado pela ENTIDADE, e a excepção é a lei
+
+Todos os outros ids do painel vêm da **posição da linha** (o `populate` cunha-os às cegas, antes de a
+peça existir). Este não precisa de registo nenhum — quem o reconhece é o `is_picker_swatch`,
+preenchido ao pintar — e por isso **pode** carregar o sujeito. E tem de carregar:
+
+O selector sobrevive a uma mudança de selecção, e **escolher outra forma no canvas não o fecha** (o
+módulo 3D toma aquele clique antes de o `pointer_down` do chrome correr). Com um id da posição, a
+amostra do objecto novo teria o **mesmo** id, o painel leria o selector como *«aberto em mim»* e
+escreveria a cor do objecto **anterior** na forma acabada de escolher — em silêncio. Com o id da
+entidade isso é **inexprimível**.
+
+*É o mesmo defeito que o `card_swatch_id` do Motion documenta — ali vinte cartões a partilhar o id do
+param; aqui duas selecções a partilhar o id da linha.*
+
+### §12.4 — ⭐ E o selector ÓRFÃO fecha-se
+
+`paint::close_a_stranded_picker`, com **dois** leitores (o caminho normal e a saída antecipada do
+painel fechado). Sem ela, trocar de selecção — ou fechar o painel — deixaria o selector aberto sobre
+uma amostra que **já não é pintada por ninguém**: a roda move-se, a cor muda no selector, e nada no
+documento a recebe. *É a espécie de controlo morto que o `CLAUDE.md` §5.0 chama de «o consumidor que
+projecta o valor fora», e nenhuma sonda de registo a vê — porque ele **é** registado.*
+
+⚠️ **Ela só fecha o que é NOSSO**: a comparação é com a amostra que este painel pintou da última vez
+(`state::remember_swatch`), nunca *«há um selector aberto»* — fechar o do Inspector ou o do Painter
+seria este painel a mandar na superfície partilhada de outro.
+
+### §12.5 — Os gates, e as sete mutações que sangraram
+
+| gate | o que ele prende |
+|---|---|
+| `a_colour_is_one_row_and_it_carries_the_swatch` | **uma** linha, com a cor do documento em sRGB8, e ela **segue** o documento |
+| `the_colour_intent_reaches_the_document` | os três canais escritos, no mesmo quadro ⇒ **um** passo de desfazer |
+| `the_round_trip_through_the_document_is_exact` | os 256 bytes fecham — §12.2 |
+| `clicking_the_swatch_opens_the_house_colour_picker` | o gesto REAL abre o selector, **semeado com a cor da peça** |
+| `what_the_picker_writes_becomes_one_edit_and_only_when_it_changed` | a leitura chega ao documento **e pára** quando ele a apanha |
+| `choosing_another_shape_does_not_paint_it_with_the_previous_colour` | §12.3 e §12.4, nas duas metades |
+| `a_colour_row_paints_no_slider_to_grab` | a amostra **substitui** o controlo de número; ele escreveria só o vermelho |
+
+⚠️ **Clicar numa amostra não emite `WidgetEvent` nenhum** — o `pointer_down` genérico abre o selector
+e devolve. ⇒ um gate que contasse eventos leria a amostra como **muda**, e um que só medisse o rect
+leria como **viva** uma que ninguém registou. *As duas leituras erram, e em sentidos opostos*; o que
+as separa é o estado que o clique deixa (`picker_target`).
+
+⭐ **Sete mutações, sete sangrias** — entre elas *semear também com o selector aberto* (a cor deixa de
+sair do selector) e *cunhar o id pela posição* (§12.3).
+
+### §12.6 — ⚠️ O que MUDOU de sítio, e o que NÃO mudou
+
+- ⛔ **O `params_of` continua a oferecer os CINCO números do material.** A dobra é da
+  **apresentação**: a porta de escrita `Param::Material(0..2)` continua a existir e continua gateada,
+  e é por ela que esta cura escreve. *Colapsar na fonte tornaria a cor inalcançável por toda a
+  maquinaria que já a alcança* — e há **dois** censos a medir os dois lados (o do painel lê `3`, o do
+  `params_of` lê `5`; se os dois lerem `5`, alguém desfez a dobra).
+- ⚠️ **As chaves `field.dim.base_r/g/b` FICAM.** Elas rotulam os params, que continuam a existir.
+  *Apagar a etiqueta de um número porque um painel deixou de o pintar é deixá-lo sem nome no dia em
+  que outra vista o mostrar.*
+- ⚠️ **Um corte de LOC pago no caminho:** a linha nova pôs o `paint` do painel em `210` de `200` ⇒ as
+  fileiras de chips do corpo saíram para `paint_chip_rows`. ⛔ *Corte, nunca uma entrada no
+  `FN_OVERAGE_OK`.*
+- ⭐ **Um método novo no arnês partilhado** (`MockPanelHost::pick_colour_in_the_open_picker`): ele
+  encena o espelho que o `hero::paint` corre, e **entra em pânico sem um selector aberto** — nunca um
+  no-op silencioso. É isso que o impede de ser o `store_mut()` que aquele ficheiro recusa por escrito.
+
+### §12.7 — ⏳ O que fica aberto
+
+- **O material não tem ALFA**, e a amostra pinta-se opaca. Carregar um alfa que o documento não
+  guarda seria prometer uma transparência que nada honra.
+- **Um material num GRUPO** continua a não existir (§11.6) — quem o traçado sabe nomear por pixel é a
+  folha.
+- **O selector abre no canto do canvas**, e não junto da amostra. É onde a casa o põe para todos os
+  painéis; movê-lo é decisão da UI, não deste módulo.

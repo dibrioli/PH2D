@@ -134,6 +134,31 @@ pub fn model3d_choice_button(row: u32, cell: u32) -> NodeId {
     hash_node_id_runtime(&format!("model3d.choice.{row}.{cell}"))
 }
 
+/// ⭐⭐⭐ **A AMOSTRA DE COR de um OBJECTO** — o que abre o selector de cor da casa
+/// (Enio, 2026-09-14: *«em vez de 3 sliders de RGB, deveríamos ter uma caixa seletora de cor»*).
+///
+/// # ⛔⛔ Ele é o ÚNICO id deste painel cunhado pela ENTIDADE, e a exceção é a lei
+///
+/// Todos os outros vêm da **posição da linha**, porque o `populate` os regista às cegas antes de a
+/// peça existir. Este não precisa de registo nenhum — quem o reconhece é o
+/// [`WidgetStore::is_picker_swatch`], preenchido ao pintar —, e por isso **pode** carregar o
+/// sujeito. E tem de carregar:
+///
+/// O selector é **um** e flutua sobre o canvas, logo ele sobrevive a uma mudança de selecção — e
+/// escolher outra forma no canvas **não** o fecha (aquele clique é tomado pelo módulo 3D antes de
+/// o `pointer_down` do chrome correr). Com um id da posição, a amostra do objecto novo teria o
+/// **mesmo** id, o painel leria o selector como *«aberto em mim»* e escreveria a cor do objecto
+/// ANTERIOR na forma acabada de escolher — **em silêncio**, e no gesto em que o artista menos a
+/// espera. Com o id da entidade isso é **inexprimível**: ids diferentes, e o painel semeia em vez
+/// de ler.
+///
+/// *É o mesmo defeito que o `card_swatch_id` do Motion documenta — ali vinte cartões a partilhar o
+/// id do param; aqui duas selecções a partilhar o id da linha.*
+#[must_use]
+pub fn model3d_color_swatch(entity: u64) -> NodeId {
+    hash_node_id_runtime(&format!("model3d.color.swatch.{entity}"))
+}
+
 /// O **slider do raio** do nó `node` da arena.
 #[must_use]
 pub fn model3d_radius_slider(node: u32) -> NodeId {

@@ -44,6 +44,35 @@ pub fn surface_of(m: FieldMaterial) -> ph2d_material::Surface {
     .prepare()
 }
 
+/// ⭐⭐⭐ **A TRAVESSIA sRGB → LINEAR DA COR BASE, e o seu par** — num sítio só.
+///
+/// # ⚠️ Por que é uma porta, e não duas linhas onde cada uma é precisa
+///
+/// O documento guarda a cor base em **linear** (é isso que o OpenPBR integra) e o selector de cor da
+/// casa fala **sRGB8** (é isso que um humano escolhe). A conversão é precisa em **dois** sítios
+/// distantes — a construção da linha do painel ([`crate::scene_panel::param_rows`]) e o dreno do
+/// pedido ([`crate::scene_intents`]) —, e escrita duas vezes seriam duas curvas: o dia em que uma
+/// ganhasse um `clamp` ou um arredondamento diferente, o ida-e-volta deixaria de fechar e a cor
+/// **derivaria a cada abertura do selector**, um passo de undo de cada vez.
+///
+/// ⚠️ **E o ida-e-volta TEM de fechar ao bit**, porque o painel pergunta *«mudou?»* comparando
+/// bytes: uma cor que não voltasse ao mesmo byte pediria uma edição **por quadro** enquanto o
+/// selector estivesse aberto. É isso que o gate
+/// [`the_round_trip_through_the_document_is_exact`](crate::materials::colour_row_tests::the_round_trip_through_the_document_is_exact)
+/// mede, sobre os 256 bytes.
+///
+/// ⛔ **A curva não é local:** ela é a do [`ph2d_color::srgb`], que é a mesma que o resto do app usa.
+#[must_use]
+pub fn base_color_srgb8(linear: [f32; 3]) -> [u8; 3] {
+    linear.map(ph2d_color::srgb::linear_to_srgb_byte)
+}
+
+/// O outro sentido de [`base_color_srgb8`] — o que o artista apontou, no espaço do documento.
+#[must_use]
+pub fn base_color_from_srgb8(srgb: [u8; 3]) -> [f32; 3] {
+    srgb.map(ph2d_color::srgb::srgb_to_linear_byte)
+}
+
 /// As folhas de uma peça, na ordem canónica: o par `(material autorado, documento de um nó posto no
 /// mundo)`.
 ///
@@ -149,6 +178,12 @@ impl Table {
 #[cfg(test)]
 #[path = "materials_tests.rs"]
 mod tests;
+
+/// ⭐⭐⭐ **A LINHA DA COR** — os três canais dobrados numa amostra (Enio, 2026-09-14). Irmão por
+/// assunto: ele mede a ponte painel↔documento, não a tabela de materiais.
+#[cfg(test)]
+#[path = "colour_row_tests.rs"]
+mod colour_row_tests;
 
 /// ⭐⭐⭐ **A TABELA SEGUE A PEÇA** — chamada uma vez por quadro, depois do cozimento.
 ///

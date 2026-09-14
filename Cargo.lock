@@ -4917,6 +4917,7 @@ dependencies = [
  "bevy_ecs",
  "half",
  "ph2d-app-host",
+ "ph2d-color",
  "ph2d-ecs",
  "ph2d-editor-core",
  "ph2d-field",

@@ -247,9 +247,16 @@ fn the_panel_shows_the_dimensions_of_what_is_selected() {
             "field.dim.round",
             // ⭐⭐⭐ **E o MATERIAL, depois do que a forma mede** (`docs/Render3d/05`) — ver
             // `ph2d_field::Param::Material`.
-            "field.dim.base_r",
-            "field.dim.base_g",
-            "field.dim.base_b",
+            //
+            // ⭐⭐⭐ **TRÊS linhas e não cinco** (Enio, 2026-09-14: *«em vez de 3 sliders de RGB,
+            // deveríamos ter uma caixa seletora de cor»*): os canais `Material(1)` e `Material(2)`
+            // **não** viram linha — eles são a mesma cor do `Material(0)`, que é publicado como
+            // **amostra** (ver o gate `a_colour_is_one_row_and_it_carries_the_swatch` abaixo).
+            //
+            // ⚠️ **O `params_of` continua a oferecer os CINCO** — a dobra é da apresentação, e o
+            // gate `scene_gesture_tests` mede o outro lado. *Se os dois censos concordarem em
+            // cinco, alguém desfez a dobra sem ler este comentário.*
+            "field.dim.base_color",
             "field.dim.roughness",
             "field.dim.metalness",
         ],

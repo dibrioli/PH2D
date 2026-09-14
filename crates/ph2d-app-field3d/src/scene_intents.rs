@@ -276,6 +276,29 @@ pub(super) fn apply(
                     with_smoke(|s| s.lasso_subtracts = slot == 1);
                 }
             }
+            // ⭐⭐⭐ **A COR BASE** (Enio, 2026-09-14) — a travessia sRGB → linear, e três escritas.
+            //
+            // ⚠️ **As três correm no MESMO quadro, e é isso que as torna UM passo de undo**: o
+            // registo é por **diff** uma vez por quadro (`App::post_frame_undo`), então o que
+            // importa não é serem uma chamada, é não haver quadro entre elas. Uma cor escolhida em
+            // três passos de desfazer seria exactamente o que o artista não espera.
+            //
+            // ⚠️ **A recusa de um canal não aborta os outros**, como em todo `set_param` deste
+            // dreno: o retrato publicado logo abaixo devolve a amostra à cor que ficou.
+            ph2d_panel_model3d::ModelIntent::SetColor { entity, srgb } => {
+                let e = bevy_ecs::entity::Entity::from_bits(entity);
+                for (k, v) in crate::materials::base_color_from_srgb8(srgb)
+                    .into_iter()
+                    .enumerate()
+                {
+                    let _ = ph2d_field_ecs::set_param(
+                        world,
+                        e,
+                        ph2d_field::Param::Material(k as u8),
+                        v,
+                    );
+                }
+            }
             ph2d_panel_model3d::ModelIntent::SetParam {
                 entity,
                 param,

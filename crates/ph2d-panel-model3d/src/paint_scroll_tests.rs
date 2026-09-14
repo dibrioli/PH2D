@@ -39,6 +39,7 @@ fn model_with_rows(n: usize) -> state::ModelSnapshot {
                 integral: false,
                 section: None,
                 choices: &[],
+                swatch: None,
                 bound: Bound::Soft(1.0),
             })
             .collect(),

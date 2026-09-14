@@ -17,6 +17,8 @@ thread_local! {
     static CURRENT: RefCell<Option<ModelSnapshot>> = const { RefCell::new(None) };
     static INTENTS: RefCell<Vec<ModelIntent>> = const { RefCell::new(Vec::new()) };
     static LAST_CONTENT_H: Cell<f32> = const { Cell::new(0.0) };
+    /// ⭐⭐ **A amostra de cor que a última pintura desenhou** — ver [`remember_swatch`].
+    static LAST_SWATCH: Cell<Option<ph2d_a11y::NodeId>> = const { Cell::new(None) };
     /// ⭐⭐⭐ **O módulo tem o canvas?** — ver [`set_armed`].
     static ARMED: Cell<bool> = const { Cell::new(false) };
 }
@@ -124,6 +126,29 @@ pub struct ParamRow {
     /// ⛔ **Ela substitui o slider, não o acompanha:** um eixo com slider *e* botões seria o mesmo
     /// facto em dois controlos, e os dois podem discordar. Ver [`ph2d_field::Span::Choice`].
     pub choices: &'static [&'static str],
+    /// ⭐⭐⭐ **A COR desta linha, em sRGB8** — `Some` ⇒ a linha é uma **amostra**, não um número
+    /// (Enio, 2026-09-14: *«em vez de 3 sliders de RGB, deveríamos ter uma caixa seletora de cor»*).
+    ///
+    /// # ⛔ Por que três sliders não era um controlo de cor
+    ///
+    /// Uma cor escolhe-se **vendo-a**. Três números dizem o que ela é depois de escolhida, e para a
+    /// escolher obrigam o artista a resolver de cabeça o que o olho faz num gesto — e ainda por cima
+    /// num espaço (**linear**) em que `0,5` não é o cinzento médio que ele espera. A dívida estava
+    /// nomeada por escrito no `docs/Render3d/05` §10.6 e na tabela do `ph2d-i18n`.
+    ///
+    /// ⛔ **Ela substitui o slider, como as [`ParamRow::choices`] e pela mesma lei:** um trio de
+    /// sliders **e** uma amostra seriam o mesmo facto em dois controlos, e os dois podem discordar.
+    ///
+    /// ⚠️ **sRGB8 e não os `f32` lineares do documento**, porque é este o espaço em que o selector
+    /// da casa lê e escreve, e é nele que o «mudou?» tem de ser perguntado: comparar os lineares
+    /// faria **abrir** o selector sobre uma cor que não é um ida-e-volta exacto de 8 bits gravar uma
+    /// quantização — uma edição que o artista não fez, embrulhada num passo de undo. É a mesma lei,
+    /// com o mesmo mecanismo escrito, do `motion_bridge_color::apply_color_to_node`.
+    ///
+    /// ⚠️ **TRÊS bytes e não quatro:** um material desta peça não tem alfa, e carregar um que o
+    /// documento não guarda seria prometer uma transparência que nada honra. A amostra pinta-se
+    /// opaca.
+    pub swatch: Option<[u8; 3]>,
 }
 
 /// Um verbo que o gizmo oferece: a chave i18n do rótulo, e se ele é o ativo.
@@ -294,6 +319,14 @@ pub enum ModelIntent {
         param: ph2d_field::Param,
         value: f32,
     },
+    /// ⭐⭐⭐ **Escrever a COR BASE do nó**, em sRGB8 — ver [`ParamRow::swatch`].
+    ///
+    /// ⛔ **Não são três [`ModelIntent::SetParam`], e a diferença é a TRAVESSIA.** O documento guarda
+    /// a cor em **linear**, o selector da casa fala **sRGB8**, e quem converte tem de ser **um**
+    /// sítio só — senão a curva fica escrita duas vezes e um dia as duas divergem na terceira casa.
+    /// Esse sítio é o shell, que já é quem sabe em que três números do nó a cor mora; o painel
+    /// entrega o que o artista apontou e não faz colorimetria nenhuma.
+    SetColor { entity: u64, srgb: [u8; 3] },
     /// Trocar o verbo do gizmo, pela **posição** no seletor.
     SetGizmoMode { slot: usize },
     /// Trocar o referencial dos eixos, pela **posição** no seletor.
@@ -356,6 +389,15 @@ pub(crate) fn push_intent(intent: ModelIntent) {
 #[must_use]
 pub fn drain_intents() -> Vec<ModelIntent> {
     INTENTS.with(|q| std::mem::take(&mut *q.borrow_mut()))
+}
+
+/// ⭐⭐ **Anota a amostra de cor desta pintura e devolve a da anterior** — `None` quando não há.
+///
+/// ⚠️ **Isto NÃO é um espelho do documento**, que é o que o [`Model3dPanelState`] recusa por
+/// escrito: é a memória do que **este painel desenhou**, que nenhuma outra coisa sabe. O consumidor
+/// é a lei *«o selector segue o sujeito»* do `paint` — ver `crate::paint::close_a_stranded_picker`.
+pub(crate) fn remember_swatch(id: Option<ph2d_a11y::NodeId>) -> Option<ph2d_a11y::NodeId> {
+    LAST_SWATCH.with(|c| c.replace(id))
 }
 
 pub(crate) fn set_last_content_h(h: f32) {

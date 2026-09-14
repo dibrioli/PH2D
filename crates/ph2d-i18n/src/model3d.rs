@@ -498,12 +498,20 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // letras soltas debaixo deles leem-se como um quarto eixo. A primeira palavra é o que diz de
         // que grandeza é o trio — a mesma lei que o `field.dim.seam_width` abaixo paga.
         //
-        // ⏳ **Três linhas são a autoria MÍNIMA, e ela está nomeada como dívida** (`docs/Render3d/05`
-        // §10.6): a casa tem `ColorSwatch` e um selector de cor, e uma cor escolhe-se **vendo-a**.
-        // O que estes três compram hoje é a cor ser AUTORÁVEL e PERSISTIR, que é o que faltava.
+        // ⛔⛔ **A DÍVIDA DAS TRÊS LINHAS ESTÁ PAGA, e o painel já não as mostra** (Enio,
+        // 2026-09-14: *«em vez de 3 sliders de RGB, deveríamos ter uma caixa seletora de cor»*). Os
+        // três canais dobram-se numa **amostra** que abre o selector de cor da casa — ver
+        // `ph2d_panel_model3d::ParamRow::swatch`.
+        //
+        // ⚠️ **E as três chaves FICAM, o que não é folga:** elas rotulam `Param::Material(0..2)`,
+        // que continua a ser a **porta de escrita** da cor — a dobra é da apresentação, não da
+        // fonte. *Apagar a etiqueta de um número porque um painel deixou de o pintar é deixar o
+        // número sem nome no dia em que outra vista o mostrar.*
         "field.dim.base_r" => "Base Color R",
         "field.dim.base_g" => "Base Color G",
         "field.dim.base_b" => "Base Color B",
+        // ⭐⭐⭐ **O RÓTULO DA AMOSTRA** — a linha é a cor inteira, e não um canal dela.
+        "field.dim.base_color" => "Base Color",
         // ⚠️ **"Roughness" e não "Gloss"**: é a palavra do OpenPBR, e é ela que o artista encontra
         // no Blender, no Substance e no Houdini. *Um sinónimo local obriga a traduzir de cabeça.*
         "field.dim.roughness" => "Roughness",

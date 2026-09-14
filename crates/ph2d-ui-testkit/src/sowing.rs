@@ -111,6 +111,33 @@ impl MockPanelHost {
         }
     }
 
+    /// ⭐⭐⭐ **O ARTISTA ESCOLHEU UMA COR no selector que está aberto** — o espelho que o
+    /// `hero::paint` corre, encenado.
+    ///
+    /// # ⚠️ O que ele encena, exactamente
+    ///
+    /// O selector de cor da casa é **um** e flutua sobre o canvas. Quem liga a roda dele ao widget
+    /// que a abriu é uma linha do `screens/hero/paint.rs`, corrida **antes** de os painéis
+    /// pintarem: *o valor vivo do selector é espelhado para `widget_color(picker_target)`*. Um
+    /// painel que edita cor lê **daí** — e essa leitura é a metade da costura que nenhum outro
+    /// método deste arnês consegue exercitar, porque o `MockPanelHost` não tem hero.
+    ///
+    /// ⛔ **Ele EXIGE um selector aberto, e entra em pânico sem ele** — nunca um no-op silencioso.
+    /// É isso que o impede de ser o `store_mut()` que este ficheiro recusa por escrito: não se pode
+    /// pintar uma cor num widget que ninguém abriu, e um gate que o fizesse estaria a provar o que
+    /// ele próprio semeou.
+    ///
+    /// ⚠️ **O alvo NÃO é um argumento**: ele é o que o `Down` real deixou em
+    /// [`WidgetStore::picker_target`]. Passá-lo à mão deixaria o gate verde sobre uma amostra que o
+    /// clique nunca alcança — que é precisamente a família de defeitos deste arnês.
+    pub fn pick_colour_in_the_open_picker(&mut self, rgba: [u8; 4]) {
+        let alvo = self.store.picker_target().expect(
+            "pick_colour_in_the_open_picker: nenhum selector está aberto — clique na amostra \
+             primeiro (é o `Down` que escolhe o alvo)",
+        );
+        self.store.set_widget_color(alvo, rgba);
+    }
+
     /// Set a registered number chip's committed value. Panics if `id` is
     /// absent or not a `NumberInput`.
     pub fn set_number_value(&mut self, id: NodeId, value: f64) {

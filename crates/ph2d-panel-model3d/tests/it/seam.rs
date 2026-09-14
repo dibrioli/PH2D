@@ -44,6 +44,7 @@ fn scene_with_one_union() {
             integral: false,
             section: None,
             choices: &[],
+            swatch: None,
             // Faixa de 0,4 — o número que o gate abaixo usa para distinguir a escala da linha de
             // uma escala fixa.
             bound: Bound::Soft(0.4),
@@ -220,6 +221,7 @@ fn every_row_gets_its_own_band_none_stacked_on_another() {
             integral: false,
             section: None,
             choices: &[],
+            swatch: None,
             bound: Bound::Hard(0.22),
         })
         .collect();
@@ -643,6 +645,7 @@ fn scene_with_one_position_row() {
             integral: false,
             section: None,
             choices: &[],
+            swatch: None,
             bound: Bound::Soft(CEILING),
         }],
         views: Vec::new(),
@@ -840,6 +843,7 @@ fn an_inert_row_registers_nothing_to_click() {
         integral: false,
         section: None,
         choices: &[],
+        swatch: None,
         bound: Bound::Wrap(180.0),
     };
     let mut host = MockPanelHost::with_panel::<Model3dPanel>();
@@ -893,6 +897,7 @@ fn an_inert_row_does_not_dispatch_even_if_an_event_arrives() {
             integral: false,
             section: None,
             choices: &[],
+            swatch: None,
             bound: Bound::Wrap(180.0),
         }],
         views: Vec::new(),
@@ -1315,6 +1320,7 @@ fn scene_with_one_choice_row() {
             integral: true,
             section: None,
             choices: &ph2d_field::Axis::KEYS,
+            swatch: None,
             bound: Bound::Hard(2.0),
         }],
         views: Vec::new(),
@@ -1634,4 +1640,246 @@ fn measure_what_the_lasso_row_costs() {
         com - sem,
         100.0 * (com - sem) / sem.max(1.0)
     );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────────
+// A LINHA-AMOSTRA — a cor escolhe-se VENDO-A (Enio, 2026-09-14)
+// ─────────────────────────────────────────────────────────────────────────────────────────────────
+
+/// A cor que a peça tem no retrato — um roxo que nenhum dos dois bytes vizinhos repete, para um
+/// despacho que trocasse canais não passar.
+const A_COR_DA_PECA: [u8; 3] = [180, 40, 220];
+
+/// A **linha** da cor base de uma folha — a peça de que as cenas abaixo são variações.
+fn scene_with_one_colour_row_row() -> ParamRow {
+    ParamRow {
+        entity: THE_UNION,
+        param: ph2d_field::Param::Material(0),
+        key: "field.dim.base_color",
+        // ⚠️ O `value` continua a ser o do canal ÂNCORA, e é ignorado por quem pinta uma amostra:
+        // a cor viaja no `swatch`. Ele fica honesto na mesma — a linha É o `Param::Material(0)`, e
+        // é esse número que ela ancora.
+        value: 0.5,
+        lo: 0.0,
+        live: true,
+        integral: false,
+        section: None,
+        choices: &[],
+        swatch: Some(A_COR_DA_PECA),
+        bound: Bound::Soft(1.0),
+    }
+}
+
+/// Uma cena de uma linha só, e ela é a **cor base** de uma folha.
+fn scene_with_one_colour_row() {
+    publish(ModelSnapshot {
+        rows: vec![scene_with_one_colour_row_row()],
+        node_count: 1,
+        ..ModelSnapshot::default()
+    });
+}
+
+/// O rect da amostra no ecrã, depois de uma pintura.
+fn swatch_rect(host: &mut MockPanelHost) -> ph2d_editor_core::zones::Rect {
+    host.hit_index_mut()
+        .rect_for(ph2d_panel_model3d::ids::model3d_color_swatch(THE_UNION))
+        .expect(
+            "a linha de cor não registou a amostra no índice de acerto — ela é decoração, e o \
+             `Down` nunca a alcança",
+        )
+}
+
+/// ⭐⭐⭐ **CLICAR NA AMOSTRA ABRE O SELECTOR DE COR DA CASA** — a costura inteira, sem app.
+///
+/// # ⛔ Por que isto não se prova pintando
+///
+/// A amostra não é um botão: o `Down` dela é reclamado pelo caminho genérico do `pointer_down`
+/// (`is_picker_swatch`), que **não emite evento nenhum** — ele abre o selector e devolve. ⇒ um gate
+/// que contasse `WidgetEvent`s leria a amostra como **muda**, e um que só medisse o rect leria como
+/// **viva** uma amostra que ninguém registou como selector. *As duas leituras erram, e em sentidos
+/// opostos.* O que a separa é o estado que o clique deixa: [`WidgetStore::picker_target`].
+///
+/// **Mutação que deve sangrar:** apagar o `register_picker_swatch` do `paint_swatch`.
+#[test]
+fn clicking_the_swatch_opens_the_house_colour_picker() {
+    scene_with_one_colour_row();
+    let mut host = MockPanelHost::with_panel::<Model3dPanel>();
+    host.set_panel_visible(Model3dPanel::ID, true);
+    let mut panel_state = Model3dPanelState;
+    let viewport = ph2d_editor_core::zones::Rect::new(0.0, 0.0, 1280.0, 800.0);
+    let _ = host.paint::<Model3dPanel>(&mut panel_state, viewport);
+    assert!(
+        host.store().picker_target().is_none(),
+        "o selector abriu sozinho, sem ninguém lhe tocar"
+    );
+    let r = swatch_rect(&mut host);
+    let _ = host.click_at(r.x + r.w * 0.5, r.y + r.h * 0.5);
+    assert_eq!(
+        host.store().picker_target(),
+        Some(ph2d_panel_model3d::ids::model3d_color_swatch(THE_UNION)),
+        "clicar na amostra não abriu o selector — ou ela não foi registada como amostra de \
+         selector, ou o rect dela não chegou ao índice de acerto"
+    );
+    // ⭐ **E ele abre SEMEADO com a cor da peça**, que é o que faz a roda nascer onde o artista a
+    // deixou em vez de num cinzento qualquer.
+    assert_eq!(
+        host.store()
+            .widget_color(ph2d_panel_model3d::ids::model3d_color_swatch(THE_UNION)),
+        Some([A_COR_DA_PECA[0], A_COR_DA_PECA[1], A_COR_DA_PECA[2], 255]),
+        "o selector abriu sobre uma cor que não é a da peça"
+    );
+}
+
+/// ⭐⭐⭐ **O QUE O SELECTOR ESCREVE VIRA UMA EDIÇÃO — e só quando a cor MUDOU.**
+///
+/// # ⛔ A segunda metade é a que impede um passo de undo por quadro
+///
+/// A leitura corre na **pintura**, que corre todo quadro enquanto o selector está aberto. Sem a
+/// comparação em sRGB8, a linha pediria a mesma edição sessenta vezes por segundo: o documento não
+/// mudaria de valor, mas cada largar de botão deixaria um passo de desfazer, e arrastar a roda
+/// deixaria um rasto deles. *Uma edição que se repete com o mesmo valor é indistinguível de uma
+/// edição, para tudo o que está a jusante.*
+///
+/// **Mutações que devem sangrar:** apagar o `if nova != rgb`; trocar a leitura por uma semeadura
+/// (isto é, semear também com o selector aberto — a cor deixa de sair de lá).
+#[test]
+fn what_the_picker_writes_becomes_one_edit_and_only_when_it_changed() {
+    scene_with_one_colour_row();
+    let mut host = MockPanelHost::with_panel::<Model3dPanel>();
+    host.set_panel_visible(Model3dPanel::ID, true);
+    let mut panel_state = Model3dPanelState;
+    let viewport = ph2d_editor_core::zones::Rect::new(0.0, 0.0, 1280.0, 800.0);
+    let _ = host.paint::<Model3dPanel>(&mut panel_state, viewport);
+    let r = swatch_rect(&mut host);
+    let _ = host.click_at(r.x + r.w * 0.5, r.y + r.h * 0.5);
+    let _ = drain_intents();
+
+    // ⭐ **O artista mexeu na roda** — o espelho que o `hero` corre antes de os painéis pintarem.
+    const ESCOLHIDA: [u8; 3] = [12, 200, 90];
+    host.pick_colour_in_the_open_picker([ESCOLHIDA[0], ESCOLHIDA[1], ESCOLHIDA[2], 255]);
+    let _ = host.paint::<Model3dPanel>(&mut panel_state, viewport);
+    assert_eq!(
+        drain_intents(),
+        vec![ModelIntent::SetColor {
+            entity: THE_UNION,
+            srgb: ESCOLHIDA,
+        }],
+        "o que o selector escreveu não chegou ao documento — a linha continua a semear a amostra \
+         em vez de a ler"
+    );
+
+    // ⛔⛔ **E O PEDIDO PÁRA ASSIM QUE O DOCUMENTO O APANHA** — encenado como o shell o corre:
+    // drenar, escrever, **republicar**, e só então pintar de novo (`scene_panel::publish_snapshot`:
+    // *«drenar ANTES de publicar»*).
+    //
+    // ⚠️ **Esta é a metade que impede um passo de desfazer por quadro.** A leitura corre em TODA
+    // pintura enquanto o selector está aberto, e ele fica aberto enquanto o artista quiser: sem a
+    // comparação, a linha pediria a mesma edição sessenta vezes por segundo. *Uma edição repetida
+    // com o mesmo valor é indistinguível de uma edição, para tudo o que está a jusante.*
+    //
+    // ⚠️ E ela **só é possível porque o ida-e-volta pelo documento fecha ao bit** — o que o gate
+    // `ph2d_app_field3d` :: `the_round_trip_through_the_document_is_exact`
+    // afirma sobre os 256 bytes. Com um byte a derivar, esta asserção seria inalcançável e o
+    // produto pediria edições para sempre.
+    publish(ModelSnapshot {
+        rows: vec![ParamRow {
+            swatch: Some(ESCOLHIDA),
+            ..scene_with_one_colour_row_row()
+        }],
+        node_count: 1,
+        ..ModelSnapshot::default()
+    });
+    for _ in 0..3 {
+        let _ = host.paint::<Model3dPanel>(&mut panel_state, viewport);
+    }
+    assert_eq!(
+        drain_intents(),
+        Vec::new(),
+        "⛔ a linha continuou a pedir a edição com o documento JÁ na cor escolhida — é um passo de \
+         desfazer por quadro enquanto o selector estiver aberto"
+    );
+    // ⭐ E o selector continua aberto: ler não o fecha.
+    assert_eq!(
+        host.store().picker_target(),
+        Some(ph2d_panel_model3d::ids::model3d_color_swatch(THE_UNION)),
+        "ler a cor fechou o selector — o artista perderia a roda a meio de a usar"
+    );
+}
+
+/// ⭐⭐⭐ **ESCOLHER OUTRA FORMA COM O SELECTOR ABERTO NÃO PINTA A NOVA COM A COR DA VELHA.**
+///
+/// # ⛔⛔ O defeito que o id da entidade torna inexprimível
+///
+/// O selector é **um** e flutua sobre o canvas; escolher outra forma **não** o fecha, porque aquele
+/// clique é tomado pelo módulo 3D antes de o `pointer_down` do chrome correr. Com o id cunhado pela
+/// **posição da linha** — que é como todos os outros controlos deste painel são cunhados — a
+/// amostra da forma nova teria o mesmo id, o painel leria o selector como *«aberto em mim»*, e a
+/// primeira pintura escreveria a cor da forma ANTERIOR na acabada de escolher. Em silêncio.
+///
+/// ⚠️ **E a outra metade: o selector órfão FECHA-SE.** Sem isso ele ficaria a flutuar a editar uma
+/// amostra que ninguém pinta — a roda move-se e nada a recebe.
+///
+/// **Mutações que devem sangrar:** cunhar o id pela posição da linha; apagar a chamada a
+/// `close_a_stranded_picker`.
+#[test]
+fn choosing_another_shape_does_not_paint_it_with_the_previous_colour() {
+    scene_with_one_colour_row();
+    let mut host = MockPanelHost::with_panel::<Model3dPanel>();
+    host.set_panel_visible(Model3dPanel::ID, true);
+    let mut panel_state = Model3dPanelState;
+    let viewport = ph2d_editor_core::zones::Rect::new(0.0, 0.0, 1280.0, 800.0);
+    let _ = host.paint::<Model3dPanel>(&mut panel_state, viewport);
+    let r = swatch_rect(&mut host);
+    let _ = host.click_at(r.x + r.w * 0.5, r.y + r.h * 0.5);
+    host.pick_colour_in_the_open_picker([12, 200, 90, 255]);
+    let _ = drain_intents();
+
+    // O artista escolheu OUTRA forma no canvas — mesma posição de linha, outra entidade, outra cor.
+    const A_OUTRA: u64 = 78;
+    publish(ModelSnapshot {
+        rows: vec![ParamRow {
+            entity: A_OUTRA,
+            swatch: Some([10, 20, 30]),
+            ..scene_with_one_colour_row_row()
+        }],
+        node_count: 1,
+        ..ModelSnapshot::default()
+    });
+    let _ = host.paint::<Model3dPanel>(&mut panel_state, viewport);
+    assert_eq!(
+        drain_intents(),
+        Vec::new(),
+        "⛔ a forma acabada de escolher recebeu a cor da anterior — o id da amostra não carrega o \
+         sujeito"
+    );
+    assert!(
+        host.store().picker_target().is_none(),
+        "o selector ficou aberto sobre uma amostra que já ninguém pinta — a roda move-se e nada a \
+         recebe"
+    );
+}
+
+/// ⭐ **A linha-amostra NÃO regista o controlo de número da linha** — as formas são exclusivas.
+///
+/// ⚠️ É a mesma lei do [`a_choice_row_paints_no_slider_to_grab`], e a discordância aqui seria pior:
+/// o slider da linha escreve `Param::Material(0)` sozinho, isto é, **só o vermelho** — o artista
+/// veria a peça avermelhar ao arrastar um controlo que não diz de que canal é.
+#[test]
+fn a_colour_row_paints_no_slider_to_grab() {
+    scene_with_one_colour_row();
+    let mut host = MockPanelHost::with_panel::<Model3dPanel>();
+    host.set_panel_visible(Model3dPanel::ID, true);
+    let mut panel_state = Model3dPanelState;
+    let viewport = ph2d_editor_core::zones::Rect::new(0.0, 0.0, 1280.0, 800.0);
+    let _ = host.paint::<Model3dPanel>(&mut panel_state, viewport);
+    for id in [
+        ph2d_panel_model3d::ids::model3d_radius_slider(0),
+        ph2d_panel_model3d::ids::model3d_radius_chip(0),
+    ] {
+        assert!(
+            host.hit_index_mut().rect_for(id).is_none(),
+            "uma linha de cor registou o controlo de número da linha — e ele escreveria só o \
+             canal vermelho"
+        );
+    }
 }

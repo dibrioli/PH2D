@@ -45,6 +45,11 @@ pub(crate) fn paint_row(
     if !row.live {
         return paint_fact(ctx, row, x, w, y);
     }
+    // ⭐⭐⭐ **UMA COR NÃO É UM NÚMERO** — ver [`ParamRow::swatch`] (Enio, 2026-09-14). Mesma lei da
+    // escolha logo abaixo: substitui o controle, não o acompanha.
+    if let Some(rgb) = row.swatch {
+        return paint_swatch(ctx, row, rgb, x, w, y);
+    }
     // ⭐⭐⭐ **UMA ESCOLHA NÃO É UM SLIDER** — ver [`ParamRow::choices`] (Enio, 2026-08-31). Ela
     // substitui o controle, e não o acompanha: o mesmo facto em dois controlos é duas verdades.
     if !row.choices.is_empty() {
@@ -228,6 +233,98 @@ fn paint_choice(ctx: &mut PaintCtx, row: &ParamRow, slot: u32, x: f32, w: f32, y
         hit_index,
     );
     y + used.max(ROW_H_PX) + ph2d_tokens::control_gap_px()
+}
+
+/// ⭐⭐⭐ **A LINHA-AMOSTRA** — o rótulo à esquerda, e na goteira do valor a cor que a peça tem
+/// (Enio, 2026-09-14: *«em vez de 3 sliders de RGB, deveríamos ter uma caixa seletora de cor»*).
+///
+/// # ⭐ O selector não se constrói aqui: ele já existe, e é UM
+///
+/// A casa tem **um** selector de cor (o OKLCH com roda, canais RGB/HSV/OKLCH, hexadecimal, paletas
+/// e conta-gotas), e um painel entra nele por **duas** linhas: registar o id como amostra
+/// ([`WidgetStore::register_picker_swatch`]) e manter a cor dela em dia. O `Down` genérico do
+/// `pointer_down` faz o resto — é o mesmo caminho do traço do Flip, do preenchimento do vetor e da
+/// tinta do Painter. *Um segundo selector neste painel seria uma segunda resposta à mesma pergunta,
+/// e a que envelhece.*
+///
+/// # ⚠️⚠️ QUEM MANDA NA COR MUDA CONFORME O SELECTOR ESTÁ ABERTO — e é aí que mora o defeito
+///
+/// | o selector está… | quem é a verdade | o que esta função faz |
+/// |---|---|---|
+/// | **fechado** | o **documento** | semeia a amostra com a cor do nó, todo quadro |
+/// | **aberto nesta amostra** | o **selector** | lê o que ele escreveu e pede a edição |
+///
+/// ⛔ **Semear nos dois casos apagaria a escolha debaixo do dedo:** o `hero` espelha o valor vivo do
+/// selector para `widget_color(id)` **antes** de os painéis pintarem, e um `set_widget_color` aqui
+/// por cima devolveria a cor velha a cada quadro — a roda mover-se-ia e a cor não. *O mesmo par de
+/// metades que o `brush_color_readback` do Painter já tem escrito.*
+///
+/// ⚠️ **E o «mudou?» pergunta-se em sRGB8** — ver [`ParamRow::swatch`]. Sem essa comparação a
+/// função pediria uma edição **por quadro** enquanto o selector estivesse aberto: um passo de undo
+/// por quadro, sobre uma cor que ninguém mexeu.
+fn paint_swatch(ctx: &mut PaintCtx, row: &ParamRow, rgb: [u8; 3], x: f32, w: f32, y: f32) -> f32 {
+    use ph2d_editor_core::widget::{ColorSwatch, SwatchSize, paint_color_swatch};
+
+    let theme = ctx.host.theme();
+    let font = TypeToken::Sm.px();
+    let dim = resolve(ColorToken::Text2, theme);
+    let baseline = y + (ROW_H_PX - font) * 0.5;
+    paint_text_block(
+        ctx.text_system,
+        ctx.scene,
+        tr(row.key),
+        x,
+        baseline,
+        font,
+        LABEL_COL_W,
+        dim,
+    );
+
+    // ⛔⛔ **O id vem da ENTIDADE, e é o único deste painel que vem** — ver
+    // [`crate::ids::model3d_color_swatch`]. Com o id da posição, escolher outra forma com o
+    // selector aberto escreveria a cor da anterior na nova, em silêncio.
+    let id = crate::ids::model3d_color_swatch(row.entity);
+    let aberto = {
+        let store = ctx.host.store_mut();
+        store.register_picker_swatch(id);
+        let aberto = store.picker_target() == Some(id);
+        if aberto {
+            // O selector é o dono: lê-se dele, e pede-se a edição só quando a cor de facto mudou.
+            if let Some(escolhida) = store.widget_color(id) {
+                let nova = [escolhida[0], escolhida[1], escolhida[2]];
+                if nova != rgb {
+                    crate::state::push_intent(crate::state::ModelIntent::SetColor {
+                        entity: row.entity,
+                        srgb: nova,
+                    });
+                }
+            }
+        } else {
+            // ⚠️ **Opaca**: o material não tem alfa, e um `255` inventado aqui é o único honesto —
+            // ver [`ParamRow::swatch`]. Com outro valor a amostra pintaria o xadrez da
+            // transparência sobre uma peça que é sólida.
+            store.set_widget_color(id, [rgb[0], rgb[1], rgb[2], 255]);
+        }
+        aberto
+    };
+
+    // A amostra ocupa a goteira do valor inteira — é uma **cor**, e uma cor lê-se melhor grande.
+    // ⚠️ A altura é a da linha, para o painel não saltar de tamanho entre uma linha e a vizinha.
+    let gutter = Rect::new(x + LABEL_COL_W, y, (w - LABEL_COL_W).max(0.0), ROW_H_PX);
+    let swatch = ColorSwatch::new(id, tr(row.key), [rgb[0], rgb[1], rgb[2], 255])
+        .size(SwatchSize::Md)
+        // ⭐ **Aberto ⇒ focado**, que é o anel que a família moderna traça: com o selector a flutuar
+        // sobre o canvas, é este anel que diz **qual** amostra ele está a editar.
+        .state(if aberto {
+            ph2d_editor_core::widget::SwatchState::Focused
+        } else {
+            ph2d_editor_core::widget::SwatchState::Normal
+        });
+    paint_color_swatch(&swatch, gutter, ctx.scene, theme);
+    // ⚠️ **Sem isto a amostra é decoração**: quem decide que o `Down` abre o selector é o
+    // `pointer_down`, e ele só vê o que o índice de acerto reclamou.
+    ctx.host.hit_index_mut().register(id, gutter);
+    y + ROW_H_PX + ph2d_tokens::control_gap_px()
 }
 
 fn paint_fact(ctx: &mut PaintCtx, row: &ParamRow, x: f32, w: f32, y: f32) -> f32 {

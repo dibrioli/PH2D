@@ -18,7 +18,7 @@ use ph2d_field::Bound;
 use ph2d_i18n::tr;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, TypeToken};
 
-use crate::state::{self, Model3dPanelState};
+use crate::state::{self, Model3dPanelState, ModelSnapshot};
 use crate::{Model3dPanel, populate::MAX_MODES, populate::MAX_ROWS};
 
 /// ⭐⭐ **O tecto de uma linha SEM parede, para efeito de DIGITAÇÃO.**
@@ -72,6 +72,10 @@ pub(crate) fn paint(_state: &mut Model3dPanelState, ctx: &mut PaintCtx) {
         // Limpeza simétrica do rect: sem isto o `panel_at` continuaria a devolver este painel
         // depois de ele fechar, e a roda do canvas ficaria a rolar um painel invisível.
         ctx.host.store_mut().clear_panel_rect(ids::MODEL3D_PANEL);
+        // ⚠️ **E o selector de cor fecha com o painel** — ver [`close_a_stranded_picker`]. Sem
+        // isto, fechar o painel com ele aberto deixaria o selector a flutuar sobre o canvas a
+        // editar uma amostra que já não é pintada por ninguém.
+        close_a_stranded_picker(ctx, None);
         return;
     }
 
@@ -147,6 +151,93 @@ pub(crate) fn paint(_state: &mut Model3dPanelState, ctx: &mut PaintCtx) {
     // apagar-lhe a pintura faria um controlo VIVO e REGISTADO deixar de ser pintado -- que e'
     // exactamente o «knob morto» do CLAUDE.md §5.0, a pior das saidas. ⇒ o integrador manteve o
     // que FUNCIONA e deixou a decisao a quem ve^ o painel.
+    // ⭐⭐ **AS FILEIRAS DE CHIPS DO CORPO** — ver [`paint_chip_rows`].
+    y = paint_chip_rows(ctx, &snapshot, x, w, y);
+    // ⛔⛔ **A CÂMERA SAIU DAQUI em 2026-08-31** — as seis vistas nomeadas e os três gestos de
+    // câmera pintam-se agora na **fila de ferramentas** (`crate::area_bar`), que é a região da
+    // área e onde a altura já se paga.
+    //
+    // ⚠️ **Elas nunca foram propriedades de nada**: são sobre *olhar*, e este painel é o inspector
+    // do objecto escolhido. Eram 9 das 74 entradas que fizeram este painel precisar de barra de
+    // rolagem — a **D2** ao pé da letra (*o painel deixa de ser o depósito por omissão*).
+    //
+    // ⚠️ **O `populate` continua a registá-las**, e tem de continuar: o registo é o que as mantém
+    // vivas sob o dedo, e quem as pinta agora é a fila. O braço do `event.rs` não mudou uma linha —
+    // ele decide por **id**, e o id é o mesmo.
+    // ⛔⛔ **E a SAÍDA saiu daqui no mesmo dia** — os três níveis de exportação são linhas do menu
+    // **File**, e a **D2** nomeia-o (`00_DECISOES_DO_ENIO.md` §D2, a tabela de destino:
+    // *«export.* → barra global → Arquivo»*). *Escrever um arquivo vale em todo o app; o corte da
+    // D2 é por ÂMBITO, não por quem foi o último a tocar no assunto.*
+    //
+    // ⚠️ **Contribuídas, e não linhas fixas do menu:** o módulo publica-as enquanto tem o canvas
+    // (`crate::area_bar::publish`), e com ele fechado o *File* volta exactamente ao que era. Uma
+    // linha *Export Draft* permanente seria um alvo que consome o clique e não faz nada.
+    // ⭐ **ESTÁ ISOLADO, e quem o diz é a VISTA** (W44) — logo abaixo dos controles e acima dos
+    // números, porque é uma afirmação sobre *o que se está a ver*, não sobre o que está escolhido.
+    //
+    // ⚠️ **Independente da seleção**, e é essa a correção: o único sinal anterior era o `active` do
+    // chip *Isolate*, que compara o nó isolado com o **escolhido** — escolher outra coisa apagava-o,
+    // e com a raiz escolhida a fileira inteira desaparece. *Um estado da vista não se anuncia por um
+    // controle da seleção.*
+    if let Some(name) = &snapshot.isolated {
+        y = paint_note(
+            ctx,
+            &format!("{}: {name}", tr("panel.model3d.isolated")),
+            x,
+            w,
+            y,
+        );
+    }
+    if snapshot.rows.is_empty() {
+        y = paint_note(ctx, tr("panel.model3d.empty"), x, w, y);
+    }
+    // ⚠️ **Corta na família, e o rodapé DIZ que cortou** — ver `MAX_ROWS`. Uma linha além dela
+    // ficaria sem controle registado: pintada e morta sob o rato, que é a falha de paridade de
+    // fiação na sua forma mais cara.
+    for (slot, row) in snapshot.rows.iter().enumerate().take(MAX_ROWS) {
+        // ⭐⭐⭐ **O CABEÇALHO DA SECÇÃO** (report do Enio, 2026-08-30) — ver `ParamRow::section`.
+        if let Some(key) = row.section {
+            y = paint_section(ctx, tr(key), x, w, y);
+        }
+        y = crate::paint_rows::paint_row(ctx, row, slot as u32, x, w, y);
+    }
+    // ⭐⭐⭐ **O SELECTOR SEGUE O SUJEITO** — ver [`close_a_stranded_picker`].
+    close_a_stranded_picker(
+        ctx,
+        snapshot
+            .rows
+            .iter()
+            .find(|r| r.swatch.is_some())
+            .map(|r| crate::ids::model3d_color_swatch(r.entity)),
+    );
+    y = paint_footer(ctx, &snapshot, x, w, y);
+    // ⚠️ O `+ scroll` desfaz o deslocamento: a altura do conteúdo é do CONTEÚDO, e não de onde ele
+    // calhou de ser desenhado. Sem ele o `max_scroll` encolheria a cada rolagem e o painel
+    // empurraria o artista de volta para o topo.
+    let content_h = y + scroll - body_top + PANEL_HEAD_PAD;
+    state::set_last_content_h(content_h);
+    ctx.scene.pop_layer();
+    // ⚠️ O `pop` vem ANTES da barra, e de propósito: o polegar vive no corpo mas **não rola com
+    // ele** — recortá-lo pela mesma banda seria correcto hoje e uma armadilha no dia em que ele
+    // saísse um pixel.
+    ctx.host.hit_index_mut().pop_clip();
+    paint_scroll_chrome(ctx, body_rect, content_h, body_h, scroll, theme);
+}
+
+/// ⭐⭐ **AS FILEIRAS DE CHIPS DO CORPO DO PAINEL** — o laço, criar/combinar, o verbo, o carácter, os
+/// modificadores e as acções, **nesta ordem**, que é a ordem em que elas se qualificam umas às
+/// outras. Devolve o **y seguinte**.
+///
+/// ⚠️ **Saiu do [`paint`] pelo tecto de 200 LOC por função** (a linha-amostra de cor empurrou-o para
+/// `210`) — ⛔ *corte, nunca uma entrada no `FN_OVERAGE_OK`*. O corte é por **assunto**: aqui mora
+/// tudo o que é uma fileira de botões do corpo, e lá fica o que decide a moldura, o recorte e a
+/// rolagem.
+///
+/// ⚠️ **A ordem é load-bearing e os comentários dizem porquê, um a um** — ela não é arrumação: cada
+/// fileira qualifica a de cima (o verbo qualifica a operação do grupo; o carácter qualifica a junta
+/// que o verbo escolheu).
+fn paint_chip_rows(ctx: &mut PaintCtx, snapshot: &ModelSnapshot, x: f32, w: f32, y: f32) -> f32 {
+    let mut y = y;
     // ⭐⭐ **O que o LAÇO faz ao que apanha** (W112), logo abaixo do referencial — os dois
     // qualificam um GESTO do canvas, e não a forma escolhida. ⚠️ A nota vem antes porque «Add» e
     // «Subtract» sozinhos não dizem *a quê*: um chip sem sujeito lê-se ao contrário.
@@ -203,66 +294,37 @@ pub(crate) fn paint(_state: &mut Model3dPanelState, ctx: &mut PaintCtx) {
     // que a tese do módulo mais aparece (ver `ph2d_field::mods`).
     y = paint_chips(ctx, &snapshot.mods, crate::ids::model3d_mod_button, x, w, y);
     y = paint_chips(ctx, &snapshot.acts, crate::ids::model3d_act_button, x, w, y);
-    // ⛔⛔ **A CÂMERA SAIU DAQUI em 2026-08-31** — as seis vistas nomeadas e os três gestos de
-    // câmera pintam-se agora na **fila de ferramentas** (`crate::area_bar`), que é a região da
-    // área e onde a altura já se paga.
-    //
-    // ⚠️ **Elas nunca foram propriedades de nada**: são sobre *olhar*, e este painel é o inspector
-    // do objecto escolhido. Eram 9 das 74 entradas que fizeram este painel precisar de barra de
-    // rolagem — a **D2** ao pé da letra (*o painel deixa de ser o depósito por omissão*).
-    //
-    // ⚠️ **O `populate` continua a registá-las**, e tem de continuar: o registo é o que as mantém
-    // vivas sob o dedo, e quem as pinta agora é a fila. O braço do `event.rs` não mudou uma linha —
-    // ele decide por **id**, e o id é o mesmo.
-    // ⛔⛔ **E a SAÍDA saiu daqui no mesmo dia** — os três níveis de exportação são linhas do menu
-    // **File**, e a **D2** nomeia-o (`00_DECISOES_DO_ENIO.md` §D2, a tabela de destino:
-    // *«export.* → barra global → Arquivo»*). *Escrever um arquivo vale em todo o app; o corte da
-    // D2 é por ÂMBITO, não por quem foi o último a tocar no assunto.*
-    //
-    // ⚠️ **Contribuídas, e não linhas fixas do menu:** o módulo publica-as enquanto tem o canvas
-    // (`crate::area_bar::publish`), e com ele fechado o *File* volta exactamente ao que era. Uma
-    // linha *Export Draft* permanente seria um alvo que consome o clique e não faz nada.
-    // ⭐ **ESTÁ ISOLADO, e quem o diz é a VISTA** (W44) — logo abaixo dos controles e acima dos
-    // números, porque é uma afirmação sobre *o que se está a ver*, não sobre o que está escolhido.
-    //
-    // ⚠️ **Independente da seleção**, e é essa a correção: o único sinal anterior era o `active` do
-    // chip *Isolate*, que compara o nó isolado com o **escolhido** — escolher outra coisa apagava-o,
-    // e com a raiz escolhida a fileira inteira desaparece. *Um estado da vista não se anuncia por um
-    // controle da seleção.*
-    if let Some(name) = &snapshot.isolated {
-        y = paint_note(
-            ctx,
-            &format!("{}: {name}", tr("panel.model3d.isolated")),
-            x,
-            w,
-            y,
-        );
+    y
+}
+
+/// ⭐⭐⭐ **O SELECTOR DE COR SEGUE O SUJEITO** — `agora` é a amostra que esta pintura desenhou, ou
+/// `None` quando não desenhou nenhuma.
+///
+/// # ⛔ O controlo morto que ela impede
+///
+/// O selector de cor da casa é **um** e flutua sobre o canvas, logo ele sobrevive a tudo o que não
+/// seja um clique fora dele — e **escolher outra forma no canvas não é um desses cliques**: aquele
+/// gesto é tomado pelo módulo 3D antes de o `pointer_down` do chrome correr. ⇒ sem esta lei, trocar
+/// de selecção (ou fechar o painel) deixaria o selector aberto sobre uma amostra que **já não é
+/// pintada por ninguém**: a roda move-se, a cor muda no selector, e nada no documento a recebe.
+/// *Um controlo vivo a escrever num consumidor que deixou de existir é a espécie de morto que o
+/// `CLAUDE.md` §5.0 chama de «o consumidor que projecta o valor fora» — e nenhuma sonda de registo
+/// o vê, porque ele **é** registado.*
+///
+/// ⚠️ **Só fecha o que é NOSSO.** A comparação é com a amostra que este painel pintou da última vez
+/// ([`state::remember_swatch`]), nunca *«há um selector aberto»*: fechar um selector do Inspector
+/// ou do Painter seria este painel a mandar na superfície partilhada de outro.
+///
+/// ⚠️ **Uma porta, dois leitores** (o caminho normal e a saída antecipada do painel fechado) — a
+/// mesma lei escrita duas vezes seria a lei escrita em nenhum, e o terceiro leitor nasceria surdo.
+fn close_a_stranded_picker(ctx: &mut PaintCtx, agora: Option<ph2d_a11y::NodeId>) {
+    let anterior = state::remember_swatch(agora);
+    if let Some(orfa) = anterior
+        && Some(orfa) != agora
+        && ctx.host.store().picker_target() == Some(orfa)
+    {
+        ctx.host.store_mut().set_picker_target(None);
     }
-    if snapshot.rows.is_empty() {
-        y = paint_note(ctx, tr("panel.model3d.empty"), x, w, y);
-    }
-    // ⚠️ **Corta na família, e o rodapé DIZ que cortou** — ver `MAX_ROWS`. Uma linha além dela
-    // ficaria sem controle registado: pintada e morta sob o rato, que é a falha de paridade de
-    // fiação na sua forma mais cara.
-    for (slot, row) in snapshot.rows.iter().enumerate().take(MAX_ROWS) {
-        // ⭐⭐⭐ **O CABEÇALHO DA SECÇÃO** (report do Enio, 2026-08-30) — ver `ParamRow::section`.
-        if let Some(key) = row.section {
-            y = paint_section(ctx, tr(key), x, w, y);
-        }
-        y = crate::paint_rows::paint_row(ctx, row, slot as u32, x, w, y);
-    }
-    y = paint_footer(ctx, &snapshot, x, w, y);
-    // ⚠️ O `+ scroll` desfaz o deslocamento: a altura do conteúdo é do CONTEÚDO, e não de onde ele
-    // calhou de ser desenhado. Sem ele o `max_scroll` encolheria a cada rolagem e o painel
-    // empurraria o artista de volta para o topo.
-    let content_h = y + scroll - body_top + PANEL_HEAD_PAD;
-    state::set_last_content_h(content_h);
-    ctx.scene.pop_layer();
-    // ⚠️ O `pop` vem ANTES da barra, e de propósito: o polegar vive no corpo mas **não rola com
-    // ele** — recortá-lo pela mesma banda seria correcto hoje e uma armadilha no dia em que ele
-    // saísse um pixel.
-    ctx.host.hit_index_mut().pop_clip();
-    paint_scroll_chrome(ctx, body_rect, content_h, body_h, scroll, theme);
 }
 
 /// Desenha a barra de rolagem e **publica** o par `content_h`/`visible_h` que o dispatch da roda

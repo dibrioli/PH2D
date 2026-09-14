@@ -1683,3 +1683,41 @@ de pintar sem a linha.
 
 **7/7 mutações** — entre elas a que faz uma linha travada voltar a **esconder-se**, que é a que
 guarda a ordem do dono.
+
+---
+
+### §23.5 — ⛔⛔ E o smoke seguinte veio com FOTO: *«widgets sobrepostos embolados, mas espaçados»*
+
+Três linhas do material colidiam com as de baixo, e duas coisas estavam erradas ao mesmo tempo.
+
+**(a) O pintor do rótulo QUEBRAVA.** O doc do `paint_text_elided` nomeia o defeito à letra:
+
+> *«`paint_text` trata `max_width` como orçamento de **quebra**, então um rótulo um pixel largo
+> demais vira duas linhas em silêncio e transborda para a linha de baixo.»*
+
+As linhas deste painel avançam um **passo fixo**, logo a segunda linha do rótulo caía **por cima** da
+seguinte. ⚠️ **Ele dormiu três waves:** com `Radius` e `Round` nada quebrava; `Coat Roughness`,
+`Specular Color` e `Emission Color` — os rótulos que o material completo trouxe — passaram a colidir
+de uma vez. *Um pintor errado só se vê quando o conteúdo cresce, e o conteúdo cresce numa wave que
+não olha para o pintor.*
+
+**(b) A linha travada era a ÚNICA do painel ainda desenhada com o modelo de TRÊS COLUNAS.** A linha
+viva perdeu a coluna externa de rótulo em 2026-09-02 — *«a caixa única: rótulo à esquerda DENTRO,
+valor à direita DENTRO»* —, e o `label_w` daquele pintor é **ignorado de propósito** desde então. O
+`LABEL_COL_W = 72` deste painel sobreviveu só nas linhas que eu escrevi: o facto, a escolha e as duas
+amostras. ⇒ *a linha inactiva não era uma linha viva a cinzento; era outra coisa.*
+
+⇒ **as quatro passam à mesma geometria:** rótulo à esquerda (**cortado**, nunca quebrado), valor ou
+amostra na **coluna da direita**.
+
+⚠️ **A amostra encolheu, e isso é visível:** ela ocupava a goteira inteira (`w − 72 ≈ 230 px`) e passa
+a ocupar a coluna de `72`. *Uma amostra tão larga lê-se como um campo de texto, e a coluna dos valores
+deixava de estar alinhada com a dos números* — ⏸️ mas é uma mudança de aparência sobre algo que o dono
+já tinha aprovado, e fica à espera do veredito dele.
+
+⚠️⚠️ **E o gate é TEXTUAL, com o motivo escrito:** a propriedade é *«a que altura o rótulo foi
+pintado»*, e o arnês conta glifos — um rótulo quebrado tem **os mesmos glifos** do que cabe. Não há
+régua de geometria que os separe, então o que resta é proibir o pintor **pelo nome**. ⛔ Ele salta os
+comentários (este ficheiro cita o nome proibido em prosa), lê o ficheiro por `include_str!` (que falha
+a **compilar** se ele mudar de sítio) e tem **controlo do próprio censo**: o ficheiro tem de conter o
+pintor que corta, senão uma varredura partida leria `0` culpadas e passaria.

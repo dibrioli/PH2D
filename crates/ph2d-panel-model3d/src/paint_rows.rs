@@ -10,7 +10,7 @@
 //! ⚠️ **Neste arquivo, como no irmão, toda função de pintura devolve o Y SEGUINTE** — e a razão
 //! está escrita no doc do [`paint_row`]: misturar as duas convenções foi um smoke reprovado.
 
-use ph2d_editor_core::paint::{paint_text_block, resolve};
+use ph2d_editor_core::paint::{paint_text_elided, resolve};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::panel_chrome::paint_segmented_group_adaptive;
 use ph2d_editor_core::widget::{NUMBER_INPUT_MIN_W_PX, paint_slider_with_chip_layout_adaptive};
@@ -207,6 +207,8 @@ fn paint_choice(ctx: &mut PaintCtx, row: &ParamRow, slot: u32, x: f32, w: f32, y
     let font = TypeToken::Sm.px();
     let dim = resolve(ColorToken::Text2, theme);
     let baseline = y + (ROW_H_PX - font) * 0.5;
+    // ⛔ **Corta, nunca quebra** — ver a nota do [`paint_fact`]. Os rótulos de escolha deste painel
+    // são curtos (`Axis`), mas o defeito não é do comprimento de hoje: é do pintor.
     ph2d_editor_core::widget::paint_property_label(
         ctx.text_system,
         ctx.scene,
@@ -237,12 +239,7 @@ fn paint_choice(ctx: &mut PaintCtx, row: &ParamRow, slot: u32, x: f32, w: f32, y
         .collect();
     let (store, hit_index) = ctx.host.store_and_hit_index_mut();
     let used = paint_segmented_group_adaptive(
-        Rect::new(
-            x + ph2d_editor_core::widget::property_label_col_w(x, w),
-            y,
-            (w - ph2d_editor_core::widget::property_label_col_w(x, w)).max(0.0),
-            ROW_H_PX,
-        ),
+        Rect::new(x + ph2d_editor_core::widget::property_label_col_w(x, w), y, (w - ph2d_editor_core::widget::property_label_col_w(x, w)).max(0.0), ROW_H_PX),
         &labels,
         ctx.scene,
         ctx.text_system,
@@ -295,14 +292,23 @@ fn paint_swatch(
     let font = TypeToken::Sm.px();
     let dim = resolve(ColorToken::Text2, theme);
     let baseline = y + (ROW_H_PX - font) * 0.5;
-    paint_text_block(
+    // ⭐⭐ **A MESMA CAIXA ÚNICA das outras linhas** (report do Enio com foto, 14/09): rótulo à
+    // esquerda, **amostra na coluna da direita** — e o rótulo CORTA em vez de quebrar.
+    //
+    // ⛔ A amostra ocupava a goteira inteira (`w − 72 ≈ 230 px`) e o rótulo vivia nos `72` da
+    // esquerda: `Emission Color` não cabia lá e virava **duas linhas**, por cima da linha seguinte.
+    // *Uma amostra tão larga lê-se como um campo de texto, e a coluna dos valores deixava de estar
+    // alinhada com a dos números.*
+    let coluna = ph2d_editor_core::widget::property_label_col_w(x, w).min(w);
+    let rotulo_w = (w - coluna).max(0.0);
+    paint_text_elided(
         ctx.text_system,
         ctx.scene,
         tr(row.key),
         x,
         baseline,
         font,
-        LABEL_COL_W,
+        rotulo_w,
         dim,
     );
 
@@ -345,9 +351,8 @@ fn paint_swatch(
         aberto
     };
 
-    // A amostra ocupa a goteira do valor inteira — é uma **cor**, e uma cor lê-se melhor grande.
     // ⚠️ A altura é a da linha, para o painel não saltar de tamanho entre uma linha e a vizinha.
-    let gutter = Rect::new(x + LABEL_COL_W, y, (w - LABEL_COL_W).max(0.0), ROW_H_PX);
+    let gutter = Rect::new(x + rotulo_w, y, coluna, ROW_H_PX);
     let swatch = ColorSwatch::new(id, tr(row.key), [rgb[0], rgb[1], rgb[2], 255])
         .size(SwatchSize::Md)
         // ⭐ **Aberto ⇒ focado**, que é o anel que a família moderna traça: com o selector a flutuar
@@ -369,6 +374,21 @@ fn paint_fact(ctx: &mut PaintCtx, row: &ParamRow, x: f32, w: f32, y: f32) -> f32
     let theme = ctx.host.theme();
     let dim = resolve(ColorToken::Text2, theme);
     let baseline = y + (ROW_H_PX - font) * 0.5;
+    // ⭐⭐⭐ **A CAIXA ÚNICA, também aqui** (report do Enio com foto, 2026-09-14: *«widgets sobrepostos
+    // embolados, mas espaçados»*) — rótulo à ESQUERDA, valor à DIREITA, como na linha viva.
+    //
+    // ⛔⛔ **Ela punha o rótulo numa coluna de largura FIXA e o valor a seguir, e isso são DOIS
+    // defeitos.** O primeiro é geométrico: a linha viva deixou de ter coluna externa de rótulo em
+    // 2026-09-02 (*«a caixa única: rótulo à esquerda DENTRO, valor à direita DENTRO»*), e o
+    // `label_w` daquele pintor é **ignorado de propósito** desde então — logo a linha travada era a
+    // única do painel ainda desenhada com o modelo de três colunas. O segundo é o que a foto mostra.
+    let valor = format!("{:.d$}", f64::from(row.value), d = decimals_for_step(1.0));
+    let valor_w = ph2d_editor_core::widget::property_label_col_w(x, w).min(w);
+    // ⛔⛔ **`paint_text_elided` e NUNCA `paint_text_block`** — o doc do primeiro nomeia este defeito
+    // à letra: *«`paint_text` trata `max_width` como orçamento de QUEBRA, então um rótulo um pixel
+    // largo demais vira duas linhas em silêncio e transborda para a linha de baixo»*. Com `Coat
+    // Roughness` e `Emission Color` a não caberem em `72 px`, a segunda linha caía **por cima** da
+    // linha seguinte, que é exactamente o que a foto do dono mostra.
     ph2d_editor_core::widget::paint_property_label(
         ctx.text_system,
         ctx.scene,
@@ -376,19 +396,17 @@ fn paint_fact(ctx: &mut PaintCtx, row: &ParamRow, x: f32, w: f32, y: f32) -> f32
         x,
         baseline,
         font,
-        ph2d_editor_core::widget::property_label_col_w(x, w),
+        (w - valor_w).max(0.0),
         dim,
     );
-    // O número fica na goteira do valor, como numa linha viva — o olho percorre a coluna sem saltar.
-    let text = format!("{:.d$}", f64::from(row.value), d = decimals_for_step(1.0));
-    paint_text_block(
+    paint_text_elided(
         ctx.text_system,
         ctx.scene,
-        &text,
-        x + ph2d_editor_core::widget::property_label_col_w(x, w),
+        &valor,
+        x + (w - valor_w).max(0.0),
         baseline,
         font,
-        (w - ph2d_editor_core::widget::property_label_col_w(x, w)).max(0.0),
+        valor_w,
         dim,
     );
     y + ph2d_tokens::row_pitch_px()
@@ -417,17 +435,26 @@ fn paint_dead_swatch(
     let font = TypeToken::Sm.px();
     let dim = resolve(ColorToken::Text2, theme);
     let baseline = y + (ROW_H_PX - font) * 0.5;
-    paint_text_block(
+    // ⭐⭐ **A MESMA CAIXA ÚNICA das outras linhas** (report do Enio com foto, 14/09): rótulo à
+    // esquerda, **amostra na coluna da direita** — e o rótulo CORTA em vez de quebrar.
+    //
+    // ⛔ A amostra ocupava a goteira inteira (`w − 72 ≈ 230 px`) e o rótulo vivia nos `72` da
+    // esquerda: `Emission Color` não cabia lá e virava **duas linhas**, por cima da linha seguinte.
+    // *Uma amostra tão larga lê-se como um campo de texto, e a coluna dos valores deixava de estar
+    // alinhada com a dos números.*
+    let coluna = ph2d_editor_core::widget::property_label_col_w(x, w).min(w);
+    let rotulo_w = (w - coluna).max(0.0);
+    paint_text_elided(
         ctx.text_system,
         ctx.scene,
         tr(row.key),
         x,
         baseline,
         font,
-        LABEL_COL_W,
+        rotulo_w,
         dim,
     );
-    let gutter = Rect::new(x + LABEL_COL_W, y, (w - LABEL_COL_W).max(0.0), ROW_H_PX);
+    let gutter = Rect::new(x + rotulo_w, y, coluna, ROW_H_PX);
     // ⚠️ **O id é o VERDADEIRO, e ele não é registado em lado nenhum** — o widget precisa de um, e
     // inventar outro faria duas identidades para a mesma amostra no dia em que ela acordasse.
     let swatch = ColorSwatch::new(id, tr(row.key), [rgb[0], rgb[1], rgb[2], 255])

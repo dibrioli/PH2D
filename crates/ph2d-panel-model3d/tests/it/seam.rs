@@ -1964,3 +1964,57 @@ fn a_locked_swatch_is_painted_and_unreachable() {
          desapareceu, que é exactamente o que a ordem do dono proíbe"
     );
 }
+
+/// ⭐⭐⭐ **NENHUMA LINHA DESTE PAINEL USA UM PINTOR DE TEXTO QUE QUEBRA** — report do Enio com foto
+/// (2026-09-14): *«widgets sobrepostos embolados, mas espaçados»*.
+///
+/// # ⛔⛔ O defeito, e porque ele é MUDO até alguém alongar um rótulo
+///
+/// O doc do `paint_text_elided` nomeia-o à letra: *«`paint_text` trata `max_width` como orçamento de
+/// **QUEBRA**, então um rótulo um pixel largo demais vira duas linhas em silêncio e transborda para a
+/// linha de baixo»*. As linhas deste painel avançam **um passo fixo**, logo a segunda linha do
+/// rótulo cai **por cima** da linha seguinte.
+///
+/// ⚠️ **Ele dormiu três waves.** Com `Radius` e `Round` nada quebrava; com `Coat Roughness`,
+/// `Specular Color` e `Emission Color` — os rótulos que o material completo trouxe — três linhas
+/// passaram a colidir de uma vez. *Um pintor errado só se vê quando o conteúdo cresce, e o conteúdo
+/// cresce numa wave que não olha para o pintor.*
+///
+/// # ⚠️ Porque este gate é TEXTUAL, e o que ele faz para não mentir
+///
+/// A propriedade é *«a que ALTURA o rótulo foi pintado»*, e o arnês conta glifos e segmentos — um
+/// rótulo quebrado tem **os mesmos glifos** do que cabe. ⇒ não há régua de geometria que os separe, e
+/// o que resta é proibir o pintor pelo nome.
+///
+/// ⛔ **Ele salta os comentários**, e isso não é arrumação: este ficheiro **explica** o defeito e cita
+/// o nome proibido em prosa três vezes. *Um censo textual que não separa prosa de código mente nos
+/// dois sentidos* (`CLAUDE.md` §5.0).
+///
+/// ⚠️ **E ele lê o ficheiro por `include_str!`**, que falha a COMPILAR se alguém o mudar de sítio —
+/// a espécie barata de gate partido, e não a que fica verde a medir nada.
+#[test]
+fn no_row_of_this_panel_wraps_its_label() {
+    const FONTE: &str = include_str!("../../src/paint_rows.rs");
+    let culpadas: Vec<(usize, &str)> = FONTE
+        .lines()
+        .enumerate()
+        .filter(|(_, l)| {
+            let t = l.trim_start();
+            !t.starts_with("//") && t.contains("paint_text_block")
+        })
+        .map(|(n, l)| (n + 1, l.trim()))
+        .collect();
+    assert!(
+        culpadas.is_empty(),
+        "estas linhas pintam um rótulo com o pintor que QUEBRA — ele transborda para a linha de \
+         baixo em silêncio, e o avanço da linha não o conta: {culpadas:?}"
+    );
+    // ⭐ **E o CONTROLO do próprio censo:** o ficheiro tem de conter o pintor que CORTA, senão uma
+    // varredura partida (um caminho errado, um ficheiro vazio) leria `0` culpadas e passaria.
+    assert!(
+        FONTE
+            .lines()
+            .any(|l| !l.trim_start().starts_with("//") && l.contains("paint_text_elided")),
+        "o censo não encontrou o pintor que corta — ele está a varrer o ficheiro errado"
+    );
+}

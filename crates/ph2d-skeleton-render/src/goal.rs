@@ -62,9 +62,14 @@ const GOAL_LINE_PX: f64 = 2.5;
 /// osso, que é a segunda resposta à mesma pergunta.
 pub type Goal = (u64, [f64; 2], [f64; 2], [f64; 2]);
 
-/// A espessura da faixa que marca a corrente governada — **mais grossa que o osso**, para ela se ler
-/// como um realce POR BAIXO dele e não como mais uma linha.
-const CHAIN_BAND_PX: f64 = 7.0;
+/// A espessura da linha da corrente — **a mesma do losango**, e não um número próprio.
+///
+/// ⛔⛔ **Era `7.0` e foi um defeito reportado com foto** (Enio, 2026-09-14: *«linha muito grossa»*).
+/// Aquele número existia para ela se ler como uma FAIXA por baixo do osso; desde que ela deixou de
+/// passar por cima dos ossos, uma faixa larga não descreve nada — é uma linha, e a linha desta
+/// família já tem largura. ⚠️ **Um `const` próprio aqui seria a segunda resposta à mesma pergunta**,
+/// e a que envelhece.
+const CHAIN_LINE_PX: f64 = GOAL_LINE_PX;
 
 /// ⭐⭐⭐ **A CORRENTE QUE A ÂNCORA GOVERNA, desenhada** — uma faixa por baixo dos ossos que ela
 /// dobra, da raiz da corrente até à ponta.
@@ -77,12 +82,18 @@ const CHAIN_BAND_PX: f64 = 7.0;
 /// ⚠️ **Ela desenha-se ANTES dos ossos e das âncoras**, e é o que a torna um realce em vez de um
 /// desenho novo: ela passa por baixo do que se agarra.
 ///
-/// ⛔⛔ **E ela é uma RECTA AO LADO, nunca uma cobra por cima** (2.º report do dono, 2026-09-14:
-/// *«a linha do IK Chain deve ser uma linha reta e não passar por dentro dos ossos»*). A 1.ª
-/// redacção traçava a polilinha das juntas: numa corrente quase esticada ela caía **exactamente**
-/// sobre os corpos dos ossos e lia-se como parte deles, e numa dobrada serpenteava. O que ela tem
-/// de dizer é *até onde o `Chain` chega* — uma **extensão**, que é o que uma cota de desenho técnico
-/// diz com uma recta deslocada. A geometria vive na porta [`chain_bar`], que é o que o gate mede.
+/// ⛔⛔ **E ela é a RECTA ENTRE AS DUAS PONTAS da corrente, nunca a polilinha das juntas** (2.º
+/// report do dono, 2026-09-14: *«deve ser uma linha reta e não passar por dentro dos ossos»*). A 1.ª
+/// redacção traçava a polilinha: numa corrente quase esticada ela caía **exactamente** sobre os
+/// corpos dos ossos e lia-se como parte deles, e numa dobrada serpenteava. Numa corrente dobrada a
+/// corda passa por FORA dos ossos sozinha — é a corda de um arco.
+///
+/// ⛔⛔ **E ela NÃO se desloca** (3.º report, com foto: *«linha muito grossa e deslocada das pontas
+/// dos ossos»*). A 2.ª redacção afastava-a para o lado livre para garantir folga em toda pose — e o
+/// preço foi ela deixar de **tocar** as duas coisas que descreve: a junta onde o `Chain` pára e o
+/// losango do alvo. *Um indicador de extensão que não encosta nas pontas não diz qual extensão é.*
+/// ⇒ ela liga as duas pontas, e a folga em pose esticada paga-se sendo uma **linha fina** em vez de
+/// uma faixa. A geometria vive na porta [`chain_bar`], que é o que os gates medem.
 ///
 /// ⚠️ **A cor segue a selecção**, como o losango: a corrente do osso escolhido acende, as outras
 /// ficam apagadas. Sem isso, uma cena com quatro restrições seria uma teia de faixas todas iguais.
@@ -115,11 +126,12 @@ pub fn draw_chains(
             faixa.move_to(a);
             faixa.line_to(b);
             target.inner_mut().stroke(
-                &Stroke::new(CHAIN_BAND_PX),
+                &Stroke::new(CHAIN_LINE_PX),
                 Affine::IDENTITY,
-                // ⚠️ **Meia opacidade**: ela é um fundo. A cheio, uma faixa mais grossa que o osso
-                // esconderia a arte por baixo dela e o artista deixaria de ver o que está a posar.
-                &Brush::Solid(cor.with_alpha(CHAIN_BAND_ALPHA)),
+                // ⚠️ **A cheio, e a meia opacidade morreu com a faixa**: ela existia porque uma
+                // faixa de `7 px` por cima da arte esconderia o que o artista está a posar. Uma
+                // linha da largura do losango não esconde nada, e a meio tom ela desaparecia.
+                &Brush::Solid(cor),
                 None,
                 &faixa,
             );
@@ -129,7 +141,12 @@ pub fn draw_chains(
         // como uma. ⚠️ Ela fica na RAIZ de verdade, não na ponta da recta deslocada: o que ela
         // responde é *qual junta é a fronteira*, e a recta responde *até onde*.
         if let Some(&p) = pontos.first() {
-            let r = CHAIN_BAND_PX;
+            // ⚠️ **A cruz é INSCRITA na bolinha da junta que ela marca** — `r` é o raio daquela
+            // bolinha dividido por `√2`, logo os quatro braços tocam-lhe a borda. ⛔ Um número
+            // próprio aqui desalinharia a marca da alça no dia em que o raio da bolinha mudasse, e
+            // ele já muda com o comprimento do osso.
+            let comp = pontos.get(1).map_or(0.0, |q| (q.x - p.x).hypot(q.y - p.y));
+            let r = crate::joint_radius_px(comp) / std::f64::consts::SQRT_2;
             let mut risco = BezPath::new();
             risco.move_to(Point::new(p.x - r, p.y - r));
             risco.line_to(Point::new(p.x + r, p.y + r));
@@ -146,78 +163,30 @@ pub fn draw_chains(
     }
 }
 
-/// ⭐⭐⭐ **A RECTA QUE DIZ ATÉ ONDE O `Chain` CHEGA** — a extensão da corrente, deslocada para
-/// **fora** dela, em píxeis de ECRÃ.
+/// ⭐⭐⭐ **A RECTA QUE DIZ ATÉ ONDE O `Chain` CHEGA** — da junta onde a corrente começa à ponta
+/// dela, em píxeis de ECRÃ.
 ///
-/// ⛔⛔ **Ela tem de LIMPAR os ossos, e o quanto é DERIVADO, não escolhido** (2.º report do dono,
-/// 2026-09-14): o que está desenhado ao longo de cada osso é o **corpo**
-/// ([`crate::bone_half_width_px`]) e a **bolinha da junta** ([`crate::joint_radius_px`]), as duas
-/// já portas desta crate e as duas função do comprimento do osso **na tela**. O afastamento é o
-/// maior dos dois ao longo da corrente, mais meia faixa, mais a folga.
+/// ⚠️ **Ela toca as duas pontas, e é isso que ela promete** (3.º report do dono, 2026-09-14): as
+/// duas coisas que ela descreve são a junta onde o `Chain` pára (marcada com a cruz) e a ponta da
+/// corrente (onde vive o losango do alvo). Deslocada, ela deixa de as tocar e o artista fica sem
+/// saber qual extensão ela mede.
 ///
-/// ⚠️ **A folga é `2 × LINE_PX`, e é o mesmo recurso que o [`crate::BONE_HALF_MIN_PX`] já nomeia:**
-/// abaixo de duas larguras de contorno as duas bordas **fundem-se numa risca só**, e o realce volta
-/// a ler-se como parte do osso — que é exactamente o defeito reportado.
-///
-/// ⭐ **Para que lado, e quanto.** Para o lado mais LIVRE — aquele em que a corrente se afasta
-/// menos da corda —, e por fora dessa excursão. ⚠️ Medido em ECRÃ, não em mundo: uma câmara
-/// espelhada troca a mão, e um lado escolhido em mundo apareceria do lado errado.
-///
-/// ⛔⛔ **Um afastamento constante não chega**, e quem o disse foi o gate: uma corrente que se
-/// enrola mais de meia volta tem bojo dos DOIS lados e vem por trás da recta (medido: `18,39 px` de
-/// um osso que ocupa `18,75`).
+/// ⛔⛔ **A 2.ª redacção afastava-a para o lado livre**, por fora da excursão da corrente, para
+/// garantir folga contra os ossos em TODA pose. Está **medido e recusado por veredito de produto**:
+/// a folga que ela comprava não valia as pontas que ela perdia. A folga que fica é a de uma linha
+/// **fina** — e numa corrente dobrada a corda passa por fora dos ossos sozinha, porque é a corda de
+/// um arco.
 ///
 /// ⚠️ `None` quando a raiz e a ponta coincidem: ali não há recta, e inventar uma direcção seria ler
 /// ruído de `f64`.
 #[must_use]
 pub fn chain_bar(pontos: &[Point]) -> Option<(Point, Point)> {
     let (&a, &b) = (pontos.first()?, pontos.last()?);
-    let (dx, dy) = (b.x - a.x, b.y - a.y);
-    let comp = dx.hypot(dy);
-    if comp <= f64::EPSILON {
+    if (b.x - a.x).hypot(b.y - a.y) <= f64::EPSILON {
         return None;
     }
-    let (ux, uy) = (dx / comp, dy / comp);
-    let (px, py) = (-uy, ux);
-    // ⭐⭐ **De que lado, e QUANTO** — as duas perguntas são uma só, e a resposta é a EXCURSÃO da
-    // corrente para cada lado da corda. O lado é o mais livre dos dois, e o afastamento tem de
-    // passar por fora da excursão desse lado.
-    //
-    // ⛔⛔ **Um afastamento CONSTANTE não chega, e foi o gate que o disse:** uma corrente que se
-    // enrola mais de meia volta (8 ossos a `0,9 rad` por junta) dá a volta e vem **por trás** da
-    // recta — ela passava a `18,39 px` de um osso que ocupa `18,75`. *Fugir do bojo não basta
-    // quando a corrente tem bojo dos dois lados.*
-    let (mais, menos) = pontos.iter().fold((0.0_f64, 0.0_f64), |(p1, m1), q| {
-        let e = (q.x - a.x) * px + (q.y - a.y) * py;
-        (p1.max(e), m1.max(-e))
-    });
-    let (lado, excursao) = if mais <= menos {
-        (1.0, mais)
-    } else {
-        (-1.0, menos)
-    };
-    let mut alcance: f64 = 0.0;
-    for w in pontos.windows(2) {
-        let c = (w[1].x - w[0].x).hypot(w[1].y - w[0].y);
-        alcance = alcance
-            .max(crate::bone_half_width_px(c))
-            .max(crate::joint_radius_px(c));
-    }
-    let afastamento = excursao + alcance + CHAIN_BAND_PX * 0.5 + CHAIN_GAP_PX;
-    let (ox, oy) = (px * lado * afastamento, py * lado * afastamento);
-    Some((
-        Point::new(a.x + ox, a.y + oy),
-        Point::new(b.x + ox, b.y + oy),
-    ))
+    Some((a, b))
 }
-
-/// A folga entre a recta da corrente e o que está desenhado sobre os ossos. Ver [`chain_bar`] — o
-/// recurso é o **contorno**, o mesmo que o [`crate::BONE_HALF_MIN_PX`] nomeia.
-const CHAIN_GAP_PX: f64 = 2.0 * crate::LINE_PX;
-
-/// Quanto a faixa da corrente deixa passar. ⚠️ Número de PRODUTO (a leitura da tela), como o
-/// [`GOAL_LINE_PX`]: ela é um FUNDO, e a cheio esconderia a arte que o artista está a posar.
-const CHAIN_BAND_ALPHA: f32 = 0.35;
 
 /// ⭐⭐⭐ **A ÂNCORA DE IK** — o losango do alvo, mais o tracejado que o liga à ponta da corrente.
 ///
@@ -319,19 +288,6 @@ mod tests {
         (p.x - (a.x + t * dx)).hypot(p.y - (a.y + t * dy))
     }
 
-    /// A menor distância entre dois segmentos, amostrada finamente nos dois sentidos.
-    fn dist_entre_segmentos(a: (Point, Point), b: (Point, Point)) -> f64 {
-        let mut d = f64::INFINITY;
-        for k in 0..=200 {
-            let t = f64::from(k) / 200.0;
-            let pa = Point::new(a.0.x + t * (a.1.x - a.0.x), a.0.y + t * (a.1.y - a.0.y));
-            let pb = Point::new(b.0.x + t * (b.1.x - b.0.x), b.0.y + t * (b.1.y - b.0.y));
-            d = d.min(dist_ao_segmento(pa, b.0, b.1));
-            d = d.min(dist_ao_segmento(pb, a.0, a.1));
-        }
-        d
-    }
-
     /// Uma corrente de `n` ossos de `comp` píxeis, dobrando `passo` radianos por junta.
     fn corrente(n: usize, comp: f64, passo: f64) -> Vec<Point> {
         let mut pts = vec![Point::new(0.0, 0.0)];
@@ -344,108 +300,67 @@ mod tests {
         pts
     }
 
-    /// ⭐⭐⭐ **A RECTA DA CORRENTE NÃO TOCA NENHUM OSSO** — o 2.º report do dono, dito como número
-    /// (*«deve ser uma linha reta e não passar por dentro dos ossos»*).
+    /// ⭐⭐⭐ **A RECTA ENCOSTA NAS DUAS PONTAS DA CORRENTE** — o 3.º report do dono, dito como
+    /// número (*«linha muito grossa e deslocada das pontas dos ossos»*).
     ///
-    /// ⚠️ **A barra é DERIVADA, não escolhida**: ela é o que de facto está desenhado sobre cada
-    /// osso — o corpo ([`crate::bone_half_width_px`]) ou a bolinha ([`crate::joint_radius_px`]), o
-    /// maior dos dois — mais meia faixa. Uma barra em píxeis soltos mediria um número meu.
+    /// ⛔⛔ **A 2.ª redacção deslocava-a** para o lado livre, para garantir folga contra os ossos em
+    /// toda pose — e o preço foi ela deixar de tocar as duas coisas que descreve: a junta onde o
+    /// `Chain` pára (a cruz) e a ponta da corrente (o losango do alvo). *Um indicador de extensão
+    /// que não encosta nas pontas não diz qual extensão é.*
     ///
-    /// ⭐ **O corpus varre a dobra INTEIRA, e é isso que importa:** o defeito reportado mora na
-    /// corrente quase ESTICADA (`passo ≈ 0`), onde a polilinha antiga caía exactamente sobre os
-    /// ossos; a dobrada é o outro extremo, onde ela serpenteava.
+    /// ⚠️ A igualdade é EXACTA de propósito: qualquer deslocamento, por pequeno que seja, é o
+    /// defeito reportado.
     #[test]
-    fn the_chain_bar_never_touches_a_bone() {
+    fn the_chain_bar_ends_on_the_chain_ends() {
         let mut casos = 0;
         for n in [2usize, 3, 5, 8] {
             for comp in [24.0_f64, 107.52, 192.0] {
-                for passo in [0.0_f64, 0.05, 0.2, 0.5, 0.9, -0.3, -0.8] {
+                for passo in [0.0_f64, 0.2, 0.5, 0.9, -0.3, -0.8] {
                     let pts = corrente(n, comp, passo);
-                    let Some(barra) = chain_bar(&pts) else {
+                    let Some((a, b)) = chain_bar(&pts) else {
                         continue;
                     };
                     casos += 1;
-                    for w in pts.windows(2) {
-                        let c = (w[1].x - w[0].x).hypot(w[1].y - w[0].y);
-                        let alcance = crate::bone_half_width_px(c).max(crate::joint_radius_px(c));
-                        // ⚠️ **A barra exige AR, não encosto** — a promessa não é «não sobrepõe»,
-                        // é *«não se lê como parte do osso»*, e o que separa duas bordas é o
-                        // contorno (o recurso que o [`crate::BONE_HALF_MIN_PX`] já nomeia).
-                        //
-                        // ⚠️⚠️ **UMA largura, e o produto entrega DUAS, de propósito:** exigir aqui
-                        // exactamente o que o produto dá faz a asserção passar por **igualdade em
-                        // `f64`** — e uma igualdade amostrada é um gate a morrer de pé (medido: a
-                        // 1.ª redacção reprovou o PRODUTO por `1e-15`). Com metade da folga, o
-                        // produto passa com margem e o mutante que a apaga cai por `2,5 px`.
-                        let exigido = alcance + CHAIN_BAND_PX * 0.5 + crate::LINE_PX;
-                        let d = dist_entre_segmentos(barra, (w[0], w[1]));
-                        assert!(
-                            d >= exigido,
-                            "com {n} ossos de {comp} px a dobrar {passo} rad, a recta passa a {d} \
-                             px do osso — o desenho dele ocupa {exigido} px, logo ela passa POR \
-                             DENTRO"
-                        );
-                    }
+                    assert_eq!(
+                        (a.x, a.y),
+                        (pts[0].x, pts[0].y),
+                        "com {n} ossos de {comp} px a dobrar {passo} rad, a recta não começa na \
+                         RAIZ da corrente"
+                    );
+                    let ponta = pts[pts.len() - 1];
+                    assert_eq!(
+                        (b.x, b.y),
+                        (ponta.x, ponta.y),
+                        "com {n} ossos de {comp} px a dobrar {passo} rad, a recta não acaba na \
+                         PONTA da corrente"
+                    );
                 }
             }
         }
-        assert!(casos >= 80, "o corpus encolheu para {casos} casos");
+        assert!(casos >= 60, "o corpus encolheu para {casos} casos");
     }
 
-    /// ⭐⭐ **A RECTA FICA DO LADO LIVRE, encostada à corrente** — e este gate mede COMPACIDADE, que
-    /// é uma coisa diferente de limpeza.
+    /// ⭐⭐ **E ela é uma CORDA, não a polilinha das juntas** — a metade que impede a volta ao 1.º
+    /// defeito reportado (*«não passar por dentro dos ossos»*).
     ///
-    /// ⛔ **Uma mutação disse-o:** com o lado FIXO a recta continua a limpar todos os ossos (o
-    /// afastamento já passa por fora da excursão daquele lado) — ela só fica **longe**, do outro
-    /// lado do arco. Um indicador atirado para fora do desenho não diz *até onde o `Chain` chega*,
-    /// diz que há uma risca algures. ⇒ o lado não é correcção, é LEITURA, e por isso tem gate
-    /// próprio.
+    /// ⚠️ Numa corrente DOBRADA as juntas do meio ficam fora da corda, e é isso que faz a corda
+    /// passar por fora dos ossos sozinha. A barra é o **corpo** do osso do meio
+    /// ([`crate::bone_half_width_px`]), lido do produto: abaixo dela a recta estaria por dentro
+    /// dele.
     #[test]
-    fn the_chain_bar_takes_the_free_side() {
-        for passo in [0.25_f64, 0.5, 0.9, -0.25, -0.5, -0.9] {
+    fn the_chain_bar_is_a_chord_not_the_joint_polyline() {
+        for passo in [0.3_f64, 0.5, 0.9, -0.4] {
             let pts = corrente(5, 107.52, passo);
             let (a, b) = chain_bar(&pts).expect("a corrente tem extensão");
-            let (raiz, ponta) = (pts[0], pts[pts.len() - 1]);
-            let (dx, dy) = (ponta.x - raiz.x, ponta.y - raiz.y);
-            let n = dx.hypot(dy);
-            let (px, py) = (-dy / n, dx / n);
-            // De que lado a corrente boja, e de que lado a recta ficou.
-            let bojo: f64 = pts
-                .iter()
-                .map(|q| (q.x - raiz.x) * px + (q.y - raiz.y) * py)
-                .sum();
-            let barra = ((a.x + b.x) * 0.5 - (raiz.x + ponta.x) * 0.5) * px
-                + ((a.y + b.y) * 0.5 - (raiz.y + ponta.y) * 0.5) * py;
-            assert!(
-                bojo * barra < 0.0,
-                "com a corrente a bojar {bojo} a recta foi para o MESMO lado ({barra}) — ela fica \
-                 do outro lado do arco, longe do que descreve (dobra {passo})"
-            );
-        }
-    }
-
-    /// ⭐ **E ela é mesmo uma RECTA** — dois pontos, e a direcção deles é a da raiz à ponta.
-    ///
-    /// ⚠️ A metade ANTI-VÁCUO é a 2.ª asserção: uma recta paralela à corda está certa; uma recta
-    /// qualquer também passaria na 1.ª.
-    #[test]
-    fn the_chain_bar_is_parallel_to_the_chain_span() {
-        for passo in [0.0_f64, 0.3, 0.7, -0.5] {
-            let pts = corrente(5, 107.52, passo);
-            let (a, b) = chain_bar(&pts).expect("a corrente tem extensão");
-            let (raiz, ponta) = (pts[0], pts[pts.len() - 1]);
-            let corda = ((ponta.x - raiz.x), (ponta.y - raiz.y));
-            let barra = ((b.x - a.x), (b.y - a.y));
-            let cruz = corda.0 * barra.1 - corda.1 * barra.0;
-            let escala = corda.0.hypot(corda.1) * barra.0.hypot(barra.1);
-            assert!(
-                cruz.abs() <= 1e-9 * escala,
-                "a recta não é paralela à extensão da corrente (dobra {passo})"
-            );
-            assert!(
-                (corda.0 * barra.0 + corda.1 * barra.1) > 0.0,
-                "a recta aponta ao contrário da corrente (dobra {passo})"
-            );
+            let meia = crate::bone_half_width_px(107.52);
+            for (i, q) in pts.iter().enumerate().take(pts.len() - 1).skip(1) {
+                let d = dist_ao_segmento(*q, a, b);
+                assert!(
+                    d > meia,
+                    "a junta {i} está a {d} px da recta (o corpo do osso ocupa {meia}): a recta \
+                     está a seguir as juntas em vez de as atravessar (dobra {passo})"
+                );
+            }
         }
     }
 }

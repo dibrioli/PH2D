@@ -50,7 +50,7 @@ const BONE_WIDTH_RATIO: f64 = 0.10;
 
 /// Piso da meia-largura, em píxeis — **o recurso é o próprio CONTORNO**: abaixo de `2 × LINE_PX` o
 /// corpo fica mais fino que a linha que o desenha, e as duas bordas fundem-se numa risca só.
-pub(crate) const BONE_HALF_MIN_PX: f64 = 2.5;
+const BONE_HALF_MIN_PX: f64 = 2.5;
 
 /// Tecto da meia-largura, em píxeis — **o recurso é o DESENHO por baixo**: o osso é overlay e não
 /// pode tapar a arte que deforma. Medido no smoke, a forma presa mais fina (o tentáculo, `0,8`
@@ -152,7 +152,7 @@ pub fn influence_handle(a: [f64; 2], b: [f64; 2], radius: f64) -> Option<[f64; 2
 }
 
 /// Espessura do contorno, em píxeis.
-pub(crate) const LINE_PX: f64 = 1.25;
+const LINE_PX: f64 = 1.25;
 
 /// Como um osso se apresenta — as três chaves que a gramática usa.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

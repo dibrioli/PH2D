@@ -276,3 +276,31 @@ raio na superfície viva*) está **REFUTADA**, explicando pior em **7 de 8** eve
 que se atrasa com o traço; a calota no repouso erra `1,8°→10,4°` e a calota na pose viva `0,4°→15,1°`
 — **as duas falham, as duas a crescer**. *Uma medição que refuta a hipótese preferida vale mais que
 uma que a confirma: ela devolve a pergunta estreita.*
+
+---
+
+### Isenção NOMEADA de 2026-09-13 — uma entrada da vassoura cobre API pública
+
+Corridas as **cinco** vassouras vivas da família sobre as cinco crates dela, a vassoura desta obra
+(**298** entradas) devolveu `exit 1` com **15** linhas. **Duas** eram dívida real e foram reescritas
+(um fragmento de código da referência e um nome interno de propriedade — registo, mecanismo e a lei
+de método que o caso produziu no
+[`LEDGER_blender-cloth.md`, sub-secção INC-4 do agente de reescrita](LEDGER_blender-cloth.md#inc-4--o-sweep-é-propriedade-do-par-código-vassoura-e-a-vassoura-é-um-alvo-móvel-agente-de-reescrita-2026-09-13)).
+
+⛔ **As outras 13 são UM só token — o nome do controlo de arredondamento da ponta do pincel — e ele
+FICA.** Medido aqui, sem interface (`blender --background --factory-startup`, **5.2.1 LTS**, `hash
+9e2066aef7ef`): é **propriedade RNA pública** do tipo de pincel, ao lado de três dos seis nomes que o
+cabeçalho da [`SPEC_reescrita…`](SPEC_reescrita_dos_comentarios_com_nomes_do_alvo.md) já declara
+admissíveis, pela **mesma** rota. É também uma frase de **duas palavras comuns** que este repo cunhou
+por conta própria (o doc-comment do campo abre com *«QUÃO REDONDA É A PONTA»*) e, hoje, um **rótulo de
+interface** com chave de i18n e dois `NodeId` **hasheados da string**.
+
+⚠️ **⇒ a vassoura contradiz o atestado que a acompanha.** O §4.2 do R-pré desta obra escreve, acima:
+*«os identificadores que aparecem … são **API pública** do alvo, alcançáveis pela linguagem de script
+dele ⇒ §4.1.13 (“interno se renomeia, interface pública se documenta”)»* — e o E que colheu a vassoura
+descartou **8** entradas por esse exacto motivo. Esta devia ter sido a **9.ª**.
+
+⏳ **Decisão pendente do R/E desta obra** (o agente de reescrita não edita vassouras): remover a
+entrada ⇒ o sweep desta obra fecha `exit 0` sobre a família. **Até lá o `exit 1` com estas 13 linhas é
+SABIDO** — ⚠️ *um sweep vermelho por isenção registada e um vermelho por dívida leem-se iguais numa
+corrida; é esta entrada que os separa.*

@@ -1149,6 +1149,103 @@ contaminada); **nada** no scratchpad da janela; **nada** em `project-memory/`.
 
 **Data:** 2026-09-13 · **E:** subagente-E despachado pela janela `9f820704-0d7e-4d96-847e-9cd720cbf178` (elo I-3).
 
+#### INC-4 — o sweep é propriedade do PAR (código, vassoura), e a vassoura é um ALVO MÓVEL (agente de reescrita, 2026-09-13)
+
+**Pedido:** correr as **cinco** vassouras vivas da família (`pose` · `cloth` · `pull` · `boundary` ·
+`unblocked`) sobre as cinco crates dela (`ph2d-sculpt3d`, `ph2d-panel-sculpt3d`, `ph2d-app-sculpt3d`,
+`ph2d-cloth`, `ph2d-pose`) e reescrever em vocabulário do domínio o que aparecesse, pelo plano da
+[`SPEC_reescrita_dos_comentarios_com_nomes_do_alvo.md`](SPEC_reescrita_dos_comentarios_com_nomes_do_alvo.md).
+
+⭐⭐ **O ACHADO DE MÉTODO, e ele vale para toda obra futura desta casa: NENHUM dos 18 hits é novo.**
+São prosa e código que **já lá estavam** e que **já passaram por sweeps verdes** — o de 10/09, e o
+`exit 0` sobre 389 ficheiros com que a emenda anterior desta secção fechou, no mesmo dia. O que mudou
+foram **as vassouras**: elas são **por alvo**, os agentes E estendem-nas a cada emenda (esta jornada
+abriu três obras novas — `pull` **298** entradas, `boundary` **229**, `unblocked` **227** — contra as
+`cloth` **149** e `pose` **137** que já existiam), e **uma entrada acrescentada hoje acusa prosa
+escrita há semanas.** ⇒ *o sweep não é uma propriedade do CÓDIGO: é uma propriedade do **PAR**
+(código, vassoura), e a vassoura é um **alvo móvel**.* **Um «sweep verde» datado não prova nada sobre
+hoje** — prova só que aquele código não casava **aquela** vassoura **naquele** dia.
+⚠️ **Corolário operacional, duplo:** (a) o fecho de uma linha desta família re-corre **todas** as
+vassouras vivas, nunca só a da obra em mãos; (b) **emendar uma vassoura obriga a uma corrida nova
+sobre a árvore inteira** — a emenda é um facto sobre todo o passado, não sobre o commit que a trouxe.
+Isto é a mesma forma da lacuna que o R já registou acima (*«o sweep verde de antes não distinguia
+“limpo” de “vassoura que não casa nada”»*), agora vista do outro lado: **a vassoura que passou a
+casar**.
+
+**Colheita.** `bash scripts/cleanroom-sweep.sh <vassoura> <as 5 crates>`, uma corrida por vassoura.
+**18 hits · 13 linhas distintas · 3 tokens distintos** (`boundary` e `unblocked` só repetem linhas que
+a `pull` já acusa):
+
+| vassoura | antes | depois |
+|---|---|---|
+| `pose` (137 entradas) | `exit 0` · 0 | `exit 0` · 0 |
+| `cloth` (149) | `exit 0` · 0 | `exit 0` · 0 |
+| `pull` (298) | ⛔ `exit 1` · **15** | ⛔ `exit 1` · **13** (todas do §isenção abaixo) |
+| `boundary` (229) | ⛔ `exit 1` · **2** | ✅ `exit 0` · 0 |
+| `unblocked` (227) | ⛔ `exit 1` · **1** | ✅ `exit 0` · 0 |
+
+**Os dois REESCRITOS** (§0.2 e §0.4 do plano — nome interno e fragmento de código da referência; a
+medição e o argumento de cada bloco ficam intactos):
+
+| sítio | espécie | o que saiu | o que o bloco passa a dizer (o facto MANTIDO) |
+|---|---|---|---|
+| `crates/ph2d-sculpt3d/src/verb_blob_tests.rs:113` | **fragmento de código** da referência (chamada com argumentos, com um nome interno de campo dentro) num doc-comment de gate | a expressão inteira | *«a referência toma o **valor absoluto** da força do pincel nesse termo, exatamente para o `Ctrl` **não** virar o aperto»* — o porquê de o Blob não ser o Crease invertido, que é a razão de ser do gate |
+| `crates/ph2d-sculpt3d/src/falloff_tests.rs:63` | nome interno de propriedade + item de enum, no doc-comment do oráculo externo | o par nome=valor | *«o Blender a correr reporta, na propriedade pública da curva de atenuação, a predefinição **suave**»* — a redacção que o ficheiro irmão [`falloff.rs:64-66`] já usava desde a reescrita anterior ⇒ **consistência**, não invenção |
+
+⚠️ **Nenhum número se perdeu:** os discriminadores do bloco do oráculo (`0,940` da leitura estática ·
+`0,835` medidos · `0,871` da curva antiga · barra `1e-4` · resíduo `~3e-5`) e a frase que carrega a
+lição (*«um pincel não nasce zero-inicializado; ele nasce do arquivo de startup»*) estão nas linhas
+seguintes, não tocadas. `bash scripts/cargo-check-narrow.sh ph2d-sculpt3d` verde.
+
+##### ⛔ ISENÇÃO NOMEADA — o controlo `tip_roundness` FICA, e a entrada da vassoura `pull` é que está larga
+
+As **13** linhas que sobram são **um só token**, em 3 crates e 16 sítios: o nome do controlo de
+arredondamento da ponta do pincel. **Decisão: não se reescreve.** O argumento, com a medição ao lado:
+
+1. ⭐ **É API PÚBLICA do alvo, e foi MEDIDO — não inferido.** Corrido aqui, hoje, sem interface
+   (`blender --background --factory-startup`, Blender **5.2.1 LTS**, `hash 9e2066aef7ef`), o RNA do
+   tipo de pincel devolve-o como propriedade `FLOAT` pública, ao lado de `tip_scale_x`, `hardness` e
+   `normal_radius_factor` — **três dos seis nomes que o cabeçalho da SPEC já declara admissíveis**, pela
+   **mesma** rota (§4.1.13). É a 9.ª que o E da vassoura deveria ter descartado na linha *«API pública,
+   MEDIDA correndo o oráculo»* da tabela acima, e não descartou.
+2. ⭐ **O ledger da própria obra `pull` já escreveu a lei que a isenta**, no §4.2 do R-pré dela:
+   *«os identificadores que aparecem … são **API pública** do alvo, alcançáveis pela linguagem de
+   script dele ⇒ §4.1.13 (“interno se renomeia, interface pública se documenta”)»*. ⇒ *a vassoura
+   contradiz o atestado que a acompanha* — e quem decide é o R/E dono dela, não este agente
+   (ver [`LEDGER_blender-pull.md`](LEDGER_blender-pull.md#isenção-nomeada-de-2026-09-13--uma-entrada-da-vassoura-cobre-api-pública)).
+3. ⭐ **É uma frase natural do domínio de duas palavras comuns**, que qualquer pessoa cunharia para o
+   mesmo conceito — e este repo cunhou-a **independentemente**: o doc-comment do campo abre com
+   *«**QUÃO REDONDA É A PONTA**»* e descreve a lei sem olhar para lá. §7.1: a vassoura é
+   **idiossincrática**, e o E que a construiu descartou **24** entradas por este exacto critério
+   (*«genérico de 1–2 palavras que escreveríamos de forma independente»*).
+4. ⭐ **É um RÓTULO QUE O ARTISTA VÊ**, e o cabeçalho da SPEC põe essa classe entre as admissíveis por
+   escrito. Hoje ele é chave de i18n (`panel.sculpt3d.tip_roundness` ⇒ *"Tip roundness"* na tela) e
+   **duas** `NodeId` **hasheadas da string** — renomear muda o valor dos ids e **muda o que o artista
+   lê**, para não ganhar nada que a parede não tenha já.
+5. ⚠️ **E a prova de que manter NÃO é inércia:** três linhas abaixo, no mesmo ficheiro, o
+   `strip_length` **recusa** por escrito o nome público do alvo para o mesmo objecto
+   (*«herdar o nome seria herdar uma confusão»*). *Esta casa renomeia quando o nome do alvo engana; aqui
+   ele não engana.*
+
+⛔ **O que a parede proíbe é copiar EXPRESSÃO** (§4.2). Um composto de duas palavras comuns, que é
+simultaneamente API pública medida, rótulo de interface e uma cunhagem independente nossa, **não é
+expressão** — e tratá-lo como tal custaria **16 sítios em 3 crates** (o campo público e o seu default ·
+5 leituras/escritas · 2 ids hasheados · 1 chave de i18n + a tradução · 1 rótulo de row + 2 acessores ·
+1 gate de costura) e uma troca no que se lê na tela.
+⇒ **Enquanto a entrada não sair da vassoura `pull`, o sweep dela fica `exit 1` com estas 13 linhas, e
+isso é SABIDO, não silêncio.** ⚠️ *Um sweep vermelho por isenção registada e um vermelho por dívida
+leem-se iguais numa corrida — é esta entrada que os separa.*
+
+**Observação que fica para o dono da vassoura (não curada aqui):** o harness do oráculo
+(`docs/3D/ferramentas/blender_sculpt_oracle.py` e o `.txt` com o cabeçalho da corrida) nomeia este
+controlo **e** a propriedade da curva de atenuação — tem de nomear, porque é o que ele **atribui** para
+correr o alvo. Ele está **fora** do caminho varrido (as 5 crates) e é artefacto de E, não prosa virada
+para o Implementador; fica registado para que ninguém o leia como dívida por omissão.
+
+**Rastro:** só prosa de comentário em 2 ficheiros; **zero** linhas de produto, zero fixtures, zero
+histórico, zero contador partilhado.
+**Data:** 2026-09-13 · **agente de reescrita de comentários** da janela `9f820704-0d7e-4d96-847e-9cd720cbf178` (elo INC-4).
+
 ---
 
 ## Erratas / seguimento do I (2026-09-06)

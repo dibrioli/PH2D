@@ -110,8 +110,8 @@ fn the_blob_raises_where_the_crease_digs() {
 /// Os dois SOBEM (`Ctrl` no Crease troca o depósito), então a altura não os
 /// distingue e um gate que só a medisse ficaria verde sobre um alias. O que os
 /// separa é o lado para onde o barro sai do eixo, e nenhum ajuste do Crease
-/// alcança o do Blob: o `abs` da referência (`std::abs(cache.bstrength)`) existe
-/// exatamente para o `Ctrl` **não** virar o aperto.
+/// alcança o do Blob: a referência toma o **valor absoluto** da força do pincel
+/// nesse termo, exatamente para o `Ctrl` **não** virar o aperto.
 #[test]
 fn the_blob_is_not_the_inverted_crease() {
     let (blob_r, blob_v) = profile(Verb::Blob, false, 1.0);

@@ -60,9 +60,9 @@ fn the_label_the_artist_reads_is_the_one_blender_gives_that_law() {
 /// ⚠️ **É ele que justifica o `profile_b` declarar [`Falloff::Smooth`]:** a
 /// leitura ESTÁTICA do definidor de pincel da referência dizia que um pincel nasce
 /// com a curva personalizada, uma curva editável semeada, logo *"nenhuma das
-/// nove"* — e o Blender a correr reporta `curve_distance_falloff_preset =
-/// SMOOTH`. *Um pincel não nasce zero-inicializado; ele nasce do arquivo de
-/// startup.*
+/// nove"* — e o Blender a correr reporta, na propriedade pública da curva de
+/// atenuação, a predefinição **suave**. *Um pincel não nasce zero-inicializado;
+/// ele nasce do arquivo de startup.*
 ///
 /// ⚠️ **A barra é `1e-4` e o DISCRIMINADOR está três ordens acima dela:** o
 /// spline de quatro pontos que a leitura estática previa daria **0,940** em

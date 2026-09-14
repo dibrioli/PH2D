@@ -550,7 +550,11 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // razao de sempre: os bytes vivem dentro de um `ComponentBlob`, que para ela e' opaco.
         // ⚠️ E o `FIELD_DOC_VERSION` NAO se mexe, apesar de o degrau falar de material: o documento
         // do campo e' GEOMETRIA, e uma cor nao muda uma distancia.
-        (141, 13, 22),
+        // PROJECT 141→142: o mesmo `FieldMaterial` ganhou os CINCO numeros do verniz (§21) —
+        // `coat`, `coat_roughness`, `coat_color`, `coat_ior`, `coat_darkening`. Mesmo mecanismo do
+        // degrau anterior, um dia depois: 36 bytes contra 64.
+        // ⚠️ **A tripla NAO ve^ este degrau** — a SEXTA vez.
+        (142, 13, 22),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

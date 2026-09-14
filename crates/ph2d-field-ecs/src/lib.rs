@@ -152,6 +152,37 @@ pub struct FieldMaterial {
     /// painel mais curto seja mais bonito. *Um controlo cujo efeito é sempre zero é um controlo
     /// morto com aparência de vivo.*
     pub emission_color: [f32; 3],
+    /// ⭐⭐⭐ **O VERNIZ** — o `coat_weight` do OpenPBR, a película transparente por cima de tudo o
+    /// resto: a laca de um carro, o verniz de uma madeira, o brilho molhado de um plástico.
+    ///
+    /// ⚠️ **Ele é um SEGUNDO realce, não um realce mais forte:** a base continua com a rugosidade
+    /// dela e o verniz põe um lóbulo próprio por cima — é isso que faz uma superfície baça parecer
+    /// envernizada em vez de simplesmente polida. Medido (`docs/Render3d/05` §21): a `0,1` já move
+    /// `7` bytes em `50 182` pixels, e a `1` move `63`.
+    ///
+    /// ⭐ **Os outros quatro números dele são inertes com este a zero** (o `prepare` mistura-os todos
+    /// por `coat_weight`), e é por isso que as linhas deles só são publicadas acima de zero.
+    pub coat: f32,
+    /// A rugosidade do verniz — `0` é uma laca de espelho, `1` é um acabamento acetinado.
+    pub coat_roughness: f32,
+    /// A cor do verniz, em **linear** e por canal — o `coat_color`, que é uma TINTA: ela multiplica o
+    /// que atravessa a película, logo um verniz âmbar amarela a peça por baixo dele.
+    ///
+    /// ⚠️ É o número do verniz que mais move o quadro: **`120` bytes** no pior pixel.
+    pub coat_color: [f32; 3],
+    /// O índice de refracção do verniz.
+    ///
+    /// ⚠️⚠️ **A faixa dele NÃO sai da régua, e sim da FÍSICA** (`docs/Render3d/05` §21): varrido até
+    /// `20` o quadro nunca pára de se mexer, logo *«onde deixa de ser observável»* não responde aqui.
+    /// O piso é `1` — a luz não atravessa nada mais depressa do que o vácuo — e o tecto é `2,5`,
+    /// acima do diamante (`2,42`), que é o mais alto dos materiais transparentes conhecidos.
+    pub coat_ior: f32,
+    /// Quanto o verniz **escurece** a base por baixo dele — `1` é o físico, `0` desliga o efeito.
+    ///
+    /// ⚠️ **O Blender não expõe este**, e nós expomos: medido, ele move `29` bytes no pior pixel, e
+    /// a lei desta casa é que um número vivo tem controlo. *Uma referência é um oráculo do que a
+    /// LEI faz, não um censo do que um painel deve ter.*
+    pub coat_darkening: f32,
 }
 
 impl Default for FieldMaterial {
@@ -162,6 +193,11 @@ impl Default for FieldMaterial {
             metalness: 0.0,
             emission: 0.0,
             emission_color: [1.0; 3],
+            coat: 0.0,
+            coat_roughness: 0.0,
+            coat_color: [1.0; 3],
+            coat_ior: 1.6,
+            coat_darkening: 1.0,
         }
     }
 }
@@ -179,6 +215,11 @@ impl FieldMaterial {
             4 => Some(self.metalness),
             5 => Some(self.emission),
             6..=8 => Some(self.emission_color[field as usize - 6]),
+            9 => Some(self.coat),
+            10 => Some(self.coat_roughness),
+            11..=13 => Some(self.coat_color[field as usize - 11]),
+            14 => Some(self.coat_ior),
+            15 => Some(self.coat_darkening),
             _ => None,
         }
     }
@@ -191,6 +232,11 @@ impl FieldMaterial {
             4 => self.metalness = value,
             5 => self.emission = value,
             6..=8 => self.emission_color[field as usize - 6] = value,
+            9 => self.coat = value,
+            10 => self.coat_roughness = value,
+            11..=13 => self.coat_color[field as usize - 11] = value,
+            14 => self.coat_ior = value,
+            15 => self.coat_darkening = value,
             _ => return false,
         }
         true

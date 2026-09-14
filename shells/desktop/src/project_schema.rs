@@ -602,4 +602,17 @@
 /// (a `line/components` e a `line/Vector` puseram doze degraus no meio). ⛔ *O valor certo não
 /// estava em nenhum dos dois lados do conflito* — ele CONTA-SE contra a árvore em que se aterra, e
 /// a tripla do ficheiro irmão sobe no mesmo commit.
-pub(crate) const PROJECT_SCHEMA: u32 = 141;
+///
+/// # `141 → 142` — o MATERIAL ganha o VERNIZ (`docs/Render3d/05` §21)
+///
+/// O `ph2d::field::FieldMaterial` passou de `9` para `16` números: `coat`, `coat_roughness`,
+/// `coat_color: [f32; 3]`, `coat_ior` e `coat_darkening`, **apendados**.
+///
+/// ⚠️ **Mesmo mecanismo do degrau anterior, um dia depois:** o postcard é posicional e sem
+/// comprimento, e um blob v129 tem `36` bytes onde este binario pede `64`.
+///
+/// ⚠️ **A tripla NAO ve^ este degrau** — a SEXTA vez (99, 100, 114, 119, 129 e este).
+///
+/// ⛔ **Sem degrau de migração**, pela decisão do Enio de 26/08 — e aqui com a razão extra de que o
+/// componente e' `register_default`: uma peça anterior a 13/09 não carrega material nenhum.
+pub(crate) const PROJECT_SCHEMA: u32 = 142;

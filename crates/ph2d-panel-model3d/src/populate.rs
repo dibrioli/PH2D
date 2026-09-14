@@ -20,38 +20,43 @@ use ph2d_editor_core::widget::{ButtonState, SliderOrientation, SliderState, Text
 /// e ninguém saberia porquê; por isso o `paint` **conta** e o rodapé diz quantos não coube. O gate
 /// `rows_beyond_the_family_are_reported_not_dropped` prende isso.
 ///
-/// ⭐⭐⭐ **E ELE É DERIVADO DA MAIOR FORMA, desde 2026-09-13** — `2 × 27 + 15`:
+/// ⭐⭐⭐ **E ELE É DERIVADO DA MAIOR FORMA, desde 2026-09-13** — hoje `2 × 27 + 20`:
 ///
 /// | parcela | de onde vem |
 /// |---|---|
 /// | `2 × MAX_POLYGON_VERTICES` | um polígono tem **duas** linhas por vértice, e `27` é o teto dele |
-/// | `+ 15` | o que **todo** nó tem além dos vértices: `3` de posição, `3` de rotação, o filete, o raio de junção, a resolução do contorno… e os **5** do material |
+/// | `+ 20` | o que **todo** nó tem além dos vértices, no PIOR estado: `3` de posição, `3` de rotação, o filete, o raio de junção, a resolução do contorno… e as **10** do material com o brilho e o verniz acesos |
 ///
 /// ⚠️ **Ele era `64`, escrito «na primeira vez» e sem medição** — e a nota dele dizia, por escrito,
 /// *«quando um documento real passar disto, o número muda com uma medição atrás»*. O material por
 /// objecto (`docs/Render3d/05`) acrescentou **5** linhas a toda folha, e foi esse o dia.
 ///
-/// ⛔⛔ **A alternativa era BAIXAR o `MAX_POLYGON_VERTICES` de `27` para `24`** — isto é, tirar três
-/// vértices ao artista porque uma peça passou a ter cor. *Um teto de registo cujo recurso é memória
-/// a mandar num teto de FORMA é o caminho lento a definir o rápido* (`CLAUDE.md` §0.0).
-///
-/// ⭐ **O preço MEDIDO da subida:** cada linha regista `6` widgets (um slider, um campo numérico e
-/// os `MAX_CHOICES` botões de escolha), logo `64 → 69` custa **`30` widgets e 5 `String`** no store,
-/// uma vez, no arranque.
-///
 /// ⚠️ **E os dois gates da `polygon_rows_tests` prendem-no pelos DOIS lados**: o polígono no teto
 /// tem de caber, e o vértice seguinte **não** pode caber. *Uma tolerância que só se defende de um
 /// lado não descreve nada.*
 ///
-/// ⭐⭐ **Em 2026-09-14 ele NÃO subiu, e a razão é uma régua corrigida** (`docs/Render3d/05` §20): o
-/// brilho próprio acrescentou uma linha a toda folha e o gate ficou verde na mesma, porque a régua
-/// contava **params** e o painel pinta **linhas** — as duas amostras de cor dobram `6` params em
-/// `2` linhas. A família estava sobre-provisionada em exactamente `2`, e o brilho consumiu essa
-/// folga: hoje o polígono no teto pede **`69` de `69`**, medido no produtor das linhas.
+/// ⭐⭐ **No BRILHO PRÓPRIO ele NÃO subiu, e a razão foi uma régua corrigida** (`docs/Render3d/05`
+/// §20): a régua contava **params** e o painel pinta **linhas** — as duas amostras de cor dobram `6`
+/// params em `2`. A família estava sobre-provisionada em exactamente `2`, e o brilho consumiu essa
+/// folga.
 ///
-/// ⛔ **Zero de folga é o estado correcto de um teto DERIVADO**, e não um aviso: ele é a maior forma
-/// mais o que toda folha tem. A linha seguinte move-o com a conta ao lado, como esta moveu.
-pub const MAX_ROWS: usize = 69;
+/// ⭐⭐⭐ **E no VERNIZ ele subiu, `69 → 74`, com a medição ao lado** (§21): `2 × 27 + 20`, onde os
+/// `20` são o que toda folha tem no **pior estado** — com o brilho *e* o verniz acesos, que é quando
+/// mais linhas coexistem. Medido no produtor das linhas:
+///
+/// | vértices | tudo apagado | tudo aceso |
+/// |---|---|---|
+/// | `3` | `21` | `26` |
+/// | `16` | `47` | `52` |
+/// | **`27`** | `69` | **`74`** |
+///
+/// ⭐ **O preço MEDIDO da subida:** cada linha regista `6` widgets, logo `69 → 74` custa **`30`
+/// widgets e 5 `String`** no store, uma vez, no arranque — o mesmo que a subida anterior.
+///
+/// ⛔⛔ **A alternativa era baixar o `MAX_POLYGON_VERTICES` de `27` para `24`**: tirar três vértices
+/// ao artista porque uma peça passou a poder ser envernizada. *Um teto de registo cujo recurso é
+/// memória a mandar num teto de FORMA é o caminho lento a definir o rápido* (`CLAUDE.md` §0.0).
+pub const MAX_ROWS: usize = 74;
 
 /// Quantos botões uma linha de **escolha** pode oferecer.
 ///

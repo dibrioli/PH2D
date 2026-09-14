@@ -227,7 +227,42 @@ pub(super) const MATERIAL_KEYS: [&str; ph2d_field::MATERIAL_FIELDS as usize] = [
     "field.dim.emission_r",
     "field.dim.emission_g",
     "field.dim.emission_b",
+    "field.dim.coat",
+    "field.dim.coat_roughness",
+    "field.dim.coat_r",
+    "field.dim.coat_g",
+    "field.dim.coat_b",
+    "field.dim.coat_ior",
+    "field.dim.coat_darkening",
 ];
+
+/// ⭐⭐⭐ **A FAIXA de um número do material** — e **quinze dos dezasseis são a mesma**.
+///
+/// ⭐ **Do zero a um, e as duas pontas são do MODELO**: uma rugosidade acima de `1` não é mais
+/// áspera, um metal a `2` não é mais metal, e um peso de verniz também não. ⚠️ `SoftFromZero` e não
+/// `Wall`: o campo numérico continua **sem tecto** (uma cor base em HDR é uma afirmação legítima
+/// sobre a peça, e um brilho próprio ainda mais), e o que este número fecha é o **curso do slider**.
+///
+/// # ⚠️⚠️ A excepção é o IOR do verniz, e a faixa dele é FÍSICA
+///
+/// Ele é a única grandeza deste material que **não é uma fracção**, e a régua que respondeu pelas
+/// outras não responde por ele: varrido até `20`, o quadro **nunca pára de se mexer**
+/// (`docs/Render3d/05` §21), logo *«onde deixa de ser observável»* não tem resposta aqui.
+///
+/// ⇒ o recurso é o **material de que uma película transparente pode ser feita**: o piso é `1`
+/// (a luz não atravessa nada mais depressa do que o vácuo) e o tecto é `2,5`, logo acima do
+/// diamante (`2,42`), que é o mais alto dos transparentes conhecidos.
+///
+/// ⛔ **`Range` e não `SoftFromZero`**, isto é: as duas pontas são **duras**, e digitar fora delas
+/// clampa. *Um IOR abaixo de `1` não é um valor raro — é um valor que o modelo não admite*, e um
+/// slider que começasse em `0` ofereceria metade do curso a sítios inexistentes.
+#[must_use]
+fn material_span(field: u8) -> Span {
+    match field {
+        14 => Span::Range { min: 1.0, max: 2.5 },
+        _ => Span::SoftFromZero(1.0),
+    }
+}
 
 /// As chaves i18n dos três ângulos.
 pub(super) const ROT_KEYS: [&str; 3] = ["field.dim.rot_x", "field.dim.rot_y", "field.dim.rot_z"];
@@ -413,7 +448,14 @@ pub fn params_of(world: &World, entity: Entity) -> Vec<(Param, Dim)> {
         // ⚠️ **Quem esconde é a APRESENTAÇÃO, e a porta de escrita não se estreita:** o `set_param`
         // continua a aceitar `Material(6..=8)`, senão um pedido guardado de um quadro atrás — o
         // selector ainda aberto quando a luminância vai a zero — cairia em silêncio.
-        let visivel = |k: u8| k < 6 || m.emission > 0.0;
+        //
+        // ⭐⭐ **E o VERNIZ obedece à mesma lei** (§21): os quatro números dele são misturados por
+        // `coat_weight` no `prepare`, logo com o peso a zero **nenhum** deles move um bit.
+        let visivel = |k: u8| match k {
+            6..=8 => m.emission > 0.0,
+            10..=15 => m.coat > 0.0,
+            _ => true,
+        };
         out.extend(
             (0..ph2d_field::MATERIAL_FIELDS)
                 .filter(|k| visivel(*k))
@@ -423,12 +465,7 @@ pub fn params_of(world: &World, entity: Entity) -> Vec<(Param, Dim)> {
                         Dim {
                             key: MATERIAL_KEYS[k as usize],
                             value: m.get(k)?,
-                            // ⭐ **Do zero a um, e as duas pontas são do MODELO** — uma rugosidade acima de
-                            // `1` não é mais áspera e um metal a `2` não é mais metal. ⚠️ `SoftFromZero` e
-                            // não `Wall`: o campo numérico continua sem tecto (uma cor base em HDR é uma
-                            // afirmação legítima sobre a peça), e o que este número fecha é o **curso do
-                            // slider**.
-                            span: Span::SoftFromZero(1.0),
+                            span: material_span(k),
                         },
                     ))
                 }),

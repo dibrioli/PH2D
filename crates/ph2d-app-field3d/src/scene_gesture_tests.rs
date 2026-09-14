@@ -339,16 +339,23 @@ fn every_node_shows_position_then_rotation_then_what_it_measures() {
             _ => None,
         })
         .collect();
-    assert_eq!(
-        material,
-        (0..material.len() as u8).collect::<Vec<_>>(),
-        "os números do material saem CONTÍGUOS e desde o zero — um buraco no meio faria a tabela de \
-         chaves e a porta de escrita indexarem coisas diferentes: {params:?}"
+    // ⛔⛔ **A 1.ª redacção exigia que eles fossem CONTÍGUOS, e isso era uma propriedade da forma
+    // de ONTEM, não uma lei.** Com o verniz (§21) o material de omissão publica `0..5` e `9` — um
+    // buraco onde mora a cor do brilho —, e isso não parte nada: a tabela de chaves e a porta de
+    // escrita são indexadas pelo **`k`**, não pela posição na lista. *Uma asserção escrita sobre o
+    // estado em que a fixtura calhou de estar reprova a wave seguinte sem nomear defeito nenhum.*
+    //
+    // ⚠️ **O que é lei é a ORDEM**: as linhas saem pela ordem dos campos, e é dela que o artista
+    // lê *«a cor, depois o que ela faz à luz, depois o verniz por cima de tudo»*.
+    assert!(
+        material.windows(2).all(|w| w[0] < w[1]),
+        "os números do material saem FORA de ordem — a secção deixa de se ler de cima para baixo: \
+         {params:?}"
     );
     assert!(
         !material.is_empty() && material.len() < ph2d_field::MATERIAL_FIELDS as usize,
-        "uma FOLHA com o brilho APAGADO publica menos do que as {} posições que a escrita aceita — \
-         a cor da emissão multiplica a luminância, e a zero ela é um controlo inerte: {params:?}",
+        "uma FOLHA com o brilho e o verniz APAGADOS publica menos do que as {} posições que a \
+         escrita aceita — a cor da emissão e os quatro números do verniz são inertes ali: {params:?}",
         ph2d_field::MATERIAL_FIELDS
     );
     // E a operação **tem** escala, senão o gate não distinguiria «não há escala» de «não há nós».

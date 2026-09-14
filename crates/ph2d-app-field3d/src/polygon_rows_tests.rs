@@ -43,10 +43,16 @@ fn poligono(n: u32) -> Primitive {
 /// — o que o torna invisível, e é exactamente por isso que esta nota existe: *uma régua conservadora
 /// não avisa no dia em que deixa de descrever o que mede.*
 ///
-/// ⚠️ **`aceso` é o PIOR caso e é ele que a família tem de aguentar:** com brilho a cor da emissão é
-/// publicada e o nó tem **uma linha a mais**. Uma família dimensionada no estado apagado deixaria a
-/// última linha sem controlo exactamente no gesto que a fez aparecer.
-fn linhas_do_painel(p: Primitive, aceso: bool) -> usize {
+/// ⚠️ **`tudo_aceso` é o PIOR caso e é ele que a família tem de aguentar:** com o brilho acima de
+/// zero a cor da emissão é publicada, e com o verniz acima de zero saem mais **quatro** linhas
+/// (§21). Uma família dimensionada no estado apagado deixaria as últimas sem controlo exactamente no
+/// gesto que as fez aparecer.
+///
+/// ⚠️⚠️ **E o PIOR CASO tem de ser RECONFERIDO a cada número novo do material** — ele não é uma
+/// propriedade da forma, é o estado em que mais linhas coexistem. *Uma lista de «o que acender»
+/// escrita à mão é a segunda resposta à pergunta que o `params_of` já responde*, e é por isso que
+/// esta função acende **pelos pesos**, que são os únicos que decidem visibilidade.
+fn linhas_do_painel(p: Primitive, tudo_aceso: bool) -> usize {
     use ph2d_field::{FieldDoc, Node, NodeId, NodeKind, Xform};
     let doc = FieldDoc::new(
         vec![Node::new(Xform::IDENTITY, NodeKind::Leaf(p))],
@@ -55,9 +61,17 @@ fn linhas_do_painel(p: Primitive, aceso: bool) -> usize {
     .expect("a peça");
     let mut sim = ph2d_ecs::SimWorld::new();
     let root = ph2d_field_ecs::spawn_doc(sim.world_mut(), &doc, "peça");
-    if aceso {
-        ph2d_field_ecs::set_param(sim.world_mut(), root, ph2d_field::Param::Material(5), 1.0)
-            .expect("o brilho");
+    if tudo_aceso {
+        // O brilho (`5`) e o verniz (`9`) — os dois pesos que abrem sub-linhas.
+        for peso in [5u8, 9] {
+            ph2d_field_ecs::set_param(
+                sim.world_mut(),
+                root,
+                ph2d_field::Param::Material(peso),
+                1.0,
+            )
+            .expect("o peso");
+        }
     }
     crate::scene::panel::param_rows(sim.world(), &[root], 1.0).len()
 }
@@ -69,10 +83,10 @@ fn linhas_do_painel(p: Primitive, aceso: bool) -> usize {
 #[test]
 fn every_row_of_the_biggest_polygon_fits_the_registered_family() {
     let teto = ph2d_panel_model3d::MAX_ROWS;
-    println!("  vértices | apagado | aceso | de {teto}");
+    println!("  vértices | tudo apagado | tudo aceso | de {teto}");
     for n in [MIN_POLYGON_VERTICES, 8, 16, MAX_POLYGON_VERTICES] {
         println!(
-            "{n:>10} | {:>7} | {:>5} |",
+            "{n:>10} | {:>12} | {:>10} |",
             linhas_do_painel(poligono(n), false),
             linhas_do_painel(poligono(n), true)
         );
@@ -113,18 +127,22 @@ fn one_more_vertex_would_not_fit() {
          a recta abaixo passa a estar errada, e com ela o teto"
     );
     let extras = lb - 2 * b as usize;
-    // ⚠️⚠️ **`15` em 2026-09-14 também, e é OUTRO quinze.** A régua desta wave passou a contar
-    // LINHAS onde contava params (ver [`linhas_do_painel`]): as duas amostras de cor dobram `6`
-    // params em `2` linhas (`−4`), e o brilho próprio acrescenta `+1` — o número não se mexeu e a
-    // grandeza mudou. ⛔ *Duas correcções de sinal oposto no mesmo literal é a forma mais silenciosa
-    // de um gate deixar de descrever o que mede;* o que prende o valor é a nota, não a coincidência.
+    // ⚠️⚠️ **A história deste número em 2026-09-14, num dia só:**
     //
-    // ⭐ **E é por isso que o `MAX_ROWS` NÃO subiu nesta wave:** a família estava sobre-provisionada
-    // em exactamente `2` (a régua velha contava os canais dobrados), e o brilho consumiu essa folga.
-    // Hoje o polígono no teto pede `69` de `69` — **zero** de folga, medido.
+    // | valor | o que mudou |
+    // |---|---|
+    // | `10` | antes do material por objecto |
+    // | `15` | os cinco números do material (13/09) |
+    // | `15` | a régua passou a contar LINHAS e não params (`−4` canais dobrados) **e** o brilho
+    //   próprio acrescentou `+1` — ⛔ *duas correcções de sinal oposto no mesmo literal* |
+    // | **`20`** | o verniz: `+1` sempre (o peso) e `+4` com ele aceso (rugosidade, cor, IOR,
+    //   escurecimento) |
+    //
+    // ⛔ *Um número que não se mexe enquanto a grandeza muda é a forma mais silenciosa de um gate
+    // deixar de descrever o que mede* — o que o prende é esta tabela, não o literal.
     assert_eq!(
-        extras, 15,
-        "um nó deixou de ter 15 linhas além dos `2N` dos vértices — a conta do teto muda com isto"
+        extras, 20,
+        "um nó deixou de ter 20 linhas além dos `2N` dos vértices — a conta do teto muda com isto"
     );
     let seguinte = 2 * (b as usize + 1) + extras;
     assert!(

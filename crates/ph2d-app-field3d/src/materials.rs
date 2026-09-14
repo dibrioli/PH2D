@@ -30,9 +30,14 @@ pub struct Table {
 
 /// ⭐ **O OpenPBR de um material autorado** — a tradução, num sítio só.
 ///
-/// ⚠️ **Os campos que não se autoram ficam no padrão da nodedef** (o verniz, a difusa especular, o
-/// IOR): um material com cinco números não é um OpenPBR diferente, é o mesmo com cinco números
-/// escolhidos. *Inventar valores para os outros dez seria escrever um material que ninguém pediu.*
+/// ⚠️ **Os campos que não se autoram ficam no padrão da nodedef**: um material com **dez** das
+/// **quinze** entradas não é um OpenPBR diferente, é o mesmo com dez entradas escolhidas. *Inventar
+/// valores para as outras cinco seria escrever um material que ninguém pediu.*
+///
+/// ⚠️⚠️ **As contagens desta página CONTAM-SE daqui, nunca de cabeça** — as cinco que faltam são
+/// `base_weight`, `base_diffuse_roughness`, `specular_weight`, `specular_color` e `specular_ior`, e
+/// esta linha já esteve errada duas vezes no mesmo dia (*«sete»*, *«doze»*) por ser somada de
+/// memória enquanto a lista crescia.
 ///
 /// ⭐⭐ **A EMISSÃO entrou em 2026-09-14** (`docs/Render3d/05` §20), e a razão é o inverso da regra
 /// acima: ela **já era paga** — a [`ph2d_material::Surface::emission`] corria por amostra e somava
@@ -46,6 +51,11 @@ pub fn surface_of(m: FieldMaterial) -> ph2d_material::Surface {
         specular_roughness: m.roughness,
         emission_luminance: m.emission,
         emission_color: m.emission_color,
+        coat_weight: m.coat,
+        coat_roughness: m.coat_roughness,
+        coat_color: m.coat_color,
+        coat_ior: m.coat_ior,
+        coat_darkening: m.coat_darkening,
         ..ph2d_material::OpenPbr::default()
     }
     .prepare()
@@ -247,3 +257,9 @@ pub(crate) fn sync(sim: &mut ph2d_ecs::SimWorld, doc_mudou: bool) {
 #[cfg(test)]
 #[path = "emission_tests.rs"]
 mod emission_tests;
+
+/// ⏱️⭐ **O VERNIZ** — quais dos cinco números dele movem o pixel. Irmão por assunto do
+/// [`emission_tests`], e pela mesma razão: ele mede uma capacidade do motor antes de ela ter botão.
+#[cfg(test)]
+#[path = "coat_tests.rs"]
+mod coat_tests;

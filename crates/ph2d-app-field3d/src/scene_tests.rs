@@ -264,6 +264,9 @@ fn the_panel_shows_the_dimensions_of_what_is_selected() {
             "field.dim.roughness",
             "field.dim.metalness",
             "field.dim.emission",
+            // ⭐⭐ **E o VERNIZ fecha** (§21) — ⚠️ **sozinho**: os outros quatro números dele são
+            // misturados por este peso, logo a zero são inertes e não são publicados.
+            "field.dim.coat",
         ],
         "uma caixa tem a POSE (posição e rotação), CINCO dimensões e o MATERIAL, nesta ordem"
     );

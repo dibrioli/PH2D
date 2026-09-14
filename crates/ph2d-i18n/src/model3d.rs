@@ -540,6 +540,21 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "field.dim.emission_r" => "Emission Color R",
         "field.dim.emission_g" => "Emission Color G",
         "field.dim.emission_b" => "Emission Color B",
+        // ⭐⭐⭐ **O VERNIZ** (`docs/Render3d/05` §21). ⚠️ **"Coat" e não "Clear Coat"**: é o nome do
+        // OpenPBR e o que o Blender escreve — e a segunda palavra passou a ser errada no dia em que
+        // o verniz ganhou cor (um verniz âmbar não é *clear*).
+        "field.dim.coat" => "Coat",
+        "field.dim.coat_roughness" => "Coat Roughness",
+        "field.dim.coat_color" => "Coat Color",
+        "field.dim.coat_r" => "Coat Color R",
+        "field.dim.coat_g" => "Coat Color G",
+        "field.dim.coat_b" => "Coat Color B",
+        // ⚠️ **"Coat IOR" com a sigla INTEIRA**: *«Index of Refraction»* por extenso não cabe na
+        // coluna do rótulo, e a sigla é a que aparece em todos os programas do ofício.
+        "field.dim.coat_ior" => "Coat IOR",
+        // ⚠️ **"Darkening" e não "Tint"**: ele não tinge — ele escurece a base por baixo do verniz,
+        // que é um efeito físico de reflexão interna. *A tinta é a linha de cima.*
+        "field.dim.coat_darkening" => "Coat Darkening",
         // ⭐⭐ **O SEGUNDO NÚMERO de uma junta** (W145). ⚠️ **"Seam Width" e não "Width"**: a
         // coluna já tem larguras da FORMA, e duas palavras iguais para grandezas de sujeitos
         // diferentes é o defeito que o `field.dim.joint` acima existe para não repetir.

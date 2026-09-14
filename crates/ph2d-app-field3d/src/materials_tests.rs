@@ -329,3 +329,75 @@ fn measure_what_building_the_table_costs_per_frame() {
         );
     }
 }
+
+/// ⭐⭐⭐ **TODO NÚMERO QUE UM MATERIAL TEM CHEGA À LEI** — o censo, derivado de
+/// [`ph2d_field::MATERIAL_FIELDS`] e não de uma lista escrita à mão.
+///
+/// # ⛔⛔ Porque ele existe depois de três waves que já o provavam por pedaços
+///
+/// A cor (§12), o brilho (§20) e o verniz (§21) trouxeram cada um o seu gate, e cada um cobria **os
+/// números daquela wave**. ⚠️ *Um número novo escrito no [`ph2d_field_ecs::FieldMaterial`] e
+/// esquecido no [`crate::materials::surface_of`] não acordaria nenhum deles* — ele viajaria até ao
+/// documento, seria gravado no arquivo, apareceria no painel, e **não faria nada**. É o *consumidor
+/// que projecta o valor fora* do `CLAUDE.md` §5.0, na forma mais cara: o fio inteiro, e o fim mudo.
+///
+/// ⇒ este percorre **todas** as posições que a escrita aceita, uma a uma.
+///
+/// # ⚠️ As duas coisas que o tornam honesto
+///
+/// 1. **A base tem os dois PESOS ligados.** A cor da emissão e os quatro números do verniz são
+///    inertes por construção com os pesos a zero — medi-los ali provaria o contrário do que se quer.
+/// 2. **A régua é a RADIÂNCIA, e não a [`ph2d_material::Surface`]:** ela guarda o `OpenPbr` inteiro
+///    lá dentro, logo duas superfícies com params diferentes são **sempre** diferentes por
+///    `PartialEq`. *Compara-se o que a lei RESPONDE, não o que ela guarda.*
+///
+/// ⚠️ **E o valor alternativo de cada posição não é uma constante:** ele é *«longe do que lá está»*,
+/// porque um número que por acaso já valesse `0,5` não se moveria ao ser posto em `0,5`.
+///
+/// **Mutação que deve sangrar:** apagar qualquer linha do `surface_of`.
+#[test]
+fn every_number_a_material_has_reaches_the_law() {
+    use ph2d_field_ecs::FieldMaterial;
+
+    // ⚠️ **Os dois pesos acesos** — ver a nota acima. E a base é fosca, para o verniz ter onde
+    // aparecer.
+    let base = FieldMaterial {
+        roughness: 0.6,
+        emission: 0.5,
+        coat: 0.7,
+        ..FieldMaterial::default()
+    };
+    let devolve = |m: FieldMaterial| {
+        let s = crate::materials::surface_of(m);
+        let n = [0.0_f32, 0.3, 0.953_939_2];
+        let v = [0.0_f32, 0.0, 1.0];
+        let para_a_luz = [0.4_f32, 0.6, 0.692_820_3];
+        let d = s.direct(n, v, para_a_luz, [3.0; 3]);
+        let e = s.emission(n, v);
+        [d[0] + e[0], d[1] + e[1], d[2] + e[2]]
+    };
+    let referencia = devolve(base);
+
+    for k in 0..ph2d_field::MATERIAL_FIELDS {
+        let mut outro = base;
+        let antes = outro.get(k).expect("a posição existe");
+        // Longe do que lá está, e dentro da faixa de todas elas (o IOR vive em `1..=2,5`).
+        let novo = if k == 14 {
+            if antes > 1.75 { 1.1 } else { 2.4 }
+        } else if antes > 0.5 {
+            0.1
+        } else {
+            0.9
+        };
+        assert!(outro.set(k, novo), "a posição {k} recusou a escrita");
+        let agora = devolve(outro);
+        let d = (0..3)
+            .map(|c| (agora[c] - referencia[c]).abs())
+            .fold(0.0_f32, f32::max);
+        assert!(
+            d > 1.0e-3,
+            "o número {k} do material ({antes} → {novo}) NÃO move a radiância ({referencia:?} → \
+             {agora:?}) — ele chega ao documento, ao arquivo e ao painel, e morre no `surface_of`"
+        );
+    }
+}

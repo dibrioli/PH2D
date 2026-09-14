@@ -1271,9 +1271,187 @@ morre* — é a lição que a `project-memory` já registava, paga outra vez.
 
 - **O material continua sem ALFA** (§12.7) — e agora com uma pergunta a mais: um brilho é aditivo e a
   transparência é multiplicativa, então as duas não se resolvem na mesma wave.
-- **Os outros `10` números do OpenPBR** que a lei honra e nenhum controlo alcança — o **verniz** (5),
-  o `specular_weight`/`specular_color`/`specular_ior` e a `base_diffuse_roughness`. ⚠️ **Nenhum é
+- **As outras `10` entradas do OpenPBR** que a lei honra e nenhum controlo alcança — o **verniz** (5),
+  o `specular_weight`/`specular_color`/`specular_ior`, o `base_weight` e a `base_diffuse_roughness`. ⚠️ **Nenhum é
   como a emissão:** eles não estão a ser **pagos a zero**, e a pergunta deles é de produto (*quantos
   knobs um modelador quer ver?*), não de dívida.
 - **O brilho não ILUMINA a vizinhança** — ele acende a própria superfície e mais nada. Um emissor que
   ilumina é *global illumination*, que este traçador não faz e cujo preço não foi medido.
+
+---
+
+## §21 — ⭐⭐⭐ O VERNIZ: a última coisa do material que a lei fazia e ninguém alcançava (2026-09-14)
+
+Depois do brilho próprio, o `materials::surface_of` escrevia `5` das `15` entradas do OpenPBR. **Cinco**
+das dez que faltavam eram o verniz — `coat_weight`, `coat_color`, `coat_roughness`, `coat_ior`,
+`coat_darkening` —, e a lei honra-os todos: o `prepare` deriva o `coat_alpha`, o `coat_f0`, o
+escurecimento da base e a atenuação a partir deles.
+
+⚠️ **Mas «a lei honra-o» não é «ele move o quadro»**, e a §20.8 tinha escrito que a pergunta do verniz
+era *de produto*. A medição respondeu antes: **os cinco movem**, e por isso nenhum tem recusa por
+inércia.
+
+---
+
+### §21.1 — A medição (`coat_tests`, sonda)
+
+Esfera a `640×360`, **base FOSCA** (`specular_roughness 0,6` — é sobre uma superfície baça que um
+verniz aparece como o que é: um segundo realce nítido por cima de um primeiro que não é), olhar do
+produto.
+
+| o quê | valor | pior Δ por pixel | pixels que mudam ≥ 2 |
+|---|---|---|---|
+| **peso** | `0,10` | `7` | `50 182` |
+| | `0,50` | `32` | `61 612` |
+| | `1,00` | **`63`** | `61 647` |
+| rugosidade | `0,10` | `44` | `1 662` |
+| | `1,00` | `50` | `53 268` |
+| IOR | `1,00` | `32` | `61 796` |
+| | `2,50` | `49` | `61 802` |
+| **cor** | `0,6` | **`120`** | `61 804` |
+| escurecimento | `0,00` | `29` | `61 804` |
+
+⚠️⚠️ **A régua é o MÁXIMO por pixel, e não a média** — e isso é uma correcção sobre a wave anterior:
+um verniz é um realce **local** (ele acende uma mancha e deixa o resto onde estava), enquanto a
+emissão é **global**. *Uma régua emprestada da wave anterior mede a grandeza da wave anterior.*
+
+⭐ **A rugosidade mostra a diferença numa coluna só:** o pior pixel mal se move (`44 → 50`) e a
+**população** salta de `1 662` para `53 268` — ela não muda *quanto*, muda *onde*.
+
+---
+
+### §21.2 — ⛔⛔ O IOR nunca satura, e por isso a faixa dele é FÍSICA
+
+A régua que fixou a ponta do brilho — *«onde o número deixa de ser observável»* — **não responde
+aqui**. Varrido contra o ponto anterior:
+
+| IOR | pior Δ contra o anterior |
+|---|---|
+| `1,4` | `12` |
+| `2,0` | `24` |
+| `2,5` | `26` |
+| `4,0` | `20` |
+| `10,0` | `17` |
+| `20,0` | `17` |
+
+⇒ ele **nunca pára**. O recurso é outro: **o material de que uma película transparente pode ser
+feita**. O piso é `1` (a luz não atravessa nada mais depressa do que o vácuo) e o tecto é `2,5`, logo
+acima do diamante (`2,42`), que é o mais alto dos transparentes conhecidos.
+
+⛔ **`Span::Range` e não `SoftFromZero`**: as duas pontas são **duras** e digitar fora delas clampa.
+*Um IOR abaixo de `1` não é um valor raro — é um valor que o modelo não admite*, e um slider a
+começar em `0` daria metade do curso do dedo a sítios inexistentes.
+
+⚠️ **É o primeiro número deste material que não é uma fracção**, e por isso o `material_span` deixou
+de ser uma constante e passou a ser uma **tabela de um caso**. *Quinze dos dezasseis continuam
+`0..1`, e o gate afirma os dois lados: o IOR duro, e o vizinho macio.*
+
+---
+
+### §21.3 — O painel: uma linha sempre, quatro só com verniz
+
+| linha | quando aparece |
+|---|---|
+| **Coat** (`Material(9)`) | sempre, numa folha |
+| **Coat Roughness** · **Coat Color** (amostra) · **Coat IOR** · **Coat Darkening** | **só com o peso acima de zero** |
+
+⭐ **É a terceira vez que esta lei é aplicada neste painel** (o raio de junção, a cor do brilho, e
+agora isto), e aqui ela tem a prova ao lado: o gate `every_coat_number_reaches_the_law_and_moves_the_answer`
+mede que cada um move a resposta **com o peso ligado**, e o `prepare` mistura-os todos por
+`coat_weight` — logo com ele a zero nenhum move um bit.
+
+⚠️ **E os dois pesos são INDEPENDENTES:** acender o verniz não pode acender a cor do brilho. Um
+`visivel` escrito com um `||` a mais fá-lo-ia, e há gate.
+
+⚠️ **O `coat_darkening` fica, e o Blender não o expõe.** Medido, ele move `29` bytes no pior pixel, e
+a lei desta casa é que um número vivo tem controlo. *Uma referência é um oráculo do que a LEI faz, não
+um censo do que um painel deve ter.*
+
+---
+
+### §21.4 — ⭐⭐ O TETO DE LINHAS SUBIU, `69 → 74`, com a medição ao lado
+
+Medido no produtor das linhas e no **pior estado** — brilho *e* verniz acesos, que é quando mais
+linhas coexistem:
+
+| vértices | tudo apagado | tudo aceso |
+|---|---|---|
+| `3` | `21` | `26` |
+| `16` | `47` | `52` |
+| **`27`** (o teto do polígono) | `69` | **`74`** |
+
+⭐ **Preço MEDIDO:** cada linha regista `6` widgets, logo `69 → 74` custa **`30` widgets e 5
+`String`** no store, uma vez, no arranque — o mesmo que a subida de `64 → 69`.
+
+⛔⛔ **A alternativa era baixar o `MAX_POLYGON_VERTICES` de `27` para `24`:** tirar três vértices ao
+artista porque uma peça passou a poder ser envernizada. *Um teto de registo cujo recurso é memória a
+mandar num teto de FORMA é o caminho lento a definir o rápido.*
+
+⚠️ **E o «pior caso» é um ESTADO, não uma propriedade da forma** — ele tem de ser reconferido a cada
+número novo do material. A sonda acende **pelos pesos** (`5` e `9`), que são os únicos que decidem
+visibilidade, em vez de guardar uma lista escrita à mão.
+
+---
+
+### §21.5 — ⛔⛔ Uma asserção minha de ONTEM reprovou hoje, e não havia defeito nenhum
+
+O gate da ordem (`scene_gesture_tests`) exigia que os números do material saíssem **contíguos desde o
+zero**, com a razão escrita: *«um buraco no meio faria a tabela de chaves e a porta de escrita
+indexarem coisas diferentes»*.
+
+**A razão era falsa.** As duas são indexadas pelo **`k`**, não pela posição na lista — e com o verniz
+o material de omissão publica `0..5` e `9`, um buraco onde mora a cor do brilho. *Uma asserção escrita
+sobre o estado em que a fixtura calhou de estar reprova a wave seguinte sem nomear defeito nenhum.*
+
+⇒ o que é lei ali é a **ORDEM** (as linhas saem pela ordem dos campos), e é isso que o gate afirma
+agora.
+
+---
+
+### §21.6 — O arquivo: `PROJECT_SCHEMA` **129 → 130**
+
+O mesmo `FieldMaterial`, de `9` para `16` números — `36` bytes contra `64`, e o mesmo mecanismo do
+degrau de ontem. ⛔ **Conte o DELTA (`+2` desde o `main`)**, nunca o literal.
+
+---
+
+### §21.7 — Os gates (3) e as mutações (10/10)
+
+| gate | o que ele prende |
+|---|---|
+| `every_coat_number_reaches_the_law_and_moves_the_answer` | os cinco atravessam o `surface_of` **e** movem a radiância |
+| `the_coat_numbers_only_exist_while_the_coat_does` | a lei da W34, e a independência dos dois pesos |
+| `the_coat_colour_is_a_swatch_and_the_ior_is_not_a_fraction` | a terceira amostra, os três selectores, e a faixa dura do IOR ao lado da macia do vizinho |
+| ⭐ `every_number_a_material_has_reaches_the_law` | **o censo, derivado do `MATERIAL_FIELDS`**: as `16` posições, uma a uma |
+
+⭐⭐ **E o quarto é o que faltava às três waves anteriores.** A cor, o brilho e o verniz trouxeram cada
+um o seu gate, e cada um cobria **os números daquela wave** — *um número novo escrito no
+`FieldMaterial` e esquecido no `surface_of` não acordaria nenhum deles*: ele viajaria até ao
+documento, seria gravado no arquivo, apareceria no painel, e não faria nada. Provado por mutação
+sobre três campos de waves **anteriores** (o metal, a rugosidade, a cor base), os três a sangrar.
+
+⚠️ **A régua do primeiro é a RADIÂNCIA, e não a `Surface`:** ela guarda o `OpenPbr` inteiro lá dentro,
+logo duas superfícies com params diferentes são **sempre** diferentes por `PartialEq` — um gate
+escrito assim passaria com a tradução a deitar o número fora, porque ele continuaria a viajar no campo
+cru. *Compara-se o que a lei RESPONDE, não o que ela guarda.*
+
+⛔⛔ **E o arnês das mutações mentiu duas vezes, as duas na mesma direcção:**
+1. apagar uma entrada da tabela `CORES` é **erro de compilação** (o comprimento do array é literal), e
+   o harness leu *«não compilou»* como *«sobreviveu»*. ⇒ *uma mutação que não compila não afirma
+   nada*, e o harness passou a distinguir os dois.
+2. um filtro escrito com o texto de antes do `cargo fmt` casou **zero** — o `0 passed` outra vez a
+   ler-se como morte. O controlo do filtro, escrito na wave de ontem, apanhou-o à primeira.
+
+---
+
+### §21.8 — ⏳ O que fica aberto
+
+- **CINCO entradas do OpenPBR continuam sem controlo:** `base_weight`, `base_diffuse_roughness`,
+  `specular_weight`, `specular_color` e `specular_ior` — o `surface_of` escreve **`10` de `15`**.
+  ⚠️⚠️ **Esta linha esteve errada duas vezes antes de ser contada** (*«sete»*, *«doze»*): eu somei de
+  cabeça uma lista que a própria wave estava a alterar. *Um número que descreve o código lê-se do
+  código* — aqui, com um `grep` ao `OpenPbr` e ao corpo do `surface_of`.
+- **O material continua sem ALFA** (§20.8), e o verniz não muda isso: ele é uma película **opaca à
+  transparência** — ela é a `transmission_*`, que a fatia do port deixou de fora com motivo escrito.
+- **O `coat_roughness_anisotropy`** não existe na crate (o traçador não tem tangentes), e por isso não
+  é um knob por construir — é uma ausência declarada.

@@ -62,6 +62,8 @@ pub mod input;
 /// ⭐⭐⭐ **A tabela de materiais da peça** — ver [`materials`].
 /// `docs/Render3d/05` — a LUZ como objecto 3D da cena (ordem do dono, 14/09).
 pub mod lights;
+/// `docs/Render3d/05` §26 — a MARCA de uma luz no canvas (report do dono, 14/09).
+pub mod lights_paint;
 pub mod materials;
 /// ADR-0161 W25 — a VOZ do módulo: uma peça que não cozinha diz porquê, e diz uma vez.
 pub mod mode;

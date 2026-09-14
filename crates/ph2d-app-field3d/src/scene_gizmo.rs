@@ -132,6 +132,20 @@ pub(super) fn resolve_pick(
     add: bool,
 ) -> Option<SelectRequest> {
     let (root, cam, screen) = pick_frame(sim, doc)?;
+    // ⭐⭐⭐ **A MARCA DE UMA LUZ GANHA DA PEÇA** (report do dono, 14/09) — ela é um sobreposto, e um
+    // sobreposto que perde do que está por baixo dele não é apontável.
+    //
+    // ⚠️ **Antes do `doc?`**, e isso é load-bearing: uma cena **sem peça nenhuma** não tem documento,
+    // e sem esta ordem as luzes de uma cena vazia seriam inalcançáveis — que é exactamente a cena em
+    // que alguém está a montar a iluminação.
+    let luzes = with_smoke(|s| s.lights.clone())?;
+    if let Some(bits) = crate::lights::under(&luzes, &cam, screen, px) {
+        return Some(if add {
+            SelectRequest::Toggle(bits)
+        } else {
+            SelectRequest::Entity(bits)
+        });
+    }
     let doc = doc?;
     let hit = crate::pick::node_under(sim.world(), root, doc, &cam, screen, px);
     match (hit, add) {

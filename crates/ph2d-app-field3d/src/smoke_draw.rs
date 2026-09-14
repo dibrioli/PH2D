@@ -149,6 +149,33 @@ pub fn draw(
         // (sem projecção, sem écran) abandonavam o `draw` INTEIRO, e a partir da W109 há coisa a
         // pintar depois deste bloco. *Um `return` no meio de um pintor é uma dependência de ordem
         // que não se vê no sítio onde ela morde.*
+        // ⭐⭐⭐ **AS MARCAS DAS LUZES** (report do dono, 14/09: *«a luz não tem seu próprio gizmo»*)
+        // — por cima da peça e **por baixo** do gizmo de transformação.
+        //
+        // ⚠️ **A ordem é a ordem da mão:** o gizmo é a ferramenta que está a ser usada, e uma alça
+        // tapada pela marca de uma lâmpada seria um gesto que falha por causa de um enfeite.
+        'luzes: {
+            if smoke.lights.is_empty() {
+                break 'luzes;
+            }
+            let Some(screen) = crate::input::area_screen(smoke) else {
+                break 'luzes;
+            };
+            let marcas = crate::lights::marks(&smoke.lights, &smoke.vp().cam, screen);
+            scene_out.push_clip(&ph2d_vector::Rect::new(
+                f64::from(area.x),
+                f64::from(area.y),
+                f64::from(area.x + area.w),
+                f64::from(area.y + area.h),
+            ));
+            // ⚠️ **Quem está escolhido sai da ÂNCORA do gizmo**, que é o que atravessa o quadro —
+            // o `draw` não tem mundo nenhum, e dar-lhe um faria o traçado depender do ECS (é a nota
+            // do `Smoke::gizmo`, e a razão é a mesma).
+            let escolhida = smoke.gizmo.map(|a| a.entity);
+            crate::lights_paint::paint(scene_out, &marcas, escolhida, theme, [area.x, area.y]);
+            scene_out.pop_layer();
+        }
+
         'gizmo: {
             let Some(anchor) = smoke.gizmo else {
                 break 'gizmo;
@@ -407,7 +434,10 @@ fn viewport_pass(
         // ponteiro, como a cache de fitas e o registo de esculturas.
         let materials = smoke.materials.clone();
         // ⭐ **As luzes viajam com o pedido**, como a tabela de materiais e pela mesma razão.
-        let lights = smoke.lights.clone();
+        //
+        // ⚠️ **O que viaja são as ACESAS** — a lista do módulo tem também as apagadas, porque o gizmo
+        // do canvas precisa de as desenhar para se poderem voltar a acender.
+        let lights = crate::lights::lamps_of(&smoke.lights);
         std::thread::spawn(move || {
             let t0 = std::time::Instant::now();
             // Abandonado a meio: não se manda nada, e quem esperava já mudou de pedido.

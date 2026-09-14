@@ -410,7 +410,7 @@ pub struct Smoke {
     /// guardá-la seria carregar uma cópia de uma coisa que a cena já tem.
     ///
     /// ⚠️ **`Arc` porque ela atravessa a fronteira da thread** do traçado — o que viaja é o ponteiro.
-    pub lights: std::sync::Arc<Vec<ph2d_field_render::PointLamp>>,
+    pub lights: std::sync::Arc<Vec<crate::lights::SceneLight>>,
     /// ⭐ **Há uma escultura VIVA na cena?** — publicado pelo shell, que é quem tem o `AppGfx`.
     ///
     /// ⚠️ Atravessa o quadro em vez de ser perguntado aqui, pela razão do `gizmo`: este arquivo não

@@ -215,29 +215,43 @@ fn a_light_object_lights_the_side_it_is_on() {
     );
 }
 
-/// ⭐⭐ **O OLHO DA HIERARQUIA APAGA A LUZ** — e de graça, porque é o mesmo componente que esconde uma
-/// forma. *Uma luz que só se desliga apagando-a é uma luz que ninguém experimenta.*
+/// ⭐⭐ **O OLHO DA HIERARQUIA APAGA A LUZ E NÃO A MARCA** — e de graça, porque é o mesmo componente
+/// que esconde uma forma. *Uma luz que só se desliga apagando-a é uma luz que ninguém experimenta.*
+///
+/// # ⚠️ As duas metades, e a segunda entrou com o gizmo (14/09)
+///
+/// A recolha do MÓDULO tem **todas** as luzes; quem filtra pelo olho é o [`lamps_of`], que é o
+/// consumidor a quem o olho diz respeito. ⛔ Filtrar na recolha tirava a luz apagada também do
+/// **canvas**, e uma luz sem marca só se voltaria a acender pela Hierarquia — que é de onde o gizmo
+/// a tirou. *A primeira redacção deste gate afirmava exactamente isso, e foi o gizmo que a corrigiu.*
 #[test]
-fn the_hierarchy_eye_switches_a_light_off() {
+fn the_hierarchy_eye_switches_the_light_off_and_not_the_mark() {
     let mut world = bevy_ecs::world::World::new();
     let luz = ph2d_field_ecs::add_light(
         &mut world,
         [1.0, 1.0, 1.0],
         ph2d_field_ecs::FieldLight::default(),
     );
-    assert_eq!(of_the_world(&mut world).len(), 1);
+    assert_eq!(lamps_of(&of_the_world(&mut world)).len(), 1);
     world
         .entity_mut(luz)
         .insert(ph2d_ecs::Visibility { hidden: true });
+    let recolhidas = of_the_world(&mut world);
+    assert_eq!(
+        recolhidas.len(),
+        1,
+        "a luz apagada saiu da recolha — o canvas fica sem a marca dela"
+    );
+    assert!(!recolhidas[0].on, "o olho não chegou à recolha");
     assert!(
-        of_the_world(&mut world).is_empty(),
+        lamps_of(&recolhidas).is_empty(),
         "a luz escondida continuou a acender"
     );
-    // ⭐ E o controlo: sem o `hidden`, ela volta.
+    // ⭐ E o controlo: sem o `hidden`, ela volta a acender.
     world
         .entity_mut(luz)
         .insert(ph2d_ecs::Visibility { hidden: false });
-    assert_eq!(of_the_world(&mut world).len(), 1);
+    assert_eq!(lamps_of(&of_the_world(&mut world)).len(), 1);
 }
 
 /// ⚠️ **A ordem das luzes é ESTÁVEL** — a soma de `f32` não é associativa, e sem isto o mesmo

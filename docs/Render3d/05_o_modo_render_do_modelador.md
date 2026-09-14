@@ -2207,9 +2207,8 @@ metade que fica tem o mesmo sintoma.*
 - ⛔⛔ **O CÉU continua ancorado no ECRÃ e as luzes passaram a ser de MUNDO** — a sala não roda com a
   câmera e as lâmpadas rodam. É uma incoerência **declarada**: o céu de mundo é outra decisão (a `W3`
   do plano nomeia-a), e chega com o resto dos modos de arte.
-- **Uma luz não se escolhe no CANVAS** — ela não tem campo, logo o clique que marcha a peça não a
-  encontra. Escolhe-se na Hierarquia (e ela nasce **já escolhida**, com o gizmo em cima). O que falta é
-  um **marcador desenhado** e o acerto dele.
+- ✅ ~~**Uma luz não se escolhe no CANVAS**~~ — **FECHOU no mesmo dia (§26)**, por report do dono:
+  *«a luz não tem seu próprio gizmo»*. Ela tem agora uma marca desenhada e clicável.
 - **Os verbos ROTAÇÃO e ESCALA do gizmo são inertes numa luz.** O verbo é estado de **VISTA** (um por
   viewport), não do objecto, então restringi-lo por-objecto é um campo novo no `Anchor`.
 - **Duplicar uma luz não faz nada** — o `duplicate` exige um pai, e uma luz é raiz. *Declarado e
@@ -2218,3 +2217,90 @@ metade que fica tem o mesmo sintoma.*
   entra no `WorldSnapshot`; o que **não** foi exercitado é um projecto gravado antes desta wave, que
   abre **sem luz nenhuma** e fica aceso só pelo céu.
 - **Uma só luz e um só tipo.** Sem cone, sem área, sem sombra — a `W4` do plano.
+
+---
+
+## §26 — ⭐⭐⭐ A LUZ TEM GIZMO PRÓPRIO (report do dono, 2026-09-14)
+
+Enio, depois de smokar a §25: *«Smoke OK. A luz não tem seu próprio gizmo»* — a metade que a §25.8 já
+tinha nomeado como aberta.
+
+---
+
+### §26.1 — Porque ela é obrigatória, e não decoração
+
+Uma luz **não tem campo**: o clique do canvas marcha a peça e não a encontra, logo a wave anterior
+deixou-a alcançável só pela Hierarquia. ⇒ *um objecto 3D que não se pode apontar no sítio onde ele
+está não é um objecto 3D*, e era essa a metade que faltava à ordem.
+
+**A marca** é um disco do tamanho do punho do gizmo da casa, com oito raios à volta e um anel:
+
+| o quê | de onde vem |
+|---|---|
+| o raio do disco | [`crate::gizmo::GRIP_HALF_PX`] — *uma marca de luz é uma alça como as outras, e duas escalas de chrome na mesma janela leem-se como duas ferramentas* |
+| os raios (`1,4×`..`2,4×`) e a espessura | derivados do disco e da haste do gizmo |
+| o **raio de agarre** | `disco + GRAB_PX/2` — a mesma folga que o vértice do gizmo declara por escrito: *«um alvo que agarra exactamente onde pinta obriga a mão a acertar no pixel»* |
+| a cor do **miolo** | a cor da própria lâmpada, pela mesma porta sRGB↔linear da amostra do painel |
+| o anel e os raios | `Text1`, ou **`Accent`** quando ela é a escolhida |
+
+⭐ **Oito raios não é decoração:** é o que faz a marca ler-se como *luz* e não como um ponto de pivô.
+⛔ Menos de seis lê-se como uma estrela de selecção; mais de doze vira um disco a esta escala.
+
+⚠️ **E uma luz APAGADA continua a ter marca**, esmaecida — a ordem da §23 aplicada aqui. *Uma marca
+que sumisse com o olho da Hierarquia deixaria a luz sem forma de voltar a acender senão pela
+Hierarquia, que é de onde esta wave a tirou.*
+
+---
+
+### §26.2 — ⭐⭐ UMA função responde às duas perguntas
+
+O pintor e o teste de acerto fazem a **mesma** pergunta — *onde é que esta luz cai no ecrã?* — e ela
+vive uma vez só, em [`lights::marks`](../../crates/ph2d-app-field3d/src/lights.rs). Este módulo de
+pintura **não projecta nada**: recebe as marcas prontas.
+
+*Uma marca desenhada num sítio e apanhada noutro lê-se como «o clique não pega», e nenhum dos dois
+lados o diagnostica sozinho* — é a mesma lei que o `smoke_draw` já escreve sobre a projecção do gizmo
+(*«nunca uma segunda conta a partir do tamanho do traçado»*).
+
+⚠️ **A marca GANHA da peça**, porque é um sobreposto — e o teste dela corre **antes** do `doc?`: uma
+cena **sem peça nenhuma** não tem documento, e sem essa ordem as luzes de uma cena vazia seriam
+inalcançáveis. *Que é exactamente a cena em que alguém está a montar a iluminação.*
+
+⚠️ E a **recolha** mudou de forma para servir os dois consumidores: ela tem agora `bits`, `world`, a
+lâmpada e o **olho**, e a lista do renderizador **deriva** dela ([`lights::lamps_of`]). ⛔ Filtrar o
+olho na recolha tirava a luz apagada também do canvas.
+
+---
+
+### §26.3 — Os gates (7) e as mutações (7/7), com as DUAS fixturas que não distinguiam nada
+
+| gate | o que ele prende |
+|---|---|
+| `the_click_finds_the_mark_where_it_is_drawn` | ⭐ a lei inteira, medida pelo **par** — e o agarre **acaba** |
+| `the_nearest_mark_wins_and_not_the_first` | o desempate, com as duas ao alcance do mesmo clique |
+| `a_light_that_is_off_still_has_a_mark` | a marca fica, não acende, **e pinta-se diferente** |
+| `the_mark_puts_geometry_in_the_scene` | o pintor desenha — com o controlo de pintar sem marca, e a segunda luz a acrescentar |
+| `the_selected_mark_is_painted_differently` | o realce compara **quem**, e uma entidade alheia não o acende |
+| `the_frame_paints_the_mark_and_a_click_on_it_picks_the_light` | ⭐⭐ a costura das **duas** pontas, com uma luz de verdade no mundo |
+| `const _: () = assert!(MARK_GRAB_PX > MARK_HALF_PX)` | ⭐ em tempo de **compilação** |
+
+⚠️⚠️ **Duas mutações sobreviveram, e as duas acusaram a FIXTURA, não o gate:**
+
+- *«a primeira da lista ganha em vez da mais próxima»* — as duas luzes estavam em lados opostos da
+  peça, logo ao clicar numa a outra caía **fora do agarre** e o filtro já a tinha deitado fora.
+  *Uma fixtura em que só um candidato sobrevive ao filtro não testa o critério de desempate.*
+- *«uma luz apagada pinta-se igual a uma acesa»* — o gate afirmava que a marca **continua lá**, e isso
+  é satisfeito por uma marca que **mente** sobre o estado da luz.
+
+⚠️ E o `the_grab_is_wider_than_the_drawing` era um `#[test]` sobre dois `const`: o clippy chamou-lhe
+*«esta asserção tem valor constante»*. ⇒ virou `const _: () = assert!(…)`, que o `cargo check` corre —
+*um gate que só um `cargo test` corre é mais fraco do que um que o `check` corre.*
+
+---
+
+### §26.4 — ⏳ O que fica aberto
+
+- **Rodar e escalar uma luz continuam inertes** (§25.8) — o verbo do gizmo é estado de **vista**.
+- **A marca não tem realce de PASSAGEM** (hover): ela acende com a selecção e mais nada.
+- **Duas luzes exactamente sobrepostas no ecrã** ficam por desempatar — a regra é a distância no ecrã,
+  e ali qualquer regra é arbitrária. *A do ecrã é a única que o artista consegue prever.*

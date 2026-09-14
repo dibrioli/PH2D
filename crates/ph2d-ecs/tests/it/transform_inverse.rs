@@ -7,7 +7,10 @@
 //! direction, and the only specification that matters for it is the round trip.
 
 use ph2d_core::Vec2;
-use ph2d_ecs::{ChildOf, Transform, parent_world_transform, parent_world_transform_into};
+use ph2d_ecs::{
+    ChildOf, Transform, parent_world_transform, parent_world_transform_into,
+    parent_world_transform_with, world_transform, world_transform_with,
+};
 
 /// A spread of parents that reaches every branch of `compose`: plain offsets,
 /// rotations past ±π, non-uniform scale, negative (mirroring) scale, and skew
@@ -231,5 +234,80 @@ fn the_scratch_walk_is_the_plain_walk() {
         parent_world_transform_into(&world, leaf, &mut scratch),
         parent_world_transform(&world, leaf),
         "a dirty scratch buffer leaked into the answer"
+    );
+}
+
+/// ⭐⭐⭐ **A travessia com a FONTE injectada, alimentada do MUNDO, é a travessia de sempre** — ao
+/// bit, e nas duas pontas (a do pai e a da entidade).
+///
+/// ⚠️ **É a razão de a generalização ser aceitável num caminho quente.** O onion pergunta *onde este
+/// osso está em `t`* e a resposta é a cadeia inteira posada; escrever esse laço noutra crate seria a
+/// segunda resposta a *«onde está esta entidade?»* — o defeito de que o cabeçalho deste módulo
+/// avisa. ⛔ O preço de o partilhar é este gate: a fonte viva **não pode mover um ULP**.
+///
+/// ⚠️ **E o CONTROLO é uma fonte que MENTE**: sem ele, um `local_of` ignorado deixaria as duas
+/// asserções acima verdes por construção.
+#[test]
+fn the_injected_live_source_is_the_plain_walk() {
+    let mut world = bevy_ecs::world::World::new();
+    let root = world
+        .spawn(Transform {
+            translation: Vec2::new(1.5, -2.5),
+            rotation: 0.7,
+            scale: Vec2::new(1.25, 0.8),
+            skew_x: 0.15,
+            skew_y: 0.0,
+        })
+        .id();
+    let mid = world
+        .spawn((
+            Transform {
+                translation: Vec2::new(-3.0, 4.0),
+                rotation: -1.2,
+                scale: Vec2::new(2.0, 2.0),
+                skew_x: 0.0,
+                skew_y: 0.05,
+            },
+            ChildOf(root),
+        ))
+        .id();
+    let leaf = world
+        .spawn((
+            Transform::from_translation(Vec2::new(0.5, 0.25)),
+            ChildOf(mid),
+        ))
+        .id();
+
+    let vivo = |e: bevy_ecs::entity::Entity| world.get::<Transform>(e).copied();
+    let mut scratch = Vec::new();
+    for e in [root, mid, leaf] {
+        assert_eq!(
+            parent_world_transform_with(&world, e, &mut scratch, &vivo),
+            parent_world_transform(&world, e),
+            "a fonte injectada moveu a travessia do PAI"
+        );
+        assert_eq!(
+            world_transform_with(&world, e, &mut scratch, &vivo),
+            world_transform(&world, e),
+            "a fonte injectada moveu a travessia da ENTIDADE"
+        );
+    }
+
+    // ⛔ O CONTROLO: uma fonte que responde OUTRA coisa tem de mudar a resposta — senão as duas
+    // asserções acima passariam sobre um argumento que ninguém lê.
+    let mentirosa = |_e: bevy_ecs::entity::Entity| Some(Transform::from_translation(Vec2::ZERO));
+    assert_ne!(
+        world_transform_with(&world, leaf, &mut scratch, &mentirosa),
+        world_transform(&world, leaf),
+        "o `local_of` nao e' lido: a travessia continua a ir buscar a pose ao mundo"
+    );
+    // ⚠️⚠️ **E o controlo na RAIZ, que é a metade que faltava:** numa folha a cadeia de ancestrais
+    // já basta para a resposta mudar, então a asserção acima sobrevive a uma travessia que leia a
+    // pose da PRÓPRIA entidade do mundo. Medido por mutação (`local_of(entity)` →
+    // `world.get::<Transform>(entity)`): ela ficou VERDE. Numa raiz o único termo é o dela.
+    assert_ne!(
+        world_transform_with(&world, root, &mut scratch, &mentirosa),
+        world_transform(&world, root),
+        "a travessia foi buscar a pose da PROPRIA entidade ao mundo em vez da fonte"
     );
 }

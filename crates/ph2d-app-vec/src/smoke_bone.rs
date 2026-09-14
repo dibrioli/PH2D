@@ -32,7 +32,8 @@ use ph2d_vec_scene::cook_tinted as shape;
 // medem-nas — dois consumidores, de propósito, sem uma família depender da outra.
 use ph2d_skeleton_demo::{
     ARM_A, ARM_B, ARM_BONES, ARM_ELBOW_BEND, DEMO_ACTION, DEMO_RISE, DEMO_SECONDS, TENTACLE_BONES,
-    TENTACLE_LIMIT_HALF, TENTACLE_LIMITED_BONE, cadeia, ponta_da_cadeia, seed_demo_action,
+    TENTACLE_LIMIT_HALF, TENTACLE_LIMITED_BONE, cadeia, ponta_da_cadeia, seed_arm_swing,
+    seed_demo_action,
 };
 
 /// **O roteador desta cena** — lê a `PH2D_VEC_BONE_SMOKE`.
@@ -218,6 +219,26 @@ pub fn bind(
             "[vec-bone-smoke] a barra AZUL passa por CIMA do braco pintado (a imagem esta' na ordem \
              do quadro), e o olho da linha «Painted arm» na Hierarquia esconde-a"
         );
+        // ⭐⭐⭐ **O BRAÇO GANHA ANIMAÇÃO no clip ABERTO** (plano 03, W7): sem ela o onion não tem
+        // passado nem futuro a mostrar, e a cena provaria o motor dos fantasmas **por ausência** —
+        // que é indistinguível de ele estar partido.
+        if let Some(raiz) = raiz {
+            let ponta = ponta_da_cadeia(sim, raiz);
+            seed_arm_swing(doc, ponta.to_bits());
+            // ⚠️ **O NOME que a Hierarquia mostra, e não os bits.** Um passo que manda clicar numa
+            // linha tem de a nomear como ela aparece — os bits são um id de alocação que o artista
+            // nunca vê.
+            let nome = sim
+                .world()
+                .get::<ph2d_ecs::Name>(ponta)
+                .map_or_else(|| "<sem nome>".to_string(), |n| n.as_str().to_string());
+            eprintln!(
+                "[vec-bone-smoke] o osso da PONTA do braco pintado («{nome}» na Hierarquia) tem \
+                 animacao no clip ABERTO: escolha essa linha, arraste o cursor da Timeline para o \
+                 MEIO e ligue «Onion» na barra dela — os fantasmas mostram a arte DOBRADA em t+-k. \
+                 Ate' 13/09 eles mostravam o quad de REPOUSO, e um rig nao produzia fantasma nenhum."
+            );
+        }
     }
     let mut presas = 0;
     for (id, raiz) in pecas.iter().take(2) {

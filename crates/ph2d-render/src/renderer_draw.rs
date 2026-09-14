@@ -21,13 +21,27 @@ impl SpriteRenderer {
         window: WindowSize,
         clear_color: wgpu::Color,
     ) {
-        self.render_with_extra(target, present, camera, window, clear_color, &[], None);
+        self.render_with_extra(
+            target,
+            present,
+            camera,
+            window,
+            clear_color,
+            &crate::LiftedInstances::default(),
+            None,
+        );
     }
 
     /// [`render`](Self::render) plus two Motion Nodes hooks. `extra` (M0.T11) is
-    /// an external instance slice appended to the scene, sorted + batched in the
+    /// an external instance set appended to the scene, sorted + batched in the
     /// same pass — a cooked node-graph stream draws without being spawned into
-    /// `PresentWorld` (stream ≠ ECS, ADR-0035); `&[]` = scene-only. `scene_viewport`
+    /// `PresentWorld` (stream ≠ ECS, ADR-0035); vazio = scene-only.
+    ///
+    /// ⭐⭐ **Ele é uma [`crate::LiftedInstances`] e não uma fatia crua desde 2026-09-13** (plano
+    /// `docs/Skeleton/03`, W7): os fantasmas do onion de uma imagem presa ao esqueleto levam a
+    /// MALHA deles (a arte deformada em `t ± k`), e um vector paralelo de malhas ao lado da fatia é
+    /// o padrão que o `corner_radius` proíbe por escrito. O stream do Motion entra sem malha
+    /// nenhuma e desenha byte a byte como sempre. `scene_viewport`
     /// (M0.T13) optionally frames the scene into a target sub-rect `[x, y, w, h]`
     /// px via `set_viewport`/`set_scissor_rect` + [`Camera2d::uniform_for_subrect`]
     /// (the split viewport-vs-graph); it applies only on the plain single-pass
@@ -41,7 +55,7 @@ impl SpriteRenderer {
         camera: &Camera2d,
         window: WindowSize,
         clear_color: wgpu::Color,
-        extra: &[RenderInstance],
+        extra: &crate::LiftedInstances,
         scene_viewport: Option<[f32; 4]>,
     ) {
         self.render_with_streams(
@@ -76,7 +90,7 @@ impl SpriteRenderer {
         camera: &Camera2d,
         window: WindowSize,
         clear_color: wgpu::Color,
-        extra: &[RenderInstance],
+        extra: &crate::LiftedInstances,
         gpu_extra: Option<(&wgpu::Buffer, u32, &[crate::GpuTexRun])>,
         scene_viewport: Option<[f32; 4]>,
         // ⭐⭐ **A FAIXA de desenho** (ADR-0154 Fase 2) — `Some((lo, hi))` desenha só as instâncias

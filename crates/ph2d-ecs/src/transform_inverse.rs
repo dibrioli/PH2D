@@ -46,11 +46,42 @@ pub fn parent_world_transform_into(
     entity: Entity,
     scratch: &mut Vec<Transform>,
 ) -> Transform {
+    parent_world_transform_with(world, entity, scratch, &|e| {
+        world.get::<Transform>(e).copied()
+    })
+}
+
+/// ⭐⭐⭐ **[`parent_world_transform_into`] com a FONTE DA POSE LOCAL injectada** — a MESMA
+/// travessia, perguntando a outro instante.
+///
+/// ⚠️ **Ela existe para que não haja uma segunda travessia.** O onion precisa de *onde este osso
+/// está em `t`*, e a resposta é a cadeia inteira posada em `t` — ⛔ escrever esse laço noutra crate
+/// seria a segunda resposta a *«onde está esta entidade?»*, que é literalmente o defeito de que o
+/// cabeçalho deste módulo avisa. O que muda entre os dois consumidores é **uma linha**: de onde vem
+/// o `Transform` local de cada elo.
+///
+/// ⚠️ **O QUADRO DA ÂNCORA continua a sair do mundo** (`anchor_mount::mount_frame`), e é correcto:
+/// ele é a montagem (*que âncora do pai este filho monta?*), não uma pose animada. Uma timeline que
+/// anime a âncora move o `Transform` dela, e esse entra pela fonte como todos os outros.
+///
+/// ⚠️ **`local_of` devolve `None` exactamente onde o mundo devolveria** — um elo sem `Transform`
+/// não entra na dobra, como sempre; devolver `Some(IDENTITY)` ali mudaria o resultado da travessia
+/// viva, porque a composição empilha um elo a mais.
+///
+/// ⛔ **Estático, nunca `dyn`:** esta travessia corre por entidade e por quadro no caminho vivo, e a
+/// generalização é para custar ZERO ali — as duas instâncias (a viva e a posada) são compiladas
+/// separadas. O gate `the_injected_live_source_is_the_plain_walk` prova que a viva não se move.
+pub fn parent_world_transform_with(
+    world: &World,
+    entity: Entity,
+    scratch: &mut Vec<Transform>,
+    local_of: &impl Fn(Entity) -> Option<Transform>,
+) -> Transform {
     scratch.clear();
     let mut child = entity;
     let mut cur = world.get::<ChildOf>(entity).map(|c| c.parent());
     while let Some(p) = cur {
-        if let Some(t) = world.get::<Transform>(p) {
+        if let Some(t) = local_of(p) {
             // ⚠️ **A MESMA lei que a propagação usa** (`crate::anchor_mount::mount_frame`), e a
             // razão de ser a mesma está escrita neste ficheiro: *duas respostas para «onde está
             // esta entidade» é precisamente o bug que esta família não para de produzir*. Um
@@ -64,7 +95,7 @@ pub fn parent_world_transform_into(
             if let Some(anchor) = crate::anchor_mount::mount_frame(world, p, child) {
                 scratch.push(anchor);
             }
-            scratch.push(*t);
+            scratch.push(t);
         }
         child = p;
         cur = world.get::<ChildOf>(p).map(|c| c.parent());
@@ -102,9 +133,27 @@ pub fn world_transform_into(
     entity: Entity,
     scratch: &mut Vec<Transform>,
 ) -> Option<Transform> {
-    let local = *world.get::<Transform>(entity)?;
+    world_transform_with(world, entity, scratch, &|e| {
+        world.get::<Transform>(e).copied()
+    })
+}
+
+/// ⭐⭐⭐ **[`world_transform_into`] com a FONTE DA POSE LOCAL injectada** — ver
+/// [`parent_world_transform_with`] para o porquê de a travessia ser UMA só.
+///
+/// ⚠️ **A fonte responde pela entidade E por cada ancestral.** Perguntar ao instante só na folha
+/// deixaria o osso animado a pendurar de um pai que ficou em *agora* — e o sintoma seria a arte a
+/// dobrar certo no sítio errado, que é indistinguível de um defeito da própria pele.
+#[must_use]
+pub fn world_transform_with(
+    world: &World,
+    entity: Entity,
+    scratch: &mut Vec<Transform>,
+    local_of: &impl Fn(Entity) -> Option<Transform>,
+) -> Option<Transform> {
+    let local = local_of(entity)?;
     Some(Transform::compose(
-        parent_world_transform_into(world, entity, scratch),
+        parent_world_transform_with(world, entity, scratch, local_of),
         local,
     ))
 }

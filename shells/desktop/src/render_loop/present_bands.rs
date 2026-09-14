@@ -96,7 +96,7 @@ pub(super) fn draw_lower_bands(
                     g.camera,
                     g.window_size,
                     wgpu::Color::TRANSPARENT,
-                    &[],
+                    &ph2d_render::LiftedInstances::default(),
                     None,
                     g.scene_viewport,
                     Some((band.lo, band.hi)),

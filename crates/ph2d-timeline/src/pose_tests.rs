@@ -299,3 +299,87 @@ fn animated_entities_lists_each_entity_once() {
         "cada entidade animada aparece exatamente uma vez"
     );
 }
+
+/// ⭐⭐⭐ **Sem nada autorado, a pose de MUNDO num instante é a pose de MUNDO de agora** — ao bit, na
+/// raiz e no filho.
+///
+/// ⚠️ É o que ata a lei nova à que já existe: o [`crate::world_pose_at`] não é uma travessia nova, é
+/// a do `transform_inverse` com a fonte trocada. Um doc vazio tem de a devolver intacta, senão há
+/// **duas** respostas para *«onde está esta entidade?»* — o defeito que aquele módulo existe para
+/// não ter.
+#[test]
+fn with_nothing_authored_the_world_pose_at_is_the_world_pose_now() {
+    let mut w = World::new();
+    let pai = w
+        .spawn(Transform {
+            translation: Vec2::new(2.0, -1.0),
+            rotation: 0.6,
+            scale: Vec2::new(1.5, 0.75),
+            skew_x: 0.1,
+            skew_y: 0.0,
+        })
+        .id();
+    let filho = w
+        .spawn((
+            Transform::from_translation(Vec2::new(0.5, 0.25)),
+            ph2d_ecs::ChildOf(pai),
+        ))
+        .id();
+    let doc = TimelineDoc::new();
+    for e in [pai, filho] {
+        same(
+            &crate::world_pose_at(&w, &doc, e.to_bits(), 1.0).expect("a entidade tem Transform"),
+            &ph2d_ecs::world_transform(&w, e).expect("idem"),
+            "doc vazio",
+        );
+    }
+}
+
+/// ⭐⭐⭐ **Uma key no PAI move o filho** — e o `pose_at` do filho, sozinho, NÃO se mexe.
+///
+/// ⚠️ **O segundo lado é o achado, não a redundância:** uma pele responde a poses de MUNDO, e um
+/// osso é um elo de uma corrente. Se a pose do fantasma saísse do `pose_at` da folha (como saía até
+/// 2026-09-13), um osso animado pendurado num pai animado ficaria pendurado no pai **de agora** — e
+/// a arte dobraria certo no sítio errado.
+#[test]
+fn a_key_on_the_parent_moves_the_child_in_world_and_not_its_local_pose() {
+    let mut w = World::new();
+    let pai = w.spawn(Transform::from_translation(Vec2::ZERO)).id();
+    let filho = w
+        .spawn((
+            Transform::from_translation(Vec2::new(1.0, 0.0)),
+            ph2d_ecs::ChildOf(pai),
+        ))
+        .id();
+    let mut doc = TimelineDoc::new();
+    key(
+        &mut doc,
+        pai.to_bits(),
+        PropKind::TranslationX,
+        0.0,
+        0.0,
+        Interp::Linear,
+    );
+    key(
+        &mut doc,
+        pai.to_bits(),
+        PropKind::TranslationX,
+        4.0,
+        8.0,
+        Interp::Linear,
+    );
+    let mundo =
+        crate::world_pose_at(&w, &doc, filho.to_bits(), 2.0).expect("o filho tem Transform");
+    assert!(
+        (mundo.translation.x - 5.0).abs() < 1e-5,
+        "o filho tinha de seguir o pai posado (x = 4 do pai + 1 dele), e leu {}",
+        mundo.translation.x
+    );
+    // ⛔ O CONTROLO: a pose LOCAL do filho não conhece o pai — é exactamente por isso que a porta
+    // nova existe, e sem esta linha o gate acima passaria com uma travessia que nem lê a cadeia.
+    let local = pose_at(&w, &doc, filho.to_bits(), 2.0).expect("idem");
+    assert!(
+        (local.translation.x - 1.0).abs() < 1e-6,
+        "a pose LOCAL do filho mexeu-se: entao a de mundo acima nao prova a composicao"
+    );
+}

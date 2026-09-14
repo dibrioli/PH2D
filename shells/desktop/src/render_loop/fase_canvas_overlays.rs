@@ -87,11 +87,14 @@ impl crate::App {
         self.onion_ghosts.clear();
         timeline_onion::collect_onion_ghosts(
             &self.timeline.onion,
-            sim.world(),
+            sim,
             present,
             &self.timeline.doc,
             hero.gizmo.iter_selected().next(),
             self.playhead.time(),
+            // A régua do projecto — a MESMA que o extract passa ao `Sprite::resolve_anchor`, senão a
+            // malha do fantasma e a do vivo respondem a âncoras diferentes.
+            hero.project.pixels_per_meter,
             &mut self.onion_ghosts,
         );
     }

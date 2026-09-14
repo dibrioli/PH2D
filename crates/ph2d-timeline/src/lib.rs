@@ -104,7 +104,7 @@ pub use onion::{OnionMode, OnionSettings};
 pub use path::{MotionPath, PathAnchor, PathSample, TangentKind};
 pub use path_convert::{ConversionReport, PositionKeyMode};
 pub use persist::{refresh_and_heal_bindings, resolve_entities, stamp_wire_ids};
-pub use pose::{animated_entities, entity_key_times, pose_at};
+pub use pose::{animated_entities, entity_key_times, pose_at, world_pose_at, world_pose_at_into};
 pub use prop::{Algebra, PropKind};
 pub use refusal::{KeyRefusal, NestRefusal};
 pub use signal::{TimelineSignal, signals_crossed};

@@ -112,6 +112,9 @@ pub fn skeleton_of(sim: &SimWorld, seed: Option<Entity>) -> Vec<Entity> {
     out
 }
 
+/// O índice `StableId → entidade` dos ossos da cena — ver [`bone_index`].
+pub type BoneIndex = std::collections::BTreeMap<StableId, Entity>;
+
 /// ⭐⭐ **O ÍNDICE `StableId → entidade` dos ossos** — a porta única da resolução de um tendão.
 ///
 /// ⚠️ **Construído uma vez por quadro e passado adiante**, e é o que o doc do
@@ -121,7 +124,8 @@ pub fn skeleton_of(sim: &SimWorld, seed: Option<Entity>) -> Vec<Entity> {
 ///
 /// ⚠️ **Só ossos**, e é o filtro que faz a resposta ser a certa: um `StableId` de um osso apagado
 /// simplesmente não está aqui, e o tendão dele é saltado.
-fn bone_index(sim: &SimWorld) -> std::collections::BTreeMap<StableId, Entity> {
+#[must_use]
+pub fn bone_index(sim: &SimWorld) -> BoneIndex {
     sim.world()
         .iter_entities()
         .filter(|er| er.get::<Bone>().is_some())
@@ -137,7 +141,29 @@ fn resolve(
     shape: Entity,
     index: &std::collections::BTreeMap<StableId, Entity>,
 ) -> Option<Skin> {
-    let shape_inv = world_of(sim, shape).inverse()?;
+    resolve_with(sim, skin, shape, index, &|e| world_of(sim, e))
+}
+
+/// ⭐⭐⭐ **[`resolve`] com a FONTE DAS POSES DE MUNDO injectada** — a mesma lei, noutro instante.
+///
+/// ⚠️ **Uma pele é função de POSES, e «agora» é só uma das respostas possíveis.** Os fantasmas do
+/// onion precisam da pele em `t ± k` (as poses dos OSSOS naquele instante, compostas pela cadeia), e
+/// copiar esta função para lá faria uma forma e a imagem irmã responderem a leis diferentes — o
+/// defeito que o [`tendons_for`] já nomeia por escrito, um nível abaixo.
+///
+/// ⛔ **A crate não conhece a timeline, e não é para conhecer:** quem sabe o que é um instante
+/// constrói o fecho e passa-o. Aqui só existe *«onde está esta entidade»*.
+///
+/// ⚠️ **A fonte responde pela FORMA e pelos OSSOS.** Posar só os ossos deixaria a imagem no sítio de
+/// agora com o esqueleto no de `t` — a arte dobrava e escorregava ao mesmo tempo.
+fn resolve_with(
+    sim: &SimWorld,
+    skin: &SkinBind,
+    shape: Entity,
+    index: &BoneIndex,
+    poses: &impl Fn(Entity) -> Xform,
+) -> Option<Skin> {
+    let shape_inv = poses(shape).inverse()?;
     let mut ossos = Vec::with_capacity(skin.tendons.len());
     for b in &skin.tendons {
         // Um osso apagado — ou um cuja identidade não está no índice — é SALTADO, e os outros
@@ -148,13 +174,8 @@ fn resolve(
         let Some(vb) = sim.world().get::<Bone>(e).copied() else {
             continue;
         };
-        if let Some(sb) = SkinBone::new(
-            Xform(b.rest),
-            vb.length,
-            vb.strength,
-            world_of(sim, e),
-            shape_inv,
-        ) {
+        if let Some(sb) = SkinBone::new(Xform(b.rest), vb.length, vb.strength, poses(e), shape_inv)
+        {
             ossos.push(sb);
         }
     }
@@ -176,6 +197,31 @@ fn resolve(
 pub fn skin_of(sim: &SimWorld, e: Entity) -> Option<Skin> {
     let skin = sim.world().get::<SkinBind>(e)?;
     resolve(sim, skin, e, &bone_index(sim))
+}
+
+/// ⭐⭐⭐ **A pele de uma coisa NUM INSTANTE** — o [`skin_of`] com as poses de mundo injectadas.
+///
+/// `poses(e)` devolve **onde `e` está** no instante que interessa; o consumidor de hoje é o onion,
+/// que compõe `ph2d_timeline::world_pose_at` pela cadeia. Ver [`resolve_with`] para o porquê de a
+/// lei ser UMA.
+/// ⚠️ **Quem corre em LAÇO usa o [`skin_of_in`]** e partilha o índice — é a lei que o doc do
+/// [`skin_of`] já escreve: *«ela constrói o índice a cada chamada, e é de propósito: quem chama tem
+/// UMA coisa na mão»*. O onion tem `N artes × M instantes` na mão.
+#[must_use]
+pub fn skin_of_with(sim: &SimWorld, e: Entity, poses: &impl Fn(Entity) -> Xform) -> Option<Skin> {
+    skin_of_in(sim, e, &bone_index(sim), poses)
+}
+
+/// [`skin_of_with`] com o índice de ossos emprestado — para quem resolve MUITAS peles num quadro.
+#[must_use]
+pub fn skin_of_in(
+    sim: &SimWorld,
+    e: Entity,
+    index: &BoneIndex,
+    poses: &impl Fn(Entity) -> Xform,
+) -> Option<Skin> {
+    let skin = sim.world().get::<SkinBind>(e)?;
+    resolve_with(sim, skin, e, index, poses)
 }
 
 /// **Um quadro de pele.** Corre depois do `vec_entities::sync` (as entidades existem) e ao lado do
@@ -393,6 +439,46 @@ pub fn chain_ends(sim: &SimWorld) -> Vec<u64> {
         .map(|e| e.to_bits())
         .collect();
     out.sort_unstable();
+    out
+}
+
+/// ⭐⭐⭐ **AS IMAGENS PRESAS A ESTE ESQUELETO** — a arte que se move quando este osso se move.
+///
+/// ⚠️ **Ela existe porque um OSSO não tem silhueta.** O onion mostra o passado e o futuro do que o
+/// animador tem na mão, e o que ele tem na mão quando posa é um osso — a coisa que se vê mover é a
+/// ARTE. Sem esta porta o onion de um personagem riggado não mostrava nada: a imagem não está
+/// animada (quem tem keys são os ossos) e o osso não tem instância de desenho.
+///
+/// ⚠️ **O critério é o TENDÃO, e não a hierarquia:** prender é uma decisão autorada, e uma imagem
+/// pode estar pendurada em qualquer sítio da cena. Um tendão cujo osso não está no índice (apagado)
+/// simplesmente não conta, como em todo o resto deste módulo.
+///
+/// ⛔ **Só IMAGENS.** Uma forma vectorial presa ao mesmo esqueleto é desenhada pelo Vello e não tem
+/// `RenderInstance` — o passe que desenha fantasmas é o de sprites, logo ela não pode ser ghostada
+/// por aqui. Limite NOMEADO, não esquecimento.
+#[must_use]
+pub fn skinned_images_of_skeleton(sim: &SimWorld, seed: Entity, index: &BoneIndex) -> Vec<Entity> {
+    let ossos: std::collections::BTreeSet<Entity> =
+        skeleton_of(sim, Some(seed)).into_iter().collect();
+    if ossos.is_empty() {
+        return Vec::new();
+    }
+    let mut out: Vec<Entity> = sim
+        .world()
+        .iter_entities()
+        .filter(|er| crate::skin_image::is_skinned_image(sim.world(), er.id()))
+        .filter(|er| {
+            er.get::<SkinBind>().is_some_and(|s| {
+                s.tendons
+                    .iter()
+                    .any(|t| index.get(&t.bone).is_some_and(|b| ossos.contains(b)))
+            })
+        })
+        .map(|er| er.id())
+        .collect();
+    // A ordem de `iter_entities` é a dos arquétipos; ordenar deixa a lista determinística entre
+    // quadros, que é o que um consumidor de desenho precisa.
+    out.sort_by_key(|e| e.to_bits());
     out
 }
 

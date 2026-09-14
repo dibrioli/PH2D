@@ -37,6 +37,7 @@ As cinco waves:
 | **W4** | o orçamento re-medido — `8 738` (do buffer do Vello) → **`1 543`** (do tempo do quadro) |
 | **W5** | a cena que ENSINA a ordem e o olho |
 | **W6** | a caixa do gizmo da sprite deixa de engolir o rig — a lei do ADR-0112 vira UMA porta |
+| **W7** | **o ONION vê a pele**: a pose de mundo num instante, a pele resolvida nele, a malha por fantasma, e o escopo que um OSSO define |
 
 ---
 
@@ -54,6 +55,11 @@ As cinco waves:
 | `ph2d-app-skeleton/src/state.rs` | sai o campo `skin_image_cache` (o `SkeletonState` fica com SETE) | — |
 | `ph2d-app-vec/src/smoke_bone.rs` | a barra que ensina a ordem + as duas portas derivadas | sim |
 | `shells/desktop/**` | o extract emite a sprite presa · a `fase_sim_extract` põe a malha · o overlay do Vello sai · o vidro/emissivo/*View All* pela porta nova · o `ppm` no *Bind* e no smoke | ver §6 |
+| `ph2d-ecs/src/transform_inverse.rs` (W7) | `parent_world_transform_with` / `world_transform_with`: a MESMA travessia com a fonte da pose local injectada (estática, zero custo no caminho vivo) | sim |
+| `ph2d-timeline/src/pose.rs` (W7) | `world_pose_at` / `_into`: o `pose_at` de cada elo, composto pela travessia acima | sim |
+| `ph2d-skeleton-live` (W7) | `skin_of_in`/`skin_of_with`, `deform_field_with`, `posed_sprite_mesh`, `bone_index` público, `skinned_images_of_skeleton` | sim (a pele viva é a mesma) |
+| `ph2d-render` `sprite_collect.rs` + `renderer_draw.rs` (W7) | o `extra` do passe é uma `LiftedInstances` (leva malhas), e não uma fatia crua | **muda a assinatura** de `render_with_extra`/`render_with_streams` |
+| `ph2d-skeleton-demo/src/lib.rs` (W7) | `seed_arm_swing` — a acção do braço, no clip ABERTO | sim |
 | `shells/desktop/src/render_loop/snapshots.rs` (W6) | o `vec_gizmo_on` vira `object_gizmo_on` e sobe para UMA porta no topo do `build_view`: **nenhuma família** publica caixa de objecto fora do Select da ferramenta vectorial (os dois `if` por família saem) | **muda comportamento** — uma SPRITE e um GRUPO deixam de publicar caixa naqueles modos (§6.8) |
 
 ---
@@ -114,6 +120,18 @@ da malha e o *View All* com âncora · a UV do pintor · a malha que o passe rec
 **W5** (`ph2d-app-vec`): a barra atravessa o braço pintado e não o tapa, em qualquer
 `pixels_per_meter`.
 
+**W7** (4 crates + shell): a fonte injectada devolve a travessia viva **ao bit**, com o controlo de
+uma fonte que mente nas DUAS pontas (`ph2d-ecs`) · doc vazio ⇒ `world_pose_at == world_transform`, e
+uma key no PAI move o filho em MUNDO e **não** a pose local dele (`ph2d-timeline`) · posar a pele sem
+tocar no mundo dá o que o mundo daria, e o mundo fica onde estava (`ph2d-skeleton-live`, com o
+oráculo a ser o PRÓPRIO produto) · a malha do fantasma dobra a arte e **mantém a UV de repouso** · a
+fatia de fora COM malha é marcada e as duas metades do quadro partilham a costura (`ph2d-render`) ·
+um OSSO seleccionado ghosta a arte que ele deforma, com os dois controlos (nada animado · o osso de
+OUTRO esqueleto) · e os fantasmas de instantes diferentes trazem malhas DIFERENTES (shell).
+**Sete mutações, sete RED.** ⚠️ **Uma delas SOBREVIVEU à primeira** — `local_of(entity)` →
+`world.get::<Transform>(entity)` — e nomeou o buraco: numa FOLHA a cadeia de ancestrais já basta para
+a resposta mudar, logo o controlo tem de estar numa **RAIZ**. O gate ganhou essa metade.
+
 **W6** (shell, `snapshots_object_gizmo_tests`): uma sprite seleccionada **não** publica caixa fora do
 Select da ferramenta vectorial, e as **extras** de uma multi-selecção obedecem à mesma porta.
 ⚠️ **Cada metade traz o CONTROLO `object_gizmo_on = true` ao lado** — um `present` sem espelho
@@ -147,6 +165,17 @@ lugar do guarda): **2 de 2 RED**, na asserção certa.
    fez nascer debaixo de um gesto de autoria. ⛔ **Nenhum gesto se perde:** naqueles modos o
    `ramo_ferramenta_vetorial` consome todo press de canvas, logo a caixa só era alcançável onde ela
    bloqueava o ramo. E a **selecção fica armada** — é isso que mantém o *Bind* com sujeito.
+10. **A W7 não «fez os fantasmas dobrarem»: ela fez um rig TER fantasmas.** A leitura anterior era
+   *«eles desenham o quad de repouso»*, que é verdade **se houver fantasma** — e num rig normal não
+   havia: o onion exigia que o seleccionado estivesse animado **e** desenhasse, e numa personagem
+   riggada quem leva keys são os ossos (que não desenham) e quem desenha é a imagem (que não leva
+   keys). *Duas guardas que se excluem uma à outra desligam o recurso sem nunca o dizer.*
+11. **O `extra` do passe mudar de `&[RenderInstance]` para `&LiftedInstances` NÃO é arrumação:** é o
+   par instância+malha a viajar junto. Um vector paralelo ao lado da fatia é o padrão que o
+   `corner_radius` proíbe por escrito, e o stream do Motion continua a entrar **sem malha nenhuma**.
+12. **O `ghost_instance` passou a ler a pose de MUNDO, e isso fechou uma nota antiga de graça:** o
+   ADR-0142 dizia *«rigs parenteados são wave futura»* porque ele lia o `pose_at` LOCAL. Para uma
+   raiz as duas respostas são as mesmas — os nove gates do onion passam sem uma linha mudada.
 9. **O `vec_gizmo_on` não foi só renomeado:** ele mudou de sítio (de dois `if` dentro dos ramos para
    UMA porta no topo do `build_view`) e de alcance (todas as famílias). O nome antigo mentia desde
    que o Flip entrou com o gémeo dele.
@@ -177,6 +206,14 @@ lugar do guarda): **2 de 2 RED**, na asserção certa.
    mas «quem passa a ter resposta onde antes não tinha nenhuma?»* — e a resposta nova chegou a um
    `hit_index` e matou o gesto que vivia por cima dela.
 
+7. ⛔⛔ **«Curar o onion custa três peças»** (a redacção da W3) — custa **quatro**, e a que faltava é
+   a que decide se o recurso existe: o **ESCOPO**. As três previstas (a pose de mundo em `t`, a pele
+   que a aceita, a malha por fantasma) estavam certas e bastavam para *desenhar* um fantasma que
+   ninguém chegava a pedir.
+8. ⛔ **«O `bone_index` constrói-se por chamada, e é de propósito»** — verdade para quem tem UMA
+   coisa na mão, e o doc dele já dizia que um LAÇO o partilha. O onion é `N` artes × `M` instantes,
+   e o `attach_skin_meshes` (que também é um laço) herda a porta nova.
+
 ---
 
 ## §8 — O que fica ABERTO
@@ -187,6 +224,8 @@ lugar do guarda): **2 de 2 RED**, na asserção certa.
 | ⚠️ **A UV do pintor fora da malha** | `sprite_world_to_uv_unclamped` responde pela lei do quad de REPOUSO: um traço que sai da silhueta posada é mapeado como se a imagem repousasse |
 | ⚠️ **9-slice e folha desdobrada** | a malha só conhece o quad da sprite; essas desenham-se SEM deformar, com aviso único no stderr |
 | ⏳ **A FATIA do quadro (`1/10`)** | é a única escolha do `SKIN_FRAME_PIECES`; medir outra é `PH2D_SKIN_PIECES=<n>` |
+| ⏳ **O custo do onion no EXTREMO** | medido: uma peça de fantasma vale `0,158 µs`, logo `16` fantasmas (o máximo dos dois sliders) sobre uma pele no tecto dela (`1 543` peças) são **`~3,9 ms`, `23 %` de um quadro**. ⛔ Não se corta nada — deitar fora os mais distantes é decisão de PRODUTO; o que fica é o número no `PH2D_BONE_LOG` |
+| ⛔ **Uma forma VECTORIAL presa não tem fantasma** | ela é desenhada pelo Vello e não tem `RenderInstance`, e o passe que desenha fantasmas é o de sprites. Limite NOMEADO — curá-lo é um fantasma de Vello, outra máquina |
 | ⏳ **O gémeo do Flip da W6** | um objecto de OUTRA família continua a publicar caixa enquanto a ferramenta Flip desenha — o `flip_gizmo_on` gateia só a arte do Flip. Mesmo mecanismo (o `GIZMO_BBOX_INTERIOR` a matar o `on_canvas`), outra ferramenta, e **sem report** |
 | ⚠️ **DUAS caixas de sprite** | a do gizmo sai do `sheet_grid_overlay::gizmo_box(sprite, …)` (o quad) e a do `ph2d_editor_core::gizmo` sai do `ph2d_render::selection_bbox_world` (que a W3 tornou ciente da malha): numa imagem presa e DOBRADA elas discordam. Hoje só a segunda é lida (o *View All* e o contorno do realce) |
 | ⚠️ **Vermelho PRÉ-EXISTENTE, não desta linha** | `ph2d-preview-drive/src/lib.rs:493` — clippy `len` sem `is_empty`. A crate é intocada por esta linha (último commit dela: `21c403c20`, 12/09) |

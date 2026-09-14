@@ -117,7 +117,8 @@ pub mod transform_inverse;
 pub mod transform_versioned;
 
 pub use crate::transform_inverse::{
-    parent_world_transform, parent_world_transform_into, world_transform, world_transform_into,
+    parent_world_transform, parent_world_transform_into, parent_world_transform_with,
+    world_transform, world_transform_into, world_transform_with,
 };
 pub use audio_2d::{
     AUDIO_MAX_DISTANCE_M, AUDIO_MAX_POLYPHONY, AudioBus, AudioListener2D, AudioSource2D, Spatial,

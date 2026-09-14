@@ -659,3 +659,8 @@ fn posed_local(sim: &SimWorld, e: Entity, mesh: &Mesh2d) -> Option<Vec<[f64; 2]>
             .collect(),
     )
 }
+
+/// A pele NOUTRO INSTANTE (a fonte de poses injectada) — filho por assunto, e aqui dentro para
+/// herdar as fixturas deste arnês (uma cópia delas divergiria no primeiro ajuste).
+#[path = "skin_at_time_tests.rs"]
+mod at_time;

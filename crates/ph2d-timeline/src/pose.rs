@@ -158,6 +158,51 @@ pub fn pose_at(world: &World, doc: &TimelineDoc, entity: u64, clip_t: f64) -> Op
     Some(xf)
 }
 
+/// ⭐⭐⭐ **A pose de MUNDO de uma entidade num instante** — o [`pose_at`] de **cada elo** da cadeia,
+/// composto pela travessia única do `ph2d-ecs` ([`ph2d_ecs::world_transform_with`]).
+///
+/// ⚠️ **Ela existe porque uma pele responde a poses de MUNDO.** Um osso é uma entidade e a corrente
+/// dele é a hierarquia da casa: a deformação de uma imagem presa em `t` é função de onde cada osso
+/// **está** em `t`, e o `pose_at` sozinho responde só a pose LOCAL. Compor com o mundo *de agora*
+/// daria um osso animado pendurado num pai parado — a arte dobra certo no sítio errado, que é
+/// indistinguível de um defeito da própria pele.
+///
+/// ⛔ **A travessia NÃO é escrita aqui.** Ela é a do `transform_inverse`, com a fonte da pose local
+/// injectada: o quadro da âncora, a ordem da dobra e a aproximação de skew saem de lá, e o gate
+/// `the_injected_live_source_is_the_plain_walk` prova que a fonte viva não move um ULP. *Duas
+/// respostas para «onde está esta entidade?» é o defeito que aquele módulo inteiro existe para não
+/// ter.*
+///
+/// ⚠️ **Um elo sem binding devolve a pose VIVA dele** — é o `pose_at` semeado do mundo, e é o que
+/// faz um esqueleto pendurado num grupo parado responder certo sem uma linha de caso especial.
+///
+/// `None` quando a entidade não existe ou não tem `Transform`.
+#[must_use]
+pub fn world_pose_at(
+    world: &World,
+    doc: &TimelineDoc,
+    entity: u64,
+    clip_t: f64,
+) -> Option<Transform> {
+    world_pose_at_into(world, doc, entity, clip_t, &mut Vec::new())
+}
+
+/// [`world_pose_at`] com o buffer de ancestrais emprestado, para quem corre por quadro —
+/// a mesma razão (e o mesmo par) do [`ph2d_ecs::world_transform_into`].
+#[must_use]
+pub fn world_pose_at_into(
+    world: &World,
+    doc: &TimelineDoc,
+    entity: u64,
+    clip_t: f64,
+    scratch: &mut Vec<Transform>,
+) -> Option<Transform> {
+    let e = Entity::try_from_bits(entity)?;
+    ph2d_ecs::world_transform_with(world, e, scratch, &|elo| {
+        pose_at(world, doc, elo.to_bits(), clip_t)
+    })
+}
+
 /// **Os instantes de keyframe de uma entidade**, em segundos, ordenados e sem repetição —
 /// a UNIÃO dos tempos de key de todas as tracks dela (exceto o Time Remap, que é o
 /// relógio, não uma pose). É o que o onion em modo *Keys* ghosta: as poses AUTORADAS

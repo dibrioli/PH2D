@@ -14,9 +14,9 @@
 //! e o passe de render diferem (o Flip composita camadas de pixels; aqui injetamos
 //! instâncias de sprite). Unificar em crate é follow-up se um 3º consumidor aparecer.
 
-use ph2d_ecs::{GlobalTransform, PresentWorld, SimRef, World};
-use ph2d_render::RenderInstance;
-use ph2d_timeline::{TimelineDoc, animated_entities, entity_key_times, pose_at};
+use ph2d_ecs::{Entity, GlobalTransform, PresentWorld, SimRef, SimWorld, Transform};
+use ph2d_render::{LiftedInstances, RenderInstance};
+use ph2d_timeline::{TimelineDoc, animated_entities, entity_key_times, world_pose_at};
 
 // As configurações do onion (`OnionSettings`/`OnionMode`) moram em `ph2d-timeline` (dados
 // puros), para o `TimelineState`, o `apply_intent`, o snapshot e o painel compartilharem a
@@ -37,19 +37,24 @@ fn ghost_alpha(settings: &OnionSettings, k: u32, n: u32) -> f32 {
 
 /// Constrói o [`RenderInstance`] de UM fantasma: o `template` (os campos de sprite do
 /// objeto vivo) com a pose de `t` e a cor/opacidade do onion, em modo silhueta.
-/// `None` quando `pose_at` não resolve (a entidade não existe naquele instante).
+/// `None` quando a pose não resolve (a entidade não existe naquele instante).
 fn ghost_instance(
-    sim: &World,
+    sim: &SimWorld,
     doc: &TimelineDoc,
     entity: u64,
     template: &RenderInstance,
     t: f64,
     tint: [f32; 4],
 ) -> Option<RenderInstance> {
-    let pose = pose_at(sim, doc, entity, t)?;
+    // ⭐⭐⭐ **A pose de MUNDO em `t`** ([`world_pose_at`]) — a cadeia inteira posada, e não só a
+    // folha. ⚠️ Até 2026-09-13 isto era o `pose_at` LOCAL, com a nota *«para um objeto RAIZ o
+    // Transform É o GlobalTransform; rigs parenteados são wave futura»*: um objecto pendurado
+    // ghostava a um offset do pai. Para uma raiz as duas respostas são a MESMA (compor com a
+    // identidade não move um ULP, e os gates deste ficheiro provam-no), então a nota fechou de graça
+    // quando a porta apareceu para os ossos.
+    let pose = world_pose_at(sim.world(), doc, entity, t)?;
     // A MESMA aritmética do extract: `affine()` = `[a,b,c,d,e,f]` coluna-a-coluna, então
-    // o basis 2×2 é `[0..4]` e a translação é `[4..6]`. Para um objeto RAIZ o Transform É
-    // o GlobalTransform (rigs parenteados são wave futura, ADR-0142).
+    // o basis 2×2 é `[0..4]` e a translação é `[4..6]`.
     let a = GlobalTransform::from_transform(pose).affine();
     let mut g = *template;
     g.world_pos = [a[4], a[5]];
@@ -121,21 +126,79 @@ fn ghost_times(
     }
 }
 
+/// ⚠️ **As peças da pele que NÃO mudam entre fantasmas**, numa struct — a lei do `BandGear` vizinho:
+/// *a engrenagem viaja numa struct, e não em oito argumentos*. O índice de ossos e a malha de
+/// repouso resolvem-se uma vez por quadro; o que varia por fantasma é o **instante**.
+struct PeleDoQuadro<'a> {
+    ppm: f32,
+    index: &'a ph2d_skeleton_live::skin_live::BoneIndex,
+    rest: &'a ph2d_poly2d::Mesh2d,
+}
+
+/// ⭐⭐⭐ **A MALHA DO FANTASMA — a arte deformada pelo esqueleto NAQUELE instante.**
+///
+/// `None` quando a entidade não é uma imagem presa (o caminho de toda sprite normal: o fantasma é o
+/// quad, como sempre) ou quando a pele não resolve ali.
+///
+/// ⛔⛔ **O fantasma usa SEMPRE a malha guardada, nunca o refinamento do `Smooth`** (`refine: None`).
+/// Duas razões, e as duas medidas: uma **silhueta** chapada não tem detalhe que um quarto de pixel
+/// de tolerância salve — o que o olho lê ali é a FORMA —, e o orçamento de peças por quadro
+/// (`SKIN_FRAME_PIECES`) foi derivado do tempo do quadro para a arte VIVA; `n` fantasmas a refinar
+/// comiam-no `n` vezes. *O fantasma é uma leitura, não a obra.*
+fn ghost_mesh(
+    sim: &SimWorld,
+    doc: &TimelineDoc,
+    entity: Entity,
+    template: &RenderInstance,
+    t: f64,
+    pele: &PeleDoQuadro<'_>,
+) -> Option<ph2d_render::SpriteMesh> {
+    let PeleDoQuadro { ppm, index, rest } = *pele;
+    // ⚠️ **A pose de MUNDO de cada elo em `t`**, e não a local: um osso é um elo de uma corrente, e
+    // a pele responde a poses de mundo. O fecho responde pelos OSSOS e pela própria ARTE — posar só
+    // os ossos deixaria a imagem no sítio de agora com o esqueleto no de `t`.
+    let poses = |e: Entity| {
+        ph2d_vec_entities::transform::xform_of_transform(
+            world_pose_at(sim.world(), doc, e.to_bits(), t).unwrap_or(Transform::IDENTITY),
+        )
+    };
+    let (p2l, pele) = ph2d_skeleton_live::skin_image::deform_field_with(
+        sim, entity, rest.size, ppm, index, &poses,
+    )?;
+    ph2d_skeleton_live::skin_image::posed_sprite_mesh(
+        rest.clone(),
+        p2l,
+        &pele,
+        template.anchor,
+        template.size,
+        None,
+    )
+    .map(|(m, _k)| m)
+}
+
 /// Constrói TODOS os fantasmas do onion e os acrescenta a `out`. `targets` = as entidades
 /// a ghostar com o `RenderInstance` VIVO de cada uma (os campos de sprite — textura, uv,
 /// tamanho, anchor). No-op quando desligado ou sem alvos.
+///
+/// ⭐ **A malha de repouso é descodificada UMA vez por alvo** (os bytes opacos da pele custam
+/// `0,134 µs` por peça, medidos na W4) e posada uma vez por instante — não uma vez por par.
 pub(crate) fn build_ghosts(
     settings: &OnionSettings,
-    sim: &World,
+    sim: &SimWorld,
     doc: &TimelineDoc,
     targets: &[(u64, RenderInstance)],
     live_clip_t: f64,
-    out: &mut Vec<RenderInstance>,
+    pixels_per_meter: f32,
+    out: &mut LiftedInstances,
 ) {
     if !settings.enabled {
         return;
     }
+    let index = ph2d_skeleton_live::skin_live::bone_index(sim);
+    let mut pecas = 0usize;
     for (entity, template) in targets {
+        let rest = Entity::try_from_bits(*entity)
+            .and_then(|e| ph2d_skeleton_live::skin_image::mesh_of(sim, e));
         for (past, color) in [(true, settings.color_before), (false, settings.color_after)] {
             let times = ghost_times(settings, doc, *entity, live_clip_t, past);
             // O falloff é sobre a contagem DE FATO encontrada (em Keys pode faltar key de
@@ -146,10 +209,41 @@ pub(crate) fn build_ghosts(
                 let a = ghost_alpha(settings, i as u32 + 1, n);
                 let tint = [color[0], color[1], color[2], a];
                 if let Some(g) = ghost_instance(sim, doc, *entity, template, t, tint) {
-                    out.push(g);
+                    let malha =
+                        rest.as_ref()
+                            .zip(Entity::try_from_bits(*entity))
+                            .and_then(|(rest, e)| {
+                                let pele = PeleDoQuadro {
+                                    ppm: pixels_per_meter,
+                                    index: &index,
+                                    rest,
+                                };
+                                ghost_mesh(sim, doc, e, template, t, &pele)
+                            });
+                    pecas += malha.as_ref().map_or(0, |m| m.tris.len());
+                    out.push(g, malha.as_ref());
                 }
             }
         }
+    }
+    // ⚠️ **O DIAGNÓSTICO, e não um tecto.** Medido (2026-09-13, `load 9,6`, mínimo de 40 corridas):
+    // `4` fantasmas × `528` peças custam `0,334 ms` — `2,0 %` de um quadro —, logo uma peça de
+    // fantasma vale `0,158 µs`. No extremo dos DOIS sliders (`MAX_GHOSTS = 8` de cada lado) sobre
+    // uma pele no tecto dela (`SKIN_FRAME_PIECES`), isso é `~3,9 ms`: **`23 %` de um quadro**.
+    //
+    // ⛔ **Não se corta nada aqui.** O artista pediu `n` fantasmas; deitar fora os mais distantes é
+    // uma decisão de PRODUTO, e um tecto que não nomeia o recurso de outra pessoa é um palpite
+    // (§0.0). O que fica é o NÚMERO: quem vir o quadro engasgar com o onion ligado tem-no no log da
+    // família, ao lado do orçamento que a pele viva declara para si.
+    if pecas > ph2d_skeleton_live::skin_image::SKIN_FRAME_PIECES
+        && std::env::var_os("PH2D_BONE_LOG").is_some()
+    {
+        eprintln!(
+            "[bone] onion: {pecas} pecas de fantasma neste quadro (o orcamento da pele VIVA e' {}) \
+             — ~{:.2} ms so' nos fantasmas",
+            ph2d_skeleton_live::skin_image::SKIN_FRAME_PIECES,
+            pecas as f64 * 0.158 / 1000.0
+        );
     }
 }
 
@@ -165,31 +259,91 @@ fn live_template(present: &mut PresentWorld, sel: u64) -> Option<RenderInstance>
         .map(|(_, ri)| *ri)
 }
 
-/// **A porta do shell:** monta os fantasmas do onion do objeto SELECIONADO e os acrescenta
-/// a `out`. No-op quando desligado, sem seleção, quando o selecionado não é animado (um
-/// objeto parado não tem passado nem futuro a mostrar), ou quando ele não tem sprite.
+/// ⭐⭐⭐ **O QUE O SELECCIONADO FAZ MOVER** — os alvos do onion, com o `RenderInstance` vivo de cada
+/// um.
 ///
-/// O escopo é o SELECIONADO (ADR-0142): edita-se o que está na mão, como o motion path.
+/// Duas respostas, e a segunda é a que faltava:
+///
+/// - o seleccionado **é a arte**, e está animado ⇒ ele próprio (o escopo do ADR-0142);
+/// - o seleccionado é um **OSSO** ⇒ as **imagens presas ao esqueleto dele**, se alguma coisa naquele
+///   esqueleto estiver animada.
+///
+/// ⛔⛔ **A segunda não é um alargamento do escopo: é o escopo aplicado a um rig.** *«Edita-se o que
+/// está na mão»* — e o que o animador tem na mão quando posa é um osso, cuja silhueta é a arte. Sem
+/// ela o onion de um personagem riggado mostrava **nada**, e por duas razões que se somam: a imagem
+/// não está animada (quem leva keys são os ossos) e o osso não tem instância de desenho. *Um recurso
+/// cujas duas guardas se excluem uma à outra está desligado, não configurado.*
+///
+/// ⚠️ **A condição de animação é do ESQUELETO, não do osso na mão.** O animador escolhe o osso que
+/// vai posar — que pode ainda não ter key nenhuma — e o que ele quer ver é o passado da personagem.
+fn ghost_targets(
+    sim: &SimWorld,
+    present: &mut PresentWorld,
+    doc: &TimelineDoc,
+    sel: u64,
+) -> Vec<(u64, RenderInstance)> {
+    let animadas = animated_entities(doc);
+    if animadas.contains(&sel)
+        && let Some(template) = live_template(present, sel)
+    {
+        return vec![(sel, template)];
+    }
+    let Some(osso) = Entity::try_from_bits(sel)
+        .filter(|&e| sim.world().get::<ph2d_skeleton_ecs::Bone>(e).is_some())
+    else {
+        return Vec::new();
+    };
+    let index = ph2d_skeleton_live::skin_live::bone_index(sim);
+    if !ph2d_skeleton_live::skin_live::skeleton_of(sim, Some(osso))
+        .iter()
+        .any(|b| animadas.contains(&b.to_bits()))
+    {
+        return Vec::new();
+    }
+    ph2d_skeleton_live::skin_live::skinned_images_of_skeleton(sim, osso, &index)
+        .into_iter()
+        .filter_map(|e| Some((e.to_bits(), live_template(present, e.to_bits())?)))
+        .collect()
+}
+
+/// **A porta do shell:** monta os fantasmas do onion do que o objeto SELECIONADO faz mover e os
+/// acrescenta a `out`. No-op quando desligado, sem seleção, ou quando nada do que ele dirige tem
+/// passado e futuro a mostrar.
+///
+/// O escopo é o SELECIONADO (ADR-0142): edita-se o que está na mão, como o motion path — e o que
+/// um OSSO tem na mão é a arte que ele deforma ([`ghost_targets`]).
+///
+/// ⚠️ **Os argumentos são os FACTOS do quadro**, como nos irmãos deste ficheiro e no
+/// `snapshots::publish`: agrupá-los numa struct aqui só mudaria o sítio onde eles são escritos (a
+/// fase que chama tem-nos todos soltos na mão, e o `gfx` está emprestado ao redor).
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn collect_onion_ghosts(
     settings: &OnionSettings,
-    sim: &World,
+    sim: &SimWorld,
     present: &mut PresentWorld,
     doc: &TimelineDoc,
     selected: Option<u64>,
     live_clip_t: f64,
-    out: &mut Vec<RenderInstance>,
+    pixels_per_meter: f32,
+    out: &mut LiftedInstances,
 ) {
     if !settings.enabled {
         return;
     }
     let Some(sel) = selected else { return };
-    if !animated_entities(doc).contains(&sel) {
+    let alvos = ghost_targets(sim, present, doc, sel);
+    if alvos.is_empty() {
         return;
     }
-    let Some(template) = live_template(present, sel) else {
-        return;
-    };
-    build_ghosts(settings, sim, doc, &[(sel, template)], live_clip_t, out);
+    build_ghosts(
+        settings,
+        sim,
+        doc,
+        &alvos,
+        live_clip_t,
+        pixels_per_meter,
+        out,
+    );
 }
 
 #[cfg(test)]

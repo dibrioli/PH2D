@@ -283,6 +283,79 @@ pub fn deform_field(
     Some((p2l, crate::skin_live::skin_of(sim, e)?))
 }
 
+/// ⭐⭐⭐ **[`deform_field`] NUM INSTANTE** — a mesma régua, com a pele resolvida das poses que
+/// `poses` der ([`crate::skin_live::skin_of_with`]).
+///
+/// ⚠️ **A RÉGUA `pixel → local` não depende do instante**, e é correcto: ela é a geometria do quad
+/// da sprite (tamanho, âncora resolvida, espelho), não uma pose. O que o tempo muda é a PELE.
+///
+/// ⚠️ **O índice de ossos vem de fora** ([`crate::skin_live::bone_index`]): o consumidor é um LAÇO
+/// (`N` artes × `M` instantes), e reconstruí-lo por chamada seria uma varredura do mundo inteiro por
+/// fantasma — a lei que o doc do `skin_of` já escreve.
+#[must_use]
+pub fn deform_field_with(
+    sim: &SimWorld,
+    e: Entity,
+    size_px: [u32; 2],
+    pixels_per_meter: f32,
+    index: &crate::skin_live::BoneIndex,
+    poses: &impl Fn(Entity) -> Xform,
+) -> Option<(Xform, ph2d_skeleton::Skin)> {
+    let p2l = pixel_to_local(sim.world().get::<Sprite>(e)?, size_px, pixels_per_meter)?;
+    Some((p2l, crate::skin_live::skin_of_in(sim, e, index, poses)?))
+}
+
+/// ⭐⭐⭐ **A MALHA POSADA de uma imagem presa — a porta ÚNICA do que se desenha.**
+///
+/// Recebe a malha de repouso (em pixels da imagem), a régua `pixel → local` ([`pixel_to_local`]), a
+/// pele já resolvida e o quad da instância; devolve a [`SpriteMesh`] que o passe de sprites desenha,
+/// mais o `k` do refinamento (`1` = não refinou).
+///
+/// ⚠️ **`refine` chega JÁ em unidades LOCAIS e já com a fatia do orçamento** — a conversão de pixels
+/// de ecrã e a repartição do orçamento são factos do QUADRO, e ficam em quem tem o quadro na mão.
+/// *Uma porta que recebesse a câmara passaria a ter duas respostas para «quanto é meio pixel».*
+///
+/// ⭐⭐ **Ela existe porque há DOIS consumidores** (2026-09-13): o quadro vivo
+/// ([`attach_skin_meshes`]) e os **fantasmas do onion**, que posam a MESMA malha com as poses de
+/// `t ± k`. ⛔ Copiada, as duas divergiriam no primeiro ajuste da UV — e o sintoma seria um fantasma
+/// com a textura deslocada, que se lê como um defeito da própria pele.
+///
+/// `None` quando um vértice de repouso cai fora do quad da sprite (a UV não existe) — o mesmo
+/// critério de sempre, numa porta só.
+#[must_use]
+pub fn posed_sprite_mesh(
+    mesh: Mesh2d,
+    p2l: Xform,
+    pele: &ph2d_skeleton::Skin,
+    anchor: [f32; 2],
+    size: [f32; 2],
+    refine: Option<RefineOptions>,
+) -> Option<(SpriteMesh, u32)> {
+    let mut escrever = pele.scratch();
+    let mut campo = |q: [f64; 2]| pele.point(p2l.apply(q), &mut escrever);
+    let (mesh, posed, k) = match refine {
+        None => {
+            let posed: Vec<[f64; 2]> = mesh.rest.iter().map(|&q| campo(q)).collect();
+            (mesh, posed, 1)
+        }
+        Some(o) => ph2d_poly2d::refine_posed(&mesh, &mut campo, o),
+    };
+    // ⭐ A UV de cada vértice é a do QUAD no ponto de REPOUSO dele — ver [`pixel_to_local`].
+    let uv = mesh
+        .rest
+        .iter()
+        .map(|&q| SpriteMesh::uv_at(f32_de(p2l.apply(q)), anchor, size))
+        .collect::<Option<Vec<[f32; 2]>>>()?;
+    Some((
+        SpriteMesh {
+            local: posed.into_iter().map(f32_de).collect(),
+            uv,
+            tris: mesh.tris,
+        },
+        k,
+    ))
+}
+
 /// ⭐ **ESTA ENTIDADE É UMA IMAGEM PRESA AO ESQUELETO?** — uma `Sprite` com `SkinBind`.
 ///
 /// ⚠️ **DERIVADA, nunca guardada:** uma sprite com pele é uma sprite que o esqueleto deforma, e a
@@ -371,59 +444,36 @@ pub fn attach_skin_meshes(
         let Some((p2l, pele)) = deform_field(sim, e, mesh.size, pixels_per_meter) else {
             continue;
         };
-        let mut escrever = pele.scratch();
-        let mut campo = |q: [f64; 2]| pele.point(p2l.apply(q), &mut escrever);
-        let (mesh, posed) = match smooth {
-            None => {
-                let posed: Vec<[f64; 2]> = mesh.rest.iter().map(|&q| campo(q)).collect();
-                (mesh, posed)
+        let antes = mesh.tris.len();
+        // ⚠️⚠️ **A tolerância é em pixels de ECRÃ:** meia unidade local é meio pixel a zoom `1` e
+        // **quatro** a zoom `8`. *A suavidade que o olho vê é um facto de espaço de ecrã* — uma
+        // tolerância em unidades locais afinaria a malha para o zoom em que o artista não está.
+        // ⚠️ A conversão (e a fatia do orçamento) moram AQUI, que é quem tem o quadro na mão; a
+        // porta que posa recebe-as já resolvidas.
+        let refine = smooth.map(|o| {
+            let b = inst.basis;
+            let det = f64::from(b[0]) * f64::from(b[3]) - f64::from(b[2]) * f64::from(b[1]);
+            let escala = (px_per_world * det.abs().sqrt()).max(f64::MIN_POSITIVE);
+            RefineOptions {
+                tolerance_px: o.tolerance_px / escala,
+                max_pieces: parte_do_orcamento(antes, guardadas, o.max_pieces),
             }
-            Some(o) => {
-                // ⚠️⚠️ **A tolerância é em pixels de ECRÃ:** meia unidade local é meio pixel a zoom
-                // `1` e **quatro** a zoom `8`. *A suavidade que o olho vê é um facto de espaço de
-                // ecrã* — uma tolerância em unidades locais afinaria a malha para o zoom em que o
-                // artista não está.
-                let b = inst.basis;
-                let det = f64::from(b[0]) * f64::from(b[3]) - f64::from(b[2]) * f64::from(b[1]);
-                let escala = (px_per_world * det.abs().sqrt()).max(f64::MIN_POSITIVE);
-                let antes = mesh.tris.len();
-                let parte = parte_do_orcamento(antes, guardadas, o.max_pieces);
-                let (m, posed, k) = ph2d_poly2d::refine_posed(
-                    &mesh,
-                    &mut campo,
-                    RefineOptions {
-                        tolerance_px: o.tolerance_px / escala,
-                        max_pieces: parte,
-                    },
-                );
-                // ⚠️ **O diagnóstico da família** (`PH2D_BONE_LOG=1`): sem ele um report de
-                // *«partiu»* não distingue *quantas peças* de *que dobra* — e foi a CONTAGEM que se
-                // revelou a grandeza que importa.
-                if std::env::var_os("PH2D_BONE_LOG").is_some() {
-                    eprintln!(
-                        "[bone] pele suave: {antes} -> {} pecas (k={k}, parte {parte} de um \
-                         orcamento de quadro {})",
-                        m.tris.len(),
-                        o.max_pieces
-                    );
-                }
-                (m, posed)
-            }
-        };
-        // ⭐ A UV de cada vértice é a do QUAD no ponto de REPOUSO dele — ver [`pixel_to_local`].
-        let Some(uv) = mesh
-            .rest
-            .iter()
-            .map(|&q| SpriteMesh::uv_at(f32_de(p2l.apply(q)), inst.anchor, inst.size))
-            .collect::<Option<Vec<[f32; 2]>>>()
+        });
+        let Some((malha, k)) = posed_sprite_mesh(mesh, p2l, &pele, inst.anchor, inst.size, refine)
         else {
             continue;
         };
-        present.world_mut().entity_mut(p).insert(SpriteMesh {
-            local: posed.into_iter().map(f32_de).collect(),
-            uv,
-            tris: mesh.tris,
-        });
+        // ⚠️ **O diagnóstico da família** (`PH2D_BONE_LOG=1`): sem ele um report de *«partiu»* não
+        // distingue *quantas peças* de *que dobra* — e foi a CONTAGEM que se revelou a grandeza que
+        // importa.
+        if let (Some(o), true) = (smooth, std::env::var_os("PH2D_BONE_LOG").is_some()) {
+            eprintln!(
+                "[bone] pele suave: {antes} -> {} pecas (k={k}, de um orcamento de quadro {})",
+                malha.tris.len(),
+                o.max_pieces
+            );
+        }
+        present.world_mut().entity_mut(p).insert(malha);
         feitas += 1;
     }
     feitas

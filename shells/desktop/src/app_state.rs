@@ -377,11 +377,11 @@ pub(crate) struct App {
     /// W2's physics panel gets a "Show Colliders" checkbox reading THIS flag —
     /// one door, so the key and the checkbox can never disagree.
     pub(crate) show_colliders: bool,
-    /// Os fantasmas do onion cozidos NESTE frame (bloco de overlay do `run_render_frame`)
-    /// e lidos pelo `run_present_phase` para o slot `extra` do passe de sprite — o mesmo
-    /// padrão do `motion.pump.instances` (cozinha numa fase, desenha noutra). Vazio quando
-    /// o onion está desligado.
-    pub(crate) onion_ghosts: Vec<ph2d_render::RenderInstance>,
+    /// Os fantasmas do onion cozidos NESTE frame (overlay) e lidos pelo `run_present_phase` para o
+    /// slot `extra` do passe de sprite — o padrão do `motion.pump.instances` (cozinha numa fase,
+    /// desenha noutra). Vazio com o onion desligado. ⭐ Com MALHA desde a W7 do `docs/Skeleton/03`:
+    /// o fantasma de uma imagem presa leva a arte DEFORMADA em `t ± k`, não o quad de repouso.
+    pub(crate) onion_ghosts: ph2d_render::LiftedInstances,
     /// **As instâncias que EMITEM neste frame** (plano `docs/Sprite_projeto/18` W8), recolhidas e
     /// consumidas dentro do `run_present_phase`.
     ///

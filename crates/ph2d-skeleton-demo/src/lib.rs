@@ -109,6 +109,34 @@ pub fn seed_demo_action(doc: &mut ph2d_timeline::TimelineDoc, bits: u64) {
     doc.set_active(antes);
 }
 
+/// Quanto o osso da ponta do braço gira ao longo da acção da cena, em radianos.
+///
+/// ⚠️ Grande o suficiente para os fantasmas do onion se distinguirem uns dos outros: com meio
+/// décimo de radiano as quatro silhuetas empilham-se e o smoke fica mudo sobre um motor correcto.
+pub const DEMO_SWING: f32 = 0.9; // LITERAL-PX-OK: radianos do documento, não medida de UI
+
+/// ⭐⭐⭐ **A ACÇÃO DO BRAÇO — e ela vive no clip ABERTO, ao contrário da [`seed_demo_action`].**
+///
+/// ⚠️⚠️ **A diferença não é arrumação: é o consumidor.** O onion lê o clip **activo**
+/// (`entity_key_times`/`animated_entities` perguntam ao `active_clip`), logo uma acção fechada
+/// deixaria os fantasmas sem passado nem futuro a mostrar — *uma cena que só produz o fenómeno
+/// depois de o artista acertar OUTRO gesto não prova nada quando esse gesto falha* (`CLAUDE.md`
+/// §5.0). A acção do osso inteligente é o oposto: ela TEM de estar fechada, e o doc dela diz porquê.
+///
+/// ⚠️ **O canal é a ROTAÇÃO de um OSSO**, e é isso que faz a arte presa dobrar sem ninguém lhe
+/// tocar: a imagem não tem key nenhuma, e é o esqueleto que a move.
+pub fn seed_arm_swing(doc: &mut ph2d_timeline::TimelineDoc, bits: u64) {
+    for (t, v) in [(0.0, 0.0_f32), (DEMO_SECONDS, DEMO_SWING)] {
+        doc.insert_key(
+            bits,
+            ph2d_timeline::PropKind::Rotation,
+            ph2d_anim::RationalTime::from_seconds(t),
+            ph2d_anim::AnimValue::Float(v),
+            ph2d_anim::Interp::Linear,
+        );
+    }
+}
+
 /// Uma cadeia de `n` ossos de `a` a `b` (mundo), o 1.º sem pai. Devolve a RAIZ.
 pub fn cadeia(sim: &mut ph2d_ecs::SimWorld, a: [f64; 2], b: [f64; 2], n: usize) -> Option<Entity> {
     #[expect(

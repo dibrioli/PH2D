@@ -122,6 +122,11 @@ fn quadrado() -> SpriteMesh {
 
 /// ⭐⭐ **A recolha marca a instância que tem malha, deixa a outra no quad, e LIMPA a marca de uma
 /// instância que chega de fora** (`extra`) — que indexaria a malha de outra chamada de render.
+///
+/// ⭐⭐⭐ **E uma de fora QUE TRAZ MALHA é marcada** (plano `docs/Skeleton/03`, W7): é assim que um
+/// fantasma do onion de uma imagem presa desenha a arte DEFORMADA em `t ± k` em vez do quad de
+/// repouso. ⚠️ A marca dela indexa o MESMO `MeshFrame` da cena, com o índice deslocado — por isso o
+/// gate conta **duas** faixas e lê a marca `2` na de fora.
 #[test]
 fn the_collect_tags_the_meshed_instance_and_clears_a_tag_from_outside() {
     let mut present = ph2d_ecs::PresentWorld::new();
@@ -135,6 +140,12 @@ fn the_collect_tags_the_meshed_instance_and_clears_a_tag_from_outside() {
     let mut de_fora = instancia();
     de_fora.z_order = 2;
     de_fora.flip_uv = RenderInstance::FLIP_X_BIT | (7 << RenderInstance::MESH_SHIFT);
+    let mut fantasma = instancia();
+    fantasma.z_order = 3;
+
+    let mut extra = crate::LiftedInstances::default();
+    extra.push(de_fora, None);
+    extra.push(fantasma, Some(&quadrado()));
 
     let mut scratch = Vec::new();
     let mut malhas = MeshFrame::default();
@@ -142,7 +153,7 @@ fn the_collect_tags_the_meshed_instance_and_clears_a_tag_from_outside() {
         &mut scratch,
         &mut malhas,
         &mut present,
-        &[de_fora],
+        &extra,
         None,
         None,
     );
@@ -150,13 +161,21 @@ fn the_collect_tags_the_meshed_instance_and_clears_a_tag_from_outside() {
         .iter()
         .map(|i| RenderInstance::unpack_mesh(i.flip_uv))
         .collect();
-    assert_eq!(marcas, vec![0, 1, 0], "quad · malha · a de fora LIMPA");
+    assert_eq!(
+        marcas,
+        vec![0, 1, 0, 2],
+        "quad · malha da cena · a de fora LIMPA · a de fora COM malha"
+    );
     assert_eq!(
         scratch[2].flip_uv,
         RenderInstance::FLIP_X_BIT,
         "limpar a marca nao pode tocar nos outros bits"
     );
-    assert_eq!(malhas.ranges, vec![(0, 5 * 2 - 2)]);
+    assert_eq!(
+        malhas.ranges,
+        vec![(0, 5 * 2 - 2), (5 * 2 - 2, 2 * (5 * 2 - 2))],
+        "as duas metades do quadro partilham a costura, em sequencia"
+    );
     // A malha em repouso cobre o quad: os cantos voltam aos cantos do QUAD_STRIP.
     let cantos: Vec<[f32; 2]> = malhas.vertices.iter().map(|q| q.pos).collect();
     for canto in [[-0.5_f32, -0.5], [0.5, -0.5], [0.5, 0.5], [-0.5, 0.5]] {

@@ -1973,11 +1973,9 @@ errado:
   W1) · e o picking, a caixa e a UV a ignorarem a malha.
 
 ⏳ **ABERTO, e nomeado:**
-- ⛔ **Os fantasmas do onion desenham o quad de repouso.** O fantasma é a instância viva com a pose
-  de `t` (`timeline_onion::ghost_instance`), e a deformação de uma imagem presa depende das poses
-  dos OSSOS em `t`, que o fantasma não avalia. Curar custa três peças: a pose de mundo de cada osso
-  em `t` (o `pose_at` composto pela hierarquia), uma pele que aceite essa pose em vez da do mundo,
-  e uma malha por fantasma na fatia `extra` — que hoje limpa as marcas de propósito.
+- ✅ **Os fantasmas do onion desenhavam o quad de repouso — CURADO pela W7** (abaixo). A redacção
+  deste item previa *três peças* e o preço estava certo; o que ela não previa era que, num rig
+  normal, o onion **não produzia fantasma nenhum**.
 - O `sprite_world_to_uv_unclamped` fora da malha responde pela lei do quad de repouso: um traço de
   pincel que sai da silhueta posada é mapeado como se a imagem repousasse.
 - **9-slice e folha desdobrada:** a malha só conhece o quad da sprite; essas desenham-se sem
@@ -2045,6 +2043,70 @@ outra ferramenta, e sem report.
 `sheet_grid_overlay::gizmo_box(sprite, …)` (o quad da sprite) e a do `ph2d_editor_core::gizmo` sai do
 `ph2d_render::selection_bbox_world` (que a W3 tornou ciente da malha). Numa imagem presa e dobrada
 elas **discordam**, e hoje só a segunda é lida pelo *View All* e pelo contorno do realce.
+
+**W7 — O ONION VÊ A PELE** (2026-09-13). ⛔⛔ **Medido primeiro, e a medição mudou a forma do
+trabalho:** a redacção anterior deste item dizia *«os fantasmas desenham o quad de repouso»*, o que é
+verdade **se houver fantasma**. Num rig normal não há — e por duas guardas que se excluem uma à
+outra: o `collect_onion_ghosts` exige que o seleccionado esteja em `animated_entities` **e** tenha
+`RenderInstance`, e numa personagem riggada quem leva keys são os **ossos** (que não desenham) e quem
+desenha é a **imagem** (que não leva keys). *Um recurso cujas duas guardas se excluem está
+desligado, não configurado.*
+
+As quatro peças:
+
+1. **A pose de MUNDO num instante** — [`ph2d_ecs::world_transform_with`] / `parent_world_transform_with`
+   (a travessia de sempre com a **fonte da pose local injectada**) e
+   [`ph2d_timeline::world_pose_at`], que a alimenta com o `pose_at` de **cada elo**. ⛔ Escrever o
+   laço noutra crate seria a segunda resposta a *«onde está esta entidade?»*, que é o defeito de que
+   o cabeçalho do `transform_inverse` avisa. Gate: a fonte VIVA devolve a travessia de sempre **ao
+   bit** (com o controlo de uma fonte que mente, nas DUAS pontas — ⚠️ a 1.ª redacção só tinha a do
+   PAI e uma mutação na folha **sobreviveu**).
+2. **A pele resolvida NOUTRO instante** — `skin_live::skin_of_in` / `skin_image::deform_field_with`
+   com a fonte de poses injectada; a crate continua sem conhecer a timeline (*aqui só existe «onde
+   está esta entidade»*). O `bone_index` passou a ser **público e emprestado**, porque o consumidor é
+   um laço (`N` artes × `M` instantes) — a lei que o doc do `skin_of` já escrevia.
+3. **A malha posada numa PORTA** (`skin_image::posed_sprite_mesh`), com dois consumidores: o quadro
+   vivo e o fantasma. ⛔ Copiada, as duas divergiriam no primeiro ajuste da UV.
+4. **A fatia `extra` do passe leva MALHAS** — ela virou uma `LiftedInstances` (o par instância+malha
+   que a W3 criou). ⛔ Um vector paralelo de malhas ao lado de uma fatia crua é o padrão que o
+   `corner_radius` proíbe por escrito. O stream do Motion entra sem malha e desenha byte a byte.
+
+E o **ESCOPO**: `ghost_targets` responde *«o que o seleccionado faz mover?»* — a arte animada (o
+escopo do ADR-0142) **ou**, com um OSSO na mão, as imagens presas ao esqueleto dele
+(`skin_live::skinned_images_of_skeleton`), se alguma coisa naquele esqueleto estiver animada.
+⚠️ **A condição é do ESQUELETO, não do osso na mão:** o animador escolhe o osso que vai posar, que
+pode ainda não ter key nenhuma. ⛔ **Só IMAGENS** — uma forma vectorial presa é desenhada pelo Vello
+e não tem instância, logo o passe que desenha fantasmas não a alcança (limite NOMEADO).
+
+⭐ **E uma nota FECHOU de graça:** o `ghost_instance` lia o `pose_at` LOCAL, com *«para um objeto RAIZ
+o Transform É o GlobalTransform; rigs parenteados são wave futura»* escrito ao lado — hoje lê o
+`world_pose_at`, e para uma raiz as duas respostas são as mesmas (os nove gates do onion passam sem
+uma linha mudada).
+
+⏱️ **MEDIDO** (`min` de 40 corridas, `load 9,6`–`19,0`; a estabilidade entre as duas cargas é a
+assinatura da instrumentação da W4): `4` fantasmas × `528` peças custam **`0,333 ms`** — **`2,0 %`**
+de um quadro —, logo uma peça de fantasma vale `0,158 µs`. ⚠️ **No extremo dos dois sliders**
+(`MAX_GHOSTS = 8` de cada lado) sobre uma pele no tecto dela (`SKIN_FRAME_PIECES = 1 543`) isso é
+**`~3,9 ms`, `23 %` de um quadro**. ⛔ **Não se corta nada:** o artista pediu `n` fantasmas, e deitar
+fora os mais distantes é decisão de PRODUTO — o que fica é o NÚMERO, no log da família
+(`PH2D_BONE_LOG=1`) quando as peças de fantasma passam o orçamento que a pele viva declara para si.
+
+⛔ **O fantasma usa SEMPRE a malha guardada, nunca o `Smooth`:** uma silhueta chapada não tem detalhe
+que um quarto de pixel de tolerância salve, e o orçamento de refinamento foi derivado para a arte
+VIVA. *O fantasma é uma leitura, não a obra.*
+
+**Sete mutações, sete RED** — o ramo do osso no escopo · o fantasma levar a malha · a pele resolvida
+em `t` · a fatia de fora levar malhas · a fonte injectada na ENTIDADE e nos ANCESTRAIS · a pele ler a
+fonte. ⚠️ **A da ENTIDADE sobreviveu à primeira**, e nomeou o buraco: numa FOLHA a cadeia de
+ancestrais já basta para a resposta mudar, então o controlo tem de ser numa **raiz**.
+
+⚠️ **E a fixtura mordeu antes do produto** (2×): a pose injectada nasceu `Transform::IDENTITY` e o
+gate leu `2e0` de desvio — exactamente a translação da raiz do osso. *Uma fixtura que perde a pose de
+base mede outro esqueleto.*
+
+**A cena ENSINA:** o osso da ponta do braço pintado nasce com animação **no clip ABERTO** (⚠️ ao
+contrário da acção do osso inteligente, que tem de estar fechada — o onion lê o clip **activo**), e a
+cena diz o NOME da linha na Hierarquia.
 
 ## ⛔ Recusas MEDIDAS deste módulo — não as reconstrua
 

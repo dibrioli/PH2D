@@ -54,7 +54,7 @@ pub(crate) fn collect_sorted_instances(
     scratch: &mut Vec<RenderInstance>,
     meshes: &mut crate::sprite_mesh::MeshFrame,
     present: &mut PresentWorld,
-    extra: &[RenderInstance],
+    extra: &crate::LiftedInstances,
     rank_window: Option<(u32, u32)>,
     held_back: Option<&std::collections::BTreeSet<ph2d_ecs::Entity>>,
 ) {
@@ -85,9 +85,26 @@ pub(crate) fn collect_sorted_instances(
         scratch.push(inst);
     }
     let de_fora = scratch.len();
-    scratch.extend_from_slice(extra);
+    scratch.extend_from_slice(extra.instances());
     for inst in &mut scratch[de_fora..] {
         crate::sprite_mesh::clear_mesh_tag(inst);
+    }
+    // ⭐⭐⭐ **A fatia de fora TAMBÉM leva malhas** (plano `docs/Skeleton/03`, W7): os fantasmas do
+    // onion de uma imagem presa ao esqueleto são a arte DEFORMADA em `t ± k`, e sem isto eles
+    // desenhavam o quad de repouso — a cena a ensinar que a arte não dobra, exactamente onde o
+    // animador olha para ver como ela dobrou.
+    //
+    // ⚠️ **Índices DESLOCADOS por `de_fora`, e as marcas entram no MESMO `MeshFrame` da cena** — as
+    // duas metades do quadro partilham a costura e os intervalos, e uma marca de outro quadro ou de
+    // outra chamada indexaria a malha errada. Por isso não há `frame.clear()` aqui: ele correu no
+    // topo, antes da cena.
+    //
+    // ⛔ E é por isso que o `extra` deixou de ser uma fatia crua: um **vector paralelo** de malhas
+    // ao lado dela é o padrão que o `corner_radius` proíbe por escrito. O par viaja junto.
+    for (i, m) in extra.meshes() {
+        if let Some(inst) = scratch.get_mut(de_fora + *i) {
+            inst.flip_uv |= meshes.push(m, inst.anchor, inst.size) << RenderInstance::MESH_SHIFT;
+        }
     }
     sort_render_order(scratch);
 }

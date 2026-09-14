@@ -169,7 +169,7 @@ impl crate::App {
         scene_viewport: Option<[f32; 4]>,
         motion_active: bool,
         frosting: bool,
-        onion_ghosts: &[ph2d_render::RenderInstance],
+        onion_ghosts: &ph2d_render::LiftedInstances,
     ) -> Option<(super::present_bands::FramePlan, bool)> {
         let gfx = self.gfx.as_mut()?;
         let AppGfx {
@@ -224,33 +224,50 @@ impl crate::App {
         } else {
             &[]
         };
-        // O slot `extra` do passe carrega TRÊS produtores CPU: os fantasmas do
-        // onion (ADR-0142), o stream do Motion e — desde o TOP-20 #18 — as PARTÍCULAS dos
-        // objectos. Concatenados num só slice; os dois primeiros raramente coexistem, então o
-        // `Vec` é vazio no caso comum.
+        // O slot `extra` do passe carrega TRÊS produtores CPU: os fantasmas do onion (ADR-0142),
+        // o stream do Motion e — desde o TOP-20 #18 — as PARTÍCULAS dos objectos.
+        //
+        // ⚠️ **Os fantasmas levam MALHA e os outros dois não** (plano `docs/Skeleton/03`, W7), então
+        // o par viaja junto numa `LiftedInstances` — ⛔ um vector paralelo de malhas ao lado de uma
+        // fatia crua é o padrão que o `corner_radius` proíbe por escrito.
         //
         // ⚠️⚠️ **As partículas desenham-se SEMPRE, e é isso que as separa do Motion:** o stream do
-        // grafo só existe com a ferramenta MOTION na mão (`motion_active`), e um jacto preso a um
-        // objecto tem de arder com qualquer ferramenta — senão o componente some quando o artista
-        // pega no pincel.
+        // grafo só existe com a ferramenta MOTION na mão, e um jacto preso a um objecto tem de arder
+        // com qualquer ferramenta — senão o componente some quando o artista pega no pincel.
+        //
+        // ⚠️ **O caso comum não copia nada:** sem fantasmas, sem Motion e sem partículas o `extra`
+        // é o dos fantasmas, já montado pela fase de overlay.
         let particulas: &[ph2d_render::RenderInstance] = &particles.instances;
-        let sprite_extra: Vec<ph2d_render::RenderInstance> =
-            if onion_ghosts.is_empty() && particulas.is_empty() {
-                // Sem fantasmas nem partículas: passa o slice do Motion direto (zero alloc no caso comum).
-                Vec::new()
+        let sprite_extra: ph2d_render::LiftedInstances = if onion_ghosts.is_empty() {
+            let mut e = ph2d_render::LiftedInstances::default();
+            for i in motion_slice {
+                e.push(*i, None);
+            }
+            for i in particulas {
+                e.push(*i, None);
+            }
+            e
+        } else if motion_slice.is_empty() && particulas.is_empty() {
+            ph2d_render::LiftedInstances::default()
+        } else {
+            let mut e = ph2d_render::LiftedInstances::default();
+            for (i, inst) in onion_ghosts.instances().iter().enumerate() {
+                e.push(*inst, onion_ghosts.mesh_of(i));
+            }
+            for i in motion_slice {
+                e.push(*i, None);
+            }
+            for i in particulas {
+                e.push(*i, None);
+            }
+            e
+        };
+        let extra: &ph2d_render::LiftedInstances =
+            if onion_ghosts.is_empty() || !motion_slice.is_empty() || !particulas.is_empty() {
+                &sprite_extra
             } else {
                 onion_ghosts
-                    .iter()
-                    .chain(motion_slice)
-                    .chain(particulas)
-                    .copied()
-                    .collect()
             };
-        let extra: &[ph2d_render::RenderInstance] = if sprite_extra.is_empty() {
-            motion_slice
-        } else {
-            &sprite_extra
-        };
         // ⭐⭐⭐ **AS FAIXAS DE DESENHO** (ADR-0154 Fase 2) — a lei, os cinco passos e o
         // porquê de a ÚLTIMA faixa de sprites não se ter movido vivem no cabeçalho do
         // irmão `present_bands`. Sem intercalação nada disto corre e o quadro é

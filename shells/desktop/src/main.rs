@@ -802,7 +802,7 @@ impl App {
             nest_smoke_done: false,
             instance_echo: Default::default(),
             show_colliders: true,
-            onion_ghosts: Vec::new(),
+            onion_ghosts: ph2d_render::LiftedInstances::default(),
             emissive_instances: Default::default(),
             frost_instances: Default::default(),
             blast_flash: None,

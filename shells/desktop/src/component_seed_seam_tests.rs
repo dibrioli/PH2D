@@ -90,19 +90,18 @@ fn attaching_is_inert_for_everything_that_does_not_seed() {
         );
         checked += 1;
     }
-    // ⚠️⚠️ **O PISO desceu de `40` para `30` em 2026-09-14, e a razão é POPULAÇÃO, não folga.**
-    // A varredura completa do catálogo (ordem do dono) converteu 16 entradas do núcleo e da
-    // imagem em `Attach::Intrinsic` — elas eram rows de secções sempre-pintadas —, e este censo
-    // só varre `Authored`: ele leu `56` antes dela e `40` depois. *Um piso que descreve uma
-    // população que já não existe reprova sobre trabalho correcto*, e foi exactamente isso que
-    // ele fez (leu `40` contra `> 40`, por UM).
+    // ⚠️⚠️ **O PISO desceu DUAS vezes no MESMO dia (`40` → `30` → `20`), e a 2.ª foi a lição.**
+    // Este censo só varre `Authored`, e a varredura completa do catálogo (ordem do dono) estava a
+    // mudar essa população enquanto corria: `56` → `40` (núcleo + imagem) → **`29`** (vetor). O
+    // piso de `> 40` reprovou por UM, o de `>= 30` reprovou por UM outra vez.
     //
-    // ⛔ O `30` não é um número escolhido para caber: é o que continua a apanhar o defeito que
-    // este piso existe para apanhar — o `all()` a devolver vazio, ou o filtro a casar zero — e
-    // deixa margem para a decisão ainda ABERTA sobre a família do vetor (13 entradas), que, se o
-    // dono a mandar podar, leva a população para ~33.
+    // ⛔ **A cura não é adivinhar o próximo número — é o piso deixar de perseguir a população.**
+    // Ele existe para apanhar UM defeito: o censo ficar verde por não medir nada (o `all()` a
+    // devolver vazio, o filtro a casar zero). Um `>= 20` apanha isso com a mesma força que um
+    // `>= 29` e **não** reprova sobre a próxima poda legítima. *Um piso calibrado numa população
+    // que está a ser podada acusa o vivo, e a segunda vez que isso acontece é dado, não azar.*
     assert!(
-        checked >= 30,
+        checked >= 20,
         "o censo varreu so' {checked} componentes — ele nao pode ficar verde por nao medir nada"
     );
 }

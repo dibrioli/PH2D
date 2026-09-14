@@ -804,3 +804,58 @@ devolver vazio) e deixa margem para a decisão aberta do vetor.
    (`ph2d-script/src/registry.rs:15`). *Um registo parcial usado como oráculo acusa de ausente o
    que só não estava naquela mesa* — quem repetir a medição usa o `full_registry()` do ficheiro
    nomeado acima.
+
+### 14.14 — O VECTOR fechou, e a resposta veio de MEDIR o que o §14.13 tinha devolvido como decisão
+
+O §14.13 entregou a família do vetor ao dono com **duas leituras** («podar as redundantes» × «a
+paleta é a superfície de descoberta»). Ele disse *«Siga»*, e a pergunta que as separa **é
+mensurável**, o que torna a decisão técnica: ⭐ ***o neutro deste tipo, pendurado numa forma que JÁ
+EXISTE, quer dizer alguma coisa?*** Corrida item a item: **11 de 14** não querem.
+
+| mecanismo | quem | a medição |
+|---|---|---|
+| o gesto **SEMEIA do contexto** que a paleta não tem | `VecContour` | `contour_live::arm` põe `d = DEFAULT_D_FRAC * scale` (a escala da selecção em MUNDO); o `default()` é `d = 0` ⇒ anéis invisíveis. **É o caso do `Collider`** — com a diferença de que lá existe um seed e aqui não |
+| precisa dos **DOIS lados**, e o neutro prende a nada | `VecPatternPath` · `VecWidgetBind` | a porta é `pattern_live::link(motif, guide)` / `widget_edit::bind(target)`, que recebem os dois resolvidos e **recusam** os casos degenerados; o `default()` prende ao id `0` — a forma exacta do `PhysicsJoint` |
+| **derivado** de uma lista/knob do painel, e o neutro é o que ele REMOVE | `VecFilter` · `VecLayoutItem` · `VecLayoutSize` · `VecLayoutAbsolute` · `VecPatternRotation` · `VecWidgetValue` | o `vec_layout_edit` escreve a lei ao lado do código: *«o neutro DESTACA: um componente que não faz nada não viaja no arquivo»* ⇒ a paleta escreveria exactamente o que o painel apaga |
+| adoptado no **NASCIMENTO** do traço | `VecSymmetry` · `VecCutPath` | o eixo de simetria é capturado em LOCAL quando a forma nasce, e a exigência do dono é explícita: *«não deve fazer simetria de formas que já existem previamente»*. ⛔ E o `VecCutPath` **não é inerte, é destrutivo**: `cut_line::upkeep` mata a lâmina anterior ao armar a nova |
+
+⭐ **E as TRÊS que ficam, ficam pela mesma medição:** `VecBindings` · `VecLayout` ·
+`VecStrokeProfile` não têm **um único** escritor de produção (só `remove`) ⇒ a paleta é literalmente
+a única porta delas. *O mesmo instrumento que manda podar onze manda NÃO podar três* — e é assim que
+a intenção declarada no cabeçalho da família («a paleta é a superfície de descoberta») é **honrada**
+em vez de revogada: ela continua a sê-lo, exactamente para as que não têm outra porta.
+
+⚠️ **Dois helpers intrínsecos agora, e a diferença é load-bearing:** `g` = *não há neutro* (o tipo
+não tem `Default` — a lista que o compilador deu); `i` = *há neutro e ele é o que o artista não
+quer*. Colapsá-los apagaria a razão de metade das linhas.
+
+**Medido:** *Show all* **40 → 29** (e **85 → 29** desde 13/09). O *aplicável* de Empty e de Image não
+se move — estes são `O::VECTOR`, que é o que torna a poda invisível para quem trabalha com imagens e
+visível para quem desenha.
+
+**Gate:** `the_vector_family_offers_only_what_has_no_other_door`, mutação `VecSymmetry → v` ⇒ RED,
+nomeando-o.
+
+#### ⛔ O `Bone` ficou, e a suspeita do §14.13 estava ERRADA
+
+O §14.13 nomeou-o como candidato (*«um `Bone::default()` pendurado num objecto qualquer é um osso
+sem origem nem ponta»*). **Medido:** `Bone::default()` é `length: 1.0, strength: 1.0` — um osso
+**válido e visível**. A premissa da suspeita era falsa, e o que a desfez foi ler o `impl Default`,
+não o gesto. *Uma acusação escrita a partir do sítio onde o componente NASCE não sabe o que o neutro
+dele vale.*
+
+#### ⚠️⚠️ E o censo desta varredura escondeu UMA entrada, por um `head`
+
+O `VecWidgetValue` **não aparece na tabela do §14.13**: o censo imprimiu `131` linhas e eu li-o com
+`head -130`. Ele só apareceu quando o `grep -c "^    v("` devolveu `4` onde a análise previa `3`.
+*Uma janela não é um veredito* — e a rede que o apanhou foi uma **contagem** cruzada com uma
+previsão, não outra leitura da mesma lista.
+
+#### ⚠️ E o piso de população reprovou DUAS vezes no mesmo dia — a 2.ª é que é o dado
+
+`attaching_is_inert_for_everything_that_does_not_seed` varre só os `Authored`, e a varredura estava a
+mudar essa população enquanto corria: `56` → `40` → **`29`**. O piso `> 40` reprovou por UM; descido
+para `>= 30`, reprovou por UM outra vez. ⛔ **A cura não é adivinhar o próximo número:** o piso existe
+para apanhar *um* defeito — o censo ficar verde por não medir nada — e um `>= 20` apanha-o com a
+mesma força sem acusar a próxima poda legítima. *Um piso calibrado numa população que está a ser
+podada acusa o vivo, e a segunda vez que isso acontece é dado, não azar.*

@@ -1144,3 +1144,145 @@ ele não tem lei por-vértice. É um **controlo morto** da espécie que o §5.0 
 porta para o curar já existe (`Brush::offers_density_controls`). ⚠️ Fica **por decidir do dono** se
 ele prefere a row escondida ou apagada em cinzento: *esconder é divulgação progressiva, e sumir sem
 rasto já foi recusado uma vez nesta casa* (a curva do falloff, que voltou depois de um smoke).
+
+---
+
+## §22 — ⭐⭐⭐ O **APAGADOR DE DESLOCAMENTO** (`SPEC_unblocked_brushes.md` §4), e o substrato que ele exigiu
+
+Seguindo a fila («Siga»): dos quatro pincéis desbloqueados, o `Density` shipou em 14/09 e os **dois
+de multirresolução** tinham **uma** peça em falta nomeada — a §2.3. Esta secção fecha a peça **e** o
+primeiro dos dois.
+
+### §22.1 — ⭐⭐ O AVALIADOR DE PONTO-LIMITE, e ele REFUTOU a espec
+
+`ph2d_mesh::limit_point` — onde um vértice pousa se a malha for subdividida **para sempre**, em forma
+fechada, `O(anel)`, sem iterar.
+
+⛔⛔ **Porque ele é a espinha (§2.1):** `subdivide^k(base)` **não é** a superfície-limite, e a
+diferença não tende a zero na densidade que um artista usa. Medido no canto de `cube(1,0)`:
+
+| superfície | coordenada do canto |
+|---|---|
+| a malha de partida | `0,5000` |
+| **um passo** de subdivisão (a previsão) | `0,2778` |
+| ⭐ o **LIMITE** | **`0,2500`** |
+
+⇒ a previsão fica **`11 %` acima**, e um apagador ancorado nela deixaria esse resíduo **a cada
+passagem**: ele *encolheria a peça*, e o artista leria isso como *«o apagador comeu a forma»*.
+
+⛔⛔ **E A ESPEC §2.3 ESTÁ REFUTADA NUM PONTO, POR MEDIÇÃO.** Ela dá a máscara de Catmull-Clark como
+`(n²V + 4·ΣE + ΣF)/(n(n+5))` com *«ΣE a soma dos pontos MÉDIOS das arestas do anel e ΣF a soma dos
+CENTROIDES das faces incidentes»*. Escrita assim, o canto do cubo calcula `0,375` e o nosso
+`subdivide` iterado sete vezes pousa em `0,250` — **estável** em `k = 4` e `k = 7`. A forma certa é a
+do **ANEL**: `(n²V + 4·Σanel + Σdiagonais)/(n(n+5))`, que para `n = 4` é o estêncil clássico
+`(16, 4, 1)/36`.
+
+⚠️ *Uma espec atestada afirma o que o revisor podia ver, e ninguém tinha corrido a fórmula contra um
+esquema.* É a **segunda** vez nesta linha (a primeira foi o `n̂` da §9.1 do contorno).
+
+⭐ **A lei é DERIVADA e CONFERIDA, nunca citada** — a espec proíbe copiar uma tabela de pesos por
+valência, e o gate `o_limite_e_onde_a_subdivisao_de_facto_pousa` mede as máscaras contra o nosso
+**próprio** `subdivide` iterado. Isso é possível por uma propriedade do nosso porte: ele mantém os
+vértices originais nos índices `0..V`. Medido (`k = 4` → `k = 7`):
+
+| peça | esquema | `k = 4` | `k = 7` |
+|---|---|---|---|
+| `cube` | CC, valência 3 | `1,29e-4` | **`5,66e-7`** |
+| `octahedron` | Loop, valência 4 | `1,95e-3` | **`3,05e-5`** |
+| `uv_sphere 12×16` | CC + Loop | `1,41e-4` | **`2,21e-6`** |
+
+⚠️ **A barra é a CONVERGÊNCIA e não um epsilon escolhido:** uma máscara errada **estabiliza** numa
+distância ≠ 0 em vez de encolher — foi exactamente assim que a leitura da espec caiu.
+
+⛔ **O anel MISTO recusa** (`LimitPoint::None`): o nosso `even` interpola dois esquemas ali e essa
+mistura não tem limite publicado. *Inventar um seria pôr o vértice numa superfície que não é a de
+esquema nenhum* — o defeito do alvo que a §2.4 manda **não** herdar.
+
+### §22.2 — O pincel, e as duas coisas que o definem
+
+**A lei (§4.1):** `p ← p + f·(R − p)` — uma interpolação **linear pura** em direcção à referência,
+sem direcção privilegiada, sem normal, sem acumulador.
+
+⭐ **A prova de que não é *«mover ao longo da normal»*** é a componente perpendicular a `R − p`,
+medida no oráculo em `3,48e-08`. ⚠️ **E a fixtura tem de discriminar:** a primeira que escrevi usava
+uma referência **radial**, onde `R − p` e a normal apontam para o mesmo lado e as duas hipóteses dão
+o mesmo resultado. *Uma fixtura em que duas hipóteses coincidem não escolhe entre elas.* A que fica
+desloca a malha por um vector **constante**.
+
+**A força ao quadrado (§1.1),** medida: força `1,0` → fracção `1,000000`; força `0,5` → **`0,250000`**.
+
+⛔⛔ **E o padrão do `Verb::Thumb` NÃO TRANSFERE, apesar de parecer o mesmo.** Lá o quadrado sai de
+graça da composição (o alvo leva um peso, o aplicador multiplica pelo `accum`, que leva o outro) —
+mas aquele verbo é `Grip::Hold`, e a tabela do `GripLaw` dá-lhe `unit_accum = false`; o `Grip::Stamp`
+— o nosso — dá **`true`**: *o alvo já traz o peso e o `accum` vale 1*. Escrito à maneira do polegar,
+este pincel media `0,500` a meio curso, que é literalmente o *«parecer o dobro de forte»* de que a
+§1.1 avisa. ⇒ o quadrado é **escrito no alvo** (`w × strength`), e `w × strength` e não `w × w`:
+`w` já é `peso × força × pressão`, logo o produto dá **força ao quadrado e pressão linear**, que é a
+fórmula da espec letra por letra.
+
+**A referência (§2), e a equivalência que a torna barata:** subdividir **não muda** a superfície
+limite, logo o limite do vértice `v` de `subdivide(nível_de_baixo)` é um ponto da superfície-limite
+do nível de baixo, **na posição paramétrica de `v`**. ⇒ a máscara de vértice chega; não é preciso
+avaliar o limite em coordenadas arbitrárias.
+
+**A recusa (§4.3):** sem pilha, o dado de entrada **não existe**, e o produto **diz-o**. ⚠️ *O
+irmão-filtro do alvo estoirou publicamente por não fazer esta verificação* — é por isso que o gate
+desta fronteira é a **recusa**, não o resultado. ⭐ E o roteiro da cena `=43` **começa por ela**: o
+passo (1) manda usá-lo sem pilha, porque é ali que o artista aprende de que família este pincel é.
+
+**Inverter não faz nada**, byte-idêntico (§1.2). *Um pincel que ignora o `Ctrl` não é um pincel a que
+falta uma feature* — apagar deslocamento tem um só sentido.
+
+### §22.3 — ⛔⛔ CINCO mutações, e TRÊS delas mudaram o método
+
+| # | mutação | o que aconteceu |
+|---|---|---|
+| 1 | a força volta a ser linear | sangra |
+| 2 | o alvo segue a NORMAL | sangra |
+| 3 | a referência vira a PREVISÃO | ⛔ **SOBREVIVEU** |
+| 4 | sem pilha ele deixa de recusar | ⚠️ **neutralizada** por uma 2.ª guarda |
+| 5 | o apagador volta a acumular | ⛔ **SOBREVIVEU** |
+
+**A (3)** sobreviveu porque a minha régua era a **caixa da peça**, e a fixtura era uma esfera UV
+subdividida — onde quase todo vértice é regular e as duas superfícies distam menos que a tolerância
+da silhueta. *Uma régua indirecta pode ser cega exactamente onde a escolha acontece.* ⇒ o gate novo
+mede a **própria tabela de referência** sobre uma base de **CUBO** (valência `3` em todo canto), e
+afirma as duas metades: ela **é** o limite, e **difere** da previsão por muito mais que o ruído.
+
+**A (5)** sobreviveu por uma causa que este repo já regista por escrito: ***um corpus no ponto NEUTRO
+de um knob não testa esse knob*** — todas as fixturas herdam `Brush::default()`, onde o `accumulate`
+nasce desarmado. ⭐ E ao construir a fixtura que o arma, o achado foi **onde** a lei é observável: no
+`Grip::Stamp` a coluna aditiva do `GripLaw` é `false` de qualquer maneira, logo o predicado não muda
+**geometria nenhuma** — *ele governa uma ROW*. ⇒ o gate mudou de crate: ele passou a afirmar que o
+painel **não oferece** o interruptor a quem não o lê, que é a espécie de controlo morto que *todo
+gate de registo atravessa verde*.
+
+**A (4)** não é uma sobrevivência: a mutação é **neutralizada** por uma segunda guarda (a contagem de
+vértices não bate). Derrubadas as duas juntas, o gate sangra. *Defesa em profundidade lê-se como
+sobrevivência num relatório de mutação, e a diferença importa.*
+
+### §22.4 — ⛔ O ARNÊS estava a medir outro programa (a SEGUNDA vez no mesmo dia)
+
+O `um_dab` dos gates de cena não chamava o `open_reference_stroke`, que é a **segunda metade** do
+pen-down. Resultado: o apagador movia **zero** vértices mesmo com a pilha montada. ⚠️ A primeira
+metade (a foto do desfazer) mordeu horas antes, com o pincel de densidade. *Um arnês a que falta um
+passo do produto mede outro programa*, e desta vez o que ele media era um pincel inerte.
+
+### §22.5 — ⚠️ Três coisas que uma leitura rápida do diff entende ao contrário
+
+1. **`Verb::ALL` foi a 30, e a fila do `L` continua em OITO.** O apagador está fora dela pela razão
+   que a densidade **perdeu** em 14/09: ele é **inerte na configuração de fábrica** — precisa de uma
+   pilha, e uma peça nova tem um nível só. Uma tecla nua responderia com a linha de recusa em vez de
+   um gesto.
+2. **O `edge_target` da `ph2d-mesh` não morreu** — ele é a lei da referência e o que as bancadas
+   medem; o produto é que já não o chama (ver §20.3).
+3. **A referência é fotografada no PEN-DOWN, não por dab** — ela é função do nível de baixo, que o
+   traço não toca. Recalculá-la por dab custaria um `subdivide` inteiro por evento de ponteiro.
+
+### §22.6 — ⏳ Fica a fila
+
+* *Smear Multires Displacement* (§5) — **destravado**: ele usa a mesma referência que acabou de
+  nascer.
+* *Scene Project* (§6) — nunca esteve travado; o que falta é o **tecto de custo**, por medir.
+* E os dois itens que já eram decisão do dono: o **bordo no `Density`** (§3.8) e a **folga do
+  `SCENE_PROJECT`** (§6.4).

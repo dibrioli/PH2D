@@ -586,6 +586,14 @@ const PANEL_A11Y_DELEGATE_OK: &[(&str, &str)] = &[
     // ⚠️ **A delegação é TRANSITIVA e MEDIDA**, e o ficheiro nasceu em 2026-09-08 do corte que a
     // secção TIMERS impôs ao `paint_frame_shared.rs` (658 de 600) — exactamente como o
     // `paint_card.rs` acima nasceu do corte do `paint.rs` dele.
+    // ⭐ **Nasceu em 2026-09-14 do corte que a secção TAGS impôs ao `paint_frame.rs`** (606 de
+    // 600) — a terceira vez que este ficheiro regista a mesma forma. ⚠️ **A isenção é MEDIDA**:
+    // zero ocorrências de `NodeId`, `hit_index` ou `register(` — ele não pinta nada, lê os
+    // instantâneos do quadro e devolve uma struct.
+    (
+        "ph2d-panel-inspector/src/paint_frame_snapshots.rs",
+        "le' os instantaneos vivos do quadro e deriva o `any_section`; nao pinta e nao regista um unico id — 0 ocorrencias de NodeId / hit_index / register(",
+    ),
     (
         "ph2d-panel-inspector/src/paint_optional.rs",
         "orquestrador das CINCO seccoes OPCIONAIS (§11 Animation, §12 Sockets, TIMERS, SIGNAL ACTIONS, AUDIO); nao regista um unico id — 0 ocorrencias de NodeId / hit_index. / register( — e cada widget e' pintado pela seccao que ele chama, a moldura pelo paint_frame. ⚠️ Chamava-se `paint_stateful.rs` ate' 2026-09-09: a AUDIO nao tem lista e por isso nao tem linha aberta, e a propriedade que dava nome ao ficheiro deixou de o descrever",

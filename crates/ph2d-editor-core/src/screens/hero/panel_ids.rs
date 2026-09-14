@@ -14,6 +14,9 @@ pub(super) fn default_panel_visibility() -> std::collections::BTreeMap<&'static 
     map.insert("widget_gallery", false);
     map.insert("grid_snap", false);
     map.insert("timeline", false);
+    // ⭐⭐⭐ O painel das TAGS (TOP-20 #9) nasce FECHADO — a maioria dos projectos não tem tag
+    // nenhuma, e a porta dele num projecto vazio é o *Window → Tags*.
+    map.insert("tags", false);
     map
 }
 
@@ -45,6 +48,10 @@ pub(super) fn canonical_panel_id(id: &str) -> Option<&'static str> {
         // `set_panel_visible` cai no `Box::leak`, o que funciona e mesmo assim é errado
         // quando o nome é conhecido.
         "model3d" => Some("model3d"),
+        // O painel das TAGS (TOP-20 #9) — irmão dos dois de cima. Sem esta entrada o
+        // `set_panel_visible` cai no `Box::leak`, o que funciona e mesmo assim é errado quando o
+        // nome é conhecido.
+        "tags" => Some("tags"),
         _ => None,
     }
 }

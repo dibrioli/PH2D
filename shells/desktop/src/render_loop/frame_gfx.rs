@@ -80,6 +80,9 @@ pub(super) struct FrameGfx<'a> {
     /// ⭐⭐ **A ÁRVORE DE TAGS do projecto** (TOP-20 #9) — lida pela resolução do `SignalActions`
     /// (um alvo por tag pergunta quem pertence à subárvore) e, a partir da W3, pelo painel.
     pub(super) tags: &'a mut ph2d_tags::TagTree,
+    /// ⭐⭐ **A RECUSA do último gesto do painel *Tags*** — ver o campo homónimo do `AppGfx`. Ela
+    /// vem junto com a árvore porque quem a escreve é quem a muta, e quem a lê é quem a publica.
+    pub(super) tags_problem: &'a mut Option<(u64, String)>,
     pub(super) logical_texture_map: &'a mut LogicalTextureMap,
     pub(super) component_registry: &'a mut ComponentRegistry,
     pub(super) editor_queue: &'a mut EditorCommandQueue,
@@ -181,6 +184,8 @@ impl<'a> FrameGfx<'a> {
             catalogs: asset_catalogs,
             // ⭐⭐ A ÁRVORE DE TAGS (TOP-20 #9) — ver o campo.
             tags,
+            // ⭐⭐ A recusa do último gesto do painel — a metade que sobrevive ao quadro.
+            tags_problem,
             // ⚠️ **CONSIDERADA e deixada de fora**, pela razão exacta da `library_cache` abaixo: a
             // cache das tags é lida no `capture_project_state`, que corre depois deste bloco.
             tags_cache: _,
@@ -272,6 +277,7 @@ impl<'a> FrameGfx<'a> {
             atlas_asset_map,
             asset_catalogs,
             tags,
+            tags_problem,
             logical_texture_map,
             component_registry,
             editor_queue,

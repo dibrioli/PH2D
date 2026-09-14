@@ -465,6 +465,11 @@ pub fn cursor_over_hero_panel(gfx: Option<&AppGfx>, x: f32, y: f32) -> bool {
         // must intercept the wheel, or wheeling over it zooms the camera
         // underneath in silence.
         || inside(PHYSICS_PANEL)
+        // ⭐⭐⭐ O painel das TAGS (TOP-20 #9, W4). Ele publica um thumb — uma taxonomia real
+        // transborda o dock com poucas dezenas de tags —, e sem esta linha rolar a árvore daria
+        // ZOOM na câmera por baixo, em silêncio. *O gate `every_scrollable_panel_intercepts_the_wheel`
+        // vive em `shells/desktop/tests/`, que nem o `--bins` nem a suíte da crate do painel alcançam.*
+        || inside(ph2d_editor_core::ids::TAGS_PANEL)
         // O painel de TOKENS (plano UI/UX W6): ~80 linhas transbordam o dock em qualquer
         // resolução, então ele publica um thumb — e sem esta linha rolar a lista de cores
         // daria ZOOM na câmera por baixo, em silêncio.

@@ -87,6 +87,7 @@ mod settings_text;
 mod settings_unit;
 mod sheet_size;
 mod skeleton_toggle;
+mod tags_toggle;
 mod theme;
 mod timeline_segment;
 mod tokens_toggle;
@@ -156,6 +157,7 @@ pub fn dispatch_all(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         || rail_panels::apply(hero, event)
         || physics_toggle::apply(hero, event)
         || skeleton_toggle::apply(hero, event)
+        || tags_toggle::apply(hero, event)
         || tokens_toggle::apply(hero, event)
         || authored_toggle::apply(hero, event)
         || io_menu::apply(hero, event)

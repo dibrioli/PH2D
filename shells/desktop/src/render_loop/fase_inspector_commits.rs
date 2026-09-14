@@ -5,6 +5,11 @@
 use super::*;
 use ph2d_i18n::tr_with;
 
+/// ⭐⭐⭐ A fase-filha dos gestos sobre a ÁRVORE de tags — ficheiro irmão por `#[path]`, para o
+/// `render_loop/mod.rs` não crescer acima do tecto dele (o molde do `fase_snapshot_readouts`).
+#[path = "fase_tag_tree_commits.rs"]
+mod tag_tree_commits;
+
 /// As edições do Inspector que o dreno do barramento recolheu neste quadro.
 pub(super) struct InspectorIntents {
     pub(super) reimport_entity: Option<u64>,
@@ -21,6 +26,7 @@ pub(super) struct InspectorIntents {
     pub(super) audio_edits: Vec<(u64, ph2d_editor_core::AudioFieldEdit)>,
     pub(super) camera_edits: Vec<(u64, ph2d_editor_core::CameraFieldEdit)>,
     pub(super) tags_edits: Vec<(u64, ph2d_editor_core::TagsFieldEdit)>,
+    pub(super) tag_tree_edits: Vec<ph2d_editor_core::TagTreeEdit>,
     pub(super) inspector_queue_dirty: bool,
     pub(super) action_edits: Vec<(u64, ph2d_editor_core::ActionFieldEdit)>,
     pub(super) physics_edits: Vec<(u64, ph2d_editor_core::PhysicsFieldEdit)>,
@@ -51,6 +57,7 @@ impl crate::App {
             name_type_id,
             sprite_type_id,
             tags,
+            tags_problem,
             ..
         } = FrameGfx::of(gfx);
         // O bloco do quadro só chama esta fase com o `HeroScreen` vivo.
@@ -70,6 +77,7 @@ impl crate::App {
             audio_edits,
             camera_edits,
             tags_edits,
+            tag_tree_edits,
             mut inspector_queue_dirty,
             action_edits,
             physics_edits,
@@ -202,6 +210,14 @@ impl crate::App {
             );
             inspector_queue_dirty = true;
         }
+        // ⭐⭐⭐ **O painel TAGS** (TOP-20 #9, W4) — os gestos sobre a ÁRVORE, na fase-filha.
+        //
+        // ⚠️ **Ela é um ficheiro irmão e não um bloco aqui**, e o tecto de LOC é que o disse: o
+        // bloco levava esta função a `219` contra um tecto de `200`. ⛔ *Partir por
+        // RESPONSABILIDADE, nunca subir o número* — e a fronteira já estava escrita no comentário
+        // dele: **nenhum destes gestos é uma edição do Inspector**. Esta função chama-a porque é a
+        // fase do quadro que tem as três coisas que ela pede (a árvore · o mundo · o ecrã).
+        tag_tree_commits::aplicar(sim, tags, tags_problem, hero, &tag_tree_edits);
         if inspector_queue_dirty
             && let Err(e) = ph2d_ecs::scene::apply_editor_commands(
                 sim.world_mut(),

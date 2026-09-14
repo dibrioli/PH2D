@@ -265,6 +265,7 @@ ph2d-panel-padding = { path = "../../crates/ph2d-panel-padding", optional = true
 # the snapshot via `ph2d_panel_vector::set_current_vector_style` (vector_bridge).
 ph2d-panel-vector = { path = "../../crates/ph2d-panel-vector", optional = true }
 ph2d-panel-skeleton = { path = "../../crates/ph2d-panel-skeleton", optional = true }
+ph2d-panel-tags = { path = "../../crates/ph2d-panel-tags", optional = true }
 # Painter layers panel — typed panel listing the LayerStack (thumb + name +
 # visibility + opacity + blend) + adjustment-layer editors. Right-docked
 # (Inspector slot takeover) when the Painter (layers + effects) tool is active.
@@ -535,6 +536,7 @@ default = [
     "panel-painter-layers",
     "panel-vector",
     "panel-skeleton",
+    "panel-tags",
     "panel-flip",
     "panel-flip-frames",
     "panel-audio-mixer",
@@ -592,6 +594,9 @@ panel-vector         = ["ph2d-panel-registry-init/panel-vector", "dep:ph2d-panel
 # por quadro (`ph2d_panel_skeleton::set_current_*`), e decide se ele é visto: ele só tem sujeito
 # numa cena que tem ossos.
 panel-skeleton       = ["ph2d-panel-registry-init/panel-skeleton", "dep:ph2d-panel-skeleton"]
+# ⭐⭐⭐ O painel TAGS (TOP-20 #9, W4). A shell publica-lhe a árvore por quadro
+# (`ph2d_panel_tags::set_current_tags`) e drena os gestos dele pelo barramento.
+panel-tags           = ["ph2d-panel-registry-init/panel-tags", "dep:ph2d-panel-tags"]
 # Flip Style panel + its render_loop bridge (`flip_bridge` publishes the style +
 # layers snapshots via `ph2d_panel_flip::set_current_flip_*` + reads the OKLCH
 # picker back into the tool), so the shell needs the direct dep too.

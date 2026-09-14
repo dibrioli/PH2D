@@ -88,6 +88,8 @@ pub fn build_typed_registry() -> ph2d_editor_core::panel::PanelRegistry {
     reg.push(ErasedPanel::new::<ph2d_panel_sculpt3d::Sculpt3dPanel>());
     #[cfg(feature = "panel-skeleton")]
     reg.push(ErasedPanel::new::<ph2d_panel_skeleton::SkeletonPanel>());
+    #[cfg(feature = "panel-tags")]
+    reg.push(ErasedPanel::new::<ph2d_panel_tags::TagsPanel>());
     #[cfg(feature = "panel-timeline")]
     reg.push(ErasedPanel::new::<ph2d_panel_timeline::TimelinePanel>());
     #[cfg(feature = "panel-tokens")]
@@ -145,6 +147,14 @@ mod tests {
             n += 1;
         }
         #[cfg(feature = "panel-skeleton")]
+        {
+            n += 1;
+        }
+        // ⭐⭐⭐ O painel TAGS (TOP-20 #9, W4). ⚠️ A nota acima já diz porquê ele tem de estar
+        // aqui: o `ph2d-panel-sync` regenera o bloco do `push` e **não** esta const, então um
+        // painel novo que só apareça lá passa em `cargo test -p <crate>` e reprova no `ship.sh`,
+        // quando a unificação de features da workspace liga o painel.
+        #[cfg(feature = "panel-tags")]
         {
             n += 1;
         }

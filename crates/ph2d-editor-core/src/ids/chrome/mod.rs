@@ -41,6 +41,9 @@ mod rail_painter;
 /// **Os ids do painel da cena 3D** (ADR-0150, W12) — a ferramenta, o pincel, o espelho,
 /// a topologia e o sombreamento. Categoria MUNDO, como o de física.
 mod sculpt3d;
+/// ⭐⭐⭐ **Os ids do painel TAGS** (TOP-20 #9) — o rect do painel e o abridor do menu, que são
+/// os dois que o CHROME lê. Os controlos vivem na crate do painel.
+mod tags;
 mod timeline;
 /// **Os ids do painel de TOKENS** (plano UI/UX W6) — a tabela de cor do design system,
 /// autorável pelo artista. Categoria MUNDO, como o de física.
@@ -68,6 +71,7 @@ pub use prefab::*;
 pub use rail::*;
 pub use rail_painter::*;
 pub use sculpt3d::*;
+pub use tags::*;
 pub use timeline::*;
 pub use tokens::*;
 pub use topbar::*;

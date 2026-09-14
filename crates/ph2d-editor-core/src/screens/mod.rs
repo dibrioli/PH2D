@@ -35,8 +35,8 @@ pub use hero::{
     InspectorTagsInfo, InspectorTimerInfo, InspectorTimerRow, InspectorTransformInfo,
     InspectorVisibilityInfo, InspectorVisibilityMixed, InspectorVisibilitySectionInfo,
     InspectorWheelInfo, JointFieldEdit, OrderingFieldEdit, PhysicsFieldEdit, PlayerFieldEdit,
-    RequestedSpriteStrategy, SamplingFieldEdit, SliceFieldEdit, SpriteFieldEdit, TagsFieldEdit,
-    TimerFieldEdit, ViewFocusKind, VisibilityFieldEdit, WheelFieldEdit, paint_hero_screen,
+    RequestedSpriteStrategy, SamplingFieldEdit, SliceFieldEdit, SpriteFieldEdit, TimerFieldEdit,
+    ViewFocusKind, VisibilityFieldEdit, WheelFieldEdit, paint_hero_screen,
 };
 pub use layout::{
     EDGE_PAD, HERO_VIEWPORT_H, HERO_VIEWPORT_W, HIERARCHY_W, HUD_BOTTOM_PAD, HUD_H, HeroLayout,

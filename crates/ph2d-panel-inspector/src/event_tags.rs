@@ -18,10 +18,10 @@
 //! da cena. Escrever aqui abriria a segunda porta para o mesmo estado — e ela mentiria exactamente
 //! no caso em que a shell recusasse a edição (o objecto cheio).
 
+use ph2d_editor_core::TagsFieldEdit;
 use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetEvent};
 use ph2d_editor_core::panel::PanelHostInternal;
-use ph2d_editor_core::screens::hero::TagsFieldEdit;
 use ph2d_editor_core::widget::{ButtonState, TagState};
 
 use crate::state;

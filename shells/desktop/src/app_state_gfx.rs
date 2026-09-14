@@ -324,6 +324,14 @@ pub(crate) struct AppGfx {
     /// ⭐ A cache que impede a árvore de ser re-codificada por quadro — a irmã exacta da
     /// [`AppGfx::library_cache`], e pela medição que aquela pagou.
     pub(crate) tags_cache: ph2d_app_components::tags_doc::TagsCache,
+    /// ⭐⭐ **A RECUSA do último gesto sobre a árvore** — `(tag, frase)`, pintada NA LINHA dela.
+    ///
+    /// ⚠️ **Estado da shell e não valor derivado:** a lei devolve o `Result` no instante do gesto e
+    /// o painel repinta dezenas de vezes depois disso. Sem esta memória, a frase apareceria um
+    /// quadro e sumia — e o artista teria de repetir o gesto para saber porque ele falhou.
+    ///
+    /// ⚠️ A frase vem de `ph2d_tags::TagError::message`, ao lado da lei; a shell não a escreve.
+    pub(crate) tags_problem: Option<(u64, String)>,
     /// M14.A: editor → SimWorld mutation pipeline. Populated at boot
     /// with the canonical Transform / Name / Visibility / RootOrder
     /// type registrations via `register_ecs_components`; future crates

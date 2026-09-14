@@ -48,17 +48,19 @@ pub struct InspectorTagsInfo {
     pub selected_count: usize,
 }
 
-/// **Uma edição da secção TAGS.**
-///
-/// ⚠️ **`Create` carrega TEXTO e as outras um id**, e a distinção é a que faz a caixa de escolha ter
-/// uma porta só: escrever um nome que não existe e carregar em *Create “…”* cria a tag **e** marca
-/// o objecto, num gesto; escolher uma da lista só marca.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum TagsFieldEdit {
-    /// Marca o objecto com esta tag (id da árvore). Uma tag que já lá está é no-op.
-    Add(u64),
-    /// Tira esta tag do objecto. ⛔ **Não apaga a tag da árvore** — o painel *Tags* (W4) é quem o faz.
-    Remove(u64),
-    /// Cria a tag com este caminho (ou devolve a que já existe, dobrada) **e** marca o objecto.
-    Create(String),
-}
+// ⛔⛔ **Nem o `TagsFieldEdit` nem o `TagTreeEdit` moram aqui, e a mudança tem um NÚMERO atrás.**
+// Os dois vivem em [`crate::tags_edits`], o módulo de vocabulário que a catraca do DAG prescreve
+// por escrito — *«os PAYLOADS do Inspector moram em `screens::hero::inspector_model*`; cura:
+// descem para um módulo de vocabulário abaixo do `action_bus`»*. A aresta `action_bus → screens`
+// estava no tecto (`24`) e o `TagsFieldEdit` desta wave fê-la passar a `25`, **em silêncio**: o
+// portão da W3 correu o painel e a shell, e este gate vive no `ph2d-editor-core`.
+// ⇒ a cura não foi subir o tecto (a catraca só encolhe): foi **começar a migração** que ela pede.
+// ⚠️ Os dois descem juntos porque são o mesmo assunto — *marcar um objecto* e *mudar a taxonomia*
+// são as duas metades de um só vocabulário, e separá-los daria dois sítios para a mesma família.
+// ⛔⛔ **O `TagTreeEdit` NÃO mora aqui, e a ausência é a decisão.** Ele vive em
+// [`crate::action_bus`], ao lado da acção que o carrega — e a razão não é gosto: as irmãs
+// (`TagsFieldEdit`, `TimerFieldEdit`, …) são tipos do MODELO, construídos pelos instantâneos
+// deste módulo, enquanto o `TagTreeEdit` não tem instantâneo nenhum: ele é só a carga do
+// barramento. ⚠️ E foi a catraca do DAG que o disse — o `action_bus → screens` está no tecto
+// (`24`), e uma 25.ª referência ali reprova: *a catraca só encolhe*, e a cura é não precisar da
+// aresta.

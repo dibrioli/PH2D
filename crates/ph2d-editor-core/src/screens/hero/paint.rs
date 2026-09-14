@@ -35,6 +35,11 @@ pub const PANEL_Z_ORDER_FALLBACK: &[ph2d_a11y::NodeId] = &[
     // no resto do tempo — e SEM ela o painel registado e visível nunca é alcançado pelo passeio, e
     // nunca é pintado.
     ids::SKELETON_PANEL,
+    // ⭐⭐⭐ O painel das TAGS (`ph2d-panel-tags`, TOP-20 #9): encaixa na coluna da direita e é
+    // categoria MUNDO, como o de física. O `paint()` dele sai cedo quando escondido, então esta
+    // entrada é inerte no resto do tempo — e SEM ela o painel registado e visível nunca é
+    // alcançado pelo passeio, e nunca é pintado.
+    ids::TAGS_PANEL,
     // Flip tool Style panel (ADR-0114 W2 docked `ph2d-panel-flip`): docks
     // over the inspector slot while the `flip` tool is active (bridge-driven
     // visibility). Its `paint()` no-ops when hidden, so this is inert

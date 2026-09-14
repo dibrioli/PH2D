@@ -179,6 +179,19 @@ pub const ASSET_CATALOG_SCROLLBAR_ID: NodeId = NodeId(845);
 /// escolhe* — e as duas terem escrito o mesmo literal é a colisão que funde **muda**: o
 /// `assert_ne!` da lista de unicidade é que a acusaria, e só se alguém a mantivesse em dia.
 pub const LAB_SCROLLBAR_ID: NodeId = NodeId(846);
+/// ⭐⭐⭐ **O painel TAGS** (TOP-20 #9, W4) — a taxonomia do projecto transborda o dock com poucas
+/// dezenas de tags, e ela não tem tecto (medido: `9 344` tags abrem em `9,2 ms`). Thumb próprio
+/// pelo mesmo motivo dos irmãos acima.
+///
+/// ⛔⛔ **Ele NASCEU na crate do painel e teve de VIR PARA CÁ** — e foi o
+/// `hit_indexed_ids_are_registered` que o disse. Um id de barra declarado do lado do painel é
+/// invisível ao [`crate::interaction::dispatch`]: o `scrollbar_panel_for_id` não o mapeia, o
+/// `begin_scrollbar_drag` nunca arma, e o polegar fica **pintado e impossível de agarrar** — que é
+/// exactamente a auditoria que o `INPUT_MAP_SCROLLBAR_ID` já pagou acima. *O dono de um id de barra
+/// é o despacho, nunca quem a desenha.*
+///
+/// Next free id is `848`; re-read the collision note above before taking it.
+pub const TAGS_SCROLLBAR_ID: NodeId = NodeId(847);
 
 #[cfg(test)]
 mod tests {
@@ -226,6 +239,7 @@ mod tests {
             ("ASSET_CATALOG", ASSET_CATALOG_SCROLLBAR_ID),
             ("LAB", LAB_SCROLLBAR_ID),
             ("ASSET_BROWSER", ASSET_BROWSER_SCROLLBAR_ID),
+            ("TAGS", TAGS_SCROLLBAR_ID),
             ("DROPDOWN", crate::widget::DROPDOWN_SCROLLBAR_ID),
         ];
         for (i, (na, a)) in ids.iter().enumerate() {

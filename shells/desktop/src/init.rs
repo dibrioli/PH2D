@@ -229,6 +229,7 @@ pub(crate) fn build_initial_state(
         library_cache: crate::project_library::LibraryCache::default(),
         tags: ph2d_tags::TagTree::new(),
         tags_cache: ph2d_app_components::tags_doc::TagsCache::default(),
+        tags_problem: None,
         component_registry: build_component_registry(),
         editor_queue: EditorCommandQueue::new(),
         transform_type_id: stable_type_id("ph2d::ecs::Transform"),

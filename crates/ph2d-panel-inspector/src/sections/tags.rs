@@ -49,7 +49,9 @@ const ROW_H: f32 = ph2d_tokens::ROW_H_PX;
 fn chip_w(text_system: &mut TextSystem, label: &str, h: f32) -> f32 {
     let pad_x = (h * 0.5).max(8.0); // LITERAL-PX-OK: espelha o `paint_tag`
     let close = (h * 0.7).clamp(10.0, 16.0); // LITERAL-PX-OK: espelha o `Tag::close_rect`
-    text_system.prefix_width(label, TypeToken::Xs.px()) + pad_x * 2.5 + close
+    // O inverso EXACTO da geometria do `paint_tag`: `pad_x` à esquerda, `pad_x` à direita do
+    // rótulo, e meio `pad_x` antes do `×`.
+    text_system.prefix_width(label, TypeToken::Xs.px()) + pad_x * 2.5 + close // LITERAL-PX-OK: fator de contagem de vãos, não uma medida
 }
 
 /// **A nuvem de chips**, quebrada em linhas. Devolve o `y` seguinte.
@@ -101,7 +103,7 @@ fn chips(
         }
         cx += cw + gap;
     }
-    cy + ROW_H + Spacing::Sm.px()
+    cy + ph2d_tokens::row_pitch_px()
 }
 
 /// **As opções da caixa** — as tags do projecto que o objecto ainda não tem, filtradas por `filtro`
@@ -185,7 +187,7 @@ fn pick_row(
         "",
         pick_options(arvore, no_objecto, filtro),
     )
-    .placeholder("Pick a tag\u{2026}")
+    .placeholder(ph2d_i18n::tr("panel.tags.pick"))
     .open(open)
     .visual(store.dropdown_visual(crate::ids::INSP_TAGS_PICK));
     paint_dropdown_chip(&dd, rect, scene, text_system, theme);
@@ -349,7 +351,8 @@ pub(crate) fn paint_tags_section(
         w,
         cur_y,
         crate::ids::INSP_TAGS_NEW,
-        TextInput::new(crate::ids::INSP_TAGS_NEW, "").placeholder("New tag or search\u{2026}"),
+        TextInput::new(crate::ids::INSP_TAGS_NEW, "")
+            .placeholder(ph2d_i18n::tr("panel.tags.new_or_search")),
     );
 
     // ⭐ O `Create` só existe quando há um nome que ainda não é de ninguém — oferecê-lo sobre uma
@@ -402,5 +405,5 @@ fn aviso(
         w,
         resolve(cor, theme),
     );
-    y + font + Spacing::Sm.px()
+    y + font + ph2d_tokens::control_gap_px()
 }

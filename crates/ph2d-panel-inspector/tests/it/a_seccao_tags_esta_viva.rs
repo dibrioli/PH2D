@@ -14,8 +14,9 @@
 //! `populate_tags` inteiro apagado. O `Down`+`Up` cai no rectângulo que a pintura registou e
 //! atravessa a mesma cadeia que o dedo do artista.
 
+use ph2d_editor_core::TagsFieldEdit;
 use ph2d_editor_core::action_bus::EditorAction;
-use ph2d_editor_core::screens::hero::{InspectorTagRow, InspectorTagsInfo, TagsFieldEdit};
+use ph2d_editor_core::screens::hero::{InspectorTagRow, InspectorTagsInfo};
 use ph2d_editor_core::zones::Rect;
 use ph2d_host::{PointerButton, PointerEvent, PointerKind, PointerSource};
 use ph2d_panel_inspector::{InspectorPanel, InspectorState, set_current_inspector_tags};

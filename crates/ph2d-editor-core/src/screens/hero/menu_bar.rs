@@ -217,7 +217,7 @@ impl ModuleTruth {
 
 /// A tabela. ⚠️ **Toda linha de alternância dos menus tem de estar aqui**, e há censo a exigi-lo
 /// (`every_toggle_row_of_the_bar_is_marked_by_its_own_state`).
-pub const MODULE_TRUTHS: [(NodeId, ModuleTruth); 19] = [
+pub const MODULE_TRUTHS: [(NodeId, ModuleTruth); 20] = [
     (ids::TOPBAR_VECTOR, ModuleTruth::Tool("vector")),
     (ids::TOPBAR_MOTION, ModuleTruth::Tool("motion")),
     (ids::TOPBAR_FLIP, ModuleTruth::Tool("flip")),
@@ -228,6 +228,9 @@ pub const MODULE_TRUTHS: [(NodeId, ModuleTruth); 19] = [
     (ids::TOPBAR_SKELETON, ModuleTruth::Panel("skeleton")),
     (ids::TOPBAR_SCULPT3D, ModuleTruth::ShellOwned),
     (ids::TOPBAR_MODEL3D, ModuleTruth::Panel("model3d")),
+    // ⭐⭐⭐ **AS TAGS** (TOP-20 #9, W4). ⚠️ O literal é o `Panel::ID` da `ph2d-panel-tags` —
+    // esta camada é chrome e não depende de painel nenhum, que é a mesma cerca das vizinhas.
+    (ids::TOPBAR_TAGS, ModuleTruth::Panel("tags")),
     (ids::TOPBAR_IMAGE_TOOLS, ModuleTruth::ImageMode),
     (ids::TOPBAR_AUDIO_MIXER, ModuleTruth::Panel("audio_mixer")),
     (ids::TOPBAR_AUDIO_EDITOR, ModuleTruth::Panel("audio_editor")),

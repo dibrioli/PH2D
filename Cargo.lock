@@ -5871,6 +5871,7 @@ dependencies = [
  "ph2d-panel-registry-init",
  "ph2d-panel-sculpt3d",
  "ph2d-panel-skeleton",
+ "ph2d-panel-tags",
  "ph2d-panel-timeline",
  "ph2d-panel-tokens",
  "ph2d-panel-upscale",
@@ -7730,6 +7731,7 @@ dependencies = [
  "ph2d-component-desc",
  "ph2d-editor-core",
  "ph2d-host",
+ "ph2d-i18n",
  "ph2d-label-fold",
  "ph2d-text",
  "ph2d-tokens",
@@ -7855,6 +7857,7 @@ dependencies = [
  "ph2d-panel-sculpt3d",
  "ph2d-panel-skeleton",
  "ph2d-panel-sync",
+ "ph2d-panel-tags",
  "ph2d-panel-timeline",
  "ph2d-panel-tokens",
  "ph2d-panel-upscale",
@@ -7902,6 +7905,22 @@ dependencies = [
 [[package]]
 name = "ph2d-panel-sync"
 version = "0.0.0"
+
+[[package]]
+name = "ph2d-panel-tags"
+version = "0.0.0"
+dependencies = [
+ "bumpalo",
+ "ph2d-a11y",
+ "ph2d-editor-core",
+ "ph2d-host",
+ "ph2d-i18n",
+ "ph2d-text",
+ "ph2d-tokens",
+ "ph2d-tool-registry",
+ "ph2d-ui-testkit",
+ "ph2d-vector",
+]
 
 [[package]]
 name = "ph2d-panel-timeline"

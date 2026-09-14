@@ -76,7 +76,12 @@ const ARESTAS_TOLERADAS: &[(&str, &str, usize, &str)] = &[
         "os PAYLOADS do Inspector (`*FieldEdit`, `*Info`, `HierReparentIntent`) moram em \
          `screens::hero::inspector_model*`. Cura: descem para um módulo de vocabulário abaixo do \
          `action_bus`. ⛔ Nesta rodada a cerca da `line/render-loop` nomeia quatro deles pelo \
-         caminho `screens::hero::` — descem depois das duas fusões.",
+         caminho `screens::hero::` — descem depois das duas fusões. ⭐ **A migração COMEÇOU em 2026-09-14** e o \
+         número ficou onde estava: a `line/components` desceu os DOIS gestos das tags \
+         (`TagsFieldEdit` + `TagTreeEdit`) para o `crate::tags_edits`, que é exactamente o módulo \
+         de vocabulário que esta cura prescreve. ⛔ Sem isso a aresta teria ido a **26**. ⚠️ E foi \
+         esta catraca que apanhou a wave anterior a passar o tecto **em silêncio**: o portão dela \
+         correu o painel e a shell, e este gate vive aqui.",
     ),
     (
         "panel",

@@ -256,82 +256,15 @@ pub(crate) fn paint_deferred_popovers(
         );
     }
 
-    // ⭐⭐⭐ **O FILTRO por tag da §11 PHYSICS** (TOP-20 #9, W3c) — terceiro slot, opções próprias
-    // (com o `(any)` à frente, que LIMPA o filtro).
-    if let Some(chip) = state_popovers::take_pending_phys_tag_dd() {
-        let dd = Dropdown::new(
-            crate::ids::INSP_PHYS_SIGNAL_TAG,
-            "",
-            sections::physics_rows::phys_tag_options(),
-        )
-        .placeholder("Only for tag\u{2026}  (any)")
-        .open(true);
-        paint_open_popover(
-            &dd,
-            chip,
-            region,
-            store,
-            scene,
-            text_system,
-            theme,
-            hit_index,
-        );
-    }
-    // ⭐⭐⭐ **A TAG ALVO de uma SIGNAL ACTION** (TOP-20 #9, W3b) — slot próprio, opções próprias.
-    // ⚠️ Elas são a árvore INTEIRA (uma acção pode apontar a qualquer tag), ao contrário da secção
-    // *Tags*, onde a lista tira as que o objecto já tem.
-    if let Some(chip) = state_popovers::take_pending_action_tag_dd() {
-        let dd = Dropdown::new(
-            crate::ids::INSP_ACTION_TAG_PICK,
-            "",
-            sections::actions::tag_options(),
-        )
-        .placeholder("Pick a tag\u{2026}")
-        .open(true);
-        paint_open_popover(
-            &dd,
-            chip,
-            region,
-            store,
-            scene,
-            text_system,
-            theme,
-            hit_index,
-        );
-    }
-    // ⭐⭐⭐ **TAGS** (TOP-20 #9) — a mesma máquina, e a lei da rederivação levada até ao fim: aqui
-    // **só o rect** viaja no slot. As opções saem do snapshot MAIS o texto da busca, que vive no
-    // store — e este passe tem os dois. ⚠️ Se o texto fosse guardado no slot, a lista pintada podia
-    // ficar um quadro atrás do que o artista está a escrever.
-    if let Some(chip) = state_popovers::take_pending_tags_dd()
-        && let Some(info) = state::current_inspector_tags()
-    {
-        let escrito = match store.get(crate::ids::INSP_TAGS_NEW) {
-            Some(ph2d_editor_core::interaction::InteractiveState::TextInput { text, .. }) => {
-                text.clone()
-            }
-            _ => String::new(),
-        };
-        let dd = Dropdown::new(
-            crate::ids::INSP_TAGS_PICK,
-            "",
-            sections::tags::pick_options(
-                &state::current_tag_tree(),
-                &info.on_object,
-                &ph2d_label_fold::fold(&escrito),
-            ),
-        )
-        .placeholder("Pick a tag\u{2026}")
-        .open(true);
-        paint_open_popover(
-            &dd,
-            chip,
-            region,
-            store,
-            scene,
-            text_system,
-            theme,
-            hit_index,
-        );
-    }
+    // ⭐⭐⭐ **OS TRÊS POPOVERS DE TAG** (TOP-20 #9) — no irmão, cortados em 2026-09-14 pelo tecto
+    // de 200 LOC desta função (ela chegou a `210`).
+    //
+    // ⚠️ **O corte é por ASSUNTO e não por tamanho:** os quatro de cima escolhem um ENUM do
+    // objecto (amostragem, camada, âncora, verbo); estes três escolhem uma **tag da árvore do
+    // projecto**, e as opções deles saem de outra porta. ⛔ Subir o número seria adiar com juros.
+    tags::paint_deferred_tag_popovers(scene, text_system, theme, hit_index, store, region);
 }
+
+/// ⭐ **Os três popovers de TAG** — irmão por `#[path]`; ver a chamada acima.
+#[path = "popovers_tags.rs"]
+mod tags;

@@ -336,7 +336,7 @@ fn target_rows(
         w,
         resolve(cor, theme),
     );
-    cur_y + font + Spacing::Sm.px()
+    cur_y + font + ph2d_tokens::control_gap_px()
 }
 
 /// A caixa de escolha da tag alvo. Devolve o `y` seguinte.
@@ -364,7 +364,7 @@ fn tag_pick_row(
         Some(InteractiveState::Dropdown { open: true, .. })
     );
     let mut dd = Dropdown::new(ids::INSP_ACTION_TAG_PICK, "", tag_options())
-        .placeholder("Pick a tag\u{2026}")
+        .placeholder(ph2d_i18n::tr("panel.tags.pick"))
         .open(open)
         .visual(store.dropdown_visual(ids::INSP_ACTION_TAG_PICK));
     if let Some(t) = row.target_tag.filter(|t| *t != 0) {

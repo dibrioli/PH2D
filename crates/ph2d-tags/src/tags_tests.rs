@@ -297,3 +297,74 @@ fn a_document_missing_an_ancestor_gets_it_with_the_parents_spelling() {
     );
     assert_eq!(t.next_id(), 6);
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// W4 — as duas perguntas que o PAINEL faz e que a W1 não precisou de responder
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// ⭐⭐⭐ **A ancestralidade de uma tag, da raiz até ela** — a porta que faz a contagem do painel
+/// caber numa passagem só pelo mundo.
+///
+/// ⚠️ **A ordem é da RAIZ para baixo**, e não é estética: quem soma contagens quer o pai antes do
+/// filho, e quem desenha um caminho lê-o na mesma direcção.
+///
+/// **Mutações que devem sangrar:** devolver só o próprio id · devolver a ordem invertida · incluir
+/// os IRMÃOS (a chave do irmão não é prefixo da minha).
+#[test]
+fn the_ancestry_of_a_tag_is_the_root_down_to_itself() {
+    let mut t = TagTree::new();
+    let boss = t.create("Enemy/Flying/Boss").expect("cria");
+    let voador = t.find("Enemy/Flying").expect("existe");
+    let inimigo = t.find("Enemy").expect("existe");
+    // ⚠️ O irmão existe DE PROPÓSITO: sem ele, uma implementação que devolvesse «tudo o que vem
+    // antes de mim na ordem da chave» passaria.
+    let _ = t.create("Enemy/Ground").expect("cria");
+
+    assert_eq!(t.ancestry(boss), vec![inimigo, voador, boss]);
+    assert_eq!(t.ancestry(inimigo), vec![inimigo]);
+    assert_eq!(
+        t.ancestry(TagId(9_999)),
+        Vec::<TagId>::new(),
+        "um id que não existe não ascende a nada"
+    );
+}
+
+/// ⚠️ **A ancestralidade nunca inventa um elo que a árvore não tem.**
+///
+/// Uma tag de raiz ao lado de outra é a dela própria e nada mais — a fixtura tem as duas raízes
+/// porque é assim que o painel as desenha, e a mutação que devolvesse «todas as de profundidade
+/// menor» passaria sem ela.
+///
+/// **Mutação que deve sangrar:** derivar a ancestralidade da PROFUNDIDADE em vez do caminho.
+#[test]
+fn a_sibling_root_is_never_an_ancestor() {
+    let mut t = TagTree::new();
+    let statue = t.create("Statue").expect("cria");
+    let enemy = t.create("Enemy").expect("cria");
+    let flying = t.create("Enemy/Flying").expect("cria");
+    assert_eq!(t.ancestry(flying), vec![enemy, flying]);
+    assert_eq!(t.ancestry(statue), vec![statue]);
+}
+
+/// ⭐⭐ **Toda recusa da árvore tem uma frase, e ela vive AO LADO DA LEI que a produz.**
+///
+/// ⛔ O painel não traduz um `TagError` — se traduzisse, a segunda superfície que mostrasse a mesma
+/// recusa escreveria outra frase, e as duas divergiriam na primeira vez que alguém mexesse numa.
+///
+/// **Mutações que devem sangrar:** duas variantes a partilharem a frase · uma frase vazia.
+#[test]
+fn every_refusal_says_why_in_words_and_no_two_say_the_same() {
+    let todas = [
+        TagError::Empty,
+        TagError::HasSeparator,
+        TagError::Collision { existing: TagId(1) },
+        TagError::IntoOwnSubtree,
+        TagError::Missing,
+    ];
+    let frases: BTreeSet<&str> = todas.iter().map(|e| e.message()).collect();
+    assert_eq!(frases.len(), todas.len(), "duas recusas com a mesma frase");
+    assert!(
+        todas.iter().all(|e| !e.message().trim().is_empty()),
+        "uma recusa sem frase é uma recusa muda"
+    );
+}

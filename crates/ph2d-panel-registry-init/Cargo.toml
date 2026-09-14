@@ -32,6 +32,7 @@ ph2d-panel-painter-layers = { path = "../ph2d-panel-painter-layers", optional = 
 ph2d-panel-physics = { path = "../ph2d-panel-physics", optional = true }
 ph2d-panel-sculpt3d = { path = "../ph2d-panel-sculpt3d", optional = true }
 ph2d-panel-skeleton = { path = "../ph2d-panel-skeleton", optional = true }
+ph2d-panel-tags = { path = "../ph2d-panel-tags", optional = true }
 ph2d-panel-timeline = { path = "../ph2d-panel-timeline", optional = true }
 ph2d-panel-tokens = { path = "../ph2d-panel-tokens", optional = true }
 ph2d-panel-upscale = { path = "../ph2d-panel-upscale", optional = true }
@@ -52,6 +53,7 @@ default = [
     # dono (2026-09-09): medido, o cabecalho dela caia em `y = 1394 px` sobre uma faixa visivel de
     # `774`, com 785 px de seccoes acima a falar de coisas que um osso nao tem.
     "panel-skeleton",
+    "panel-tags",
     "panel-color-equalization", "panel-equalize-sizes", "panel-upscale",
     "panel-audio-mixer", "panel-audio-editor",
     "panel-motion-graph", "panel-motion-params",
@@ -95,6 +97,7 @@ panel-painter-layers = ["dep:ph2d-panel-painter-layers"]
 panel-physics = ["dep:ph2d-panel-physics"]
 panel-sculpt3d = ["dep:ph2d-panel-sculpt3d"]
 panel-skeleton = ["dep:ph2d-panel-skeleton"]
+panel-tags = ["dep:ph2d-panel-tags"]
 panel-timeline = ["dep:ph2d-panel-timeline"]
 panel-tokens = ["dep:ph2d-panel-tokens"]
 panel-upscale = ["dep:ph2d-panel-upscale"]

@@ -15,9 +15,8 @@ use ph2d_editor_core::screens::hero::{
     InspectorActionInfo, InspectorAnchorInfo, InspectorAnimInfo, InspectorAudioInfo,
     InspectorBlendInfo, InspectorCameraInfo, InspectorJointInfo, InspectorNameInfo,
     InspectorOrderingInfo, InspectorPhysicsInfo, InspectorPlayerInfo, InspectorSamplingInfo,
-    InspectorSliceInfo, InspectorSpriteInfo, InspectorTagRow, InspectorTagsInfo,
-    InspectorTimerInfo, InspectorTransformInfo, InspectorVisibilityInfo,
-    InspectorVisibilitySectionInfo, InspectorWheelInfo,
+    InspectorSliceInfo, InspectorSpriteInfo, InspectorTimerInfo, InspectorTransformInfo,
+    InspectorVisibilityInfo, InspectorVisibilitySectionInfo, InspectorWheelInfo,
 };
 
 /// Inspector panel retained state. Held inside `ErasedPanel<InspectorPanel>`
@@ -165,24 +164,6 @@ thread_local! {
     /// CAMERA — o snapshot da entidade selecionada (TOP-20 #7).
     pub(crate) static CURRENT_INSPECTOR_CAMERA:
         std::cell::RefCell<Option<InspectorCameraInfo>> = const { std::cell::RefCell::new(None) };
-
-    /// TAGS — os chips DESTE objecto (TOP-20 #9). ⚠️ A árvore do projecto **não** vem aqui: ela
-    /// é do DOCUMENTO e tem porta própria ([`CURRENT_TAG_TREE`]).
-    pub(crate) static CURRENT_INSPECTOR_TAGS:
-        std::cell::RefCell<Option<InspectorTagsInfo>> = const { std::cell::RefCell::new(None) };
-
-    /// ⭐⭐⭐ **A ÁRVORE DE TAGS DO PROJECTO** — a lista inteira, na ordem dela.
-    ///
-    /// ⛔⛔ **Porta própria, e não um campo do [`CURRENT_INSPECTOR_TAGS`]**, e a razão é a SEGUNDA
-    /// superfície: a secção *Signal Actions* escolhe uma tag como alvo, e um objecto com
-    /// `SignalActions` **pode não ter `Tags` nenhum** — com a lista dentro do instantâneo por
-    /// objecto, a caixa de escolha do alvo abriria vazia exactamente no caso normal.
-    ///
-    /// ⚠️ *Não foi erro de leitura: era a forma certa enquanto houve um consumidor só.* O segundo
-    /// consumidor é que revela o NÍVEL a que um dado pertence — a árvore é documento, como a
-    /// `VecScene` e o `FlipDoc`, e não dado de uma entidade.
-    pub(crate) static CURRENT_TAG_TREE:
-        std::cell::RefCell<Vec<InspectorTagRow>> = const { std::cell::RefCell::new(Vec::new()) };
 
     /// **§12 — a linha ABERTA da lista, no sentido PAINEL → SHELL.**
     ///
@@ -369,22 +350,6 @@ pub fn set_current_inspector_camera(info: Option<InspectorCameraInfo>) {
 
 pub(crate) fn current_inspector_camera() -> Option<InspectorCameraInfo> {
     CURRENT_INSPECTOR_CAMERA.with(|c| c.borrow().clone())
-}
-
-pub fn set_current_inspector_tags(info: Option<InspectorTagsInfo>) {
-    CURRENT_INSPECTOR_TAGS.with(|c| *c.borrow_mut() = info);
-}
-
-pub(crate) fn current_inspector_tags() -> Option<InspectorTagsInfo> {
-    CURRENT_INSPECTOR_TAGS.with(|c| c.borrow().clone())
-}
-
-pub fn set_current_tag_tree(rows: Vec<InspectorTagRow>) {
-    CURRENT_TAG_TREE.with(|c| *c.borrow_mut() = rows);
-}
-
-pub(crate) fn current_tag_tree() -> Vec<InspectorTagRow> {
-    CURRENT_TAG_TREE.with(|c| c.borrow().clone())
 }
 
 pub(crate) fn current_inspector_audio() -> Option<InspectorAudioInfo> {
@@ -599,3 +564,15 @@ mod tint_color_tests {
         assert_eq!(tint_f32_to_u8([0.5, 0.5, 0.5, 0.5]), [128, 128, 128, 128]);
     }
 }
+
+/// ⭐⭐⭐ **As portas das TAGS** (TOP-20 #9) — irmão por `#[path]`, cortado em 2026-09-14 pelo tecto
+/// de 600 LOC deste ficheiro (a wave da secção levou-o a `601`).
+///
+/// ⚠️ **O corte é por ASSUNTO:** aqui estão os instantâneos POR OBJECTO que a shell publica; ali
+/// estão os das tags, que são **dois níveis diferentes** — os chips de um objecto e a árvore do
+/// DOCUMENTO —, e o doc-comment de cada um precisa de explicar porquê. ⛔ Subir o número seria
+/// adiar com juros.
+#[path = "state_tags.rs"]
+mod tags;
+pub(crate) use tags::{current_inspector_tags, current_tag_tree};
+pub use tags::{set_current_inspector_tags, set_current_tag_tree};

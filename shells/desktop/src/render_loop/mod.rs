@@ -134,6 +134,8 @@ mod inspector_slice;
 /// documentos (o mundo e a árvore de tags).
 mod inspector_tags;
 mod inspector_timer;
+/// ⭐⭐⭐ O painel TAGS (TOP-20 #9, W4) — o instantâneo da ÁRVORE e os gestos sobre ela.
+mod tags_panel;
 // ⭐ A derivação do `MasterPiece` (`master_editing`, F4.6) mudou-se para a
 // `ph2d_app_components` em 2026-09-12: é **lei da família das instâncias**, não do laço. O gate do
 // anel de objecto vazio (`group_gizmo_view_tests`) continua a acender a receita pela porta de

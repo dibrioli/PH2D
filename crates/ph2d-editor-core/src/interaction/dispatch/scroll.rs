@@ -182,6 +182,8 @@ pub(crate) fn scrollbar_panel_for_id(id: NodeId) -> Option<NodeId> {
         Some(ids::FLIP_PANEL)
     } else if id == crate::widget::PHYSICS_SCROLLBAR_ID {
         Some(ids::PHYSICS_PANEL)
+    } else if id == crate::widget::TAGS_SCROLLBAR_ID {
+        Some(ids::TAGS_PANEL)
     } else if id == crate::widget::WET_TUNING_SCROLLBAR_ID {
         Some(ids::WET_TUNING_PANEL)
     } else if id == crate::widget::MOTION_PARAMS_SCROLLBAR_ID {

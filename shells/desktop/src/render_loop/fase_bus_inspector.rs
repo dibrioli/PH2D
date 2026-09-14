@@ -209,6 +209,12 @@ impl crate::App {
             EditorAction::InspectorTagsEdit { entity_bits, edit } => {
                 pd.tags_edits.push((entity_bits, edit));
             }
+            // ⭐⭐⭐ **O painel TAGS** (TOP-20 #9, W4). ⛔ **Sem `entity_bits`, e é isso que o
+            // separa da irmã de cima:** o sujeito é a TAXONOMIA, não um objecto — e por isso a
+            // pergunta da BulkSelect nem sequer se põe.
+            EditorAction::TagTreeEdit { edit } => {
+                pd.tag_tree_edits.push(edit);
+            }
             // ⭐ **O `+` do Inspector** (ADR-0166 / F3) — o painel PEDE e a shell abre,
             // porque só ela sabe o tipo do objeto, o que ele já tem, e o que o registo
             // sabe construir.

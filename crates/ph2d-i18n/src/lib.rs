@@ -84,6 +84,8 @@ mod inspector_player;
 mod model3d;
 mod painter_layers;
 mod sculpt3d;
+/// ⭐ **As strings do painel TAGS** (TOP-20 #9) — irmão de tabela, por assunto.
+mod tags;
 
 pub fn tr(key: &str) -> &'static str {
     match key {
@@ -514,6 +516,7 @@ pub fn tr(key: &str) -> &'static str {
         k => vector::tr(k)
             .or_else(|| sculpt3d::tr(k))
             .or_else(|| model3d::tr(k))
+            .or_else(|| tags::tr(k))
             .or_else(|| chrome::tr(k))
             .or_else(|| painter_layers::tr(k))
             .or_else(|| inspector::tr(k))

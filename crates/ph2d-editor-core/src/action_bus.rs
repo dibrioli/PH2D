@@ -324,7 +324,16 @@ pub enum EditorAction {
     /// projecto **e** marca o objecto, num gesto — a árvore é documento, e o passo de undo é um só.
     InspectorTagsEdit {
         entity_bits: u64,
-        edit: crate::screens::hero::TagsFieldEdit,
+        edit: crate::tags_edits::TagsFieldEdit,
+    },
+
+    /// ⭐⭐⭐ **O painel TAGS** (TOP-20 #9, W4) — um gesto sobre a ÁRVORE do projecto.
+    ///
+    /// ⛔ **Sem `entity_bits`, e é isso que o separa da [`Self::InspectorTagsEdit`]**: o sujeito é a
+    /// taxonomia, não um objecto. O que acontece à pertença é consequência — apagar leva-a junto,
+    /// no mesmo passo de undo.
+    TagTreeEdit {
+        edit: crate::tags_edits::TagTreeEdit,
     },
 
     /// **A secção AUDIO** (TOP-20 #4) — o som de um objecto da cena.

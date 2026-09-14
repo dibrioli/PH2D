@@ -129,6 +129,9 @@ pub fn installed_registry() -> Option<&'static registry::Registry> {
     EDITOR_REGISTRY.get()
 }
 
+/// ⭐⭐⭐ **O vocabulário das TAGS** — os dois gestos, num módulo abaixo do `action_bus` e do
+/// `screens`. Ver o cabeçalho dele: é o primeiro degrau da cura que a catraca do DAG prescreve.
+pub mod tags_edits;
 pub use floating_panel::{FloatingPanel, PanelAction, PanelAnchor, PanelControl, PanelTab, ToolId};
 pub use gizmo::{
     GizmoCamera, GizmoDragKind, GizmoDragState, GizmoHit, GizmoModifiers, GizmoSnap, GizmoTarget,
@@ -172,9 +175,10 @@ pub use screens::{
     InspectorTagsInfo, InspectorTimerInfo, InspectorTimerRow, InspectorTransformInfo,
     InspectorVisibilityInfo, InspectorVisibilityMixed, InspectorVisibilitySectionInfo,
     InspectorWheelInfo, JointFieldEdit, OrderingFieldEdit, PhysicsFieldEdit, PlayerFieldEdit,
-    RequestedSpriteStrategy, SamplingFieldEdit, SliceFieldEdit, SpriteFieldEdit, TagsFieldEdit,
-    TimerFieldEdit, ViewFocusKind, VisibilityFieldEdit, WheelFieldEdit, paint_hero_screen,
+    RequestedSpriteStrategy, SamplingFieldEdit, SliceFieldEdit, SpriteFieldEdit, TimerFieldEdit,
+    ViewFocusKind, VisibilityFieldEdit, WheelFieldEdit, paint_hero_screen,
 };
+pub use tags_edits::{TagTreeEdit, TagsFieldEdit, TagsPanelInfo, TagsPanelRow};
 pub use toast::{Toast, ToastQueue, ToastSeverity};
 pub use tool::{PanelEvent, Tool, ToolRegistry};
 // Re-export so the shell can name the dragging node id without

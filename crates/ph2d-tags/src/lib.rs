@@ -106,6 +106,31 @@ pub enum TagError {
     Missing,
 }
 
+/// ⭐⭐ **As palavras de cada recusa vivem ao lado da LEI que a produz** (W4).
+///
+/// ⛔ **O painel não traduz um [`TagError`]**, e a razão é a lei do L-System (`TextRow.problem`):
+/// duas superfícies a traduzir a mesma recusa escrevem duas frases, e elas divergem na primeira
+/// vez que alguém mexe numa. Aqui o painel pinta uma `&str` que não interpreta.
+///
+/// ⚠️ **Em inglês e sem `ph2d_i18n::tr`, como as vizinhas**: esta crate é uma FOLHA sem
+/// dependências de UI, e pô-la a depender do catálogo pelo texto de cinco frases inverteria a
+/// pilha. O dia em que a segunda língua entrar, o que muda é quem chama isto, não a assinatura.
+impl TagError {
+    /// A frase que o painel mostra NA LINHA — nunca num toast.
+    #[must_use]
+    pub fn message(self) -> &'static str {
+        match self {
+            Self::Empty => "A tag needs a name.",
+            Self::HasSeparator => {
+                "A name cannot contain \u{201c}/\u{201d} \u{2014} drag the tag instead."
+            }
+            Self::Collision { .. } => "A tag with this name already exists here.",
+            Self::IntoOwnSubtree => "Cannot move a tag inside itself.",
+            Self::Missing => "That tag no longer exists.",
+        }
+    }
+}
+
 /// A chave de uma tag: os níveis do caminho, cada um DOBRADO.
 fn chave_de(p: &str) -> Vec<String> {
     path::tree_order_key(p, fold)
@@ -398,6 +423,29 @@ impl TagTree {
             .iter()
             .take_while(|e| path::key_is_self_or_descendant(&e.chave, raiz))
             .map(|e| e.tag.id)
+            .collect()
+    }
+
+    /// ⭐⭐⭐ **A tag e os ANCESTRAIS dela, da RAIZ para baixo** — a inversa exacta do
+    /// [`Self::subtree`], e a porta que faz a contagem do painel *Tags* caber numa passagem só
+    /// pelo mundo (`ph2d_ecs::tags::counts`).
+    ///
+    /// ⚠️ **Os níveis são PREFIXOS DA CHAVE**, nunca «as tags de profundidade menor que vêm
+    /// antes»: a ordem da chave põe uma raiz irmã antes de mim e ela não me ascende a nada.
+    ///
+    /// ⚠️ Um id que não existe devolve vazio — a mesma cerca do [`Self::reaches`].
+    #[must_use]
+    pub fn ancestry(&self, id: TagId) -> Vec<TagId> {
+        let Some(i) = self.indice(id) else {
+            return Vec::new();
+        };
+        let chave = &self.entradas[i].chave;
+        // ⚠️ **Um ancestral pode não existir?** Não: o `create` e o `restore` fazem-no nascer, e o
+        // `delete` leva a subárvore. O `filter_map` é a cerca de um documento estranho, não o
+        // caminho normal — e saltar um nível em falta mantém a ordem raiz→folha dos que existem.
+        (1..=chave.len())
+            .filter_map(|n| self.por_chave(&chave[..n]))
+            .map(|k| self.entradas[k].tag.id)
             .collect()
     }
 

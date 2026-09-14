@@ -244,3 +244,71 @@ fn measure_tag_tree_scale() {
     }
     println!("load {:.2}", load_average());
 }
+
+/// ⭐⭐⭐ **O PREÇO DA COLUNA DO PAINEL** (W4) — *«quantos objectos por tag»*, para TODAS as tags.
+///
+/// O painel *Tags* repinta a cada quadro e precisa das `N` contagens juntas. Há duas formas, e esta
+/// sonda mede as duas sobre o mesmo mundo:
+///
+/// - **`counts`** — uma passagem pelo mundo; cada objecto sobe a própria ancestralidade.
+/// - **`tagged` em laço** — uma varredura do mundo POR TAG, que é o que já shipa para uma tag só.
+///
+/// ⚠️ **A segunda coluna não é um espantalho:** era a implementação óbvia, e é a que estaria lá se
+/// ninguém tivesse medido. O que a torna inviável não é a constante — é o produto `tags × objectos`,
+/// que num painel é pago **por quadro**.
+///
+/// ⚠️ **`#[ignore]`** pela razão das irmãs: mede um relógio, e imprime o `load`.
+#[test]
+#[ignore = "mede um relogio -- corra com --include-ignored --nocapture numa maquina calma"]
+fn measure_tag_counts() {
+    println!("load {:.2}", load_average());
+    println!("| objectos | com tags | tags | counts (ms) | tagged em laco (ms) | razao |");
+    println!("|---:|---:|---:|---:|---:|---:|");
+    for &(n, k) in &[(1_000u32, 10u32), (10_000, 10), (10_000, 1), (100_000, 10)] {
+        for &t in &[8usize, 512] {
+            let doc = documento(t);
+            let (tree, _) = TagTree::restore(doc, 0);
+            let tags: Vec<TagId> = tree.tags().map(|g| g.id).collect();
+            let mut world = World::new();
+            for i in 0..n {
+                let mut e = world.spawn((Name::new(format!("obj{i}")), StableId(u64::from(i) + 1)));
+                if i % k == 0 {
+                    e.insert(Tags::from_ids([
+                        tags[(i as usize / k as usize) % tags.len()]
+                    ]));
+                }
+            }
+            let iters = if n >= 100_000 { 5 } else { ITERS };
+            let mut rapido = Vec::with_capacity(iters);
+            for _ in 0..iters {
+                let c = Instant::now();
+                std::hint::black_box(ph2d_ecs::tags::counts(&world, &tree));
+                rapido.push(c.elapsed().as_secs_f64() * 1e3);
+            }
+            // ⚠️ O laço lento corre MENOS vezes quando é caro — senão a sonda sozinha passa minutos.
+            let iters_lento = if tags.len() * n as usize > 2_000_000 {
+                1
+            } else {
+                iters
+            };
+            let mut lento = Vec::with_capacity(iters_lento);
+            for _ in 0..iters_lento {
+                let c = Instant::now();
+                let mut soma = 0usize;
+                for &q in &tags {
+                    soma += tagged(&world, &tree, q).len();
+                }
+                std::hint::black_box(soma);
+                lento.push(c.elapsed().as_secs_f64() * 1e3);
+            }
+            let (a, b) = (median(rapido), median(lento));
+            println!(
+                "| {n} | {} | {} | {a:.4} | {b:.4} | {:.1}x |",
+                n.div_ceil(k),
+                tags.len(),
+                b / a
+            );
+        }
+    }
+    println!("load {:.2}", load_average());
+}

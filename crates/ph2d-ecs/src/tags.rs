@@ -144,16 +144,95 @@ pub fn tagged(world: &World, tree: &TagTree, q: TagId) -> Vec<Entity> {
     if reach.is_empty() {
         return Vec::new();
     }
-    let Some(mut query) = world.try_query::<(Entity, &Tags, Option<&StableId>)>() else {
+    let Some(mut query) = world.try_query::<(Entity, &Tags)>() else {
         return Vec::new();
     };
+    // ⛔⛔ **A identidade é lida POR ACERTO, e não pedida na query** — e a diferença não é de estilo.
+    // O `try_query` do `bevy_ecs` devolve `None` quando **qualquer** componente da consulta é
+    // desconhecido do mundo, e um `Option<&StableId>` conta: num mundo onde nada nunca teve
+    // `StableId` (o `assign_missing_stable_ids` corre no caminho do NOME e na captura, não no
+    // spawn), esta porta respondia **«ninguém»** — um sinal por tag não alcançava nada e nada o
+    // dizia. Apanhado pelo gate do painel *Tags* em 2026-09-14, com a fixtura a spawnar sem ele.
+    // ⚠️ O preço é uma leitura por ACERTO (não por entidade), e os acertos são poucos.
     let mut hits: Vec<(u64, Entity)> = query
         .iter(world)
-        .filter(|(_, t, _)| t.meets(&reach))
-        .map(|(e, _, s)| (s.filter(|s| !s.is_none()).map_or(u64::MAX, |s| s.0), e))
+        .filter(|(_, t)| t.meets(&reach))
+        .map(|(e, _)| e)
+        .collect::<Vec<_>>()
+        .into_iter()
+        .map(|e| {
+            let s = world
+                .get::<StableId>(e)
+                .filter(|s| !s.is_none())
+                .map_or(u64::MAX, |s| s.0);
+            (s, e)
+        })
         .collect();
     hits.sort_unstable_by_key(|&(s, e)| (s, e.index()));
     hits.into_iter().map(|(_, e)| e).collect()
+}
+
+/// ⭐⭐⭐ **Quantos objectos pertencem a CADA tag** — a coluna do painel *Tags*, numa passagem só.
+///
+/// A resposta é, tag a tag, a mesma do [`tagged`] (há gate a exigi-lo). O que muda é o preço: o
+/// painel repinta a cada quadro e precisa das `N` contagens juntas, não de uma.
+///
+/// # ⚠️ Porque não é `tagged` em laço, e porque não é a soma dos filhos
+///
+/// `tagged` varre o mundo **por tag** ⇒ `O(tags × objectos)`; aqui cada objecto é visitado uma vez
+/// e sobe a própria ancestralidade ⇒ `O(objectos × tags_do_objecto × profundidade)`.
+///
+/// **MEDIDO** (`measure_tag_counts`, `--release`, mediana de 25; `load 72,41` — a máquina tinha
+/// outra suíte a correr, então **as absolutas são um TECTO e a razão é o que se lê**, porque as
+/// duas colunas saem do mesmo mundo no mesmo instante):
+///
+/// | objectos | com tags | tags | `counts` | `tagged` em laço | razão |
+/// |---:|---:|---:|---:|---:|---:|
+/// | 1 000 | 100 | 10 | 0,0092 ms | 0,0076 ms | **0,8×** |
+/// | 1 000 | 100 | 584 | 0,0288 ms | 0,3895 ms | 13,5× |
+/// | 10 000 | 1 000 | 584 | 0,2897 ms | 2,1800 ms | 7,5× |
+/// | 10 000 | 10 000 | 10 | 0,8820 ms | 0,4216 ms | **0,5×** |
+/// | 10 000 | 10 000 | 584 | 2,9732 ms | 21,1946 ms | 7,1× |
+/// | 100 000 | 10 000 | 584 | 3,0816 ms | 20,5228 ms | 6,7× |
+///
+/// ⚠️⚠️ **A porta rápida PERDE quando a árvore é pequena** (as duas linhas a negrito), e isso não é
+/// ruído: com 10 tags, subir a ancestralidade de cada objecto custa mais do que dez varreduras do
+/// mundo. ⇒ *o `counts` não é «a versão rápida», é a que não EXPLODE* — ela troca um produto
+/// `tags × objectos` por uma soma, e é esse o recurso. Com a árvore pequena as duas cabem com
+/// folga, e com ela grande só uma cabe.
+///
+/// ⛔ **E nenhuma das duas cabe num quadro no extremo** (2,97 ms é 18 % de 16,7): é por isso que o
+/// chamador só a corre com o painel *Tags* **ABERTO** — a coluna não existe enquanto ninguém a vê.
+///
+/// ⛔ **Somar as contagens dos filhos está ERRADO por construção**, e não é uma optimização
+/// recusada por preço: um objecto com `Boss` **e** `Enemy` entraria duas vezes em `Enemy`. É a
+/// mesma razão por que o conjunto existe — a pergunta é *«quantos OBJECTOS»*, não *«quantas
+/// pertenças»*.
+///
+/// ⚠️ **Toda tag da árvore tem linha, mesmo a zero** — o painel desenha as linhas da ÁRVORE, e uma
+/// tag sem membros continua a ser uma tag. ⚠️ E um id órfão (tag apagada sem o [`scrub`]) não ganha
+/// linha nenhuma: ele não está na árvore, logo não é membro de nada.
+#[must_use]
+pub fn counts(world: &World, tree: &TagTree) -> BTreeMap<TagId, usize> {
+    let mut out: BTreeMap<TagId, usize> = tree.tags().map(|t| (t.id, 0usize)).collect();
+    let Some(mut query) = world.try_query::<&Tags>() else {
+        return out;
+    };
+    // ⚠️ Reaproveitado entre objectos: um `BTreeSet` novo por entidade seria uma alocação por
+    // objecto por quadro, que é exactamente o que o painel não pode pagar.
+    let mut alcance: BTreeSet<TagId> = BTreeSet::new();
+    for tags in query.iter(world) {
+        alcance.clear();
+        for m in tags.direct_ids() {
+            alcance.extend(tree.ancestry(m));
+        }
+        for q in &alcance {
+            if let Some(n) = out.get_mut(q) {
+                *n += 1;
+            }
+        }
+    }
+    out
 }
 
 /// ⭐⭐ **Tira estas tags de todos os objectos** — o par obrigatório do `TagTree::delete`, no MESMO

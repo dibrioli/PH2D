@@ -377,3 +377,161 @@ fn a_tag_that_no_longer_exists_reaches_nobody() {
     assert!(tagged(&f.world, &f.tree, f.boss).is_empty());
     assert_eq!(tagged(&f.world, &f.tree, f.enemy).len(), 4);
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// W4 — a pergunta do PAINEL: quantos objectos por tag, numa passagem só
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// ⭐⭐⭐ **A contagem do painel é a do [`tagged`], tag a tag** — e é isso que o gate afirma, porque
+/// a porta rápida e a lenta têm de dar o MESMO número ou a coluna do painel mente.
+///
+/// A fixture é a do plano §5.1, que é também a da cena de smoke: `Enemy (5)` › `Flying (3)` ›
+/// `Boss (1)`, `Statue (1)`, `Player (1)`.
+///
+/// **Mutações que devem sangrar:** contar só a pertença DIRECTA (`Enemy` leria `2`) · somar as
+/// contagens dos filhos (`Enemy` leria `2+3+1 = 6`, e a soma é errada por construção quando um
+/// objecto pertence a dois níveis).
+#[test]
+fn the_count_of_a_tag_is_what_the_query_returns_for_it() {
+    let f = fixture();
+    let contagens = super::counts(&f.world, &f.tree);
+    for (tag, esperado) in [
+        (f.enemy, 5),
+        (f.flying, 3),
+        (f.boss, 1),
+        (f.statue, 1),
+        (f.player, 1),
+    ] {
+        assert_eq!(
+            contagens.get(&tag).copied().unwrap_or(0),
+            tagged(&f.world, &f.tree, tag).len(),
+            "a porta rápida discorda da lenta em {tag:?}"
+        );
+        assert_eq!(
+            contagens.get(&tag).copied().unwrap_or(0),
+            esperado,
+            "{tag:?}"
+        );
+    }
+    assert_eq!(contagens.len(), 5, "uma linha por tag da árvore, nem mais");
+}
+
+/// ⭐⭐⭐ **Um objecto que pertence a DOIS níveis do mesmo ramo conta UMA vez.**
+///
+/// ⚠️ É esta a razão por que a contagem não pode ser a soma das dos filhos, e a fixture do gate
+/// acima **não** contém o fenómeno — um Dragon com `Boss` **e** `Enemy` faria uma soma ler `6`
+/// onde a verdade é `5`.
+///
+/// **Mutação que deve sangrar:** trocar o conjunto por um contador por id directo.
+#[test]
+fn an_object_in_two_levels_of_one_branch_is_counted_once() {
+    let mut f = fixture();
+    let dragao = f.e["Dragon"];
+    // ⚠️ O controlo: sem isto o gate passaria por vácuo se a fixture já o tivesse.
+    assert_eq!(
+        f.world.get::<Tags>(dragao).expect("tem").len(),
+        1,
+        "a fixture já continha o fenómeno"
+    );
+    f.world
+        .get_mut::<Tags>(dragao)
+        .expect("tem")
+        .insert(f.enemy);
+    let contagens = super::counts(&f.world, &f.tree);
+    assert_eq!(
+        contagens.get(&f.enemy).copied(),
+        Some(5),
+        "contou o Dragon duas vezes"
+    );
+    assert_eq!(contagens.get(&f.boss).copied(), Some(1));
+}
+
+/// ⚠️ **Um id ÓRFÃO não conta para ninguém** — a tag foi apagada e o `scrub` não correu (um
+/// documento estranho, ou um gesto a meio).
+///
+/// ⛔ Sem isto, a coluna do painel somaria um objecto a uma tag que ele já não tem — e o *«remove
+/// from N objects»* do apagar prometeria mexer em quem não mexe.
+///
+/// **Mutação que deve sangrar:** contar pelo id directo sem o confrontar com a árvore.
+#[test]
+fn an_orphan_id_counts_for_nobody() {
+    let mut f = fixture();
+    let solto = TagId(9_999);
+    f.world
+        .get_mut::<Tags>(f.e["Statue"])
+        .expect("tem")
+        .insert(solto);
+    let contagens = super::counts(&f.world, &f.tree);
+    assert!(!contagens.contains_key(&solto), "um id órfão ganhou linha");
+    assert_eq!(contagens.get(&f.statue).copied(), Some(1));
+}
+
+/// ⚠️ **Um mundo que nunca viu o componente devolve zeros, e não uma tabela vazia** — o painel
+/// desenha as linhas da ÁRVORE, e uma tag sem membros continua a ser uma tag.
+///
+/// **Mutação que deve sangrar:** devolver cedo quando não há `Tags` no mundo.
+#[test]
+fn a_world_without_the_component_still_lists_every_tag_at_zero() {
+    let f = fixture();
+    let vazio = World::new();
+    let contagens = super::counts(&vazio, &f.tree);
+    assert_eq!(contagens.len(), 5);
+    assert!(contagens.values().all(|&n| n == 0));
+}
+
+/// ⛔⛔ **A consulta responde num mundo que nunca viu um `StableId`** — o defeito que o gate do
+/// painel *Tags* apanhou em 2026-09-14.
+///
+/// O `try_query` do `bevy_ecs` devolve `None` quando **qualquer** componente da consulta é
+/// desconhecido do mundo, e um `Option<&T>` conta. Enquanto o [`tagged`] pedia
+/// `Option<&StableId>`, um mundo sem ele respondia **«ninguém»**: um sinal por tag não alcançava
+/// nada, e nada na tela o dizia. ⚠️ *A fixtura do gate irmão spawna COM `StableId`, então ela não
+/// continha o fenómeno* — a deste contém, e é a diferença inteira.
+///
+/// **Mutação que deve sangrar:** repor o `Option<&StableId>` dentro da `try_query`.
+#[test]
+fn the_query_answers_in_a_world_that_never_saw_a_stable_id() {
+    let f = fixture();
+    // O controlo: um mundo novo, com as MESMAS tags e SEM `StableId` em lado nenhum.
+    let mut w = World::new();
+    for tag in [f.enemy, f.flying, f.boss] {
+        w.spawn((crate::Transform::IDENTITY, Tags::from_ids([tag])));
+    }
+    assert!(
+        w.iter_entities().all(|e| e.get::<StableId>().is_none()),
+        "a fixtura tem de NÃO ter identidade, senão não contém o fenómeno"
+    );
+    assert_eq!(tagged(&w, &f.tree, f.enemy).len(), 3);
+    assert_eq!(tagged(&w, &f.tree, f.boss).len(), 1);
+    assert_eq!(tagged(&w, &f.tree, f.statue).len(), 0);
+}
+
+/// ⚠️ **E a ORDEM continua a ser a da identidade quando ela existe** — o gate acima não pode ter
+/// comprado a robustez com a lei do irmão.
+///
+/// **Mutação que deve sangrar:** ordenar por `e.index()` sozinho.
+#[test]
+fn the_query_order_is_still_the_identity_after_the_cure() {
+    let mut f = fixture();
+    // Inverte a identidade dos dois goblins: a ordem da consulta tem de os seguir.
+    let (a, b) = (f.e["Goblin A"], f.e["Goblin B"]);
+    f.world.get_mut::<StableId>(a).expect("tem").0 = 900;
+    f.world.get_mut::<StableId>(b).expect("tem").0 = 100;
+    let hits = tagged(&f.world, &f.tree, f.enemy);
+    let (i_a, i_b) = (
+        hits.iter()
+            .position(|&e| e == a)
+            .expect("o Goblin A pertence"),
+        hits.iter()
+            .position(|&e| e == b)
+            .expect("o Goblin B pertence"),
+    );
+    assert!(
+        i_b < i_a,
+        "o menor StableId vem primeiro (B=100, A=900): {hits:?}"
+    );
+    // ⚠️ E os dois vêm DEPOIS dos morcegos e do dragão, que ficaram em 3, 4 e 5 — a ordem é a
+    // identidade INTEIRA, não uma troca local entre dois vizinhos.
+    assert_eq!(i_b, 3, "{hits:?}");
+    assert_eq!(i_a, 4, "{hits:?}");
+}

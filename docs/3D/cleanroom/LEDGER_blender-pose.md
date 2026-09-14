@@ -548,6 +548,7 @@ emenda 3 instrumentou e ainda não varreu até ao fim.
 | **3 — EMENDA 2** | idem | idem | os 5 achados de higiene aplicados **e a espécie varrida em todo o documento**, não só nos cinco endereços | verde, com controlo positivo | 2026-09-13 |
 | **4 — EMENDA 3** | idem | idem | os 7 achados aplicados + a pergunta *«que fixtura reprova o CONTRÁRIO disto?»* corrida sobre o documento inteiro ⇒ nasce o censo **§12.4** (`6` linhas) | verde, com controlo positivo | 2026-09-13 |
 | **5 — EMENDA 4** | idem | idem | os 5 achados aplicados + varredura pela **FORMA DA PROMESSA** (`medido/medidas/observável`) em todo o documento ⇒ o censo **§12.4** passa a `10` linhas, uma delas achada pela própria varredura | verde, com controlo positivo | 2026-09-13 |
+| **6 — EMENDA 6** | idem | idem | as **duas** curas prescritas pela 5.ª passagem (que ATESTOU) + a linha de censo que ela pediu ⇒ §12.4 com `11` linhas. ⛔ Escopo fechado: 5 hunks, zero reescrita oportunista, §4.2 intocado | verde, com controlo positivo | 2026-09-13 |
 
 ⚠️ **Commit ÚNICO, pós-filtragem** (§3.E): a espec **não** entrou por rascunhos incrementais.
 
@@ -804,6 +805,34 @@ a barra do fechamento em *«zero hits sobre a árvore rastreada»* e o **ledger 
 acima). As duas exigências **não são satisfazíveis ao mesmo tempo**: o R-pós tem de **escolher e
 declarar** qual honra (o caminho previsível é excluir `cleanroom/LEDGER_*` do sweep de árvore, com a
 exclusão escrita). ⛔ Não é defeito desta espec.
+
+---
+
+### ✅ EMENDA 6 — a 5.ª passagem ATESTA, e prescreve duas curas que não retêm o atestado
+
+O R-pré auditou o §4.2 **do zero** sobre as 111 linhas da emenda 5 (identificador · grafia interna ·
+prosa traduzida · pseudo-código espelhado ⇒ **zero** achados), re-correu o controlo positivo ele
+próprio, acrescentou **duas lentes que o instrumento não tem** (sem caixa · sem acentos, as duas a
+zero), e confirmou que **nenhum título carrega promessa**, que a renumeração `1..19` fecha e que o
+censo do §12.4 está **honesto nas 10 linhas, zero fabricadas**.
+
+As duas curas prescritas, aplicadas **e mais nada** (diff de 5 hunks, zero reescrita oportunista):
+
+| # | achado | cura |
+|---|---|---|
+| 1 | a abertura do §8 rotulava de *«requisito observável»* a mesma classe de proposição que a cura do §7.2 declarou **não** observável — o documento contradizia-se entre duas secções | a abertura passa a enunciar a **LEI** (a saída com `k` eixos é a que tem a transformação do octante de cada vértice já aplicada), declara o **mecanismo livre** e entra no censo §12.4 ⇒ **11** linhas |
+| 2 | a frase-guarda-chuva do §1.1 prometia *«factos observados, não escolhas nossas»* sobre uma coluna em que **duas** células remetem para o §1.4, que entrega recomendação **nossa** e *«não medido»* | estreitada ao que de facto cobre (faixas + omissões **cruas**), **nomeando a excepção**. ⚠️ Não é buraco de proveniência: as cruas têm-na, e este ledger regista-a — é a frase que passou a prometer a mais depois da emenda 5 |
+
+⭐ **A medição que o R trouxe e que decide a cura 1:** as `5` fixturas de simetria correm todas na
+mesma figura, e essa malha é **exactamente espelhada em `X`** (`0` de `4 930` vértices sem parceiro)
+⇒ resolver tudo numa passagem e repassar por eixo dão a **mesma** saída **por construção**, e o
+corpus não pode refutar o contrário. *A ausência é real, logo tinha de ser censada.*
+
+⚠️⚠️ **A lei de método desta passagem, e é a mais cara de todas:** *toda linha nova é população
+nova a auditar.* Um diff pequeno deixa o R-pós confirmar num relance que a parede não foi tocada;
+um diff grande obriga a uma auditoria inteira e **derruba o atestado que se acabou de ganhar**. ⇒ o
+cabeçalho da espec diz, **a seguir** ao veredito, exactamente o que mudou depois dele — *um atestado
+que cobre uma versão que já não existe é pior que nenhum*.
 
 ---
 

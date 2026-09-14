@@ -77,7 +77,7 @@
 //! estruturalmente diferente.*
 //!
 //! ⚠️ **O SculptGL responde (3) com uma TROCA DE DIAGONAL em vez de recusar.** É
-//! uma reparação a mais, não uma correção: o Blender (`pbvh_bmesh_collapse_edge`)
+//! uma reparação a mais, não uma correção: o outro alvo, o de topologia dinâmica,
 //! recusa, e nós já rodamos o [`crate::dyntopo_flip`] no mesmo dab. Duas respostas
 //! para *"como esta região melhora de forma"* divergiriam, e a que a wave escolhe
 //! é a que já está gateada.

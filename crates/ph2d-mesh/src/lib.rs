@@ -38,6 +38,7 @@
 mod aabb;
 mod adjacency;
 mod collapse;
+mod compact;
 mod cotangent;
 mod curvature;
 mod curvature_dirs;
@@ -76,6 +77,7 @@ pub use adjacency::{Adjacency, Csr};
 pub use collapse::{
     Collapse, Sizing, collapse_in_sphere, collapse_in_sphere_sized, collapse_target,
 };
+pub use compact::compact_for_faces;
 pub use cotangent::{
     RingWeights, cotangent_ring_average_at, curvature_normal_dir_at, curvature_normals_of,
     mean_curvature_normal_at, ring_weights_at,

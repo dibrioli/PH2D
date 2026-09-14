@@ -195,38 +195,21 @@ pub fn import_obj(text: &str) -> Result<Vec<ImportedPiece>, ObjError> {
     Ok(out)
 }
 
-/// **Só os vértices que estas faces usam**, com os índices remapeados.
+/// **Só os vértices que estas faces usam**, com os índices remapeados — e a
+/// cor a seguir pela mesma numeração.
 ///
-/// ⚠️ Ela existe porque o pool é do ARQUIVO: sem a compactação, cada peça de um
-/// arquivo de dez objetos carregaria os vértices dos outros nove — malha
-/// inteira em memória por peça, com uma nuvem de vértices órfãos que o
-/// `from_parts` aceita, o octree indexa e a caixa da câmera enxerga (a peça
-/// nasceria enquadrada no arquivo inteiro em vez de nela mesma).
+/// ⚠️ **A aritmética NÃO mora aqui**: ela é a porta [`crate::compact_for_faces`],
+/// que nasceu neste ficheiro e saiu quando apareceu o segundo consumidor (uma
+/// cena de smoke que recortava meia esfera e ficava com `721` órfãos). O que
+/// sobra aqui é o que é do OBJ: a cor é um canal **paralelo**, e segue a
+/// terceira saída da porta.
 fn compact(
     positions: &[[f32; 3]],
     colors: &[[f32; 3]],
     faces: &[Face],
 ) -> (Vec<[f32; 3]>, Vec<[f32; 3]>, Vec<Face>) {
-    let mut remap = vec![u32::MAX; positions.len()];
-    let (mut verts, mut cols) = (Vec::new(), Vec::new());
-    let mut out = Vec::with_capacity(faces.len());
-    for f in faces {
-        let n = f.verts().len();
-        let mut mapped = f.0;
-        // ⚠️ **Só os `n` primeiros slots** — o 4º de um triângulo é a sentinela
-        // `TRI` (`u32::MAX`), e remapeá-la a transformaria num índice de vértice
-        // que a malha não tem. É o mesmo motivo por que o `verts()` existe.
-        for slot in &mut mapped[..n] {
-            let old = *slot as usize;
-            if remap[old] == u32::MAX {
-                remap[old] = u32::try_from(verts.len()).unwrap_or(u32::MAX);
-                verts.push(positions[old]);
-                cols.push(colors[old]);
-            }
-            *slot = remap[old];
-        }
-        out.push(Face(mapped));
-    }
+    let (verts, out, origem) = crate::compact_for_faces(positions, faces);
+    let cols = origem.iter().map(|&o| colors[o as usize]).collect();
     (verts, cols, out)
 }
 

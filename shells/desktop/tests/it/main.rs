@@ -104,6 +104,7 @@ mod the_bone_handles_are_painted_over_the_bones;
 mod the_bone_pickers_are_modal;
 mod the_boolean_cooks_before_the_alignment;
 mod the_border_gesture_reaches_the_panel;
+mod the_boundary_ribbon_is_painted_under_the_ring;
 mod the_bridge_reverts_a_param_by_clearing_both_channels;
 mod the_brush_cursor_lies_on_the_surface;
 mod the_brush_ring_marks_the_hit_the_dab_will_use;

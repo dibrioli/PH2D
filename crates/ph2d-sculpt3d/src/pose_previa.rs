@@ -73,7 +73,7 @@ use crate::{Brush, Symmetry};
 /// da família de flakes sob fan-out (`CLAUDE.md` §5.0). *O relógio entra só
 /// onde é insubstituível: a medir o que a construção custou, que é o número que
 /// se auto-calibra ao perfil em que o produto de facto corre.*
-const ORCAMENTO_POR_QUADRO: Duration = Duration::from_micros(1_670);
+pub(crate) const ORCAMENTO_POR_QUADRO: Duration = Duration::from_micros(1_670);
 
 /// Um segmento da cadeia, como o indicador o desenha: em espaço de **objecto**.
 ///

@@ -72,6 +72,34 @@ impl crate::App {
                     traco(pivo, rgba);
                 }
             }
+            // ⭐⭐ **A FITA DO PINCEL DE CONTORNO**, e ela vem antes do anel pela
+            // razão do osso: a região deste verbo também não sai do cursor — ela
+            // sai da BORDA, e o anel sozinho promete um círculo onde a
+            // ferramenta pensa numa beirada.
+            //
+            // ⚠️ **A alfa de cada pedaço é o PESO dele.** É o que faz o
+            // selector `Falloff along the edge` deixar de ser uma palavra e
+            // passar a ser uma coisa que se vê: com `Constant` a boca inteira
+            // acende, com `Radius` só o troço que de facto se move.
+            if !over_panel && let Some(fita) = scene.boundary_gizmo(px, py) {
+                for (caminho, peso) in &fita.borda {
+                    let mut rgba = ph2d_app_sculpt3d::BOUNDARY_EDGE_RGBA;
+                    rgba[3] *= peso;
+                    traco(caminho, rgba);
+                }
+                if let Some(linha) = &fita.profundidade {
+                    traco(linha, ph2d_app_sculpt3d::BOUNDARY_DEPTH_RGBA);
+                }
+                if let Some(pivo) = &fita.pivo {
+                    let rgba = if fita.inerte {
+                        // ⛔ Não há beirada ao alcance: este gesto não move nada.
+                        ph2d_app_sculpt3d::BOUNDARY_INERT_RGBA
+                    } else {
+                        ph2d_app_sculpt3d::BOUNDARY_PIVOT_RGBA
+                    };
+                    traco(pivo, rgba);
+                }
+            }
             if !over_panel && let Some(mark) = scene.cursor_mark(px, py) {
                 let rgba = if mark.on_surface {
                     ph2d_app_sculpt3d::ON_SURFACE_RGBA

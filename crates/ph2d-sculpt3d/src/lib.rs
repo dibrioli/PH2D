@@ -73,7 +73,9 @@ pub mod pose_controlos;
 pub use pose_controlos::PoseControlos;
 /// ⭐⭐ **O INDICADOR do pincel de POSE** — o osso que se vê antes de premir, com
 /// a cache e o orçamento que o separam do alvo. Ver [`pose_previa`].
+pub mod boundary_previa;
 pub mod pose_previa;
+pub use boundary_previa::TrechoDaBorda;
 /// ⭐ **O modo do pincel de pose, re-exportado.** O painel escolhe entre os três
 /// e não precisa de conhecer a crate da lei — a mesma forma com que ele já lê o
 /// `ClothMode`.

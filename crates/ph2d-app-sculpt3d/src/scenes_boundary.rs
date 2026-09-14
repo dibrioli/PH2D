@@ -66,6 +66,11 @@ pub(crate) fn tigela() -> ph2d_mesh::Mesh {
 }
 
 /// O roteiro da `=42`.
+///
+/// ⚠️ **O passo (1) é o INDICADOR, e ele vem antes de qualquer arrasto** — pela
+/// razão do irmão da pose: a região deste verbo não sai do cursor, e o anel
+/// sozinho descreve-o mal. *Um artista que só vê o anel conclui que o pincel faz
+/// um calombo redondo, e depois lê o resultado como defeito.*
 pub(crate) fn announce() {
     if !boundary_scene() {
         return;
@@ -78,34 +83,45 @@ pub(crate) fn announce() {
          [sculpt3d]    Abra o painel com a CRASE (`). A fileira de pinceis esta' no topo; o\n\
          [sculpt3d]    novo chama-se `Boundary`, e esta' no FIM da fileira.\n\
          [sculpt3d]\n\
-         [sculpt3d]    (1) Escolha `Move / Grab`, carregue perto da BORDA de cima e arraste\n\
+         [sculpt3d]    (1) Escolha `Boundary` e passe o rato SEM CARREGAR perto da boca.\n\
+         [sculpt3d]        -> Acende uma FITA ao longo da beirada: e' exactamente o pedaco\n\
+         [sculpt3d]           que vai dobrar. E sai dela uma LINHA para dentro da tigela,\n\
+         [sculpt3d]           com uma bolinha na ponta: e' ate' onde a dobra entra, e a\n\
+         [sculpt3d]           bolinha e' o eixo em torno do qual a beirada gira.\n\
+         [sculpt3d]        -> Afaste o rato da boca (para o fundo da tigela): a fita some e\n\
+         [sculpt3d]           fica so' uma bolinha VERMELHA. Isso quer dizer `daqui este\n\
+         [sculpt3d]           pincel nao faz nada`.\n\
+         [sculpt3d]    (2) Escolha `Move / Grab`, carregue perto da BORDA de cima e arraste\n\
          [sculpt3d]        para o lado.\n\
          [sculpt3d]        -> O barro vem ATRAS do dedo e faz um bico local. E' o que voce ja'\n\
          [sculpt3d]           conhece, e serve de termo de comparacao.\n\
-         [sculpt3d]    (2) Ctrl+Z. Escolha `Boundary` e faca o MESMO arrasto, no mesmo sitio.\n\
-         [sculpt3d]        -> A BOCA INTEIRA se dobra, e a dobra vai MORRENDO para dentro da\n\
-         [sculpt3d]           tigela. Nao e' um bico: e' a beirada a virar.\n\
-         [sculpt3d]    (3) Ctrl+Z. No painel, troque `Falloff along the edge` para `Radius`\n\
-         [sculpt3d]        e repita.\n\
-         [sculpt3d]        -> Agora so' um PEDACO da boca se move -- o que esta' perto de\n\
-         [sculpt3d]           onde voce carregou. Com `Constant` era a boca toda.\n\
-         [sculpt3d]    (4) Ctrl+Z. Troque para `Loop` e repita.\n\
-         [sculpt3d]        -> A boca fica ONDULADA: a deformacao vai e volta ao longo dela.\n\
-         [sculpt3d]           `Loop and Invert` faz as ondas trocarem de lado.\n\
-         [sculpt3d]    (5) Ctrl+Z. Volte a `Constant` e arraste o `Origin offset` para cima.\n\
-         [sculpt3d]        -> A dobra passa a entrar MUITO mais fundo na tigela, e fica mais\n\
-         [sculpt3d]           forte. O pedaco da BOCA que se move nao muda -- so' a\n\
-         [sculpt3d]           profundidade.\n\
-         [sculpt3d]    (6) Ctrl+Z. Em `Deformation`, experimente os outros cinco:\n\
+         [sculpt3d]    (3) Ctrl+Z. Volte a `Boundary` e faca o MESMO arrasto, no mesmo sitio.\n\
+         [sculpt3d]        -> A BEIRADA e' quem mais se move, e a dobra vai MORRENDO para\n\
+         [sculpt3d]           dentro da tigela. Nao e' um bico, e nao e' o miolo: e' a boca\n\
+         [sculpt3d]           a virar, com o fundo da tigela parado.\n\
+         [sculpt3d]    (4) Ctrl+Z. No painel, troque `Falloff along the edge` para `Radius`.\n\
+         [sculpt3d]        -> Antes de arrastar, olhe a FITA: agora so' um PEDACO dela\n\
+         [sculpt3d]           acende -- o que esta' perto de onde voce aponta. Arraste e a\n\
+         [sculpt3d]           peca faz exactamente o que a fita mostrou.\n\
+         [sculpt3d]    (5) Ctrl+Z. Troque para `Loop` e repita.\n\
+         [sculpt3d]        -> A fita fica MALHADA e a boca fica ONDULADA: a deformacao vai e\n\
+         [sculpt3d]           volta ao longo dela. `Loop and Invert` troca as ondas de lado.\n\
+         [sculpt3d]    (6) Ctrl+Z. Volte a `Constant` e arraste o `Origin offset` para cima,\n\
+         [sculpt3d]        SEM carregar na peca.\n\
+         [sculpt3d]        -> A LINHA para dentro da tigela fica mais comprida e a bolinha\n\
+         [sculpt3d]           afunda. Arraste agora: a dobra entra muito mais fundo e fica\n\
+         [sculpt3d]           mais forte. O pedaco da BOCA nao muda -- so' a profundidade.\n\
+         [sculpt3d]    (7) Ctrl+Z. Em `Deformation`, experimente os outros cinco:\n\
          [sculpt3d]          Expand   -> a boca ABRE ou FECHA, deslizando na propria superficie\n\
          [sculpt3d]          Inflate  -> a beirada engrossa para fora\n\
          [sculpt3d]          Grab     -> a boca segue a mao em qualquer direccao\n\
          [sculpt3d]          Twist    -> a boca RODA sobre o eixo da tigela\n\
          [sculpt3d]          Smooth   -> a boca ALISA-SE (⚠️ este age com o cursor PARADO)\n\
          [sculpt3d]\n\
-         [sculpt3d]    DEU ERRADO SE: no passo (2) sair um bico local em vez da boca inteira;\n\
-         [sculpt3d]    se nada mexer; se a dobra nao morrer para dentro da peca; ou se trocar\n\
-         [sculpt3d]    o `Falloff along the edge` nao mudar QUANTO da boca se move.\n\
+         [sculpt3d]    DEU ERRADO SE: no passo (1) nao acender fita nenhuma perto da boca;\n\
+         [sculpt3d]    se no passo (3) quem dobrar for o MIOLO em vez da beirada; se sair um\n\
+         [sculpt3d]    bico local; se nada mexer; ou se trocar o `Falloff along the edge`\n\
+         [sculpt3d]    nao mudar o tamanho da fita.\n\
          [sculpt3d]\n\
          [sculpt3d]    (Duas coisas que sao a LEI e nao defeito: arrastar na direccao da\n\
          [sculpt3d]     propria borda nao faz nada -- so' conta o quanto voce puxa para\n\
@@ -128,6 +144,47 @@ mod tests {
             assert!(
                 crate::scenes::CENAS >= 42,
                 "o tecto do roteador tem de conter esta cena (=42)"
+            );
+        }
+    }
+
+    /// **A SONDA DO CUSTO DO INDICADOR**, na malha da própria cena.
+    ///
+    /// ⚠️ **`#[ignore]`: ela IMPRIME, não afirma.** O número que governa o
+    /// produto é o do perfil em que o dono corre o smoke — corra-a com
+    /// `--profile smoke` antes de citar qualquer linha da tabela do
+    /// [`ph2d_sculpt3d::boundary_previa`]. *Uma tabela sem o perfil ao lado mede
+    /// outro programa.*
+    #[test]
+    #[ignore]
+    fn mede_o_indicador_desta_cena() {
+        let malha = super::tigela();
+        let alvo = malha
+            .positions()
+            .iter()
+            .copied()
+            .max_by(|a, c| a[1].total_cmp(&c[1]))
+            .expect("a malha tem vértices");
+        for raio in [0.3f32, 0.6, 1.0] {
+            let b = Brush {
+                verb: Verb::Boundary,
+                radius: raio,
+                ..Brush::default()
+            };
+            let mut s = SculptStroke::default();
+            let t0 = std::time::Instant::now();
+            let n = s
+                .boundary_contorno(&malha, &b, Symmetry::default(), alvo)
+                .borda()
+                .len();
+            let primeiro = t0.elapsed().as_secs_f64() * 1e3;
+            let t1 = std::time::Instant::now();
+            s.boundary_contorno(&malha, &b, Symmetry::default(), alvo);
+            let repetido = t1.elapsed().as_secs_f64() * 1e6;
+            println!(
+                "tigela {:>5} verts · raio {raio:>4.2} · pedacos {n:>3} · \
+                 1.a construcao {primeiro:>7.3} ms · quadro repetido {repetido:>7.2} us",
+                malha.positions().len()
             );
         }
     }

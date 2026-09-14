@@ -276,6 +276,13 @@ pub struct SculptStroke {
     /// gesto atravessarem a **mesma** porta ([`Self::pose_ossos`]) e torna
     /// inexprimível que um mostre uma cadeia e o outro construa outra.
     pub(crate) pose_previa: super::pose_previa::PosePrevia,
+    /// ⭐⭐ **O INDICADOR do contorno** — o troço de borda que vai dobrar e a
+    /// linha da profundidade, com o censo de bordas guardado e o MESMO
+    /// orçamento do osso da pose. Ver [`super::boundary_previa`].
+    ///
+    /// ⚠️ Mora aqui pela razão da irmã: é o que faz o indicador e o gesto
+    /// atravessarem a mesma porta.
+    pub(crate) boundary_previa: super::boundary_previa::ContornoPrevia,
     /// ⭐ **O filtro de tecido deste gesto colide?** — fotografado no pen-down.
     ///
     /// ⚠️ **Uma bandeira e não uma leitura das propriedades a cada passo**: a
@@ -468,6 +475,7 @@ impl SculptStroke {
         // seria varrer a malha inteira por quadro, que é o custo que ele existe
         // para não pagar).
         self.pose_previa.esquecer();
+        self.boundary_previa.esquecer();
     }
 }
 

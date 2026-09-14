@@ -929,15 +929,26 @@ fn a_stroke_belongs_to_the_piece_it_started_on() {
     // um `&mut`. *Sem esse corte, o terceiro consumidor seria o primeiro que
     // poderia trocar de peça a meio de uma pincelada — que é o pânico que este
     // gate existe para impedir.*
-    let alvo = function_body(&src, "pose_gizmo_alvo(&self");
-    assert!(
-        alvo.contains("self.pick(x, y)") && !alvo.contains("self.active ="),
-        "o indicador da pose pica para DESENHAR e não pode mexer no ativo"
-    );
+    //
+    // ⚠️⚠️ **E o QUARTO chegou no MESMO dia, e é a prova de que o corte era a
+    // cura certa e não um remendo:** o indicador do pincel de CONTORNO (a fita
+    // da beirada) tem exactamente a mesma forma — `&mut self` por causa da
+    // cache — e herdou o molde sem uma linha de discussão. *Um corte que o
+    // segundo caso reutiliza é um desenho; um que ele contorna era um remendo.*
+    for (indicador, quem) in [
+        ("pose_gizmo_alvo(&self", "da pose"),
+        ("boundary_gizmo_alvo(&self", "do contorno"),
+    ] {
+        let alvo = function_body(&src, indicador);
+        assert!(
+            alvo.contains("self.pick(x, y)") && !alvo.contains("self.active ="),
+            "o indicador {quem} pica para DESENHAR e não pode mexer no ativo"
+        );
+    }
     assert_eq!(
         src.matches("self.pick(x, y)").count(),
-        3,
-        "apareceu um QUARTO consumidor da lista: se ele for `&mut self`, ele \
+        4,
+        "apareceu um QUINTO consumidor da lista: se ele for `&mut self`, ele \
          pode trocar de peça no meio de um gesto — nomeie-o aqui e prove que é \
          somente-leitura"
     );

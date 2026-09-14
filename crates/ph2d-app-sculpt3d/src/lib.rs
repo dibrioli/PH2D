@@ -126,6 +126,15 @@ pub use cursor::{OFF_SURFACE_RGBA, ON_SURFACE_RGBA};
 mod pose_gizmo;
 pub use pose_gizmo::{POSE_BONE_RGBA, POSE_INERT_RGBA, POSE_PIVOT_RGBA, PoseGizmo};
 
+/// ⭐⭐ **A FITA DO PINCEL DE CONTORNO** — irmão do [`pose_gizmo`], e o corte é o
+/// mesmo com outro sujeito: aquele desenha *o membro que vai dobrar*, este *a
+/// beirada que vai dobrar e quão fundo*.
+mod boundary_gizmo;
+pub use boundary_gizmo::{
+    BOUNDARY_DEPTH_RGBA, BOUNDARY_EDGE_RGBA, BOUNDARY_INERT_RGBA, BOUNDARY_PIVOT_RGBA,
+    BoundaryGizmo,
+};
+
 /// **O PAINEL** — o retrato que ele pinta e o gesto que ele devolve (W12).
 /// Terceiro irmão do [`input`] e do [`keys`]: o mesmo corte, com um vocabulário
 /// próprio (o gesto chega como DADO, um frame depois, pela fila de intents).

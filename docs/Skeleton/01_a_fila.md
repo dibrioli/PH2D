@@ -2456,9 +2456,16 @@ compram nada; (b) **o pincel pequeno só ajuda com malha fina** (numa malha gros
 em cima de uma aresta de facete e fica pior); (c) ⛔ **um pincel MUITO grande (`0,25`) fica em `2,15`
 em TODA malha** — ali o que varia é a deformação, não a facete, e nenhuma densidade a salva.
 
-⏳ **ESTADO: diagnóstico fechado, cura medida, construção NÃO autorizada.** A pergunta ao dono é se
-vale gastar uma wave no núcleo partilhado de todo pincel para arte presa a esqueleto, ou se as duas
-alavancas chegam.
+⛔⛔ **VEREDITO DO DONO (2026-09-14): *«Deixe como está.»*** ⇒ a cura amostrada **NÃO se constrói**, e
+o caminho recomendado ao artista é **`Deform = Smooth`** com pincel médio ou pequeno (`~1,15`, quase
+redondo). ⚠️ **Isto é uma DECISÃO registada, não trabalho pendente** — *um ⛔ «recusado com motivo» e
+um ⏳ «ninguém fez» leem igual numa tabela* (`CLAUDE.md` §5). Quem reabrir isto tem de trazer ou um
+preço menor (uma forma de a lei viver DENTRO do `FootprintDeform` sem tocar os ~12 sítios) ou um
+report novo que a tabela das alavancas não explique.
+
+⛔ **E a alavanca tem um limite MEDIDO que faz parte do veredito:** um pincel muito grande (`0,25` de
+UV) fica em `2,15` em **toda** densidade de malha — ali o que varia ao longo do dab é a própria
+dobra, e a malha fina não a salva.
 
 ## ⛔ Recusas MEDIDAS deste módulo — não as reconstrua
 

@@ -1,11 +1,14 @@
 //! **OS TRÊS NÚMEROS DO PINCEL DE POSE** — irmão (`#[path]`) do [`super::rows`],
 //! cortado por ASSUNTO, como os do tecido.
 //!
-//! ⚠️ **As faixas são as do alvo** (espec §1.1), e cada uma diz de que recurso
-//! é: os segmentos e as suavizações são **tempo** (a construção é `O(V)` por
-//! varredura e a suavização é `O(V·N)` **por segmento**, e o produto dos dois é
-//! a queixa pública de desempenho deste pincel); o desvio é **alcance**, em
-//! múltiplos do raio.
+//! ⚠️ **As faixas são as do alvo** (espec §1.1) **menos uma**, e cada uma diz de
+//! que recurso é: os segmentos e as suavizações são **tempo** (a construção é
+//! `O(V)` por varredura e a suavização é `O(V·N)` **por segmento**, e o produto
+//! dos dois é a queixa pública de desempenho deste pincel); o desvio é
+//! **alcance**, em múltiplos do raio.
+//!
+//! ⭐ **A excepção é o DESVIO, que vai a `3` por ordem do dono** (o alvo pára em
+//! `2`) — divergência **declarada**, com a medição no doc da própria row.
 
 use ph2d_sculpt3d::Verb;
 
@@ -36,12 +39,39 @@ pub(super) const POSE_SEGMENTS: Row = Row {
     place: Place::Knobs,
 };
 
+/// ⭐⭐ **O DESVIO DA ORIGEM chega a `3`, e isso é uma DIVERGÊNCIA DECLARADA do
+/// alvo** — ordem do dono, 2026-09-14. O alvo oferece `0..2` (espec §1.1).
+///
+/// ⚠️ **Medido antes de escrever o número** (`ph2d-pose`, sonda
+/// `sonda_o_desvio_da_origem_alem_do_tecto`, três malhas do corpus do oráculo,
+/// raio `0,25`, arrasto `0,2`):
+///
+/// | desvio | comprimento do 1.º segmento | deslocamento máximo | construção |
+/// |---|---|---|---|
+/// | `0` | `0,223`–`0,251` | `0,156`–`0,180` | `0,17`–`0,55 ms` |
+/// | `2` (tecto do alvo) | `0,723`–`0,751` | `0,189`–`0,202` | `0,98`–`5,75 ms` |
+/// | **`3`** | `0,973`–`1,001` | `0,192`–`0,201` | `1,35`–`5,76 ms` |
+/// | `4` | `1,223`–`1,251` | `0,194`–`0,200` | `1,74`–`5,75 ms` |
+///
+/// ⭐ **Três leituras, e nenhuma é uma esperança:**
+/// 1. a alavanca é **exactamente linear** — `raio × (1 + desvio)`, e a coluna
+///    confirma-o ao cêntimo;
+/// 2. o efeito **satura**: o deslocamento mal se move depois de `2`, porque com
+///    o pivô longe a rotação tende para uma **translação** — o limite
+///    geométrico, não um artefacto;
+/// 3. o relógio **também satura** nas duas malhas maiores (`5,75` → `5,76` →
+///    `5,75 ms` de `2` a `4`), e cresce devagar na pequena.
+///
+/// ⇒ subir de `2` para `3` **não abre regime novo nenhum** — dá mais alcance à
+/// dobradiça ao mesmo preço. ⛔ E o que fica do outro lado do `3` está medido e
+/// é mais do mesmo: o tecto é de PRODUTO (até onde vale a pena arrastar um
+/// knob), não de recurso.
 pub(super) const POSE_OFFSET: Row = Row {
     label: "panel.sculpt3d.pose_offset",
     slider: crate::ids::SCULPT3D_POSE_OFFSET,
     chip: crate::ids::SCULPT3D_POSE_OFFSET_NUM,
     min: 0.0,
-    max: 2.0,   // LITERAL-PX-OK: teto da faixa do alvo, em raios de pincel
+    max: 3.0,   // LITERAL-PX-OK: ordem do dono, em raios de pincel — ver acima
     step: 0.05, // LITERAL-PX-OK: knob em raios de pincel
     decimals: 2,
     get: |u| u.brush.pose.desvio_da_origem,

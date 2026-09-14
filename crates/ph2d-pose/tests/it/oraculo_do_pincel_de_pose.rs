@@ -634,3 +634,70 @@ fn ossos_em(
     pose.ossos(ctrl, &mut saida);
     saida
 }
+
+/// ⭐⭐ **O que a lei faz quando o DESVIO DA ORIGEM passa o tecto do alvo.**
+///
+/// O alvo oferece `0..2` (§1.1) e o dono pediu `3` (2026-09-14). ⚠️ *Um tecto
+/// que se sobe sem medir é um palpite à espera de um smoke* — esta sonda mede o
+/// que há do outro lado: o comprimento do 1.º segmento (o braço da alavanca),
+/// o deslocamento máximo de um arrasto fixo, e o que a construção custa.
+///
+/// ```text
+/// cargo test -p ph2d-pose --test it -- --ignored --nocapture sonda_o_desvio
+/// ```
+#[test]
+#[ignore = "sonda: o que ha' do outro lado do tecto do desvio da origem"]
+fn sonda_o_desvio_da_origem_alem_do_tecto() {
+    let mut malhas: Vec<String> = corpus()
+        .iter()
+        .map(|n| traco(n).s("superficie").to_string())
+        .collect();
+    malhas.sort();
+    malhas.dedup();
+
+    println!(
+        "\n{:<24} {:>6} {:>10} {:>12} {:>12} {:>8}",
+        "malha", "desvio", "comp. seg0", "desloc. max", "construcao", "finito"
+    );
+    for nome in &malhas {
+        let sup = superficie(nome);
+        let escondido = vec![false; sup.pos.len()];
+        let viz = Vizinhanca::construir(
+            sup.pos.len(),
+            sup.faces.iter().map(Vec::as_slice),
+            &escondido,
+        );
+        let cursor = ponta_da_peca(&sup.pos);
+        let eleito = ph2d_pose::cadeia::mais_proximo_global(&sup.pos, &escondido, cursor)
+            .expect("malha com vertices");
+        for desvio in [0.0f32, 1.0, 2.0, 2.5, 3.0, 4.0] {
+            let ctrl = Controlos {
+                desvio_da_origem: desvio,
+                ..Default::default()
+            };
+            let t0 = std::time::Instant::now();
+            let mut pose = Pose::comecar(&viz, &sup.pos, &escondido, eleito, cursor, &ctrl);
+            let ms = t0.elapsed().as_secs_f64() * 1e3;
+            let seg0 = pose.cadeia().segmentos[0].comprimento;
+            pose.evento(
+                &ctrl,
+                &ph2d_pose::Evento {
+                    arrasto: [0.0, 0.2, 0.0],
+                    dx_pixels: 0.0,
+                },
+                &ph2d_pose::suave,
+            );
+            let mut saida = Vec::new();
+            pose.posicoes(&ctrl, &sup.pos, Default::default(), &mut saida);
+            let mut pior = 0.0f32;
+            let mut finito = true;
+            for (a, b) in sup.pos.iter().zip(&saida) {
+                finito &= b.iter().all(|c| c.is_finite());
+                pior = pior.max(distancia(*a, *b));
+            }
+            println!(
+                "{nome:<24} {desvio:>6.1} {seg0:>10.4} {pior:>12.4} {ms:>10.2} ms {finito:>8}"
+            );
+        }
+    }
+}

@@ -60,6 +60,9 @@ pub(crate) fn physics(world: &World, bits: u64) -> bool {
         0,
         (0.0, 5.0),
         0,
+        // ⚠️ Uma sonda de PRESENÇA: ela pergunta se a §11 existe, e a árvore não muda essa
+        // resposta — uma vazia é o suficiente e não mente.
+        &ph2d_tags::TagTree::new(),
     )
     .is_some()
 }

@@ -102,7 +102,19 @@ fn removing_a_body_detaches_both_components() {
     // ⚠️ **E a §11 FECHA** (ADR-0166 / F3): ela seguia toda entidade com `Transform` e mostrava uma
     // face vazia; hoje segue os componentes dela. A rota de volta é o `+` do cabeçalho.
     assert!(
-        build_physics_info(sim.world(), e.to_bits(), 0, 0, 0, false, 0, (0.0, 5.0), 0).is_none(),
+        build_physics_info(
+            sim.world(),
+            e.to_bits(),
+            0,
+            0,
+            0,
+            false,
+            0,
+            (0.0, 5.0),
+            0,
+            &ph2d_tags::TagTree::new()
+        )
+        .is_none(),
         "sem corpo nem collider a §11 tem de sumir"
     );
 }
@@ -169,14 +181,37 @@ fn the_snapshot_reflects_what_was_written() {
     // contrário («a plain sprite is inspectable, or the Add button is never offered»), porque o
     // botão *Add Physics Body* vivia numa face vazia que era a única rota. Hoje a rota é o `+`.
     assert!(
-        build_physics_info(sim.world(), e.to_bits(), 0, 0, 0, false, 0, (0.0, 5.0), 0).is_none(),
+        build_physics_info(
+            sim.world(),
+            e.to_bits(),
+            0,
+            0,
+            0,
+            false,
+            0,
+            (0.0, 5.0),
+            0,
+            &ph2d_tags::TagTree::new()
+        )
+        .is_none(),
         "um sprite pelado nao tem §11"
     );
 
     apply(&mut sim, e, PhysicsFieldEdit::Add);
     apply(&mut sim, e, PhysicsFieldEdit::Friction(0.25));
-    let info =
-        build_physics_info(sim.world(), e.to_bits(), 0, 0, 0, false, 0, (0.0, 5.0), 0).unwrap();
+    let info = build_physics_info(
+        sim.world(),
+        e.to_bits(),
+        0,
+        0,
+        0,
+        false,
+        0,
+        (0.0, 5.0),
+        0,
+        &ph2d_tags::TagTree::new(),
+    )
+    .unwrap();
     assert!(info.has_body);
     assert_eq!(info.friction, 0.25);
     assert_eq!(info.half_x, 1.0);

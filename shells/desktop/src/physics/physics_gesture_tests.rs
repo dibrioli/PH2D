@@ -51,8 +51,19 @@ pub(super) fn snapshot(
     sim: &ph2d_ecs::SimWorld,
     e: ph2d_ecs::Entity,
 ) -> ph2d_editor_core::InspectorPhysicsInfo {
-    build_physics_info(sim.world(), e.to_bits(), 0, 0, 0, false, 0, (0.0, 5.0), 0)
-        .expect("§11 aparece para qualquer entidade com Transform")
+    build_physics_info(
+        sim.world(),
+        e.to_bits(),
+        0,
+        0,
+        0,
+        false,
+        0,
+        (0.0, 5.0),
+        0,
+        &ph2d_tags::TagTree::new(),
+    )
+    .expect("§11 aparece para qualquer entidade com Transform")
 }
 
 /// **The whole feature, end to end.** Add on a plain sprite, then run the
@@ -209,7 +220,7 @@ fn authoring_both_signal_names_makes_the_door_open_and_close() {
     let mut names = Vec::new();
     for t in 0..=180 {
         bridge.dispatch(&mut sim, true, t);
-        for s in bridge.signal_events(&sim) {
+        for s in bridge.signal_events(&sim, &ph2d_tags::TagTree::new()) {
             names.push(s.name);
         }
     }

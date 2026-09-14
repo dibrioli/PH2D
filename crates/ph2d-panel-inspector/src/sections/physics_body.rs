@@ -234,6 +234,8 @@ pub(super) fn paint_body_face(
         info.is_sensor,
         info.one_way,
         info.no_wall_cling,
+        info.signal_tag,
+        &info.signal_tag_path,
     );
     // E, se este collider é uma ZONA, o que ela faz a quem está dentro (W-Area..
     // W-AreaFalloff). ⚠️ Bloco próprio desde a W-PartFace: uma PEÇA tem as rows

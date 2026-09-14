@@ -82,6 +82,8 @@ fn actions() -> InspectorActionInfo {
                 verb_tag: 3,
                 arg: String::new(),
                 uses_arg: false,
+                target_tag: None,
+                target_tag_path: String::new(),
             },
             InspectorActionRow {
                 on: "abre".into(),
@@ -89,6 +91,8 @@ fn actions() -> InspectorActionInfo {
                 verb_tag: 0,
                 arg: String::new(),
                 uses_arg: true,
+                target_tag: None,
+                target_tag_path: String::new(),
             },
         ],
         verb_labels: vec![

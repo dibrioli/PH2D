@@ -59,7 +59,7 @@ fn run(sim: &mut SimWorld, ticks: u64) -> Vec<(String, Entity, Entity)> {
     let mut out = Vec::new();
     for t in 0..=ticks {
         bridge.dispatch(sim, true, t);
-        for s in bridge.signal_events(sim) {
+        for s in bridge.signal_events(sim, &ph2d_tags::TagTree::new()) {
             out.push((s.name, s.source, s.other));
         }
     }
@@ -241,13 +241,13 @@ fn a_scrub_backwards_is_not_a_storm_of_arrivals() {
     let mut bridge = PhysicsBridge::new();
     for t in 0..=60 {
         bridge.dispatch(&mut sim, true, t);
-        let _ = bridge.signal_events(&sim);
+        let _ = bridge.signal_events(&sim, &ph2d_tags::TagTree::new());
     }
     // Volta o relógio: uma descontinuidade, não uma chegada.
     let mut fired = 0;
     for t in (0..=30).rev() {
         bridge.dispatch(&mut sim, true, t);
-        fired += bridge.signal_events(&sim).len();
+        fired += bridge.signal_events(&sim, &ph2d_tags::TagTree::new()).len();
     }
     assert_eq!(fired, 0, "o scrub emitiu {fired} sinal(is)");
 }
@@ -400,7 +400,7 @@ fn a_scrub_back_into_an_overlap_is_silent() {
     // O relógio está no fim, com a bola LONGE. Volta ao instante da travessia:
     // uma descontinuidade, não uma chegada.
     bridge.dispatch(&mut sim, true, inside_at);
-    let fired = bridge.signal_events(&sim);
+    let fired = bridge.signal_events(&sim, &ph2d_tags::TagTree::new());
     assert!(
         fired.is_empty(),
         "o scrub de volta para dentro da sobreposição gritou: {fired:?}"
@@ -637,18 +637,171 @@ fn a_scrub_out_of_an_overlap_is_silent() {
     // Avança até DENTRO do sensor (o walker cruza x=0 por volta do tick 30).
     for t in 0..=30 {
         bridge.dispatch(&mut sim, true, t);
-        let _ = bridge.signal_events(&sim);
+        let _ = bridge.signal_events(&sim, &ph2d_tags::TagTree::new());
     }
     // Volta ao tick 0, onde ele está longe: a sobreposição desaparece SEM que a
     // simulação tenha atravessado a saída.
     bridge.dispatch(&mut sim, true, 0);
     let after: Vec<String> = bridge
-        .signal_events(&sim)
+        .signal_events(&sim, &ph2d_tags::TagTree::new())
         .into_iter()
         .map(|s| s.name)
         .collect();
     assert!(
         after.is_empty(),
         "o scrub gritou {after:?} -- uma descontinuidade do relogio nao e' uma saida"
+    );
+}
+
+// ─── O FILTRO POR TAG (TOP-20 #9, W3c) ────────────────────────────────────────────────────────
+//
+// ⚠️ **A armadilha é o CHÃO com `SignalOnHit`**, e quem cai nele é a bola: é o mesmo corpus dos
+// gates acima, com um filtro por cima. *Uma fixtura nova mediria outro programa.*
+
+use ph2d_physics_ecs::SignalTagFilter;
+
+/// Uma árvore com `Player` e `Inimigo/Voador`.
+fn arvore_de_tags() -> (ph2d_tags::TagTree, ph2d_tags::TagId, ph2d_tags::TagId) {
+    let mut t = ph2d_tags::TagTree::new();
+    let player = t.create("Player").expect("cria");
+    let voador = t.create("Inimigo/Voador").expect("cria");
+    (t, player, voador)
+}
+
+/// Corre com a ÁRVORE dada — o gémeo do [`run`], para os gates do filtro.
+fn run_com(
+    sim: &mut SimWorld,
+    ticks: u64,
+    tree: &ph2d_tags::TagTree,
+) -> Vec<(String, Entity, Entity)> {
+    let mut bridge = PhysicsBridge::new();
+    let mut out = Vec::new();
+    for t in 0..=ticks {
+        bridge.dispatch(sim, true, t);
+        for s in bridge.signal_events(sim, tree) {
+            out.push((s.name, s.source, s.other));
+        }
+    }
+    out
+}
+
+/// ⭐⭐⭐ **Uma armadilha filtrada IGNORA quem não é da tag** — e a lei vale na CHEGADA e na SAÍDA.
+///
+/// ⚠️ *«Só o jogador dispara esta armadilha»* é uma frase sobre QUEM toca, não sobre a fase do
+/// toque: um filtro só na chegada faria a porta fechar-se a quem nunca a abriu.
+///
+/// **Mutação que deve sangrar:** o `passa(…)` tirado de qualquer um dos braços do `signal_events`.
+#[test]
+fn a_filtered_trap_ignores_a_non_member_on_arrival_and_departure() {
+    let (tree, player, _voador) = arvore_de_tags();
+    let mut sim = SimWorld::new();
+    let chao = ground(&mut sim, Some("trap"));
+    sim.world_mut()
+        .entity_mut(chao)
+        .insert(SignalTagFilter(player.0));
+    // A bola NÃO é do `Player` — ela é um inimigo voador.
+    let bola = ball(&mut sim, 1.0, None);
+    sim.world_mut()
+        .entity_mut(bola)
+        .insert(ph2d_ecs::tags::Tags::from_ids([_voador]));
+    let sinais = run_com(&mut sim, 90, &tree);
+    assert!(
+        !sinais.iter().any(|(n, _, _)| n == "trap"),
+        "a armadilha filtrada gritou com quem nao e' da tag: {sinais:?}"
+    );
+
+    // E o MEMBRO dispara-a — a metade de presença, sem a qual a de ausência passa sobre nada.
+    let mut sim = SimWorld::new();
+    let chao = ground(&mut sim, Some("trap"));
+    sim.world_mut()
+        .entity_mut(chao)
+        .insert(SignalTagFilter(player.0));
+    let bola = ball(&mut sim, 1.0, None);
+    sim.world_mut()
+        .entity_mut(bola)
+        .insert(ph2d_ecs::tags::Tags::from_ids([player]));
+    let sinais = run_com(&mut sim, 90, &tree);
+    assert!(
+        sinais.iter().any(|(n, _, _)| n == "trap"),
+        "a armadilha filtrada nao gritou com um MEMBRO da tag: {sinais:?}"
+    );
+}
+
+/// ⭐⭐ **Sem filtro, o mundo de hoje é BYTE-IDÊNTICO** — a metade de inércia.
+///
+/// ⚠️ Sem ela, um filtro que recusasse tudo passaria no gate de cima e partia toda cena que já
+/// existe.
+///
+/// **Mutação que deve sangrar:** o `return true` do ramo «sem componente» trocado por `false`.
+#[test]
+fn an_unfiltered_trap_is_byte_identical() {
+    let (tree, _p, _v) = arvore_de_tags();
+    let monta = |sim: &mut SimWorld| {
+        let _ = ground(sim, Some("trap"));
+        let _ = ball(sim, 1.0, None);
+    };
+    let mut a = SimWorld::new();
+    monta(&mut a);
+    let sem_arvore = run(&mut a, 90);
+    let mut b = SimWorld::new();
+    monta(&mut b);
+    let com_arvore = run_com(&mut b, 90, &tree);
+    assert!(
+        !sem_arvore.is_empty(),
+        "a fixtura nao produz sinal nenhum — o gate passaria por nao medir nada"
+    );
+    assert_eq!(
+        sem_arvore, com_arvore,
+        "uma cena SEM filtro mudou de saida por existir uma arvore de tags"
+    );
+}
+
+/// ⛔⛔ **Uma tag APAGADA não passa ninguém** — falha FECHADA.
+///
+/// ⚠️ Com a falha ABERTA, apagar uma tag no painel *Tags* faria esta armadilha passar a gritar com
+/// TUDO. *Entre «deixa de funcionar» e «funciona para toda a gente», a segunda é a que estraga uma
+/// cena sem ninguém perceber.*
+///
+/// **Mutação que deve sangrar:** o `if tree.get(q).is_none() { return false }` apagado.
+#[test]
+fn a_missing_filter_tag_passes_nobody() {
+    let (mut tree, player, _v) = arvore_de_tags();
+    let mut sim = SimWorld::new();
+    let chao = ground(&mut sim, Some("trap"));
+    sim.world_mut()
+        .entity_mut(chao)
+        .insert(SignalTagFilter(player.0));
+    let bola = ball(&mut sim, 1.0, None);
+    // A bola É do `Player` — ela passaria, se a tag existisse.
+    sim.world_mut()
+        .entity_mut(bola)
+        .insert(ph2d_ecs::tags::Tags::from_ids([player]));
+    let _ = tree.delete(player);
+    let sinais = run_com(&mut sim, 90, &tree);
+    assert!(
+        !sinais.iter().any(|(n, _, _)| n == "trap"),
+        "a tag do filtro foi apagada e a armadilha gritou na mesma — ela passou a valer para TODOS: \
+         {sinais:?}"
+    );
+}
+
+/// ⚠️ **Um filtro POR ESCOLHER (`0`) passa todos** — ele é um filtro por acabar, não um que partiu.
+///
+/// ⛔ Tratá-lo como a tag apagada faria anexar o componente PARAR a armadilha até o artista
+/// adivinhar porquê.
+///
+/// **Mutação que deve sangrar:** o `tag()` a devolver `Some(0)`.
+#[test]
+fn an_unset_filter_passes_everyone() {
+    let (tree, _p, _v) = arvore_de_tags();
+    let mut sim = SimWorld::new();
+    let chao = ground(&mut sim, Some("trap"));
+    sim.world_mut().entity_mut(chao).insert(SignalTagFilter(0));
+    let _ = ball(&mut sim, 1.0, None);
+    let sinais = run_com(&mut sim, 90, &tree);
+    assert!(
+        sinais.iter().any(|(n, _, _)| n == "trap"),
+        "um filtro por ESCOLHER parou a armadilha — anexar o componente apagou o comportamento: \
+         {sinais:?}"
     );
 }

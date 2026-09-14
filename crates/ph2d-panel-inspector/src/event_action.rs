@@ -46,6 +46,43 @@ pub(crate) fn apply_action_event(
             demote(host, id);
             return true;
         }
+        // ⭐⭐⭐ **O alvo: por NOME ou por TAG** (TOP-20 #9, W3b).
+        //
+        // ⚠️ **Os dois segmentos empurram, mesmo o que já está marcado** — carregar no segmento
+        // aceso é um no-op no documento (a shell escreve o mesmo valor), e recusá-lo aqui seria um
+        // clique que não faz nada por uma razão que o artista não vê. *O silêncio é do modelo, não
+        // do despacho.*
+        for (segmento, por_tag) in [
+            (crate::ids::INSP_ACTION_BY_NAME, false),
+            (crate::ids::INSP_ACTION_BY_TAG, true),
+        ] {
+            if id == segmento {
+                push(
+                    host,
+                    info.entity_bits,
+                    ActionFieldEdit::TargetMode(sel_u8, por_tag),
+                );
+                demote(host, id);
+                return true;
+            }
+        }
+        // Uma opção da caixa da tag alvo. ⚠️ **A lista é a MESMA que o pintor derivou**
+        // (`tag_options`), e ela é a árvore inteira — aqui não se tira nada, ao contrário da
+        // secção *Tags*.
+        if let Some(i) = crate::ids::INSP_ACTION_TAG_OPT
+            .iter()
+            .position(|&o| o == id)
+            && let Some(opt) = crate::sections::actions::tag_options().get(i)
+        {
+            push(
+                host,
+                info.entity_bits,
+                ActionFieldEdit::TargetTag(sel_u8, opt.value),
+            );
+            fecha_tag_popover(host);
+            demote(host, id);
+            return true;
+        }
         // ⚠️ **A POSIÇÃO no array É a tag** — reordenar aquele array faria um clique escrever
         // outro verbo, e compila. Há gate na lei pura (`the_verb_tag_is_its_position…`).
         if let Some(i) = crate::ids::INSP_ACTION_VERB.iter().position(|&o| o == id)
@@ -90,6 +127,15 @@ fn push(host: &mut dyn PanelHostInternal, entity_bits: u64, edit: ActionFieldEdi
 /// ⚠️ **E NÃO escreve o `selected_index`.** Quem é dono do verbo é o snapshot: o quadro seguinte
 /// relê-o da cena. Escrever aqui abriria a segunda porta para o mesmo estado — e ela mentiria
 /// exactamente no caso em que a shell recusasse a edição. É a lei que a §12 já paga.
+/// Fecha o popover da TAG ALVO depois de uma escolha.
+fn fecha_tag_popover(host: &mut dyn PanelHostInternal) {
+    if let Some(InteractiveState::Dropdown { open, .. }) =
+        host.store_mut().get_mut(crate::ids::INSP_ACTION_TAG_PICK)
+    {
+        *open = false;
+    }
+}
+
 fn close_verb_popover(host: &mut dyn PanelHostInternal) {
     if let Some(InteractiveState::Dropdown { open, .. }) =
         host.store_mut().get_mut(crate::ids::INSP_ACTION_VERB_PICK)

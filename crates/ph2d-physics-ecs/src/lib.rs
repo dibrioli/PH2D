@@ -71,7 +71,8 @@ pub use components::{
     Dominance, GravityScale, InitialVelocity, LockPositionX, LockPositionY, LockRotation,
     MassOverride, MaterialCombine, NoWallCling, OneWayPlatform, PlatformLift, PlatformPlayer,
     PlayerMode, PlayerSignals, PulleyWheel, RigidBody, RopeStops, SignalOnHit, SignalOnLeave,
-    WalkSurface, WestonAxle, WrapSide, reseat_mounted_axle, reseat_wheel_geometry, rope_joint_of,
+    SignalTagFilter, WalkSurface, WestonAxle, WrapSide, reseat_mounted_axle, reseat_wheel_geometry,
+    rope_joint_of,
 };
 pub use interaction::{
     HoldMode, InteractionSettings, InteractionTool, MAX_ATTRACT_FORCE, MAX_BLAST_IMPULSE,
@@ -157,6 +158,9 @@ pub fn register_physics_components(reg: &mut ComponentRegistry) {
     reg.register_default::<PlayerSignals>("ph2d::physics::PlayerSignals");
     reg.register_default::<SignalOnHit>("ph2d::physics::SignalOnHit");
     reg.register_default::<SignalOnLeave>("ph2d::physics::SignalOnLeave");
+    // ⭐ O filtro por TAG (TOP-20 #9, W3c). ⚠️ Sem o registo, o artista calibra uma armadilha,
+    // grava, reabre — e ela passa a gritar com tudo, em silêncio.
+    reg.register_default::<SignalTagFilter>("ph2d::physics::SignalTagFilter");
     reg.register_default::<InitialVelocity>("ph2d::physics::InitialVelocity");
     reg.register_default::<Ccd>("ph2d::physics::Ccd");
     reg.register_default::<LockRotation>("ph2d::physics::LockRotation");
@@ -195,7 +199,10 @@ mod tests {
     fn registers_every_physics_component() {
         let mut reg = ComponentRegistry::new();
         register_physics_components(&mut reg);
-        assert_eq!(reg.len(), 32);
+        // ⚠️ **O DELTA é +1 contra o `main` (32)**, nunca um literal escolhido: este número soma
+        // entre linhas, e o git não sabe o que ele significa quando duas escrevem o mesmo valor.
+        assert_eq!(reg.len(), 33);
+        assert!(reg.get_by_name("ph2d::physics::SignalTagFilter").is_some());
         assert!(reg.get_by_name("ph2d::physics::RigidBody").is_some());
         assert!(reg.get_by_name("ph2d::physics::Collider").is_some());
         assert!(reg.get_by_name("ph2d::physics::PhysicsJoint").is_some());

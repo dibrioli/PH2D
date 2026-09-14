@@ -155,3 +155,46 @@ fn signal_name(raw: &str) -> Option<&str> {
 pub struct PlayerSignals;
 
 impl SimComponent for PlayerSignals {}
+
+/// ⭐⭐⭐ **Só quem tem esta TAG faz esta armadilha gritar** (TOP-20 #9, W3c).
+///
+/// Ausente = **sem filtro**, e o mundo de hoje fica byte-idêntico: toda cena que já existe continua
+/// a emitir exactamente o que emitia.
+///
+/// # ⚠️ Componente IRMÃO, e não um campo do [`SignalOnHit`]
+///
+/// É a mesma razão que o cabeçalho deste módulo já dá para o `SignalOnLeave` ser um segundo
+/// componente: aqueles são serializados POSICIONALMENTE pelo postcard, logo apendar um campo é um
+/// bump de `PROJECT_SCHEMA` — e um bump **recusa todo projecto já gravado**. Um componente
+/// recém-registado é chaveado pelo hash do próprio nome de tipo e é puramente aditivo.
+///
+/// ⭐ **E ele filtra os DOIS nomes**, a chegada e a saída: *«só o jogador dispara esta armadilha»* é
+/// uma frase sobre QUEM toca, não sobre a fase do toque. Um filtro por fase obrigaria o artista a
+/// escrever a mesma tag duas vezes para dizer uma coisa.
+///
+/// # ⛔ Uma tag APAGADA não passa ninguém — falha FECHADA
+///
+/// ⚠️ É a lei do alvo que não existe, e aqui ela tem de ser a **fechada**: com a aberta, apagar uma
+/// tag no painel *Tags* faria uma armadilha calibrada para o jogador passar a gritar com TUDO o que
+/// lhe toque. *Entre «deixa de funcionar» e «funciona para toda a gente», a segunda é a que estraga
+/// uma cena sem ninguém perceber.* O painel escreve *«Missing tag»* na linha.
+///
+/// ⚠️ **`u64` e não `TagId`** porque a folha das tags não fala `serde` (de propósito) — o mesmo do
+/// `ph2d_ecs::Tags` e do `SignalTarget`.
+#[derive(Component, Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SignalTagFilter(pub u64);
+
+impl SignalTagFilter {
+    /// A tag do filtro, ou `None` quando ele está por escolher (`0` nunca é dado pela árvore).
+    ///
+    /// ⚠️ **`0` é «por escolher», e passa TODOS** — ao contrário de uma tag apagada, que não passa
+    /// ninguém. São duas histórias: uma é um filtro por acabar (e o mundo sem filtro é o default),
+    /// a outra é um filtro que partiu. ⛔ Tratá-las igual faria anexar o componente parar a
+    /// armadilha até o artista adivinhar porquê.
+    #[must_use]
+    pub const fn tag(self) -> Option<u64> {
+        if self.0 == 0 { None } else { Some(self.0) }
+    }
+}
+
+impl SimComponent for SignalTagFilter {}

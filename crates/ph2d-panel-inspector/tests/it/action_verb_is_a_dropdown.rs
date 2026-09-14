@@ -69,6 +69,8 @@ fn actions() -> InspectorActionInfo {
             verb_tag: 3,
             arg: String::new(),
             uses_arg: false,
+            target_tag: None,
+            target_tag_path: String::new(),
         }],
         verb_labels: vec![
             "Start Timer".into(),

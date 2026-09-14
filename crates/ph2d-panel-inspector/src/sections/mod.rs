@@ -73,7 +73,7 @@ mod physics_join_rows;
 /// W-PartFace: a 3ª face do §11 — o que se mostra de um `Collider` que não é
 /// corpo (uma PEÇA de um corpo composto).
 mod physics_part;
-mod physics_rows;
+pub(crate) mod physics_rows;
 /// ⚠️ `pub(crate)` só para o `PLAYER_ROW_COUNT` do `lib.rs` — o gate de seam
 /// afirma que cobre a tabela INTEIRA, e um oráculo que itera a própria lista
 /// que testa encolhe junto com ela.

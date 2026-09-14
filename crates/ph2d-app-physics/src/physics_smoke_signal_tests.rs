@@ -13,7 +13,7 @@ fn fired(secs: f32) -> Vec<String> {
     let mut out = Vec::new();
     for t in 0..=(secs * 60.0) as u64 {
         bridge.dispatch(&mut sim, true, t);
-        for s in bridge.signal_events(&sim) {
+        for s in bridge.signal_events(&sim, &ph2d_tags::TagTree::new()) {
             out.push(s.name);
         }
     }

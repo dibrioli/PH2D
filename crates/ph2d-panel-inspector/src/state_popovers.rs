@@ -52,6 +52,19 @@ thread_local! {
     pub(crate) static PENDING_TAGS_DD:
         std::cell::Cell<Option<ph2d_editor_core::zones::Rect>> = const { std::cell::Cell::new(None) };
 
+    /// SIGNAL ACTIONS: o chip da TAG ALVO (TOP-20 #9, W3b). ⚠️ Slot próprio, e não o
+    /// [`PENDING_TAGS_DD`]: os dois selectores nunca estão abertos ao mesmo tempo, mas partilhar o
+    /// slot faria o passe diferido pintar a lista com as opções da OUTRA secção — e os ids delas
+    /// pertencem a outro braço do despacho.
+    pub(crate) static PENDING_ACTION_TAG_DD:
+        std::cell::Cell<Option<ph2d_editor_core::zones::Rect>> = const { std::cell::Cell::new(None) };
+
+    /// §11 PHYSICS: o chip do filtro *Only for tag* (TOP-20 #9, W3c). ⚠️ Terceiro slot, pela mesma
+    /// razão dos outros dois: as opções de cada selector têm ids próprios, e partilhar o slot faria
+    /// o passe diferido pintar a lista de outra secção.
+    pub(crate) static PENDING_PHYS_TAG_DD:
+        std::cell::Cell<Option<ph2d_editor_core::zones::Rect>> = const { std::cell::Cell::new(None) };
+
     /// AUDIO: quando o seletor do BARRAMENTO está aberto, a seção guarda aqui
     /// `(tag escolhida, rect do chip)`. ⚠️ Mesma assimetria do irmão: a tag vem no slot, os
     /// rótulos rederivam-se do snapshot.
@@ -107,6 +120,22 @@ pub(crate) fn set_pending_tags_dd(chip: Option<ph2d_editor_core::zones::Rect>) {
 
 pub(crate) fn take_pending_tags_dd() -> Option<ph2d_editor_core::zones::Rect> {
     PENDING_TAGS_DD.with(|c| c.take())
+}
+
+pub(crate) fn set_pending_action_tag_dd(chip: Option<ph2d_editor_core::zones::Rect>) {
+    PENDING_ACTION_TAG_DD.with(|c| c.set(chip));
+}
+
+pub(crate) fn take_pending_action_tag_dd() -> Option<ph2d_editor_core::zones::Rect> {
+    PENDING_ACTION_TAG_DD.with(|c| c.take())
+}
+
+pub(crate) fn set_pending_phys_tag_dd(chip: Option<ph2d_editor_core::zones::Rect>) {
+    PENDING_PHYS_TAG_DD.with(|c| c.set(chip));
+}
+
+pub(crate) fn take_pending_phys_tag_dd() -> Option<ph2d_editor_core::zones::Rect> {
+    PENDING_PHYS_TAG_DD.with(|c| c.take())
 }
 
 pub(crate) fn set_pending_audio_dd(chip: Option<(u8, ph2d_editor_core::zones::Rect)>) {

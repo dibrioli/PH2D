@@ -62,6 +62,9 @@ pub fn build_physics_info(
     join_kind_tag: u8,
     bake_range: (f32, f32),
     bake_channels_tag: u8,
+    // ⭐ A árvore de tags (TOP-20 #9, W3c) — a row *Only for tag* mostra o CAMINHO do filtro, não o
+    // número dele. ⚠️ O painel não conhece a árvore.
+    tree: &ph2d_tags::TagTree,
 ) -> Option<InspectorPhysicsInfo> {
     let (bake_start_seconds, bake_seconds) = bake_range;
     use ph2d_physics_ecs::{
@@ -228,6 +231,9 @@ pub fn build_physics_info(
             // pintadas com um collider em mãos.
             signal: String::new(),
             signal_leave: String::new(),
+            // Idem: sem collider não há sinal, logo não há filtro para ele.
+            signal_tag: None,
+            signal_tag_path: String::new(),
             bake_channels_tag,
             gravity_scale: GravityScale::NEUTRAL,
             cap_half_height: 0.25,
@@ -325,6 +331,17 @@ pub fn build_physics_info(
             .and_then(ph2d_physics_ecs::SignalOnLeave::name)
             .unwrap_or_default()
             .to_string(),
+        // ⭐ O FILTRO dos dois nomes acima. ⚠️ **`Some(0)` (por escolher) e o caminho VAZIO com um
+        // id vivo são histórias diferentes** — ver o doc do `SignalTagFilter`.
+        signal_tag: world
+            .get::<ph2d_physics_ecs::SignalTagFilter>(entity)
+            .map(|f| f.0),
+        signal_tag_path: world
+            .get::<ph2d_physics_ecs::SignalTagFilter>(entity)
+            .and_then(|f| f.tag())
+            .and_then(|id| tree.get(ph2d_tags::TagId(id)))
+            .map(|t| t.path.clone())
+            .unwrap_or_default(),
         bake_channels_tag,
         gravity_scale,
         cap_half_height,
@@ -426,8 +443,19 @@ mod tests {
                 SignalOnLeave("door_close".to_string()),
             ))
             .id();
-        let info = build_physics_info(&world, e.to_bits(), 0, 0, 0, false, 0, (0.0, 5.0), 0)
-            .expect("um corpo tem Transform, então a §11 o descreve");
+        let info = build_physics_info(
+            &world,
+            e.to_bits(),
+            0,
+            0,
+            0,
+            false,
+            0,
+            (0.0, 5.0),
+            0,
+            &ph2d_tags::TagTree::new(),
+        )
+        .expect("um corpo tem Transform, então a §11 o descreve");
         assert_eq!(
             info.signal, "door_open",
             "o nome de CHEGADA não chegou ao snapshot — a row é write-only"
@@ -447,8 +475,19 @@ mod tests {
                 Collider::default(),
             ))
             .id();
-        let info = build_physics_info(&world, plain.to_bits(), 0, 0, 0, false, 0, (0.0, 5.0), 0)
-            .expect("idem");
+        let info = build_physics_info(
+            &world,
+            plain.to_bits(),
+            0,
+            0,
+            0,
+            false,
+            0,
+            (0.0, 5.0),
+            0,
+            &ph2d_tags::TagTree::new(),
+        )
+        .expect("idem");
         assert!(info.signal.is_empty() && info.signal_leave.is_empty());
     }
 
@@ -484,9 +523,20 @@ mod tests {
             if marked {
                 world.entity_mut(e).insert(AreaForceWorldAxes);
             }
-            build_physics_info(&world, e.to_bits(), 0, 0, 0, false, 0, (0.0, 5.0), 0)
-                .expect("a zone has a Transform, so §11 describes it")
-                .force_world_axes
+            build_physics_info(
+                &world,
+                e.to_bits(),
+                0,
+                0,
+                0,
+                false,
+                0,
+                (0.0, 5.0),
+                0,
+                &ph2d_tags::TagTree::new(),
+            )
+            .expect("a zone has a Transform, so §11 describes it")
+            .force_world_axes
         };
         assert!(
             !zone(false),

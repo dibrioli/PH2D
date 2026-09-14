@@ -147,7 +147,12 @@ fn the_course_fires_every_name_the_script_promises() {
             },
         );
         bridge.dispatch(&mut sim, true, tick);
-        names.extend(bridge.signal_events(&sim).into_iter().map(|s| s.name));
+        names.extend(
+            bridge
+                .signal_events(&sim, &ph2d_tags::TagTree::new())
+                .into_iter()
+                .map(|s| s.name),
+        );
     }
     for want in [
         "player.jumped.ground",
@@ -198,7 +203,7 @@ fn the_course_names_what_it_fires() {
             },
         );
         bridge.dispatch(&mut sim, true, tick);
-        for s in bridge.signal_events(&sim) {
+        for s in bridge.signal_events(&sim, &ph2d_tags::TagTree::new()) {
             if s.name.starts_with("player.") {
                 eprintln!("  t={tick:4}  x={x:6.2}  {}", s.name);
             }

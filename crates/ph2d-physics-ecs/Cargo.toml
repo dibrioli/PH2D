@@ -20,6 +20,10 @@ path = "src/bin/physics_ecs_c9/main.rs"
 [dependencies]
 # The ECS this bridge reads components from and writes Transform back to.
 ph2d-ecs = { path = "../ph2d-ecs" }
+# ⭐ A árvore de tags (TOP-20 #9, W3c) — o `SignalTagFilter` pergunta a pertença pela porta dela.
+# ⚠️ Folha SEM ECS e sem `serde`, de propósito: ela já entra no fecho do `ph2d-ecs` acima (que a usa
+# pelo mesmo motivo), logo não traz nada de novo ao grafo.
+ph2d-tags = { path = "../ph2d-tags" }
 # Direct bevy_ecs (same 0.19 as ph2d-ecs) to name + CACHE a `QueryState`
 # in the bridge — building the query fresh every frame allocates; the
 # cached state is the zero-alloc idiom (mirrors `TransformPropagationState`

@@ -136,6 +136,18 @@ pub(super) fn populate_joint(store: &mut WidgetStore) {
     // nasceriam pintadas, hit-registradas e MORTAS sob o mouse — a falha que este
     // arquivo existe para impedir, e que o `architecture_panel_wiring_parity`
     // pega.
+    // ⭐ O FILTRO por tag (TOP-20 #9, W3c): as opções são botões (as linhas do popover) e só o CHIP
+    // é um `Dropdown`. ⚠️ O `(any)` é a 1.ª opção e também é botão.
+    super::populate::register_button_ids(store, &[ids::INSP_PHYS_SIGNAL_TAG_CLEAR]);
+    super::populate::register_button_ids(store, &ids::INSP_PHYS_TAG_OPT);
+    store.register(
+        ids::INSP_PHYS_SIGNAL_TAG,
+        InteractiveState::Dropdown {
+            state: ph2d_editor_core::widget::DropdownState::Normal,
+            open: false,
+            selected_index: None,
+        },
+    );
     for id in [ids::INSP_PHYS_SIGNAL, ids::INSP_PHYS_SIGNAL_LEAVE] {
         store.register(
             id,

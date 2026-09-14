@@ -227,5 +227,101 @@ mutacao "M20 o passe diferido nao pinta a lista das tags" crates/ph2d-panel-insp
         && let Some(chip) = state_popovers::take_pending_tags_dd()' \
   ph2d-panel-inspector --test=it escolher_uma_tag_da_lista_aberta_chega_ao_barramento
 
+# ── W3b: o alvo por TAG de uma Signal Action ─────────────────────────────────
+AC=shells/desktop/src/render_loop/inspector_action.rs
+SA=crates/ph2d-panel-inspector/src/sections/actions.rs
+PA=crates/ph2d-panel-inspector/src/populate_action.rs
+
+mutacao "M21 virar para TAG escolhe uma tag sozinho" "$AC" \
+  '                SignalTarget::Tagged(0)' '                SignalTarget::Tagged(1)' \
+  ph2d-host-desktop --bins switching_the_target_to_tag_picks_no_tag_at_all
+
+mutacao "M22 a linha mostra o NUMERO da tag e nao o caminho" "$AC" \
+  '                .map(|t| t.path.clone())
+                .unwrap_or_default(),' \
+  '                .map(|t| t.path.clone())
+                .unwrap_or_else(|| String::from("?")),' \
+  ph2d-host-desktop --bins a_deleted_tag_leaves_the_action_pointing_at_nobody_and_says_so
+
+mutacao "M23 voltar ao NOME nao larga a tag" "$AC" \
+  '            a.target_by = if *por_tag {
+                SignalTarget::Tagged(0)
+            } else {
+                SignalTarget::Named
+            };' \
+  '            if *por_tag {
+                a.target_by = SignalTarget::Tagged(0);
+            }' \
+  ph2d-host-desktop --bins going_back_to_name_drops_the_tag_by_construction
+
+mutacao "M24 o nome e a tag aparecem os DOIS na tela" "$SA" \
+  '    if !por_tag {
+        return super::anim_rows::text_row(' \
+  '    {
+        return super::anim_rows::text_row(' \
+  ph2d-panel-inspector --test=it um_modo_um_controlo_o_nome_e_a_tag_nunca_aparecem_juntos
+
+mutacao "M25 os dois selectores de tag partilham ids" "$SA" \
+  '        .zip(ids::INSP_ACTION_TAG_OPT.iter())' \
+  '        .zip(crate::ids::INSP_TAGS_OPT.iter())' \
+  ph2d-panel-inspector --test=it escolher_a_tag_alvo_aponta_a_accao_e_nao_marca_o_objecto
+
+mutacao "M26 o segmentado morre sob o dedo (sem registo)" "$PA" \
+  '    register_button_ids(
+        store,
+        &[
+            crate::ids::INSP_ACTION_BY_NAME,
+            crate::ids::INSP_ACTION_BY_TAG,
+        ],
+    );' '' \
+  ph2d-panel-inspector --test=it o_segmentado_vira_o_alvo_da_accao_para_tag
+
+# ── W3c: o filtro por TAG de uma armadilha ───────────────────────────────────
+SG=crates/ph2d-physics-ecs/src/bridge/signals.rs
+CS=crates/ph2d-physics-ecs/src/components/signal.rs
+PR=crates/ph2d-panel-inspector/src/sections/physics_rows.rs
+PP=crates/ph2d-panel-inspector/src/populate_physics.rs
+
+mutacao "M27 a armadilha filtrada grita com quem nao e' da tag" "$SG" \
+  '                if let Some(name) = named(source).filter(|_| passa(source, other)) {' \
+  '                if let Some(name) = named(source) {' \
+  ph2d-physics-ecs --test=it a_filtered_trap_ignores_a_non_member_on_arrival_and_departure
+
+mutacao "M28 um mundo SEM filtro deixa de ser byte-identico" "$SG" \
+  '    let Some(filtro) = sim.world().get::<SignalTagFilter>(source) else {
+        return true;
+    };' \
+  '    let Some(filtro) = sim.world().get::<SignalTagFilter>(source) else {
+        return false;
+    };' \
+  ph2d-physics-ecs --test=it an_unfiltered_trap_is_byte_identical
+
+# ⚠️⚠️ **A 1.ª redacção desta mutação SOBREVIVEU, e o achado foi melhor que o gate:** ela apagava um
+# `if tree.get(q).is_none() { return false }` do `signal_passes` — e nada reprovou, porque o
+# `TagTree::reaches` (W1) já devolve `false` para um id fora da árvore. O guarda era uma DECLARAÇÃO
+# que o programa não executava; foi removido. ⇒ a mutação que mede esta lei tem de morder onde ela de
+# facto vive: A MONTANTE, na porta da pertença.
+mutacao "M29 uma tag APAGADA passa a valer para todos (falha ABERTA)" crates/ph2d-ecs/src/tags.rs \
+  '    tags.0.iter().any(|&m| tree.reaches(q, TagId(m)))' \
+  '    tree.get(q).is_none() || tags.0.iter().any(|&m| tree.reaches(q, TagId(m)))' \
+  ph2d-physics-ecs --test=it a_missing_filter_tag_passes_nobody
+
+mutacao "M30 um filtro POR ESCOLHER para a armadilha" "$CS" \
+  '        if self.0 == 0 { None } else { Some(self.0) }' '        Some(self.0)' \
+  ph2d-physics-ecs --test=it an_unset_filter_passes_everyone
+
+# ⚠️⚠️ **A 1.ª redacção destas duas apontava o `every_registered_physics_component_has_a_ui_writer`,
+# e as DUAS sobreviveram:** aquele gate é um censo TEXTUAL sobre a fonte — ele vê o id e a edição
+# escritos no painel e é **cego a se o controlo chega a ser PINTADO**. *Um censo de fiação e um seam
+# de gesto medem coisas diferentes, e o nome do primeiro não avisa disso.* ⇒ o seam da row nasceu
+# daqui (`seam_physics::a_row_do_filtro_por_tag_esta_viva_sob_o_dedo`).
+mutacao "M31 a row do filtro nao e' pintada" "$PR" \
+  '    hit_index.register(ids::INSP_PHYS_SIGNAL_TAG, rect);' '' \
+  ph2d-panel-inspector --test=it o_chip_do_filtro_por_tag_e_pintado
+
+mutacao "M32 o filtro morre sob o dedo (sem registo)" "$PP" \
+  '    super::populate::register_button_ids(store, &[ids::INSP_PHYS_SIGNAL_TAG_CLEAR]);' '' \
+  ph2d-panel-inspector --test=it a_row_do_filtro_por_tag_esta_viva_sob_o_dedo
+
 echo "load $(cut -d' ' -f1 /proc/loadavg)"
 git status --short -- crates shells | grep -v '^??' || true

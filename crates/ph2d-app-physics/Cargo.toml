@@ -27,6 +27,8 @@ bevy_ecs = "0.19"
 ph2d-core = { path = "../ph2d-core" }
 ph2d-ecs = { path = "../ph2d-ecs" }
 ph2d-physics-ecs = { path = "../ph2d-physics-ecs" }
+# ⭐ A árvore de tags (TOP-20 #9, W3c) — o caminho do filtro na row *Only for tag*.
+ph2d-tags = { path = "../ph2d-tags" }
 ph2d-render = { path = "../ph2d-render" }
 # ⭐ **O CUSTO REAL do módulo, e ele só se lê aqui** (HOWTO §1.3): dentro da shell todas
 # estas eram dependência do binário, e um ficheiro escrevia `ph2d_timeline::…` sem nada que o

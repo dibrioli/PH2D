@@ -62,7 +62,9 @@ impl crate::App {
                 sig.fires,
             ));
         }
-        for sig in physics.signal_events(sim) {
+        // ⭐ **A árvore vai junto** (TOP-20 #9, W3c): o `SignalTagFilter` de uma armadilha decide
+        // AQUI, onde o `other` existe. Sem filtro nenhum a saída é byte-idêntica.
+        for sig in physics.signal_events(sim, tags) {
             self.signals.publish(ph2d_runtime::Signal::from_contact(
                 &sig.name,
                 sig.source.to_bits(),

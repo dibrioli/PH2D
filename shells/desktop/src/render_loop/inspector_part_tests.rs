@@ -91,6 +91,7 @@ fn info(sim: &mut SimWorld, e: Entity) -> ph2d_editor_core::InspectorPhysicsInfo
         0,
         (0.0, 5.0),
         0,
+        &ph2d_tags::TagTree::new(),
     )
     .expect("info")
 }

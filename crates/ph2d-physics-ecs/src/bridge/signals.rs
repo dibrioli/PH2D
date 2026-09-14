@@ -24,7 +24,7 @@ use ph2d_ecs::{Entity, SimWorld};
 
 use ph2d_platformer::{JumpKind, PlayerEvent};
 
-use crate::{PlayerSignals, SignalOnHit, SignalOnLeave};
+use crate::{PlayerSignals, SignalOnHit, SignalOnLeave, SignalTagFilter};
 
 use super::PhysicsBridge;
 use super::contacts::ContactPhase;
@@ -85,9 +85,20 @@ impl PhysicsBridge {
     ///
     /// Aloca só quando há o que emitir: a varredura é sobre listas que estão
     /// vazias em quase todo quadro.
+    /// # ⭐⭐⭐ E o FILTRO por tag (TOP-20 #9, W3c)
+    ///
+    /// Uma fonte com [`SignalTagFilter`] só grita se o `other` **pertencer** à tag dele — e a
+    /// pergunta passa pela porta da pertença ([`ph2d_ecs::tags::belongs`]), que alcança a subárvore.
+    /// Ausente = sem filtro, e o mundo de hoje fica **byte-idêntico**.
+    ///
+    /// ⚠️ **O filtro é consultado AQUI, e não pelo consumidor**, porque é aqui que o `other` existe:
+    /// o `Signal` que sai leva as duas entidades, mas quem o drena não sabe que uma delas é o
+    /// sujeito de um filtro. *Um leitor que recebe o valor e o descarta é a segunda espécie de
+    /// controlo morto (§5.0), e ela não deixa rasto nenhum.*
     #[must_use]
-    pub fn signal_events(&self, sim: &SimWorld) -> Vec<SignalEvent> {
+    pub fn signal_events(&self, sim: &SimWorld, tree: &ph2d_tags::TagTree) -> Vec<SignalEvent> {
         let mut out = Vec::new();
+        let passa = |source: Entity, other: Entity| signal_passes(sim, tree, source, other);
         let on_hit = |e: Entity| -> Option<String> {
             sim.world()
                 .get::<SignalOnHit>(e)
@@ -109,7 +120,7 @@ impl PhysicsBridge {
                 ContactPhase::Ended => &on_leave,
             };
             for (source, other) in [(ev.a, ev.b), (ev.b, ev.a)] {
-                if let Some(name) = named(source) {
+                if let Some(name) = named(source).filter(|_| passa(source, other)) {
                     out.push(SignalEvent {
                         name,
                         source,
@@ -126,7 +137,7 @@ impl PhysicsBridge {
             (self.trigger_exits(), &on_leave),
         ] {
             for ev in evs {
-                if let Some(name) = named(ev.sensor) {
+                if let Some(name) = named(ev.sensor).filter(|_| passa(ev.sensor, ev.other)) {
                     out.push(SignalEvent {
                         name,
                         source: ev.sensor,
@@ -146,6 +157,13 @@ impl PhysicsBridge {
         // nada têm com esta. É o mesmo idioma dos dois irmãos acima.
         for (source, ev) in self.player_events() {
             if sim.world().get::<PlayerSignals>(*source).is_none() {
+                continue;
+            }
+            // ⚠️ **O filtro também vale aqui, e o `other` de um evento de player é ELE PRÓPRIO**
+            // (ver o campo abaixo). ⇒ um player filtrado por uma tag que ele tem continua a gritar,
+            // e um filtrado por outra cala-se. *Saltar o filtro nesta fonte faria o mesmo componente
+            // significar coisas diferentes em três sítios da mesma porta.*
+            if !passa(*source, *source) {
                 continue;
             }
             out.push(SignalEvent {
@@ -188,4 +206,47 @@ fn player_signal_name(ev: &PlayerEvent) -> &'static str {
         PlayerEvent::EnteredWater => "player.entered_water",
         PlayerEvent::LeftWater => "player.left_water",
     }
+}
+
+/// ⭐⭐⭐ **Este sinal de colisão passa o filtro?** — a porta ÚNICA do [`SignalTagFilter`].
+///
+/// | a fonte tem… | resposta |
+/// |---|---|
+/// | nenhum filtro | **sim** — o mundo de hoje, byte-idêntico |
+/// | filtro por escolher (`0`) | **sim** — um filtro por acabar não pára a armadilha |
+/// | filtro com tag viva | só se o `other` **pertencer** a ela (com a subárvore) |
+/// | filtro com tag APAGADA | **não passa ninguém** — falha FECHADA |
+///
+/// ⛔ **A falha fechada é a decisão, e a aberta seria pior:** com ela, apagar uma tag no painel
+/// *Tags* faria uma armadilha calibrada para o jogador passar a gritar com tudo o que lhe toque.
+/// *Entre «deixa de funcionar» e «funciona para toda a gente», a segunda é a que estraga uma cena
+/// sem ninguém perceber.*
+///
+/// ⚠️ **A pergunta passa por [`ph2d_ecs::tags::belongs`]**, que alcança a SUBÁRVORE: uma armadilha
+/// filtrada por `Inimigo` dispara com um `Inimigo/Voador`. Responder aqui, lendo o conjunto directo
+/// do `other`, seria a segunda resposta a *«pertence?»* — e ela erraria no dia em que o artista
+/// criasse a primeira tag-filha.
+#[must_use]
+pub fn signal_passes(
+    sim: &SimWorld,
+    tree: &ph2d_tags::TagTree,
+    source: Entity,
+    other: Entity,
+) -> bool {
+    let Some(filtro) = sim.world().get::<SignalTagFilter>(source) else {
+        return true;
+    };
+    let Some(id) = filtro.tag() else {
+        return true;
+    };
+    let q = ph2d_tags::TagId(id);
+    // ⛔ A tag foi apagada ⇒ ninguém passa. ⚠️ **E isto tem de ser perguntado ANTES do `belongs`**:
+    // ele devolveria `false` na mesma, mas por outra razão — e um dia em que o `belongs` mude a
+    // resposta para um id órfão, esta cláusula continua a dizer o que esta porta decide.
+    if tree.get(q).is_none() {
+        return false;
+    }
+    sim.world()
+        .get::<ph2d_ecs::tags::Tags>(other)
+        .is_some_and(|t| ph2d_ecs::tags::belongs(t, tree, q))
 }

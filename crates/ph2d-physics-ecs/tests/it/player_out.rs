@@ -365,13 +365,23 @@ fn the_opt_in_is_what_makes_a_player_event_a_signal() {
             );
             tick += 1;
             bridge.dispatch(&mut sim, true, tick);
-            names.extend(bridge.signal_events(&sim).into_iter().map(|s| s.name));
+            names.extend(
+                bridge
+                    .signal_events(&sim, &ph2d_tags::TagTree::new())
+                    .into_iter()
+                    .map(|s| s.name),
+            );
         }
         for _ in 0..120 {
             bridge.set_player_input(p, PlayerInput::default());
             tick += 1;
             bridge.dispatch(&mut sim, true, tick);
-            names.extend(bridge.signal_events(&sim).into_iter().map(|s| s.name));
+            names.extend(
+                bridge
+                    .signal_events(&sim, &ph2d_tags::TagTree::new())
+                    .into_iter()
+                    .map(|s| s.name),
+            );
         }
 
         if emit {
@@ -422,7 +432,7 @@ fn the_three_jumps_are_three_names() {
         bridge.dispatch(&mut sim, true, tick);
         names.extend(
             bridge
-                .signal_events(&sim)
+                .signal_events(&sim, &ph2d_tags::TagTree::new())
                 .into_iter()
                 .map(|s| s.name)
                 .filter(|n| n.starts_with("player.jumped")),

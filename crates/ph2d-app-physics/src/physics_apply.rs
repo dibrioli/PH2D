@@ -344,6 +344,17 @@ pub fn apply_physics_edit(
     // **A superfície de caminhada** (W-Surface) — no módulo IRMÃO, pela mesma
     // linha de corte que separou as zonas: *o que este CORPO é* × *o que esta
     // ÁREA faz a outros* × **de que esta SUPERFÍCIE é feita para quem anda**.
+    // ⭐ O FILTRO por tag dos sinais (TOP-20 #9, W3c) — irmão do de superfície, e pela mesma razão.
+    if crate::physics_surface::apply_signal_tag_filter_edit(
+        world,
+        entity,
+        entity_bits,
+        edit,
+        queue,
+        registry,
+    ) {
+        return;
+    }
     if apply_surface_edit(world, entity, entity_bits, edit, queue, registry) {
         return;
     }
@@ -568,7 +579,9 @@ pub fn apply_physics_edit(
         | PhysicsFieldEdit::AreaTorque(_)
         | PhysicsFieldEdit::AreaFalloff(_)
         | PhysicsFieldEdit::WalkGrip(_)
-        | PhysicsFieldEdit::WalkBelt(_) => {
+        | PhysicsFieldEdit::WalkBelt(_)
+        // ⭐ O filtro por tag é escrito pelo irmão do de superfície, acima.
+        | PhysicsFieldEdit::SignalTagFilter(_) => {
             unreachable!("handled above")
         }
     }

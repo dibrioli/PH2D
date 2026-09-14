@@ -128,6 +128,23 @@ fn click_edit(
     id: ph2d_editor_core::NodeId,
     info: InspectorPhysicsInfo,
 ) -> Option<PhysicsFieldEdit> {
+    // ⭐⭐⭐ **O FILTRO por tag dos sinais** (TOP-20 #9, W3c) — o `(any)` e as opções da árvore.
+    //
+    // ⚠️ **Antes de tudo**, porque a lista é resolvida por `position()` sobre um array e os braços
+    // por igualdade abaixo não a alcançariam. ⛔ E o `(any)` é a mesma edição com `0`: uma segunda
+    // variante para *«limpar»* seria uma segunda resposta a *«qual é o filtro?»*.
+    if id == crate::ids::INSP_PHYS_SIGNAL_TAG_CLEAR {
+        return info
+            .has_collider
+            .then_some(PhysicsFieldEdit::SignalTagFilter(0));
+    }
+    if let Some(i) = crate::ids::INSP_PHYS_TAG_OPT.iter().position(|&o| o == id) {
+        // ⚠️ A lista é a MESMA que o pintor derivou, e o `(any)` ocupa a posição `0` dela.
+        return crate::sections::physics_rows::phys_tag_options()
+            .get(i + 1)
+            .filter(|_| info.has_collider)
+            .map(|o| PhysicsFieldEdit::SignalTagFilter(o.value));
+    }
     if id == crate::ids::INSP_PHYS_ADD && !info.has_body {
         Some(PhysicsFieldEdit::Add)
     } else if id == crate::ids::INSP_PHYS_REMOVE && (info.has_body || info.has_collider) {

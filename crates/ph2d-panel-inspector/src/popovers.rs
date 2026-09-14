@@ -256,6 +256,49 @@ pub(crate) fn paint_deferred_popovers(
         );
     }
 
+    // ⭐⭐⭐ **O FILTRO por tag da §11 PHYSICS** (TOP-20 #9, W3c) — terceiro slot, opções próprias
+    // (com o `(any)` à frente, que LIMPA o filtro).
+    if let Some(chip) = state_popovers::take_pending_phys_tag_dd() {
+        let dd = Dropdown::new(
+            crate::ids::INSP_PHYS_SIGNAL_TAG,
+            "",
+            sections::physics_rows::phys_tag_options(),
+        )
+        .placeholder("Only for tag\u{2026}  (any)")
+        .open(true);
+        paint_open_popover(
+            &dd,
+            chip,
+            region,
+            store,
+            scene,
+            text_system,
+            theme,
+            hit_index,
+        );
+    }
+    // ⭐⭐⭐ **A TAG ALVO de uma SIGNAL ACTION** (TOP-20 #9, W3b) — slot próprio, opções próprias.
+    // ⚠️ Elas são a árvore INTEIRA (uma acção pode apontar a qualquer tag), ao contrário da secção
+    // *Tags*, onde a lista tira as que o objecto já tem.
+    if let Some(chip) = state_popovers::take_pending_action_tag_dd() {
+        let dd = Dropdown::new(
+            crate::ids::INSP_ACTION_TAG_PICK,
+            "",
+            sections::actions::tag_options(),
+        )
+        .placeholder("Pick a tag\u{2026}")
+        .open(true);
+        paint_open_popover(
+            &dd,
+            chip,
+            region,
+            store,
+            scene,
+            text_system,
+            theme,
+            hit_index,
+        );
+    }
     // ⭐⭐⭐ **TAGS** (TOP-20 #9) — a mesma máquina, e a lei da rederivação levada até ao fim: aqui
     // **só o rect** viaja no slot. As opções saem do snapshot MAIS o texto da busca, que vive no
     // store — e este passe tem os dois. ⚠️ Se o texto fosse guardado no slot, a lista pintada podia

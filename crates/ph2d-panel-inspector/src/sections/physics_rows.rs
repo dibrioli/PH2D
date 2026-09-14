@@ -10,6 +10,7 @@ use super::rows::{num_row, num_row_unit, seg_row};
 use super::*;
 use ph2d_i18n::TextKey;
 use ph2d_i18n::tr;
+use ph2d_editor_core::widget::{Dropdown, DropdownOption, paint_dropdown_chip};
 
 /// Mass-source toggle labels, indexed by `mass_manual as u8`: `0` Auto (mass is
 /// density×area, the Density row) · `1` Manual (an explicit mass in kg, the Mass row).
@@ -328,6 +329,10 @@ pub(super) fn paint_collision_rows(
     is_sensor: bool,
     one_way: bool,
     no_wall_cling: bool,
+    // ⭐ O FILTRO por tag dos sinais (TOP-20 #9, W3c): `None` = sem componente, `Some(0)` = anexado
+    // e por escolher, e o CAMINHO vazio com um id vivo = a tag foi apagada.
+    signal_tag: Option<u64>,
+    signal_tag_path: &str,
 ) -> f32 {
     let mut yy = y;
     // The per-body half of collision layers. The other half — WHICH layers collide —
@@ -476,7 +481,103 @@ pub(super) fn paint_collision_rows(
             placeholder,
         );
     }
-    yy
+    // ⭐⭐⭐ **E o FILTRO dos dois** (TOP-20 #9, W3c) — *só quem tem esta tag dispara isto*.
+    //
+    // ⚠️ **UMA row para os DOIS nomes**, ao contrário dos nomes em si: *«só o jogador dispara esta
+    // armadilha»* é uma frase sobre QUEM toca, não sobre a fase do toque, e um filtro por extremo
+    // obrigaria a escrever a mesma tag duas vezes para dizer uma coisa.
+    signal_tag_row(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        yy,
+        signal_tag,
+        signal_tag_path,
+    )
+}
+
+/// A row do filtro por tag, e o aviso quando ele deixou de alcançar alguém. Devolve o `y` seguinte.
+///
+/// ⛔ **A tag APAGADA não passa ninguém** (falha fechada — ver o `SignalTagFilter`), e a row di-lo em
+/// WARN: sem a frase, a armadilha cala-se e o artista procura o defeito no sinal.
+#[allow(clippy::too_many_arguments)]
+fn signal_tag_row(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    x: f32,
+    w: f32,
+    y: f32,
+    signal_tag: Option<u64>,
+    signal_tag_path: &str,
+) -> f32 {
+    let (control_w, dot) = ph2d_editor_core::widget::form_row_columns(x, w, y, ROW_H_PX);
+    let rect = Rect::new(x, y, control_w, ROW_H_PX);
+    hit_index.register(ids::INSP_PHYS_SIGNAL_TAG, rect);
+    let open = matches!(
+        store.get(ids::INSP_PHYS_SIGNAL_TAG),
+        Some(InteractiveState::Dropdown { open: true, .. })
+    );
+    let mut dd = Dropdown::new(ids::INSP_PHYS_SIGNAL_TAG, "", phys_tag_options())
+        .placeholder("Only for tag\u{2026}  (any)")
+        .open(open)
+        .visual(store.dropdown_visual(ids::INSP_PHYS_SIGNAL_TAG));
+    if let Some(t) = signal_tag.filter(|t| *t != 0) {
+        dd.select(t);
+    }
+    paint_dropdown_chip(&dd, rect, scene, text_system, theme);
+    if open {
+        crate::state_popovers::set_pending_phys_tag_dd(Some(rect));
+    }
+    ph2d_editor_core::widget::paint_decorator_dot(scene, theme, dot);
+    let mut cur_y = y + ph2d_tokens::row_pitch_px();
+
+    // ⛔ A tag foi apagada ⇒ a armadilha não grita com ninguém. ⚠️ Só com o id VIVO e o caminho
+    // vazio: um filtro por escolher (`0`) passa todos e não é um defeito.
+    if signal_tag.is_some_and(|t| t != 0) && signal_tag_path.is_empty() {
+        let font = TypeToken::Sm.px();
+        paint_text(
+            text_system,
+            scene,
+            "That tag was deleted \u{b7} this reaches nobody.",
+            x,
+            cur_y,
+            font,
+            w,
+            resolve(ColorToken::Warn, theme),
+        );
+        cur_y += font + Spacing::Sm.px();
+    }
+    cur_y
+}
+
+/// **As opções: a árvore inteira do projecto**, indentada pela profundidade, com *(any)* à frente.
+///
+/// ⚠️ `pub(crate)` porque o passe diferido a re-deriva — a lei do popover.
+pub(crate) fn phys_tag_options() -> Vec<DropdownOption<u64>> {
+    // ⭐ A primeira entrada LIMPA o filtro. ⛔ Sem ela, anexar o componente seria um caminho sem
+    // volta pelo painel — e um controlo que não se desfaz é pior que um que não existe.
+    let mut out = vec![DropdownOption::new(
+        ids::INSP_PHYS_SIGNAL_TAG_CLEAR,
+        0u64,
+        String::from("(any)"),
+    )];
+    out.extend(
+        crate::state::current_tag_tree()
+            .iter()
+            .zip(ids::INSP_PHYS_TAG_OPT.iter())
+            .map(|(row, &id)| {
+                let recuo = "    ".repeat(row.depth);
+                DropdownOption::new(id, row.id, format!("{recuo}{}", row.label))
+            }),
+    );
+    out
 }
 
 /// A row de um nome de sinal — um `TextInput`, porque o valor É uma string e o

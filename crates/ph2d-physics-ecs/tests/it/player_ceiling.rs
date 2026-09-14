@@ -296,7 +296,12 @@ fn the_bonk_reaches_the_signal_bus_with_a_name() {
             },
         );
         bridge.dispatch(&mut sim, true, t);
-        names.extend(bridge.signal_events(&sim).into_iter().map(|s| s.name));
+        names.extend(
+            bridge
+                .signal_events(&sim, &ph2d_tags::TagTree::new())
+                .into_iter()
+                .map(|s| s.name),
+        );
     }
     assert_eq!(
         names.iter().filter(|n| *n == "player.bonked").count(),

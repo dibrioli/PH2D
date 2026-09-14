@@ -20,6 +20,24 @@ pub(crate) fn populate_action(store: &mut WidgetStore) {
     // ⚠️ **As entradas do seletor do verbo continuam BOTÕES** — elas são as linhas do popover, e
     // o despachante decide pelo `is_focusable`: sem registo, o clique numa opção é engolido em
     // silêncio. Só o CHIP é um `Dropdown`, e o que ele guarda é o `open`, nunca a escolha.
+    // ⭐⭐⭐ **O alvo por TAG** (TOP-20 #9, W3b): os dois segmentos, as opções da caixa (botões, como
+    // as do verbo) e o CHIP dela, que é o único `Dropdown` — o que ele guarda é o `open`.
+    register_button_ids(
+        store,
+        &[
+            crate::ids::INSP_ACTION_BY_NAME,
+            crate::ids::INSP_ACTION_BY_TAG,
+        ],
+    );
+    register_button_ids(store, &crate::ids::INSP_ACTION_TAG_OPT);
+    store.register(
+        crate::ids::INSP_ACTION_TAG_PICK,
+        InteractiveState::Dropdown {
+            state: DropdownState::Normal,
+            open: false,
+            selected_index: None,
+        },
+    );
     register_button_ids(store, &crate::ids::INSP_ACTION_VERB);
     store.register(
         crate::ids::INSP_ACTION_VERB_PICK,

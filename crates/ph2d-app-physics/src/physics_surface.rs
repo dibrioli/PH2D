@@ -76,3 +76,48 @@ pub(super) fn apply_surface_edit(
     }
     true
 }
+
+const SIGNAL_TAG_FILTER: &str = "ph2d::physics::SignalTagFilter";
+
+/// ⭐⭐⭐ **Escreve o FILTRO por tag dos sinais de colisão** (TOP-20 #9, W3c), ou devolve `false` se a
+/// edição não é essa.
+///
+/// ⚠️ **Irmão do [`apply_surface_edit`] e não um braço do `match` dele**, pela razão que aquele já
+/// escreve: o componente é OPCIONAL, e um braço no `match` do collider faria uma escrita parcial.
+///
+/// ⭐ **`0` DESANEXA**, pelo idioma do *presence-override* que a superfície acima usa: *«sem filtro»*
+/// é a ausência do componente, não um componente com um valor neutro dentro. ⛔ Guardar `Some(0)` no
+/// documento poria no ficheiro um no-op que o `signal_passes` teria de aprender a ignorar — e a cena
+/// deixaria de ser byte-idêntica à de quem nunca lhe tocou.
+///
+/// ⚠️ **Gateado no COLLIDER**, como o irmão e pela mesma razão: um filtro é propriedade da FACE que
+/// grita, e uma peça de corpo composto tem `Collider` sem `RigidBody`.
+pub(super) fn apply_signal_tag_filter_edit(
+    world: &bevy_ecs::world::World,
+    entity: Entity,
+    entity_bits: u64,
+    edit: PhysicsFieldEdit,
+    queue: &EditorCommandQueue,
+    registry: &ComponentRegistry,
+) -> bool {
+    use ph2d_physics_ecs::{Collider, SignalTagFilter};
+
+    let PhysicsFieldEdit::SignalTagFilter(id) = edit else {
+        return false;
+    };
+    if world.get::<Collider>(entity).is_none() {
+        return true;
+    }
+    if id == 0 {
+        queue_remove(queue, registry, entity_bits, SIGNAL_TAG_FILTER);
+    } else {
+        queue_set(
+            queue,
+            registry,
+            entity_bits,
+            SIGNAL_TAG_FILTER,
+            &SignalTagFilter(id),
+        );
+    }
+    true
+}

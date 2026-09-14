@@ -238,6 +238,160 @@ fn verb_row(
     y + ph2d_tokens::row_pitch_px()
 }
 
+/// ⭐⭐⭐ **A QUEM esta acção acerta** (TOP-20 #9, W3b) — o segmentado `Name | Tag` e, por baixo, o
+/// controlo do modo escolhido. Devolve o `y` seguinte.
+///
+/// # ⚠️ Um modo, UM controlo
+///
+/// O campo do nome e a caixa da tag **nunca aparecem os dois**: com os dois à vista, *«a quem?»*
+/// teria duas respostas escritas ao mesmo tempo e o artista não saberia qual manda — que é
+/// exactamente o que o doc do `SignalTarget` recusa no modelo. O segmentado escolhe; o outro sai.
+///
+/// # ⛔ E as duas formas de «não acerta em ninguém» são DITAS, cada uma com a sua frase
+///
+/// | estado | o que se passa | o que o artista faz |
+/// |---|---|---|
+/// | por tag, **sem tag escolhida** | a linha está por acabar | escolher uma na caixa |
+/// | por tag, **tag apagada** | alguém apagou a tag no painel *Tags* | escolher outra |
+///
+/// *As duas alcançam ninguém e são histórias diferentes; uma frase só para as duas mandaria o
+/// artista procurar a tag que ele nunca escolheu.*
+#[allow(clippy::too_many_arguments)]
+fn target_rows(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    x: f32,
+    w: f32,
+    y: f32,
+    row: &InspectorActionRow,
+) -> f32 {
+    let por_tag = row.target_is_tag();
+    let (seg_w, seg_dot) = ph2d_editor_core::widget::form_row_columns(x, w, y, ROW_H);
+    let seg_h = paint_segmented_group_adaptive(
+        Rect::new(x, y, seg_w, ROW_H),
+        &[
+            ("Name", !por_tag, ids::INSP_ACTION_BY_NAME),
+            ("Tag", por_tag, ids::INSP_ACTION_BY_TAG),
+        ],
+        scene,
+        text_system,
+        theme,
+        store,
+        hit_index,
+    );
+    ph2d_editor_core::widget::paint_decorator_dot(scene, theme, seg_dot);
+    let mut cur_y = y + seg_h + Spacing::Xs.px();
+
+    if !por_tag {
+        return super::anim_rows::text_row(
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            x,
+            w,
+            cur_y,
+            ids::INSP_ACTION_TARGET,
+            TextInput::new(ids::INSP_ACTION_TARGET, "")
+                .placeholder(tr("panel.inspector.actions.target_empty_this_object")),
+        );
+    }
+
+    cur_y = tag_pick_row(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        cur_y,
+        row,
+    );
+    let font = TypeToken::Sm.px();
+    let (aviso, cor) = if row.target_tag_unset() {
+        (
+            "No tag chosen \u{b7} this action reaches nobody.",
+            ColorToken::Text3,
+        )
+    } else if row.target_tag_missing() {
+        (
+            "That tag was deleted \u{b7} this action reaches nobody.",
+            ColorToken::Warn,
+        )
+    } else {
+        return cur_y;
+    };
+    paint_text(
+        text_system,
+        scene,
+        aviso,
+        x,
+        cur_y,
+        font,
+        w,
+        resolve(cor, theme),
+    );
+    cur_y + font + Spacing::Sm.px()
+}
+
+/// A caixa de escolha da tag alvo. Devolve o `y` seguinte.
+///
+/// ⚠️ **Ela oferece a árvore INTEIRA**, ao contrário da secção *Tags* — ali a lista tira as que o
+/// objecto já tem (escolhê-las seria um gesto recusado); aqui uma acção pode apontar a qualquer
+/// tag, incluindo uma que o próprio objecto carregue.
+#[allow(clippy::too_many_arguments)]
+fn tag_pick_row(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    x: f32,
+    w: f32,
+    y: f32,
+    row: &InspectorActionRow,
+) -> f32 {
+    let (control_w, dot) = ph2d_editor_core::widget::form_row_columns(x, w, y, ROW_H);
+    let rect = Rect::new(x, y, control_w, ROW_H);
+    hit_index.register(ids::INSP_ACTION_TAG_PICK, rect);
+    let open = matches!(
+        store.get(ids::INSP_ACTION_TAG_PICK),
+        Some(InteractiveState::Dropdown { open: true, .. })
+    );
+    let mut dd = Dropdown::new(ids::INSP_ACTION_TAG_PICK, "", tag_options())
+        .placeholder("Pick a tag\u{2026}")
+        .open(open)
+        .visual(store.dropdown_visual(ids::INSP_ACTION_TAG_PICK));
+    if let Some(t) = row.target_tag.filter(|t| *t != 0) {
+        dd.select(t);
+    }
+    paint_dropdown_chip(&dd, rect, scene, text_system, theme);
+    if open {
+        crate::state_popovers::set_pending_action_tag_dd(Some(rect));
+    }
+    ph2d_editor_core::widget::paint_decorator_dot(scene, theme, dot);
+    y + ph2d_tokens::row_pitch_px()
+}
+
+/// **As opções: a árvore inteira do projecto**, indentada pela profundidade.
+///
+/// ⚠️ `pub(crate)` porque o passe diferido a re-deriva — a lei do popover.
+pub(crate) fn tag_options() -> Vec<DropdownOption<u64>> {
+    crate::state::current_tag_tree()
+        .iter()
+        .zip(ids::INSP_ACTION_TAG_OPT.iter())
+        .map(|(row, &id)| {
+            let recuo = "    ".repeat(row.depth);
+            DropdownOption::new(id, row.id, format!("{recuo}{}", row.label))
+        })
+        .collect()
+}
+
 /// O editor da acção aberta. Devolve o `y` seguinte.
 #[allow(clippy::too_many_arguments)]
 fn editor(
@@ -265,7 +419,7 @@ fn editor(
         TextInput::new(ids::INSP_ACTION_ON, "")
             .placeholder(tr("panel.inspector.actions.on_signal")),
     );
-    cur_y = super::anim_rows::text_row(
+    cur_y = target_rows(
         scene,
         text_system,
         theme,
@@ -274,9 +428,7 @@ fn editor(
         x,
         w,
         cur_y,
-        ids::INSP_ACTION_TARGET,
-        TextInput::new(ids::INSP_ACTION_TARGET, "")
-            .placeholder(tr("panel.inspector.actions.target_empty_this_object")),
+        row,
     );
     cur_y = verb_row(
         scene,

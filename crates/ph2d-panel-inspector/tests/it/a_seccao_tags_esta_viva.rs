@@ -321,3 +321,147 @@ fn escolher_uma_tag_da_lista_aberta_chega_ao_barramento() {
     set_current_inspector_tags(None);
     ph2d_panel_inspector::set_current_tag_tree(Vec::new());
 }
+
+// ─── O ALVO POR TAG de uma SIGNAL ACTION (W3b) ───────────────────────────────────────────────
+//
+// ⚠️ **Vivem NESTE ficheiro e não no da secção Actions**, e a razão é o assunto: o que se prova
+// aqui é que a ÁRVORE DE TAGS chega a uma segunda superfície e está viva lá. O seam do verbo e das
+// linhas continua onde estava.
+
+use ph2d_editor_core::screens::hero::{ActionFieldEdit, InspectorActionInfo, InspectorActionRow};
+use ph2d_panel_inspector::set_current_inspector_action;
+
+fn accao(target_tag: Option<u64>, path: &str) -> InspectorActionInfo {
+    InspectorActionInfo {
+        entity_bits: ENTITY,
+        rows: vec![InspectorActionRow {
+            on: "alarme".into(),
+            target: "Parede".into(),
+            verb_tag: 0,
+            arg: String::new(),
+            uses_arg: false,
+            target_tag,
+            target_tag_path: path.into(),
+        }],
+        verb_labels: vec!["Show".into(), "Hide".into()],
+        selected_count: 1,
+    }
+}
+
+/// A secção *Signal Actions* pintada, com a árvore do projecto semeada.
+fn host_accao(i: InspectorActionInfo) -> (MockPanelHost, InspectorState) {
+    let h = MockPanelHost::with_panel::<InspectorPanel>();
+    set_current_inspector_action(Some(i));
+    ph2d_panel_inspector::set_current_tag_tree(arvore());
+    (h, InspectorState::default())
+}
+
+/// ⭐⭐⭐ **O segmentado `Name | Tag` vira o alvo da acção** — com o gesto REAL.
+///
+/// **Mutação que deve sangrar:** tirar o `INSP_ACTION_BY_TAG` do `populate_action` · apagar o braço
+/// dos segmentos no `event_action`.
+#[test]
+fn o_segmentado_vira_o_alvo_da_accao_para_tag() {
+    let (mut h, mut st) = host_accao(accao(None, ""));
+    let rects = h.paint::<InspectorPanel>(&mut st, VIEWPORT);
+    let r = rect_de(
+        &rects,
+        ph2d_panel_inspector::ids::INSP_ACTION_BY_TAG,
+        "o segmento Tag",
+    );
+    let acoes = carrega(&mut h, &mut st, r, "o segmento Tag");
+    assert!(
+        acoes.iter().any(|a| matches!(
+            a,
+            EditorAction::InspectorActionEdit {
+                edit: ActionFieldEdit::TargetMode(0, true),
+                ..
+            }
+        )),
+        "o segmento `Tag` tinha de mandar `TargetMode(0, true)`; o que chegou foi {acoes:?}"
+    );
+    set_current_inspector_action(None);
+    ph2d_panel_inspector::set_current_tag_tree(Vec::new());
+}
+
+/// ⛔⛔ **Um modo, UM controlo** — o campo do NOME e a caixa da TAG nunca aparecem os dois.
+///
+/// ⚠️ *Com os dois à vista, «a quem?» teria duas respostas escritas ao mesmo tempo* — o que o doc do
+/// `SignalTarget` recusa no modelo, recusado aqui na tela.
+///
+/// **Mutação que deve sangrar:** o `if !por_tag { return … }` do `target_rows` apagado.
+#[test]
+fn um_modo_um_controlo_o_nome_e_a_tag_nunca_aparecem_juntos() {
+    let (mut h, mut st) = host_accao(accao(None, ""));
+    let por_nome = h.paint::<InspectorPanel>(&mut st, VIEWPORT);
+    assert!(
+        por_nome
+            .iter()
+            .any(|(n, _)| *n == ph2d_panel_inspector::ids::INSP_ACTION_TARGET),
+        "o modo NOME nao pintou o campo do nome"
+    );
+    assert!(
+        !por_nome
+            .iter()
+            .any(|(n, _)| *n == ph2d_panel_inspector::ids::INSP_ACTION_TAG_PICK),
+        "o modo NOME pintou TAMBEM a caixa da tag"
+    );
+
+    let (mut h, mut st) = host_accao(accao(Some(2), "Enemy"));
+    let por_tag = h.paint::<InspectorPanel>(&mut st, VIEWPORT);
+    assert!(
+        por_tag
+            .iter()
+            .any(|(n, _)| *n == ph2d_panel_inspector::ids::INSP_ACTION_TAG_PICK),
+        "o modo TAG nao pintou a caixa da tag"
+    );
+    assert!(
+        !por_tag
+            .iter()
+            .any(|(n, _)| *n == ph2d_panel_inspector::ids::INSP_ACTION_TARGET),
+        "o modo TAG pintou TAMBEM o campo do nome — «a quem?» com duas respostas na tela"
+    );
+    set_current_inspector_action(None);
+    ph2d_panel_inspector::set_current_tag_tree(Vec::new());
+}
+
+/// ⭐⭐⭐ **Escolher a tag alvo na lista aberta chega ao barramento** — o gesto que vive no passe
+/// diferido, com ids PRÓPRIOS.
+///
+/// ⛔ **É aqui que se prova que os ids não são os da secção *Tags***: com o mesmo array, o braço
+/// daquela secção corre primeiro no router e o clique marcaria o objecto em vez de apontar a acção.
+///
+/// **Mutação que deve sangrar:** o `INSP_ACTION_TAG_OPT` trocado pelo `INSP_TAGS_OPT` · o braço da
+/// tag alvo apagado do passe diferido.
+#[test]
+fn escolher_a_tag_alvo_aponta_a_accao_e_nao_marca_o_objecto() {
+    let (mut h, mut st) = host_accao(accao(Some(0), ""));
+    let _ = h.paint::<InspectorPanel>(&mut st, VIEWPORT);
+    h.set_dropdown_open(ph2d_panel_inspector::ids::INSP_ACTION_TAG_PICK, true);
+    let rects = h.paint::<InspectorPanel>(&mut st, VIEWPORT);
+    // A 1.ª opção é a `Boss` — aqui a lista é a árvore INTEIRA, sem tirar nada.
+    let r = rect_de(
+        &rects,
+        ph2d_panel_inspector::ids::INSP_ACTION_TAG_OPT[0],
+        "a 1.a opcao da tag alvo",
+    );
+    let acoes = carrega(&mut h, &mut st, r, "a 1.a opcao da tag alvo");
+    assert!(
+        acoes.iter().any(|a| matches!(
+            a,
+            EditorAction::InspectorActionEdit {
+                edit: ActionFieldEdit::TargetTag(0, 1),
+                ..
+            }
+        )),
+        "escolher a 1.a opcao tinha de apontar a ACCAO a' `Boss`; o que chegou foi {acoes:?}"
+    );
+    assert!(
+        !acoes
+            .iter()
+            .any(|a| matches!(a, EditorAction::InspectorTagsEdit { .. })),
+        "o clique na tag ALVO marcou o objecto — os dois selectores partilham ids"
+    );
+    set_current_inspector_action(None);
+    ph2d_panel_inspector::set_current_tag_tree(Vec::new());
+}

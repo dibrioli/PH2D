@@ -56,7 +56,8 @@ fn a_water_zone_is_authorable_with_ui_gestures_alone() {
             false,
             0,
             (0.0, 5.0),
-            0
+            0,
+            &ph2d_tags::TagTree::new()
         )
         .is_none(),
         "um sprite pelado nao tem §11 — a poda da F3"

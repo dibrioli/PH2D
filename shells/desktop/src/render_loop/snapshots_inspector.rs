@@ -110,6 +110,7 @@ pub(super) fn publish(
         joint_paste_targets,
         wheel_body_pick,
         wheel_rope_pick,
+        tags,
     );
     let LateSections {
         inspector_anim,
@@ -125,12 +126,18 @@ pub(super) fn publish(
         selected_count,
         window_size,
         game_camera_preview,
+        tags,
     );
     // ⭐⭐⭐ **A secção TAGS** (TOP-20 #9) — `None` para quem não tem o componente (ADR-0166).
     //
-    // ⚠️ **Ela é construída AQUI e não na [`late`]**, e a razão é a assinatura: a `late` recebe o
-    // que sai da CENA, e esta secção precisa da árvore, que é um documento irmão. Enfiá-la lá
-    // obrigaria a `late` a receber um argumento que nenhuma das outras cinco lê.
+    // ⚠️⚠️ **Esta nota dizia que a árvore não tinha o que fazer na [`late`]** — *«ela recebe o que
+    // sai da CENA, e enfiá-la lá obrigaria a receber um argumento que nenhuma das outras cinco
+    // lê»*. A W3b desmentiu-a no dia seguinte: a secção SIGNAL ACTIONS também precisa da árvore
+    // (para mostrar o CAMINHO da tag alvo), logo a `late` recebe-a e são DUAS a lê-la. *Uma
+    // justificação que assenta em «só uma precisa disto» expira no dia em que a segunda aparece.*
+    // Esta fica aqui e não lá por outra razão, essa estável: a `late` devolve um bloco de cinco
+    // irmãs, e acrescentar uma sexta ao `LateSections` só para poupar uma linha não a torna irmã
+    // de nada.
     let inspector_tags = hero.gizmo.selection.and_then(|b| {
         crate::render_loop::inspector_tags::build_tags_info(sim.world(), tags, b, selected_count)
     });
@@ -207,6 +214,8 @@ fn late(
     selected_count: usize,
     window_size: WindowSize,
     game_camera_preview: bool,
+    // ⭐ A árvore de tags (TOP-20 #9) — a secção SIGNAL ACTIONS mostra o CAMINHO da tag alvo.
+    tags: &ph2d_tags::TagTree,
 ) -> LateSections {
     let sel = inspector_selection;
     let inspector_anim = hero.gizmo.selection.and_then(|b| {
@@ -218,7 +227,12 @@ fn late(
     });
     // ⭐ A secção SIGNAL ACTIONS — `None` para quem não tem o componente (ADR-0166).
     let inspector_action = hero.gizmo.selection.and_then(|b| {
-        crate::render_loop::inspector_action::build_action_info(sim.world(), b, selected_count)
+        crate::render_loop::inspector_action::build_action_info(
+            sim.world(),
+            tags,
+            b,
+            selected_count,
+        )
     });
     // ⭐ A secção AUDIO — `None` para quem não tem a fonte NEM as orelhas (ADR-0166).
     //
@@ -289,6 +303,8 @@ fn physics(
     joint_paste_targets: usize,
     wheel_body_pick: Option<u64>,
     wheel_rope_pick: Option<u64>,
+    // ⭐ A árvore de tags — a row *Only for tag* da §11 (TOP-20 #9, W3c).
+    tags: &ph2d_tags::TagTree,
 ) -> PhysicsSections {
     let sel = inspector_selection;
     // ⭐⭐ **O ÍNDICE DE ASSETS** (plano `docs/Components/07`, wave A2) — a junção das duas fontes,
@@ -398,6 +414,8 @@ fn physics(
             join_kind_tag,
             bake_range,
             bake_channels_tag,
+            // ⭐ A árvore — a row *Only for tag* mostra o CAMINHO do filtro (TOP-20 #9, W3c).
+            tags,
         )
     });
     let inspector_joint = hero.gizmo.selection.and_then(|b| {

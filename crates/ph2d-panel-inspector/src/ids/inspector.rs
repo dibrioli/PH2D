@@ -340,6 +340,10 @@ pub const INSP_PHYS_SIGNAL: NodeId = hash_node_id("insp_phys_signal");
 /// seletor que trocasse o significado do mesmo campo tornaria impossível autorar
 /// os dois ao mesmo tempo, que é o caso de uso inteiro.
 pub const INSP_PHYS_SIGNAL_LEAVE: NodeId = hash_node_id("insp_phys_signal_leave");
+/// ⭐⭐⭐ **O filtro por TAG dos dois sinais acima** — o CHIP do selector (TOP-20 #9, W3c).
+pub const INSP_PHYS_SIGNAL_TAG: NodeId = hash_node_id("insp_phys_signal_tag");
+/// **Limpa o filtro** — a armadilha volta a valer para todos.
+pub const INSP_PHYS_SIGNAL_TAG_CLEAR: NodeId = hash_node_id("insp_phys_signal_tag_clear");
 
 /// §11 join-kind selector, indexed by `JointKind` tag (Pin / Spring / Rope /
 /// Weld / Slider). Painted beside *Join Selected Bodies* so the artist creates

@@ -427,8 +427,33 @@ ordem, que as duas procuras acham à primeira.
 | | entrega | estado |
 |---|---|---|
 | **W3a** | o TECTO do objecto (`TAGS_MAX`) · a costura na shell (instantâneo + commit) · a **secção *Tags*** do painel (chips com `×` · caixa de escolha com busca · `+ Create "…"`) | ✅ 7 gates na shell · 8 no painel · **18 mutações** |
-| **W3b** | o alvo por tag nas *Signal Actions* (o `Name \| Tag` segmentado + a caixa de escolha partilhada) | ⏳ |
-| **W3c** | `SignalTagFilter` + `signal_passes` + a row *Only for tag* (fecha o gate 17) | ⏳ |
+| **W3b** | a árvore sobe para porta própria · o alvo por tag nas *Signal Actions* (`Name \| Tag` + caixa) | ✅ 12 gates na shell · 3 no painel · 6 mutações |
+| **W3c** | `SignalTagFilter` + `signal_passes` + a row *Only for tag* (fecha o gate 17) | ✅ 4 gates na física · 6 mutações |
+
+### §7.3 — O que a W3c decidiu, e é tudo sobre COMO UMA COISA FALHA
+
+| estado | resposta | porquê |
+|---|---|---|
+| sem componente | **passa todos** | o mundo de hoje, byte-idêntico |
+| filtro por escolher (`0`) | **passa todos** | um filtro por acabar não pára a armadilha |
+| tag viva | só quem **pertence** (com a subárvore) | a porta `belongs`, nunca o conjunto directo |
+| **tag apagada** | **não passa ninguém** | falha FECHADA — ver abaixo |
+
+⛔⛔ **A falha fechada é a decisão, e a aberta seria pior:** com ela, apagar uma tag no painel *Tags*
+faria uma armadilha calibrada para o jogador passar a gritar com TUDO o que lhe toque. *Entre «deixa
+de funcionar» e «funciona para toda a gente», a segunda é a que estraga uma cena sem ninguém
+perceber.* ⚠️ E ela distingue-se do filtro **por escolher**: tratá-los igual faria anexar o
+componente PARAR a armadilha até o artista adivinhar porquê.
+
+⭐ **O `(any)` da lista é a MESMA edição com `0`, e DESANEXA o componente** (o idioma do
+*presence-override* que a `WalkSurface` já usa). ⛔ Sem essa entrada, anexar o filtro era um caminho
+sem volta pelo painel — *um controlo que não se desfaz é pior que um que não existe*. E guardar
+`Some(0)` no documento poria lá um no-op que o `signal_passes` teria de aprender a ignorar.
+
+⚠️ **E o gate `every_registered_physics_component_has_a_ui_writer` fez o trabalho dele à letra:**
+acusou o `SignalTagFilter` no minuto em que ele foi registado sem row no painel. É por causa dele
+que esta fatia saiu da W2 — o componente, a lei e a row viajam juntos, senão fica vermelho no
+intervalo entre as duas waves.
 
 ⛔⛔ **DUAS correcções ao que este plano afirmava, as duas medidas na W3a:**
 

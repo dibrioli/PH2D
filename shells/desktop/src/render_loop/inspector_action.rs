@@ -18,10 +18,12 @@
 
 use ph2d_ecs::scene::{ComponentRegistry, EditorCommandQueue};
 use ph2d_ecs::{
-    Entity, SIGNAL_ACTIONS_MAX, SignalAction, SignalActions, SignalVerb, SimWorld, World,
+    Entity, SIGNAL_ACTIONS_MAX, SignalAction, SignalActions, SignalTarget, SignalVerb, SimWorld,
+    World,
 };
 use ph2d_editor_core::{ActionFieldEdit, InspectorActionInfo, InspectorActionRow, Toast};
 use ph2d_i18n::tr_with;
+use ph2d_tags::TagTree;
 
 use ph2d_inspector_ordering::queue_set;
 
@@ -30,6 +32,9 @@ const ACTIONS: &str = "ph2d::ecs::SignalActions";
 /// O snapshot da secção, ou `None` quando o objecto não tem a tabela.
 pub(super) fn build_action_info(
     world: &World,
+    // ⭐ A árvore de tags (TOP-20 #9, W3b) — para a linha mostrar o CAMINHO da tag alvo, e não o
+    // número dela. ⚠️ O painel não conhece a árvore, e um id cru na tela não diz nada a ninguém.
+    tree: &TagTree,
     entity_bits: u64,
     selected_count: usize,
 ) -> Option<InspectorActionInfo> {
@@ -44,6 +49,15 @@ pub(super) fn build_action_info(
             verb_tag: a.verb.tag(),
             arg: a.arg.clone(),
             uses_arg: a.verb.uses_arg(),
+            target_tag: a.target_by.tag().map(|t| t.0),
+            // ⚠️ **Vazio quando a tag já não existe**, e é isso que faz a secção poder dizer que a
+            // linha partiu — ver `InspectorActionRow::target_tag_missing`.
+            target_tag_path: a
+                .target_by
+                .tag()
+                .and_then(|t| tree.get(t))
+                .map(|t| t.path.clone())
+                .unwrap_or_default(),
         })
         .collect();
     Some(InspectorActionInfo {
@@ -110,6 +124,26 @@ pub(super) fn apply_action_edit(
         ActionFieldEdit::Arg(i, arg) => {
             let a = table.0.get_mut(usize::from(*i))?;
             a.arg = arg.trim().to_string();
+        }
+        // ⭐⭐⭐ **O alvo por TAG** (TOP-20 #9, W3b).
+        ActionFieldEdit::TargetMode(i, por_tag) => {
+            let a = table.0.get_mut(usize::from(*i))?;
+            // ⚠️ **`Tagged(0)` é «por tag, e ainda não escolheu qual»** — o `TagId(0)` nunca é dado
+            // pela árvore, logo a linha alcança ninguém até o artista escolher, e a secção di-lo.
+            // ⛔ Escolher uma tag por ele (a primeira da árvore, digamos) faria um clique num
+            // segmentado mudar a quem a acção acerta.
+            a.target_by = if *por_tag {
+                SignalTarget::Tagged(0)
+            } else {
+                SignalTarget::Named
+            };
+        }
+        ActionFieldEdit::TargetTag(i, id) => {
+            let a = table.0.get_mut(usize::from(*i))?;
+            // ⚠️ **Escolher uma tag PÕE a linha no modo tag**, mesmo que ela estivesse por nome: o
+            // gesto que chega aqui é o de uma caixa que só existe no modo tag, e recusá-lo por a
+            // linha estar noutro modo seria um clique que não faz nada.
+            a.target_by = SignalTarget::Tagged(*id);
         }
     }
     queue_set(queue, registry, entity_bits, ACTIONS, &table);

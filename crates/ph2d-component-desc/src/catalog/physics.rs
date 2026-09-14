@@ -252,6 +252,7 @@ pub const DESCS: &[D] = &[
     i("ph2d::physics::RopeStops", "Rope Stops"),
     i("ph2d::physics::SignalOnHit", "Signal on Hit"),
     i("ph2d::physics::SignalOnLeave", "Signal on Leave"),
+    p("ph2d::physics::SignalTagFilter", "Signal Tag Filter"),
     i("ph2d::physics::WalkSurface", "Walk Surface"),
     i("ph2d::physics::WestonAxle", "Weston Axle"),
 ];

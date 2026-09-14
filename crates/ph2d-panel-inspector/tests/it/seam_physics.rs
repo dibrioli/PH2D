@@ -69,6 +69,8 @@ fn with_body() -> InspectorPhysicsInfo {
         // gates que exercitam as rows preenchem estes campos.
         signal: String::new(),
         signal_leave: String::new(),
+        signal_tag: None,
+        signal_tag_path: String::new(),
         // The zone's own frame — the DEFAULT, declared rather than inherited. A fixture
         // that reaches its state implicitly flips meaning the day the default moves and
         // stays green testing the opposite.
@@ -2560,4 +2562,99 @@ fn the_walk_surface_rows_are_offered_for_every_collider_and_never_without_one() 
             "um sprite SEM collider ofereceu {label} — a row anexaria um órfão"
         );
     }
+}
+
+// ─── O FILTRO por TAG dos sinais (TOP-20 #9, W3c) ─────────────────────────────────────────────
+//
+// ⚠️⚠️ **Estes gates nasceram de DUAS mutações sobreviventes.** A prova da W3c apontou primeiro o
+// `every_registered_physics_component_has_a_ui_writer`, e apagar o `hit_index.register` da row **não
+// o fez reprovar** — ele é um **censo TEXTUAL** sobre a fonte, que vê o id e a edição escritos no
+// painel e é cego a se o controlo chega a ser PINTADO. *Um censo de fiação e um seam de gesto medem
+// coisas diferentes, e o nome do primeiro não avisa disso.*
+
+/// ⭐⭐⭐ **A row *Only for tag* é PINTADA e está VIVA sob o dedo** — com o ponteiro REAL.
+///
+/// **Mutações que devem sangrar:** tirar o `hit_index.register(INSP_PHYS_SIGNAL_TAG, …)` da row ·
+/// tirar o `INSP_PHYS_TAG_OPT`/`INSP_PHYS_SIGNAL_TAG` do `populate_physics`.
+#[test]
+fn a_row_do_filtro_por_tag_esta_viva_sob_o_dedo() {
+    ph2d_panel_inspector::set_current_tag_tree(vec![
+        ph2d_editor_core::screens::hero::InspectorTagRow {
+            id: 7,
+            path: "Player".into(),
+            label: "Player".into(),
+            depth: 0,
+        },
+    ]);
+    // ⚠️ **A lista tem de ser ABERTA primeiro** — as opções de um selector só são pintadas (e
+    // hit-registadas) pelo passe diferido enquanto o popover está aberto. *Um gate que as procura
+    // com a caixa fechada mede um ecrã onde elas legitimamente não estão.*
+    use ph2d_editor_core::zones::Rect;
+    const VIEWPORT: Rect = Rect {
+        x: 0.0,
+        y: 0.0,
+        w: 320.0,
+        h: 2400.0,
+    };
+    let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+    let mut state = InspectorState::default();
+    set_current_inspector_physics(Some(with_body()));
+    let _ = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
+    host.set_dropdown_open(ph2d_panel_inspector::ids::INSP_PHYS_SIGNAL_TAG, true);
+    let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
+    // A 1.ª opção é o `(any)`, que LIMPA o filtro — e é ela que prova que anexar o componente não é
+    // um caminho sem volta.
+    let r = rects
+        .iter()
+        .find(|(n, _)| *n == ph2d_panel_inspector::ids::INSP_PHYS_SIGNAL_TAG_CLEAR)
+        .map(|(_, r)| *r)
+        .expect("a lista aberta nunca pintou o `(any)`");
+    let eventos = host.click_at(r.x + r.w * 0.5, r.y + r.h * 0.5);
+    assert!(
+        !eventos.is_empty(),
+        "o ponteiro sobre o `(any)` nao virou evento nenhum — ele esta' pintado e nao existe para o \
+         dispatcher (falta o registo no populate_physics)"
+    );
+    for ev in eventos {
+        let _ = host.apply_panel_event::<InspectorPanel>(&mut state, ev);
+    }
+    let acoes = host.drained_actions();
+    set_current_inspector_physics(None);
+    assert!(
+        acoes.iter().any(|a| matches!(
+            a,
+            EditorAction::InspectorPhysicsEdit {
+                edit: PhysicsFieldEdit::SignalTagFilter(0),
+                ..
+            }
+        )),
+        "o `(any)` tinha de mandar `SignalTagFilter(0)` — sem ele, anexar o filtro nao se desfaz \
+         pelo painel; o que chegou foi {acoes:?}"
+    );
+    ph2d_panel_inspector::set_current_tag_tree(Vec::new());
+}
+
+/// ⭐⭐ **E o CHIP do selector é pintado com área** — é ele que abre a lista.
+///
+/// **Mutação que deve sangrar:** o `hit_index.register` da row apagado.
+#[test]
+fn o_chip_do_filtro_por_tag_e_pintado() {
+    use ph2d_editor_core::zones::Rect;
+    const VIEWPORT: Rect = Rect {
+        x: 0.0,
+        y: 0.0,
+        w: 320.0,
+        h: 2400.0,
+    };
+    let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+    let mut state = InspectorState::default();
+    set_current_inspector_physics(Some(with_body()));
+    let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
+    set_current_inspector_physics(None);
+    let r = rects
+        .iter()
+        .find(|(n, _)| *n == ph2d_panel_inspector::ids::INSP_PHYS_SIGNAL_TAG)
+        .map(|(_, r)| *r)
+        .expect("a §11 nunca pintou o chip do filtro *Only for tag*");
+    assert!(r.w > 0.0 && r.h > 0.0, "o chip do filtro sem area: {r:?}");
 }

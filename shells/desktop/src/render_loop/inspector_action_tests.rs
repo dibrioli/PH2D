@@ -29,8 +29,14 @@ fn edit(
     t
 }
 
+/// A árvore das fixturas — vazia, para os gates que não falam de tags. ⚠️ Quem fala delas usa a
+/// [`arvore_com_tags`].
+fn sem_tags() -> ph2d_tags::TagTree {
+    ph2d_tags::TagTree::new()
+}
+
 fn info(sim: &SimWorld, e: Entity) -> InspectorActionInfo {
-    build_action_info(sim.world(), e.to_bits(), 1).expect("o objecto tem a tabela")
+    build_action_info(sim.world(), &sem_tags(), e.to_bits(), 1).expect("o objecto tem a tabela")
 }
 
 /// ⛔ **Um objecto SEM a tabela não tem secção** — ADR-0166.
@@ -38,7 +44,7 @@ fn info(sim: &SimWorld, e: Entity) -> InspectorActionInfo {
 fn an_object_without_the_component_has_no_section() {
     let mut sim = SimWorld::default();
     let e = sim.world_mut().spawn((Transform::default(),)).id();
-    assert!(build_action_info(sim.world(), e.to_bits(), 1).is_none());
+    assert!(build_action_info(sim.world(), &sem_tags(), e.to_bits(), 1).is_none());
 }
 
 /// ⭐⭐ **Os RÓTULOS do painel saem de `SignalVerb::ALL`, que é a fonte.**
@@ -170,4 +176,124 @@ fn the_action_row_ids_cover_the_model_cap() {
         "o painel desenha um numero de linhas diferente do cap do modelo — as accoes a mais \
          seriam inalcancaveis"
     );
+}
+
+/// Uma linha de acção comum, para os gates do alvo por TAG.
+fn linha_de_accao() -> SignalAction {
+    SignalAction {
+        on: "alarme".into(),
+        target: "Parede".into(),
+        verb: SignalVerb::Hide,
+        ..SignalAction::default()
+    }
+}
+
+/// Uma árvore com `Inimigo` e `Inimigo/Voador`, para os gates do alvo por TAG.
+fn arvore_com_tags() -> (ph2d_tags::TagTree, u64, u64) {
+    let mut t = ph2d_tags::TagTree::new();
+    let inimigo = t.create("Inimigo").expect("cria").0;
+    let voador = t.create("Inimigo/Voador").expect("cria").0;
+    (t, inimigo, voador)
+}
+
+/// ⭐⭐⭐ **Virar o alvo para TAG não escolhe tag nenhuma** — a linha fica *por acabar*, e não
+/// apontada a alguém que o artista nunca nomeou.
+///
+/// ⛔ **Escolher a primeira tag da árvore por ele** faria um clique num segmentado mudar a QUEM a
+/// acção acerta — que é o mesmo defeito do `+` que nasce com um sinal a disparar.
+///
+/// **Mutação que deve sangrar:** o `Tagged(0)` trocado pela primeira tag da árvore.
+#[test]
+fn switching_the_target_to_tag_picks_no_tag_at_all() {
+    let (tree, _inimigo, _voador) = arvore_com_tags();
+    let reg = registry();
+    let mut sim = SimWorld::default();
+    let e = objecto(&mut sim, vec![linha_de_accao()]);
+    edit(&mut sim, e, &reg, ActionFieldEdit::TargetMode(0, true));
+    let i = build_action_info(sim.world(), &tree, e.to_bits(), 1).expect("tem a tabela");
+    let r = &i.rows[0];
+    assert!(r.target_is_tag(), "a linha nao ficou no modo TAG");
+    assert!(
+        r.target_tag_unset(),
+        "virar para TAG escolheu uma tag sozinho — o alvo mudou sem ninguem o pedir"
+    );
+    assert!(
+        !r.target_tag_missing(),
+        "uma linha POR ACABAR foi lida como uma linha PARTIDA — sao duas historias diferentes"
+    );
+}
+
+/// ⭐⭐ **Escolhida a tag, a linha mostra o CAMINHO dela** — e não o número.
+///
+/// ⚠️ O painel não conhece a árvore: sem o caminho no snapshot ele só teria um id para desenhar.
+///
+/// **Mutação que deve sangrar:** o `target_tag_path` a vir sempre vazio.
+#[test]
+fn a_tag_target_shows_its_path_not_its_number() {
+    let (tree, _inimigo, voador) = arvore_com_tags();
+    let reg = registry();
+    let mut sim = SimWorld::default();
+    let e = objecto(&mut sim, vec![linha_de_accao()]);
+    edit(&mut sim, e, &reg, ActionFieldEdit::TargetTag(0, voador));
+    let i = build_action_info(sim.world(), &tree, e.to_bits(), 1).expect("tem a tabela");
+    let r = &i.rows[0];
+    assert_eq!(r.target_tag, Some(voador));
+    assert_eq!(r.target_tag_path, "Inimigo/Voador");
+    assert!(!r.target_tag_missing() && !r.target_tag_unset());
+    // ⚠️ E o alvo deixa de ser «este objecto», mesmo com o campo do NOME vazio: ali o vazio já não
+    // significa nada, porque ninguém lê aquele campo.
+    assert!(
+        !r.target_is_self(),
+        "uma linha com alvo por TAG foi lida como apontando a si mesma"
+    );
+}
+
+/// ⛔⛔ **Uma tag APAGADA deixa a linha a alcançar ninguém, e a secção tem de o poder dizer.**
+///
+/// ⚠️ *Uma acção que deixou de acertar por causa de um gesto noutro painel é a forma mais
+/// silenciosa de «não acontece nada»* — e ela distingue-se de uma linha por acabar.
+///
+/// **Mutação que deve sangrar:** o `target_tag_missing` a devolver `false` sempre · o
+/// `unwrap_or_default` do caminho trocado por um `format!("{id}")` (a linha passaria a mostrar um
+/// número e a parecer viva).
+#[test]
+fn a_deleted_tag_leaves_the_action_pointing_at_nobody_and_says_so() {
+    let (mut tree, _inimigo, voador) = arvore_com_tags();
+    let reg = registry();
+    let mut sim = SimWorld::default();
+    let e = objecto(&mut sim, vec![linha_de_accao()]);
+    edit(&mut sim, e, &reg, ActionFieldEdit::TargetTag(0, voador));
+    // O painel *Tags* (W4) apaga a tag — a acção não é tocada.
+    let _ = tree.delete(ph2d_tags::TagId(voador));
+    let i = build_action_info(sim.world(), &tree, e.to_bits(), 1).expect("tem a tabela");
+    let r = &i.rows[0];
+    assert!(
+        r.target_tag_missing(),
+        "a tag foi apagada e a linha nao acusa nada — ela alcanca ninguem em silencio"
+    );
+    assert!(
+        !r.target_tag_unset(),
+        "uma linha PARTIDA foi lida como uma linha POR ACABAR"
+    );
+}
+
+/// ⚠️ **Voltar ao modo NOME larga a tag, e isso é a decisão do modelo, não um esquecimento** — o
+/// `SignalTarget` é um enum, e o ramo `Named` não tem onde guardar uma tag. ⛔ Guardar as duas
+/// respostas ao mesmo tempo é o que o doc dele recusa por escrito.
+///
+/// **Mutação que deve sangrar:** o braço `false` do `TargetMode` a não repor o `Named`.
+#[test]
+fn going_back_to_name_drops_the_tag_by_construction() {
+    let (tree, _i, voador) = arvore_com_tags();
+    let reg = registry();
+    let mut sim = SimWorld::default();
+    let e = objecto(&mut sim, vec![linha_de_accao()]);
+    edit(&mut sim, e, &reg, ActionFieldEdit::TargetTag(0, voador));
+    edit(&mut sim, e, &reg, ActionFieldEdit::TargetMode(0, false));
+    let i = build_action_info(sim.world(), &tree, e.to_bits(), 1).expect("tem a tabela");
+    assert!(
+        !i.rows[0].target_is_tag(),
+        "a linha continua no modo TAG depois de voltar ao NOME"
+    );
+    assert_eq!(i.rows[0].target_tag, None);
 }

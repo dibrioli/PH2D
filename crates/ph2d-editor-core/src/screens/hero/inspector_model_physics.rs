@@ -174,6 +174,12 @@ pub struct InspectorPhysicsInfo {
     /// **O nome que este objeto GRITA quando algo SAI dele** (W-SignalLeave),
     /// vazio se ele não emite nada. Espelha o `SignalOnLeave`.
     pub signal_leave: String,
+    /// ⭐⭐⭐ **A tag que filtra os dois sinais acima** (TOP-20 #9, W3c). `None` = sem filtro (o
+    /// componente não está lá), `Some(0)` = anexado e por escolher.
+    pub signal_tag: Option<u64>,
+    /// O CAMINHO da tag do filtro, para a linha o mostrar. **Vazio com `signal_tag: Some(n)`,
+    /// `n != 0`, significa que ela foi APAGADA** — e aí o filtro não passa ninguém.
+    pub signal_tag_path: String,
     /// Which pose channels the Bake writes: `0` All · `1` Position · `2` Rotation (a global bake option the shell owns).
     pub bake_channels_tag: u8,
     /// Per-body gravity multiplier (W8): `1.0` full gravity, `0.0` weightless,
@@ -497,4 +503,11 @@ pub enum PhysicsFieldEdit {
     /// one run of the simulation, where a fan-out would re-simulate the whole
     /// scene once per body and file a separate undo step for each.
     Bake,
+    /// ⭐⭐⭐ **Só quem tem esta TAG dispara este sinal** (TOP-20 #9, W3c) — escreve o
+    /// `SignalTagFilter`. `0` = **limpar o filtro**, e a linha volta a valer para todos.
+    ///
+    /// ⚠️ **Um id e não um nome**, ao contrário do `signal`/`signal_leave` que estão logo acima: a
+    /// tag é uma IDENTIDADE, e um nome envelheceria ao primeiro renomear — que é exactamente a
+    /// decisão D1 do dono (o modelo do Blender: a pertença é uma referência).
+    SignalTagFilter(u64),
 }

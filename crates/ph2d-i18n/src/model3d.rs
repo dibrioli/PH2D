@@ -507,6 +507,20 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // que continua a ser a **porta de escrita** da cor — a dobra é da apresentação, não da
         // fonte. *Apagar a etiqueta de um número porque um painel deixou de o pintar é deixar o
         // número sem nome no dia em que outra vista o mostrar.*
+        // ⭐⭐⭐ **A NOTA DE UMA ESCRITA QUE ESPALHA** (14/09) — ver
+        // `ph2d_panel_model3d::ParamRow::subject`. Um pedido de material alcança a selecção
+        // inteira, e o controlo mostra o valor de UMA forma: sem esta nota o artista lê «estou a
+        // pintar esta» e pinta cinco.
+        //
+        // ⚠️ **Três chaves e não uma frase pronta**: a nota tem um NÚMERO no meio, e quem o sabe é
+        // o shell — ele compõe `«Material applies to: 3 shapes»` das peças traduzidas, como a
+        // fileira do verbo já compõe o nome da forma.
+        "panel.model3d.material_applies_to" => "Material applies to",
+        "panel.model3d.shapes" => "shapes",
+        // ⚠️ **«they differ» e não «mixed»**: o aviso só aparece quando o valor mostrado é FALSO
+        // sobre as outras formas, e o artista tem de perceber *o que* está errado no que vê — não
+        // um rótulo de estado.
+        "panel.model3d.material_mixed" => "they differ; the swatch shows the first",
         "field.dim.base_r" => "Base Color R",
         "field.dim.base_g" => "Base Color G",
         "field.dim.base_b" => "Base Color B",

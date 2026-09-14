@@ -441,7 +441,7 @@ fn paint_section(ctx: &mut PaintCtx, text: &str, x: f32, w: f32, y: f32) -> f32 
     top + used.max(font) + Spacing::Xs.px()
 }
 
-fn paint_note(ctx: &mut PaintCtx, text: &str, x: f32, w: f32, y: f32) -> f32 {
+pub(crate) fn paint_note(ctx: &mut PaintCtx, text: &str, x: f32, w: f32, y: f32) -> f32 {
     let font = TypeToken::Sm.px();
     let theme = ctx.host.theme();
     let used = paint_text_block(

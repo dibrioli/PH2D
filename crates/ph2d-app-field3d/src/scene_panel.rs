@@ -27,7 +27,7 @@ pub fn publish_snapshot(
     ms: f32,
 ) {
     let all = ph2d_field_ecs::walk(world, root);
-    let rows = param_rows(world, selection.first().copied(), view_span);
+    let rows = param_rows(world, selection, view_span);
     // ⚠️ A lista de verbos é **derivada de `Mode::ALL`**, que é a fonte da contagem. O painel não
     // conhece o enum — acrescentar um verbo lá faz o seletor seguir sem uma linha de mudança.
     let (active, frame, mut subtracts) =
@@ -205,10 +205,10 @@ pub fn publish_snapshot(
 /// pontas. Espalhar isto por linha era o que fazia toda linha começar em zero.
 pub fn param_rows(
     world: &bevy_ecs::world::World,
-    selected: Option<bevy_ecs::entity::Entity>,
+    selection: &[bevy_ecs::entity::Entity],
     view_span: f32,
 ) -> Vec<ph2d_panel_model3d::ParamRow> {
-    let Some(e) = selected else {
+    let Some(&e) = selection.first() else {
         return Vec::new();
     };
     // ⚠️ O valor E as pontas vêm os DOIS do nó (`params_of`). Um painel que guardasse o seu próprio
@@ -282,7 +282,7 @@ pub fn param_rows(
             .map_or(0.0, |(_, d)| d.value)
     };
     let cor = crate::materials::base_color_srgb8([canal(0), canal(1), canal(2)]);
-    numeros
+    let mut linhas: Vec<ph2d_panel_model3d::ParamRow> = numeros
         .iter()
         .cloned()
         // ⛔ **Os canais 1 e 2 saem ANTES do `secao`**, que é uma máquina de estados sobre a
@@ -378,9 +378,12 @@ pub fn param_rows(
                     _ => &[],
                 },
                 swatch: cor_base.then_some(cor),
+                subject: None,
             }
         })
-        .collect()
+        .collect();
+    material_for_the_selection(world, selection, view_span, &mut linhas);
+    linhas
 }
 
 /// ⭐ **Os modificadores oferecidos, e quais o nó já tem** — interruptores, não ações.
@@ -608,3 +611,10 @@ pub fn ops_for(
         Vec::new()
     }
 }
+
+/// ⭐⭐⭐ **O MATERIAL DA SELECÇÃO** — quantas formas um pedido de material pinta, e como se diz.
+/// Vive no irmão, por assunto e pelo tecto de LOC. Ver [`field3d_scene_panel_material`](self::material).
+#[path = "scene_panel_material.rs"]
+mod material;
+use material::material_for_the_selection;
+pub(crate) use material::material_reach;

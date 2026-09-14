@@ -166,7 +166,7 @@ fn the_value_is_a_fixed_point_when_the_hand_does_not_move() {
         )
         .map_or(0.0, |b| b.radius);
         let span = latched_span_for(alvo.to_bits(), raio);
-        let linhas = param_rows(world, Some(alvo), span);
+        let linhas = param_rows(world, &[alvo], span);
         let Some(linha) = linhas.iter().find(|r| r.key == "field.dim.pos_x") else {
             // Sem uma posição nesta cena não há o que medir — o controle abaixo apanha-o.
             break;
@@ -239,7 +239,7 @@ fn the_band_of_a_deformer_reaches_the_piece_and_not_much_more() {
         ph2d_field_eval::bounds::bounding_ball(&cozida, &ph2d_field_eval::hybrid::Registry::new())
             .map_or(0.0, |b| b.radius);
     let span = crate::scene::span::gesture_span(raio);
-    let linhas = param_rows(world, Some(alvo), span);
+    let linhas = param_rows(world, &[alvo], span);
     let de = |k: &str| {
         linhas
             .iter()

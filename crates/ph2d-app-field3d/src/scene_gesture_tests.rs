@@ -425,7 +425,7 @@ fn a_position_admits_negatives_a_dimension_does_not_and_an_angle_is_half_a_turn(
     let leaf = a_leaf(world, root);
     const VIEW: f32 = 2.5;
 
-    let rows = crate::scene::panel::param_rows(world, Some(leaf), VIEW);
+    let rows = crate::scene::panel::param_rows(world, &[leaf], VIEW);
     let find = |want: Param| {
         rows.iter()
             .find(|r| r.param == want)
@@ -536,7 +536,7 @@ fn at_the_pole_the_third_angle_reaches_the_panel_as_a_fact() {
     const VIEW: f32 = 2.5;
 
     let live_of = |world: &bevy_ecs::world::World, axis: u8| -> bool {
-        crate::scene::panel::param_rows(world, Some(leaf), VIEW)
+        crate::scene::panel::param_rows(world, &[leaf], VIEW)
             .into_iter()
             .find(|r| r.param == Param::Rot(axis))
             .map(|r| r.live)

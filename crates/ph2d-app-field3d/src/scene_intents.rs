@@ -286,17 +286,32 @@ pub(super) fn apply(
             // ⚠️ **A recusa de um canal não aborta os outros**, como em todo `set_param` deste
             // dreno: o retrato publicado logo abaixo devolve a amostra à cor que ficou.
             ph2d_panel_model3d::ModelIntent::SetColor { entity, srgb } => {
-                let e = bevy_ecs::entity::Entity::from_bits(entity);
-                for (k, v) in crate::materials::base_color_from_srgb8(srgb)
-                    .into_iter()
-                    .enumerate()
-                {
-                    let _ = ph2d_field_ecs::set_param(
-                        world,
-                        e,
-                        ph2d_field::Param::Material(k as u8),
-                        v,
-                    );
+                let cor = crate::materials::base_color_from_srgb8(srgb);
+                for alvo in crate::scene::panel::material_reach(world, selection, entity) {
+                    for (k, v) in cor.into_iter().enumerate() {
+                        let _ = ph2d_field_ecs::set_param(
+                            world,
+                            alvo,
+                            ph2d_field::Param::Material(k as u8),
+                            v,
+                        );
+                    }
+                }
+            }
+            // ⭐⭐⭐ **UM NÚMERO DE MATERIAL ESPALHA-SE PELA SELECÇÃO**, como a cor — ver
+            // [`crate::scene::panel::material_reach`].
+            //
+            // ⚠️ **E uma DIMENSÃO não**, no braço logo abaixo: largura, raio e posição são **daquela
+            // forma**, e espalhá-los por uma selecção seria esmagar o desenho. *A distinção não é
+            // arbitrária — um material é a única coisa que um artista atribui a muitos objectos de
+            // uma vez.*
+            ph2d_panel_model3d::ModelIntent::SetParam {
+                entity,
+                param: param @ ph2d_field::Param::Material(_),
+                value,
+            } => {
+                for alvo in crate::scene::panel::material_reach(world, selection, entity) {
+                    let _ = ph2d_field_ecs::set_param(world, alvo, param, value);
                 }
             }
             ph2d_panel_model3d::ModelIntent::SetParam {

@@ -211,7 +211,7 @@ fn the_copy_count_is_an_integer_row_with_a_floor_of_one() {
     const VIEW: f32 = 2.5;
 
     let count_row = |world: &bevy_ecs::world::World| {
-        crate::scene::panel::param_rows(world, Some(root), VIEW)
+        crate::scene::panel::param_rows(world, &[root], VIEW)
             .into_iter()
             .find(|r| r.param == Param::Mod { slot: 0, field: 0 })
             .expect("a linha da contagem")
@@ -269,7 +269,7 @@ fn the_side_count_of_a_prism_floors_where_the_document_says() {
     .expect("o prisma nasce");
 
     let sides_row = |world: &bevy_ecs::world::World| {
-        crate::scene::panel::param_rows(world, Some(prisma), 2.5)
+        crate::scene::panel::param_rows(world, &[prisma], 2.5)
             .into_iter()
             .find(|r| r.param == Param::Dim(0))
             .expect("a linha dos lados")
@@ -455,7 +455,7 @@ fn every_modifier_gets_its_own_section_in_the_panel() {
     for k in [UnaryKind::Shell, UnaryKind::Twist] {
         assert!(ph2d_field_ecs::add_mod(world, alvo, k), "{k:?} não entrou");
     }
-    let linhas = crate::scene::panel::param_rows(world, Some(alvo), 2.5);
+    let linhas = crate::scene::panel::param_rows(world, &[alvo], 2.5);
     let mods = ph2d_field_ecs::mods_of(world, alvo);
 
     // ⭐ A PRIMEIRA linha abre a secção da forma; as seguintes dela continuam-na.

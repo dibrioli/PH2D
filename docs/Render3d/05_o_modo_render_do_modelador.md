@@ -397,8 +397,7 @@ onde estava, e o `MAX_ROWS` passa a ser **derivado da maior forma**: `2 × 27 + 
   apanhou (as quatro sub-amostras da borda não guardam ponto). É a mesma aproximação que a direcção
   de vista já faz, e está declarada no `shade_render`.
 - ~~**O custo por quadro do `Owners`**~~ — ✅ **MEDIDO em 14/09, e não é o tecto.** Ver §14.
-- **Um material num GRUPO** não existe: quem o traçado sabe nomear por pixel é a folha. Herdar do
-  grupo é modelo novo.
+- ~~**Um material num GRUPO** não existe~~ — ✅ **EXISTE desde 14/09, e sem modelo novo: ver §18.**
 
 
 ---
@@ -896,3 +895,87 @@ A [`measure_what_the_render_mode_costs_and_paints`], corrida depois da §15.5:
 
 ⭐ A `Neutral` não corta em **exposição nenhuma** — é isso que ela compra, e o `+2` é onde a diferença
 deixa de ser subtil: `85 %` da peça em branco chapado contra zero.
+
+
+---
+
+## §18 — ⭐⭐⭐ PINTAR VÁRIAS FORMAS DE UMA VEZ (2026-09-14)
+
+A §12.7 dizia: *«um material num GRUPO não existe: quem o traçado sabe nomear por pixel é a folha.
+Herdar do grupo é modelo novo.»* ⭐ **A primeira metade continua verdadeira e a segunda era falsa** —
+não é preciso modelo novo nenhum, porque a resposta não é *herança*, é **alcance de escrita**.
+
+### §18.1 — A lei: o material espalha, a dimensão não
+
+| pedido | alcance |
+|---|---|
+| **material** (a cor, a rugosidade, o metal) | a **selecção inteira**, com cada grupo resolvido nas folhas debaixo dele |
+| **dimensão** (largura, raio, posição, ângulo…) | só o nó que a pediu |
+
+⚠️ **A distinção não é arbitrária, e é o que impede isto de ser um esmagamento:** largura, raio e
+posição são **daquela forma**, e espalhá-los destrói o desenho das outras. ⭐ *Um material é a única
+coisa que um artista atribui a MUITOS objectos de uma vez* — é o `assign material to selection` de
+todo DCC, e é a continuação directa do gesto que o dono pediu ao pedir a caixa de cor: **pintar uma
+peça, não uma face.**
+
+⛔ **Um grupo continua a não TER material** — o que ele oferece é o das folhas da sub-árvore, e é lá
+que a escrita cai. O traçado continua a saber nomear só a folha.
+
+### §18.2 — ⛔⛔ Espalhar sem sinal é um ESMAGAMENTO silencioso
+
+O controlo mostra o valor de **uma** forma. Sem um sinal, o artista lê *«estou a pintar esta»* e pinta
+cinco — e quando as formas **discordam**, o valor mostrado é **falso** sobre as outras.
+
+⇒ [`ParamRow::subject`](../../crates/ph2d-panel-model3d/src/state.rs): uma nota pintada **antes** da
+linha, que diz sobre quantas formas ela escreve e, **só quando elas diferem**, que a amostra mostra a
+primeira.
+
+*É a lei que a caixa «Visible» do Inspector já pagou, à letra: «espalhar sem sinal troca um
+sub-aplicar silencioso por um esmagamento silencioso».*
+
+⚠️ **Três cercas, cada uma com o seu gate:**
+
+- **uma forma só não leva nota** — ela é o sujeito óbvio, e uma nota permanente sobre o gesto mais
+  comum do painel é ruído;
+- **o aviso de divergência só aparece quando ela existe** — com as formas de acordo a amostra
+  descreve todas, e um *«diferem»* ali seria mentira ao contrário;
+- **a nota é um `String` composto e não uma chave** (HR-15): ela tem um NÚMERO dentro, e quem o sabe é
+  o shell. É a mesma forma do `verb_subject`, que já compõe o nome da forma com um prefixo traduzido.
+
+### §18.3 — ⭐⭐ E um pedido de um quadro atrás pinta só a forma DELE
+
+O pedido traz o `entity` da **linha** que o produziu, e a selecção pode ter mudado entre o quadro que
+a pintou e o que a drena (um clique no canvas, um desfazer). ⇒
+[`material_reach`](../../crates/ph2d-app-field3d/src/scene_panel_material.rs) confere o sujeito do
+pedido contra o presente: **fora do alcance de agora, a escrita cai só nele.**
+
+⛔ Sem esta cerca, um pedido velho pintaria a selecção **de agora** — e o artista veria formas que
+nunca escolheu mudar de cor. *É a mesma família do id da amostra (§12.3): um pedido carrega o sujeito
+que o produziu, e quem o executa confere-o contra o presente.*
+
+### §18.4 — Os gates (4) e as mutações (6/6)
+
+| gate | o que ele prende |
+|---|---|
+| `a_group_offers_the_material_of_the_shapes_under_it_and_painting_it_paints_them_all` | as **duas** metades — oferecer sem escrever é o botão mudo; escrever sem oferecer é o gesto inalcançável |
+| `a_dimension_never_spreads_across_the_selection` | o **controlo** que separa a lei nova de um esmagamento |
+| `the_note_says_how_many_shapes_and_whether_they_differ` | §18.2, com as três cercas |
+| `a_request_from_a_stale_selection_paints_only_its_own_shape` | §18.3 |
+
+⭐ **6 mutações, 6 sangrias** — entre elas *apagar a guarda `param @ Material(_)`* (toda dimensão
+passaria a espalhar) e *a nota avisar sempre que diferem*.
+
+### §18.5 — ⚠️ E dois TETOS DE LOC caíram no caminho
+
+O `scene_panel.rs` foi a `757` e o `render_light_tests.rs` a `765`, contra `700`. ⛔ *Corte por
+responsabilidade, nunca uma entrada no `FILE_OVERAGE_OK`* — e os dois ficaram melhores:
+
+- [`scene_panel_material.rs`](../../crates/ph2d-app-field3d/src/scene_panel_material.rs) — **um
+  assunto**, e ele atravessa as duas pontas da costura (o retrato precisa do alcance para a nota, o
+  dreno precisa dele para escrever);
+- [`render_light_lobe_tests.rs`](../../crates/ph2d-app-field3d/src/render_light_lobe_tests.rs) — o
+  oráculo, os dois gates e as duas sondas da §16, que se leem juntos e sem o resto.
+
+⚠️ **E os testes foram CONFERIDOS depois de mudarem de ficheiro** (`nextest list`): mover código parte
+gates em duas espécies e **só uma avisa** — um ficheiro que nenhum `mod` declara não é compilado, e as
+suítes ficam verdes com os testes ausentes.

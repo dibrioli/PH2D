@@ -45,6 +45,7 @@ fn scene_with_one_union() {
             section: None,
             choices: &[],
             swatch: None,
+            subject: None,
             // Faixa de 0,4 — o número que o gate abaixo usa para distinguir a escala da linha de
             // uma escala fixa.
             bound: Bound::Soft(0.4),
@@ -222,6 +223,7 @@ fn every_row_gets_its_own_band_none_stacked_on_another() {
             section: None,
             choices: &[],
             swatch: None,
+            subject: None,
             bound: Bound::Hard(0.22),
         })
         .collect();
@@ -646,6 +648,7 @@ fn scene_with_one_position_row() {
             section: None,
             choices: &[],
             swatch: None,
+            subject: None,
             bound: Bound::Soft(CEILING),
         }],
         views: Vec::new(),
@@ -844,6 +847,7 @@ fn an_inert_row_registers_nothing_to_click() {
         section: None,
         choices: &[],
         swatch: None,
+        subject: None,
         bound: Bound::Wrap(180.0),
     };
     let mut host = MockPanelHost::with_panel::<Model3dPanel>();
@@ -898,6 +902,7 @@ fn an_inert_row_does_not_dispatch_even_if_an_event_arrives() {
             section: None,
             choices: &[],
             swatch: None,
+            subject: None,
             bound: Bound::Wrap(180.0),
         }],
         views: Vec::new(),
@@ -1321,6 +1326,7 @@ fn scene_with_one_choice_row() {
             section: None,
             choices: &ph2d_field::Axis::KEYS,
             swatch: None,
+            subject: None,
             bound: Bound::Hard(2.0),
         }],
         views: Vec::new(),
@@ -1666,6 +1672,7 @@ fn scene_with_one_colour_row_row() -> ParamRow {
         section: None,
         choices: &[],
         swatch: Some(A_COR_DA_PECA),
+        subject: None,
         bound: Bound::Soft(1.0),
     }
 }

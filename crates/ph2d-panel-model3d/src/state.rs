@@ -149,6 +149,27 @@ pub struct ParamRow {
     /// documento não guarda seria prometer uma transparência que nada honra. A amostra pinta-se
     /// opaca.
     pub swatch: Option<[u8; 3]>,
+    /// ⭐⭐⭐ **A NOTA a pintar ANTES desta linha** — *sobre o quê* ela escreve, quando isso não é
+    /// óbvio.
+    ///
+    /// # ⛔⛔ Ela existe porque uma escrita que ESPALHA tem de o DIZER
+    ///
+    /// Um pedido de **material** alcança a selecção inteira, com cada grupo resolvido nas folhas
+    /// debaixo dele — é o *«assign material to selection»* de todo DCC, e é o que o dono pediu ao
+    /// pedir a caixa de cor. ⚠️ Mas o controlo mostra o valor de **uma** forma, e sem esta nota o
+    /// artista lê *«estou a pintar esta»* e pinta cinco.
+    ///
+    /// *Espalhar sem sinal troca um sub-aplicar silencioso por um **esmagamento** silencioso* — a
+    /// lei que a caixa «Visible» do Inspector já pagou, à letra.
+    ///
+    /// ⚠️ **E ela diz também quando as formas DISCORDAM**, que é o único momento em que o valor
+    /// mostrado é falso sobre as outras: *uma amostra que mostra a cor da primeira sobre cinco
+    /// formas de cores diferentes é uma affordance que mente.*
+    ///
+    /// ⚠️ **Um `String` composto, e não uma chave** (HR-15): a nota tem um NÚMERO dentro, e quem o
+    /// sabe é o shell. É a mesma forma do [`ModelSnapshot::verb_subject`], que já compõe o nome da
+    /// forma com um prefixo traduzido.
+    pub subject: Option<String>,
 }
 
 /// Um verbo que o gizmo oferece: a chave i18n do rótulo, e se ele é o ativo.

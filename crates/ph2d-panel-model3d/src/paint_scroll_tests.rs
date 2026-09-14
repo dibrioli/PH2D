@@ -40,6 +40,7 @@ fn model_with_rows(n: usize) -> state::ModelSnapshot {
                 section: None,
                 choices: &[],
                 swatch: None,
+                subject: None,
                 bound: Bound::Soft(1.0),
             })
             .collect(),

@@ -39,6 +39,13 @@ pub(crate) fn paint_row(
     w: f32,
     y: f32,
 ) -> f32 {
+    // ⭐⭐⭐ **A NOTA DO SUJEITO vem ANTES da linha** — ver [`ParamRow::subject`]. Ela diz sobre o
+    // quê a linha escreve quando isso não é óbvio (uma escrita que espalha), e vem primeiro pela
+    // mesma razão da fileira do verbo: *um controlo sem sujeito lê-se ao contrário.*
+    let y = match &row.subject {
+        Some(nota) => crate::paint::paint_note(ctx, nota, x, w, y),
+        None => y,
+    };
     // ⭐ **Uma linha que não pode agir não é pintada como se pudesse** — ver [`ParamRow::live`]. Ela
     // sai daqui como facto e **não regista nada** no índice de acerto, então não há slider a agarrar
     // nem campo a receber texto: é a mesma lei do [`paint_note`], neste mesmo arquivo.

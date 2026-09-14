@@ -30,8 +30,6 @@ use ph2d_tool_bgremoval::params::{
 };
 use ph2d_vector::VectorScene;
 
-const LABEL_COL_W: f32 = 76.0; // LITERAL-PX-OK: panel grid metric (per-panel label gutter width)
-
 /// Tolerance / Feather / Refine — three canonical slider+chip rows.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn paint_slider_rows(
@@ -77,7 +75,7 @@ pub(crate) fn paint_slider_rows(
             None,
             id,
             chip_id,
-            LABEL_COL_W,
+            ph2d_editor_core::widget::property_label_col_w(inner_x, inner_w),
             chip_w,
             store,
             hit_index,
@@ -126,7 +124,7 @@ pub(crate) fn paint_grow_shrink(
         Some(&grow_display),
         ph2d_tool_bgremoval::ids::BGR_GROW,
         ph2d_tool_bgremoval::ids::BGR_GROW_NUM,
-        LABEL_COL_W,
+        ph2d_editor_core::widget::property_label_col_w(inner_x, inner_w),
         chip_w,
         store,
         hit_index,
@@ -193,7 +191,7 @@ pub(crate) fn paint_islands(
             Some(&min_display),
             ph2d_tool_bgremoval::ids::BGR_MIN_ISLAND_PX,
             ph2d_tool_bgremoval::ids::BGR_MIN_ISLAND_PX_NUM,
-            LABEL_COL_W,
+            ph2d_editor_core::widget::property_label_col_w(inner_x, inner_w),
             chip_w,
             store,
             hit_index,
@@ -408,7 +406,7 @@ pub(crate) fn paint_protect_brush(
             None,
             ph2d_tool_bgremoval::ids::BGR_BRUSH_SIZE,
             ph2d_tool_bgremoval::ids::BGR_BRUSH_SIZE_NUM,
-            LABEL_COL_W,
+            ph2d_editor_core::widget::property_label_col_w(inner_x, inner_w),
             chip_w,
             store,
             hit_index,

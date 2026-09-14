@@ -301,7 +301,7 @@ fn smart_action_row(r: &mut RowCtx, sb: &SmartBoneView, y: f32) -> f32 {
         r.inner_x,
         y + (r.row_h - r.font) * 0.5,
         r.font,
-        label_col_w(r.inner_x, r.inner_w, y, r.row_h),
+        label_col_w(r.inner_x, r.inner_w),
         resolve(ColorToken::Text1, r.theme),
     );
     let rotulo = if sb.clip.is_empty() {
@@ -309,7 +309,7 @@ fn smart_action_row(r: &mut RowCtx, sb: &SmartBoneView, y: f32) -> f32 {
     } else {
         sb.clip.as_str()
     };
-    let lc = label_col_w(r.inner_x, r.inner_w, y, r.row_h);
+    let lc = label_col_w(r.inner_x, r.inner_w);
     let chip = Rect::new(
         r.inner_x + lc + gap,
         y,

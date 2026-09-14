@@ -113,7 +113,7 @@ impl BodyCtx<'_> {
         if let Some(b) = crate::state::token_bindings().filter(|_| tem_traco) {
             let width_chip = ph2d_editor_core::widget::slider_with_chip_chip_rect(
                 width_row,
-                LABEL_COL_W,
+                label_col_w(self.inner_x, self.inner_w),
                 self.chip_w,
             );
             if b.width.is_some() {
@@ -131,7 +131,7 @@ impl BodyCtx<'_> {
             self.inner_x,
             y + (self.row_h - self.font) * 0.5,
             self.font,
-            LABEL_COL_W,
+            label_col_w(self.inner_x, self.inner_w),
             resolve(ColorToken::Text1, self.theme),
         );
         let stroke_swatch_rect = Rect::new(

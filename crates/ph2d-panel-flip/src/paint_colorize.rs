@@ -2,7 +2,7 @@
 //! só pelo teto de LOC (a costura que o arquivo já tinha). Estende o mesmo [`BodyCtx`].
 
 use crate::ids;
-use crate::paint_sections::{BodyCtx, LABEL_COL_W};
+use crate::paint_sections::BodyCtx;
 use ph2d_editor_core::paint::{paint_text, resolve};
 use ph2d_editor_core::widget::{ColorSwatch, SwatchSize, paint_color_swatch};
 use ph2d_editor_core::zones::Rect;
@@ -31,7 +31,7 @@ impl BodyCtx<'_> {
             self.inner_x,
             y + (self.row_h - self.font) * 0.5,
             self.font,
-            LABEL_COL_W,
+            ph2d_editor_core::widget::property_label_col_w(self.inner_x, self.inner_w),
             resolve(ColorToken::Text1, self.theme),
         );
         let swatch_rect = Rect::new(

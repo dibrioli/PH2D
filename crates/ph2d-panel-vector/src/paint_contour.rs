@@ -152,7 +152,7 @@ impl BodyCtx<'_> {
             self.inner_x,
             y + (self.row_h - self.font) * 0.5,
             self.font,
-            LABEL_COL_W,
+            label_col_w(self.inner_x, self.inner_w),
             resolve(ColorToken::Text1, self.theme),
         );
         let rect = Rect::new(

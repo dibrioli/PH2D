@@ -6,7 +6,7 @@
 //! `slider_row_linked`, `segmented`) que TODA seção compõe; lá, a composição. Um
 //! `impl BodyCtx` a mais no mesmo crate — o tipo e os campos seguem sendo do irmão.
 
-use crate::paint_sections::{BodyCtx, LABEL_COL_W};
+use crate::paint_sections::BodyCtx;
 use ph2d_editor_core::IconId;
 use ph2d_editor_core::paint::{paint_icon, paint_text, resolve};
 use ph2d_editor_core::widget::paint_slider_with_chip_layout_adaptive;
@@ -53,7 +53,7 @@ impl BodyCtx<'_> {
             Some(display),
             slider_id,
             chip_id,
-            LABEL_COL_W,
+            ph2d_editor_core::widget::property_label_col_w(self.inner_x, self.inner_w),
             self.chip_w,
             self.store,
             self.hit_index,
@@ -96,7 +96,7 @@ impl BodyCtx<'_> {
             Some(display),
             slider_id,
             chip_id,
-            LABEL_COL_W,
+            ph2d_editor_core::widget::property_label_col_w(self.inner_x, body_w),
             self.chip_w,
             self.store,
             self.hit_index,

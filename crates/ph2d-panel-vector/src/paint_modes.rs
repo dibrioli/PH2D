@@ -23,7 +23,7 @@
 mod text_sections;
 
 use crate::paint_sections::BodyCtx;
-use crate::paint_sections::LABEL_COL_W;
+use crate::paint_sections::label_col_w;
 use crate::state;
 use ph2d_editor_core::paint::{paint_text, resolve};
 use ph2d_editor_core::widget::panel_chrome::{
@@ -296,11 +296,11 @@ impl BodyCtx<'_> {
             self.inner_x,
             y + (self.row_h - TypeToken::Sm.px()) * 0.5,
             TypeToken::Sm.px(),
-            LABEL_COL_W,
+            label_col_w(self.inner_x, self.inner_w),
             resolve(ColorToken::Text2, self.theme),
         );
-        let field_x = self.inner_x + LABEL_COL_W + gap;
-        let field_w = (self.inner_w - LABEL_COL_W - gap).max(1.0);
+        let field_x = self.inner_x + label_col_w(self.inner_x, self.inner_w) + gap;
+        let field_w = (self.inner_w - label_col_w(self.inner_x, self.inner_w) - gap).max(1.0);
         let rect = Rect::new(field_x, y, field_w, self.row_h);
         self.hit_index.register(id, rect);
         paint_segmented_button(

@@ -301,15 +301,42 @@ pub struct PropertyRow {
 /// A fracção da linha que o rótulo ocupa — ver [`PropertyRow`] para a medição.
 const LABEL_COL_FRAC: f32 = 0.348; // LITERAL-PX-OK: nao e' px, e' a RAZAO MEDIDA 96/276 (96 = a resposta que 3 dos 6 sitios escreviam; 276 = a largura real de uma linha do Inspector: 304 do token `inspector-w` menos 2x8 de recuo do painel e 2x6 do cartao)
 
+/// ⭐⭐⭐ **A METADE HORIZONTAL da [`property_row_columns`] — a largura da coluna do rótulo.**
+///
+/// ⚠️⚠️ **Ela existe porque a largura NÃO DEPENDE DO VERTICAL, e isso não é um detalhe: era o preço
+/// escrito na dívida.** Em 2026-09-14 o painel de vetor ficou fora da conversão com a razão *«33
+/// sítios a usá-la como constante livre, **muitos sem `y`/`row_h` em alcance**»* — e a régua estava
+/// na moeda errada. O `row_y`/`row_h` da porta grande só decidem **onde** os rects começam e que
+/// **altura** têm; a coluna sai de `x` e `w` e de mais nada. *Um bloqueio afirmado sobre um
+/// argumento que o resultado não lê é um palpite com cara de medição* — e os 33 sítios tinham todos
+/// o `inner_x`/`inner_w` à mão.
+///
+/// ⛔ **Ela não é uma segunda lei: a [`property_row_columns`] CHAMA-A.** Não há aqui nada para um
+/// gate comparar — e isso foi medido: a primeira redacção do gate punha as duas lado a lado e a
+/// prova de mutação **sobreviveu**, porque apagar o tecto muda as duas ao mesmo tempo. *Um gate que
+/// compara duas construções é cego a uma mutação partilhada.* Quem defende a lei é o
+/// `a_property_row_never_starves_its_control`, que mede o **piso do controlo** contra um oráculo
+/// fora dela (duas mutações, as duas mortas).
+#[must_use]
+pub fn property_label_col_w(x: f32, w: f32) -> f32 {
+    // ⚠️ O vertical entra a zero **e é deitado fora**: o único uso que a [`form_row_columns`] lhe dá
+    // é montar o rect do ponto, e aqui só queremos a largura utilizável (que já desconta a coluna
+    // de animação, ou não desconta nada na aparência clássica — a guarda mora lá, uma vez).
+    let (usable_w, _dot) = form_row_columns(x, w, 0.0, 0.0);
+    let gap = Spacing::Md.px();
+    // ⛔ O piso do CONTROLO é o recurso — ver o doc de [`PropertyRow`].
+    let control_min = ph2d_tokens::ICON_BTN_SIZE_PX + Spacing::Lg.px();
+    (usable_w * LABEL_COL_FRAC)
+        .min((usable_w - gap - control_min).max(0.0))
+        .max(0.0)
+}
+
 /// ⭐⭐⭐ **A porta de uma linha de propriedade** — ver [`PropertyRow`].
 #[must_use]
 pub fn property_row_columns(x: f32, w: f32, row_y: f32, row_h: f32) -> PropertyRow {
     let (usable_w, dot) = form_row_columns(x, w, row_y, row_h);
     let gap = Spacing::Md.px();
-    // ⛔ O piso do CONTROLO é o recurso — ver o doc de [`PropertyRow`].
-    let control_min = ph2d_tokens::ICON_BTN_SIZE_PX + Spacing::Lg.px();
-    let label_w = (usable_w * LABEL_COL_FRAC).min((usable_w - gap - control_min).max(0.0));
-    let label_w = label_w.max(0.0);
+    let label_w = property_label_col_w(x, w);
     let control_x = x + label_w + gap;
     let control_w = (usable_w - label_w - gap).max(1.0);
     PropertyRow {

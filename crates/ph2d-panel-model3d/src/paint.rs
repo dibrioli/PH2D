@@ -28,9 +28,6 @@ use crate::{Model3dPanel, populate::MAX_MODES, populate::MAX_ROWS};
 /// que só existe para não haver tecto tem de dizê-lo.*
 pub(crate) const TETO_DIGITAVEL: f64 = 1.0e6;
 
-/// A goteira do rótulo. Os rótulos aqui são o **tipo do nó** ("Union", "Cylinder"), não uma frase.
-pub(crate) const LABEL_COL_W: f32 = 72.0; // LITERAL-PX-OK: panel grid metric (label gutter width)
-
 /// Em quantos passos o arrasto atravessa o curso de uma linha.
 ///
 /// ⚠️ **Em centésimos do CURSO, e não num passo absoluto**: um passo fixo seria grosseiro num filete

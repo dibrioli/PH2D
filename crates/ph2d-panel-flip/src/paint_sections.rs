@@ -22,9 +22,6 @@ use ph2d_tool_flip::{
 };
 use ph2d_vector::VectorScene;
 
-/// Label column width for slider rows + the Stroke label.
-pub(crate) const LABEL_COL_W: f32 = 64.0; // LITERAL-PX-OK: panel grid metric (per-panel label gutter width)
-
 /// Per-frame paint context for the Flip Style panel body — mutable render
 /// targets + shared layout metrics. Each section method borrows disjoint fields.
 pub(crate) struct BodyCtx<'a> {
@@ -247,7 +244,7 @@ impl BodyCtx<'_> {
                 self.inner_x,
                 y + (self.row_h - self.font) * 0.5,
                 self.font,
-                LABEL_COL_W,
+                ph2d_editor_core::widget::property_label_col_w(self.inner_x, self.inner_w),
                 resolve(ColorToken::Text1, self.theme),
             );
             let rect = Rect::new(
@@ -270,7 +267,7 @@ impl BodyCtx<'_> {
             self.inner_x,
             y + (self.row_h - self.font) * 0.5,
             self.font,
-            LABEL_COL_W,
+            ph2d_editor_core::widget::property_label_col_w(self.inner_x, self.inner_w),
             resolve(ColorToken::Text1, self.theme),
         );
         let swatch_rect = Rect::new(
@@ -305,7 +302,7 @@ impl BodyCtx<'_> {
             self.inner_x,
             y + (self.row_h - self.font) * 0.5,
             self.font,
-            LABEL_COL_W,
+            ph2d_editor_core::widget::property_label_col_w(self.inner_x, self.inner_w),
             resolve(ColorToken::Text1, self.theme),
         );
         let swatch_rect = Rect::new(

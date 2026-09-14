@@ -33,10 +33,6 @@ mod tool;
 /// declaração é que estava um nível abaixo do lugar dele.
 mod widgets;
 
-/// Calha do rótulo. Larga como a do painel de física porque estes rótulos também
-/// são palavras ("Plane Offset", "Light Height"), não uma aresta só.
-pub(crate) const LABEL_COL_W: f32 = 84.0; // LITERAL-PX-OK: métrica de grade do painel (calha do rótulo)
-
 pub(crate) fn paint(_state: &mut Sculpt3dPanelState, ctx: &mut PaintCtx) {
     // ⚠️ **DUAS recusas, e nenhuma basta sozinha.** A primeira é a do artista (o
     // painel está fechado); a segunda é a da CENA — sem escultura viva, seis
@@ -157,7 +153,7 @@ pub(crate) fn paint_row(
         Some(&text),
         row.slider,
         row.chip,
-        LABEL_COL_W,
+        ph2d_editor_core::widget::property_label_col_w(x, w),
         ph2d_editor_core::widget::NUMBER_INPUT_MIN_W_PX,
         store,
         hit_index,

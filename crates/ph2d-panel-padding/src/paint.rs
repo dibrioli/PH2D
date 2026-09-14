@@ -40,9 +40,6 @@ use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ROW_H_PX, Spacing, Theme};
 use ph2d_tool_padding::params::px_to_slider;
 
-/// Label column width for slider rows.
-const LABEL_COL_W: f32 = 64.0; // LITERAL-PX-OK: panel grid metric (per-panel label gutter width)
-
 pub(crate) fn paint(_state: &mut PaddingPanelState, ctx: &mut PaintCtx) {
     if !ctx.host.panel_visible(PaddingPanel::ID) {
         // Symmetric stale-rect cleanup so `panel_at` stops returning
@@ -209,7 +206,7 @@ fn paint_body_sections(
             Some(&px_display),
             slider_id,
             chip_id,
-            LABEL_COL_W,
+            ph2d_editor_core::widget::property_label_col_w(inner_x, inner_w),
             chip_w,
             store,
             hit_index,

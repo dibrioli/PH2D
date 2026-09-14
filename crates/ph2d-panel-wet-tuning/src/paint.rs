@@ -26,9 +26,6 @@ use ph2d_tool_painter::BrushSettings;
 use crate::state::{self, WetTuningPanelState};
 use crate::{WetTuningPanel, rows};
 
-/// Label gutter — knob names are words ("Gate saturation"), same width the
-/// physics panel settled on.
-pub(crate) const LABEL_COL_W: f32 = 78.0; // LITERAL-PX-OK: panel grid metric (label gutter width)
 /// Width reserved at a row's right edge for its per-knob reset button.
 const RESET_W: f32 = 22.0; // LITERAL-PX-OK: per-knob reset button slot width
 
@@ -293,7 +290,7 @@ fn paint_row(
             Some(&text),
             row.slider,
             row.chip,
-            LABEL_COL_W,
+            ph2d_editor_core::widget::property_label_col_w(x, row_w),
             ph2d_editor_core::widget::NUMBER_INPUT_MIN_W_PX,
             store,
             hit_index,

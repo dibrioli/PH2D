@@ -40,9 +40,6 @@ use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ROW_H_PX, Spacing, Theme};
 use ph2d_tool_color_equalization::params::ColorEqualizationUiSnapshot;
 
-/// Label column width for slider rows.
-const LABEL_COL_W: f32 = 84.0; // LITERAL-PX-OK: panel grid metric (per-panel label gutter width)
-
 /// Height of the histogram overlay strip.
 const HISTOGRAM_H: f32 = 64.0; // LITERAL-PX-OK: panel grid metric (histogram strip height)
 
@@ -68,9 +65,11 @@ pub(crate) fn paint(_state: &mut ColorEqualizationPanelState, ctx: &mut PaintCtx
     // Dock-slot drag + resize handles (shared with Inspector).
     {}
 
+    let inner_x = rect.x + PANEL_HEAD_PAD;
+    let inner_w = (rect.w - PANEL_HEAD_PAD * 2.0).max(0.0);
     let layout = SectionLayout {
-        inner_x: rect.x + PANEL_HEAD_PAD,
-        inner_w: (rect.w - PANEL_HEAD_PAD * 2.0).max(0.0),
+        inner_x,
+        inner_w,
         row_h: ROW_H_PX,
         // ⭐ **O vão entre dois controlos vem da PORTA** (`3` px, ordem do dono de 2026-09-07).
         //   Ele era `Spacing::Sm` (6) — este painel era um dos que respiravam 50 % mais que o
@@ -78,7 +77,11 @@ pub(crate) fn paint(_state: &mut ColorEqualizationPanelState, ctx: &mut PaintCtx
         row_gap: ph2d_tokens::control_gap_px(),
         // Canonical chip width — 72 px (was 32, user 2026-05-24).
         chip_w: ph2d_editor_core::widget::NUMBER_INPUT_MIN_W_PX,
-        label_col_w: LABEL_COL_W,
+        // ⭐ **A coluna do rótulo também vem da PORTA** (2026-09-14) — ela era `84`, e a mesma
+        //   pergunta tinha ONZE respostas no app. Uma largura FIXA está errada por construção:
+        //   a coluna docada é arrastável, e um número afinado à largura de omissão come o
+        //   controlo numa coluna estreita.
+        label_col_w: ph2d_editor_core::widget::property_label_col_w(inner_x, inner_w),
     };
 
     // Título curto pra caber em 1 linha mesmo com painel estreito

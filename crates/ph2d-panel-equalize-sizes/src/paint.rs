@@ -36,9 +36,6 @@ use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, Theme, TypeToken};
 use ph2d_tool_equalize_sizes::params::{EqualizeSizesUiSnapshot, TargetMode, UpscaleAlgorithm};
 use ph2d_vector::VectorScene;
 
-/// Label column width for Grid-mode slider rows.
-const LABEL_COL_W: f32 = 72.0; // LITERAL-PX-OK: panel grid metric (per-panel label gutter width)
-
 pub(crate) fn paint(_state: &mut EqualizeSizesPanelState, ctx: &mut PaintCtx) {
     if !ctx.host.panel_visible(EqualizeSizesPanel::ID) {
         // Symmetric stale-rect cleanup so `panel_at` stops returning
@@ -364,7 +361,7 @@ fn paint_mode_rows(
                 Some(&display),
                 ph2d_tool_equalize_sizes::ids::EQS_GRID_OFFSET,
                 ph2d_tool_equalize_sizes::ids::EQS_GRID_OFFSET_NUM,
-                LABEL_COL_W,
+                ph2d_editor_core::widget::property_label_col_w(inner_x, inner_w),
                 chip_w,
                 store,
                 hit_index,

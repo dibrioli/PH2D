@@ -2,8 +2,9 @@
 //! verbatim from `ph2d_editor_core::grid_snap::panel`.
 //!
 //! Wave 10 / Etapa 5.1: ROW_H/pad()/row_gap()/LABEL_FONT_SIZE now flow
-//! from `ph2d_tokens` (no literal pixels). LABEL_COL_W stays as a
-//! panel-specific design measurement (see comment).
+//! from `ph2d_tokens` (no literal pixels). ⭐ E a coluna do rótulo saiu daqui
+//! em 2026-09-14: ela é a porta `property_label_col_w`, perguntada no sítio da
+//! pintura com a largura REAL da linha.
 
 use ph2d_tokens::{ROW_H_PX, Spacing, TypeToken};
 
@@ -18,9 +19,3 @@ pub(crate) fn row_gap() -> f32 {
     ph2d_tokens::control_gap_px()
 }
 pub(crate) const LABEL_FONT_SIZE: f32 = TypeToken::Base.px();
-/// Column where the widget (right side of a "Label: [widget]" row)
-/// starts, measured from the inner-x of the row.
-/// Width reserved for the label column in NumberInput rows. Widened
-/// from 110 → 150 on 2026-05-15 so the longest labels ("QT bounds max
-/// X / Y", "Chunk size (cells)") fit on one line.
-pub(crate) const LABEL_COL_W: f32 = 150.0; // LITERAL-PX-OK: panel-specific label-column width (longest grid-snap labels)

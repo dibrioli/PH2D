@@ -208,11 +208,14 @@ impl BodyCtx<'_> {
             self.inner_x,
             y + (self.row_h - TypeToken::Sm.px()) * 0.5,
             TypeToken::Sm.px(),
-            crate::paint_sections::LABEL_COL_W,
+            crate::paint_sections::label_col_w(self.inner_x, self.inner_w),
             resolve(ColorToken::Text2, self.theme),
         );
-        let chip_x = self.inner_x + crate::paint_sections::LABEL_COL_W + gap;
-        let chip_w = (self.inner_w - crate::paint_sections::LABEL_COL_W - gap).max(1.0);
+        let chip_x =
+            self.inner_x + crate::paint_sections::label_col_w(self.inner_x, self.inner_w) + gap;
+        let chip_w =
+            (self.inner_w - crate::paint_sections::label_col_w(self.inner_x, self.inner_w) - gap)
+                .max(1.0);
         let chip = Rect::new(chip_x, y, chip_w, self.row_h);
         let open = matches!(
             self.store.get(ph2d_tool_vector::ids::VECTOR_SHAPE_GROUP_DD),

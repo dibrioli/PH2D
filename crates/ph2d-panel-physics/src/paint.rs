@@ -25,10 +25,6 @@ mod interact;
 mod joint;
 mod matrix;
 
-/// Label gutter. Wider than the padding panel's because these labels are words
-/// ("Sub-steps", "Contact Hz"), not single edges.
-pub(crate) const LABEL_COL_W: f32 = 78.0; // LITERAL-PX-OK: panel grid metric (label gutter width)
-
 pub(crate) fn paint(_state: &mut PhysicsPanelState, ctx: &mut PaintCtx) {
     if !ctx.host.panel_visible(PhysicsPanel::ID) {
         // Symmetric stale-rect cleanup, so `panel_at` stops returning
@@ -124,7 +120,7 @@ pub(crate) fn paint_row(
         Some(&text),
         row.slider,
         row.chip,
-        LABEL_COL_W,
+        ph2d_editor_core::widget::property_label_col_w(x, w),
         ph2d_editor_core::widget::NUMBER_INPUT_MIN_W_PX,
         store,
         hit_index,
@@ -160,7 +156,7 @@ pub(crate) fn paint_irow(
         Some(&text),
         row.slider,
         row.chip,
-        LABEL_COL_W,
+        ph2d_editor_core::widget::property_label_col_w(x, w),
         ph2d_editor_core::widget::NUMBER_INPUT_MIN_W_PX,
         store,
         hit_index,

@@ -52,12 +52,15 @@ use ph2d_vector::VectorScene;
 /// ⭐ **É esta função que serve vários painéis de uma vez**, porque o [`RowCtx`] é a linha
 /// partilhada — converter o número aqui alinha todos os que passam por ele.
 ///
-/// Ver [`crate::widget::property_row_columns`] para a derivação da fracção.
+/// ⚠️ **Ela pede `x` e `w` e mais nada** (2026-09-14): nasceu a pedir também `y`/`row_h` por
+/// simetria com a porta grande, e o resultado nunca os leu. *Um parâmetro que o resultado ignora é
+/// um convite a supor que ele importa* — e foi essa suposição que deixou o painel de vetor fora da
+/// conversão por um dia, com «muitos sítios sem `y`/`row_h` em alcance» escrito como se fosse preço.
+///
+/// Ver [`crate::widget::property_label_col_w`] para a derivação da fracção.
 #[must_use]
-pub fn label_col_w(inner_x: f32, inner_w: f32, y: f32, row_h: f32) -> f32 {
-    crate::widget::property_row_columns(inner_x, inner_w, y, row_h)
-        .label
-        .w
+pub fn label_col_w(inner_x: f32, inner_w: f32) -> f32 {
+    crate::widget::property_label_col_w(inner_x, inner_w)
 }
 
 /// **O contexto de uma linha** — os alvos mutáveis do quadro mais as métricas partilhadas.
@@ -155,7 +158,7 @@ impl RowCtx<'_> {
     ) -> f32 {
         let gap = Spacing::Xs.px();
         self.label_cell(label, y);
-        let lc = label_col_w(self.inner_x, self.inner_w, y, self.row_h);
+        let lc = label_col_w(self.inner_x, self.inner_w);
         let x = self.inner_x + lc + gap;
         let w = (self.inner_w - lc - gap).max(1.0);
         let rect = Rect::new(x, y, w, self.row_h);
@@ -179,7 +182,7 @@ impl RowCtx<'_> {
     pub fn labeled_number_field(&mut self, label: &str, id: NodeId, step: f64, y: f32) -> f32 {
         let gap = Spacing::Xs.px();
         self.label_cell(label, y);
-        let lc = label_col_w(self.inner_x, self.inner_w, y, self.row_h);
+        let lc = label_col_w(self.inner_x, self.inner_w);
         let x = self.inner_x + lc + gap;
         let w = (self.inner_w - lc - gap).max(1.0);
         let rect = Rect::new(x, y, w, self.row_h);
@@ -239,7 +242,7 @@ impl RowCtx<'_> {
             self.inner_x,
             y + (self.row_h - TypeToken::Sm.px()) * 0.5,
             TypeToken::Sm.px(),
-            label_col_w(self.inner_x, self.inner_w, y, self.row_h),
+            label_col_w(self.inner_x, self.inner_w),
             resolve(ColorToken::Text2, self.theme),
         );
     }

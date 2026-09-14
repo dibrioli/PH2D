@@ -18,9 +18,7 @@ use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
 use ph2d_tokens::{ColorToken, ROW_H_PX, TypeToken};
 
-use crate::paint::{
-    LABEL_COL_W, STEPS_ACROSS_THE_RANGE, TETO_DIGITAVEL, bound_is_wall, decimals_for_step,
-};
+use crate::paint::{STEPS_ACROSS_THE_RANGE, TETO_DIGITAVEL, bound_is_wall, decimals_for_step};
 use crate::state::ParamRow;
 
 /// Uma linha: rótulo do tipo do nó + slider + campo numérico. Devolve o **y seguinte**.
@@ -152,7 +150,7 @@ pub(crate) fn paint_row(
         Some(&text),
         slider,
         chip,
-        LABEL_COL_W,
+        ph2d_editor_core::widget::property_label_col_w(x, w),
         NUMBER_INPUT_MIN_W_PX,
         store,
         hit_index,
@@ -174,7 +172,7 @@ pub(crate) fn paint_row(
 /// saltar de tamanho debaixo do cursor.
 /// ⭐⭐⭐ **A FILEIRA DE ESCOLHA de uma linha** — o rótulo à esquerda, os botões na goteira do valor.
 ///
-/// ⚠️ **A goteira é a MESMA do slider** (`x + LABEL_COL_W`), e isso não é estética: o olho percorre
+/// ⚠️ **A goteira é a MESMA do slider** (a porta `property_label_col_w`), e isso não é estética: o olho percorre
 /// a coluna dos valores de cima a baixo, e uma fileira que começasse noutro sítio faria o painel
 /// parecer duas listas.
 ///
@@ -193,7 +191,7 @@ fn paint_choice(ctx: &mut PaintCtx, row: &ParamRow, slot: u32, x: f32, w: f32, y
         x,
         baseline,
         font,
-        LABEL_COL_W,
+        ph2d_editor_core::widget::property_label_col_w(x, w),
         dim,
     );
     // ⚠️ **O activo lê-se do VALOR, todo quadro** — nunca de um estado guardado no painel. É a mesma
@@ -216,7 +214,12 @@ fn paint_choice(ctx: &mut PaintCtx, row: &ParamRow, slot: u32, x: f32, w: f32, y
         .collect();
     let (store, hit_index) = ctx.host.store_and_hit_index_mut();
     let used = paint_segmented_group_adaptive(
-        Rect::new(x + LABEL_COL_W, y, (w - LABEL_COL_W).max(0.0), ROW_H_PX),
+        Rect::new(
+            x + ph2d_editor_core::widget::property_label_col_w(x, w),
+            y,
+            (w - ph2d_editor_core::widget::property_label_col_w(x, w)).max(0.0),
+            ROW_H_PX,
+        ),
         &labels,
         ctx.scene,
         ctx.text_system,
@@ -239,7 +242,7 @@ fn paint_fact(ctx: &mut PaintCtx, row: &ParamRow, x: f32, w: f32, y: f32) -> f32
         x,
         baseline,
         font,
-        LABEL_COL_W,
+        ph2d_editor_core::widget::property_label_col_w(x, w),
         dim,
     );
     // O número fica na goteira do valor, como numa linha viva — o olho percorre a coluna sem saltar.
@@ -248,10 +251,10 @@ fn paint_fact(ctx: &mut PaintCtx, row: &ParamRow, x: f32, w: f32, y: f32) -> f32
         ctx.text_system,
         ctx.scene,
         &text,
-        x + LABEL_COL_W,
+        x + ph2d_editor_core::widget::property_label_col_w(x, w),
         baseline,
         font,
-        (w - LABEL_COL_W).max(0.0),
+        (w - ph2d_editor_core::widget::property_label_col_w(x, w)).max(0.0),
         dim,
     );
     y + ph2d_tokens::row_pitch_px()

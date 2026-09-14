@@ -8,7 +8,7 @@
 //! com estes tijolos; um tijolo novo serve todas as seções — e foi a row de **Align** que levou o
 //! arquivo ao teto.
 
-use super::paint_sections::{BodyCtx, LABEL_COL_W};
+use super::paint_sections::{BodyCtx, label_col_w};
 use ph2d_editor_core::paint::{paint_text, paint_text_block, resolve};
 use ph2d_editor_core::widget::showcase::read_number_input;
 use ph2d_editor_core::widget::{
@@ -40,7 +40,7 @@ impl BodyCtx<'_> {
             Some(display),
             slider_id,
             chip_id,
-            LABEL_COL_W,
+            label_col_w(self.inner_x, self.inner_w),
             self.chip_w,
             self.store,
             self.hit_index,
@@ -129,7 +129,7 @@ impl BodyCtx<'_> {
             self.inner_x,
             y + (self.row_h - self.font) * 0.5,
             self.font,
-            LABEL_COL_W,
+            label_col_w(self.inner_x, self.inner_w),
             resolve(ColorToken::Text1, self.theme),
         );
         let rect = Rect::new(

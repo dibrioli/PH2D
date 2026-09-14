@@ -12,7 +12,6 @@
 
 use crate::ids;
 use crate::ids::FlipLayerWidget;
-use crate::paint_sections::LABEL_COL_W;
 use crate::state::{FlipLayerRow, FlipLayersSnapshot, FlipPanelState, LayerRename};
 use ph2d_editor_core::IconId;
 use ph2d_editor_core::interaction::InteractiveState;
@@ -217,7 +216,11 @@ fn paint_layer_block(
     // de stacking do painter, senão o contorno de acento é dimensionado por uma regra e
     // preenchido por outra. Não-slider: eye/name/↑↓ + [blend] (base dropa o blend).
     let slider_content_w = m.inner_w - Spacing::Xs.px() * 2.0;
-    let slider_h = if slider_with_chip_is_stacked(slider_content_w, LABEL_COL_W, DEFAULT_CHIP_W) {
+    let slider_h = if slider_with_chip_is_stacked(
+        slider_content_w,
+        ph2d_editor_core::widget::property_label_col_w(m.inner_x, slider_content_w),
+        DEFAULT_CHIP_W,
+    ) {
         m.row_h + SECTION_LABEL_TO_CONTROL_PX + m.row_h
     } else {
         m.row_h
@@ -458,7 +461,7 @@ fn paint_labeled_slider_row(
         Some(&display),
         slider_id,
         chip_id,
-        LABEL_COL_W,
+        ph2d_editor_core::widget::property_label_col_w(rect.x, rect.w),
         DEFAULT_CHIP_W,
         store,
         hit_index,

@@ -61,7 +61,7 @@ use ph2d_i18n::tr;
 use ph2d_tokens::Spacing;
 
 use crate::ids;
-use crate::paint_sections::{BodyCtx, LABEL_COL_W};
+use crate::paint_sections::{BodyCtx, label_col_w};
 
 /// O lado de cada botão de ícone (Play, Desconectar) ao fim da linha da forma.
 const ICON_W: f32 = 28.0; // LITERAL-PX-OK: um botão de ícone quadrado na altura da row
@@ -266,7 +266,12 @@ impl BodyCtx<'_> {
         let gap = Spacing::Xs.px();
         self.label_line_in(
             tr("panel.vector.morph.reached_by"),
-            Rect::new(self.inner_x, y, LABEL_COL_W, self.row_h),
+            Rect::new(
+                self.inner_x,
+                y,
+                label_col_w(self.inner_x, self.inner_w),
+                self.row_h,
+            ),
         );
         // ⚠️ **Vazio mostra o traço, e não uma string vazia.** Uma célula em branco lê-se como um
         // controlo por carregar; o traço diz *"sem tecla, de propósito"*.
@@ -277,9 +282,9 @@ impl BodyCtx<'_> {
         };
         let id = ids::morph_shape_key_button_id(i);
         let r = Rect::new(
-            self.inner_x + LABEL_COL_W + gap,
+            self.inner_x + label_col_w(self.inner_x, self.inner_w) + gap,
             y,
-            (self.inner_w - LABEL_COL_W - gap).max(1.0),
+            (self.inner_w - label_col_w(self.inner_x, self.inner_w) - gap).max(1.0),
             self.row_h,
         );
         // ⚠️ **Registado como DROPDOWN, pintado como BOTÃO** — e a assimetria é o desenho.

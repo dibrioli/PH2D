@@ -34,7 +34,7 @@ const MAX_DAMPING: f32 = 2.0;
 
 use crate::ids;
 use crate::paint_sections::BodyCtx;
-use crate::paint_sections::LABEL_COL_W;
+use crate::paint_sections::label_col_w;
 use crate::state;
 
 impl BodyCtx<'_> {
@@ -279,7 +279,7 @@ impl BodyCtx<'_> {
             self.inner_x,
             y + (self.row_h - TypeToken::Sm.px()) * 0.5,
             TypeToken::Sm.px(),
-            LABEL_COL_W,
+            label_col_w(self.inner_x, self.inner_w),
             resolve(text, self.theme),
         );
 
@@ -287,7 +287,7 @@ impl BodyCtx<'_> {
             return y + self.row_h + Spacing::Xs.px();
         }
 
-        let x0 = self.inner_x + LABEL_COL_W;
+        let x0 = self.inner_x + label_col_w(self.inner_x, self.inner_w);
         let w = (self.inner_x + self.inner_w - x0).max(0.0);
         let gap = Spacing::Xs.px();
         // Um papel vazio tem UM verbo; um gravado tem três. A largura segue a contagem em vez de

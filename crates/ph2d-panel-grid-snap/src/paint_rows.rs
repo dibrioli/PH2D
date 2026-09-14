@@ -4,7 +4,7 @@
 //! `ph2d_editor_core::grid_snap::panel::paint_rows` during ADR-0029
 //! Phase C.4.
 
-use crate::layout::{LABEL_COL_W, LABEL_FONT_SIZE, ROW_H};
+use crate::layout::{LABEL_FONT_SIZE, ROW_H};
 use crate::state::{meters_to_display, unit_suffix_paren};
 use ph2d_editor_core::NodeId;
 use ph2d_editor_core::grid_snap::GridSnapState;
@@ -131,10 +131,12 @@ pub(crate) fn paint_number_row_value(
         x,
         y + (ROW_H - LABEL_FONT_SIZE) * 0.5,
         LABEL_FONT_SIZE,
-        LABEL_COL_W - Spacing::Sm.px(),
+        ph2d_editor_core::widget::property_label_col_w(x, w) - Spacing::Sm.px(),
         resolve(ColorToken::Text1, theme),
     );
-    let input_rect = Rect::new(x + LABEL_COL_W, y, w - LABEL_COL_W, ROW_H);
+    // ⭐ A coluna do rótulo vem da PORTA — ver `property_label_col_w`.
+    let label_w = ph2d_editor_core::widget::property_label_col_w(x, w);
+    let input_rect = Rect::new(x + label_w, y, w - label_w, ROW_H);
     let input = NumberInput::new(id, "", value).visual(visual);
     paint_number_input_with_buffer(
         &input,

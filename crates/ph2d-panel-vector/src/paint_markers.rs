@@ -23,7 +23,7 @@
 //! `push_clip` do scroll o cortaria na borda da seção. O chip só guarda o rect (+ o SLOT,
 //! porque são dois seletores e o passe é um só).
 
-use crate::paint_sections::{BodyCtx, LABEL_COL_W};
+use crate::paint_sections::{BodyCtx, label_col_w};
 use crate::state;
 use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetEvent};
@@ -171,14 +171,14 @@ impl BodyCtx<'_> {
             self.inner_x,
             y + (self.row_h - TypeToken::Sm.px()) * 0.5,
             TypeToken::Sm.px(),
-            LABEL_COL_W,
+            label_col_w(self.inner_x, self.inner_w),
             resolve(ColorToken::Text2, self.theme),
         );
         let id = marker_dd_id(slot);
         let chip = Rect::new(
-            self.inner_x + LABEL_COL_W + gap,
+            self.inner_x + label_col_w(self.inner_x, self.inner_w) + gap,
             y,
-            (self.inner_w - LABEL_COL_W - gap).max(1.0),
+            (self.inner_w - label_col_w(self.inner_x, self.inner_w) - gap).max(1.0),
             self.row_h,
         );
         let open = matches!(

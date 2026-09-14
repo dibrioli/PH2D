@@ -30,22 +30,23 @@ use ph2d_tool_vector::{
 use ph2d_vec_scene::StrokeAlign;
 use ph2d_vector::VectorScene;
 
-/// Label column width for the Width slider row + the Stroke / Fill labels.
+/// **A coluna de RÓTULO** deste painel — a linha do slider de largura, os rótulos de Stroke / Fill,
+/// os chips de token, a fileira de marcadores. Ela **pergunta a porta** desde 2026-09-14.
 ///
-/// ⚠️ **Re-exportado da porta** ([`ph2d_editor_core::panel::LABEL_COL_W`]) desde 2026-09-09: com o
-/// esqueleto em painel próprio são DOIS painéis a alinhar a mesma coluna, e dois números iguais
-/// escritos em sítios diferentes divergem na primeira vez que alguém mexe num deles.
-/// ⏳ **A coluna do rótulo deste painel ainda é um NÚMERO — e é a próxima a converter.**
+/// ⛔⛔ **Era uma constante de `64.0`, e o preço da conversão estava escrito na moeda
+/// errada.** A dívida dizia *«**33 sítios** a usá-la como constante livre, **muitos deles sem o
+/// `y`/`row_h` em alcance**, logo a conversão é uma wave própria e não um `sed`»* — e a largura da
+/// coluna **nunca dependeu do vertical**: a [`ph2d_editor_core::widget::property_label_col_w`]
+/// lê `x` e `w` e mais nada. Os 33 sítios tinham todos o `inner_x`/`inner_w` à mão, porque todos
+/// vivem num método do [`BodyCtx`]. *Um bloqueio afirmado sobre um argumento que o resultado não lê
+/// é um palpite com cara de medição.*
 ///
-/// ⛔ Ela era um re-export da constante do núcleo, e o núcleo passou a **perguntar a porta**
-/// (`ph2d_editor_core::panel::label_col_w`, 2026-09-14). Este painel tem **33 sítios** a usá-la
-/// como constante livre, muitos deles sem o `y`/`row_h` em alcance, logo a conversão é uma wave
-/// própria e não um `sed`.
-///
-/// ⚠️ **Fica com o valor que já tinha**, para que nada mude de aparência aqui enquanto isso não for
-/// feito — e o `the_label_column_is_one_answer` nomeia-o na catraca. *Uma dívida NOMEADA com o
-/// valor de ontem é honesta; uma conversão às cegas em 33 sítios é como se parte um painel.*
-pub(crate) const LABEL_COL_W: f32 = 64.0; // LITERAL-PX-OK: divida nomeada — ver o doc acima
+/// ⚠️ **É uma função e não uma constante de propósito:** a coluna docada é arrastável
+/// (`WidgetStore::DOCK_W_MIN`..`720`), e um número afinado à largura de omissão come o controlo
+/// numa coluna estreita e deixa-o absurdo numa larga.
+pub(crate) fn label_col_w(inner_x: f32, inner_w: f32) -> f32 {
+    ph2d_editor_core::panel::label_col_w(inner_x, inner_w)
+}
 
 /// Per-frame paint context for the Vector Style panel body — the mutable render
 /// targets + the shared layout metrics. Constructed once per frame in
@@ -464,7 +465,7 @@ impl BodyCtx<'_> {
             self.inner_x,
             y + (self.row_h - self.font) * 0.5,
             self.font,
-            LABEL_COL_W,
+            label_col_w(self.inner_x, self.inner_w),
             resolve(ColorToken::Text1, self.theme),
         );
         let fill_swatch_rect = Rect::new(

@@ -17,7 +17,7 @@ use ph2d_i18n::tr;
 use ph2d_tokens::{ColorToken, Spacing, Theme};
 
 use crate::ids;
-use crate::paint_sections::{BodyCtx, LABEL_COL_W};
+use crate::paint_sections::{BodyCtx, label_col_w};
 use crate::state;
 
 /// O rótulo que o chip mostra: a chave do token, ou o travessão de *não preso*.
@@ -100,13 +100,13 @@ impl BodyCtx<'_> {
             self.inner_x,
             y + (self.row_h - self.font) * 0.5,
             self.font,
-            LABEL_COL_W,
+            label_col_w(self.inner_x, self.inner_w),
             ph2d_editor_core::paint::resolve(ColorToken::Text1, self.theme),
         );
         let chip = Rect::new(
-            self.inner_x + LABEL_COL_W + gap,
+            self.inner_x + label_col_w(self.inner_x, self.inner_w) + gap,
             y,
-            (self.inner_w - LABEL_COL_W - gap).max(1.0),
+            (self.inner_w - label_col_w(self.inner_x, self.inner_w) - gap).max(1.0),
             self.row_h,
         );
         let open = matches!(

@@ -467,13 +467,13 @@ impl BodyCtx<'_> {
             self.inner_x,
             y + (self.row_h - self.font) * 0.5,
             self.font,
-            LABEL_COL_W,
+            label_col_w(self.inner_x, self.inner_w),
             resolve(ColorToken::Text1, self.theme),
         );
         let chip = Rect::new(
-            self.inner_x + LABEL_COL_W + gap,
+            self.inner_x + label_col_w(self.inner_x, self.inner_w) + gap,
             y,
-            (self.inner_w - LABEL_COL_W - gap).max(1.0),
+            (self.inner_w - label_col_w(self.inner_x, self.inner_w) - gap).max(1.0),
             self.row_h,
         );
         let open = matches!(

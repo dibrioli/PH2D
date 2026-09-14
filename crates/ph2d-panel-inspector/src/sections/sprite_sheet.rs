@@ -63,13 +63,13 @@ pub(crate) fn paint_sprite_sheet_section(
     };
     let mut cur_y = y + header_h;
 
-    let label_col_w = 78.0_f32; // LITERAL-PX-OK: row-label column width
-    let col_gap = Spacing::Md.px();
-    let field_x = x + label_col_w + col_gap;
-    // A coluna de animação sai da largura ANTES de o campo a repartir — pela porta, e uma vez para
-    // todas as linhas desta secção.
-    let (control_w, _) = ph2d_editor_core::widget::form_row_columns(x, w, y, ROW_H_PX);
-    let field_w = (control_w - label_col_w - col_gap).max(0.0);
+    // ⭐ **As colunas saem da porta** (14/09) — eram `78 px` escritos aqui, uma das SEIS respostas
+    // que o app dava à mesma pergunta. ⛔ Uma largura fixa não sobrevive a arrastar a coluna docada.
+    // ⚠️ Medidas **uma vez** para todas as linhas desta secção, que é o que as mantém alinhadas.
+    let colunas = ph2d_editor_core::widget::property_row_columns(x, w, y, ROW_H_PX);
+    let label_col_w = colunas.label.w;
+    let field_x = colunas.control.x;
+    let field_w = colunas.control.w;
     let number_row = |scene: &mut VectorScene,
                       text_system: &mut TextSystem,
                       hit_index: &mut HitIndex,

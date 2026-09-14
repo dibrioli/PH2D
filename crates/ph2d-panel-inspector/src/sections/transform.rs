@@ -38,7 +38,17 @@ pub(crate) fn paint_transform_section(
 
     let col_gap = Spacing::Md.px();
     let tag_box_gap = Spacing::Xxs.px();
-    let label_col_w = 78.0_f32; // LITERAL-PX-OK: row-label column width
+    // ⭐ **A coluna do rótulo sai da porta** (14/09) — era `78 px` escritos aqui, uma das SEIS
+    // respostas do app à mesma pergunta.
+    //
+    // ⚠️ **Só ESTE número muda: a lei adaptativa desta secção fica intacta.** Ela decide entre
+    // *inline* e *empilhado* comparando a largura com o que dois chips precisam
+    // (`widest_inline_needed_w`, mais abaixo), e essa decisão tem feedback do dono de 2026-05-24
+    // por trás. ⇒ com a coluna a vir da porta, a fronteira entre os dois modos desloca-se um pouco
+    // — que é o certo: ela passa a ser calculada com a coluna que a secção de facto desenha.
+    let label_col_w = ph2d_editor_core::widget::property_row_columns(x, w, y, ROW_H_PX)
+        .label
+        .w;
     let axis_col_w = Spacing::Lg.px();
     let axis_label_font = TypeToken::Base.px();
     // Tighter than SECTION_LABEL_TO_CONTROL_PX (4 px): in narrow

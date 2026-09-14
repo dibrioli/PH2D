@@ -37,9 +37,6 @@ use ph2d_i18n::tr_with;
 /// O rótulo da opção «não montar». ⚠️ É também o que o chip mostra quando nada está montado.
 pub(crate) const MOUNT_NONE_LABEL: &str = "\u{2014}";
 
-/// A largura da coluna do rótulo, igual à da §7 Ordering — as duas linhas de rótulo-mais-chip do
-/// Inspector alinham entre si.
-const LABEL_COL_W: f32 = 96.0; // LITERAL-PX-OK: coluna de rótulo, igual à da §7
 /// Altura de botão do Inspector, igual à de [`super::anchors`].
 const BTN_H: f32 = 30.0; // LITERAL-PX-OK: altura de botão do Inspector
 /// Altura visual de uma checkbox, igual à de [`super::anchors`].
@@ -97,21 +94,21 @@ pub(crate) fn paint_mount_row(
         return y;
     }
     let h = ROW_H_PX;
+    // ⭐ A coluna do rótulo sai da porta (14/09) — era a `LABEL_COL_W` deste ficheiro, cujo próprio
+    // comentário dizia *«igual à da §7»*: uma cópia a prometer que acompanharia outra.
     let font = TypeToken::Sm.px();
-    paint_text(
+    let row = ph2d_editor_core::widget::property_row_columns(x, w, y, h);
+    ph2d_editor_core::paint::paint_text_elided(
         text_system,
         scene,
         tr("panel.inspector.anchors.rides_parent_anchor"),
-        x,
-        y + (h - font) * 0.5,
+        row.label.x,
+        row.label.y + (h - font) * 0.5,
         font,
-        LABEL_COL_W,
+        row.label.w,
         resolve(ColorToken::Text2, theme),
     );
-    let (control_w, dot) = ph2d_editor_core::widget::form_row_columns(x, w, y, h);
-    let chip_x = x + LABEL_COL_W + Spacing::Md.px();
-    let chip_w = (control_w - LABEL_COL_W - Spacing::Md.px()).max(0.0);
-    let rect = Rect::new(chip_x, y, chip_w, h);
+    let (dot, rect) = (row.dot, row.control);
     hit_index.register(ids::INSP_MOUNT_PICK, rect);
 
     // ⚠️ **A verdade é do MODELO; o store só guarda se o popover está aberto.** Um índice vindo do

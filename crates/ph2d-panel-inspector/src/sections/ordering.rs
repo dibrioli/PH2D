@@ -90,24 +90,22 @@ fn number_row(
     id: NodeId,
     label: &str,
 ) -> f32 {
+    // ⭐ **A coluna do rótulo deixou de ser um literal** (14/09): ela era `96 px` escritos aqui, e
+    // a mesma pergunta tinha SEIS respostas no app (`96` · `78` · `84` · `76` · `72` · `150`).
+    // ⛔ Uma largura fixa está errada por construção — a coluna docada é arrastável.
     let h = ROW_H_PX;
-    let label_col_w = 96.0_f32; // LITERAL-PX-OK: §7 row-label column width
-    let gap = Spacing::Md.px();
-    paint_text(
+    let row = ph2d_editor_core::widget::property_row_columns(x, w, y, h);
+    ph2d_editor_core::paint::paint_text_elided(
         text_system,
         scene,
         label,
-        x,
-        y + (h - TypeToken::Sm.px()) * 0.5,
+        row.label.x,
+        row.label.y + (h - TypeToken::Sm.px()) * 0.5,
         TypeToken::Sm.px(),
-        label_col_w,
+        row.label.w,
         label_color(theme),
     );
-    let chip_x = x + label_col_w + gap;
-    // A coluna de animação sai da largura ANTES de os controlos a repartirem — pela porta.
-    let (control_w, dot) = ph2d_editor_core::widget::form_row_columns(x, w, y, h);
-    let chip_w = (control_w - label_col_w - gap).max(0.0);
-    let rect = Rect::new(chip_x, y, chip_w, h);
+    let (dot, rect) = (row.dot, row.control);
     hit_index.register(id, rect);
     let (state, value, buffer, caret, anchor) = read_number_input(store, id);
     let input = NumberInput::new(id, "", value)
@@ -141,24 +139,20 @@ fn layer_row(
     y: f32,
     fallback_idx: usize,
 ) -> f32 {
+    // ⭐ Irmã da row acima: a coluna do rótulo sai da porta, não de um literal.
     let h = ROW_H_PX;
-    let label_col_w = 96.0_f32; // LITERAL-PX-OK: §7 row-label column width
-    let gap = Spacing::Md.px();
-    paint_text(
+    let row = ph2d_editor_core::widget::property_row_columns(x, w, y, h);
+    ph2d_editor_core::paint::paint_text_elided(
         text_system,
         scene,
         tr("panel.inspector.ordering.sorting_layer"),
-        x,
-        y + (h - TypeToken::Sm.px()) * 0.5,
+        row.label.x,
+        row.label.y + (h - TypeToken::Sm.px()) * 0.5,
         TypeToken::Sm.px(),
-        label_col_w,
+        row.label.w,
         label_color(theme),
     );
-    let chip_x = x + label_col_w + gap;
-    // A coluna de animação sai da largura ANTES de os controlos a repartirem — pela porta.
-    let (control_w, dot) = ph2d_editor_core::widget::form_row_columns(x, w, y, h);
-    let chip_w = (control_w - label_col_w - gap).max(0.0);
-    let rect = Rect::new(chip_x, y, chip_w, h);
+    let (dot, rect) = (row.dot, row.control);
     hit_index.register(ids::INSP_ORDER_SORTING_LAYER, rect);
     let (open, sel) = match store.get(ids::INSP_ORDER_SORTING_LAYER) {
         Some(InteractiveState::Dropdown {

@@ -761,11 +761,14 @@ fn every_player_control_carries_a_hover_hint() {
     //
     // ⚠️ Nenhuma OUTRA seção do Inspector dá dica a estes três, então exigi-la
     // aqui seria esta seção a legislar para o painel inteiro.
-    let chrome: [(&str, ph2d_a11y::NodeId); 3] = [
-        (
-            "o scrollbar do Inspector (ele nasce porque a §14 estica o painel)",
-            ph2d_editor_core::widget::INSPECTOR_SCROLLBAR_ID,
-        ),
+    // ⭐⭐ **O scrollbar SAIU desta lista em 2026-09-14, e a metade de obsolescência foi quem o
+    // tirou.** A isenção dizia *«ele nasce porque a §14 estica o painel»* — e quando o rótulo das
+    // rows passou a ficar à ESQUERDA (`widget::property_row_columns`), cada linha do Inspector
+    // encolheu ~16 px, a §14 deixou de esticar o painel para além da altura dele, e o scrollbar
+    // deixou de nascer. O gate reprovou a dizer *«isenção STALE»*, que é exactamente o trabalho
+    // dela. ⇒ *a prova de que a conversão encurtou o painel não foi uma medição minha: foi uma
+    // isenção a deixar de descrever alguma coisa.*
+    let chrome: [(&str, ph2d_a11y::NodeId); 2] = [
         ("o cabecalho da secao", ids::INSP_LIVE_PLAYER_SECTION),
         ("o circulo de cor do cabecalho", ids::INSP_LIVE_PLAYER_COLOR),
     ];

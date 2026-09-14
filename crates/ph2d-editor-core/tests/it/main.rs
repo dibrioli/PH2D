@@ -105,6 +105,7 @@ mod the_input_map_window_binds_a_key;
 mod the_input_map_window_is_painted_where_it_says;
 mod the_inspector_is_open_when_the_app_opens;
 mod the_intent_drain_reaches_every_variant;
+mod the_label_column_is_one_answer;
 mod the_look_is_a_widget_skin_never_an_area_model;
 mod the_menu_bar_relocates_the_verbs_it_shows;
 mod the_modern_family_paints_fewer_frames;

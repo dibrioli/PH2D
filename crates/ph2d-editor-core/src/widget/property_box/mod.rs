@@ -245,6 +245,80 @@ pub fn form_row_columns(x: f32, w: f32, row_y: f32, row_h: f32) -> (f32, Rect) {
     )
 }
 
+/// ⭐⭐⭐ **A LINHA DE PROPRIEDADE — rótulo à ESQUERDA, controlo à direita, e é UMA lei.**
+///
+/// ⛔⛔ **Report do dono, 2026-09-14, com duas fotos:** *«Label acima do campo numérico! Muito
+/// ruim!»* (a secção LEG do Platform Player) e *«número na frente da label»* (a Sprite Sheet).
+/// Medido no mesmo dia: só o Inspector tinha **cinco** pintores de «rótulo + campo numérico» —
+/// dois empilhavam o rótulo (`sections/rows::num_row`, `sections/visibility::number_row`) e três
+/// punham-no à esquerda —, e a largura da coluna do rótulo tinha **SEIS** respostas em todo o app,
+/// cada uma um literal com dispensa: `96` · `78` · `84` · `76` · `72` · `150`.
+///
+/// ⭐ **E o doc da [`form_row_columns`], aqui ao lado, já nomeava esta família como a que não tinha
+/// porta:** *«a terceira — rótulo à esquerda + campos numéricos soltos … é construída à mão em cada
+/// painel, com a sua própria aritmética de larguras»*. Esta é essa porta.
+///
+/// # ⛔ Uma largura FIXA está errada por construção, e a prova não é de gosto
+///
+/// A coluna docada é **arrastável** (`WidgetStore::DOCK_W_MIN`..`720`). Um rótulo de `96 px` numa
+/// coluna aberta a `720` deixa o controlo com `600` — e na largura mínima ele come a linha inteira.
+/// *Os seis literais não são seis gostos: são seis leituras da MESMA coluna à largura de omissão.*
+/// ⇒ a coluna do rótulo é uma **fracção** da linha.
+///
+/// # A fracção é MEDIDA, não escolhida
+///
+/// `LABEL_COL_FRAC` reproduz o literal que a casa mais escreve (`96`, em 3 dos 6 sítios) à largura
+/// REAL de uma linha do Inspector: `304` (token `inspector-w`) − `2×8` (recuo do painel) − `2×6`
+/// (recuo do cartão) = **276 px**, e `96 / 276 = 0,348`. ⚠️ **O número não é uma opinião sobre
+/// quanto um rótulo precisa — é a resposta que já estava no produto, escrita de uma forma que não
+/// sobrevive a um arrasto.**
+///
+/// # O tecto tem RECURSO, e o recurso é o CONTROLO
+///
+/// Um rótulo não pode crescer até o campo deixar de ser usável: o piso do controlo é
+/// [`ph2d_tokens::ICON_BTN_SIZE_PX`] — a largura de um botão de ícone, que é o que a coluna do
+/// *stepper* de um `NumberInput` ocupa — **mais um dígito**. Abaixo disso o campo deixa de ter onde
+/// pôr o valor (§0.0: *um limite legítimo diz de que recurso ele é*).
+///
+/// ⚠️ **O vão horizontal `rótulo → controlo` é [`Spacing::Md`] (8) porque é o que a casa já
+/// responde** em 3 dos sítios — e ⏳ **ele NÃO tem derivação**: é a única grandeza desta porta sem
+/// origem no modelo, e fica NOMEADA como dívida em vez de fingir-se lei. *Um número que a porta
+/// centraliza pode ser corrigido num sítio; um espalhado por seis, não.*
+///
+/// ⚠️ **O ponto da coluna de animação continua a sair da [`form_row_columns`]** — esta porta
+/// COMPÕE com ela e não repete a subtracção do [`DECORATOR_W`]. *Duas portas a responder ao mesmo
+/// `x` é a forma que esta casa acabou de pagar seis vezes.*
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct PropertyRow {
+    /// Onde o rótulo é pintado — alinhado ao centro vertical da linha, elidido se não couber.
+    pub label: Rect,
+    /// Onde o controlo (campo, chip, selector) é pintado.
+    pub control: Rect,
+    /// A coluna de animação, já reservada — passe-a ao [`paint_decorator_dot`].
+    pub dot: Rect,
+}
+
+/// A fracção da linha que o rótulo ocupa — ver [`PropertyRow`] para a medição.
+const LABEL_COL_FRAC: f32 = 0.348; // LITERAL-PX-OK: nao e' px, e' a RAZAO MEDIDA 96/276 (96 = a resposta que 3 dos 6 sitios escreviam; 276 = a largura real de uma linha do Inspector: 304 do token `inspector-w` menos 2x8 de recuo do painel e 2x6 do cartao)
+
+/// ⭐⭐⭐ **A porta de uma linha de propriedade** — ver [`PropertyRow`].
+#[must_use]
+pub fn property_row_columns(x: f32, w: f32, row_y: f32, row_h: f32) -> PropertyRow {
+    let (usable_w, dot) = form_row_columns(x, w, row_y, row_h);
+    let gap = Spacing::Md.px();
+    // ⛔ O piso do CONTROLO é o recurso — ver o doc de [`PropertyRow`].
+    let control_min = ph2d_tokens::ICON_BTN_SIZE_PX + Spacing::Lg.px();
+    let label_w = (usable_w * LABEL_COL_FRAC).min((usable_w - gap - control_min).max(0.0));
+    let label_w = label_w.max(0.0);
+    let control_x = x + label_w + gap;
+    let control_w = (usable_w - label_w - gap).max(1.0);
+    PropertyRow {
+        label: Rect::new(x, row_y, label_w, row_h),
+        control: Rect::new(control_x, row_y, control_w, row_h),
+        dot,
+    }
+}
+
 /// ⭐ **A porta da coluna de animação para quem NÃO usa a caixa única.**
 ///
 /// ⚠️ Ela existe porque o app tem **três** famílias de linha de formulário, e só duas passam por

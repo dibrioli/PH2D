@@ -29,23 +29,22 @@ fn number_row(
     label: &str,
     id: NodeId,
 ) -> f32 {
+    // ⭐ **Rótulo à ESQUERDA, pela porta** (report do dono, 14/09) — esta era a SEGUNDA das duas
+    // funções do Inspector que empilhavam o rótulo, gémea da `sections/rows::num_row`.
     let h = ROW_H_PX;
+    let row = ph2d_editor_core::widget::property_row_columns(x, w, y, h);
     let label_font = TypeToken::Sm.px();
-    let label_h = label_font + Spacing::Xs.px();
-    paint_text(
+    ph2d_editor_core::paint::paint_text_elided(
         text_system,
         scene,
         label,
-        x,
-        y + (label_h - label_font) * 0.5,
+        row.label.x,
+        row.label.y + (row.label.h - label_font) * 0.5,
         label_font,
-        w,
+        row.label.w,
         resolve(ColorToken::Text2, theme),
     );
-    let row_y = y + label_h;
-    let (control_w, dot) = ph2d_editor_core::widget::form_row_columns(x, w, row_y, h);
-    let rect = Rect::new(x, row_y, control_w, h);
-    hit_index.register(id, rect);
+    hit_index.register(id, row.control);
     let (state, value, buffer, caret, anchor) = read_number_input(store, id);
     let input = NumberInput::new(id, "", value)
         .step(0.1) // LITERAL-PX-OK: cutoff/rect step
@@ -55,13 +54,13 @@ fn number_row(
         Some(buffer),
         caret,
         anchor,
-        rect,
+        row.control,
         scene,
         text_system,
         theme,
     );
-    ph2d_editor_core::widget::paint_decorator_dot(scene, theme, dot);
-    row_y + h + Spacing::Sm.px()
+    ph2d_editor_core::widget::paint_decorator_dot(scene, theme, row.dot);
+    y + h + ph2d_tokens::control_gap_px()
 }
 
 /// Paint a 3-tab segmented control (label above), registering each tab's

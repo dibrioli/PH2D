@@ -25,16 +25,25 @@ pub(super) fn seg_row(
     labels: &[&str],
     selected: u8,
 ) -> f32 {
+    // ⭐⭐ **Irmã da [`num_row`]: o rótulo fica à ESQUERDA, pela mesma porta.** Convertê-la no mesmo
+    // commit não é zelo — ela e a `num_row` partilham as mesmas secções, e deixar uma à esquerda e a
+    // outra por cima **é** a queixa do dono («muito ruim!») uma linha mais abaixo.
+    //
+    // ⚠️ **O controlo REFLUI e a coluna do rótulo não:** com três opções compridas
+    // (*Dynamic · Static · Kinematic*) o grupo segmentado quebra em mais de uma fileira dentro da
+    // coluna dele — e é por isso que a altura devolvida é a do que ele de facto ocupou
+    // (`seg_h`), nunca `ROW_H_PX`. *O que mantém a secção legível é a coluna da esquerda estar
+    // sempre no mesmo `x`; o lado direito pode crescer.*
+    let row = ph2d_editor_core::widget::property_row_columns(x, w, y, ROW_H_PX);
     let label_font = TypeToken::Sm.px();
-    let label_h = label_font + Spacing::Xs.px();
-    paint_text(
+    ph2d_editor_core::paint::paint_text_elided(
         text_system,
         scene,
         label,
-        x,
-        y + (label_h - label_font) * 0.5,
+        row.label.x,
+        row.label.y + (row.label.h - label_font) * 0.5,
         label_font,
-        w,
+        row.label.w,
         resolve(ColorToken::Text2, theme),
     );
     let seg = SegmentedAdaptive::new(
@@ -47,29 +56,31 @@ pub(super) fn seg_row(
             .collect(),
     )
     .selected((selected as usize).min(labels.len() - 1));
-    let (control_w, dot) = ph2d_editor_core::widget::form_row_columns(x, w, y + label_h, ROW_H_PX);
     let seg_h = paint_segmented_adaptive(
         &seg,
-        Rect::new(x, y + label_h, control_w, ROW_H_PX),
+        row.control,
         scene,
         text_system,
         theme,
         store,
         hit_index,
     );
-    ph2d_editor_core::widget::paint_decorator_dot(scene, theme, dot);
-    y + label_h + seg_h + ph2d_tokens::control_gap_px()
+    ph2d_editor_core::widget::paint_decorator_dot(scene, theme, row.dot);
+    y + seg_h.max(ROW_H_PX) + ph2d_tokens::control_gap_px()
 }
 
-/// A altura que uma [`num_row`] consome — rótulo + caixa + respiro.
+/// A altura que uma [`num_row`] consome — **uma linha**.
 ///
 /// ⚠️ Existe porque o **card** (`card_frame`) precisa saber quanto medir ANTES
 /// de as rows serem pintadas, e uma segunda cópia dessa aritmética é como uma
 /// moldura passa a não caber no que ela emoldura: a próxima seção pintaria por
 /// cima das caixas. Uma régua, dois consumidores — o mesmo argumento do
 /// `segmented_row_counts` do Painter.
+/// ⚠️ **Encolheu em 2026-09-14** — de `rótulo + caixa + respiro` para **o passo de uma linha**.
+/// O rótulo deixou de ter faixa própria (ele é a coluna da esquerda, pela
+/// `widget::property_row_columns`), logo uma row mede uma LINHA, como em todo painel desta casa.
 pub(super) fn num_row_h() -> f32 {
-    TypeToken::Sm.px() + Spacing::Xs.px() + ph2d_tokens::row_pitch_px()
+    ph2d_tokens::row_pitch_px()
 }
 
 /// Quanto um card **inteiro** mede.
@@ -98,8 +109,9 @@ pub(crate) fn card_pitch(n_rows: usize) -> f32 {
 ///
 /// ⚠️ **Molde do card do Painter** (`ph2d-panel-painter-layers::card_frame`), e
 /// não uma invenção: é a caixa em que este app já diz *"estes números são um
-/// assunto só"*. O que muda é a régua da linha — lá o rótulo fica à ESQUERDA da
-/// caixa, aqui ele fica ACIMA dela, que é a forma de row do Inspector inteiro.
+/// assunto só"*. ⚠️ **E desde 2026-09-14 a régua da linha é a MESMA dos dois lados**: o rótulo fica
+/// à ESQUERDA aqui também, pela `widget::property_row_columns`. *Esta nota dizia o contrário — ela
+/// é de quando o Inspector era a excepção, e o report do dono fechou essa excepção.*
 #[allow(clippy::too_many_arguments)]
 pub(super) fn card_frame(
     scene: &mut VectorScene,
@@ -169,27 +181,29 @@ pub(super) fn num_row(
     label: &str,
     id: NodeId,
 ) -> f32 {
+    // ⭐⭐⭐ **O rótulo fica à ESQUERDA, pela porta** — report do dono, 2026-09-14, com foto da
+    // secção LEG do Platform Player: *«Label acima do campo numérico! Muito ruim!»*. Até aqui esta
+    // função empilhava (uma faixa só para o rótulo, o campo por baixo em largura cheia) e era a
+    // única das cinco do Inspector com o campo a ocupar a linha inteira.
+    //
+    // ⚠️ **A altura de uma row cai de `label_h + passo` para o PASSO** (~16 px por linha), e é por
+    // isso que a [`num_row_h`] encolheu no mesmo commit: a `card_h` deriva dela, e as duas têm de
+    // continuar a ser a mesma resposta — senão a moldura do card nasce por cima das caixas.
+    let row = ph2d_editor_core::widget::property_row_columns(x, w, y, ROW_H_PX);
     let label_font = TypeToken::Sm.px();
-    let label_h = label_font + Spacing::Xs.px();
-    paint_text(
+    // ⚠️ **ELIDIDO, nunca transbordado:** a coluna do rótulo é uma FRACÇÃO da linha (a coluna
+    // docada é arrastável), logo um rótulo comprido numa coluna estreita passaria por cima do campo.
+    ph2d_editor_core::paint::paint_text_elided(
         text_system,
         scene,
         label,
-        x,
-        y + (label_h - label_font) * 0.5,
+        row.label.x,
+        row.label.y + (row.label.h - label_font) * 0.5,
         label_font,
-        w,
+        row.label.w,
         resolve(ColorToken::Text2, theme),
     );
-    // ⚠️ A régua da altura é a `num_row_h`, e ela é PERGUNTADA — o `card_frame`
-    // mede com a mesma função, então a moldura não pode deixar de caber.
-    debug_assert!((num_row_h() - (label_h + ph2d_tokens::row_pitch_px())).abs() < 1.0e-3);
-    let row_y = y + label_h;
-    // A coluna de animação, pela porta — ver `widget::form_row_columns`. ⚠️ Nestas linhas o rótulo
-    // fica ACIMA do controlo, então o ponto alinha-se com a **caixa**, que é onde o valor está.
-    let (control_w, dot) = ph2d_editor_core::widget::form_row_columns(x, w, row_y, ROW_H_PX);
-    let rect = Rect::new(x, row_y, control_w, ROW_H_PX);
-    hit_index.register(id, rect);
+    hit_index.register(id, row.control);
     let (state, value, buffer, caret, anchor) = read_number_input(store, id);
     let input = NumberInput::new(id, "", value).visual((state, store.hover_live(id)));
     paint_number_input_with_buffer(
@@ -197,11 +211,11 @@ pub(super) fn num_row(
         Some(buffer),
         caret,
         anchor,
-        rect,
+        row.control,
         scene,
         text_system,
         theme,
     );
-    ph2d_editor_core::widget::paint_decorator_dot(scene, theme, dot);
-    row_y + ph2d_tokens::row_pitch_px()
+    ph2d_editor_core::widget::paint_decorator_dot(scene, theme, row.dot);
+    y + ph2d_tokens::row_pitch_px()
 }

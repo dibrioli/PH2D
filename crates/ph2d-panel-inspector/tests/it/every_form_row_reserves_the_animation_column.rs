@@ -30,8 +30,14 @@ const ROW_PAINTERS: &[&str] = &[
     "paint_text_input_with_buffer",
 ];
 
-/// A porta: quem a chama reserva a coluna e sabe onde pôr o ponto.
-const DOOR: &str = "form_row_columns";
+/// As portas: quem chama uma delas reserva a coluna e sabe onde pôr o ponto.
+///
+/// ⚠️ **São DUAS desde 2026-09-14, e a segunda COMPÕE com a primeira** — a
+/// `widget::property_row_columns` (a linha de propriedade: rótulo à esquerda, controlo à direita)
+/// chama a `form_row_columns` por dentro e devolve o mesmo `dot`. ⛔ *Uma régua que procura só o
+/// nome da porta antiga acusa quem passou a usar a nova*, que foi exactamente o que ela fez ao
+/// `sections/rows.rs` no commit da conversão.
+const DOORS: [&str; 2] = ["form_row_columns", "property_row_columns"];
 
 /// ⏳ **Dívida MEDIDA, e só encolhe.** Cada ficheiro aqui pinta pelo menos um controlo de
 /// formulário e ainda não reserva a coluna — ou seja, as linhas dele aparecem ao artista **sem o
@@ -111,7 +117,7 @@ fn census() -> Vec<(String, bool)> {
             .and_then(|n| n.to_str())
             .expect("nome utf-8")
             .to_string();
-        out.push((name, painting.contains(DOOR)));
+        out.push((name, DOORS.iter().any(|d| painting.contains(d))));
     }
     out.sort();
     out

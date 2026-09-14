@@ -706,6 +706,107 @@ três taxas só existem para a rotação). Declarada e censada. ⇒ o censo do �
 
 ---
 
+## ✅ R-PRÉ — 5.ª passagem (2026-09-13): **ATESTA**
+
+**Veredito: auditada contra §4.2 por R-pré em 2026-09-13. A janela que implementa pode abrir.**
+
+⚠️ **A parede foi auditada DO ZERO, não herdada.** O «limpo» da 4.ª passagem não foi assumido: o
+diff `a0320e869` mexeu em **111** linhas da espec, e *toda linha nova é população nova*.
+
+### O que a parede mediu
+
+| lente | resultado |
+|---|---|
+| **§4.2 à mão**, documento inteiro (identificador · grafia interna · prosa traduzida · pseudo-código espelhado) | **zero violações** |
+| `cleanroom-sweep.sh` sobre a espec **e** as 85 fixturas | **verde**, 137 entradas |
+| **controlo positivo re-corrido por este R** (`--git-history` sobre o path da espec) | **`5` achados** no histórico (conteúdo da v1) · **`0`** no HEAD ⇒ o instrumento está armado |
+| ⭐ **lente extra: *case-insensitive*** (o ponto cego **nomeado e não curado** do instrumento) | **`0`** |
+| ⭐ **lente extra: de-acentuada** (a cegueira que a obra já pagou) | **`0`** |
+| **composição da vassoura** (a alegação «duas línguas», conferida e não aceite) | `137` entradas = `86` identificadores de ~21 caracteres + `51` frases, `15` acentuadas ⇒ **bilingue de facto** |
+| **denylist honrada pelo próprio documento** | as `22` URLs são **todas** a forma permitida `/issues/<n>`; `0` de fonte/commit/raw, `0` caminho de ficheiro do alvo |
+
+⚠️ *A caixa não escondeu nada **aqui**, e isso é uma medição — não uma razão para a deixar por curar.*
+
+### As 5 curas, conferidas contra o diff
+
+| # | o que o R da 4.ª pediu | veredito |
+|---|---|---|
+| 1 | a promessa viva em **dois títulos** (§8, §11) | ✅ **curada, e pela forma**: varri **todos** os títulos do documento — **nenhum** carrega promessa |
+| 2 | §1.4, proveniência **circular** e número errado | ✅ **curada**, e a premissa dela **verificada por mim no README do harness** (*«todos os parâmetros reescritos»*, verbatim). Re-contei: `ancorado 64/69`, `trava 68/69` — correctos |
+| 3 | §7.2 rotulava de observável o que não discrimina | ✅ **curada nas duas metades** (a LEI passa a ser o requisito, o MECANISMO fica livre, e a linha entrou no censo) |
+| 4 | determinismo como **facto** em três sítios | ✅ **curado nos três** (§4 ×2, §12), com a reserva a viajar com a afirmação |
+| 5 | lista `10, 10a, 10c, 10b` | ✅ **renumerada `1..19`**, e **toda `§N.M` resolve** (só `4.2`/`4.3`/`8.1` apontam para fora — para a SKILL, correctamente) |
+
+### O censo do §12.4 (`6 → 10`) — auditado linha a linha contra os cabeçalhos das 69
+
+⭐⭐ **As 10 linhas estão HONESTAS; ZERO fabricadas.** *Um censo que o próprio autor alargou é onde
+uma linha honesta e uma decorativa se leem igual* — por isso cada ausência foi medida, não lida:
+
+| linha nova | como a verifiquei | veredito |
+|---|---|---|
+| simetria **radial** (§8) | censo das chaves dos 69 cabeçalhos | ✅ **real** — só existe a chave de X; a radial **não existe** em nenhum |
+| **outros modos sem memória de evento** (§5.1-bis) | modo + inversão de **cada** fixtura de taxa ≠ 12 | ✅ **real** — as `6` (`4ev`/`36ev`) são **todas** de rotação com a inversão **desligada** |
+| **default** de ancorado/trava (§1.4) | re-contagem + README do harness | ✅ **real** — `64/69` e `68/69`, e o cabeçalho é ENTRADA |
+| **preferência pelo rebase** (§7.2) | argumento de construção | ✅ **honesta** — indiscriminável por construção, e a espec di-lo |
+
+### ⏳ O que fica: 2 achados, **NÃO bloqueantes**, **ZERO §4.2**
+
+⚠️⚠️ **É a espécie da promessa pela QUARTA vez seguida — e desta vez não num título, numa
+ABERTURA.** A lição da emenda 4 (*«cura-se pela FORMA, não pelo endereço»*) está certa e ainda não
+foi levada até ao fim: a varredura por forma procurou *«medido/medidas/observável»* e **não
+perguntou onde o documento usa a palavra «Requisito»**.
+
+**1 — a abertura do §8 rotula de «Requisito observável» o que o §7.2 acabou de declarar não
+observável.** A regra que a cura 3 escreveu é *«uma proposição sobre a ausência de um passo interno
+do alvo não discrimina, logo não é observável e não é requisito»*; a abertura do §8 afirma que *as
+passagens seguintes não produzem deslocamento nenhum* — a mesma forma — e chama-lhe requisito
+observável. Falta-lhe a linha no §12.4. ⚠️ **A cura da 4.ª passagem tocou a linha imediatamente
+ABAIXO desta** (`Consequências, as três medidas` → `duas medidas…`) e não a abertura.
+⭐ **MEDIDO, e é o que fecha o achado:** as `5` fixturas de simetria correm **todas** na figura, e
+essa malha é **exactamente espelhada em X** — `0` de `4 930` vértices sem parceiro. Numa malha
+espelhada, uma passagem só e uma re-passagem por eixo dão a **mesma** saída **por construção** (a
+re-passagem reconstruiria a cadeia a partir do cursor espelhado, que é precisamente o que o
+espelhamento por octante já produz) ⇒ **o corpus não pode refutar o contrário**. Numa malha
+assimétrica poderia — e o corpus não tem nenhuma com simetria activa.
+*Cura: tirar o rótulo «observável» e acrescentar a linha ao §12.4. Uma edição, zero medição nova.*
+⛔ **Não é risco de produto:** a afirmação é quase de certeza **verdadeira** do alvo (a maquinaria
+dos 8 octantes do §6 só faz sentido com uma passagem), e um implementador que a siga constrói o
+desenho certo. O defeito é o **rótulo sobrestimar a evidência**, que é exactamente o que o §12.4
+existe para arrumar.
+
+**2 — a frase-guarda-chuva do §1.1 promete à coluna inteira o estatuto que duas células já não
+têm.** *«As faixas e as omissões abaixo são factos observados da interface pública do alvo, não
+escolhas nossas»* governa uma tabela em que as células de **ancorado** e **trava** remetem para o
+§1.4 — que entrega *«não medido»* e uma **recomendação NOSSA**. ⚠️ **A metade da proveniência está
+SÃ e conferi-a:** as faixas e as omissões **cruas** têm origem registada neste ledger (as
+declarações públicas do alvo, lidas pelo E) ⇒ isto é desencontro de **redacção**, não buraco de
+proveniência, e é por isso que é o menor dos dois. *Cura: uma oração a ressalvar as duas células.*
+
+### Conferido e limpo — para não reabrir
+
+- **§4.2 sem uma violação**, com a população nova varrida à parte;
+- o **pseudo-código sequencial** que a 3.ª passagem matou (§5.1) continua morto: aquilo é hoje uma
+  **tabela de estado exigido**, declarativa, não uma sequência de atribuições;
+- a **matemática** do §6/§7.1 é matemática (§4.1.2), e o §7.1 declara por escrito que a espec **não**
+  prescreve armazenamento nem factorização — a cura da 3.ª passagem segura;
+- as **nove leis de atenuação** são o vocabulário **da casa**: confirmei-as no `falloff.rs`, onde já
+  viviam antes desta obra, e a conta `9 + 1 + 2 = 12` do `Falloff::ALL` fecha;
+- a **proveniência das fixturas** (malhas nossas, geradas pelo harness; zero asset do alvo) e o
+  corpus a bater o §14: **69** finais + **11** por evento = os `80` que a espec promete, em 85
+  ficheiros com as 3 malhas e o índice;
+- a armadilha que a 4.ª passagem registou **confirma-se**: `suavizacoes_do_peso` tem **três** valores
+  distintos nos cabeçalhos (`4`, `10`, `0`) e **um** nome de ficheiro ⇒ *o instrumento é o cabeçalho,
+  nunca o nome*.
+
+⚠️ **Achado de PROTOCOLO que a 4.ª passagem deixou e eu confirmo, para o R-pós:** o §7.2 da SKILL põe
+a barra do fechamento em *«zero hits sobre a árvore rastreada»* e o **ledger vive na árvore** — e o
+§6 **obriga** este ledger a registar a cobertura da travessia por caminho de ficheiro do alvo (tabela
+acima). As duas exigências **não são satisfazíveis ao mesmo tempo**: o R-pós tem de **escolher e
+declarar** qual honra (o caminho previsível é excluir `cleanroom/LEDGER_*` do sweep de árvore, com a
+exclusão escrita). ⛔ Não é defeito desta espec.
+
+---
+
 ## Incidentes
 
 *(vazio)*

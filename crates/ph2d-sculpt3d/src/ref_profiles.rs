@@ -19,8 +19,8 @@ use crate::ref_mode::{RefMode, StrengthCurve};
 /// **O que uma referência DECLARA sobre um verbo.**
 ///
 /// ⚠️ **A struct CRESCE wave a wave, e um campo só entra com o consumidor
-/// dele.** Os campos da metade imperativa (`front_face`, `hardness`,
-/// `normal_radius_factor`, `strength_curve`, `plane_side`, …) chegam junto com
+/// dele.** Os campos da metade imperativa (a lei de face frontal, a dureza, a
+/// fracção do raio da normal, a curva da força, o lado do plano, …) chegam com
 /// os kernels que os leem — um campo que ninguém lê é estado morto, e este repo
 /// varre isso a cada wave.
 ///
@@ -38,7 +38,7 @@ pub struct VerbProfile {
     /// número"*, porque um pincel zero-inicializado lá cai na curva **custom**.
     /// ⚠️ **O oráculo executável refutou a premissa:**
     /// um pincel não nasce zero-inicializado, nasce do arquivo de startup, e o
-    /// Blender 5.2 a correr reporta `curve_distance_falloff_preset = SMOOTH`
+    /// binário 5.2 **a correr** reporta a curva SUAVE como preset de fábrica,
     /// depositando a analítica (ver [`super::profile_b`]). A tabela por-TOOL —
     /// a força e o raio de fábrica do Clay Strips — essa **continua** sem fonte:
     /// desde o 4.3 ela vive num `.blend` binário de assets.
@@ -289,7 +289,7 @@ impl Verb {
 /// custom (*"nenhuma das nove"*); o oráculo executável
 /// (`docs/3D/ferramentas/blender_sculpt_oracle.py`, Blender 5.2 com GUI —
 /// em `--background` o `region.data` é nulo e o sculpt segfaulta) reporta
-/// `curve_distance_falloff_preset = SMOOTH` e **deposita a analítica**: a
+/// a curva SUAVE como preset de fábrica e **deposita a analítica**: a
 /// `r/R = 0,258` o vértice move `0,417503` de um pico de `0,5` ⇒ razão
 /// **0,835**, contra **0,8348** de `3u² − 2u³` e **0,94** do spline de quatro
 /// pontos que a leitura estática previa. ⇒ [`Falloff::Smooth`], que desde

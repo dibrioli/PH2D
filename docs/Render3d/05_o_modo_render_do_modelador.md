@@ -1141,6 +1141,22 @@ zero** — a guarda **observa** a álgebra, não a muda. Um `<= 0.0` **mudaria**
 luminância negativa, e a `ph2d-material` é o **port fiel** do GLSL de referência: uma entrada fora da
 faixa da nodedef é assunto de quem autora, não desta lei.
 
+⭐⭐ **E o que ela poupa foi MEDIDO no quadro inteiro**, com o A/B que a isola: o segundo ponto é
+`f32::MIN_POSITIVE`, cuja luminância percorre o corpo **inteiro** da `emission` e acrescenta ao pixel
+uma radiância de `1e-38`. *A imagem é a mesma; a diferença de relógio é exactamente o ramo que a
+guarda salta.* ⛔ Comparar com um brilho de `1,0` mediria *«o que um material aceso custa»*, que é
+outra pergunta — e um A/B de **build** não cabe numa corrida, enquanto um A/B de **entrada** cabe.
+
+| corrida (mín. de 7, `load ~26`) | com guarda | sem ela | poupança |
+|---|---|---|---|
+| 1 | `1,78 ms` | `1,93 ms` | **`7,6 %`** |
+| 2 | `1,82 ms` | `1,94 ms` | `5,8 %` |
+| 3 | `1,81 ms` | `1,93 ms` | `6,2 %` |
+
+⚠️ **E um brilho de verdade custa o mesmo que não ter guarda** (`1,89`–`1,92 ms`), que é a confirmação
+de que o A/B mede o ramo e não a luz: *quem usa o brilho paga-o; quem não usa deixou de pagar.* O
+número corrobora a estimativa de `4,6 %` da §8, medida por amostra noutra fixtura.
+
 ⛔⛔ **E o PREÇO da guarda não tem gate, por medição.** Um gate sobre a resposta é cego ao preço
 (`CLAUDE.md` §5.0), e a cura que a wave anterior usou — um contador (`POINT_TAPES`) — **não serve
 aqui**: aquele conta uma **compilação de fita**, que é rara; este contaria uma **amostra**, e um

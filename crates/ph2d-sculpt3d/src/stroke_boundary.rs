@@ -51,6 +51,25 @@ struct Passagem {
 }
 
 impl crate::SculptStroke {
+    /// A estrutura **viva** do traço a decorrer, o censo dela e as posições de
+    /// repouso — o que o indicador precisa para desenhar de graça.
+    ///
+    /// ⚠️ **A primeira passagem, e não uma por eixo de espelho:** a figura
+    /// descreve o gesto que a mão está a fazer; as passagens reflectidas são a
+    /// mesma lei noutro sítio, e desenhá-las todas poria linhas sob o cursor que
+    /// não respondem a ele. Vazio quando o traço foi recusado em todas.
+    pub(crate) fn boundary_sessao_viva(
+        &self,
+    ) -> Option<(
+        &ph2d_boundary::Contorno,
+        &ph2d_boundary::Topologia,
+        &[[f32; 3]],
+    )> {
+        let s = self.boundary.as_ref()?;
+        let p = s.passagens.first()?;
+        Some((&p.contorno, &s.topo, &s.p0))
+    }
+
     /// Um evento de contorno. Devolve quantos vértices se moveram.
     pub(super) fn boundary_dab(
         &mut self,
@@ -149,7 +168,22 @@ impl crate::SculptStroke {
             mesh.faces().iter().map(Face::verts),
             &escondido,
         );
-        let curva = |p: f32| brush.falloff.weight(p);
+        // ⚠️⚠️ **`1 − p`, e a inversão é a LEI — não um sinal trocado.** As duas
+        // casas escrevem a mesma curva com argumentos OPOSTOS, e as duas estão
+        // certas em casa: para a [`ph2d_boundary::Curva`] o argumento é *quanto
+        // FALTA* (`1 − anel/K`, portanto `1` **na borda**), e para o
+        // [`crate::Falloff::weight`] é *quanto já se ANDOU* (`d/R`, portanto `0`
+        // no centro do carimbo). Ligadas sem esta linha, o peso na borda lê
+        // `curva(1) = 0`: a boca fica **parada** e o miolo dobra — o report do
+        // dono de 2026-09-14, medido na coluna do cursor como
+        // `0 · 0,126 · 0,332 · 0,452 · 0,440 · 0,330 · 0,172 · 0`, uma CORCOVA
+        // onde tem de haver uma rampa.
+        //
+        // ⛔ **O corpus não o apanhava e não podia:** as 61 fixturas correm a
+        // crate **directamente**, com a convenção dela — `51 de 61` fecharam
+        // sobre esta ponte partida. *Uma paridade medida a montante de uma
+        // conversão não afirma nada sobre a conversão.*
+        let curva = |p: f32| brush.falloff.weight(1.0 - p);
         let curva: ph2d_boundary::Curva<'_> = &curva;
 
         let mut passagens = Vec::new();
@@ -214,3 +248,7 @@ fn espelhos(sym: Symmetry) -> Vec<[f32; 3]> {
     }
     saida
 }
+
+#[cfg(test)]
+#[path = "stroke_boundary_tests.rs"]
+mod tests;

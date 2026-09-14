@@ -404,6 +404,141 @@ decomposição que foi removida**. Uma palavra cada.
 
 ---
 
+### Auditoria R-pré — 2026-09-13 (espec v4, **4.ª passagem**)
+
+| papel | id | data |
+|---|---|---|
+| R-pré (4.ª passagem) | subagente R-pré **novo**, despachado pela janela-mãe `9f820704-0d7e-4d96-847e-9cd720cbf178` (elo **I-3**) — ⛔ não é o E nem nenhum dos três R-pré anteriores; contexto novo; viu os dois lados (fonte por shell, `Read` deny-listed) | 2026-09-13 — ⛔ **NÃO ATESTA: 5 achados, ZERO substanciais** |
+
+**Sweep (§7.1):** `✓ limpo`, **137** entradas, `exit 0` sobre a espec + as 85 fixturas.
+⭐ **Controlo positivo re-corrido por este R, não herdado:** a mesma vassoura sobre a **v1** da espec
+(`git show <v1>:…`) acusa **5** achados de conteúdo. ⇒ o verde do HEAD é um verde **medido**, não a
+ausência de instrumento. ⚠️ Pela **quarta** vez, nenhum achado desta passagem move a vassoura: a
+parede está intacta e **o instrumento não é o que falta**.
+
+#### ⭐ O que está CONFERIDO e LIMPO — não reabrir
+
+- **As 7 curas da emenda 3, uma a uma contra o diff** (`git show` do commit da emenda): a afirmação e
+  a prescrição da cabeça **apagadas** e substituídas pela medição de inércia · a §5.5 com a cláusula
+  nova (não resolve a cadeia; a trava de rotação não tem papel) · o §6 a nomear a direcção **inicial**
+  · a secção de decomposição de armazenamento **apagada** com os quatro endereços secundários
+  reescritos e a renumeração **completa** (⭐ conferido mecanicamente: **todas** as `§N.M` citadas no
+  documento resolvem para um título existente — zero referências penduradas) · o §1.3 em duas colunas
+  · o §15 e o §16 com a proveniência trocada pelo observável · o §4 a citar as corridas de
+  repetibilidade. **7 de 7.** ✅
+- **§4.2 — zero violações.** Varri o documento por identificador de código, grafia interna, prosa do
+  alvo e pseudo-código espelhado: o vocabulário é de domínio de ponta a ponta, e as únicas cadeias
+  ASCII são as **nossas** (símbolos de álgebra, nomes de fixtura, `f32`/`f64`/`NaN`). ✅
+- **A tabela das nove leis de atenuação** é a **nossa** (confirmado contra o catálogo do produto: o
+  `ALL` da casa tem `12` e a conta `9 + 1 + 2` fecha), e a identidade algébrica que a espec declara
+  entre a forma dela e a da casa **verifica-se**. ✅
+- **Proveniência das fixturas (§5):** malhas de entrada **nossas**, geradas pelo harness; nenhum asset
+  do alvo; estatuto legal citado ao texto da licença; vocabulário renomeado; o sweep corre sobre a
+  pasta. ✅
+- **O corpus bate o que o §14 promete** — medido, não lido: `69` finais + `11` por evento em disco, e
+  **todos os seis modos** têm fixtura. ⭐ **A minha 1.ª suspeita caiu na medição:** por nome só há UMA
+  fixtura de suavização, mas o censo dos cabeçalhos dá **três** valores distintos do controlo de
+  suavizações (`0`, `4`, `10`) — as fixturas variam-no **sem o dizer no nome**. *Inferir cobertura do
+  nome do ficheiro é a armadilha; o instrumento é o cabeçalho.*
+- **A §12.4 é HONESTA em todas as linhas que o instrumento alcança** (adendo B): as três ausências que
+  ela declara **sem fixtura** não têm sequer chave no cabeçalho de nenhuma das 69 ⇒ o corpus de facto
+  nunca as varia; as duas **medidas como inertes** têm o número; a linha das travas de eixo e do
+  recorte de espelho idem. ✅
+
+#### ⛔ A ESPÉCIE JÁ CURADA ESTÁ VIVA EM DOIS TÍTULOS QUE NENHUMA EMENDA TOCOU
+
+A emenda 3 curou o título do §1.3 (*prometia «medido» para cinco ausências e o corpus media uma*).
+**A mesma redacção sobrevive, verbatim desde a v1, em dois outros sítios** — conferido com
+`git show <v1>` (as duas linhas são **idênticas** na v1 e no HEAD):
+
+| # | sítio | o que a medição diz |
+|---|---|---|
+| **A1** | **§8**, a linha que abre as consequências da simetria | promete que **as três** são medidas. A terceira é a simetria radial ser ignorada — e ela é **sourced a uma issue**, declarada fronteira que **não copiamos**. ⛔ **Zero** fixturas radiais, e **nenhuma** das 69 tem sequer uma chave de simetria radial no cabeçalho; o §14 não tem esse eixo |
+| **A2** | **§11**, o **título** da secção | promete *«todas medidas»*. A §11.4 **não tem fixtura** — e ⛔ **a própria §12.4, três secções adiante, diz isso por escrito**: o documento contradiz-se a si mesmo entre um título e o censo que a emenda 3 acabou de escrever. A §11.5 é igualmente sourced a uma issue |
+
+⚠️⚠️ **A leitura de método desta passagem, e é a terceira vez seguida:** *a emenda cura o ENDEREÇO
+que o R nomeou e não varre a REDACÇÃO.* A emenda 1 curou instâncias e a 2.ª passagem achou a espécie
+viva noutro sítio; a emenda 2 varreu e curou mais seis, e a 3.ª passagem achou-a **uma secção
+adiante**; a emenda 3 curou um título e a redacção **idêntica** ficou em dois títulos vizinhos.
+⇒ a cura desta vez é um `grep` pela **forma da promessa** (*«medido/medidas/observável»* sem fixtura
+ao lado), não por endereço.
+
+#### ⛔ Proveniência CIRCULAR numa afirmação que decide um default de produto
+
+**§1.4** justifica *«o artista depara-se com o controlo de ancoragem LIGADO»* — e portanto a
+recomendação de **nascer ancorado** — com *«observado no dump de configuração de todas as 69
+fixturas»*. Duas coisas, as duas medidas:
+
+1. ⛔ **O número está errado:** o controlo de ancoragem vale ligado em **`64` de `69`** (cinco estão
+   desligadas) e o da trava de rotação vale desligado em **`68` de `69`**. A espec **nomeia ela
+   própria**, duas linhas abaixo, uma das cinco excepções como *«o lado desligado»*.
+2. ⛔⛔ **E o instrumento é circular:** o README das fixturas diz, por escrito, que o harness
+   **reescreve todos os parâmetros** para os valores do cabeçalho de cada fixtura ⇒ **o cabeçalho é a
+   ENTRADA do harness, não uma observação do que o alvo traz de origem**. O que a espec quer afirmar é
+   sobre a biblioteca de pincéis distribuída com o alvo, e o ledger não regista nenhum dump dessa
+   biblioteca — só os dumps de saída.
+⇒ a afirmação pode muito bem ser **verdadeira**; o que ela não tem é instrumento. Ou se nomeia o
+canal real, ou se diz que o valor é o default do **harness** e que a recomendação é nossa.
+⚠️ **Não bloqueia** porque a decisão está declarada como sendo de produto e o corpus tem fixtura dos
+**dois** lados — seja qual for a escolha, ela é gateável.
+
+#### ⛔ A §12.4 tem um BURACO, e ele é da espécie que a emenda 3 acabou de nomear
+
+**§7.2** enuncia como *«requisito … enunciado pelo que se observa»* um facto sobre o **programa** do
+alvo (a ausência de um passo de reposição da malha entre eventos) e rotula de ***Observável*** uma
+proposição que **não o discrimina**: o observável citado refuta *«o traço acumula»*, que é outra
+afirmação. As duas maneiras de lá chegar — subtrair a deriva, ou repor e aplicar — dão, **em
+aritmética exacta, o mesmo ponto**; o §17 transforma na mesma o mecanismo num item de lista com a
+forma de uma escolha exclusiva.
+⭐ **E há uma razão legítima para a preferência, que a espec não dá:** as duas formas diferem no
+**arredondamento de `f32`**, e a própria barra do documento vive a `~1e-7` com tecto a `1e-6` — ou
+seja, o mecanismo *pode* valer alguns ULP de paridade. ⇒ a cura não é apagar a preferência: é
+**enunciar a lei** (a pose final é a posição de início mais o deslocamento; o traço não acumula),
+**declarar o mecanismo livre até ao arredondamento**, e dar-lhe a razão certa se a razão for a
+paridade. Mais **uma linha na §12.4**, que hoje não o lista.
+
+#### ⛔ O determinismo do alvo continua escrito como FACTO em dois sítios (adendo C)
+
+A emenda 3 acrescentou o parágrafo que diz — correctamente — que o regime de não-reprodutibilidade
+**nunca foi observado** (`4×3` corridas, até `66 049` vértices, idênticas ao bit) e que a frase é um
+**risco nomeado pelo mecanismo**. ⛔ **Mas as frases à volta não foram reconciliadas:** a que abre a
+§4 continua a chamar-lhe *«o achado»* e a afirmá-lo a negrito **antes** da correcção; a que fecha a
+mesma secção fala do *«regime em que o alvo não o é»*; e a linha de abertura da §12 afirma-o **sem
+nenhuma reserva**, que é onde um implementador o vai ler isolado.
+⇒ três sítios dizem facto, um diz risco. *Uma cláusula corrigida pelo parágrafo seguinte é
+exactamente a forma que este repo já pagou noutra secção.* Cura: a reserva viaja com a afirmação,
+nos três sítios.
+
+#### Higiene (trivial, uma linha)
+
+- **§17**: os itens estão numerados `10 · 10a · 10c · 10b · 11` — o `10c` foi inserido **antes** do
+  `10b`. Uma lista que se percorre a marcar caixas não deve ter a ordem trocada.
+
+#### ⚠️ Para o R-PÓS, achado de PROTOCOLO (não é achado da espec)
+
+O comando da missão varre a **espec + as fixturas** e fecha **verde**. Corri-o também sobre **este
+ledger** e ele acusa **três** linhas — **todas pré-existentes, nenhuma do texto desta passagem**
+(conferido: o sweep sobre o meu diff isolado dá `exit 0`). Duas delas são a **tabela de cobertura da
+travessia**, que o §6 da SKILL **obriga** o ledger a ter, e a terceira é um achado de R que cita a
+redacção antiga da espec.
+⇒ ⛔ **O §7.2 da SKILL põe a barra do fechamento em *«zero hits sobre a árvore inteira»*, e o ledger
+vive na árvore rastreada.** As duas exigências não podem ser satisfeitas ao mesmo tempo enquanto a
+cobertura for registada por nome de ficheiro do alvo. *Isto não bloqueia esta espec e não é defeito
+dela* — é uma decisão que o **R-pós** tem de tomar e declarar: ou a cobertura passa a ser registada
+sem os nomes (por área, ou por `sha256`, como o §6 já manda para trechos), ou o fechamento declara o
+ledger fora do censo **por escrito e com o motivo**. ⚠️ Uma barra que ninguém pode cumprir é uma
+barra que se afrouxa em silêncio no dia do fechamento.
+
+#### O que esta passagem NÃO pede
+
+⭐ **Nenhum dos cinco pede medição nova** — quatro são uma edição de uma linha e o do §7.2 são duas
+linhas mais uma linha de tabela. **Nenhum toca uma fixtura.** E ⛔ **nenhum é §4.2**: a parede está
+intacta, o sweep tem controlo positivo, e a espec **não carrega expressão do alvo**. O que estas
+cinco medem é a distância entre *«a espec diz»* e *«o corpus prova»* — que é exactamente o eixo que a
+emenda 3 instrumentou e ainda não varreu até ao fim.
+
+---
+
 ## Espec
 
 | versão | caminho | rascunho | filtragem §4.3 | sweep | data |

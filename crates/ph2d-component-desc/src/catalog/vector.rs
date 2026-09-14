@@ -57,7 +57,7 @@
 //!
 //! ⚠️ **Dois helpers intrínsecos, e a diferença é load-bearing:** [`g`] é *não há neutro*
 //! (o tipo não tem `Default`); [`i`] é *há neutro e ele é o que o artista não quer*.
-use crate::{ComponentCategory as C, ComponentDesc as D, ObjectKinds as O};
+use crate::{ComponentCategory as C, ComponentDesc as D};
 
 /// Um `Vec*` que chega com o GESTO — **não tem `Default`**, e a lista abaixo não foi
 /// escolhida: ela é a saída do compilador ao converter os registradores para

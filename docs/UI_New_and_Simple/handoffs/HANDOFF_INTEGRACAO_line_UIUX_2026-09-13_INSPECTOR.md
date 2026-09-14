@@ -902,3 +902,17 @@ sobre um **objecto vazio**, onde as ofertas `IMAGE`-only continuam inaplicáveis
 **mais forte**: ele agora nomeia o que reapareceu (o *9-Slice*, escondido na metade de cima e
 revelado **com a razão** na de baixo). *Um gate cujo sujeito deixou de ter o fenómeno não afirma
 nada — troca-se o sujeito, nunca a barra.*
+
+#### ⛔⛔ E o commit do §14.15 entrou com o CLIPPY VERMELHO, por um `| tail`
+
+Apagar o helper `v` deixou o `ObjectKinds as O` sem uso no `catalog/vector.rs`. O
+`cargo-check-narrow.sh` ficou **verde** (import morto é *warning*) e o `clippy -D warnings`
+reprovou — mas a corrida foi escrita como `cargo clippy … | tail -2 && git add … && git commit …`,
+e **o exit code de um pipe é o do último comando**: o `tail` devolveu `0`, o `&&` continuou, e o
+commit entrou por cima de um portão vermelho.
+
+⚠️ É a lei que o `CLAUDE.md §2` já escreve para os scripts de teste (*«um `| head` destrói o exit
+code — é por isso que os dois scripts preservam o do cargo»*), paga aqui na forma de um `| tail` num
+**veredito encadeado com `&&`**. ⇒ *num comando cujo `&&` seguinte é irreversível (um commit, um
+push), a saída do portão vai para um FICHEIRO e o `$?` lê-se do cargo, nunca do filtro.*
+Curado no commit seguinte, com o `clippy exit=0` medido à parte.

@@ -459,7 +459,7 @@ Régua = merge-base `1d43da737`.
 
 | passo | resultado |
 |---|---|
-| `BASE=1d43da737 bash scripts/nextest-impacted.sh` | ✅ **14 651 passaram, 0 falharam** (10 428 saltados) — o delta contra a W12 (`14 644`) são os **7** gates novos: **4** da W14, **1** da W14b e **2** da W14c|
+| `BASE=1d43da737 bash scripts/nextest-impacted.sh` | ✅ **14 693 passaram, 0 falharam** — o delta contra a W12 (`14 644`) são os gates novos das W14a–c e da W15, **mais** as 38 suítes que a W15 traz para a varredura (ela toca a `ph2d-skeleton`, que é folha de meia dezena de crates)|
 | `cargo fmt --all --check` | ✅ |
 | `cargo clippy --workspace --all-targets` | ⚠️ **correu em CACHE e não repete avisos** (a saída inteira é uma linha, `Finished`). Forçado o replay da única crate com aviso: `ph2d-preview-drive`, **pré-existente** e intocada por esta linha (§8). As crates desta linha foram corridas com replay: zero |
 | `cargo machete` | ✅ nenhuma dependência por usar — a `ph2d-vector` e a `ph2d-asset` SAÍRAM da `ph2d-skeleton-live` |
@@ -471,7 +471,7 @@ Régua = merge-base `1d43da737`.
 `196 990` — **UMA** linha de folga —, e a **W12b fez a cura que este parágrafo prescrevia**: o motor
 do onion (`timeline_onion.rs` + os dois ficheiros de teste, **`1 014`** linhas) saiu para
 [`crates/ph2d-timeline-onion`](../../../crates/ph2d-timeline-onion/), porque ele não é composição —
-nada nele pergunta pela `App`. A shell fecha esta linha em **`196 485`**, com **`505`** de folga (as waves W14a–c somaram `511` em gates e na fase nova).
+nada nele pergunta pela `App`. A shell fecha esta linha em **`196 500`**, com **`490`** de folga.
 ⚠️ **Prova exacta do movimento: `15` testes antes, `15` depois** (14 + 1 `#[ignore]`), contados nos
 dois lados — *um `git mv` que perde um teste fica VERDE em `check`, `clippy` e nas três suítes*.
 ⛔ E continua a valer: a cura de um vermelho é corte por responsabilidade, nunca subir o número.

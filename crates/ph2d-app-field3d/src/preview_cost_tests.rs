@@ -289,9 +289,56 @@ fn measure_where_the_frame_stands_after_all_of_it() {
                 Some(&cache),
             );
         }
+        // ⭐⭐⭐ **O QUADRO DE MOVIMENTO MEDE-SE EM MOVIMENTO** — cada amostra numa pose NOVA, a
+        // continuar o arrasto do aquecimento.
+        //
+        // ⛔⛔ **A 1.ª redacção desta bancada cronometrava `Orbit::default()` REPETIDO**, e a §90.1
+        // do doc corrigiu-a por escrito em 27/08 — *«uma bancada que repete a mesma pose não mede
+        // movimento»* — sem nunca a corrigir no CÓDIGO. A pose repetida é o **único** caso em que a
+        // cache de fitas acerta `100 %`: ela mede a cache, não a marcha.
+        //
+        // ⚠️ **E a régua de um arrasto é a CAUDA, não a mediana** (a lição da W89, no irmão
+        // `measure_the_stall_a_hesitating_hand_pays`): o que o artista sente é o pior quadro de cada
+        // punhado, e uma mediana esconde-o por construção. ⇒ as duas são impressas, com o controlo
+        // da pose repetida ao lado, para o tamanho da mentira ficar à vista.
+        let pose = |i: usize| Orbit {
+            rotation: Orbit::from_yaw_pitch(0.88 + (i as f32) * 2.0f32.to_radians(), 0.52).rotation,
+            ..Orbit::default()
+        };
+        let mut arrasto: Vec<f64> = (0..24)
+            .map(|i| {
+                let t0 = std::time::Instant::now();
+                let _ = ph2d_field_render::trace_cached_for_test(
+                    &movimento,
+                    &reg,
+                    &pose(i),
+                    640,
+                    360,
+                    false,
+                    Some(&cache),
+                );
+                t0.elapsed().as_secs_f64() * 1000.0
+            })
+            .collect();
+        arrasto.sort_by(f64::total_cmp);
+        let p90 = arrasto[arrasto.len() * 9 / 10];
+        println!(
+            "{:32} | med {:7.2} ms | p90 {p90:7.2} ms | {:5.2} do orçamento de 16,7",
+            "movimento REAL (pose nova)",
+            arrasto[arrasto.len() / 2],
+            p90 / 16.7
+        );
+
         let cam = Orbit::default();
         let casos: [(&str, &FieldDoc, u32, u32, bool); 3] = [
-            ("movimento (640x360, sem AA)", &movimento, 640, 360, false),
+            // ⚠️ **Este é o CONTROLO, e não o quadro de movimento** — ver acima.
+            (
+                "CONTROLO: a mesma pose repetida",
+                &movimento,
+                640,
+                360,
+                false,
+            ),
             ("assentar 1 (640x360, com AA)", &assente, 640, 360, true),
             ("assentar 2 (1280x720, com AA)", &assente, 1280, 720, true),
         ];

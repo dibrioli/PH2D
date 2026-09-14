@@ -320,4 +320,9 @@ pub(crate) static PARAM_GATES_ABOVE: &[ParamGateAbove] = &[
         when: param::COLLIDE,
         above: 0.0,
     },
+    ParamGateAbove {
+        param: param::ROLLING,
+        when: param::COLLIDE,
+        above: 0.0,
+    },
 ];

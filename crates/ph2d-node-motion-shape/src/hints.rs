@@ -354,6 +354,17 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
         step: 0.01,
         widget: ParamWidget::Slider,
     },
+    // ⭐⭐⭐ **O que faz uma bola PARAR sozinha** (doc 109 §7.10). O tecto é `1,5` e sai da MEDIÇÃO
+    // (o doc de `ROLLING_MAX` tem a tabela): é onde a coluna satura, porque a partir dali quem
+    // trava a peça é o atrito de Coulomb e não esta lei.
+    ParamUiHint {
+        param: param::ROLLING,
+        label: "Rolling Friction",
+        min: 0.0,
+        max: ph2d_nodegraph::attr::ROLLING_MAX,
+        step: 0.01,
+        widget: ParamWidget::Slider,
+    },
 ];
 
 /// **What each of this node's numbers IS** (doc 88, Wave A) — never how it is
@@ -385,4 +396,5 @@ pub(crate) static PARAM_GROUPS: &[ParamGroup] = &[
     ParamGroup::new(param::LOCK_ROTATION, "Collision"),
     ParamGroup::new(param::FRICTION, "Collision"),
     ParamGroup::new(param::BOUNCE, "Collision"),
+    ParamGroup::new(param::ROLLING, "Collision"),
 ];

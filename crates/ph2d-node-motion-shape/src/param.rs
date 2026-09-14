@@ -204,6 +204,16 @@ pub const FRICTION: &str = "friction";
 /// ⚠️ **O par combina-se pelo MAIOR dos dois**, então uma bola saltitante salta contra uma parede
 /// morta. É a lei do Box2D, e é o que o artista espera de uma bola saltitante.
 pub const BOUNCE: &str = "bounce";
+/// ⭐⭐⭐ **O ATRITO DE ROLAMENTO** (doc 109 §7.10): o que faz uma bola a rolar **parar sozinha**.
+/// `0` (o default) é a lei de sempre — ela rola para sempre num chão infinito.
+///
+/// ⚠️ **Ele não é o `Friction` com outro nome:** aquele trava quem DERRAPA, e uma bola que já rola
+/// tem velocidade zero no ponto de contacto — não há deslize nenhum para ele opor. Este opõe-se ao
+/// próprio ROLAR, e é a única coisa que pára uma bola num plano.
+///
+/// ⚠️ **É da PEÇA, e não do par** — o mecanismo e o porquê estão em
+/// `ph2d_nodegraph::attr::ROLLING_COLUMN`.
+pub const ROLLING: &str = "rolling";
 
 /// **As duas colunas que o SHELL publica** com a geometria — a caixa envolvente do contorno de
 /// preenchimento, em unidade de geometria — e que o nó **retira sempre**, depois de declarar.
@@ -400,6 +410,10 @@ pub const SPECS: &[ParamSpec] = &[
     },
     ParamSpec {
         name: BOUNCE,
+        default: 0.0,
+    },
+    ParamSpec {
+        name: ROLLING,
         default: 0.0,
     },
 ];

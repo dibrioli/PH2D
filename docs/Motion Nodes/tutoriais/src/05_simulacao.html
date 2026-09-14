@@ -96,7 +96,7 @@ parado. Uma simulação só existe <em>ao longo do tempo</em>: ela precisa de
 <h2>1 · Abrir</h2>
 <p>Cole isto inteiro num terminal. Na primeira vez ele compila (alguns minutos); depois abre em
 segundos.</p>
-<div class="cmd">cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-motion-value &amp;&amp; env PH2D_GPU_COOK_DEMO=113 cargo run -p ph2d-host-desktop --release</div>
+<div class="cmd">cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-motion-value &amp;&amp; env PH2D_GPU_COOK_DEMO=113 cargo run -p ph2d-host-desktop --profile smoke</div>
 
 <ol class="steps">
   <li><b>Carregue em <kbd>Play</kbd>.</b>
@@ -250,7 +250,63 @@ discordam na primeira peça que desaparecer.</div>
 contribuem — nenhuma anula a anterior. É por isso que há <em>um</em> passo no
 fim que aplica a soma, uma vez só — nesta cena o <b>Simulation Step</b>.</div>
 
-<h2>6 · O que cada controlo faz</h2>
+<h2>6 · As peças colidem SOZINHAS, e de que elas são feitas</h2>
+
+<p>No capítulo 2 o colisor era uma coisa <em>do mundo</em>: um chão, um prato, uma
+caixa onde as peças batem. Falta a outra metade — <b>a peça também pode ter um
+colisor</b>, e aí ela deixa de atravessar as outras peças e passa a ter um
+<b>material</b>: quanto ela agarra, quanto ela salta, e quanto ela trava a rolar.</p>
+
+<p>Isto vive no cartão da <b>forma</b>, e não na linha da simulação: quem desenha
+é quem sabe o tamanho do que desenhou. Abra a segunda cena:</p>
+
+<div class="cmd">cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-motion-value &amp;&amp; env PH2D_GPU_COOK_DEMO=115 cargo run -p ph2d-host-desktop --profile smoke</div>
+
+<p>São <b>seis bolas em três fileiras</b>, e em cada par muda <b>um número só</b>
+no cartão da forma — a rampa, o chão, a taça e a gravidade são os mesmos.</p>
+
+<ol class="steps" start="11">
+  <li><b>Carregue em <kbd>Play</kbd>.</b>
+      <div class="out">As seis bolas caem. A fileira de baixo despeja dezasseis
+      bolinhas dentro de duas taças.</div></li>
+  <li><b>Olhe a fileira de CIMA — as duas rampas.</b>
+      <div class="out">A da esquerda <b>escorrega sem virar</b>: o tracejado do
+      contorno fica sempre na mesma posição. A da direita <b>ROLA</b>, e o
+      tracejado gira como uma roda.</div>
+      <div class="bad">Se as duas fizerem a mesma coisa, pare: é o material que
+      não está a chegar à bola.</div></li>
+  <li>Clique no cartão <code>Friction 1: ROLA</code> e <b>abra a seção
+      <code>Collision</code></b>. Arraste <code>Friction</code> até <b>0</b>.
+      <div class="out">A bola passa a escorregar sem virar, igual à da esquerda.
+      Volte a 1 e ela volta a rolar.</div></li>
+  <li><b>Arraste <code>Rolling Friction</code> até perto de 0,25.</b>
+      <div class="out">A bola <b>trava na rampa</b>: assenta e fica lá. Volte a 0 e
+      ela desce outra vez.</div></li>
+  <li><b>Fileira do MEIO</b> — clique em <code>Bounciness 0,9: SALTA</code> e arraste
+      <code>Bounciness</code> até ao <b>fim</b> do deslizante (2,00).
+      <div class="out">Ela volta <b>mais alto do que caiu</b>, e chega a sair pelo
+      cimo da janela antes de voltar.</div></li>
+  <li><b>Fileira de BAIXO</b> — as duas taças são <b>escorregadias</b>, então tudo o
+      que se vê ali vem das bolas <em>umas contra as outras</em>. À esquerda elas
+      escorregam sem nenhuma virar; à direita rolam umas nas outras.</li>
+</ol>
+
+<div class="note"><b>Três números, e o terceiro não é o primeiro com outro nome.</b>
+<code>Friction</code> trava quem <b>derrapa</b> — e é também a única coisa que faz um
+círculo <em>rodar</em>, porque um empurrão que passa pelo centro da bola nunca a faz
+girar. Mas uma bola que já <em>rola</em> não derrapa nada: no ponto onde ela toca o
+chão a velocidade é zero, e é por isso que ela rolaria para sempre.
+<code>Rolling Friction</code> é o que se opõe ao próprio <b>rolar</b>.
+⚠ O valor a que a bola prende na rampa não foi escolhido: uma bola trava numa rampa
+quando esse número passa a inclinação dela, e 12 graus dão <b>0,21</b>.</div>
+
+<div class="note"><b>Onde cada um vale.</b> <code>Friction</code> e
+<code>Bounciness</code> valem contra o mundo <em>e</em> entre as próprias peças — é o
+que a fileira de baixo mostra. <code>Rolling Friction</code> vale contra o
+<b>mundo</b> (o chão, a rampa, a taça): entre duas peças que se tocam ainda não há
+velocidade de rotação para ele travar.</div>
+
+<h2>7 · O que cada controlo faz</h2>
 
 <p>A tabela abaixo é <b>gerada do próprio app</b>: ela lista o que cada
 cartão mostra quando você larga o nó, com a faixa e a unidade de cada
@@ -379,4 +435,5 @@ controlo.</p>
 </table>
 
 <footer>PH2D · Motion Nodes · tutorial 5 de 9 — ciclo da
-<b>simulação</b>. Cena de smoke <code>PH2D_GPU_COOK_DEMO=113</code>.</footer>
+<b>simulação</b>. Cenas de smoke <code>PH2D_GPU_COOK_DEMO=113</code> (capítulos 1 a 5)
+e <code>=115</code> (capítulo 6).</footer>

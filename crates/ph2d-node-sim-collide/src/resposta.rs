@@ -34,6 +34,9 @@ pub(super) struct Resposta {
     pub salto: f32,
     /// O coeficiente de atrito do par, `0..1`.
     pub atrito: f32,
+    /// ⭐ **O atrito de ROLAMENTO da peça** (doc 109 §7.10) — dela, não do par (ver
+    /// [`ph2d_nodegraph::attr::ROLLING_COLUMN`]). `0` = a lei de sempre, ao bit.
+    pub rolar: f32,
     /// `(bt, invI)`: a alavanca da tangente no ponto e o quanto a peça roda por unidade de
     /// binário. `None` na peça sem forma declarada — ver o cabeçalho.
     pub rolamento: Option<(f32, f32)>,
@@ -81,7 +84,16 @@ pub(super) fn respond(
     let teto = (r.atrito * jn).max(0.0);
     let jt = ((0.0 - vt) / kt).clamp(-teto, teto); // CLAMP-OK: teto >= 0
     *v = [out[0] + t[0] * jt, out[1] + t[1] * jt];
-    jt * inv_i * bt * GRAUS
+    let d_spin = jt * inv_i * bt;
+    if r.rolar <= 0.0 || inv_i <= 0.0 {
+        return d_spin * GRAUS;
+    }
+    // ⭐⭐⭐ **O ROLAMENTO** (doc 109 §7.10, a ponta que o §7.7 nomeava). ⚠️ Ele lê o `ω` **já
+    // corrigido pelo tangencial** — os dois escrevem a mesma grandeza, e lidos do mesmo `ω` este
+    // desfaria parte do giro que aquele acabou de dar.
+    let omega = spin / GRAUS + d_spin;
+    let jr = ph2d_contact::atrito::rolamento(omega / inv_i, r.rolar, jn, bt);
+    (d_spin - jr * inv_i) * GRAUS
 }
 
 #[cfg(test)]

@@ -172,7 +172,8 @@ fn the_grid_gives_the_same_bits_as_all_pairs() {
         vec![
             Material {
                 atrito: 0.7,
-                salto: 0.2
+                salto: 0.2,
+                rolar: 0.0,
             };
             p0.len()
         ],
@@ -641,6 +642,7 @@ fn a_disc_that_slides_starts_to_roll_and_ice_does_not() {
         Material {
             atrito: 1.0,
             salto: 0.0,
+            rolar: 0.0,
         },
     );
     let (sem, _) = corre_com_atrito(&mut gelo, &antes, &c, &w, Material::LISO);
@@ -676,6 +678,7 @@ fn the_rolling_split_gives_the_spin_twice_the_slide() {
         Material {
             atrito: 1.0,
             salto: 0.0,
+            rolar: 0.0,
         },
     );
     // Quanto o ponto de contacto andou por cada uma das duas metades, ao longo da tangente.
@@ -740,6 +743,7 @@ fn the_bounce_of_the_liveliest_pair_reaches_the_piece_that_touched() {
         Material {
             atrito: 0.0,
             salto: 0.8,
+            rolar: 0.0,
         },
     );
     assert!((salto[1] - 0.8).abs() < 1e-6, "o disco tocou: {salto:?}");
@@ -796,6 +800,7 @@ fn a_spinning_disc_rubs_against_the_floor_even_standing_still() {
         Material {
             atrito: 1.0,
             salto: 0.0,
+            rolar: 0.0,
         },
     );
     assert!(
@@ -822,6 +827,7 @@ fn a_spinning_disc_rubs_against_the_floor_even_standing_still() {
         Material {
             atrito: 1.0,
             salto: 0.0,
+            rolar: 0.0,
         },
     );
     assert_eq!(parada[1].to_bits(), 0.0_f32.to_bits(), "{}", parada[1]);
@@ -857,4 +863,57 @@ fn the_bounce_reaches_twice_the_old_ceiling_and_the_friction_does_not() {
     // E o PAR: o maior dos dois, coagido pelo mesmo tecto.
     assert_eq!(super::atrito::salto(2.0, 0.0), 2.0);
     assert_eq!(super::atrito::salto(9.0, 0.0), BOUNCE_MAX);
+}
+
+/// ⛔⛔ **A FRONTEIRA DO ROLAMENTO, DECLARADA E MEDIDA** (doc 109 §7.10): o contacto peça×peça
+/// **ignora** o [`Material::rolar`], e a saída é **byte-idêntica** com ele a `0` ou no tecto.
+///
+/// ⚠️ **Não é um esquecimento — é o que esta moeda pode dizer.** Aqui a rotação é uma correcção de
+/// POSIÇÃO (§7.4): a peça roda enquanto toca e não carrega velocidade angular nenhuma do contacto,
+/// logo não existe um `ω` que um atrito de rolamento possa travar. *Uma bola que não tem como
+/// «rolar para sempre» também não tem o que parar.* O número vive na outra moeda
+/// (peça × obstáculo, `sim.collide`), onde há `spin` de verdade.
+///
+/// ⚠️ **E este gate é o que impede a fronteira de se tornar um DEFEITO SILENCIOSO:** se um dia
+/// alguém der velocidade angular a este solver (o §7.7 nomeia-o), ele reprova e obriga a decidir.
+#[test]
+fn the_piece_against_piece_contact_ignores_rolling_bit_for_bit() {
+    let (p0, c, w) = chao_e_disco(0.5, 1e-4);
+    let antes = vec![p0[0], [p0[1][0] - 0.1, p0[1][1]]];
+    let material = |rolar: f32| Material {
+        atrito: 1.0,
+        salto: 0.0,
+        rolar,
+    };
+    let (mut a, mut b) = (p0.clone(), p0.clone());
+    let (giro_a, salto_a) = corre_com_atrito(&mut a, &antes, &c, &w, material(0.0));
+    let (giro_b, salto_b) = corre_com_atrito(
+        &mut b,
+        &antes,
+        &c,
+        &w,
+        material(ph2d_nodegraph::attr::ROLLING_MAX),
+    );
+    assert!(
+        giro_a[1] < -0.01,
+        "o controlo tem de rodar, senão o gate não afirma nada: {}",
+        giro_a[1]
+    );
+    for i in 0..p0.len() {
+        assert_eq!(
+            (
+                a[i][0].to_bits(),
+                a[i][1].to_bits(),
+                giro_a[i].to_bits(),
+                salto_a[i].to_bits()
+            ),
+            (
+                b[i][0].to_bits(),
+                b[i][1].to_bits(),
+                giro_b[i].to_bits(),
+                salto_b[i].to_bits()
+            ),
+            "peça {i}: o rolamento não tem consumidor nesta moeda e mudou um bit"
+        );
+    }
 }

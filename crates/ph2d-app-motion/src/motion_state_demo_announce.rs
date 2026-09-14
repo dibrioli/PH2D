@@ -243,13 +243,22 @@ pub(super) fn material() {
      tracejados giram.
   6. Clique no cartao `Entre bolas, Friction 1: ROLAM umas nas outras` e arraste
      `Friction` ate' 0: os tracejados congelam e o monte fica mais espalhado. Volte a 1.
-  7. Experimente misturar: ponha `Friction` a 0 na bola que salta -- ela continua a
+  7. Volte ao cartao `Friction 1: ROLA` (a rampa da direita) e arraste a linha
+     `Rolling Friction` -- a ultima da seccao -- ate' perto de 0,25. A bola TRAVA na
+     rampa: ela assenta e fica. Volte a 0 e ela desce outra vez.
+     (i) Isto e' outra coisa que o `Friction`: aquele trava quem DERRAPA, e uma bola que
+         ja' rola nao derrapa nada -- e' por isso que ate' hoje ela rolava para sempre.
+         Este opoe-se ao proprio ROLAR.
+     (i) O 0,25 nao foi escolhido: uma bola prende numa rampa quando este numero passa a
+         inclinacao dela, e 12 graus dao 0,21.
+  8. Experimente misturar: ponha `Friction` a 0 na bola que salta -- ela continua a
      saltar, mas deixa de rodar ao tocar no chao.
 
   DEU ERRADO se: as duas bolas de cima fizerem a mesma coisa; se a da direita escorregar
   sem o tracejado girar; se nas tacas de baixo os dois montes ficarem iguais; se mexer em
   `Friction` ou `Bounciness` nao mudar nada; se o `Bounciness` parar de responder antes
-  do fim do slider; se alguma bola atravessar a rampa, o chao ou a taca; se as bolinhas
+  do fim do slider; se o `Rolling Friction` nao travar a bola em nenhum ponto do slider;
+  se alguma bola atravessar a rampa, o chao ou a taca; se as bolinhas
   SALTAREM para dentro da taca no instante em que a cena comeca; ou se a cena congelar ou
   as bolas desaparecerem de vez com o `Bounciness` no maximo."
     );

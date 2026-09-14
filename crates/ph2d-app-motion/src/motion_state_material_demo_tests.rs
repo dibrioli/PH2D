@@ -470,3 +470,59 @@ fn the_bounce_reaches_the_new_ceiling_in_the_scene() {
         "no tecto novo a bola tem de subir MUITO mais do que no tecto antigo: {alturas:?}"
     );
 }
+
+/// **SONDA — a partir de que `Rolling Friction` a bola TRAVA na rampa** (doc 109 §7.10).
+///
+/// ```text
+/// cargo test -p ph2d-app-motion --lib probe_the_rolling_ball_on_the_ramp -- --ignored --nocapture
+/// ```
+#[test]
+#[ignore = "sonda de medicao, nao um gate"]
+fn probe_the_rolling_ball_on_the_ramp() {
+    eprintln!("\n  Rolling │ desceu (unidades em 2 s)   [rampa de 12°, tan = 0,213]");
+    for rolar in [0.0_f32, 0.1, 0.2, 0.25, 0.3, 0.5, 1.0, 1.5] {
+        let c = corre(2.0, |s, formas| {
+            s.doc.graph.set_param(formas[1], param::ROLLING, rolar);
+        });
+        let (a, b) = (c.inicio[1][0], c.fim[1][0]);
+        let d = ((b[0] - a[0]).powi(2) + (b[1] - a[1]).powi(2)).sqrt();
+        eprintln!("  {rolar:>7.2} │ {d:>8.3}");
+    }
+}
+
+/// ⭐⭐⭐ **O `Rolling Friction` TRAVA a bola na própria rampa** (doc 109 §7.10) — a ponta que o §7.7
+/// nomeava (*«ela rola para sempre»*), agora com o número do PRODUTO e não só o da lei.
+///
+/// ⭐⭐ **E o valor a que ela trava não foi escolhido: é `tan(12°) = 0,213`**, a condição clássica de
+/// equilíbrio ao rolamento num plano inclinado (`μr ≥ tan θ`). Medido na cena (sonda
+/// `probe_the_rolling_ball_on_the_ramp`): `0,20 → desce 0,170` · **`0,25 → 0,087`** · `1,50 → 0,086`
+/// — ou seja, ela prende entre `0,20` e `0,25`, exactamente onde a conta manda, e daí para cima o
+/// número não muda mais nada.
+///
+/// ⚠️ **A régua é a DISTÂNCIA percorrida, não o ângulo:** uma bola travada ainda assenta os `0,02`
+/// de folga com que nasce pousada, e isso são `0,086` que não são descida nenhuma.
+#[test]
+fn the_rolling_friction_locks_the_ball_on_the_ramp() {
+    let desceu = |rolar: f32| {
+        let c = corre(2.0, |s, formas| {
+            s.doc.graph.set_param(formas[1], param::ROLLING, rolar);
+        });
+        let (a, b) = (c.inicio[1][0], c.fim[1][0]);
+        ((b[0] - a[0]).powi(2) + (b[1] - a[1]).powi(2)).sqrt()
+    };
+    let solta = desceu(0.0);
+    assert!(
+        solta > 1.0,
+        "o controlo: sem rolamento a bola desce a rampa toda, e desceu {solta}"
+    );
+    let presa = desceu(0.5);
+    assert!(
+        presa < 0.15,
+        "com `Rolling Friction 0,5` (acima de tan 12° = 0,213) ela tem de FICAR onde está, \
+         e andou {presa}"
+    );
+    assert!(
+        solta > presa * 5.0,
+        "e a diferença tem de ser à vista: {solta} contra {presa}"
+    );
+}

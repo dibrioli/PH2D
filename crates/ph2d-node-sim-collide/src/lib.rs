@@ -32,8 +32,12 @@
 //! collider jitter: the thing buzzes on the ground forever, gaining energy from its own contact
 //! test.
 //!
-//! **Restitution ≤ 1**, and the guard says so: a bounce that returns more than it took is a
-//! machine for making energy, and it ends with the scene exploding.
+//! ⭐⭐ **Restitution ≤ [`attr::BOUNCE_MAX`] — que é `2` desde o doc 109 §7.9, e não `1`.** A frase
+//! que estava aqui (*«uma batida que devolve mais do que levou é uma máquina de fazer energia, e a
+//! cena acaba a explodir»*) é verdadeira em Física e **falsa sobre o que este código faz**: medida,
+//! a cena não explode nem atravessa o chão — a bola sobe cada vez mais, que é o pedido. O tecto
+//! vive numa porta só, partilhada com o `Bounciness` da PEÇA, porque os dois se combinam por `max`
+//! e entram no mesmo `Resposta::salto`. Tabela: o doc-comment do `BOUNCE_MAX`.
 //!
 //! Transcendental-free (HR-5): the normals are geometry, not angles — a floor's normal is up, a
 //! disc's is the radial direction. Nothing here needs a sine.
@@ -97,16 +101,18 @@
 //! phases — and `dot(p, (0,1))` is `p.y`, so the untilted plane is the floor that shipped, term
 //! for term.
 
+use aleatorio::{RANDOMNESS, SEED, element_restitution};
 use ph2d_node_registry::{
     NodeRegistry, ParamUiHint, ParamUnit, ParamUnitDecl, ParamWidget, RegistryError,
 };
-use ph2d_nodegraph::attr::{Column, Stream};
+use ph2d_nodegraph::attr::{self, Column, Stream};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
 use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel};
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
+mod aleatorio;
 mod trig;
 mod ui;
 
@@ -410,30 +416,6 @@ fn sizes(s: &Stream, n: usize) -> Vec<[f32; 2]> {
     }
 }
 
-/// O nome do param da aleatoriedade, e o da semente que a escolhe.
-const RANDOMNESS: &str = "restitution_randomness";
-const SEED: &str = "seed";
-
-/// **A RESTITUIÇÃO DE UM ELEMENTO** — a ÚNICA porta, chamada pelo [`collide`] e portada
-/// termo a termo para o [`GPU_KERNEL`].
-///
-/// `rest · (1 − randomness · h)`, com `h ∈ [0, 1)` do hash estável da identidade. Em
-/// `randomness = 0` o factor é **exactamente** `1` em IEEE-754 (`1 − 0·h`), então a saída é
-/// bit-idêntica à de antes deste param existir — não «quase», o mesmo número.
-///
-/// ⚠️ **Ela só TIRA, nunca acrescenta**, e é a leitura certa de um material: a restituição
-/// autorada é o teto (a batida mais viva que aquele obstáculo devolve), e o acaso diz quanto
-/// desta batida se perdeu. Um `±` centrado no valor autorado faria `restitution = 1` devolver
-/// **mais** energia do que recebeu em metade dos elementos — a máquina de fazer energia que o
-/// clamp do `eval` existe para impedir.
-///
-/// ⚠️ **A chave é a IDENTIDADE do elemento (`id`), não a posição dele na lista** — pela mesma
-/// lei do `pick` do `motion.duplicator`: pôr um `motion.sort` no meio não pode redistribuir
-/// quão saltitante cada partícula é. Sem coluna `id`, a posição é a única resposta disponível.
-fn element_restitution(rest: f32, randomness: f32, seed: u32, key: u32) -> f32 {
-    rest * (1.0 - randomness * hash::rand01(seed, key))
-}
-
 /// A LARGURA e a ALTURA da caixa, inteiras (ver [`SHAPE_BOX`]).
 const BOX_W: &str = "box_width";
 const BOX_H: &str = "box_height";
@@ -543,6 +525,10 @@ fn collide(
             let resposta = resposta::Resposta {
                 salto: mat.map_or(rest_i, |m| ph2d_contact::atrito::salto(rest_i, m.salto)),
                 atrito: mat.map_or(friction, |m| ph2d_contact::atrito::mu(friction, m.atrito)),
+                // ⚠️ **O rolamento é da PEÇA e não do par** — o obstáculo não tem (nem vai ter)
+                // um número destes, e combiná-los daria `0` em toda cena que existe
+                // (`attr::ROLLING_COLUMN` tem o mecanismo).
+                rolar: mat.map_or(0.0, |m| m.rolar),
                 // ⭐⭐ **A alavanca só existe onde a peça DECLAROU uma forma** — um ponto não tem
                 // raio, e é isso que mantém toda cena sem colisor declarado na lei de sempre.
                 //
@@ -604,10 +590,20 @@ impl NodeOp for SimCollide {
         let height = ctx.param("height");
         let c = [ctx.param("center_x"), ctx.param("center_y")];
         let radius = ctx.param("radius").max(0.0);
-        // A restitution above 1 returns more than it took — a machine for making energy, and the
-        // scene ends up in orbit. Clamped, not trusted.
-        let restitution = ctx.param("restitution").clamp(0.0, 1.0); // CLAMP-OK: const bounds
-        let friction = ctx.param("friction").clamp(0.0, 1.0); // CLAMP-OK: const bounds
+        // ⭐⭐⭐ **O TECTO DO OBSTÁCULO É O DA PEÇA, e é o MESMO NÚMERO** (doc 109 §7.9 — ordem do
+        // dono, 2026-09-13). A frase que decidia este `1` desde que o nó existe — *«uma batida que
+        // devolve mais do que levou é uma máquina de fazer energia, e a cena acaba em órbita»* —
+        // é verdadeira em Física e **nunca tinha sido medida sobre o que este código faz**.
+        // Medida (sonda `probe_the_obstacle_bounce_above_one`, nas condições do `BOUNCE_MAX`):
+        // `1,00 → 0,75` · `1,25 → 39,4` · `1,50 → 95,8` · `2,00 → 194,0` · `3,00 → 550,6` —
+        // todos finitos, nenhum a atravessar o chão.
+        //
+        // ⚠️⚠️ **E os dois números encontram-se no MESMO campo** (`Resposta::salto`, combinados
+        // por `max`): manter `1` aqui era o mesmo deslizante parar a meio do curso ou não
+        // consoante o lado do par em que o artista lhe tocasse. O tecto real tem recurso com
+        // nome e é de OUTRO subsistema (`2R/dt`, o tunelamento — o `Speed Limit` do `sim.step`).
+        let restitution = attr::material_coerce(ctx.param("restitution"), attr::BOUNCE_MAX);
+        let friction = attr::material_coerce(ctx.param("friction"), attr::FRICTION_MAX);
         let part = (
             ctx.param("radius_from").round() as i32,
             ctx.param("particle_radius"),
@@ -674,10 +670,6 @@ use gpu::GPU_KERNEL;
 mod hash;
 
 #[cfg(test)]
-#[path = "randomness_tests.rs"]
-mod randomness_tests;
-
-#[cfg(test)]
 #[path = "box_tests.rs"]
 mod box_tests;
 
@@ -694,3 +686,7 @@ mod resposta;
 #[cfg(test)]
 #[path = "declared_tests.rs"]
 mod declared_tests;
+
+#[cfg(test)]
+#[path = "randomness_tests.rs"]
+mod randomness_tests;

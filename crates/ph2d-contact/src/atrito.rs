@@ -68,36 +68,46 @@
 //! [`ph2d_nodegraph::attr::FRICTION_COLUMN`]/[`ph2d_nodegraph::attr::BOUNCE_COLUMN`] o material é
 //! [`Material::LISO`], `μ = 0`, `λt = 0`, e nem uma soma é feita.
 
-use ph2d_nodegraph::attr::{BOUNCE_COLUMN, Column, FRICTION_COLUMN, Stream};
+use ph2d_nodegraph::attr::{BOUNCE_COLUMN, Column, FRICTION_COLUMN, ROLLING_COLUMN, Stream};
 
 use super::Colisor;
 
-/// **DE QUE A PEÇA É FEITA** — o par que todo motor tem, na unidade de todos eles (`0..1`).
+/// **DE QUE A PEÇA É FEITA** — o par que todo motor tem, mais o terceiro número que faz uma bola
+/// parar sozinha. Cada um tem o tecto DELE, e nenhum é `0..1` por acidente: ver
+/// [`ph2d_nodegraph::attr::BOUNCE_MAX`] e [`ph2d_nodegraph::attr::ROLLING_MAX`].
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Material {
     /// O coeficiente de Coulomb. `0` = gelo (o deslize não é oposto), `1` = lixa.
     pub atrito: f32,
-    /// Quanto de um embate volta. `0` = morto (a lei de sempre), `1` = perfeitamente elástico.
+    /// Quanto de um embate volta. `0` = morto (a lei de sempre), `2` = o dobro do que levou.
     pub salto: f32,
+    /// ⭐ **O ATRITO DE ROLAMENTO** (doc 109 §7.10): quanto o contacto se opõe a ROLAR, e não a
+    /// deslizar. `0` = a bola rola para sempre (a lei de antes desta coluna, ao bit).
+    ///
+    /// ⚠️ **Não se combina por par** — é da peça, e o porquê está no
+    /// [`ph2d_nodegraph::attr::ROLLING_COLUMN`].
+    pub rolar: f32,
 }
 
 /// Os tectos e a coerção vivem ao lado das COLUNAS (`ph2d_nodegraph::attr`), e não aqui: quem
 /// declara e quem consome têm de ler o mesmo número. Ver [`ph2d_nodegraph::attr::BOUNCE_MAX`] —
 /// é lá que está a tabela MEDIDA que abriu a faixa de `1` para `2`.
-pub use ph2d_nodegraph::attr::{BOUNCE_MAX, FRICTION_MAX, material_coerce as coage};
+pub use ph2d_nodegraph::attr::{BOUNCE_MAX, FRICTION_MAX, ROLLING_MAX, material_coerce as coage};
 
 impl Material {
     /// **O material da AUSÊNCIA** — gelo morto, que é a lei de antes do doc 109 §7, termo a termo.
     pub const LISO: Self = Self {
         atrito: 0.0,
         salto: 0.0,
+        rolar: 0.0,
     };
 
     /// Lido de um valor autorado: um não-finito não é um pedido, e cada metade tem o tecto dela.
-    fn de(atrito: f32, salto: f32) -> Self {
+    fn de(atrito: f32, salto: f32, rolar: f32) -> Self {
         Self {
             atrito: coage(atrito, FRICTION_MAX),
             salto: coage(salto, BOUNCE_MAX),
+            rolar: coage(rolar, ROLLING_MAX),
         }
     }
 }
@@ -115,8 +125,12 @@ pub fn materiais(s: &Stream) -> Option<Vec<Material>> {
         Some(Column::Scalar(v)) if v.len() == s.count() => Some(v.clone()),
         _ => None,
     };
-    let (a, b) = (coluna(FRICTION_COLUMN), coluna(BOUNCE_COLUMN));
-    if a.is_none() && b.is_none() {
+    let (a, b, c) = (
+        coluna(FRICTION_COLUMN),
+        coluna(BOUNCE_COLUMN),
+        coluna(ROLLING_COLUMN),
+    );
+    if a.is_none() && b.is_none() && c.is_none() {
         return None;
     }
     Some(
@@ -125,6 +139,7 @@ pub fn materiais(s: &Stream) -> Option<Vec<Material>> {
                 Material::de(
                     a.as_ref().map_or(0.0, |v| v[i]),
                     b.as_ref().map_or(0.0, |v| v[i]),
+                    c.as_ref().map_or(0.0, |v| v[i]),
                 )
             })
             .collect(),
@@ -156,6 +171,32 @@ pub fn lambda(deslize: f32, soma: f32, mu: f32, lambda_n: f32) -> f32 {
     }
     let teto = mu * lambda_n;
     (deslize / soma).clamp(-teto, teto) // CLAMP-OK: teto >= 0 verificado acima
+}
+
+/// ⭐⭐⭐ **O IMPULSO DE ROLAMENTO** — o que faz uma bola a rolar **parar sozinha** (doc 109 §7.10).
+///
+/// O atrito tangencial trava quem **derrapa**; uma bola que já rola tem velocidade zero no ponto de
+/// contacto, logo ele não tem nada a opor e ela rola para sempre. O que a trava na vida real é a
+/// **deformação** do contacto, que a literatura modela como um binário limitado pela normal:
+///
+/// ```text
+///   |τ| ≤ μr · jn · R          ⇒   jr = clamp( L,  ±μr·jn·R ),   L = ω / invI
+/// ```
+///
+/// — a mesma forma do `rollingResistance` do Box2D v3 e do `rolling_resistance` do Rapier.
+/// `L` é o **momento angular que a peça tem**, então o `clamp` diz que o pior caso é parar a
+/// rotação neste tique: ⛔ ele nunca a inverte, e é por isso que o tecto não tem divergência a
+/// temer (`ph2d_nodegraph::attr::ROLLING_MAX`).
+///
+/// ⚠️ **Ele corre DEPOIS do tangencial e lê o `ω` já corrigido por ele** — os dois escrevem a mesma
+/// grandeza, e lidos do mesmo `ω` o rolamento desfaria parte do giro que o atrito acabou de dar.
+#[must_use]
+pub fn rolamento(momento: f32, mu_r: f32, lambda_n: f32, braco: f32) -> f32 {
+    let teto = mu_r * lambda_n * braco.abs();
+    if !teto.is_finite() || !momento.is_finite() || teto <= 0.0 {
+        return 0.0;
+    }
+    momento.clamp(-teto, teto) // CLAMP-OK: teto > 0 verificado acima
 }
 
 /// **O DESLIZE que o atrito opõe** — o que o solver precisa de saber para o medir.

@@ -191,12 +191,21 @@ fn write_the_sim_figures() {
     }
 
     let path = dir.join("params_sim.html");
-    std::fs::write(&path, super::tutorial_table::derive(TABELA)).expect("a tabela");
+    // ⚠️ O cartão da FORMA entra com o `Collide` LIGADO — é o estado em que o capítulo 3 o põe, e
+    // é onde a secção `Collision` existe. Ver [`tutorial_table::derive_ligado`].
+    let tabela = super::tutorial_table::derive_ligado(
+        TABELA,
+        &[("shape", ph2d_node_motion_shape::param::COLLIDE, 1.0)],
+    );
+    std::fs::write(&path, tabela).expect("a tabela");
     eprintln!("  tabela derivada       │ {}", path.display());
 }
 
 /// As âncoras da tabela «o que cada controlo faz» — a mesma porta dos ciclos 1 a 4.
 static TABELA: &[(&str, &str)] = &[
+    // ⭐ A FORMA entra nesta tabela desde o doc 109: o colisor e o material moram no cartão dela,
+    // e um tutorial de simulação que não os liste manda o artista procurá-los no nó errado.
+    ("shape", "source.shape"),
     ("collider", "sim.collide"),
     ("wind", "force.wind"),
     ("zone", "sim.zone"),

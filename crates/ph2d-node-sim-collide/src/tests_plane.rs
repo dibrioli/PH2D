@@ -58,6 +58,7 @@ fn an_untilted_plane_is_the_floor_that_shipped_before_it() {
                     &crate::resposta::Resposta {
                         salto: 0.0,
                         atrito: 0.35,
+                        rolar: 0.0,
                         rolamento: None,
                     },
                 );

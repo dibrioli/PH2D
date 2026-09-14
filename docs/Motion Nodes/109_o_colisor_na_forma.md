@@ -597,8 +597,11 @@ lê-se exactamente como um controlo que não funciona.* A cura foi dar-lhe o A/B
 - ⏳ **Entre CAIXAS o `Friction` quase não pesa** (tabela acima): o encaixe geométrico de duas faces
   planas já impede o deslize, e o que sobra para o atrito é pouco. Não está errado — está **medido e
   nomeado**, e quem quiser mudá-lo tem de dizer que recurso é que o limita.
-- ⏳ **Não há atrito de ROLAMENTO** (o que faz uma bola a rolar parar sozinha num plano): com
-  `angular_damping = 1` (o default) ela rola para sempre num chão infinito. É um param, não uma lei.
+- ✅ **Não há atrito de ROLAMENTO** — **FECHADO na §7.10.** A redacção original dizia: *«(o que faz
+  uma bola a rolar parar sozinha num plano): com `angular_damping = 1` (o default) ela rola para
+  sempre num chão infinito. **É um param, não uma lei**»* — ⚠️ e essa última metade estava **errada**:
+  o `Friction` não podia fazê-lo por construção (o deslize de uma bola a rolar é exactamente zero),
+  logo era preciso um impulso novo. *O diagnóstico estava certo e o preço não.*
 
 ### §7.8 — O salto vai ao DOBRO, e a frase que o segurava nunca tinha sido medida
 
@@ -654,3 +657,138 @@ Medido na cena: `Bounciness 0 → 0,200` (pousada) · `1 → 0,510` · **`2 → 
 
 ⚠️ **Dois gates antigos reprovaram, e era o que tinham de fazer:** eles afirmavam *«e nunca passa de
 1»*. A faixa mudou, e eles disseram-no alto em vez de a deixarem passar em silêncio.
+
+### §7.9 — O `Bounce` do OBSTÁCULO chega ao mesmo tecto, e a §7.8 estava errada sobre ele
+
+⛔⛔ **A última linha da §7.8 é uma premissa minha que a medição derrubou.** Ela dizia:
+
+> *«O `restitution` do OBSTÁCULO (`sim.collide`) fica em `0..1` — é outro controlo, o dono não o
+> pediu, e o par toma o MAIOR dos dois, logo a peça alcança `2` contra qualquer parede.»*
+
+As duas metades da frase são verdade e a conclusão não. O par toma o maior, **e os dois números
+entram no MESMO campo** (`resposta::Resposta::salto`): não são dois controlos, são o mesmo número
+com duas portas de autoria. Manter `1` numa delas é o mesmo deslizante a parar a meio do curso ou
+não **consoante o lado do par em que o artista lhe toca** — e o lado do obstáculo é o que o
+tutorial do ciclo 5 ensina primeiro (capítulo 2).
+
+⚠️ **E o corte estava em DOIS sítios, não no hint:** o `eval` cortava (`clamp(0.0, 1.0)`) e o
+cabeçalho do módulo declarava a lei por escrito (*«Restitution ≤ 1»*). Um deslizante alargado com o
+`eval` a cortar teria dado exactamente o sintoma que o dono já tinha reportado uma vez.
+
+**Medido** (sonda `probe_the_obstacle_bounce_above_one`, nas condições da tabela do §7.8 — queda de
+`0,75`, `g = 4`, `dt = 1/60`, **sem laço**, 40 s):
+
+| `Bounce` do obstáculo | 0,00 | 0,50 | 1,00 | 1,25 | 1,50 | 2,00 | 3,00 |
+|---|---|---|---|---|---|---|---|
+| pico alcançado | 0,750 | 0,750 | 0,750 | **39,40** | 95,83 | 194,05 | 550,58 |
+
+⭐ **É a MESMA curva da tabela do §7.8** (`39,6` · `91,8` · `192,0` · `550,8`, medida pelo lado da
+peça): as duas portas alimentam a mesma lei, e agora têm o mesmo tecto — `ph2d_nodegraph::attr::
+BOUNCE_MAX`, lido pelo hint **e** pela coerção.
+
+**O que mudou:** o `eval` passa a coagir por `material_coerce(_, BOUNCE_MAX)` (e o `friction` por
+`FRICTION_MAX`, pela mesma porta), o hint lê a const, e o cabeçalho do módulo leva a tabela.
+Gate `the_obstacle_bounce_reaches_the_same_ceiling_as_the_piece` — a régua é o **produto** (a peça
+volta acima de onde partiu) e não a constante, com o controlo a `1,00` no mesmo teste.
+
+### §7.10 — O ATRITO DE ROLAMENTO: a bola pára sozinha
+
+A ponta que a §7.7 nomeava — *«com `angular_damping = 1` (o default) ela rola para sempre num chão
+infinito. É um param, não uma lei»* — estava certa no diagnóstico e errada no preço: **é uma lei**,
+e a razão é a mesma conta da §7.1.
+
+⭐⭐⭐ **Porque o `Friction` não podia fazer isto.** O atrito tangencial opõe-se ao **deslize**, que
+é a velocidade do PONTO de contacto (`v·t + ω·bt`). Numa bola a rolar sem derrapar esse número é
+**exactamente zero** — não há nada a que ele se oponha. *A mesma identidade que faz o atrito ser a
+única coisa capaz de rodar um círculo (§7.1) faz dele incapaz de o parar.* O que trava uma bola
+real é a **deformação** do contacto, que a literatura modela como um binário limitado pela normal:
+
+```text
+  |τ| ≤ μr · jn · R      ⇒     jr = clamp( ω/invI,  ±μr·jn·R )
+```
+
+— a forma do `rollingResistance` do Box2D v3 e do `rolling_resistance` do Rapier. ⚠️ O `clamp` é
+sobre o **momento angular que a peça tem**, logo o pior caso é parar a rotação neste tique: ⛔ ele
+nunca a inverte, e é por isso que o tecto não tem divergência a temer.
+
+⚠️ **Ele corre DEPOIS do tangencial e lê o `ω` que aquele acabou de escrever** — os dois escrevem a
+mesma grandeza. Lido do `ω` de entrada, numa bola a derrapar (onde `ω = 0`) ele seria **inerte no
+tique em que o atrito a põe a rodar**. Gate `the_rolling_reads_the_spin_the_friction_just_wrote`,
+com a régua a `0,5` e não a `1,0`: **a `1,0` o cancelamento é exacto** (o tecto do rolamento vale
+precisamente o momento que o atrito produziu) e um gate ali mediria uma igualdade acidental.
+
+#### O tecto, MEDIDO
+
+Sonda `probe_the_rolling_ball_stops` — bola já **a rolar** a `1 u/s`, chão plano, `μ = 1`, nas
+constantes da `=115`:
+
+| rolamento | 0,00 | 0,02 | 0,05 | 0,10 | 0,25 | 0,50 | 1,00 | **1,50** | 2,00 | 4,00 | 8,00 |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| pára em (s) | ∞ | 18,57 | 7,43 | 3,72 | 1,50 | 0,78 | 0,43 | **0,33** | 0,33 | 0,33 | 0,33 |
+
+⭐⭐ **A `1,50` a coluna satura, e o que a segura é OUTRA lei:** com o rolamento a matar todo o `ω`
+em cada tique a bola passa a ser um bloco a derrapar, e aí quem a trava é o atrito de Coulomb —
+`v/(μ·g) = 0,25 s` em teoria, `0,33` medidos (o contacto não acontece em todos os tiques). ⇒
+`ROLLING_MAX = 1.5`, porque acima disso o deslizante devolve sempre o mesmo número.
+
+#### A fronteira, e porque ela NÃO se combina por par
+
+⚠️⚠️ **É a única das três propriedades que é da PEÇA e não do par.** O atrito e o salto são de
+*duas superfícies a esfregar-se*; o rolamento modela a peça a **achatar-se** contra o que toca.
+⛔ E a razão de produto é mais dura que a física: nenhum obstáculo declara rolamento, logo uma média
+geométrica daria `0` em **toda cena que existe** — o artista arrastaria um controlo que não faz
+nada, que é literalmente o report do §7.6.
+
+⛔⛔ **E ela vive na moeda da VELOCIDADE** (peça × obstáculo). No contacto peça × peça a rotação é
+uma correcção de POSIÇÃO (§7.4) e não há `ω` que travar — *uma bola que não tem como «rolar para
+sempre» também não tem o que parar*. Isto está **declarado e gateado**, não esquecido:
+`the_piece_against_piece_contact_ignores_rolling_bit_for_bit` compara a saída com o rolamento a `0`
+e no tecto e exige **bits iguais**. ⇒ no dia em que aquele solver ganhar velocidade angular (o §7.7
+nomeia-o), ele reprova e obriga a decidir.
+
+#### Medido na cena
+
+⭐⭐⭐ **A bola TRAVA na própria rampa, e o número não foi escolhido:** uma bola prende num plano
+inclinado quando `μr ≥ tan θ`, e a rampa da `=115` tem `12°` ⇒ `0,213`. Medido (sonda
+`probe_the_rolling_ball_on_the_ramp`, 2 s, distância percorrida):
+
+| `Rolling Friction` | 0,00 | 0,10 | 0,20 | **0,25** | 0,30 | 0,50 | 1,00 | 1,50 |
+|---|---|---|---|---|---|---|---|---|
+| desceu | 1,104 | 0,620 | 0,170 | **0,087** | 0,087 | 0,086 | 0,086 | 0,086 |
+
+— ela prende entre `0,20` e `0,25`, **exactamente onde a conta manda**, e daí para cima nada muda.
+⚠️ Os `0,086` que sobram não são descida: é a folga de `0,02` com que a bola nasce pousada.
+Gate `the_rolling_friction_locks_the_ball_on_the_ramp`.
+
+**O que mudou:** coluna `rolling` + `ROLLING_MAX` (`ph2d_nodegraph::attr`) · `Material::rolar` e
+`atrito::rolamento` (`ph2d-contact`) · o impulso em `resposta::respond` · o param `Rolling Friction`
+no cartão da forma (hint, grupo `Collision`, gate acima do `Collide`, coluna escrita pelo
+`collider.rs`) · o passo 7 do anúncio da `=115`.
+
+### §7.11 — O tutorial do ciclo 5 passa a ensinar o que o app faz
+
+⛔⛔ **O PDF do ciclo 5 ensinava o colisor ANTIGO.** Ele foi aprovado em 10/09 e o capítulo 2 dele
+manda *«clique no cartão `Collider` e arraste a caixa»* — o colisor do MUNDO. Nada do colisor na
+forma, do material ou do salto ao dobro estava lá, e a tabela derivada dizia `Friction 0 a 1` sobre
+uma secção que hoje tem três linhas. *Quando um comportamento muda, o smoke que o demonstra é o
+último sítio a ser lembrado e o primeiro que o dono lê* (`CLAUDE.md` §5.0).
+
+- **Capítulo 6 novo** — *«As peças colidem SOZINHAS, e de que elas são feitas»*, sobre a `=115`,
+  com o comando próprio e seis passos numerados; o antigo 6 passa a 7.
+- ⛔ **O comando deixa de ser `--release`** — `161 s` por correcção contra `3 s` do perfil `smoke`
+  (DIRETRIZ §6.7). *Um tutorial é o sítio onde o dono COPIA o comando.* Há gate a proibir a palavra.
+- **A tabela derivada ganha o cartão da FORMA**, com o `Collide` **ligado** (`derive_ligado`): é o
+  estado em que o capítulo o põe, e a nota `Só noutro modo` não carrega a FAIXA de cada controlo,
+  que é o que o leitor ali vai buscar.
+- ⛔⛔ **E o gerador era cego a uma família inteira de gates:** a nota lia só os `ParamGate`
+  (enum) e **nunca** os `ParamGateAbove` (limiar), que shipou depois dela — a secção `Collision`
+  inteira não aparecia nem na tabela nem na nota. *Uma nota que promete «o que existe e o modo de
+  omissão não acende» e lê metade dos gates é pior que a ausência dela: ela afirma que não há mais
+  nada.* Curado, e as notas passam a ser **por param** (o `Collider Radius` tem um gate de cada
+  família e saía escrito duas vezes, a prometer coisas diferentes).
+- ⚠️ **Regenerar as tabelas dos ciclos 1 a 3 mudou-as** — elas estavam paradas antes da cura
+  *«uma unidade, uma palavra»* e ainda imprimiam `graus` onde o app diz `deg`. Os cinco PDFs foram
+  reconstruídos.
+- O gate `every_row_the_sim_tutorial_names_is_on_the_card` passa a correr **sobre as DUAS cenas**,
+  e procura os cartões pelo nome que o capítulo manda clicar (`Friction 1: ROLA`), que é o da
+  legenda e não `Shape`.

@@ -644,3 +644,67 @@ fn a_resting_sized_particle_does_not_jitter_either() {
         "touching the floor at its own radius must change nothing"
     );
 }
+
+/// ⭐⭐⭐ **O `Bounce` DO OBSTÁCULO chega ao MESMO tecto que o da peça** (doc 109 §7.9 — ordem do
+/// dono, 2026-09-13). O corte vivia no `eval` (`clamp(0, 1)`) e o do cartão da forma tinha subido
+/// para `2`: **os dois números encontram-se no mesmo campo** (`Resposta::salto`, por `max`), logo
+/// o artista via o mesmo deslizante parar a meio do curso ou não consoante o lado em que tocasse.
+///
+/// ⚠️ A régua é o PRODUTO e não a constante: uma peça largada tem de voltar **acima de onde
+/// partiu**, que é o que passar de `1` quer dizer — e o controlo a `1,00` não passa.
+#[test]
+fn the_obstacle_bounce_reaches_the_same_ceiling_as_the_piece() {
+    fn pico(rest: f32) -> f32 {
+        let mut reg = NodeRegistry::new();
+        ph2d_node_registry_init::register_all_nodes(&mut reg).expect("registry");
+        let mut g = Graph::new();
+        let seed = g.add_node("motion.grid");
+        g.set_param(seed, "rows", 1.0);
+        g.set_param(seed, "cols", 1.0);
+        let zone = g.add_node("sim.zone");
+        let wind = g.add_node("force.wind");
+        g.set_param(wind, "angle", 270.0); // gravidade
+        g.set_param(wind, "strength", 4.0);
+        g.set_param(wind, "gust", 0.0);
+        let step = g.add_node("sim.step");
+        let floor = g.add_node("sim.collide");
+        g.set_param(floor, "shape", SHAPE_PLANE as f32);
+        g.set_param(floor, "height", -2.0);
+        g.set_param(floor, "restitution", rest);
+        for (from, fp, to, tp, delayed) in [
+            (seed, 0u16, zone, 0u16, false),
+            (zone, 0, wind, 0, true),
+            (wind, 0, step, 0, false),
+            (step, 0, floor, 0, false),
+            (floor, 0, zone, 1, false),
+        ] {
+            g.connect(Edge {
+                from: (NodeId(from.0), fp),
+                to: (NodeId(to.0), tp),
+                delayed,
+            })
+            .expect("wire");
+        }
+        let mut cook = Cook::new();
+        let mut alto = f32::MIN;
+        for k in 0..600u64 {
+            let t = k as f64 / 60.0;
+            let out = cook.cook(&g, &reg, zone, t).expect("cozinha");
+            if let Some(Column::Vec2(p)) = out[0].as_stream().get("P") {
+                alto = alto.max(p.iter().map(|q| q[1]).fold(f32::MIN, f32::max));
+            }
+            cook.advance_tick(&g, &reg, t).expect("tique");
+        }
+        alto
+    }
+    let (um, dois) = (pico(1.0), pico(2.0));
+    assert!(
+        um < 0.05,
+        "o controlo: a `1,00` a peça não passa de onde partiu, e leu {um}"
+    );
+    assert!(
+        dois > 1.0,
+        "a `2,00` o obstáculo tem de devolver mais do que levou e a peça subir acima da partida \
+         -- leu {dois}, que é o corte de `1` a comer o resto do curso"
+    );
+}

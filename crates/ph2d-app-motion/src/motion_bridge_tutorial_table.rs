@@ -30,10 +30,34 @@ fn fmt_num(v: f64) -> String {
 /// diz **o que o acende**. *Numa tabela de referência a omissão é pior que no painel:* ali o
 /// controlo está a um clique e vê-se aparecer; aqui ele simplesmente não existe.
 pub fn derive(entradas: &[(&str, &str)]) -> String {
+    derive_ligado(entradas, &[])
+}
+
+/// A mesma tabela, com o cartão de algumas âncoras posto no estado em que o TUTORIAL o põe.
+///
+/// ⚠️ **Existe porque a tabela promete *«o que o cartão mostra»*, e um capítulo que manda LIGAR um
+/// interruptor muda essa resposta** — a secção `Collision` do `source.shape` nasce escondida, e
+/// listá-la só na nota `Só noutro modo` tirava-lhe a FAIXA de cada controlo, que é precisamente o
+/// que o leitor vai ali buscar. ⛔ Não é uma segunda lei: a [`derive`] é esta função sem ligar nada.
+pub fn derive_ligado(entradas: &[(&str, &str)], ligados: &[(&str, &str, f32)]) -> String {
     let mut html = String::from("<!-- GERADO pelo gerador do tutorial. Nao editar a mao. -->\n");
     for (ancora, node) in entradas {
         let mut aux = MotionState::new();
         let id = aux.doc.graph.add_node((*node).to_string());
+        // ⚠️ O param é CONFERIDO contra o manifesto: um nome que o nó não tem seria um `set_param`
+        // mudo, e a tabela sairia com a secção fechada a dizer-se aberta.
+        for (a, param, valor) in ligados.iter().filter(|(a, ..)| a == ancora) {
+            let tem = aux
+                .registry
+                .manifests()
+                .find(|m| m.name == *node)
+                .is_some_and(|m| m.params.iter().any(|p| p.name == *param));
+            assert!(
+                tem,
+                "o no' `{node}` da ancora `{a}` nao tem o param `{param}`"
+            );
+            aux.doc.graph.set_param(id, *param, *valor);
+        }
         let tid = aux.doc.graph.node(id).expect("no'").type_id();
         let nome = aux
             .registry
@@ -128,7 +152,15 @@ fn so_noutro_modo(
             .find(|h| h.param == nome)
             .map_or(nome, |h| h.label)
     };
-    let mut notas: Vec<String> = Vec::new();
+    // ⚠️ **Por PARAM e não por gate:** um controlo pode ter um gate de cada família (o
+    // `Collider Radius` tem), e uma linha por gate escrevia-o duas vezes a prometer coisas
+    // diferentes — quando na verdade ele precisa das DUAS condições ao mesmo tempo.
+    let mut notas: Vec<(&str, Vec<String>)> = Vec::new();
+    let mut junta =
+        |param: &'static str, cond: String| match notas.iter_mut().find(|(p, _)| *p == param) {
+            Some((_, v)) => v.push(cond),
+            None => notas.push((param, vec![cond])),
+        };
     for g in aux.registry.param_gates(tid).unwrap_or(&[]) {
         if mostrados.contains(&g.param) {
             continue; // já está na tabela: o modo de omissão acende-o
@@ -145,14 +177,41 @@ fn so_noutro_modo(
                 _ => v.to_string(),
             })
             .collect();
-        notas.push(format!(
-            "<b>{}</b> aparece quando <b>{}</b> é {}",
-            rotulo(g.param),
-            rotulo(g.when),
-            quais.join(" ou ")
-        ));
+        junta(
+            g.param,
+            format!("<b>{}</b> é {}", rotulo(g.when), quais.join(" ou ")),
+        );
     }
-    (!notas.is_empty()).then(|| notas.join(" · "))
+    // ⛔⛔ **A SEGUNDA FAMÍLIA DE GATES, que esta nota não via.** O `ParamGateAbove` é o irmão
+    // CONTÍNUO do `ParamGate` (um limiar, não uma lista de valores) e shipou depois desta função:
+    // uma secção inteira do `source.shape` — o `Collision`, sete controlos — não aparecia nem na
+    // tabela nem na nota. *Uma nota que promete «o que existe e o modo de omissão não acende» e lê
+    // só metade dos gates é pior que a ausência dela: ela afirma que não há mais nada.*
+    for g in aux.registry.param_gates_above(tid).unwrap_or(&[]) {
+        if mostrados.contains(&g.param) {
+            continue;
+        }
+        // Um limiar sobre um interruptor lê-se «ligado»; sobre um número, «passa de N».
+        let ligavel = matches!(
+            hints.iter().find(|h| h.param == g.when).map(|h| h.widget),
+            Some(ph2d_node_registry::ParamWidget::Toggle)
+        );
+        let quando = if ligavel && g.above <= 0.0 {
+            format!("<b>{}</b> está ligado", rotulo(g.when))
+        } else {
+            format!(
+                "<b>{}</b> passa de {}",
+                rotulo(g.when),
+                fmt_num(g.above.into())
+            )
+        };
+        junta(g.param, quando);
+    }
+    let linhas: Vec<String> = notas
+        .iter()
+        .map(|(p, conds)| format!("<b>{}</b> aparece quando {}", rotulo(p), conds.join(" e ")))
+        .collect();
+    (!linhas.is_empty()).then(|| linhas.join(" · "))
 }
 
 /// ⭐⭐⭐ **UMA UNIDADE, UMA PALAVRA — em toda a tabela.**

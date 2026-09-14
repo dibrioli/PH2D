@@ -131,14 +131,28 @@ pub const INV_INERTIA_COLUMN: &str = "inv_inertia";
 /// `ph2d_contact::atrito::mu` — uma peça de gelo desliza contra tudo, que é o que «gelo» quer
 /// dizer. Um `max` faria uma peça de lixa colar tudo o resto ao chão.
 pub const FRICTION_COLUMN: &str = "friction";
-/// ⭐⭐ **O SALTO da peça** (doc 109 §7): quanto de um embate volta, `0..1`. **Ausente ⇒ `0` ⇒
-/// morto.** O par combina-se pelo MAIOR dos dois (Box2D): uma bola saltitante salta contra uma
-/// parede morta.
+/// ⭐⭐ **O SALTO da peça** (doc 109 §7): quanto de um embate volta, `0..`[`BOUNCE_MAX`].
+/// **Ausente ⇒ `0` ⇒ morto.** O par combina-se pelo MAIOR dos dois (Box2D): uma bola saltitante
+/// salta contra uma parede morta.
 ///
 /// ⚠️ **Ela não se chama `restitution`** de propósito: esse nome já é um **param** do
 /// `sim.collide` (o do OBSTÁCULO), e duas grandezas com o mesmo nome em sítios diferentes é como
 /// um dia alguém lê a do obstáculo julgando ler a da peça. Aqui a coluna é da PEÇA.
 pub const BOUNCE_COLUMN: &str = "bounce";
+/// ⭐⭐⭐ **O ATRITO DE ROLAMENTO da peça** (doc 109 §7.10 — a ponta que o §7.7 nomeava: *«com
+/// `angular_damping = 1` ela rola para sempre num chão infinito»*): o que faz uma bola a rolar
+/// **parar sozinha**. **Ausente ⇒ `0` ⇒ rola para sempre**, que é a lei de antes desta coluna.
+///
+/// ⚠️⚠️ **Ela é a ÚNICA das três que NÃO se combina por par, e a escolha é deliberada.** O atrito
+/// e o salto são propriedades de *duas superfícies a esfregar-se*; o rolamento modela a peça a
+/// **achatar-se** contra o que toca, logo é dela. ⛔ Combinar por média geométrica (como o atrito)
+/// daria `0` em toda cena que existe — nenhum obstáculo declara rolamento — e o artista veria um
+/// controlo que **não faz nada**, que é exactamente o report que o §7.6 já custou.
+///
+/// ⚠️ **A fronteira, DECLARADA** (§7.4): ela vive na moeda de VELOCIDADE (peça × obstáculo, o
+/// `sim.collide`). No contacto peça × peça a rotação é posicional e **não tem velocidade angular a
+/// resistir** — ali não há nada que este número possa travar, e isso é o mesmo vão já nomeado.
+pub const ROLLING_COLUMN: &str = "rolling";
 
 /// ⭐⭐⭐ **O TECTO DO SALTO, e ele é o DOBRO do de todo motor** — ordem do dono (2026-09-13:
 /// *«quero mais capacidade de Bounciness — de zero até o dobro do máximo atual»*).
@@ -161,6 +175,28 @@ pub const BOUNCE_MAX: f32 = 2.0;
 /// O tecto do [`FRICTION_COLUMN`]. `1` é a lixa de todo motor, e subi-lo não compra nada: o
 /// impulso tangencial já está limitado por Coulomb ao que a normal aguenta.
 pub const FRICTION_MAX: f32 = 1.0;
+
+/// **O TECTO DO ROLAMENTO** ([`ROLLING_COLUMN`]) — MEDIDO, e o número é onde a curva PÁRA de
+/// responder, não um lugar redondo (§0.0).
+///
+/// Sonda `probe_the_rolling_ball_stops` (`ph2d-node-sim-collide`), nas condições da cena `=115`:
+/// raio `0,2`, gravidade `4`, `dt = 1/60`, a bola já **a rolar** a `1 u/s` num chão plano de
+/// `μ = 1` — segundos até parar:
+///
+/// ```text
+///   rolamento │ 0,00  0,02  0,05  0,10  0,25  0,50  1,00 │ 1,50  2,00  3,00  4,00  8,00
+///   pára em s │  ∞   18,57  7,43  3,72  1,50  0,78  0,43 │ 0,33  0,33  0,33  0,33  0,33
+/// ```
+///
+/// ⭐⭐ **A `1,50` a coluna SATURA, e o que a segura não é esta lei — é o ATRITO DE COULOMB.** Com o
+/// rolamento a matar todo o `ω` em cada tique, a bola passa a ser um bloco a derrapar, e aí quem a
+/// trava é `μ·g`: `v/(μ·g) = 0,25 s` em teoria, `0,33` medidos (o contacto não acontece em todos os
+/// tiques). ⇒ o recurso que fecha esta faixa tem nome e é de **outra lei**; escrever mais do que
+/// `1,5` seria dar ao artista curso de deslizante que devolve sempre o mesmo número.
+///
+/// ⛔ E não há divergência a temer: o impulso é limitado ao momento angular que a peça **tem**
+/// (`ω/invI`), logo o pior caso é parar a rotação neste tique — nunca invertê-la.
+pub const ROLLING_MAX: f32 = 1.5;
 
 /// **A PORTA da coerção de um coeficiente de material** — `0..teto`, e um não-finito lê como `0`
 /// (o neutro desta grandeza, não a identidade).

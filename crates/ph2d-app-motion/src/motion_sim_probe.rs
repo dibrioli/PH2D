@@ -334,6 +334,69 @@ fn every_row_the_sim_tutorial_names_is_on_the_card() {
             "o tutorial manda abrir a seccao `{seccao}` no cartao `{titulo}`, e ele tem {secs:?}"
         );
     }
+
+    // ⭐⭐⭐ **O CAPÍTULO 6 CORRE NOUTRA CENA** (`=115`, o material — doc 109 §7): o colisor e as
+    // três linhas do material moram no cartão da FORMA, e o capítulo manda clicar em cada uma.
+    //
+    // ⚠️ **Sem esta metade o capítulo novo entrava sem régua nenhuma** — a de cima corre sobre a
+    // `=113`, onde o cartão da forma nem sequer tem o `Collide` ligado.
+    let mut m115 = crate::motion_state::MotionState::new();
+    let _ = crate::motion_demo_legend::monta("115", &mut m115.doc, &m115.registry);
+    let mut s115 = ph2d_panel_motion_graph::snapshot_from(&m115.doc.graph, &m115.registry);
+    crate::motion_bridge::params::card::stamp_card_params(
+        &m115,
+        ph2d_editor_core::ProjectSettings::default(),
+        &mut s115,
+    );
+    // ⚠️ **O cartão da forma nesta cena tem o nome da LEGENDA** (`Friction 1: ROLA`), e é esse o
+    // nome que o capítulo manda clicar — logo é esse que o gate procura. *Uma régua que procurasse
+    // `Shape` passaria sobre um tutorial que manda clicar num cartão que não existe.*
+    for (titulo, linhas) in [
+        ("Friction 1: ROLA", &["Friction", "Rolling Friction"][..]),
+        ("Bounciness 0,9: SALTA", &["Bounciness"][..]),
+    ] {
+        let forma = s115
+            .nodes
+            .iter()
+            .find(|v| v.display_name == titulo)
+            .unwrap_or_else(|| {
+                let havia: Vec<&str> = s115.nodes.iter().map(|v| v.display_name.as_str()).collect();
+                panic!("o capitulo 6 manda clicar no cartao `{titulo}` -- ha': {havia:?}")
+            });
+        let rows: Vec<&str> = forma.params.iter().map(|c| c.hint.label).collect();
+        for l in linhas {
+            assert!(
+                rows.contains(l),
+                "o capitulo 6 manda arrastar `{l}` no cartao `{titulo}`, e ele mostra {rows:?}"
+            );
+            assert!(
+                TUTORIAL.contains(l),
+                "o gate defende a linha `{l}` e o tutorial nunca a nomeia"
+            );
+        }
+        assert!(
+            TUTORIAL.contains(titulo),
+            "o gate defende o cartao `{titulo}` e o tutorial nunca o nomeia"
+        );
+        let secs: Vec<&str> = forma.sections.iter().map(|s| s.title).collect();
+        assert!(
+            secs.contains(&"Collision"),
+            "o capitulo 6 manda abrir a seccao `Collision` em `{titulo}`, e ele tem {secs:?}"
+        );
+    }
+    // ⚠️ **E o comando da cena tem de estar LÁ** — um capítulo que manda abrir outra cena sem
+    // dizer como é um passo impossível, que é exactamente o que esta régua existe para apanhar.
+    assert!(
+        TUTORIAL.contains("PH2D_GPU_COOK_DEMO=115"),
+        "o capitulo 6 corre na `=115` e o tutorial nao traz o comando dela"
+    );
+    // ⛔ E **nunca** `--release`: o `smoke` custa 3 s contra 161 (DIRETRIZ §6.7). Um tutorial é o
+    // sítio onde o dono copia o comando, logo é o sítio onde o número errado custa mais.
+    assert!(
+        !TUTORIAL.contains("--release"),
+        "o tutorial manda compilar em `--release`, que custa 161 s por correccao contra 3 s do \
+         perfil `smoke`"
+    );
 }
 
 /// ⭐⭐⭐ **O PREÇO DO GRUPO** (ciclo 5, passo 5 — doc 103 §1).

@@ -103,7 +103,10 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
         param: "restitution",
         label: "Bounce",
         min: 0.0,
-        max: 1.0,
+        // ⭐⭐ **A FAIXA É A DA PEÇA, lida da porta e não escrita outra vez** (doc 109 §7.9): o
+        // salto do obstáculo e o da peça combinam-se por `max` e entram no mesmo campo, logo um
+        // tecto por lado é o mesmo deslizante a parar a meio do curso consoante onde se lhe toca.
+        max: ph2d_nodegraph::attr::BOUNCE_MAX,
         step: 0.01,
         widget: ParamWidget::Slider,
     },
@@ -111,7 +114,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
         param: "friction",
         label: "Friction",
         min: 0.0,
-        max: 1.0,
+        max: ph2d_nodegraph::attr::FRICTION_MAX,
         step: 0.01,
         widget: ParamWidget::Slider,
     },

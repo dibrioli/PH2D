@@ -130,11 +130,25 @@ impl crate::App {
                 clippy::cast_sign_loss,
                 reason = "o campo é f64 e a contagem de ossos é u32; o piso em 0 já corre abaixo"
             )]
-            Some((IkKnob::Chain, v)) => Some(ph2d_skeleton_live::goal::side_for_chain(
-                sim,
-                osso,
-                v.max(0.0) as u32,
-            )),
+            // ⛔⛔ **O MISTO NÃO É RE-CAPTURADO, e a excepção é a lei dele.** A captura existe
+            // porque o lado descreve UMA corrente e subir o número troca a corrente por outra — mas
+            // o que ela devolve é um lado FORÇADO (`Ccw`/`Cw`), e escrevê-lo por cima de um `Mixed`
+            // apagaria a escolha do artista **em silêncio**, no gesto mais provável de todos (pôr o
+            // `IK Chain` no tamanho certo depois de escolher o modo). ⭐ E o misto não precisa da
+            // re-captura: ele lê o lado de cada junta da pose autorada, a cada resolução — uma
+            // corrente maior traz juntas novas, e cada uma chega com o seu.
+            Some((IkKnob::Chain, v))
+                if sim
+                    .world()
+                    .get::<ph2d_skeleton_ecs::IkGoal>(osso)
+                    .is_none_or(|g| g.bend != ph2d_skeleton::BendSide::Mixed) =>
+            {
+                Some(ph2d_skeleton_live::goal::side_for_chain(
+                    sim,
+                    osso,
+                    v.max(0.0) as u32,
+                ))
+            }
             _ => None,
         };
         if let Some((qual, v)) = pending_ik_knob

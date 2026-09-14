@@ -89,4 +89,15 @@ fn changing_the_chain_recaptures_the_bend_side() {
         "{} calcula o lado novo e DEITA-O FORA — citar a porta não é consultá-la.",
         f.display()
     );
+    // ⛔⛔ **E o MISTO é a EXCEPÇÃO da re-captura** (2026-09-14). O que a porta devolve é um lado
+    // FORÇADO (`Ccw`/`Cw`); escrevê-lo por cima de um `Mixed` apagaria a escolha do artista em
+    // silêncio, no gesto mais provável de todos — pôr o `IK Chain` no tamanho certo DEPOIS de
+    // escolher o modo. ⭐ E o misto não precisa dela: ele lê o lado de cada junta da pose autorada a
+    // cada resolução, logo uma corrente maior traz juntas novas já com o lado delas.
+    assert!(
+        src.contains("BendSide::Mixed"),
+        "{} re-captura o lado sem excluir o modo MISTO: mudar o `IK Chain` apagaria a escolha do \
+         artista em silêncio.",
+        f.display()
+    );
 }

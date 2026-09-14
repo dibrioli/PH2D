@@ -98,33 +98,32 @@ impl crate::App {
             // Em que disposição a folha aberta está — a caixa do gizmo envolve-a inteira.
             &tool_preview_bits,
             vec_scene,
-            // O gizmo da forma só existe fora da ferramenta vetorial, ou no modo
-            // Select dela (ADR-0112).
+            // ⭐⭐⭐ **A caixa de objecto só existe quando NENHUMA ferramenta autora no canvas**
+            // (ADR-0112) — a vectorial fora do Select dela, **e a do Flip fora do Select dela**.
+            // As alças registam hit-rects, e os dois ramos de canvas (`ramo_ferramenta_vetorial` e
+            // `ramo_flip_premidos`) exigem o MESMO `on_canvas`: uma caixa sobre um canvas de
+            // autoria é um ladrão de cliques, seja qual for a família do objecto que a publica.
             //
             // ⚠️ **E nunca durante o modo de PREVIEW** (W7r): a caixa é derivada da pose
             // AUTORADA, então enquanto a máquina move a forma ela fica para trás e passa a
             // descrever um lugar que a forma já não ocupa — é a razão pela qual o ADR-0128
-            // recusou cinco vezes um gizmo sobre geometria que se move. E as alças dela
-            // registram hit-rects, que é o mesmo motivo pelo qual o ADR-0112 já a suprime
-            // nos modos de nó: uma caixa sobre a apresentação é um ladrão de cliques.
+            // recusou cinco vezes um gizmo sobre geometria que se move.
             (!tools
                 .active()
                 .is_some_and(|t| t.id() == ph2d_editor_core::ToolId::new("vector"))
                 || self.vec.draw_config.mode == ph2d_tool_vector::DrawMode::Select)
+                && (!tools
+                    .active()
+                    .is_some_and(|t| t.id() == ph2d_editor_core::ToolId::new("flip"))
+                    || matches!(
+                        self.flip_state.style.map(|s| s.mode),
+                        Some(ph2d_tool_flip::FlipMode::Select)
+                    ))
                 && !self.ui_preview.is_on(),
             // As poses que o último desenho derivou — sem elas a caixa do gizmo de um filho
             // colocado aparece onde a forma foi AUTORADA.
             &self.vec.view_derived,
             flip,
-            // Idem para o objeto Flip: gizmo fora da tool Flip, ou no modo Select
-            // dela — em Draw/Erase ele comeria o clique do canvas (ADR-0112 parity).
-            !tools
-                .active()
-                .is_some_and(|t| t.id() == ph2d_editor_core::ToolId::new("flip"))
-                || matches!(
-                    self.flip_state.style.map(|s| s.mode),
-                    Some(ph2d_tool_flip::FlipMode::Select)
-                ),
             // ⭐ **O relógio anda?** — a secção FACTORY di-lo, e é o que separa *«a fábrica está
             // avariada»* de *«a fábrica está à espera»*. Resolvido AQUI porque é a shell que tem o
             // relógio, como o `bake_range` logo abaixo.

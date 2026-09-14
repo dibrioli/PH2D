@@ -2165,6 +2165,52 @@ zero ou duas vezes — nenhum fantasma, que é honesto e **não** foi smokado ·
 osso **seleccionado**, logo quem a IK moveu na corrente não recebe chave (é o modelo do Blender, e
 não foi medido contra ele).
 
+**W9 — O GÉMEO DO FLIP DA W6, fechado SEM report** (2026-09-14). A W6 deixou-o nomeado: *«um
+objecto de outra família continua a publicar caixa enquanto a ferramenta Flip desenha»*. Medido
+antes de tocar em código, e as três metades da medição:
+
+1. **A condição.** `object_gizmo_on` era *«não estou na ferramenta vectorial, ou estou no Select
+   dela»* — com a ferramenta **Flip** na mão ela é **verdadeira**, logo uma sprite, um grupo ou uma
+   forma seleccionados publicam caixa.
+2. **O consumidor.** O `ramo_flip_premidos` exige o **MESMO** `on_canvas` que o ramo vectorial
+   (= *nenhum painel e nenhum widget sob o cursor*), em **9** sítios. ⇒ a caixa mata o traço.
+3. **O alcance.** O `flip_wants_canvas()` não olha a selecção (ele lê `flip_state.active` e o modo),
+   e o objecto Flip activo é **o 1.º do documento**, não o escolhido ⇒ o artista pode ter qualquer
+   coisa seleccionada enquanto desenha. *O caso normal é uma sprite de REFERÊNCIA.*
+
+⭐⭐ **E a medição achou a resposta já escrita uma família ao lado, com a forma OPOSTA:** o Painter
+não usa o `on_canvas` — ele tem porta própria (`chrome_hit::pointer_over_chrome`) que **isenta** os
+ids do gizmo, e por isso pinta por cima da caixa. ⛔ **Essa saída está RECUSADA aqui**: ali a caixa
+continua PINTADA e deixa de pegar, que é a alça morta que o `CLAUDE.md` §5.0 nomeia. O que tem de
+não existir é a CAIXA — que é o que o ADR-0112 já dizia.
+
+⇒ a condição da porta única passou a ser *«nenhuma ferramenta AUTORA no canvas»* (a vectorial fora
+do Select dela **e** a do Flip fora do Select dela), e o **terceiro** `if` por família
+(`if !flip_gizmo_on`) morreu com ela — a W6 tinha matado os dois primeiros.
+⚠️ **Para o objecto FLIP nada muda, e isso é álgebra, não promessa:** antes a caixa dele era
+`object_gizmo_on_antigo ∧ flip_ok`, hoje é `object_gizmo_on_novo` = `vec_ok ∧ flip_ok ∧ ¬preview` —
+a mesma expressão. O que muda é a caixa das **outras** famílias.
+
+**Dois gates novos, e os dois são ARCH** (a condição vive numa fase do `render_frame` que nenhum
+teste de unidade alcança — a porta que a consome já tem o gate da W6): a condição **nomeia as duas
+ferramentas**, e o **censo dos ramos** que recebem o `on_canvas` — um QUARTO acorda a lei, porque é
+uma ferramenta nova a partilhar o canvas. **Duas mutações, duas RED.**
+⚠️ **E o `cargo check -p` do laço interno voltou a ler VERDE com um gate partido** (o 3.º hoje): ele
+não compila os testes, e a chamada da W6 ao `publish_gizmo` ficou com um argumento a mais.
+
+⛔⛔ **E a W9 EXPIROU um gate que estava certo, sobre um quadro certo:** o
+`the_gizmo_is_not_published_while_the_preview_runs` citava a condição **INTEIRA** achatada — as duas
+cláusulas da ferramenta vectorial *seguidas* do termo da preview — e a cláusula nova do Flip entrou
+**no meio delas**. *Uma agulha ancorada na ADJACÊNCIA é um proxy que expira na primeira linha que
+alguém acrescenta.* Hoje ela é o **termo** (`&&!self.ui_preview.is_on(),`, com a vírgula a provar que
+ele fecha o argumento) e exige **unicidade** — mais forte do que era, e imune à cláusula seguinte.
+Mutação (apagar o termo): RED.
+
+⏳ **ABERTO:** a condição continua a viver no FIO (uma expressão numa fase), e o gate que a protege é
+textual — ele apanha a regressão (uma cláusula apagada) e o crescimento da população, **não** a
+ferramenta nova que ninguém ligou. A cura de fundo seria a ferramenta DECLARAR se autora no canvas,
+e isso é o `Tool`, que é contrato **congelado** (§6).
+
 ## ⛔ Recusas MEDIDAS deste módulo — não as reconstrua
 
 > ⚠️ **As seis de 2026-09-07/08 entraram aqui na auditoria de 08/09** — elas viviam só em prosa e em

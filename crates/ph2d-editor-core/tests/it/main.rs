@@ -46,6 +46,7 @@ mod architecture_every_panel_is_painted;
 mod architecture_interactive_crate_has_behavioral_test;
 mod architecture_motion_chrome_never_wraps_a_row_label;
 mod architecture_msrv_is_the_pinned_toolchain;
+mod architecture_no_authoring_tool_shares_the_canvas_with_a_box;
 mod architecture_no_chip_without_steppers;
 mod architecture_no_dependency_climbs_a_layer;
 mod architecture_no_orphan_source_file;

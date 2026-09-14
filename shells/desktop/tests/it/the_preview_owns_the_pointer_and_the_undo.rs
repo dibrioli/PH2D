@@ -117,10 +117,21 @@ fn the_preview_consumes_the_click_before_any_tool() {
 fn the_gizmo_is_not_published_while_the_preview_runs() {
     let src = crate::frame_text::render_frame();
     let flat: String = src.chars().filter(|c| !c.is_whitespace()).collect();
-    assert!(
-        flat.contains("==ph2d_editor_core::ToolId::new(\"vector\"))||self.vec.draw_config.mode==ph2d_tool_vector::DrawMode::Select)&&!self.ui_preview.is_on()"),
-        "o `vec_gizmo_on` deixou de excluir a preview — a caixa fica sobre a pose autorada \
-         enquanto a forma anima para longe dela, e as alcas dela roubam o clique da apresentacao"
+    // ⚠️ **A agulha é o TERMO, e não a vizinhança dele** (2026-09-14). A 1.ª redacção citava a
+    // condição INTEIRA — as duas cláusulas da ferramenta vectorial seguidas do termo da preview —
+    // e expirou quando a W9 pôs a cláusula do **Flip** no meio delas, sobre um quadro CERTO: *uma
+    // agulha ancorada na adjacência é um proxy que expira na primeira linha que alguém acrescenta*
+    // ([[feedback_a_gate_anchored_on_a_byte_distance_is_a_proxy_that_expires]]). O que esta lei
+    // afirma é que o termo da preview é uma CONJUNÇÃO daquele argumento — e a vírgula prova que ele
+    // o fecha.
+    let agulha = "&&!self.ui_preview.is_on(),";
+    assert_eq!(
+        flat.matches(agulha).count(),
+        1,
+        "o `object_gizmo_on` deixou de excluir a preview — a caixa fica sobre a pose autorada \
+         enquanto a forma anima para longe dela, e as alcas dela roubam o clique da apresentacao. \
+         (Duas ocorrencias sao um segundo argumento a fazer a mesma pergunta: a agulha deixou de \
+         identificar este.)"
     );
 }
 

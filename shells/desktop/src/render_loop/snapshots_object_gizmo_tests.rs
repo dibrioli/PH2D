@@ -68,7 +68,6 @@ fn passe(
         object_gizmo_on,
         &ph2d_vec_scene::VecViewState::default(),
         &FlipDoc::default(),
-        true,
         Vec::new(),
         None,
         false,

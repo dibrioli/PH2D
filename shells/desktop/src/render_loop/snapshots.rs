@@ -84,20 +84,20 @@ pub(super) fn publish(
     // ADR-0111: uma forma vetorial também publica `GizmoView` — ela é um objeto com
     // `Transform`, e o gizmo que a manipula é o de sprite.
     vec_scene: &ph2d_vec_scene::VecScene,
-    // ADR-0112: …mas NÃO nos modos de desenho/edição de nós. As alças do gizmo
-    // registram hit-rects e comeriam o clique da âncora.
+    // ADR-0112: …mas NÃO enquanto uma ferramenta AUTORA no canvas. As alças do gizmo registam
+    // hit-rects e comeriam o clique do gesto.
     //
-    // ⚠️ **Ele vale para TODA família de objeto**, e não só para a forma vetorial — ver a porta
-    // única em `publish_gizmo::build_view`. O nome diz `object` por isso.
+    // ⚠️ **Ele vale para TODA família de objeto e para TODA ferramenta de autoria** — a vectorial
+    // fora do Select dela, e a do Flip fora do Select dela. Ver a porta única em
+    // `publish_gizmo::build_view`; o nome diz `object` por isso.
     object_gizmo_on: bool,
     // Os fatos DERIVADOS por frame (as poses do auto layout): sem eles a caixa do gizmo de um
     // filho colocado aparece onde a forma foi AUTORADA, e não onde a moldura a pôs.
     vec_view: &ph2d_vec_scene::VecViewState,
-    // ADR-0114/ADR-0111: um objeto Flip TAMBÉM publica `GizmoView` (mesma caixa/pivô/
-    // rotação, da bbox local da arte + `Transform`), fora dos modos Draw/Erase da
-    // tool Flip (senão o gizmo comeria o clique do canvas).
+    // ADR-0114/ADR-0111: um objeto Flip TAMBÉM publica `GizmoView` (mesma caixa/pivô/rotação, da
+    // bbox local da arte + `Transform`). ⚠️ O gate dele **não** vive aqui desde 2026-09-14: é o
+    // `object_gizmo_on`, que é de toda família.
     flip: &FlipDoc,
-    flip_gizmo_on: bool,
     // W4: the `(start, end)` window in seconds the §11 Bake button would cover.
     // Resolved by the caller (which owns the clock) and shown ON the button —
     // see `physics_bake::bake_range`. Start is honoured now (W-BakeRange), so a
@@ -202,7 +202,6 @@ pub(super) fn publish(
         object_gizmo_on,
         vec_view,
         flip,
-        flip_gizmo_on,
         joint_anchor_handles,
         joint_anchor_snap,
         join_draw_armed,
@@ -280,7 +279,6 @@ fn publish_gizmo(
     object_gizmo_on: bool,
     vec_view: &ph2d_vec_scene::VecViewState,
     flip: &FlipDoc,
-    flip_gizmo_on: bool,
     joint_anchor_handles: Vec<ph2d_editor_core::gizmo::PointHandle>,
     joint_anchor_snap: Option<[f32; 2]>,
     join_draw_armed: bool,
@@ -343,9 +341,14 @@ fn publish_gizmo(
         // podia ser apontado ou posado** (report do dono: *«selecionar o osso não é mais
         // possível»*). *Uma caixa que nasce onde o rig vive engole o rig.*
         //
-        // ⏳ **NOMEADO e não curado:** o gémeo do Flip — um objecto de outra família continua a
-        // publicar caixa enquanto a ferramenta Flip desenha (o `flip_gizmo_on` gateia só a arte do
-        // Flip). Mesmo mecanismo, outra ferramenta, e sem report.
+        // ⭐⭐ **E o GÉMEO DO FLIP fechou no dia seguinte (2026-09-14), sem report — medido:** o
+        // `flip_gizmo_on` gateava só a arte do Flip, logo com a ferramenta Flip a desenhar um
+        // objecto de OUTRA família (uma sprite de referência, um grupo, uma forma) continuava a
+        // publicar caixa — e o `ramo_flip_premidos` exige o MESMO `on_canvas` que o ramo vectorial.
+        // ⇒ a condição desta porta passou a ser *«nenhuma ferramenta AUTORA no canvas»*, e o
+        // terceiro `if` por família morreu com ela. ⛔ **A saída não é isentar o gizmo no hit-test**
+        // (o que o Painter faz, por ter porta própria): ali a caixa continua PINTADA, e uma alça
+        // pintada que não pega é o controlo morto que este repo nomeia.
         if !object_gizmo_on {
             return None;
         }
@@ -376,9 +379,8 @@ fn publish_gizmo(
                 .get::<ph2d_ecs::FlipObjectRef>(sim_entity)
                 .is_some()
             {
-                if !flip_gizmo_on {
-                    return None;
-                }
+                // ⛔ Aqui morava o TERCEIRO `if` por família (`if !flip_gizmo_on`) — a porta única
+                // acima já o diz, e para TODA família (2026-09-14).
                 return ph2d_app_flip::gizmo_view::view(
                     sim,
                     flip,

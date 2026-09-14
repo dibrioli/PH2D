@@ -33,6 +33,11 @@
 #[path = "motion_demo_strobe.rs"]
 mod strobe;
 
+/// ⭐⭐⭐ **O gate dos ANÚNCIOS** — todo cartão que um passo manda clicar existe na cena; ver o
+/// cabeçalho dele. `#[cfg(test)]`: é uma régua, não código de produto.
+#[cfg(test)]
+#[path = "motion_state_demo_announce_tests.rs"]
+mod demo_announce_tests;
 /// As cenas de GRUPO da conferência (doc 89, a segunda volta): o documento que cada uma
 /// monta e a PROSA que ela imprime. ⚠️ O roteador continua a ser a ÚNICA lista de níveis —
 /// este arquivo não tem `match` nenhum, de propósito (ver o cabeçalho dele).
@@ -89,6 +94,11 @@ mod pivot_demo;
 /// **DEIXAR A FÍSICA DECIDIR** — a cena de smoke do ciclo 5 (a simulação); ver o cabeçalho dela.
 #[path = "motion_state_sim_demo.rs"]
 mod sim_demo;
+/// ⭐⭐⭐ **UM NÚMERO QUE MANDA EM TUDO** — a cena de smoke do **ciclo 6**: quatro quadrantes, e em
+/// cada par muda UM NÓ (doc 110 §12). ⚠️ Irmã da `fio_demo` e não a mesma: aquela ensina um CUSTO
+/// (e por isso tem 102 400 peças), esta ensina a LEI do grupo (e por isso tem trinta e seis).
+#[path = "motion_state_valor_demo.rs"]
+mod valor_demo;
 
 /// As DECLARAÇÕES dos módulos de cena da conferência (doc 89) — uma família num
 /// arquivo só, extraída quando este passou o teto de LOC do HR-18. ⚠️ Os caminhos não

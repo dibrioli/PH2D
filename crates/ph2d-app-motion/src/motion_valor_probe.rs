@@ -207,16 +207,17 @@ fn probe_does_a_value_chain_stay_on_the_device() {
 #[ignore = "sonda de medicao, nao um gate"]
 fn probe_what_the_three_off_device_nodes_cost() {
     use ph2d_nodegraph::graph::{Edge, NodeId};
-    let liga = |m: &mut crate::motion_state::MotionState, de: (NodeId, u16), para: (NodeId, u16)| {
-        m.doc
-            .graph
-            .connect(Edge {
-                from: de,
-                to: para,
-                delayed: false,
-            })
-            .expect("fio");
-    };
+    let liga =
+        |m: &mut crate::motion_state::MotionState, de: (NodeId, u16), para: (NodeId, u16)| {
+            m.doc
+                .graph
+                .connect(Edge {
+                    from: de,
+                    to: para,
+                    delayed: false,
+                })
+                .expect("fio");
+        };
     let mede = |rotulo: &str, monta: &dyn Fn(&mut crate::motion_state::MotionState) -> NodeId| {
         let mut m = crate::motion_state::MotionState::new();
         let sink = monta(&mut m);
@@ -295,7 +296,11 @@ fn probe_what_the_three_off_device_nodes_cost() {
             let v = m.doc.graph.add_node(no.to_string());
             liga(m, (g, 0), (d, 0));
             // O `value.number` é gerador (zero entradas); os outros dois lêem a contagem.
-            if m.doc.graph.node(v).is_some_and(|i| i.type_name != "value.number") {
+            if m.doc
+                .graph
+                .node(v)
+                .is_some_and(|i| i.type_name != "value.number")
+            {
                 liga(m, (g, 0), (v, 0));
             }
             liga(m, (v, 0), (d, 1));
@@ -412,16 +417,17 @@ fn probe_where_the_pulse_seam_falls() {
             }
         );
     };
-    let liga = |m: &mut crate::motion_state::MotionState, de: (NodeId, u16), para: (NodeId, u16)| {
-        m.doc
-            .graph
-            .connect(Edge {
-                from: de,
-                to: para,
-                delayed: false,
-            })
-            .expect("fio");
-    };
+    let liga =
+        |m: &mut crate::motion_state::MotionState, de: (NodeId, u16), para: (NodeId, u16)| {
+            m.doc
+                .graph
+                .connect(Edge {
+                    from: de,
+                    to: para,
+                    delayed: false,
+                })
+                .expect("fio");
+        };
     eprintln!("\n  cadeia                                       | stages | onde a CPU ainda coze");
     eprintln!("  ---------------------------------------------|--------|----------------------");
     // (1) O CONTROLO: a mesma cena sem pulso nenhum.

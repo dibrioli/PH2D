@@ -196,7 +196,11 @@ pub fn censo() -> Censo {
                 .param_gates_above(man.id)
                 .unwrap_or(&[])
                 .is_empty()
-            || !m.registry.param_gates_text(man.id).unwrap_or(&[]).is_empty();
+            || !m
+                .registry
+                .param_gates_text(man.id)
+                .unwrap_or(&[])
+                .is_empty();
         if tem_gate {
             c.com_gate += 1;
         }

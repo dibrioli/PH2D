@@ -169,7 +169,9 @@ o sintoma.*
 5. ⏳ **W5 — a MEDIÇÃO** — **a RESIDÊNCIA feita** (§11): `32 de 35` no dispositivo, e o preço dos
    três que ficam **medido em elementos** (`1` · `102 400` · `102 400`). ⏳ O RELÓGIO fica: `load
    12–18` na janela inteira, e o §5.0 pede `≤ 5`.
-6. ⏳ **W6 — o TUTORIAL em PDF** (passos 6 e 7, o smoke do dono).
+6. ✅ **W6 — a cena `=117` e o TUTORIAL em PDF** — **FEITA** (§12): quatro quadrantes com gate de
+   comportamento, quatro figuras saídas do motor, e o PDF de 5 páginas. ⏳ **Falta o smoke do
+   dono.**
 
 ⚠️ **A ordem 1→2 não é preferência: é a lei 1 do §2 do protocolo.** Um grupo cujo uso normal
 derruba o dispositivo não fecha um ciclo com «tem mais botões».
@@ -778,3 +780,92 @@ difunde. **Wave própria, com este número (`102 400 → 1`) como justificação
 `load 12–18` durante toda a janela (§5.0 pede `≤ 5`). ⚠️ E um A/B device-contra-CPU deste grupo pede
 um `GpuContext` no arnês, que já está nomeado como wave própria no §6. *O que se mede sem máquina
 calma é a máquina, não o código.*
+
+---
+
+## §12 — W6: a cena `=117` e o TUTORIAL — o smoke do dono
+
+### §12.1 — A cena: quatro quadrantes, e em cada par muda UM NÓ
+
+```text
+  EM CIMA   o mesmo pano, o mesmo LFO     só o LFO        →  respira LISO
+                                          + Quantize      →  respira aos DEGRAUS
+  EM BAIXO  o mesmo pano, o mesmo Beat    só o Beat       →  pisca a CADA batida
+                                          + Counter       →  pisca a cada QUATRO
+```
+
+⚠️⚠️ **Em cada par muda um NÓ, e não um número** — e há gate a afirmá-lo
+(`each_pair_differs_by_exactly_one_node`, que conta os tipos). *Se a diferença fosse um slider, a
+cena ensinaria que o grupo é uma gaveta de controlos; ela é sobre o que um nó a mais faz ao número
+e ao instante que já lá estavam.*
+
+⚠️ **O pano é `6 × 6` e não `320 × 320`.** A `=116` ensina um CUSTO e por isso tem 102 400 peças;
+esta ensina uma LEI, e uma lei lê-se melhor em trinta e seis.
+
+⚠️ **A metade de baixo corre na CPU, e é declarado** (§8.6): o `motion.strobe` ainda não tem
+kernel. *Uma cena de ciclo mostra o que o grupo FAZ; a rota tem a `=116`.*
+
+**Cinco gates de comportamento**, e as duas medidas que os sustentam:
+
+| o que o anúncio promete | a régua | medido |
+|---|---|---|
+| em cima, um respira liso e o outro aos degraus | **valores distintos** que o tamanho toma numa volta | `49` contra **`4`** |
+| em baixo, ritmos diferentes | quantas vezes o tamanho **SOBE de repente** | `4` contra **`1`** |
+
+⛔ A régua de cima **não é «os dois mexem»**: uma grelha é um contradomínio mais pequeno, e comparar
+dois instantes diria que os dois respiram sem dizer qual salta. A de baixo conta a **subida** e não
+o valor — o clarão desvanece, e um limiar sobre o tamanho contaria o mesmo flash muitas vezes.
+
+### §12.2 — ⭐⭐⭐ O gate que nasceu disto apanhou TRÊS passos impossíveis, dois deles meus
+
+`every_card_an_announcement_tells_you_to_click_exists_in_that_scene`: **todo cartão que um anúncio
+manda clicar existe na cena que ele anuncia**, derivado do próprio texto (o bloco de cada cena é
+delimitado pelo `[cena N]` que ela imprime) e cruzado com os títulos que a cena de facto pinta.
+
+| cena | o passo dizia | o cartão chama-se |
+|---|---|---|
+| `=116` | `Value LFO` | **`LFO`** |
+| `=117` | `Value LFO` | **`LFO`** |
+| `=112` | `Field Remap` | **`Remap`** |
+
+⚠️⚠️ **A `=112` é do ciclo 4 e o dono JÁ a smokou e aprovou** — o passo impossível atravessou uma
+aprovação. *O nome de um nó no código (`value.lfo`, `field.remap`) e o nome do cartão na tela não
+são a mesma palavra, e quem escreve o passo tem o primeiro na cabeça.*
+
+⚠️ **E ele tem a metade NEGATIVA:** a `=114` ensina que o colisor é da FORMA dizendo que **não há**
+cartão `Collide` na linha da simulação — uma afirmação tão forte como a outra, e que no dia em que
+houver um passa a ensinar o contrário do que se vê. ⛔ A 1.ª redacção do gate reprovou sobre essas
+duas frases, que estão **certas**: *uma régua que confunde «clique aqui» com «isto não existe»
+acusa o texto correcto.* A extracção passou a ser pela **forma imperativa**, varrida do próprio
+ficheiro.
+
+### §12.3 — As figuras: uma FORMA DE ONDA, e é a primeira deste módulo
+
+As quatro saem da cena `=117` do produto — cada ponto é o `size` que o motor deu a uma peça num
+instante. ⚠️ **O eixo horizontal é o TEMPO**, o que nenhum tutorial deste módulo tinha desenhado
+ainda, e a razão é o assunto: *um número que manda em tudo só se vê ao longo do tempo, e uma
+fotografia de um instante mostraria quatro panos iguais.*
+
+⭐ **Na segunda de cada par, o fantasma por baixo é a PRIMEIRA** — é assim que a figura mostra que
+os dois lados são o mesmo número e o mesmo ritmo, com um nó pelo meio.
+
+⛔ **A escrita vem depois das asserções** (a lei que o ciclo 4 pagou), e há gate a exigir que as
+quatro existam no disco e sejam **diferentes entre si**.
+
+### §12.4 — O tutorial
+
+[`06_valor_e_pulso.pdf`](tutoriais/06_valor_e_pulso.pdf) — **5 páginas**, fonte em
+[`src/06_valor_e_pulso.html`](tutoriais/src/06_valor_e_pulso.html). Sete capítulos: abrir · o número
+· o número moldado · o instante · o instante contado · **o mapa do grupo** (uma tabela *«quando você
+quer… procure por…»*, porque trinta e cinco cartões não se decoram) · e o que isto custa (a `=116`).
+
+**Gates:** `every_row_the_value_tutorial_names_is_on_the_card` (cada linha que o texto manda
+arrastar está no cartão, **na cena**, e o título está de facto no texto) · o comando é
+`--profile smoke` e **nunca** `--release` · as duas cenas que ele abre existem ·
+`the_four_figures_the_tutorial_shows_exist_and_differ`.
+
+### §12.5 — O smoke, para o dono
+
+```text
+cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-motion-value && env PH2D_GPU_COOK_DEMO=117 cargo run -p ph2d-host-desktop --profile smoke
+```

@@ -71,6 +71,10 @@ pub mod motion_object_bake_dims;
 pub mod motion_object_smoke;
 /// Irmã das duas acima: reduz um assado ao cartão do painel.
 pub mod motion_object_thumb;
+/// ⭐ **O censo do ALCANCE** — um param que nenhuma combinação de gates revela (ciclo 6 W3).
+/// `#[cfg(test)]`: é um instrumento de auditoria, não código de produto.
+#[cfg(test)]
+pub mod motion_param_reach;
 pub mod motion_path_smoke;
 /// O estado de shell da familia — os quatro campos que saíram da `App` na W2/L1 (A2b).
 /// O que uma CENA pede à shell, no vocabulário da família (W2 Fase C).
@@ -88,10 +92,6 @@ pub mod motion_sim_probe;
 #[cfg(test)]
 pub mod motion_stamp_cost_probe;
 pub mod motion_state;
-/// ⭐ **O censo do ALCANCE** — um param que nenhuma combinação de gates revela (ciclo 6 W3).
-/// `#[cfg(test)]`: é um instrumento de auditoria, não código de produto.
-#[cfg(test)]
-pub mod motion_param_reach;
 /// A auditoria do grupo do ciclo 6 (VALOR & PULSO) — `#[cfg(test)]`, não entra no bin.
 #[cfg(test)]
 pub mod motion_valor_probe;

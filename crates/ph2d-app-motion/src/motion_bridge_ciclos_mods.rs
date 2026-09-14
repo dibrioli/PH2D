@@ -49,6 +49,12 @@ mod deformadores_figures;
 #[path = "motion_bridge_sim_figures.rs"]
 mod sim_figures;
 
+/// As figuras do tutorial do **ciclo 6** (o valor e o pulso) — duas FORMAS DE ONDA por par, e o
+/// eixo horizontal é o TEMPO; ver o cabeçalho delas.
+#[cfg(test)]
+#[path = "motion_bridge_valor_figures.rs"]
+mod valor_figures;
+
 /// As figuras do tutorial do **ciclo 4** (os campos) — quadrados do tamanho que o campo lhes
 /// pesou; ver o cabeçalho delas.
 #[cfg(test)]

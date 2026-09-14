@@ -220,7 +220,7 @@ pub(super) fn pilha() {
 pub(super) fn fio() {
     eprintln!(
         "[cena 116] UM NUMERO QUE MANDA EM TUDO. Um pano de 102 400 pecas, e UM fio: o
-  cartao `Value LFO` manda no tamanho de todas elas.
+  cartao `LFO` manda no tamanho de todas elas.
 
   1. Carregue em PLAY. O pano inteiro RESPIRA -- as pecas crescem e encolhem juntas.
   2. Olhe o terminal de onde abriu o app, ABAIXO deste texto. Ha' uma linha colada a`
@@ -239,6 +239,44 @@ pub(super) fn fio() {
   DEU ERRADO se: o pano nao respirar; se o terminal nao disser NADA em nenhuma das duas
   corridas (o registo de rota nao esta' ligado -- confira a variavel); se as duas corridas
   disserem a MESMA coisa; ou se a cena com o interruptor LIGADO for a lenta."
+    );
+}
+
+/// ⭐⭐⭐ **UM NÚMERO QUE MANDA EM TUDO** (`=117`) — a cena do **ciclo 6** (doc 110 §12).
+///
+/// ⚠️ **Precisa de Play**: o `LFO` e o `Beat` leem o playhead, e parada ela é quatro panos
+/// iguais.
+///
+/// ⚠️ **Ela é irmã da `=116` e não a repete** — aquela ensina o CUSTO (a rota, no terminal), esta
+/// ensina a LEI (o que um nó a mais faz ao número e ao instante que já lá estavam).
+pub(super) fn valor() {
+    eprintln!(
+        "[cena 117] UM NUMERO QUE MANDA EM TUDO. Quatro panos de 36 pecas. Em cada par
+  muda UM CARTAO -- o pano, o tamanho e o ritmo sao os mesmos dos dois lados.
+
+  1. Carregue em PLAY. Sem isto os quatro panos ficam parados e iguais.
+  2. Fileira de CIMA -- o NUMERO. O pano da ESQUERDA respira: as pecas crescem e
+     encolhem, e o movimento e' LISO. O da DIREITA respira aos DEGRAUS: ele salta de
+     tamanho em tamanho em vez de deslizar.
+     (i) A diferenca e' UM cartao a mais no caminho do fio: o `Quantize`. Ele pega no
+         numero que o `LFO` faz e arredonda-o a uma grelha.
+  3. Clique no cartao `Quantize` (o da direita, em cima) e arraste a linha `Step`:
+     - para PERTO DE ZERO os degraus somem e o pano da direita fica igual ao da
+       esquerda -- o mesmo numero, sem grelha nenhuma;
+     - para o FIM do slider fica um degrau so': as pecas param de respirar.
+  4. Fileira de BAIXO -- o INSTANTE. O pano da ESQUERDA pisca a CADA batida. O da
+     DIREITA pisca a cada QUATRO.
+     (i) Outra vez UM cartao a mais: o `Counter`. O `Beat` bate sempre ao mesmo ritmo;
+         o contador deixa passar so' a batida em que ele da' a volta.
+  5. Clique no cartao `Counter` e arraste a linha `Count` de 4 para 2: o pano da direita
+     passa a piscar ao DOBRO da velocidade. Ponha em 1 e ele fica igual ao da esquerda.
+  6. Clique no cartao `Beat` da ESQUERDA e arraste `Period`: os dois panos de baixo mudam
+     de ritmo juntos? NAO -- cada metade tem o seu `Beat`, e so' aquele muda. E' assim
+     que se ve' que o par nao partilha nada alem da forma.
+
+  DEU ERRADO se: os quatro panos ficarem parados depois do Play; se os dois de cima
+  respirarem IGUAL (o `Quantize` nao esta' a chegar); se os dois de baixo piscarem ao
+  mesmo ritmo (o `Counter` nao esta' a chegar); ou se algum pano nao piscar de todo."
     );
 }
 
@@ -330,7 +368,7 @@ pub(super) fn foco() {
   3. No cartao `Falloff`, na linha `Shape`, troque `Circle` por `Rect`. A mancha fica
      quadrada, e uma linha `Rotation` APARECE no cartao -- num circulo ela esta'
      escondida porque girar nao muda nada.
-  4. No cartao `Field Remap`, arraste `Curvature`: a borda da mancha endurece ou
+  4. No cartao `Remap`, arraste `Curvature`: a borda da mancha endurece ou
      amacia, sem a mancha mudar de sitio nem de tamanho.
 
   Tudo isto corre no dispositivo."

@@ -31,12 +31,19 @@ use super::*;
 /// número em dois sítios, que é como ele envelhece. *Um valor sob `cfg(test)` é invisível do
 /// outro lado da fronteira (HOWTO §2.5) — e aqui a cura não é abrir uma feature, é reconhecer
 /// que a constante deixou de ser só do teste.*
-pub const MAX_DEMO_LEVEL: u32 = 116;
+pub const MAX_DEMO_LEVEL: u32 = 117;
 
 /// **As cenas de smoke dos CICLOS** — irmãs pelo tecto de LOC, cortadas por responsabilidade;
 /// ver o cabeçalho delas.
 #[path = "motion_state_demo_router_ciclos.rs"]
 mod ciclos;
+
+/// ⚠️ **A tabela das cenas de ciclo, para um gate que não é o roteador** — ver
+/// [`ciclos::e_de_ciclo_pub`]. Uma segunda lista divergiria no dia em que nascesse a sétima cena.
+#[cfg(test)]
+pub fn is_cycle_scene(n: &str) -> bool {
+    ciclos::e_de_ciclo_pub(n)
+}
 
 /// Os sinks da cena que o ambiente pediu — vazio quando ele não pediu nada, que é a TELA
 /// VAZIA com que o editor abre.

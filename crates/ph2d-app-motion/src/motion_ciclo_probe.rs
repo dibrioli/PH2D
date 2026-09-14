@@ -363,7 +363,9 @@ pub fn vocabulario_do_artista(grupo: &[&str]) {
         }
     }
 
-    eprintln!("\n  (2) UMA CHAVE, VÁRIOS RÓTULOS -- o grafo guarda o mesmo e a tela diz outra coisa");
+    eprintln!(
+        "\n  (2) UMA CHAVE, VÁRIOS RÓTULOS -- o grafo guarda o mesmo e a tela diz outra coisa"
+    );
     eprintln!("  chave                | rótulo           | quem");
     eprintln!("  ---------------------|------------------|------");
     for (chave, rotulos) in &por_chave {
@@ -402,7 +404,10 @@ pub fn vocabulario_do_artista(grupo: &[&str]) {
 ///
 /// ⚠️ Derivado do registry, nunca uma lista: o dia em que um widget novo dobrar um vizinho, ele
 /// entra aqui por declarar-se, e não por alguém se lembrar.
-fn dobrados_por_outro_widget(m: &MotionState, grupo: &[&str]) -> std::collections::BTreeSet<String> {
+fn dobrados_por_outro_widget(
+    m: &MotionState,
+    grupo: &[&str],
+) -> std::collections::BTreeSet<String> {
     use ph2d_node_registry::ParamWidget;
     let mut fora = std::collections::BTreeSet::new();
     for nome in grupo {

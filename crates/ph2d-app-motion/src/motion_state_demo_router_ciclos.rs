@@ -17,11 +17,19 @@ use ph2d_node_registry::NodeRegistry;
 use ph2d_nodegraph::graph::NodeId;
 
 /// Os níveis que são cena de ciclo. ⚠️ **Uma tabela, dois leitores** — ver o cabeçalho.
-const CICLOS: &[&str] = &["111", "112", "113", "114", "115", "116"];
+const CICLOS: &[&str] = &["111", "112", "113", "114", "115", "116", "117"];
 
 /// Este nível é uma cena de ciclo?
 pub(super) fn e_de_ciclo(n: &str) -> bool {
     CICLOS.contains(&n)
+}
+
+/// ⚠️ **A MESMA tabela, para quem não é o roteador** — o gate dos anúncios varre as cenas de ciclo
+/// e tem de as descobrir por aqui, senão ele leva a própria lista e as duas divergem no dia em que
+/// nascer a sétima.
+#[cfg(test)]
+pub(crate) fn e_de_ciclo_pub(n: &str) -> bool {
+    e_de_ciclo(n)
 }
 
 /// Constrói a cena, pousa a legenda e anuncia os passos.
@@ -82,6 +90,16 @@ pub(super) fn build(n: &str, doc: &mut MotionDoc, reg: &NodeRegistry) -> Vec<Nod
             let sinks = super::fio_demo::build(doc, reg).unwrap_or_default();
             crate::motion_demo_legend::publish(super::fio_demo::captions());
             announce::fio();
+            sinks
+        }
+        // ⭐⭐⭐ **UM NÚMERO QUE MANDA EM TUDO** (ciclo 6, doc 110 §12) — quatro quadrantes, e em
+        // cada par muda **UM NÓ**. ⚠️ Ela é irmã da `=116` e não a repete: aquela ensina o CUSTO
+        // (102 400 peças, a rota no terminal), esta ensina a LEI (trinta e seis peças, o que um
+        // nó a mais faz ao número e ao instante que já lá estavam).
+        "117" => {
+            let sinks = super::valor_demo::build(doc, reg).unwrap_or_default();
+            crate::motion_demo_legend::publish(super::valor_demo::captions());
+            announce::valor();
             sinks
         }
         // ⚠️ Inalcançável: a [`e_de_ciclo`] gateia esta função com a MESMA tabela.

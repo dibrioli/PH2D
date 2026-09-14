@@ -26,10 +26,10 @@
 | 09 |   | [09_cor.md](09_cor.md) | folha | Família 9 — COR / APARÊNCIA (4 nós) |
 | 10 |   | [10_field.md](10_field.md) | folha | 10 — FIELD (5 nós) · conferência do plano 89 |
 | 11 |   | [11_fx_raster.md](11_fx_raster.md) | folha | 89 · Família 11 — **FX (raster)** · 3 nós |
-| 12 |   | [12_pulse.md](12_pulse.md) | folha | 12 — PULSE / EVENTOS (6 nós) — conferência contra a referência |
+| 12 |   | [12_pulse.md](12_pulse.md) | folha | 12 — PULSE / EVENTOS (9 nós) — conferência contra a referência |
 | 13 |   | [13_sim_stack.md](13_sim_stack.md) | folha | 89 · CONFERÊNCIA — Família 13: `sim.*` (o STACK) — 5 nós |
 | 14 |   | [14_source.md](14_source.md) | folha | 14 — SOURCE (`source.object` · `source.shape`) |
-| 15 |   | [15_value.md](15_value.md) | folha | 89 · Família 15 — VALUE (23 nós) |
+| 15 |   | [15_value.md](15_value.md) | folha | 89 · Família 15 — VALUE (26 nós) |
 | 16 |   | [16_rig.md](16_rig.md) | folha | 16 — RIG (6 nós) — conferência contra o mercado |
 | 17 |   | [17_zero_param_debug.md](17_zero_param_debug.md) | folha | 89 · CONFERÊNCIA — Família 17: ZERO-PARAM + DEBUG (7 exclusivos + 8 também-conferidos) |
 

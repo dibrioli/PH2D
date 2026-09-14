@@ -1,0 +1,288 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>PH2D · Um número que manda em tudo</title>
+<style>
+  @page { size: A4; margin: 16mm 15mm; }
+  :root {
+    --bg: #0f0e12; --card: #17161c; --line: #2a2830;
+    --t1: #ece9f2; --t2: #a9a3b8; --t3: #6f6a7d;
+    --acc: #c9a6ff; --ok: #7ee0b0; --warn: #ffcf7a;
+    --src: #5f9e79; --tra: #6f86c9; --out: #c96a6a;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--t1);
+         font:14px/1.55 "Inter","Segoe UI",system-ui,sans-serif; }
+  h1 { font-size:30px; line-height:1.15; margin:0 0 4px; letter-spacing:-.02em; }
+  h1 small { display:block; font-size:14px; font-weight:400; color:var(--t2); margin-top:6px; }
+  h2 { font-size:19px; margin:26px 0 10px; padding-top:12px; border-top:1px solid var(--line); }
+  h3 { font-size:15px; margin:18px 0 6px; color:var(--acc); }
+  h4 { font-size:13px; margin:14px 0 4px; color:var(--t1); }
+  p { margin:8px 0; }
+  code, kbd { font-family:"JetBrains Mono",ui-monospace,monospace; font-size:12px; }
+  kbd { background:#22202a; border:1px solid var(--line); border-bottom-width:2px;
+        border-radius:5px; padding:1px 6px; color:var(--t1); }
+  .cmd { background:#080810; border:1px solid var(--line); border-left:3px solid var(--acc);
+         border-radius:8px; padding:11px 13px; color:var(--ok); font-family:ui-monospace,monospace;
+         font-size:11.5px; overflow-wrap:anywhere; margin:10px 0; }
+  .steps { counter-reset:s; list-style:none; padding:0; margin:0; }
+  .steps > li { counter-increment:s; position:relative; padding:0 0 0 40px; margin:0 0 16px;
+                break-inside:avoid; }
+  .steps > li::before { content:counter(s); position:absolute; left:0; top:-1px;
+      width:26px; height:26px; border-radius:50%; background:var(--acc); color:#1a1420;
+      font-weight:700; font-size:13px; display:flex; align-items:center; justify-content:center; }
+  .steps b { color:var(--t1); }
+  .out { color:var(--t2); }
+  .out::before { content:"→ "; color:var(--acc); }
+  .bad { color:var(--warn); }
+  .bad::before { content:"⚠ "; }
+  .figs { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin:12px 0; }
+  .figs.two { grid-template-columns:repeat(2,1fr); }
+  .fig { background:var(--card); border:1px solid var(--line); border-radius:10px;
+         padding:8px; text-align:center; break-inside:avoid; }
+  .fig img { width:100%; display:block; border-radius:6px; }
+  .fig figcaption { font-size:11px; color:var(--t2); margin-top:6px; }
+  .fig b { color:var(--t1); display:block; font-size:12.5px; }
+  .wide { background:var(--card); border:1px solid var(--line); border-radius:10px;
+          padding:10px; margin:12px 0; break-inside:avoid; }
+  .wide img { width:100%; display:block; border-radius:6px; }
+  .key { font-size:11.5px; color:var(--t2); margin-top:8px; display:flex; flex-wrap:wrap; gap:14px; }
+  .key i { font-style:normal; display:inline-flex; align-items:center; gap:6px; }
+  .key s { width:16px; height:3px; border-radius:2px; display:inline-block; text-decoration:none; }
+  table { border-collapse:collapse; width:100%; margin:6px 0 14px; font-size:11.5px; }
+  th, td { text-align:left; padding:4px 8px; border-bottom:1px solid var(--line); }
+  th { color:var(--t3); font-weight:600; font-size:10.5px; text-transform:uppercase;
+       letter-spacing:.05em; }
+  td.n { text-align:right; font-variant-numeric:tabular-nums; }
+  .note { background:var(--card); border:1px solid var(--line); border-left:3px solid var(--acc);
+          border-radius:8px; padding:10px 13px; margin:12px 0; font-size:13px; break-inside:avoid; }
+  .note b { color:var(--acc); }
+  .card-demo { background:var(--card); border:1px solid var(--line); border-radius:9px;
+       width:230px; overflow:hidden; font-size:11px; }
+  .card-demo .h { padding:5px 9px; font-weight:600; color:#0e0d10; font-size:11.5px; }
+  .card-demo .rows { padding:6px; display:grid; gap:3px; }
+  .card-demo .r { background:#0b0a0e; border-radius:4px; padding:3px 7px; display:flex;
+       justify-content:space-between; position:relative; overflow:hidden; }
+  .card-demo .r i { position:absolute; inset:0 auto 0 0; background:#3b3350; }
+  .card-demo .r span { position:relative; }
+  .card-demo .r .n { color:var(--t1); }
+  .card-demo .r .l { color:var(--t2); }
+  .card-demo .sec { color:var(--t3); padding:3px 7px; font-size:10.5px; }
+  .two-col { display:grid; grid-template-columns:230px 1fr; gap:16px; align-items:start; }
+  .params { font-size:11px; }
+  .params h4 { margin-top:12px; }
+  .soft { color:var(--t3); }
+  footer { margin-top:26px; padding-top:10px; border-top:1px solid var(--line);
+           color:var(--t3); font-size:11px; }
+</style>
+
+<h1>Um número que manda em tudo
+  <small>PH2D · Motion Nodes · tutorial 6 — os trinta e cinco nós que fazem
+  <b>um número</b> e <b>um instante</b>, e o que eles mandam fazer ao resto</small></h1>
+
+<p>Nos cinco tutoriais anteriores você pôs coisas na tela, fê-las andar, dobrou-as,
+escolheu quem é afetado e entregou a última decisão a uma lei. Em todos eles havia
+controlos: você arrastava um número e a cena respondia.</p>
+
+<p>Este grupo é o <b>cérebro</b>. Ele não põe nada na tela e não move nada — ele
+<em>faz números</em> e <em>marca instantes</em>, e depois manda esses números e esses
+instantes a qualquer outro controlo da cena. É a diferença entre <em>você</em> arrastar
+um controlo e <em>a cena</em> arrastá-lo sozinha.</p>
+
+<div class="note"><b>São duas famílias, e elas respondem perguntas diferentes.</b>
+Os cartões <b>Value</b> respondem <em>que número é este agora?</em> — e a resposta é
+sempre um número, a toda a hora. Os cartões <b>Pulse</b> respondem <em>quando é que
+isto acontece?</em> — e a resposta é um instante: ou acontece, ou não acontece.
+Um número é contínuo; um instante é seco. O tutorial inteiro é sobre essa diferença.</div>
+
+<h2>1 · Abrir</h2>
+<p>Cole isto inteiro num terminal. Na primeira vez ele compila (alguns minutos); depois abre em
+segundos.</p>
+<div class="cmd">cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-motion-value &amp;&amp; env PH2D_GPU_COOK_DEMO=117 cargo run -p ph2d-host-desktop --profile smoke</div>
+
+<ol class="steps">
+  <li><b>Carregue em <kbd>Play</kbd>.</b>
+      <div class="out">Quatro panos de peças. Os <b>dois de cima respiram</b> — as peças
+      crescem e encolhem. Os <b>dois de baixo piscam</b>.</div>
+      <div class="bad">Se os quatro ficarem parados e iguais, o transporte está parado.
+      Este grupo vive no tempo: sem Play ele é uma fotografia de um instante.</div></li>
+</ol>
+
+<div class="note"><b>Os quatro panos são o mesmo pano.</b> Mesmo número de peças, mesmo
+tamanho, mesmo espaçamento. Em cada par, entre a esquerda e a direita, muda
+<b>um cartão</b> — e mais nada. Tudo o que você vai ver de diferente vem daí.</div>
+
+<h2>2 · Em cima: o número</h2>
+
+<p>O pano da <b>esquerda</b> respira, e o movimento é <em>liso</em>: as peças deslizam de
+um tamanho para o outro. Quem manda nisso é o cartão <b>LFO</b> — um oscilador, que é
+um nó que faz um número subir e descer sozinho, para sempre.</p>
+
+<ol class="steps" start="2">
+  <li><b>Clique no cartão <code>LFO</code> da esquerda</b> e arraste a linha
+      <code>Amplitude</code>.
+      <div class="out">O pano respira <b>mais fundo</b> ou <b>mais raso</b>. Em zero ele
+      pára de respirar — o número deixa de mudar.</div></li>
+  <li>Arraste a linha <code>Period</code>.
+      <div class="out">A respiração fica mais <b>lenta</b> ou mais <b>rápida</b>.
+      <code>Period</code> é quantos segundos leva uma volta inteira.</div></li>
+</ol>
+
+<div class="note"><b>Repare no FIO.</b> Do cartão <code>LFO</code> sai uma linha que vai
+ter ao cartão <code>Scale</code>, e ela não entra pelo lado — entra <em>na linha
+<code>Scale</code></em> do cartão. É isso que quer dizer «um número que manda num
+controlo»: aquela linha deixou de ser sua e passou a ser do oscilador. Puxe-a se quiser
+o controlo de volta.</div>
+
+<h2>3 · O mesmo número, moldado</h2>
+
+<p>O pano da <b>direita</b> respira aos <b>degraus</b>: ele salta de tamanho em tamanho
+em vez de deslizar. E o oscilador dele é igual ao da esquerda — mesma amplitude, mesmo
+período. A diferença é <b>um cartão a mais no caminho do fio</b>: o
+<b>Quantize</b>, que pega no número que chega e arredonda-o a uma grelha.</p>
+
+<div class="figs two">
+  <figure class="fig"><img src="../fig/valor_liso.svg" alt="uma onda lisa: os pontos deslizam de um valor para o seguinte">
+    <b>só o LFO</b>
+    <figcaption>o tamanho ao longo de uma volta — ele <em>desliza</em>, e
+    toma <b>49</b> valores diferentes</figcaption></figure>
+  <figure class="fig"><img src="../fig/valor_degraus.svg" alt="uma escada: os pontos ficam parados e saltam, com a onda lisa por baixo">
+    <b>LFO + Quantize</b>
+    <figcaption>o mesmo número, com a onda lisa por baixo — ele <em>segura e
+    salta</em>, e toma <b>4</b></figcaption></figure>
+</div>
+
+<div class="note"><b>Estas duas imagens não são desenhos.</b> Cada ponto é o tamanho que
+o motor deu a uma peça de verdade, num instante de verdade, ao correr esta cena. Na
+segunda, os pontos apagados por baixo são a <em>primeira</em> — é o mesmo número, com um
+cartão pelo meio. Se as duas contarem a mesma história, elas
+<b>recusam-se a ser geradas</b>.</div>
+
+<ol class="steps" start="4">
+  <li><b>Clique no cartão <code>Quantize</code></b> e arraste a linha <code>Step</code>
+      para perto de zero.
+      <div class="out">Os degraus somem e o pano da direita fica <b>igual ao da
+      esquerda</b> — o mesmo número, sem grelha nenhuma.</div></li>
+  <li>Arraste o <code>Step</code> para o fim do slider.
+      <div class="out">Fica <b>um degrau só</b>: as peças param de respirar. A grelha
+      ficou tão grossa que o número nunca chega ao degrau seguinte.</div>
+      <div class="bad">Se o pano da direita nunca mudar, o fio do <code>Quantize</code>
+      está solto — os dois panos de cima deviam ser diferentes.</div></li>
+</ol>
+
+<h2>4 · Em baixo: o instante</h2>
+
+<p>Os dois panos de baixo <b>piscam</b>. Quem marca o instante é o cartão <b>Beat</b> —
+um metrónomo: ele não faz um número, ele <em>bate</em>. E quem transforma a batida numa
+coisa que se vê é o <b>Strobe</b>, que dá um clarão à peça e deixa-o desvanecer.</p>
+
+<ol class="steps" start="6">
+  <li><b>Clique no cartão <code>Beat</code> da esquerda</b> e arraste
+      <code>Period</code>.
+      <div class="out">O pano da esquerda pisca mais depressa ou mais devagar. O da
+      <b>direita não muda</b> — cada metade tem o seu metrónomo.</div></li>
+  <li><b>Clique no cartão <code>Strobe</code></b> e arraste <code>Decay</code>.
+      <div class="out">O clarão desvanece mais devagar (a peça fica acesa mais tempo) ou
+      quase instantaneamente.</div></li>
+</ol>
+
+<div class="note"><b>Por que é que um instante precisa de outro cartão para se ver.</b>
+Um número pode mandar diretamente numa linha, porque uma linha quer um número. Um
+instante não: ele não é um valor, é um <em>acontecimento</em>. Alguém tem de decidir o
+que fazer quando ele acontece — e é para isso que servem os cartões que <em>recebem</em>
+um pulso, como este <code>Strobe</code>.</div>
+
+<h2>5 · O mesmo instante, contado</h2>
+
+<p>O pano da <b>direita</b> pisca a cada <b>quatro</b> batidas. O metrónomo dele bate ao
+mesmo ritmo do outro — o que muda é, outra vez, <b>um cartão a mais</b>: o
+<b>Counter</b>, que conta as batidas e só deixa passar a que fecha a volta.</p>
+
+<div class="figs two">
+  <figure class="fig"><img src="../fig/valor_cada_batida.svg" alt="quatro picos igualmente espacados ao longo do tempo">
+    <b>só o Beat</b>
+    <figcaption>o tamanho ao longo de quatro batidas — <b>quatro</b>
+    clarões</figcaption></figure>
+  <figure class="fig"><img src="../fig/valor_a_cada_quatro.svg" alt="um pico so, com os quatro picos apagados por baixo">
+    <b>Beat + Counter</b>
+    <figcaption>o mesmo ritmo, com os quatro apagados por baixo —
+    <b>um</b> clarão</figcaption></figure>
+</div>
+
+<ol class="steps" start="8">
+  <li><b>Clique no cartão <code>Counter</code></b> e arraste a linha <code>Count</code>
+      de 4 para 2.
+      <div class="out">O pano da direita passa a piscar ao <b>dobro</b> da
+      velocidade.</div></li>
+  <li>Ponha o <code>Count</code> em 1.
+      <div class="out">Ele fica <b>igual ao da esquerda</b> — contar de um em um é não
+      contar.</div>
+      <div class="bad">Se os dois panos de baixo piscarem sempre ao mesmo ritmo, o fio do
+      <code>Counter</code> está solto.</div></li>
+</ol>
+
+<div class="note"><b>O Counter tem duas saídas, e a que o pano usa é a segunda.</b> A
+primeira é a <em>contagem</em> — um número que sobe, 0, 1, 2, 3, e volta. A segunda
+chama-se <b>carry</b> e é um <em>instante</em>: ela marca a batida em que a contagem dá
+a volta. Um número e um instante saem do mesmo cartão, e você escolhe qual usa ligando
+uma ou outra.</div>
+
+<h2>6 · O mapa do grupo</h2>
+
+<p>São trinta e cinco cartões. Você não precisa de os conhecer um a um — precisa de
+saber em que prateleira procurar.</p>
+
+<table>
+  <tr><th>quando você quer…</th><th>procure por</th><th>exemplos</th></tr>
+  <tr><td>um número que <b>anda sozinho</b></td><td>Value</td>
+      <td><code>LFO</code> · <code>Noise</code> · <code>Wave</code> · <code>Time</code></td></tr>
+  <tr><td>um número que <b>vem da cena</b></td><td>Value</td>
+      <td><code>Attribute</code> (a posição, a idade, o tamanho) · <code>Cursor</code> (o rato)</td></tr>
+  <tr><td>um número <b>escrito à mão</b></td><td>Value</td>
+      <td><code>Number</code></td></tr>
+  <tr><td><b>mudar</b> um número que já tem</td><td>Value</td>
+      <td><code>Math</code> · <code>Map Range</code> · <code>Curve</code> · <code>Quantize</code> · <code>Mix</code></td></tr>
+  <tr><td>um número <b>do conjunto todo</b></td><td>Value</td>
+      <td><code>Reduce</code> (soma, média, máximo) · <code>Normalize</code></td></tr>
+  <tr><td>um <b>ritmo</b></td><td>Pulse</td>
+      <td><code>Beat</code></td></tr>
+  <tr><td>disparar quando um número <b>passa de um limite</b></td><td>Pulse</td>
+      <td><code>Compare</code> · <code>Threshold</code></td></tr>
+  <tr><td>disparar quando uma coisa <b>muda</b></td><td>Pulse</td>
+      <td><code>On Change</code></td></tr>
+  <tr><td><b>contar</b> ou <b>desbastar</b> instantes</td><td>Pulse</td>
+      <td><code>Counter</code></td></tr>
+  <tr><td>transformar um instante num <b>número</b></td><td>Pulse</td>
+      <td><code>Level</code> (0 ou 1) · <code>ADSR</code> (uma curva que sobe e desce)</td></tr>
+  <tr><td><b>segurar</b> um número até ao próximo instante</td><td>Pulse</td>
+      <td><code>Sample &amp; Hold</code></td></tr>
+</table>
+
+<div class="note"><b>A ponte nos dois sentidos.</b> Um número vira instante com
+<code>Compare</code> (dispara quando passa de um limite); um instante vira número com
+<code>Level</code> (0 quando não, 1 quando sim) ou com <code>ADSR</code> (uma curva que
+sobe no disparo e volta a cair). É por isso que as duas famílias vivem no mesmo grupo:
+elas convertem-se uma na outra.</div>
+
+<h2>7 · O que isto custa</h2>
+
+<p>Um fio destes chega a <b>qualquer</b> controlo de <b>qualquer</b> cartão da cena — e
+a cena pode ter muita coisa. Vale a pena saber que isso agora é barato.</p>
+
+<div class="cmd">cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-motion-value &amp;&amp; env PH2D_GPU_COOK_DEMO=116 cargo run -p ph2d-host-desktop --profile smoke</div>
+
+<ol class="steps" start="10">
+  <li><b>Carregue em <kbd>Play</kbd>.</b>
+      <div class="out">Um pano de <b>102 400 peças</b> e <b>um fio</b>: o cartão
+      <code>LFO</code> manda no tamanho de todas elas, e o pano inteiro respira
+      liso.</div></li>
+</ol>
+
+<div class="note"><b>Cem mil peças a obedecer a um número, sem engasgar.</b> Até esta
+volta de trabalho, aquela <em>única</em> ligação tirava a cena da placa gráfica e
+mandava-a para o processador — e o mesmo pano custava <b>cinquenta vezes</b> mais.
+Agora não. É a razão de esta cena ser tão grande: um custo destes sobre dez peças não se
+veria.</div>
+
+<footer>PH2D · Motion Nodes · tutorial 6 de uma série · cenas
+<code>PH2D_GPU_COOK_DEMO=117</code> (a lei) e <code>=116</code> (o custo) ·
+as figuras são saída do motor, não desenhos.</footer>

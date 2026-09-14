@@ -312,6 +312,20 @@ impl App {
         // A grelha desta sprite (ADR-0164 F1 passo 6) — ausente = uma célula.
         let sprite_grid = gfx.sim.world().get::<ph2d_ecs::SpriteGrid>(entity).copied();
         let window_size = gfx.surface.size();
+        // ⭐⭐⭐ **A ARTE DOBRADA MANDA NO PONTEIRO** — o afim abaixo é o do QUAD DE REPOUSO e não
+        // sabe o que é uma malha. A lei (e o porquê) vive na [`ph2d_render::mesh_uv`]; `Quad` deixa
+        // o caminho de sempre INTOCADO, que é o que mantém a grelha da folha e o *Repeat Image*.
+        let world = gfx.camera.screen_to_world((px, py), window_size);
+        let malha = ph2d_render::mesh_uv(
+            gfx.present.world_mut(),
+            bits,
+            world,
+            phase == PointerPhase::Down,
+        );
+        if malha == ph2d_render::MeshUv::Refuse {
+            // Um traço não NASCE sobre o quad de repouso de uma arte que se desenha dobrada.
+            return false;
+        }
         let Some(tool) = gfx.tools.active_mut() else {
             return false;
         };
@@ -336,10 +350,13 @@ impl App {
             window_size,
         );
         let img = affine.inverse() * ph2d_vector::Point::new(f64::from(px), f64::from(py));
-        let (u, v) = (
-            (img.x / f64::from(iw)) as f32,
-            (img.y / f64::from(ih)) as f32,
-        );
+        let (u, v) = match malha {
+            ph2d_render::MeshUv::Use(mu, mv) => (mu, mv), // a UV de repouso do texel que está ALI
+            _ => (
+                (img.x / f64::from(iw)) as f32,
+                (img.y / f64::from(ih)) as f32,
+            ),
+        };
         // A Down only starts a stroke when inside the footprint (outside clicks fall through to pan /
         // selection); Move/Up always reach an open stroke so you can paint to and past the edge.
         // **Repeat Image + Tiling**: the 8 neighbour tiles are paintable too — extend the Down hit

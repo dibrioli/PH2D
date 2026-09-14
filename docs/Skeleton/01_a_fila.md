@@ -2211,6 +2211,47 @@ textual — ele apanha a regressão (uma cláusula apagada) e o crescimento da p
 ferramenta nova que ninguém ligou. A cura de fundo seria a ferramenta DECLARAR se autora no canvas,
 e isso é o `Tool`, que é contrato **congelado** (§6).
 
+**W10 — O PINCEL SEGUE A ARTE DOBRADA** (2026-09-14). O item da fila dizia *«a UV do pintor fora da
+malha responde pela lei do quad de repouso»*. **Re-medido, o endereço estava errado e o defeito é
+maior:**
+
+- as duas portas que conhecem a malha desde a W3 — `sprite_world_to_uv` e o `_unclamped` — têm
+  **ZERO chamadores de produto** (só testes e o `pub use`);
+- o Painter mapeia o ponteiro por **outra** porta, o afim do **quad de repouso**
+  (`ph2d_sprite_screen::sprite_image_to_screen_affine`), que não sabe o que é uma malha;
+- ⇒ numa arte presa e **dobrada** a pincelada cai deslocada **exactamente pela deformação, em TODA a
+  arte** — não só fora dela, que era o que a fila dizia.
+
+*Duas portas com a lei certa, e o consumidor a usar uma terceira.*
+
+⇒ [`ph2d_render::mesh_uv`] passa a ser **a porta de canvas**, com três estados porque o chamador tem
+três coisas a fazer: **`Quad`** (não é malha ⇒ a lei do chamador fica **intocada** — e no Painter ela
+carrega a grelha da folha, o *Repeat Image* e a margem do gizmo de deformação, que esta porta não
+conhece), **`Use`** (a UV de repouso do texel sob o ponto) e **`Refuse`** (fora da arte, num gesto que
+COMEÇA — um traço não nasce sobre um quad que não se desenha; com o traço já aberto ela devolve
+`Use` com a UV do quad, que é a lei que o `_unclamped` já escrevia e é o que deixa a pincelada sair
+da silhueta sem se partir).
+
+**Gates:** os três estados + o **controlo da sprite SEM malha** (`ph2d-render`, atrás de uma fixtura
+que já existia) · e um **arch-gate** para o fio (a porta de canvas exige janela e GPU: nenhum teste a
+alcança). **Quatro mutações, quatro RED** — ⚠️ **uma sobreviveu à primeira e nomeou a metade que
+faltava:** um `let malha = MeshUv::Quad;` ao lado de um `let _ = mesh_uv(..)` deixava o gate verde
+sobre o defeito inteiro. *Citar uma porta não é consultá-la* ⇒ ele passou a exigir a **ligação**
+(`let malha = ph2d_render::mesh_uv(`).
+
+⏳ **ABERTO e NOMEADO:** o **chrome** do Painter continua no quad de repouso (o anel do pincel segue o
+ponteiro e só o TAMANHO dele sai do afim; a curva, a linha, o gizmo de deformação, os gizmos de
+selecção, os crachás e a humidade desenham-se em posições de IMAGEM) — numa arte dobrada eles ficam
+no sítio de repouso. Não piorou com esta wave: antes a tinta estava errada **com** eles. E o
+conta-gotas do *BgRemoval* usa uma caixa alinhada aos eixos que ignora rotação **e** malha.
+
+⛔⛔ **E o TECTO DA SHELL ficou em `16` linhas de folga** (`196 974` de `196 990`): as três waves de
+hoje são quase todas GATES, e o tecto é a grandeza que soma entre linhas sem ninguém a contar
+(`CLAUDE.md` §5.0). ⭐ **A cura medida está identificada e não foi feita:** o `timeline_onion.rs` e os
+dois ficheiros de teste dele são **~800 linhas** que não são composição — o motor do onion só depende
+de crates (`ph2d-ecs`, `-render`, `-timeline`, `-skeleton-live`, `-poly2d`, `-vec-entities`) e só a
+CHAMADA é da shell. Tirá-lo daria ao integrador ~800 linhas de folga e é o molde do HOWTO.
+
 ## ⛔ Recusas MEDIDAS deste módulo — não as reconstrua
 
 > ⚠️ **As seis de 2026-09-07/08 entraram aqui na auditoria de 08/09** — elas viviam só em prosa e em

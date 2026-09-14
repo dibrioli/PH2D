@@ -308,6 +308,55 @@ pub fn sprite_world_to_uv_unclamped(
     uv_query(present, sim_entity_bits, world_pos).map(|(uv, _)| uv)
 }
 
+/// ⭐⭐⭐ **O que uma PORTA DE CANVAS deve fazer sobre uma sprite desenhada como MALHA.**
+///
+/// ⛔⛔ **A lei existia em duas portas e o consumidor usava uma TERCEIRA** (medido 2026-09-14): o
+/// [`sprite_world_to_uv`] e o [`sprite_world_to_uv_unclamped`] conhecem a malha desde a W3 do plano
+/// `docs/Skeleton/03` — e tinham **zero** chamadores de produto. O Painter mapeia o ponteiro pelo
+/// afim do QUAD DE REPOUSO (`ph2d_sprite_screen::sprite_image_to_screen_affine`), que não sabe o que
+/// é uma malha, logo numa arte presa e DOBRADA a pincelada cai deslocada exactamente pela
+/// deformação — em toda a arte, não só fora dela. *Duas portas com a lei certa e ninguém as
+/// chamava.*
+///
+/// A resposta é um enum de três estados porque o chamador tem três coisas diferentes a fazer, e
+/// nenhuma delas é «um `Option` com um `if` ao lado»:
+///
+/// - [`Self::Quad`] — **não é uma malha**: a lei do chamador continua **intocada** (e para o Painter
+///   isso importa: o afim dele carrega a grelha da folha, o *Repeat Image* e a margem do gizmo de
+///   deformação, que esta porta não conhece).
+/// - [`Self::Use`] — a UV de REPOUSO do texel sob o ponto, lida do triângulo posado.
+/// - [`Self::Refuse`] — fora da arte desenhada, e o gesto está a COMEÇAR: um traço não nasce sobre
+///   um quad que não se desenha. ⚠️ Com o gesto **já aberto** a porta devolve [`Self::Use`] com a UV
+///   do quad de repouso — é a lei que o `_unclamped` já escrevia, e é o que deixa uma pincelada
+///   sair da silhueta sem se partir.
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub enum MeshUv {
+    /// A sprite não é desenhada como malha — o chamador fica com a lei dele.
+    Quad,
+    /// A UV de repouso a usar.
+    Use(f32, f32),
+    /// Fora da arte desenhada, num gesto que COMEÇA.
+    Refuse,
+}
+
+/// Ver [`MeshUv`]. `starting` = este é o primeiro ponto do gesto (um `Down`).
+pub fn mesh_uv(
+    present: &mut World,
+    sim_entity_bits: u64,
+    world_pos: [f32; 2],
+    starting: bool,
+) -> MeshUv {
+    let Some(((u, v), on_mesh)) = uv_query(present, sim_entity_bits, world_pos) else {
+        return MeshUv::Quad;
+    };
+    match on_mesh {
+        None => MeshUv::Quad,
+        Some(true) => MeshUv::Use(u, v),
+        Some(false) if starting => MeshUv::Refuse,
+        Some(false) => MeshUv::Use(u, v),
+    }
+}
+
 /// The UV under `world_pos` on sprite `sim_entity_bits`, and — for a skinned sprite — whether the
 /// point is ON its drawn mesh (`Some(false)` = off it, answered by the rest quad law). `None` in
 /// the second slot for a plain quad.

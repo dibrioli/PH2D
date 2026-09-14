@@ -40,6 +40,7 @@ As cinco waves:
 | **W7** | **o ONION vê a pele**: a pose de mundo num instante, a pele resolvida nele, a malha por fantasma, e o escopo que um OSSO define |
 | **W8** | **os dois relatos do smoke da W7**: o onion passa a falar o relógio do CLIP (só aparecia a silhueta do futuro), e a MÃO que pousa um osso passa a existir para o quadro (com a timeline aberta o osso não se transformava e o AutoKey não cunhava nada) |
 | **W9** | **o gémeo do Flip da W6, fechado SEM report**: a condição da caixa de objecto passa a ser *«nenhuma ferramenta AUTORA no canvas»*, e o terceiro `if` por família morre |
+| **W10** | **o pincel segue a arte DOBRADA**: a porta de canvas (`ph2d_render::mesh_uv`) e o Painter a consultá-la — as duas portas que sabiam da malha não tinham chamador de produto |
 
 ---
 
@@ -62,6 +63,8 @@ As cinco waves:
 | `ph2d-skeleton-live` (W7) | `skin_of_in`/`skin_of_with`, `deform_field_with`, `posed_sprite_mesh`, `bone_index` público, `skinned_images_of_skeleton` | sim (a pele viva é a mesma) |
 | `ph2d-render` `sprite_collect.rs` + `renderer_draw.rs` (W7) | o `extra` do passe é uma `LiftedInstances` (leva malhas), e não uma fatia crua | **muda a assinatura** de `render_with_extra`/`render_with_streams` |
 | `ph2d-skeleton-demo/src/lib.rs` (W7) | `seed_arm_swing` — a acção do braço, no clip ABERTO | sim |
+| `ph2d-render/src/picking.rs` (W10) | `MeshUv` + `mesh_uv`: a porta de canvas de três estados, sobre o `uv_query` que já existia | sim |
+| `shells/desktop/src/input_dispatch/painter_canvas_input.rs` (W10) | o `deliver_canvas_pointer` consulta a porta antes do afim do quad | **muda comportamento** de uma sprite com malha (é a cura); `Quad` deixa o resto byte-idêntico |
 | `shells/desktop/src/render_loop/snapshots.rs` (W9) | o `flip_gizmo_on` SAI de `publish`/`publish_gizmo` (o 3.º `if` por família morre) | **muda a assinatura** (shell-interna) |
 | `shells/desktop/src/render_loop/fase_snapshots_publish.rs` (W9) | a condição do `object_gizmo_on` ganha a cláusula da ferramenta Flip | **é a cura** — a caixa de OUTRA família deixa de matar o traço do Flip |
 | `shells/desktop/src/render_loop/timeline_onion.rs` (W8) | `collect_onion_ghosts` passa a receber `live_clip_t: Option<f64>` — `None` = o clip activo não tem instante único aqui ⇒ **zero fantasmas** | **muda a assinatura** (shell-interna) |
@@ -177,6 +180,12 @@ acrescentar um quarto ramo). ⚠️ Os dois vivem na `ph2d-editor-core` pela raz
 `the_onion_speaks_the_clip_clock`, e ⛔ **nenhum deles alcança a ferramenta NOVA que ninguém ligar** —
 isso é dívida nomeada no §8.
 
+**W10** (`ph2d-render` + um arch-gate): os **três estados** da porta, com o **controlo da sprite sem
+malha** (sem ele, uma porta que respondesse `Use` a toda gente passaria) · e o fio (a porta de canvas
+exige janela e GPU). **Quatro mutações, quatro RED** — ⚠️ **uma SOBREVIVEU à primeira**: um
+`let malha = MeshUv::Quad;` ao lado de um `let _ = mesh_uv(..)` deixava o arch-gate verde sobre o
+defeito inteiro. *Citar uma porta não é consultá-la* ⇒ ele exige a **ligação**, não a menção.
+
 ---
 
 ## §6 — Coisas que uma leitura rápida do diff entende ao contrário
@@ -219,6 +228,13 @@ isso é dívida nomeada no §8.
 12. **O `ghost_instance` passou a ler a pose de MUNDO, e isso fechou uma nota antiga de graça:** o
    ADR-0142 dizia *«rigs parenteados são wave futura»* porque ele lia o `pose_at` LOCAL. Para uma
    raiz as duas respostas são as mesmas — os nove gates do onion passam sem uma linha mudada.
+19. **A W10 não «arranjou a UV fora da malha»** (que é o que a fila dizia): ela pôs o Painter a
+   falar com a porta que sabe da malha. O defeito era em **TODA** a arte dobrada, não só fora dela —
+   o Painter nunca chamou nenhuma das duas portas de UV, ele tem afim próprio.
+20. **`MeshUv::Quad` não é um caso degenerado: é o que mantém o Painter intacto.** O afim dele
+   carrega a grelha da folha, o *Repeat Image* e a margem do gizmo de deformação; uma porta que
+   respondesse a toda sprite apagaria os três.
+
 17. **A W9 não muda NADA para o objecto Flip, e isso é álgebra:** a caixa dele era
    `object_gizmo_on_antigo ∧ flip_ok` e hoje é `object_gizmo_on_novo = vec_ok ∧ flip_ok ∧ ¬preview` —
    a mesma expressão. O que muda é a caixa das **outras** famílias sob a ferramenta Flip.
@@ -292,7 +308,9 @@ isso é dívida nomeada no §8.
 | item | estado |
 |---|---|
 | ✅ **Os fantasmas do onion desenhavam o quad de repouso** | **FECHADO pela W7** (a pose de mundo em `t`, a pele resolvida nele, a malha por fantasma) e **alcançável desde a W8** (o relógio do clip). ⚠️ A redacção fica aqui por contraste: ela dizia *«eles desenham o quad de repouso»* e a medição mostrou que **não havia fantasma nenhum** |
-| ⚠️ **A UV do pintor fora da malha** | `sprite_world_to_uv_unclamped` responde pela lei do quad de REPOUSO: um traço que sai da silhueta posada é mapeado como se a imagem repousasse |
+| ✅ **A UV do pintor** | **FECHADO pela W10**, e o item estava mal endereçado: o Painter não chamava nenhuma das duas portas de UV — ele tem afim próprio, do quad de repouso, logo o erro era em TODA a arte dobrada |
+| ⏳ **O CHROME do Painter fica no repouso** | a curva, a linha, o gizmo de deformação, os gizmos de selecção, os crachás e a humidade desenham-se em posições de IMAGEM pelo mesmo afim; numa arte dobrada ficam no sítio de repouso. ⚠️ **Não piorou com a W10** (antes a tinta estava errada com eles), e o anel do pincel segue o ponteiro — só o TAMANHO dele sai do afim |
+| ⏳ **O conta-gotas do BgRemoval** | usa uma caixa alinhada aos eixos que ignora rotação **e** malha — mais antigo e mais cru que tudo isto |
 | ⚠️ **9-slice e folha desdobrada** | a malha só conhece o quad da sprite; essas desenham-se SEM deformar, com aviso único no stderr |
 | ⏳ **A FATIA do quadro (`1/10`)** | é a única escolha do `SKIN_FRAME_PIECES`; medir outra é `PH2D_SKIN_PIECES=<n>` |
 | ⏳ **O custo do onion no EXTREMO** | medido: uma peça de fantasma vale `0,158 µs`, logo `16` fantasmas (o máximo dos dois sliders) sobre uma pele no tecto dela (`1 543` peças) são **`~3,9 ms`, `23 %` de um quadro**. ⛔ Não se corta nada — deitar fora os mais distantes é decisão de PRODUTO; o que fica é o número no `PH2D_BONE_LOG` |
@@ -330,18 +348,23 @@ Régua = merge-base `1d43da737`.
 
 | passo | resultado |
 |---|---|
-| `BASE=1d43da737 bash scripts/nextest-impacted.sh` | ✅ **13 702 passaram, 0 falharam** (11 357 saltados), `54,7 s` — nenhum membro da família de flakes de carga reprovou |
+| `BASE=1d43da737 bash scripts/nextest-impacted.sh` | ✅ **13 704 passaram, 0 falharam** (11 357 saltados), `102,4 s` — nenhum membro da família de flakes de carga reprovou |
 | `cargo fmt --all --check` | ✅ |
 | `cargo clippy --workspace --all-targets` | ⚠️ **correu em CACHE e não repete avisos** (a saída inteira é uma linha, `Finished`). Forçado o replay da única crate com aviso: `ph2d-preview-drive`, **pré-existente** e intocada por esta linha (§8). As crates desta linha foram corridas com replay: zero |
 | `cargo machete` | ✅ nenhuma dependência por usar — a `ph2d-vector` e a `ph2d-asset` SAÍRAM da `ph2d-skeleton-live` |
 | `bash scripts/doc-index.sh --check` | ✅ 19 índices em dia |
-| provas de mutação | ✅ **21 RED** na asserção certa (8 na W2, 8 na W3, **5 na W8**), cada uma com o controlo `1 failed` — um filtro que casasse zero leria `0 passed; 0 failed`. ⚠️ A 1.ª redacção da 5.ª (o onion a aceitar um instante ausente) **não compilava**, e um erro de compilação não é um gate vermelho: foi reescrita numa forma que compila. **W9: mais 3** (a cláusula do Flip · o quarto ramo no canvas · o termo da preview) |
+| provas de mutação | ✅ **21 RED** na asserção certa (8 na W2, 8 na W3, **5 na W8**), cada uma com o controlo `1 failed` — um filtro que casasse zero leria `0 passed; 0 failed`. ⚠️ A 1.ª redacção da 5.ª (o onion a aceitar um instante ausente) **não compilava**, e um erro de compilação não é um gate vermelho: foi reescrita numa forma que compila. **W9: mais 3** (a cláusula do Flip · o quarto ramo no canvas · o termo da preview). **W10: mais 4**, e ⚠️ **uma sobreviveu à primeira** (citar a porta em vez de a ligar) |
 | tectos de LOC | ✅ ⚠️ **A W8 reprovou DOIS ficheiros de teste da shell** (`autokey_pass_tests` `612` · `timeline_onion_tests` `613`, tecto `600`): curados por **corte por responsabilidade** — o gate do osso saiu para o `autokey_bone_tests.rs` e o do relógio para um **sub-módulo** que herda as fixturas (`timeline_onion_clock_tests.rs`, o molde do `skin_at_time_tests` da W7). ⛔ Nunca subir o número. E o resto: ⚠️ **O `app_state.rs` bateu no tecto** (`1 023 / 1 019`) e a cura foi CORTE da prosa que eu tinha acrescentado — nunca subir o número |
 
-⛔⛔ **O NÚMERO QUE O INTEGRADOR TEM DE VER:** a shell fecha esta linha em **`196 957`** linhas
-contra o tecto de `196 990` do `the_shell_only_shrinks` — **`33` de folga**. Ele é um tecto que SOMA
-entre linhas sem ninguém a contar (`CLAUDE.md` §5.0), e esta linha gastou-o quase todo em GATES. Se
-outra linha da rodada crescer, a cura é corte por responsabilidade, nunca subir o número.
+⛔⛔ **O NÚMERO QUE O INTEGRADOR TEM DE VER:** a shell fecha esta linha em **`196 974`** linhas
+contra o tecto de `196 990` do `the_shell_only_shrinks` — **`16` de folga**. Ele é um tecto que SOMA
+entre linhas sem ninguém a contar (`CLAUDE.md` §5.0), e esta linha gastou-o quase todo em GATES.
+⭐ **A cura MEDIDA está identificada e não foi feita, de propósito:** o `timeline_onion.rs` e os dois
+ficheiros de teste dele são **~800 linhas que não são composição** — o motor do onion depende só de
+crates (`ph2d-ecs`, `-render`, `-timeline`, `-skeleton-live`, `-poly2d`, `-vec-entities`) e só a
+CHAMADA é da shell. Tirá-lo para `crates/ph2d-timeline-onion` é o molde do HOWTO e devolve ~800
+linhas. ⛔ Enquanto isso não acontece, a cura de um vermelho é corte por responsabilidade — nunca
+subir o número.
 ⚠️ **E é por isso que o arch-gate `the_onion_speaks_the_clip_clock` vive na `ph2d-editor-core`** e não
 ao lado do irmão em `shells/desktop/tests/it/`: a razão está escrita no cabeçalho dele.
 
@@ -368,6 +391,11 @@ cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-Vector && env PH2D_VEC_BON
 pintado (a imagem presa está na ORDEM do quadro), e o **olho** da linha *«Painted arm»* na Hierarquia
 esconde-a. Com a camada do Vello, a imagem ficava à frente da barra e continuava desenhada com o olho
 fechado.
+
+⚠️ **E o que a W10 acrescenta:** na MESMA cena, dobre o braço pintado (arraste o corpo de um osso),
+escolha a linha *«Painted arm»*, pegue no **Painter** e pinte sobre a arte **dobrada**. A tinta tem de
+sair debaixo do ponteiro. ⛔ Até 2026-09-14 ela caía deslocada exactamente pela deformação, e um
+clique sobre o quad de REPOUSO (onde nada se desenha) começava um traço invisível.
 
 ⚠️ **E o que a W9 acrescenta:** com a MESMA cena, escolha a linha *«Painted arm»* na Hierarquia,
 pegue na ferramenta **Flip** (modo *Draw*) e desenhe **por cima do braço pintado**. Tem de desenhar.

@@ -449,3 +449,51 @@ fn a_mesh_the_renderer_would_not_draw_picks_like_the_quad() {
     );
     assert_eq!(pick_sprite_at_world(present.world_mut(), [4.0, 0.5]), None);
 }
+
+/// ⭐⭐⭐ **A porta de canvas: os TRÊS estados** ([`MeshUv`]), e o controlo da sprite SEM malha.
+///
+/// ⛔ O defeito que ela fecha (medido 2026-09-14): o Painter mapeia o ponteiro pelo afim do QUAD DE
+/// REPOUSO, então numa arte presa e DOBRADA a pincelada cai deslocada pela deformação — e as duas
+/// portas que sabiam da malha não tinham chamador nenhum de produto.
+#[test]
+fn the_canvas_port_answers_the_art_the_quad_and_the_refusal() {
+    let mut sim = ph2d_ecs::SimWorld::new();
+    let mut present = PresentWorld::new();
+    let e = fresh_sim_entity(&mut sim);
+    let bits = spawn_at(&mut present, e, 0.0, 0.0, [2.0, 2.0]);
+    give_mesh(&mut present, e, posed_arm());
+
+    // Sobre a arte: a UV de repouso do texel desenhado ali — a começar ou a meio, é a mesma.
+    for starting in [true, false] {
+        assert!(
+            matches!(
+                crate::mesh_uv(present.world_mut(), bits, [3.5, 0.5], starting),
+                crate::MeshUv::Use(u, v) if (u - 0.25).abs() < 1e-5 && (v - 0.75).abs() < 1e-5
+            ),
+            "sobre a arte a porta devolve a UV de repouso (starting = {starting})"
+        );
+    }
+    // Fora dela: um gesto que COMEÇA é recusado — um traço não nasce sobre um quad que não se
+    // desenha —, e um gesto ABERTO segue pela lei do quad, para a pincelada não se partir.
+    assert_eq!(
+        crate::mesh_uv(present.world_mut(), bits, [0.0, 0.0], true),
+        crate::MeshUv::Refuse
+    );
+    assert!(matches!(
+        crate::mesh_uv(present.world_mut(), bits, [0.0, 0.0], false),
+        crate::MeshUv::Use(u, v) if (u - 0.5).abs() < 1e-5 && (v - 0.5).abs() < 1e-5
+    ));
+
+    // ⛔ O CONTROLO: uma sprite SEM malha devolve `Quad` nos dois casos — a lei do chamador fica
+    // intocada (no Painter ela carrega a grelha da folha e o *Repeat Image*, que esta porta não
+    // conhece). Sem ele, uma porta que respondesse `Use` a toda gente passaria nas asserções acima.
+    let plain = fresh_sim_entity(&mut sim);
+    let pbits = spawn_at(&mut present, plain, 20.0, 0.0, [2.0, 2.0]);
+    for (p, starting) in [([20.0, 0.0], true), ([99.0, 0.0], false)] {
+        assert_eq!(
+            crate::mesh_uv(present.world_mut(), pbits, p, starting),
+            crate::MeshUv::Quad,
+            "uma sprite sem malha nao passa por esta porta"
+        );
+    }
+}

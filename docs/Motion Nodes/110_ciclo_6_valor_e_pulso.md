@@ -262,6 +262,45 @@ campos** (um campo privado é visível ao módulo que o declara e aos descendent
 contacto tem uma `Pecas`* — dois `&`-de-mesma-forma numa lista posicional trocam de lugar sem o
 compilador dizer nada.
 
+### A cena `=116` — onde isto se VÊ
+
+⚠️ **O que mudou não é uma aparência: é ONDE a cena corre.** Uma cena de A/B por quadrantes
+ensinaria que isto é uma questão de desenho — os dois lados desta comparação são a **mesma** cena
+com o interruptor `PH2D_MOTION_DRIVEN_GPU` num sítio e noutro.
+
+- **102 400 peças e UM fio** (um `value.lfo` a comandar o `motion.scale`): a cadeia mais simples
+  que existe com um nó de valor, e exactamente a que caía.
+- ⚠️ **Ela é grande porque o sujeito é o CUSTO.** As `=111`..`=115` têm dezenas de peças porque
+  ensinam uma LEI; um custo de `50×` sobre dez peças não se vê.
+- **Medido no app a correr**, as duas corridas:
+
+```text
+  normal                        → [motion-route] device: o plano inteiro (fully-GPU)
+  PH2D_MOTION_DRIVEN_GPU=0      → [motion-route] CPU: fronteira sem estagio de GPU que despache
+```
+
+⚠️ **E o anúncio teve de deixar de imprimir a linha que manda procurar**: ele citava-a *verbatim*, e
+a citação e a linha de verdade liam-se iguais no terminal. Agora ele diz que a de verdade está
+**colada à margem**, e nomeia a diferença. *Um smoke que manda procurar um texto não pode ser o
+próprio produtor desse texto.*
+
+Gates: `the_wire_scene_is_claimed_by_the_device` · ⛔ `with_the_switch_off_the_same_scene_falls_to_the_cpu`
+(sem esta metade, o passo 3 do anúncio manda comparar duas corridas iguais) ·
+`the_scene_has_exactly_one_wire_and_it_drives_the_scale` · `the_cloth_is_as_big_as_the_announcement_says` ·
+`the_cloth_actually_breathes`.
+
+### ⛔⛔ A sonda do PREÇO foi APAGADA — ela media outro programa
+
+`probe_the_price_of_driving_one_param` imprimia uma razão para *«o preço de dirigir um param»*. **Os
+dois lados dela corriam o cozedor da CPU** (`pump.cook`) e o plano dela era o antigo: ela nunca
+tocou no dispositivo. O que media era o custo de cozer o CONDUTOR — a parte que esta wave não muda.
+
+⚠️ **E ela devolveu um número plausível — `1,21×` — que é o que a tornava perigosa.** Uma régua que
+devolve `0,00 ms` desconfia-se; uma que devolve `1,21×` cita-se. *Uma régua que mede outro programa
+é pior que régua nenhuma.* ⇒ o instrumento do preço passa a ser a cena `=116` com o registo de rota,
+e a paridade que corre as duas rotas a sério. Um A/B de relógio device-contra-CPU pede um
+`GpuContext` no arnês e é wave própria.
+
 ### ⚠️ DOIS candidatos NOMEADOS à família das flakes de carga
 
 A suíte de GPU inteira (`--ignored`, 784 s) deu **198 verdes e 3 vermelhos**. Um é o pré-existente

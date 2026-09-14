@@ -263,6 +263,13 @@ pub(crate) fn valores_dirigidos(
     playhead: f64,
 ) -> ph2d_gpu_cook::DrivenParams {
     let mut fora = ph2d_gpu_cook::DrivenParams::new();
+    // ⭐⭐ **O INTERRUPTOR DESTA WAVE** (`PH2D_MOTION_DRIVEN_GPU=0`) — devolver o mapa VAZIO é
+    // exactamente a lei de antes dela: sem valores, nenhum nó com fio é encenado
+    // (`plan::DrivenParams`). É por isso que ele é uma bissecção honesta e não um segundo
+    // caminho — *o caso vazio já era o produto.*
+    if std::env::var_os("PH2D_MOTION_DRIVEN_GPU").is_some_and(|v| v == "0") {
+        return fora;
+    }
     if motion.doc.graph.all_param_sources().is_empty() {
         return fora;
     }

@@ -47,6 +47,12 @@ mod demo_conferencia_animadores;
 /// DIAGNOSER sobre cada cena da conferência precisa de as MONTAR
 /// (`demo_router::build_level`), e antes disso nenhuma era alcançável de um teste.
 pub mod demo_router;
+/// **DE QUE A PEÇA É FEITA** — o MATERIAL (atrito e salto), e a cena em que um círculo ROLA
+/// em vez de derrapar; ver o cabeçalho dela (doc 109 §7).
+/// ⭐ **UM NÚMERO QUE MANDA EM TUDO** — a cena da W1a do ciclo 6: 102 400 peças e UM fio, e o
+/// custo que essa única ligação tinha (doc 110 §6).
+#[path = "motion_state_fio_demo.rs"]
+mod fio_demo;
 /// A cena de smoke do ciclo 3 — «em torno de quê» (doc 106).
 /// **NEM TODOS AO MESMO TEMPO** — a cena de smoke do ciclo 4 (os campos); ver o cabeçalho dela.
 #[path = "motion_state_foco_demo.rs"]
@@ -72,8 +78,6 @@ mod gpu_demos;
 /// out at the HR-18 cap — a cohesive family like the deformers next door.
 #[path = "motion_state_gpu_field_demos.rs"]
 mod gpu_field_demos;
-/// **DE QUE A PEÇA É FEITA** — o MATERIAL (atrito e salto), e a cena em que um círculo ROLA
-/// em vez de derrapar; ver o cabeçalho dela (doc 109 §7).
 #[path = "motion_state_material_demo.rs"]
 mod material_demo;
 /// **PEÇAS QUE NÃO SE ATRAVESSAM** — o `motion.collide` DENTRO de uma simulação a correr;

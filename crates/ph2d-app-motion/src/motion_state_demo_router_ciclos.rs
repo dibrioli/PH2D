@@ -17,7 +17,7 @@ use ph2d_node_registry::NodeRegistry;
 use ph2d_nodegraph::graph::NodeId;
 
 /// Os níveis que são cena de ciclo. ⚠️ **Uma tabela, dois leitores** — ver o cabeçalho.
-const CICLOS: &[&str] = &["111", "112", "113", "114", "115"];
+const CICLOS: &[&str] = &["111", "112", "113", "114", "115", "116"];
 
 /// Este nível é uma cena de ciclo?
 pub(super) fn e_de_ciclo(n: &str) -> bool {
@@ -72,6 +72,16 @@ pub(super) fn build(n: &str, doc: &mut MotionDoc, reg: &NodeRegistry) -> Vec<Nod
             let sinks = super::material_demo::build(doc, reg).unwrap_or_default();
             crate::motion_demo_legend::publish(super::material_demo::captions());
             announce::material();
+            sinks
+        }
+        // ⭐⭐⭐ **UM NÚMERO QUE MANDA EM TUDO** (ciclo 6, doc 110 §6) — 102 400 peças e um fio.
+        // ⚠️ Ela não ensina uma LEI, ensina um CUSTO: até à W1a, aquela única ligação trocava o
+        // caminho de `3,85 ms` pelo de `195,9 ms`. Por isso é grande — um custo de `50×` sobre
+        // dez peças não se vê.
+        "116" => {
+            let sinks = super::fio_demo::build(doc, reg).unwrap_or_default();
+            crate::motion_demo_legend::publish(super::fio_demo::captions());
+            announce::fio();
             sinks
         }
         // ⚠️ Inalcançável: a [`e_de_ciclo`] gateia esta função com a MESMA tabela.

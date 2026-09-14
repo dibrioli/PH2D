@@ -348,10 +348,19 @@ fn ik_rows(r: &mut RowCtx, y: f32) -> f32 {
     // **ao mesmo tempo**, por índice: uma variante nova na lei sem um id ao lado é erro de
     // compilação (os dois arrays têm de ter o mesmo comprimento), em vez de um segmento que
     // desaparece em silêncio.
+    // ⚠️⚠️ **A promessa de «erro de compilação» era FALSA até 2026-09-14**: as duas listas eram
+    // indexadas lado a lado e um comprimento diferente dava **pânico em runtime**, apanhado só pelo
+    // gate de costura. Este `assert!` de `const` torna-a verdadeira — e foi preciso acrescentar uma
+    // variante (`Mixed`) para o descobrir.
+    const _: () = assert!(
+        ids::VECTOR_BONE_BEND_IDS.len() == ph2d_skeleton::BendSide::ALL.len(),
+        "um lado novo na LEI precisa de um id ao lado dele"
+    );
     let rotulos = [
         tr("panel.vector.bone.ik.bend.auto"),
         tr("panel.vector.bone.ik.bend.ccw"),
         tr("panel.vector.bone.ik.bend.cw"),
+        tr("panel.vector.bone.ik.bend.mixed"),
     ];
     let mut lados: [(ph2d_a11y::NodeId, &str, bool); ph2d_skeleton::BendSide::ALL.len()] =
         [(ids::VECTOR_BONE_BEND_IDS[0], "", false); ph2d_skeleton::BendSide::ALL.len()];

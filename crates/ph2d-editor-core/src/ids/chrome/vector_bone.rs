@@ -83,8 +83,10 @@ pub const VECTOR_BONE_IK_BEND_CCW: NodeId = hash_node_id("vector.bone.ik.bend.cc
 
 /// **CW** — ... do lado horário.
 pub const VECTOR_BONE_IK_BEND_CW: NodeId = hash_node_id("vector.bone.ik.bend.cw");
+/// ⭐ O **MISTO**: cada junta defende o lado que ela já tinha (ordem do dono, 2026-09-14).
+pub const VECTOR_BONE_IK_BEND_MIXED: NodeId = hash_node_id("vector.bone.ik.bend.mixed");
 
-/// Os três segmentos, **índice-alinhados** com [`ph2d_skeleton::BendSide::ALL`] — o mesmo idioma do
+/// Os QUATRO segmentos, **índice-alinhados** com [`ph2d_skeleton::BendSide::ALL`] — o mesmo idioma do
 /// [`VECTOR_BONE_ACTION_IDS`], e pela mesma razão: alinhar por índice é o que impede a fileira do
 /// painel e o vocabulário da lei de divergirem em silêncio.
 ///
@@ -95,10 +97,11 @@ pub const VECTOR_BONE_IK_BEND_CW: NodeId = hash_node_id("vector.bone.ik.bend.cw"
 /// exige que o `populate` tenha um laço sobre a tabela que o `paint` itera, e sem esse laço a
 /// próxima fileira que alguém acrescente nasce **morta sob o dedo**. *Herdar a rota de outra tabela
 /// funciona e apaga a regra que protege quem vier a seguir.*
-pub const VECTOR_BONE_BEND_IDS: [NodeId; 3] = [
+pub const VECTOR_BONE_BEND_IDS: [NodeId; 4] = [
     VECTOR_BONE_IK_BEND_AUTO,
     VECTOR_BONE_IK_BEND_CCW,
     VECTOR_BONE_IK_BEND_CW,
+    VECTOR_BONE_IK_BEND_MIXED,
 ];
 
 /// ⭐⭐⭐ **Add Angle Limit** — dá a esta junta um arco de que ela não sai.

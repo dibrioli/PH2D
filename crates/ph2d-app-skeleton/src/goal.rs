@@ -440,6 +440,18 @@ fn solve_one(
     if alcance <= f64::EPSILON {
         return false;
     }
+    // ⭐⭐⭐ **O MISTO PARTE DA POSE AUTORADA, e é isso que dá sentido a «inicial».** Ele lê o lado
+    // de CADA junta da pose que recebe; recebendo a viva, «inicial» seria *o que o solver deixou no
+    // quadro anterior* — estável enquanto o alvo está ao alcance (o modo é um ponto fixo, e há
+    // gate), e **apagado para sempre** no primeiro arrasto que o leve para fora dele, que deita a
+    // corrente na recta. ⚠️ Os outros três modos ficam **byte a byte** como estavam: o lado deles
+    // vive num campo do documento e não na pose.
+    if g.bend == ph2d_skeleton::BendSide::Mixed
+        && let Some(autoradas) =
+            crate::goal_authored::authored_joints(sim, preview, corrente, &juntas, &comps)
+    {
+        juntas = autoradas;
+    }
     // ⚠️ A suavidade é uma FRACÇÃO do alcance (adimensional, como a força do osso) e a lei do
     // `reach` quer unidades de MUNDO — a conversão vive aqui, que é a porta onde as duas se
     // encontram.

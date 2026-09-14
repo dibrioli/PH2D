@@ -182,3 +182,287 @@ fn the_two_authored_sides_are_exact_mirrors_of_each_other() {
         }
     }
 }
+
+/// ⭐⭐⭐ **O MODO MISTO: cada junta fica do lado em que o artista a deixou, E a ponta chega** —
+/// o gate da ordem do dono (2026-09-14: *«além de CCW e CW precisamos de um modo misto onde temos
+/// ossos com ângulos para os dois lados, e cada osso mantém sua direção inicial»*).
+///
+/// O corpus é uma corrente em **ZIG-ZAG** — cada junta dobrada para o lado oposto da anterior —,
+/// que é a pose que nenhum dos outros três modos sabe exprimir: o `Ccw` e o `Cw` põem TODAS as
+/// juntas do mesmo lado, e o `Keep` não defende nenhuma.
+///
+/// ⭐⭐ **A metade ANTI-VÁCUO é a segunda:** a mesma corrente resolvida com [`BendSide::Keep`]
+/// **perde** pelo menos um sinal em `7` dos `12` alvos — sempre o da junta junto à ponta, que é a
+/// que mais se move para chegar ao alvo. Sem essa metade, um `Mixed` que não fizesse nada passaria
+/// nos alvos em que o `Keep` já acerta por acaso.
+///
+/// ⛔ **A tolerância da ponta é a do solver** (`TOLERANCE · alcance`), não um número escolhido: a
+/// promessa deste modo é chegar ao alvo *e* guardar os lados, e o gate exige as duas ao mesmo tempo.
+#[test]
+fn a_mixed_chain_keeps_every_joint_on_its_own_side() {
+    let mut keep_perdeu = 0usize;
+    let mut casos = 0usize;
+    for n in [3usize, 4, 5, 6] {
+        let lengths: Vec<f64> = (0..n).map(|_| 1.0).collect();
+        let total: f64 = lengths.iter().sum();
+        // Cada osso aponta para a frente e alterna em `y`: as juntas alternam de lado.
+        let mut j: Vec<[f64; 2]> = vec![[0.0, 0.0]];
+        for i in 0..n {
+            let s = if i % 2 == 0 { 1.0 } else { -1.0 };
+            let ultimo = *j.last().unwrap();
+            j.push([ultimo[0] + 0.85, ultimo[1] + 0.5 * s]);
+        }
+        let antes = sinais_crus(&j);
+        assert!(
+            antes.iter().any(|&s| s > 0.0) && antes.iter().any(|&s| s < 0.0),
+            "a fixtura de {n} ossos nao e' um zig-zag: {antes:?}"
+        );
+        for alvo in [[total * 0.5, 0.2], [total * 0.7, -0.4], [total * 0.35, 0.6]] {
+            casos += 1;
+            let mut k = j.clone();
+            reach(
+                &mut k,
+                &lengths,
+                alvo,
+                Reach {
+                    bend: BendSide::Mixed,
+                    ..Reach::default()
+                },
+            );
+            assert_eq!(
+                sinais_crus(&k),
+                antes,
+                "com {n} ossos e o alvo {alvo:?}, o MISTO trocou o lado de uma junta"
+            );
+            let erro = (k[n][0] - alvo[0]).hypot(k[n][1] - alvo[1]);
+            assert!(
+                erro < 1e-3 * total,
+                "com {n} ossos e o alvo {alvo:?}, o MISTO guardou os lados e a ponta ficou a \
+                 {erro} do alvo (alcance {total})"
+            );
+
+            // ANTI-VÁCUO: a corrente LIVRE resolve os mesmos alvos e perde sinais.
+            let mut livre = j.clone();
+            reach(&mut livre, &lengths, alvo, Reach::default());
+            if sinais_crus(&livre) != antes {
+                keep_perdeu += 1;
+            }
+        }
+    }
+    assert_eq!(casos, 12, "o corpus mudou de tamanho");
+    assert!(
+        keep_perdeu >= 5,
+        "o corpus deixou de discriminar: a corrente LIVRE guardou os sinais em {} dos {casos} \
+         alvos, logo este gate passaria sem o modo MISTO fazer nada",
+        casos - keep_perdeu
+    );
+}
+
+/// ⭐ **Resolver duas vezes devolve a MESMA pose** — o modo misto lê o lado da pose que chega, logo
+/// a pose que ele devolve tem de ser um ponto fixo dele. ⚠️ Sem isto, um rig parado derivaria de
+/// quadro para quadro, que é o defeito que a W16 curou no lado autorado.
+#[test]
+fn a_mixed_chain_is_a_fixed_point() {
+    let lengths = [1.0, 1.0, 1.0, 1.0, 1.0];
+    let mut j: Vec<[f64; 2]> = vec![[0.0, 0.0]];
+    for i in 0..5 {
+        let s = if i % 2 == 0 { 1.0 } else { -1.0 };
+        let u = *j.last().unwrap();
+        j.push([u[0] + 0.85, u[1] + 0.5 * s]);
+    }
+    let alvo = [2.6, 0.3];
+    let opts = Reach {
+        bend: BendSide::Mixed,
+        ..Reach::default()
+    };
+    reach(&mut j, &lengths, alvo, opts);
+    let uma = j.clone();
+    reach(&mut j, &lengths, alvo, opts);
+    for (i, (a, b)) in uma.iter().zip(&j).enumerate() {
+        let d = (a[0] - b[0]).hypot(a[1] - b[1]);
+        assert!(
+            d < 1e-9,
+            "a junta {i} andou {d} numa segunda resolucao igual"
+        );
+    }
+}
+
+/// ⭐⭐⭐ **UMA JUNTA EMPURRADA CONTRA A RECTA PÁRA ANTES DELA, NUNCA NELA.**
+///
+/// ⛔⛔ **Parar NA recta perderia a feature em silêncio no quadro SEGUINTE**: o lado de cada junta é
+/// re-lido da pose a cada resolução, e uma junta exactamente recta lê-se «sem lado» — ela deixaria
+/// de ser defendida para sempre, e o artista veria uma junta trocar de lado sozinha um quadro
+/// depois de nada ter feito.
+///
+/// ⚠️ **A fixtura foi ACHADA, não escolhida:** uma varredura de `1 176` combinações (contagem de
+/// ossos × dobra autorada × padrão de lados × alvo, só alvos ao alcance e só juntas que nasceram
+/// com lado) procurou o menor seno final de todas — e ele é **exactamente** `0,008`, a margem, nesta
+/// célula. É o único sítio do corpus onde a parede da recta é o que decide.
+#[test]
+fn a_joint_pushed_against_the_straight_stops_short_of_it() {
+    // (ossos, dobra autorada, alvo). A 1.ª é onde a parede DECIDE no produto; a 2.ª é onde uma
+    // parede SEM margem deixa a junta exactamente recta — as duas saíram da mesma varredura, uma
+    // corrida sobre o produto e outra sobre o mutante.
+    for (ossos, dy, alvo) in [(6usize, 0.1, [1.2, 0.9]), (4, 0.01, [2.8, -0.9])] {
+        let lengths = vec![1.0; ossos];
+        let mut j: Vec<[f64; 2]> = vec![[0.0, 0.0]];
+        for i in 0..ossos {
+            let s = if i % 2 == 0 { 1.0 } else { -1.0 };
+            let u = *j.last().unwrap();
+            j.push([u[0] + 0.9, u[1] + dy * s]);
+        }
+        let antes = sinais_crus(&j);
+        let mut k = j.clone();
+        reach(
+            &mut k,
+            &lengths,
+            alvo,
+            Reach {
+                bend: BendSide::Mixed,
+                ..Reach::default()
+            },
+        );
+        assert_eq!(
+            sinais_crus(&k),
+            antes,
+            "o alvo {alvo:?} empurrou uma junta para cima da recta (ou para lá dela)"
+        );
+        // E a folga é MENSURÁVEL, não um resto de arredondamento. ⚠️ A barra é a margem que o produto
+        // promete, LIDA dele — repeti-la aqui deixaria o gate a concordar com uma constante que já não
+        // existe.
+        let margem = crate::reach_mixed::MARGEM.sin();
+        let mut encostou = false;
+        for i in 1..k.len() - 1 {
+            let v1 = [k[i][0] - k[i - 1][0], k[i][1] - k[i - 1][1]];
+            let v2 = [k[i + 1][0] - k[i][0], k[i + 1][1] - k[i][1]];
+            let seno =
+                (v1[0] * v2[1] - v1[1] * v2[0]).abs() / (v1[0].hypot(v1[1]) * v2[0].hypot(v2[1]));
+            assert!(
+                seno >= margem * 0.999,
+                "a junta {i} ficou a {seno} de seno da recta — abaixo da margem {margem}, logo o \
+                 proximo quadro le-a como SEM lado"
+            );
+            if seno < margem * 1.001 {
+                encostou = true;
+            }
+        }
+        // ANTI-VÁCUO: sem nenhuma junta a encostar na parede, este gate não mede parede nenhuma.
+        // ⚠️ Só a 1.ª célula o promete — na 2.ª a parede decide mais cedo e a junta acaba folgada.
+        assert!(
+            encostou || ossos == 4,
+            "nenhuma junta encostou na parede da recta com {ossos} ossos: a fixtura deixou de \
+             exercitar a lei que este gate afirma"
+        );
+    }
+}
+
+/// O sinal CRU de cada junta interior — sem o limiar de recta do produto, de propósito: um gate que
+/// partilhasse a régua do produto não veria uma junta empurrada para cima da fronteira.
+fn sinais_crus(p: &[[f64; 2]]) -> Vec<f64> {
+    (1..p.len() - 1)
+        .map(|i| {
+            let v1 = [p[i][0] - p[i - 1][0], p[i][1] - p[i - 1][1]];
+            let v2 = [p[i + 1][0] - p[i][0], p[i + 1][1] - p[i][1]];
+            let cruz = v1[0] * v2[1] - v1[1] * v2[0];
+            // ⚠️ `f64::signum` devolve `±1` para o ZERO — uma junta exactamente recta lia-se como
+            // tendo lado, e um gate construído sobre isso não vê a junta que ficou sem nenhum.
+            if cruz == 0.0 { 0.0 } else { cruz.signum() }
+        })
+        .collect()
+}
+
+/// ⭐⭐ **O INSTRUMENTO que achou as duas fixturas do gate da parede** — varre `1 176` células
+/// (contagem de ossos × dobra autorada × padrão de lados × alvo) e imprime o **menor seno final**
+/// de todas as juntas que nasceram com lado, com o alvo em alcance.
+///
+/// ⚠️ Corra-o **também sobre o mutante** que quer matar: uma fixtura calibrada no caminho do
+/// produto não discrimina, porque o mutante anda por outro caminho — foi exactamente assim que a
+/// 1.ª redacção do gate da parede passou com a margem da recta apagada. No produto ele lê
+/// `0,008000` (a margem, encostada); sem a margem lê `0,000000` noutra célula, e é essa a que o
+/// gate carrega.
+#[test]
+#[ignore]
+fn varre_fixturas() {
+    let mut pior = f64::INFINITY;
+    let mut onde = String::new();
+    for n in [3usize, 4, 5, 6] {
+        let lengths: Vec<f64> = (0..n).map(|_| 1.0).collect();
+        for dy in [0.01f64, 0.03, 0.1, 0.3, 0.5, 0.7, 0.9] {
+            for padrao in 0..4 {
+                let mut j: Vec<[f64; 2]> = vec![[0.0, 0.0]];
+                for i in 0..n {
+                    let s = match padrao {
+                        0 => {
+                            if i % 2 == 0 {
+                                1.0
+                            } else {
+                                -1.0
+                            }
+                        }
+                        1 => {
+                            if i < n / 2 {
+                                1.0
+                            } else {
+                                -1.0
+                            }
+                        }
+                        2 => {
+                            if i % 3 == 0 {
+                                1.0
+                            } else {
+                                -1.0
+                            }
+                        }
+                        _ => 1.0,
+                    };
+                    let u = *j.last().unwrap();
+                    j.push([u[0] + 0.9, u[1] + dy * s]);
+                }
+                for gx in [0.2f64, 0.3, 0.5, 0.7, 0.9, 0.99] {
+                    for gy in [-0.9f64, -0.5, -0.2, 0.0, 0.2, 0.5, 0.9] {
+                        let mut k = j.clone();
+                        let alvo = [n as f64 * gx, gy];
+                        if alvo[0].hypot(alvo[1]) > n as f64 * 0.98 {
+                            continue; // fora de alcance: a recta e' a resposta, sem lado nenhum
+                        }
+                        reach(
+                            &mut k,
+                            &lengths,
+                            alvo,
+                            Reach {
+                                bend: BendSide::Mixed,
+                                ..Reach::default()
+                            },
+                        );
+                        let erro = (k[n][0] - alvo[0]).hypot(k[n][1] - alvo[1]);
+                        let sinais_ok = sinais_crus(&k) == sinais_crus(&j);
+                        println!(
+                            "F n={n} dy={dy} p={padrao} g={gx},{gy} erro={erro:.5} ok={sinais_ok}"
+                        );
+                        for i in 1..k.len() - 1 {
+                            let a1 = [j[i][0] - j[i - 1][0], j[i][1] - j[i - 1][1]];
+                            let a2 = [j[i + 1][0] - j[i][0], j[i + 1][1] - j[i][1]];
+                            let autorado = (a1[0] * a2[1] - a1[1] * a2[0]).abs()
+                                / (a1[0].hypot(a1[1]) * a2[0].hypot(a2[1]));
+                            if autorado <= 1e-3 {
+                                continue; // nasceu recta: nao tem lado para defender
+                            }
+                            let v1 = [k[i][0] - k[i - 1][0], k[i][1] - k[i - 1][1]];
+                            let v2 = [k[i + 1][0] - k[i][0], k[i + 1][1] - k[i][1]];
+                            let sen = (v1[0] * v2[1] - v1[1] * v2[0]).abs()
+                                / (v1[0].hypot(v1[1]) * v2[0].hypot(v2[1]));
+                            if sen < pior {
+                                pior = sen;
+                                onde = format!("n={n} dy={dy} p={padrao} alvo={alvo:?} junta={i}");
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    println!(
+        "MENOR seno final = {pior:.6}  (margem {:.6})  em {onde}",
+        crate::reach_mixed::MARGEM.sin()
+    );
+}

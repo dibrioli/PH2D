@@ -241,11 +241,17 @@ mod reach_action_tests;
 #[cfg(test)]
 #[path = "reach_chain_side_tests.rs"]
 mod reach_chain_side_tests;
+/// ⭐ **Uma passagem da corrente** — irmão do [`reach`] pelo tecto de LOC, cortado por
+/// responsabilidade: *que pose se pede* e *como a corrente varre* são duas perguntas.
+mod reach_fabrik;
 /// ⭐ Os gates da **parede de uma junta** — irmão do [`reach_tests`] pelo teto de LOC, cortado por
 /// RESPONSABILIDADE: *até onde este osso dobra* não é uma pergunta sobre alcance.
 #[cfg(test)]
 #[path = "reach_limit_tests.rs"]
 mod reach_limit_tests;
+/// ⭐ **O modo MISTO** — irmão do [`reach`] pelo tecto de LOC, cortado por responsabilidade: ele
+/// não é uma variante do FABRIK, é outro solver (descida junta a junta com a parede de cada lado).
+mod reach_mixed;
 /// ⭐ **Como uma corrente ganha e guarda um LADO** — irmão do [`reach`] pelo tecto de LOC,
 /// cortado por responsabilidade: *onde ela chega* e *para que lado dobra* são duas perguntas.
 mod reach_side;

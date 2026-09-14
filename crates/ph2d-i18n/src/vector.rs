@@ -326,6 +326,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.vector.bone.ik.bend.auto" => "Auto",
         "panel.vector.bone.ik.bend.ccw" => "CCW",
         "panel.vector.bone.ik.bend.cw" => "CW",
+        "panel.vector.bone.ik.bend.mixed" => "Mixed",
         "panel.vector.bone.limit.add" => "Add Angle Limit",
         "panel.vector.bone.limit.remove" => "Remove Angle Limit",
         "panel.vector.bone.limit.min" => "Limit Min",

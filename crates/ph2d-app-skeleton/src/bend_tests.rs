@@ -153,3 +153,80 @@ fn the_smoke_scene_gives_the_anchor_a_side_to_defend() {
          INVERTER, que é o defeito que esta wave cura. Ponha `ARM_ELBOW_BEND` fora do zero."
     );
 }
+
+/// Uma corrente de quatro ossos em ZIG-ZAG — a pose que só o modo MISTO sabe defender.
+fn zigzag() -> (SimWorld, Vec<Entity>) {
+    let mut sim = SimWorld::default();
+    let mut ossos = Vec::new();
+    for i in 0..4 {
+        let pai = ossos.last().copied();
+        let pos = if i == 0 { [0.0, 0.0] } else { [10.0, 0.0] };
+        let e = crate::goal::osso(&mut sim, &format!("B{i}"), pos, 10.0, pai);
+        if let Some(mut t) = sim.world_mut().get_mut::<Transform>(e) {
+            t.rotation = if i % 2 == 0 { 0.35 } else { -0.35 };
+        }
+        ossos.push(e);
+    }
+    ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
+    (sim, ossos)
+}
+
+/// O sinal de cada junta interior, lido dos segmentos VIVOS.
+fn lados(sim: &SimWorld) -> Vec<f64> {
+    let segs = ph2d_skeleton_live::skin_live::bone_segments(sim);
+    (1..segs.len())
+        .map(|i| {
+            let (_, a0, b0) = segs[i - 1];
+            let (_, a1, b1) = segs[i];
+            let v1 = [b0[0] - a0[0], b0[1] - a0[1]];
+            let v2 = [b1[0] - a1[0], b1[1] - a1[1]];
+            let cruz = v1[0] * v2[1] - v1[1] * v2[0];
+            if cruz.abs() <= 1e-9 {
+                0.0
+            } else {
+                cruz.signum()
+            }
+        })
+        .collect()
+}
+
+/// ⭐⭐⭐ **OS LADOS DO MODO MISTO SOBREVIVEM A UM ARRASTO PARA FORA DO ALCANCE.**
+///
+/// ⛔⛔ **É o defeito que a pose viva não podia evitar:** fora do alcance a resposta certa é a
+/// RECTA — e uma corrente recta não tem lado nenhum para ler. Lendo os lados da pose viva, o quadro
+/// seguinte não tinha o que defender e as juntas caíam para onde o solver quisesse, **para sempre**
+/// e sem nada na tela a dizê-lo. Lendo-os do que o artista DESENHOU, o braço volta como estava.
+///
+/// ⚠️ **O `PreviewDrive` é UM só, atravessando os três quadros** — e tem de ser: é ele que guarda o
+/// autorado enquanto o motor escreve por cima. Um ledger novo por quadro (o idioma das outras
+/// fixturas deste módulo) mediria um app que não existe.
+#[test]
+fn a_mixed_chain_survives_a_drag_out_of_reach() {
+    let (mut sim, ossos) = zigzag();
+    let tip = *ossos.last().expect("a corrente tem ossos");
+    add(&mut sim, tip).expect("a âncora nasce");
+    {
+        let mut g = sim
+            .world_mut()
+            .get_mut::<IkGoal>(tip)
+            .expect("a âncora foi escrita");
+        g.bend = ph2d_skeleton::BendSide::Mixed;
+        g.chain = 4;
+    }
+    let autorados = lados(&sim);
+    assert!(
+        autorados.iter().any(|&s| s > 0.0) && autorados.iter().any(|&s| s < 0.0),
+        "a fixtura nao e' um zig-zag: {autorados:?}"
+    );
+    let mut pv = PreviewDrive::default();
+    let perto = [22.0, 6.0];
+    for alvo in [perto, [4000.0, 0.0], perto] {
+        assert!(drag_anchor(&mut sim, tip, alvo), "a ancora existe");
+        solve(&mut sim, &mut pv);
+    }
+    assert_eq!(
+        lados(&sim),
+        autorados,
+        "depois de ir e voltar do fora-de-alcance, a corrente perdeu os lados que o artista desenhou"
+    );
+}

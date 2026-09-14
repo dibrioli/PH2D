@@ -11,7 +11,7 @@
 //!    ao bojo do arco **sobreviveu** a toda a suíte, porque este espelho já corrigia: *o lado tem
 //!    um dono*, e daí sai a lei de que `Ccw` e `Cw` são espelhos exactos um do outro.
 
-use super::reach::{BOW, BendSide, dominant_side, unit};
+use super::reach::{BOW, BendSide, STRAIGHT, dominant_side, unit};
 
 /// ⭐⭐⭐ **A POSE DE PARTIDA CANÓNICA de uma corrente com lado AUTORADO** — um arco de seno da raiz
 /// ao alvo, a bojar para o lado pedido.
@@ -115,4 +115,22 @@ pub(crate) fn mirror_to_side(p: &mut [[f64; 2]], goal: [f64; 2], side: BendSide)
         q[0] = root[0] + 2.0 * ao_longo * u[0] - v[0];
         q[1] = root[1] + 2.0 * ao_longo * u[1] - v[1];
     }
+}
+
+/// ⭐ **O sinal da dobra de cada junta INTERIOR** de uma corrente — `+1` anti-horário, `−1` horário,
+/// `0` quando ela está recta (e aí não há lado para defender).
+pub(crate) fn joint_signs(p: &[[f64; 2]]) -> Vec<f64> {
+    (1..p.len().saturating_sub(1))
+        .map(|i| {
+            let v1 = [p[i][0] - p[i - 1][0], p[i][1] - p[i - 1][1]];
+            let v2 = [p[i + 1][0] - p[i][0], p[i + 1][1] - p[i][1]];
+            let cruz = v1[0] * v2[1] - v1[1] * v2[0];
+            let esc = v1[0].hypot(v1[1]) * v2[0].hypot(v2[1]);
+            if esc <= f64::EPSILON || cruz.abs() <= STRAIGHT * esc {
+                0.0
+            } else {
+                cruz.signum()
+            }
+        })
+        .collect()
 }

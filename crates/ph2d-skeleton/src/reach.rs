@@ -40,7 +40,9 @@
 //! a `R` **sem nunca lá chegar** — a corrente aproxima-se da recta e não trava. ⛔ A forma óbvia
 //! (`1 − e^{-x}`) tem as mesmas propriedades e paga um transcendental.
 
-use crate::reach_side::{break_collinearity, mirror_to_side, seed_arc};
+use crate::reach_fabrik::sweep;
+use crate::reach_mixed;
+use crate::reach_side::{break_collinearity, joint_signs, mirror_to_side, seed_arc};
 
 /// ⭐⭐⭐ **DE QUE LADO A CORRENTE DOBRA** — e por que ele é um dado AUTORADO e não uma dedução.
 ///
@@ -84,19 +86,40 @@ pub enum BendSide {
     /// ⚠️ É este o lado para que as duas leis desempatam hoje quando a corrente está recta —
     /// **medido**, não deduzido (`n=2` `−7,416198` · `n=3` `−4,472136` · `n=5` `−4,486331`).
     Cw,
+    /// ⭐⭐⭐ **CADA JUNTA DEFENDE O LADO QUE ELA JÁ TINHA** — uma corrente pode ter ossos dobrados
+    /// para os DOIS lados, e cada um mantém a sua direcção (ordem do dono, 2026-09-14: *«precisamos
+    /// de um modo misto onde temos ossos com ângulos para os dois lados, e cada osso mantém sua
+    /// direcção inicial»*).
+    ///
+    /// ⚠️ **O lado de cada junta é lido da POSE QUE CHEGA**, e não de um campo guardado: assim o
+    /// documento não cresce e quem chama decide o que *«inicial»* quer dizer — a restrição passa a
+    /// pose AUTORADA (a do ledger de pré-visualização), e o resultado é uma função dos dados como
+    /// nos outros dois lados.
+    ///
+    /// ⛔⛔ **Semear não chega, e está MEDIDO:** o FABRIK partido de um zig-zag preserva a maioria
+    /// dos sinais e **perde o da ponta** (`3/4` a 5 ossos, `4/5` a 6, `2/3` a 4) — é a junta que ele
+    /// mais move para chegar ao alvo. ⇒ o sinal é **imposto dentro do laço**, por reflexão local,
+    /// que é a forma clássica de pôr restrições no FABRIK.
+    ///
+    /// ⚠️ **Onde o alvo e os sinais se contradizem, o SINAL ganha** e a ponta fica curta — é o que o
+    /// artista pediu (*«cada osso mantém sua direcção»*), e a alternativa seria desobedecer em
+    /// silêncio à única coisa que este modo promete.
+    Mixed,
 }
 
 impl BendSide {
     /// Os três, na ordem em que um selector os oferece. ⚠️ Quem pinta um segmento por variante
     /// alinha-se por ÍNDICE com esta lista — é o que impede a fileira do painel e o vocabulário de
     /// divergirem em silêncio (o padrão do `BoneAction::ALL`).
-    pub const ALL: [Self; 3] = [Self::Keep, Self::Ccw, Self::Cw];
+    pub const ALL: [Self; 4] = [Self::Keep, Self::Ccw, Self::Cw, Self::Mixed];
 
     /// O sinal que este lado impõe a [`side_of`], ou `None` quando ele não impõe nenhum.
     #[must_use]
     pub const fn forced(self) -> Option<f64> {
         match self {
-            Self::Keep => None,
+            // ⚠️ O `Mixed` **não impõe um lado à corrente** — ele impõe um a cada JUNTA, e isso não
+            // cabe num sinal só. Quem o executa é o [`crate::reach_side::enforce_signs`].
+            Self::Keep | Self::Mixed => None,
             Self::Ccw => Some(1.0),
             Self::Cw => Some(-1.0),
         }
@@ -109,6 +132,8 @@ impl BendSide {
             Self::Keep => Self::Keep,
             Self::Ccw => Self::Cw,
             Self::Cw => Self::Ccw,
+            // Espelhar «cada junta mantém o que tem» é ela própria: não há um lado para trocar.
+            Self::Mixed => Self::Mixed,
         }
     }
 }
@@ -206,7 +231,7 @@ pub(crate) const BOW: f64 = 1e-3;
 /// ⭐ E ele cobre com folga o ruído medido: um `Transform` em `f32` erra a posição em `~1e-6`, e a
 /// raiz quadrada da lei dos cossenos amplifica isso para `~5e-4` de ângulo (medido no braço da cena
 /// de smoke). `1e-3` são `0,057°` — invisíveis, e acima do ruído.
-const STRAIGHT: f64 = BOW;
+pub(crate) const STRAIGHT: f64 = BOW;
 
 pub(crate) fn unit(v: [f64; 2], fallback: [f64; 2]) -> [f64; 2] {
     let n = v[0].hypot(v[1]);
@@ -463,6 +488,22 @@ pub fn reach(joints: &mut [[f64; 2]], lengths: &[f64], goal: [f64; 2], opts: Rea
     // o gesto de arrastar a ponta — partir da pose que lá está é o DESENHO (*um gesto preserva o
     // que se vê, uma restrição defende o que se autorou*), e o caminho fica byte a byte o de
     // sempre.
+    // ⭐⭐⭐ **O MISTO tem SOLVER PRÓPRIO, e não é o FABRIK** — ele lê o lado de CADA junta da pose
+    // que chega (ordem do dono, 2026-09-14: *«cada osso mantém sua direção inicial»*) e desce junta
+    // a junta com esse lado como parede. O porquê, com a medição que derrubou a restrição dentro
+    // das varreduras, está no cabeçalho do [`crate::reach_mixed`].
+    if opts.bend == BendSide::Mixed {
+        let sinais = joint_signs(joints);
+        reach_mixed::solve(
+            joints,
+            lengths,
+            alvo,
+            &sinais,
+            opts.iterations.clamp(1, MAX_ITERATIONS),
+            TOLERANCE * total,
+        );
+        return;
+    }
     if opts.bend != BendSide::Keep {
         seed_arc(joints, lengths, total, alvo, u);
     }
@@ -472,36 +513,9 @@ pub fn reach(joints: &mut [[f64; 2]], lengths: &[f64], goal: [f64; 2], opts: Rea
     // corrigir é o arqueamento — e quando a pose já vem torta é o espelho que manda.
     mirror_to_side(joints, alvo, opts.bend);
     let ancora = joints[0];
-    let n = joints.len();
-    for _ in 0..opts.iterations.clamp(1, MAX_ITERATIONS) {
-        // PARA TRÁS: a ponta toma o alvo e a corrente é arrastada atrás dela.
-        joints[n - 1] = alvo;
-        for i in (0..n - 1).rev() {
-            let v = [
-                joints[i][0] - joints[i + 1][0],
-                joints[i][1] - joints[i + 1][1],
-            ];
-            let w = unit(v, [1.0, 0.0]);
-            joints[i] = [
-                joints[i + 1][0] + lengths[i] * w[0],
-                joints[i + 1][1] + lengths[i] * w[1],
-            ];
-        }
-        // PARA A FRENTE: a raiz volta ao sítio onde está pregada, e a corrente vem atrás.
-        joints[0] = ancora;
-        for i in 1..n {
-            let v = [
-                joints[i][0] - joints[i - 1][0],
-                joints[i][1] - joints[i - 1][1],
-            ];
-            let w = unit(v, [1.0, 0.0]);
-            joints[i] = [
-                joints[i - 1][0] + lengths[i - 1] * w[0],
-                joints[i - 1][1] + lengths[i - 1] * w[1],
-            ];
-        }
-        let erro = (joints[n - 1][0] - alvo[0]).hypot(joints[n - 1][1] - alvo[1]);
-        if erro < TOLERANCE * total {
+    let passagens = opts.iterations.clamp(1, MAX_ITERATIONS);
+    for _ in 0..passagens {
+        if sweep(joints, lengths, alvo, ancora) < TOLERANCE * total {
             break;
         }
     }

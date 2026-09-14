@@ -470,6 +470,23 @@ impl PreviewDrive {
         self.memo.keys().any(|(bits, _)| *bits == entity)
     }
 
+    /// ⭐⭐⭐ **O VALOR AUTORADO que este motor deslocou** — o que o documento diz, enquanto a cena
+    /// mostra o que o motor escreveu.
+    ///
+    /// ⚠️ **Ela não é um atalho da [`Self::substitute_authored`], e a diferença é a razão de
+    /// existir:** aquela põe o MUNDO INTEIRO no estado autorado e obriga a repor a seguir — é a
+    /// porta da captura, e usá-la para ler dois ossos deslocaria todos os outros motores a meio do
+    /// quadro. Esta responde por **uma** entidade sem tocar em nada.
+    ///
+    /// ⭐ O 1.º consumidor é o modo MISTO do esqueleto: *«cada osso mantém sua direção inicial»* só
+    /// tem sentido se «inicial» for o que o artista DESENHOU. Lido da pose viva, o lado de uma junta
+    /// é o que o solver deixou no quadro anterior — e um arrasto que leve o alvo para fora do
+    /// alcance deita a corrente na recta e **apaga os lados para sempre**.
+    #[must_use]
+    pub fn authored(&self, entity: u64, driver: Driver) -> Option<Driven> {
+        self.memo.get(&(entity, driver)).map(|e| e.authored)
+    }
+
     /// ⭐ **QUE MOTORES conduzem esta entidade agora** — a lista, para quem precisa de a **largar**
     /// e não só de saber que ela existe.
     ///

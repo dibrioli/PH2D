@@ -86,7 +86,10 @@ pub(super) fn publish(
     vec_scene: &ph2d_vec_scene::VecScene,
     // ADR-0112: …mas NÃO nos modos de desenho/edição de nós. As alças do gizmo
     // registram hit-rects e comeriam o clique da âncora.
-    vec_gizmo_on: bool,
+    //
+    // ⚠️ **Ele vale para TODA família de objeto**, e não só para a forma vetorial — ver a porta
+    // única em `publish_gizmo::build_view`. O nome diz `object` por isso.
+    object_gizmo_on: bool,
     // Os fatos DERIVADOS por frame (as poses do auto layout): sem eles a caixa do gizmo de um
     // filho colocado aparece onde a forma foi AUTORADA, e não onde a moldura a pôs.
     vec_view: &ph2d_vec_scene::VecViewState,
@@ -196,7 +199,7 @@ pub(super) fn publish(
         last_pointer,
         tool_preview_bits,
         vec_scene,
-        vec_gizmo_on,
+        object_gizmo_on,
         vec_view,
         flip,
         flip_gizmo_on,
@@ -257,6 +260,11 @@ use inspector_sprite::sheet_authorship;
 #[path = "snapshots_sheet_authorship_tests.rs"]
 mod sheet_authorship_tests;
 
+/// A porta única da caixa de objecto (`publish_gizmo::build_view`) — o gate mora ao lado da lei.
+#[cfg(test)]
+#[path = "snapshots_object_gizmo_tests.rs"]
+mod object_gizmo_tests;
+
 /// O passe do gizmo: a poda dos mortos, a view da seleção primária e das extras (o `build_view`), o número do
 /// arrasto e o gizmo de ponto das juntas. Os gates que leem este passe pelo caminho do ficheiro leem-no aqui.
 #[allow(clippy::too_many_arguments)]
@@ -269,7 +277,7 @@ fn publish_gizmo(
     last_pointer: (f32, f32),
     tool_preview_bits: &[Option<u64>],
     vec_scene: &ph2d_vec_scene::VecScene,
-    vec_gizmo_on: bool,
+    object_gizmo_on: bool,
     vec_view: &ph2d_vec_scene::VecViewState,
     flip: &FlipDoc,
     flip_gizmo_on: bool,
@@ -319,6 +327,28 @@ fn publish_gizmo(
                       sim: &SimWorld,
                       present: &mut PresentWorld|
      -> Option<ph2d_editor_core::GizmoView> {
+        // ⭐⭐⭐ **NENHUMA FAMÍLIA PUBLICA CAIXA DE OBJECTO FORA DO SELECT DA FERRAMENTA VECTORIAL**
+        // (ADR-0112) — UMA porta, e não um `if` por família. A razão é a que aquele ADR já escreve:
+        // *as alças registam hit-rects, e uma caixa sobre o canvas de um modo de autoria é um
+        // ladrão de cliques*. ⚠️ A selecção fica ARMADA — só a caixa e as alças somem —, e é isso
+        // que mantém o *Bind to Skeleton* com sujeito dentro do modo Osso.
+        //
+        // ⛔⛔ **A lei estava escrita para a forma vectorial e para o envelope, e a SPRITE e o
+        // GRUPO ficavam de fora — o buraco era invisível porque a sprite que vive debaixo de um
+        // gesto de autoria não existia.** Em 2026-09-13 a imagem presa ao esqueleto passou a emitir
+        // instância (plano `docs/Skeleton/03`, W2) e a `gizmo::sprite_view` passou a devolver
+        // caixa: seleccionada, o `ids::GIZMO_BBOX_INTERIOR` que o gizmo regista cobre o braço
+        // inteiro, o `on_canvas` do despacho fica **falso** em cima dele, o
+        // `ramo_ferramenta_vetorial` nem corre e **nenhum osso por cima da arte que ele deforma
+        // podia ser apontado ou posado** (report do dono: *«selecionar o osso não é mais
+        // possível»*). *Uma caixa que nasce onde o rig vive engole o rig.*
+        //
+        // ⏳ **NOMEADO e não curado:** o gémeo do Flip — um objecto de outra família continua a
+        // publicar caixa enquanto a ferramenta Flip desenha (o `flip_gizmo_on` gateia só a arte do
+        // Flip). Mesmo mecanismo, outra ferramenta, e sem report.
+        if !object_gizmo_on {
+            return None;
+        }
         let sim_entity = ph2d_ecs::Entity::from_bits(bits);
         if sim.world().get::<Sprite>(sim_entity).is_none() {
             // Não é sprite: uma forma vetorial ou um objeto Flip — cada um lê o
@@ -328,9 +358,6 @@ fn publish_gizmo(
                 .get::<ph2d_ecs::VecPathRef>(sim_entity)
                 .is_some()
             {
-                if !vec_gizmo_on {
-                    return None;
-                }
                 // (O SPINE de um Blend não publica gizmo — o `vec_gizmo_view::view` o pula, como
                 // faz com o conector. ADR-0128.)
                 return crate::vec_gizmo_view::view(
@@ -364,16 +391,13 @@ fn publish_gizmo(
             }
             // ADR-0129 Fatia 3: o container de um Envelope é um grupo SEM path próprio, mas TEM
             // gizmo — a caixa-união dos filhos, para o gizmo de sprite mover/girar/escalar o
-            // envelope inteiro (Fatia 2). Gate no mesmo `vec_gizmo_on` (Select; no Node aparece a
+            // envelope inteiro (Fatia 2). A porta acima já o gateia (Select; no Node aparece a
             // gaiola, não a caixa).
             if sim
                 .world()
                 .get::<ph2d_ecs::VecEnvelope>(sim_entity)
                 .is_some()
             {
-                if !vec_gizmo_on {
-                    return None;
-                }
                 return crate::vec_gizmo_view::container_view(
                     sim,
                     vec_scene,

@@ -36,6 +36,7 @@ As cinco waves:
 | **W3** | os outros consumidores: quem COPIA a instância leva a malha; quem APONTA lê o que é desenhado |
 | **W4** | o orçamento re-medido — `8 738` (do buffer do Vello) → **`1 543`** (do tempo do quadro) |
 | **W5** | a cena que ENSINA a ordem e o olho |
+| **W6** | a caixa do gizmo da sprite deixa de engolir o rig — a lei do ADR-0112 vira UMA porta |
 
 ---
 
@@ -53,6 +54,7 @@ As cinco waves:
 | `ph2d-app-skeleton/src/state.rs` | sai o campo `skin_image_cache` (o `SkeletonState` fica com SETE) | — |
 | `ph2d-app-vec/src/smoke_bone.rs` | a barra que ensina a ordem + as duas portas derivadas | sim |
 | `shells/desktop/**` | o extract emite a sprite presa · a `fase_sim_extract` põe a malha · o overlay do Vello sai · o vidro/emissivo/*View All* pela porta nova · o `ppm` no *Bind* e no smoke | ver §6 |
+| `shells/desktop/src/render_loop/snapshots.rs` (W6) | o `vec_gizmo_on` vira `object_gizmo_on` e sobe para UMA porta no topo do `build_view`: **nenhuma família** publica caixa de objecto fora do Select da ferramenta vectorial (os dois `if` por família saem) | **muda comportamento** — uma SPRITE e um GRUPO deixam de publicar caixa naqueles modos (§6.8) |
 
 ---
 
@@ -112,6 +114,12 @@ da malha e o *View All* com âncora · a UV do pintor · a malha que o passe rec
 **W5** (`ph2d-app-vec`): a barra atravessa o braço pintado e não o tapa, em qualquer
 `pixels_per_meter`.
 
+**W6** (shell, `snapshots_object_gizmo_tests`): uma sprite seleccionada **não** publica caixa fora do
+Select da ferramenta vectorial, e as **extras** de uma multi-selecção obedecem à mesma porta.
+⚠️ **Cada metade traz o CONTROLO `object_gizmo_on = true` ao lado** — um `present` sem espelho
+devolve `None` sempre, e sem o controlo o gate ficaria verde a medir o vazio. Mutação (`if false` no
+lugar do guarda): **2 de 2 RED**, na asserção certa.
+
 ---
 
 ## §6 — Coisas que uma leitura rápida do diff entende ao contrário
@@ -133,8 +141,15 @@ da malha e o *View All* com âncora · a UV do pintor · a malha que o passe rec
    fora dela: limite NOMEADO no §8.
 7. **A `ph2d-vector` sair das dependências da `ph2d-skeleton-live` não é arrumação:** é o fim do
    número que ela sustentava. O mesmo para a `ph2d-asset`, que saiu com a cache de imagens.
-8. **O `clone_from` do `SpriteMesh` não é estilo:** o `LiftedInstances` copia malhas A CADA QUADRO,
-   e o `Clone` derivado recria os três `Vec` de cada vez.
+8. **A W6 não «esconde o gizmo no modo Osso»: ela põe a SPRITE e o GRUPO dentro de uma lei que já
+   existia** (ADR-0112, *«o gizmo de objecto só existe fora da ferramenta vectorial, ou no Select
+   dela»*). Ela estava escrita **por família**, e as duas que faltavam são exactamente as que a W2
+   fez nascer debaixo de um gesto de autoria. ⛔ **Nenhum gesto se perde:** naqueles modos o
+   `ramo_ferramenta_vetorial` consome todo press de canvas, logo a caixa só era alcançável onde ela
+   bloqueava o ramo. E a **selecção fica armada** — é isso que mantém o *Bind* com sujeito.
+9. **O `vec_gizmo_on` não foi só renomeado:** ele mudou de sítio (de dois `if` dentro dos ramos para
+   UMA porta no topo do `build_view`) e de alcance (todas as famílias). O nome antigo mentia desde
+   que o Flip entrou com o gémeo dele.
 
 ---
 
@@ -155,6 +170,12 @@ da malha e o *View All* com âncora · a UV do pintor · a malha que o passe rec
    máquina estava a roubar.
 5. ⛔ **«O quinto defeito da F6-h era só a âncora.»** Era a âncora **e o espelho**: o shader espelha a
    UV do quad, logo a régua da imagem tem de espelhar a POSIÇÃO — espelhar as duas não espelha nada.
+6. ⛔⛔ **«Os consumidores da instância são cinco, e a W3 fechou-os»** (§7.2) — havia um **sexto**, e
+   ele não copiava nem lia: ele passou a **EXISTIR**. A caixa do gizmo pede um espelho no presente,
+   logo enquanto a imagem presa não emitia instância ela não tinha caixa nenhuma, e a ausência lia-se
+   como a do objecto inteiro. ⇒ *ao fazer uma coisa existir no quadro, o censo não é «quem a copia?»
+   mas «quem passa a ter resposta onde antes não tinha nenhuma?»* — e a resposta nova chegou a um
+   `hit_index` e matou o gesto que vivia por cima dela.
 
 ---
 
@@ -166,6 +187,8 @@ da malha e o *View All* com âncora · a UV do pintor · a malha que o passe rec
 | ⚠️ **A UV do pintor fora da malha** | `sprite_world_to_uv_unclamped` responde pela lei do quad de REPOUSO: um traço que sai da silhueta posada é mapeado como se a imagem repousasse |
 | ⚠️ **9-slice e folha desdobrada** | a malha só conhece o quad da sprite; essas desenham-se SEM deformar, com aviso único no stderr |
 | ⏳ **A FATIA do quadro (`1/10`)** | é a única escolha do `SKIN_FRAME_PIECES`; medir outra é `PH2D_SKIN_PIECES=<n>` |
+| ⏳ **O gémeo do Flip da W6** | um objecto de OUTRA família continua a publicar caixa enquanto a ferramenta Flip desenha — o `flip_gizmo_on` gateia só a arte do Flip. Mesmo mecanismo (o `GIZMO_BBOX_INTERIOR` a matar o `on_canvas`), outra ferramenta, e **sem report** |
+| ⚠️ **DUAS caixas de sprite** | a do gizmo sai do `sheet_grid_overlay::gizmo_box(sprite, …)` (o quad) e a do `ph2d_editor_core::gizmo` sai do `ph2d_render::selection_bbox_world` (que a W3 tornou ciente da malha): numa imagem presa e DOBRADA elas discordam. Hoje só a segunda é lida (o *View All* e o contorno do realce) |
 | ⚠️ **Vermelho PRÉ-EXISTENTE, não desta linha** | `ph2d-preview-drive/src/lib.rs:493` — clippy `len` sem `is_empty`. A crate é intocada por esta linha (último commit dela: `21c403c20`, 12/09) |
 | ⏳ como no handoff anterior | o mapa dobra sobre si em dobras fortes · F4 *«undo tem poucos passos»* |
 
@@ -181,6 +204,10 @@ da malha e o *View All* com âncora · a UV do pintor · a malha que o passe rec
 3. ⚠️ **Os símbolos APAGADOS do §4** partem uma linha que os use (a shell re-exporta o módulo inteiro).
 4. ⚠️ **O picking e o *View All* mudam de resultado** para sprites com âncora/rotação (§6.5): um
    golden de outra linha que os contenha muda de valor, e a mudança **é a cura**.
+5. ⚠️ **A W6 toca o `snapshots.rs` da shell** (o parâmetro `vec_gizmo_on` → `object_gizmo_on` e uma
+   porta nova no `build_view`): uma linha paralela que edite o mesmo passe funde com conflito de
+   MESMO SÍMBOLO. O sítio de chamada (`fase_snapshots_publish.rs`) **não** muda — e não pode: o gate
+   `the_gizmo_is_not_published_while_the_preview_runs` lê aquela expressão à letra.
 
 ---
 

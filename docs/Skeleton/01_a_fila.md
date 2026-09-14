@@ -2009,6 +2009,43 @@ imagem presa está na ORDEM do quadro. ⚠️ **A barra é DERIVADA do rectângu
 cena passaria a ensinar nada, em silêncio. E a linha *«Painted arm»* na Hierarquia tem o **olho**:
 fechá-lo esconde a imagem presa, que a camada do Vello continuava a desenhar.
 
+**W6 — a CAIXA DO GIZMO ENGOLIA O RIG** (report do dono no smoke da W5: *«selecionar o osso não é
+mais possível»*). ⭐⭐⭐ **O sexto consumidor da W3 não copiava a instância nem lia o quad: ele passou
+a EXISTIR.** A `snapshots::gizmo::sprite_view` pede um espelho no presente
+(`query::<(&SimRef, &GlobalTransform)>`), então enquanto a imagem presa não emitia instância ela
+**não tinha caixa de gizmo** — e ninguém o notou, porque a ausência era a do objecto inteiro. Com a
+W2 ela passou a emitir: seleccionada, o `paint_sprite_gizmo` regista `ids::GIZMO_BBOX_INTERIOR`
+sobre a arte inteira, o `on_canvas` do despacho pede o `hit_index` **VAZIO**, fica falso em cima
+dela, o `ramo_ferramenta_vetorial` **nem corre** — e o ramo do modo Osso, que é onde
+`bone_gesture::press` vive, nunca chega a ser perguntado. *Nenhum osso por cima da arte que ele
+deforma podia ser apontado nem posado.*
+
+⚠️⚠️ **A lei que cura já estava escrita, e a SPRITE ficava de fora dela.** O ADR-0112 diz *«o gizmo
+de objecto só existe fora da ferramenta vectorial, ou no modo Select dela»*, com a razão ao lado —
+*as alças registam hit-rects, e uma caixa sobre o canvas de um modo de autoria é um ladrão de
+cliques*. Ela estava escrita **por família**, num `if` dentro de cada ramo: a forma vectorial tinha,
+o envelope tinha, o Flip tinha o gémeo dele — **a sprite e o grupo não tinham**. ⇒ hoje é **UMA
+porta** no topo do `build_view` (`object_gizmo_on`, renomeado de `vec_gizmo_on`, que era um nome a
+mentir), e os dois `if` por família saíram. *Uma lei escrita em dois sítios ainda não é uma lei.*
+
+⚠️ **A selecção fica ARMADA** — só a caixa e as alças somem —, e é isso que mantém o *Bind to
+Skeleton* (que age sobre a selecção de formas) com sujeito dentro do modo Osso. ⛔ E o gizmo não
+perde gesto nenhum: dentro daqueles modos o `ramo_ferramenta_vetorial` consome **todo** press de
+canvas, logo a caixa só era alcançável exactamente onde ela bloqueava.
+
+Gate `snapshots_object_gizmo_tests` (duas metades, cada uma com o CONTROLO `object_gizmo_on = true`
+ao lado — sem ele o gate ficava verde sobre uma view que nunca nasce): o primário e as **extras** de
+uma multi-selecção. Mutação (`if false`): **2 de 2 RED**, na asserção certa.
+
+⏳ **NOMEADO e não curado:** o gémeo do Flip — um objecto de OUTRA família continua a publicar caixa
+enquanto a ferramenta Flip desenha (o `flip_gizmo_on` gateia só a arte do Flip). Mesmo mecanismo,
+outra ferramenta, e sem report.
+
+⚠️ **E há DUAS caixas de sprite neste repo, que esta wave não unificou:** a do gizmo sai do
+`sheet_grid_overlay::gizmo_box(sprite, …)` (o quad da sprite) e a do `ph2d_editor_core::gizmo` sai do
+`ph2d_render::selection_bbox_world` (que a W3 tornou ciente da malha). Numa imagem presa e dobrada
+elas **discordam**, e hoje só a segunda é lida pelo *View All* e pelo contorno do realce.
+
 ## ⛔ Recusas MEDIDAS deste módulo — não as reconstrua
 
 > ⚠️ **As seis de 2026-09-07/08 entraram aqui na auditoria de 08/09** — elas viviam só em prosa e em

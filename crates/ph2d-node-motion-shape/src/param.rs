@@ -5,6 +5,8 @@
 //! Módulo irmão pelo teto de LOC do HR-18: o `lib.rs` chegou ao teto ao ganhar o TRIM e o
 //! TRACEJADO, e a lista de nomes é a metade que não tem nada a ver com o `NodeOp`.
 
+use ph2d_nodegraph::node::ParamSpec;
+
 pub const KIND: &str = "kind";
 pub const SIZE: &str = "size";
 pub const ASPECT: &str = "aspect";
@@ -186,8 +188,218 @@ pub const SHOW_COLLIDER: &str = "show_collider";
 /// rígido, dito no vocabulário desta casa.
 pub const LOCK_ROTATION: &str = "lock_rotation";
 
+/// ⭐⭐⭐ **O ATRITO da peça** (doc 109 §7 — report do dono, 2026-09-13: *«os círculos não rotacionam
+/// com a colisão, talvez por falta de atrito. Precisamos de parâmetros do material»*).
+///
+/// `0` é gelo e `1` é lixa, a faixa de todo motor. ⚠️ **E ele não é só «quanto trava»: é a única
+/// coisa que RODA um círculo** — a correcção de não-penetração empurra ao longo da normal, cuja
+/// alavanca num disco é exactamente zero (a conta está em `ph2d_contact::atrito`).
+///
+/// ⚠️ **O default é `0,5`, e é o do Rapier** — o motor de corpo rígido que este repo já usa na
+/// física. Um `0` faria o dono ter de descobrir o slider para ver a coisa que ele pediu.
+pub const FRICTION: &str = "friction";
+/// ⭐⭐ **O SALTO da peça** (doc 109 §7): quanto de um embate volta. `0` (o default, o do Rapier e
+/// o do Box2D) é uma peça morta — a lei de sempre.
+///
+/// ⚠️ **O par combina-se pelo MAIOR dos dois**, então uma bola saltitante salta contra uma parede
+/// morta. É a lei do Box2D, e é o que o artista espera de uma bola saltitante.
+pub const BOUNCE: &str = "bounce";
+
 /// **As duas colunas que o SHELL publica** com a geometria — a caixa envolvente do contorno de
 /// preenchimento, em unidade de geometria — e que o nó **retira sempre**, depois de declarar.
 /// Nenhum nó a jusante as vê.
 pub const COLLIDER_FIT_CENTER_COL: &str = "collider_fit_center";
 pub const COLLIDER_FIT_HALF_COL: &str = "collider_fit_half";
+
+/// ⭐ **A DECLARAÇÃO de cada param — o nome E o default, no mesmo sítio.**
+///
+/// ⚠️ **Irmã de [`ALL`] pelo teto de LOC do HR-18** (o `lib.rs` chegou a `697` de `700` ao ganhar
+/// a secção de colisão), e melhor por assunto: uma lista de nomes ao lado de uma lista de defaults
+/// noutro ficheiro é como um param novo nasce sem valor de partida.
+///
+/// ⚠️ **APPEND ONLY, como toda lista lida posicionalmente por quem guarda um índice.**
+pub const SPECS: &[ParamSpec] = &[
+    ParamSpec {
+        name: KIND,
+        default: 0.0,
+    },
+    ParamSpec {
+        name: SIZE,
+        default: 1.0,
+    },
+    ParamSpec {
+        name: ASPECT,
+        default: 1.0,
+    },
+    ParamSpec {
+        name: SIDES,
+        default: 6.0,
+    },
+    ParamSpec {
+        name: CORNER,
+        default: 0.0,
+    },
+    ParamSpec {
+        name: STAR_DEPTH,
+        default: 0.45,
+    },
+    ParamSpec {
+        name: CLEFT,
+        default: 0.2,
+    },
+    ParamSpec {
+        name: TOOTH_DEPTH,
+        default: 0.35,
+    },
+    ParamSpec {
+        name: HOLE,
+        default: 0.45,
+    },
+    // ⚠️ **Apendados** (doc 89 folha 14, P0). `stroke_width = 0` ⇒ sem
+    // `StrokeSpec` ⇒ a forma que sempre shipou, byte-idêntica.
+    ParamSpec {
+        name: STROKE_WIDTH,
+        default: 0.0,
+    },
+    ParamSpec {
+        name: STROKE_R,
+        default: 0.0,
+    },
+    ParamSpec {
+        name: STROKE_G,
+        default: 0.0,
+    },
+    ParamSpec {
+        name: STROKE_B,
+        default: 0.0,
+    },
+    ParamSpec {
+        name: STROKE_A,
+        default: 1.0,
+    },
+    // ⚠️ **Apendados** (doc 89 folha 14, as duas últimas células). `fill = 0` e
+    // `rotation = 0` ⇒ as colunas `tint`/`rot` do shell atravessam INTOCADAS.
+    ParamSpec {
+        name: FILL,
+        default: 0.0,
+    },
+    ParamSpec {
+        name: FILL_R,
+        default: 1.0,
+    },
+    ParamSpec {
+        name: FILL_G,
+        default: 1.0,
+    },
+    ParamSpec {
+        name: FILL_B,
+        default: 1.0,
+    },
+    ParamSpec {
+        name: FILL_A,
+        default: 1.0,
+    },
+    ParamSpec {
+        name: ROTATION,
+        default: 0.0,
+    },
+    // ⚠️ **Apendados** (doc 89 folha 14, as linhas do *sweep/start/inner* e do *raio
+    // por canto*). Todos neutros no default — o `sweep = 0` pela sentinela documentada
+    // no [`param::SWEEP`], os outros seis porque `0` já é o valor que a biblioteca usa.
+    ParamSpec {
+        name: SWEEP,
+        default: 0.0,
+    },
+    ParamSpec {
+        name: START,
+        default: 0.0,
+    },
+    ParamSpec {
+        name: INNER,
+        default: 0.0,
+    },
+    ParamSpec {
+        name: CORNER_TR,
+        default: 0.0,
+    },
+    ParamSpec {
+        name: CORNER_BR,
+        default: 0.0,
+    },
+    ParamSpec {
+        name: CORNER_BL,
+        default: 0.0,
+    },
+    ParamSpec {
+        name: SMOOTHING,
+        default: 0.0,
+    },
+    // ⚠️ **Apendados** (doc 89 folha 14, a linha do *trim/dash*). `{0, 1, 0}` é o
+    // NEUTRO do `TrimSpec`, e a pilha de efeitos salta um efeito neutro por inteiro
+    // ⇒ a forma que sempre shipou, byte-idêntica. O `dash_gap` nasce em `1` porque
+    // um vão de zero seria um tracejado contínuo com custo — mas ele só existe
+    // quando o `dash` sai do zero.
+    ParamSpec {
+        name: TRIM_START,
+        default: 0.0,
+    },
+    ParamSpec {
+        name: TRIM_END,
+        default: 1.0,
+    },
+    ParamSpec {
+        name: TRIM_OFFSET,
+        default: 0.0,
+    },
+    ParamSpec {
+        name: DASH,
+        default: 0.0,
+    },
+    ParamSpec {
+        name: DASH_GAP,
+        default: 1.0,
+    },
+    // ⚠️ **Apendados** (doc 109). `collide = 0` ⇒ nenhuma coluna nova ⇒ o stream de sempre.
+    ParamSpec {
+        name: COLLIDE,
+        default: 0.0,
+    },
+    ParamSpec {
+        name: COLLIDER_SHAPE,
+        default: 0.0,
+    },
+    ParamSpec {
+        name: COLLIDER_WIDTH,
+        default: 1.0,
+    },
+    ParamSpec {
+        name: COLLIDER_HEIGHT,
+        default: 1.0,
+    },
+    ParamSpec {
+        name: COLLIDER_RADIUS,
+        default: 1.0,
+    },
+    // **Ver o colisor** (report do dono, 2026-09-13) — LIGADO por omissão: quem liga o
+    // `Collide` quer ver o que declarou, e o botão é para o DESLIGAR quando a cena enche.
+    ParamSpec {
+        name: SHOW_COLLIDER,
+        default: 1.0,
+    },
+    // **Travar a rotação** (doc 109 §6) — DESLIGADO por omissão: o dono pediu a rotação
+    // destravada, e este botão é o que a prende quando ela não é o que se quer.
+    ParamSpec {
+        name: LOCK_ROTATION,
+        default: 0.0,
+    },
+    // ── O MATERIAL (doc 109 §7) ─────────────────────────────────────────────
+    // APENDADOS, nunca inseridos: a lista é lida posicionalmente por quem guarda um índice.
+    ParamSpec {
+        name: FRICTION,
+        default: 0.5,
+    },
+    ParamSpec {
+        name: BOUNCE,
+        default: 0.0,
+    },
+];

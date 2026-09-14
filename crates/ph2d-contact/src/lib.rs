@@ -46,6 +46,14 @@
 //! afastamento — uma peça roda enquanto está em contacto e não continua a girar no ar. É o que
 //! separa isto de um corpo rígido a sério, e está nomeado no doc 109 §6.
 //!
+//! ## E as peças têm MATERIAL (doc 109 §7)
+//!
+//! Report do dono: *«os círculos não rotacionam com a colisão, talvez por falta de atrito.
+//! Precisamos de parâmetros do material»* — e ele tinha razão pela conta que o módulo [`atrito`]
+//! escreve: **a alavanca da normal sobre um disco é EXACTAMENTE zero**, logo nenhuma lei que só
+//! empurre ao longo dela roda um círculo. A metade que faltava é a TANGENTE, cuja alavanca no
+//! mesmo disco é o raio inteiro. Ler [`atrito`] antes de tocar aqui.
+//!
 //! ## A lei do par é calculada na ordem do PAR
 //!
 //! Cada par resolve-se sempre do índice MENOR para o MAIOR, e o maior recebe a normal simétrica —
@@ -83,9 +91,11 @@ use ph2d_nodegraph::attr::{
     SIZE_IDENTITY, Stream, par_build,
 };
 
+pub mod atrito;
 mod par;
 mod trig;
 
+pub use atrito::{Deslize, Material, Pecas, Saida, materiais};
 pub use par::{contato, disco_caixa};
 
 /// Abaixo disto dois centros coincidem e a normal não existe (o `EPS` do `motion.collide`).
@@ -122,13 +132,30 @@ pub struct Contacto {
 }
 
 impl Contacto {
+    /// O braço deste contacto sobre uma peça centrada em `centro`: `ponto − centro`.
+    pub fn raio(&self, centro: [f32; 2]) -> [f32; 2] {
+        [self.ponto[0] - centro[0], self.ponto[1] - centro[1]]
+    }
+
     /// **A ALAVANCA deste contacto sobre uma peça centrada em `centro`** — `(ponto − centro) × n`.
     /// Zero quando a normal passa pelo centro: ali o contacto só empurra, nunca roda.
+    ///
+    /// ⚠️ **Num DISCO ela é zero sempre e exactamente** (`r = ±R·n`), e é essa a conta que diz
+    /// porque um círculo não podia rodar antes do atrito — [`atrito`].
     pub fn braco(&self, centro: [f32; 2]) -> f32 {
-        cruz(
-            [self.ponto[0] - centro[0], self.ponto[1] - centro[1]],
-            self.normal,
-        )
+        cruz(self.raio(centro), self.normal)
+    }
+
+    /// **A TANGENTE do contacto** — `perp(n)`, a direcção em que as duas superfícies deslizam.
+    pub fn tangente(&self) -> [f32; 2] {
+        perp(self.normal)
+    }
+
+    /// **A ALAVANCA da TANGENTE** — `(ponto − centro) × t`, que pela identidade `r × perp(n) =
+    /// r · n` é a projecção do braço na NORMAL. Máxima (`±R`) exactamente onde a de [`braco`] é
+    /// zero: as duas são as duas coordenadas do mesmo vector.
+    pub fn braco_tangente(&self, centro: [f32; 2]) -> f32 {
+        dot(self.raio(centro), self.normal)
     }
 }
 
@@ -418,30 +445,40 @@ pub fn inv_inercias(s: &Stream, colisores: &[Option<Colisor>], pesos: &[f32]) ->
         .collect()
 }
 
-/// Afasta as peças sobrepostas, `varreduras` vezes. `p` é reescrito no sítio, e `giro` ACUMULA em
-/// GRAUS o quanto cada peça rodou (doc 109 §6) — o chamador soma-o à coluna `rot`.
+/// O que uma varredura decidiu para uma peça: a posição nova, o giro em graus e o salto do par
+/// mais vivo que ela tocou.
+type Nova = Option<([f32; 2], f32, f32)>;
+
+/// Confere que toda coluna tem o comprimento da nuvem.
+fn confere(n: usize, saida: &Saida<'_>, pecas: &Pecas<'_>) {
+    assert_eq!(saida.giro.len(), n, "um giro por peca");
+    assert_eq!(saida.salto.len(), n, "um salto por peca");
+    assert_eq!(pecas.colisores.len(), n, "um colisor por peca");
+    assert_eq!(pecas.pesos.len(), n, "um peso por peca");
+    assert_eq!(pecas.inv_inercia.len(), n, "uma inercia por peca");
+    if let Some(d) = pecas.deslize {
+        assert_eq!(d.antes.len(), n, "um antes por peca");
+        assert_eq!(d.girou_antes.len(), n, "um giro anterior por peca");
+        assert_eq!(d.material.len(), n, "um material por peca");
+    }
+}
+
+/// Afasta as peças sobrepostas, `varreduras` vezes. `p` é reescrito no sítio; a [`Saida`] ACUMULA
+/// em GRAUS o quanto cada peça rodou (doc 109 §6) e recolhe o salto de cada uma (§7).
 ///
 /// # Panics
 ///
-/// Se `giro`, `colisores`, `pesos` ou `inv_inercia` não tiverem o comprimento de `p` — colunas de
-/// uma mesma corrente com comprimentos diferentes não são uma pergunta com resposta.
-pub fn separate(
-    p: &mut [[f32; 2]],
-    giro: &mut [f32],
-    colisores: &[Option<Colisor>],
-    pesos: &[f32],
-    inv_inercia: &[f32],
-    varreduras: usize,
-) {
+/// Se alguma coluna da [`Saida`] ou das [`Pecas`] não tiver o comprimento de `p` — colunas de uma
+/// mesma corrente com comprimentos diferentes não são uma pergunta com resposta.
+pub fn separate(p: &mut [[f32; 2]], saida: &mut Saida<'_>, pecas: &Pecas<'_>, varreduras: usize) {
     let n = p.len();
-    assert_eq!(giro.len(), n, "um giro por peca");
-    assert_eq!(colisores.len(), n, "um colisor por peca");
-    assert_eq!(pesos.len(), n, "um peso por peca");
-    assert_eq!(inv_inercia.len(), n, "uma inercia por peca");
-    let ativo: Vec<bool> = (0..n).map(|i| ativo(p[i], colisores[i].as_ref())).collect();
+    confere(n, saida, pecas);
+    let ativo: Vec<bool> = (0..n)
+        .map(|i| ativo(p[i], pecas.colisores[i].as_ref()))
+        .collect();
     let alcance_max = (0..n)
         .filter(|&i| ativo[i])
-        .filter_map(|i| colisores[i].map(|c| c.alcance()))
+        .filter_map(|i| pecas.colisores[i].map(|c| c.alcance()))
         .fold(0.0_f32, f32::max);
     if alcance_max <= 0.0 {
         return;
@@ -450,11 +487,12 @@ pub fn separate(
     for _ in 0..varreduras {
         let foto = p.to_vec();
         // As formas COMO ESTÃO: o que as varreduras anteriores rodaram já conta.
+        let girado = saida.giro.to_vec();
         let agora: Vec<Option<Colisor>> = (0..n)
-            .map(|i| colisores[i].map(|c| c.girado(giro[i])))
+            .map(|i| pecas.colisores[i].map(|c| c.girado(girado[i])))
             .collect();
         let grelha = grelha(&foto, &ativo, lado);
-        let novas: Vec<Option<([f32; 2], f32)>> = par_build(n, |k| {
+        let novas: Vec<Nova> = par_build(n, |k| {
             if !ativo[k] {
                 return None;
             }
@@ -472,13 +510,13 @@ pub fn separate(
                 k,
                 parceiros.into_iter(),
                 &foto,
+                &girado,
                 &agora,
-                pesos,
-                inv_inercia,
+                pecas,
                 &ativo,
             )
         });
-        aplica(p, giro, novas);
+        aplica(p, saida, novas);
     }
 }
 
@@ -488,42 +526,41 @@ pub fn separate(
 /// chama.
 pub fn separate_all_pairs(
     p: &mut [[f32; 2]],
-    giro: &mut [f32],
-    colisores: &[Option<Colisor>],
-    pesos: &[f32],
-    inv_inercia: &[f32],
+    saida: &mut Saida<'_>,
+    pecas: &Pecas<'_>,
     varreduras: usize,
 ) {
     let n = p.len();
-    assert_eq!(giro.len(), n, "um giro por peca");
-    assert_eq!(colisores.len(), n, "um colisor por peca");
-    assert_eq!(pesos.len(), n, "um peso por peca");
-    assert_eq!(inv_inercia.len(), n, "uma inercia por peca");
-    let ativo: Vec<bool> = (0..n).map(|i| ativo(p[i], colisores[i].as_ref())).collect();
+    confere(n, saida, pecas);
+    let ativo: Vec<bool> = (0..n)
+        .map(|i| ativo(p[i], pecas.colisores[i].as_ref()))
+        .collect();
     for _ in 0..varreduras {
         let foto = p.to_vec();
+        let girado = saida.giro.to_vec();
         let agora: Vec<Option<Colisor>> = (0..n)
-            .map(|i| colisores[i].map(|c| c.girado(giro[i])))
+            .map(|i| pecas.colisores[i].map(|c| c.girado(girado[i])))
             .collect();
-        let novas: Vec<Option<([f32; 2], f32)>> = (0..n)
+        let novas: Vec<Nova> = (0..n)
             .map(|k| {
                 if ativo[k] {
-                    corrigida(k, 0..n, &foto, &agora, pesos, inv_inercia, &ativo)
+                    corrigida(k, 0..n, &foto, &girado, &agora, pecas, &ativo)
                 } else {
                     None
                 }
             })
             .collect();
-        aplica(p, giro, novas);
+        aplica(p, saida, novas);
     }
 }
 
 /// Escreve o que uma varredura produziu.
-fn aplica(p: &mut [[f32; 2]], giro: &mut [f32], novas: Vec<Option<([f32; 2], f32)>>) {
+fn aplica(p: &mut [[f32; 2]], saida: &mut Saida<'_>, novas: Vec<Nova>) {
     for (k, nova) in novas.into_iter().enumerate() {
-        if let Some((q, g)) = nova {
+        if let Some((q, g, s)) = nova {
             p[k] = q;
-            giro[k] += g;
+            saida.giro[k] += g;
+            saida.salto[k] = saida.salto[k].max(s);
         }
     }
 }
@@ -551,19 +588,21 @@ fn grelha(foto: &[[f32; 2]], ativo: &[bool], lado: f32) -> BTreeMap<(i64, i64), 
     g
 }
 
-/// A posição e o giro de `k` depois desta varredura, ou `None` se nada lhe tocou. Os `parceiros` têm
+/// A posição, o giro e o salto de `k` depois desta varredura, ou `None` se nada lhe tocou. Os `parceiros` têm
 /// de vir em ordem CRESCENTE — ver o cabeçalho.
 fn corrigida(
     k: usize,
     parceiros: impl Iterator<Item = usize>,
     foto: &[[f32; 2]],
+    girado: &[f32],
     colisores: &[Option<Colisor>],
-    pesos: &[f32],
-    inv_inercia: &[f32],
+    pecas: &Pecas<'_>,
     ativo: &[bool],
-) -> Option<([f32; 2], f32)> {
+) -> Nova {
+    let (pesos, inv_inercia) = (pecas.pesos, pecas.inv_inercia);
     let mut delta = [0.0_f32; 2];
     let mut giro = 0.0_f32;
+    let mut salto = 0.0_f32;
     let mut contatos = 0_u32;
     for j in parceiros {
         if j == k || !ativo[j] {
@@ -577,13 +616,13 @@ fn corrigida(
         let Some(c) = contato(&clo, foto[lo], &chi, foto[hi], (lo + hi) % 2 == 0) else {
             continue;
         };
-        // A massa efectiva de cada lado no PONTO do contacto (doc 109 §6).
-        let braco = |i: usize, col: &Colisor| c.braco(col.centro(foto[i]));
-        let (bk, bj) = if k == lo {
-            (braco(lo, &clo), braco(hi, &chi))
+        // O centro de cada lado, e daí a massa efectiva no PONTO do contacto (doc 109 §6).
+        let (ck, cj) = if k == lo {
+            (clo.centro(foto[lo]), chi.centro(foto[hi]))
         } else {
-            (braco(hi, &chi), braco(lo, &clo))
+            (chi.centro(foto[hi]), clo.centro(foto[lo]))
         };
+        let (bk, bj) = (c.braco(ck), c.braco(cj));
         let massa = |w: f32, inv_i: f32, b: f32| w + inv_i * b * b;
         let soma = massa(pesos[k], inv_inercia[k], bk) + massa(pesos[j], inv_inercia[j], bj);
         // Dois obstáculos (ou dois pesos infinitos) não têm correcção a repartir.
@@ -596,6 +635,32 @@ fn corrigida(
         delta[0] += c.normal[0] * empurra;
         delta[1] += c.normal[1] * empurra;
         giro += bk * lambda * inv_inercia[k] * sinal * GRAUS;
+        // ⭐⭐⭐ **A METADE TANGENCIAL** (doc 109 §7) — o deslize desfeito, limitado por Coulomb.
+        // ⚠️ Sem `sinal`: o deslize já é medido **de `k` para `j`**, então a correcção dele é
+        // simétrica por construção e os dois lados do par concordam sem desempate nenhum.
+        if let Some(d) = pecas.deslize {
+            let (mk, mj) = (pecas.material(k), pecas.material(j));
+            salto = salto.max(atrito::salto(mk.salto, mj.salto));
+            let t = c.tangente();
+            let (tk, tj) = (c.braco_tangente(ck), c.braco_tangente(cj));
+            // Quanto o PONTO de contacto de cada lado andou desde o início do passo: o centro
+            // MAIS o que a rotação do corpo lhe acrescentou (`dθ × r`, em 2D `dθ · perp(r)`).
+            let andou = |i: usize, centro: [f32; 2]| {
+                let dtheta = (girado[i] + d.girou_antes[i]) / GRAUS;
+                let r = c.raio(centro);
+                [
+                    foto[i][0] - d.antes[i][0] - dtheta * r[1],
+                    foto[i][1] - d.antes[i][1] + dtheta * r[0],
+                ]
+            };
+            let (ak, aj) = (andou(k, ck), andou(j, cj));
+            let desliza = dot([ak[0] - aj[0], ak[1] - aj[1]], t);
+            let soma_t = massa(pesos[k], inv_inercia[k], tk) + massa(pesos[j], inv_inercia[j], tj);
+            let lt = atrito::lambda(desliza, soma_t, atrito::mu(mk.atrito, mj.atrito), lambda);
+            delta[0] -= t[0] * lt * pesos[k];
+            delta[1] -= t[1] * lt * pesos[k];
+            giro -= tk * lt * inv_inercia[k] * GRAUS;
+        }
         contatos += 1;
     }
     (contatos > 0).then(|| {
@@ -607,6 +672,7 @@ fn corrigida(
         (
             [foto[k][0] + delta[0] * inv, foto[k][1] + delta[1] * inv],
             giro * inv,
+            salto,
         )
     })
 }

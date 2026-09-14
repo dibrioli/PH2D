@@ -333,6 +333,24 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
         step: 1.0,
         widget: ParamWidget::Toggle,
     },
+    // ⭐⭐⭐ **O MATERIAL** (doc 109 §7 — *«precisamos de parâmetros do material»*). O atrito é o
+    // que faz um círculo RODAR em vez de derrapar, e não apenas o que o trava.
+    ParamUiHint {
+        param: param::FRICTION,
+        label: "Friction",
+        min: 0.0,
+        max: 1.0,
+        step: 0.01,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: param::BOUNCE,
+        label: "Bounciness",
+        min: 0.0,
+        max: 1.0,
+        step: 0.01,
+        widget: ParamWidget::Slider,
+    },
 ];
 
 /// **What each of this node's numbers IS** (doc 88, Wave A) — never how it is
@@ -362,6 +380,8 @@ pub(crate) static PARAM_GROUPS: &[ParamGroup] = &[
     ParamGroup::new(param::COLLIDER_RADIUS, "Collision"),
     ParamGroup::new(param::SHOW_COLLIDER, "Collision"),
     ParamGroup::new(param::LOCK_ROTATION, "Collision"),
+    ParamGroup::new(param::FRICTION, "Collision"),
+    ParamGroup::new(param::BOUNCE, "Collision"),
 ];
 
 /// **Per-kind visibility** — a param appears only when `kind` is one of the listed
@@ -661,6 +681,16 @@ pub(crate) static PARAM_GATES_ABOVE: &[ParamGateAbove] = &[
     },
     ParamGateAbove {
         param: param::LOCK_ROTATION,
+        when: param::COLLIDE,
+        above: 0.0,
+    },
+    ParamGateAbove {
+        param: param::FRICTION,
+        when: param::COLLIDE,
+        above: 0.0,
+    },
+    ParamGateAbove {
+        param: param::BOUNCE,
         when: param::COLLIDE,
         above: 0.0,
     },

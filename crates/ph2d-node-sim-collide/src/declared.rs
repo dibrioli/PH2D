@@ -16,8 +16,18 @@
 use super::{SHAPE_BOWL, SHAPE_BOX, SHAPE_DISC};
 use ph2d_contact::{Colisor, Contacto, Forma};
 
-/// **O que o contacto de uma peça declarada pede**: `(normal, empurrão)` e o giro em GRAUS.
-///
+/// **O que o contacto de uma peça declarada pede.**
+#[derive(Default)]
+pub(super) struct Toque {
+    /// `(normal, empurrão)`, ou `None` quando ela não toca.
+    pub empurrao: Option<([f32; 2], f32)>,
+    /// Quanto ela roda pela metade NORMAL, em graus (doc 109 §6).
+    pub giro: f32,
+    /// ⭐ **A alavanca da TANGENTE no ponto** (`r · n`, doc 109 §7) — num disco o raio inteiro,
+    /// exactamente onde a da normal é zero. É por ela que o atrito faz a peça ROLAR.
+    pub braco_t: f32,
+}
+
 /// A correcção reparte-se entre mover e rodar pela massa efectiva no PONTO (doc 109 §6):
 /// `k = 1 + invI · braço²`, `λ = penetração / k`. ⚠️ A massa é `1` porque este nó não lê `inv_mass`
 /// — quem o lê é o `sim.step`. Com `invI = 0` (rotação travada) `k` é `1` e `λ` é a penetração
@@ -33,17 +43,19 @@ pub(super) fn toque(
     half: [f32; 2],
     col: &Colisor,
     inv_inercia: f32,
-) -> (Option<([f32; 2], f32)>, f32) {
+) -> Toque {
     let Some(ct) = contact_declared(shape, p, height, c, radius, plane_n, half, col) else {
-        return (None, 0.0);
+        return Toque::default();
     };
-    let braco = ct.braco(col.centro(p));
+    let centro = col.centro(p);
+    let braco = ct.braco(centro);
     let k = 1.0 + inv_inercia * braco * braco;
     let lambda = ct.penetracao / k;
-    (
-        Some((ct.normal, lambda)),
-        braco * lambda * inv_inercia * ph2d_contact::GRAUS,
-    )
+    Toque {
+        empurrao: Some((ct.normal, lambda)),
+        giro: braco * lambda * inv_inercia * ph2d_contact::GRAUS,
+        braco_t: ct.braco_tangente(centro),
+    }
 }
 
 /// O contacto da peça em `p` que declarou `col`: a normal PARA ONDE ela tem de sair, a profundidade

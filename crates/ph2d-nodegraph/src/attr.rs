@@ -122,6 +122,23 @@ pub const COLLIDER_OFFSET_COLUMN: &str = "collider_offset";
 /// com `w` a coluna `inv_mass`). É o irmão angular dela, e a razão
 /// de ser uma COLUNA é a mesma: quem desenha é quem sabe, e a declaração viaja com a peça.
 pub const INV_INERTIA_COLUMN: &str = "inv_inertia";
+/// ⭐⭐⭐ **O ATRITO da peça** (doc 109 §7 — report do dono, 2026-09-13: *«os círculos não rotacionam
+/// com a colisão, talvez por falta de atrito. Precisamos de parâmetros do material»*): o
+/// coeficiente de Coulomb, `0..1`. **Ausente ⇒ `0` ⇒ gelo**, que é a lei de antes desta coluna, ao
+/// bit — e é por isso que ela pode nascer sem migração nenhuma.
+///
+/// ⚠️ **O par combina-se pela média GEOMÉTRICA** (`√(μa·μb)`, a lei do Box2D), na porta
+/// `ph2d_contact::atrito::mu` — uma peça de gelo desliza contra tudo, que é o que «gelo» quer
+/// dizer. Um `max` faria uma peça de lixa colar tudo o resto ao chão.
+pub const FRICTION_COLUMN: &str = "friction";
+/// ⭐⭐ **O SALTO da peça** (doc 109 §7): quanto de um embate volta, `0..1`. **Ausente ⇒ `0` ⇒
+/// morto.** O par combina-se pelo MAIOR dos dois (Box2D): uma bola saltitante salta contra uma
+/// parede morta.
+///
+/// ⚠️ **Ela não se chama `restitution`** de propósito: esse nome já é um **param** do
+/// `sim.collide` (o do OBSTÁCULO), e duas grandezas com o mesmo nome em sítios diferentes é como
+/// um dia alguém lê a do obstáculo julgando ler a da peça. Aqui a coluna é da PEÇA.
+pub const BOUNCE_COLUMN: &str = "bounce";
 
 /// As colunas de **ESCRITURAÇÃO** — aquelas cuja máquina de estado de um nó a
 /// jusante lê, e que por isso um escritor genérico não pode sobrescrever.

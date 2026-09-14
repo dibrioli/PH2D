@@ -17,7 +17,7 @@ use ph2d_node_registry::NodeRegistry;
 use ph2d_nodegraph::graph::NodeId;
 
 /// Os níveis que são cena de ciclo. ⚠️ **Uma tabela, dois leitores** — ver o cabeçalho.
-const CICLOS: &[&str] = &["111", "112", "113", "114"];
+const CICLOS: &[&str] = &["111", "112", "113", "114", "115"];
 
 /// Este nível é uma cena de ciclo?
 pub(super) fn e_de_ciclo(n: &str) -> bool {
@@ -62,6 +62,16 @@ pub(super) fn build(n: &str, doc: &mut MotionDoc, reg: &NodeRegistry) -> Vec<Nod
             let sinks = super::pilha_demo::build(doc, reg).unwrap_or_default();
             crate::motion_demo_legend::publish(super::pilha_demo::captions());
             announce::pilha();
+            sinks
+        }
+        // ⭐⭐⭐ **DE QUE A PEÇA É FEITA** (doc 109 §7) — o material. A rampa é `sim.collide` e
+        // não uma peça pousada: o obstáculo do nó é o único plano INCLINADO deste catálogo, e
+        // uma rampa feita de peças pedia um pino, um ângulo e três nós a mais para dizer o
+        // mesmo. A pergunta da cena é o cartão da BOLA.
+        "115" => {
+            let sinks = super::material_demo::build(doc, reg).unwrap_or_default();
+            crate::motion_demo_legend::publish(super::material_demo::captions());
+            announce::material();
             sinks
         }
         // ⚠️ Inalcançável: a [`e_de_ciclo`] gateia esta função com a MESMA tabela.

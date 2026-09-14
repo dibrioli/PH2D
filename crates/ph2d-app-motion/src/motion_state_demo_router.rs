@@ -31,7 +31,7 @@ use super::*;
 /// número em dois sítios, que é como ele envelhece. *Um valor sob `cfg(test)` é invisível do
 /// outro lado da fronteira (HOWTO §2.5) — e aqui a cura não é abrir uma feature, é reconhecer
 /// que a constante deixou de ser só do teste.*
-pub const MAX_DEMO_LEVEL: u32 = 114;
+pub const MAX_DEMO_LEVEL: u32 = 115;
 
 /// **As cenas de smoke dos CICLOS** — irmãs pelo tecto de LOC, cortadas por responsabilidade;
 /// ver o cabeçalho delas.

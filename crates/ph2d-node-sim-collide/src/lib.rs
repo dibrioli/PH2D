@@ -166,6 +166,14 @@ pub const RADIUS_SIZE: i32 = 2;
 /// lie (the mask that masked its own gravity, `sim.zone`'s own scar).
 pub const HIT_COL: &str = "hit";
 
+/// **A VELOCIDADE ANGULAR da peça**, em graus por segundo — a coluna que o `sim.step` integra no
+/// `rot`. O atrito deste nó lê-a (para saber quão depressa o ponto de contacto desliza de verdade)
+/// e escreve-lhe o que lhe acrescentou (doc 109 §7).
+///
+/// ⚠️ **O nome é o do `sim.step`**, e tem de ser: dois nomes para o mesmo estado angular seriam
+/// duas simulações a girar a mesma peça.
+const SPIN_COL: &str = "spin";
+
 pub const MANIFEST: NodeManifest = NodeManifest {
     id: NodeTypeId::of("sim.collide"),
     name: "sim.collide",
@@ -377,38 +385,6 @@ fn contact(
     }
 }
 
-/// One contact response — the ONE place a collision is written, for every shape.
-fn respond(
-    p: &mut [f32; 2],
-    v: &mut [f32; 2],
-    n: [f32; 2],
-    depth: f32,
-    restitution: f32,
-    friction: f32,
-) {
-    p[0] += n[0] * depth;
-    p[1] += n[1] * depth;
-
-    let vn = v[0] * n[0] + v[1] * n[1];
-    // Already leaving (or sliding along) the surface: touching it must not change it. Reflecting
-    // here is the classic collider jitter — the element buzzes on the ground forever, fed by its
-    // own contact test.
-    if vn >= 0.0 {
-        return;
-    }
-    // Reflect the normal component, keep (and bleed) the tangential one.
-    let bounce = (1.0 + restitution) * vn;
-    let mut out = [v[0] - bounce * n[0], v[1] - bounce * n[1]];
-    let vn_out = out[0] * n[0] + out[1] * n[1];
-    let tangent = [out[0] - vn_out * n[0], out[1] - vn_out * n[1]];
-    let keep = 1.0 - friction;
-    out = [
-        vn_out * n[0] + tangent[0] * keep,
-        vn_out * n[1] + tangent[1] * keep,
-    ];
-    *v = out;
-}
-
 fn vec2(s: &Stream, name: &str, n: usize) -> Vec<[f32; 2]> {
     match s.get(name) {
         Some(Column::Vec2(v)) if v.len() == n => v.clone(),
@@ -507,6 +483,14 @@ fn collide(
         || vec![0.0; n],
         |f| ph2d_contact::inv_inercias(s, f, &vec![1.0; n]),
     );
+    // ⭐⭐ O MATERIAL que a peça DECLAROU (doc 109 §7). ⚠️ `None` e «tudo a zero» são coisas
+    // diferentes: sem declaração o obstáculo aplica o atrito DELE inteiro (a lei de sempre, ao
+    // bit); com ela o par combina-se, e uma peça de gelo desliza sobre um chão áspero.
+    let material = ph2d_contact::materiais(s);
+    // A velocidade ANGULAR de cada peça — lida para o atrito saber quão depressa o ponto de
+    // contacto de facto desliza, e reescrita com o que ele lhe acrescenta.
+    let mut spin = scalars(s, SPIN_COL, n);
+    let mut mexeu_spin = false;
     let mut giro = vec![0.0_f32; n];
     // A identidade de cada elemento. ⚠️ Lida uma vez: um `get` por elemento seria a mesma
     // pergunta `n` vezes, e a coluna AUSENTE tem de cair na posição — não em zero, que daria
@@ -524,7 +508,7 @@ fn collide(
                 || col.desvio != [0.0, 0.0]
                 || inv_inercia[i] > 0.0
         });
-        let (toque, girou) = match forma {
+        let toque = match forma {
             Some(col) => declared::toque(
                 shape,
                 p[i],
@@ -538,13 +522,14 @@ fn collide(
             ),
             None => {
                 let r = particle_radius(mode, fixed, scale, size[i], declarados[i]);
-                (
-                    contact(shape, p[i], height, c, radius, r, plane_n, half),
-                    0.0,
-                )
+                declared::Toque {
+                    empurrao: contact(shape, p[i], height, c, radius, r, plane_n, half),
+                    ..declared::Toque::default()
+                }
             }
         };
-        if let Some((normal, depth)) = toque {
+        let girou = toque.giro;
+        if let Some((normal, depth)) = toque.empurrao {
             let (mut pi, mut vi) = (p[i], v[i]);
             #[expect(clippy::cast_sign_loss, reason = "uma identidade e' um inteiro >= 0")]
             #[expect(clippy::cast_possible_truncation, reason = "idem")]
@@ -552,10 +537,29 @@ fn collide(
                 .as_ref()
                 .map_or(i as u32, |v| v[i].max(0.0).round() as u32);
             let rest_i = element_restitution(restitution, randomness, seed, key);
-            respond(&mut pi, &mut vi, normal, depth, rest_i, friction);
+            // ⭐ O par: o salto é o MAIS VIVO dos dois, o atrito é a média geométrica — e sem
+            // declaração o obstáculo continua sozinho, ao bit (ver o comentário do `material`).
+            let mat = material.as_ref().map(|m| m[i]);
+            let resposta = resposta::Resposta {
+                salto: mat.map_or(rest_i, |m| ph2d_contact::atrito::salto(rest_i, m.salto)),
+                atrito: mat.map_or(friction, |m| ph2d_contact::atrito::mu(friction, m.atrito)),
+                // ⭐⭐ **A alavanca só existe onde a peça DECLAROU uma forma** — um ponto não tem
+                // raio, e é isso que mantém toda cena sem colisor declarado na lei de sempre.
+                //
+                // ⚠️ **E a rotação TRAVADA não muda a LEI, só o resultado**: com `invI = 0` o
+                // Coulomb continua a valer e o giro sai zero por construção. Gatear aqui pelo
+                // `invI` faria o botão `Lock Rotation` trocar o modelo de atrito por baixo do
+                // artista — um botão que diz «não rodes» a mudar quanto a peça TRAVA.
+                rolamento: forma.is_some().then_some((toque.braco_t, inv_inercia[i])),
+            };
+            let d_spin = resposta::respond(&mut pi, &mut vi, spin[i], normal, depth, &resposta);
             if pi.iter().chain(&vi).all(|x| x.is_finite()) {
                 p[i] = pi;
                 v[i] = vi;
+                if d_spin.is_finite() && d_spin != 0.0 {
+                    spin[i] += d_spin;
+                    mexeu_spin = true;
+                }
                 // Written where the response LANDED. A dropped (non-finite) response moved
                 // nothing, so reporting a contact there would say the node did something it
                 // did not — the channel describes what happened, not what was attempted.
@@ -570,6 +574,12 @@ fn collide(
     out.set("P", Column::Vec2(p));
     out.set("vel", Column::Vec2(v));
     out.set(HIT_COL, Column::Scalar(hit));
+    // ⚠️ A coluna do giro só se escreve se o atrito de facto rodou alguém — uma cena sem colisor
+    // declarado (ou com a rotação travada) sai sem `spin`, exactamente como sempre saiu. É a
+    // mesma lei da coluna `rot` logo abaixo.
+    if mexeu_spin {
+        out.set(SPIN_COL, Column::Scalar(spin));
+    }
     // ⚠️ A coluna do ângulo só se escreve se alguém de facto rodou: uma cena com a rotação travada
     // (ou sem colisor declarado) sai como sempre saiu, sem coluna nova.
     if giro.iter().any(|g| *g != 0.0) {
@@ -677,6 +687,9 @@ use caixa::box_contact;
 
 #[path = "declared.rs"]
 mod declared;
+
+#[path = "resposta.rs"]
+mod resposta;
 
 #[cfg(test)]
 #[path = "declared_tests.rs"]

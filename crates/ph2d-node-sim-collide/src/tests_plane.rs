@@ -47,7 +47,20 @@ fn an_untilted_plane_is_the_floor_that_shipped_before_it() {
             let (mut fp, mut fv) = (p, v);
             if fp[1] < -2.0 {
                 let depth = -2.0 - fp[1];
-                respond(&mut fp, &mut fv, [0.0, 1.0], depth, 0.0, 0.35);
+                // ⚠️ A peça deste gate NÃO declara forma, logo `rolamento: None`: ela fica no
+                // sangramento tangencial de sempre, que é precisamente o que esta linha afirma.
+                crate::resposta::respond(
+                    &mut fp,
+                    &mut fv,
+                    0.0,
+                    [0.0, 1.0],
+                    depth,
+                    &crate::resposta::Resposta {
+                        salto: 0.0,
+                        atrito: 0.35,
+                        rolamento: None,
+                    },
+                );
             }
             assert_eq!((gp, gv), (fp, fv), "p={p:?} v={v:?}");
         }

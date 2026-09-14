@@ -72,6 +72,10 @@ mod gpu_demos;
 /// out at the HR-18 cap — a cohesive family like the deformers next door.
 #[path = "motion_state_gpu_field_demos.rs"]
 mod gpu_field_demos;
+/// **DE QUE A PEÇA É FEITA** — o MATERIAL (atrito e salto), e a cena em que um círculo ROLA
+/// em vez de derrapar; ver o cabeçalho dela (doc 109 §7).
+#[path = "motion_state_material_demo.rs"]
+mod material_demo;
 /// **PEÇAS QUE NÃO SE ATRAVESSAM** — o `motion.collide` DENTRO de uma simulação a correr;
 /// ver o cabeçalho dela (e porque as duas cenas que o nó já tinha não mostram isto).
 #[path = "motion_state_pilha_demo.rs"]

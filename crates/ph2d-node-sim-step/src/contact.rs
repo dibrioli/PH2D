@@ -44,24 +44,50 @@ pub(crate) const VARREDURAS: usize = 8;
 
 /// Separa as peças com colisor, cancela a aproximação delas e devolve **quanto cada uma rodou**, em
 /// graus (vazio quando ninguém declara colisor). `dt(i)` é o passo daquela peça.
+///
+/// `antes_do_passo` é onde cada peça estava **antes de a integração a mover** — é dele que sai o
+/// DESLIZE que o atrito opõe (doc 109 §7), e `girou` é o que o `spin` já rodou neste mesmo passo.
 pub(crate) fn resolve(
     state: &Stream,
     p: &mut [[f32; 2]],
     vel: &mut [[f32; 2]],
     pesos: &[f32],
+    antes_do_passo: &[[f32; 2]],
+    girou: &[f32],
     dt: impl Fn(usize) -> f32,
 ) -> Vec<f32> {
     let n = p.len();
     let Some(colisores) = ph2d_contact::colisores(state) else {
         return Vec::new();
     };
-    if colisores.len() != n {
+    if colisores.len() != n || antes_do_passo.len() != n || girou.len() != n {
         return Vec::new();
     }
     let inv_inercia = ph2d_contact::inv_inercias(state, &colisores, pesos);
-    let mut giro = vec![0.0_f32; n];
+    // ⭐ O MATERIAL de cada peça (doc 109 §7). Sem as colunas ele é `LISO` para todas, `μ = 0`, e
+    // o solver devolve a lei de antes do §7 **ao bit** — é isso que dispensa migração nenhuma.
+    let material =
+        ph2d_contact::materiais(state).unwrap_or_else(|| vec![ph2d_contact::Material::LISO; n]);
+    let (mut giro, mut salto) = (vec![0.0_f32; n], vec![0.0_f32; n]);
     let antes = p.to_vec();
-    ph2d_contact::separate(p, &mut giro, &colisores, pesos, &inv_inercia, VARREDURAS);
+    ph2d_contact::separate(
+        p,
+        &mut ph2d_contact::Saida {
+            giro: &mut giro,
+            salto: &mut salto,
+        },
+        &ph2d_contact::Pecas {
+            colisores: &colisores,
+            pesos,
+            inv_inercia: &inv_inercia,
+            deslize: Some(ph2d_contact::Deslize {
+                antes: antes_do_passo,
+                girou_antes: girou,
+                material: &material,
+            }),
+        },
+        VARREDURAS,
+    );
     for i in 0..n {
         let d = [p[i][0] - antes[i][0], p[i][1] - antes[i][1]];
         let len = d[0].hypot(d[1]);
@@ -75,7 +101,19 @@ pub(crate) fn resolve(
             continue;
         }
         let tira = (-vn).min(len / dti);
-        let v = [vel[i][0] + normal[0] * tira, vel[i][1] + normal[1] * tira];
+        // ⭐⭐ **O SALTO** (doc 109 §7): cancelar é `salto = 0`, e é a lei de sempre — o `if` está
+        // aqui para o dizer AO BIT, e não «por um factor que calha ser 1». Acima disso a peça
+        // devolve parte do que trouxe, e o tecto continua a ser o `len / dt`: duas peças que
+        // NASCEM sobrepostas separam-se em posição e não são atiradas.
+        let empurra = if salto[i] > 0.0 {
+            tira * (1.0 + salto[i])
+        } else {
+            tira
+        };
+        let v = [
+            vel[i][0] + normal[0] * empurra,
+            vel[i][1] + normal[1] * empurra,
+        ];
         if v.iter().all(|x| x.is_finite()) {
             vel[i] = v;
         }

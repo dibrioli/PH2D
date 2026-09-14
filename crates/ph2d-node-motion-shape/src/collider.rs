@@ -33,8 +33,8 @@
 
 use super::param;
 use ph2d_nodegraph::attr::{
-    COLLIDER_BOX_COLUMN, COLLIDER_COLUMN, COLLIDER_OFFSET_COLUMN, Column, INV_INERTIA_COLUMN,
-    Stream,
+    BOUNCE_COLUMN, COLLIDER_BOX_COLUMN, COLLIDER_COLUMN, COLLIDER_OFFSET_COLUMN, Column,
+    FRICTION_COLUMN, INV_INERTIA_COLUMN, Stream,
 };
 
 /// Os rótulos do `Collider Shape`. ⚠️ O índice é formato de arquivo — APPEND ONLY.
@@ -49,6 +49,16 @@ pub(crate) const SHAPE_CIRCLE: i32 = 1;
 /// identidade.
 fn multiplicador(k: f32) -> f32 {
     if k.is_finite() { k.max(0.0) } else { 1.0 }
+}
+
+/// Um coeficiente de material autorado: a faixa é `0..1` em todo motor, e um não-finito lê como
+/// `0` — o neutro desta grandeza (gelo, morto), não a identidade.
+fn material(k: f32) -> f32 {
+    if k.is_finite() {
+        k.clamp(0.0, 1.0) // CLAMP-OK: const bounds
+    } else {
+        0.0
+    }
 }
 
 /// Uma coluna `Vec2` do stream publicado, se tiver o comprimento dele.
@@ -113,6 +123,21 @@ pub(crate) fn declare(published: Stream, param: impl Fn(&str) -> f32) -> Stream 
     if centro.iter().any(|c| *c != [0.0, 0.0]) {
         out.set(COLLIDER_OFFSET_COLUMN, Column::Vec2(centro));
     }
+    // ⭐⭐⭐ **O MATERIAL** (doc 109 §7): o atrito é o que RODA um círculo — a alavanca da normal
+    // num disco é exactamente zero, e a da tangente é o raio inteiro.
+    //
+    // ⚠️ **As duas colunas escrevem-se SEMPRE que o `Collide` está ligado, mesmo a zero**, e aqui
+    // a lei estrutural do `fill` não vale: `0` não é *«como estava»*, é **gelo** — e gelo é um
+    // pedido. É a declaração que tira a peça do atrito do obstáculo (`sim.collide`) e a põe a
+    // deslizar sobre ele; a AUSÊNCIA é que quer dizer *«não declarei material nenhum»*.
+    out.set(
+        FRICTION_COLUMN,
+        Column::Scalar(vec![material(param(param::FRICTION)); n]),
+    );
+    out.set(
+        BOUNCE_COLUMN,
+        Column::Scalar(vec![material(param(param::BOUNCE)); n]),
+    );
     // ⭐⭐ **TRAVAR a rotação** (doc 109 §6): a coluna a `0` diz ao solver que esta peça não roda.
     // ⚠️ Destravada NÃO se escreve nada — a ausência quer dizer *«deriva da forma»*, e escrever o
     // valor derivado aqui seria a segunda resposta à mesma pergunta.

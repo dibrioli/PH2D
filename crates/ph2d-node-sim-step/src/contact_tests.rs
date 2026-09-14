@@ -140,3 +140,133 @@ fn a_piece_without_a_collider_passes_through() {
     let out = step(&s, DT, 1.0, 0.0, 0.0, 1.0);
     assert_eq!(col(&out, "P"), vec![[-0.1, 0.0], [0.1, 0.0]]);
 }
+
+// ───────────────────────── §7 · O MATERIAL, PELA PORTA DO PRODUTO ─────────────────────────
+
+use ph2d_nodegraph::attr::{BOUNCE_COLUMN, FRICTION_COLUMN};
+
+/// Uma bola livre a deslizar sobre um OBSTÁCULO (`inv_mass = 0`) que não se move, com o material
+/// pedido. `spin` semeia a rotação própria da bola.
+fn bola_sobre_obstaculo(atrito: f32, vx: f32, spin: Option<f32>) -> Stream {
+    // O obstáculo é um disco grande, a bola um disco pequeno pousado nele com folga mínima.
+    let (grande, pequeno) = (2.0_f32, 0.25_f32);
+    let s = Stream::new(2)
+        .with(
+            "P",
+            Column::Vec2(vec![[0.0, -grande], [0.0, pequeno - 0.001]]),
+        )
+        .with("vel", Column::Vec2(vec![[0.0, 0.0], [vx, -0.2]]))
+        .with("inv_mass", Column::Scalar(vec![0.0, 1.0]))
+        .with("sim_t", Column::Scalar(vec![0.0, 0.0]))
+        .with(COLLIDER_COLUMN, Column::Scalar(vec![grande, pequeno]))
+        .with(FRICTION_COLUMN, Column::Scalar(vec![atrito, atrito]))
+        .with(BOUNCE_COLUMN, Column::Scalar(vec![0.0, 0.0]));
+    match spin {
+        Some(g) => s.with("spin", Column::Scalar(vec![0.0, g])),
+        None => s,
+    }
+}
+
+fn escalar(s: &Stream, name: &str) -> Vec<f32> {
+    match s.get(name) {
+        Some(Column::Scalar(v)) => v.clone(),
+        _ => Vec::new(),
+    }
+}
+
+/// ⭐⭐⭐ **A COSTURA do material está ligada** (doc 109 §7): o passo tem de entregar ao contacto o
+/// DESLIZE (onde a peça estava antes de ele a mover) e o MATERIAL — senão a lei existe na folha e
+/// não acontece no produto.
+///
+/// ⛔⛔ **É este gate, e só este, que morre se o `sim.step` deixar de passar o `antes_do_passo` ou
+/// os materiais.** Os gates da `ph2d-contact` chamam o solver directamente e ficariam todos verdes:
+/// *a costura é o que se perde num merge, não a matemática.*
+#[test]
+fn the_step_hands_the_contact_the_slide_and_the_material() {
+    let rola = step(
+        &bola_sobre_obstaculo(1.0, 1.0, None),
+        DT,
+        1.0,
+        0.0,
+        0.0,
+        1.0,
+    );
+    let gelo = step(
+        &bola_sobre_obstaculo(0.0, 1.0, None),
+        DT,
+        1.0,
+        0.0,
+        0.0,
+        1.0,
+    );
+    let g = escalar(&rola, "rot");
+    assert!(
+        g.get(1).copied().unwrap_or(0.0) < -1e-4,
+        "com atrito a bola tem de RODAR (horario, a deslizar para +x): {g:?}"
+    );
+    // ⚠️ **A barra é de RUÍDO e não zero, e o número tem mecanismo** (doc 109 §7.1): a alavanca da
+    // normal num disco é zero em aritmética exacta, e o `ponto − centro` de uma peça longe da
+    // origem é uma subtracção que deixa cancelamento de `f32` — medido aqui, **`9,1e-10`**, contra
+    // os `~1e-2` que o atrito produz. *Uma barra de zero mediria a aritmética.*
+    let gelado = escalar(&gelo, "rot").get(1).copied().unwrap_or(0.0);
+    assert!(
+        gelado.abs() < 1e-6,
+        "com atrito 0 a bola nao pode rodar, e rodou {gelado}"
+    );
+}
+
+/// ⭐⭐ **E o passo diz ao contacto quanto o `spin` JÁ rodou neste tique** — uma bola a girar derrapa
+/// contra o chão mesmo sem se deslocar, e sem este canal o atrito não a veria.
+///
+/// ⚠️ O controlo é a MESMA cena sem `spin`: ali o contacto não tem deslize nenhum a opor.
+#[test]
+fn the_step_tells_the_contact_how_much_the_spin_already_turned() {
+    let girando = step(
+        &bola_sobre_obstaculo(1.0, 0.0, Some(900.0)),
+        DT,
+        1.0,
+        0.0,
+        0.0,
+        1.0,
+    );
+    let parada = step(
+        &bola_sobre_obstaculo(1.0, 0.0, Some(0.0)),
+        DT,
+        1.0,
+        0.0,
+        0.0,
+        1.0,
+    );
+    // A bola patina: o chão empurra-a para o lado contrário ao varrimento do ponto de baixo.
+    let (a, b) = (col(&girando, "P"), col(&parada, "P"));
+    assert!(
+        a[1][0] < b[1][0] - 1e-6,
+        "o atrito tinha de empurrar a bola que patina: {:?} contra {:?}",
+        a[1],
+        b[1]
+    );
+}
+
+/// ⭐⭐ **O SALTO da peça chega à velocidade** (doc 109 §7): duas bolas saltitantes a aproximarem-se
+/// separam-se com MAIS velocidade do que duas mortas — e com `bounce = 0` a lei é a de sempre.
+#[test]
+fn the_bounce_of_the_pieces_reaches_the_velocity() {
+    let com = |b: f32| {
+        par(0.4, 1.0, Some(0.5))
+            .with(FRICTION_COLUMN, Column::Scalar(vec![0.0, 0.0]))
+            .with(BOUNCE_COLUMN, Column::Scalar(vec![b, b]))
+    };
+    let morta = step(&com(0.0), DT, 1.0, 0.0, 0.0, 1.0);
+    let viva = step(&com(0.9), DT, 1.0, 0.0, 0.0, 1.0);
+    let (m, v) = (col(&morta, "vel"), col(&viva, "vel"));
+    assert!(
+        m[0][0].abs() < 1e-4,
+        "morta: a aproximacao e' CANCELADA, e sobrou {:?}",
+        m[0]
+    );
+    assert!(
+        v[0][0] < -0.5,
+        "viva: ela tem de voltar para tras, e ficou em {:?}",
+        v[0]
+    );
+}

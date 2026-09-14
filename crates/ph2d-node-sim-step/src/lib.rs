@@ -406,6 +406,10 @@ fn step(
     let age_prev = scalar_col(state, "age", n, 0.0).unwrap_or_else(|| vec![0.0; n]);
 
     let mut p = vec2_col(state, "P", n);
+    // ⭐ ONDE CADA PEÇA ESTAVA antes de a integração a mover — o DESLIZE que o atrito do contacto
+    // opõe (doc 109 §7) mede-se daqui. Sem ele o atrito veria só o que o próprio solver empurrou,
+    // que é normal por construção: uma bola a derrapar não teria deslize nenhum a opor.
+    let antes_do_passo = p.clone();
     let mut vel = vec2_col(state, "vel", n);
     let accel = vec2_col(state, "accel", n);
     let w = scalar_col(state, "inv_mass", n, 1.0).unwrap_or_else(|| vec![1.0; n]);
@@ -436,14 +440,35 @@ fn step(
             p[i] = q;
         }
     }
-    // ⭐⭐ O CONTACTO ENTRE PEÇAS (doc 109) — depois da integração, só onde há colisor declarado.
-    // Ele devolve o quanto cada peça RODOU (doc 109 §6), em graus.
-    let giro = contact::resolve(state, &mut p, &mut vel, &w, |i| {
+    let passo = |i: usize| {
         t_prev
             .as_ref()
             .map(|t| (playhead - t[i]).clamp(0.0, MAX_DT)) // CLAMP-OK: const bounds, min < max
             .unwrap_or(0.0)
-    });
+    };
+    // ⭐ QUANTO O `spin` JÁ RODOU neste passo. ⚠️ Ele é INTEGRADO mais abaixo, e o valor é o mesmo
+    // (`spin_step` é puro e lê o `spin` de entrada) — o que muda é só o atrito passar a VER a
+    // rotação própria da peça: uma bola que chega a girar derrapa contra o chão mesmo parada, e
+    // sem isto a única rotação que o deslize conhecia era a que o próprio contacto tinha feito.
+    let girou_spin: Vec<f32> = spin_prev.as_ref().map_or_else(
+        || vec![0.0; n],
+        |s0| {
+            (0..n)
+                .map(|i| spin_step(s0[i], 0.0, passo(i), angular_damping).1)
+                .collect()
+        },
+    );
+    // ⭐⭐ O CONTACTO ENTRE PEÇAS (doc 109) — depois da integração, só onde há colisor declarado.
+    // Ele devolve o quanto cada peça RODOU (doc 109 §6), em graus.
+    let giro = contact::resolve(
+        state,
+        &mut p,
+        &mut vel,
+        &w,
+        &antes_do_passo,
+        &girou_spin,
+        passo,
+    );
 
     let age: Vec<f32> = (0..n)
         .map(|i| {

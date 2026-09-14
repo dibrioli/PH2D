@@ -614,7 +614,21 @@ ficheiro à mão. ⚠️ **Os scripts do repo estão a salvo** (correm fora dest
 os dois `grep -qv` vivos em `scripts/` estão correctos lá) — *a armadilha é do lado que MEDE*.
 Registo: [`feedback_the_grep_in_this_agents_shell_is_ugrep_and_qv_always_says_no`](../../../project-memory/feedback_the_grep_in_this_agents_shell_is_ugrep_and_qv_always_says_no.md).
 
-### 14.10 — ⏳ ABERTO
+### 14.10 — Commit, portão e binário
+
+**Commit:** `6d8e16b0e` (sobre `004f29609`). **Portão batched VERDE de ponta a ponta sobre a árvore
+final**, os doze passos a `exit=0`: `doc-index`(+`--check`) · `fmt` · censo lexical (**4 638**,
+inalterado) · censo do `tool-painter` · `check --workspace --all-targets` (aviso = erro) ·
+`clippy -D warnings` · `machete` · `standalone` · `workflow-packages` · `typos` ·
+**`nextest-impacted` (`BASE=1d43da737`): 13 876 testes, 13 876 passaram**.
+
+**Binário de smoke recompilado** sobre a árvore final: `9,86 s` na 1.ª corrida, **`0,24 s` e zero
+`Compiling`** na 2.ª — `79 585 624` bytes em `target/smoke/ph2d-host-desktop`.
+
+⚠️ **A máquina esteve entre `load 7` e `load 85` (partilhada) durante estas corridas** — nenhum
+relógio aqui é medição de desempenho; os vereditos são estruturais e reproduzíveis.
+
+### 14.11 — ⏳ ABERTO
 
 - **As outras famílias continuam por auditar com esta régua**, e a `core` (22 `D::authored`) tem
   candidatos claros a row (`Blend Mode`, `Texture Filter`, `Order In Layer`, `Locked`, `Visibility`,

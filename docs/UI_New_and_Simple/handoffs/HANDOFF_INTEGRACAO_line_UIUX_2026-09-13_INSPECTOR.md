@@ -638,3 +638,57 @@ relógio aqui é medição de desempenho; os vereditos são estruturais e reprod
 - **A §14 aparece em todo corpo `Dynamic`**, o que é um cabeçalho e um botão a mais no Inspector de
   um caixote. É o preço declarado da decisão do dono; se ele o achar ruído, a saída barata é a
   secção nascer **dobrada** (o `SectionFold` já existe), não voltar a escondê-la.
+
+### 14.12 — AUDITORIA da secção de física (ordem do dono, 14/09): *«ela tem realmente tudo?»*
+
+Quatro censos, porque a pergunta tem quatro respostas diferentes e só a última é sobre PIXEL.
+
+**(a) Registo ↔ catálogo.** `reg.register[_default]::<T>` em
+[`ph2d-physics-ecs/src/lib.rs`](../../../crates/ph2d-physics-ecs/src/lib.rs) dá **32** nomes; `DESCS`
+de [`catalog/physics.rs`](../../../crates/ph2d-component-desc/src/catalog/physics.rs) dá **32**, e os
+conjuntos coincidem. ⚠️ O `PlatformLift` aparece num `grep` por `pub enum` da pasta `components/` e
+**não é componente** — é o campo `platform_player.platform_lift`; contá-lo daria um 33.º fantasma.
+
+**(b) Cada tipo tem uma PORTA no produto.** 24 são rows da §11 (as 7 da zona atrás de `is_sensor`, a
+`WalkSurface` e os dois nomes de sinal em **todo** collider, o bloco *Dynamic-only* com `GravityScale`
+· `InitialVelocity` · `Ccd` · os 3 locks · `MassOverride` · `Dominance` · `DampingOverride`), 3 são a
+§14, e **5 nascem de GESTO**: `PhysicsJoint` (*Join* / *Join by drawing* / *Rig*) · `PulleyWheel`
+(botão *Add Wheel*, `INSP_JOINT_ADD_WHEEL`) · `WestonAxle` (chip `INSP_WHEEL_DIFF_*` → `WheelFieldEdit::Weston`,
+que anexa/desanexa o marcador) · `JointWorldAnchor` ([`joint_draw`](../../../crates/ph2d-app-physics/src/joint_draw.rs)
+quando o traço acaba no cenário) · `RopeStops` (alça de canvas publicada em
+[`overlay/point_gizmo.rs:260`](../../../crates/ph2d-app-physics/src/overlay/point_gizmo.rs)).
+
+**(c) Campo a campo, e não tipo a tipo.** Sonda sobre os `pub struct` × o caminho de escrita
+(`physics_apply` · `physics_area` · `physics_surface` · `physics_markers` · `joint*`) × o de pintura
+(`sections/physics*` · `sync_physics` · `inspector/body.rs`): **zero** campos sem escrita e zero sem
+leitura em `Collider` (7) · `RigidBody` (1) · `WalkSurface` (2) · `DampingOverride` (3) ·
+`InitialVelocity` (2) · `MaterialCombine` (2) · `RopeStops` (2). O `PlatformPlayer` tem **55** campos
+e os 55 têm as duas metades. ⚠️ **O `PhysicsJoint` acusou 8 e os 8 eram FALSOS POSITIVOS** — o
+snapshot **renomeia na fronteira** (`limit_min` → `limit_min_ui`, `motor_mode` → `motor_mode_tag`,
+porque a unidade muda com o `JointKind`), e `local_a`/`local_b` são alças de canvas. *Um censo por
+nome de campo mede a fronteira, não a cobertura.*
+
+**(d) Fiação.** 196 ids declarados em `ids/inspector_{physics_body,joint,player}`; **195 pintados**
+(o 196.º é o `INSP_ADD_COMPONENT`, que vive no cabeçalho), **0 órfãos**, e todas as 50 variantes de
+`PhysicsFieldEdit` têm braço em `event_physics`. ⚠️ Os `*_GROUP` e os `INSP_PLAYER_CARD_*` aparecem
+como *«pintado sem consumidor»* numa varredura ingénua: eles são a âncora do grupo, e quem despacha
+é o array `*_IDS` das opções.
+
+**⭐ O ACHADO, e é de GATE:** o teste que parecia provar a porta única —
+`a_water_zone_is_authorable_with_ui_gestures_alone` — **não podia reprovar**. Ele fazia
+`attach(RigidBody)` e logo a seguir `attach(Collider)`, então a forma chegava pela mão do teste e a
+asserção `(1.0, 1.5)` passava com a cascata apagada. Medido: com `requires: &[]` no `pr(..RigidBody..)`
+o teste ficava **VERDE**. Removida a segunda linha, a mesma mutação lê **`(0.5, 0.5)`** — o
+meio-metro do `Collider::default()` — e o gate reprova. ⇒ *a única rota que o artista tem desde a poda
+passa a ser a única rota que o teste tem.* (O irmão `attaching_a_player_brings_the_body_and_the_collider`
+já matava a mutação, mas pela porta do **player**; a porta da **paleta** não tinha quem a defendesse.)
+⚠️ E o caminho até lá tem a sua própria lição: a 1.ª corrida usou o filtro
+`a_buoyant_pool_…`, que é **outro teste do mesmo ficheiro** e nunca toca `attach_by_name` — ele passou
+e quase arquivou a mutação como sobrevivente. *Confirme que o filtro nomeia o teste que contém a linha
+editada, não um vizinho com nome parecido.*
+
+**O que NÃO é buraco:** as rows escondidas têm todas a condição declarada com a razão ao lado —
+*Dynamic-only* (o solver não move um `Static`), *Sensor-only* para a zona (a ponte não lê efector de
+sólido nem de peça), *one-way só em sólido* (mutuamente exclusivo com a zona). O buraco real do módulo
+contra o referencial continua a ser **`obstacle actions: climbing`**, que é pré-existente e está
+nomeado na [auditoria 09](../../Physics/09_auditoria_engines.md) — nada a ver com esta poda.

@@ -65,8 +65,15 @@ fn a_water_zone_is_authorable_with_ui_gestures_alone() {
     // 1. O `+` → **Physics Body**. ⚠️ O collider nasce CASADO com o sprite (1.00 x 1.50 = metade de
     //    2 x 3), então o artista não digita dimensão nenhuma para ter a piscina do tamanho que
     //    desenhou — e agora isso é o *seed* que a paleta corre, não um braço do botão que morreu.
+    //
+    // ⚠️⚠️ **UMA linha, e a segunda não volta.** Até 2026-09-14 havia aqui um
+    // `attach(.., "ph2d::physics::Collider")` logo a seguir, e ele tornava este bloco **incapaz de
+    // reprovar**: a forma chegava pela mão do teste, então a asserção abaixo passava com a CASCATA
+    // apagada. Hoje a `Collision Shape` chega **só** pelo `requires` do `RigidBody`, que é a única
+    // rota que o artista tem desde que a paleta passou a oferecer uma porta só — e é por isso que
+    // este é o gate que a defende. (Mutação medida: pôr `requires: &[]` no `pr(..RigidBody..)` do
+    // `catalog/physics.rs` ⇒ RED aqui, a ler `(0.5, 0.5)` — o meio-metro do `Collider::default()`.)
     attach(&mut sim, pool, "ph2d::physics::RigidBody");
-    attach(&mut sim, pool, "ph2d::physics::Collider");
     let i = snapshot(&sim, pool);
     assert_eq!(
         (i.half_x, i.half_y),

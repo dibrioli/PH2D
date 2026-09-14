@@ -402,6 +402,10 @@ fn the_normals_after_a_stroke_are_what_a_full_rebuild_would_give() {
 #[path = "verb_erase_tests.rs"]
 mod verb_erase;
 
+/// **O ESFREGÃO DE DESLOCAMENTO** — ver [`verb_smear_tests`].
+#[path = "verb_smear_tests.rs"]
+mod verb_smear_tests;
+
 /// Os verbos, um a um — a LEI mora no arquivo irmão.
 #[path = "verb_tests.rs"]
 mod verbs;

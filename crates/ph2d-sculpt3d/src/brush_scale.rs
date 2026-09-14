@@ -132,6 +132,20 @@ impl Brush {
         self.verb.sem_lei_por_vertice()
     }
 
+    /// **ESTE PINCEL ESCOLHE UMA DIRECÇÃO DE ESFREGÃO?** — a porta única do
+    /// [`Brush::smear_mode`].
+    ///
+    /// ⚠️ **Ela compara com o VERBO, e isso é o oposto da irmã de cima** — que
+    /// pergunta a um predicado de propósito. Aqui não há propriedade a
+    /// perguntar: *«qual a direcção do esfregão»* é uma pergunta sobre **este**
+    /// pincel e mais nenhum, e um predicado com um membro só seria uma família
+    /// inventada para parecer derivada. ⛔ *Uma lei derivada de uma população
+    /// de um é uma lista escrita à mão com outro nome.*
+    #[must_use]
+    pub fn offers_smear_controls(&self) -> bool {
+        self.verb == crate::Verb::SmearMultires
+    }
+
     /// **E a TRAVA DE ROTAÇÃO?**
     ///
     /// ⭐⭐ **Só no modo de escala, e isso é LEI e não arrumação:** ela decide se

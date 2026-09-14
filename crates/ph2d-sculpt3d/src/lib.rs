@@ -62,6 +62,8 @@ mod falloff;
 /// **A LEI QUE UM ARRASTO DE FILTRO APLICA** — a uniao das duas familias.
 mod filter_law;
 mod grip;
+/// ⭐⭐ **PARA ONDE O ESFREGÃO EMPURRA** — ver [`smear_mode`].
+mod smear_mode;
 pub use boundary_controlos::BoundaryControlos;
 /// ⭐ **Os dois selectores do contorno, re-exportados.** O painel escolhe entre
 /// eles e não precisa de conhecer a crate da lei — a mesma forma com que ele já
@@ -123,6 +125,7 @@ pub use kelvinlet::KELVINLET_REACH;
 pub use preview::{NO_PREVIEW, preview_into, preview_verts};
 pub use ref_mode::{Field, FrontFace, KernelLaw, LateralPull, PlaneReach, RefMode};
 pub use ref_profiles::VerbProfile;
+pub use smear_mode::SmearMode;
 pub use spacing::{MIN_SPACING_FRACTION, Walk, min_spacing, walk};
 pub use stroke::ClothFilterStep;
 pub use stroke::cloth_repica;

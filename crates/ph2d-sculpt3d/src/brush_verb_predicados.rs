@@ -49,6 +49,22 @@ impl Verb {
             // o primeiro. A espec §4.1 escreve-o com todas as letras: *«sem
             // direcção privilegiada, sem normal e sem acumulador»*.
             && self != Self::EraseMultires
+            // ⛔ **E o ESFREGÃO, por uma razão de LEI que é IRMÃ da do apagador
+            // e não a mesma:** o alvo dele não é fixo ao longo do traço (o
+            // campo `D` é relido a cada dab), mas é **ancorado na superfície de
+            // referência** — `R[v] + D′[v]` —, e o `Accumulate` desta casa é o
+            // `from_live` do [`Grip::Stamp`], ou seja *de onde a curva de queda
+            // mede a distância*. Com um alvo ancorado na referência, mandar a
+            // queda medir da posição JÁ esfregada faria a pegada do pincel
+            // depender de quanto relevo ele já transportou — uma lei que
+            // referência nenhuma declara.
+            //
+            // ⚠️ **MEDIDO antes de escondido** (`o_acumular_do_esfregao_e_uma_lei_que_ninguem_declara`):
+            // ligá-lo muda a saída (não é um controlo morto), e é exactamente
+            // por isso que ele não pode ser oferecido sem uma lei atestada por
+            // trás. *Esconder um knob vivo e esconder um knob morto leem-se
+            // igual numa tabela — o que os separa é a medição escrita ao lado.*
+            && self != Self::SmearMultires
     }
 
     /// Este verbo escreve na MÁSCARA em vez da posição?
@@ -169,7 +185,10 @@ impl Verb {
     /// os nomes, e ficou VERDE sobre a omissão até alguém a procurar.
     #[must_use]
     pub fn uses_neighbours(self) -> bool {
-        matches!(self, Self::Smooth | Self::Sharpen | Self::SurfaceSmooth)
+        matches!(
+            self,
+            Self::Smooth | Self::Sharpen | Self::SurfaceSmooth | Self::SmearMultires
+        )
     }
 
     /// **ESTE VERBO PASSA PELO APLICADOR POR-VÉRTICE?**
@@ -297,7 +316,7 @@ impl Verb {
     /// desta fronteira é a **recusa** e não o resultado.
     #[must_use]
     pub fn precisa_de_referencia(self) -> bool {
-        matches!(self, Self::EraseMultires)
+        matches!(self, Self::EraseMultires | Self::SmearMultires)
     }
 
     /// **ESTE VERBO CORRE SEM O INTERRUPTOR DA TOPOLOGIA DINÂMICA?**

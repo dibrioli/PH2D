@@ -61,6 +61,14 @@ impl Verb {
             // ele **não** tem é acumulador, e quem o tira dessa família é o
             // [`Self::accumulates`], não um grip novo.
             Self::EraseMultires => Grip::Stamp,
+            // ⭐ **O ESFREGÃO é CARIMBO pela mesma razão do apagador**, e uma a
+            // mais: ele **precisa** do caminho do carimbo. O `d̂` do modo
+            // [`crate::SmearMode::Drag`] é o movimento do cursor entre dabs, e
+            // quem o mede é o passeio do espaçamento — um grip de âncora
+            // entregaria o deslocamento TOTAL desde o pen-down, e o pincel
+            // passaria a empurrar sempre na direcção do início do traço em vez
+            // de na direcção em que a mão vai agora.
+            Self::SmearMultires => Grip::Stamp,
             Self::Twist => Grip::Turn(Amount::Angle),
             Self::LocalScale => Grip::Turn(Amount::Fraction),
             // O CARIMBO: a faixa compõe sobre a lista de dabs como o Draw.

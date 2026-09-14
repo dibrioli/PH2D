@@ -13,7 +13,7 @@
 //! valor novo no `ALL` do motor sem id correspondente reprova, e um id a mais
 //! sem valor no motor também — o segundo é o chip que aponta para nada.
 
-use ph2d_sculpt3d::{ClothArea, ClothForceFalloff, ClothMode, Falloff};
+use ph2d_sculpt3d::{ClothArea, ClothForceFalloff, ClothMode, Falloff, SmearMode};
 
 /// **GATE — o painel oferece TODA curva de falloff que o motor tem.**
 #[test]
@@ -227,5 +227,21 @@ fn a_qualidade_do_pincel_aparece_com_o_pincel() {
         !(r.show)(&u),
         "a *Quality* do PINCEL apareceu com o Draw na mao -- ela e' do pincel, e quem o filtro \
          le^ e' a `cfilter_sweeps`"
+    );
+}
+
+/// **GATE — o painel oferece TODA direcção de esfregão que o motor tem.**
+///
+/// ⚠️ **Três é a conta da espec §5.3**, e não um número que alguém escolheu:
+/// arrastar · apertar · espalhar. Um quarto valor no `ALL` sem id nasce
+/// inalcançável, e um id a mais é um chip que aponta para nada.
+#[test]
+fn the_panel_offers_every_smear_mode_the_engine_has() {
+    assert_eq!(
+        crate::ids::SCULPT3D_SMEAR_MODE.len(),
+        SmearMode::ALL.len(),
+        "o painel tem {} chips de direccao e o motor tem {} modos",
+        crate::ids::SCULPT3D_SMEAR_MODE.len(),
+        SmearMode::ALL.len()
     );
 }

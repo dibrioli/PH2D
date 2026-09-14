@@ -201,3 +201,10 @@ mod densidade;
 /// afirmar — a recusa quando não há, e que ele não come a forma.
 #[path = "apagador_tests.rs"]
 mod apagador;
+
+/// **OS GATES DO ESFREGÃO DE DESLOCAMENTO** — ver [`esfregao`].
+///
+/// ⚠️ Mesmo corte do vizinho, e um passo a mais: o traço deles **ANDA**, porque
+/// um arnês de UM dab deixa o arrasto inerte por lei.
+#[path = "esfregao_tests.rs"]
+mod esfregao;

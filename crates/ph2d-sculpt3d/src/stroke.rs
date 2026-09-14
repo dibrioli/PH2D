@@ -215,6 +215,19 @@ pub struct SculptStroke {
     /// ⚠️ **`None` é *este dab não deposita*.** Ela é reescrita no topo de todo
     /// dab, então nunca sobrevive ao seguinte.
     scrape: Option<plane::ScrapePlanes>,
+    /// ⭐⭐ **O CAMPO DE DESLOCAMENTO DO ESFREGÃO, por SLOT** — ver
+    /// [`super::stroke_smear`].
+    ///
+    /// ⚠️ **Vazio para trinta dos trinta e um verbos**, e é o `fill_smear_d`
+    /// que o enche — a mesma preguiça do `hc_b` ao lado, e pela mesma razão: um
+    /// traço de `Draw` numa malha de 5 M vértices não paga 12 bytes por vértice
+    /// tocado por um verbo que ele não escolheu.
+    ///
+    /// ⚠️ **Indexado por SLOT e não por vértice, e isso É a lei da orla**
+    /// (espec §5.4): um vizinho que o traço nunca tocou não tem slot, logo lê
+    /// **zero** — que é exactamente o *«campo zerado no início do traço»* da
+    /// referência, e o que faz a borda da pincelada comer deslocamento.
+    smear_d: Vec<[f32; 3]>,
     /// **O `b` do HC, por SLOT** — ver [`super::stroke_hc`].
     ///
     /// ⚠️ **Vazio para vinte e um dos vinte e dois verbos**, e é o `fill_hc_disp`
@@ -588,6 +601,10 @@ mod growth;
 /// onde cada verbo aponta* (lá).
 #[path = "stroke_target.rs"]
 mod target;
+
+/// ⭐⭐ **O CAMPO DE DESLOCAMENTO DO ESFREGÃO** — ver [`stroke_smear`].
+#[path = "stroke_smear.rs"]
+mod stroke_smear;
 
 /// **O QUE O ANEL DIZ** — a média congelada e a normal que o relax remove.
 /// Filho pelo mesmo motivo do [`target`]: os dois leem o `pre`.

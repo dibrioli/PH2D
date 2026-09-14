@@ -38,6 +38,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // ⚠️ Os rótulos do alvo, sem tradução: *Deformation* e *Simulation
         // Area* são o que o painel dele diz (espec §8.4), e um artista que vem
         // de lá procura essas duas palavras.
+        "panel.sculpt3d.smear_mode" => "Deformation",
         "panel.sculpt3d.cloth_mode" => "Deformation",
         // ── O pincel de POSE ────────────────────────────────────────────────
         // ⚠️ **«Deformation» é a MESMA palavra do tecido, e está certo:** as

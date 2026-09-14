@@ -104,6 +104,12 @@ pub fn populate(store: &mut WidgetStore) {
         &crate::ids::SCULPT3D_CLOTH_MODE[..],
         &crate::ids::SCULPT3D_CLOTH_AREA[..],
         &crate::ids::SCULPT3D_CLOTH_FORCE_FALLOFF[..],
+        // ⚠️ **E a fileira do ESFREGÃO, pela mesma lição:** ela é pintada e
+        // hit-indexada com o verbo na mão, e sem esta linha o clique é
+        // **descartado em silêncio**. *Um controlo nunca pintado e um morto sob
+        // o dedo dão o MESMO report* — quem os separa é o gesto REAL do
+        // `every_smear_control_is_clickable_where_it_is_drawn`.
+        &crate::ids::SCULPT3D_SMEAR_MODE[..],
         &crate::ids::SCULPT3D_ALPHA[..],
         &crate::ids::SCULPT3D_ADD[..],
         &crate::ids::SCULPT3D_MASK_OP[..],

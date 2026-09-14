@@ -162,6 +162,13 @@ impl SculptStroke {
                 .reference
                 .get(v as usize)
                 .map_or(live, |&r| toward3(live, r, w * brush.strength)),
+            // ⭐⭐ **O ESFREGÃO — ele não move o vértice para onde a mão vai;
+            // move o CAMPO DE DESLOCAMENTO sobre a superfície de referência**
+            // (espec §5.2). A lei inteira vive no irmão
+            // [`super::stroke_smear`], porque ela lê o campo dos VIZINHOS e não
+            // cabe numa função pura por-vértice — a mesma razão do
+            // [`Verb::SurfaceSmooth`].
+            Verb::SmearMultires => self.smear_target(mesh, brush, dab, v, s, w),
             // `Brush.js:57-91` — `deform = intensidade · raio · 0,1`, e o peso
             // inteiro (curva × intensidade × máscara × alpha) chega no `w`.
             Verb::Draw => add(live, n_area, reach * w),
@@ -676,7 +683,7 @@ mod gripped;
 /// `accum`, e escrevê-la duas vezes seria a segunda resposta a *«o que é
 /// caminhar uma fracção até um alvo?»* — com a divergência a aparecer como o
 /// apagador a parar num sítio diferente do que o aplicador esperava.
-fn toward3(b: [f32; 3], t: [f32; 3], a: f32) -> [f32; 3] {
+pub(super) fn toward3(b: [f32; 3], t: [f32; 3], a: f32) -> [f32; 3] {
     [
         super::apply::toward(b[0], t[0], a),
         super::apply::toward(b[1], t[1], a),

@@ -17,7 +17,7 @@
 
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_i18n::tr;
-use ph2d_sculpt3d::{ClothArea, ClothForceFalloff, ClothMode, Verb};
+use ph2d_sculpt3d::{ClothArea, ClothForceFalloff, ClothMode, SmearMode, Verb};
 use ph2d_tokens::Spacing;
 
 use super::widgets::{command, labelled_seg, toggle};
@@ -138,6 +138,45 @@ pub(super) fn paint_pose_rows(
     } else {
         y
     }
+}
+
+/// **A FILEIRA DO PINCEL DE ESFREGAR DESLOCAMENTO** — *Deformation*, as três
+/// direcções da espec §5.3.
+///
+/// ⚠️⚠️ **Elas NÃO são três leis: são três direcções de UMA lei.** O que o chip
+/// escolhe é contra que vector o peso de cada vizinho é medido; a média
+/// ponderada, a normalização com peso próprio `1` e o tecto são os mesmos nos
+/// três. *Ler isto como «três modos» faz parecer que falta partilhar código
+/// entre eles, e não falta — já é um.*
+///
+/// ⛔ **Sem ela o artista alcança UM dos três gestos**, que é o defeito que o
+/// pincel de tecido pagou por escrito: *um motor vivo sem botão nenhum.*
+pub(super) fn paint_smear_rows(
+    ctx: &mut PaintCtx,
+    snap: &Sculpt3dSnapshot,
+    x: f32,
+    w: f32,
+    y: f32,
+) -> f32 {
+    if !snap.ui.brush.offers_smear_controls() {
+        return y;
+    }
+    let selected = SmearMode::ALL
+        .iter()
+        .position(|&m| m == snap.ui.brush.smear_mode)
+        .unwrap_or(0);
+    let labels: Vec<&str> = SmearMode::ALL.iter().map(|m| m.label()).collect();
+    labelled_seg(
+        ctx,
+        tr("panel.sculpt3d.smear_mode"),
+        crate::ids::SCULPT3D_SEC_BRUSH,
+        &crate::ids::SCULPT3D_SMEAR_MODE,
+        &labels,
+        selected,
+        x,
+        w,
+        y,
+    ) + Spacing::Sm.px()
 }
 
 /// **AS DUAS FILEIRAS DO PINCEL DE TECIDO** — *Deformation* e *Simulation Area*,

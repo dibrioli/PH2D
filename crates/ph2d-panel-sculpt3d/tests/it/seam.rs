@@ -803,6 +803,68 @@ fn every_cloth_control_is_clickable_where_it_is_drawn() {
     cada_botao_responde_no_proprio_centro(&mut host, &painted, &by_id);
 }
 
+/// ⭐⭐ **GATE — com o ESFREGÃO na mão, a fileira dele é PINTADA e responde ao
+/// ponteiro.**
+///
+/// ⛔⛔ **As duas metades são defeitos DIFERENTES que dão o MESMO report** (a
+/// lei que a `line/Vector` pagou duas vezes): uma fileira nunca pintada e uma
+/// fileira **morta sob o dedo** leem-se igual para quem usa. O `Click`
+/// sintético só apanha a segunda porque o gesto é REAL — carregar no centro do
+/// rect que o painel registou.
+///
+/// ⚠️ **A fixtura tem de conter o fenómeno:** os gates irmãos armam o `Crease` e
+/// o `Cloth`, e a fileira deste pincel só existe com **ele** na mão.
+#[test]
+fn every_smear_control_is_clickable_where_it_is_drawn() {
+    let mut ui = Sculpt3dUi::default();
+    ph2d_panel_sculpt3d::state::switch_verb(&mut ui, Verb::SmearMultires);
+    ui.ui_level = UiLevel::Pro;
+    let (mut host, mut state) = arrange(ui);
+    let painted = host.paint::<Sculpt3dPanel>(&mut state, VIEWPORT);
+
+    let want: Vec<(String, ph2d_a11y::NodeId)> = ph2d_sculpt3d::SmearMode::ALL
+        .into_iter()
+        .enumerate()
+        .map(|(i, m)| {
+            (
+                format!("smear mode {}", m.label()),
+                ids::SCULPT3D_SMEAR_MODE[i],
+            )
+        })
+        .collect();
+    assert_eq!(
+        want.len(),
+        3,
+        "a espec §5.3 conta TRÊS direcções — a fixtura deixou de conter o fenómeno"
+    );
+    for (name, id) in &want {
+        assert!(
+            painted.iter().any(|(pid, _)| pid == id),
+            "`{name}` ({id:?}) devia estar pintado com o esfregão na mão"
+        );
+    }
+    let by_id: std::collections::BTreeMap<_, _> =
+        want.iter().map(|(n, id)| (*id, n.clone())).collect();
+    for (name, id) in &want {
+        let rect = painted
+            .iter()
+            .rev()
+            .find(|(pid, _)| pid == id)
+            .map(|(_, r)| *r)
+            .expect("pintado logo acima");
+        let (cx, cy) = (rect.x + rect.w * 0.5, rect.y + rect.h * 0.5);
+        let events = host.click_at(cx, cy);
+        assert!(
+            events
+                .iter()
+                .any(|e| matches!(e, WidgetEvent::Click(c) if *c == *id)),
+            "clicar `{name}` no centro pintado não produziu Click — ele está no \
+             índice de hit e morto sob o dedo"
+        );
+    }
+    let _ = by_id;
+}
+
 /// ⛔⛔ **O INTERRUPTOR `Accumulate` NÃO É OFERECIDO A QUEM NÃO O LÊ.**
 ///
 /// ⚠️⚠️ **Este gate nasceu de uma mutação SOBREVIVENTE, e o que ela expôs é
@@ -834,6 +896,19 @@ fn o_acumular_nao_e_oferecido_a_quem_nao_o_le() {
         !com(Verb::EraseMultires),
         "o `Accumulate` foi pintado com o apagador em mãos — o alvo dele é \
          ABSOLUTO (a superfície de referência) e acumular não nomeia nada"
+    );
+    // ⛔⛔ **E o ESFREGÃO, por uma razão IRMÃ e não a mesma** (2026-09-14): o
+    // alvo dele muda a cada dab (o campo `D` é relido), mas é ancorado na
+    // superfície de referência — e o `Accumulate` desta casa é o `from_live`,
+    // *de onde a curva de queda mede a distância*. ⚠️ **Ele está VIVO**
+    // (medido em `o_acumular_do_esfregao_e_uma_lei_que_ninguem_declara`), e é
+    // por isso que ele não pode ser oferecido: a lei que ele instalaria não
+    // está em espec nenhuma. *Um knob vivo escondido e um knob morto escondido
+    // leem-se igual — o que os separa é a medição escrita ao lado.*
+    assert!(
+        !com(Verb::SmearMultires),
+        "o `Accumulate` foi pintado com o esfregão em mãos — a lei que ele \
+         instalaria não é declarada por referência nenhuma"
     );
     // ⭐ **O controlo:** um verbo que o LÊ continua a vê-lo.
     assert!(

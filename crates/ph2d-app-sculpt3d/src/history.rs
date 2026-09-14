@@ -645,7 +645,7 @@ impl Sculpt3dScene {
             Some(r) => self.stroke.reference = r,
             None => {
                 self.stroke.reference.clear();
-                // ⛔ **A RECUSA EM VOZ ALTA é o produto** (espec §4.3): sem pilha
+                // ⛔ **A RECUSA EM VOZ ALTA é o produto** (espec §4.3 e §5.6): sem pilha
                 // o dado de entrada não existe, e *o irmão-filtro do alvo
                 // estoirou publicamente por não verificar isto*. Com a
                 // referência vazia a lei devolve o vivo — não move nada —, e
@@ -653,7 +653,7 @@ impl Sculpt3dScene {
                 // partido.
                 eprintln!(
                     "[sculpt3d] {} precisa de uma pilha de multiresolucao -- \
-                     sem um nivel ABAIXO nao ha' deslocamento a apagar (K subdivide, \
+                     sem um nivel ABAIXO nao ha' deslocamento nenhum (K subdivide, \
                      ',' desce)",
                     self.brush.verb.label()
                 );

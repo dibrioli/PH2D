@@ -318,7 +318,14 @@ fn the_families_that_the_ui_asks_about_agree_with_the_verb_list() {
         .filter(|v| v.uses_neighbours())
         .map(Verb::label)
         .collect();
-    assert_eq!(ring, ["Smooth", "Sharpen", "Surface Smooth"]);
+    assert_eq!(
+        ring,
+        // ⭐ **O ESFREGÃO entrou nesta família em 2026-09-14**, e não é um
+        // alisador: o que o põe aqui é a MÉDIA PONDERADA do campo de
+        // deslocamento sobre o anel (espec §5.2) — *«ler o anel»* é a pergunta
+        // desta porta, não *«alisar»*.
+        ["Smooth", "Sharpen", "Surface Smooth", "Smear Displacement"]
+    );
     let mask: Vec<_> = Verb::ALL
         .into_iter()
         .filter(|v| v.paints_mask())

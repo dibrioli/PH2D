@@ -904,6 +904,21 @@ fn every_verb_is_reachable_from_the_keyboard() {
         //
         // ⇒ a fila dos pretendentes ao `L` continua em **oito**.
         "EraseMultires",
+        // ⚠️⚠️ **O ESFREGÃO DE DESLOCAMENTO, e ele está fora da fila pela MESMA
+        // razão do apagador — a que a densidade PERDEU.**
+        //
+        // ⛔ Ele é **inerte na configuração de fábrica**: precisa de uma pilha
+        // de multiresolução, e uma peça acabada de nascer tem um nível só. Uma
+        // tecla nua para ele responderia com a linha de recusa em vez de um
+        // gesto.
+        //
+        // ⭐ E ele é da mesma família dos outros dois: **manutenção da pele**.
+        // A vizinhança dele no teclado é o `K` (subdividir) e o `,`/`.` (descer
+        // e subir de nível), não a fileira de pincéis — *e o par natural dele é
+        // o apagador, que já ali está*.
+        //
+        // ⇒ a fila dos pretendentes ao `L` continua em **oito**.
+        "SmearMultires",
     ];
     let keys = function_body(&sculpt_src(), "key");
     // ⚠️ **O gate COLETA em vez de abortar no primeiro, e isso não é estilo.**

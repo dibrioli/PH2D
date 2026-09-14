@@ -45,7 +45,7 @@ use super::fixtures::{
 /// enumeração que aqui viveu apodreceu no dia previsível, e a cena `=14` abriu com o canvas em
 /// branco porque ninguém lhe acrescentou o `"14"`. *O censo mede os predicados; ele não pede a
 /// ninguém que se lembre de uma lista.*
-pub const CENAS: u32 = 43;
+pub const CENAS: u32 = 44;
 
 /// **A env do roteador, lida DENTRO da crate.**
 ///
@@ -462,6 +462,11 @@ pub(crate) mod boundary;
 /// onde o artista aprende de que família este pincel é.
 #[path = "scenes_erase.rs"]
 pub(crate) mod erase;
+/// **O ESFREGÃO DE DESLOCAMENTO** (`=44`) — ver [`smear`]. ⚠️ Irmã da [`erase`]
+/// e pela mesma razão: ela abre SEM pilha de propósito, e o 1.º passo do
+/// roteiro é a **recusa**.
+#[path = "scenes_smear.rs"]
+pub(crate) mod smear;
 /// **OS DOIS GESTOS TANGENCIAIS** (`=40`) — ver [`tangenciais`]. ⚠️ O nome não é
 /// `thumb` porque esse já é do *Clay Thumb*, que é outra ferramenta: aqui vivem
 /// o polegar que espalma e o empurrão que varre.

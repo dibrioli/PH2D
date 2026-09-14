@@ -123,7 +123,11 @@ const fn profile_s(verb: Verb) -> Option<VerbProfile> {
         // números dele (a cadeia de peso, a força ao quadrado, o tecto
         // `min(f, 1)`) vêm da OUTRA referência, e estão medidos na espec §1 e
         // §4.1 — não há nada a herdar aqui.
-        Verb::EraseMultires => return None,
+        // ⛔ **E o ESFREGÃO DE DESLOCAMENTO pela mesma razão, letra por letra:**
+        // o SculptGL não tem multiresolução a esfregar. Os números dele (a
+        // cadeia de peso, a força ao quadrado, o tecto `clamp(f, 0, 1)`) vêm da
+        // OUTRA referência, e estão medidos na espec §1 e §5.2.
+        Verb::EraseMultires | Verb::SmearMultires => return None,
         // `Brush.js:11-16` — `_radius 50 · _intensity 0.5 · _clay true ·
         // _accumulate true`. A tool `Brush` do original é a nossa **Draw E
         // Clay** (o `_clay` é um checkbox dela, ligado de fábrica).
@@ -370,7 +374,12 @@ const fn profile_b(verb: Verb) -> Option<VerbProfile> {
         verb,
         // ⛔ **E o APAGADOR fica de fora com os quatro:** ele não é um pincel do
         // `s`, logo não há um par de perfis entre os quais escolher.
-        Verb::Cloth | Verb::Pose | Verb::Boundary | Verb::Density | Verb::EraseMultires
+        Verb::Cloth
+            | Verb::Pose
+            | Verb::Boundary
+            | Verb::Density
+            | Verb::EraseMultires
+            | Verb::SmearMultires
     ) {
         return None;
     }

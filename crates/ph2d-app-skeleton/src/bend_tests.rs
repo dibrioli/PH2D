@@ -230,3 +230,79 @@ fn a_mixed_chain_survives_a_drag_out_of_reach() {
         "depois de ir e voltar do fora-de-alcance, a corrente perdeu os lados que o artista desenhou"
     );
 }
+
+/// ⭐⭐⭐ **A CENA DE SMOKE DISTINGUE OS TRÊS MODOS DE LADO** — sem isto ela ensinaria que eles não
+/// existem.
+///
+/// ⛔⛔ **É o modo de falha que o `CLAUDE.md` §5.0 nomeia, e ele estava a um passo:** com **uma** só
+/// junta dobrada, `Ccw`, `Cw` e `Mixed` entregam a **mesma** pose — o dono escolheria os três,
+/// veria a mesma coisa, e concluiria que o `IK Bend` não faz nada. O braço abre em **S**
+/// (`ARM_SHOULDER_BEND` oposto ao `ARM_ELBOW_BEND`) e o `IK Chain` sobe a `3` para as duas juntas
+/// ficarem sob a âncora.
+///
+/// ⚠️ Ele mede a MESMA geometria que a cena monta (a tabela `ARM_*`), nunca uma cópia dos números.
+#[test]
+fn the_smoke_scene_tells_the_three_bend_modes_apart() {
+    use ph2d_skeleton_demo::{ARM_A, ARM_B, ARM_BONES, ARM_ELBOW_BEND, ARM_SHOULDER_BEND};
+    let montar = || {
+        let mut sim = SimWorld::default();
+        let raiz = ph2d_skeleton_demo::cadeia(&mut sim, ARM_A, ARM_B, ARM_BONES)
+            .expect("a cadeia do braço monta-se");
+        let meio = sim
+            .world()
+            .get::<ph2d_ecs::Children>(raiz)
+            .and_then(|c| c.iter().next().copied())
+            .expect("o braço tem três ossos");
+        let mut ponta = meio;
+        while let Some(f) = sim.world().get::<ph2d_ecs::Children>(ponta).and_then(|c| {
+            c.iter()
+                .find(|c| sim.world().get::<Bone>(**c).is_some())
+                .copied()
+        }) {
+            ponta = f;
+        }
+        for (e, r) in [(meio, ARM_SHOULDER_BEND), (ponta, ARM_ELBOW_BEND)] {
+            if let Some(mut t) = sim.world_mut().get_mut::<Transform>(e) {
+                t.rotation = r;
+            }
+        }
+        ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
+        (sim, ponta)
+    };
+    let (sim0, _) = montar();
+    let autorados = lados(&sim0);
+    assert!(
+        autorados.iter().any(|&s| s > 0.0) && autorados.iter().any(|&s| s < 0.0),
+        "a cena não põe o braço em S: as juntas são {autorados:?}, e os três modos dariam a mesma \
+         pose. Ponha `ARM_SHOULDER_BEND` com o sinal oposto ao `ARM_ELBOW_BEND`."
+    );
+    let mut poses = Vec::new();
+    for modo in [
+        ph2d_skeleton::BendSide::Ccw,
+        ph2d_skeleton::BendSide::Cw,
+        ph2d_skeleton::BendSide::Mixed,
+    ] {
+        let (mut sim, ponta) = montar();
+        add(&mut sim, ponta).expect("a âncora nasce");
+        if let Some(mut g) = sim.world_mut().get_mut::<IkGoal>(ponta) {
+            g.bend = modo;
+            g.chain = 3;
+        }
+        let mut pv = PreviewDrive::default();
+        assert!(drag_anchor(&mut sim, ponta, [-4.0, 5.0]), "a ancora existe");
+        solve(&mut sim, &mut pv);
+        poses.push((modo, lados(&sim)));
+    }
+    let misto = &poses[2].1;
+    assert_eq!(
+        *misto, autorados,
+        "o MISTO não guardou os lados que a cena desenhou"
+    );
+    for (modo, lados_do_modo) in &poses[..2] {
+        assert_ne!(
+            lados_do_modo, misto,
+            "o {modo:?} entrega os MESMOS lados que o MISTO nesta cena: o dono escolheria os dois \
+             e veria a mesma pose"
+        );
+    }
+}

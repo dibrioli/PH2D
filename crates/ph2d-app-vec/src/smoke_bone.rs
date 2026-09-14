@@ -31,9 +31,9 @@ use ph2d_vec_scene::cook_tinted as shape;
 // (auditoria de arquitectura A1, 2026-09-12): a cena monta-as e os gates da família do esqueleto
 // medem-nas — dois consumidores, de propósito, sem uma família depender da outra.
 use ph2d_skeleton_demo::{
-    ARM_A, ARM_B, ARM_BONES, ARM_ELBOW_BEND, DEMO_ACTION, DEMO_RISE, DEMO_SECONDS, TENTACLE_BONES,
-    TENTACLE_LIMIT_HALF, TENTACLE_LIMITED_BONE, cadeia, ponta_da_cadeia, seed_arm_swing,
-    seed_demo_action,
+    ARM_A, ARM_B, ARM_BONES, ARM_ELBOW_BEND, ARM_SHOULDER_BEND, DEMO_ACTION, DEMO_RISE,
+    DEMO_SECONDS, TENTACLE_BONES, TENTACLE_LIMIT_HALF, TENTACLE_LIMITED_BONE, cadeia,
+    ponta_da_cadeia, seed_arm_swing, seed_demo_action,
 };
 
 /// **O roteador desta cena** — lê a `PH2D_VEC_BONE_SMOKE`.
@@ -320,10 +320,26 @@ pub fn bind(
     // ⚠️ A cerca do bloco de baixo continua inteira: o que não pode abrir deslocado é a
     // ÂNCORA (ela nasce coincidente com a ponta, e o braço não se mexe quando ela aparece).
     // Um cotovelo dobrado é a pose que o artista autorou — é o que um braço tem.
+    //
+    // ⭐⭐⭐ **E O OMBRO DOBRA PARA O LADO CONTRÁRIO — o braço abre em S**, que é o que dá ao modo
+    // **MISTO** um sujeito (2026-09-14). Com uma só junta dobrada os três modos de lado entregam a
+    // MESMA pose, e a cena ensinaria que eles não existem.
     if let Some((_, Some(raiz))) = pecas.first().copied() {
         let ponta = ponta_da_cadeia(sim, raiz);
         if let Some(mut t) = sim.world_mut().get_mut::<ph2d_ecs::Transform>(ponta) {
             t.rotation = ARM_ELBOW_BEND;
+        }
+        // O osso do MEIO: o filho da raiz. ⚠️ A cerca de `ARM_BONES >= 3` garante que ele existe e
+        // que não é a ponta.
+        let meio = sim
+            .world()
+            .get::<ph2d_ecs::Children>(raiz)
+            .and_then(|f| f.iter().next().copied());
+        if let Some(meio) = meio
+            && meio != ponta
+            && let Some(mut t) = sim.world_mut().get_mut::<ph2d_ecs::Transform>(meio)
+        {
+            t.rotation = ARM_SHOULDER_BEND;
         }
     }
     let ancorado = pecas
@@ -357,8 +373,48 @@ pub fn bind(
              animacao inteira."
         );
     }
+    // ⭐⭐ **Os lados do braço são DERIVADOS da cena montada, nunca prometidos em prosa.** A cerca
+    // das constantes é em tempo de compilação e não vê a cena ESQUECER-SE de as aplicar: ali o braço
+    // abriria com uma curva só, os três modos de `IK Bend` dariam a MESMA pose, e a cena ensinaria
+    // que o controlo não faz nada (`CLAUDE.md` §5.0).
+    let s_braco: Vec<f64> = pecas
+        .first()
+        .and_then(|(_, raiz)| *raiz)
+        .map(|raiz| {
+            let segs = ph2d_skeleton_live::skin_live::bone_segments(sim);
+            let mut e = Some(raiz);
+            let mut dirs: Vec<[f64; 2]> = Vec::new();
+            while let Some(b) = e {
+                if let Some(&(_, a, z)) = segs.iter().find(|(x, _, _)| *x == b.to_bits()) {
+                    dirs.push([z[0] - a[0], z[1] - a[1]]);
+                }
+                e = sim
+                    .world()
+                    .get::<ph2d_ecs::Children>(b)
+                    .and_then(|c| c.iter().next().copied());
+            }
+            (1..dirs.len())
+                .map(|i| {
+                    let (u, v) = (dirs[i - 1], dirs[i]);
+                    (u[0] * v[1] - u[1] * v[0]).signum()
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+    let em_s = s_braco.iter().any(|&x| x > 0.0) && s_braco.iter().any(|&x| x < 0.0);
     eprintln!(
-        "[vec-bone-smoke] {presas} forma(s) presa(s): o BRACO (3 ossos, COTOVELO DOBRADO, com \
+        "[vec-bone-smoke] o BRACO abre em S (juntas {s_braco:?}): ponha `IK Chain` em 3 e \
+         experimente `IK Bend` -- CCW e CW alinham as duas juntas para o mesmo lado, MIXED deixa \
+         cada uma no lado em que esta'."
+    );
+    if !em_s {
+        eprintln!(
+            "[vec-bone-smoke] ATENCAO: o braco NAO abriu em S -- os tres modos de `IK Bend` vao \
+             dar a MESMA pose. Nao smoke o modo MIXED com esta cena."
+        );
+    }
+    eprintln!(
+        "[vec-bone-smoke] {presas} forma(s) presa(s): o BRACO (3 ossos, em S, com \
          ANCORA DE IK: {ancorado}, lado capturado: {lado:?}) e o TENTACULO (6, ja' CURVADO \
          pela cena -- e' o motor a trabalhar sem gesto nenhum). A FOLHA roxa tem esqueleto e \
          NAO esta' presa -- seleccione-a e carregue em `Bind to Skeleton`. Para POSAR, fique \

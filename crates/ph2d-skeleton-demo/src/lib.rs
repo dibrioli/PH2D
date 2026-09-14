@@ -30,6 +30,32 @@ pub const ARM_BONES: usize = 3;
 /// para esse zero ser vermelho em vez de invisível.
 pub const ARM_ELBOW_BEND: f32 = 0.45; // LITERAL-PX-OK: ângulo do documento (rad)
 
+/// ⭐⭐⭐ **A DOBRA DO OMBRO, PARA O LADO CONTRÁRIO** — o que dá ao modo **MISTO** um sujeito na
+/// cena (ordem do dono, 2026-09-14: *«ossos com ângulos para os dois lados»*).
+///
+/// ⛔⛔ **Sem ela a cena não sabe exprimir o que o modo faz:** com uma só junta dobrada, `Mixed`,
+/// `Ccw` e `Cw` entregam a MESMA pose, e o dono escolheria os três sem ver diferença nenhuma —
+/// *uma cena que não distingue os modos ensina que eles não existem*. Com o braço em **S**, subir
+/// o `IK Chain` para `3` põe as duas juntas sob a âncora: o `Ccw` e o `Cw` alinham-nas, o `Mixed`
+/// deixa cada uma no lado em que está.
+///
+/// ⚠️ O sinal é o que importa, não o valor: ela tem de ser **oposta** à [`ARM_ELBOW_BEND`], e a
+/// cerca abaixo faz disso um erro de compilação.
+pub const ARM_SHOULDER_BEND: f32 = -0.45; // LITERAL-PX-OK: ângulo do documento (rad)
+
+/// ⭐ A cerca das duas dobras do braço — em TEMPO DE COMPILAÇÃO, ao lado do que guarda.
+///
+/// ⚠️ Zero em qualquer uma delas apaga uma wave **em silêncio**: sem a do cotovelo o `add` captura
+/// uma corrente recta (e o joelho volta a inverter); com as duas do MESMO lado o braço deixa de ser
+/// um S e o modo misto fica indistinguível do `Ccw`.
+const _: () = {
+    assert!(ARM_ELBOW_BEND != 0.0);
+    assert!(ARM_SHOULDER_BEND != 0.0);
+    assert!((ARM_ELBOW_BEND > 0.0) != (ARM_SHOULDER_BEND > 0.0));
+    // O braço precisa de TRÊS ossos para ter duas juntas interiores.
+    assert!(ARM_BONES >= 3);
+};
+
 /// Qual osso do tentáculo nasce com limite de ângulo — o 2.º, que fica bem no meio da parte visível
 /// da cadeia. ⚠️ O vizinho fica SEM limite de propósito: é o contraste que ensina.
 pub const TENTACLE_LIMITED_BONE: usize = 2;

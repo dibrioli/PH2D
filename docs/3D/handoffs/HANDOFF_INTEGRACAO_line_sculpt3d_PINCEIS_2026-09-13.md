@@ -157,8 +157,8 @@ o mesmo defeito, mas é produto vivo e a fixture que o decide existe: está em �
 |---|---|---|---|
 | `blender-pull` (polegar · empurrão · 4 opções) | `SPEC_pull_brushes.md` | ✅ **atestada** (1.ª passagem) | ⭐ **sim** (esta jornada) |
 | `blender-unblocked` (Density · 2 de multires · projecção) | `SPEC_unblocked_brushes.md` | ✅ **atestada** (3.ª passagem) | ⬜ não |
-| `blender-pose` | `SPEC_pose_brush.md` | ⏳ 3 passagens, **1 substancial aberto** | ⬜ não |
-| `blender-boundary` | `SPEC_boundary_brush.md` | ⏳ 3.ª passagem a correr | ⬜ não |
+| `blender-boundary` | `SPEC_boundary_brush.md` | ✅ **atestada** (3.ª passagem) | ⬜ não |
+| `blender-pose` | `SPEC_pose_brush.md` | ⏳ 4.ª passagem a correr (as 3 anteriores acharam 6, 5 e 7) | ⬜ não |
 
 ⛔⛔ **O ACHADO DE MÉTODO DESTA JORNADA, e ele vale para toda obra futura da
 casa: o sweep da parede fechou VERDE sobre TRÊS especs que traduziam prosa do
@@ -178,9 +178,18 @@ idiossincráticas ao ponto de as varrer, e depois escreveu-as traduzidas.
    obra e `26 %` das entradas noutra ⇒ cada entrada de prosa PT ganhou a forma
    **sem acentos**.
 
-⚠️ **Nomeada e NÃO curada:** o sweep é sensível à **caixa** (60 de 227 entradas
-numa das vassouras têm maiúscula). Não foi tratada porque uma tradução muda
-acentos e não muda caixa — é a próxima, se alguém a quiser.
+⚠️ **Nomeada e NÃO curada, agora com o número:** o sweep é sensível à **caixa** —
+`56` das `229` entradas de uma vassoura têm maiúscula e, com a inicial em
+minúscula, **`53` evadem** (o instrumento acusa `3` de `56`). ⛔ E o controlo
+positivo **não expõe** essa cegueira, o que a torna a espécie mais cara: um
+instrumento que passa o próprio controlo e falha a classe. A decisão é de quem
+possui o script partilhado.
+
+⛔⛔ **E a medição que fecha o assunto, feita pelo R-pré do contorno:** o sweep
+sobre a **versão 2** da espec — a que a 2.ª passagem REPROVOU com quatro achados —
+fecha **VERDE**. *O instrumento nunca poderia ter apanhado nenhum deles.* ⇒ o
+sweep mede **uma** classe (a colagem literal); a parede tem outras três, e quem
+julga é o **R**.
 
 ⭐ **E a lição que fica escrita nos quatro ledgers:** *sweep verde é necessário e
 nunca suficiente* — o instrumento apanha a colagem, quem apanha a tradução é um

@@ -16,9 +16,13 @@ Filtragem §4.3: executada em 2026-09-13 · Sweep: ✅ VERDE em 2026-09-13 sobre
 Auditoria §4.2 (R-pré): ⛔ REPROVADA **duas** vezes em 2026-09-13 — 1.ª passagem 4 achados (versão 1)
   → versão 2 → 2.ª passagem, subagente novo: ⛔ **REPROVADA, 4 achados**, **um BLOQUEANTE** (§4.1:
   a tabela do censo de bordas era o conjunto de testes do ALVO) → **versão 3, este documento**.
-  ⏳ **AINDA NÃO ATESTADA. ⛔ A janela NÃO implementa a partir desta versão** — falta um R-pré NOVO.
-  As 4 curas da 1.ª passagem e os 4 achados da 2.ª estão FEITOS; a instrução funcional de cada um, a
-  medição do instrumento e a do histórico estão no LEDGER_blender-boundary.md.
+  ✅ **auditada contra §4.2 por R-pré em 2026-09-13** — 3.ª passagem, subagente novo, os dois lados
+  lidos por shell: **VERDE, ATESTADA**. ⇒ a janela PODE implementar a partir desta versão.
+  As 4 curas da 1.ª passagem e as 4 da 2.ª foram **conferidas uma a uma** (a tabela do §4.1
+  RE-CONTADA das nove fixtures de repouso, coluna a coluna) e o sweep re-corrido com controlo
+  positivo. Duas notas que **NÃO bloqueiam** — uma do documento, uma do instrumento — estão no
+  LEDGER_blender-boundary.md §«Auditoria R-pré — 3.ª passagem»; a instrução funcional de cada
+  achado das passagens anteriores, a medição do instrumento e a do histórico estão no mesmo ledger.
 Mapa de leitura da literatura: nenhum paper. As fontes livres usadas são (a) o manual público do alvo,
   (b) as mensagens de commit públicas e (c) o rastreador de defeitos público — todas re-ditas em palavras
   nossas, com o endereço ao lado; e (d) a SAÍDA do binário sobre malhas NOSSAS (§19).

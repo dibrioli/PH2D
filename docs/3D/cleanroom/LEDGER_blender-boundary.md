@@ -395,6 +395,69 @@ commits do INC-4**: um commit que **remove** texto do alvo carrega-o no patch po
 2026-09-13): o squash acima **não foi feito** — ele fica como recomendação medida, para o handoff
 da linha. A emenda da versão 3 acrescenta **um** commit docs-only ao contador desta linha.
 
+### Auditoria R-pré — 3.ª passagem (2026-09-13) — ✅ VERDE, **ATESTADA** (versão 3)
+
+**Quem:** subagente R-pré **novo** (contexto independente do E e das duas passagens anteriores),
+despachado pela janela I `9f820704-…`. **Os dois lados lidos por shell** (`sed`/`grep`/`python3`);
+⛔ nada escrito em `crates/`, nada de `project-memory/`, nada de histórico reescrito.
+
+**Veredito:** a espec **passa** o §4.2. O atestado está no cabeçalho dela, numa linha greppável
+(*«auditada contra §4.2 por R-pré em 2026-09-13»*). **⛔ Não refazer nada do que está abaixo.**
+
+#### O que eu conferi (com o número ao lado)
+
+| # | o quê | resultado |
+|---|---|---|
+| 1 | **A tabela do §4.1, RE-CONTADA** (achado bloqueante da 2.ª passagem) — as faces de cada um dos `9` `*.repouso.txt.gz` lidas e as arestas de borda contadas do zero por mim | ⭐ **as 6 colunas batem nas 9 linhas** (`738/1 504/0/0` · `1 089/2 112/128/128` ×4 · `25/40/16/16` · `1 089/3 136/128/128` · `800/1 568/64/64` · `385/768/32/32` · `66/97/66/66`); a fórmula do perímetro **produz** cada número a partir do `L × C` nomeado; e a coluna *«o corpus confirma»* bate com o `movidos` do cabeçalho das fixtures (`165` · `15` · `128` · `96` · os dois `0`) |
+| 2 | **A linha apagada** (a que a 2.ª passagem acusou) | confirmada contra o alvo: era o conjunto de testes dele, `3` casos na ordem dele, com os valores esperados dele — e o rótulo de facto não produzia os números. **Não há resíduo dela na versão 3** |
+| 3 | **As 4 curas da 1.ª passagem**, uma a uma, contra o fonte | ✅ as duas justificações das recusas (§5.2) são hoje argumento de geometria **diferente** do que o alvo guarda; ✅ caíram as três citações do que o alvo diz de si mesmo; ✅ o layout virou classe de custo; ✅ a linha do sobrevoo está re-dita |
+| 4 | **As 4 curas da 2.ª passagem** | ✅ §4.5 e §17 já só dizem o que **nós** exigimos (`N`), com a frase que recusa afirmar o que o alvo guarda; ✅ os `8` `D` levam endereço; ✅ as duas referências cruzadas apontam ao sítio certo |
+| 5 | **TODO comentário dos três ficheiros do alvo extraído e comparado, um a um, com a espec** | ⭐ **zero prosa de comentário atravessa**. As quatro traduções da 1.ª passagem não têm resíduo; nenhum comentário novo entrou |
+| 6 | **Os `8` hashes de commit citados**, contra o corpus público capturado em `notes/` | ⭐ **os 8 existem e o assunto de cada um bate com a afirmação da espec** — incluindo o do §4.4, cujo assunto público **é** a própria afirmação (⇒ a frase *«os autores curaram-no exactamente assim»* é `D` legítimo, **não** leitura de código: eu levantei-a como suspeita e ela caiu com o assunto do commit na mão) |
+| 7 | **Pseudo-código espelhado** — comparei a escolha da âncora, as duas recusas, o modo de alisar e a função de queda no contorno com o que o alvo faz | ⭐ nenhum espelha: sem intermediários nomeados, sem a ordem de escrita dele, e a espec reparte as fases de outra maneira. É o algoritmo (§4.1.11), que **pode** ir a qualquer profundidade |
+| 8 | **Nomes** | `grep` de todo identificador em crase: só nomes das **nossas** fixtures (em português) e os `4` nomes públicos declarados no §0. ⭐ As curvas de queda (`SMOOTH`/`SHARP`/…) já são **vocabulário nosso** desde antes desta obra — `ph2d-sculpt3d/src/falloff.rs` —, logo não são «nomes conservados» por conservar |
+| 9 | **~25 outros números** da espec (§8.3, §8.4, §9.3, §10.1, §10.5, §12.3, §12.4, §13.1, §13.2, §13.3, §14.2) contra o cabeçalho das fixtures | todos batem |
+| 10 | **A régua das fixtures** (`confere_cabecalhos.py --check 59`) | `exit 0`, `68` fixtures, `59` excepções |
+
+⭐ **O conjunto de sinais do laço invertido (§8.3) foi RE-EXAMINADO e a ordem da 2.ª passagem
+(«⛔ não o corrijas») CONFIRMA-SE**: a tabela medida cobre um período inteiro (`0..4`), logo o
+resto do conjunto sai por periodicidade e é **derivado**, não copiado. ⚠️ Eu levantei-o como
+achado antes de ler o ledger — *e o ledger já tinha a resposta, com o mecanismo*. Fica aqui a
+prova de que a nota serviu: **ela impediu uma correcção que teria desfeito trabalho já pago.**
+
+#### As DUAS notas que **não bloqueiam** (nenhuma é §4.2; nenhuma expõe o alvo)
+
+1. **O documento usa um QUINTO selo de proveniência que a legenda do §0 não declara.** O §0 declara
+   `F`/`M`/`D`/`N`; o corpo usa **`leitura`** em três sítios (cabeçalho do §4.2, cabeçalho do §5.1 e
+   a linha `4` da tabela do §13). O acto que ele nomeia é **legítimo** (SKILL §4.1.11: reconstruir
+   da compreensão e reabrir só para confirmar factos) e é **honesto** — é exactamente o selo que
+   avisa o Implementador de que ali **não há fixture nem fonte pública** —, mas a legenda não o
+   explica. ⚠️ Ele sobreviveu às duas emendas porque as duas mexeram no **corpo** das secções e não
+   nos **cabeçalhos** delas. **Cura funcional (uma linha, sem mudar conteúdo nenhum):** acrescentar
+   ao §0 a entrada do selo, dizendo que é reconstrução do E a partir da leitura, sem fixture e sem
+   fonte pública, e que **quem implementar reconfere contra o oráculo**. ⛔ Não precisa de R-pré
+   novo: não move uma afirmação do documento.
+2. **O sweep é CEGO À CAIXA, e aqui morde.** Medido por mim: das `229` entradas, **`56`** levam
+   pelo menos uma maiúscula (`32` só na inicial). Escrevendo as mesmas `56` com a **inicial em
+   minúscula** — que é o que acontece a uma frase citada a meio de outra — o sweep acusa **`3` de
+   `56`**: ⇒ **`53` entradas evadem**. ⚠️ **O controlo positivo actual não expõe isto**: a versão 1
+   lê `6` linhas acentuada, `6` de-acentuada **e `6` em minúsculas** (as que casam não dependem de
+   caixa). **Cura funcional:** ou o gémeo de caixa para cada entrada de prosa (como se fez com os
+   acentos: `229` → ~`285`), ou `-i` no `grep` **só** para as entradas de prosa (⛔ não para as de
+   identificador: `113` das entradas têm forma de identificador e `-i` global compra falsos
+   positivos). ⚠️ É **defeito do instrumento partilhado**, não desta espec — a mesma cegueira está
+   nomeada e por curar numa espec irmã desta jornada, e a decisão é de quem possui o script.
+
+#### O instrumento, re-corrido por mim (números, não promessas)
+
+| corrida | resultado |
+|---|---|
+| sweep sobre a espec v3 **+** o directório inteiro das fixtures (`79` ficheiros), vassoura `229` | ✅ `exit 0` |
+| controlo positivo: versão **1** (`23bb85670`) | `exit 1`, **`6`** linhas |
+| a mesma versão 1 **de-acentuada** | `exit 1`, **`6`** linhas ⇒ ⭐ a cura do E confirma-se (era `2`) |
+| a mesma versão 1 **em minúsculas** | `exit 1`, `6` linhas (⚠️ ver nota 2: este controlo **não** mede a cegueira de caixa) |
+| ⛔⛔ sweep sobre a versão **2** (a que a 2.ª passagem REPROVOU) | ✅ **`exit 0`** — *o instrumento nunca poderia ter apanhado nenhum dos 4 achados dela.* **É a lição a levar para a SKILL: o sweep mede uma classe (string idiossincrática do alvo) e a parede tem outras três** (tabela copiada, selo mal aplicado, afirmação sobre o código do alvo) — **quem julga é o R** |
+
 ### Auditoria R-pré (2026-09-13) — ⛔ REPROVADA
 
 **Alvo confirmado por shell:** binário `/usr/bin/blender` = **5.2.1 LTS** (build 2026-09-01); fonte
@@ -462,7 +525,7 @@ reescrever, pôr o endereço ao lado de cada `(D)` restante.
 |---|---|---|---|
 | 1 | `docs/3D/cleanroom/SPEC_boundary_brush.md` | `23bb85670`, docs-only, `line/sculpt3d`, 2026-09-13 | ⛔ **REPROVADA** pelo R-pré, 1.ª passagem (4 achados) |
 | 2 | o mesmo caminho | `881e96d9e`, docs-only, 2026-09-13 | ⛔ **REPROVADA** pelo R-pré, 2.ª passagem (4 achados, **1 bloqueante**) |
-| 3 | o mesmo caminho | commit docs-only de 2026-09-13 (esta emenda) | ⏳ **aguarda R-pré NOVO** — ⛔ a janela não implementa |
+| 3 | o mesmo caminho | commit docs-only de 2026-09-13 (esta emenda) | ✅ **ATESTADA** pelo R-pré, 3.ª passagem, 2026-09-13 (VERDE; duas notas que não bloqueiam) — a janela PODE implementar |
 
 **Filtragem §4.3 executada** em 2026-09-13, secção a secção: cada frase responde *o que o programa
 FAZ*; cada número traz `F` (fórmula) · `M` (medido, com a fixture) · `D` (documentado pelos autores,

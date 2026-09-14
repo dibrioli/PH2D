@@ -6,7 +6,7 @@
 //! repetir — ⭐ e é essa formulação (e não «os outros vértices da face») que
 //! suporta topologia **não-manifold**, onde três faces partilham uma aresta.
 
-use crate::vetor::{distancia, V3};
+use crate::vetor::{V3, distancia};
 
 /// Adjacência em CSR: `vizinhos[inicio[v] .. inicio[v+1]]`.
 ///
@@ -14,6 +14,7 @@ use crate::vetor::{distancia, V3};
 /// à parte — e não são apendadas a esta lista. A razão é a §4: a travessia e o
 /// crescimento **usam-nas**, a suavização dos pesos **não**. Fundi-las numa
 /// lista só torna essa distinção inexprimível, e o defeito seria mudo.
+#[derive(Clone, Debug)]
 pub struct Vizinhanca {
     inicio: Vec<u32>,
     vizinhos: Vec<u32>,

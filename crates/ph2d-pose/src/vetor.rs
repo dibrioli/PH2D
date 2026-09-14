@@ -156,7 +156,10 @@ impl Rot {
         }
         let eixo = cruz(a, b);
         // `w = 1 + cos`, `v = a × b`; normalizado dá a rotação de meio ângulo.
-        let q = Rot { w: 1.0 + c, v: eixo };
+        let q = Rot {
+            w: 1.0 + c,
+            v: eixo,
+        };
         q.normalizada()
     }
 

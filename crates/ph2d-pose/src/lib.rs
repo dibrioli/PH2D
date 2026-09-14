@@ -243,18 +243,24 @@ impl Pose {
     }
 
     /// Escreve a posição de cada vértice **depois** deste evento (§7).
-    pub fn posicoes(
-        &self,
-        ctrl: &Controlos,
-        p0: &[V3],
-        fatores: Fatores<'_>,
-        saida: &mut Vec<V3>,
-    ) {
+    pub fn posicoes(&self, ctrl: &Controlos, p0: &[V3], fatores: Fatores<'_>, saida: &mut Vec<V3>) {
         aplicar::posicoes_finais(&self.cadeia, ctrl, &self.mapas, p0, fatores, saida);
     }
 
     pub fn cadeia(&self) -> &Cadeia {
         &self.cadeia
+    }
+
+    /// ⭐ **O que um indicador desenha** — ver [`Cadeia::ossos`].
+    ///
+    /// ⚠️ **A mesma porta serve o indicador ANTES de premir e o osso VIVO
+    /// durante o arrasto**, e é isso que garante que os dois não divergem: em
+    /// repouso a cadeia ainda não foi resolvida e os mapas são a identidade, e
+    /// a mesma expressão devolve o par inicial. *Duas funções — uma «em
+    /// repouso» e outra «a mexer» — são duas respostas à mesma pergunta, e a
+    /// que o artista vê é a que envelhece.*
+    pub fn ossos(&self, ctrl: &Controlos, saida: &mut Vec<[V3; 2]>) {
+        self.cadeia.ossos(ctrl, saida);
     }
 
     /// ⭐ **O caso §11.1, detectável em vez de silencioso.**

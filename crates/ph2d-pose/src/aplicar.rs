@@ -7,10 +7,10 @@
 //! com `p₀(v)` a posição do vértice **no início do traço** e `a(v)` o octante de
 //! espelho dele. Depois multiplica-se pelo factor da máscara (§9).
 
-use crate::cadeia::Cadeia;
-use crate::mapas::{octante, Mapa};
-use crate::vetor::{add, escalar, sub, V3};
 use crate::Controlos;
+use crate::cadeia::Cadeia;
+use crate::mapas::{Mapa, octante};
+use crate::vetor::{V3, add, escalar, sub};
 
 /// O que atenua o deslocamento final, por vértice (§9).
 ///
@@ -29,11 +29,18 @@ pub struct Fatores<'a> {
 
 impl Fatores<'_> {
     fn de(&self, v: usize) -> f32 {
-        if self.escondido.is_some_and(|e| e.get(v).copied().unwrap_or(false)) {
+        if self
+            .escondido
+            .is_some_and(|e| e.get(v).copied().unwrap_or(false))
+        {
             return 0.0;
         }
-        let m = self.mascara.map_or(1.0, |m| 1.0 - m.get(v).copied().unwrap_or(0.0));
-        let a = self.auto_mascara.map_or(1.0, |a| a.get(v).copied().unwrap_or(1.0));
+        let m = self
+            .mascara
+            .map_or(1.0, |m| 1.0 - m.get(v).copied().unwrap_or(0.0));
+        let a = self
+            .auto_mascara
+            .map_or(1.0, |a| a.get(v).copied().unwrap_or(1.0));
         m * a
     }
 }

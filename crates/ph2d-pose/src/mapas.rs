@@ -19,7 +19,7 @@
 //! por evento) é escolha de quem implementa.
 
 use crate::cadeia::Cadeia;
-use crate::vetor::{add, cruz, direccao_entre_posicoes, escalar, normalizar, ponto, sub, Rot, V3};
+use crate::vetor::{Rot, V3, add, cruz, direccao_entre_posicoes, escalar, normalizar, ponto, sub};
 use crate::{Controlos, Deformacao};
 
 /// O mapa afim de um segmento num octante.
@@ -48,7 +48,10 @@ impl Mapa {
         ];
         q = self.rot.aplicar(q);
         if let Some(f) = self.quadro {
-            q = add(add(escalar(f[0], q[0]), escalar(f[1], q[1])), escalar(f[2], q[2]));
+            q = add(
+                add(escalar(f[0], q[0]), escalar(f[1], q[1])),
+                escalar(f[2], q[2]),
+            );
         }
         add(q, self.origem)
     }

@@ -30,7 +30,12 @@ fn grelha(n: usize) -> (Vec<V3>, Vec<Vec<u32>>) {
     let mut faces = Vec::new();
     for j in 0..n {
         for i in 0..n {
-            faces.push(vec![idx(i, j), idx(i + 1, j), idx(i + 1, j + 1), idx(i, j + 1)]);
+            faces.push(vec![
+                idx(i, j),
+                idx(i + 1, j),
+                idx(i + 1, j + 1),
+                idx(i, j + 1),
+            ]);
         }
     }
     (pos, faces)
@@ -47,6 +52,16 @@ fn grelha(n: usize) -> (Vec<V3>, Vec<Vec<u32>>) {
 const CURSOR: V3 = [0.5, 0.1, 0.0];
 
 fn traco(ctrl: &Controlos, arrasto: V3) -> (Vec<V3>, Vec<Segmento>) {
+    let (pose, pos) = pose_apos(ctrl, arrasto);
+    let mut saida = Vec::new();
+    pose.posicoes(ctrl, &pos, Default::default(), &mut saida);
+    (saida, pose.cadeia().segmentos.clone())
+}
+
+/// O traço inteiro, mas devolvendo a **pose** em vez das posições — é o que os
+/// gates do osso precisam, e partilhar o arnês é o que impede que eles meçam
+/// outro gesto que não o dos irmãos.
+fn pose_apos(ctrl: &Controlos, arrasto: V3) -> (Pose, Vec<V3>) {
     let (pos, faces) = grelha(24);
     let escondido = vec![false; pos.len()];
     let viz = Vizinhanca::construir(pos.len(), faces.iter().map(Vec::as_slice), &escondido);
@@ -70,9 +85,7 @@ fn traco(ctrl: &Controlos, arrasto: V3) -> (Vec<V3>, Vec<Segmento>) {
             &crate::suave,
         );
     }
-    let mut saida = Vec::new();
-    pose.posicoes(ctrl, &pos, Default::default(), &mut saida);
-    (saida, pose.cadeia().segmentos.clone())
+    (pose, pos)
 }
 
 /// §2.1 — ⚠️ **a semente é ordenada por índice crescente antes de começar**, e
@@ -118,7 +131,11 @@ fn o_espremer_nao_resolve_a_cadeia() {
             s.origem, s.origem_inicial,
             "segmento {i}: o espremer moveu a origem — a cadeia foi resolvida"
         );
-        assert_eq!(s.rot, crate::Rot::IDENTIDADE, "segmento {i}: rotacao mexida");
+        assert_eq!(
+            s.rot,
+            crate::Rot::IDENTIDADE,
+            "segmento {i}: rotacao mexida"
+        );
     }
     // E o controlo positivo, na mesma malha: o modo que **resolve** move-a.
     let girar = Controlos {
@@ -194,4 +211,126 @@ fn a_mesma_entrada_da_a_mesma_saida_ao_bit() {
     let (a, _) = traco(&ctrl, [0.2, 0.3, 0.1]);
     let (b, _) = traco(&ctrl, [0.2, 0.3, 0.1]);
     assert_eq!(a, b, "duas corridas iguais divergiram");
+}
+
+/// ⭐ **O osso em REPOUSO é o par inicial** — o indicador que se vê antes de
+/// premir descreve a cadeia que o pen-down vai construir.
+///
+/// ⚠️ **A barra não é o bit e a razão é aritmética, não tolerância a defeito:**
+/// a cabeça sai de `origem + M(cabeça₀ − origem₀)` e em `f32` `a + (b − a)` não
+/// devolve `b` exactamente. A barra é relativa ao tamanho da peça.
+#[test]
+fn o_osso_em_repouso_e_o_par_inicial() {
+    let ctrl = Controlos {
+        segmentos: 3,
+        raio: 0.3,
+        ..Default::default()
+    };
+    let (pos, faces) = grelha(24);
+    let escondido = vec![false; pos.len()];
+    let viz = Vizinhanca::construir(pos.len(), faces.iter().map(Vec::as_slice), &escondido);
+    let eleito = crate::cadeia::mais_proximo_global(&pos, &escondido, CURSOR).expect("malha");
+    let pose = Pose::comecar(&viz, &pos, &escondido, eleito, CURSOR, &ctrl);
+    assert!(!pose.inerte(), "o arnes nasceu inerte");
+    let mut ossos = Vec::new();
+    pose.ossos(&ctrl, &mut ossos);
+    assert_eq!(
+        ossos.len(),
+        pose.cadeia().segmentos.len(),
+        "um osso por segmento"
+    );
+    for (osso, seg) in ossos.iter().zip(&pose.cadeia().segmentos) {
+        assert_eq!(
+            osso[0], seg.origem_inicial,
+            "a origem em repouso e' a inicial"
+        );
+        let erro = crate::vetor::distancia(osso[1], seg.cabeca_inicial);
+        assert!(
+            erro < 1e-6,
+            "a cabeca em repouso desviou {erro:e} da inicial"
+        );
+    }
+}
+
+/// ⭐⭐ **O osso é a LEI aplicada à cabeça, e este gate mata o atalho.**
+///
+/// ⛔ O atalho plausível — `origem + rot·(cabeça₀ − origem₀)` — concorda com a
+/// lei em quatro das cinco deformações, e é **por isso** que ele entra sem
+/// ninguém ver. No espremer/esticar a rotação é a identidade e a escala vive
+/// numa base **local ao segmento**: o atalho desenha um osso do tamanho
+/// original enquanto a peça estica.
+///
+/// ⚠️ **O controlo negativo está DENTRO do gate**: ele afirma que o atalho de
+/// facto diverge aqui, senão a comparação principal passaria por os dois
+/// caminhos coincidirem.
+#[test]
+fn o_osso_e_a_lei_aplicada_a_cabeca_e_nao_o_atalho() {
+    let ctrl = Controlos {
+        modo: Modo::EspremerEsticar,
+        raio: 0.3,
+        ..Default::default()
+    };
+    let (pose, _) = pose_apos(&ctrl, [0.0, 0.18, 0.0]);
+    let mut ossos = Vec::new();
+    pose.ossos(&ctrl, &mut ossos);
+    let seg = &pose.cadeia().segmentos[0];
+    let atalho = {
+        let d = crate::vetor::sub(seg.cabeca_inicial, seg.origem_inicial);
+        crate::vetor::add(seg.origem, seg.rot.aplicar(d))
+    };
+    let divergencia = crate::vetor::distancia(ossos[0][1], atalho);
+    assert!(
+        divergencia > 1e-3,
+        "o controlo negativo caiu: o atalho concorda com a lei ({divergencia:e}), \
+         logo este gate nao esta' a medir nada"
+    );
+    // E a lei é mesmo a do §6: o osso tem o comprimento que a escala do
+    // segmento manda, medido ao longo da própria direcção.
+    let esticado = crate::vetor::distancia(ossos[0][0], ossos[0][1]);
+    let razao = esticado / seg.comprimento;
+    assert!(
+        (razao - seg.escala[2]).abs() < 1e-3,
+        "o osso esticou {razao} e a escala do segmento e' {:?}",
+        seg.escala
+    );
+}
+
+/// ⚠️⚠️ **Com simetria ligada e a âncora em coordenada NEGATIVA, o osso fica do
+/// lado da mão.** As reflexões do §6 cancelam-se em pares, logo o mapa não
+/// reflectido é o do octante **da âncora** — usar o `0` desenharia o indicador
+/// espelhado no outro lado da peça, e só em malhas cujo cursor cai em `x < 0`.
+#[test]
+fn o_osso_fica_do_lado_da_ancora_com_simetria() {
+    let ctrl = Controlos {
+        simetria: [true, false, false],
+        raio: 0.25,
+        ..Default::default()
+    };
+    // A grelha vive em `x ∈ [0,1]`; deslocá-la põe o cursor em `x < 0`.
+    let (mut pos, faces) = grelha(24);
+    for p in pos.iter_mut() {
+        p[0] -= 1.0;
+    }
+    let cursor = [CURSOR[0] - 1.0, CURSOR[1], CURSOR[2]];
+    let escondido = vec![false; pos.len()];
+    let viz = Vizinhanca::construir(pos.len(), faces.iter().map(Vec::as_slice), &escondido);
+    let eleito = crate::cadeia::mais_proximo_global(&pos, &escondido, cursor).expect("malha");
+    let mut pose = Pose::comecar(&viz, &pos, &escondido, eleito, cursor, &ctrl);
+    assert!(!pose.inerte(), "o arnes nasceu inerte");
+    pose.evento(
+        &ctrl,
+        &Evento {
+            arrasto: [0.0, 0.2, 0.0],
+            dx_pixels: 0.0,
+        },
+        &crate::suave,
+    );
+    let mut ossos = Vec::new();
+    pose.ossos(&ctrl, &mut ossos);
+    for osso in &ossos {
+        assert!(
+            osso[1][0] < 0.0,
+            "o osso saltou para x >= 0 — o octante usado foi o do outro lado: {osso:?}"
+        );
+    }
 }

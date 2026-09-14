@@ -17,7 +17,7 @@
 //! cada taxa**»*.
 
 use crate::cadeia::Cadeia;
-use crate::vetor::{add, escalar, normalizar, ponto, sub, Rot, V3};
+use crate::vetor::{Rot, V3, add, escalar, normalizar, ponto, sub};
 use crate::{Controlos, Curva, Deformacao};
 
 /// O que muda de um evento para o outro.

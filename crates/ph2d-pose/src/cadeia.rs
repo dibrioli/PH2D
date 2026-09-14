@@ -8,9 +8,9 @@
 //! lado da mão. *Uma implementação que promedie o interior põe o pivô no meio do
 //! dedo e o dedo roda em torno de si mesmo.*
 
-use crate::vetor::{add, distancia, escalar, normalizar, sub, V3};
-use crate::vizinhanca::Vizinhanca;
 use crate::Controlos;
+use crate::vetor::{V3, add, distancia, escalar, normalizar, sub};
+use crate::vizinhanca::Vizinhanca;
 
 /// Um segmento da cadeia. O estado **inicial** é a referência do traço todo; o
 /// estado vivo é reescrito a cada evento (§5.1-bis).
@@ -46,6 +46,38 @@ pub struct Cadeia {
 impl Cadeia {
     pub fn peso(&self, segmento: usize, v: usize) -> f32 {
         self.pesos[segmento * self.n_vertices + v]
+    }
+
+    /// ⭐⭐ **O OSSO de cada segmento** — o par `(origem, cabeça)` no estado em
+    /// que o último evento deixou a cadeia. É o que um indicador desenha, e em
+    /// repouso é exactamente `(origem_inicial, cabeça_inicial)`.
+    ///
+    /// ⚠️⚠️ **Ele NÃO é uma segunda versão da lei: a cabeça é a imagem da
+    /// cabeça INICIAL pelo mapa do PRÓPRIO segmento** (§6) — exactamente a
+    /// função por que passa todo vértice daquele segmento. Escrever aqui o
+    /// atalho `origem + rot·(cabeça₀ − origem₀)` dá a mesma resposta em quatro
+    /// das cinco deformações e a **errada** no espremer/esticar, onde a escala
+    /// vive numa base local e a rotação é a identidade. *Um indicador que
+    /// desenha a sua própria versão da lei mente exactamente no modo em que o
+    /// artista mais precisa de confiar nele.*
+    ///
+    /// ⚠️⚠️ **O octante é o da ÂNCORA, e não o `0`.** As reflexões do §6
+    /// cancelam-se em pares (`bit != (âncora[eixo] < 0)`), logo o mapa **não
+    /// reflectido** é o do octante em que a âncora vive — com simetria ligada e
+    /// o cursor em coordenada negativa, o octante `0` é o mapa do **outro
+    /// lado**, e o osso apareceria espelhado longe da mão.
+    pub fn ossos(&self, ctrl: &Controlos, saida: &mut Vec<[V3; 2]>) {
+        saida.clear();
+        let n = self.segmentos.len();
+        let mapas = crate::mapas::construir(self, ctrl);
+        let base = crate::mapas::octante(self.ancora, ctrl.simetria) * n;
+        for (i, seg) in self.segmentos.iter().enumerate() {
+            let cabeca = match mapas.get(base + i) {
+                Some(m) => m.aplicar(seg.cabeca_inicial),
+                None => seg.cabeca_inicial,
+            };
+            saida.push([seg.origem, cabeca]);
+        }
     }
 }
 

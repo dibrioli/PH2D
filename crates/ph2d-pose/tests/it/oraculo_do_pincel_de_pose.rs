@@ -16,7 +16,7 @@
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 
-use ph2d_pose::vetor::{distancia, V3};
+use ph2d_pose::vetor::{V3, distancia};
 use ph2d_pose::{Controlos, Modo, Pose, Vizinhanca};
 
 fn fixture_dir() -> PathBuf {
@@ -203,7 +203,11 @@ fn correr(nome: &str) -> Corrida {
     );
 
     let escondido = vec![false; sup.pos.len()];
-    let mut viz = Vizinhanca::construir(sup.pos.len(), sup.faces.iter().map(Vec::as_slice), &escondido);
+    let mut viz = Vizinhanca::construir(
+        sup.pos.len(),
+        sup.faces.iter().map(Vec::as_slice),
+        &escondido,
+    );
     if !ctrl.so_conectado {
         viz.ligar_pecas(&sup.pos, ctrl.distancia_max_entre_pecas);
     }
@@ -312,11 +316,7 @@ fn mede_o_corpus_contra_o_oraculo() {
         );
     }
     let dentro = linhas.iter().filter(|(p, _, _)| *p <= 1e-5).count();
-    println!(
-        "\n{} de {} fixturas a <= 1e-5\n",
-        dentro,
-        linhas.len()
-    );
+    println!("\n{} de {} fixturas a <= 1e-5\n", dentro, linhas.len());
 }
 
 /// ⭐ **A sonda do vale**: o comprimento do 1.º segmento em TODO o corpus.
@@ -329,7 +329,11 @@ fn sonda_o_vale_do_comprimento_do_primeiro_segmento() {
         let sup = superficie(t.s("superficie"));
         let ctrl = controlos(&t);
         let escondido = vec![false; sup.pos.len()];
-        let viz = Vizinhanca::construir(sup.pos.len(), sup.faces.iter().map(Vec::as_slice), &escondido);
+        let viz = Vizinhanca::construir(
+            sup.pos.len(),
+            sup.faces.iter().map(Vec::as_slice),
+            &escondido,
+        );
         let c0 = t.caminho[0];
         let eleito =
             ph2d_pose::cadeia::mais_proximo_global(&sup.pos, &escondido, c0).expect("malha");
@@ -340,7 +344,11 @@ fn sonda_o_vale_do_comprimento_do_primeiro_segmento() {
             .iter()
             .chain(s.origem_inicial.iter())
             .fold(0.0f32, |m, c| m.max(c.abs()));
-        linhas.push((s.comprimento, s.comprimento / (escala.max(1.0) * f32::EPSILON), nome));
+        linhas.push((
+            s.comprimento,
+            s.comprimento / (escala.max(1.0) * f32::EPSILON),
+            nome,
+        ));
     }
     linhas.sort_by(|a, b| a.0.total_cmp(&b.0));
     for (c, ulps, nome) in &linhas {
@@ -381,7 +389,9 @@ fn classe(nome: &str) -> Classe {
         // mecanismos já eliminados por medição: ⛔ não é descontinuidade
         // (perturbar raio ou cursor em `1e-6` move a saída `≤ 2,4e-6`) e ⛔ não
         // é a confusão das duas sementes (apagar o pré-peso muda `0,000e+00`).
-        "figura_girar_cabeca_no_plano_sem_simetria" => Classe::SemParidade("desvio sistematico por explicar"),
+        "figura_girar_cabeca_no_plano_sem_simetria" => {
+            Classe::SemParidade("desvio sistematico por explicar")
+        }
         // §15 — a auto-suavização do alvo NÃO está modelada, de propósito: ela
         // só age dentro do raio inicial enquanto a deformação alcança muito mais
         // longe, e os autores registam-no como defeito. ⭐ Se a oferecermos, ela
@@ -487,4 +497,140 @@ fn o_censo_das_excepcoes_nao_descreve_nada_de_obsoleto() {
         "estas ja cabem na barra absoluta — APAGUE a linha delas em `classe()`:\n  {}",
         obsoletas.join("\n  ")
     );
+}
+
+// ---------------------------------------------------------------------------
+// A SONDA DO INDICADOR (o «osso» que se desenha antes de premir)
+// ---------------------------------------------------------------------------
+
+/// ⭐⭐ **O que uma construção custa, e quanto o osso ANDA quando o cursor anda.**
+///
+/// ⚠️ **É uma SONDA, não um gate** — ela imprime a tabela de que sai o limiar
+/// com que o indicador decide reconstruir-se, e o número tem de ser lido no
+/// perfil em que o produto corre. `#[ignore]` porque a célula do pior caso
+/// (`20` segmentos × `100` suavizações) é cara de propósito.
+///
+/// ```text
+/// cargo test -p ph2d-pose --test it -- --ignored --nocapture mede_o_indicador
+/// ```
+#[test]
+#[ignore = "sonda: imprime a tabela do custo e da sensibilidade do indicador"]
+fn mede_o_indicador_da_pose() {
+    let mut malhas: Vec<String> = corpus()
+        .iter()
+        .map(|n| traco(n).s("superficie").to_string())
+        .collect();
+    malhas.sort();
+    malhas.dedup();
+
+    println!("\n=== CUSTO DE UMA CONSTRUCAO (ms) ===");
+    println!(
+        "{:<24} {:>7} {:>10} {:>10} {:>10}",
+        "malha", "verts", "default", "seg20", "seg20s100"
+    );
+    for nome in &malhas {
+        let sup = superficie(nome);
+        let escondido = vec![false; sup.pos.len()];
+        let viz = Vizinhanca::construir(
+            sup.pos.len(),
+            sup.faces.iter().map(Vec::as_slice),
+            &escondido,
+        );
+        // Um cursor fora do centro: perto da ponta mais afastada do centroide,
+        // que é onde um artista de facto põe o pincel deste verbo.
+        let cursor = ponta_da_peca(&sup.pos);
+        let eleito = ph2d_pose::cadeia::mais_proximo_global(&sup.pos, &escondido, cursor)
+            .expect("malha com vertices");
+        let mut linha = format!("{:<24} {:>7}", nome, sup.pos.len());
+        for ctrl in [
+            Controlos::default(),
+            Controlos {
+                segmentos: 20,
+                ..Default::default()
+            },
+            Controlos {
+                segmentos: 20,
+                suavizacoes_do_peso: 100,
+                ..Default::default()
+            },
+        ] {
+            let t0 = std::time::Instant::now();
+            let pose = Pose::comecar(&viz, &sup.pos, &escondido, eleito, cursor, &ctrl);
+            let ms = t0.elapsed().as_secs_f64() * 1e3;
+            std::hint::black_box(&pose);
+            linha.push_str(&format!(" {ms:>10.2}"));
+        }
+        println!("{linha}");
+    }
+
+    println!("\n=== SENSIBILIDADE: quanto o OSSO anda por unidade de CURSOR ===");
+    println!(
+        "{:<24} {:>8} {:>10} {:>10} {:>10}",
+        "malha", "f", "|dcursor|", "|dosso|max", "razao"
+    );
+    for nome in &malhas {
+        let sup = superficie(nome);
+        let escondido = vec![false; sup.pos.len()];
+        let viz = Vizinhanca::construir(
+            sup.pos.len(),
+            sup.faces.iter().map(Vec::as_slice),
+            &escondido,
+        );
+        let ctrl = Controlos::default();
+        let cursor = ponta_da_peca(&sup.pos);
+        let base = ossos_em(&viz, &sup.pos, &escondido, cursor, &ctrl);
+        for f in [0.01f32, 0.02, 0.05, 0.10] {
+            let d = ctrl.raio * f;
+            let mut pior = 0.0f32;
+            for eixo in 0..3 {
+                for sinal in [-1.0f32, 1.0] {
+                    let mut c = cursor;
+                    c[eixo] += sinal * d;
+                    let outro = ossos_em(&viz, &sup.pos, &escondido, c, &ctrl);
+                    for (a, b) in base.iter().zip(&outro) {
+                        pior = pior.max(distancia(a[0], b[0])).max(distancia(a[1], b[1]));
+                    }
+                }
+            }
+            println!(
+                "{:<24} {:>8.2} {:>10.4} {:>10.4} {:>10.2}",
+                nome,
+                f,
+                d,
+                pior,
+                pior / d.max(1e-9)
+            );
+        }
+    }
+}
+
+/// Um ponto sobre a peça longe do centroide — onde a franja é assimétrica e o
+/// pivô é empurrado para dentro (§11.1: no meio de uma superfície lisa a cadeia
+/// nasce inerte e a sonda mediria o nada).
+fn ponta_da_peca(pos: &[V3]) -> V3 {
+    let n = pos.len() as f32;
+    let mut c = [0.0f32; 3];
+    for p in pos {
+        for (a, b) in c.iter_mut().zip(p) {
+            *a += b / n;
+        }
+    }
+    *pos.iter()
+        .max_by(|a, b| distancia(**a, c).total_cmp(&distancia(**b, c)))
+        .expect("malha com vertices")
+}
+
+fn ossos_em(
+    viz: &Vizinhanca,
+    pos: &[V3],
+    escondido: &[bool],
+    cursor: V3,
+    ctrl: &Controlos,
+) -> Vec<[V3; 2]> {
+    let eleito =
+        ph2d_pose::cadeia::mais_proximo_global(pos, escondido, cursor).expect("malha com vertices");
+    let pose = Pose::comecar(viz, pos, escondido, eleito, cursor, ctrl);
+    let mut saida = Vec::new();
+    pose.ossos(ctrl, &mut saida);
+    saida
 }

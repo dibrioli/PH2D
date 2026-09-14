@@ -1286,3 +1286,166 @@ passo do produto mede outro programa*, e desta vez o que ele media era um pincel
 * *Scene Project* (§6) — nunca esteve travado; o que falta é o **tecto de custo**, por medir.
 * E os dois itens que já eram decisão do dono: o **bordo no `Density`** (§3.8) e a **folga do
   `SCENE_PROJECT`** (§6.4).
+
+---
+
+## §23 — ⭐⭐⭐ O **ESFREGÃO DE DESLOCAMENTO** (`SPEC_unblocked_brushes.md` §5), e a lei que se fecha à mão
+
+O terceiro dos quatro. Ele **não move o vértice para onde a mão vai**: move o **campo de
+deslocamento** sobre a superfície de referência, como quem arrasta uma textura sobre uma forma
+fixa. A forma grande fica exactamente onde estava; o que viaja é o relevo.
+
+### §23.1 — A lei, e as três coisas que uma leitura rápida inverte
+
+```text
+D[u]  = p[u] − R[u]                          // nos nós TOCADOS, uma vez por dab
+D′[v] = ( D[v] + Σ_w g(w)·D[w] ) / (1 + Σ_w g(w))
+        com  g(w) = max(0, −(d̂ · ê_w))
+p[v] ← lerp( p[v], R[v] + D′[v], peso × força² )
+```
+
+1. **`g` é a parte NEGATIVA do cosseno** ⇒ só os vizinhos **a montante** contribuem. É isso que
+   faz o deslocamento *viajar* em vez de borrar por igual — quem está do lado para onde a mão vai
+   tem peso zero.
+2. **A vizinhança é medida na REFERÊNCIA**, nunca nas posições deslocadas: é por isso que esfregar
+   repetidamente não deforma a topologia.
+3. **O peso próprio é `1` FIXO**, fora da normalização dos outros — o travão que impede a
+   vizinhança de dominar a média por mais vizinhos que haja a montante.
+
+A lei vive em [`stroke_smear.rs`](../../../crates/ph2d-sculpt3d/src/stroke_smear.rs), irmã do
+`stroke_hc` e **pela mesma razão estrutural**: ela lê o campo dos VIZINHOS, e depois de um vértice
+se mexer o `D` dele já não é recuperável da posição ⇒ passe de preparação por dab (irmão do
+`fit_plane`, do `alpha_frame` e do `fill_hc_disp`), e o alvo sai inteiro de um passe só.
+
+### §23.2 — ⭐⭐⭐ A LEI É COBRADA POR FORMA FECHADA, e a fixtura é um DEGRAU
+
+Num plano triangulado com a referência plana e o relevo a valer `h` só em `x < −0,05`, com a mão a
+andar em `+X`, a espec prevê — e o motor entrega, a `< 1e-5` — exactamente isto:
+
+| `x` | `D` antes | `D′` depois | porquê |
+|---|---|---|---|
+| `−0,20` | `h` | **`h/(1+G)`** | a **ORLA** (§5.4): os vizinhos a montante estão FORA da pegada e entram com **zero** |
+| `−0,10` | `h` | **`h`** | a montante é tudo `h` ⇒ a média devolve `h` |
+| `0,00` | `0` | **`h·G/(1+G)`** | o relevo **VIAJA** para onde a mão vai |
+| `+0,10` | `0` | **`0`** | a jusante não contribui |
+
+com `G = 1 + 1/√2` — o vizinho de aresta (`ê = −x̂`, `g = 1`) mais o **diagonal** que esta
+triangulação dá (`g = 1/√2`); os vizinhos em `±ŷ` têm `g = 0` por ortogonalidade.
+
+⛔⛔ **A linha `+0,10` é a lei inteira numa célula:** com `g` escrito como `|cos|` em vez da parte
+negativa, ela lê `h·G/(1+G)` e o pincel passa a **BORRAR** em vez de **TRANSPORTAR**. *É a
+diferença entre as duas ferramentas, e ela cabe num número.*
+
+⭐ **E a linha `−0,20` reproduz o artefacto que os autores do alvo escolheram MANTER** (§5.4): o
+campo só é posto em dia nos nós tocados, e um vizinho de fora entra com o valor que tinha — zero no
+primeiro dab. O `0,0739` daquela célula é `h/(1+G)` **à letra**. ⚠️ O zero não é conveniência: é a
+cura **publicada** de uma regressão em que vizinhos sem valor definido propagavam `NaN` pela malha;
+o que a cura NÃO fez foi alargar a actualização à vizinhança.
+
+### §23.3 — ⛔⛔ A BANCADA DE PARIDADE NÃO PODE EXISTIR HOJE, e há gate com catraca a dizê-lo
+
+A espec §7 declara que o bloco `l` *«torna as famílias de multirresolução utilizáveis sem termos o
+§2.3 pronto»*, e o `README` das fixturas repete-o. ⭐ **Isso é verdade para o APAGADOR e FALSO para
+este**, e a diferença é a lei:
+
+| pincel | a lei lê | as fixturas trazem |
+|---|---|---|
+| *Erase* | **um ponto** (`p`, `R[v]`) | tudo o que ela precisa |
+| *Smear* | **o ANEL** (`R[w]` de cada vizinho) | ⛔ **nenhuma conectividade** |
+
+As **12** fixturas de `esfregao` trazem `r`, `l`, `s` e `c` — e **nenhum bloco de faces**, apesar de
+a linha `blocos:` do cabeçalho delas listar `f=faces` na legenda genérica.
+
+⛔ **E a conectividade NÃO é recuperável — medido, não suposto.** A contagem bate exactamente com um
+cubo subdividido cinco vezes (`8 → 26 → 98 → 386 → 1 538 → **6 146**`) e a caixa do bloco `l` é
+perfeitamente simétrica (`±0,93268955` nos três eixos), que é a assinatura de uma superfície-limite
+de cubo. ⚠️ **Mas a bijecção por posição falha:** escalando a nossa superfície-limite pelo factor
+que iguala as caixas (`k = 2,2220`), o emparelhamento por vizinho mais próximo dá **`528` colisões**
+e pior distância **`3,04e-2`** — da ordem do espaçamento da grelha (`~4,2e-2`). ⇒ *a malha do
+oráculo não é a nossa subdivisão reescalada, e adivinhar a permutação produziria uma bancada que
+mede outra malha.*
+
+⏳ **Dívida NOMEADA, e é acto do E:** uma emenda às fixturas que emita o bloco de faces do nível de
+topo. O gate [`oraculo_do_esfregao.rs`](../../../crates/ph2d-sculpt3d/tests/it/oraculo_do_esfregao.rs)
+tem a **catraca** com as duas metades que a casa exige — o **piso de população** (`12` fixturas) e a
+**obsolescência** (o dia em que o bloco `f` aparecer ele reprova e manda construir a bancada).
+
+### §23.4 — ⛔ O `Accumulate` fica de FORA, e MEDIDO antes de escondido
+
+Nesta casa o `Accumulate` é o `from_live` do `Grip::Stamp` — *de onde a curva de queda mede a
+distância*. Medido (`o_acumular_do_esfregao_e_uma_lei_que_ninguem_declara`), ele está **VIVO**:
+ligá-lo muda a saída.
+
+⇒ **e é exactamente por isso que ele não pode ser oferecido.** Com um alvo ancorado na superfície de
+referência, mandar a queda medir da posição JÁ esfregada faria a pegada do pincel depender de quanto
+relevo ele já transportou — e a espec §5 escreve a lei **inteira** sem um acumulador. *Um chip cuja
+lei nós inventámos é uma LEI vestida com a autoridade de uma fonte que não a declara*, que é a cerca
+que o `L` do kelvinlet já paga por escrito.
+
+⚠️⚠️ **Esconder um knob VIVO e esconder um knob MORTO leem-se igual numa tabela de dívida**, e o que
+os separa é a medição escrita ao lado. ⛔ A razão do apagador (*«o alvo é absoluto, o segundo dab
+tem o mesmo destino que o primeiro»*) **não serve aqui** — o campo `D` é relido a cada dab.
+
+### §23.5 — ⛔⛔ O gate de costura apanhou um defeito ANTES de ele shipar
+
+Os três chips de *Deformation* nasceram **pintados, hit-indexados e MORTOS SOB O DEDO**: faltava a
+fileira no `populate`. ⚠️ *Um controlo nunca pintado e um morto sob o dedo dão o MESMO report*, e só
+o gesto **REAL** (carregar no centro do rect que o painel registou) os separa — um `Click` sintético
+passa com o chip morto. É a sétima vez que esta família o escreve, e a primeira em que o gate
+existia **antes** do defeito.
+
+### §23.6 — ⛔ O censo dos gates NOMEADOS apanhou uma recaída minha na mesma hora
+
+Ao cortar o `brush.rs` eu escrevi no cabeçalho do ficheiro novo que a prova de que *«nenhum número
+muda»* era o gate `the_factory_brush_is_the_verb_it_declares` — **que nunca existiu**. É exactamente
+a forma que a jornada de 13/09 curou nesta família (oito citações dessas), e o censo que ela deixou
+reprovou no portão de fecho, **com o endereço e a linha**.
+
+⇒ a nota passa a nomear os censos que de facto defendem a propriedade, e a citação histórica entra
+em `MEMORIAS` com o motivo. *Uma promessa de gate lê-se exactamente como um gate, e a diferença só
+aparece no dia em que ele devia sangrar.*
+
+### §23.7 — O que mudou, e os dois cortes
+
+| ficheiro | o quê |
+|---|---|
+| [`smear_mode.rs`](../../../crates/ph2d-sculpt3d/src/smear_mode.rs) | `SmearMode` (`Drag`/`Pinch`/`Expand`) e a porta **única** `direction(path, centre, ponto)` |
+| [`stroke_smear.rs`](../../../crates/ph2d-sculpt3d/src/stroke_smear.rs) | o campo `D`, o passe de preparação e o alvo |
+| [`brush_verb_campo.rs`](../../../crates/ph2d-sculpt3d/src/brush_verb_campo.rs) | **corte**: o campo elástico sai do `brush_verb.rs` (`678 → 601`) |
+| [`brush_default.rs`](../../../crates/ph2d-sculpt3d/src/brush_default.rs) | **corte**: os valores de fábrica saem do `brush.rs` (`693 → 548`) |
+| [`scenes_smear.rs`](../../../crates/ph2d-app-sculpt3d/src/scenes_smear.rs) | a cena **`=44`**, cujo passo (1) é a recusa |
+| [`esfregao_tests.rs`](../../../crates/ph2d-app-sculpt3d/src/esfregao_tests.rs) | os 3 gates de cena (GPU) |
+| [`verb_smear_tests.rs`](../../../crates/ph2d-sculpt3d/src/verb_smear_tests.rs) | os 8 gates de lei (sem GPU) |
+
+⛔ **Os dois cortes são por RESPONSABILIDADE e nenhum entrou no `FILE_OVERAGE_OK`** — a lei do §5.0
+do roteador, que esta casa já pagou em cinco painéis.
+
+⚠️ **O `direction` recebe o caminho do gesto E a geometria**, e é isso que o torna a resposta
+inteira: o arrasto lê o gesto e ignora onde o vértice está; os outros dois leem a geometria e
+ignoram o gesto. ⛔ *Uma porta que só soubesse a metade geométrica devolveria um sentinela para o
+arrasto, e o chamador teria de o substituir — que é a segunda resposta à mesma pergunta.*
+
+### §23.8 — As provas
+
+* **Mutação 10 de 10**, cada uma com controlo do próprio filtro: `g` como `|cos|` · o peso próprio
+  na normalização · o anel nas posições vivas · a força linear · a orla a ler o slot velho · o
+  arrasto parado a ganhar direcção · o modo ignorado · o `Accumulate` de volta · a fileira a sumir
+  do painel · a referência a deixar de ser pedida.
+* **Portão de fecho:** `fmt` OK · `clippy --workspace --all-targets` **0 avisos** ·
+  `nextest-impacted` **15 181 testes: 15 181 passaram** · `doc-index --check` ✓ 19 · as **seis**
+  vassouras limpas excepto o `tip_roundness` **pré-existente** (isenção já nomeada no §18 deste
+  handoff; `0` linhas de código novas no diff).
+* **Zero contador partilhado** (`PROJECT_SCHEMA`, `VEC_SCENE_SCHEMA`, `FLIP_SCHEMA`,
+  `FIELD_DOC_VERSION`, os registos de componentes), zero contrato congelado, zero ADR, zero pacote
+  novo no `Cargo.lock`, zero linha de `shells/desktop/src`.
+
+### §23.9 — O que fica ABERTO
+
+* ⏳ **A bancada de paridade** (§23.3) — bloqueada numa emenda do E, com a catraca escrita.
+* ⏳ **A conservação da §5.5 NÃO é gate, e é uma decisão registada:** a espec mede `< 1 %` de deriva
+  do deslocamento total **nas fixturas do alvo**, e na nossa (uma esfera com o dab em cima do pico
+  do relevo) a mesma lei dá `+5,6 %` a `−21,2 %`. ⛔ Uma barra de `1 %` aqui seria **calibrada sem o
+  lado aprovado**, que é a lei que o corpus do tecido já impôs a duas barras desta linha. *O
+  mecanismo é conhecido e não é defeito:* a média com peso próprio `1` mais a orla tiram um pouco, e
+  a deriva cresce com o comprimento do traço.
+* ⏳ **O último dos quatro:** *Scene Project* (§6), que precisa do tecto de custo medido (§10 item 6).

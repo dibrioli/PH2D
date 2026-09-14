@@ -702,8 +702,8 @@ fn a_forca_do_agarrar_e_linear_e_a_do_polegar_nao() {
         }
         let base = repouso(t.s("superficie"));
         let mut meio = 0.0f32;
-        for i in 0..base.len() {
-            let d = menos(mesh.positions()[i], base[i]);
+        for (p, r) in mesh.positions().iter().zip(&base) {
+            let d = menos(*p, *r);
             meio = meio.max((d[0] * d[0] + d[1] * d[1] + d[2] * d[2]).sqrt());
         }
         meio / cheio
@@ -767,8 +767,8 @@ fn sonda_do_agarrar_que_ja_shipamos() {
         }
         let base = repouso(t.s("superficie"));
         let mut pico = 0.0f32;
-        for i in 0..base.len() {
-            let d = menos(mesh.positions()[i], base[i]);
+        for (p, r) in mesh.positions().iter().zip(&base) {
+            let d = menos(*p, *r);
             pico = pico.max((d[0] * d[0] + d[1] * d[1] + d[2] * d[2]).sqrt());
         }
         println!("    N = {n:>2}: pico {pico:.6}");
@@ -802,9 +802,9 @@ fn sonda_do_residuo_da_esfera() {
         let (mut dele_i, mut dele_d) = (0usize, 0.0f32);
         let (mut mov_n, mut mov_d) = (0usize, 0usize);
         let norma = |v: [f32; 3]| (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]).sqrt();
-        for i in 0..base.len() {
-            let dn = norma(menos(malha.positions()[i], base[i]));
-            let dd = norma(menos(t.depois[i], base[i]));
+        for (i, (r, depois)) in base.iter().zip(&t.depois).enumerate() {
+            let dn = norma(menos(malha.positions()[i], *r));
+            let dd = norma(menos(*depois, *r));
             if dn > 1e-9 {
                 mov_n += 1;
             }

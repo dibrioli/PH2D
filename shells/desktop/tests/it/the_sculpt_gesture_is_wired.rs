@@ -808,6 +808,24 @@ fn every_verb_is_reachable_from_the_keyboard() {
         // deixa a fileira dele mais curta e não mais longa. **A escolha da tecla
         // é do Enio.**
         "Cloth",
+        // ⚠️ **O POLEGAR e o EMPURRÃO (13/09), e eles entram aqui pela MESMA
+        // frase do tecido: não há tecla livre.** O parágrafo da demão diz que o
+        // `L` é a última e que gastá-la é decisão do Enio; dá-la a um destes por
+        // serem os mais recentes seria *«quem escolhe é quem passou por último»*,
+        // que aquele parágrafo recusa.
+        //
+        // ⚠️⚠️ **E aqui a ausência custa MAIS que no tecido, e é honesto
+        // dizê-lo:** os dois são verbos de RETOQUE — alterna-se com o Draw e com
+        // o agarrar a cada dois traços, que é exactamente o uso que uma tecla
+        // serve. O tecido escapava por ser um gesto de forma, escolhido uma vez
+        // e usado por minutos; estes não escapam.
+        //
+        // ⇒ **a fila de pretendentes a UMA tecla passou de quatro para seis**, e
+        // isso é o que torna a decisão do Enio mais barata de tomar agora do que
+        // depois: com seis candidatos, escolher UM continua a gastar a última
+        // tecla, mas o custo de NÃO escolher passa a ser pago em todo traço.
+        "Thumb",
+        "Nudge",
     ];
     let keys = function_body(&sculpt_src(), "key");
     // ⚠️ **O gate COLETA em vez de abortar no primeiro, e isso não é estilo.**

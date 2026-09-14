@@ -65,7 +65,11 @@ impl SculptStroke {
         dab: &Dab,
     ) -> Option<[f32; 3]> {
         let r = dab.radius * brush.normal_radius_frac;
-        if !(r > 0.0) {
+        // ⚠️ **`is_finite` ANTES do sinal, e não um `r <= 0.0` sozinho:** um
+        // `NaN` compara falso com tudo, logo `r <= 0.0` deixá-lo-ia passar e a
+        // soma sairia envenenada — que é o defeito que o `normalizar` existe
+        // para não ter de curar a jusante.
+        if !r.is_finite() || r <= 0.0 {
             return None;
         }
         // A pose de leitura: congelada no gesto ancorado, viva no que viaja.

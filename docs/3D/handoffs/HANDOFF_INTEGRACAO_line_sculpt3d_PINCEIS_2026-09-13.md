@@ -317,3 +317,36 @@ agarrar a meia força passa a mover metade (§5.1) — vale a pena olhar para el
 cena `=28`.
 
 ⚠️ **Rode uma vez SEM env var** — é a metade que prova a inércia.
+
+---
+
+## §11 — O portão do fecho
+
+| passo | resultado |
+|---|---|
+| `scripts/nextest-impacted.sh` (1× sobre o diff acumulado) | ✅ **14 370 testes, 0 falhas** (`71,0 s`) |
+| clippy `--all-targets --all-features` nas 5 crates tocadas + shell | ✅ limpo (4 avisos curados — ver abaixo) |
+| `cleanroom-sweep.sh`, as **cinco** vassouras sobre tudo o que a jornada escreveu | ✅ limpo (3 linhas curadas — ver abaixo) |
+| `doc-index.sh` | ✅ 19 índices em dia |
+| `rm -rf target/*/incremental` | `28 G → 19 G` |
+
+⚠️ **O portão apanhou UM vermelho, e ele é o gate a fazer o seu trabalho:**
+`every_verb_is_reachable_from_the_keyboard` — todo verbo tem de ter tecla **ou**
+estar na lista dos que shipam só com chip, **com o motivo escrito**. Os dois
+novos entraram na lista, porque não há tecla livre; e a entrada regista que aqui
+a ausência custa **mais** que no tecido (estes são verbos de retoque) e que a
+fila de pretendentes à última tecla passou de **quatro para seis**.
+
+⚠️ **E o clippy apanhou um defeito de NaN que não era estilo:** o
+`!(r > 0.0)` que ele acusa **não** se cura com `r <= 0.0` — um `NaN` compara
+falso com tudo e passaria por baixo. A cura é `!r.is_finite() || r <= 0.0`.
+
+⚠️ **A varredura da parede acusou três doc-comments NOSSOS** (anteriores a esta
+jornada) que nomeavam propriedades públicas do alvo para dar a proveniência de
+um facto. O facto ficou inteiro e a grafia saiu — é a dívida que o `CLAUDE.md`
+§5 declara aberta (*os nomes de SÍMBOLO internos são §4.2 e o gate não os mede*),
+e este ficheiro é desta linha.
+
+⏳ **Em voo no momento do fecho:** a 4.ª passagem do R-pré do `blender-pose` e a
+3.ª do `blender-boundary`. O veredito de cada uma aterra **no cabeçalho da
+respectiva espec** — que é onde a janela seguinte o confere, por desenho.

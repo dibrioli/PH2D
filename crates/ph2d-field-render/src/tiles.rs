@@ -11,7 +11,7 @@ use ph2d_field::FieldDoc;
 use rayon::prelude::*;
 
 /// O que um ladrilho devolve: os índices dos pixels dele, a máscara e as normais.
-type TileResult = (Vec<usize>, Vec<bool>, Vec<[f32; 3]>);
+type TileResult = (Vec<usize>, Vec<bool>, Vec<[f32; 3]>, Vec<[f32; 3]>);
 
 /// O lado de um ladrilho, em pixels — **medido, não escolhido**.
 ///
@@ -158,13 +158,14 @@ pub(crate) fn tiled_trace(
                 pts.push(plane.plane_at(x as f32 + 0.5, y as f32 + 0.5));
             }
         }
-        let empty = (
-            idx.len(),
-            vec![false; idx.len()],
-            vec![[0.0f32; 3]; idx.len()],
-        );
         if cancel.is_some_and(|c| c.load(std::sync::atomic::Ordering::Relaxed)) {
-            return (idx, empty.1, empty.2);
+            let n = idx.len();
+            return (
+                idx,
+                vec![false; n],
+                vec![[0.0f32; 3]; n],
+                vec![[0.0f32; 3]; n],
+            );
         }
         let tile_scene = Scene {
             shape: scene.shape,
@@ -188,8 +189,8 @@ pub(crate) fn tiled_trace(
         let Some((t_lo, t_hi)) = tile_t_range(scene.cam, plane, (x0, y0), (x1, y1), bbox) else {
             // Nenhum raio de canto alcança a peça — não há o que especializar, e desistir é a
             // resposta segura (um raio INTERIOR ainda pode acertar).
-            let (hit, normal, _) = march(&tile_scene, &pts);
-            return (idx, hit, normal);
+            let (hit, normal, point) = march(&tile_scene, &pts);
+            return (idx, hit, normal, point);
         };
         // ⚠️ **O que mutação nenhuma mata aqui, e por quê.** Fazer este `shape_of` devolver
         // sempre `None` desliga a especialização inteira — e a imagem sai **idêntica**, porque o
@@ -199,7 +200,7 @@ pub(crate) fn tiled_trace(
         // (`the_table_of_how_many_depth_slabs`), que é relógio por natureza. *A afirmação encolhe
         // até ao que a máquina faz: a paridade prova a IMAGEM, a tabela prova o PREÇO.*
         let bounds = slab_bounds(t_lo, t_hi, slabs);
-        let (hit, normal, _) = march_slabs(&tile_scene, &pts, &bounds, &mut |k| {
+        let (hit, normal, point) = march_slabs(&tile_scene, &pts, &bounds, &mut |k| {
             let r = slab_region(
                 scene.cam,
                 plane,
@@ -266,7 +267,7 @@ pub(crate) fn tiled_trace(
             );
             Some(tape)
         });
-        (idx, hit, normal)
+        (idx, hit, normal, point)
     };
     // ⭐ **O ladrilho mais caro** — ver [`TILE_MAX`]. Dois carregamentos e um `fetch_max` por
     // ladrilho, contra os milhares de amostras que ele acabou de dar.
@@ -298,10 +299,14 @@ pub(crate) fn tiled_trace(
     };
     let mut hit = vec![false; w * h];
     let mut normal = vec![[0.0f32; 3]; w * h];
-    for (idx, th, tn) in done {
+    // ⭐ O ponto de mundo deixou de ser deitado fora — ver [`Gbuffer::point`]. O ladrilho já o
+    // tinha na mão, exactamente como a linha.
+    let mut point = vec![[0.0f32; 3]; w * h];
+    for (idx, th, tn, tp) in done {
         for (k, &i) in idx.iter().enumerate() {
             hit[i] = th[k];
             normal[i] = tn[k];
+            point[i] = tp[k];
         }
     }
     let edges =
@@ -315,6 +320,7 @@ pub(crate) fn tiled_trace(
         height: out_h,
         hit,
         normal,
+        point,
         edges,
     }
 }

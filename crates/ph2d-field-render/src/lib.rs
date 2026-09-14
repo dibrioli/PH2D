@@ -169,6 +169,22 @@ pub struct Gbuffer {
     pub hit: Vec<bool>,
     /// Normal em **espaço de vista** (`z` para o observador), unitária. Lixo onde `!hit`.
     pub normal: Vec<[f32; 3]>,
+    /// ⭐⭐⭐ **Onde o raio parou, no MUNDO.** Lixo onde `!hit`.
+    ///
+    /// # ⛔⛔ Ele era DEITADO FORA, e a nota que o justificava caducou
+    ///
+    /// O `trace` escrevia *«o ponto de mundo não interessa a um quadro inteiro — quem o quer é a
+    /// seleção por clique»*, e isso foi verdade até ao dia em que o material passou a ser **por
+    /// objecto**: aí *«de quem é este pixel?»* deixa de ser uma pergunta de clique e passa a ser uma
+    /// pergunta por pixel, que só se responde **no ponto** (`docs/Render3d/05` §8).
+    ///
+    /// ⭐ **E ele sai de graça:** a [`march::march_slabs`] já o devolve (a marcha sabe o `t`), e os
+    /// dois caminhos do traçador — a linha e o ladrilho — já o tinham na mão. O que se paga é a
+    /// memória: `12 B` por pixel, `2,8 MB` num viewport de `640×360`.
+    ///
+    /// ⚠️ **Ele NÃO é uma cor** — a fronteira desta struct continua de pé. É geometria, como a
+    /// normal: *onde* a superfície está, e não *que aspecto* ela tem.
+    pub point: Vec<[f32; 3]>,
     /// Os pixels onde a imagem tem **aresta** — de silhueta ou de quina —, com quatro amostras cada.
     ///
     /// Vazio quando o traçado corre sem anti-serrilhado. Ordenado por `pixel`, sempre: é o que faz
@@ -402,30 +418,31 @@ fn trace_inner_tiles(
     }
 
     // Passo 1: um raio por pixel, uma fatia por linha.
-    let row = |y: usize| -> (Vec<bool>, Vec<[f32; 3]>) {
+    type Row = (Vec<bool>, Vec<[f32; 3]>, Vec<[f32; 3]>);
+    let row = |y: usize| -> Row {
         let pts: Vec<(f32, f32)> = (0..w)
             .map(|x| plane.plane_at(x as f32 + 0.5, y as f32 + 0.5))
             .collect();
-        // O ponto de mundo não interessa a um quadro inteiro — quem o quer é a seleção por
-        // clique (`surface_under`), um raio de cada vez.
         // ⚠️ **A bandeira é lida POR LINHA.** Uma marcha abandonada custa o resto das linhas a
         // zero — e não o resto da imagem, que é o que a espera de 121 ms era.
         if cancel.is_some_and(|c| c.load(std::sync::atomic::Ordering::Relaxed)) {
-            return (vec![false; w], vec![[0.0; 3]; w]);
+            return (vec![false; w], vec![[0.0; 3]; w], vec![[0.0; 3]; w]);
         }
-        let (h, n, _) = march(&scene, &pts);
-        (h, n)
+        march(&scene, &pts)
     };
-    let rows: Vec<(Vec<bool>, Vec<[f32; 3]>)> = if parallel {
+    let rows: Vec<Row> = if parallel {
         (0..h).into_par_iter().map(row).collect()
     } else {
         (0..h).map(row).collect()
     };
     let mut hit = Vec::with_capacity(w * h);
     let mut normal = Vec::with_capacity(w * h);
-    for (rh, rn) in rows {
+    // ⭐ O ponto de mundo deixou de ser deitado fora — ver [`Gbuffer::point`].
+    let mut point = Vec::with_capacity(w * h);
+    for (rh, rn, rp) in rows {
         hit.extend(rh);
         normal.extend(rn);
+        point.extend(rp);
     }
 
     // Passo 2: re-amostrar as bordas.
@@ -441,6 +458,7 @@ fn trace_inner_tiles(
         height,
         hit,
         normal,
+        point,
         edges,
     }
 }

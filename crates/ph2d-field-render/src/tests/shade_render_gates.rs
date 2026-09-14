@@ -27,6 +27,9 @@ fn strip(normals: [[f32; 3]; 3]) -> Gbuffer {
         height: 1,
         hit: vec![true, false, true],
         normal: normals.to_vec(),
+        // ⚠️ A fita é sombreada com lente ORTOGRÁFICA e material único: o ponto de mundo não entra
+        // em conta nenhuma destes gates. Ver [`ph2d_field_render::Gbuffer::point`].
+        point: vec![[0.0; 3]; 3],
         edges: Vec::new(),
     }
 }

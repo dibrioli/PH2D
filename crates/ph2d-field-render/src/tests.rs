@@ -18,6 +18,35 @@ fn sphere(radius: f32) -> FieldDoc {
     .expect("esfera")
 }
 
+/// ⚠️ **Uma peça que o caminho por LADRILHO aceita** — um perfil extrudado de `n` arestas.
+///
+/// A especialização por região só vale a pena quando há o que especializar
+/// (`RegionCompiler::is_worth_it`): numa esfera sozinha ela recusa, e quem a pedisse receberia a
+/// marcha de linha com outro nome. É o molde que as suítes de orçamento desta crate já usam.
+fn profile_piece(edges: usize) -> FieldDoc {
+    let contour: Vec<[f32; 2]> = (0..edges)
+        .map(|i| {
+            let a = std::f64::consts::TAU * (i as f64) / (edges as f64);
+            [(0.6 * a.cos()) as f32, (0.6 * a.sin()) as f32]
+        })
+        .collect();
+    let profile = ph2d_field::Profile::new(vec![contour], ph2d_field::FillRule::NonZero, 1e-4)
+        .expect("perfil");
+    FieldDoc::new(
+        vec![ph2d_field_eval::leaf(
+            Primitive::Extrude {
+                profile,
+                half_height: 0.4,
+                round: 0.06,
+                chamfer: 0.0,
+            },
+            Xform::IDENTITY,
+        )],
+        NodeId(0),
+    )
+    .expect("extrusão")
+}
+
 /// ⚠️ **A condição que autoriza o `rayon` aqui, MEDIDA e não afirmada** (ADR-0109).
 ///
 /// Cada pixel é um gather puro contra uma árvore imutável e escreve só o próprio slot — então a
@@ -6175,4 +6204,86 @@ fn a_shape_with_both_recesses_draws_whole_and_strands_no_ray() {
         "a peça saiu com {furos} pixels de FUNDO rodeados de peça — num prisma, que é convexo, isso \
          só pode ser a marcha a atravessar a superfície"
     );
+}
+
+/// ⭐⭐⭐ **O PONTO DO G-BUFFER É HONESTO** — ele está SOBRE a superfície e projecta de volta no
+/// pixel que o gerou (W-material, 2026-09-13).
+///
+/// # ⛔ Porque ele precisa de gate próprio, e das DUAS metades
+///
+/// O ponto era **deitado fora** pelo traçador, e passou a ser guardado porque *«de quem é este
+/// pixel?»* deixou de ser pergunta de clique e passou a ser pergunta por pixel
+/// (`docs/Render3d/05` §8). Um ponto **errado** não estraga a imagem — a máscara e a normal saem
+/// iguais —, então nada do que já existe o acusaria: ele só se veria no dia em que um pixel
+/// recebesse a cor do objecto do lado.
+///
+/// ⚠️ **As duas metades apanham defeitos diferentes:** *«o campo vale zero ali»* mata um ponto que
+/// ficou pelo caminho (a marcha a devolver o `t` errado), e *«ele volta ao mesmo pixel»* mata um
+/// ponto certo **do pixel errado** — a permuta que um ladrilho mal indexado produz, e que a primeira
+/// metade não vê.
+///
+/// ⚠️ **E corre nos DOIS caminhos do traçador.** O ladrilho é o que o produto usa numa peça real, e
+/// ele monta o buffer por índice — que é exactamente onde uma permuta nasce.
+#[test]
+fn the_point_of_the_gbuffer_is_on_the_surface_and_comes_back_to_its_pixel() {
+    let (w, h) = (96u32, 72u32);
+    let cam = Orbit::default();
+    let screen = Screen::new(w, h, cam.half_extent);
+    // ⚠️⚠️ **Uma esfera sozinha NÃO chega, e a 1.ª redacção deste gate usou-a.** O caminho por
+    // ladrilho só é tomado quando a especialização VALE A PENA (`RegionCompiler::is_worth_it`), e
+    // numa folha simples ela recusa ⇒ as duas linhas da tabela mediam **a mesma marcha de linha**,
+    // com números byte-idênticos. A mutação que permuta os pontos do ladrilho **SOBREVIVEU**, e foi
+    // ela que o disse. *Duas colunas que imprimem o mesmo número não são duas medições.*
+    let doc = profile_piece(168);
+    let reg = Registry::new();
+    let field = ph2d_field_eval::Field::new(&doc);
+    let ladrilho =
+        crate::probe_doors::trace_tiled_for_test(&doc, &reg, &cam, w, h, 24, 4, false, true)
+            .expect("o caminho por LADRILHO recusou esta peça — o gate mediria a linha duas vezes");
+
+    for (nome, g) in [
+        ("ladrilho", ladrilho),
+        (
+            "linha",
+            crate::probe_doors::trace_by_rows_for_test(&doc, &reg, &cam, w, h),
+        ),
+    ] {
+        let mut acertos = 0usize;
+        let (mut pior_campo, mut pior_volta) = (0.0f32, 0.0f32);
+        for i in 0..(w as usize * h as usize) {
+            if !g.hit[i] {
+                continue;
+            }
+            acertos += 1;
+            let p = g.point[i];
+            let v = field
+                .at(f64::from(p[0]), f64::from(p[1]), f64::from(p[2]))
+                .abs() as f32;
+            pior_campo = pior_campo.max(v);
+            let (px, _) = cam
+                .project(p, screen)
+                .expect("o ponto está à frente da câmera");
+            let alvo = [(i % w as usize) as f32 + 0.5, (i / w as usize) as f32 + 0.5];
+            pior_volta = pior_volta.max((px[0] - alvo[0]).abs().max((px[1] - alvo[1]).abs()));
+        }
+        // ⚠️ **O piso de população**: sem ele um traçado que não acertasse em nada passaria os dois
+        // asserts trivialmente — a forma muda que o `CLAUDE.md` §5.0 nomeia.
+        assert!(
+            acertos > 1000,
+            "{nome}: só {acertos} pixels de peça — o gate não mediu nada"
+        );
+        // A barra é a tolerância de acerto da marcha, que é o que define «está na superfície».
+        assert!(
+            pior_campo < 1.0e-3,
+            "{nome}: o ponto NÃO está na superfície (pior |campo| = {pior_campo:e})"
+        );
+        // Meio pixel: o raio saiu do CENTRO do pixel, logo é ali que ele tem de voltar.
+        assert!(
+            pior_volta < 0.5,
+            "{nome}: o ponto volta a OUTRO pixel (pior desvio = {pior_volta} px)"
+        );
+        println!(
+            "{nome:9}: {acertos} px · pior |campo| {pior_campo:e} · pior volta {pior_volta:.3} px"
+        );
+    }
 }

@@ -2618,7 +2618,11 @@ fn the_specialisation_gives_up_under_a_remapping_ancestor() {
     let spacing = 0.9f32;
     let mut worsts: Vec<(&str, f32)> = Vec::new();
     for (name, m, copy_x) in [
-        ("espelho na operação", Unary::Mirror { offset: 0.0 }, -0.35f32),
+        (
+            "espelho na operação",
+            Unary::Mirror { offset: 0.0 },
+            -0.35f32,
+        ),
         (
             "matriz na operação",
             Unary::Array {

@@ -41,6 +41,7 @@ pub mod file_menu;
 pub mod fixture;
 mod frame_layout;
 pub mod global_palette;
+pub(crate) mod menu_row_mark;
 pub mod panel_ids;
 /// O MODELO do menu radial (E4) — a vista de OITO direcções da mesma lista da paleta.
 pub mod radial;

@@ -103,18 +103,37 @@ ordens de grandeza e não um relógio (`CLAUDE.md` §5.0) — a medição fina v
 **paralelo** e o matcap corria em série desde que existe. O matcap passou a correr igual — bytes
 idênticos, porque a lei é por pixel (há gate).
 
-A luz que sai, com o rig e o céu de omissão (verde médio dos pixels da peça · quantos saturam):
+A luz que sai, com o rig e o céu de omissão — verde médio dos pixels da peça · quantos têm o verde
+em `255` · quantos são **branco chapado** (os três canais em `255`):
 
 | exposição | `Standard` | `Neutral` |
 |---|---|---|
-| `−2` | `108,1` · `0` | `92,1` · `0` |
-| `−1` | `148,9` · `115` | `138,9` · `0` |
-| `0` | `202,7` · `4 364` | `194,0` · `0` |
-| `+1` | `242,0` · `39 890` | `231,2` · `0` |
-| `+2` | `254,8` · `61 492` | `243,9` · `0` |
+| `−2` | `105,6` · `0` · `0` | `88,6` · `0` · `0` |
+| `−1` | `145,7` · `118` · `114` | `134,8` · `0` · `0` |
+| `0` | `197,9` · `6 729` · **`5 197`** | `188,3` · `0` · `0` |
+| `+1` | `235,5` · `37 965` · `37 172` | `224,7` · `0` · `0` |
+| `+2` | `252,7` · `53 243` · `52 436` | `243,0` · `0` · `0` |
 
-⇒ **é a tabela que justifica a vista existir**: a `Standard` corta `7 %` da peça já na exposição
-neutra (o realce especular), e a `Neutral` não satura um único pixel em nenhuma exposição.
+⇒ **é a tabela que justifica a vista existir**: a `Standard` corta `10,9 %` da peça já na exposição
+neutra — **`8,4 %` dela em branco chapado, sem forma nenhuma** — e a `Neutral` não satura um único
+pixel em nenhuma exposição.
+
+### §6.1 — ⛔⛔ Esta tabela foi RE-MEDIDA em 13/09, e a primeira media outro programa
+
+A redacção anterior dizia `108,1 · 0` … `254,8 · 61 492`, e o corte a `0` stops era `7 %`. Os
+números eram reais e **não eram do produto**: a sonda que os produziu vivia na `ph2d-field-render`,
+que **não alcança** o [`render_light`](../../crates/ph2d-app-field3d/src/render_light.rs), e por
+isso escrevia a luz **à mão** — uma lâmpada com a direcção em literal (nem sequer unitária:
+`1,000466` contra `1,000003` do rotor) e um céu **CONSTANTE**, onde o produto tem um gradiente
+(`0,670` no zénite a `0,126` no nadir, no canal azul).
+
+⇒ a sonda mudou-se para [`render_light_tests`](../../crates/ph2d-app-field3d/src/render_light_tests.rs),
+onde **chama as portas** (`lamps(&LightRig::default())` · `StudioSky` · `OpenPbr::default()`), e a
+tabela acima é a saída dela. *Uma segunda cópia escrita à mão do valor que uma porta produz é a
+forma canónica de um número envelhecer sem ninguém ver* (`CLAUDE.md` §5.0).
+
+⚠️ **E a diferença não é cosmética:** a primeira tabela errava **no sentido optimista** em toda a
+linha que decide alguma coisa (`+54 %` de pixels cortados a `0` stops, `−13 %` a `+2`).
 
 ## §7 — ⛔ O que esta fatia NÃO faz, e porquê
 
@@ -129,9 +148,49 @@ neutra (o realce especular), e a `Neutral` não satura um único pixel em nenhum
 
 ## §8 — ⏳ O que fica aberto
 
+- ⛔⛔ **A peça sai com `8,4 %` em BRANCO CHAPADO no olhar de omissão** (§6) — não é um realce, é um
+  planalto sem forma. ⚠️ **É decisão do dono**, e o cálculo está fechado: na `Standard` a peça só
+  deixa de cortar a `−1` stop (`118` px, `0,2 %`); a `Neutral` não corta em exposição nenhuma. As
+  duas saídas são *a vista de omissão passa a `Neutral`* ou *a exposição de omissão desce um stop*.
 - ⏳ **A radiância do céu é avaliada na direcção ESPELHADA**, e para um lóbulo largo a média do céu
-  linear está na direcção média do lóbulo, não na espelhada. O erro **não foi medido**; ele é da
-  forma do céu (`ENV_SLOPE`), não do material.
+  linear está na direcção média do lóbulo, não na espelhada. ⚠️⚠️ **A redacção anterior dizia que o
+  erro «não foi medido» e que ele «é da forma do céu, não do material» — as duas metades estavam
+  erradas.** Medido em 13/09 contra a média GGX numérica (`65 536` amostras, peso `N·L`), o erro é
+  **do PAR**, e quem manda na magnitude é o `alpha` do material:
+
+  | rugosidade | `N` para CIMA | `N` para BAIXO | rasante (`V` a 80°) |
+  |---|---:|---:|---:|
+  | `0,224` | `0,71 %` | `3,59 %` | `6,65 %` |
+  | **`0,300`** (a de omissão) | `1,64 %` | **`7,89 %`** | `14,30 %` |
+  | `0,500` | `5,69 %` | `22,25 %` | `35,09 %` |
+  | `1,000` | `15,65 %` | **`41,84 %`** | `59,57 %` |
+
+  ⭐ **No pixel, hoje, é ruído:** `p50 = 0`, `p95 = 1` byte. Num **METAL** a rugosidade `1` custa
+  `p95 = 23` e `max = 33` bytes ⇒ *ela torna-se visível no dia em que houver material por objecto*.
+  ⛔⛔ **E o oráculo NÃO a pode apanhar:** o gate do céu (§2) corre sobre um céu **constante**, e num
+  céu constante a espelhada e a média do lóbulo são iguais **por construção**. *O oráculo desta lei
+  é cego exactamente à aproximação que esta linha diz estar aberta.*
+- ⚠️ **Uma mina para a `W3` (o rig de MUNDO): `l + v == 0` devolve `NaN`**, e o `sanitize` do olhar
+  transforma-o em **PRETO em silêncio** — o pior modo de falha que existe, porque um pixel `NaN` e um
+  pixel legitimamente preto leem-se iguais. Hoje é **inalcançável por geometria** (`to_light.z ≥
+  sin(5°)` pelo `MIN_ELEV_DEG` do rig e `v.z > 0` em toda superfície visível ⇒ `(l+v).z ≥ 0,0872`;
+  varredura de `31 417` normais: zero não-finitos). ⛔ **A cerca NÃO entra na
+  [`ph2d-material`](../../crates/ph2d-material/)**: ela é o port fiel do GLSL, que tem a mesma
+  propriedade, e «melhorar» uma fórmula ali deixa de ser a referência. *Quem der ao rig uma lâmpada
+  atrás da câmera põe a cerca no CHAMADOR, e declara-a.*
+- ⚠️ **O multi-scatter da difusa fica NEGATIVO acima de `base_color ≈ 6`** (polo em `5,981` com
+  `base_diffuse_roughness = 1`; a `6,0` a indirecta devolve `[−676, −716, −813]`). Inalcançável nesta
+  fatia (`base_color 0,8`, rugosidade difusa `0` ⇒ denominador `1`), e é a mesma propriedade do GLSL
+  de referência. ⇒ **a porta que deixar autorar `base_color` coage a `0..1`.**
+- ⚠️ **A `Surface::emission` é chamada por amostra e devolve zero** com o material de omissão — um
+  `forward_facing`, um `dot`, um `clamp` e um `powf(5)` para somar `[0,0,0]`. Medido: `12,18 ns`
+  contra `265,64 ns` do pixel completo ⇒ **`4,6 %`** do relógio de sombreamento. Cura: uma guarda
+  `emission_luminance > 0` na porta.
+- ⚠️ **As TRÊS lâmpadas de preenchimento do rig são IDÊNTICAS** (`[KEY, FILL, FILL, FILL]`, e as três
+  `FILL` têm o mesmo azimute `50°` e a mesma elevação `25°`) — o doc do próprio `Light::FILL` escreve
+  *«duas lâmpadas no mesmo lugar são uma lâmpada»*. **Pré-existente na
+  [`ph2d-light`](../../crates/ph2d-light/), não desta fatia**, e o modo Render é só o primeiro
+  consumidor que o torna visível em cor. Acendê-las multiplica a intensidade por `3` no mesmo sítio.
 - ⏳ **O material por objecto** pede o nó por pixel. O `surface_under` custa `0,10 ms` por raio
   (é uma folha de menor módulo), o que a `640×360` seriam ~`23 s` — ⇒ a via é a especialização por
   ladrilho que o traçador já tem, e ela é uma medição por fazer.
@@ -149,3 +208,85 @@ reprovações**, uma delas um **pânico** no produto (`spent() - before` a ficar
 ⇒ a subtracção passou a **saturar** (um contador que outro pode repor não é uma diferença), e a
 regra fica escrita: *os gates de contagem desta crate correm por `nextest`* — o
 `scripts/cargo-test-narrow.sh` é o corredor errado para eles.
+
+## §10 — A auditoria de 13/09, e as duas curas que ela pagou
+
+> Enio, 2026-09-13: *«funciona mas não totalmente. faça auditoria. e coloque a marca de seleção no
+> render selecionado (ponto como nos menus do topo).»*
+
+Duas lentes correram em paralelo — a **lei** (material · luz · cor) e a **costura** (ids → publicar
+→ pintar → despachar → consumir). A lei está no §6.1 e no §8; a costura está aqui.
+
+### §10.1 — ⛔⛔ As nove linhas abriam TODAS IGUAIS, e a verdade já estava publicada
+
+O [`area_bar::entries`](../../crates/ph2d-panel-model3d/src/area_bar.rs) escreve `ButtonState::Pressed`
+no chip aceso de cada fileira **desde que o pulldown existe**. Quem pintava o ponto era o
+`id_is_currently_selected`, que responde por uma **tabela de ids que o `ph2d-editor-core` conhece** —
+e as linhas de um pulldown de área são de outro módulo **por construção** (é a **D2**: aquela crate
+não pode conhecer os ids de cada editor). A cadeia caía até `false`.
+
+⇒ *o `Pressed` publicado não tinha LEITOR.* A cura é
+[`menu_row_mark::contributed_row_is_current`](../../crates/ph2d-editor-core/src/screens/hero/menu_row_mark.rs):
+uma linha **contribuída** acende pelo estado que o **módulo dono** publica.
+
+⚠️ **A cerca *«esta linha veio do módulo?»* é obrigatória** — o `dispatch::pointer_down` escreve
+`Pressed` num botão **enquanto o dedo está em baixo**, e sem ela a marca passaria a dizer *«é aqui
+que estou a carregar»* em vez de *«é este o estado»*.
+
+⭐ **E vale de graça para o pulldown *View***, que tinha exactamente o mesmo buraco: as seis vistas
+nomeadas e os três gestos de câmera também abriam sem marca nenhuma.
+
+### §10.2 — ⛔ O risco entre fileiras: o produtor não o emitia e o consumidor deitava-o fora
+
+Três rádios independentes chegavam ao ecrã como **nove linhas numa coluna única**. O
+`ToolRailEntry::Divider` **já existia** na casa — e o merge do menu fazia
+`filter_map(|e| Some((e.node_id()?, e.label()?, None)))`, onde um divisor não tem nem id nem
+rótulo ⇒ **todo divisor contribuído evaporava-se em silêncio**. *Um produtor sem consumidor e um
+consumidor sem produtor dão o mesmo ecrã, e as curas são opostas.*
+
+⇒ [`MenuRow`](../../crates/ph2d-editor-core/src/screens/hero/menu_row_mark.rs) (comando **ou** risco),
+a altura do menu passa a **somar** em vez de multiplicar, e o `entries` emite o risco **só** entre
+fileiras não-vazias (a lei *vazio ⇒ não é pintado*, nas duas pontas).
+
+### §10.3 — Os gates, e porque são DOIS
+
+| gate | onde | o que mata |
+|---|---|---|
+| `a_contributed_row_is_marked_by_the_state_its_module_publishes` | `ph2d-editor-core` | a **lei** — e a cerca do dedo em baixo é o 2.º `assert` |
+| `the_mark_reaches_the_pixel_and_one_bullet_is_one_state` | `ph2d-panel-registry-init` | o **pixel** — conta segmentos de caminho com `0`, `1` e `3` fileiras acesas |
+| `a_rule_between_the_rows_says_they_are_three_questions` | idem | o **risco** — a distância dentro da fileira contra a que atravessa a fronteira |
+
+⭐⭐ **A prova de mutação mostrou que eles NÃO são redundantes:** apagar a chamada
+`|| contributed_row_is_current(...)` no pintor deixa o gate da **lei VERDE** (a função está intacta)
+e faz o gate do **pixel sangrar**. *Um gate que lê o `ButtonState` mede a publicação, não a pintura.*
+
+### §10.4 — ⛔⛔ E TRÊS gates de ARQUITECTURA estavam VERMELHOS desde o commit da fatia
+
+Nenhum deles vive nas crates que a fatia editou, e o fecho da wave correu só essas — é a cegueira
+que o `CLAUDE.md` §5.1 já nomeia (*«um fecho que só corre as crates EDITADAS é cego aos gates de
+arquitectura»*), agora pela quinta vez.
+
+| vermelho | causa | cura |
+|---|---|---|
+| `as_citacoes_em_comentario_so_descem` | a `ph2d-material` trouxe **15** citações a `.glsl` do MaterialX, com a catraca em **zero** | triagem: o artefacto é **Apache-2.0** (`pacman -Qo` → `materialx 1.39.5-1.1`; o `LICENSE` abre com *«Apache License, Version 2.0»*) ⇒ os 11 ficheiros entram em `ALVO_PERMISSIVO`. *Atribuição é obrigação da licença, não dívida.* |
+| `panel_functions_under_loc_cap` | `event.rs::apply_event` a `221` contra `200` | os **treze** braços copiados viraram a tabela `CHIP_ROWS` — a forma que este repo mediu como a única sem knob morto |
+| `workspace_src_files_under_loc_cap` | `context_menu_overlay.rs` a `724` contra `700` | corte por responsabilidade: `menu_row_mark.rs` (*o que uma linha É, e quando está acesa*) sai do ficheiro que a DESENHA |
+
+⛔ **Nenhuma isenção nova** — a catraca deste repo só desce.
+
+### §10.5 — ⏳ O que a auditoria da costura deixou ABERTO (decisão de produto)
+
+- **O menu FECHA a cada linha servida** ⇒ trocar modo + vista + exposição custa **abrir o pulldown
+  três vezes**. A lei *«servir é fechar»* é genérica do store e está gateada — ⚠️ mas foi calibrada
+  num pulldown de **uma** fileira (servir uma vista é um gesto terminal). Um pulldown de **três
+  rádios** é composição nova, e ninguém reconferiu a nota.
+- **A face fechada diz só o MODO** (`Shading / Matcap`): com o menu fechado não há confirmação da
+  exposição nem da vista. O `AreaMenu` tem **um** campo `face`, e o chip mede `36 px` fixos.
+- **A lei da W34 não cobre as três fileiras novas** — elas não dependem da selecção, logo caem fora
+  do censo do [`reach_tests`](../../crates/ph2d-app-field3d/src/reach_tests.rs) **por construção, e
+  não por decisão escrita**. O gate não reprova nem declara excepção.
+- **Nenhuma das três tem tecla**, e o `Z` (o gesto do Blender para isto) está **livre** no roteador
+  do modelador. ⚠️ O molde seguro existe (`input_pointer::mode_for_key` recusa `ctrl/alt/super`);
+  sem ele, um `Z` come o `Ctrl+Z` do app inteiro.
+- **O orçamento de chips da fila:** medido `3`, usam-se `2` ⇒ **cabe um terceiro**. ⚠️ A nota do
+  `ids/chrome/rail.rs` ainda diz *«hoje usa-se 1»*, falsa desde esta fatia.

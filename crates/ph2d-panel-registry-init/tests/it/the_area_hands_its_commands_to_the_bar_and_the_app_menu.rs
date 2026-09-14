@@ -114,11 +114,24 @@ fn hero(w: f32, h: f32, armed: bool) -> (HeroScreen, Rect) {
 }
 
 fn paint(h: &mut HeroScreen, vp: Rect) {
+    let _ = paint_counting(h, vp);
+}
+
+/// [`paint`], devolvendo **quantos segmentos de caminho a cena de facto recebeu**.
+///
+/// ⛔⛔ **Ela existe porque um gate que lê o `ButtonState` mede a PUBLICAÇÃO, não a PINTURA** — é a
+/// lição do §4.2 da auditoria do `source.lsystem`, onde o gate que prometia medir *«a queixa chega
+/// a PIXEL»* media a linha reservada e ficava verde com a pintura apagada.
+///
+/// ⚠️ **O número absoluto não significa nada** (o ecrã inteiro entra, e o laço pinta duas vezes) —
+/// o que significa é a DIFERENÇA entre dois retratos que só discordam no que se está a medir.
+fn paint_counting(h: &mut HeroScreen, vp: Rect) -> u32 {
     let mut scene = ph2d_vector::VectorScene::new();
     let mut text = TextSystem::without_system_fonts();
     for _ in 0..2 {
         ph2d_editor_core::screens::hero::paint_hero_screen(h, vp, &mut scene, &mut text);
     }
+    scene.inner().encoding().n_path_segments
 }
 
 fn pointer(kind: PointerKind, x: f32, y: f32) -> PointerEvent {
@@ -464,6 +477,144 @@ fn the_shading_pulldown_serves_the_render_mode_and_the_bar_is_still_one_line() {
         assert_eq!(added, 2, "{name}: o desenho usa DOIS chips de area");
         assert_eq!(lines, 1, "{name}: a fila precisa de {lines} linhas");
     }
+}
+
+/// O retrato com o pulldown do sombreamento, dizendo **qual chip de cada fileira está aceso**.
+fn shading_snapshot(
+    modo: Option<usize>,
+    vista: Option<usize>,
+    exposicao: Option<usize>,
+) -> ModelSnapshot {
+    let fileira = |chaves: &[&'static str], aceso: Option<usize>| -> Vec<ModeChip> {
+        chaves
+            .iter()
+            .enumerate()
+            .map(|(i, key)| ModeChip {
+                key,
+                active: aceso == Some(i),
+            })
+            .collect()
+    };
+    ModelSnapshot {
+        shadings: fileira(
+            &[
+                "panel.model3d.shading.matcap",
+                "panel.model3d.shading.render",
+            ],
+            modo,
+        ),
+        looks: fileira(
+            &["panel.model3d.look.standard", "panel.model3d.look.neutral"],
+            vista,
+        ),
+        exposures: fileira(
+            &[
+                "panel.model3d.exposure.minus2",
+                "panel.model3d.exposure.minus1",
+                "panel.model3d.exposure.zero",
+                "panel.model3d.exposure.plus1",
+                "panel.model3d.exposure.plus2",
+            ],
+            exposicao,
+        ),
+        shading_label: "panel.model3d.shading.matcap",
+        ..snapshot_with_area_commands()
+    }
+}
+
+/// Abre o pulldown do sombreamento com este retrato e devolve o `HeroScreen` **com o menu aberto**.
+fn hero_with_shading_menu_open(
+    modo: Option<usize>,
+    vista: Option<usize>,
+    exposicao: Option<usize>,
+) -> (HeroScreen, Rect) {
+    let (mut h, vp) = hero(1194.0, 834.0, true);
+    ph2d_panel_model3d::publish(shading_snapshot(modo, vista, exposicao));
+    ph2d_panel_model3d::publish_area_bar(&mut h.store, true);
+    let _ = ph2d_panel_model3d::drain_intents();
+    paint(&mut h, vp);
+    open_area_menu(&mut h, vp, 1);
+    // ⚠️ **Re-publicar não é cerimónia:** o `publish_area_bar` corre em TODO quadro no app, e o
+    // `Down` que abriu o menu escreveu `Pressed` no chip sob o dedo. Sem isto o retrato do gate
+    // discordaria do que o produto teria no quadro seguinte.
+    ph2d_panel_model3d::publish(shading_snapshot(modo, vista, exposicao));
+    ph2d_panel_model3d::publish_area_bar(&mut h.store, true);
+    let _ = ph2d_panel_model3d::drain_intents();
+    (h, vp)
+}
+
+/// ⭐⭐⭐ **A MARCA CHEGA AO PIXEL, e um ponto é um ESTADO** (report do dono, 2026-09-13: *«coloque a
+/// marca de seleção no render selecionado»*).
+///
+/// ⛔⛔ **Um gate que lesse o `ButtonState` mediria a PUBLICAÇÃO, e a publicação já estava certa** —
+/// o `area_bar::entries` escreve `Pressed` no chip aceso desde que o pulldown existe. O que faltava
+/// era o pintor LER isso, e é por isso que este gate conta geometria: ele reprova exactamente no
+/// estado em que o dono abriu o menu e viu nove linhas iguais.
+///
+/// ⚠️ **A régua é a DIFERENÇA entre três retratos que só discordam no `active`** — o número
+/// absoluto conta o ecrã inteiro e não significa nada. E a 2.ª asserção é a que separa *«pintou
+/// alguma coisa»* de *«pintou UM ponto por fileira acesa»*: três estados têm de custar exactamente
+/// o triplo de um.
+#[test]
+fn the_mark_reaches_the_pixel_and_one_bullet_is_one_state() {
+    let conta = |modo, vista, exposicao| {
+        let (mut h, vp) = hero_with_shading_menu_open(modo, vista, exposicao);
+        paint_counting(&mut h, vp)
+    };
+    let nenhuma = conta(None, None, None);
+    let uma = conta(Some(1), None, None);
+    let tres = conta(Some(1), Some(1), Some(4));
+    println!("segmentos: 0 acesas {nenhuma} · 1 acesa {uma} · 3 acesas {tres}");
+    assert!(
+        uma > nenhuma,
+        "a linha ACESA nao pintou nada a mais do que uma apagada ({uma} contra {nenhuma}) — o menu \
+         abre com as nove linhas iguais, que e' o report do dono"
+    );
+    assert_eq!(
+        tres - nenhuma,
+        (uma - nenhuma) * 3,
+        "tres fileiras acesas nao custaram tres pontos ({tres} - {nenhuma} contra 3 x ({uma} - \
+         {nenhuma})) — a marca nao e' por FILEIRA"
+    );
+}
+
+/// ⭐⭐⭐ **UM RISCO ENTRE AS FILEIRAS** — a prova de que as nove linhas são **três perguntas**.
+///
+/// ⚠️ **A régua é o índice de acerto e não a cena**, e de propósito: ela mede *onde as linhas
+/// ficaram*, que é o que responde *«há alguma coisa entre elas?»*. Duas linhas da mesma fileira
+/// ficam a `ROW_H` uma da outra; atravessar uma fronteira custa `ROW_H` **mais a banda do risco** —
+/// e os dois riscos têm de medir o mesmo, senão não é uma lei, são dois números.
+///
+/// **Mutação que deve sangrar:** apagar o `push(ToolRailEntry::Divider)` do `area_bar::entries`, ou
+/// o braço `MenuRow::Divider` do pintor — nos dois casos as três distâncias colapsam em `ROW_H`.
+#[test]
+fn a_rule_between_the_rows_says_they_are_three_questions() {
+    let (h, _vp) = hero_with_shading_menu_open(Some(0), Some(0), Some(2));
+    let y = |id| {
+        h.hit_index
+            .rect_for(id)
+            .unwrap_or_else(|| panic!("a linha {id:?} nao foi pintada no menu aberto"))
+            .y
+    };
+    let matcap = y(ph2d_panel_model3d::ids::model3d_shading_button(0));
+    let render = y(ph2d_panel_model3d::ids::model3d_shading_button(1));
+    let standard = y(ph2d_panel_model3d::ids::model3d_look_button(0));
+    let neutral = y(ph2d_panel_model3d::ids::model3d_look_button(1));
+    let menos2 = y(ph2d_panel_model3d::ids::model3d_exposure_button(0));
+
+    let dentro = render - matcap;
+    let primeiro = standard - render - dentro;
+    let segundo = menos2 - neutral - dentro;
+    println!("passo dentro da fileira {dentro} · riscos {primeiro} e {segundo}");
+    assert!(
+        primeiro > 0.0,
+        "nao ha nada entre o modo e a vista da cena: as duas fileiras leem-se como uma lista so"
+    );
+    assert!(
+        (primeiro - segundo).abs() < 0.01,
+        "os dois riscos medem diferente ({primeiro} contra {segundo}) — nao e' uma lei, sao dois \
+         numeros"
+    );
 }
 
 /// ⭐⭐⭐ **A SAÍDA vive no menu do APP** — e as linhas dele aparecem DEPOIS das que já lá estavam.

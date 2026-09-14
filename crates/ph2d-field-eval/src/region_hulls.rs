@@ -44,7 +44,12 @@ pub struct RegionHulls {
 }
 
 const fn rect(lo: [f32; 2], hi: [f32; 2]) -> [[f32; 2]; 4] {
-    [[lo[0], lo[1]], [hi[0], lo[1]], [hi[0], hi[1]], [lo[0], hi[1]]]
+    [
+        [lo[0], lo[1]],
+        [hi[0], lo[1]],
+        [hi[0], hi[1]],
+        [lo[0], hi[1]],
+    ]
 }
 
 impl LeafRegion {
@@ -113,7 +118,11 @@ impl RegionCompiler {
     /// ⚠️ Os dois leitores são a compilação e [`Self::hulls`]. *Uma regra escrita em dois sítios ainda
     /// não é uma regra* — e aqui a cópia que divergisse serviria uma fita sobre uma folha que a
     /// compilação cortou por outro critério.
-    pub(crate) fn specialised_leaf(&self, node: &Node, i: usize) -> Option<(Affine, &ProfileIndex)> {
+    pub(crate) fn specialised_leaf(
+        &self,
+        node: &Node,
+        i: usize,
+    ) -> Option<(Affine, &ProfileIndex)> {
         self.maps
             .get(i)
             .copied()

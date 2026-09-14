@@ -292,6 +292,18 @@ pub fn publish(store: &mut WidgetStore, armed: bool) {
 fn entries(store: &mut WidgetStore, rows: &[Row<'_>]) -> Vec<ToolRailEntry> {
     let mut out: Vec<ToolRailEntry> = Vec::new();
     for (chips, id_of) in rows {
+        // ⭐⭐⭐ **UM RISCO ENTRE FILEIRAS** (report do dono, 2026-09-13). O pulldown *Shading* tem
+        // TRÊS rádios independentes — o modo, a vista da cena e a exposição — e sem separação eles
+        // chegam ao ecrã como nove linhas iguais numa coluna só. *O artista não tem como saber que
+        // `Render` e `Exposure 0` respondem a perguntas diferentes.*
+        //
+        // ⚠️ **A cerca é a lei da casa — *vazio ⇒ não é pintado*:** o risco só nasce quando já há
+        // algo por cima E há algo por baixo. Sem a 1.ª metade, um pulldown cuja 1.ª fileira esteja
+        // vazia abriria com um risco no topo; sem a 2.ª, um com a ÚLTIMA vazia fecharia com um
+        // risco pendurado — um separador que não separa nada.
+        if !out.is_empty() && !chips.is_empty() {
+            out.push(ToolRailEntry::Divider);
+        }
         // ⚠️ **O mesmo tecto do painel** (`MAX_MODES`): o `populate` cunha os ids às cegas, então
         // uma fileira mais longa do que a família teria chips sem registo — pintados e mortos sob
         // o dedo, que é o modo de falha mais caro desta casa.

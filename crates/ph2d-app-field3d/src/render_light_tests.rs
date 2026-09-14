@@ -132,3 +132,97 @@ fn the_irradiance_is_the_cosine_mean_of_the_radiance() {
         }
     }
 }
+
+/// ⏱️ **SONDA (`--ignored`): o que o modo RENDER custa, e que luz ele DEVOLVE** — com o rig, o céu,
+/// o material e o olhar **do produto**.
+///
+/// ⛔⛔ **Ela mudou de crate em 2026-09-13, e a mudança É a correcção.** Ela nasceu na
+/// `ph2d-field-render`, que **não alcança** este ficheiro — e por isso escrevia a luz à mão: uma
+/// lâmpada com a direcção em literal e um céu **CONSTANTE**, onde o produto tem um [`StudioSky`]
+/// que é um GRADIENTE. ⇒ a tabela de luz do `docs/Render3d/05` §6 media um programa que ninguém
+/// corre, e errava no sentido optimista (`7,1 %` da peça cortada a `0` stops, contra os `10,9 %`
+/// reais). *Uma segunda cópia escrita à mão do valor que uma porta produz.*
+///
+/// ⚠️ **Não é um gate — não há barra aqui.** É a medição que responde *«isto ainda é interactivo?»*
+/// e *«a peça sai preta ou estourada?»* antes de o dono olhar para ela. Corra-a com a máquina calma
+/// (`CLAUDE.md` §5.0: nenhum relógio desta workstation vale acima de `load ~5`).
+#[test]
+#[ignore = "sonda de medição"]
+fn measure_what_the_render_mode_costs_and_paints() {
+    use ph2d_field_render::{Lighting, Matcap, Orbit, shade_render, trace};
+    use ph2d_view_transform::{Look, ViewTransform};
+    use std::time::Instant;
+
+    const BG: [u8; 4] = [12, 34, 56, 200];
+    let (w, h) = (640, 360);
+    let cam = Orbit::default();
+    let doc = ph2d_field::FieldDoc::new(
+        vec![ph2d_field_eval::leaf(
+            ph2d_field::Primitive::Sphere { radius: 0.6 },
+            ph2d_field::Xform::IDENTITY,
+        )],
+        ph2d_field::NodeId(0),
+    )
+    .expect("esfera");
+    let reg = ph2d_field_eval::hybrid::Registry::new();
+    let t = Instant::now();
+    let g = trace(&doc, &reg, &cam, w, h);
+    let trace_ms = t.elapsed().as_secs_f64() * 1e3;
+
+    // ⭐ **A luz é a do PRODUTO, pelas mesmas portas que o `smoke_draw` chama.**
+    let lamps = lamps(&ph2d_light::LightRig::default());
+    let surface = ph2d_material::OpenPbr::default().prepare();
+    let light = Lighting {
+        lamps: &lamps,
+        sky: &StudioSky,
+    };
+    let t = Instant::now();
+    let render_px = shade_render(&g, &cam, &surface, &light, Look::default(), BG);
+    let render_ms = t.elapsed().as_secs_f64() * 1e3;
+
+    let texels = vec![0.5_f32; 2 * 2 * 3];
+    let m = Matcap {
+        side: 2,
+        rgb_linear: &texels,
+    };
+    let t = Instant::now();
+    let _ = ph2d_field_render::shade(&g, &m, BG);
+    let matcap_ms = t.elapsed().as_secs_f64() * 1e3;
+
+    // ⚠️ **Saturado é os TRÊS canais em `255`**, e não só o verde: um canal no tecto ainda tem cor,
+    // e o que o olho lê como «branco chapado» é a peça a perder a forma nos três.
+    let stats = |px: &[u8]| -> (f64, u32, u32, usize) {
+        let (mut soma, mut verde, mut branco, mut n) = (0.0_f64, 0_u32, 0_u32, 0_usize);
+        for (i, p) in px.as_chunks::<4>().0.iter().enumerate() {
+            if !g.hit[i] {
+                continue;
+            }
+            n += 1;
+            soma += f64::from(p[1]);
+            verde += u32::from(p[1] == 255);
+            branco += u32::from(p[0] == 255 && p[1] == 255 && p[2] == 255);
+        }
+        (soma / n as f64, verde, branco, n)
+    };
+    let (_, _, branco0, pixels) = stats(&render_px);
+    println!("esfera {w}x{h} · {pixels} pixels de peça · traçado {trace_ms:.1} ms");
+    println!(
+        "sombrear: matcap (2x2 texels) {matcap_ms:.2} ms · render {render_ms:.2} ms · \
+         branco chapado {branco0}"
+    );
+    for stops in [-2.0, -1.0, 0.0, 1.0, 2.0] {
+        let de = |view| {
+            let look = Look {
+                exposure_stops: stops,
+                view,
+            };
+            stats(&shade_render(&g, &cam, &surface, &light, look, BG))
+        };
+        let (s_media, s_verde, s_branco, _) = de(ViewTransform::Standard);
+        let (n_media, n_verde, n_branco, _) = de(ViewTransform::Neutral);
+        println!(
+            "  {stops:+.0} stop · Standard media {s_media:6.1} verde=255 {s_verde:6} branco {s_branco:6} \
+             · Neutral media {n_media:6.1} verde=255 {n_verde:6} branco {n_branco:6}"
+        );
+    }
+}

@@ -12,7 +12,6 @@ use crate::interaction::{ContextMenuKind, HitIndex, InteractiveState, WidgetStor
 use crate::paint::{fill_rounded_rect, paint_icon, paint_text, resolve, stroke_rounded_rect};
 use crate::widget::{TextInput, paint_text_input_with_buffer};
 use crate::zones::Rect;
-use ph2d_a11y::NodeId;
 use ph2d_i18n::tr;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{
@@ -49,135 +48,7 @@ fn clamp_to_viewport(anchor_x: f32, anchor_y: f32, w: f32, h: f32, viewport: Rec
 /// paint user-placed notes.
 pub use crate::widget::panel_chrome::HIGHLIGHTER_RGBA;
 
-/// Does `id` correspond to the currently-active choice for any of
-/// the single-choice menus? The row paint draws an accent bullet
-/// next to the row whose id matches, mirroring SceneList's "current
-/// scene" indicator (2026-05-24 menu standardization).
-///
-/// One function covers every menu because IDs are unique across all
-/// menu kinds — checking `id == active_theme_id || id == active_radius
-/// _id || ...` is unambiguous and avoids threading `kind` through the
-/// row loop.
-pub(super) fn id_is_currently_selected(
-    id: NodeId,
-    theme: Theme,
-    store: &WidgetStore,
-    project: &crate::project::ProjectSettings,
-    motion: &crate::motion::UiMotion,
-) -> bool {
-    use crate::project::{DisplayAngle, DisplayUnit, ImageFilterMode};
-    use crate::widget::RailButtonSize;
-    // ⛔⛔ **AS DEZASSEIS LINHAS DE ALTERNÂNCIA DA BARRA DE MENUS** — os treze módulos, os dois
-    // painéis e a régua. Elas nasceram em 2026-08-30 **sem marca nenhuma**: o menu *Window* dizia
-    // exactamente a mesma coisa com o Vector aberto e fechado.
-    //
-    // ⚠️ É a lei que este ficheiro já documenta, paga na unidade de ângulo: *«fiar o clique não é
-    // fiar o ESTADO»* — e a barra repetiu-a dezasseis vezes de uma vez. Antes dela a indicação
-    // existia: o laço de reconciliação da shell força `Pressed` no pill do tool activo, e o pill
-    // lia-o. O pill saiu; a marca não foi com ele para lado nenhum.
-    if super::menu_bar::row_is_marked_by_button_state(id) {
-        return matches!(
-            store.button_state(id),
-            Some(crate::widget::ButtonState::Pressed)
-        );
-    }
-    let theme_id = super::theme_menu::theme_menu_id(theme);
-    if id == theme_id {
-        return true;
-    }
-    const RADIUS_ROUND_THRESH: f32 = 1.3; // LITERAL-PX-OK: midpoint between Default(1.0) and Round(1.5) radius preset
-    let radius_id = if store.radius_scale() < 0.5 {
-        ids::CTX_MENU_RADIUS_SHARP
-    } else if store.radius_scale() > RADIUS_ROUND_THRESH {
-        ids::CTX_MENU_RADIUS_ROUND
-    } else {
-        ids::CTX_MENU_RADIUS_DEFAULT
-    };
-    if id == radius_id {
-        return true;
-    }
-    let rail_id = match store.rail_button_size() {
-        RailButtonSize::Small => ids::CTX_MENU_RAIL_SIZE_SMALL,
-        RailButtonSize::Medium => ids::CTX_MENU_RAIL_SIZE_MEDIUM,
-        RailButtonSize::Large => ids::CTX_MENU_RAIL_SIZE_LARGE,
-    };
-    if id == rail_id {
-        return true;
-    }
-    let ppm_id = match project.pixels_per_meter as i32 {
-        16 => Some(ids::CTX_MENU_PPM_16),
-        32 => Some(ids::CTX_MENU_PPM_32),
-        100 => Some(ids::CTX_MENU_PPM_100),
-        256 => Some(ids::CTX_MENU_PPM_256),
-        1024 => Some(ids::CTX_MENU_PPM_1024),
-        _ => None,
-    };
-    if ppm_id == Some(id) {
-        return true;
-    }
-    let unit_id = match project.display_unit {
-        DisplayUnit::Meters => ids::CTX_MENU_UNIT_METERS,
-        DisplayUnit::Pixels => ids::CTX_MENU_UNIT_PIXELS,
-    };
-    if id == unit_id {
-        return true;
-    }
-    // Angle unit — a irmã do `display_unit` acima (Enio, 2026-08-30). ⚠️ **Esta linha faltou na
-    // 1.ª entrega da feature**, e o defeito é da família que este ficheiro existe para curar: o
-    // menu abria, o clique funcionava e o valor gravava — mas **nenhuma das duas opções aparecia
-    // marcada**, então não havia como ver em que unidade se estava sem abrir o Inspector e
-    // comparar. *Fiar o clique não é fiar o ESTADO.*
-    let angle_id = match project.display_angle {
-        DisplayAngle::Degrees => ids::CTX_MENU_ANGLE_DEGREES,
-        DisplayAngle::Radians => ids::CTX_MENU_ANGLE_RADIANS,
-    };
-    if id == angle_id {
-        return true;
-    }
-    let filter_id = match project.image_filter {
-        ImageFilterMode::PixelArt => ids::CTX_MENU_FILTER_PIXELART,
-        ImageFilterMode::Smooth => ids::CTX_MENU_FILTER_SMOOTH,
-    };
-    if id == filter_id {
-        return true;
-    }
-    // Text rendering — value lives on the `paint::text_rendering`
-    // thread-local (published per-frame from `HeroScreen.text_rendering`),
-    // so we can read it here without threading another param through.
-    let text_id = match crate::paint::text_rendering() {
-        ph2d_tokens::TextRendering::Default => ids::CTX_MENU_TEXT_DEFAULT,
-        ph2d_tokens::TextRendering::CrispHeavy => ids::CTX_MENU_TEXT_CRISP_HEAVY,
-        ph2d_tokens::TextRendering::CrispHeavyPlus => ids::CTX_MENU_TEXT_CRISP_HEAVY_PLUS,
-    };
-    if id == text_id {
-        return true;
-    }
-    // Display submenu (VSync / Immediate) — store mirrors the last
-    // value `settings_present::apply` published; default `true` matches
-    // the shell's `Fifo` baseline.
-    let display_id = if store.present_vsync() {
-        ids::CTX_MENU_DISPLAY_VSYNC
-    } else {
-        ids::CTX_MENU_DISPLAY_IMMEDIATE
-    };
-    if id == display_id {
-        return true;
-    }
-    // Motion — o carácter é um RÁDIO (uma linha acesa das duas) e o reduced motion é um TOGGLE
-    // (aceso quando ligado). ⚠️ São perguntas independentes, então são dois `if` e não um `match`:
-    // *Expressivo + reduced* tem de conseguir acender as duas linhas ao mesmo tempo.
-    let character_id = match motion.character() {
-        crate::motion::UiCharacter::Discrete => ids::CTX_MENU_MOTION_DISCRETE,
-        crate::motion::UiCharacter::Expressive => ids::CTX_MENU_MOTION_EXPRESSIVE,
-    };
-    if id == character_id {
-        return true;
-    }
-    if id == ids::CTX_MENU_MOTION_REDUCED && motion.reduced_motion() {
-        return true;
-    }
-    false
-}
+use super::menu_row_mark::{MenuRow, contributed_row_is_current, id_is_currently_selected};
 
 /// Paint the open context menu (if any) and register hit rects for each item. Called last in the hero
 /// paint pipeline so the menu always sits on top. `viewport` clamps the menu rect so a cascade submenu
@@ -223,15 +94,28 @@ pub fn paint_context_menu_overlay(
     };
     // ⚠️ `filter_map` e não `map`: o `Divider` não tem id nem rótulo, e uma linha de menu sem verbo
     // seria um alvo que consome o clique e não faz nada.
-    let items: Vec<(NodeId, &str, Option<[u8; 4]>)> = statics
-        .iter()
-        .map(|&(id, key, swatch)| (id, key.tr(), swatch))
-        .chain(
-            contrib
-                .iter()
-                .filter_map(|e| Some((e.node_id()?, e.label()?, None))),
-        )
-        .collect();
+    //
+    // ⚠️⚠️ **DUAS linhas mudaram esta expressão no mesmo dia, e as duas mudanças ficam** (fusão de
+    // 2026-09-17). A `line/UIUX` migrou a tabela estática para CHAVES (a `crate::ids::MenuRow` é a
+    // tupla `(NodeId, TextKey, …)` e o texto sai aqui, por `.tr()`, HR-15); a `line/3DModeling`
+    // trocou o par cru pelo enum [`MenuRow`] do `menu_row_mark`, porque *um `ToolRailEntry` sem id
+    // é o RISCO* e a redacção anterior — um `filter_map` sobre `(node_id()?, label()?)` — fazia
+    // **todo** divisor contribuído evaporar-se em silêncio.
+    // ⛔ Ficar com uma só das duas dá um defeito calado de cada lado: sem o `.tr()` o menu pinta a
+    // CHAVE crua; sem o enum, o risco desaparece. ⚠️ E os dois tipos **chamam-se `MenuRow`** — o
+    // daqui é o do `menu_row_mark` (importado no topo); o da tabela chega qualificado, pelo
+    // `menu_rows::menu_rows`.
+    let rows: Vec<MenuRow<'_>> = statics
+    .iter()
+    .map(|&(id, key, swatch)| MenuRow::Item(id, key.tr(), swatch))
+    .chain(contrib.iter().map(|e| {
+        match (e.node_id(), e.label()) {
+            (Some(id), Some(label)) => MenuRow::Item(id, label, None),
+            // Um alvo sem id consumiria o clique e não faria nada; o que ele é, é um risco.
+            _ => MenuRow::Divider,
+        }
+    }))
+    .collect();
 
     if matches!(req.kind, ContextMenuKind::SceneList) {
         paint_scene_list(req, scene, text_system, theme, hit_index, store, viewport);
@@ -270,7 +154,10 @@ pub fn paint_context_menu_overlay(
         paint_dialog(scene, text_system, theme, hit_index, store, viewport);
         return;
     }
-    let total_h = ROW_H * items.len() as f32 + pad_y() * 2.0;
+    // ⚠️ A altura SOMA as linhas uma a uma em vez de multiplicar pela contagem: um risco não é do
+    // tamanho de um comando, e a conta antiga (`ROW_H * len`) deixaria a coluna a transbordar do
+    // cartão exactamente pela altura dos riscos.
+    let total_h = rows.iter().map(MenuRow::h).sum::<f32>() + pad_y() * 2.0;
     let rect = clamp_to_viewport(req.x, req.y, MENU_W, total_h, viewport);
 
     // Floating panel: BgElev fill + Border stroke + Md radius.
@@ -293,8 +180,23 @@ pub fn paint_context_menu_overlay(
     // 10 px → text x). Painted on every row so labels align whether
     // the row is current or not.
     let bullet_col_w: f32 = 10.0; // LITERAL-PX-OK: chrome-specific bullet→text gap
-    for (i, (id, label, swatch)) in items.iter().enumerate() {
-        let r = Rect::new(row_x, rect.y + pad_y() + ROW_H * i as f32, row_w, ROW_H);
+    let mut row_y = rect.y + pad_y();
+    for row in &rows {
+        let h = row.h();
+        let r = Rect::new(row_x, row_y, row_w, h);
+        row_y += h;
+        let MenuRow::Item(id, label, swatch) = row else {
+            // ⭐ **O RISCO** — a mesma linha de `1 px` em `Border` que o trilho desenha
+            // (`widget::tool_rail`), centrada na banda que ela ocupa. ⛔ Não entra no índice de
+            // acerto: um separador que aceitasse o clique seria um alvo que não faz nada.
+            fill_rounded_rect(
+                scene,
+                Rect::new(r.x, r.y + (h - 1.0) * 0.5, r.w, 1.0),
+                0.0,
+                resolve(ColorToken::Border, theme),
+            );
+            continue;
+        };
         hit_index.register(*id, r);
         if Some(*id) == store.hot_id() {
             fill_rounded_rect(
@@ -309,7 +211,13 @@ pub fn paint_context_menu_overlay(
         let icon_y = r.y + (r.h - icon_size) * 0.5;
         // Bullet for currently-selected item (SceneList parity,
         // 2026-05-24 menu standardization).
-        let is_current = id_is_currently_selected(*id, theme, store, project, motion);
+        //
+        // ⭐⭐⭐ **As DUAS metades**: as linhas que esta crate conhece respondem por tabela, e as que
+        // um MÓDULO contribui respondem pelo `ButtonState` que ele próprio publica — ver
+        // [`contributed_row_is_current`]. ⛔ Uma tabela só teria de conhecer os ids de todo editor
+        // do app, que é o acoplamento que a **D2** existe para não ter.
+        let is_current = id_is_currently_selected(*id, theme, store, project, motion)
+            || contributed_row_is_current(*id, contrib, store);
         let bullet_x = r.x + pad_x;
         if is_current {
             let dot = ph2d_vector::Circle::new(

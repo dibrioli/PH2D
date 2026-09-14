@@ -66,7 +66,8 @@ fn ring(n: usize, r_in: f32, r_out: f32) -> Vec<[f32; 2]> {
 /// cada folha E na raiz, mais as duas folhas que NÃO têm casco (o torno, e uma debaixo de um espelho,
 /// que remapeia coordenadas).
 fn posed_doc() -> FieldDoc {
-    let prof = |pts: Vec<[f32; 2]>| Profile::new(vec![pts], FillRule::NonZero, 1e-3).expect("perfil");
+    let prof =
+        |pts: Vec<[f32; 2]>| Profile::new(vec![pts], FillRule::NonZero, 1e-3).expect("perfil");
     let x = |axis: [f32; 3], angle: f32, scale: f32, translation: [f32; 3]| Xform {
         translation,
         rotation: quat(axis, angle),
@@ -173,7 +174,12 @@ fn polygon(hull: &[[f32; 2]], local: ([f32; 3], [f32; 3])) -> Vec<[f32; 2]> {
         hull.to_vec()
     } else {
         let (lo, hi) = local;
-        vec![[lo[0], lo[1]], [hi[0], lo[1]], [hi[0], hi[1]], [lo[0], hi[1]]]
+        vec![
+            [lo[0], lo[1]],
+            [hi[0], lo[1]],
+            [hi[0], hi[1]],
+            [lo[0], hi[1]],
+        ]
     }
 }
 
@@ -182,9 +188,9 @@ fn polygon(hull: &[[f32; 2]], local: ([f32; 3], [f32; 3])) -> Vec<[f32; 2]> {
 /// polígonos não ser lido como fuga por um ULP.
 fn samples_in(poly: &[[f32; 2]], rng: &mut Rng) -> Vec<[f32; 2]> {
     let n = poly.len();
-    let c = poly
-        .iter()
-        .fold([0.0f32; 2], |a, p| [a[0] + p[0] / n as f32, a[1] + p[1] / n as f32]);
+    let c = poly.iter().fold([0.0f32; 2], |a, p| {
+        [a[0] + p[0] / n as f32, a[1] + p[1] / n as f32]
+    });
     let mut out: Vec<[f32; 2]> = poly.to_vec();
     for i in 0..n {
         let (a, b) = (poly[i], poly[(i + 1) % n]);

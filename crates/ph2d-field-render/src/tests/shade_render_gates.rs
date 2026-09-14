@@ -140,97 +140,14 @@ fn the_view_direction_follows_the_ray_that_traced_the_pixel() {
     }
 }
 
-/// ⏱️ **SONDA (`--ignored`): o que o modo RENDER custa, e que luz ele devolve.**
-///
-/// ⚠️ Ela **não é um gate** — não há barra aqui. É a medição que responde *«isto ainda é
-/// interactivo?»* e *«a peça sai preta ou estourada?»* antes de o dono olhar para ela.
-#[test]
-#[ignore = "sonda de medição"]
-fn measure_what_the_render_mode_costs_and_paints() {
-    use std::time::Instant;
-    let (w, h) = (640, 360);
-    let cam = Orbit::default();
-    let doc = sphere(0.6);
-    let reg = Registry::new();
-    let t = Instant::now();
-    let g = trace(&doc, &reg, &cam, w, h);
-    let trace_ms = t.elapsed().as_secs_f64() * 1e3;
-
-    let texels = vec![0.5_f32; 2 * 2 * 3];
-    let m = Matcap {
-        side: 2,
-        rgb_linear: &texels,
-    };
-    let t = Instant::now();
-    let matcap_px = shade(&g, &m, BG);
-    let matcap_ms = t.elapsed().as_secs_f64() * 1e3;
-
-    // O rig e o céu de omissão do modelador, como o `render_light` os traduz: a chave a `π`, o céu
-    // do estúdio aproximado pela média dele.
-    let surface = OpenPbr::default().prepare();
-    let lamps = [Lamp {
-        to_light: [-0.558, 0.663, 0.5],
-        radiance: [std::f32::consts::PI; 3],
-    }];
-    let sky = Sky([0.35, 0.37, 0.42]);
-    let light = Lighting {
-        lamps: &lamps,
-        sky: &sky,
-    };
-    let t = Instant::now();
-    let render_px = shade_render(&g, &cam, &surface, &light, Look::default(), BG);
-    let render_ms = t.elapsed().as_secs_f64() * 1e3;
-
-    let stats = |px: &[u8]| -> (f64, u32, usize) {
-        let (mut sum, mut saturated, mut n) = (0.0_f64, 0_u32, 0_usize);
-        for (i, p) in px.as_chunks::<4>().0.iter().enumerate() {
-            if !g.hit[i] {
-                continue;
-            }
-            n += 1;
-            sum += f64::from(p[1]);
-            if p[1] == 255 {
-                saturated += 1;
-            }
-        }
-        (sum / n as f64, saturated, n)
-    };
-    let (m_mean, m_sat, pixels) = stats(&matcap_px);
-    let (r_mean, r_sat, _) = stats(&render_px);
-    println!("esfera {w}x{h} · {pixels} pixels de peça · traçado {trace_ms:.1} ms");
-    println!("matcap: {matcap_ms:.2} ms · verde médio {m_mean:.1} · saturados {m_sat}");
-    println!("render: {render_ms:.2} ms · verde médio {r_mean:.1} · saturados {r_sat}");
-    for stops in [-2.0, -1.0, 0.0, 1.0, 2.0] {
-        let px = shade_render(
-            &g,
-            &cam,
-            &surface,
-            &light,
-            Look {
-                exposure_stops: stops,
-                view: ViewTransform::Standard,
-            },
-            BG,
-        );
-        let neutral = shade_render(
-            &g,
-            &cam,
-            &surface,
-            &light,
-            Look {
-                exposure_stops: stops,
-                view: ViewTransform::Neutral,
-            },
-            BG,
-        );
-        let (s_mean, s_sat, _) = stats(&px);
-        let (n_mean, n_sat, _) = stats(&neutral);
-        println!(
-            "  {stops:+.0} stop · Standard média {s_mean:6.1} saturados {s_sat:6} · \
-             Neutral média {n_mean:6.1} saturados {n_sat:6}"
-        );
-    }
-}
+// ⛔⛔ **A SONDA DO CUSTO E DA LUZ MUDOU-SE PARA A `ph2d-app-field3d`** (auditoria de 2026-09-13),
+// e a mudança é a correcção: daqui ela não alcança o [`crate::Lighting`] que o produto de facto
+// monta (o rig e o céu vivem na `ph2d-app-field3d::render_light`), então escrevia a luz **à mão** —
+// uma lâmpada com a direcção em literal e um céu **CONSTANTE**. ⇒ a tabela de luz do
+// `docs/Render3d/05` §6 media um programa que o produto não corre. *Uma segunda cópia escrita à
+// mão do valor que uma porta produz é a forma canónica de um número envelhecer sem ninguém ver.*
+//
+// Ela é agora `render_light_tests::measure_what_the_render_mode_costs_and_paints`.
 
 /// ⭐ **O matcap responde ao MESMO olhar** — e o olhar de omissão é o quadro de sempre, ao byte.
 #[test]

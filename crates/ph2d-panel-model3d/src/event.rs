@@ -44,6 +44,117 @@ fn slot_in(id: ph2d_a11y::NodeId, of: fn(u32) -> ph2d_a11y::NodeId) -> Option<us
     (0..crate::populate::MAX_MODES).find_map(|n| (id == of(n)).then_some(n as usize))
 }
 
+/// ⭐⭐⭐ **AS TREZE FILEIRAS DE CHIP, NUMA TABELA** — a família de ids · quantos chips o retrato
+/// deste quadro publicou · que intenção um clique empurra.
+///
+/// # ⛔⛔ Porque ela substituiu treze braços copiados
+///
+/// Os treze eram **a mesma frase** treze vezes (`slot_in` → conferir contra a fileira → empurrar),
+/// e uma fileira nova custava um bloco novo. ⚠️ O modo de falha desse molde já está medido nesta
+/// casa: um bloco copiado com **a família certa e o comprimento do vizinho** confere o slot contra
+/// a lista errada, e o botão fica morto só nas posições que a outra fileira não tem — *um defeito
+/// que aparece na 6.ª posição de uma fileira de 8 e em lado nenhum antes*.
+///
+/// ⭐ **É a forma que este repo já mediu como a única sem knob morto** (`CLAUDE.md` §5.0: *«o único
+/// painel 42/42 limpo é o gerado por TABELA»*), e ela leva o `apply_event` de `221` para dentro do
+/// tecto de `200` **por corte de responsabilidade**, nunca por uma isenção.
+///
+/// ⚠️ **A conferência contra a fileira publicada NÃO é cerimónia:** o `populate` cunha `MAX_MODES`
+/// ids por família **às cegas**, todo quadro, então um clique num id que o retrato não pintou é
+/// alcançável — e sem ela viraria um pedido ao shell.
+///
+/// ⚠️ E o `+ Add shape…` entra aqui com a assinatura dos outros e **ignora o slot** de propósito:
+/// ele abre a paleta (W100), que é a porta única de nascer uma forma.
+type ChipRow = (
+    fn(u32) -> ph2d_a11y::NodeId,
+    fn(&state::ModelSnapshot) -> usize,
+    fn(usize) -> ModelIntent,
+);
+
+const CHIP_ROWS: &[ChipRow] = &[
+    (
+        crate::ids::model3d_select_button,
+        |s| s.selects.len(),
+        |slot| ModelIntent::SetLassoMode { slot },
+    ),
+    (
+        crate::ids::model3d_add_button,
+        |s| s.adds.len(),
+        |_| ModelIntent::OpenShapes,
+    ),
+    (
+        crate::ids::model3d_op_button,
+        |s| s.ops.len(),
+        |slot| ModelIntent::ApplyOp { slot },
+    ),
+    (
+        crate::ids::model3d_verb_button,
+        |s| s.verbs.len(),
+        |slot| ModelIntent::SetVerb { slot },
+    ),
+    (
+        crate::ids::model3d_character_button,
+        |s| s.characters.len(),
+        |slot| ModelIntent::SetCharacter { slot },
+    ),
+    (
+        crate::ids::model3d_mod_button,
+        |s| s.mods.len(),
+        |slot| ModelIntent::ToggleMod { slot },
+    ),
+    (
+        crate::ids::model3d_export_button,
+        |s| s.exports.len(),
+        |slot| ModelIntent::Export { slot },
+    ),
+    (
+        crate::ids::model3d_act_button,
+        |s| s.acts.len(),
+        |slot| ModelIntent::Act { slot },
+    ),
+    (
+        crate::ids::model3d_view_button,
+        |s| s.views.len(),
+        |slot| ModelIntent::SetView { slot },
+    ),
+    (
+        crate::ids::model3d_camera_button,
+        |s| s.camera.len(),
+        |slot| ModelIntent::Camera { slot },
+    ),
+    // ⭐⭐⭐ **O SOMBREAMENTO** (`docs/Render3d/05`) — o modo, a vista da cena e a exposição.
+    (
+        crate::ids::model3d_shading_button,
+        |s| s.shadings.len(),
+        |slot| ModelIntent::SetShading { slot },
+    ),
+    (
+        crate::ids::model3d_look_button,
+        |s| s.looks.len(),
+        |slot| ModelIntent::SetLook { slot },
+    ),
+    (
+        crate::ids::model3d_exposure_button,
+        |s| s.exposures.len(),
+        |slot| ModelIntent::SetExposure { slot },
+    ),
+];
+
+/// Este clique é de uma fileira de chips? Se for, empurra a intenção dela. Ver [`CHIP_ROWS`].
+///
+/// ⚠️ O retrato é lido **uma vez, e só quando uma família casa** — `state::current()` clona, e
+/// perguntá-lo antes da varredura pagaria esse clone em todo clique do app.
+fn chip_click(id: ph2d_a11y::NodeId) -> bool {
+    CHIP_ROWS.iter().any(|(family, publicados, intent)| {
+        slot_in(id, *family).is_some_and(|slot| {
+            slot < publicados(&state::current()) && {
+                state::push_intent(intent(slot));
+                true
+            }
+        })
+    })
+}
+
 pub(crate) fn apply_event(
     _state: &mut Model3dPanelState,
     host: &mut dyn PanelHostInternal,
@@ -161,106 +272,17 @@ pub(crate) fn apply_event(
                 true
             }
         }
-        WidgetEvent::Click(id) if slot_in(id, crate::ids::model3d_select_button).is_some() => {
-            let slot = slot_in(id, crate::ids::model3d_select_button).unwrap_or(0);
-            slot < state::current().selects.len() && {
-                state::push_intent(ModelIntent::SetLassoMode { slot });
-                true
-            }
-        }
-        // ⭐⭐⭐ **UM botão, e ele ABRE a paleta** (W100) — ver [`crate::ModelIntent::OpenShapes`].
-        //
-        // ⚠️ O `slot` continua a ser conferido contra a fileira publicada, e não é cerimónia: a
-        // família de ids tem `MAX_MODES` slots registados sempre, então um clique num id que o
-        // retrato deste quadro não pintou é alcançável — e sem a guarda ele viraria um pedido.
-        WidgetEvent::Click(id) if slot_in(id, crate::ids::model3d_add_button).is_some() => {
-            let slot = slot_in(id, crate::ids::model3d_add_button).unwrap_or(0);
-            slot < state::current().adds.len() && {
-                state::push_intent(ModelIntent::OpenShapes);
-                true
-            }
-        }
-        WidgetEvent::Click(id) if slot_in(id, crate::ids::model3d_op_button).is_some() => {
-            let slot = slot_in(id, crate::ids::model3d_op_button).unwrap_or(0);
-            slot < state::current().ops.len() && {
-                state::push_intent(ModelIntent::ApplyOp { slot });
-                true
-            }
-        }
-        WidgetEvent::Click(id) if slot_in(id, crate::ids::model3d_verb_button).is_some() => {
-            let slot = slot_in(id, crate::ids::model3d_verb_button).unwrap_or(0);
-            slot < state::current().verbs.len() && {
-                state::push_intent(ModelIntent::SetVerb { slot });
-                true
-            }
-        }
-        WidgetEvent::Click(id) if slot_in(id, crate::ids::model3d_character_button).is_some() => {
-            let slot = slot_in(id, crate::ids::model3d_character_button).unwrap_or(0);
-            slot < state::current().characters.len() && {
-                state::push_intent(ModelIntent::SetCharacter { slot });
-                true
-            }
-        }
-        WidgetEvent::Click(id) if slot_in(id, crate::ids::model3d_mod_button).is_some() => {
-            let slot = slot_in(id, crate::ids::model3d_mod_button).unwrap_or(0);
-            slot < state::current().mods.len() && {
-                state::push_intent(ModelIntent::ToggleMod { slot });
-                true
-            }
-        }
-        WidgetEvent::Click(id) if slot_in(id, crate::ids::model3d_export_button).is_some() => {
-            let slot = slot_in(id, crate::ids::model3d_export_button).unwrap_or(0);
-            slot < state::current().exports.len() && {
-                state::push_intent(ModelIntent::Export { slot });
-                true
-            }
-        }
-        WidgetEvent::Click(id) if slot_in(id, crate::ids::model3d_act_button).is_some() => {
-            let slot = slot_in(id, crate::ids::model3d_act_button).unwrap_or(0);
-            slot < state::current().acts.len() && {
-                state::push_intent(ModelIntent::Act { slot });
-                true
-            }
-        }
-        WidgetEvent::Click(id) if slot_in(id, crate::ids::model3d_view_button).is_some() => {
-            let slot = slot_in(id, crate::ids::model3d_view_button).unwrap_or(0);
-            slot < state::current().views.len() && {
-                state::push_intent(ModelIntent::SetView { slot });
-                true
-            }
-        }
-        WidgetEvent::Click(id) if slot_in(id, crate::ids::model3d_camera_button).is_some() => {
-            let slot = slot_in(id, crate::ids::model3d_camera_button).unwrap_or(0);
-            slot < state::current().camera.len() && {
-                state::push_intent(ModelIntent::Camera { slot });
-                true
-            }
-        }
-        WidgetEvent::Click(id) if slot_in(id, crate::ids::model3d_shading_button).is_some() => {
-            let slot = slot_in(id, crate::ids::model3d_shading_button).unwrap_or(0);
-            slot < state::current().shadings.len() && {
-                state::push_intent(ModelIntent::SetShading { slot });
-                true
-            }
-        }
-        WidgetEvent::Click(id) if slot_in(id, crate::ids::model3d_look_button).is_some() => {
-            let slot = slot_in(id, crate::ids::model3d_look_button).unwrap_or(0);
-            slot < state::current().looks.len() && {
-                state::push_intent(ModelIntent::SetLook { slot });
-                true
-            }
-        }
-        WidgetEvent::Click(id) if slot_in(id, crate::ids::model3d_exposure_button).is_some() => {
-            let slot = slot_in(id, crate::ids::model3d_exposure_button).unwrap_or(0);
-            slot < state::current().exposures.len() && {
-                state::push_intent(ModelIntent::SetExposure { slot });
-                true
-            }
-        }
+        // ⚠️ **O FECHAR vem ANTES da tabela** — o braço dela casa todo `Click` que sobra, e um
+        // `_ => false` por baixo dele nunca corre. *Uma tabela que apanha tudo empurra para cima
+        // tudo o que não é dela.*
         WidgetEvent::Click(id) if id == crate::ids::MODEL3D_CLOSE => {
             host.set_panel_visible(Model3dPanel::ID, false);
             true
         }
+        // ⭐⭐⭐ **AS TREZE FILEIRAS, por TABELA** — ver [`CHIP_ROWS`]. Este braço substituiu treze
+        // blocos que eram a mesma frase treze vezes, e é ele que mantém o `apply_event` dentro do
+        // tecto de LOC **por corte de responsabilidade**, nunca por uma isenção.
+        WidgetEvent::Click(id) => chip_click(id),
         _ => false,
     };
     if consumed {

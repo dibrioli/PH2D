@@ -2169,7 +2169,7 @@ fn every_choice_submenu_marks_the_active_pick() {
         let marcadas = rows
             .iter()
             .filter(|(id, _, _)| {
-                crate::screens::hero::context_menu_overlay::id_is_currently_selected(
+                crate::screens::hero::menu_row_mark::id_is_currently_selected(
                     *id, theme, &store, &project, &motion,
                 )
             })

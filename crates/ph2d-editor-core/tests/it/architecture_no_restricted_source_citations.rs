@@ -113,6 +113,29 @@ const ALVO_PERMISSIVO: &[(&str, &str)] = &[
     ("adjacency.cpp", "Instant Meshes, BSD-3"),
     ("meshstats.cpp", "Instant Meshes, BSD-3"),
     ("optimizer.cpp", "Instant Meshes, BSD-3"),
+    // ⭐⭐⭐ **MaterialX — Apache-2.0**, com a licença LIDA NO ARTEFACTO INSTALADO
+    // (`pacman -Qo /usr/share/licenses/materialx/LICENSE` → `materialx 1.39.5-1.1`;
+    // o ficheiro abre com *«Apache License, Version 2.0»*). ⛔ **Não foi adivinhada
+    // pelo nome do projecto** — é a armadilha §0.9 que esta casa mede desde 09/09.
+    //
+    // A `ph2d-material` **É** o porte destes ficheiros (o OpenPBR Surface como lei
+    // de referência em CPU, `docs/Render3d/05`), e a atribuição é **obrigação da
+    // licença, não dívida**: a mesma leitura que o `ph2d-quadflow` tem sobre o
+    // Instant Meshes, acima.
+    //
+    // ⚠️ Todos em `/usr/share/materialx/libraries/pbrlib/genglsl/`, e a proveniência
+    // ficheiro a ficheiro vive no cabeçalho de `ph2d-material/src/bsdf.rs`.
+    ("mx_microfacet.glsl", "MaterialX, Apache-2.0"),
+    ("mx_microfacet_specular.glsl", "MaterialX, Apache-2.0"),
+    ("mx_microfacet_diffuse.glsl", "MaterialX, Apache-2.0"),
+    ("mx_dielectric_bsdf.glsl", "MaterialX, Apache-2.0"),
+    ("mx_generalized_schlick_bsdf.glsl", "MaterialX, Apache-2.0"),
+    ("mx_oren_nayar_diffuse_bsdf.glsl", "MaterialX, Apache-2.0"),
+    ("mx_add_bsdf.glsl", "MaterialX, Apache-2.0"),
+    ("mx_layer_bsdf.glsl", "MaterialX, Apache-2.0"),
+    ("mx_multiply_bsdf_float.glsl", "MaterialX, Apache-2.0"),
+    ("mx_multiply_bsdf_color3.glsl", "MaterialX, Apache-2.0"),
+    ("mx_environment_prefilter.glsl", "MaterialX, Apache-2.0"),
     // Graphics Gems — o ajuste de curva canónico, de uso livre.
     ("FitCurves.c", "Graphics Gems"),
     // lib2geom — dual `LGPL-2.1-only OR MPL-1.1`, triado 2026-09-09. ⚠️ O

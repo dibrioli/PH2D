@@ -10,11 +10,12 @@
 //! lê retângulos de hit, nunca pixels, e uma segunda máquina de leitura de cena para um ponto seria
 //! mais superfície do que o facto que ela prova.
 
-use super::context_menu_overlay::id_is_currently_selected;
+use super::menu_row_mark::{contributed_row_is_current, id_is_currently_selected};
 use crate::ids;
-use crate::interaction::WidgetStore;
+use crate::interaction::{InteractiveState, WidgetStore};
 use crate::motion::{UiCharacter, UiMotion};
 use crate::project::ProjectSettings;
+use crate::widget::{ButtonState, ToolRailEntry};
 use ph2d_tokens::Theme;
 
 fn lit(id: ph2d_a11y::NodeId, motion: &UiMotion) -> bool {
@@ -58,6 +59,64 @@ fn the_reduced_row_is_lit_only_while_it_is_on() {
     assert!(lit(ids::CTX_MENU_MOTION_REDUCED, &motion));
     motion.set_reduced_motion(false);
     assert!(!lit(ids::CTX_MENU_MOTION_REDUCED, &motion));
+}
+
+/// ⭐⭐⭐ **A linha que um MÓDULO contribui acende pelo estado que ELE publica** (report do dono,
+/// 2026-09-13: *«coloque a marca de seleção no render selecionado»*).
+///
+/// ⛔⛔ **A metade que se esquece é a CERCA, e ela é o 2.º `assert`:** o `dispatch::pointer_down`
+/// escreve `Pressed` num botão enquanto o dedo está em baixo, então um `Pressed` **sozinho** não
+/// significa *«é este o estado»* — significa *«é aqui que estou a carregar»*. Sem a pergunta
+/// *«esta linha veio do módulo?»* a marca mudaria de sentido no meio de um clique.
+///
+/// **Mutações que devem sangrar:** apagar o `contrib.iter().any(...)` (a linha alheia acende sob o
+/// dedo) · apagar o `matches!(..Pressed)` (as nove linhas do pulldown acendem todas) · devolver
+/// `false` sempre (o defeito que o dono reportou).
+#[test]
+fn a_contributed_row_is_marked_by_the_state_its_module_publishes() {
+    // Dois ids do MESMO módulo, os dois `Pressed`: um está no menu, o outro não.
+    let (na_lista, fora_da_lista, apagada) = (
+        ph2d_a11y::NodeId(901),
+        ph2d_a11y::NodeId(902),
+        ph2d_a11y::NodeId(903),
+    );
+    let mut store = WidgetStore::default();
+    for id in [na_lista, fora_da_lista] {
+        store.register(
+            id,
+            InteractiveState::Button {
+                state: ButtonState::Pressed,
+            },
+        );
+    }
+    store.register(
+        apagada,
+        InteractiveState::Button {
+            state: ButtonState::Normal,
+        },
+    );
+    let contrib = vec![
+        ToolRailEntry::compound(na_lista, "Render", "Render", ""),
+        ToolRailEntry::compound(apagada, "Matcap", "Matcap", ""),
+    ];
+
+    assert!(
+        contributed_row_is_current(na_lista, &contrib, &store),
+        "a linha que o módulo publicou ACESA não recebeu a marca — é o report do dono"
+    );
+    assert!(
+        !contributed_row_is_current(fora_da_lista, &contrib, &store),
+        "uma linha que NÃO veio deste menu acendeu: o `Pressed` do dedo em baixo passou a ler-se \
+         como estado"
+    );
+    assert!(
+        !contributed_row_is_current(apagada, &contrib, &store),
+        "a linha apagada do módulo recebeu marca — o menu passa a dizer que está em dois estados"
+    );
+    assert!(
+        !contributed_row_is_current(na_lista, &[], &store),
+        "controlo: sem contribuição nenhuma não há linha contribuída para marcar"
+    );
 }
 
 /// **Os dois eixos acendem ao mesmo tempo** — a prova, no readout, de que a submenu não é um

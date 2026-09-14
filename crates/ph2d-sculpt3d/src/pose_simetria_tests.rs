@@ -169,3 +169,79 @@ fn a_cadeia_da_pose_constroi_se_uma_vez_por_traco() {
         "o `begin` tem de largar a cadeia: um traço novo constrói a dele"
     );
 }
+
+/// ⛔⛔ **O TRAÇO DE POSE TEM DE PREENCHER A JANELA DO UNDO.**
+///
+/// Report do dono (2026-09-14): *«undo/redo não funciona para esse pincel»*.
+///
+/// ⚠️ **O mecanismo, e ele é estrutural:** o `close_stroke` da cena grava
+/// `StrokeUndo::Stroke { verts: touched(), positions: base_positions() }` e
+/// **devolve cedo** quando `touched()` está vazio. Quem enche essa janela é o
+/// `capture`, que vive no laço por-vértice do `dab_core` — e este verbo
+/// [`Verb::resolve_a_propria_regiao`], logo **nunca passa por lá**. O tecido
+/// desvia igual e chama o `capture` à mão; a pose não chamava.
+///
+/// ⇒ o traço movia a malha e **não deixava rasto nenhum** para o `Ctrl+Z`.
+/// *Uma janela vazia e um gesto que não fez nada são o mesmo byte para o
+/// `close_stroke`.*
+#[test]
+fn a_pose_enche_a_janela_do_undo() {
+    let mut malha = esfera();
+    let b = pincel();
+    let mut s = SculptStroke::default();
+    s.begin(&malha);
+    let antes = malha.positions().to_vec();
+    for k in 1..=4 {
+        let d = 0.05 * f32::from(u8::try_from(k).unwrap_or(1));
+        s.dab(
+            &mut malha,
+            &b,
+            &puxao([0.6, 0.0, 0.8], b.radius, [0.0, d, 0.0]),
+            Symmetry::default(),
+        );
+    }
+    let mexidos = antes
+        .iter()
+        .zip(malha.positions())
+        .filter(|(a, b)| a != b)
+        .count();
+    assert!(
+        mexidos > 8,
+        "o arnes nao moveu nada de jeito ({mexidos} vertices) — o gate mediria vacuo"
+    );
+    assert!(
+        !s.touched().is_empty(),
+        "a janela do undo saiu VAZIA depois de mover {mexidos} vertices — o \
+         `close_stroke` devolve cedo e o Ctrl+Z nao tem o que desfazer"
+    );
+    assert_eq!(
+        s.touched().len(),
+        s.base_positions().len(),
+        "a janela e o `pre` tem de andar em par"
+    );
+    // ⭐⭐ **E o `pre` tem de ser o de ANTES DO TRAÇO, não o do evento em que o
+    // vértice entrou na janela.** É a metade que faz o desfazer devolver a
+    // forma, e não uma pose intermédia: com quatro eventos, um vértice que só
+    // se mova no terceiro tem de trazer a posição do pen-down.
+    for (&v, &pre) in s.touched().iter().zip(s.base_positions()) {
+        assert_eq!(
+            pre, antes[v as usize],
+            "o vertice {v} entrou na janela com uma pose INTERMEDIA — o Ctrl+Z \
+             devolveria o meio do arrasto"
+        );
+    }
+    // E todo vértice que de facto se moveu tem de estar na janela, senão o
+    // desfazer deixa parte da deformação para trás.
+    let janela: std::collections::BTreeSet<u32> = s.touched().iter().copied().collect();
+    let esquecidos = antes
+        .iter()
+        .zip(malha.positions())
+        .enumerate()
+        .filter(|(i, (a, b))| a != b && !janela.contains(&(*i as u32)))
+        .count();
+    assert_eq!(
+        esquecidos, 0,
+        "{esquecidos} vertices mexeram e ficaram FORA da janela — o Ctrl+Z \
+         devolveria a peca pela metade"
+    );
+}

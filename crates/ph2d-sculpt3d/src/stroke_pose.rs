@@ -94,14 +94,41 @@ impl crate::SculptStroke {
             &mut saida,
         );
 
-        self.moved.clear();
-        let posicoes = mesh.positions_mut();
-        for (i, (destino, actual)) in saida.iter().zip(posicoes.iter_mut()).enumerate() {
+        // ⛔⛔ **A ESCRITA É EM TRÊS PASSOS, E O DO MEIO É O UNDO** (report do
+        // dono, 2026-09-14: *«undo/redo não funciona para esse pincel»*).
+        //
+        // O `close_stroke` da cena grava a janela `touched()` + `base_positions()`
+        // e **devolve cedo** quando ela está vazia; quem a enche é o `capture`,
+        // que vive no laço por-vértice do `dab_core` — e este verbo desvia antes
+        // dele ([`crate::Verb::resolve_a_propria_regiao`]). ⇒ o traço movia a
+        // malha e não deixava rasto nenhum para o `Ctrl+Z`. *Uma janela vazia e
+        // um gesto que não fez nada são o mesmo byte para quem grava.*
+        //
+        // ⚠️ **O `capture` tem de correr ANTES da escrita**, e é isso que o
+        // parte em dois laços: ele lê `mesh.positions()` para congelar o `pre`, e
+        // depois de escrever o `pre` seria a pose deste evento. Ele é
+        // **idempotente** (carimbo por época), então um vértice que entre na
+        // janela no 3.º evento traz na mesma a posição do pen-down — a malha só
+        // é escrita a partir do `p0`, logo quem ainda não se moveu está onde
+        // nasceu.
+        //
+        // ⛔ **É o mesmo desvio que o TECIDO já fazia** (`stroke_cloth`, que
+        // chama o `capture` à mão sobre a região dele). A pose é que não o fazia.
+        let mut movidos = std::mem::take(&mut self.moved);
+        movidos.clear();
+        for (i, (destino, actual)) in saida.iter().zip(mesh.positions()).enumerate() {
             if actual != destino {
-                *actual = *destino;
-                self.moved.push(i as u32);
+                movidos.push(u32::try_from(i).unwrap_or(u32::MAX));
             }
         }
+        for &v in &movidos {
+            self.capture(mesh, v);
+        }
+        let posicoes = mesh.positions_mut();
+        for &v in &movidos {
+            posicoes[v as usize] = saida[v as usize];
+        }
+        self.moved = movidos;
         self.pose_saida = saida;
         self.pose = Some(sessao);
 

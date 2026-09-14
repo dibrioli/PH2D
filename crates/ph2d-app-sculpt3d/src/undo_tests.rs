@@ -560,3 +560,89 @@ fn a_cloth_stroke_undoes() {
          do 1.o traco vazou para a entrada do 2.o"
     );
 }
+
+/// **UM TRAÇO DE POSE DESFAZ E REFAZ.**
+///
+/// ⛔⛔ Enio, 2026-09-14, sobre o pincel de pose: ***«undo/redo não funciona
+/// para esse pincel»***.
+///
+/// ⚠️ **A causa era a mesma FORMA do report do tecido e um mecanismo
+/// DIFERENTE**, e a distinção importa: no tecido os dados estavam certos na
+/// crate e o defeito era da shell (o foco preso num chip do painel comia o
+/// `Ctrl+Z`); aqui a janela do undo saía **VAZIA da crate**. Quem a enche é o
+/// `capture`, que vive no laço por-vértice do `dab_core` — e este verbo
+/// [`Verb::resolve_a_propria_regiao`], logo nunca passava por lá. O
+/// `close_stroke` devolve cedo sobre uma janela vazia, e *uma janela vazia e um
+/// gesto que não fez nada são o mesmo byte para quem grava.*
+///
+/// ⚠️ **Ele NÃO pode usar o [`one_dab`]**, pelo motivo do irmão do tecido: a
+/// pose tem âncora ([`Verb::anchors`]) e o pen-down dela **pega** em vez de
+/// carimbar. E o arrasto é o do [`ph2d_sculpt3d::Grip::Hold`] — o ponteiro
+/// **regista** (`pending_grab`) e quem drena é o quadro.
+#[test]
+#[ignore = "requires a GPU adapter (no GPU on CI); run with --ignored on a dev machine"]
+fn a_pose_stroke_undoes_and_redoes() {
+    let gpu = gpu_or_skip!();
+    let mut s = scene(&gpu.device, Verb::Pose);
+    let antes: Vec<[f32; 3]> = s.mesh().positions().to_vec();
+
+    // ⚠️ **Fora do centro do enquadramento, de propósito.** Numa esfera lisa a
+    // franja é um anel simétrico à volta do cursor, o pivô cai em cima dele e o
+    // traço inteiro é **INERTE** (espec §11.1) — *um gate sobre um gesto que não
+    // move nada fica verde a medir o nada*, e foi assim que a `=41` foi parar à
+    // esfera com orelha.
+    let toque = (CENTRE.0 + 120.0, CENTRE.1 - 90.0);
+    assert!(s.aim(toque.0, toque.1), "o raio errou a peca enquadrada");
+    s.stroke.begin(s.objects[s.active].stack.mesh());
+    assert!(
+        s.take_hold(toque.0, toque.1),
+        "o pen-down da pose nao pegou a malha"
+    );
+    s.stroke_anchor = [toque.0, toque.1];
+
+    for k in 1..=8 {
+        s.pending_grab = Some((
+            toque.0 + 6.0 * f32::from(u8::try_from(k).unwrap_or(1)),
+            toque.1,
+        ));
+        s.flush_pending_grab();
+    }
+
+    let moveu = (0..antes.len())
+        .filter(|v| s.mesh().positions()[*v] != antes[*v])
+        .count();
+    assert!(
+        moveu > 0,
+        "premissa: o traco de pose nao moveu vertice nenhum (o pivo caiu em cima \
+         do cursor?), e sem isso o desfazer nao tem o que desfazer"
+    );
+
+    s.close_stroke();
+    s.objects[s.active].uploaded = true;
+    assert!(
+        s.undo_stroke(),
+        "⛔ o traco de POSE nao gravou passo de undo -- e' o report de 14/09"
+    );
+    let sobra = (0..antes.len())
+        .filter(|v| s.mesh().positions()[*v] != antes[*v])
+        .count();
+    assert_eq!(
+        sobra, 0,
+        "o desfazer deixou {sobra} de {moveu} vertices deslocados"
+    );
+    assert!(
+        !s.objects[s.active].uploaded,
+        "⛔ o desfazer da pose nao avisou a TELA -- a malha volta na memoria e a \
+         GPU continua a mostrar a de antes"
+    );
+
+    // O REFAZER, porque o report nomeia os dois.
+    assert!(s.redo_stroke(), "⛔ a pose nao refaz");
+    let voltou = (0..antes.len())
+        .filter(|v| s.mesh().positions()[*v] != antes[*v])
+        .count();
+    assert_eq!(
+        voltou, moveu,
+        "o refazer devolveu {voltou} dos {moveu} vertices que o traco tinha movido"
+    );
+}

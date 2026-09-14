@@ -60,4 +60,40 @@ fn the_canvas_pointer_asks_the_mesh_before_the_quad_affine() {
          textura, e no ecrã ele sai esticado pelo tanto que a arte está dobrada.",
         f.display()
     );
+    // ⭐⭐⭐ **E o TAMANHO DO DAB entra na pergunta** (3.º report do dono, 2026-09-14: *«quase bom …
+    // talvez artefato inevitável»*). Uma malha é afim POR TRIÂNGULO: perguntar num PONTO dá ao dab
+    // inteiro a deformação de um pedaço dele, e com um pincel grande sobre uma malha grossa isso
+    // chega a deixar a marca MENOS redonda do que não corrigir nada (`1,38` contra `1,19`, medido).
+    assert!(
+        src.contains("let raio_px = painter.dab_footprint_px();"),
+        "{} não pergunta ao pincel que tamanho o dab vai ter: sem isso a porta da malha só sabe \
+         responder por um PONTO.",
+        f.display()
+    );
+    // ⚠️ **A ligação prova-se nos ARGUMENTOS da chamada, nunca pela linha ao lado** — uma agulha
+    // ancorada na adjacência é um proxy que expira na primeira linha que alguém acrescenta (a lei
+    // que a W9 desta linha pagou). Aqui recorta-se a chamada e lê-se o que ela de facto recebe.
+    let chamada = {
+        let ini = src
+            .find("ph2d_render::mesh_uv(")
+            .expect("a chamada da porta de canvas, afirmada acima");
+        let fim = src[ini..].find(");").expect("a chamada fecha") + ini;
+        &src[ini..fim]
+    };
+    assert!(
+        chamada.contains("footprint_uv"),
+        "{} chama a porta da malha SEM o footprint do dab — ela responde por um ponto, e a \
+         deformação que o pincel recebe passa a ser a de um pedaço do dab: {chamada}",
+        f.display()
+    );
+    // ⚠️⚠️ **E o NOME ligado a um literal nulo lê-se igual ao nome ligado ao raio** — uma mutação que
+    // escreveu `let footprint_uv = [0.0, 0.0];` e deixou a chamada intacta SOBREVIVEU à primeira
+    // redacção deste gate. *Citar uma porta não é consultá-la, e nomear um argumento não é
+    // alimentá-lo.* ⇒ exige-se a DERIVAÇÃO, que é o único sítio onde o raio do pincel entra.
+    assert!(
+        src.contains("let footprint_uv = [raio_px / iw as f32, raio_px / ih as f32];"),
+        "{} nomeia o footprint do dab e não o DERIVA do raio do pincel — um `[0, 0]` ali é \
+         literalmente *«não vou pintar»*, e a porta volta a responder por um ponto.",
+        f.display()
+    );
 }

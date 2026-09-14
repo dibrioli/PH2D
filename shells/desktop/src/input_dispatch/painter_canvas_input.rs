@@ -316,16 +316,6 @@ impl App {
         // sabe o que é uma malha. A lei (e o porquê) vive na [`ph2d_render::mesh_uv`]; `Quad` deixa
         // o caminho de sempre INTOCADO, que é o que mantém a grelha da folha e o *Repeat Image*.
         let world = gfx.camera.screen_to_world((px, py), window_size);
-        let malha = ph2d_render::mesh_uv(
-            gfx.present.world_mut(),
-            bits,
-            world,
-            phase == PointerPhase::Down,
-        );
-        if malha == ph2d_render::MeshUv::Refuse {
-            // Um traço não NASCE sobre o quad de repouso de uma arte que se desenha dobrada.
-            return false;
-        }
         let Some(tool) = gfx.tools.active_mut() else {
             return false;
         };
@@ -334,6 +324,25 @@ impl App {
         };
         let (iw, ih) = painter.canvas_size();
         if iw == 0 || ih == 0 {
+            return false;
+        }
+        // ⭐⭐⭐ **A deformação pergunta-se AO TAMANHO DO DAB, nunca num ponto** (3.º report do dono,
+        // 2026-09-14: *«quase bom … talvez artefato inevitável»*). Uma malha é afim POR TRIÂNGULO:
+        // um dab que cabe num recebe a resposta exacta dele, e um que se estende por vários recebe o
+        // melhor afim sobre o que ele cobre — sem isso a correcção da wave anterior chega a deixar
+        // um pincel grande MENOS redondo do que não corrigir nada. A lei e a medição vivem na
+        // `ph2d_render::sprite_mesh_warp`; o raio é o do dab ANTES da composição, senão é um laço.
+        let raio_px = painter.dab_footprint_px();
+        let footprint_uv = [raio_px / iw as f32, raio_px / ih as f32];
+        let malha = ph2d_render::mesh_uv(
+            gfx.present.world_mut(),
+            bits,
+            world,
+            phase == PointerPhase::Down,
+            footprint_uv,
+        );
+        if malha == ph2d_render::MeshUv::Refuse {
+            // Um traço não NASCE sobre o quad de repouso de uma arte que se desenha dobrada.
             return false;
         }
         // Screen → image-px via the FULL sprite affine (size · scale · rotation · anchor · camera) —

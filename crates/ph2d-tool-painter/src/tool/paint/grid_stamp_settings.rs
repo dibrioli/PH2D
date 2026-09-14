@@ -171,6 +171,25 @@ impl PainterTool {
         brush
     }
 
+    /// ⭐⭐⭐ **O RAIO QUE O DAB VAI OCUPAR na imagem, ANTES da deformação** — o que a porta de canvas
+    /// precisa para perguntar à malha *«que deformação fazes sobre um disco deste tamanho?»*
+    /// ([`ph2d_render::mesh_uv`]).
+    ///
+    /// ⚠️ **É o raio do [`Self::stroke_spec`] SEM a composição da deformação**, e tem de ser: o que
+    /// a malha responde é a entrada daquela composição, e realimentá-la com a saída dela seria um
+    /// laço. ⛔ E é o raio do *Grid Stamp* quando ele manda, porque ali o footprint é a CÉLULA e não
+    /// o tamanho do pincel.
+    #[must_use]
+    pub fn dab_footprint_px(&self) -> f32 {
+        let brush = self.paint.brush;
+        let brush = if brush.stroke_method == ph2d_painter_brush::StrokeMethod::GridStamp {
+            brush.as_grid_stamp(self.shape_silhouette_active())
+        } else {
+            brush
+        };
+        brush.clamped_radius()
+    }
+
     /// A silhueta de **Shape** está de fato ativa (kind escolhido *e*, para `Image`, pixels
     /// carregados) — a porta que o `stroke_spec` e o carimbo perguntam.
     #[must_use]

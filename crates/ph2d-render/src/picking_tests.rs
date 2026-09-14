@@ -9,6 +9,10 @@ use bevy_ecs::entity::Entity;
 use ph2d_core::Vec2;
 use ph2d_ecs::PresentWorld;
 
+/// ⚠️ **O footprint de quem NÃO vai pintar** — o picking e as caixas querem a deformação de um
+/// PONTO, e é isso que `[0, 0]` diz à porta ([`crate::sprite_mesh_warp`]).
+const SEM_DAB: [f32; 2] = [0.0, 0.0];
+
 /// Spawn a present-side mirror entity for `sim_entity` at `(x,
 /// y)` with `size`. Returns the bits the renderer's picking
 /// surfaces back to callers.
@@ -467,7 +471,7 @@ fn the_canvas_port_answers_the_art_the_quad_and_the_refusal() {
     for starting in [true, false] {
         assert!(
             matches!(
-                crate::mesh_uv(present.world_mut(), bits, [3.5, 0.5], starting),
+                crate::mesh_uv(present.world_mut(), bits, [3.5, 0.5], starting, SEM_DAB),
                 crate::MeshUv::Use { u, v, .. } if (u - 0.25).abs() < 1e-5 && (v - 0.75).abs() < 1e-5
             ),
             "sobre a arte a porta devolve a UV de repouso (starting = {starting})"
@@ -476,11 +480,11 @@ fn the_canvas_port_answers_the_art_the_quad_and_the_refusal() {
     // Fora dela: um gesto que COMEÇA é recusado — um traço não nasce sobre um quad que não se
     // desenha —, e um gesto ABERTO segue pela lei do quad, para a pincelada não se partir.
     assert_eq!(
-        crate::mesh_uv(present.world_mut(), bits, [0.0, 0.0], true),
+        crate::mesh_uv(present.world_mut(), bits, [0.0, 0.0], true, SEM_DAB),
         crate::MeshUv::Refuse
     );
     assert!(matches!(
-        crate::mesh_uv(present.world_mut(), bits, [0.0, 0.0], false),
+        crate::mesh_uv(present.world_mut(), bits, [0.0, 0.0], false, SEM_DAB),
         crate::MeshUv::Use { u, v, warp } if (u - 0.5).abs() < 1e-5 && (v - 0.5).abs() < 1e-5
             && warp == [[1.0, 0.0], [0.0, 1.0]]
     ));
@@ -492,7 +496,7 @@ fn the_canvas_port_answers_the_art_the_quad_and_the_refusal() {
     let pbits = spawn_at(&mut present, plain, 20.0, 0.0, [2.0, 2.0]);
     for (p, starting) in [([20.0, 0.0], true), ([99.0, 0.0], false)] {
         assert_eq!(
-            crate::mesh_uv(present.world_mut(), pbits, p, starting),
+            crate::mesh_uv(present.world_mut(), pbits, p, starting, SEM_DAB),
             crate::MeshUv::Quad,
             "uma sprite sem malha nao passa por esta porta"
         );
@@ -517,7 +521,7 @@ fn the_canvas_port_reports_the_local_deformation_and_it_is_dimensionless() {
     give_mesh(&mut present, rigido, posed_arm());
     assert!(
         matches!(
-            crate::mesh_uv(present.world_mut(), rb, [3.5, 0.5], true),
+            crate::mesh_uv(present.world_mut(), rb, [3.5, 0.5], true, SEM_DAB),
             crate::MeshUv::Use { warp, .. } if warp == [[1.0, 0.0], [0.0, 1.0]]
         ),
         "uma malha que so' TRANSLADA a arte nao a deforma"
@@ -535,7 +539,7 @@ fn the_canvas_port_reports_the_local_deformation_and_it_is_dimensionless() {
         },
     );
     let crate::MeshUv::Use { warp, .. } =
-        crate::mesh_uv(present.world_mut(), db, [23.2, 0.2], true)
+        crate::mesh_uv(present.world_mut(), db, [23.2, 0.2], true, SEM_DAB)
     else {
         panic!("o ponto tinha de cair sobre o triangulo");
     };
@@ -592,7 +596,8 @@ fn the_published_deformation_makes_the_brush_round_on_screen() {
     let bits = spawn_at(&mut present, e, 0.0, 0.0, size);
     give_mesh(&mut present, e, mesh);
 
-    let crate::MeshUv::Use { warp, .. } = crate::mesh_uv(present.world_mut(), bits, centro, true)
+    let crate::MeshUv::Use { warp, .. } =
+        crate::mesh_uv(present.world_mut(), bits, centro, true, [0.05, 0.05])
     else {
         panic!("o centroide tinha de cair sobre o triangulo");
     };

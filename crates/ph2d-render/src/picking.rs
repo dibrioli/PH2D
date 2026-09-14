@@ -282,7 +282,7 @@ pub fn sprite_world_to_uv(
         uv: (u, v),
         on_mesh,
         ..
-    } = uv_query(present, sim_entity_bits, world_pos)?;
+    } = uv_query(present, sim_entity_bits, world_pos, [0.0, 0.0])?;
     let drawn_here = on_mesh.unwrap_or(true);
     // matched the entity, but the cursor is off what it draws
     (drawn_here && (0.0..1.0).contains(&u) && (0.0..1.0).contains(&v)).then_some((u, v))
@@ -309,7 +309,7 @@ pub fn sprite_world_to_uv_unclamped(
     sim_entity_bits: u64,
     world_pos: [f32; 2],
 ) -> Option<(f32, f32)> {
-    uv_query(present, sim_entity_bits, world_pos).map(|h| h.uv)
+    uv_query(present, sim_entity_bits, world_pos, [0.0, 0.0]).map(|h| h.uv)
 }
 
 /// ⭐⭐⭐ **O que uma PORTA DE CANVAS deve fazer sobre uma sprite desenhada como MALHA.**
@@ -345,17 +345,26 @@ pub enum MeshUv {
 }
 
 /// Ver [`MeshUv`]. `starting` = este é o primeiro ponto do gesto (um `Down`).
+///
+/// ⭐⭐⭐ **`footprint_uv` é o RAIO do dab em UV de repouso, por eixo** — e não um detalhe de
+/// afinação: a deformação devolvida é a que a malha faz **sobre esse disco**, não a do ponto. Um
+/// dab que cabe num triângulo recebe a deformação daquele triângulo **ao bit**; um que se estende
+/// por vários recebe o melhor afim sobre o que ele cobre, que é o que o impede de sair menos
+/// redondo do que sairia sem correcção nenhuma. A lei e a medição vivem na
+/// [`crate::sprite_mesh_warp`]. ⛔ `[0, 0]` = *«não vou pintar»* — é o que as portas de apontar
+/// passam, e ali a resposta é a de um ponto.
 pub fn mesh_uv(
     present: &mut World,
     sim_entity_bits: u64,
     world_pos: [f32; 2],
     starting: bool,
+    footprint_uv: [f32; 2],
 ) -> MeshUv {
     let Some(UvHit {
         uv: (u, v),
         on_mesh,
         warp,
-    }) = uv_query(present, sim_entity_bits, world_pos)
+    }) = uv_query(present, sim_entity_bits, world_pos, footprint_uv)
     else {
         return MeshUv::Quad;
     };
@@ -385,7 +394,12 @@ struct UvHit {
 /// The UV under `world_pos` on sprite `sim_entity_bits`, and — for a skinned sprite — whether the
 /// point is ON its drawn mesh (`Some(false)` = off it, answered by the rest quad law). `None` in
 /// the second slot for a plain quad.
-fn uv_query(present: &mut World, sim_entity_bits: u64, world_pos: [f32; 2]) -> Option<UvHit> {
+fn uv_query(
+    present: &mut World,
+    sim_entity_bits: u64,
+    world_pos: [f32; 2],
+    footprint_uv: [f32; 2],
+) -> Option<UvHit> {
     let mut q = present.query::<(
         &SimRef,
         &GlobalTransform,
@@ -410,8 +424,9 @@ fn uv_query(present: &mut World, sim_entity_bits: u64, world_pos: [f32; 2]) -> O
         if let Some(m) = malha
             && let Some(uv) = crate::sprite_mesh::uv_under(m, [local_dx, local_dy])
         {
-            let warp = crate::sprite_mesh::warp_under(m, [local_dx, local_dy], ri.size)
-                .unwrap_or([[1.0, 0.0], [0.0, 1.0]]);
+            let warp =
+                crate::sprite_mesh_warp::warp_over(m, [local_dx, local_dy], ri.size, footprint_uv)
+                    .unwrap_or([[1.0, 0.0], [0.0, 1.0]]);
             return Some(UvHit {
                 uv: (uv[0], uv[1]),
                 on_mesh: Some(true),

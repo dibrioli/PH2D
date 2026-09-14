@@ -122,7 +122,15 @@ const BORDA_BARICENTRICA: f32 = 8.0 * f32::EPSILON;
 
 /// Os pesos baricêntricos de `p` no triângulo `t`, com a borda INCLUÍDA; `None` fora dele ou num
 /// triângulo sem área (que o rasterizador não desenha).
-fn barycentric(p: [f32; 2], t: [[f32; 2]; 3]) -> Option<[f32; 3]> {
+pub(crate) fn barycentric(p: [f32; 2], t: [[f32; 2]; 3]) -> Option<[f32; 3]> {
+    let w = barycentric_raw(p, t)?;
+    w.iter().all(|&x| x >= -BORDA_BARICENTRICA).then_some(w)
+}
+
+/// Os mesmos pesos **sem a cerca**: fora do triângulo eles saem negativos, e é isso que EXTRAPOLA
+/// o afim dele para um ponto de fora. ⚠️ Só quem já sabe qual é o triângulo certo pode usá-los —
+/// quem PROCURA um triângulo usa a [`barycentric`], que os recusa.
+pub(crate) fn barycentric_raw(p: [f32; 2], t: [[f32; 2]; 3]) -> Option<[f32; 3]> {
     let [a, b, c] = t;
     let menos = |x: [f32; 2], y: [f32; 2]| [x[0] - y[0], x[1] - y[1]];
     let cruz = |u: [f32; 2], v: [f32; 2]| u[0] * v[1] - u[1] * v[0];
@@ -132,17 +140,19 @@ fn barycentric(p: [f32; 2], t: [[f32; 2]; 3]) -> Option<[f32; 3]> {
     }
     let w1 = cruz(menos(p, a), menos(c, a)) / area;
     let w2 = cruz(menos(b, a), menos(p, a)) / area;
-    let w0 = 1.0 - w1 - w2;
-    [w0, w1, w2]
-        .iter()
-        .all(|&w| w >= -BORDA_BARICENTRICA)
-        .then_some([w0, w1, w2])
+    Some([1.0 - w1 - w2, w1, w2])
 }
 
 /// ⭐ **Os três vértices LOCAIS de um triângulo da malha** (os índices já vieram de
 /// [`SpriteMesh::triangles`]).
 pub(crate) fn corners(mesh: &SpriteMesh, t: [usize; 3]) -> [[f32; 2]; 3] {
     [mesh.local[t[0]], mesh.local[t[1]], mesh.local[t[2]]]
+}
+
+/// ⭐ **Os três vértices do mesmo triângulo em UV DE REPOUSO** — o gémeo de [`corners`], e os dois
+/// juntos são o afim que aquele triângulo aplica.
+pub(crate) fn uv_corners(mesh: &SpriteMesh, t: [usize; 3]) -> [[f32; 2]; 3] {
+    [mesh.uv[t[0]], mesh.uv[t[1]], mesh.uv[t[2]]]
 }
 
 /// ⭐⭐ **O ponto LOCAL `p` cai sobre a malha posada?**
@@ -152,68 +162,68 @@ pub(crate) fn covers(mesh: &SpriteMesh, p: [f32; 2]) -> bool {
         .any(|t| barycentric(p, corners(mesh, t)).is_some())
 }
 
-/// ⭐⭐⭐ **A DEFORMAÇÃO LOCAL debaixo do ponto LOCAL `p`** — a `2×2` adimensional que leva um
-/// deslocamento na textura ao deslocamento que ele ocupa no ECRÃ, e **a identidade em repouso**.
+/// ⭐⭐⭐ **A DEFORMAÇÃO LOCAL de um triângulo** — a `2×2` adimensional que leva um deslocamento na
+/// textura ao deslocamento que ele ocupa no ECRÃ, e **a identidade em repouso**.
 ///
 /// ⛔⛔ É o que faltava ao pincel (report do dono, 2026-09-14, com foto): a posição já era a certa e
 /// a FORMA não — onde o leque comprime a arte, um disco de textura chega ao ecrã como uma lasca.
 /// Quem consome isto é a [`ph2d_painter_brush::canvas_warp`], que a inverte para saber que elipse
-/// pintar.
+/// pintar; quem escolhe o triângulo (ou COMPÕE vários) é a [`crate::sprite_mesh_warp::warp_over`].
 ///
 /// A conta é o triângulo: com `A = [P₁−P₀, P₂−P₀]` (local) e `B = [U₁−U₀, U₂−U₀]` (uv), o jacobiano
 /// `d(local)/d(uv)` é `A·B⁻¹`; dividido pelo do QUAD de repouso (`diag(sw, −sh)`, que é o que a lei
 /// do quad usa) sobra a deformação pura. ⚠️ **A divisão pelo quad é o que a torna adimensional** —
 /// sem ela o número carregaria o tamanho da sprite e o pincel mudaria de forma ao redimensioná-la.
 ///
-/// `None` fora da malha ou num triângulo degenerado (`det(B) ≈ 0`).
+/// ⚠️ **UMA conta, e é esta:** ela viveu emparelhada com a busca do triângulo até 2026-09-14, e a
+/// wave do footprint precisou de a aplicar a triângulos que não são o do ponto. Duas cópias desta
+/// álgebra seriam duas respostas à mesma pergunta — e a W11b mostrou o que custa errar a base numa
+/// delas. `None` num triângulo degenerado (`det(B) ≈ 0`) ou com `size` não positivo.
 #[must_use]
-pub(crate) fn warp_under(mesh: &SpriteMesh, p: [f32; 2], size: [f32; 2]) -> Option<[[f32; 2]; 2]> {
+pub(crate) fn warp_of(mesh: &SpriteMesh, t: [usize; 3], size: [f32; 2]) -> Option<[[f32; 2]; 2]> {
     if size[0] <= 0.0 || size[1] <= 0.0 {
         return None;
     }
-    mesh.triangles().rev().find_map(|t| {
-        let c = corners(mesh, t);
-        barycentric(p, c)?;
-        let uv = [mesh.uv[t[0]], mesh.uv[t[1]], mesh.uv[t[2]]];
-        let b = [
-            [uv[1][0] - uv[0][0], uv[2][0] - uv[0][0]],
-            [uv[1][1] - uv[0][1], uv[2][1] - uv[0][1]],
-        ];
-        let det = b[0][0] * b[1][1] - b[0][1] * b[1][0];
-        if !det.is_finite() || det.abs() < 1e-12 {
-            return None;
-        }
-        let a = [
-            [c[1][0] - c[0][0], c[2][0] - c[0][0]],
-            [c[1][1] - c[0][1], c[2][1] - c[0][1]],
-        ];
-        // `A · B⁻¹`
-        let inv = [
-            [b[1][1] / det, -b[0][1] / det],
-            [-b[1][0] / det, b[0][0] / det],
-        ];
-        let j = [
-            [
-                a[0][0] * inv[0][0] + a[0][1] * inv[1][0],
-                a[0][0] * inv[0][1] + a[0][1] * inv[1][1],
-            ],
-            [
-                a[1][0] * inv[0][0] + a[1][1] * inv[1][0],
-                a[1][0] * inv[0][1] + a[1][1] * inv[1][1],
-            ],
-        ];
-        // ⚠️⚠️ **As DUAS pontas na mesma base, e é aqui que a 1.ª redacção errou:** as LINHAS de `j`
-        // estão em coordenadas locais (`y` para CIMA) e as COLUNAS em `uv` (`v` para BAIXO). A
-        // resposta tem de estar em coordenadas de ECRÃ nos dois lados — senão a matriz nasce numa
-        // base MISTA, que nega os termos fora da diagonal: uma arte RODADA recebia a elipse
-        // espelhada, esticada na diagonal errada (report do dono: *«sem melhorias»*).
-        // ⛔ E as fixturas alinhadas aos eixos **não o viam**: ali os termos fora da diagonal são
-        // zero. ⇒ `D · j · diag(1/sw, 1/sh)`, com `D` a espelhar a linha do `y`.
-        Some([
-            [j[0][0] / size[0], j[0][1] / size[1]],
-            [-j[1][0] / size[0], -j[1][1] / size[1]],
-        ])
-    })
+    let c = corners(mesh, t);
+    let uv = uv_corners(mesh, t);
+    let b = [
+        [uv[1][0] - uv[0][0], uv[2][0] - uv[0][0]],
+        [uv[1][1] - uv[0][1], uv[2][1] - uv[0][1]],
+    ];
+    let det = b[0][0] * b[1][1] - b[0][1] * b[1][0];
+    if !det.is_finite() || det.abs() < 1e-12 {
+        return None;
+    }
+    let a = [
+        [c[1][0] - c[0][0], c[2][0] - c[0][0]],
+        [c[1][1] - c[0][1], c[2][1] - c[0][1]],
+    ];
+    // `A · B⁻¹`
+    let inv = [
+        [b[1][1] / det, -b[0][1] / det],
+        [-b[1][0] / det, b[0][0] / det],
+    ];
+    let j = [
+        [
+            a[0][0] * inv[0][0] + a[0][1] * inv[1][0],
+            a[0][0] * inv[0][1] + a[0][1] * inv[1][1],
+        ],
+        [
+            a[1][0] * inv[0][0] + a[1][1] * inv[1][0],
+            a[1][0] * inv[0][1] + a[1][1] * inv[1][1],
+        ],
+    ];
+    // ⚠️⚠️ **As DUAS pontas na mesma base, e é aqui que a 1.ª redacção errou:** as LINHAS de `j`
+    // estão em coordenadas locais (`y` para CIMA) e as COLUNAS em `uv` (`v` para BAIXO). A
+    // resposta tem de estar em coordenadas de ECRÃ nos dois lados — senão a matriz nasce numa
+    // base MISTA, que nega os termos fora da diagonal: uma arte RODADA recebia a elipse
+    // espelhada, esticada na diagonal errada (report do dono: *«sem melhorias»*).
+    // ⛔ E as fixturas alinhadas aos eixos **não o viam**: ali os termos fora da diagonal são
+    // zero. ⇒ `D · j · diag(1/sw, 1/sh)`, com `D` a espelhar a linha do `y`.
+    Some([
+        [j[0][0] / size[0], j[0][1] / size[1]],
+        [-j[1][0] / size[0], -j[1][1] / size[1]],
+    ])
 }
 
 /// ⭐⭐ **A UV DE REPOUSO debaixo do ponto LOCAL `p`** — interpolada no triângulo posado que o

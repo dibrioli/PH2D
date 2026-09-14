@@ -255,3 +255,86 @@ pub fn rotulos_colididos() -> Vec<(&'static str, String, String, usize)> {
     }
     fora
 }
+
+// ---------------------------------------------------------------------------------------------
+// A CONFERÊNCIA cobre o catálogo? (ciclo 6, W4)
+// ---------------------------------------------------------------------------------------------
+
+/// **Os nós que NENHUMA folha de conferência nomeia.**
+///
+/// ⛔⛔ **O placar é derivado das FOLHAS, e uma folha não tem célula nenhuma para um nó que ela não
+/// conhece** — logo um nó nascido depois dela lê `0 aberto` por ausência, não por estar conferido.
+/// Medido no ciclo 6: a folha 12 diz *«PULSE (6 nós)»* e a família tem **9**; a 15 diz *«VALUE (23
+/// nós)»* e a família tem **26**. *Um censo que varre menos devolve a diferença como «não há mais
+/// nada».*
+///
+/// ⚠️ **A lista viva sai do REGISTRY, nunca de um `grep` sobre o fonte** — o repo já pagou isso (a
+/// contagem de saídas do `paint_port_label` leu `294` de um regex que contava manifestos repetidos).
+///
+/// ⚠️ **As folhas são lidas em RUNTIME** (não há `include_str!` com glob), e é por isso que
+/// [`Conferencia::folhas`] existe: se o caminho se partir, o número cai a zero e o gate acusa em
+/// vez de ficar verde a medir o vazio.
+pub struct Conferencia {
+    /// Quantas folhas foram lidas (o `README.md` não conta).
+    pub folhas: usize,
+    /// Quantos nós o registry declara.
+    pub nos: usize,
+    /// Os que nenhuma folha nomeia.
+    pub ausentes: Vec<&'static str>,
+}
+
+/// Lê as folhas e cruza com o registry.
+#[must_use]
+pub fn conferencia() -> Conferencia {
+    let raiz = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../docs/Motion Nodes/89_conferencia");
+    let mut texto = String::new();
+    let mut folhas = 0usize;
+    if let Ok(dir) = std::fs::read_dir(&raiz) {
+        for e in dir.flatten() {
+            let nome = e.file_name();
+            let nome = nome.to_string_lossy();
+            if !nome.ends_with(".md") || nome == "README.md" {
+                continue;
+            }
+            if let Ok(s) = std::fs::read_to_string(e.path()) {
+                texto.push_str(&s);
+                folhas += 1;
+            }
+        }
+    }
+    // ⚠️⚠️ **A régua é a LINHA DA TABELA, não «o nome aparece algures».** Os três `pulse.*` novos
+    // são citados na folha 12 — mas como **linhas de FAMÍLIA** (a lacuna que eles vieram fechar) e
+    // em notas de encerramento, nunca com uma linha própria a responder *«o que é que ELE não tem
+    // contra a referência?»*. *Um nó citado como a CURA de uma célula não foi conferido como nó.*
+    let conferido: std::collections::BTreeSet<&str> = texto
+        .lines()
+        .filter_map(|l| {
+            let l = l.trim_start();
+            if !l.starts_with('|') {
+                return None;
+            }
+            // A primeira célula é o sujeito da linha.
+            l.split('|').nth(1).map(str::trim)
+        })
+        .filter_map(|c| {
+            let c = c.trim_matches(|ch| ch == '*' || ch == ' ');
+            c.strip_prefix('`')?.split('`').next()
+        })
+        .collect();
+    let m = MotionState::new();
+    let mut ausentes = Vec::new();
+    let mut nos = 0usize;
+    for man in m.registry.manifests() {
+        nos += 1;
+        if !conferido.contains(man.name) {
+            ausentes.push(man.name);
+        }
+    }
+    ausentes.sort_unstable();
+    Conferencia {
+        folhas,
+        nos,
+        ausentes,
+    }
+}

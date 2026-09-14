@@ -162,8 +162,10 @@ o sintoma.*
    W3b: as três chaves partilhadas por perguntas diferentes (§9.7).
    ⚠️ **E o §4 dizia `6` divergências com `5` na tabela** — *o número escreve-se da sonda, não da
    memória*.
-4. **W4 — o poder que falta**, nó a nó, contra o estado da arte (a folha 15 da conferência + as
-   referências), que é o passo 2 do protocolo por nó.
+4. ✅ **W4 — o poder que falta**, nó a nó — **FEITA** (§10): o placar lia `0 aberto` sobre **29 de
+   35** nós, e a régua certa (uma LINHA cujo sujeito é o nó) acusa **15** no catálogo inteiro. Os
+   **seis** do grupo estão conferidos nas folhas 12 e 15 — `0 P0/P1/P2` — e a dívida ganhou catraca
+   com as duas metades (`15 → 9`).
 5. **W5 — a MEDIÇÃO** (passo 5) e **W6 — o TUTORIAL em PDF** (passos 6 e 7, o smoke do dono).
 
 ⚠️ **A ordem 1→2 não é preferência: é a lei 1 do §2 do protocolo.** Um grupo cujo uso normal
@@ -635,3 +637,77 @@ par `(nó, nome)` é inequívoco. ⇒ renomear custaria o valor autorado de todo
 (um override desconhecido cai no default, em silêncio) e compraria zero. **Fica declarado, não
 curado** — e o dia em que uma destas chaves ganhar um consumidor partilhado, ela vira um `substeps`
 e a cura passa a ser obrigatória.
+
+---
+
+## §10 — W4: a CONFERÊNCIA do grupo — e o furo que ela tinha
+
+### §10.1 — ⛔⛔ O placar lia `0 aberto` sobre uma população de 29 de 35
+
+A folha **12** abre com *«PULSE / EVENTOS (6 nós)»* e a família tem **9**; a **15** com
+*«VALUE (23 nós)»* e a família tem **26**. ⇒ **o placar é derivado das FOLHAS, e uma folha não tem
+célula nenhuma para um nó que ela não conhece** — logo os seis lêem `0 aberto` **por ausência**, não
+por estarem conferidos.
+
+⚠️⚠️ **E a régua certa não é «o nome aparece na folha»: é a LINHA DA TABELA.** Os três `pulse.*`
+novos **nasceram desta folha** — são a cura de três células de família — e por isso são citados nela
+como a resposta, nunca como o **sujeito** de uma linha. *Um nó citado como a CURA de uma célula não
+foi conferido como nó.*
+
+**Censo sobre o catálogo inteiro** (`probe_unconferred_nodes`, 17 folhas / 134 nós):
+
+| régua | acusados |
+|---|---|
+| *«o nome aparece algures na folha»* | **6** |
+| **«tem uma LINHA cujo sujeito é ele»** | **15** |
+
+### §10.2 — Os seis do grupo, conferidos
+
+Escritos como **§12** das folhas [12](89_conferencia/12_pulse.md) e
+[15](89_conferencia/15_value.md), com a referência citada em cada célula. Resultado: **0 P0 · 0 P1 ·
+0 P2**, `3` ✅ e `6` ⛔.
+
+| nó | o que a referência tem e nós não | veredito |
+|---|---|---|
+| `pulse.adsr` | **`Peak`** (TD Trigger CHOP) | ⛔ — `→ value.math(Multiply)`, um nó |
+| `pulse.adsr` | **`retrigger delay`** como TEMPO | ⛔ — é o `debounce` do `pulse.threshold`, a montante ⚠️ *e o `pulse.compare` não o tem: quem gatilha por CAMPO não alcança a janela* |
+| `pulse.adsr` | — | ⭐ `SUPERAR:` o **`hold`** é nosso — um gatilho não tem *note off*, logo o patamar tem de ter duração autorada |
+| `pulse.level` | os modos do TD **Logic CHOP** | ⛔ — *toggle* e *latch* são `pulse.counter(count_max = 2)`, escrito no header |
+| `pulse.signal` | um sinal com **PAYLOAD** | ⛔ — **fronteira declarada**; a contagem de linhas que dispararam já viaja no `SignalOrigin` |
+| `value.cursor` | o `followMouse` do Cavalry **dentro do Falloff** | ⭐ `SUPERAR:` como produtor ele alcança **todo param de todo nó**; um toggle por nó só saberia mover um CENTRO |
+| `value.number` | uma constante de **TEXTO** | ⛔ — **não existe canal de texto** num fio (`Dim` tem `Scalar`/`Vec2`/…), medido |
+| `value.table` | **N fluxos** de um ficheiro (o `.mgjson` da Adobe) | ⛔ — um `value.table` por coluna; a cadeia é linear nos fluxos |
+
+⛔⛔ **E uma célula ficou FORA da tabela de propósito:** o `outside` do `value.table` tem `Hold` e
+`Loop`, e a memória diz que um leitor de tabela costuma oferecer mais extensões — **não há
+referência CITADA neste repo** para isso. O placar **recusou** a linha sem veredito e tem razão:
+*uma linha de conferência sem referência citada é um palpite com cara de medição*, e uma tabela que
+a aceitasse passava a contar palpites como dívida medida.
+
+### §10.3 — A catraca que impede isto de voltar a acontecer em silêncio
+
+`every_node_has_a_conference_row_or_is_named_in_the_debt` — **as duas metades**: reprova quando um
+nó nasce fora das folhas, **e** quando uma entrada da dívida já não descreve nada. Mais o **piso de
+população** (as folhas são lidas em RUNTIME, sem `include_str!` com glob: um caminho partido daria
+zero folhas e a lista inteira).
+
+⭐ **Ela já desceu: `15 → 9`**, e quem exigiu apagar os seis foi a própria metade de obsolescência,
+em voz alta e a nomeá-los. Os `9` que ficam são de outros ciclos, cada um com a folha a que
+pertence (`audio.bands` · `motion.bezier_warp` · `motion.proximity` · `motion.randomize` ·
+`motion.sub_uv` · `motion.velocity` · `source.lsystem` · `source.table` · `source.text`).
+
+### §10.4 — A suíte de GPU inteira, depois do `dt` uniform
+
+`210 passed / 2 failed` em `766 s`. **Nenhum dos dois é desta wave:**
+
+| vermelho | medida | veredito |
+|---|---|---|
+| `value_slope_kernel_matches_the_cpu_on_the_device` | `1.05023384e-4` contra uma barra de `1e-4` — **bit-idêntico** em 2 de 2 corridas e **o mesmo número** já registado no §6 antes desta wave | **pré-existente, determinístico** |
+| `crossing_the_reach_boundary_does_not_step_the_cost` | na suíte: `127,0` → `3 264,6 ms`, razão **`25,7×`**. Sozinho, `3 de 3`: `7,0` → `7,0 ms`, razão **`0,998`** | ⚠️ **FLAKE DE CARGA** — membro novo da família |
+
+⚠️⚠️ **A assinatura deste é a mais limpa que esta linha viu:** não é a razão que se move, é o
+**relógio absoluto**, `466×` (`7 ms` → `3 265 ms`). Sob o fan-out da suíte a placa está contendida, e
+um gate que divide dois relógios de GPU herda isso inteiro. ⇒ **proposta à integração**: acrescentar
+`crossing_the_reach_boundary_does_not_step_the_cost`
+([`gpu_collide.rs`](../../crates/ph2d-gpu-cook/tests/it/gpu_collide.rs)) à família de flakes de
+carga do `CLAUDE.md` §5.0 — *a linha pede, o integrador escreve*.

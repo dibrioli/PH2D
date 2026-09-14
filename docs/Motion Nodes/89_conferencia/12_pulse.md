@@ -1,7 +1,9 @@
-# 12 — PULSE / EVENTOS (6 nós) — conferência contra a referência
+# 12 — PULSE / EVENTOS (9 nós) — conferência contra a referência
 
 **Data:** 2026-08-09 · **Plano:** [89](../89_plano_conferencia_dos_nos.md) §3 · **Família 12/17**
-**Nós:** `pulse.beat` · `pulse.compare` · `pulse.counter` · `pulse.on_change` · `pulse.sample_hold` · `pulse.threshold`
+**Nós:** `pulse.beat` · `pulse.compare` · `pulse.counter` · `pulse.on_change` · `pulse.sample_hold` · `pulse.threshold` · `pulse.adsr` · `pulse.level` · `pulse.signal`
+⚠️ **Os três últimos NASCERAM desta folha** (são a cura de três células de família) e só foram
+conferidos COMO NÓS em 2026-09-14 — ver §12.
 
 **Método:** params lidos do `MANIFEST` de cada crate (não do doc), faixas/unidades/widgets lidos do
 `register_param_ui`/`register_param_hard_max` de cada `register()`, e **toda cadeia de
@@ -49,7 +51,7 @@ frames, e o "Modal Event" aparece na lista de *faltantes* dos próprios devs, li
 | `pulse.sample_hold` | **0** | **magro por NATUREZA — o veredito, com mecanismo:** as duas entradas do sampler são PORTAS (o valor e o gatilho, ambos animáveis), e a única escolha que sobraria — *qual borda* — é inexprimível no tipo (linha acima). Zero params está **certo** | — | natureza | ⛔ | — |
 | **(família)** | — | **`pulse.adsr`** — envelope Delay/Attack/Sustain/Release no trigger (TD **Trigger CHOP**: *"starts an audio-style ADSR envelope to all trigger pulses"*, doc 06 §4); o doc 63 §2.4 já o lista como **P1** e continua correto (não há crate `pulse-adsr`) | **PELO HACK, e só** — `motion.strobe` É o envelope, mas escreve **canal de transform**; para usá-lo como VALOR seria `strobe → value.attribute(canal)` = exatamente o "clock hack" que o doc 09 matou | ✅ **CONSTRUÍDO (2026-08-10): a crate `ph2d-node-pulse-adsr`** — e a decisão que desenha o nó é que **um gatilho não tem *note off***. Num sintetizador o envelope é dirigido por um PORTÃO (a tecla desce, a tecla sobe); o nosso pulso é um IMPULSO, e `pulse.level` é **momentâneo e sem estado por decisão** (a P0 desta folha) ⇒ **não existe no catálogo nada que segure um portão aberto**. Logo o envelope é um **one-shot** e o param `hold` é quem o fecha — a única forma que COMPÕE com o que a família produz. Um segundo porto *release* daria o modelo de teclado e seria a **segunda** resposta a *"quando este envelope termina?"*: fica nomeado, não construído. ⚠️ **As rampas são ALGÉBRICAS** (bias de Schlick, HR-5) e em `0.5` reduzem **literalmente** à identidade — linear não é aproximação de linear. **Dois** shapes e não três (o `release_shape` governa as duas QUEDAS), com gate afirmando que cada um dobra exatamente os trechos que promete — sem ele a decisão seria uma frase, porque nos defaults lineares os dois são indistinguíveis. ⚠️ **E o teto NÃO é o do `debounce`, embora a grandeza e o relógio sejam os mesmos:** aquele conta para BAIXO e este para CIMA, e numa potência de dois os vizinhos de baixo estão **duas vezes mais juntos** — copiar o número teria shipado um teto quebrado; medido, **65536 s** | omissão | ✅ | nó novo ⇒ nada existente muda |
 
-**Contagem (DERIVADA por `ferramentas/placar_conferencia.py`, reconciliada em 2026-08-22):** 20 linhas — **P0 = 0** · **P1 = 0** · **P2 = 0** · ✅ fechadas **15** · ⛔ recusadas/refutadas **5**.
+**Contagem (DERIVADA por `ferramentas/placar_conferencia.py`, reconciliada em 2026-09-14):** 25 linhas — **P0 = 0** · **P1 = 0** · **P2 = 0** · ✅ fechadas **16** · ⛔ recusadas/refutadas **9**.
 
 > ✅ **A FOLHA 12 FECHOU POR INTEIRO** — zero em todas as prioridades. A wave de 2026-08-22 levou-a de 7 P2 a nenhum: **cinco** construídos (a régua de BPM, a fase por-linha, a janela de atividade, a porta de referência do `compare`, e os DOIS tetos digitáveis) e **um refutado por medição** (contar para baixo já funcionava pelo `step`).
 >
@@ -272,3 +274,27 @@ pelo Enio em 2026-08-10**, depois do fix de rota acima.
 **Segue ABERTA a direção `runtime → grafo`** (colisão vira pulso), pelo motivo acima: ela é
 decisão do Enio, não dívida de engenharia.
 
+---
+
+## §12 — OS TRÊS NÓS QUE ESTA FOLHA NUNCA CONFERIU (2026-09-14, ciclo 6 W4)
+
+⛔⛔ **O cabeçalho diz *«6 nós»* e a família tem NOVE.** O `pulse.adsr`, o `pulse.level` e o
+`pulse.signal` **nasceram desta folha** — são a cura de três células de família — e por isso são
+citados aqui como a resposta, nunca como o **sujeito** de uma linha. ⇒ o placar lia `0 aberto` para
+eles **por ausência**, e não por estarem conferidos. *Um nó citado como a CURA de uma célula não foi
+conferido como nó* (censo: `every_node_has_a_conference_row_or_is_named_in_the_debt`).
+
+| nó | params hoje | falta (referência CITADA) | exprimível? (a cadeia tentada) | natureza/omissão | P | default que reduz |
+|---|---|---|---|---|---|---|
+| `pulse.adsr` | 9 — `delay` · `attack` · `decay` · `sustain` · `hold` · `release` · `attack_shape` · `release_shape` · `retrigger` | **`Peak`** — o nível a que o ataque sobe (o nosso é fixo em `1`). TD **Trigger CHOP** ([houdini_mops §287](../referencia_pesquisa_houdini_mops.md)): *«Delay→Attack(len+shape)→**Peak**→Decay→Sustain(level)→Release(len+shape)»* | **SIM, um nó** — `pulse.adsr → value.math(Multiply, pico)`: o envelope inteiro escala e o `sustain` continua a ser a fracção do pico, que é o que o CHOP faz | **cerca** (composição de UM nó) | ⛔ **recusada** | — |
+| `pulse.adsr` | idem | **`retrigger delay`** — o TD dá um TEMPO mínimo antes de aceitar novo disparo; o nosso `retrigger` é booleano | **SIM, a montante** — é o `debounce` do `pulse.threshold`, em segundos, que já shipa com a janela de silêncio. ⚠️ O `pulse.compare` **não** o tem, e essa é a nota: quem gatilha por CAMPO não alcança a janela | **cerca**, com a assimetria nomeada | ⛔ **recusada** | — |
+| `pulse.adsr` | idem | — | — | ⭐ **`SUPERAR:` o `hold` é NOSSO** — um gatilho não tem *note off*, então o patamar tem de ter DURAÇÃO autorada; o CHOP segura enquanto o portão está alto, e um pulso dura um tique | **natureza** | ✅ | — |
+| `pulse.level` | **0** | os **modos de conversão** do TD **Logic CHOP** (`Off/On/Momentary/**Toggle**/…`), que existe precisamente para converter nível↔borda (doc 06) | **SIM, um nó** — o *toggle* e o *latch* são `pulse.counter(count_max = 2)`, e o ida-e-volta `level → compare(rise 0.5)` é a **identidade** (os dois estão escritos no header do nó) | **cerca** | ⛔ **recusada** | — |
+| `pulse.signal` | 1 texto — `name` | um sinal com **PAYLOAD** (Max/TD levam um valor no evento; [doc 09 §3](../09_handoff_pulse_signal_source_and_naming.md)) | **PARCIAL, e por desenho** — a informação que o colapso descartaria (QUANTAS linhas dispararam) **já viaja** no `SignalOrigin`; um payload arbitrário não, e é a MESMA fronteira que põe `runtime → grafo` fora (um sinal é fato do QUADRO, o cook é função do TIQUE) | **fronteira declarada** (doc 63 §4 — cross-line/decisão do Enio) | ⛔ **recusada** | — |
+
+**Contagem desta secção:** 5 linhas — **P0 = 0** · **P1 = 0** · **P2 = 0** · ✅ **1** · ⛔ **4**.
+
+⚠️ **O cabeçalho passou a dizer `9 nós`, e a contagem foi reconciliada com a ferramenta** — as duas
+são grandezas diferentes (POPULAÇÃO e VEREDITOS) e as duas estavam desactualizadas. *Quem acrescenta
+linhas roda o `ferramentas/placar_conferencia.py` e reconcilia; ele imprime e sai vermelho, e
+`--write` não existe.*

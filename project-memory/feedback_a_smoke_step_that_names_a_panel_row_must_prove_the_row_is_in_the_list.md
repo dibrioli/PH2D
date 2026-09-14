@@ -60,6 +60,23 @@ smoke do dono **pendente**: ele bateria nisto no primeiro selector que tocasse.
 são o último sítio lembrado e o primeiro que o dono lê — `grep` os textos de smoke pelo verbo que
 mudou, no mesmo commit que o muda.
 
+⛔⛔ **E uma QUARTA espécie, medida em 2026-09-13 sobre um smoke MEU: o botão cuja SECÇÃO inteira
+deixou de ser alcançada.** Eu escrevi *«carrega em **Add Physics Body**»* e **verifiquei** — o
+rótulo está na tabela de textos (`panel.inspector.physics.add_physics_body`), o pintor da face vazia
+da §11 desenha-o, o `HitIndex` regista-o. Três leituras, todas verdadeiras, e o passo era
+**impossível**: desde o ADR-0166/F3 o `build_physics_info` devolve `None` quando o objecto não tem
+corpo nem collider, logo num sprite pelado **a secção inteira não é pintada** e nada daquilo corre.
+
+⚠️ **O que engana é que as três leituras estão no lado certo da costura.** A régua que decide é o
+**construtor do snapshot**, que vive noutra crate e cujo `return None` não menciona botão nenhum. ⇒
+*a pergunta não é «quem pinta este botão?», é «quem decide se esta SECÇÃO chega a ser pintada, e para
+que objecto?»* — uma cláusula acima do que as três espécies anteriores olhavam.
+
+⚠️⚠️ **E no mesmo smoke eu acertei nos outros três nomes** (*Add Component*, *Platform Player*,
+*Timers* — este corrigido de *Timer* pela leitura do catálogo), o que é o pior resultado possível:
+**verificar quase tudo produz a confiança de ter verificado tudo**. O report do dono veio no dia
+seguinte, e a frase dele foi *«não temos mais Add Physics Body no painel»*.
+
 **Why:** o texto de um smoke é **superfície de produto** — é onde o dono aprende a ferramenta
 (CLAUDE.md §0.8) —, e é a única superfície do repo cuja correcção nada media.
 

@@ -536,7 +536,8 @@ nomes que o gate percorria: duas respostas à mesma pergunta, hoje **uma tabela*
 
 ⭐ **O `requires` não era opcional.** Sem ele, anexar `PlatformPlayer` a um objeto sem corpo punha o
 componente lá e a §14 **não aparecia** — a poda abria um buraco próprio. A cascata viaja no **rótulo
-do item**, e é **FECHADA** (`Platform Player — brings Rigid Body, Collider`): mostrar só o 1.º salto
+do item**, e é **FECHADA** (`Platform Player — brings Physics Body, Collision Shape`; os dois rótulos
+eram `Rigid Body` e `Collider` até à poda de 13/09): mostrar só o 1.º salto
 seria a queixa do Bevy um nível abaixo. ⛔ Só o **estrutural** entra: a barra é *o componente é
 inerte sem aquele*, e a ponte da física consulta `(RigidBody, Collider, Transform)` — uma query, não
 uma opinião.

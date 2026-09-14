@@ -144,6 +144,7 @@ Nada muda à vista. O modo de falha a procurar é um rótulo que apareça como `
 | onde | o que ver |
 |---|---|
 | **Inspector**, com um objecto escolhido | os cabeçalhos e as linhas de **Transform**, **Render Source** (incl. `Storage`/`Source`), **Sampling**, **Ordering**, **Visibility**, **Color & Tint**, **Material & Blend**, **Sprite Sheet** |
+| **`+` → Add Component → Physics** (o §13) | **três** itens e não trinta: *Physics Body — brings Collision Shape* · *Collision Shape* · *Platform Player — brings Physics Body, Collision Shape*. ⛔ Nenhum *Gravity Scale*, *Damping*, *Lock Position X*, *Joint*… — esses são rows da §11 |
 | **Inspector** de um corpo físico | **Physics Body** (Body/Collider/Collision/Bake), as linhas de **material** e de **massa**, e a **ZONA** de um sensor (Force X/Y, Force Axes, Torque, Falloff, Drag) |
 | **Physics Joint** | o selector de **Kind** (Pin…Custom), **Limits/Travel**, **Motor** (Target/Speed com a unidade), **Breakable**, e o `Custom` com os três eixos (`X`, `Y`, `Rotation`) |
 | **Platform Player** (§14) | os doze cards (`LEG`, `WALK`, `JUMP`, `FORGIVENESS`…), as dicas de hover das linhas, os botões *Fit to Collider (needs > …)* e *Clear Recorded Run (… s)*, e a leitura viva (`Posture: ground`, `Facing: right`) |
@@ -201,6 +202,20 @@ fechado, e apagá-lo é o reset.
 > gate por crate; sobram a shell (917), a `app-physics` (843), a `editor-core` (692, ao número por
 > ficheiro) e o `panel-vector` (225) — ⚠️ e a régua corrigiu-se **duas** vezes em 13/09 (a palavra
 > GRITADA · a BARRA numa frase), por isso um número medido antes disso é um piso.
+
+⚠️ **E uma segunda linha, para a `Componentes / instâncias`** (o §13 abaixo — o assunto é a F3 do
+ADR-0166, não esta linha):
+
+> ⭐⭐ **A paleta do `+` estava PICOTADA na física** (report do dono, 13/09): `30` dos `32` tipos da
+> família estavam `Authored` — **35 % da paleta inteira** —, e `27` deles são as **rows** que a
+> §11/§12/§13/§14 já pinta e já anexa (presença-override), ou nascem de gestos. Hoje são **três
+> portas** (*Physics Body* · *Collision Shape* · *Platform Player*, os dois primeiros renomeados para
+> nomear a secção que criam), os outros 27 são `Attach::Intrinsic` — **não se oferecem, continuam a
+> editar-se** — e a paleta inteira desce de **85 para 58** itens (*Image · Show all* deixa de precisar
+> de rolagem). ⚠️ A régua já estava escrita na razão 2 do `Attach::Intrinsic` e **nunca tinha sido
+> corrida sobre a família**: o helper local chamava-se `p` e construía `authored`, logo *classificar
+> era não escrever nada*. ⛔ As outras famílias **não** foram auditadas com ela (a `core` oferece 22).
+> Catraca nomeada: `the_physics_family_offers_three_doors_and_not_its_rows`.
 
 ## 11 — As leis que esta volta pagou
 
@@ -263,3 +278,137 @@ números estão no §7 e na resposta ao dono.
 ⚠️ **A máquina esteve partilhada com outra sessão durante o fecho** (carga entre 4 e 54): os
 relógios desta corrida não servem de medição de desempenho, e os vereditos não dependem deles —
 os dois vermelhos foram gates estruturais, reprodutíveis, não flakes de recurso.
+
+---
+
+## 13 — ADENDO de 13/09 — a paleta de física estava PICOTADA (report do dono, depois do fecho)
+
+> *«Não temos mais Add Physics Body no painel. Os componentes da física foram colocados no modal que
+> é aberto ao clicar no `+` do inspector. Contudo foi erroneamente picotado, dividido em inúmeros
+> supostos componentes que na verdade são apenas seções das opções de física. … Talvez só Add
+> Physics Body no modal seja mais correto, acrescentando todas as opções da física ao mesmo tempo.»*
+
+⚠️ **Isto NÃO é desta linha nem desta volta** — é a F3 do ADR-0166 (`line/components`, 24/08), e cai
+aqui porque o dono o reportou a esta janela e a cura é uma tabela de UI. O integrador deve lê-lo como
+um item da família **Componentes**, não da migração de texto acima.
+
+### 13.1 — O que estava errado, medido
+
+A família de física do catálogo declarava **30 dos seus 32 tipos como `Authored`** — `30` de `85`
+itens da paleta inteira (**35 %**, e a maior família de longe; a seguinte, `core`, oferece 22). E
+**27** deles não são uma escolha do artista: são as **rows** que a §11/§12/§13/§14 já pinta e **já
+anexa**, pelo idioma da presença-override que o `PhysicsFieldEdit` inteiro usa (`Ccd`,
+`LockPositionX/Y`, `LockRotation`, `GravityScale`, `InitialVelocity`, `MaterialCombine`,
+`DampingOverride`, `OneWayPlatform`, `NoWallCling`, `WalkSurface`, as **sete** da zona, os dois
+toggles da §14, as duas rows de sinal) ou nascem de **gestos** (`PhysicsJoint`, `PulleyWheel`,
+`WestonAxle`, `JointWorldAnchor`, `RopeStops`).
+
+⛔ **E um deles anexado pelo `+` é PIOR que ausente:** um `PhysicsJoint::default()` prende
+`StableId 0` a `StableId 0` — uma junta que não prende nada, num objeto que pode nem ser corpo. Os
+outros 26 são mais benignos e têm o mesmo defeito de fundo: *o componente entra e nada acontece*,
+porque o valor neutro é exactamente o que a ausência já dizia.
+
+⭐⭐ **E a prova de que os 27 continuam alcançáveis não é minha: JÁ EXISTE e está verde.** O gate
+`every_registered_physics_component_has_a_ui_writer` (`shells/desktop/tests/it/`) afirma, desde as
+oito waves da física, que *todo componente de física registado é nomeado por alguém no caminho de
+ESCRITA da UI* — nove ficheiros, e a lista falha alto quando um escritor sai. ⇒ tirar os 27 da paleta
+**não pode** torná-los inalcançáveis: se tornasse, aquele gate ficava vermelho. *Esta poda apoia-se
+num censo que outra linha pagou, e a única coisa nova é ter olhado para ele.*
+
+⭐⭐ **A régua que faltava já estava ESCRITA — no `Attach::Intrinsic`, razão 2**: *«o neutro existe e
+anexá-lo seria um NO-OP; a PRESENÇA é que carrega o sentido, e o valor de anexação tem de vir do
+CONTEXTO, que a paleta genérica não conhece»*. Ela tinha sido aplicada a **dois** destes
+(`Dominance`, `MassOverride`, com a cerca citada no próprio catálogo) e **nunca foi corrida sobre a
+família**: o helper local chamava-se `p` e construía `authored`, então classificar era *não escrever
+nada*. *Um helper cujo caminho de menor esforço é uma das respostas escolhe a resposta.*
+
+### 13.2 — A cura: TRÊS portas
+
+| Porta | O que ela quer dizer | Traz |
+|---|---|---|
+| **Physics Body** (`RigidBody`) | *este objeto é simulado* — e a §11 abre com **todas** as opções | `Collision Shape` |
+| **Collision Shape** (`Collider`) | *esta forma é mais uma peça do corpo acima* (W-Compound, o antigo *Add Shape to X*) | — |
+| **Platform Player** (`PlatformPlayer`) | *este objeto é um personagem que anda e salta* | `Physics Body`, `Collision Shape` |
+
+Os outros 27 passam a `Attach::Intrinsic` — **não se oferecem, continuam a editar-se** (`Intrinsic`
+diz *não se escolhe*, nunca *não se edita*; é a distinção que a terceira variante comprou, e a
+`PhysicsJoint`/`PulleyWheel` mantêm os `fields` declarados, logo o remap de referências da F4.2 fica
+intacto).
+
+⚠️ **Dois rótulos mudaram, e é a regra do próprio campo** (*`display_name` é nomeado pelo resultado,
+não pelo tipo Rust*): `Rigid Body` → **Physics Body** (o cabeçalho da §11 que nasce, e a palavra do
+botão que o dono conhecia) e `Collider` → **Collision Shape** (neste app «shape» sozinho já é forma
+vectorial e forma 3D).
+
+⛔ **O `Collider` NÃO pode ser `Intrinsic`**, e não é opinião: o `RigidBody` exige-o, e o gate
+`every_declared_requirement_names_a_real_component` proíbe uma dependência `Intrinsic` — a cascata
+teria de construir o que ninguém declarou construível.
+
+⭐ **E a resposta ao *«não temos mais Add Physics Body no painel»* é a que o próprio dono propôs:** a
+porta fica no modal, porque a face vazia da §11 é precisamente o que o ADR-0166 retirou (o Inspector
+mostra o que o objecto TEM). Repô-la só para a física faria dela a única secção com face vazia, ao
+lado de Timer/Áudio/Câmera/Âncoras/Animação que perderam a delas na mesma fase. O que muda é o
+**nome**: o item passa a chamar-se como o botão se chamava. ⚠️ **O comportamento é o mesmo ao bit** —
+`BodyKind::default()` é `Dynamic` e a semente do `Collider` mede o sprite, que era exactamente o que
+o `PhysicsFieldEdit::Add` fazia.
+
+⚠️ **A face vazia da §11 continua VIVA e alcançável** num caso: `build_physics_info` mantém a secção
+quando `rig_parts > 0` (o tronco de um personagem), e ali os três botões — *Add Physics Body*, *Add
+Shape to X*, *Rig N Parts* — continuam a ser pintados. Não é código morto.
+
+### 13.3 — Medição, antes e depois (sonda `measure_palette`, viewport 1187×953 do report de 25/08)
+
+| caso | antes | depois |
+|---|---|---|
+| itens oferecidos, total | **85** | **58** |
+| `Empty` · aplicável | 56 | **29** |
+| `Image` · aplicável | 71 | **44** |
+| `Empty` · *Show all* — o que não cabe | 238 px | **46 px** |
+| `Image` · *Show all* — o que não cabe | 175 px | **0 px** |
+
+⭐ A queixa de 25/08 (*«a janela não tem scroll … veja que componentes estão inacessíveis fora da
+janela»*) foi curada com rolagem; esta poda tira-lhe a causa em metade dos casos.
+
+### 13.4 — O gate, e a mutação que o prova
+
+`the_physics_family_offers_three_doors_and_not_its_rows` (em `catalog/physics.rs`) — uma **catraca
+NOMEADA**: a lista das três portas é a afirmação, não um número. Uma quarta entrada autorada reprova
+e obriga a decidir *isto é uma intenção do artista ou é uma row?*; uma das três que desapareça
+reprova pelo mesmo `assert_eq`, que é a **metade de obsolescência**; e um **piso de população**
+(`DESCS.len() >= 30`) impede que apagar a família deixe o gate a comparar dois vazios.
+
+| # | defeito injectado | quem o matou |
+|---|---|---|
+| M10 | `i("…::Ccd", …)` volta a `D::authored(…)` | `the_physics_family_offers_three_doors_and_not_its_rows` (`left` nomeia o intruso) |
+
+Restauro por cópia + `touch` + comparação byte a byte, verde depois.
+
+### 13.5 — ⏳ ABERTO, e é honesto dizê-lo
+
+- **As outras famílias não foram auditadas com esta régua, e a segunda maior tem sinais da mesma
+  doença.** A `core` declara **22** `D::authored`, e à vista há lá candidatos claros a row — `Blend
+  Mode` (§Material & Blend), `Texture Filter` / `Texture Repeat` (§Sampling), `Order In Layer` ·
+  `Sorting Layer` · `Sorting Group` · `Z Index Override` · `Show Behind Parent` · `Y Sort` ·
+  `Visibility Layer` (§Ordering), `Locked` e `Visibility` (o cadeado e o olho da Hierarquia) —, mais
+  o `Transform`, que **toda** entidade tem e que por isso só seria oferecido a um objecto sem
+  `Transform`, isto é a nenhum. ⚠️ **Mas ela NÃO é uniformemente descuidada como a física**: o
+  `InstanceOf` e o `LinkedArt` já são `Intrinsic` **com a razão escrita**, logo alguém correu a régua
+  em parte da tabela. ⛔ **E falta-lhe o que autorizou esta poda:** o `ph2d-ecs` não tem o gémeo do
+  `every_registered_physics_component_has_a_ui_writer`, então uma poda ali teria de **construir o
+  censo primeiro** — é uma wave própria, não um apêndice desta. *A régua é barata; o que não é barato
+  é acreditar que a família já está certa, nem podá-la sem o censo do outro lado.*
+- **A paleta não sabe dizer *«isto precisa de um corpo acima»***: o `Collision Shape` é sempre
+  oferecido, e num objecto sem corpo ancestral a §11 pinta honestamente *«Shape with no body
+  above»*. O mecanismo do esmaecido-com-razão existe mas é indexado por `ObjectKind`, não por
+  contexto da entidade.
+
+### 13.6 — O que a fusão parte
+
+Nada de estrutura. **Quatro ficheiros**, todos texto de tabela ou prosa:
+`crates/ph2d-component-desc/src/catalog/physics.rs` (a tabela) ·
+`crates/ph2d-app-components/src/component_palette_tests.rs` (os dois rótulos no gate da cascata) ·
+`shells/desktop/src/physics/physics_gesture_tests.rs` + `physics_gesture_zone_tests.rs` (prosa que
+citava *Rigid Body*) · `docs/Components/05_plano_de_implementacao.md` (idem).
+⚠️ **Uma linha da `line/components` que toque `catalog/physics.rs` colide textualmente** — a cura é
+ler a tabela das três portas no cabeçalho e classificar a entrada nova, nunca aceitar o lado que
+tiver mais `authored`.

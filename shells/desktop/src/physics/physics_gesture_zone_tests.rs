@@ -62,7 +62,7 @@ fn a_water_zone_is_authorable_with_ui_gestures_alone() {
         "um sprite pelado nao tem §11 — a poda da F3"
     );
 
-    // 1. O `+` → **Rigid Body**. ⚠️ O collider nasce CASADO com o sprite (1.00 x 1.50 = metade de
+    // 1. O `+` → **Physics Body**. ⚠️ O collider nasce CASADO com o sprite (1.00 x 1.50 = metade de
     //    2 x 3), então o artista não digita dimensão nenhuma para ter a piscina do tamanho que
     //    desenhou — e agora isso é o *seed* que a paleta corre, não um braço do botão que morreu.
     attach(&mut sim, pool, "ph2d::physics::RigidBody");

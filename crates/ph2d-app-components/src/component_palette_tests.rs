@@ -184,12 +184,14 @@ fn every_group_is_named_and_tinted() {
 #[test]
 fn the_cascade_is_shown_in_the_label_before_it_is_applied() {
     let m = build(ObjectKind::Image, &[], &buildable, false);
+    // ⚠️ Os rótulos são **Physics Body** e **Collision Shape** desde a poda de 13/09 (report do
+    // dono): eles nomeiam a SECÇÃO que nasce, não o tipo Rust. Ver o cabeçalho do `catalog/physics`.
     let body = labels(&m)
         .into_iter()
-        .find(|l| l.starts_with("Rigid Body"))
-        .expect("o Rigid Body tem de estar na paleta");
+        .find(|l| l.starts_with("Physics Body"))
+        .expect("o Physics Body tem de estar na paleta");
     assert!(
-        body.contains("brings Collider"),
+        body.contains("brings Collision Shape"),
         "o rotulo tem de dizer o que vem junto: {body:?}"
     );
     let player = labels(&m)
@@ -197,7 +199,7 @@ fn the_cascade_is_shown_in_the_label_before_it_is_applied() {
         .find(|l| l.starts_with("Platform Player"))
         .expect("o Platform Player tem de estar na paleta");
     assert!(
-        player.contains("Rigid Body") && player.contains("Collider"),
+        player.contains("Physics Body") && player.contains("Collision Shape"),
         "a cascata tem de ser FECHADA (transitiva): {player:?}"
     );
 }

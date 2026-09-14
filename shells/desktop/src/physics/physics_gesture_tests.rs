@@ -32,8 +32,9 @@ use ph2d_app_physics::inspector::body::build_physics_info;
 /// (ADR-0166 / F3), *com o seed*.
 ///
 /// ⚠️ Existe porque a face vazia da §11 morreu: os gestos que começavam por *"clique em Add
-/// Physics Body"* passam a começar por *"escolha Rigid Body na paleta"*, e encená-los com um
-/// `world.insert()` à mão mediria a encenação em vez da porta.
+/// Physics Body"* passam a começar por *"escolha **Physics Body** na paleta"* (o rótulo desde a
+/// poda de 13/09 — ver o cabeçalho do `catalog/physics`), e encená-los com um `world.insert()` à
+/// mão mediria a encenação em vez da porta.
 pub(super) fn attach(sim: &mut ph2d_ecs::SimWorld, e: ph2d_ecs::Entity, name: &str) {
     let reg = crate::init::build_component_registry();
     ph2d_app_components::component_attach::attach_by_name(

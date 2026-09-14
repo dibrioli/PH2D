@@ -165,10 +165,33 @@ fn changing_how_it_is_painted_drops_the_frame_that_was_already_traced() {
         let _ = ph2d_panel_model3d::drain_intents();
         crate::scene::sync_scene_and_birth(&mut sim, None, &[], 0.0, &crate::scene::no_drawing());
 
+        // ⛔⛔ **OS SLOTS SÃO DERIVADOS DO ESTADO, nunca literais** — e esta linha é uma cura, não
+        // uma elegância. A 1.ª redacção escrevia `SetLook { slot: 1 }`, que era *«a vista que não é
+        // a de omissão»* no dia em que foi escrita; quando o dono mandou o módulo abrir em
+        // `Neutral` (14/09), o `slot 1` passou a ser **o estado em vigor**, o `set_look` devolveu
+        // cedo (ele não faz nada quando o olhar não muda) e o gate reprovou sobre produto correcto.
+        //
+        // ⚠️ *Uma fixtura que escolhe um slot LITERAL está a afirmar que ele difere do estado — e
+        // deixa de o afirmar no dia em que a omissão se mexe, sem uma linha do gate mudar.*
+        let (shading_agora, look_agora) = view_now();
+        let outro_modo = crate::shading::Shading::ALL
+            .iter()
+            .position(|s| *s != shading_agora)
+            .expect("há mais de um modo");
+        let outra_vista = ph2d_view_transform::ViewTransform::ALL
+            .iter()
+            .position(|v| *v != look_agora.view)
+            .expect("há mais de uma vista");
+        let outra_exposicao = crate::shading::EXPOSURES
+            .iter()
+            .position(|(s, _)| (*s - look_agora.exposure_stops).abs() > 1.0e-6)
+            .expect("há mais de uma exposição");
         for intent in [
-            ph2d_panel_model3d::ModelIntent::SetShading { slot: 1 },
-            ph2d_panel_model3d::ModelIntent::SetLook { slot: 1 },
-            ph2d_panel_model3d::ModelIntent::SetExposure { slot: 4 },
+            ph2d_panel_model3d::ModelIntent::SetShading { slot: outro_modo },
+            ph2d_panel_model3d::ModelIntent::SetLook { slot: outra_vista },
+            ph2d_panel_model3d::ModelIntent::SetExposure {
+                slot: outra_exposicao,
+            },
         ] {
             // Encena um quadro JÁ SERVIDO em TODAS as vistas: o olhar é da cena, então o gate
             // tem de poder ver as outras a serem largadas também.

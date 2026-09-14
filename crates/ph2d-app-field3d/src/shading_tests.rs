@@ -2,10 +2,54 @@
 
 use super::*;
 
-/// ⭐ **A omissão é o que o modelador sempre pintou** — matcap, e o olhar identidade.
+/// ⭐⭐⭐ **COM QUE OLHAR O MODELADOR ABRE** — a decisão do dono de 14/09, com um gate por cima.
+///
+/// # ⛔⛔ Porque ela precisa de um gate, e de um que nomeie a ORDEM
+///
+/// Trocar a omissão para `Neutral` custa: o olhar é da **cena**, logo ele governa também o matcap, e
+/// `99,9 %` dos texels dele mudam (`13` bytes típicos). ⇒ **é exactamente o tipo de linha que alguém
+/// «simplifica» de volta para `Look::default()` numa limpeza** — e a decisão evaporaria em silêncio,
+/// com o quadro a voltar ao branco chapado de `8,4 %` sem nenhum teste a acusar.
+///
+/// ⚠️ **As DUAS metades, e são leis diferentes:**
+///
+/// | afirmação | de quem |
+/// |---|---|
+/// | `Look::default()` continua a ser a **identidade** | do **tipo** ([`ph2d_view_transform`]), e vale para todo consumidor dele |
+/// | o **módulo** abre em [`OPENING_LOOK`] | decisão de produto, e vive na `crate::shading` |
+///
+/// ⛔ Quem trocasse a primeira mudaria, à distância, o quadro de quem nunca pediu olhar nenhum.
+///
+/// **Mutação que deve sangrar:** `view.rs` a voltar a `ph2d_view_transform::Look::default()`.
 #[test]
-fn the_default_is_what_the_modeler_always_painted() {
+fn the_modeler_opens_with_the_look_the_owner_chose() {
+    // ⭐ A metade do PRODUTO: o módulo abre em `Neutral`, e é a `View::default` que o diz — que é a
+    // mesma porta que o `boot` usa (o doc dela: *«é esta a definição de vista nova»*).
+    assert_eq!(
+        crate::smoke::view::View::default().look,
+        OPENING_LOOK,
+        "a vista nova deixou de abrir com o olhar que o dono escolheu"
+    );
+    assert_eq!(
+        OPENING_LOOK.view,
+        ViewTransform::Neutral,
+        "o olhar de abertura deixou de ser o `Neutral` — ordem do dono de 2026-09-14, com a tabela \
+         do preço no doc da constante"
+    );
+    assert!(
+        (OPENING_LOOK.exposure_stops).abs() < 1.0e-6,
+        "a exposição de abertura não é zero — a decisão foi sobre a VISTA, e baixar um stop foi \
+         medido como 3,5× pior para o matcap"
+    );
+    // ⭐ **E o MODO de abertura não se mexeu** — o matcap continua a ser o que um modelador quer
+    // ver primeiro: ele lê **forma**. A decisão do dono foi sobre o olhar, não sobre o modo.
     assert_eq!(Shading::default(), Shading::Matcap);
+    assert_eq!(
+        crate::smoke::view::View::default().shading,
+        Shading::Matcap,
+        "a vista nova deixou de abrir em matcap"
+    );
+    // ⛔ **E a metade do TIPO fica intacta:** a identidade continua a ser a identidade.
     assert_eq!(
         Look::default(),
         Look {

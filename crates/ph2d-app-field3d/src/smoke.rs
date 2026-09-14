@@ -181,7 +181,7 @@ fn boot() -> Option<Smoke> {
 /// ⭐ **O estado de VISTA e a memória que o faz sobreviver a fechar o painel** vive no irmão — ver
 /// [`field3d_view`](self::view).
 #[path = "view.rs"]
-mod view;
+pub(crate) mod view;
 pub use view::forget_isolation_across_documents;
 
 /// ⭐ **Os pedidos que atravessam para o app** vivem no irmão — ver [`field3d_smoke_requests`](self::requests).

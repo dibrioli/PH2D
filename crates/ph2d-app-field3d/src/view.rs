@@ -96,7 +96,10 @@ impl Default for View {
     fn default() -> Self {
         Self {
             shading: crate::shading::Shading::default(),
-            look: ph2d_view_transform::Look::default(),
+            // ⭐⭐⭐ **E NÃO o `Look::default()`** — ver [`crate::shading::OPENING_LOOK`], que é a
+            // decisão de produto do dono (14/09) e traz a tabela do que ela custa. *A identidade do
+            // TIPO e o olhar com que este módulo ABRE são duas perguntas.*
+            look: crate::shading::OPENING_LOOK,
             split: crate::layout::Split::One,
             cam: Orbit::default(),
             manual: false,

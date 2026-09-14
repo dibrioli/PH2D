@@ -717,5 +717,41 @@ como equivalentes, estava a esconder um factor de três e meio.
 
 ⭐ **O precedente da indústria é a `Neutral`:** o Blender trocou a omissão de `Standard` para uma
 vista com ombro (Filmic, depois AgX) exactamente por isto, e aplica a *Color Management* dele também
-ao modo sólido. ⛔ **Mas é decisão do DONO**, porque a coluna da direita é o ecrã que ele já aprovou
-dezenas de vezes.
+ao modo sólido.
+
+### §15.5 — ✅ A DECISÃO: `Neutral`, por ordem do dono (14/09)
+
+Posta com as três colunas acima, a escolha foi a **`Neutral`**. ⇒
+[`crate::shading::OPENING_LOOK`](../../crates/ph2d-app-field3d/src/shading.rs), lido pela
+`View::default` — que é a mesma porta que o `boot` usa.
+
+⛔⛔ **E ela NÃO é o `Look::default()`, de propósito.** São duas leis:
+
+| afirmação | de quem |
+|---|---|
+| `Look::default()` continua a ser a **identidade** (`Standard`, `0` stops) | do **tipo**, e vale para todo consumidor dele |
+| o **módulo** abre em `OPENING_LOOK` | decisão de **produto**, e vive na `crate::shading` |
+
+*Quem trocasse a primeira mudaria, à distância, o quadro de quem nunca pediu olhar nenhum.*
+
+⚠️ **O modo de abertura NÃO se mexeu** — o matcap continua a ser o que um modelador vê primeiro (ele
+lê **forma**). A decisão foi sobre o olhar.
+
+⭐ **Gate `the_modeler_opens_with_the_look_the_owner_chose`**, com as duas metades e a ordem nomeada:
+*é exactamente o tipo de linha que alguém «simplifica» de volta para `Look::default()` numa limpeza*,
+e sem ele a decisão evaporaria em silêncio com o quadro a voltar ao branco chapado. 2 mutações, 2
+sangrias.
+
+### §15.6 — ⛔⛔ E a mudança de omissão APANHOU UM GATE ACABADO DE ESCREVER
+
+O `changing_how_it_is_painted_drops_the_frame_that_was_already_traced` (§13) reprovou **sobre produto
+correcto**: ele escrevia `SetLook { slot: 1 }`, que era *«a vista que não é a de omissão»* no dia em
+que foi escrito. Com a omissão em `Neutral`, o `slot 1` passou a ser **o estado em vigor** — e o
+`set_look` devolve cedo quando o olhar não muda, logo não larga pedido nenhum.
+
+⚠️ *Uma fixtura que escolhe um slot LITERAL está a afirmar que ele difere do estado — e deixa de o
+afirmar no dia em que a omissão se mexe, sem uma linha do gate mudar.* ⇒ os três slots passam a ser
+**derivados** do estado lido no início do gate.
+
+⭐ É a mesma família do `§0.0`: *quem move o número que tornava algo inalcançável tem de reconferir a
+nota* — aqui, quem move a omissão tem de reconferir as fixturas que a pressupunham.

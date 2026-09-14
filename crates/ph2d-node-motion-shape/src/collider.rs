@@ -33,8 +33,8 @@
 
 use super::param;
 use ph2d_nodegraph::attr::{
-    BOUNCE_COLUMN, COLLIDER_BOX_COLUMN, COLLIDER_COLUMN, COLLIDER_OFFSET_COLUMN, Column,
-    FRICTION_COLUMN, INV_INERTIA_COLUMN, Stream,
+    BOUNCE_COLUMN, BOUNCE_MAX, COLLIDER_BOX_COLUMN, COLLIDER_COLUMN, COLLIDER_OFFSET_COLUMN,
+    Column, FRICTION_COLUMN, FRICTION_MAX, INV_INERTIA_COLUMN, Stream,
 };
 
 /// Os rótulos do `Collider Shape`. ⚠️ O índice é formato de arquivo — APPEND ONLY.
@@ -51,14 +51,13 @@ fn multiplicador(k: f32) -> f32 {
     if k.is_finite() { k.max(0.0) } else { 1.0 }
 }
 
-/// Um coeficiente de material autorado: a faixa é `0..1` em todo motor, e um não-finito lê como
-/// `0` — o neutro desta grandeza (gelo, morto), não a identidade.
-fn material(k: f32) -> f32 {
-    if k.is_finite() {
-        k.clamp(0.0, 1.0) // CLAMP-OK: const bounds
-    } else {
-        0.0
-    }
+/// Um coeficiente de material autorado, coagido pela PORTA da folha — e cada metade tem o tecto
+/// dela: o atrito pára em `1`, o salto vai ao **dobro** por ordem do dono (doc 109 §7.8).
+///
+/// ⚠️ **Coagir aqui com um número PRÓPRIO seria o defeito clássico deste par:** o cartão deixaria
+/// autorar um valor que o solver corta, e o slider pararia de responder a meio do curso.
+fn material(k: f32, teto: f32) -> f32 {
+    ph2d_nodegraph::attr::material_coerce(k, teto)
 }
 
 /// Uma coluna `Vec2` do stream publicado, se tiver o comprimento dele.
@@ -132,11 +131,11 @@ pub(crate) fn declare(published: Stream, param: impl Fn(&str) -> f32) -> Stream 
     // deslizar sobre ele; a AUSÊNCIA é que quer dizer *«não declarei material nenhum»*.
     out.set(
         FRICTION_COLUMN,
-        Column::Scalar(vec![material(param(param::FRICTION)); n]),
+        Column::Scalar(vec![material(param(param::FRICTION), FRICTION_MAX); n]),
     );
     out.set(
         BOUNCE_COLUMN,
-        Column::Scalar(vec![material(param(param::BOUNCE)); n]),
+        Column::Scalar(vec![material(param(param::BOUNCE), BOUNCE_MAX); n]),
     );
     // ⭐⭐ **TRAVAR a rotação** (doc 109 §6): a coluna a `0` diz ao solver que esta peça não roda.
     // ⚠️ Destravada NÃO se escreve nada — a ausência quer dizer *«deriva da forma»*, e escrever o

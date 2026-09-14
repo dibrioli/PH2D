@@ -520,4 +520,8 @@ mod fill_tests;
 
 mod collider;
 mod hints;
-use hints::{PARAM_GATES, PARAM_GATES_ABOVE, PARAM_GROUPS, PARAM_HINTS, PARAM_UNITS};
+/// **QUANDO cada linha do cartão aparece** — as duas tabelas de portão; ver o cabeçalho.
+#[path = "param_gates.rs"]
+mod param_gates;
+use hints::{PARAM_GROUPS, PARAM_HINTS, PARAM_UNITS};
+use param_gates::{PARAM_GATES, PARAM_GATES_ABOVE};

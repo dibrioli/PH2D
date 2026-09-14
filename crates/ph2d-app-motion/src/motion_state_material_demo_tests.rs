@@ -432,3 +432,41 @@ fn every_ball_of_the_third_row_starts_inside_its_bowl() {
         );
     }
 }
+
+/// ⭐⭐⭐ **A FAIXA NOVA CHEGA AO PRODUTO** — ordem do dono (2026-09-13: *«quero mais capacidade de
+/// Bounciness — de zero até o dobro do máximo atual»*): no tecto a bola sobe MUITO mais do que no
+/// `1` que era o tecto antigo.
+///
+/// ⚠️ **A escada tem TRÊS degraus e não dois**: com dois, uma lei que saturasse em `1` passaria o
+/// gate se o degrau de baixo fosse `0`. Os três exigem que o de cima seja estritamente mais alto
+/// que o do meio, que é onde a faixa antiga acabava.
+#[test]
+fn the_bounce_reaches_the_new_ceiling_in_the_scene() {
+    let alturas: Vec<f32> = [0.0_f32, 1.0, ph2d_nodegraph::attr::BOUNCE_MAX]
+        .into_iter()
+        .map(|e| {
+            corre(2.0, |state, formas| {
+                state
+                    .doc
+                    .graph
+                    .set_param(formas[QUEDA_VIVA], param::BOUNCE, e);
+            })
+            .pico_depois_do_toque[QUEDA_VIVA]
+        })
+        .collect();
+    eprintln!(
+        "  faixa do salto │ 0 → {:.3} · 1 → {:.3} · {} → {:.3}",
+        alturas[0],
+        alturas[1],
+        ph2d_nodegraph::attr::BOUNCE_MAX,
+        alturas[2]
+    );
+    assert!(
+        alturas[0] < alturas[1] && alturas[1] < alturas[2],
+        "a altura tem de subir com o salto, monotonamente: {alturas:?}"
+    );
+    assert!(
+        alturas[2] > alturas[1] + 0.5,
+        "no tecto novo a bola tem de subir MUITO mais do que no tecto antigo: {alturas:?}"
+    );
+}

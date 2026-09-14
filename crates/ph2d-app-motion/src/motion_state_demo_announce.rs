@@ -233,6 +233,9 @@ pub(super) fn material() {
   4. Fileira do MEIO, as duas quedas. A bola da ESQUERDA cai e morre onde bate. A da
      DIREITA SALTA, e cada salto e' mais baixo que o anterior. Clique no cartao
      `Bounciness 0,9: SALTA` e arraste `Bounciness` ate' 0: ela passa a morrer no chao.
+     Agora arraste ate' ao FIM do slider (2,00): ela volta mais alto do que caiu, e
+     chega a SAIR pelo cimo da janela antes de voltar. E' isso que 2 quer dizer --
+     acima de 1 a batida devolve mais do que levou.
   5. Fileira de BAIXO, as duas tacas: 16 bolinhas a cair em cascata. ESTA fileira e'
      sobre o material de uma bola contra OUTRA BOLA -- as duas tacas sao
      ESCORREGADIAS, entao tudo o que se ve vem das bolas entre si. A` ESQUERDA elas
@@ -245,9 +248,10 @@ pub(super) fn material() {
 
   DEU ERRADO se: as duas bolas de cima fizerem a mesma coisa; se a da direita escorregar
   sem o tracejado girar; se nas tacas de baixo os dois montes ficarem iguais; se mexer em
-  `Friction` ou `Bounciness` nao mudar nada; se alguma bola atravessar a rampa, o chao ou
-  a taca; se as bolinhas SALTAREM para dentro da taca no instante em que a cena comeca;
-  ou se a bola que salta nunca parar de saltar."
+  `Friction` ou `Bounciness` nao mudar nada; se o `Bounciness` parar de responder antes
+  do fim do slider; se alguma bola atravessar a rampa, o chao ou a taca; se as bolinhas
+  SALTAREM para dentro da taca no instante em que a cena comeca; ou se a cena congelar ou
+  as bolas desaparecerem de vez com o `Bounciness` no maximo."
     );
 }
 

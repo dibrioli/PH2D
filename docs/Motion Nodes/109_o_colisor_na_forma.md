@@ -599,3 +599,58 @@ lê-se exactamente como um controlo que não funciona.* A cura foi dar-lhe o A/B
   nomeado**, e quem quiser mudá-lo tem de dizer que recurso é que o limita.
 - ⏳ **Não há atrito de ROLAMENTO** (o que faz uma bola a rolar parar sozinha num plano): com
   `angular_damping = 1` (o default) ela rola para sempre num chão infinito. É um param, não uma lei.
+
+### §7.8 — O salto vai ao DOBRO, e a frase que o segurava nunca tinha sido medida
+
+> *«Quero mais capacidade de Bounciness — de zero até o dobro do máximo atual.»* (dono, 2026-09-13)
+
+⛔⛔ **O `1` vinha de uma frase, não de uma medição.** Ela vive no `sim.collide` desde que ele
+existe — *«uma batida que devolve mais do que levou é uma máquina de fazer energia, e acaba com a
+cena em órbita»* — e é **verdadeira em Física e falsa sobre o que este código faz**. Medido numa
+queda de `0,75` sob gravidade `4`, **sem laço**, 40 s:
+
+| `Bounciness` | pico | `v` máxima | saltos | finito? |
+|---|---|---|---|---|
+| `0,90` | `0,95` | `2,40` | 16 | sim |
+| `1,00` | `0,95` | `2,47` | 50 | sim — salta **para sempre**, que é o que «perfeitamente elástico» quer dizer |
+| `1,25` | `39,6` | `22,2` | 10 | sim |
+| `1,50` | `91,8` | `40,7` | 7 | sim |
+| **`2,00`** | **`192,0`** | **`78,3`** | 5 | **sim** |
+| `3,00` | `550,8` | `66,4` | 3 | sim |
+
+⇒ **nada diverge, nada vira `NaN`, nada atravessa o chão.** O que acontece acima de `1` é a bola
+subir cada vez mais — que é *exactamente* o que o artista pede ao passar de `1`. *A «órbita» da
+frase era uma previsão, e a previsão estava certa sobre a trajectória e errada sobre a estabilidade.*
+
+⚠️⚠️ **A primeira medição mediu o programa ERRADO.** Corrida na cena `=115` tal como ela shipa, a
+`2,00` dava `pico 3,2` e `v 4,9` — tudo manso — porque a `sim.zone` está em **laço** e reinicia
+antes de qualquer acumulação. *Uma régua corrida sobre uma cena que se reinicia mede o relógio da
+cena, não a lei.* A tabela acima é com `duration = 600`.
+
+⚠️ **O limite REAL tem recurso com nome, e não é este número:** acima de `2R/dt` (na `=115`,
+`24 u/s`) a peça atravessa o próprio diâmetro num tique, e colidir com algo que não seja um plano
+infinito deixa de ser fiável. Uma queda **sem laço** chega lá acima de `~1,25`. ⛔ Isso é propriedade
+do **integrador**, não deste param — a cura que já existe é o `Speed Limit` do `sim.step` — e numa
+cena em laço (todas as deste catálogo) não chega a nascer.
+
+**O que mudou:**
+
+- `ph2d_nodegraph::attr::BOUNCE_MAX = 2.0` e `FRICTION_MAX = 1.0`, **ao lado das colunas**, com
+  `material_coerce` — a porta única que os DOIS lados usam. ⚠️ *Quem declara e quem consome têm de
+  coagir pelo mesmo tecto, senão o cartão deixa autorar um número que o solver corta e o slider
+  pára de responder a meio do curso.*
+- O `max` do hint de `Bounciness` **lê** `BOUNCE_MAX`. Um literal ali seria o segundo sítio onde a
+  faixa vive — e a caixa de texto de um param sem `ParamHardMax` é capada exactamente por esse
+  `max`, logo ele é a faixa inteira que o artista alcança, e não só o curso do slider.
+- ⚠️ **O atrito NÃO foi alargado, e ele é o controlo da mudança:** um coeficiente de Coulomb acima
+  de `1` não compra nada (o impulso tangencial já está limitado ao que a normal aguenta). Sem essa
+  metade, «alargar o tecto do material» teria alargado os dois e o gate ficaria verde sobre uma
+  faixa que ninguém pediu.
+- ⚠️ **O `restitution` do OBSTÁCULO (`sim.collide`) fica em `0..1`** — é outro controlo, o dono não
+  o pediu, e o par toma o MAIOR dos dois, logo a peça alcança `2` contra qualquer parede.
+
+Medido na cena: `Bounciness 0 → 0,200` (pousada) · `1 → 0,510` · **`2 → 3,201`**. ⚠️ No tecto a bola
+**sai pelo cimo da janela** antes de voltar, e o anúncio diz isso — *é o que `2` quer dizer*.
+
+⚠️ **Dois gates antigos reprovaram, e era o que tinham de fazer:** eles afirmavam *«e nunca passa de
+1»*. A faixa mudou, e eles disseram-no alto em vez de a deixarem passar em silêncio.

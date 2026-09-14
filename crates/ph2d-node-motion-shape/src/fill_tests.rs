@@ -166,7 +166,7 @@ fn every_new_knob_is_reachable() {
         );
     }
     assert!(
-        hints::PARAM_GATES_ABOVE
+        param_gates::PARAM_GATES_ABOVE
             .iter()
             .any(|g| g.param == param::FILL_R && g.when == param::FILL),
         "o swatch tem de estar gateado ao modo que o le^"

@@ -140,6 +140,43 @@ pub const FRICTION_COLUMN: &str = "friction";
 /// um dia alguém lê a do obstáculo julgando ler a da peça. Aqui a coluna é da PEÇA.
 pub const BOUNCE_COLUMN: &str = "bounce";
 
+/// ⭐⭐⭐ **O TECTO DO SALTO, e ele é o DOBRO do de todo motor** — ordem do dono (2026-09-13:
+/// *«quero mais capacidade de Bounciness — de zero até o dobro do máximo atual»*).
+///
+/// ⚠️⚠️ **A frase que segurava o `1` nunca tinha sido MEDIDA neste solver.** Ela vive no
+/// `sim.collide` desde que ele existe — *«uma batida que devolve mais do que levou é uma máquina
+/// de fazer energia, e acaba com a cena em órbita»* — e é verdadeira em Física e **falsa sobre o
+/// que este código faz**. Medido numa queda de `0,75` sob gravidade `4`, **sem laço**, 40 s:
+/// `1,00` → pico `0,95` · `1,25` → `39,6` · `1,50` → `91,8` · **`2,00` → `192,0`** · `3,00` →
+/// `550,8`, **todos finitos, nenhum a atravessar o chão**. O que acontece acima de `1` é a bola
+/// subir cada vez mais — que é o que o artista pede ao passar de `1`.
+///
+/// ⚠️ **O limite REAL é outro e tem recurso com nome:** acima de `2R/dt` a peça atravessa o
+/// próprio diâmetro num tique, e aí colidir com algo que não seja um plano infinito deixa de ser
+/// fiável. ⛔ Isso é propriedade do INTEGRADOR e não deste número — a cura que já existe é o
+/// `Speed Limit` do `sim.step`. Numa cena em LAÇO o problema não nasce (a `=115` a `2,00` fica em
+/// pico `3,2`). Tabela inteira: `docs/Motion Nodes/109_o_colisor_na_forma.md` §7.8.
+pub const BOUNCE_MAX: f32 = 2.0;
+
+/// O tecto do [`FRICTION_COLUMN`]. `1` é a lixa de todo motor, e subi-lo não compra nada: o
+/// impulso tangencial já está limitado por Coulomb ao que a normal aguenta.
+pub const FRICTION_MAX: f32 = 1.0;
+
+/// **A PORTA da coerção de um coeficiente de material** — `0..teto`, e um não-finito lê como `0`
+/// (o neutro desta grandeza, não a identidade).
+///
+/// ⚠️ **Ela mora aqui, ao lado das colunas, e não num dos lados:** quem DECLARA (o `source.shape`)
+/// e quem CONSOME (o `ph2d-contact`) têm de coagir pelo mesmo tecto, senão o cartão deixa autorar
+/// um número que o solver corta — e o artista vê um slider que pára de responder a meio do curso.
+#[must_use]
+pub fn material_coerce(x: f32, teto: f32) -> f32 {
+    if x.is_finite() {
+        x.clamp(0.0, teto.max(0.0)) // CLAMP-OK: teto >= 0 forçado
+    } else {
+        0.0
+    }
+}
+
 /// As colunas de **ESCRITURAÇÃO** — aquelas cuja máquina de estado de um nó a
 /// jusante lê, e que por isso um escritor genérico não pode sobrescrever.
 ///

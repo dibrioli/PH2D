@@ -69,8 +69,6 @@ fn corre_com_atrito(
     w: &[f32],
     m: Material,
 ) -> (Vec<f32>, Vec<f32>) {
-    let n = p.len();
-    let inv = inercias(c, w);
     corre_com_atrito_girando(p, antes, &vec![0.0; p.len()], c, w, m)
 }
 
@@ -720,7 +718,12 @@ fn the_pair_takes_the_geometric_mean_of_friction_and_the_livelier_bounce() {
     assert_eq!(super::atrito::mu(0.0, 1.0), 0.0, "gelo contra lixa e' gelo");
     assert!((super::atrito::mu(0.25, 0.64) - 0.4).abs() < 1e-6);
     assert_eq!(super::atrito::salto(0.0, 0.9), 0.9, "a mais viva manda");
-    assert_eq!(super::atrito::salto(2.0, 0.1), 1.0, "e nunca passa de 1");
+    // ⚠️ O tecto passou de `1` para `2` em 2026-09-13 (§7.8) — e é lido da coluna, nunca escrito.
+    assert_eq!(
+        super::atrito::salto(9.0, 0.1),
+        ph2d_nodegraph::attr::BOUNCE_MAX,
+        "e nunca passa do tecto da coluna"
+    );
 }
 
 /// ⭐ **E o salto CHEGA a quem responde**: a peça que tocou leva o salto do par mais vivo.
@@ -764,7 +767,13 @@ fn a_stream_without_material_columns_is_ice() {
     assert_eq!(m[0].atrito, 0.5);
     assert_eq!(m[0].salto, 0.0, "um NaN nao e' um pedido");
     assert_eq!(m[1].atrito, 0.0, "um negativo nao e' um pedido");
-    assert_eq!(m[1].salto, 1.0, "e a faixa e' a de todo motor");
+    // ⚠️ **`2` e não `1` desde a ordem do dono de 2026-09-13** (§7.8): a faixa do salto é o DOBRO
+    // da de todo motor, e o tecto vive na coluna (`BOUNCE_MAX`).
+    assert_eq!(
+        m[1].salto,
+        ph2d_nodegraph::attr::BOUNCE_MAX,
+        "e a faixa e' a da COLUNA"
+    );
 }
 
 /// ⭐⭐ **UMA BOLA QUE GIRA DERRAPA CONTRA O CHÃO MESMO PARADA** — o deslize inclui a rotação
@@ -816,4 +825,36 @@ fn a_spinning_disc_rubs_against_the_floor_even_standing_still() {
         },
     );
     assert_eq!(parada[1].to_bits(), 0.0_f32.to_bits(), "{}", parada[1]);
+}
+
+/// ⭐⭐⭐ **O SALTO VAI AO DOBRO, E O ATRITO NÃO** — ordem do dono (2026-09-13: *«quero mais
+/// capacidade de Bounciness — de zero até o dobro do máximo atual»*).
+///
+/// ⚠️ **O atrito é o CONTROLO desta mudança:** sem ele, alargar «o tecto do material» teria
+/// alargado os dois, e o gate ficaria verde sobre uma faixa que ninguém pediu. Um coeficiente de
+/// Coulomb acima de `1` não compra nada — o impulso tangencial já está limitado ao que a normal
+/// aguenta.
+#[test]
+fn the_bounce_reaches_twice_the_old_ceiling_and_the_friction_does_not() {
+    use ph2d_nodegraph::attr::{BOUNCE_MAX, FRICTION_MAX};
+    assert_eq!(BOUNCE_MAX, 2.0, "o dobro do `1` de todo motor");
+    assert_eq!(FRICTION_MAX, 1.0, "e o atrito fica onde estava");
+    let s = Stream::new(3)
+        .with(
+            ph2d_nodegraph::attr::FRICTION_COLUMN,
+            Column::Scalar(vec![0.5, 2.0, f32::INFINITY]),
+        )
+        .with(
+            ph2d_nodegraph::attr::BOUNCE_COLUMN,
+            Column::Scalar(vec![2.0, 5.0, -1.0]),
+        );
+    let m = materiais(&s).expect("declarou");
+    assert_eq!(m[0].salto, 2.0, "o dobro e' autorável");
+    assert_eq!(m[1].salto, BOUNCE_MAX, "acima do tecto, COAGE");
+    assert_eq!(m[1].atrito, FRICTION_MAX, "e o atrito coage no dele");
+    assert_eq!(m[2].salto, 0.0, "um negativo nao e' um pedido");
+    assert_eq!(m[2].atrito, 0.0, "nem um infinito");
+    // E o PAR: o maior dos dois, coagido pelo mesmo tecto.
+    assert_eq!(super::atrito::salto(2.0, 0.0), 2.0);
+    assert_eq!(super::atrito::salto(9.0, 0.0), BOUNCE_MAX);
 }

@@ -215,3 +215,36 @@ fn every_gate_names_declared_params_and_valid_kinds() {
         }
     }
 }
+
+/// ⭐⭐ **A FAIXA DO CARTÃO É A DA COLUNA** — um literal no hint seria o segundo sítio onde o tecto
+/// vive, e a ordem do dono (o dobro do salto) teria de ser escrita duas vezes para valer.
+///
+/// ⚠️ **A caixa de texto é capada pelo `max` do hint** quando o param não declara `ParamHardMax`
+/// (o doc do `damping` do `sim.step` mede-o) — então este `max` é a faixa INTEIRA que o artista
+/// alcança, e não só o curso do slider.
+#[test]
+fn the_material_rows_take_their_range_from_the_column_ceiling() {
+    use ph2d_nodegraph::attr::{BOUNCE_MAX, FRICTION_MAX};
+    let de = |nome: &str| {
+        hints::PARAM_HINTS
+            .iter()
+            .find(|h| h.param == nome)
+            .unwrap_or_else(|| panic!("o cartao tem de mostrar `{nome}`"))
+    };
+    let salto = de(param::BOUNCE);
+    let atrito = de(param::FRICTION);
+    assert_eq!(salto.max, BOUNCE_MAX, "a faixa do salto e' a da coluna");
+    assert_eq!(atrito.max, FRICTION_MAX, "e a do atrito tambem");
+    assert_eq!(
+        (salto.min, atrito.min),
+        (0.0, 0.0),
+        "as duas comecam em zero"
+    );
+    // ⚠️ E o CONTROLO: as duas faixas são DIFERENTES, senão este gate passaria com um tecto só.
+    assert!(
+        salto.max > atrito.max,
+        "o dono pediu o dobro SO' no salto: {} contra {}",
+        salto.max,
+        atrito.max
+    );
+}

@@ -81,6 +81,11 @@ pub struct Material {
     pub salto: f32,
 }
 
+/// Os tectos e a coerção vivem ao lado das COLUNAS (`ph2d_nodegraph::attr`), e não aqui: quem
+/// declara e quem consome têm de ler o mesmo número. Ver [`ph2d_nodegraph::attr::BOUNCE_MAX`] —
+/// é lá que está a tabela MEDIDA que abriu a faixa de `1` para `2`.
+pub use ph2d_nodegraph::attr::{BOUNCE_MAX, FRICTION_MAX, material_coerce as coage};
+
 impl Material {
     /// **O material da AUSÊNCIA** — gelo morto, que é a lei de antes do doc 109 §7, termo a termo.
     pub const LISO: Self = Self {
@@ -88,18 +93,11 @@ impl Material {
         salto: 0.0,
     };
 
-    /// Lido de um valor autorado: um não-finito não é um pedido, e a faixa é a de todo motor.
+    /// Lido de um valor autorado: um não-finito não é um pedido, e cada metade tem o tecto dela.
     fn de(atrito: f32, salto: f32) -> Self {
-        let so = |x: f32| {
-            if x.is_finite() {
-                x.clamp(0.0, 1.0)
-            } else {
-                0.0
-            }
-        }; // CLAMP-OK: const
         Self {
-            atrito: so(atrito),
-            salto: so(salto),
+            atrito: coage(atrito, FRICTION_MAX),
+            salto: coage(salto, BOUNCE_MAX),
         }
     }
 }
@@ -140,8 +138,11 @@ pub fn mu(a: f32, b: f32) -> f32 {
 
 /// **O SALTO DO PAR** — o maior dos dois (Box2D). Uma bola saltitante salta contra uma parede
 /// morta, que é o que o artista espera de uma bola saltitante.
+///
+/// ⚠️ O tecto é o [`BOUNCE_MAX`], **lido da coluna e não escrito outra vez**: o `1` que este `clamp`
+/// tinha era o segundo sítio onde a faixa vivia, e teria sobrevivido à ordem do dono em silêncio.
 pub fn salto(a: f32, b: f32) -> f32 {
-    a.max(b).clamp(0.0, 1.0) // CLAMP-OK: const bounds
+    coage(a.max(b), BOUNCE_MAX)
 }
 
 /// **O multiplicador TANGENCIAL** — o que desfaz o `deslize`, limitado por Coulomb a `μ · λn`.

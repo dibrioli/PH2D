@@ -8,7 +8,7 @@
 | **Licença** | **GPL-2.0-or-later** (`COPYING` da raiz, lido 2026-09-13) · **Degrau: T2** |
 | **Ledger** | [`LEDGER_blender-pose.md`](LEDGER_blender-pose.md), aberto 2026-09-13 (⛔ o Implementador não o abre) |
 | **Patente (§8.1)** | buscado 2026-09-13 — termos e tabela no ledger. ⭐ **Nenhuma patente viva alcança o método.** A mais próxima (máscara topológica + linha de acção do *Transpose*, **US 9 460 556 B2**, Pixologic) está **EXPIRADA** por falta de anuidade ⇒ literatura livre. Duas cercas nomeadas: ⛔ nunca implementar «derreter de volta a uma pose de repouso por comparação com uma pose atractora» (US 8 704 828 B1, Pixar, viva até 2031) · ⛔ nunca implementar um modo elástico por Kelvinlet dentro deste pincel (US 10 586 401 B2, Pixar, viva até 2038) |
-| **Filtragem §4.3** | executada 2026-09-13 (v3) · **Sweep:** verde em 2026-09-13, **com controlo positivo** — a vassoura cobre agora as **duas línguas** e acusa `5` achados na v1 desta espec, `0` nesta |
+| **Filtragem §4.3** | executada 2026-09-13 (v4) · **Sweep:** verde em 2026-09-13, **com controlo positivo** — a vassoura cobre agora as **duas línguas** e acusa `5` achados na v1 desta espec, `0` nesta |
 | **Auditoria §4.2 (R-pré)** | ⛔ a **v1 NÃO foi atestada** (6 achados, 4 substanciais); esta é a **v2**, reescrita pela regra do arquivo fechado. ⛔ **2.ª passagem (R-pré independente, 2026-09-13): NÃO ATESTA — 5 achados, ZERO substanciais.** As **6** curas da v1 estão **confirmadas uma a uma contra o fonte**; o que sobra é higiene (4 × §4.2 **menor** + 1 funcional), tudo em secções que a emenda **não** tocou, cada uma uma edição de uma linha e **nenhuma** a pedir medição nova. Veredictos no [ledger](LEDGER_blender-pose.md). ⛔ **3.ª passagem (R-pré independente, 2026-09-13): NÃO ATESTA — 7 achados, 1 SUBSTANCIAL.** As 6 curas da v1 e as 5 da v2 estão confirmadas; o que falta é (a) a §5.1 afirmar uma consequência **falsa** sobre uma grandeza que **nenhum modo lê**, com a cerca da §5.5 por escrever, (b) a §7.2 ser a decomposição de **armazenamento** do alvo — com um símbolo que a espec nunca define, contra a frase que a §7.1 acabou de acrescentar —, (c) quatro provas de proveniência e duas referências penduradas. Veredictos, endereços e o que ficou **conferido e limpo** no [ledger](LEDGER_blender-pose.md). ⏳ Aguarda a 4.ª passagem — condição para abrir a janela que implementa |
 | **Mapa de leitura da literatura** | não há paper. A literatura livre é: (a) as **issues públicas** do rastreador do alvo, citadas por número no §15 — são a fonte da sabedoria dos autores (§4.1.12); (b) a documentação de utilizador pública do alvo (factos, nunca o *wording*); (c) a patente expirada acima. ⛔ **A PULAR:** qualquer *code search*, espelho de fonte, ou o repositório do alvo |
 | **Denylist de URLs** | `projects.blender.org/blender/blender` (e `/src/`, `/raw/`, `/commit/`) · `github.com/blender/blender` e espelhos · `developer.blender.org/D*` (revisões diferenciais = diffs) · qualquer *grep.app* / *searchcode* / *sourcegraph* sobre o alvo. ⭐ **PERMITIDO:** `projects.blender.org/blender/blender/issues/<n>` (texto de utilizadores e triagem — é o que o §15 cita) e `docs.blender.org` (manual, para FACTOS) |
@@ -73,24 +73,28 @@ falam deles, e são os nomes que a nossa implementação deve usar. As faixas e 
 | **vértices escondidos** | factor `0`, e são saltados em toda travessia (§9) |
 | **simetria de espelho X/Y/Z** | §8 |
 | **«só conectado»** / **distância máxima entre peças** | §2.4 |
-| **travas de eixo / recorte do modificador de espelho** | aplicados ao deslocamento final (§7.4) |
+| **travas de eixo / recorte do modificador de espelho** | aplicados ao deslocamento final (§7.3) |
 | **alvo da deformação** | **a geometria** (o pincel move os vértices) ou a simulação de tecido. Só o primeiro é especificado aqui |
 
-### §1.3 — Controlos que este pincel **NÃO** lê (medido — a ausência é o facto)
+### §1.3 — Controlos que este pincel **NÃO** lê
 
-- ⛔ **Pressão da caneta não altera a força.** A força efectiva é `força_do_pincel × pluma_de_simetria`,
-  sem factor de pressão, sem o factor de direcção do pincel e sem o factor de sobreposição que os
-  pincéis de deslocamento usam. A **pluma de simetria** vale `1` a menos que a opção *Feather* da
-  simetria esteja ligada.
-  *Prova:* `figura_girar_dedo_pressao03` (pressão `0,3` por evento) produz uma saída
-  **idêntica ao BIT** à de `figura_girar_dedo` (`max|dif| = 0,0` sobre 4 930 vértices); o modelo de
-  referência, que ignora pressão, concorda com as duas a `1,7e-7`.
-- ⛔ **O modificador de inversão não nega a força** — escolhe a outra deformação (§0).
-- ⛔ **A direcção «Add/Subtract» do pincel não tem efeito.**
-- ⛔ **A dureza (*hardness*) não tem efeito** — não há atenuação radial: um vértice é governado pelos
-  **pesos dos segmentos** (§2, §4), não pela distância ao cursor.
-- ⛔ **A forma de atenuação (esfera/tubo)** só alcança este pincel pela projecção do deslocamento do
-  arrasto no plano da vista, que é genérica do traço — não muda a região nem os pesos.
+A força efectiva é `força_do_pincel × pluma_de_simetria`, e a **pluma** vale `1` a menos que a opção
+*Feather* da simetria esteja ligada.
+
+⚠️ **Duas colunas, de propósito: o que o CORPUS mede e o que a espec só AFIRMA.** *Uma lista que
+promete «medido» para o conjunto todo quando uma fixtura mede uma linha é uma lista que envelhece
+sem aviso.*
+
+| controlo | veredito | proveniência |
+|---|---|---|
+| **pressão da caneta** | não altera a força | ⭐ **MEDIDO:** `figura_girar_dedo_pressao03` (pressão `0,3` por evento) é **idêntica ao bit** à `figura_girar_dedo` — `max|dif| = 0,0` sobre 4 930 vértices |
+| **modificador de inversão** | não nega a força; escolhe a outra deformação (§0) | ⭐ **MEDIDO** no modo onde não há outra deformação para escolher: `figura_esticar_dedo_invertido` é **idêntica ao bit** à `figura_esticar_dedo`. ⚠️ Nos outros dois modos o efeito de trocar de deformação é visível em todo o corpus, mas *que a força não muda de sinal* não tem fixtura própria |
+| **direcção «Add/Subtract»** | sem efeito | ⛔ **AFIRMADO, sem fixtura** — o corpus nunca a varia |
+| **dureza (*hardness*)** | sem efeito: não há atenuação radial, o vértice é governado pelos **pesos dos segmentos** (§2, §4) e não pela distância ao cursor | ⛔ **AFIRMADO, sem fixtura.** ⚠️ A metade *«os pesos governam»* **é** observável em todo o corpus (um vértice a `10×` o raio move-se); a metade *«a dureza não entra»* não |
+| **forma de atenuação (esfera/tubo)** | só alcança este pincel projectando o deslocamento do arrasto no plano da vista — genérico do traço; não muda a região nem os pesos | ⛔ **AFIRMADO, sem fixtura** |
+
+⏳ **Fechar as três afirmadas custa três fixturas** (variar cada controlo e exigir saída idêntica ao
+bit) — trabalho de corpus, não de espec.
 
 ### §1.4 — ⚠️ As duas omissões que dependem de quem pergunta
 
@@ -164,7 +168,7 @@ o desempate do §2.3.
 
 ### §2.3 — A origem
 
-- Se a média do passo 4 recebeu pelo menos um vértice: **`O₀` = essa média**.
+- Se a média da **franja** (§2.2) recebeu pelo menos um vértice: **`O₀` = essa média**.
 - Caso contrário: `O₀` = **o vértice visitado mais afastado de `C`** (mantido durante a travessia
   pela regra «substitui o corrente sempre que o novo estiver mais longe de `C`»), ou o próprio `C`
   se nada foi visitado.
@@ -298,6 +302,13 @@ não é reprodutível quando a região excede uma partição da estrutura espaci
 nas 69 fixturas publicadas a região cabe (malhas de `1 298` e `4 930` vértices) e a paridade fecha
 a `~1e-7` (§12).
 
+⚠️ **E o regime de cima NÃO foi observado — o que temos é o mecanismo, não um caso.** As corridas de
+repetibilidade do oráculo (4 configurações × 3 corridas, em **duas sessões** separadas, incluindo
+uma malha de **66 049** vértices) voltaram **idênticas ao bit**, `max|dif| = 0,000e+00` em todas.
+⇒ o limiar não foi alcançado por este corpus, e a frase acima é um **risco nomeado pelo mecanismo**,
+não uma divergência medida. *Uma fixtura que o exercitasse teria de forçar a região acima de uma
+partição — trabalho de corpus, e está por fazer.*
+
 ⇒ **DECISÃO NOSSA:** a nossa implementação faz **Jacobi limpo** — cada iteração lê só o estado da
 iteração anterior — e é portanto **determinística em toda a malha**, incluindo o regime em que o
 alvo não o é. ⚠️ Isso é uma escolha, não uma cópia: acima do limiar as duas saídas podem divergir
@@ -334,12 +345,22 @@ nesta configuração:
 | **alvo do seguinte** | `origem_i` | a origem deste é o alvo do próximo |
 
 ⚠️⚠️ **A cabeça e a origem que o segmento leva para o evento seguinte NÃO ficam à distância
-`comprimento_i` uma da outra** — elas
-são medidas a partir de origens diferentes (`O⁻` e `T`), e a separação delas vale
-`|2·comprimento_i − ‖T − O⁻‖|`. Isto é **invisível em todos os modos menos um**: a cabeça só é lida
-pelo referencial do espremer/esticar (§6), e é lá — e só lá — que a inconsistência chega a pixel.
-*Uma implementação que "corrigisse" a cabeça para `origem_i + d·comprimento_i` diverge nesse modo e
-em mais nenhum.*
+`comprimento_i` uma da outra** — elas são medidas a partir de origens diferentes (`O⁻` e `T`), e a
+separação delas vale `|2·comprimento_i − ‖T − O⁻‖|`.
+
+⭐⭐ **Mas a cabeça resolvida é SÓ-ESCRITA: nenhum modo a lê, e está medido.** O único consumidor da
+cabeça é o referencial do espremer/esticar (§6) — e esse modo **não resolve a cadeia** (§5.5), logo
+ali a cabeça é a **inicial**, nunca esta. Os modos que resolvem a cadeia (girar; escalar com a trava
+desligada) têm referencial **identidade** e não a lêem.
+*Medição:* substituir a cabeça pela «corrigida» (`origem_i + d·comprimento_i`) no modelo de
+referência muda a saída de **`0` das `69`** fixturas — pior diferença **`0,000e+00`**.
+⇒ **A escolha é de quem implementa**; guardar a cabeça ou não guardar nada é indistinguível pelo
+comportamento. ⛔ **Não** prescrevemos reproduzir este valor.
+
+⚠️⚠️ **E a lição de método, que custou três filtragens:** a versão anterior desta espec afirmava
+que a inconsistência «chega a pixel» num modo, e a álgebra estava **certa** — o que faltava era a
+outra pergunta: ***que fixtura reprova se eu escrever o contrário disto?*** Aqui: nenhuma.
+*Verificar a álgebra de um facto não é verificar que ele tem CONSUMIDOR.*
 
 **Epílogo da âncora.** Com a âncora ligada, a cadeia **inteira** é a seguir deslocada pelo vector
 que devolve a origem do **último** segmento ao sítio onde ela nasceu
@@ -450,7 +471,14 @@ saturação neste modo. §11.2.
 
 ### §5.5 — Espremer / esticar
 
-`escala_z` é o mesmo quociente de §5.4. Depois:
+⚠️⚠️ **Este modo NÃO resolve a cadeia.** Ele toma **só** o quociente de escala definido no §5.4
+(o passo `2`–`3` de lá); ⛔ **o passo `1` — resolver a cadeia — não se aplica aqui**, e a **trava de
+rotação não tem papel nenhum** neste modo. ⇒ cabeça, origem e rotação de cada segmento ficam nos
+valores **iniciais** o traço todo; só a escala muda.
+*Observável:* a fixtura `figura_esticar_dedo_invertido` é **idêntica ao bit** à
+`figura_esticar_dedo` (`max|dif| = 0,0`) — nem sequer o modificador de inversão move este modo (§0).
+
+`escala_z` é esse quociente. Depois:
 
 - se `|escala_z| < 1e-5` ⇒ **escala = (0,0,0)** (a guarda que existe, e a razão de ela existir está
   em [#130465](https://projects.blender.org/blender/blender/issues/130465): sem ela a malha ia a
@@ -458,7 +486,8 @@ saturação neste modo. §11.2.
 - caso contrário `escala_x = escala_y = sinal(escala_z) · √(1/|escala_z|)` — o que **conserva o
   volume** do factor de escala (`x·y·z = sinal·z/|z| · … = ±1` em módulo).
 
-Neste modo a rotação guardada de cada segmento **não é usada** como rotação (ver §7.2).
+Neste modo a rotação de cada segmento **não entra como rotação**: a orientação vive no referencial
+`F` (§6).
 
 ---
 
@@ -485,7 +514,7 @@ que a origem sofreu*, e devolve-se. O deslocamento do vértice é `X(p₀) − p
 | | `R` | `F` |
 |---|---|---|
 | girar · torcer · escalar · transladar | a rotação do segmento | **identidade** |
-| espremer/esticar | **identidade** | base ortonormal com o eixo **z** em `normalizar(cabeça_espelhada − Õ)` |
+| espremer/esticar | **identidade** | base ortonormal com o eixo **z** ao longo do segmento — e ⚠️ **da direcção INICIAL dele**, porque neste modo a cadeia não é resolvida (§5.5): `normalizar(cabeça_inicial_espelhada − Õ)` |
 
 ⚠️ **É `F` que faz o espremer/esticar agir ao longo do SEGMENTO** e não ao longo do eixo `z` do
 mundo — e é por isso que naquele modo a orientação vive em `F` e a rotação `R` não é usada.
@@ -516,15 +545,7 @@ onde `X_{i,a}` é o mapa afim do §6 e `a(v)` o **octante de espelho** do vérti
 composição do §6 é uma *lei*, e agrupar os factores (ou pré-multiplicá-los por octante, ou não os
 pré-multiplicar de todo) é escolha de quem implementa.
 
-### §7.2 — ⚠️ O que cada modo de facto escreve
-
-| modo | `M` carrega | `F` carrega |
-|---|---|---|
-| rotação / torção | a rotação (+ escala unitária) + translação da origem | identidade |
-| escala / translação | rotação (identidade na translação pura) + escala uniforme + translação | identidade |
-| espremer/esticar | **só escala + translação** | a **direcção do segmento** |
-
-### §7.3 — Rebase (porque não há passo de «restaurar»)
+### §7.2 — Rebase: o traço não acumula
 
 O deslocamento acima é medido **a partir das posições do início do traço**. Antes de ser aplicado,
 subtrai-se-lhe `posição_actual(v) − p₀(v)`. ⇒ aplicar o resultado à posição actual aterra
@@ -536,10 +557,12 @@ passo de desfazer entre eventos — e não precisa de o ser, porque o rebase já
 resultado. *Observável:* a pose depois de `N` eventos é a que o `G` acumulado pede, sem acumulação
 de traço (as fixturas por evento medem-no directamente, §14).
 
-### §7.4 — Depois do rebase
+### §7.3 — Depois do rebase
 
 Aplicam-se, por esta ordem: as **travas de eixo** da escultura (zeram a componente) e o **recorte do
 modificador de espelho** (um vértice a menos de uma tolerância do plano de espelho não o atravessa).
+
+⛔ **Sem fixtura** — o corpus nunca liga nenhum dos dois (§12.4).
 
 ---
 
@@ -582,7 +605,7 @@ O factor por vértice que multiplica o deslocamento final é:
 | quando | o que acontece |
 |---|---|
 | **1.º evento** | fixa-se o ponto de aplicação (âncora) e o raio em espaço de objecto; **constrói-se a cadeia inteira** (§2–§4) |
-| **cada evento** | actualiza-se `G`; resolve-se a cadeia (§5); reconstroem-se as 8×`n` matrizes (§6); aplica-se (§7) |
+| **cada evento** | actualiza-se `G`; resolve-se a cadeia (§5); o mapa de cada segmento e octante (§6) passa a valer para o `G` novo; aplica-se (§7) |
 | **fim do traço** | a cadeia é largada |
 | **passar o rato sem premir** | ⚠️ **a cadeia é construída na mesma**, só para desenhar o indicador do pivô e dos segmentos sob o cursor |
 
@@ -654,7 +677,7 @@ suavização** através de fronteiras de partição (§4).
 
 ### §12.1 — ⭐⭐ O achado que decide a barra: a região é decidida por um `<` estrito em `f32`
 
-O teste do §2.2 passo 3 é uma comparação **estrita** `distância < raio`, avaliada em **precisão
+O predicado `dentro` do §2.2 é uma comparação **estrita** `distância < raio`, avaliada em **precisão
 simples**. Um único vértice a atravessar essa fronteira muda a **franja**, logo muda o **pivô**,
 logo muda a deformação **inteira** — e não por um infinitésimo.
 
@@ -712,6 +735,25 @@ sai, e o segmento muda de sítio.
 
 ⚠️ **Bit-parity NÃO é a meta** e não deve ser prometida — cerca da casa ([ADR-0162](../../architecture/decisions/0162-quad-remesh-pivots-to-the-global-family-clean-room-from-papers-gpl-oracle-outside.md)), mantida aqui.
 
+### §12.4 — ⭐⭐ O que esta espec afirma e o corpus NÃO mede
+
+> **A pergunta que fecha cada afirmação é *«que fixtura reprova se eu escrever o CONTRÁRIO disto?»*.**
+> Ela é diferente de *«a álgebra está certa?»* — e é a que faltava: duas afirmações desta espec
+> passaram **três** filtragens com a álgebra correcta e **zero** consumidores.
+
+| afirmação | fixtura que a refutaria | estado |
+|---|---|---|
+| a **cabeça** resolvida de um segmento (§5.1) | — | ⭐ **medido INERTE**: trocá-la pela «corrigida» muda `0` de `69` fixturas, `0,000e+00`. ⇒ escolha do implementador |
+| o **pré-peso** do mais-próximo global (§2.1) | uma peça mais perto no espaço do que a que está sob o cursor | ⭐ **medido INERTE** neste corpus (`0,000e+00`); a fixtura que o separaria está **nomeada** e não existe |
+| a **não-reprodutibilidade** acima de uma partição (§4) | região maior que uma partição | ⛔ **não observada** — `4×3` corridas em 2 sessões, até `66 049` vértices, todas idênticas ao bit |
+| três das cinco ausências do §1.3 | variar o controlo e exigir saída idêntica | ⛔ **afirmadas, sem fixtura** (a tabela do §1.3 separa-as das medidas) |
+| a ordem *travas → recorte de espelho* (§7.3) | ligar cada um | ⛔ **sem fixtura** — o corpus nunca os liga |
+| a divergência do **vértice solto** (§11.4) | malha com vértice sem faces | ⛔ **sem fixtura** — e é **nossa**, deliberada |
+
+⚠️ **Nada nesta tabela está errado — está por medir.** Ela existe para que a próxima leitura não
+confunda *«a espec diz»* com *«o corpus prova»*, e para que quem acrescentar uma fixtura saiba
+exactamente qual linha ela apaga.
+
 ---
 
 ## §13 — Custo
@@ -729,7 +771,8 @@ sai, e o segmento muda de sítio.
 ⚠️ **O produto destes factores é a queixa dos autores e dos utilizadores** (§10): `20` segmentos ×
 `100` suavizações × `V` é o pior caso, e ele é pago **por movimento do rato**.
 ⭐ **Recomendação:** limitar segmentos e suavizações por orçamento medido, guardar a cadeia entre
-eventos (o alvo já o faz), e **não** reconstruir ao passar o rato.
+eventos — a cadeia é a mesma do princípio ao fim do traço (§10) —, e **não** a reconstruir ao
+passar o rato.
 
 ---
 
@@ -787,14 +830,20 @@ Re-dito em palavras nossas, com a fonte (§4.1.12). ⭐ **Cada linha é uma esco
 alguém quiser controlo de pivô aqui, o precedente diz que a saída é **marcar a malha**, não afinar
 a heurística.
 
+⚠️ **Proveniência desta última:** o **registo público de commits** do alvo (a mensagem que introduziu
+aquele modo, percorrida pelo E — a cobertura está no ledger). ⛔ A espec **não liga** para lá: a
+denylist do cabeçalho barra URLs de commit ao Implementador, e um link que ele não pode abrir é pior
+que nenhum. *As outras linhas do §15 citam issues porque as issues ele PODE abrir.*
+
 ---
 
 ## §16 — Fora de escopo (nomeado, não esquecido)
 
 - ⛔ **Os dois modos de origem por conjuntos de faces** (incluindo o modo de cinemática directa) —
   exclusão C da missão: não temos conjuntos de faces. ⚠️ **É só ali** que o deslocamento do arrasto
-  leva um termo de correcção adicional; no modo de topologia esse termo é **exactamente zero**
-  (verificado).
+  leva um termo de correcção adicional; no modo de topologia esse termo é **exactamente zero**.
+  *Observável:* o modelo de referência **não tem esse termo** e fecha o corpus a `~1e-7` (§12.3) — um
+  termo não-nulo apareceria como desvio proporcional ao arrasto em todas as 69 fixturas.
 - ⛔ **Multiresolução e malha dinâmica** — os dois caminhos existem no alvo e seguem a **mesma** lei;
   as diferenças são de como os vértices são endereçados, não de comportamento.
 - ⛔ **O alvo de deformação «simulação de tecido»**.
@@ -814,11 +863,17 @@ a heurística.
 8. [ ] Escala/espremer forçam **um** segmento (§3).
 9. [ ] Guarda de `1e-5` no espremer/esticar (§5.5) — com gate que prova o `NaN` sem ela.
 10. [ ] Âncora repõe a origem do **último** segmento (§5.1).
+10a. [ ] ⛔ **NÃO** prescrever a cabeça resolvida: ela é **só-escrita** e o corpus não a distingue
+    (§5.1). Guardá-la ou não é escolha livre.
+10c. [ ] **Espremer/esticar NÃO resolve a cadeia** (§5.5) — importar o passo de resolução do §5.4
+    para lá torna real a divergência que o §5.1 diz ser invisível.
 10b. [ ] **Solver incremental** — a rotação mede-se contra o estado inicial, a posição avança a
     partir do estado do evento anterior (§5.1-bis). Gate: `figura_girar_braco_ik3` nas **três**
     taxas de evento, cada uma contra a fixture dela.
-11. [ ] Rebase em vez de repor a malha (§7.3).
+11. [ ] Rebase em vez de repor a malha (§7.2).
 12. [ ] Pressão **não** entra na força (§1.3) — com gate sobre `figura_girar_dedo_pressao03`.
 13. [ ] Inversão **troca de modo**, não de sinal (§0).
 14. [ ] Indicador ao passar o rato **não** reconstrói a cadeia (§10, §13).
 15. [ ] Auto-suavização, se existir, segue os **pesos** e não o raio (§15).
+16. [ ] ⚠️ Antes de confiar em qualquer linha desta lista, ler o **§12.4** — seis afirmações desta
+    espec não têm fixtura que as refute, e duas delas estão medidas como **inertes**.

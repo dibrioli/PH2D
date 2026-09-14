@@ -482,6 +482,36 @@ como código do alvo.
 > não houve **colagem nem tradução**; que o documento descreve **comportamento** é juízo, e custa
 > uma leitura humana (ou de um R independente) **a cada versão**.
 
+### ⛔⛔⛔ EMENDA 3 — a 3.ª passagem: 7 achados, **1 SUBSTANCIAL**, e a pergunta que faltava
+
+As **11** curas anteriores (as 5 nomeadas + as 6 varridas) foram confirmadas. O substancial é de
+espécie NOVA, e a lição é a mais forte desta obra:
+
+> ⭐⭐⭐ **VERIFICAR A ÁLGEBRA DE UM FACTO NÃO É VERIFICAR QUE ELE TEM CONSUMIDOR.**
+> A §5.1 afirmava — e a 2.ª passagem **elogiou** — que a inconsistência entre cabeça e origem
+> «chega a pixel» num modo. A álgebra estava **certa** (o R re-derivou-a). A consequência era
+> **falsa**: o único modo que lê a cabeça **não resolve a cadeia**, e os que a resolvem não a lêem.
+> ⇒ a espec mandava reproduzir um artefacto interno por uma razão que não existe.
+> **O teste que faltava é *«que fixtura reprova se eu escrever o CONTRÁRIO disto?»***
+
+⭐ **Medido, e é definitivo:** trocar a cabeça guardada pela «corrigida» no modelo de referência muda
+a saída de **`0` das `69`** fixturas — `max|dif| = 0,000e+00`. A cabeça é **só-escrita**.
+
+| # | achado | cura |
+|---|---|---|
+| 1 | **SUBSTANCIAL** — §5.1 afirma consequência falsa; §5.5 sem a cerca | a afirmação e a prescrição **apagadas**; a cabeça declarada não-observável **com a medição**; §5.5 ganha a cláusula *«este modo NÃO resolve a cadeia, e a trava de rotação não tem papel aqui»*; §6 diz que ali o referencial nasce da direcção **inicial** |
+| 2 | §7.2 era a decomposição de **armazenamento** (símbolo usado **uma vez** no documento inteiro) | **secção apagada**; §7.3→§7.2, §7.4→§7.3, referências repontadas. Mesma espécie em §10 (contagem de matrizes), §13 («o alvo já o faz»), o **título** da §7.3 e a cauda do §1.3 — as quatro reescritas |
+| 3 | §1.3 promete «(medido)» para **cinco** ausências e o corpus mede **uma** | tabela de **duas colunas**: `MEDIDO` vs `AFIRMADO, sem fixtura`. ⭐ E uma segunda passou a medida: `figura_esticar_dedo_invertido` é idêntica ao bit ⇒ `2` medidas, `3` afirmadas |
+| 4 | §15 atribui motivação sem nomear o canal | canal nomeado (registo público de commits) **sem link** — a denylist barra URLs de commit ao I, e *um link que ele não pode abrir é pior que nenhum* |
+| 5 | §16 «(verificado)» não é proveniência | trocado pelo observável: o modelo **não tem** esse termo e fecha o corpus a `~1e-7` |
+| 6 | §4 não cita as corridas de repetibilidade | citadas — e ⭐ **elas mudam a afirmação**: `4×3` corridas em 2 sessões, até `66 049` vértices, **todas idênticas ao bit** ⇒ o limiar **não foi observado**, e a frase passa a **risco nomeado pelo mecanismo** |
+| 7 | duas referências penduradas a passos numerados que a emenda 1 apagou | §2.3 → «a média da franja»; §12.1 → «o predicado `dentro`» |
+
+⭐⭐ **E a pergunta virou INSTRUMENTO, não uma correcção pontual:** a espec ganhou a **§12.4**, um
+censo de **seis** afirmações sem fixtura que as refute — duas delas **medidas como inertes**, uma
+**não observada**, três **afirmadas**. *Ela existe para que a próxima leitura não confunda «a espec
+diz» com «o corpus prova», e para que quem acrescentar uma fixtura saiba qual linha ela apaga.*
+
 ### Medições novas desta emenda
 
 | pergunta | experiência | veredito |

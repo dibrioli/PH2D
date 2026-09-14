@@ -115,6 +115,28 @@ impl crate::App {
             // osso não roda um grau.
             crate::bone_limit::set_edge(&mut l, e_max, graus.to_radians());
         }
+        // ⭐⭐⭐ **MUDAR O `Chain` RE-CAPTURA O LADO DA DOBRA** — ordem do dono (2026-09-14: *«o lado
+        // da dobra é capturado no momento em que carrega Add IK e sempre que IK Chain for
+        // mudado»*). A razão é geométrica: o lado descreve **uma corrente**, e subir o número troca
+        // a corrente por outra — o bit guardado passaria a falar de uma geometria que já não é a
+        // que está debaixo do artista.
+        //
+        // ⚠️ **Lido ANTES de escrever**, e tem de ser: o `captured_side` precisa de `&sim` e o
+        // `g` é um empréstimo mutável do mesmo mundo. ⛔ E é lido com a corrente NOVA, que é a
+        // pergunta certa — com a velha ele devolveria o lado que já lá está.
+        let lado_novo = match pending_ik_knob {
+            #[expect(
+                clippy::cast_possible_truncation,
+                clippy::cast_sign_loss,
+                reason = "o campo é f64 e a contagem de ossos é u32; o piso em 0 já corre abaixo"
+            )]
+            Some((IkKnob::Chain, v)) => Some(ph2d_skeleton_live::goal::side_for_chain(
+                sim,
+                osso,
+                v.max(0.0) as u32,
+            )),
+            _ => None,
+        };
         if let Some((qual, v)) = pending_ik_knob
             && let Some(mut g) = sim.world_mut().get_mut::<ph2d_skeleton_ecs::IkGoal>(osso)
         {
@@ -133,6 +155,9 @@ impl crate::App {
                     reason = "o campo é f64 e a contagem de ossos é u32; o piso em 0 já corre acima"
                 )]
                 IkKnob::Chain => g.chain = v.max(0.0) as u32,
+            }
+            if let Some(lado) = lado_novo {
+                g.bend = lado;
             }
         }
         // ⭐⭐⭐ **E O APP DIZ, seja qual for a ordem em que o artista chegou aqui.**

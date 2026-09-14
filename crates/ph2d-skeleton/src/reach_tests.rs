@@ -606,24 +606,48 @@ fn a_locked_side_is_stable_not_a_flip_flop() {
             // `n = 2` o produto não consulta o `side_of` de todo, e é por isso que uma mutação de
             // sinal morre **aqui e só aqui**. ⛔ Tirar o `2` da lista não deixa o gate mais fraco —
             // deixa-o cego.
-            if n > 2 {
-                assert!(
-                    primeiro > 1e-12,
-                    "com {n} ossos e {side:?} a fixtura não produziu movimento nenhum — a metade da \
-                     convergência mede o nada"
-                );
-            } else {
-                assert!(
-                    primeiro == 0.0 && ultimo == 0.0,
-                    "o caso de DOIS ossos deixou de ser um ponto fixo ({primeiro} -> {ultimo}) — a \
-                     lei de forma fechada passou a refinar, e a célula que ilibava a família de ser \
-                     um espelho mudou de natureza"
-                );
-            }
+            // ⭐⭐⭐ **TODA corrente com lado AUTORADO é um PONTO FIXO** — e até 2026-09-14 só o
+            // `n = 2` o era.
+            //
+            // ⛔⛔ **A premissa da metade da convergência DISSOLVEU-SE, e foi a cura que a
+            // dissolveu** (report do dono: *«IK Bend não está consistente para maior que 2. Muda o
+            // ângulo de lado.»*). Ela exigia `primeiro > 1e-12` acima de dois ossos — *«a fixtura
+            // tem de produzir movimento, senão mede o nada»* —, e esse movimento **era o defeito**:
+            // o FABRIK partia da pose do quadro anterior, logo o mesmo pedido dava poses diferentes
+            // (`0,52` de desvio num alcance de `3`, `1,58` em `5`). Hoje a corrente parte de um arco
+            // canónico e a segunda passagem não move um bit.
+            //
+            // ⚠️ **A anti-vacuidade não se perdeu, mudou de sítio:** ela vive agora no caminho do
+            // GESTO (`BendSide::Keep`), que é o único que ainda refina — e é medida logo abaixo.
             assert!(
-                ultimo <= primeiro,
-                "com {n} ossos e {side:?} o movimento CRESCEU entre passagens ({primeiro} -> \
-                 {ultimo}): a pose está a divergir em vez de assentar"
+                primeiro == 0.0 && ultimo == 0.0,
+                "com {n} ossos e {side:?} a corrente NÃO é um ponto fixo ({primeiro} -> {ultimo}): o \
+                 artista carrega no mesmo botão e vê um ângulo diferente"
+            );
+        }
+
+        // ⛔⛔ **A ANTI-VACUIDADE, no caminho que ainda ITERA** — sem ela a asserção de ponto fixo
+        // acima passaria sobre um `reach` que não fizesse nada nenhum. Com [`BendSide::Keep`] (o
+        // gesto de arrastar a ponta) a corrente parte da pose que lá está, e acima de dois ossos o
+        // FABRIK **tem** de a mover na primeira passagem.
+        if n > 2 {
+            let (mut j, l) = corrente(n, 10.0);
+            #[expect(clippy::cast_precision_loss, reason = "n é um punhado de ossos")]
+            let alcance = n as f64 * 10.0;
+            let alvo = [alcance * 0.4, alcance * 0.25];
+            let opts = Reach::default(); // `bend: Keep`
+            reach(&mut j, &l, alvo, opts);
+            let antes = j.clone();
+            reach(&mut j, &l, alvo, opts);
+            let mov = antes
+                .iter()
+                .zip(&j)
+                .map(|(a, b)| (a[0] - b[0]).hypot(a[1] - b[1]))
+                .fold(0.0_f64, f64::max);
+            assert!(
+                mov > 1e-12,
+                "com {n} ossos o caminho do GESTO deixou de refinar — a asserção de ponto fixo \
+                 acima passaria sobre um `reach` inerte"
             );
         }
     }

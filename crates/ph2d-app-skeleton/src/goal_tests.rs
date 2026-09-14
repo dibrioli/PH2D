@@ -404,3 +404,48 @@ fn the_drawn_chain_follows_the_chain_number() {
         "sem restricao nenhuma nao ha' faixa"
     );
 }
+
+/// ⭐⭐⭐ **O LADO DA DOBRA DESCREVE UMA CORRENTE, e mudar o `Chain` troca a corrente** — ordem do
+/// dono (2026-09-14: *«o lado da dobra é capturado no momento em que carrega Add IK e sempre que IK
+/// Chain for mudado»*).
+///
+/// ⚠️ **A porta é UMA** (`ph2d_skeleton_live::goal::side_for_chain`) e tem dois chamadores: o
+/// `Add IK` e a mudança do número. Duas leituras da mesma pergunta divergiriam no dia em que uma
+/// delas fosse afinada.
+///
+/// ⛔ O CONTROLO é a corrente **recta**: ali não há lado para capturar e a resposta é `Keep` — e
+/// sem ele este gate passaria sobre uma porta que devolvesse sempre o mesmo lado.
+#[test]
+fn the_side_is_read_from_the_chain_the_number_names() {
+    let mut sim = SimWorld::default();
+    let a = crate::goal::osso(&mut sim, "A", [0.0, 0.0], 10.0, None);
+    let b = crate::goal::osso(&mut sim, "B", [10.0, 0.0], 10.0, Some(a));
+    let c = crate::goal::osso(&mut sim, "C", [20.0, 0.0], 10.0, Some(b));
+    let d = crate::goal::osso(&mut sim, "D", [30.0, 0.0], 10.0, Some(c));
+    ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
+    // ⛔ O CONTROLO: recta, nenhum lado.
+    assert_eq!(
+        ph2d_skeleton_live::goal::side_for_chain(&sim, d, 2),
+        ph2d_skeleton::BendSide::Keep,
+        "uma corrente recta nao tem lado para capturar"
+    );
+    // Dobra só o OSSO DO MEIO da corrente longa: os dois últimos continuam alinhados, logo a
+    // corrente de `2` é recta e a de `4` não é. *É exactamente a célula que distingue as duas.*
+    sim.world_mut()
+        .get_mut::<ph2d_ecs::Transform>(b)
+        .expect("o osso do meio")
+        .rotation = 0.6;
+    let curto = ph2d_skeleton_live::goal::side_for_chain(&sim, d, 2);
+    let longo = ph2d_skeleton_live::goal::side_for_chain(&sim, d, 4);
+    assert_eq!(
+        curto,
+        ph2d_skeleton::BendSide::Keep,
+        "a corrente de DOIS continua recta: nao ha' lado"
+    );
+    assert_ne!(
+        longo,
+        ph2d_skeleton::BendSide::Keep,
+        "a corrente de QUATRO esta' dobrada e TEM lado — se o numero nao mudasse a resposta, o \
+         `Chain` nao estaria a ser lido"
+    );
+}

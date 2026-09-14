@@ -50,3 +50,43 @@ fn the_governed_chain_reaches_the_canvas() {
         f.display()
     );
 }
+
+/// ⭐⭐⭐ **MUDAR O `Chain` RE-CAPTURA O LADO DA DOBRA** — ordem do dono (2026-09-14: *«o lado da
+/// dobra é capturado no momento em que carrega Add IK e sempre que IK Chain for mudado»*).
+///
+/// ⚠️ **A LEI tem gate onde ela vive** (`side_for_chain`, na `ph2d-app-skeleton`); o que nenhum
+/// teste de unidade alcança é o FIO — o braço que aplica o número vive numa fase do `render_frame`.
+///
+/// ⛔ E a agulha exige a **corrente NOVA**: ler o lado com o `chain` que ainda lá está devolveria o
+/// que já existe, e o gesto ficaria a não fazer nada com a suíte inteira verde.
+#[test]
+fn changing_the_chain_recaptures_the_bend_side() {
+    let f = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .and_then(Path::parent)
+        .expect("crates/<x>/ tem dois pais")
+        .join("shells/desktop/src/render_loop/fase_bone_smart_and_knobs.rs");
+    let src: String = std::fs::read_to_string(&f)
+        .expect("a fase que aplica os números do osso")
+        .lines()
+        .map(|l| l.split_once("//").map_or(l, |(antes, _)| antes))
+        .collect::<Vec<_>>()
+        .join("\n");
+    // Controlo positivo: é ESTE o sítio que escreve o `Chain`.
+    assert!(
+        src.contains("IkKnob::Chain => g.chain ="),
+        "{} deixou de escrever o Chain — este gate perdeu o sujeito",
+        f.display()
+    );
+    assert!(
+        src.contains("ph2d_skeleton_live::goal::side_for_chain("),
+        "{} escreve o `Chain` e não re-captura o lado da dobra: o bit guardado passa a falar de uma \
+         corrente que já não é a que está debaixo do artista (ordem do dono, 2026-09-14).",
+        f.display()
+    );
+    assert!(
+        src.contains("g.bend = lado;"),
+        "{} calcula o lado novo e DEITA-O FORA — citar a porta não é consultá-la.",
+        f.display()
+    );
+}

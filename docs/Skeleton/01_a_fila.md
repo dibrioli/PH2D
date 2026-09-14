@@ -2617,6 +2617,61 @@ ossos). Se o artista subir o `Chain` depois, o lado guardado descreve a geometri
 continua a ser honrado, mas foi lido de uma corrente mais curta. Re-capturar ao mudar o número é
 decisão de produto (é mexer num bit autorado sem o artista pedir).
 
+**W16 — *«IK BEND NÃO ESTÁ CONSISTENTE PARA MAIOR QUE 2. MUDA O ÂNGULO DE LADO»*** (report do dono,
+2026-09-14, depois de a W15 refutar a premissa anterior). ⭐⭐⭐ **Ele tinha razão, e a minha régua é
+que era grossa.**
+
+⛔⛔ **A W15 mediu o LADO (um bit) e ele estava certo; o que muda é o ÂNGULO.** Medido agora: a MESMA
+restrição — mesmo alvo, mesmo lado — resolvida a partir de **quatro poses de partida diferentes** dá
+**quatro poses finais diferentes**:
+
+| ossos | pior desvio entre as quatro | em fracção do alcance |
+|---|---|---|
+| **2** | `0,0000` | **`0 %`** |
+| 3 | `0,52` | `17 %` |
+| 4 | `1,15` | `29 %` |
+| 5 | `1,58` | **`32 %`** |
+
+⇒ **o FABRIK é sensível à pose inicial, e cada quadro partia do resultado do anterior.** A dois ossos
+isto nunca aconteceu porque ali a lei é **fechada** e não olha para a pose — que é exactamente o
+*«só funciona se o Chain for 2»* dos dois reports, visto pelo lado certo.
+
+⇒ **Com um lado AUTORADO a corrente parte sempre de uma pose canónica** — um arco de seno da raiz ao
+alvo, de amplitude igual à **folga** (a altura do triângulo isósceles de lados `total/2` sobre a
+base `d`: zero no limite do alcance, máxima com a corrente dobrada em dois). O resultado passa a ser
+uma **função de `(raiz, comprimentos, alvo, lado)`**.
+
+⚠️⚠️ **E o arco tem de ser de VERDADE:** a 1.ª cura deitou a corrente RECTA e deixou o arqueamento de
+`1e-3` dar-lhe o lado — e a **8 ossos ela caiu para o lado errado**. Aquele arqueamento existe para
+dar ao FABRIK *por onde cair*, não para escolher a pose: uma perturbação de um milésimo do alcance
+não sobrevive a quarenta passagens.
+
+⚠️ **Só com lado autorado.** Com `Keep` — o gesto de arrastar a ponta — partir da pose que lá está é
+o DESENHO (*um gesto preserva o que se vê, uma restrição defende o que se autorou*), e aquele
+caminho fica byte a byte o que era.
+
+⛔⛔ **E a cura DISSOLVEU a premissa de um gate que estava certo:** o
+`a_locked_side_is_stable_not_a_flip_flop` exigia `primeiro > 1e-12` acima de dois ossos — *«a fixtura
+tem de produzir movimento, senão mede o nada»* — e **esse movimento era o defeito**. Hoje ele afirma
+o contrário e mais forte (*toda* corrente com lado autorado é ponto fixo), e a anti-vacuidade mudou
+de sítio: ela vive no caminho do GESTO, que é o único que ainda refina.
+
+⭐⭐ **E uma mutação SOBREVIVENTE deu uma lei mais forte:** o bojo do arco multiplicava pelo lado
+pedido, e apagar esse factor não reprovava nada — o espelho a seguir já corrige. ⇒ *o lado tem UM
+dono*, e daí sai a lei nova: **`Ccw` e `Cw` são espelhos EXACTOS** um do outro sobre a recta
+`raiz → alvo`, o que um bojo com sinal próprio não garantiria.
+
+**W16b — ORDEM DO DONO: o lado é capturado no `Add IK` E sempre que o `Chain` mudar.** A razão é
+geométrica: o lado descreve **uma corrente**, e subir o número troca a corrente por outra — o bit
+guardado passaria a falar de uma geometria que já não é a que está debaixo do artista. ⇒ uma porta
+(`goal::side_for_chain`) com os **dois** chamadores. ⚠️ Lida com a corrente **NOVA** (com a velha
+devolveria o lado que já lá está) e **antes** de escrever (o `captured_side` precisa de `&sim` e o
+`IkGoal` é um empréstimo mutável do mesmo mundo).
+
+**Cinco mutações, cinco RED.** ⚠️ E o `reach.rs` voltou ao tecto (`734` de `700`): partiu-se por
+RESPONSABILIDADE em `reach_side.rs` — *onde a corrente chega* e *para que lado ela dobra* são duas
+perguntas, e os três passos do lado (semear · arquear · espelhar) são um assunto só.
+
 ## ⛔ Recusas MEDIDAS deste módulo — não as reconstrua
 
 > ⚠️ **As seis de 2026-09-07/08 entraram aqui na auditoria de 08/09** — elas viviam só em prosa e em

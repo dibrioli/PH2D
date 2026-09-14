@@ -246,6 +246,9 @@ mod reach_chain_side_tests;
 #[cfg(test)]
 #[path = "reach_limit_tests.rs"]
 mod reach_limit_tests;
+/// ⭐ **Como uma corrente ganha e guarda um LADO** — irmão do [`reach`] pelo tecto de LOC,
+/// cortado por responsabilidade: *onde ela chega* e *para que lado dobra* são duas perguntas.
+mod reach_side;
 #[cfg(test)]
 #[path = "reach_tests.rs"]
 mod reach_tests;

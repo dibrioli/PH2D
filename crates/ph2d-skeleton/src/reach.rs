@@ -40,6 +40,8 @@
 //! a `R` **sem nunca lá chegar** — a corrente aproxima-se da recta e não trava. ⛔ A forma óbvia
 //! (`1 − e^{-x}`) tem as mesmas propriedades e paga um transcendental.
 
+use crate::reach_side::{break_collinearity, mirror_to_side, seed_arc};
+
 /// ⭐⭐⭐ **DE QUE LADO A CORRENTE DOBRA** — e por que ele é um dado AUTORADO e não uma dedução.
 ///
 /// Sem isto o lado sai da pose que a corrente tem no instante em que se resolve, e há uma pose em
@@ -191,7 +193,7 @@ const TOLERANCE: f64 = 1e-4;
 /// ⛔ **Sem isto o FABRIK fica preso:** numa corrente recta com o alvo fora da recta, cada passagem
 /// devolve exactamente a mesma recta — não há lado para onde cair. E o caso não é exótico: é o
 /// estado em que um esqueleto acabado de desenhar nasce.
-const BOW: f64 = 1e-3;
+pub(crate) const BOW: f64 = 1e-3;
 
 /// **Quão recta é "recta"** — o seno do ângulo entre dois ossos abaixo do qual eles não têm lado.
 ///
@@ -206,7 +208,7 @@ const BOW: f64 = 1e-3;
 /// de smoke). `1e-3` são `0,057°` — invisíveis, e acima do ruído.
 const STRAIGHT: f64 = BOW;
 
-fn unit(v: [f64; 2], fallback: [f64; 2]) -> [f64; 2] {
+pub(crate) fn unit(v: [f64; 2], fallback: [f64; 2]) -> [f64; 2] {
     let n = v[0].hypot(v[1]);
     if n > f64::EPSILON {
         [v[0] / n, v[1] / n]
@@ -373,57 +375,6 @@ pub fn bend_side_of(joints: &[[f64; 2]], goal: [f64; 2], reach: f64) -> BendSide
     }
 }
 
-/// Arqueia uma corrente RECTA para o FABRIK ter um lado para onde cair — para o lado PEDIDO, se
-/// houver um.
-fn break_collinearity(p: &mut [[f64; 2]], reach: f64, goal: [f64; 2], side: BendSide) {
-    let n = p.len();
-    let to_goal = [goal[0] - p[0][0], goal[1] - p[0][1]];
-    let d = to_goal[0].hypot(to_goal[1]);
-    if reach - d < BOW * reach {
-        return; // o alvo está na extensão máxima (ou além): a recta É a resposta
-    }
-    if dominant_side(p, goal).abs() > BOW * reach {
-        return; // já está fora da recta — a iteração tem para onde cair
-    }
-    let u = unit(to_goal, [1.0, 0.0]);
-    // `u × perp = +1`, então `+perp` é o lado anti-horário de [`side_of`].
-    let perp = [-u[1], u[0]];
-    let arco = BOW * reach * side.forced().unwrap_or(1.0);
-    for q in p.iter_mut().take(n - 1).skip(1) {
-        q[0] += perp[0] * arco;
-        q[1] += perp[1] * arco;
-    }
-}
-
-/// ⭐⭐⭐ **ESPELHA a corrente para o lado pedido** — a metade que o arqueamento não faz.
-///
-/// ⚠️ **Sem isto o lado autorado não morde numa corrente de 3+ ossos**, e a razão é que o
-/// [`break_collinearity`] só age sobre uma pose **recta**: com a corrente já dobrada para o lado
-/// errado ele devolve cedo, e o FABRIK parte da pose que encontra — ele **preserva** o lado, que é
-/// exactamente o que aqui se quer mudar.
-///
-/// ⭐ A operação é uma **reflexão sobre a recta `raiz → alvo`**, e por ser uma isometria ela não
-/// toca em nenhum comprimento — o invariante das duas leis desta crate sobrevive por construção,
-/// não por uma guarda escrita à mão. A raiz fica onde está porque a recta passa por ela.
-fn mirror_to_side(p: &mut [[f64; 2]], goal: [f64; 2], side: BendSide) {
-    let Some(quero) = side.forced() else {
-        return;
-    };
-    let actual = dominant_side(p, goal);
-    if actual == 0.0 || actual.signum() == quero.signum() {
-        return;
-    }
-    let root = p[0];
-    let u = unit([goal[0] - root[0], goal[1] - root[1]], [1.0, 0.0]);
-    for q in &mut p[1..] {
-        let v = [q[0] - root[0], q[1] - root[1]];
-        let ao_longo = v[0] * u[0] + v[1] * u[1];
-        // `q' = raiz + 2·(v·u)·u − v` — a reflexão de `v` sobre a direcção `u`.
-        q[0] = root[0] + 2.0 * ao_longo * u[0] - v[0];
-        q[1] = root[1] + 2.0 * ao_longo * u[1] - v[1];
-    }
-}
-
 /// **A CORRENTE ALCANÇA O ALVO** — em lugar, sobre as posições de MUNDO das juntas.
 ///
 /// `joints` tem `lengths.len() + 1` entradas: `joints[0]` é a âncora (fica onde está) e
@@ -496,6 +447,25 @@ pub fn reach(joints: &mut [[f64; 2]], lengths: &[f64], goal: [f64; 2], opts: Rea
         return;
     }
 
+    // ⭐⭐⭐ **COM UM LADO AUTORADO, A CORRENTE PARTE SEMPRE DO MESMO SÍTIO** (report do dono,
+    // 2026-09-14: *«IK Bend não está consistente para maior que 2. Muda o ângulo de lado.»*).
+    //
+    // ⛔⛔ **O FABRIK é sensível à pose inicial, e cada quadro partia do resultado do anterior** —
+    // medido: a mesma restrição resolvida de quatro poses de partida diferentes dava quatro poses
+    // finais, a `0,52` de desvio numa corrente de alcance `3` (**17 %**), `1,15` em `4` e `1,58` em
+    // `5` (**32 %**). O lado saía certo e o ÂNGULO mudava, que é exactamente o que ele viu. ⚠️ A
+    // dois ossos isto nunca aconteceu: ali a lei é **fechada** e não olha para a pose.
+    //
+    // ⇒ deitar a corrente sobre a direcção do alvo antes de iterar torna o resultado uma **função
+    // de `(raiz, comprimentos, alvo, lado)`** — o mesmo pedido dá sempre a mesma pose.
+    //
+    // ⚠️⚠️ **Só com lado AUTORADO, e a distinção é a do módulo inteiro:** com [`BendSide::Keep`] —
+    // o gesto de arrastar a ponta — partir da pose que lá está é o DESENHO (*um gesto preserva o
+    // que se vê, uma restrição defende o que se autorou*), e o caminho fica byte a byte o de
+    // sempre.
+    if opts.bend != BendSide::Keep {
+        seed_arc(joints, lengths, total, alvo, u);
+    }
     break_collinearity(joints, total, alvo, opts.bend);
     // ⚠️ **Depois** do arqueamento, não antes: sobre uma corrente recta o espelho não tem o que
     // espelhar (o desvio dominante é zero e ele devolve cedo), então quem lhe dá um lado para

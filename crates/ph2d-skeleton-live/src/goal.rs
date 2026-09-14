@@ -60,7 +60,7 @@ pub fn joints_of(sim: &SimWorld, corrente: &[Entity]) -> Option<(Vec<[f64; 2]>, 
 /// ⚠️ Uma corrente que nasce **recta** não tem lado, e aí devolve-se [`BendSide::Keep`] — que é o
 /// desempate determinístico de sempre. ⛔ Escolher um lado ali seria inventar uma decisão do artista
 /// a partir de ruído de `f32`.
-fn captured_side(sim: &SimWorld, corrente: &[Entity]) -> ph2d_skeleton::BendSide {
+pub fn captured_side(sim: &SimWorld, corrente: &[Entity]) -> ph2d_skeleton::BendSide {
     let Some((juntas, comps)) = joints_of(sim, corrente) else {
         return ph2d_skeleton::BendSide::Keep;
     };
@@ -71,6 +71,22 @@ fn captured_side(sim: &SimWorld, corrente: &[Entity]) -> ph2d_skeleton::BendSide
     // ⚠️ **Quem decide o que «recta» significa é a LEI**, não esta função: a barra é uma fracção do
     // alcance e vive lá dentro, ao lado do arqueamento que a usa.
     ph2d_skeleton::bend_side_of(&juntas, ponta, alcance)
+}
+
+/// ⭐⭐⭐ **O LADO QUE ESTA CORRENTE JÁ TEM, para um `chain` dado** — a porta que o *Add IK* e a
+/// mudança do número **Chain** partilham.
+///
+/// ⛔⛔ **ORDEM DO DONO** (2026-09-14): *«o lado da dobra é capturado no momento em que carrega Add
+/// IK e sempre que IK Chain for mudado»*. A razão é geométrica: o lado descreve **uma corrente**, e
+/// subir o `Chain` de `2` para `4` troca a corrente por outra — o bit guardado passaria a falar de
+/// uma geometria que já não é a que está debaixo do artista.
+///
+/// ⚠️ **Uma corrente RECTA continua a devolver [`ph2d_skeleton::BendSide::Keep`]** (a lei do
+/// [`captured_side`]): ali não há lado para capturar, e inventar um seria fabricar uma decisão do
+/// artista a partir de ruído de `f32`.
+#[must_use]
+pub fn side_for_chain(sim: &SimWorld, bone: Entity, chain: u32) -> ph2d_skeleton::BendSide {
+    captured_side(sim, &governed(sim, bone, chain))
 }
 
 /// ⭐⭐⭐ **CRIA a âncora** deste osso, com o alvo pousado na ponta dele. Devolve o alvo.
@@ -117,7 +133,7 @@ pub fn add(sim: &mut SimWorld, bone: Entity) -> Option<Entity> {
     // já posou à mão. ⚠️ Sem isto ela nasceria em `Keep`, e a primeira vez que ele esticasse o
     // membro o joelho inverteria sozinho: é o defeito medido em
     // `the_elbow_flips_when_the_chain_passes_through_straight`.
-    let bend = captured_side(sim, &governed(sim, bone, ph2d_skeleton_ecs::DEFAULT_CHAIN));
+    let bend = side_for_chain(sim, bone, ph2d_skeleton_ecs::DEFAULT_CHAIN);
     sim.world_mut().entity_mut(bone).insert(IkGoal {
         target: id,
         bend,

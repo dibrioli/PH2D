@@ -50,6 +50,8 @@ As cinco waves:
 | **W14b** | **com uma restrição VIVA o sujeito da autoria é o ALVO da âncora** — os ossos são derivados e o ledger salta-os com razão; a mão do quadro passa a trazer o alvo |
 | **W14c** | **a ORDEM DO QUADRO** — a malha de uma imagem presa era construída ANTES de o solver de IK escrever a pose, e o apply repunha a curva mesmo a tempo: o gizmo mostrava a IK e a arte mostrava a curva, para sempre |
 | **W15** | **os três itens do report do IK** — o painel mentia sobre os CINCO números (nunca semeados do documento), a corrente governada passou a ter uma FAIXA na tela, e o *«bend só funciona a 2»* foi medido e **refutado** |
+| **W16** | **o ângulo ERA inconsistente acima de 2, e a régua da W15 era grossa** — o FABRIK partia da pose do quadro anterior (`32 %` do alcance de desvio a 5 ossos); com lado autorado a corrente parte de um arco canónico e o resultado vira uma função dos dados |
+| **W16b** | **ordem do dono: o lado é capturado no `Add IK` E em cada mudança do `Chain`** |
 
 ---
 
@@ -81,6 +83,9 @@ As cinco waves:
 | `shells/desktop/src/render_loop/fase_snapshots_publish.rs` (W9) | a condição do `object_gizmo_on` ganha a cláusula da ferramenta Flip | **é a cura** — a caixa de OUTRA família deixa de matar o traço do Flip |
 | `shells/desktop/src/render_loop/timeline_onion.rs` (W8) | `collect_onion_ghosts` passa a receber `live_clip_t: Option<f64>` — `None` = o clip activo não tem instante único aqui ⇒ **zero fantasmas** | **muda a assinatura** (shell-interna) |
 | `shells/desktop/src/render_loop/fase_canvas_overlays.rs` (W8) | o relógio do onion passa a ser `self.timeline_view.clip_time` (era `self.playhead.time()`) | **é a cura do 1.º relato** |
+| `ph2d-skeleton/src/reach.rs` + `reach_side.rs` (W16, NOVO) | a pose de partida canónica (`seed_arc`) com lado autorado; os três passos do LADO saem para um irmão (tecto de LOC) | **muda comportamento** só com `Ccw`/`Cw`; o `Keep` fica byte a byte |
+| `ph2d-skeleton-live/src/goal.rs` (W16b) | `side_for_chain` NOVA (o `captured_side` passa a `pub`) — a porta que o `Add IK` e a mudança do `Chain` partilham | sim |
+| `shells/desktop/src/render_loop/fase_bone_smart_and_knobs.rs` (W16b) | mudar o `Chain` re-captura o lado, lido com a corrente NOVA | **é a ordem do dono** |
 | `ph2d-panel-skeleton/src/{section,paint}.rs` (W15) | os cinco campos numéricos passam a ser SEMEADOS do documento, por UMA tabela que quem pinta e quem semeia percorrem | **é a cura** — o painel mostrava `0` em todos |
 | `ph2d-app-skeleton/src/goal.rs` (W15) | `chains` NOVA — as juntas da corrente governada, em mundo, pela MESMA população do solver | sim |
 | `ph2d-skeleton-render/src/goal.rs` (W15) | `draw_chains` NOVA — a faixa por baixo dos ossos governados + o X na raiz | sim |
@@ -504,6 +509,11 @@ fechado.
 
 ⚠️ **E o que a W11 acrescenta:** com o braço bem DOBRADO, o risco pintado tem de sair com a
 **espessura do anel do cursor** — e não uma lasca fina onde o leque comprime a arte.
+
+⚠️ **E o que a W16 acrescenta (o report seguinte):** com `Chain = 3` ou mais, carregar em **CCW** e
+**CW** tem de dar sempre o **mesmo** ângulo para o mesmo lado — ⛔ até 2026-09-14 o lado saía certo e
+a forma mudava a cada clique (o solver partia da pose do quadro anterior). E mudar o **Chain** com o
+braço dobrado tem de **manter** a dobra do lado em que ela está.
 
 ⚠️ **E o que a W15 acrescenta (os três itens do report do IK):** com a âncora criada, o painel
 *Bones* tem de mostrar **`Chain = 2`** (e `Mix = 1`, `Softness = 0`, mais o comprimento e a força do

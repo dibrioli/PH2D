@@ -192,6 +192,120 @@ fn probe_does_a_value_chain_stay_on_the_device() {
     eprintln!();
 }
 
+/// ⭐⭐⭐ **SONDA — os TRÊS que ficam fora do dispositivo, e o que cada um custa numa cadeia REAL**
+/// (ciclo 6, W5 — doc 110 §11).
+///
+/// Depois da W2 o grupo está `32 de 35` no dispositivo. ⚠️ **Um `NAO` na coluna do retrato não é um
+/// preço** — ele só custa alguma coisa se o nó estiver no caminho do OBJECTO, e a rota do param
+/// dirigido é CPU **por desenho** (a W1a coze o condutor e entrega o NÚMERO). ⇒ esta sonda põe cada
+/// um numa cadeia que chega mesmo ao stream de objectos e pergunta ao planeador onde é a costura.
+///
+/// ```text
+/// cargo test -p ph2d-app-motion --lib probe_what_the_three_off_device -- --ignored --nocapture
+/// ```
+#[test]
+#[ignore = "sonda de medicao, nao um gate"]
+fn probe_what_the_three_off_device_nodes_cost() {
+    use ph2d_nodegraph::graph::{Edge, NodeId};
+    let liga = |m: &mut crate::motion_state::MotionState, de: (NodeId, u16), para: (NodeId, u16)| {
+        m.doc
+            .graph
+            .connect(Edge {
+                from: de,
+                to: para,
+                delayed: false,
+            })
+            .expect("fio");
+    };
+    let mede = |rotulo: &str, monta: &dyn Fn(&mut crate::motion_state::MotionState) -> NodeId| {
+        let mut m = crate::motion_state::MotionState::new();
+        let sink = monta(&mut m);
+        let dirigidos = crate::motion_bridge::gpu::valores_dirigidos(&mut m, 0.0);
+        let plano =
+            ph2d_gpu_cook::plan_driven(&m.doc.graph, &m.registry, &m.registry, sink, &dirigidos);
+        let costuras: Vec<String> = plano
+            .boundaries
+            .iter()
+            .map(|(no, porta)| {
+                format!(
+                    "{}:{porta}",
+                    m.doc.graph.node(*no).map_or("?", |i| i.type_name.as_str())
+                )
+            })
+            .collect();
+        // ⚠️ **O número que decide é QUANTOS ELEMENTOS a costura carrega**, e não que ela exista:
+        // uma fronteira de UM elemento é um `f32` por quadro; uma de `N` é o stream inteiro a
+        // subir. *«Está fora do dispositivo» não é um preço enquanto ninguém contar o que sobe.*
+        let elementos: Vec<String> = plano
+            .boundaries
+            .iter()
+            .map(|(no, porta)| {
+                m.pump
+                    .cook
+                    .cook(&m.doc.graph, &m.registry, *no, 0.0)
+                    .ok()
+                    .and_then(|o| o.get(*porta).map(|v| v.as_stream().count()))
+                    .map_or_else(|| "?".to_string(), |n| n.to_string())
+            })
+            .collect();
+        eprintln!(
+            "  {rotulo:<48} | {:>6} | {:<22} | {}",
+            plano.stages.len(),
+            if costuras.is_empty() {
+                "—".to_string()
+            } else {
+                costuras.join(" · ")
+            },
+            if elementos.is_empty() {
+                "— (nada sobe)".to_string()
+            } else {
+                elementos.join(" · ")
+            }
+        );
+    };
+    eprintln!(
+        "\n  cadeia que chega ao STREAM DE OBJECTOS            | stages | costura                | elementos que SOBEM"
+    );
+    eprintln!(
+        "  -------------------------------------------------|--------|------------------------|--------------------"
+    );
+    // O CONTROLO: a mesma forma, com um condutor que TEM kernel.
+    mede("grid -> drive(v = value.lfo) -> output", &|m| {
+        let g = m.doc.graph.add_node("motion.grid".to_string());
+        // ⚠️ **320 × 320**, a contagem das tabelas do doc 98 — a `3 × 3` do default esconde
+        // exactamente a grandeza que esta sonda existe para medir.
+        m.doc.graph.set_param(g, "rows", 320.0);
+        m.doc.graph.set_param(g, "cols", 320.0);
+        let d = m.doc.graph.add_node("motion.drive".to_string());
+        let o = m.doc.graph.add_node("motion.output".to_string());
+        let v = m.doc.graph.add_node("value.lfo".to_string());
+        liga(m, (g, 0), (d, 0));
+        liga(m, (g, 0), (v, 0));
+        liga(m, (v, 0), (d, 1));
+        liga(m, (d, 0), (o, 0));
+        o
+    });
+    for no in ["value.number", "value.table", "value.cursor"] {
+        mede(&format!("grid -> drive(v = {no}) -> output"), &|m| {
+            let g = m.doc.graph.add_node("motion.grid".to_string());
+            m.doc.graph.set_param(g, "rows", 320.0);
+            m.doc.graph.set_param(g, "cols", 320.0);
+            let d = m.doc.graph.add_node("motion.drive".to_string());
+            let o = m.doc.graph.add_node("motion.output".to_string());
+            let v = m.doc.graph.add_node(no.to_string());
+            liga(m, (g, 0), (d, 0));
+            // O `value.number` é gerador (zero entradas); os outros dois lêem a contagem.
+            if m.doc.graph.node(v).is_some_and(|i| i.type_name != "value.number") {
+                liga(m, (g, 0), (v, 0));
+            }
+            liga(m, (v, 0), (d, 1));
+            liga(m, (d, 0), (o, 0));
+            o
+        });
+    }
+    eprintln!();
+}
+
 /// ⛔⛔ **A SONDA DO PREÇO FOI APAGADA, e a razão fica escrita** (doc 110 §6).
 ///
 /// Ela media `grid → scale → output` com e sem um fio, e imprimia uma razão. **Os dois lados dela

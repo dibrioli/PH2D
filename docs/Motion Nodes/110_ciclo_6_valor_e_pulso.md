@@ -166,7 +166,10 @@ o sintoma.*
    35** nós, e a régua certa (uma LINHA cujo sujeito é o nó) acusa **15** no catálogo inteiro. Os
    **seis** do grupo estão conferidos nas folhas 12 e 15 — `0 P0/P1/P2` — e a dívida ganhou catraca
    com as duas metades (`15 → 9`).
-5. **W5 — a MEDIÇÃO** (passo 5) e **W6 — o TUTORIAL em PDF** (passos 6 e 7, o smoke do dono).
+5. ⏳ **W5 — a MEDIÇÃO** — **a RESIDÊNCIA feita** (§11): `32 de 35` no dispositivo, e o preço dos
+   três que ficam **medido em elementos** (`1` · `102 400` · `102 400`). ⏳ O RELÓGIO fica: `load
+   12–18` na janela inteira, e o §5.0 pede `≤ 5`.
+6. ⏳ **W6 — o TUTORIAL em PDF** (passos 6 e 7, o smoke do dono).
 
 ⚠️ **A ordem 1→2 não é preferência: é a lei 1 do §2 do protocolo.** Um grupo cujo uso normal
 derruba o dispositivo não fecha um ciclo com «tem mais botões».
@@ -711,3 +714,67 @@ um gate que divide dois relógios de GPU herda isso inteiro. ⇒ **proposta à i
 `crossing_the_reach_boundary_does_not_step_the_cost`
 ([`gpu_collide.rs`](../../crates/ph2d-gpu-cook/tests/it/gpu_collide.rs)) à família de flakes de
 carga do `CLAUDE.md` §5.0 — *a linha pede, o integrador escreve*.
+
+---
+
+## §11 — W5: a MEDIÇÃO — `32 de 35` no dispositivo, e o preço dos três que ficam
+
+### §11.1 — A residência (independente da carga, logo mede-se sempre)
+
+| família | no dispositivo |
+|---|---|
+| `value.*` | **23 de 26** |
+| `pulse.*` | **9 de 9** (eram `0 de 9` antes da W2) |
+| **grupo** | **32 de 35** |
+
+Fora: `value.number` · `value.cursor` · `value.table`.
+
+### §11.2 — ⛔⛔ Um `NAO` na coluna do retrato NÃO é um preço
+
+A rota do param dirigido é CPU **por desenho** — a W1a coze o condutor e entrega o NÚMERO —, logo um
+`value.*` que só dirige params nunca paga por não ter kernel. ⇒ a sonda
+(`probe_what_the_three_off_device_nodes_cost`) põe cada um numa cadeia que chega mesmo ao **stream de
+objectos** (`grid → motion.drive → output`, `320 × 320`) e pergunta ao planeador onde é a costura
+**e quantos elementos ela carrega**:
+
+| cadeia | stages | costura | elementos que SOBEM |
+|---|---|---|---|
+| `drive(v = value.lfo)` — o controlo | **4** | — | — (nada sobe) |
+| `drive(v = value.number)` | 3 | `value.number:0` | **1** |
+| `drive(v = value.table)` | 3 | `value.table:0` | **102 400** |
+| `drive(v = value.cursor)` | 3 | `value.cursor:0` | **102 400** |
+
+⭐⭐⭐ **A costura é UM NÓ, não a cadeia** — o resto (`grid`, `drive`, `output`) fica no dispositivo
+nos quatro casos. *É a diferença entre a W1a e o que havia antes dela, medida: em Agosto qualquer um
+destes derrubava a cadeia INTEIRA.*
+
+### §11.3 — ⭐ O `value.number` fica fora, e isso é grátis
+
+Ele emite **UM** elemento (a regra `1→N` difunde-o a jusante), logo a costura dele é **um `f32` por
+quadro**. ⚠️ **O achado do §3 nomeava-o** (*«e a primeira delas era uma CONSTANTE»*) e era sobre o
+**PLANEADOR** a recusar a cadeia inteira — o que a W1a curou. *Escrever-lhe um kernel agora compraria
+um float por quadro, e o §0.0 manda medir antes de limitar — e também antes de construir.*
+
+### §11.4 — ⛔⛔ E os outros dois sobem **102 400 cópias do MESMO número**
+
+O `value.cursor` e o `value.table` declaram, os dois, *«a cardinalidade segue a geometria»* (o padrão
+do `value.lfo`/`value.time`): ligada a porta `in`, eles emitem **um campo de comprimento `N` com o
+mesmo número em todas as linhas**. Para o `value.lfo` isso é obrigatório — com a porta `time` ligada
+ele dá **um relógio por elemento** —, mas o cursor é global por definição e a tabela devolve **um
+instante**.
+
+⇒ **a cura não é um kernel: é o comprimento.** Se os dois emitissem `1`, a costura passava de
+`102 400` para `1` — a mesma conta do `value.number`, e a regra `1→N` da casa já existe dos dois
+lados (`ColumnAccess::ReadBroadcast` no dispositivo; o `if v.len() == 1 { resize(n, v[0]) }` na CPU).
+
+⚠️ **Não está feito, e o motivo é medido e não preguiça:** *nem todo consumidor honra a regra*. Um
+`Read` simples no dispositivo julga um campo de comprimento `1` **ausente** e devolve a identidade —
+foi por isso que o `ReadBroadcast` nasceu, e o `pulse.compare` precisou dele esta semana. ⇒ mudar o
+comprimento de saída exige **varrer os consumidores de VALOR um a um** e provar que cada um
+difunde. **Wave própria, com este número (`102 400 → 1`) como justificação e como barra.**
+
+### §11.5 — O RELÓGIO fica por medir, e a razão é a mesma do ciclo 5
+
+`load 12–18` durante toda a janela (§5.0 pede `≤ 5`). ⚠️ E um A/B device-contra-CPU deste grupo pede
+um `GpuContext` no arnês, que já está nomeado como wave própria no §6. *O que se mede sem máquina
+calma é a máquina, não o código.*

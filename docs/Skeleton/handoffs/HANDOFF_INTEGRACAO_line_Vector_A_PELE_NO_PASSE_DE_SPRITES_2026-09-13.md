@@ -464,7 +464,7 @@ Régua = merge-base `1d43da737`.
 
 | passo | resultado |
 |---|---|
-| `BASE=1d43da737 bash scripts/nextest-impacted.sh` | ✅ **14 693 passaram, 0 falharam** — o delta contra a W12 (`14 644`) são os gates novos das W14a–c e da W15, **mais** as 38 suítes que a W15 traz para a varredura (ela toca a `ph2d-skeleton`, que é folha de meia dezena de crates)|
+| `BASE=1d43da737 bash scripts/nextest-impacted.sh` | ✅ **14 697 passaram, 0 falharam** — o delta contra a W12 (`14 644`) são os gates novos das W14a–c, W15 e W16, **mais** as suítes que estas trazem para a varredura (elas tocam a `ph2d-skeleton`, que é folha de meia dezena de crates)|
 | `cargo fmt --all --check` | ✅ |
 | `cargo clippy --workspace --all-targets` | ⚠️ **correu em CACHE e não repete avisos** (a saída inteira é uma linha, `Finished`). Forçado o replay da única crate com aviso: `ph2d-preview-drive`, **pré-existente** e intocada por esta linha (§8). As crates desta linha foram corridas com replay: zero |
 | `cargo machete` | ✅ nenhuma dependência por usar — a `ph2d-vector` e a `ph2d-asset` SAÍRAM da `ph2d-skeleton-live` |

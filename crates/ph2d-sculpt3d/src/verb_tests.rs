@@ -174,6 +174,10 @@ fn invert_changes_the_result_of_exactly_the_verbs_that_have_an_opposite() {
         let mut mesh = mesh_for(brush.verb);
         let mut s = SculptStroke::default();
         s.begin(&mesh);
+        // ⚠️ Ver [`referencia_sintetica`]: sem ela o apagador de deslocamento é
+        // inerte neste arnês, e o anti-vácuo abaixo reprova apontando para o
+        // VERBO em vez de para a fixtura.
+        s.reference = referencia_sintetica(&mesh);
         // ⚠️ **DOIS dabs, e o segundo é o que torna a fixture honesta.** O
         // [`Dab::path`] é derivado da diferença entre CENTROS, então o primeiro
         // dab de qualquer traço nasce sem direção — e o [`Verb::ClayThumb`]
@@ -599,4 +603,25 @@ fn the_mask_verb_writes_its_channel_and_moves_no_geometry() {
     // mais toques do que a pintura.
     let hard = clear(&mut mesh);
     assert_eq!(hard, 0.0, "limpar com peso cheio deixou {hard}");
+}
+
+/// ⭐⭐ **A SUPERFÍCIE DE REFERÊNCIA SINTÉTICA que um arnês sem pilha precisa
+/// de dar ao [`Verb::EraseMultires`].**
+///
+/// ⛔⛔ **Ela existe porque a alternativa era EXCLUIR o verbo dos censos, e um
+/// censo que exclui um verbo deixa de o testar.** Este apagador caminha em
+/// direcção a uma referência fotografada pela shell; um arnês que não a forneça
+/// mede um verbo **inerte**, e os censos leem isso como *«o dab não fez nada em
+/// canal nenhum»* — que é literalmente a mensagem com que eles reprovaram
+/// quando o verbo nasceu.
+///
+/// ⚠️ **A referência é a malha ENCOLHIDA `20 %` em direcção à origem**, e a
+/// escolha tem duas razões: ela difere de TODO vértice (logo o dab tem sempre o
+/// que fazer) e é **função da posição**, logo o alpha e a curva de queda
+/// continuam a modular o resultado — que é o que os dois censos medem.
+fn referencia_sintetica(mesh: &Mesh) -> Vec<[f32; 3]> {
+    mesh.positions()
+        .iter()
+        .map(|p| [p[0] * 0.8, p[1] * 0.8, p[2] * 0.8])
+        .collect()
 }

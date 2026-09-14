@@ -291,6 +291,9 @@ pub fn pointer_down(
             // ⚠️ **Depois do `aim`**: a foto é da peça que este traço vai
             // esculpir, e antes do `aim` ela seria a da peça anterior.
             scene.open_dyntopo_stroke();
+            // ⭐ **E a superfície de REFERÊNCIA**, pela mesma razão e no mesmo
+            // sítio: ela é função do nível de baixo, que o traço não toca.
+            scene.open_reference_stroke();
             // A âncora do espaçamento nasce no pen-down: o 1º dab é o que
             // está sob o dedo, e o resíduo passa a contar a partir dele.
             scene.stroke_anchor = [pos.0, pos.1];

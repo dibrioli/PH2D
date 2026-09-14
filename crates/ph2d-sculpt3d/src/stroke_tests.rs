@@ -398,6 +398,10 @@ fn the_normals_after_a_stroke_are_what_a_full_rebuild_would_give() {
     }
 }
 
+/// Os gates do APAGADOR DE DESLOCAMENTO — ver [`verb_erase`].
+#[path = "verb_erase_tests.rs"]
+mod verb_erase;
+
 /// Os verbos, um a um — a LEI mora no arquivo irmão.
 #[path = "verb_tests.rs"]
 mod verbs;

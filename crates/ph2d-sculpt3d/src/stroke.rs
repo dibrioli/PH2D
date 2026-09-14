@@ -93,6 +93,22 @@ pub struct SculptStroke {
     /// duas e levar o RAIO ao espaço local (`Pose::ray_to_local`) é mais barato
     /// e mais exacto que transformar a malha inteira.
     pub cloth_colliders: Vec<(Mesh, ph2d_mesh::Pose)>,
+    /// ⭐⭐ **A SUPERFÍCIE DE REFERÊNCIA, fotografada no pen-down** — por vértice
+    /// do nível de cima, o ponto da superfície-limite da subdivisão da base
+    /// (`SPEC_unblocked_brushes.md` §2). Só o [`Verb::EraseMultires`] a lê.
+    ///
+    /// ⚠️ **VAZIA é a omissão, e ela quer dizer *«não há referência»*** — o
+    /// pincel devolve a posição viva, ou seja **não move nada**. É por isso que
+    /// um traço sem pilha de multiresolução é inerte mesmo se alguém contornar
+    /// a recusa da shell: *a lei não tem para onde apontar, e não inventa.*
+    ///
+    /// ⚠️ **Fotografada no PEN-DOWN e não por dab**, como os colisores do pano:
+    /// ela é função do nível de BAIXO, que o traço não toca. Recalculá-la por
+    /// dab custaria um `subdivide` inteiro por evento de ponteiro.
+    ///
+    /// ⚠️ **Quem a enche é a shell**, que é quem conhece a pilha — a mesma
+    /// divisão dos colisores.
+    pub reference: Vec<[f32; 3]>,
     base_pos: Vec<[f32; 3]>,
     base_nrm: Vec<[f32; 3]>,
     base_mask: Vec<f32>,

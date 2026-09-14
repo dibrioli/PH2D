@@ -803,6 +803,46 @@ fn every_cloth_control_is_clickable_where_it_is_drawn() {
     cada_botao_responde_no_proprio_centro(&mut host, &painted, &by_id);
 }
 
+/// ⛔⛔ **O INTERRUPTOR `Accumulate` NÃO É OFERECIDO A QUEM NÃO O LÊ.**
+///
+/// ⚠️⚠️ **Este gate nasceu de uma mutação SOBREVIVENTE, e o que ela expôs é
+/// ONDE a lei é observável.** Pôr o [`ph2d_sculpt3d::Verb::EraseMultires`] de
+/// volta na família do `accumulates()` não mudava **geometria nenhuma** — no
+/// `Grip::Stamp` a coluna aditiva do `GripLaw` é `false` de qualquer maneira, e
+/// o alvo do apagador lê a posição viva nos dois casos. ⇒ *o predicado governa
+/// uma ROW, não um pixel de barro*, e um gate de geometria nunca o apanharia.
+///
+/// ⭐ E a row importa: um interruptor que aparece e não faz nada é o **controlo
+/// morto** que o §5.0 do roteador descreve — a espécie que *todo gate de registo
+/// atravessa verde*, porque ele está pintado, hit-indexado e vivo sob o dedo.
+///
+/// ⚠️ **As duas metades:** o apagador **não** o vê, e o `Draw` **vê** — senão um
+/// `false` cravado passaria.
+#[test]
+fn o_acumular_nao_e_oferecido_a_quem_nao_o_le() {
+    let com = |verb: Verb| {
+        let mut ui = Sculpt3dUi::default();
+        ph2d_panel_sculpt3d::state::switch_verb(&mut ui, verb);
+        ui.ui_level = UiLevel::Pro;
+        let (mut host, mut state) = arrange(ui);
+        let painted = host.paint::<Sculpt3dPanel>(&mut state, VIEWPORT);
+        painted
+            .iter()
+            .any(|(pid, _)| *pid == ids::SCULPT3D_ACCUMULATE)
+    };
+    assert!(
+        !com(Verb::EraseMultires),
+        "o `Accumulate` foi pintado com o apagador em mãos — o alvo dele é \
+         ABSOLUTO (a superfície de referência) e acumular não nomeia nada"
+    );
+    // ⭐ **O controlo:** um verbo que o LÊ continua a vê-lo.
+    assert!(
+        com(Verb::Draw),
+        "o `Accumulate` sumiu do `Draw` — sem este lado, um `false` cravado no \
+         predicado passaria a metade de cima"
+    );
+}
+
 /// **As rows condicionais não são pintadas com a ferramenta errada.**
 ///
 /// A metade oposta do gate acima, e ela falha sozinha: um `show` sempre-verdade

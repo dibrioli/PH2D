@@ -77,6 +77,13 @@ fn um_dab(s: &mut Sculpt3dScene) {
     // interruptor. *Um arnês a que falta um passo do produto mede outro
     // programa*, e o que ele media aqui era um pincel sem desfazer.
     s.open_dyntopo_stroke();
+    // ⚠️⚠️ **E a superfície de REFERÊNCIA, que é a SEGUNDA metade do pen-down
+    // que este arnês não fazia.** A primeira (a foto do desfazer) mordeu horas
+    // antes, com o pincel de densidade; esta mordeu com o apagador, que sem ela
+    // move **zero** vértices mesmo com a pilha montada. *Um arnês a que falta
+    // um passo do produto mede outro programa — e o que ele media aqui era um
+    // pincel inerte.*
+    s.open_reference_stroke();
     assert!(
         s.sculpt_at(CENTRE.0, CENTRE.1),
         "o dab não pegou a malha: a fixtura não contém o fenómeno"
@@ -186,3 +193,11 @@ fn cena_com(
 /// Curado por corte e nunca por uma entrada no `FILE_OVERAGE_OK`.
 #[path = "densidade_tests.rs"]
 mod densidade;
+
+/// **OS GATES DO APAGADOR DE DESLOCAMENTO** — ver [`apagador`].
+///
+/// ⚠️ O corte é o dos vizinhos: a **LEI** dele mora na `ph2d-sculpt3d` (sem
+/// GPU); aqui fica o que só uma **pilha de multiresolução** a sério pode
+/// afirmar — a recusa quando não há, e que ele não come a forma.
+#[path = "apagador_tests.rs"]
+mod apagador;

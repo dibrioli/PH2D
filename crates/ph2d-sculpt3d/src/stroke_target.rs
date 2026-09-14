@@ -122,6 +122,46 @@ impl SculptStroke {
             // existir ([`Verb::sem_lei_por_vertice`]). Não mover nada é a
             // resposta correcta para *«e se alguém chegar aqui mesmo assim?»*.
             Verb::Density => live,
+            // ⭐⭐ **O APAGADOR — uma interpolação LINEAR pura em direcção à
+            // superfície de referência** (espec §4.1): `p ← p + f·(R − p)`, sem
+            // direcção privilegiada, sem normal e sem acumulador.
+            //
+            // ⭐⭐⭐ **A FORÇA ENTRA AO QUADRADO, e o quadrado é ESCRITO AQUI —
+            // não sai da composição.** Espec §1.1, medida: com a curva
+            // *Constant* e força `1` o vértice pousa **na** referência
+            // (`1,000000`); com força `0,5` percorre **`0,250000`** do caminho,
+            // e não `0,500`.
+            //
+            // ⛔⛔ **E o padrão do [`Verb::Thumb`] NÃO TRANSFERE para cá, apesar
+            // de parecer o mesmo.** Lá o quadrado sai de graça da composição —
+            // o alvo leva um peso e o aplicador multiplica pelo `accum`, que
+            // leva o outro. Mas aquele verbo é [`Grip::Hold`], e a tabela do
+            // [`crate::GripLaw`] dá `unit_accum = FALSE` a ele; o
+            // [`Grip::Stamp`] — o nosso — dá **`true`**: *o alvo já traz o peso
+            // e o `accum` vale 1*. Escrito à maneira do polegar, este pincel
+            // media `0,500` a meio curso, que é exactamente o *«parecer o dobro
+            // de forte»* que a §1.1 avisa.
+            //
+            // ⚠️ **`w × strength` é a conta certa e não `w × w`:** `w` é
+            // `peso × força × pressão`, logo o produto dá
+            // `peso × força² × pressão` — a **força** ao quadrado e a **pressão**
+            // linear, que é a fórmula da espec letra por letra. `w × w`
+            // elevaria a pressão e a curva de queda junto.
+            //
+            // ⛔ **E o tecto `min(f, 1)` sai de graça:** `w ≤ 1` por construção
+            // (é um produto de factores em `[0, 1]`), logo ele **nunca
+            // ultrapassa** a referência. *Não há «apagar demais».*
+            //
+            // ⚠️⚠️ **Sem referência fotografada ele devolve o VIVO — não move
+            // nada.** É a resposta certa para um traço sem pilha de
+            // multiresolução: ali o dado de entrada não existe, e *a lei não
+            // inventa uma superfície*. A recusa em voz alta é da shell (§4.3);
+            // esta linha é a rede que garante que contorná-la não inventa
+            // geometria.
+            Verb::EraseMultires => self
+                .reference
+                .get(v as usize)
+                .map_or(live, |&r| toward3(live, r, w * brush.strength)),
             // `Brush.js:57-91` — `deform = intensidade · raio · 0,1`, e o peso
             // inteiro (curva × intensidade × máscara × alpha) chega no `w`.
             Verb::Draw => add(live, n_area, reach * w),
@@ -627,3 +667,19 @@ mod ring;
 /// Ver [`gripped`].
 #[path = "stroke_target_grip.rs"]
 mod gripped;
+
+/// **A interpolação de um PONTO em direcção a outro** — `b + (t − b)·a`, canal a
+/// canal.
+///
+/// ⚠️ **Ela chama o [`super::apply::toward`] escalar em vez de repetir a
+/// aritmética**: é a MESMA lei que o aplicador usa para compor o alvo com o
+/// `accum`, e escrevê-la duas vezes seria a segunda resposta a *«o que é
+/// caminhar uma fracção até um alvo?»* — com a divergência a aparecer como o
+/// apagador a parar num sítio diferente do que o aplicador esperava.
+fn toward3(b: [f32; 3], t: [f32; 3], a: f32) -> [f32; 3] {
+    [
+        super::apply::toward(b[0], t[0], a),
+        super::apply::toward(b[1], t[1], a),
+        super::apply::toward(b[2], t[2], a),
+    ]
+}

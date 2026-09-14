@@ -873,20 +873,37 @@ fn every_verb_is_reachable_from_the_keyboard() {
         //
         // ⭐ As oito disputam uma tecla porque são **gestos de forma**: o artista
         // alterna entre elas enquanto esculpe. Este não esculpe — ele **não move
-        // um único vértice** ([`ph2d_sculpt3d::Verb::sem_lei_por_vertice`]), e
-        // só faz alguma coisa com o passe de topologia **armado**. ⇒ uma tecla
-        // nua para ele seria inerte na configuração de fábrica (o dyntopo nasce
-        // desligado), que é exactamente a objecção que já pesou contra o
-        // contorno, **mais forte**: o contorno é mudo numa peça sem borda, este
-        // é mudo em toda a peça até alguém premir `P`.
+        // um único vértice** ([`ph2d_sculpt3d::Verb::sem_lei_por_vertice`]).
         //
-        // ⚠️ E ele é um verbo de **manutenção da malha**, não de escultura: a
-        // vizinhança dele no teclado é o `P` (armar) e o `U` (detalhe), não a
-        // fileira de pincéis. *Se um dia ele ganhar tecla, é dessa família que
-        // ela sai* — registado para a decisão não ter de redescobrir isto.
+        // ⚠️⚠️ **A razão de 14/09 ERA OUTRA e ENVELHECEU no mesmo dia:** ela
+        // dizia *«só faz alguma coisa com o passe de topologia armado ⇒ uma
+        // tecla nua seria inerte na configuração de fábrica»*, e o dono mandou
+        // exactamente o contrário — *«independente se Dynamic topology está
+        // ligado ou não, Density faz o seu trabalho»*. ⇒ **ele já não é inerte
+        // de fábrica**, e o argumento que o mantém fora da fila é o que sobra,
+        // que é o mais forte dos dois.
+        //
+        // ⭐ E ele é um verbo de **manutenção da malha**, não de escultura: a
+        // vizinhança dele no teclado é o `P` e o `U`, não a fileira de pincéis.
+        // *Se um dia ele ganhar tecla, é dessa família que ela sai* — registado
+        // para a decisão não ter de redescobrir isto.
+        "Density",
+        // ⚠️⚠️ **O APAGADOR DE DESLOCAMENTO, e ele está fora da fila pela razão
+        // que a densidade PERDEU.**
+        //
+        // ⛔ Ele é **inerte na configuração de fábrica**, e não por um
+        // interruptor que se liga: ele precisa de uma **pilha de
+        // multiresolução**, e uma peça acabada de nascer tem um nível só. Uma
+        // tecla nua para ele responderia com a linha de recusa em vez de um
+        // gesto — que é a pior coisa que um atalho pode fazer a quem está a
+        // aprender a ferramenta (§0.8: *o smoke é onde ele as APRENDE*).
+        //
+        // ⭐ E ele é da mesma família da densidade: **manutenção da malha**. A
+        // vizinhança dele no teclado é o `K` (subdividir) e o `,`/`.` (descer e
+        // subir de nível), não a fileira de pincéis.
         //
         // ⇒ a fila dos pretendentes ao `L` continua em **oito**.
-        "Density",
+        "EraseMultires",
     ];
     let keys = function_body(&sculpt_src(), "key");
     // ⚠️ **O gate COLETA em vez de abortar no primeiro, e isso não é estilo.**

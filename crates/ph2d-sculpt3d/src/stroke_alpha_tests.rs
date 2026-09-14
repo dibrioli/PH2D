@@ -287,6 +287,7 @@ fn every_verb_reads_the_alpha() {
             mesh.put_masks(vec![ph2d_mesh::DEFAULT_MASK; mesh.vert_count()]);
             let mut stroke = SculptStroke::default();
             stroke.begin(&mesh);
+            stroke.reference = referencia_sintetica(&mesh);
             let mut brush = textured(verb);
             if !armed {
                 brush.alpha = None;
@@ -422,4 +423,25 @@ fn the_crease_sharpens_the_alpha_because_it_lives_inside_the_shape() {
          padrão está FORA do expoente do vinco",
         expo.len()
     );
+}
+
+/// ⭐⭐ **A SUPERFÍCIE DE REFERÊNCIA SINTÉTICA que um arnês sem pilha precisa
+/// de dar ao [`Verb::EraseMultires`].**
+///
+/// ⛔⛔ **Ela existe porque a alternativa era EXCLUIR o verbo dos censos, e um
+/// censo que exclui um verbo deixa de o testar.** Este apagador caminha em
+/// direcção a uma referência fotografada pela shell; um arnês que não a forneça
+/// mede um verbo **inerte**, e os censos leem isso como *«o dab não fez nada em
+/// canal nenhum»* — que é literalmente a mensagem com que eles reprovaram
+/// quando o verbo nasceu.
+///
+/// ⚠️ **A referência é a malha ENCOLHIDA `20 %` em direcção à origem**, e a
+/// escolha tem duas razões: ela difere de TODO vértice (logo o dab tem sempre o
+/// que fazer) e é **função da posição**, logo o alpha e a curva de queda
+/// continuam a modular o resultado — que é o que os dois censos medem.
+fn referencia_sintetica(mesh: &Mesh) -> Vec<[f32; 3]> {
+    mesh.positions()
+        .iter()
+        .map(|p| [p[0] * 0.8, p[1] * 0.8, p[2] * 0.8])
+        .collect()
 }

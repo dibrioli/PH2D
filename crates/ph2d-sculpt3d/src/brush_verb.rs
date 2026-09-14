@@ -449,9 +449,13 @@ pub enum Verb {
     /// passe desarmado: `0` vértices movidos de `1 681`, e a diferença máxima de
     /// posição é `0` exactamente, não «pequeno».
     ///
-    /// ⚠️ **Com o passe de topologia DESARMADO ele é inteiramente inerte**, e
-    /// isso é a lei e não uma cerca: a única metade que ele arma está fora de
-    /// jogo. É o análogo do *Detailing* em **Manual** do alvo.
+    /// ⭐⭐⭐ **ELE CORRE SEM O INTERRUPTOR DA TOPOLOGIA DINÂMICA** — ordem do
+    /// dono (2026-09-14): *«independente se Dynamic topology está ligado ou não,
+    /// Density faz o seu trabalho. Dynamic topology é para os outros
+    /// pincéis.»* ⚠️ **Divergência DECLARADA** da referência, que desarma o
+    /// passe inteiro no modo *Manual* (espec §3.2, 1.ª linha): aquele
+    /// interruptor pergunta *«o meu traço também muda a topologia?»*, e este
+    /// verbo **não tem traço**. Ver [`Self::corre_sem_o_interruptor`].
     ///
     /// ⛔ **DECISÃO DE PRODUTO por decidir, e ela é observável:** o nosso
     /// colapso recusa mexer numa aresta em que *algum dos quatro vértices está
@@ -463,11 +467,47 @@ pub enum Verb {
     ///
     /// A espec é `docs/3D/cleanroom/SPEC_unblocked_brushes.md` §3.
     Density,
+    /// ⭐⭐ **O APAGADOR DE DESLOCAMENTO — ele repõe a pele na SUPERFÍCIE-LIMITE.**
+    ///
+    /// Com uma pilha de multiresolução montada, cada vértice do nível de cima é
+    /// *a superfície de base mais um deslocamento*. Este pincel **desfaz esse
+    /// deslocamento** onde passa: a escultura fina esmorece e a forma grande
+    /// fica exactamente onde estava.
+    ///
+    /// ⛔⛔ **A referência é o LIMITE e não a PREVISÃO, e essa é a wave inteira**
+    /// ([`ph2d_mesh::limit_point`], espec §2.1): `subdivide^k(base)` **não é** a
+    /// superfície-limite, e a diferença não tende a zero na densidade que um
+    /// artista usa. Medido no canto de um cubo de lado `1`: a previsão de um
+    /// passo pousa em `0,2778` e o limite em **`0,2500`** — `11 %` de resíduo,
+    /// que um apagador ancorado na previsão deixaria **a cada passagem**. ⇒ ele
+    /// *encolheria a peça*, e o artista leria isso como *«o apagador comeu a
+    /// forma»*.
+    ///
+    /// ⚠️ **A lei é uma interpolação LINEAR pura em direcção à referência** —
+    /// `p ← p + f·(R − p)` —, sem direcção privilegiada, sem normal e sem
+    /// acumulador. ⭐ A prova de que não é *«mover ao longo da normal até à
+    /// referência»* é a componente perpendicular a `R − p`, medida no oráculo
+    /// em **`3,48e-08`**: ruído de `f32`.
+    ///
+    /// ⚠️ **O tecto `min(f, 1)` significa que ele NUNCA ultrapassa a
+    /// referência** — não há *«apagar demais»*.
+    ///
+    /// ⛔ **Inverter não faz nada**, e isso não é uma feature em falta: apagar
+    /// deslocamento tem um só sentido (o deslocamento zero), e *«apagar ao
+    /// contrário»* não nomeia nada. Ver [`Self::honours_invert`].
+    ///
+    /// ⛔ **Sem pilha de multiresolução ele RECUSA em voz alta** (espec §4.3): ali
+    /// não existe o dado de entrada. *O irmão-filtro do alvo estoirou
+    /// publicamente por não verificar isto* — e é por isso que o gate desta
+    /// fronteira é a **recusa**, não o resultado.
+    ///
+    /// A espec é `docs/3D/cleanroom/SPEC_unblocked_brushes.md` §4.
+    EraseMultires,
 }
 
 impl Verb {
     /// Todos, na ordem em que a UI os lista.
-    pub const ALL: [Self; 29] = [
+    pub const ALL: [Self; 30] = [
         Self::Draw,
         Self::Inflate,
         Self::Smooth,
@@ -497,6 +537,7 @@ impl Verb {
         Self::Pose,
         Self::Boundary,
         Self::Density,
+        Self::EraseMultires,
     ];
 
     /// O nome que a UI mostra.
@@ -530,6 +571,7 @@ impl Verb {
             Self::Pose => "Pose",
             Self::Boundary => "Boundary",
             Self::Density => "Density",
+            Self::EraseMultires => "Erase Displacement",
             Self::Thumb => "Thumb",
             Self::Nudge => "Nudge",
         }

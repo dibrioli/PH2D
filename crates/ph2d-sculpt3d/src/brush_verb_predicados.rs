@@ -42,6 +42,13 @@ impl Verb {
             // não move um vértice. Oferecer o interruptor seria um controlo que
             // aparece e não faz nada.
             && !self.sem_lei_por_vertice()
+            // ⛔ **E o APAGADOR, por uma razão de LEI e não de ausência:** o
+            // alvo dele é ABSOLUTO (a superfície de referência), e o tecto
+            // `min(f, 1)` diz que ele *nunca ultrapassa*. Acumular um alvo
+            // absoluto não nomeia nada — o segundo dab tem o mesmo destino que
+            // o primeiro. A espec §4.1 escreve-o com todas as letras: *«sem
+            // direcção privilegiada, sem normal e sem acumulador»*.
+            && self != Self::EraseMultires
     }
 
     /// Este verbo escreve na MÁSCARA em vez da posição?
@@ -275,6 +282,22 @@ impl Verb {
     #[must_use]
     pub fn mexe_na_topologia(self) -> bool {
         !self.anchors() && self != Self::Mask
+    }
+
+    /// **ESTE VERBO PRECISA DE UMA SUPERFÍCIE DE REFERÊNCIA?**
+    ///
+    /// ⭐ A porta ÚNICA da pergunta, com **três** consumidores em sítios
+    /// diferentes: o **pen-down** da shell (para a fotografar), a **recusa** em
+    /// voz alta quando não há pilha de multiresolução (espec §4.3), e o
+    /// **arnês** dos censos, que sem ela mediria um verbo inerte.
+    ///
+    /// ⛔ **Sem pilha, o dado de entrada NÃO EXISTE** — não é que o resultado
+    /// seja mau: não há de onde tirar um deslocamento. *O irmão-filtro do alvo
+    /// estoirou publicamente por não verificar isto*, e é por isso que o gate
+    /// desta fronteira é a **recusa** e não o resultado.
+    #[must_use]
+    pub fn precisa_de_referencia(self) -> bool {
+        matches!(self, Self::EraseMultires)
     }
 
     /// **ESTE VERBO CORRE SEM O INTERRUPTOR DA TOPOLOGIA DINÂMICA?**

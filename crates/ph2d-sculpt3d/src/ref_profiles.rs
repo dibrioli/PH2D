@@ -118,6 +118,12 @@ const fn profile_s(verb: Verb) -> Option<VerbProfile> {
         // não há força nem queda a herdar de ninguém. O que ela lê é o raio
         // (para a região do passe de topologia), e esse já vem do pincel.
         Verb::Density => return None,
+        // ⛔ **O APAGADOR DE DESLOCAMENTO não tem perfil `s` pela razão mais
+        // simples de todas: o SculptGL não tem multiresolução a apagar.** Os
+        // números dele (a cadeia de peso, a força ao quadrado, o tecto
+        // `min(f, 1)`) vêm da OUTRA referência, e estão medidos na espec §1 e
+        // §4.1 — não há nada a herdar aqui.
+        Verb::EraseMultires => return None,
         // `Brush.js:11-16` — `_radius 50 · _intensity 0.5 · _clay true ·
         // _accumulate true`. A tool `Brush` do original é a nossa **Draw E
         // Clay** (o `_clay` é um checkbox dela, ligado de fábrica).
@@ -362,7 +368,9 @@ const fn profile_b(verb: Verb) -> Option<VerbProfile> {
     // nenhuma — um chip `B` aqui ofereceria um modo para uma lei inexistente.
     if matches!(
         verb,
-        Verb::Cloth | Verb::Pose | Verb::Boundary | Verb::Density
+        // ⛔ **E o APAGADOR fica de fora com os quatro:** ele não é um pincel do
+        // `s`, logo não há um par de perfis entre os quais escolher.
+        Verb::Cloth | Verb::Pose | Verb::Boundary | Verb::Density | Verb::EraseMultires
     ) {
         return None;
     }

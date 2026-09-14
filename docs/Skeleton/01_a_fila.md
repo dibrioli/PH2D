@@ -2320,6 +2320,81 @@ RED**, a primeira sendo o próprio erro do report.
 ⚠️ E o raio composto passou a ter cerca: a que o **motor já aceita do artista**
 (`BRUSH_SIZE_MAX_PX`), com o recurso nomeado — o custo de um dab cresce com o raio ao QUADRADO.
 
+**W12 — «QUASE BOM»: A DEFORMAÇÃO DEBAIXO DE UM DAB MEDE-SE AO TAMANHO DO DAB** (3.º report com
+foto, 2026-09-14: *«melhor. quase bom. Talvez artefato inevitável devido à natureza das deformações
+do mesh»*). ⭐⭐⭐ **O dono tinha meia razão, e a medição diz qual metade.**
+
+**O mecanismo.** Uma malha é **afim por TRIÂNGULO**. Dentro de um triângulo a deformação é constante
+e a elipse que o pincel pinta volta ao ecrã como um disco **exacto**. Um dab que se estende por
+vários triângulos era corrigido pela deformação do triângulo debaixo do **CENTRO**, e as partes dele
+que caem nos vizinhos recebiam a correcção errada. ⇒ a grandeza certa não é a deformação **no
+ponto**: é o melhor afim (mínimos quadrados) do mapa da malha **sobre o disco que o dab ocupa**.
+
+**A medição** (sonda sobre dois leques × 4 raios × 3 pontos; redondeza da marca no ECRÃ, `1` = disco):
+
+| regime | sem correcção | facete (W11b) | **ao tamanho do dab** |
+|---|---|---|---|
+| dab DENTRO de um triângulo | `1,86`–`2,31` | `1,006` | `1,006` (o mesmo, **ao bit**) |
+| dab sobre `~2` triângulos | `2,20` | `1,21` | **`1,11`** |
+| dab sobre `~4` triângulos, leque forte | `1,19` | `1,38` | **`1,18`** |
+
+⛔⛔ **A linha do fundo é a que obrigou esta wave:** com um pincel GRANDE sobre uma malha grossa a
+correcção da W11b deixava a marca **MENOS redonda do que não corrigir nada** (`1,383` contra
+`1,188`). Nas 24 células a resposta nova é **sempre melhor ou igual** à da facete.
+
+⭐ **Degenera no de sempre, e é um `if`:** se todas as amostras do bordo caem no MESMO triângulo do
+centro, a porta devolve a facete **sem tocar num float** — *«byte a byte» não é uma promessa que uns
+mínimos quadrados cumpram*, que é a lição da W11 repetida um nível acima.
+
+**As peças:** [`ph2d_render::sprite_mesh_warp::warp_over`] (crate nova de módulo, com a álgebra do
+triângulo extraída para uma `warp_of` **única** — a `warp_under` MORREU, porque uma porta sem
+chamador e uma lei ausente produzem o mesmo app) · `mesh_uv` ganha `footprint_uv` (o raio do dab em
+UV de repouso; `[0, 0]` = *«não vou pintar»*, que é o que o picking e as caixas passam) ·
+`PainterTool::dab_footprint_px` (o raio **ANTES** da composição da deformação — realimentá-lo com a
+saída dela seria um laço).
+
+**Dois números MEDIDOS, não escolhidos:** `AMOSTRAS = 8` (concorda com `32` a `±0,001` nas 24
+células; `4` desvia até `0,014`) e o raio de amostragem = o **raio do dab** (a metade dele deixa a
+coluna do raio pequeno em `1,162` contra `1,162` da facete — **ganho zero**).
+
+**O custo, medido** (`--release`, uma chamada por evento de ponteiro): `0,7 µs` a `128` triângulos ·
+`10,9 µs` a `2 048` · **`40,7 µs`** ao tecto do `Smooth` (`7 688`) = `0,24 %` de um quadro. É por
+isso que a varredura é **UMA** passagem com rejeito por caixa em UV, e não oito.
+
+**Cinco mutações, cinco RED** — ⚠️ **TRÊS sobreviveram à primeira**, e as três nomearam buracos:
+1. **um dab REDONDO não consegue medir a BASE do ajuste.** Trocar a base por um espelho multiplica a
+   matriz por um factor **ORTOGONAL**, que tem os mesmos valores singulares e os mesmos eixos ⇒ com
+   `flatten = 0` a resposta é a mesma **ao bit**. É a W11b uma volta mais fundo: lá a fixtura
+   alinhada aos eixos não media a base, aqui é o **pincel** que não a mede. ⇒ gate novo com a elipse
+   **AUTORADA** (`flatten 0,4`, `angle 30°`): o eixo maior chega a `29,8°`–`38,3°` com a lei certa e
+   a `152,6°`–`164,2°` com a base trocada.
+2. **nomear um argumento não é alimentá-lo** — `let footprint_uv = [0.0, 0.0];` com a chamada
+   intacta passava no arch-gate. Ele exige agora a **DERIVAÇÃO** do raio do pincel.
+3. **um gate só com o raio grande não pina o raio de amostragem** — a lei só se lê com a coluna do
+   raio PEQUENO ao lado.
+
+⏳ **ABERTO e NOMEADO — e é aqui que o dono tem razão:** o que sobra (`≈1,1`–`1,2` no pior regime) é
+inerente a **UMA elipse por dab** — sobre um footprint em que a deformação varia, nenhum afim único
+a descreve. ⛔ **Mas não é uma parede: é uma troca de RESOLUÇÃO** — os dois diminuidores medidos são
+a malha mais fina (o `Smooth`) e o pincel menor.
+
+⛔⛔ **E o item que a fila nomeava como o próximo — a deformação por DAB — foi MEDIDO e vale ~zero:**
+com o pen-down do outro lado do braço a redondeza muda `≤ 0,05` e **em sinal ambíguo**, contra os
+`0,10`–`0,23` que o footprint compra. A razão é que o `stamp_dabs_inner` já relê o `stroke_spec`
+**ao vivo**, logo só o RAIO fica congelado no pen-down. *Um item de fila escrito por quem acabou de
+curar a porta ao lado descreve o resíduo daquela porta, não o maior defeito.* Fica aberto como
+**inconsistência declarada** (dois leitores do mesmo spec em instantes diferentes), não como cura.
+
+**W12b — O ONION SAIU DA SHELL** (a cura NOMEADA do tecto, 2026-09-14). As waves do pincel tinham
+deixado `the_shell_only_shrinks` com **UMA** linha de folga (`196 989` de `196 990`), e a lei do
+`CLAUDE.md` §2 é clara: *quando ela reprovar, MOVA — nunca suba o número*. O motor do onion
+(`timeline_onion.rs` + os dois ficheiros de teste, **1 014 linhas**) não é composição — ele só
+depende de crates irmãs —, e vive agora em [`ph2d-timeline-onion`](../../crates/ph2d-timeline-onion/);
+a shell fica com a **CHAMADA**, que é a fase do quadro onde ela pertence. Shell: **195 974**
+(`1 016` de folga). ⚠️ **Prova exacta:** `15` testes antes, `15` depois (14 + 1 `#[ignore]`).
+⛔ **E um gate apanhou a armadilha do HOWTO à primeira:** a crate nova não herdava os lints da
+workspace (`unsafe` PERMITIDO nela, em todo alvo) — `[lints] workspace = true`.
+
 ## ⛔ Recusas MEDIDAS deste módulo — não as reconstrua
 
 > ⚠️ **As seis de 2026-09-07/08 entraram aqui na auditoria de 08/09** — elas viviam só em prosa e em

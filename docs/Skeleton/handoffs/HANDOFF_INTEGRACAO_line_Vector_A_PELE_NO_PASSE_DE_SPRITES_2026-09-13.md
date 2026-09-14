@@ -43,6 +43,8 @@ As cinco waves:
 | **W10** | **o pincel segue a arte DOBRADA**: a porta de canvas (`ph2d_render::mesh_uv`) e o Painter a consultá-la — as duas portas que sabiam da malha não tinham chamador de produto |
 | **W11** | **o pincel PAGA a deformação**: o dab nasce como a elipse que a malha endireita, e sai redondo no ECRÃ |
 | **W11b** | **a matriz nascia numa BASE MISTA** (2.º report: *«sem melhorias»*) — as duas metades tinham gate e a JUNÇÃO não, porque as fixturas das duas eram alinhadas aos eixos |
+| **W12** | **a deformação debaixo de um dab mede-se AO TAMANHO DO DAB** (3.º report: *«quase bom … talvez artefato inevitável»*) — uma malha é afim por TRIÂNGULO, e perguntar num PONTO dava ao dab inteiro a deformação de um pedaço dele |
+| **W12b** | **o motor do onion SAIU da shell** — a cura nomeada do tecto `the_shell_only_shrinks`, que as waves do pincel tinham deixado com UMA linha de folga |
 
 ---
 
@@ -77,6 +79,12 @@ As cinco waves:
 | `shells/desktop/src/render_loop/timeline_bridge.rs` (W8) | `maos_do_quadro` NOVA (o gizmo ∪ o esqueleto que a ferramenta Bone pousa); `run` troca `live_entity: Option<u64>` por `maos: &[u64]` | **muda a assinatura** (shell-interna) |
 | `shells/desktop/src/render_loop/{fase_timeline_view,fase_timeline_drain,fase_frame_open}.rs` (W8) | o `TimelineView::dragging_entity` vira `maos: Vec<u64>` e atravessa a fase | sim |
 | `shells/desktop/src/render_loop/autokey_pass.rs` (W8) | `run` ganha `skeleton: &SkeletonState`; `drag_now = gizmo.drag.is_some() \|\| skeleton.bone_pose.is_some()` | **muda comportamento**: um arrasto de osso passa a ser UM passo de undo |
+| `ph2d-render/src/sprite_mesh_warp.rs` (W12, NOVO) | `warp_over`: a deformação que a malha faz **sobre o disco que o dab ocupa** (mínimos quadrados, `8` amostras), com atalho ao bit quando o dab cabe na facete | sim |
+| `ph2d-render/src/sprite_mesh.rs` (W12) | a álgebra do triângulo sai para `warp_of` (UMA conta, duas entradas); ⛔ **`warp_under` APAGADA** — ficou sem chamador, e uma porta sem chamador lê-se como lei ausente | **muda a assinatura** (crate-interna) |
+| `ph2d-render/src/picking.rs` (W12) | `mesh_uv` e o `uv_query` ganham `footprint_uv: [f32; 2]` — `[0, 0]` = *«não vou pintar»* (o picking e as caixas) | **muda a assinatura** (pública) |
+| `ph2d-tool-painter` (W12) | `PainterTool::dab_footprint_px` — o raio do dab ANTES da composição da deformação | sim |
+| `shells/desktop/src/input_dispatch/painter_canvas_input.rs` (W12) | o painter é obtido ANTES da pergunta à malha, para o footprint viajar nela | **é a cura** |
+| `crates/ph2d-timeline-onion/` (W12b, CRATE NOVA) | o motor do onion (`1 014` linhas) sai da shell — ele só depende de crates irmãs; a shell fica com a CHAMADA | sim (byte-idêntico) |
 | `shells/desktop/src/render_loop/snapshots.rs` (W6) | o `vec_gizmo_on` vira `object_gizmo_on` e sobe para UMA porta no topo do `build_view`: **nenhuma família** publica caixa de objecto fora do Select da ferramenta vectorial (os dois `if` por família saem) | **muda comportamento** — uma SPRITE e um GRUPO deixam de publicar caixa naqueles modos (§6.8) |
 
 ---
@@ -206,6 +214,29 @@ de ecrã, constrói-se o triângulo que a produz). **Duas mutações, duas RED**
 próprio erro do report. ⚠️ A crate ganhou um **dev-dep** para a lei canónica do pincel — a forma dos
 dois que ela já tinha.
 
+**W12** (`ph2d-render` + o fio): um dab que cabe numa facete recebe a facete **ao bit** (controlo: um
+dab grande TEM de mover a resposta) · a marca é mais redonda ao tamanho do dab em **todas** as seis
+células medidas, com margem `0,02` · **a elipse AUTORADA chega ao ecrã como o artista a desenhou** ·
+as amostras fora da malha respondem pela facete que deixaram · e o fio (a DERIVAÇÃO do footprint).
+**Cinco mutações, cinco RED** — ⚠️⚠️ **TRÊS sobreviveram à primeira**, e as três nomearam buracos:
+
+1. ⛔⛔ **Um dab REDONDO não consegue medir a BASE do ajuste.** Trocar a base por um espelho
+   multiplica a matriz por um factor **ORTOGONAL** — mesmos valores singulares, mesmos eixos —, logo
+   com `flatten = 0` a resposta é a mesma **ao bit**. É a W11b uma volta mais fundo: lá a fixtura
+   alinhada aos eixos não media a base, aqui é o **pincel** que não a mede. Com `flatten 0,4` e
+   `angle 30°` o eixo maior chega a `29,8°`–`38,3°` com a lei certa e a `152,6°`–`164,2°` com a base
+   trocada.
+2. ⛔ **Nomear um argumento não é alimentá-lo** — `let footprint_uv = [0.0, 0.0];` com a chamada
+   intacta passava no arch-gate (a mesma forma da mutação da W10: *citar uma porta não é
+   consultá-la*). Ele exige agora a **derivação** do raio do pincel.
+3. ⛔ **Um gate só com o raio grande não pina o raio de amostragem** — amostrar a METADE do raio
+   melhora os dabs grandes na mesma, e só a coluna do raio PEQUENO a apanha (ganho **zero** ali).
+
+**W12b** (a mudança de crate): ⛔ **o `every_member_inherits_the_workspace_lints` apanhou a armadilha
+do HOWTO à primeira** — a crate nova não herdava os lints da workspace, logo o `unsafe` ficava
+PERMITIDO nela em todo alvo. Prova exacta do movimento: **`15` testes antes, `15` depois**
+(14 + 1 `#[ignore]`).
+
 ---
 
 ## §6 — Coisas que uma leitura rápida do diff entende ao contrário
@@ -332,6 +363,22 @@ dois que ela já tinha.
    gizmo de sprite. Medido nesta jornada com a sonda: `0,77 → 0,45` no quadro seguinte ao arrasto.
    *Um gesto novo herda os inimigos do antigo, e ninguém lhe dá a lista.*
 
+11. ⛔⛔ **«O resíduo que sobra é inevitável — é a natureza das deformações do mesh»** (a hipótese do
+   dono no 3.º report, e a minha antes de medir). **Metade errada:** a maior parte dele era a
+   deformação ser lida num PONTO e aplicada a um dab que cobria vários triângulos — e isso tem cura,
+   com `0,10`–`0,23` de redondeza medidos. *«Fora de escopo porque é inalcançável» é uma afirmação
+   sobre um número que outra pessoa pode mudar* (§0.0). A metade certa é o que sobra depois: **uma
+   elipse por dab**, que é uma troca de resolução e não uma parede.
+12. ⛔⛔ **«O próximo item é a deformação POR DAB»** (o que a W11 deixou escrito na fila). Medido:
+   vale `≤ 0,05` e **em sinal ambíguo**, um quarto do que o footprint compra — porque o
+   `stamp_dabs_inner` já relê o `stroke_spec` ao vivo e só o RAIO fica congelado no pen-down.
+   *Um item de fila escrito por quem acabou de curar a porta ao lado descreve o resíduo daquela
+   porta, não o maior defeito.*
+13. ⛔ **«A `warp_under` é a porta da deformação num ponto e fica»** — depois da W12 ela tinha **zero
+   chamadores**, e este repo já escreveu que *uma porta sem chamador e uma lei ausente produzem o
+   mesmo app*. Foi APAGADA; o que fica é a `warp_of` (a álgebra, dado o triângulo), com duas
+   entradas.
+
 ---
 
 ## §8 — O que fica ABERTO
@@ -340,7 +387,8 @@ dois que ela já tinha.
 |---|---|
 | ✅ **Os fantasmas do onion desenhavam o quad de repouso** | **FECHADO pela W7** (a pose de mundo em `t`, a pele resolvida nele, a malha por fantasma) e **alcançável desde a W8** (o relógio do clip). ⚠️ A redacção fica aqui por contraste: ela dizia *«eles desenham o quad de repouso»* e a medição mostrou que **não havia fantasma nenhum** |
 | ✅ **A UV do pintor** | **FECHADO pela W10**, e o item estava mal endereçado: o Painter não chamava nenhuma das duas portas de UV — ele tem afim próprio, do quad de repouso, logo o erro era em TODA a arte dobrada |
-| ⏳ **A deformação do pincel é a do PEN-DOWN** | o `stroke_spec` é capturado ao abrir o traço (a mesma fotografia que o pincel de tecido tira dos obstáculos): um traço LONGO que atravesse compressões diferentes usa a do princípio. Para seguir por dab, a deformação tem de viajar no `StrokePoint`, como a pressão — medido e não feito |
+| ⚠️ **A deformação do pincel é a do PEN-DOWN** | ⛔⛔ **MEDIDO na W12 e vale ~zero:** com o pen-down do outro lado do braço a redondeza da marca muda `≤ 0,05`, **em sinal ambíguo**, contra os `0,10`–`0,23` que o footprint compra. A razão é que o `stamp_dabs_inner` já relê o `stroke_spec` **ao vivo**, logo só o RAIO fica congelado. Fica como **inconsistência declarada** — dois leitores do mesmo spec em instantes diferentes —, não como cura à espera. *Um item de fila escrito por quem acabou de curar a porta ao lado descreve o resíduo daquela porta, não o maior defeito.* |
+| ⏳ **UMA elipse por dab é o resíduo que sobra** | depois da W12 sobra `≈1,1`–`1,2` de redondeza no pior regime (pincel grande × malha grossa × leque forte), e é **inerente**: sobre um footprint em que a deformação varia, nenhum afim único a descreve. ⛔ **Não é uma parede** — os dois diminuidores medidos são a malha mais fina (`Smooth`) e o pincel menor. Dividir o dab em sub-dabs é a saída teórica e **não foi medida** |
 | ⏳ **O CHROME do Painter fica no repouso** | a curva, a linha, o gizmo de deformação, os gizmos de selecção, os crachás e a humidade desenham-se em posições de IMAGEM pelo mesmo afim; numa arte dobrada ficam no sítio de repouso. ⚠️ **Não piorou com a W10** (antes a tinta estava errada com eles), e o anel do pincel segue o ponteiro — só o TAMANHO dele sai do afim |
 | ⏳ **O conta-gotas do BgRemoval** | usa uma caixa alinhada aos eixos que ignora rotação **e** malha — mais antigo e mais cru que tudo isto |
 | ⚠️ **9-slice e folha desdobrada** | a malha só conhece o quad da sprite; essas desenham-se SEM deformar, com aviso único no stderr |
@@ -353,6 +401,7 @@ dois que ela já tinha.
 | ⚠️ **Vermelho PRÉ-EXISTENTE, não desta linha** | `ph2d-preview-drive/src/lib.rs:493` — clippy `len` sem `is_empty`. A crate é intocada por esta linha (último commit dela: `21c403c20`, 12/09) |
 | ⏳ **O onion no Arrange com PILHA** | o `clip_time` responde `None` quando o clip activo toca **zero ou duas** vezes ali ⇒ nenhum fantasma. É a resposta honesta (não existe um «agora» de que o passado seja vizinho) e **não** foi smokada: uma pilha com uma strip só devolve o tempo local, que é o caso comum |
 | ⏳ **O AutoKey de um osso key só o SELECCIONADO** | com a corrente inteira congelada durante o arrasto, quem a IK moveu não recebe chave — o `autokey_pass` amostra `gizmo.iter_selected()`. É o modelo do Blender (keya-se o osso escolhido), mas **não foi medido contra ele** |
+| ⏳ **O tecto da shell tem `1 016` linhas de folga** | a W12b moveu `1 014` (o motor do onion). A próxima candidata **não** está medida — e o tecto é a grandeza que soma entre linhas sem ninguém a contar (`CLAUDE.md` §5.0) |
 | ⏳ como no handoff anterior | o mapa dobra sobre si em dobras fortes · F4 *«undo tem poucos passos»* |
 
 ---
@@ -380,7 +429,7 @@ Régua = merge-base `1d43da737`.
 
 | passo | resultado |
 |---|---|
-| `BASE=1d43da737 bash scripts/nextest-impacted.sh` | ✅ **14 639 passaram, 0 falharam** (10 428 saltados), `37,9 s` — a W11 traz as duas maiores crates do repo para a varredura, e nenhum membro da família de flakes de carga reprovou |
+| `BASE=1d43da737 bash scripts/nextest-impacted.sh` | ✅ **14 644 passaram, 0 falharam** (10 428 saltados), `107 s` — o delta contra a corrida da W11b (`14 640`) é **exactamente os 4 gates novos** da W12, e os 15 testes do onion contam o mesmo dos dois lados da mudança de crate. Nenhum membro da família de flakes de carga reprovou, com **outra sessão a compilar na máquina** |
 | `cargo fmt --all --check` | ✅ |
 | `cargo clippy --workspace --all-targets` | ⚠️ **correu em CACHE e não repete avisos** (a saída inteira é uma linha, `Finished`). Forçado o replay da única crate com aviso: `ph2d-preview-drive`, **pré-existente** e intocada por esta linha (§8). As crates desta linha foram corridas com replay: zero |
 | `cargo machete` | ✅ nenhuma dependência por usar — a `ph2d-vector` e a `ph2d-asset` SAÍRAM da `ph2d-skeleton-live` |
@@ -388,15 +437,14 @@ Régua = merge-base `1d43da737`.
 | provas de mutação | ✅ **21 RED** na asserção certa (8 na W2, 8 na W3, **5 na W8**), cada uma com o controlo `1 failed` — um filtro que casasse zero leria `0 passed; 0 failed`. ⚠️ A 1.ª redacção da 5.ª (o onion a aceitar um instante ausente) **não compilava**, e um erro de compilação não é um gate vermelho: foi reescrita numa forma que compila. **W9: mais 3** (a cláusula do Flip · o quarto ramo no canvas · o termo da preview). **W10: mais 4** e **W11: mais 5**, e ⚠️ **uma sobreviveu à primeira em cada uma** — as duas pelo mesmo motivo: citar a porta em vez de a ligar |
 | tectos de LOC | ✅ ⚠️ **A W8 reprovou DOIS ficheiros de teste da shell** (`autokey_pass_tests` `612` · `timeline_onion_tests` `613`, tecto `600`): curados por **corte por responsabilidade** — o gate do osso saiu para o `autokey_bone_tests.rs` e o do relógio para um **sub-módulo** que herda as fixturas (`timeline_onion_clock_tests.rs`, o molde do `skin_at_time_tests` da W7). ⛔ Nunca subir o número. E o resto: ⚠️ **O `app_state.rs` bateu no tecto** (`1 023 / 1 019`) e a cura foi CORTE da prosa que eu tinha acrescentado — nunca subir o número |
 
-⛔⛔ **O NÚMERO QUE O INTEGRADOR TEM DE VER:** a shell fecha esta linha em **`196 980`** linhas
-contra o tecto de `196 990` do `the_shell_only_shrinks` — **`10` de folga**. Ele é um tecto que SOMA
-entre linhas sem ninguém a contar (`CLAUDE.md` §5.0), e esta linha gastou-o quase todo em GATES.
-⭐ **A cura MEDIDA está identificada e não foi feita, de propósito:** o `timeline_onion.rs` e os dois
-ficheiros de teste dele são **~800 linhas que não são composição** — o motor do onion depende só de
-crates (`ph2d-ecs`, `-render`, `-timeline`, `-skeleton-live`, `-poly2d`, `-vec-entities`) e só a
-CHAMADA é da shell. Tirá-lo para `crates/ph2d-timeline-onion` é o molde do HOWTO e devolve ~800
-linhas. ⛔ Enquanto isso não acontece, a cura de um vermelho é corte por responsabilidade — nunca
-subir o número.
+⭐⭐⭐ **O NÚMERO QUE O INTEGRADOR TEM DE VER, e ele MUDOU:** a W12 levou a shell a **`196 989`** de
+`196 990` — **UMA** linha de folga —, e a **W12b fez a cura que este parágrafo prescrevia**: o motor
+do onion (`timeline_onion.rs` + os dois ficheiros de teste, **`1 014`** linhas) saiu para
+[`crates/ph2d-timeline-onion`](../../../crates/ph2d-timeline-onion/), porque ele não é composição —
+nada nele pergunta pela `App`. A shell fecha esta linha em **`195 974`**, com **`1 016`** de folga.
+⚠️ **Prova exacta do movimento: `15` testes antes, `15` depois** (14 + 1 `#[ignore]`), contados nos
+dois lados — *um `git mv` que perde um teste fica VERDE em `check`, `clippy` e nas três suítes*.
+⛔ E continua a valer: a cura de um vermelho é corte por responsabilidade, nunca subir o número.
 ⚠️ **E é por isso que o arch-gate `the_onion_speaks_the_clip_clock` vive na `ph2d-editor-core`** e não
 ao lado do irmão em `shells/desktop/tests/it/`: a razão está escrita no cabeçalho dele.
 
@@ -427,6 +475,11 @@ fechado.
 ⚠️ **E o que a W11 acrescenta:** com o braço bem DOBRADO, o risco pintado tem de sair com a
 **espessura do anel do cursor** — e não uma lasca fina onde o leque comprime a arte.
 
+⚠️ **E o que a W12 acrescenta, que é o que o 3.º report pedia:** repita o toque com o pincel **bem
+grande** (o anel a cobrir vários triângulos da arte dobrada). A marca tem de sair redonda **também
+aí** — ⛔ até 2026-09-14 um pincel grande sobre uma malha grossa saía **menos** redondo do que sairia
+sem correcção nenhuma, porque o dab inteiro levava a deformação de um pedaço dele.
+
 ⚠️ **E o que a W10 acrescenta:** na MESMA cena, dobre o braço pintado (arraste o corpo de um osso),
 escolha a linha *«Painted arm»*, pegue no **Painter** e pinte sobre a arte **dobrada**. A tinta tem de
 sair debaixo do ponteiro. ⛔ Até 2026-09-14 ela caía deslocada exactamente pela deformação, e um
@@ -449,4 +502,4 @@ existir para o apply (W8).
 
 ## §11 — A UMA LINHA proposta para o `CLAUDE.md §5` (entrada **Vector**, depois da linha do ATLAS)
 
-> ✅ **A PELE DE IMAGEM ENTROU NO PASSE DE SPRITES** (13/09, [handoff](docs/Skeleton/handoffs/HANDOFF_INTEGRACAO_line_Vector_A_PELE_NO_PASSE_DE_SPRITES_2026-09-13.md), [plano](docs/Skeleton/03_plano_a_pele_no_passe_de_sprites.md)): uma imagem presa ao esqueleto era uma **camada do Vello por cima do quadro** — fora da ordem, desenhada com o olho fechado, sem as propriedades da sprite, com costuras, e com a régua a ler a âncora CRUA. Hoje ela é uma **sprite do quadro desenhada como MALHA** (`SpriteMesh`, ⭐ **sem pipeline nova**: `N` triângulos entram como UMA tira nas `TriangleStrip` de sempre), e quem copia a instância (vidro do prefab, emissivo) ou aponta (picking, caixas, *View All*, UV do pintor) lê o que é DESENHADO. ⭐⭐ **O orçamento saiu do buffer do Vello e passou a sair do TEMPO do quadro:** `8 738 → 1 543` peças, de `1,08 µs` medidos por peça entregue. ⭐⭐⭐ **E o ONION de um rig passou a EXISTIR** (W7+W8): ele exigia que o seleccionado estivesse animado **e** desenhasse, e numa personagem riggada quem leva keys são os **ossos** (que não desenham) e quem desenha é a **imagem** (que não leva keys) ⇒ *zero fantasmas, sempre* — a nota antiga dizia *«eles desenham o quad de repouso»*, que é verdade **se houver fantasma**. Hoje um OSSO ghosta a arte que ele deforma, **dobrada** no instante de cada silhueta, e os instantes saem dos ossos ANIMADOS do esqueleto (o modo `Keys` é o de omissão e lia as keys do alvo desenhado). ⚠️ **E o relógio era o QUARTO palpite:** a chamada passava o `playhead` da CENA enquanto a aba Keys dirige o `clip_playhead` — com o cursor parado em `0` só o FUTURO tinha vizinhos (report do dono; arch-gate `the_onion_speaks_the_clip_clock`). ⭐⭐ **E a MÃO que pousa um osso passou a existir para o quadro:** o apply da timeline só conhecia a lista do gizmo de sprite, logo com a timeline aberta ele reescrevia a rotação do osso pela curva no quadro seguinte (`0,77 → 0,45`) — o osso voltava debaixo do dedo e o AutoKey lia `mundo == curva`. Hoje o que a mão segura é **o esqueleto inteiro** (a IK da ponta move a corrente toda) e um arrasto de osso é **UM** passo de undo. ⭐⭐ **E o GÉMEO DO FLIP fechou sem report** (W9): a condição da caixa de objecto era *«não estou na ferramenta vectorial»*, então com a ferramenta **Flip** a desenhar uma sprite de referência seleccionada publicava a caixa dela e **apagava o traço por cima da arte** (o ramo do Flip exige o mesmo `on_canvas`, em 9 sítios). Hoje a condição é *«nenhuma ferramenta AUTORA no canvas»* e o terceiro `if` por família morreu. ⛔ **A saída do Painter — isentar os ids do gizmo no hit-test — está RECUSADA aqui:** ali a caixa continua PINTADA e deixa de pegar. ⏳ Ficam o 9-slice e a folha desdobrada.
+> ✅ **A PELE DE IMAGEM ENTROU NO PASSE DE SPRITES** (13/09, [handoff](docs/Skeleton/handoffs/HANDOFF_INTEGRACAO_line_Vector_A_PELE_NO_PASSE_DE_SPRITES_2026-09-13.md), [plano](docs/Skeleton/03_plano_a_pele_no_passe_de_sprites.md)): uma imagem presa ao esqueleto era uma **camada do Vello por cima do quadro** — fora da ordem, desenhada com o olho fechado, sem as propriedades da sprite, com costuras, e com a régua a ler a âncora CRUA. Hoje ela é uma **sprite do quadro desenhada como MALHA** (`SpriteMesh`, ⭐ **sem pipeline nova**: `N` triângulos entram como UMA tira nas `TriangleStrip` de sempre), e quem copia a instância (vidro do prefab, emissivo) ou aponta (picking, caixas, *View All*, UV do pintor) lê o que é DESENHADO. ⭐⭐ **O orçamento saiu do buffer do Vello e passou a sair do TEMPO do quadro:** `8 738 → 1 543` peças, de `1,08 µs` medidos por peça entregue. ⭐⭐⭐ **E o ONION de um rig passou a EXISTIR** (W7+W8): ele exigia que o seleccionado estivesse animado **e** desenhasse, e numa personagem riggada quem leva keys são os **ossos** (que não desenham) e quem desenha é a **imagem** (que não leva keys) ⇒ *zero fantasmas, sempre* — a nota antiga dizia *«eles desenham o quad de repouso»*, que é verdade **se houver fantasma**. Hoje um OSSO ghosta a arte que ele deforma, **dobrada** no instante de cada silhueta, e os instantes saem dos ossos ANIMADOS do esqueleto (o modo `Keys` é o de omissão e lia as keys do alvo desenhado). ⚠️ **E o relógio era o QUARTO palpite:** a chamada passava o `playhead` da CENA enquanto a aba Keys dirige o `clip_playhead` — com o cursor parado em `0` só o FUTURO tinha vizinhos (report do dono; arch-gate `the_onion_speaks_the_clip_clock`). ⭐⭐ **E a MÃO que pousa um osso passou a existir para o quadro:** o apply da timeline só conhecia a lista do gizmo de sprite, logo com a timeline aberta ele reescrevia a rotação do osso pela curva no quadro seguinte (`0,77 → 0,45`) — o osso voltava debaixo do dedo e o AutoKey lia `mundo == curva`. Hoje o que a mão segura é **o esqueleto inteiro** (a IK da ponta move a corrente toda) e um arrasto de osso é **UM** passo de undo. ⭐⭐ **E o GÉMEO DO FLIP fechou sem report** (W9): a condição da caixa de objecto era *«não estou na ferramenta vectorial»*, então com a ferramenta **Flip** a desenhar uma sprite de referência seleccionada publicava a caixa dela e **apagava o traço por cima da arte** (o ramo do Flip exige o mesmo `on_canvas`, em 9 sítios). Hoje a condição é *«nenhuma ferramenta AUTORA no canvas»* e o terceiro `if` por família morreu. ⛔ **A saída do Painter — isentar os ids do gizmo no hit-test — está RECUSADA aqui:** ali a caixa continua PINTADA e deixa de pegar. ⏳ Ficam o 9-slice e a folha desdobrada. ⭐⭐⭐ **E o PINCEL PASSOU A PINTAR SOBRE A ARTE DOBRADA, em três reports** (W10–W12): a tinta caía deslocada **em toda a arte** porque o Painter mapeia o ponteiro pelo afim do **quad de repouso** e as duas portas que sabiam da malha tinham **zero chamadores de produto** (W10); a FORMA continuava a ser a da textura, e onde o leque comprime um disco chegava ao ecrã como uma **lasca** (W11); e a matriz nascia numa **base MISTA** — linhas em `y` para CIMA, colunas em `v` para BAIXO —, o que nega os termos fora da diagonal e espelha a elipse de uma arte **RODADA**, com as fixturas das duas metades alinhadas aos eixos e portanto cegas (W11b). ⭐⭐⭐ **E a W12 fechou o que o dono chamou de *«talvez artefato inevitável»*: uma malha é afim por TRIÂNGULO, e a deformação era lida num PONTO**  — um dab que cobre vários triângulos levava, por inteiro, a deformação de um pedaço dele, e com um pincel grande sobre uma malha grossa isso deixava a marca **menos redonda do que não corrigir nada** (`1,383` contra `1,188`). Hoje a porta responde pelo melhor afim **sobre o disco que o dab ocupa** (`1,18`), e um dab que cabe numa facete recebe a facete **ao bit**. ⚠️ **Três mutações sobreviveram à primeira, e a melhor delas é uma lei:** *um dab REDONDO não consegue medir a BASE* — um factor ortogonal tem os mesmos valores singulares e os mesmos eixos, logo o espelho é invisível ao círculo unitário; só uma elipse **autorada** o separa (`30°` contra `155°`). ⏳ O resíduo que fica é **uma elipse por dab**, e é troca de resolução, não parede. ⭐⭐ **E o tecto da shell foi curado pela cura que o handoff anterior prescrevia e não fez:** o motor do onion (`1 014` linhas, zero `App`) saiu para [`ph2d-timeline-onion`](crates/ph2d-timeline-onion/) — shell `196 989 → 195 974`. 

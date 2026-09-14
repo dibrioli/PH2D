@@ -530,7 +530,83 @@ facto*. O alvo cala-se neste caso.
 | a silhueta simétrica | `a_silhueta_e_mais_larga_junto_da_dobradica` |
 | a cintura sem piso | `a_cintura_tem_piso_em_pixels` |
 
-### §6-ter.8 — ⏳ ABERTO, com o instrumento de cada item
+### §6-ter.8 — ⛔⛔ O UNDO DA POSE NÃO EXISTIA, e a causa é estrutural
+
+> **Report do dono (2026-09-14):** *«undo/redo não funciona para esse pincel»*.
+
+O `close_stroke` da cena grava `StrokeUndo::Stroke { verts: touched(),
+positions: base_positions() }` e **devolve cedo** quando a janela está vazia.
+Quem a enche é o `capture`, que vive no laço **por-vértice** do `dab_core` — e
+este verbo [`Verb::resolve_a_propria_regiao`], logo **nunca passava por lá**.
+
+⇒ o traço movia a malha (`171` vértices na fixtura do gate) e **não deixava rasto
+nenhum**. ⚠️ *Uma janela vazia e um gesto que não fez nada são o mesmo byte para
+quem grava* — nenhum gate acusava, porque nenhum perguntava.
+
+⭐ **O tecido desvia igual e chamava o `capture` à mão**; a pose não. A cura é a
+mesma porta, e a escrita passa a ser em **três passos**:
+
+1. quem vai mudar, contra a malha **viva**;
+2. `capture` de cada um — ⚠️ **antes** da escrita, porque ele lê
+   `mesh.positions()` para congelar o `pre`;
+3. a escrita.
+
+⚠️ **O `capture` é idempotente (carimbo por época), e é isso que faz o `pre`
+estar certo mesmo para um vértice que só entra na janela ao 3.º evento:** a lei
+escreve sempre a partir do `p0` congelado, logo quem ainda não se moveu está
+exactamente onde nasceu.
+
+⚠️⚠️ **E o report tem a mesma FORMA do do tecido (05/09) com um mecanismo
+OPOSTO**, o que vale mais que a cura: lá os dados estavam certos na crate e o
+defeito era da **shell** (o foco preso num chip do painel comia o `Ctrl+Z`); aqui
+a janela saía vazia **da crate**. *Dois relatos idênticos, duas causas em
+camadas diferentes — e quem tratasse o segundo pela memória do primeiro
+procuraria no sítio errado.*
+
+**Gates, e são dois porque provam metades diferentes:**
+
+| gate | onde | o que só ele afirma |
+|---|---|---|
+| `a_pose_enche_a_janela_do_undo` | `ph2d-sculpt3d` (unidade, corre sempre) | a janela enche, o `pre` é o do **pen-down** e **nenhum** vértice movido fica de fora |
+| `a_pose_stroke_undoes_and_redoes` | `ph2d-app-sculpt3d` (produto, `#[ignore]` + GPU) | a corrente inteira: `take_hold` → `pending_grab`/`flush` → `close_stroke` → `undo` → `redo`, e que o desfazer **avisa a tela** |
+
+⚠️ O gate de produto toca **fora** do centro do enquadramento de propósito: numa
+esfera lisa o pivô cai em cima do cursor e o traço é **inerte** (§11.1) — *um
+gate sobre um gesto que não move nada fica verde a medir o nada*.
+
+**Prova de mutação: 2 de 2 sangram, nos dois gates** — apagar o `capture`, e
+(o subtil) chamá-lo **depois** da escrita, que passa o `pre` a ser a pose deste
+evento.
+
+---
+
+### §6-ter.9 — O tecto do *Pivot offset* sobe a `3` (ordem do dono)
+
+O alvo oferece `0..2` (espec §1.1) e o dono pediu `3` ⇒ **divergência
+declarada**, com a medição no doc da própria row
+([`rows_pose.rs`](../../../crates/ph2d-panel-sculpt3d/src/rows_pose.rs)).
+
+**MEDIDO antes de escrever o número** (sonda
+`sonda_o_desvio_da_origem_alem_do_tecto`, três malhas do corpus, raio `0,25`,
+arrasto `0,2`):
+
+| desvio | comprimento do 1.º segmento | deslocamento máximo | construção |
+|---|---|---|---|
+| `0` | `0,223`–`0,251` | `0,156`–`0,180` | `0,17`–`0,55 ms` |
+| `2` (tecto do alvo) | `0,723`–`0,751` | `0,189`–`0,202` | `0,98`–`5,75 ms` |
+| **`3`** | `0,973`–`1,001` | `0,192`–`0,201` | `1,35`–`5,76 ms` |
+| `4` | `1,223`–`1,251` | `0,194`–`0,200` | `1,74`–`5,75 ms` |
+
+⭐ **Três leituras:** a alavanca é **exactamente linear** (`raio × (1 + desvio)`);
+o efeito **satura** depois de `2` (com o pivô longe a rotação tende para uma
+**translação** — o limite geométrico, não um artefacto); e o relógio **também
+satura** nas duas malhas maiores. ⇒ subir de `2` para `3` **não abre regime novo
+nenhum**: o tecto é de PRODUTO, não de recurso, e o que há do outro lado está
+medido e é mais do mesmo.
+
+---
+
+### §6-ter.10 — ⏳ ABERTO, com o instrumento de cada item
 
 - **A região não é pintada, só a cadeia.** O osso mostra a EXTENSÃO do membro;
   *quais vértices* e *com que peso* é outra superfície (o canal por-vértice do

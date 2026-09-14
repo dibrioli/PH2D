@@ -121,6 +121,7 @@
 - ⛔ [Grelha nunca cai num conjunto de MEDIDA NULA ⇒ reporta-o LIMPO (vinco: 2,2e-6 contra 1,9e-1) — os pontos PÕEM-SE](feedback_a_grid_never_lands_on_a_measure_zero_set_so_it_reports_it_clean.md)
 - ⛔⛔ [Contar operações ≠ perfil, e o PERFIL DE BUILD decide o número: suíte 372→57 s por 4 linhas de opt-level; a mesma cura lia 5% a opt-0 e 14% a opt-2](feedback_an_operation_count_is_not_a_profile_and_the_build_profile_decides_the_number.md)
 - ⛔ [Cache que faz o trabalho `O(V)` da chave ANTES de a comparar: 456 µs/quadro para não fazer nada, com o gate de «não reconstrói» VERDE](feedback_a_cache_that_does_the_expensive_work_before_checking_is_not_a_cache.md)
+- ⛔⛔ [Dois reports IDÊNTICOS («não tem undo/redo») com causas em CAMADAS diferentes — e um verbo que DESVIA do caminho comum perde tudo o que ele fazia de lado](feedback_two_identical_reports_can_have_causes_in_different_layers.md)
 - [Reprodução/diagnóstico (19)](reference_topic_repro_discipline.md)
 - [Réguas do quad remesh (19) — densidade · limiar · 1.ª aceite · alisador cego · fixtura com ponta](reference_topic_quad_remesh_rulers.md)
 - ⛔ [Régua de vazamento cuja máscara usa o predicado DO PRODUTO lê 0,00 % sobre o defeito](feedback_a_leak_ruler_masked_by_the_products_own_predicate_hides_the_leak.md)

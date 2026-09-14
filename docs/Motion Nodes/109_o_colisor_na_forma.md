@@ -417,3 +417,156 @@ somas.
 - ⏳ **Velocidade angular** (uma peça que continua a girar depois do toque) e **atrito angular**.
 - ⏳ **O contorno exacto** (casco convexo), §5.5.
 - ⏳ **W4** (o `motion.integrate`) e ⏸️ **W5** (o dispositivo).
+
+---
+
+## §7 — A peça tem MATERIAL, e é o atrito que roda um círculo (3.º report do dono, 2026-09-13)
+
+> *«Os círculos não rotacionam com a colisão, talvez por falta de atrito. Precisamos de parâmetros
+> do material.»*
+
+### §7.1 — A conta que dá razão ao report, e que o explica melhor do que o palpite
+
+A correcção de não-penetração (§6) move as peças **ao longo da normal**, e a alavanca dela é
+`r × n`. Num disco o ponto de contacto está **sobre a linha dos centros**, logo `r = ±R·n` e
+
+```
+r × n  =  ±R · (n × n)  =  0
+```
+
+— zero **por construção**, nas três rotas que produzem um contacto de disco (disco×disco ·
+disco×caixa, por dentro e por fora · o ponto de suporte contra um plano). ⇒ **nenhum número dado
+àquela metade podia rodar um círculo.** Não era um parâmetro mal afinado: era uma metade ausente.
+
+⭐⭐ E a metade que faltava tem a alavanca **máxima exactamente onde a outra tem zero**. Com
+`t = perp(n)` vale a identidade `r × t = r · n`, e num disco `r · n = ±R`:
+
+| | alavanca da NORMAL (`r × n`) | alavanca da TANGENTE (`r · n`) |
+|---|---|---|
+| disco | **0** | **±R** (o raio inteiro) |
+| caixa de chapa | 0 (o meio da face) | `−h` (meia altura) |
+| caixa de quina | ≠ 0 | ≠ 0 |
+
+*As duas são as duas coordenadas do mesmo vector: onde uma é zero a outra é tudo.* Gate:
+`a_disc_has_no_lever_on_the_normal_and_all_of_it_on_the_tangent`
+([`ph2d-contact/src/tests.rs`](../../crates/ph2d-contact/src/tests.rs)).
+
+⚠️ **Zero em aritmética exacta, RUÍDO em `f32`.** O braço é `ponto − centro`, e numa peça longe da
+origem isso subtrai dois números muito maiores do que a diferença. Medido na cena `=115` (bola a
+`x ≈ 1,35`, 2 s de rampa): **`0,0000075°` acumulados**. ⛔ *Uma barra de zero-ao-bit sobre isto
+mediria a aritmética e não a lei* — os gates de cena usam `1e-3°` com este número escrito ao lado.
+
+### §7.2 — E já HAVIA atrito. Ele era do tipo errado.
+
+⛔⛔ O `sim.collide` tem um param `friction` desde que existe, e a cena `=114` põe-no a `0,6`. A
+lei dele era **um sangramento da velocidade tangencial** (`vt *= 1 − atrito`), aplicado **no centro
+de massa**: ele tira a derrapagem e **não produz binário nenhum**. ⇒ *uma bola com atrito máximo
+PARAVA em vez de ROLAR.*
+
+É a família do §5.0 do `CLAUDE.md` — **o consumidor que projecta o valor fora**: o fio está
+completo, o número chega ao solver, e a matemática descarta a parte que interessa. Nenhuma sonda de
+*«quem lê este param?»* o vê: ele **é** lido.
+
+### §7.3 — A lei: atrito como restrição POSICIONAL no ponto de contacto
+
+É a restrição de atrito do PBD (Müller et al. 2007 §3.5, na forma de corpo rígido de
+Macklin–Müller–Chentanez). O **deslize** é quanto os dois pontos de contacto se mexeram um em
+relação ao outro ao longo de `t` **desde o início do passo**; o atrito desfá-lo, repartido entre
+mover e RODAR pela massa efectiva tangencial, limitado por **Coulomb**:
+
+```
+λt = clamp( deslize / (kt_a + kt_b),  ±μ · λn )     kt = w + invI · (r · n)²
+Δp = −t · λt · w                 Δθ = −(r · n) · λt · invI
+```
+
+⭐ **Numa bola pousada isto dá o rolamento de manual à primeira correcção:** `kt = w + 2w = 3w`,
+logo `⅓` do deslize vai para a translação e `⅔` para a rotação, e a soma no ponto de contacto é
+exactamente `−deslize`. *Ela deixa de derrapar porque começou a ROLAR, não porque travou.* Gate
+`the_rolling_split_gives_the_spin_twice_the_slide` — medido `2,00×`.
+
+⚠️ **O limite de Coulomb é o que a torna física e não cola.** Numa pilha assente `λn` é a penetração
+que a gravidade fez **naquele tique** (`~g·dt²`), então o atrito por tique é `μ·g·dt²` — pequeno de
+propósito. Uma bola a `1 u/s` sob gravidade `4` com `μ = 0,6` passa de derrapar a rolar em ~0,3 s.
+
+⚠️ **O deslize inclui a rotação PRÓPRIA da peça** (`spin` integrado), e não só a do contacto: uma
+bola que chega a girar derrapa contra o chão mesmo parada. O `sim.step` calcula esse ângulo antes de
+chamar o contacto — o valor é o mesmo que ele já integrava, e a ordem das somas no `rot` não muda.
+
+### §7.4 — Duas moedas, e a fronteira entre elas é DECLARADA
+
+| onde | moeda | quem roda |
+|---|---|---|
+| peça × peça (`ph2d-contact::separate`, dentro do `sim.step`) | **posição** | `rot`, pela projecção |
+| peça × obstáculo (`sim.collide`) | **velocidade** | `spin`, que o `sim.step` integra |
+
+Não é uma lei escrita duas vezes: é a mesma lei nas duas moedas que cada substrato fala. O
+`sim.collide` é `Effect::Pure`, **não tem `dt` nenhum**, e sem um passo um deslocamento não é
+derivável de uma velocidade — ali o atrito é o impulso tangencial que anula a velocidade **do ponto
+de contacto** (`v·t + ω·bt`), limitado a `μ·jn`, repartido entre travar e rodar.
+
+⚠️⚠️ **E ele AUTO-CORRIGE**: como a velocidade lida é a do PONTO, uma bola a girar depressa demais é
+travada pelo mesmo termo que a pôs a girar. *Sem o `ω·bt` ela acelerava para sempre* — o
+`angular_damping` do `sim.step` nasce em `1` (sem arrasto) e nada mais no quadro a travaria. Gate
+`a_disc_spinning_too_fast_is_slowed_by_the_same_friction`.
+
+⛔ **A peça SEM forma declarada fica no sangramento de sempre, ao bit** — um ponto não tem raio, e
+inventar-lhe um mudaria toda cena que este nó já shipou. Gate
+`the_undeclared_path_is_the_tangential_bleed_verbatim`, que escreve a lei antiga inline.
+⚠️ E `Lock Rotation` **não** troca a lei: com `invI = 0` o Coulomb continua a valer e o giro sai zero
+por construção. *Um botão que diz «não rodes» não pode mudar quanto a peça TRAVA.*
+
+### §7.5 — O material, e como um par se combina
+
+Duas colunas reservadas novas — `friction` e `bounce` ([`attr.rs`](../../crates/ph2d-nodegraph/src/attr.rs)) —
+e duas linhas na secção `Collision` do cartão: **`Friction`** (default `0,5`, o do Rapier) e
+**`Bounciness`** (default `0`, o do Rapier e o do Box2D).
+
+| grandeza | combina por | porquê |
+|---|---|---|
+| atrito | **média geométrica** `√(μa·μb)` | uma peça de gelo desliza contra tudo, que é o que «gelo» quer dizer; um `max` faria uma peça de lixa colar tudo ao chão |
+| salto | **o maior dos dois** | uma bola saltitante salta contra uma parede morta |
+
+(as duas leis são as do Box2D.)
+
+⚠️⚠️ **`None` e `Some(0)` são coisas DIFERENTES, e a distinção é load-bearing.** O obstáculo do
+`sim.collide` tem atrito próprio; uma peça que **não declarou nada** tem de continuar a sofrê-lo
+inteiro (a lei de sempre, ao bit), enquanto uma peça que declarou `Friction 0` **é gelo** e desliza
+sobre ele. Colapsar as duas faria toda cena de hoje perder o atrito do chão — é por isso que
+`ph2d_contact::materiais` devolve `Option`, como a irmã `colisores`.
+
+⚠️ **As duas colunas escrevem-se SEMPRE que o `Collide` está ligado, mesmo a zero** — aqui a lei
+estrutural do `fill` (*«o default não é escrever o mesmo valor, é não escrever»*) **não vale**: `0`
+não é *«como estava»*, é **gelo**, e gelo é um pedido.
+
+### §7.6 — A cena `=115`, e o que ela mede
+
+`PH2D_GPU_COOK_DEMO=115` — quatro bolas iguais, e em cada par muda **um** número do cartão da forma
+(a rampa, o chão, a gravidade e o relógio são os mesmos nós com os mesmos números, com gate:
+`only_the_shape_card_differs_between_the_halves_of_a_pair`).
+
+| quadrante | medido em 2 s |
+|---|---|
+| rampa, `Friction 0` | andou `1,60` · rodou **`−0,0°`** |
+| rampa, `Friction 1` | andou `1,08` · rodou **`279,6°`** — `0,97×` o rolamento puro (`288°`) |
+| queda, `Bounciness 0` | pico `−2,130` = pousada no chão (`−2,35 + R`) |
+| queda, `Bounciness 0,9` | pico **`−1,117`** — sobe `1,01` |
+
+⚠️ **A bola leva um TRACEJADO no contorno**, e ele é a razão de ela ser desenhada assim: *um círculo
+liso rodado é indistinguível de um círculo parado.* Uma cena que demonstra rotação tem de desenhar
+uma coisa cuja rotação se veja.
+
+⚠️ **A cena `=114` não regride**: o vão típico da pilha continua em `0,2192` (`100 %` do lado) e as
+peças continuam a tombar (`54,0°` de máximo, `18` de `25` acima de `5°`, contra `49,4°`/`22` antes
+do atrito). *O que mudou foi elas deixarem de escorregar umas sobre as outras.*
+
+### §7.7 — Aberto, com o mecanismo
+
+- ⏳ **O kernel de GPU do `sim.collide` não conhece nem a forma declarada nem o material** — ele
+  implementa `contact` + o sangramento. É o **mesmo** vão que o §5 já abriu (a caixa declarada
+  também não chega lá), e não um vão novo: quem o fechar fecha os dois de uma vez.
+- ⏳ **A rotação do contacto peça×peça continua sem velocidade angular** (§6): ela é projecção de
+  posição, e uma peça roda enquanto toca. O que MUDOU é que uma bola contra um obstáculo agora
+  ganha `spin` de verdade — as duas metades do app já não dizem a mesma coisa sobre isto, e
+  unificá-las é uma wave própria.
+- ⏳ **Não há atrito de ROLAMENTO** (o que faz uma bola a rolar parar sozinha num plano): com
+  `angular_damping = 1` (o default) ela rola para sempre num chão infinito. É um param, não uma lei.

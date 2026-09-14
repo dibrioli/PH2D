@@ -171,3 +171,176 @@ fn measure_pick_cost() {
     let each = t0.elapsed().as_secs_f64() * 1000.0 / f64::from(N);
     println!("[pick] {each:.2} ms por clique — 3 folhas, quadro de 1600x1000");
 }
+
+/// ⏱️ **SONDA (`--ignored`): quanto custa perguntar «de quem é este pixel» para a PEÇA INTEIRA.**
+///
+/// # ⛔⛔ Porquê agora: uma recusa medida mudou de premissa
+///
+/// O cabeçalho de [`super`] recusa o *id-buffer* — *«o custo espalhado por cada pixel de cada quadro
+/// para responder a uma pergunta que só se faz **num clique**»*. ⚠️ **Material por objecto faz dela
+/// uma pergunta POR PIXEL**, e o `CLAUDE.md` §0.0 é explícito: *quem move o número que tornava algo
+/// inalcançável tem de reconferir a nota*.
+///
+/// ⇒ esta sonda mede a rota que a recusa **não** cobria: resolver o dono **só no ponto final**, uma
+/// vez por pixel de peça, em vez de arrastar um segundo canal por cada passo da marcha.
+///
+/// # As três colunas, e o que cada uma vale
+///
+/// | coluna | o que é | quanto dela é custo NOVO |
+/// |---|---|---|
+/// | `traçado` | a marcha que o quadro já paga | zero — já acontece |
+/// | `pontos` | uma 2.ª marcha só para saber ONDE cada pixel bateu | zero **se o G-buffer guardar o ponto**, que ele hoje DEITA FORA (`march` devolve-o e o `trace` ignora-o) |
+/// | `donos` | avaliar cada folha no ponto e ficar com a de menor módulo | **este é o preço da feature** |
+#[test]
+#[ignore = "sonda de medição"]
+fn measure_what_a_material_per_object_would_cost() {
+    use ph2d_field_render::{Lens, surfaces_under};
+    use std::time::Instant;
+
+    let (w, h) = (640u32, 360u32);
+    // ⚠️ **Ortográfica e enquadrada**, para a contagem de pixels de peça não depender da lente.
+    let cam = Orbit {
+        lens: Lens::Ortho,
+        ..front()
+    };
+    let screen = Screen::new(w, h, cam.half_extent);
+    let reg = crate::smoke::sampled_registry();
+
+    println!(
+        "folhas ·  peça px ·  traçado ·   pontos ·    donos ·  por pixel ·  c/ caixa ·  visitadas"
+    );
+    for k in [1usize, 2, 4, 8, 16] {
+        // `k` esferas numa grelha, todas dentro do enquadramento e em união.
+        let lado = (k as f32).sqrt().ceil() as usize;
+        let passo = 0.9 / lado as f32;
+        let mut nodes: Vec<Node> = (0..k)
+            .map(|i| Node {
+                xform: Xform::at(
+                    ((i % lado) as f32 - (lado - 1) as f32 * 0.5) * passo,
+                    ((i / lado) as f32 - (lado - 1) as f32 * 0.5) * passo,
+                    0.0,
+                ),
+                kind: NodeKind::Leaf(Primitive::Sphere {
+                    radius: passo * 0.45,
+                }),
+                mods: Vec::new(),
+                verb: None,
+            })
+            .collect();
+        nodes.push(Node {
+            xform: Xform::IDENTITY,
+            kind: NodeKind::Combine {
+                op: Op::Union(Blend::Sharp),
+                children: (0..k).map(|i| NodeId(i as u32)).collect(),
+            },
+            mods: Vec::new(),
+            verb: None,
+        });
+        let doc = FieldDoc::new(nodes, NodeId(k as u32)).expect("a grelha de esferas");
+
+        let t = Instant::now();
+        let g = ph2d_field_render::trace(&doc, &reg, &cam, w, h);
+        let tracado = t.elapsed().as_secs_f64() * 1e3;
+
+        let pixels: Vec<[f32; 2]> = (0..(w as usize * h as usize))
+            .filter(|i| g.hit[*i])
+            .map(|i| [(i % w as usize) as f32 + 0.5, (i / w as usize) as f32 + 0.5])
+            .collect();
+        let t = Instant::now();
+        let pontos = surfaces_under(&doc, &reg, &cam, screen, &pixels);
+        let ms_pontos = t.elapsed().as_secs_f64() * 1e3;
+
+        // ⚠️ **Uma fita por folha, compilada UMA vez** — é a lei que o `owners_under` já paga, e
+        // medir sem ela mediria o JIT, não a pergunta.
+        let folhas: Vec<ph2d_field_eval::Field> = (0..k)
+            .map(|i| {
+                let placed = FieldDoc::new(vec![doc.nodes()[i].clone()], NodeId(0))
+                    .expect("a folha sozinha");
+                ph2d_field_eval::Field::new(&placed)
+            })
+            .collect();
+        let t = Instant::now();
+        let mut donos = 0usize;
+        for p in pontos.iter().flatten() {
+            let mut melhor = (f32::INFINITY, 0usize);
+            for (n, f) in folhas.iter().enumerate() {
+                let v = f
+                    .at(f64::from(p[0]), f64::from(p[1]), f64::from(p[2]))
+                    .abs() as f32;
+                if v < melhor.0 {
+                    melhor = (v, n);
+                }
+            }
+            donos += melhor.1;
+        }
+        let ms_donos = t.elapsed().as_secs_f64() * 1e3;
+        assert!(
+            donos < usize::MAX,
+            "o laço não pode ser optimizado para fora"
+        );
+
+        // ⭐⭐⭐ **A MESMA resposta com a CAIXA à frente** — a bola de cada folha já é derivada pela
+        // casa (`bounds::bounding_ball`), e um ponto fora dela não pode ser o dono: numa união o
+        // vencedor vale ~0, logo ele está SOBRE a superfície da própria folha.
+        //
+        // ⚠️ **Com uma mistura a superfície sai para FORA das bolas das folhas** (o `fold_children`
+        // diz-o por escrito: uma união suave empurra o vinco), então a rede tem de existir — aqui
+        // ela é contada, não escondida.
+        let bolas: Vec<ph2d_field_eval::bounds::Ball> = (0..k)
+            .map(|i| {
+                let placed = FieldDoc::new(vec![doc.nodes()[i].clone()], NodeId(0))
+                    .expect("a folha sozinha");
+                ph2d_field_eval::bounds::bounding_ball(&placed, &reg).expect("a bola da folha")
+            })
+            .collect();
+        let t = Instant::now();
+        let (mut donos2, mut visitadas, mut redes) = (0usize, 0usize, 0usize);
+        for p in pontos.iter().flatten() {
+            // ⚠️⚠️ **A MARGEM não é folga, é OBRIGATÓRIA — e a 1.ª redacção desta sonda não a
+            // tinha, e a rede disparou em 26 216 de 26 216 pixels.** A marcha pára quando o campo
+            // desce abaixo de uma tolerância, ou seja **ligeiramente FORA** da superfície: o ponto
+            // está a um epsilon da bola, sempre, e `d² <= r²` reprova em todo o lado. *Um filtro
+            // exacto sobre um ponto que é aproximado por construção rejeita a resposta certa.*
+            //
+            // ⚠️ Aqui ela é derivada do ENQUADRAMENTO (a tolerância da marcha escala com ele); numa
+            // implementação a sério ela sai da `Sharpness`, que é quem a escolhe.
+            let margem = 0.01 * cam.half_extent;
+            let dentro = |b: &ph2d_field_eval::bounds::Ball| {
+                let d = [p[0] - b.center[0], p[1] - b.center[1], p[2] - b.center[2]];
+                let r = b.radius + margem;
+                d[0] * d[0] + d[1] * d[1] + d[2] * d[2] <= r * r
+            };
+            let cabe = folhas.len() > 1 && bolas.iter().any(dentro);
+            if !cabe {
+                redes += 1;
+            }
+            let mut melhor = (f32::INFINITY, 0usize);
+            for (n, f) in folhas.iter().enumerate() {
+                if cabe && !dentro(&bolas[n]) {
+                    continue;
+                }
+                visitadas += 1;
+                let v = f
+                    .at(f64::from(p[0]), f64::from(p[1]), f64::from(p[2]))
+                    .abs() as f32;
+                if v < melhor.0 {
+                    melhor = (v, n);
+                }
+            }
+            donos2 += melhor.1;
+        }
+        let ms_caixa = t.elapsed().as_secs_f64() * 1e3;
+        assert_eq!(
+            donos2, donos,
+            "a caixa à frente mudou a RESPOSTA, não só o relógio"
+        );
+
+        let n = pixels.len().max(1);
+        println!(
+            "{k:6} · {n:8} · {tracado:6.1} ms · {ms_pontos:6.1} ms · {ms_donos:6.1} ms · \
+             {:6.0} ns · {ms_caixa:6.1} ms · {:4.1} folhas/px · rede {redes}",
+            ms_donos * 1e6 / n as f64,
+            visitadas as f64 / n as f64
+        );
+    }
+}

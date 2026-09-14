@@ -191,9 +191,39 @@ linha que decide alguma coisa (`+54 %` de pixels cortados a `0` stops, `−13 %`
   *«duas lâmpadas no mesmo lugar são uma lâmpada»*. **Pré-existente na
   [`ph2d-light`](../../crates/ph2d-light/), não desta fatia**, e o modo Render é só o primeiro
   consumidor que o torna visível em cor. Acendê-las multiplica a intensidade por `3` no mesmo sítio.
-- ⏳ **O material por objecto** pede o nó por pixel. O `surface_under` custa `0,10 ms` por raio
-  (é uma folha de menor módulo), o que a `640×360` seriam ~`23 s` — ⇒ a via é a especialização por
-  ladrilho que o traçador já tem, e ela é uma medição por fazer.
+- ✅ **O MATERIAL POR OBJECTO foi MEDIDO (13/09) e a rota está escolhida** — esta linha dizia
+  *«~`23 s` a `640×360`, e a via é a especialização por ladrilho»*, e as duas metades estavam erradas.
+  O `23 s` saía de chamar o `surface_under` **por pixel**, que recompila a árvore a cada chamada (um
+  JIT por raio); a pergunta real faz-se **uma vez, no ponto final**, e o ladrilho não é preciso.
+  Medido em máquina calma (`load 1,8`), grelha de esferas a `640×360`, `~26 100` px de peça
+  ([`pick_tests::measure_what_a_material_per_object_would_cost`](../../crates/ph2d-app-field3d/src/pick_tests.rs)):
+
+  | folhas | donos, ingénuo | por pixel | donos, **com a bola à frente** | folhas visitadas |
+  |---:|---:|---:|---:|---:|
+  | `1` | `0,6 ms` | `24 ns` | `0,6 ms` | `1,0` |
+  | `4` | `3,5 ms` | `132 ns` | `0,9 ms` | `1,0` |
+  | `8` | `6,0 ms` | `258 ns` | `0,9 ms` | `1,0` |
+  | `16` | `13,3 ms` | `507 ns` | **`1,6 ms`** | `1,0` |
+
+  ⭐⭐ **A cura é a bola que a casa JÁ deriva** (`bounds::bounding_ball`): numa união o dono vale `~0`,
+  logo o ponto está **sobre** a superfície da própria folha — quem não a contém não pode ganhar.
+  `8,3×` com **a mesma resposta** (há assert no gate). O custo deixa de seguir a contagem de folhas.
+  ⚠️⚠️ **E a MARGEM é obrigatória, não folga:** a 1.ª redacção da sonda testava `d² ≤ r²` e a rede
+  disparou em **`26 216` de `26 216`** pixels — a marcha pára quando o campo desce abaixo de uma
+  tolerância, isto é **ligeiramente fora** da superfície. *Um filtro exacto sobre um ponto que é
+  aproximado por construção rejeita a resposta certa, em todo o lado.*
+  ⚠️ **Duas coisas que a sonda NÃO mede:** formas **sobrepostas** (a grelha dela é separada, daí o
+  `1,0`) e uma **mistura suave**, que empurra a superfície para fora das bolas das folhas — o
+  `fold_children` escreve-o. Nos dois casos a rede existe e é contada, nunca escondida.
+  ⭐ **E a 2.ª marcha (`pontos`, `5–6 ms`) é GRÁTIS:** o `march` já devolve o ponto de mundo e o
+  `trace` **deita-o fora** (*«o ponto de mundo não interessa a um quadro inteiro»* — deixou de ser
+  verdade no dia em que o material passou a ser por objecto). Guardá-lo custa `12 B` por pixel.
+- ⛔⛔ **E isto reabre uma RECUSA MEDIDA, pela porta que o `CLAUDE.md` §0.0 nomeia.** O cabeçalho do
+  [`pick`](../../crates/ph2d-app-field3d/src/pick.rs) recusa o *id-buffer* porque ele espalharia um
+  segundo canal *«por cada pixel de cada quadro para responder a uma pergunta que só se faz num
+  clique»*. ⇒ **material por objecto faz dela uma pergunta por pixel**, e a premissa dissolveu-se.
+  ⚠️ A recusa continua a valer **contra o id-buffer**: a rota medida acima não arrasta canal nenhum
+  pela marcha — ela resolve o dono **depois**, uma vez por pixel de peça.
 - ⏳ **O relógio fino** do custo do sombreamento (a máquina esteve a `load ~9`).
 - ⏳ **O gémeo em WGSL** do material (o gerado pelo MaterialX) com gate de paridade contra a
   `ph2d-material` — é o que leva esta lei à escultura e ao runtime.

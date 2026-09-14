@@ -60,6 +60,22 @@ pub(crate) fn paint(_state: &mut SkeletonPanelState, ctx: &mut PaintCtx) {
     let body_top = rect.y + PANEL_TITLE_BASELINE + title_size + Spacing::Md.px();
     let body_h = (rect.y + rect.h - body_top - PANEL_HEAD_PAD).max(0.0);
 
+    // ⭐⭐⭐ **OS NÚMEROS DO DOCUMENTO ENTRAM NO STORE ANTES DE A SECÇÃO PINTAR** — ver
+    // [`section::valores_dos_campos`]. ⛔ Até 2026-09-14 nenhum deles era semeado: os cinco campos
+    // mostravam o `0` com que nasceram, e um `Chain = 0` significa *«até à raiz»*.
+    //
+    // ⚠️ **A `set_number_value` preserva a edição em curso** (o campo com foco e o arrasto de
+    // scrub), então semear todo quadro não tira o cursor ao artista. E vive AQUI porque o `RowCtx`
+    // recebe o store **imutável** — a fileira pinta, não escreve.
+    {
+        let store = ctx.host.store_mut();
+        for (id, _, _, valor) in section::campos_do_osso().into_iter().flatten() {
+            store.set_number_value(id, valor);
+        }
+        for (id, _, _, valor) in section::campos_da_ancora().into_iter().flatten() {
+            store.set_number_value(id, valor);
+        }
+    }
     let content_h = {
         let scene = &mut *ctx.scene;
         let text_system = &mut *ctx.text_system;

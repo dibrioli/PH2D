@@ -2576,6 +2576,47 @@ de canvas não pode voltar a chamá-los, senão eles correm **duas** vezes por q
 deste repo pergunta «quem escreve pose depois de ela ser lida?»* — o que existe agora é este gate,
 sobre estes dois.
 
+**W15 — OS TRÊS ITENS DO REPORT DO IK** (2026-09-14: *«IK chain mostra 0 ao inserir IK. Não temos
+uma linha indicativa do IK Chain. IK Bend só funciona se o IK Chain for 2»*). ⭐ **Dois eram o mesmo
+defeito, e o terceiro não existia.**
+
+**(a) O painel MENTIA sobre os cinco números, não só sobre o `Chain`.** O `populate` regista os
+campos com `value: 0.0`, o publicador (`state::set_current_bone_ik`) existe e a shell chama-o todo
+quadro — e os valores morriam no `state`, porque quem pinta a fileira (`labeled_number_field`) tira o
+valor do **WidgetStore** e ninguém lá escrevia. *Um publicador sem quem o leia e uma lei ausente
+produzem o mesmo painel.* ⚠️ **O gate red-first acusou `Length` primeiro**: os cinco mostravam `0`, e
+o dono só notou o `Chain` porque ali `0` significa **«até à raiz»** — o default do Blender, que é a
+queixa nº 1 documentada da feature. ⇒ **UMA tabela, DOIS consumidores** (`campos_do_osso` /
+`campos_da_ancora`): quem pinta e quem semeia percorrem a mesma lista, e um campo novo traz o valor
+no tuplo ou **não compila**. A semeadura é a `set_number_value`, que **preserva a edição em curso**
+(o campo com foco e o arrasto) — semear por cima do cursor seria trocar um defeito por outro.
+
+**(b) A LINHA DO `IK Chain` EXISTE** — uma **faixa** por baixo dos ossos governados, da raiz da
+corrente à ponta, com um **X** na raiz (é ali que o `Chain` pára) e a cor a seguir a selecção. ⚠️ A
+população é a **MESMA** do solver (`goal::governed`): uma lista derivada por outro caminho seria a
+segunda resposta à mesma pergunta, e no dia em que divergissem o desenho estaria a mentir sobre quem
+dobra. ⚠️ Desenhada **antes** dos ossos e a `35 %` de opacidade — ela é um realce, não um desenho
+novo: a cheio e por cima esconderia o corpo do osso, que é o que a mão agarra.
+
+**(c) ⛔⛔ *«IK Bend só funciona se o Chain for 2»* — MEDIDO, e a premissa é FALSA.** O lado é honrado
+de **2 a 6** ossos, em três distâncias de alvo, com a ponta a chegar (`erro < 1e-2`). Os dois
+caminhos aplicam-no por mecanismos diferentes — o fechado escolhe o sinal da lei dos cossenos, o
+FABRIK **arqueia e espelha** a corrente antes de iterar — e ambos respondem. ⇒ o que o dono viu foi
+**(a)**: o painel dizia `Chain = 0` e o número que ele lia não era o que a restrição usava. *Um gate
+que defende uma premissa refutada vale mais que a refutação sozinha: ele impede que ela volte.*
+
+**Cinco mutações, cinco RED** — o painel sem semeadura · a faixa a ignorar o `Chain` · a faixa fora
+do quadro · o espelho do FABRIK apagado · o valor do `Chain` trocado na tabela.
+
+⚠️ **E o tecto de LOC apanhou o gate novo:** o `reach.rs` foi a `731` de `700` e partiu-se por
+RESPONSABILIDADE (`reach_chain_side_tests.rs`) — *para que lado dobra uma corrente de N* não é a
+mesma pergunta que *onde ela chega*. ⛔ Nunca subir o número.
+
+⏳ **ABERTO e NOMEADO:** o `bend` é **capturado** no `Add` com a corrente de `DEFAULT_CHAIN` (dois
+ossos). Se o artista subir o `Chain` depois, o lado guardado descreve a geometria de então — ele
+continua a ser honrado, mas foi lido de uma corrente mais curta. Re-capturar ao mudar o número é
+decisão de produto (é mexer num bit autorado sem o artista pedir).
+
 ## ⛔ Recusas MEDIDAS deste módulo — não as reconstrua
 
 > ⚠️ **As seis de 2026-09-07/08 entraram aqui na auditoria de 08/09** — elas viviam só em prosa e em

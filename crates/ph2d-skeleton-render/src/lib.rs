@@ -23,7 +23,7 @@ mod goal;
 
 /// ⭐ O ARCO DE LIMITE — irmão do `goal` pelo teto de LOC, cortado por assunto.
 mod limit;
-pub use goal::{Goal, draw_goals, goal_radius_px};
+pub use goal::{Goal, draw_chains, draw_goals, goal_radius_px};
 pub use limit::{LIMIT_HANDLE_R_PX, LimitArc, draw_limit};
 
 use ph2d_tokens::{ColorToken, Theme};

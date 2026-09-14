@@ -49,6 +49,7 @@ As cinco waves:
 | **W14** | **o AutoKey grava a pose que a MÃO fez** — a população era a SELECÇÃO, e agarrar um osso não o selecciona: a pose feita com IK ia para a animação por um osso só |
 | **W14b** | **com uma restrição VIVA o sujeito da autoria é o ALVO da âncora** — os ossos são derivados e o ledger salta-os com razão; a mão do quadro passa a trazer o alvo |
 | **W14c** | **a ORDEM DO QUADRO** — a malha de uma imagem presa era construída ANTES de o solver de IK escrever a pose, e o apply repunha a curva mesmo a tempo: o gizmo mostrava a IK e a arte mostrava a curva, para sempre |
+| **W15** | **os três itens do report do IK** — o painel mentia sobre os CINCO números (nunca semeados do documento), a corrente governada passou a ter uma FAIXA na tela, e o *«bend só funciona a 2»* foi medido e **refutado** |
 
 ---
 
@@ -80,6 +81,9 @@ As cinco waves:
 | `shells/desktop/src/render_loop/fase_snapshots_publish.rs` (W9) | a condição do `object_gizmo_on` ganha a cláusula da ferramenta Flip | **é a cura** — a caixa de OUTRA família deixa de matar o traço do Flip |
 | `shells/desktop/src/render_loop/timeline_onion.rs` (W8) | `collect_onion_ghosts` passa a receber `live_clip_t: Option<f64>` — `None` = o clip activo não tem instante único aqui ⇒ **zero fantasmas** | **muda a assinatura** (shell-interna) |
 | `shells/desktop/src/render_loop/fase_canvas_overlays.rs` (W8) | o relógio do onion passa a ser `self.timeline_view.clip_time` (era `self.playhead.time()`) | **é a cura do 1.º relato** |
+| `ph2d-panel-skeleton/src/{section,paint}.rs` (W15) | os cinco campos numéricos passam a ser SEMEADOS do documento, por UMA tabela que quem pinta e quem semeia percorrem | **é a cura** — o painel mostrava `0` em todos |
+| `ph2d-app-skeleton/src/goal.rs` (W15) | `chains` NOVA — as juntas da corrente governada, em mundo, pela MESMA população do solver | sim |
+| `ph2d-skeleton-render/src/goal.rs` (W15) | `draw_chains` NOVA — a faixa por baixo dos ossos governados + o X na raiz | sim |
 | `shells/desktop/src/render_loop/fase_skeleton_drives.rs` (W14c, NOVO) | o osso inteligente + a âncora de IK saem da fase de CANVAS para a metade da SIMULAÇÃO, entre o apply e o extract | **é a cura** |
 | `ph2d-app-skeleton/src/goal.rs` (W14b) | `target_of` NOVA — o alvo que a âncora de um osso persegue, extraída do `drag_anchor` (a mesma procura, dois consumidores) | sim |
 | `shells/desktop/src/render_loop/timeline_bridge.rs` (W14b) | a `maos_do_quadro` traz também o **ALVO** de cada âncora do esqueleto segurado | **muda comportamento**: o apply deixa de escrever por cima do alvo, e o AutoKey passa a cunhá-lo |
@@ -500,6 +504,12 @@ fechado.
 
 ⚠️ **E o que a W11 acrescenta:** com o braço bem DOBRADO, o risco pintado tem de sair com a
 **espessura do anel do cursor** — e não uma lasca fina onde o leque comprime a arte.
+
+⚠️ **E o que a W15 acrescenta (os três itens do report do IK):** com a âncora criada, o painel
+*Bones* tem de mostrar **`Chain = 2`** (e `Mix = 1`, `Softness = 0`, mais o comprimento e a força do
+osso) — ⛔ até 2026-09-14 os cinco mostravam `0`. Mudar o `Chain` para `3` ou `4` tem de **mover a
+faixa** que marca a corrente governada no canvas (o X marca onde ela pára), e o **Bend** tem de
+continuar a inverter o joelho com `Chain` maior que `2`.
 
 ⚠️ **E o que a W14c acrescenta (as duas fotos, *«ao acrescentar o IK o osso perde influência sobre a
 ponta da malha»*):** na mesma cena, com a âncora criada, arraste-a e veja a **ARTE** dobrar com os

@@ -235,6 +235,12 @@ mod reach;
 #[cfg(test)]
 #[path = "reach_action_tests.rs"]
 mod reach_action_tests;
+/// ⭐ Os gates do **LADO da dobra numa corrente longa** — o mesmo corte, e ele nasceu de um report
+/// do dono (*«IK Bend só funciona se o IK Chain for 2»*): *para que lado dobra uma corrente de N*
+/// não é a mesma pergunta que *onde ela chega*.
+#[cfg(test)]
+#[path = "reach_chain_side_tests.rs"]
+mod reach_chain_side_tests;
 /// ⭐ Os gates da **parede de uma junta** — irmão do [`reach_tests`] pelo teto de LOC, cortado por
 /// RESPONSABILIDADE: *até onde este osso dobra* não é uma pergunta sobre alcance.
 #[cfg(test)]

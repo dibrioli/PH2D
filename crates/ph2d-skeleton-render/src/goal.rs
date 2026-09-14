@@ -62,6 +62,84 @@ const GOAL_LINE_PX: f64 = 2.5;
 /// osso, que é a segunda resposta à mesma pergunta.
 pub type Goal = (u64, [f64; 2], [f64; 2], [f64; 2]);
 
+/// A espessura da faixa que marca a corrente governada — **mais grossa que o osso**, para ela se ler
+/// como um realce POR BAIXO dele e não como mais uma linha.
+const CHAIN_BAND_PX: f64 = 7.0;
+
+/// ⭐⭐⭐ **A CORRENTE QUE A ÂNCORA GOVERNA, desenhada** — uma faixa por baixo dos ossos que ela
+/// dobra, da raiz da corrente até à ponta.
+///
+/// ⛔⛔ **Report do dono** (2026-09-14): *«não temos uma linha indicativa do IK Chain»*. O `Chain` é
+/// um número num painel, e o que ele significa é **quais ossos obedecem** — uma pergunta sobre a
+/// cena. Sem isto, mudar o número de `2` para `4` não tem efeito visível nenhum até se arrastar o
+/// alvo, e o artista fica a adivinhar qual foi a conta.
+///
+/// ⚠️ **Ela desenha-se ANTES dos ossos e das âncoras**, e é o que a torna um realce em vez de um
+/// desenho novo: a faixa passa por baixo do corpo do osso, que continua a ser o que se agarra.
+///
+/// ⚠️ **A cor segue a selecção**, como o losango: a corrente do osso escolhido acende, as outras
+/// ficam apagadas. Sem isso, uma cena com quatro restrições seria uma teia de faixas todas iguais.
+pub fn draw_chains(
+    chains: &[(u64, Vec<[f64; 2]>)],
+    selected: Option<u64>,
+    transform: Affine,
+    theme: Theme,
+    target: &mut VectorScene,
+) {
+    let vello = |t: ColorToken| {
+        let c = t.resolve(theme);
+        VelloColor::from_rgba8(c.r, c.g, c.b, c.a)
+    };
+    let (aceso, apagado) = (vello(ColorToken::Accent), vello(ColorToken::AccentSoft));
+    for (bits, juntas) in chains {
+        let mut faixa = BezPath::new();
+        for (i, j) in juntas.iter().enumerate() {
+            let p = transform * Point::new(j[0], j[1]);
+            if i == 0 {
+                faixa.move_to(p);
+            } else {
+                faixa.line_to(p);
+            }
+        }
+        let cor = if Some(*bits) == selected {
+            aceso
+        } else {
+            apagado
+        };
+        target.inner_mut().stroke(
+            &Stroke::new(CHAIN_BAND_PX),
+            Affine::IDENTITY,
+            // ⚠️ **Meia opacidade**: ela é um fundo. A cheio, uma faixa mais grossa que o osso
+            // esconderia a arte por baixo dela e o artista deixaria de ver o que está a posar.
+            &Brush::Solid(cor.with_alpha(CHAIN_BAND_ALPHA)),
+            None,
+            &faixa,
+        );
+        // ⭐ **A marca da RAIZ da corrente** — é ali que o `Chain` pára, e é a única parte da faixa
+        // que carrega informação nova: sem ela, duas correntes que se sobrepõem lêem-se como uma.
+        if let Some(raiz) = juntas.first() {
+            let p = transform * Point::new(raiz[0], raiz[1]);
+            let r = CHAIN_BAND_PX;
+            let mut risco = BezPath::new();
+            risco.move_to(Point::new(p.x - r, p.y - r));
+            risco.line_to(Point::new(p.x + r, p.y + r));
+            risco.move_to(Point::new(p.x - r, p.y + r));
+            risco.line_to(Point::new(p.x + r, p.y - r));
+            target.inner_mut().stroke(
+                &Stroke::new(LINE_PX),
+                Affine::IDENTITY,
+                &Brush::Solid(cor),
+                None,
+                &risco,
+            );
+        }
+    }
+}
+
+/// Quanto a faixa da corrente deixa passar. ⚠️ Número de PRODUTO (a leitura da tela), como o
+/// [`GOAL_LINE_PX`]: ela é um FUNDO, e a cheio esconderia a arte que o artista está a posar.
+const CHAIN_BAND_ALPHA: f32 = 0.35;
+
 /// ⭐⭐⭐ **A ÂNCORA DE IK** — o losango do alvo, mais o tracejado que o liga à ponta da corrente.
 ///
 /// # Por que um LOSANGO e não mais um anel

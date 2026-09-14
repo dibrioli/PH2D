@@ -57,6 +57,7 @@ mod architecture_panel_wiring_parity;
 mod architecture_stack_versions_doc_matches_the_lockfile;
 mod architecture_the_canvas_pointer_asks_the_mesh;
 mod architecture_the_foundation_modules_form_a_dag;
+mod architecture_the_ik_chain_is_drawn;
 mod architecture_the_onion_speaks_the_clip_clock;
 mod architecture_the_pose_motors_run_before_the_mesh;
 mod architecture_the_shell_only_shrinks;

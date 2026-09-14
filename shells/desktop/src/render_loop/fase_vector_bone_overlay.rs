@@ -120,6 +120,19 @@ impl crate::App {
                     // losango do alvo, e desenhar os dois prometeria dois verbos onde há um.
                     crate::skeleton_goal::unanchored_ends(sim)
                 };
+                // ⭐⭐⭐ **A FAIXA DA CORRENTE GOVERNADA, por BAIXO dos ossos** (report do dono,
+                // 2026-09-14: *«não temos uma linha indicativa do IK Chain»*). O `Chain` é um
+                // número no painel e o que ele significa é **quais ossos obedecem** — sem isto,
+                // mudá-lo de `2` para `4` não tem efeito visível nenhum até se arrastar o alvo.
+                // ⚠️ **Antes** do `draw_bones`, e é o que a torna um realce: o corpo do osso
+                // continua a ser o que se vê e o que se agarra.
+                ph2d_skeleton_render::draw_chains(
+                    &crate::skeleton_goal::chains(sim),
+                    hero.gizmo.selection,
+                    cam_affine,
+                    hero.theme,
+                    vector_scene,
+                );
                 ph2d_skeleton_render::draw_bones(
                     &ossos,
                     hero.gizmo.selection,
@@ -131,6 +144,8 @@ impl crate::App {
                 );
                 // ⭐⭐⭐ **AS ÂNCORAS DE IK** — o losango do alvo e o tracejado até à ponta. Elas
                 // vêm DEPOIS dos ossos porque o alvo é o que a mão agarra: ele fica por cima.
+                // ⚠️ E a FAIXA da corrente governada já foi desenhada ANTES dos ossos, por baixo
+                // deles (`draw_chains`): ela é um realce, não um desenho novo.
                 ph2d_skeleton_render::draw_goals(
                     &crate::skeleton_goal::anchors(sim),
                     hero.gizmo.selection,

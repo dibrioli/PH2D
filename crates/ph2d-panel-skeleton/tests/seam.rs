@@ -589,3 +589,47 @@ fn the_deform_row_asks_about_the_scene_and_not_about_the_selection() {
     limpa();
     state::set_current_skinned_image(false);
 }
+
+/// ⭐⭐⭐ **OS NÚMEROS DO PAINEL SÃO OS DO DOCUMENTO** (report do dono, 2026-09-14: *«IK chain mostra
+/// 0 ao inserir IK»*).
+///
+/// ⛔⛔ **Os cinco campos nasciam com `0` e nada lá escrevia** — o `populate` regista-os com
+/// `value: 0.0` e ninguém chamava `set_number_value`. O publicador (`set_current_bone_ik`) existe,
+/// a shell chama-o todo quadro, e os valores morriam no `state` porque a fileira que os pinta não
+/// os lê: o `labeled_number_field` tira o valor do **WidgetStore**.
+///
+/// ⚠️ **`Chain = 0` não é um `0` inócuo:** ele significa *«até à raiz»*, e é a queixa nº 1
+/// documentada do default do Blender. O painel dizia ao artista exactamente a coisa que o modelo
+/// existe para não fazer — e um `Mix = 0` lido como verdade é a restrição DESLIGADA.
+///
+/// ⛔ O CONTROLO é um valor por campo, todos diferentes: um painel que semeasse só um, ou que
+/// semeasse todos com o mesmo, passaria num gate escrito com um número só.
+#[test]
+fn the_number_fields_show_the_document_not_the_value_they_were_born_with() {
+    let mut host = MockPanelHost::with_panel::<SkeletonPanel>();
+    let mut st = SkeletonPanelState;
+    publica_tudo();
+    state::set_current_bone(Some((20.0, 1.5)));
+    state::set_current_bone_ik(Some((0.5, 0.25, 4.0, ph2d_skeleton::BendSide::Keep)));
+    // Pintar UMA vez: o `painted_rect` corre o painel inteiro e devolve o rect de um id.
+    host.painted_rect::<SkeletonPanel>(&mut st, VIEWPORT, ids::VECTOR_BONE_IK_CHAIN)
+        .expect("o campo Chain tem de ser pintado com um osso com ancora em foco");
+    for (id, esperado, nome) in [
+        (ids::VECTOR_BONE_LENGTH, 20.0, "Length"),
+        (ids::VECTOR_BONE_STRENGTH, 1.5, "Strength"),
+        (ids::VECTOR_BONE_IK_MIX, 0.5, "Mix"),
+        (ids::VECTOR_BONE_IK_SOFTNESS, 0.25, "Softness"),
+        (ids::VECTOR_BONE_IK_CHAIN, 4.0, "Chain"),
+    ] {
+        let (_, v, ..) = host
+            .store()
+            .number_input(id)
+            .unwrap_or_else(|| panic!("{nome} nao esta' registado no store"));
+        assert!(
+            (v - esperado).abs() < 1e-9,
+            "{nome} mostra {v} e o documento diz {esperado} — o painel mente sobre o que o artista \
+             tem, e um `Chain = 0` significa «ate' a` raiz»"
+        );
+    }
+    limpa();
+}

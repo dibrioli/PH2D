@@ -362,3 +362,45 @@ fn a_bone_under_an_anchor_cannot_be_a_control() {
          e um aviso que aparece sempre não é lido nunca"
     );
 }
+
+/// ⭐⭐⭐ **A FAIXA DA CORRENTE DIZ QUAIS OSSOS OBEDECEM, e ela SEGUE o número `Chain`** (report do
+/// dono, 2026-09-14: *«não temos uma linha indicativa do IK Chain»*).
+///
+/// ⛔ **O `Chain` é um número num painel e o que ele significa é uma pergunta sobre a CENA.** Sem o
+/// desenho, mudá-lo de `2` para `4` não tem efeito visível nenhum até se arrastar o alvo — e o
+/// artista fica a adivinhar qual foi a conta.
+///
+/// ⚠️ **A população é a MESMA do solver** (`goal::governed`): uma lista derivada por outro caminho
+/// seria a segunda resposta à mesma pergunta, e no dia em que divergissem o desenho estaria a
+/// mentir sobre quem dobra. Este gate mede-a pelos NÚMEROS de junta que cada `chain` produz.
+#[test]
+fn the_drawn_chain_follows_the_chain_number() {
+    let mut sim = SimWorld::default();
+    let a = crate::goal::osso(&mut sim, "A", [0.0, 0.0], 10.0, None);
+    let b = crate::goal::osso(&mut sim, "B", [10.0, 0.0], 10.0, Some(a));
+    let c = crate::goal::osso(&mut sim, "C", [20.0, 0.0], 10.0, Some(b));
+    let d = crate::goal::osso(&mut sim, "D", [30.0, 0.0], 10.0, Some(c));
+    ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
+    crate::goal::add(&mut sim, d).expect("a ancora na ponta");
+    assert_eq!(crate::goal::chains(&sim).len(), 1, "uma ancora, uma faixa");
+    // `n` ossos governados desenham `n + 1` juntas; `0` = até à raiz (os quatro).
+    for (chain, juntas) in [(2u32, 3usize), (3, 4), (4, 5), (0, 5)] {
+        sim.world_mut()
+            .get_mut::<ph2d_skeleton_ecs::IkGoal>(d)
+            .expect("a restricao")
+            .chain = chain;
+        let desenhado = crate::goal::chains(&sim);
+        assert_eq!(
+            desenhado[0].1.len(),
+            juntas,
+            "com Chain = {chain} a faixa tem de cobrir {juntas} juntas"
+        );
+    }
+    // ⛔ O CONTROLO: sem âncora nenhuma não se desenha faixa — e a saída é CEDO, sem varrer o mundo.
+    let mut vazio = SimWorld::default();
+    crate::goal::osso(&mut vazio, "Solto", [0.0, 0.0], 10.0, None);
+    assert!(
+        crate::goal::chains(&vazio).is_empty(),
+        "sem restricao nenhuma nao ha' faixa"
+    );
+}

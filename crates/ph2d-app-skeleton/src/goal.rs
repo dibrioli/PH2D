@@ -190,6 +190,43 @@ fn feeds_back(sim: &SimWorld, alvo: Entity, corrente: &[Entity]) -> bool {
     }
 }
 
+/// ⭐⭐⭐ **A CORRENTE QUE CADA ÂNCORA GOVERNA, em MUNDO** — as juntas dos ossos que ela dobra, da
+/// raiz da corrente até à ponta.
+///
+/// ⛔⛔ **Ela existe por um report do dono** (2026-09-14: *«não temos uma linha indicativa do IK
+/// Chain»*). O `Chain` é um NÚMERO num painel, e o que ele significa é *quais ossos obedecem* — uma
+/// pergunta sobre a cena que só a cena pode responder. Sem ela desenhada, mudar o número de `2` para
+/// `4` não tem nenhum efeito visível até se arrastar o alvo, e o artista fica a adivinhar.
+///
+/// ⚠️ **A população é a MESMA do solver** ([`ph2d_skeleton_live::goal::governed`]): desenhar uma
+/// lista derivada por outro caminho seria a segunda resposta à mesma pergunta, e o dia em que as
+/// duas divergissem o desenho estaria a mentir sobre quem dobra.
+///
+/// ⚠️ **Mesma saída cedo das [`anchors`]**, e pela mesma razão medida: sem âncora nenhuma na cena
+/// isto não pode pagar uma varredura do mundo por quadro.
+#[must_use]
+pub fn chains(sim: &SimWorld) -> Vec<(u64, Vec<[f64; 2]>)> {
+    if !sim
+        .world()
+        .iter_entities()
+        .any(|er| er.contains::<IkGoal>())
+    {
+        return Vec::new();
+    }
+    let mut out: Vec<(u64, Vec<[f64; 2]>)> = sim
+        .world()
+        .iter_entities()
+        .filter_map(|er| {
+            let g = er.get::<IkGoal>()?;
+            let corrente = ph2d_skeleton_live::goal::governed(sim, er.id(), g.chain);
+            let (juntas, _) = ph2d_skeleton_live::goal::joints_of(sim, &corrente)?;
+            (juntas.len() >= 2).then(|| (er.id().to_bits(), juntas))
+        })
+        .collect();
+    out.sort_by_key(|c| c.0);
+    out
+}
+
 /// ⭐⭐⭐ **AS ÂNCORAS DA CENA** — `(osso, âncora, origem do osso, ponta do osso)` em MUNDO, ordenado.
 ///
 /// ⚠️ **Uma varredura, três consumidores**: o desenho (o losango e o tracejado), o dedo (o realce) e

@@ -154,20 +154,8 @@ pub(crate) fn body(r: &mut RowCtx, y: f32) -> f32 {
     }
     // Os dois números do OSSO em foco. Sem osso não há sujeito — e um campo sem sujeito é a
     // classe de controlo morto que o `CLAUDE.md` §5.0 nomeia.
-    if state::current_bone().is_some() {
-        let campos: [(ph2d_a11y::NodeId, &str, f64); 2] = [
-            (
-                ids::VECTOR_BONE_LENGTH,
-                tr("panel.vector.bone.length"),
-                LENGTH_STEP,
-            ),
-            (
-                ids::VECTOR_BONE_STRENGTH,
-                tr("panel.vector.bone.strength"),
-                STRENGTH_STEP,
-            ),
-        ];
-        for (id, label, step) in campos {
+    if let Some(campos) = campos_do_osso() {
+        for (id, label, step, _valor) in campos {
             y = r.labeled_number_field(label, id, step, y);
         }
         y = limit_rows(r, y);
@@ -347,24 +335,9 @@ fn ik_rows(r: &mut RowCtx, y: f32) -> f32 {
         tr("panel.vector.bone.ik.remove"),
         y,
     );
-    let campos: [(ph2d_a11y::NodeId, &str, f64); 3] = [
-        (
-            ids::VECTOR_BONE_IK_MIX,
-            tr("panel.vector.bone.ik.mix"),
-            MIX_STEP,
-        ),
-        (
-            ids::VECTOR_BONE_IK_SOFTNESS,
-            tr("panel.vector.bone.ik.softness"),
-            MIX_STEP,
-        ),
-        (
-            ids::VECTOR_BONE_IK_CHAIN,
-            tr("panel.vector.bone.ik.chain"),
-            CHAIN_STEP,
-        ),
-    ];
-    for (id, label, step) in campos {
+    for (id, label, step, _valor) in campos_da_ancora().unwrap_or_else(|| {
+        unreachable!("a âncora existe: o `let Some(..) = current_bone_ik()` acima devolveu cedo")
+    }) {
         y = r.labeled_number_field(label, id, step, y);
     }
     // ⭐⭐⭐ **PARA QUE LADO O JOELHO DOBRA** — e ele vem DEPOIS de `Chain` porque é o `Chain`
@@ -386,6 +359,66 @@ fn ik_rows(r: &mut RowCtx, y: f32) -> f32 {
         *slot = (ids::VECTOR_BONE_BEND_IDS[i], rotulos[i], i == lado);
     }
     r.segmented(tr("panel.vector.bone.ik.bend"), &lados, y)
+}
+
+/// ⭐⭐⭐ **OS CAMPOS NUMÉRICOS DO OSSO — id, rótulo, passo e O VALOR QUE ELES MOSTRAM.**
+///
+/// ⛔⛔ **Os cinco campos desta secção nasciam com `0` e nada lá escrevia** (report do dono,
+/// 2026-09-14: *«IK chain mostra 0 ao inserir IK»*). O `populate` regista-os com `value: 0.0`, o
+/// publicador (`state::set_current_bone_ik`) existe e a shell chama-o todo quadro — e os valores
+/// morriam no `state`, porque quem pinta a fileira ([`RowCtx::labeled_number_field`]) tira o valor
+/// do **WidgetStore**. *Um publicador sem quem o leia e uma lei ausente produzem o mesmo painel.*
+///
+/// ⚠️ **`Chain = 0` não é um zero inócuo:** ele significa *«até à raiz»*, que é o default do Blender
+/// e a queixa nº 1 documentada da feature. O painel dizia ao artista exactamente a coisa que o
+/// modelo existe para não fazer — e um `Mix = 0` lido como verdade é a restrição **desligada**.
+///
+/// ⭐ **UMA tabela, DOIS consumidores:** quem pinta a fileira e quem semeia o valor no store
+/// ([`crate::paint`]) percorrem esta MESMA lista. Um campo novo traz o valor no tuplo ou **não
+/// compila** — em vez de nascer a mostrar `0` e ninguém dar por isso.
+///
+/// `None` = não há osso em foco, e então não se pinta nem se semeia nada.
+pub(crate) fn campos_do_osso() -> Option<[(ph2d_a11y::NodeId, &'static str, f64, f64); 2]> {
+    let (length, strength) = state::current_bone()?;
+    Some([
+        (
+            ids::VECTOR_BONE_LENGTH,
+            tr("panel.vector.bone.length"),
+            LENGTH_STEP,
+            length,
+        ),
+        (
+            ids::VECTOR_BONE_STRENGTH,
+            tr("panel.vector.bone.strength"),
+            STRENGTH_STEP,
+            strength,
+        ),
+    ])
+}
+
+/// Os três números da ÂNCORA — ver [`campos_do_osso`]. `None` = o osso não tem restrição.
+pub(crate) fn campos_da_ancora() -> Option<[(ph2d_a11y::NodeId, &'static str, f64, f64); 3]> {
+    let (mix, softness, chain, _) = state::current_bone_ik()?;
+    Some([
+        (
+            ids::VECTOR_BONE_IK_MIX,
+            tr("panel.vector.bone.ik.mix"),
+            MIX_STEP,
+            mix,
+        ),
+        (
+            ids::VECTOR_BONE_IK_SOFTNESS,
+            tr("panel.vector.bone.ik.softness"),
+            MIX_STEP,
+            softness,
+        ),
+        (
+            ids::VECTOR_BONE_IK_CHAIN,
+            tr("panel.vector.bone.ik.chain"),
+            CHAIN_STEP,
+            chain,
+        ),
+    ])
 }
 
 /// Passo do campo de comprimento, no domínio do DOCUMENTO (unidades de mundo).

@@ -262,6 +262,23 @@ campos** (um campo privado é visível ao módulo que o declara e aos descendent
 contacto tem uma `Pecas`* — dois `&`-de-mesma-forma numa lista posicional trocam de lugar sem o
 compilador dizer nada.
 
+### ⚠️ DOIS candidatos NOMEADOS à família das flakes de carga
+
+A suíte de GPU inteira (`--ignored`, 784 s) deu **198 verdes e 3 vermelhos**. Um é o pré-existente
+abaixo; os outros dois são **gates de CUSTO**, e correram numa janela em que esta workstation esteve
+a `load 26–75` — *nenhuma leitura de relógio desta máquina vale nada acima de `~5`*
+(`CLAUDE.md` §5.0):
+
+| gate | sozinho, com a carga ao lado |
+|---|---|
+| `gpu_collide::crossing_the_reach_boundary_does_not_step_the_cost` | **1/1 verde** a `load 4,55` |
+| `gpu_cpu_parity_sim::readback_tap_cost_probe` | **3/3 verde** a `load 4,55 · 4,26 · 4,00` |
+
+⇒ assinatura completa da família: verde isolado, vermelho no pico do fan-out, e **zero linhas do
+diff desta wave naquelas crates**. ⚠️ **Ficam NOMEADOS de propósito** — *uma flake sem nome não entra
+numa lista, e quem a encontrar outra vez recomeça do zero*. A promoção à lista do `CLAUDE.md` §5.0 é
+**pedido da linha e escrita do integrador** (o precedente de 10/09).
+
 ### ⚠️ Um VERMELHO pré-existente, medido e NÃO meu
 
 A suíte de paridade de GPU desta máquina (o adapter existe, e por isso ela correu de verdade) dá

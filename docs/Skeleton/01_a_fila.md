@@ -2539,6 +2539,43 @@ trajectória é geometria do CLIP e o documento **recusa-a** fora da aba *Keys* 
 é a aba de omissão do app. *Um gate que herda um default de construtor mede outro programa;* o do
 motion path já trazia esta nota, e foi preciso pagá-la outra vez.
 
+**W14c — *«AO ACRESCENTAR O IK O OSSO PERDE INFLUÊNCIA SOBRE A PONTA DA MALHA»*: a ORDEM DO QUADRO,
+e o próprio código já escrevia a lei violada** (report do dono com duas fotos, 2026-09-14).
+
+Nas fotos o **gizmo** do osso está na pose resolvida pela IK e a **arte** não o acompanha — duas
+leituras da mesma pose, e a que o artista vê é a errada.
+
+⭐⭐⭐ **A lei estava escrita, para a OUTRA mídia.** O comentário que punha a âncora imediatamente
+antes do `skeleton_live::recook` (a pele **vectorial**) diz à letra: *«ela escreve a pose dos ossos,
+e o recook é quem transforma a pose em geometria. Ao contrário, a pele mostraria a pose do quadro
+anterior.»*
+
+⛔⛔ **A SEGUNDA MÍDIA chegou depois e não herdou a arrumação.** A malha de uma imagem presa é posta
+no `attach_skin_meshes`, dentro da `fase_sim_extract` — que corre na metade da **SIMULAÇÃO**, antes
+da fase de canvas inteira onde os dois motores viviam. ⇒ a malha era construída da pose de **ANTES**
+do solver.
+
+⚠️⚠️ **E não é um atraso de um quadro, é PERMANENTE:** o apply da timeline (`fase_timeline_drain`)
+corre na mesma metade e reescreve todo osso **keyado** pela curva, mesmo a tempo de a malha a ler.
+Cada quadro: apply repõe a curva → a malha lê a curva → o solver escreve a IK → o gizmo mostra-a.
+*É por isso que o sintoma só aparece com o IK: sem ele ninguém escreve pose depois do extract.*
+
+⇒ **A cura é a ORDEM:** os dois motores (`skeleton_smart::drive` e `skeleton_goal::solve`) mudaram-se
+para uma fase própria (`fase_skeleton_drives`) **entre o apply e o extract**. A ordem interna entre
+eles continua a de sempre e continua load-bearing (o osso inteligente primeiro — ele é a pose de
+BASE; a âncora depois — ela persegue um alvo e tem de ver a pose já corrigida), e a pele vectorial
+continua a correr depois dos dois, agora por uma margem maior.
+
+**Dois gates, três mutações RED:** a ordem medida **dentro de UM ficheiro só** (⛔ concatenar dois
+para medir uma ordem é fraude — tudo o que está no segundo vem depois de tudo o que está no
+primeiro; a lição que o corte do teclado do sculpt pagou em 2026-09-04), e **a outra porta** — a fase
+de canvas não pode voltar a chamá-los, senão eles correm **duas** vezes por quadro.
+
+⚠️ **A generalização NÃO foi feita, e é nomeada:** este quadro tem outros motores que escrevem pose
+(a física, as curvas, os nós de Motion) e nada os obriga a correr antes de quem lê. *Nenhuma sonda
+deste repo pergunta «quem escreve pose depois de ela ser lida?»* — o que existe agora é este gate,
+sobre estes dois.
+
 ## ⛔ Recusas MEDIDAS deste módulo — não as reconstrua
 
 > ⚠️ **As seis de 2026-09-07/08 entraram aqui na auditoria de 08/09** — elas viviam só em prosa e em

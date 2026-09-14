@@ -60,6 +60,12 @@ impl crate::App {
             report.ticks,
         );
         self.fase_open_recipe();
+        // ⭐⭐⭐ **OS MOTORES DE POSE DO ESQUELETO ANTES DO EXTRACT, e a ordem é load-bearing** (report
+        // do dono, 2026-09-14): a malha de uma imagem presa é posta na `fase_sim_extract`, logo o
+        // osso inteligente e a âncora de IK têm de já ter escrito a pose. Ao contrário — que era
+        // onde eles viviam — o gizmo mostra a pose resolvida e a ARTE mostra a curva que o apply
+        // acabou de repor, para sempre.
+        self.fase_skeleton_drives();
         self.fase_sim_extract(dt, preview_overrides, sheet_preview, ppm, default_filter);
         Some((report, tool_preview_bits))
     }

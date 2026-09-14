@@ -48,6 +48,7 @@ As cinco waves:
 | **W13** | **o diagnóstico completo do *«só fica redondo onde não temos deformação»*** — a régua da W12 era cega a uma marca AMASSADA; a cura foi medida (grelha amostrada) e **RECUSADA pelo dono** |
 | **W14** | **o AutoKey grava a pose que a MÃO fez** — a população era a SELECÇÃO, e agarrar um osso não o selecciona: a pose feita com IK ia para a animação por um osso só |
 | **W14b** | **com uma restrição VIVA o sujeito da autoria é o ALVO da âncora** — os ossos são derivados e o ledger salta-os com razão; a mão do quadro passa a trazer o alvo |
+| **W14c** | **a ORDEM DO QUADRO** — a malha de uma imagem presa era construída ANTES de o solver de IK escrever a pose, e o apply repunha a curva mesmo a tempo: o gizmo mostrava a IK e a arte mostrava a curva, para sempre |
 
 ---
 
@@ -79,6 +80,7 @@ As cinco waves:
 | `shells/desktop/src/render_loop/fase_snapshots_publish.rs` (W9) | a condição do `object_gizmo_on` ganha a cláusula da ferramenta Flip | **é a cura** — a caixa de OUTRA família deixa de matar o traço do Flip |
 | `shells/desktop/src/render_loop/timeline_onion.rs` (W8) | `collect_onion_ghosts` passa a receber `live_clip_t: Option<f64>` — `None` = o clip activo não tem instante único aqui ⇒ **zero fantasmas** | **muda a assinatura** (shell-interna) |
 | `shells/desktop/src/render_loop/fase_canvas_overlays.rs` (W8) | o relógio do onion passa a ser `self.timeline_view.clip_time` (era `self.playhead.time()`) | **é a cura do 1.º relato** |
+| `shells/desktop/src/render_loop/fase_skeleton_drives.rs` (W14c, NOVO) | o osso inteligente + a âncora de IK saem da fase de CANVAS para a metade da SIMULAÇÃO, entre o apply e o extract | **é a cura** |
 | `ph2d-app-skeleton/src/goal.rs` (W14b) | `target_of` NOVA — o alvo que a âncora de um osso persegue, extraída do `drag_anchor` (a mesma procura, dois consumidores) | sim |
 | `shells/desktop/src/render_loop/timeline_bridge.rs` (W14b) | a `maos_do_quadro` traz também o **ALVO** de cada âncora do esqueleto segurado | **muda comportamento**: o apply deixa de escrever por cima do alvo, e o AutoKey passa a cunhá-lo |
 | `shells/desktop/src/render_loop/autokey_pass.rs` (W14) | a população sai para a porta `populacao` e passa a ser **selecção ∪ mão**; `run` recebe `&SimWorld` | **é a cura** |
@@ -498,6 +500,11 @@ fechado.
 
 ⚠️ **E o que a W11 acrescenta:** com o braço bem DOBRADO, o risco pintado tem de sair com a
 **espessura do anel do cursor** — e não uma lasca fina onde o leque comprime a arte.
+
+⚠️ **E o que a W14c acrescenta (as duas fotos, *«ao acrescentar o IK o osso perde influência sobre a
+ponta da malha»*):** na mesma cena, com a âncora criada, arraste-a e veja a **ARTE** dobrar com os
+ossos. ⛔ Até 2026-09-14 o gizmo do osso ia para a pose resolvida e a arte ficava na curva — a malha
+era construída antes de o solver escrever.
 
 ⚠️ **E o que a W14b acrescenta (o report seguinte, *«ainda não funciona para IK»*):** na mesma cena,
 arraste o **losango da âncora** (a restrição que a cena cria na ponta do braço) com o **AutoKey**

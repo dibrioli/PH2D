@@ -143,8 +143,6 @@ impl crate::App {
         // que persegue um alvo — ela tem de ver a pose já corrigida. ⛔ Ao contrário, a IK
         // resolveria sobre uma pose que a acção ainda vai mudar, e o alvo deixaria de ser
         // alcançado no mesmo quadro.
-        crate::skeleton_smart::drive(sim, &self.timeline.doc, &mut self.preview_drive);
-        crate::skeleton_goal::solve(sim, &mut self.preview_drive);
         // ⚠️ Sem `xforms`: a pele resolve a pose de cada osso e da forma pela hierarquia (a
         // propagação de `Transform` que a casa já corre), que é a mesma razão de a cinemática
         // directa não precisar de código.

@@ -357,8 +357,9 @@ mod fase_shape_fields;
 mod fase_sheet_verbs;
 mod fase_signal_log;
 mod fase_signal_outbox;
-/// Fase do quadro: o extract (propagação, emissão das sprites e a ordem total do quadro).
 mod fase_sim_extract;
+/// Fase do quadro: o extract (propagação, emissão das sprites e a ordem total do quadro).
+mod fase_skeleton_drives;
 /// Fase do quadro: os verbos do esqueleto.
 mod fase_skeleton_verbs;
 /// Fase do quadro: a publicação dos instantâneos.

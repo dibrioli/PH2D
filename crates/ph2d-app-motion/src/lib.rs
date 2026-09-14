@@ -88,6 +88,9 @@ pub mod motion_sim_probe;
 #[cfg(test)]
 pub mod motion_stamp_cost_probe;
 pub mod motion_state;
+/// A auditoria do grupo do ciclo 6 (VALOR & PULSO) — `#[cfg(test)]`, não entra no bin.
+#[cfg(test)]
+pub mod motion_valor_probe;
 
 // ─── as duas âncoras que eram módulos de TOPO da shell e são código desta família ─────
 /// ⭐ **O gizmo dos CAMPOS na tela.** Ele lê `MotionState` e `motion_bridge::params`, logo nunca

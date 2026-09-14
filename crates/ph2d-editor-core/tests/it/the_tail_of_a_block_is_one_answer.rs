@@ -4,9 +4,16 @@
 //!
 //! | pergunta | porta | valor | derivação (Godot Modern, MIT) |
 //! |---|---|---|---|
-//! | de uma LINHA para a seguinte | `control_gap_px` / `list_row_gap_px` | 4 / 1 | `separation_margin` · `Tree.v_separation` |
-//! | de um BLOCO para o seguinte | `control_gap_px` | **6** | `base_margin · 1,5` (13 usos no tema) |
+//! | duas linhas de uma LISTA | `list_row_gap_px` | 1 | `Tree.v_separation` |
+//! | dois CONTROLOS de uma secção (e a cauda de um BLOCO) | `control_gap_px` | **3** | `GridContainer.v_separation = widget_margin.y − 2` |
 //! | de um CARTÃO DE SECÇÃO para o seguinte | `section_gap_px` | 8 | `Separator separation = base_margin · 2` |
+//!
+//! ⚠️⚠️ **Esta tabela dizia `4 / 1` e `6`, e estava DESACTUALIZADA CONTRA O PRÓPRIO CÓDIGO** — a
+//! wave 20 fundiu o `block_gap` no `control_gap_px` e o valor shipado é **3** (o doc-comment da
+//! porta, em `ph2d-tokens/src/spacing.rs`, traz a escada corrigida e o porquê: com os botões em
+//! grupos a distarem um fio de 1 px, uma fronteira a `3` já se lê com folga). Corrigida em
+//! 2026-09-14, quando um sítio novo a leu e escreveu `Spacing::Sm` (6) a acreditar nela.
+//! *Quando duas páginas imprimem a mesma grandeza e discordam, a que manda é o código.*
 //!
 //! ⛔ **Censo de 2026-09-07: 78 sítios respondiam à cauda de um bloco, com QUATRO respostas** —
 //! `Sm` (6) em 40 · `Xs` (4) em 29 · `Md` (8) em 8 · `Lg` (12) em 1.

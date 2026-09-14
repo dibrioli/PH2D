@@ -61,6 +61,7 @@ pub(crate) fn apply_player_event(host: &mut dyn PanelHostInternal, ev: WidgetEve
                 id == crate::ids::INSP_PLAYER_CROUCH_WALK_OFF_IDS[0],
             ))
         }
+        WidgetEvent::Click(id) if id == crate::ids::INSP_PLAYER_ADD => Some(PlayerFieldEdit::Add),
         WidgetEvent::Click(id) if id == crate::ids::INSP_PLAYER_REMOVE => {
             Some(PlayerFieldEdit::Remove)
         }

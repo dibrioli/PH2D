@@ -43,13 +43,22 @@ pub(crate) type PlayerRow = (TextKey, ph2d_a11y::NodeId, TextKey);
 /// `rows` aqui dentro a sombrearia — o pintor compilaria a chamar outra coisa.
 #[path = "player_rows.rs"]
 mod table;
+
+/// A face VAZIA — ver [`door::paint_empty_face`].
+#[path = "player_door.rs"]
+mod door;
 pub(crate) use table::{PLAYER_CARDS, player_row_count};
 
 /// As dicas dos QUATRO BOTÕES da seção — a mesma lei das rows, num lugar onde não
 /// cabe uma tupla de row.
 ///
-/// ⚠️ **Eram cinco até a F3** (ADR-0166): o `INSP_PLAYER_ADD` saiu com a face vazia que o continha.
-pub(crate) const PLAYER_BUTTON_TIPS: [(ph2d_a11y::NodeId, TextKey); 4] = [
+/// ⚠️ **Foram QUATRO entre a F3 e 2026-09-14**: o `INSP_PLAYER_ADD` saiu com a face vazia que o
+/// continha, e voltou com ela por ordem do dono — *«todas as opções aparecem com ele»*.
+pub(crate) const PLAYER_BUTTON_TIPS: [(ph2d_a11y::NodeId, TextKey); 5] = [
+    (
+        ids::INSP_PLAYER_ADD,
+        TextKey::new("panel.inspector.player.turn_this_body_into_a"),
+    ),
     (
         ids::INSP_PLAYER_FIT,
         TextKey::new("panel.inspector.player.set_float_height_from_the"),
@@ -113,17 +122,14 @@ pub(crate) fn paint_player_section(
 
     let mut yy = y + header_h;
 
-    // ⛔ **A FACE VAZIA MORREU na F3** (ADR-0166). Ela era um botão «Make Platform Player» sobre um
-    // `has_player == false` — e era a ÚNICA rota para a feature, e é por isso que só podia ser
-    // apagada DEPOIS de o `+` do cabeçalho existir e o censo (`component_reach_tests`) o provar.
+    // ⭐⭐ **A FACE VAZIA — a porta, no ficheiro irmão** (ver `player_door.rs` para o porquê).
     //
-    // ⚠️ **O que fica é uma GUARDA, não uma face.** Hoje a seção inteira não se pinta sem o
-    // componente (a shell não publica o info), então `has_player` é sempre `true` aqui — mas o
-    // painel é chrome e não pode DEPENDER disso: sem esta linha, um info com `has_player = false`
-    // pinta a seção inteira de knobs sobre um player que não existe. (Foi o que aconteceu quando a
-    // face saiu, e os dois gates do `seam_player` foram quem o disse.)
+    // ⚠️ **A guarda continua a ser LEI, e não decoração:** sem ela um info com `has_player =
+    // false` pintaria a secção inteira de knobs sobre um player que não existe — foi o que
+    // aconteceu quando a face saiu, e os dois gates do `seam_player` foram quem o disse.
     if !info.has_player {
-        return fold.finish(store, scene, hit_index, yy);
+        let fim = door::paint_empty_face(scene, text_system, theme, hit_index, store, x, w, yy, h);
+        return fold.finish(store, scene, hit_index, fim);
     }
 
     // **COMO ele é movido** (W-KinMove) — a primeira coisa da seção, porque toda

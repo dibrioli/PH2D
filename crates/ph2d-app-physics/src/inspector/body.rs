@@ -88,7 +88,22 @@ pub fn build_physics_info(
     //
     // ⚠️ O `join_count` não precisa de estar aqui: ele exige `RigidBody` + `Collider` em **toda** a
     // seleção, logo o primário já tem os dois e o primeiro ramo responde.
-    if rb.is_none() && col.is_none() && rig_parts == 0 {
+    //
+    // ⭐⭐ **E um CORPO ACIMA na árvore também conta** (ordem do dono, 2026-09-14: *«um objeto de
+    // física (Physics Body) e todas as opções aparecem com ele, inclusive Collision Shape»*). O
+    // `Collider` deixou de ser oferecido na paleta, e a rota que ele era — *esta forma é mais uma
+    // peça do corpo ancestral* — é o botão **Add Shape to X** da face vazia. ⚠️ Ela é a MESMA
+    // excepção do `rig_parts`, pela mesma razão e não por folga: **a paleta genérica não sabe
+    // NOMEAR o dono**, e sem o nome o gesto não existe (um collider é invisível e a hierarquia pode
+    // ter um grupo no meio). Gatear só nos componentes tornava a peça composta inalcançável
+    // exactamente no objecto para que ela existe — um filho de um corpo, ainda sem física nenhuma.
+    let part_owner = if rb.is_some() {
+        // Um corpo não é peça de ninguém (docs do `nearest_body_name`).
+        String::new()
+    } else {
+        nearest_body_name(world, entity)
+    };
+    if rb.is_none() && col.is_none() && rig_parts == 0 && part_owner.is_empty() {
         return None;
     }
     // Optional per-body gravity multiplier (W8); absent = the neutral 1.0.
@@ -203,7 +218,7 @@ pub fn build_physics_info(
             rig_parts,
             // W-Compound: a face VAZIA é a única em que a pergunta faz sentido —
             // um objeto que já é corpo não vira peça de ninguém.
-            part_owner: nearest_body_name(world, entity),
+            part_owner,
             join_draw_armed,
             join_kind_tag,
             is_sensor: false,
@@ -289,11 +304,7 @@ pub fn build_physics_info(
         rig_parts,
         // Um corpo não é peça de ninguém (docs do `nearest_body_name`); uma peça
         // NOMEIA o dono no cabeçalho da própria face.
-        part_owner: if rb.is_some() {
-            String::new()
-        } else {
-            nearest_body_name(world, entity)
-        },
+        part_owner,
         join_draw_armed,
         join_kind_tag,
         bake_seconds,

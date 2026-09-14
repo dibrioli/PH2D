@@ -227,20 +227,33 @@ fn expect(actions: &[EditorAction], edit: PlayerFieldEdit, what: &str) {
     );
 }
 
-/// ⛔ **A FACE VAZIA MORREU na F3** (ADR-0166), e o que a substitui tem gate no lado da shell
-/// (`inspector_player_tests::attaching_the_player_opens_the_section_at_the_laws_starting_point`).
+/// ⭐⭐ **A FACE VAZIA VOLTOU (2026-09-14, ordem do dono), e ela pinta UM botão e MAIS NADA.**
 ///
-/// Ela era um botão «Make Platform Player» sobre um `has_player == false` — *o gesto que fazia o
-/// comportamento existir*, e a **única** rota para ele. Hoje a seção inteira não se pinta sem o
-/// componente, então aquele ecrã era inalcançável; quem anexa é o `+` do cabeçalho do Inspector.
+/// *«Um objeto de física (Physics Body) e todas as opções aparecem com ele (inclusive Collision
+/// Shape e Platform Player).»* ⇒ a paleta do `+` passa a ter **uma** entrada de física, e a porta do
+/// comportamento é outra vez o *Make Platform Player* desta secção — que é onde a pergunta vive, e
+/// onde a física pode responder (num `Static` a mola do player é um impulso sobre massa infinita, e
+/// o `+` genérico não sabe perguntar isso).
 ///
-/// ⚠️ **O que sobra aqui é a metade de AUSÊNCIA**, e ela ficou mais forte: com `has_player = false`
-/// o painel não pode pintar controle NENHUM — nem o botão que o criava.
+/// ⛔ **Ela morreu na F3** (ADR-0166) porque a §14 passou a pintar-se só COM o componente: a porta
+/// ficava fechada sobre a própria chave. A reversão é do dono; o que **não** volta é a doença que a
+/// F3 curou (um objecto pelado não mostra secção de física nenhuma).
+///
+/// ⚠️ **As DUAS metades importam, e a de ausência é a que apanha a regressão cara:** com
+/// `has_player = false` o painel pinta **exactamente** o botão que cria o comportamento — e nenhum
+/// dos knobs, que descreveriam um player que não existe. (Foi o que aconteceu quando a face saiu, e
+/// estes dois gates foram quem o disse.)
 #[test]
-fn the_dead_empty_face_paints_nothing_at_all() {
+fn the_empty_face_paints_the_door_and_nothing_else() {
     let rects = painted(empty());
+    assert!(
+        rects
+            .iter()
+            .any(|(n, _)| *n == ph2d_panel_inspector::ids::INSP_PLAYER_ADD),
+        "a §14 nao pintou a porta: sem ela o comportamento e' inalcancavel, porque desde \
+         2026-09-14 ele NAO esta' na paleta do `+`"
+    );
     for id in [
-        ph2d_panel_inspector::ids::INSP_PLAYER_ADD,
         ph2d_panel_inspector::ids::INSP_PLAYER_REMOVE,
         ph2d_panel_inspector::ids::INSP_PLAYER_FIT,
         ph2d_panel_inspector::ids::INSP_PLAYER_FLOAT,
@@ -254,24 +267,25 @@ fn the_dead_empty_face_paints_nothing_at_all() {
     }
 }
 
-/// ⛔⛔⛔ **E a face morta não deixou REGISTO para trás** — a metade que faltava, e que deixou o
-/// `INSP_PLAYER_ADD` a existir no `WidgetStore` de toda sessão durante duas waves.
+/// ⭐⭐ **E o botão da face está REGISTADO** — a metade que o gate acima não mede.
 ///
-/// O gate acima mede *«ninguém o PINTA»*; este mede *«ninguém o REGISTA»*, e são coisas
-/// diferentes. Um id registado e nunca pintado não faz barulho nenhum — o artista não o vê, o
-/// clique nunca lá cai — **mas faz toda sonda futura de controlos mortos mentir**: a régua lê
-/// «registado» e conta-o como controlo, e a acusação que ela emite aponta para um botão que já não
-/// existe. Foi assim que o instrumento
-/// `ph2d-editor-core/tests/it/the_painted_control_reaches_a_consumer.rs` o apanhou em 2026-08-30.
+/// Aquele pergunta *«alguém o PINTA?»*; este pergunta *«alguém o REGISTA?»*, e são coisas
+/// diferentes. As duas têm de valer ao mesmo tempo, e cada desemparelhamento é um defeito próprio:
+/// **registado e não pintado** é o ÓRFÃO (invisível ao artista, e faz toda sonda de controlos
+/// mortos apontar para um botão inexistente — foi assim que o
+/// `ph2d-editor-core/tests/it/the_painted_control_reaches_a_consumer.rs` apanhou este mesmo id em
+/// 2026-08-30, quando a F3 apagou a face e deixou o registo para trás); **pintado e não registado**
+/// é um botão sem visual de estado, que não acende sob o dedo.
 ///
-/// ⚠️ **A metade justa vem primeiro:** os irmãos VIVOS do mesmo `register_button_ids` continuam
+/// ⚠️ **A metade justa vem primeiro:** os irmãos do mesmo `register_button_ids` continuam
 /// registados. Sem ela, apagar a chamada inteira passaria.
 ///
-/// **Mutação:** repor `ids::INSP_PLAYER_ADD` na lista do `populate_physics.rs` ⇒ RED.
+/// **Mutação:** tirar `ids::INSP_PLAYER_ADD` da lista do `populate_player.rs` ⇒ RED.
 #[test]
-fn the_dead_empty_face_leaves_no_registration_behind() {
+fn the_door_of_the_empty_face_is_registered() {
     let host = MockPanelHost::with_panel_and_shared_chrome::<InspectorPanel>();
     for id in [
+        ph2d_panel_inspector::ids::INSP_PLAYER_ADD,
         ph2d_panel_inspector::ids::INSP_PLAYER_REMOVE,
         ph2d_panel_inspector::ids::INSP_PLAYER_FIT,
         ph2d_panel_inspector::ids::INSP_PLAYER_CLEAR_RUN,
@@ -280,19 +294,10 @@ fn the_dead_empty_face_leaves_no_registration_behind() {
     ] {
         assert!(
             host.store().get(id).is_some(),
-            "{id:?} deixou de ser registado — este gate mede a AUSENCIA de um orfao, e sem os \
-             irmaos vivos ele passaria com a chamada inteira apagada"
+            "{id:?} nao esta' registado — um botao pintado sem registo nao acende sob o dedo, e \
+             este gate mede a PRESENCA dos seis para que apagar a chamada inteira reprove"
         );
     }
-    assert!(
-        host.store()
-            .get(ph2d_panel_inspector::ids::INSP_PLAYER_ADD)
-            .is_none(),
-        "`INSP_PLAYER_ADD` continua registado. O botao que ele nomeia saiu do produto na F3 \
-         (ADR-0166) com a face vazia que o continha: ninguem o pinta e ninguem lhe responde. \
-         Um registo orfao e' lixo que faz toda sonda de controlos mortos apontar para um botao \
-         inexistente."
-    );
 }
 
 /// **Todos os números levantam a própria edição** — a varredura.

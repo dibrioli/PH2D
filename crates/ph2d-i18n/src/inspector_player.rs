@@ -63,6 +63,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "Crouched, he stops at the edge -- the sneak-to-the-brink move. It only \
          tightens: it cannot give back what standing already refuses."
         }
+        "panel.inspector.player.turn_this_body_into_a" => {
+            "Turn this body into a walking, jumping character."
+        }
         "panel.inspector.player.set_float_height_from_the" => {
             "Set Float Height from the collider, so he really hovers."
         }
@@ -93,6 +96,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.player.when_crouching" => "  ...When Crouching",
         "panel.inspector.player.fit_to_collider" => "Fit to Collider",
         "panel.inspector.player.fit_crouch_to_collider" => "Fit Crouch to Collider",
+        "panel.inspector.player.make_platform_player" => "Make Platform Player",
         "panel.inspector.player.remove_platform_player" => "Remove Platform Player",
         "panel.inspector.player.live" => "Live",
         "panel.inspector.player.not_simulating" => "not simulating",

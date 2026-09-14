@@ -429,3 +429,198 @@ anterior; o delta é a catraca nova e os gates que ela reabilita no grafo de imp
 
 ⚠️ **A máquina esteve a `load 33–50` durante o portão** (partilhada): nenhum relógio desta corrida é
 medição de desempenho. Os vereditos são estruturais.
+
+---
+
+## 14 — ADENDO de 14/09 — UMA porta, e as outras duas voltam para DENTRO das secções
+
+> *«Melhor como eu havia dito: um objeto de física (Physics Body) e todas as opções aparecem com ele
+> (inclusive Collision Shape e Platform Player).»* — o dono, 2026-09-14, depois de ver a poda de três
+> do §13.
+
+⚠️ **Isto é um VEREDITO DE PRODUTO que reverte, parcialmente e só na física, a peça 1 da F3 do
+ADR-0166.** Não é uma correcção de defeito e não deve ser lido como tal: a F3 apagou as faces vazias
+porque a rota nova era o `+`; com a física a sair da paleta, a rota volta a ser a secção. *Quem move
+o número que tornava algo inalcançável tem de reconferir a nota* (CLAUDE.md §0.0) — aqui quem se
+moveu foi a paleta, e as duas notas reconferidas estão nos doc-comments de
+`player_section_applies` e de `build_physics_info`.
+
+### 14.1 — O que a paleta oferece agora: **uma** entrada
+
+| Onde | O que | Porque não é um item de paleta |
+|---|---|---|
+| **`+` → Physics → Physics Body** (`RigidBody`) | *este objeto é simulado* | é a porta |
+| **§11, ao nascer** (`Collider`) | forma · meias-extensões · offset · densidade · quique · atrito · camada · Solid\|Sensor | as opções **são** as rows da §11, e ela nasce com o corpo |
+| **§11, face vazia** (`Collider` sozinho) | *Add Shape to X* — esta forma é mais uma peça do corpo acima | ⛔ a paleta não sabe **NOMEAR o dono**, e sem o nome o gesto não existe |
+| **§14, face vazia** (`PlatformPlayer`) | *Make Platform Player* | ⛔ só faz sentido num corpo `Dynamic` (a mola é um impulso, e um impulso não move massa infinita), e o `+` genérico não sabe perguntar isso |
+
+⭐ **As duas linhas de baixo são exactamente as portas que a F3 apagou**, e voltam **com o código que
+ela removeu** — `PlayerFieldEdit::Add`, o `INSP_PLAYER_ADD` no `populate`, a face vazia do
+`sections/player.rs`. O `git show 60315cb39` é a remoção original; esta é a inversa dela, com a
+diferença de que o *seed* passou a ser uma porta (`attach_player` chama `seed_attached_player`, que o
+`+` também usa) em vez das duas construções que existiam antes.
+
+### 14.2 — As TRÊS metades da §14, e porque é um `||`
+
+`player_section_applies(kind, has_player) = has_player || kind == Dynamic`
+
+| metade | o defeito que ela apanha |
+|---|---|
+| `Dynamic` **sem** o componente ⇒ **com** secção | a porta a desaparecer: o comportamento fica inalcançável, porque já não está na paleta |
+| `Static` sem o componente ⇒ **sem** secção | um botão que a física recusa em silêncio |
+| `Static` **com** o componente ⇒ **com** secção | um componente presente e **invisível** — o caso de um player que um bake pôs `Kinematic` |
+
+⚠️ **A F3 tinha razão em apagar a 2.ª metade ENQUANTO a porta era o `+`** (mantê-la dava *«o artista
+anexa pelo `+` e nada aparece»*, e o doc dela dizia-o). Com a porta de volta à secção, a condição de
+**oferecer** volta a ser a condição de **pintar** — e é isso que faz a pergunta *«a secção
+aparece?»* e a pergunta *«esta edição é legal?»* serem outra vez a mesma, que é o que torna seguro o
+`apply_player_edit` guardar-se pela mesma função.
+
+### 14.3 — A §11 alcança um FILHO de um corpo
+
+`build_physics_info` devolvia `None` para quem não tem `RigidBody`, nem `Collider`, nem `rig_parts`.
+Acrescenta-se **`&& part_owner.is_empty()`**: um objecto com um corpo acima na árvore mostra a §11
+com a face vazia, onde vive o *Add Shape to X*.
+
+⚠️ **É a MESMA excepção do `rig_parts`, pela mesma razão e não por folga** — aquela já estava
+escrita ali: *«um gesto sobre uma SUBÁRVORE, que a paleta de componentes não sabe exprimir»*. Aqui é
+um gesto sobre o **corpo ancestral**, que a paleta não sabe **nomear**. ⭐ E o `nearest_body_name`
+passa a correr **uma vez** (era chamado em dois ramos), o que é a única mudança de custo.
+
+### 14.4 — `Attach::Intrinsic` **com** `requires`, e o gate que nomeava o recurso errado
+
+⛔⛔ **`every_declared_requirement_names_a_real_component` exigia que o alvo de um `requires` fosse
+`Authored`, e a razão escrita ao lado era FALSA:** *«é Intrinsic — a cascata não o consegue
+construir»*. Quem constrói a cascata é o **`insert_default` do `ComponentRegistry`**
+(`attach_by_name` → `attach_one`), e ele **não consulta o `attach`**. Um `Intrinsic` com `Default` —
+o `Collider` é exactamente esse caso — constrói-se perfeitamente.
+
+⇒ o gate passa a exigir o que de facto importa: **o registo do produto sabe construir o alvo**. Ele
+fica **mais forte**, porque um `requires` que aponte a um tipo sem `insert_default` passava antes e
+reprova agora. *Um limite legítimo diz de que recurso ele é* (§0.0), e este dizia de um recurso de
+outro subsistema.
+
+⭐ E nasce `ComponentDesc::intrinsic_requiring`, para o `PlatformPlayer`: **o `attach` responde *quem
+escolhe*, o `requires` responde *é inerte sem o quê***. O segundo continua verdadeiro para um
+componente que saiu da paleta — e sem ele um chamador de `attach_by_name` (um teste, um script)
+deixava o player numa entidade sem corpo, a não fazer nada, em silêncio.
+
+⚠️ **E o piso de população do `the_require_graph_has_no_cycles` ganhou um NOME:** `seen >= 2` não
+distingue *«a população encolheu por uma decisão»* de *«alguém apagou o `requires` e o gate anda
+sobre nada»*. Hoje ele também **ancora a cascata canónica** (`RigidBody → Collider`) por nome, com a
+mensagem a dizer o que fazer se ela mudar mesmo.
+
+### 14.5 — Medição (sonda `measure_palette`, viewport 1187×953 do report de 25/08)
+
+| caso | antes do §13 | depois do §13 | **hoje** |
+|---|---|---|---|
+| itens oferecidos, total | **85** | 58 | **56** |
+| `Empty` · aplicável | 56 | 29 | **27** |
+| `Image` · aplicável | 71 | 44 | **42** |
+| `Empty` · *Show all* — o que não cabe | 238 px | 46 px | **46 px** |
+| `Image` · *Show all* — o que não cabe | 175 px | 0 px | **0 px** |
+
+Família de física: **30 `Authored` → 1**. ⚠️ Os dois últimos passos (`58 → 56`) são pequenos **na
+contagem** e são a decisão inteira **na semântica**: o que saiu foram as duas entradas que o artista
+lia como *«outra coisa que se adiciona»* quando são partes do mesmo objecto.
+
+### 14.6 — Provas de mutação — 5/5 MORTAS, cada uma pelo NOME do teste que a devia apanhar
+
+Restauro por cópia + `touch` + comparação byte a byte; carga impressa ao lado de cada corrida.
+
+| # | defeito injectado | quem o matou |
+|---|---|---|
+| M11 | `player_section_applies` volta a `has_player` | `the_section_follows_the_component_or_a_dynamic_body` **e** `the_player_section_belongs_to_every_dynamic_body` |
+| M12 | tirar o `&& part_owner.is_empty()` do `build_physics_info` | `the_physics_section_reaches_a_child_of_a_body` (a metade do sprite ÓRFÃO) |
+| M13 | `i("…::Collider", …)` volta a `D::authored(…)` | `the_physics_family_offers_one_door_and_not_its_rows` (`left` nomeia o intruso) |
+| M14 | o `INSP_PLAYER_ADD` sai do `populate_player` | `the_door_of_the_empty_face_is_registered` |
+| M15 | o botão da face vazia deixa de ser pintado | `the_empty_face_paints_the_door_and_nothing_else` |
+
+### 14.7 — Os gates que INVERTERAM, e porquê isso não é fraqueza
+
+Quatro gates afirmavam a lei da F3 e passam a afirmar a lei restaurada. **Nenhum foi apagado** — os
+quatro ficam, com as duas metades e com a história dentro:
+
+| gate | era | é |
+|---|---|---|
+| `seam_player::the_dead_empty_face_paints_nothing_at_all` | nada é pintado sem o componente | `…the_empty_face_paints_the_door_and_nothing_else` — **o botão e mais nada** |
+| `seam_player::the_dead_empty_face_leaves_no_registration_behind` | o id NÃO está registado | `…the_door_of_the_empty_face_is_registered` — os **seis** estão |
+| `inspector_player_tests::the_section_follows_the_component_not_the_body_kind` | sem componente, nunca | `…_or_a_dynamic_body` — com o `assert_eq` sobre o `kind` |
+| `inspector_player_tests::removing_the_behaviour_closes_the_section` | a secção fecha | `…_leaves_the_door_open` — ela fica, com `has_player = false` |
+
+⚠️ **E o `inspector_presence_tests` perdeu uma linha da tabela e ganhou DOIS testes nomeados:** a §14
+saiu do `CASES` porque a lei dela deixou de ser *«aparece se e só se o componente está lá»* — é a
+mesma forma da §7 Ordering, que já vivia fora da tabela pela mesma razão. A metade *«um objecto
+pelado não mostra a §14»* está afirmada **explicitamente** dentro do teste novo, porque sair da
+tabela é sair do `an_empty_object_still_shows_transform_and_name`.
+
+⚠️ **Uma nota HISTÓRICA foi corrigida em vez de reescrita:** o
+`the_painted_control_reaches_a_consumer` regista que o `INSP_PLAYER_ADD` foi apagado em 30/08 como
+**registo órfão**. A entrada continua verdadeira sobre o dia em que foi escrita e seria uma armadilha
+lida hoje — leva agora a linha que diz que ele voltou, **com o botão**. *Um órfão cura-se apagando; o
+que o des-orfanou foi o botão nascer outra vez.*
+
+### 14.8 — O que a fusão parte
+
+**14 ficheiros**, e a superfície é a mesma do §13 mais a §14 do Inspector:
+
+- `ph2d-component-desc`: `lib.rs` (construtor novo) · `catalog/physics.rs` (a tabela)
+- `ph2d-app-components`: `component_palette_tests.rs` (dois gates)
+- `ph2d-editor-core`: `inspector_model_player.rs` (`PlayerFieldEdit::Add`) · `tests/it/the_painted_control_reaches_a_consumer.rs` (prosa)
+- `ph2d-i18n`: `inspector_player.rs` (**duas chaves novas**)
+- `ph2d-panel-inspector`: `sections/player.rs` · `event_player.rs` · `populate_player.rs` · `tests/it/seam_player.rs`
+- `ph2d-app-physics`: `inspector/player.rs` · `inspector/body.rs`
+- `shells/desktop`: `inspector_presence_tests.rs` · `physics/inspector_player_tests.rs`
+
+⚠️ **Uma linha da `line/components` que toque `catalog/physics.rs` colide textualmente** — a cura é
+ler a tabela no cabeçalho e classificar a entrada nova, nunca aceitar o lado com mais `authored`.
+⚠️ **E quem integrar uma linha que mexa na §14 vai encontrar `PlayerFieldEdit::Add` de volta**: se o
+outro lado o tiver apagado por seguir a F3, o lado certo é este.
+
+### 14.9 — O que só o portão de fecho apanhou
+
+| vermelho | o que era | cura |
+|---|---|---|
+| `architecture_panel_loc_cap::panel_functions_under_loc_cap` | `paint_player_section` a **203** LOC (teto 200) — a face vazia que voltou | **corte por responsabilidade**: a porta saiu para `sections/player_door.rs` (`213 → 196`) |
+| `the_tail_of_a_block_is_one_answer::…_is_never_written_at_the_painting_site` | o corte **criou** o vermelho: dentro do `player.rs` o `+ Spacing::Sm.px()` vivia como ARGUMENTO de uma chamada e a régua textual não o via; como **cauda** de uma função, vê | passa pela porta `ph2d_tokens::control_gap_px()` |
+| `ph2d-app-flip …::a_long_stroke_is_bounded_by_the_redundancy_floor_not_by_a_budget` | **flake de recurso sob fan-out**, já NOMEADA no `CLAUDE.md` §5.0 (a família `flip_smooth::resample_measurement::precisao::orcamento`) | nenhuma — **3/3 verde sozinha a `load 82,88`**, e o diff desta volta tem **zero linhas** naquela crate |
+
+⭐⭐ **O 2.º vermelho é instrutivo por ser CAUSADO pela cura do 1.º:** *mover código não muda o que
+ele faz — muda o que as réguas conseguem ver*. É a espécie «falha alto» do HOWTO §2, do lado bom.
+
+⚠️⚠️ **E o valor MUDA com ele: `6 px → 3 px`.** O `Spacing::Sm` é `6`; o `control_gap_px()` é
+`widget_margin_y − 2 = 3`. ⛔ **Não é regressão** — é esta face a entrar na escada `1 / 3 / 8` em que
+os outros 78 sítios já entraram na wave 20 (ela morreu na F3 **antes** daquela wave e voltou
+**depois** dela, logo nunca lá tinha passado). O botão fica 3 px mais colado ao fim da secção.
+
+⛔⛔ **E a tabela do CABEÇALHO daquele gate estava DESACTUALIZADA CONTRA O PRÓPRIO CÓDIGO**, a
+ensinar `6` para este degrau — foi ela que me levou a escrever `Spacing::Sm` na 1.ª redacção. A wave
+20 fundiu o `block_gap` no `control_gap_px` e corrigiu o doc-comment **da porta**, sem voltar ao doc
+**do gate**. Corrigida aqui, com a nota do porquê. *Quando duas páginas imprimem a mesma grandeza e
+discordam, a que manda é o código* — e foi preciso um sítio novo acreditar na errada para alguém
+reparar.
+
+⚠️ **O teto de FICHEIRO decidiu a forma do corte, e não a aritmética:** o `player.rs` estava
+**exactamente** em `600` de `600`, logo o bloco não podia crescer lá dentro de maneira nenhuma —
+*dois tectos diferentes a apontar para o mesmo corte é o sinal de que ele é por responsabilidade*. O
+irmão segue a linha que o `physics_doors.rs` já desenhava um nível acima: *o que este player É* ×
+**o que CRIAR aqui**.
+
+⛔⛔ **E o veredito do portão quase passou como VERDE por uma armadilha da FERRAMENTA, não do
+código:** o `grep` dentro do shell deste agente é um wrapper para o **ugrep**, e nele
+**`grep -qv PADRÃO` devolve «não encontrei» SEMPRE** — o vigia que eu tinha armado anunciou
+*«GATE VERDE: todos os passos exit=0»* sobre um ficheiro com `exit=100`. O que salvou foi ler o
+ficheiro à mão. ⚠️ **Os scripts do repo estão a salvo** (correm fora desta shell, onde `grep` é o GNU;
+os dois `grep -qv` vivos em `scripts/` estão correctos lá) — *a armadilha é do lado que MEDE*.
+Registo: [`feedback_the_grep_in_this_agents_shell_is_ugrep_and_qv_always_says_no`](../../../project-memory/feedback_the_grep_in_this_agents_shell_is_ugrep_and_qv_always_says_no.md).
+
+### 14.10 — ⏳ ABERTO
+
+- **As outras famílias continuam por auditar com esta régua**, e a `core` (22 `D::authored`) tem
+  candidatos claros a row (`Blend Mode`, `Texture Filter`, `Order In Layer`, `Locked`, `Visibility`,
+  e o `Transform`, que **toda** entidade tem). ⛔ Falta-lhe o gémeo do
+  `every_registered_physics_component_has_a_ui_writer`, que é o censo que autorizou esta poda — uma
+  poda ali **começa por construir o instrumento**.
+- **A §14 aparece em todo corpo `Dynamic`**, o que é um cabeçalho e um botão a mais no Inspector de
+  um caixote. É o preço declarado da decisão do dono; se ele o achar ruído, a saída barata é a
+  secção nascer **dobrada** (o `SectionFold` já existe), não voltar a escondê-la.

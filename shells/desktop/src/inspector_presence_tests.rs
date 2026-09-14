@@ -225,16 +225,9 @@ const CASES: &[Case] = &[
         },
         live: physics,
     },
-    Case {
-        section: "§14 Platform Player",
-        component: "PlatformPlayer",
-        base: body,
-        attach: |w, e| {
-            w.entity_mut(e)
-                .insert(ph2d_physics_ecs::PlatformPlayer::default());
-        },
-        live: player,
-    },
+    // ⚠️ **A §14 NÃO está nesta tabela, e a ausência é a lei** — ver
+    // `the_player_section_belongs_to_every_dynamic_body`. Ela pertence a todo corpo `Dynamic`, com
+    // ou sem o componente, exactamente como a §7 Ordering pertence a todo objecto.
 ];
 
 /// ⭐ **A LEI, nos dois sentidos, sobre as treze combinações.**
@@ -280,6 +273,108 @@ fn an_empty_object_still_shows_transform_and_name() {
             c.section
         );
     }
+}
+
+/// ⭐⭐ **A §14 Platform Player vale para TODO corpo DYNAMIC** (ordem do dono, 2026-09-14) — e as
+/// **três** metades, porque aqui a cerca não é «tem o componente», é a FÍSICA.
+///
+/// *«Um objeto de física (Physics Body) e todas as opções aparecem com ele (inclusive Collision
+/// Shape e Platform Player).»* ⇒ a paleta do `+` tem **uma** entrada de física e a porta do
+/// comportamento volta a ser o *Make Platform Player* da face vazia desta secção.
+///
+/// ⛔ **Isto REVERTE, de propósito e só aqui, a poda da F3** (ADR-0166), que apagara esta face
+/// porque a rota nova era o `+`. O que **não** volta é a doença que ela curou: um objecto pelado
+/// continua sem secção de física nenhuma, e é a 3.ª metade abaixo que o afirma.
+///
+/// | metade | o defeito que ela apanha |
+/// |---|---|
+/// | corpo `Dynamic` **sem** o componente ⇒ **com** secção | a porta a desaparecer: o comportamento fica inalcançável, porque ele já não está na paleta |
+/// | corpo `Static` sem o componente ⇒ **sem** secção | um botão que a física recusa em silêncio (a mola do player é um impulso, e um impulso não move massa infinita) |
+/// | corpo `Static` **com** o componente ⇒ **com** secção | um componente presente e INVISÍVEL, que se lê como defeito — é o que acontece a um player que um bake pôs `Kinematic` |
+///
+/// ⚠️ **E a metade que fica na tabela acima é a do objecto pelado** (`an_empty_object_still_…`
+/// varre `CASES`, e a §14 saiu dela) — por isso ela é afirmada aqui, explicitamente.
+///
+/// (Mutação: pôr `player_section_applies` de volta em `has_player` ⇒ a 1.ª metade reprova.)
+#[test]
+fn the_player_section_belongs_to_every_dynamic_body() {
+    let mut sim = SimWorld::new();
+    let dyn_body = body(sim.world_mut());
+    assert!(
+        player(&sim, dyn_body.to_bits()),
+        "um corpo Dynamic ficou SEM a §14 — a porta *Make Platform Player* nao tem onde estar, e \
+         desde 2026-09-14 o componente NAO esta' na paleta do `+`"
+    );
+
+    let mut sim = SimWorld::new();
+    let stat = sim
+        .world_mut()
+        .spawn((
+            Transform::IDENTITY,
+            ph2d_ecs::Name::new("Floor"),
+            ph2d_physics_ecs::RigidBody {
+                kind: ph2d_physics_ecs::BodyKind::Static,
+            },
+        ))
+        .id();
+    assert!(
+        !player(&sim, stat.to_bits()),
+        "um corpo Static mostrou a §14 — o botao ofereceria um gesto que a fisica recusa"
+    );
+    sim.world_mut()
+        .entity_mut(stat)
+        .insert(ph2d_physics_ecs::PlatformPlayer::default());
+    assert!(
+        player(&sim, stat.to_bits()),
+        "um Static COM o componente ficou sem a §14 — um componente presente e invisivel le-se \
+         como defeito, e e' o caso de um player que um bake pos Kinematic"
+    );
+
+    let mut sim = SimWorld::new();
+    let nu = plain(sim.world_mut());
+    assert!(
+        !player(&sim, nu.to_bits()),
+        "um objeto sem corpo nenhum mostrou a §14 — a poda da F3 continua a valer para ele"
+    );
+}
+
+/// ⭐⭐ **A §11 alcança um FILHO de um corpo, ainda sem física nenhuma** (ordem do dono,
+/// 2026-09-14) — a porta da PEÇA composta.
+///
+/// O `Collider` deixou de ser oferecido na paleta, e a rota que ele era — *esta forma é mais uma
+/// peça do corpo ancestral* (W-Compound) — é o botão **Add Shape to X** da face vazia da §11.
+/// ⛔ **A paleta genérica não sabe NOMEAR o dono**, e sem o nome o gesto não existe: um collider é
+/// invisível e a hierarquia pode ter um grupo no meio. É a MESMA excepção do `rig_parts`, que já
+/// vivia ali pela mesma razão (um gesto sobre a subárvore que a paleta não exprime).
+///
+/// ⚠️ **A metade de ausência é o irmão SEM pai**: um sprite solto continua sem §11. Sem ela, esta
+/// lei seria indistinguível de *«a §11 voltou para toda a gente»*, que é a face vazia da F3 de volta.
+///
+/// (Mutação: tirar o `&& part_owner.is_empty()` do `build_physics_info` ⇒ a 2.ª metade reprova.)
+#[test]
+fn the_physics_section_reaches_a_child_of_a_body() {
+    let mut sim = SimWorld::new();
+    let dono = body(sim.world_mut());
+    let filho = sim
+        .world_mut()
+        .spawn((
+            Transform::IDENTITY,
+            ph2d_ecs::Name::new("Shape"),
+            ph2d_ecs::ChildOf(dono),
+        ))
+        .id();
+    assert!(
+        physics(&sim, filho.to_bits()),
+        "um filho de um corpo ficou SEM a §11 — o *Add Shape to X* e' a unica porta da peca \
+         composta, porque a paleta nao sabe nomear o dono"
+    );
+
+    let mut sim = SimWorld::new();
+    let orfao = sprite(sim.world_mut());
+    assert!(
+        !physics(&sim, orfao.to_bits()),
+        "um sprite SEM corpo acima mostrou a §11 — a face vazia da F3 voltou para toda a gente"
+    );
 }
 
 /// ⭐⭐ **A §7 Ordering vale para TODO objeto** (Enio, 2026-08-30) — e as duas metades, como toda

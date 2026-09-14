@@ -65,18 +65,25 @@ const CAPSULE: ColliderShape = ColliderShape::Capsule {
     radius: 0.2,
 };
 
-/// **O gesto inteiro:** um corpo Dynamic **não tem** a §14, anexar o componente fá-la aparecer, e
+/// **O gesto inteiro:** um corpo Dynamic tem a §14 com a face VAZIA, o botão anexa o componente, e
 /// os números vêm do ponto de partida da LEI.
 ///
-/// ⚠️ **A primeira metade INVERTEU na F3** (ADR-0166). Este gate afirmava *"todo corpo Dynamic tem
-/// a §14"* — a **face vazia**, cujo botão «Make Platform Player» era a única rota para a feature.
-/// Hoje a seção segue o componente, e a rota é o `+` do cabeçalho.
+/// ⚠️ **A primeira metade inverteu DUAS vezes, e a redacção de hoje é a original.** Ela dizia *«todo
+/// corpo Dynamic tem a §14»* (a face vazia, cujo botão era a única rota); a **F3** (ADR-0166)
+/// inverteu-a para *«a secção segue o componente»*, porque a rota passara a ser o `+`; e em
+/// **2026-09-14 o dono reverteu** — *«um objeto de física (Physics Body) e todas as opções aparecem
+/// com ele (inclusive Collision Shape e Platform Player)»* —, tirando a física da paleta e
+/// devolvendo a porta à secção. ⚠️ *Um gate que inverte não é um gate fraco: é a lei do produto a
+/// ser decidida por quem pode.*
 #[test]
 fn attaching_the_player_opens_the_section_at_the_laws_starting_point() {
     let (mut sim, bits) = body(BodyKind::Dynamic, CAPSULE);
+    let vazia = build_player_info(&sim, bits, 0.0, 0.0, None, SPRUNG)
+        .expect("um corpo Dynamic tem a §14, com a face vazia — e' a porta do comportamento");
     assert!(
-        build_player_info(&sim, bits, 0.0, 0.0, None, SPRUNG).is_none(),
-        "um corpo SEM o componente nao pode ter a §14 — era a face vazia da pre-F3"
+        !vazia.has_player,
+        "a face vazia tem de se DECLARAR vazia: e' o `has_player` que faz o painel pintar o botao \
+         em vez dos knobs de um player que nao existe"
     );
 
     attach_player(&mut sim, bits);
@@ -132,30 +139,38 @@ fn fit_to_collider_raises_a_short_float_height() {
     );
 }
 
-/// ⚠️ **A §14 segue o COMPONENTE, e não o tipo do corpo** — e isto é uma REVERSÃO medida da F3.
+/// ⚠️ **A §14 segue o COMPONENTE *ou* o corpo ser `Dynamic`** — um `||`, e cada metade responde a
+/// uma pergunta diferente.
 ///
-/// Até aqui a regra era *"Dynamic, com ou sem o componente; e nunca um Static"*, porque a mola é um
-/// impulso e um impulso não move massa infinita. Aquela era a condição de **OFERECER O BOTÃO**, e o
-/// botão mudou-se para a paleta: mantê-la produziria o pior dos dois mundos — o artista anexa o
-/// componente pelo `+` e **nada aparece**. *Um componente presente e invisível lê-se como defeito.*
+/// - **`has_player`** é a metade da VERDADE: o componente está lá, logo a secção mostra-o. Sem ela,
+///   um player que um bake pôs `Kinematic` desapareceria do Inspector com o componente ainda na
+///   entidade, e *um componente presente e invisível lê-se como defeito* — foi esta a razão que a
+///   F3 escreveu ao apagar o `BodyKind`.
+/// - **`Dynamic`** é a metade da OFERTA: o botão que CRIA o comportamento só existe onde a física o
+///   honra — a mola do player é um impulso, e um impulso não move massa infinita.
 ///
-/// A física continua verdadeira; ela é assunto da §11, que é onde o tipo do corpo se muda.
+/// ⚠️ **A F3 tinha razão em apagar a 2.ª ENQUANTO a porta era o `+`** (mantê-la daria *o artista
+/// anexa pelo `+` e nada aparece*). Com a ordem do dono de 2026-09-14 a física saiu da paleta e a
+/// porta voltou para cá — e a condição de oferecer volta a ser condição de pintar, que é o que faz
+/// as duas perguntas serem a mesma outra vez.
 ///
-/// (Mutação: pôr `kind != Static` de volta na `player_section_applies` ⇒ o `Static` reprova.)
+/// (Mutação: pôr `player_section_applies` de volta em `has_player` ⇒ o `Dynamic` vazio reprova.)
 #[test]
-fn the_section_follows_the_component_not_the_body_kind() {
+fn the_section_follows_the_component_or_a_dynamic_body() {
     for kind in [BodyKind::Static, BodyKind::Kinematic, BodyKind::Dynamic] {
         let (mut sim, bits) = body(kind, CAPSULE);
-        assert!(
-            build_player_info(&sim, bits, 0.0, 0.0, None, SPRUNG).is_none(),
-            "sem o componente nao ha' §14, nem num {kind:?}"
+        let vazia = build_player_info(&sim, bits, 0.0, 0.0, None, SPRUNG);
+        assert_eq!(
+            vazia.is_some(),
+            kind == BodyKind::Dynamic,
+            "sem o componente a §14 e' a face vazia de um Dynamic e de mais ninguem — {kind:?}"
         );
         attach_player(&mut sim, bits);
         assert!(
             sim.world()
                 .get::<PlatformPlayer>(ph2d_ecs::Entity::from_bits(bits))
                 .is_some(),
-            "a porta da paleta anexa em qualquer corpo — {kind:?}"
+            "a porta anexa em qualquer corpo — {kind:?}"
         );
         assert!(
             build_player_info(&sim, bits, 0.0, 0.0, None, SPRUNG).is_some(),
@@ -164,20 +179,30 @@ fn the_section_follows_the_component_not_the_body_kind() {
     }
 }
 
-/// **Remover devolve o corpo a um corpo comum — e FECHA a seção.**
+/// **Remover devolve o corpo a um corpo comum — e deixa a PORTA aberta.**
 ///
-/// ⚠️ **A segunda metade inverteu na F3:** ela dizia *"a seção continua viva, com a face vazia,
-/// para que ele possa voltar a ser um player"*. A rota de volta é agora o `+` do cabeçalho, e uma
-/// seção vazia sobre um componente ausente é exatamente o que a fase apaga.
+/// ⚠️ **Esta metade inverteu duas vezes, e hoje é a original:** ela dizia *«a secção continua viva,
+/// com a face vazia, para que ele possa voltar a ser um player»*; a F3 fechou-a (a rota de volta
+/// passou a ser o `+`); e a ordem do dono de 2026-09-14 tirou a física da paleta, logo fechar a
+/// secção deixaria o artista **sem rota de volta nenhuma** — o defeito mais caro dos três.
+///
+/// ⚠️ **E o que sai é o COMPONENTE, não a secção:** `has_player` volta a `false`, que é o que o
+/// painel lê para pintar o botão em vez dos knobs.
 #[test]
-fn removing_the_behaviour_closes_the_section() {
+fn removing_the_behaviour_leaves_the_door_open() {
     let (mut sim, bits) = body(BodyKind::Dynamic, CAPSULE);
     attach_player(&mut sim, bits);
-    assert!(build_player_info(&sim, bits, 0.0, 0.0, None, SPRUNG).is_some());
-    apply_player_edit(&mut sim, bits, PlayerFieldEdit::Remove);
     assert!(
-        build_player_info(&sim, bits, 0.0, 0.0, None, SPRUNG).is_none(),
-        "sem o componente a §14 tem de sumir"
+        build_player_info(&sim, bits, 0.0, 0.0, None, SPRUNG)
+            .expect("com o componente")
+            .has_player
+    );
+    apply_player_edit(&mut sim, bits, PlayerFieldEdit::Remove);
+    let depois = build_player_info(&sim, bits, 0.0, 0.0, None, SPRUNG)
+        .expect("a §14 fica, com a face vazia — e' a unica rota de volta");
+    assert!(
+        !depois.has_player,
+        "o componente saiu, logo a face tem de se declarar VAZIA"
     );
 }
 
@@ -412,10 +437,13 @@ fn removing_the_behaviour_gives_a_plain_dynamic_body_back() {
         "⚠️ o corpo tem de VOLTAR a cair -- Kinematic sem player e' dirigido pela \
          CENA, e a §14 nao e' oferecida ali: o artista fica PRESO"
     );
-    // ⚠️ **E a seção FECHA** (F3): a porta de volta é o `+` do cabeçalho, não uma face vazia.
+    // ⚠️ **E a seção FICA, com a face VAZIA** (ordem do dono, 2026-09-14): ela é a única rota de
+    // volta desde que a física saiu da paleta. É o `has_player` que a declara vazia.
     assert!(
-        build_player_info(&sim, bits, 0.0, 0.0, None, SPRUNG).is_none(),
-        "sem o componente a §14 tem de sumir"
+        !build_player_info(&sim, bits, 0.0, 0.0, None, SPRUNG)
+            .expect("a §14 fica sobre o corpo Dynamic que o Remove devolveu")
+            .has_player,
+        "o componente saiu, logo a face tem de se declarar VAZIA"
     );
 }
 

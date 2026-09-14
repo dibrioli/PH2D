@@ -161,6 +161,42 @@ impl ComponentDesc {
         }
     }
 
+    /// **Dado que chega com o gesto e que não FUNCIONA sem outro componente** — [`Attach::Intrinsic`]
+    /// mais [`ComponentDesc::requires`].
+    ///
+    /// ⚠️ **As duas coisas não são contraditórias, e confundi-las custa um half-attach silencioso.**
+    /// O `attach` responde *quem ESCOLHE isto* (aqui: ninguém — chega por um gesto da secção que fala
+    /// dele); o `requires` responde *isto é inerte sem o quê*, que é um facto **estrutural** da
+    /// query da ponte e continua verdadeiro seja quem for a anexar. A porta
+    /// `component_attach::attach_by_name` honra a cascata **sem consultar o `attach`**, então
+    /// declarar aqui é o que impede que um chamador (um teste, um script, a porta de produção)
+    /// deixe o componente numa entidade onde ele não faz nada.
+    ///
+    /// ⚠️ **O que se perde é só o RÓTULO** — a cascata que viaja no item da paleta («brings …») não
+    /// existe para quem não está na paleta. A metade que resta é a que escreve no mundo.
+    ///
+    /// Nasceu em 2026-09-14 para o `PlatformPlayer`, quando a ordem do dono tirou a física da paleta
+    /// e deixou **uma** porta: *«um objeto de física (Physics Body) e todas as opções aparecem com
+    /// ele»*.
+    #[must_use]
+    pub const fn intrinsic_requiring(
+        canonical_name: &'static str,
+        display_name: &'static str,
+        category: ComponentCategory,
+        fields: &'static [FieldDesc],
+        requires: &'static [&'static str],
+    ) -> Self {
+        Self {
+            canonical_name,
+            display_name,
+            category,
+            attach: Attach::Intrinsic,
+            fields,
+            requires,
+            owned_document: false,
+        }
+    }
+
     /// **Um componente que é máquina** — nunca oferecido, nunca uma seção.
     ///
     /// Não recebe `fields` de propósito: descrever os campos de algo que não tem seção seria

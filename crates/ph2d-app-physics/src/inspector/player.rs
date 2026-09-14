@@ -201,15 +201,26 @@ pub fn build_player_info(
 /// tornaria o player inalcançável; por isso a ordem da F3 é **porta primeiro, poda depois**, com o
 /// censo (`component_reach_tests`) verde entre as duas.
 ///
-/// ⚠️ **E o `BodyKind` DEIXOU de mandar, o que é uma reversão deliberada.** A regra antiga também
-/// dizia *"e o corpo não pode ser `Static`"*, porque a mola do player é um impulso e um impulso não
-/// move massa infinita — mas isso era o critério de **OFERECER O BOTÃO**, e o botão mudou-se para a
-/// paleta. Mantê-lo aqui produziria o pior estado dos dois mundos: o artista anexa o componente
-/// pelo `+` e **nada aparece**. *Um componente presente e invisível lê-se como defeito*, que é
-/// exatamente a doença que a F3 existe para curar. A física continua verdadeira; ela é assunto da
-/// §11, onde o tipo do corpo se muda.
-pub fn player_section_applies(_kind: BodyKind, has_player: bool) -> bool {
-    has_player
+/// ⭐⭐ **E em 2026-09-14 o dono REVERTEU a poda:** *«um objeto de física (Physics Body) e todas as
+/// opções aparecem com ele (inclusive Collision Shape e Platform Player)»*. A face vazia volta, e
+/// com ela a regra original — **o componente presente, OU um corpo `Dynamic`**.
+///
+/// ⚠️ **As duas metades respondem a perguntas diferentes, e é por isso que são um `||`:**
+///
+/// - `has_player` é a metade da **VERDADE**: o componente está lá, logo a secção tem de o mostrar.
+///   Sem ela, um player que ficou `Static` (ou `Kinematic` por um bake) desapareceria do Inspector
+///   com o componente ainda na entidade — *um componente presente e invisível lê-se como defeito*,
+///   e foi essa a razão que a F3 escreveu ao apagar o `BodyKind`.
+/// - `Dynamic` é a metade da **OFERTA**: o botão que CRIA o comportamento só faz sentido onde a
+///   física o honra — a mola do player é um impulso, e um impulso não move massa infinita. ⛔ Num
+///   `Static` o botão não aparece, e a cura é mudar o tipo do corpo na §11, que é onde ele se muda.
+///
+/// ⚠️ **A mesma porta guarda a EDIÇÃO** (`apply_player_edit`), e isso é o que torna a reversão
+/// segura: quando a regra era só `has_player`, ela fechava-se sobre o gesto que a abre — a lição
+/// que a F3 pagou e escreveu (*«a pergunta "a secção aparece?" e a pergunta "esta edição é legal?"
+/// deixaram de ser a mesma»*). Com o `||` voltam a ser a mesma, e o `Add` passa.
+pub fn player_section_applies(kind: BodyKind, has_player: bool) -> bool {
+    has_player || kind == BodyKind::Dynamic
 }
 
 /// Uma `float_height` que de fato FLUTUA sobre esta forma.
@@ -298,6 +309,24 @@ pub fn seed_attached_player(sim: &mut SimWorld, entity_bits: u64) {
     sim.world_mut().entity_mut(entity).insert(p);
 }
 
+/// ⭐⭐ **O gesto INTEIRO de anexar um player** — o ponto neutro do tipo, e depois o seed.
+///
+/// ⚠️ **`PlatformPlayer::default()`, nunca campo a campo.** A 1.ª versão montava o componente a
+/// partir do `PlayerConfig::STARTING_POINT` — uma SEGUNDA porta para a tradução que o `Default` já
+/// faz —, e ela apodreceu na 1.ª wave que acrescentou campos.
+///
+/// ⚠️ **UMA porta, DOIS chamadores:** o botão *Make Platform Player* da §14 (pelo
+/// `PlayerFieldEdit::Add`) e o seed que o `+` do cabeçalho corre depois do `insert_default`. O
+/// segundo entra pelo [`seed_attached_player`], que é a metade de baixo desta função — *a lei do
+/// «ele nasce pairando» está escrita uma vez só*.
+pub fn attach_player(sim: &mut SimWorld, entity_bits: u64) {
+    let entity = Entity::from_bits(entity_bits);
+    sim.world_mut()
+        .entity_mut(entity)
+        .insert(PlatformPlayer::default());
+    seed_attached_player(sim, entity_bits);
+}
+
 /// **Aplica uma edição da §14.** Sem fan-out — a seção descreve UM personagem.
 pub fn apply_player_edit(sim: &mut SimWorld, entity_bits: u64, edit: PlayerFieldEdit) {
     let entity = Entity::from_bits(entity_bits);
@@ -311,6 +340,13 @@ pub fn apply_player_edit(sim: &mut SimWorld, entity_bits: u64, edit: PlayerField
     let shape = sim.world().get::<Collider>(entity).map(|c| c.shape);
 
     match edit {
+        // ⭐ **A porta** — e ela sai daqui INTEIRA, para o `+` do cabeçalho poder semear pela
+        // mesma lei. O `return` é o que impede o resto do `match` de ler um componente que
+        // acabou de nascer.
+        PlayerFieldEdit::Add => {
+            attach_player(sim, entity_bits);
+            return;
+        }
         // ⚠️ **UM gesto, DOIS campos** — ver `ids::INSP_PLAYER_MODE`. O
         // `PlayerMode` decide a LEI e quem escreve a pose; o `RigidBody.kind`
         // decide o que o corpo É no rapier. Pedir os dois ao artista, em duas
@@ -390,7 +426,8 @@ pub fn apply_player_edit(sim: &mut SimWorld, entity_bits: u64, edit: PlayerField
         // fan-out por entidade, como faz com o `Join` da §11. Ele está nomeado
         // neste braço em vez de num `_` justamente para o dia em que alguém mover
         // a interceptação: o braço fica INERTE e visível, e não engole o verbo.
-        PlayerFieldEdit::Remove
+        PlayerFieldEdit::Add
+        | PlayerFieldEdit::Remove
         | PlayerFieldEdit::ClearRun
         | PlayerFieldEdit::RestoreRun
         | PlayerFieldEdit::EmitSignals(_) => {}

@@ -4,18 +4,20 @@
 //! *"o undo ordena por bytes"*. Isso é o que os torna anexáveis com segurança — anexar um
 //! `RigidBody` é declarar uma intenção, não injetar um corpo no meio de um passo do solver.
 //!
-//! # ⭐⭐ TRÊS PORTAS, e 29 LINHAS DE SECÇÃO (report do dono, 2026-09-13)
+//! # ⭐⭐ UMA PORTA, e 31 LINHAS DE SECÇÃO (report do dono, 2026-09-13 e 14)
 //!
 //! *«Os componentes da física foram colocados no modal que é aberto ao clicar no `+` do inspector.
 //! Contudo foi erroneamente picotado, dividido em inúmeros supostos componentes que na verdade são
 //! apenas seções das opções de física.»*
 //!
 //! Medido: dos **32** tipos descritos aqui, **30 estavam `Authored`** — `30` de `85` itens da
-//! paleta inteira, **35 %**, e de longe a maior família (a seguinte, `core`, oferece 22). E **27**
-//! deles não são uma escolha do artista: são as **rows** que a §11/§12/§13/§14 já pinta *e já
-//! anexa*. Depois da poda: `30 → 3` oferecidos, e a paleta inteira de **85 → 58** itens (sonda
-//! `measure_palette`, mesma viewport de 1187×953 do report de 25/08 — *Image · Show all* deixa de
-//! precisar de rolagem, `175 px → 0`, e *Empty · Show all* cai de `238` para `46 px`).
+//! paleta inteira, **35 %**, e de longe a maior família (a seguinte, `core`, oferece 22). E
+//! **nenhum** deles, menos um, é uma escolha do artista: são as **rows** que a §11/§12/§13/§14 já
+//! pinta *e já anexa*, ou gestos que a paleta genérica não sabe exprimir.
+//!
+//! ⭐⭐ **E a decisão final é do dono** (2026-09-14, depois de ver a poda de três):
+//! *«um objeto de física (Physics Body) e todas as opções aparecem com ele (inclusive Collision
+//! Shape e Platform Player)»*. ⇒ **`30 → 1`**.
 //!
 //! ⚠️ **A régua não é nova — é a razão 2 do próprio [`crate::Attach::Intrinsic`]**, que já estava
 //! escrita e aplicada a dois destes (`Dominance`, `MassOverride`): *o neutro existe e anexá-lo
@@ -39,23 +41,25 @@
 //! o mesmo defeito de fundo: **o componente entra e nada acontece**, porque o valor neutro é
 //! exatamente o que a ausência já dizia.
 //!
-//! ⇒ o que a paleta oferece são as **três portas**, cada uma uma intenção diferente do artista:
+//! ⇒ a paleta oferece **UMA** entrada de física, e tudo o resto chega com ela ou por um gesto da
+//! secção que fala dele:
 //!
-//! | Porta | O que ela quer dizer | O que vem junto |
+//! | Onde | O que | Porque não é um item de paleta |
 //! |---|---|---|
-//! | **Physics Body** (`RigidBody`) | *este objeto é simulado* — e a §11 abre com TODAS as opções | `Collision Shape` |
-//! | **Collision Shape** (`Collider`) | *esta forma é mais uma peça do corpo acima* (W-Compound) | — |
-//! | **Platform Player** (`PlatformPlayer`) | *este objeto é um personagem que anda e salta* | `Physics Body`, `Collision Shape` |
+//! | **`+` → Physics → Physics Body** (`RigidBody`) | *este objeto é simulado* | é a porta |
+//! | **§11, ao nascer** (`Collider`) | forma · meias-extensões · offset · densidade · quique · atrito · camada · Solid\|Sensor | as opções **são** as rows da §11, e ela nasce com o corpo |
+//! | **§11, face vazia** (`Collider` sozinho) | *Add Shape to X* — esta forma é mais uma peça do corpo acima | ⛔ a paleta não sabe **NOMEAR o dono**, e sem o nome o gesto não existe |
+//! | **§14, face vazia** (`PlatformPlayer`) | *Make Platform Player* | ⛔ só faz sentido num corpo `Dynamic` (a mola é um impulso), e o `+` genérico não sabe perguntar isso |
 //!
-//! ⚠️ **O `Collider` FICA `Authored` por duas razões, e a segunda é um gate:** ele é a porta da
-//! peça composta (o antigo *Add Shape to X*), e o `RigidBody` **exige-o** — o
-//! `every_declared_requirement_names_a_real_component` proíbe uma dependência `Intrinsic`, porque a
-//! cascata teria de construir o que ninguém declarou construível.
+//! ⚠️ **As duas faces vazias VOLTARAM**, e é uma reversão parcial e declarada da F3 do ADR-0166
+//! (*«o Inspector mostra o que o objecto TEM»*): a §11 volta a aparecer num filho de um corpo, e a
+//! §14 em todo corpo `Dynamic`. O que **não** volta é a doença que a F3 curou — um objecto pelado
+//! não mostra secção de física nenhuma, e as doze secções de zeros continuam mortas.
 //!
-//! ⚠️ **Os rótulos passam a nomear a SECÇÃO que nascerá**, que é a regra do campo
+//! ⚠️ **O rótulo passa a nomear a SECÇÃO que nascerá**, que é a regra do campo
 //! [`crate::ComponentDesc::display_name`] (*nomeado pelo resultado, não pelo tipo Rust*):
-//! `Rigid Body` → **Physics Body** (o cabeçalho da §11, e a palavra do botão que o dono conhecia) e
-//! `Collider` → **Collision Shape** (neste app «shape» sozinho já é forma vetorial e forma 3D).
+//! `Rigid Body` → **Physics Body** (o cabeçalho da §11, e a palavra do botão que o dono conhecia).
+//! O `Collider` fica **Collision Shape** para o rótulo *«brings …»* dizer o que de facto chega.
 //!
 //! ⚠️ **`applies_to` é `ANY` de propósito, e é a medição que o manda:** a ponte da física vê
 //! as entidades por *query* (`BodyQuery = (Entity, &RigidBody, &Collider, &Transform)`), e
@@ -120,16 +124,18 @@ const fn i(canonical_name: &'static str, display_name: &'static str) -> D {
     D::intrinsic(canonical_name, display_name, C::Physics, &[])
 }
 
-/// **Uma PORTA que não funciona sem outro componente** — ver [`D::requires`].
+/// **A PORTA, e o que ela não funciona sem** — ver [`D::requires`].
 ///
 /// ⚠️ Irmã do [`i`] pelo lado oposto: ali o componente não se escolhe, aqui ele escolhe-se *e traz
 /// companhia*. (Era *«irmã do `p`»*, o helper autorado que a poda de 13/09 apagou — quando o vizinho
 /// que dá nome a uma nota deixa de existir, o que se corrige é a nota.)
 ///
-/// ⚠️ **Duas entradas em toda a família, e as duas são a MESMA query.** A ponte consulta
-/// `(Entity, &RigidBody, &Collider, &Transform)`: um corpo sem collider nunca entra no solver, e um
-/// player é uma lei que corre sobre um corpo. ⛔ A barra é *inerte sem aquele*, nunca boa prática —
-/// as zonas, os joints e os markers ficam de fora de propósito.
+/// ⚠️ **UMA entrada em toda a família, e ela é uma QUERY.** A ponte consulta
+/// `(Entity, &RigidBody, &Collider, &Transform)`: um corpo sem collider nunca entra no solver. ⛔ A
+/// barra é *inerte sem aquele*, nunca boa prática — as zonas, os joints e os markers ficam de fora
+/// de propósito. (Eram duas até 2026-09-14: o `PlatformPlayer` exigia o `RigidBody` pela mesma
+/// query, e deixou de precisar de o declarar quando a porta dele passou a ser um botão que só
+/// existe **sobre** um corpo.)
 const fn pr(
     canonical_name: &'static str,
     display_name: &'static str,
@@ -147,9 +153,8 @@ const fn pr(
 
 /// Ordenado por `canonical_name` (gate `the_catalog_is_sorted_and_unique`).
 ///
-/// ⚠️ **Três portas e 29 `Intrinsic`** (25 pelo [`i`] + os 4 que precisam de campos ou já cá
-/// estavam) — a tabela das portas vive no cabeçalho, e o gate
-/// [`tests::the_physics_family_offers_three_doors_and_not_its_rows`] impede que a quarta entre sem
+/// ⚠️ **UMA porta e 31 `Intrinsic`** — a tabela vive no cabeçalho, e o gate
+/// [`tests::the_physics_family_offers_one_door_and_not_its_rows`] impede que a segunda entre sem
 /// alguém decidir.
 pub const DESCS: &[D] = &[
     // As SETE da zona — todas rows do bloco de área da §11, pintadas quando o collider é
@@ -164,18 +169,17 @@ pub const DESCS: &[D] = &[
     i("ph2d::physics::AreaFormDrag", "Form Drag Zone"),
     i("ph2d::physics::AreaTorque", "Torque Zone"),
     i("ph2d::physics::Ccd", "Continuous Collision"),
-    // ⭐ **PORTA 2 — a peça composta.** Sem `RigidBody` ao lado, um `Collider` é *mais uma forma do
-    // corpo ancestral* (W-Compound), e a §11 tem uma face inteira para ela; com um corpo, é a forma
-    // dele. ⛔ **Não pode ser `Intrinsic`:** o `RigidBody` exige-o, e o
-    // `every_declared_requirement_names_a_real_component` proíbe uma dependência que a cascata não
-    // saiba construir.
-    D::authored(
-        "ph2d::physics::Collider",
-        "Collision Shape",
-        C::Physics,
-        O::ANY,
-        &[],
-    ),
+    // ⭐⭐ **A forma do corpo — e ela CHEGA COM ELE** (ordem do dono, 2026-09-14). Todas as opções
+    // dela (forma, meias-extensões, offset, densidade, quique, atrito, camada, Solid|Sensor) são
+    // rows da §11, que nasce com o `Physics Body`. A outra vida dela — *esta forma é mais uma peça
+    // do corpo ancestral* (W-Compound) — é o botão **Add Shape to X** da face vazia da §11, que
+    // NOMEIA o dono; a paleta genérica não sabe nomeá-lo, e por isso aquela é a porta.
+    //
+    // ⚠️ **Ser `Intrinsic` e ser dependência do `RigidBody` deixou de ser contraditório:** o gate
+    // `every_declared_requirement_names_a_real_component` exigia `Authored` e o recurso de que ele
+    // falava é OUTRO — quem constrói a cascata é o `insert_default` do REGISTO, que não consulta o
+    // `attach`. Hoje ele exige o que de facto é preciso: que o registo saiba construir o alvo.
+    i("ph2d::physics::Collider", "Collision Shape"),
     i("ph2d::physics::DampingOverride", "Damping"),
     // ⚠️⚠️ `Dominance` e `MassOverride` são `Intrinsic` por uma CERCA, não por falta de
     // desenho — e a cerca está escrita no doc-comment deles (`components/overrides.rs`):
@@ -206,11 +210,23 @@ pub const DESCS: &[D] = &[
     // **pode** ter campos, e sem eles a junta de uma instância prende os corpos do mestre (gate
     // `the_instance_joint_binds_the_instances_own_bodies`).
     D::intrinsic("ph2d::physics::PhysicsJoint", "Joint", C::Physics, JOINT),
-    // ⭐ **PORTA 3 — o personagem.** A única das três cujo assunto é COMPORTAMENTO, e a única cuja
-    // §14 sabe remover-se mas não criar-se: o `+` é a porta dela.
-    pr(
+    // ⭐⭐ **O comportamento — e ele também chega com o corpo** (ordem do dono, 2026-09-14). A §14
+    // volta a pintar-se sobre **todo corpo Dynamic**, com ou sem o componente, e a face vazia dela é
+    // o botão *Make Platform Player* — que foi a porta original (W5) e morreu na F3.
+    //
+    // ⚠️ **A porta por-secção faz o que a paleta não podia:** ela só existe onde a física honra o
+    // gesto (num `Static` a mola do player é um impulso sobre massa infinita), e o `+` genérico não
+    // sabe perguntar isso. ⛔ E anexá-lo pelo `+` a um corpo qualquer era o pior dos dois mundos —
+    // um crate com lei de personagem.
+    // ⚠️ **`Intrinsic` E com `requires`**, que não é contradição: o `attach` diz *quem escolhe* e o
+    // `requires` diz *é inerte sem o quê* — e a porta `attach_by_name` honra a cascata sem
+    // consultar o `attach`. Sem esta linha, um chamador que anexasse o player a um objecto pelado
+    // deixava-o lá a não fazer nada, em silêncio. Ver [`D::intrinsic_requiring`].
+    D::intrinsic_requiring(
         "ph2d::physics::PlatformPlayer",
         "Platform Player",
+        C::Physics,
+        &[],
         &["ph2d::physics::RigidBody"],
     ),
     i("ph2d::physics::PlayerMode", "Player Mode"),
@@ -244,28 +260,26 @@ pub const DESCS: &[D] = &[
 mod tests {
     use super::DESCS;
 
-    /// ⭐⭐ **A família da física oferece TRÊS portas, e nenhuma linha de secção.**
+    /// ⭐⭐ **A família da física oferece UMA porta, e nenhuma linha de secção.**
     ///
     /// O gate que faltava em 2026-08-24, quando a F3 escreveu a família inteira com o helper
-    /// autorado: **30 itens na paleta, 27 deles rows que a §11 já anexa**. O report do dono
-    /// (13/09) nomeou-o *«picotado, dividido em inúmeros supostos componentes»*.
+    /// autorado: **30 itens na paleta, e as opções de UM objecto de física espalhadas por eles**. O
+    /// report do dono (13/09) nomeou-o *«picotado, dividido em inúmeros supostos componentes»*, e o
+    /// veredito dele (14/09) fixou o número: *«um objeto de física (Physics Body) e todas as opções
+    /// aparecem com ele»*.
     ///
     /// ⚠️ **É uma catraca NOMEADA, e a lista é a afirmação** — não um número. Uma família de
-    /// física que ganhe uma quarta porta reprova aqui e obriga a decidir *isto é uma intenção do
-    /// artista, ou é uma row?*; e uma das três que desapareça reprova pelo mesmo `assert_eq`, que
-    /// é a **metade de obsolescência** (a lista deixaria de descrever a tabela).
+    /// física que ganhe uma segunda porta reprova aqui e obriga a decidir *isto é uma intenção do
+    /// artista, ou é uma row/gesto da secção?*; e se a porta desaparecer reprova pelo mesmo
+    /// `assert_eq`, que é a **metade de obsolescência** (a lista deixaria de descrever a tabela).
     ///
     /// ⚠️ **O piso de população é a outra metade:** sem ele, apagar a família inteira deixaria o
     /// gate a comparar dois vazios — *um zero de «não medido» e um de «perfeito» são o mesmo byte*.
     ///
     /// (Mutação: trocar um `i(...)` por `D::authored(...)` ⇒ o `assert_eq` reprova, nomeando-o.)
     #[test]
-    fn the_physics_family_offers_three_doors_and_not_its_rows() {
-        const PORTAS: [&str; 3] = [
-            "ph2d::physics::Collider",
-            "ph2d::physics::PlatformPlayer",
-            "ph2d::physics::RigidBody",
-        ];
+    fn the_physics_family_offers_one_door_and_not_its_rows() {
+        const PORTAS: [&str; 1] = ["ph2d::physics::RigidBody"];
         let offered: Vec<&str> = DESCS
             .iter()
             .filter(|d| d.is_offered())
@@ -274,10 +288,10 @@ mod tests {
         assert_eq!(
             offered,
             PORTAS.to_vec(),
-            "a paleta de FISICA tem de oferecer exatamente as tres portas.\n\
+            "a paleta de FISICA tem de oferecer exatamente UMA porta -- o `Physics Body`.\n\
              Um componente novo aqui e' uma pergunta, nao um esquecimento: e' uma INTENCAO do \
-             artista (entao e' `D::authored`/`pr`, e esta lista cresce com ele), ou e' uma ROW que \
-             um knob da §11/§12/§13/§14 ja' anexa (entao e' `i(..)`)?"
+             artista (entao e' `pr`, e esta lista cresce com ele), ou e' uma ROW / um GESTO que a \
+             §11/§12/§13/§14 ja' oferece (entao e' `i(..)`)?"
         );
         assert!(
             DESCS.len() >= 30,

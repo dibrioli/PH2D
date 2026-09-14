@@ -107,6 +107,10 @@ const NO_CONSUMER_PENDING: &[(&str, &str)] = &[
     //       escrevia (`close_button_seam.rs`). Ele saiu da lista `BUTTONS`: encaminhar um fecho
     //       pelo barramento pedia um braço no shell que nunca existiu.
     //   `INSP_PLAYER_ADD`     — registo ÓRFÃO de um botão que saiu do produto na F3; apagado.
+    //       ⚠️ **E VOLTOU em 2026-09-14, com o botão** (ordem do dono: a §14 pinta outra vez a face
+    //       vazia, porque o `PlatformPlayer` deixou de estar na paleta do `+`). *A entrada acima
+    //       continua verdadeira sobre o dia em que foi escrita, e seria uma armadilha lida hoje:
+    //       um id órfão cura-se apagando, e o que o des-orfanou foi o botão nascer outra vez.*
     //   `WET_TUNING_SCROLL`   — id ÓRFÃO (a barra real é a `WET_TUNING_SCROLLBAR_ID`); apagado.
     //
     // ⚠️ **Os dois últimos são de OUTRA espécie, e a distinção é a cura:** um id declarado que

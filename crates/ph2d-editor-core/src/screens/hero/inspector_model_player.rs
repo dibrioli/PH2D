@@ -283,14 +283,21 @@ pub struct PlayerLive {
 /// Uma edição na §14 — o vocabulário que o painel emite e a shell honra.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum PlayerFieldEdit {
-    // ⛔ **`Add` MORREU na F3** (ADR-0166). Ele anexava o `PlatformPlayer` já ajustado à forma do
-    // collider, e o botão que o levantava («Make Platform Player») vivia DENTRO da §14 — que hoje
-    // só se pinta com o componente lá. A porta ficaria fechada sobre a própria chave.
-    //
-    // ⚠️ **O ajuste NÃO se perdeu:** ele é agora o *seed* que o `+` do cabeçalho corre depois de
-    // inserir o ponto neutro (`inspector_player::seed_attached_player`). Foi esta a variante que
-    // provou a emenda medida na F0 — *nem toda porta por-seção é redundante com o `+`; as que
-    // semeiam do valor vivo fazem o que a paleta genérica não pode*.
+    /// ⭐⭐ **VOLTOU em 2026-09-14, por ordem do dono** — *«um objeto de física (Physics Body) e
+    /// todas as opções aparecem com ele (inclusive Collision Shape e Platform Player)»*.
+    ///
+    /// Ele anexa o `PlatformPlayer` já ajustado à forma do collider, e o botão que o levanta
+    /// («Make Platform Player») vive na face vazia da §14 — que volta a pintar-se sobre **todo
+    /// corpo Dynamic**, com ou sem o componente.
+    ///
+    /// ⛔ **Ele MORREU na F3** (ADR-0166) porque a §14 passou a pintar-se só COM o componente: a
+    /// porta ficava fechada sobre a própria chave. A reversão é do dono, e o que ela troca está
+    /// medido — a paleta do `+` passa a oferecer **uma** entrada de física em vez de três, e as
+    /// outras duas voltam a ser gestos da secção que fala delas.
+    ///
+    /// ⚠️ **O ajuste não é uma segunda construção:** este braço chama o MESMO
+    /// `inspector_player::attach_player` que o seed do `+` usa — *a lei mora numa porta só*.
+    Add,
     /// Remove o componente: o corpo volta a ser um corpo comum.
     Remove,
     /// Semeia a `float_height` a partir da forma do collider (o botão

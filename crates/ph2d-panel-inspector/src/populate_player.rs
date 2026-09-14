@@ -93,21 +93,22 @@ fn populate_player_chips(store: &mut WidgetStore) {
 
 pub(super) fn populate_player(store: &mut WidgetStore) {
     populate_player_chips(store);
-    // ⛔⛔ **O `INSP_PLAYER_ADD` saiu desta lista em 2026-08-30 — era um REGISTO ÓRFÃO.**
+    // ⭐⭐ **O `INSP_PLAYER_ADD` VOLTOU a esta lista em 2026-09-14, com o botão que o nomeia.**
     //
-    // Ele era o botão «Make Platform Player» da face vazia, e a face **morreu na F3**
-    // (ADR-0166: quem anexa passou a ser o `+` do cabeçalho do Inspector). O `sections/player.rs`
-    // já dizia *«eram cinco até a F3»* na tabela de dicas — e o registo ficou para trás, sozinho:
-    // pintado por ninguém, despachado por ninguém, e a ocupar espaço no `WidgetStore` de toda
-    // sessão.
+    // Ele é o «Make Platform Player» da face vazia. Entre 2026-08-30 e hoje ele **não** esteve
+    // aqui, e isso estava certo: a face tinha morrido na F3 e o registo ficara órfão — *um id
+    // registado sem pintura nem consumo faz toda sonda de controlos mortos mentir*, porque a régua
+    // vê «registado» e conta-o como controlo. Com a face de volta (ordem do dono: *«todas as
+    // opções aparecem com ele»*), o registo volta a descrever um botão que existe, é pintado e
+    // tem braço de evento.
     //
-    // ⚠️ **Um id registado sem pintura nem consumo não é inofensivo:** ele faz toda sonda futura de
-    // controlos mortos mentir — a régua vê «registado» e conta-o como controlo, e a acusação que
-    // ela produz aponta para um botão que já não existe. Gate:
-    // `tests/seam_player.rs::the_dead_empty_face_leaves_no_registration_behind`.
+    // ⚠️ **As três metades andam juntas, e o gate do `seam_player` mede-as:** pintar sem registar
+    // deixa o botão sem visual de estado; registar sem pintar é o órfão; despachar sem pintar é o
+    // controlo morto sob o dedo.
     register_button_ids(
         store,
         &[
+            ids::INSP_PLAYER_ADD,
             ids::INSP_PLAYER_REMOVE,
             ids::INSP_PLAYER_FIT,
             ids::INSP_PLAYER_CLEAR_RUN,

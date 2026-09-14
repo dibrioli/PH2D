@@ -184,8 +184,9 @@ fn every_group_is_named_and_tinted() {
 #[test]
 fn the_cascade_is_shown_in_the_label_before_it_is_applied() {
     let m = build(ObjectKind::Image, &[], &buildable, false);
-    // ⚠️ Os rótulos são **Physics Body** e **Collision Shape** desde a poda de 13/09 (report do
-    // dono): eles nomeiam a SECÇÃO que nasce, não o tipo Rust. Ver o cabeçalho do `catalog/physics`.
+    // ⚠️ O rótulo é **Physics Body** desde a poda de 13/09 e o `Collision Shape` que ele TRAZ já não
+    // é um item da paleta desde 14/09 (ordem do dono) — o que não muda é a lei: *o artista vê o que
+    // vem junto ANTES de clicar*. Ver o cabeçalho do `catalog/physics`.
     let body = labels(&m)
         .into_iter()
         .find(|l| l.starts_with("Physics Body"))
@@ -194,13 +195,12 @@ fn the_cascade_is_shown_in_the_label_before_it_is_applied() {
         body.contains("brings Collision Shape"),
         "o rotulo tem de dizer o que vem junto: {body:?}"
     );
-    let player = labels(&m)
-        .into_iter()
-        .find(|l| l.starts_with("Platform Player"))
-        .expect("o Platform Player tem de estar na paleta");
+    // ⚠️ **A metade FECHADA (transitiva) mede-se na tabela, e não na paleta** — desde 14/09 o único
+    // `requires` da física é `RigidBody → Collider`, logo não há um 2.º salto para ver num rótulo.
+    // A lei do fecho continua gateada no `brings_along` pelas famílias que a exercem.
     assert!(
-        player.contains("Physics Body") && player.contains("Collision Shape"),
-        "a cascata tem de ser FECHADA (transitiva): {player:?}"
+        !body.contains("brings brings"),
+        "o rotulo montou-se duas vezes: {body:?}"
     );
 }
 
@@ -241,27 +241,61 @@ fn the_require_graph_has_no_cycles() {
         }
         walk(d.canonical_name, &mut Vec::new());
     }
+    // ⚠️ **O piso de população deixou de ser SÓ um NÚMERO e ganhou um NOME** (2026-09-14). Um piso
+    // que só conta não distingue *«a população encolheu por uma decisão»* de *«alguém apagou o
+    // `requires` e o gate passou a andar sobre nada»* — e nesta rodada as duas cascatas da física
+    // sobreviveram por razões diferentes (o `Collider` porque o corpo é inerte sem ele; o
+    // `RigidBody` porque o **player** é, mesmo tendo saído da paleta: `Intrinsic` e `requires`
+    // respondem a perguntas diferentes). A âncora nomeada abaixo é o que torna isso verificável.
     assert!(
         seen >= 2,
         "o gate ficou verde por nao haver `requires` nenhum ({seen})"
     );
+    let corpo = ph2d_component_desc::desc_for("ph2d::physics::RigidBody").expect("o descritor");
+    assert_eq!(
+        corpo.requires,
+        ["ph2d::physics::Collider"],
+        "a cascata CANONICA desapareceu — este gate percorre um grafo, e sem uma aresta conhecida \
+         ele nao percorre nada. Se o `RigidBody` deixou mesmo de exigir o `Collider`, troque esta \
+         ancora pela cascata que ficou no lugar dela."
+    );
 }
 
-/// ⚠️ **Toda dependência declarada NOMEIA um componente que existe e se constrói.**
+/// ⚠️ **Toda dependência declarada NOMEIA um componente que existe e que o REGISTO sabe construir.**
 ///
 /// Um nome canónico errado no `requires` não falha a compilação — a cascata simplesmente salta-o em
 /// silêncio, e o artista anexa o dependente sem a dependência. É a mesma classe da chave por string
 /// que o próprio descritor avisa.
+///
+/// ⛔⛔ **A 1.ª redacção exigia `Attach::Authored`, e nomeava o RECURSO ERRADO.** Ela dizia *«é
+/// Intrinsic — a cascata não o consegue construir»*, e isso é falso: quem constrói é o
+/// `insert_default` do **`ComponentRegistry`** (`attach_by_name` → `attach_one`), que **não
+/// consulta o `attach`**. Um `Intrinsic` com `Default` — o `Collider` é exactamente esse caso —
+/// constrói-se perfeitamente. *Um limite legítimo diz de que recurso ele é* (CLAUDE.md §0.0), e
+/// este dizia de um recurso de outro subsistema.
+///
+/// ⚠️ Foi a ordem do dono de 2026-09-14 que o expôs (o `Collider` sai da paleta e continua a ser
+/// dependência do `RigidBody`) — e a cura não é isentar a linha: é medir o que de facto importa.
+/// Com o registo do produto a responder, o gate ficou **mais forte**, porque um `requires` que
+/// nomeie um tipo sem `insert_default` passava antes e reprova agora.
+///
+/// (Mutação: apontar um `requires` a um nome sem `Default` no registo ⇒ RED com o nome dentro.)
 #[test]
 fn every_declared_requirement_names_a_real_component() {
+    let reg = crate::component_registry_for_tests::registo();
     for d in ph2d_component_desc::all() {
         for dep in d.requires {
-            let target = ph2d_component_desc::desc_for(dep).unwrap_or_else(|| {
+            ph2d_component_desc::desc_for(dep).unwrap_or_else(|| {
                 panic!("{} exige {dep}, que nao tem descritor", d.canonical_name)
             });
+            let buildable = reg
+                .get_by_id(ph2d_ecs::scene::stable_type_id(dep))
+                .is_some_and(|e| e.insert_default.is_some());
             assert!(
-                !matches!(target.attach, ph2d_component_desc::Attach::Intrinsic),
-                "{} exige {dep}, que e' Intrinsic — a cascata nao o consegue construir",
+                buildable,
+                "{} exige {dep}, que o registo do produto nao sabe construir — a cascata \
+                 (`attach_one`) insere o ponto NEUTRO pelo `insert_default`, entao sem ele o \
+                 dependente nasce sem a dependencia, em silencio",
                 d.canonical_name
             );
         }

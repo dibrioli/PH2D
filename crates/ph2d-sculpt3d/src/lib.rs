@@ -63,10 +63,14 @@ mod grip;
 /// Os controlos próprios do pincel de POSE — ver [`pose_controlos`].
 pub mod pose_controlos;
 pub use pose_controlos::PoseControlos;
+/// ⭐⭐ **O INDICADOR do pincel de POSE** — o osso que se vê antes de premir, com
+/// a cache e o orçamento que o separam do alvo. Ver [`pose_previa`].
+pub mod pose_previa;
 /// ⭐ **O modo do pincel de pose, re-exportado.** O painel escolhe entre os três
 /// e não precisa de conhecer a crate da lei — a mesma forma com que ele já lê o
 /// `ClothMode`.
 pub use ph2d_pose::Modo as PoseModo;
+pub use pose_previa::Osso as PoseOsso;
 /// **O CAMPO ELÁSTICO** — os Kelvinlets regularizados (de Goes & James 2017),
 /// que são o `l-mode` da família que agarra. Ver [`kelvinlet`].
 pub mod kelvinlet;

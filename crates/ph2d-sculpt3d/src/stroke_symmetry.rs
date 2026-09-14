@@ -136,7 +136,10 @@ impl SculptStroke {
                 // aqui — e cai **alto** em debug, em vez de não mover nada em
                 // silêncio.
                 outro => {
-                    debug_assert!(false, "{outro:?} declara resolver a própria região e não tem destino");
+                    debug_assert!(
+                        false,
+                        "{outro:?} declara resolver a própria região e não tem destino"
+                    );
                     0
                 }
             };

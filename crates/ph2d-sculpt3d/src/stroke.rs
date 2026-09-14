@@ -251,6 +251,14 @@ pub struct SculptStroke {
     /// não partiria teste nenhum — a saída seria a mesma, só mais lenta. Ver
     /// [`super::pose_simetria_tests`].
     pub(crate) pose_construcoes: u32,
+    /// ⭐⭐ **O INDICADOR da pose** — o osso que se vê ANTES de premir, com a
+    /// adjacência guardada e o orçamento que o impede de arrastar o editor.
+    /// Ver [`super::pose_previa`], que é onde a tabela medida está.
+    ///
+    /// ⚠️ **Mora aqui e não na cena** de propósito: é o que faz o indicador e o
+    /// gesto atravessarem a **mesma** porta ([`Self::pose_ossos`]) e torna
+    /// inexprimível que um mostre uma cadeia e o outro construa outra.
+    pub(crate) pose_previa: super::pose_previa::PosePrevia,
     /// ⭐ **O filtro de tecido deste gesto colide?** — fotografado no pen-down.
     ///
     /// ⚠️ **Uma bandeira e não uma leitura das propriedades a cada passo**: a
@@ -433,6 +441,12 @@ impl SculptStroke {
         // ⚠️ A cadeia da pose é do TRAÇO: um traço novo acha o pivô outra vez.
         self.pose = None;
         self.pose_construcoes = 0;
+        // ⚠️⚠️ **E o INDICADOR esquece TUDO, adjacência incluída** — este é o
+        // único momento em que a malha pode ter mudado de uma forma que a chave
+        // dele não vê (as ligações entre peças dependem das POSIÇÕES, e lê-las
+        // seria varrer a malha inteira por quadro, que é o custo que ele existe
+        // para não pagar).
+        self.pose_previa.esquecer();
     }
 }
 
@@ -445,12 +459,6 @@ pub mod stroke_cloth_num;
 
 #[path = "stroke_cloth.rs"]
 mod stroke_cloth;
-/// ⭐ **A ponte do pincel de POSE** — ver [`stroke_pose`]. Irmão do
-/// [`stroke_cloth`] no papel (os dois desviam antes do `dab_core`) e não na
-/// razão: o tecido porque cada cópia de simetria tem a **sua** região; a pose
-/// porque a lei dela **já resolve os oito octantes numa passagem só**.
-#[path = "stroke_pose.rs"]
-mod stroke_pose;
 /// ⭐ **O FILTRO de tecido** (espec §7) — o mesmo solver na peça inteira, sem
 /// pincel. Irmão do [`stroke_cloth_ref`], e o corte é o GESTO: lá um traço com
 /// carimbo, aqui um arrasto que não toca a malha.
@@ -460,6 +468,12 @@ mod stroke_cloth_filter;
 /// de `PH2D_CLOTH_LAW=ref`. Ver [`stroke_cloth_ref`].
 #[path = "stroke_cloth_ref.rs"]
 mod stroke_cloth_ref;
+/// ⭐ **A ponte do pincel de POSE** — ver [`stroke_pose`]. Irmão do
+/// [`stroke_cloth`] no papel (os dois desviam antes do `dab_core`) e não na
+/// razão: o tecido porque cada cópia de simetria tem a **sua** região; a pose
+/// porque a lei dela **já resolve os oito octantes numa passagem só**.
+#[path = "stroke_pose.rs"]
+mod stroke_pose;
 pub use stroke_cloth_filter::ClothFilterStep;
 pub use stroke_cloth_ref::cloth_repica;
 
@@ -568,6 +582,11 @@ mod tests;
 #[cfg(test)]
 #[path = "stroke_cloth_tests.rs"]
 mod cloth_tests;
+/// Os gates do INDICADOR da pose — irmão do [`pose_simetria_tests`], e o corte
+/// é o SUJEITO: lá o que o GESTO faz à malha, aqui o que se VÊ antes dele.
+#[cfg(test)]
+#[path = "pose_previa_tests.rs"]
+mod pose_previa_tests;
 /// Os gates da FIAÇÃO da pose — ver [`super::pose_simetria_tests`].
 #[cfg(test)]
 #[path = "pose_simetria_tests.rs"]

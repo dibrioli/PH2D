@@ -34,6 +34,16 @@ pub(super) struct PoseSessao {
 }
 
 impl crate::SculptStroke {
+    /// ⭐ **A cadeia VIVA do traço em curso** — a porta por onde o indicador
+    /// ([`crate::pose_previa`]) lê o osso já dobrado pelo arrasto, em vez de
+    /// construir uma cadeia sua.
+    ///
+    /// ⚠️ `None` fora de um traço de pose, que é **exactamente** a condição em
+    /// que o indicador tem de construir a sua.
+    pub(crate) fn pose_sessao(&self) -> Option<&ph2d_pose::Pose> {
+        self.pose.as_ref().map(|s| &s.pose)
+    }
+
     /// Um evento de pose. Devolve quantos vértices se moveram.
     pub(super) fn pose_dab(
         &mut self,

@@ -1,5 +1,5 @@
 use super::*;
-use crate::interaction::{HitIndex, InteractiveState, PainterLayerDrop};
+use crate::interaction::{HitIndex, InteractiveState, PanelRowDrop, PanelRowFamily};
 use crate::widget::{
     ButtonState, CheckboxState, CheckboxValue, SliderOrientation, SliderState, ToggleState,
 };

@@ -468,7 +468,7 @@ impl App {
         }
 
         // Painter layers drag-reparent (W3 T3.8): the dispatch emits a
-        // PainterLayerReparent on Up of an active layer-row drag; route it to
+        // PanelRowReparent (família PainterLayer) no Up de um arrasto activo; encaminha-o para
         // the active PainterTool, which reverses NodeId→LayerId and applies
         // move_into_group / reorder. The concrete-tool downcast lives in the
         // allowlisted painter bridge so central dispatch stays downcast-free

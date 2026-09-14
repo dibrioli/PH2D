@@ -21,6 +21,14 @@ com `--no-fail-fast`, e conta as suítes do ficheiro de log
 ([[feedback_a_tail_is_a_window_not_a_verdict]]). ⚠️ E a cura de um teto é **cortar por assunto**,
 nunca a marca de isenção que o próprio gate oferece — aqui saíram `undo_library_tests.rs` (a
 biblioteca de imagens no undo) e `field3d_input_undo_seam_tests.rs` (o undo de um arrasto).
+⛔⛔ **E há uma VOLTA A MAIS, medida em 2026-09-14** (`line/components`, W4 das Tags): o gate pode
+viver na `tests/it/` de **OUTRA crate**. O fecho daquela wave correu `-p ph2d-panel-inspector` e
+`-p ph2d-host-desktop` — as duas crates que ela editou — e **sete** gates de arquitectura estavam
+vermelhos em `ph2d-editor-core/tests/it/`, que mede os painéis TODOS: três tectos de ficheiro, um de
+função, a catraca do DAG, o HR-15 e dois de token. *Correr `--all-targets` das crates que a linha
+editou não chega: os gates que julgam um painel vivem na fundação.* ⇒ o fecho de quem toca um painel
+corre também **`-p ph2d-editor-core`**.
+
 Irmãs: [[feedback_a_closing_run_with_a_name_filter_never_reaches_a_tree_scanning_gate]] ·
 [[feedback_loc_cap_split_not_allowlist_and_fmt_reexpands]] ·
 [[feedback_testing_a_crate_alone_hides_every_defect_in_a_feature_the_shell_enables]]

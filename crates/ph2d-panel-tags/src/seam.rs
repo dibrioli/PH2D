@@ -15,7 +15,9 @@
 use crate::state::TagsPanelState;
 use ph2d_editor_core::TagTreeEdit;
 use ph2d_editor_core::action_bus::EditorAction;
-use ph2d_editor_core::interaction::{InteractiveState, WidgetEvent, WidgetStore};
+use ph2d_editor_core::interaction::{
+    InteractiveState, PanelRowDrop, PanelRowFamily, WidgetEvent, WidgetStore,
+};
 use ph2d_editor_core::panel::{EventOutcome, Panel, PanelHostInternal};
 use ph2d_editor_core::widget::{ButtonState, TextInputState};
 
@@ -64,6 +66,15 @@ pub(crate) fn register_rows(store: &mut WidgetStore, tags: &[u64]) {
     for &t in tags {
         store.register_if_absent(crate::ids::row_id(t), InteractiveState::Plain);
     }
+    // ⭐⭐⭐ **E declara-as ARRASTÁVEIS** (W4b) — é isto que faz o despacho armar um arrasto no Down
+    // sobre uma linha e emitir um `PanelRowReparent` no Up.
+    //
+    // ⚠️ **Republicado a cada quadro, e o store apaga primeiro as da MESMA família:** sem isso uma
+    // tag apagada ficaria para sempre arrastável sobre um sítio onde já não há linha nenhuma.
+    store.set_panel_row_ids(
+        PanelRowFamily::TagTree,
+        tags.iter().map(|&t| crate::ids::row_id(t)).collect(),
+    );
 }
 
 /// Abre o campo de renomear com `seed` dentro e o cursor no fim.
@@ -169,6 +180,38 @@ pub(crate) fn apply_event(
         }
         WidgetEvent::Cancel(id) if id == crate::ids::TAGS_RENAME_INPUT => {
             state.renaming = None;
+            EventOutcome::Consumed
+        }
+        // ⭐⭐⭐ **ARRASTAR uma tag para dentro de outra** (W4b, gate 26) — o gesto do Blender.
+        //
+        // ⚠️ **`Before`/`After` e `Inside` NÃO são três respostas aqui, são DUAS**: a `TagTree`
+        // ordena-se sozinha pela chave dobrada, então *«antes da Flying»* e *«depois da Flying»*
+        // significam os dois **irmã da Flying** — o lugar na lista não é autorado, é derivado do
+        // nome. ⛔ Fingir três destinos daria ao artista um gesto cujo efeito ele não consegue ver.
+        WidgetEvent::PanelRowReparent {
+            family: PanelRowFamily::TagTree,
+            dragged,
+            drop,
+        } => {
+            let Some(tag) = tag_of(dragged) else {
+                return EventOutcome::Ignored;
+            };
+            let destino = match drop {
+                PanelRowDrop::Inside(alvo) => tag_of(alvo).map(Some),
+                PanelRowDrop::Before(alvo) | PanelRowDrop::After(alvo) => {
+                    tag_of(alvo).map(parent_of)
+                }
+                // Largada abaixo de todas as linhas: raiz.
+                PanelRowDrop::End => Some(None),
+            };
+            if let Some(parent) = destino
+                // ⚠️ **Largar sobre o PAI que já se tem é no-op** — o `move_under` aceitá-lo-ia e a
+                // revisão subiria, o que daria um passo de undo sobre uma árvore que não mudou.
+                && parent != parent_of(tag)
+            {
+                state.focus = Some(tag);
+                push(host, TagTreeEdit::Move { id: tag, parent });
+            }
             EventOutcome::Consumed
         }
         WidgetEvent::Click(id) if id == crate::ids::TAGS_CLOSE => {

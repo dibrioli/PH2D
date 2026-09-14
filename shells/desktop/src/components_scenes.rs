@@ -39,6 +39,7 @@ impl crate::App {
             vec_scene: &mut gfx.vec_scene,
             vec_entities,
             registry: &gfx.component_registry,
+            tags: &mut gfx.tags,
             hero_screen: gfx.hero_screen.as_mut(),
             playhead,
             audio_ready,
@@ -48,38 +49,40 @@ impl crate::App {
 
     /// No prólogo do quadro, uma vez. No-op sem a env.
     pub(crate) fn timer_smoke(&mut self) {
-        if self.timer_smoke_done || std::env::var_os("PH2D_TIMER_SMOKE").is_none() {
+        if self.components_smokes.timer || std::env::var_os("PH2D_TIMER_SMOKE").is_none() {
             return;
         }
         let Some(mut cx) = self.components_ctx() else {
             return; // ainda não há mundo; tenta no quadro seguinte
         };
         ph2d_app_components::timer_smoke::timer_smoke(&mut cx);
-        self.timer_smoke_done = true;
+        self.components_smokes.timer = true;
     }
 
     /// No prólogo do quadro, uma vez. No-op sem a env.
     pub(crate) fn signal_action_smoke(&mut self) {
-        if self.signal_action_smoke_done || std::env::var_os("PH2D_SIGNAL_ACTION_SMOKE").is_none() {
+        if self.components_smokes.signal_action
+            || std::env::var_os("PH2D_SIGNAL_ACTION_SMOKE").is_none()
+        {
             return;
         }
         let Some(mut cx) = self.components_ctx() else {
             return;
         };
         ph2d_app_components::signal_action_smoke::signal_action_smoke(&mut cx);
-        self.signal_action_smoke_done = true;
+        self.components_smokes.signal_action = true;
     }
 
     /// No prólogo do quadro, uma vez. No-op sem a env.
     pub(crate) fn audio_2d_smoke(&mut self) {
-        if self.audio_2d_smoke_done || std::env::var_os("PH2D_AUDIO_2D_SMOKE").is_none() {
+        if self.components_smokes.audio_2d || std::env::var_os("PH2D_AUDIO_2D_SMOKE").is_none() {
             return;
         }
         let Some(mut cx) = self.components_ctx() else {
             return;
         };
         ph2d_app_components::audio_2d_smoke::audio_2d_smoke(&mut cx);
-        self.audio_2d_smoke_done = true;
+        self.components_smokes.audio_2d = true;
     }
 
     /// No prólogo do quadro, uma vez. No-op sem a env.
@@ -88,26 +91,67 @@ impl crate::App {
     /// contrário dos outros quatro — por isso ele fica na `App` e não podia ser um `thread_local`
     /// da crate.
     pub(crate) fn game_camera_smoke(&mut self) {
-        if self.game_camera_smoke_done || std::env::var_os("PH2D_GAME_CAMERA_SMOKE").is_none() {
+        if self.components_smokes.game_camera
+            || std::env::var_os("PH2D_GAME_CAMERA_SMOKE").is_none()
+        {
             return;
         }
         let Some(mut cx) = self.components_ctx() else {
             return;
         };
         ph2d_app_components::camera_2d_smoke::game_camera_smoke(&mut cx);
-        self.game_camera_smoke_done = true;
+        self.components_smokes.game_camera = true;
+    }
+
+    /// ⭐⭐⭐ **As TAGS** (TOP-20 #9, W4) — no prólogo do quadro, uma vez. No-op sem a env.
+    ///
+    /// ⚠️ **O NÍVEL é lido aqui e passado**, ao contrário dos quatro irmãos acima (que são
+    /// interruptores): esta env tem duas cenas, e um valor que a crate não reconheça cai na `=1` —
+    /// *uma cena ausente ensina menos que uma cena errada, mas um ecrã VAZIO não ensina nada*.
+    pub(crate) fn tags_smoke(&mut self) {
+        if self.components_smokes.tags {
+            return;
+        }
+        let Some(v) = std::env::var_os("PH2D_TAGS_SMOKE") else {
+            return;
+        };
+        let nivel = v.to_str().and_then(|s| s.parse().ok()).unwrap_or(1);
+        let Some(mut cx) = self.components_ctx() else {
+            return;
+        };
+        let cena = ph2d_app_components::tags_smoke::tags_smoke(&mut cx, nivel);
+        self.components_smokes.tags = true;
+        // ⭐⭐⭐ **A `=2` é de FÍSICA, e sem isto ela demonstra um mundo CONGELADO.**
+        //
+        // ⛔⛔ *Uma cena de smoke que ensina o CONTRÁRIO do que acontece é pior que uma cena
+        // ausente* (`CLAUDE.md` §5.0): sem o `simulate_physics` armado e sem o play, os dois
+        // corpos ficam pendurados no ar e o artista lê *«a armadilha não dispara para ninguém»* —
+        // que é exactamente o veredito errado sobre um filtro que funciona.
+        //
+        // ⚠️ **Aqui e não na cena**, pela lei da Fase C da `line/app-physics`: *o que sai são os
+        // CORPOS; o que decide a ordem do quadro fica*. E a **RÉGUA** abre junto, pelo motivo que a
+        // cena 67 da física pagou em produto — uma instrução que manda rebobinar sobre um ecrã sem
+        // transporte devolve *«que régua?»*.
+        if cena == 2 {
+            self.timeline.flags.simulate_physics = true;
+            if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
+                hero.panel_visibility.insert("timeline", true);
+            }
+            self.playhead.rewind();
+            self.playhead.play();
+        }
     }
 
     /// Prólogo do quadro, uma vez. No-op sem a env.
     pub(crate) fn instance_smoke(&mut self) {
-        if self.instance_smoke_done || std::env::var_os("PH2D_INSTANCE_SMOKE").is_none() {
+        if self.components_smokes.instance || std::env::var_os("PH2D_INSTANCE_SMOKE").is_none() {
             return;
         }
         let Some(mut cx) = self.components_ctx() else {
             return; // o mundo ainda não subiu; tenta no próximo quadro
         };
         ph2d_app_components::instance_smoke::instance_smoke(&mut cx);
-        self.instance_smoke_done = true;
+        self.components_smokes.instance = true;
     }
 
     /// ⚠️ **Depois do quadro e ANTES do `post_frame_undo`**, e as duas metades são a razão:

@@ -613,23 +613,25 @@ pub struct WidgetStore {
     /// `super_key()` and `control_key()` so panel handlers can treat
     /// the two as interchangeable (toggle-select modifier).
     pub(super) cmd_held: bool,
-    /// In-progress Painter layers-panel row drag (W3 T3.8 — reorder +
-    /// drop-into-group). Reuses the generic [`HierarchyDragState`] anchor
-    /// (dragged id + down/cursor pos + active threshold). Unlike the
-    /// hierarchy drag, the dispatch never mutates structure here — the
-    /// painter tool owns the `LayerStack` and resolves the drop.
-    pub(super) painter_layer_drag: Option<HierarchyDragState>,
+    /// ⭐⭐ **O arrasto de linha de um painel em curso** — `(família, âncora)`.
+    ///
+    /// ⛔ **UM slot para TODAS as famílias, e é de propósito:** só um arrasto pode estar vivo de
+    /// cada vez (há um ponteiro), e um slot por família daria dois arrastos simultâneos que nunca
+    /// acontecem. Reaproveita a âncora genérica [`HierarchyDragState`]. ⚠️ Ao contrário do arrasto
+    /// da hierarquia, o despacho **nunca muta estrutura** aqui: quem possui a `LayerStack` ou a
+    /// `TagTree` é que resolve a queda.
+    pub(super) panel_row_drag: Option<(crate::interaction::PanelRowFamily, HierarchyDragState)>,
     /// W4 §3 — pending Curves/Levels control-point drag, set by the dispatch
     /// when a [`InteractiveState::CurvePoint`] is dragged and drained by the
     /// panel each frame: `(parent, channel, index, x01, y01)`. Like the layer
     /// drags, the dispatch never mutates curve state here — the painter tool
     /// owns the curve and applies it via `set_curve_point`.
     pub(super) curve_point_drag: Option<(NodeId, u8, u8, f32, f32)>,
-    /// Every `NodeId` currently displayed as a Painter layer row. The
-    /// layers panel republishes the set each frame; dispatch reads it to
-    /// decide "this Down is on a draggable layer row" (mirror of
-    /// [`Self::hierarchy_row_ids`]).
-    pub(super) painter_layer_row_ids: std::collections::BTreeSet<NodeId>,
+    /// ⭐⭐ **De que FAMÍLIA é cada linha arrastável na tela** — cada painel republica as dele a
+    /// cada quadro, e o despacho lê isto para decidir *«este Down é sobre uma linha arrastável, e
+    /// de quem?»* (espelho do [`Self::hierarchy_row_ids`]).
+    pub(super) panel_row_family:
+        std::collections::BTreeMap<NodeId, crate::interaction::PanelRowFamily>,
     /// Every `NodeId` that is a "picker swatch" — a [`crate::widget::ColorSwatch`]
     /// whose Down opens the canonical Blender color picker seeded with the
     /// swatch's current `widget_color`. Panels register their picker swatches

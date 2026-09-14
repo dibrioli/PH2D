@@ -398,6 +398,13 @@ ordem, que as duas procuras acham à primeira.
 
 ### §6.2 — As cenas `PH2D_TAGS_SMOKE=1..2` (W4; família `components`, `max_level` contado)
 
+> ✅ **CONSTRUÍDAS e CORRIDAS em 2026-09-14**, e o binário devolveu os dois números que elas existem
+> para produzir: `[signal] 5 accao(oes) aplicada(s)` na `=1` e `1` na `=2`. ⚠️ **Duas correcções ao
+> que esta secção planeava:** o nome do cérebro é ***Scene Brain*** (o texto dizia *«um objecto
+> vazio»*, e ele tem uma sprite para se ver), e a **`=2` precisa do TRANSPORTE armado pela shell** —
+> sem `simulate_physics` e sem play, os corpos ficam pendurados e a cena ensina que o filtro não
+> dispara para ninguém.
+
 1. **`=1`** sobe com a fixture do §5.1 lado a lado, cada objecto com o nome e as tags escritos por
    baixo, o painel *Tags* aberto a mostrar `Enemy (5)` › `Flying (3)` › `Boss (1)`, `Statue (1)`,
    `Player (1)`.
@@ -420,7 +427,7 @@ ordem, que as duas procuras acham à primeira.
 | **W1** | `ph2d-label-fold` · `ph2d-label-path` (e o `CatalogTree` a usá-la, com o defeito do gémeo curado) · `ph2d-tags` · `ph2d_ecs::tags` (portas, registo, catálogo) | gates 1–13 vistos vermelhos · headless |
 | **W2** | `SignalTarget` + `targets_of` · `ProjectState.tags` (formato, cache, undo, load com gémeos) · `PROJECT_SCHEMA` +1 com a migração · contadores | gates 14–16, 18, 20 · headless |
 | **W3** | secção *Tags* do Inspector · alvo por tag · **`SignalTagFilter` + `signal_passes`** e a linha *Only for tag* | gates 17, seam 21–25 + smoke do Enio |
-| **W4** | painel *Tags* · `PH2D_TAGS_SMOKE=1..2` | gates 26–28 + smoke do Enio |
+| **W4** ✅ | painel *Tags* · `PH2D_TAGS_SMOKE=1..2` | gates 26–28 + smoke do Enio — ver §7.4 |
 
 ### §7.1 — A W3 partiu-se em três, e a W3a FECHOU (2026-09-13)
 
@@ -429,6 +436,18 @@ ordem, que as duas procuras acham à primeira.
 | **W3a** | o TECTO do objecto (`TAGS_MAX`) · a costura na shell (instantâneo + commit) · a **secção *Tags*** do painel (chips com `×` · caixa de escolha com busca · `+ Create "…"`) | ✅ 7 gates na shell · 8 no painel · **18 mutações** |
 | **W3b** | a árvore sobe para porta própria · o alvo por tag nas *Signal Actions* (`Name \| Tag` + caixa) | ✅ 12 gates na shell · 3 no painel · 6 mutações |
 | **W3c** | `SignalTagFilter` + `signal_passes` + a row *Only for tag* (fecha o gate 17) | ✅ 4 gates na física · 6 mutações |
+
+### §7.4 — A W4 FECHOU, em duas metades (2026-09-14)
+
+| | entrega | estado |
+|---|---|---|
+| **W4a** | o painel *Tags* docado (os 6 verbos · renomear por duplo clique · a coluna de contagem) · as duas portas novas (`ancestry` · `counts`, medidas) · os cinco sítios de registo + o menu *Window* | ✅ 3 gates na folha · 6 no `ph2d-ecs` · 8 na shell · 11 no painel (9 de COSTURA com ponteiro real) |
+| **W4b** | o ARRASTO (linha para dentro de linha) · as cenas `PH2D_TAGS_SMOKE=1|2` | ✅ o arrasto generalizado (3.ª cópia evitada) · 4 gates de arrasto · 7 gates de cena · **31 mutações** |
+
+⛔⛔ **E o fecho apanhou SETE gates de arquitectura vermelhos desde a W3** — eles vivem em
+`ph2d-editor-core/tests/it/`, e o portão daquela wave correu o painel e a shell. Todos curados por
+CORTE; duas catracas **desceram**. Mecanismo, os sete achados e as cinco premissas refutadas:
+[handoff de 14/09](handoffs/HANDOFF_INTEGRACAO_line_components_TAGS_2026-09-14.md).
 
 ### §7.3 — O que a W3c decidiu, e é tudo sobre COMO UMA COISA FALHA
 

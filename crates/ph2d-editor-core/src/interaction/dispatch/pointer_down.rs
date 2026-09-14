@@ -593,11 +593,11 @@ pub(super) fn dispatch_down<'frame>(
         if store.is_hierarchy_row(id) {
             store.begin_hierarchy_drag(id, event.x, event.y, event.timestamp_ns);
         }
-        // Painter layers-panel row drag (W3 T3.8) — same anchor as the
-        // hierarchy; the Up handler resolves the drop into a
-        // `PainterLayerReparent` for the painter tool to apply.
-        if store.is_painter_layer_row(id) {
-            store.begin_painter_layer_drag(id, event.x, event.y, event.timestamp_ns);
+        // ⭐⭐ **O arrasto de uma linha de PAINEL** — a mesma âncora da hierarquia; o Up resolve a
+        // queda num `PanelRowReparent` para o dono da estrutura aplicar. A família vem do store, e
+        // é ela que diz de QUEM a linha é (camadas do Painter · tags do projecto).
+        if let Some(family) = store.panel_row_family(id) {
+            store.begin_panel_row_drag(family, id, event.x, event.y, event.timestamp_ns);
         }
         // BlenderColorPicker sub-control hits route into the
         // parent's stored state mutation. Right-click on a

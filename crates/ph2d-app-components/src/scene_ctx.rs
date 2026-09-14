@@ -34,6 +34,13 @@ pub struct SceneCtx<'a> {
     pub vec_entities: &'a mut ph2d_vec_entities::entities::VecEntityMap,
     /// ⚠️ **Só LEITURA:** uma cena povoa o mundo, nunca regista um tipo de componente.
     pub registry: &'a ComponentRegistry,
+    /// ⭐⭐⭐ **A ÁRVORE DE TAGS do projecto** (TOP-20 #9, W4b) — a taxonomia que as cenas de tag
+    /// escrevem antes de marcar os objectos.
+    ///
+    /// ⚠️ **`&mut`, e é a única coisa aqui que não é o mundo:** ela vive ao lado dele no `AppGfx`
+    /// (é DOCUMENTO, como a `VecScene`), e uma cena que marque um objecto sem criar a tag deixaria
+    /// ids órfãos — o painel abriria vazio sobre objectos marcados.
+    pub tags: &'a mut ph2d_tags::TagTree,
     /// O ecrã, para as cenas que deixam uma peça **escolhida** — sem isso a receita que elas abrem
     /// não aparece na Hierarquia, porque a marca `MasterEditing` é derivada da selecção.
     ///

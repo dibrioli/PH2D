@@ -55,6 +55,9 @@
 
 ## Git & colisão multi-agente
 - [Perigos de git/edição (12)](reference_topic_git_hazards.md) · 📚 [mais 4 lições](reference_topic_git_lessons_loose.md)
+- [Perigos de git/edição (13)](reference_topic_git_hazards.md)
+- ⛔⛔ [`git commit -- <paths>` ignora ficheiros por RASTREAR: o commit «tem sucesso» e a árvore dele não compila](feedback_a_commit_with_paths_never_picks_up_an_untracked_file.md)
+- 📚 [Git & colisão multi-agente: mais 4 lições, uma linha cada, verbatim](reference_topic_git_lessons_loose.md)
 
 ## Ship / CI / integração
 - ✅ [W2 integrada e ENVIADA (13/09): shell 526 k → 187 k; a lei «nextest-impacted não alcança `tests/it`» está REFUTADA](project_w2_six_lines_integrated_2026_09_11.md)
@@ -69,6 +72,11 @@
 - ⛔ [`--bins` NÃO alcança `tests/`](feedback_a_bins_run_never_reaches_the_gates_that_live_in_tests.md) · [e o `cargo-check-narrow.sh` é cego aos `tests/it/`](feedback_the_inner_loop_check_script_is_blind_to_its_own_integration_tests.md)
 - ⛔ [um `tail` é uma JANELA, não um veredito](feedback_a_tail_is_a_window_not_a_verdict.md)
 - [Flakes de carga: o discriminador é o FAN-OUT, não o relógio](reference_flip_fit_cache_ratio_is_a_load_flake.md)
+- [CI corre 26 de 313 membros — «suíte verde» ≠ «CI verde»](project_ci_runs_26_of_313_workspace_members.md)
+- [A suíte em DEBUG parece pendurada por UM teste: `field-eval` custa 55 min sozinho — corra-o à parte](reference_one_field_eval_test_costs_55_minutes_of_the_debug_suite.md)
+- ⛔⛔ [`--bins` NÃO alcança `tests/` — e o gate pode viver na `tests/it/` de OUTRA crate: 7 vermelhos em `ph2d-editor-core` sobre painéis que a linha editou](feedback_a_bins_run_never_reaches_the_gates_that_live_in_tests.md)
+- ⛔ [um `tail` é uma JANELA, não um veredito (0 FAILED sobre 212 suites)](feedback_a_tail_is_a_window_not_a_verdict.md)
+- [TRÊS membros novos da família de flakes de carga (o 3.º passa 3/3 a `load 19` ⇒ o discriminador é o FAN-OUT, não o relógio)](reference_flip_fit_cache_ratio_is_a_load_flake.md)
 - [Cadência de processo + CI (17)](reference_topic_process_cadence.md)
 - 📚 [Ship / CI / integração: mais 19 lições](reference_topic_ship_ci_integration_lessons.md)
 
@@ -160,6 +168,8 @@
 - ⛔ [Renomear um símbolo por NOME destrói a PROSA que o cita — num repo onde o porquê vive em doc-comments, a memória histórica é a vítima mais comum](feedback_a_rename_by_name_cannot_tell_an_address_from_a_memory.md)
 - ⛔⛔ [Apagar um item deixa o `#[cfg]` dele a gatear o VIZINHO — e com a feature ligada por omissão nenhuma build da CI o vê](feedback_an_orphaned_cfg_attaches_to_the_next_item_and_the_default_build_is_blind.md)
 - [Registro de painel (5 sites)](reference_topic_panel_registration.md)
+- ⛔⛔ [`try_query` com um `Option<&T>` devolve NONE se o MUNDO não conhece o tipo — a porta responde «ninguém» e nada o diz (um sinal por tag não alcançava nada)](feedback_a_try_query_with_an_optional_component_answers_nobody.md)
+- ⛔ [O dono de um id de BARRA DE ROLAGEM é o DESPACHO — declarado no painel, o polegar pinta e nunca se agarra (há um vivo: o painel de ossos)](feedback_the_owner_of_a_scrollbar_id_is_the_dispatch.md)
 - [Gotchas de código (14)](reference_topic_code_gotchas.md)
 - 📚 [Padrões de código (gotchas silenciosos): mais 6 lições, uma linha cada, verbatim](reference_topic_code_pattern_gotchas.md)
 

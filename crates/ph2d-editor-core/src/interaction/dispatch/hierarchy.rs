@@ -10,7 +10,7 @@
 //! handler in `screens::hero` matches on it to issue the actual
 //! ECS mutation.
 
-use super::super::{HitIndex, PainterLayerDrop, WidgetStore};
+use super::super::{HitIndex, PanelRowDrop, PanelRowFamily, WidgetStore};
 use ph2d_a11y::NodeId;
 
 /// Drop kind resolved at the end of a hierarchy DnD: a sibling
@@ -159,20 +159,23 @@ pub(super) fn find_hierarchy_drop(
     HierDrop::End
 }
 
-/// Resolve where a dragged Painter layer row was dropped, by hit-testing
-/// `cursor_y` against the registered row rects. Mirror of
-/// [`find_hierarchy_drop`] — same 30/40/30 band split (Before / Inside /
-/// After) — but keyed on [`WidgetStore::is_painter_layer_row`] and
-/// returning a [`PainterLayerDrop`] for the painter tool to resolve against
-/// its `LayerStack`. The dispatch does NOT mutate any structure here.
-pub(super) fn find_painter_layer_drop(
+/// ⭐⭐ **Onde uma linha de painel arrastada foi largada** — hit-test do `cursor_y` contra os rects
+/// registados. Espelho do [`find_hierarchy_drop`] (a mesma partição 30/40/30 em Before / Inside /
+/// After), mas keyed na FAMÍLIA e a devolver um [`PanelRowDrop`] para o dono da estrutura o
+/// resolver. ⛔ O despacho **não muta estrutura nenhuma** aqui.
+///
+/// ⚠️ **Só as linhas da MESMA família contam como alvo** — sem isso, com o painel de camadas e o
+/// de tags abertos ao mesmo tempo, arrastar uma tag para cima de uma camada emitiria uma queda que
+/// o dono da árvore leria como uma tag.
+pub(super) fn find_panel_row_drop(
     hit_index: &HitIndex,
     store: &WidgetStore,
     cursor_y: f32,
     dragged: NodeId,
-) -> PainterLayerDrop {
+    family: PanelRowFamily,
+) -> PanelRowDrop {
     for (id, rect) in hit_index.iter_registrations() {
-        if !store.is_painter_layer_row(id) || id == dragged {
+        if store.panel_row_family(id) != Some(family) || id == dragged {
             continue;
         }
         let top = rect.y;
@@ -183,13 +186,13 @@ pub(super) fn find_painter_layer_drop(
         let inside_top = top + rect.h * 0.3;
         let inside_bot = top + rect.h * 0.7;
         if cursor_y < inside_top {
-            return PainterLayerDrop::Before(id);
+            return PanelRowDrop::Before(id);
         } else if cursor_y < inside_bot {
-            return PainterLayerDrop::Inside(id);
+            return PanelRowDrop::Inside(id);
         } else {
-            return PainterLayerDrop::After(id);
+            return PanelRowDrop::After(id);
         }
     }
     // Below every visible row → root level, bottom of the stack.
-    PainterLayerDrop::End
+    PanelRowDrop::End
 }

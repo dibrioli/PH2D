@@ -32,8 +32,8 @@ const FN_LOC_CAP: usize = 200;
 const FN_OVERAGE_OK: &[(&str, &str, usize, &str)] = &[(
     "main.rs",
     "new",
-    237,
-    "o literal `Self { … }` são 233 linhas, um inicializador por campo da `App`: descer a 200 é reagrupar campos (a abertura do comando e do áudio já saiu, `line/loc-caps`)",
+    233,
+    "o literal `Self { … }` é um inicializador por campo da `App`: descer a 200 é reagrupar campos (a abertura do comando e do áudio já saiu, `line/loc-caps`). ⭐ 237 → 233 em 2026-09-14: os SEIS latches das cenas da família `components` viraram UMA struct",
 )];
 
 fn src_root() -> PathBuf {

@@ -88,29 +88,50 @@ pub enum WidgetEvent {
         /// resolving the next-sibling slot in the dispatcher.
         after: Option<NodeId>,
     },
-    /// W3 T3.8 — a Painter layers-panel row was drag-reparented (reorder
-    /// and/or drop-into-group). The dispatch resolves only the geometry
-    /// (`drop` band relative to a target row); the painter tool — which
-    /// owns the `LayerStack` — reverses the `NodeId`s to `LayerId`s and
-    /// applies `move_into_group` / `reorder`. NodeIds keep this `Copy`.
-    PainterLayerReparent {
+    /// ⭐⭐⭐ **Uma LINHA DE PAINEL foi arrastada para cima de outra** — a família diz de QUAL painel.
+    ///
+    /// ⛔⛔ **Ela nasceu `PainterLayerReparent` e generalizou-se em 2026-09-14**, quando o painel
+    /// *Tags* ia ser o **terceiro** a copiar a mesma máquina (a Hierarquia é o primeiro, e tem
+    /// mutação própria no despacho; as camadas do Painter são o segundo). *Uma lei escrita em dois
+    /// sítios ainda não é uma lei — só uma PORTA é*, e a terceira cópia era o momento de a fazer.
+    ///
+    /// O despacho resolve **só a geometria** (a banda `drop` relativa a uma linha-alvo); quem
+    /// possui a estrutura — a `LayerStack` do Painter, a `TagTree` do projecto — é que a aplica.
+    /// Os `NodeId` mantêm isto `Copy`.
+    PanelRowReparent {
+        family: PanelRowFamily,
         dragged: NodeId,
-        drop: PainterLayerDrop,
+        drop: PanelRowDrop,
     },
 }
 
-/// Where a dragged Painter layer row was dropped, relative to a target
-/// row. Mirror of the hierarchy's `HierDrop`, but the consumer (the
-/// painter tool) resolves it against the `LayerStack`, not the dispatch.
+/// ⭐⭐ **De que painel é uma linha arrastável** — a chave que separa as famílias que partilham a
+/// máquina de arrasto do despacho.
+///
+/// ⚠️ **A Hierarquia NÃO está aqui**, e a ausência é a decisão: o arrasto dela **muta a árvore no
+/// próprio despacho** (`hierarchy_move` / `hierarchy_set_parent`) e emite um evento com semântica
+/// de irmãos (`before`/`after`/`new_parent`). Estas outras só resolvem geometria e entregam.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum PanelRowFamily {
+    /// As camadas do Painter (W3 T3.8) — o `LayerStack` é da ferramenta.
+    PainterLayer,
+    /// ⭐ As tags do projecto (TOP-20 #9, W4b) — a `TagTree` é do documento.
+    TagTree,
+}
+
+/// Onde uma linha arrastada foi largada, relativamente a uma linha-alvo. Espelho do `HierDrop` da
+/// hierarquia, mas quem o resolve é o dono da estrutura, não o despacho.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum PainterLayerDrop {
-    /// Drop just before the target row (same parent) — previous sibling.
+pub enum PanelRowDrop {
+    /// Antes da linha-alvo (mesmo pai) — irmã anterior.
+    ///
+    /// ⚠️ **A `TagTree` ORDENA-SE sozinha** (pela chave dobrada), então para ela o `Before` e o
+    /// `After` significam *«irmã de»* — o sítio na lista não é autorado.
     Before(NodeId),
-    /// Drop INTO the target row, as a child (the tool no-ops if the
-    /// target isn't a group, or rejects on depth/cycle).
+    /// DENTRO da linha-alvo, como filha (o dono recusa um ciclo, ou um alvo que não aceita filhos).
     Inside(NodeId),
-    /// Drop just after the target row (same parent) — next sibling.
+    /// Depois da linha-alvo (mesmo pai) — irmã seguinte.
     After(NodeId),
-    /// Dropped below every row → root level, bottom of the stack.
+    /// Largada abaixo de TODAS as linhas → raiz.
     End,
 }

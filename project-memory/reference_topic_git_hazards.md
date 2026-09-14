@@ -1,6 +1,6 @@
 ---
 name: reference-topic-git-hazards
-description: Perigos e armadilhas de git/edição multi-agente — stash · reset alheio · fence · worktree-base · mojibake · fmt -p · str.replace · sed -i · rewrite de token · mover doc (12)
+description: Perigos e armadilhas de git/edição multi-agente — stash · reset alheio · fence · worktree-base · mojibake · fmt -p · str.replace · sed -i · rewrite de token · mover doc · commit -- paths ignora `??` (13)
 metadata: 
   node_type: memory
   type: reference
@@ -8,6 +8,7 @@ metadata:
   modified: 2026-08-23T00:59:08.535Z
 ---
 
+- [[feedback_a_commit_with_paths_never_picks_up_an_untracked_file]] — ⛔⛔ `commit -- <paths>` ignora ficheiros `??`: o commit «tem sucesso» e a árvore dele NÃO COMPILA (11 ficheiros novos de fora)
 - [[feedback_git_stash_multiagent_danger]] — pop com índice sujo injeta marcador em arquivo alheio
 - [[feedback_destructive_git_outside_pasta]] — nunca reset/checkout em path alheio
 - [[feedback_destructive_reset_collision_2026_05_28]] — `git add` cedo cria fence

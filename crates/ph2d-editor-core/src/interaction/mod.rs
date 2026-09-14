@@ -61,7 +61,7 @@ pub use drag::{
     NUMBER_INPUT_DRAG_THRESHOLD_PX, NumberInputDragState, NumberStepperHoldState,
     STEPPER_HOLD_INITIAL_DELAY_NS, STEPPER_REPEAT_INTERVAL_NS, ScrollbarDragAnchor, ScrubLaw,
 };
-pub use event::{PainterLayerDrop, WidgetEvent};
+pub use event::{PanelRowDrop, PanelRowFamily, WidgetEvent};
 pub use hit::HitIndex;
 pub use state::{
     InteractiveState, NamedPalette, TAB_DRAG_THRESHOLD_PX, TabDragAnchor, WidgetStore,

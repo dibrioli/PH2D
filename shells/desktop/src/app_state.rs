@@ -350,14 +350,8 @@ pub(crate) struct App {
     pub(crate) harmony_smoke_done: bool,
     /// O smoke dos sinais da timeline (ADR-0143) já rodou. `PH2D_SIGNAL_SMOKE=1`.
     pub(crate) signal_smoke_done: bool,
-    /// ⭐⭐⭐ O smoke do `Timer` (TOP-20 #2) já rodou. `PH2D_TIMER_SMOKE=1`.
-    pub(crate) timer_smoke_done: bool,
-    /// ⭐ A cena do `SignalActions` (TOP-20 #5) já montou?
-    pub(crate) signal_action_smoke_done: bool,
-    /// ⭐ A cena do SOM DE CENA (TOP-20 #4) já montou?
-    pub(crate) audio_2d_smoke_done: bool,
-    /// ⭐ A cena da CÂMERA DE JOGO (TOP-20 #7) já montou?
-    pub(crate) game_camera_smoke_done: bool,
+    /// ⭐⭐ Os latches das cenas de smoke da família das INSTÂNCIAS — ver [`ComponentsSmokeLatches`].
+    pub(crate) components_smokes: ComponentsSmokeLatches,
     /// ⭐⭐⭐ **A vista está a ser conduzida pela CÂMERA DA CENA?** (TOP-20 #7)
     ///
     /// ⚠️ **É estado de VISTA, e não documento** — o molde é o *«Show sheet on canvas»* da §4: vive
@@ -393,8 +387,6 @@ pub(crate) struct App {
     // do `bone_smoke_step` que sempre lhes pertenceu (HOWTO §1.1: *a família que guardou o estado
     // em casa foi a que conseguiu sair de casa*).
     pub(crate) nest_smoke_done: bool,
-    /// Latch de `PH2D_INSTANCE_SMOKE` (o ragdoll instanciado 3×, ADR-0164 F4).
-    pub(crate) instance_smoke_done: bool,
     /// **O eco do mestre** (ADR-0164 / F4.4) — o que a receita tinha no passe anterior, que é
     /// como o sync sabe QUEM se mexeu. Cache de sessão: perdê-la só custa não atribuir um
     /// override no primeiro passe seguinte, e nunca um valor errado.
@@ -1017,3 +1009,8 @@ pub(crate) struct RubberBandState {
     /// (clearing first).
     pub(crate) add_mode: bool,
 }
+
+/// ⭐⭐ Os latches das cenas da família das INSTÂNCIAS — irmão por tecto de LOC.
+#[path = "app_state_components_smokes.rs"]
+mod components_smokes;
+pub(crate) use components_smokes::ComponentsSmokeLatches;

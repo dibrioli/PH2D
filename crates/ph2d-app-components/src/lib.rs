@@ -105,6 +105,8 @@ pub mod prefab_stage;
 pub mod scene_ctx;
 pub mod signal_action_smoke;
 pub mod tags_doc;
+/// ⭐⭐⭐ As duas cenas do TOP-20 #9 (`PH2D_TAGS_SMOKE=1|2`) — ver o cabeçalho do módulo.
+pub mod tags_smoke;
 pub mod timer_smoke;
 
 /// ⚠️ **`#[cfg(any(test, feature = "test-support"))]` e não `#[cfg(test)]`** (HOWTO §2.5): daqui a
@@ -161,6 +163,9 @@ pub const FAMILY: ph2d_app_host::AppFamily = ph2d_app_host::AppFamily {
         r("PH2D_GAME_CAMERA_SMOKE", 1),
         r("PH2D_INSTANCE_SMOKE", 7),
         r("PH2D_SIGNAL_ACTION_SMOKE", 1),
+        // ⭐⭐⭐ As TAGS (TOP-20 #9, W4): `=1` o sinal que fala com a família · `=2` a armadilha
+        // filtrada. ⚠️ O `max_level` é **contado** no `match` do `tags_smoke::tags_smoke`.
+        r("PH2D_TAGS_SMOKE", tags_smoke::CENAS),
         r("PH2D_TIMER_SMOKE", 1),
     ],
 };

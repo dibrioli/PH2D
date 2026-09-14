@@ -158,39 +158,48 @@ impl WidgetStore {
         self.hierarchy_row_ids.len()
     }
 
-    // ── Painter layers-panel row drag (W3 T3.8) — mirror of the hierarchy
-    //    drag, but the dispatch never mutates structure (the painter tool
-    //    owns the LayerStack and resolves the emitted `PainterLayerReparent`).
+    // ── O ARRASTO DE UMA LINHA DE PAINEL — espelho do arrasto da hierarquia, mas o despacho
+    //    **nunca muta estrutura**: quem possui a `LayerStack` (o Painter) ou a `TagTree` (o
+    //    projecto) é que resolve o `PanelRowReparent` que sai daqui.
+    //
+    //    ⛔⛔ Ele nasceu `painter_layer_*` e generalizou-se em 2026-09-14, quando o painel *Tags*
+    //    ia ser a TERCEIRA cópia da mesma máquina. *Uma lei escrita em dois sítios ainda não é uma
+    //    lei — só uma PORTA é.*
 
-    /// Snapshot of the in-progress painter layer-row drag, if any.
-    pub fn painter_layer_drag(&self) -> Option<HierarchyDragState> {
-        self.painter_layer_drag
+    /// O arrasto de linha em curso, e de que família ele é.
+    pub fn panel_row_drag(
+        &self,
+    ) -> Option<(crate::interaction::PanelRowFamily, HierarchyDragState)> {
+        self.panel_row_drag
     }
 
-    /// Begin a painter layer-row drag (Primary Down on a row). `active`
-    /// flips once the cursor passes the 5px threshold (see
-    /// [`Self::update_painter_layer_drag`]).
-    pub fn begin_painter_layer_drag(
+    /// Começa um arrasto de linha (Down primário sobre uma). O `active` vira assim que o cursor
+    /// passa o limiar de 5 px (ver [`Self::update_panel_row_drag`]).
+    pub fn begin_panel_row_drag(
         &mut self,
+        family: crate::interaction::PanelRowFamily,
         dragged: NodeId,
         down_x: f32,
         down_y: f32,
         timestamp_ns: u128,
     ) {
-        self.painter_layer_drag = Some(HierarchyDragState {
-            dragged,
-            down_x,
-            down_y,
-            cursor_x: down_x,
-            cursor_y: down_y,
-            active: false,
-            down_timestamp_ns: timestamp_ns,
-        });
+        self.panel_row_drag = Some((
+            family,
+            HierarchyDragState {
+                dragged,
+                down_x,
+                down_y,
+                cursor_x: down_x,
+                cursor_y: down_y,
+                active: false,
+                down_timestamp_ns: timestamp_ns,
+            },
+        ));
     }
 
-    /// Advance the drag cursor; flips `active` once past the 5px threshold.
-    pub fn update_painter_layer_drag(&mut self, cursor_x: f32, cursor_y: f32) {
-        if let Some(d) = self.painter_layer_drag.as_mut() {
+    /// Avança o cursor do arrasto; vira o `active` depois do limiar de 5 px.
+    pub fn update_panel_row_drag(&mut self, cursor_x: f32, cursor_y: f32) {
+        if let Some((_, d)) = self.panel_row_drag.as_mut() {
             d.cursor_x = cursor_x;
             d.cursor_y = cursor_y;
             let dx = cursor_x - d.down_x;
@@ -201,9 +210,11 @@ impl WidgetStore {
         }
     }
 
-    /// Take the in-progress drag (cleared on Up).
-    pub fn end_painter_layer_drag(&mut self) -> Option<HierarchyDragState> {
-        self.painter_layer_drag.take()
+    /// Tira o arrasto em curso (limpo no Up).
+    pub fn end_panel_row_drag(
+        &mut self,
+    ) -> Option<(crate::interaction::PanelRowFamily, HierarchyDragState)> {
+        self.panel_row_drag.take()
     }
 
     /// W4 §3 — record a Curves/Levels control-point drag computed by the
@@ -254,16 +265,26 @@ impl WidgetStore {
         self.curve_point_drag.take()
     }
 
-    /// Republish the set of `NodeId`s that are currently painter layer rows.
-    /// The layers panel calls this each frame with `painter_layer_widget_id(
-    /// layer, Row)` for every visible row.
-    pub fn set_painter_layer_row_ids(&mut self, ids: std::collections::BTreeSet<NodeId>) {
-        self.painter_layer_row_ids = ids;
+    /// ⭐⭐ **Republica as linhas arrastáveis de UMA família** — cada painel chama-o a cada quadro
+    /// com os ids que ele está a desenhar.
+    ///
+    /// ⚠️ **Ele APAGA primeiro as da mesma família** e só depois insere: sem isso, uma tag apagada
+    /// (ou uma camada removida) ficaria para sempre arrastável sobre um sítio onde já não há linha
+    /// nenhuma. ⛔ E apaga **só as dela** — um painel não pode calar as linhas do outro.
+    pub fn set_panel_row_ids(
+        &mut self,
+        family: crate::interaction::PanelRowFamily,
+        ids: std::collections::BTreeSet<NodeId>,
+    ) {
+        self.panel_row_family.retain(|_, f| *f != family);
+        for id in ids {
+            self.panel_row_family.insert(id, family);
+        }
     }
 
-    /// Is `id` a draggable painter layer row?
-    pub fn is_painter_layer_row(&self, id: NodeId) -> bool {
-        self.painter_layer_row_ids.contains(&id)
+    /// De que família é esta linha, se for uma linha arrastável de painel.
+    pub fn panel_row_family(&self, id: NodeId) -> Option<crate::interaction::PanelRowFamily> {
+        self.panel_row_family.get(&id).copied()
     }
 
     /// Mark `id` as a picker swatch — a [`crate::widget::ColorSwatch`] whose

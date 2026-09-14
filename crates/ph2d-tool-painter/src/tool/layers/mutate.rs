@@ -132,7 +132,7 @@ impl PainterTool {
     }
 
     /// Apply a drag-drop reparent/reorder emitted by the dispatch
-    /// (`WidgetEvent::PainterLayerReparent`). Reverses the dragged + target
+    /// (`WidgetEvent::PanelRowReparent` da família `PainterLayer`). Reverses the dragged + target
     /// `NodeId`s to `LayerId`s via the per-row widget id, then dispatches to
     /// `move_into_group` (drop INTO a group) / `move_to_sibling_of` (before /
     /// after) / `move_to_root_bottom_above_base` (drop at the end). The
@@ -141,9 +141,9 @@ impl PainterTool {
     pub fn handle_layer_reparent(
         &mut self,
         dragged: ph2d_a11y::NodeId,
-        drop: ph2d_editor_core::interaction::PainterLayerDrop,
+        drop: ph2d_editor_core::interaction::PanelRowDrop,
     ) {
-        use ph2d_editor_core::interaction::PainterLayerDrop;
+        use ph2d_editor_core::interaction::PanelRowDrop;
         let Some(d) = self.decode_layer_widget(dragged).map(|(l, _)| l) else {
             return;
         };
@@ -156,7 +156,7 @@ impl PainterTool {
             return;
         }
         let moved = match drop {
-            PainterLayerDrop::Inside(t) => match self.decode_layer_widget(t) {
+            PanelRowDrop::Inside(t) => match self.decode_layer_widget(t) {
                 // Middle band: drop INTO a group folder. If the target isn't a
                 // group (or the nest is rejected — depth cap / cycle),
                 // `move_into_group` returns `false` WITHOUT mutating (its guards
@@ -172,15 +172,15 @@ impl PainterTool {
                 }
                 None => false,
             },
-            PainterLayerDrop::Before(t) => match self.decode_layer_widget(t) {
+            PanelRowDrop::Before(t) => match self.decode_layer_widget(t) {
                 Some((tgt, _)) => self.layers.move_to_sibling_of(d, tgt, false),
                 None => false,
             },
-            PainterLayerDrop::After(t) => match self.decode_layer_widget(t) {
+            PanelRowDrop::After(t) => match self.decode_layer_widget(t) {
                 Some((tgt, _)) => self.layers.move_to_sibling_of(d, tgt, true),
                 None => false,
             },
-            PainterLayerDrop::End => self.layers.move_to_root_bottom_above_base(d),
+            PanelRowDrop::End => self.layers.move_to_root_bottom_above_base(d),
         };
         if moved {
             self.invalidate_composite();

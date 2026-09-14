@@ -226,6 +226,17 @@ pub fn counts(world: &World, tree: &TagTree) -> BTreeMap<TagId, usize> {
         for m in tags.direct_ids() {
             alcance.extend(tree.ancestry(m));
         }
+        // ⛔⛔ **«Um id órfão não conta para ninguém» tem DOIS guardas, e nenhum é observável
+        // sozinho** — medido por três redacções de mutação (W4, 2026-09-14):
+        //
+        // 1. o [`TagTree::ancestry`] devolve **vazio** para um id que a árvore não conhece, logo um
+        //    órfão nunca entra no `alcance`;
+        // 2. o `out` só tem as chaves de `tree.tags()`, logo o `get_mut` recusa-o aqui.
+        //
+        // ⚠️ Apagar QUALQUER UM deles deixa o gate VERDE — *uma mutação sobre um guarda defendido
+        // pelo outro mede a redundância, não a lei*. A que sangra escreve o id **directo** no mapa,
+        // saltando os dois de uma vez. ⇒ os dois ficam: cada um continua a ser a rede do outro no
+        // dia em que a porta de cima mudar de contrato.
         for q in &alcance {
             if let Some(n) = out.get_mut(q) {
                 *n += 1;

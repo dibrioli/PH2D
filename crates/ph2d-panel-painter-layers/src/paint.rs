@@ -209,8 +209,11 @@ pub(crate) fn paint(_state: &mut PainterLayersPanelState, ctx: &mut PaintCtx) {
             store.set_panel_scroll(core_ids::PAINTER_LAYERS_PANEL, max_scroll);
         }
         // Tell the dispatch which NodeIds are draggable layer rows (Down on one
-        // of these begins a `PainterLayerReparent` drag — Coord drag foundation).
-        store.set_painter_layer_row_ids(painter_row_ids);
+        // of these begins a `PanelRowReparent` drag — Coord drag foundation).
+        store.set_panel_row_ids(
+            ph2d_editor_core::interaction::PanelRowFamily::PainterLayer,
+            painter_row_ids,
+        );
     }
 
     // Deferred: the single open blend dropdown popover, on top of everything.

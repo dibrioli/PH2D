@@ -42,7 +42,17 @@ pub(crate) fn paint_layer_rows(
     let mut painter_row_ids: std::collections::BTreeSet<ph2d_a11y::NodeId> =
         std::collections::BTreeSet::new();
     let mut ghost: Option<(String, f32, f32)> = None;
-    let dragging = ctx.host.store().painter_layer_drag().filter(|d| d.active);
+    // ⚠️ **Filtra pela FAMÍLIA** (2026-09-14): o slot de arrasto passou a ser um só para todos os
+    // painéis, e sem esta pergunta o fantasma das camadas desenhava-se enquanto alguém arrasta uma
+    // TAG no painel ao lado.
+    let dragging = ctx
+        .host
+        .store()
+        .panel_row_drag()
+        .filter(|&(f, d)| {
+            f == ph2d_editor_core::interaction::PanelRowFamily::PainterLayer && d.active
+        })
+        .map(|(_, d)| d);
     match state::current_layers() {
         Some(stack) if !stack.is_empty() => {
             painter_row_ids = stack

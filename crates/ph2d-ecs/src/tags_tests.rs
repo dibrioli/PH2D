@@ -453,6 +453,10 @@ fn an_object_in_two_levels_of_one_branch_is_counted_once() {
 /// from N objects»* do apagar prometeria mexer em quem não mexe.
 ///
 /// **Mutação que deve sangrar:** contar pelo id directo sem o confrontar com a árvore.
+///
+/// ⛔⛔ **E tem de ser essa** — a lei tem DOIS guardas (o `ancestry` devolve vazio · o `out` só tem
+/// chaves da árvore) e apagar qualquer um deles deixa este gate VERDE. Medido por três redacções
+/// de mutação; a nota inteira está no doc do [`counts`].
 #[test]
 fn an_orphan_id_counts_for_nobody() {
     let mut f = fixture();

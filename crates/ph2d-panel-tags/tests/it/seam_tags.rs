@@ -13,6 +13,7 @@
 use ph2d_editor_core::TagTreeEdit;
 use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::interaction::WidgetEvent;
+use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_editor_core::zones::Rect;
 use ph2d_editor_core::{TagsPanelInfo, TagsPanelRow};
 use ph2d_panel_tags::{TagsPanel, TagsPanelState, ids, set_current_tags};
@@ -337,5 +338,152 @@ fn an_empty_tree_says_the_gesture_that_fills_it() {
     assert!(
         glifos > 30,
         "o painel vazio pintou {glifos} glifos — ele não diz nada"
+    );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// W4b — o ARRASTO (gate 26), por PONTEIRO REAL
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Arrasta a linha de `de` para o MEIO da linha de `para` e devolve o que chegou ao barramento.
+///
+/// ⚠️ **Um `drag_at` de verdade** (Down · Move · Up pelo `dispatch_pointer`), e não um
+/// `WidgetEvent::PanelRowReparent` construído à mão: o que este gate mede é a corrente inteira —
+/// a linha estar declarada **arrastável** no store, o Down armar, o Move passar o limiar de 5 px, o
+/// Up resolver a banda e o painel traduzir. *Um evento sintético passa com a linha não-arrastável.*
+fn arrastar(
+    host: &mut MockPanelHost,
+    state: &mut TagsPanelState,
+    rects: &[(ph2d_a11y::NodeId, Rect)],
+    de: u64,
+    para: Option<u64>,
+) -> Vec<EditorAction> {
+    let a = rect_de(rects, ids::row_id(de));
+    let (x1, y1) = match para {
+        // O meio da linha-alvo: a banda `Inside`, que é os 40 % do centro.
+        Some(t) => {
+            let b = rect_de(rects, ids::row_id(t));
+            (b.x + b.w * 0.5, b.y + b.h * 0.5)
+        }
+        // Abaixo de TODAS as linhas — a banda `End`, que é a raiz.
+        None => (
+            a.x + a.w * 0.5,
+            rects.iter().map(|(_, r)| r.y + r.h).fold(0.0, f32::max) + 200.0,
+        ),
+    };
+    let eventos = host.drag_at(a.x + a.w * 0.5, a.y + a.h * 0.5, x1, y1);
+    assert!(
+        eventos
+            .iter()
+            .any(|e| matches!(e, WidgetEvent::PanelRowReparent { dragged, .. } if *dragged == ids::row_id(de))),
+        "arrastar a linha de {de} não emitiu um PanelRowReparent: {eventos:?} — ela não está \
+         declarada ARRASTÁVEL no store, e o Down nunca armou"
+    );
+    for ev in eventos {
+        let _ = host.apply_panel_event::<TagsPanel>(state, ev);
+    }
+    host.drained_actions()
+}
+
+/// ⭐⭐⭐ **Arrastar uma tag para cima de outra mete-a DENTRO dela** (gate 26) — o gesto do Blender,
+/// pelo ponteiro.
+#[test]
+fn dragging_a_row_onto_another_moves_it_inside() {
+    let (mut host, mut state, rects) = palco(arvore());
+    let out = arrastar(&mut host, &mut state, &rects, STATUE, Some(ENEMY));
+    so(
+        &out,
+        TagTreeEdit::Move {
+            id: STATUE,
+            parent: Some(ENEMY),
+        },
+        "arrastar a Statue para dentro do Enemy",
+    );
+}
+
+/// ⭐⭐ **Arrastar para abaixo de todas as linhas devolve a tag à RAIZ.**
+///
+/// ⚠️ Esta é a metade que o botão *Move to root* também faz — e as duas existem porque a área
+/// «abaixo de todas» **muda de tamanho com a lista**: num painel cheio ela não existe.
+#[test]
+fn dragging_below_every_row_returns_the_tag_to_the_root() {
+    let (mut host, mut state, rects) = palco(arvore());
+    let out = arrastar(&mut host, &mut state, &rects, FLYING, None);
+    so(
+        &out,
+        TagTreeEdit::Move {
+            id: FLYING,
+            parent: None,
+        },
+        "arrastar a Flying para fora de tudo",
+    );
+}
+
+/// ⛔ **Largar sobre o pai que já se tem NÃO escreve nada** — o `move_under` aceitaria e a revisão
+/// subiria, o que daria um passo de `Ctrl+Z` sobre uma árvore que não mudou.
+///
+/// **Mutação que deve sangrar:** tirar a comparação com o pai actual.
+#[test]
+fn dropping_onto_the_parent_it_already_has_writes_nothing() {
+    let (mut host, mut state, rects) = palco(arvore());
+    let out = arrastar(&mut host, &mut state, &rects, FLYING, Some(ENEMY));
+    assert!(
+        out.is_empty(),
+        "largar a Flying no Enemy, que já é o pai dela, escreveu {out:?}"
+    );
+}
+
+/// ⛔⛔ **Uma linha de OUTRA família não é alvo** — com o painel de camadas do Painter aberto ao
+/// lado, arrastar uma tag para cima de uma camada tem de cair na RAIZ, nunca «dentro» dela.
+///
+/// ⚠️ É o gate da generalização: o slot de arrasto é UM para todos os painéis, e o que separa as
+/// famílias é a pergunta `panel_row_family(id)`.
+///
+/// **Mutação que deve sangrar:** o `find_panel_row_drop` a aceitar qualquer linha registada.
+#[test]
+fn a_row_of_another_family_is_never_a_drop_target() {
+    let (mut host, mut state, rects) = palco(arvore());
+    // ⚠️ **A linha alheia fica ABAIXO de todas as tags**, e a fixtura só contém o fenómeno assim:
+    // pousada EM CIMA de uma linha de tag, a linha certa também estaria debaixo do cursor e ganharia
+    // — o gate passaria com o filtro de família apagado. *A 1.ª redacção fazia exactamente isso.*
+    let alheia = ph2d_editor_core::ids::PAINTER_LAYERS_PANEL;
+    host.store_mut().set_panel_row_ids(
+        ph2d_editor_core::interaction::PanelRowFamily::PainterLayer,
+        std::collections::BTreeSet::from([alheia]),
+    );
+    let fundo = rects.iter().map(|(_, r)| r.y + r.h).fold(0.0, f32::max);
+    let modelo = rect_de(&rects, ids::row_id(ENEMY));
+    let alvo = Rect {
+        y: fundo + 20.0,
+        ..modelo
+    };
+    host.hit_index_mut().register(alheia, alvo);
+    // O controlo: nenhuma linha de TAG vive onde a alheia está.
+    assert!(
+        !rects
+            .iter()
+            .any(|(_, r)| r.y < alvo.y + alvo.h && alvo.y < r.y + r.h),
+        "a fixtura não contém o fenómeno: há uma linha de tag por baixo da alheia"
+    );
+    // ⚠️ **A arrastada é a `Flying`, e não uma RAIZ**: largar uma raiz na raiz é o no-op que o
+    // gate vizinho mede, e aqui ele esconderia a diferença entre *«a família filtrou»* e
+    // *«o gesto não mudou nada»*.
+    let a = rect_de(&rects, ids::row_id(FLYING));
+    let eventos = host.drag_at(
+        a.x + a.w * 0.5,
+        a.y + a.h * 0.5,
+        alvo.x + alvo.w * 0.5,
+        alvo.y + alvo.h * 0.5,
+    );
+    for ev in eventos {
+        let _ = host.apply_panel_event::<TagsPanel>(&mut state, ev);
+    }
+    so(
+        &host.drained_actions(),
+        TagTreeEdit::Move {
+            id: FLYING,
+            parent: None,
+        },
+        "arrastar sobre uma linha de OUTRA família",
     );
 }

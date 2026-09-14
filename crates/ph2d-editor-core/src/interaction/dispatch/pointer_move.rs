@@ -123,8 +123,8 @@ pub(super) fn dispatch_move<'frame>(
     }
     // Painter layers-panel row drag (W3 T3.8) — advance the anchor so
     // the panel can render the drop indicator + flip `active`.
-    if store.painter_layer_drag().is_some() {
-        store.update_painter_layer_drag(event.x, event.y);
+    if store.panel_row_drag().is_some() {
+        store.update_panel_row_drag(event.x, event.y);
     }
     // M14.A: NumberInput drag-or-slider. When a Down on the
     // NumberInput body seeded `number_input_drag`, every Move

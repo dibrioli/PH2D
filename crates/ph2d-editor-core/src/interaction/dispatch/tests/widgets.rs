@@ -321,7 +321,7 @@ fn hierarchy_drag_in_live_mode_emits_reparent_intent() {
 fn painter_layer_drag_emits_reparent_with_resolved_drop() {
     // W3 T3.8: Primary Down on a painter layer row + a threshold-crossing
     // Move + Up over the middle of a target row resolves to
-    // `PainterLayerDrop::Inside` and emits a `PainterLayerReparent`. The
+    // `PanelRowDrop::Inside` and emits a `PanelRowReparent`. The
     // dispatch does NO structure mutation — the painter tool applies it.
     let mut store = WidgetStore::with_capacity(8);
     let target_id = ph2d_a11y::NodeId(200_000);
@@ -331,7 +331,7 @@ fn painter_layer_drag_emits_reparent_with_resolved_drop() {
     let mut row_set = std::collections::BTreeSet::new();
     row_set.insert(target_id);
     row_set.insert(dragged_id);
-    store.set_painter_layer_row_ids(row_set);
+    store.set_panel_row_ids(PanelRowFamily::PainterLayer, row_set);
     let mut hits = HitIndex::new();
     // Target row y=0..20 (Inside band 6..14), dragged row y=30..50.
     hits.register(target_id, Rect::new(0.0, 0.0, 200.0, 20.0));
@@ -359,12 +359,13 @@ fn painter_layer_drag_emits_reparent_with_resolved_drop() {
     assert!(
         evts.iter().any(|e| matches!(
             e,
-            WidgetEvent::PainterLayerReparent {
+            WidgetEvent::PanelRowReparent {
+                family: PanelRowFamily::PainterLayer,
                 dragged,
-                drop: PainterLayerDrop::Inside(t),
+                drop: PanelRowDrop::Inside(t),
             } if *dragged == dragged_id && *t == target_id
         )),
-        "expected PainterLayerReparent Inside({target_id:?}); got {evts:?}"
+        "expected PanelRowReparent Inside({target_id:?}); got {evts:?}"
     );
 }
 
@@ -377,7 +378,7 @@ fn painter_layer_sub_threshold_click_emits_no_reparent() {
     store.register(row_id, InteractiveState::Plain);
     let mut row_set = std::collections::BTreeSet::new();
     row_set.insert(row_id);
-    store.set_painter_layer_row_ids(row_set);
+    store.set_panel_row_ids(PanelRowFamily::PainterLayer, row_set);
     let mut hits = HitIndex::new();
     hits.register(row_id, Rect::new(0.0, 0.0, 200.0, 20.0));
     let arena = Bump::new();
@@ -396,7 +397,7 @@ fn painter_layer_sub_threshold_click_emits_no_reparent() {
     assert!(
         !evts
             .iter()
-            .any(|e| matches!(e, WidgetEvent::PainterLayerReparent { .. })),
+            .any(|e| matches!(e, WidgetEvent::PanelRowReparent { .. })),
         "a sub-threshold click must not emit a reparent; got {evts:?}"
     );
 }

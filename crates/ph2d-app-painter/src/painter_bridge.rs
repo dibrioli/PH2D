@@ -400,7 +400,7 @@ pub fn dispatch(
         // on structural/metadata edits (`invalidate_composite` + `set_source`),
         // NOT strokes and NOT cursor moves. So during an in-flight drag the
         // structure is stable → we skip the clone entirely; the panel keeps its
-        // last published snapshot and reads the live `painter_layer_drag()` cursor
+        // last published snapshot and reads the live `panel_row_drag()` cursor
         // for the overlay (panel re-paints every frame regardless). First
         // activation always publishes (sentinel `u64::MAX` ≠ any real revision);
         // the single persistent `PainterTool` instance keeps `layers_revision`

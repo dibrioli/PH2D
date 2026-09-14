@@ -19,7 +19,12 @@
 //! dono.
 
 /// O tecto MEDIDO em 2026-09-12, depois da A9. **Só desce**, e no mesmo commit que tira o campo.
-const TETO_CAMPOS: usize = 187;
+///
+/// ⭐ **187 → 183 em 2026-09-14**: a `line/components` precisava de um campo novo (o latch da cena
+/// das TAGS) e a falha deste gate diz, no próprio texto, o que fazer — *«um campo novo tem DONO»*.
+/// Os SEIS latches das cenas daquela família viraram uma `ComponentsSmokeLatches`, e a catraca
+/// desceu quatro degraus em vez de subir um.
+const TETO_CAMPOS: usize = 183;
 
 const APP_STATE: &str = include_str!("../../src/app_state.rs");
 

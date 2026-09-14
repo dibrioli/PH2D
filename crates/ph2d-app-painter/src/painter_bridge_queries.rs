@@ -29,7 +29,7 @@ pub fn deform_transform_gizmo_active(tools: &mut ToolRegistry) -> bool {
 pub fn apply_layer_reparent(
     tools: &mut ToolRegistry,
     dragged: ph2d_editor_core::NodeId,
-    drop: ph2d_editor_core::interaction::PainterLayerDrop,
+    drop: ph2d_editor_core::interaction::PanelRowDrop,
 ) {
     if let Some(painter) = tools.active_mut().and_then(|t| {
         t.as_any_mut()

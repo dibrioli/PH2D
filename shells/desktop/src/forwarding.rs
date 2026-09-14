@@ -9,7 +9,7 @@
 
 use crate::AppGfx;
 use ph2d_editor_core::WidgetEvent;
-use ph2d_editor_core::interaction::PainterLayerDrop;
+use ph2d_editor_core::interaction::{PanelRowDrop, PanelRowFamily};
 use ph2d_host::{KeyEvent, PointerEvent};
 
 #[path = "forwarding_persist.rs"]
@@ -21,16 +21,19 @@ mod persist;
 /// drive hero-level state mutations) and logs unconsumed ones to
 /// stderr for the developer to verify wiring.
 ///
-/// Returns a `PainterLayerReparent` payload `(dragged, drop)` when the
-/// drag dispatch emitted one — the caller (which holds the `ToolRegistry`)
-/// routes it to the active `PainterTool::handle_layer_reparent`. `None`
-/// otherwise. (The hero/chrome can't own this: it's a tool mutation, and
-/// `forward_to_hero` has no `ToolRegistry`.)
+/// Returns a `PanelRowReparent` payload `(dragged, drop)` **da família `PainterLayer`** quando o
+/// despacho emitiu um — quem chama (que tem o `ToolRegistry`) encaminha-o para o
+/// `PainterTool::handle_layer_reparent` activo. `None` nos outros casos. (O hero/chrome não pode
+/// possuir isto: é uma mutação de FERRAMENTA, e o `forward_to_hero` não tem `ToolRegistry`.)
+///
+/// ⚠️ **As outras famílias CAEM para o `hero.apply_event`** e são resolvidas pelo painel que as
+/// desenhou — a `TagTree` é do documento e o painel *Tags* traduz a queda num `TagTreeEdit::Move`.
+/// *Interceptar aqui todas as famílias faria esta função ter de conhecer cada uma delas.*
 #[must_use]
 pub fn forward_to_hero(
     gfx: Option<&mut AppGfx>,
     event: PointerEvent,
-) -> Option<(ph2d_editor_core::NodeId, PainterLayerDrop)> {
+) -> Option<(ph2d_editor_core::NodeId, PanelRowDrop)> {
     let gfx = gfx?;
     let hero = gfx.hero_screen.as_mut()?;
     // Snapshot events before applying — apply_event may mutate hero,
@@ -71,9 +74,15 @@ pub fn forward_to_hero(
             }
             continue;
         }
-        // Painter layers drag-reparent (W3 T3.8): surface to the caller,
-        // which holds the `ToolRegistry`, to apply on the active PainterTool.
-        if let WidgetEvent::PainterLayerReparent { dragged, drop } = e {
+        // O arrasto das CAMADAS do Painter (W3 T3.8): sobe a quem chama, que tem o
+        // `ToolRegistry`, para ser aplicado na ferramenta activa. ⚠️ **Só esta família** — as
+        // outras caem para o `apply_event` e são do painel que as desenhou.
+        if let WidgetEvent::PanelRowReparent {
+            family: PanelRowFamily::PainterLayer,
+            dragged,
+            drop,
+        } = e
+        {
             reparent = Some((dragged, drop));
             continue;
         }

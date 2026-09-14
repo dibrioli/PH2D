@@ -3,7 +3,7 @@
 //! same `super::` paths, same behaviour (covered by `dispatch::tests`).
 
 use super::focus::apply_click;
-use super::hierarchy::{HierDrop, find_hierarchy_drop, find_painter_layer_drop};
+use super::hierarchy::{HierDrop, find_hierarchy_drop, find_panel_row_drop};
 use super::hover::set_widget_released;
 use crate::interaction::flip_strip::FlipStripGesture;
 use crate::interaction::types::{GesturePhase, GraphGesture, TimelineGesture};
@@ -214,13 +214,12 @@ pub(super) fn dispatch_up<'frame>(
             }
         }
     }
-    // Painter layers-panel row drag (W3 T3.8): on Up of an ACTIVE drag,
-    // resolve the drop band → emit `PainterLayerReparent` for the
-    // painter tool to apply. NO store-side mutation (the tool owns the
-    // LayerStack). Drop-on-self (drifted back onto the dragged row) is a
-    // no-op. Only one row drag can be active per frame, so the hierarchy
-    // block above already no-op'd when this one is `Some`.
-    if let Some(drag) = store.end_painter_layer_drag()
+    // ⭐⭐ **O arrasto de uma linha de PAINEL**: no Up de um arrasto ACTIVO, resolve a banda da
+    // queda e emite um `PanelRowReparent` para o dono da estrutura aplicar. ⛔ Zero mutação do
+    // lado do store (a `LayerStack` é da ferramenta, a `TagTree` é do documento). Largar sobre a
+    // própria linha (o cursor voltou) é no-op. Só um arrasto de linha pode estar vivo por quadro,
+    // então o bloco da hierarquia acima já foi no-op quando este é `Some`.
+    if let Some((family, drag)) = store.end_panel_row_drag()
         && drag.active
     {
         let over_self = hit_index
@@ -231,8 +230,9 @@ pub(super) fn dispatch_up<'frame>(
             })
             .unwrap_or(false);
         if !over_self {
-            let drop = find_painter_layer_drop(hit_index, store, event.y, drag.dragged);
-            events.push(WidgetEvent::PainterLayerReparent {
+            let drop = find_panel_row_drop(hit_index, store, event.y, drag.dragged, family);
+            events.push(WidgetEvent::PanelRowReparent {
+                family,
                 dragged: drag.dragged,
                 drop,
             });

@@ -126,3 +126,122 @@ e entra na catraca do `the_label_column_is_one_answer` **no lugar do núcleo, qu
 *Uma dívida nomeada com o valor de ontem é honesta; um `sed` em 33 sítios é como se parte um painel.*
 
 **Portão:** `nextest-impacted` **13 882/13 882** · `clippy --workspace -D warnings` exit 0 · fmt.
+
+---
+
+## 9 — ⭐⭐⭐ ADENDO: os DOZE painéis saíram da catraca num dia, e a dívida estava precificada na moeda errada
+
+Commit `defbac096` · 32 ficheiros · +228/−150.
+
+### 9.1 — O erro que a §8 escreveu, com o nome dele
+
+A §8 fecha com a dívida nomeada do painel de vetor:
+
+> *«tem **33 sítios** a usá-la como constante livre, **muitos sem `y`/`row_h` em alcance** ⇒ a
+> conversão é wave própria»*
+
+⛔⛔ **Falso, e a refutação é de uma linha:** a largura da coluna **não depende do vertical**. A
+[`property_row_columns`](../../../crates/ph2d-editor-core/src/widget/property_box/mod.rs) usa
+`row_y`/`row_h` **só** para montar os `Rect` que devolve; o número que sai de `label.w` é função de
+`x` e `w` e de mais nada. E os 33 sítios do vetor vivem **todos** num método do `BodyCtx`, que tem
+`inner_x`/`inner_w` como campos.
+
+⇒ ***um bloqueio afirmado sobre um argumento que o resultado não lê é um palpite com cara de
+medição*** — e ele custou os outros **onze** painéis, adiados pela mesma frase.
+
+⚠️ A forma de o ter apanhado no dia era **ler a porta antes de escrever o preço**: a função tem
+oito linhas e a dependência lê-se nelas. Eu escrevi o preço a partir da *assinatura*.
+
+### 9.2 — A porta ganhou a metade horizontal
+
+```rust
+pub fn property_label_col_w(x: f32, w: f32) -> f32   // a lei, sem o vertical que ela não lê
+pub fn property_row_columns(x, w, row_y, row_h) -> PropertyRow  // CHAMA a de cima
+```
+
+E a [`panel::label_col_w`](../../../crates/ph2d-editor-core/src/panel/rows.rs) perdeu os dois
+parâmetros que ignorava (5 chamadores actualizados). *Um parâmetro que o resultado ignora é um
+convite a supor que ele importa* — foi essa suposição que escreveu a §8.
+
+### 9.3 — O que foi convertido
+
+| painel | sítios | literal que morreu |
+|---|---|---|
+| `ph2d-panel-vector` | 33 | `64` |
+| `ph2d-panel-flip` | 8 | `64` |
+| `ph2d-panel-model3d` | 8 | `72` |
+| `ph2d-panel-bgremoval` | 4 | `76` |
+| `ph2d-panel-grid-snap` | 2 | `150` |
+| `ph2d-panel-physics` | 2 | `78` |
+| `ph2d-panel-equalize-sizes` | 1 | `72` |
+| `ph2d-panel-color-equalization` | 1 | `84` |
+| `ph2d-panel-padding` | 1 | `64` |
+| `ph2d-panel-sculpt3d` | 1 | `84` |
+| `ph2d-panel-upscale` | 1 | `64` |
+| `ph2d-panel-wet-tuning` | 1 | `78` |
+
+⚠️ **Onde a constante era ÚNICA, ela foi APAGADA e o sítio chama a porta directamente** — o painel
+deixa de ter uma resposta própria para esconder. Só o vetor ficou com uma função-ponte
+(`paint_sections::label_col_w`), porque são 33 chamadores em 11 ficheiros.
+
+⚠️ **O da timeline FICA na catraca**, e a distinção está escrita nela: a
+`tracks.rs::LABEL_COL_W = 176` é a coluna de nome de uma **FAIXA**, não a de uma linha de
+propriedade. *A régua é textual e não sabe separar as duas — quem a converter decide primeiro se a
+pergunta é a mesma.*
+
+### 9.4 — ⛔ Um gate MEU foi construído, medido e deitado fora no mesmo dia
+
+A 1.ª redacção da 3.ª metade do `the_label_column_is_one_answer` comparava as **duas portas**:
+`property_row_columns(x,w,y,h).label.w` contra `property_label_col_w(x,w)`, em 108 células.
+
+**A prova de mutação disse-o inútil: ela SOBREVIVEU.** Apagar o tecto (`.min(usable − gap −
+control_min)`) muda **as duas** ao mesmo tempo, porque uma chama a outra.
+⇒ ***um gate que compara duas construções é cego a uma mutação partilhada*** — aqui ele comparava
+a função consigo própria.
+
+**O que ficou** é `a_property_row_never_starves_its_control`, com o oráculo **fora** da lei:
+
+- a linha reparte-se (`rótulo + vão + controlo ≤ w`) sempre que `w` chega para uma linha;
+- quando um controlo utilizável **cabe**, ele **é** utilizável: `control ≥ ICON_BTN_SIZE_PX +
+  Spacing::Lg`;
+- numa linha larga (`w ≥ 200`) o rótulo é a **menor** das duas colunas;
+- piso de população nas duas famílias (≥ 100 células cada), senão uma varredura colapsada passa
+  trivialmente.
+
+**Duas mutações, as duas mortas:**
+
+| mutação | efeito medido | veredito |
+|---|---|---|
+| apagar o `.min(…)` da coluna | a `w = 100` o campo fica com `48` px, piso `52` | ✗ vermelho |
+| `LABEL_COL_FRAC 0,348 → 0,748` | o rótulo passa o controlo na linha larga | ✗ vermelho |
+
+E a catraca textual **também** foi provada com a lista já a UMA entrada: um `const … = 96.0` novo
+num painel convertido ⇒ `the_label_column_is_never_chosen_at_the_painting_site` vermelho.
+
+⛔ **A cerca de degenerado é nomeada:** abaixo de `gap + piso` a porta não reparte nada — entrega os
+mínimos (`control = 1 px`, o vão inteiro) e a soma passa a linha por construção. *Uma linha que já
+não cabe não é uma linha de propriedade*, e afirmar a partição ali seria medir o degenerado.
+
+### 9.5 — ⚠️ A reescrita por NOME destruiu prosa, pela 5.ª vez neste repo
+
+O `paint_sections.rs` do vetor tinha, num doc-comment, a frase *«Era `const LABEL_COL_W: f32 =
+64.0`»* — e a substituição textual transformou-a em `const label_col_w(self.inner_x,
+self.inner_w): f32 = 64.0`. Foi apanhada por **ler cada linha reescrita** (`git diff --unified=0 |
+grep '^+'`), não por um gate. *Num repo onde o porquê vive em doc-comments, a memória histórica é a
+vítima mais comum de um `sed`.*
+
+O mesmo mecanismo mordeu uma segunda vez no `equalize-sizes`, onde a própria **declaração** da
+constante entrou na substituição — e ali a cura foi barata porque o compilador fala alto.
+
+### 9.6 — ⏳ ABERTO depois disto
+
+1. **A unidade dentro do rótulo** (`"Float Height (m)"`), que é o que faz um rótulo elidir num
+   painel estreito. Toca strings de i18n ⇒ wave própria.
+2. **A coluna da timeline**, com a pergunta por decidir (§9.3).
+3. **A página escrita** do modelo, derivada das portas — o passo 4 do plano aprovado pelo dono.
+4. As dívidas nomeadas da §7 continuam: o vão horizontal `rótulo → controlo` (`Spacing::Md`, sem
+   derivação), o INSET sem porta, os 74 sítios horizontais de `Spacing::` e as 356 constantes locais.
+
+**Portão:** `nextest-impacted` (BASE `1d43da737`) **13 883/13 883**, exit 0, `load 49,7` ·
+`clippy --workspace --all-targets -D warnings` exit 0 · `fmt --all --check` exit 0 · árvore limpa ·
+binário de smoke reconstruído (exit 0, 79 582 488 bytes).

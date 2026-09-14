@@ -118,7 +118,7 @@ impl Sculpt3dScene {
         // linha seguinte recebe pode ter mais vértices que a do `pick_active`
         // acima: é por isso que ela é pedida de novo, por índice, em vez de
         // segurada numa referência desde o topo.
-        self.refine_for_dab(hit.point, brush.radius);
+        self.refine_for_dab(brush.verb, hit.point, brush.radius);
         let eye = self.dir_to_local(ray.dir());
         self.stroke.dab(
             self.objects[self.active].stack.mesh_mut(),

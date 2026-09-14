@@ -209,4 +209,132 @@ impl Verb {
     pub fn resolve_a_propria_regiao(self) -> bool {
         matches!(self, Self::Cloth | Self::Pose | Self::Boundary)
     }
+
+    /// **Este verbo REFINA a malha em Dynamic Topology?**
+    ///
+    /// ⛔⛔ **ESTA RESPOSTA NÃO É O VEREDITO DO ESTUDO** (`docs/3D/22`). Ela é,
+    /// verbo a verbo, o **comportamento de hoje** — mais **uma** correcção que
+    /// não depende de oráculo nenhum: a **MÁSCARA**.
+    ///
+    /// # ⭐ Porque a máscara pode ser curada antes do estudo
+    ///
+    /// Ela pinta um canal por-vértice e **não move um único vértice**. Refinar
+    /// debaixo dela muda a topologia da peça num gesto que não toca na
+    /// geometria, e o custo é pago por um artista que só queria proteger uma
+    /// zona. *Um gesto que não escreve posição não tem porque mudar a
+    /// topologia* — e essa frase não precisa de saber o que outro programa faz.
+    ///
+    /// # ⚠️ O que o `false` dos verbos com ÂNCORA significa aqui
+    ///
+    /// Hoje eles **nem chegam à porta**: o refino tem um chamador só, o braço do
+    /// carimbo, e quem tem âncora entra por outro caminho (`take_hold`,
+    /// `hook_step`, `cloth_step`). O `false` deles é, portanto, **o estado
+    /// actual e o valor conservador**: se alguém ligar a porta aos gestos
+    /// ancorados antes de o estudo existir, nada muda em silêncio. ⛔ Ele **não**
+    /// é a afirmação de que a pose ou o tecido não devem refinar — essa é
+    /// exactamente a pergunta aberta, e são eles que mais **esticam** superfície.
+    ///
+    /// ⚠️ **Existe uma segunda coluna** ([`Self::colapsa_no_dyntopo`]) porque o
+    /// refino e o colapso são **leis independentes** que por acaso vivem na
+    /// mesma porta: um verbo pode querer relaxar densidade sem criar detalhe.
+    /// *Uma tabela com uma coluna só obriga quem a lê a escolher por ela.*
+    #[must_use]
+    pub fn refina_no_dyntopo(self) -> bool {
+        !self.anchors() && self != Self::Mask
+    }
+
+    /// **Este verbo COLAPSA arestas curtas em Dynamic Topology?**
+    ///
+    /// A segunda metade do [`Self::refina_no_dyntopo`], e ela existe separada
+    /// pela razão escrita lá. ⚠️ **Hoje as duas colunas coincidem em todos os
+    /// verbos**, e isso é um facto sobre o produto de hoje (as duas leis vivem
+    /// numa porta só), **não** uma lei — o estudo pode separá-las.
+    #[must_use]
+    pub fn colapsa_no_dyntopo(self) -> bool {
+        !self.anchors() && self != Self::Mask
+    }
+}
+
+/// **O CENSO DAS DUAS COLUNAS DO DYNTOPO** — o que esta tabela afirma HOJE.
+#[cfg(test)]
+mod dyntopo_tests {
+    use super::Verb;
+
+    /// ⭐⭐⭐ **A MÁSCARA É A ÚNICA CORRECÇÃO QUE ESTA TABELA FAZ.**
+    ///
+    /// ⚠️⚠️ **É isto que impede a tabela de virar um palpite disfarçado de lei.**
+    /// O que cada verbo *deve* fazer é pergunta de **ORÁCULO**
+    /// (`docs/3D/22_plano_quem_subdivide_no_dyntopo.md`), e este censo afirma
+    /// que o commit que a introduziu **mudou exactamente um comportamento**:
+    /// todos os outros verbos leem o que já liam.
+    ///
+    /// ⇒ o dia em que o estudo existir, é **este gate** que muda, célula a
+    /// célula, e a mudança fica visível no diff em vez de se diluir num `match`
+    /// que ninguém recontou.
+    #[test]
+    fn o_mask_e_a_unica_correccao_que_esta_tabela_faz() {
+        let mut corrigidos = Vec::new();
+        for v in Verb::ALL {
+            // O comportamento de HOJE: o refino tem um chamador só — o braço do
+            // carimbo —, e quem tem âncora entra por outro caminho.
+            let chega_a_porta = !v.anchors();
+            if v.refina_no_dyntopo() != chega_a_porta || v.colapsa_no_dyntopo() != chega_a_porta {
+                corrigidos.push(v.label());
+            }
+        }
+        assert_eq!(
+            corrigidos,
+            ["Mask"],
+            "esta tabela mudou o comportamento de outro verbo além da máscara. \
+             Se foi o ESTUDO a chegar, reescreva este gate célula a célula com a \
+             tabela medida ao lado; se não foi, é uma regressão"
+        );
+    }
+
+    /// ⚠️ **O `false` dos verbos com ÂNCORA é o valor CONSERVADOR, não uma
+    /// afirmação.** Hoje eles nem chegam à porta; se alguém a ligar aos gestos
+    /// ancorados antes de o estudo existir, **nada muda em silêncio**.
+    ///
+    /// ⛔ E eles são precisamente os que mais **esticam** superfície (a pose roda
+    /// um membro inteiro), logo são os candidatos mais fortes a mudar de valor
+    /// quando a tabela for medida — este gate existe para essa mudança ser
+    /// deliberada.
+    #[test]
+    fn nenhum_verbo_com_ancora_refina_ou_colapsa_hoje() {
+        let ancorados: Vec<&str> = Verb::ALL
+            .into_iter()
+            .filter(|v: &Verb| v.anchors())
+            .map(Verb::label)
+            .collect();
+        assert!(
+            ancorados.len() >= 8,
+            "o censo varreu só {} verbos com âncora — a varredura partiu-se: {ancorados:?}",
+            ancorados.len()
+        );
+        for v in Verb::ALL.into_iter().filter(|v| v.anchors()) {
+            assert!(
+                !v.refina_no_dyntopo() && !v.colapsa_no_dyntopo(),
+                "`{}` tem âncora e declara que mexe na topologia — ele nem chega \
+                 à porta hoje, então isto muda comportamento sem o estudo",
+                v.label()
+            );
+        }
+    }
+
+    /// ⚠️ **As duas colunas coincidem hoje em TODOS os verbos**, e isso é um
+    /// facto sobre o produto de hoje (as duas leis vivem numa porta só), **não**
+    /// uma lei. Este gate existe para o dia em que o estudo as separar: ele
+    /// reprova, e quem o apagar tem de escrever o que passou a ser verdade.
+    #[test]
+    fn as_duas_colunas_ainda_coincidem_e_isso_nao_e_uma_lei() {
+        for v in Verb::ALL {
+            assert_eq!(
+                v.refina_no_dyntopo(),
+                v.colapsa_no_dyntopo(),
+                "`{}` separou as duas colunas — se foi o estudo, apague este \
+                 gate e escreva a tabela medida",
+                v.label()
+            );
+        }
+    }
 }

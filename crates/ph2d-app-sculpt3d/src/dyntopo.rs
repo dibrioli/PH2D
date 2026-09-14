@@ -124,8 +124,32 @@ impl Sculpt3dScene {
     /// deposita o barro na malha grossa e adensa em cima — o detalhe nasce um
     /// dab atrasado, e o traço fica com a silhueta do que a malha era, não do
     /// que ela é.
-    pub(super) fn refine_for_dab(&mut self, centre: [f32; 3], radius: f32) -> bool {
+    pub(super) fn refine_for_dab(
+        &mut self,
+        verbo: ph2d_sculpt3d::Verb,
+        centre: [f32; 3],
+        radius: f32,
+    ) -> bool {
         if !self.dyntopo.armed {
+            return false;
+        }
+        // ⭐⭐⭐ **A PERGUNTA É AO VERBO, e até 2026-09-14 ela não era feita.**
+        //
+        // Esta porta tem **um** chamador de produto — o braço do carimbo —, logo
+        // a pergunta que o produto respondia era *«este gesto passou pelo
+        // caminho do carimbo?»* e não *«este verbo cria superfície nova?»*.
+        // ⚠️ É a mesma família de defeito que este módulo já pagou três vezes ao
+        // contrário: *inferir uma propriedade do VERBO a partir do CAMINHO que o
+        // gesto tomou.*
+        //
+        // ⛔ **Report do dono:** *«algumas tools que não deveriam fazer a
+        // subdivisão … estão fazendo (como smooth) enquanto algumas que deveriam
+        // não estão»*. A tabela inteira é pergunta de ORÁCULO
+        // (`docs/3D/22_plano_quem_subdivide_no_dyntopo.md`) — **uma** célula
+        // dela não é, e é a que esta linha cura: a **MÁSCARA** não move um
+        // vértice, e medido nesta cena ela levava a peça de `830` para `1 331`
+        // vértices.
+        if !verbo.refina_no_dyntopo() && !verbo.colapsa_no_dyntopo() {
             return false;
         }
         // ⚠️ **Recusa com a pilha montada** (ver o cabeçalho). Silenciosa aqui
@@ -151,18 +175,41 @@ impl Sculpt3dScene {
         // afirma que a malha cresceu exactamente o que ele partiu. Refinar antes
         // faria a renumeração chegar depois e descrever índices que já não são os
         // que o `grow_with` acabou de instalar.
-        let shrunk = collapse_in_sphere(
-            mesh,
-            centre,
-            radius,
-            collapse_target(target),
-            &mut remap,
-            &mut region,
-        );
-        let out = refine_in_sphere(mesh, centre, radius, target, &mut births, &mut region);
+        // ⚠️ **As duas colunas são lidas em separado**, e não porque algum verbo
+        // hoje as separe: elas são **leis independentes** que por acaso vivem na
+        // mesma porta (um verbo pode querer relaxar densidade sem criar
+        // detalhe), e o estudo pode separá-las. *Uma porta que lê uma coluna só
+        // obriga quem a preenche a escolher pelas duas.*
+        // ⚠️⚠️ **As duas colunas são lidas em SEPARADO, e o `&&` curto-circuita** —
+        // um verbo que diga `false` não chega a chamar o motor. Elas são **leis
+        // independentes** que por acaso vivem na mesma porta (um verbo pode
+        // querer relaxar densidade sem criar detalhe), e o estudo pode separá-las.
+        // *Uma porta que lê uma coluna só obriga quem a preenche a escolher
+        // pelas duas.*
+        //
+        // ⛔ E o veredito é lido como **booleano** e não por um estado novo nos
+        // enums da `ph2d-mesh`: `Collapse::Enough` significa *«nenhuma aresta
+        // está sob o limiar»*, que é um facto sobre a MALHA — usá-lo para dizer
+        // *«o verbo não pediu»* poria duas coisas diferentes no mesmo byte, que
+        // é o defeito que este módulo acabou de pagar noutro sítio.
+        let cut = verbo.colapsa_no_dyntopo()
+            && matches!(
+                collapse_in_sphere(
+                    mesh,
+                    centre,
+                    radius,
+                    collapse_target(target),
+                    &mut remap,
+                    &mut region,
+                ),
+                Collapse::Done { .. }
+            );
+        let done = verbo.refina_no_dyntopo()
+            && matches!(
+                refine_in_sphere(mesh, centre, radius, target, &mut births, &mut region),
+                Refine::Done { .. }
+            );
         self.dyn_region = region;
-        let cut = matches!(shrunk, Collapse::Done { .. });
-        let done = matches!(out, Refine::Done { .. });
         if cut {
             // ⚠️ **Antes do `grow_with`, sempre.** Ele afirma que a malha cresceu
             // exactamente o número de nascimentos que chegaram, e a conta é
@@ -189,3 +236,8 @@ impl Sculpt3dScene {
         true
     }
 }
+
+/// **Quem muda a topologia em dyntopo** — ver [`tests`].
+#[cfg(test)]
+#[path = "dyntopo_tests.rs"]
+mod tests;

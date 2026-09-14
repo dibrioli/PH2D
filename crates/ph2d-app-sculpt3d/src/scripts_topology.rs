@@ -121,7 +121,15 @@ pub(crate) fn for_scene(mesh: &ph2d_mesh::Mesh) {
              [sculpt3d]        adensada FICA -- desligar nao desfaz).
              [sculpt3d]   (10) A RECUSA: Ctrl+Z ate' voltar ao inicio, aperte K (subdividir) e
              [sculpt3d]        depois P. O log tem de dizer que RECUSA com a pilha montada, e
-             [sculpt3d]        dizer o conserto (J reverte)."
+             [sculpt3d]        dizer o conserto (J reverte).
+             [sculpt3d]   (11) QUEM NAO MEXE NA MALHA NAO A ADENSA (corrigido 14/09): com o modo
+             [sculpt3d]        LIGADO e o detalhe no FINO, escolha o pincel `Mask` e pinte uma
+             [sculpt3d]        zona. A mascara tem de aparecer (a zona escurece) e a malha tem
+             [sculpt3d]        de ficar EXACTAMENTE como estava -- ela nao move um vertice, logo
+             [sculpt3d]        nao tem porque criar triangulos. Antes desta correccao um unico
+             [sculpt3d]        toque levava a peca de 830 para 1331 vertices.
+             [sculpt3d]        Volte ao `Draw` e esculpa: a malha volta a adensar. Se a mascara
+             [sculpt3d]        adensar, ou se o desenho parar de adensar, e' reprovacao."
         );
     }
 

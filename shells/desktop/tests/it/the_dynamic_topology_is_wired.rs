@@ -216,3 +216,40 @@ fn the_arming_question_is_a_parse_and_not_a_list() {
         "e nunca uma lista de níveis: ela apodrece no dia em que a cena N+1 nascer"
     );
 }
+
+/// ⭐⭐⭐ **A PORTA PERGUNTA AO VERBO, e não ao caminho que o gesto tomou.**
+///
+/// Até 2026-09-14 o refino tinha **um** chamador de produto — o braço do
+/// carimbo —, logo a pergunta que o produto respondia era *«este gesto passou
+/// pelo caminho do carimbo?»* e não *«este verbo cria superfície nova?»*. ⚠️ É a
+/// mesma família de defeito que este módulo já pagou três vezes ao contrário:
+/// *inferir uma propriedade do VERBO a partir do CAMINHO do gesto.*
+///
+/// ⛔ **Report do dono:** *«algumas tools que não deveriam fazer a subdivisão …
+/// estão fazendo (como smooth) enquanto algumas que deveriam não estão»*. A
+/// tabela inteira é pergunta de oráculo (`docs/3D/22`); a célula da **MÁSCARA**
+/// não é, e é a que a cura fecha — medido, ela levava a peça de `830` para
+/// `1 331` vértices num gesto que não move um único vértice.
+///
+/// As três metades:
+/// 1. a porta **recebe** o verbo;
+/// 2. ela lê as **duas** colunas (refino e colapso são leis independentes);
+/// 3. o chamador passa o verbo do pincel **armado**, não um literal.
+#[test]
+fn the_dyntopo_door_asks_the_verb() {
+    let src = sculpt_src();
+    let body = function_body(&src, "refine_for_dab");
+    assert!(
+        body.contains("verbo.refina_no_dyntopo()") && body.contains("verbo.colapsa_no_dyntopo()"),
+        "a porta do dyntopo não consulta as DUAS colunas do verbo — sem isso ela \
+         responde «este gesto passou pelo carimbo?», que é a pergunta errada"
+    );
+    // ⚠️ **O chamador passa o verbo do pincel ARMADO** (`brush.verb`), e não o
+    // `self.brush.verb`: entre os dois está o `armed_brush`, que é quem resolve
+    // os modificadores do gesto. *Duas respostas para «qual verbo está na mão»
+    // divergem no dia do primeiro modificador que troca de verbo.*
+    assert!(
+        src.contains("self.refine_for_dab(brush.verb,"),
+        "o chamador não passa o verbo do pincel armado à porta do dyntopo"
+    );
+}

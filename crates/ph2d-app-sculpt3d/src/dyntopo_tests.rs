@@ -143,11 +143,16 @@ fn a_mascara_continua_a_pintar_o_canal() {
 fn cena_com(
     device: &wgpu::Device,
     verb: Verb,
+    modo: ph2d_sculpt3d::DensityModo,
     malha: ph2d_mesh::Mesh,
     detalhe: f32,
     raio_px: f32,
 ) -> Sculpt3dScene {
     let mut s = Sculpt3dScene::new(device, malha, 1.0);
+    // ⚠️ **A direcção é do PINCEL e entra pelo arnês**, nunca por omissão: as
+    // duas células que a tabela-verdade da espec separa diferem SÓ neste campo,
+    // e lê-las do default deixaria metade do gate a medir o outro caso.
+    s.brush.density_modo = modo;
     s.note_canvas(ph2d_editor_core::zones::Rect::new(0.0, 0.0, 900.0, 700.0));
     s.brush.verb = verb;
     // ⚠️⚠️ **O raio do pincel vive em PIXELS DE ECRÃ, e o `Brush::radius` é
@@ -163,19 +168,31 @@ fn cena_com(
     s
 }
 
-/// ⭐⭐⭐ **A DENSIDADE AFINA A MALHA, E NUNCA A ENGROSSA.**
+/// ⭐⭐⭐ **A TABELA-VERDADE DO PASSE, célula a célula** (espec §3.2).
 ///
-/// São **duas leis, não uma** (espec §3.2): *ele liga o colapso* **e** *ele não
-/// liga o partir*. ⚠️ Um gate que só verificasse a primeira passaria com um
-/// pincel que **também subdivide**, que é outro produto — e é por isso que a
-/// segunda metade corre sobre uma malha GROSSA, onde partir teria o que fazer.
+/// ⛔⛔ **Este gate nasceu a afirmar UMA CÉLULA AO CONTRÁRIO, e quem o desmentiu
+/// foi o dono, pelo produto:** *«por que não pode aumentar a densidade
+/// também?»* (2026-09-14). A redacção anterior chamava-se *«a densidade afina a
+/// malha e NUNCA a engrossa»* e escrevia, com o comentário ao lado, que *«um
+/// pincel que também subdividisse é outro produto»*.
+///
+/// **Não é.** A espec diz que este pincel **ACRESCENTA a bandeira de colapso**
+/// ao modo do passe — ele não **RETIRA** a de partir. Quem decide o partir é o
+/// ajuste ([`ph2d_sculpt3d::DensityModo`]), e a espec mede as duas células **na
+/// mesma malha grossa**: `81 → 81` com o ajuste em «só colapsar» e **`81 → 101`**
+/// com «partir + colapsar».
+///
+/// ⚠️ **A recusa medida da espec continua de pé e é OUTRA pergunta:** o pincel
+/// não pode **FORÇAR** o partir, como força o colapso. A célula (b) é
+/// exactamente esse controlo.
 ///
 /// **Medido** (um dab, raio `160 px`):
 ///
-/// | arranjo | verbo | vértices |
+/// | arranjo | ajuste | vértices |
 /// |---|---|---|
-/// | malha fina (`48×72`), alvo grosso | `Density` | **`3 386 → 3 352`** |
-/// | malha grossa (`8×12`), alvo fino | `Density` | **`86 → 86`** — ele nunca acrescenta |
+/// | malha fina (`48×72`), alvo grosso | `Afinar` | **`3 386 → 3 352`** |
+/// | malha grossa (`8×12`), alvo fino | `Afinar` | **`86 → 86`** — ele não FORÇA o partir |
+/// | a MESMA, alvo fino | **`Igualar`** | **cresce** — a célula que o dono pediu |
 /// | a MESMA, alvo fino | `Draw` | **`86 → 359`** — o controlo |
 ///
 /// ⚠️ **A colheita da primeira linha é modesta (`34` vértices) e isso é a
@@ -185,49 +202,166 @@ fn cena_com(
 /// sobrevivente**. A espec §3.8 declara isso uma **decisão de produto** com duas
 /// frases e sem terceira saída, e o que shipa é a conservadora: *o `Density`
 /// respeita as recusas que o nosso colapso já tem, e no bordo ele simplesmente
-/// não come*.
+/// não come*. ⭐ A magnitude que o dono vê está no gate irmão
+/// [`a_densidade_tira_uma_fraccao_visivel_e_nao_um_punhado`], que mede o
+/// percurso dele inteiro e não um dab.
 #[test]
 #[ignore]
-fn a_densidade_afina_a_malha_e_nunca_a_engrossa() {
+fn a_densidade_obedece_a_tabela_verdade_do_passe() {
+    use ph2d_sculpt3d::DensityModo;
     let gpu = gpu_or_skip!();
 
     // (a) MALHA FINA, alvo GROSSO — há aresta curta de sobra, logo o colapso
-    // tem o que comer.
+    // tem o que comer. ⭐ **E ele corre nos DOIS ajustes**: é a lei do pincel
+    // (a coluna *colapsar* está a `sim` nas três linhas da tabela da espec), e
+    // não um ajuste.
     let fina = || ph2d_mesh::shapes::uv_sphere(48, 72, 1.0);
-    let mut s = cena_com(&gpu.device, Verb::Density, fina(), 0.15, 160.0);
-    let antes = vertices(&s);
-    um_dab(&mut s);
-    let depois = vertices(&s);
-    assert!(
-        depois < antes,
-        "a densidade não afinou nada ({antes} -> {depois}) — todo o efeito dela \
-         é sobre o passe de topologia, e sem isto ela é um pincel inerte"
-    );
+    for modo in DensityModo::ALL {
+        let mut s = cena_com(&gpu.device, Verb::Density, modo, fina(), 0.15, 160.0);
+        let antes = vertices(&s);
+        um_dab(&mut s);
+        let depois = vertices(&s);
+        assert!(
+            depois < antes,
+            "a densidade não afinou nada em `{}` ({antes} -> {depois}) — o \
+             colapso é a LEI deste pincel e corre nos dois ajustes",
+            modo.label()
+        );
+    }
 
-    // (b) MALHA GROSSA, alvo FINO — aqui **partir** teria muito o que fazer, e
-    // é isto que separa este pincel de um que também subdivide.
+    // (b) MALHA GROSSA, alvo FINO, ajuste `Afinar` — aqui **partir** teria muito
+    // o que fazer, e é isto que prova que o pincel não o FORÇA.
     let grossa = || ph2d_mesh::shapes::uv_sphere(8, 12, 1.0);
-    let mut s = cena_com(&gpu.device, Verb::Density, grossa(), 1.0, 160.0);
+    let mut s = cena_com(
+        &gpu.device,
+        Verb::Density,
+        DensityModo::Afinar,
+        grossa(),
+        1.0,
+        160.0,
+    );
     let antes = vertices(&s);
     um_dab(&mut s);
-    let depois = vertices(&s);
+    let so_afina = vertices(&s);
     assert!(
-        depois <= antes,
-        "a densidade ACRESCENTOU superfície ({antes} -> {depois}) — ela liga o \
-         colapso e NÃO liga o partir"
+        so_afina <= antes,
+        "a densidade ACRESCENTOU superfície com o ajuste em `Thin Only` \
+         ({antes} -> {so_afina}) — ali ela só colapsa"
     );
 
-    // ⭐ **O controlo positivo da metade (b):** o mesmo arranjo com um verbo que
-    // liga as duas metades **cresce**. Sem ele, o `<=` acima ficaria verde sobre
-    // um passe que nunca dispara.
-    let mut s = cena_com(&gpu.device, Verb::Draw, grossa(), 1.0, 160.0);
+    // ⭐⭐⭐ (c) **A MESMA malha e o MESMO alvo, com o ajuste de OMISSÃO: ela
+    // CRESCE.** É a célula `81 → 101` da espec, e é o report do dono.
+    let mut s = cena_com(
+        &gpu.device,
+        Verb::Density,
+        DensityModo::Igualar,
+        grossa(),
+        1.0,
+        160.0,
+    );
+    let antes_ig = vertices(&s);
+    um_dab(&mut s);
+    let iguala = vertices(&s);
+    assert_eq!(
+        antes_ig, antes,
+        "os dois arranjos têm de partir da MESMA malha, senão a comparação \
+         abaixo não é entre ajustes"
+    );
+    assert!(
+        iguala > so_afina,
+        "o ajuste de omissão não adensou nada ({antes_ig} -> {iguala}, contra \
+         {so_afina} em `Thin Only`) — é exactamente o report do dono: *«por que \
+         não pode aumentar a densidade também?»*"
+    );
+
+    // ⭐ **O controlo positivo:** o mesmo arranjo com um verbo que liga as duas
+    // metades cresce também. Sem ele, a célula (b) ficaria verde sobre um passe
+    // que nunca dispara.
+    let mut s = cena_com(
+        &gpu.device,
+        Verb::Draw,
+        DensityModo::Afinar,
+        grossa(),
+        1.0,
+        160.0,
+    );
     let antes = vertices(&s);
     um_dab(&mut s);
     let depois = vertices(&s);
     assert!(
         depois > antes,
         "o desenho não subdividiu a malha grossa ({antes} -> {depois}) — sem \
-         isto a metade (b) não afirma nada"
+         isto a célula (b) não afirma nada"
+    );
+}
+
+/// ⭐⭐⭐ **A PISTA DO DETALHE CHEGA AO MOTOR — e a régua é a MALHA, nunca o
+/// campo.**
+///
+/// ⚠️⚠️ **É o ponto cego que o §5.0 do roteador nomeia:** *nenhum instrumento
+/// deste repo pergunta se o VALOR chega a um consumidor*. Um slider pode estar
+/// pintado, registado, vivo sob o ponteiro e varrido pela costura — e o número
+/// dele nunca sair do painel. As três metades aqui são:
+///
+/// 1. o painel **publica** o que a cena tem (ida);
+/// 2. a cena **escreve** o que o painel mandou (volta);
+/// 3. ⭐ **duas posições da pista dão malhas DIFERENTES** no mesmo gesto — a
+///    única das três que prova que o número atravessou até ao motor.
+///
+/// ⛔ Sem a terceira, cravar o `detail` numa constante dentro do passe deixaria
+/// as duas primeiras verdes.
+#[test]
+#[ignore]
+fn a_pista_do_detalhe_chega_ao_motor() {
+    let gpu = gpu_or_skip!();
+    let mut s = Sculpt3dScene::new(&gpu.device, ph2d_mesh::shapes::uv_sphere(10, 14, 1.0), 1.0);
+    s.note_canvas(ph2d_editor_core::zones::Rect::new(0.0, 0.0, 900.0, 700.0));
+
+    // (1) IDA — o retrato publica o que a cena tem.
+    s.dyntopo.detail = 0.15;
+    assert!(
+        (s.panel_snapshot(false).ui.dyn_detail - 0.15).abs() < 1e-6,
+        "o retrato não publica o detalhe da cena — a pista nasceria a mostrar \
+         outro número que o do motor"
+    );
+
+    // (2) VOLTA — a cena escreve o que o painel mandou.
+    //
+    // ⚠️ **Pela PORTA DO PRODUTO** (`apply_panel_intent`), e não pelo `apply_ui`
+    // privado: é este o caminho que um arrasto de pista toma, e um gate que
+    // chamasse o ajudante interno afirmaria sobre código que o painel não usa —
+    // a mesma armadilha que este repo já registou como *nomear a VISIBILIDADE
+    // em vez da lei*.
+    let mut ui = s.panel_snapshot(false).ui;
+    ui.dyn_detail = 0.9;
+    s.apply_panel_intent(ph2d_panel_sculpt3d::Sculpt3dIntent::SetUi(ui));
+    assert!(
+        (s.dyntopo.detail - 0.9).abs() < 1e-6,
+        "a pista não chega ao campo da cena: {} — um slider morto",
+        s.dyntopo.detail
+    );
+
+    // (3) ⭐ **E O NÚMERO CHEGA AO MOTOR:** o mesmo gesto, na mesma malha, com
+    // duas posições da pista, tem de dar contagens DIFERENTES. É esta metade
+    // que uma constante cravada no passe faria sangrar.
+    let conta_com = |detalhe: f32| {
+        let mut s = cena_com(
+            &gpu.device,
+            Verb::Density,
+            ph2d_sculpt3d::DensityModo::Igualar,
+            ph2d_mesh::shapes::uv_sphere(10, 14, 1.0),
+            detalhe,
+            160.0,
+        );
+        um_dab(&mut s);
+        vertices(&s)
+    };
+    let grosso = conta_com(0.0);
+    let fino = conta_com(1.0);
+    assert!(
+        fino > grosso,
+        "as duas pontas da pista dão a mesma malha ({grosso} e {fino}) — o \
+         número não atravessa até ao motor"
     );
 }
 
@@ -308,15 +442,34 @@ fn diag_o_percurso_do_dono() {
         println!("  Draw fino dab {i}: {} verts", vertices(&s));
     }
     s.brush.verb = Verb::Density;
-    for detalhe in [0.15f32, 0.5] {
-        s.dyntopo.detail = detalhe;
-        for i in 0..10 {
-            um_dab(&mut s);
-            println!(
-                "  Density detalhe {detalhe} dab {i}: {} verts",
-                vertices(&s)
-            );
+    for modo in ph2d_sculpt3d::DensityModo::ALL {
+        s.brush.density_modo = modo;
+        for detalhe in [0.15f32, 0.5] {
+            s.dyntopo.detail = detalhe;
+            for i in 0..10 {
+                um_dab(&mut s);
+                println!(
+                    "  Density {} detalhe {detalhe} dab {i}: {} verts",
+                    modo.label(),
+                    vertices(&s)
+                );
+            }
         }
+    }
+
+    // ⭐⭐ **O GESTO NOVO — adensar com o próprio pincel de densidade**, que é a
+    // metade que o report de 14/09 pediu (*«por que não pode aumentar a
+    // densidade também?»*). Parte da malha CRUA da cena, sem `Draw` nenhum.
+    let mut s = Sculpt3dScene::new(&gpu.device, ph2d_mesh::shapes::uv_sphere(10, 14, 1.0), 1.0);
+    s.note_canvas(ph2d_editor_core::zones::Rect::new(0.0, 0.0, 900.0, 700.0));
+    assert!(s.toggle_dyntopo().0);
+    s.brush.verb = Verb::Density;
+    s.brush.density_modo = ph2d_sculpt3d::DensityModo::Igualar;
+    s.dyntopo.detail = 1.0;
+    println!("adensar com Density: {} verts (cru)", vertices(&s));
+    for i in 0..6 {
+        um_dab(&mut s);
+        println!("  Density Equalise fino dab {i}: {} verts", vertices(&s));
     }
 }
 
@@ -394,11 +547,19 @@ fn quando_a_densidade_nao_faz_nada_ela_diz_porque() {
          partido e não tem como saber que falta o `P`"
     );
 
-    // (b) ARMADA mas sem nada a colapsar (detalhe fino numa malha grossa).
+    // (b) ARMADA mas sem nada a fazer (detalhe fino numa malha grossa).
+    //
+    // ⚠️⚠️ **O ajuste é `Thin Only`, e é ele que CRIA a pergunta.** Desde que o
+    // pincel também adensa (report do dono, 14/09), no ajuste de omissão este
+    // arranjo **parte** arestas — ou seja, o passe faz alguma coisa e não há
+    // queixa nenhuma a dar. *É a metade do report que já está curada.* A queixa
+    // continua a existir para quem escolhe só afinar, que é exactamente onde o
+    // artista pode pedir uma coisa que a malha não tem.
     let mut s = Sculpt3dScene::new(&gpu.device, ph2d_mesh::shapes::uv_sphere(10, 14, 1.0), 1.0);
     s.note_canvas(ph2d_editor_core::zones::Rect::new(0.0, 0.0, 900.0, 700.0));
     assert!(s.toggle_dyntopo().0);
     s.brush.verb = Verb::Density;
+    s.brush.density_modo = ph2d_sculpt3d::DensityModo::Afinar;
     s.dyntopo.detail = 1.0;
     um_dab(&mut s);
     assert!(

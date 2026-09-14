@@ -396,8 +396,11 @@ fn group_chip_ui(
         // não é o material `-1`, é a AUSÊNCIA de matcap.
         ui.matcap = i.checked_sub(1).map(|k| u8::try_from(k).unwrap_or(u8::MAX));
     } else {
-        let i = index_of(&crate::ids::SCULPT3D_DETAIL, id)?;
-        ui.detail = u8::try_from(i).unwrap_or(0);
+        // ⭐ **AS DUAS DIRECÇÕES DO PINCEL DE DENSIDADE** — sem re-armar nada,
+        // pela razão dos irmãos acima: escolher se ele também adensa é uma
+        // escolha sobre o pincel que já está na mão, não a troca dele.
+        let i = index_of(&crate::ids::SCULPT3D_DENSITY_MODE, id)?;
+        ui.brush.density_modo = ph2d_sculpt3d::DensityModo::ALL[i];
     }
     Some(ui)
 }

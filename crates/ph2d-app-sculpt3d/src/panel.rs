@@ -16,7 +16,6 @@
 
 use ph2d_panel_sculpt3d::{Sculpt3dIntent, Sculpt3dSnapshot, Sculpt3dUi};
 
-use super::dyntopo::DETAIL_STEPS;
 use super::{MaskOp, Primitive, Sculpt3dScene, legacy_requested, retopo_line};
 
 /// **O que o LAÇO DE FRAME tem de cumprir** por um gesto do painel.
@@ -71,7 +70,7 @@ impl Sculpt3dScene {
                 sss_scatter: self.sss_scatter,
                 light_az_deg: f32::from(light.angle_deg),
                 light_elev_deg: f32::from(light.elev_deg),
-                detail: detail_index(self.dyntopo.detail),
+                dyn_detail: self.dyntopo.detail,
                 extract: self.extract,
                 // Contagem de células vira `f32` só para a pista; a fronteira de
                 // volta (`apply_ui`) arredonda e clampa.
@@ -222,7 +221,11 @@ impl Sculpt3dScene {
         l.angle_deg = (ui.light_az_deg.round().max(0.0) as u16) % 360;
         l.elev_deg =
             (ui.light_elev_deg.round().max(0.0) as u16).clamp(ph2d_light::MIN_ELEV_DEG, 90);
-        self.dyntopo.detail = DETAIL_STEPS[(ui.detail as usize).min(DETAIL_STEPS.len() - 1)].0;
+        // ⚠️ **Os mesmos limites da row, e não porque ela já os aplique:** o
+        // painel é UMA porta para este campo, e um smoke ou uma cena que o
+        // escrevam direto entram por outra. A faixa é o domínio da lei — o
+        // `ph2d_mesh::edge_target` faz `detail.clamp(0.0, 1.0)`.
+        self.dyntopo.detail = ui.dyn_detail.clamp(0.0, 1.0);
         self.extract = ui.extract;
         // ⚠️ **Arredondado aqui, na fronteira**, e não guardado como `f32`: a
         // resolução é uma CONTAGEM de células, e a pista de um slider é contínua
@@ -547,26 +550,6 @@ impl Sculpt3dScene {
         self.mask_op(op);
         eprintln!("[sculpt3d] mascara: {}", op.label());
     }
-}
-
-/// Em que degrau da tabela um detalhe caiu.
-///
-/// ⚠️ **O mais PRÓXIMO, e não uma igualdade exata.** O rótulo do log usa
-/// `abs() < 1e-6` e devolve `"custom"` quando nada casa — o que é honesto num
-/// texto e inútil num rádio, que tem de acender alguma coisa. Um valor fora dos
-/// três degraus só existe se alguém o escrever à mão; acender o vizinho é a
-/// leitura menos surpreendente.
-fn detail_index(detail: f32) -> u8 {
-    let mut best = 0usize;
-    let mut best_d = f32::INFINITY;
-    for (i, (d, _)) in DETAIL_STEPS.iter().enumerate() {
-        let dist = (d - detail).abs();
-        if dist < best_d {
-            best_d = dist;
-            best = i;
-        }
-    }
-    u8::try_from(best).unwrap_or(0)
 }
 
 #[cfg(test)]

@@ -170,8 +170,17 @@ pub struct Sculpt3dUi {
     pub alpha_preview: bool,
     /// A malha de arestas por cima da forma.
     pub wireframe: bool,
-    /// Qual degrau de detalhe a topologia dinâmica usa (índice em `DETAIL_STEPS`).
-    pub detail: u8,
+    /// **O ALVO DE DENSIDADE do passe de topologia dinâmica** — uma FRACÇÃO em
+    /// `0..=1` contra o raio do pincel, nunca um comprimento.
+    ///
+    /// ⚠️⚠️ **Era um índice `u8` em `DETAIL_STEPS`** (três chips: grosso · médio
+    /// · fino) e passou a ser o próprio número em 2026-09-14, por report do
+    /// dono: *«porque não temos um slider neste pincel para definir a densidade
+    /// da malha»*. ⛔ A tecla `U` continua a ciclar os três degraus com nome —
+    /// ela escreve neste mesmo campo, e por isso **não há duas fontes**: o
+    /// atalho e a pista dizem sempre a mesma coisa, como o `[`/`]` e a pista do
+    /// raio.
+    pub dyn_detail: f32,
     /// **Em que resolução o botão RECONSTRUIR voxeliza.**
     ///
     /// ⚠️ Nasce no `ph2d_sdf::DEFAULT_RESOLUTION`, que é o número da referência
@@ -267,7 +276,10 @@ impl Default for Sculpt3dUi {
             matcap: Some(0),
             alpha_preview: true,
             wireframe: false,
-            detail: 1,
+            // O MEIO da faixa, que é o valor com que a cena nasce — a fonte é
+            // o `Dyntopo::default` do lado da cena, e este espelho existe só
+            // para uma fixtura de costura ver o mesmo mundo que o artista vê.
+            dyn_detail: 0.5, // LITERAL-PX-OK: fracao do curso, nao metrica de layout
             // A fonte é a const do motor, não uma cópia dela.
             remesh_res: 150.0, // LITERAL-PX-OK: resolucao de voxel, nao metrica de layout
             // O MEIO do curso. Medido na malha da cena `=35`: 384 vertices e

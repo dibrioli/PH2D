@@ -10,7 +10,9 @@
 use crate::rows::{Place, Row};
 use crate::state::UiLevel;
 
-/// **A TOPOLOGIA** — hoje uma row só, a resolução do remesh.
+/// **A TOPOLOGIA** — quatro rows: o alvo do passe dinâmico (colado ao
+/// interruptor que o arma) e os três argumentos dos botões que reconstroem a
+/// malha.
 ///
 /// ⚠️ **A FAIXA É MEDIDA, e o recurso é a memória do campo TRANSIENTE**
 /// (`ph2d-sdf/tests/it/measure_remesh.rs`, esfera `uv(96,144)`):
@@ -31,6 +33,42 @@ use crate::state::UiLevel;
 /// ⚠️ E o piso é 16 porque abaixo dele a saída deixa de ser uma forma (1.250
 /// vértices já é blocagem grossa), não porque algum recurso acabe.
 pub static TOPOLOGY: &[Row] = &[
+    // ⭐⭐ **O ALVO DE DENSIDADE DA TOPOLOGIA DINÂMICA**, e ele mora colado ao
+    // interruptor que o arma ([`Place::AfterDyntopo`]) — não no bloco do fim da
+    // secção, que é dos argumentos do botão de retopologia.
+    //
+    // ⚠️⚠️ **Ele substitui TRÊS CHIPS com nome** (*grosso · médio · fino*), por
+    // report do dono em 2026-09-14: *«porque não temos um slider neste pincel
+    // para definir a densidade da malha»*. ⛔ **Os dois não coexistem** — eles
+    // escrevem o mesmo número, e duas superfícies sobre um valor só divergem no
+    // dia em que uma ganhar clamp e a outra não. A tecla `U` fica, a ciclar os
+    // três valores com nome: é o atalho, como o `[`/`]` do raio é o da pista
+    // dele.
+    //
+    // ⚠️ **A FAIXA NÃO É ESCOLHIDA — é o domínio da lei**
+    // ([`ph2d_mesh::edge_target`], que faz `detail.clamp(0.0, 1.0)`):
+    // `aresta_alvo = raio × √((1,1 − d) × 0,2)`, logo `0` pede
+    // `0,469 × raio` (o mais grosso que a lei exprime) e `1` pede
+    // `0,141 × raio` — uma faixa de **3,3×**. ⛔ Um tecto mais apertado aqui
+    // seria um limite sem recurso nomeado.
+    //
+    // ⚠️ E ele é uma **FRACÇÃO contra o raio do pincel**, nunca um comprimento:
+    // é isso que impede o número de mudar de significado quando o artista troca
+    // de pincel — a mesma razão escrita no [`ph2d_app_sculpt3d`] que o guarda.
+    Row {
+        label: "panel.sculpt3d.dyn_detail",
+        slider: crate::ids::SCULPT3D_DYN_DETAIL,
+        chip: crate::ids::SCULPT3D_DYN_DETAIL_NUM,
+        min: 0.0,
+        max: 1.0,
+        step: 0.05, // LITERAL-PX-OK: fracao do curso, nao metrica de layout
+        decimals: 2,
+        get: |u| u.dyn_detail,
+        set: |u, v| u.dyn_detail = v,
+        show: |_| true,
+        level: UiLevel::Basic,
+        place: Place::AfterDyntopo,
+    },
     Row {
         label: "panel.sculpt3d.remesh_res",
         slider: crate::ids::SCULPT3D_REMESH_RES,

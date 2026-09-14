@@ -66,11 +66,18 @@ impl Default for Dyntopo {
     }
 }
 
-/// Os três degraus que a tecla percorre, e os nomes que o log usa.
+/// Os três degraus que a TECLA `U` percorre, e os nomes que o log usa.
 ///
-/// ⚠️ **Três e não um slider contínuo**, porque a UI aqui é o teclado (a aba
-/// Topologia é wave de UI, `04.3`): um passo por toque com nome próprio é
-/// legível num log, e `0,5 → 0,53 → 0,56` não é.
+/// ⚠️⚠️ **Eles deixaram de ser a única superfície em 2026-09-14** — report do
+/// dono: *«porque não temos um slider neste pincel para definir a densidade da
+/// malha»*. A nota que aqui estava dizia *«três e não um slider contínuo,
+/// porque a UI aqui é o teclado»*, e a **premissa dela expirou** quando a
+/// secção Topology do painel ganhou os knobs do remesh; ninguém releu a nota.
+///
+/// ⭐ Hoje o valor é uma **pista contínua** no painel e esta tabela é o
+/// **atalho**: um toque por degrau, com nome próprio, que é o que um log
+/// consegue dizer (`0,5 → 0,53 → 0,56` não é). *A mesma relação que o `[`/`]`
+/// tem com a pista do raio.*
 pub(super) const DETAIL_STEPS: [(f32, &str); 3] = [(0.15, "grosso"), (0.5, "medio"), (1.0, "fino")];
 
 impl Sculpt3dScene {
@@ -146,6 +153,7 @@ impl Sculpt3dScene {
     pub(super) fn refine_for_dab(
         &mut self,
         verbo: ph2d_sculpt3d::Verb,
+        densidade: ph2d_sculpt3d::DensityModo,
         centre: [f32; 3],
         radius: f32,
     ) -> bool {
@@ -172,7 +180,7 @@ impl Sculpt3dScene {
         // dela não é, e é a que esta linha cura: a **MÁSCARA** não move um
         // vértice, e medido nesta cena ela levava a peça de `830` para `1 331`
         // vértices.
-        if !verbo.refina_no_dyntopo() && !verbo.colapsa_no_dyntopo() {
+        if !verbo.refina_no_dyntopo(densidade) && !verbo.colapsa_no_dyntopo() {
             return false;
         }
         // ⚠️ **Recusa com a pilha montada** (ver o cabeçalho). Silenciosa aqui
@@ -231,7 +239,7 @@ impl Sculpt3dScene {
                 ),
                 Collapse::Done { .. }
             );
-        let done = verbo.refina_no_dyntopo()
+        let done = verbo.refina_no_dyntopo(densidade)
             && matches!(
                 refine_in_sphere(mesh, centre, radius, target, &mut births, &mut region),
                 Refine::Done { .. }
@@ -257,16 +265,21 @@ impl Sculpt3dScene {
         self.dyn_births = births;
         if !done && !cut {
             // ⚠️ **A razão mais provável, e a mais difícil de adivinhar de
-            // fora:** o alvo de aresta é `raio × f(detalhe)`, logo um detalhe
-            // FINO pede arestas curtas e não há nada a colapsar. Medido no
-            // percurso do dono: com o detalhe em `grosso` a peça vai de `822`
-            // para `399` vértices em dez toques; em `medio`, ela lê
-            // `396 -> 396` — **zero**, e o artista vê a mesma coisa que veria
-            // com o pincel partido.
+            // fora:** o alvo de aresta é `raio × f(detalhe)`, logo a malha pode
+            // já estar exactamente no ponto que o slider pede.
+            //
+            // ⚠️⚠️ **Esta razão ENCOLHEU em 2026-09-14 e a queixa foi reescrita
+            // com ela.** Enquanto a densidade só colapsava, ela disparava em
+            // metade do curso do slider — *«apenas no grosso vi alguma coisa
+            // acontecendo»* (report do dono) —, e o texto mandava **baixar** o
+            // detalhe, que é conselho de um pincel que só afina. Hoje o ajuste
+            // de omissão leva a malha ao alvo nos DOIS sentidos, logo chegar
+            // aqui quer mesmo dizer *já está no ponto*; quem só afina escolheu
+            // esse ajuste e a cura dele continua a ser baixar o detalhe.
             self.queixa_do_passe(
                 verbo,
-                "nao ha' aresta fora da faixa aqui -- baixe o detalhe com U \
-                 (ou aumente o pincel com ]) e passe de novo",
+                "a malha aqui ja' esta' no ponto que o Detail pede -- mova o \
+                 slider (ou a tecla U), ou aumente o pincel com ], e passe de novo",
             );
             return false;
         }

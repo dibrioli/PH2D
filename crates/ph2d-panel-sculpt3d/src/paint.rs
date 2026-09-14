@@ -23,6 +23,8 @@ use crate::{Sculpt3dPanel, rows};
 mod body;
 /// A cabeça e a cauda da seção do PINCEL — ver o doc do módulo.
 mod brush;
+/// As fileiras próprias de cada pincel — ver [`brush_fileiras`].
+mod brush_fileiras;
 /// **O QUE SE FAZ COM UMA MÁSCARA PINTADA** — irmão do [`body`], cortado por
 /// assunto quando o transform cruzou o teto de LOC dele.
 mod mask_tools;

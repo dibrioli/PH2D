@@ -618,9 +618,6 @@ fn every_painted_control_is_clickable_where_it_is_drawn() {
     for (i, id) in ids::SCULPT3D_ADD.into_iter().enumerate() {
         want.push((format!("add {i}"), id));
     }
-    for (i, id) in ids::SCULPT3D_DETAIL.into_iter().enumerate() {
-        want.push((format!("detail {i}"), id));
-    }
     for (name, id) in [
         ("sym x", ids::SCULPT3D_SYM_X),
         ("sym y", ids::SCULPT3D_SYM_Y),
@@ -806,6 +803,70 @@ fn every_cloth_control_is_clickable_where_it_is_drawn() {
     cada_botao_responde_no_proprio_centro(&mut host, &painted, &by_id);
 }
 
+/// ⭐⭐ **GATE — com o PINCEL DE DENSIDADE na mão, a fileira dele responde ao
+/// ponteiro.**
+///
+/// ⚠️ **A fixtura tem de conter o fenómeno** — a lei que este ficheiro já pagou
+/// seis vezes, e que o tecido pagou com uma wave inteira de controlos mortos: o
+/// gate genérico arma o **Crease**, e a fileira deste pincel só existe com ele
+/// na mão.
+///
+/// ⛔ Ele é a **única** fileira própria deste verbo, e é isso que o torna
+/// load-bearing: sem ela o artista alcança uma das duas direcções, e a que
+/// faltaria é a que responde ao report do dono (*«por que não pode aumentar a
+/// densidade também?»*).
+#[test]
+fn every_density_control_is_clickable_where_it_is_drawn() {
+    let mut ui = Sculpt3dUi::default();
+    ph2d_panel_sculpt3d::state::switch_verb(&mut ui, Verb::Density);
+    ui.ui_level = UiLevel::Pro;
+    let (mut host, mut state) = arrange(ui.clone());
+    let painted = host.paint::<Sculpt3dPanel>(&mut state, VIEWPORT);
+
+    let mut want: Vec<(String, ph2d_a11y::NodeId)> = Vec::new();
+    for (i, m) in ph2d_sculpt3d::DensityModo::ALL.into_iter().enumerate() {
+        want.push((
+            format!("density mode {}", m.label()),
+            ids::SCULPT3D_DENSITY_MODE[i],
+        ));
+    }
+    // ⚠️ **Anti-vácuo:** se a fileira deixar de ser desenhada, a varredura
+    // abaixo passaria sobre uma lista vazia e ficaria verde a medir nada.
+    assert_eq!(
+        want.len(),
+        ph2d_sculpt3d::DensityModo::ALL.len(),
+        "a fixtura da densidade não varre modo nenhum"
+    );
+    for (name, id) in &want {
+        assert!(
+            painted.iter().any(|(pid, _)| pid == id),
+            "`{name}` ({id:?}) devia estar pintado com a densidade na mão"
+        );
+    }
+    let by_id: std::collections::BTreeMap<_, _> =
+        want.iter().map(|(n, id)| (*id, n.clone())).collect();
+    cada_botao_responde_no_proprio_centro(&mut host, &painted, &by_id);
+}
+
+/// ⛔ **E a METADE OPOSTA: com outro pincel na mão a fileira NÃO é pintada.**
+///
+/// Sem ela, um `show` sempre-verdade deixaria dois chips de densidade a
+/// aparecer em vinte e oito ferramentas que não os leem.
+#[test]
+fn a_fileira_da_densidade_e_ausente_com_outro_pincel() {
+    let mut ui = Sculpt3dUi::default();
+    ph2d_panel_sculpt3d::state::switch_verb(&mut ui, Verb::Draw);
+    ui.ui_level = UiLevel::Pro;
+    let (mut host, mut state) = arrange(ui.clone());
+    let painted = host.paint::<Sculpt3dPanel>(&mut state, VIEWPORT);
+    for id in ids::SCULPT3D_DENSITY_MODE {
+        assert!(
+            !painted.iter().any(|(pid, _)| *pid == id),
+            "{id:?} foi pintado com o Draw em mãos — um chip que o verbo não lê"
+        );
+    }
+}
+
 /// **As rows condicionais não são pintadas com a ferramenta errada.**
 ///
 /// A metade oposta do gate acima, e ela falha sozinha: um `show` sempre-verdade
@@ -869,6 +930,41 @@ fn every_matcap_chip_arms_its_own_material() {
             },
             "o chip {i} mexeu num campo que não é dele"
         );
+    }
+}
+
+/// ⭐⭐ **Cada chip de densidade arma o SEU modo — e mais nada.**
+///
+/// ⚠️ **O oráculo é POR CHIP, e não *«saiu um intent»*.** Com dois chips, um
+/// `ALL[0]` cravado no despacho deixa o segundo **pintado, hit-indexado e a
+/// mentir** — a espécie de controlo morto que o §5.0 do roteador chama de *dreno
+/// de um braço só*, e que todo gate de registo atravessa verde.
+///
+/// ⛔ E o segundo é precisamente o que responde ao report do dono (*«por que não
+/// pode aumentar a densidade também?»*): um chip morto ali devolveria o pincel
+/// ao estado que ele reprovou.
+#[test]
+fn cada_chip_de_densidade_arma_o_seu_modo() {
+    for (i, &id) in ids::SCULPT3D_DENSITY_MODE.iter().enumerate() {
+        let mut base = Sculpt3dUi::default();
+        ph2d_panel_sculpt3d::state::switch_verb(&mut base, Verb::Density);
+        let (mut host, mut state) = arrange(base.clone());
+        let outcome = host.apply_panel_event::<Sculpt3dPanel>(&mut state, WidgetEvent::Click(id));
+        assert_eq!(outcome, EventOutcome::Consumed, "o chip {i} não despacha");
+        let Sculpt3dIntent::SetUi(got) = only_intent("density mode") else {
+            panic!("o chip {i} enfileirou o tipo errado de intent");
+        };
+        let want = ph2d_sculpt3d::DensityModo::ALL[i];
+        assert_eq!(
+            got.brush.density_modo,
+            want,
+            "o chip {i} armou `{}` e devia armar `{}`",
+            got.brush.density_modo.label(),
+            want.label()
+        );
+        let mut esperado = base.clone();
+        esperado.brush.density_modo = want;
+        assert_eq!(got, esperado, "o chip {i} mexeu num campo que não é dele");
     }
 }
 

@@ -105,7 +105,10 @@ pub fn populate(store: &mut WidgetStore) {
         &crate::ids::SCULPT3D_CLOTH_AREA[..],
         &crate::ids::SCULPT3D_CLOTH_FORCE_FALLOFF[..],
         &crate::ids::SCULPT3D_ALPHA[..],
-        &crate::ids::SCULPT3D_DETAIL[..],
+        // ⚠️ **Os DOIS entram sempre**, pela lei do vizinho `RETOPO_MODE`:
+        // registar só os pintados faria o chip nascer morto no quadro em que o
+        // artista pega no pincel de densidade.
+        &crate::ids::SCULPT3D_DENSITY_MODE[..],
         &crate::ids::SCULPT3D_ADD[..],
         &crate::ids::SCULPT3D_MASK_OP[..],
         &crate::ids::SCULPT3D_TRANSFORM[..],

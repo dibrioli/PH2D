@@ -78,6 +78,24 @@ fn the_panel_offers_every_retopo_mode_the_engine_has() {
     );
 }
 
+/// **GATE — o painel oferece AS DUAS direcções do pincel de densidade.**
+///
+/// ⚠️ **A metade que falta é a que o dono pediu** (2026-09-14: *«por que não
+/// pode aumentar a densidade também?»*): sem o segundo chip o pincel volta a ser
+/// o que ele reprovou — um que só age quando o detalhe pedido é mais grosso que
+/// a malha, ou seja em metade do curso da pista.
+#[test]
+fn the_panel_offers_every_density_mode_the_brush_has() {
+    assert_eq!(
+        crate::ids::SCULPT3D_DENSITY_MODE.len(),
+        ph2d_sculpt3d::DensityModo::ALL.len(),
+        "o painel tem {} chips de direccao da densidade e o pincel tem {} -- um modo \
+         sem id nasce inalcancavel, e um id sem modo e' um chip que aponta para nada",
+        crate::ids::SCULPT3D_DENSITY_MODE.len(),
+        ph2d_sculpt3d::DensityModo::ALL.len()
+    );
+}
+
 /// **GATE — cada rótulo é distinto, e nenhum é vazio.**
 ///
 /// ⚠️ Dois chips com o mesmo texto são um controlo que o artista não consegue

@@ -130,24 +130,36 @@ pub(crate) fn for_scene(mesh: &ph2d_mesh::Mesh) {
              [sculpt3d]        toque levava a peca de 830 para 1331 vertices.
              [sculpt3d]        Volte ao `Draw` e esculpa: a malha volta a adensar. Se a mascara
              [sculpt3d]        adensar, ou se o desenho parar de adensar, e' reprovacao.
-             [sculpt3d]   (12) O PINCEL QUE SO' AFINA -- `Density`, no fim da fileira (novo).
-             [sculpt3d]        ATENCAO: este passo comeca do ZERO, porque os passos (9) e (10)
-             [sculpt3d]        deixam o modo desligado ou com a pilha montada. Faca assim:
-             [sculpt3d]          a) Ctrl+Z ate' voltar ao inicio. Se voce fez o (10), aperte J
-             [sculpt3d]             (ele reverte a subdivisao).
-             [sculpt3d]          b) Aperte P ate' o log dizer LIGADA, e U ate' dizer FINO.
-             [sculpt3d]          c) Com `Draw`, esculpa uma zona ate' ela ficar bem densa.
-             [sculpt3d]          d) Abra o painel (crase), escolha `Density`, e aperte U ate'
-             [sculpt3d]             dizer GROSSO. ATENCAO: SEM este U ele nao tem o que fazer.
-             [sculpt3d]          e) Passe por cima daquela zona, varias vezes.
-             [sculpt3d]        -> A malha AFINA onde voce passa, e a FORMA fica. Medido: dez
-             [sculpt3d]           passadas levam a peca de 822 para 399 vertices.
-             [sculpt3d]        -> Ele NUNCA acrescenta: insista numa zona ja' grossa e nada
-             [sculpt3d]           acontece. E' isso que o separa do `Draw`.
-             [sculpt3d]        -> E quando ele NAO faz nada, ele DIZ PORQUE no log -- o modo
-             [sculpt3d]           desligado, a pilha montada, ou nao haver aresta fora da
-             [sculpt3d]           faixa ali. Se voce nao ve efeito, a linha do log diz o que
-             [sculpt3d]           falta.
+             [sculpt3d]   (12) O PINCEL DA DENSIDADE -- `Density`, no fim da fileira. Ele nao\n\
+             [sculpt3d]        esculpe NADA: ele so' muda de quantos triangulos a malha e' feita\n\
+             [sculpt3d]        ali, e a forma fica.\n\
+             [sculpt3d]        ATENCAO: este passo comeca do ZERO, porque os passos (9) e (10)\n\
+             [sculpt3d]        deixam o modo desligado ou com a pilha montada. Faca assim:\n\
+             [sculpt3d]          a) Ctrl+Z ate' voltar ao inicio. Se voce fez o (10), aperte J\n\
+             [sculpt3d]             (ele reverte a subdivisao).\n\
+             [sculpt3d]          b) Aperte P ate' o log dizer LIGADA.\n\
+             [sculpt3d]          c) Abra o painel (crase) e escolha `Density` no fim da fileira.\n\
+             [sculpt3d]        A seccao `Topology` do painel tem agora um slider `Detail`\n\
+             [sculpt3d]        (novo em 14/09 -- eram tres botoes grosso/medio/fino, e a tecla\n\
+             [sculpt3d]        U continua a passar por eles). Ele diz QUAO FINA voce quer a\n\
+             [sculpt3d]        malha debaixo do pincel, e vale para todos os pinceis.\n\
+             [sculpt3d]        E o `Density` tem UM ajuste proprio, `Density`, com dois botoes:\n\
+             [sculpt3d]          `Equalise`  -> leva a malha AO que o slider pede, nos dois\n\
+             [sculpt3d]                         sentidos: adensa onde esta' grossa e afina onde\n\
+             [sculpt3d]                         esta' fina. E' o de fabrica.\n\
+             [sculpt3d]          `Thin Only` -> so' AFINA, e nunca acrescenta.\n\
+             [sculpt3d]          d) ADENSAR: com `Equalise` e o slider no MAXIMO, passe o pincel\n\
+             [sculpt3d]             numa zona grossa. Os triangulos ali tem de ficar MENORES e a\n\
+             [sculpt3d]             forma nao pode mudar. Medido nesta cena: 128 -> 719 vertices.\n\
+             [sculpt3d]          e) AFINAR: arraste o slider para perto do ZERO e passe de novo\n\
+             [sculpt3d]             na mesma zona. Agora ela tem de ALIVIAR. Medido: 822 -> 400.\n\
+             [sculpt3d]          f) Escolha `Thin Only`, ponha o slider no MAXIMO e passe outra\n\
+             [sculpt3d]             vez: agora nada acontece -- nesse ajuste ele nunca acrescenta.\n\
+             [sculpt3d]        -> Se a FORMA mudar em qualquer um dos tres, e' reprovacao.\n\
+             [sculpt3d]        -> E quando ele NAO faz nada, ele DIZ PORQUE no log -- o modo\n\
+             [sculpt3d]           desligado, a pilha montada, ou a malha ja' estar no ponto que\n\
+             [sculpt3d]           o slider pede. Se voce nao ve efeito, a linha do log diz o\n\
+             [sculpt3d]           que falta.\n\
              [sculpt3d]        (A borda de uma peca aberta ele nao afina -- e' uma escolha
              [sculpt3d]         nossa, para o contorno nao mudar de forma sozinho.)"
         );

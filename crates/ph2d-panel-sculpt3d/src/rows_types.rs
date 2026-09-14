@@ -85,6 +85,16 @@ pub enum Place {
     AfterAlpha,
     /// No fim da seção, colada ao botão de extract que a lê.
     AfterExtract,
+    /// **Logo abaixo do interruptor da topologia dinâmica**, que é o que a
+    /// arma — e não no bloco de knobs no fim da secção, onde vivem os
+    /// argumentos do botão de retopologia.
+    ///
+    /// ⚠️ **A mesma lei do [`Self::AfterAlpha`] e do [`Self::AfterExtract`]:**
+    /// uma pista mora ao lado do controlo que a lê. Aqui ela é o ALVO de
+    /// densidade do passe, logo o sítio dela é debaixo da caixa que liga o
+    /// passe — no fim da secção ela seria lida como mais um argumento do
+    /// *Quad Retopology*, que é outro assunto.
+    AfterDyntopo,
 }
 
 impl Row {

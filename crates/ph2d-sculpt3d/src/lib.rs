@@ -57,6 +57,8 @@ mod cloth_mode;
 mod coat;
 #[path = "dab_alcance.rs"]
 mod dab_alcance;
+/// **As duas direcções do pincel de DENSIDADE** — ver [`density_modo`].
+mod density_modo;
 /// **A CURVA DO PINCEL** — o falloff, irmão do [`brush`]. Ver [`falloff`].
 mod falloff;
 /// **A LEI QUE UM ARRASTO DE FILTRO APLICA** — a uniao das duas familias.
@@ -116,6 +118,7 @@ pub use cloth_filter_props::ClothFilterProps;
 pub use cloth_force_falloff::ClothForceFalloff;
 pub use cloth_mode::{ClothArea, ClothMode};
 pub use coat::{COAT_HEAD, coat_step};
+pub use density_modo::DensityModo;
 pub use falloff::Falloff;
 pub use filter_law::FilterLaw;
 pub use grip::{Amount, Grip, GripLaw};

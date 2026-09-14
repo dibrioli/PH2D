@@ -223,7 +223,33 @@ impl Verb {
         matches!(self, Self::Cloth | Self::Pose | Self::Boundary)
     }
 
-    /// **Este verbo REFINA a malha em Dynamic Topology?**
+    /// **Este verbo NÃO TEM LEI POR-VÉRTICE?** — a porta que tira a densidade
+    /// do `dab_core`.
+    ///
+    /// ⭐ Irmão do [`Self::resolve_a_propria_regiao`] e o corte é claro: aqueles
+    /// têm lei própria **noutro sítio** (um solver, uma cadeia de mapas, uma
+    /// borda); este **não tem lei nenhuma sobre posições**. Todo o efeito dele é
+    /// sobre o passe de TOPOLOGIA.
+    ///
+    /// ⚠️ **Porta e não um `matches!` no sítio de uso, pela razão dos irmãos:**
+    /// o desvio do traço pergunta para NÃO CORRER a cadeia de peso, e o painel
+    /// pergunta para não oferecer os controlos dela. Duas cópias divergiriam num
+    /// pincel que mostra uma força que ninguém lê.
+    ///
+    /// ⚠️⚠️ **E este doc-comment esteve COLADO ao do vizinho de baixo até
+    /// 2026-09-14** — a declaração nasceu no meio do bloco do
+    /// [`Self::refina_no_dyntopo`], que ficou **sem doc nenhum** enquanto este
+    /// carregava os dois. É a armadilha que o cabeçalho deste ficheiro já
+    /// regista uma vez, agora com a segunda ocorrência: *inserir um item entre
+    /// um doc e o dono dele muda o dono em silêncio, e o clippy só a apanha
+    /// quando o atributo fica órfão.*
+    #[must_use]
+    pub fn sem_lei_por_vertice(self) -> bool {
+        matches!(self, Self::Density)
+    }
+
+    /// **ESTE VERBO PODE MEXER NA TOPOLOGIA DE TODO?** — a metade das duas
+    /// colunas que NÃO depende de ajuste nenhum.
     ///
     /// ⛔⛔ **ESTA RESPOSTA NÃO É O VEREDITO DO ESTUDO** (`docs/3D/22`). Ela é,
     /// verbo a verbo, o **comportamento de hoje** — mais **uma** correcção que
@@ -246,46 +272,59 @@ impl Verb {
     /// ancorados antes de o estudo existir, nada muda em silêncio. ⛔ Ele **não**
     /// é a afirmação de que a pose ou o tecido não devem refinar — essa é
     /// exactamente a pergunta aberta, e são eles que mais **esticam** superfície.
-    ///
-    /// ⚠️ **Existe uma segunda coluna** ([`Self::colapsa_no_dyntopo`]) porque o
-    /// refino e o colapso são **leis independentes** que por acaso vivem na
-    /// mesma porta: um verbo pode querer relaxar densidade sem criar detalhe.
-    /// *Uma tabela com uma coluna só obriga quem a lê a escolher por ela.*
-    /// **Este verbo NÃO TEM LEI POR-VÉRTICE?** — a porta que tira a densidade
-    /// do `dab_core`.
-    ///
-    /// ⭐ Irmão do [`Self::resolve_a_propria_regiao`] e o corte é claro: aqueles
-    /// têm lei própria **noutro sítio** (um solver, uma cadeia de mapas, uma
-    /// borda); este **não tem lei nenhuma sobre posições**. Todo o efeito dele é
-    /// sobre o passe de TOPOLOGIA.
-    ///
-    /// ⚠️ **Porta e não um `matches!` no sítio de uso, pela razão dos irmãos:**
-    /// o desvio do traço pergunta para NÃO CORRER a cadeia de peso, e o painel
-    /// pergunta para não oferecer os controlos dela. Duas cópias divergiriam num
-    /// pincel que mostra uma força que ninguém lê.
     #[must_use]
-    pub fn sem_lei_por_vertice(self) -> bool {
-        matches!(self, Self::Density)
+    pub fn mexe_na_topologia(self) -> bool {
+        !self.anchors() && self != Self::Mask
     }
 
+    /// **Este verbo REFINA a malha em Dynamic Topology?**
+    ///
+    /// ⚠️⚠️ **ELA GANHOU UM ARGUMENTO EM 2026-09-14, e a razão é uma LEITURA
+    /// ERRADA MINHA que o dono apanhou pelo produto** — *«por que não pode
+    /// aumentar a densidade também?»*.
+    ///
+    /// A primeira redacção afirmava aqui, num comentário, que *«a densidade
+    /// nunca acrescenta superfície, e é lei e não omissão»*. **Não é.** A espec
+    /// §3.2 traz a tabela-verdade do passe, e o que o pincel faz é
+    /// **ACRESCENTAR a bandeira de colapso** ao modo — ele não **retira** a de
+    /// partir, que continua a ser do ajuste de refino. A mesma malha grossa
+    /// mede `81 → 81` com o ajuste em «só colapsar» e **`81 → 101`** com
+    /// «partir + colapsar»: *duas leituras do mesmo pincel, com o ajuste
+    /// diferente.*
+    ///
+    /// ⇒ o ajuste é o [`crate::DensityModo`], e ele vive **no pincel**
+    /// (espec §9.8 — o alvo guarda-o na cena e tem pedido público aberto para o
+    /// mudar; ⛔ não copiámos o modelo que ele está a caminho de abandonar).
+    ///
+    /// ⚠️ **A recusa medida da espec continua de pé, e é OUTRA:** *«fazer o
+    /// `Density` também subdividir»* quer dizer o pincel **FORÇAR** o partir,
+    /// como ele força o colapso. Ele não força — ele obedece.
+    ///
+    /// ⚠️ **O argumento é lido por UM verbo só, e é de propósito que ele não é
+    /// um campo do `Verb`:** os outros 28 não têm ajuste de refino nenhum (o
+    /// passe deles faz as duas metades desde que existe), e dar-lhes um seria
+    /// inventar superfície que nenhuma referência declara.
     #[must_use]
-    pub fn refina_no_dyntopo(self) -> bool {
-        // ⛔ **A DENSIDADE NUNCA ACRESCENTA SUPERFÍCIE, e é lei e não omissão:**
-        // ela liga o colapso e **não** liga o partir. *Um pincel que também
-        // subdividisse é outro produto*, e é por isso que esta linha existe
-        // separada da de baixo — as duas colunas deixam de coincidir aqui.
-        self != Self::Density && !self.anchors() && self != Self::Mask
+    pub fn refina_no_dyntopo(self, densidade: crate::DensityModo) -> bool {
+        self.mexe_na_topologia() && (self != Self::Density || densidade.parte_arestas_longas())
     }
 
     /// **Este verbo COLAPSA arestas curtas em Dynamic Topology?**
     ///
     /// A segunda metade do [`Self::refina_no_dyntopo`], e ela existe separada
-    /// pela razão escrita lá. ⚠️ **Hoje as duas colunas coincidem em todos os
-    /// verbos**, e isso é um facto sobre o produto de hoje (as duas leis vivem
-    /// numa porta só), **não** uma lei — o estudo pode separá-las.
+    /// pela razão escrita lá: as duas são **leis independentes** que por acaso
+    /// vivem na mesma porta — um verbo pode querer relaxar densidade sem criar
+    /// detalhe. *Uma tabela com uma coluna só obriga quem a lê a escolher por
+    /// ela.*
+    ///
+    /// ⭐ **Ela NÃO tem argumento, e a assimetria é a lei do pincel de
+    /// densidade:** ele acrescenta a bandeira de colapso **aconteça o que
+    /// acontecer** com o ajuste (espec §3.2, as três linhas da tabela têm
+    /// *colapsar* a `sim`). É por isso que o `Afinar` não é «desligar o
+    /// colapso»: não existe esse estado.
     #[must_use]
     pub fn colapsa_no_dyntopo(self) -> bool {
-        !self.anchors() && self != Self::Mask
+        self.mexe_na_topologia()
     }
 }
 
@@ -293,56 +332,94 @@ impl Verb {
 #[cfg(test)]
 mod dyntopo_tests {
     use super::Verb;
+    use crate::DensityModo;
 
-    /// ⭐⭐⭐ **SÓ DOIS VERBOS SE AFASTAM DO COMPORTAMENTO DE HOJE, E POR RAZÕES
-    /// DE ESPÉCIE DIFERENTE.**
+    /// ⭐⭐⭐ **A TABELA-VERDADE DO PINCEL DE DENSIDADE, célula a célula** — é a
+    /// da espec §3.2, e ela reprovou a primeira redacção desta casa.
+    ///
+    /// ⚠️⚠️ **O gate que aqui estava afirmava o CONTRÁRIO de uma das células**
+    /// (*«a densidade LIGA o colapso e NÃO liga o partir — um pincel que também
+    /// subdividisse é outro produto»*), e quem o desmentiu foi o dono, pelo
+    /// produto: *«por que não pode aumentar a densidade também?»*. A espec diz
+    /// que o pincel **ACRESCENTA** a bandeira de colapso e não **RETIRA** a de
+    /// partir — e mede as duas células na mesma malha grossa, `81 → 81` contra
+    /// **`81 → 101`**.
+    ///
+    /// ⇒ *um gate pode pinar a leitura errada de uma espec tão bem como pina um
+    /// defeito*, e o que o separa de uma medição é ninguém ter corrido a outra
+    /// célula.
+    #[test]
+    fn a_densidade_colapsa_sempre_e_parte_conforme_o_ajuste() {
+        // As três linhas da tabela da espec que têm o passe armado. A quarta
+        // (*Detailing* Manual) é o dyntopo desarmado, e vive no `refine_for_dab`.
+        assert!(
+            Verb::Density.colapsa_no_dyntopo(),
+            "o colapso é a LEI deste pincel, não um ajuste: ele acrescenta a \
+             bandeira aconteça o que acontecer com o modo"
+        );
+        assert!(
+            Verb::Density.refina_no_dyntopo(DensityModo::Igualar),
+            "com o ajuste a pedir «partir + colapsar» o passe PARTE — é a \
+             célula que a espec mede em `81 -> 101`"
+        );
+        assert!(
+            !Verb::Density.refina_no_dyntopo(DensityModo::Afinar),
+            "com o ajuste em «só colapsar» o passe não parte — `81 -> 81`"
+        );
+        // ⛔ **A recusa medida da espec, e ela é OUTRA pergunta:** o pincel não
+        // pode FORÇAR o partir como força o colapso. Com o ajuste a pedir só o
+        // colapso, ele obedece — e é isso que este par afirma.
+        assert!(
+            Verb::Density.refina_no_dyntopo(DensityModo::Afinar)
+                != Verb::Density.colapsa_no_dyntopo(),
+            "no modo `Afinar` as duas colunas TÊM de se separar, senão o pincel \
+             está a forçar o partir — a recusa medida da espec"
+        );
+    }
+
+    /// ⭐⭐⭐ **SÓ UM VERBO SE AFASTA DO COMPORTAMENTO DE HOJE, E COM O AJUSTE DE
+    /// OMISSÃO ELE É A MÁSCARA.**
     ///
     /// ⚠️⚠️ **É isto que impede a tabela de virar um palpite disfarçado de lei.**
     /// O que cada verbo *deve* fazer é pergunta de **ORÁCULO**
-    /// (`docs/3D/22_plano_quem_subdivide_no_dyntopo.md`), e este censo afirma
-    /// que os únicos desvios são:
+    /// (`docs/3D/22_plano_quem_subdivide_no_dyntopo.md`), e o único desvio que
+    /// não depende dele é:
     ///
     /// | verbo | as duas colunas | que espécie de entrada isto é |
     /// |---|---|---|
     /// | **Mask** | `false` · `false` | ⛔ **uma CORRECÇÃO** — ele não move um vértice, e adensava a malha (`830 → 1 331`) |
-    /// | **Density** | `false` · **`true`** | ⭐ **a LEI de um verbo novo** — ele existe para colapsar, e nunca acrescenta |
     ///
-    /// ⚠️ **As duas espécies leem-se iguais numa lista** — *«dois verbos fora do
-    /// padrão»* —, e não são a mesma coisa: apagar a primeira é reabrir um
-    /// defeito, apagar a segunda é apagar um pincel. É por isso que este gate as
-    /// nomeia **em separado** em vez de contar duas.
+    /// ⚠️ **A densidade SAIU desta lista em 2026-09-14**, e a saída é o registo:
+    /// no ajuste de omissão ([`DensityModo::Igualar`]) ela faz exactamente o que
+    /// os outros 27 fazem — as duas metades. *O que a distingue não é a
+    /// topologia, é ela não ter lei por-vértice.*
     ///
     /// ⇒ o dia em que o estudo existir, é **este gate** que muda, célula a
     /// célula, e a mudança fica visível no diff.
     #[test]
-    fn so_dois_verbos_se_afastam_do_comportamento_de_hoje() {
+    fn so_a_mascara_se_afasta_do_comportamento_de_hoje() {
         let mut corrigidos = Vec::new();
         for v in Verb::ALL {
             // O comportamento de HOJE: o refino tem um chamador só — o braço do
             // carimbo —, e quem tem âncora entra por outro caminho.
             let chega_a_porta = !v.anchors();
-            if v.refina_no_dyntopo() != chega_a_porta || v.colapsa_no_dyntopo() != chega_a_porta {
+            if v.refina_no_dyntopo(DensityModo::default()) != chega_a_porta
+                || v.colapsa_no_dyntopo() != chega_a_porta
+            {
                 corrigidos.push(v.label());
             }
         }
         assert_eq!(
             corrigidos,
-            ["Mask", "Density"],
-            "esta tabela mudou o comportamento de um verbo além da máscara e da \
-             densidade. Se foi o ESTUDO a chegar, reescreva este gate célula a \
-             célula com a tabela medida ao lado; se não foi, é uma regressão"
+            ["Mask"],
+            "esta tabela mudou o comportamento de um verbo além da máscara. Se \
+             foi o ESTUDO a chegar, reescreva este gate célula a célula com a \
+             tabela medida ao lado; se não foi, é uma regressão"
         );
-        // ⚠️ **E as DUAS espécies, em separado** — ver a tabela no doc: a
-        // máscara é uma correcção (ela não podia adensar), a densidade é a LEI
-        // de um pincel (ele existe para colapsar).
         assert!(
-            !Verb::Mask.refina_no_dyntopo() && !Verb::Mask.colapsa_no_dyntopo(),
+            !Verb::Mask.refina_no_dyntopo(DensityModo::default())
+                && !Verb::Mask.colapsa_no_dyntopo(),
             "a máscara não pode mexer na topologia por nenhuma das metades"
-        );
-        assert!(
-            !Verb::Density.refina_no_dyntopo() && Verb::Density.colapsa_no_dyntopo(),
-            "a densidade LIGA o colapso e NÃO liga o partir — um pincel que \
-             também subdividisse é outro produto"
         );
     }
 
@@ -354,6 +431,10 @@ mod dyntopo_tests {
     /// um membro inteiro), logo são os candidatos mais fortes a mudar de valor
     /// quando a tabela for medida — este gate existe para essa mudança ser
     /// deliberada.
+    ///
+    /// ⚠️ **Ele varre os DOIS ajustes de densidade**, e não porque algum verbo
+    /// com âncora seja a densidade: é a metade justa da pergunta — um ajuste que
+    /// passasse a armar a topologia de um verbo ancorado entraria por aqui.
     #[test]
     fn nenhum_verbo_com_ancora_refina_ou_colapsa_hoje() {
         let ancorados: Vec<&str> = Verb::ALL
@@ -367,39 +448,42 @@ mod dyntopo_tests {
             ancorados.len()
         );
         for v in Verb::ALL.into_iter().filter(|v| v.anchors()) {
-            assert!(
-                !v.refina_no_dyntopo() && !v.colapsa_no_dyntopo(),
-                "`{}` tem âncora e declara que mexe na topologia — ele nem chega \
-                 à porta hoje, então isto muda comportamento sem o estudo",
-                v.label()
-            );
+            for modo in DensityModo::ALL {
+                assert!(
+                    !v.refina_no_dyntopo(modo) && !v.colapsa_no_dyntopo(),
+                    "`{}` tem âncora e declara que mexe na topologia — ele nem \
+                     chega à porta hoje, então isto muda comportamento sem o estudo",
+                    v.label()
+                );
+            }
         }
     }
 
-    /// ⭐⭐⭐ **AS DUAS COLUNAS SEPARAM-SE EM EXACTAMENTE UM VERBO: a DENSIDADE.**
+    /// ⭐⭐⭐ **O AJUSTE SÓ ALCANÇA UM VERBO, E É A DENSIDADE.**
     ///
-    /// ⚠️ **Este gate nasceu a dizer o contrário**, e a mudança é o registo: até
-    /// 14/09 elas coincidiam em todos os verbos, e ele dizia *«isso é um facto
-    /// sobre o produto de hoje, não uma lei — este gate reprova no dia em que
-    /// alguém as separar»*. O dia chegou, e não foi o estudo: foi o pincel de
-    /// **densidade**, que **liga o colapso e não liga o partir**.
+    /// ⚠️ **Ele existe porque o argumento novo é uma superfície nova**, e uma
+    /// superfície que alcance verbo a mais é a forma deste módulo de partir: os
+    /// outros 27 não têm ajuste de refino nenhum (o passe deles faz as duas
+    /// metades desde que existe), e dar-lhes um seria inventar controlo que
+    /// nenhuma referência declara.
     ///
-    /// ⭐ *Um gate escrito para reprovar no dia em que a premissa dele morre é o
-    /// que torna a morte dela visível no diff* — em vez de a coincidência se
-    /// desfazer num `match` que ninguém recontou.
+    /// ⭐ *A prova é por VARREDURA e não por leitura:* ele troca o ajuste e
+    /// recolhe **quem muda de resposta**.
     #[test]
-    fn as_duas_colunas_separam_se_em_exactamente_um_verbo() {
-        let separados: Vec<&str> = Verb::ALL
+    fn o_ajuste_de_densidade_so_alcanca_a_densidade() {
+        let sensiveis: Vec<&str> = Verb::ALL
             .into_iter()
-            .filter(|v| v.refina_no_dyntopo() != v.colapsa_no_dyntopo())
+            .filter(|v| {
+                v.refina_no_dyntopo(DensityModo::Igualar)
+                    != v.refina_no_dyntopo(DensityModo::Afinar)
+            })
             .map(Verb::label)
             .collect();
         assert_eq!(
-            separados,
+            sensiveis,
             ["Density"],
-            "as duas colunas separaram-se noutro verbo. Se foi o ESTUDO a \
-             chegar, reescreva este gate com a tabela medida ao lado; se não \
-             foi, é uma regressão"
+            "o ajuste de densidade passou a mexer noutro verbo — ou ele deixou \
+             de mexer na densidade"
         );
     }
 }

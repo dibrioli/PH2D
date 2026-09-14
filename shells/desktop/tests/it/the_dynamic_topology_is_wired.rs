@@ -231,26 +231,33 @@ fn the_arming_question_is_a_parse_and_not_a_list() {
 /// não é, e é a que a cura fecha — medido, ela levava a peça de `830` para
 /// `1 331` vértices num gesto que não move um único vértice.
 ///
-/// As três metades:
+/// As quatro metades:
 /// 1. a porta **recebe** o verbo;
 /// 2. ela lê as **duas** colunas (refino e colapso são leis independentes);
-/// 3. o chamador passa o verbo do pincel **armado**, não um literal.
+/// 3. ela passa ao refino o **ajuste do pincel** — e é aí que vive a resposta ao
+///    report de 14/09 (*«por que não pode aumentar a densidade também?»*): o
+///    pincel de densidade **acrescenta** a bandeira de colapso e **não retira**
+///    a de partir, que segue o ajuste (espec §3.2);
+/// 4. o chamador passa o verbo **e** o ajuste do pincel **armado**, nunca um
+///    literal.
 #[test]
 fn the_dyntopo_door_asks_the_verb() {
     let src = sculpt_src();
     let body = function_body(&src, "refine_for_dab");
     assert!(
-        body.contains("verbo.refina_no_dyntopo()") && body.contains("verbo.colapsa_no_dyntopo()"),
-        "a porta do dyntopo não consulta as DUAS colunas do verbo — sem isso ela \
-         responde «este gesto passou pelo carimbo?», que é a pergunta errada"
+        body.contains("verbo.refina_no_dyntopo(densidade)")
+            && body.contains("verbo.colapsa_no_dyntopo()"),
+        "a porta do dyntopo não consulta as DUAS colunas do verbo, com o ajuste \
+         de densidade no refino — sem isso ela responde «este gesto passou pelo \
+         carimbo?», que é a pergunta errada"
     );
-    // ⚠️ **O chamador passa o verbo do pincel ARMADO** (`brush.verb`), e não o
-    // `self.brush.verb`: entre os dois está o `armed_brush`, que é quem resolve
-    // os modificadores do gesto. *Duas respostas para «qual verbo está na mão»
-    // divergem no dia do primeiro modificador que troca de verbo.*
+    // ⚠️ **O chamador passa o verbo E o ajuste do pincel ARMADO** (`brush.*`), e
+    // não os campos de `self.brush`: entre os dois está o `armed_brush`, que é
+    // quem resolve os modificadores do gesto. *Duas respostas para «o que está
+    // na mão» divergem no dia do primeiro modificador que troca de verbo.*
     assert!(
-        src.contains("self.refine_for_dab(brush.verb,"),
-        "o chamador não passa o verbo do pincel armado à porta do dyntopo"
+        src.contains("self.refine_for_dab(brush.verb, brush.density_modo,"),
+        "o chamador não passa o verbo e o ajuste do pincel armado à porta do dyntopo"
     );
 }
 

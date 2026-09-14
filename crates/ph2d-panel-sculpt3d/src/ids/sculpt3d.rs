@@ -246,8 +246,8 @@ pub const SCULPT3D_CLOTH_FILTER_ORIENT: [NodeId; 2] = [
 
 /// **COM QUE PROFUNDIDADE OLHAR** — os chips `Basic` · `Pro` (§2 do plano).
 ///
-/// ⚠️ **O nome não é `DETAIL` de propósito:** [`SCULPT3D_DETAIL`] já existe e é
-/// o degrau da topologia dinâmica, e [`SCULPT3D_LEVEL_UP`] é o da multires. Três
+/// ⚠️ **O nome não é `DETAIL` de propósito:** [`SCULPT3D_DYN_DETAIL`] já existe e
+/// é o alvo da topologia dinâmica, e [`SCULPT3D_LEVEL_UP`] é o da multires. Três
 /// coisas diferentes disputando a palavra *nível* num painel só é como o próximo
 /// leitor abre o array errado.
 pub const SCULPT3D_UI_LEVEL: [NodeId; 2] = [
@@ -271,11 +271,34 @@ pub const SCULPT3D_RETOPO_MODE: [NodeId; 2] = [
 /// Liga/desliga a topologia dinâmica.
 pub const SCULPT3D_DYNTOPO: NodeId = hash_node_id("sculpt3d.dyntopo");
 
-/// Os 3 degraus de detalhe (grosso/médio/fino).
-pub const SCULPT3D_DETAIL: [NodeId; 3] = [
-    hash_node_id("sculpt3d.detail.0"),
-    hash_node_id("sculpt3d.detail.1"),
-    hash_node_id("sculpt3d.detail.2"),
+/// **O ALVO DE DENSIDADE do passe de topologia dinâmica** — a pista e o chip.
+///
+/// ⚠️⚠️ **Eram TRÊS CHIPS com nome** (*grosso · médio · fino*) e passaram a ser
+/// uma pista contínua em 2026-09-14, por report do dono: *«porque não temos um
+/// slider neste pincel para definir a densidade da malha»*. ⛔ **Os dois não
+/// coexistem**, e a razão é a lei desta casa e não gosto: eles escrevem o MESMO
+/// número, e duas superfícies sobre um valor só divergem no dia em que uma
+/// ganhar clamp e a outra não. A tecla `U` fica — ela cicla os três valores com
+/// nome, que é o atalho, exactamente como o `[`/`]` do raio coexiste com a
+/// pista dele.
+///
+/// ⚠️ O doc que morava na tabela de degraus dizia *«três e não um slider
+/// contínuo, porque a UI aqui é o teclado»* — **a premissa expirou** quando a
+/// secção Topology ganhou os knobs do remesh, e ninguém releu a nota.
+pub const SCULPT3D_DYN_DETAIL: NodeId = hash_node_id("sculpt3d.dyn_detail");
+
+/// Ver [`SCULPT3D_DYN_DETAIL`].
+pub const SCULPT3D_DYN_DETAIL_NUM: NodeId = hash_node_id("sculpt3d.dyn_detail_num");
+
+/// **AS DUAS DIRECÇÕES DO PINCEL DE DENSIDADE** — os chips `Equalise` · `Thin Only`.
+///
+/// ⚠️ **O tamanho se CONTA e não se escolhe**, como o do motor de retopologia: o
+/// censo `the_panel_offers_every_density_mode_the_brush_has` compara este array
+/// com o `DensityModo::ALL`, então um modo novo que não passe por aqui nasce
+/// inalcançável e o gate fica vermelho em vez de o chip sumir em silêncio.
+pub const SCULPT3D_DENSITY_MODE: [NodeId; 2] = [
+    hash_node_id("sculpt3d.density_mode.0"),
+    hash_node_id("sculpt3d.density_mode.1"),
 ];
 
 /// Desce um nível de multiresolução.

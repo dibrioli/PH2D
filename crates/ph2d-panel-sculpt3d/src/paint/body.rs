@@ -21,13 +21,6 @@ use super::widgets::{self, command, header, labelled_seg, readout, row_of_two, t
 use crate::rows;
 use crate::state::Sculpt3dSnapshot;
 
-/// Os rótulos dos três degraus de detalhe, na ordem do `DETAIL_STEPS` do shell.
-const DETAIL_LABELS: [&str; 3] = [
-    "panel.sculpt3d.detail.coarse",
-    "panel.sculpt3d.detail.medium",
-    "panel.sculpt3d.detail.fine",
-];
-
 /// Os rótulos das quatro primitivas, na ordem dos comandos `Add*`.
 const ADD_LABELS: [&str; 4] = [
     "panel.sculpt3d.add.sphere",
@@ -220,18 +213,22 @@ fn paint_topology(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32, y
         w,
         y,
     ) + gap;
-    let detail: Vec<&str> = DETAIL_LABELS.iter().map(|k| tr(k)).collect();
-    y = labelled_seg(
-        ctx,
-        tr("panel.sculpt3d.detail"),
-        crate::ids::SCULPT3D_SEC_TOPOLOGY,
-        &crate::ids::SCULPT3D_DETAIL,
-        &detail,
-        snap.ui.detail as usize,
-        x,
-        w,
-        y,
-    );
+    // ⭐⭐ **O ALVO DE DENSIDADE, colado ao interruptor que o arma** — foi aqui
+    // que viveram três chips com nome (*grosso · médio · fino*) até 2026-09-14,
+    // e o report do dono foi *«porque não temos um slider neste pincel para
+    // definir a densidade da malha»*. ⛔ Os dois **não** coexistem: escrevem o
+    // mesmo número, e duas superfícies sobre um valor só divergem no dia em que
+    // uma ganhar clamp e a outra não. A tecla `U` fica como atalho.
+    //
+    // ⚠️ Ela é pintada AQUI e não no bloco do fim da secção porque *uma pista
+    // mora ao lado do controlo que a lê* — lá em baixo ela seria lida como mais
+    // um argumento do *Quad Retopology* (`Place::AfterDyntopo`).
+    for row in rows::TOPOLOGY
+        .iter()
+        .filter(|r| r.place == rows::Place::AfterDyntopo && r.visible(&snap.ui))
+    {
+        y = paint_one_row(ctx, snap, row, x, w, y);
+    }
     // O nível vivo é um FATO, e ele fica entre os dois botões que o movem — sem
     // ele, descer e subir são dois botões que não dizem onde você está (a malha
     // de baixo se PARECE com a de cima alisada).
@@ -334,7 +331,10 @@ fn paint_topology(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32, y
     // ela é argumento do Remesh, e separá-los faria dela um número que aparece
     // do nada e não se liga ao gesto que o artista acabou de dar — a mesma
     // lição que o `Alpha Scale` custou um smoke (ver `Row::place`).
-    for row in rows::TOPOLOGY {
+    for row in rows::TOPOLOGY
+        .iter()
+        .filter(|r| r.place == rows::Place::Knobs && r.visible(&snap.ui))
+    {
         y = paint_one_row(ctx, snap, row, x, w, y);
     }
     widgets::end_fold(ctx, fold, y + Spacing::Md.px())

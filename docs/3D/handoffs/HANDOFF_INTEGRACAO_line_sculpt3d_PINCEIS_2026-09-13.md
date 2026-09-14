@@ -158,7 +158,21 @@ o mesmo defeito, mas é produto vivo e a fixture que o decide existe: está em �
 | `blender-pull` (polegar · empurrão · 4 opções) | `SPEC_pull_brushes.md` | ✅ **atestada** (1.ª passagem) | ⭐ **sim** (esta jornada) |
 | `blender-unblocked` (Density · 2 de multires · projecção) | `SPEC_unblocked_brushes.md` | ✅ **atestada** (3.ª passagem) | ⬜ não |
 | `blender-boundary` | `SPEC_boundary_brush.md` | ✅ **atestada** (3.ª passagem) | ⬜ não |
-| `blender-pose` | `SPEC_pose_brush.md` | ⏳ 4.ª passagem a correr (as 3 anteriores acharam 6, 5 e 7) | ⬜ não |
+| `blender-pose` | `SPEC_pose_brush.md` | ⏳ **4 passagens** (6 · 5 · 7 · 5 achados) — ⭐ a 4.ª deu o **§4.2 por LIMPO**: os 5 que sobram são de PROMESSA e proveniência, **nenhum bloqueante**; a emenda 5 foi despachada e falta-lhe a passagem que a atesta | ⬜ não |
+
+⚠️⚠️ **O padrão que as quatro passagens do Pose mediram, e ele é do MÉTODO:** em
+**três** delas seguidas a emenda curou **o endereço nomeado** e a mesma redacção
+sobreviveu noutro sítio — incluindo em **títulos** que nenhuma emenda tocou. ⇒ a
+instrução que fica para toda emenda futura é *cure pela FORMA da frase (um
+`grep` pela promessa), nunca pelo endereço*.
+
+⛔ **ACHADO DE PROTOCOLO para o R-PÓS, e ele não é desta espec:** o §7.2 põe a
+barra do fechamento em *«zero hits sobre a árvore inteira»*, e o **§6 obriga o
+ledger a ter a tabela de cobertura** — que nomeia ficheiros do alvo. O ledger
+vive na árvore rastreada ⇒ **as duas exigências não são satisfazíveis ao mesmo
+tempo**. Quem fechar tem de escolher e **declarar** (cobertura sem nomes, ou o
+ledger fora do censo com o motivo escrito). *Uma barra que ninguém pode cumprir é
+uma barra que se afrouxa em silêncio no dia do fechamento.*
 
 ⛔⛔ **O ACHADO DE MÉTODO DESTA JORNADA, e ele vale para toda obra futura da
 casa: o sweep da parede fechou VERDE sobre TRÊS especs que traduziam prosa do

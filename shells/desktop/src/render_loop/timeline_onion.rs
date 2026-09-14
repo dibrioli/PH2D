@@ -71,11 +71,19 @@ fn ghost_instance(
 }
 
 /// Os instantes de clip a ghostar de UM lado, do mais PRÓXIMO ao mais distante do vivo.
-/// `Frames`: `live ± k·dt`. `Keys`: as keyframes vizinhas de `entity` (o pose-a-pose).
+/// `Frames`: `live ± k·dt`. `Keys`: as keyframes vizinhas dos **relógios** (o pose-a-pose).
+///
+/// ⭐⭐⭐ **`relogios` é quem tem as KEYS, que não é sempre quem se DESENHA** (W7). Numa personagem
+/// riggada as keys vivem nos **ossos** e o que se vê é a **imagem** — ler as keyframes do alvo
+/// desenhado devolveria a lista VAZIA, e o modo `Keys` (que é o de OMISSÃO) não mostraria fantasma
+/// nenhum. *O mesmo defeito do escopo, um nível abaixo: a pergunta certa é «quem MOVE isto?».*
+///
+/// ⚠️ **A UNIÃO, e não o primeiro:** a pose do braço muda quando QUALQUER osso dele tem uma key, e
+/// uma lista só do osso na mão saltaria as poses que os vizinhos autoram.
 fn ghost_times(
     settings: &OnionSettings,
     doc: &TimelineDoc,
-    entity: u64,
+    relogios: &[u64],
     live_clip_t: f64,
     past: bool,
 ) -> Vec<f64> {
@@ -105,7 +113,14 @@ fn ghost_times(
             // Um `eps` exclui o próprio instante vivo se ele cair EXATO sobre uma key (o
             // playhead num keyframe): a pose viva não é um fantasma.
             let eps = 1e-6;
-            let times = entity_key_times(doc, entity);
+            let mut times: Vec<f64> = relogios
+                .iter()
+                .flat_map(|&e| entity_key_times(doc, e))
+                .collect();
+            times.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+            // Duas keys no MESMO instante (dois ossos autorados juntos) são UMA pose-fantasma — a
+            // mesma dedup que o `entity_key_times` faz para as colunas `X`+`Y` de um objecto.
+            times.dedup_by(|a, b| (*a - *b).abs() < 1e-9);
             if past {
                 times
                     .iter()
@@ -176,9 +191,21 @@ fn ghost_mesh(
     .map(|(m, _k)| m)
 }
 
-/// Constrói TODOS os fantasmas do onion e os acrescenta a `out`. `targets` = as entidades
-/// a ghostar com o `RenderInstance` VIVO de cada uma (os campos de sprite — textura, uv,
-/// tamanho, anchor). No-op quando desligado ou sem alvos.
+/// ⭐⭐ **UM ALVO DO ONION: o que se DESENHA, e quem tem as KEYS que dizem em que instantes.**
+///
+/// ⚠️ **Os dois são a mesma entidade em toda cena SEM rig, e por isso a distinção não existia.** Num
+/// personagem riggado eles separam-se: desenha-se a imagem, e quem leva keys são os ossos.
+pub(crate) struct GhostTarget {
+    /// A entidade DESENHADA (a que dá a pose do fantasma e a malha, se tiver pele).
+    pub entity: u64,
+    /// Os campos de sprite do vivo — textura, uv, tamanho, anchor.
+    pub template: RenderInstance,
+    /// Quem tem as KEYS (modo `Keys`). Para a arte animada é ela própria; para um rig, os ossos.
+    pub relogios: Vec<u64>,
+}
+
+/// Constrói TODOS os fantasmas do onion e os acrescenta a `out`. No-op quando desligado ou sem
+/// alvos.
 ///
 /// ⭐ **A malha de repouso é descodificada UMA vez por alvo** (os bytes opacos da pele custam
 /// `0,134 µs` por peça, medidos na W4) e posada uma vez por instante — não uma vez por par.
@@ -186,7 +213,7 @@ pub(crate) fn build_ghosts(
     settings: &OnionSettings,
     sim: &SimWorld,
     doc: &TimelineDoc,
-    targets: &[(u64, RenderInstance)],
+    targets: &[GhostTarget],
     live_clip_t: f64,
     pixels_per_meter: f32,
     out: &mut LiftedInstances,
@@ -196,11 +223,16 @@ pub(crate) fn build_ghosts(
     }
     let index = ph2d_skeleton_live::skin_live::bone_index(sim);
     let mut pecas = 0usize;
-    for (entity, template) in targets {
+    for GhostTarget {
+        entity,
+        template,
+        relogios,
+    } in targets
+    {
         let rest = Entity::try_from_bits(*entity)
             .and_then(|e| ph2d_skeleton_live::skin_image::mesh_of(sim, e));
         for (past, color) in [(true, settings.color_before), (false, settings.color_after)] {
-            let times = ghost_times(settings, doc, *entity, live_clip_t, past);
+            let times = ghost_times(settings, doc, relogios, live_clip_t, past);
             // O falloff é sobre a contagem DE FATO encontrada (em Keys pode faltar key de
             // um lado): o mais próximo é o mais forte, o mais distante encontrado o mais
             // fraco.
@@ -281,12 +313,16 @@ fn ghost_targets(
     present: &mut PresentWorld,
     doc: &TimelineDoc,
     sel: u64,
-) -> Vec<(u64, RenderInstance)> {
+) -> Vec<GhostTarget> {
     let animadas = animated_entities(doc);
     if animadas.contains(&sel)
         && let Some(template) = live_template(present, sel)
     {
-        return vec![(sel, template)];
+        return vec![GhostTarget {
+            entity: sel,
+            template,
+            relogios: vec![sel],
+        }];
     }
     let Some(osso) = Entity::try_from_bits(sel)
         .filter(|&e| sim.world().get::<ph2d_skeleton_ecs::Bone>(e).is_some())
@@ -294,15 +330,27 @@ fn ghost_targets(
         return Vec::new();
     };
     let index = ph2d_skeleton_live::skin_live::bone_index(sim);
-    if !ph2d_skeleton_live::skin_live::skeleton_of(sim, Some(osso))
+    // ⭐⭐⭐ **OS RELÓGIOS são os ossos ANIMADOS deste esqueleto** — quem tem as keys. ⛔ Sem eles o
+    // modo `Keys` (o de OMISSÃO) devolvia lista vazia: ele pergunta as keyframes do alvo, e a
+    // imagem não tem nenhuma. *A pergunta certa é «quem MOVE isto?», e ela vale nos DOIS sítios —
+    // no escopo e nos instantes.*
+    let relogios: Vec<u64> = ph2d_skeleton_live::skin_live::skeleton_of(sim, Some(osso))
         .iter()
-        .any(|b| animadas.contains(&b.to_bits()))
-    {
+        .map(|b| b.to_bits())
+        .filter(|b| animadas.contains(b))
+        .collect();
+    if relogios.is_empty() {
         return Vec::new();
     }
     ph2d_skeleton_live::skin_live::skinned_images_of_skeleton(sim, osso, &index)
         .into_iter()
-        .filter_map(|e| Some((e.to_bits(), live_template(present, e.to_bits())?)))
+        .filter_map(|e| {
+            Some(GhostTarget {
+                entity: e.to_bits(),
+                template: live_template(present, e.to_bits())?,
+                relogios: relogios.clone(),
+            })
+        })
         .collect()
 }
 

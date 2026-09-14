@@ -55,6 +55,15 @@ fn rig() -> (SimWorld, u64, TimelineDoc) {
 
 /// Modo FRAMES, `fps = 4` ⇒ `dt = 0,25 s` ⇒ passos de X de `0,625` bem separados. (O
 /// default é `Keys`; estes gates fixam `Frames` de propósito — é o que eles testam.)
+/// O alvo de sempre: a entidade desenha-se E tem as keys — o caso de toda cena sem rig.
+fn alvo(e: u64) -> super::GhostTarget {
+    super::GhostTarget {
+        entity: e,
+        template: template(),
+        relogios: vec![e],
+    }
+}
+
 fn settings() -> OnionSettings {
     OnionSettings {
         enabled: true,
@@ -92,7 +101,7 @@ fn the_onion_ghosts_the_frames_before_and_after() {
     let (w, e, doc) = rig();
     let s = settings();
     let mut out = ph2d_render::LiftedInstances::default();
-    build_ghosts(&s, &w, &doc, &[(e, template())], 2.0, PPM, &mut out);
+    build_ghosts(&s, &w, &doc, &[alvo(e)], 2.0, PPM, &mut out);
     assert_eq!(
         out.len(),
         (s.frames_before + s.frames_after) as usize,
@@ -106,7 +115,7 @@ fn past_ghosts_are_cool_and_future_ghosts_are_warm() {
     let s = settings();
     let live_x = pose_at(w.world(), &doc, e, 2.0).unwrap().translation.x; // 5.0
     let mut out = ph2d_render::LiftedInstances::default();
-    build_ghosts(&s, &w, &doc, &[(e, template())], 2.0, PPM, &mut out);
+    build_ghosts(&s, &w, &doc, &[alvo(e)], 2.0, PPM, &mut out);
     for g in out.instances() {
         let cool = g.world_pos[0] < live_x; // passado = X menor (objeto ia para a direita)
         let want = if cool { s.color_before } else { s.color_after };
@@ -134,7 +143,7 @@ fn a_farther_ghost_is_fainter() {
     let s = settings();
     let live_x = pose_at(w.world(), &doc, e, 2.0).unwrap().translation.x;
     let mut out = ph2d_render::LiftedInstances::default();
-    build_ghosts(&s, &w, &doc, &[(e, template())], 2.0, PPM, &mut out);
+    build_ghosts(&s, &w, &doc, &[alvo(e)], 2.0, PPM, &mut out);
     // Do lado futuro: o mais próximo (menor |x-live|) é mais forte que o mais distante.
     let mut future: Vec<_> = out
         .instances()
@@ -163,7 +172,7 @@ fn a_ghost_stands_where_the_object_would_be_not_where_it_is() {
     let s = settings();
     let live_x = pose_at(w.world(), &doc, e, 2.0).unwrap().translation.x;
     let mut out = ph2d_render::LiftedInstances::default();
-    build_ghosts(&s, &w, &doc, &[(e, template())], 2.0, PPM, &mut out);
+    build_ghosts(&s, &w, &doc, &[alvo(e)], 2.0, PPM, &mut out);
     for g in out.instances() {
         assert!(
             (g.world_pos[0] - live_x).abs() > 1e-3,
@@ -178,7 +187,7 @@ fn a_ghost_is_a_flat_silhouette() {
     let (w, e, doc) = rig();
     let s = settings();
     let mut out = ph2d_render::LiftedInstances::default();
-    build_ghosts(&s, &w, &doc, &[(e, template())], 2.0, PPM, &mut out);
+    build_ghosts(&s, &w, &doc, &[alvo(e)], 2.0, PPM, &mut out);
     assert!(!out.is_empty());
     for g in out.instances() {
         assert!(
@@ -206,7 +215,7 @@ fn the_onion_is_off_by_default_and_when_disabled() {
         ..settings()
     };
     let mut out = ph2d_render::LiftedInstances::default();
-    build_ghosts(&s, &w, &doc, &[(e, template())], 2.0, PPM, &mut out);
+    build_ghosts(&s, &w, &doc, &[alvo(e)], 2.0, PPM, &mut out);
     assert!(out.is_empty(), "desligado não desenha fantasma");
 }
 
@@ -231,7 +240,7 @@ fn keys_mode_ghosts_the_neighboring_keyframes() {
         ..OnionSettings::default()
     };
     let mut out = ph2d_render::LiftedInstances::default();
-    build_ghosts(&s, &w, &doc, &[(e, template())], 2.0, PPM, &mut out);
+    build_ghosts(&s, &w, &doc, &[alvo(e)], 2.0, PPM, &mut out);
     assert_eq!(out.len(), 4, "duas keys de cada lado do playhead");
     // As posições X dos fantasmas são as poses NAS keys (2,5·t): 2.5 e 0.0 (passado),
     // 7.5 e 10.0 (futuro). O live (5.0) NÃO está entre elas.
@@ -263,7 +272,7 @@ fn keys_mode_ignores_the_frame_grid() {
     let x_of = |fps: f64| -> Vec<f32> {
         let s = OnionSettings { fps, ..base };
         let mut out = ph2d_render::LiftedInstances::default();
-        build_ghosts(&s, &w, &doc, &[(e, template())], 2.0, PPM, &mut out);
+        build_ghosts(&s, &w, &doc, &[alvo(e)], 2.0, PPM, &mut out);
         let mut xs: Vec<f32> = out.instances().iter().map(|g| g.world_pos[0]).collect();
         xs.sort_by(|a, b| a.partial_cmp(b).unwrap());
         xs
@@ -352,7 +361,7 @@ fn a_selected_bone_ghosts_the_art_it_deforms() {
     }
     let alvos = super::ghost_targets(&sim, &mut present, &doc, osso);
     assert_eq!(
-        alvos.iter().map(|(e, _)| *e).collect::<Vec<_>>(),
+        alvos.iter().map(|a| a.entity).collect::<Vec<_>>(),
         vec![arte],
         "o osso seleccionado tinha de ghostar a imagem presa ao esqueleto dele"
     );
@@ -503,5 +512,52 @@ fn measure_the_cost_of_a_rigged_onion() {
         "onion de um rig: 4 fantasmas x {pecas} pecas — min {min:.3} ms · mediana {mediana:.3} ms \
          ({:.2}% de um quadro de 16,67 ms)",
         min / 16.667 * 100.0
+    );
+}
+
+/// ⭐⭐⭐ **No modo `Keys` — o de OMISSÃO — um rig tem fantasmas, e os instantes saem dos OSSOS.**
+///
+/// ⛔⛔ **O defeito que este gate não deixa voltar, achado ANTES do smoke:** o `ghost_times` lia as
+/// keyframes do alvo DESENHADO, e numa personagem riggada a imagem não tem nenhuma. Com o escopo
+/// curado e os instantes não, o recurso continuava mudo **na configuração de fábrica** — *o mesmo
+/// defeito do escopo, um nível abaixo*.
+#[test]
+fn in_keys_mode_the_instants_of_a_rig_come_from_its_bones() {
+    let (sim, mut present, osso, arte) = rig_com_pele();
+    let mut doc = TimelineDoc::new();
+    for (t, v) in [(0.0, 0.0f32), (2.0, 1.2)] {
+        doc.insert_key(
+            osso,
+            PropKind::Rotation,
+            RationalTime::from_seconds(t),
+            AnimValue::Float(v),
+            Interp::Linear,
+        );
+    }
+    let keys = OnionSettings {
+        enabled: true,
+        mode: OnionMode::Keys,
+        ..OnionSettings::default()
+    };
+    let mut out = ph2d_render::LiftedInstances::default();
+    super::collect_onion_ghosts(
+        &keys,
+        &sim,
+        &mut present,
+        &doc,
+        Some(osso),
+        1.0,
+        PPM,
+        &mut out,
+    );
+    assert_eq!(
+        out.len(),
+        2,
+        "no modo Keys um rig tinha de ghostar a key de tras e a da frente"
+    );
+    // ⛔ O CONTROLO: as keyframes da ARTE são zero — é por isso que os relógios existem.
+    assert!(
+        ph2d_timeline::entity_key_times(&doc, arte).is_empty(),
+        "a fixtura keyou a ARTE: o gate acima passaria sem os relogios"
     );
 }

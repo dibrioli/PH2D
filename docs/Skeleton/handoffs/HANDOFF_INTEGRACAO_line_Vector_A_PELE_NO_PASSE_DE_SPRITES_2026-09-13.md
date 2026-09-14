@@ -128,7 +128,7 @@ oráculo a ser o PRÓPRIO produto) · a malha do fantasma dobra a arte e **mant�
 fatia de fora COM malha é marcada e as duas metades do quadro partilham a costura (`ph2d-render`) ·
 um OSSO seleccionado ghosta a arte que ele deforma, com os dois controlos (nada animado · o osso de
 OUTRO esqueleto) · e os fantasmas de instantes diferentes trazem malhas DIFERENTES (shell).
-**Sete mutações, sete RED.** ⚠️ **Uma delas SOBREVIVEU à primeira** — `local_of(entity)` →
+**Oito mutações, oito RED.** ⚠️ **Uma delas SOBREVIVEU à primeira** — `local_of(entity)` →
 `world.get::<Transform>(entity)` — e nomeou o buraco: numa FOLHA a cadeia de ancestrais já basta para
 a resposta mudar, logo o controlo tem de estar numa **RAIZ**. O gate ganhou essa metade.
 
@@ -165,6 +165,10 @@ lugar do guarda): **2 de 2 RED**, na asserção certa.
    fez nascer debaixo de um gesto de autoria. ⛔ **Nenhum gesto se perde:** naqueles modos o
    `ramo_ferramenta_vetorial` consome todo press de canvas, logo a caixa só era alcançável onde ela
    bloqueava o ramo. E a **selecção fica armada** — é isso que mantém o *Bind* com sujeito.
+13. **O `GhostTarget` tem `relogios` porque a pergunta «quem MOVE isto?» vale em DOIS eixos:** o
+   ESCOPO (quem é ghostado) e os INSTANTES (quando). O segundo foi achado antes do smoke — o modo
+   `Keys`, que é o de **omissão**, lia as keyframes do alvo desenhado, e a imagem de um rig não tem
+   nenhuma. *Curar metade de uma pergunta deixa o recurso mudo na configuração de fábrica.*
 10. **A W7 não «fez os fantasmas dobrarem»: ela fez um rig TER fantasmas.** A leitura anterior era
    *«eles desenham o quad de repouso»*, que é verdade **se houver fantasma** — e num rig normal não
    havia: o onion exigia que o seleccionado estivesse animado **e** desenhasse, e numa personagem

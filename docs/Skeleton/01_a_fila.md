@@ -2071,6 +2071,14 @@ As quatro peças:
    que a W3 criou). ⛔ Um vector paralelo de malhas ao lado de uma fatia crua é o padrão que o
    `corner_radius` proíbe por escrito. O stream do Motion entra sem malha e desenha byte a byte.
 
+⛔⛔ **E a mesma pergunta tinha de ser feita DUAS vezes, uma em cada eixo — achado ANTES do smoke:**
+os *instantes* do modo `Keys` (o de **OMISSÃO**) saíam das keyframes do alvo **DESENHADO**, e a
+imagem de um rig não tem nenhuma. Com o escopo curado e os instantes não, o recurso continuava mudo
+**na configuração de fábrica**. ⇒ um alvo do onion passou a ser `{ o que se DESENHA, quem tem as
+KEYS }` (`GhostTarget::relogios`), e para um rig os relógios são os ossos **animados** do esqueleto —
+a UNIÃO deles, porque a pose do braço muda quando QUALQUER osso tem uma key. *Nas duas metades a
+pergunta certa é a mesma: «quem MOVE isto?».*
+
 E o **ESCOPO**: `ghost_targets` responde *«o que o seleccionado faz mover?»* — a arte animada (o
 escopo do ADR-0142) **ou**, com um OSSO na mão, as imagens presas ao esqueleto dele
 (`skin_live::skinned_images_of_skeleton`), se alguma coisa naquele esqueleto estiver animada.
@@ -2095,9 +2103,9 @@ fora os mais distantes é decisão de PRODUTO — o que fica é o NÚMERO, no lo
 que um quarto de pixel de tolerância salve, e o orçamento de refinamento foi derivado para a arte
 VIVA. *O fantasma é uma leitura, não a obra.*
 
-**Sete mutações, sete RED** — o ramo do osso no escopo · o fantasma levar a malha · a pele resolvida
+**Oito mutações, oito RED** — o ramo do osso no escopo · o fantasma levar a malha · a pele resolvida
 em `t` · a fatia de fora levar malhas · a fonte injectada na ENTIDADE e nos ANCESTRAIS · a pele ler a
-fonte. ⚠️ **A da ENTIDADE sobreviveu à primeira**, e nomeou o buraco: numa FOLHA a cadeia de
+fonte · os relógios serem os ossos e não a arte. ⚠️ **A da ENTIDADE sobreviveu à primeira**, e nomeou o buraco: numa FOLHA a cadeia de
 ancestrais já basta para a resposta mudar, então o controlo tem de ser numa **raiz**.
 
 ⚠️ **E a fixtura mordeu antes do produto** (2×): a pose injectada nasceu `Transform::IDENTITY` e o

@@ -130,6 +130,8 @@
 - ⭐⭐⭐ [Uma família de réguas que a resposta DEGENERADA ganha por construção aprova a degenerada — medir só suavidade shipou um borrão global a chamar-se rig (vazamento 26,5 px)](feedback_measuring_only_smoothness_approves_a_global_blur_as_a_rig.md)
 - ⛔⛔ [Trocar uma lei apaga o que a antiga tinha DE GRAÇA e ninguém reconfere, porque nunca foi escrito como requisito — um esqueleto a 400 unidades passou a mandar na arte](feedback_what_the_old_law_had_for_free_must_be_rechecked_when_the_law_changes.md)
 - ⛔⛔ [Sweep da parede VERDE sobre espec que TRADUZIA o alvo — a vassoura estava noutra língua; o instrumento apanha colagem, o R-pré apanha tradução](feedback_a_sweep_in_one_language_does_not_prove_filtering_in_another.md)
+- ⛔⛔ [Corpus todo na força MÁXIMA não testa a curva da força (`s = s² = s⁴` em 1) — a lei do modo B estava errada e a suíte ficou verde com a troca](feedback_a_corpus_at_full_strength_cannot_test_the_strength_curve.md)
+- ⛔ [Régua que pergunta pelo NOME quebra na 1.ª família nova — «11× de divergência» era a bancada a dar o incremento a um gesto que quer o total](feedback_a_ruler_that_asks_for_the_name_breaks_on_the_first_new_family.md)
 - ⛔ [viés em NDC não é constante no mundo: 3e-3 = 30 % da distância do olho](feedback_a_depth_bias_constant_in_ndc_is_not_constant_in_the_world.md)
 - ⛔ [Barra calibrada SEM o lado aprovado mede os nossos defeitos; o PISO do censo decide o que a régua vê (4× «nenhuma melhoria»)](feedback_a_bar_calibrated_without_the_approved_side_measures_our_own_defects.md)
 - ⛔⛔ [Uma SEGUNDA memória do mesmo facto mascara a perda da primeira — a mutação sobreviveu porque a rotação guardava a direcção que a velocidade perdera](feedback_a_second_memory_of_the_same_fact_masks_the_loss_of_the_first.md)

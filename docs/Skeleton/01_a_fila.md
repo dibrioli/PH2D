@@ -2778,8 +2778,38 @@ fora do desenho não diz até onde a corrente vai, diz que há uma risca algures
 
 ⚠️⚠️ **E a 1.ª redacção do gate reprovou o PRODUTO por `1e-15`:** exigir exactamente o que o produto
 entrega faz a asserção passar por **igualdade em `f64`**, e uma igualdade amostrada é um gate a
-morrer de pé. A barra pede **metade** da folga; o produto entrega-a inteira, e o mutante que a apaga
-cai por `2,5 px`.
+morrer de pé. A barra pede **metade** da folga; o produto entrega-a inteira.
+
+### F5-e — ✅ **E a recta ENCOSTA nas duas pontas, e é FINA** (3.º report do dono, com foto, 2026-09-14)
+
+> *«linha muito grossa e deslocada das pontas dos ossos»*
+
+⛔⛔ **O deslocamento da F5-d está RECUSADO por veredito de produto.** Ele comprava folga contra os
+ossos em toda pose e pagava-a com o que a linha existe para dizer: ela deixava de **tocar** a junta
+onde o `Chain` pára (a cruz) e a ponta da corrente (o losango do alvo). *Um indicador de extensão
+que não encosta nas pontas não diz qual extensão é.* ⇒ ela é a **corda** entre as duas pontas, e a
+folga em pose dobrada vem de graça (uma corda passa por fora do arco); em pose esticada paga-se
+sendo **fina** em vez de uma faixa.
+
+⭐ **A largura deixou de ser um número próprio** — é a do losango (`GOAL_LINE_PX`), por **alias**: um
+`const` só dela seria a segunda resposta à mesma pergunta. E a **meia opacidade morreu com a faixa**
+(ela existia porque `7 px` por cima da arte escondiam o que o artista posa; a meio tom uma linha fina
+desaparece).
+
+⭐ **E a cruz da raiz é INSCRITA na bolinha da junta que marca** (`raio / √2`), em vez de herdar a
+largura da faixa — aquele raio já encolhe com o comprimento do osso, e um número próprio
+desalinhava a marca da alça.
+
+⚠️⚠️ **DOIS gates dissolveram-se com a premissa** (`never_touches_a_bone`, `takes_the_free_side`) e
+foram substituídos pelos da lei nova: `ends_on_the_chain_ends` (igualdade **exacta** — qualquer
+deslocamento é o defeito reportado) e `is_a_chord_not_the_joint_polyline` (a metade que impede a
+volta ao 1.º defeito). E um terceiro foi **apagado por ter virado tautologia**: com os extremos
+iguais às pontas, o paralelismo é por construção.
+
+⭐⭐ **A leitura das três voltas é uma só:** *as duas queixas dele eram sobre a mesma linha e puxavam
+em sentidos opostos* — «não passes por dentro dos ossos» e «não te afastes das pontas». A resposta
+não estava em nenhum dos extremos que eu construí (polilinha · barra deslocada), estava na **corda
+fina**, que é o que as duas frases dele, juntas, descrevem.
 
 ## ⛔ Recusas MEDIDAS deste módulo — não as reconstrua
 
@@ -2807,6 +2837,7 @@ cai por `2,5 px`.
 | **Amortecer entre a fronteira e o espelho** (`λ · ângulo`, varrido em `0,0 · 0,2 · 0,4 · 0,5 · 0,6 · 0,8 · 1,0`) | Nenhum valor resolve os dois alvos teimosos, e os intermédios são **piores que qualquer um dos extremos** (a `λ = 0,5` três alvos que o `λ = 1` resolve ao bit passam a errar `0,60`–`1,34`). *Não é afinação — é o laço.* |
 | **`livre ± 2π` entre os candidatos** do passo do misto | Código defensivo **sem consumidor**: nunca venceu em `900` fixturas, e não pode vencer — a pose de partida é feita dos sinais que dela se leram, logo cada ângulo já está dentro da sua parede e o intervalo vive inteiro dentro de `(−π, π)`, onde o candidato do interior também vive. |
 | **Traçar a linha do `IK Chain` pela POLILINHA das juntas** (F5-d, 2026-09-14) | Numa corrente quase esticada ela cai **exactamente** sobre os corpos dos ossos e lê-se como parte deles; numa dobrada, serpenteia. O que o controlo tem de dizer é uma EXTENSÃO, e uma extensão desenha-se como cota: recta e deslocada. |
+| **DESLOCAR a recta da corrente para o lado livre** (F5-e, veredito do dono) | A folga contra os ossos em toda pose custa as PONTAS: ela deixa de tocar a junta onde o `Chain` pára e o losango do alvo, e um indicador de extensão que não encosta nas pontas não diz qual extensão é. A corda passa por fora do arco sozinha; em pose esticada a folga vem de a linha ser **fina**. |
 | **Deslocar a recta da corrente por uma CONSTANTE** | Não limpa uma corrente que se enrola mais de meia volta: ela tem bojo dos DOIS lados e vem por trás da recta (medido: `18,39 px` de um osso que ocupa `18,75`). O afastamento tem de passar por fora da **excursão** do lado escolhido. |
 | **Ler os lados do modo MISTO da pose VIVA** | Estável enquanto o alvo está ao alcance (o modo é ponto fixo, e há gate) e **apagado para sempre** no primeiro arrasto que o leve para fora dele: fora do alcance a resposta certa é a RECTA, e uma recta não tem lado nenhum para ler. «Inicial» tem de ser o DOCUMENTO. |
 | **Fazer a malha SEGUIR a silhueta** em vez de a cobrir (F6-b) | Traz de volta as células deformadas da borda, que são o defeito que a wave cura. O recorte fino é do **alfa da própria arte**, de graça e ao sub-pixel — o *Expansion* do *Puppet* do AE. |

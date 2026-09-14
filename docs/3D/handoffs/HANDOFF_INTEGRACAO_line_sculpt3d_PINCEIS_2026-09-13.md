@@ -608,6 +608,14 @@ medido e é mais do mesmo.
 
 ### §6-ter.10 — ⏳ ABERTO, com o instrumento de cada item
 
+- ⏳⏳ **NA FILA, por ordem do dono (14/09): quem subdivide no Dynamic Topology**
+  — [plano 22](../22_plano_quem_subdivide_no_dyntopo.md). A causa está **medida**
+  (o refino tem um chamador só, o braço do carimbo ⇒ `19` verbos refinam, `8`
+  nunca refinam), a pergunta é de **oráculo** (metade livre no SculptGL, que é
+  MIT; metade por janela **E** no Blender), e as três armadilhas da cura estão
+  nomeadas. ⛔ **O `Mask` pode ser curado antes do estudo:** um gesto que não
+  escreve posição não tem porque mudar a topologia.
+
 - **A região não é pintada, só a cadeia.** O osso mostra a EXTENSÃO do membro;
   *quais vértices* e *com que peso* é outra superfície (o canal por-vértice do
   device já existe — é o do padrão do pincel) e ela **colide** com o preview do

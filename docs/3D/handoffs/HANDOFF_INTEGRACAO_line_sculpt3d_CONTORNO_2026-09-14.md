@@ -456,6 +456,85 @@ compilava** — uma mutação que não compila não prova nada, e lê-se como sa
 
 ---
 
+## §16 — ⭐⭐ A METADE DA MÁSCARA NO DYNAMIC TOPOLOGY está CURADA
+
+> Item da fila que o dono pôs em 14/09: *«algumas tools que não deveriam fazer a
+> subdivisão de polígonos no modo Dynamic Topology estão fazendo (como smooth)
+> enquanto algumas que deveriam criar subdivisões não estão»*.
+
+A tabela inteira é pergunta de **ORÁCULO** e continua aberta
+([plano 22](../22_plano_quem_subdivide_no_dyntopo.md) §4). ⭐ **Uma célula dela
+não precisa de alvo nenhum, e é a que esta jornada fecha.**
+
+### A causa: a porta respondia à pergunta errada
+
+O refino tem **um** chamador de produto — o braço do carimbo —, logo a pergunta
+que o produto respondia era *«este gesto passou pelo caminho do carimbo?»* e não
+*«este verbo cria superfície nova?»*. ⚠️ É a mesma família de defeito que este
+módulo já pagou três vezes ao contrário: **inferir uma propriedade do VERBO a
+partir do CAMINHO que o gesto tomou.**
+
+### Medido, e o número é grosseiro
+
+Com o dyntopo armado e o detalhe no extremo fino, **um** dab de máscara na cena
+de teste levava a peça de **`830` para `1 331` vértices** — `+60 %` de topologia
+num gesto que **não move um único vértice**. O artista que só queria proteger uma
+zona pagava uma malha diferente.
+
+### A cura, e o que ela deliberadamente NÃO faz
+
+A porta passou a **receber o verbo** e a ler **duas colunas**
+(`Verb::refina_no_dyntopo` · `Verb::colapsa_no_dyntopo`), com o `&&` a
+curto-circuitar — um verbo que diga `false` nem chega a chamar o motor.
+
+⛔ **E mais nada mudou, com gate a afirmá-lo**
+(`o_mask_e_a_unica_correccao_que_esta_tabela_faz`): todos os outros verbos leem
+exactamente o que já liam. ⇒ o §5 do plano já não é um esboço — a porta existe, e
+o estudo preenche **células** em vez de re-fiar.
+
+⚠️ **O `false` dos 8 verbos com âncora é o valor CONSERVADOR, não uma resposta:**
+hoje eles nem chegam à porta, e assim ligá-la aos gestos ancorados antes do
+estudo **não muda nada em silêncio**. Eles são precisamente os que mais
+**esticam** superfície, logo os candidatos mais fortes a mudar de valor quando a
+tabela for medida — e é por isso que a mudança tem de ser deliberada.
+
+⚠️ **As duas colunas coincidem hoje em TODOS os verbos**, e isso é um facto sobre
+o produto de hoje (as duas leis vivem numa porta só), **não** uma lei. O gate
+`as_duas_colunas_ainda_coincidem_e_isso_nao_e_uma_lei` reprova no dia em que o
+estudo as separar — que é quando se quer que ele fale.
+
+⛔ **O veredito é lido como BOOLEANO e não por um estado novo nos enums da
+`ph2d-mesh`:** `Collapse::Enough` significa *«nenhuma aresta está sob o limiar»*,
+que é um facto sobre a MALHA — usá-lo para dizer *«o verbo não pediu»* poria duas
+coisas diferentes no mesmo byte.
+
+### As réguas, e as duas metades de cada uma
+
+| gate | onde | o que afirma |
+|---|---|---|
+| `a_mascara_nao_muda_a_topologia_e_o_desenho_muda` | cena (GPU, `#[ignore]`) | a máscara não muda a contagem **e** o `Draw` no mesmo arranjo muda |
+| `a_mascara_continua_a_pintar_o_canal` | cena (GPU) | *curar um defeito desligando o verbo é a forma mais barata de o esconder* |
+| `o_mask_e_a_unica_correccao_que_esta_tabela_faz` | unidade | o delta desta tabela é **um** verbo |
+| `nenhum_verbo_com_ancora_refina_ou_colapsa_hoje` | unidade | o valor conservador, com piso de população |
+| `as_duas_colunas_ainda_coincidem_e_isso_nao_e_uma_lei` | unidade | reprova no dia do estudo |
+| `the_dyntopo_door_asks_the_verb` | shell | a porta recebe o verbo e lê as **duas** colunas; o chamador passa o pincel **armado** |
+
+⚠️ **O controlo positivo é o que torna a primeira uma medição:** sem o `Draw`, um
+`assert_eq!` de contagem ficaria verde sobre um dyntopo **inerte** (detalhe
+grosso, esfera já fina, raio errado). *Uma régua que não vê o fenómeno acontecer
+não prova que ele não aconteceu.* E o detalhe corre no **extremo fino** de
+propósito — um refino que só aparece ali lê-se como *«não refina»* num corpus
+grosso, que é a armadilha que o plano nomeia para o estudo.
+
+### Mutações (2 de 2 sangram, nas três camadas)
+
+| # | mutação | quem sangra |
+|---|---|---|
+| M12 | o `Mask` volta a refinar | o censo de unidade **e** o gate de cena |
+| M13 | a porta deixa de perguntar ao verbo | o gate de cena **e** o da shell |
+
+---
+
 ## §12 — Smoke
 
 ```

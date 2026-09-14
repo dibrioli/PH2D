@@ -4,7 +4,7 @@ tags: [modulo/3d, tipo/plano, status/aberto]
 status: aberto
 modulo: 3D
 atualizado: 2026-09-14
-resumo: "O refino do dyntopo está preso ao GESTO e não ao VERBO: 19 verbos refinam (o Smooth e a MÁSCARA incluídos) e 8 nunca refinam (Grab, Snake Hook, Cloth, Pose…). O que cada verbo DEVE fazer é uma pergunta de oráculo, com meia resposta livre (SculptGL é MIT) e meia atrás da parede (Blender é GPL ⇒ corre-se, não se lê)."
+resumo: "A METADE DA MÁSCARA ESTÁ CURADA (14/09): a porta passou a perguntar ao VERBO e a máscara deixou de mudar a topologia — medido, ela levava a peça de 830 para 1 331 vértices. O resto da tabela continua aberto. O refino do dyntopo estava preso ao GESTO e não ao VERBO: 19 verbos refinam (o Smooth e a MÁSCARA incluídos) e 8 nunca refinam (Grab, Snake Hook, Cloth, Pose…). O que cada verbo DEVE fazer é uma pergunta de oráculo, com meia resposta livre (SculptGL é MIT) e meia atrás da parede (Blender é GPL ⇒ corre-se, não se lê)."
 ---
 
 # 22 — Quem subdivide no Dynamic Topology
@@ -15,9 +15,33 @@ resumo: "O refino do dyntopo está preso ao GESTO e não ao VERBO: 19 verbos ref
 > criando. é preciso um estudo no blender ou no SculptGL para descobrir que deve
 > ou não subdividir faces no Dynamic Topology.»*
 
-⚠️ **Este doc é o PLANO e o CENSO. Nada foi mudado no produto.** O que ele
-afirma sobre **nós** está medido; o que ele afirma sobre os alvos é a **pergunta**
-e o **instrumento** que a responde — nunca uma resposta que eu não medi.
+⚠️ **Este doc é o PLANO e o CENSO.** O que ele afirma sobre **nós** está medido;
+o que ele afirma sobre os alvos é a **pergunta** e o **instrumento** que a
+responde — nunca uma resposta que eu não medi.
+
+> ## ✅ ACTUALIZAÇÃO 2026-09-14 — a metade da MÁSCARA está CURADA
+>
+> A porta (`refine_for_dab`) passou a **receber o verbo** e a ler **duas
+> colunas** ([`Verb::refina_no_dyntopo`] · [`Verb::colapsa_no_dyntopo`]), e a
+> máscara responde `false` às duas. **Medido na cena, com o detalhe no extremo
+> fino:** um dab de máscara levava a peça de **`830` para `1 331` vértices** —
+> `+60 %` de topologia num gesto que **não move um único vértice**.
+>
+> ⛔ **E MAIS NADA MUDOU, com gate a afirmá-lo**
+> (`o_mask_e_a_unica_correccao_que_esta_tabela_faz`): todos os outros verbos leem
+> exactamente o que já liam. *O resto da tabela continua a ser a pergunta de
+> oráculo que o §4 descreve*, e o §5 já não é um esboço — a porta existe, e o
+> estudo preenche células em vez de re-fiar.
+>
+> ⚠️ **O `false` dos 8 verbos com âncora é o valor CONSERVADOR, não uma
+> resposta:** hoje eles nem chegam à porta, e assim ligá-la aos gestos ancorados
+> antes do estudo não muda nada em silêncio. Há gate
+> (`nenhum_verbo_com_ancora_refina_ou_colapsa_hoje`).
+>
+> ⚠️ **As duas colunas coincidem hoje em TODOS os verbos**, e isso é um facto
+> sobre o produto de hoje — não uma lei. O gate
+> `as_duas_colunas_ainda_coincidem_e_isso_nao_e_uma_lei` **reprova** no dia em
+> que o estudo as separar, que é quando se quer que ele fale.
 
 ---
 
@@ -132,9 +156,15 @@ nunca a alcançam.
    traços). Refinar sob eles muda a contagem de vértices ⇒ **as fixturas deixam
    de ser comparáveis**. A cura tem de nascer atrás do ARM do dyntopo (que as
    bancadas nunca ligam), e há de haver gate a afirmá-lo.
-3. ⚠️ **O `Mask` é o caso mais barato e o mais visível** — ele pode ser curado
-   **antes** do estudo, porque a resposta não depende de alvo nenhum: um gesto
-   que não escreve posição não tem porque mudar a topologia.
+3. ✅ **O `Mask` era o caso mais barato e o mais visível, e está CURADO**
+   (14/09) — a resposta não dependia de alvo nenhum: um gesto que não escreve
+   posição não tem porque mudar a topologia. ⚠️ **A régua precisou das duas
+   metades:** sem o controlo positivo (um `Draw` no mesmo arranjo, que tem de
+   refinar) um `assert_eq!` de contagem ficaria verde sobre um dyntopo **inerte**
+   — o detalhe grosso, a esfera já fina, o raio errado. *Uma régua que não vê o
+   fenómeno acontecer não prova que ele não aconteceu.* E há uma segunda
+   asserção a impedir a cura barata: **a máscara continua a mascarar** (*curar um
+   defeito desligando o verbo é a forma mais barata de o esconder*).
 
 ---
 

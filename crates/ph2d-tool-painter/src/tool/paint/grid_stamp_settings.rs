@@ -134,14 +134,34 @@ impl PainterTool {
     /// vez e entregar o mesmo spec aos dois é o que impede a tinta de encostar num lado e sobrar do
     /// outro; [`ph2d_painter_brush::BrushSpec::as_grid_stamp`] é idempotente, então aplicá-la de novo
     /// no carimbo não é uma segunda resposta.
+    ///
+    /// ⭐⭐⭐ **E a DEFORMAÇÃO DO CANVAS entra aqui, pela MESMA razão** (report do dono com foto,
+    /// 2026-09-14: *«o pincel é redondo mas pinta como se os polígonos não estivessem
+    /// deformados»*). Sobre uma arte presa a um esqueleto e dobrada, um disco de textura chega ao
+    /// ecrã como uma lasca; o que tem de ser pintado é a elipse que a deformação endireita, e ela
+    /// são três números que o motor já consome — raio, achatamento e ângulo
+    /// ([`ph2d_painter_brush::canvas_warp::warped_dab`]).
+    ///
+    /// ⚠️ **Os DOIS leitores desta porta continuam a concordar**, que é a razão de ela existir: o
+    /// motor emite cada dab com este raio e o carimbo estica a silhueta com este achatamento.
+    /// ⛔ **Sem deformação a conta é o NO-OP ao bit** — toda pincelada deste app é a de sempre.
     #[must_use]
     pub(crate) fn stroke_spec(&self) -> ph2d_painter_brush::BrushSpec {
         let brush = self.paint.brush;
-        if brush.stroke_method == ph2d_painter_brush::StrokeMethod::GridStamp {
+        let mut brush = if brush.stroke_method == ph2d_painter_brush::StrokeMethod::GridStamp {
             brush.as_grid_stamp(self.shape_silhouette_active())
         } else {
             brush
-        }
+        };
+        let w = ph2d_painter_brush::canvas_warp::warped_dab(
+            self.paint.canvas_warp,
+            brush.dab_flatten,
+            brush.dab_angle_deg,
+        );
+        brush.radius_px *= w.radius_scale;
+        brush.dab_flatten = w.flatten;
+        brush.dab_angle_deg = w.angle_deg;
+        brush
     }
 
     /// A silhueta de **Shape** está de fato ativa (kind escolhido *e*, para `Image`, pixels
@@ -452,6 +472,56 @@ mod tests {
             "o meio do curso TEM de ser o neutro"
         );
         assert!((t.paint.brush.grid_fit_scale() - 1.0).abs() < 1e-6);
+    }
+
+    /// ⭐⭐⭐ **O `stroke_spec` paga a DEFORMAÇÃO DO CANVAS** — report do dono com foto (2026-09-14):
+    /// *«o pincel é redondo mas pinta como se os polígonos não estivessem deformados»*. Com a arte
+    /// comprimida a metade em `x`, o dab tem de nascer **duas vezes mais largo** naquele eixo para
+    /// chegar redondo ao ecrã.
+    ///
+    /// ⛔ **O CONTROLO é a identidade, e ele é a metade que protege TODO o app:** sem deformação o
+    /// spec sai **ao bit** o do artista — senão toda pincelada deste editor mudava de tinta.
+    ///
+    /// **Mutação que tem de sangrar:** o `stroke_spec` devolver o `brush` sem compor a `warp`.
+    #[test]
+    fn the_stroke_spec_pays_for_the_canvas_deformation() {
+        let mut t = PainterTool::default();
+        t.set_brush_size_px(10.0);
+        let autorado = t.stroke_spec();
+        // ⛔ O CONTROLO: identidade ⇒ nada se move.
+        t.set_canvas_warp([[1.0, 0.0], [0.0, 1.0]]);
+        assert_eq!(
+            (
+                t.stroke_spec().radius_px,
+                t.stroke_spec().dab_flatten,
+                t.stroke_spec().dab_angle_deg
+            ),
+            (
+                autorado.radius_px,
+                autorado.dab_flatten,
+                autorado.dab_angle_deg
+            ),
+            "sem deformacao o spec do traco e' o do artista, AO BIT"
+        );
+        // A arte comprimida a metade em `x`.
+        t.set_canvas_warp([[0.5, 0.0], [0.0, 1.0]]);
+        let dobrado = t.stroke_spec();
+        assert!(
+            (dobrado.radius_px - autorado.radius_px * 2.0).abs() < 1e-3,
+            "o eixo comprimido pede o DOBRO do raio: {} contra {}",
+            dobrado.radius_px,
+            autorado.radius_px
+        );
+        assert!(
+            (dobrado.dab_flatten - 0.5).abs() < 1e-3,
+            "…e o eixo livre mede metade do maior: {}",
+            dobrado.dab_flatten
+        );
+        assert!(
+            dobrado.dab_angle_deg == 0 || dobrado.dab_angle_deg == 180,
+            "…com o eixo maior em x: {}",
+            dobrado.dab_angle_deg
+        );
     }
 
     /// **O `stroke_spec` resolve o frame da célula, e SÓ para o Grid Stamp.**

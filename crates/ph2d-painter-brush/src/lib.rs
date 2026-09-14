@@ -30,6 +30,7 @@ pub mod ablate; // measurement-only ablation switch for the height texel loop (n
 pub mod blend;
 pub mod blur;
 pub mod blur_grain;
+pub mod canvas_warp;
 pub mod clone;
 pub mod clone_grain;
 pub mod curve_fit;

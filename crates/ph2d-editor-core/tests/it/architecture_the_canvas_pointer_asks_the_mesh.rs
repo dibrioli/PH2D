@@ -45,9 +45,19 @@ fn the_canvas_pointer_asks_the_mesh_before_the_quad_affine() {
         f.display()
     );
     assert!(
-        src.contains("ph2d_render::MeshUv::Use(mu, mv) => (mu, mv)"),
+        src.contains("ph2d_render::MeshUv::Use { u: mu, v: mv, .. } => (mu, mv)"),
         "{} chama a porta e DEITA FORA a resposta dela: a UV da malha tem de ser a que segue para o \
          pincel, senão o gate acima fica verde sobre o defeito inteiro.",
+        f.display()
+    );
+    // ⭐ **E a FORMA também** — a posição certa com o dab redondo na TEXTURA sai uma lasca no ecrã
+    // onde a arte comprime (report do dono com foto, 2026-09-14).
+    assert!(
+        // ⚠️ **`match malha`, e não `set_canvas_warp(`**: pela mesma mutação sobrevivente de cima —
+        // *citar a porta não é consultá-la*, e aqui o que se exige é que o argumento SAIA da resposta.
+        src.contains("painter.set_canvas_warp(match malha {"),
+        "{} resolve a UV pela malha e não entrega a DEFORMAÇÃO ao pincel: o dab continua redondo na \
+         textura, e no ecrã ele sai esticado pelo tanto que a arte está dobrada.",
         f.display()
     );
 }

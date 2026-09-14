@@ -350,8 +350,14 @@ impl App {
             window_size,
         );
         let img = affine.inverse() * ph2d_vector::Point::new(f64::from(px), f64::from(py));
+        // ⭐⭐⭐ **E a FORMA do dab também é da malha** — redondo na TEXTURA sai uma lasca no ecrã
+        // onde a arte comprime. A lei vive na `ph2d_painter_brush::canvas_warp`.
+        painter.set_canvas_warp(match malha {
+            ph2d_render::MeshUv::Use { warp, .. } => warp,
+            _ => [[1.0, 0.0], [0.0, 1.0]],
+        });
         let (u, v) = match malha {
-            ph2d_render::MeshUv::Use(mu, mv) => (mu, mv), // a UV de repouso do texel que está ALI
+            ph2d_render::MeshUv::Use { u: mu, v: mv, .. } => (mu, mv), // a UV de repouso ALI
             _ => (
                 (img.x / f64::from(iw)) as f32,
                 (img.y / f64::from(ih)) as f32,

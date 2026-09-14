@@ -41,6 +41,7 @@ As cinco waves:
 | **W8** | **os dois relatos do smoke da W7**: o onion passa a falar o relógio do CLIP (só aparecia a silhueta do futuro), e a MÃO que pousa um osso passa a existir para o quadro (com a timeline aberta o osso não se transformava e o AutoKey não cunhava nada) |
 | **W9** | **o gémeo do Flip da W6, fechado SEM report**: a condição da caixa de objecto passa a ser *«nenhuma ferramenta AUTORA no canvas»*, e o terceiro `if` por família morre |
 | **W10** | **o pincel segue a arte DOBRADA**: a porta de canvas (`ph2d_render::mesh_uv`) e o Painter a consultá-la — as duas portas que sabiam da malha não tinham chamador de produto |
+| **W11** | **o pincel PAGA a deformação**: o dab nasce como a elipse que a malha endireita, e sai redondo no ECRÃ |
 
 ---
 
@@ -63,6 +64,9 @@ As cinco waves:
 | `ph2d-skeleton-live` (W7) | `skin_of_in`/`skin_of_with`, `deform_field_with`, `posed_sprite_mesh`, `bone_index` público, `skinned_images_of_skeleton` | sim (a pele viva é a mesma) |
 | `ph2d-render` `sprite_collect.rs` + `renderer_draw.rs` (W7) | o `extra` do passe é uma `LiftedInstances` (leva malhas), e não uma fatia crua | **muda a assinatura** de `render_with_extra`/`render_with_streams` |
 | `ph2d-skeleton-demo/src/lib.rs` (W7) | `seed_arm_swing` — a acção do braço, no clip ABERTO | sim |
+| `ph2d-render/src/sprite_mesh.rs` (W11) | `warp_under`: a deformação local do triângulo, adimensional | sim |
+| `ph2d-painter-brush/src/canvas_warp.rs` (W11, NOVO) | `warped_dab`: `W⁻¹ · E` nos três números do motor (raio · achatamento · ângulo), sem transcendentais | sim (identidade ⇒ no-op ao bit) |
+| `ph2d-tool-painter` (W11) | `PainterTool::set_canvas_warp` + a composição no `stroke_spec` (a porta do *Grid Stamp*) | **muda comportamento** só com deformação |
 | `ph2d-render/src/picking.rs` (W10) | `MeshUv` + `mesh_uv`: a porta de canvas de três estados, sobre o `uv_query` que já existia | sim |
 | `shells/desktop/src/input_dispatch/painter_canvas_input.rs` (W10) | o `deliver_canvas_pointer` consulta a porta antes do afim do quad | **muda comportamento** de uma sprite com malha (é a cura); `Quad` deixa o resto byte-idêntico |
 | `shells/desktop/src/render_loop/snapshots.rs` (W9) | o `flip_gizmo_on` SAI de `publish`/`publish_gizmo` (o 3.º `if` por família morre) | **muda a assinatura** (shell-interna) |
@@ -186,6 +190,15 @@ exige janela e GPU). **Quatro mutações, quatro RED** — ⚠️ **uma SOBREVIV
 `let malha = MeshUv::Quad;` ao lado de um `let _ = mesh_uv(..)` deixava o arch-gate verde sobre o
 defeito inteiro. *Citar uma porta não é consultá-la* ⇒ ele exige a **ligação**, não a menção.
 
+**W11** (3 crates + o fio): o no-op ao bit (com controlo) · o eixo comprimido a pedir o dobro do
+raio · **a elipse pintada a voltar REDONDA ao ecrã** (a régua é o produto) · o triângulo colapsado
+recusado · a deformação adimensional (controlo: o `posed_arm` só translada) · o `stroke_spec` a
+pagá-la (controlo: a identidade) · e o fio. **Cinco mutações, cinco RED** — ⚠️ **uma sobreviveu**,
+pela segunda vez no dia, porque o arch-gate exigia a MENÇÃO da porta e não a LIGAÇÃO à resposta.
+⛔⛔ **E um gate apanhou uma promessa minha a ser falsa:** sem o atalho da identidade a decomposição
+devolvia `1,0000006` e `0,39999998` em repouso — *«byte a byte» não é uma promessa que uma raiz
+quadrada cumpra: é um `if`*.
+
 ---
 
 ## §6 — Coisas que uma leitura rápida do diff entende ao contrário
@@ -228,6 +241,12 @@ defeito inteiro. *Citar uma porta não é consultá-la* ⇒ ele exige a **ligaç
 12. **O `ghost_instance` passou a ler a pose de MUNDO, e isso fechou uma nota antiga de graça:** o
    ADR-0142 dizia *«rigs parenteados são wave futura»* porque ele lia o `pose_at` LOCAL. Para uma
    raiz as duas respostas são as mesmas — os nove gates do onion passam sem uma linha mudada.
+21. **A W11 não muda o pincel de ninguém:** com a arte em repouso (ou sem malha) a `canvas_warp`
+   devolve o spec do artista **ao bit**, por um `if` explícito — e é isso que mantém os goldens e a
+   paridade do Painter de pé.
+22. **O `dab_flatten`/`dab_angle_deg` do PAINEL não se mexem:** o `stroke_spec` devolve uma CÓPIA
+   (é o que o *Grid Stamp* já fazia), logo o artista continua a ver os números dele.
+
 19. **A W10 não «arranjou a UV fora da malha»** (que é o que a fila dizia): ela pôs o Painter a
    falar com a porta que sabe da malha. O defeito era em **TODA** a arte dobrada, não só fora dela —
    o Painter nunca chamou nenhuma das duas portas de UV, ele tem afim próprio.
@@ -309,6 +328,7 @@ defeito inteiro. *Citar uma porta não é consultá-la* ⇒ ele exige a **ligaç
 |---|---|
 | ✅ **Os fantasmas do onion desenhavam o quad de repouso** | **FECHADO pela W7** (a pose de mundo em `t`, a pele resolvida nele, a malha por fantasma) e **alcançável desde a W8** (o relógio do clip). ⚠️ A redacção fica aqui por contraste: ela dizia *«eles desenham o quad de repouso»* e a medição mostrou que **não havia fantasma nenhum** |
 | ✅ **A UV do pintor** | **FECHADO pela W10**, e o item estava mal endereçado: o Painter não chamava nenhuma das duas portas de UV — ele tem afim próprio, do quad de repouso, logo o erro era em TODA a arte dobrada |
+| ⏳ **A deformação do pincel é a do PEN-DOWN** | o `stroke_spec` é capturado ao abrir o traço (a mesma fotografia que o pincel de tecido tira dos obstáculos): um traço LONGO que atravesse compressões diferentes usa a do princípio. Para seguir por dab, a deformação tem de viajar no `StrokePoint`, como a pressão — medido e não feito |
 | ⏳ **O CHROME do Painter fica no repouso** | a curva, a linha, o gizmo de deformação, os gizmos de selecção, os crachás e a humidade desenham-se em posições de IMAGEM pelo mesmo afim; numa arte dobrada ficam no sítio de repouso. ⚠️ **Não piorou com a W10** (antes a tinta estava errada com eles), e o anel do pincel segue o ponteiro — só o TAMANHO dele sai do afim |
 | ⏳ **O conta-gotas do BgRemoval** | usa uma caixa alinhada aos eixos que ignora rotação **e** malha — mais antigo e mais cru que tudo isto |
 | ⚠️ **9-slice e folha desdobrada** | a malha só conhece o quad da sprite; essas desenham-se SEM deformar, com aviso único no stderr |
@@ -348,16 +368,16 @@ Régua = merge-base `1d43da737`.
 
 | passo | resultado |
 |---|---|
-| `BASE=1d43da737 bash scripts/nextest-impacted.sh` | ✅ **13 704 passaram, 0 falharam** (11 357 saltados), `102,4 s` — nenhum membro da família de flakes de carga reprovou |
+| `BASE=1d43da737 bash scripts/nextest-impacted.sh` | ✅ **14 639 passaram, 0 falharam** (10 428 saltados), `37,9 s` — a W11 traz as duas maiores crates do repo para a varredura, e nenhum membro da família de flakes de carga reprovou |
 | `cargo fmt --all --check` | ✅ |
 | `cargo clippy --workspace --all-targets` | ⚠️ **correu em CACHE e não repete avisos** (a saída inteira é uma linha, `Finished`). Forçado o replay da única crate com aviso: `ph2d-preview-drive`, **pré-existente** e intocada por esta linha (§8). As crates desta linha foram corridas com replay: zero |
 | `cargo machete` | ✅ nenhuma dependência por usar — a `ph2d-vector` e a `ph2d-asset` SAÍRAM da `ph2d-skeleton-live` |
 | `bash scripts/doc-index.sh --check` | ✅ 19 índices em dia |
-| provas de mutação | ✅ **21 RED** na asserção certa (8 na W2, 8 na W3, **5 na W8**), cada uma com o controlo `1 failed` — um filtro que casasse zero leria `0 passed; 0 failed`. ⚠️ A 1.ª redacção da 5.ª (o onion a aceitar um instante ausente) **não compilava**, e um erro de compilação não é um gate vermelho: foi reescrita numa forma que compila. **W9: mais 3** (a cláusula do Flip · o quarto ramo no canvas · o termo da preview). **W10: mais 4**, e ⚠️ **uma sobreviveu à primeira** (citar a porta em vez de a ligar) |
+| provas de mutação | ✅ **21 RED** na asserção certa (8 na W2, 8 na W3, **5 na W8**), cada uma com o controlo `1 failed` — um filtro que casasse zero leria `0 passed; 0 failed`. ⚠️ A 1.ª redacção da 5.ª (o onion a aceitar um instante ausente) **não compilava**, e um erro de compilação não é um gate vermelho: foi reescrita numa forma que compila. **W9: mais 3** (a cláusula do Flip · o quarto ramo no canvas · o termo da preview). **W10: mais 4** e **W11: mais 5**, e ⚠️ **uma sobreviveu à primeira em cada uma** — as duas pelo mesmo motivo: citar a porta em vez de a ligar |
 | tectos de LOC | ✅ ⚠️ **A W8 reprovou DOIS ficheiros de teste da shell** (`autokey_pass_tests` `612` · `timeline_onion_tests` `613`, tecto `600`): curados por **corte por responsabilidade** — o gate do osso saiu para o `autokey_bone_tests.rs` e o do relógio para um **sub-módulo** que herda as fixturas (`timeline_onion_clock_tests.rs`, o molde do `skin_at_time_tests` da W7). ⛔ Nunca subir o número. E o resto: ⚠️ **O `app_state.rs` bateu no tecto** (`1 023 / 1 019`) e a cura foi CORTE da prosa que eu tinha acrescentado — nunca subir o número |
 
-⛔⛔ **O NÚMERO QUE O INTEGRADOR TEM DE VER:** a shell fecha esta linha em **`196 974`** linhas
-contra o tecto de `196 990` do `the_shell_only_shrinks` — **`16` de folga**. Ele é um tecto que SOMA
+⛔⛔ **O NÚMERO QUE O INTEGRADOR TEM DE VER:** a shell fecha esta linha em **`196 980`** linhas
+contra o tecto de `196 990` do `the_shell_only_shrinks` — **`10` de folga**. Ele é um tecto que SOMA
 entre linhas sem ninguém a contar (`CLAUDE.md` §5.0), e esta linha gastou-o quase todo em GATES.
 ⭐ **A cura MEDIDA está identificada e não foi feita, de propósito:** o `timeline_onion.rs` e os dois
 ficheiros de teste dele são **~800 linhas que não são composição** — o motor do onion depende só de
@@ -391,6 +411,9 @@ cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-Vector && env PH2D_VEC_BON
 pintado (a imagem presa está na ORDEM do quadro), e o **olho** da linha *«Painted arm»* na Hierarquia
 esconde-a. Com a camada do Vello, a imagem ficava à frente da barra e continuava desenhada com o olho
 fechado.
+
+⚠️ **E o que a W11 acrescenta:** com o braço bem DOBRADO, o risco pintado tem de sair com a
+**espessura do anel do cursor** — e não uma lasca fina onde o leque comprime a arte.
 
 ⚠️ **E o que a W10 acrescenta:** na MESMA cena, dobre o braço pintado (arraste o corpo de um osso),
 escolha a linha *«Painted arm»*, pegue no **Painter** e pinte sobre a arte **dobrada**. A tinta tem de

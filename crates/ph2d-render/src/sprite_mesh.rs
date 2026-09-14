@@ -152,6 +152,64 @@ pub(crate) fn covers(mesh: &SpriteMesh, p: [f32; 2]) -> bool {
         .any(|t| barycentric(p, corners(mesh, t)).is_some())
 }
 
+/// ⭐⭐⭐ **A DEFORMAÇÃO LOCAL debaixo do ponto LOCAL `p`** — a `2×2` adimensional que leva um
+/// deslocamento na textura ao deslocamento que ele ocupa no ECRÃ, e **a identidade em repouso**.
+///
+/// ⛔⛔ É o que faltava ao pincel (report do dono, 2026-09-14, com foto): a posição já era a certa e
+/// a FORMA não — onde o leque comprime a arte, um disco de textura chega ao ecrã como uma lasca.
+/// Quem consome isto é a [`ph2d_painter_brush::canvas_warp`], que a inverte para saber que elipse
+/// pintar.
+///
+/// A conta é o triângulo: com `A = [P₁−P₀, P₂−P₀]` (local) e `B = [U₁−U₀, U₂−U₀]` (uv), o jacobiano
+/// `d(local)/d(uv)` é `A·B⁻¹`; dividido pelo do QUAD de repouso (`diag(sw, −sh)`, que é o que a lei
+/// do quad usa) sobra a deformação pura. ⚠️ **A divisão pelo quad é o que a torna adimensional** —
+/// sem ela o número carregaria o tamanho da sprite e o pincel mudaria de forma ao redimensioná-la.
+///
+/// `None` fora da malha ou num triângulo degenerado (`det(B) ≈ 0`).
+#[must_use]
+pub(crate) fn warp_under(mesh: &SpriteMesh, p: [f32; 2], size: [f32; 2]) -> Option<[[f32; 2]; 2]> {
+    if size[0] <= 0.0 || size[1] <= 0.0 {
+        return None;
+    }
+    mesh.triangles().rev().find_map(|t| {
+        let c = corners(mesh, t);
+        barycentric(p, c)?;
+        let uv = [mesh.uv[t[0]], mesh.uv[t[1]], mesh.uv[t[2]]];
+        let b = [
+            [uv[1][0] - uv[0][0], uv[2][0] - uv[0][0]],
+            [uv[1][1] - uv[0][1], uv[2][1] - uv[0][1]],
+        ];
+        let det = b[0][0] * b[1][1] - b[0][1] * b[1][0];
+        if !det.is_finite() || det.abs() < 1e-12 {
+            return None;
+        }
+        let a = [
+            [c[1][0] - c[0][0], c[2][0] - c[0][0]],
+            [c[1][1] - c[0][1], c[2][1] - c[0][1]],
+        ];
+        // `A · B⁻¹`
+        let inv = [
+            [b[1][1] / det, -b[0][1] / det],
+            [-b[1][0] / det, b[0][0] / det],
+        ];
+        let j = [
+            [
+                a[0][0] * inv[0][0] + a[0][1] * inv[1][0],
+                a[0][0] * inv[0][1] + a[0][1] * inv[1][1],
+            ],
+            [
+                a[1][0] * inv[0][0] + a[1][1] * inv[1][0],
+                a[1][0] * inv[0][1] + a[1][1] * inv[1][1],
+            ],
+        ];
+        // ÷ o jacobiano do quad de repouso, `diag(sw, −sh)`.
+        Some([
+            [j[0][0] / size[0], -j[0][1] / size[1]],
+            [j[1][0] / size[0], -j[1][1] / size[1]],
+        ])
+    })
+}
+
 /// ⭐⭐ **A UV DE REPOUSO debaixo do ponto LOCAL `p`** — interpolada no triângulo posado que o
 /// contém; `None` fora da malha.
 ///

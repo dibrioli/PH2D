@@ -2252,6 +2252,48 @@ dois ficheiros de teste dele são **~800 linhas** que não são composição —
 de crates (`ph2d-ecs`, `-render`, `-timeline`, `-skeleton-live`, `-poly2d`, `-vec-entities`) e só a
 CHAMADA é da shell. Tirá-lo daria ao integrador ~800 linhas de folga e é o molde do HOWTO.
 
+**W11 — O PINCEL PAGA A DEFORMAÇÃO** (report do dono com foto, 2026-09-14: *«o local é correto mas o
+pincel não considera o resultante das deformações do mesh … o pincel é redondo mas pinta como se os
+polígonos não estivessem deformados»*). A W10 pôs a tinta no **texel certo**; a **forma** continuava
+a ser a da textura. Onde o leque comprime a arte, um disco de textura chega ao ecrã como uma
+**lasca** — é o que a foto mostra dentro do anel redondo do cursor.
+
+**A lei:** o artista pede um disco de raio `R` **no ecrã**. Com `W` a deformação local (ecrã por
+textura, adimensional, **identidade em repouso**), o que tem de ser pintado na textura é `W⁻¹`
+aplicado a esse disco — uma **elipse**. ⭐⭐ E uma elipse é exactamente o que o dab já sabe ser: o par
+*Flatten + Angle* do gizmo de Shape mais o raio. ⇒ **nenhum tipo novo chega ao kernel**.
+
+As três peças:
+
+1. **A deformação sai do TRIÂNGULO** (`ph2d_render::sprite_mesh::warp_under`): `d(local)/d(uv)` do
+   triângulo, **dividido pelo do quad de repouso** — é a divisão que a torna adimensional, e sem ela
+   o pincel mudaria de forma ao redimensionar a sprite. Ela viaja no `MeshUv::Use`.
+2. **A decomposição** (`ph2d_painter_brush::canvas_warp::warped_dab`): `W⁻¹ · E` (com `E` = a elipse
+   que o artista autorou) nos três números que o motor consome. ⚠️ **Sem transcendentais (HR-5):** os
+   semi-eixos saem dos autovalores de `A·Aᵀ` (só `sqrt`) e o ângulo por **procura na tabela cozida**
+   de graus — um `atan2` podia arredondar para graus diferentes noutra plataforma, e o
+   `dab_angle_deg` é um **inteiro** que escolhe tinta.
+3. **A composição entra no `stroke_spec`**, que é a porta que o *Grid Stamp* já usava pela mesma
+   razão — *os DOIS leitores têm de concordar*: o motor emite cada dab com aquele raio e o carimbo
+   estica a silhueta com aquele achatamento.
+
+⛔⛔ **E o gate apanhou a minha promessa a ser falsa:** sem um atalho explícito para a identidade, a
+decomposição devolvia `radius_scale = 1,0000006` e `flatten = 0,39999998` sobre uma arte em
+**repouso** — números plausíveis e **outra tinta**, em toda pincelada do app. *«Byte a byte» não é
+uma promessa que uma raiz quadrada cumpra: é um `if`.*
+
+**Gates:** o no-op ao bit (com o controlo de uma deformação real) · o eixo comprimido a pedir o dobro
+do raio · **a elipse pintada a voltar REDONDA ao ecrã** (a régua é o produto, não os três números) ·
+o triângulo colapsado recusado · a deformação adimensional (com o controlo do `posed_arm`, que só
+translada) · o `stroke_spec` a pagá-la (com o controlo da identidade) · e o fio.
+**Cinco mutações, cinco RED** — ⚠️ **uma sobreviveu à primeira, pela segunda vez no mesmo dia:** o
+arch-gate exigia a MENÇÃO da porta e não a LIGAÇÃO à resposta dela.
+
+⏳ **ABERTO e NOMEADO:** a deformação é a do **pen-down**, para o traço inteiro (é o `stroke_spec`
+que o motor captura ao abrir, e é a mesma fotografia que o pincel de tecido tira da lista de
+obstáculos). Um traço LONGO que atravesse regiões de compressão diferentes usa a do princípio. Para
+seguir por dab, o caminho está medido: a deformação tem de viajar no `StrokePoint`, como a pressão.
+
 ## ⛔ Recusas MEDIDAS deste módulo — não as reconstrua
 
 > ⚠️ **As seis de 2026-09-07/08 entraram aqui na auditoria de 08/09** — elas viviam só em prosa e em

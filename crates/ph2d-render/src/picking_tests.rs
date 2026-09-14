@@ -468,7 +468,7 @@ fn the_canvas_port_answers_the_art_the_quad_and_the_refusal() {
         assert!(
             matches!(
                 crate::mesh_uv(present.world_mut(), bits, [3.5, 0.5], starting),
-                crate::MeshUv::Use(u, v) if (u - 0.25).abs() < 1e-5 && (v - 0.75).abs() < 1e-5
+                crate::MeshUv::Use { u, v, .. } if (u - 0.25).abs() < 1e-5 && (v - 0.75).abs() < 1e-5
             ),
             "sobre a arte a porta devolve a UV de repouso (starting = {starting})"
         );
@@ -481,7 +481,8 @@ fn the_canvas_port_answers_the_art_the_quad_and_the_refusal() {
     );
     assert!(matches!(
         crate::mesh_uv(present.world_mut(), bits, [0.0, 0.0], false),
-        crate::MeshUv::Use(u, v) if (u - 0.5).abs() < 1e-5 && (v - 0.5).abs() < 1e-5
+        crate::MeshUv::Use { u, v, warp } if (u - 0.5).abs() < 1e-5 && (v - 0.5).abs() < 1e-5
+            && warp == [[1.0, 0.0], [0.0, 1.0]]
     ));
 
     // ⛔ O CONTROLO: uma sprite SEM malha devolve `Quad` nos dois casos — a lei do chamador fica
@@ -496,4 +497,53 @@ fn the_canvas_port_answers_the_art_the_quad_and_the_refusal() {
             "uma sprite sem malha nao passa por esta porta"
         );
     }
+}
+
+/// ⭐⭐⭐ **A porta de canvas devolve a DEFORMAÇÃO LOCAL, e ela é adimensional** — report do dono com
+/// foto (2026-09-14): *«o pincel é redondo mas pinta como se os polígonos não estivessem
+/// deformados»*. Aqui o triângulo comprime `x` a metade ⇒ a `warp` diz `0,5` ali, e é disso que o
+/// pincel tira a elipse que sai redonda no ecrã.
+///
+/// ⛔ **O CONTROLO é o `posed_arm`**, que só TRANSLADA a arte (a mesma escala do quad): ali a
+/// deformação é a **identidade**, e uma porta que devolvesse sempre a matriz do triângulo
+/// responderia `[[2,0],[0,2]]` — o tamanho da sprite, não a deformação.
+#[test]
+fn the_canvas_port_reports_the_local_deformation_and_it_is_dimensionless() {
+    let mut sim = ph2d_ecs::SimWorld::new();
+    let mut present = PresentWorld::new();
+
+    let rigido = fresh_sim_entity(&mut sim);
+    let rb = spawn_at(&mut present, rigido, 0.0, 0.0, [2.0, 2.0]);
+    give_mesh(&mut present, rigido, posed_arm());
+    assert!(
+        matches!(
+            crate::mesh_uv(present.world_mut(), rb, [3.5, 0.5], true),
+            crate::MeshUv::Use { warp, .. } if warp == [[1.0, 0.0], [0.0, 1.0]]
+        ),
+        "uma malha que so' TRANSLADA a arte nao a deforma"
+    );
+
+    let dobrado = fresh_sim_entity(&mut sim);
+    let db = spawn_at(&mut present, dobrado, 20.0, 0.0, [2.0, 2.0]);
+    give_mesh(
+        &mut present,
+        dobrado,
+        crate::SpriteMesh {
+            local: vec![[3.0, 0.0], [4.0, 0.0], [3.0, 2.0]],
+            uv: vec![[0.0, 1.0], [1.0, 1.0], [0.0, 0.0]],
+            tris: vec![[0, 1, 2]],
+        },
+    );
+    let crate::MeshUv::Use { warp, .. } =
+        crate::mesh_uv(present.world_mut(), db, [23.2, 0.2], true)
+    else {
+        panic!("o ponto tinha de cair sobre o triangulo");
+    };
+    assert!(
+        (warp[0][0] - 0.5).abs() < 1e-5
+            && warp[0][1].abs() < 1e-5
+            && warp[1][0].abs() < 1e-5
+            && (warp[1][1] - 1.0).abs() < 1e-5,
+        "o triangulo comprime x a metade: {warp:?}"
+    );
 }

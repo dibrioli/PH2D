@@ -277,6 +277,12 @@ pub(crate) struct PaintState {
     pub(super) gizmo_mods: ph2d_editor_core::GizmoModifiers,
     /// Control-handle grab radius (image px) for the shape editors — shell forwards a footprint-scaled value.
     pub(super) shape_grab_tol_px: f32,
+    /// ⭐⭐⭐ **A DEFORMAÇÃO LOCAL do canvas sob o ponteiro** (`2×2` adimensional, identidade sobre uma
+    /// imagem que não está deformada) — a shell reenvia-a a cada evento, como o `shape_grab_tol_px`.
+    /// O [`super::PainterTool::stroke_spec`] compõe-na no raio e na elipse do dab para o traço sair
+    /// redondo **no ecrã** sobre uma arte presa a um esqueleto e dobrada
+    /// ([`ph2d_painter_brush::canvas_warp`]; report do dono com foto, 2026-09-14).
+    pub(super) canvas_warp: [[f32; 2]; 2],
     /// **Offset** slider track (`0..1`, `0.5` = none) — perpendicular path offset for the shape editors.
     pub(super) shape_offset_norm: f32,
     /// **Accumulated** offset (px) from prior Apply & Keep; EFFECTIVE = base + slider (a single offset of the pristine base).

@@ -162,6 +162,8 @@ impl Default for PaintState {
             selection_op_tap: None,
             gizmo_mods: ph2d_editor_core::GizmoModifiers::default(),
             shape_grab_tol_px: DEFAULT_SHAPE_GRAB_TOL_PX,
+            // Identidade: sem deformação o `stroke_spec` devolve o spec do artista AO BIT.
+            canvas_warp: [[1.0, 0.0], [0.0, 1.0]],
             shape_offset_norm: 0.5, // centred → 0px offset (default byte-identical)
             shape_offset_base_px: 0.0,
             offset_trim: false, // self-intersection trimming off by default

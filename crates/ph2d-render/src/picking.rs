@@ -278,7 +278,11 @@ pub fn sprite_world_to_uv(
     sim_entity_bits: u64,
     world_pos: [f32; 2],
 ) -> Option<(f32, f32)> {
-    let ((u, v), on_mesh) = uv_query(present, sim_entity_bits, world_pos)?;
+    let UvHit {
+        uv: (u, v),
+        on_mesh,
+        ..
+    } = uv_query(present, sim_entity_bits, world_pos)?;
     let drawn_here = on_mesh.unwrap_or(true);
     // matched the entity, but the cursor is off what it draws
     (drawn_here && (0.0..1.0).contains(&u) && (0.0..1.0).contains(&v)).then_some((u, v))
@@ -305,7 +309,7 @@ pub fn sprite_world_to_uv_unclamped(
     sim_entity_bits: u64,
     world_pos: [f32; 2],
 ) -> Option<(f32, f32)> {
-    uv_query(present, sim_entity_bits, world_pos).map(|(uv, _)| uv)
+    uv_query(present, sim_entity_bits, world_pos).map(|h| h.uv)
 }
 
 /// ⭐⭐⭐ **O que uma PORTA DE CANVAS deve fazer sobre uma sprite desenhada como MALHA.**
@@ -333,8 +337,9 @@ pub fn sprite_world_to_uv_unclamped(
 pub enum MeshUv {
     /// A sprite não é desenhada como malha — o chamador fica com a lei dele.
     Quad,
-    /// A UV de repouso a usar.
-    Use(f32, f32),
+    /// A UV de repouso a usar, com a **deformação local** ali (`2×2` adimensional, identidade em
+    /// repouso) — o que o pincel precisa para sair redondo no ECRÃ e não na textura.
+    Use { u: f32, v: f32, warp: [[f32; 2]; 2] },
     /// Fora da arte desenhada, num gesto que COMEÇA.
     Refuse,
 }
@@ -346,25 +351,41 @@ pub fn mesh_uv(
     world_pos: [f32; 2],
     starting: bool,
 ) -> MeshUv {
-    let Some(((u, v), on_mesh)) = uv_query(present, sim_entity_bits, world_pos) else {
+    let Some(UvHit {
+        uv: (u, v),
+        on_mesh,
+        warp,
+    }) = uv_query(present, sim_entity_bits, world_pos)
+    else {
         return MeshUv::Quad;
     };
     match on_mesh {
         None => MeshUv::Quad,
-        Some(true) => MeshUv::Use(u, v),
+        Some(true) => MeshUv::Use { u, v, warp },
         Some(false) if starting => MeshUv::Refuse,
-        Some(false) => MeshUv::Use(u, v),
+        // ⚠️ Fora da malha a deformação é a do QUAD (identidade): o traço já aberto continua com a
+        // forma que o artista pediu, que é o que o deixa sair da silhueta sem se partir.
+        Some(false) => MeshUv::Use {
+            u,
+            v,
+            warp: [[1.0, 0.0], [0.0, 1.0]],
+        },
     }
+}
+
+/// A resposta de [`uv_query`] — nomeada porque são TRÊS coisas e um tuplo delas lê-se por posição.
+struct UvHit {
+    uv: (f32, f32),
+    /// `Some(false)` = fora da malha desenhada (respondido pela lei do quad); `None` num quad simples.
+    on_mesh: Option<bool>,
+    /// A deformação local ali (identidade fora de uma malha ou em repouso).
+    warp: [[f32; 2]; 2],
 }
 
 /// The UV under `world_pos` on sprite `sim_entity_bits`, and — for a skinned sprite — whether the
 /// point is ON its drawn mesh (`Some(false)` = off it, answered by the rest quad law). `None` in
 /// the second slot for a plain quad.
-fn uv_query(
-    present: &mut World,
-    sim_entity_bits: u64,
-    world_pos: [f32; 2],
-) -> Option<((f32, f32), Option<bool>)> {
+fn uv_query(present: &mut World, sim_entity_bits: u64, world_pos: [f32; 2]) -> Option<UvHit> {
     let mut q = present.query::<(
         &SimRef,
         &GlobalTransform,
@@ -389,14 +410,24 @@ fn uv_query(
         if let Some(m) = malha
             && let Some(uv) = crate::sprite_mesh::uv_under(m, [local_dx, local_dy])
         {
-            return Some(((uv[0], uv[1]), Some(true)));
+            let warp = crate::sprite_mesh::warp_under(m, [local_dx, local_dy], ri.size)
+                .unwrap_or([[1.0, 0.0], [0.0, 1.0]]);
+            return Some(UvHit {
+                uv: (uv[0], uv[1]),
+                on_mesh: Some(true),
+                warp,
+            });
         }
         // The quad center sits at `anchor` in the local frame. `u` grows with local +X
         // (right edge), `v` with local −Y (so the top edge = `v=0`, matching the texture +
         // the old axis-aligned mapping for an un-rotated sprite).
         let u = (local_dx - ri.anchor[0]) / sw + 0.5;
         let v = 0.5 - (local_dy - ri.anchor[1]) / sh;
-        return Some(((u, v), malha.map(|_| false)));
+        return Some(UvHit {
+            uv: (u, v),
+            on_mesh: malha.map(|_| false),
+            warp: [[1.0, 0.0], [0.0, 1.0]],
+        });
     }
     None
 }

@@ -127,4 +127,12 @@ impl PainterTool {
     pub fn set_shape_grab_tol_px(&mut self, px: f32) {
         self.paint.shape_grab_tol_px = px.max(1.0);
     }
+
+    /// ⭐⭐⭐ **A deformação local do canvas sob o ponteiro** — a shell resolve-a da malha que a sprite
+    /// desenha (`ph2d_render::mesh_uv`) e reenvia-a a cada evento, fora de banda como o
+    /// [`Self::set_shape_grab_tol_px`]. Identidade = arte sem deformação, e aí tudo o que este
+    /// módulo faz é byte a byte o que era.
+    pub fn set_canvas_warp(&mut self, warp: [[f32; 2]; 2]) {
+        self.paint.canvas_warp = warp;
+    }
 }

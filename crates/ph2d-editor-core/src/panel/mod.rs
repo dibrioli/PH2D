@@ -39,5 +39,5 @@ pub use registry::{
     PANEL_REGISTRY, PanelRegistry, install_panel_registry, with_registry, with_registry_opt,
     with_registry_ref,
 };
-pub use rows::{LABEL_COL_W, RowCtx};
+pub use rows::{RowCtx, label_col_w};
 pub use seam_macro::seam_reset_button;

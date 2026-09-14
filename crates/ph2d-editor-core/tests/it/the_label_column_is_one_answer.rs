@@ -46,7 +46,7 @@ const AINDA_A_MAO: &[&str] = &[
     // eu tinha aberto; esta régua varre as fontes de UI todas e devolve `64` (×4) · `72` · `78`
     // (×2) · `84` · `176` **além** dos seis que a foto do dono me pôs à frente. *Um censo escrito à
     // mão mede os sítios de que já se suspeita.*
-    "crates/ph2d-editor-core/src/panel/rows.rs",
+    "crates/ph2d-panel-vector/src/paint_sections.rs",
     "crates/ph2d-panel-flip/src/paint_sections.rs",
     "crates/ph2d-panel-model3d/src/paint.rs",
     "crates/ph2d-panel-padding/src/paint.rs",

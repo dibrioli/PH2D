@@ -97,3 +97,32 @@ lista por a régua ser textual; quem o converter decide primeiro se a pergunta �
   ⚠️ Ela vem **depois** das portas, de propósito: um documento escrito primeiro envelhece contra o
   código, que é exactamente o que a `docs/design/` fez (ela não diz **nada** sobre a linha de
   propriedade, a coisa que o app mais repete).
+
+## 8 — ADENDO: a LINHA PARTILHADA do núcleo também pergunta a porta
+
+> *«não vejo melhorias. Mas siga com as melhorias»* — o dono, depois do commit acima.
+
+⚠️ **A primeira coisa foi verificar se eu tinha mexido no pintor errado.** Sonda sobre a pintura
+real da §14 (`MockPanelHost`, os rects que saem do `hit_index`): o campo *Float Height* cai em
+`x = 166,6` (antes começava na margem do cartão, com o rótulo numa faixa por cima) e as rows distam
+**25 px** em vez de 41. ⇒ *o pintor era o certo e a conversão está no produto*; o que ele viu foi um
+binário anterior.
+
+⛔ **Mas a leitura dele continua a valer para o APP**, e por uma razão medível: a conversão anterior
+tocou o **Inspector**, e o resto da casa passa por outra linha — o `RowCtx` de
+[`ph2d-editor-core/src/panel/rows.rs`](../../../crates/ph2d-editor-core/src/panel/rows.rs), *«uma
+lei, N hospedeiros»*, que tinha a coluna do rótulo escrita como `LABEL_COL_W = 64.0`.
+
+**Convertido:** a constante virou a função `panel::label_col_w(inner_x, inner_w, y, row_h)`, que
+delega na porta; os três sítios internos (`labeled_action_button`, `labeled_number_field`,
+`label_cell`) passam por ela, e o rótulo passou a ser **elidido**. ⭐ *É uma mudança num ficheiro que
+alinha todos os painéis que compõem por `RowCtx`* — o do esqueleto incluído, convertido no mesmo
+commit (dois sítios).
+
+⏳ **E o painel do VETOR fica NOMEADO, com o valor de ontem.** Ele re-exportava a constante do
+núcleo e tem **33 sítios** a usá-la como constante livre, muitos sem `y`/`row_h` em alcance ⇒ a
+conversão é wave própria. Ele recebe um `const LABEL_COL_W = 64.0` local, com o doc a dizer porquê,
+e entra na catraca do `the_label_column_is_one_answer` **no lugar do núcleo, que saiu**.
+*Uma dívida nomeada com o valor de ontem é honesta; um `sed` em 33 sítios é como se parte um painel.*
+
+**Portão:** `nextest-impacted` **13 882/13 882** · `clippy --workspace -D warnings` exit 0 · fmt.

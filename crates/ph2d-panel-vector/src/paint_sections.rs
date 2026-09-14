@@ -35,7 +35,17 @@ use ph2d_vector::VectorScene;
 /// ⚠️ **Re-exportado da porta** ([`ph2d_editor_core::panel::LABEL_COL_W`]) desde 2026-09-09: com o
 /// esqueleto em painel próprio são DOIS painéis a alinhar a mesma coluna, e dois números iguais
 /// escritos em sítios diferentes divergem na primeira vez que alguém mexe num deles.
-pub(crate) use ph2d_editor_core::panel::LABEL_COL_W;
+/// ⏳ **A coluna do rótulo deste painel ainda é um NÚMERO — e é a próxima a converter.**
+///
+/// ⛔ Ela era um re-export da constante do núcleo, e o núcleo passou a **perguntar a porta**
+/// (`ph2d_editor_core::panel::label_col_w`, 2026-09-14). Este painel tem **33 sítios** a usá-la
+/// como constante livre, muitos deles sem o `y`/`row_h` em alcance, logo a conversão é uma wave
+/// própria e não um `sed`.
+///
+/// ⚠️ **Fica com o valor que já tinha**, para que nada mude de aparência aqui enquanto isso não for
+/// feito — e o `the_label_column_is_one_answer` nomeia-o na catraca. *Uma dívida NOMEADA com o
+/// valor de ontem é honesta; uma conversão às cegas em 33 sítios é como se parte um painel.*
+pub(crate) const LABEL_COL_W: f32 = 64.0; // LITERAL-PX-OK: divida nomeada — ver o doc acima
 
 /// Per-frame paint context for the Vector Style panel body — the mutable render
 /// targets + the shared layout metrics. Constructed once per frame in

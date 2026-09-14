@@ -25,7 +25,7 @@ use ph2d_a11y::NodeId;
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::InteractiveState;
 use ph2d_editor_core::paint::{paint_text, resolve};
-use ph2d_editor_core::panel::{LABEL_COL_W, PaintCtx, RowCtx};
+use ph2d_editor_core::panel::{PaintCtx, RowCtx, label_col_w};
 use ph2d_editor_core::widget::{
     DROPDOWN_SCROLLBAR_ID, Dropdown, DropdownOption, paint_dropdown_chip,
     paint_dropdown_popover_scrolled, scrollbar_is_needed, scrollbar_track_rect,
@@ -301,7 +301,7 @@ fn smart_action_row(r: &mut RowCtx, sb: &SmartBoneView, y: f32) -> f32 {
         r.inner_x,
         y + (r.row_h - r.font) * 0.5,
         r.font,
-        LABEL_COL_W,
+        label_col_w(r.inner_x, r.inner_w, y, r.row_h),
         resolve(ColorToken::Text1, r.theme),
     );
     let rotulo = if sb.clip.is_empty() {
@@ -309,10 +309,11 @@ fn smart_action_row(r: &mut RowCtx, sb: &SmartBoneView, y: f32) -> f32 {
     } else {
         sb.clip.as_str()
     };
+    let lc = label_col_w(r.inner_x, r.inner_w, y, r.row_h);
     let chip = Rect::new(
-        r.inner_x + LABEL_COL_W + gap,
+        r.inner_x + lc + gap,
         y,
-        (r.inner_w - LABEL_COL_W - gap).max(1.0),
+        (r.inner_w - lc - gap).max(1.0),
         r.row_h,
     );
     let open = matches!(

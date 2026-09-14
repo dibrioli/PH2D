@@ -41,11 +41,24 @@ use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Spacing, Theme, TypeToken};
 use ph2d_vector::VectorScene;
 
-/// **A coluna de RÓTULO** de uma linha rotulada, em px.
+/// **A coluna de RÓTULO** de uma linha rotulada — ela **pergunta a porta**, e deixou de ser um
+/// número escrito aqui (2026-09-14).
 ///
-/// ⚠️ É uma métrica de grelha do painel, não um token de cor nem de vão — ela existe para que o
-/// rótulo e a caixa de dez linhas seguidas alinhem na mesma vertical.
-pub const LABEL_COL_W: f32 = 64.0; // LITERAL-PX-OK: panel grid metric (per-panel label gutter width)
+/// ⛔⛔ **Era `64.0`, e a mesma pergunta tinha ONZE respostas no app** (`96` · `78` · `64` · `84` ·
+/// `76` · `72` · `150` · `176`), cada uma um literal com dispensa. Uma largura FIXA está errada por
+/// construção: a coluna docada é arrastável (`WidgetStore::DOCK_W_MIN`..`720`), logo um número
+/// afinado à largura de omissão come o controlo numa coluna estreita e deixa-o absurdo numa larga.
+///
+/// ⭐ **É esta função que serve vários painéis de uma vez**, porque o [`RowCtx`] é a linha
+/// partilhada — converter o número aqui alinha todos os que passam por ele.
+///
+/// Ver [`crate::widget::property_row_columns`] para a derivação da fracção.
+#[must_use]
+pub fn label_col_w(inner_x: f32, inner_w: f32, y: f32, row_h: f32) -> f32 {
+    crate::widget::property_row_columns(inner_x, inner_w, y, row_h)
+        .label
+        .w
+}
 
 /// **O contexto de uma linha** — os alvos mutáveis do quadro mais as métricas partilhadas.
 ///
@@ -142,8 +155,9 @@ impl RowCtx<'_> {
     ) -> f32 {
         let gap = Spacing::Xs.px();
         self.label_cell(label, y);
-        let x = self.inner_x + LABEL_COL_W + gap;
-        let w = (self.inner_w - LABEL_COL_W - gap).max(1.0);
+        let lc = label_col_w(self.inner_x, self.inner_w, y, self.row_h);
+        let x = self.inner_x + lc + gap;
+        let w = (self.inner_w - lc - gap).max(1.0);
         let rect = Rect::new(x, y, w, self.row_h);
         let st = self.store.button_visual(id);
         let btn = Button::new(id, texto)
@@ -165,8 +179,9 @@ impl RowCtx<'_> {
     pub fn labeled_number_field(&mut self, label: &str, id: NodeId, step: f64, y: f32) -> f32 {
         let gap = Spacing::Xs.px();
         self.label_cell(label, y);
-        let x = self.inner_x + LABEL_COL_W + gap;
-        let w = (self.inner_w - LABEL_COL_W - gap).max(1.0);
+        let lc = label_col_w(self.inner_x, self.inner_w, y, self.row_h);
+        let x = self.inner_x + lc + gap;
+        let w = (self.inner_w - lc - gap).max(1.0);
         let rect = Rect::new(x, y, w, self.row_h);
         self.hit_index.register(id, rect);
         let (st, value, buffer, caret, anchor) = read_number_input(self.store, id);
@@ -216,14 +231,15 @@ impl RowCtx<'_> {
 
     /// A célula de rótulo das duas linhas rotuladas — uma porta, para as duas nunca desalinharem.
     fn label_cell(&mut self, label: &str, y: f32) {
-        paint_text(
+        // ⚠️ **ELIDIDO:** a coluna é uma fracção da linha, e a coluna docada estreita-se.
+        crate::paint::paint_text_elided(
             self.text_system,
             self.scene,
             label,
             self.inner_x,
             y + (self.row_h - TypeToken::Sm.px()) * 0.5,
             TypeToken::Sm.px(),
-            LABEL_COL_W,
+            label_col_w(self.inner_x, self.inner_w, y, self.row_h),
             resolve(ColorToken::Text2, self.theme),
         );
     }

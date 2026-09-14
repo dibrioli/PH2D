@@ -34,28 +34,51 @@ impl crate::App {
         // `pointer_down` já recusa pela MESMA porta), e uma mira sobre o
         // chrome prometeria um gesto que o clique não faz.
         #[cfg(feature = "sculpt3d")]
-        if let Some(scene) = sculpt3d.as_ref() {
+        if let Some(scene) = sculpt3d.as_mut() {
+            use ph2d_vector::{Affine, Brush, Color, Stroke};
             let (px, py) = self.last_pointer;
             let over_panel = hero
                 .store
                 .panel_rect(ph2d_editor_core::ids::SCULPT3D_PANEL)
                 .is_some_and(|r| r.contains(px, py));
+            // ⚠️ `Affine::IDENTITY` em todos: no Vello o transform do `stroke`
+            // MULTIPLICA a largura — os caminhos já estão em pixels.
+            let mut traco = |caminho: &ph2d_vector::BezPath, rgba: [f32; 4]| {
+                vector_scene.inner_mut().stroke(
+                    &Stroke::new(1.5), // LITERAL-PX-OK: chrome de overlay, espessura de tela
+                    Affine::IDENTITY,
+                    &Brush::Solid(Color::new(rgba)),
+                    None,
+                    caminho,
+                );
+            };
+            // ⭐⭐ **O OSSO DO PINCEL DE POSE**, e ele vem ANTES do anel de
+            // propósito: o anel é onde a mão está *agora* e tem de ficar por
+            // cima. Aquele verbo não tem atenuação radial, então o anel sozinho
+            // descreve-o mal — ele mostra um círculo onde a ferramenta pensa
+            // num membro.
+            if !over_panel && let Some(osso) = scene.pose_gizmo(px, py) {
+                for caminho in osso.ossos.iter().chain(&osso.juntas) {
+                    traco(caminho, ph2d_app_sculpt3d::POSE_BONE_RGBA);
+                }
+                if let Some(pivo) = &osso.pivo {
+                    let rgba = if osso.inerte {
+                        // ⭐ §11.1: o pivô caiu em cima do cursor e este gesto
+                        // **não move nada**. O alvo cala-se aqui.
+                        ph2d_app_sculpt3d::POSE_INERT_RGBA
+                    } else {
+                        ph2d_app_sculpt3d::POSE_PIVOT_RGBA
+                    };
+                    traco(pivo, rgba);
+                }
+            }
             if !over_panel && let Some(mark) = scene.cursor_mark(px, py) {
-                use ph2d_vector::{Affine, Brush, Color, Stroke};
                 let rgba = if mark.on_surface {
                     ph2d_app_sculpt3d::ON_SURFACE_RGBA
                 } else {
                     ph2d_app_sculpt3d::OFF_SURFACE_RGBA
                 };
-                vector_scene.inner_mut().stroke(
-                    // ⚠️ `Affine::IDENTITY`: no Vello o transform do `stroke`
-                    // MULTIPLICA a largura — o caminho já está em pixels.
-                    &Stroke::new(1.5), // LITERAL-PX-OK: chrome de overlay, espessura de tela
-                    Affine::IDENTITY,
-                    &Brush::Solid(Color::new(rgba)),
-                    None,
-                    &mark.path,
-                );
+                traco(&mark.path, rgba);
             }
         }
         // A TRAJETÓRIA do objeto selecionado (ADR-0141): um binding Position guarda

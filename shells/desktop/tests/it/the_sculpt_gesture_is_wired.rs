@@ -243,7 +243,13 @@ fn the_brush_radius_is_screen_pixels_converted_against_the_camera() {
     // derivado por dab. Ancorá-lo no modelo fazia o pincel crescer junto com a
     // imagem ao aproximar, o que é o oposto de como se alcança detalhe fino.
     let src = sculpt_src();
-    let armed = function_body(&src, "armed_brush");
+    // ⚠️⚠️ **A âncora é `armed_brush_on` desde 2026-09-14.** A conversão saiu do
+    // `armed_brush` para lá quando o INDICADOR da pose passou a precisar dela
+    // para uma peça que **não é a activa** (ao sobrevoar, o cursor pode estar
+    // sobre outra), e o `armed_brush` ficou a delegar. *A lei não se moveu — ela
+    // ganhou um segundo leitor —, mas um gate ancorado num CORPO de função
+    // expira quando o corpo muda de casa.*
+    let armed = function_body(&src, "armed_brush_on");
     assert!(
         armed.contains("world_radius_for_screen_px("),
         "o raio de mundo tem de vir da CÂMERA"

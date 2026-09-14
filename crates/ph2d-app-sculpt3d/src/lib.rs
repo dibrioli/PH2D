@@ -121,6 +121,11 @@ pub use mode::sync_pill;
 
 pub use cursor::{OFF_SURFACE_RGBA, ON_SURFACE_RGBA};
 
+/// ⭐⭐ **O OSSO DO PINCEL DE POSE** — irmão do [`cursor`], e o corte é o
+/// SUJEITO: aquele diz *onde o gesto vai pousar*, este *o que ele vai dobrar*.
+mod pose_gizmo;
+pub use pose_gizmo::{POSE_BONE_RGBA, POSE_INERT_RGBA, POSE_PIVOT_RGBA, PoseGizmo};
+
 /// **O PAINEL** — o retrato que ele pinta e o gesto que ele devolve (W12).
 /// Terceiro irmão do [`input`] e do [`keys`]: o mesmo corte, com um vocabulário
 /// próprio (o gesto chega como DADO, um frame depois, pela fila de intents).

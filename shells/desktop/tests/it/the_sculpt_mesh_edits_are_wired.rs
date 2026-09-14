@@ -847,7 +847,13 @@ fn the_pick_compares_in_world_and_the_brush_crosses_the_scale() {
         "e a comparação sobe de volta ao mundo — um `t` mediria em réguas diferentes"
     );
 
-    let brush = function_body(&src, "armed_brush(&self, local_at");
+    // ⚠️⚠️ **A âncora é o `armed_brush_on`, e não o `armed_brush`, desde
+    // 2026-09-14** — a conversão saiu para lá quando o INDICADOR da pose passou
+    // a precisar dela para uma peça que não é a activa, e o `armed_brush` ficou
+    // a delegar. *Um gate ancorado num CORPO de função expira quando o corpo
+    // muda de casa, e a lei não se moveu: ela só passou a ter um segundo
+    // leitor.* As duas metades abaixo continuam a ser a lei inteira.
+    let brush = function_body(&src, "armed_brush_on(&self, pose: Pose, local_at");
     assert!(
         brush.contains("pose.point_to_world(local_at)"),
         "a câmera só responde sobre o mundo"
@@ -855,6 +861,14 @@ fn the_pick_compares_in_world_and_the_brush_crosses_the_scale() {
     assert!(
         brush.contains("/ pose.scale()"),
         "e o raio volta para a régua da malha"
+    );
+    // ⭐ E o delegado **não** pode ter uma segunda cópia da conversão: é isso
+    // que mantém a resposta única depois do corte.
+    let delegado = function_body(&src, "armed_brush(&self, local_at");
+    assert!(
+        !delegado.contains("point_to_world"),
+        "o `armed_brush` voltou a fazer a conta em vez de delegar — duas \
+         respostas à mesma pergunta, e a segunda envelhece"
     );
 }
 
@@ -907,10 +921,23 @@ fn a_stroke_belongs_to_the_piece_it_started_on() {
         "o cursor pica para DESENHAR e não pode mexer no ativo — `&self` já o \
          proíbe, e esta linha é o que impede alguém de torná-lo `&mut self`"
     );
+    // ⚠️ **E o TERCEIRO chegou em 2026-09-14, com nome e prova.** O indicador do
+    // pincel de pose (o «osso») precisa de saber sobre que peça desenhar, e ele
+    // é `&mut self` — a cache da cadeia vive no traço. ⭐ **A escolha da peça
+    // saiu para uma função `&self`** (`pose_gizmo_alvo`) exactamente para que a
+    // prova continue a ser do COMPILADOR: o `pick` dele nunca está ao alcance de
+    // um `&mut`. *Sem esse corte, o terceiro consumidor seria o primeiro que
+    // poderia trocar de peça a meio de uma pincelada — que é o pânico que este
+    // gate existe para impedir.*
+    let alvo = function_body(&src, "pose_gizmo_alvo(&self");
+    assert!(
+        alvo.contains("self.pick(x, y)") && !alvo.contains("self.active ="),
+        "o indicador da pose pica para DESENHAR e não pode mexer no ativo"
+    );
     assert_eq!(
         src.matches("self.pick(x, y)").count(),
-        2,
-        "apareceu um TERCEIRO consumidor da lista: se ele for `&mut self`, ele \
+        3,
+        "apareceu um QUARTO consumidor da lista: se ele for `&mut self`, ele \
          pode trocar de peça no meio de um gesto — nomeie-o aqui e prove que é \
          somente-leitura"
     );

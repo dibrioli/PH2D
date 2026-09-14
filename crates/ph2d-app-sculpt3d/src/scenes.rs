@@ -446,16 +446,16 @@ pub(crate) mod surface;
 #[path = "scenes_thumb.rs"]
 pub(crate) mod thumb;
 
-/// **OS DOIS GESTOS TANGENCIAIS** (`=40`) — ver [`tangenciais`]. ⚠️ O nome não é
-/// `thumb` porque esse já é do *Clay Thumb*, que é outra ferramenta: aqui vivem
-/// o polegar que espalma e o empurrão que varre.
-#[path = "scenes_tangenciais.rs"]
-pub(crate) mod tangenciais;
 /// **O PINCEL DE POSE** (`=41`) — ver [`pose`]. ⚠️ Ela abre na esfera com
 /// ORELHA e não numa lisa, e a escolha é MEDIDA: numa esfera a franja é um anel
 /// simétrico, o pivô cai em cima do cursor e o pincel não move nada.
 #[path = "scenes_pose.rs"]
 pub(crate) mod pose;
+/// **OS DOIS GESTOS TANGENCIAIS** (`=40`) — ver [`tangenciais`]. ⚠️ O nome não é
+/// `thumb` porque esse já é do *Clay Thumb*, que é outra ferramenta: aqui vivem
+/// o polegar que espalma e o empurrão que varre.
+#[path = "scenes_tangenciais.rs"]
+pub(crate) mod tangenciais;
 /// **A CENA DOS QUATRO VIEWPORTS** (`=38`) — irmã da [`cloth_filter`] pela mesma
 /// linha de corte: cada arquivo é a história de uma wave.
 #[path = "scenes_viewports.rs"]

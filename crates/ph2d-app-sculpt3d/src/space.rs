@@ -219,7 +219,17 @@ impl Sculpt3dScene {
     /// objeto ao dobro do tamanho receberia uma pegada com METADE do diâmetro
     /// aparente, e o artista leria isso como *"o pincel encolheu"*.
     pub(super) fn armed_brush(&self, local_at: [f32; 3]) -> Brush {
-        let pose = self.pose();
+        self.armed_brush_on(self.pose(), local_at)
+    }
+
+    /// **O mesmo pincel, para uma peça que não é a ACTIVA.**
+    ///
+    /// ⚠️ **Existe porque o INDICADOR pergunta por outra peça:** o dab corre
+    /// sempre na activa (o `aim` do pen-down garante-o), mas o osso da pose
+    /// desenha-se ao sobrevoar — e ali a peça sob o cursor pode ser outra, com
+    /// **outra escala**. *Copiar as três linhas para lá seria a terceira cópia
+    /// desta conversão, e a que ficaria para trás no dia em que ela mudar.*
+    pub(super) fn armed_brush_on(&self, pose: Pose, local_at: [f32; 3]) -> Brush {
         let world = pose.point_to_world(local_at);
         let radius =
             self.camera

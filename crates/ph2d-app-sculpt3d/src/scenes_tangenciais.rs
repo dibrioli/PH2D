@@ -95,10 +95,14 @@ mod tests {
         // reprovou no dia em que a seguinte nasceu, sobre produto correcto.
         // *Quando a mensagem de um gate e a asserção dele discordam, é a
         // asserção que está errada: a mensagem é o que alguém quis dizer.*
-        assert!(
-            crate::scenes::CENAS >= 40,
-            "o tecto do roteador ({}) tem de conter esta cena (=40)",
-            crate::scenes::CENAS
-        );
+        //
+        // ⭐ **E ela é de COMPILAÇÃO, não de teste** — ver o gémeo em
+        // [`super::super::scenes_pose`], onde o mecanismo está escrito.
+        const {
+            assert!(
+                crate::scenes::CENAS >= 40,
+                "o tecto do roteador tem de conter esta cena (=40)"
+            );
+        }
     }
 }

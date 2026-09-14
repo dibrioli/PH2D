@@ -24,6 +24,17 @@
 //! pivô**. O agarrar leva o barro atrás do dedo e faz um bico; a pose faz a
 //! peça inteira **rodar** em torno de um ponto que ninguém marcou. O roteiro
 //! põe os dois no mesmo sítio, na mesma ordem.
+//!
+//! # ⭐⭐ E o passo (2) é o OSSO, que é o que torna o resto ensinável
+//!
+//! Ordem do dono (2026-09-14): *«no blender temos um gizmo do pincel que mostra
+//! como se fosse um bone de modo ao usuário perceber a área de atualização do
+//! pincel»*. Ele existe agora ([`super::pose_gizmo`]), e o roteiro **passa o
+//! rato antes de carregar** de propósito: a pergunta que este verbo levanta —
+//! *onde é que ele vai achar a dobradiça?* — passa a ter resposta **antes** do
+//! gesto, e não depois de o desfazer. ⚠️ *Um pincel cuja região não se vê
+//! aprende-se por tentativa; o anel do cursor, sozinho, desenha um círculo onde
+//! a ferramenta pensa num membro.*
 
 /// `=41` — a cena do **PINCEL DE POSE**.
 ///
@@ -50,35 +61,54 @@ pub(crate) fn announce() {
          [sculpt3d]        o lado.\n\
          [sculpt3d]        -> O barro vem ATRAS do dedo e a orelha estica num bico. E' o que\n\
          [sculpt3d]           voce ja' conhece, e serve de termo de comparacao.\n\
-         [sculpt3d]    (2) Ctrl+Z. Escolha `Pose` e faca o MESMO arrasto, no mesmo sitio.\n\
-         [sculpt3d]        -> A orelha INTEIRA gira, rigida, como se tivesse uma dobradica na\n\
-         [sculpt3d]           base. Ela nao estica e nao afina: ela DOBRA. Nao ha' esqueleto\n\
-         [sculpt3d]           nenhum -- o pincel acha a dobradica sozinho, pela forma.\n\
-         [sculpt3d]    (3) Ctrl+Z. No painel, ponha `Segments` em 3 e repita o arrasto.\n\
-         [sculpt3d]        -> Agora a orelha dobra em TRES pedacos, como um braco: a curva\n\
-         [sculpt3d]           acompanha a mao em vez de ser um so' giro.\n\
-         [sculpt3d]    (4) Ctrl+Z. Ponha `Segments` de volta em 1 e desmarque `Pin far end`.\n\
+         [sculpt3d]    (2) Ctrl+Z. Escolha `Pose` e passe o rato sobre a orelha SEM CARREGAR.\n\
+         [sculpt3d]        -> Aparece um OSSO desenhado por cima da forma, do feitio dos ossos\n\
+         [sculpt3d]           de um boneco articulado: largo de um lado e afilado do outro.\n\
+         [sculpt3d]           Ele diz o que vai acontecer se voce arrastar dali:\n\
+         [sculpt3d]             * a BOLINHA CHEIA, na ponta larga, e' a dobradica;\n\
+         [sculpt3d]             * o osso vai da dobradica ate' a' sua mao, e e' esse pedaco\n\
+         [sculpt3d]               da peca que vai rodar.\n\
+         [sculpt3d]           Passeie o rato ao longo da orelha e veja a dobradica MUDAR de\n\
+         [sculpt3d]           sitio: perto da ponta ela fica na base; perto da base ela cai\n\
+         [sculpt3d]           no corpo da bola.\n\
+         [sculpt3d]    (3) Agora faca o MESMO arrasto do passo (1), no mesmo sitio.\n\
+         [sculpt3d]        -> A orelha INTEIRA gira, rigida, em volta da bolinha que voce viu.\n\
+         [sculpt3d]           Ela nao estica e nao afina: ela DOBRA. Nao ha' esqueleto nenhum\n\
+         [sculpt3d]           -- o pincel acha a dobradica sozinho, pela forma.\n\
+         [sculpt3d]           O osso acompanha a mao enquanto voce arrasta.\n\
+         [sculpt3d]    (4) Ctrl+Z. No painel, ponha `Segments` em 3 e passe o rato outra vez.\n\
+         [sculpt3d]        -> Agora sao TRES ossos em fila, como um braco. Arraste: a orelha\n\
+         [sculpt3d]           dobra em tres pedacos e a curva acompanha a mao, em vez de ser\n\
+         [sculpt3d]           um so' giro.\n\
+         [sculpt3d]    (5) Ctrl+Z. Ponha `Segments` de volta em 1 e desmarque `Pin far end`.\n\
          [sculpt3d]        -> A orelha deixa de rodar no sitio: ela e' ARRASTADA junto com o\n\
          [sculpt3d]           giro. Marcada, a base fica pregada; desmarcada, nao.\n\
-         [sculpt3d]    (5) Marque `Pin far end` outra vez. Troque `Deformation` para\n\
+         [sculpt3d]    (6) Marque `Pin far end` outra vez. Troque `Deformation` para\n\
          [sculpt3d]        `Scale / Translate` e arraste ao longo da orelha.\n\
          [sculpt3d]        -> A orelha ENGORDA ou ENCOLHE. Com Ctrl carregado, em vez disso\n\
          [sculpt3d]           ela desliza inteira sem mudar de tamanho.\n\
-         [sculpt3d]    (6) Troque `Deformation` para `Squash / Stretch` e arraste ao longo\n\
+         [sculpt3d]    (7) Troque `Deformation` para `Squash / Stretch` e arraste ao longo\n\
          [sculpt3d]        dela.\n\
          [sculpt3d]        -> A orelha ESTICA e AFINA junto (ou encolhe e engorda): o volume\n\
          [sculpt3d]           dela mantem-se, como massa a ser puxada.\n\
-         [sculpt3d]    (7) Volte a `Rotate / Twist` e arraste com Ctrl carregado, na\n\
+         [sculpt3d]    (8) Volte a `Rotate / Twist` e arraste com Ctrl carregado, na\n\
          [sculpt3d]        horizontal.\n\
          [sculpt3d]        -> Agora ela TORCE sobre o proprio eixo, em vez de dobrar.\n\
          [sculpt3d]\n\
-         [sculpt3d]    DEU ERRADO SE: a orelha esticar num bico no passo (2) em vez de dobrar\n\
-         [sculpt3d]    rigida; se ela nao mexer NADA; se o corpo da bola se deformar junto com\n\
-         [sculpt3d]    ela; ou se desmarcar `Pin far end` nao mudar nada.\n\
+         [sculpt3d]    DEU ERRADO SE: nao aparecer osso nenhum no passo (2); se a orelha\n\
+         [sculpt3d]    esticar num bico no passo (3) em vez de dobrar rigida; se ela nao mexer\n\
+         [sculpt3d]    NADA; se o corpo da bola se deformar junto com ela; ou se desmarcar\n\
+         [sculpt3d]    `Pin far end` nao mudar nada.\n\
+         [sculpt3d]\n\
+         [sculpt3d]    (Se em vez do osso aparecer so' uma BOLINHA VERMELHA sobre o cursor, e'\n\
+         [sculpt3d]     um aviso: ali nao ha' dobradica nenhuma e arrastar nao move nada.\n\
+         [sculpt3d]     Acontece no meio de uma superficie lisa, e e' o sitio certo para NAO\n\
+         [sculpt3d]     usar este pincel.)\n\
          [sculpt3d]\n\
          [sculpt3d]    (Os outros dois knobs: `Pivot offset from cursor` empurra a dobradica\n\
-         [sculpt3d]     para longe do dedo, e `Weight smoothing` -- que so' aparece no modo\n\
-         [sculpt3d]     avancado do painel -- esbate a fronteira entre os pedacos da dobra.)"
+         [sculpt3d]     para longe do dedo -- da' para ver o osso crescer enquanto voce mexe\n\
+         [sculpt3d]     nele --, e `Weight smoothing` -- que so' aparece no modo avancado do\n\
+         [sculpt3d]     painel -- esbate a fronteira entre os pedacos da dobra.)"
     );
 }
 
@@ -96,11 +126,66 @@ mod tests {
         // reprovou no dia em que a seguinte nasceu, sobre produto correcto.
         // *Quando a mensagem de um gate e a asserção dele discordam, é a
         // asserção que está errada: a mensagem é o que alguém quis dizer.*
-        assert!(
-            crate::scenes::CENAS >= 41,
-            "o tecto do roteador ({}) tem de conter esta cena (=41)",
-            crate::scenes::CENAS
-        );
+        //
+        // ⭐ **E ela é de COMPILAÇÃO, não de teste** — os dois lados são
+        // constantes, então o `clippy` acusava-a (`assertions_on_constants`) e
+        // tinha razão: uma comparação que o compilador resolve não precisa de
+        // uma corrida para reprovar. ⛔ O preço é a mensagem perder o número:
+        // um `const` não formata.
+        //
+        // ⚠️⚠️ **E o `cargo check` é CEGO a isto — medido nesta jornada.** Com
+        // o limiar mutado para `9999`, `cargo check -p … --all-targets` fecha
+        // **verde** e só o `cargo test` (que constrói) devolve o `E0080`. *Um
+        // `const` de dentro de uma função só é avaliado quando ela é
+        // construída*, logo o laço interno deste repo não o vê — o portão de
+        // fecho, que corre o nextest, vê. É o mesmo ponto cego de família do
+        // `--bins` que não alcança `tests/`.
+        const {
+            assert!(
+                crate::scenes::CENAS >= 41,
+                "o tecto do roteador tem de conter esta cena (=41)"
+            );
+        }
+    }
+
+    /// ⭐ **Sonda: o que o INDICADOR custa NESTA cena**, que é a malha que o dono
+    /// vai ter à frente. O orçamento de [`ph2d_sculpt3d::pose_previa`] deriva o
+    /// silêncio deste número, então ele é o que decide se o osso segue o cursor
+    /// quadro a quadro ou se ele passa a arrastar-se.
+    ///
+    /// ```text
+    /// cargo test -p ph2d-app-sculpt3d --lib -- --ignored --nocapture mede_o_indicador
+    /// ```
+    #[test]
+    #[ignore = "sonda: imprime o custo do indicador na malha desta cena"]
+    fn mede_o_indicador_nesta_cena() {
+        let malha = crate::scenes::mesh::smoke_mesh_for_tests_ear();
+        let ponta = malha
+            .positions()
+            .iter()
+            .copied()
+            .max_by(|a, b| a[1].total_cmp(&b[1]))
+            .expect("a malha tem vértices");
+        for segmentos in [1u32, 3, 20] {
+            let mut b = Brush {
+                verb: Verb::Pose,
+                radius: 0.25,
+                ..Brush::default()
+            };
+            b.pose.segmentos = segmentos;
+            let mut s = SculptStroke::default();
+            let t0 = std::time::Instant::now();
+            let n = s.pose_ossos(&malha, &b, Symmetry::default(), ponta).len();
+            let primeiro = t0.elapsed().as_secs_f64() * 1e3;
+            let t1 = std::time::Instant::now();
+            s.pose_ossos(&malha, &b, Symmetry::default(), ponta);
+            let repetido = t1.elapsed().as_secs_f64() * 1e6;
+            println!(
+                "orelha {:>6} verts · segmentos {segmentos:>2} · ossos {n} · \
+                 1.a construcao {primeiro:>7.2} ms · quadro repetido {repetido:>7.2} us",
+                malha.positions().len()
+            );
+        }
     }
 
     /// ⭐⭐ **A MALHA DESTA CENA É ESCOLHA MEDIDA, e este gate é a medição.**

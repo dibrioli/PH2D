@@ -191,6 +191,7 @@ mod the_picker_writes_the_ramp_end_it_was_opened_from;
 mod the_player_smokes_name_the_key_that_jumps;
 mod the_players_finger_reaches_the_bridge;
 mod the_pointer_clock_starts_where_the_paint_starts;
+mod the_pose_bone_is_painted_under_the_ring;
 mod the_pose_is_wired_to_the_pointer;
 mod the_preview_owns_the_pointer_and_the_undo;
 mod the_recipe_mark_reads_the_whole_selection;

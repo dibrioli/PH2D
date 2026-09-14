@@ -192,3 +192,140 @@ fn probe_does_a_value_chain_stay_on_the_device() {
 /// `the_device_reads_the_driven_param_and_agrees_with_the_cpu`, que corre as DUAS rotas a sério.
 /// Um A/B de relógio device-contra-CPU pede um `GpuContext` no arnês, e é wave própria.
 const _PRECO: () = ();
+
+/// ⭐⭐⭐ **SONDA — A FAIXA DO PULSO: quem consome um pulso, e chega algum deles ao dispositivo?**
+/// (ciclo 6, W2 — doc 110 §5, item 2).
+///
+/// ⚠️ **Esta sonda corre ANTES de se escrever um kernel, e a razão é o §0.0:** a W2 diz *«a família
+/// `pulse.*` no dispositivo»*, e um kernel só paga se o **consumidor** do pulso também lá estiver.
+/// Um pulso não se desenha: ele ou dirige um param (que a W1a resolveu na CPU, de propósito) ou
+/// entra numa **porta** de outro nó. *A pergunta não é «este nó tem kernel», é «esta FAIXA existe».*
+///
+/// ```text
+/// cargo test -p ph2d-app-motion --lib probe_the_pulse_lane -- --ignored --nocapture
+/// ```
+#[test]
+#[ignore = "sonda de medicao, nao um gate"]
+fn probe_the_pulse_lane() {
+    let mut m = crate::motion_state::MotionState::new();
+    // ⚠️ O tipo lê-se do GRAFO depois de o nó nascer (a mesma porta do `retrato`): um
+    // `NodeTypeId::of` escrito à mão sobre um nome errado devolveria «sem kernel» em silêncio.
+    let mut tem_kernel = |ty: &str| -> bool {
+        use ph2d_nodegraph::gpu::KernelResolver;
+        let id = m.doc.graph.add_node(ty.to_string());
+        let tid = m.doc.graph.node(id).expect("no'").type_id();
+        m.registry.gpu_kernel(tid).is_some()
+    };
+    eprintln!("\n  PRODUTORES (a familia `pulse.*`)");
+    eprintln!("  no                        | kernel");
+    eprintln!("  --------------------------|-------");
+    for no in crate::motion_ciclo_probe::familia("pulse.") {
+        eprintln!(
+            "  {no:<25} | {}",
+            if tem_kernel(no) { "sim" } else { "⛔ NAO" }
+        );
+    }
+    eprintln!("\n  CONSUMIDORES (quem tem uma PORTA de pulso) -- e' aqui que a faixa acaba");
+    eprintln!("  no                        | kernel");
+    eprintln!("  --------------------------|-------");
+    for no in ["motion.strobe", "motion.step", "sim.spawn", "util.reroute"] {
+        eprintln!(
+            "  {no:<25} | {}",
+            if tem_kernel(no) { "sim" } else { "⛔ NAO" }
+        );
+    }
+    eprintln!();
+}
+
+/// ⭐⭐⭐ **SONDA — ONDE A FRONTEIRA CAI numa cadeia de pulso de verdade** (ciclo 6, W2).
+///
+/// A sonda irmã diz quem TEM kernel. Esta diz o que isso custa: monta as três cadeias em que um
+/// pulso chega de facto ao stream de objectos e pergunta ao planeador **onde é a costura**.
+///
+/// ⚠️ **Uma fronteira não é o mesmo que «tudo na CPU»** — o nó da fronteira é cozido na CPU e a
+/// corrente dele é carregada na costura; o resto pode ficar no dispositivo. *Contar nós sem olhar
+/// para o sítio da costura é a régua que mente aqui.*
+///
+/// ```text
+/// cargo test -p ph2d-app-motion --lib probe_where_the_pulse_seam_falls -- --ignored --nocapture
+/// ```
+#[test]
+#[ignore = "sonda de medicao, nao um gate"]
+fn probe_where_the_pulse_seam_falls() {
+    use ph2d_nodegraph::graph::{Edge, NodeId};
+    let mede = |rotulo: &str, monta: &dyn Fn(&mut crate::motion_state::MotionState) -> NodeId| {
+        let mut m = crate::motion_state::MotionState::new();
+        let sink = monta(&mut m);
+        let dirigidos = crate::motion_bridge::gpu::valores_dirigidos(&mut m, 0.0);
+        let plano =
+            ph2d_gpu_cook::plan_driven(&m.doc.graph, &m.registry, &m.registry, sink, &dirigidos);
+        let costuras: Vec<String> = plano
+            .boundaries
+            .iter()
+            .map(|(no, porta)| {
+                let ty = m
+                    .doc
+                    .graph
+                    .node(*no)
+                    .map_or("?", |i| i.type_name.as_str())
+                    .to_string();
+                format!("{ty}:{porta}")
+            })
+            .collect();
+        eprintln!(
+            "  {rotulo:<44} | {:>6} | {}",
+            plano.stages.len(),
+            if costuras.is_empty() {
+                "— (tudo no dispositivo)".to_string()
+            } else {
+                costuras.join(" · ")
+            }
+        );
+    };
+    let liga = |m: &mut crate::motion_state::MotionState, de: (NodeId, u16), para: (NodeId, u16)| {
+        m.doc
+            .graph
+            .connect(Edge {
+                from: de,
+                to: para,
+                delayed: false,
+            })
+            .expect("fio");
+    };
+    eprintln!("\n  cadeia                                       | stages | onde a CPU ainda coze");
+    eprintln!("  ---------------------------------------------|--------|----------------------");
+    // (1) O CONTROLO: a mesma cena sem pulso nenhum.
+    mede("grid -> scale -> output (o controlo)", &|m| {
+        let g = m.doc.graph.add_node("motion.grid".to_string());
+        let s = m.doc.graph.add_node("motion.scale".to_string());
+        let o = m.doc.graph.add_node("motion.output".to_string());
+        liga(m, (g, 0), (s, 0));
+        liga(m, (s, 0), (o, 0));
+        o
+    });
+    // (2) O ÚNICO consumidor de pulso COM kernel.
+    mede("grid -> beat -> sim.spawn(pulse) -> output", &|m| {
+        let g = m.doc.graph.add_node("motion.grid".to_string());
+        let b = m.doc.graph.add_node("pulse.beat".to_string());
+        let sp = m.doc.graph.add_node("sim.spawn".to_string());
+        let o = m.doc.graph.add_node("motion.output".to_string());
+        liga(m, (g, 0), (b, 0));
+        liga(m, (g, 0), (sp, 0));
+        liga(m, (b, 0), (sp, 1));
+        liga(m, (sp, 0), (o, 0));
+        o
+    });
+    // (3) O consumidor que o artista alcança primeiro — e que NÃO tem kernel.
+    mede("grid -> threshold -> strobe(pulse) -> output", &|m| {
+        let g = m.doc.graph.add_node("motion.grid".to_string());
+        let t = m.doc.graph.add_node("pulse.threshold".to_string());
+        let st = m.doc.graph.add_node("motion.strobe".to_string());
+        let o = m.doc.graph.add_node("motion.output".to_string());
+        liga(m, (g, 0), (t, 0));
+        liga(m, (g, 0), (st, 0));
+        liga(m, (t, 0), (st, 1));
+        liga(m, (st, 0), (o, 0));
+        o
+    });
+    eprintln!();
+}

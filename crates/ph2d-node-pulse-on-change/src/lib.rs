@@ -36,6 +36,7 @@ use ph2d_node_registry::{NodeRegistry, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
+use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel};
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
@@ -95,6 +96,83 @@ pub const MANIFEST: NodeManifest = NodeManifest {
         },
     ],
     lowerings: &[LoweringKind::Cpu],
+};
+
+/// ⭐ **O KERNEL** (ADR-0126) — a porta WGSL do [`step`], **inteiramente no dispositivo**.
+///
+/// ⚠️ **As três leis de borda da CPU estão portadas à letra, e cada uma já custou um defeito:**
+/// o `direction` ilegível cai no **neutro** (`Both`) e não na variante `0` (`f32::NAN as i32`
+/// satura a zero em Rust, e a WGSL não promete melhor); o `epsilon` negativo ou NaN cai em `0`
+/// pelo mesmo `select` que o `f32::max(0.0)` faz; e o arredondamento é **meio-para-longe-do-zero**
+/// como o do Rust, que não é o `round` da WGSL (meio-par).
+///
+/// ⚠️ **A coluna `v` é `Consume`:** o `step` da CPU emite `pulse` + `oc_prev` + `oc_primed` e
+/// **larga** o valor de entrada. Sem isto o `v` da base viajaria na saída e um consumidor de valor
+/// a jusante leria o número que este nó observou em vez do pulso que ele emitiu.
+///
+/// ⚠️ **DIVERGÊNCIA DECLARADA — um stream de estado mais CURTO que o de entrada.** A CPU
+/// (`scalar_col(.., n)`) enche a cauda com `0`; o dispositivo julga a coluna **ausente por
+/// inteiro** e lê a identidade `0` em TODA a linha. As duas só diferem no transitório em que o
+/// `pre` ainda não tem o comprimento da geometria — e nesse tique a CPU também não tem história
+/// para essas linhas. *Escrito aqui porque um leitor do diff supõe que a régua do comprimento é a
+/// mesma dos dois lados, e não é.*
+const GPU_KERNEL: GpuKernel = GpuKernel {
+    wgsl: "\
+        let oc_v = read_value_v(i);\n\
+        let oc_d = oc_v - read_state_oc_prev(i);\n\
+        let oc_eps = select(0.0, params.epsilon, params.epsilon >= 0.0);\n\
+        let oc_dir = oc_dir_of(params.direction);\n\
+        let oc_way = (oc_dir == 2) || (oc_dir == 0 && oc_d > 0.0) || (oc_dir == 1 && oc_d < 0.0);\n\
+        let oc_fire = read_state_oc_primed(i) > 0.5 && abs(oc_d) > oc_eps && oc_way;\n\
+        write_pulse(i, select(0.0, 1.0, oc_fire));\n\
+        write_oc_prev(i, oc_v);\n\
+        write_oc_primed(i, 1.0);\n",
+    wgsl_lib: "\
+        // O gémeo de [`ChangeDir::from_param`], braço a braço. `f32::MAX`: a WGSL não tem\n\
+        // `isFinite`, e `abs(x) <= MAX` responde a NaN e a ±inf de uma vez (toda comparação\n\
+        // com NaN é falsa).\n\
+        fn oc_dir_of(x: f32) -> i32 {\n\
+        \x20   if (!(abs(x) <= 3.4028235e38)) { return 2; }\n\
+        \x20   // Rust `f32::round` = meio para LONGE do zero; o `round` da WGSL é meio-par.\n\
+        \x20   let r = select(ceil(x - 0.5), floor(x + 0.5), x >= 0.0);\n\
+        \x20   if (r == 0.0) { return 0; }\n\
+        \x20   if (r == 1.0) { return 1; }\n\
+        \x20   return 2;\n\
+        }\n",
+    bindings: &[
+        ColumnBinding {
+            column: VALUE_COL,
+            dim: Dim::Scalar,
+            access: ColumnAccess::Consume,
+            identity: [0.0; 4],
+            port: 0,
+        },
+        ColumnBinding {
+            column: PULSE_COL,
+            dim: Dim::Scalar,
+            access: ColumnAccess::Write,
+            identity: [0.0; 4],
+            port: 0,
+        },
+        ColumnBinding {
+            column: PREV_COL,
+            dim: Dim::Scalar,
+            access: ColumnAccess::ReadWrite,
+            identity: [0.0; 4],
+            port: 1,
+        },
+        ColumnBinding {
+            column: PRIMED_COL,
+            dim: Dim::Scalar,
+            access: ColumnAccess::ReadWrite,
+            identity: [0.0; 4],
+            port: 1,
+        },
+    ],
+    params: &["epsilon", "direction"],
+    count_law: None,
+    variant_by_param: None,
+    applicable: None,
 };
 
 /// Which way a step has to go to count. Mirror of `pulse.threshold`'s `EdgeDir`
@@ -187,6 +265,7 @@ impl NodeOp for PulseOnChange {
 /// `ph2d-node-registry-init::register_all_nodes`.
 pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register(Box::new(PulseOnChange))?;
+    reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
     reg.register_ui(
         MANIFEST.id,
         ph2d_node_registry::NodeUiManifest {

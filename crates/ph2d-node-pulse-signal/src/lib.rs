@@ -38,6 +38,7 @@ use ph2d_node_registry::{NodeRegistry, ParamUiHint, ParamWidget, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
+use ph2d_nodegraph::gpu::GpuKernel;
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
@@ -128,6 +129,15 @@ pub fn fired_rows(stream: &Stream) -> usize {
 /// Devolve [`RegistryError`] se o tipo já estiver registrado.
 pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register(Box::new(PulseSignal))?;
+    // ⭐ **O KERNEL é o PASSTHROUGH** (ADR-0126): este nó devolve `input.clone()` e o
+    // sequenciador, perante um kernel sem corpo e sem bindings, **não emite passe nenhum** — a
+    // corrente atravessa-o intocada, que é literalmente a lei da CPU.
+    //
+    // ⚠️ **O NOME não viaja na corrente, e é por isso que isto é honesto.** O `text_param` é lido
+    // no `eval` para entrar na impressão digital do cozedor; ele não muda um byte do stream. Um
+    // nó de MEDIÇÃO que derrubasse a cadeia inteira para a CPU seria a pior espécie de sonda: a
+    // que muda o programa que mede.
+    reg.register_gpu_kernel(MANIFEST.id, GpuKernel::PASSTHROUGH);
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
     // ⚠️ **ELE NÃO TINHA NOME NA PALETA** (achado do censo da folha 17, 2026-08-25): dos
     // 130 tipos, TRÊS não registavam `NodeUiManifest`, e sem ele a paleta cai no nome CRU

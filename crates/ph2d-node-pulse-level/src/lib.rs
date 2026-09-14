@@ -65,6 +65,7 @@ use ph2d_node_registry::{NodeRegistry, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
+use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel};
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
@@ -105,6 +106,43 @@ pub const MANIFEST: NodeManifest = NodeManifest {
     lowerings: &[LoweringKind::Cpu],
 };
 
+/// ⭐ **O KERNEL** (ADR-0126) — a porta WGSL da [`level`], **inteiramente no dispositivo**.
+///
+/// ⚠️ **A coluna `pulse` é `Consume`, e é isso que torna a rota fiel:** a `level` da CPU emite
+/// `Stream::new(n).with(VALUE_COL, …)` — ela **larga** o pulso. Sem o `Consume` a coluna do port 0
+/// (a base) viajaria na saída e um `pulse.compare` a jusante leria o disparo de ANTES em vez do
+/// nível que este nó acabou de escrever. *Uma diferença de conjunto de colunas não é ε: é outro
+/// grafo.*
+///
+/// ⚠️ **Coluna ausente lê a identidade `0`**, que é exactamente o `unwrap_or(0.0)` da CPU — as
+/// duas leis da ausência escrevem-se aqui e ali e têm de dizer o mesmo.
+const GPU_KERNEL: GpuKernel = GpuKernel {
+    // O gémeo do [`FIRED`]. Os dois literais movem-se juntos ou o gate de paridade acusa.
+    wgsl: "\
+        write_v(i, select(0.0, 1.0, read_pulse(i) > 0.5));\n",
+    wgsl_lib: "",
+    bindings: &[
+        ColumnBinding {
+            column: PULSE_COL,
+            dim: Dim::Scalar,
+            access: ColumnAccess::Consume,
+            identity: [0.0; 4],
+            port: 0,
+        },
+        ColumnBinding {
+            column: VALUE_COL,
+            dim: Dim::Scalar,
+            access: ColumnAccess::Write,
+            identity: [0.0; 4],
+            port: 0,
+        },
+    ],
+    params: &[],
+    count_law: None,
+    variant_by_param: None,
+    applicable: None,
+};
+
 /// Um tique: a máscara `0/1` do pulso, elemento a elemento.
 fn level(pulse: &Stream) -> Stream {
     let n = pulse.count();
@@ -141,6 +179,7 @@ impl NodeOp for PulseLevel {
 /// `ph2d-node-registry-init::register_all_nodes`.
 pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register(Box::new(PulseLevel))?;
+    reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
     reg.register_ui(
         MANIFEST.id,
         ph2d_node_registry::NodeUiManifest {

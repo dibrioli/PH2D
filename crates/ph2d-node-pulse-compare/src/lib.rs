@@ -35,6 +35,7 @@ use ph2d_node_registry::{NodeRegistry, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
+use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel};
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
@@ -110,6 +111,84 @@ pub const MANIFEST: NodeManifest = NodeManifest {
         },
     ],
     lowerings: &[LoweringKind::Cpu],
+};
+
+/// ⭐ **O KERNEL** (ADR-0126) — a porta WGSL do [`step`], **inteiramente no dispositivo**.
+///
+/// ⚠️ **A referência é `ReadBroadcast`, e é essa a única forma de exprimir a lei que o nó tem:**
+/// porta desligada ⇒ os params · comprimento `1` ⇒ o mesmo limiar para todo o campo · comprimento
+/// `N` ⇒ um limiar por linha. Um `Read` simples julgaria um campo de comprimento `1` **ausente**
+/// e o gatilho inteiro cairia nos params — plausível, e errado.
+///
+/// ⚠️ **`edge` NÃO tem guarda de NaN, e isso é fiel de propósito.** O [`EdgeDir::from_param`] da
+/// CPU não a tem, e `f32::NAN as i32` satura a `0` em Rust ⇒ `Rise`, que é o default deste nó. A
+/// expressão WGSL abaixo cai no mesmo braço pelo mesmo motivo (toda comparação com NaN é falsa).
+/// *Se um dia a CPU ganhar a guarda, esta também tem de a ganhar — o gate de paridade acusa.*
+///
+/// ⚠️ **DIVERGÊNCIA DECLARADA — uma referência de comprimento INTERMÉDIO** (`1 < k < N`): a CPU
+/// enche a cauda com `0` (um limiar em zero para as linhas sem referência); o dispositivo julga a
+/// porta ausente e cai nos params para TODA a linha. Nenhuma das duas é o que o artista quis, e o
+/// caso não é alcançável pelas cadeias do catálogo (um campo tem `1` ou `N`).
+const GPU_KERNEL: GpuKernel = GpuKernel {
+    wgsl: "\
+        let cm_v = read_value_v(i);\n\
+        let cm_ref = read_reference_v(i);\n\
+        let cm_rise = select(params.rise, cm_ref, HAS_reference_v);\n\
+        let cm_low = select(params.fall, cm_ref - (params.rise - params.fall), HAS_reference_v);\n\
+        // A banda nunca inverte -- o `fall.min(rise)` do `step_one`.\n\
+        let cm_fall = min(cm_low, cm_rise);\n\
+        let cm_was = read_state_cmp_armed(i) > 0.5;\n\
+        let cm_now = select(cm_v >= cm_rise, cm_v > cm_fall, cm_was);\n\
+        let cm_rose = cm_now && !cm_was;\n\
+        let cm_fell = !cm_now && cm_was;\n\
+        let cm_e = cmp_edge_of(params.edge);\n\
+        let cm_fire = (cm_e == 0 && cm_rose) || (cm_e == 1 && cm_fell)\n\
+        \x20   || (cm_e == 2 && (cm_rose || cm_fell));\n\
+        write_pulse(i, select(0.0, 1.0, cm_fire));\n\
+        write_cmp_armed(i, select(0.0, 1.0, cm_now));\n",
+    wgsl_lib: "\
+        // O gémeo de [`EdgeDir::from_param`]: `1` Fall, `2` Both, o resto Rise.\n\
+        // Rust `f32::round` = meio para LONGE do zero; o `round` da WGSL e' meio-par.\n\
+        fn cmp_edge_of(x: f32) -> i32 {\n\
+        \x20   let r = select(ceil(x - 0.5), floor(x + 0.5), x >= 0.0);\n\
+        \x20   if (r == 1.0) { return 1; }\n\
+        \x20   if (r == 2.0) { return 2; }\n\
+        \x20   return 0;\n\
+        }\n",
+    bindings: &[
+        ColumnBinding {
+            column: VALUE_COL,
+            dim: Dim::Scalar,
+            access: ColumnAccess::Consume,
+            identity: [0.0; 4],
+            port: 0,
+        },
+        ColumnBinding {
+            column: PULSE_COL,
+            dim: Dim::Scalar,
+            access: ColumnAccess::Write,
+            identity: [0.0; 4],
+            port: 0,
+        },
+        ColumnBinding {
+            column: ARMED_COL,
+            dim: Dim::Scalar,
+            access: ColumnAccess::ReadWrite,
+            identity: [0.0; 4],
+            port: 1,
+        },
+        ColumnBinding {
+            column: VALUE_COL,
+            dim: Dim::Scalar,
+            access: ColumnAccess::ReadBroadcast,
+            identity: [0.0; 4],
+            port: 2,
+        },
+    ],
+    params: &["rise", "fall", "edge"],
+    count_law: None,
+    variant_by_param: None,
+    applicable: None,
 };
 
 /// Direction selector for [`step_one`].
@@ -236,6 +315,7 @@ impl NodeOp for PulseCompare {
 /// `ph2d-node-registry-init::register_all_nodes`.
 pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register(Box::new(PulseCompare))?;
+    reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
     reg.register_ui(
         MANIFEST.id,
         ph2d_node_registry::NodeUiManifest {

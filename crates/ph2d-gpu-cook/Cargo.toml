@@ -102,6 +102,12 @@ ph2d-node-motion-stagger = { path = "../ph2d-node-motion-stagger" }
 ph2d-node-motion-look-at = { path = "../ph2d-node-motion-look-at" }
 ph2d-node-motion-drive = { path = "../ph2d-node-motion-drive" }
 ph2d-node-value-attribute = { path = "../ph2d-node-value-attribute" }
+# A familia `pulse.*` no dispositivo (ciclo 6 W2) — o gate `gpu_cpu_parity_pulse`.
+ph2d-node-pulse-compare = { path = "../ph2d-node-pulse-compare" }
+ph2d-node-pulse-level = { path = "../ph2d-node-pulse-level" }
+ph2d-node-pulse-on-change = { path = "../ph2d-node-pulse-on-change" }
+ph2d-node-pulse-sample-hold = { path = "../ph2d-node-pulse-sample-hold" }
+ph2d-node-pulse-signal = { path = "../ph2d-node-pulse-signal" }
 ph2d-node-value-lfo = { path = "../ph2d-node-value-lfo" }
 # The value-domain coherent-noise producer (fBm over the wiggle lattice).
 ph2d-node-value-noise = { path = "../ph2d-node-value-noise" }

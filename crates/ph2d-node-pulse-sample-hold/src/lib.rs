@@ -36,6 +36,7 @@ use ph2d_node_registry::{NodeRegistry, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
+use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel};
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
@@ -108,6 +109,80 @@ fn scalar_col(s: &Stream, name: &str, n: usize) -> Vec<f32> {
 
 /// The pulse driving instance `i`, applying the `1→N` broadcast rule: a length-1
 /// pulse fires every instance together; a length-N pulse fires each on its own.
+/// ⭐ **O KERNEL** (ADR-0126) — a porta WGSL do [`step`], **inteiramente no dispositivo**.
+///
+/// ⚠️ **As DUAS portas de pulso são `ReadBroadcast`**, porque é isso que o [`pulse_at`] faz:
+/// comprimento `1` é **um gatilho global** que vale para todo o campo, e comprimento `N` é um
+/// gatilho por linha. Um `Read` simples leria um metrónomo de uma linha como AUSENTE, e o nó nunca
+/// mais amostrava — o modo de falha mais silencioso deste nó, porque ele continua a devolver um
+/// número (o segurado) para sempre.
+///
+/// ⚠️ **O `v` aparece em DUAS portas com papéis opostos** — o número a amostrar (porta `value`) e o
+/// número já segurado (porta `state`) —, e é por isso que os leitores de um nó multi-porta se
+/// chamam pelo NOME DA PORTA: um `read_v` cru significaria um dos dois, e responderia plausível.
+///
+/// Sem params: o nó é um amostrador puro, disparado por borda.
+const GPU_KERNEL: GpuKernel = GpuKernel {
+    wgsl: "\
+        let sh_p = read_pulse_pulse(i);\n\
+        let sh_rise = sh_p > 0.5 && read_state_sh_prev(i) <= 0.5;\n\
+        let sh_reset = read_reset_pulse(i) > 0.5;\n\
+        // Primeiro tique (nada amostrado ainda) tambem amostra -- o nó recusa um `0` morto.\n\
+        let sh_take = read_state_sh_primed(i) <= 0.5 || sh_rise || sh_reset;\n\
+        write_v(i, select(read_state_v(i), read_value_v(i), sh_take));\n\
+        write_sh_prev(i, sh_p);\n\
+        write_sh_primed(i, 1.0);\n",
+    wgsl_lib: "",
+    bindings: &[
+        ColumnBinding {
+            column: VALUE_COL,
+            dim: Dim::Scalar,
+            access: ColumnAccess::Read,
+            identity: [0.0; 4],
+            port: 0,
+        },
+        ColumnBinding {
+            column: PULSE_COL,
+            dim: Dim::Scalar,
+            access: ColumnAccess::ReadBroadcast,
+            identity: [0.0; 4],
+            port: 1,
+        },
+        ColumnBinding {
+            column: VALUE_COL,
+            dim: Dim::Scalar,
+            access: ColumnAccess::ReadWrite,
+            identity: [0.0; 4],
+            port: 2,
+        },
+        ColumnBinding {
+            column: PREV_COL,
+            dim: Dim::Scalar,
+            access: ColumnAccess::ReadWrite,
+            identity: [0.0; 4],
+            port: 2,
+        },
+        ColumnBinding {
+            column: PRIMED_COL,
+            dim: Dim::Scalar,
+            access: ColumnAccess::ReadWrite,
+            identity: [0.0; 4],
+            port: 2,
+        },
+        ColumnBinding {
+            column: PULSE_COL,
+            dim: Dim::Scalar,
+            access: ColumnAccess::ReadBroadcast,
+            identity: [0.0; 4],
+            port: 3,
+        },
+    ],
+    params: &[],
+    count_law: None,
+    variant_by_param: None,
+    applicable: None,
+};
+
 fn pulse_at(pulse: &Stream, i: usize) -> f32 {
     match pulse.get(PULSE_COL) {
         Some(Column::Scalar(v)) => match v.len() {
@@ -171,6 +246,7 @@ impl NodeOp for PulseSampleHold {
 /// `ph2d-node-registry-init::register_all_nodes`.
 pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register(Box::new(PulseSampleHold))?;
+    reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
     reg.register_ui(
         MANIFEST.id,
         ph2d_node_registry::NodeUiManifest {

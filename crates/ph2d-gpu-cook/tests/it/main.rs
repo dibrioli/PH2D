@@ -17,6 +17,7 @@ mod gpu_cpu_parity_curve;
 mod gpu_cpu_parity_deform;
 mod gpu_cpu_parity_driven;
 mod gpu_cpu_parity_holds;
+mod gpu_cpu_parity_pulse;
 mod gpu_cpu_parity_sim;
 mod gpu_cpu_parity_stats;
 mod gpu_cpu_parity_table_seed;

@@ -153,10 +153,14 @@ linha que decide alguma coisa (`+54 %` de pixels cortados a `0` stops, `−13 %`
   planalto sem forma. ⚠️ **É decisão do dono**, e o cálculo está fechado: na `Standard` a peça só
   deixa de cortar a `−1` stop (`118` px, `0,2 %`); a `Neutral` não corta em exposição nenhuma. As
   duas saídas são *a vista de omissão passa a `Neutral`* ou *a exposição de omissão desce um stop*.
-  ⚠️⚠️ **E em 14/09 isto deixou de ser cosmético (§24.7):** o estúdio leva o corte de `5 180` para
-  `7 972` pixels na `Standard` a `0` stops — e para **`0`** na `Neutral`, em todas as vinte
-  configurações medidas. *Pôr uma fonte no céu é exactamente o que torna obrigatória a vista que não
-  corta.*
+  ✅ **RESOLVIDO na §15 do mesmo dia** (13/09 → 14/09): o `OPENING_LOOK` do modelador é `Neutral`,
+  com a tabela do que isso custa ao matcap ao lado. ⚠️⚠️ **Este parágrafo ficou por corrigir e
+  custou caro:** em 14/09 a §24 leu-o como decisão em aberto e pediu ao dono que decidisse uma coisa
+  que ele já tinha decidido nessa manhã. *O §8 é uma lista de trabalho pago — audite-a contra o
+  CÓDIGO antes de pegar um item dela*, que é o aviso que este próprio ficheiro já dá sobre si mesmo.
+  ⚠️ E a medição da §24.7 continua a valer, noutro papel: ela mostra **porque** é que aquela escolha
+  era load-bearing — o estúdio leva o corte de `5 180` para `7 972` px na `Standard`, e a `Neutral`
+  corta `0` nas vinte configurações medidas.
 - ~~**A radiância do céu é avaliada na direcção ESPELHADA**~~ — ✅ **CURADA em 14/09, ver §16.**
   O diagnóstico abaixo fica, porque é ele que explica a cura: para um lóbulo largo a média do céu
   linear está na direcção média do lóbulo, não na espelhada. ⚠️⚠️ **A redacção anterior dizia que o
@@ -1741,29 +1745,32 @@ plano.
 ### §24.1 — ⛔⛔ A premissa, em bytes: um ESPELHO e um pedaço de GIZ tinham o mesmo contraste
 
 Sonda [`measure_how_much_of_the_material_this_sky_lets_through`](../../crates/ph2d-app-field3d/src/render_light_tests.rs),
-esfera a `640×360`, `61 804` pixels de peça, tudo em bytes (logo independente do relógio e da carga):
+esfera a `640×360`, `61 804` pixels de peça, **no olhar com que o modelador ABRE** (`Neutral`, §15),
+tudo em bytes (logo independente do relógio e da carga):
 
 | material | média | estrutura `\|∇²\|` do verde | quanto vem da LÂMPADA |
 |---|---:|---:|---:|
-| metal, rugosidade `0,05` | `153,9` | **`1,074`** | `2` de `154` |
-| metal, rugosidade `0,30` | `164,2` | `1,078` | `49` de `164` |
-| metal, rugosidade `1,00` | `212,0` | **`1,085`** | `146` de `212` |
-| dieléctrico, rugosidade `0,30` | `209,6` | `1,022` | `143` de `210` |
+| metal, rugosidade `0,05` (espelho) | `144,5` | **`1,077`** | **`1` de `144`** |
+| metal, rugosidade `0,30` | `154,9` | `1,116` | `32` de `155` |
+| metal, rugosidade `0,50` | `171,5` | `1,191` | — |
+| metal, rugosidade `1,00` (baço) | `200,4` | **`0,930`** | `140` de `200` |
+| dieléctrico, rugosidade `0,30` | `199,0` | `0,984` | `135` de `199` |
 
-⭐⭐⭐ **A linha de cima e a de baixo são a mesma peça.** Um espelho e um baço têm o **mesmo** contraste
-local, e a razão é dupla: a rampa `A + B·y` filtrada por um lóbulo largo **continua a ser uma rampa**
-(não há nada para reflectir), e uma luz direccional é um **delta**, que um espelho reflecte num
-conjunto de medida nula — `2` bytes de `154`. *O metal deste app era uma bola cinzenta com um
-gradiente.*
+⭐⭐⭐ **A coluna do meio não diz de que material a peça é feita.** Ela vive toda numa banda de
+`0,93`–`1,19`, e **o espelho está no fundo dela** — um metal *quase baço* tem MAIS contraste local do
+que um cromado. A razão é dupla: a rampa `A + B·y` filtrada por um lóbulo largo **continua a ser uma
+rampa** (não há nada para reflectir), e uma luz direccional é um **delta**, que um espelho reflecte
+num conjunto de medida nula — **`1` byte de `144`**. *O cromado deste app era a peça com menos forma
+de todas; o que dava contraste a um metal era a rugosidade dele deixar a lâmpada aparecer.*
 
 ⚠️ **E o controlo que o dono mais usa era o mais invisível.** Num dieléctrico, arrastar o `Roughness`
-de `0,30` a `0,05` movia `1 122` de `61 804` pixels (**`1,82 %`**), com `\|Δ\|` médio de **`0,53`
+de `0,30` a `0,05` movia `1 048` de `61 804` pixels (**`1,70 %`**), com `\|Δ\|` médio de **`0,60`
 bytes** sobre a peça inteira — e a §22 tinha acabado de lhe dar mais nove controlos para arrastar.
 
-⚠️⚠️ **A régua da estrutura tem CONTROLO, e sem ele ela não afirma nada:** um `\|∇²\|` que lê `1,07` em
-tudo é indistinguível de uma régua **cega**. Sob um céu sintético com **aresta** ela lê `2,405` no
-espelho (`2,24×`), `1,614` no metal baço e `1,221` no dieléctrico. *Ela vê, e vê mais no espelho, que
-é o sentido certo.*
+⚠️⚠️ **A régua da estrutura tem CONTROLO, e sem ele ela não afirma nada:** um `\|∇²\|` que lê `~1` em
+tudo é indistinguível de uma régua **cega**. Sob um céu sintético com **aresta** ela lê `2,699` no
+espelho (`2,5×`), `1,716` no metal baço e `1,248` no dieléctrico. *Ela vê, vê mais no espelho, e é
+isso que prova que o `1,077` de cima é uma afirmação sobre o CÉU e não sobre a régua.*
 
 ---
 
@@ -1852,8 +1859,14 @@ outra. Estrutura no espelho, sob a mesma energia:
 | forma | estrutura `\|∇²\|` | ganho |
 |---|---:|---:|
 | rampa nua | `1,074` | — |
-| **gaussiana esférica** | `1,171` | `+9 %` |
-| **disco com bordo esbatido** | `1,434` | **`+34 %`** |
+| **gaussiana esférica**, na melhor célula dela | `1,171` | `+9 %` |
+| **disco**, na MESMA célula | `1,337` | `+24 %` |
+| **disco**, na melhor célula dele | `1,478` | **`+38 %`** |
+
+*(⚠️ estas três foram medidas na vista `Standard`, **antes** de a régua se mudar para o olhar do
+produto — §24.7. A troca move a rampa de `1,074` para `1,077`, isto é, nada: o que ela move é o
+extremo alto, onde o corte começa a comer a estrutura. A configuração escolhida lê `1,077 → 1,268`
+no olhar do produto.)*
 
 ⭐⭐⭐ *Uma gaussiana não tem aresta nenhuma, e a aresta é o efeito.* Uma caixa de luz real é um
 rectângulo de bordo nítido, e é isso que um cromado mostra. ⇒ o argumento inteiro a favor da SG — que
@@ -1899,11 +1912,12 @@ sala é o que ilumina a difusa.
 
 ---
 
-### §24.7 — ⛔⛔ Uma afirmação minha, derrubada na primeira corrida: o BRANCO CHAPADO **sobe**
+### §24.7 — ⛔⛔ DUAS afirmações minhas, derrubadas — e a segunda foi o dono que a derrubou
 
-O cabeçalho do módulo dizia, quando foi escrito: *«a média fica igual, logo o `8,4 %` de branco
-chapado do §8 não pode piorar por acumulação»*. **Falso.** Média constante é uma afirmação sobre a
-**MÉDIA**; o corte é uma afirmação sobre o **PICO**, e concentrar energia é precisamente subir o pico.
+**(a) O branco chapado SOBE.** O cabeçalho do módulo dizia, quando foi escrito: *«a média fica igual,
+logo o `8,4 %` de branco chapado do §8 não pode piorar por acumulação»*. **Falso.** Média constante é
+uma afirmação sobre a **MÉDIA**; o corte é uma afirmação sobre o **PICO**, e concentrar energia é
+precisamente subir o pico.
 
 | vista | branco chapado, rampa nua | com a caixa |
 |---|---:|---:|
@@ -1911,13 +1925,28 @@ chapado do §8 não pode piorar por acumulação»*. **Falso.** Média constante
 | `Standard`, `−1` stop | `114` | `115` |
 | **`Neutral`**, `0` stops | **`0`** | **`0`** |
 
-⭐⭐⭐ **A `Neutral` corta ZERO pixels nas vinte configurações medidas** — a caixa de luz e a gestão de
-cor são o mesmo assunto: *pôr uma fonte no céu é exactamente o que torna obrigatória a vista que não
-corta*. A escolha da omissão continua a ser **do dono** (§8), e esta wave é a medição que a torna
-urgente.
+⛔⛔⛔ **(b) E a linha que interessa é a última, porque é onde o modelador ABRE.** A primeira redacção
+desta secção dizia *«a escolha da omissão continua a ser do dono, e esta wave torna-a urgente»*, e o
+smoke que eu escrevi pedia-lhe que decidisse. **Ele já tinha decidido, nessa manhã, e a decisão já
+estava shipada:** o [`shading::OPENING_LOOK`](../../crates/ph2d-app-field3d/src/shading.rs) é
+`Neutral` desde a §15, com a tabela do preço ao lado dela. A resposta dele foi *«Neutral como padrão
+(como já está)»*.
 
-⚠️ **E é por isso que as constantes da §24.6 foram escolhidas na `Neutral`:** sob a `Standard` um
-planalto saturado tem `∇² = 0`, logo o corte **esconde** o efeito que a régua devia medir. *A régua
+⚠️⚠️ **O mecanismo do erro é o do `CLAUDE.md` §5.0, e é reproduzível:** as sondas desta wave pintavam
+com `ph2d_view_transform::Look::default()` — a omissão do **TIPO**, que é `Standard` porque ela é a
+identidade para luz em `0..=1` — e eu li a coluna delas como sendo *o produto*. *Uma sonda que chama
+o default do tipo mede outro programa que o pill.* ⇒ as sondas passam a pintar com o `OPENING_LOOK`,
+e a coluna `Standard` fica como o **outro lado do A/B** (o que vê quem trocar a vista na fileira do
+*Shading*), nunca como a omissão.
+
+⚠️ **E havia gate a mais e a menos ao mesmo tempo.** O `shading_tests` já proibia o `view.rs` de
+voltar ao `Look::default()`, logo a DECISÃO estava presa — mas **nada ligava essa decisão ao que ela
+protege**. *Uma catraca sobre um valor não diz porque é que o valor importa, e foi por isso que eu a
+pude ler como aberta.* ⇒ gate novo, sobre a consequência:
+`the_modeller_opens_in_a_view_the_softbox_does_not_blow_out`.
+
+⚠️ **E é por isso que as constantes da §24.6 foram escolhidas no olhar do produto:** sob a `Standard`
+um planalto saturado tem `∇² = 0`, logo o corte **esconde** o efeito que a régua devia medir. *A régua
 estaria a ser lida através do defeito que ela acusa.*
 
 ---
@@ -1959,6 +1988,7 @@ caixa `10°` maior sai a `0,1+`), senão uma barra larga não afirmaria nada.
 | `with_no_box_the_sky_is_the_one_it_replaces` | **ao BIT**, nas duas perguntas, sobre `3 000` direcções |
 | `the_box_redistributes_the_sky_it_does_not_add_to_it` | a média sobre a esfera não se mexe, na radiância **e** na irradiância |
 | `the_box_brightens_the_zenith_and_darkens_the_floor` | o zénite sobe, o chão desce — a metade que diz *de onde* veio a energia |
+| `the_modeller_opens_in_a_view_the_softbox_does_not_blow_out` | ⭐ a CONSEQUÊNCIA do `OPENING_LOOK`: `0` pixels saturados no caminho do produto, com o controlo na `Standard` |
 
 ⚠️⚠️ **E o `the_sky_honours_the_lobe_width_it_is_handed` PARTIU-SE, de propósito, e a forma como
 partiu é o achado.** A redacção anterior media a lei do lóbulo **contra a fórmula da rampa** e
@@ -1969,21 +1999,35 @@ encolhimento da rampa e a linha da tabela). ⇒ o gate parte-se em duas metades,
 de que ela fala**: a lei exacta sobre a rampa nua, a dependência sobre o céu do produto — e a metade
 nova afirma o **contrário** da antiga no equador.
 
+⚠️ **E o portão do fecho apanhou um TECTO DE LOC** (`studio_tests.rs` a `715` contra `700`), curado
+por **corte por responsabilidade** e nunca por uma entrada no `FILE_OVERAGE_OK`. ⭐ O corte caiu no
+sítio certo por si mesmo: um **gate** afirma uma lei e uma **sonda** imprime uma tabela e não afirma
+nada — são dois leitores diferentes (o portão de fecho, e quem está a escolher uma constante). ⇒
+`studio_probe_tests.rs`.
+
 ⚠️ **O oráculo da forma é RE-ESCRITO no gate, de propósito:** se ele chamasse a `Softbox` do produto,
 uma mutação na forma passaria pelos dois lados ao mesmo tempo. É essa separação que mata a mutação
 `[2]`.
 
-**7/7 mutações** — a caixa a somar-se em vez de sair do ambiente · a linha da tabela fixa (o `α`
+**9/9 mutações** — a caixa a somar-se em vez de sair do ambiente · a linha da tabela fixa (o `α`
 deitado fora, que mata em dois ficheiros diferentes) · o bordo a virar degrau · a irradiância a
-ignorar a caixa · a tabela sem normalização · o eixo do ângulo sem deformação · o `up = dir[1]`.
+ignorar a caixa · a tabela sem normalização · o eixo do ângulo sem deformação · o `up = dir[1]` · o
+`OPENING_LOOK` a voltar a `Standard` · **o produto a perder a caixa**.
 ⚠️ Com **controlo do próprio filtro** antes de mutar (`6 passed` limpo), senão um filtro que casa zero
 imprime o mesmo que um gate que morre.
+
+⚠️⚠️ **E a última delas SOBREVIVEU à primeira redacção do gate novo, o que o corrigiu.** O controlo
+pedia apenas *«na `Standard` isto satura»* — e a **rampa nua já satura `5 180` px sozinha**, logo
+apagar a caixa do produto deixava o gate verde. *Um controlo que o sujeito da mutação não toca não é
+um controlo: é uma segunda asserção sobre outra coisa.* ⇒ hoje o controlo é o A/B da própria caixa
+(numa vista que corta, ela tem de **acrescentar** corte), e as duas metades dependem dela.
 
 ---
 
 ### §24.10 — ⏳ O que fica aberto
 
-- ⛔ **A vista de omissão** — §8, e agora com a medição que a torna urgente (§24.7). **Decisão do dono.**
+- ✅ ~~**A vista de omissão**~~ — **já estava decidida e shipada** (§15), e esta wave só descobriu que
+  não sabia disso (§24.7). Hoje tem gate sobre a consequência.
 - **A caixa é UMA, e no eixo da rampa.** Uma segunda caixa (o preenchimento, o `rim`) custa **uma
   segunda tabela** e uma direcção que já não sai da rampa — isto é, a primeira constante de direcção
   desta lei. *Não é trabalho a fazer: é uma decisão a tomar primeiro.*

@@ -419,3 +419,8 @@ impl ph2d_material::Environment for Studio<'_> {
 #[cfg(test)]
 #[path = "studio_tests.rs"]
 mod tests;
+
+/// ⏱️ As SONDAS vivem no irmão, por assunto e pelo tecto de LOC — ver [`probes`].
+#[cfg(test)]
+#[path = "studio_probe_tests.rs"]
+mod probes;

@@ -71,11 +71,11 @@ pub fn owners_under(
     if hits.iter().all(Option::is_none) {
         return vec![None; px.len()];
     }
-    // Uma fita por folha, **uma vez** — e a pose de MUNDO, não a local: o ponto veio do mundo. Uma
+    // Uma folha por entidade, **com a pose de MUNDO** e não a local: o ponto veio do mundo. Uma
     // folha avaliada com a pose local responderia sobre um sítio onde ela não está — e o erro cresce
     // com o aninhamento, então passaria despercebido numa peça plana e escolheria o objeto errado
     // numa peça agrupada.
-    let leaves: Vec<(Entity, ph2d_field_eval::Field)> = ph2d_field_ecs::walk(world, root)
+    let (quem, postas): (Vec<Entity>, Vec<FieldDoc>) = ph2d_field_ecs::walk(world, root)
         .into_iter()
         .filter_map(|(e, _)| {
             let FieldNode {
@@ -94,23 +94,22 @@ pub fn owners_under(
                 NodeId(0),
             )
             .ok()?;
-            Some((e, ph2d_field_eval::Field::new(&placed)))
+            Some((e, placed))
         })
-        .collect();
+        .unzip();
+    // ⭐⭐⭐ **A LEI VIVE NUMA PORTA, e este é um dos dois leitores dela** — o outro é o
+    // sombreamento, que faz a mesma pergunta **por pixel** desde que o material passou a ser por
+    // objecto. Ver [`ph2d_field_eval::owners`], que traz a bola à frente, a margem e a rede.
+    //
+    // ⚠️ **A margem é a tolerância de quem PRODUZIU o ponto**, e ela é perguntada ao traçador em vez
+    // de escrita aqui: um número local seria a segunda resposta, e a que envelhece.
+    let owners = ph2d_field_eval::owners::Owners::new(
+        &postas,
+        &crate::smoke::sampled_registry(),
+        ph2d_field_render::hit_tolerance(cam.half_extent, screen.width().min(screen.height())),
+    );
     hits.into_iter()
-        .map(|hit| {
-            let p = hit?;
-            let mut best: Option<(f32, Entity)> = None;
-            for (e, f) in &leaves {
-                let v = f
-                    .at(f64::from(p[0]), f64::from(p[1]), f64::from(p[2]))
-                    .abs() as f32;
-                if best.is_none_or(|(b, _)| v < b) {
-                    best = Some((v, *e));
-                }
-            }
-            best.map(|(_, e)| e)
-        })
+        .map(|hit| owners.at(hit?).map(|i| quem[i]))
         .collect()
 }
 

@@ -463,6 +463,22 @@ fn trace_inner_tiles(
     }
 }
 
+/// ⭐⭐⭐ **A TOLERÂNCIA com que um ponto deste traçador foi produzido** — quanto ele pode estar fora
+/// da superfície.
+///
+/// ⛔⛔ **Ela é pública porque quem CONSOME o ponto precisa dela e não a pode adivinhar.** O
+/// [`Gbuffer::point`] está *ligeiramente fora* da superfície por construção (a marcha pára quando o
+/// campo desce abaixo disto), e um consumidor que o teste contra uma fronteira exacta rejeita a
+/// resposta certa **em todo o lado** — medido: `26 216` de `26 216` pixels
+/// (`ph2d_field_eval::owners`). *Uma tolerância que só o produtor conhece obriga o consumidor a
+/// inventar uma segunda, e a que envelhece é sempre a inventada.*
+///
+/// ⚠️ Ela **desce com o zoom**, como as duas tolerâncias de que é feita — ver [`Sharpness`].
+#[must_use]
+pub fn hit_tolerance(half_extent: f32, side_px: f32) -> f32 {
+    Sharpness::for_frame(half_extent, side_px.max(0.0) as usize).hit
+}
+
 /// ⭐ **Onde o raio entra e sai da caixa** (o *slab test*), ou `None` se ele a falha.
 ///
 /// ⚠️ Um raio **paralelo** a um eixo tem `1/d = ±∞`, e a aritmética de `f32` trata-o certo: o

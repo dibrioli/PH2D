@@ -65,6 +65,8 @@ pub mod ops_symbols;
 pub mod ops_thread;
 /// ⭐ O TRIÂNGULO de vértices quaisquer — ver [`ops_triangle`].
 pub mod ops_triangle;
+/// ⭐⭐⭐ **De quem é este ponto** — ver [`owners`].
+pub mod owners;
 pub mod profile;
 /// ⭐⭐ O perfil como CONSULTA (W56) — a cura do custo linear nas arestas.
 pub mod profile_index;

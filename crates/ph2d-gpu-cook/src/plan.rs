@@ -12,7 +12,7 @@ use ph2d_nodegraph::cook::OpResolver;
 use ph2d_nodegraph::gpu::KernelResolver;
 use ph2d_nodegraph::graph::{Graph, NodeId};
 use ph2d_nodegraph::node::{NodeManifest, NodeTypeId};
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
 /// Where one input port of a [`GpuStage`] gets its stream.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -154,6 +154,7 @@ fn output_shape(
     kernels: &dyn KernelResolver,
     node: NodeId,
     budget: u32,
+    driven: &DrivenParams,
 ) -> Option<Shape> {
     let budget = budget.checked_sub(1)?;
     let inst = graph.node(node)?;
@@ -183,7 +184,7 @@ fn output_shape(
             // A `pre` stop: last tick's stream, which the walk has not derived.
             Some((_, _, true)) => return None,
             Some((src, _, false)) => {
-                let s = output_shape(graph, ops, kernels, src, budget)?;
+                let s = output_shape(graph, ops, kernels, src, budget, driven)?;
                 (s.cols, s.dense)
             }
         },
@@ -210,7 +211,7 @@ fn output_shape(
                     None => {}
                     Some((_, _, true)) => return None,
                     Some((src, _, false)) => {
-                        cols.extend(output_shape(graph, ops, kernels, src, budget)?.cols);
+                        cols.extend(output_shape(graph, ops, kernels, src, budget, driven)?.cols);
                     }
                 }
             }
@@ -226,7 +227,7 @@ fn output_shape(
     // different column per param, and deriving the shape from the default set
     // would predict columns the dispatch never produces.
     for b in kernel
-        .resolve(&|name| resolve_param(graph, node, manifest, name))
+        .resolve(&|name| resolve_param(graph, node, manifest, name, driven))
         .bindings
     {
         let present = cols.contains(b.column);
@@ -266,7 +267,10 @@ pub fn output_dense_window(
     kernels: &dyn KernelResolver,
     node: NodeId,
 ) -> Option<bool> {
-    output_shape(graph, ops, kernels, node, SHAPE_DEPTH).map(|s| s.dense)
+    // ⚠️ Sem params dirigidos: esta porta responde sobre a FORMA da saída, e um fio só a
+    // mudaria através de um kernel dependente de param — caso que nenhum consumidor desta
+    // função tem. Um mapa vazio é a resposta de sempre.
+    output_shape(graph, ops, kernels, node, SHAPE_DEPTH, &DrivenParams::new()).map(|s| s.dense)
 }
 
 /// Can the GPU claim this node? Every reason a node breaks the GPU claim lives
@@ -281,6 +285,7 @@ fn eligible(
     node: NodeId,
     claimed: &BTreeSet<NodeId>,
     forbidden: &BTreeSet<NodeId>,
+    driven: &DrivenParams,
 ) -> bool {
     // A node the RETREAT forbade (`plan`): a partially-claimed sim loop drops its
     // `pre`-source here so the loop recedes to the pump while a render suffix
@@ -299,10 +304,21 @@ fn eligible(
     let Some(kernel) = kernels.gpu_kernel(inst.type_id()) else {
         return false;
     };
-    // A driven param is a live wire into another subtree — the CPU cook
-    // resolves those; a GPU stage has no lane for them (F1.2+).
-    if graph.param_sources(node).is_some_and(|s| !s.is_empty()) {
-        return false;
+    // ⭐⭐⭐ **UM PARAM DIRIGIDO JÁ NÃO DERRUBA O NÓ** (doc 110 §3 — a recusa cega que este
+    // planeador tinha desde a F1.2). Ela custava o dispositivo à razão de existir de uma família
+    // inteira: **medido, 6 de 6 cadeias caíam, e a primeira delas era uma CONSTANTE**
+    // (`value.number`), trocando `3,85 ms` por `195,9 ms` (doc 98).
+    //
+    // ⚠️ **O que a substitui não é «aceitar sempre»: é aceitar quando o VALOR está na mão.** Um
+    // param dirigido cujo número não veio no mapa continua a ser recusado — e é essa metade que
+    // impede a única falha grave possível aqui, a das duas rotas a desenharem documentos
+    // diferentes (ver [`DrivenParams`]). Sem mapa nenhum, esta função responde exactamente o que
+    // respondia antes desta wave.
+    if let Some(fios) = graph.param_sources(node) {
+        let mapa = driven.get(&node);
+        if !fios.keys().all(|p| mapa.is_some_and(|m| m.contains_key(p))) {
+            return false;
+        }
     }
     // **A GPU stage produces ONE buffer.** [`GpuStage`] holds a `node`, never a
     // `(node, port)`, and `source_of` resolves an input to `GpuSource::Stage(src)`
@@ -359,14 +375,14 @@ fn eligible(
     // cannot answer for — `motion.integrate` + `id` is a gather. The shape must
     // be PROVABLE, so an input the plan cannot derive refuses too.
     let bindings = kernel
-        .resolve(&|name| resolve_param(graph, node, manifest, name))
+        .resolve(&|name| resolve_param(graph, node, manifest, name, driven))
         .bindings;
     for b in bindings.iter().filter(|b| b.access.refuses()) {
         let known = match graph.input_edge(node, b.port) {
             None => Some(BTreeSet::new()),
             Some((_, _, true)) => None,
             Some((src, _, false)) => {
-                output_shape(graph, ops, kernels, src, SHAPE_DEPTH).map(|s| s.cols)
+                output_shape(graph, ops, kernels, src, SHAPE_DEPTH, driven).map(|s| s.cols)
             }
         };
         match known {
@@ -391,9 +407,8 @@ fn eligible(
         let shape = match graph.input_edge(node, b.port) {
             None => Some((BTreeSet::new(), false)),
             Some((_, _, true)) => None,
-            Some((src, _, false)) => {
-                output_shape(graph, ops, kernels, src, SHAPE_DEPTH).map(|s| (s.cols, s.dense))
-            }
+            Some((src, _, false)) => output_shape(graph, ops, kernels, src, SHAPE_DEPTH, driven)
+                .map(|s| (s.cols, s.dense)),
         };
         match shape {
             None => return false,
@@ -403,7 +418,7 @@ fn eligible(
     }
     // Param-dependent coverage (e.g. the oscillator's X/Y-only kernel).
     match kernel.applicable {
-        Some(f) => f(&|name| resolve_param(graph, node, manifest, name)),
+        Some(f) => f(&|name| resolve_param(graph, node, manifest, name, driven)),
         None => true,
     }
 }
@@ -412,18 +427,48 @@ fn eligible(
 /// so a malformed (forward-cyclic) graph is a refusal, not a stack overflow.
 const SHAPE_DEPTH: u32 = 256;
 
-/// The node's live param value: per-instance override else manifest default —
-/// the same override>default resolution as `EvalCtx::param` (driven params
-/// were excluded by [`eligible`], so the wire tier cannot apply here).
+/// ⭐⭐⭐ **O VALOR DE CADA PARAM DIRIGIDO neste quadro** (doc 110 §3 · [doc 102 W1]).
+///
+/// Um param dirigido é um fio para outra sub-árvore, e o número dele **não está no grafo**: quem o
+/// sabe é quem cozeu o condutor. O sequenciador não coze nada, logo o valor **entra** — e a
+/// ausência dele tem consequência declarada em [`eligible`]: *sem valor, o nó não é encenado*.
+///
+/// ⚠️ **A ausência não pode cair no default em silêncio.** A CPU, para um condutor que ainda não
+/// produziu número nenhum, deixa o param a CAIR no override/default (a lei do `driven_value`); mas
+/// um condutor que produziu `7` e um mapa que não o trouxe leem-se **iguais** aqui — e aí as duas
+/// rotas desenhavam documentos diferentes sem nada acusar. Por isso a regra é sobre a CHAVE, não
+/// sobre o valor: quem tem fio e não tem entrada no mapa fica na CPU, como sempre esteve.
+///
+/// [doc 102 W1]: ../../../docs/Motion%20Nodes/102_o_outro_patamar_plano_dos_nos_2026-09-04.md
+/// ⚠️⚠️ **O valor é um `Option`, e as duas metades dele são perguntas DIFERENTES:**
+/// - a **chave ausente** = *«ninguém consultou este fio»* ⇒ o nó não é encenado (a lei de sempre);
+/// - a chave presente com **`None`** = *«consultei, e o condutor não deu número»* ⇒ o param CAI no
+///   override/default, que é exactamente o que a CPU faz (`driven_value`), e o nó **fica**.
+///
+/// ⛔⛔ **Colapsar as duas faria a cena saltar entre a placa e o processador de quadro para
+/// quadro:** um `pulse.*` só dá número no instante em que dispara, e sem esta distinção o plano
+/// mudava de rota a cada tique — um engasgo visível, causado por uma escolha de tipo.
+pub type DrivenParams = BTreeMap<NodeId, BTreeMap<String, Option<f32>>>;
+
+/// The node's live param value: **driven** (the wire tier) else per-instance
+/// override else manifest default — a escada do `EvalCtx::param`, agora com os
+/// três degraus, e não dois.
 pub(crate) fn resolve_param(
     graph: &Graph,
     node: NodeId,
     manifest: &NodeManifest,
     name: &str,
+    driven: &DrivenParams,
 ) -> f32 {
-    graph
-        .node_param_overrides(node)
+    driven
+        .get(&node)
         .and_then(|m| m.get(name).copied())
+        .flatten()
+        .or_else(|| {
+            graph
+                .node_param_overrides(node)
+                .and_then(|m| m.get(name).copied())
+        })
         .or_else(|| manifest.param_default(name))
         .unwrap_or(0.0)
 }
@@ -435,6 +480,8 @@ struct Walk<'a> {
     kernels: &'a dyn KernelResolver,
     stages: Vec<GpuStage>,
     boundaries: Vec<(NodeId, usize)>,
+    /// Os valores dos params dirigidos — ver [`DrivenParams`].
+    driven: &'a DrivenParams,
     /// Nodes this walk is staging — inserted on ENTRY, so a `pre` edge that
     /// closes a loop back onto an ancestor still on the stack sees it. Since
     /// eligibility is settled before `accept`, "claimed" is never withdrawn:
@@ -480,6 +527,7 @@ impl Walk<'_> {
                     src,
                     &self.claimed,
                     self.forbidden,
+                    self.driven,
                 ) =>
             {
                 self.accept(src, ty);
@@ -502,7 +550,22 @@ pub fn plan(
     kernels: &dyn KernelResolver,
     sink: NodeId,
 ) -> GpuPlan {
-    plan_forbidding(graph, ops, kernels, sink, &BTreeSet::new())
+    plan_driven(graph, ops, kernels, sink, &DrivenParams::new())
+}
+
+/// ⭐⭐⭐ [`plan`], **com os valores dos params dirigidos** (doc 110 §3).
+///
+/// ⚠️ **A [`plan`] é esta função com o mapa VAZIO**, e isso não é um atalho: sem valores nenhum nó
+/// com fio é encenado, que é exactamente o que este planeador fazia antes desta wave. *Uma porta
+/// nova cujo caso vazio reproduz a lei antiga não precisa que ninguém confie nela.*
+pub fn plan_driven(
+    graph: &Graph,
+    ops: &dyn OpResolver,
+    kernels: &dyn KernelResolver,
+    sink: NodeId,
+    driven: &DrivenParams,
+) -> GpuPlan {
+    plan_forbidding(graph, ops, kernels, sink, &BTreeSet::new(), driven)
 }
 
 /// [`plan`], with a set of nodes forced to be boundaries — the retreat mechanism
@@ -550,10 +613,11 @@ fn plan_forbidding(
     kernels: &dyn KernelResolver,
     sink: NodeId,
     forbidden: &BTreeSet<NodeId>,
+    driven: &DrivenParams,
 ) -> GpuPlan {
     let claimed = BTreeSet::new();
     let sink_ty = match graph.node(sink).map(|i| i.type_id()) {
-        Some(ty) if eligible(graph, ops, kernels, sink, &claimed, forbidden) => ty,
+        Some(ty) if eligible(graph, ops, kernels, sink, &claimed, forbidden, driven) => ty,
         // The sink itself is CPU: nothing to claim. (`dispatching_stages` is 0,
         // so the caller's route recuses whole.)
         _ => {
@@ -571,6 +635,7 @@ fn plan_forbidding(
         boundaries: Vec::new(),
         claimed,
         forbidden,
+        driven,
     };
     walk.accept(sink, sink_ty);
 
@@ -614,7 +679,7 @@ fn plan_forbidding(
             .iter()
             .fold(false, |g, n| next.insert(*n) | g);
         if grew {
-            return plan_forbidding(graph, ops, kernels, sink, &next);
+            return plan_forbidding(graph, ops, kernels, sink, &next, driven);
         }
         // No progress possible (a forbidden node still staged — cannot happen,
         // `eligible` refuses it): fall back to the whole refusal.

@@ -353,18 +353,19 @@ impl GpuCook {
         } = alg;
         // The node's own param laws, to the letter (`motion.voronoi::eval`).
         let count = param_as_count(
-            resolve_param(graph, node, manifest, count_param),
+            resolve_param(graph, node, manifest, count_param, &self.driven),
             *max_points,
         );
         if count == 0 {
             return GpuStream::default();
         }
-        let w = resolve_param(graph, node, manifest, width_param).max(1e-3);
-        let h = resolve_param(graph, node, manifest, height_param).max(1e-3);
-        let seed = resolve_param(graph, node, manifest, seed_param)
+        let w = resolve_param(graph, node, manifest, width_param, &self.driven).max(1e-3);
+        let h = resolve_param(graph, node, manifest, height_param, &self.driven).max(1e-3);
+        let seed = resolve_param(graph, node, manifest, seed_param, &self.driven)
             .max(0.0)
             .round() as u32;
-        let iterations = (resolve_param(graph, node, manifest, iterations_param).round() as i64)
+        let iterations = (resolve_param(graph, node, manifest, iterations_param, &self.driven)
+            .round() as i64)
             .clamp(0, *max_iterations) as usize;
         let res = GpuAlgorithm::lloyd_resolution(count, *samples_per_point, *min_res, *max_res)
             .min(INT_CENTROID_RES_CEILING);

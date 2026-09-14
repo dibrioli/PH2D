@@ -117,14 +117,42 @@ fn probe_does_a_value_chain_stay_on_the_device() {
         liga(&mut m, alvo, out);
         if let Some(no) = dirigir {
             let v = m.doc.graph.add_node(no.to_string());
+            // ⚠️ **O condutor é ALIMENTADO**, e sem isto a tabela mentiria sobre dois deles: o
+            // `value.math` opera sobre uma corrente e o `pulse.beat` conta uma, logo desligados
+            // não produzem número nenhum — e o nó fica na CPU pela lei do condutor VAZIO, que é
+            // outra coisa do que uma recusa do planeador. *Duas causas que se leem iguais numa
+            // coluna só.*
+            let semente = m.doc.graph.add_node("value.number".to_string());
+            let _ = m.doc.graph.connect(Edge {
+                from: (semente, 0),
+                to: (v, 0),
+                delayed: false,
+            });
             m.doc
                 .graph
                 .drive_param(alvo, "amount", (v, 0))
                 .expect("dirige");
         }
-        let plano = ph2d_gpu_cook::plan(&m.doc.graph, &m.registry, &m.registry, out);
+        // ⭐ **Com os valores na mão** — a mesma porta que o `cook_gpu` usa. ⚠️ A `plan` sem mapa
+        // continua a recusar, de propósito (ver `plan::DrivenParams`), então uma sonda que a
+        // chamasse mediria a lei ANTIGA e diria que nada mudou.
+        let dirigidos = crate::motion_bridge::gpu::valores_dirigidos(&mut m, 0.0);
+        let plano =
+            ph2d_gpu_cook::plan_driven(&m.doc.graph, &m.registry, &m.registry, out, &dirigidos);
+        // ⚠️ **A terceira coluna é o que separa uma recusa de uma AUSÊNCIA.** Um condutor que não
+        // produz número nenhum deixa o param a cair no default — e o nó fica na CPU *por essa*
+        // razão, não porque o planeador o recusou. Sem esta coluna as duas leem-se iguais, e a
+        // tabela ensinaria que a wave não funcionou naquele nó.
+        let valor = dirigidos
+            .values()
+            .flat_map(std::collections::BTreeMap::values)
+            .next()
+            .map_or_else(
+                || "—  (fio nenhum)".to_string(),
+                |v| v.map_or_else(|| "vazio ⇒ cai no default".to_string(), |n| format!("{n}")),
+            );
         eprintln!(
-            "  {rotulo:<38} | {}",
+            "  {rotulo:<38} | {:<11} | {valor}",
             if plano.is_fully_gpu() {
                 "dispositivo"
             } else {
@@ -132,8 +160,8 @@ fn probe_does_a_value_chain_stay_on_the_device() {
             }
         );
     };
-    eprintln!("\n  cadeia `grid -> scale -> output`        | onde corre");
-    eprintln!("  ---------------------------------------|------------");
+    eprintln!("\n  cadeia `grid -> scale -> output`        | onde corre  | o valor que chegou");
+    eprintln!("  ---------------------------------------|-------------|-------------------");
     mede("sem valor nenhum (o controlo)", None);
     for no in [
         "value.number",
@@ -232,4 +260,133 @@ fn probe_the_price_of_driving_one_param() {
         if d2 { "dispositivo" } else { "CPU" }
     );
     eprintln!("  custo                  | {:>8.2}x\n", dirigido / livre);
+}
+
+/// ⭐⭐⭐ **UM FIO DE VALOR JÁ NÃO CUSTA O DISPOSITIVO** (doc 110 §3) — a sonda de cima, agora como
+/// GATE, e sobre a porta que a PRODUÇÃO usa (`valores_dirigidos`).
+///
+/// ⚠️ **Ele mede a cadeia inteira, não a constante:** a régua é `is_fully_gpu`, que é a mesma
+/// pergunta cuja resposta era `⛔ CPU` em 6 de 6 antes desta wave.
+#[test]
+fn a_value_wire_no_longer_costs_the_device() {
+    use ph2d_nodegraph::graph::{Edge, NodeId};
+    let fica = |condutor: &str| -> bool {
+        let mut m = crate::motion_state::MotionState::new();
+        let grid = m.doc.graph.add_node("motion.grid".to_string());
+        let alvo = m.doc.graph.add_node("motion.scale".to_string());
+        let out = m.doc.graph.add_node("motion.output".to_string());
+        let v = m.doc.graph.add_node(condutor.to_string());
+        let semente = m.doc.graph.add_node("value.number".to_string());
+        for (de, para, porta) in [(grid, alvo, 0u16), (alvo, out, 0), (semente, v, 0)] {
+            let _ = m.doc.graph.connect(Edge {
+                from: (NodeId(de.0), 0),
+                to: (NodeId(para.0), porta),
+                delayed: false,
+            });
+        }
+        m.doc
+            .graph
+            .drive_param(alvo, "amount", (v, 0))
+            .expect("dirige");
+        let dirigidos = crate::motion_bridge::gpu::valores_dirigidos(&mut m, 0.0);
+        ph2d_gpu_cook::plan_driven(&m.doc.graph, &m.registry, &m.registry, out, &dirigidos)
+            .is_fully_gpu()
+    };
+    let caidos: Vec<&str> = [
+        "value.number",
+        "value.lfo",
+        "value.math",
+        "value.time",
+        "value.noise",
+        "pulse.beat",
+    ]
+    .into_iter()
+    .filter(|n| !fica(n))
+    .collect();
+    assert!(
+        caidos.is_empty(),
+        "estes condutores ainda derrubam a cadeia para a CPU: {caidos:?}"
+    );
+}
+
+/// ⛔⛔ **UM CONDUTOR QUE NÃO DÁ NÚMERO NÃO PODE TROCAR A ROTA** (doc 110 §3).
+///
+/// Um `pulse.*` só fala no instante em que dispara. Se *«consultei e não veio nada»* fosse lido
+/// como *«ninguém consultou»*, o plano trocava entre dispositivo e CPU **a cada tique** — um
+/// engasgo visível, causado por uma escolha de tipo. A régua varre uma janela de instantes e exige
+/// a MESMA resposta em todos.
+#[test]
+fn a_wire_that_gives_no_number_never_flips_the_route() {
+    use ph2d_nodegraph::graph::{Edge, NodeId};
+    let mut m = crate::motion_state::MotionState::new();
+    let grid = m.doc.graph.add_node("motion.grid".to_string());
+    let alvo = m.doc.graph.add_node("motion.scale".to_string());
+    let out = m.doc.graph.add_node("motion.output".to_string());
+    let batida = m.doc.graph.add_node("pulse.beat".to_string());
+    for (de, para) in [(grid, alvo), (alvo, out)] {
+        m.doc
+            .graph
+            .connect(Edge {
+                from: (NodeId(de.0), 0),
+                to: (NodeId(para.0), 0),
+                delayed: false,
+            })
+            .expect("fio");
+    }
+    m.doc
+        .graph
+        .drive_param(alvo, "amount", (batida, 0))
+        .expect("dirige");
+    let rotas: Vec<bool> = (0..12)
+        .map(|k| {
+            let ph = f64::from(k) / 60.0;
+            let d = crate::motion_bridge::gpu::valores_dirigidos(&mut m, ph);
+            ph2d_gpu_cook::plan_driven(&m.doc.graph, &m.registry, &m.registry, out, &d)
+                .is_fully_gpu()
+        })
+        .collect();
+    assert!(
+        rotas.iter().all(|r| *r),
+        "a rota trocou ao longo de 12 tiques: {rotas:?} -- a cena engasga"
+    );
+}
+
+/// ⚠️⚠️ **OS VALORES SÃO DO INSTANTE** (doc 110 §3) — um `value.lfo` dá outro número a cada tique, e
+/// derivar uma vez por quadro congelaria a animação no primeiro sub-passo.
+///
+/// ⛔ **O call-site tem cerca própria** (o instante do plano vive dentro de um bloco, logo passá-lo
+/// ao laço não compila); este gate segura a outra metade: a própria porta tem de responder ao
+/// tempo. *Uma das duas sozinha não chega — a cerca não prova que a função LÊ o instante.*
+#[test]
+fn the_driven_values_follow_the_instant() {
+    use ph2d_nodegraph::graph::{Edge, NodeId};
+    let mut m = crate::motion_state::MotionState::new();
+    let grid = m.doc.graph.add_node("motion.grid".to_string());
+    let alvo = m.doc.graph.add_node("motion.scale".to_string());
+    let lfo = m.doc.graph.add_node("value.lfo".to_string());
+    m.doc
+        .graph
+        .connect(Edge {
+            from: (NodeId(grid.0), 0),
+            to: (NodeId(alvo.0), 0),
+            delayed: false,
+        })
+        .expect("fio");
+    m.doc
+        .graph
+        .drive_param(alvo, "amount", (lfo, 0))
+        .expect("dirige");
+    let mut em = |ph: f64| -> f32 {
+        crate::motion_bridge::gpu::valores_dirigidos(&mut m, ph)
+            .get(&alvo)
+            .and_then(|p| p.get("amount").copied())
+            .flatten()
+            .expect("o lfo da' numero")
+    };
+    // ⚠️ Um quarto de período do default, para os três caírem em sítios distintos da onda.
+    let (a, b, c) = (em(0.0), em(0.25), em(0.5));
+    assert!(
+        (a - b).abs() > 1e-3 || (b - c).abs() > 1e-3,
+        "os tres instantes deram o mesmo numero ({a}, {b}, {c}) -- a porta nao le^ o tempo"
+    );
 }

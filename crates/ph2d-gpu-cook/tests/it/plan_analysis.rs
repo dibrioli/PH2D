@@ -172,9 +172,13 @@ fn an_uncovered_param_space_puts_the_boundary_at_that_node() {
 
 #[test]
 fn a_driven_param_puts_the_boundary_at_the_driven_node() {
-    // Wire a driver into `move.dx` (doc 58): the GPU stage has no lane for a
-    // live wire, so `move` itself must cook on the CPU; only `output` (a
-    // pass-through) stays GPU-side — a lowering-only plan.
+    // Wire a driver into `move.dx` (doc 58) e **NÃO dizer ao planeador quanto ele vale**: sem o
+    // número na mão, `move` cozinha na CPU e só o `output` (pass-through) fica do lado do
+    // dispositivo — um plano só de lowering.
+    //
+    // ⚠️ **Desde o doc 110 §3 esta é a metade CONSERVADORA da lei, não a lei inteira**: a
+    // [`ph2d_gpu_cook::plan`] é a [`ph2d_gpu_cook::plan_driven`] com o mapa vazio, e é por isso
+    // que este gate continua a dizer exactamente o que dizia. O outro lado está nos três abaixo.
     let reg = registry();
     let (mut g, [grid, _, mv, out]) = chain(&reg);
     g.drive_param(mv, "dx", (grid, 0)).unwrap();
@@ -184,6 +188,81 @@ fn a_driven_param_puts_the_boundary_at_the_driven_node() {
         plan.dispatching_stages(&reg),
         0,
         "only the pass-through sink"
+    );
+}
+
+/// ⭐⭐⭐ **COM O VALOR NA MÃO, O FIO DEIXA DE CUSTAR O DISPOSITIVO** (doc 110 §3 · doc 102 W1).
+///
+/// A recusa cega deste planeador custava o caminho rápido à razão de existir de uma família
+/// inteira: **medido, 6 de 6 cadeias caíam — e a primeira era uma CONSTANTE** (`value.number`),
+/// trocando `3,85 ms` por `195,9 ms` (doc 98). Aqui a mesma cadeia, com o número entregue, é
+/// reivindicada por inteiro.
+#[test]
+fn a_driven_param_with_its_value_in_hand_keeps_the_node_on_the_device() {
+    use ph2d_gpu_cook::DrivenParams;
+    let reg = registry();
+    let (mut g, [grid, osc, mv, out]) = chain(&reg);
+    g.drive_param(mv, "dx", (grid, 0)).unwrap();
+    let mut driven = DrivenParams::new();
+    driven
+        .entry(mv)
+        .or_default()
+        .insert("dx".to_string(), Some(3.0));
+    let plan = ph2d_gpu_cook::plan_driven(&g, &reg, &reg, out, &driven);
+    assert!(
+        plan.is_fully_gpu(),
+        "com o valor entregue a cadeia inteira e' do dispositivo: {:?}",
+        plan.boundaries
+    );
+    let nodes: Vec<NodeId> = plan.stages.iter().map(|s| s.node).collect();
+    assert_eq!(nodes, vec![grid, osc, mv, out], "source→sink order");
+}
+
+/// ⭐⭐ **UM CONDUTOR VAZIO MANTÉM O NÓ, e cai no default como a CPU** (doc 110 §3).
+///
+/// ⛔⛔ **Sem esta metade a cena ENGASGA:** um `pulse.*` só dá número no instante em que dispara,
+/// e se «consultei e não veio nada» fosse lido como «ninguém consultou», o plano trocava de rota
+/// a cada tique. A chave presente com `None` diz *«foi consultado»*; o número ausente faz o param
+/// cair no override/default, que é literalmente o que o `driven_value` da CPU faz.
+#[test]
+fn an_empty_driver_keeps_the_node_and_falls_back_like_the_cpu() {
+    use ph2d_gpu_cook::DrivenParams;
+    let reg = registry();
+    let (mut g, [grid, _, mv, out]) = chain(&reg);
+    g.drive_param(mv, "dx", (grid, 0)).unwrap();
+    let mut driven = DrivenParams::new();
+    driven.entry(mv).or_default().insert("dx".to_string(), None);
+    let plan = ph2d_gpu_cook::plan_driven(&g, &reg, &reg, out, &driven);
+    assert!(
+        plan.is_fully_gpu(),
+        "consultado e vazio ainda e' consultado: {:?}",
+        plan.boundaries
+    );
+}
+
+/// ⛔ **UM PARAM QUE NINGUÉM CONSULTOU FICA NA CPU** — a metade que impede a única falha grave
+/// possível aqui: as duas rotas a desenharem documentos diferentes.
+///
+/// ⚠️ A régua é um mapa que traz **outro** param do mesmo nó: um condutor que produziu `7` e um
+/// mapa que não o trouxe leem-se iguais dentro do `resolve_param`, logo a decisão tem de ser sobre
+/// a CHAVE, e por param — não «este nó tem alguma entrada».
+#[test]
+fn a_param_nobody_consulted_keeps_the_whole_chain_on_the_cpu() {
+    use ph2d_gpu_cook::DrivenParams;
+    let reg = registry();
+    let (mut g, [grid, _, mv, out]) = chain(&reg);
+    g.drive_param(mv, "dx", (grid, 0)).unwrap();
+    g.drive_param(mv, "dy", (grid, 0)).unwrap();
+    let mut driven = DrivenParams::new();
+    driven
+        .entry(mv)
+        .or_default()
+        .insert("dx".to_string(), Some(3.0));
+    let plan = ph2d_gpu_cook::plan_driven(&g, &reg, &reg, out, &driven);
+    assert_eq!(
+        plan.boundaries,
+        vec![(mv, 0)],
+        "o `dy` nao foi consultado -- o no' tem de recuar inteiro"
     );
 }
 

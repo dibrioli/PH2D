@@ -278,7 +278,7 @@ impl GpuCook {
             let mut uni = [0u8; UNIFORM_BYTES as usize];
             uni[0..4].copy_from_slice(&n.to_le_bytes());
             for (j, name) in spec.params.iter().enumerate() {
-                let v = resolve_param(graph, node, manifest, name);
+                let v = resolve_param(graph, node, manifest, name, &self.driven);
                 let at = 4 + j * 4;
                 uni[at..at + 4].copy_from_slice(&v.to_le_bytes());
             }

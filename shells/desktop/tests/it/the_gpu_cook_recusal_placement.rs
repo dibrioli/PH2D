@@ -48,8 +48,13 @@ fn the_recusals_run_in_the_right_place_relative_to_the_plan() {
         "cook_gpu consulta graph_substeps — sem ele o device marcharia um documento substepado \
          no ritmo errado, e os dois produtores mostrariam quadros diferentes",
     );
+    // ⚠️ **A agulha é a `plan_driven`, e a mudança de nome é do doc 110 §3:** o planeador passou a
+    // receber os valores dos params DIRIGIDOS (sem eles, um fio de valor derrubava a cadeia
+    // inteira para a CPU — medido, 6 de 6). A `plan` continua a existir e é esta com o mapa vazio,
+    // mas quem o `cook_gpu` chama é a que leva os números. *Este gate quebrou ALTO ao renomear, que
+    // é a espécie boa de gate partido.*
     let plan = body
-        .find("ph2d_gpu_cook::plan(")
+        .find("ph2d_gpu_cook::plan_driven(")
         .expect("cook_gpu still plans");
     let changes_count = body
         .find("suffix_changes_count(")
@@ -67,6 +72,18 @@ fn the_recusals_run_in_the_right_place_relative_to_the_plan() {
         live_vector < plan && live_geo < plan,
         "the live-vector recusals must run BEFORE planning \
          (shape@{live_vector}, object@{live_geo} vs plan@{plan})"
+    );
+
+    // ⭐ **E a derivação dos valores dirigidos roda DEPOIS das recusas** (doc 110 §3): ela COZE as
+    // sub-árvores dos condutores na CPU, e fazê-lo num grafo que vai recusar de qualquer maneira
+    // seria trabalho deitado fora em todo quadro de uma cena vectorial viva.
+    let dirigidos = body
+        .find("valores_dirigidos(")
+        .expect("cook_gpu deriva os valores dos params dirigidos");
+    assert!(
+        dirigidos > live_vector && dirigidos > live_geo && dirigidos < plan,
+        "os valores dirigidos derivam-se depois das recusas e antes do plano \
+         (dirigidos@{dirigidos} vs shape@{live_vector}, object@{live_geo}, plan@{plan})"
     );
 
     // A CERCA de contagem roda DEPOIS do plano (ela precisa do plano para inspecionar

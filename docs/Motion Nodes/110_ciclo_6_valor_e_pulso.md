@@ -143,7 +143,7 @@ o sintoma.*
 
 ## §5 — A fila proposta (a decidir com o dono)
 
-1. **W1 — AS LANES DO PLANEADOR** (§3). Já está **especificada ao detalhe** no
+1. ✅ **W1a — O PARAM DIRIGIDO NÃO DERRUBA O NÓ** — **FEITA** (§6). ⏳ A metade (b) (porta ≠ 0) fica. Já está **especificada ao detalhe** no
    [doc 102 §W1](102_o_outro_patamar_plano_dos_nos_2026-09-04.md): o param dirigido passa a ser um
    **uniform copiado no device** (um buffer `drv` por nó, `copy_buffer_to_buffer` de 4 bytes por
    fonte, zero passes a mais), e a porta ≠ 0 vira o **complemento de um `Compact`**. Gates de
@@ -159,3 +159,120 @@ o sintoma.*
 
 ⚠️ **A ordem 1→2 não é preferência: é a lei 1 do §2 do protocolo.** Um grupo cujo uso normal
 derruba o dispositivo não fecha um ciclo com «tem mais botões».
+
+---
+
+## §6 — W1a FEITA: um fio de valor já não custa o dispositivo
+
+> Ordem do dono, 2026-09-14: *«sim. faça o que for melhor.»*
+
+### O que mudou, em uma frase
+
+O planeador deixou de recusar cegamente um nó com param dirigido; o que ele passou a exigir é o
+**número**, entregue por quem coze o condutor.
+
+### A régua, antes e depois
+
+Mesma sonda (`probe_does_a_value_chain_stay_on_the_device`), mesma cadeia
+`motion.grid → motion.scale → motion.output`:
+
+| condutor a dirigir o `amount` | antes | **depois** | o valor que chegou |
+|---|---|---|---|
+| — (o controlo) | dispositivo | dispositivo | — |
+| `value.number` | ⛔ CPU | **dispositivo** | `1` |
+| `value.lfo` | ⛔ CPU | **dispositivo** | `0` |
+| `value.math` | ⛔ CPU | **dispositivo** | `1` |
+| `value.time` | ⛔ CPU | **dispositivo** | `0` |
+| `value.noise` | ⛔ CPU | **dispositivo** | `-1` |
+| `pulse.beat` | ⛔ CPU | **dispositivo** | vazio ⇒ cai no default |
+
+⚠️ **A terceira coluna nasceu de um engano meu e ficou por isso.** A primeira corrida depois da cura
+deu `4 de 6`, com o `value.math` e o `pulse.beat` ainda em CPU — e as duas causas eram diferentes e
+**liam-se iguais numa coluna só**: o `math` opera sobre uma corrente e, desligado, não produz número
+nenhum; o `pulse.beat` só fala no instante em que dispara. *Uma recusa do planeador e um condutor
+vazio não são a mesma coisa, e sem a coluna do VALOR a tabela ensinaria que a wave não funcionou.*
+
+### O desenho, e a única falha grave que ele tinha de impedir
+
+⭐⭐ **As duas rotas a desenharem documentos diferentes.** É a falha que nenhum gate de rota vê: o nó
+fica no dispositivo, o dispositivo lê o default, e o artista vê outra cena. A cura é a regra ser
+sobre a **chave** e não sobre o valor:
+
+- **chave ausente** = *«ninguém consultou este fio»* ⇒ o nó **não é encenado** (a lei de sempre);
+- chave presente com **`None`** = *«consultei, e o condutor não deu número»* ⇒ o param cai no
+  override/default — exactamente o que o `driven_value` da CPU faz — e o nó **fica**.
+
+⛔⛔ **Colapsar as duas faria a cena ENGASGAR**, e foi a medição que o mostrou: um `pulse.*` só dá
+número quando dispara, logo o plano trocaria de rota a cada tique. Gate
+`a_wire_that_gives_no_number_never_flips_the_route` (12 instantes, a mesma resposta em todos).
+
+⭐ **E a `plan` continua a ser a `plan_driven` com o mapa vazio** — sem valores, nenhum nó com fio é
+encenado, que é o que este planeador fazia antes da wave. *Uma porta nova cujo caso vazio reproduz a
+lei antiga não precisa que ninguém confie nela*, e o gate antigo
+(`a_driven_param_puts_the_boundary_at_the_driven_node`) passou sem uma linha mudada.
+
+### ⚠️ Divergência DECLARADA do desenho do doc 102 W1(a)
+
+O doc 102 desenha um buffer `drv` por nó com `copy_buffer_to_buffer` de 4 bytes e substituição de
+`params.<name>` por `drv[k]` no WGSL. **Não foi esse o caminho.** O valor entra pelo **uniform que
+já existe**, porque a CPU o tem em mão: é o caminho que o próprio doc 102 nomeia como *«o escalar
+avaliado na CPU entra no `drv` como fallback (zero cópias)»*. ⇒ zero buffers novos, zero passes
+novos, zero mudanças no codegen — e o gate `no_params_dot_survives_for_a_driven_name` que aquele
+desenho pedia **não se aplica a este**.
+
+⏳ **O que fica por fazer, nomeado:** quando o condutor é ele próprio um estágio de GPU, o número
+faz uma volta pela CPU que uma cópia de 4 bytes device-side evitaria. ⚠️ **Não é uma regressão** — o
+condutor já era cozido na CPU hoje, só que arrastava o consumidor e os milhões de objectos dele
+atrás. *O que esta wave tira do caminho lento é o consumidor.*
+
+⏳ E a metade **(b)** do W1 (porta ≠ 0 = o complemento de um `Compact`) fica inteira por fazer: ela
+é outra pergunta (o `sim.lifetime.pulse`), e não é a que a medição do §3 acusou.
+
+### O que segura isto
+
+| gate | onde | o que afirma |
+|---|---|---|
+| `a_driven_param_with_its_value_in_hand_keeps_the_node_on_the_device` | `plan_analysis` | com o valor, a cadeia é do dispositivo |
+| `a_param_nobody_consulted_keeps_the_whole_chain_on_the_cpu` | `plan_analysis` | sem ele, recua — **por param**, não por nó |
+| `an_empty_driver_keeps_the_node_and_falls_back_like_the_cpu` | `plan_analysis` | consultado e vazio ainda é consultado |
+| `a_driven_param_puts_the_boundary_at_the_driven_node` | `plan_analysis` | a `plan` sem mapa é a lei ANTIGA, intacta |
+| ⭐ `the_device_reads_the_driven_param_and_agrees_with_the_cpu` | `gpu_cpu_parity_driven` | **as duas rotas concordam a `1e-4` num dispositivo REAL**, com o controlo que prova que o device lê o fio |
+| `a_value_wire_no_longer_costs_the_device` | `motion_valor_probe` | os 6 condutores, pela porta da produção |
+| `a_wire_that_gives_no_number_never_flips_the_route` | `motion_valor_probe` | 12 instantes, a mesma rota |
+| `the_driven_values_follow_the_instant` | `motion_valor_probe` | a porta lê o TEMPO |
+| `the_recusals_run_in_the_right_place_relative_to_the_plan` | shell | os valores derivam-se **depois** das recusas |
+
+**Provas de mutação: 5/5 mortas.** ⚠️ Uma delas só morreu depois de eu mudar o CÓDIGO em vez do
+gate: congelar o instante no laço dos tiques sobrevivia a tudo o que eu tinha escrito, e a cura não
+foi um gate novo — foi pôr o instante do plano **dentro de um bloco**, onde o laço não lhe chega.
+*O erro que não compila não precisa de gate*; o gate que ficou (`the_driven_values_follow_the_instant`)
+segura a outra metade, que é a porta ler o tempo.
+
+### Tectos e arrumação
+
+⚠️ O `ph2d-gpu-cook/src/lib.rs` passou o tecto de LOC (`714 > 700`) e a cura foi **corte por
+responsabilidade**: o ESTADO do sequenciador (26 campos) saiu para
+[`estado.rs`](../../crates/ph2d-gpu-cook/src/estado.rs) — *ali está o que ele FAZ, aqui o que ele
+TEM* — e o `lib.rs` ficou em `601`. ⚠️ Mover o tipo para fora da raiz muda **quem lhe pode ler os
+campos** (um campo privado é visível ao módulo que o declara e aos descendentes): daí o
+`pub(crate)`.
+
+⚠️ E a `stage_window` passou a **oito** argumentos: os quatro que andam sempre juntos (`graph`,
+`node`, `manifest`, `driven`) viraram uma `count::No`. *É a mesma razão pela qual o solver de
+contacto tem uma `Pecas`* — dois `&`-de-mesma-forma numa lista posicional trocam de lugar sem o
+compilador dizer nada.
+
+### ⚠️ Um VERMELHO pré-existente, medido e NÃO meu
+
+A suíte de paridade de GPU desta máquina (o adapter existe, e por isso ela correu de verdade) dá
+**142 verdes e 1 vermelho**: `value_slope_kernel_matches_the_cpu_on_the_device`, com
+`max |d| = 1,05023384e-4` contra a barra de `1e-4` — **fora por 5 centésimos de por cento**.
+
+⛔ **Medido nos dois lados antes de escrever isto:** com a wave posta de lado (`git stash`), o
+mesmo teste dá **exactamente o mesmo número, ao bit**. Não é desta wave. ⚠️ É a espécie que o
+`CLAUDE.md` §5.0 nomeia: um gate `#[ignore]` que **o CI nunca correu**, a viver a um ULP da barra —
+e quem lhe tocar primeiro herda-o. *Fica registado com o número, não curado aqui: uma barra de
+paridade mexe-se com a medição do autor dela ao lado, não de passagem noutra wave.*
+
+⏳ **O RELÓGIO continua por ler** (§3): a workstation esteve a `load 26–75` toda a jornada. A sonda
+`probe_the_price_of_driving_one_param` está escrita, corrigida e à espera de máquina calma.

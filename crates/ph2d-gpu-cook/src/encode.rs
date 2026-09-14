@@ -78,7 +78,8 @@ impl GpuCook {
         // module text, the bind group, the cache key it is stored under — must
         // describe the SAME kernel, so it is asked for once and threaded through
         // rather than re-resolved per site (`GpuKernel::resolve`).
-        let kernel = kernel.resolve(&|name| resolve_param(graph, node, manifest, name));
+        let kernel =
+            kernel.resolve(&|name| resolve_param(graph, node, manifest, name, &self.driven));
         let bindings = kernel.bindings;
 
         // Is the binding's column readable off its port? The CPU's re-seed rule
@@ -122,7 +123,7 @@ impl GpuCook {
         uni[0..4].copy_from_slice(&count.to_le_bytes());
         uni[4..8].copy_from_slice(&(playhead as f32).to_le_bytes());
         for (k, name) in kernel.params.iter().enumerate() {
-            let v = resolve_param(graph, node, manifest, name);
+            let v = resolve_param(graph, node, manifest, name, &self.driven);
             let at = 8 + k * 4;
             uni[at..at + 4].copy_from_slice(&v.to_le_bytes());
         }
@@ -164,7 +165,7 @@ impl GpuCook {
             + usize::from(has_src_n) * 4
             + usize::from(codegen::broadcasts_anything(bindings)) * 4;
         if let Some((spec, gb)) = grid {
-            let cell = resolve_param(graph, node, manifest, spec.cell_param);
+            let cell = resolve_param(graph, node, manifest, spec.cell_param, &self.driven);
             uni[grid_at..grid_at + 4].copy_from_slice(&gb.num_buckets.to_le_bytes());
             uni[grid_at + 4..grid_at + 8].copy_from_slice(&cell.to_le_bytes());
         }
@@ -363,7 +364,7 @@ impl GpuCook {
         manifest: &NodeManifest,
     ) -> GridBuffers {
         let n = inputs.get(spec.port).map_or(0, |s| s.count);
-        let cell = resolve_param(graph, node, manifest, spec.cell_param);
+        let cell = resolve_param(graph, node, manifest, spec.cell_param, &self.driven);
         let pos = inputs
             .get(spec.port)
             .and_then(|s| s.cols.get(spec.column))

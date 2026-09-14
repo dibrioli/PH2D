@@ -249,7 +249,7 @@ impl GpuCook {
         // predicate is a dispatch like any other, and skipping them here would
         // reopen exactly the divergence the audit closed.
         let bindings = predicate
-            .resolve(&|p| resolve_param(graph, node, manifest, p))
+            .resolve(&|p| resolve_param(graph, node, manifest, p, &self.driven))
             .bindings;
         if let Some((bport, len)) = gather::broadcast_length_mismatch(None, n, bindings, |b| {
             inputs
@@ -575,7 +575,7 @@ impl GpuCook {
             .and_then(|m| m.get(text_param))
             .map(String::as_str)
             .unwrap_or("");
-        let mode = resolve_param(graph, node, manifest, mode_param).round() as i32;
+        let mode = resolve_param(graph, node, manifest, mode_param, &self.driven).round() as i32;
         let dst: Arc<wgpu::Buffer> = self.pool.acquire(gpu, u64::from(n) * 4);
         let mut hold: Vec<wgpu::Buffer> = Vec::new();
         match (src_stream.cols.get(name), mode) {

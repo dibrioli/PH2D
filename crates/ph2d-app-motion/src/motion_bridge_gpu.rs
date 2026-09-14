@@ -237,6 +237,69 @@ fn cook_publishes_live_geometry(cook: &ph2d_nodegraph::cook::Cook) -> bool {
 /// `readout::take_tap` — readouts, digest, probe), so a fully-GPU document is
 /// no longer blind in the editor; the tap is one frame behind the cook it
 /// samples (the documented ordering asymmetry vs the CPU memo).
+/// Um nó e os fios que chegam aos params dele: `(nó, [(param, (condutor, porta))])`.
+type FioDeParam = (
+    ph2d_nodegraph::graph::NodeId,
+    Vec<(String, (ph2d_nodegraph::graph::NodeId, u16))>,
+);
+
+/// ⭐⭐⭐ **OS VALORES DOS PARAMS DIRIGIDOS, neste instante** (doc 110 §3 · doc 102 W1).
+///
+/// A razão de existir de um `value.*` é dirigir um param, e até esta wave isso derrubava a cadeia
+/// inteira para a CPU — **medido, 6 de 6, e a primeira era uma constante**. O planeador deixou de
+/// recusar; o que ele passou a exigir é o NÚMERO, e quem o sabe é quem coze o condutor.
+///
+/// ⚠️ **O condutor é cozido na CPU, de propósito, e isso NÃO é a metade lenta:** ele é uma
+/// sub-árvore de um elemento (o `driven_value` lê o elemento `0`), e a CPU já o cozia hoje — só
+/// que arrastava consigo o consumidor e os `4,19 M` objectos dele. *O que esta wave tira do
+/// caminho lento é o consumidor, não o condutor.* ⏳ Passar o próprio condutor ao dispositivo é a
+/// metade (a) do W1 que fica NOMEADA e por fazer: uma cópia de 4 bytes entre buffers.
+///
+/// ⚠️⚠️ **E ele é derivado POR INSTANTE.** Um `value.lfo` dá um número diferente a cada tique;
+/// derivar uma vez e reutilizar em toda a marcha congelaria a animação no primeiro sub-passo —
+/// com a cena a mexer-se, que é a forma mais cara de estar errado.
+pub(crate) fn valores_dirigidos(
+    motion: &mut MotionState,
+    playhead: f64,
+) -> ph2d_gpu_cook::DrivenParams {
+    let mut fora = ph2d_gpu_cook::DrivenParams::new();
+    if motion.doc.graph.all_param_sources().is_empty() {
+        return fora;
+    }
+    // ⚠️ **Fotografados ANTES de cozer:** o `cook` toma o `motion` emprestado mutavelmente, e o
+    // `all_param_sources` é uma leitura dele — os dois empréstimos não vivem juntos.
+    let fios: Vec<FioDeParam> = motion
+        .doc
+        .graph
+        .all_param_sources()
+        .iter()
+        .map(|(n, m)| (*n, m.iter().map(|(p, s)| (p.clone(), *s)).collect()))
+        .collect();
+    for (node, params) in fios {
+        for (param, (src, port)) in params {
+            let Ok(saida) =
+                motion
+                    .pump
+                    .cook
+                    .cook(&motion.doc.graph, &motion.registry, src, playhead)
+            else {
+                continue;
+            };
+            // ⚠️ **A MESMA porta que o `EvalCtx::param` usa** — um segundo leitor do mesmo valor
+            // seria a forma clássica de as duas rotas discordarem no elemento que leem.
+            // ⚠️ **Um condutor VAZIO entra na mesma, com `None`.** Ele foi consultado, e é isso
+            // que a chave diz; o número ausente faz o param cair no override/default — a lei do
+            // `driven_value`, a MESMA dos dois lados. Deixá-lo de fora faria o nó recuar para a
+            // CPU só nos tiques em que um `pulse.*` não dispara, e a cena engasgava.
+            let v = saida
+                .get(port as usize)
+                .and_then(ph2d_nodegraph::param_source::driven_value);
+            fora.entry(node).or_default().insert(param, v);
+        }
+    }
+    fora
+}
+
 pub(super) fn cook_gpu(
     motion: &mut MotionState,
     gpu: &ph2d_gpu::GpuContext,
@@ -294,12 +357,26 @@ pub(super) fn cook_gpu(
     // sub-tiques que o bracket da CPU lhe daria. Os dois produtores concordam sem ninguém ter de
     // escolher entre acelerar e estar certo.
     let sub = ph2d_nodegraph::cook::graph_substeps(&motion.doc.graph, &motion.registry);
-    let plan = ph2d_gpu_cook::plan(
-        &motion.doc.graph,
-        &motion.registry,
-        &motion.registry,
-        motion.sinks[0],
-    );
+    // ⭐⭐⭐ **OS PARAMS DIRIGIDOS** (doc 110 §3): sem isto, qualquer fio de valor no grafo derruba
+    // a cadeia inteira para a CPU. ⚠️ **As CHAVES é que decidem o plano** (quem é encenado) e os
+    // VALORES é que entram no uniform — e o plano deriva-se uma vez, porque quem tem fio não muda
+    // dentro do quadro; os valores, esses, re-derivam-se por tique no laço abaixo.
+    // ⚠️⚠️ **O instante do PLANO vive dentro deste bloco, e isso é a cerca.** Os valores do laço
+    // abaixo são de OUTRO instante (um por tique), e uma mutação que lá passasse este congelava a
+    // animação no primeiro sub-passo — com a cena a mexer-se, que é a forma mais cara de estar
+    // errado. Fora de escopo, ela deixa de ser escrevível: *o erro que não compila não precisa de
+    // gate.*
+    let plan = {
+        let alvo_ph = target as f64 * fixed_dt;
+        let dirigidos_do_plano = valores_dirigidos(motion, alvo_ph);
+        ph2d_gpu_cook::plan_driven(
+            &motion.doc.graph,
+            &motion.registry,
+            &motion.registry,
+            motion.sinks[0],
+            &dirigidos_do_plano,
+        )
+    };
     // Como este sink DESENHA (doc 89, folha 17): blend · pivô · filtro · ordem. Lido da
     // porta ÚNICA — a MESMA que o pump da CPU pergunta no laço de sinks —, e resolvido
     // AQUI, ao lado do sink que o plano escolheu: um segundo leitor teria liberdade de
@@ -355,6 +432,10 @@ pub(super) fn cook_gpu(
             };
             let ticks = substep_clocks(&ticks, sub, fixed_dt, plan.drives_a_loop());
             motion.gpu_live = ticks.iter().all(|&(playhead, tick)| {
+                // ⚠️ **POR TIQUE**: um `value.lfo` dá outro número a cada sub-passo, e reutilizar
+                // o do plano congelaria a animação no primeiro deles.
+                let dirigidos = valores_dirigidos(motion, playhead);
+                motion.gpu_cook.set_driven(dirigidos);
                 motion
                     .gpu_cook
                     .cook(

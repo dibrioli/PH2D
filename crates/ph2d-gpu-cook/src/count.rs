@@ -35,15 +35,33 @@ use ph2d_nodegraph::node::NodeManifest;
 ///
 /// `inputs` are the resolved input streams in port order (an unconnected port is
 /// the empty stream, exactly like the CPU's `ctx.input(p)`).
+/// **QUEM É O NÓ, e como se leem os params dele** — os quatro que andam sempre juntos.
+///
+/// ⚠️ Uma struct e não quatro argumentos soltos: com o mapa dos fios (doc 110 §3) esta chamada
+/// passou de sete para oito, e a lista é a forma clássica de dois `&`-de-mesma-forma trocarem de
+/// lugar sem o compilador dizer nada. *É a mesma razão pela qual o solver de contacto tem uma
+/// `Pecas`.*
+#[derive(Clone, Copy)]
+pub(crate) struct No<'a> {
+    pub graph: &'a Graph,
+    pub node: NodeId,
+    pub manifest: &'static NodeManifest,
+    pub driven: &'a crate::plan::DrivenParams,
+}
+
 pub(crate) fn stage_window(
     kernel: &GpuKernel,
-    graph: &Graph,
-    node: NodeId,
-    manifest: &'static NodeManifest,
+    no: No<'_>,
     inputs: &[GpuStream],
     playhead: f64,
     dt: f64,
 ) -> SourceWindow {
+    let No {
+        graph,
+        node,
+        manifest,
+        driven,
+    } = no;
     let Some(law) = kernel.count_law else {
         // The default law: the output rides port 0 (`ColumnBinding::port`), so it
         // is exactly as long. `of_count` and not a bare number — a transformer
@@ -51,7 +69,7 @@ pub(crate) fn stage_window(
         return SourceWindow::of_count(inputs.first().map_or(0, |s| s.count) as usize);
     };
     let counts: Vec<u32> = inputs.iter().map(|s| s.count).collect();
-    let param = |name: &str| resolve_param(graph, node, manifest, name);
+    let param = |name: &str| resolve_param(graph, node, manifest, name, driven);
     law(&CountLawCtx {
         inputs: &counts,
         param: &param,

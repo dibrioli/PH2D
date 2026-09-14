@@ -216,5 +216,16 @@ mutacao "M18 a regiao do popover cresce e a lista deixa de cobrir um ecra" \
 }' \
   ph2d-panel-inspector --test=it a_lista_de_tags_cobre_um_ecra_cheio
 
+# ── A opção da lista, que é o gesto que vive no passe DIFERIDO ────────────────
+mutacao "M19 a opcao da lista morre sob o dedo (sem registo)" "$P" \
+  '    register_button_ids(store, &crate::ids::INSP_TAGS_OPT);' '' \
+  ph2d-panel-inspector --test=it escolher_uma_tag_da_lista_aberta_chega_ao_barramento
+
+mutacao "M20 o passe diferido nao pinta a lista das tags" crates/ph2d-panel-inspector/src/popovers.rs \
+  '    if let Some(chip) = state_popovers::take_pending_tags_dd()' \
+  '    if false
+        && let Some(chip) = state_popovers::take_pending_tags_dd()' \
+  ph2d-panel-inspector --test=it escolher_uma_tag_da_lista_aberta_chega_ao_barramento
+
 echo "load $(cut -d' ' -f1 /proc/loadavg)"
 git status --short -- crates shells | grep -v '^??' || true

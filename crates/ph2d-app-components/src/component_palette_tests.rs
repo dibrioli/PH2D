@@ -301,3 +301,44 @@ fn every_declared_requirement_names_a_real_component() {
         }
     }
 }
+
+/// ⭐⭐⭐ **A linha «Tags» está na paleta, para TODO tipo de objecto** (TOP-20 #9, W3a).
+///
+/// # Porque este gate existe
+///
+/// ⛔ É a lei do smoke: *um passo que manda clicar numa LINHA de painel AFIRMA que ela está na
+/// lista*, e o dono aprova o roteiro com o passo impossível lá dentro. A secção *Tags* só aparece
+/// para quem TEM o componente (ADR-0166), e a única forma de o pôr é esta paleta — se ela não o
+/// oferecer, o smoke inteiro é inalcançável e ninguém descobre até ele estar nas mãos dele.
+///
+/// ⚠️ **A varredura é sobre `ObjectKind::ALL`, não uma amostra**: o descritor declara `O::ANY`
+/// porque um objecto VAZIO — *«o cérebro da cena»* — e um grupo são tão marcáveis quanto uma
+/// sprite, e é justamente o vazio que o smoke usa.
+///
+/// **Mutação que deve sangrar:** o `applies_to` do descritor do `Tags` a deixar de ser `O::ANY`.
+#[test]
+fn tags_is_offered_to_every_kind_of_object() {
+    for kind in ObjectKind::ALL {
+        let m = build(kind, &[], &buildable, false);
+        assert!(
+            labels(&m).iter().any(|l| l == "Tags"),
+            "a paleta de um objecto {kind:?} nao oferece «Tags» — o passo do smoke que manda \
+             clicar nessa linha seria impossivel; ofereceu: {:?}",
+            labels(&m)
+        );
+    }
+}
+
+/// ⚠️ **E ela SAI da lista depois de anexada** — oferecer duas vezes o mesmo componente dá ao
+/// artista um clique que não faz nada, que é o defeito que o `+` existe para não ter.
+///
+/// **Mutação que deve sangrar:** o filtro `present` do `is_offerable`.
+#[test]
+fn tags_leaves_the_palette_once_the_object_has_it() {
+    let m = build(ObjectKind::Image, &["ph2d::ecs::Tags"], &buildable, false);
+    assert!(
+        !labels(&m).iter().any(|l| l == "Tags"),
+        "«Tags» continua a ser oferecido a um objecto que ja' o tem; ofereceu: {:?}",
+        labels(&m)
+    );
+}

@@ -266,3 +266,43 @@ fn o_create_nao_existe_sem_um_nome_novo() {
     );
     set_current_inspector_tags(None);
 }
+
+/// ⭐⭐⭐ **Escolher uma tag da LISTA ABERTA chega ao barramento** — com o gesto REAL, sobre o
+/// popover que o passe diferido pinta.
+///
+/// # Porque este gate existe
+///
+/// ⛔ Era o ÚNICO gesto desta secção sem gate de gesto: os outros dois (o `×` e o `Create`) pintam
+/// no corpo da secção, e este vive num passe que corre DEPOIS de todas elas, com o rect a viajar
+/// por um slot. *Uma opção pintada no sítio certo e ausente do `populate` morre sob o dedo em
+/// silêncio*, e nenhum gate sobre `pick_options` (que é uma função pura) o veria.
+///
+/// **Mutações que devem sangrar:** tirar o `INSP_TAGS_OPT` do `populate_tags` · apagar o braço das
+/// TAGS do passe diferido em `popovers.rs` (a lista deixa de ser pintada, logo não há rect).
+#[test]
+fn escolher_uma_tag_da_lista_aberta_chega_ao_barramento() {
+    let (mut h, mut st) = host(info(false, 1));
+    let _ = h.paint::<InspectorPanel>(&mut st, VIEWPORT);
+    h.set_dropdown_open(ph2d_panel_inspector::ids::INSP_TAGS_PICK, true);
+    let rects = h.paint::<InspectorPanel>(&mut st, VIEWPORT);
+
+    // A 1.ª opção é a `Boss` — a fixtura oferece `Boss` e `Prop` (as outras duas já estão no
+    // objecto), pela ordem da árvore.
+    let r = rect_de(
+        &rects,
+        ph2d_panel_inspector::ids::INSP_TAGS_OPT[0],
+        "a 1.a opcao da lista",
+    );
+    let acoes = carrega(&mut h, &mut st, r, "a 1.a opcao da lista");
+    assert!(
+        acoes.iter().any(|a| matches!(
+            a,
+            EditorAction::InspectorTagsEdit {
+                entity_bits: ENTITY,
+                edit: TagsFieldEdit::Add(1),
+            }
+        )),
+        "escolher a 1.a opcao tinha de mandar `Add(1)` (a `Boss`); o que chegou foi {acoes:?}"
+    );
+    set_current_inspector_tags(None);
+}

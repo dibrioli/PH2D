@@ -2395,6 +2395,71 @@ a shell fica com a **CHAMADA**, que é a fase do quadro onde ela pertence. Shell
 ⛔ **E um gate apanhou a armadilha do HOWTO à primeira:** a crate nova não herdava os lints da
 workspace (`unsafe` PERMITIDO nela, em todo alvo) — `[lints] workspace = true`.
 
+**W13 — «SÓ FICA REDONDO ONDE NÃO TEMOS DEFORMAÇÃO»: o diagnóstico COMPLETO, e a cura MEDIDA e não
+construída** (4.º report com foto, 2026-09-14). ⛔⛔ **A W12 melhorou e não chegou**, e a razão é que
+a régua dela ainda estava errada.
+
+⚠️⚠️ **A régua da W12 media `maior/menor` da marca — e isso é CEGO a uma marca AMASSADA.** Uma forma
+lobada pode ter exactamente os mesmos dois extremos que um círculo. A régua certa é o **PERFIL visto
+do ECRÃ**: para cada direcção, a que distância a cobertura acaba — e dela sai a **ondulação** (o
+desvio quadrático médio do raio). *Pela terceira vez nesta linha, o que estava errado era a régua.*
+
+**E com a régua certa a fixtura também estava errada:** o leque suave que a W12 usou lê `1,1`–`1,2`,
+e a foto do dono é um leque **forte sobre uma malha grossa**. Reproduzido (`6×6`, `2,5 rad`):
+
+| lei | `maior/menor` | ondulação |
+|---|---|---|
+| sem correcção nenhuma | `2,0`–`2,7` | `20`–`29 %` |
+| a facete (W11b) | `2,2`–`3,2` ⛔ **pior que não corrigir** | até `40 %` |
+| ao tamanho do dab (W12) | `1,3`–`2,6` | `8`–`28 %` |
+
+⇒ **A causa é o MODELO do dab, e não a malha:** o pincel pinta **UMA elipse** na textura, e a malha
+leva-a ao ecrã por um mapa **afim POR TRIÂNGULO** — com **dobras**, não com curvatura. Nenhuma
+elipse única é a pré-imagem de um disco quando o dab atravessa facetes com deformações diferentes.
+
+⛔ **Uma lei QUADRÁTICA foi construída, medida e REFUTADA:** ela ajuda nalgumas células
+(`1,41 → 1,16`) e **piora noutras** (`1,33 → 1,60`), porque um polinómio liso não representa uma
+**dobra** — pode até ultrapassá-la.
+
+⭐⭐⭐ **A CURA ESTÁ MEDIDA: a lei do dab passa a ser o mapa AMOSTRADO** — o deslocamento de ECRÃ numa
+grelha sobre a caixa do dab, lido por interpolação bilinear:
+
+| lei | `maior/menor` | ondulação |
+|---|---|---|
+| hoje (uma elipse) | `1,33`–`2,56` | `5`–`28 %` |
+| grelha `8×8` | **`1,07`–`1,14`** | `1,3`–`1,9 %` |
+| grelha `24×24` | **`1,02`–`1,05`** | `0,4`–`0,7 %` |
+| grelha `64×64` | `1,008`–`1,017` | `0,2`–`0,5 %` |
+
+⭐ **E ela degenera no de hoje por CONSTRUÇÃO: uma bilinear reproduz um mapa AFIM exactamente** ⇒ em
+repouso, e dentro de uma facete, a tinta é a de sempre **ao bit**.
+
+⛔⛔ **O PREÇO, que é o que a torna decisão do dono:** a lei do dab vive na
+[`FootprintDeform::apply`](../../crates/ph2d-painter-brush/src/footprint.rs), que é `Copy` de 12
+bytes e o **choke point de todo pincel do app** (os quatro meios partilham-no). Uma grelha não cabe
+lá dentro, e levá-la por fora toca **~12 sítios de cobertura** na crate mais quente do repo
+(`ph2d-tool-painter`/`ph2d-painter-brush`, 136 k LOC) — *o raio de explosão é todo pincel do app,
+para curar uma coisa que só acontece em arte presa a um esqueleto.*
+
+**AS DUAS ALAVANCAS QUE O DONO JÁ TEM HOJE, medidas** (leque `2,5 rad`, a lei que shipa; pior de 3
+pontos):
+
+| malha | dab `0,25` | `0,125` | `0,06` | `0,03` |
+|---|---|---|---|---|
+| `6×6` (grossa) | `2,16` | `1,56` | `1,82` | `1,75` |
+| `12×12` | `2,17` | `1,36` | `1,20` | `1,23` |
+| `24×24` (o `Smooth`) | `2,15` | `1,33` | **`1,15`** | **`1,11`** |
+| `48×48` | `2,15` | `1,32` | `1,15` | `1,11` |
+
+⚠️ **Três leituras que só a tabela dá:** (a) a malha fina **satura** em `24×24` — mais peças não
+compram nada; (b) **o pincel pequeno só ajuda com malha fina** (numa malha grossa um dab pequeno cai
+em cima de uma aresta de facete e fica pior); (c) ⛔ **um pincel MUITO grande (`0,25`) fica em `2,15`
+em TODA malha** — ali o que varia é a deformação, não a facete, e nenhuma densidade a salva.
+
+⏳ **ESTADO: diagnóstico fechado, cura medida, construção NÃO autorizada.** A pergunta ao dono é se
+vale gastar uma wave no núcleo partilhado de todo pincel para arte presa a esqueleto, ou se as duas
+alavancas chegam.
+
 ## ⛔ Recusas MEDIDAS deste módulo — não as reconstrua
 
 > ⚠️ **As seis de 2026-09-07/08 entraram aqui na auditoria de 08/09** — elas viviam só em prosa e em

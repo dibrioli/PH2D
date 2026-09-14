@@ -1,5 +1,21 @@
 //! **A família da imagem** — a `Sprite` e o que só existe por causa dela.
 //!
+//! # ⭐⭐ A RÉGUA DO DONO, corrida sobre esta família (2026-09-14)
+//!
+//! Ver a tabela inteira no cabeçalho de [`super::core`]. As duas metades — *existe um controlo
+//! **sempre** visível que o escreve?* e *ele **anexa**?* — puseram **quatro** destas entradas do
+//! lado das rows, e todas pela mesma razão: o snapshot da sprite **lê-as com um neutro**
+//! (`SpriteGrid::SINGLE`, `SpriteCornerTint::IDENTITY`, `EMISSIVE_OFF`), logo a row é pintada em
+//! **toda** sprite e a paleta escreveria exactamente o que ela já mostra.
+//!
+//! ⛔ **E cinco FICAM, por medição:** a §5 9-Slice, a §11 Animation e a §12 Anchors só são
+//! pintadas **se o componente estiver lá** (tabela `CASES` do `inspector_presence_tests`) — ali a
+//! paleta é a única porta. *A mesma régua dá respostas opostas dentro da mesma família.*
+//!
+//! ⚠️ **O `AnchorVisibility` é o caso subtil:** a caixa «Always show anchors» é pintada sempre que
+//! o objecto **tem âncoras** — não quando ela própria está anexada. É a forma das rows de ZONA da
+//! física (visíveis dado o *Sensor*), e cai do mesmo lado.
+//!
 //! ⚠️ A `Sprite` mora em `ph2d-render` e as outras nove em `ph2d-ecs`; aqui elas ficam
 //! juntas porque o catálogo é cortado por **família**, não por crate dona. É a mesma razão
 //! por que a chave é o nome canónico: o descritor fala de tipos que ele não pode importar.
@@ -95,11 +111,11 @@ pub const DESCS: &[D] = &[
         O::ANY,
         &[],
     ),
-    D::authored(
+    // ⇒ a porta é a caixa «Always show anchors» da §12, pintada sempre que o objecto TEM âncoras (`anchor_mount_row::paint_visibility_rows`).
+    D::intrinsic(
         "ph2d::ecs::AnchorVisibility",
         "Anchor Visibility",
         C::Anchors,
-        O::ANY,
         &[],
     ),
     D::authored(
@@ -133,33 +149,28 @@ pub const DESCS: &[D] = &[
     // ⭐ Os TRÊS do corte (ADR-0164 F1 passo 6 / ADR-0166) — `Authored` e `O::IMAGE`: é a
     // paleta do F3 que os anexa, e só a um objeto-imagem. A ausência de cada um é o default
     // benigno que o campo tinha, então nada aparece no Inspector até o artista o pedir.
-    D::authored(
+    // ⇒ a porta é as rows do degradê de cantos, pintadas em toda sprite (ausente = os quatro cantos brancos).
+    D::intrinsic(
         "ph2d::ecs::SpriteCornerTint",
         "Corner Tint",
         C::Image,
-        O::IMAGE,
         SPRITE_CORNER_TINT,
     ),
     // ⚠️ Categoria `Image` e não `Animation`: a grelha é um FATO da textura (como ela se
     // divide), e é a `SpriteAnimations` que a percorre. Pô-la em Animation faria um sprite com
     // folha estática — o caso comum — procurar a grelha na secção errada.
-    D::authored(
+    // ⇒ a porta é a §4 Sprite Sheet, pintada em toda sprite (ausente = `SpriteGrid::SINGLE`).
+    D::intrinsic(
         "ph2d::ecs::SpriteGrid",
         "Sprite Grid",
         C::Image,
-        O::IMAGE,
         SPRITE_GRID,
     ),
     // Os pixels editados desta sprite (`project_sprite_pixels.rs`): identidade de CONTEÚDO,
     // posta pelo funil de commit das oito ferramentas de imagem. O artista não a anexa.
     D::machinery("ph2d::ecs::SpritePixels", "Sprite Pixels", C::Image),
-    D::authored(
-        "ph2d::ecs::SpriteRegion",
-        "Region",
-        C::Image,
-        O::IMAGE,
-        SPRITE_REGION,
-    ),
+    // ⇒ a porta é as rows de REGIÃO do §Render Source, pintadas em toda sprite (`paint_region_rows`, sem condição).
+    D::intrinsic("ph2d::ecs::SpriteRegion", "Region", C::Image, SPRITE_REGION),
     // Proveniência de autoria (que folha esta sprite veio de), não índice de célula — o
     // índice vivo é o `SpriteGrid::frame`. Máquina: quem a põe é o importador.
     D::machinery("ph2d::ecs::SpriteSheetFrame", "Sheet Frame", C::Image),
@@ -169,3 +180,47 @@ pub const DESCS: &[D] = &[
     // é o caso que a variante `Intrinsic` existe para exprimir.
     D::intrinsic("ph2d::render::Sprite", "Sprite", C::Image, SPRITE),
 ];
+
+#[cfg(test)]
+mod tests {
+    use super::DESCS;
+
+    /// ⭐⭐ **A imagem oferece INTENÇÕES, e nenhuma row de secção sempre-pintada.**
+    ///
+    /// Irmão do `the_core_family_offers_intentions_and_not_rows` e do
+    /// `the_physics_family_offers_one_door_and_not_its_rows`, e existe pela mesma razão: esta
+    /// família nasceu com o helper autorado e ninguém a classificou item a item. Medido em
+    /// 2026-09-14: `9` oferecidas, `4` delas rows que toda sprite já mostra.
+    ///
+    /// ⚠️ **A lista é a afirmação.** Uma entrada nova é a pergunta de duas metades do cabeçalho.
+    ///
+    /// (Mutação: devolver o `SpriteGrid` a `D::authored` ⇒ RED, nomeando-o.)
+    #[test]
+    fn the_image_family_offers_intentions_and_not_rows() {
+        const PORTAS: [&str; 5] = [
+            "ph2d::ecs::AnchorMount",
+            "ph2d::ecs::NamedAnchorList",
+            "ph2d::ecs::SliceNine",
+            "ph2d::ecs::SpriteAnimations",
+            "ph2d::ecs::SpriteAnimator",
+        ];
+        let offered: Vec<&str> = DESCS
+            .iter()
+            .filter(|d| d.is_offered())
+            .map(|d| d.canonical_name)
+            .collect();
+        assert_eq!(
+            offered,
+            PORTAS.to_vec(),
+            "a paleta da IMAGEM tem de oferecer exatamente estas 5 intencoes.\n\
+             Antes de acrescentar uma, responda as duas metades: existe um controlo SEMPRE \
+             visivel que a escreve (o snapshot da sprite le-a com um neutro?), e esse controlo \
+             ANEXA-a? Se sim, e' `D::intrinsic`."
+        );
+        assert!(
+            DESCS.len() >= 12,
+            "a familia encolheu para {} — o gate acima deixaria de afirmar",
+            DESCS.len()
+        );
+    }
+}

@@ -23,6 +23,36 @@
 //! objeto ele tem efeito VISÍVEL"*. As duas coincidem acima porque o leitor é um renderer só;
 //! onde houver dois leitores em famílias diferentes, a resposta pede o smoke.
 
+//! # ⭐⭐ A RÉGUA DO DONO, corrida sobre esta família (2026-09-14)
+//!
+//! *«um objeto de física (Physics Body) e todas as opções aparecem com ele»* foi o veredito que
+//! podou a [`super::physics`] de 30 portas para 1. A varredura completa (ordem dele, mesmo dia)
+//! correu a mesma régua aqui, e ela tem **duas** metades — não basta o componente ser editável:
+//!
+//! 1. existe um controlo **sempre disponível** que o escreve? (⛔ não um que só aparece se o
+//!    componente já lá estiver — esse é o caso do `BlendMode`, e é por isso que ele FICA);
+//! 2. esse controlo **ANEXA** o componente, em vez de só editar o que já existe?
+//!
+//! Onde as duas são *sim*, a entrada da paleta escreve o ponto neutro que a row já mostra — a
+//! razão 2 do [`crate::Attach::Intrinsic`], palavra por palavra. **11 das 22** estavam nesse caso:
+//!
+//! | componente | a porta que já existia |
+//! |---|---|
+//! | `OrderInLayer` · `ZIndexOverride` · `ZAsRelative` · `ShowBehindParent` · `SortingLayer` · `YSort` · `SortingGroup` · `TopLevel` | a **§7 Ordering**, que por decisão do dono (2026-08-30) é pintada em **todo** objecto (gate `the_ordering_section_belongs_to_every_object`), e cujo aplicador declara por escrito *«presence = override … queues a `SetComponent` (insert/update) or `RemoveComponent` (detach)»* — `ph2d-inspector-ordering` |
+//! | `Visibility` · `Locked` · `GroupedChildren` | o **olho**, o **cadeado** e o **agrupador** da Hierarquia, que fazem `insert`/`remove` em toda linha (`render_loop/hierarchy.rs`) |
+//!
+//! ⛔ **E as 11 que FICAM, ficam por MEDIÇÃO e não por inércia:** a §9 Sampling, a §10 Blend, a §8
+//! Visibility e a §5 9-Slice só são pintadas **se o componente estiver lá** (tabela `CASES` do
+//! `inspector_presence_tests` da shell) — para elas a paleta é a **única** porta, e podá-las
+//! tornaria a feature inalcançável. *A mesma régua dá respostas opostas dentro da mesma família, e
+//! é isso que a torna uma régua em vez de uma opinião sobre a categoria.*
+//!
+//! ⚠️ **O `Transform` fica fora da poda de propósito:** toda entidade tem um, logo a paleta nunca o
+//! oferece na prática (ela esconde o que o objecto já tem) — mas numa entidade **sem** pose ele é a
+//! única porta, e não há medição que diga que essa entidade não pode existir. *Podar por «é óbvio
+//! que ninguém precisa» é o que esta régua existe para não fazer.*
+//!
+
 use crate::{
     ComponentCategory as C, ComponentDesc as D, FieldDesc, FieldKind as K, ObjectKinds as O,
     Propagation,
@@ -125,11 +155,11 @@ pub const DESCS: &[D] = &[
         O::ANY,
         CLIP_CHILDREN,
     ),
-    D::authored(
+    // ⇒ a porta é o alternador de GRUPO da Hierarquia, em toda linha.
+    D::intrinsic(
         "ph2d::ecs::GroupedChildren",
         "Grouped Children",
         C::Identity,
-        O::ANY,
         MARKER,
     ),
     // ⭐ **O ELO de uma instância ao mestre** (ADR-0164 / F4.2) — a raiz de uma instância diz
@@ -156,7 +186,8 @@ pub const DESCS: &[D] = &[
     // ⭐ E ela aparece no Inspector porque é a única superfície que diz ao artista **qual das duas
     // leis** esta cópia segue: as duas são iguais na tela até ao gesto seguinte.
     D::intrinsic("ph2d::ecs::LinkedArt", "Linked Art", C::Instancing, MARKER),
-    D::authored("ph2d::ecs::Locked", "Locked", C::Identity, O::ANY, MARKER),
+    // ⇒ a porta é o CADEADO da Hierarquia, em toda linha.
+    D::intrinsic("ph2d::ecs::Locked", "Locked", C::Identity, MARKER),
     D::authored("ph2d::ecs::Mask2D", "Mask", C::Rendering, O::IMAGE, &[]),
     D::authored(
         "ph2d::ecs::MaskInteraction",
@@ -196,49 +227,44 @@ pub const DESCS: &[D] = &[
         O::IMAGE,
         &[],
     ),
-    D::authored(
+    // ⇒ a porta é §7 Ordering, pintada em TODO objecto.
+    D::intrinsic(
         "ph2d::ecs::OrderInLayer",
         "Order in Layer",
         C::Ordering,
-        O::ANY,
         ORDER_IN_LAYER,
     ),
     // ⚠️ Máquina: o editor mantém-no para desempatar raízes (*"não se escolhe um desempate
     // melhor, não se tem empate"*). Um artista que o pusesse à mão estaria a escrever num
     // campo que o próprio editor reescreve no quadro seguinte.
     D::machinery("ph2d::ecs::RootOrder", "Root Order", C::Ordering),
-    D::authored(
+    // ⇒ a porta é §7 Ordering.
+    D::intrinsic(
         "ph2d::ecs::ShowBehindParent",
         "Show Behind Parent",
         C::Ordering,
-        O::ANY,
         MARKER,
     ),
     // ⚠️ Máquina, pela MESMA razão do `RootOrder` (o gémeo dele para raízes): a ordem entre
     // irmãos é escrita pelo GESTO de arrastar na Hierarquia, e o editor mantém-na. Um artista
     // que a pusesse à mão estaria a escrever num campo que a varredura reescreve.
     D::machinery("ph2d::ecs::SiblingOrder", "Sibling Order", C::Ordering),
-    D::authored(
+    // ⇒ a porta é §7 Ordering (*Sorting Group* + *Sort At Root*).
+    D::intrinsic(
         "ph2d::ecs::SortingGroup",
         "Sorting Group",
         C::Ordering,
-        O::ANY,
         SORTING_GROUP,
     ),
-    D::authored(
+    // ⇒ a porta é §7 Ordering.
+    D::intrinsic(
         "ph2d::ecs::SortingLayer",
         "Sorting Layer",
         C::Ordering,
-        O::ANY,
         SORTING_LAYER,
     ),
-    D::authored(
-        "ph2d::ecs::SpriteEmissive",
-        "Emissive",
-        C::Rendering,
-        O::IMAGE,
-        &[],
-    ),
+    // ⇒ a porta é a row *Emissive* do §Render Source, pintada em toda sprite (ausente **é** `EMISSIVE_OFF`).
+    D::intrinsic("ph2d::ecs::SpriteEmissive", "Emissive", C::Rendering, &[]),
     D::authored(
         "ph2d::ecs::TextureFilter",
         "Texture Filter",
@@ -253,13 +279,8 @@ pub const DESCS: &[D] = &[
         O::IMAGE,
         &[],
     ),
-    D::authored(
-        "ph2d::ecs::TopLevel",
-        "Top Level",
-        C::Ordering,
-        O::ANY,
-        MARKER,
-    ),
+    // ⇒ a porta é §7 Ordering.
+    D::intrinsic("ph2d::ecs::TopLevel", "Top Level", C::Ordering, MARKER),
     D::authored(
         "ph2d::ecs::Transform",
         "Transform",
@@ -274,11 +295,11 @@ pub const DESCS: &[D] = &[
         O::IMAGE,
         &[],
     ),
-    D::authored(
+    // ⇒ a porta é o OLHO da Hierarquia, em toda linha.
+    D::intrinsic(
         "ph2d::ecs::Visibility",
         "Visibility",
         C::Identity,
-        O::ANY,
         VISIBILITY,
     ),
     D::authored(
@@ -288,19 +309,72 @@ pub const DESCS: &[D] = &[
         O::IMAGE,
         &[],
     ),
-    D::authored("ph2d::ecs::YSort", "Y Sort", C::Ordering, O::ANY, Y_SORT),
-    D::authored(
+    // ⇒ a porta é §7 Ordering (tres rows: ligar · eixo · ponto).
+    D::intrinsic("ph2d::ecs::YSort", "Y Sort", C::Ordering, Y_SORT),
+    // ⇒ a porta é §7 Ordering.
+    D::intrinsic(
         "ph2d::ecs::ZAsRelative",
         "Z as Relative",
         C::Ordering,
-        O::ANY,
         Z_AS_RELATIVE,
     ),
-    D::authored(
-        "ph2d::ecs::ZIndexOverride",
-        "Z Index",
-        C::Ordering,
-        O::ANY,
-        Z_INDEX,
-    ),
+    // ⇒ a porta é §7 Ordering — e o `—` dela é a AUSENCIA deste componente.
+    D::intrinsic("ph2d::ecs::ZIndexOverride", "Z Index", C::Ordering, Z_INDEX),
 ];
+
+#[cfg(test)]
+mod tests {
+    use super::DESCS;
+
+    /// ⭐⭐ **O núcleo oferece INTENÇÕES, e nenhuma row de secção sempre-pintada.**
+    ///
+    /// Irmão do `the_physics_family_offers_one_door_and_not_its_rows`, e pela mesma razão: a
+    /// família nasceu inteira com o helper autorado e **ninguém classificou item a item** —
+    /// medido em 2026-09-14, `22` das 29 entradas eram oferecidas, e 11 delas duplicavam um
+    /// controlo que o artista já tem sem abrir a paleta.
+    ///
+    /// ⚠️ **A lista é a afirmação, não o número.** Uma entrada nova aqui é uma pergunta com duas
+    /// metades: *existe um controlo SEMPRE visível que o escreve, e ele ANEXA?* Se sim, é `i`/
+    /// `D::intrinsic` e esta lista não cresce; se não, é `D::authored` e cresce com ela.
+    ///
+    /// ⚠️ **O piso de população é a metade de obsolescência:** sem ele, apagar a família deixaria
+    /// o `assert_eq` a comparar dois vazios — *um zero de «não medido» e um de «perfeito» são o
+    /// mesmo byte*.
+    ///
+    /// (Mutação: devolver o `ZIndexOverride` a `D::authored` ⇒ RED, nomeando-o.)
+    #[test]
+    fn the_core_family_offers_intentions_and_not_rows() {
+        const PORTAS: [&str; 10] = [
+            "ph2d::ecs::BlendMode",
+            "ph2d::ecs::ClipChildren",
+            "ph2d::ecs::Mask2D",
+            "ph2d::ecs::MaskInteraction",
+            "ph2d::ecs::OnScreenEnabler",
+            "ph2d::ecs::TextureFilter",
+            "ph2d::ecs::TextureRepeat",
+            "ph2d::ecs::Transform",
+            "ph2d::ecs::UvTransform",
+            "ph2d::ecs::VisibilityLayer",
+        ];
+        let offered: Vec<&str> = DESCS
+            .iter()
+            .filter(|d| d.is_offered())
+            .map(|d| d.canonical_name)
+            .collect();
+        assert_eq!(
+            offered,
+            PORTAS.to_vec(),
+            "a paleta do NUCLEO tem de oferecer exatamente estas 11 intencoes.\n\
+             Um componente novo aqui e' uma pergunta de DUAS metades: existe um controlo SEMPRE \
+             visivel que o escreve (nao um que so' aparece se ele ja' la' estiver), e esse \
+             controlo ANEXA-o? Se sim, e' `D::intrinsic` — a row ja' e' a porta, e a entrada da \
+             paleta escreveria o ponto neutro que ela ja' mostra. Ver a tabela no cabecalho."
+        );
+        assert!(
+            DESCS.len() >= 25,
+            "a familia encolheu para {} — o gate acima passaria a comparar duas listas quase \
+             vazias e a nao afirmar nada",
+            DESCS.len()
+        );
+    }
+}

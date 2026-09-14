@@ -692,3 +692,115 @@ editada, não um vizinho com nome parecido.*
 sólido nem de peça), *one-way só em sólido* (mutuamente exclusivo com a zona). O buraco real do módulo
 contra o referencial continua a ser **`obstacle actions: climbing`**, que é pré-existente e está
 nomeado na [auditoria 09](../../Physics/09_auditoria_engines.md) — nada a ver com esta poda.
+
+### 14.13 — VARREDURA COMPLETA do catálogo (ordem do dono, 14/09): *«siga com varredura completa»*
+
+A régua que podou a física corrida sobre as **11** famílias — **131** descritores, medidos pela
+própria `catalog::all()` cruzada com o `ComponentRegistry` (censo temporário, corrido e retirado).
+
+**A régua, escrita para ser reusável — DUAS metades, e falhar uma basta:**
+
+1. existe um controlo **sempre visível** que escreve este componente? ⛔ *Não* um que só aparece
+   depois de ele estar lá — esse é o caso do `BlendMode` (§10, gateada por presença na tabela
+   `CASES` do `inspector_presence_tests`), e por isso ele **fica**.
+2. esse controlo **ANEXA**, em vez de só editar o que já existe?
+
+Onde as duas são *sim*, a entrada da paleta escreve o ponto neutro que a row já mostra — a razão 2
+do `Attach::Intrinsic`, literalmente.
+
+**Resultado: 16 entradas convertidas, em duas famílias.**
+
+| família | convertidas | a porta que já existia |
+|---|---|---|
+| `core` | `OrderInLayer` · `ZIndexOverride` · `ZAsRelative` · `ShowBehindParent` · `SortingLayer` · `YSort` · `SortingGroup` · `TopLevel` | a **§7 Ordering**, pintada em **todo** objecto por decisão do dono (30/08, gate `the_ordering_section_belongs_to_every_object`), e cujo aplicador declara *«presence = override … queues a `SetComponent` or `RemoveComponent`»* |
+| `core` | `Visibility` · `Locked` · `GroupedChildren` | o **olho**, o **cadeado** e o **agrupador** da Hierarquia (`render_loop/hierarchy.rs`, `insert`/`remove` em toda linha) |
+| `core` | `SpriteEmissive` | a row *Emissive* do §Render Source, chamada **sem condição** (`render_source.rs:141`) |
+| `image` | `SpriteGrid` · `SpriteRegion` · `SpriteCornerTint` | o snapshot da sprite lê-as **com um neutro** (`SpriteGrid::SINGLE` · `SpriteCornerTint::IDENTITY`), logo as rows são pintadas em toda sprite |
+| `image` | `AnchorVisibility` | a caixa «Always show anchors», pintada sempre que o objecto **tem âncoras** — a forma das rows de ZONA da física |
+
+**Medido (sonda `measure_palette`, viewport 1187×953):** *Show all* **56 → 40** · *Empty aplicável*
+**27 → 15** · *Image aplicável* **42 → 26**, zero px de transbordo em todos. Somando a poda de 13/09:
+**85 → 40**.
+
+**Dois gates novos, com prova de mutação nomeada:** `the_core_family_offers_intentions_and_not_rows`
+(`ZIndexOverride` de volta a `authored` ⇒ RED) e `the_image_family_offers_intentions_and_not_rows`
+(`SpriteGrid` ⇒ RED). Irmãos do da física; a **lista é a afirmação**, e cada um traz o piso de
+população.
+
+#### ⛔ O que NÃO foi convertido, e porquê — isto é metade do trabalho
+
+- **`Transform`** fica `Authored` de propósito: toda entidade tem uma pose, logo a paleta nunca o
+  oferece na prática (ela esconde o que o objecto já tem) — mas numa entidade **sem** pose ele é a
+  única porta, e **não há medição** que diga que essa entidade não pode existir.
+- **`BlendMode` · `ClipChildren` · `Mask2D` · `MaskInteraction` · `OnScreenEnabler` ·
+  `TextureFilter` · `TextureRepeat` · `UvTransform` · `VisibilityLayer` · `SliceNine` ·
+  `SpriteAnimations` · `SpriteAnimator` · `AnchorMount` · `NamedAnchorList`** — as secções delas
+  (§8 · §9 · §10 · §5 · §11 · §12) **só são pintadas se o componente lá estiver**: a paleta é a
+  **única** porta e podá-las tornaria a feature inalcançável. *A mesma régua dá respostas opostas
+  dentro da mesma família, e é isso que a torna uma régua.*
+- **`audio` (2) · `camera` (3) · `logic` (2)** medem-se **correctas**: o `CameraFollow`/`CameraLimits`
+  só são pintados com `if let Some(f) = info.follow` ⇒ sem componente não há row ⇒ a paleta é a porta.
+- **`skeleton`** já tinha sido classificada **item a item pela própria linha**, com a razão escrita
+  em cada entrada — e o `SmartBone` foi `Intrinsic → Authored` em 08/09 **por ordem do dono**.
+  ⛔ Reverter isso de fora, por uma régua genérica, seria desfazer uma decisão medida. Fica **uma**
+  pergunta aberta: o `Bone` (sem razão escrita) é criado pelo modo **Bone** da caneta, que
+  **spawna** a entidade com a geometria do traço (`ph2d-skeleton-live/bone.rs:36`) — um
+  `Bone::default()` pendurado num objecto qualquer é um osso sem origem nem ponta, que é a forma do
+  `PhysicsJoint`.
+
+#### ⭐⭐⭐ O ACHADO da varredura: no VECTOR, quem classificou foi o COMPILADOR
+
+O cabeçalho de [`catalog/vector.rs`](../../../crates/ph2d-component-desc/src/catalog/vector.rs)
+di-lo por escrito, sobre o helper `g` (o intrínseco):
+
+> *«a lista abaixo **não foi escolhida**: ela é a **saída do compilador** ao converter os
+> registadores para `register_default` (`the trait bound X: Default is not satisfied`)»*
+
+⇒ as **13** entradas `Authored` desta família não foram medidas contra pergunta nenhuma: elas são
+*«as que implementam `Default`»*. É a mesma forma do defeito da física (*o caminho de menor esforço
+escolheu a resposta*), agora com a causa admitida no próprio ficheiro.
+
+**Medido, para quem pegar nisto** (`insert` tipado ou `queue_set` pelo nome canónico, em ficheiros
+de produção):
+
+| têm criador de produção além da paleta | **não têm — a paleta é a ÚNICA porta** |
+|---|---|
+| `VecContour` (`contour_live`) · `VecCutPath` (`cut_line`) · `VecFilter` (`ui_state_edit`) · `VecLayoutAbsolute` (`vec_layout_edit`) · `VecPatternPath` · `VecPatternRotation` (`pattern_live`) · `VecWidgetBind` (`widget_edit`) | `VecBindings` · `VecLayout` · `VecLayoutItem` · `VecLayoutSize` · `VecStrokeProfile` · `VecSymmetry` |
+
+⛔ **E NÃO foram convertidas, de propósito**, porque o mesmo cabeçalho carrega a intenção oposta e
+ela é de PRODUTO, não técnica:
+
+> *«Nenhum destes é hoje alcançável pelo Inspector … Declará-los aqui … põe-nos na paleta do `+`,
+> que é a pergunta "que componentes existem para este objeto?"»*
+
+Ou seja: ali a paleta é a superfície de **DESCOBERTA** de features que o Inspector não mostra, e
+podá-las trocaria ruído por invisibilidade. *Duas leituras levam a trabalho materialmente diferente
+⇒ é decisão do dono*, e a medição acima é o que ela precisa.
+
+#### ⚠️ O piso de população que reprovou, e porque isso é o sistema a funcionar
+
+`attaching_is_inert_for_everything_that_does_not_seed` varre só os `Authored`: leu **56** antes e
+**40** depois, contra um piso de `> 40` — reprovou **por UM**, sobre trabalho correcto. *Um piso que
+descreve uma população que já não existe acusa o vivo.* Descido para `>= 30` **com a razão e o
+histórico ao lado**, e o valor continua a apanhar o defeito de que ele é a rede (o `all()` a
+devolver vazio) e deixa margem para a decisão aberta do vetor.
+
+#### ⚠️ Duas correcções ao que o §14.11 e o censo desta varredura afirmavam
+
+1. **O §14.11 dizia que faltava «o gémeo do `every_registered_physics_component_has_a_ui_writer`,
+   que é o censo que autorizou esta poda». Está meio errado.** O censo **catálogo ↔ registo** já
+   existe para **todas** as famílias e tem cinco metades
+   ([`every_registered_component_is_described.rs`](../../../shells/desktop/tests/it/every_registered_component_is_described.rs):
+   todo registado tem descritor · todo descritor nomeia um registado · todo oferecido constrói ·
+   `Machinery` não declara campos · o registo e a busca concordam). O que é **só da física** é o
+   censo de **ESCRITOR de UI**, e ⭐ **esta varredura não precisou dele**: a pergunta *«a row é
+   pintada sem o componente?»* responde-se pelos **gates de presença** da shell
+   (`inspector_presence_tests`), que são um instrumento mais forte para ela — o censo de escritor
+   diz *«alguém escreve isto»*, e o de presença diz *«o artista vê o controlo sem ter o
+   componente»*, que é exactamente a 1.ª metade da régua.
+2. **O censo temporário desta varredura leu `ph2d::script::LuauScript` como «NÃO-REGISTADO», e é
+   um artefacto do INSTRUMENTO:** ele corre sobre o `component_registry_for_tests` da
+   `ph2d-app-components`, que não inclui a crate do script; o registo a sério regista-o
+   (`ph2d-script/src/registry.rs:15`). *Um registo parcial usado como oráculo acusa de ausente o
+   que só não estava naquela mesa* — quem repetir a medição usa o `full_registry()` do ficheiro
+   nomeado acima.

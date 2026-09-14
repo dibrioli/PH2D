@@ -90,8 +90,19 @@ fn attaching_is_inert_for_everything_that_does_not_seed() {
         );
         checked += 1;
     }
+    // ⚠️⚠️ **O PISO desceu de `40` para `30` em 2026-09-14, e a razão é POPULAÇÃO, não folga.**
+    // A varredura completa do catálogo (ordem do dono) converteu 16 entradas do núcleo e da
+    // imagem em `Attach::Intrinsic` — elas eram rows de secções sempre-pintadas —, e este censo
+    // só varre `Authored`: ele leu `56` antes dela e `40` depois. *Um piso que descreve uma
+    // população que já não existe reprova sobre trabalho correcto*, e foi exactamente isso que
+    // ele fez (leu `40` contra `> 40`, por UM).
+    //
+    // ⛔ O `30` não é um número escolhido para caber: é o que continua a apanhar o defeito que
+    // este piso existe para apanhar — o `all()` a devolver vazio, ou o filtro a casar zero — e
+    // deixa margem para a decisão ainda ABERTA sobre a família do vetor (13 entradas), que, se o
+    // dono a mandar podar, leva a população para ~33.
     assert!(
-        checked > 40,
+        checked >= 30,
         "o censo varreu so' {checked} componentes — ele nao pode ficar verde por nao medir nada"
     );
 }

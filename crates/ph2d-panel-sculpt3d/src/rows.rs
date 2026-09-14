@@ -40,6 +40,9 @@ pub use topology::TOPOLOGY;
 /// Os cinco números do pincel de TECIDO — ver o doc do módulo.
 #[path = "rows_cloth.rs"]
 mod cloth;
+/// Os três números do pincel de POSE — ver [`pose`].
+#[path = "rows_pose.rs"]
+mod pose;
 
 /// ⭐ Os quatro números do FILTRO de tecido, e a *Quality* do pincel — ver o doc
 /// do módulo. ⚠️ **Irmão do [`cloth`] por SUJEITO**: os números do filtro não são
@@ -481,6 +484,15 @@ static BRUSH: &[Row] = &[
     cloth::CLOTH_MASS,
     cloth::CLOTH_DAMPING,
     cloth::CLOTH_PLASTICITY,
+    // ── Os TRÊS números do pincel de POSE ───────────────────────────────────
+    //
+    // ⚠️ A pergunta de visibilidade é ao VERBO, como a do tecido: com outro
+    // pincel na mão eles não movem um vértice. ⭐ E os OUTROS três controlos
+    // próprios deste pincel não são rows — o modo é uma fileira de chips e os
+    // dois interruptores são caixas; ver `paint::brush` e `event_toggles`.
+    pose::POSE_SEGMENTS,
+    pose::POSE_OFFSET,
+    pose::POSE_SMOOTHINGS,
     // ⭐⭐⭐ **A *Quality* do pincel** — as varreduras que o ALVO FIXA em `5`.
     // Ver `Brush::cloth_sweeps` para a tabela do que ela compra.
     cloth_filter::CLOTH_SWEEPS,

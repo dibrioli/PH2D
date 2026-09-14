@@ -486,6 +486,7 @@ pub(crate) fn for_scene(mesh: &ph2d_mesh::Mesh) {
     crate::scenes::strip::announce();
     crate::scenes::thumb::announce();
     crate::scenes::tangenciais::announce();
+    crate::scenes::pose::announce();
     crate::scenes::scrape::announce();
     crate::scenes::surface::announce();
     crate::scenes::layer::announce();

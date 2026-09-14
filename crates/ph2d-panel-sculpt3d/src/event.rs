@@ -370,6 +370,11 @@ fn group_chip_ui(
         ui.ui_level = state::UiLevel::ALL[i];
     } else if let Some(i) = index_of(&crate::ids::SCULPT3D_FALLOFF, id) {
         ui.brush.falloff = Falloff::ALL[i];
+    } else if let Some(i) = index_of(&crate::ids::SCULPT3D_POSE_MODE, id) {
+        // ⚠️ **Sem re-armar nada**, pela mesma razão do falloff e dos modos do
+        // tecido: escolher COMO a pose deforma é uma escolha sobre o pincel que
+        // já está na mão, não a troca dele.
+        ui.brush.pose.modo = ph2d_sculpt3d::PoseModo::ALL[i];
     } else if let Some(i) = index_of(&crate::ids::SCULPT3D_CLOTH_MODE, id) {
         // ⚠️ **Sem re-armar nada:** escolher COMO o tecido deforma é uma escolha
         // sobre o pincel que já está na mão, não a troca dele — a mesma razão do

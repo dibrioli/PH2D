@@ -91,6 +91,28 @@ impl Brush {
         matches!(self.verb, crate::Verb::Move)
     }
 
+    /// **Este pincel oferece os controlos da POSE?**
+    #[must_use]
+    pub fn offers_pose_controls(&self) -> bool {
+        self.verb == crate::Verb::Pose
+    }
+
+    /// **E a TRAVA DE ROTAÇÃO?**
+    ///
+    /// ⭐⭐ **Só no modo de escala, e isso é LEI e não arrumação:** ela decide se
+    /// o gesto roda **antes** de escalar (espec §5.4 passo 1). No modo de
+    /// girar/torcer não há escala nenhuma para travar, e no de espremer/esticar
+    /// a espec diz por escrito que *«a trava de rotação não tem papel nenhum»* —
+    /// ali a cadeia nem sequer é resolvida.
+    ///
+    /// ⚠️ *Mostrá-la nos três seria um controlo morto em dois deles* — e um
+    /// interruptor que não faz nada é pior que um ausente, porque o artista
+    /// conclui que já tentou.
+    #[must_use]
+    pub fn offers_pose_rotation_lock(&self) -> bool {
+        self.offers_pose_controls() && self.pose.modo == crate::PoseModo::EscalarTransladar
+    }
+
     /// **Este verbo lê o [`Brush::surface_only`]?** — a porta única, pelo mesmo
     /// argumento do irmão acima.
     ///

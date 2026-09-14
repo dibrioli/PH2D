@@ -33,7 +33,7 @@ pub(super) type Toggle = (NodeId, fn(&Sculpt3dUi) -> bool, fn(&mut Sculpt3dUi));
 /// `Brush::offers_front_faces`, `ClothArea::offers_pin`), nunca a uma lista de
 /// nomes aqui — o pintor faz a mesma pergunta para decidir se desenha a caixa, e
 /// duas cópias divergiriam num interruptor que aparece e não muda um vértice.
-pub(super) const TOGGLES: [Toggle; 14] = [
+pub(super) const TOGGLES: [Toggle; 16] = [
     (
         crate::ids::SCULPT3D_ACCUMULATE,
         |u| u.brush.verb.accumulates(),
@@ -53,6 +53,19 @@ pub(super) const TOGGLES: [Toggle; 14] = [
         crate::ids::SCULPT3D_SURFACE_ONLY,
         |u| u.brush.offers_surface_only(),
         |u| u.brush.surface_only = !u.brush.surface_only,
+    ),
+    // ── Os DOIS interruptores do pincel de POSE ─────────────────────────────
+    (
+        crate::ids::SCULPT3D_POSE_ANCHORED,
+        |u| u.brush.offers_pose_controls(),
+        |u| u.brush.pose.ancorado = !u.brush.pose.ancorado,
+    ),
+    (
+        crate::ids::SCULPT3D_POSE_ROT_LOCK,
+        // ⭐ A pergunta é mais estreita que a do irmão, de propósito: ver
+        // [`ph2d_sculpt3d::Brush::offers_pose_rotation_lock`].
+        |u| u.brush.offers_pose_rotation_lock(),
+        |u| u.brush.pose.trava_rotacao = !u.brush.pose.trava_rotacao,
     ),
     (
         crate::ids::SCULPT3D_SCRAPE_DYNAMIC,

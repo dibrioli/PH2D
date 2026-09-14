@@ -826,6 +826,25 @@ fn every_verb_is_reachable_from_the_keyboard() {
         // tecla, mas o custo de NÃO escolher passa a ser pago em todo traço.
         "Thumb",
         "Nudge",
+        // ⚠️ **A POSE (13/09), e ela entra aqui pela mesma frase — mas o cálculo
+        // do CUSTO é OUTRO, e é honesto separá-lo.** O polegar e o empurrão
+        // custam caro sem tecla por serem verbos de RETOQUE, alternados a cada
+        // dois traços. A pose não é: ela é o gesto mais **de forma** de todo o
+        // catálogo — escolhe-se, dobra-se um membro, e larga-se. Está com o
+        // tecido, não com os dois acima.
+        //
+        // ⚠️⚠️ **E ela traz consigo um argumento NOVO sobre a última tecla, que
+        // o dono não tinha quando a fila era de seis:** este verbo é o único que
+        // oferece uma fileira de MODOS com três entradas **mais** dois
+        // interruptores. Uma tecla que só o SELECCIONA deixa o artista na mesma
+        // fileira do painel para escolher o modo ⇒ *aqui a tecla compra menos
+        // que nos outros seis*, e isso torna a pose a **pior** candidata ao `L`
+        // em vez da mais recente. ⭐ Registado para que a decisão do dono não
+        // tenha de redescobrir isto.
+        //
+        // ⇒ a fila de pretendentes passa de seis para **sete**, e o `L`
+        // continua a ser UM. **A escolha é do Enio.**
+        "Pose",
     ];
     let keys = function_body(&sculpt_src(), "key");
     // ⚠️ **O gate COLETA em vez de abortar no primeiro, e isso não é estilo.**

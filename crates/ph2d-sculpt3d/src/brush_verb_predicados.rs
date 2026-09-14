@@ -107,11 +107,11 @@ impl Verb {
                 // (`if (angle >= 0.0f)`). É o `if (flip) angle *= -1` do
                 // *Multiplane Scrape*, e não uma força negativa.
                 | Self::MultiplaneScrape
-                // ⚠️ **A DEMÃO cava, e é o `brush.direction` da referência** —
-                // no *Layer* o sinal viaja no `cache.bstrength`, que o
-                // Blender já entrega negativo. Aqui ele viaja no alvo (o `sign`
-                // do `compute_target`), porque o nosso `accum` é a MAGNITUDE da
-                // demão e uma magnitude não tem lado.
+                // ⚠️ **A DEMÃO cava, e é a direcção do pincel da referência** —
+                // lá o sinal viaja **dentro da força efectiva**, que a
+                // referência já entrega negativa. Aqui ele viaja no alvo (o
+                // `sign` do `compute_target`), porque o nosso `accum` é a
+                // MAGNITUDE da demão e uma magnitude não tem lado.
                 | Self::Layer
                 // ⚠️ **O TECIDO honra o Ctrl desde 2026-09-06**, quando a lei da
                 // referência passou a ser a de omissão: ela carrega um sinal

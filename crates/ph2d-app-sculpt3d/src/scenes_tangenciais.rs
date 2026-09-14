@@ -89,10 +89,16 @@ mod tests {
     /// é a metade local, e falha primeiro.
     #[test]
     fn a_cena_reclama_o_nivel_que_o_roteador_declara() {
-        assert_eq!(
-            crate::scenes::CENAS,
-            40,
-            "o tecto do roteador tem de conter esta cena"
+        // ⚠️⚠️ **`>=` e não `==`, e a diferença custou um vermelho.** A primeira
+        // redacção deste gate dizia *«o tecto tem de CONTER esta cena»* e
+        // assertava uma **igualdade** — ele passou enquanto esta era a última, e
+        // reprovou no dia em que a seguinte nasceu, sobre produto correcto.
+        // *Quando a mensagem de um gate e a asserção dele discordam, é a
+        // asserção que está errada: a mensagem é o que alguém quis dizer.*
+        assert!(
+            crate::scenes::CENAS >= 40,
+            "o tecto do roteador ({}) tem de conter esta cena (=40)",
+            crate::scenes::CENAS
         );
     }
 }

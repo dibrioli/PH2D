@@ -15,6 +15,12 @@ use super::*;
 /// que nenhum arch-gate de fonte enxerga. Um gate que reconstruísse a malha por
 /// conta própria estaria medindo outra malha no dia em que esta mudasse.
 #[must_use]
+/// A malha da `=41`, para o gate que afirma que ela não é inerte.
+#[cfg(test)]
+pub(crate) fn smoke_mesh_for_tests_ear() -> ph2d_mesh::Mesh {
+    eared_sphere()
+}
+
 pub(crate) fn smoke_mesh() -> ph2d_mesh::Mesh {
     // ⚠️ A `=8` abre com as CRISTAS pelo motivo que o `scene_objects` explica:
     // uma esfera lisa reaberta é indistinguível de uma recém-nascida, e o smoke
@@ -52,6 +58,16 @@ pub(crate) fn smoke_mesh() -> ph2d_mesh::Mesh {
     // pergunta passa a ser binária: *a outra peça mexeu-se, sim ou não?*
     if alcance::alcance_scene() {
         return alcance::duas_pecas_vizinhas();
+    }
+    // ⭐⭐ **A `=41` abre na ORELHA, e a escolha é MEDIDA e não estética:** numa
+    // esfera lisa a franja que dá o pivô é um anel **simétrico** à volta do
+    // cursor ⇒ a média dela cai em cima dele, o primeiro segmento nasce com
+    // comprimento nulo e o pincel de pose **não move nada** (espec §11.1). Uma
+    // cena de esfera mostraria a ferramenta a parecer partida. A orelha é um
+    // apêndice: a franja dela é quase toda do lado do corpo, e o pivô cai na
+    // BASE — que é o que faz o gesto parecer uma articulação.
+    if pose::pose_scene() {
+        return eared_sphere();
     }
     // ⭐ **A `=40` abre na MESMA enrugada, e a razão é a mesma da `=34` vista de
     // outro lado:** os dois gestos tangenciais movem o barro NO PLANO da

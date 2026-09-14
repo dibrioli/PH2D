@@ -104,7 +104,19 @@ impl Sculpt3dScene {
         // deslocamento, e a [`Pose`] os trata diferente de propósito.
         let center = self.pose().point_to_local(at);
         let pull = self.pose().vector_to_local(pull);
-        let brush = self.armed_brush(center);
+        let mut brush = self.armed_brush(center);
+        // ⚠️⚠️ **O ÚNICO número deste app que desce em PIXELS DE ECRÃ, e ele
+        // serve um modo só:** a torção da pose lê o percurso horizontal do
+        // ponteiro em pixels (espec §5.2) ⇒ a saída dela depende da **resolução
+        // e do zoom**. É a conta que precisa da câmera, e é por isso que ela
+        // mora aqui e não na lei.
+        //
+        // ⭐ **É um candidato NOMEADO a superar o alvo** — *o mesmo gesto dá
+        // torções diferentes conforme o zoom* é a família «o resultado depende
+        // de algo em que o artista não está a pensar». ⛔ Trocá-lo é um MODO com
+        // gate próprio, nunca uma correcção silenciosa: as fixturas de torção
+        // medem esta lei.
+        brush.pose.arrasto_x_pixels = x - from.0;
         let eye = self.dir_to_local(self.ray_at(x, y).dir());
         self.stroke.dab(
             self.objects[self.active].stack.mesh_mut(),

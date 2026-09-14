@@ -45,7 +45,7 @@ use super::fixtures::{
 /// enumeração que aqui viveu apodreceu no dia previsível, e a cena `=14` abriu com o canvas em
 /// branco porque ninguém lhe acrescentou o `"14"`. *O censo mede os predicados; ele não pede a
 /// ninguém que se lembre de uma lista.*
-pub const CENAS: u32 = 40;
+pub const CENAS: u32 = 41;
 
 /// **A env do roteador, lida DENTRO da crate.**
 ///
@@ -451,6 +451,11 @@ pub(crate) mod thumb;
 /// o polegar que espalma e o empurrão que varre.
 #[path = "scenes_tangenciais.rs"]
 pub(crate) mod tangenciais;
+/// **O PINCEL DE POSE** (`=41`) — ver [`pose`]. ⚠️ Ela abre na esfera com
+/// ORELHA e não numa lisa, e a escolha é MEDIDA: numa esfera a franja é um anel
+/// simétrico, o pivô cai em cima do cursor e o pincel não move nada.
+#[path = "scenes_pose.rs"]
+pub(crate) mod pose;
 /// **A CENA DOS QUATRO VIEWPORTS** (`=38`) — irmã da [`cloth_filter`] pela mesma
 /// linha de corte: cada arquivo é a história de uma wave.
 #[path = "scenes_viewports.rs"]

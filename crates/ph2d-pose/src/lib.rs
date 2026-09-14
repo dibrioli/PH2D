@@ -65,6 +65,33 @@ pub enum Modo {
 }
 
 impl Modo {
+    /// Os três, na ordem em que a UI os lista — ⚠️ **e é a mesma ordem em que o
+    /// alvo os expõe**, porque a correspondência com as fixturas é
+    /// **posicional** (o cabeçalho de cada uma traz o nome do nosso lado).
+    pub const ALL: [Self; 3] = [
+        Self::GirarTorcer,
+        Self::EscalarTransladar,
+        Self::EspremerEsticar,
+    ];
+
+    /// O nome que a UI mostra.
+    ///
+    /// ⚠️ **Os dois lados de cada barra são o gesto normal e o gesto com o
+    /// modificador de inversão**, e não duas ferramentas: o Ctrl **troca de
+    /// deformação** em vez de trocar o sinal da força. Escrever só o primeiro
+    /// esconderia metade do pincel.
+    #[must_use]
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::GirarTorcer => "Rotate / Twist",
+            Self::EscalarTransladar => "Scale / Translate",
+            // ⚠️ Aqui o modificador **não muda nada**, e está medido: a fixtura
+            // invertida é idêntica ao bit à normal. A barra fica porque o alvo
+            // nomeia as duas metades assim.
+            Self::EspremerEsticar => "Squash / Stretch",
+        }
+    }
+
     /// §3 — ⚠️ **nos modos de escala e de espremer/esticar a cadeia tem
     /// exactamente UM segmento**, seja qual for o valor do controlo.
     ///

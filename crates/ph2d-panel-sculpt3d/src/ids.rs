@@ -13,6 +13,9 @@ mod sculpt3d;
 pub use sculpt3d::*;
 mod sculpt3d_cloth;
 pub use sculpt3d_cloth::*;
+/// Os ids do pincel de POSE — ver [`sculpt3d_pose`].
+mod sculpt3d_pose;
+pub use sculpt3d_pose::*;
 mod sculpt3d_brush;
 pub use sculpt3d_brush::*;
 mod sculpt3d_shading;

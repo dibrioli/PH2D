@@ -357,7 +357,63 @@ fn paint_per_verb_switches(
         y
     };
     let y = paint_cloth_rows(ctx, snap, x, w, y);
+    let y = paint_pose_rows(ctx, snap, x, w, y);
     paint_mask_tools(ctx, snap, x, w, y)
+}
+
+/// **A FILEIRA E AS DUAS CAIXAS DO PINCEL DE POSE.**
+///
+/// ⚠️ **A fileira de modos NÃO é um luxo: sem ela o artista alcança UM dos três
+/// gestos.** Girar/torcer, escalar/transladar e espremer/esticar são
+/// deformações diferentes — e cada barra tem duas metades, porque o modificador
+/// de inversão **troca de deformação** em vez de trocar o sinal da força.
+///
+/// ⚠️ **A trava aparece SÓ no modo de escala** — ver
+/// [`ph2d_sculpt3d::Brush::offers_pose_rotation_lock`]: nos outros dois ela não
+/// tem o que travar, e um interruptor inerte é pior que um ausente.
+fn paint_pose_rows(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32, y: f32) -> f32 {
+    if !snap.ui.brush.offers_pose_controls() {
+        return y;
+    }
+    let modos = ph2d_sculpt3d::PoseModo::ALL;
+    let selected = modos
+        .iter()
+        .position(|&m| m == snap.ui.brush.pose.modo)
+        .unwrap_or(0);
+    let labels: Vec<&str> = modos.iter().map(|m| m.label()).collect();
+    let y = labelled_seg(
+        ctx,
+        tr("panel.sculpt3d.pose_mode"),
+        crate::ids::SCULPT3D_SEC_BRUSH,
+        &crate::ids::SCULPT3D_POSE_MODE,
+        &labels,
+        selected,
+        x,
+        w,
+        y,
+    );
+    let y = toggle(
+        ctx,
+        crate::ids::SCULPT3D_POSE_ANCHORED,
+        tr("panel.sculpt3d.pose_anchored"),
+        snap.ui.brush.pose.ancorado,
+        x,
+        w,
+        y,
+    ) + Spacing::Sm.px();
+    if snap.ui.brush.offers_pose_rotation_lock() {
+        toggle(
+            ctx,
+            crate::ids::SCULPT3D_POSE_ROT_LOCK,
+            tr("panel.sculpt3d.pose_rot_lock"),
+            snap.ui.brush.pose.trava_rotacao,
+            x,
+            w,
+            y,
+        ) + Spacing::Sm.px()
+    } else {
+        y
+    }
 }
 
 /// **AS DUAS FILEIRAS DO PINCEL DE TECIDO** — *Deformation* e *Simulation Area*,

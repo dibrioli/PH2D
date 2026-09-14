@@ -62,7 +62,8 @@
 /// inicialização de pincel semeia a curva editável com o preset suave,
 /// logo *"uma bézier editável, nenhuma das nove"*. **Medido no Blender 5.2 a
 /// correr** (`docs/3D/ferramentas/blender_sculpt_oracle.py`), o pincel de
-/// fábrica reporta `curve_distance_falloff_preset = SMOOTH`, e o perfil que ele
+/// fábrica reporta, na propriedade pública da curva de atenuação, a predefinição
+/// **suave**, e o perfil que ele
 /// deposita é a **analítica**: a `r/R = 0,258` ele move `0,417503` de um pico de
 /// `0,5` ⇒ razão **0,835**, contra **0,8348** de `3u² − 2u³` e **0,94** do
 /// spline de quatro pontos. *Um pincel não nasce zero-inicializado; ele nasce do

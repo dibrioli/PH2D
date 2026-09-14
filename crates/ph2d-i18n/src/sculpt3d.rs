@@ -39,6 +39,23 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // Area* são o que o painel dele diz (espec §8.4), e um artista que vem
         // de lá procura essas duas palavras.
         "panel.sculpt3d.cloth_mode" => "Deformation",
+        // ── O pincel de POSE ────────────────────────────────────────────────
+        // ⚠️ **«Deformation» é a MESMA palavra do tecido, e está certo:** as
+        // duas fileiras respondem à mesma pergunta — *como é que este pincel
+        // deforma?* — e só uma delas é desenhada de cada vez, porque cada uma
+        // pergunta ao seu verbo.
+        "panel.sculpt3d.pose_mode" => "Deformation",
+        "panel.sculpt3d.pose_segments" => "Segments",
+        // ⚠️ **«do cursor» está no rótulo de propósito:** o número é em raios de
+        // pincel e o que ele afasta é o PIVÔ, não a região. Sem isso ele lê-se
+        // como um deslocamento da malha.
+        "panel.sculpt3d.pose_offset" => "Pivot offset from cursor",
+        "panel.sculpt3d.pose_smoothings" => "Weight smoothing",
+        // ⚠️ **O rótulo diz o que a caixa FAZ, não o nome interno da opção:** o
+        // que ela prende é a ponta distante da cadeia, e é isso que faz o gesto
+        // rodar em torno de um pivô fixo.
+        "panel.sculpt3d.pose_anchored" => "Pin far end",
+        "panel.sculpt3d.pose_rot_lock" => "Scale without rotating",
         "panel.sculpt3d.cloth_area" => "Simulation Area",
         "panel.sculpt3d.cloth_force_falloff" => "Force Falloff",
         "panel.sculpt3d.cloth_pin" => "Pin Simulation Boundary",

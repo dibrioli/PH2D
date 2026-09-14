@@ -47,6 +47,9 @@ impl crate::App {
             hero,
             sim.world(),
             &self.preview_drive,
+            // ⭐ A SEGUNDA mão: a ferramenta Bone a posar um osso é um arrasto como o do gizmo, e é
+            // isso que faz o gesto inteiro ser UM passo de undo (ver `autokey_pass::run`).
+            &self.skeleton,
         );
     }
 }

@@ -3,7 +3,7 @@
 //! toggle do motion path espelhado do objecto seleccionado, e os valores das faixas publicados DEPOIS de a
 //! pose deste quadro estar escrita (OBRA 2 da `line/render-loop`, 2026-09-12).
 //!
-//! ⚠️ Os quatro parâmetros são os que a `fase_timeline_view` publicou para ESTE quadro (`Copy`).
+//! ⚠️ Os quatro parâmetros são os que a `fase_timeline_view` publicou para ESTE quadro.
 
 use super::*;
 
@@ -12,7 +12,7 @@ impl crate::App {
     pub(super) fn fase_timeline_drain(
         &mut self,
         container: Option<usize>,
-        dragging_entity: Option<u64>,
+        maos: &[u64],
         keys_mode: bool,
         selected_now: Option<u64>,
     ) {
@@ -39,7 +39,7 @@ impl crate::App {
             &mut self.timeline,
             active_playhead,
             &mut self.timeline_intents,
-            dragging_entity,
+            maos,
             &mut self.autokey,
             keys_mode,
             container,

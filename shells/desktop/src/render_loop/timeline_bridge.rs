@@ -77,9 +77,45 @@ impl SignalEmitter {
     }
 }
 
+/// ⭐⭐⭐ **O QUE A MÃO SEGURA NESTE QUADRO** — as entidades que o apply da timeline não escreve,
+/// para o documento não brigar com a manipulação viva.
+///
+/// ⛔⛔ **São DUAS mãos, e o quadro só conhecia uma** (report do dono, 2026-09-14; mecanismo e
+/// números no `maos_tests`): a ferramenta **Bone** tem gesto próprio ([`crate::bone_pose::pose`]) e
+/// não publicava nada. ⚠️ **Dela vai o ESQUELETO INTEIRO** — a IK da ponta dobra a corrente toda, e
+/// qual metade depende da alça; congelá-lo não perde animação (posar é um gesto de pausa).
+/// ⚠️ **E ela recebe os dois ESTADOS, não dois `Option` já resolvidos:** a chamada vive numa fase do
+/// `render_frame` que nenhum teste alcança, e resolver a mão fora daqui repetiria o defeito.
+pub(crate) fn maos_do_quadro(
+    hero: Option<&ph2d_editor_core::HeroScreen>,
+    skeleton: &ph2d_app_skeleton::state::SkeletonState,
+    sim: &ph2d_ecs::SimWorld,
+) -> Vec<u64> {
+    let mut maos: Vec<u64> = hero
+        .and_then(|h| h.gizmo.drag)
+        .map(|d| d.entity_bits)
+        .into_iter()
+        .collect();
+    let osso = skeleton.bone_pose.map(|(bits, _)| bits);
+    // ⛔ O guarda do osso é load-bearing: sem ele um `seed` que não é osso faz o `skeleton_of`
+    // devolver TODOS os ossos da cena (a leitura certa dele para *«ninguém apontou»*, e a errada
+    // aqui) — o apply pararia de escrever o esqueleto inteiro do documento.
+    let osso = osso
+        .and_then(ph2d_ecs::Entity::try_from_bits)
+        .filter(|&e| sim.world().get::<ph2d_skeleton_ecs::Bone>(e).is_some());
+    if let Some(e) = osso {
+        maos.extend(
+            ph2d_skeleton_live::skin_live::skeleton_of(sim, Some(e))
+                .iter()
+                .map(|b| b.to_bits()),
+        );
+    }
+    maos
+}
+
 /// Drain pending intents into `timeline`, then apply its document to `world` at
-/// the current `playhead` time. The apply leaves untouched: `live_entity` (the
-/// entity whose gizmo is being dragged this frame, if any) and every entity in
+/// the current `playhead` time. The apply leaves untouched: `maos` (what the hand
+/// holds this frame — [`maos_do_quadro`]) and every entity in
 /// `ak.displaced` (a pose the user displaced while paused, waiting for a manual
 /// K — see `autokey_pass`), so the document does not fight the manipulation.
 /// Call each frame in the apply pass, after `apply_sprite_animations`.
@@ -97,7 +133,7 @@ pub(crate) fn run(
     timeline: &mut TimelineState,
     playhead: &mut Playhead,
     intents: &mut Vec<TimelineIntent>,
-    live_entity: Option<u64>,
+    maos: &[u64],
     ak: &mut super::autokey_pass::AutokeyState,
     solo: bool,
     container: Option<usize>,
@@ -145,7 +181,7 @@ pub(crate) fn run(
         ak.displaced_t = playhead.time();
     }
     let displaced = &ak.displaced;
-    let skip = |bits: u64| live_entity == Some(bits) || displaced.contains(&bits);
+    let skip = |bits: u64| maos.contains(&bits) || displaced.contains(&bits);
     // **Three clocks, three views** (Enio, 2026-07-16 / 2026-07-22):
     // - Keys solos the active CLIP at its own clock (`apply_active_clip`) — pose the
     //   exact curves you edit, stack out of the way.
@@ -426,3 +462,7 @@ mod container_tests;
 #[cfg(test)]
 #[path = "timeline_bridge_signal_tests.rs"]
 mod signal_tests;
+
+#[cfg(test)]
+#[path = "timeline_bridge_maos_tests.rs"]
+mod maos_tests;

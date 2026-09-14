@@ -2116,6 +2116,55 @@ base mede outro esqueleto.*
 contrário da acção do osso inteligente, que tem de estar fechada — o onion lê o clip **activo**), e a
 cena diz o NOME da linha na Hierarquia.
 
+**W8 — OS DOIS RELATOS DO SMOKE DA W7** (2026-09-14). O dono correu a cena e devolveu duas frases:
+*«só aparece a silhueta do futuro»* e *«com a timeline aberta não é possível transformar os ossos e
+criar key frames com AutoKey»*. São **dois defeitos de FIO**, nenhum de motor — e cada um tem a mesma
+forma: *o quadro já respondia àquela pergunta noutro sítio, e este sítio respondia sozinho.*
+
+**(a) O RELÓGIO.** Um fantasma é a pose de [`ph2d_timeline::pose_at`], que fala o tempo do **clip
+activo** — o espelho exacto do `apply_active_clip`. Mas o relógio que a vista dirige não é sempre o
+mesmo objecto: a aba **Keys** (a de OMISSÃO) move o `clip_playhead`, um contêiner aberto move o
+`container_playhead`, e só o Arrange move o `playhead` da cena. O quadro escolhe entre os três em
+**dois** sítios (o dreno da timeline e o passe de AutoKey), e a chamada do onion passava um **quarto**
+palpite escrito à mão, `self.playhead.time()`. ⇒ na configuração de fábrica arrastar o cursor **não
+movia** esse número: ele ficava em `0`, não havia key ANTES dele, e **só o futuro tinha vizinhos**.
+Cura: ler o que a vista **já publica** uma vez por quadro, `TimelineViewSnapshot::clip_time` — que é
+`None` quando o clip não toca ali (ou toca duas vezes numa pilha), e aí a resposta honesta é
+**nenhum fantasma**. ⚠️ **A decisão não é alcançável de um teste de unidade** (vive numa fase do
+`render_frame`), então a lei é um **arch-gate** que varre o `src/` da shell — o irmão do
+`the_motion_path_is_offered_only_on_the_keys_tab`, e pela mesma razão. ⚠️ **Ele reprovou primeiro
+sobre o COMENTÁRIO que explica a cura**, que nomeia o relógio errado para dizer que ele saiu: *um
+censo textual que não separa prosa de código mente nos DOIS sentidos.*
+
+**(b) A MÃO.** O apply da timeline escreve a pose de toda entidade keyada, **menos** a que a mão
+segura — e a única lista que ele conhecia era a do **gizmo de sprite** (`hero.gizmo.drag`). Posar um
+osso é um gesto PRÓPRIO (o gizmo não serve: a caixa de um osso é `0×0`, e o `bone_pose::pose` já o
+escrevia), e ele não publicava nada. Medido com sonda: a mão punha `0,77` e o apply devolvia `0,45`
+**no quadro seguinte** — o osso voltava debaixo do dedo, e o AutoKey, que corre DEPOIS do apply, lia
+`mundo == curva` e não tinha o que cunhar. *Duas metades do mesmo defeito, um relato só.*
+⇒ `timeline_bridge::maos_do_quadro` (o gizmo ∪ o esqueleto que a ferramenta Bone pousa), e o
+`live_entity: Option<u64>` do bridge vira `maos: &[u64]`.
+⚠️ **De um osso vai o ESQUELETO INTEIRO**, não o agarrado: puxar a PONTA faz cinemática inversa e
+dobra a corrente toda, logo uma mão de um elemento deixaria metade dela a brigar com o dedo — e qual
+metade depende da alça. Congelá-lo durante o arrasto não perde animação (posar é um gesto de pausa: o
+AutoKey é inerte a tocar). ⛔ E o **guarda** do sujeito que não é osso é load-bearing: sem ele o
+`skeleton_of` devolve TODOS os ossos da cena, que é a leitura certa dele para *«ninguém apontou»* e a
+errada aqui.
+⚠️ **E a cura criava um defeito novo sem a terceira metade:** o `drag_now` do AutoKey também só
+conhecia o gizmo, então cada quadro do arrasto seria uma «edição discreta» com passo de undo próprio
+— quarenta passos para dobrar um braço. Hoje ele soma a mão no osso, e o gesto é **UM** passo.
+⚠️ **As duas portas recebem os ESTADOS, não `Option`s já resolvidos** — é isso que fecha o fio: a
+chamada vive numa fase que nenhum teste alcança, e resolver a mão fora delas repetiria o defeito.
+
+**Cinco mutações, cinco RED:** o relógio da cena de volta · a porta a esquecer o OSSO · a porta a
+esquecer o GIZMO (⚠️ *a mão antiga não se perde ao ganhar a nova* — é a forma de defeito que este
+repo já pagou) · o AutoKey a esquecer a mão no osso · o onion a aceitar um instante ausente.
+
+⏳ **ABERTO e nomeado:** no Arrange **com pilha** o `clip_time` responde `None` quando o clip toca
+zero ou duas vezes — nenhum fantasma, que é honesto e **não** foi smokado · e o AutoKey keya só o
+osso **seleccionado**, logo quem a IK moveu na corrente não recebe chave (é o modelo do Blender, e
+não foi medido contra ele).
+
 ## ⛔ Recusas MEDIDAS deste módulo — não as reconstrua
 
 > ⚠️ **As seis de 2026-09-07/08 entraram aqui na auditoria de 08/09** — elas viviam só em prosa e em

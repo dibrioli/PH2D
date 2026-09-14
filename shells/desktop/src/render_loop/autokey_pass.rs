@@ -89,6 +89,10 @@ fn sample_pose(world: &World, entity: u64) -> PoseSample {
 /// (`playhead.is_playing()`). Rebuilds the baseline from the live selection every
 /// frame (so it tracks selection changes), brackets the undo step, and manages
 /// the displaced-pose pin (see the module docs).
+// Os factos do quadro, cada um load-bearing — a MESMA nota do `apply_samples` abaixo e do
+// `timeline_bridge::run`: agrupá-los numa struct esconde quais o chamador tem de fornecer por
+// quadro. O 8.º é a SEGUNDA mão (a ferramenta Bone), que este passe não conhecia.
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn run(
     timeline: &mut TimelineState,
     playhead: &Playhead,
@@ -97,13 +101,17 @@ pub(crate) fn run(
     hero: &HeroScreen,
     world: &World,
     preview: &ph2d_preview_drive::PreviewDrive,
+    skeleton: &ph2d_app_skeleton::state::SkeletonState,
 ) {
     let panel_open = hero.is_panel_visible("timeline");
     let armed = panel_open && timeline.flags.auto_key;
     // Performing needs the panel open too (same gate as auto-key): record is a
     // timeline authoring mode, meaningless when its UI is hidden.
     let performing = panel_open && timeline.flags.performing;
-    let drag_now = hero.gizmo.drag.is_some();
+    // ⭐⭐⭐ **DUAS MÃOS ARRASTAM NESTE APP, e este passe só conhecia uma** — posar um osso é um
+    // gesto próprio (`bone_pose::pose`). Sem o somar aqui, cada quadro de um arrasto de osso é uma
+    // «edição discreta» e abre um passo de undo seu: quarenta passos para dobrar um braço.
+    let drag_now = hero.gizmo.drag.is_some() || skeleton.bone_pose.is_some();
     // Sample every selected sprite's live pose, in selection order.
     //
     // ⛔⛔ **Menos quem um MOTOR está a conduzir** (auditoria de 2026-09-08). A invariante que o
@@ -493,6 +501,9 @@ pub(crate) fn apply_samples(
     ak.drag_active = drag_now;
 }
 
+#[cfg(test)]
+#[path = "autokey_bone_tests.rs"]
+mod bone_tests;
 #[cfg(test)]
 #[path = "autokey_cut_clock_tests.rs"]
 mod cut_clock_tests;

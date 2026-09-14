@@ -38,6 +38,7 @@ As cinco waves:
 | **W5** | a cena que ENSINA a ordem e o olho |
 | **W6** | a caixa do gizmo da sprite deixa de engolir o rig — a lei do ADR-0112 vira UMA porta |
 | **W7** | **o ONION vê a pele**: a pose de mundo num instante, a pele resolvida nele, a malha por fantasma, e o escopo que um OSSO define |
+| **W8** | **os dois relatos do smoke da W7**: o onion passa a falar o relógio do CLIP (só aparecia a silhueta do futuro), e a MÃO que pousa um osso passa a existir para o quadro (com a timeline aberta o osso não se transformava e o AutoKey não cunhava nada) |
 
 ---
 
@@ -60,6 +61,11 @@ As cinco waves:
 | `ph2d-skeleton-live` (W7) | `skin_of_in`/`skin_of_with`, `deform_field_with`, `posed_sprite_mesh`, `bone_index` público, `skinned_images_of_skeleton` | sim (a pele viva é a mesma) |
 | `ph2d-render` `sprite_collect.rs` + `renderer_draw.rs` (W7) | o `extra` do passe é uma `LiftedInstances` (leva malhas), e não uma fatia crua | **muda a assinatura** de `render_with_extra`/`render_with_streams` |
 | `ph2d-skeleton-demo/src/lib.rs` (W7) | `seed_arm_swing` — a acção do braço, no clip ABERTO | sim |
+| `shells/desktop/src/render_loop/timeline_onion.rs` (W8) | `collect_onion_ghosts` passa a receber `live_clip_t: Option<f64>` — `None` = o clip activo não tem instante único aqui ⇒ **zero fantasmas** | **muda a assinatura** (shell-interna) |
+| `shells/desktop/src/render_loop/fase_canvas_overlays.rs` (W8) | o relógio do onion passa a ser `self.timeline_view.clip_time` (era `self.playhead.time()`) | **é a cura do 1.º relato** |
+| `shells/desktop/src/render_loop/timeline_bridge.rs` (W8) | `maos_do_quadro` NOVA (o gizmo ∪ o esqueleto que a ferramenta Bone pousa); `run` troca `live_entity: Option<u64>` por `maos: &[u64]` | **muda a assinatura** (shell-interna) |
+| `shells/desktop/src/render_loop/{fase_timeline_view,fase_timeline_drain,fase_frame_open}.rs` (W8) | o `TimelineView::dragging_entity` vira `maos: Vec<u64>` e atravessa a fase | sim |
+| `shells/desktop/src/render_loop/autokey_pass.rs` (W8) | `run` ganha `skeleton: &SkeletonState`; `drag_now = gizmo.drag.is_some() \|\| skeleton.bone_pose.is_some()` | **muda comportamento**: um arrasto de osso passa a ser UM passo de undo |
 | `shells/desktop/src/render_loop/snapshots.rs` (W6) | o `vec_gizmo_on` vira `object_gizmo_on` e sobe para UMA porta no topo do `build_view`: **nenhuma família** publica caixa de objecto fora do Select da ferramenta vectorial (os dois `if` por família saem) | **muda comportamento** — uma SPRITE e um GRUPO deixam de publicar caixa naqueles modos (§6.8) |
 
 ---
@@ -138,6 +144,24 @@ Select da ferramenta vectorial, e as **extras** de uma multi-selecção obedecem
 devolve `None` sempre, e sem o controlo o gate ficaria verde a medir o vazio. Mutação (`if false` no
 lugar do guarda): **2 de 2 RED**, na asserção certa.
 
+**W8** (shell + `ph2d-editor-core`): **sem instante de clip o onion não publica fantasma nenhum**,
+com o controlo (a MESMA cena com instante ghosta) · **arch-gate
+`the_onion_speaks_the_clip_clock`** — varre o `src/` inteiro da shell e exige que a chamada leve
+`self.timeline_view.clip_time` e **nenhum** dos três relógios crus, com controlo de população
+(exactamente UMA chamada) · **a pose que a mão pôs sobrevive ao apply**, com o controlo da mão vazia
+(ali a curva TEM de escrever) · **de um osso vai o esqueleto inteiro**, com o guarda do sujeito que
+não é osso e a metade que prova que **a mão do gizmo não se perdeu** · e **posar um osso abre UMA
+bracket de arrasto**, com o controlo do gesto ausente.
+**Cinco mutações, cinco RED:** o relógio da cena de volta · a porta a esquecer o OSSO · a porta a
+esquecer o GIZMO · o autokey a esquecer a mão no osso · o onion a aceitar um instante ausente.
+⚠️ **O arch-gate reprovou primeiro sobre o COMENTÁRIO que explica a cura** (ele nomeia o relógio
+errado para dizer que ele saiu): *um censo textual que não separa prosa de código mente nos DOIS
+sentidos*, e a varredura passou a apagar os `//` antes de aplicar a lei.
+⚠️ **Ele vive na `ph2d-editor-core`, não em `shells/desktop/tests/it/` ao lado do irmão
+`the_motion_path_is_offered_only_on_the_keys_tab`** — a razão está escrita no cabeçalho dele e é
+MEDIDA: a shell tinha `90` linhas de folga contra o `the_shell_only_shrinks`, e um gate de 90 linhas
+lá dentro estouraria a catraca que existe para ela só encolher.
+
 ---
 
 ## §6 — Coisas que uma leitura rápida do diff entende ao contrário
@@ -180,6 +204,17 @@ lugar do guarda): **2 de 2 RED**, na asserção certa.
 12. **O `ghost_instance` passou a ler a pose de MUNDO, e isso fechou uma nota antiga de graça:** o
    ADR-0142 dizia *«rigs parenteados são wave futura»* porque ele lia o `pose_at` LOCAL. Para uma
    raiz as duas respostas são as mesmas — os nove gates do onion passam sem uma linha mudada.
+14. **A W8 não «acrescentou um relógio ao onion»: ela apagou o QUARTO.** O quadro já escolhia entre
+   os três relógios em dois sítios (o dreno e o autokey), e a chamada do onion escrevia à mão um
+   palpite que não era nenhum deles. ⇒ a cura é ler o que a vista **já publica**
+   (`TimelineViewSnapshot::clip_time`), não escolher melhor.
+15. **O `maos: &[u64]` no lugar do `live_entity: Option<u64>` não é generalização preventiva:**
+   agarrar a PONTA de um osso faz cinemática inversa e move a corrente toda, logo uma mão com um
+   elemento deixaria metade do esqueleto a brigar com o dedo — e **qual** metade depende da alça.
+16. **O `drag_now` do autokey passar a somar o osso muda o UNDO, não a autoria:** sem ele o gesto
+   ainda cunharia chaves (cada quadro é uma «edição discreta»), mas cada quadro abriria um passo
+   próprio. *A cura do 2.º relato criava um defeito novo se esta metade ficasse de fora.*
+
 9. **O `vec_gizmo_on` não foi só renomeado:** ele mudou de sítio (de dois `if` dentro dos ramos para
    UMA porta no topo do `build_view`) e de alcance (todas as famílias). O nome antigo mentia desde
    que o Flip entrou com o gémeo dele.
@@ -218,13 +253,23 @@ lugar do guarda): **2 de 2 RED**, na asserção certa.
    coisa na mão, e o doc dele já dizia que um LAÇO o partilha. O onion é `N` artes × `M` instantes,
    e o `attach_skin_meshes` (que também é um laço) herda a porta nova.
 
+9. ⛔⛔ **«A W7 fechou o onion de um rig»** — ela fechou o MOTOR e deixou o RELÓGIO. Os nove gates
+   dela passam-lhe o instante à mão, e o único sítio que o escolhe é uma fase do `render_frame` que
+   nenhum deles alcança: na configuração de fábrica (aba **Keys**) o número entregue ficava parado em
+   `0` e **só o futuro tinha vizinhos**. *Um gate que recebe o instante como argumento mede tudo
+   menos de onde ele veio.*
+10. ⛔ **«Posar um osso é um gesto do esqueleto, e a timeline não tem nada com isso.»** Tem: o apply
+   escreve a pose de TODA entidade keyada, e a única lista de excepção que ele conhecia era a do
+   gizmo de sprite. Medido nesta jornada com a sonda: `0,77 → 0,45` no quadro seguinte ao arrasto.
+   *Um gesto novo herda os inimigos do antigo, e ninguém lhe dá a lista.*
+
 ---
 
 ## §8 — O que fica ABERTO
 
 | item | estado |
 |---|---|
-| ⛔ **Os fantasmas do onion desenham o quad de repouso** | o fantasma é a instância viva com a pose de `t`, e a deformação depende das poses dos OSSOS em `t`. Curar custa três peças: a pose de mundo de cada osso em `t` (`pose_at` composto pela hierarquia), uma pele que aceite essa pose, e uma malha por fantasma na fatia `extra` (que hoje limpa as marcas de propósito) |
+| ✅ **Os fantasmas do onion desenhavam o quad de repouso** | **FECHADO pela W7** (a pose de mundo em `t`, a pele resolvida nele, a malha por fantasma) e **alcançável desde a W8** (o relógio do clip). ⚠️ A redacção fica aqui por contraste: ela dizia *«eles desenham o quad de repouso»* e a medição mostrou que **não havia fantasma nenhum** |
 | ⚠️ **A UV do pintor fora da malha** | `sprite_world_to_uv_unclamped` responde pela lei do quad de REPOUSO: um traço que sai da silhueta posada é mapeado como se a imagem repousasse |
 | ⚠️ **9-slice e folha desdobrada** | a malha só conhece o quad da sprite; essas desenham-se SEM deformar, com aviso único no stderr |
 | ⏳ **A FATIA do quadro (`1/10`)** | é a única escolha do `SKIN_FRAME_PIECES`; medir outra é `PH2D_SKIN_PIECES=<n>` |
@@ -233,6 +278,8 @@ lugar do guarda): **2 de 2 RED**, na asserção certa.
 | ⏳ **O gémeo do Flip da W6** | um objecto de OUTRA família continua a publicar caixa enquanto a ferramenta Flip desenha — o `flip_gizmo_on` gateia só a arte do Flip. Mesmo mecanismo (o `GIZMO_BBOX_INTERIOR` a matar o `on_canvas`), outra ferramenta, e **sem report** |
 | ⚠️ **DUAS caixas de sprite** | a do gizmo sai do `sheet_grid_overlay::gizmo_box(sprite, …)` (o quad) e a do `ph2d_editor_core::gizmo` sai do `ph2d_render::selection_bbox_world` (que a W3 tornou ciente da malha): numa imagem presa e DOBRADA elas discordam. Hoje só a segunda é lida (o *View All* e o contorno do realce) |
 | ⚠️ **Vermelho PRÉ-EXISTENTE, não desta linha** | `ph2d-preview-drive/src/lib.rs:493` — clippy `len` sem `is_empty`. A crate é intocada por esta linha (último commit dela: `21c403c20`, 12/09) |
+| ⏳ **O onion no Arrange com PILHA** | o `clip_time` responde `None` quando o clip activo toca **zero ou duas** vezes ali ⇒ nenhum fantasma. É a resposta honesta (não existe um «agora» de que o passado seja vizinho) e **não** foi smokada: uma pilha com uma strip só devolve o tempo local, que é o caso comum |
+| ⏳ **O AutoKey de um osso key só o SELECCIONADO** | com a corrente inteira congelada durante o arrasto, quem a IK moveu não recebe chave — o `autokey_pass` amostra `gizmo.iter_selected()`. É o modelo do Blender (keya-se o osso escolhido), mas **não foi medido contra ele** |
 | ⏳ como no handoff anterior | o mapa dobra sobre si em dobras fortes · F4 *«undo tem poucos passos»* |
 
 ---
@@ -260,13 +307,20 @@ Régua = merge-base `1d43da737`.
 
 | passo | resultado |
 |---|---|
-| `BASE=1d43da737 bash scripts/nextest-impacted.sh` | ✅ **13 684 passaram, 0 falharam** (11 356 saltados), `29,9 s` — nenhum membro da família de flakes de carga reprovou |
+| `BASE=1d43da737 bash scripts/nextest-impacted.sh` | ✅ **13 700 passaram, 0 falharam** (11 357 saltados), `44,1 s` a `load 57` — nenhum membro da família de flakes de carga reprovou |
 | `cargo fmt --all --check` | ✅ |
 | `cargo clippy --workspace --all-targets` | ⚠️ **correu em CACHE e não repete avisos** (a saída inteira é uma linha, `Finished`). Forçado o replay da única crate com aviso: `ph2d-preview-drive`, **pré-existente** e intocada por esta linha (§8). As crates desta linha foram corridas com replay: zero |
 | `cargo machete` | ✅ nenhuma dependência por usar — a `ph2d-vector` e a `ph2d-asset` SAÍRAM da `ph2d-skeleton-live` |
 | `bash scripts/doc-index.sh --check` | ✅ 19 índices em dia |
-| provas de mutação | ✅ **16 RED** na asserção certa (8 na W2, 8 na W3), cada uma com o controlo `1 failed` — um filtro que casasse zero leria `0 passed; 0 failed` |
-| tectos de LOC | ✅ o `file_loc_caps` do shell e o `workspace_file_loc_cap` passam. ⚠️ **O `app_state.rs` bateu no tecto** (`1 023 / 1 019`) e a cura foi CORTE da prosa que eu tinha acrescentado — nunca subir o número |
+| provas de mutação | ✅ **21 RED** na asserção certa (8 na W2, 8 na W3, **5 na W8**), cada uma com o controlo `1 failed` — um filtro que casasse zero leria `0 passed; 0 failed`. ⚠️ A 1.ª redacção da 5.ª (o onion a aceitar um instante ausente) **não compilava**, e um erro de compilação não é um gate vermelho: foi reescrita numa forma que compila |
+| tectos de LOC | ✅ ⚠️ **A W8 reprovou DOIS ficheiros de teste da shell** (`autokey_pass_tests` `612` · `timeline_onion_tests` `613`, tecto `600`): curados por **corte por responsabilidade** — o gate do osso saiu para o `autokey_bone_tests.rs` e o do relógio para um **sub-módulo** que herda as fixturas (`timeline_onion_clock_tests.rs`, o molde do `skin_at_time_tests` da W7). ⛔ Nunca subir o número. E o resto: ⚠️ **O `app_state.rs` bateu no tecto** (`1 023 / 1 019`) e a cura foi CORTE da prosa que eu tinha acrescentado — nunca subir o número |
+
+⛔⛔ **O NÚMERO QUE O INTEGRADOR TEM DE VER:** a shell fecha esta linha em **`196 946`** linhas
+contra o tecto de `196 990` do `the_shell_only_shrinks` — **`44` de folga**. Ele é um tecto que SOMA
+entre linhas sem ninguém a contar (`CLAUDE.md` §5.0), e esta linha gastou-o quase todo em GATES. Se
+outra linha da rodada crescer, a cura é corte por responsabilidade, nunca subir o número.
+⚠️ **E é por isso que o arch-gate `the_onion_speaks_the_clip_clock` vive na `ph2d-editor-core`** e não
+ao lado do irmão em `shells/desktop/tests/it/`: a razão está escrita no cabeçalho dele.
 
 ⚠️ **O `collision-surface.sh` marca `✗` em dois ficheiros da shell** (`app_state.rs` `1019/600`,
 `main.rs` `1118/600`): são as folgas NUMERADAS do `file_loc_caps`, que é o gate a sério — o mapa
@@ -292,8 +346,16 @@ pintado (a imagem presa está na ORDEM do quadro), e o **olho** da linha *«Pain
 esconde-a. Com a camada do Vello, a imagem ficava à frente da barra e continuava desenhada com o olho
 fechado.
 
+⚠️ **E o que a W7+W8 acrescentam a ele** (a cena imprime a linha que nomeia o osso): abrir
+*Window → Timeline*, escolher na **Hierarchy** a linha de osso que o terminal nomeia, arrastar o
+cursor da timeline para o meio e ligar **Onion** — têm de aparecer **duas** silhuetas do braço
+pintado, uma esverdeada (passado) e uma azulada (futuro), as três formas DIFERENTES. ⛔ Se só
+aparecer a azulada, o relógio do onion voltou a ser o da cena (W8). E com o AutoKey ligado, arrastar
+o CORPO desse osso tem de o mover e cunhar chave — se ele voltar debaixo do dedo, a mão deixou de
+existir para o apply (W8).
+
 ---
 
 ## §11 — A UMA LINHA proposta para o `CLAUDE.md §5` (entrada **Vector**, depois da linha do ATLAS)
 
-> ✅ **A PELE DE IMAGEM ENTROU NO PASSE DE SPRITES** (13/09, [handoff](docs/Skeleton/handoffs/HANDOFF_INTEGRACAO_line_Vector_A_PELE_NO_PASSE_DE_SPRITES_2026-09-13.md), [plano](docs/Skeleton/03_plano_a_pele_no_passe_de_sprites.md)): uma imagem presa ao esqueleto era uma **camada do Vello por cima do quadro** — fora da ordem, desenhada com o olho fechado, sem as propriedades da sprite, com costuras, e com a régua a ler a âncora CRUA. Hoje ela é uma **sprite do quadro desenhada como MALHA** (`SpriteMesh`, ⭐ **sem pipeline nova**: `N` triângulos entram como UMA tira nas `TriangleStrip` de sempre), e quem copia a instância (vidro do prefab, emissivo) ou aponta (picking, caixas, *View All*, UV do pintor) lê o que é DESENHADO. ⭐⭐ **O orçamento saiu do buffer do Vello e passou a sair do TEMPO do quadro:** `8 738 → 1 543` peças, de `1,08 µs` medidos por peça entregue. ⏳ Ficam os fantasmas do **onion** (o quad de repouso, com o preço da cura nomeado) e o 9-slice.
+> ✅ **A PELE DE IMAGEM ENTROU NO PASSE DE SPRITES** (13/09, [handoff](docs/Skeleton/handoffs/HANDOFF_INTEGRACAO_line_Vector_A_PELE_NO_PASSE_DE_SPRITES_2026-09-13.md), [plano](docs/Skeleton/03_plano_a_pele_no_passe_de_sprites.md)): uma imagem presa ao esqueleto era uma **camada do Vello por cima do quadro** — fora da ordem, desenhada com o olho fechado, sem as propriedades da sprite, com costuras, e com a régua a ler a âncora CRUA. Hoje ela é uma **sprite do quadro desenhada como MALHA** (`SpriteMesh`, ⭐ **sem pipeline nova**: `N` triângulos entram como UMA tira nas `TriangleStrip` de sempre), e quem copia a instância (vidro do prefab, emissivo) ou aponta (picking, caixas, *View All*, UV do pintor) lê o que é DESENHADO. ⭐⭐ **O orçamento saiu do buffer do Vello e passou a sair do TEMPO do quadro:** `8 738 → 1 543` peças, de `1,08 µs` medidos por peça entregue. ⭐⭐⭐ **E o ONION de um rig passou a EXISTIR** (W7+W8): ele exigia que o seleccionado estivesse animado **e** desenhasse, e numa personagem riggada quem leva keys são os **ossos** (que não desenham) e quem desenha é a **imagem** (que não leva keys) ⇒ *zero fantasmas, sempre* — a nota antiga dizia *«eles desenham o quad de repouso»*, que é verdade **se houver fantasma**. Hoje um OSSO ghosta a arte que ele deforma, **dobrada** no instante de cada silhueta, e os instantes saem dos ossos ANIMADOS do esqueleto (o modo `Keys` é o de omissão e lia as keys do alvo desenhado). ⚠️ **E o relógio era o QUARTO palpite:** a chamada passava o `playhead` da CENA enquanto a aba Keys dirige o `clip_playhead` — com o cursor parado em `0` só o FUTURO tinha vizinhos (report do dono; arch-gate `the_onion_speaks_the_clip_clock`). ⭐⭐ **E a MÃO que pousa um osso passou a existir para o quadro:** o apply da timeline só conhecia a lista do gizmo de sprite, logo com a timeline aberta ele reescrevia a rotação do osso pela curva no quadro seguinte (`0,77 → 0,45`) — o osso voltava debaixo do dedo e o AutoKey lia `mundo == curva`. Hoje o que a mão segura é **o esqueleto inteiro** (a IK da ponta move a corrente toda) e um arrasto de osso é **UM** passo de undo. ⏳ Ficam o 9-slice e a folha desdobrada.

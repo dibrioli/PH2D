@@ -434,7 +434,7 @@ fn the_ghost_of_a_bound_image_carries_the_mesh_bent_at_that_instant() {
         &mut present,
         &doc,
         Some(osso),
-        2.0,
+        Some(2.0),
         PPM,
         &mut out,
     );
@@ -493,7 +493,7 @@ fn measure_the_cost_of_a_rigged_onion() {
             &mut present,
             &doc,
             Some(osso),
-            2.0,
+            Some(2.0),
             PPM,
             &mut out,
         );
@@ -546,7 +546,7 @@ fn in_keys_mode_the_instants_of_a_rig_come_from_its_bones() {
         &mut present,
         &doc,
         Some(osso),
-        1.0,
+        Some(1.0),
         PPM,
         &mut out,
     );
@@ -561,3 +561,9 @@ fn in_keys_mode_the_instants_of_a_rig_come_from_its_bones() {
         "a fixtura keyou a ARTE: o gate acima passaria sem os relogios"
     );
 }
+
+/// ⭐ O RELÓGIO do onion — irmão deste ficheiro pelo teto de 600 LOC, e sub-módulo de propósito:
+/// ele herda as fixturas daqui (`rig_com_pele`, `settings`, `PPM`), que é o molde do
+/// `skin_at_time_tests` da W7.
+#[path = "timeline_onion_clock_tests.rs"]
+mod relogio;

@@ -259,14 +259,10 @@ pub(crate) fn build_ghosts(
         }
     }
     // ⚠️ **O DIAGNÓSTICO, e não um tecto.** Medido (2026-09-13, `load 9,6`, mínimo de 40 corridas):
-    // `4` fantasmas × `528` peças custam `0,334 ms` — `2,0 %` de um quadro —, logo uma peça de
-    // fantasma vale `0,158 µs`. No extremo dos DOIS sliders (`MAX_GHOSTS = 8` de cada lado) sobre
-    // uma pele no tecto dela (`SKIN_FRAME_PIECES`), isso é `~3,9 ms`: **`23 %` de um quadro**.
-    //
-    // ⛔ **Não se corta nada aqui.** O artista pediu `n` fantasmas; deitar fora os mais distantes é
-    // uma decisão de PRODUTO, e um tecto que não nomeia o recurso de outra pessoa é um palpite
-    // (§0.0). O que fica é o NÚMERO: quem vir o quadro engasgar com o onion ligado tem-no no log da
-    // família, ao lado do orçamento que a pele viva declara para si.
+    // `4` fantasmas × `528` peças custam `0,334 ms` (`2,0 %` de um quadro) ⇒ uma peça vale
+    // `0,158 µs`; no extremo dos DOIS sliders sobre uma pele no tecto dela são `~3,9 ms`, **`23 %`
+    // de um quadro**. ⛔ **Não se corta nada aqui:** deitar fora os mais distantes é decisão de
+    // PRODUTO (§0.0). O que fica é o NÚMERO, no log da família.
     if pecas > ph2d_skeleton_live::skin_image::SKIN_FRAME_PIECES
         && std::env::var_os("PH2D_BONE_LOG").is_some()
     {
@@ -358,6 +354,11 @@ fn ghost_targets(
 /// acrescenta a `out`. No-op quando desligado, sem seleção, ou quando nada do que ele dirige tem
 /// passado e futuro a mostrar.
 ///
+/// ⭐⭐⭐ **`live_clip_t` é o instante do CLIP ACTIVO, e é `Option` de propósito:** tudo aqui fala o
+/// tempo do clip (o [`ph2d_timeline::pose_at`], que espelha o `apply_active_clip`), e quando o clip
+/// não toca no instante da vista — ou toca duas vezes — não há «agora» de que o passado e o futuro
+/// sejam vizinhos. A resposta honesta é **nenhum fantasma**.
+///
 /// O escopo é o SELECIONADO (ADR-0142): edita-se o que está na mão, como o motion path — e o que
 /// um OSSO tem na mão é a arte que ele deforma ([`ghost_targets`]).
 ///
@@ -371,14 +372,16 @@ pub(crate) fn collect_onion_ghosts(
     present: &mut PresentWorld,
     doc: &TimelineDoc,
     selected: Option<u64>,
-    live_clip_t: f64,
+    live_clip_t: Option<f64>,
     pixels_per_meter: f32,
     out: &mut LiftedInstances,
 ) {
     if !settings.enabled {
         return;
     }
-    let Some(sel) = selected else { return };
+    let (Some(sel), Some(live_clip_t)) = (selected, live_clip_t) else {
+        return;
+    };
     let alvos = ghost_targets(sim, present, doc, sel);
     if alvos.is_empty() {
         return;

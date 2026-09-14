@@ -13,8 +13,9 @@ use super::*;
 pub(super) struct TimelineView {
     /// O contêiner cujas faixas o transporte está a EDITAR neste quadro (só dentro de um).
     pub(super) container: Option<usize>,
-    /// A entidade que o gizmo arrasta — o bridge não a aplica, para o documento não brigar com a mão.
-    pub(super) dragging_entity: Option<u64>,
+    /// O que a MÃO segura neste quadro — o bridge não o aplica, para o documento não brigar com ela.
+    /// São DUAS mãos: o gizmo de sprite e a ferramenta Bone ([`timeline_bridge::maos_do_quadro`]).
+    pub(super) maos: Vec<u64>,
     /// A aba Keys do painel (o relógio próprio do clip solado).
     pub(super) keys_mode: bool,
     /// O objecto seleccionado agora (a borda que leva a timeline à aba Keys).
@@ -78,12 +79,10 @@ impl crate::App {
         // Transform writes (`autokey_pass::run`, below the EditorAction drain),
         // so it observes the settled pose and cannot fight the apply.
         //
-        // `dragging_entity` is still needed here: `timeline_bridge::run` skips
-        // it in the apply so the document never fights the live gizmo drag.
-        let dragging_entity: Option<u64> = hero_screen
-            .as_ref()
-            .and_then(|h| h.gizmo.drag)
-            .map(|d| d.entity_bits);
+        // `maos` is still needed here: `timeline_bridge::run` skips what the hand holds
+        // in the apply so the document never fights a live manipulation — the gizmo drag
+        // AND the bone the Bone tool is posing (`timeline_bridge::maos_do_quadro`).
+        let maos = timeline_bridge::maos_do_quadro(hero_screen.as_ref(), &self.skeleton, sim);
         // The panel's Keys tab drives a soloed clip on its OWN clock (the AE precomp
         // model). `keys_mode` is the panel's last-painted tab; it picks which
         // playhead the transport moves, whether the scene solos, and how K authors.
@@ -133,7 +132,7 @@ impl crate::App {
         self.timeline.container_open = container;
         Some(TimelineView {
             container,
-            dragging_entity,
+            maos,
             keys_mode,
             selected_now,
         })

@@ -91,7 +91,11 @@ impl crate::App {
             present,
             &self.timeline.doc,
             hero.gizmo.iter_selected().next(),
-            self.playhead.time(),
+            // ⭐⭐⭐ **O RELÓGIO DO CLIP, e não o da cena** (report do dono, 2026-09-14: *«só aparece
+            // a silhueta do futuro»*) — a resposta que o quadro já publica UMA vez, do relógio que
+            // a vista dirige. O porquê inteiro e a lei vivem no arch-gate
+            // `the_onion_speaks_the_clip_clock`.
+            self.timeline_view.clip_time,
             // A régua do projecto — a MESMA que o extract passa ao `Sprite::resolve_anchor`, senão a
             // malha do fantasma e a do vivo respondem a âncoras diferentes.
             hero.project.pixels_per_meter,

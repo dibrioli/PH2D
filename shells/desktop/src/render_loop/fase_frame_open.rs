@@ -45,12 +45,12 @@ impl crate::App {
         } = self.fase_extract_inputs(wall_dt)?;
         let fase_timeline_view::TimelineView {
             container,
-            dragging_entity,
+            maos,
             keys_mode,
             selected_now,
         } = self.fase_timeline_view()?;
         self.fase_timeline_containers(container, keys_mode);
-        self.fase_timeline_drain(container, dragging_entity, keys_mode, selected_now);
+        self.fase_timeline_drain(container, &maos, keys_mode, selected_now);
         self.fase_physics_step(player_input);
         self.fase_signal_outbox(
             anim_signals,

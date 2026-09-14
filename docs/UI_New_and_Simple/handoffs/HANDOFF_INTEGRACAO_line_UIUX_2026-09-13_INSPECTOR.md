@@ -164,7 +164,9 @@ $ cargo build -p ph2d-host-desktop --profile smoke
     Finished `smoke` profile [optimized] target(s) in 0.20s
 ```
 
-Binário: `target/smoke/ph2d-host-desktop`, **79,6 MB**. ⚠️ Nenhum smoke desta volta pede `--features`,
+Binário: `target/smoke/ph2d-host-desktop`, **79,6 MB**. ⭐ **Recompilado depois do §13** (`fb26bc48a`):
+`8,01 s` na 1.ª corrida (cinco crates, porque o `ph2d-component-desc` está debaixo de toda a gente) e
+`0,22 s` na 2.ª, com **zero `Compiling`** — `79 588 248` bytes. ⚠️ Nenhum smoke desta volta pede `--features`,
 e `~/.ph2d/layout.txt` guarda a arrumação dos painéis — um ficheiro velho abre o app com o Inspector
 fechado, e apagá-lo é o reset.
 
@@ -412,3 +414,18 @@ citava *Rigid Body*) · `docs/Components/05_plano_de_implementacao.md` (idem).
 ⚠️ **Uma linha da `line/components` que toque `catalog/physics.rs` colide textualmente** — a cura é
 ler a tabela das três portas no cabeçalho e classificar a entrada nova, nunca aceitar o lado que
 tiver mais `authored`.
+
+### 13.7 — Portão e commit
+
+**Commit:** `fb26bc48a` (sobre `5af3dbf78`, o fecho da 2.ª volta).
+
+**Portão batched corrido INTEIRO sobre a árvore final, todos verdes:** `doc-index.sh` (+ `--check`) ·
+`cargo fmt --all -- --check` · censo lexical (**4 638**, inalterado — os dois rótulos renomeados são
+língua dos dois lados) · censo do `ph2d-tool-painter` · `cargo check --workspace --all-targets` (aviso
+= erro) · `cargo clippy --workspace --all-targets -D warnings` · `cargo machete` ·
+`check-standalone-optional` · `check-workflow-packages` · `typos` ·
+**`nextest-impacted` (`BASE=1d43da737`): 13 874 testes, 13 874 passaram** (eram 13 867 na volta
+anterior; o delta é a catraca nova e os gates que ela reabilita no grafo de impacto).
+
+⚠️ **A máquina esteve a `load 33–50` durante o portão** (partilhada): nenhum relógio desta corrida é
+medição de desempenho. Os vereditos são estruturais.

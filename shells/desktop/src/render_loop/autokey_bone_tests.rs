@@ -304,3 +304,72 @@ fn the_population_is_the_selection_plus_the_hand_without_repeats() {
         "um osso sob conducao de um MOTOR nao pode entrar na populacao, nem pela mao"
     );
 }
+
+/// ⚠️ **O caso REAL do artista: um rig NOVO, sem curva nenhuma.** Os gates acima partem de ossos já
+/// keyados; aqui mede-se o primeiro gesto de uma animação — dobrar a corrente e ver se ela fica
+/// gravada. ⛔ Se o passe só soubesse cunhar por cima de uma curva existente, o primeiro arrasto de
+/// toda animação deste app seria mudo.
+#[test]
+fn the_first_pose_of_a_fresh_rig_is_recorded_for_every_bone_it_bent() {
+    use ph2d_ecs::{Entity, SimWorld, Transform};
+    use ph2d_timeline::PropKind;
+    let mut sim = SimWorld::new();
+    let raiz = ph2d_skeleton_live::bone::create(&mut sim, None, [0.0, 0.0], [1.0, 0.0])
+        .map(Entity::from_bits)
+        .expect("raiz");
+    let ponta = ph2d_skeleton_live::bone::create(&mut sim, Some(raiz), [1.0, 0.0], [2.0, 0.0])
+        .map(Entity::from_bits)
+        .expect("ponta");
+    let mut st = TimelineState::new();
+    st.flags.auto_key = true;
+    let mut ph = Playhead::new(1.0 / 60.0);
+    ph.pause();
+    ph.seek(1.0);
+    let mut hero = ph2d_editor_core::HeroScreen::new(ph2d_editor_core::NodeId(1));
+    {
+        use ph2d_editor_core::panel::PanelHostInternal as _;
+        hero.set_panel_visible("timeline", true);
+    }
+    hero.gizmo.selection = Some(ponta.to_bits());
+    let posando = ph2d_app_skeleton::state::SkeletonState {
+        bone_pose: Some((ponta.to_bits(), ph2d_skeleton_render::BonePart::Body)),
+        ..Default::default()
+    };
+    // ⚠️ **Um arrasto são DOIS quadros, e é preciso dizê-lo:** sem curva não há de que a pose esteja
+    // «fora», então quem mede a mudança é a BASELINE — o 1.º quadro do gesto estabelece-a e os
+    // seguintes cunham a diferença. ⛔ Um teste de UM quadro leria «não grava nada» sobre um passe
+    // são, que é o erro que esta fixtura quase fabricou.
+    let mut ak = AutokeyState::default();
+    fn quadro(
+        st: &mut TimelineState,
+        ak: &mut AutokeyState,
+        ph: &Playhead,
+        hero: &ph2d_editor_core::HeroScreen,
+        sim: &ph2d_ecs::SimWorld,
+        posando: &ph2d_app_skeleton::state::SkeletonState,
+    ) {
+        super::run(
+            st,
+            ph,
+            ak,
+            &mut ph2d_editor_core::ToastQueue::new(),
+            hero,
+            sim,
+            &ph2d_preview_drive::PreviewDrive::default(),
+            posando,
+        );
+    }
+    quadro(&mut st, &mut ak, &ph, &hero, &sim, &posando); // o gesto abre com a pose de repouso
+    for e in [raiz, ponta] {
+        sim.world_mut().get_mut::<Transform>(e).unwrap().rotation = 0.6;
+    }
+    quadro(&mut st, &mut ak, &ph, &hero, &sim, &posando); // e a IK dobrou a corrente
+    for e in [raiz, ponta] {
+        assert!(
+            st.doc
+                .binding_for(e.to_bits(), PropKind::Rotation)
+                .is_some(),
+            "o primeiro gesto de uma animacao tem de gravar TODO osso que ele dobrou"
+        );
+    }
+}

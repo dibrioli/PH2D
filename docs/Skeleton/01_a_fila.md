@@ -2502,6 +2502,13 @@ protegia. Hoje o gate exige que ele salte o conduzido **mesmo estando na mão**.
 ⚠️ **O `run` passou a receber `&SimWorld`** (era `&World`): a mão precisa de perguntar pela cadeia de
 ossos. É uma mudança de assinatura interna da shell.
 
+⚠️⚠️ **E uma fixtura quase FABRICOU um defeito que não existe:** um gate de UM quadro sobre um rig
+**novo** (sem curva nenhuma) lê *«não grava nada»* — e o passe está são. Sem curva não há de que a
+pose esteja «fora», então quem mede a mudança é a **BASELINE**: o 1.º quadro do gesto estabelece-a e
+os seguintes cunham a diferença. *Um arrasto são DOIS quadros, e um teste que só corre um mede outro
+programa.* O gate ficou, escrito como o gesto de facto é — e ele é o **primeiro gesto de toda
+animação** deste app.
+
 ## ⛔ Recusas MEDIDAS deste módulo — não as reconstrua
 
 > ⚠️ **As seis de 2026-09-07/08 entraram aqui na auditoria de 08/09** — elas viviam só em prosa e em

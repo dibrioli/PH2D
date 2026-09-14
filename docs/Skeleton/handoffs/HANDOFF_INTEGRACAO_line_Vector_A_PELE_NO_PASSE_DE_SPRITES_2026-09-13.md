@@ -237,7 +237,10 @@ as amostras fora da malha respondem pela facete que deixaram · e o fio (a DERIV
 **W14** (a shell): a pose que a mão fez entra INTEIRA (red-first `(2, 3)`) · um osso que a mão segura
 e que **não se moveu** não cunha nada (`(2, 3, 3)`) · e a porta `populacao` com os três casos dela
 (selecção ∪ mão sem repetidos · a mão do GIZMO sem estar na selecção · o conduzido por um MOTOR
-saltado mesmo estando na mão). **Cinco mutações, cinco RED** — ⚠️ **duas só morreram depois de a
+saltado mesmo estando na mão) · e o **primeiro gesto de um rig NOVO**, sem curva nenhuma.
+⚠️ **Essa última fixtura quase fabricou um defeito que não existe:** de UM quadro ela lê *«não grava
+nada»* sobre um passe são — sem curva, quem mede a mudança é a **BASELINE**, e *um arrasto são DOIS
+quadros*. **Cinco mutações, cinco RED** — ⚠️ **duas só morreram depois de a
 população sair para uma PORTA**, e a quinta apanhou uma lei (*pré-visualização não é autoria*) que
 vivia **sem gate** desde a auditoria de 2026-09-08.
 
@@ -439,7 +442,7 @@ Régua = merge-base `1d43da737`.
 
 | passo | resultado |
 |---|---|
-| `BASE=1d43da737 bash scripts/nextest-impacted.sh` | ✅ **14 644 passaram, 0 falharam** (10 428 saltados), `107 s` — o delta contra a corrida da W11b (`14 640`) é **exactamente os 4 gates novos** da W12, e os 15 testes do onion contam o mesmo dos dois lados da mudança de crate. Nenhum membro da família de flakes de carga reprovou, com **outra sessão a compilar na máquina** |
+| `BASE=1d43da737 bash scripts/nextest-impacted.sh` | ✅ **14 648 passaram, 0 falharam** (10 428 saltados) — o delta contra a W12 (`14 644`) são os **4** gates novos da W14. A corrida anterior, ao fechar a W12, lia `14 644`|
 | `cargo fmt --all --check` | ✅ |
 | `cargo clippy --workspace --all-targets` | ⚠️ **correu em CACHE e não repete avisos** (a saída inteira é uma linha, `Finished`). Forçado o replay da única crate com aviso: `ph2d-preview-drive`, **pré-existente** e intocada por esta linha (§8). As crates desta linha foram corridas com replay: zero |
 | `cargo machete` | ✅ nenhuma dependência por usar — a `ph2d-vector` e a `ph2d-asset` SAÍRAM da `ph2d-skeleton-live` |

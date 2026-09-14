@@ -2748,6 +2748,39 @@ como tendo lado, e um instrumento construído sobre isso não vê a junta que fi
 **Cortes por responsabilidade** (o `reach.rs` voltou a passar o tecto de 700): `reach_fabrik.rs` (a
 varredura), `reach_mixed.rs` (o solver do misto), `goal_authored.rs` (a pose do documento).
 
+### F5-d — ✅ **A linha do `IK Chain` é uma RECTA AO LADO** (2.º report do dono, 2026-09-14)
+
+> *«a linha do IK Chain deve ser uma linha reta e não passar por dentro dos ossos»*
+
+A 1.ª redacção (F5-a, W15) traçava a **polilinha das juntas**: numa corrente quase esticada ela caía
+**exactamente** sobre os corpos dos ossos e lia-se como parte deles; numa dobrada, serpenteava. O
+que ela tem de dizer é *até onde o `Chain` chega* — uma **extensão**, que é o que uma cota de
+desenho técnico diz com uma recta deslocada.
+
+⭐ **A geometria saiu para uma PORTA** (`chain_bar`), que é o que os gates medem — desenhar e medir
+a mesma conta em dois sítios seria a resposta que envelhece.
+
+⭐⭐ **O afastamento é DERIVADO, não escolhido:** o que está desenhado sobre cada osso é o **corpo**
+(`bone_half_width_px`) ou a **bolinha da junta** (`joint_radius_px`), as duas já portas desta crate e
+as duas função do comprimento **na tela**. Mais meia faixa, mais a folga — e a folga é `2 × LINE_PX`,
+o mesmo recurso que o `BONE_HALF_MIN_PX` já nomeia por escrito: *abaixo de duas larguras de contorno
+as duas bordas fundem-se numa risca só*, que é literalmente o defeito reportado.
+
+⛔⛔ **E um afastamento CONSTANTE não chega — quem o disse foi o gate.** Uma corrente que se enrola
+mais de meia volta (8 ossos a `0,9 rad` por junta) tem bojo dos **dois** lados e vem por trás da
+recta: ela passava a `18,39 px` de um osso que ocupa `18,75`. ⇒ o afastamento passa por fora da
+**excursão** do lado escolhido, e o lado é o **mais livre** dos dois.
+
+⚠️ **Cinco mutações, cinco RED — e a 5.ª só morreu depois de um gate NOVO.** Com o lado FIXO a recta
+continua a limpar todos os ossos (o afastamento já passa por fora daquela excursão): ela só fica
+**longe**, do outro lado do arco. *O lado não é correcção, é LEITURA* — e um indicador atirado para
+fora do desenho não diz até onde a corrente vai, diz que há uma risca algures.
+
+⚠️⚠️ **E a 1.ª redacção do gate reprovou o PRODUTO por `1e-15`:** exigir exactamente o que o produto
+entrega faz a asserção passar por **igualdade em `f64`**, e uma igualdade amostrada é um gate a
+morrer de pé. A barra pede **metade** da folga; o produto entrega-a inteira, e o mutante que a apaga
+cai por `2,5 px`.
+
 ## ⛔ Recusas MEDIDAS deste módulo — não as reconstrua
 
 > ⚠️ **As seis de 2026-09-07/08 entraram aqui na auditoria de 08/09** — elas viviam só em prosa e em
@@ -2773,6 +2806,8 @@ varredura), `reach_mixed.rs` (o solver do misto), `goal_authored.rs` (a pose do 
 | **Deitar a junta violada na FRONTEIRA** (a projecção de norma mínima) | Ela move aquela junta o mínimo e custa à CORRENTE o máximo: desfaz a **dobra**, e uma ponta que só se alcança dobrando deixa de se alcançar — `2,43` de erro num alvo a `1,52` de uma corrente de alcance `4`, que tem pose exacta com aqueles sinais. |
 | **Amortecer entre a fronteira e o espelho** (`λ · ângulo`, varrido em `0,0 · 0,2 · 0,4 · 0,5 · 0,6 · 0,8 · 1,0`) | Nenhum valor resolve os dois alvos teimosos, e os intermédios são **piores que qualquer um dos extremos** (a `λ = 0,5` três alvos que o `λ = 1` resolve ao bit passam a errar `0,60`–`1,34`). *Não é afinação — é o laço.* |
 | **`livre ± 2π` entre os candidatos** do passo do misto | Código defensivo **sem consumidor**: nunca venceu em `900` fixturas, e não pode vencer — a pose de partida é feita dos sinais que dela se leram, logo cada ângulo já está dentro da sua parede e o intervalo vive inteiro dentro de `(−π, π)`, onde o candidato do interior também vive. |
+| **Traçar a linha do `IK Chain` pela POLILINHA das juntas** (F5-d, 2026-09-14) | Numa corrente quase esticada ela cai **exactamente** sobre os corpos dos ossos e lê-se como parte deles; numa dobrada, serpenteia. O que o controlo tem de dizer é uma EXTENSÃO, e uma extensão desenha-se como cota: recta e deslocada. |
+| **Deslocar a recta da corrente por uma CONSTANTE** | Não limpa uma corrente que se enrola mais de meia volta: ela tem bojo dos DOIS lados e vem por trás da recta (medido: `18,39 px` de um osso que ocupa `18,75`). O afastamento tem de passar por fora da **excursão** do lado escolhido. |
 | **Ler os lados do modo MISTO da pose VIVA** | Estável enquanto o alvo está ao alcance (o modo é ponto fixo, e há gate) e **apagado para sempre** no primeiro arrasto que o leve para fora dele: fora do alcance a resposta certa é a RECTA, e uma recta não tem lado nenhum para ler. «Inicial» tem de ser o DOCUMENTO. |
 | **Fazer a malha SEGUIR a silhueta** em vez de a cobrir (F6-b) | Traz de volta as células deformadas da borda, que são o defeito que a wave cura. O recorte fino é do **alfa da própria arte**, de graça e ao sub-pixel — o *Expansion* do *Puppet* do AE. |
 

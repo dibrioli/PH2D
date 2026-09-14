@@ -52,6 +52,7 @@ mod measure_the_walk_loses_dabs;
 mod measure_transform;
 mod measure_valley;
 mod measure_where_the_curve_knobs_reach;
+mod mede_o_esfregao;
 mod mede_o_filtro_de_tecido;
 mod mede_o_tecido_que_atravessa_os_gestos;
 mod mede_o_tecido_que_estica;

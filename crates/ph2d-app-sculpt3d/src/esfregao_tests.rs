@@ -192,3 +192,61 @@ fn com_a_mao_parada_so_o_arrasto_fica_inerte() {
          podia ter degenerado com o cursor"
     );
 }
+
+/// ⭐⭐⭐ **A PEÇA QUE AS DUAS CENAS DE MULTIRRESOLUÇÃO ABREM CABE NO ORÇAMENTO
+/// DEPOIS DOS DOIS `K` QUE O ROTEIRO MANDA** — a cura do report do dono
+/// (*«meio travado, até na hora de rotacionar o canvas»*, 2026-09-14).
+///
+/// ⛔⛔ **Elas caíam no default do módulo (`98 306` vértices) e o roteiro manda
+/// apertar `K` duas vezes ⇒ `1 572 866`.** Ali um dab de **`Draw`** custa
+/// `9,7 ms` contra o *kill* de `8` — *toda* ferramenta estoura, e a câmera
+/// engasga. *A cena ensinava que o pincel é lento quando quem é pesada é a peça
+/// que ela própria mandou construir.*
+///
+/// ⚠️ **A régua é a CONTAGEM e não o relógio**, de propósito: um gate de tempo
+/// aqui seria mais um membro da família de flakes sob fan-out que o
+/// `CLAUDE.md` §5.0 lista. A contagem é determinística, e o tecto sai da
+/// medição que está no doc do [`crate::scenes_mesh`].
+#[test]
+fn a_peca_das_cenas_de_multirresolucao_aguenta_os_dois_k_do_roteiro() {
+    // ⚠️ **O piso e o tecto**: com menos de `2 000` o relevo não tem onde se
+    // ler, e acima de `~10 000` o dab sai do orçamento na peça do artista.
+    const PISO: usize = 2_000;
+    const TECTO: usize = 10_000;
+    let mut m = crate::scenes::mesh::peca_de_multirresolucao();
+    let abre = m.vert_count();
+    for _ in 0..2 {
+        m = ph2d_mesh::subdivide(&m);
+    }
+    assert!(
+        (PISO..=TECTO).contains(&m.vert_count()),
+        "a peça abre com {abre} vértices e os dois `K` do roteiro levam-na a \
+         {} — fora da faixa [{PISO}, {TECTO}] em que o dab cabe no orçamento e \
+         o relevo ainda se lê",
+        m.vert_count()
+    );
+
+    // ⛔⛔ **A SEGUNDA METADE, e ela nasceu de uma mutação SOBREVIVENTE:** a de
+    // cima mede a PORTA e é cega ao FIO. Trocar o despacho para devolver o
+    // default do módulo deixava-a **verde** — *um gate que chama a função em vez
+    // de percorrer a rota afirma que a peça certa existe, nunca que a cena a
+    // usa*. É o ponto cego que o `CLAUDE.md` §5.0 nomeia: nenhuma sonda deste
+    // repo pergunta se o VALOR chega a um consumidor.
+    //
+    // ⚠️ **`include_str!` e não `read_to_string`**, pela lição do HOWTO §2: o
+    // gémeo em runtime só falha **quando o teste corre**, e este ficheiro tem de
+    // deixar de COMPILAR no dia em que o irmão mudar de sítio.
+    let despacho = include_str!("scenes_mesh.rs");
+    let rota = despacho
+        .lines()
+        .skip_while(|l| !l.contains("erase_scene() || crate::scenes::smear::smear_scene()"))
+        .take(3)
+        .collect::<Vec<_>>()
+        .join("\n");
+    assert!(
+        rota.contains("peca_de_multirresolucao()"),
+        "as duas cenas de multirresolução deixaram de rotear para a peça \
+         grossa — elas voltaram a cair no default do módulo, e o roteiro delas \
+         fabrica 1 572 866 vértices outra vez.\n\nrota lida:\n{rota}"
+    );
+}

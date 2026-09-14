@@ -110,7 +110,7 @@ impl SculptStroke {
         // ela lê `mesh.positions()` e a referência, que são o estado de ANTES
         // do dab, e o alvo depois lê o campo dos VIZINHOS — que não é
         // recuperável da posição depois de alguém se mexer.
-        self.fill_smear_d(mesh, brush.verb == Verb::SmearMultires);
+        self.fill_smear_d(mesh, brush, dab, brush.verb == Verb::SmearMultires);
         // ⚠️ **UMA vez por dab, e a assinatura é o que garante isso.** O frame do
         // padrão sai do rotor de um grau ACUMULADO deste app, que é `O(graus)`:
         // derivado por vértice ele custaria mais que o padrão inteiro que

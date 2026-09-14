@@ -50,32 +50,41 @@ const G: f32 = 1.0 + std::f32::consts::FRAC_1_SQRT_2;
 /// que põe **um** vizinho diagonal a montante em vez de dois, e é daí que sai o
 /// `G` da tabela do cabeçalho.
 fn degrau(deslocar: impl Fn(&mut [f32; 3])) -> (Mesh, Vec<[f32; 3]>) {
-    const N: usize = 21;
-    let mut pos = Vec::with_capacity(N * N);
-    for j in 0..N {
-        for i in 0..N {
-            pos.push([(i as f32 - 10.0) * PASSO, (j as f32 - 10.0) * PASSO, 0.0f32]);
+    grelha(PASSO, 21, move |p| {
+        if p[0] < -0.05 {
+            deslocar(p);
+        }
+    })
+}
+
+/// **UMA GRELHA TRIANGULADA `n × n` de passo `passo`**, com o deslocamento que
+/// `deslocar` escreve — a fixtura de que o [`degrau`] é um caso.
+///
+/// ⚠️ **O passo é PARÂMETRO porque a densidade é o sujeito de um dos gates:** a
+/// mesma bossa em duas grelhas mede se o pincel segue a geometria ou a
+/// tesselação.
+fn grelha(passo: f32, n: usize, deslocar: impl Fn(&mut [f32; 3])) -> (Mesh, Vec<[f32; 3]>) {
+    let meio = (n / 2) as f32;
+    let mut pos = Vec::with_capacity(n * n);
+    for j in 0..n {
+        for i in 0..n {
+            pos.push([(i as f32 - meio) * passo, (j as f32 - meio) * passo, 0.0f32]);
         }
     }
     let referencia = pos.clone();
     for p in &mut pos {
-        if p[0] < -0.05 {
-            deslocar(p);
-        }
+        deslocar(p);
     }
-    let mut faces = Vec::with_capacity((N - 1) * (N - 1) * 2);
-    for j in 0..N - 1 {
-        for i in 0..N - 1 {
-            let a = (j * N + i) as u32;
-            let (b, c) = (a + 1, a + N as u32);
+    let mut faces = Vec::with_capacity((n - 1) * (n - 1) * 2);
+    for j in 0..n - 1 {
+        for i in 0..n - 1 {
+            let a = (j * n + i) as u32;
+            let (b, c) = (a + 1, a + n as u32);
             faces.push(ph2d_mesh::Face::tri(a, c, b));
             faces.push(ph2d_mesh::Face::tri(b, c, c + 1));
         }
     }
-    (
-        Mesh::from_parts(pos, faces).expect("o plano do degrau"),
-        referencia,
-    )
+    (Mesh::from_parts(pos, faces).expect("a grelha"), referencia)
 }
 
 /// O índice do vértice da linha central em `x = (i − 10)·PASSO`.
@@ -341,5 +350,90 @@ fn o_acumular_do_esfregao_e_uma_lei_que_ninguem_declara() {
         d > 1e-4,
         "o `Accumulate` mediu {d:.3e} — se ele fosse INERTE, escondê-lo seria \
          arrumação e não uma decisão; esta nota tem de mudar com a medição"
+    );
+}
+
+/// ⭐⭐⭐ **O TRANSPORTE É UM FACTO DO PINCEL, NÃO DA GRELHA** — a cura do 2.º
+/// report do dono (*«a intensidade parece baixa mesmo no máximo»*, 2026-09-14).
+///
+/// ⛔⛔ **A média do anel transporta UMA ARESTA por dab**, logo a lei nua é
+/// **inversamente proporcional à densidade da malha**. Medido na peça de
+/// omissão da escultura e na mesma subdividida uma vez, doze dabs sobre uma
+/// bossa de `0,200`:
+///
+/// | vértices | aresta | antes | depois |
+/// |---|---|---|---|
+/// | `98 306` | `0,01154` | `0,0297` | **`0,0840`** |
+/// | `393 218` | `0,00577` | `0,0149` | **`0,0848`** |
+///
+/// ⇒ antes, **dobrar a densidade cortava o efeito ao meio, exactamente**;
+/// depois, a diferença entre as duas é **`1 %`**. E na peça de omissão o pincel
+/// ficou **`2,8×` mais forte** sem que a força mudasse.
+///
+/// ⚠️ **Este gate mede a MALHA FINA contra a GROSSA na mesma peça**, que é a
+/// forma barata da mesma afirmação: a fixtura do degrau com o passo a metade
+/// tem o dobro da densidade, e a lei tem de entregar o MESMO transporte.
+#[test]
+fn o_transporte_do_esfregao_nao_segue_a_densidade_da_malha() {
+    // A mesma bossa, em duas grelhas — a segunda com o dobro da densidade.
+    let transporte = |passo: f32, n: usize| -> f32 {
+        let (mut mesh, r) = grelha(passo, n, |p| {
+            let d2 = p[0] * p[0] + p[1] * p[1];
+            p[2] = H * (-d2 / 0.08).exp();
+        });
+        let antes = mesh.positions().to_vec();
+        let mut b = pincel(SmearMode::Drag, 1.0);
+        b.radius = RAIO;
+        let depois = esfregar(&mut mesh, &r, &b, 8);
+        antes
+            .iter()
+            .zip(&depois)
+            .map(|(p, q)| (q[2] - p[2]).abs())
+            .fold(0.0f32, f32::max)
+    };
+    let grossa = transporte(0.04, 41);
+    let fina = transporte(0.02, 81);
+    assert!(
+        grossa > 1e-3 && fina > 1e-3,
+        "a fixtura não transportou nada ({grossa:.5} · {fina:.5}) — ela não \
+         contém o fenómeno"
+    );
+    let razao = fina / grossa;
+    assert!(
+        (razao - 1.0).abs() < 0.25,
+        "a malha FINA transportou {fina:.5} e a GROSSA {grossa:.5} (razão \
+         {razao:.3}) — o pincel voltou a seguir a TESSELAÇÃO. Sem a lei das \
+         passagens esta razão é ~0,5."
+    );
+}
+
+/// ⭐⭐ **A CALIBRAÇÃO: na densidade do ORÁCULO a lei devolve UMA passagem.**
+///
+/// ⛔⛔ **É o que impede a cura de contradizer o lado aprovado.** As fixturas da
+/// espec §7 correm com `6 146` vértices e raio `0,35` ⇒ **`8,3` arestas por
+/// raio**, e `FRACCAO_DO_RAIO = 1/8,3`. Ali `n = 1` e a saída é a lei nua **ao
+/// bit** — a correcção não toca no regime onde a paridade foi medida, e corrige
+/// só o que as fixturas nunca cobriram.
+///
+/// ⚠️ **A régua é o PRODUTO e não a constante:** ela mede que a fixtura do
+/// degrau (que é da ordem da densidade do oráculo) continua a entregar a tabela
+/// de forma fechada do cabeçalho deste ficheiro — se `n` passasse a `2` ali, a
+/// primeira linha lia outro número.
+#[test]
+fn na_densidade_do_oraculo_a_lei_devolve_uma_passagem() {
+    // A fixtura do degrau tem aresta `PASSO` e o pincel raio `RAIO`.
+    let arestas_por_raio = RAIO / PASSO;
+    assert!(
+        (3.0..=12.0).contains(&arestas_por_raio),
+        "a fixtura deixou de estar na ordem de densidade do oráculo \
+         ({arestas_por_raio:.1} arestas por raio) — a tabela de forma fechada \
+         do cabeçalho deixou de medir a lei NUA"
+    );
+    // E a prova é o produto: a tabela fechada continua exacta.
+    let (mut mesh, referencia) = degrau(|p| p[2] = H);
+    let z = esfregar(&mut mesh, &referencia, &pincel(SmearMode::Drag, 1.0), 2);
+    assert!(
+        (z[central(10)][2] - H * G / (1.0 + G)).abs() < 1e-5,
+        "com mais de uma passagem a célula `0,00` deixaria de valer `h·G/(1+G)`"
     );
 }

@@ -488,7 +488,7 @@ pub(crate) fn extract_scene() -> bool {
 
 /// **COM QUE MALHA CADA CENA ABRE** — ver [`mesh`].
 #[path = "scenes_mesh.rs"]
-mod mesh;
+pub(crate) mod mesh;
 pub(crate) use mesh::smoke_mesh;
 
 /// `=2` — a cena da **DOAÇÃO**: a esfera E uma tela branca para pintar.

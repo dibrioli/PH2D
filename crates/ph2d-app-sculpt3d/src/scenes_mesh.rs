@@ -8,6 +8,71 @@
 
 use super::*;
 
+/// ⭐⭐⭐ **A PEÇA DAS DUAS CENAS DE MULTIRRESOLUÇÃO** (`=43`, o apagador, e
+/// `=44`, o esfregão) — e ela abre GROSSA, com o número do report do dono
+/// (*«meio travado, até na hora de rotacionar o canvas dá uma travadinha»*,
+/// 2026-09-14).
+///
+/// ⛔⛔ **O roteiro das duas manda apertar `K` duas vezes, e sobre o default do
+/// módulo (`98 306` vértices) isso fabrica uma peça de `1 572 866`.** Medido em
+/// `--release`: ali um dab de **`Draw`** custa `9,7 ms` contra o *kill* de `8`
+/// — *toda* ferramenta estoura o orçamento, e rodar a câmera engasga. ⇒ *a cena
+/// ensinava que o pincel é lento quando quem é pesada é a peça que ela própria
+/// mandou construir*, que é a espécie que o `CLAUDE.md` §5.0 chama de **pior
+/// que uma cena ausente**.
+///
+/// ⭐ **A escada passa a ser `386 → 1 538 → 6 146`**, e o `6 146` não é um
+/// número escolhido: é **a densidade das fixturas do oráculo** destes dois
+/// pincéis (espec §7), ou seja o regime em que a lei deles foi medida.
+///
+/// ⚠️ **É o CUBO subdividido e não uma `uv_sphere`**, pela mesma razão que fez o
+/// default do módulo mudar por ordem do dono em 2026-08-10: o leque de pólo de
+/// uma esfera UV dá ao mesmo pincel uma superfície por dab dez vezes menor no
+/// pólo que no equador — e estas cenas tocam no pólo.
+pub(crate) fn peca_de_multirresolucao() -> ph2d_mesh::Mesh {
+    // ⭐⭐⭐ **AS DUAS CENAS DE MULTIRRESOLUÇÃO ABREM GROSSAS, e o número é o
+    // report do dono** (*«meio travado, até na hora de rotacionar o canvas
+    // dá uma travadinha»*, 2026-09-14).
+    //
+    // ⛔⛔ **O roteiro delas manda apertar `K` duas vezes, e sobre o default
+    // do módulo (`98 306` vértices) isso fabrica uma peça de `1 572 866`.**
+    // Medido: ali um dab de **`Draw`** custa `9,7 ms` contra o *kill* de
+    // `8` — *toda* ferramenta estoura o orçamento, e rodar a câmera
+    // engasga. ⇒ *a cena ensinava que o pincel é lento quando quem é pesada
+    // é a peça que ela própria mandou construir*, que é a espécie que o
+    // `CLAUDE.md` §5.0 chama de pior que uma cena ausente.
+    //
+    // ⭐ **A escada passa a ser `386 → 1 538 → 6 146`**, e o `6 146` não é
+    // um número escolhido: é **a densidade das fixturas do oráculo** destes
+    // dois pincéis (espec §7), ou seja o regime em que a lei deles foi
+    // medida. Ali o dab custa uma fracção de milissegundo e a câmera roda
+    // limpa.
+    //
+    // ⚠️ **É o cubo subdividido e não uma `uv_sphere`**, pela mesma razão
+    // que fez o default do módulo mudar por ordem do dono em 2026-08-10: o
+    // leque de pólo de uma esfera UV dá ao mesmo pincel uma superfície por
+    // dab dez vezes menor no pólo que no equador — e uma cena que abre no
+    // pólo mediria isso em vez do pincel.
+    let mut m = ph2d_mesh::shapes::cube(1.0);
+    for _ in 0..3 {
+        m = ph2d_mesh::subdivide(&m);
+    }
+    // A meia-extensão da caixa a `1,0`, como a `sculpt_sphere` faz — senão a
+    // câmera enquadra outra peça e os raios do pincel deixam de comparar.
+    let b = m.bounds();
+    let meia = (0..3)
+        .map(|i| (b.max[i] - b.min[i]) * 0.5)
+        .fold(0.0f32, f32::max);
+    if meia > 0.0 {
+        let k = 1.0 / meia;
+        for p in m.positions_mut() {
+            *p = [p[0] * k, p[1] * k, p[2] * k];
+        }
+        m.rebuild();
+    }
+    m
+}
+
 /// A malha com que cada cena abre.
 ///
 /// ⚠️ **Porta única, e ela existe para o gate.** A cena `=3` só significa alguma
@@ -141,6 +206,9 @@ pub(crate) fn smoke_mesh() -> ph2d_mesh::Mesh {
         // Com 10×14 as facetas são visíveis a olho nu, e é contra elas que o
         // detalhe nascendo se vê.
         return ph2d_mesh::shapes::uv_sphere(10, 14, 1.0);
+    }
+    if crate::scenes::erase::erase_scene() || crate::scenes::smear::smear_scene() {
+        return peca_de_multirresolucao();
     }
     if reversion_scene() {
         // ⚠️ **Ela é DUAS vezes subdividida de propósito**: um modelo denso que

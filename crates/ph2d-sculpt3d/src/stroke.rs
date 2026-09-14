@@ -228,6 +228,11 @@ pub struct SculptStroke {
     /// **zero** — que é exactamente o *«campo zerado no início do traço»* da
     /// referência, e o que faz a borda da pincelada comer deslocamento.
     smear_d: Vec<[f32; 3]>,
+    /// **O DUPLO BUFFER das passagens do esfregão** — ver
+    /// [`super::stroke_smear`]. ⚠️ Campo e não local: alocar a pegada inteira a
+    /// cada passagem de cada dab devolveria ao alocador o que o resto deste
+    /// ficheiro economiza.
+    smear_scratch: Vec<[f32; 3]>,
     /// **O `b` do HC, por SLOT** — ver [`super::stroke_hc`].
     ///
     /// ⚠️ **Vazio para vinte e um dos vinte e dois verbos**, e é o `fill_hc_disp`

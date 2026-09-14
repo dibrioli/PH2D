@@ -1449,3 +1449,106 @@ arrasto, e o chamador teria de o substituir — que é a segunda resposta à mes
   mecanismo é conhecido e não é defeito:* a média com peso próprio `1` mais a orla tiram um pouco, e
   a deriva cresce com o comprimento do traço.
 * ⏳ **O último dos quatro:** *Scene Project* (§6), que precisa do tecto de custo medido (§10 item 6).
+
+---
+
+## §24 — ⛔⛔⛔ Os **DOIS reports** do dono sobre o esfregão tinham **UMA raiz**, e nenhuma era a lei
+
+> *«O efeito (resultado) parece OK, mas meio travado, até na hora de rotacionar o canvas dá uma
+> travadinha»* · *«a intensidade parece baixa mesmo no máximo»* (2026-09-14)
+
+⭐ **A pista está na segunda metade da primeira frase:** rodar o canvas **não corre a lei do
+pincel**. ⇒ o custo que ele sente ao rodar não pode ser do alvo por-vértice, e a primeira coisa a
+medir não era o kernel — era **o tamanho da peça que o roteiro manda construir**.
+
+### §24.1 — ⛔⛔ A CENA FABRICAVA A PEÇA
+
+As `=43` e `=44` caíam no **default do módulo** (`sculpt_sphere`, **98 306** vértices) e o roteiro
+das duas manda apertar **`K` duas vezes** ⇒ **`1 572 866`**. Medido em `--release`:
+
+| vértices | `Draw` | `Smooth` | `Smear` |
+|---|---|---|---|
+| `98 306` | `0,52 ms` | `0,49 ms` | **`0,65 ms`** |
+| `393 218` | `2,88 ms` | `2,75 ms` | **`4,42 ms`** |
+| `1 572 866` | `9,72 ms` | `9,47 ms` | `21,9 ms` |
+
+⇒ **a `1,57 M` um dab de `Draw` já custa `9,7 ms` contra o *kill* de `8`.** *Toda* ferramenta
+estoura o orçamento ali, e a câmara engasga. ⛔ *A cena ensinava que o pincel é lento quando quem é
+pesada é a peça que ela própria mandou construir* — a espécie que o `CLAUDE.md` §5.0 chama de **pior
+que uma cena ausente**.
+
+⇒ as duas passam a abrir com o **cubo subdividido três vezes** (`386`), e a escada do roteiro fica
+**`386 → 1 538 → 6 146`**. ⭐ O `6 146` **não é escolhido**: é a densidade das **fixturas do oráculo**
+destes dois pincéis (espec §7), ou seja o regime em que a lei deles foi medida. ⚠️ É o **cubo** e
+não uma `uv_sphere` pela razão que fez o default do módulo mudar por ordem do dono em 2026-08-10: o
+leque de pólo dá ao mesmo pincel uma superfície por dab dez vezes menor no pólo que no equador — e
+estas cenas tocam no pólo.
+
+### §24.2 — ⛔⛔⛔ E O PINCEL SEGUIA A TESSELAÇÃO — o 2.º report, com número
+
+A média do anel transporta o relevo **UMA ARESTA por dab** (medido: `0,15 ×` a aresta média). ⇒ o
+efeito é **inversamente proporcional à densidade da malha**:
+
+| vértices | aresta | raio em arestas | 12 dabs **antes** | 12 dabs **depois** |
+|---|---|---|---|---|
+| `98 306` | `0,01154` | `30,3` | `0,0297` | **`0,0840`** |
+| `393 218` | `0,00577` | `60,6` | `0,0149` | **`0,0848`** |
+
+*Dobrar a densidade cortava o efeito **ao meio, exactamente**.* Contra uma bossa de `0,200`, doze
+dabs moviam `15 %` dela na peça de omissão, `7,5 %` na subdividida e **`~3,7 %`** na peça que o
+roteiro construía — invisível. ⚠️ É a doença que esta casa já nomeou três vezes: **um efeito que
+segue a TESSELAÇÃO em vez da geometria**.
+
+⇒ a cura é `n − 1` relaxações do campo `D` na preparação, mais a do alvo, transportando `n`
+arestas, com
+
+```text
+n = clamp( round( FRACCAO_DO_RAIO · raio / aresta_da_pegada ), 1, MAX_PASSAGENS )
+```
+
+Depois: **`2,8×` mais forte** na peça de omissão, e a diferença entre as duas densidades cai de
+`2,00×` para **`1 %`**.
+
+⭐⭐ **A FRACÇÃO NÃO É ESCOLHIDA — ela é a densidade do próprio ORÁCULO.** As fixturas correm com
+`6 146` vértices e raio `0,35`, ou seja **`8,3` arestas por raio**, e `1/8,3 = 0,12`. ⇒ ali a lei
+devolve **`n = 1`** e a nossa saída é a lei nua **ao bit**: *a correcção não toca no regime onde a
+paridade foi medida, e corrige só o que as fixturas nunca cobriram.* Gate
+`na_densidade_do_oraculo_a_lei_devolve_uma_passagem`, e a prova dele é o **produto** (a tabela de
+forma fechada do §23.2 continua exacta), não a constante.
+
+⚠️ **O TECTO nomeia o recurso, e é o RELÓGIO DO DAB:** a `393 218` vértices um `Draw` custa
+`2,88 ms` e cada passagem `0,22` ⇒ `24` passagens põem o esfregão nos `8 ms` do *kill*. `MAX_PASSAGENS = 24`.
+
+### §24.3 — ⚠️ Duas decisões de estrutura que a cura impôs
+
+* **A média do anel virou PORTA ÚNICA** (`media_do_anel`), com **dois** chamadores — a relaxação e o
+  alvo. ⛔ Escrita duas vezes, a `n`-ésima passagem deixaria de ser a mesma lei da primeira, e o
+  pincel teria uma lei para o meio do dab e outra para o fim.
+* **O buffer da relaxação é DUPLO**, e tem de ser: a média lê o `D` dos vizinhos, e escrever no
+  sítio a meio do laço faria metade dos vértices ler o valor novo e metade o velho — um
+  Gauss-Seidel **dependente da ORDEM da pegada**, a mesma doença que o `stroke_hc` documenta ter
+  evitado. *A mutação que o instala sangra.*
+
+### §24.4 — ⛔⛔ E uma MUTAÇÃO SOBREVIVENTE expôs que o gate da cena media a PORTA e não o FIO
+
+O primeiro gate da peça chamava `peca_de_multirresolucao()` **directamente** ⇒ trocar o **despacho**
+para devolver o default do módulo deixava-o **verde**. ⚠️ *Um gate que chama a função em vez de
+percorrer a rota afirma que a peça certa existe, nunca que a cena a usa* — é o ponto cego que o
+`CLAUDE.md` §5.0 nomeia por escrito: **nenhuma sonda deste repo pergunta se o VALOR chega a um
+consumidor**.
+
+⇒ a segunda metade lê o despacho por **`include_str!`** e não `read_to_string`, pela lição do HOWTO
+§2: o gémeo em runtime só falha *quando o teste corre*, e este ficheiro tem de deixar de **COMPILAR**
+no dia em que o irmão mudar de sítio.
+
+### §24.5 — As provas
+
+* **Mutação 14 de 14** (eram 10; as quatro novas: a lei das passagens morta · as passagens
+  desancoradas do raio · o Gauss-Seidel · a peça da cena de volta ao default).
+* **Gates de lei: 10** (eram 8) — os dois novos são `o_transporte_do_esfregao_nao_segue_a_densidade_da_malha`
+  (a malha fina contra a grossa na mesma peça) e a calibração acima.
+* **Portão:** `fmt` OK · `clippy` **0 avisos** · `nextest-impacted` **15 184: 15 184 passaram** ·
+  `doc-index --check` ✓ 19 · as seis vassouras limpas excepto o `tip_roundness` pré-existente.
+* ⚠️ **As medições vivem no caminho do produto** (`mede_o_esfregao.rs`, `#[ignore]`), e **em
+  `--release`**: o debug lê `~20×` mais lento e daria um tecto de passagens cinco vezes menor — *a
+  mesma cura mede-se cinco vezes menor no perfil errado* (a lição da `line/3DModeling` em 10/09).

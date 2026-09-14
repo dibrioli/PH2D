@@ -245,8 +245,15 @@ fn the_panel_shows_the_dimensions_of_what_is_selected() {
             // do que ele deixou.
             "field.dim.chamfer",
             "field.dim.round",
+            // ⭐⭐⭐ **E o MATERIAL, depois do que a forma mede** (`docs/Render3d/05`) — ver
+            // `ph2d_field::Param::Material`.
+            "field.dim.base_r",
+            "field.dim.base_g",
+            "field.dim.base_b",
+            "field.dim.roughness",
+            "field.dim.metalness",
         ],
-        "uma caixa tem a POSE (posição e rotação) e CINCO dimensões, nesta ordem"
+        "uma caixa tem a POSE (posição e rotação), CINCO dimensões e o MATERIAL, nesta ordem"
     );
     // ⛔ **E NÃO tem `Scale`**: numa folha o tamanho visível são as dimensões, e mostrar as duas
     // coisas daria dois controles para a mesma coisa — sem forma de saber qual o gesto seguinte

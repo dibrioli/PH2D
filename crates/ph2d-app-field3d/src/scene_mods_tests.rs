@@ -488,6 +488,15 @@ fn every_modifier_gets_its_own_section_in_the_panel() {
                     );
                 }
             }
+            // ⭐⭐⭐ **O MATERIAL tem secção PRÓPRIA** (`docs/Render3d/05`), como um modificador —
+            // o que a forma mede à LUZ não é o que ela mede à régua. ⚠️ E a **primeira** linha dele
+            // é que a abre: as outras quatro continuam-na, exactamente como as de um modificador.
+            Param::Material(k) => assert_eq!(
+                l.section,
+                (k == 0).then_some("panel.model3d.section.material"),
+                "a linha {k} do material abriu `{:?}` — só a primeira abre a secção",
+                l.section
+            ),
             _ => assert!(
                 l.section.is_none() || l.section == Some("panel.model3d.section.shape"),
                 "uma linha da forma abriu a secção `{:?}`",

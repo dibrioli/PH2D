@@ -230,10 +230,17 @@ pub fn param_rows(
                 Some(ph2d_field::Param::Mod { slot: a, .. }),
                 ph2d_field::Param::Mod { slot: b, .. },
             ) => a == b,
-            // Tudo o que não é modificador é a forma, e ela é uma secção só.
+            // Duas linhas do material continuam a secção dele.
+            (Some(ph2d_field::Param::Material(_)), ph2d_field::Param::Material(_)) => true,
+            // Tudo o que não é modificador nem material é a forma, e ela é uma secção só.
             (Some(a), b) => {
-                !matches!(a, ph2d_field::Param::Mod { .. })
-                    && !matches!(b, ph2d_field::Param::Mod { .. })
+                let solta = |p: ph2d_field::Param| {
+                    !matches!(
+                        p,
+                        ph2d_field::Param::Mod { .. } | ph2d_field::Param::Material(_)
+                    )
+                };
+                solta(a) && solta(b)
             }
             (None, _) => false,
         };
@@ -248,6 +255,10 @@ pub fn param_rows(
                 // ⚠️ Um slot sem modificador não pode acontecer (as duas listas saem do mesmo nó),
                 // e se acontecer o cabeçalho genérico é melhor do que nenhum.
                 .or(Some("panel.model3d.section.modifier")),
+            // ⭐⭐⭐ **O MATERIAL é uma secção própria** (`docs/Render3d/05`) — o que a forma mede
+            // à LUZ não é o que ela mede à régua, e cinco números sem cabeçalho debaixo das
+            // dimensões leem-se como mais dimensões.
+            ph2d_field::Param::Material(_) => Some("panel.model3d.section.material"),
             _ => Some("panel.model3d.section.shape"),
         }
     };

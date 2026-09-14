@@ -139,7 +139,7 @@ linha que decide alguma coisa (`+54 %` de pixels cortados a `0` stops, `−13 %`
 
 | ausência | razão |
 |---|---|
-| **material por objecto** | o material desta fatia é o **padrão da nodedef**. Por objecto precisa de saber *qual folha* cada pixel tocou, e o custo disso é uma medição por fazer (§8) |
+| ~~**material por objecto**~~ | ✅ **FECHOU em 13/09** — ver §11. Ficou o que ele **não** tem: a cor escolhe-se por três números e não por uma amostra de cor |
 | **o rig do DOCUMENTO** | o rig vive dentro da cena da escultura (`ph2d_app_sculpt3d::cena`), fora do alcance do modelador; esta fatia usa o rig de omissão da `ph2d-light` |
 | **anisotropia, transmissão, subsuperfície, fuzz, película fina** | cada uma é uma closure com gate próprio; com peso zero a composição gerada dá-lhes contribuição **zero**, e os campos **não existem** na struct (um campo que a lei não lê é um controlo morto) |
 | **AgX** | ⛔ **licença**: não há neste disco um AgX cuja licença permissiva se leia no artefacto (`04` §3). O oráculo dele corre-se à mesma |
@@ -320,3 +320,85 @@ arquitectura»*), agora pela quinta vez.
   sem ele, um `Z` come o `Ctrl+Z` do app inteiro.
 - **O orçamento de chips da fila:** medido `3`, usam-se `2` ⇒ **cabe um terceiro**. ⚠️ A nota do
   `ids/chrome/rail.rs` ainda diz *«hoje usa-se 1»*, falsa desde esta fatia.
+
+## §11 — **CADA OBJECTO COM O SEU MATERIAL** (13/09)
+
+**O que o artista alcança:** escolhida uma forma, o painel `MODEL` ganha uma secção **Material** com
+cinco números — *Base Color R/G/B*, *Roughness*, *Metalness*. Eles viajam no arquivo, sobrevivem ao
+desfazer, e uma cópia sai com o material do original.
+
+### §11.1 — ⭐⭐⭐ O painel não precisou de uma linha de código
+
+As linhas deste painel são **derivadas** do [`params_of`](../../crates/ph2d-field-ecs/src/edit_params.rs):
+a faixa, o despacho, a escrita e o cabeçalho de secção saem todos do [`ph2d_field::Param`]. ⇒ o
+material entrou como uma variante nova (`Param::Material(u8)`) e a autoria apareceu inteira.
+
+⛔ **A alternativa era uma superfície própria para o material** — uma segunda máquina de rows ao lado
+de uma que já funciona. *A que apodrece é sempre a segunda.*
+
+### §11.2 — As quatro peças, e onde cada uma vive
+
+| peça | onde | o que ela decide |
+|---|---|---|
+| `Param::Material(u8)` | [`ph2d-field`](../../crates/ph2d-field/src/dims.rs) | que um material é um número autorado do nó, como uma largura |
+| `FieldMaterial` | [`ph2d-field-ecs`](../../crates/ph2d-field-ecs/src/lib.rs) | componente **opcional** e registado: a ausência é *«o de omissão»*, e ele persiste |
+| `owners::Owners` | [`ph2d-field-eval`](../../crates/ph2d-field-eval/src/owners.rs) | de quem é um ponto — a lei que o clique **já** usava |
+| `materials::Table` | [`ph2d-app-field3d`](../../crates/ph2d-app-field3d/src/materials.rs) | a ponte: as folhas do mundo → uma superfície por folha, atravessando para a thread do traçado |
+
+⚠️ **O `FIELD_DOC_VERSION` NÃO se mexe.** O documento é **geometria** — é ele que a marcha compila —
+e uma cor não muda uma distância. ⇒ uma peça gravada antes desta wave abre, com o material de
+omissão.
+
+### §11.3 — ⭐⭐ A tabela tem DUAS metades, e o preço é a razão
+
+| metade | depende de | refaz-se quando |
+|---|---|---|
+| a geometria (uma fita compilada por folha) | a forma | o documento muda |
+| os números | o material | alguém lhes toca |
+
+⚠️ **Compilar a fita de uma folha é um JIT**, e arrastar um slider de cor não muda geometria nenhuma.
+Uma tabela só, refeita sempre que qualquer das duas mudasse, pagaria **um JIT por folha a cada
+quadro** de um arrasto de cor.
+
+⚠️ **E as duas largam o pedido guardado** (`Smoke::forget_requests`, agora com dois chamadores — o
+olhar e o material): as duas mudam o que o traçado **pinta** sem mudar nada do que o cache compara.
+
+### §11.4 — ⛔⛔ Os cinco vermelhos que os censos desta casa apanharam
+
+Nenhum deles era previsível a partir do diff — os cinco foram **encontrados por gates que já
+existiam**:
+
+| censo | o que ele apanhou |
+|---|---|
+| `a_duplicate_carries_every_optional_component_of_a_node` | **defeito real**: duplicar uma peça de metal vermelho devolvia uma de omissão. O `copy_optional` não conhecia o componente novo, e a diferença só apareceria no modo *Render* — longe do gesto que a causou |
+| `every_row_of_the_biggest_polygon_fits_the_registered_family` | o teto de linhas do painel — ver §11.5 |
+| `one_more_vertex_would_not_fit` | a outra ponta do mesmo teto |
+| `every_modifier_gets_its_own_section_in_the_panel` | a secção nova tinha de ser **declarada**, não tolerada |
+| `every_node_shows_position_then_rotation_then_what_it_measures` | a **ordem**: o material vem depois das dimensões, e um material no meio delas partiria a secção da forma em duas |
+
+### §11.5 — ⛔⛔ E um TETO EMPRESTADO caiu, como o da graduação da ponta antes dele
+
+O `MAX_ROWS` do painel estava em **`64`**, e a nota dele dizia-o por escrito: *«o número escrito na
+primeira vez … quando um documento real passar disto, o número muda com uma medição atrás»*. O
+`MAX_POLYGON_VERTICES` (**27**) era **derivado** dele: `2 × 27 + 10 = 64`, exactamente no teto.
+
+⇒ as cinco linhas do material empurravam o polígono para **24 vértices**. *Um teto de REGISTO cujo
+recurso é memória a mandar num teto de FORMA é o caminho lento a definir o rápido* (`CLAUDE.md` §0.0).
+
+⭐ **Medido:** cada linha regista `6` widgets (um slider, um campo numérico e os `MAX_CHOICES` botões
+de escolha) ⇒ `64 → 69` custa **`30` widgets e 5 `String`**, uma vez, no arranque. O polígono fica
+onde estava, e o `MAX_ROWS` passa a ser **derivado da maior forma**: `2 × 27 + 15`.
+
+### §11.6 — ⏳ O que fica aberto
+
+- **A cor escolhe-se por TRÊS NÚMEROS**, e uma cor escolhe-se **vendo-a**. A casa tem `ColorSwatch` e
+  um selector de cor; o que falta é uma variante de row que os hospede. ⚠️ *Dívida nomeada, não
+  esquecimento* — os três números compram hoje o que faltava: a cor ser **autorável** e **persistir**.
+- **Uma silhueta entre duas peças de cores diferentes** recebe a cor de quem o centro do pixel
+  apanhou (as quatro sub-amostras da borda não guardam ponto). É a mesma aproximação que a direcção
+  de vista já faz, e está declarada no `shade_render`.
+- **O custo por quadro do `Owners`** numa peça grande **não foi medido** — a sonda mediu a
+  RESOLUÇÃO (`1,6 ms` a 16 folhas), não a **construção** (um JIT por folha a cada mudança de
+  geometria, isto é, a cada quadro de um arrasto). É a primeira medição da wave seguinte.
+- **Um material num GRUPO** não existe: quem o traçado sabe nomear por pixel é a folha. Herdar do
+  grupo é modelo novo.

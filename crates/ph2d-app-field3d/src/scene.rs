@@ -81,6 +81,10 @@ pub fn ecs_bridge(
     // ⭐⭐ **Os vértices saem da MESMA travessia que a âncora** (W133): os dois precisam do mundo, e
     // publicá-los em quadros diferentes deixaria a alça a marcar um ponto que a peça já não tem.
     let vertices = vertices_for(sim, selected, &chosen);
+    // ⚠️ **A bandeira sai do fecho porque o passo do MATERIAL precisa do MUNDO**, e o `with_smoke`
+    // só tem o estado do módulo. *Um passo que precisa das duas coisas corre entre elas, não dentro
+    // de uma.*
+    let mut mudou_o_doc = false;
     with_smoke(|s| {
         s.gizmo = anchor;
         s.vertices = vertices;
@@ -88,6 +92,7 @@ pub fn ecs_bridge(
         // re-traçar para sempre, matando o "só se traça o que mudou".
         if s.doc != cooked {
             s.doc = cooked;
+            mudou_o_doc = true;
         }
         // ⭐⭐ **A peça de um documento novo nasce ENQUADRADA** (W46) — e é AQUI, depois de o
         // documento estar cozido, porque enquadrar precisa do bordo dele. O pedido fica de pé até
@@ -97,6 +102,9 @@ pub fn ecs_bridge(
             s.vp_mut().manual = true;
         }
     });
+    // ⭐⭐⭐ **E A TABELA DE MATERIAIS segue a peça** (`docs/Render3d/05`) — depois do cozimento,
+    // porque ela é derivada dele, e fora do fecho acima, porque ela precisa do mundo.
+    crate::materials::sync(sim, mudou_o_doc);
     picked.or(born)
 }
 

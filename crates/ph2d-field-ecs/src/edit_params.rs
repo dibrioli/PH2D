@@ -212,6 +212,19 @@ fn subtree_reach(world: &World, root: Entity) -> [f32; 3] {
 /// As chaves i18n dos três eixos da posição.
 pub(super) const POS_KEYS: [&str; 3] = ["field.dim.pos_x", "field.dim.pos_y", "field.dim.pos_z"];
 
+/// ⭐⭐⭐ **As chaves i18n dos números do MATERIAL**, na ordem de [`ph2d_field::Param::Material`].
+///
+/// ⚠️ **A contagem é [`ph2d_field::MATERIAL_FIELDS`]**, e há gate: uma tabela mais curta do que a
+/// lei daria um `params_of` a entrar em pânico no índice, e uma mais longa pintaria uma linha que a
+/// escrita recusa.
+pub(super) const MATERIAL_KEYS: [&str; ph2d_field::MATERIAL_FIELDS as usize] = [
+    "field.dim.base_r",
+    "field.dim.base_g",
+    "field.dim.base_b",
+    "field.dim.roughness",
+    "field.dim.metalness",
+];
+
 /// As chaves i18n dos três ângulos.
 pub(super) const ROT_KEYS: [&str; 3] = ["field.dim.rot_x", "field.dim.rot_y", "field.dim.rot_z"];
 
@@ -372,6 +385,37 @@ pub fn params_of(world: &World, entity: Entity) -> Vec<(Param, Dim)> {
                 fecha_pela_peca(d, curso_do_segundo(op.blend(), escala)),
             ));
         }
+    }
+    // ⭐⭐⭐ **O MATERIAL, e só numa FOLHA** (`docs/Render3d/05`) — o que a forma mede à LUZ, depois
+    // do que ela mede à régua.
+    //
+    // ⚠️ **A pergunta é feita à FORMA e não ao nó:** quem o traçado sabe nomear por pixel é a folha
+    // (`ph2d_field_eval::owners`), então um material num grupo seria um valor que nenhum pixel
+    // consegue ir buscar — a affordance que mente, a mesma lei que o raio de junção acima honra.
+    //
+    // ⚠️ **A ausência do componente É o material de omissão**, e é por isso que as linhas aparecem
+    // na mesma: sem elas o artista teria de saber que precisa de «acrescentar um material» antes de
+    // poder escolher uma cor. Escrever materializa (ver [`ph2d_field::Param::Material`]).
+    if matches!(node.shape, NodeShape::Leaf(_)) {
+        let m = world
+            .get::<crate::FieldMaterial>(entity)
+            .copied()
+            .unwrap_or_default();
+        out.extend((0..ph2d_field::MATERIAL_FIELDS).filter_map(|k| {
+            Some((
+                Param::Material(k),
+                Dim {
+                    key: MATERIAL_KEYS[k as usize],
+                    value: m.get(k)?,
+                    // ⭐ **Do zero a um, e as duas pontas são do MODELO** — uma rugosidade acima de
+                    // `1` não é mais áspera e um metal a `2` não é mais metal. ⚠️ `SoftFromZero` e
+                    // não `Wall`: o campo numérico continua sem tecto (uma cor base em HDR é uma
+                    // afirmação legítima sobre a peça), e o que este número fecha é o **curso do
+                    // slider**.
+                    span: Span::SoftFromZero(1.0),
+                },
+            ))
+        }));
     }
     // ⭐⭐ **A RESOLUÇÃO do contorno vivo** (W55) — logo depois do que a forma mede, e antes do que
     // se fez a ela.

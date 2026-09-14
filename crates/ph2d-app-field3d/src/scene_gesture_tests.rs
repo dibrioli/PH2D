@@ -309,9 +309,26 @@ fn every_node_shows_position_then_rotation_then_what_it_measures() {
         !params.contains(&Param::Scale),
         "uma FOLHA não tem linha de escala — o tamanho dela são as dimensões: {params:?}"
     );
+    // ⭐⭐⭐ **Depois da pose vêm as DIMENSÕES e depois o MATERIAL** (`docs/Render3d/05`), nesta
+    // ordem: primeiro o que a forma mede à régua, depois o que ela mede à luz.
+    //
+    // ⚠️ **A ordem é afirmada e não só o conjunto:** um material ENTRE as dimensões partiria a
+    // secção da forma em duas, e o artista leria as últimas dimensões como se fossem do material.
+    let dims = params[6..]
+        .iter()
+        .take_while(|p| matches!(p, Param::Dim(_)))
+        .count();
     assert!(
-        params[6..].iter().all(|p| matches!(p, Param::Dim(_))),
-        "depois da pose só há dimensões: {params:?}"
+        params[6 + dims..]
+            .iter()
+            .all(|p| matches!(p, Param::Material(_))),
+        "depois da pose há as dimensões e depois o material, e mais nada: {params:?}"
+    );
+    assert_eq!(
+        params[6 + dims..].len(),
+        ph2d_field::MATERIAL_FIELDS as usize,
+        "uma FOLHA oferece os {} números do material: {params:?}",
+        ph2d_field::MATERIAL_FIELDS
     );
     // E a operação **tem** escala, senão o gate não distinguiria «não há escala» de «não há nós».
     let ops: Vec<Param> = ph2d_field_ecs::params_of(world, root)

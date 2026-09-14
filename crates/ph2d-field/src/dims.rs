@@ -111,7 +111,32 @@ pub enum Param {
     /// a mesma lei da W34 que o resto do painel honra: *o painel oferece exactamente o que o gesto
     /// faz*.
     Seam(u8),
+    /// ⭐⭐⭐ **UM NÚMERO DO MATERIAL desta forma** — a cor base (`0`, `1`, `2`), a rugosidade (`3`) e
+    /// o metal (`4`).
+    ///
+    /// # ⚠️ Porque um material é um `Param` como os outros, e não uma superfície à parte
+    ///
+    /// O painel deste módulo é **derivado** de [`crate::Param`] ponta a ponta — a linha, a faixa, o
+    /// despacho e a escrita. Uma superfície própria para o material seria uma **segunda** máquina
+    /// de rows ao lado de uma que já funciona, e a que apodrece é sempre a segunda. *Um material é
+    /// o que a forma mede à luz, exactamente como uma largura é o que ela mede à régua.*
+    ///
+    /// ⚠️ **Ele NÃO entra no [`crate::FieldDoc`]**, e isso é a decisão: o documento é **geometria**
+    /// (é ele que a marcha compila), e uma cor não muda uma distância. O material vive num
+    /// componente ao lado do nó — logo o `FIELD_DOC_VERSION` não se mexe, e uma peça já gravada
+    /// continua a ler-se.
+    ///
+    /// ⚠️ **Só uma FOLHA o tem.** É a folha que o traçado sabe nomear (`ph2d_field_eval::owners`),
+    /// e um material num grupo seria um valor que nenhum pixel consegue ir buscar.
+    Material(u8),
 }
+
+/// Quantos números um material tem — ver [`Param::Material`].
+///
+/// ⚠️ **Derivado por quem o lê**, e não escrito em cada sítio: o `params_of` publica esta quantidade
+/// de linhas e o `set_param` recusa acima dela. Dois literais divergiriam no dia em que um sexto
+/// número entrasse, e o sintoma seria uma linha pintada que a escrita recusa.
+pub const MATERIAL_FIELDS: u8 = 5;
 
 /// ⭐ **O que uma grandeza admite** — a forma da faixa, e de que recurso vem cada ponta.
 ///

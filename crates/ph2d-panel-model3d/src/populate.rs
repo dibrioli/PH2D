@@ -20,10 +20,29 @@ use ph2d_editor_core::widget::{ButtonState, SliderOrientation, SliderState, Text
 /// e ninguém saberia porquê; por isso o `paint` **conta** e o rodapé diz quantos não coube. O gate
 /// `rows_beyond_the_family_are_reported_not_dropped` prende isso.
 ///
-/// 64 é o número escrito na primeira vez, e a única coisa que o justifica é ser muito maior do que
-/// qualquer peça hoje autorável à mão (as cenas de smoke têm 1 a 4 nós). *Quando um documento real
-/// passar disto, o rodapé diz — e aí o número muda com uma medição atrás.*
-pub const MAX_ROWS: usize = 64;
+/// ⭐⭐⭐ **E ELE É DERIVADO DA MAIOR FORMA, desde 2026-09-13** — `2 × 27 + 15`:
+///
+/// | parcela | de onde vem |
+/// |---|---|
+/// | `2 × MAX_POLYGON_VERTICES` | um polígono tem **duas** linhas por vértice, e `27` é o teto dele |
+/// | `+ 15` | o que **todo** nó tem além dos vértices: `3` de posição, `3` de rotação, o filete, o raio de junção, a resolução do contorno… e os **5** do material |
+///
+/// ⚠️ **Ele era `64`, escrito «na primeira vez» e sem medição** — e a nota dele dizia, por escrito,
+/// *«quando um documento real passar disto, o número muda com uma medição atrás»*. O material por
+/// objecto (`docs/Render3d/05`) acrescentou **5** linhas a toda folha, e foi esse o dia.
+///
+/// ⛔⛔ **A alternativa era BAIXAR o `MAX_POLYGON_VERTICES` de `27` para `24`** — isto é, tirar três
+/// vértices ao artista porque uma peça passou a ter cor. *Um teto de registo cujo recurso é memória
+/// a mandar num teto de FORMA é o caminho lento a definir o rápido* (`CLAUDE.md` §0.0).
+///
+/// ⭐ **O preço MEDIDO da subida:** cada linha regista `6` widgets (um slider, um campo numérico e
+/// os `MAX_CHOICES` botões de escolha), logo `64 → 69` custa **`30` widgets e 5 `String`** no store,
+/// uma vez, no arranque.
+///
+/// ⚠️ **E os dois gates da `polygon_rows_tests` prendem-no pelos DOIS lados**: o polígono no teto
+/// tem de caber, e o vértice seguinte **não** pode caber. *Uma tolerância que só se defende de um
+/// lado não descreve nada.*
+pub const MAX_ROWS: usize = 69;
 
 /// Quantos botões uma linha de **escolha** pode oferecer.
 ///

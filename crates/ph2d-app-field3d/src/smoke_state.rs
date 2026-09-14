@@ -373,6 +373,16 @@ pub struct Smoke {
     /// de lá: quem drena as intenções recebe o mundo, nunca a cena vetorial. *Publicar um `bool`
     /// onde a fonte tinha um id é deitar fora a metade que a próxima feature ia pedir.*
     pub profile_pick: Option<u64>,
+    /// ⭐⭐⭐ **A TABELA DE MATERIAIS da peça** (`docs/Render3d/05`) — quem é cada folha à luz.
+    ///
+    /// ⚠️ **CACHE do quadro, e não vista:** ela é DERIVADA do mundo (as folhas e os componentes
+    /// `FieldMaterial` deles), exactamente como o [`Self::doc`]. Atravessar um fecho de painel com
+    /// ela seria carregar uma cópia de uma coisa que a peça já tem — a lei que o `vertices` ao lado
+    /// já paga.
+    ///
+    /// ⚠️ **`Arc` porque ela atravessa a fronteira da thread** do traçado, como a cache de fitas e o
+    /// registo de esculturas: o que viaja é o ponteiro.
+    pub materials: Option<std::sync::Arc<crate::materials::Table>>,
     /// ⭐ **Há uma escultura VIVA na cena?** — publicado pelo shell, que é quem tem o `AppGfx`.
     ///
     /// ⚠️ Atravessa o quadro em vez de ser perguntado aqui, pela razão do `gizmo`: este arquivo não
@@ -421,6 +431,18 @@ impl Smoke {
             return;
         }
         self.look = look;
+        self.forget_requests();
+    }
+
+    /// ⭐⭐ **Larga o pedido guardado de TODOS os viewports** — a porta que diz *«o que está na tela
+    /// deixou de descrever a cena»*.
+    ///
+    /// ⚠️ **Dois chamadores e uma lei:** o olhar ([`Smoke::set_look`]) e a tabela de materiais
+    /// (`docs/Render3d/05`). Os dois mudam o que o traçado **pinta** sem mudar nada do que o cache
+    /// compara — a câmera, o tamanho e o documento são os mesmos —, e sem esta chamada o laço
+    /// responde *«nada mudou»* e o quadro fica no estado antigo até alguém tocar na peça. *É o
+    /// congelador que o doc do [`Viewport::requested`] descreve.*
+    pub(crate) fn forget_requests(&mut self) {
         for vp in &mut self.vps {
             vp.requested = None;
         }

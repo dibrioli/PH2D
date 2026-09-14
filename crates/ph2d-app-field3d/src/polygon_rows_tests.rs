@@ -93,9 +93,12 @@ fn one_more_vertex_would_not_fit() {
          a recta abaixo passa a estar errada, e com ela o teto"
     );
     let extras = lb - 2 * b as usize;
+    // ⚠️ **`15` desde 2026-09-13, e eram `10`:** o material por objecto (`docs/Render3d/05`)
+    // acrescentou **5** linhas a toda folha, e o `MAX_ROWS` subiu com elas em vez de o polígono
+    // encolher — ver a nota daquele const para o preço medido da subida.
     assert_eq!(
-        extras, 10,
-        "um nó deixou de ter 10 linhas além dos `2N` dos vértices — a conta do teto muda com isto"
+        extras, 15,
+        "um nó deixou de ter 15 linhas além dos `2N` dos vértices — a conta do teto muda com isto"
     );
     let seguinte = 2 * (b as usize + 1) + extras;
     assert!(

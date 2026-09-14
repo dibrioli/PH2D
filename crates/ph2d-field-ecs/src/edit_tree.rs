@@ -429,6 +429,19 @@ fn copy_optional(world: &mut World, src: Entity, dst: Entity) {
     if let Some(verb) = world.get::<crate::FieldVerb>(src).copied() {
         world.entity_mut(dst).insert(verb);
     }
+    // ⭐⭐⭐ **E o MATERIAL viaja com a cópia** (`docs/Render3d/05`) — duplicar uma peça vermelha tem
+    // de dar outra vermelha.
+    //
+    // ⚠️ **O gate irmão apanhou este, exactamente como tinha apanhado o verbo**, no mesmo dia em que
+    // o componente nasceu: sem esta linha a cópia caía no material de OMISSÃO, e a diferença entre
+    // as duas só apareceria no modo *Render* — isto é, num sítio onde ninguém a ligaria a um
+    // duplicar. *Um censo de componentes opcionais paga-se sozinho na primeira wave que o usa.*
+    //
+    // ⚠️ E é `Option`, não `unwrap_or_default`, pela razão do verbo acima: a ausência quer dizer
+    // *«o de omissão»*, e materializá-la na cópia congelaria o valor de hoje.
+    if let Some(material) = world.get::<crate::FieldMaterial>(src).copied() {
+        world.entity_mut(dst).insert(material);
+    }
 }
 
 /// ⭐ **Apaga um nó e o que está debaixo dele.**

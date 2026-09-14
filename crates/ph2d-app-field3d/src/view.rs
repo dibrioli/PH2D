@@ -154,6 +154,10 @@ impl View {
             nav_hot: _,
             nav_press: _,
             has_live_sculpt: _,
+            // ⚠️ **CACHE, e não vista** — a tabela de materiais é DERIVADA do mundo a cada cozimento
+            // (`docs/Render3d/05`). Atravessar um fecho com ela seria carregar uma cópia de uma
+            // coisa que a peça já tem, e ela ficaria a descrever a peça de ontem.
+            materials: _,
             // ⚠️ **Cache, e não vista** — as fitas compiladas de um quadro. Deitá-las fora ao
             // fechar não custa nada: a 1.ª mão a mexer volta a enchê-las.
             //

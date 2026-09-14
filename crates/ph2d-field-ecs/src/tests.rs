@@ -368,7 +368,7 @@ fn a_duplicate_carries_every_optional_component_of_a_node() {
     crate::register_field_components(&mut reg);
     assert_eq!(
         reg.len(),
-        6,
+        7,
         "o módulo passou a ter outro componente — ensine-o ao `copy_optional` (a cópia da \
          Hierarquia) e acrescente-o à fixture abaixo, senão duplicar um nó perde-o em silêncio"
     );
@@ -421,6 +421,11 @@ fn a_duplicate_carries_every_optional_component_of_a_node() {
         Some(ph2d_field::Op::Difference(Blend::Exact { radius: 0.04 })),
     )
     .expect("é um nó");
+    // ⭐⭐⭐ **E o MATERIAL** (`docs/Render3d/05`): duplicar uma peça VERMELHA tem de dar outra
+    // vermelha. Sem a linha no `copy_optional` a cópia cai no material de omissão, e a diferença
+    // entre as duas só aparece no modo *Render* — longe do gesto que a causou.
+    crate::set_param(&mut world, leaf, ph2d_field::Param::Material(0), 0.9).expect("a cor base");
+    crate::set_param(&mut world, leaf, ph2d_field::Param::Material(4), 1.0).expect("o metal");
 
     let copy = crate::duplicate(&mut world, leaf, [0.5, 0.0, 0.0]).expect("duplicou");
     assert_eq!(
@@ -437,5 +442,14 @@ fn a_duplicate_carries_every_optional_component_of_a_node() {
         crate::verb_of(&world, copy),
         Some(ph2d_field::Op::Difference(Blend::Exact { radius: 0.04 })),
         "a cópia de um FURO tinha de sair furo — sem o verbo ela cai na herança e passa a somar"
+    );
+    let m = world
+        .get::<crate::FieldMaterial>(copy)
+        .copied()
+        .expect("a cópia tem material");
+    assert_eq!(
+        (m.base_color[0], m.metalness),
+        (0.9, 1.0),
+        "a cópia de uma peça de METAL VERMELHO saiu com o material de omissão"
     );
 }

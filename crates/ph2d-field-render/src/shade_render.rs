@@ -34,6 +34,41 @@ pub struct Lighting<'a> {
     pub sky: &'a (dyn Environment + Sync),
 }
 
+/// ⭐⭐⭐ **OS MATERIAIS DA PEÇA, e de quem é cada pixel** (`docs/Render3d/05`).
+///
+/// # ⚠️ Porque são DOIS campos e não um material só
+///
+/// Uma peça é uma árvore de folhas, e cada folha tem o seu aspecto. O que o traçado entrega é um
+/// **ponto de mundo** por pixel ([`Gbuffer::point`]); quem o traduz em *«a folha nº 3»* é a lei do
+/// [`ph2d_field_eval::owners`], que é a MESMA que a selecção por clique usa.
+///
+/// ⚠️ **`owners: None` é o caso de UM**, e não um caso especial: uma peça com um material só não
+/// precisa de perguntar de quem é o pixel, e não perguntar é exactamente o custo zero. É assim que
+/// o quadro de omissão continua a ser o de sempre, byte a byte.
+///
+/// ⛔ **A ordem de [`Self::all`] é a das folhas do [`ph2d_field_eval::owners::Owners`]**, e quem as
+/// constrói constrói as duas — uma lista com outra ordem pintaria cada peça com a cor da vizinha,
+/// sem erro nenhum.
+pub struct Surfaces<'a> {
+    /// Um material por folha. **Nunca vazio** — ver [`Self::of`].
+    pub all: &'a [Surface],
+    /// De quem é cada ponto. `None` ⇒ a peça inteira usa `all[0]`.
+    pub owners: Option<&'a ph2d_field_eval::owners::Owners>,
+}
+
+impl<'a> Surfaces<'a> {
+    /// O material deste ponto.
+    ///
+    /// ⚠️ **A rede é `all[0]`**, e ela não é decorativa: o `Owners` pode devolver um índice de uma
+    /// peça que já mudou entre o traçado e o sombreamento (eles correm em threads diferentes). Uma
+    /// indexação crua entraria em pânico **no meio de um quadro**; pintar com o primeiro material é
+    /// uma resposta que o artista lê como «ainda não actualizou», que é o que de facto aconteceu.
+    fn of(&self, p: [f32; 3]) -> &Surface {
+        let i = self.owners.and_then(|o| o.at(p)).unwrap_or(0);
+        self.all.get(i).unwrap_or(&self.all[0])
+    }
+}
+
 /// A direcção **para o observador** no pixel `(x, y)`, em espaço de vista — o raio do traçado, ao
 /// contrário.
 ///
@@ -75,7 +110,7 @@ fn radiance(
 pub fn shade_render(
     g: &Gbuffer,
     cam: &Orbit,
-    surface: &Surface,
+    surfaces: &Surfaces<'_>,
     light: &Lighting<'_>,
     look: Look,
     background: [u8; 4],
@@ -97,8 +132,10 @@ pub fn shade_render(
         for (x, px) in row.as_chunks_mut::<4>().0.iter_mut().enumerate() {
             let i = y * w + x;
             if g.hit[i] {
+                // ⭐⭐⭐ **O MATERIAL sai do PONTO** — ver [`Surfaces`]. Numa peça de um material só
+                // isto é uma leitura de `all[0]` e mais nada.
                 let c = radiance(
-                    surface,
+                    surfaces.of(g.point[i]),
                     light,
                     look,
                     g.normal[i],
@@ -124,6 +161,11 @@ pub fn shade_render(
         // ⚠️ **A vista do CENTRO do pixel serve às quatro amostras**: dentro de um pixel a direcção do
         // raio muda menos do que o passo de um byte move a luz, e a borda não guarda as posições.
         let v = view_direction(cam, &screen, i % w, i / w);
+        // ⚠️ **E o MATERIAL do centro serve às quatro amostras**, pela mesma razão da vista: a borda
+        // não guarda os pontos das sub-amostras. ⛔ Numa silhueta entre DUAS peças de cores
+        // diferentes isto pinta a borda com a cor da que o centro apanhou — declarado, e é a mesma
+        // aproximação que a direcção de vista já faz.
+        let surface = surfaces.of(g.point[i]);
         let mut acc = [0.0f32; 4];
         for k in 0..4 {
             let c = if e.hit[k] {

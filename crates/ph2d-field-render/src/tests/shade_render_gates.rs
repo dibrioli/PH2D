@@ -5,6 +5,7 @@
 //! direcção de vista certa, o olhar por amostra, e o fundo intocado.
 
 use super::*;
+use crate::Surfaces;
 use crate::shade_render::view_direction;
 use ph2d_material::{Environment, OpenPbr};
 use ph2d_view_transform::{Look, ViewTransform};
@@ -70,7 +71,20 @@ fn every_part_pixel_is_the_material_law_under_the_look() {
             view: ViewTransform::Neutral,
         },
     ] {
-        let px = shade_render(&g, &cam, &surface, &light, look, BG);
+        // ⚠️ **Um material só, e sem `owners`** — é o caso de UM, que é o que este gate afirma: a
+        // lei do material por pixel tem gate próprio (`the_two_shapes_wear_their_own_material`).
+        let so = [surface];
+        let px = shade_render(
+            &g,
+            &cam,
+            &Surfaces {
+                all: &so,
+                owners: None,
+            },
+            &light,
+            look,
+            BG,
+        );
         assert_eq!(
             px[4..8],
             BG,

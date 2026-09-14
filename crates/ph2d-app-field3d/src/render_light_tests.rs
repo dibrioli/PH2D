@@ -171,7 +171,13 @@ fn measure_what_the_render_mode_costs_and_paints() {
 
     // ⭐ **A luz é a do PRODUTO, pelas mesmas portas que o `smoke_draw` chama.**
     let lamps = lamps(&ph2d_light::LightRig::default());
-    let surface = ph2d_material::OpenPbr::default().prepare();
+    let so = [ph2d_material::OpenPbr::default().prepare()];
+    // ⚠️ **Um material só, e sem `owners`** — esta sonda mede a LUZ, e a lei do material por
+    // objecto tem gates próprios (`materials_tests`).
+    let surface = ph2d_field_render::Surfaces {
+        all: &so,
+        owners: None,
+    };
     let light = Lighting {
         lamps: &lamps,
         sky: &StudioSky,

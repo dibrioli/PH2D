@@ -107,6 +107,73 @@ pub struct FieldMods {
     pub stack: Vec<Unary>,
 }
 
+/// ⭐⭐⭐ **O MATERIAL DESTA FORMA** — com que aspecto ela responde à luz (`docs/Render3d/05`).
+///
+/// # ⚠️ Componente PRÓPRIO e OPCIONAL, pelas duas razões do [`FieldMods`]
+///
+/// A ausência dele significa *«o material de omissão»*, que é o do nodedef do OpenPBR — e um campo
+/// apendado ao [`FieldNode`] quebraria todo projecto já gravado (o blob de um componente é postcard
+/// **posicional**).
+///
+/// # ⛔ Ele NÃO viaja no `FieldDoc`, e isso é a decisão
+///
+/// O documento é **geometria**: é ele que a marcha compila, e uma cor não muda uma distância. ⇒ o
+/// `FIELD_DOC_VERSION` **não se mexe** e uma peça gravada antes desta wave continua a abrir, com o
+/// material de omissão. Quem junta os dois é o sombreamento, por pixel, pela folha que o ponto
+/// nomeia ([`ph2d_field_eval::owners`]).
+///
+/// # ⚠️ Os números são os do OpenPBR, e o DEFAULT é o da nodedef
+///
+/// ⛔ **E ele não é copiado daqui para lá:** há gate na `ph2d-app-field3d` (que vê as duas crates) a
+/// exigir que este `Default` e o `ph2d_material::OpenPbr::default()` digam o mesmo. *Uma constante
+/// escrita em dois sítios ainda não é uma constante — a segunda é a que envelhece.*
+#[derive(Component, Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+pub struct FieldMaterial {
+    /// A cor difusa, em **linear** e por canal.
+    pub base_color: [f32; 3],
+    /// `0` espelho, `1` completamente difuso.
+    pub roughness: f32,
+    /// `0` dieléctrico (plástico, cerâmica), `1` metal.
+    pub metalness: f32,
+}
+
+impl Default for FieldMaterial {
+    fn default() -> Self {
+        Self {
+            base_color: [0.8; 3],
+            roughness: 0.3,
+            metalness: 0.0,
+        }
+    }
+}
+
+impl FieldMaterial {
+    /// Lê um dos [`ph2d_field::MATERIAL_FIELDS`] números, pela posição — ver [`ph2d_field::Param`].
+    ///
+    /// ⚠️ **Uma tabela e não um `match` por chamador:** a leitura e a escrita têm de concordar sobre
+    /// qual número é o `3`, e a única forma de não divergirem é serem irmãs no mesmo ficheiro.
+    #[must_use]
+    pub fn get(&self, field: u8) -> Option<f32> {
+        match field {
+            0..=2 => Some(self.base_color[field as usize]),
+            3 => Some(self.roughness),
+            4 => Some(self.metalness),
+            _ => None,
+        }
+    }
+
+    /// Escreve um dos números. `false` quando a posição não existe.
+    pub fn set(&mut self, field: u8, value: f32) -> bool {
+        match field {
+            0..=2 => self.base_color[field as usize] = value,
+            3 => self.roughness = value,
+            4 => self.metalness = value,
+            _ => return false,
+        }
+        true
+    }
+}
+
 /// ⭐⭐ **O DESENHO DE ONDE ESTA FORMA VEIO** — o vínculo vivo entre o contorno do editor vetorial e
 /// a peça (W55).
 ///
@@ -202,6 +269,9 @@ pub fn register_field_components(reg: &mut ComponentRegistry) {
     reg.register::<FieldNode>("ph2d::field::FieldNode");
     reg.register_default::<FieldPose>("ph2d::field::FieldPose");
     reg.register_default::<FieldMods>("ph2d::field::FieldMods");
+    // ⭐⭐⭐ **O MATERIAL** — `register_default` como os irmãos com neutro: a ausência dele quer dizer
+    // *«o material de omissão»*, e esse é exactamente o `Default`.
+    reg.register_default::<FieldMaterial>("ph2d::field::FieldMaterial");
     // ⚠️ `register`, e **não** `register_default`: este componente não tem neutro. A ausência dele
     // já quer dizer uma coisa (*«herda do pai»*), e um default inventaria um verbo que ninguém
     // escolheu em todo nó que o não tenha.

@@ -66,6 +66,30 @@ pub fn set_param(
             pose.xform.scale = value;
             Ok(())
         }
+        // ⭐⭐⭐ **UM NÚMERO DO MATERIAL** (`docs/Render3d/05`) — e escrever aqui **MATERIALIZA** o
+        // componente, como o [`Param::Joint`] materializa o verbo.
+        //
+        // ⚠️ **A ausência do componente quer dizer «o de omissão»**, e é por isso que a escrita
+        // começa por ele em vez de recusar: um artista que arrasta a rugosidade de uma forma que
+        // nunca teve material não está a pedir um erro — está a pedir um material.
+        //
+        // ⚠️ **A posição é conferida pela PORTA do componente** ([`FieldMaterial::set`]), e não por
+        // um `k < 5` escrito aqui: dois limites divergiriam no dia em que um sexto número entrasse,
+        // e o sintoma seria uma linha pintada que a escrita recusa em silêncio.
+        Param::Material(k) => {
+            let mut m = world
+                .get::<crate::FieldMaterial>(entity)
+                .copied()
+                .unwrap_or_default();
+            if !m.set(k, value) {
+                return Err(FieldError::BadRoot);
+            }
+            let Ok(mut e) = world.get_entity_mut(entity) else {
+                return Err(FieldError::BadRoot);
+            };
+            e.insert(m);
+            Ok(())
+        }
         Param::Dim(i) => set_dim(world, entity, i as usize, value),
         // ⭐⭐⭐ **O RAIO DA JUNÇÃO** (W98) — e escrever aqui **MATERIALIZA o verbo**.
         //

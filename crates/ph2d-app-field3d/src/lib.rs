@@ -59,6 +59,8 @@ pub mod gizmo_paint;
 /// ADR-0161 W22 — a porta de ENTRADA: um arquivo de malha vira escultura dentro da peça.
 pub mod import;
 pub mod input;
+/// ⭐⭐⭐ **A tabela de materiais da peça** — ver [`materials`].
+pub mod materials;
 /// ADR-0161 W25 — a VOZ do módulo: uma peça que não cozinha diz porquê, e diz uma vez.
 pub mod mode;
 pub mod notice;

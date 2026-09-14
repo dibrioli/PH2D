@@ -122,7 +122,7 @@ pub use probe_doors::*;
 #[doc(hidden)]
 pub use shade::Matcap;
 pub use shade::{shade, shade_with};
-pub use shade_render::{Lamp, Lighting, shade_render};
+pub use shade_render::{Lamp, Lighting, Surfaces, shade_render};
 pub use tape_cache::{
     EVICT_NS, GET_NS, Growth, INFLATE, PAD_OF_REACH, TAPE_DROPPED, TAPE_EVICTIONS, TAPE_HITS,
     TapeCache,

@@ -18,6 +18,11 @@ use crate::{ComponentCategory as C, ComponentDesc as D};
 
 /// Ordenado por `canonical_name` (gate `the_catalog_is_sorted_and_unique`).
 pub const DESCS: &[D] = &[
+    // ⭐⭐⭐ **O MATERIAL de uma forma** (`docs/Render3d/05`). ⚠️ **Máquina, como os irmãos:** quem o
+    // materializa é o arrasto de uma linha do painel `MODEL`, e a AUSÊNCIA dele quer dizer *«o
+    // material de omissão»*. Um `+` do Inspector que o anexasse escreveria um material que ninguém
+    // escolheu — e, pior, num objecto que pode nem ser uma folha.
+    D::machinery("ph2d::field::FieldMaterial", "Field Material", C::Model3D),
     D::machinery("ph2d::field::FieldMods", "Field Modifiers", C::Model3D),
     D::machinery("ph2d::field::FieldNode", "Field Node", C::Model3D),
     // O MARCADOR de ObjectKind::Model3D.

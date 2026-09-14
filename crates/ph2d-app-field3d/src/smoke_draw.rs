@@ -403,6 +403,9 @@ fn viewport_pass(
         // lidos na thread: o estado do módulo não atravessa a fronteira, e um olhar lido depois
         // podia já não ser o do pedido que este traçado responde.
         let (shading, look) = (smoke.vps[i].shading, smoke.look);
+        // ⭐⭐⭐ **A TABELA DE MATERIAIS atravessa a fronteira como `Arc`** — o que viaja é o
+        // ponteiro, como a cache de fitas e o registo de esculturas.
+        let materials = smoke.materials.clone();
         std::thread::spawn(move || {
             let t0 = std::time::Instant::now();
             // Abandonado a meio: não se manda nada, e quem esperava já mudou de pedido.
@@ -429,15 +432,31 @@ fn viewport_pass(
                     BACKGROUND,
                 ),
                 crate::shading::Shading::Render => {
-                    // ⚠️ **O material e o rig desta fatia são os PADRÕES** — o OpenPBR da nodedef e
-                    // o rig de omissão da `ph2d-light`. Material por objecto e o rig do documento são
-                    // os passos seguintes, nomeados no `docs/Render3d/05`.
+                    // ⚠️ **O rig desta fatia ainda é o PADRÃO** da `ph2d-light`; o rig do documento
+                    // é o passo seguinte (`docs/Render3d/05` §7).
+                    //
+                    // ⭐⭐⭐ **O MATERIAL já é POR OBJECTO** — a tabela viajou com o pedido, como o
+                    // modo e o olhar, e pela mesma razão: o estado do módulo não atravessa a
+                    // fronteira, e uma tabela lida depois podia já não ser a do pedido que este
+                    // traçado responde.
                     let lamps = crate::render_light::lamps(&ph2d_light::LightRig::default());
-                    let surface = ph2d_material::OpenPbr::default().prepare();
+                    let padrao;
+                    let surfaces = match &materials {
+                        Some(t) => t.surfaces_for(),
+                        // ⚠️ Sem tabela (o primeiro quadro de uma cena) a peça usa o material de
+                        // omissão — o mesmo que a ausência do componente significa.
+                        None => {
+                            padrao = [ph2d_material::OpenPbr::default().prepare()];
+                            ph2d_field_render::Surfaces {
+                                all: &padrao,
+                                owners: None,
+                            }
+                        }
+                    };
                     ph2d_field_render::shade_render(
                         &g,
                         &cam,
-                        &surface,
+                        &surfaces,
                         &ph2d_field_render::Lighting {
                             lamps: &lamps,
                             sky: &crate::render_light::StudioSky,

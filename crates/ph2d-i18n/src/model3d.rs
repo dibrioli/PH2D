@@ -259,6 +259,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // (`panel.model3d.mod.*`), então esta lista só precisa dos dois genéricos.
         "panel.model3d.section.shape" => "Shape",
         "panel.model3d.section.modifier" => "Modifier",
+        // ⭐⭐⭐ **O MATERIAL** (`docs/Render3d/05`) — o que a forma mede à LUZ.
+        "panel.model3d.section.material" => "Material",
         // ⚠️ "From"/"To" e não "Lower"/"Upper": a banda é uma FAIXA ao longo do eixo, e o artista
         // lê-a como um intervalo. (O Blender diz "Limits", o 3ds Max "Upper/Lower Limit" — os dois
         // nomeiam a cerca; aqui nomeia-se o intervalo, que é o que a linha mostra.)
@@ -490,6 +492,22 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // ⚠️ E o **grupo** usa esta mesma chave, de propósito: o raio dele é o raio de junção
         // **padrão**, o que as formas caladas usam. *Uma grandeza, uma palavra.*
         "field.dim.joint" => "Joint",
+        // ⭐⭐⭐ **OS NÚMEROS DO MATERIAL** (`docs/Render3d/05`), na ordem do `Param::Material`.
+        //
+        // ⚠️ **"Base Color R/G/B" e não "R/G/B"**: a coluna já tem trios (posição, rotação), e três
+        // letras soltas debaixo deles leem-se como um quarto eixo. A primeira palavra é o que diz de
+        // que grandeza é o trio — a mesma lei que o `field.dim.seam_width` abaixo paga.
+        //
+        // ⏳ **Três linhas são a autoria MÍNIMA, e ela está nomeada como dívida** (`docs/Render3d/05`
+        // §10.6): a casa tem `ColorSwatch` e um selector de cor, e uma cor escolhe-se **vendo-a**.
+        // O que estes três compram hoje é a cor ser AUTORÁVEL e PERSISTIR, que é o que faltava.
+        "field.dim.base_r" => "Base Color R",
+        "field.dim.base_g" => "Base Color G",
+        "field.dim.base_b" => "Base Color B",
+        // ⚠️ **"Roughness" e não "Gloss"**: é a palavra do OpenPBR, e é ela que o artista encontra
+        // no Blender, no Substance e no Houdini. *Um sinónimo local obriga a traduzir de cabeça.*
+        "field.dim.roughness" => "Roughness",
+        "field.dim.metalness" => "Metalness",
         // ⭐⭐ **O SEGUNDO NÚMERO de uma junta** (W145). ⚠️ **"Seam Width" e não "Width"**: a
         // coluna já tem larguras da FORMA, e duas palavras iguais para grandezas de sujeitos
         // diferentes é o defeito que o `field.dim.joint` acima existe para não repetir.

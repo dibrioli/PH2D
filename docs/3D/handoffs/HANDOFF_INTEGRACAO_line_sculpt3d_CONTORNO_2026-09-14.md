@@ -1059,3 +1059,88 @@ parte uma malha*; *o que o pincel faz* contra *de onde vem o número que ele per
 3. **Zoom muito perto pode deixar o pincel menor que um triângulo**, e aí não há o que pegar — o log
    diz-o, e a cura do artista é o `]`. Com a lei antiga isto não acontecia porque o alvo encolhia
    junto; é o preço declarado de a densidade deixar de depender da vista.
+
+---
+
+## §21 — ⭐⭐ DOIS SLIDERS `Detail`, e é de propósito — a consequência directa da §20.2
+
+**Ordem do dono (2026-09-14, a quarta sobre este pincel):**
+
+> *«Deixe o slider Detail para o dynamic Retopology e coloque outro slider Detail exclusivo para o
+> pincel, nas propriedades do pincel.»*
+
+⭐ **Ela fecha o raciocínio que a ordem anterior começou.** Se *«Dynamic topology é para os outros
+pincéis»*, então o ajuste dela também é — e o pincel de densidade tem de trazer o seu. Eram **duas
+perguntas a partilhar um número**:
+
+| pergunta | quem responde | onde vive |
+|---|---|---|
+| *quão fina a malha fica debaixo de um **TRAÇO*** | o ajuste da cena (`Dyntopo::detail`) | secção **Topology** |
+| *quão fina eu quero **esta zona, agora*** | o pincel (`Brush::density_detail`) | **propriedades do pincel** |
+
+⚠️ **Os dois têm o mesmo rótulo e a mesma unidade, e isso é deliberado:** a régua é a mesma — uma
+contagem de triângulos ancorada na ÁREA (§20.3), logo independente do zoom e do tamanho da peça.
+*Dois sliders, uma régua.*
+
+⛔ **E eles NÃO são duas superfícies sobre um valor** — a armadilha que os três chips de detalhe
+pagaram na §19.3 desta mesma jornada. São **dois campos**, um na cena e outro no `Brush`, e quem
+escolhe entre eles é **uma porta**.
+
+### §21.1 — A porta, e os seus dois consumidores
+
+`Brush::offers_density_controls()` (⭐ ela **voltou**: existiu para a fileira `Thin Only` e saiu com
+ela na §20.1) responde *«este pincel traz o próprio alvo?»*, e tem dois consumidores em crates
+diferentes:
+
+* **o painel**, para decidir se pinta a pista;
+* **o passe**, através da `Sculpt3dScene::detalhe_do_gesto`, para decidir **qual dos dois números
+  ler**.
+
+⚠️ *Duas cópias divergiriam num slider visível a governar outra coisa* — que é a forma mais cara de
+um controlo mentir, porque ele **funciona**, só que noutro sítio.
+
+⚠️ **E a porta tem um TERCEIRO consumidor que quase ficou de fora: a tecla `U`.** Ela cicla os três
+degraus com nome, e agora cicla **o slider do gesto em mãos** — com o log a **nomear qual deles**
+(`detalhe do Density:` contra `detalhe do Dynamic Topology:`).
+
+### §21.2 — ⛔⛔ A mutação que SOBREVIVEU, e o que ela nomeia
+
+Cravar o `cycle_detail` a escrever sempre em `self.dyntopo.detail` **passava a suíte inteira**.
+
+⚠️ *Um atalho que escreve no controlo errado é indistinguível de um atalho morto, e nenhum gate de
+fiação o vê: ele está ligado.* O artista carregaria no `U`, veria um slider mexer-se na tela, e o
+gesto dele não mudaria de densidade nenhuma.
+
+⇒ `a_tecla_do_detalhe_cicla_o_slider_do_gesto_em_maos`, com **as duas metades**: a que escreve **e**
+a que **não toca no vizinho**. ⛔ Sem a segunda, um `cycle_detail` que escrevesse nos **dois** ficaria
+verde — e mexer no atalho com um pincel na mão estragaria o ajuste do outro.
+
+### §21.3 — Os gates e as mutações (3 de 3 sangram)
+
+| gate | o que morre sem ele |
+|---|---|
+| `cada_gesto_le_o_seu_proprio_slider` | a troca — e a régua põe os dois em valores **OPOSTOS**, porque *dois números iguais não distinguem duas leis*; varre os **dois sentidos** |
+| `a_tecla_do_detalhe_cicla_o_slider_do_gesto_em_maos` | o atalho mexer no slider errado, ou nos dois |
+| `a_pista_do_detalhe_chega_ao_motor` | ganhou a segunda pista: ida e volta dos **dois** campos |
+| `the_edge_target_comes_from_the_piece_never_from_the_brush` | o passe ler um dos dois **directamente** em vez de perguntar à porta (a régua é o CORPO da função, não o cluster — o ficheiro tem leituras legítimas: a tecla escreve, o retrato publica) |
+
+**Mutações:** (1) a densidade volta a ler o slider da cena · (2) o painel deixa de oferecer a pista
+do pincel · (3) a tecla `U` escreve sempre no da cena. As três sangram — a terceira **só depois** do
+gate que ela encomendou.
+
+### §21.4 — ⚠️ Duas coisas que uma leitura rápida do diff entende ao contrário
+
+1. **Dois controlos com o mesmo rótulo não é um descuido** — é o mesmo nome para a mesma grandeza em
+   dois assuntos, como *Radius* existe em mais de uma ferramenta. O que os separa é a **secção** em
+   que vivem, e o log da tecla `U` nomeia-os quando fala.
+2. **O arnês dos testes escreve nos DOIS**, e isso não enfraquece os gates: é o que mantém todos os
+   outros a medir a densidade que pedem. *Quem prova que cada verbo lê o seu é o gate dedicado, que
+   os põe em valores diferentes.*
+
+### §21.5 — ⏳ ABERTO e nomeado
+
+Com o `Density` na mão o painel ainda oferece **`Strength`** (e a curva), que este verbo **não lê** —
+ele não tem lei por-vértice. É um **controlo morto** da espécie que o §5.0 do roteador descreve, e a
+porta para o curar já existe (`Brush::offers_density_controls`). ⚠️ Fica **por decidir do dono** se
+ele prefere a row escondida ou apagada em cinzento: *esconder é divulgação progressiva, e sumir sem
+rasto já foi recusado uma vez nesta casa* (a curva do falloff, que voltou depois de um smoke).

@@ -2672,6 +2672,82 @@ devolveria o lado que já lá está) e **antes** de escrever (o `captured_side` 
 RESPONSABILIDADE em `reach_side.rs` — *onde a corrente chega* e *para que lado ela dobra* são duas
 perguntas, e os três passos do lado (semear · arquear · espelhar) são um assunto só.
 
+### F5-c — ✅ **O MODO MISTO: ossos para os dois lados, cada um a guardar o seu** (ordem do dono, 2026-09-14)
+
+> *«ótimo. Funcionou. Mas além de CCw e CW precisamos de um modo misto onde temos ossos com ângulos
+> para os dois lados. e cada osso mantêm sua direção inicial»*
+
+O `Ccw` e o `Cw` põem **todas** as juntas do mesmo lado — é o que um bit por corrente pode dizer. O
+misto é a quarta variante do [`BendSide`], e o que ela guarda não é um bit: é **o lado de cada
+junta**, lido da pose que o artista desenhou.
+
+**⛔⛔ E ele NÃO é uma variante do FABRIK — isso foi construído, medido e REFUTADO.** Pôr o sinal de
+cada junta como restrição dentro das varreduras (a forma clássica, *FABRIK with constraints*)
+**oscila**: a ida prega a ponta no alvo e re-resolve a corrente inteira sem olhar aos sinais, a
+correcção desfaz isso, e as duas leis andam à roda. Medido no corpus do zig-zag, o erro da ponta
+**CRESCE** passagem a passagem em 2 dos 12 alvos:
+
+| alvo | passagem 1 | … | passagem 12 |
+|---|---|---|---|
+| `n=3`, alvo a `0,7` do alcance | `0,5156` | ↗ | `1,5797` |
+| `n=5`, alvo a `0,7` do alcance | `1,8707` | ↗ | `1,9912` |
+
+⚠️ **E os dois TÊM pose exacta** — uma busca cega sobre os ângulos, com os sinais como restrição,
+acha erro `0,0` nos dois. ⇒ *não era a restrição a ser impossível, era o laço.*
+
+⛔ **Três curas foram medidas e nenhuma resolve:** deitar a junta violada na **fronteira** (a
+projecção que menos a move — e a que mais custa à corrente, porque desfaz a DOBRA: `2,43` de erro
+num alvo a `1,52` de uma corrente de alcance `4`), **espelhá-la** (conserva o ângulo e troca o lado
+— melhor, e ainda deixa dois alvos por resolver), e o **amortecimento** entre as duas, varrido em
+`0,0 · 0,2 · 0,4 · 0,5 · 0,6 · 0,8 · 1,0`: nenhum valor resolve os dois, e os intermédios são
+**piores** que qualquer um dos extremos. *Não é afinação.*
+
+**⭐⭐⭐ A lei que fica é a DESCIDA JUNTA A JUNTA com a parede de cada lado** — e ela ganha por uma
+PROPRIEDADE, não por um número. Rodar a cauda em torno de uma junta muda **essa junta e mais
+nenhuma** (as de jusante viajam rigidamente, a de montante não se mexe), logo o lado pedido vira um
+**intervalo fechado** naquele ângulo; e a pose de partida, sendo a autorada, já está dentro dele. ⇒
+**cada passo nunca piora a ponta, e um laço que nunca piora não pode entrar em ciclo.** Corpus
+inteiro: **12 de 12** no alvo (erro `≤ 0,0004`), **12 de 12** conjuntos de sinais intactos.
+
+**⭐⭐ A parede tem margem nas DUAS pontas, e as duas são load-bearing.** Uma junta exactamente
+**recta** não tem lado legível — e uma dobrada a **`π`** também não (ali o produto vectorial é
+zero). Parar em qualquer das duas perderia a feature **no quadro seguinte**, em silêncio: o lado é
+re-lido da pose a cada resolução. A margem é `8 × STRAIGHT` (`0,46°`), e as duas mutações que a
+apagam são RED.
+
+**⭐⭐⭐ E ele parte da POSE AUTORADA, que é o que dá sentido a «inicial».** Lido da pose viva,
+«inicial» seria *o que o solver deixou no quadro anterior* — estável enquanto o alvo está ao alcance
+(o modo é ponto fixo, e há gate), e **apagado para sempre** no primeiro arrasto que o leve para fora
+dele, porque fora do alcance a resposta certa é a RECTA e uma recta não tem lado nenhum para ler.
+⇒ uma porta nova no ledger (`PreviewDrive::authored`, que responde por **uma** entidade sem deslocar
+o mundo como a `substitute_authored` faz) e a reconstrução da corrente desenhada
+(`goal_authored::authored_joints`). ⭐ **O truque é que a junta É a rotação local do osso de baixo** —
+num encadeamento pai→filho o ângulo de mundo acumula, logo a diferença dos dois ângulos de mundo
+**é** o `local` do filho: não é preciso pose de mundo autorada nenhuma. Gate:
+`a_mixed_chain_survives_a_drag_out_of_reach` (RED sem a cura).
+
+⚠️ **Os outros três modos ficam byte a byte** — o lado deles vive num campo do documento, não na
+pose.
+
+**Quatro mutações RED de cinco.** ⚠️ **A quinta SOBREVIVE e fica registada no fonte**: trocar a
+escolha do passo (mínimo exacto sobre o intervalo) por um `clamp` linear não reprova gate nenhum —
+ela muda o passo em **165** varreduras do corpus (o `clamp` escolhe o extremo errado: `−0,027` onde
+o mínimo está em `+3,099`) e a descida absorve isso, com a pior deterioração na pose FINAL a ser
+`0,0003` num alcance de `4`. ⛔ Fica assim mesmo assim: é esse mínimo exacto que compra a
+propriedade pela qual este solver substituiu o FABRIK.
+
+⚠️⚠️ **E uma fixtura calibrada no caminho do PRODUTO não discrimina o mutante** — a 1.ª redacção do
+gate da parede passou com a margem da recta apagada, porque o mutante anda por outro caminho e a
+junta acabava noutro sítio. ⇒ a varredura de `1 176` células **corre-se sobre os dois**, e o gate
+carrega uma célula de cada (no produto o menor seno final é `0,008000`, a margem encostada; sem ela
+é `0,000000`, noutra célula).
+
+⚠️ **E `f64::signum` devolve `±1` para o ZERO** — a régua do gate lia uma junta exactamente recta
+como tendo lado, e um instrumento construído sobre isso não vê a junta que ficou sem nenhum.
+
+**Cortes por responsabilidade** (o `reach.rs` voltou a passar o tecto de 700): `reach_fabrik.rs` (a
+varredura), `reach_mixed.rs` (o solver do misto), `goal_authored.rs` (a pose do documento).
+
 ## ⛔ Recusas MEDIDAS deste módulo — não as reconstrua
 
 > ⚠️ **As seis de 2026-09-07/08 entraram aqui na auditoria de 08/09** — elas viviam só em prosa e em
@@ -2693,6 +2769,11 @@ perguntas, e os três passos do lado (semear · arquear · espelhar) são um ass
 | **Guardar quadriláteros** em vez de dois triângulos (F6-b) | Um afim não leva um quadrilátero qualquer a outro qualquer: quatro pontos são **oito equações para seis incógnitas**. «Quadmesh» aqui é a DISPOSIÇÃO dos vértices, nunca o primitivo guardado. |
 | **Escolher a diagonal da célula pela forma DEFORMADA** (a mais curta das duas — a resposta clássica) | A malha trocaria de diagonal a meio de um gesto ⇒ *o desenho pisca exactamente enquanto o artista dobra.* A diagonal `a–c` fixa-se no **repouso**. |
 | **Dilatar cada recorte** para fechar as costuras da pele de imagem (F6-g, 2026-09-13) | Dilatar `0,5 px` (homotetia pelo incentro) fecha a costura em arte OPACA (`16 580 → 0` px com `216` peças) e, em arte TRANSLÚCIDA (alfa `128`), compõe a faixa sobreposta DUAS vezes: `10 580 → 40 050` px com alfa errado e o pior erro `20 → 111` (`3 456` peças: `41 732 → 158 046`). Sombras suaves, bordas anti-aliased e brilhos são translúcidos ⇒ a cura estraga mais do que conserta. Sonda `ph2d-render::skin_pieces_gpu_cost::measure_seams_against_clip_dilation`. A cura que resta é rasterizar a malha SEM AA nas arestas internas. |
+| **O sinal de cada junta como restrição DENTRO das varreduras do FABRIK** (a forma clássica; F5-c, 2026-09-14) | **Oscila.** A ida prega a ponta no alvo e re-resolve a corrente inteira sem olhar aos sinais; a correcção desfaz isso. Medido: o erro da ponta **cresce** passagem a passagem em 2 dos 12 alvos do zig-zag (`0,52 → 1,58` num alcance de `3`; `1,87 → 2,00` num de `5`) — e os dois **têm pose exacta**, achada por busca cega sobre os ângulos com os sinais como restrição. A cura é outro solver (descida junta a junta), não outra projecção. |
+| **Deitar a junta violada na FRONTEIRA** (a projecção de norma mínima) | Ela move aquela junta o mínimo e custa à CORRENTE o máximo: desfaz a **dobra**, e uma ponta que só se alcança dobrando deixa de se alcançar — `2,43` de erro num alvo a `1,52` de uma corrente de alcance `4`, que tem pose exacta com aqueles sinais. |
+| **Amortecer entre a fronteira e o espelho** (`λ · ângulo`, varrido em `0,0 · 0,2 · 0,4 · 0,5 · 0,6 · 0,8 · 1,0`) | Nenhum valor resolve os dois alvos teimosos, e os intermédios são **piores que qualquer um dos extremos** (a `λ = 0,5` três alvos que o `λ = 1` resolve ao bit passam a errar `0,60`–`1,34`). *Não é afinação — é o laço.* |
+| **`livre ± 2π` entre os candidatos** do passo do misto | Código defensivo **sem consumidor**: nunca venceu em `900` fixturas, e não pode vencer — a pose de partida é feita dos sinais que dela se leram, logo cada ângulo já está dentro da sua parede e o intervalo vive inteiro dentro de `(−π, π)`, onde o candidato do interior também vive. |
+| **Ler os lados do modo MISTO da pose VIVA** | Estável enquanto o alvo está ao alcance (o modo é ponto fixo, e há gate) e **apagado para sempre** no primeiro arrasto que o leve para fora dele: fora do alcance a resposta certa é a RECTA, e uma recta não tem lado nenhum para ler. «Inicial» tem de ser o DOCUMENTO. |
 | **Fazer a malha SEGUIR a silhueta** em vez de a cobrir (F6-b) | Traz de volta as células deformadas da borda, que são o defeito que a wave cura. O recorte fino é do **alfa da própria arte**, de graça e ao sub-pixel — o *Expansion* do *Puppet* do AE. |
 
 

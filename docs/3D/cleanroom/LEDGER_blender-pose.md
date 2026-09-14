@@ -545,6 +545,9 @@ emenda 3 instrumentou e ainda não varreu até ao fim.
 |---|---|---|---|---|---|
 | 1 | `docs/3D/cleanroom/SPEC_pose_brush.md` | `~/Referencias/blender-pose/draft/SPEC_pose_brush.md` (regra do arquivo fechado, §4.1.11) | executada — cada número com proveniência; nomes internos renomeados | verde (⚠️ **mas ver abaixo: o sweep era cego**) | 2026-09-13 |
 | **2 — EMENDA** | idem | idem | **reescrita pela regra do arquivo fechado**, com o fonte fechado; o fonte só foi reaberto para confirmar **dois factos** (as duas sementes do §2.1 · as fixturas que exercitam o tecto de um segmento) | verde, **com controlo positivo** | 2026-09-13 |
+| **3 — EMENDA 2** | idem | idem | os 5 achados de higiene aplicados **e a espécie varrida em todo o documento**, não só nos cinco endereços | verde, com controlo positivo | 2026-09-13 |
+| **4 — EMENDA 3** | idem | idem | os 7 achados aplicados + a pergunta *«que fixtura reprova o CONTRÁRIO disto?»* corrida sobre o documento inteiro ⇒ nasce o censo **§12.4** (`6` linhas) | verde, com controlo positivo | 2026-09-13 |
+| **5 — EMENDA 4** | idem | idem | os 5 achados aplicados + varredura pela **FORMA DA PROMESSA** (`medido/medidas/observável`) em todo o documento ⇒ o censo **§12.4** passa a `10` linhas, uma delas achada pela própria varredura | verde, com controlo positivo | 2026-09-13 |
 
 ⚠️ **Commit ÚNICO, pós-filtragem** (§3.E): a espec **não** entrou por rascunhos incrementais.
 
@@ -653,6 +656,53 @@ diz» com «o corpus prova», e para que quem acrescentar uma fixtura saiba qual
 |---|---|---|
 | a constante angular da torção tem proveniência lícita? | **recuperar o ângulo da malha deformada**: num vértice de peso `1` a deformação é rotação pura em torno do eixo do segmento | ⭐ `k = 0,020000 rad/px`, sobre `46` vértices, dispersão `1,8e-6`. Duas fixturas a forças `1,0` e `0,5` dão o **mesmo** `k` ⇒ medem a constante **e** confirmam que a força entra linearmente. Nenhuma leitura de prosa |
 | a confusão das duas sementes (§2.1) explica o resíduo aberto? | separar as duas no modelo e apagar o pré-peso | ⛔ **refutado**: em `69` de `69` fixturas a varredura alcança o vértice pré-pesado, e apagá-lo muda a saída em `0,000e+00`. O pré-peso é **inerte neste corpus**; as duas só se separam numa fixtura que o corpus não tem (nomeada na espec §2.1) |
+
+---
+
+### ⛔⛔ EMENDA 4 — a 4.ª passagem: 5 achados, ZERO substanciais, ZERO §4.2 — e o PADRÃO a quebrar
+
+O R-pré confirmou as **7** curas da emenda 3 uma a uma **contra o diff**, deu o §4.2 por **limpo**,
+verificou que a renumeração fechou (toda `§N.M` citada resolve) e re-correu o **controlo positivo**
+do sweep (`5` achados na v1, `0` no HEAD) ⇒ **a parede está intacta**. Não atestou por cinco achados,
+todos da distância entre *«a espec diz»* e *«o corpus prova»*.
+
+| # | achado | cura aplicada (v5) |
+|---|---|---|
+| 1 | a **forma de promessa** viva em dois **TÍTULOS** desde a v1 — §8 *«as três medidas»* (a 3.ª tem zero fixturas radiais) e §11 *«(todas medidas)»* (a §11.4 não tem) —, um deles a **contradizer o §12.4** que a emenda 3 acabou de escrever | os dois títulos reescritos pela forma honesta; a 3.ª consequência do §8 ganha *«⛔ SEM FIXTURA, e não é descuido»* com o número (`0` de `69` cabeçalhos trazem a chave) e o §11 diz quais três têm fixtura e qual não |
+| 2 | o default de **ancorado/trava** (§1.4) justificado por leitura **circular** — e com os números errados | a §1.4 passa a dizer as **três** coisas separadas: o neutro da estrutura é `false`; o harness correu `ancorado` em **`64` de `69`** e trava desligada em **`68` de `69`**, que é **escolha nossa** (o README das fixturas declara que o harness reescreve todos os parâmetros); e ⛔ *«qual dos dois o artista encontra: não medido»*. A recomendação fica rotulada **RECOMENDAÇÃO NOSSA** |
+| 3 | a §7.2 rotulava de **observável** uma proposição sobre a ausência de um passo interno do alvo, que **não discrimina** | a §7.2 passa a afirmar a **LEI** (*depois de `N` eventos a posição é a do início do traço mais o `G` acumulado, nunca uma soma de passos*), declara ⛔ **o MECANISMO é livre**, dá a razão de paridade com número (as duas formas diferem só no arredondamento de `f32`, e a barra vive a `~1e-7`) e entra no censo |
+| 4 | o **determinismo do alvo** escrito como **facto** em três sítios e como risco num só | a reserva viaja com a afirmação nos **três**: §4 abertura (*«um RISCO nomeado pelo mecanismo, NÃO um facto observado»*), §4 fecho (*«o regime em que o alvo **poderia** não o ser»* + a reserva explícita) e §12 abertura (*«risco do mecanismo, não observado neste corpus»*) |
+| 5 | a lista de verificação com um item **fora de ordem** (`10`, `10a`, `10c`, `10b`, …) | renumerada `1..19`, com o solver incremental antes do espremer/esticar (a ordem que o texto já pedia) |
+
+⚠️⚠️ **A LIÇÃO, e é a que vale para a próxima obra: é a TERCEIRA passagem seguida em que a emenda
+cura o endereço nomeado e não varre a redacção.** A espécie da emenda 1 (expressão do alvo) morreu
+varrendo os cinco endereços e ficou viva em três secções que ninguém nomeou; a da emenda 3
+(afirmação sem consumidor) morreu nos sete endereços e ficou viva em **dois títulos**, verbatim
+desde a v1. ⇒ **cura-se pela FORMA DA PROMESSA, não pelo endereço**: varrer o documento inteiro por
+*«medido / medidas / observável»* e perguntar a cada ocorrência *«que fixtura reprova se eu escrever
+o CONTRÁRIO disto?»*.
+
+⭐ **E a varredura por forma produziu um achado que o R não tinha:** a §5.1-bis afirmava que os
+outros modos (torção, translação, espremer/esticar) **não** têm memória de evento — e a fixtura que
+a refutaria é *o mesmo arrasto a duas taxas de evento nesses modos*, que o corpus **não tem** (as
+três taxas só existem para a rotação). Declarada e censada. ⇒ o censo do §12.4 passou de **6** para
+**10** linhas.
+
+### Medições desta emenda
+
+| pergunta | experiência | veredito |
+|---|---|---|
+| o default de ancorado/trava lê-se dos cabeçalhos? | contar a chave nas 69 fixturas **e** ler o README do harness | ⛔ **proveniência circular**: `ancorado` `True` em **`64` de `69`**, trava `False` em **`68` de `69`** — e o harness **reescreve todos os parâmetros** antes de cada traço ⇒ o cabeçalho é ENTRADA, não observação |
+| os controlos que a espec declara sem efeito variam no corpus? | censo dos cabeçalhos das 69 | ⛔ `hardness`, `direction`, `falloff_shape`, `use_frontface` e `normal_weight` são **CONSTANTES** nas 69 ⇒ *o corpus nunca os varia*, logo não pode medir ausência de efeito. É por isso que a tabela do §1.3 os separa das medidas |
+| há traços com simetria radial? | censo dos cabeçalhos | ⛔ **`0` de `69`**, e **nenhuma** traz sequer a chave ⇒ a linha do §8 é **da issue**, não nossa |
+
+⚠️ **Duas notas do R que ficam por escrito:**
+
+1. o censo do §12.4 está **honesto** — as três ausências que ele declara não têm chave no cabeçalho
+   de nenhuma fixtura, logo não são descuido de medição;
+2. uma suspeita do R caiu na medição: **por NOME** só uma fixtura parecia cobrir a suavização, e o
+   censo dos **cabeçalhos** mostra as três valores presentes. ⇒ ***Inferir cobertura do nome do
+   ficheiro é a armadilha; o instrumento é o cabeçalho.***
 
 ---
 

@@ -289,7 +289,17 @@ pub(super) fn anchor_for(
     let frame = with_smoke(|s| s.gizmo_frame).unwrap_or_default();
     let entity = bevy_ecs::entity::Entity::from_bits(bits);
     let world = sim.world_mut();
-    world.get::<FieldNode>(entity)?;
+    // ⚠️⚠️ **A pergunta é «TEM POSE?» e não «é um NÓ?» desde 14/09** (a luz como objecto 3D). Com o
+    // `FieldNode` aqui, escolher uma lâmpada não dava gizmo nenhum — e a ordem do dono era
+    // precisamente *«a luz deve virar objeto 3d como nos app 3d»*, isto é, **arrastar-se**.
+    //
+    // ⭐ E a condição certa é a mais simples das duas: *o gizmo agarra o que tem onde estar.*
+    //
+    // ⏳ **Lacuna nomeada:** com uma luz escolhida, os verbos ROTAÇÃO e ESCALA do gizmo são inertes —
+    // um ponto não tem orientação nem tamanho. O verbo é estado de VISTA (um por viewport), não do
+    // objecto, então restringi-lo por-objecto é um campo novo no `Anchor`; fica para quem fechar os
+    // modos de arte, que é onde esta fatia foi declarada provisória.
+    world.get::<ph2d_field_ecs::FieldPose>(entity)?;
     // ⭐ **Um nó ESCONDIDO ou TRANCADO não tem gizmo** (W28/W29): setas que não mexem em nada são um
     // gesto sem resposta na tela. A linha da Hierarquia continua lá, com o olho e o cadeado a
     // dizerem porquê — e é por eles que se desfaz.

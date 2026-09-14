@@ -54,8 +54,8 @@ mod spawn;
 
 pub use cook::{contributes, cook, field_world_xform, is_hidden, set_world_xform, world_xform};
 pub use edit::{
-    add_leaf, add_mod, add_sampled, can_detach, can_wrap, dims_of, duplicate, mods_of, params_of,
-    promote_leaf_hosts, radius_bound, radius_of, remove, remove_mod, rotate_world,
+    add_leaf, add_light, add_mod, add_sampled, can_detach, can_wrap, dims_of, duplicate, mods_of,
+    params_of, promote_leaf_hosts, radius_bound, radius_of, remove, remove_mod, rotate_world,
     rotate_world_about, scale_about, scale_by, set_dim, set_op, set_param, set_radius, top_level,
     translate_world, walk, wrap_in_op,
 };
@@ -378,6 +378,79 @@ impl Default for FieldPose {
     }
 }
 
+/// ⭐⭐⭐ **UMA LUZ DA CENA — a lâmpada como OBJECTO 3D** (ordem do dono, 2026-09-14:
+/// *«a luz deve virar objeto 3d como nos app 3d»*).
+///
+/// # ⚠️ Onde ela ESTÁ não vive aqui, e essa é a decisão inteira
+///
+/// Uma luz que é um objecto tem a pose onde todo objecto a tem: no `Transform` da entidade. ⇒ este
+/// componente guarda só o que **não** é pose — a força e a cor —, e mover a luz é o MESMO gesto que
+/// mover uma forma, com o MESMO gizmo. *Um campo de posição aqui seria a segunda resposta a «onde
+/// está isto», e a que diverge no dia em que alguém arrasta o gizmo.*
+///
+/// # ⚠️ Ela é um PONTO, e não um sol
+///
+/// A escolha segue da ordem: um sol não tem posição — só rotação —, logo arrastá-lo pela cena não
+/// faria nada, e um objecto que se move sem efeito é o controlo morto do `CLAUDE.md` §5.0 na forma
+/// mais cara. Um ponto cai com `1/r²`, e é isso que faz aproximá-lo da peça ser um gesto que se vê.
+///
+/// # A unidade da [`Self::intensity`], derivada e não escolhida
+///
+/// O rig da casa promete que *«uma superfície plana de frente para uma luz de intensidade `1`
+/// devolve `1`»* ([`ph2d_light`]). ⇒ aqui a intensidade é **a mesma intensidade, medida a UMA
+/// unidade de distância**: uma luz de `1` a uma unidade da peça acende-a como a lâmpada do rig
+/// acendia. *Não há uma segunda escala para aprender.*
+///
+/// # ⛔ Ela NÃO viaja no `FieldDoc`, pela razão do [`FieldMaterial`]
+///
+/// O documento é **geometria** e uma lâmpada não muda uma distância ⇒ o `FIELD_DOC_VERSION` não se
+/// mexe, e uma peça gravada antes desta wave abre na mesma — sem luz nenhuma, que é exactamente o
+/// que ela tinha.
+#[derive(Component, Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+pub struct FieldLight {
+    /// A força, medida a **uma unidade de distância** — ver o doc do tipo.
+    pub intensity: f32,
+    /// A cor (RGB **linear**, `0..1`).
+    pub color: [f32; 3],
+}
+
+impl FieldLight {
+    /// **O número `k`**, ou `None` se ele não existe — a tabela que o painel lê.
+    ///
+    /// ⚠️ **Uma tabela só, nos dois sentidos** ([`Self::set`] é o gémeo): duas listas divergiriam no
+    /// dia em que alguém acrescentasse um campo, e o sintoma seria uma linha pintada que a escrita
+    /// recusa em silêncio. É a lei do [`FieldMaterial::get`], um componente ao lado.
+    #[must_use]
+    pub fn get(&self, k: u8) -> Option<f32> {
+        match k {
+            0 => Some(self.intensity),
+            1..=3 => Some(self.color[k as usize - 1]),
+            _ => None,
+        }
+    }
+
+    /// Escreve o número `k`. Devolve `false` quando ele não existe.
+    pub fn set(&mut self, k: u8, v: f32) -> bool {
+        match k {
+            0 => self.intensity = v,
+            1..=3 => self.color[k as usize - 1] = v,
+            _ => return false,
+        }
+        true
+    }
+}
+
+impl Default for FieldLight {
+    /// ⚠️ **Branca e de força `1`** — a lâmpada que o rig da casa sempre teve, para que a primeira
+    /// luz que um artista acrescenta não seja uma decisão de cor que ele não pediu.
+    fn default() -> Self {
+        Self {
+            intensity: 1.0,
+            color: [1.0; 3],
+        }
+    }
+}
+
 /// Registra os componentes do módulo no registro compartilhado.
 ///
 /// Sem esta chamada o `WorldSnapshot` **descarta o componente em silêncio** — e o sintoma não é um
@@ -399,6 +472,9 @@ pub fn register_field_components(reg: &mut ComponentRegistry) {
     // escolheu em todo nó que o não tenha.
     reg.register::<FieldVerb>("ph2d::field::FieldVerb");
     reg.register::<FieldProfileSource>("ph2d::field::FieldProfileSource");
+    // ⭐⭐⭐ **A LUZ** — `register_default` como o material: uma luz sem o componente é uma luz
+    // branca de força `1`, que é o que o [`FieldLight::default`] diz.
+    reg.register_default::<FieldLight>("ph2d::field::FieldLight");
 }
 
 /// O campo de uma **cena**: a união de todos os objetos, na ordem da chave.

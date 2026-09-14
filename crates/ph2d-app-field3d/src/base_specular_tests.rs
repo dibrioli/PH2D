@@ -35,6 +35,7 @@ fn measure_what_the_last_five_openpbr_inputs_would_buy() {
     let lamps = lamps(&ph2d_light::LightRig::default());
     let light = Lighting {
         lamps: &lamps,
+        points: &[],
         sky: &StudioSky,
     };
     let olhar = crate::shading::OPENING_LOOK;

@@ -406,6 +406,8 @@ fn viewport_pass(
         // ⭐⭐⭐ **A TABELA DE MATERIAIS atravessa a fronteira como `Arc`** — o que viaja é o
         // ponteiro, como a cache de fitas e o registo de esculturas.
         let materials = smoke.materials.clone();
+        // ⭐ **As luzes viajam com o pedido**, como a tabela de materiais e pela mesma razão.
+        let lights = smoke.lights.clone();
         std::thread::spawn(move || {
             let t0 = std::time::Instant::now();
             // Abandonado a meio: não se manda nada, e quem esperava já mudou de pedido.
@@ -432,14 +434,16 @@ fn viewport_pass(
                     BACKGROUND,
                 ),
                 crate::shading::Shading::Render => {
-                    // ⚠️ **O rig desta fatia ainda é o PADRÃO** da `ph2d-light`; o rig do documento
-                    // é o passo seguinte (`docs/Render3d/05` §7).
+                    // ⭐⭐⭐ **AS LUZES SÃO OBJECTOS DA CENA** (ordem do dono, 14/09) — e viajam com o
+                    // pedido pela MESMA razão que a tabela de materiais: o estado do módulo não
+                    // atravessa a fronteira, e uma lista lida depois podia já não ser a do pedido
+                    // que este traçado responde.
                     //
-                    // ⭐⭐⭐ **O MATERIAL já é POR OBJECTO** — a tabela viajou com o pedido, como o
-                    // modo e o olhar, e pela mesma razão: o estado do módulo não atravessa a
-                    // fronteira, e uma tabela lida depois podia já não ser a do pedido que este
-                    // traçado responde.
-                    let lamps = crate::render_light::lamps(&ph2d_light::LightRig::default());
+                    // ⛔ **O rig ancorado no ECRÃ da `ph2d-light` deixou de acender o Render.** Ele
+                    // continua a acender o **matcap** (que é sombreamento de vista, por definição) e
+                    // a tinta e a escultura, que são outros módulos. *Uma cena sem luz nenhuma sai
+                    // acesa só pelo céu — que é o que ela de facto tem.*
+                    let lamps: [ph2d_field_render::Lamp; 0] = [];
                     let padrao;
                     let surfaces = match &materials {
                         Some(t) => t.surfaces_for(),
@@ -459,6 +463,7 @@ fn viewport_pass(
                         &surfaces,
                         &ph2d_field_render::Lighting {
                             lamps: &lamps,
+                            points: &lights,
                             sky: &crate::render_light::StudioSky,
                         },
                         look,

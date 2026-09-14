@@ -90,6 +90,21 @@ pub fn set_param(
             e.insert(m);
             Ok(())
         }
+        // ⭐⭐⭐ **UM NÚMERO DE UMA LUZ** — e a porta do componente é quem confere a posição, pela
+        // razão exacta do [`Param::Material`] acima.
+        //
+        // ⚠️ **Aqui NÃO se materializa nada:** escrever numa luz que não tem `FieldLight` seria
+        // transformar uma forma em lâmpada por engano. Uma luz é criada por um gesto próprio, e o
+        // que não é luz recusa.
+        Param::Light(k) => {
+            let Some(mut l) = world.get_mut::<crate::FieldLight>(entity) else {
+                return Err(FieldError::BadRoot);
+            };
+            if !l.set(k, value) {
+                return Err(FieldError::BadRoot);
+            }
+            Ok(())
+        }
         Param::Dim(i) => set_dim(world, entity, i as usize, value),
         // ⭐⭐⭐ **O RAIO DA JUNÇÃO** (W98) — e escrever aqui **MATERIALIZA o verbo**.
         //

@@ -66,6 +66,7 @@ fn measure_which_of_the_coat_numbers_move_the_picture() {
     let lamps = lamps(&ph2d_light::LightRig::default());
     let light = Lighting {
         lamps: &lamps,
+        points: &[],
         sky: &StudioSky,
     };
     let olhar = crate::shading::OPENING_LOOK;

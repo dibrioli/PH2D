@@ -232,12 +232,16 @@ pub fn param_rows(
             ) => a == b,
             // Duas linhas do material continuam a secção dele.
             (Some(ph2d_field::Param::Material(_)), ph2d_field::Param::Material(_)) => true,
-            // Tudo o que não é modificador nem material é a forma, e ela é uma secção só.
+            // ⭐ E duas linhas da LUZ continuam a dela.
+            (Some(ph2d_field::Param::Light(_)), ph2d_field::Param::Light(_)) => true,
+            // Tudo o que não é modificador, material nem luz é a forma, e ela é uma secção só.
             (Some(a), b) => {
                 let solta = |p: ph2d_field::Param| {
                     !matches!(
                         p,
-                        ph2d_field::Param::Mod { .. } | ph2d_field::Param::Material(_)
+                        ph2d_field::Param::Mod { .. }
+                            | ph2d_field::Param::Material(_)
+                            | ph2d_field::Param::Light(_)
                     )
                 };
                 solta(a) && solta(b)
@@ -259,6 +263,9 @@ pub fn param_rows(
             // à LUZ não é o que ela mede à régua, e cinco números sem cabeçalho debaixo das
             // dimensões leem-se como mais dimensões.
             ph2d_field::Param::Material(_) => Some("panel.model3d.section.material"),
+            // ⭐⭐⭐ **A LUZ é uma secção própria** (ordem do dono, 14/09) — e a de cima dela é a
+            // POSE, que sai com o cabeçalho da forma. *Uma lâmpada também tem um «onde».*
+            ph2d_field::Param::Light(_) => Some("panel.model3d.section.light"),
             _ => Some("panel.model3d.section.shape"),
         }
     };
@@ -275,10 +282,12 @@ pub fn param_rows(
     // ⚠️ **Os três valores saem da MESMA lista** que dá as outras linhas — não do componente. Ler o
     // `FieldMaterial` aqui seria a segunda fonte para os mesmos números, e a que diverge no dia em
     // que o `params_of` passar a derivar algum deles.
-    let canal = |k: u8| {
+    // ⚠️ **Ele recebe o `Param`, e não um índice**, desde que a luz entrou: um `u8` obrigaria quem
+    // chama a saber de que família o canal é, e essa é exactamente a informação que a âncora já tem.
+    let canal = |p: ph2d_field::Param| {
         numeros
             .iter()
-            .find(|(p, _)| *p == ph2d_field::Param::Material(k))
+            .find(|(q, _)| *q == p)
             .map_or(0.0, |(_, d)| d.value)
     };
     // ⭐⭐ **As cores de um material são uma TABELA de âncoras** (`docs/Render3d/05` §20), e não um
@@ -295,11 +304,26 @@ pub fn param_rows(
         (13, "field.dim.coat_color"),
         (20, "field.dim.emission_color"),
     ];
-    let ancora = |p: ph2d_field::Param| match p {
-        ph2d_field::Param::Material(k) => CORES.iter().find(|(a, _)| *a == k).copied(),
-        _ => None,
+    // ⭐⭐⭐ **E a cor de uma LUZ entra pela MESMA máquina** (ordem do dono, 14/09): âncora no canal
+    // `R`, seguidores `+1` e `+2`. *A caixa de cor de uma lâmpada não é um segundo widget — é a
+    // mesma linha, sobre outro `Param`.*
+    const COR_DA_LUZ: (u8, &str) = (1, "field.dim.light_color");
+    // ⚠️ **Os três canais saem da PORTA** ([`ph2d_field::Param::colour_channels`]) e não de uma
+    // conta aqui: o dreno que os escreve usa a mesma, e é isso que impede a linha de pintar uma cor
+    // e escrever noutra.
+    let ancora = |p: ph2d_field::Param| -> Option<(&'static str, [ph2d_field::Param; 3])> {
+        let rotulo = match p {
+            ph2d_field::Param::Material(k) => CORES.iter().find(|(a, _)| *a == k).map(|(_, r)| *r),
+            ph2d_field::Param::Light(k) if k == COR_DA_LUZ.0 => Some(COR_DA_LUZ.1),
+            _ => None,
+        }?;
+        Some((rotulo, p.colour_channels()?))
     };
-    let seguidor = |p: &ph2d_field::Param| matches!(p, ph2d_field::Param::Material(k) if CORES.iter().any(|(a, _)| k == &(a + 1) || k == &(a + 2)));
+    let seguidor = |p: &ph2d_field::Param| match p {
+        ph2d_field::Param::Material(k) => CORES.iter().any(|(a, _)| k == &(a + 1) || k == &(a + 2)),
+        ph2d_field::Param::Light(k) => *k == COR_DA_LUZ.0 + 1 || *k == COR_DA_LUZ.0 + 2,
+        _ => false,
+    };
     let mut linhas: Vec<ph2d_panel_model3d::ParamRow> = numeros
         .iter()
         .cloned()
@@ -375,7 +399,7 @@ pub fn param_rows(
             ph2d_panel_model3d::ParamRow {
                 entity: e.to_bits(),
                 param,
-                key: cor.map_or(d.key, |(_, rotulo)| rotulo),
+                key: cor.map_or(d.key, |(rotulo, _)| rotulo),
                 value: d.value,
                 lo,
                 bound,
@@ -388,9 +412,7 @@ pub fn param_rows(
                     Span::Choice(nomes) => nomes,
                     _ => &[],
                 },
-                swatch: cor.map(|(k, _)| {
-                    crate::materials::colour_srgb8([canal(k), canal(k + 1), canal(k + 2)])
-                }),
+                swatch: cor.map(|(_, canais)| crate::materials::colour_srgb8(canais.map(canal))),
                 subject: None,
             }
         })
@@ -565,10 +587,23 @@ pub fn op_at(slot: usize) -> Option<Op> {
 /// `adds`: o `paint_chips` já sabe desenhar, medir e registar; um botão avulso seria um caminho de
 /// pintura novo neste painel.
 pub fn adds_for() -> Vec<ph2d_panel_model3d::ModeChip> {
-    vec![ph2d_panel_model3d::ModeChip {
-        key: "panel.model3d.add.open",
-        active: false,
-    }]
+    vec![
+        ph2d_panel_model3d::ModeChip {
+            key: "panel.model3d.add.open",
+            active: false,
+        },
+        // ⭐⭐⭐ **A LUZ** (ordem do dono, 14/09) — e ela está AQUI e não na paleta de formas, por
+        // recusa de um gate: o `each_family_has_its_own_title_and_colour` exige **uma tinta por
+        // família**, e há exactamente sete `NodeCat*`, todas tomadas. Uma oitava família pedia um
+        // token novo, que é decisão de design (§7) e não desta linha.
+        //
+        // ⭐ E a recusa aponta para a leitura certa: *aquela paleta é de FORMAS*, e uma lâmpada não
+        // é uma forma — ela nem sequer entra na árvore da peça.
+        ph2d_panel_model3d::ModeChip {
+            key: "panel.model3d.add.light",
+            active: false,
+        },
+    ]
 }
 
 /// ⭐ **Quais operações fazem sentido AGORA** — e vazio quando nenhuma faz.

@@ -111,6 +111,24 @@ pub enum Param {
     /// a mesma lei da W34 que o resto do painel honra: *o painel oferece exactamente o que o gesto
     /// faz*.
     Seam(u8),
+    /// ⭐⭐⭐ **UM NÚMERO DE UMA LUZ** — a força (`0`) e a cor (`1`..`3`), quando o objecto escolhido é
+    /// uma lâmpada (ordem do dono, 2026-09-14: *«a luz deve virar objeto 3d como nos app 3d»*).
+    ///
+    /// # ⚠️ Porque uma luz entra pela MESMA porta que uma largura
+    ///
+    /// É a razão do [`Param::Material`], um nível acima: o painel deste módulo é **derivado** de
+    /// [`Param`] ponta a ponta — a linha, a faixa, o despacho e a escrita. Uma superfície própria
+    /// para a luz seria uma **segunda** máquina de rows ao lado de uma que funciona, e a que
+    /// apodrece é sempre a segunda.
+    ///
+    /// ⚠️ **A POSIÇÃO não está aqui**, e é a decisão inteira: ela é a pose da entidade, logo entra
+    /// pelo [`Param::Pos`] que já existe, e mover a luz é o **mesmo gesto** que mover uma forma.
+    ///
+    /// ⛔ **E a ROTAÇÃO não é oferecida**: um ponto não tem orientação, e uma linha que não muda um
+    /// pixel é o controlo morto que a W34 proíbe.
+    ///
+    /// A tabela vive em [`ph2d_field_ecs::FieldLight::get`], que é quem a lê e a escreve.
+    Light(u8),
     /// ⭐⭐⭐ **UM NÚMERO DO MATERIAL desta forma** — as `15` entradas do OpenPBR, **na ordem da
     /// nodedef**: a base (`0`..`5`), o realce (`6`..`11`), o verniz (`12`..`18`) e o brilho próprio
     /// (`19`..`22`). ⇒ a tabela vive em [`ph2d_field_ecs::FieldMaterial::get`], que é quem a lê e a
@@ -146,6 +164,38 @@ pub enum Param {
 /// esconde é a apresentação, e um pedido guardado de um quadro atrás tem de continuar a poder
 /// aterrar.
 pub const MATERIAL_FIELDS: u8 = 23;
+
+/// ⭐⭐⭐ **Quantos números uma LUZ tem** — a força (`0`) e os três canais da cor (`1`..`3`).
+///
+/// ⚠️ **Contado aqui e lido por toda a gente**, pela razão do [`MATERIAL_FIELDS`]: a tabela é o
+/// `FieldLight::get`, e uma segunda contagem escrita à mão seria a que envelhece.
+pub const LIGHT_FIELDS: u8 = 4;
+
+impl Param {
+    /// ⭐⭐⭐ **OS TRÊS CANAIS de uma cor, a partir da ÂNCORA** — `None` quando este param não abre
+    /// uma cor.
+    ///
+    /// # ⚠️ Porque a lei mora AQUI e não em quem pinta
+    ///
+    /// Ela tem **três** leitores: o painel, que dobra os seguidores numa amostra só; o dreno, que
+    /// escreve os três no mesmo quadro para a cor ser **um** passo de desfazer; e o gate que ata os
+    /// dois. *Uma lei com três leitores escrita em três sítios é a definição do número que
+    /// envelhece* — e o modo de falha é mudo: a cor da emissão aterraria na cor base, com a mesma
+    /// escrita e sem erro nenhum.
+    ///
+    /// ⚠️ **Ela não sabe QUAIS âncoras existem**, e isso é de propósito: a lista de cores de um
+    /// material é do documento (o `MATERIAL_KEYS`), e um segundo vocabulário aqui envelheceria na
+    /// primeira cor nova. O que ela sabe é que **uma cor são três números consecutivos da mesma
+    /// família**.
+    #[must_use]
+    pub fn colour_channels(self) -> Option<[Self; 3]> {
+        match self {
+            Self::Material(k) => Some([0, 1, 2].map(|i| Self::Material(k + i))),
+            Self::Light(k) => Some([0, 1, 2].map(|i| Self::Light(k + i))),
+            _ => None,
+        }
+    }
+}
 
 /// ⭐ **O que uma grandeza admite** — a forma da faixa, e de que recurso vem cada ponta.
 ///

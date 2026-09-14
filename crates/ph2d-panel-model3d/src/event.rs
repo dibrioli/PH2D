@@ -80,7 +80,13 @@ const CHIP_ROWS: &[ChipRow] = &[
     (
         crate::ids::model3d_add_button,
         |s| s.adds.len(),
-        |_| ModelIntent::OpenShapes,
+        // ⚠️ **Por SLOT desde 14/09**: a fileira tinha um chip e todo slot abria a paleta; o segundo
+        // acende uma LUZ. ⛔ Um `_ =>` a abrir a paleta faria o chip novo parecer vivo e abrir a
+        // coisa errada — *o pior dos dois, porque parece funcionar*.
+        |slot| match slot {
+            1 => ModelIntent::AddLight,
+            _ => ModelIntent::OpenShapes,
+        },
     ),
     (
         crate::ids::model3d_op_button,

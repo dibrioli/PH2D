@@ -60,6 +60,8 @@ pub mod gizmo_paint;
 pub mod import;
 pub mod input;
 /// ⭐⭐⭐ **A tabela de materiais da peça** — ver [`materials`].
+/// `docs/Render3d/05` — a LUZ como objecto 3D da cena (ordem do dono, 14/09).
+pub mod lights;
 pub mod materials;
 /// ADR-0161 W25 — a VOZ do módulo: uma peça que não cozinha diz porquê, e diz uma vez.
 pub mod mode;

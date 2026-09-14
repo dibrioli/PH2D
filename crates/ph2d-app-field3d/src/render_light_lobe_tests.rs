@@ -315,7 +315,11 @@ fn measure_what_the_lobe_cure_changes_in_the_pixel() {
                 &g,
                 &cam,
                 &surface,
-                &Lighting { lamps: &lamps, sky },
+                &Lighting {
+                    lamps: &lamps,
+                    points: &[],
+                    sky,
+                },
                 olhar,
                 BG,
             )

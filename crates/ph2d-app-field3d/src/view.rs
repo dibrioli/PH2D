@@ -161,6 +161,8 @@ impl View {
             // (`docs/Render3d/05`). Atravessar um fecho com ela seria carregar uma cópia de uma
             // coisa que a peça já tem, e ela ficaria a descrever a peça de ontem.
             materials: _,
+            // ⭐ CACHE, como a tabela de materiais: derivada do mundo, refeita no quadro seguinte.
+            lights: _,
             // ⚠️ **Cache, e não vista** — as fitas compiladas de um quadro. Deitá-las fora ao
             // fechar não custa nada: a 1.ª mão a mexer volta a enchê-las.
             //

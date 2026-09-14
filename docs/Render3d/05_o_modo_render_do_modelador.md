@@ -140,7 +140,7 @@ linha que decide alguma coisa (`+54 %` de pixels cortados a `0` stops, `−13 %`
 | ausência | razão |
 |---|---|
 | ~~**material por objecto**~~ | ✅ **FECHOU em 13/09** — ver §11; e a cor passou a escolher-se **vendo-a** em 14/09, §12 |
-| **o rig do DOCUMENTO** | o rig vive dentro da cena da escultura (`ph2d_app_sculpt3d::cena`), fora do alcance do modelador; esta fatia usa o rig de omissão da `ph2d-light` |
+| ~~**o rig do DOCUMENTO**~~ | ⭐ **FECHOU em 14/09 por ordem do dono, e por outra porta**: o modelador não foi buscar o rig da escultura — a luz passou a ser um **objecto da cena** (§25) |
 | **anisotropia, transmissão, subsuperfície, fuzz, película fina** | cada uma é uma closure com gate próprio; com peso zero a composição gerada dá-lhes contribuição **zero**, e os campos **não existem** na struct (um campo que a lei não lê é um controlo morto) |
 | **AgX** | ⛔ **licença**: não há neste disco um AgX cuja licença permissiva se leia no artefacto (`04` §3). O oráculo dele corre-se à mesma |
 | **exposição contínua** | os chips dão `±2` stops, que é o que o smoke do plano pede; um slider de vista pede um alcance medido e um sítio no painel |
@@ -2034,8 +2034,187 @@ um controlo: é uma segunda asserção sobre outra coisa.* ⇒ hoje o controlo �
 - **O tamanho da caixa não é autorável**, e o preço está nomeado: a tabela é construída para UMA
   forma, logo um raio autorado é um **terceiro eixo** nela (ou uma reconstrução de `27,6 ms` por
   mexida no slider).
-- **O rig continua a ser o de omissão** — o modelador não tem controlo de luz nenhum, e a §7 declara
-  porquê. ⚠️ Esta wave torna a ausência mais visível: agora que há uma caixa no céu, mover a **chave**
-  é o gesto seguinte que um artista procura.
+- ✅ ~~**O rig continua a ser o de omissão**~~ — **fechou no mesmo dia (§25)**: a luz virou objecto da
+  cena, por ordem do dono. ⚠️ E abriu a incoerência que a §25.8 nomeia: o céu é de ecrã e as luzes são
+  de mundo.
 - ⏳ O que a `W3` do plano ainda não faz: o céu continua **analítico** (não há mapa de ambiente), e a
   `W4`/`W5` (sombras e luz indirecta) não começaram.
+
+---
+
+## §25 — ⭐⭐⭐ A LUZ É UM OBJECTO DA CENA (ordem do dono, 2026-09-14)
+
+Enio, depois da §24: *«A luz deve virar objeto 3d como nos app 3d. Pode ser a luz. O Painel model
+pode receber uma seção para a luz. Isso é provisório até finalizarmos os modos de arte do app.»*
+
+---
+
+### §25.1 — A lei, numa frase
+
+Uma luz é uma **entidade** com um [`ph2d_field_ecs::FieldLight`](../../crates/ph2d-field-ecs/src/lib.rs)
+e uma pose. ⇒ ela aparece na Hierarquia, escolhe-se, renomeia-se, apaga-se, esconde-se e **move-se com
+o mesmo gizmo** que move uma forma — tudo isso **sem uma linha de código próprio**, porque é o que ser
+uma entidade desta cena já significa (a W5: *a hierarquia da cena É o documento*).
+
+⭐ **O componente guarda só o que NÃO é pose** — a força e a cor. *Um campo de posição ali seria a
+segunda resposta a «onde está isto», e a que diverge no dia em que alguém arrasta o gizmo.*
+
+⛔ **E ela NÃO leva `FieldNode`**, o que a mantém fora de tudo o resto **de graça**: o cozimento, o
+`leaves` dos materiais, o `owners` e o clique no canvas filtram todos por ele. *Uma luz que fosse um
+nó apareceria como uma forma invisível no meio da peça.*
+
+---
+
+### §25.2 — ⚠️ Ela é um PONTO, e não um sol
+
+A escolha segue da ordem. Um sol não tem posição — só rotação —, logo **arrastá-lo pela cena não faria
+nada**, e um objecto que se move sem efeito é o controlo morto do `CLAUDE.md` §5.0 na forma mais cara.
+Um ponto cai com `1/r²`, e é isso que faz **aproximá-lo da peça ser um gesto que se vê**.
+
+⭐ **A unidade da intensidade é DERIVADA, não escolhida:** o rig da casa promete que *«uma superfície
+plana de frente para uma luz de intensidade `1` devolve `1`»* ⇒ aqui a intensidade é **a mesma, medida
+a UMA unidade de distância**. *Não há uma segunda escala para aprender.*
+
+---
+
+### §25.3 — ⛔⛔ O que ela SUBSTITUI, e o que isso custa à imagem
+
+**O rig ancorado no ecrã deixou de acender o modo Render.** Ele continua a acender o **matcap** (que é
+sombreamento de vista, por definição), a tinta e a escultura — outros módulos. *As luzes desta cena são
+as luzes desta cena; uma cena sem luz nenhuma sai acesa só pelo céu.*
+
+⭐⭐ **E a cena nasce com uma**, como em todo aplicativo 3D — senão o modo Render perdia a lâmpada e não
+ganhava nenhuma. *Uma feature que exige um gesto antes de a cena voltar a parecer-se com ela própria
+não é uma feature: é uma regressão com um botão ao lado.*
+
+**Onde ela nasce é derivado de duas coisas que já existiam:**
+
+| | de onde vem |
+|---|---|
+| **a direcção** | a do `Light::KEY` do rig (`230°`/`30°`, afinada pelo Enio em 2026-07-12), lida pela porta e convertida pela base da **câmera** |
+| **a distância** | `2 × half_extent` — duas meias-larguras do que a câmera enquadra: fora da peça, e a um passo de zoom de estar à vista |
+| **a força** | `r²` — com a queda `1/r²`, é o que entrega **no centro da peça exactamente o que a lâmpada do rig entregava** |
+
+⚠️⚠️ **A primeira redacção do sítio era um `[f32; 3]` const em MUNDO**, e isso é a mesma classe de erro
+que o sinal de `y` desta casa já pagou: *a direcção do rig é de ECRÃ, e onde «superior-esquerda» cai no
+mundo depende de para onde a câmera olha.* Hoje é uma função da câmera, com gate nas duas metades.
+
+**O preço, medido** (esfera do §6, olhar do produto):
+
+| | média | branco chapado | `\|Δ\|` médio | máx |
+|---|---:|---:|---:|---:|
+| a lâmpada de ECRÃ (o de antes) | `181,9` | `0` | — | — |
+| **a luz de ABERTURA** | `163,3` | `0` | **`21,4`** | `71` |
+| só o céu (cena sem luz) | `128,9` | `0` | `52,5` | `108` |
+
+⭐ **E ela NÃO reproduz a imagem antiga, nem pode:** uma luz direccional entrega a mesma radiância em
+todo o lado; um ponto entrega `1/r²`, e o lado de lá da peça está mais longe. Afastá-la e reforçá-la
+aproxima (a `5` unidades com força `25` o desvio cai a `6,7` bytes) — e a `5` unidades ela está **fora
+do enquadramento**, que é o oposto do que a ordem pediu. *A troca é o preço de a luz passar a estar em
+algum sítio.*
+
+---
+
+### §25.4 — O painel, e o que ele NÃO oferece
+
+Uma luz escolhida traz a secção **Light**: a **posição** (que é a pose, pelo `Param::Pos` que já
+existia) e, sob o cabeçalho próprio, a **Intensity** e a **Color**.
+
+⛔ **A rotação e a escala não são oferecidas**, e é a metade que interessa: um ponto não tem orientação
+nem tamanho, e três sliders de ângulo que não movem um pixel são o controlo morto que a **W34** proíbe
+por escrito.
+
+⭐ **A caixa de cor é a MESMA máquina da §12** — âncora no canal `R`, seguidores dobrados na amostra.
+⚠️⚠️ **E o `ModelIntent::SetColor` teve de deixar de carregar um `u8`:** com um índice cru, a cor de uma
+lâmpada (`Light(1)`) e a cor base de um material (`Material(1)`) viajam como o **mesmo `1`**, e quem
+drena escolhe a família por conta própria. *Um índice sem família é um sujeito por adivinhar, e a
+adivinha é silenciosa.* ⇒ ele carrega o **`Param`**, e os três canais saem de uma porta só
+([`Param::colour_channels`](../../crates/ph2d-field/src/dims.rs)) que o painel e o dreno partilham.
+
+⚠️ **E a condição do ramo da amostra era a FAMÍLIA e passou a ser a AMOSTRA:** com o filtro por
+`Param::Material`, a cor de uma lâmpada caía no slider e pintava o canal **vermelho** como um número.
+*Quem decide que isto é uma cor é o `swatch`, e perguntar duas vezes deixa as duas respostas
+divergirem.*
+
+---
+
+### §25.5 — ⛔ Acender uma luz NÃO entra na paleta de formas, e foi um gate que o disse
+
+A primeira tentativa pôs a luz no catálogo, numa família `Lights`. O
+`each_family_has_its_own_title_and_colour` reprovou: ele exige **uma tinta por família**, e há
+exactamente **sete** `NodeCat*` — todas tomadas. Uma oitava família pedia um token novo, que é decisão
+de design (§7) e **não desta linha**.
+
+⭐ **E a recusa aponta para a leitura certa:** *aquela paleta é de FORMAS*, e uma lâmpada não é uma
+forma — ela nem sequer entra na árvore da peça. ⇒ o gesto é um **chip próprio na fileira de criar**, ao
+lado do *+ Add shape…*, e a fileira passou a decidir por **slot** em vez de todo clique abrir a paleta.
+⛔ Um `_ =>` ali faria o chip novo parecer vivo e abrir a coisa errada — *o pior dos dois, porque parece
+funcionar*.
+
+---
+
+### §25.6 — ⛔⛔ Duas coisas que quase shiparam invisíveis
+
+**(a) A luz não tinha linha na Hierarquia.** A query das raízes da casa é
+`With<Transform>, Without<ChildOf>`, e o `add_light` dava `Name` e `FieldPose` e mais nada. A luz
+existia, iluminava a peça e **não se podia escolher, renomear, esconder nem apagar**. *Uma luz que não
+aparece na Hierarquia não é um objecto 3D — é uma variável global com uma posição*, que é exactamente o
+oposto da ordem. ⇒ `Transform` como **marcador** (a pose continua no `FieldPose`, que é a convenção que
+o `spawn_doc` já usa na raiz da peça), e gate com **piso de população** — a peça tem de estar na lista
+também, senão um dia em que a query deixe de casar seja o que for ele leria «zero raízes» e passaria
+por vacuidade.
+
+**(b) O gizmo não pegava nela.** O `anchor_for` perguntava *«é um nó?»* (`FieldNode`), e a resposta
+certa é a mais simples das duas: *o gizmo agarra o que tem onde estar* ⇒ `FieldPose`.
+
+---
+
+### §25.7 — Os gates (9) e as mutações (7/7), com as DUAS que sobreviveram
+
+| gate | o que ele prende |
+|---|---|
+| `a_light_is_a_row_of_the_hierarchy` | a query da casa, com piso de população e os nomes únicos |
+| `the_first_light_is_born_where_the_rig_lamp_shone_from` | direcção, distância e força — e que o sítio **segue a câmera** |
+| `the_panel_of_a_light_offers_no_angle_and_no_size` | a W34 sobre o objecto novo, e que mover é o mesmo gesto |
+| `a_light_object_lights_the_side_it_is_on` | ⭐ acende **e** do lado certo, nos **dois** sentidos |
+| `a_light_falls_off_with_the_square_of_the_distance` | a queda, pela imagem — e a singularidade |
+| `the_hierarchy_eye_switches_a_light_off` | o olho, com o controlo do outro lado |
+| `the_lights_come_out_in_a_stable_order` | a ordem contra a troca de arquétipo |
+| `a_light_of_one_at_one_unit_is_the_lamp_the_rig_had` | a unidade da intensidade é a do rig |
+| `a_negative_light_is_no_light_never_a_dark_one` | força e cor negativas são coadas |
+
+⚠️⚠️ **A primeira redacção do gate da queda era uma TAUTOLOGIA, e uma mutação provou-o.** Ela chamava
+`Surface::direct` com uma radiância que **o próprio teste dividia por `r²`** ⇒ apagar a divisão do
+**produto** deixava-a verde. *Um gate que re-implementa a lei não mede o produto — mede-se a si mesmo.*
+Hoje ela compara duas **imagens**, e o controlo dela mede a razão `4` sem compensação. ⚠️ E essa razão
+teve de ser lida em **linear**: a saída é sRGB8, e `4` em linear lê-se **`1,88`** em bytes — o número
+que a primeira leitura acusou é exactamente `4^(1/2,2)`.
+
+⚠️⚠️ **E a segunda sobrevivente ensinou que o PISO da distância resolvia metade de um defeito.** Pô-lo a
+`0` não sangrava: o byte satura, logo `1/0,0025` e `1/0` pintam os mesmos `255`. *O que era observável
+era o defeito ao lado dele* — com a luz exactamente sobre o ponto, `d` é o vector **ZERO**, a direcção
+normalizada sai `[0,0,0]`, o `N·L` dá `0` e o pixel fica **PRETO**, que é o mesmo sintoma da divisão
+por zero por outro caminho. ⇒ abaixo do piso a direcção passa a ser a **NORMAL**, e o gate produz a
+distância exactamente zero **lendo um ponto do próprio G-buffer**.
+
+*Um piso que protege a aritmética e deixa a geometria degenerada resolve metade de um defeito, e a
+metade que fica tem o mesmo sintoma.*
+
+---
+
+### §25.8 — ⏳ O que fica aberto (e o dono declarou esta fatia PROVISÓRIA)
+
+- ⛔⛔ **O CÉU continua ancorado no ECRÃ e as luzes passaram a ser de MUNDO** — a sala não roda com a
+  câmera e as lâmpadas rodam. É uma incoerência **declarada**: o céu de mundo é outra decisão (a `W3`
+  do plano nomeia-a), e chega com o resto dos modos de arte.
+- **Uma luz não se escolhe no CANVAS** — ela não tem campo, logo o clique que marcha a peça não a
+  encontra. Escolhe-se na Hierarquia (e ela nasce **já escolhida**, com o gizmo em cima). O que falta é
+  um **marcador desenhado** e o acerto dele.
+- **Os verbos ROTAÇÃO e ESCALA do gizmo são inertes numa luz.** O verbo é estado de **VISTA** (um por
+  viewport), não do objecto, então restringi-lo por-objecto é um campo novo no `Anchor`.
+- **Duplicar uma luz não faz nada** — o `duplicate` exige um pai, e uma luz é raiz. *Declarado e
+  testado*, não acidental.
+- **Uma luz não viaja no arquivo com o resto** — ela é uma entidade com componentes registados, logo
+  entra no `WorldSnapshot`; o que **não** foi exercitado é um projecto gravado antes desta wave, que
+  abre **sem luz nenhuma** e fica aceso só pelo céu.
+- **Uma só luz e um só tipo.** Sem cone, sem área, sem sombra — a `W4` do plano.

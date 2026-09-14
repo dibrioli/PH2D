@@ -243,6 +243,53 @@ pub(super) const MATERIAL_KEYS: [&str; ph2d_field::MATERIAL_FIELDS as usize] = [
     "field.dim.emission_b",
 ];
 
+/// As chaves i18n das linhas de uma luz — **a mesma ordem do [`crate::FieldLight::get`]**.
+pub(super) const LIGHT_KEYS: [&str; ph2d_field::LIGHT_FIELDS as usize] = [
+    "field.dim.light_intensity",
+    "field.dim.light_color",
+    "field.dim.light_color_g",
+    "field.dim.light_color_b",
+];
+
+/// ⭐⭐⭐ **AS LINHAS DE UMA LUZ** — a pose, a força e a cor.
+///
+/// # ⛔ O que ela NÃO oferece, e porquê
+///
+/// **A rotação.** Um ponto não tem orientação: os três ângulos seriam três sliders que não movem um
+/// pixel, que é o controlo morto que a W34 proíbe por escrito. ⚠️ E a **escala** também não — uma
+/// lâmpada não tem tamanho nesta lei (o raio dela é o piso da singularidade, e é uma const do
+/// renderizador, não um knob).
+fn light_params(world: &World, entity: Entity, l: crate::FieldLight) -> Vec<(Param, Dim)> {
+    let pose = world
+        .get::<FieldPose>(entity)
+        .map_or(Xform::IDENTITY, |p| p.xform);
+    (0..3u8)
+        .map(|k| {
+            (
+                Param::Pos(k),
+                Dim {
+                    key: POS_KEYS[k as usize],
+                    value: pose.translation[k as usize],
+                    span: Span::Free,
+                },
+            )
+        })
+        .chain((0..ph2d_field::LIGHT_FIELDS).filter_map(|k| {
+            Some((
+                Param::Light(k),
+                Dim {
+                    key: LIGHT_KEYS[k as usize],
+                    value: l.get(k)?,
+                    // ⚠️ **Tecto MOLE, como o material**: a faixa do slider é `0..1` e o campo
+                    // aceita mais — uma luz de força `4` é uma luz a quatro unidades de distância,
+                    // e recusá-la seria inventar um limite que a física não tem.
+                    span: Span::SoftFromZero(1.0),
+                },
+            ))
+        }))
+        .collect()
+}
+
 /// ⭐⭐⭐ **A FAIXA de um número do material** — e **quinze dos dezasseis são a mesma**.
 ///
 /// ⭐ **Do zero a um, e as duas pontas são do MODELO**: uma rugosidade acima de `1` não é mais
@@ -300,6 +347,12 @@ pub(super) const ROT_SPAN_DEG: [f32; 3] = [180.0, 90.0, 180.0];
 /// decisão.
 #[must_use]
 pub fn params_of(world: &World, entity: Entity) -> Vec<(Param, Dim)> {
+    // ⭐⭐⭐ **UMA LUZ NÃO É UM NÓ** (ordem do dono, 14/09) — ela tem pose e lâmpada, e mais nada. A
+    // pergunta vem ANTES do `FieldNode` porque uma luz não o tem: sem esta linha o painel de uma
+    // luz escolhida sairia **vazio**, que é o que ele fazia até esta wave.
+    if let Some(l) = world.get::<crate::FieldLight>(entity) {
+        return light_params(world, entity, *l);
+    }
     let Some(node) = world.get::<FieldNode>(entity) else {
         return Vec::new();
     };

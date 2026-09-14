@@ -86,6 +86,65 @@ pub fn add_sampled(
     )
 }
 
+/// ⭐⭐⭐ **NASCE UMA LUZ** — a lâmpada como objecto 3D (ordem do dono, 2026-09-14).
+///
+/// # ⚠️ Ela é uma RAIZ, e não um filho da peça
+///
+/// Uma luz não é geometria: pô-la dentro da árvore da peça faria mover a peça mover a luz, e
+/// **apagar a peça apagar a luz**. Na Hierarquia ela nasce ao lado da peça, que é onde uma luz vive
+/// em todo aplicativo 3D.
+///
+/// ⚠️ **Ela NÃO leva `FieldNode`**, e é isso que a mantém fora de tudo o resto de graça: o
+/// cozimento, o `leaves` dos materiais, o `owners` e o clique no canvas filtram todos por ele. *Uma
+/// luz que fosse um nó apareceria como uma forma invisível no meio da peça.*
+pub fn add_light(world: &mut World, world_pos: [f32; 3], light: crate::FieldLight) -> Entity {
+    let nome = unique_root_name(world, "Light");
+    world
+        .spawn((
+            ph2d_ecs::Name::new(nome),
+            // ⭐⭐⭐ **O `Transform` é o que a HIERARQUIA enumera** — a query das raízes dela é
+            // `With<Transform>, Without<ChildOf>` —, e sem ele a luz existiria no mundo, iluminaria
+            // a peça e **não teria linha nenhuma**: um objecto que não se pode escolher, renomear,
+            // esconder nem apagar. *Uma luz que não aparece na Hierarquia não é um objecto 3D — é
+            // uma variável global com uma posição.*
+            //
+            // ⚠️ **A pose de VERDADE é o [`FieldPose`]**, e esta é a convenção do módulo, não uma
+            // segunda verdade: o `spawn_doc` faz o mesmo à raiz da peça. O `Transform` é o
+            // **marcador** de *«sou uma linha de topo»*; quem responde *«onde está isto»* é o
+            // `world_xform`, e é ele que o gizmo escreve.
+            //
+            // ⛔ **O `RootOrder` NÃO se escreve aqui**: o passe `assign_missing_root_order` da casa
+            // dá-o no quadro em que a luz nasce, **preservando a ordem que a Hierarquia já mostra**.
+            // Um `0` escrito à mão empataria com a peça.
+            ph2d_ecs::Transform::default(),
+            light,
+            FieldPose {
+                xform: ph2d_field::Xform {
+                    translation: world_pos,
+                    ..ph2d_field::Xform::IDENTITY
+                },
+            },
+        ))
+        .id()
+}
+
+/// Um nome que nenhuma RAIZ já tem.
+///
+/// ⚠️ **Irmão do [`unique_sibling_name`] e não o mesmo**: aquele pergunta aos filhos de um pai, e uma
+/// raiz não tem pai. *Duas luzes chamadas «Light» na Hierarquia são duas linhas que o artista não
+/// consegue distinguir.*
+fn unique_root_name(world: &mut World, base: &str) -> String {
+    let mut q = world.query::<(Entity, &ph2d_ecs::Name)>();
+    let usados: Vec<String> = q.iter(world).map(|(_, n)| n.0.clone()).collect();
+    if !usados.iter().any(|u| u == base) {
+        return base.to_string();
+    }
+    (2..)
+        .map(|i| format!("{base} {i}"))
+        .find(|c| !usados.iter().any(|u| u == c))
+        .unwrap_or_else(|| base.to_string())
+}
+
 /// O corpo partilhado: nasce o nó, entra na hierarquia, e a pose vai para o MUNDO pedido.
 fn add_node(
     world: &mut World,

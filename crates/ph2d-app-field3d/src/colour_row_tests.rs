@@ -146,7 +146,7 @@ fn the_colour_intent_reaches_the_document() {
     let _ = rows_of(&mut sim, folha);
     ph2d_panel_model3d::state::push_intent_for_test(ph2d_panel_model3d::ModelIntent::SetColor {
         // ⚠️ A ÂNCORA da cor BASE — as outras três têm gates próprios nos ficheiros irmãos.
-        field: 1,
+        anchor: ph2d_field::Param::Material(1),
         entity: folha.to_bits(),
         srgb: [255, 0, 128],
     });
@@ -296,7 +296,7 @@ fn a_group_offers_the_material_of_the_shapes_under_it_and_painting_it_paints_the
     // ── E o pedido pinta as TRÊS ──
     ph2d_panel_model3d::state::push_intent_for_test(ph2d_panel_model3d::ModelIntent::SetColor {
         // ⚠️ A ÂNCORA da cor BASE — as outras três têm gates próprios nos ficheiros irmãos.
-        field: 1,
+        anchor: ph2d_field::Param::Material(1),
         entity: cor.entity,
         srgb: [255, 0, 128],
     });
@@ -425,7 +425,7 @@ fn a_request_from_a_stale_selection_paints_only_its_own_shape() {
     // O pedido é da folha 0; a selecção de AGORA é a 1 e a 2 — a 0 não está nela.
     ph2d_panel_model3d::state::push_intent_for_test(ph2d_panel_model3d::ModelIntent::SetColor {
         // ⚠️ A ÂNCORA da cor BASE — as outras três têm gates próprios nos ficheiros irmãos.
-        field: 1,
+        anchor: ph2d_field::Param::Material(1),
         entity: folhas[0].to_bits(),
         srgb: [255, 0, 128],
     });
@@ -586,6 +586,7 @@ fn colour_boundary_step(blend: ph2d_field::Blend, cores: [[f32; 3]; 2]) -> i32 {
         },
         &Lighting {
             lamps: &crate::render_light::lamps(&ph2d_light::LightRig::default()),
+            points: &[],
             sky: &crate::render_light::StudioSky,
         },
         crate::shading::OPENING_LOOK,

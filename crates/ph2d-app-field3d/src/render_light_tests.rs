@@ -180,6 +180,7 @@ fn measure_what_the_render_mode_costs_and_paints() {
     };
     let light = Lighting {
         lamps: &lamps,
+        points: &[],
         sky: &StudioSky,
     };
     let t = Instant::now();
@@ -424,6 +425,7 @@ fn measure_what_material_per_object_costs_the_shading() {
             .collect();
         let light = Lighting {
             lamps: &lamps,
+            points: &[],
             sky: &StudioSky,
         };
         // ⚠️ A mediana de 5, com um aquecimento antes — e o MÍNIMO ao lado, porque esta máquina não
@@ -516,7 +518,11 @@ fn measure_how_much_of_the_material_this_sky_lets_through() {
             all: &so,
             owners: None,
         };
-        let light = Lighting { lamps, sky };
+        let light = Lighting {
+            lamps,
+            points: &[],
+            sky,
+        };
         shade_render(&g, &cam, &surface, &light, crate::shading::OPENING_LOOK, BG)
     };
 

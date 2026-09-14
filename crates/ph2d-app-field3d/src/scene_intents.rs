@@ -51,6 +51,28 @@ pub(super) fn apply(
             ph2d_panel_model3d::ModelIntent::OpenShapes => {
                 crate::smoke::ask_shape_palette();
             }
+            // ⭐⭐⭐ **ACENDE-SE UMA LUZ** (ordem do dono, 14/09).
+            //
+            // ⚠️ **Ela nasce onde a câmera OLHA e não na origem**, e à distância e na direcção que o
+            // rig que ela substitui tinha — ver [`crate::lights::opening_place`]. *Uma lâmpada que
+            // nasce fora do enquadramento é uma lâmpada que o artista tem de ir procurar antes de a
+            // poder mover.*
+            //
+            // ⛔ **E ela não consulta o `where_to_add`:** uma luz não tem pai. Ela nasce RAIZ, ao
+            // lado da peça — é onde uma luz vive em todo aplicativo 3D, e é o que faz apagar a peça
+            // não apagar a luz.
+            ph2d_panel_model3d::ModelIntent::AddLight => {
+                let cam = crate::smoke::with_smoke(|s| s.vp().cam).unwrap_or_default();
+                // ⭐ **A MESMA lei da primeira luz** — uma lâmpada acrescentada depois é tão útil
+                // como a que a cena trouxe. *Duas leis dariam duas lâmpadas diferentes com o mesmo
+                // nome.*
+                let (onde, lampada) = crate::lights::opening_light(&cam);
+                let e = ph2d_field_ecs::add_light(world, onde, lampada);
+                // ⭐ A luz nova fica ESCOLHIDA — é o que põe o gizmo em cima dela e abre a secção
+                // dela no painel, sem ninguém a ter de a achar na Hierarquia. É a mesma lei da forma
+                // que nasce da paleta.
+                created = Some(e.to_bits());
+            }
             // ⭐ **As ações sobre o objeto escolhido** — e o `slot` resolve-se em **chave**.
             //
             // ⚠️ **Nunca por número.** A fileira deixou de ser fixa na W57 (largar e ligar só
@@ -291,18 +313,26 @@ pub(super) fn apply(
             // da emissão aterrar na cor base: *a mesma escrita, o sujeito errado, e sem erro nenhum.*
             ph2d_panel_model3d::ModelIntent::SetColor {
                 entity,
-                field,
+                anchor,
                 srgb,
             } => {
                 let cor = crate::materials::colour_from_srgb8(srgb);
-                for alvo in crate::scene::panel::material_reach(world, selection, entity) {
-                    for (k, v) in cor.into_iter().enumerate() {
-                        let _ = ph2d_field_ecs::set_param(
-                            world,
-                            alvo,
-                            ph2d_field::Param::Material(field + k as u8),
-                            v,
-                        );
+                // ⚠️ **Os três canais saem da PORTA**, a mesma que o painel usa para os dobrar na
+                // amostra — ver [`ph2d_field::Param::colour_channels`].
+                if let Some(canais) = anchor.colour_channels() {
+                    // ⭐ **A cor de uma LUZ é daquela luz**, e não se espalha pela selecção: o alcance do
+                    // material existe porque *«um material é a única coisa que um artista atribui a
+                    // muitos objectos de uma vez»* — uma lâmpada não é.
+                    let alvos: Vec<bevy_ecs::entity::Entity> =
+                        if matches!(anchor, ph2d_field::Param::Light(_)) {
+                            vec![bevy_ecs::entity::Entity::from_bits(entity)]
+                        } else {
+                            crate::scene::panel::material_reach(world, selection, entity)
+                        };
+                    for alvo in alvos {
+                        for (k, v) in cor.into_iter().enumerate() {
+                            let _ = ph2d_field_ecs::set_param(world, alvo, canais[k], v);
+                        }
                     }
                 }
             }

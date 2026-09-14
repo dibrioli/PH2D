@@ -131,6 +131,7 @@ fn boot() -> Option<Smoke> {
         view_menu: None,
         view_menu_rect: None,
         materials: None,
+        lights: std::sync::Arc::default(),
         has_live_sculpt: false,
         matcap: Arc::new(load_matcap()),
         // ⭐ **Um viewport, que é o que o módulo sempre teve** — a divisão entra depois, e este

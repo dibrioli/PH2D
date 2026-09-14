@@ -334,7 +334,11 @@ fn the_modeller_opens_in_a_view_the_softbox_does_not_blow_out() {
     };
     let chapado =
         |sky: &(dyn ph2d_material::Environment + Sync), look: ph2d_view_transform::Look| -> usize {
-            let light = Lighting { lamps: &lamps, sky };
+            let light = Lighting {
+                lamps: &lamps,
+                points: &[],
+                sky,
+            };
             shade_render(&g, &cam, &surface, &light, look, BG)
                 .as_chunks::<4>()
                 .0

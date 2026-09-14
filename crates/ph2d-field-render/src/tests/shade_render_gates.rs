@@ -62,6 +62,7 @@ fn every_part_pixel_is_the_material_law_under_the_look() {
     let sky = Sky([0.2, 0.25, 0.3]);
     let light = Lighting {
         lamps: &lamps,
+        points: &[],
         sky: &sky,
     };
     for look in [

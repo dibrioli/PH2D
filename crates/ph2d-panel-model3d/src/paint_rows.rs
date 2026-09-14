@@ -59,8 +59,13 @@ pub(crate) fn paint_row(
     // uma **amostra**, apagada. Depois do teste de `live` ela caía no [`paint_fact`] e o artista via
     // um **número** (`0,8`) onde estava uma cor — *a linha deixava de saltar de sítio e passava a
     // saltar de ESPÉCIE, que é a mesma queixa noutra escala.*
-    if let (Some(rgb), ph2d_field::Param::Material(campo)) = (row.swatch, row.param) {
-        return paint_swatch(ctx, row, campo, rgb, x, w, y);
+    //
+    // ⚠️⚠️ **A condição era `Param::Material(campo)` e passou a ser a AMOSTRA** (14/09, a luz): com
+    // o filtro pela família, uma linha com amostra de qualquer outra — a cor de uma lâmpada — caía
+    // no slider e pintava o canal **vermelho** como um número. *Quem decide que isto é uma cor é o
+    // `swatch`, e perguntar duas vezes deixa as duas respostas divergirem.*
+    if let Some(rgb) = row.swatch {
+        return paint_swatch(ctx, row, rgb, x, w, y);
     }
     // ⭐ **Uma linha que não pode agir não é pintada como se pudesse** — ver [`ParamRow::live`]. Ela
     // sai daqui como facto e **não regista nada** no índice de acerto, então não há slider a agarrar
@@ -277,15 +282,7 @@ fn paint_choice(ctx: &mut PaintCtx, row: &ParamRow, slot: u32, x: f32, w: f32, y
 /// ⚠️ **E o «mudou?» pergunta-se em sRGB8** — ver [`ParamRow::swatch`]. Sem essa comparação a
 /// função pediria uma edição **por quadro** enquanto o selector estivesse aberto: um passo de undo
 /// por quadro, sobre uma cor que ninguém mexeu.
-fn paint_swatch(
-    ctx: &mut PaintCtx,
-    row: &ParamRow,
-    campo: u8,
-    rgb: [u8; 3],
-    x: f32,
-    w: f32,
-    y: f32,
-) -> f32 {
+fn paint_swatch(ctx: &mut PaintCtx, row: &ParamRow, rgb: [u8; 3], x: f32, w: f32, y: f32) -> f32 {
     use ph2d_editor_core::widget::{ColorSwatch, SwatchSize, paint_color_swatch};
 
     let theme = ctx.host.theme();
@@ -315,6 +312,16 @@ fn paint_swatch(
     // ⛔⛔ **O id vem da ENTIDADE, e é o único deste painel que vem** — ver
     // [`crate::ids::model3d_color_swatch`]. Com o id da posição, escolher outra forma com o
     // selector aberto escreveria a cor da anterior na nova, em silêncio.
+    //
+    // ⚠️ **O `campo` é o índice DENTRO da família**, e as duas famílias que abrem cor — o material e
+    // a luz — nunca coexistem na mesma entidade (o `params_of` responde uma OU a outra), logo o par
+    // `(entidade, índice)` continua a ser único. *Se um dia uma entidade tiver as duas, este id tem
+    // de crescer — e o sintoma seria o selector aberto numa a responder pela outra.*
+    let campo = match row.param {
+        ph2d_field::Param::Material(k) | ph2d_field::Param::Light(k) => k,
+        // Uma amostra sobre um param sem índice não existe hoje; `0` é a resposta estável.
+        _ => 0,
+    };
     let id = crate::ids::model3d_color_swatch(row.entity, campo);
     // ⭐⭐⭐ **UMA AMOSTRA TRAVADA NÃO ABRE O SELECTOR, e nem sequer se REGISTA** — ordem do Enio
     // (14/09): ela fica **visível e inactiva**.
@@ -337,7 +344,7 @@ fn paint_swatch(
                 if nova != rgb {
                     crate::state::push_intent(crate::state::ModelIntent::SetColor {
                         entity: row.entity,
-                        field: campo,
+                        anchor: row.param,
                         srgb: nova,
                     });
                 }

@@ -368,10 +368,28 @@ fn a_duplicate_carries_every_optional_component_of_a_node() {
     crate::register_field_components(&mut reg);
     assert_eq!(
         reg.len(),
-        7,
+        8,
         "o módulo passou a ter outro componente — ensine-o ao `copy_optional` (a cópia da \
          Hierarquia) e acrescente-o à fixture abaixo, senão duplicar um nó perde-o em silêncio"
     );
+    // ⚠️⚠️ **O oitavo é o [`crate::FieldLight`], e ele NÃO está no `copy_optional` — de propósito.**
+    // O `copy_subtree` copia entidades com [`FieldNode`], e uma luz não tem nenhum: ela é uma raiz
+    // ao lado da peça. Pô-lo naquela lista seria escrever código que nunca corre.
+    //
+    // ⛔ **E uma exclusão declarada em prosa não vale nada** — é a lição que este gate inteiro
+    // existe para registar. ⇒ o que se testa é a CONSEQUÊNCIA: duplicar uma luz devolve `None`,
+    // porque ela não tem pai. *Isto é uma lacuna nomeada desta fatia, não um acidente* — quem a
+    // fechar vê este assert vermelho com o porquê ao lado.
+    {
+        let mut w = bevy_ecs::world::World::new();
+        let luz = crate::add_light(&mut w, [1.0, 2.0, 3.0], crate::FieldLight::default());
+        assert!(w.get::<crate::FieldLight>(luz).is_some());
+        assert!(
+            crate::duplicate(&mut w, luz, [0.1; 3]).is_none(),
+            "duplicar uma luz passou a devolver algo — o `copy_subtree` só copia nós, então o que \
+             ele devolveu não é uma luz"
+        );
+    }
 
     let mut world = bevy_ecs::world::World::new();
     // ⚠️ Uma peça com **grupo**: `duplicate` recusa a raiz (ela *é* a peça), então a fixture só prova

@@ -29,6 +29,6 @@ pub use pose::{
     rotate_world, rotate_world_about, scale_about, scale_by, top_level, translate_world,
 };
 pub use tree::{
-    add_leaf, add_sampled, can_detach, can_wrap, duplicate, promote_leaf_hosts, remove, set_op,
-    set_radius, wrap_in_op,
+    add_leaf, add_light, add_sampled, can_detach, can_wrap, duplicate, promote_leaf_hosts, remove,
+    set_op, set_radius, wrap_in_op,
 };

@@ -48,7 +48,11 @@ fn measure_which_softbox_the_rulers_choose() {
                 all: &so,
                 owners: None,
             };
-            let light = Lighting { lamps: &lamps, sky };
+            let light = Lighting {
+                lamps: &lamps,
+                points: &[],
+                sky,
+            };
             shade_render(&g, &cam, &surface, &light, look, BG)
         };
     // ⛔⛔ **O OLHAR DO PRODUTO É O `OPENING_LOOK`, NUNCA O `Look::default()`.** O segundo é a
@@ -111,7 +115,11 @@ fn measure_which_softbox_the_rulers_choose() {
             all: &so,
             owners: None,
         };
-        let light = Lighting { lamps: &lamps, sky };
+        let light = Lighting {
+            lamps: &lamps,
+            points: &[],
+            sky,
+        };
         let look = Look {
             exposure_stops: stops,
             view,
@@ -326,7 +334,11 @@ fn measure_what_the_box_costs_per_frame() {
     // A tabela do produto construída FORA do relógio — ela é paga uma vez, e tem sonda própria.
     let _ = Studio::of_the_product().radiance([0.0, 1.0, 0.0], 0.09);
     let med = |sky: &(dyn ph2d_material::Environment + Sync)| -> (f64, f64) {
-        let light = Lighting { lamps: &lamps, sky };
+        let light = Lighting {
+            lamps: &lamps,
+            points: &[],
+            sky,
+        };
         let _ = shade_render(&g, &cam, &surface, &light, Look::default(), BG);
         let mut v: Vec<f64> = (0..7)
             .map(|_| {

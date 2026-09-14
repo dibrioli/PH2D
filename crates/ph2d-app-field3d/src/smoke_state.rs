@@ -403,6 +403,14 @@ pub struct Smoke {
     /// ⚠️ **`Arc` porque ela atravessa a fronteira da thread** do traçado, como a cache de fitas e o
     /// registo de esculturas: o que viaja é o ponteiro.
     pub materials: Option<std::sync::Arc<crate::materials::Table>>,
+    /// ⭐⭐⭐ **AS LUZES DA CENA**, já resolvidas em mundo (`docs/Render3d/05`, ordem do dono 14/09).
+    ///
+    /// ⚠️ **CACHE do quadro, e não vista**, pela razão exacta da [`Self::materials`]: ela é DERIVADA
+    /// do mundo (as entidades com `FieldLight` e a pose delas). Fechar o painel e reabrir refá-la;
+    /// guardá-la seria carregar uma cópia de uma coisa que a cena já tem.
+    ///
+    /// ⚠️ **`Arc` porque ela atravessa a fronteira da thread** do traçado — o que viaja é o ponteiro.
+    pub lights: std::sync::Arc<Vec<ph2d_field_render::PointLamp>>,
     /// ⭐ **Há uma escultura VIVA na cena?** — publicado pelo shell, que é quem tem o `AppGfx`.
     ///
     /// ⚠️ Atravessa o quadro em vez de ser perguntado aqui, pela razão do `gizmo`: este arquivo não

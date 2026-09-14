@@ -584,7 +584,13 @@ fn the_selectors_never_answer_for_each_other() {
             // TRILHO, que já existiam. Os gates deles vivem nos testes de gesto acima.
             // ⚠️ **Sem `slot`, e essa é a diferença** (W100): esta fileira deixou de escolher uma
             // forma e passou a ABRIR a paleta, onde a escolha acontece.
-            ModelIntent::OpenShapes,
+            //
+            // ⚠️⚠️ **E o SLOT voltou a significar alguma coisa em 14/09**: a fileira ganhou um
+            // segundo chip — a LUZ —, e este gate clica no slot `1` de cada família. ⇒ o que ele
+            // espera aqui é o `AddLight`, e a **mudança é a notícia**: se esta linha voltar a
+            // `OpenShapes`, o chip da luz passou a abrir a paleta de formas, que é exactamente o
+            // defeito que o `match` por slot existe para impedir.
+            ModelIntent::AddLight,
             ModelIntent::ApplyOp { slot: 1 },
             ModelIntent::ToggleMod { slot: 1 },
             ModelIntent::Export { slot: 1 },
@@ -1772,7 +1778,7 @@ fn what_the_picker_writes_becomes_one_edit_and_only_when_it_changed() {
             // ⚠️ **`1` é a ÂNCORA da cor BASE** — a fixtura publica só ela (a posição `0` é o
             // `base_weight`). As outras três âncoras têm gates próprios no `emission_tests`, no
             // `coat_tests` e no `base_specular_tests`; o que este mede é a costura.
-            field: 1,
+            anchor: ph2d_field::Param::Material(1),
             srgb: ESCOLHIDA,
         }],
         "o que o selector escreveu não chegou ao documento — a linha continua a semear a amostra \

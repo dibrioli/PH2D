@@ -261,6 +261,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.model3d.section.modifier" => "Modifier",
         // ⭐⭐⭐ **O MATERIAL** (`docs/Render3d/05`) — o que a forma mede à LUZ.
         "panel.model3d.section.material" => "Material",
+        "panel.model3d.section.light" => "Light",
+        "panel.model3d.add.light" => "Light",
         // ⚠️ "From"/"To" e não "Lower"/"Upper": a banda é uma FAIXA ao longo do eixo, e o artista
         // lê-a como um intervalo. (O Blender diz "Limits", o 3ds Max "Upper/Lower Limit" — os dois
         // nomeiam a cerca; aqui nomeia-se o intervalo, que é o que a linha mostra.)
@@ -555,6 +557,13 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // ⚠️ **A linha é a cor inteira** (a amostra), e as três dos canais só existem para a porta
         // de escrita — elas nunca são pintadas, pela mesma dobra da cor base.
         "field.dim.emission_color" => "Emission Color",
+        // ⭐⭐⭐ A LUZ como objecto 3D (ordem do dono, 14/09) — `docs/Render3d/05`.
+        "field.dim.light_intensity" => "Intensity",
+        "field.dim.light_color" => "Color",
+        // ⚠️ Os dois canais seguidores têm chave porque a tabela os enumera; a linha deles é
+        // **dobrada** na amostra e nunca é pintada (ver `scene_panel::param_rows`).
+        "field.dim.light_color_g" => "Color G",
+        "field.dim.light_color_b" => "Color B",
         "field.dim.emission_r" => "Emission Color R",
         "field.dim.emission_g" => "Emission Color G",
         "field.dim.emission_b" => "Emission Color B",

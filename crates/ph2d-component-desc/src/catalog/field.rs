@@ -1,4 +1,4 @@
-//! **A modelagem 3D por campo implícito** — os 6 de `ph2d-field-ecs` ([ADR-0161](../../../../docs/architecture/decisions/0161-3d-modeling-is-an-implicit-field-tree-and-what-the-artist-sees-is-the-traced-field.md)).
+//! **A modelagem 3D por campo implícito** — os 7 de `ph2d-field-ecs` ([ADR-0161](../../../../docs/architecture/decisions/0161-3d-modeling-is-an-implicit-field-tree-and-what-the-artist-sees-is-the-traced-field.md)).
 //!
 //! ⚠️ **Quase tudo aqui é máquina, e a razão é a arquitetura do módulo:** *a hierarquia da
 //! cena É o documento* — o `FieldDoc` é **cozido** dela a cada quadro. Quem põe um `FieldNode`
@@ -22,6 +22,12 @@ pub const DESCS: &[D] = &[
     // materializa é o arrasto de uma linha do painel `MODEL`, e a AUSÊNCIA dele quer dizer *«o
     // material de omissão»*. Um `+` do Inspector que o anexasse escreveria um material que ninguém
     // escolheu — e, pior, num objecto que pode nem ser uma folha.
+    // ⭐⭐⭐ **A LUZ como objecto 3D** (ordem do dono, 2026-09-14). ⚠️ **Máquina, como os irmãos, e
+    // por uma razão própria:** este componente é o que FAZ de uma entidade uma lâmpada. Um `+` do
+    // Inspector que o anexasse a uma sprite, a um caminho vectorial ou a uma forma transformaria
+    // essa coisa numa luz — e o gesto que cria uma é o chip *Light* do painel `MODEL`, que também
+    // lhe dá a pose e o nome.
+    D::machinery("ph2d::field::FieldLight", "Field Light", C::Model3D),
     D::machinery("ph2d::field::FieldMaterial", "Field Material", C::Model3D),
     D::machinery("ph2d::field::FieldMods", "Field Modifiers", C::Model3D),
     D::machinery("ph2d::field::FieldNode", "Field Node", C::Model3D),

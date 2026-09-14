@@ -105,6 +105,8 @@ pub fn ecs_bridge(
     // ⭐⭐⭐ **E A TABELA DE MATERIAIS segue a peça** (`docs/Render3d/05`) — depois do cozimento,
     // porque ela é derivada dele, e fora do fecho acima, porque ela precisa do mundo.
     crate::materials::sync(sim, mudou_o_doc);
+    // ⭐⭐⭐ **E AS LUZES também** (ordem do dono, 14/09) — mesma altura, mesma razão.
+    crate::lights::sync(sim);
     picked.or(born)
 }
 
@@ -300,6 +302,20 @@ pub fn sync_scene_and_birth(
                 return (None, None);
             };
             let root = ph2d_field_ecs::spawn_doc(world, doc, PART_NAME);
+            // ⭐⭐⭐ **E UMA LUZ NASCE COM ELA** (ordem do dono, 14/09: *«a luz deve virar objeto 3d
+            // como nos app 3d»*) — como num aplicativo 3D, uma cena nova já tem uma.
+            //
+            // ⚠️ **Sem isto o modo Render perdia a lâmpada de estúdio e não ganhava nenhuma:** o
+            // rig ancorado no ecrã deixou de acender o Render nesta wave, e uma cena sem luz sai
+            // acesa **só pelo céu**. *Uma feature que exige um gesto antes de a cena voltar a
+            // parecer-se com ela própria não é uma feature: é uma regressão com um botão ao lado.*
+            //
+            // ⚠️ **Acima e à esquerda, e não na origem** — é a direcção que o `Light::KEY` do rig
+            // sempre teve (`230°` de azimute, `30°` de elevação), lida dali e convertida uma vez.
+            // *A peça abre com a luz que ela tinha, num sítio que o artista pode agarrar.*
+            let cam = crate::smoke::with_smoke(|s| s.vp().cam).unwrap_or_default();
+            let (onde, lampada) = crate::lights::opening_light(&cam);
+            ph2d_field_ecs::add_light(world, onde, lampada);
             // ⭐⭐⭐ **A SEMENTE DECLARA-SE AUTORADA** (2026-09-04) — a mesma lei da forma da
             // paleta e da escultura importada (W115): ela nasce num quadro **sem evento**, e sem
             // esta linha fundia-se no PRIMEIRO passo do artista. Medido pelo pill: `nos=0→4`

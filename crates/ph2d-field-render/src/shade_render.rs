@@ -28,10 +28,83 @@ pub struct Lamp {
     pub radiance: [f32; 3],
 }
 
-/// A luz de uma cena: as lâmpadas e o céu.
+/// ⭐⭐⭐ **UMA LUZ QUE É UM OBJECTO DA CENA** — um ponto no MUNDO (ordem do dono, 2026-09-14).
+///
+/// # ⚠️ Porque ela é um tipo À PARTE da [`Lamp`], e não uma variante dela
+///
+/// As duas respondem a perguntas diferentes **por pixel**: a [`Lamp`] é ancorada no ECRÃ e a
+/// direcção dela é a mesma em toda a imagem (é o estúdio — ela não se mexe quando a câmera roda);
+/// esta é ancorada no MUNDO, e a direcção e a distância mudam de pixel para pixel. ⇒ um `enum`
+/// poria um ramo dentro do laço mais quente do sombreamento para distinguir duas listas que o
+/// chamador já tem separadas.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct PointLamp {
+    /// Onde ela está, no **MUNDO** — a pose da entidade, propagada.
+    pub world: [f32; 3],
+    /// A radiância que ela entrega a **UMA unidade** de distância.
+    ///
+    /// ⚠️ A queda é `1/r²`, logo este é o numerador. A unidade é a do rig da casa (`cor ×
+    /// intensidade × π`), medida a uma unidade — ver o doc do `ph2d_field_ecs::FieldLight`.
+    pub radiance_at_one: [f32; 3],
+}
+
+/// **O PISO DA DISTÂNCIA** de uma [`PointLamp`], em unidades de mundo — a remoção de uma
+/// singularidade.
+///
+/// Um ponto matemático diverge quando a superfície o alcança, e `1/0` entra no sombreamento como
+/// `inf`. Abaixo deste piso a peça já está saturada **há muito** — com força `1` e o material de
+/// omissão uma difusa satura a `r ≈ 0,9`, isto é a `18×` este raio —, logo o que ele corta é a
+/// divisão por zero e mais nada. *É o que uma luz ESFÉRICA de raio `0,05` faria.*
+///
+/// # ⚠️⚠️ O VALOR dele não é observável, e a lei que o gate prende é a OUTRA metade
+///
+/// Uma prova de mutação pô-lo a `0` e **sobreviveu**: o byte satura, logo `1/0,0025` e `1/0` pintam
+/// os mesmos `255`. *O que era observável era o defeito ao lado dele* — com a luz exactamente sobre
+/// o ponto, `d` é o vector **ZERO**, a direcção normalizada sai `[0,0,0]`, o `N·L` dá `0` e o pixel
+/// fica **PRETO**. ⇒ abaixo do piso a direcção passa a ser a **NORMAL**, e é essa mutação que sangra
+/// (`a_light_falls_off_with_the_square_of_the_distance`).
+///
+/// *Um piso que protege a aritmética e deixa a geometria degenerada resolve metade de um defeito, e
+/// a metade que fica tem o mesmo sintoma.*
+pub const POINT_LAMP_MIN_DISTANCE: f32 = 0.05;
+
+/// A luz de uma cena: as lâmpadas de estúdio, as luzes-objecto e o céu.
 pub struct Lighting<'a> {
+    /// Ancoradas no ECRÃ — o estúdio.
     pub lamps: &'a [Lamp],
+    /// ⭐ Ancoradas no MUNDO — os objectos da cena. `&[]` é o caminho de sempre, ao bit.
+    pub points: &'a [PointLamp],
     pub sky: &'a (dyn Environment + Sync),
+}
+
+/// A base de VISTA — o que converte uma direcção de MUNDO no referencial em que o G-buffer guarda a
+/// normal.
+///
+/// ⚠️ Ela resolve-se **uma vez por quadro** e não por pixel: `cam.basis()` é a mesma para a imagem
+/// inteira. *Uma base reconstruída dentro do laço corre onde o laço corre.*
+#[derive(Clone, Copy, Debug)]
+struct ViewBasis {
+    right: [f32; 3],
+    up: [f32; 3],
+    toward_eye: [f32; 3],
+}
+
+impl ViewBasis {
+    fn of(cam: &Orbit) -> Self {
+        let (right, up, toward_eye) = cam.basis();
+        Self {
+            right,
+            up,
+            toward_eye,
+        }
+    }
+
+    /// ⚠️ **O sinal é o do [`view_direction`]**, e não uma segunda convenção: lá a direcção do raio
+    /// é negada para apontar ao olho, aqui a direcção já aponta para a luz.
+    fn world_to_view(self, w: [f32; 3]) -> [f32; 3] {
+        let dot = |a: [f32; 3], b: [f32; 3]| a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+        [dot(w, self.right), dot(w, self.up), dot(w, self.toward_eye)]
+    }
 }
 
 /// ⭐⭐⭐ **OS MATERIAIS DA PEÇA, e de quem é cada pixel** (`docs/Render3d/05`).
@@ -111,17 +184,38 @@ pub(crate) fn view_direction(cam: &Orbit, screen: &Screen, x: usize, y: usize) -
 }
 
 /// A luz que a superfície devolve pela direcção `v`, já com o olhar — em linear de ECRÃ.
-fn radiance(
-    surface: &Surface,
-    light: &Lighting<'_>,
-    look: Look,
-    n: [f32; 3],
-    v: [f32; 3],
-) -> [f32; 3] {
+fn radiance(surface: &Surface, light: &Lighting<'_>, look: Look, geom: PixelGeom) -> [f32; 3] {
+    let PixelGeom { p, n, v, basis } = geom;
     let add = |a: [f32; 3], b: [f32; 3]| [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
     let mut rgb = surface.indirect(n, v, light.sky);
     for lamp in light.lamps {
         rgb = add(rgb, surface.direct(n, v, lamp.to_light, lamp.radiance));
+    }
+    // ⭐⭐⭐ **AS LUZES-OBJECTO** — a direcção e a distância saem do PONTO deste pixel.
+    for lamp in light.points {
+        let d = [
+            lamp.world[0] - p[0],
+            lamp.world[1] - p[1],
+            lamp.world[2] - p[2],
+        ];
+        let cru = d[0] * d[0] + d[1] * d[1] + d[2] * d[2];
+        let piso = POINT_LAMP_MIN_DISTANCE * POINT_LAMP_MIN_DISTANCE;
+        // ⚠️⚠️ **O piso protege DUAS grandezas, e a primeira redacção só protegia uma.** Ela coava
+        // o `r²` e normalizava o vector **cru**: com a luz exactamente sobre o ponto, `d` é o vector
+        // ZERO, a direcção sai `[0,0,0]`, o `N·L` dá `0` e o pixel fica **PRETO** — o mesmo sintoma
+        // que a divisão por zero, por outro caminho. *Uma mutação que punha o piso a `0` sobreviveu
+        // ao gate porque o produto já estava a falhar do outro lado.*
+        //
+        // ⇒ abaixo do piso a direcção é a **NORMAL**: a luz está em cima da superfície, logo ela
+        // ilumina-a de frente. É o limite certo, e é finito.
+        let to_light = if cru <= piso {
+            n
+        } else {
+            let inv = cru.sqrt().recip();
+            basis.world_to_view([d[0] * inv, d[1] * inv, d[2] * inv])
+        };
+        let chega = lamp.radiance_at_one.map(|c| c / cru.max(piso));
+        rgb = add(rgb, surface.direct(n, v, to_light, chega));
     }
     look.apply(add(rgb, surface.emission(n, v)))
 }
@@ -149,6 +243,8 @@ pub fn shade_render(
         return out;
     }
     let screen = Screen::new(g.width, g.height, cam.half_extent);
+    // ⭐ **Uma vez por quadro** — ver [`ViewBasis`].
+    let basis = ViewBasis::of(cam);
     // ⭐ **A largura da transição entre dois materiais, em MUNDO** — a única coisa que o
     // [`Surfaces::mix_of`] não pode adivinhar. Ver [`ph2d_field_eval::owners::Owners::mix_at`].
     let pixel_world = BOUNDARY_PIXELS * 2.0 * cam.half_extent / w.min(h).max(1) as f32;
@@ -168,12 +264,15 @@ pub fn shade_render(
                 let v = view_direction(cam, &screen, x, y);
                 let c = mixed_radiance(
                     surfaces,
-                    g.point[i],
+                    PixelGeom {
+                        p: g.point[i],
+                        n: g.normal[i],
+                        v,
+                        basis,
+                    },
                     pixel_world,
                     light,
                     look,
-                    g.normal[i],
-                    v,
                 );
                 write(px, [c[0], c[1], c[2], 1.0]);
             } else {
@@ -204,12 +303,15 @@ pub fn shade_render(
             let c = if e.hit[k] {
                 let rgb = mixed_radiance(
                     surfaces,
-                    g.point[i],
+                    PixelGeom {
+                        p: g.point[i],
+                        n: e.normal[k],
+                        v,
+                        basis,
+                    },
                     pixel_world,
                     light,
                     look,
-                    e.normal[k],
-                    v,
                 );
                 [rgb[0], rgb[1], rgb[2], 1.0]
             } else {
@@ -270,20 +372,34 @@ const BOUNDARY_PIXELS: f32 = 2.0;
 ///
 /// ⛔ **E ela só paga o dobro onde há fronteira** (`t > 0`): fora dela, e numa peça de um material
 /// só, é uma chamada e mais nada.
+/// **A GEOMETRIA de um pixel** — o que o G-buffer sabe dele, mais a base que o liga ao mundo.
+///
+/// ⚠️ Ela nasceu em 14/09 porque a luz-objecto trouxe o **ponto** e a **base** para dentro do
+/// sombreamento, e as duas funções passaram a levar oito argumentos. *Quatro grandezas que viajam
+/// sempre juntas são uma coisa só.*
+#[derive(Clone, Copy)]
+struct PixelGeom {
+    /// Onde a superfície está, no MUNDO.
+    p: [f32; 3],
+    /// A normal, em espaço de VISTA.
+    n: [f32; 3],
+    /// A direcção para o observador, em espaço de VISTA.
+    v: [f32; 3],
+    basis: ViewBasis,
+}
+
 fn mixed_radiance(
     surfaces: &Surfaces<'_>,
-    p: [f32; 3],
+    geom: PixelGeom,
     pixel_world: f32,
     light: &Lighting<'_>,
     look: Look,
-    n: [f32; 3],
-    v: [f32; 3],
 ) -> [f32; 3] {
-    let (a, b, t) = surfaces.mix_of(p, pixel_world);
-    let ca = radiance(a, light, look, n, v);
+    let (a, b, t) = surfaces.mix_of(geom.p, pixel_world);
+    let ca = radiance(a, light, look, geom);
     if t <= 0.0 {
         return ca;
     }
-    let cb = radiance(b, light, look, n, v);
+    let cb = radiance(b, light, look, geom);
     [0, 1, 2].map(|i| ca[i] + (cb[i] - ca[i]) * t)
 }

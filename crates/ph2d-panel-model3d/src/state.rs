@@ -353,13 +353,18 @@ pub enum ModelIntent {
     /// Esse sítio é o shell, que já é quem sabe em que três números do nó a cor mora; o painel
     /// entrega o que o artista apontou e não faz colorimetria nenhuma.
     ///
-    /// ⚠️ **`field` é a ÂNCORA — o índice do primeiro canal** (`0` a cor base, `6` a da emissão desde
-    /// o §20 do `docs/Render3d/05`), e os outros dois são `field + 1` e `field + 2`. ⛔ Ele **não** é
-    /// um enum de «que cor»: a lista de cores de um material é do documento, e um segundo vocabulário
-    /// aqui envelheceria na primeira cor nova.
+    /// ⚠️ **`anchor` é a ÂNCORA — o PARAM do primeiro canal**, e os outros dois saem dele pela porta
+    /// [`ph2d_field::Param::colour_channels`]. ⛔ Ele **não** é um enum de «que cor»: a lista de
+    /// cores de um material é do documento, e um segundo vocabulário aqui envelheceria na primeira
+    /// cor nova.
+    ///
+    /// ⚠️⚠️ **Ele era um `u8` e passou a ser um `Param` quando a LUZ chegou** (14/09): com um índice
+    /// cru, a cor de uma lâmpada (`Light(1)`) e a cor base de um material (`Material(1)`) viajam
+    /// como o **mesmo** `1`, e quem drena escolhe a família por conta própria. *Um índice sem
+    /// família é um sujeito por adivinhar, e a adivinha é silenciosa.*
     SetColor {
         entity: u64,
-        field: u8,
+        anchor: ph2d_field::Param,
         srgb: [u8; 3],
     },
     /// Trocar o verbo do gizmo, pela **posição** no seletor.
@@ -376,6 +381,10 @@ pub enum ModelIntent {
     /// do `+` do Inspector), que tem busca, categorias e rolagem — e o pick volta pelo canal dela,
     /// não por aqui. *Um painel de dock não é sítio para um catálogo de 60 itens.*
     OpenShapes,
+    /// ⭐⭐⭐ **ACENDER UMA LUZ** (ordem do dono, 14/09: *«a luz deve virar objeto 3d como nos app
+    /// 3d»*) — e repare que ele **não traz posição nenhuma**: quem sabe onde a câmera olha é o lado
+    /// de lá, e uma lâmpada que nasce fora do enquadramento é uma lâmpada por procurar.
+    AddLight,
     /// Aplicar uma operação booleana ao que está selecionado, pela **posição** no seletor.
     ApplyOp { slot: usize },
     /// ⭐⭐ **Escrever o verbo da forma escolhida**, pela **posição** no seletor — e a posição `0` é

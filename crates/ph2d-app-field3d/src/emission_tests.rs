@@ -64,6 +64,7 @@ fn measure_what_a_glow_paints_and_what_the_call_costs() {
     let lamps = lamps(&ph2d_light::LightRig::default());
     let light = Lighting {
         lamps: &lamps,
+        points: &[],
         sky: &StudioSky,
     };
     let olhar = crate::shading::OPENING_LOOK;
@@ -361,7 +362,7 @@ fn a_glow_colour_reaches_the_document_without_touching_the_base() {
     let _ = super::colour_row_tests::rows_of(&mut sim, folha);
     ph2d_panel_model3d::state::push_intent_for_test(ph2d_panel_model3d::ModelIntent::SetColor {
         entity: folha.to_bits(),
-        field: 20,
+        anchor: ph2d_field::Param::Material(20),
         srgb: [255, 0, 128],
     });
     let _ = super::colour_row_tests::rows_of(&mut sim, folha);

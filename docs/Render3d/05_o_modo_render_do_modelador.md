@@ -657,3 +657,65 @@ fita por folha. *Uma régua que lê zero nos dois lados é verde e não afirma n
 
 ⚠️ **Ele corre por `nextest`** — o §9 deste doc mede o que acontece a um contador global sob `cargo
 test`, em que as threads se vêem umas às outras.
+
+
+---
+
+## §15 — ⭐⭐⭐ O BRANCO CHAPADO: a pergunta do dono tinha uma METADE POR MEDIR (2026-09-14)
+
+O §8 leva esta desde 13/09: *«a peça sai com `8,4 %` em BRANCO CHAPADO no olhar de omissão»*, com
+duas saídas escritas — *a vista passa a `Neutral`* ou *a exposição desce um stop*. ⚠️ **As duas notas
+descreviam só o que se GANHA.** O que se paga não tinha sido medido.
+
+### §15.1 — ⛔ Primeiro, uma hipótese REFUTADA por leitura
+
+O §8 nomeia, logo abaixo, que *«as TRÊS lâmpadas de preenchimento do rig são IDÊNTICAS»* — o que
+sugeria que o estouro fosse o rig a somar três vezes a mesma luz. **Não é:** o
+[`Light::FILL`](../../crates/ph2d-light/src/lib.rs) tem **`on: false`**. O rig de omissão é **uma
+lâmpada**, e a nota das três continua verdadeira e continua a ser sobre o que acontece a quem as
+ACENDE. *Uma hipótese barata, refutada a ler o ficheiro — antes de medir o que quer que seja.*
+
+### §15.2 — ⚠️ A metade que faltava: o olhar governa TAMBÉM o matcap
+
+O `Look` é **da cena** — e o doc do [`shade_with`](../../crates/ph2d-field-render/src/shade.rs)
+escreve-o: *«o olhar vale também para o matcap, como no Blender»*. ⇒ **trocar a omissão não afina o
+modo novo: repinta o que o modelador sempre mostrou.**
+
+⚠️ E a razão de a omissão ser `Standard` está escrita no `ph2d-view-transform`: *«com exposição `0` e
+luz dentro de `0..=1` ela devolve a entrada»* — isto é, **ela foi escolhida pelo matcap**, que é uma
+fotografia em `0..=1`.
+
+### §15.3 — A medição, no asset da casa (`749²`, `561 001` texels)
+
+Sonda [`measure_what_neutral_would_do_to_the_matcap`](../../crates/ph2d-app-field3d/src/render_light_tests.rs):
+
+| | texels que mudam | `|Δ|` p50 | p95 | pior |
+|---|---:|---:|---:|---:|
+| **`Neutral`** | `99,9 %` | **`13`** bytes | `29` | `−31` |
+| **`−1` stop** | `100,0 %` | **`46`** bytes | `55` | `−56` |
+
+⭐⭐ **E o achado que inverte a intuição: `0,0 %` dos texels estão acima do joelho (`0,76`) e ainda
+assim `99,9 %` mudam.** A *Khronos PBR Neutral* **não é a identidade em lado nenhum** — ela subtrai um
+offset a **todas** as cores antes de comprimir (a dessaturação do algoritmo), e não só às que passam
+do joelho. ⚠️ *A leitura «abaixo do joelho ela não toca» é falsa, e era a premissa com que esta linha
+teria escolhido.*
+
+⇒ **o `−1` stop é `3,5×` pior para o matcap** (`46` contra `13` bytes de desvio típico) e ainda deixa
+`0,2 %` a cortar. Entre as duas saídas escritas, a `Neutral` é a barata — e a nota do §8, que as dava
+como equivalentes, estava a esconder um factor de três e meio.
+
+### §15.4 — ⏳ E há uma TERCEIRA saída que o §8 não listava
+
+**Não mexer na omissão.** O estouro é do modo **Render**, e o modo de omissão é o **Matcap** — onde a
+`Standard` é a identidade por construção. O pulldown já oferece as duas vistas e os cinco stops.
+
+| saída | o modo **Render** | o **Matcap** de hoje |
+|---|---|---|
+| **não mexer** | corta `8,4 %` | **intocado, ao bit** |
+| **`Neutral`** | não corta em exposição nenhuma | muda `99,9 %` dos texels, `13` bytes típicos |
+| **`−1` stop** | corta `0,2 %` | muda `100 %`, `46` bytes típicos |
+
+⭐ **O precedente da indústria é a `Neutral`:** o Blender trocou a omissão de `Standard` para uma
+vista com ombro (Filmic, depois AgX) exactamente por isto, e aplica a *Color Management* dele também
+ao modo sólido. ⛔ **Mas é decisão do DONO**, porque a coluna da direita é o ecrã que ele já aprovou
+dezenas de vezes.

@@ -232,3 +232,115 @@ fn measure_what_the_render_mode_costs_and_paints() {
         );
     }
 }
+
+/// ⏱️ **SONDA — o que a vista `Neutral` faria ao MATCAP**, que é a metade da pergunta do dono que
+/// ninguém tinha medido (`docs/Render3d/05` §8).
+///
+/// # ⚠️ A pergunta, e porque ela NÃO é só sobre o modo Render
+///
+/// A peça sai com `8,4 %` em branco chapado no olhar de omissão, e as duas saídas escritas são *a
+/// vista passa a `Neutral`* ou *a exposição desce um stop*. ⛔ **Mas o olhar é da CENA, e o matcap
+/// também passa por ele** (o doc do `shade_with` escreve-o, e é a *Color Management* do Blender):
+/// trocar a omissão muda **o que o modelador sempre mostrou**, não só o modo novo.
+///
+/// ⚠️ E a razão de a omissão ser `Standard` está escrita no `ph2d-view-transform`: *«com exposição
+/// `0` e luz dentro de `0..=1` ela devolve a entrada»* — isto é, **ela foi escolhida para o matcap**,
+/// que é uma fotografia em `0..=1`. A `Neutral` dobra tudo acima do joelho (`0,76`), logo o preço da
+/// troca mora exactamente nos texels claros.
+///
+/// ⇒ esta sonda mede esse preço no **asset da casa**, texel a texel.
+#[test]
+#[ignore = "sonda de medição: imprime uma tabela, não afirma nada"]
+fn measure_what_neutral_would_do_to_the_matcap() {
+    use ph2d_view_transform::{Look, ViewTransform};
+
+    let side = ph2d_mesh_render::matcap::MATCAPS[0].side as usize;
+    let bytes = ph2d_mesh_render::matcap::decode(0);
+    let padrao = Look::default();
+    let neutra = Look {
+        exposure_stops: 0.0,
+        view: ViewTransform::Neutral,
+    };
+    let escura = Look {
+        exposure_stops: -1.0,
+        view: ViewTransform::Standard,
+    };
+
+    let mut deltas: std::collections::BTreeMap<i32, Vec<i32>> = std::collections::BTreeMap::new();
+    let mut n = 0usize;
+    let mut acima_do_joelho = 0usize;
+    let mut cortados = 0usize;
+    let (mut mudados_neutra, mut pior_neutra) = (0usize, 0i32);
+    let (mut mudados_escura, mut pior_escura) = (0usize, 0i32);
+    for texel in bytes.as_chunks::<8>().0.iter() {
+        let mut lin = [0.0f32; 3];
+        for (c, v) in lin.iter_mut().enumerate() {
+            *v =
+                half::f16::from_bits(u16::from_le_bytes([texel[c * 2], texel[c * 2 + 1]])).to_f32();
+        }
+        n += 1;
+        if lin.iter().any(|c| *c > 0.76) {
+            acima_do_joelho += 1;
+        }
+        if lin.iter().any(|c| *c >= 1.0) {
+            cortados += 1;
+        }
+        let byte = |l: Look| l.apply(lin).map(ph2d_color::srgb::linear_to_srgb_byte);
+        let base = byte(padrao);
+        for (outra, mudados, pior) in [
+            (neutra, &mut mudados_neutra, &mut pior_neutra),
+            (escura, &mut mudados_escura, &mut pior_escura),
+        ] {
+            let b = byte(outra);
+            let d = (0..3)
+                .map(|c| i32::from(b[c]) - i32::from(base[c]))
+                .max_by_key(|d| d.abs())
+                .unwrap_or(0);
+            if d != 0 {
+                *mudados += 1;
+            }
+            if d.abs() > pior.abs() {
+                *pior = d;
+            }
+            deltas
+                .entry(outra.view as u8 as i32 * 1000 + i32::from(outra.exposure_stops as i8))
+                .or_default()
+                .push(d.abs());
+        }
+    }
+    let pct = |k: usize| k as f64 / n as f64 * 100.0;
+    println!("matcap {side}² = {n} texels");
+    println!(
+        "  acima do joelho da Neutral (0,76): {:5.1} %",
+        pct(acima_do_joelho)
+    );
+    println!(
+        "  já cortados pela Standard (≥ 1,0): {:5.1} %",
+        pct(cortados)
+    );
+    println!(
+        "  Neutral   : {:5.1} % dos texels mudam · pior {pior_neutra:+} bytes",
+        pct(mudados_neutra)
+    );
+    println!(
+        "  −1 stop   : {:5.1} % dos texels mudam · pior {pior_escura:+} bytes",
+        pct(mudados_escura)
+    );
+    // ⚠️ **O PIOR não diz se se vê** — um extremo num punhado de texels é ruído; o que decide é a
+    // MEDIANA e o p95 do desvio, que é o que o olho percorre numa face grande.
+    for (chave, mut v) in deltas {
+        v.sort_unstable();
+        let q = |f: f64| v[((v.len() - 1) as f64 * f) as usize];
+        println!(
+            "  {:9}: |Δ| p50 {:3} · p95 {:3} · p99 {:3} bytes",
+            if chave >= 1000 {
+                "Neutral"
+            } else {
+                "−1 stop"
+            },
+            q(0.5),
+            q(0.95),
+            q(0.99)
+        );
+    }
+}

@@ -315,11 +315,153 @@ vassoura partida e não como um erro de invocação.
 
 ---
 
+## §13 — ⛔⛔⛔ O SMOKE DO DONO REPROVOU, e o primeiro report era a PONTE
+
+> *«aparentemente errado. Não é a borda que está dobrando, mas a região interna.»*
+
+Ele tem razão, e a medição é inequívoca. Na tigela da cena, com o cursor na boca
+(`K = 4` anéis), o peso e o deslocamento por anel liam:
+
+| anel (`0` = a BORDA) | peso | deslocamento |
+|---|---|---|
+| **0** | **`0,0000`** | **`0,00000`** |
+| 1 | `0,1562` | `0,09623` |
+| 2 | `0,5000` | `0,19720` |
+| 3 | `0,8438` | `0,15244` |
+| 4 | `0,0000` | `0,00000` |
+
+Uma **corcova no miolo** com a beirada parada — a frase dele, em números.
+
+### ⭐ O oráculo decide, e não por pouco
+
+Medido nas fixturas do próprio corpus, o deslocamento do **alvo** por anel:
+
+```
+grade_agarrar_constante (K=5)   0,1000 · 0,0896 · 0,0648 · 0,0352 · 0,0104 · 0
+grade_dobrar_constante_origem1  0,6613 · 0,5702 · 0,4566 · 0,3366 · 0,2239 · … · 0
+```
+
+Máximo **no anel 0** e monótono para dentro — e os números são exactamente
+`curva(1 − anel/K)` com a *smoothstep*. ⇒ **a lei da crate estava CERTA.**
+
+### O defeito: duas convenções opostas, ligadas sem a inversão
+
+| quem | o argumento é | vale `1` em |
+|---|---|---|
+| `ph2d_boundary::Curva` | **quanto FALTA** (`1 − anel/K`) | o argumento `1` |
+| `crate::Falloff::weight` | **quanto já se ANDOU** (`d/R`) | o argumento `0` |
+
+A ponte escrevia `|p| brush.falloff.weight(p)`. Na borda isso lê `curva(1) = 0`.
+**Uma linha** (`weight(1.0 - p)`), e o perfil passa a `1,212 · 1,033 · 0,825 ·
+0,587 · 0,339 · 0,133 · 0,021 · 0`.
+
+⚠️ **E ela cura DUAS coisas**, porque a mesma curva alimenta a queda de
+profundidade **e** a queda ao longo do contorno: sob `Radius` o troço aceso era o
+**oposto** do que o artista apontava.
+
+### ⛔⛔ Porque `51 de 61` fecharam sobre isto
+
+**O corpus corre a crate DIRECTAMENTE**, com a convenção dela — ele nunca
+atravessa a ponte. *Uma paridade medida a montante de uma conversão não afirma
+nada sobre a conversão.* E o gate da cena `=42` era **verde**: ele contava
+**quantos** vértices se movem (`> 30`), e `144` movem-se nas duas orientações.
+⇒ *uma régua que conta QUANTOS nunca vê QUAIS* — a mesma forma do `edge_max`
+global cego ao quad fino e do `χ` cego à almofada.
+
+⇒ o gate novo é `a_borda_e_quem_mais_se_move_e_o_efeito_morre_para_dentro`
+(`ph2d-sculpt3d`, no caminho do **produto**, `SculptStroke::dab`), e ele afirma a
+frase inteira: a borda move-se, o perfil é **monótono**, e ele **morre**.
+⚠️ Monótono e não *«o primeiro é o maior»*: o defeito produzia uma **corcova**, e
+um simples `max` deixá-la-ia passar.
+
+⚠️ **A fixtura não continha o fenómeno à primeira**, e reprovou a apontar para o
+verbo — a mesma armadilha da irmã do `stroke_tests`. A sonda que a escolheu ficou
+(`diag_varre_o_puxao`): numa grelha plana o avanço é a projecção no plano, então
+`[0, 0,4, 0]` (perpendicular) e `[0,4, 0, 0]` (ao longo da borda) leem **zero**.
+
+---
+
+## §14 — O segundo report: *«e não tem gizmo»*
+
+Verdade: a única coisa desenhada era o **anel do cursor**, e para este verbo ele
+é ainda pior descritor do que para a pose — a região não sai do cursor, sai da
+**BORDA**.
+
+⇒ [`boundary_previa`](../../../crates/ph2d-sculpt3d/src/boundary_previa.rs) (a
+lei) + [`boundary_gizmo`](../../../crates/ph2d-app-sculpt3d/src/boundary_gizmo.rs)
+(a figura), irmãos dos da pose e com o **mesmo orçamento**. A figura responde às
+duas perguntas que o painel faz:
+
+| o que o artista mexe | o que ele vê mudar |
+|---|---|
+| `Falloff along the edge` | a **fita** ao longo da beirada — a alfa de cada pedaço é o **peso** dele |
+| `Origin offset` | a **linha** que mergulha na peça, com o **anel** no eixo |
+
+E um quarto estado: **sem beirada ao alcance**, só um anel vermelho — *«daqui
+este pincel não faz nada»*, onde o alvo se cala.
+
+### ⛔⛔ A cadeia NÃO vem em ordem de passeio, e ligá-la pela ordem dela desenha CORDAS
+
+A fase C anda a borda **nos dois sentidos ao mesmo tempo** e devolve a `cadeia`
+ordenada por **distância à âncora**, alternando os lados: medido na boca da
+tigela, `[94, 0, 92, 1, 90, 4, …]` com distâncias `[0, 0,131, 0,131, 0,262,
+0,262, …]` — **`45` de `47`** pares consecutivos **não** são vizinhos de borda.
+Uma polilinha `windows(2)` sobre ela desenha um ziguezague **através** da boca.
+
+⚠️ **E as réguas que eu já tinha escrito ficavam verdes sobre isso:** a contagem
+de pedaços é a mesma, os pesos são os mesmos, o laço fecha na mesma. ⇒ o gate é
+`nenhum_pedaco_atravessa_a_boca`, e ele afirma a **RELAÇÃO**: cada pedaço
+desenhado liga dois vértices **vizinhos na borda**. *Quem desenha uma ligação
+tem de gatear a relação, não o número de linhas.*
+
+O traçado passou a ser reconstruído pela adjacência: dois passeios a partir da
+âncora, um por sentido, enquanto o vizinho ainda pertence à cadeia — mais o
+pedaço de **fecho** quando a boca é um laço (sem ele falta sempre um vão, e é
+logo o do lado oposto ao cursor).
+
+### ⭐ O custo, MEDIDO no perfil do smoke (malha da cena `=42`, `769` vértices)
+
+| raio | pedaços | 1.ª construção | quadro repetido |
+|---|---|---|---|
+| `0,30` (omissão) | 48 | `0,096 ms` | `0,29 µs` |
+| `0,60` | 48 | `0,083 ms` | `0,03 µs` |
+| `1,00` | 48 | `0,084 ms` | `0,03 µs` |
+
+⇒ cabe **17×** no orçamento, logo a fita segue o cursor quadro a quadro.
+⚠️ **O custo é da MALHA e não do pincel** — o raio mal o move.
+
+### O quarto consumidor do `pick`, e porque ele é a prova de que o corte era desenho
+
+O gate `a_stroke_belongs_to_the_piece_it_started_on` conta quem consulta a lista
+de peças. O indicador do contorno é `&mut self` (a cache vive no traço) e herdou
+**sem uma linha de discussão** o molde que a pose pagou: a escolha da peça sai
+para uma função `&self` (`boundary_gizmo_alvo`), e a prova continua a ser do
+compilador. *Um corte que o segundo caso reutiliza é um desenho; um que ele
+contorna era um remendo.* Censo `3 → 4`.
+
+---
+
+## §15 — Provas de mutação da 2.ª jornada (5 de 5 sangram)
+
+| # | mutação | quem sangra |
+|---|---|---|
+| M7 | a curva volta ao contrário (o defeito do dono) | `a_borda_e_quem_mais_se_move_e_o_efeito_morre_para_dentro` |
+| M8 | a fita volta a ligar pela ORDEM da cadeia | `nenhum_pedaco_atravessa_a_boca` **e** `o_indicador_desenha_a_boca_e_a_profundidade` |
+| M9 | o pedaço de FECHO desaparece | `o_indicador_desenha_a_boca_e_a_profundidade` |
+| M10 | o PESO deixa de entrar na tinta | `the_weight_of_each_piece_reaches_the_ink` |
+| M11 | o bloco da fita é apagado do overlay | os **3** do `the_boundary_ribbon_is_painted_under_the_ring` |
+
+⚠️ **M11 teve de ser reescrita:** a 1.ª redacção renomeava o método e **não
+compilava** — uma mutação que não compila não prova nada, e lê-se como sangrar.
+
+---
+
 ## §12 — Smoke
 
 ```
 cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-sculpt3d && env PH2D_SCULPT3D_SMOKE=42 cargo run -p ph2d-host-desktop --profile smoke
 ```
 
-O roteiro dos 6 passos é impresso pelo próprio app ao abrir. ⚠️ Rode também
+O roteiro dos **7** passos é impresso pelo próprio app ao abrir, e o passo
+**(1)** é o INDICADOR: passar o rato **sem carregar** perto da boca. ⚠️ Rode também
 **uma vez sem a env var** — é a metade que prova a inércia.

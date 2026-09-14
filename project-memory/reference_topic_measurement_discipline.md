@@ -218,3 +218,4 @@ vizinho mede antes de reaproveitar a régua dele.
   junto dos eixos: medido à contagem igualada, a graduada entrega `1,15`–`1,27 px` de faceta contra
   `1,94`–`1,96` da uniforme. ⇒ *uma recusa medida responde a UMA pergunta sobre UMA lei; quem troca
   a lei tem de re-correr as recusas que a citavam* (§0.0 sobre quem move o número).
+- ⛔ **Uma régua que conta QUANTOS nunca vê QUAIS** — o gate da cena exigia «> 30 vértices movidos» e `144` moviam-se com a lei INVERTIDA (a beirada parada, o miolo a dobrar); a régua honesta é o PERFIL (quem mais se move, e monótono)

@@ -65,3 +65,4 @@ metadata:
   ficheiro, procura por nome em cenas de smoke, agrupamentos): separe um `id` estável da chave de
   texto, e leia os nomes antigos como PADRÕES de `match` (que a régua lexical isenta).
   (`line/UIUX`, 2026-09-16, formato `v2` com alias `v1`.)
+- [[feedback_a_collection_ordered_by_distance_is_not_ordered_by_adjacency]] — `windows(2)` sobre uma lista ordenada por DISTÂNCIA desenhou cordas através da peça (45 de 47 pares não eram vizinhos), com contagem, pesos e fecho todos verdes

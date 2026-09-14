@@ -57,3 +57,4 @@ metadata:
   [[reference_cascadeur_oracle_door_measured]].
 - ⛔ [[feedback_a_law_parity_corpus_does_not_measure_the_product_the_owner_uses]] — lei a 1e-8 e o pincel piorava a superfície: peça a 2.ª missão de PRODUTO (valores de fábrica, gesto real, cursor na superfície, ablação)
 - [[feedback_an_attested_spec_is_refutable_by_the_corpus_and_the_blind_spot_is_the_corpus]] — a fórmula ATESTADA concorda com a certa em toda peça CENTRADA na origem; 4 fixturas deslocadas refutaram-na (43 → 49 de 61)
+- [[feedback_a_parity_measured_upstream_of_a_conversion_says_nothing_about_it]] — 51/61 fixturas verdes sobre uma ponte que invertia a curva: a bancada corre a lei DIRECTAMENTE e nunca atravessa a conversão do produto

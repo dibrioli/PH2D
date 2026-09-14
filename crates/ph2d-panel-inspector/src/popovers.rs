@@ -272,7 +272,11 @@ pub(crate) fn paint_deferred_popovers(
         let dd = Dropdown::new(
             crate::ids::INSP_TAGS_PICK,
             "",
-            sections::tags::pick_options(&info, &ph2d_label_fold::fold(&escrito)),
+            sections::tags::pick_options(
+                &state::current_tag_tree(),
+                &info.on_object,
+                &ph2d_label_fold::fold(&escrito),
+            ),
         )
         .placeholder("Pick a tag\u{2026}")
         .open(true);

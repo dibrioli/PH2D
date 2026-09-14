@@ -2,13 +2,17 @@
 //!
 //! ⚠️ **Irmão de [`super::inspector_model`] por CAP de LOC** — o mesmo padrão dos outros sete.
 //!
-//! # ⚠️ O snapshot traz DUAS listas, e são duas perguntas diferentes
+//! # ⚠️ Este instantâneo é DO OBJECTO, e a árvore do projecto NÃO está nele
 //!
-//! - [`InspectorTagsInfo::on_object`] é *«que tags este objecto tem»* — os chips.
-//! - [`InspectorTagsInfo::all`] é *«que tags o projecto tem»* — o que a caixa de escolha oferece.
+//! [`InspectorTagsInfo::on_object`] responde *«que tags este objecto tem»* — os chips. A outra
+//! pergunta, *«que tags o projecto tem»*, é do DOCUMENTO e viaja por uma porta própria
+//! (`ph2d_panel_inspector::set_current_tag_tree`).
 //!
-//! ⛔ **A segunda não se deriva da primeira nem do mundo:** ela é a árvore do documento, e é por
-//! isso que ela viaja no snapshot em vez de o painel a ir buscar — o painel não vê o `AppGfx`.
+//! ⛔⛔ **A árvore ESTEVE aqui dentro, e foi a segunda superfície que mostrou o nível certo:** a
+//! secção *Signal Actions* escolhe uma tag como alvo, e um objecto com `SignalActions` pode não ter
+//! `Tags` nenhum — com a lista dentro deste instantâneo (que é `None` nesse caso), a caixa de
+//! escolha do alvo abriria vazia exactamente no caso normal. ⚠️ *Não foi erro de leitura: era a
+//! forma certa enquanto houve um consumidor só.*
 //!
 //! # ⚠️ O que este snapshot NÃO tem
 //!
@@ -36,8 +40,6 @@ pub struct InspectorTagsInfo {
     pub entity_bits: u64,
     /// As tags DESTE objecto, pela ordem da árvore.
     pub on_object: Vec<InspectorTagRow>,
-    /// A árvore INTEIRA do projecto, pela ordem dela — as opções da caixa de escolha.
-    pub all: Vec<InspectorTagRow>,
     /// O objecto já não aceita mais tags (`ph2d_ecs::TAGS_MAX`) — a secção esconde a caixa e diz
     /// porquê, em vez de oferecer um gesto que vai ser recusado.
     pub full: bool,

@@ -154,6 +154,12 @@ pub(super) fn publish(
         ph2d_panel_inspector::set_current_inspector_audio(inspector_audio);
         ph2d_panel_inspector::set_current_inspector_camera(inspector_camera);
         ph2d_panel_inspector::set_current_inspector_tags(inspector_tags);
+        // ⭐ **A ÁRVORE DO PROJECTO** — publicada em TODO quadro, com ou sem selecção: ela não é
+        // dado de um objecto, e o segundo consumidor (o alvo de uma *Signal Action*) vive num
+        // objecto que pode não ter `Tags` nenhum.
+        ph2d_panel_inspector::set_current_tag_tree(
+            crate::render_loop::inspector_tags::tag_tree_rows(tags),
+        );
         ph2d_panel_inspector::set_current_inspector_physics(inspector_physics);
         ph2d_panel_inspector::set_current_inspector_joint(inspector_joint);
         ph2d_panel_inspector::set_current_inspector_wheel(inspector_wheel);

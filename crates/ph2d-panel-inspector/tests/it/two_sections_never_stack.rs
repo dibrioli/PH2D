@@ -140,10 +140,6 @@ fn tags() -> ph2d_editor_core::screens::hero::InspectorTagsInfo {
     ph2d_editor_core::screens::hero::InspectorTagsInfo {
         entity_bits: 1,
         on_object: vec![linha(1, "Enemy", "Enemy", 0)],
-        all: vec![
-            linha(1, "Enemy", "Enemy", 0),
-            linha(2, "Enemy/Flying", "Flying", 1),
-        ],
         full: false,
         selected_count: 1,
     }

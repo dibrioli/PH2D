@@ -112,8 +112,12 @@ fn chips(
 /// do snapshot e do store, que ele tem — só o rect do chip é que não.
 ///
 /// ⚠️ **A indentação é a PROFUNDIDADE**, e é o que faz a lista ler-se como a árvore que é.
-pub(crate) fn pick_options(info: &InspectorTagsInfo, filtro: &str) -> Vec<DropdownOption<u64>> {
-    tags_que_faltam(info, filtro)
+pub(crate) fn pick_options(
+    arvore: &[InspectorTagRow],
+    no_objecto: &[InspectorTagRow],
+    filtro: &str,
+) -> Vec<DropdownOption<u64>> {
+    tags_que_faltam(arvore, no_objecto, filtro)
         .zip(crate::ids::INSP_TAGS_OPT.iter())
         .map(|(row, &id)| {
             let recuo = "    ".repeat(row.depth);
@@ -127,18 +131,23 @@ pub(crate) fn pick_options(info: &InspectorTagsInfo, filtro: &str) -> Vec<Dropdo
 /// ⚠️ **A comparação é sobre o CAMINHO inteiro**, não sobre o rótulo: escrever `enemy` tem de
 /// trazer `Enemy/Flying`, senão procurar por uma família não acha os membros dela.
 fn tags_que_faltam<'a>(
-    info: &'a InspectorTagsInfo,
+    arvore: &'a [InspectorTagRow],
+    no_objecto: &'a [InspectorTagRow],
     filtro: &'a str,
 ) -> impl Iterator<Item = &'a InspectorTagRow> {
-    info.all.iter().filter(move |row| {
-        !info.on_object.iter().any(|t| t.id == row.id)
+    arvore.iter().filter(move |row| {
+        !no_objecto.iter().any(|t| t.id == row.id)
             && (filtro.is_empty() || ph2d_label_fold::fold(&row.path).contains(filtro))
     })
 }
 
 /// Quantas candidatas a busca encontrou — para a linha que conta as que não couberam.
-fn quantas_faltam(info: &InspectorTagsInfo, filtro: &str) -> usize {
-    tags_que_faltam(info, filtro).count()
+fn quantas_faltam(
+    arvore: &[InspectorTagRow],
+    no_objecto: &[InspectorTagRow],
+    filtro: &str,
+) -> usize {
+    tags_que_faltam(arvore, no_objecto, filtro).count()
 }
 
 /// **O texto que o artista escreveu no campo**, tal como está.
@@ -160,7 +169,8 @@ fn pick_row(
     x: f32,
     w: f32,
     y: f32,
-    info: &InspectorTagsInfo,
+    arvore: &[InspectorTagRow],
+    no_objecto: &[InspectorTagRow],
     filtro: &str,
 ) -> f32 {
     let (control_w, dot) = ph2d_editor_core::widget::form_row_columns(x, w, y, ROW_H);
@@ -170,10 +180,14 @@ fn pick_row(
         store.get(crate::ids::INSP_TAGS_PICK),
         Some(InteractiveState::Dropdown { open: true, .. })
     );
-    let dd = Dropdown::new(crate::ids::INSP_TAGS_PICK, "", pick_options(info, filtro))
-        .placeholder("Pick a tag\u{2026}")
-        .open(open)
-        .visual(store.dropdown_visual(crate::ids::INSP_TAGS_PICK));
+    let dd = Dropdown::new(
+        crate::ids::INSP_TAGS_PICK,
+        "",
+        pick_options(arvore, no_objecto, filtro),
+    )
+    .placeholder("Pick a tag\u{2026}")
+    .open(open)
+    .visual(store.dropdown_visual(crate::ids::INSP_TAGS_PICK));
     paint_dropdown_chip(&dd, rect, scene, text_system, theme);
     // ⚠️ **O popover NÃO se pinta aqui** — ele sairia debaixo da secção seguinte. O rect vai ao
     // slot e o passe diferido do painel desenha-o por cima de tudo.
@@ -291,6 +305,8 @@ pub(crate) fn paint_tags_section(
 
     let escrito = texto(store);
     let filtro = ph2d_label_fold::fold(&escrito);
+    // ⭐ A árvore vem da porta do DOCUMENTO, não deste instantâneo — ver o cabeçalho do modelo.
+    let arvore = crate::state::current_tag_tree();
     cur_y = pick_row(
         scene,
         text_system,
@@ -300,11 +316,12 @@ pub(crate) fn paint_tags_section(
         x,
         w,
         cur_y,
-        info,
+        &arvore,
+        &info.on_object,
         &filtro,
     );
     // ⛔ **O que não coube é CONTADO** — ver o cabeçalho.
-    let achadas = quantas_faltam(info, &filtro);
+    let achadas = quantas_faltam(&arvore, &info.on_object, &filtro);
     if achadas > crate::ids::INSP_TAGS_OPT.len() {
         cur_y = aviso(
             scene,
@@ -338,8 +355,7 @@ pub(crate) fn paint_tags_section(
     // ⭐ O `Create` só existe quando há um nome que ainda não é de ninguém — oferecê-lo sobre uma
     // tag que já existe faria o artista pensar que criou uma segunda com o mesmo nome.
     let ja_existe = !filtro.is_empty()
-        && info
-            .all
+        && arvore
             .iter()
             .any(|r| ph2d_label_fold::fold(&r.path) == filtro);
     if !escrito.trim().is_empty() && !ja_existe {

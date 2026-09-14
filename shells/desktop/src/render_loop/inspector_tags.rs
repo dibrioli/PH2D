@@ -46,10 +46,10 @@ fn row(t: &Tag) -> InspectorTagRow {
 
 /// O snapshot da secção, ou `None` quando o objecto não tem o componente (ADR-0166).
 ///
-/// ⚠️ **As duas listas saem da MESMA travessia da árvore**, e por isso vêm na ordem dela.
+/// ⚠️ **Os chips saem da travessia da ÁRVORE**, e por isso vêm na ordem dela.
 ///
-/// ⭐ **A razão é UMA ordem para tags em todo o app**: a caixa de escolha desta secção oferece-as na
-/// ordem da árvore e o painel *Tags* (W4) vai listá-las na mesma. Derivar `on_object` do conjunto do
+/// ⭐ **A razão é UMA ordem para tags em todo o app**: a caixa de escolha oferece-as na ordem da
+/// árvore e o painel *Tags* (W4) vai listá-las na mesma. Derivar `on_object` do conjunto do
 /// componente daria a ordem dos **ids** (a de criação), e o artista veria o mesmo conjunto de tags
 /// em duas ordens diferentes no MESMO ecrã.
 ///
@@ -65,14 +65,11 @@ pub(super) fn build_tags_info(
     selected_count: usize,
 ) -> Option<InspectorTagsInfo> {
     let tags = world.get::<Tags>(Entity::from_bits(entity_bits))?;
-    let mut on_object = Vec::new();
-    let mut all = Vec::with_capacity(tree.len());
-    for t in tree.tags() {
-        if tags.direct_ids().any(|i| i == t.id) {
-            on_object.push(row(t));
-        }
-        all.push(row(t));
-    }
+    let on_object: Vec<InspectorTagRow> = tree
+        .tags()
+        .filter(|t| tags.direct_ids().any(|i| i == t.id))
+        .map(row)
+        .collect();
     Some(InspectorTagsInfo {
         entity_bits,
         // ⚠️ O tecto mede o conjunto do COMPONENTE, não os chips: um id órfão (de uma tag apagada
@@ -80,9 +77,17 @@ pub(super) fn build_tags_info(
         // que o `Tags::insert` recusa.
         full: tags.len() >= TAGS_MAX,
         on_object,
-        all,
         selected_count,
     })
+}
+
+/// ⭐⭐⭐ **A ÁRVORE DO PROJECTO, na ordem dela** — as opções de toda caixa de escolha de tag.
+///
+/// ⛔ **Não depende da selecção**, e é essa a diferença que a torna uma porta própria: ela é
+/// publicada em TODO quadro, com ou sem objecto escolhido, porque o segundo consumidor (o alvo de
+/// uma *Signal Action*) vive num objecto que pode não ter `Tags` nenhum.
+pub(super) fn tag_tree_rows(tree: &TagTree) -> Vec<InspectorTagRow> {
+    tree.tags().map(row).collect()
 }
 
 /// Aplica uma [`TagsFieldEdit`]. Devolve **`true` se a ÁRVORE mudou** — o que o chamador precisa de

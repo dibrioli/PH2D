@@ -147,7 +147,7 @@ pub use state::{
     set_current_inspector_player, set_current_inspector_properties, set_current_inspector_sampling,
     set_current_inspector_slice, set_current_inspector_sprite, set_current_inspector_tags,
     set_current_inspector_timer, set_current_inspector_transform, set_current_inspector_visibility,
-    set_current_inspector_visibility_section, set_current_inspector_wheel,
+    set_current_inspector_visibility_section, set_current_inspector_wheel, set_current_tag_tree,
 };
 pub use state::{probe_current_instance, probe_current_properties, texture_slot_pick};
 
@@ -158,10 +158,11 @@ pub use state::{probe_current_instance, probe_current_properties, texture_slot_p
 /// a `player_control_ids()` pagou (encolher a lista encolhia a varredura, e a mutação passava).
 #[must_use]
 pub fn probe_tag_options(
-    info: &ph2d_editor_core::screens::hero::InspectorTagsInfo,
+    arvore: &[ph2d_editor_core::screens::hero::InspectorTagRow],
+    no_objecto: &[ph2d_editor_core::screens::hero::InspectorTagRow],
     filtro_dobrado: &str,
 ) -> Vec<ph2d_editor_core::widget::DropdownOption<u64>> {
-    crate::sections::tags::pick_options(info, filtro_dobrado)
+    crate::sections::tags::pick_options(arvore, no_objecto, filtro_dobrado)
 }
 
 use ph2d_a11y::NodeId;

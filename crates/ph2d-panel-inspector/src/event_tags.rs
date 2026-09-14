@@ -49,7 +49,10 @@ pub(crate) fn apply_tags_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent
     // no quadro em que o artista está a escrever.
     if let Some(i) = crate::ids::INSP_TAGS_OPT.iter().position(|&o| o == id) {
         let filtro = ph2d_label_fold::fold(&texto(host));
-        if let Some(opt) = crate::sections::tags::pick_options(&info, &filtro).get(i) {
+        let arvore = state::current_tag_tree();
+        if let Some(opt) =
+            crate::sections::tags::pick_options(&arvore, &info.on_object, &filtro).get(i)
+        {
             push(host, info.entity_bits, TagsFieldEdit::Add(opt.value));
             limpa_busca(host);
             fecha_popover(host);

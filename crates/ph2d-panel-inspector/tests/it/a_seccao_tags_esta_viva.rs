@@ -51,9 +51,21 @@ fn linha(id: u64, path: &str, label: &str, depth: usize) -> InspectorTagRow {
     }
 }
 
-/// A árvore da fixtura: `Boss` · `Enemy` · `Enemy/Flying` · `Prop`, com o objecto a ter as duas do
-/// meio. ⚠️ **As tags do objecto e as do projecto são listas diferentes de propósito** — é isso que
-/// deixa a caixa de escolha ter o que oferecer.
+/// A ÁRVORE DO PROJECTO: `Boss` · `Enemy` · `Enemy/Flying` · `Prop`.
+///
+/// ⚠️ **Ela é a fixtura de OUTRA porta** (`set_current_tag_tree`), e não um campo do instantâneo do
+/// objecto — é isso que deixa a caixa de escolha ter o que oferecer a um objecto que ainda não tem
+/// `Tags` nenhum, que é o caso normal da secção *Signal Actions*.
+fn arvore() -> Vec<InspectorTagRow> {
+    vec![
+        linha(1, "Boss", "Boss", 0),
+        linha(2, "Enemy", "Enemy", 0),
+        linha(3, "Enemy/Flying", "Flying", 1),
+        linha(4, "Prop", "Prop", 0),
+    ]
+}
+
+/// O objecto da fixtura: tem as duas tags do meio da árvore.
 fn info(full: bool, selected_count: usize) -> InspectorTagsInfo {
     InspectorTagsInfo {
         entity_bits: ENTITY,
@@ -61,20 +73,17 @@ fn info(full: bool, selected_count: usize) -> InspectorTagsInfo {
             linha(2, "Enemy", "Enemy", 0),
             linha(3, "Enemy/Flying", "Flying", 1),
         ],
-        all: vec![
-            linha(1, "Boss", "Boss", 0),
-            linha(2, "Enemy", "Enemy", 0),
-            linha(3, "Enemy/Flying", "Flying", 1),
-            linha(4, "Prop", "Prop", 0),
-        ],
         full,
         selected_count,
     }
 }
 
+/// ⚠️ **As DUAS portas são semeadas**, e é isso que o desenho novo obriga: a lista que a caixa
+/// oferece já não vem do instantâneo do objecto.
 fn host(i: InspectorTagsInfo) -> (MockPanelHost, InspectorState) {
     let h = MockPanelHost::with_panel::<InspectorPanel>();
     set_current_inspector_tags(Some(i));
+    ph2d_panel_inspector::set_current_tag_tree(arvore());
     (h, InspectorState::default())
 }
 
@@ -134,6 +143,7 @@ fn os_chips_e_a_caixa_de_escolha_sao_pintados() {
         "foi pintado um chip para uma tag que o objecto nao tem"
     );
     set_current_inspector_tags(None);
+    ph2d_panel_inspector::set_current_tag_tree(Vec::new());
 }
 
 /// ⭐⭐⭐ **O `×` de um chip chega ao barramento como `Remove`** — com o gesto REAL.
@@ -174,6 +184,7 @@ fn o_x_de_um_chip_tira_a_tag_deste_objecto() {
         "o x do segundo chip tinha de mandar `Remove(3)`; o que chegou foi {acoes:?}"
     );
     set_current_inspector_tags(None);
+    ph2d_panel_inspector::set_current_tag_tree(Vec::new());
 }
 
 /// ⭐⭐ **A lista não oferece o que o objecto já tem** — oferecê-lo seria um gesto que o
@@ -183,7 +194,7 @@ fn o_x_de_um_chip_tira_a_tag_deste_objecto() {
 #[test]
 fn a_lista_nao_oferece_as_tags_que_o_objecto_ja_tem() {
     let i = info(false, 1);
-    let opcoes = ph2d_panel_inspector::probe_tag_options(&i, "");
+    let opcoes = ph2d_panel_inspector::probe_tag_options(&arvore(), &i.on_object, "");
     let ids: Vec<u64> = opcoes.iter().map(|o| o.value).collect();
     assert_eq!(
         ids,
@@ -201,11 +212,12 @@ fn a_lista_nao_oferece_as_tags_que_o_objecto_ja_tem() {
 /// caso acentuado) · comparar contra `row.label` em vez de `row.path`.
 #[test]
 fn a_busca_dobra_e_procura_no_caminho_inteiro() {
-    let mut i = info(false, 1);
-    // Uma tag acentuada, e o objecto não a tem.
-    i.all.push(linha(5, "Inimigo/Aéreo", "Aéreo", 1));
+    let i = info(false, 1);
+    // Uma tag acentuada NA ÁRVORE, e o objecto não a tem.
+    let mut arv = arvore();
+    arv.push(linha(5, "Inimigo/Aéreo", "Aéreo", 1));
     let vals = |f: &str| -> Vec<u64> {
-        ph2d_panel_inspector::probe_tag_options(&i, &ph2d_label_fold::fold(f))
+        ph2d_panel_inspector::probe_tag_options(&arv, &i.on_object, &ph2d_label_fold::fold(f))
             .iter()
             .map(|o| o.value)
             .collect()
@@ -246,6 +258,7 @@ fn um_objecto_cheio_esconde_a_caixa_e_diz_porque() {
         "os chips sumiram com o objecto cheio — nao haveria por onde tirar uma"
     );
     set_current_inspector_tags(None);
+    ph2d_panel_inspector::set_current_tag_tree(Vec::new());
 }
 
 /// ⛔ **O `Create` só existe quando há um nome que ainda não é de ninguém.**
@@ -265,6 +278,7 @@ fn o_create_nao_existe_sem_um_nome_novo() {
         "o `Create` foi pintado com o campo vazio"
     );
     set_current_inspector_tags(None);
+    ph2d_panel_inspector::set_current_tag_tree(Vec::new());
 }
 
 /// ⭐⭐⭐ **Escolher uma tag da LISTA ABERTA chega ao barramento** — com o gesto REAL, sobre o
@@ -305,4 +319,5 @@ fn escolher_uma_tag_da_lista_aberta_chega_ao_barramento() {
         "escolher a 1.a opcao tinha de mandar `Add(1)` (a `Boss`); o que chegou foi {acoes:?}"
     );
     set_current_inspector_tags(None);
+    ph2d_panel_inspector::set_current_tag_tree(Vec::new());
 }

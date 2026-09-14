@@ -253,6 +253,109 @@ fn strip_test_modules(src: &str) -> String {
 /// de CAMINHO deixa de ver quando o assunto do ficheiro se parte em filhos (`line/render-bodies`: o `snapshots.rs` e o
 /// `sim_extract.rs`). ⚠️ Uma AUSÊNCIA lida só no pai fica VERDE sobre o código que se mudou para um filho, e uma
 /// contagem exacta fica cega a uma segunda ocorrência escrita num deles (auditoria do fecho da linha).
+fn is_ident(b: u8) -> bool {
+    b.is_ascii_alphanumeric() || b == b'_'
+}
+
+/// **O texto sem comentários (`//`, `/* */` aninhados) nem literais (`"…"`, `r#"…"#`, `'x'`).**
+///
+/// ⚠️ **Vive AQUI e não em cada censo**, pela razão do cabeçalho deste módulo: dez gates já tinham
+/// o `fn_body` deles escrito à mão, e duas cópias de um parser discordam no primeiro apóstrofo em
+/// prosa. Um censo textual que não separe prosa de código mente nos DOIS sentidos — ele conta um
+/// nome citado num comentário como uso, e um gate que se cite a si mesmo aprova-se sozinho.
+///
+/// ⚠️ **Um lifetime (`'a`) não é um literal**, e comê-lo engoliria código até à próxima aspa.
+pub fn strip_comments_and_strings(src: &str) -> String {
+    let b = src.as_bytes();
+    let mut out = Vec::with_capacity(b.len());
+    let mut i = 0;
+    while i < b.len() {
+        let c = b[i];
+        if c == b'/' && b.get(i + 1) == Some(&b'/') {
+            while i < b.len() && b[i] != b'\n' {
+                i += 1;
+            }
+            continue;
+        }
+        if c == b'/' && b.get(i + 1) == Some(&b'*') {
+            let mut depth = 1;
+            i += 2;
+            while i < b.len() && depth > 0 {
+                if b[i] == b'/' && b.get(i + 1) == Some(&b'*') {
+                    depth += 1;
+                    i += 2;
+                } else if b[i] == b'*' && b.get(i + 1) == Some(&b'/') {
+                    depth -= 1;
+                    i += 2;
+                } else {
+                    i += 1;
+                }
+            }
+            continue;
+        }
+        if c == b'r' && (i == 0 || !is_ident(b[i - 1])) {
+            let mut j = i + 1;
+            let mut hashes = 0;
+            while b.get(j) == Some(&b'#') {
+                hashes += 1;
+                j += 1;
+            }
+            if b.get(j) == Some(&b'"') && (hashes > 0 || j == i + 1) {
+                j += 1;
+                while j < b.len() {
+                    if b[j] == b'"'
+                        && b.len() >= j + 1 + hashes
+                        && b[j + 1..j + 1 + hashes].iter().all(|&h| h == b'#')
+                    {
+                        j += 1 + hashes;
+                        break;
+                    }
+                    j += 1;
+                }
+                i = j;
+                out.extend_from_slice(b"\"\"");
+                continue;
+            }
+        }
+        if c == b'"' {
+            i += 1;
+            while i < b.len() {
+                if b[i] == b'\\' {
+                    i += 2;
+                    continue;
+                }
+                if b[i] == b'"' {
+                    i += 1;
+                    break;
+                }
+                i += 1;
+            }
+            out.extend_from_slice(b"\"\"");
+            continue;
+        }
+        if c == b'\'' {
+            if b.get(i + 1) == Some(&b'\\') {
+                let mut j = i + 2;
+                while j < b.len() && b[j] != b'\'' {
+                    j += 1;
+                }
+                i = j + 1;
+                continue;
+            }
+            // Um carácter (ASCII ou até 4 bytes) fechado por aspa é literal; o resto é lifetime.
+            if let Some(k) = (2..=5).find(|&k| b.get(i + k) == Some(&b'\''))
+                && std::str::from_utf8(&b[i + 1..i + k]).is_ok_and(|s| s.chars().count() == 1)
+            {
+                i += k + 1;
+                continue;
+            }
+        }
+        out.push(c);
+        i += 1;
+    }
+    String::from_utf8_lossy(&out).into_owned()
+}
+
 pub fn path_children(path: &std::path::Path) -> String {
     let src = std::fs::read_to_string(path).unwrap_or_else(|e| panic!("{}: {e}", path.display()));
     let dir = path.parent().expect("um ficheiro da shell mora numa pasta");

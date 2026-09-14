@@ -125,19 +125,39 @@ fn the_snapshot_carries_the_object_and_the_project_in_tree_order() {
         ["Enemy", "Enemy/Flying", "Prop"],
         "os chips nao vieram na ordem da arvore"
     );
+    // ⭐ **A ÁRVORE vem pela OUTRA porta** — ela não é dado deste objecto (ver o cabeçalho do
+    // modelo), e é a mesma travessia que a alimenta.
+    let arv = tag_tree_rows(&tree);
     assert_eq!(
-        i.all.iter().map(|r| r.path.as_str()).collect::<Vec<_>>(),
+        arv.iter().map(|r| r.path.as_str()).collect::<Vec<_>>(),
         ["Boss", "Enemy", "Enemy/Flying", "Prop"],
-        "a lista de escolha nao e' a arvore inteira, na ordem dela"
+        "a lista do projecto nao e' a arvore inteira, na ordem dela"
     );
     // O rótulo é o ÚLTIMO nível e a profundidade vem com ele — é o que o chip desenha.
-    let f = i
-        .all
-        .iter()
-        .find(|r| r.path == "Enemy/Flying")
-        .expect("la'");
+    let f = arv.iter().find(|r| r.path == "Enemy/Flying").expect("la'");
     assert_eq!((f.label.as_str(), f.depth), ("Flying", 1));
     assert!(!i.full);
+}
+
+/// ⛔⛔ **A árvore do projecto é publicada MESMO sem objecto com `Tags`** — é a razão de ela ter
+/// porta própria: a caixa de escolha do alvo de uma *Signal Action* vive num objecto que pode não
+/// ter o componente, e com a lista dentro do instantâneo por objecto ela abria vazia.
+///
+/// **Mutação que deve sangrar:** a `tag_tree_rows` a devolver vazio quando ninguém está escolhido
+/// (ou a publicação a mudar-se para dentro do `and_then` da selecção).
+#[test]
+fn the_project_tree_is_published_even_with_no_tagged_object() {
+    let (tree, _) = arvore();
+    let mut sim = SimWorld::default();
+    // Um objecto SEM o componente — o instantâneo dele é `None`…
+    let e = sim.world_mut().spawn((Transform::default(),)).id();
+    assert!(build_tags_info(sim.world(), &tree, e.to_bits(), 1).is_none());
+    // …e a árvore continua a ter as quatro.
+    assert_eq!(
+        tag_tree_rows(&tree).len(),
+        4,
+        "a arvore do projecto veio vazia para um objecto sem `Tags` — a caixa de escolha do alvo          de uma accao abriria sem nada para oferecer"
+    );
 }
 
 /// ⭐ **Escolher uma tag da lista marca o objecto — e só isso.**

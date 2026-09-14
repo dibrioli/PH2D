@@ -2509,6 +2509,36 @@ os seguintes cunham a diferença. *Um arrasto são DOIS quadros, e um teste que 
 programa.* O gate ficou, escrito como o gesto de facto é — e ele é o **primeiro gesto de toda
 animação** deste app.
 
+**W14b — *«AINDA NÃO FUNCIONA PARA IK»*: com uma restrição VIVA o sujeito da autoria é OUTRO**
+(report do dono, 2026-09-14, logo a seguir a aprovar o smoke da W14).
+
+⭐⭐⭐ **E o módulo já o dizia por escrito.** O cabeçalho do [`goal`](../../crates/ph2d-app-skeleton/src/goal.rs):
+*«o que o artista autora é a pose da **ÂNCORA** (e os três números da restrição); a rotação dos ossos
+governados é **derivada** dela»*. E o `bone_pose::pose` faz exactamente isso: com um `IkGoal` vivo,
+arrastar a ponta **não posa osso nenhum** — chama o `goal::drag_anchor`, que escreve o `Transform`
+do **ALVO**.
+
+⛔⛔ **A população da W14 não podia funcionar aqui, e por DUAS razões ao mesmo tempo:**
+1. o alvo **não é osso** — ele não entra pelo `skeleton_of`;
+2. os ossos que a IK dobrou estão todos **sob condução do solver** (`goal::solve` regista
+   `preview.driven` em cada um, todo quadro), e o filtro de pré-visualização salta-os — **e está
+   certo**: cunhar dali faria chaves da saída do motor.
+
+*A pose inteira era derivada, e a única coisa autorada do gesto não estava na lista.*
+
+⇒ **A cura é uma linha na `maos_do_quadro`:** o esqueleto que a mão segura passa a trazer também o
+**ALVO de cada âncora** dele, por uma porta nova (`goal::target_of`, extraída do `drag_anchor` — *a
+mesma procura, dois consumidores*). ⭐ E ela serve as **duas** metades daquela porta: o apply também
+não pode escrever por cima do alvo enquanto o dedo o move.
+
+**Duas mutações, duas RED** (o alvo fora da mão · o `target_of` a devolver o alvo errado).
+
+⚠️⚠️ **E a fixtura quase fabricou um defeito pela SEGUNDA vez nesta wave:** com `keys_mode = false`
+(o default do `TimelineState::new()`) o gate falha **com a cura aplicada** — uma âncora de
+trajectória é geometria do CLIP e o documento **recusa-a** fora da aba *Keys* (Enio, 2026-07-31), que
+é a aba de omissão do app. *Um gate que herda um default de construtor mede outro programa;* o do
+motion path já trazia esta nota, e foi preciso pagá-la outra vez.
+
 ## ⛔ Recusas MEDIDAS deste módulo — não as reconstrua
 
 > ⚠️ **As seis de 2026-09-07/08 entraram aqui na auditoria de 08/09** — elas viviam só em prosa e em

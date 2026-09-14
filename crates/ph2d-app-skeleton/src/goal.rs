@@ -252,12 +252,27 @@ pub fn unanchored_ends(sim: &SimWorld) -> Vec<u64> {
 ///
 /// ⚠️ É por aqui que o arrasto da ponta passa quando há restrição: ele deixa de posar a corrente
 /// (que o passe reescreveria no quadro seguinte, e o artista veria o osso voltar) e passa a mover o
+/// ⭐⭐⭐ **O ALVO que a âncora de `bone` persegue** — a entidade cuja pose o artista AUTORA quando
+/// arrasta a ponta de uma corrente com restrição viva.
+///
+/// ⛔⛔ **Ela existe porque a pergunta tem DOIS consumidores** (2026-09-14, report do dono *«ainda
+/// não funciona para IK»*): o [`drag_anchor`], que escreve ali, e a **mão do quadro** — o apply da
+/// timeline não pode escrever por cima do alvo enquanto o dedo o move, e o AutoKey tem de o cunhar,
+/// *porque ele é a única coisa autorada do gesto* (a rotação dos ossos governados é DERIVADA, e o
+/// ledger de pré-visualização salta-a com razão). Uma segunda cópia desta procura seria a segunda
+/// resposta à mesma pergunta, e a identidade aqui é um [`StableId`] — bits de alocação não
+/// sobrevivem ao respawn do undo.
+///
+/// `None` quando o osso não tem restrição, ou quando o alvo dela foi apagado ([`StableId::NONE`]).
+#[must_use]
+pub fn target_of(sim: &SimWorld, bone: Entity) -> Option<Entity> {
+    let g = sim.world().get::<IkGoal>(bone).copied()?;
+    index(sim).get(&g.target).copied()
+}
+
 /// **objecto autorado**, que é o que o documento guarda.
 pub fn drag_anchor(sim: &mut SimWorld, bone: Entity, world: [f64; 2]) -> bool {
-    let Some(g) = sim.world().get::<IkGoal>(bone).copied() else {
-        return false;
-    };
-    let Some(alvo) = index(sim).get(&g.target).copied() else {
+    let Some(alvo) = target_of(sim, bone) else {
         return false;
     };
     // O espaço do PAI do ALVO — a pose local vive nele. Uma âncora nasce raiz, então isto costuma

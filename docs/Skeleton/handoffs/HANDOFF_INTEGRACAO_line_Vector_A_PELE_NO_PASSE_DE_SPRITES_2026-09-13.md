@@ -47,6 +47,7 @@ As cinco waves:
 | **W12b** | **o motor do onion SAIU da shell** — a cura nomeada do tecto `the_shell_only_shrinks`, que as waves do pincel tinham deixado com UMA linha de folga |
 | **W13** | **o diagnóstico completo do *«só fica redondo onde não temos deformação»*** — a régua da W12 era cega a uma marca AMASSADA; a cura foi medida (grelha amostrada) e **RECUSADA pelo dono** |
 | **W14** | **o AutoKey grava a pose que a MÃO fez** — a população era a SELECÇÃO, e agarrar um osso não o selecciona: a pose feita com IK ia para a animação por um osso só |
+| **W14b** | **com uma restrição VIVA o sujeito da autoria é o ALVO da âncora** — os ossos são derivados e o ledger salta-os com razão; a mão do quadro passa a trazer o alvo |
 
 ---
 
@@ -78,6 +79,9 @@ As cinco waves:
 | `shells/desktop/src/render_loop/fase_snapshots_publish.rs` (W9) | a condição do `object_gizmo_on` ganha a cláusula da ferramenta Flip | **é a cura** — a caixa de OUTRA família deixa de matar o traço do Flip |
 | `shells/desktop/src/render_loop/timeline_onion.rs` (W8) | `collect_onion_ghosts` passa a receber `live_clip_t: Option<f64>` — `None` = o clip activo não tem instante único aqui ⇒ **zero fantasmas** | **muda a assinatura** (shell-interna) |
 | `shells/desktop/src/render_loop/fase_canvas_overlays.rs` (W8) | o relógio do onion passa a ser `self.timeline_view.clip_time` (era `self.playhead.time()`) | **é a cura do 1.º relato** |
+| `ph2d-app-skeleton/src/goal.rs` (W14b) | `target_of` NOVA — o alvo que a âncora de um osso persegue, extraída do `drag_anchor` (a mesma procura, dois consumidores) | sim |
+| `shells/desktop/src/render_loop/timeline_bridge.rs` (W14b) | a `maos_do_quadro` traz também o **ALVO** de cada âncora do esqueleto segurado | **muda comportamento**: o apply deixa de escrever por cima do alvo, e o AutoKey passa a cunhá-lo |
+| `shells/desktop/src/render_loop/autokey_pass.rs` (W14) | a população sai para a porta `populacao` e passa a ser **selecção ∪ mão**; `run` recebe `&SimWorld` | **é a cura** |
 | `shells/desktop/src/render_loop/timeline_bridge.rs` (W8) | `maos_do_quadro` NOVA (o gizmo ∪ o esqueleto que a ferramenta Bone pousa); `run` troca `live_entity: Option<u64>` por `maos: &[u64]` | **muda a assinatura** (shell-interna) |
 | `shells/desktop/src/render_loop/{fase_timeline_view,fase_timeline_drain,fase_frame_open}.rs` (W8) | o `TimelineView::dragging_entity` vira `maos: Vec<u64>` e atravessa a fase | sim |
 | `shells/desktop/src/render_loop/autokey_pass.rs` (W8) | `run` ganha `skeleton: &SkeletonState`; `drag_now = gizmo.drag.is_some() \|\| skeleton.bone_pose.is_some()` | **muda comportamento**: um arrasto de osso passa a ser UM passo de undo |
@@ -243,6 +247,13 @@ nada»* sobre um passe são — sem curva, quem mede a mudança é a **BASELINE*
 quadros*. **Cinco mutações, cinco RED** — ⚠️ **duas só morreram depois de a
 população sair para uma PORTA**, e a quinta apanhou uma lei (*pré-visualização não é autoria*) que
 vivia **sem gate** desde a auditoria de 2026-09-08.
+
+**W14b** (a shell + a `ph2d-app-skeleton`): arrastar a âncora de IK grava **a âncora**. ⚠️ **A
+fixtura quase fabricou um defeito pela SEGUNDA vez nesta wave:** com `keys_mode = false` (o default
+do construtor) o gate falha **com a cura aplicada** — uma âncora de trajectória é geometria do CLIP e
+o documento recusa-a fora da aba *Keys*, que é a de omissão do app. **Duas mutações, duas RED** (o
+alvo fora da mão · o `target_of` a devolver o alvo errado — esta última também acordou dois gates de
+costura do esqueleto, o que diz que a porta é a mesma que o hit-test usa).
 
 **W12b** (a mudança de crate): ⛔ **o `every_member_inherits_the_workspace_lints` apanhou a armadilha
 do HOWTO à primeira** — a crate nova não herdava os lints da workspace, logo o `unsafe` ficava
@@ -487,6 +498,13 @@ fechado.
 
 ⚠️ **E o que a W11 acrescenta:** com o braço bem DOBRADO, o risco pintado tem de sair com a
 **espessura do anel do cursor** — e não uma lasca fina onde o leque comprime a arte.
+
+⚠️ **E o que a W14b acrescenta (o report seguinte, *«ainda não funciona para IK»*):** na mesma cena,
+arraste o **losango da âncora** (a restrição que a cena cria na ponta do braço) com o **AutoKey**
+ligado. A corrente segue-o; ao arrastar o cursor do tempo para longe e voltar, **o braço tem de
+voltar à mesma pose** — porque o que ficou gravado é a **âncora**, e os ossos derivam dela. ⛔ Até
+2026-09-14 o gesto não gravava nada: os ossos são conduzidos pelo solver (e o AutoKey salta-os, com
+razão) e o alvo não estava na lista de quem o passe olha.
 
 ⚠️ **E o que a W14 acrescenta (a fase seguinte, escolhida pelo dono):** com *Window → Timeline*
 aberta e o **AutoKey** ligado, puxe a **PONTA** do braço com a ferramenta **Bone** — a corrente

@@ -104,10 +104,21 @@ pub(crate) fn maos_do_quadro(
         .and_then(ph2d_ecs::Entity::try_from_bits)
         .filter(|&e| sim.world().get::<ph2d_skeleton_ecs::Bone>(e).is_some());
     if let Some(e) = osso {
+        let ossos = ph2d_skeleton_live::skin_live::skeleton_of(sim, Some(e));
+        maos.extend(ossos.iter().map(|b| b.to_bits()));
+        // ⭐⭐⭐ **E o ALVO de cada ÂNCORA de IK do esqueleto** (report do dono, 2026-09-14: *«ainda
+        // não funciona para IK»*). Com uma restrição viva, arrastar a ponta **não posa osso
+        // nenhum** — o `bone_pose::pose` chama o `goal::drag_anchor`, que escreve o `Transform` do
+        // ALVO, *«que é o que o documento guarda»* (o cabeçalho do `goal` diz-o à letra). ⇒ o
+        // sujeito do gesto é uma entidade que **não é osso**, e sem ela aqui as duas metades falham
+        // ao mesmo tempo: o apply escreve por cima do alvo enquanto o dedo o move, e o AutoKey não
+        // tem o que cunhar — a pose dos ossos é toda DERIVADA, e o ledger de pré-visualização
+        // salta-a com razão.
         maos.extend(
-            ph2d_skeleton_live::skin_live::skeleton_of(sim, Some(e))
+            ossos
                 .iter()
-                .map(|b| b.to_bits()),
+                .filter_map(|&b| ph2d_app_skeleton::goal::target_of(sim, b))
+                .map(|alvo| alvo.to_bits()),
         );
     }
     maos

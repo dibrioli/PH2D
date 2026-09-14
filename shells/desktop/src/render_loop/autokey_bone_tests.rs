@@ -373,3 +373,83 @@ fn the_first_pose_of_a_fresh_rig_is_recorded_for_every_bone_it_bent() {
         );
     }
 }
+
+/// ⭐⭐⭐ **ARRASTAR A ÂNCORA DE IK GRAVA A ÂNCORA** (report do dono, 2026-09-14: *«ainda não funciona
+/// para IK»*, depois de a W14 fechar o gesto de posar um osso).
+///
+/// ⛔⛔ **Aqui o sujeito da autoria é OUTRO, e o [`crate::skeleton_goal`] já o declarava por escrito:**
+/// *«o que o artista autora é a pose da ÂNCORA; a rotação dos ossos governados é DERIVADA dela»*.
+/// Com uma restrição viva, o `bone_pose::pose` da ponta não posa osso nenhum — ele chama o
+/// `goal::drag_anchor`, que escreve o `Transform` do **ALVO**.
+///
+/// ⇒ a população da W14 (a selecção ∪ os OSSOS da mão) não podia funcionar aqui, e por **duas**
+/// razões ao mesmo tempo: o alvo não é osso (não entra por `skeleton_of`) e os ossos que a IK dobrou
+/// estão todos **sob condução do solver** — o filtro de pré-visualização salta-os, e está certo.
+/// *A pose inteira era derivada, e a única coisa autorada não estava na lista.*
+#[test]
+fn dragging_the_ik_anchor_records_the_anchor() {
+    use ph2d_ecs::{Entity, SimWorld, Transform};
+    use ph2d_timeline::PropKind;
+    let mut sim = SimWorld::new();
+    let raiz = ph2d_skeleton_live::bone::create(&mut sim, None, [0.0, 0.0], [1.0, 0.0])
+        .map(Entity::from_bits)
+        .expect("raiz");
+    let ponta = ph2d_skeleton_live::bone::create(&mut sim, Some(raiz), [1.0, 0.0], [2.0, 0.0])
+        .map(Entity::from_bits)
+        .expect("ponta");
+    let alvo = ph2d_skeleton_live::goal::add(&mut sim, ponta).expect("a ancora");
+    let mut st = TimelineState::new();
+    st.flags.auto_key = true;
+    // ⚠️ **A aba KEYS é a de omissão do app**, e uma âncora de trajectória é geometria do CLIP: fora
+    // dela o documento RECUSA (Enio, 2026-07-31). Herdar o default do `TimelineState::new()` mediria
+    // a recusa em vez da autoria — a mesma nota do gate do motion path.
+    st.keys_mode = true;
+    let mut ph = Playhead::new(1.0 / 60.0);
+    ph.pause();
+    ph.seek(1.0);
+    // ⚠️ A mão está na PONTA e **nada está seleccionado** — agarrar a âncora não selecciona nada,
+    // que é exactamente o caso do report.
+    let mut hero = ph2d_editor_core::HeroScreen::new(ph2d_editor_core::NodeId(1));
+    {
+        use ph2d_editor_core::panel::PanelHostInternal as _;
+        hero.set_panel_visible("timeline", true);
+    }
+    let posando = ph2d_app_skeleton::state::SkeletonState {
+        bone_pose: Some((ponta.to_bits(), ph2d_skeleton_render::BonePart::Tip)),
+        ..Default::default()
+    };
+    let mut ak = AutokeyState::default();
+    fn quadro(
+        st: &mut TimelineState,
+        ak: &mut AutokeyState,
+        ph: &Playhead,
+        hero: &ph2d_editor_core::HeroScreen,
+        sim: &ph2d_ecs::SimWorld,
+        posando: &ph2d_app_skeleton::state::SkeletonState,
+    ) {
+        super::run(
+            st,
+            ph,
+            ak,
+            &mut ph2d_editor_core::ToastQueue::new(),
+            hero,
+            sim,
+            &ph2d_preview_drive::PreviewDrive::default(),
+            posando,
+        );
+    }
+    quadro(&mut st, &mut ak, &ph, &hero, &sim, &posando);
+    // O arrasto: o `drag_anchor` escreve a pose do ALVO, não a dos ossos.
+    sim.world_mut()
+        .get_mut::<Transform>(alvo)
+        .unwrap()
+        .translation = ph2d_core::Vec2::new(2.5, 1.0);
+    quadro(&mut st, &mut ak, &ph, &hero, &sim, &posando);
+    assert!(
+        st.doc
+            .binding_for(alvo.to_bits(), PropKind::TranslationX)
+            .is_some()
+            || st.doc.position_path(alvo.to_bits()).is_some(),
+        "arrastar a ancora tem de gravar a ANCORA — e' a unica coisa autorada no gesto"
+    );
+}

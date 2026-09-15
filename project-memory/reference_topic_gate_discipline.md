@@ -177,3 +177,14 @@ metadata:
   que exige que o detector recuse um nome inventado **e** aceite um real (senão ele aceita tudo ou
   recusa tudo). ⛔ E a lista de formas em que um nome nasce tem de incluir `as NOME`: uma porta
   re-exportada (`MIN_W_PX as NUMBER_INPUT_MIN_W_PX`) era acusada de não existir.
+- ⛔⛔ **Uma lei curada numa SECÇÃO e não gateada é uma lei que a secção seguinte não conhece.**
+  Medido 2026-09-15 (`line/UIUX`): a unidade saíra do rótulo para dentro do campo numa secção do
+  Inspector (32 rótulos, `20 de 39` cortados → `1`), e **28** rótulos do resto do app continuavam a
+  carregá-la — `"Break Torque (N.m)"`, `"Init Vel X (m/s)"`, `"Non-Spatialized Radius (m)"`. ⇒ *ao
+  curar uma lei numa superfície, o mesmo commit escreve o CENSO que a cobra em todas* — e escrevê-lo
+  **red-first**, com a tolerância a conter só o que não se vai converter, transforma-o na lista de
+  trabalho. ⚠️ **E o piso de população tem de ser MEDIDO**: chutei `> 2000` sobre uma varredura que lê
+  `1 801` e o gate reprovou sobre o produto certo. ⚠️⚠️ **E a RAZÃO de cada tolerância também se
+  mede:** escrevi *«row de dois campos»* e a medição desmentiu — a porta `field_row` pinta uma row de
+  UM campo e também não levava sufixo. *O que separa não é a forma da row, é a PORTA ter por onde a
+  coisa entrar.*

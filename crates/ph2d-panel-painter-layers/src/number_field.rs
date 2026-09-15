@@ -247,14 +247,34 @@ pub(crate) fn paint_num_params(
     mut y: f32,
     params: &[(&str, NodeId, f32)],
 ) -> f32 {
+    let font = ph2d_tokens::TypeToken::Sm.px();
+    let gap = Spacing::Xs.px();
+    let half = ((content_w - gap) * 0.5).max(0.0);
     let mut i = 0;
     while i < params.len() {
         let (l0, id0, v0) = params[i];
-        if i + 1 < params.len() && l0.len() <= PAIR_MAX_LEN && params[i + 1].0.len() <= PAIR_MAX_LEN
-        {
+        // ⭐⭐⭐ **Emparelhar é uma escolha de PRODUTO; cabe é uma MEDIÇÃO** — report do dono,
+        // 2026-09-15, com duas fotos: *«Em Grain: Voronoi : Metric e Edges os nomes somem ao
+        // estreitar o painel. Melhor seria quebrar a linha»*.
+        //
+        // ⚠️⚠️ **O `PAIR_MAX_LEN` diz QUAIS params podem partilhar uma fileira** (uma decisão de
+        // desenho sobre nomes curtos) e **nunca soube se eles CABEM ali**: numa metade estreita a
+        // coluna do nome fica menor que a reticência e o pintor devolve string vazia — a resposta
+        // certa dele para uma coluna degenerada, e a errada para quem escolheu emparelhar.
+        // *O degrau a seguir a «não cabe o nome» não é apagar o nome — é deixar de emparelhar.*
+        //
+        // ⛔ A pergunta vai à PORTA (`property_row_fits`), não a uma segunda aritmética daqui.
+        let elegivel = i + 1 < params.len()
+            && l0.len() <= PAIR_MAX_LEN
+            && params[i + 1].0.len() <= PAIR_MAX_LEN;
+        let cabe = elegivel && {
+            let w0 = ctx.text_system.prefix_width(l0, font);
+            let w1 = ctx.text_system.prefix_width(params[i + 1].0, font);
+            ph2d_editor_core::property_row::property_row_fits(half, w0)
+                && ph2d_editor_core::property_row::property_row_fits(half, w1)
+        };
+        if cabe {
             let (l1, id1, v1) = params[i + 1];
-            let gap = Spacing::Xs.px();
-            let half = ((content_w - gap) * 0.5).max(0.0);
             half_param(ctx, theme, x, half, y, l0, id0, v0);
             half_param(ctx, theme, x + half + gap, half, y, l1, id1, v1);
             y += ph2d_tokens::row_pitch_px();

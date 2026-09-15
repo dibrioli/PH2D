@@ -143,3 +143,26 @@ pub fn paint_fields_row(
     crate::widget::paint_decorator_dot(scene, theme, row.dot);
     y + passo * linhas as f32
 }
+
+/// ⭐⭐⭐ **CABE uma linha de propriedade com este nome dentro de `w`?**
+///
+/// ⛔⛔ **Report do dono, 2026-09-15, com duas fotos (painel largo e estreito):** *«Em Grain:
+/// Voronoi : Metric e Edges os nomes somem ao estreitar o painel. Melhor seria quebrar a linha»*.
+///
+/// Aquelas duas vivem **emparelhadas**, cada uma numa METADE da largura do painel. Ao estreitar, a
+/// coluna do nome de uma metade fica menor do que a reticência e o
+/// [`crate::widget::paint_property_label`] devolve **string vazia** — que é a resposta certa dele
+/// (*«a caixa fica só com o número, que é o degrau seguinte da escada do estreito»*) e a **errada**
+/// para quem escolheu emparelhar: *o degrau a seguir a «não cabe o nome» não é apagar o nome, é
+/// deixar de emparelhar.*
+///
+/// ⇒ quem empareelha pergunta ANTES. ⚠️ **Ela pergunta à PORTA, não a uma segunda aritmética:** o
+/// veredito sai da [`crate::widget::property_row_columns_for`], a mesma que vai desenhar. *Duas
+/// contas para «isto cabe?» divergem no dia em que uma das leis muda.*
+#[must_use]
+pub fn property_row_fits(w: f32, label_w: f32) -> bool {
+    let piso = crate::widget::NUMBER_INPUT_MIN_W_PX;
+    let row =
+        crate::widget::property_row_columns_for(0.0, w, 0.0, ROW_H_PX, Some(label_w), Some(piso));
+    row.label.w >= label_w - 0.01 && row.control.w >= piso - 0.01
+}

@@ -1709,3 +1709,67 @@ certa.
 - **Os outros seis painéis** (`flip-frames` · `grid-snap` · `motion-graph` · `motion-params` ·
   `timeline` · `vector`) seguem por converter.
 - O censo `no_row_paints_its_name_above_its_control` continua **do Inspector**, por construção.
+
+---
+
+## 26 — ⛔⛔⛔ *«Os nomes somem ao estreitar o painel»* — EMPARELHAR é escolha, CABER é medição
+
+**Report do dono, 2026-09-15**, com **duas** fotos do mesmo painel (largo e estreito): *«Em Grain:
+Voronoi : Metric e Edges os nomes somem ao estreitar o painel. Melhor seria quebrar a linha»*.
+
+### 26.1 — O mecanismo, e porque a culpa NÃO é do pintor
+
+`Metric` e `Edges` vivem **emparelhados**, cada um numa METADE da largura (uma decisão de desenho do
+painel do Painter, guardada no `PAIR_MAX_LEN`: dois nomes curtos partilham a fileira).
+
+Ao estreitar, a coluna do nome de uma metade fica **menor do que a própria reticência**, e o
+`fit_label` devolve **string vazia**. ⚠️ **Isso é a resposta CERTA do pintor** — o doc dele di-lo por
+escrito: *«devolve string VAZIA quando nem duas letras cabem — e isso é uma resposta, não uma falha:
+a caixa fica só com o número, que é o degrau seguinte da escada do estreito»*.
+
+⇒ **o defeito é de quem EMPARELHOU sem perguntar.** *O degrau a seguir a «não cabe o nome» não é
+apagar o nome: é deixar de emparelhar.*
+
+### 26.2 — A cura: duas perguntas, e só uma é de produto
+
+| pergunta | quem responde | onde |
+|---|---|---|
+| *que propriedades PODEM partilhar uma fileira?* | o painel (desenho) | `PAIR_MAX_LEN`, intacto |
+| *elas CABEM aqui?* | a **porta** | `property_row::property_row_fits(w, largura_do_nome)` |
+
+⛔ **E a segunda vai à PORTA, nunca a uma segunda aritmética no painel:** o veredito sai da mesma
+`property_row_columns_for` que vai desenhar. *Duas contas para «isto cabe?» divergem no dia em que
+uma das leis muda* — e esta linha já pagou essa forma na §23.
+
+⚠️ **O `PAIR_MAX_LEN` FICA, e isso é deliberado.** Trocá-lo por uma pura medição de largura faria
+`Contrast`+`Brightness` emparelharem num painel largo — uma mudança de disposição que o dono **não
+pediu**. *Uma régua nova responde à pergunta que foi feita, não a todas as que ela conseguiria
+responder.*
+
+### 26.3 — A medição
+
+`Metric` mede `36,8 px` a `Sm`. A fileira emparelhada parte abaixo de um painel de **`~300 px`** —
+exactamente a faixa entre as duas fotos dele.
+
+| painel | `Metric` | `Edges` |
+|---|---|---|
+| `220` · `260` · `280` | ⛔ quebra | ⛔ quebra (`Edges` cabe a `280`; basta um não caber) |
+| `300` e acima | ✅ par | ✅ par |
+
+### 26.4 — O gate, com o oráculo FORA do predicado
+
+`a_paired_row_breaks_before_its_name_disappears`: quando `property_row_fits` diz **sim**, o rótulo
+que o pintor de facto põe na cena tem de ser o nome **inteiro**.
+
+⚠️⚠️ **Comparar o predicado com a `property_row_columns_for` seria compará-lo consigo próprio** — o
+defeito que esta linha já pagou duas vezes (§22.5, e a memória
+`feedback_a_gate_that_compares_two_constructions_is_blind_to_a_shared_mutation`). ⇒ a régua é o
+**TEXTO PINTADO**, pelo `property_label_origin` com o sistema de texto real.
+
+**Mutação:** o predicado deixa de olhar para o nome (`row.control.w >= piso` só) ⇒
+*«metade 108,0: `property_row_fits` disse SIM para "Metric" (36,8 px) e o pintor põe "…"»* ✅ — a
+mensagem do gate é literalmente a foto do dono.
+
+⭐ E o segundo teste é o **controlo pelos dois lados**: o predicado diz **sim** a `480` e **não** a
+`240`. Sem ele, um `false` constante deixava a metade de cima verde sobre um painel que nunca
+emparelha.

@@ -240,6 +240,35 @@ facto não há folga nenhuma.
 
 ---
 
+## §6-quater — EMPARELHAR é uma escolha; CABER é uma medição
+
+⛔⛔ **Report do dono, 2026-09-15, com duas fotos (o mesmo painel largo e estreito):** *«Em Grain:
+Voronoi : Metric e Edges os nomes somem ao estreitar o painel. Melhor seria quebrar a linha»*.
+
+Aqueles dois vivem **emparelhados**, cada um numa METADE da largura. Ao estreitar, a coluna do nome
+de uma metade fica menor do que a própria reticência e o `paint_property_label` devolve **string
+vazia** — que é a resposta **certa** dele para uma coluna degenerada (§4: *«a caixa fica só com o
+número, que é o degrau seguinte da escada do estreito»*) e a **errada** para quem escolheu
+emparelhar.
+
+⇒ *o degrau a seguir a «não cabe o nome» não é apagar o nome: é **deixar de emparelhar**.*
+
+⚠️ **Duas perguntas diferentes, e só uma é de produto:**
+
+| pergunta | quem responde |
+|---|---|
+| *que propriedades PODEM partilhar uma fileira?* | o painel — é desenho (nomes curtos, assuntos irmãos) |
+| *elas CABEM aqui?* | a porta, `property_row_fits(w, largura_do_nome)` |
+
+⛔ **E a segunda pergunta vai à PORTA, nunca a uma segunda aritmética:** o veredito sai da mesma
+`property_row_columns_for` que vai desenhar. *Duas contas para «isto cabe?» divergem no dia em que
+uma das leis muda.*
+
+**Medido** (`Metric`, `36,8 px` a `Sm`): a fileira emparelhada parte abaixo de um painel de
+**`~300 px`** — exactamente a faixa entre as duas fotos dele.
+
+---
+
 ## §7 — O que a linha leva SEMPRE
 
 | peça | lei |
@@ -300,6 +329,7 @@ facto não há folga nenhuma.
 | §6-bis | a caixa sozinha cobre exactamente o que o par cobre | `property_row_columns` | `the_lone_field_of_a_row_spans_what_the_pair_spans` |
 | §6-bis | dispor N campos numa linha tem UM chamador em todo o painel | `property_fields_layout` | `only_one_door_lays_out_a_row_of_fields` |
 | §6-ter | uma linha nunca quebra enquanto a coluna do nome tem folga | `property_label_col_w_for` | `a_row_never_wraps_while_the_name_column_has_slack` |
+| §6-quater | quem emparelha duas propriedades pergunta antes se o nome cabe | `property_row_fits` | `a_paired_row_breaks_before_its_name_disappears` |
 | §6-bis | nenhuma linha do Inspector põe o nome por cima do controlo | `fields_row` | `no_row_paints_its_name_above_its_control` |
 | §7 | toda linha reserva a coluna de animação | `form_row_columns` | `every_form_row_reserves_the_animation_column` |
 | §7 | as portas que reservam a coluna DERIVAM-SE, nunca se enumeram | `property_label_row` | `the_door_census_derives_the_second_order_doors` |

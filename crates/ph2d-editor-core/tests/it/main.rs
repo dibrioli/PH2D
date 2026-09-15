@@ -21,6 +21,7 @@ mod a_label_that_does_not_fit_is_elided_not_wrapped;
 mod a_label_that_fits_is_never_painted_with_dots;
 mod a_list_is_not_a_form;
 mod a_longer_suffix_is_never_shadowed_by_a_shorter_one;
+mod a_paired_row_breaks_before_its_name_disappears;
 mod a_panel_scrolls_by_dragging_its_body;
 mod a_ring_painted_as_a_fill_is_still_a_frame;
 mod a_row_of_many_fields_never_starves_them;

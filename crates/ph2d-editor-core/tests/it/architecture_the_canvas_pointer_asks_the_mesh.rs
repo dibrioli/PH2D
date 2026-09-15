@@ -157,17 +157,18 @@ fn both_canvas_entries_ask_the_mesh_through_one_door() {
     );
 }
 
-/// ⭐⭐⭐ **O ANEL DO CURSOR PERCORRE A PEGADA DO MOTOR — não a remonta.**
+/// ⭐⭐⭐ **O ANEL DO CURSOR NÃO TEM LEI DE ORIENTAÇÃO PRÓPRIA — ele percorre UMA porta.**
 ///
-/// ⛔⛔ **Medido em 2026-09-14:** o anel lia o achatamento e o rotor do instantâneo **autorado** e
-/// montava a elipse `(cos θ, m·sin θ)` à mão, noutra crate. Quando a pegada passou a carregar a
-/// deformação da arte (a wave do report com foto), o anel ficou a desenhar a forma — e o TAMANHO —
-/// de **repouso** por cima de uma arte dobrada. *A mesma lei escrita duas vezes diverge no dia em
-/// que uma delas aprende alguma coisa.*
+/// ⛔⛔⛔ **E o que a porta devolve é a pegada que o ARTISTA VÊ, não a que o motor emite** (2.º
+/// report do dono com foto, 2026-09-14: *«o gizmo do pincel se deforma ao passar por cima das faces
+/// dobradas»*). Sobre arte dobrada o motor pinta na textura a elipse que a deformação **endireita**
+/// — no ecrã ela sai redonda —, e desenhar essa directamente no ecrã mostra-a torta. *A 1.ª
+/// redacção desta wave corrigiu uma coisa que já estava certa, e a foto foi a prova.*
 ///
-/// ⇒ a porta é o `PainterTool::cursor_dab` (o `stroke_spec`, que já aplica a deformação, mais o
-/// rotor vivo), e o contorno é o `FootprintDeform::outline_at`, que tem gate a provar que o
-/// `falloff_t` dele é `1` — a curva de nível que o amostrador usa.
+/// ⚠️ **Este gate é ESTRUTURAL e não bastava sozinho** — ele ficou verde sobre a inversão, porque
+/// o que ele mede é *«o anel lê a porta»* e não *«a forma está certa»*. A metade que faltava é a
+/// identidade `W · (W⁻¹·E) = E`, medida na `ph2d-painter-brush`
+/// (`the_painted_dab_seen_through_the_warp_is_the_authored_ellipse`).
 #[test]
 fn the_cursor_ring_walks_the_engine_footprint() {
     let f = Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -189,8 +190,8 @@ fn the_cursor_ring_walks_the_engine_footprint() {
     );
     assert!(
         src.contains("painter.cursor_dab()"),
-        "{} não pergunta ao motor que pegada o dab vai ter: sem isso ele volta a desenhar a forma \
-         de repouso sobre uma arte dobrada.",
+        "{} não pergunta à ferramenta que pegada mostrar: sem a porta, o anel volta a ter uma lei \
+         de orientação própria — e foi ela que inverteu o sentido sem nada acusar.",
         f.display()
     );
     assert!(
@@ -199,11 +200,12 @@ fn the_cursor_ring_walks_the_engine_footprint() {
          uma segunda vez, que é o defeito que esta porta cura.",
         f.display()
     );
-    // ⚠️ E o TAMANHO também sai da porta: a deformação escala o raio, não só a forma.
+    // ⚠️ E o TAMANHO sai da mesma porta, pela mesma razão: uma segunda fonte para o raio é uma
+    // segunda lei a envelhecer.
     assert!(
         !src.contains("bs.size_px"),
-        "{} volta a tirar o raio do instantâneo AUTORADO (`bs.size_px`): sobre uma arte comprimida \
-         o anel mostra o tamanho de repouso enquanto a tinta pinta outro.",
+        "{} volta a tirar o raio de um segundo sítio: o raio e a forma têm de vir da MESMA porta, \
+         senão eles discordam no dia em que uma delas aprender alguma coisa.",
         f.display()
     );
 }

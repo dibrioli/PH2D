@@ -55,24 +55,32 @@ impl PainterTool {
         brush
     }
 
-    /// ⭐⭐⭐ **A PEGADA DO DAB COMO O MOTOR A VAI EMITIR** — o raio em píxeis de imagem e a
-    /// [`ph2d_painter_brush::FootprintDeform`] já com a deformação da arte e a orientação viva.
+    /// ⭐⭐⭐ **A PEGADA QUE O ARTISTA VÊ** — o raio e a [`ph2d_painter_brush::FootprintDeform`] da
+    /// marca **como ela aparece no ecrã**, com a orientação viva do traço.
     ///
-    /// ⛔⛔ **Ela existe porque o ANEL DO CURSOR reconstruía a elipse por fora** (item 1 da fila do
-    /// esqueleto, 2026-09-14): ele lia o achatamento e o rotor do instantâneo **autorado** e
-    /// montava `(cos θ, m·sin θ)` à mão, noutra crate. Quando a pegada passou a carregar a
-    /// deformação da arte (a wave anterior), o anel ficou a mostrar a forma de REPOUSO por cima de
-    /// uma arte dobrada — *a mesma lei escrita duas vezes diverge no dia em que uma delas aprende
-    /// alguma coisa.*
+    /// ⛔⛔⛔ **A 1.ª redacção devolvia a pegada que o MOTOR EMITE, e isso é o contrário** (report do
+    /// dono com foto, 2026-09-14: *«o gizmo do pincel se deforma ao passar por cima das faces
+    /// dobradas»*). Sobre arte dobrada o motor pinta na textura a elipse que a deformação
+    /// **endireita** — no ecrã ela sai redonda. Desenhar essa elipse directamente no ecrã mostra-a
+    /// torta: *o anel passou a mentir exactamente onde ele antes acertava.*
     ///
-    /// ⚠️ **A composição é a do motor, chamada e não copiada:** o [`Self::stroke_spec`] (que já
-    /// aplica a deformação) mais o `follow_rotor` sobre o rumo VIVO — as mesmas duas funções que o
-    /// `BrushSpec::dab_rotor` compõe, menos o salto aleatório por dab, que é ruído e não forma.
+    /// ⭐ **E a lei é uma IDENTIDADE, com gate:** `W · (W⁻¹·E) = E` — o que o motor pinta, levado
+    /// pela deformação, **é** a elipse autorada (`the_painted_dab_seen_through_the_warp_is_the_
+    /// authored_ellipse`, medido sobre a saída real da porta, que passa por uma decomposição em três
+    /// números e podia não voltar). ⇒ o anel desenha a AUTORADA, e por isso ele e a tinta concordam
+    /// no ecrã por construção.
+    ///
+    /// ⚠️ **Ela continua a ser uma PORTA e não o instantâneo** (que também a traz): o anel não pode
+    /// ter lei de orientação própria — foi remontá-la noutra crate que deixou esta wave inverter o
+    /// sentido sem nada acusar. A composição é a do motor: o `follow_rotor` sobre o rumo VIVO.
     #[must_use]
     pub fn cursor_dab(&self) -> (f32, ph2d_painter_brush::FootprintDeform) {
-        let spec = self.stroke_spec();
-        let rotor = spec.follow_rotor(self.live_heading());
-        (spec.radius_px, spec.dab_footprint(rotor))
+        let b = self.paint.brush;
+        let pegada = ph2d_painter_brush::FootprintDeform::new(b.dab_flatten, b.dab_angle_deg);
+        (
+            b.radius_px,
+            pegada.rotated_by(b.follow_rotor(self.live_heading())),
+        )
     }
 
     /// ⭐⭐⭐ **O RAIO QUE O DAB VAI OCUPAR na imagem, ANTES da deformação** — o que a porta de canvas
@@ -107,6 +115,55 @@ impl PainterTool {
 #[cfg(test)]
 mod tests {
     use super::super::super::PainterTool;
+
+    /// ⭐⭐⭐ **A PEGADA DO CURSOR É A AUTORADA, NUNCA A QUE O MOTOR PINTA** — o gate do report com
+    /// foto (2026-09-14: *«o gizmo do pincel se deforma ao passar por cima das faces dobradas»*).
+    ///
+    /// ⛔⛔⛔ **Nenhum gate apanhava esta inversão, e eu enviei-a.** O gate estrutural da shell mede
+    /// *«o anel lê a porta»* e ficou verde; o gate da identidade (`ph2d-painter-brush`) mede a LEI e
+    /// também ficou verde — *a lei estava certa e a porta devolvia o outro lado dela*. ⇒ o que
+    /// faltava é esta asserção: sobre uma arte deformada, a pegada do cursor tem de continuar a ser
+    /// a do artista, e tem de **DIFERIR** da que o motor emite.
+    ///
+    /// ⚠️ A 2.ª metade é a que mata a inversão: sem ela, uma pegada que devolvesse a pintada
+    /// passaria sempre que a deformação fosse a identidade.
+    #[test]
+    fn the_cursor_footprint_is_the_authored_one_not_the_painted_one() {
+        let mut t = PainterTool::default();
+        t.set_brush_dab_flatten(0.4);
+        t.set_brush_dab_angle(30.0);
+        let repouso = t.cursor_dab();
+        // Uma arte comprimida ao meio num eixo — o regime da foto.
+        t.set_canvas_warp([[0.5, 0.0], [0.0, 1.0]]);
+        let dobrada = t.cursor_dab();
+        assert!(
+            (dobrada.0 - repouso.0).abs() < 1e-6,
+            "o RAIO do anel mudou com a deformação ({} contra {}): no ecrã a marca continua do \
+             mesmo tamanho, e o anel tem de continuar também",
+            dobrada.0,
+            repouso.0
+        );
+        for k in 0..64 {
+            let (a, b) = (
+                repouso.1.outline_at(k as f32 / 64.0),
+                dobrada.1.outline_at(k as f32 / 64.0),
+            );
+            assert!(
+                (a[0] - b[0]).hypot(a[1] - b[1]) < 1e-6,
+                "a FORMA do anel mudou com a deformação no ponto {k}: ele passou a desenhar a \
+                 elipse que o motor pinta na TEXTURA, que no ecrã sai redonda — o anel fica torto \
+                 exactamente onde a marca fica certa"
+            );
+        }
+        // ANTI-VÁCUO: a pegada que o motor EMITE tem mesmo de ser outra, senão não há o que separar.
+        let pintada = t.stroke_spec();
+        assert!(
+            (pintada.dab_flatten - t.paint.brush.dab_flatten).abs() > 1e-3
+                || pintada.radius_px != t.paint.brush.radius_px,
+            "com esta deformação o motor emite a MESMA pegada que o artista autorou: a fixtura não \
+             produz a diferença que este gate existe para separar"
+        );
+    }
 
     /// ⭐⭐⭐ **A PEGADA DO CURSOR RODA COM O TRAÇO** — a metade que um censo de texto não mede.
     ///

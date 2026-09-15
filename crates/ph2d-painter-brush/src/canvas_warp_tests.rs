@@ -91,3 +91,60 @@ fn a_collapsed_triangle_is_refused_not_amplified() {
         }
     );
 }
+
+/// ⭐⭐⭐ **O QUE O ARTISTA VÊ É A ELIPSE AUTORADA — e é essa que o anel do cursor tem de desenhar.**
+///
+/// ⛔⛔⛔ **Report do dono com foto (2026-09-14): *«o gizmo do pincel se deforma ao passar por cima
+/// das faces dobradas»*.** Eu tinha acabado de pôr o anel a percorrer a pegada que o MOTOR emite —
+/// e essa é a elipse da TEXTURA, a que a deformação endireita. No ecrã ela aparece **redonda**;
+/// desenhá-la directamente no ecrã mostra-a **torta**. *Corrigi uma coisa que já estava certa, e a
+/// foto é a prova.*
+///
+/// A lei, escrita como identidade: a pegada que o motor pinta, **levada pela deformação**, é a
+/// elipse que o artista autorou. `W · (W⁻¹·E) = E`, e o gate mede-o sobre a saída real da porta —
+/// que passa por uma decomposição em três números e podia não voltar.
+#[test]
+fn the_painted_dab_seen_through_the_warp_is_the_authored_ellipse() {
+    use crate::footprint::FootprintDeform;
+    let mut casos = 0;
+    for warp in [
+        [[2.0_f32, 0.0], [0.0, 1.0]],
+        [[1.0, 0.0], [0.0, 3.0]],
+        [[1.0 / 3.0, 0.0], [0.0, 1.0]],
+        [[1.0, 0.4], [-0.2, 1.3]],
+    ] {
+        for (flatten, angle) in [(0.0_f32, 0_u16), (0.4, 0), (0.4, 37), (0.25, 115)] {
+            let autorada = FootprintDeform::new(flatten, angle);
+            let d = warped_dab(warp, flatten, angle);
+            let pintada = FootprintDeform::new(d.flatten, d.angle_deg);
+            // A fronteira do que o motor pinta, escalada pelo raio que ele usa e LEVADA pela
+            // deformação: é isto que chega ao olho.
+            let vista: Vec<[f32; 2]> = (0..256)
+                .map(|k| {
+                    let p = pintada.outline_at(k as f32 / 256.0);
+                    let (x, y) = (p[0] * d.radius_scale, p[1] * d.radius_scale);
+                    [
+                        warp[0][0] * x + warp[0][1] * y,
+                        warp[1][0] * x + warp[1][1] * y,
+                    ]
+                })
+                .collect();
+            // E a autorada, que é o que o anel desenha.
+            for k in 0..256 {
+                let a = autorada.outline_at(k as f32 / 256.0);
+                let perto = vista
+                    .iter()
+                    .map(|v| (v[0] - a[0]).hypot(v[1] - a[1]))
+                    .fold(f32::INFINITY, f32::min);
+                casos += 1;
+                assert!(
+                    perto < 2e-2,
+                    "com warp {warp:?}, flatten {flatten} e ângulo {angle}°, o ponto {k} da elipse \
+                     AUTORADA está a {perto} da fronteira do que o motor de facto pinta — o anel e \
+                     a tinta mostram formas diferentes"
+                );
+            }
+        }
+    }
+    assert_eq!(casos, 4 * 4 * 256, "o corpus mudou de tamanho");
+}

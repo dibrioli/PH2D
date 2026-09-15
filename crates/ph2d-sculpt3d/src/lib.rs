@@ -64,6 +64,12 @@ mod filter_law;
 mod grip;
 /// ⭐⭐ **PARA ONDE O ESFREGÃO EMPURRA** — ver [`smear_mode`].
 mod smear_mode;
+
+/// ⭐⭐ **PARA ONDE O RAIO DA PROJECÇÃO APONTA** — ver [`project_mode`].
+mod project_mode;
+
+/// ⭐⭐⭐ **A DISTÂNCIA ATÉ À OUTRA PEÇA** — ver [`projectar`].
+mod projectar;
 pub use boundary_controlos::BoundaryControlos;
 /// ⭐ **Os dois selectores do contorno, re-exportados.** O painel escolhe entre
 /// eles e não precisa de conhecer a crate da lei — a mesma forma com que ele já
@@ -123,9 +129,24 @@ pub use filter_law::FilterLaw;
 pub use grip::{Amount, Grip, GripLaw};
 pub use kelvinlet::KELVINLET_REACH;
 pub use preview::{NO_PREVIEW, preview_into, preview_verts};
+pub use project_mode::ProjectMode;
 pub use ref_mode::{Field, FrontFace, KernelLaw, LateralPull, PlaneReach, RefMode};
 pub use ref_profiles::VerbProfile;
 pub use smear_mode::SmearMode;
+
+/// **SÓ PARA A BANCADA** — a lei do raio, sem o traço à volta. Ver
+/// [`projectar::distancia`].
+#[must_use]
+pub fn distancia_de_projeccao_para_teste(
+    ponto: [f32; 3],
+    direccao: [f32; 3],
+    activo: ph2d_mesh::Pose,
+    alvos: &[(ph2d_mesh::Mesh, ph2d_mesh::Pose)],
+    bidir: bool,
+    folga: f32,
+) -> Option<f32> {
+    projectar::distancia(ponto, direccao, activo, alvos, bidir, folga)
+}
 pub use spacing::{MIN_SPACING_FRACTION, Walk, min_spacing, walk};
 pub use stroke::ClothFilterStep;
 pub use stroke::cloth_repica;

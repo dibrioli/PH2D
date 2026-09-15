@@ -144,6 +144,11 @@ impl Default for Brush {
             // leis próprias (adensar e espalhar) que o artista escolhe; este é
             // o que ele espera ao pegar a ferramenta.
             smear_mode: crate::SmearMode::Drag,
+            // ⭐ Os três de fábrica do corpus do oráculo: raio de vista,
+            // folga `0`, um sentido — a base de `21` das `24` fixturas.
+            project_mode: crate::ProjectMode::View,
+            project_min_distance: 0.0,
+            project_bidirectional: false,
             // ⚠️ **DERIVADO do verbo, como o `accumulate` e o `falloff` logo
             // acima** — e pela mesma razão: um literal aqui seria o MESMO fato
             // em dois lugares, e no dia em que a tabela do verbo mudasse ele

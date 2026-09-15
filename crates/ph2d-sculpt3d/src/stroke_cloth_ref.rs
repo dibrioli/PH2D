@@ -473,7 +473,7 @@ impl SculptStroke {
         // acima: as funções que a lei recebe emprestam-nos, e o `capture` do undo
         // logo a seguir precisa do `&mut self`. *Tirar e repor é o que deixa as
         // duas coisas coexistirem sem uma cópia.*
-        let colisores = std::mem::take(&mut self.cloth_colliders);
+        let colisores = std::mem::take(&mut self.pecas_da_cena);
         let simulou = {
             let anel = |v: u32| anel_de(mesh, v);
             if brush.cloth_collisions && !colisores.is_empty() {
@@ -485,7 +485,7 @@ impl SculptStroke {
                 ses.tecido.passo(&pos, &anel, &passo)
             }
         };
-        self.cloth_colliders = colisores;
+        self.pecas_da_cena = colisores;
         if simulou {
             // ⚠️ Todo vértice ACTIVO é capturado antes de ser escrito: o `pre` é
             // o que o undo devolve (a mesma lei do `build_cloth` do VBD).

@@ -17,7 +17,7 @@ use ph2d_tokens::Spacing;
 
 use super::body::paint_one_row;
 use super::brush_fileiras::{
-    paint_boundary_rows, paint_cloth_rows, paint_pose_rows, paint_smear_rows,
+    paint_boundary_rows, paint_cloth_rows, paint_pose_rows, paint_project_rows, paint_smear_rows,
 };
 use super::mask_tools::paint_mask_tools;
 use super::widgets::{command, labelled_seg, toggle};
@@ -363,5 +363,6 @@ fn paint_per_verb_switches(
     let y = paint_pose_rows(ctx, snap, x, w, y);
     let y = paint_boundary_rows(ctx, snap, x, w, y);
     let y = paint_smear_rows(ctx, snap, x, w, y);
+    let y = paint_project_rows(ctx, snap, x, w, y);
     paint_mask_tools(ctx, snap, x, w, y)
 }

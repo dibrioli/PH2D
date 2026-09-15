@@ -17,7 +17,7 @@
 
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_i18n::tr;
-use ph2d_sculpt3d::{ClothArea, ClothForceFalloff, ClothMode, SmearMode, Verb};
+use ph2d_sculpt3d::{ClothArea, ClothForceFalloff, ClothMode, ProjectMode, SmearMode, Verb};
 use ph2d_tokens::Spacing;
 
 use super::widgets::{command, labelled_seg, toggle};
@@ -173,6 +173,57 @@ pub(super) fn paint_smear_rows(
         &crate::ids::SCULPT3D_SMEAR_MODE,
         &labels,
         selected,
+        x,
+        w,
+        y,
+    ) + Spacing::Sm.px()
+}
+
+/// **AS DUAS SUPERFÍCIES PINTADAS DO PINCEL DE PROJECTAR** — a direcção do raio
+/// (espec §6.2) e procurar também para trás (§6.3.2).
+///
+/// ⚠️ **A terceira — a FOLGA — é um SLIDER e vive na tabela** (`rows.rs`), como
+/// todo knob numérico deste painel. *Pintá-la aqui à mão seria a segunda
+/// resposta a «como se desenha um número», e o painel guiado por tabela é o
+/// único desta casa sem knob morto* (CLAUDE.md §5.0).
+///
+/// ⛔ **Sem elas o artista alcança UM dos dois modos e nunca o alvo do lado
+/// errado** — o defeito que o pincel de tecido pagou por escrito: *um motor
+/// vivo sem botão nenhum.*
+pub(super) fn paint_project_rows(
+    ctx: &mut PaintCtx,
+    snap: &Sculpt3dSnapshot,
+    x: f32,
+    w: f32,
+    y: f32,
+) -> f32 {
+    if !snap.ui.brush.offers_project_controls() {
+        return y;
+    }
+    let selected = ProjectMode::ALL
+        .iter()
+        .position(|&m| m == snap.ui.brush.project_mode)
+        .unwrap_or(0);
+    let labels: Vec<&str> = ProjectMode::ALL.iter().map(|m| m.label()).collect();
+    let y = labelled_seg(
+        ctx,
+        tr("panel.sculpt3d.project_mode"),
+        crate::ids::SCULPT3D_SEC_BRUSH,
+        &crate::ids::SCULPT3D_PROJECT_MODE,
+        &labels,
+        selected,
+        x,
+        w,
+        y,
+    ) + Spacing::Sm.px();
+    // ⚠️ **A caixa responde *«a lei existe»*, nunca *«o flag está ligado»*** — a
+    // mesma cerca do `Connected Only`: uma caixa que se escondesse quando
+    // desmarcada seria uma caixa que ninguém consegue marcar.
+    toggle(
+        ctx,
+        crate::ids::SCULPT3D_PROJECT_BIDIR,
+        tr("panel.sculpt3d.project_bidir"),
+        snap.ui.brush.project_bidirectional,
         x,
         w,
         y,

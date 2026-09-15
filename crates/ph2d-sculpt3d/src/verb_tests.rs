@@ -178,6 +178,7 @@ fn invert_changes_the_result_of_exactly_the_verbs_that_have_an_opposite() {
         // inerte neste arnês, e o anti-vácuo abaixo reprova apontando para o
         // VERBO em vez de para a fixtura.
         s.reference = referencia_sintetica(&mesh);
+        s.pecas_da_cena = alvo_sintetico();
         // ⚠️ **DOIS dabs, e o segundo é o que torna a fixture honesta.** O
         // [`Dab::path`] é derivado da diferença entre CENTROS, então o primeiro
         // dab de qualquer traço nasce sem direção — e o [`Verb::ClayThumb`]
@@ -624,4 +625,26 @@ fn referencia_sintetica(mesh: &Mesh) -> Vec<[f32; 3]> {
         .iter()
         .map(|p| [p[0] * 0.8, p[1] * 0.8, p[2] * 0.8])
         .collect()
+}
+
+/// ⭐⭐ **A OUTRA PEÇA DA CENA, sintética** — a irmã exacta da
+/// [`referencia_sintetica`], e ela existe pela MESMA razão: sem um alvo contra
+/// que projectar, o [`Verb::SceneProject`] é **inerte por lei** (espec §6.3.3),
+/// e os censos leem isso como *«o dab não fez nada em canal nenhum»* — que é
+/// literalmente a mensagem com que eles reprovaram quando o verbo nasceu.
+///
+/// ⛔ **A alternativa era EXCLUIR o verbo dos censos, e um censo que exclui um
+/// verbo deixa de o testar** — aqui isso custaria duas propriedades reais: que
+/// o `Ctrl` inverte este pincel, e que o alpha o alcança.
+///
+/// ⚠️ **É uma esfera que ENVOLVE a peça**, e a escolha não é decorativa: assim
+/// **qualquer** raio, de qualquer vértice e em qualquer direcção, acerta —
+/// logo o arnês não depende de para onde o dab olha. E a distância continua a
+/// ser **função da posição**, logo o alpha e a curva de queda continuam a
+/// modular o resultado, que é o que os dois censos medem.
+fn alvo_sintetico() -> Vec<(Mesh, ph2d_mesh::Pose)> {
+    vec![(
+        ph2d_mesh::shapes::uv_sphere(12, 16, 3.0),
+        ph2d_mesh::Pose::IDENTITY,
+    )]
 }

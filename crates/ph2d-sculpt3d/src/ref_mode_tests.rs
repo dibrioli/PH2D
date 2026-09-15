@@ -213,15 +213,21 @@ fn the_census_of_offered_chips() {
     //
     // ⚠️ **17 desde a W6, 18 desde o Blob, 19 desde o Clay Thumb, 20 desde o
     // Multiplane Scrape, 21 desde o Slide Relax, 22 desde o Surface Smooth, 23
-    // desde a DEMÃO, 25 desde os DOIS GESTOS TANGENCIAIS:** todos são
-    // ferramentas da referência restrita, então a força ao quadrado — que mora
-    // no funil de todas elas — vale para elas por construção.
+    // desde a DEMÃO, 25 desde os DOIS GESTOS TANGENCIAIS, 26 desde PROJECTAR NA
+    // CENA:** todos são ferramentas da referência restrita, então a força ao
+    // quadrado — que mora no funil de todas elas — vale para elas por
+    // construção.
+    //
+    // ⭐⭐ **E o de PROJECTAR tem o `s²` medido no corpus, não inferido:** a
+    // fixtura `projectar_forca05_constante_1passo` pousa o vértice a `0,125` de
+    // um vão de `0,5`, ou seja `0,5²` do caminho — *a lei que este número
+    // afirma vale-se dela sozinha* (espec §1.1).
     //
     // ⭐⭐ **E no polegar e no empurrão esse `s²` deixou de ser só uma linha de
     // censo: ele é MEDIDO contra o oráculo** (a meia força o pico cai a um
     // quarto, `oraculo_dos_gestos_tangenciais`). *A lei que este número afirma
     // passou a ter um lado aprovado.*
-    assert_eq!(count(RefMode::B), 25, "B: a lei da força vale para todos");
+    assert_eq!(count(RefMode::B), 26, "B: a lei da força vale para todos");
     // A literatura chega paper a paper, nas waves W4/W5/W7.
     //
     // ⚠️ **E o Surface Smooth NÃO o move, embora SEJA um paper** (Vollmer,

@@ -651,7 +651,7 @@ fn sonda_do_custo_da_colisao() {
                     // mesmo, e o resultado não é o que esta sonda mede.
                     for k in 0..colisores {
                         let c = ph2d_mesh::shapes::uv_sphere(16, 8, 0.2);
-                        s.cloth_colliders
+                        s.pecas_da_cena
                             .push((c, ph2d_mesh::Pose::at([0.0, 0.0, -2.0 - k as f32])));
                     }
                 }

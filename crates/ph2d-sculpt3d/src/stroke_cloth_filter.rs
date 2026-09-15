@@ -392,7 +392,7 @@ impl SculptStroke {
         // ⚠️ **Os colisores saem do `self` durante o passo**, como no traço: as
         // funções que a lei recebe emprestam-nos e a escrita na malha logo a
         // seguir precisa do `&mut self`.
-        let colisores = std::mem::take(&mut self.cloth_colliders);
+        let colisores = std::mem::take(&mut self.pecas_da_cena);
         let simulou = if self.cloth_filter_collisions && !colisores.is_empty() {
             let fs = super::stroke_cloth_ref::caixas_de(&colisores);
             let refs: Vec<ph2d_cloth::verlet::Colisor> =
@@ -401,7 +401,7 @@ impl SculptStroke {
         } else {
             ses.passo(&pos, &anel, &p)
         };
-        self.cloth_colliders = colisores;
+        self.pecas_da_cena = colisores;
         let mut movidos = 0;
         if simulou {
             // Todo vértice activo é capturado antes de ser escrito — o `pre` é o

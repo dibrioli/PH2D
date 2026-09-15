@@ -110,6 +110,7 @@ pub fn populate(store: &mut WidgetStore) {
         // o dedo dão o MESMO report* — quem os separa é o gesto REAL do
         // `every_smear_control_is_clickable_where_it_is_drawn`.
         &crate::ids::SCULPT3D_SMEAR_MODE[..],
+        &crate::ids::SCULPT3D_PROJECT_MODE[..],
         &crate::ids::SCULPT3D_ALPHA[..],
         &crate::ids::SCULPT3D_ADD[..],
         &crate::ids::SCULPT3D_MASK_OP[..],
@@ -160,6 +161,7 @@ pub fn populate(store: &mut WidgetStore) {
         crate::ids::SCULPT3D_ACCUMULATE,
         crate::ids::SCULPT3D_FRONT_FACES,
         crate::ids::SCULPT3D_SURFACE_ONLY,
+        crate::ids::SCULPT3D_PROJECT_BIDIR,
         crate::ids::SCULPT3D_SCRAPE_DYNAMIC,
         crate::ids::SCULPT3D_CLOTH_PIN,
         crate::ids::SCULPT3D_CLOTH_PERSISTENT,

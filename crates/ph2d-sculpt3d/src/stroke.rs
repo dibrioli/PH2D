@@ -79,20 +79,23 @@ pub struct SculptStroke {
     /// cai no repouso do traço sozinha, sem ninguém ter de se lembrar de a
     /// apagar.
     pub persistent_base: Vec<[f32; 3]>,
-    /// ⭐⭐ **AS OUTRAS PEÇAS DA CENA, para a colisão do tecido** (espec §5.6).
+    /// ⭐⭐⭐ **AS OUTRAS PEÇAS DA CENA, fotografadas no pen-down** — uma **PORTA
+    /// com DOIS consumidores**, não um campo do tecido.
     ///
-    /// ⚠️ **A lista é montada UMA vez, quando a simulação nasce**, e cada peça
-    /// fica na pose desse instante — é por isso que ela é uma FOTOGRAFIA e não
-    /// uma referência: *um colisor animado não se move durante o traço, e um que
-    /// apareça a meio não entra.*
-    ///
-    /// ⚠️ Vazia = sem colisores, que é a omissão. Quem a enche é a shell, que é
-    /// quem sabe o que mais há na cena.
-    /// ⚠️ **A POSE viaja com a malha** — a lei recebe posições em espaço do
-    /// MUNDO e o `Multires::mesh` de cada peça está em espaço LOCAL. Guardar as
-    /// duas e levar o RAIO ao espaço local (`Pose::ray_to_local`) é mais barato
-    /// e mais exacto que transformar a malha inteira.
-    pub cloth_colliders: Vec<(Mesh, ph2d_mesh::Pose)>,
+    /// ⚠️ A lista é montada **UMA vez**, quando o gesto nasce, e cada peça fica
+    /// na pose desse instante ⇒ *uma peça que se mova durante o traço não se
+    /// move para o efeito, e uma que apareça a meio não entra.* Ela nasceu para
+    /// a colisão do tecido (espec §5.6) e o segundo consumidor —
+    /// [`crate::Verb::SceneProject`] (§6.1) — chegou **sem a contornar**.
+    /// ⚠️ **O nome deixou de dizer «colisores» em 2026-09-14**: um segundo
+    /// instantâneo da mesma coisa seria a segunda resposta a *«que mais há na
+    /// cena?»*. Vazia = não há outras peças; quem a enche é a **shell**, que
+    /// pergunta a [`crate::Brush::precisa_das_pecas_da_cena`]. A POSE viaja com
+    /// a malha porque levar o RAIO ao espaço local dela é mais barato.
+    pub pecas_da_cena: Vec<(Mesh, ph2d_mesh::Pose)>,
+    /// **ONDE A PEÇA QUE SE ESCULPE ESTÁ** — a RÉGUA em que os candidatos da
+    /// projecção competem (porquê: [`crate::projectar`]). Omissão: identidade.
+    pub pose_activa: ph2d_mesh::Pose,
     /// ⭐⭐ **A SUPERFÍCIE DE REFERÊNCIA, fotografada no pen-down** — por vértice
     /// do nível de cima, o ponto da superfície-limite da subdivisão da base
     /// (`SPEC_unblocked_brushes.md` §2). Só o [`Verb::EraseMultires`] a lê.
@@ -592,9 +595,7 @@ mod shape;
 #[path = "stroke_growth.rs"]
 mod growth;
 
-/// ⭐⭐ **A PEGADA CONGELADA DO PEN-DOWN** — ver [`pegada`]. Irmão do
-/// [`growth`], e o corte é de ASSUNTO: lá o `pre` de cada vértice a sobreviver à
-/// topologia, aqui o CONJUNTO de vértices do gesto a sobreviver a ela.
+/// ⭐⭐ **A PEGADA CONGELADA DO PEN-DOWN** — ver [`pegada`], irmão do [`growth`].
 #[path = "stroke_pegada.rs"]
 mod pegada;
 

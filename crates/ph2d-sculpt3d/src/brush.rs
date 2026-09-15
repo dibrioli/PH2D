@@ -304,6 +304,27 @@ pub struct Brush {
     /// o defeito que o pincel de tecido já pagou nesta casa: **um motor vivo
     /// sem botão nenhum**.
     pub smear_mode: crate::SmearMode,
+    /// **PARA ONDE O RAIO DA PROJECÇÃO APONTA** — ⛔ só o
+    /// [`crate::Verb::SceneProject`] o lê
+    /// ([`Brush::offers_project_controls`]). Ver [`crate::ProjectMode`].
+    pub project_mode: crate::ProjectMode,
+    /// **A FOLGA da projecção** — quanto barro fica ANTES de encostar no alvo
+    /// (o *minimum distance* da espec §6.3.4), em unidades do objecto.
+    ///
+    /// ⛔⛔ **Ela só é «distância mínima» no sentido de AVANÇO, e as duas
+    /// surpresas estão medidas** (espec §6.4): uma folga maior que o vão faz a
+    /// peça **AFASTAR-SE**, e num acerto para trás ela **cresce** a excursão em
+    /// vez de a travar. *Isto é o alvo reproduzido de propósito*; a alternativa
+    /// simétrica existe escrita em [`crate::projectar::folga_simetrica`] e é
+    /// **decisão do dono**.
+    pub project_min_distance: f32,
+    /// **PROCURAR TAMBÉM PARA TRÁS** — o *bidirectional* da espec §6.3.2.
+    ///
+    /// ⚠️ Desligado, um alvo do lado errado deixa o pincel **inerte**, e isso é
+    /// a resposta certa e não um defeito: sem ele não há «projectar para o
+    /// infinito». Ligado, o candidato de trás entra com `−d` na mesma
+    /// competição por `|d|`.
+    pub project_bidirectional: bool,
     /// **SÓ AS FACES DE FRENTE** — a opção de pincel *"Front Faces Only"* da
     /// referência (rótulo público: é o que o artista vê na tela dela).
     ///

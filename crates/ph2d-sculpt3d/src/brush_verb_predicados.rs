@@ -162,6 +162,15 @@ impl Verb {
                 // **diferente e MAIOR** com a inversão, que é a assinatura de
                 // uma truncagem sobre um factor negativo.
                 | Self::Boundary
+                // ⭐⭐⭐ **PROJECTAR honra o Ctrl, e ele vira o RAIO — não o
+                // sinal do deslocamento.** Medido no corpus, e é o achado que
+                // essa distinção produziu: a fixtura `projectar_invertido` tem
+                // o alvo ACIMA e os dois sentidos DESLIGADOS, logo escrito como
+                // negação no fim ele movia **`0` vértices contra `301`** — não
+                // há o que negar quando o raio não acertou em nada.
+                // ⭐ *Do lado do artista, `Ctrl` aqui não quer dizer «afasta»:
+                // quer dizer «procura do outro lado».*
+                | Self::SceneProject
         )
     }
 

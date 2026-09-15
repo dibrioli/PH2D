@@ -22,6 +22,9 @@ pub use sculpt3d_boundary::*;
 /// Os ids do pincel de ESFREGAR DESLOCAMENTO — ver [`sculpt3d_smear`].
 mod sculpt3d_smear;
 pub use sculpt3d_smear::*;
+/// Os ids do pincel de PROJECTAR NA CENA — ver [`sculpt3d_project`].
+mod sculpt3d_project;
+pub use sculpt3d_project::*;
 mod sculpt3d_brush;
 pub use sculpt3d_brush::*;
 mod sculpt3d_shading;

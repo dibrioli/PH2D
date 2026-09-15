@@ -146,6 +146,36 @@ impl Brush {
         self.verb == crate::Verb::SmearMultires
     }
 
+    /// **ESTE PINCEL ESCOLHE COMO PROJECTAR?** — a porta única dos três knobs
+    /// do [`crate::Verb::SceneProject`] (`project_mode` · `project_min_distance`
+    /// · `project_bidirectional`), pelo mesmo argumento da irmã acima: a
+    /// população é de UM, e um predicado com um membro só seria uma lista
+    /// escrita à mão com outro nome.
+    #[must_use]
+    pub fn offers_project_controls(&self) -> bool {
+        self.verb == crate::Verb::SceneProject
+    }
+
+    /// ⭐⭐⭐ **ESTE GESTO PRECISA DE SABER O QUE MAIS HÁ NA CENA?** — a porta
+    /// única que a shell pergunta antes de fotografar as outras peças
+    /// ([`crate::SculptStroke::pecas_da_cena`]).
+    ///
+    /// ⚠️ **Ela existe porque a lista tem DOIS consumidores com predicados
+    /// DIFERENTES**, e essa é exactamente a forma que produz duas respostas à
+    /// mesma pergunta: o tecido só quer as peças com a colisão LIGADA (ela é
+    /// cara — `2,6×` a `6,1×` o dab, medido), e a projecção quer-as sempre,
+    /// porque **sem elas ela não tem lei nenhuma**. ⛔ Escrito no sítio da
+    /// fotografia como um `if` de duas pernas, o terceiro consumidor herdaria a
+    /// perna errada em silêncio.
+    #[must_use]
+    pub fn precisa_das_pecas_da_cena(&self) -> bool {
+        match self.verb {
+            crate::Verb::Cloth => self.cloth_collisions,
+            crate::Verb::SceneProject => true,
+            _ => false,
+        }
+    }
+
     /// **E a TRAVA DE ROTAÇÃO?**
     ///
     /// ⭐⭐ **Só no modo de escala, e isso é LEI e não arrumação:** ela decide se

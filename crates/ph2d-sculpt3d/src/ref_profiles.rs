@@ -128,6 +128,13 @@ const fn profile_s(verb: Verb) -> Option<VerbProfile> {
         // cadeia de peso, a força ao quadrado, o tecto `clamp(f, 0, 1)`) vêm da
         // OUTRA referência, e estão medidos na espec §1 e §5.2.
         Verb::EraseMultires | Verb::SmearMultires => return None,
+        // ⛔ **PROJECTAR NA CENA não tem perfil `s`, e a razão é de ESCOPO e não
+        // de feature:** o SculptGL esculpe **uma** malha — ele não tem o
+        // conceito de *outra peça da cena* contra a qual projectar, logo não há
+        // aqui número nenhum a LER. ⚠️ Os números deste pincel (a cadeia de
+        // peso, a força ao quadrado, a folga) vêm da OUTRA referência e estão
+        // medidos na espec §1 e §6.
+        Verb::SceneProject => return None,
         // `Brush.js:11-16` — `_radius 50 · _intensity 0.5 · _clay true ·
         // _accumulate true`. A tool `Brush` do original é a nossa **Draw E
         // Clay** (o `_clay` é um checkbox dela, ligado de fábrica).

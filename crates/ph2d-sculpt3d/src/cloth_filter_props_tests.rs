@@ -266,7 +266,7 @@ fn as_colisoes_do_filtro_param_o_pano_no_obstaculo() {
         // estar no caminho de facto.
         if com_colisor {
             let placa = shapes::uv_sphere(12, 18, 3.0);
-            st.cloth_colliders.push((placa, Pose::at([0.0, -4.0, 0.0])));
+            st.pecas_da_cena.push((placa, Pose::at([0.0, -4.0, 0.0])));
         }
         let props = ClothFilterProps {
             collisions: com_colisor,

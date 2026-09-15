@@ -288,6 +288,7 @@ fn every_verb_reads_the_alpha() {
             let mut stroke = SculptStroke::default();
             stroke.begin(&mesh);
             stroke.reference = referencia_sintetica(&mesh);
+            stroke.pecas_da_cena = alvo_sintetico();
             let mut brush = textured(verb);
             if !armed {
                 brush.alpha = None;
@@ -444,4 +445,23 @@ fn referencia_sintetica(mesh: &Mesh) -> Vec<[f32; 3]> {
         .iter()
         .map(|p| [p[0] * 0.8, p[1] * 0.8, p[2] * 0.8])
         .collect()
+}
+
+/// ⭐⭐ **A OUTRA PEÇA DA CENA, sintética** — a irmã exacta da
+/// [`referencia_sintetica`], e ela existe pela MESMA razão: sem um alvo contra
+/// que projectar, o [`Verb::SceneProject`] é **inerte por lei** (espec §6.3.3),
+/// e os censos leem isso como *«o dab não fez nada em canal nenhum»*.
+///
+/// ⛔ **A alternativa era EXCLUIR o verbo do censo, e um censo que exclui um
+/// verbo deixa de o testar** — aqui isso custaria a propriedade que este gate
+/// mede: que o alpha alcança este pincel.
+///
+/// ⚠️ **É uma esfera que ENVOLVE a peça**, para que **qualquer** raio acerte —
+/// e a distância continua a ser função da posição, logo o alpha continua a
+/// modular o resultado.
+fn alvo_sintetico() -> Vec<(Mesh, ph2d_mesh::Pose)> {
+    vec![(
+        ph2d_mesh::shapes::uv_sphere(12, 16, 3.0),
+        ph2d_mesh::Pose::IDENTITY,
+    )]
 }

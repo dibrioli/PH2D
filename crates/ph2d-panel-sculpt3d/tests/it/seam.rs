@@ -865,6 +865,65 @@ fn every_smear_control_is_clickable_where_it_is_drawn() {
     let _ = by_id;
 }
 
+/// ⭐⭐ **GATE — com o PROJECTAR na mão, as DUAS superfícies dele são pintadas e
+/// respondem ao ponteiro.**
+///
+/// ⛔⛔ **Irmão exacto do gate do esfregão, e ele existe porque aquele defeito
+/// aconteceu:** os três chips do esfregão nasceram pintados, hit-indexados e
+/// **mortos sob o dedo** — faltava a fileira no `populate`. *Um controlo nunca
+/// pintado e um morto sob o dedo dão o MESMO report*, e só o gesto REAL os
+/// separa.
+///
+/// ⚠️ **A caixa dos dois sentidos entra com os chips**, e não é zelo: ela é o
+/// único caminho para um alvo do lado errado ser alcançado, logo sem ela metade
+/// da espec §6.3 é inexprimível pelo artista.
+#[test]
+fn every_project_control_is_clickable_where_it_is_drawn() {
+    let mut ui = Sculpt3dUi::default();
+    ph2d_panel_sculpt3d::state::switch_verb(&mut ui, Verb::SceneProject);
+    ui.ui_level = UiLevel::Pro;
+    let (mut host, mut state) = arrange(ui);
+    let painted = host.paint::<Sculpt3dPanel>(&mut state, VIEWPORT);
+
+    let mut want: Vec<(String, ph2d_a11y::NodeId)> = ph2d_sculpt3d::ProjectMode::ALL
+        .into_iter()
+        .enumerate()
+        .map(|(i, m)| {
+            (
+                format!("project mode {}", m.label()),
+                ids::SCULPT3D_PROJECT_MODE[i],
+            )
+        })
+        .collect();
+    assert_eq!(
+        want.len(),
+        2,
+        "a espec §6.2 conta DUAS direcções — a fixtura deixou de conter o fenómeno"
+    );
+    want.push(("search both ways".to_owned(), ids::SCULPT3D_PROJECT_BIDIR));
+    for (name, id) in &want {
+        assert!(
+            painted.iter().any(|(pid, _)| pid == id),
+            "`{name}` ({id:?}) devia estar pintado com o projectar na mão"
+        );
+        let rect = painted
+            .iter()
+            .rev()
+            .find(|(pid, _)| pid == id)
+            .map(|(_, r)| *r)
+            .expect("pintado logo acima");
+        let (cx, cy) = (rect.x + rect.w * 0.5, rect.y + rect.h * 0.5);
+        let events = host.click_at(cx, cy);
+        assert!(
+            events
+                .iter()
+                .any(|e| matches!(e, WidgetEvent::Click(c) if *c == *id)),
+            "clicar `{name}` no centro pintado não produziu Click — ele está \
+             pintado e morto sob o dedo"
+        );
+    }
+}
+
 /// ⛔⛔ **O INTERRUPTOR `Accumulate` NÃO É OFERECIDO A QUEM NÃO O LÊ.**
 ///
 /// ⚠️⚠️ **Este gate nasceu de uma mutação SOBREVIVENTE, e o que ela expôs é

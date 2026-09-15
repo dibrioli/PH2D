@@ -276,18 +276,28 @@ pub fn pointer_down(
             // pelo mesmo motivo: a simulação nasce e morre com o traço (§6.3).
             // ⛔ E a pose de cada peça entra na cópia — a lei recebe posições
             // em espaço do MUNDO, e o `Multires::mesh` está em espaço local.
-            scene.stroke.cloth_colliders.clear();
-            if scene.brush.verb == Verb::Cloth && scene.brush.cloth_collisions {
+            scene.stroke.pecas_da_cena.clear();
+            // ⭐⭐⭐ **A pergunta é ao PINCEL, não a um verbo** — ver
+            // [`ph2d_sculpt3d::Brush::precisa_das_pecas_da_cena`]. Os dois
+            // consumidores (a colisão do tecido e a PROJECÇÃO) têm predicados
+            // diferentes, e um `if` de duas pernas escrito aqui faria o
+            // terceiro herdar a perna errada em silêncio.
+            if scene.brush.precisa_das_pecas_da_cena() {
                 let activo = scene.active;
                 for (i, o) in scene.objects.iter().enumerate() {
                     if i != activo {
                         scene
                             .stroke
-                            .cloth_colliders
+                            .pecas_da_cena
                             .push((o.stack.mesh().clone(), o.pose));
                     }
                 }
             }
+            // ⚠️ **E a pose do ACTIVO com elas, no mesmo instante** — ela é a
+            // régua em que os candidatos da projecção competem
+            // (`ph2d_sculpt3d::projectar`). Fotografá-la noutro sítio abriria a
+            // hipótese de a lista e a régua descreverem instantes diferentes.
+            scene.stroke.pose_activa = scene.objects[scene.active].pose;
             // ⚠️ **Depois do `aim`**: a foto é da peça que este traço vai
             // esculpir, e antes do `aim` ela seria a da peça anterior.
             scene.open_dyntopo_stroke();

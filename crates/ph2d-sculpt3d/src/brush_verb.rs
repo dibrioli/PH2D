@@ -551,11 +551,33 @@ pub enum Verb {
     ///
     /// A espec é `docs/3D/cleanroom/SPEC_unblocked_brushes.md` §5.
     SmearMultires,
+    /// ⭐⭐⭐ **PROJECTAR NA CENA** — o barro é empurrado até **encostar noutra
+    /// peça**, como quem molda uma coisa contra a outra.
+    ///
+    /// Para cada vértice ao alcance lança-se um raio na direcção do dab contra
+    /// **as outras peças da cena**, e o vértice viaja a distância que o raio
+    /// mediu. ⭐ **Uma direcção para o dab INTEIRO**, nunca uma por vértice — a
+    /// versão por normal do vértice foi construída e rejeitada pelo autor do
+    /// alvo como inutilizável (espec §9.2: *recusa medida por terceiros*).
+    ///
+    /// ⛔⛔ **Nenhum acerto ⇒ o vértice NÃO SE MEXE.** Não há «projectar para o
+    /// infinito», e é por isso que sem outra peça na cena o pincel é inerte —
+    /// a fixtura `projectar_sem_alvo` mede **zero** vértices movidos.
+    ///
+    /// ⚠️ **Não há acumulador nem memória entre dabs** (espec §6.5): cada dab
+    /// re-mede a distância a partir de onde o vértice está **agora**. ⭐ É daí
+    /// que sai a assimetria da §6.6 — *a lei é antissimétrica e o processo não
+    /// é*: na direcção do alvo a distância encolhe e o vértice **pára**; ao
+    /// contrário, ela cresce. ⛔ Um gate que exija espelho exacto sobre um TRAÇO
+    /// reprova o próprio alvo (medido: `max |d + d′| = 1,415e-01`).
+    ///
+    /// A espec é `docs/3D/cleanroom/SPEC_unblocked_brushes.md` §6.
+    SceneProject,
 }
 
 impl Verb {
     /// Todos, na ordem em que a UI os lista.
-    pub const ALL: [Self; 31] = [
+    pub const ALL: [Self; 32] = [
         Self::Draw,
         Self::Inflate,
         Self::Smooth,
@@ -587,6 +609,7 @@ impl Verb {
         Self::Density,
         Self::EraseMultires,
         Self::SmearMultires,
+        Self::SceneProject,
     ];
 
     /// O nome que a UI mostra.
@@ -622,6 +645,7 @@ impl Verb {
             Self::Density => "Density",
             Self::EraseMultires => "Erase Displacement",
             Self::SmearMultires => "Smear Displacement",
+            Self::SceneProject => "Scene Project",
             Self::Thumb => "Thumb",
             Self::Nudge => "Nudge",
         }

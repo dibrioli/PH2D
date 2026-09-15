@@ -179,13 +179,13 @@ impl Sculpt3dScene {
             //
             // ⚠️ **A pose de cada peça entra na cópia**: a lei recebe posições em
             // espaço de MUNDO, e o `Multires::mesh` está em espaço local.
-            self.stroke.cloth_colliders.clear();
+            self.stroke.pecas_da_cena.clear();
             if self.tecido.props.collisions {
                 let activo = self.active;
                 for (i, o) in self.objects.iter().enumerate() {
                     if i != activo {
                         self.stroke
-                            .cloth_colliders
+                            .pecas_da_cena
                             .push((o.stack.mesh().clone(), o.pose));
                     }
                 }

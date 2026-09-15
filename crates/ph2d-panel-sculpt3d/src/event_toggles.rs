@@ -33,7 +33,7 @@ pub(super) type Toggle = (NodeId, fn(&Sculpt3dUi) -> bool, fn(&mut Sculpt3dUi));
 /// `Brush::offers_front_faces`, `ClothArea::offers_pin`), nunca a uma lista de
 /// nomes aqui — o pintor faz a mesma pergunta para decidir se desenha a caixa, e
 /// duas cópias divergiriam num interruptor que aparece e não muda um vértice.
-pub(super) const TOGGLES: [Toggle; 16] = [
+pub(super) const TOGGLES: [Toggle; 17] = [
     (
         crate::ids::SCULPT3D_ACCUMULATE,
         |u| u.brush.verb.accumulates(),
@@ -53,6 +53,14 @@ pub(super) const TOGGLES: [Toggle; 16] = [
         crate::ids::SCULPT3D_SURFACE_ONLY,
         |u| u.brush.offers_surface_only(),
         |u| u.brush.surface_only = !u.brush.surface_only,
+    ),
+    // ⚠️ **PROCURAR TAMBÉM PARA TRÁS** — a caixa existe porque sem ela um alvo
+    // do lado errado deixa o pincel **inerte**, e isso é a resposta certa e não
+    // um defeito (espec §6.3.3: não há «projectar para o infinito»).
+    (
+        crate::ids::SCULPT3D_PROJECT_BIDIR,
+        |u| u.brush.offers_project_controls(),
+        |u| u.brush.project_bidirectional = !u.brush.project_bidirectional,
     ),
     // ── Os DOIS interruptores do pincel de POSE ─────────────────────────────
     (

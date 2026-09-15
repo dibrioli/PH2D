@@ -386,6 +386,11 @@ fn group_chip_ui(
         // ONDE o esfregão empurra é uma escolha sobre o pincel que já está na
         // mão, não a troca dele.
         ui.brush.smear_mode = ph2d_sculpt3d::SmearMode::ALL[i];
+    } else if let Some(i) = index_of(&crate::ids::SCULPT3D_PROJECT_MODE, id) {
+        // ⚠️ **Sem re-armar nada**, pela mesma razão dos irmãos: escolher CONTRA
+        // QUE DIRECÇÃO o raio mede é uma escolha sobre o pincel que já está na
+        // mão, não a troca dele.
+        ui.brush.project_mode = ph2d_sculpt3d::ProjectMode::ALL[i];
     } else if let Some(i) = index_of(&crate::ids::SCULPT3D_CLOTH_MODE, id) {
         // ⚠️ **Sem re-armar nada:** escolher COMO o tecido deforma é uma escolha
         // sobre o pincel que já está na mão, não a troca dele — a mesma razão do

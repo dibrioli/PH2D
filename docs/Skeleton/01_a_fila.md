@@ -2900,6 +2900,11 @@ saía do eixo MAIOR do dab: `44` → `22` → `11` → `5` dabs no mesmo caminho
 era a faixa do slider. ⛔ **O que escondia os dois era a minha régua:** `maior/menor` é invariante à
 escala e não vê uma marca certa na forma e errada no tamanho.
 
+⭐⭐⭐⭐ **E o 7.º report achou o defeito POR BAIXO dos outros dois: o traço lia a dobra UMA VEZ, no
+pen-down.** Um clique solto ficava certo (*«mais redondo do que nunca»*) e um traço pintava tudo com
+a dobra do sítio onde começou. ⛔ **Nenhum gate a exercitava ao longo de um CAMINHO** — todos mediam
+a lei num PONTO, e ali ela estava certa.
+
 ⇒ **[HANDOFF_A_CURVATURA_DEBAIXO_DO_DAB_2026-09-14](handoffs/HANDOFF_A_CURVATURA_DEBAIXO_DO_DAB_2026-09-14.md)**
 — as tabelas, as duas cercas, as **seis** leituras que o diff inverte, as **quatro** premissas minhas
 que a medição derrubou (entre elas a que este módulo tinha escrita no cabeçalho) e a régua minha que

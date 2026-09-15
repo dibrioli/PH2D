@@ -224,11 +224,41 @@ o quadrado do raio.
 ⚠️ A cerca a `32×` fica, e é do **modelo**: ali o `dab_flatten` satura em `DAB_FLATTEN_MAX = 0,95` e
 uma lasca infinitamente fina não é pintável.
 
+## §9-quater — ⭐⭐⭐⭐ O 7.º REPORT: *«sem melhorias»* — e era o defeito POR BAIXO dos outros dois
+
+`Stroke::new(self.stroke_spec(), …)` captura o `BrushSpec` no **pen-down** — e isso é desenho (o
+artista mexer num slider a meio não pode mudar o traço já começado). Mas **quatro** daqueles campos
+não são do artista: `radius_px`, `dab_flatten`, `dab_angle_deg` e `dab_curve` são **derivados da
+deformação da arte**, e essa muda de sítio para sítio.
+
+⇒ **o traço inteiro pintava com a dobra do sítio onde COMEÇOU.** A marca estava certa no primeiro
+ponto e errada em todo o resto do caminho.
+
+⚠️⚠️ **É isto que explica a progressão dos reports dele:** um dab SOLTO (um clique) usa a dobra do
+pen-down e ficou certo — *«mais redondo do que nunca»*. Um TRAÇO não, e nenhuma das duas waves
+anteriores lhe tocou. *Toda a maquinaria por-dab estava correcta e nunca era relida.*
+
+⛔⛔ **E nenhum gate desta linha a exercitava ao longo de um CAMINHO.** Eles medem a lei num
+**ponto** — o `warped_dab`, a identidade da elipse, a pegada, a ponte para o device — e a lei num
+ponto estava certa. *Uma lei medida num ponto não diz nada sobre um percurso.* É a mesma família das
+outras quatro cegueiras desta wave: a régua que responde a uma pergunta e é lida como se
+respondesse a todas.
+
+**A cura** é uma porta estreita ([`Stroke::set_canvas_dab`]) que deixa passar só aqueles quatro
+campos, mais o par `authored_spec()` / `compose_canvas_warp()`: o traço guarda o **autorado** no
+pen-down e recompõe a cada ponto contra a dobra viva. ⛔ Ele **não** relê `self.paint.brush` — o que
+viaja é a dobra da ARTE, nunca a intenção do artista a meio do gesto.
+
 ## §10 — O que fica ABERTO
 
 - ⏳ **O chrome que é CAMINHO** (a grelha, os contornos de selecção, a curva e a linha do Painter):
   eles precisam de ser **subdivididos** para seguir a malha — é trabalho de outra natureza, e não foi
   começado.
+- ⏳ **A malha é amostrada no ponto do EVENTO e o percurso emite dabs ENTRE eventos** — num traço
+  rápido um evento cobre muitos dabs, e todos usam a dobra do fim do segmento. O exacto seria a
+  malha por DAB, o que põe a malha dentro do motor de pincel.
+- ⏳ **Os traços de FORMA** (curva, elipse, polígono, multi) emitem o caminho inteiro de uma vez a
+  partir de um único evento, logo continuam com uma dobra só.
 - ⏳ **O `apply_jitter` espalha com o raio INFLADO** (mesmo mecanismo do passo). Inerte por omissão
   — o jitter nasce a zero — e por isso nomeado em vez de curado.
 - ⚠️ **Flake de carga para a lista do §5.0:** `the_cost_of_a_gated_stroke_follows_the_footprint_not_the_canvas`

@@ -287,8 +287,7 @@ desta wave, e fica **nomeado** em vez de suposto benigno.
   local é outra. Hoje é um círculo no cursor, e a cura pede a `warp` da malha ali.
 - ⏳ **O custo da porta directa é linear nos triângulos** — nomeado no doc dela, com a cura (índice
   por UV) escrita e não construída, porque nenhum consumidor de hoje a alcança.
-- ⏳ **O `Click` sem consumidor** que o `PH2D_PICK_LOG` expôs (§7-quater) — a forma do controlo
-  morto, por medir.
+- ✅ **O `Click` sem consumidor FECHOU em 2026-09-15, e NÃO era um controlo morto** — ver a §10.
 - ⏳ Os itens que já estavam abertos: **F8 — Bendy Bones** (⭐ **o 1.º passo, o ALCANCE, está MEDIDO
   — ver a célula F8 da [fila](../01_a_fila.md): a lei da pele já é de N ossos e não muda, o produtor
   é UM só sítio, e dos quatro consumidores só o desenho e o dedo precisam da curva**) · **F4 — *«undo tem poucos passos»*** (não
@@ -355,3 +354,47 @@ que a próxima janela tem de confirmar com o dono a olhar.
 erro ali lê-se na hora, como o conta-gotas se lia); o **véu de humidade** é um campo borrado
 desenhado em `ImageQuality::Low`, onde o mesmo erro é quase invisível. *Se a rota tiver de ser paga
 uma vez, ela paga-se pela selecção.*
+
+---
+
+## §10 — ⭐⭐⭐ O `Click` SEM CONSUMIDOR: o id foi INVERTIDO, e a resposta inverteu o diagnóstico
+
+A linha do log do dono, verbatim:
+
+```
+[hero] unhandled event: Click(NodeId(3001329642747827011))
+[pick] (1054, 318) sel=Some(4294967283) painel=false fonte-do-mundo=acumulador
+```
+
+⚠️ **Ela vem LOGO ANTES de uma amostragem que FUNCIONOU**, e foi essa adjacência que a manteve
+*«nomeada e por medir»* durante duas waves: parecia ruído de um sítio onde tudo dava certo.
+
+### Como se soube qual era
+
+O `NodeId` é um **FNV-1a de uma string**, e o repo declara-as todas por `hash_node_id("…")`. ⇒ o id
+inverte-se **pela população**: `3 431` literais distintos varridos, um bate — **`blender_eyedropper`**,
+o botão do próprio conta-gotas que ele estava a testar. *Um hash não se adivinha; conta-se o
+domínio dele.*
+
+### E o diagnóstico inverteu-se
+
+O botão faz **todo** o trabalho no `Down` — e tem de ser ali, porque o `Down` **seguinte** é a
+colheita. ⇒ o `Click` que o `Up` produz chega depois de tudo feito, ninguém o consome, e o detector
+de costura morta da shell grita.
+
+⭐⭐ **Não é um controlo morto: é o DETECTOR a gritar lobo.** E o preço está medido — *um detector
+que grita lobo treina toda a gente, e a próxima LLM, a ignorá-lo*, que é exactamente o que
+aconteceu.
+
+### As três decisões da cura
+
+| decisão | porquê |
+|---|---|
+| A isenção é da **FAMÍLIA**, não de um id | o conta-gotas foi só o que ele carregou; o `Close`, a barra de arrastar, o selector de paletas e as alças de tamanho produzem a MESMA linha com outro número |
+| A **ROTA ganhou gate ANTES** da isenção | ⛔ *silenciar um diagnóstico sem prova por trás é armengo* — hoje há gate a medir que o `Down` arma, que o seguinte colhe, que o 2.º clique cancela e que o `Up` **não** desarma |
+| A lei **mudou de casa** para a `ph2d-editor-core` | cada linha do `expected_unhandled` é um facto sobre o DESPACHO (quem lê por polling, quem age no `Down`); a shell não sabe nenhum deles — ela só decide imprimir |
+
+⚠️⚠️ **E a mudança de casa deixou DUAS mutações a sobreviver**, apanhadas na prova: os gates ficaram
+a medir a porta de BAIXO (`work_already_done_on_down`) e ninguém exercitava o `unhandled_is_expected`
+com um `Click`, logo alargar a isenção ao TIPO inteiro — ou apagá-la — deixava a suíte verde.
+*Mover uma lei sem mover a régua que a ATRAVESSA deixa um gate a medir a metade de baixo.*

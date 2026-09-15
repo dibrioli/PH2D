@@ -5643,6 +5643,7 @@ version = "0.0.0"
 dependencies = [
  "ph2d-field",
  "ph2d-field-eval",
+ "ph2d-field-render",
  "pollster",
  "wgpu",
 ]

@@ -26,7 +26,28 @@
 // ⚠️ **`BTreeMap` e não `HashMap`** — HR-5/ADR-0022. Aqui ele também é o certo por outra razão:
 // a chave é o TEXTO do shader, e uma ordem estável faz um censo de pipelines compilados ser
 // reprodutível entre corridas.
+use ph2d_field::{FieldDoc, NodeKind};
 use std::collections::BTreeMap;
+
+/// ⛔⛔⛔ **ESTE DOCUMENTO PODE IR PARA O DISPOSITIVO?**
+///
+/// Hoje a resposta é **não** para um só motivo, e ele é grave o suficiente para ter porta própria:
+/// uma **ESCULTURA** ([`NodeKind::Sampled`]) não é uma expressão — é uma **grade** que o registo do
+/// avaliador resolve por nome. O compilador da fita traduz o nó para
+/// `Tree::constant(hybrid::ABSENT)`, isto é, **espaço vazio**.
+///
+/// ⚠️⚠️ **Sem esta porta, ligar a GPU faria a escultura DESAPARECER da peça — em silêncio, e com
+/// o resto dela perfeito.** E o gate da paridade não o veria: ele compara a fita com a fita, e as
+/// duas concordam que ali não há nada. *Foi a cena da ponte a ler `0,000` de desvio que mostrou o
+/// buraco — um zero de «igual» e um de «nenhum dos dois sabe» são o mesmo byte.*
+///
+/// ⇒ quem não passa aqui **fica na CPU**, que sabe desenhá-la.
+#[must_use]
+pub fn supports(doc: &FieldDoc) -> bool {
+    !doc.nodes()
+        .iter()
+        .any(|n| matches!(n.kind, NodeKind::Sampled { .. }))
+}
 
 pub mod parity;
 pub mod trace;

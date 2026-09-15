@@ -3104,3 +3104,71 @@ O tecto do §32 (`5,00 ms`) é **compute puro, sem leitura**. O que sobra aqui:
   `map_async` assíncrono em vez de `poll(Wait)`.
 - ⚠️ **E nada disto está ligado ao produto.** O que falta é a costura: o `Tracer` vive no viewport,
   o resultado entra como `Gbuffer` + `Shadows`, e a pintura corre onde já corre.
+
+---
+
+## §36 — ⭐⭐⭐ LIGADO: o quadro assente do modelador passa pelo dispositivo (2026-09-14)
+
+### §36.1 — As três condições, e nenhuma é opcional
+
+| condição | porquê |
+|---|---|
+| **há adaptador** | sem GPU o módulo corre como sempre |
+| **o quadro é o ASSENTE** | o de movimento fica **byte-idêntico** — a cerca que impede a regressão do §32 de voltar por outra porta |
+| ⛔ **a peça não tem ESCULTURA** | ver §36.2 |
+
+`PH2D_FIELD_GPU=0` devolve tudo à CPU — a porta de bissecção que responde a *«piorou»* sem ninguém
+adivinhar qual metade.
+
+### §36.2 — ⛔⛔⛔ A ESCULTURA: o defeito que o gate da paridade NÃO podia ver
+
+Uma escultura (`NodeKind::Sampled`) não é uma expressão — é uma **grade** que o registo resolve por
+nome. O compilador da fita traduz o nó para **`Tree::constant(ABSENT)`**, isto é, *espaço vazio*.
+
+⚠️⚠️ **Sem a recusa, ligar a GPU faria a escultura DESAPARECER — em silêncio, e com o resto da peça
+perfeito.** E o gate da paridade nunca o veria: ele compara a fita com a fita, e as duas concordam
+que ali não há nada. *Foi a cena da ponte a ler `Δ = 0,000` que mostrou o buraco — um zero de
+«igual» e um de «nenhum dos dois sabe» são o mesmo byte.*
+
+⇒ [`ph2d_field_gpu::supports`], com gate que afirma a recusa **e** o controlo (as outras dezassete
+cenas são aceites, senão a recusa seria um `false` constante).
+
+⚠️ E o mesmo raciocínio vale para **duas lâmpadas**: o shader tem um canal de sombra, logo a segunda
+ficaria sem sombra em silêncio. ⇒ o chamador cai na CPU em vez de a ignorar.
+
+### §36.3 — ⛔⛔ E o dispositivo NÃO pode viver no `Smoke`
+
+A primeira versão guardava o traçador no [`crate::smoke::Smoke`], que é um **`thread_local`**. Um
+`wgpu::Device` ali é destruído **na saída da thread**, onde outros `thread_local` já morreram:
+
+```text
+panicked at std/src/thread/local.rs:429:
+cannot access a Local Storage value during or after destruction
+```
+
+E o relatório da suíte dizia **`0 falharam · 0 passaram · 0 ignorados`**.
+⚠️ *Um binário que não corre teste nenhum lê-se, num relatório, quase como um que passou.*
+
+⭐ O sítio certo não é uma correcção de conveniência: **o dispositivo é da MÁQUINA**. Quatro vistas
+da mesma peça partilham a estrutura, logo partilham o pipeline — e nada nele é estado que o artista
+tenha pousado. ⇒ um `OnceLock` de processo.
+
+### §36.4 — O que o artista passa a ver
+
+| `1920×1080`, quadro assente | antes | **agora** |
+|---|---:|---:|
+| encontrar a peça + sombra | `92 ms` | *incluído* |
+| o dispositivo | — | `24 ms` |
+| pintar (OpenPBR, na CPU) | `11 ms` | `11 ms` |
+| **total** | **`103 ms`** | **`~35 ms`** |
+| oclusão de contacto | **desligada** | **incluída** |
+
+⭐ E a pintura **continua a ser a da CPU**: a lei do material vive num sítio só (§34.1).
+
+### §36.5 — ⏳ O que fica
+
+- **O quadro de MOVIMENTO continua na CPU** — de propósito nesta fatia. Ele custa `2,53 ms` no
+  dispositivo contra `13,15` aqui, e é a próxima costura.
+- **Os `24 ms` ainda não são os `5 ms` do tecto** (§35.4): `49 MB` de leitura por quadro e duas
+  paragens de sincronização.
+- **Uma peça com escultura ou com duas luzes fica na CPU** — declarado, com gate.

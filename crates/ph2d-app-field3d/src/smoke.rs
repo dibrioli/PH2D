@@ -1022,3 +1022,45 @@ mod gpu_frame_clock {
         }
     }
 }
+
+#[cfg(test)]
+mod gpu_recusa {
+    /// ⛔⛔⛔ **UMA PEÇA COM ESCULTURA NÃO VAI PARA O DISPOSITIVO.**
+    ///
+    /// ⚠️ **É o gate mais importante desta wave, e ele afirma uma AUSÊNCIA.** Uma escultura compila
+    /// para `Tree::constant(ABSENT)` — espaço vazio —, logo sem esta recusa a GPU desenharia a peça
+    /// **sem ela**, em silêncio e com o resto perfeito.
+    ///
+    /// ⛔ E o gate da PARIDADE não o veria: ele compara a fita com a fita, e as duas concordam que
+    /// ali não há nada. *Um zero de «igual» e um de «nenhum dos dois sabe» são o mesmo byte.*
+    #[test]
+    fn uma_peca_com_escultura_fica_na_cpu() {
+        // A cena 6 é a PONTE: uma escultura de 8 192 triângulos virada campo.
+        let com = crate::smoke::scene(6);
+        assert!(
+            !ph2d_field_gpu::supports(&com),
+            "a cena da ponte tem uma ESCULTURA e o dispositivo aceitou-a — ela desapareceria"
+        );
+        assert!(
+            com.nodes()
+                .iter()
+                .any(|n| matches!(n.kind, ph2d_field::NodeKind::Sampled { .. })),
+            "a fixtura deixou de ter escultura — este gate passou a não afirmar nada"
+        );
+
+        // ⭐ O controlo: as OUTRAS cenas vão. Sem ele a recusa podia ser um `false` constante.
+        let mut aceites = 0;
+        for n in 0..crate::smoke::scenes::CENAS {
+            if n == 6 || crate::smoke::scenes::PODADAS.contains(&n) {
+                continue;
+            }
+            if ph2d_field_gpu::supports(&crate::smoke::scene(n)) {
+                aceites += 1;
+            }
+        }
+        assert!(
+            aceites > 10,
+            "só {aceites} cenas foram aceites — a recusa está a reclamar tudo"
+        );
+    }
+}

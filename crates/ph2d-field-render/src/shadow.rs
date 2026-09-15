@@ -101,6 +101,20 @@ impl Shadows {
         self.ambient.get(i).copied().unwrap_or(1.0)
     }
 
+    /// ⭐ **O canal de UMA lâmpada**, para quem o calculou noutro sítio (o traçador de GPU).
+    ///
+    /// ⚠️ Ela existe porque o `per_lamp` é privado de propósito: a forma dele (`[lâmpada][pixel]`)
+    /// é uma decisão do passe, e um campo público congelá-la-ia.
+    pub fn set_lamp(&mut self, lamp: usize, vis: Vec<f32>) {
+        if self.pixels == 0 {
+            self.pixels = vis.len();
+        }
+        if self.per_lamp.len() <= lamp {
+            self.per_lamp.resize(lamp + 1, Vec::new());
+        }
+        self.per_lamp[lamp] = vis;
+    }
+
     /// Põe a oclusão do céu neste canal — a saída de [`occlusion_passes`].
     pub fn set_ambient(&mut self, ambient: Vec<f32>) {
         if self.pixels == 0 {

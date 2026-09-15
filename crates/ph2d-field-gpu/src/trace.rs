@@ -648,3 +648,54 @@ fn marcha_com(
         edges,
     }
 }
+
+impl DeviceGbuffer {
+    /// ⭐⭐⭐ **O G-buffer do dispositivo no vocabulário da CPU** — para a pintura correr onde já
+    /// corre, sem saber que a marcha mudou de sítio.
+    ///
+    /// ⚠️ **O `point` RECONSTRÓI-SE do `t`**, e é por isso que ele não atravessa o barramento: são
+    /// mais `12 B` por pixel (`25 MB` a `1920×1080`) para uma conta que a CPU faz em microssegundos.
+    /// *O que se lê de volta é o que não se pode derivar.*
+    #[must_use]
+    pub fn to_cpu(
+        &self,
+        cam: &ph2d_field_render::Orbit,
+        screen: ph2d_field_render::Screen,
+    ) -> (ph2d_field_render::Gbuffer, ph2d_field_render::Shadows) {
+        let n = self.t.len();
+        let mut hit = Vec::with_capacity(n);
+        let mut point = Vec::with_capacity(n);
+        let w = self.width as usize;
+        for (i, t) in self.t.iter().enumerate() {
+            hit.push(*t >= 0.0);
+            #[allow(clippy::cast_precision_loss)]
+            let (px, py) = ((i % w) as f32 + 0.5, (i / w) as f32 + 0.5);
+            let (u, v) = screen.plane_at(px, py);
+            let (o, d) = cam.ray_at_plane(u, v);
+            point.push([o[0] + d[0] * t, o[1] + d[1] * t, o[2] + d[2] * t]);
+        }
+        let edges = self
+            .edges
+            .iter()
+            .map(|e| ph2d_field_render::EdgePixel {
+                pixel: e.pixel,
+                hit: e.hit,
+                normal: e.normal,
+            })
+            .collect();
+        let g = ph2d_field_render::Gbuffer {
+            width: self.width,
+            height: self.height,
+            hit,
+            normal: self.normal.clone(),
+            point,
+            edges,
+        };
+        let mut sh = ph2d_field_render::Shadows::default();
+        sh.set_lamp(0, self.shadow.clone());
+        // ⚠️ **A suavização é aplicada AQUI**, como o refinamento da CPU a aplica no publicar — ela
+        // faz parte do que a oclusão entrega, e não do que ela calcula.
+        sh.set_ambient(ph2d_field_render::blur_occlusion(&g, &self.ambient));
+        (g, sh)
+    }
+}

@@ -56,6 +56,8 @@ pub mod export_job;
 /// ADR-0161 W51 — a VIAGEM entre vistas: a câmera vai suavemente, com a lei de motion da casa.
 pub mod flight;
 pub mod gizmo_paint;
+/// ADR-0161 W24 — a resolução do preview é DERIVADA do relógio: grossa ao mexer, nítida ao assentar.
+pub mod gpu_frame;
 /// ADR-0161 W22 — a porta de ENTRADA: um arquivo de malha vira escultura dentro da peça.
 pub mod import;
 pub mod input;
@@ -69,7 +71,6 @@ pub mod materials;
 pub mod mode;
 pub mod notice;
 pub mod pick;
-/// ADR-0161 W24 — a resolução do preview é DERIVADA do relógio: grossa ao mexer, nítida ao assentar.
 pub mod preview;
 /// ADR-0161 W53 — o perfil DESENHADO vira peça: o fluxo do MoI, com a caneta que a casa já tem.
 pub mod profile;

@@ -472,20 +472,48 @@ fn viewport_pass(
         // ⚠️ **O que viaja são as ACESAS** — a lista do módulo tem também as apagadas, porque o gizmo
         // do canvas precisa de as desenhar para se poderem voltar a acender.
         let lights = crate::lights::lamps_of(&smoke.lights);
+        // ⭐⭐⭐ **O TRAÇADOR DO DISPOSITIVO atravessa a fronteira como PONTEIRO** — como a tabela
+        // de materiais e a cache de fitas, e pela mesma razão: abri-lo por quadro custa mais do que
+        // a CPU inteira (`130 ms` contra `13`, §35).
+        //
+        // ⚠️ **Só o quadro ASSENTE, e só uma peça SEM ESCULTURA** — ver
+        // [`crate::gpu_frame::takes_the_frame`]. O de movimento fica byte-idêntico, que é a cerca
+        // que impede a regressão do §32 de voltar por outra porta.
+        let gpu = crate::gpu_frame::shared();
         std::thread::spawn(move || {
             let t0 = std::time::Instant::now();
+            // ⭐⭐⭐ **O DISPOSITIVO, quando ele pode.** As três condições vivem numa porta
+            // ([`crate::gpu_frame::takes_the_frame`]), e a que mais importa é a terceira: uma peça
+            // com ESCULTURA fica na CPU, senão ela desapareceria em silêncio.
+            let mundos: Vec<[f32; 3]> = lights.iter().map(|l| l.world).collect();
+            let pelo_dispositivo = matches!(shading, crate::shading::Shading::Render)
+                && !mundos.is_empty()
+                && crate::gpu_frame::takes_the_frame(gpu, antialias, &doc);
+            let do_gpu = if pelo_dispositivo {
+                gpu.as_ref()
+                    .and_then(|t| crate::gpu_frame::march(t, &doc, &reg, &cam, &mundos, tw, th))
+            } else {
+                None
+            };
             // Abandonado a meio: não se manda nada, e quem esperava já mudou de pedido.
-            let Some(g) = ph2d_field_render::trace_cancellable(
-                &doc,
-                &reg,
-                &cam,
-                tw,
-                th,
-                &flag,
-                antialias,
-                usa_cache.then_some(&*tapes),
-            ) else {
-                return;
+            // ⚠️ O G-buffer **move-se**: ele tem milhões de pixels e não é `Clone` de propósito.
+            let (g, sombras_do_gpu) = match do_gpu {
+                Some((g, sh)) => (g, Some(sh)),
+                None => {
+                    let Some(g) = ph2d_field_render::trace_cancellable(
+                        &doc,
+                        &reg,
+                        &cam,
+                        tw,
+                        th,
+                        &flag,
+                        antialias,
+                        usa_cache.then_some(&*tapes),
+                    ) else {
+                        return;
+                    };
+                    (g, None)
+                }
             };
             let rgba = match shading {
                 crate::shading::Shading::Matcap => ph2d_field_render::shade_with(
@@ -547,10 +575,14 @@ fn viewport_pass(
                     //
                     // ⚠️ **O `antialias` É a bandeira** (`= !coarse`, linha 413) — lido aqui, e não
                     // uma segunda pergunta ao mesmo facto.
-                    let mut sombras = antialias.then(|| {
-                        let mundos: Vec<[f32; 3]> = lights.iter().map(|l| l.world).collect();
-                        ph2d_field_render::shadow_pass(&doc, &reg, &cam, &g, &mundos)
-                    });
+                    // ⭐ **A sombra e a oclusão vêm do dispositivo quando ele traçou** — elas
+                    // saíram da MESMA marcha, e refazê-las aqui seria pagar duas vezes pela mesma
+                    // resposta.
+                    let mut sombras = match sombras_do_gpu {
+                        Some(sh) => Some(sh),
+                        None => antialias
+                            .then(|| ph2d_field_render::shadow_pass(&doc, &reg, &cam, &g, &mundos)),
+                    };
                     let pinta = |sh: Option<&ph2d_field_render::Shadows>| {
                         ph2d_field_render::shade_render(
                             &g,

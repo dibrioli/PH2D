@@ -2820,3 +2820,73 @@ eixos em vez de olhar para um número só.
   oclusão de contacto; o `3×3` foi o que a tabela mediu, e não foi varrido.
 - **A guarda é a NORMAL, e não a profundidade.** Duas superfícies paralelas a distâncias diferentes
   (uma peça à frente de outra) misturam-se — declarado, e sem sujeito enquanto a cena é uma peça.
+
+---
+
+## §32 — ⛔⛔⛔ O DONO REPROVOU, E A MEDIÇÃO DIZ QUE ELE TEM RAZÃO POR UMA RAZÃO ESTRUTURAL (2026-09-14)
+
+Dois reports no mesmo dia:
+
+> *«funciona mas com aspecto ruim, muito demorado e em etapas estranhas. Bastante inferior a app
+> como Unreal. Lembre-se: queremos superar Unreal»*
+>
+> *«mover os objetos ficou muito lento»*
+
+### §32.1 — ⛔ O segundo é uma REGRESSÃO minha, e tem mecanismo
+
+Cada passagem do refinamento **repinta a imagem inteira**, e o [`shade_render`] corre em **todos os
+núcleos** (`par_chunks_mut` da `rayon`). A `1920×1080` isso são `~123 ms` de máquina inteira, `16`
+vezes — e o quadro que a mão arrasta usa **a mesma pool**. *O refinamento roubava a máquina ao
+gesto.* ⚠️ E o cancelamento era visto **depois** da pintura: largar depois de pagar não é largar.
+
+### §32.2 — ⭐⭐⭐ O primeiro é o §0.0, e eu violei-o a olhos vistos
+
+**Tudo o que as §27–§31 mediram é CPU.** Eu medi a CPU, vi que a luz indirecta não cabia, escrevi
+*«não cabe, por uma a duas ordens de grandeza»* (§29.2) e deixei a **CPU desenhar o produto** — com
+uma lei de acumulação, passagens visíveis e dois segundos de espera.
+
+O `CLAUDE.md` §0.0 escreve o erro com estas palavras: **«nunca deixe o fallback definir o produto…
+o caminho mais lento definiu o teto do mais rápido, no módulo cuja razão de existir é o mais
+rápido»**. E esta máquina tem uma **RTX 5060 Ti** parada enquanto a CPU marcha.
+
+### §32.3 — ⭐⭐⭐ O TECTO, medido (`ph2d-gpu/examples/field_march_ceiling.rs`)
+
+A **mesma peça**, a **mesma lei de marcha** (`t += d·passo`), o **mesmo** passo seguro, a mesma
+tolerância de acerto e o mesmo orçamento de `512` passos — escritos em WGSL:
+
+| | CPU | **GPU** | ganho |
+|---|---:|---:|---:|
+| só o traçado, `640×360` | `5,80 ms` | `0,67 ms` | `8,7×` |
+| só o traçado, `1920×1080` | `29,18 ms` | `0,67 ms` | `43,6×` |
+| traçado + 1 passagem, `1920×1080` | `152 ms` | `0,62 ms` | `244×` |
+| **traçado + oclusão INTEIRA (16 raios), `1920×1080`** | **`1 998 ms`** | **`5,00 ms`** | **`399,5×`** |
+
+⇒ **o que aqui custa DOIS SEGUNDOS em dezasseis etapas visíveis cabe em `5 ms` de um quadro de
+`16,7`.** Sem etapas, sem espera, sem lei de acumulação — e **sobra orçamento** para o que a §29.5
+diz que falta (as quicadas de cor).
+
+⚠️ **É um TECTO, não um produto.** O WGSL da sonda é aquela peça **escrita à mão**; um traçador a
+sério compila a **árvore do documento** para o dispositivo, e é essa a wave. *Mas é exactamente para
+isto que o §0.0 manda medir antes: o número diz que a wave vale a pena e diz quanto ela pode pedir.*
+
+### §32.4 — ⭐⭐ E é aqui que *«superar o Unreal»* deixa de ser uma frase
+
+O Lumen é uma **aproximação** — espaço de ecrã, *proxies*, sondas de distância —, e é assim porque
+ele tem de aceitar qualquer malha de qualquer artista. **Nós temos o campo de distância verdadeiro**
+(`02` §5.1): a peça *é* uma função, e marchar sobre ela dá a oclusão **exacta**, sem proxy e sem o
+ruído que obriga a um *denoiser*. ⭐ O que faltava não era a ideia — era estar no dispositivo certo.
+
+### §32.5 — O que muda hoje
+
+- **A oclusão de CPU NASCE DESLIGADA** (`preview::refines_occlusion`). O quadro assente volta ao que
+  o dono aprovou: traçado + sombra directa.
+- **O código FICA** como **referência de CPU** que o traçador de GPU terá de reproduzir — o molde de
+  *dois motores, uma lei* que este repositório já usa no Flip e no tecido. `PH2D_FIELD_AO=1` liga-o.
+- **O cancelamento passa a ser visto ANTES da pintura**, mesmo com ele ligado.
+- ⛔ **E há gate a afirmar a AUSÊNCIA** (`a_oclusao_de_cpu_nao_chega_ao_artista_por_omissao`): sem
+  ele, alguém lê a condição que a desliga e «corrige»-a.
+
+⚠️⚠️ **A lição, e ela já tinha ficheiro próprio na memória deste repositório:** *uma feature pode ser
+PIOR do que não existir*. **Catorze gates verdes** defendiam um desenho que o dono reprovou em dois
+segundos — porque nenhum deles perguntava *«isto é bom?»*, só *«isto está correcto?»*. A linha de
+controlo que faltava era a mais simples de todas: **não fazer nada**.

@@ -337,5 +337,43 @@ pub const SETTLED_NORMAL_ERR_DEG: f32 = 0.5;
 /// refinamento passa a correr, que é exactamente quando o artista está a olhar para a peça.
 #[must_use]
 pub fn refines_occlusion(antialias: bool, plate_parked: bool) -> bool {
-    antialias && plate_parked
+    antialias && plate_parked && cpu_occlusion_enabled()
+}
+
+/// ⛔⛔⛔ **O REFINAMENTO DE CPU NASCE DESLIGADO — por veredito do dono e por medição.**
+///
+/// # Os dois reports, no mesmo dia
+///
+/// 1. *«funciona mas com aspecto ruim, muito demorado e em etapas estranhas. Bastante inferior a
+///    app como Unreal»*;
+/// 2. *«mover os objetos ficou muito lento»* — e essa é uma **regressão medida**: cada passagem
+///    repinta a imagem inteira, e o [`ph2d_field_render::shade_render`] corre em **todos os
+///    núcleos** (`par_chunks_mut`). O refinamento roubava a máquina ao quadro que a mão arrastava.
+///
+/// # ⭐⭐⭐ E a medição diz que a cura não é afinar isto — é o DISPOSITIVO
+///
+/// Medido nesta máquina (`cargo run --release -p ph2d-gpu --example field_march_ceiling`,
+/// **RTX 5060 Ti**), a mesma peça, a mesma lei de marcha, o mesmo orçamento de passos:
+///
+/// | | CPU | **GPU** | ganho |
+/// |---|---:|---:|---:|
+/// | só o traçado, `1920×1080` | `29,18 ms` | `0,67 ms` | `43,6×` |
+/// | traçado + oclusão INTEIRA (16 raios) | `1 998 ms` | **`5,00 ms`** | **`399,5×`** |
+///
+/// ⇒ *o que aqui custa DOIS SEGUNDOS em dezasseis etapas visíveis cabe num QUADRO no dispositivo*
+/// — sem etapas, sem espera, sem lei de acumulação nenhuma. O `CLAUDE.md` §0.0 escreve-o com estas
+/// palavras: **«nunca deixe o fallback definir o produto… o caminho mais lento definiu o teto do
+/// mais rápido, no módulo cuja razão de existir é o mais rápido»**. Eu medi a CPU, vi que não cabia,
+/// e deixei a CPU desenhar o produto.
+///
+/// # ⚠️ O código FICA, e não é indecisão
+///
+/// Ele é a **referência de CPU** que o traçador de GPU tem de reproduzir — o molde de *dois motores,
+/// uma lei* que este repositório já usa no Flip e no tecido. `PH2D_FIELD_AO=1` liga-o para bissecar
+/// ou para comparar imagens. ⛔ O que não pode é ele ser o que o artista recebe: *uma feature pode
+/// ser PIOR do que não existir*, e catorze gates verdes defendiam um desenho que o dono reprovou em
+/// dois segundos.
+fn cpu_occlusion_enabled() -> bool {
+    static LIGADO: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *LIGADO.get_or_init(|| std::env::var("PH2D_FIELD_AO").is_ok_and(|v| v != "0"))
 }

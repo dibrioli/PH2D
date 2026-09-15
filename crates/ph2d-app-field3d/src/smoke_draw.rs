@@ -598,6 +598,14 @@ fn viewport_pass(
                         &g,
                         &mut sh,
                         |sh, passagem| {
+                            // ⛔⛔ **O cancelamento é visto ANTES da pintura**, e foi a segunda
+                            // metade do report *«mover os objetos ficou muito lento»*: o
+                            // `shade_render` corre em TODOS os núcleos, logo uma passagem já
+                            // cancelada ainda roubava a máquina inteira ao quadro que a mão
+                            // arrastava. *Largar depois de pagar não é largar.*
+                            if flag.load(std::sync::atomic::Ordering::Relaxed) {
+                                return false;
+                            }
                             let ultima = passagem == ph2d_field_render::OCCLUSION_PASSES;
                             let _ = tx.try_send(Ready {
                                 rgba: pinta(Some(sh)),

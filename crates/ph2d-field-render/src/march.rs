@@ -558,7 +558,7 @@ pub(crate) fn march_shadow_counted(
 ///
 /// # Porque a dureza deixou de poder ser um escalar
 ///
-/// A [`crate::shadow::occlusion_slice_with_reach`] traça um **CONE por direcção**, e o cone certo
+/// A [`crate::occlusion::occlusion_slice_with_reach`] traça um **CONE por direcção**, e o cone certo
 /// para a oclusão é o que **roça o plano tangente**: meio-ângulo `θ` com `tan θ = n·d`. Isso põe a
 /// dureza a `1/(n·d)` — **um número por raio**, porque cada direcção do conjunto faz um ângulo
 /// diferente com a normal daquele pixel.

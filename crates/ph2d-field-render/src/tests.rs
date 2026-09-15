@@ -6838,7 +6838,7 @@ fn measure_how_many_passes_the_occlusion_needs() {
     // ⚠️⚠️ **A REFERÊNCIA ERA UM ESPELHO** (§31): com `64` raios do mesmo leque plano, ela media o
     // estimador contra ele próprio e via `1/√N` bonito sobre um resultado enviesado. Hoje o
     // amostrador varre o hemisfério, e a referência é `256` — oito vezes o maior N testado.
-    let referencia = crate::shadow::occlusion(&doc, &reg, &cam, &g, 256);
+    let referencia = crate::occlusion::occlusion(&doc, &reg, &cam, &g, 256);
     let peca: Vec<usize> = (0..g.hit.len()).filter(|i| g.hit[*i]).collect();
 
     // ⭐⭐⭐ **A RÉGUA É O BYTE DO PIXEL, e não o valor do canal.** A oclusão multiplica só o termo
@@ -6915,7 +6915,7 @@ fn measure_how_many_passes_the_occlusion_needs() {
 
     println!("  passagens · PIXEL RMS (bytes) · pior · COM BORRÃO: RMS · pior");
     for n in [1_u32, 2, 4, 8, 16, 32] {
-        let acc = crate::shadow::occlusion(&doc, &reg, &cam, &g, n);
+        let acc = crate::occlusion::occlusion(&doc, &reg, &cam, &g, n);
         let mut canal = 0.0f64;
         for &i in &peca {
             let d = f64::from(acc[i] - referencia[i]);
@@ -7019,7 +7019,7 @@ fn measure_the_occlusion_reach() {
     for f in [0.15_f32, 0.35, 0.6, 1.0, 1.6, 2.5] {
         let medio = |doc: &ph2d_field::FieldDoc| {
             let g = trace(doc, &reg, &cam, 160, 90);
-            let oc = crate::shadow::occlusion_with_reach(doc, &reg, &cam, &g, 16, f);
+            let oc = crate::occlusion::occlusion_with_reach(doc, &reg, &cam, &g, 16, f);
             let peca: Vec<usize> = (0..g.hit.len()).filter(|i| g.hit[*i]).collect();
             peca.iter().map(|i| f64::from(oc[*i])).sum::<f64>() / peca.len().max(1) as f64
         };
@@ -7029,7 +7029,7 @@ fn measure_the_occlusion_reach() {
         // fenda é uma fracção pequena dos pixels visíveis: uma oclusão profunda em `5 %` da peça
         // mal move a média. *O que o olho lê é o CONTRASTE, e o que o mede é a cauda.*
         let g = trace(&cruz, &reg, &cam, 160, 90);
-        let oc = crate::shadow::occlusion_with_reach(&cruz, &reg, &cam, &g, 16, f);
+        let oc = crate::occlusion::occlusion_with_reach(&cruz, &reg, &cam, &g, 16, f);
         let mut v: Vec<f32> = (0..g.hit.len())
             .filter(|i| g.hit[*i])
             .map(|i| oc[i])
@@ -7047,7 +7047,7 @@ fn measure_the_occlusion_reach() {
         // O relógio de UMA passagem, que é o que o quadro assente paga de cada vez.
         let g = trace(&cruz, &reg, &cam, 640, 360);
         let t = std::time::Instant::now();
-        let v = crate::shadow::occlusion_slice_with_reach(&cruz, &reg, &cam, &g, 0, 1, 32, f);
+        let v = crate::occlusion::occlusion_slice_with_reach(&cruz, &reg, &cam, &g, 0, 1, 32, f);
         std::hint::black_box(v.sum.len());
         let ms = t.elapsed().as_secs_f64() * 1e3;
         println!("  {f:7.2} · {c:15.3} · {e:17.3} · {:9.3} · {ms:6.2}", e - c);

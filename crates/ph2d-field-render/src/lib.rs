@@ -107,6 +107,8 @@ impl Sharpness {
 mod camera;
 mod edges;
 mod march;
+/// ⭐⭐⭐ **A oclusão** — a sombra do céu. Irmã do [`shadow`], com a fronteira escrita lá.
+mod occlusion;
 mod probe_doors;
 mod shade;
 mod shade_render;
@@ -122,18 +124,18 @@ pub use march::{
     EXHAUSTED, FORKED, HIST, MARCH_RAYS, NORMAL_SAMPLES, SLAB_SAMPLES, SLABS_COUNTED, STEP_HIST,
     STEP_SAMPLES, Stencil,
 };
+pub use occlusion::{
+    ConeSlice, OCCLUSION_BLUR_COS, OCCLUSION_PASSES, OCCLUSION_REACH, blur_occlusion, cone_dir,
+    occlusion, occlusion_slice, occlusion_slice_with_reach, occlusion_with_reach, refine_occlusion,
+};
 pub use probe_doors::*;
 #[doc(hidden)]
 pub use shade::Matcap;
 pub use shade::{shade, shade_with};
 pub use shade_render::{
-    Lamp, Lighting, POINT_LAMP_MIN_DISTANCE, PointLamp, Surfaces, shade_render,
+    Lamp, Lighting, POINT_LAMP_MIN_DISTANCE, PointLamp, Surfaces, boundary_world, shade_render,
 };
-pub use shadow::{
-    ConeSlice, HARDNESS, OCCLUSION_BLUR_COS, OCCLUSION_PASSES, OCCLUSION_REACH, Shadows,
-    blur_occlusion, cone_dir, occlusion, occlusion_slice, occlusion_slice_with_reach,
-    occlusion_with_reach, refine_occlusion, shadow_pass,
-};
+pub use shadow::{HARDNESS, Shadows, shadow_pass};
 pub use tape_cache::{
     EVICT_NS, GET_NS, Growth, INFLATE, PAD_OF_REACH, TAPE_DROPPED, TAPE_EVICTIONS, TAPE_HITS,
     TapeCache,

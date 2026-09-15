@@ -553,3 +553,67 @@ fn probe_os_apoios_face_a_face_no_tempo() {
     eprintln!("\n  ⚠️ o censo do doc 109 §8.7 le' a coluna «NO FIM». Se o PICO for muito maior,");
     eprintln!("     ele mede os SOBREVIVENTES de um defeito e le'-se como a ausencia do caso.");
 }
+
+// ---------------------------------------------------------------------------------------------
+// O GATE
+// ---------------------------------------------------------------------------------------------
+
+/// ⭐⭐⭐ **UMA PEÇA QUE ASSENTOU NÃO DÁ UM SALTO** — o gate do 5.º report do dono, e ele só pôde
+/// nascer depois da cura, porque **é ela que cria o lado APROVADO** (§0.0: a barra sai de um vale
+/// MEDIDO, nunca de um número escolhido).
+///
+/// ## O vale, medido dos DOIS lados
+///
+/// `substeps = 8` (o que shipa), 5 realizações do berço, `probe_o_salto_contra_os_substeps`:
+///
+/// ```text
+///   contacto de UM ponto (o defeito) |  3,15°  3,40°  3,46°  7,78°  16,51°
+///   ENCOSTO DE DOIS PONTOS (a cura)  |  0,86°  0,89°  0,89°  0,93°   0,96°
+/// ```
+///
+/// ⇒ o vale é `[0,96° .. 3,15°]` e a barra fica a **`2,0°`**: `2,1×` de folga sobre o pior lado
+/// aprovado e `1,6×` de margem antes do melhor lado reprovado. ⛔ Não é um número escolhido — é o
+/// meio de um intervalo em que **nenhuma** das dez medições cai.
+///
+/// ## Prova red-first
+///
+/// Com o manifesto desligado (o ponto médio de sempre), este gate reprova nomeando a peça: a `17`
+/// salta `16,51°` depois de estar quieta a `0,147 °/tique`, e a `12` salta `23,26°`.
+#[test]
+fn a_settled_piece_does_not_jump() {
+    /// O meio do vale medido acima. Um quadrado tem simetria de `90°`, então `2°` é invisível.
+    const BARRA: f32 = 2.0;
+    /// O tecto de `|Δrot|` por tique que ainda conta como «a peça tinha assentado».
+    const QUIETO: f32 = 0.2;
+    // `substeps` da cena que shipa — ⚠️ lido do produto, nunca digitado: um gate cujo sujeito
+    // não é o que o artista vê não afirma nada.
+    let sub = {
+        #[expect(
+            clippy::cast_possible_truncation,
+            clippy::cast_sign_loss,
+            reason = "uma contagem de sub-passos pequena"
+        )]
+        let s = super::SUBSTEPS as u32;
+        s
+    };
+    let todos = saltos(sub, 0.0, SALTO);
+    assert!(
+        todos.len() > 500,
+        "piso de populacao: a marcha tem de produzir eventos ({})",
+        todos.len()
+    );
+    let pior = todos
+        .iter()
+        .find(|s| s.antes <= QUIETO && s.depois <= QUIETO);
+    if let Some(s) = pior {
+        assert!(
+            s.grau <= BARRA,
+            "a peca {} estava quieta a {:.3}°/tique e saltou {:.2}° no tique {} (barra {BARRA}°) \
+             — doc 111 §5.10",
+            s.peca,
+            s.antes,
+            s.grau,
+            s.tique
+        );
+    }
+}

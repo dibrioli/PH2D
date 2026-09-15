@@ -123,23 +123,35 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
         // integração E o seu contacto, é o que faz um solver assentar uma pilha **à rigidez plena**
         // — sem baixar o ganho, sem filtrar e sem amolecer, que são as três que caíram.
         //
-        // ⭐ **O `8` é o JOELHO da curva medida** (5 realizações por célula, as quatro réguas):
+        // ⚠️⚠️ **A TABELA FOI RE-MEDIDA em 2026-09-15, depois do ENCOSTO DE DOIS PONTOS** (doc 111
+        // §5.11) — a primeira versão dela foi levantada com o contacto de UM ponto, e o manifesto
+        // moveu a curva inteira. *Uma tabela medida sobre um substrato que mudou é uma mentira com
+        // números* (`CLAUDE.md` §0.0: quem move o número tem de reconferir a nota).
+        //
+        // ⭐ **O `8` é o JOELHO da curva** (5 realizações por célula, as CINCO réguas):
         //
         // ```text
-        //   substeps | tremor (°/tique) |   rodopio   | altura |   vão  | cozimento
-        //          1 |    3,79 .. 5,69  | 24,3 .. 28,4 | −2,56 | 0,2583 |  0,67 ms
-        //          4 |    0,17 .. 0,61  | 19,9 .. 33,1 | −2,43 | 0,2493 |  2,63 ms
-        //          8 |    0,18 .. 0,22  |  9,5 .. 31,7 | −2,53 | 0,2390 |  4,67 ms
-        //         16 |   0,087 .. 0,171 |  8,4 .. 16,5 | −2,43 | 0,2358 |  9,94 ms
+        //   substeps | tremor (°/tique) |  rodopio   | altura |   vão  | salto | cozimento
+        //          1 |    2,33 .. 2,84  | 17,4..31,4 | −2,46  | 0,2198 | 1,06° |  0,71 ms
+        //          2 |    2,43 .. 2,59  |  3,9.. 7,7 | −2,43  | 0,2200 |   —   |  1,65 ms
+        //          4 |    0,150.. 0,217 |  6,4.. 6,6 | −2,42  | 0,2202 | 1,29° |  3,18 ms
+        //          8 |    0,060.. 0,168 |  3,0.. 3,1 | −2,42  | 0,2203 | 0,89° |  6,26 ms
+        //         16 |    0,038.. 0,041 |  2,1.. 2,2 | −2,42  | 0,2204 | 1,44° | 12,25 ms
         // ```
         //
-        // ⚠️ **O recurso é o QUADRO**, e é ele que escolhe o `8`: `4,67 ms` são `28 %` de um quadro
-        // de `16,7`, e o `16` custa `9,94` (`60 %`) para comprar `2×` num tremor que a `8` já é
-        // `20×` menor que o de hoje. ⛔ Acima daqui o preço cresce linear e o ganho não.
+        // ⚠️ **O recurso é o QUADRO**, e é ele que escolhe o `8`: o `16` custa o dobro para comprar
+        // um tremor que a `8` já tem `35×` abaixo da barra do gate. ⛔ Acima daqui o preço cresce
+        // linear e o ganho não.
         //
-        // ⚠️ **E as duas réguas de FORMA ficam intactas** — a pilha não congela (`y` na mesma) nem
-        // colapsa (vão `0,2390` contra `0,2583`, `−9 %`). As duas curas anteriores falharam
-        // exactamente aí, e nenhuma das réguas do tremor as via.
+        // ⭐⭐ **O `4` é uma opção MEDIDA e viável** (metade do preço, as cinco réguas dentro da
+        // barra) — fica aqui nomeada para quem precisar do quadro de volta, e ⛔ não é o default
+        // porque a `8` é a única célula em que o salto e o rodopio são **reprodutíveis** entre
+        // realizações (`0,86..0,96` contra `1,25..1,82`).
+        //
+        // ⚠️ **E as duas réguas de FORMA ficam intactas** — a pilha não congela (`y = −2,42`, longe
+        // da altura de nascimento `−0,35`) nem colapsa: o vão `0,2203` é o face-a-face **exacto**
+        // (`2 × LADO = 0,2200`), isto é, a pilha passou a encostar de CHAPA em vez de assentar em
+        // quinas. As duas curas anteriores falharam exactamente aí.
         g.set_param(zone, "substeps", SUBSTEPS);
         g.set_param(zone, "mode", em_laco);
         g.set_param(zone, "duration", DURACAO);

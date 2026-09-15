@@ -80,6 +80,24 @@ fn an_approach_is_cancelled_not_reflected() {
 
 /// ⭐⭐ **Duas CAIXAS encostam pela FACE e param** — a distância é a soma das meias larguras, não a
 /// dos círculos à volta delas (o `41 %` de ar do report do doc 109 §5), e a aproximação é cancelada.
+///
+/// ⚠️⚠️ **A tolerância da distância é o RESÍDUO DE CONVERGÊNCIA do encosto de dois pontos, medido**
+/// (doc 111 §5.11). Estas caixas são `0,5 × 2,0` — aspecto `4:1` —, e o braço de cada extremo do
+/// trecho é `2,0`: com o braço a entrar na massa efectiva de cada ponto (`k = w + invI·b²`), cada
+/// varredura corrige menos e o produto, às `8` varreduras, fica **`3,5 %` curto**:
+///
+/// ```text
+///   varreduras | distancia | residuo
+///            8 |  0,964626 | 3,5e-2
+///           16 |  0,996872 | 3,1e-3
+///           32 |  0,999976 | 2,4e-5
+///           64 |  1,000000 | 0,0      ← exacto
+/// ```
+///
+/// ⛔ **O resíduo ENCOLHE com as varreduras ⇒ é convergência, não viés** — e por isso o gate mede
+/// as DUAS pontas em vez de afrouxar a barra até a de `8` passar. ⭐ A `=114` usa quadrados (aspecto
+/// `1:1`) e fica `0,15 %` curta às `8`, exacta às `32`: *o preço é do ASPECTO da caixa, e uma cena
+/// que empilhe formas esguias paga-o em sub-passos.*
 #[test]
 fn two_boxes_rest_face_to_face_and_stop() {
     let s = Stream::new(2)
@@ -92,23 +110,63 @@ fn two_boxes_rest_face_to_face_and_stop() {
         );
     let out = step(&s, DT, 1.0, 0.0, 0.0, 1.0);
     let (p, v) = (col(&out, "P"), col(&out, "vel"));
-    assert!(((p[1][0] - p[0][0]) - 1.0).abs() < 1e-4, "{p:?}");
+    // Às `8` varreduras do produto: o resíduo MEDIDO acima, e nunca uma sobreposição maior.
+    let d = p[1][0] - p[0][0];
+    assert!(
+        (0.96..=1.0).contains(&d),
+        "elas encostam pela face, a menos do residuo de convergencia: {p:?}"
+    );
     for (i, vi) in v.iter().enumerate() {
         assert!(vi[0].abs() < 1e-3, "a caixa {i} parou em x: {vi:?}");
     }
+    // ⭐ E com varreduras a chegar, a distância é EXACTA — a prova de que não há viés.
+    let convergida = {
+        let mut p = vec![[-0.3_f32, 0.0], [0.3, 0.0]];
+        let c = vec![
+            Some(ph2d_contact::Colisor::caixa([0.5, 2.0], [1.0, 0.0])),
+            Some(ph2d_contact::Colisor::caixa([0.5, 2.0], [1.0, 0.0])),
+        ];
+        let w = [1.0_f32, 1.0];
+        let inv: Vec<f32> = c
+            .iter()
+            .zip(w)
+            .map(|(c, w)| c.map_or(0.0, |c| c.inv_inercia(w)))
+            .collect();
+        let (mut g, mut s) = (vec![0.0; 2], vec![0.0; 2]);
+        ph2d_contact::separate(
+            &mut p,
+            &mut ph2d_contact::Saida {
+                giro: &mut g,
+                salto: &mut s,
+            },
+            &ph2d_contact::Pecas::novas(&c, &w, &inv),
+            64,
+        );
+        p[1][0] - p[0][0]
+    };
+    assert!(
+        (convergida - 1.0).abs() < 1e-5,
+        "a 64 varreduras o residuo desaparece: {convergida}"
+    );
 }
 
-/// ⭐⭐⭐ **Uma caixa apanhada FORA DO CENTRO tomba** (doc 109 §6 — *«precisa destravar a rot»*), e a
-/// coluna `inv_inertia` a zero (o botão `Lock Rotation` do cartão) trava-a.
+/// ⭐⭐⭐ **Uma caixa cujo CENTRO passa da beira tomba** (doc 109 §6 — *«precisa destravar a rot»*),
+/// e a coluna `inv_inertia` a zero (o botão `Lock Rotation` do cartão) trava-a.
 ///
 /// ⚠️ **As duas metades num gate:** *«roda»* passa com uma peça que gira sempre, e *«trava»* passa
 /// com uma que nunca gira. E travada **nem a coluna `rot` nasce** — uma cena sem rotação sai como
 /// sempre saiu.
+///
+/// ⚠️⚠️ **A 1.ª redacção punha o centro da caixa em `0,9`, DENTRO da prancha que acaba em `1,0`, e
+/// exigia que ela tombasse** — ela passava porque o contacto de UM ponto dá binário a uma caixa
+/// apoiada, que é o defeito que o encosto de dois pontos veio curar (doc 111 §5.10). *O gate tinha
+/// o defeito escrito dentro dele.* Hoje o centro está em `1,1`, para lá da beira, que é a condição
+/// em que tombar é a resposta certa — e o irmão em [`ph2d_contact`] mede o contraste.
 #[test]
 fn a_box_caught_off_centre_turns_unless_the_column_locks_it() {
     let angulos = |travada: bool| -> Option<Vec<f32>> {
         let s = Stream::new(2)
-            .with("P", Column::Vec2(vec![[0.0, 0.0], [0.9, 0.25]]))
+            .with("P", Column::Vec2(vec![[0.0, 0.0], [1.1, 0.25]]))
             .with("vel", Column::Vec2(vec![[0.0, 0.0], [0.0, 0.0]]))
             .with("sim_t", Column::Scalar(vec![0.0, 0.0]))
             // A prancha é um pino; a caixa livre pousa na ponta dela.

@@ -455,18 +455,32 @@ fn a_stream_without_collider_columns_answers_none() {
 
 // ── A ROTAÇÃO (doc 109 §6) ───────────────────────────────────────────────────────────
 
-/// ⭐⭐⭐ **Uma caixa apanhada FORA DO CENTRO roda** — e o `Lock Rotation` (a inércia a zero) trava-a
-/// sem lhe mudar mais nada de essencial.
+/// ⭐⭐⭐ **Uma caixa cujo CENTRO passa da beira tomba** — e o `Lock Rotation` (a inércia a zero)
+/// trava-a sem lhe mudar mais nada de essencial.
 ///
-/// A prancha é um pino largo; a caixa livre pousa na ponta dela, com metade de fora: o contacto
-/// acontece a um braço do centro, e é isso que a faz tombar.
+/// A prancha é um pino largo que acaba em `x = 1,0`; a caixa livre pousa com o **centro em `1,1`**,
+/// para lá da beira, e tomba.
+///
+/// ⚠️⚠️ **A 1.ª redacção deste gate punha o centro em `0,9` — DENTRO do apoio — e exigia que ela
+/// tombasse.** Ele passava porque o contacto de UM ponto dá binário a uma caixa que está apoiada,
+/// que é exactamente o defeito que o encosto de dois pontos veio curar (doc 111 §5.10): *o gate
+/// tinha o defeito escrito dentro dele, e por isso defendia-o*. A varredura que o apanhou:
+///
+/// ```text
+///   centro |  apoiado? |    giro
+///     0,60 |       SIM |   0,000
+///     0,80 |       SIM |   0,010
+///     0,90 |       SIM |  −0,208   ← a fixtura velha, a exigir |giro| > 1
+///     1,05 |       NAO | −10,544
+///     1,10 |       NAO | −13,998
+/// ```
 #[test]
-fn a_box_caught_off_centre_turns_and_the_lock_stops_it() {
+fn a_box_whose_centre_clears_the_edge_topples_and_the_lock_stops_it() {
     let c = vec![
         Some(Colisor::caixa([1.0, 0.1], SEM_GIRO)),
         Some(Colisor::caixa([0.25, 0.25], SEM_GIRO)),
     ];
-    let (w, p0) = ([0.0, 1.0], vec![[0.0, 0.0], [0.9, 0.25]]);
+    let (w, p0) = ([0.0, 1.0], vec![[0.0, 0.0], [1.1, 0.25]]);
 
     let mut solta = p0.clone();
     let giro = corre_girando(&mut solta, &c, &w);
@@ -476,7 +490,7 @@ fn a_box_caught_off_centre_turns_and_the_lock_stops_it() {
     );
     assert!(
         giro[1].abs() > 1.0,
-        "a caixa apanhada na ponta tem de TOMBAR: {giro:?}"
+        "com o centro FORA do apoio ela tem de TOMBAR: {giro:?}"
     );
 
     let mut travada = p0.clone();
@@ -487,8 +501,54 @@ fn a_box_caught_off_centre_turns_and_the_lock_stops_it() {
     );
 }
 
+/// ⭐⭐⭐ **E a METADE QUE O ENCOSTO DE DOIS PONTOS COMPRA: uma caixa APOIADA PELO CENTRO não tomba.**
+///
+/// É a cura do 5.º report do dono (doc 111 §5.10) escrita como propriedade: com um contacto
+/// pontual o empurrão age no meio do trecho, que **não** está debaixo do centro de massa, e a caixa
+/// ganha binário sem ninguém lhe tocar — na `=114` isso crescia `×1,4` por tique até ela tombar
+/// nos `45°`.
+///
+/// ⚠️ **A barra é o CONTRASTE, não um número escolhido:** a mesma caixa com o centro fora da beira
+/// (`1,1`) roda `−14,0°`, e com ele dentro (`0,9`) tem de ficar **duas ordens de grandeza** abaixo.
+#[test]
+fn a_box_supported_under_its_centre_does_not_topple() {
+    let c = vec![
+        Some(Colisor::caixa([1.0, 0.1], SEM_GIRO)),
+        Some(Colisor::caixa([0.25, 0.25], SEM_GIRO)),
+    ];
+    let mut apoiada = vec![[0.0, 0.0], [0.9, 0.25]];
+    let dentro = corre_girando(&mut apoiada, &c, &[0.0, 1.0])[1].abs();
+
+    let mut fora = vec![[0.0, 0.0], [1.1, 0.25]];
+    let alem = corre_girando(&mut fora, &c, &[0.0, 1.0])[1].abs();
+
+    assert!(
+        dentro < 1.0,
+        "apoiada pelo centro ela NAO tomba: {dentro:.3}°"
+    );
+    assert!(
+        alem > 10.0 * dentro,
+        "e o contraste com a que passa a beira e' de uma ordem de grandeza: {dentro:.3}° contra {alem:.3}°"
+    );
+}
+
 /// ⭐⭐⭐ **Uma caixa pousada DE CHAPA não roda** — e é isto que o recorte das faces compra: com o
 /// vértice mais fundo no lugar do meio do trecho, uma pilha parada tombava sozinha.
+///
+/// ⚠️⚠️ **E a separação CONVERGE, não enviesa** — a distinção que o encosto de dois pontos obrigou
+/// a medir. Com dois pontos, cada um carrega o termo de rotação na massa efectiva dele
+/// (`k = w + invI·b²`, e `b` nas pontas é maior que no meio), logo cada varredura corrige MENOS e
+/// são precisas mais. Medido:
+///
+/// ```text
+///   varreduras |        y | residuo
+///            8 | 0,899160 | 8,4e-4
+///           16 | 0,899986 | 1,4e-5
+///           32 | 0,900000 | 0,0      ← exacto
+/// ```
+///
+/// ⛔ *Um resíduo que ENCOLHE com as varreduras é convergência; um que fica é viés* — e por isso o
+/// gate mede as DUAS pontas, em vez de afrouxar a tolerância até a de `8` passar.
 #[test]
 fn a_box_resting_flat_on_another_does_not_turn() {
     let c = vec![
@@ -501,7 +561,26 @@ fn a_box_resting_flat_on_another_does_not_turn() {
         giro[1].abs() < 1e-3,
         "de chapa o binario e' zero: {giro:?} · {p:?}"
     );
-    assert!((p[1][1] - 0.9).abs() < 1e-4, "e ela assenta na face: {p:?}");
+    // Às `8` varreduras do produto: já lá quase, e o resíduo é o MEDIDO acima.
+    assert!((p[1][1] - 0.9).abs() < 1e-3, "e ela assenta na face: {p:?}");
+    // ⭐ E com varreduras a chegar ela assenta EXACTAMENTE — a prova de que não há viés.
+    let mut convergida = vec![[0.0, 0.0], [0.0, 0.85]];
+    let inv = inercias(&c, &[0.0, 1.0]);
+    let (mut g, mut s) = (vec![0.0; 2], vec![0.0; 2]);
+    separate(
+        &mut convergida,
+        &mut Saida {
+            giro: &mut g,
+            salto: &mut s,
+        },
+        &Pecas::novas(&c, &[0.0, 1.0], &inv),
+        32,
+    );
+    assert!(
+        (convergida[1][1] - 0.9).abs() < 1e-6,
+        "a 32 varreduras o residuo desaparece: {convergida:?}"
+    );
+    assert!(g[1].abs() < 1e-3, "e o binario continua zero: {g:?}");
 }
 
 /// ⭐⭐ **A inércia inversa sai da FORMA e do peso** — e um pino (ou um colisor degenerado) nunca roda.

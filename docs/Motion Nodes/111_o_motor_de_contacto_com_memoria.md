@@ -587,3 +587,108 @@ mecanismo, o dossiê e a régua já construídos.
   vão) têm de continuar dentro da banda. ⛔ *Uma cura que mate o salto e colapse o monte é a 17.ª
   recusa desta linha, não a primeira vitória.*
 - ⛔ **A barra do gate nasce COM a cura** (§5.9.5): o lado aprovado ainda não existe.
+
+## §5.11 — ✅⭐⭐⭐ A CURA: o ENCOSTO DE DOIS PONTOS, e o trecho já estava a ser calculado
+
+### §5.11.1 — ⭐⭐ A cura já era PRODUZIDA e a última linha deitava-a fora
+
+O `ponto_de_contacto` de [`par.rs`](../../crates/ph2d-contact/src/par.rs) **já recortava** a face
+incidente contra a de referência e obtinha os **dois** extremos do trecho — e devolvia
+`(clo + chi) * 0,5`. O doc-comment de quem o escreveu já sabia porquê:
+
+> *«A média, e não o vértice mais fundo: de chapa uma sobre a outra os dois vértices estão à mesma
+> profundidade, e escolher um deles dá binário a uma pilha parada — ela tomba sozinha.»*
+
+⇒ **escolheu-se o menos mau dos pontos ÚNICOS.** É a mesma forma que a `line/quadextract` já pagou
+(*«a cura já era produzida e o desempate deitava-a fora»*).
+
+⚠️⚠️ **E o que faltava não era o segundo ponto: era a PROFUNDIDADE PRÓPRIA de cada um.** Com
+profundidades iguais os dois pontos entregam exactamente o binário do meio — *nada muda*. O que
+endireita é a caixa **inclinada**, onde um canto está mais fundo que o outro: aí cada ponto pede a
+sua correcção, e a diferença entre elas **é** o restaurador que faltava.
+
+### §5.11.2 — O que shipa
+
+- [`ph2d_contact::manifesto`](../../crates/ph2d-contact/src/par.rs) — o par entrega o **trecho**
+  (1 ou 2 pontos, cada um com a sua profundidade). ⛔ Entre uma **quina e uma face** o contacto é um
+  ponto **por geometria**, e isso não é limitação: os `45°` já são a configuração estável.
+- O `contato` de sempre fica, **byte-idêntico**, como a leitura de UM ponto — o colisor de mundo e
+  os censos usam-no. ⚠️ **Uma lei, dois leitores**: o eixo separador e a face incidente saíram para
+  portas partilhadas, senão o ponto e o trecho passariam a falar de eixos diferentes.
+- A acumulação por peça saiu para [`varredura.rs`](../../crates/ph2d-contact/src/varredura.rs) —
+  o tecto de LOC reprovou a `720` e a cura foi **corte por responsabilidade**, ⛔ nunca uma isenção.
+
+### §5.11.3 — ⛔⛔ DUAS formulações construídas, MEDIDAS e REFUTADAS
+
+| formulação | o que faz | porque CAIU |
+|---|---|---|
+| **média + diferença** (a média translada, a diferença roda) | os dois pontos partilham UM `λ` | ⛔ **converge melhor e ERRA**: com `λ` partilhado o solver perde a capacidade de **redistribuir a pressão** ao longo do apoio, e é isso que deixa uma caixa apoiada pelo CENTRO ficar quieta. Medido: ela tomba `5,06°`. *Convergir e acertar são coisas diferentes.* |
+| **somar** os dois pontos (sem média) | cada ponto aplica a correcção inteira | ⛔ sobrepassa: **cinco** gates de geometria caem de uma vez |
+
+⇒ fica a lei do meio: **duas restrições independentes, cada uma com o seu `λ`, entrando pela MÉDIA**
+— que é o esquema de Jacobi que o cabeçalho do módulo já declarava para os vizinhos.
+
+### §5.11.4 — ⚠️ O preço: CONVERGÊNCIA, medida nas duas pontas
+
+Cada ponto carrega o braço na massa efectiva dele (`k = w + invI·b²`, e `b` numa ponta é maior que
+no meio), logo cada varredura corrige menos:
+
+```text
+                        8 varr. | 16 varr. | 32 varr. | 64 varr.
+  caixas 0,5×2,0 (4:1)   −3,5 % |  −0,31 % | −0,002 % |  exacto
+  quadrados da =114      −0,15 % | −0,003 % |  exacto  |  exacto
+```
+
+⛔ **Um resíduo que ENCOLHE com as varreduras é convergência, não viés** — e os gates medem as DUAS
+pontas, em vez de afrouxar a barra até a de `8` passar. ⭐ O preço é do **ASPECTO** da caixa: uma
+cena que empilhe formas esguias paga-o em sub-passos.
+
+### §5.11.5 — ⭐⭐⭐ O resultado, medido
+
+**O salto** (`probe_o_salto_contra_os_substeps`, 5 realizações por célula):
+
+| substeps | UM ponto (antes) | DOIS pontos (agora) |
+|---|---|---|
+| 1 | `0,90 .. 8,93°` | **`0,69 .. 1,98°`** |
+| 4 | `2,66 .. 17,45°` | **`1,25 .. 1,82°`** |
+| **8** (shipa) | `3,15 .. 16,51°` | **`0,86 .. 0,96°`** |
+| 16 | `1,60 .. 30,32°` | **`1,38 .. 1,49°`** |
+
+⭐ Pior de toda a varredura: **`30,32° → 1,98°`**. E a **dispersão colapsou** (`3,15..16,51` ⇒
+`0,86..0,96`): *o caos desapareceu, o que é a prova de que se removeu uma instabilidade em vez de a
+baralhar.*
+
+**As outras quatro réguas, a `substeps = 8`:**
+
+| régua | UM ponto | DOIS pontos |
+|---|---|---|
+| tremor (°/tique) | `0,182 .. 0,219` | **`0,060 .. 0,168`** |
+| rodopio (°/0,9 s) | `9,5 .. 31,7` | **`3,0 .. 3,1`** |
+| altura `y` | `−2,53` | `−2,42` |
+| vão típico | `0,2390` | **`0,2203`** |
+| cozimento | `4,54 ms` | `6,73 ms` |
+
+⭐⭐ **O vão bate `0,2203` contra o face-a-face EXACTO de `2 × LADO = 0,2200`** — a pilha passou a
+encostar de **chapa** em vez de assentar em quinas. E `y = −2,42` está longe da altura de nascimento
+(`−0,35`): ela não congela.
+
+### §5.11.6 — O gate, e os DOIS que tinham o defeito escrito dentro deles
+
+✅ **`a_settled_piece_does_not_jump`** — barra **`2,0°`**, o meio do vale medido `[0,96° .. 3,15°]`,
+com prova red-first (colapsado a um ponto ele reprova nomeando a peça `19` a saltar `8,27°`).
+
+⛔⛔ **E DOIS gates existentes reprovaram porque defendiam o defeito:**
+`a_box_caught_off_centre_turns…` (nas duas crates) punha o centro da caixa **DENTRO** do apoio e
+exigia que ela tombasse. A varredura que o apanhou:
+
+```text
+   centro |  apoiado? |    giro
+     0,60 |       SIM |   0,000
+     0,90 |       SIM |  −0,208   ← a fixtura velha, a exigir |giro| > 1
+     1,05 |       NAO | −10,544
+     1,10 |       NAO | −13,998
+```
+
+⇒ *um gate cuja fixtura encena o defeito passa a defendê-lo*, e a cura é a **fixtura**, nunca a
+barra. Nasceu com eles o irmão que faltava — **`a_box_supported_under_its_centre_does_not_topple`**,
+que é a metade que a cura compra.

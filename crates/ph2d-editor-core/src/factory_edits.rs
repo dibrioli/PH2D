@@ -1,3 +1,18 @@
+//! ⭐⭐⭐ **O VOCABULÁRIO DA FÁBRICA E DO CICLO DE VIDA** (TOP-20 #11 e #12) — o instantâneo e a
+//! edição, num módulo abaixo do [`crate::action_bus`] e do [`crate::screens`].
+//!
+//! # ⛔⛔ Porque ele não está no `screens::hero`, com os irmãos
+//!
+//! Pela MESMA razão do [`crate::tags_edits`], e com o mesmo número atrás: a catraca do DAG tolera a
+//! aresta `action_bus → screens` num **tecto**, e escreve a cura ao lado dela — *«os PAYLOADS do
+//! Inspector moram em `screens::hero::inspector_model*`; cura: descem para um módulo de vocabulário
+//! abaixo do `action_bus`»*. A aresta estava **no tecto** quando esta wave nasceu, e o
+//! [`FactoryFieldEdit`] fê-la passar. ⇒ *a catraca só encolhe*, logo a cura não foi subir o número:
+//! foi **dar o segundo degrau** da migração que ela pede.
+//!
+//! *É a segunda vez em dois dias que esta linha paga este degrau, e isso é o sistema a funcionar:
+//! cada payload novo que desce aqui torna o resto da migração mais barato.*
+
 //! ⭐⭐⭐ **O que o Inspector mostra da FÁBRICA e do CICLO DE VIDA** (TOP-20 #11 e #12, W3).
 //!
 //! # ⚠️ Um snapshot, DUAS secções — e a razão é o SUJEITO
@@ -161,4 +176,37 @@ pub enum FactoryFieldEdit {
     OnDeath(String),
     /// A folga do fora-do-ecrã, em metros.
     OutsideMargin(f32),
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// ⭐⭐ **Cada modo lê EXACTAMENTE um conjunto de campos, e os três são disjuntos.**
+    ///
+    /// ⚠️ **É a lei do `SignalVerb::uses_arg`**, e sem ela o painel tem duas escolhas igualmente
+    /// más: mostrar sempre tudo (dois controlos mortos em cada modo) ou esconder um campo que o
+    /// modo lê (uma feature inalcançável). *As duas leem-se como «mexo e nada acontece».*
+    ///
+    /// (Mutação: `uses_area` a responder `true` para `Here` ⇒ RED.)
+    #[test]
+    fn each_mode_reads_exactly_its_own_fields() {
+        assert!(!InspectorSpawnWhere::Here.uses_area());
+        assert!(!InspectorSpawnWhere::Here.uses_tag());
+        assert!(InspectorSpawnWhere::Area.uses_area());
+        assert!(!InspectorSpawnWhere::Area.uses_tag());
+        assert!(!InspectorSpawnWhere::Tagged.uses_area());
+        assert!(InspectorSpawnWhere::Tagged.uses_tag());
+        // ⚠️ **O controlo do censo**: se `ALL` encolher, este gate deixa de falar dos três.
+        assert_eq!(InspectorSpawnWhere::ALL.len(), 3);
+    }
+
+    /// ⚠️ **A POSIÇÃO no array é a tag do clique** — reordenar faria um clique escrever outro modo.
+    #[test]
+    fn the_position_in_all_is_the_click_tag() {
+        for (i, m) in InspectorSpawnWhere::ALL.into_iter().enumerate() {
+            assert_eq!(usize::from(m.tag()), i, "o modo {m:?} mudou de posicao");
+        }
+        assert_eq!(InspectorSpawnWhere::default(), InspectorSpawnWhere::Here);
+    }
 }

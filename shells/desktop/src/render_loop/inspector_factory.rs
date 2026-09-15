@@ -248,3 +248,7 @@ fn escreve(world: &mut World, e: Entity, f: impl FnOnce(&mut Factory)) -> bool {
     f(&mut fab);
     true
 }
+
+#[cfg(test)]
+#[path = "inspector_factory_tests.rs"]
+mod tests;

@@ -338,7 +338,7 @@ pub(crate) fn paint_optional_sections(
     // ⚠️ **`y = ` na irmã de cima, e não uma chamada solta**: a CAMERA deixou de ser a última desta
     // cadeia, e uma chamada cujo `y` se deita fora empilha a secção seguinte por cima dela — o
     // defeito exacto que o gate `two_sections_never_stack` existe para apanhar.
-    y = paint_factory_section(
+    y = crate::paint_optional_factory::paint_factory_section(
         scene,
         text_system,
         theme,
@@ -352,7 +352,7 @@ pub(crate) fn paint_optional_sections(
         header_h,
         factory,
     );
-    y = paint_lifecycle_section(
+    y = crate::paint_optional_factory::paint_lifecycle_section(
         scene,
         text_system,
         theme,
@@ -379,121 +379,6 @@ pub(crate) fn paint_optional_sections(
         y,
         header_h,
         tags,
-    )
-}
-
-/// **A secção FACTORY** — moldura e tudo (TOP-20 #11, W3). ⚠️ Sem estado de painel, como a da
-/// câmera: um objecto tem UMA fábrica, então não há linha aberta a lembrar.
-#[allow(clippy::too_many_arguments)]
-pub(crate) fn paint_factory_section(
-    scene: &mut VectorScene,
-    text_system: &mut TextSystem,
-    theme: ph2d_tokens::Theme,
-    hit_index: &mut HitIndex,
-    store: &WidgetStore,
-    section_tops_y: &mut Vec<f32>,
-    inner_x: f32,
-    inner_w: f32,
-    body_top_y: f32,
-    mut y: f32,
-    header_h: f32,
-    info: Option<&ph2d_editor_core::screens::hero::InspectorFactoryInfo>,
-) -> f32 {
-    // ⚠️ **A secção só existe se o objecto TIVER a fábrica** — ADR-0166. Um objecto com só uma
-    // vida entra pelo irmão de baixo, e nenhum dos dois paga o cabeçalho do outro.
-    let Some(info) = info.filter(|i| i.factory.is_some()) else {
-        return y;
-    };
-    y = close_section(scene, theme, inner_x, inner_w, y);
-    let y_before = y;
-    begin_section(
-        section_tops_y,
-        hit_index,
-        inner_x,
-        inner_w,
-        body_top_y,
-        y_before,
-        ids::INSP_LIVE_FACTORY_SECTION,
-        header_h,
-    );
-    let new_y = crate::sections::factory::paint_factory_section(
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-        inner_x,
-        inner_w,
-        y,
-        info,
-    );
-    finish_section(
-        scene,
-        text_system,
-        hit_index,
-        store,
-        inner_x,
-        inner_w,
-        ids::INSP_LIVE_FACTORY_SECTION,
-        y_before,
-        new_y,
-        &[],
-    )
-}
-
-/// **A secção LIFECYCLE** — moldura e tudo (TOP-20 #12, W3).
-#[allow(clippy::too_many_arguments)]
-pub(crate) fn paint_lifecycle_section(
-    scene: &mut VectorScene,
-    text_system: &mut TextSystem,
-    theme: ph2d_tokens::Theme,
-    hit_index: &mut HitIndex,
-    store: &WidgetStore,
-    section_tops_y: &mut Vec<f32>,
-    inner_x: f32,
-    inner_w: f32,
-    body_top_y: f32,
-    mut y: f32,
-    header_h: f32,
-    info: Option<&ph2d_editor_core::screens::hero::InspectorFactoryInfo>,
-) -> f32 {
-    let Some(info) = info.filter(|i| i.lifecycle.is_some()) else {
-        return y;
-    };
-    y = close_section(scene, theme, inner_x, inner_w, y);
-    let y_before = y;
-    begin_section(
-        section_tops_y,
-        hit_index,
-        inner_x,
-        inner_w,
-        body_top_y,
-        y_before,
-        ids::INSP_LIVE_LIFECYCLE_SECTION,
-        header_h,
-    );
-    let new_y = crate::sections::factory::paint_lifecycle_section(
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-        inner_x,
-        inner_w,
-        y,
-        info,
-    );
-    finish_section(
-        scene,
-        text_system,
-        hit_index,
-        store,
-        inner_x,
-        inner_w,
-        ids::INSP_LIVE_LIFECYCLE_SECTION,
-        y_before,
-        new_y,
-        &[],
     )
 }
 

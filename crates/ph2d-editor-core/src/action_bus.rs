@@ -363,7 +363,7 @@ pub enum EditorAction {
     /// cada edição toca. ⛔ Três variantes aqui seriam três drenos a fazer a mesma coisa.
     InspectorFactoryEdit {
         entity_bits: u64,
-        edit: crate::screens::hero::FactoryFieldEdit,
+        edit: crate::factory_edits::FactoryFieldEdit,
     },
 
     /// Inspector → shell channel for a §10 Material & Blend field (Blend

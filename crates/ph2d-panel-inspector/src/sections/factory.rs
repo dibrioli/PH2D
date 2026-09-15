@@ -170,7 +170,8 @@ fn factory_body(
         w,
         cur_y,
         crate::ids::INSP_FACTORY_RECIPE,
-        TextInput::new(crate::ids::INSP_FACTORY_RECIPE, "").placeholder("recipe name\u{2026}"),
+        TextInput::new(crate::ids::INSP_FACTORY_RECIPE, "")
+            .placeholder(ph2d_i18n::tr("panel.factory.recipe")),
     );
     cur_y = super::anim_rows::text_row(
         scene,
@@ -182,7 +183,8 @@ fn factory_body(
         w,
         cur_y,
         crate::ids::INSP_FACTORY_ON_SIGNAL,
-        TextInput::new(crate::ids::INSP_FACTORY_ON_SIGNAL, "").placeholder("on signal\u{2026}"),
+        TextInput::new(crate::ids::INSP_FACTORY_ON_SIGNAL, "")
+            .placeholder(ph2d_i18n::tr("panel.factory.on_signal")),
     );
     cur_y = where_row(
         scene,
@@ -226,7 +228,8 @@ fn factory_body(
             w,
             cur_y,
             crate::ids::INSP_FACTORY_TAG,
-            TextInput::new(crate::ids::INSP_FACTORY_TAG, "").placeholder("spawn point tag\u{2026}"),
+            TextInput::new(crate::ids::INSP_FACTORY_TAG, "")
+                .placeholder(ph2d_i18n::tr("panel.factory.tag")),
         );
         let rect = Rect::new(x, cur_y, w, CHECK_H);
         hit_index.register(crate::ids::INSP_FACTORY_PICK_RANDOM, rect);
@@ -274,13 +277,19 @@ fn factory_body(
             step,
         );
     }
-    for (id, ph) in [
-        (crate::ids::INSP_FACTORY_ON_SPAWNED, "on spawned\u{2026}"),
+    // ⚠️ **Os dois pela TABELA**, como os irmãos — um literal aqui seria a palavra do app escrita
+    // num sítio que a tradução não alcança (HR-15).
+    for (id, chave) in [
+        (
+            crate::ids::INSP_FACTORY_ON_SPAWNED,
+            "panel.factory.on_spawned",
+        ),
         (
             crate::ids::INSP_FACTORY_ON_EXHAUSTED,
-            "on exhausted\u{2026}",
+            "panel.factory.on_exhausted",
         ),
     ] {
+        let ph = ph2d_i18n::tr(chave);
         cur_y = super::anim_rows::text_row(
             scene,
             text_system,
@@ -360,7 +369,8 @@ fn lifecycle_body(
             w,
             cur_y,
             crate::ids::INSP_LIFE_ON_DEATH,
-            TextInput::new(crate::ids::INSP_LIFE_ON_DEATH, "").placeholder("on death\u{2026}"),
+            TextInput::new(crate::ids::INSP_LIFE_ON_DEATH, "")
+                .placeholder(ph2d_i18n::tr("panel.factory.on_death")),
         );
     }
     if l.outside_margin.is_some() {

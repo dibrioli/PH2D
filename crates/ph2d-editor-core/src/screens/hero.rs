@@ -65,7 +65,6 @@ mod inspector_model_anchor;
 mod inspector_model_anim;
 mod inspector_model_audio;
 mod inspector_model_camera;
-mod inspector_model_factory;
 /// ⭐ **A seção COMPONENT** (ADR-0164 / F5) — o que esta cópia tem de diferente da receita.
 mod inspector_model_instance;
 /// §12 Physics Joint + §13 Pulley Wheel — irmão do `inspector_model_physics`,
@@ -115,13 +114,16 @@ pub mod variant_axes;
 // seis defeitos.
 pub use paint::PANEL_Z_ORDER_FALLBACK;
 
+/// ⭐ **O vocabulário da FÁBRICA mora ABAIXO daqui** ([`crate::factory_edits`]) — a catraca do DAG
+/// pede-o assim. Ele re-exporta-se aqui porque quem pinta a secção importa desta porta, como as
+/// irmãs, e um caminho diferente para um payload faria o painel escolher entre dois.
+pub use crate::factory_edits::*;
 pub use inspector_model::*;
 pub use inspector_model_action::*;
 pub use inspector_model_anchor::*;
 pub use inspector_model_anim::*;
 pub use inspector_model_audio::*;
 pub use inspector_model_camera::*;
-pub use inspector_model_factory::*;
 pub use inspector_model_instance::*;
 pub use inspector_model_joint::*;
 pub use inspector_model_ordering::*;

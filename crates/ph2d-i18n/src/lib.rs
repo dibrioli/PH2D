@@ -81,10 +81,11 @@ mod vector_engine;
 mod chrome;
 mod inspector;
 mod inspector_player;
+/// ⭐ **As strings do painel TAGS** (TOP-20 #9) — irmão de tabela, por assunto.
+mod factory;
 mod model3d;
 mod painter_layers;
 mod sculpt3d;
-/// ⭐ **As strings do painel TAGS** (TOP-20 #9) — irmão de tabela, por assunto.
 mod tags;
 
 pub fn tr(key: &str) -> &'static str {
@@ -517,6 +518,7 @@ pub fn tr(key: &str) -> &'static str {
             .or_else(|| sculpt3d::tr(k))
             .or_else(|| model3d::tr(k))
             .or_else(|| tags::tr(k))
+            .or_else(|| factory::tr(k))
             .or_else(|| chrome::tr(k))
             .or_else(|| painter_layers::tr(k))
             .or_else(|| inspector::tr(k))

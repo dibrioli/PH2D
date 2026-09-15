@@ -4,7 +4,9 @@
 //! doc-comment do irmão, medida sobre o mundo que a `montar` devolve.
 
 use super::{CENAS, montar};
-use ph2d_ecs::{DestroyOutside, Factory, Lifetime, MasterRoot, Name, Pick, SimWorld, SpawnAt, Timers};
+use ph2d_ecs::{
+    DestroyOutside, Factory, Lifetime, MasterRoot, Name, Pick, SimWorld, SpawnAt, Timers,
+};
 use ph2d_tags::TagTree;
 
 fn monta(nivel: u32) -> (SimWorld, TagTree, u32) {
@@ -32,7 +34,10 @@ fn the_first_scene_points_the_factory_at_a_master_that_exists() {
     let alvo = fab.master;
     // ⚠️ O timer é o que dá ritmo — e o sinal dele TEM de ser o que a fábrica escuta.
     assert_eq!(timers.0.len(), 1);
-    assert_eq!(timers.0[0].signal, fab.on_signal, "o relogio fala para outro");
+    assert_eq!(
+        timers.0[0].signal, fab.on_signal,
+        "o relogio fala para outro"
+    );
     assert!(timers.0[0].repeat && timers.0[0].autostart);
 
     let mut q = sim
@@ -57,7 +62,11 @@ fn the_second_scene_has_tagged_points_a_cap_and_a_reaper() {
     assert_eq!(marcas.len(), 3, "as tres marcas do doc");
 
     let mut q = sim.world_mut().query::<&Factory>();
-    let fab = q.iter(sim.world()).next().expect("a fabrica existe").clone();
+    let fab = q
+        .iter(sim.world())
+        .next()
+        .expect("a fabrica existe")
+        .clone();
     match fab.at {
         SpawnAt::Tagged { tag, pick } => {
             assert_eq!(tag, ponto.0, "a fabrica aponta a outra tag");
@@ -76,7 +85,11 @@ fn the_second_scene_has_tagged_points_a_cap_and_a_reaper() {
     );
     // E a receita leva o colhedor.
     let mut q = sim.world_mut().query::<(&MasterRoot, &DestroyOutside)>();
-    assert_eq!(q.iter(sim.world()).count(), 1, "a receita nao leva o colhedor");
+    assert_eq!(
+        q.iter(sim.world()).count(),
+        1,
+        "a receita nao leva o colhedor"
+    );
 }
 
 /// ⭐⭐ **A vida e o colhedor vivem na RECEITA, nunca na fábrica** — a lei do §2.6.
@@ -87,7 +100,9 @@ fn the_second_scene_has_tagged_points_a_cap_and_a_reaper() {
 fn the_lifecycle_lives_on_the_recipe_and_not_on_the_factory() {
     for nivel in [1u32, 2] {
         let (mut sim, _, _) = monta(nivel);
-        let mut q = sim.world_mut().query::<(&Factory, Option<&Lifetime>, Option<&DestroyOutside>)>();
+        let mut q = sim
+            .world_mut()
+            .query::<(&Factory, Option<&Lifetime>, Option<&DestroyOutside>)>();
         for (_, vida, fora) in q.iter(sim.world()) {
             assert!(
                 vida.is_none() && fora.is_none(),
@@ -150,7 +165,10 @@ fn the_scene_spawns_nothing_until_a_signal_arrives() {
     let vazio = ph2d_ecs::tick_factories(sim.world_mut(), &tree, &[]);
     assert!(vazio.births.is_empty(), "nasceu sem sinal nenhum");
     let errado = ph2d_ecs::tick_factories(sim.world_mut(), &tree, &["outro"]);
-    assert!(errado.births.is_empty(), "nasceu com o sinal de outra pessoa");
+    assert!(
+        errado.births.is_empty(),
+        "nasceu com o sinal de outra pessoa"
+    );
     let certo = ph2d_ecs::tick_factories(sim.world_mut(), &tree, &["drop"]);
     assert_eq!(certo.births.len(), 1, "o sinal certo nao fez nascer");
 }

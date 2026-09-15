@@ -131,6 +131,8 @@ pub fn installed_registry() -> Option<&'static registry::Registry> {
 
 /// ⭐⭐⭐ **O vocabulário das TAGS** — os dois gestos, num módulo abaixo do `action_bus` e do
 /// `screens`. Ver o cabeçalho dele: é o primeiro degrau da cura que a catraca do DAG prescreve.
+/// ⭐ O VOCABULÁRIO da fábrica e do ciclo de vida — abaixo do `action_bus` (catraca do DAG).
+pub mod factory_edits;
 pub mod tags_edits;
 pub use floating_panel::{FloatingPanel, PanelAction, PanelAnchor, PanelControl, PanelTab, ToolId};
 pub use gizmo::{

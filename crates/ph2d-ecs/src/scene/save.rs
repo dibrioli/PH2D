@@ -214,7 +214,7 @@ pub fn world_to_snapshot(
         // ⛔ Sem isto uma fábrica a 60 Hz punha uma entidade nova no **ficheiro** e um passo na
         // pilha de `Ctrl+Z` **por tique** — e não há modo de jogo neste app, logo isso acontecia
         // enquanto o artista edita.
-        if crate::is_transient(world, entity) {
+        if !crate::is_transient(world, entity) {
             continue;
         }
         visit_order.push(entity);

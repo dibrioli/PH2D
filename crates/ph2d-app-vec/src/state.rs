@@ -94,6 +94,12 @@ pub struct VecState {
     /// dar entidade às formas, `2` prende, `3` acabou. ⚠️ Ela precisa de dois quadros porque
     /// prender exige a ENTIDADE da forma, e quem a cria corre depois do prólogo.
     pub bone_smoke_step: u8,
+    /// ⭐ Latch one-shot da [`crate::smoke_bone_paint`] — o canvas do Painter preso a ossos.
+    ///
+    /// ⚠️ **Ele mora AQUI e não na `App`**, e não por arrumação: as duas catracas da shell
+    /// (`the_app_only_sheds_fields` e `fn_loc_caps`) disseram-no pelo nome no mesmo minuto —
+    /// *«um campo novo tem DONO: ponha-o no estado da família do assunto dele»*.
+    pub bone_paint_smoke_done: bool,
 
     /// ⭐ **A IMAGEM da cena de osso** — os bits da sprite e a raiz do esqueleto dela.
     ///

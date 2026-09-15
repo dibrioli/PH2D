@@ -57,6 +57,39 @@ impl crate::App {
             }
         }
 
+        // ⭐⭐⭐ **O CANVAS DO PAINTER PRESO A OSSOS** (`PH2D_VEC_BONE_PAINT_SMOKE=1`) — a cena que
+        // faltava à cura das guias chatas (item 4 do dono): sem ela a correcção estava gateada e
+        // **invisível**, e uma cura que ninguém pode ver é uma cura que ninguém julga.
+        //
+        // ⚠️ Mesma dança da máscara ao lado, e pela mesma razão: o canvas fica SELECCIONADO (é ele o
+        // sujeito do Painter) e nada mais é armado — a ferramenta, o pincel e a grelha são do artista.
+        if let Some(hero) = hero_screen.as_mut()
+            && ph2d_app_vec::smoke_bone_paint::armed()
+            && !std::mem::replace(&mut self.vec.bone_paint_smoke_done, true)
+        {
+            let ppm = hero.project.pixels_per_meter;
+            let cell = *next_import_cell;
+            if let Some(bits) = ph2d_app_vec::smoke_bone_paint::build(
+                sim,
+                renderer,
+                asset_db,
+                cell,
+                ppm,
+                atlas_asset_map,
+            ) {
+                *next_import_cell = next_import_cell.saturating_add(1);
+                hero.gizmo.replace_selection(Some(bits));
+                hero.bus
+                    .push(ph2d_editor_core::action_bus::EditorAction::SetViewFocus {
+                        kind: ph2d_editor_core::ViewFocusKind::Selected,
+                    });
+                toasts.push(Toast::success(
+                    "Bone-paint smoke: pegue o Painter e desenhe uma forma sobre o canvas dobrado"
+                        .to_string(),
+                ));
+            }
+        }
+
         // **A FOLHA COMO OBJETO** (`PH2D_SHEET_SMOKE=1`, plano `docs/Sprite_projeto/17` §7): cinco
         // peças de tamanhos diferentes entram, e sai UM objeto — um retângulo na hierarquia, com
         // as peças arranjadas dentro como filhos.

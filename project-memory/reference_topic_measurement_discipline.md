@@ -153,3 +153,11 @@ uma continua a ser um ficheiro próprio; o que mudou foi o endereço.
   não como âncora. ⚠️ E ao fazê-lo apareceu o inverso do mesmo erro: a escada media `200`, um ponto
   **abaixo do mínimo do dock**, ou seja *uma régua calibrada fora do curso, a medir um programa que
   nenhum arrasto produz*.
+- ⛔⛔ **Um censo de TEXTO é cego ao texto que é CONSTRUÍDO.** Medido 2026-09-15 (`line/UIUX`): o
+  censo que cobra *«a unidade vive no campo, nunca no rótulo»* fechou verde, e no dia seguinte o dono
+  fotografou `Speed (°/s)` ainda no rótulo — porque o texto na tabela é **`"Speed ({unit})"`** e o
+  detector procurava um sufixo LITERAL. ⇒ *o caso mais certo de todos — um rótulo cujo conteúdo entre
+  parênteses é a palavra «unidade» — era o único que ele não via.* ⚠️ **E alargar a «qualquer `{…}`»
+  acusou quatro TÍTULOS** (`"Timers  ({n})"`), onde o molde é uma contagem: a régua que separa é o
+  **NOME do molde**, escrito dentro do próprio dado. *Quando um detector passa a ver demais, aperte-o
+  por uma propriedade que o dado já declara, não por uma lista de excepções.*

@@ -27,7 +27,7 @@ reproduz-se com a mesma receita.
 | `cylinder_32.obj` | cilindro | 66 / 96 | tampas planas ⇒ o caso **coplanar**, que é onde os solucionadores se separam |
 | `open_tube3.obj` | tubo **aberto** | 18 / 12 | ⭐ bordo — §11.1 da espec |
 | `open_disc.obj` | disco **aberto** | 19 / 24 | bordo, com miolo |
-| `pillow.obj` | peça degenerada | 3 / 2 | o caso mínimo que ainda é uma malha |
+| `pillow.obj` | peça degenerada | 3 / **2** | o caso mínimo que ainda é uma malha. ⚠️ **O ficheiro tem `2` faces e o oráculo mediu `1`**: são os mesmos três vértices com enrolamento oposto, e a importação do alvo coalesce-as **em silêncio** (espec §11.1) |
 | *(não distribuída)* | esfera de escultura | 98 306 / 98 304 | a medição de densidade longe do corte, e a nota pública dos 100 k |
 
 ## Receita das entradas (determinística, e é NOSSA)

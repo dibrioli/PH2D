@@ -748,16 +748,24 @@ errado. ⚠️ Mas note-se que ele é **indistinguível, de fora, de um corte qu
 
 ### §11.1 — ⭐⭐ A malha ABERTA é onde os três solucionadores DIVERGEM
 
-**M**, sobre três fixturas **nossas** com bordo (um tubo aberto, um disco, e uma peça degenerada
-de **duas** faces — os mesmos três vértices com enrolamento oposto):
+**M**, sobre três fixturas **nossas** com bordo (um tubo aberto, um disco, e uma peça degenerada):
 
-| solucionador | tubo aberto (18 V, bordo 12) | disco (19 V, bordo 12) | peça de 1 face (bordo 3) |
+| solucionador | tubo aberto (18 V, bordo 12) | disco (19 V, bordo 12) | peça degenerada (3 V, bordo 3) |
 |---|---|---|---|
 | `MANIFOLD` | ⛔ **RECUSA** | ⛔ **RECUSA** | ⛔ **RECUSA** |
 | `EXACT` | `→ 17 V`, bordo **`10`** | `→ 21 V`, bordo **`17`** | `→ 4 V`, bordo `4` |
 | `FLOAT` | `→ 17 V`, bordo **`14`** | `→ 21 V`, bordo **`17`** | `→ 4 V`, bordo `4` |
 
-*(a coluna da peça degenerada é `2` faces na entrada — ver o README das fixturas)*
+⚠️⚠️ **E a peça degenerada carrega um facto que a coluna sozinha escondia, e que só o par
+ficheiro↔medição revela: o FICHEIRO tem `2` faces e o que o solucionador RECEBEU tem `1`.** São os
+mesmos três vértices escritos duas vezes com enrolamento oposto, e a importação do alvo entrega
+**uma** face — a segunda desaparece **em silêncio**, sem aviso e sem recusa.
+
+⇒ ⭐ *a fronteira de importação é um consumidor como outro qualquer, e ela edita a peça antes de a
+lei do gesto lhe tocar.* ⚠️ **Toda medição sobre ficheiro tem de dizer QUAL dos dois lados mede** —
+esta célula dizia `1` (o que o solucionador viu), a prosa dizia `2` (o que o ficheiro tem), e as
+duas estavam certas sobre assuntos diferentes. **N:** se o nosso importador coalescer faces, a
+contagem que o artista vê tem de ser a de DEPOIS, e a diferença tem de ser dita.
 
 ⭐ **Três factos que só esta tabela dá:**
 1. o solucionador de omissão **recusa** malha aberta, em voz alta e sem tocar na peça — ⇒ numa

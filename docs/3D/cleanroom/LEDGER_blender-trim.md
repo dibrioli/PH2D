@@ -395,3 +395,36 @@ com controlo positivo do lado que devia acusar — feito por quem não escreveu 
 instrumento.* Nas três cegueiras desta obra (`.gz` → quebra de linha → ênfase) a espécie foi
 sempre **alcance**, nunca padrões; e a terceira foi encontrada **por o auditor correr a régua
 corrigida por terceiro**, que é exactamente a razão de o R-pré não poder ser o E.
+
+---
+
+## ⭐⭐⭐ NOTA DE MÉTODO — a cegueira do instrumento foi de ALCANCE **três vezes seguidas**
+
+Esta obra emendou o `scripts/cleanroom-sweep.sh` **três** vezes, e as três falhas eram da **mesma
+espécie**: o instrumento **não CHEGAVA** ao texto. ⛔ **Nenhuma** foi um padrão em falta.
+
+| # | o que ele não alcançava | como se manifestava | quem a achou |
+|---|---|---|---|
+| 1 | o conteúdo de um ficheiro **comprimido** (o `strings` de um `.gz` devolve lixo) | sweep verde sobre corpora gzipados | a obra anterior (2026-09-14) |
+| 2 | a frase **partida por uma quebra de linha** (`grep -F` casa dentro de UMA linha, e toda espec é markdown quebrado a ~100 colunas) | sweep verde sobre uma citação traduzida | esta obra |
+| 3 | a frase com **ênfase markdown no meio** (a cura 2 normalizava espaço em branco, não marcadores) | sweep verde sobre a oração citada da §6.1 | o **R-pré** |
+| 3b | ⛔ e a cura 3, ao apagar `_`, ficou cega a **todo identificador que o contenha** — que é quase todos | acusava menos do que devia | o **R-pré**, na 2.ª passagem |
+
+⇒ ⭐⭐ **A LEI QUE FICA, para quem emendar este sweep outra vez:**
+> **Procure primeiro o que o instrumento não ALCANÇA; só depois o que ele não RECONHECE.**
+
+E as duas cláusulas que o corolário obriga:
+- **todo verde exige CONTROLO POSITIVO** — um ficheiro de prova que o sweep *tem* de acusar, feito
+  com a mesma deformação que se suspeita (quebra, ênfase, compressão). *Um verde sem controlo mede
+  o alcance do instrumento, nunca o conteúdo do texto.*
+- ⛔ **a normalização é de UM LADO SÓ.** Normalizar também o lado da **agulha** (as entradas da
+  vassoura) fabricaria colisão em vez de a revelar — está escrito no script, e é a razão de a cura
+  tocar só o palheiro.
+
+⚠️ **E a mesma lei apanhou um erro de LEITURA, não de instrumento, na última correcção:** a célula
+da §11.1 dizia `1` face e a prosa dizia `2`, e a cura pedida era trocar a palavra. Medido o par
+ficheiro↔saída, **os dois números estavam certos sobre assuntos diferentes** — o ficheiro tem duas
+faces e a importação do alvo entrega uma, coalescendo-as em silêncio. ⇒ *quando dois números do
+mesmo documento discordam, meça os dois antes de apagar um: a discordância pode ser o achado.* É a
+mesma forma que este repo já registou («quando uma página imprime duas medidas da mesma grandeza e
+elas discordam, isso É o achado»).

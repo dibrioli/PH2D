@@ -219,3 +219,28 @@ vizinho mede antes de reaproveitar a régua dele.
   `1,94`–`1,96` da uniforme. ⇒ *uma recusa medida responde a UMA pergunta sobre UMA lei; quem troca
   a lei tem de re-correr as recusas que a citavam* (§0.0 sobre quem move o número).
 - ⛔ **Uma régua que conta QUANTOS nunca vê QUAIS** — o gate da cena exigia «> 30 vértices movidos» e `144` moviam-se com a lei INVERTIDA (a beirada parada, o miolo a dobrar); a régua honesta é o PERFIL (quem mais se move, e monótono)
+- ⛔⛔ **Um ITEM ABERTO que nomeia um recurso sem o ter MEDIDO manda optimizar a coisa errada, e
+  ninguém o contesta porque ele já está escrito.** Medido 2026-09-15 (`line/3DModeling`, report do
+  dono sobre performance): o doc do módulo declarava, havia um dia, que o tecto do quadro eram os
+  **`49 MB` de leitura de volta** do G-buffer. Medida à parte, a travessia custa **`1,86 ms` — `4 %`
+  do quadro**. O tecto era um laço de CPU que eu próprio escrevera (`47,4` de `87,6 ms`), mais do
+  que a placa e o pintor somados. ⇒ *a lista de «abertos» de um módulo é uma lista de HIPÓTESES, e
+  cada uma precisa da medição ao lado antes de alguém lhe pegar.*
+- ⛔⛔ **E as duas hipóteses seguintes mediram ZERO, as duas plausíveis à vista:** a base de
+  quaternião reconstruída por pixel (são ~30 operações **sem divisão**, e o compilador já a tirava
+  do laço) e a divisão inteira `i % w` por valor de *runtime*. O custo era a **NORMALIZAÇÃO**:
+  `o + (v/|v|)·t` são **três** divisões `f32` e `o + v·(t/|v|)` é **uma** — `37,87 → 5,75 ms`,
+  `6,6×`. ⚠️ *Numa `f32`, uma divisão custa ~15 ciclos e três seguidas não emparelham; contar
+  «operações» não as distingue de somas.* ⇒ **isole cada candidato num laço à parte e meça-o**, em
+  vez de aplicar a cura e ler o total: três hipóteses, duas a zero, e só a terceira paga.
+- ⛔⛔ **Uma RÉGUA de amplitude não vê um PADRÃO, e o olho vê padrões antes de amplitudes.** Mesmo
+  dia, mesmo módulo: o report era *«baixíssima qualidade»* sobre o ruído da oclusão, e a primeira
+  régua — erro no BYTE sobre remendos lisos — leu `p99 = 2` níveis, que se lê como *«invisível»* e
+  como *«o dono não tem razão»*. Despejando o canal numa IMAGEM, ele sai com uma **textura tecida**
+  óbvia. ⇒ *toda sonda de qualidade visual despeja a imagem ao lado da tabela*, senão ela mede a
+  grandeza certa e responde à pergunta errada.
+- ⛔⛔ **Uma CERCA que protege um gesto pode ser o que APAGA uma feature nesse gesto, e as duas
+  frases leem-se igual num doc.** A condição *«o dispositivo só toma o quadro ASSENTE»* foi escrita
+  como protecção contra uma regressão de arrasto já reportada — e como o sombreado de contacto só
+  existe naquele caminho, ela fazia-o **desaparecer a cada rotação**. O dono reportou-a como defeito
+  novo. ⇒ ao escrever uma cerca por MODO, pergunte **o que mais vive só do lado que ela corta**.

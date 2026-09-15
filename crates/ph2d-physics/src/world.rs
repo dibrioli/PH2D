@@ -11,6 +11,10 @@ pub mod buoyancy;
 /// Consultas de cena (raio/forma) — a perna da cápsula flutuante (docs dele).
 pub mod cast;
 pub mod character;
+/// ⚠️ **SONDA `#[ignore]`** do plano 10 (TOP-20 #13) — o par do
+/// `godot_topdown_probe.gd`. Ver o cabeçalho dela.
+#[cfg(test)]
+mod character_slide_probe;
 pub mod checkpoint;
 pub mod collider_build;
 pub mod contacts;

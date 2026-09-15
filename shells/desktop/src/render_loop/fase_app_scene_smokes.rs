@@ -20,6 +20,7 @@ impl crate::App {
         self.timer_smoke();
         self.signal_action_smoke();
         self.tags_smoke();
+        self.factory_smoke();
         #[cfg(feature = "panel-audio-editor")]
         self.audio_2d_smoke();
         self.game_camera_smoke();

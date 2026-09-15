@@ -13,10 +13,11 @@
 
 use ph2d_editor_core::screens::hero::{
     InspectorActionInfo, InspectorAnchorInfo, InspectorAnimInfo, InspectorAudioInfo,
-    InspectorBlendInfo, InspectorCameraInfo, InspectorJointInfo, InspectorNameInfo,
-    InspectorOrderingInfo, InspectorPhysicsInfo, InspectorPlayerInfo, InspectorSamplingInfo,
-    InspectorSliceInfo, InspectorSpriteInfo, InspectorTimerInfo, InspectorTransformInfo,
-    InspectorVisibilityInfo, InspectorVisibilitySectionInfo, InspectorWheelInfo,
+    InspectorBlendInfo, InspectorCameraInfo, InspectorFactoryInfo, InspectorJointInfo,
+    InspectorNameInfo, InspectorOrderingInfo, InspectorPhysicsInfo, InspectorPlayerInfo,
+    InspectorSamplingInfo, InspectorSliceInfo, InspectorSpriteInfo, InspectorTimerInfo,
+    InspectorTransformInfo, InspectorVisibilityInfo, InspectorVisibilitySectionInfo,
+    InspectorWheelInfo,
 };
 
 /// Inspector panel retained state. Held inside `ErasedPanel<InspectorPanel>`
@@ -164,6 +165,10 @@ thread_local! {
     /// CAMERA — o snapshot da entidade selecionada (TOP-20 #7).
     pub(crate) static CURRENT_INSPECTOR_CAMERA:
         std::cell::RefCell<Option<InspectorCameraInfo>> = const { std::cell::RefCell::new(None) };
+
+    /// ⭐⭐⭐ **O snapshot das secções FACTORY e LIFECYCLE** (TOP-20 #11 e #12).
+    pub(crate) static CURRENT_INSPECTOR_FACTORY:
+        std::cell::RefCell<Option<InspectorFactoryInfo>> = const { std::cell::RefCell::new(None) };
 
     /// **§12 — a linha ABERTA da lista, no sentido PAINEL → SHELL.**
     ///
@@ -342,6 +347,14 @@ pub(crate) fn current_inspector_action() -> Option<InspectorActionInfo> {
 
 pub fn set_current_inspector_audio(info: Option<InspectorAudioInfo>) {
     CURRENT_INSPECTOR_AUDIO.with(|c| *c.borrow_mut() = info);
+}
+
+pub fn set_current_inspector_factory(info: Option<InspectorFactoryInfo>) {
+    CURRENT_INSPECTOR_FACTORY.with(|c| *c.borrow_mut() = info);
+}
+
+pub(crate) fn current_inspector_factory() -> Option<InspectorFactoryInfo> {
+    CURRENT_INSPECTOR_FACTORY.with(|c| c.borrow().clone())
 }
 
 pub fn set_current_inspector_camera(info: Option<InspectorCameraInfo>) {

@@ -99,6 +99,8 @@ pub(super) fn publish(
     // Resolved by the caller (which owns the clock) and shown ON the button —
     // see `physics_bake::bake_range`. Start is honoured now (W-BakeRange), so a
     // `[2s, 5s]` loop bakes exactly that.
+    // ⭐ O relógio anda? — a secção FACTORY di-lo (TOP-20 #11).
+    clock_playing: bool,
     bake_range: (f32, f32),
     // Which pose channels the §11 Bake selector shows as chosen (the shell's
     // transient `bake_channels`, a global bake option).
@@ -229,6 +231,7 @@ pub(super) fn publish(
         renderer,
         window_size,
         game_camera_preview,
+        clock_playing,
         bake_range,
         bake_channels_tag,
         join_kind_tag,

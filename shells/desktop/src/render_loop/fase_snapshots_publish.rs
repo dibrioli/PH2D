@@ -113,6 +113,10 @@ impl crate::App {
                     self.flip_state.style.map(|s| s.mode),
                     Some(ph2d_tool_flip::FlipMode::Select)
                 ),
+            // ⭐ **O relógio anda?** — a secção FACTORY di-lo, e é o que separa *«a fábrica está
+            // avariada»* de *«a fábrica está à espera»*. Resolvido AQUI porque é a shell que tem o
+            // relógio, como o `bake_range` logo abaixo.
+            self.playhead.is_playing(),
             // W4: the range the §11 Bake button covers, resolved HERE
             // because the shell owns both the document and the clock, and
             // shown on the button so the artist never has to guess it.

@@ -142,6 +142,47 @@ impl crate::App {
         }
     }
 
+    /// ⭐⭐⭐ **A FÁBRICA e o CICLO DE VIDA** (TOP-20 #11 e #12, W4). Prólogo do quadro, uma vez.
+    ///
+    /// ⚠️ **As DUAS cenas são de FÍSICA e as duas precisam do relógio A ANDAR**, e por duas razões
+    /// diferentes que só juntas se lêem: a física move o que nasce, e **a corrida é o relógio** —
+    /// a fábrica é gateada em `playhead.is_playing()`. Sem isto o artista vê uma cena parada e lê
+    /// *«a fábrica não faz nada»*, que é o veredito errado sobre uma fábrica que funciona.
+    ///
+    /// ⛔⛔ *Uma cena de smoke que ensina o CONTRÁRIO do que acontece é pior que uma cena ausente*
+    /// (`CLAUDE.md` §5.0).
+    pub(crate) fn factory_smoke(&mut self) {
+        if self.components_smokes.factory {
+            return;
+        }
+        let Some(v) = std::env::var_os("PH2D_FACTORY_SMOKE") else {
+            return;
+        };
+        let nivel = v.to_str().and_then(|s| s.parse().ok()).unwrap_or(1);
+        let Some(mut cx) = self.components_ctx() else {
+            return;
+        };
+        let cena = ph2d_app_components::factory_smoke::factory_smoke(&mut cx, nivel);
+        self.components_smokes.factory = true;
+        // ⭐⭐⭐ **A `=2` TOMA a vista da câmera do jogo, e sem isso ela ENSINA O CONTRÁRIO.**
+        //
+        // O *Destroy Outside* mede contra o rectângulo da `GameCamera` — nunca contra a vista do
+        // editor (uma corrida não pode depender de onde o artista rolou o ecrã). Com a vista do
+        // editor, que é mais larga, as cópias somem **no meio do ecrã** e o artista lê *«elas
+        // desaparecem sozinhas»* em vez de *«elas saem do ecrã do jogo»*.
+        if cena == 2 {
+            self.game_camera_preview = true;
+        }
+        self.timeline.flags.simulate_physics = true;
+        // ⚠️ **A régua abre junto** — uma instrução que manda rebobinar sobre um ecrã sem
+        // transporte devolve *«que régua?»* (a lição da cena 67 da física).
+        if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
+            hero.panel_visibility.insert("timeline", true);
+        }
+        self.playhead.rewind();
+        self.playhead.play();
+    }
+
     /// Prólogo do quadro, uma vez. No-op sem a env.
     pub(crate) fn instance_smoke(&mut self) {
         if self.components_smokes.instance || std::env::var_os("PH2D_INSTANCE_SMOKE").is_none() {

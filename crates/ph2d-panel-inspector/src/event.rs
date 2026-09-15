@@ -60,6 +60,9 @@ pub(crate) fn apply_event(
         return EventOutcome::Consumed;
     }
 
+    if crate::event_factory::apply_factory_event(host, ev) {
+        return EventOutcome::Consumed;
+    }
     if crate::event_camera::apply_camera_event(host, ev) {
         return EventOutcome::Consumed;
     }

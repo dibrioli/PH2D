@@ -9,8 +9,8 @@
 #[path = "../sculpt_source/mod.rs"]
 mod sculpt_source;
 
-mod a_fabrica_nasce_antes_de_a_morte_drenar;
 mod a_baked_object_outlives_the_3d_module;
+mod a_fabrica_nasce_antes_de_a_morte_drenar;
 mod a_frames_handle_resizes_it_and_does_not_scale_it;
 mod a_layout_never_commands_a_panel_a_bridge_owns;
 mod a_placed_instance_lands_a_screen_step_from_its_main;

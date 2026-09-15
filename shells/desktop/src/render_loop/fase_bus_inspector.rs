@@ -206,6 +206,11 @@ impl crate::App {
             // Fica de fora porque *marcar N objectos de uma vez* é um gesto que ninguém pediu e
             // que o painel não desenha: a secção mostra os chips da primária e diz quantos mais
             // estão escolhidos. ⛔ Ligá-lo sem o desenhar daria ao artista um efeito invisível.
+            // ⭐ **As secções FACTORY e LIFECYCLE** (TOP-20 #11 e #12). ⚠️ **NÃO espalha sobre a
+            // BulkSelect**, pela razão das irmãs: o painel mostra a PRIMÁRIA e di-lo por escrito.
+            EditorAction::InspectorFactoryEdit { entity_bits, edit } => {
+                pd.factory_edits.push((entity_bits, edit));
+            }
             EditorAction::InspectorTagsEdit { entity_bits, edit } => {
                 pd.tags_edits.push((entity_bits, edit));
             }

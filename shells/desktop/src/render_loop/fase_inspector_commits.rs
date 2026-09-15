@@ -10,6 +10,11 @@ use ph2d_i18n::tr_with;
 #[path = "fase_tag_tree_commits.rs"]
 mod tag_tree_commits;
 
+/// ⭐⭐⭐ A fase-filha das edições da FÁBRICA e do CICLO DE VIDA — irmã da de cima, e pela mesma
+/// razão: o tecto de LOC desta fase, e uma fronteira que o comentário do bloco já escrevia.
+#[path = "fase_factory_commits.rs"]
+mod factory_commits;
+
 /// As edições do Inspector que o dreno do barramento recolheu neste quadro.
 pub(super) struct InspectorIntents {
     pub(super) reimport_entity: Option<u64>,
@@ -25,6 +30,8 @@ pub(super) struct InspectorIntents {
     pub(super) timer_edits: Vec<(u64, ph2d_editor_core::TimerFieldEdit)>,
     pub(super) audio_edits: Vec<(u64, ph2d_editor_core::AudioFieldEdit)>,
     pub(super) camera_edits: Vec<(u64, ph2d_editor_core::CameraFieldEdit)>,
+    /// ⭐ As edições das secções FACTORY e LIFECYCLE (TOP-20 #11 e #12).
+    pub(super) factory_edits: Vec<(u64, ph2d_editor_core::FactoryFieldEdit)>,
     pub(super) tags_edits: Vec<(u64, ph2d_editor_core::TagsFieldEdit)>,
     pub(super) tag_tree_edits: Vec<ph2d_editor_core::TagTreeEdit>,
     pub(super) inspector_queue_dirty: bool,
@@ -76,6 +83,7 @@ impl crate::App {
             timer_edits,
             audio_edits,
             camera_edits,
+            factory_edits,
             tags_edits,
             tag_tree_edits,
             mut inspector_queue_dirty,
@@ -192,6 +200,8 @@ impl crate::App {
             inspector_camera::apply_camera_edit(sim, *bits, edit, editor_queue, component_registry);
             inspector_queue_dirty = true;
         }
+        // ⭐⭐⭐ **As secções FACTORY e LIFECYCLE** (TOP-20 #11 e #12, W3) — na fase-filha.
+        inspector_queue_dirty |= factory_commits::aplicar(sim, tags, &factory_edits);
         // ⭐⭐⭐ **A secção TAGS** (TOP-20 #9) — aqui pela razão MAIS forte das três: ela é a única
         // do Inspector que escreve em DOIS documentos, e o segundo (a árvore) nem sequer está no
         // mundo. O `inspector_commits` não o recebe — e não devia: ele é o dreno da CENA.

@@ -29,6 +29,8 @@ pub(crate) struct ComponentsSmokeLatches {
     pub(crate) game_camera: bool,
     /// ⭐ As duas cenas das TAGS (TOP-20 #9). `PH2D_TAGS_SMOKE=1|2`.
     pub(crate) tags: bool,
+    /// ⭐ A FÁBRICA e o CICLO DE VIDA (TOP-20 #11 e #12) — `PH2D_FACTORY_SMOKE`.
+    pub(crate) factory: bool,
     /// O ragdoll instanciado 3× (ADR-0164 F4). `PH2D_INSTANCE_SMOKE=1..7`.
     pub(crate) instance: bool,
 }

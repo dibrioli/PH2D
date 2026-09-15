@@ -81,6 +81,9 @@ pub mod component_smoke;
 /// ⭐⭐⭐ **A PONTE da FÁBRICA e da MORTE** (TOP-20 #11 e #12) — os factos que a lei pura devolve
 /// viram objectos no mundo.
 pub mod factory_bridge;
+/// ⭐⭐⭐ As duas cenas do TOP-20 #9 (`PH2D_TAGS_SMOKE=1|2`) — ver o cabeçalho do módulo.
+/// ⭐⭐⭐ **A FÁBRICA e o CICLO DE VIDA** (TOP-20 #11 e #12) — as duas cenas do dono.
+pub mod factory_smoke;
 pub mod instance_added;
 pub mod instance_added_smoke;
 pub mod instance_apply_deep;
@@ -108,7 +111,6 @@ pub mod prefab_stage;
 pub mod scene_ctx;
 pub mod signal_action_smoke;
 pub mod tags_doc;
-/// ⭐⭐⭐ As duas cenas do TOP-20 #9 (`PH2D_TAGS_SMOKE=1|2`) — ver o cabeçalho do módulo.
 pub mod tags_smoke;
 pub mod timer_smoke;
 
@@ -168,6 +170,9 @@ pub const FAMILY: ph2d_app_host::AppFamily = ph2d_app_host::AppFamily {
         r("PH2D_SIGNAL_ACTION_SMOKE", 1),
         // ⭐⭐⭐ As TAGS (TOP-20 #9, W4): `=1` o sinal que fala com a família · `=2` a armadilha
         // filtrada. ⚠️ O `max_level` é **contado** no `match` do `tags_smoke::tags_smoke`.
+        // ⭐⭐⭐ A FÁBRICA (TOP-20 #11 e #12, W4): `=1` a chuva que não cresce · `=2` os pontos
+        // marcados com limite e colheita. ⚠️ O `max_level` é **contado** no `match` do `montar`.
+        r("PH2D_FACTORY_SMOKE", factory_smoke::CENAS),
         r("PH2D_TAGS_SMOKE", tags_smoke::CENAS),
         r("PH2D_TIMER_SMOKE", 1),
     ],

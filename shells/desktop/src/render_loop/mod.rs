@@ -125,6 +125,7 @@ mod inspector_audio;
 /// ⭐⭐⭐ **A secção CAMERA** (TOP-20 #7) — o snapshot e o commit dos três componentes.
 mod inspector_camera;
 mod inspector_commits_sprite;
+mod inspector_factory;
 /// ⭐ **A seção COMPONENT do Inspector** (ADR-0164 / F5) — o que esta cópia tem de diferente
 /// da receita, e o gesto que limpa as excepções sem alvo.
 pub(crate) mod inspector_instance;
@@ -176,8 +177,6 @@ pub(crate) mod sprite_anim_tick;
 mod timer_tick;
 pub(crate) use sprite_anim_tick::start_autoplay_animations;
 pub(crate) use timer_tick::start_autostart_timers;
-/// Fase do quadro: o outbox de sinais (os produtores que faltavam e o dreno).
-mod fase_fabrica_e_morte;
 /// Fase do quadro: as cenas de smoke que pedem a `App` inteira (1.ª metade).
 mod fase_app_scene_smokes;
 /// Fase do quadro: as cenas de smoke que pedem a `App` inteira (2.ª metade).
@@ -224,6 +223,8 @@ mod fase_entity_sync;
 mod fase_envelope;
 /// Fase do quadro: os insumos do extract (passo, pré-visualizações, folha aberta, px/m, filtro).
 mod fase_extract_inputs;
+/// Fase do quadro: o outbox de sinais (os produtores que faltavam e o dreno).
+mod fase_fabrica_e_morte;
 /// Fase do quadro: os pedidos do modelador 3D.
 mod fase_field3d_requests;
 /// Fase do quadro: o desenho do modelador 3D.

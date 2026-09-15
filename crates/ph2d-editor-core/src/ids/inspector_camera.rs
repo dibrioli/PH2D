@@ -21,3 +21,13 @@ use super::*;
 pub const INSP_LIVE_CAMERA_SECTION: NodeId = hash_node_id("insp_live_camera_section");
 /// CAMERA — ponto de cor do cabeçalho.
 pub const INSP_LIVE_CAMERA_COLOR: NodeId = hash_node_id("insp_live_camera_color");
+
+/// A secção FACTORY — o cabeçalho colapsável (TOP-20 #11, W3).
+///
+/// ⚠️ **Aqui e não na crate do painel, como as irmãs `INSP_LIVE_*`**: o cabeçalho de secção é lido
+/// pelo `LIVE_SECTIONS` da fundação (a ordem das secções vivas), e não só por quem pinta.
+pub const INSP_LIVE_FACTORY_SECTION: NodeId = hash_node_id("insp_live_factory_section");
+/// A secção LIFECYCLE — o cabeçalho colapsável (TOP-20 #12, W3).
+pub const INSP_LIVE_LIFECYCLE_SECTION: NodeId = hash_node_id("insp_live_lifecycle_section");
+/// Quantas opções o segmentado do ONDE tem — a porta que o painel lê para repartir a largura.
+pub const INSP_FACTORY_WHERE_LEN: usize = 3;

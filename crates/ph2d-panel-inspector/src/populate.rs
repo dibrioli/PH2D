@@ -57,6 +57,7 @@ pub fn populate(store: &mut WidgetStore) {
     super::populate_action::populate_action(store);
     super::populate_audio::populate_audio(store);
     super::populate_camera::populate_camera(store);
+    super::populate_factory::populate_factory(store);
     populate_visibility_section(store);
     populate_blend(store);
     super::populate_physics::populate_physics(store);

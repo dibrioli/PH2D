@@ -27,14 +27,8 @@ const ORDER: &[(&str, &str)] = &[
         "ph2d_ecs::tick_factories(",
         "a FABRICA le' os sinais deste quadro",
     ),
-    (
-        "factory_bridge::apply_births(",
-        "as copias NASCEM",
-    ),
-    (
-        "factory_bridge::apply_deaths(",
-        "a MORTE drena, por ultimo",
-    ),
+    ("factory_bridge::apply_births(", "as copias NASCEM"),
+    ("factory_bridge::apply_deaths(", "a MORTE drena, por ultimo"),
 ];
 
 #[test]

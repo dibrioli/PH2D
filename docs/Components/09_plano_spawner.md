@@ -471,18 +471,28 @@ constrói índice nenhum.
 |---|---|---|
 | **W1** | as três leis puras + o `Spawned` + a porta em LOTE **medida** + 12 gates | nada ainda (é motor) |
 | **W2** | a ponte na shell, a poda da captura, o dreno da morte, a varredura ao rebobinar + 6 gates | — |
-| **W3** | as três secções do Inspector, o catálogo, os requeridos + 4 gates | os controlos |
+| **W3** | **DUAS** secções do Inspector (ver abaixo), o catálogo, os requeridos + 4 gates | os controlos |
 | **W4** | duas cenas de smoke + a prova de mutação | **o smoke** |
+
+⚠️ **A W3 entregou DUAS secções e não três, e a razão é o SUJEITO:** a `Factory` vive em quem
+fabrica e a `Lifetime`/`DestroyOutside` vivem na **receita**, que é outro objecto — uma secção só
+chamada *Factory* a mostrar apenas uma vida seria um título a mentir. ⇒ *Factory* e *Lifecycle*,
+com **um** snapshot e **uma** enum de edição, porque a plumbing é a mesma pergunta.
 
 **As duas cenas (§0.8 — passos numerados, o que se vê, e como saber que deu errado):**
 
-- **`=3` A chuva** — uma fábrica no alto faz cair uma moeda por segundo (o `Timer` que ela puxou),
-  cada uma com `Lifetime` de 2 s: elas caem, somem, e **a cena nunca cresce**. O contador do painel
-  mostra *vivas*, e rebobinar limpa o ecrã.
-- **`=4` A porta que cospe inimigos** — uma armadilha marcada `Trap` publica `alarme`; a fábrica
-  nasce **ao sinal**, `burst = 3`, num ponto marcado com a tag `SpawnPoint`; `alive_max = 6` e um
-  `DestroyOutside` limpa quem sai do ecrã do jogo. ⭐ Ela compõe **as quatro waves anteriores desta
-  linha**: tags, sinais, câmera de jogo e instâncias.
+⚠️ **Elas são `PH2D_FACTORY_SMOKE=1|2`** — um roteador próprio da família, e não níveis novos de
+um que já existia (a lei do `CLAUDE.md` §5.1 sobre o `PH2D_MOTION_NODE_PATH_SMOKE`).
+
+- **`=1` A chuva que não cresce** — uma nuvem com um relógio de `0,7 s` e uma fábrica ligada a ele;
+  a receita é uma moeda que cai e vive `2 s`. **Medido a correr:** nasce uma a cada `0,7 s`, morre
+  uma a cada `0,7 s` a partir da terceira, e a população estabiliza. ⚠️ *A prova não é o ecrã — é a
+  contagem parar de subir*; uma fábrica sem higiene enche a memória com o ecrã igual.
+- **`=2` Nascer NUM PONTO marcado, com limite e sem lixo** — três marcas com a tag `SpawnPoint`, a
+  fábrica em roda-viva, `Max Alive = 6`, e um `DestroyOutside` a colher quem sai do ecrã da
+  **câmera do jogo** (a cena **toma** a vista dela, senão as cópias somem no meio do ecrã do editor
+  e a cena ensina o contrário). ⭐ Ela compõe **quatro waves anteriores desta linha**: tags, sinais,
+  câmera de jogo e instâncias.
 
 ---
 

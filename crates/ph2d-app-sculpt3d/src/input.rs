@@ -92,7 +92,12 @@ impl Sculpt3dScene {
     pub(super) fn sculpt_at(&mut self, x: f32, y: f32) -> bool {
         // Na peça ATIVA — quem a escolheu foi o `aim` do pen-down. Ver o doc
         // dele: um traço pertence a uma peça, e trocar no meio é um pânico.
-        let Some(hit) = self.pick_active(x, y) else {
+        //
+        // ⭐⭐⭐ **E contra a superfície do PEN-DOWN quando o verbo a pede** —
+        // ver [`super::Sculpt3dScene::pick_do_dab`] e o report do dono medido
+        // em [`ph2d_sculpt3d::Verb::pica_na_superficie_do_pen_down`]. Sem
+        // fotografia armada isto é o `pick_active` de sempre, ao bit.
+        let Some(hit) = self.pick_do_dab(x, y) else {
             return false;
         };
         let ray = self.ray_at(x, y);

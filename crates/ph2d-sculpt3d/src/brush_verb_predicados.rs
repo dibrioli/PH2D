@@ -298,4 +298,57 @@ impl Verb {
     pub fn precisa_de_referencia(self) -> bool {
         matches!(self, Self::EraseMultires | Self::SmearMultires)
     }
+
+    /// ⭐⭐⭐ **ESTE VERBO PICA NA SUPERFÍCIE DO PEN-DOWN?** — a porta que
+    /// impede o cursor de perseguir o barro que ele próprio acabou de mandar
+    /// embora.
+    ///
+    /// # ⛔⛔ O report do dono (`=45`, 2026-09-14): *«resultado bem bizarro»*
+    ///
+    /// Todo dab desta casa é re-picado da superfície VIVA: o raio do evento
+    /// seguinte é lançado contra a malha que o evento anterior acabou de
+    /// mover. Isso é inofensivo enquanto o deslocamento de um dab for uma
+    /// **fracção do raio do pincel** — a superfície recua um pouco debaixo do
+    /// cursor e o dab seguinte, nove pixels adiante, ainda cai ao lado do
+    /// anterior.
+    ///
+    /// ⚠️ **E é FALSO para este verbo, porque o deslocamento dele não é
+    /// limitado pelo raio:** o `d` da [`crate::projectar::distancia`] é uma
+    /// distância da **CENA** (espec §6.5 — `direcção · d · peso · força²`), e
+    /// nada na lei a compara com o pincel. Medido na `=45` de fábrica, um dab
+    /// só move o barro `0,63` com um raio de `0,34` — quase **dois raios** —,
+    /// logo a superfície **foge de debaixo do cursor**, o raio seguinte passa
+    /// pelo buraco e acerta **no outro lado da peça**:
+    ///
+    /// ```text
+    /// dab 0 -> [ 0,59,  0,38,  0,74]   a frente da bola
+    /// dab 1 -> [ 0,00, -0,03, -0,24]   ⛔ o MIOLO — nove pixels depois
+    /// dab 3 -> [ 0,41,  0,17,  0,16]   e volta
+    /// ```
+    ///
+    /// Seis dabs = seis crateras em sítios sem relação, e as fronteiras entre
+    /// elas **são** os golpes escuros da foto do dono.
+    ///
+    /// # ⭐ A lei que fica
+    ///
+    /// *Um traço trabalha a superfície que o artista VIU quando encostou a
+    /// caneta.* A consulta da pegada continua nas posições vivas (é lá que o
+    /// barro está); o que congela é **onde o dab aterra**.
+    ///
+    /// ⚠️ **É a MESMA família que o polegar já pagou nesta casa** — lá é a
+    /// PEGADA que foge ([`crate::SculptStroke::pegada_ancorada`]), aqui é o
+    /// **PICK**, um degrau acima. E a lei-irmã já está escrita na cadeia de
+    /// peso: com o `Accumulate` desarmado, a curva de queda deste verbo já mede
+    /// as distâncias contra o `pre` do pen-down ([`crate::GripLaw::from_live`])
+    /// — *o alvo já vinha da superfície congelada, e só o CENTRO não vinha*.
+    ///
+    /// ⛔ **Ele é `false` para todos os outros, e não por omissão:** os verbos
+    /// de carimbo deslocam `raio × 0,1 × intensidade` (uma fracção do raio, por
+    /// construção), os quatro grips de gesto já congelam a pegada ou a âncora, e
+    /// o tecido desvia antes do `dab_core`. *Congelar o pick de quem não foge
+    /// seria trocar o cursor por um fantasma sem comprar nada.*
+    #[must_use]
+    pub fn pica_na_superficie_do_pen_down(self) -> bool {
+        matches!(self, Self::SceneProject)
+    }
 }

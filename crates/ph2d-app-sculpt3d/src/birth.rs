@@ -125,6 +125,7 @@ impl Sculpt3dScene {
             // que a ordem da lista mudar.
             retopo_mode: ph2d_panel_sculpt3d::state::RetopoMode::ALL[0],
             stroke: SculptStroke::default(),
+            superficie_do_pen_down: None,
             undo: Vec::new(),
             redo: Vec::new(),
             edits: 0,

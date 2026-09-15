@@ -261,6 +261,12 @@ pub(super) use refusal::RemeshRefusal;
 
 pub(super) use retopo_global::{legacy_requested, retopo_line};
 
+/// **A SUPERFÍCIE DE REFERÊNCIA** — ver [`referencia`]. Irmão dos de cima, e o
+/// corte é o de sempre: aqui *o que um gesto guarda para desfazer*, lá *contra
+/// que superfície um deslocamento se mede* (espec §2).
+#[path = "history_referencia.rs"]
+mod referencia;
+
 /// **QUANTO a história pode pesar** — ver [`budget`]. Irmão do [`undo`], e o
 /// corte é o mesmo: *o que se guarda* aqui, *quanto disso cabe* lá.
 #[path = "history_budget.rs"]
@@ -518,6 +524,14 @@ impl Sculpt3dScene {
 
     /// Fecha o traço e guarda o desfazer.
     pub(super) fn close_stroke(&mut self) {
+        // ⚠️ **A fotografia do pen-down morre com o traço** — ela é uma cópia
+        // da malha inteira, e mantê-la viva fora do gesto seria segurar uma
+        // segunda peça em memória por nada. ⛔ **Não é aqui que a correcção
+        // mora**: quem garante que um traço não pica contra a foto do anterior
+        // é o pen-down, que a reescreve sempre (ver
+        // [`super::cena::Sculpt3dScene::superficie_do_pen_down`]). Esta linha é
+        // memória, e por isso vem ANTES dos dois `return` abaixo.
+        self.superficie_do_pen_down = None;
         // ⚠️ **O traço que MUDOU A TOPOLOGIA desfaz pela malha inteira**, e a
         // pergunta não é *"o dyntopo estava armado?"* e sim *"a contagem de
         // vértices mudou?"*: armado e sem nada a refinar (a malha já tem a
@@ -580,85 +594,6 @@ impl Sculpt3dScene {
             .iter()
             .zip(self.stroke.base_masks())
             .any(|(&v, &m)| live[v as usize] != m)
-    }
-}
-
-impl Sculpt3dScene {
-    /// ⭐⭐⭐ **A SUPERFÍCIE DE REFERÊNCIA do pincel de apagar deslocamento**,
-    /// fotografada no pen-down (`SPEC_unblocked_brushes.md` §2).
-    ///
-    /// Por vértice do nível de cima, o ponto da **superfície-limite** da
-    /// subdivisão do nível de baixo.
-    ///
-    /// ⭐⭐ **A equivalência que torna isto `O(anel)` e não uma avaliação de
-    /// superfície:** subdividir **não muda** a superfície-limite, logo o limite
-    /// do vértice `v` de `subdivide(nível_de_baixo)` é um ponto da
-    /// superfície-limite do nível de baixo, na posição paramétrica de `v`. ⇒ a
-    /// máscara de vértice do [`ph2d_mesh::limit_point`] chega — *não é preciso
-    /// avaliar o limite em coordenadas arbitrárias*.
-    ///
-    /// ⛔⛔ **A REFERÊNCIA NÃO É A PREVISÃO**, e a diferença é a wave inteira
-    /// (espec §2.1): `subdivide(base)` é a previsão de UM passo, e usá-la
-    /// **encolheria a peça** a cada passagem. Medido no canto de um cubo: a
-    /// previsão pousa em `0,2778` e o limite em `0,2500`.
-    ///
-    /// ⚠️ **O vértice sem limite publicado FICA ONDE ESTÁ** (anel misto
-    /// tri/quad — ver [`ph2d_mesh::LimitPoint::None`]): a referência dele é a
-    /// posição VIVA, logo o pincel não o move. *Pôr ali a previsão seria
-    /// escolher uma superfície que não é a de esquema nenhum.*
-    ///
-    /// Devolve `None` quando não há nível de baixo — ali o deslocamento não
-    /// existe, e quem diz isso em voz alta é o chamador.
-    pub(super) fn superficie_de_referencia(&self) -> Option<Vec<[f32; 3]>> {
-        let stack = &self.objects[self.active].stack;
-        let k = stack.level();
-        let baixo = stack.level_mesh(k.checked_sub(1)?)?;
-        let previsto = ph2d_mesh::subdivide(baixo);
-        let topo = stack.mesh();
-        // ⛔ **A contagem tem de bater**, e ela bate por construção (o `higher`
-        // do multires faz exactamente este `subdivide`). Se não bater, a pilha
-        // não descreve esta malha e a referência seria uma tabela desalinhada —
-        // devolver `None` é a resposta certa.
-        if previsto.vert_count() != topo.vert_count() {
-            return None;
-        }
-        Some(
-            (0..previsto.vert_count())
-                .map(|v| match ph2d_mesh::limit_point(&previsto, v) {
-                    ph2d_mesh::LimitPoint::At(q) => q,
-                    ph2d_mesh::LimitPoint::None => topo.positions()[v],
-                })
-                .collect(),
-        )
-    }
-
-    /// **Fotografa a referência que o gesto pede, e diz quando não há.**
-    ///
-    /// ⚠️ **Chamada no pen-down e só ali**, como a foto do desfazer ao lado: ela
-    /// é função do nível de BAIXO, que o traço não toca.
-    pub(super) fn open_reference_stroke(&mut self) {
-        if !self.brush.verb.precisa_de_referencia() {
-            self.stroke.reference.clear();
-            return;
-        }
-        match self.superficie_de_referencia() {
-            Some(r) => self.stroke.reference = r,
-            None => {
-                self.stroke.reference.clear();
-                // ⛔ **A RECUSA EM VOZ ALTA é o produto** (espec §4.3 e §5.6): sem pilha
-                // o dado de entrada não existe, e *o irmão-filtro do alvo
-                // estoirou publicamente por não verificar isto*. Com a
-                // referência vazia a lei devolve o vivo — não move nada —, e
-                // esta linha é o que impede o artista de ler isso como um pincel
-                // partido.
-                eprintln!(
-                    "[sculpt3d] {} precisa de uma pilha de multiresolucao -- \
-                     sem um nivel ABAIXO nao ha' deslocamento nenhum (K subdivide, \
-                     ',' desce)",
-                    self.brush.verb.label()
-                );
-            }
-        }
     }
 }
 

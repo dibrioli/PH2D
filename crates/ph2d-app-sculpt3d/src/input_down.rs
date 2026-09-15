@@ -298,6 +298,11 @@ pub fn pointer_down(
             // (`ph2d_sculpt3d::projectar`). Fotografá-la noutro sítio abriria a
             // hipótese de a lista e a régua descreverem instantes diferentes.
             scene.stroke.pose_activa = scene.objects[scene.active].pose;
+            // ⭐⭐⭐ **E A SUPERFÍCIE DO PRÓPRIO ACTIVO, pela MESMA lei e no
+            // mesmo instante** — ver
+            // [`super::Sculpt3dScene::fotografa_a_superficie_do_pen_down`], onde
+            // o report do dono que a pagou está medido.
+            scene.fotografa_a_superficie_do_pen_down();
             // ⚠️ **Depois do `aim`**: a foto é da peça que este traço vai
             // esculpir, e antes do `aim` ela seria a da peça anterior.
             scene.open_dyntopo_stroke();

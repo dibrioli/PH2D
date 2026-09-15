@@ -319,6 +319,59 @@ impl Sculpt3dScene {
             .raycast(&o.pose.ray_to_local(&self.ray_at(x, y)))
     }
 
+    /// ⭐⭐⭐ **O PEN-DOWN FOTOGRAFA A SUPERFÍCIE** que este traço vai picar —
+    /// a porta que o [`Self::pick_do_dab`] consome.
+    ///
+    /// ⚠️ **Porta e não três linhas dentro do `input_down`, e a razão é
+    /// GATEÁVEL:** o pen-down do produto precisa de um `AppHost` e não é
+    /// alcançável de um teste, logo a decisão escrita lá dentro só podia ser
+    /// afirmada por um censo textual. Aqui ela é exercitada pelo mesmo caminho
+    /// que o artista toma, e o que fica para o censo é só *«o pen-down chama-a»*.
+    ///
+    /// ⚠️ **Escreve SEMPRE**, `Some` ou `None`: uma fotografia que sobrevivesse
+    /// ao traço que a tirou faria o traço seguinte picar contra uma peça que já
+    /// não existe.
+    pub(crate) fn fotografa_a_superficie_do_pen_down(&mut self) {
+        self.superficie_do_pen_down = self
+            .brush
+            .verb
+            .pica_na_superficie_do_pen_down()
+            .then(|| Box::new(self.objects[self.active].stack.mesh().clone()));
+    }
+
+    /// ⭐⭐⭐ **ONDE ESTE DAB ATERRA** — irmã do [`Self::pick_active`], e a
+    /// diferença é **contra QUE superfície** o raio é lançado.
+    ///
+    /// Com uma fotografia de pen-down armada
+    /// ([`Self::superficie_do_pen_down`]), o raio vai contra ela; sem
+    /// fotografia, contra a malha viva, que é o caminho de sempre e é
+    /// **byte-idêntico** — a chamada delega.
+    ///
+    /// ⚠️ **Porta separada, e não um `if` dentro do [`Self::pick_active`]:** as
+    /// outras quatro consultas daquela porta perguntam *onde está a superfície
+    /// AGORA* — a alça do puxão, o filtro, o gizmo. Só o dab pergunta *onde o
+    /// artista mandou*, e misturar as duas faria uma fotografia armada por um
+    /// pincel mudar, em silêncio, a resposta dada a quatro consumidores que não
+    /// a pediram.
+    ///
+    /// ⚠️ **O acerto vem em coordenadas LOCAIS da peça activa nos dois casos**
+    /// — a fotografia é da mesma peça, na mesma pose —, logo quem o recebe não
+    /// tem de saber qual dos dois caminhos correu.
+    pub(super) fn pick_do_dab(&self, x: f32, y: f32) -> Option<Hit> {
+        let Some(congelada) = self.superficie_do_pen_down.as_deref() else {
+            return self.pick_active(x, y);
+        };
+        // ⚠️ **As DUAS recusas do [`Self::pick_active`] continuam a valer**, e
+        // por isso são repetidas e não saltadas: sem peça não há espaço local
+        // em que o acerto signifique alguma coisa, e uma peça activa ESCONDIDA
+        // não pode ser esculpida por baixo do isolamento.
+        let o = self.obj()?;
+        if self.isolated_index().is_some_and(|k| k != self.active) {
+            return None;
+        }
+        congelada.raycast(&o.pose.ray_to_local(&self.ray_at(x, y)))
+    }
+
     pub(super) fn pick(&self, x: f32, y: f32) -> Option<(usize, Hit)> {
         let world = self.ray_at(x, y);
         let eye = world.origin();

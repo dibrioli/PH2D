@@ -335,6 +335,42 @@ pub struct Sculpt3dScene {
     /// [`ph2d_panel_sculpt3d::state::RetopoMode`].
     pub(crate) retopo_mode: ph2d_panel_sculpt3d::state::RetopoMode,
     pub(crate) stroke: SculptStroke,
+    /// ⭐⭐⭐ **A SUPERFÍCIE QUE O ARTISTA VIU AO ENCOSTAR A CANETA** — contra
+    /// ela é que este traço PICA, e só para os verbos que
+    /// [`ph2d_sculpt3d::Verb::pica_na_superficie_do_pen_down`] nomeia.
+    ///
+    /// ⚠️⚠️ **Não é um cache e não é o [`Self::dyn_before`]**, e ler os dois
+    /// como um seria o defeito clássico de duas respostas à mesma pergunta:
+    /// aquele é a metade de trás de **um passo de undo** (existe só com a
+    /// topologia dinâmica armada, e a sua vida é a da entrada `Remeshed`); este
+    /// é o **alvo de uma consulta de raio** e existe por causa da lei do
+    /// pincel. Fundi-los faria o pick do projectar depender de um interruptor
+    /// de topologia — em silêncio.
+    ///
+    /// ⚠️ **Ela é escrita a CADA pen-down** (`Some` ou `None`), e não só quando
+    /// é precisa: um traço anterior não pode deixar uma fotografia velha para o
+    /// seguinte picar contra ela. O `close_stroke` limpa-a por memória, não por
+    /// correcção.
+    ///
+    /// ⛔ **É uma cópia da malha inteira, e o preço está MEDIDO** — a sonda é a
+    /// `diag_o_preco_da_fotografia` (em `--release`, mínimo de cinco com a
+    /// mediana ao lado; ⚠️ a máquina estava a `load 40`, logo a mediana é o
+    /// tecto de uma leitura suja e o mínimo é a que descreve o produto):
+    ///
+    /// | a peça | mínimo | mediana |
+    /// |---|---|---|
+    /// | `98 306` verts (fábrica) | **`0,70 ms`** | `4,51` |
+    /// | `393 218` (`K`) | `2,55` | `4,55` |
+    /// | `1 572 866` (`KK`) | `10,40` | `23,03` |
+    ///
+    /// ⭐ **E ela corre UMA vez por traço, no pen-down** — não por dab —, ao
+    /// lado da cópia que a [`ph2d_sculpt3d::SculptStroke::pecas_da_cena`] já
+    /// paga no mesmo instante e da que o [`Self::dyn_before`] paga com a
+    /// topologia dinâmica armada: *o orçamento aqui é o do gesto que começa, não
+    /// o dos `8 ms` de um dab*. ⭐ O octree viaja na cópia (ele é campo da
+    /// [`ph2d_mesh::Mesh`]), logo o primeiro raio **não** reconstrói árvore
+    /// nenhuma.
+    pub(crate) superficie_do_pen_down: Option<Box<ph2d_mesh::Mesh>>,
     pub(crate) undo: Vec<Entry>,
     /// **O futuro guardado** — o que um Ctrl+Z tirou e um Ctrl+Shift+Z devolve.
     ///

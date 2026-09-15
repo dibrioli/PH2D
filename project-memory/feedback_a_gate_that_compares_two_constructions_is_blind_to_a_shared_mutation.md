@@ -50,3 +50,19 @@ Vizinhos: [[feedback-a-mutation-proof-needs-a-control-on-its-own-filter]] ·
 [[feedback-a-cure-measured-on-a-fixture-that-lacks-the-phenomenon-reads-as-useless]] ·
 [[feedback-an-inequality-accepts-a-whole-interval-only-an-oracle-accepts-an-answer]] ·
 [[feedback-a-claim-no-mutation-can-kill-is-a-claim-about-nothing]]
+
+## Segunda ocorrência — 2026-09-15, `line/UIUX`
+
+⚠️ **Ela repetiu-se no gate seguinte da MESMA porta, e a primeira já estava escrita ao lado.** O
+`the_lone_field_of_a_row_spans_what_the_pair_spans` provava a ordem do dono de 2026-05-24 (*«a caixa
+única de Rotation deve se alinhar à caixa de X à esquerda e à direita»*) comparando `sozinha_dir`
+com `par_dir` — os **dois** derivados de `property_fields_layout`. A mutação que desconta um vão a
+mais na largura da célula encolhe os dois lados ao mesmo tempo: a igualdade continua a valer e a
+prova **SOBREVIVEU**.
+
+⇒ o oráculo tem de ser **outra porta**: a borda direita da coluna do controlo
+(`property_row_columns`). Reescrito assim — *«a linha ENCHE a coluna do controlo, nos dois
+regimes»* —, a mesma mutação morre (`183,00` contra `186,00` à largura mínima do dock).
+
+⭐ **A regra prática:** quando um gate afirma que **A == B** e os dois saem da função que ele mede,
+ele mede a função contra si própria. Procure a grandeza que a função **não** produz.

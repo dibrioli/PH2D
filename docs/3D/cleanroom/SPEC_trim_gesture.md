@@ -34,14 +34,32 @@ Filtragem §4.3: executada em 2026-09-15 · Sweep: ✅ VERDE — vassoura de **5
   ⚠️ **Preço declarado da 3.ª cura:** a passagem plana junta agora **através de parágrafo e de
   título**, logo um acerto dela **exige leitura humana** antes de contar como fuga (está escrito
   no cabeçalho do script).
-Auditoria §4.2 (R-pré): ⛔ **1.ª passagem em 2026-09-15: NÃO ATESTADA — 9 achados, 2 bloqueantes.**
-  Veredito do auditor: a parte medida é forte, as fixturas cobrem o que a espec afirma, e não há
-  fuga de nome interno nem de organização. Os **9 foram corrigidos** nesta versão (o mapa
-  achado→cura está no ledger §«R-pré, 1.ª passagem»).
-  ⛔⛔ **AINDA PENDENTE: o atestado é do R, e o E não se ateste a si mesmo.** A re-auditoria é
-  curta — re-correr o sweep com a passagem plana a remover também a ênfase. A janela **não
-  implementa** antes do atestado. ⚠️ Peça-lhe atenção
-  especial aos itens com selo **L** (§0): são os que descrevem comportamento lido no fonte e
+Auditoria §4.2 (R-pré): ✅ **AUDITADA CONTRA §4.2 POR R-PRÉ EM 2026-09-15 — 2.ª passagem, VERDE.**
+  A janela **pode implementar a partir desta versão.**
+  1.ª passagem: **9 achados, 2 bloqueantes** (mapa achado→cura no ledger §«R-pré, 1.ª passagem»).
+  2.ª passagem: os **9 conferidos um a um, os 9 curados**. O auditor re-mediu pelos próprios
+  instrumentos, com controlo dos dois lados: a 3.ª passagem do sweep apanha a frase com **negrito,
+  itálico, código, citação** e ênfase-mais-quebra (as cinco eram limpas antes) e **não** ficou larga
+  sobre prosa legítima (9 especs da casa × 7 vassouras: os **2** acertos são **pré-existentes**,
+  confirmados contra o script anterior à 1.ª cura, e são colisão com termo de arte e com nome
+  público noutras obras); o `verifica_corridas.py` matou **5 de 5** mutações do auditor com
+  controlo verde, e o piso não é trivial; as **2** corridas apagadas **não continham medição
+  nenhuma** (sem `antes`, sem `depois`, raio por fixar) e **nenhum outro registo foi alterado**;
+  e as contagens reconciliam — `58` registos = `56` reais + `2` fantasma, `56` = nomes únicos
+  antes e agora, e o `52` antigo era o ledger sem a leva de `4` da §3, hoje escrita.
+  ⭐ **A espec está limpa sob uma normalização MAIS FORTE que a shipada** (marcadores removidos dos
+  **dois** lados, minúsculas, espaço normalizado): o único acerto em toda a obra é um nome de
+  propriedade **pública** no ficheiro de corridas, que o §0 declara conservado — uso lícito.
+  ⏳ **Duas notas do auditor que NÃO bloqueiam** (nenhuma é §4.2, e a espec foi conferida sob as
+  duas): (a) a 3.ª passagem apaga também `_`, o que a cega para as entradas de vassoura com
+  `_` — medido: `0` usos de `_` como ênfase nestes documentos contra `15`/`16` identificadores, e
+  a normalização dos **dois** lados fabrica uma colisão com o nome público; a passagem 1 cobre-as,
+  e a correcção é de **um caractere**, no script; (b) o cabeçalho da tabela da §11.1 ainda diz
+  «1 face» onde a prosa acima e a nota abaixo dizem **duas** — correcção de uma palavra.
+  ⚠️ Os itens com selo **L** (§0) foram atacados primeiro, como o cabeçalho anterior pedia — o
+  enchimento (§6.1) e as três suposições (§10) conferem **exactamente** contra o fonte; os estados
+  do ponto médio (§6.2) eram o bloqueante nº 2 e estão hoje escritos pelos **alcançáveis**. Leia-os
+  primeiro na mesma ordem: são os que descrevem comportamento lido no fonte e
   ainda NÃO confirmado na saída do oráculo — **§4.2** (o factor de alcance), **§6.1** (o enchimento
   da profundidade), **§6.2** (os três estados alcançáveis do ponto médio), **§5** (a divergência de
   escala não-uniforme), **§9** (a razão do modo ausente), **§10** (as três suposições) e **§15**

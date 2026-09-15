@@ -214,10 +214,12 @@ hoje foram **do alcance**, não dos padrões.
 
 ## Fechamento
 
-- ⏳ **R-PRÉ: por fazer.** A espec sai com o atestado marcado **PENDENTE** no cabeçalho, e a janela
-  **não implementa** antes dele (SKILL §3.R). Um subagente R-pré **novo** (≠ este E) deve ler os
-  dois lados, com atenção aos itens de selo **L**.
-- ⏳ **R-PÓS:** só depois de haver paridade.
+- ✅ **R-PRÉ: ATESTADA em 2026-09-15**, à **2.ª passagem** (1.ª: 9 achados, 2 bloqueantes; 2.ª:
+  verde). O atestado está no cabeçalho da espec e o registo na secção «R-PRÉ, 2.ª passagem», no
+  fim deste ficheiro. **A janela pode implementar.**
+- ⏳ **R-PÓS:** só depois de haver paridade. ⚠️ Herda **duas** notas não-bloqueantes do R-pré (a
+  cegueira do `_` na 3.ª passagem do sweep; o cabeçalho de coluna da §11.1) e a dívida de
+  **histórico** medida acima, que continua a ser de R-pós e não desta obra.
 
 
 ---
@@ -331,3 +333,65 @@ produto nunca alcança não tem como ser testado.
 mesmo** e nenhum instrumento o media — a prova disso é que o `verifica_corridas.py` **não existia**,
 e ao nascer acusou o defeito na primeira corrida. As três mutações (nome repetido · motivo a apontar
 para fora · corpus esvaziado) **matam-no** as três.
+
+---
+
+## ✅ R-PRÉ, 2.ª passagem (2026-09-15) — **ATESTADA**
+
+Auditor **independente** (≠ o subagente-E que escreveu a espec), com os dois lados à vista.
+Os **9 achados** da 1.ª passagem foram conferidos **um a um** e os **9** estão curados.
+O atestado está no cabeçalho da espec; **a janela pode implementar a partir desta versão.**
+
+### O que o auditor re-mediu pelos PRÓPRIOS instrumentos
+
+⚠️ *O E emendou o instrumento que o audita pela terceira vez nesta obra ⇒ nada aqui foi aceite
+pela declaração dele.* Todos os controlos abaixo usam **frase do auditor**, nunca do alvo, logo
+nada do alvo tocou o disco.
+
+| o que | como | resultado |
+|---|---|---|
+| a 3.ª passagem **apanha** o que diz apanhar | 5 ficheiros de controlo (negrito · itálico · código · citação · ênfase+quebra) | **acusados os 5** — e os **5** eram limpos na versão anterior |
+| ela **não ficou larga** sobre prosa legítima | **9** especs da casa × **7** vassouras, 3 passagens | **2** acertos, os **2 PRÉ-EXISTENTES** (confirmados contra o script anterior à 1.ª cura): termo de arte numa obra, nome público noutra ⇒ colisão, não fuga |
+| a espec sob normalização **mais forte que a shipada** | marcadores removidos dos **DOIS** lados + minúsculas + espaço normalizado, 5 artefactos × 7 vassouras | **1** acerto, e é um nome de **propriedade pública** no ficheiro de corridas, que o §0 da espec declara conservado (§4.1.13) ⇒ **uso lícito** |
+| o `verifica_corridas.py` | **5** mutações do auditor (nome repetido · piso · motivo a apontar para fora · concluída sem metade · sem veredito) + **controlo verde** | **5 de 5 mortas**, cada uma com a mensagem certa; piso não trivial (`56` contra `50`, dispara a `49`) |
+| as **2 corridas apagadas** eram medição? | diff do JSON contra `dc62c83b4`, campo a campo | ⭐ **não**: sem `antes`, sem `depois`, raio por fixar ⇒ **zero** medição; e **`0`** registos alterados ou acrescentados — nada foi destruído |
+| as contagens | `58` / `56` / `52` | **reconciliam**: `58` = `56` reais + `2` fantasma · `56` = nomes únicos **antes e agora** · o `52` era o ledger sem a leva de **4** da §3, hoje escrita |
+| o commit `dc62c83b4` isolado | mensagem + patch × 7 vassouras × com e sem quebras desfeitas | **limpo nas 4 combinações** ⇒ a dívida de histórico **não é desta obra**, e a mensagem **não precisa de varredura** |
+
+### Os itens de selo `L`, atacados primeiro
+
+- **§6.1 (o enchimento)** e **§10 (as três suposições)**: conferem **exactamente** contra o fonte.
+- **§6.2 (o ponto médio)**: era o bloqueante nº 2 — a espec descrevia **quatro** estados e a ordem
+  de leitura torna **um inalcançável**; hoje está escrita pelos **três** alcançáveis, com o braço
+  morto nomeado.
+
+### Proveniência (a metade T0), validada na máquina e no registo
+
+| rota | licença **lida** | veredito |
+|---|---|---|
+| a biblioteca externa do solucionador de omissão | `Apache-2.0` (`pacman -Qi`), ligada dinamicamente (`ldd`), projecto de montante **independente** do alvo | ✅ o degrau **T0 mantém-se** |
+| as ligações seguras, o `-sys` e a fachada | `Apache-2.0 OR MIT`, mesmo repositório, sobre a API C dela | ✅ |
+| o porte **puro-Rust** | `Apache-2.0`, declara-se porte da mesma biblioteca, e o tree dele **não menciona o alvo** | ✅ |
+| a 4.ª rota (a que o ledger elegia) | **não existe no registo** | ✅ **retirada** pelo E no achado #8 — confirmado nesta passagem |
+
+⇒ **nenhuma descende do alvo**, e o achado #9 fecha o resto: o T0 é **por solucionador**, e os
+outros dois da tabela da §10.1 são código do próprio alvo, **não portáveis**.
+
+### ⏳ Duas notas que NÃO bloqueiam (nenhuma é §4.2)
+
+1. **A 3.ª passagem apaga também `_`**, o que a cega para toda entrada de vassoura que o contenha.
+   Medido: **`0`** usos de `_` como ênfase nestes documentos contra `15`/`16` identificadores; a
+   passagem 1 cobre-as (um identificador não tem espaços, logo o parágrafo não o quebra), e
+   normalizar os **dois** lados **fabrica** a colisão com o nome público. ⇒ correcção de **um
+   caractere**, no script, e a espec foi conferida **com e sem** ela.
+2. **O cabeçalho de coluna da §11.1** ainda diz «1 face» onde a prosa acima e a nota abaixo dizem
+   **duas** — correcção de **uma palavra**. *Três afirmações da mesma grandeza em sete linhas, uma
+   delas errada, é a forma que o achado #7 curou do outro lado.*
+
+### ⭐ A lei que esta passagem deixa
+
+*Um sweep verde prova o que o INSTRUMENTO alcança, e a pergunta «ele chega lá?» só tem resposta
+com controlo positivo do lado que devia acusar — feito por quem não escreveu nem o texto nem o
+instrumento.* Nas três cegueiras desta obra (`.gz` → quebra de linha → ênfase) a espécie foi
+sempre **alcance**, nunca padrões; e a terceira foi encontrada **por o auditor correr a régua
+corrigida por terceiro**, que é exactamente a razão de o R-pré não poder ser o E.

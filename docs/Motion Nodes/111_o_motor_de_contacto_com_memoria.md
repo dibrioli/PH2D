@@ -257,3 +257,50 @@ truncava toda cena com mais de `65 536` peças, **em silêncio**) · colunas aus
 a lei de hoje ao bit.
 
 **`3 de 3` mutações mortas**, e a terceira — o `u16` — só morre por causa da identidade grande.
+### §5.5 — ⭐⭐ A W3b PROTOTIPADA: o PASSA-BAIXO — real, medido, e ainda `4×` curto
+
+⭐⭐⭐ **A W3a desbloqueou uma coisa que o doc 109 §8.14 dava por impossível:** ele fechava com *«o
+`sim.collide` é `Effect::Pure`, logo não tem memória»*. **A premissa dissolveu-se** — o cache é uma
+COLUNA, e uma coluna ENTRA e SAI de um nó puro; o laço do estado devolve-a no tique seguinte. *Um nó
+sem estado pode ter memória, desde que a memória viaje nos dados.*
+
+**A forma da lei saiu do SINAL, não de uma escolha.** O zumbido alterna de sinal em **17 de 18**
+tiques (§8.2 nº 6) — **Nyquist puro** — e o que SEGURA o ângulo é a componente **DC**. ⇒ um
+**passa-baixo** passa o DC inteiro e anula o Nyquist, ⛔ ao contrário de baixar o ganho, que corta os
+dois (é por isso que aquela família fechou, §8.9).
+
+**Só a metade do MUNDO** (5 realizações por célula):
+
+| mistura | balanço pior | giro líquido pior | `y` final |
+|---|---|---|---|
+| `0` (o que shipa) | `3,79 .. 5,69` | `24,30 .. 28,36` | `−2,56` |
+| **`0,3`** | **`2,06 .. 3,05`** | **`12,88 .. 27,74`** | `−2,54` |
+| `0,5` | `1,36 .. 1,91` | `15,60 .. 71,96` | `−2,56` |
+| `0,9` | `0,79 .. 1,00` | `28,71 .. 63,22` | `−2,49` |
+
+⭐ **A `0,3` é a PRIMEIRA coisa desta caça inteira que melhora as DUAS colunas** — zumbido `1,9×`
+melhor **e** o pior giro abaixo do de hoje — com a pilha a cair na mesma.
+
+**As DUAS metades juntas** (mundo + peça×peça, a mesma mistura):
+
+| mistura | balanço pior | giro líquido pior | `y` final |
+|---|---|---|---|
+| `0,3` | `2,18 .. 3,34` | `17,15 .. 88,97` | `−2,57` |
+| `0,5` | `1,64 .. 2,20` | `25,11 .. 34,58` | `−2,50` |
+| **`0,7`** | **`0,65 .. 1,32`** | `21,50 .. 39,91` | `−2,50` |
+| `0,9` | `1,09 .. 1,34` | `66,65 .. 97,85` | `−2,47` |
+
+⇒ **o melhor ponto medido é `0,65`**, contra a barra de **`0,15`** — **`4,3×` curto** —, e a partir
+de `0,5` o giro volta a sair da banda. *A troca regressa, com câmbio melhor.*
+
+⛔ **O protótipo foi REVERTIDO** (o `git diff` do motor contra o início da jornada é `+pub mod
+warm;` e mais nada): ele vivia atrás de uma porta atómica, e uma porta de instrumento não é produto.
+O que fica é esta tabela — e a **décima quinta** recusa medida.
+
+| # | ideia | veredito |
+|---|---|---|
+| 15 | o **passa-baixo** sobre a correcção angular | ⚠️ **parcial**: `5,8×` no zumbido no melhor ponto, mas `4,3×` curto da barra, e acima de `0,5` o giro sai da banda |
+
+**O que isto ensina à obra que falta:** o filtro ataca o SINTOMA (a alternância) e não a causa (a
+correcção ser recalculada do zero). ⇒ a lei tem de usar a memória para **o `λ` não ser recalculado**,
+e não para suavizar o que foi recalculado. É a diferença entre filtrar um ruído e não o produzir.

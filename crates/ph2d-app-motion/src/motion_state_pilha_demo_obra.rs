@@ -12,6 +12,8 @@
 //! numa coluna), e a quarta impôs uma cerca à lei que ainda não existe (sem `id`, a memória só vale
 //! com a população fixa).
 
+use super::curas::realizacao_de_produto;
+use super::tremor::mediana;
 use super::*;
 use crate::motion_state::MotionState;
 use ph2d_nodegraph::attr::Column;

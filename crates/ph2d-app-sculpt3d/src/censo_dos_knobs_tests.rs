@@ -1,0 +1,531 @@
+//! ⭐⭐⭐ **O CENSO DOS KNOBS QUE CHEGAM — por VERBO, e medido no BARRO.**
+//!
+//! # ⛔⛔ A pergunta que nenhum instrumento deste repo fazia
+//!
+//! O `CLAUDE.md` §5.0 escreve-o com todas as letras: *«nenhum instrumento do
+//! repo pergunta se o VALOR chega a um consumidor»*. O
+//! `architecture_panel_wiring_parity` mede **focalizabilidade**, os `seam_*`
+//! provam que o clique **chega à ferramenta**, e o
+//! [`crate::censo_das_fileiras_tests`](ph2d_panel_sculpt3d) prova que **todo
+//! valor do motor tem chip**. Nenhum deles olha para o barro.
+//!
+//! ⚠️ **E o módulo passou de `24` para `32` verbos em três dias**, com o painel
+//! a pintar as mesmas quatro fileiras sempre. *Um knob pintado que o verbo em
+//! mãos não lê é a espécie que o dono reporta como «não vejo efeito» — e três
+//! dos últimos reports dele foram exactamente isso.*
+//!
+//! # A régua
+//!
+//! Para cada `(verbo, knob)`: **o mesmo gesto, duas posições do knob, as
+//! posições comparadas bit a bit**. É a régua que o irmão
+//! `measure_where_the_curve_knobs_reach` já usa para **dois** knobs em **três**
+//! regimes; aqui ela é varrida sobre a matriz inteira.
+//!
+//! ⛔ **A régua é o PRODUTO** (`SculptStroke::dab`), nunca as funções soltas:
+//! um `Falloff::weight` correcto não prova um pincel que o consome.
+//!
+//! ⚠️⚠️ **E o gesto é o do GRIP, não um dab genérico** — um `Dab::at` entregue
+//! a um verbo de âncora tem `pull` nulo e o verbo é **inerte por lei**. *Um
+//! censo que mede um verbo inerte lê `0,000` em toda a linha e acusa cinco
+//! knobs mortos que estão vivos.* É a armadilha que a `alvo_sintetico` e a
+//! `referencia_sintetica` já pagaram nesta crate, aqui numa terceira forma.
+//!
+//! # As DUAS metades, e a acusação é a interseção
+//!
+//! | | o knob CHEGA | o knob NÃO chega |
+//! |---|---|---|
+//! | o painel **PINTA** | ✅ | ⛔ **o morto** |
+//! | o painel **esconde** | ⛔ o inalcançável | ✅ |
+//!
+//! ⚠️ **As duas colunas erradas têm curas OPOSTAS** (§5.0: *o morto liga-se, o
+//! órfão apaga-se*), e é por isso que este censo mede as duas e não uma.
+
+use ph2d_mesh::Mesh;
+use ph2d_panel_sculpt3d::rows::{Place, SECTIONS, rows};
+use ph2d_panel_sculpt3d::slots::VerbSlot;
+use ph2d_panel_sculpt3d::state::Sculpt3dUi;
+use ph2d_panel_sculpt3d::state_modes::UiLevel;
+use ph2d_sculpt3d::{Amount, Brush, Dab, Falloff, Grip, SculptStroke, Symmetry, Verb};
+
+/// A peça do censo — fina o bastante para um dab tocar centenas de vértices.
+fn peca() -> Mesh {
+    ph2d_mesh::shapes::uv_sphere(24, 32, 1.0)
+}
+
+const PONTA: [f32; 3] = [0.0, 0.0, 1.0];
+const OLHO: [f32; 3] = [0.0, 0.0, -1.0];
+const RAIO: f32 = 0.5;
+
+/// ⭐⭐ **O GESTO QUE ESTE GRIP SABE RECEBER.**
+///
+/// ⛔ Sem isto metade da tabela leria `0,000` em toda a linha — não porque os
+/// knobs estejam mortos, mas porque **o verbo não recebeu gesto nenhum**.
+fn gesto(verb: Verb, raio: f32) -> Dab {
+    match verb.grip() {
+        Grip::Hold => Dab::pulling(PONTA, raio, OLHO, [0.25, 0.0, 0.0]),
+        Grip::Hook => Dab::hooking(PONTA, raio, OLHO, [0.25, 0.0, 0.0]),
+        Grip::Turn(Amount::Angle) => Dab::turning(PONTA, raio, OLHO, 0.6),
+        Grip::Turn(Amount::Fraction) => Dab::scaling(PONTA, raio, OLHO, 0.3),
+        _ => Dab::at(PONTA, raio, OLHO),
+    }
+}
+
+/// A superfície de referência da multiresolução, sintética — ver o gémeo em
+/// `verb_tests.rs`: **sem ela os dois verbos de deslocamento são inertes por
+/// lei**, e o censo leria a ausência de entrada como um knob morto.
+fn referencia(mesh: &Mesh) -> Vec<[f32; 3]> {
+    mesh.positions()
+        .iter()
+        .map(|p| [p[0] * 0.8, p[1] * 0.8, p[2] * 0.8])
+        .collect()
+}
+
+/// A outra peça da cena, sintética — **uma esfera que ENVOLVE a peça**, para
+/// que qualquer raio acerte. Mesma razão da de cima.
+fn alvo() -> Vec<(Mesh, ph2d_mesh::Pose)> {
+    vec![(
+        ph2d_mesh::shapes::uv_sphere(12, 16, 3.0),
+        ph2d_mesh::Pose::IDENTITY,
+    )]
+}
+
+/// **UM GESTO PELO CAMINHO DO MOTOR**, com tudo o que o pen-down fotografaria.
+fn corre(x: &Ajuste) -> Mesh {
+    let b = &x.brush;
+    let mut mesh = peca();
+    let mut s = SculptStroke::default();
+    s.begin(&mesh);
+    if b.verb.precisa_de_referencia() {
+        s.reference = referencia(&mesh);
+    }
+    if b.precisa_das_pecas_da_cena() {
+        s.pecas_da_cena = alvo();
+        s.pose_activa = ph2d_mesh::Pose::IDENTITY;
+    }
+    s.dab(&mut mesh, b, &gesto(b.verb, x.raio), Symmetry::default());
+    mesh
+}
+
+/// O maior desvio entre duas saídas — **posição E máscara**, porque há verbos
+/// que só escrevem o canal (`Verb::Mask`) e um censo que olhasse só posições
+/// acusaria todos os knobs dele.
+fn desvio(a: &Mesh, b: &Mesh) -> f32 {
+    let pos = a
+        .positions()
+        .iter()
+        .zip(b.positions())
+        .map(|(p, q)| (0..3).map(|k| (p[k] - q[k]).abs()).fold(0.0f32, f32::max))
+        .fold(0.0f32, f32::max);
+    // ⚠️⚠️ **Um lado SEM canal é um canal de ZEROS, nunca «não comparável»** —
+    // e isto foi apanhado pelo controlo positivo: a peça por tocar não tem
+    // máscara, logo o `Verb::Mask` lia-se **INERTE** contra ela e os cinco
+    // knobs dele entravam como não-medidos. *Uma ausência e um zero são a mesma
+    // coisa para este canal, e tratá-los como coisas diferentes apaga o único
+    // verbo que só escreve nele.*
+    let em = |m: Option<&[f32]>, i: usize| m.map_or(0.0, |v| v[i]);
+    let n = a.positions().len().min(b.positions().len());
+    let canal = (0..n)
+        .map(|i| (em(a.masks(), i) - em(b.masks(), i)).abs())
+        .fold(0.0f32, f32::max);
+    pos.max(canal)
+}
+
+/// **O QUE UM KNOB MOVE** — o pincel E o raio do dab, porque a fileira do raio
+/// não escreve no `Brush`: ela escreve no `radius_px` da vista, que a câmara
+/// converte no raio do dab. *Um censo que só soubesse mutar o pincel teria de
+/// deixar o raio de fora, e um knob fora do censo é um knob que pode estar
+/// morto sem ninguém ver.*
+#[derive(Clone)]
+struct Ajuste {
+    brush: Brush,
+    raio: f32,
+}
+
+/// Um KNOB do painel: o rótulo que ele mostra, as duas posições que o censo
+/// varre, e a pergunta *«o painel pinta-o com este verbo?»*.
+struct Knob {
+    /// A chave de i18n, que é como a fileira se chama no painel.
+    rotulo: &'static str,
+    /// As duas posições. ⚠️ Elas são **extremos da faixa do próprio painel**,
+    /// nunca números escolhidos: um par apertado lê `0,000` sobre um knob vivo.
+    a: fn(&mut Ajuste),
+    b: fn(&mut Ajuste),
+}
+
+/// ⚠️ **São os knobs que o painel pinta SEM perguntar pelo verbo** — os outros
+/// já têm `show` por verbo e portanto não podem estar mortos por construção.
+/// A lista sai da tabela `BRUSH` de `rows.rs`, e o gate
+/// [`a_lista_do_censo_cobre_os_knobs_incondicionais`] prende as duas.
+const KNOBS: &[Knob] = &[
+    Knob {
+        rotulo: "panel.sculpt3d.radius",
+        a: |x| x.raio = RAIO,
+        b: |x| x.raio = RAIO * 1.6,
+    },
+    Knob {
+        rotulo: "panel.sculpt3d.strength",
+        a: |x| x.brush.strength = 0.1,
+        b: |x| x.brush.strength = 1.0,
+    },
+    Knob {
+        rotulo: "panel.sculpt3d.hardness",
+        a: |x| x.brush.hardness = 0.0,
+        b: |x| x.brush.hardness = 0.95,
+    },
+    Knob {
+        rotulo: "panel.sculpt3d.auto_smooth",
+        a: |x| x.brush.auto_smooth = 0.0,
+        b: |x| x.brush.auto_smooth = 1.0,
+    },
+    // ⚠️ **A CURVA não é uma fileira de slider — é a fileira de chips** —, e
+    // por isso ela não tem `Row`. Ela é pintada por
+    // `paint/brush.rs::paint_falloff_row` com uma cerca ESCRITA (*«o painel de
+    // queda é dobrado, nunca ausente»*, decisão portada), logo ela é o knob
+    // incondicional por excelência.
+    Knob {
+        rotulo: "panel.sculpt3d.falloff",
+        a: |x| x.brush.falloff = Falloff::Constant,
+        b: |x| x.brush.falloff = Falloff::Sharper,
+    },
+];
+
+/// ⛔⛔ **O CONTROLO POSITIVO POR VERBO: este verbo FAZ alguma coisa neste
+/// arnês?**
+///
+/// ⚠️⚠️ **Sem ele o censo MENTE, e a 1.ª corrida provou-o:** ele leu `32` knobs
+/// mortos, e o `Clay Thumb` aparecia com **quatro de cinco** — um verbo de
+/// carimbo, com lei por-vértice, cujos `Radius`/`Strength`/`Hardness`/curva
+/// liam todos `0,000e0`. A causa não era nenhum knob: **o verbo não move um
+/// único vértice neste arranjo**, e o que se mexia era o *auto-smooth* (todos
+/// eles liam exactamente `4,001e-2`, que é a assinatura de o verbo contribuir
+/// zero).
+///
+/// ⇒ *um censo que mede um verbo INERTE acusa cinco knobs vivos de uma vez*, e
+/// é a terceira forma desta armadilha nesta crate (a `alvo_sintetico` e a
+/// `referencia_sintetica` são as outras duas).
+///
+/// A régua é a mais crua possível: o verbo com os defaults dele contra a peça
+/// **por tocar**. Se nada se mexe, a linha dele não é *«morta»* — é **NÃO
+/// MEDIDA**, e o gate [`o_censo_nomeia_os_verbos_que_este_arnes_nao_acorda`]
+/// obriga-a a ser nomeada em vez de silenciada.
+fn acorda_neste_arnes(verb: Verb) -> bool {
+    let slot = VerbSlot::for_verb(verb);
+    let x = Ajuste {
+        brush: Brush {
+            // ⚠️ O *auto-smooth* é DESARMADO aqui de propósito: ele move barro
+            // sozinho, e com ele ligado todo verbo leria «acorda».
+            auto_smooth: 0.0,
+            ..slot.brush
+        },
+        raio: RAIO,
+    };
+    desvio(&peca(), &corre(&x)) > 0.0
+}
+
+/// O retrato do painel com este verbo na mão — o que ele PINTARIA.
+fn painel_com(verb: Verb) -> Sculpt3dUi {
+    let slot = VerbSlot::for_verb(verb);
+    Sculpt3dUi {
+        brush: slot.brush,
+        radius_px: slot.radius_px,
+        // ⚠️ **O nível mais LARGO de propósito:** no `Basic` o painel dobra
+        // metade das fileiras, e um censo corrido ali leria *«escondido»* sobre
+        // knobs que o artista alcança com um clique. *A pergunta é o que ele
+        // PODE ver, não o que vê agora.*
+        ui_level: UiLevel::Pro,
+        ..Sculpt3dUi::default()
+    }
+}
+
+/// O painel pinta esta fileira com este verbo na mão?
+///
+/// ⚠️ **A resposta sai da TABELA do painel**, nunca de uma lista escrita aqui:
+/// uma segunda cópia da condição divergiria na primeira wave que mexesse numa
+/// delas, e a que o artista vê é a que envelhece.
+fn pintado(ui: &Sculpt3dUi, rotulo: &str) -> bool {
+    // A curva não é um `Row` — ela é a fileira de chips, e a cerca dela é
+    // incondicional por decisão portada (ver o `Knob` dela).
+    if rotulo == "panel.sculpt3d.falloff" {
+        return true;
+    }
+    rows()
+        .find(|r| r.label == rotulo)
+        .is_some_and(|r| r.visible(ui))
+}
+
+/// **SONDA — a matriz inteira**, para a tabela poder ser lida de uma vez.
+///
+/// ```text
+/// cargo test -p ph2d-app-sculpt3d --lib diag_o_censo_dos_knobs -- --ignored --nocapture
+/// ```
+#[test]
+#[ignore]
+fn diag_o_censo_dos_knobs() {
+    eprint!("{:<18}", "verbo");
+    for k in KNOBS {
+        eprint!("{:>22}", k.rotulo.trim_start_matches("panel.sculpt3d."));
+    }
+    eprintln!();
+    let mut mortos = 0usize;
+    let mut adormecidos = 0usize;
+    for &verb in &Verb::ALL {
+        let ui = painel_com(verb);
+        let vivo = acorda_neste_arnes(verb);
+        if !vivo {
+            adormecidos += 1;
+        }
+        eprint!("{:<18}{}", verb.label(), if vivo { " " } else { "z" });
+        for k in KNOBS {
+            let slot = VerbSlot::for_verb(verb);
+            let base = Ajuste {
+                brush: slot.brush,
+                raio: RAIO,
+            };
+            let (mut x, mut y) = (base.clone(), base);
+            (k.a)(&mut x);
+            (k.b)(&mut y);
+            let d = desvio(&corre(&x), &corre(&y));
+            let p = pintado(&ui, k.rotulo);
+            let marca = match (vivo, p, d > 0.0) {
+                // ⛔ O verbo não acorda neste arranjo: a linha inteira é NÃO
+                // MEDIDA, e chamar-lhe «morta» seria acusar knobs vivos.
+                (false, _, _) => "?",
+                (true, true, true) => "ok",
+                (true, true, false) => {
+                    mortos += 1;
+                    "MORTO"
+                }
+                (true, false, true) => "escondido/vivo",
+                (true, false, false) => "-",
+            };
+            eprint!("{:>14.3e} {marca:>7}", d);
+        }
+        eprintln!();
+    }
+    eprintln!(
+        "\nknobs PINTADOS que não chegam ao barro: {mortos}\n         verbos que este arnês não acorda (linha `z`, NÃO MEDIDA): {adormecidos}"
+    );
+}
+
+/// ⛔⛔⛔ **A CATRACA DOS KNOBS MORTOS — e é ela que faz disto um PORTÃO e não um
+/// relatório.**
+///
+/// Cada entrada é um `(verbo, knob)` que o painel **PINTA** e que o barro
+/// **não sente**, com o motivo ao lado. As duas metades obrigatórias:
+///
+/// * um morto **NOVO** reprova ⇒ um verbo não pode nascer a oferecer um knob
+///   que ele não lê;
+/// * um morto **CURADO** reprova ⇒ a lista só desce, e uma entrada que já não
+///   descreve nada é a catraca a virar **licença** (§5.0).
+///
+/// ⚠️ **O motivo é o que separa uma DIVERGÊNCIA de uma DÍVIDA**, e os dois
+/// estão aqui: a curva da máscara é uma recusa **medida** (curá-la parte dois
+/// gates de paridade, com a fonte escrita no
+/// [`ph2d_sculpt3d::Brush::mask_hardness`]); os quatro da pose são **dívida
+/// real** — o artista arrasta e não acontece nada.
+const MORTOS_CONHECIDOS: &[(Verb, &str, &str)] = &[
+    (
+        Verb::Mask,
+        "panel.sculpt3d.falloff",
+        "DIVERGÊNCIA declarada: o canal tem a SEGUNDA curva da referência, e a \
+         do carimbo não o alcança (recusa medida, com dois gates a defendê-la)",
+    ),
+    (
+        Verb::Pose,
+        "panel.sculpt3d.radius",
+        "⏳ DÍVIDA: a pista do raio não move a cadeia neste arranjo",
+    ),
+    (
+        Verb::Pose,
+        "panel.sculpt3d.hardness",
+        "esperado: este verbo é o único SEM atenuação radial (espec §13), logo \
+         não há distância para a dureza remapear — ⏳ mas então ele não devia \
+         ser PINTADO",
+    ),
+    (
+        Verb::Pose,
+        "panel.sculpt3d.auto_smooth",
+        "⏳ DÍVIDA: ele resolve a própria região e desvia antes do laço \
+         por-vértice, onde o auto-smooth corre",
+    ),
+    (
+        Verb::Pose,
+        "panel.sculpt3d.falloff",
+        "esperado pela mesma razão da dureza, e com o mesmo ⏳: pintado sem ter \
+         quem o leia",
+    ),
+];
+
+/// **GATE — a lista dos mortos é EXACTA nos dois sentidos.**
+#[test]
+fn o_censo_dos_knobs_mortos_so_desce() {
+    let mut medidos: Vec<(Verb, &'static str)> = Vec::new();
+    for &verb in &Verb::ALL {
+        if !acorda_neste_arnes(verb) {
+            continue;
+        }
+        let ui = painel_com(verb);
+        for k in KNOBS {
+            let slot = VerbSlot::for_verb(verb);
+            let base = Ajuste {
+                brush: slot.brush,
+                raio: RAIO,
+            };
+            let (mut x, mut y) = (base.clone(), base);
+            (k.a)(&mut x);
+            (k.b)(&mut y);
+            if pintado(&ui, k.rotulo) && desvio(&corre(&x), &corre(&y)) == 0.0 {
+                medidos.push((verb, k.rotulo));
+            }
+        }
+    }
+    let novos: Vec<_> = medidos
+        .iter()
+        .filter(|(v, r)| !MORTOS_CONHECIDOS.iter().any(|(w, q, _)| w == v && q == r))
+        .map(|(v, r)| (v.label(), *r))
+        .collect();
+    assert!(
+        novos.is_empty(),
+        "knobs PINTADOS que o barro não sente e que ninguém nomeou: {novos:?} — \
+         um controlo que o artista arrasta e não faz nada é a espécie que ele \
+         reporta como «não vejo efeito»"
+    );
+    let obsoletos: Vec<_> = MORTOS_CONHECIDOS
+        .iter()
+        .filter(|(v, r, _)| !medidos.iter().any(|(w, q)| w == v && q == r))
+        .map(|(v, r, _)| (v.label(), *r))
+        .collect();
+    assert!(
+        obsoletos.is_empty(),
+        "estes knobs JÁ chegam ao barro e a lista não desceu: {obsoletos:?} — \
+         apague-os, senão a catraca vira licença"
+    );
+    // ⭐ **O piso de população:** se esta lista esvaziar sem o censo a varrer
+    // nada, o gate ficava verde sobre o VÁCUO — a forma que o §5.0 nomeia.
+    assert!(
+        Verb::ALL.iter().filter(|v| acorda_neste_arnes(**v)).count() >= 20,
+        "o arnês deixou de acordar a maioria dos verbos — o censo passou a \
+         medir quase nada e este gate ficaria verde por vácuo"
+    );
+}
+
+/// ⛔⛔ **OS VERBOS QUE ESTE ARNÊS NÃO ACORDA SÃO NOMEADOS/// ⛔⛔ **OS VERBOS QUE ESTE ARNÊS NÃO ACORDA SÃO NOMEADOS, NUNCA SILENCIADOS.**
+///
+/// ⚠️ **É uma CATRACA de dívida com censo de obsolescência nos dois sentidos**
+/// (§5.0): quem ensinar o arnês a acordar um deles **tem de o apagar daqui**, e
+/// um verbo novo que nasça inerte **reprova** em vez de entrar calado na lista.
+///
+/// ⛔ **A alternativa era EXCLUIR estes verbos do censo, e um censo que exclui
+/// um verbo deixa de o testar** — a mesma frase que a `alvo_sintetico` já
+/// carrega. Aqui a lista é a **dívida escrita**, com o motivo de cada um.
+#[test]
+fn o_censo_nomeia_os_verbos_que_este_arnes_nao_acorda() {
+    /// Cada entrada diz **porque** o arnês não o acorda — e é isso que separa
+    /// uma dívida de uma isenção.
+    const ADORMECIDOS: &[(Verb, &str)] = &[
+        // O efeito inteiro dele é sobre a TOPOLOGIA, e o passe de topologia não
+        // corre dentro do `dab`. *Não é um verbo inerte — é um verbo cuja lei
+        // não vive aqui.*
+        (Verb::Density, "a lei é o passe de topologia, fora do `dab`"),
+        // Os três resolvem a PRÓPRIA região e precisam de estado que o pen-down
+        // do produto monta (a sessão da pose, as fases A–E do contorno, o solver
+        // do pano).
+        (
+            Verb::Boundary,
+            "resolve a própria região: pede as fases do pen-down",
+        ),
+        (
+            Verb::Cloth,
+            "desvia antes do `dab_core`: pede o solver do traço",
+        ),
+        // ⚠️ Os três seguintes são DÍVIDA REAL do arnês, não lei: eles têm lei
+        // por-vértice e deviam mexer-se. Quem os acordar mede quatro knobs de
+        // uma vez.
+        (
+            Verb::ClayThumb,
+            "⏳ dívida do arnês: pede a direcção do traço anterior",
+        ),
+        (
+            Verb::MultiplaneScrape,
+            "⏳ dívida do arnês: pede o plano ajustado",
+        ),
+        (
+            Verb::SmearMultires,
+            "⏳ dívida do arnês: a referência sintética é lisa, e ele transporta RELEVO",
+        ),
+    ];
+    let medidos: Vec<&'static str> = Verb::ALL
+        .iter()
+        .filter(|v| !acorda_neste_arnes(**v))
+        .filter(|v| !ADORMECIDOS.iter().any(|(w, _)| w == *v))
+        .map(|v| v.label())
+        .collect();
+    assert!(
+        medidos.is_empty(),
+        "verbos INERTES neste arnês e fora da lista: {medidos:?} — enquanto          eles não acordarem, o censo lê os knobs deles como mortos e acusa          controlos vivos"
+    );
+    let obsoletos: Vec<&'static str> = ADORMECIDOS
+        .iter()
+        .filter(|(v, _)| acorda_neste_arnes(*v))
+        .map(|(v, _)| v.label())
+        .collect();
+    assert!(
+        obsoletos.is_empty(),
+        "estes JÁ acordam e a catraca não desceu: {obsoletos:?} — apague-os da          lista, senão ela vira licença"
+    );
+}
+
+/// ⛔⛔ **A LISTA DO CENSO COBRE OS KNOBS INCONDICIONAIS** — o piso de
+/// população que impede este ficheiro de ficar verde a medir menos do que
+/// promete.
+///
+/// ⚠️ **Sem ele, um knob novo `show: always` nasceria fora do censo e o censo
+/// ficaria verde sobre ele** — a forma que o `CLAUDE.md` §5.0 chama de *censo
+/// que varre zero e fica verde*, aqui na versão *varre menos*.
+#[test]
+fn a_lista_do_censo_cobre_os_knobs_incondicionais() {
+    // Um verbo por FAMÍLIA de grip: um knob `show: always` aparece em todos, e
+    // um que dependa do verbo não sobrevive à interseção.
+    // ⚠️⚠️ **A população é a secção do PINCEL, e o gate ensinou-o na 1.ª
+    // corrida:** ele acusou `extract_thickness`, `cavity`, `ao`, `ssao`,
+    // `dyn_detail`, `remesh_res`, `quad_detail` e `quad_adapt` — nove rows
+    // **sempre visíveis** que **não são knobs de pincel nenhum**: elas são
+    // argumentos de BOTÕES (o extract, o remesh) e de PASSES (a sombra, a
+    // topologia), e um dab não as lê **por desenho**.
+    //
+    // ⇒ *«sempre pintado» não é o mesmo que «pintado PARA o pincel»*, e o censo
+    // que não os separasse acusaria oito controlos vivos de uma vez — a mesma
+    // forma que o controlo positivo por verbo acabou de curar um nível abaixo.
+    // ⚠️ A população sai da SECÇÃO declarada, nunca de uma lista escrita aqui.
+    let seccao = SECTIONS
+        .iter()
+        .find(|s| s.id == ph2d_panel_sculpt3d::ids::SCULPT3D_SEC_BRUSH)
+        .expect("o painel tem a secção do pincel");
+    let sempre: Vec<&'static str> = seccao
+        .rows
+        .iter()
+        // ⚠️⚠️ **E dentro da secção, só o BLOCO DE KNOBS** — a 2.ª corrida
+        // acusou `extract_thickness` e `extract_smooth`, que vivem aqui e são
+        // `Place::AfterExtract`: *argumentos de um BOTÃO*, colados a ele de
+        // propósito. Um dab não os lê **por desenho**, e a `Place` é a porta
+        // que o painel já declara — não uma lista escrita aqui.
+        .filter(|r| r.place == Place::Knobs)
+        .filter(|r| Verb::ALL.iter().all(|&v| r.visible(&painel_com(v))))
+        .map(|r| r.label)
+        .collect();
+    let faltam: Vec<&&str> = sempre
+        .iter()
+        .filter(|l| !KNOBS.iter().any(|k| k.rotulo == **l))
+        .collect();
+    assert!(
+        faltam.is_empty(),
+        "o painel pinta {faltam:?} com TODO verbo e o censo não os varre — um \
+         knob fora do censo é um knob que pode estar morto sem ninguém ver"
+    );
+    assert!(
+        sempre.len() >= 2,
+        "o piso de população: o painel tem de ter pelo menos dois knobs \
+         incondicionais, e achei {sempre:?} — se esta lista esvaziar, o censo \
+         passou a medir NADA e ficaria verde"
+    );
+}

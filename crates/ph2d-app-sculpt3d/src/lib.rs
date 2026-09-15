@@ -187,6 +187,14 @@ mod named_gates_census_tests;
 #[path = "scenes_announce_census_tests.rs"]
 mod scenes_announce_census_tests;
 
+/// ⭐⭐⭐ **O knob que o painel pinta CHEGA ao barro?** — o censo que mede a
+/// terceira costura (§5.0: *nenhum instrumento do repo pergunta se o VALOR
+/// chega a um consumidor*). Ele mora aqui e não no painel nem no motor porque
+/// é o **único** sítio onde os dois lados da pergunta existem.
+#[cfg(test)]
+#[path = "censo_dos_knobs_tests.rs"]
+mod censo_dos_knobs_tests;
+
 /// O QUE A CENA DIZ ao artista — ver o módulo.
 #[path = "announce.rs"]
 mod announce_mod;

@@ -2724,3 +2724,107 @@ treze chips:** ele corria com a deformação de fábrica (`Rotate`), onde aquela
 caixa nem é desenhada. Segunda metade acrescentada, com clique REAL.
 
 Mutação **2 de 2**. Portão: **`15 219` testes, `15 219` verdes** (`load 25,87`).
+
+---
+
+## §32 — ⭐⭐⭐ O censo passa a medir **31 dos 32** verbos, e as `25` células novas acusaram **dois** mortos
+
+> `c65f3bb32`
+
+### §32.1 — Porquê isto e não outra coisa
+
+O censo declarava **seis** verbos que o arnês não acordava ⇒ **`30` células às
+escuras**, e é exactamente ali que o próximo *«não funciona»* nasceria. *Um censo
+que exclui um verbo deixa de o testar*, e a lista era dívida escrita — não
+isenção.
+
+### §32.2 — ⭐⭐⭐ Cinco acordaram, e a causa foi UMA SÓ: **o arnês entregava um CARIMBO**
+
+Quatro daquelas leis precisam de um **TRAÇO**. O [`Dab::path`] sai da **diferença
+entre centros** de dabs consecutivos, e quatro leis lêem-no: o polegar e o
+raspador de planos derivam dele o eixo de inclinação, o esfregão a direcção de
+transporte, o pano o passo do solver.
+
+| verbo | 1 dab | 2 dabs |
+|---|---|---|
+| `Clay Thumb` | `0,000e0` | **`1,19e-2`** |
+| `Multiplane Scrape` | `0,000e0` | **`9,88e-3`** |
+| `Smear Displacement` | `0,000e0` | **`3,89e-3`** |
+| `Cloth` | `0,000e0` | **`9,90e-3`** |
+
+⚠️ **`DABS_DO_TRACO = 2` e não três nem dez:** dois é o mínimo que produz um
+caminho, e cada dab a mais é ruído de composição a entrar numa régua que compara
+**duas posições de um knob** — *o censo mede o knob, não o traço*.
+
+### §32.3 — ⛔⛔ O quinto pedia uma peça com **BORDO ABERTO**, e eu reproduzi um defeito já pago
+
+A região do contorno **começa na borda**: numa esfera fechada não há de onde
+começar. ⇒ porta nova `Verb::precisa_de_bordo_aberto`, com o segundo consumidor
+**nomeado e por construir**: a **recusa em voz alta** (o `Density` já tem a dele;
+*um pincel mudo sobre a própria inércia é o que o dono reporta como «não
+funciona»*).
+
+⚠️⚠️ **E a 1.ª tentativa reproduziu à letra o defeito de fixtura que a cena `=42`
+já pagou:** montei a tigela com `from_parts` sobre as posições originais e
+ficaram **`721` vértices ÓRFÃOS** — a busca da âncora aterrava num sem arestas e
+a lei recusava o traço inteiro (`2,98e-8`, ruído de `f32`). *Reconstruí o que já
+tinha porta.* Hoje ela vem pela `scenes::boundary::tigela`, que compacta.
+
+⚠️ E a referência sintética passou a ter **RELEVO**: ela era uniformemente
+encolhida (lisa) e o `SmearMultires` **transporta relevo** — `4,53e-3` liso
+contra `7,53e-3` com relevo. *Uma fixtura que não contém o fenómeno não afirma
+nada sobre ele*, terceira vez neste ficheiro.
+
+⇒ **verbos às escuras: `6 → 1`.** O que fica é o `Density`, e **por LEI**: o
+efeito inteiro dele é sobre a TOPOLOGIA, que não corre dentro do `dab`. A saída
+está nomeada — o arnês teria de correr o `refine_for_dab` e comparar **CONTAGEM
+de vértices** em vez de posições, que é outra grandeza e portanto outra régua.
+
+### §32.4 — ⭐⭐⭐ E as `25` células novas acusaram **dois** mortos, da espécie que a pose acabou de pagar
+
+`Cloth × auto_smooth` e `Boundary × auto_smooth` liam `0,000e0`: os dois desviam
+antes do laço por-vértice onde o passe corre, e o painel pintava-o na mesma.
+
+⛔ **Curados por ESCONDER, e não por ligar** — e a diferença para a pose é a
+proveniência:
+
+| | pose | cloth · boundary |
+|---|---|---|
+| a espec prescreve a lei? | **sim** (§15 e item 18: *«segue os PESOS, não o raio»*) | **não**, nenhuma das duas a menciona |
+| cura | **construída** (`alisa_a_pose`) | **escondida** |
+
+⭐ E o contorno tem **`Modo::Suavizar`** — um alisamento **da referência** — entre
+os seis dele: oferecer o genérico por cima seria a segunda resposta à mesma
+pergunta. *Inventar uma lei para um pincel de clean-room sem referência é
+exactamente o que a parede existe para impedir.*
+
+⏳ **As duas saídas ficam NOMEADAS** na porta `Verb::o_auto_smooth_chega`: uma
+janela **E** pode medir se o alvo o oferece com aqueles pincéis na mão, ou o dono
+pode ordenar que seja construído seguindo os pesos da região de cada um.
+
+### §32.5 — ⚠️ Um gate teve a PREMISSA MORTA, e isso é o gate a funcionar
+
+O `the_second_pass_skips_the_two_verbs_the_reference_skips` dizia **dois** e são
+**quatro**, por **duas razões diferentes** ⇒ reescrito como
+`the_second_pass_is_refused_for_two_different_reasons`, com a tabela das duas
+proveniências e — o que importa — **o controlo que as separa**: a `Pose` desvia do
+laço tal como os outros dois e **RECEBE** o passe, porque tem o dele. *Uma
+resposta derivada da `resolve_a_propria_regiao` passaria e apagaria um controlo
+vivo.*
+
+### §32.6 — O portão
+
+**`15 219` testes, `15 219` verdes** (`load 8,71`), clippy limpo, as **seis**
+vassouras clean-room limpas menos o `tip_roundness` **pré-existente**. Mutação
+**3 de 3**, cada uma com a mensagem certa (o passe que passa a alcançar dois
+verbos que não o sentem · o bordo que deixa de ser pedido · o traço que volta a
+carimbo e apaga quatro verbos).
+
+### §32.7 — ⏳ O que fica ABERTO
+
+| # | item | estado |
+|---|---|---|
+| 1 | os do §30.9 e §31.8 | ⏳ inalterados |
+| 2 | o `Density` no censo | ⛔ por **LEI**; a saída é uma régua de **contagem**, não de posição |
+| 3 | a **recusa em voz alta** do contorno numa peça fechada | ⏳ **nomeada na porta nova**, com o `Density` como precedente |
+| 4 | o auto-smooth do `Cloth` e do `Boundary` | ⛔ **divergência declarada**, com as duas saídas escritas |

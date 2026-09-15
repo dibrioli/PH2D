@@ -2537,3 +2537,68 @@ inerte (W42). A 1.ª corrida leu `None` dos dois lados e teria passado por não 
 - **Escalar uma luz terá sujeito quando houver luz de ÁREA**, e rodar quando houver **cone** — as
   duas são `W4` do plano e não estão construídas. *O verbo volta à fileira no dia em que o tipo de
   luz o justificar, e o `offered_verbs` é o sítio único onde isso se escreve.*
+
+---
+
+## §29 — ⭐⭐⭐ QUANTO DE GI CABE: a medição que a W5 exige ANTES de existir (2026-09-14)
+
+O `03_o_plano.md` §W5 manda, por escrito: *«a wave começa por medir quanto de GI cabe, e o resultado
+pode ser «cozida e não em tempo real» — que é uma resposta legítima»*. Esta secção é esse número.
+
+### §29.1 — A medição (`load 2,06`, mínimo de 3 corridas, três cilindros cruzados)
+
+`N` raios por pixel de peça, cosseno-distribuídos no hemisfério da normal, com a cerca curta da
+oclusão (`0,35 × half_extent`) e a partida erguida pela normal (§27.5).
+
+| px | raios/px | traçado | GI | GI/traçado | do quadro |
+|---|---:|---:|---:|---:|---:|
+| `640×360` | `1` | `3,70 ms` | **`7,21 ms`** | `1,95×` | `43,2 %` |
+| `640×360` | `4` | `3,70 ms` | `29,82 ms` | `8,05×` | `178,6 %` |
+| `640×360` | `16` | `3,70 ms` | `132,46 ms` | `35,8×` | `793,2 %` |
+| `1920×1080` | `1` | `21,67 ms` | `70,34 ms` | `3,25×` | `421,2 %` |
+| `1920×1080` | `4` | `21,67 ms` | `310,15 ms` | `14,3×` | `1 857 %` |
+| **`1920×1080`** | **`16`** | `21,67 ms` | **`1 348 ms`** | `62,2×` | `8 073 %` |
+
+⭐ **Um raio de GI é `1,9×` mais BARATO que um de sombra** (`119 ns` contra `224 ns`), e a razão é a
+cerca: ele pergunta até `0,35 × half_extent` e o de sombra até à lâmpada. *A cerca é o que decide o
+preço, outra vez.*
+
+### §29.2 — ⛔⛔ O veredito: a força bruta por pixel NÃO cabe, por uma a duas ordens de grandeza
+
+**`1,35 s` para um quadro assente a `1920×1080` com `16` raios por pixel** — contra os `85 ms` que o
+quadro assente custa hoje (traçado + sombra). Nem como disparo único isso é um modelador.
+
+⭐⭐⭐ **E isso CONFIRMA a escolha do plano em vez de a contrariar.** O `03` §W5 nomeia como candidato
+principal as **cascatas de radiância com sondas esparsas**, e a razão escrita ali é *«sem ruído, logo
+sem denoiser»*. A medição acrescenta a segunda razão, a de preço: **o que não escala é a contagem de
+raios POR PIXEL**, e uma sonda esparsa é exactamente o que a desacopla da resolução.
+
+### §29.3 — ⭐⭐ A segunda rota, que o módulo quase já tem de graça
+
+`1` raio por pixel a `640×360` custa `7,21 ms`. Acumulado ao longo de passagens sucessivas do quadro
+**assente**, `16` raios custam `115 ms` repartidos por `16` passagens de `7 ms` — a imagem **afina
+enquanto a mão está parada**, que é o idioma de toda viewport de render.
+
+⚠️ **Ela pede uma lei nova, e é honesto dizê-lo:** hoje o assentar faz **um** traçado e pára (o
+`preview::next_trace` devolve `None` quando nada mudou, porque *«re-traçar seria queimar um núcleo
+por nada»*). Acumular é precisamente re-traçar de propósito, com um critério de paragem. ⇒ não é uma
+afinação do que existe; é uma decisão de desenho, e fica registada aqui com o preço ao lado.
+
+### §29.4 — ⛔ E a PRIMEIRA redacção desta sonda mediu a coisa errada
+
+A coluna do *tapado médio* lia **`5,3 %` a 1 raio e `17,3 %` a 16**, o que se lê como *«um raio
+subestima a oclusão»* — uma conclusão sobre AO. Era um furo da **régua**: a elevação saía de
+`(j + 0,5)/N`, logo com `N = 1` ela vale `0,5` em **todo** pixel — um só ângulo (45°) na imagem
+inteira.
+
+⇒ deslocamento por pixel (Cranley–Patterson), e a coluna passa a ler **`17,3 %` nos três N**, que é
+o que um estimador imparcial tem de fazer. *Uma estratificação que muda com o N não compara os N* —
+e o custo, que é o que a sonda existe para medir, subiu `20 %` ao ser medido em direcções honestas.
+
+### §29.5 — ⏳ O que esta secção NÃO mede
+
+- **Uma peça só, e uma câmera só.** O custo por raio segue o que a §27 mediu — ele paga a rastejar à
+  saída da superfície —, logo uma peça com mais arestas paga mais.
+- **Zero bounces de COR.** Isto é visibilidade (oclusão), não transporte de luz: a radiância que
+  volta pelo raio não foi sombreada. *O preço de uma segunda quicada não está aqui.*
+- **Nada na GPU.** Todos os números são da CPU, como o resto do traçado deste módulo.

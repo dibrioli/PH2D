@@ -6572,3 +6572,175 @@ fn measure_how_much_shadow_fits_in_a_frame() {
         );
     }
 }
+
+/// ⭐⭐⭐ **QUANTO DE GI CABE** — o 1.º passo que o `docs/Render3d/03` §W5 exige por escrito
+/// (*«a wave começa por medir quanto de GI cabe, e o resultado pode ser «cozida e não em tempo
+/// real» — que é uma resposta legítima»*).
+///
+/// A unidade já está medida (§27): **um raio de sombra custa `29,3` amostras de campo contra `8,7`
+/// de um raio de câmera**. Esta sonda põe `N` raios por pixel no hemisfério da normal e mede o que
+/// a máquina de facto faz — porque um raio de GI **não** custa o mesmo que um de sombra: ele tem
+/// uma cerca curta (o raio de oclusão) e parte na direcção da normal, não na da luz.
+#[test]
+#[ignore = "sonda"]
+fn measure_how_much_gi_fits_in_a_frame() {
+    use std::time::Instant;
+
+    let s = std::f32::consts::FRAC_1_SQRT_2;
+    let cyl = |rot: [f32; 4]| {
+        ph2d_field_eval::leaf(
+            Primitive::Cylinder {
+                radius: 0.22,
+                half_height: 0.78,
+                round: 0.05,
+                chamfer: 0.0,
+            },
+            Xform {
+                rotation: rot,
+                ..Xform::IDENTITY
+            },
+        )
+    };
+    let doc = ph2d_field::FieldDoc::new(
+        vec![
+            cyl([0.0, 0.0, 0.0, 1.0]),
+            cyl([s, 0.0, 0.0, s]),
+            cyl([0.0, 0.0, s, s]),
+            ph2d_field::Node {
+                xform: Xform::IDENTITY,
+                kind: ph2d_field::NodeKind::Combine {
+                    op: ph2d_field::Op::Union(ph2d_field::Blend::Exact { radius: 0.12 }),
+                    children: vec![NodeId(0), NodeId(1), NodeId(2)],
+                },
+                mods: Vec::new(),
+                verb: None,
+            },
+        ],
+        NodeId(3),
+    )
+    .expect("a peça");
+    let reg = Registry::new();
+    let cam = Orbit::default();
+
+    println!(
+        "carga: {}",
+        std::fs::read_to_string("/proc/loadavg").unwrap().trim()
+    );
+    println!("  px   ·  raios/px ·  traçado ·       GI ·  GI/traçado · do quadro · tapado médio");
+
+    for (w, h) in [(640_u32, 360_u32), (1920, 1080)] {
+        let med = |f: &dyn Fn() -> f64| -> f64 {
+            let mut v: Vec<f64> = (0..3).map(|_| f()).collect();
+            v.sort_by(f64::total_cmp);
+            v[0]
+        };
+        let g = trace(&doc, &reg, &cam, w, h);
+        let tracado = med(&|| {
+            let t = Instant::now();
+            let g = trace(&doc, &reg, &cam, w, h);
+            std::hint::black_box(g.hits());
+            t.elapsed().as_secs_f64() * 1e3
+        });
+        let (right, up, toward_eye) = cam.basis();
+        let peca: Vec<usize> = (0..g.hit.len()).filter(|i| g.hit[*i]).collect();
+
+        // ⭐ **A cerca da oclusão é um RAIO, não uma lâmpada** — é o que faz um raio de GI ser
+        // potencialmente mais barato que um de sombra. `0,35 × half_extent` é a distância a que a
+        // oclusão de contacto ainda diz alguma coisa nesta peça.
+        let alcance = 0.35 * cam.half_extent;
+        let shape = ph2d_field_eval::hybrid::Hybrid::new(&doc, &reg);
+        let scene = crate::march::Scene {
+            shape: &shape,
+            cam: &cam,
+            basis: (right, up, toward_eye),
+            sharp: Sharpness::for_frame(cam.half_extent, (w.min(h)) as usize),
+            clip: None,
+            step: ph2d_field_eval::safe_march_step(&doc),
+            shrink: ph2d_field_eval::field_shrink(&doc, &reg),
+            stencil: Stencil::Tetra4,
+        };
+        let lift = scene.sharp.hit * crate::march::BIAS;
+
+        for n_raios in [1_usize, 4, 16] {
+            let mut origens = Vec::new();
+            let mut dirs = Vec::new();
+            let mut cercas = Vec::new();
+            for (k, &i) in peca.iter().enumerate() {
+                let p = g.point[i];
+                let nv = g.normal[i];
+                // A normal do G-buffer está em VISTA; o campo vive no MUNDO.
+                let nm = [
+                    nv[0] * right[0] + nv[1] * up[0] + nv[2] * toward_eye[0],
+                    nv[0] * right[1] + nv[1] * up[1] + nv[2] * toward_eye[1],
+                    nv[0] * right[2] + nv[1] * up[2] + nv[2] * toward_eye[2],
+                ];
+                // Uma base do hemisfério, sem trigonometria por amostra.
+                let a = if nm[0].abs() < 0.9 {
+                    [1.0, 0.0, 0.0]
+                } else {
+                    [0.0, 1.0, 0.0]
+                };
+                let t1 = [
+                    a[1] * nm[2] - a[2] * nm[1],
+                    a[2] * nm[0] - a[0] * nm[2],
+                    a[0] * nm[1] - a[1] * nm[0],
+                ];
+                let l = (t1[0] * t1[0] + t1[1] * t1[1] + t1[2] * t1[2])
+                    .sqrt()
+                    .max(1e-6);
+                let t1 = [t1[0] / l, t1[1] / l, t1[2] / l];
+                let t2 = [
+                    nm[1] * t1[2] - nm[2] * t1[1],
+                    nm[2] * t1[0] - nm[0] * t1[2],
+                    nm[0] * t1[1] - nm[1] * t1[0],
+                ];
+                for j in 0..n_raios {
+                    // Cosseno-distribuído por Hammersley — determinista, e o pixel entra na
+                    // sequência para os vizinhos não dispararem todos na mesma direcção.
+                    // ⚠️⚠️ **O DESLOCAMENTO POR PIXEL é o que torna as linhas COMPARÁVEIS.** A 1.ª
+                    // redacção usava `(j + 0,5)/N`: com `N = 1` isso dá `u1 = 0,5` para TODO pixel,
+                    // isto é, **um só ângulo de elevação** (45°) na imagem inteira — e a coluna do
+                    // «tapado» lia `5,3 %` contra `17,3 %` a 16 raios, o que se leria como *«um raio
+                    // subestima a oclusão»* quando o que ele estava a medir era outra pergunta.
+                    // *Uma estratificação que muda com o N não compara os N.* ⇒ rotação de
+                    // Cranley–Patterson: cada pixel entra na sequência com um deslocamento próprio,
+                    // e a MÉDIA sobre a imagem cobre o hemisfério em qualquer N.
+                    let salto =
+                        (((k as u32).wrapping_mul(2_654_435_761)) >> 8) as f32 / 16_777_216.0;
+                    let u1 = ((j as f32 + salto) / n_raios as f32).fract();
+                    let u2 = (((k as u32).reverse_bits() >> 8) as f32) / 16_777_216.0;
+                    let r = u1.sqrt();
+                    let phi = std::f32::consts::TAU * u2;
+                    let (sp, cp) = phi.sin_cos();
+                    let z = (1.0 - u1).max(0.0).sqrt();
+                    let d = [
+                        t1[0] * r * cp + t2[0] * r * sp + nm[0] * z,
+                        t1[1] * r * cp + t2[1] * r * sp + nm[1] * z,
+                        t1[2] * r * cp + t2[2] * r * sp + nm[2] * z,
+                    ];
+                    origens.push([
+                        p[0] + nm[0] * lift,
+                        p[1] + nm[1] * lift,
+                        p[2] + nm[2] * lift,
+                    ]);
+                    dirs.push(d);
+                    cercas.push(alcance);
+                }
+            }
+            let gi = med(&|| {
+                let t = Instant::now();
+                let v = crate::march::march_shadow_to(&scene, &origens, &dirs, &cercas, 1.0);
+                std::hint::black_box(v.len());
+                t.elapsed().as_secs_f64() * 1e3
+            });
+            let v = crate::march::march_shadow_to(&scene, &origens, &dirs, &cercas, 1.0);
+            let tapado = v.iter().filter(|x| **x < 0.5).count();
+            println!(
+                "{w:5} · {n_raios:9} · {tracado:7.2} ms · {gi:6.2} ms · {:9.2}× · {:6.1} % · {:6.1} %",
+                gi / tracado,
+                100.0 * gi / 16.7,
+                100.0 * tapado as f64 / v.len().max(1) as f64,
+            );
+        }
+    }
+}

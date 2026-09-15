@@ -55,6 +55,7 @@ pub use dispatch::{
     KEY_KEY_H, KEY_KEY_I, KEY_KEY_K, KEY_KEY_L, KEY_KEY_P, KEY_KEY_V, KEY_KEY_X, KEY_SPACE,
     KEY_TAB, apply_clipboard_paste, blur_focus, dispatch_key, dispatch_pointer,
     dispatch_pointer_with_text, dispatch_text_input, dispatch_tick, dispatch_wheel, graph_key_for,
+    unhandled_is_expected, work_already_done_on_down,
 };
 pub use drag::{
     DRAG_RATE_X, DRAG_RATE_Y, DRAG_SHIFT_MUL, HierarchyDragState, LONG_PRESS_THRESHOLD_NS,

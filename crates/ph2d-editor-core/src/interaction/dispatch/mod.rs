@@ -475,3 +475,63 @@ pub(super) fn write_hex_canonical(store: &mut WidgetStore, id: ph2d_a11y::NodeId
 
 #[cfg(test)]
 mod tests;
+
+/// ⭐⭐⭐ **QUE EVENTOS O HERO PODE LEGITIMAMENTE NÃO CONSUMIR** — a lista de excepções do detector
+/// de costura morta, que vive na shell (`[hero] unhandled event: …`).
+///
+/// ⚠️ **Ela mora AQUI e não na shell desde 2026-09-15**, e o motivo é o mesmo que a última entrada
+/// dela expôs: cada linha desta função é um facto sobre o DESPACHO (quem lê por polling, quem age no
+/// `Down`), e a shell não sabe nenhum deles — ela só decide imprimir.
+///
+/// *Este evento chegar sem handler é ESPERADO?* — a isenção do detector de seam morto.
+///
+/// ⚠️ Ela é por MOTIVO, nunca por conveniência. O log ao lado é como um widget pintado-mas-mudo
+/// se anuncia, então cada linha desta função apaga uma classe inteira de aviso e tem de dizer
+/// por que aquele evento não tem handler.
+///
+/// - **Focus/Blur**: o store rastreia foco internamente e o hero não tem braço por-widget para
+///   eles — logar cada clique num campo numérico afogava o console (Enio 2026-07-07).
+/// - **`ValueChanged` do color picker**: o valor dele é lido por **POLLING**, não consumido como
+///   evento — seis pontes (vector · painter · flip · motion · tokens · o render_loop) chamam
+///   `store.blender_picker(INSP_BLENDER_PICKER)` a cada frame. Arrastar a cor emitia uma linha
+///   por frame sobre um seam que está VIVO (Enio 2026-08-06).
+///
+/// ⚠️ A isenção do picker é pelo **ID**, jamais pelo tipo `ValueChanged`: calar o tipo inteiro
+/// cegaria o detector para todo slider e chip do app, que é precisamente o que ele existe para
+/// apanhar.
+#[must_use]
+pub fn unhandled_is_expected(e: &WidgetEvent, store: &WidgetStore) -> bool {
+    match e {
+        WidgetEvent::Focus(_) | WidgetEvent::Blur(_) => true,
+        WidgetEvent::ValueChanged(id) => *id == crate::ids::INSP_BLENDER_PICKER,
+        // ⭐ **O `Click` de quem já agiu no PRESSIONAR** — a lei é do DESPACHO, que é quem sabe
+        // que aquela família trabalha no `Down`; aqui só se pergunta. O porquê, a linha de log do
+        // dono que a originou e o gate da rota vivem no doc dela.
+        WidgetEvent::Click(id) => work_already_done_on_down(store, *id),
+        _ => false,
+    }
+}
+/// ⭐⭐⭐ **ESTE WIDGET JÁ FEZ O TRABALHO NO PRESSIONAR?** — e nesse caso o `Click` que o soltar
+/// produz é **redundante por construção**, e ninguém o consome.
+///
+/// ⛔⛔ **Ela nasceu de uma linha de LOG do dono** (2026-09-15): `[hero] unhandled event:
+/// Click(NodeId(3001329642747827011))` **logo antes de uma amostragem que funcionou**. O id foi
+/// invertido contra os `3 431` literais de `hash_node_id` do repo e é o `blender_eyedropper` — o
+/// botão do próprio conta-gotas. ⇒ *não era um controlo morto: era o detector de costura morta da
+/// shell a gritar lobo*, e o preço da falsa alarme está medido — aquela linha ficou «nomeada e por
+/// medir» durante duas waves porque ninguém a conseguia separar de uma costura morta a sério.
+///
+/// ⚠️⚠️ **A regra é da FAMÍLIA e não de um id**, e a diferença é o próximo report: o conta-gotas foi
+/// só o que ele carregou. Todo widget do selector de cor age no `Down` — o `Close`, a barra de
+/// arrastar, o selector de paletas, as alças de tamanho — e produz a mesma linha com outro número.
+///
+/// ⚠️ **Ela mora AQUI e não na shell** porque o facto é do despacho: quem sabe que aquela família
+/// trabalha no `Down` é quem a despacha. A shell só pergunta.
+///
+/// ⭐ E ela só é honesta porque a ROTA tem gate ([`tests::eyedropper`]): o `Down` arma, o `Down`
+/// seguinte colhe, o segundo clique cancela, e o `Up` continua a emitir este `Click`. *Silenciar um
+/// diagnóstico sem prova por trás é armengo.*
+#[must_use]
+pub fn work_already_done_on_down(store: &WidgetStore, id: ph2d_a11y::NodeId) -> bool {
+    matches!(store.get(id), Some(InteractiveState::BlenderHit { .. }))
+}

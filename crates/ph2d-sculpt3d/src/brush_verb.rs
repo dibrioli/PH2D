@@ -635,6 +635,10 @@ mod grip_por_verbo;
 #[path = "brush_verb_campo.rs"]
 mod campo;
 
+/// ⭐⭐⭐ **QUEM MEXE NA TOPOLOGIA em Dynamic Topology** — ver [`dyntopo`].
+#[path = "brush_verb_dyntopo.rs"]
+mod dyntopo;
+
 /// **OS DEFAULTS** — com que números um verbo nasce. Ver [`defaults`].
 #[path = "brush_verb_defaults.rs"]
 mod defaults;

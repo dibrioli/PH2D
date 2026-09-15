@@ -150,6 +150,26 @@ impl Sculpt3dScene {
         let step = self.pose().vector_to_local(step);
         let brush = self.armed_brush(center);
         let eye = self.dir_to_local(self.ray_at(to[0], to[1]).dir());
+        // ⭐⭐⭐ **O GESTO ANCORADO ALCANÇA A PORTA DA TOPOLOGIA** (2026-09-14,
+        // `docs/3D/22`) — a segunda metade do report do dono: *«algumas que
+        // deveriam criar subdivisões com Dynamic Topology não estão criando»*.
+        //
+        // ⚠️⚠️ **Até aqui o refino tinha UM chamador de produto — o braço do
+        // CARIMBO —, logo a pergunta que o produto respondia era «este gesto
+        // passou pelo caminho do carimbo?» e não «este verbo cria superfície
+        // nova?».** Quem tem âncora entra por aqui, e por aqui não passava.
+        //
+        // ⛔ **Quem decide continua a ser o VERBO**, não este sítio: a porta lê
+        // as duas colunas ([`Verb::refina_no_dyntopo`] ·
+        // [`Verb::colapsa_no_dyntopo`]) e devolve `false` a quem não as declara.
+        // *Ligar o fio não é responder a pergunta — é deixar a resposta chegar.*
+        //
+        // ⭐ **E o estado do traço em voo sobrevive:** o `grow_with` semeia cada
+        // vértice novo a partir dos pais e o `shrink_with` aplica a renumeração
+        // do colapso. ⚠️ A pegada CONGELADA não entra nisto e não precisa — ela
+        // é lida só pelo polegar (`congela = matches!(verb, Thumb)`), que não
+        // declara nenhuma das colunas.
+        self.refine_for_dab(&brush, center);
         self.stroke.dab(
             self.objects[self.active].stack.mesh_mut(),
             &brush,
@@ -311,6 +331,26 @@ impl Sculpt3dScene {
                 Dab::scaling(center, brush.radius, eye, (x - from.0) * SCALE_PER_PX)
             }
         };
+        // ⭐⭐⭐ **O GESTO ANCORADO ALCANÇA A PORTA DA TOPOLOGIA** (2026-09-14,
+        // `docs/3D/22`) — a segunda metade do report do dono: *«algumas que
+        // deveriam criar subdivisões com Dynamic Topology não estão criando»*.
+        //
+        // ⚠️⚠️ **Até aqui o refino tinha UM chamador de produto — o braço do
+        // CARIMBO —, logo a pergunta que o produto respondia era «este gesto
+        // passou pelo caminho do carimbo?» e não «este verbo cria superfície
+        // nova?».** Quem tem âncora entra por aqui, e por aqui não passava.
+        //
+        // ⛔ **Quem decide continua a ser o VERBO**, não este sítio: a porta lê
+        // as duas colunas ([`Verb::refina_no_dyntopo`] ·
+        // [`Verb::colapsa_no_dyntopo`]) e devolve `false` a quem não as declara.
+        // *Ligar o fio não é responder a pergunta — é deixar a resposta chegar.*
+        //
+        // ⭐ **E o estado do traço em voo sobrevive:** o `grow_with` semeia cada
+        // vértice novo a partir dos pais e o `shrink_with` aplica a renumeração
+        // do colapso. ⚠️ A pegada CONGELADA não entra nisto e não precisa — ela
+        // é lida só pelo polegar (`congela = matches!(verb, Thumb)`), que não
+        // declara nenhuma das colunas.
+        self.refine_for_dab(&brush, center);
         self.stroke.dab(
             self.objects[self.active].stack.mesh_mut(),
             &brush,

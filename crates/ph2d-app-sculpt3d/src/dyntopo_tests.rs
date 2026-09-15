@@ -208,3 +208,121 @@ mod apagador;
 /// um arnês de UM dab deixa o arrasto inerte por lei.
 #[path = "esfregao_tests.rs"]
 mod esfregao;
+
+/// **UM TRAÇO ANCORADO** (`Grip::Hook` / `Grip::Turn`), pela sequência do
+/// pen-down que o `input.rs` percorre.
+///
+/// ⚠️ **Ele existe porque o `um_dab` mede o braço do CARIMBO**, e a metade do
+/// report do dono que fala dos que *«deveriam criar subdivisões e não estão»* é
+/// precisamente a dos verbos que **não passam por ali**. *Um arnês que só
+/// percorre um dos dois caminhos é cego a metade da tabela.*
+fn um_traco_ancorado(s: &mut Sculpt3dScene) {
+    assert!(s.aim(CENTRE.0, CENTRE.1), "o raio errou a peça enquadrada");
+    s.stroke.begin(s.objects[s.active].stack.mesh());
+    s.open_dyntopo_stroke();
+    s.open_reference_stroke();
+    assert!(
+        s.take_hold(CENTRE.0, CENTRE.1),
+        "o pen-down ancorado não pegou a malha"
+    );
+    s.stroke_anchor = [CENTRE.0, CENTRE.1];
+    let mut prev = [CENTRE.0, CENTRE.1];
+    for k in 1..=8 {
+        let to = [CENTRE.0 + 9.0 * k as f32, CENTRE.1];
+        match s.brush.verb.grip() {
+            ph2d_sculpt3d::Grip::Turn(kind) => s.turn_at(kind, to[0], to[1]),
+            _ => s.hook_step(prev, to),
+        }
+        prev = to;
+    }
+    s.close_stroke();
+}
+
+/// ⭐⭐⭐ **O REPORT DO DONO, MEDIDO NOS DOIS SENTIDOS** (2026-09-14):
+///
+/// > *«algumas tools que não deveriam fazer a subdivisão de polígonos no modo
+/// > Dynamic Topology estão fazendo (como smooth) enquanto algumas que deveriam
+/// > criar subdivisões com Dynamic Topology não estão criando.»*
+///
+/// ⭐ **As duas metades foram confirmadas por um oráculo LIVRE** (o SculptGL é
+/// **MIT**, logo lê-se e porta-se com atribuição — §0.9: *a triagem pára na
+/// primeira porta ABERTA*), e este gate mede que o PRODUTO as honra:
+///
+/// | verbo | o oráculo | e aqui |
+/// |---|---|---|
+/// | **Smooth** | não chama a topologia | a contagem **não muda** |
+/// | **Snake Hook** | chama-a | a contagem **muda** |
+/// | `Draw` | chama-a | **controlo positivo** — sem ele o gate ficaria verde sobre um dyntopo inerte |
+/// | `Move` (agarrar) | não chama | **controlo negativo** — sem ele, desligar tudo passaria |
+///
+/// ⚠️⚠️ **O `Draw` é obrigatório e não é zelo:** um `assert_eq!` de contagem
+/// fica trivialmente verde num arranjo em que o refino **nunca** dispara (o
+/// detalhe grosso, a esfera já fina, o raio errado). *Uma régua que não vê o
+/// fenómeno acontecer não prova que ele não aconteceu* — e este módulo já pagou
+/// essa frase seis vezes.
+#[test]
+#[ignore]
+fn o_smooth_deixou_de_subdividir_e_o_gancho_passou_a_subdividir() {
+    let gpu = gpu_or_skip!();
+
+    // ⭐ (1) O CONTROLO POSITIVO: o `Draw` refina, senão o arranjo é inerte.
+    let mut draw = cena_armada(&gpu.device, Verb::Draw);
+    let antes = vertices(&draw);
+    um_dab(&mut draw);
+    let depois = vertices(&draw);
+    assert!(
+        depois > antes,
+        "o `Draw` não refinou ({antes} -> {depois}): o arranjo não contém o \
+         fenómeno, e o resto deste gate mediria vácuo"
+    );
+
+    // ⛔ (2) O SMOOTH NÃO MUDA A CONTAGEM — a 1.ª metade do report.
+    let mut smooth = cena_armada(&gpu.device, Verb::Smooth);
+    let antes = vertices(&smooth);
+    let pos_antes: Vec<[f32; 3]> = smooth.mesh().positions().to_vec();
+    um_dab(&mut smooth);
+    assert_eq!(
+        vertices(&smooth),
+        antes,
+        "o `Smooth` mudou a contagem de vértices — o oráculo livre não chama a \
+         topologia dinâmica de lado nenhum do alisador, e o dono nomeou-o à letra"
+    );
+    // ⭐⭐ **E ELE CONTINUA A ALISAR** — *curar um defeito desligando o verbo é a
+    // forma mais barata de o esconder*, e com a contagem igual nos dois casos um
+    // `Smooth` inerte passaria a metade de cima sem se mexer.
+    let moveu = pos_antes
+        .iter()
+        .zip(smooth.mesh().positions())
+        .filter(|(a, b)| a != b)
+        .count();
+    assert!(
+        moveu > 0,
+        "o `Smooth` não moveu um único vértice — a contagem igual passou a ser \
+         a afirmação trivial de que um pincel morto não muda a topologia"
+    );
+
+    // ⭐⭐⭐ (3) O GANCHO PASSOU A MUDAR A CONTAGEM — a 2.ª metade do report, e
+    // ela é a que precisou de FIAÇÃO: ele tem âncora, logo não passa pelo braço
+    // do carimbo.
+    let mut gancho = cena_armada(&gpu.device, Verb::SnakeHook);
+    let antes = vertices(&gancho);
+    um_traco_ancorado(&mut gancho);
+    let depois = vertices(&gancho);
+    assert!(
+        depois != antes,
+        "o `Snake Hook` não mexeu na contagem ({antes} -> {depois}) — ele \
+         TRANSPORTA matéria e é dos que mais produzem aresta longa; o oráculo \
+         livre chama a topologia dinâmica nele"
+    );
+
+    // ⛔ (4) O CONTROLO NEGATIVO: o agarrar NÃO muda, e o oráculo concorda.
+    let mut agarrar = cena_armada(&gpu.device, Verb::Move);
+    let antes = vertices(&agarrar);
+    um_traco_ancorado(&mut agarrar);
+    assert_eq!(
+        vertices(&agarrar),
+        antes,
+        "o `Move` mudou a contagem — sem este lado, ligar a porta a TODO gesto \
+         ancorado passaria neste gate"
+    );
+}

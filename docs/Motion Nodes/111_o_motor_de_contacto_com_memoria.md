@@ -105,14 +105,39 @@ restrição sustentar a orientação sem a re-excitar — o *warm starting* que 
 | # | wave | entrega | porquê nesta ordem |
 |---|---|---|---|
 | **W0** | **o ATRITO na cena** | a `=114` (e o default do `source.shape`) deixam de ser gelo | ⛔ **sem isto nenhum número desta obra significa nada** — o §2 mostra que nem o oráculo assenta a `μ = 0`. É de PRODUTO, não de motor, e é a única wave que pode fechar sozinha. |
-| **W1** | **o REPOUSO**, sozinho | um critério de adormecer por colunas + a medição contra a barra do §2 | é metade do resultado do oráculo e **não precisa de cache nenhum**. Se bastar, as W2–W4 não existem. |
+| **W1** | **o REPOUSO**, com CONTADOR | adormecer depois de `N` tiques quietos, com o contador numa COLUNA do estado | é metade do resultado do oráculo e não precisa do cache **por PAR**. ⚠️ **Mas não é sem estado** — ver o §5.1, que já o mediu. |
 | **W2** | a **CHAVE** do contacto | a identidade `(id, id, feição)` medida: quantos contactos sobrevivem ao tique seguinte num monte real | ⚠️ é o número que diz se o *warm starting* é sequer aplicável aqui — se as feições mudarem todos os tiques, não há o que aquecer. |
 | **W3** | o **CACHE** | o `λ` acumulado, na morada que a W2 justificar | só depois de a W2 provar que há chave |
 | **W4** | o **DISPOSITIVO** | o mesmo cache do lado do kernel | ⛔ sem ela a lei nova é CPU-only e custa o que vem curar |
 
-⚠️ **A W1 é a fronteira da encomenda.** Ela é barata, mede-se contra uma barra que já existe, e pode
-tornar as outras três desnecessárias — *medir se a composição já exprime o item antes de o construir*
-(`CLAUDE.md` §5.0).
+⚠️ **A W1 é a fronteira da encomenda.** Ela é a mais barata das quatro e pode tornar as outras três
+desnecessárias — *medir se a composição já exprime o item antes de o construir* (`CLAUDE.md` §5.0).
+
+### §5.1 — ⛔⛔⛔ E a W1 já foi PROTOTIPADA: a versão SEM ESTADO congela a cena
+
+O protótipo (uma cerca: a peça cujo passo linear **e** angular cabem nela volta ao sítio e perde a
+velocidade) foi construído e medido em 5 realizações por célula, a `μ = 0,6`:
+
+| cerca linear / lado | cerca angular | balanço pior | giro líquido pior | `y` mediano final |
+|---|---|---|---|---|
+| `0` (o que shipa) | `0°` | `3,83 .. 7,79` | `24,73 .. 38,15` | — |
+| `0,02` | `0,5°` | **`0,0000`** | **`0,00`** | **`−0,35`** |
+| `0,05` | `1,0°` | `0,0000` | `0,00` | `−0,35` |
+| `0,20` | `4,0°` | `0,0000` | `0,00` | `−0,35` |
+
+⛔⛔ **`y = −0,35` é exactamente o `ALTURA` da cena — a altura de NASCIMENTO. A pilha nunca cai:**
+ela congela no primeiro tique, onde o passo ainda é menor que a cerca, e fica pendurada no ar.
+
+⚠️⚠️ **E as DUAS réguas do tremor leem isso como uma vitória PERFEITA** (`0,0000` e `0,00`), porque
+uma pilha imóvel é imóvel *seja qual for a razão*. Foi preciso uma terceira régua — a ALTURA — para
+separar *«assentou»* de *«congelou»*. ⇒ **a espec ganha essa régua como condição de aceitação de toda
+a obra**, e ela é a terceira vez nesta caça que uma cura melhora o que se mede e estraga o que não se
+media.
+
+⇒ **um repouso honesto precisa de um CONTADOR por peça** (*«quieta há `N` tiques»*), acordado pelo
+contacto — o que o oráculo faz. Isso é estado, mas é estado **POR PEÇA**, logo cabe numa COLUNA do
+`state`, ao lado do `age` e do `sim_t`, e **não** precisa do cache por PAR das W2–W4. A W1 encolhe de
+*«sem estado»* para *«uma coluna»*, e continua a ser a mais barata das quatro.
 
 ---
 
@@ -125,3 +150,4 @@ As oito do [doc 109 §8.14](109_o_colisor_na_forma.md), mais as três deste doc:
 | 9 | **adoptar o `rapier2d` como motor da sim do Motion** | ⛔ tecto medido entre `1 600` e `6 400` peças contra `4,19 M` no dispositivo (§3) |
 | 10 | medir a obra na cena como ela shipa (`μ = 0`) | ⛔ o oráculo roda `331°` ali: *a cena não tem resposta certa para medir contra* (§2) |
 | 11 | o `angular_damping` como cura | ⛔ **inerte**: ele amortece a coluna `spin` e o contacto escreve o `rot` (doc 109 §8.12) |
+| 12 | o repouso como **cerca SEM ESTADO** | ⛔ congela a pilha no ar, no primeiro tique (§5.1) — e as duas réguas do tremor leem `0,0000` |

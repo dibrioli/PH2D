@@ -685,3 +685,61 @@ próprio** — ele media uma *reconstrução* da cena. ⇒ a criação passou a 
 (`corrente()`), por onde o produto **e** os gates passam; com ela a mesma mutação mata o gate da
 faceta com o número na mensagem (`14,24 px`). *A lei escrita em dois sítios prova-se num e ship-a no
 outro.*
+
+---
+
+## §14 — *«bem melhor. deformou um pouco»* — o que SOBRA é a lei, e tem número
+
+4.º report, sobre a cena do §13: a faceta foi. O que o dono nota agora é a **circunferência sair
+ligeiramente oval**, e a pergunta é se isso é defeito ou é a arte a dobrar.
+
+**É a arte.** Medido no campo desta cena:
+
+| | esticão local (razão dos valores singulares) |
+|---|---:|
+| no **centro** do canvas | **`1,017`** — praticamente rígido |
+| nas juntas | `1,109`–`1,190` |
+| nas pontas/bordas | `1,411` (o máximo) |
+
+Uma circunferência de `r = 128 px` desenhada ao centro **amostra** essa variação (o topo dela está a
+`y = 32`, a base a `y = 288`) e sai **`14,9 %`** fora de redondo. ⇒ *o esticão pontual é quase nulo
+onde ela é desenhada; o que a deforma é ela ser GRANDE em relação à dobra.*
+
+### A varredura do ângulo — a deformação é quase LINEAR nele, e a faceta acompanha
+
+| graus por junta | faceta | esticão máx | **círculo fora de redondo** | `det_min` |
+|---:|---:|---:|---:|---:|
+| **`25`** — esta cena | `0,92 px` | `1,411` | **`14,9 %`** | `0,7475` |
+| `20` | `0,75 px` | `1,321` | `11,6 %` | `0,8079` |
+| `15` | `0,57 px` | `1,234` | `8,5 %` | `0,8644` |
+| `10` | `0,39 px` | `1,151` | `5,5 %` | `0,9160` |
+| `6` | `0,23 px` | `1,088` | `3,3 %` | `0,9529` |
+
+⛔⛔ **E baixar o ângulo seria DISFARCE, não cura** — a cena existe para mostrar que a arte dobra e
+que as guias a seguem; uma cena afinada para minimizar o fenómeno que demonstra é a *«cena que ensina
+o contrário»* do `CLAUDE.md` §5.0. ⇒ o ângulo FICA, e o gate novo
+`a_cena_deforma_a_arte_o_bastante_para_demonstrar_e_nao_mais` tem as **duas** metades: piso `10 %`
+(*a dobra ainda se vê*) e tecto `20 %` (*a arte não está a ser maltratada*). **Prova de mutação:**
+`6°` reprova o piso com `3,3 %`; `60°` reprova o tecto com `52,9 %`.
+
+⛔ **A alternativa à lei já é recusa medida deste repo**: o movimento rígido (o *dual quaternion* do
+2D) foi construído e **PIORA** a dobra (§5 do `CLAUDE.md`). Não reabrir sem número novo.
+
+### ⚠️ E uma premissa minha que a varredura DERRUBOU no caminho
+
+Ao ver o esticão maior nas PONTAS (`1,411`) do que nas juntas (`1,109`) concluí que dar alcance `2×`
+tinha posto todos os ossos a influenciar a tela inteira e **piorado** a forma. Medido lado a lado,
+é o contrário — a influência mais larga mistura mais suave:
+
+| cena (3 ossos, `25°`) | tris | faceta | esticão máx | esticão no centro |
+|---|---:|---:|---:|---:|
+| `512×320` força `1,5` | `780` | `1,89 px` | `1,672` | `1,030` |
+| **`512×320` força `2,0`** — esta | `780` | **`0,92 px`** | **`1,411`** | **`1,017`** |
+| `512×320` força `2,5` | `780` | `0,81 px` | `1,487` | `1,011` |
+| `512×160` força `1,0` (osso longo face à arte) | `468` | `1,88 px` | `1,531` | `1,070` |
+| `1024×320` força `1,0` | `1 350` | `1,72 px` | `1,536` | `1,070` |
+
+⭐ **A força `2,0` é o MÍNIMO do esticão máximo** (`1,672 → 1,411 → 1,487`) e o mínimo do esticão no
+centro — *a configuração de hoje é o óptimo entre as nove medidas, e não um ponto de partida*.
+⚠️ E as cenas «osso longo face à arte», que eu esperava serem melhores por usarem a força de fábrica,
+são **piores nas três colunas**.

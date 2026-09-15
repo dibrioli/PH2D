@@ -420,6 +420,44 @@ mod tests {
         d * PX_POR_METRO
     }
 
+    /// ⭐ **QUANTO UMA CIRCUNFERÊNCIA DESENHADA AO CENTRO SAI FORA DE REDONDO** — `r_max / r_min`.
+    ///
+    /// ⚠️ É o que o dono de facto olha: ele arrasta uma *Ellipse* e julga a forma dela. O raio é
+    /// `40 %` da altura, que é o tamanho da circunferência da foto de 2026-09-15.
+    fn circulo_fora_de_redondo(altura_px: u32, forca: Option<f64>) -> f64 {
+        let (sim, e) = cena(altura_px, forca);
+        let malha = ph2d_skeleton_live::skin_image::mesh_of(&sim, e).expect("malha");
+        let (p2l, pele) =
+            ph2d_skeleton_live::skin_image::deform_field(&sim, e, malha.size, PPM).expect("campo");
+        let mut w = pele.scratch();
+        let centro = [
+            f64::from(super::LARGURA_PX) / 2.0,
+            f64::from(altura_px) / 2.0,
+        ];
+        let r = f64::from(altura_px) * 0.4;
+        let n = 720;
+        let pts: Vec<[f64; 2]> = (0..n)
+            .map(|i| {
+                let t = std::f64::consts::TAU * f64::from(i) / f64::from(n);
+                pele.point(
+                    p2l.apply([centro[0] + r * t.cos(), centro[1] + r * t.sin()]),
+                    &mut w,
+                )
+            })
+            .collect();
+        let c = pts
+            .iter()
+            .fold([0.0, 0.0], |a, p| [a[0] + p[0], a[1] + p[1]]);
+        let c = [c[0] / f64::from(n), c[1] / f64::from(n)];
+        let (mut rmin, mut rmax) = (f64::INFINITY, 0.0_f64);
+        for p in &pts {
+            let d = (p[0] - c[0]).hypot(p[1] - c[1]);
+            rmin = rmin.min(d);
+            rmax = rmax.max(d);
+        }
+        rmax / rmin
+    }
+
     /// ⭐⭐⭐ **NENHUM PEDAÇO DA ARTE DESTA CENA ESTÁ FORA DO ALCANCE DOS OSSOS.**
     ///
     /// ⛔⛔ **Este é o gate que não existia, e a ausência dele custou um smoke reprovado.** Um ponto
@@ -521,6 +559,45 @@ mod tests {
             "a arte usa {fraccao:.4} do alcance e a tabela mediu {:.4}: a derivacao deixou de \
              aterrar onde foi medida",
             super::FRACCAO_DO_ALCANCE
+        );
+    }
+
+    /// ⭐⭐⭐ **A CENA DE FACTO DEFORMA A ARTE — e por uma quantidade MEDIDA.**
+    ///
+    /// ⛔⛔ **É o gate que impede a cura de virar disfarce.** Depois do 3.º report do dono
+    /// (*«bem melhor. deformou um pouco»*) a tentação é baixar a dobra até a deformação sumir — e
+    /// isso seria uma **cena que ensina o contrário do que acontece** (CLAUDE.md §5.0): o que ela
+    /// existe para mostrar é justamente que a arte dobra e que as guias a seguem.
+    ///
+    /// ⚠️ **A deformação que sobra NÃO é defeito: é o *linear blend skinning* a fazer o que faz.**
+    /// Medido, ela é quase LINEAR no ângulo, e a faceta (o defeito que foi curado) acompanha:
+    ///
+    /// | graus por junta | faceta | círculo fora de redondo |
+    /// |---:|---:|---:|
+    /// | **`25`** — esta cena | **`0,92 px`** | **`14,9 %`** |
+    /// | `15` | `0,57 px` | `8,5 %` |
+    /// | `10` | `0,39 px` | `5,5 %` |
+    /// | `6` | `0,23 px` | `3,3 %` |
+    ///
+    /// ⛔ **A alternativa foi medida e recusada pelo próprio repo**: o movimento rígido (o *dual
+    /// quaternion* do 2D) foi construído e **PIORA** a dobra — ver o §5 do `CLAUDE.md`.
+    ///
+    /// ⚠️ **As DUAS metades:** o piso diz *«a cena ainda demonstra»* e o tecto diz *«a arte não está
+    /// a ser maltratada»*. Só o tecto seria um gate que uma cena plana passaria.
+    #[test]
+    fn a_cena_deforma_a_arte_o_bastante_para_demonstrar_e_nao_mais() {
+        let fora = circulo_fora_de_redondo(super::ALTURA_PX, None);
+        assert!(
+            fora > 1.10,
+            "a circunferencia sai {:.1}% fora de redondo: a dobra deixou de se VER, e a cena passa \
+             a ensinar que prender arte a ossos nao faz nada",
+            (fora - 1.0) * 100.0
+        );
+        assert!(
+            fora < 1.20,
+            "a circunferencia sai {:.1}% fora de redondo: a arte esta' a ser maltratada, e o dono \
+             ve' isso antes de ver a guia que a cena existe para mostrar",
+            (fora - 1.0) * 100.0
         );
     }
 

@@ -28,6 +28,51 @@
 //! multiplicações e `sqrt` (exacta em IEEE), e o ângulo sai por **procura na própria tabela**
 //! ([`crate::texture::rotate_by_degrees`]): o grau cujo vector está mais perto do eixo maior.
 
+/// ⭐⭐⭐ **A DEFORMAÇÃO DA ARTE DEBAIXO DO DAB** — a matriz local **mais a curvatura**.
+///
+/// ⛔⛔ **A segunda metade existe porque a primeira tem TECTO, e ele foi medido** (report do dono,
+/// 4.ª foto: *«quase bom»*). Um mapa linear não acompanha uma dobra, e o desvio da marca **não é
+/// facetagem** — refinar a malha de `32` para `8 192` triângulos deixa-o onde estava. Ele é a
+/// curvatura dentro do próprio dab, e cresce com o raio do pincel: `1,054` · `1,118` · `1,197` para
+/// raios de `0,06` · `0,125` · `0,20`. Com os graus `2` e `3`: `1,008` · `1,005` · **`1,006`**.
+/// Tabela e sondas em [`ph2d_render::sprite_mesh_warp`] (a porta que a mede).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct CanvasWarp {
+    /// Ecrã por textura, adimensional — **identidade em repouso**. O que sempre viajou aqui.
+    pub linear: [[f32; 2]; 2],
+    /// Os graus `2` e `3` (`x²`, `x·y`, `y²`, `x³`, `x²·y`, `x·y²`, `y³`), com a entrada em
+    /// **raios do footprint** e a saída na mesma escala de `linear`. ⛔ **Zero em repouso**, e é
+    /// isso que mantém toda pincelada deste app byte a byte como era.
+    pub curve: [[f32; 7]; 2],
+}
+
+impl CanvasWarp {
+    /// A arte em repouso: sem deformação e sem dobra.
+    #[must_use]
+    pub const fn rest() -> Self {
+        Self {
+            linear: [[1.0, 0.0], [0.0, 1.0]],
+            curve: [[0.0; 7]; 2],
+        }
+    }
+
+    /// Só a matriz local, sem curvatura — o que as portas que **apontam** (o picking, as caixas)
+    /// sabem responder.
+    #[must_use]
+    pub const fn linear(linear: [[f32; 2]; 2]) -> Self {
+        Self {
+            linear,
+            curve: [[0.0; 7]; 2],
+        }
+    }
+
+    /// Nenhuma dobra declarada ⇒ o caminho linear de sempre.
+    #[must_use]
+    pub fn is_straight(&self) -> bool {
+        self.curve.iter().flatten().all(|c| *c == 0.0)
+    }
+}
+
 /// A elipse que o motor tem de pintar, nos números que ele já consome.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct WarpedDab {
@@ -37,6 +82,9 @@ pub struct WarpedDab {
     pub flatten: f32,
     /// O `dab_angle_deg` composto — o eixo MAIOR da elipse.
     pub angle_deg: u16,
+    /// ⭐ A curvatura que sobra depois de a elipse dar o que podia dar, já no referencial da pegada
+    /// ([`super::canvas_warp_curve`]). Plana sempre que a arte não está dobrada.
+    pub curve: crate::FootprintCurve,
 }
 
 impl WarpedDab {
@@ -47,6 +95,7 @@ impl WarpedDab {
             radius_scale: 1.0,
             flatten: 0.0,
             angle_deg: 0,
+            curve: crate::FootprintCurve::flat(),
         }
     }
 }
@@ -70,30 +119,33 @@ fn authored_matrix(flatten: f32, angle_deg: u16) -> [[f32; 2]; 2] {
 /// ⛔ Uma `warp` degenerada (determinante ~0 — um triângulo colapsado) devolve a identidade: um dab
 /// infinito não é a resposta a uma malha dobrada sobre si mesma.
 #[must_use]
-pub fn warped_dab(warp: [[f32; 2]; 2], flatten: f32, angle_deg: u16) -> WarpedDab {
+pub fn warped_dab(warp: CanvasWarp, flatten: f32, angle_deg: u16) -> WarpedDab {
     // ⭐⭐⭐ **O ATALHO DA IDENTIDADE é LOAD-BEARING, e o gate apanhou-o:** sem ele a decomposição
     // devolvia `radius_scale = 1,0000006` e `flatten = 0,39999998` sobre uma arte em REPOUSO —
     // números plausíveis e **outra tinta**, em toda pincelada do app. *«Byte a byte» não é uma
     // promessa que uma raiz quadrada cumpra: é um `if`.*
-    if warp == [[1.0, 0.0], [0.0, 1.0]] {
+    if warp.linear == [[1.0, 0.0], [0.0, 1.0]] && warp.is_straight() {
         return WarpedDab {
             radius_scale: 1.0,
             flatten,
             angle_deg,
+            curve: crate::FootprintCurve::flat(),
         };
     }
-    let det = warp[0][0] * warp[1][1] - warp[0][1] * warp[1][0];
+    let linear = warp.linear;
+    let det = linear[0][0] * linear[1][1] - linear[0][1] * linear[1][0];
     if !det.is_finite() || det.abs() < 1e-6 {
         return WarpedDab {
             radius_scale: 1.0,
             flatten,
             angle_deg,
+            curve: crate::FootprintCurve::flat(),
         };
     }
     // `W⁻¹` — o que a textura tem de ter para o ecrã ver o disco.
     let inv = [
-        [warp[1][1] / det, -warp[0][1] / det],
-        [-warp[1][0] / det, warp[0][0] / det],
+        [linear[1][1] / det, -linear[0][1] / det],
+        [-linear[1][0] / det, linear[0][0] / det],
     ];
     let e = authored_matrix(flatten, angle_deg);
     // `A = W⁻¹ · E`: do disco unitário para a elipse a pintar na textura.
@@ -133,11 +185,60 @@ pub fn warped_dab(warp: [[f32; 2]; 2], flatten: f32, angle_deg: u16) -> WarpedDa
     } else {
         [1.0, 0.0]
     };
+    let flatten_final = (1.0 - s2 / s1).clamp(0.0, crate::footprint::DAB_FLATTEN_MAX);
+    let angulo = nearest_degree(dir);
     WarpedDab {
         radius_scale: s1,
         // ⚠️ A cerca é a do próprio footprint: uma lasca infinitamente fina não é pintável.
-        flatten: (1.0 - s2 / s1).clamp(0.0, crate::footprint::DAB_FLATTEN_MAX),
-        angle_deg: nearest_degree(dir),
+        flatten: flatten_final,
+        angle_deg: angulo,
+        curve: curvatura(warp.curve, e, linear, s1, flatten_final, angulo),
+    }
+}
+
+/// A curvatura levada ao referencial da pegada — ver [`super::canvas_warp_curve`], que tem a conta
+/// inteira e o porquê do `V`.
+///
+/// ⛔ **Sem dobra declarada a resposta é PLANA sem tocar num float** — o atalho que mantém byte a
+/// byte toda pincelada sobre arte que não está dobrada.
+fn curvatura(
+    curve: [[f32; 7]; 2],
+    e: [[f32; 2]; 2],
+    linear: [[f32; 2]; 2],
+    s1: f32,
+    flatten: f32,
+    angle_deg: u16,
+) -> crate::FootprintCurve {
+    use super::canvas_warp_curve as cc;
+    if curve.iter().flatten().all(|c| *c == 0.0) {
+        return crate::FootprintCurve::flat();
+    }
+    let Some(e_inv) = cc::inverte(e) else {
+        return crate::FootprintCurve::flat();
+    };
+    // `G₁ = s₁·E⁻¹·L` — a parte linear do mapa exacto, no referencial do amostrador.
+    let g1_raw = cc::produto(e_inv, linear);
+    let g1 = [
+        [g1_raw[0][0] * s1, g1_raw[0][1] * s1],
+        [g1_raw[1][0] * s1, g1_raw[1][1] * s1],
+    ];
+    let rot = crate::texture::rotate_by_degrees(angle_deg);
+    let inv_minor = 1.0 / (1.0 - flatten);
+    if !inv_minor.is_finite() {
+        return crate::FootprintCurve::flat();
+    }
+    let composta = cc::compoe(curve, e_inv, cc::v_transposta(g1, rot, inv_minor), s1, rot);
+    // ⛔⛔ **A CERCA:** uma dobra violenta faz o mapa dobrar sobre si mesmo dentro do dab, e aí a
+    // curvatura sai PIOR do que não corrigir nada — o erro que a W11b já pagou com a facete. A
+    // pegada tem de continuar amostrável; se não estiver, a elipse é a resposta honesta.
+    // Ver [`crate::FootprintDeform::is_sampleable`], que tem o número.
+    if crate::FootprintDeform::new(flatten, angle_deg)
+        .with_curve(composta)
+        .is_sampleable()
+    {
+        composta
+    } else {
+        crate::FootprintCurve::flat()
     }
 }
 

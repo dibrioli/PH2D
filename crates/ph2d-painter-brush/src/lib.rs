@@ -31,6 +31,7 @@ pub mod blend;
 pub mod blur;
 pub mod blur_grain;
 pub mod canvas_warp;
+mod canvas_warp_curve;
 pub mod clone;
 pub mod clone_grain;
 pub mod curve_fit;
@@ -154,7 +155,7 @@ pub use falloff_curve::{
     FalloffCurve, FalloffPoint, HandleType, MAX_FALLOFF_POINTS, MAX_HANDLE_TYPES,
     eval_falloff_curve,
 };
-pub use footprint::{DAB_FLATTEN_MAX, FootprintDeform};
+pub use footprint::{DAB_FLATTEN_MAX, FootprintCurve, FootprintDeform};
 pub use height::{DepthSource, DrawTo};
 pub use jitter::shift_colors_like;
 pub use mask_ops::{MaskCanvasOp, apply_mask_op};

@@ -1,6 +1,6 @@
 //! Os gates da porta da deformação do canvas — ver [`super`].
 
-use super::{WarpedDab, warped_dab};
+use super::{CanvasWarp, WarpedDab, warped_dab};
 
 const I: [[f32; 2]; 2] = [[1.0, 0.0], [0.0, 1.0]];
 
@@ -10,17 +10,18 @@ const I: [[f32; 2]; 2] = [[1.0, 0.0], [0.0, 1.0]];
 fn at_rest_the_door_is_a_bit_exact_no_op() {
     for (flatten, angle) in [(0.0, 0u16), (0.4, 30), (0.9, 271)] {
         assert_eq!(
-            warped_dab(I, flatten, angle),
+            warped_dab(CanvasWarp::linear(I), flatten, angle),
             WarpedDab {
                 radius_scale: 1.0,
                 flatten,
-                angle_deg: angle
+                angle_deg: angle,
+                curve: crate::FootprintCurve::flat(),
             },
             "em repouso a porta devolve o que entrou"
         );
     }
     // ⛔ O CONTROLO: sem ele, uma porta que devolvesse sempre a entrada passaria no gate acima.
-    let esticada = warped_dab([[2.0, 0.0], [0.0, 1.0]], 0.0, 0);
+    let esticada = warped_dab(CanvasWarp::linear([[2.0, 0.0], [0.0, 1.0]]), 0.0, 0);
     assert!(
         esticada != WarpedDab::identity(),
         "uma deformacao real TEM de mover os numeros: {esticada:?}"
@@ -32,7 +33,7 @@ fn at_rest_the_door_is_a_bit_exact_no_op() {
 /// achatamento é `1 − ⅓`, com o eixo MAIOR em `x`.
 #[test]
 fn a_squeezed_axis_paints_a_stretched_ellipse() {
-    let w = warped_dab([[1.0 / 3.0, 0.0], [0.0, 1.0]], 0.0, 0);
+    let w = warped_dab(CanvasWarp::linear([[1.0 / 3.0, 0.0], [0.0, 1.0]]), 0.0, 0);
     assert!(
         (w.radius_scale - 3.0).abs() < 1e-5,
         "o raio segue o eixo MAIOR: {w:?}"
@@ -53,7 +54,7 @@ fn a_squeezed_axis_paints_a_stretched_ellipse() {
 fn the_painted_ellipse_comes_back_round_on_screen() {
     // Uma deformação com corte (o que um triângulo dobrado de facto faz).
     let warp = [[0.5, 0.25], [0.0, 1.5]];
-    let d = warped_dab(warp, 0.0, 0);
+    let d = warped_dab(CanvasWarp::linear(warp), 0.0, 0);
     let [c, s] = crate::texture::rotate_by_degrees(d.angle_deg);
     let (maior, menor) = (d.radius_scale, d.radius_scale * (1.0 - d.flatten));
     // Os dois semi-eixos da elipse pintada, levados ao ecrã pela deformação.
@@ -81,13 +82,14 @@ fn the_painted_ellipse_comes_back_round_on_screen() {
 /// entrada, e o traço continua a ser o que o artista pediu.
 #[test]
 fn a_collapsed_triangle_is_refused_not_amplified() {
-    let d = warped_dab([[1.0, 2.0], [0.5, 1.0]], 0.3, 45);
+    let d = warped_dab(CanvasWarp::linear([[1.0, 2.0], [0.5, 1.0]]), 0.3, 45);
     assert_eq!(
         d,
         WarpedDab {
             radius_scale: 1.0,
             flatten: 0.3,
-            angle_deg: 45
+            angle_deg: 45,
+            curve: crate::FootprintCurve::flat(),
         }
     );
 }
@@ -115,7 +117,7 @@ fn the_painted_dab_seen_through_the_warp_is_the_authored_ellipse() {
     ] {
         for (flatten, angle) in [(0.0_f32, 0_u16), (0.4, 0), (0.4, 37), (0.25, 115)] {
             let autorada = FootprintDeform::new(flatten, angle);
-            let d = warped_dab(warp, flatten, angle);
+            let d = warped_dab(CanvasWarp::linear(warp), flatten, angle);
             let pintada = FootprintDeform::new(d.flatten, d.angle_deg);
             // A fronteira do que o motor pinta, escalada pelo raio que ele usa e LEVADA pela
             // deformação: é isto que chega ao olho.
@@ -147,4 +149,143 @@ fn the_painted_dab_seen_through_the_warp_is_the_authored_ellipse() {
         }
     }
     assert_eq!(casos, 4 * 4 * 256, "o corpus mudou de tamanho");
+}
+
+/// Os monómios de grau `2` e `3` de `d`, na ordem da [`crate::FootprintCurve`].
+fn monomios(d: [f32; 2]) -> [f32; 7] {
+    let (x, y) = (d[0], d[1]);
+    let (xx, xy, yy) = (x * x, x * y, y * y);
+    [xx, xy, yy, xx * x, xx * y, xy * y, yy * y]
+}
+
+/// O mapa VERDADEIRO da arte dobrada: `ecrã(d) = L·d + K(d)`, com o raio do footprint em `1` (as
+/// contas desta porta cancelam-no, e é isso que deixa o gate viver sem malha nenhuma).
+fn dobra(linear: [[f32; 2]; 2], k: [[f32; 7]; 2], d: [f32; 2]) -> [f32; 2] {
+    let m = monomios(d);
+    let mut out = [
+        linear[0][0] * d[0] + linear[0][1] * d[1],
+        linear[1][0] * d[0] + linear[1][1] * d[1],
+    ];
+    for (o, row) in out.iter_mut().zip(k.iter()) {
+        for (c, mk) in row.iter().zip(m.iter()) {
+            *o += c * mk;
+        }
+    }
+    out
+}
+
+/// O pior desvio entre a fronteira do que o motor pinta (levada pela dobra) e a elipse autorada.
+///
+/// ⚠️⚠️ **É PONTUAL, e a primeira redacção não era** — ela procurava, para cada ponto da elipse
+/// autorada, o ponto mais próximo da fronteira pintada. Isso mede também a **desigualdade das duas
+/// amostragens**: com uma dobra forte a parametrização do contorno fica muito não-uniforme, os
+/// pontos vizinhos afastam-se, e a régua lia `0,062` sobre uma composição que a álgebra diz ser
+/// EXACTA. *Uma régua que compara dois conjuntos por vizinho mais próximo mede o espaçamento deles,
+/// não a lei.*
+///
+/// ⇒ a lei é pontual e não precisa de emparelhar nada: **todo ponto da fronteira pintada, visto
+/// pela dobra, está SOBRE a elipse autorada** — e «estar sobre» é o amostrador dela dar `1`.
+fn desvio(
+    linear: [[f32; 2]; 2],
+    k: [[f32; 7]; 2],
+    flatten: f32,
+    angle: u16,
+    d: super::WarpedDab,
+) -> f32 {
+    use crate::footprint::FootprintDeform;
+    let autorada = FootprintDeform::new(flatten, angle);
+    let pintada = FootprintDeform::new(d.flatten, d.angle_deg).with_curve(d.curve);
+    (0..512)
+        .map(|j| {
+            let p = pintada.outline_at(j as f32 / 512.0);
+            let v = dobra(linear, k, [p[0] * d.radius_scale, p[1] * d.radius_scale]);
+            (autorada.falloff_t(v[0], v[1]) - 1.0).abs()
+        })
+        .fold(0.0_f32, f32::max)
+}
+
+/// ⭐⭐⭐ **A IDENTIDADE, GENERALIZADA PARA A DOBRA** — e é este o gate que prova a wave inteira.
+///
+/// O irmão [`the_painted_dab_seen_through_the_warp_is_the_authored_ellipse`] mede `W·(W⁻¹E) = E`
+/// para um `W` **linear**. Aqui o mapa da arte é `L·d + K(d)`, com os graus `2` e `3` de uma dobra
+/// a sério — e a lei tem de continuar a valer: *o que o motor pinta, levado pela arte dobrada, É a
+/// elipse que o artista autorou*.
+///
+/// ⚠️ **Ele mede a cadeia toda de uma vez**, que é a razão de existir: a decomposição em três
+/// números **e** a rotação `V` que leva a curvatura ao referencial da pegada
+/// ([`super::canvas_warp_curve`]) **e** o `outline_at` a perseguir uma curva de nível que já não é
+/// uma elipse. Qualquer uma delas errada, e o desvio salta.
+///
+/// # As TRÊS asserções, e porque são três
+///
+/// 1. ⛔⛔ **NUNCA PIOR que não corrigir** — sobre toda a população, dobras violentas incluídas.
+///    *Esta é a que este módulo já pagou uma vez*: na W11b a correcção pela facete deixava a marca
+///    menos redonda do que deixá-la em paz. Medido aqui: sem a cerca da
+///    [`crate::FootprintDeform::is_sampleable`] o pior caso sai a **`0,994`** contra `0,611` sem
+///    correcção — e com ela sai **exactamente** `0,611`, que é a degradação certa.
+/// 2. ⭐ **MUITO melhor onde a dobra é amostrável** — senão a cerca podia curar tudo desistindo de
+///    tudo, e as duas primeiras asserções ficavam verdes sobre o produto de ontem.
+/// 3. ⛔ **E um PISO DE POPULAÇÃO**: pelo menos dois terços do corpus tem de conservar a
+///    curvatura. *Sem ele, uma cerca apertada demais apaga a wave e nenhum número acusa.*
+#[test]
+fn the_painted_dab_seen_through_a_fold_is_the_authored_ellipse() {
+    let (mut casos, mut curvos) = (0, 0);
+    let (mut pior_razao, mut pior_com, mut melhor_sem) = (0.0_f32, 0.0_f32, f32::INFINITY);
+    for linear in [
+        [[1.0_f32, 0.0], [0.0, 1.0]],
+        [[0.6, 0.0], [0.0, 1.0]],
+        [[1.0, 0.35], [-0.2, 1.2]],
+    ] {
+        for k in [
+            [[0.22_f32, 0.0, -0.13, 0.0, 0.0, 0.0, 0.0], [0.0; 7]],
+            [[0.0; 7], [0.05, 0.0, 0.0, 0.16, -0.08, 0.0, 0.11]],
+            [
+                [0.10, -0.06, 0.04, 0.03, 0.0, -0.02, 0.0],
+                [-0.05, 0.11, 0.0, 0.0, 0.06, 0.0, -0.04],
+            ],
+        ] {
+            for (flatten, angle) in [(0.0_f32, 0_u16), (0.4, 37), (0.25, 115)] {
+                let d = warped_dab(CanvasWarp { linear, curve: k }, flatten, angle);
+                let com = desvio(linear, k, flatten, angle, d);
+                let sem = desvio(
+                    linear,
+                    k,
+                    flatten,
+                    angle,
+                    super::WarpedDab {
+                        curve: crate::FootprintCurve::flat(),
+                        ..d
+                    },
+                );
+                casos += 1;
+                pior_razao = pior_razao.max(com / sem);
+                if !d.curve.is_flat() {
+                    curvos += 1;
+                    pior_com = pior_com.max(com);
+                    melhor_sem = melhor_sem.min(sem);
+                }
+            }
+        }
+    }
+    assert_eq!(casos, 3 * 3 * 3, "o corpus mudou de tamanho");
+    assert!(
+        pior_razao <= 1.0 + 1e-4,
+        "houve um caso em que a curvatura deixou a marca PIOR do que não corrigir \
+         (razão {pior_razao}) — é o defeito da W11b de volta, um grau acima"
+    );
+    assert!(
+        pior_com < 2.5e-2,
+        "onde a dobra é amostrável, o que o motor pinta ainda se afasta {pior_com} da elipse \
+         autorada — a curvatura não está a fechar a lei"
+    );
+    assert!(
+        melhor_sem > 4.0 * pior_com,
+        "o MELHOR caso sem curvatura ({melhor_sem}) tem de estar muito acima do PIOR com ela \
+         ({pior_com}) — sem margem, este gate deixou de distinguir a cura do defeito"
+    );
+    assert!(
+        curvos * 3 >= casos * 2,
+        "só {curvos} de {casos} casos conservaram a curvatura — a cerca está a apagar a wave, e \
+         as asserções de cima ficariam verdes sobre o produto de ontem"
+    );
 }

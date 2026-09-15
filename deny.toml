@@ -60,6 +60,24 @@ allow = ["MIT"]
 name = "r-efi"
 
 [[licenses.exceptions]]
+# clipper2-rust is BSL-1.0 only (Boost Software License — permissive,
+# MIT-equivalent, OSI-approved + FSF-Free; the same grant already accepted
+# below for error-code/clipboard-win).
+#
+# ⚠️ Pulled by `manifold-rust`, the Apache-2.0 pure-Rust mesh-boolean engine
+# behind `ph2d-mesh-bool` (the cut of the sculpt module). Clipper2 is the 2D
+# polygon-clipping half that the engine uses for cross-sections; it is not
+# optional behind a feature flag (measured: the only flags are `parallel` and
+# `nalgebra`).
+#
+# ⛔ It was measured BEFORE the dependency landed: of the 12 packages the engine
+# pulls, eleven are MIT/Apache-2.0 and this is the one that our allow-list does
+# not cover globally. Without this entry `./scripts/ship.sh` fails — and it is
+# the LAST gate before push, which is the most expensive place to find out.
+allow = ["BSL-1.0"]
+name = "clipper2-rust"
+
+[[licenses.exceptions]]
 # error-code + clipboard-win are BSL-1.0 only (Boost Software
 # License — permissive, MIT-equivalent, OSI-approved + FSF-Free).
 # Both pulled by `arboard`, which shells/desktop uses for Cmd+C/V

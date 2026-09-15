@@ -1,0 +1,42 @@
+[package]
+name = "ph2d-mesh-bool"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+# A FRONTEIRA da booleana de malha — cortar uma peça com outra.
+#
+# ⭐⭐ **Ela existe para ser SUBSTITUÍVEL.** A superfície que o produto precisa é
+# de CINCO chamadas (importar · ler estado · operar · exportar · e a conversão
+# que é nossa), e é isso que cabe aqui: trocar o motor por outro é reescrever
+# ESTE ficheiro, nunca o módulo que corta. A `SPEC_trim_gesture.md` §1.5.4 mede
+# a superfície e a §1.5.9 diz porque a fronteira é a mitigação do único risco
+# da dependência escolhida — a IDADE dela.
+#
+# ⛔⛔ E ela existe por uma segunda razão, que é a mais cara: **o motor falha em
+# SILÊNCIO**. Com malha aberta ele devolve malha VAZIA e o estado do RESULTADO
+# diz «sem erro» (reproduzido nesta casa, ver o cabeçalho de `lib.rs`). Quem
+# chamar o motor directamente e verificar o resultado entrega uma escultura
+# APAGADA. A lei que impede isso vive aqui, num sítio só.
+
+[lib]
+
+[dependencies]
+# ph2d-mesh: a entrada e a saída são `Mesh` — esta crate é uma PORTA entre a
+# nossa malha e um motor de terceiros, e não um formato próprio.
+ph2d-mesh = { path = "../ph2d-mesh" }
+
+# ⭐ O motor. Apache-2.0, **Rust puro** — sem `cc`, sem `cmake`, sem rede na
+# build (medido: `16,66 s` a frio contra `1 min 39 s` da rota que liga a C++,
+# nas três plataformas do CI). A triagem que o pôs em T0 está na
+# `SPEC_trim_gesture.md` §1.4/§1.5 e no ADR desta decisão.
+# ⚠️ `default-features = false`: a bandeira `parallel` fica DESLIGADA de
+# propósito — o corte corre no fecho de um gesto, e um pool de threads dentro
+# de uma operação de 68 ms compete com o quadro que a desenha.
+manifold-rust = { version = "0.13.1", default-features = false }
+
+[lints]
+workspace = true

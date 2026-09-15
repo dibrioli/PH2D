@@ -76,15 +76,11 @@ fn cena_45(device: &wgpu::Device) -> Sculpt3dScene {
     if std::env::var("SEM_MASCARA").is_ok() {
         s.brush.surface_only = false;
     }
-    if let Ok(v) = std::env::var("FORCA") {
-        if let Ok(f) = v.parse::<f32>() {
-            s.brush.strength = f;
-        }
+    if let Some(f) = std::env::var("FORCA").ok().and_then(|v| v.parse().ok()) {
+        s.brush.strength = f;
     }
-    if let Ok(v) = std::env::var("RAIO_PX") {
-        if let Ok(r) = v.parse::<f32>() {
-            s.radius_px = r;
-        }
+    if let Some(r) = std::env::var("RAIO_PX").ok().and_then(|v| v.parse().ok()) {
+        s.radius_px = r;
     }
     s
 }

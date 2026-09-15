@@ -14,6 +14,11 @@ use ph2d_host::{KeyEvent, PointerEvent};
 
 #[path = "forwarding_persist.rs"]
 mod persist;
+/// ⭐ O diagnóstico da escolha do conta-gotas (`PH2D_PICK_LOG=1`) — ver o `//!` do módulo. ⚠️ Ele
+/// mora AQUI, e não na raiz: o sujeito dele é esta escolha, e a raiz é o ficheiro que o tecto de
+/// LOC da shell aperta primeiro.
+#[path = "pick_log.rs"]
+mod pick_log;
 /// ⭐ As duas coisas que o selector de cor não sabe fazer sozinho — ver o `//!` do módulo.
 #[path = "forwarding_picker.rs"]
 mod picker;
@@ -61,7 +66,7 @@ pub fn forward_to_hero(
             // + panel hit from `hero` first, then pass the render fields by value/ref to the helper.
             let selection = hero.gizmo.selection;
             let on_panel = hero.store.panel_at(px as f32, py as f32).is_some();
-            let picked = painter_eyedropper_sample(
+            let autorada = painter_eyedropper_sample(
                 &mut gfx.tools,
                 &gfx.sim,
                 gfx.present.world_mut(),
@@ -71,27 +76,45 @@ pub fn forward_to_hero(
                 on_panel,
                 px as f32,
                 py as f32,
-            )
-            // ⭐⭐⭐ **A COR QUE O ARTISTA VÊ** (2026-09-15) — até aqui esta linha lia SÓ a camada
-            // do Vello, que sobre o canvas é transparente por construção: o conta-gotas devolvia
+            );
+            // ⭐⭐⭐ **A COR QUE O ARTISTA VÊ** (2026-09-15) — a reserva lia SÓ a camada do Vello,
+            // que sobre o canvas é transparente por construção: o conta-gotas devolvia
             // `#00000000` em quase todo o ecrã (report do dono: *«não funciona de maneira nenhuma
             // e em nenhum lugar»*). O quadro tem DUAS metades em texturas diferentes — o mundo
             // (sprites, imagens, a prévia do Painter) e o chrome (os painéis **e a arte vectorial
             // do documento**) —, e a cor do ecrã é a composição delas. Ver
             // [`ph2d_render::screen_pick`].
-            .or_else(|| {
-                ph2d_render::screen_color(
-                    gfx.surface.gpu(),
-                    ph2d_render::world_source(
-                        gfx.compositor_reads_world,
-                        &gfx.world_rt,
-                        &gfx.tonemap,
-                    ),
-                    gfx.vello_pass.intermediate_texture(),
+            let mundo =
+                ph2d_render::world_source(gfx.compositor_reads_world, &gfx.world_rt, &gfx.tonemap);
+            let do_ecra = ph2d_render::screen_color(
+                gfx.surface.gpu(),
+                mundo,
+                gfx.vello_pass.intermediate_texture(),
+                px,
+                py,
+            );
+            // ⚠️ **O DIAGNÓSTICO da escolha** (`PH2D_PICK_LOG=1`) — ele imprime as DUAS respostas e
+            // de que textura veio o mundo. *Um report de «não funciona» sobre um caminho que tem
+            // duas fontes e dois modos não tem como ser diagnosticado por leitura.*
+            if pick_log::armado() {
+                pick_log::diz(
                     px,
                     py,
-                )
-            });
+                    gfx.compositor_reads_world,
+                    selection,
+                    on_panel,
+                    autorada,
+                    do_ecra,
+                    ph2d_render::read_texel(gfx.surface.gpu(), mundo, px, py),
+                    ph2d_render::read_texel(
+                        gfx.surface.gpu(),
+                        gfx.vello_pass.intermediate_texture(),
+                        px,
+                        py,
+                    ),
+                );
+            }
+            let picked = autorada.or(do_ecra);
             if let Some([r, g, b, a]) = picked {
                 hero.store
                     .set_blender_value(parent, ph2d_tokens::ColorValue::from_rgba8(r, g, b, a));

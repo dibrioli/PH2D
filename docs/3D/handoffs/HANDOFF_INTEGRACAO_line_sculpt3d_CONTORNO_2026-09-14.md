@@ -2520,3 +2520,172 @@ entrada no `FILE_OVERAGE_OK`:
 | 3 | os **6** verbos que o arnês não acorda | ⏳ `Density`/`Boundary`/`Cloth` por LEI (a lei deles não vive no `dab`); `ClayThumb`/`MultiplaneScrape`/`SmearMultires` são **dívida do arnês**, cada um com o que lhe falta escrito na catraca |
 | 4 | o `Strength` e a curva do **`Density`** | ⏳ **decisão do dono** por tomar (esconder ou pintar em cinzento) — a porta da cura já existe |
 | 5 | o censo cobre a secção do **pincel**; as outras secções não têm censo equivalente | ⏳ nomeado |
+
+---
+
+## §31 — ⛔⛔⛔ *«os outros 2 botões ainda não funcionam»* — os chips de `Deformation` estavam **MORTOS SOB O DEDO**, e a cura é estrutural
+
+> Report do dono, 2026-09-15: *«precisamos que os botões de deformation fiquem na
+> seção details junto com os outros parâmetros do pincel. Não devem ser ativados
+> com CTRL mas checando o botão no painel. Os outros 2 botões ainda não
+> funcionam.»* · `41b2710e3`
+
+### §31.1 — A terceira frase era um DEFEITO, e não a lei
+
+Medidas as cinco deformações **pelo caminho do produto, na peça da própria
+cena** (a esfera com orelha da `=41`, cursor no ápice, dois eventos):
+
+| deformação | ao longo da orelha (`+y`) | atravessado (`+x`) |
+|---|---|---|
+| `Rotate` | `5,96e-8` | **`2,11e-1`** |
+| `Twist` | `8,40e-2` | `8,40e-2` |
+| `Scale` | **`2,98e-1`** | `2,11e-1` |
+| `Translate` | `1,25e-1` | `1,25e-1` |
+| `Squash / Stretch` | **`5,42e-1`** | `2,98e-8` |
+
+⇒ **as cinco movem barro.** O que não funcionava era o **CLIQUE**.
+
+⚠️ **A primeira sonda quase fabricou a conclusão errada:** corrida numa esfera
+LISA, com o cursor no pólo e o eixo da cadeia a apontar à câmara, `Scale` e
+`Squash` liam ruído de `f32` — porque as duas lêem a componente do arrasto **ao
+longo** do osso, e ali o artista não consegue produzir nenhuma. *A fixtura tem de
+ser a da cena que o dono usou*, e é a quinta vez que esta linha o escreve.
+
+### §31.2 — ⛔⛔ A causa: pintado, hit-indexado, com braço — e **não registado**
+
+Uma fileira de chips vive em **três** sítios: o `paint` desenha-a e hit-indexa-a,
+o `event` dá-lhe um braço, o `populate` **regista-a**. O
+`SCULPT3D_POSE_MODE` estava nos dois primeiros e **fora do terceiro**.
+
+⚠️⚠️ **E o sintoma que chega ao dono é o pior possível:** ele não lê *«o botão
+não responde»* — ele lê *«a ferramenta não funciona»*, porque o pincel **fica** no
+modo de omissão e as outras deformações parecem leis partidas. *Um controlo nunca
+pintado e um morto sob o dedo dão o MESMO report.*
+
+⛔ **E não eram só os da pose.** O censo achou mais dois grupos na mesma
+condição — `SCULPT3D_BOUNDARY_MODE` (6) e `SCULPT3D_BOUNDARY_FALLOFF` (4) —,
+**13 chips** em dois pincéis; e o gate de costura novo achou um **quarto caso, de
+outra espécie**: o `Pin far end` e o `Scale without rotating` vivem na tabela
+`TOGGLES` e o `populate` tinha uma **segunda lista escrita à mão** ao lado dela,
+sem os dois. Com o `Pin far end` morto, **metade da espec §5.1 era inexprimível
+pelo artista** (ele é o que separa uma rotação em torno do pivô de um arrasto
+rígido).
+
+### §31.3 — ⭐⭐⭐ A cura é ESTRUTURAL, porque esta é a **SÉTIMA** ocorrência
+
+O cabeçalho do próprio `populate.rs` já descreve o defeito, e o ficheiro já
+carrega **três** registos dele (a matriz da física, o filtro de tecido, o
+esfregão). A cura por «escrever mais um gate de costura» depende de alguém se
+lembrar de armar o pincel certo — e *uma fixtura que não contém o fenómeno não
+afirma nada sobre ele*: com o `Crease` na mão a fileira do tecido nem é
+desenhada; com o tecido na mão a da pose nem é desenhada.
+
+⇒ três peças, e as duas primeiras não armam pincel nenhum:
+
+1. **[`populate_censo_tests`](../../../crates/ph2d-panel-sculpt3d/src/populate_censo_tests.rs)** —
+   censo **DERIVADO**: toda fileira que o `event.rs` despacha por `index_of` tem
+   de ser registada, e toda registada tem de ter braço. ⚠️ **As duas metades,
+   porque as curas são OPOSTAS** (§5.0: um morto liga-se, um órfão apaga-se), com
+   **piso de população** (`≥ 20` dos dois lados) e **controlo positivo da
+   extracção** (três nomes que têm de lá estar) — *uma contagem sozinha não prova
+   que a extracção lê o que promete ler*. ⚠️ E ela peneira as linhas de
+   **comentário**: os dois ficheiros citam nomes de `SCULPT3D_*` na prosa, e *um
+   censo textual que não separa prosa de código mente nos dois sentidos*.
+2. **Os interruptores saem da TABELA que os despacha** — a mesma lei que o bloco
+   dos `COMMANDS` logo acima já aplicava, e que esta lista violava havia
+   **dezassete** entradas. Gate
+   `nenhum_interruptor_da_tabela_e_nomeado_a_mao_no_populate`. ⚠️ O doc do módulo
+   dizia *«os SEIS interruptores»* e eram `17` — *uma contagem escrita à mão ao
+   lado de uma tabela envelhece na primeira adição*, e esta envelheceu onze
+   vezes.
+3. **`every_pose_control_is_clickable_where_it_is_drawn`** — a **reprodução**,
+   com clique REAL no centro pintado. Foi ele que achou o `Pin far end`, que o
+   censo (que só cobre arrays) não podia ver.
+
+### §31.4 — ⭐⭐⭐ As CINCO deformações passam a ser CINCO BOTÕES
+
+Ordem do dono. O alvo tem **três** modos e cada um esconde a segunda metade
+atrás do modificador de inversão — *um gesto que só existe se o artista adivinhar
+o modificador é meio gesto*.
+
+| a lei lê | o artista escolhe |
+|---|---|
+| `(GirarTorcer, false)` | **Rotate** |
+| `(GirarTorcer, true)` | **Twist** |
+| `(EscalarTransladar, false)` | **Scale** |
+| `(EscalarTransladar, true)` | **Translate** |
+| `(EspremerEsticar, —)` | **Squash / Stretch** |
+
+⚠️⚠️ **A LEI NÃO MUDOU, e é por isso que os `69` traços do oráculo ficam
+intactos.** O [`ph2d_pose::Controlos`] continua a ser `(modo, invertido)` e o
+`deformacao()` continua a resolvê-los; o que mudou foi **quem escolhe**. A ponte
+entra por `Deformacao::modo_e_inversao`, a inversa exacta, com **gate de
+ida-e-volta nos dois sentidos** — a ida prova que toda deformação tem par, a
+**volta** prova que todo par que a lei resolve é **alcançável** pelo painel
+(sem ela, uma deformação podia desaparecer da lista e o gate ficava verde).
+
+⛔ **E o `Brush::invert` deixa de chegar a este verbo.** Com as cinco à vista, o
+`Ctrl` seria a **segunda** maneira de dizer a mesma coisa — e uma que **COMPÕE**:
+escolher `Twist` no painel e carregar `Ctrl` devolveria `Rotate`, e o artista
+leria isso como *«o botão não funciona»*. É o argumento que o
+[`Verb::honours_invert`] já escreve para os dois `Grip::Turn`. Gate
+`o_ctrl_nao_troca_a_deformacao_da_pose` (**ao bit**, sobre as cinco), com o
+controlo positivo `a_deformacao_escolhida_muda_o_gesto` — sem ele, o primeiro
+ficaria verde sobre um pincel que não faz nada.
+
+⚠️ **O arrasto do controlo positivo tem componente nos DOIS eixos de propósito:**
+a escala e o espremer lêem a componente **axial** e a rotação a **transversal**;
+num eixo só, duas das cinco sairiam inertes e o gate leria isso como duas leis
+iguais.
+
+### §31.5 — A fileira sobe para junto dos knobs do pincel
+
+Ela vivia no **fim** da cauda da secção — depois da curva, do padrão e das
+fileiras do tecido —, logo o `Deformation` aparecia a meia dúzia de fileiras de
+distância do `Segments`, do `Pivot offset` e do `Weight smoothing`, que são os
+outros três controlos do **mesmo** pincel. *Um controlo separado dos irmãos por
+controlos de outro assunto lê-se como sendo de outro assunto.*
+
+⚠️ **É o TOPO da cauda e não o bloco de knobs**, e a diferença é estrutural:
+aquele bloco é percorrido a partir da tabela de `Row`, e uma fileira de chips não
+é uma `Row`. Aqui ela fica imediatamente abaixo do último knob do pincel, que é o
+mesmo sítio aos olhos de quem lê.
+
+### §31.6 — O roteiro, e o gate que o obriga a ser alcançável
+
+A `=41` passa a **dez** passos, **cinco botões e zero `Ctrl`** — e a lei do
+arrasto **AO LONGO do osso** fica escrita onde ela morde (*«arrastar de travessão
+move pouco, e isso é a lei, não um defeito»*).
+
+⛔⛔ **E o passo do `Auto-Smooth` QUASE shipou a mandar o dono subir um controlo
+que ele não vê:** aquela fileira é `UiLevel::Pro` e o painel nasce em `Basic`.
+*Um passo que manda clicar numa linha AFIRMA que ela está lá, e o dono aprova o
+smoke com o passo impossível dentro — ele conclui que não achou, não que não
+existe.* ⇒ `as_fileiras_que_o_roteiro_nomeia_sao_alcancaveis_com_a_pose_na_mao`,
+com duas metades porque as quatro superfícies do roteiro são de dois tipos: as
+que são `Row` saem da **tabela** do painel (com a asserção de que o nível
+prometido é o nível **real** — uma fileira prometida no `Pro` tem de estar mesmo
+escondida no `Basic`, senão a frase que manda trocar o interruptor é ruído), e as
+duas que não são (`Pin far end`, `Deformation`) são presas pelo **texto do
+pintor** por `include_str!`.
+
+### §31.7 — O portão
+
+**`15 218` testes, `15 216` verdes.** As **duas** reprovadas são membros
+**confirmados** da família de flakes de recurso sob fan-out do §5.0
+(`no_expression_allocates_no_link_frame` · `measure_normals_parallel_speedup`),
+com as três assinaturas: zero linhas do diff desta jornada naquelas crates, e
+**3 de 3 verde sozinhas a `load 67–71`** — que é **oito vezes** a carga em que
+reprovaram (`8,92`). *O discriminador é o FAN-OUT, não o relógio.*
+
+Clippy `--all-targets` limpo nas quatro crates; tectos de LOC verdes sem
+isenções novas. **Mutação 4 de 4** (o laço da `TOGGLES` apagado · um interruptor
+nomeado à mão · o grupo de chips fora do registo · o nível prometido do roteiro).
+
+### §31.8 — ⏳ O que fica ABERTO
+
+| # | item | estado |
+|---|---|---|
+| 1 | os do §30.9 | ⏳ inalterados, menos o `Pose × falloff`, que agora tem botão próprio (`Twist`) e continua **inerte no `Rotate`** — a entrada da catraca fica, com a razão actualizada |
+| 2 | o censo cobre os grupos de **array** e a tabela de **toggles**; um id **solto** pintado à mão fora das duas continua invisível a ele | ⏳ nomeado — hoje sobram `5` nessa condição (`REF_MODE_ALL`, os três eixos do espelho, o `CLOSE`), e os cinco têm gate de costura próprio |
+| 3 | o `Scale`/`Translate`/`Squash` lêem **só** a componente axial do arrasto | ⛔ é a lei da espec §5.4/§5.5, agora escrita no roteiro; se o dono quiser a componente transversal a fazer alguma coisa, é **decisão de produto** e muda a lei |

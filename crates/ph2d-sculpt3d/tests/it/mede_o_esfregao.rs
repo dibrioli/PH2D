@@ -304,3 +304,16 @@ fn mede_uma_referencia_sem_pilha() {
         );
     }
 }
+#[test]
+#[ignore = "sonda: o mapa verbo -> grip -> coluna de hoje"]
+fn sonda_do_mapa_dos_verbos() {
+    for v in ph2d_sculpt3d::Verb::ALL {
+        println!(
+            "{:<20} grip {:<22} ancora {:<5} mexe {}",
+            v.label(),
+            format!("{:?}", v.grip()),
+            v.anchors(),
+            v.mexe_na_topologia()
+        );
+    }
+}

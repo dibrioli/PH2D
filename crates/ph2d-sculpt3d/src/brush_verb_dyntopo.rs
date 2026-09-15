@@ -33,45 +33,43 @@ impl Verb {
     /// **ESTE VERBO PODE MEXER NA TOPOLOGIA DE TODO?** — a metade das duas
     /// colunas que NÃO depende de ajuste nenhum.
     ///
-    /// ⭐⭐⭐ **METADE DESTA TABELA É AGORA O VEREDITO DE UM ORÁCULO LIVRE**
-    /// (2026-09-14, `docs/3D/22`). O report do dono — *«algumas tools que não
-    /// deveriam subdividir estão fazendo (como smooth) e algumas que deveriam
-    /// não estão»* — foi **confirmado nos dois sentidos** pelo SculptGL, que é
-    /// **MIT** e portanto se lê e se porta com atribuição (§0.9: *a triagem de
-    /// licença pára na primeira porta ABERTA*).
+    /// ⭐⭐⭐ **ESTA TABELA É O VEREDITO DE DOIS ORÁCULOS** (2026-09-14,
+    /// `docs/3D/22`), e o report do dono — *«algumas tools que não deveriam
+    /// subdividir estão fazendo (como smooth) e algumas que deveriam não
+    /// estão»* — foi **confirmado nos dois sentidos**:
     ///
-    /// | verbo | o oráculo livre | nós, antes |
+    /// | fonte | licença | como | o que respondeu |
+    /// |---|---|---|---|
+    /// | a **livre** | **MIT** | ⭐ lê-se e porta-se, com atribuição (§0.9: *a triagem pára na primeira porta ABERTA*) | 13 ferramentas |
+    /// | a **medida** | GPL | ⛔ corre-se **sem interface**, por uma janela **E**; a saída é DADO (GPLv2 §0) | **27** tipos, `343` células |
+    ///
+    /// # A tabela, e a proveniência de cada célula
+    ///
+    /// | verbo | mexe? | de onde |
     /// |---|---|---|
-    /// | Draw · Clay · Inflate · Flatten · Pinch · Crease | **mexe** | mexia ✓ |
-    /// | **Smooth** | ⛔ **NÃO mexe** | mexia — **curado** |
-    /// | **Snake Hook · Twist · Local Scale** | ⭐ **mexe** | não mexia — **curado** |
-    /// | Move (agarrar) | não mexe | não mexia ✓ |
-    /// | **Mask** | ⛔ **NÃO mexe, e o alvo diz-o por escrito** | curado em 14/09 ✓ |
+    /// | Draw · Clay · Inflate · Flatten · Fill · Scrape · Pinch · Crease · Blob · Clay Strips · Clay Thumb · Multiplane Scrape | ✅ | as duas (onde as duas existem) |
+    /// | **Snake Hook** | ✅ | **as duas** — e foi preciso LIGAR a porta ao gesto ancorado |
+    /// | **Nudge** | ✅ | a medida (`441 → 2 853`) |
+    /// | **Twist · Local Scale** | ✅ | ⚠️⚠️ **as duas DISCORDAM** — ver o braço delas |
+    /// | **Smooth** | ⛔ | **as duas**, e o dono nomeou-o à letra |
+    /// | **Slide Relax · Surface Smooth · Layer** | ⛔ | a medida (`441 → 441` nos dois extremos) |
+    /// | Move · Thumb · Pose · Boundary · Cloth | ⛔ | as duas (onde as duas existem) |
+    /// | **Mask** | ⛔ | ⭐ **domínio**, curado um dia ANTES do estudo — e as duas confirmaram |
+    /// | Density | ✅ | ⛔ construção: ele **É** o passe de topologia |
+    /// | Erase · Smear Displacement | ⛔ | ⛔ construção: multirresolução exclui dyntopo (espec §5.6) |
+    /// | **Sharpen · Magnify** | ✅ | ⚠️ **NENHUM oráculo os responde** — valor conservador, com gate a nomeá-los |
     ///
     /// ⭐⭐ **A célula da MÁSCARA foi curada um dia ANTES do estudo, por
-    /// raciocínio, e o oráculo concordou** — ele **sobrescreve** a lei geral só
-    /// para ela, com um comentário a dizer que ali não há topologia dinâmica.
-    /// *Uma cura que o oráculo depois confirma é a melhor prova de que o
-    /// raciocínio que a produziu era do domínio e não do programa.*
+    /// raciocínio de domínio, e a referência livre depois SOBRESCREVEU a lei
+    /// geral dela para dizer o mesmo.** *Uma cura que o oráculo depois confirma
+    /// é a melhor prova de que o raciocínio que a produziu era do domínio e não
+    /// do programa.*
     ///
-    /// # ⚠️ O que ainda NÃO está respondido, e porquê
-    ///
-    /// O SculptGL tem **treze** ferramentas; nós temos **trinta e um** verbos.
-    /// Os que só existem na outra referência — Sharpen, Fill, Scrape, Magnify,
-    /// Blob, Clay Strips, Clay Thumb, Multiplane Scrape, Slide Relax, Surface
-    /// Smooth, Layer, Thumb, Nudge, Pose, Cloth, Boundary — **continuam com o
-    /// comportamento de hoje**, que é o valor conservador, e a resposta deles é
-    /// uma corrida de oráculo **atrás da parede** (GPL ⇒ corre-se, não se lê).
-    ///
-    /// ⛔ **E três verbos NÃO são pergunta de oráculo nenhum:**
-    ///
-    /// - **`Density`** ([`Self::sem_lei_por_vertice`]) — ele **é** o passe de
-    ///   topologia; perguntar se ele o dispara é perguntar se ele existe.
-    /// - **`EraseMultires` e `SmearMultires`** — eles exigem uma **pilha de
-    ///   multiresolução**, e a espec §5.6 escreve que combinar isso com
-    ///   topologia dinâmica é **incoerente por construção** (uma pilha de níveis
-    ///   e uma malha que muda de contagem não coexistem). A porta já os recusa
-    ///   com a pilha montada, por outro guarda.
+    /// ⛔ **E NENHUMA das duas referências separa as duas colunas por verbo** —
+    /// quem refina também colapsa, nas duas. É facto sobre elas e **não** uma
+    /// lei: o irmão [`Self::colapsa_no_dyntopo`] existe separado porque a
+    /// separação **é exprimível** (a referência medida tem o modo de refino da
+    /// cena com os três estados), e nós podemos querê-la antes delas.
     #[must_use]
     pub fn mexe_na_topologia(self) -> bool {
         match self {
@@ -99,7 +97,45 @@ impl Verb {
             // ⚠️ **Eles têm ÂNCORA, logo entram por outra porta** (`hook_step`,
             // `turn_at`) — e foi preciso ligá-la lá, o que é a metade de
             // FIAÇÃO desta wave.
-            Self::SnakeHook | Self::Twist | Self::LocalScale => true,
+            Self::SnakeHook => true,
+            // ⚠️⚠️ **TWIST e LOCAL SCALE: AS DUAS REFERÊNCIAS DISCORDAM, e a
+            // divergência é DECLARADA.**
+            //
+            // | referência | diz |
+            // |---|---|
+            // | a **livre** (MIT) | **mexe** — as duas ferramentas chamam a topologia dinâmica |
+            // | a **medida** (corrida sem interface) | ⛔ **não mexe** — `441 → 441` nos dois extremos do slider |
+            //
+            // ⭐ **Fica o `true`, e o argumento é GEOMÉTRICO e não de voto:** uma
+            // torção com queda **cisalha** a superfície e uma escala local
+            // **estica-a radialmente** — os dois produzem aresta longa, que é
+            // exactamente a metade do report do dono (*«algumas que deveriam
+            // criar subdivisões não estão criando»*). O irmão deles que as duas
+            // referências **concordam** que mexe — o gancho — é da mesma
+            // família: quem TRANSPORTA matéria estica a malha atrás de si.
+            //
+            // ⛔ **A outra leitura é legítima e está registada:** na referência
+            // medida, `ROTATE` e a escala elástica pertencem à família que move
+            // uma região **como um corpo**, onde a densidade viaja com o
+            // material — e ali eles não refinam, como o agarrar. *É decisão de
+            // produto, e o dono tem os dois números.*
+            Self::Twist | Self::LocalScale => true,
+            // ⭐ **O EMPURRÃO passou a mexer, e a referência medida é clara:**
+            // `441 → 2 853` com o alvo fino. Ele é irmão do gancho — transporta
+            // matéria ao longo da superfície —, e era dos que *«deveriam criar
+            // subdivisões e não estavam»*.
+            Self::Nudge => true,
+            // ⛔⛔ **OS TRÊS QUE DEIXARAM DE MEXER**, e a referência medida
+            // devolve `441 → 441` nos dois extremos do slider para os três:
+            //
+            // - **Slide Relax** — ele desliza vértices sobre a superfície sem
+            //   criar detalhe; adensar debaixo dele é pagar topologia por um
+            //   gesto que só arruma a que já existe.
+            // - **Surface Smooth** — é o alisador que preserva forma, e cai com
+            //   o `Smooth` pela mesma razão.
+            // - **Layer** — a demão deposita uma altura limitada e satura; ela
+            //   não estica superfície.
+            Self::SlideRelax | Self::SurfaceSmooth | Self::Layer => false,
             // ⛔ **O AGARRAR não mexe**, e o oráculo livre concorda com o que já
             // fazíamos: ele desloca uma região inteira **sem a esticar** contra
             // o resto — o barro viaja junto, e a densidade dele viaja com ele.
@@ -305,22 +341,45 @@ mod dyntopo_tests {
     fn cada_desvio_do_comportamento_de_hoje_tem_proveniencia() {
         /// `(verbo, refina?, de onde veio)` — as células que se afastam do que
         /// o produto fazia antes do estudo.
-        const DESVIOS: [(&str, bool, &str); 7] = [
+        const DESVIOS: [(&str, bool, &str); 11] = [
+            // ⭐⭐ **AS DUAS REFERENCIAS CONCORDAM** — a livre (MIT, lida) e a
+            // medida (corrida sem interface pela janela E).
+            ("Smooth", false, "as DUAS: nao mexe (medida: 441 -> 441)"),
+            ("Snake Hook", true, "as DUAS: mexe (medida: 441 -> 2 723)"),
+            // ⭐ **DOMINIO** — curado um dia antes do estudo, e a referencia
+            // livre depois SOBRESCREVEU a lei geral dela para dizer o mesmo.
+            ("Mask", false, "dominio; e as DUAS referencias confirmaram"),
+            // ⚠️⚠️ **AS DUAS DISCORDAM** — ver o braco delas na tabela.
             (
-                "Smooth",
-                false,
-                "oraculo livre (MIT): nao chama a topologia",
+                "Twist",
+                true,
+                "CONFLITO: livre diz mexe, medida diz nao (441 -> 441)",
             ),
-            ("Mask", false, "dominio: um gesto que nao move um vertice"),
-            ("Snake Hook", true, "oraculo livre (MIT): chama a topologia"),
-            ("Twist", true, "oraculo livre (MIT): chama a topologia"),
             (
                 "Local Scale",
                 true,
-                "oraculo livre (MIT): chama a topologia",
+                "CONFLITO: livre diz mexe, medida diz nao",
             ),
-            ("Erase Displacement", false, "espec §5.6: multirresolucao"),
-            ("Smear Displacement", false, "espec §5.6: multirresolucao"),
+            // ⭐ **SO' A MEDIDA responde** (nao existem na referencia livre).
+            ("Slide Relax", false, "medida: 441 -> 441 nos dois extremos"),
+            (
+                "Surface Smooth",
+                false,
+                "medida: 441 -> 441 nos dois extremos",
+            ),
+            ("Layer", false, "medida: 441 -> 441 nos dois extremos"),
+            ("Nudge", true, "medida: 441 -> 2 853 com o alvo fino"),
+            // ⛔ **CONSTRUCAO** — nao e' pergunta de oraculo nenhum.
+            (
+                "Erase Displacement",
+                false,
+                "espec §5.6: multirresolucao exclui dyntopo",
+            ),
+            (
+                "Smear Displacement",
+                false,
+                "espec §5.6: multirresolucao exclui dyntopo",
+            ),
         ];
         let mut corrigidos = Vec::new();
         for v in Verb::ALL {
@@ -332,7 +391,14 @@ mod dyntopo_tests {
                 corrigidos.push(v.label());
             }
         }
-        let esperados: Vec<&str> = DESVIOS.iter().map(|(n, _, _)| *n).collect();
+        // ⚠️ **A comparação é por CONJUNTO e não por ordem**: a varredura sai na
+        // ordem do `Verb::ALL` e a lista está agrupada por PROVENIÊNCIA, que é a
+        // informação que ela existe para carregar. *Obrigar as duas ordens a
+        // coincidir faria a tabela ser arrumada pela ordem do catálogo, onde a
+        // proveniência deixa de se ler.*
+        let mut esperados: Vec<&str> = DESVIOS.iter().map(|(n, _, _)| *n).collect();
+        esperados.sort_unstable();
+        corrigidos.sort_unstable();
         assert_eq!(
             corrigidos, esperados,
             "a tabela mudou uma célula sem passar por aqui. Toda célula que se \
@@ -355,70 +421,84 @@ mod dyntopo_tests {
         }
     }
 
-    /// ⚠️⚠️ **OS VERBOS COM ÂNCORA QUE AINDA NÃO FORAM MEDIDOS CONTINUAM A NÃO
-    /// MEXER**, e esse `false` é o valor CONSERVADOR — não uma afirmação.
+    /// ⭐⭐⭐ **OS NOVE VERBOS COM ÂNCORA, TODOS MEDIDOS — e quatro deles mexem.**
     ///
-    /// ⭐ **Três deles SAÍRAM desta lista em 2026-09-14** (Snake Hook · Twist ·
-    /// Local Scale), porque o oráculo livre respondeu por eles. Os que ficam —
-    /// **Move · Cloth · Thumb · Nudge · Pose** — não têm resposta ainda: o
-    /// `Move` porque o oráculo diz que ele **não** mexe (e isso é uma resposta,
-    /// que a tabela regista), e os outros quatro porque só existem na
-    /// referência que está atrás da parede.
+    /// ⚠️⚠️ **Este gate mudou de PREMISSA em 2026-09-14.** Ele chamava-se *«os
+    /// ancorados por medir continuam a não mexer»* e o `false` deles era o
+    /// **valor conservador**; hoje os nove têm resposta, e a lista deixou de ser
+    /// uma dívida para ser uma **tabela**. *Uma catraca cuja população foi
+    /// inteiramente respondida tem de mudar de forma, senão ela vira licença.*
     ///
-    /// ⛔ E eles são precisamente os que mais **esticam** superfície (a pose
-    /// roda um membro inteiro), logo são os candidatos mais fortes a mudar de
-    /// valor quando a outra metade chegar — este gate existe para essa mudança
-    /// ser deliberada.
+    /// | verbo | mexe? | de onde |
+    /// |---|---|---|
+    /// | **Snake Hook** | ✅ | as DUAS referências |
+    /// | **Nudge** | ✅ | a medida (`441 → 2 853`) |
+    /// | **Twist · Local Scale** | ✅ | ⚠️ **as duas discordam** — ver a tabela |
+    /// | Move · Thumb · Pose · Boundary · Cloth | ⛔ | as duas, onde as duas existem |
     #[test]
-    fn os_ancorados_por_medir_continuam_a_nao_mexer() {
-        /// Os que o oráculo livre JÁ respondeu, e por isso saíram desta lista.
-        const RESPONDIDOS: [&str; 3] = ["Snake Hook", "Twist", "Local Scale"];
+    fn os_nove_ancorados_tem_resposta_e_quatro_deles_mexem() {
+        /// Os ancorados que MEXEM, com a proveniência no gate irmão.
+        const MEXEM: [&str; 4] = ["Snake Hook", "Twist", "Local Scale", "Nudge"];
         let ancorados: Vec<&str> = Verb::ALL
             .into_iter()
             .filter(|v: &Verb| v.anchors())
             .map(Verb::label)
             .collect();
         assert!(
-            ancorados.len() >= 8,
+            ancorados.len() >= 9,
             "o censo varreu só {} verbos com âncora — a varredura partiu-se: {ancorados:?}",
             ancorados.len()
         );
-        // ⭐ **O piso dos POR MEDIR**: sem ele, responder a todos de uma vez
-        // deixaria este gate verde sobre uma lista vazia.
-        let por_medir: Vec<&str> = ancorados
+        // ⭐ **O piso dos que NÃO mexem**: sem ele, ligar a porta a todo gesto
+        // ancorado deixaria este gate verde sobre uma lista vazia.
+        let parados: Vec<&str> = ancorados
             .iter()
             .copied()
-            .filter(|n| !RESPONDIDOS.contains(n))
+            .filter(|n| !MEXEM.contains(n))
             .collect();
         assert!(
-            por_medir.len() >= 5,
-            "só {} ancorados por medir — ou a outra metade chegou (e este gate \
-             tem de encolher com a tabela ao lado), ou a varredura partiu-se: \
-             {por_medir:?}",
-            por_medir.len()
+            parados.len() >= 5,
+            "só {} ancorados parados — ligar a porta a todos passaria aqui: {parados:?}",
+            parados.len()
         );
-        for v in Verb::ALL
-            .into_iter()
-            .filter(|v| v.anchors() && !RESPONDIDOS.contains(&v.label()))
-        {
-            assert!(
-                !v.refina_no_dyntopo() && !v.colapsa_no_dyntopo(),
-                "`{}` tem âncora, não foi medido, e declara que mexe na \
-                 topologia — isto muda comportamento sem oráculo nenhum",
+        for v in Verb::ALL.into_iter().filter(|v| v.anchors()) {
+            let deve = MEXEM.contains(&v.label());
+            assert_eq!(
+                v.refina_no_dyntopo(),
+                deve,
+                "`{}` tem âncora e a tabela medida diz {deve}",
                 v.label()
             );
         }
-        // ⭐ **E os respondidos MEXEM**, senão a lista de isenções descreveria
-        // uma resposta que o produto não dá.
-        for nome in RESPONDIDOS {
+    }
+
+    /// ⛔⛔ **OS DOIS VERBOS QUE NENHUMA DAS DUAS REFERÊNCIAS RESPONDE, e eles
+    /// ficam NOMEADOS em vez de silenciosos.**
+    ///
+    /// O **Sharpen** e o **Magnify** não têm equivalente na referência livre nem
+    /// tipo próprio na medida — a corrida da janela E cobriu **27** tipos e
+    /// nenhum é um deles. ⇒ os dois ficam com o comportamento de antes do
+    /// estudo (**mexem**, por serem carimbo), e isso é o **valor conservador**,
+    /// não uma resposta.
+    ///
+    /// ⚠️ **Sem este gate eles leem-se como decididos** — uma célula sem
+    /// proveniência e uma com proveniência têm exactamente o mesmo aspecto numa
+    /// tabela. *É a mesma doença do `❌ recusado com motivo` contra o `❌ ninguém
+    /// fez` que o §5 deste repo já nomeia.*
+    #[test]
+    fn os_dois_verbos_sem_oraculo_ficam_nomeados() {
+        const SEM_ORACULO: [&str; 2] = ["Sharpen", "Magnify"];
+        for nome in SEM_ORACULO {
             let v = Verb::ALL
                 .into_iter()
                 .find(|v| v.label() == nome)
-                .unwrap_or_else(|| panic!("`{nome}` saiu do catálogo"));
+                .unwrap_or_else(|| {
+                    panic!("`{nome}` saiu do catálogo e esta lista ficou para trás")
+                });
             assert!(
                 v.refina_no_dyntopo() && v.colapsa_no_dyntopo(),
-                "`{nome}` está na lista dos respondidos e não mexe — a lista \
-                 deixou de descrever alguma coisa"
+                "`{nome}` mudou de valor e continua na lista dos SEM ORÁCULO — \
+                 se alguém o mediu, a entrada tem de sair com a medição ao lado"
             );
         }
     }

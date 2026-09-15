@@ -315,7 +315,34 @@ fn o_smooth_deixou_de_subdividir_e_o_gancho_passou_a_subdividir() {
          livre chama a topologia dinâmica nele"
     );
 
-    // ⛔ (4) O CONTROLO NEGATIVO: o agarrar NÃO muda, e o oráculo concorda.
+    // ⭐ (4) **O EMPURRÃO**, que a referência MEDIDA respondeu (`441 → 2 853`):
+    // ele é irmão do gancho e também tem âncora, logo também precisou da
+    // fiação.
+    let mut empurrao = cena_armada(&gpu.device, Verb::Nudge);
+    let antes = vertices(&empurrao);
+    um_traco_ancorado(&mut empurrao);
+    assert!(
+        vertices(&empurrao) != antes,
+        "o `Nudge` não mexeu na contagem ({antes} -> {}) — a referência medida \
+         diz que ele mexe, e ele entra pela mesma porta que o gancho",
+        vertices(&empurrao)
+    );
+
+    // ⛔ (5) **A DEMÃO deixou de mexer** — `441 → 441` nos dois extremos do
+    // slider na referência medida. Ela é de CARIMBO, logo o caminho por onde ela
+    // deixou de refinar é o oposto do dos ancorados: aqui a porta é alcançada e
+    // a TABELA é que responde `false`.
+    let mut demao = cena_armada(&gpu.device, Verb::Layer);
+    let antes = vertices(&demao);
+    um_dab(&mut demao);
+    assert_eq!(
+        vertices(&demao),
+        antes,
+        "o `Layer` mudou a contagem — a referência medida devolve 441 -> 441 \
+         nos dois extremos do slider"
+    );
+
+    // ⛔ (6) O CONTROLO NEGATIVO: o agarrar NÃO muda, e o oráculo concorda.
     let mut agarrar = cena_armada(&gpu.device, Verb::Move);
     let antes = vertices(&agarrar);
     um_traco_ancorado(&mut agarrar);

@@ -3012,3 +3012,22 @@ recurso sob fan-out do §5.0, com zero linhas do diff desta jornada naquela crat
 | 2 | as **6** que precisam da geometria do alvo | ⏳ acto do **E**, inalterado |
 | 3 | a **folga simétrica** (§10.3) | ⏳ **decisão do dono**, ainda sem resposta |
 | 4 | *«o alvo ESCONDIDO não conta»* (§6.1) | ⏳ o `SceneObject` não tem visibilidade |
+
+---
+
+## §35+ — **A jornada de 2026-09-15 continua noutro ficheiro**
+
+⚠️ **Este documento chegou a `196 KB`**, acima do joelho de `80`–`110 KB` que o
+`CLAUDE.md` §5.0 mede (*acima dele o `Read` desaparece e o acesso vira raspagem
+por shell*). As waves de **2026-09-15** que fecham os itens abertos do §34.7
+vivem em
+[`HANDOFF_INTEGRACAO_line_sculpt3d_2026-09-15.md`](HANDOFF_INTEGRACAO_line_sculpt3d_2026-09-15.md):
+
+| § | assunto |
+|---|---|
+| §35 | a **inversão** do projectar nega a translação (`12 → 14` no oráculo) |
+| §36 | a **direcção do raio** não deriva com a trincheira (`14 → 15`) |
+| §37 | um alvo **escondido** não conta (espec §6.1) |
+| §38 | o painel deixa de **prometer** knobs que o barro não sente |
+| §39 | a catraca dos **adormecidos** a zero, e os **ids soltos** com censo |
+| §40 | o que fica aberto, com o `tip_roundness` **medido** |

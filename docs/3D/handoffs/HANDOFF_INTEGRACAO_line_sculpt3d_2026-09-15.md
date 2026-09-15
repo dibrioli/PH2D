@@ -21,6 +21,12 @@
 
 ## §35 — ⭐⭐⭐ A **INVERSÃO** do projectar nega a TRANSLAÇÃO e **não vira o raio**: o placar salta de `12` para `14`
 
+> ⛔⛔ **LEIA O §42 ANTES DE IMPLEMENTAR DAQUI.** Esta secção continua correcta
+> sobre a LEI — e a feature que ela cura foi **RETIRADA no mesmo dia, por ordem
+> do dono**. O que fica aqui é o diagnóstico (que vale, e é por isso que não foi
+> apagado); o que já não existe é o `Ctrl` deste pincel.
+
+
 ### §35.1 — ⛔⛔ O desvio estava escrito no número que a espec publica
 
 O par `…_invertido` / `…_subtrair` desviava **`1,415e-1`**, e a §34.3 já notara
@@ -477,6 +483,24 @@ que desmente a flake não pode ser a própria flake*):
 *serial* inflou `1,7×` e o *paralelo* **`9×`** — é o escalonador a não ter
 núcleos para dar, não uma lei que mudou.
 
+⭐⭐ **E ela reprovou OUTRA VEZ no portao do §42, com as TRÊS assinaturas da
+família completas nesta jornada:**
+
+1. **zero linhas de diff** — `git diff --stat` das seis waves de hoje sobre
+   `crates/ph2d-mesh/` devolve **vazio**;
+2. **o mesmo binário passou numa varredura e reprovou noutra** (a do §41 fechou
+   `15 240/15 240` com ela VERDE; a do §42, sobre uma árvore que difere só em
+   ficheiros de outra crate, deu-a vermelha);
+3. verde sozinha com a carga baixa.
+
+⚠️⚠️ **E o dado NOVO desta jornada é de onde vinha a carga: de OUTRA LINHA.**
+A confirmação a `load 45` deu `2` reprovações em `3` — e o `ps` mostrou um
+`nextest -E rdeps(ph2d-app-painter) + rdeps(ph2d-app-vec) + …` a correr noutra
+worktree, mais um `cargo check -p ph2d-topdown`. ⇒ *o fan-out que quebra estes
+gates não é só o da PRÓPRIA varredura: numa workstation com linhas paralelas
+ele atravessa as árvores*, e a espera por *«máquina calma»* pode nunca chegar
+(§5.0: *mede-se o MÍNIMO de N corridas com a mediana ao lado*).
+
 ### §41.2 — ⛔⛔⛔ O ARNÊS DE TESTE tinha nome de PRODUTO, e a varredura da família leu-o como produto
 
 **Os dois vermelhos do shell têm UMA causa.** O `sculpt_src()` — que alimenta
@@ -539,3 +563,96 @@ agrupar, **nunca um `allow` por cima do aviso**: os três buffers (`remap`,
 chamadores já os seguravam juntos (a cena em campos `dyn_*` para o caminho quente
 não alocar; o censo na mesma linha). Hoje são o `Rascunho<'_>`, e a porta fica em
 `6`.
+
+---
+
+## §42 — ⛔⛔⛔ O `Ctrl` do **Scene Project** SAI por ordem do dono, e isto é a RECUSA REGISTADA
+
+Veredito dele depois do smoke da `=45`:
+
+> *«Não vi utilidade na feature Scene Project + CTRL. Melhor retirá-la e
+> documentá-la como indesejada.»*
+
+(No mesmo report: **`Density Smoke OK`** — aquela metade está aprovada.)
+
+### §42.1 — ⚠️ Retirar o GESTO retira a CAPACIDADE, e isso mediu-se ANTES de cortar
+
+A pergunta que decide a forma da cura é *«o Ctrl é a única porta?»*:
+
+| porta | medição |
+|---|---|
+| gesto | `scene.brush.invert = ctrl` no pen-down — **o único escritor de `Brush::invert` no produto inteiro** |
+| painel | **nenhum** controlo *Add/Subtract* para este verbo |
+
+⇒ **sim**. Logo não há a leitura branda *«tira-se o atalho e a capacidade fica»*
+— tirar o gesto apaga a feature. E com o verbo fora do `Verb::honours_invert`, o
+`sign` do `stroke_target` fica preso em `+1` para sempre: **um parâmetro que só
+pode valer uma coisa é um órfão**, e *a cura de um órfão é apagar* (§5.0), não
+deixá-lo vivo e inalcançável. ⇒ o `sign` desapareceu da assinatura do
+`projectar::alvo_do_vertice`.
+
+⚠️ **Divergência DECLARADA:** a referência **tem** a capacidade. Nós não a
+queremos — e isso fica escrito, com o número ao lado, em vez de a ausência se
+ler como incapacidade.
+
+### §42.2 — ⛔ O que a decisão CUSTOU, contado
+
+| grandeza | antes | depois |
+|---|---|---|
+| corpus vivo do oráculo | `16` reconstrutíveis | **`14`** |
+| catraca `VERDE_N` | `15` de `16` | **`13` de `14`** |
+| gate de unidade | `a_inversao_nega_a_translacao_e_nao_vira_o_raio` | **apagado** (o sujeito deixou de existir) |
+
+⭐⭐ **As duas fixturas saíram VERDES** (`2,384e-7` cada, contra a barra de
+`2e-6`). *Uma fixtura que sai por DECISÃO e uma que sai por DERROTA leem-se
+igual numa lista* — o que as separa é a frase e o número ao lado, e por isso elas
+vão para uma lista **nomeada** (`FORA_POR_DECISAO_DO_DONO`) e não para o esquecimento.
+
+⛔⛔ **E a catraca a DESCER é o ponto perigoso deste commit.** `15 → 13` lê-se
+como regressão e **não é**: é a população a encolher. O que os separa é o
+denominador (`13` de **`14`**) e o gate novo. *Escrever `13` sem escrever porquê
+seria a catraca a virar LICENÇA no sentido contrário: a próxima pessoa
+afrouxaria o número e chamar-lhe-ia história.*
+
+### §42.3 — ⭐⭐ O gate mede o BARRO, não o predicado
+
+`o_ctrl_saiu_do_projectar_e_o_corpus_diz_quais_fixturas_isso_custou` tem duas
+metades e **prova de mutação 2 de 2, uma por metade**:
+
+1. `Verb::SceneProject.honours_invert()` é `false` — e a mensagem manda **repor**
+   as duas fixturas e subir o `VERDE_N` no dia em que a decisão mudar (a metade
+   de **obsolescência**, sem a qual a lista de exclusão vira licença).
+2. ⭐ **correr a fixtura com `invert = true` dá o mesmo bloco de vértices, ao
+   bit.** *Um predicado é um resumo do produto, e um resumo pode estar à frente
+   dele* — a mutação que lê `brush.invert` dentro da lei passa a primeira metade
+   e sangra nesta (`1,000e0`).
+
+⚠️ **E a primeira tentativa de mutação NÃO ENTROU** (o `fmt` tinha reflowado o
+`match` e o filtro casou `0×`): *uma mutação que não entra lê-se exactamente como
+uma que sobreviveu* — o `assert` de contagem é o que separa as duas.
+
+### §42.4 — ⛔⛔ E a lei REFUTADA de manhã tinha uma SEGUNDA cópia, que sobreviveu à cura
+
+Ao remover a entrada, apareceu que o `brush_verb_predicados.rs` ainda afirmava
+*«PROJECTAR honra o Ctrl, e ele vira o RAIO»* — **a lei que o §35 refutou nesta
+mesma jornada**. A cura da manhã corrigiu o `projectar.rs` e não a cópia.
+
+⚠️ *Uma lei escrita em dois sítios ainda não é uma lei — e a cópia que ninguém
+relê é a que envelhece.* Ela só apareceu porque a remoção obrigou a olhar para
+aquela linha; nenhum gate a media.
+
+### §42.5 — O que fica escrito para quem reabrir
+
+O mecanismo **não** se apaga com a feature (§5.0: *o que foi medido e rejeitado
+não se reconstrói*). Ficam, no `alvo_do_vertice` e na nota que substituiu o gate
+apagado: a tabela de duas colunas que separa as duas leis candidatas (com o alvo
+abaixo elas são **indistinguíveis**, e só *«alvo acima, sem os dois sentidos»* as
+separa), o número do oráculo (`1,415e-1 → 2,384e-7`), e o mecanismo da excursão
+travada em `0,500000` que refutou a hipótese da fuga sem fim.
+
+### §42.6 — E a cena deixou de ensinar o gesto
+
+O roteiro da `=45` passou de **9 para 8 passos** — o passo do `Ctrl` saiu, os
+seguintes renumeraram e o `DEU ERRADO SE` perdeu a cláusula correspondente.
+*Uma cena que continuasse a mandar carregar em `Ctrl` ensinaria um gesto que não
+existe, que é a espécie que o §5.0 chama de pior que uma cena ausente.*

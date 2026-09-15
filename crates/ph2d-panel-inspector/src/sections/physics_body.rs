@@ -12,7 +12,7 @@
 //! chama também — *quais números esta forma tem* é uma pergunta do COLLIDER, não
 //! do corpo.
 
-use super::rows::{num_row, seg_row};
+use super::rows::{num_row_unit, seg_row};
 use super::*;
 use ph2d_editor_core::screens::hero::InspectorPhysicsInfo;
 use ph2d_i18n::TextKey;
@@ -153,17 +153,19 @@ pub(super) fn paint_body_face(
     // Collider offset from the sprite centre — a collider-geometry property (not
     // Dynamic-only), so it sits with the shape dimensions rather than the dynamics
     // block. The overlay draws the outline here so the offset is visible.
-    for (label, id) in [
+    for (label, id, unit) in [
         (
             tr("panel.inspector.physics.offset_x_m"),
             ids::INSP_PHYS_OFFSET_X,
+            Some(ph2d_editor_core::widget::Unit::Meters),
         ),
         (
             tr("panel.inspector.physics.offset_y_m"),
             ids::INSP_PHYS_OFFSET_Y,
+            Some(ph2d_editor_core::widget::Unit::Meters),
         ),
     ] {
-        yy = num_row(
+        yy = num_row_unit(
             scene,
             text_system,
             theme,
@@ -174,6 +176,8 @@ pub(super) fn paint_body_face(
             yy,
             label,
             id,
+            unit,
+            None,
         );
     }
 
@@ -273,31 +277,36 @@ fn paint_dynamics_rows(
     y: f32,
 ) -> f32 {
     let mut yy = y;
-    for (label, id) in [
+    for (label, id, unit) in [
         (
             tr("panel.inspector.physics.gravity_scale"),
             ids::INSP_PHYS_GRAVITY_SCALE,
+            None,
         ),
         (
             tr("panel.inspector.physics.init_vel_x_m_s"),
             ids::INSP_PHYS_LINVEL_X,
+            Some(ph2d_editor_core::widget::Unit::MetersPerSecond),
         ),
         (
             tr("panel.inspector.physics.init_vel_y_m_s"),
             ids::INSP_PHYS_LINVEL_Y,
+            Some(ph2d_editor_core::widget::Unit::MetersPerSecond),
         ),
         (
             tr("panel.inspector.physics.init_spin_deg_s"),
             ids::INSP_PHYS_ANGVEL,
+            None,
         ),
         // Dominance (collision priority): a higher value bulldozes lower ones.
         // Dynamic-only like the rest — a non-dynamic body is already at the max.
         (
             tr("panel.inspector.physics.dominance"),
             ids::INSP_PHYS_DOMINANCE,
+            None,
         ),
     ] {
-        yy = num_row(
+        yy = num_row_unit(
             scene,
             text_system,
             theme,
@@ -308,6 +317,8 @@ fn paint_dynamics_rows(
             yy,
             label,
             id,
+            unit,
+            None,
         );
     }
     yy

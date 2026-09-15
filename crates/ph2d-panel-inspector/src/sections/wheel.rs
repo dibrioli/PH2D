@@ -15,7 +15,7 @@
 //! alcançar. O raio é o caso oposto: a alça do aro no canvas já o edita, e as
 //! duas portas escrevem o MESMO campo.
 
-use super::rows::{num_row, seg_row};
+use super::rows::{num_row, num_row_unit, seg_row};
 use super::*;
 use ph2d_editor_core::screens::hero::InspectorWheelInfo;
 use ph2d_editor_core::widget::SectionFold;
@@ -85,7 +85,7 @@ pub(crate) fn paint_wheel_section(
     let mut yy = y + header_h;
     yy = paint_rope_row(scene, text_system, theme, hit_index, store, x, w, yy, info);
     yy = paint_mount_row(scene, text_system, theme, hit_index, store, x, w, yy, info);
-    yy = num_row(
+    yy = num_row_unit(
         scene,
         text_system,
         theme,
@@ -96,6 +96,8 @@ pub(crate) fn paint_wheel_section(
         yy,
         tr("panel.inspector.wheel.radius_m"),
         ids::INSP_WHEEL_RADIUS,
+        Some(ph2d_editor_core::widget::Unit::Meters),
+        None,
     );
     // **Out Radius** — o SEGUNDO diâmetro do eixo (W4). `0` é uma roldana comum;
     // qualquer outro valor faz dela um TAMBOR DIFERENCIAL, e a corda ganha
@@ -104,7 +106,7 @@ pub(crate) fn paint_wheel_section(
     // ⚠️ Row SEMPRE pintada, e não só quando já há um diferencial: ela é o único
     // gesto que CRIA um, e um controle que só aparece depois de a coisa existir
     // não pode ser o que a faz existir. (É a mesma lei da §11 vazia do W2a.)
-    yy = num_row(
+    yy = num_row_unit(
         scene,
         text_system,
         theme,
@@ -115,6 +117,8 @@ pub(crate) fn paint_wheel_section(
         yy,
         tr("panel.inspector.wheel.out_radius_m"),
         ids::INSP_WHEEL_RADIUS_OUT,
+        Some(ph2d_editor_core::widget::Unit::Meters),
+        None,
     );
     // **Differential** — o eixo de dois diâmetros é um TAMBOR ou uma talha de
     // WESTON (W-Weston), e a diferença é onde o segundo contato fica: no mesmo nó
@@ -175,7 +179,7 @@ pub(crate) fn paint_wheel_section(
     // ANGULAR, e é isso que faz o diâmetro ser o câmbio: a corda anda `ω·r`,
     // então o mesmo motor num tambor maior recolhe mais depressa. Mesma unidade
     // que o motor do Pin usa na §12.
-    yy = num_row(
+    yy = num_row_unit(
         scene,
         text_system,
         theme,
@@ -186,6 +190,8 @@ pub(crate) fn paint_wheel_section(
         yy,
         tr("panel.inspector.wheel.motor_s"),
         ids::INSP_WHEEL_MOTOR,
+        Some(ph2d_editor_core::widget::Unit::DegreesPerSecond),
+        None,
     );
     yy = seg_row(
         scene,
@@ -251,7 +257,7 @@ fn paint_break_rows(
     if !info.break_enabled {
         return yy;
     }
-    num_row(
+    num_row_unit(
         scene,
         text_system,
         theme,
@@ -262,6 +268,8 @@ fn paint_break_rows(
         yy,
         tr("panel.inspector.wheel.break_force_n"),
         ids::INSP_WHEEL_BREAK_FORCE,
+        Some(ph2d_editor_core::widget::Unit::Newtons),
+        None,
     )
 }
 

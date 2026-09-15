@@ -265,6 +265,7 @@ fn editor(
         tr("panel.inspector.timers.duration_seconds"),
         &[ids::INSP_TIMER_DURATION],
         0.1, // LITERAL-PX-OK: passo de scrub em SEGUNDOS, não em pixels
+        None,
     );
 
     let half = (w - Spacing::Sm.px()) * 0.5;

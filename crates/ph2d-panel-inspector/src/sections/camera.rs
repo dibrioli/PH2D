@@ -141,21 +141,24 @@ fn camera_body(
     // e um arrasto de décimo em décimo sobre um inteiro é um controlo que mente sobre o que guarda.
     // *O gate do número mágico é que o disse — a primeira redacção partilhava `0,1` entre metros e
     // uma contagem.*
-    for (label, ids3, step) in [
+    for (label, ids3, step, unit) in [
         (
             tr("panel.inspector.camera.height_m"),
             &[ids::INSP_CAMERA_HEIGHT][..],
             0.5,
+            Some(ph2d_editor_core::widget::Unit::Meters),
         ), // LITERAL-PX-OK: passo em metros
         (
             tr("panel.inspector.camera.offset_m"),
             &[ids::INSP_CAMERA_OFFSET_X, ids::INSP_CAMERA_OFFSET_Y][..],
             0.1, // LITERAL-PX-OK: passo em metros
+            Some(ph2d_editor_core::widget::Unit::Meters),
         ),
         (
             tr("panel.inspector.camera.priority"),
             &[ids::INSP_CAMERA_PRIORITY][..],
             1.0,
+            None,
         ), // LITERAL-PX-OK: uma prioridade de cada vez
     ] {
         cur_y = super::anchors::field_row(
@@ -170,6 +173,7 @@ fn camera_body(
             label,
             ids3,
             step,
+            unit,
         );
     }
 
@@ -240,26 +244,30 @@ fn follow_body(
         );
     }
 
-    for (label, ids2, step) in [
+    for (label, ids2, step, unit) in [
         (
             tr("panel.inspector.camera.damping_1_s"),
             [ids::INSP_CAMERA_DAMP_X, ids::INSP_CAMERA_DAMP_Y],
             0.5, // LITERAL-PX-OK: passo em 1/s
+            None,
         ),
         (
             tr("panel.inspector.camera.dead_zone"),
             [ids::INSP_CAMERA_DEAD_X, ids::INSP_CAMERA_DEAD_Y],
             0.05, // LITERAL-PX-OK: fracção da meia-janela
+            None,
         ),
         (
             tr("panel.inspector.camera.lookahead_s"),
             [ids::INSP_CAMERA_LOOK_X, ids::INSP_CAMERA_LOOK_Y],
             0.05, // LITERAL-PX-OK: passo em segundos
+            Some(ph2d_editor_core::widget::Unit::Seconds),
         ),
         (
             tr("panel.inspector.camera.follow_offset_m"),
             [ids::INSP_CAMERA_FOLLOW_OFF_X, ids::INSP_CAMERA_FOLLOW_OFF_Y],
             0.1, // LITERAL-PX-OK: passo em metros
+            Some(ph2d_editor_core::widget::Unit::Meters),
         ),
     ] {
         cur_y = super::anchors::field_row(
@@ -274,6 +282,7 @@ fn follow_body(
             label,
             &ids2,
             step,
+            unit,
         );
     }
     cur_y
@@ -305,14 +314,16 @@ fn limits_body(
             ColorToken::Warn,
         );
     }
-    for (label, ids2) in [
+    for (label, ids2, unit) in [
         (
             tr("panel.inspector.camera.min_m"),
             [ids::INSP_CAMERA_MIN_X, ids::INSP_CAMERA_MIN_Y],
+            Some(ph2d_editor_core::widget::Unit::Meters),
         ),
         (
             tr("panel.inspector.camera.max_m"),
             [ids::INSP_CAMERA_MAX_X, ids::INSP_CAMERA_MAX_Y],
+            Some(ph2d_editor_core::widget::Unit::Meters),
         ),
     ] {
         cur_y = super::anchors::field_row(
@@ -327,6 +338,7 @@ fn limits_body(
             label,
             &ids2,
             0.5, // LITERAL-PX-OK: passo em metros
+            unit,
         );
     }
     cur_y

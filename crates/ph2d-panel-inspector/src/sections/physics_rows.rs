@@ -6,7 +6,7 @@
 //! rather than the whole `InspectorPhysicsInfo`, so this file shares no private
 //! consts with `physics.rs` — the two only meet at the call site.
 
-use super::rows::{num_row, seg_row};
+use super::rows::{num_row, num_row_unit, seg_row};
 use super::*;
 use ph2d_i18n::TextKey;
 use ph2d_i18n::tr;
@@ -409,14 +409,19 @@ pub(super) fn paint_collision_rows(
         &WALLMAT_LABELS.map(TextKey::tr),
         u8::from(no_wall_cling),
     );
-    for (label, id) in [
-        (tr("panel.inspector.physics.grip"), ids::INSP_PHYS_WALK_GRIP),
+    for (label, id, unit) in [
+        (
+            tr("panel.inspector.physics.grip"),
+            ids::INSP_PHYS_WALK_GRIP,
+            None,
+        ),
         (
             tr("panel.inspector.physics.belt_m_s"),
             ids::INSP_PHYS_WALK_BELT,
+            Some(ph2d_editor_core::widget::Unit::MetersPerSecond),
         ),
     ] {
-        yy = num_row(
+        yy = num_row_unit(
             scene,
             text_system,
             theme,
@@ -427,6 +432,8 @@ pub(super) fn paint_collision_rows(
             yy,
             label,
             id,
+            unit,
+            None,
         );
     }
     // **O que este objeto GRITA quando algo chega nele — e quando algo sai**

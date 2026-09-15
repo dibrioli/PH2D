@@ -231,41 +231,48 @@ fn source_body(
         );
     }
 
-    for (label, id, step) in [
+    for (label, id, step, unit) in [
         (
             tr("panel.inspector.audio.volume_db"),
             ids::INSP_AUDIO_VOLUME,
             1.0,
+            None,
         ), // LITERAL-PX-OK: passo em decibéis
         (
             tr("panel.inspector.audio.pitch"),
             ids::INSP_AUDIO_PITCH,
             0.05, // LITERAL-PX-OK: passo do factor de tom
+            None,
         ),
         (
             tr("panel.inspector.audio.max_distance_m"),
             ids::INSP_AUDIO_MAX_DIST,
             0.5,
+            Some(ph2d_editor_core::widget::Unit::Meters),
         ), // LITERAL-PX-OK: passo em metros
         (
             tr("panel.inspector.audio.attenuation"),
             ids::INSP_AUDIO_ATTENUATION,
             0.1, // LITERAL-PX-OK: passo do expoente
+            None,
         ),
         (
             tr("panel.inspector.audio.non_spatialized_radius_m"),
             ids::INSP_AUDIO_RADIUS,
             0.1, // LITERAL-PX-OK: metros
+            Some(ph2d_editor_core::widget::Unit::Meters),
         ),
         (
             tr("panel.inspector.audio.panning_strength"),
             ids::INSP_AUDIO_PANNING,
             0.05, // LITERAL-PX-OK: passo da fracção
+            None,
         ),
         (
             tr("panel.inspector.audio.max_polyphony"),
             ids::INSP_AUDIO_POLYPHONY,
             1.0,
+            None,
         ), // LITERAL-PX-OK: uma voz de cada vez
     ] {
         cur_y = super::anchors::field_row(
@@ -280,6 +287,7 @@ fn source_body(
             label,
             &[id],
             step, // LITERAL-PX-OK: passo de scrub na UNIDADE do campo, não em pixels
+            unit,
         );
     }
 

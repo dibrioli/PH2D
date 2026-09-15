@@ -6,7 +6,7 @@
 //! se desenha*, este *o que cada TIPO oferece* — e é este que cresce, um tipo de cada vez. O pai
 //! passou o tecto de 600 LOC quando as tabelas de rótulos viraram `TextKey`.
 
-use super::rows::{num_row, seg_row};
+use super::rows::{num_row, num_row_unit, seg_row};
 use super::*;
 use ph2d_editor_core::screens::hero::InspectorJointInfo;
 use ph2d_i18n::TextKey;
@@ -87,7 +87,7 @@ pub(super) fn paint_kind_params(
         }
     }
     if info.kind_tag == KIND_SPRING {
-        yy = num_row(
+        yy = num_row_unit(
             scene,
             text_system,
             theme,
@@ -98,6 +98,8 @@ pub(super) fn paint_kind_params(
             yy,
             tr("panel.inspector.joint.rest_length_m"),
             ids::INSP_JOINT_REST_LENGTH,
+            Some(ph2d_editor_core::widget::Unit::Meters),
+            None,
         );
     }
     // A solda que CEDE (W-SoftWeld). A chave vem ANTES da mola porque é ela quem

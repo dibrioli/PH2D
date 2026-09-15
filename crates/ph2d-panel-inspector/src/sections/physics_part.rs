@@ -27,7 +27,7 @@
 //! o bloco de área virou função própria (`physics_area_rows::paint_area_rows`) e só a
 //! face de CORPO a chama.
 
-use super::rows::{num_row, seg_row};
+use super::rows::{num_row_unit, seg_row};
 use super::*;
 use ph2d_editor_core::screens::hero::InspectorPhysicsInfo;
 use ph2d_i18n::tr;
@@ -100,14 +100,16 @@ pub(super) fn paint_part_face(
         yy,
         info.shape_tag,
     );
-    for (label, id) in [
+    for (label, id, unit) in [
         (
             tr("panel.inspector.physics.offset_x_m"),
             ids::INSP_PHYS_OFFSET_X,
+            Some(ph2d_editor_core::widget::Unit::Meters),
         ),
         (
             tr("panel.inspector.physics.offset_y_m"),
             ids::INSP_PHYS_OFFSET_Y,
+            Some(ph2d_editor_core::widget::Unit::Meters),
         ),
         // A densidade de uma peça é REAL: ela contribui para a massa do corpo
         // composto. O toggle Auto|Manual do W-Mass fica de fora porque o
@@ -115,9 +117,10 @@ pub(super) fn paint_part_face(
         (
             tr("panel.inspector.physics.density"),
             ids::INSP_PHYS_DENSITY,
+            None,
         ),
     ] {
-        yy = num_row(
+        yy = num_row_unit(
             scene,
             text_system,
             theme,
@@ -128,6 +131,8 @@ pub(super) fn paint_part_face(
             yy,
             label,
             id,
+            unit,
+            None,
         );
     }
     yy = super::physics_rows::paint_material_rows(

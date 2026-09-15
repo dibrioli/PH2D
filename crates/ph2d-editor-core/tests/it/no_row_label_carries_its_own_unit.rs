@@ -1,0 +1,252 @@
+//! ⭐⭐⭐ **A UNIDADE VIVE NO CAMPO, NUNCA NO RÓTULO** — e este gate é quem o cobra em todo o app.
+//!
+//! ⛔⛔ A lei está escrita na spec da linha de propriedade
+//! (`docs/UI_New_and_Simple/spec/03_a_linha_de_propriedade.md` §7) e foi **medida** em 2026-09-14:
+//! com a unidade no rótulo, **20 de 39** rótulos do Inspector eram cortados à largura de omissão;
+//! sem ela, **1**. Um `"Float Height (m)"` mede `92,1 px` numa coluna de `91,2`.
+//!
+//! ⚠️⚠️ **E a cura foi aplicada a UMA secção.** Em 2026-09-15 o censo achou **42** textos ainda com
+//! a unidade entre parênteses — entre eles `"Non-Spatialized Radius (m)"` (26 caracteres),
+//! `"Break Torque (N.m)"` e `"Init Vel X (m/s)"`. *Uma lei curada numa secção e não gateada é uma
+//! lei que a secção seguinte não conhece.*
+//!
+//! # A régua
+//!
+//! Varre as tabelas de i18n e acusa todo VALOR que acabe num sufixo de unidade entre parênteses.
+//! ⛔ Ela lê o **texto**, que é o que o artista vê — não a chave, que é um ENDEREÇO e **mantém** o
+//! sufixo de propósito (renomear uma chave para dizer a mesma coisa custa 31 sítios).
+//!
+//! # ⚠️ A catraca traz o censo de obsolescência ao lado
+//!
+//! `CLAUDE.md` §5.0: *uma catraca sem censo de obsolescência não desce — ela vira LICENÇA.* A
+//! segunda metade pergunta, por entrada, se a chave ainda existe e se o texto dela ainda carrega a
+//! unidade.
+
+use std::fs;
+use std::path::PathBuf;
+
+/// ⏳ **Os que FICAM, cada um com o MECANISMO que o impede — e só ENCOLHE.**
+///
+/// ⛔ **Não acrescente uma entrada para uma linha nova.** Uma row de campo único nasce com
+/// `num_row_unit` e a unidade no campo; é um argumento.
+/// ⚠️⚠️ **A razão de cada entrada é a PORTA que a pinta, não «é multi-campo».** A 1.ª redacção
+/// escreveu *«row de dois campos»* e a medição desmentiu-a: o `field_row` das âncoras pinta uma
+/// row de UM campo (`Rotation (deg)`) e mesmo assim não leva sufixo, enquanto o `num_row_unit`
+/// leva-o numa row de um campo **e** poderia levá-lo em N. *O que separa não é a contagem de
+/// campos — é a porta ter, ou não, por onde a unidade entrar.*
+const AINDA_NO_ROTULO: &[(&str, &str)] = &[
+    // ⏳ **A porta `sections::field_row`** (N campos com um passo) ainda não aceita unidade.
+    //    Acrescentá-la serve estas quatro de uma vez, e é a wave seguinte.
+    (
+        "panel.inspector.anchors.position_x_y_px",
+        "porta `field_row` — ainda sem sufixo",
+    ),
+    (
+        "panel.inspector.anchors.rotation_deg",
+        "porta `field_row` — ainda sem sufixo",
+    ),
+    (
+        "panel.inspector.anchors.bounds_x_y_w_h",
+        "porta `field_row` — ainda sem sufixo",
+    ),
+    (
+        "panel.inspector.anchors.center_x_y_w_h",
+        "porta `field_row` — ainda sem sufixo",
+    ),
+    (
+        "panel.inspector.slice.borders_l_t_px",
+        "porta `field_row` — ainda sem sufixo",
+    ),
+    (
+        "panel.inspector.slice.borders_r_b_px",
+        "porta `field_row` — ainda sem sufixo",
+    ),
+    // ⏳ **A porta `transform_row::paint_row`** (um par de chips coloridos com tag `X`/`Y`).
+    //    ⚠️ E aqui o rótulo carrega **a régua activa** (`DisplayUnit`/`DisplayAngle`), logo fechá-la
+    //    é a wave da CONVERSÃO do valor, não a de um sufixo.
+    (
+        "panel.inspector.transform.position_m",
+        "porta `paint_row` + o rotulo diz a REGUA activa (DisplayUnit)",
+    ),
+    (
+        "panel.inspector.transform.position_px",
+        "porta `paint_row` + o rotulo diz a REGUA activa (DisplayUnit)",
+    ),
+    (
+        "panel.inspector.transform.rotation",
+        "porta `paint_row` + o rotulo diz a REGUA activa (DisplayAngle)",
+    ),
+    (
+        "panel.inspector.transform.rotation_rad",
+        "porta `paint_row` + o rotulo diz a REGUA activa (DisplayAngle)",
+    ),
+    (
+        "panel.inspector.transform.skew",
+        "porta `paint_row` + o rotulo diz a REGUA activa (DisplayAngle)",
+    ),
+    (
+        "panel.inspector.transform.skew_rad",
+        "porta `paint_row` + o rotulo diz a REGUA activa (DisplayAngle)",
+    ),
+    // ⚠️ **A CAIXA ÚNICA não tem sufixo**: ali o rótulo vive DENTRO da caixa, à esquerda, e o valor
+    //    à direita — o `NumberInput::suffix` é do campo solto. Ver a spec §2.
+    (
+        "panel.painter_layers.wetpaint.grid_size_px",
+        "caixa unica (slider+chip) — o rotulo vive DENTRO",
+    ),
+    (
+        "panel.tokens.numeric",
+        "caixa unica (slider+chip) — o rotulo vive DENTRO",
+    ),
+    // ⛔ **Não são unidades** — a régua casa `(s)` no fim e estes acabam assim por acidente.
+    (
+        "panel.inspector.instance.clear_orphans",
+        "«override(s)» — plural, nao unidade",
+    ),
+    (
+        "panel.timeline.length",
+        "faixa da timeline: outra familia de linha (ver a spec §1)",
+    ),
+    (
+        "panel.timeline.time_seconds",
+        "faixa da timeline: outra familia de linha (ver a spec §1)",
+    ),
+];
+
+/// Um valor de i18n «tem unidade no fim» quando acaba em `(<sufixo>)`.
+///
+/// ⚠️ **A lista sai do vocabulário do produto** ([`ph2d_editor_core::widget::Unit`]) mais as formas
+/// tipográficas que um rótulo usa e o campo não (`°`, `N.m` com espaço). ⛔ Derivá-la SÓ do enum
+/// deixaria de fora exactamente os rótulos que ainda não têm unidade correspondente — que são os
+/// que este gate existe para achar.
+fn unidade_no_fim(texto: &str) -> Option<String> {
+    let t = texto.trim_end();
+    if !t.ends_with(')') {
+        return None;
+    }
+    let abre = t.rfind('(')?;
+    let dentro = &t[abre + 1..t.len() - 1];
+    let normal = dentro.replace("\\u{00b0}", "°");
+    const SUFIXOS: &[&str] = &[
+        "m", "px", "s", "N", "N.m", "m/s", "m/s2", "m/s^2", "%", "deg", "rad", "°", "°/s", "N.s",
+    ];
+    SUFIXOS
+        .iter()
+        .any(|s| normal.eq_ignore_ascii_case(s))
+        .then_some(normal)
+}
+
+fn tabelas() -> Vec<(String, String)> {
+    let raiz = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("..")
+        .join("..")
+        .join("crates/ph2d-i18n/src");
+    let mut out = Vec::new();
+    let Ok(entradas) = fs::read_dir(&raiz) else {
+        panic!("a varredura nao achou {raiz:?}");
+    };
+    for e in entradas.flatten() {
+        let p = e.path();
+        if p.extension().and_then(|s| s.to_str()) != Some("rs") {
+            continue;
+        }
+        let Ok(txt) = fs::read_to_string(&p) else {
+            continue;
+        };
+        for linha in txt.lines() {
+            let Some(seta) = linha.find("\" => \"") else {
+                continue;
+            };
+            let Some(abre) = linha[..seta].rfind('"') else {
+                continue;
+            };
+            let chave = &linha[abre + 1..seta];
+            let resto = &linha[seta + 6..];
+            let Some(fim) = resto.find('"') else { continue };
+            out.push((chave.to_string(), resto[..fim].to_string()));
+        }
+    }
+    out
+}
+
+#[test]
+fn no_row_label_carries_its_own_unit() {
+    let pares = tabelas();
+    // ⚠️ **Piso de população, MEDIDO** — uma varredura partida devolve zero e lê-se como aprovada.
+    //    As tabelas tinham **1 801** textos em 2026-09-15; o piso fica em `1 500` para tolerar uma
+    //    poda honesta e ainda acusar um parser que deixou de casar. ⛔ O número é medido, não
+    //    escolhido: a 1.ª redacção chutou `2 000` e reprovou sobre o produto certo.
+    assert!(
+        pares.len() >= 1500,
+        "a varredura leu {} textos de i18n — ela deixou de alcancar as tabelas",
+        pares.len()
+    );
+    let tolerado: Vec<&str> = AINDA_NO_ROTULO.iter().map(|(k, _)| *k).collect();
+    let mut acusados = Vec::new();
+    for (chave, texto) in &pares {
+        if tolerado.contains(&chave.as_str()) {
+            continue;
+        }
+        if let Some(u) = unidade_no_fim(texto) {
+            acusados.push(format!("{chave}  =>  {texto:?}  (unidade `{u}`)"));
+        }
+    }
+    acusados.sort();
+    assert!(
+        acusados.is_empty(),
+        "{} rotulo(s) ainda carregam a unidade no TEXTO:\n  {}\n\n\
+         A unidade vive no CAMPO (`num_row_unit` + `NumberInput::suffix`) — ver a spec \
+         `docs/UI_New_and_Simple/spec/03_a_linha_de_propriedade.md` §7. \
+         A CHAVE mantem o sufixo: ela e' um endereco, nao o texto.",
+        acusados.len(),
+        acusados.join("\n  ")
+    );
+}
+
+/// ⚠️ **A metade de OBSOLESCÊNCIA** — uma tolerância que já não descreve nada sai da lista.
+#[test]
+fn the_tolerated_unit_labels_still_describe_something() {
+    let pares = tabelas();
+    let mut mortas = Vec::new();
+    for (chave, razao) in AINDA_NO_ROTULO {
+        match pares.iter().find(|(k, _)| k == chave) {
+            None => mortas.push(format!("{chave} — a chave sumiu ({razao})")),
+            Some((_, texto)) if unidade_no_fim(texto).is_none() => {
+                mortas.push(format!(
+                    "{chave} — ja' nao tem unidade: {texto:?} ({razao})"
+                ));
+            }
+            _ => {}
+        }
+    }
+    assert!(
+        mortas.is_empty(),
+        "entrada(s) STALE na tolerancia:\n  {}",
+        mortas.join("\n  ")
+    );
+}
+
+/// ⭐⭐ **O CONTROLO do detector** — sem ele, um `unidade_no_fim` que respondesse sempre `None`
+/// deixaria as duas metades verdes sobre o app inteiro por converter.
+#[test]
+fn the_detector_can_see_a_unit_in_a_label() {
+    for (texto, esperado) in [
+        ("Break Torque (N.m)", Some("N.m")),
+        ("Radius (m)", Some("m")),
+        ("Motor (\\u{00b0}/s)", Some("°/s")),
+        ("Init Vel X (m/s)", Some("m/s")),
+        ("Grid Size (px)", Some("px")),
+    ] {
+        assert_eq!(
+            unidade_no_fim(texto).as_deref(),
+            esperado,
+            "o detector nao ve a unidade em {texto:?}"
+        );
+    }
+    for texto in ["Float Height", "Corner Rays", "Weight on Ground", "Damping"] {
+        assert!(
+            unidade_no_fim(texto).is_none(),
+            "o detector inventa uma unidade em {texto:?}"
+        );
+    }
+}

@@ -51,6 +51,13 @@ pub(super) fn field_row(
     label: &str,
     field_ids: &[NodeId],
     step: f64,
+    // ⭐⭐ **A UNIDADE do campo, 2026-09-15** — a mesma para TODOS os campos da row, porque uma row
+    //    de `X`/`Y` mede a mesma grandeza nos dois. ⛔ Pô-la só no primeiro diria que o outro tem
+    //    outra.
+    //
+    // ⚠️ **Ela entra AQUI e não no rótulo** (spec §7): medido em 2026-09-14, com a unidade no texto
+    //    **20 de 39** rótulos do Inspector eram cortados à largura de omissão; sem ela, **1**.
+    unit: Option<ph2d_editor_core::widget::Unit>,
 ) -> f32 {
     let label_font = TypeToken::Sm.px();
     let label_h = label_font + Spacing::Xs.px();
@@ -74,7 +81,8 @@ pub(super) fn field_row(
         let (state, value, buffer, caret, anchor) = read_number_input(store, id);
         let input = NumberInput::new(id, "", value)
             .step(step)
-            .visual((state, store.hover_live(id)));
+            .visual((state, store.hover_live(id)))
+            .suffix(unit.map(ph2d_editor_core::widget::Unit::suffix));
         paint_number_input_with_buffer(
             &input,
             Some(buffer),
@@ -272,6 +280,7 @@ fn anchor_editor(
         tr("panel.inspector.anchors.position_x_y_px"),
         &ids::INSP_ANCHOR_POS,
         PX_STEP,
+        None,
     );
     cur_y = field_row(
         scene,
@@ -285,6 +294,7 @@ fn anchor_editor(
         tr("panel.inspector.anchors.rotation_deg"),
         &[ids::INSP_ANCHOR_ROT],
         DEG_STEP,
+        None,
     );
     cur_y = check_row(
         scene,
@@ -313,6 +323,7 @@ fn anchor_editor(
             tr("panel.inspector.anchors.bounds_x_y_w_h"),
             &ids::INSP_ANCHOR_BOUNDS,
             PX_STEP,
+            None,
         );
         cur_y = check_row(
             scene,
@@ -339,6 +350,7 @@ fn anchor_editor(
                 tr("panel.inspector.anchors.center_x_y_w_h"),
                 &ids::INSP_ANCHOR_CENTER,
                 PX_STEP,
+                None,
             );
         }
     }

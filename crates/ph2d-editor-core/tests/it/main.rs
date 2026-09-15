@@ -76,6 +76,7 @@ mod no_effect_inside_debug_assert;
 mod no_label_of_this_crate_is_written_in_the_painter;
 mod no_literal_color;
 mod no_magic_numeric;
+mod no_row_label_carries_its_own_unit;
 mod no_tofu_glyphs;
 mod node_id_collisions;
 mod nothing_inside_a_section_wears_the_section_tone;

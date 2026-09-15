@@ -47,6 +47,28 @@ pub enum Unit {
     /// consegue escrever. ⏳ Separar as duas strings é a dívida que o `DisplayAngle::suffix` já
     /// nomeia (*«o que se escreve e o que se lê não têm de ser a mesma string»*).
     MetersPerSecondSquared,
+    /// ⭐ **Newtons** — a unidade de **cinco** rótulos medidos em 2026-09-15 (*Break Force* da junta
+    /// e da roda, *Force X*, *Force Y*).
+    ///
+    /// ⚠️⚠️ **É a primeira unidade MAIÚSCULA do vocabulário, e foi ela que cobrou a dívida escrita
+    /// ao lado da [`Unit::MetersPerSecondSquared`].** No SI o newton é `N`; um `n` minúsculo é outra
+    /// coisa (nano). Até aqui o [`Unit::parse_suffix`] comparava o texto **já em minúsculas** contra
+    /// o sufixo, logo um sufixo com maiúscula nunca voltaria a ser lido — o campo mostraria `5 N` e
+    /// recusaria `5 N` de volta. ⇒ a comparação passou a ser **insensível à caixa**, que paga a
+    /// dívida sem criar uma segunda string para divergir da primeira.
+    Newtons,
+    /// ⭐ **Newton-metro** — o binário de ruptura de uma junta (*Break Torque*).
+    ///
+    /// ⚠️⚠️ **O sufixo dele acaba em `m`**, logo tem de ser testado **antes** de [`Unit::Meters`]:
+    /// `"12 N.m"` termina em `"m"`, e um `Meters` testado primeiro leria um binário como um
+    /// comprimento — o número certo e a unidade errada, sem erro nenhum.
+    NewtonMetres,
+    /// ⭐ **Graus por segundo** — a velocidade do motor de uma roda (*Motor*).
+    ///
+    /// ⚠️ **O sufixo acaba em `s`**, logo vem antes de [`Unit::Seconds`], pela mesma lei que separa
+    /// `m/s` de `s`. ⚠️ E é `deg/s` e não `°/s` **pela razão de sempre**: o que se mostra é o que se
+    /// tem de conseguir escrever.
+    DegreesPerSecond,
 }
 
 impl Unit {
@@ -61,6 +83,9 @@ impl Unit {
             Unit::Seconds => "s",
             Unit::MetersPerSecond => "m/s",
             Unit::MetersPerSecondSquared => "m/s2",
+            Unit::Newtons => "N",
+            Unit::NewtonMetres => "N.m",
+            Unit::DegreesPerSecond => "deg/s",
         }
     }
 
@@ -68,14 +93,20 @@ impl Unit {
     ///
     /// ⚠️ Pública para que o gate possa medir a ORDEM em vez de a repetir — uma cópia da lista no
     /// teste provaria que a cópia está ordenada, não que o parser está.
-    pub const ALL: [Unit; 8] = [
+    pub const ALL: [Unit; 11] = [
+        // ⚠️ `deg/s` acaba em `s` ⇒ antes de `Seconds`. (E `deg` **não** é o fim de `deg/s`, logo
+        //    `Degrees` pode ficar onde está.)
+        Unit::DegreesPerSecond,
         Unit::Degrees,
         Unit::Radians,
         Unit::MetersPerSecondSquared,
         Unit::MetersPerSecond,
         Unit::Px,
+        // ⚠️ `N.m` acaba em `m` ⇒ antes de `Meters`.
+        Unit::NewtonMetres,
         Unit::Meters,
         Unit::Seconds,
+        Unit::Newtons,
         Unit::Percent,
     ];
 
@@ -90,8 +121,26 @@ impl Unit {
         // `"m/s"`, logo o mais LONGO tem de ser testado primeiro. Com a ordem trocada, `"5m/s"`
         // devolve `(5.0, Seconds)` — o número certo e a unidade errada, sem erro nenhum. O gate
         // `a_longer_suffix_is_never_shadowed_by_a_shorter_one` deriva a ordem de `ALL` e prova-a.
-        Self::ALL.into_iter().find(|u| s.ends_with(u.suffix()))
+        // ⚠️⚠️ **Insensível à CAIXA, e isso é a dívida do `MetersPerSecondSquared` paga.** O sufixo
+        // que se MOSTRA pode ter maiúscula (`N`, `N.m` — o newton do SI), e o que o artista escreve
+        // não tem de a ter. ⛔ A alternativa era uma SEGUNDA string por unidade (uma para mostrar,
+        // outra para ler), e duas strings para a mesma coisa divergem no dia em que alguém edita uma
+        // — o defeito que este ficheiro já nomeia três vezes.
+        Self::ALL.into_iter().find(|u| termina_em(&s, u.suffix()))
     }
+}
+
+/// `str::ends_with` insensível à caixa, **sem alocar**.
+///
+/// ⚠️ Os sufixos são todos ASCII de propósito (ver [`Unit::MetersPerSecondSquared`]), logo dobrar a
+/// caixa **preserva o comprimento** — é isso que deixa o [`parse`] cortar o número por
+/// `suffix().len()` sem reindexar.
+fn termina_em(texto: &str, sufixo: &str) -> bool {
+    texto.len() >= sufixo.len()
+        && texto
+            .as_bytes()
+            .get(texto.len() - sufixo.len()..)
+            .is_some_and(|fim| fim.eq_ignore_ascii_case(sufixo.as_bytes()))
 }
 
 /// Parse a typed field like `"90deg"` / `"12.5 px"` / `"50%"` into its

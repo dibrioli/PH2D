@@ -7,7 +7,7 @@
 //! de uma colisão*, as daqui *o que esta ÁREA faz* —, e uma **peça** tem as primeiras e nenhuma
 //! destas.
 
-use super::rows::{num_row, seg_row};
+use super::rows::{num_row, num_row_unit, seg_row};
 use super::*;
 use ph2d_i18n::TextKey;
 use ph2d_i18n::tr;
@@ -45,17 +45,19 @@ pub(super) fn paint_area_rows(
         // artist tunes against a body's own weight.
         // Force is what the area PUSHES with; Drag is what it RESISTS with. Together
         // they are the difference between wind (push, no resistance) and water.
-        for (label, id) in [
+        for (label, id, unit) in [
             (
                 tr("panel.inspector.physics.force_x_n"),
                 ids::INSP_PHYS_FORCE_X,
+                Some(ph2d_editor_core::widget::Unit::Newtons),
             ),
             (
                 tr("panel.inspector.physics.force_y_n"),
                 ids::INSP_PHYS_FORCE_Y,
+                Some(ph2d_editor_core::widget::Unit::Newtons),
             ),
         ] {
-            yy = num_row(
+            yy = num_row_unit(
                 scene,
                 text_system,
                 theme,
@@ -66,6 +68,8 @@ pub(super) fn paint_area_rows(
                 yy,
                 label,
                 id,
+                unit,
+                None,
             );
         }
         // In WHOSE axes are those two numbers? Directly under them, and deliberately

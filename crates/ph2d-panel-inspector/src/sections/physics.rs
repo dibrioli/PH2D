@@ -10,7 +10,7 @@
 //! Snapshot-driven like §10: the panel crate never sees `ph2d-physics-ecs`,
 //! only resolved tags and floats.
 
-use super::rows::num_row;
+use super::rows::num_row_unit;
 use super::*;
 use ph2d_editor_core::screens::hero::InspectorPhysicsInfo;
 use ph2d_editor_core::widget::SectionFold;
@@ -214,7 +214,7 @@ pub(super) fn paint_shape_dims(
     };
     let mut yy = y;
     for (label, id) in rows {
-        yy = num_row(
+        yy = num_row_unit(
             scene,
             text_system,
             theme,
@@ -225,6 +225,9 @@ pub(super) fn paint_shape_dims(
             yy,
             label,
             *id,
+            // ⭐ As tres dimensoes deste laco sao METROS — `radius`, `half_width`, `half_height`.
+            Some(ph2d_editor_core::widget::Unit::Meters),
+            None,
         );
     }
     yy

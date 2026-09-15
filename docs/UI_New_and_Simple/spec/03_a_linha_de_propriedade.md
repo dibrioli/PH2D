@@ -135,7 +135,8 @@ compra **zero** (ali a metade e o tecto coincidem e não há folga nenhuma).
 | peça | lei |
 |---|---|
 | **coluna de animação** | [`DECORATOR_W`] = `14 px`, em **todas** as linhas, sempre — decisão do dono (*«vou querer animar tudo»*). É um **indicador**, não um controlo: não regista clique nenhum |
-| **a unidade** | dentro do campo, **colada ao número**, em `Text2`, e **some enquanto se escreve**. ⛔ Nunca no rótulo: com a unidade lá, **20 de 39** rótulos do Inspector eram cortados; sem ela, **1** |
+| **a unidade** | dentro do campo, **colada ao número**, em `Text2`, e **some enquanto se escreve**. ⛔ Nunca no rótulo: com a unidade lá, **20 de 39** rótulos do Inspector eram cortados; sem ela, **1**. ⭐ Em 2026-09-15 o censo levou os restantes **28** (`Break Torque (N.m)`, `Init Vel X (m/s)`, `Non-Spatialized Radius (m)`, …) e o vocabulário ganhou `N`, `N.m` e `deg/s` |
+| **o que o campo pinta, o campo lê** | o sufixo que se MOSTRA pode ter maiúscula (o `N` do SI) e o que o artista escreve não tem de a ter ⇒ a leitura é **insensível à caixa**. ⛔ Não há uma segunda string por unidade: duas strings para a mesma coisa divergem |
 | **a superfície** | o preenchimento sai da porta do TEMA ([`body_fill`]), nunca do token do cartão. Num tema moderno o campo é um degrau **abaixo** da superfície em que assenta, e **não** leva moldura em repouso |
 | **o valor** | alinhado à esquerda dentro do campo, com as setinhas na coluna da direita |
 
@@ -154,6 +155,14 @@ compra **zero** (ali a metade e o tecto coincidem e não há folga nenhuma).
 4. **A unidade de EXIBIÇÃO** (`m` ⇄ `px`) ainda não conduz o sufixo do campo: mostrar `px` sobre um
    número em metros trocaria um rótulo comprido por um rótulo **mentiroso**. Precisa da conversão do
    valor, não de um sufixo.
+5. ⏳ **DUAS portas ainda não levam unidade**, e a catraca do
+   `no_row_label_carries_its_own_unit` nomeia-as linha a linha: a `transform_row::paint_row` (o par
+   de chips `X`/`Y` do Transform, onde o rótulo carrega ainda por cima a RÉGUA activa) e o
+   `field_row` do 9-slice. ⚠️ **O `field_row` das âncoras JÁ leva** (2026-09-15) — a mesma unidade em
+   todos os campos da row, porque uma row de `X`/`Y` mede a mesma grandeza nos dois.
+   ⛔ E a razão de cada entrada da catraca é a **PORTA**, não *«é multi-campo»*: o `field_row` pinta
+   uma row de UM campo (`Rotation (deg)`) e mesmo assim não levava sufixo. *O que separa não é a
+   contagem de campos — é a porta ter, ou não, por onde a unidade entrar.*
 5. **A coluna de nome de FAIXA da timeline** (`tracks.rs`) responde a outra pergunta e fica de fora
    **de propósito**.
 
@@ -180,6 +189,8 @@ compra **zero** (ali a metade e o tecto coincidem e não há folga nenhuma).
 | §7 | o preenchimento do campo sai do tema | `body_fill` | `every_field_painter_asks_the_theme_for_its_fill` |
 | §7 | um campo nunca tem a cor daquilo em que assenta | `SURFACE_STEP` | `a_field_is_never_the_colour_of_what_it_sits_on` |
 | §7 | um sufixo mais longo nunca é ensombrado por um mais curto | `Unit` | `a_longer_suffix_is_never_shadowed_by_a_shorter_one` |
+| §7 | o campo lê de volta a unidade que ele próprio pinta, em qualquer caixa | `parse_suffix` | `every_unit_reads_back_what_it_paints` |
+| §7 | nenhum rótulo do app carrega a unidade no texto | `num_row_unit` | `no_row_label_carries_its_own_unit` |
 | §7 | a unidade é tinta dentro da caixa, nunca uma segunda caixa | `paint_number_input_with_buffer` | `the_unit_is_ink_inside_the_box_and_never_a_second_box` |
 
 ---

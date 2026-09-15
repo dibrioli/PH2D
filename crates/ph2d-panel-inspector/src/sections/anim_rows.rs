@@ -242,6 +242,7 @@ fn editor(
         tr("panel.inspector.animation.from_to_cell"),
         &[ids::INSP_ANIM_FROM, ids::INSP_ANIM_TO],
         1.0,
+        None,
     );
     cur_y = super::anchors::field_row(
         scene,
@@ -255,6 +256,7 @@ fn editor(
         tr("panel.inspector.animation.frame_ms_repeat_0_forever"),
         &[ids::INSP_ANIM_FRAME_MS, ids::INSP_ANIM_REPEAT],
         1.0,
+        None,
     );
     // ⚠️ **Uma animação com ritmo PRÓPRIO por célula (§8.12) tem de o DIZER.** Sem esta linha o
     // campo `Frame ms` acima mente sobre ela — mostra a duração mais comum e nada explica por que
@@ -285,6 +287,7 @@ fn editor(
         tr("panel.inspector.animation.hold_ms_repeat_delay_ms"),
         &[ids::INSP_ANIM_HOLD_MS, ids::INSP_ANIM_DELAY_MS],
         10.0, // LITERAL-PX-OK: passo de scrub em MILISSEGUNDOS, não em pixels
+        None,
     );
 
     // A direção, como quatro botões. ⚠️ A seleção vem do SNAPSHOT, e não do store.

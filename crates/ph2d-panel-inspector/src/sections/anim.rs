@@ -159,6 +159,7 @@ fn player_block(
         tr("panel.inspector.animation.speed_x"),
         &[ids::INSP_ANIM_SPEED],
         0.1, // LITERAL-PX-OK: passo de scrub em MÚLTIPLOS de velocidade, não em pixels
+        None,
     );
 
     cur_y = segmented_row(
@@ -267,6 +268,7 @@ fn player_block(
                 tr("panel.inspector.animation.this_frame_ms_0_use"),
                 &[ids::INSP_ANIM_FRAME_MS_THIS],
                 10.0, // LITERAL-PX-OK: passo de scrub em MILISSEGUNDOS, não em pixels
+                None,
             );
         }
     }

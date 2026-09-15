@@ -1063,3 +1063,93 @@ larguras intermédias, que é exactamente onde o dono está (`273,3`).
 
 ⇒ a onda seguinte é dar às secções dos outros painéis a medição do rótulo mais largo. ⚠️ Ela é
 **mecânica** onde a secção tem tabela e **trabalho** onde as rows são construídas à mão.
+
+---
+
+## 19 — ⭐⭐⭐ A UNIDADE SAI DO RÓTULO EM TODO O APP — 28 rótulos, e o vocabulário cresce
+
+A §12 moveu a unidade para dentro do campo **numa secção** (a §14 do Platform Player, 32 rótulos).
+O censo de 2026-09-15 mostrou que a lei não tinha chegado ao resto: **28** textos ainda a carregavam,
+entre eles `"Non-Spatialized Radius (m)"` (26 caracteres), `"Break Torque (N.m)"` e
+`"Init Vel X (m/s)"`. ⇒ ***uma lei curada numa secção e não gateada é uma lei que a secção seguinte
+não conhece.***
+
+### 19.1 — A onda começou pelo PORTÃO, e ele foi a lista de trabalho
+
+[`no_row_label_carries_its_own_unit`](../../../crates/ph2d-editor-core/tests/it/no_row_label_carries_its_own_unit.rs)
+varre as tabelas de i18n e acusa todo VALOR que acabe num sufixo de unidade entre parênteses.
+Escrito **red-first** com a tolerância a conter só o que NÃO ia converter, ele imprimiu os 28 e
+fechou verde quando o último caiu.
+
+⚠️ **Ele lê o TEXTO, nunca a chave** — a chave mantém o sufixo de propósito (é um endereço;
+renomeá-la para dizer o mesmo custa 31 sítios).
+
+⚠️⚠️ **E o piso de população foi CHUTADO e reprovou sobre o produto certo:** escrevi `> 2000` e a
+varredura lê **1 801**. Corrigido para `>= 1500` **com o número medido ao lado**. *Um piso inventado
+é um gate que reprova sobre o que está bem.*
+
+### 19.2 — O vocabulário cresce em TRÊS, e a terceira cobrou uma dívida escrita
+
+`Unit` ganha **`Newtons` (`N`)**, **`NewtonMetres` (`N.m`)** e **`DegreesPerSecond` (`deg/s`)`.
+
+⚠️ **Duas colisões novas de ordem**, e o `ALL` nomeia-as: `"N.m"` acaba em `"m"` ⇒ antes de
+`Meters`; `"deg/s"` acaba em `"s"` ⇒ antes de `Seconds`. Sem isso o parser devolve *o número certo e
+a unidade errada, sem erro nenhum*.
+
+⭐⭐ **E o `Newtons` é a primeira unidade MAIÚSCULA do vocabulário** — no SI o newton é `N`, e um `n`
+é outra coisa. Até aqui o `parse_suffix` comparava o texto **já em minúsculas** contra o sufixo, logo
+um sufixo com maiúscula era **inalcançável**: *o campo pintaria `1200 N` e recusaria `1200 N` de
+volta*. ⇒ a comparação passou a ser **insensível à caixa** (`termina_em`, sem alocar), que **paga a
+dívida que o `MetersPerSecondSquared` já nomeava** (*«o que se escreve e o que se lê não têm de ser a
+mesma string»*) **sem** criar uma segunda string por unidade para divergir da primeira.
+
+Gate novo `every_unit_reads_back_what_it_paints` — varre `Unit::ALL` (⛔ não uma lista à mão) e
+exige a ida-e-volta em quatro caixas por unidade; mais o controlo
+`the_parser_still_refuses_what_is_not_a_unit`.
+
+### 19.3 — E a razão que eu escrevi na tolerância estava ERRADA
+
+A 1.ª redacção dizia *«row de dois campos — o editor de par não leva sufixo»*. A medição desmentiu-a:
+o `field_row` das âncoras pinta uma row de **UM** campo (`Rotation (deg)`) e **também** não levava
+sufixo, enquanto o `num_row_unit` o leva numa row de um campo **e** poderia levá-lo em N.
+
+⇒ ***o que separa não é a contagem de campos — é a PORTA ter, ou não, por onde a unidade entrar.***
+O `field_row` ganhou o parâmetro (a **mesma** unidade em todos os campos da row: um par `X`/`Y` mede
+a mesma grandeza nos dois), e a catraca passou a nomear **portas**, não formas.
+
+### 19.4 — O que a conversão custou, e o que o compilador garantiu
+
+| ficheiro | forma |
+|---|---|
+| `joint_cards` · `joint_kind_rows` · `wheel` | chamada directa ⇒ `num_row_unit` |
+| `camera` · `audio` | tabela ⇒ **coluna nova** `Option<Unit>` na tupla |
+| `physics` | laço homogéneo ⇒ a unidade do laço (as três dimensões são metros) |
+| `physics_body` · `physics_part` · `physics_area_rows` · `physics_rows` | laços MISTOS ⇒ coluna |
+
+⭐ **O script foi a forma certa e o modo de falha foi ALTO:** o `num_row_unit` tem **aridade
+diferente** do `num_row`, logo toda inserção errada **não compila**. ⚠️ Ele converteu **7** dos ~33
+sítios sozinho — os outros vivem em tabelas, e ali a cura é uma **coluna**, que é a forma certa
+(*uma row nasce com a sua unidade, ou não nasce*).
+
+### 19.5 — Provas de mutação
+
+| mutação | gate | veredito |
+|---|---|---|
+| `N.m` testado **depois** de `Meters` | `a_longer_suffix_is_never_shadowed_by_a_shorter_one` | **MORTA** |
+| `deg/s` testado **depois** de `Seconds` | idem | **MORTA** |
+| a comparação volta a ser sensível à caixa | `every_unit_reads_back_what_it_paints` | **MORTA** |
+| a unidade volta a um rótulo | `no_row_label_carries_its_own_unit` | **MORTA** |
+| uma tolerância deixa de descrever algo | `the_tolerated_unit_labels_still_describe_something` | **MORTA** |
+
+### 19.6 — ⏳ E a onda destapou um defeito MAIOR, que fica NOMEADO e não curado
+
+**O `field_row` EMPILHA o rótulo por cima dos campos** (`paint_text(label, x, …)` e só depois
+`row_y = y + label_h`) — que é literalmente o report do dono de 2026-09-14, *«Label acima do campo
+numérico! Muito ruim!»*, numa porta que a §14 não alcançou. Ele pinta as âncoras, o 9-slice, a
+câmera e o áudio.
+
+⛔ **Não curado nesta onda de propósito:** é a lei da §3/§4 do manual (a coluna ao meio, o rótulo à
+direita), é uma mudança **visível** em quatro secções, e merece o smoke dela. ⚠️ *E é o mesmo
+mecanismo da §19: uma cura aplicada a UMA porta não chega à porta vizinha* — só que aqui o gate que
+o apanharia (`the_label_column_is_never_chosen_at_the_painting_site`) mede a **largura da coluna**, e
+uma row que não TEM coluna não é medida por ele.

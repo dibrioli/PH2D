@@ -5,7 +5,7 @@
 //! romper é*, lá *quais linhas este tipo tem*. Cada card é um subject que vários
 //! tipos compartilham, e é isso que os torna uma unidade.
 
-use super::rows::{num_row, seg_row};
+use super::rows::{num_row, num_row_unit, seg_row};
 use super::*;
 use ph2d_editor_core::screens::hero::InspectorJointInfo;
 use ph2d_i18n::tr;
@@ -158,7 +158,7 @@ pub(super) fn paint_break_rows(
     if !info.break_enabled {
         return yy;
     }
-    yy = num_row(
+    yy = num_row_unit(
         scene,
         text_system,
         theme,
@@ -169,9 +169,11 @@ pub(super) fn paint_break_rows(
         yy,
         tr("panel.inspector.joint.break_force_n"),
         ids::INSP_JOINT_BREAK_FORCE,
+        Some(ph2d_editor_core::widget::Unit::Newtons),
+        None,
     );
     if info.breaks_on_torque {
-        yy = num_row(
+        yy = num_row_unit(
             scene,
             text_system,
             theme,
@@ -182,6 +184,8 @@ pub(super) fn paint_break_rows(
             yy,
             tr("panel.inspector.joint.break_torque_n_m"),
             ids::INSP_JOINT_BREAK_TORQUE,
+            Some(ph2d_editor_core::widget::Unit::NewtonMetres),
+            None,
         );
     }
     yy

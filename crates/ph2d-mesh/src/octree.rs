@@ -392,7 +392,14 @@ impl Octree {
             return;
         }
         let mut best = f32::INFINITY;
-        let mut stack: Vec<(u32, f32)> = vec![(0, 0.0)];
+        // ⛔⛔ **A RAIZ É TESTADA COMO QUALQUER OUTRO NÓ, e até 2026-09-14 não
+        // era.** Ela entrava com `entry = 0,0` cravado, logo um raio que nem
+        // toca na caixa da peça começava a descer a árvore na mesma.
+        let (t0, t1) = self.nodes[0].loose.ray_slab(origin, inv_dir);
+        if t0 > t1 {
+            return;
+        }
+        let mut stack: Vec<(u32, f32)> = vec![(0, t0.max(0.0))];
         while let Some((ni, entry)) = stack.pop() {
             // O `t` de entrada foi medido quando o nó foi EMPILHADO; o `best`
             // pode ter encolhido desde então, e este é o teste que aproveita.
@@ -416,7 +423,21 @@ impl Octree {
             }
             kids.sort_unstable_by(|a, b| b.1.total_cmp(&a.1));
             for (ci, t0) in kids {
-                if t0 <= best {
+                // ⛔⛔ **`<=` E NÃO `<`, e a diferença foi MEDIDA por um gate
+                // que reprovou.** A troca para `<` parece obviamente certa — um
+                // filho que a caixa REJEITA sai do `ray_slab` com `t0 = ∞`, e
+                // enquanto nada foi acertado o `best` também é `∞`, logo
+                // `∞ <= ∞` volta a empilhar o nó rejeitado. Mas o `<=` é
+                // **rede** para o caso que o
+                // `an_axis_aligned_ray_grazing_a_box_plane_is_not_lost_to_nan`
+                // defende: um raio alinhado ao eixo, com a origem EXACTAMENTE
+                // no plano de uma caixa, produz `0 × ∞ = NaN` no slab e o nó sai
+                // rejeitado de raspão — com `<` a face **desaparece**.
+                //
+                // ⇒ a poda do caso que importa mudou-se para a RAIZ (acima), que
+                // a cura sem tocar nesta rede: um raio que nem toca na caixa da
+                // peça devolve em `O(1)`.
+                if t0 < best {
                     stack.push((ci, t0));
                 }
             }

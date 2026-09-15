@@ -111,6 +111,23 @@ impl Aabb {
         for k in 0..3 {
             let a = (self.min[k] - origin[k]) * inv_dir[k];
             let b = (self.max[k] - origin[k]) * inv_dir[k];
+            // ⛔⛔ **O NaN SALTA O EIXO, e até 2026-09-14 ele RESTRINGIA.** O
+            // parágrafo acima prometia que *«aquele eixo simplesmente não
+            // restringe o intervalo»*, e o código fazia o contrário: com a
+            // origem no plano `min` daquele eixo sai `a = 0 × ∞ = NaN` e
+            // `b = +∞`, e o `f32::min` da `std` devolve o **outro** operando ⇒
+            // `a.min(b) = +∞` ⇒ `t0 = ∞`, que é uma **REJEIÇÃO** e não uma
+            // resposta conservadora.
+            //
+            // ⚠️⚠️ **Ninguém notou porque o octree tinha uma REDE:** enquanto
+            // nada foi acertado o `best` é `∞`, e o `t0 <= best` dele voltava a
+            // empilhar o nó rejeitado. *Uma promessa de doc que o código não
+            // cumpre pode viver anos debaixo de uma rede noutro ficheiro* — e
+            // ela só apareceu quando a poda da RAIZ passou a acreditar nesta
+            // função.
+            if a.is_nan() || b.is_nan() {
+                continue;
+            }
             t0 = t0.max(a.min(b));
             t1 = t1.min(a.max(b));
         }

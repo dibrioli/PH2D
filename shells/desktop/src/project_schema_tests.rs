@@ -514,7 +514,13 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // é a décima quinta vez. ⛔ O `TopDownState` — a memória da velocidade — **não é
         // componente**: ela vive na ponte, dentro do anel de checkpoints, porque um campo que muda
         // por tique num componente registado faria o undo ver cada quadro como um passo.
-        (132, 13, 22),
+        // ⭐⭐⭐ **132 → 133 — o CÉREBRO AUTORÁVEL** (TOP-20 #15, `line/components`, 2026-09-15):
+        // UM componente registado novo (`ph2d::ecs::StateMachine`). O Flip e a VecScene não se
+        // mexem, e **a tripla não vê este degrau** — é a **décima sétima** vez. ⛔ O
+        // `StateMachineRuntime` — em que estado se está agora — **não é componente registado**: a
+        // cerca é o TIPO (ele não deriva `Serialize`), e registá-lo faria **cada transição** virar
+        // um passo de `Ctrl+Z`. Ele é reposto ao rebobinar pela porta do `ph2d_ecs::rewind_runtime`.
+        (133, 13, 22),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

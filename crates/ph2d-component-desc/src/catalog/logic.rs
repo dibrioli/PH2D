@@ -59,6 +59,27 @@ const TIMER_FIELDS: &[FieldDesc] = &[
     f(5, "Signal", K::Text),
 ];
 
+/// **Os campos de um `StateMachine`** — os três de um ESTADO, os três de uma SETA, e o inicial.
+///
+/// ⚠️ **Duas listas num descritor só**, como o `Timers` descreve um elemento da dele: o que isto
+/// SERVE são rótulos e o `field_id` de um override por-campo. Os ids não se reordenam.
+///
+/// ⛔ **Não há campo para o `StateMachineRuntime`** — o estado corrente é vivo, o undo não o
+/// fotografa, e descrevê-lo aqui seria prometer ao Inspector um valor que ele não deve editar.
+const STATE_MACHINE_FIELDS: &[FieldDesc] = &[
+    f(1, "State Name", K::Text),
+    // ⚠️ **Vazio = calado**, a lei do produtor de sinal desta casa.
+    f(2, "On Enter", K::Text),
+    f(3, "On Exit", K::Text),
+    // ⚠️ Os dois extremos de uma seta são ÍNDICES e não nomes — um nome ligaria a seta ao texto
+    // que o artista pode reescrever a meio, e a seta saltaria de estado.
+    f(4, "From", K::Scalar),
+    // ⚠️ **Este é um NOME**, e é o único: ele é o contrato com o resto do mundo.
+    f(5, "On Signal", K::Text),
+    f(6, "To", K::Scalar),
+    f(7, "Initial State", K::Scalar),
+];
+
 /// **Os campos de UMA linha da tabela `SignalActions`** — *quando o sinal `on` chegar, faz `verb`
 /// em `target`*.
 ///
@@ -144,6 +165,19 @@ pub const DESCS: &[ComponentDesc] = &[
         C::Logic,
         O::ANY,
         ACTION_FIELDS,
+    ),
+    // ⭐⭐⭐ **O CÉREBRO AUTORÁVEL** (TOP-20 #15) — `O::ANY` pela mesma razão do relógio e da
+    // tabela: quem pensa é tantas vezes um objecto VAZIO quanto uma sprite.
+    //
+    // ⚠️ **Entre o `SignalActions` e o `Timers`, e isso NÃO é estilo:** a lista é procurada por
+    // busca binária, e fora de ordem o descritor devolve `None` para um tipo que existe — *um
+    // descritor que não é encontrado lê-se exactamente como um que não existe*.
+    D::authored(
+        "ph2d::ecs::StateMachine",
+        "State Machine",
+        C::Logic,
+        O::ANY,
+        STATE_MACHINE_FIELDS,
     ),
     // ⚠️ **`O::ANY`, e é a decisão**: um relógio serve a um sprite, a uma forma, a um objecto
     // VAZIO e a um grupo. Restringi-lo a `DRAWABLE` faria o objecto vazio — a entidade que o

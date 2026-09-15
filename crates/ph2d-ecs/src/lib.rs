@@ -100,6 +100,10 @@ pub mod sprite_sheet_ref;
 pub mod stable_id;
 /// ⭐⭐⭐ **O cérebro autorável** (TOP-20 #15) — ver o cabeçalho do módulo.
 pub mod state_machine;
+pub use state_machine::{
+    MachineState, STATE_NAME_MAX_BYTES, STATES_MAX, StateMachine, StateMachineRuntime,
+    TRANSITIONS_MAX, Transition as StateTransition,
+};
 /// ⭐⭐⭐ **O `Timer`** — o item #2 do TOP-20 e o primeiro produtor de sinal barato do produto
 /// (hoje o único produtor autorável é uma COLISÃO).
 pub mod tags;

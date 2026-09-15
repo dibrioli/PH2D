@@ -33,7 +33,10 @@
 //! fica porque a redundância declarada é barata e porque o dia em que uma vida for autorável à mão
 //! já não tem de se lembrar disto (o mesmo argumento do `release_grab` no `bridge::rewind`).
 
-use crate::{CameraRuntime, Entity, FactoryRuntime, LifetimeRuntime, TimerRuntime, Timers, World};
+use crate::{
+    CameraRuntime, Entity, FactoryRuntime, LifetimeRuntime, StateMachine, StateMachineRuntime,
+    TimerRuntime, Timers, World,
+};
 
 /// **Repõe o estado vivo de toda a gente, como no tique 0.** Devolve **quantos componentes** foram
 /// tocados — o número que um diagnóstico imprime e que um gate lê.
@@ -49,6 +52,7 @@ use crate::{CameraRuntime, Entity, FactoryRuntime, LifetimeRuntime, TimerRuntime
 /// | [`TimerRuntime`] | [`crate::timer::born`] por slot | um `autostart` nasce **a correr**; o `Default` é parado |
 /// | [`LifetimeRuntime`] | `Default` | zero microssegundos vividos |
 /// | [`FactoryRuntime`] | `Default` | ⭐ **`rng: 0` quer dizer «por semear»** ⇒ a corrida seguinte **repete** a primeira |
+/// | [`StateMachineRuntime`] | [`crate::state_machine::born`] | volta ao estado **inicial**, e `started = false` fá-lo anunciar a entrada outra vez |
 /// | [`CameraRuntime`] | ⭐⭐ **APAGAR o componente** | o `ensure_runtime` da shell recria-o **da pose autorada**; um `Default` poria a câmera na ORIGEM |
 pub fn rewind_runtime_state(world: &mut World) -> usize {
     let mut n = 0;
@@ -66,6 +70,16 @@ pub fn rewind_runtime_state(world: &mut World) -> usize {
     let mut q = world.query::<&mut LifetimeRuntime>();
     for mut rt in q.iter_mut(world) {
         *rt = LifetimeRuntime::default();
+        n += 1;
+    }
+
+    // ── OS CÉREBROS ──────────────────────────────────────────────────────────
+    // ⭐ **O membro que nasceu DEPOIS da porta**, e que passou por ela porque o censo o obrigou —
+    // que é exactamente o que esta wave existiu para conseguir. A config entra na conta: um cérebro
+    // renasce no estado INICIAL dele, e com `started = false` ele volta a anunciar a entrada.
+    let mut q = world.query::<(&StateMachine, &mut StateMachineRuntime)>();
+    for (cfg, mut rt) in q.iter_mut(world) {
+        *rt = crate::state_machine::born(cfg);
         n += 1;
     }
 

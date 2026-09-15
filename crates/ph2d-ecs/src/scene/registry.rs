@@ -587,6 +587,14 @@ pub fn register_ecs_components(reg: &mut ComponentRegistry) {
     // consumidor que faltava aos sinais. ⚠️ Ela é CONFIG inteira: o que ela guarda é o que o
     // artista escreveu, e o efeito de uma acção vive no componente que ela toca.
     reg.register_default::<crate::SignalActions>("ph2d::ecs::SignalActions");
+    // ⭐⭐⭐ **O CÉREBRO AUTORÁVEL** (TOP-20 #15, 2026-09-15) — os estados, as setas e o inicial são
+    // CONFIG inteira. Sem o registo, o artista desenha a máquina, grava, reabre, e o objecto volta
+    // BURRO: nada some da tela e nada dá erro.
+    //
+    // ⛔⛔ **O `StateMachineRuntime` NÃO está aqui**, e a porta fecha-se pelo **TIPO**: ele não
+    // deriva `Serialize`, logo a linha nem compila — o precedente do `TimerRuntime`. Registá-lo
+    // faria **cada transição** virar um passo de `Ctrl+Z`.
+    reg.register_default::<crate::StateMachine>("ph2d::ecs::StateMachine");
     // ⭐⭐⭐ **A FÁBRICA e o CICLO DE VIDA** (TOP-20 #11 e #12, 2026-09-14) — os três são CONFIG
     // inteira e gravam-se. Sem o registo, o artista escolhe a receita, afina a rajada, grava,
     // reabre, e a cena volta ESTÉRIL: nada some da tela e nada dá erro.

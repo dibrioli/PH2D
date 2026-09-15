@@ -431,4 +431,26 @@
 /// tem o componente, logo lê-se inteiro por este binário.
 ///
 /// ⚠️ **A tripla NÃO vê este degrau** — é a **décima sexta** vez.
-pub(crate) const PROJECT_SCHEMA: u32 = 132;
+/// # 132 -> 133 — o CÉREBRO AUTORÁVEL (TOP-20 #15, `line/components`)
+///
+/// UM componente registado novo: `ph2d::ecs::StateMachine` — os estados, as setas e o inicial.
+/// Mesmo mecanismo dos degraus `123`, `125`, `126`, `127`, `130`, `131` e `132`.
+///
+/// ⭐⭐⭐ **E ele só existe porque a composição foi MEDIDA primeiro** (§5.0). A sonda
+/// `ph2d-ecs/tests/it/mede_o_que_a_composicao_ja_da_ao_cerebro.rs` respondeu **NÃO** em três
+/// sítios: o mesmo sinal com duas linhas contraditórias dispara **as duas** (nada escolhe uma — *e
+/// escolher uma é o que um estado é*), a `SignalAction` tem **5** campos e **zero** são uma guarda,
+/// e dos **7** verbos com sink **nenhum** emite um sinal. *O que faltava não eram acções: era a
+/// MEMÓRIA de em que estado se está.*
+///
+/// ⛔⛔ **O `StateMachineRuntime` NÃO é componente registado, pela mesma razão do `TimerRuntime`:**
+/// registá-lo faria **cada transição** virar um passo de `Ctrl+Z`. E a cerca é o **TIPO** — ele não
+/// deriva `Serialize`, logo a linha do registo nem compila. Ele é reposto ao rebobinar pela porta
+/// do `ph2d_ecs::rewind_runtime`, escrita na **W0** desta mesma jornada por o defeito existir já
+/// nos três runtimes que havia.
+///
+/// ⛔ **Sem degrau de migração**, pela decisão do Enio de 26/08 e pela razão aditiva: um v132 não
+/// tem o componente, logo lê-se inteiro por este binário.
+///
+/// ⚠️ **A tripla NÃO vê este degrau** — é a **décima sétima** vez.
+pub(crate) const PROJECT_SCHEMA: u32 = 133;

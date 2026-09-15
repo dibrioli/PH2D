@@ -158,6 +158,18 @@ pub enum SignalOrigin {
         /// A cópia que morreu.
         source: EntityBits,
     },
+    /// ⭐⭐⭐ **Um objecto ENTROU ou SAIU de um estado** (TOP-20 #15).
+    ///
+    /// ⚠️ **Não carrega se foi entrada ou saída, e é a lei do produtor desta casa:** entrar e sair
+    /// distinguem-se por serem **nomes diferentes**, autorados em dois campos do estado — nunca por
+    /// um campo de fase. É a mesma decisão do `Contact` (chegada/saída) e das tags de animação.
+    ///
+    /// ⚠️ **Nem carrega o nome do ESTADO**: o nome do sinal é o que o artista autorou, logo ele já é
+    /// o contrato. Pôr os dois daria duas respostas a *«o que é este evento?»*.
+    StateMachine {
+        /// Quem pensou — a entidade que carrega a máquina.
+        source: EntityBits,
+    },
 }
 
 /// Um sinal publicado neste quadro.
@@ -245,6 +257,20 @@ impl Signal {
             origin: SignalOrigin::Timer {
                 source: EntityBits(source),
                 fires,
+            },
+        }
+    }
+
+    /// **Um objecto entrou ou saiu de um estado** ([`SignalOrigin::StateMachine`]).
+    ///
+    /// ⚠️ Sem contagem, ao contrário do timer e da fábrica: uma transição **não colapsa** — cada uma
+    /// é um facto com o seu nome, e duas transições num tique são dois nomes diferentes.
+    #[must_use]
+    pub fn from_state_machine(name: &str, source: u64) -> Self {
+        Self {
+            name: Arc::from(name),
+            origin: SignalOrigin::StateMachine {
+                source: EntityBits(source),
             },
         }
     }

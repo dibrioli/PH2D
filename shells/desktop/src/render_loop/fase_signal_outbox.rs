@@ -115,6 +115,29 @@ impl crate::App {
                 &[("sig", &(sig.name))],
             )));
         }
+        // ⭐⭐⭐ **OS CÉREBROS** (TOP-20 #15) — eles leem os sinais e ANUNCIAM, e o que anunciam é
+        // publicado aqui, **antes** de a tabela de acções ler. É isso que faz uma porta abrir no
+        // MESMO quadro em que o botão é tocado.
+        //
+        // ⚠️ **Todas as máquinas leem a mesma fotografia**, tirada antes de qualquer uma avançar —
+        // ver o cabeçalho de [`state_machine_tick`]. Uma emissão desta fase chega a quem a escuta
+        // no quadro SEGUINTE, que é o que fecha a classe dos laços sem um `if`.
+        {
+            let ouvidos: Vec<String> = self
+                .signals
+                .read(&mut self.signal_readers.machine)
+                .map(|s| s.name.to_string())
+                .collect();
+            let nomes: Vec<&str> = ouvidos.iter().map(String::as_str).collect();
+            let anunciados = state_machine_tick::advance_machines(sim, &nomes);
+            for sig in anunciados {
+                self.signals
+                    .publish(ph2d_runtime::Signal::from_state_machine(
+                        &sig.name,
+                        sig.entity.to_bits(),
+                    ));
+            }
+        }
         // ⭐⭐⭐ **O CONSUMIDOR QUE FAZ ALGUMA COISA** (TOP-20 #5) — a tabela nome → acção.
         //
         // ⚠️ **Aqui, e não noutro sítio do quadro:** depois do dreno (senão os sinais deste quadro
@@ -158,50 +181,11 @@ impl crate::App {
         // a lei que o oráculo mediu — um moribundo continua visível a toda consulta até ao fim do
         // quadro.
         self.fase_fabrica_e_morte(deaths, camera_rect);
-        if let Some(reader) = self.signal_readers.log.as_mut() {
-            for sig in self.signals.read(reader) {
-                match sig.origin {
-                    ph2d_runtime::SignalOrigin::Timeline { t } => {
-                        eprintln!("[signal] {} <- timeline @ {t:.3}s", sig.name);
-                    }
-                    ph2d_runtime::SignalOrigin::Contact { source, other } => {
-                        eprintln!(
-                            "[signal] {} <- fisica, {} tocou {}",
-                            sig.name, source.0, other.0
-                        );
-                    }
-                    ph2d_runtime::SignalOrigin::Control => {
-                        eprintln!("[signal] {} <- controle autorado", sig.name);
-                    }
-                    ph2d_runtime::SignalOrigin::Motion { tick, rows } => {
-                        eprintln!(
-                            "[signal] {} <- grafo motion, tique {tick}, {rows} linha(s)",
-                            sig.name
-                        );
-                    }
-                    ph2d_runtime::SignalOrigin::Animation { source, cycles } => {
-                        eprintln!(
-                            "[signal] {} <- animacao da sprite {}, {cycles} ciclo(s)",
-                            sig.name, source.0
-                        );
-                    }
-                    ph2d_runtime::SignalOrigin::Timer { source, fires } => {
-                        eprintln!(
-                            "[signal] {} <- timer do objecto {}, {fires} periodo(s)",
-                            sig.name, source.0
-                        );
-                    }
-                    ph2d_runtime::SignalOrigin::Spawned { source, count } => {
-                        eprintln!(
-                            "[signal] {} <- fabrica {}, {count} copia(s) nasceram",
-                            sig.name, source.0
-                        );
-                    }
-                    ph2d_runtime::SignalOrigin::Death { source } => {
-                        eprintln!("[signal] {} <- morreu a copia {}", sig.name, source.0);
-                    }
-                }
-            }
-        }
+        // ⭐ **E o DIAGNÓSTICO**, que é assunto próprio e mora no irmão (`fase_signal_log`).
+        //
+        // ⚠️ **Ela chama-se `fase_*` e isso NÃO é estilo:** o texto emendado do quadro colhe só
+        // essas, e com outro nome ela desapareceria do oráculo de **toda** lei de ordem desta
+        // shell, em silêncio — a armadilha que a wave da fábrica mediu e escreveu.
+        self.fase_signal_log();
     }
 }

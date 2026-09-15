@@ -146,6 +146,8 @@ mod tags_panel;
 pub(crate) use audio_2d::AudioSceneReport;
 pub(crate) use camera_2d::CameraSceneReport;
 mod signal_actions;
+/// ⭐⭐⭐ **A ponte do cérebro autorável** (TOP-20 #15) — ver o cabeçalho dela.
+mod state_machine_tick;
 /// ⚠️ A MESMA porta do passe, alcançável dos gates de outro módulo (a cadeia de visibilidade do
 /// vetor lê a marca, e o gate dela tem de a poder carimbar). *Um segundo carimbo escrito à mão no
 /// teste seria a segunda resposta.*
@@ -351,6 +353,7 @@ mod fase_session_upkeep;
 mod fase_shape_fields;
 /// Fase do quadro: os verbos da folha de sprites.
 mod fase_sheet_verbs;
+mod fase_signal_log;
 mod fase_signal_outbox;
 /// Fase do quadro: o extract (propagação, emissão das sprites e a ordem total do quadro).
 mod fase_sim_extract;

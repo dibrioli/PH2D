@@ -50,6 +50,9 @@ impl Host {
                 SignalOrigin::Death { source } => {
                     format!("{} morreu {}", sig.name, source.0)
                 }
+                SignalOrigin::StateMachine { source } => {
+                    format!("{} cerebro {}", sig.name, source.0)
+                }
             });
         }
     }

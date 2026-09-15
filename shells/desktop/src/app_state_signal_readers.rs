@@ -26,6 +26,11 @@ pub(crate) struct SignalReaders {
     pub(crate) log: Option<ph2d_runtime::SignalReader>,
     /// ⭐ O cursor da tabela **nome → acção** (TOP-20 #5).
     pub(crate) action: ph2d_runtime::SignalReader,
+    /// ⭐ O cursor dos **CÉREBROS** (TOP-20 #15).
+    ///
+    /// ⚠️ **Próprio, e não partilhado com a tabela de acções:** cada consumidor lê a saída com o
+    /// seu cursor, e é isso que permite a esta fase correr ANTES daquela sem lhe roubar os sinais.
+    pub(crate) machine: ph2d_runtime::SignalReader,
     /// ⭐ O cursor da **FÁBRICA** (TOP-20 #11) — ela escuta o mesmo sinal que a tabela de acções, e
     /// por isso precisa do seu: com um cursor partilhado, quem lesse primeiro apagava o outro.
     pub(crate) factory: ph2d_runtime::SignalReader,
@@ -34,12 +39,13 @@ pub(crate) struct SignalReaders {
 }
 
 impl SignalReaders {
-    /// Os cinco cursores no arranque. ⚠️ O de diagnóstico só nasce com a env var.
+    /// Os seis cursores no arranque. ⚠️ O de diagnóstico só nasce com a env var.
     pub(crate) fn new() -> Self {
         Self {
             toast: ph2d_runtime::SignalReader::new(),
             log: std::env::var_os("PH2D_SIGNAL_LOG").map(|_| ph2d_runtime::SignalReader::new()),
             action: ph2d_runtime::SignalReader::new(),
+            machine: ph2d_runtime::SignalReader::new(),
             factory: ph2d_runtime::SignalReader::new(),
             ui: ph2d_runtime::SignalReader::new(),
         }

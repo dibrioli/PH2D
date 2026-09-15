@@ -129,6 +129,40 @@ pub(crate) fn fill_token(state: TextInputState) -> ColorToken {
     }
 }
 
+/// ⭐⭐⭐ **A COR DE FUNDO de um campo — a porta ÚNICA dos três pintores da família**
+/// (`text_input` · `number_input` · `text_area`).
+///
+/// ⛔⛔ **Report do dono, 2026-09-14: *«caixas de input numérico sem cor de fundo»*.** Medido: o
+/// `number_input` e a `text_area` pintavam `resolve(fill_token(state))` = **`Bg1`**, que é
+/// **exactamente** o token de um cartão de secção ([`crate::widget::section_cards::CardDepth`]) —
+/// e é sobre cartões que o Inspector põe as linhas dele. Distância medida: **`0/255` nos oito
+/// temas**. Num tema moderno a moldura de repouso é ZERO (é a lei do `LineEdit` do Godot que esta
+/// casa adoptou) ⇒ *não havia caixa nenhuma*, só o número solto sobre o cartão.
+///
+/// ⚠️⚠️ **E o `text_input` já perguntava ao tema — os outros dois é que não.** A resposta certa
+/// existia, tinha UM chamador, e dois pintores irmãos usavam uma terceira. *Uma lei com uma porta
+/// e dois consumidores fora dela não é uma lei; é uma coincidência que ainda não divergiu.*
+///
+/// # A escada, por família
+///
+/// - **Clássica** (a moldura de repouso existe): devolve o que os pintores sempre devolveram —
+///   `Bg1`, ou `Bg2` desactivado. **Byte-idêntico**, e ali a caixa lê-se pela borda.
+/// - **Moderna** (sem moldura em repouso): devolve o [`ph2d_tokens::visuals::Chrome::field_fill`],
+///   que desde 2026-09-14 é *um degrau abaixo da superfície mais funda em que um campo pode
+///   assentar* — `10/255` do painel no `Dark` e no `Gray`, `11` da subsecção no `Light`.
+///
+/// ⏳ **O estado DESACTIVADO não tem tinta própria num tema moderno** — a distinção viaja no
+/// TEXTO (`ColorToken::TextDisabled`, que os três pintores já aplicam). É o comportamento que o
+/// `text_input` já shipava; fica **nomeado** aqui em vez de inventar um segundo tom.
+pub(crate) fn field_fill(state: TextInputState, theme: Theme) -> ph2d_vector::Color {
+    let chrome = ph2d_tokens::visuals::Chrome::of(theme);
+    if chrome.field_border.is_visible() {
+        resolve(fill_token(state), theme)
+    } else {
+        crate::paint::token_to_vello(chrome.field_fill)
+    }
+}
+
 /// **A cor da borda de um campo, já com o eixo do hover** — a porta ÚNICA dos três pintores da
 /// família (`text_input` · `number_input` · `text_area`), pelo mesmo motivo que o
 /// [`border_token`] é livre: eles partilham a paleta, e uma segunda cópia da mistura divergiria
@@ -215,12 +249,9 @@ pub fn paint_text_input_with_buffer(
     //    abaixo do painel, e **moldura só no foco** (o `LineEdit` do Godot) — ou no erro.
     let chrome = ph2d_tokens::visuals::Chrome::of(theme);
     let radius = chrome.field_radius;
-    let fill = if chrome.field_border.is_visible() {
-        resolve(fill_token(input.state), theme)
-    } else {
-        crate::paint::token_to_vello(chrome.field_fill)
-    };
-    fill_rounded_rect(scene, rect, radius, fill);
+    // ⭐ Pela porta — ver [`field_fill`]. Ela nasceu deste `if`, quando o report do dono mostrou
+    //   que os dois pintores irmãos não o tinham.
+    fill_rounded_rect(scene, rect, radius, field_fill(input.state, theme));
     if chrome.field_border.is_visible() {
         let stroke_w = if input.state == TextInputState::Focused {
             chrome.field_focus.width

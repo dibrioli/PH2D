@@ -88,7 +88,7 @@ impl Rgb {
     }
 
     #[must_use]
-    fn clamp(self) -> Self {
+    pub(crate) fn clamp(self) -> Self {
         Self::new(
             self.r.clamp(0.0, 1.0),
             self.g.clamp(0.0, 1.0),
@@ -220,11 +220,18 @@ pub struct Roles {
     pub contrast: f32,
 }
 
-/// **O degrau entre o painel e o CHÃO da janela**, em fracção de canal (≈ 10/255).
+/// **O degrau entre DUAS SUPERFÍCIES vizinhas**, em fracção de canal (≈ 10/255).
 ///
 /// ⛔ Absoluto de propósito — ver a nota no `ground`. O valor é o piso a que a separação ainda se
 /// lê nos quatro temas modernos, e o gate `the_ground_stands_under_every_panel` mede-o.
-const GROUND_STEP: f32 = 0.04;
+///
+/// ⭐ **Ele nasceu para o CHÃO e serve a mesma pergunta para o CAMPO** (2026-09-14): *«duas
+/// superfícies que se tocam têm de se ler como duas»*. A `visuals::Chrome::modern` afasta o fundo
+/// de um campo das três superfícies em que ele pode assentar por este mesmo degrau — ⛔ e isso
+/// **não** é herdar a resposta de outra pergunta: é a MESMA pergunta (separação entre superfícies
+/// nos mesmos quatro temas), que é a cerca que o gate dos cartões planta ao recusar herdar os
+/// `12/255` do par *cartão-contra-painel*.
+pub const SURFACE_STEP: f32 = 0.04;
 
 impl Inputs {
     /// As entradas de um tema moderno; `None` para a família clássica.
@@ -313,9 +320,9 @@ impl Inputs {
             //    fracção cobre uma distância enorme. *Uma escada relativa mede-se em passos
             //    diferentes conforme onde se está nela.*
             ground: Rgb::new(
-                panel.r - GROUND_STEP,
-                panel.g - GROUND_STEP,
-                panel.b - GROUND_STEP,
+                panel.r - SURFACE_STEP,
+                panel.g - SURFACE_STEP,
+                panel.b - SURFACE_STEP,
             )
             .clamp(),
             contrast_1: base.lerp(mono, c_floor * 1.15),

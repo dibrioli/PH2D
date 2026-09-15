@@ -266,8 +266,45 @@ impl Chrome {
             field_radius: MODERN_CORNER_RADIUS_PX,
             field_border: border,
             field_focus: Stroke::new(MODERN_FOCUS_W, r.accent.color()),
-            // O `LineEdit` do Godot assenta num degrau abaixo do painel.
-            field_fill: r.dark_1.lerp(Rgb::BLACK, r.contrast.max(0.0) * 0.5).color(),
+            // ⭐⭐⭐ **UM CAMPO É A SUPERFÍCIE MAIS FUNDA DA PILHA — um degrau abaixo da mais funda
+            //    em que ele pode assentar.** Report do dono, 2026-09-14: *«caixas de input numérico
+            //    sem cor de fundo»*.
+            //
+            // ⛔⛔ Era `r.dark_1.lerp(BLACK, max(contrast,0) * 0.5)` — *«o `LineEdit` do Godot
+            //    assenta num degrau abaixo do painel»* —, e a frase estava certa sobre o GODOT e
+            //    errada sobre NÓS: o Godot põe o campo sobre o painel, e aqui as linhas do
+            //    Inspector assentam num **CARTÃO** (`bg-1`), que é um degrau ACIMA do painel. O
+            //    campo ficava a `4/255` do painel e a `8/255` do cartão — e os pintores que nem
+            //    esta tabela perguntavam (`number_input`, `text_area`) pintavam `bg-1`, que é
+            //    **exactamente a cor do cartão**: `0/255`, sem moldura nenhuma, num tema moderno.
+            //
+            // ⚠️ **As três superfícies em que um campo assenta neste app** são o painel
+            //    (`panel-bg` = `panel`), o cartão de secção (`bg-1` = `dark_3`) e o de subsecção
+            //    (`bg-2` = `base`) — e **qual delas é a mais funda muda com o tema**: no `Dark` e
+            //    no `Gray` é o painel, no `Light` é a subsecção (ali a escada sobe). ⛔ Escrever
+            //    «abaixo do painel» seria escrever a lei na polaridade de um tema, que é o defeito
+            //    que o gate dos cartões já pagou.
+            //
+            // ⛔ **No OLED as três são pretas e o degrau não tem para onde ir**: o valor satura em
+            //    zero e quem separa é a *Draw Extra Borders*, como no Godot — a mesma cláusula que
+            //    o `panel` e o `ground` já declaram.
+            field_fill: {
+                let mais_funda = [r.panel, r.dark_3, r.base]
+                    .into_iter()
+                    .min_by(|a, b| {
+                        (a.r + a.g + a.b)
+                            .partial_cmp(&(b.r + b.g + b.b))
+                            .unwrap_or(std::cmp::Ordering::Equal)
+                    })
+                    .unwrap_or(r.panel);
+                Rgb::new(
+                    mais_funda.r - crate::derive::SURFACE_STEP,
+                    mais_funda.g - crate::derive::SURFACE_STEP,
+                    mais_funda.b - crate::derive::SURFACE_STEP,
+                )
+                .clamp()
+                .color()
+            },
             selected: Stroke::new(MODERN_SELECTED_W, r.mono.color()),
         }
     }

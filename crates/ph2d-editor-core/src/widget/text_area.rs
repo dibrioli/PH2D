@@ -10,7 +10,7 @@
 //! between glyphs on proportional fonts.
 
 use crate::paint::{fill_rounded_rect, paint_text, rect_to_vello, resolve};
-use crate::widget::text_input::{TextInputState, border_color, fill_token};
+use crate::widget::text_input::{TextInputState, border_color, field_fill};
 use crate::zones::Rect;
 use ph2d_a11y::{Action, Node, NodeBuilder, NodeId, Role};
 use ph2d_text::TextSystem;
@@ -161,7 +161,8 @@ pub fn paint_text_area_with_state(
 ) {
     // ⭐ Raio e moldura pela porta do TEMA (ver `number_input`).
     let radius = crate::paint::frame_radius(theme, Radius::Sm.px());
-    fill_rounded_rect(scene, rect, radius, resolve(fill_token(area.state), theme));
+    // ⭐ O fundo é do TEMA, pela porta — ver [`crate::widget::text_input::field_fill`].
+    fill_rounded_rect(scene, rect, radius, field_fill(area.state, theme));
     let stroke_w = if area.state == TextInputState::Focused {
         2.0
     } else {

@@ -8,7 +8,7 @@
 
 use crate::icons::IconId;
 use crate::paint::{fill_rounded_rect, paint_icon, paint_text, resolve};
-use crate::widget::text_input::{TextInputState, border_color, fill_token};
+use crate::widget::text_input::{TextInputState, border_color, field_fill};
 use crate::zones::Rect;
 use ph2d_a11y::{Action, Node, NodeBuilder, NodeId, Role};
 use ph2d_text::TextSystem;
@@ -198,7 +198,11 @@ pub fn paint_number_input_with_buffer(
     // ⭐ Raio e moldura pela porta do TEMA — no clássico byte-idêntico; num tema moderno o campo
     //    é plano e a moldura só aparece no foco (anel a 2 px) ou no erro.
     let radius = crate::paint::frame_radius(theme, Radius::Sm.px());
-    fill_rounded_rect(scene, rect, radius, resolve(fill_token(input.state), theme));
+    // ⭐⭐ **O fundo é do TEMA, pela porta** ([`crate::widget::text_input::field_fill`]) — este
+    //    pintor escrevia `Bg1`, que é a cor de um CARTÃO de secção, e num tema moderno não há
+    //    moldura de repouso: a caixa ficava a `0/255` do que está por baixo. Report do dono,
+    //    2026-09-14: *«caixas de input numérico sem cor de fundo»*.
+    fill_rounded_rect(scene, rect, radius, field_fill(input.state, theme));
     let stroke_w = if input.state == TextInputState::Focused {
         2.0
     } else {

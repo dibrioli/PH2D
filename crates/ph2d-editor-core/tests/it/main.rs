@@ -57,6 +57,7 @@ mod architecture_workspace_file_loc_cap;
 mod canonical_icon_button;
 mod docs_bugs_have_gates;
 mod every_button_wears_the_live_hover;
+mod every_field_painter_asks_the_theme_for_its_fill;
 mod every_frame_goes_through_the_theme_door;
 mod every_menu_row_is_registered;
 mod every_menu_row_reaches_a_handler;

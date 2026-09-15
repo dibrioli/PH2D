@@ -6,6 +6,7 @@
 //! ganham o prefixo do módulo (`ficheiro::fn`); filtros por `test(nome)` continuam a casar.
 //! ⚠️ Teste novo = ficheiro novo AQUI + uma linha `mod` abaixo — nunca um `tests/*.rs` solto.
 
+mod a_field_is_never_the_colour_of_what_it_sits_on;
 mod an_alias_has_no_value_it_has_a_parent;
 mod design_token_sync;
 mod measure_override_layer;

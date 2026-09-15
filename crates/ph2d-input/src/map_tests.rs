@@ -124,7 +124,9 @@ fn o_mapa_de_fabrica_declara_os_quatro_rumos() {
         PLAYER_MOVE_UP,
         PLAYER_MOVE_DOWN,
     ] {
-        let id = m.id(nome).unwrap_or_else(|| panic!("falta a accao `{nome}`"));
+        let id = m
+            .id(nome)
+            .unwrap_or_else(|| panic!("falta a accao `{nome}`"));
         let a = m.get(id).expect("a accao acabou de ser achada");
         assert!(
             !a.bindings.is_empty(),

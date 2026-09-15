@@ -47,13 +47,19 @@ fn quatro_direccoes_encaixa_no_rumo_mais_perto() {
     // a 1.ª redacção deste gate esperava `[1 · 0]` — o teste é que estava errado.
     let vinte_e_tres = 23.0_f32.to_radians();
     perto(
-        direction::quantize([vinte_e_tres.cos(), vinte_e_tres.sin()], DirectionMode::FourWay),
+        direction::quantize(
+            [vinte_e_tres.cos(), vinte_e_tres.sin()],
+            DirectionMode::FourWay,
+        ),
         [1.0, 0.0],
         "23° encaixa em 0°",
     );
     let sessenta_e_sete = 67.0_f32.to_radians();
     perto(
-        direction::quantize([sessenta_e_sete.cos(), sessenta_e_sete.sin()], DirectionMode::FourWay),
+        direction::quantize(
+            [sessenta_e_sete.cos(), sessenta_e_sete.sin()],
+            DirectionMode::FourWay,
+        ),
         [0.0, 1.0],
         "67° encaixa em 90°",
     );
@@ -96,8 +102,14 @@ fn a_isometria_manda_as_duas_teclas_para_as_arestas_do_losango() {
     // 2:1, cuja elevação é arctan(0,5) = 26,565°.
     let direita = viewpoint::reproject([1.0, 0.0], Viewpoint::Isometric2to1, 0.0);
     let cima = viewpoint::reproject([0.0, 1.0], Viewpoint::Isometric2to1, 0.0);
-    assert!(direita[0] > 0.0 && direita[1] > 0.0, "→ vai para nordeste: {direita:?}");
-    assert!(cima[0] < 0.0 && cima[1] > 0.0, "↑ vai para noroeste: {cima:?}");
+    assert!(
+        direita[0] > 0.0 && direita[1] > 0.0,
+        "→ vai para nordeste: {direita:?}"
+    );
+    assert!(
+        cima[0] < 0.0 && cima[1] > 0.0,
+        "↑ vai para noroeste: {cima:?}"
+    );
     // A inclinação é a do tabuleiro: 2 de largura por 1 de altura.
     let inclinacao = direita[1] / direita[0];
     assert!(
@@ -126,7 +138,11 @@ fn uma_elevacao_impossivel_cai_na_identidade_em_vez_de_inventar_um_losango() {
 fn so_o_modo_custom_le_o_angulo() {
     // ⭐ É esta pergunta que esconde a linha do ângulo no painel.
     assert!(Viewpoint::Custom.reads_angle());
-    for v in [Viewpoint::TopDown, Viewpoint::Isometric2to1, Viewpoint::Isometric30] {
+    for v in [
+        Viewpoint::TopDown,
+        Viewpoint::Isometric2to1,
+        Viewpoint::Isometric30,
+    ] {
         assert!(!v.reads_angle(), "{} nao le o angulo", v.label());
     }
 }
@@ -196,7 +212,11 @@ fn a_rampa_leva_o_tempo_que_o_numero_diz() {
     for _ in 0..30 {
         v = intent::advance(v, [1.0, 0.0], 4.0, 8.0, 8.0, 1.0 / 60.0);
     }
-    assert!((len(v) - 4.0).abs() < 0.02, "depois de 30 tiques: {:.4}", len(v));
+    assert!(
+        (len(v) - 4.0).abs() < 0.02,
+        "depois de 30 tiques: {:.4}",
+        len(v)
+    );
     let mut v = [0.0_f32, 0.0];
     for _ in 0..15 {
         v = intent::advance(v, [1.0, 0.0], 4.0, 8.0, 8.0, 1.0 / 60.0);
@@ -247,7 +267,10 @@ fn parado_ele_fica_onde_estava() {
 fn ele_vira_pelo_lado_CURTO() {
     // De 175° para −175° são 10°, não 350°.
     let de = 175.0_f32.to_radians();
-    let alvo = [(-175.0_f32).to_radians().cos(), (-175.0_f32).to_radians().sin()];
+    let alvo = [
+        (-175.0_f32).to_radians().cos(),
+        (-175.0_f32).to_radians().sin(),
+    ];
     let ang = rotation::rotate_toward(de, alvo, RotationMode::ToMovement, 600.0, 1.0 / 60.0);
     let andou = (ang - de).to_degrees();
     assert!(
@@ -263,7 +286,11 @@ fn o_encaixe_da_rotacao_e_do_ALVO_e_nao_do_caminho() {
     let vinte_e_dois = 22.4_f32.to_radians();
     let alvo = [vinte_e_dois.cos(), vinte_e_dois.sin()];
     let ang = rotation::rotate_toward(0.0, alvo, RotationMode::Snap90, 0.0, 1.0 / 60.0);
-    assert!(ang.abs() < EPS, "22,4° encaixa em 0° e deu {:.3}°", ang.to_degrees());
+    assert!(
+        ang.abs() < EPS,
+        "22,4° encaixa em 0° e deu {:.3}°",
+        ang.to_degrees()
+    );
     let trinta = 30.0_f32.to_radians();
     let alvo = [trinta.cos(), trinta.sin()];
     let ang = rotation::rotate_toward(0.0, alvo, RotationMode::Snap45, 0.0, 1.0 / 60.0);
@@ -277,7 +304,11 @@ fn o_encaixe_da_rotacao_e_do_ALVO_e_nao_do_caminho() {
 #[test]
 fn so_quem_roda_le_a_velocidade_de_viragem() {
     assert!(!RotationMode::None.reads_speed());
-    for m in [RotationMode::ToMovement, RotationMode::Snap90, RotationMode::Snap45] {
+    for m in [
+        RotationMode::ToMovement,
+        RotationMode::Snap90,
+        RotationMode::Snap45,
+    ] {
         assert!(m.reads_speed(), "{}", m.label());
     }
 }
@@ -288,13 +319,28 @@ fn so_quem_roda_le_a_velocidade_de_viragem() {
 #[test]
 fn o_fio_de_cada_enum_e_uma_ida_e_volta_exacta() {
     for m in DirectionMode::ALL {
-        assert_eq!(direction::from_wire(direction::to_wire(m)), m, "{}", m.label());
+        assert_eq!(
+            direction::from_wire(direction::to_wire(m)),
+            m,
+            "{}",
+            m.label()
+        );
     }
     for v in Viewpoint::ALL {
-        assert_eq!(viewpoint::from_wire(viewpoint::to_wire(v)), v, "{}", v.label());
+        assert_eq!(
+            viewpoint::from_wire(viewpoint::to_wire(v)),
+            v,
+            "{}",
+            v.label()
+        );
     }
     for r in RotationMode::ALL {
-        assert_eq!(rotation::from_wire(rotation::to_wire(r)), r, "{}", r.label());
+        assert_eq!(
+            rotation::from_wire(rotation::to_wire(r)),
+            r,
+            "{}",
+            r.label()
+        );
     }
 }
 

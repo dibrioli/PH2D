@@ -86,7 +86,11 @@ pub fn dot(a: Vec2, b: Vec2) -> f32 {
 #[must_use]
 pub fn normalize(v: Vec2) -> Option<Vec2> {
     let n = len(v);
-    if n > 1.0e-6 { Some([v[0] / n, v[1] / n]) } else { None }
+    if n > 1.0e-6 {
+        Some([v[0] / n, v[1] / n])
+    } else {
+        None
+    }
 }
 
 /// **A configuração inteira de um player de vista de cima** — o que o componente

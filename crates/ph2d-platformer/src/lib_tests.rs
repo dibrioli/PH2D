@@ -581,7 +581,10 @@ fn o_eixo_vertical_nao_toca_na_lei_de_plataforma() {
             outro.motor.accel, base.motor.accel,
             "`drive_y = {y}` mexeu na aceleracao da lei de PLATAFORMA"
         );
-        assert_eq!(outro.motor.boost, base.motor.boost, "idem no boost, com {y}");
+        assert_eq!(
+            outro.motor.boost, base.motor.boost,
+            "idem no boost, com {y}"
+        );
         assert_eq!(
             outro.gravity_hold, base.gravity_hold,
             "idem no canal da gravidade, com {y}"

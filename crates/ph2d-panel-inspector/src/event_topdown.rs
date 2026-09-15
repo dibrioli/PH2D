@@ -44,7 +44,11 @@ pub(crate) fn apply_topdown_event(host: &mut dyn PanelHostInternal, ev: WidgetEv
             return true;
         }
         if let Some(i) = crate::ids::INSP_TD_FACING.iter().position(|&b| b == id) {
-            push(host, bits, TopDownFieldEdit::Facing(InspectorFacing::ALL[i]));
+            push(
+                host,
+                bits,
+                TopDownFieldEdit::Facing(InspectorFacing::ALL[i]),
+            );
             return true;
         }
     }

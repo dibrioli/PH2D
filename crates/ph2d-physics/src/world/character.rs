@@ -186,7 +186,15 @@ impl PhysicsWorld {
         layer: u8,
         hits: &mut Vec<CharacterHit>,
     ) -> CharacterMove {
-        self.move_character_from(handle, [0.0, 0.0], wanted, params, exclude_collider, layer, hits)
+        self.move_character_from(
+            handle,
+            [0.0, 0.0],
+            wanted,
+            params,
+            exclude_collider,
+            layer,
+            hits,
+        )
     }
 
     /// **O mesmo, a partir de um ponto DESLOCADO** — a porta que um laço de

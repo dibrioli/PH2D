@@ -6,7 +6,11 @@ use ph2d_ecs::SimWorld;
 fn monta(nivel: u32) -> SimWorld {
     let mut sim = SimWorld::new();
     let devolveu = montar(sim.world_mut(), nivel);
-    assert_eq!(devolveu, nivel.min(CENAS).max(1), "o roteador devolveu outra cena");
+    assert_eq!(
+        devolveu,
+        nivel.min(CENAS).max(1),
+        "o roteador devolveu outra cena"
+    );
     sim
 }
 
@@ -33,7 +37,10 @@ fn a_cena_um_tem_o_dente_contra_o_qual_se_encosta() {
 #[test]
 fn o_boneco_da_cena_um_anda_em_oito_direccoes_e_e_cinematico() {
     let sim = monta(1);
-    let mut q = sim.world().try_query::<(&Name, &TopDownPlayer, &RigidBody)>().unwrap();
+    let mut q = sim
+        .world()
+        .try_query::<(&Name, &TopDownPlayer, &RigidBody)>()
+        .unwrap();
     let mut achou = false;
     for (n, c, b) in q.iter(sim.world()) {
         if n.as_str() != "Hero" {
@@ -43,7 +50,11 @@ fn o_boneco_da_cena_um_anda_em_oito_direccoes_e_e_cinematico() {
         assert_eq!(c.law().direction, DirectionMode::EightWay);
         assert_eq!(c.law().speed, VELOCIDADE);
         // ⛔ Dinâmico seria do solver, e o componente ficaria sem pose para escrever.
-        assert_eq!(b.kind, BodyKind::Kinematic, "o mover escreve a propria pose");
+        assert_eq!(
+            b.kind,
+            BodyKind::Kinematic,
+            "o mover escreve a propria pose"
+        );
     }
     assert!(achou);
 }
@@ -81,13 +92,19 @@ fn e_a_mesma_seta_leva_os_dois_a_sitios_DIFERENTES() {
     let mut dirs = Vec::new();
     for (n, c) in q.iter(sim.world()) {
         if n.as_str().starts_with("Hero (") || n.as_str().starts_with("Control (") {
-            dirs.push((n.as_str().to_string(), ph2d_topdown::world_direction([1.0, 0.0], &c.law())));
+            dirs.push((
+                n.as_str().to_string(),
+                ph2d_topdown::world_direction([1.0, 0.0], &c.law()),
+            ));
         }
     }
     assert_eq!(dirs.len(), 2, "{dirs:?}");
     let (a, b) = (dirs[0].1, dirs[1].1);
     let dist = ((a[0] - b[0]).powi(2) + (a[1] - b[1]).powi(2)).sqrt();
-    assert!(dist > 0.3, "a mesma seta leva os dois ao mesmo sitio: {dirs:?}");
+    assert!(
+        dist > 0.3,
+        "a mesma seta leva os dois ao mesmo sitio: {dirs:?}"
+    );
 }
 
 #[test]

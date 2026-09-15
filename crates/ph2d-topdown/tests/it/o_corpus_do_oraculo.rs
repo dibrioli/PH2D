@@ -153,7 +153,8 @@ fn abaixo_do_limiar_ele_para_e_o_controlo_e_o_knob_a_zero() {
         let oraculo_parou = com / ORCAMENTO < 0.01;
         let nos_paramos = nosso / ORCAMENTO < 0.01;
         assert_eq!(
-            nos_paramos, oraculo_parou,
+            nos_paramos,
+            oraculo_parou,
             "a {a:.0}° o oraculo {} (anda {com:.6}) e nos {} (andamos {nosso:.6}).\n\
              ⚠️ O penhasco esta' no knob e o `<=` e' MEDIDO: 15° ainda para, 16° desliza.",
             if oraculo_parou { "PARA" } else { "desliza" },
@@ -174,9 +175,18 @@ fn o_tecto_de_deslizes_fecha_o_plano() {
         // Uma normal SEMPRE oposta ao passo de agora ⇒ incidência frontal a cada
         // volta… que a cláusula do limiar já corta. Aqui a normal é obliqua de
         // propósito, para exercitar o TECTO e não o limiar.
-        let obliqua = [-s.dir[0] * 0.5 - s.dir[1] * 0.866, -s.dir[1] * 0.5 + s.dir[0] * 0.866];
+        let obliqua = [
+            -s.dir[0] * 0.5 - s.dir[1] * 0.866,
+            -s.dir[1] * 0.5 + s.dir[0] * 0.866,
+        ];
         passo = next_step(s, 0.0, obliqua, 15.0);
-        assert!(n < 50, "o plano nao terminou — o tecto de deslizes nao esta' a fechar");
+        assert!(
+            n < 50,
+            "o plano nao terminou — o tecto de deslizes nao esta' a fechar"
+        );
     }
-    assert_eq!(n, 3, "com `max_slides = 2` o plano tem de ter 3 passos (o primeiro + dois deslizes)");
+    assert_eq!(
+        n, 3,
+        "com `max_slides = 2` o plano tem de ter 3 passos (o primeiro + dois deslizes)"
+    );
 }

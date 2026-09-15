@@ -493,7 +493,6 @@ pub(crate) fn current_display_angle() -> ph2d_editor_core::project::DisplayAngle
     CURRENT_DISPLAY_ANGLE.with(|c| c.get())
 }
 
-
 /// Last-known total content height of the inspector body. Used by
 /// `dispatch_wheel` to clamp the scroll offset.
 pub fn last_inspector_content_h() -> f32 {

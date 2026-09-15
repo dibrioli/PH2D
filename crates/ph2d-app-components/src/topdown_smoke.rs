@@ -103,7 +103,12 @@ fn cena_um(world: &mut World) {
     parede(world, "Wall E", Vec2::new(7.5, 0.0), Vec2::new(0.5, 6.0));
     // ⭐ **O dente**: é contra ele que o artista encosta na diagonal. Ele fica no MEIO do caminho
     // de propósito — uma parede só na borda faz o teste acontecer fora do olhar.
-    parede(world, "Wall Corner", Vec2::new(1.5, 1.0), Vec2::new(4.0, 0.5));
+    parede(
+        world,
+        "Wall Corner",
+        Vec2::new(1.5, 1.0),
+        Vec2::new(4.0, 0.5),
+    );
 
     heroi(
         world,

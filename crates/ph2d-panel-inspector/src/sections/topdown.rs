@@ -186,16 +186,8 @@ fn corpo(
     let mut cur_y = avisos(scene, text_system, theme, x, w, y, i);
     for (label, id, step) in [
         ("Speed (m/s)", crate::ids::INSP_TD_SPEED, 0.1), // LITERAL-PX-OK: m/s
-        (
-            "Acceleration (0 = instant)",
-            crate::ids::INSP_TD_ACCEL,
-            0.5,
-        ), // LITERAL-PX-OK: m/s²
-        (
-            "Deceleration (0 = instant)",
-            crate::ids::INSP_TD_DECEL,
-            0.5,
-        ), // LITERAL-PX-OK: m/s²
+        ("Acceleration (0 = instant)", crate::ids::INSP_TD_ACCEL, 0.5), // LITERAL-PX-OK: m/s²
+        ("Deceleration (0 = instant)", crate::ids::INSP_TD_DECEL, 0.5), // LITERAL-PX-OK: m/s²
     ] {
         cur_y = super::anchors::field_row(
             scene,
@@ -296,12 +288,8 @@ fn corpo(
     }
 
     for (label, id, step) in [
-        (
-            "Min Slide Angle (deg)",
-            crate::ids::INSP_TD_MIN_SLIDE,
-            1.0,
-        ), // LITERAL-PX-OK: graus
-        ("Max Slides", crate::ids::INSP_TD_MAX_SLIDES, 1.0), // LITERAL-PX-OK: contagem
+        ("Min Slide Angle (deg)", crate::ids::INSP_TD_MIN_SLIDE, 1.0), // LITERAL-PX-OK: graus
+        ("Max Slides", crate::ids::INSP_TD_MAX_SLIDES, 1.0),           // LITERAL-PX-OK: contagem
     ] {
         cur_y = super::anchors::field_row(
             scene,

@@ -24,7 +24,6 @@ mod event_anim;
 mod event_audio;
 mod event_camera;
 mod event_factory;
-mod event_topdown;
 /// ⭐⭐ **Os cliques do CARTÃO de instância** — irmão por assunto do `event`.
 mod event_instance;
 mod event_joint;
@@ -39,6 +38,7 @@ mod event_sprite_value;
 mod event_tags;
 /// ⭐ O despacho da secção TIMERS — irmão do `event` por CAP de função.
 mod event_timer;
+mod event_topdown;
 mod event_transform;
 mod event_value;
 mod event_wheel;
@@ -62,7 +62,6 @@ mod populate_anim;
 mod populate_audio;
 mod populate_camera;
 mod populate_factory;
-mod populate_topdown;
 /// ⭐⭐ O registo do CARTÃO de instância — irmão por assunto, ver o cabeçalho de lá.
 mod populate_instance;
 mod populate_physics;
@@ -71,11 +70,12 @@ mod populate_player;
 mod populate_tags;
 /// ⭐ O registo dos widgets da secção TIMERS — irmão por CAP de ficheiro.
 mod populate_timer;
+mod populate_topdown;
 mod sections;
 pub mod state;
+mod state_popovers;
 /// ⚠️ As duas conversões de tinta — irmão do `state` por CAP de LOC. Ver o cabeçalho dele.
 mod state_tint;
-mod state_popovers;
 mod sync;
 mod sync_physics;
 mod sync_sections;
@@ -150,13 +150,12 @@ pub use state::{
     set_current_display_unit, set_current_inspector_action, set_current_inspector_anchor,
     set_current_inspector_anim, set_current_inspector_audio, set_current_inspector_blend,
     set_current_inspector_camera, set_current_inspector_factory, set_current_inspector_instance,
-    set_current_inspector_topdown,
     set_current_inspector_joint, set_current_inspector_name, set_current_inspector_ordering,
     set_current_inspector_physics, set_current_inspector_player, set_current_inspector_properties,
     set_current_inspector_sampling, set_current_inspector_slice, set_current_inspector_sprite,
-    set_current_inspector_tags, set_current_inspector_timer, set_current_inspector_transform,
-    set_current_inspector_visibility, set_current_inspector_visibility_section,
-    set_current_inspector_wheel, set_current_tag_tree,
+    set_current_inspector_tags, set_current_inspector_timer, set_current_inspector_topdown,
+    set_current_inspector_transform, set_current_inspector_visibility,
+    set_current_inspector_visibility_section, set_current_inspector_wheel, set_current_tag_tree,
 };
 pub use state::{probe_current_instance, probe_current_properties, texture_slot_pick};
 

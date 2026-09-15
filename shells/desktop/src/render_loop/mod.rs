@@ -126,7 +126,6 @@ mod inspector_audio;
 mod inspector_camera;
 mod inspector_commits_sprite;
 mod inspector_factory;
-mod inspector_topdown;
 /// ⭐ **A seção COMPONENT do Inspector** (ADR-0164 / F5) — o que esta cópia tem de diferente
 /// da receita, e o gesto que limpa as excepções sem alvo.
 pub(crate) mod inspector_instance;
@@ -136,6 +135,7 @@ mod inspector_slice;
 /// documentos (o mundo e a árvore de tags).
 mod inspector_tags;
 mod inspector_timer;
+mod inspector_topdown;
 /// ⭐⭐⭐ O painel TAGS (TOP-20 #9, W4) — o instantâneo da ÁRVORE e os gestos sobre ela.
 mod tags_panel;
 // ⭐ A derivação do `MasterPiece` (`master_editing`, F4.6) mudou-se para a

@@ -53,5 +53,8 @@ fn aproximar(de: Vec2, ate: Vec2, taxa: f32, dt: f32) -> Vec2 {
     if falta <= passo || falta < 1.0e-9 {
         return ate;
     }
-    [de[0] + delta[0] / falta * passo, de[1] + delta[1] / falta * passo]
+    [
+        de[0] + delta[0] / falta * passo,
+        de[1] + delta[1] / falta * passo,
+    ]
 }

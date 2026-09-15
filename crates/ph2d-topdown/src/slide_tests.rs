@@ -15,8 +15,15 @@ fn sem_velocidade_nao_ha_plano() {
 #[test]
 fn o_orcamento_do_primeiro_passo_e_a_distancia_do_tique() {
     let s = first_step([3.0, 4.0], 1.0 / 60.0, 4).expect("ha' velocidade");
-    assert!((s.budget - 5.0 / 60.0).abs() < 1.0e-6, "orcamento {:.6}", s.budget);
-    assert!((crate::len(s.dir) - 1.0).abs() < 1.0e-6, "a direccao vem normalizada");
+    assert!(
+        (s.budget - 5.0 / 60.0).abs() < 1.0e-6,
+        "orcamento {:.6}",
+        s.budget
+    );
+    assert!(
+        (crate::len(s.dir) - 1.0).abs() < 1.0e-6,
+        "a direccao vem normalizada"
+    );
 }
 
 #[test]
@@ -46,8 +53,14 @@ fn a_tangente_conserva_o_resto_do_orcamento() {
         seguinte.budget,
         s.budget * 0.7071
     );
-    assert!(seguinte.dir[0].abs() < 1.0e-6, "a tangente nao tem componente normal");
-    assert!(seguinte.dir[1] > 0.0, "e aponta para o mesmo lado da parede");
+    assert!(
+        seguinte.dir[0].abs() < 1.0e-6,
+        "a tangente nao tem componente normal"
+    );
+    assert!(
+        seguinte.dir[1] > 0.0,
+        "e aponta para o mesmo lado da parede"
+    );
 }
 
 #[test]
@@ -71,7 +84,10 @@ fn o_tecto_desce_a_cada_deslize() {
     const OBLIQUA: [f32; 2] = [-0.707_106_8, -0.707_106_8];
     let b = next_step(a, 0.0, OBLIQUA, 15.0).unwrap();
     assert_eq!(b.slides_left, 0);
-    assert!(next_step(b, 0.0, [-1.0, 0.0], 15.0).is_none(), "o tecto fecha");
+    assert!(
+        next_step(b, 0.0, [-1.0, 0.0], 15.0).is_none(),
+        "o tecto fecha"
+    );
 }
 
 #[test]

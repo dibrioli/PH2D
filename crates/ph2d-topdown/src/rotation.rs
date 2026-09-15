@@ -65,7 +65,13 @@ impl RotationMode {
 /// `speed_deg` é graus por segundo; ⚠️ **zero é instantâneo**, a mesma convenção
 /// das rampas do [`crate::intent`].
 #[must_use]
-pub fn rotate_toward(atual: f32, dir_mundo: Vec2, mode: RotationMode, speed_deg: f32, dt: f32) -> f32 {
+pub fn rotate_toward(
+    atual: f32,
+    dir_mundo: Vec2,
+    mode: RotationMode,
+    speed_deg: f32,
+    dt: f32,
+) -> f32 {
     if matches!(mode, RotationMode::None) {
         return atual;
     }

@@ -49,7 +49,6 @@ mod color_tint;
 /// tecto de LOC.
 mod emissive_row;
 pub(crate) mod factory;
-pub(crate) mod topdown;
 mod identity;
 /// ⭐ **A seção COMPONENT** (ADR-0164 / F5) — o que esta cópia tem de diferente da receita.
 pub(crate) mod instance;
@@ -96,6 +95,7 @@ mod sprite_sheet;
 pub(crate) mod tags;
 /// ⭐⭐⭐ **A secção TIMERS** (TOP-20 #2, W3) — o painel do primeiro relógio autorável.
 pub(crate) mod timers;
+pub(crate) mod topdown;
 mod transform;
 // ⚠️ O DESENHO de uma linha do Transform — separado da orquestração delas pelo tecto de LOC.
 mod visibility;

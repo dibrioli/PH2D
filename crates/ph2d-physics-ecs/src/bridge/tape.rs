@@ -47,9 +47,9 @@
 
 use std::collections::BTreeMap;
 
+use crate::components::TopDownPlayer;
 use bevy_ecs::entity::Entity;
 use ph2d_ecs::SimWorld;
-use crate::components::TopDownPlayer;
 use ph2d_platformer::{PlayerInput, PlayerState};
 
 use crate::components::PlatformPlayer;

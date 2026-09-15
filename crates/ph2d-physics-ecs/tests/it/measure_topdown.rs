@@ -161,5 +161,10 @@ fn mede_o_custo_de_um_mover_por_tique() {
             ms / 16.67 * 100.0
         );
     }
-    println!("# load {}", std::fs::read_to_string("/proc/loadavg").unwrap_or_default().trim());
+    println!(
+        "# load {}",
+        std::fs::read_to_string("/proc/loadavg")
+            .unwrap_or_default()
+            .trim()
+    );
 }

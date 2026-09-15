@@ -114,13 +114,21 @@ impl PhysicsBridge {
                 let got = self
                     .world
                     .move_character_from(handle, andado, pedido, params, None, layer, &mut hits);
-                andado = [andado[0] + got.translation[0], andado[1] + got.translation[1]];
+                andado = [
+                    andado[0] + got.translation[0],
+                    andado[1] + got.translation[1],
+                ];
                 let coube = ph2d_topdown::len(got.translation);
                 if diagnostico() {
                     eprintln!(
                         "TD dir=({:.4},{:.4}) budget={:.5} got=({:.6},{:.6}) hits={} restam={}",
-                        s.dir[0], s.dir[1], s.budget, got.translation[0], got.translation[1],
-                        hits.len(), s.slides_left
+                        s.dir[0],
+                        s.dir[1],
+                        s.budget,
+                        got.translation[0],
+                        got.translation[1],
+                        hits.len(),
+                        s.slides_left
                     );
                 }
                 // ⚠️ **A normal é a do PRIMEIRO contacto, com o sinal normalizado

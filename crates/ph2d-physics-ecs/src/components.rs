@@ -247,12 +247,12 @@ mod area;
 mod overrides;
 /// O componente do player de plataforma (docs dele).
 mod player;
-/// ⭐⭐⭐ **O mover de VISTA DE CIMA** (TOP-20 #13) — ver o cabeçalho dele.
-mod topdown;
 mod rope;
 mod signal;
 /// A SUPERFÍCIE que o pé encontra (docs dele).
 mod surface;
+/// ⭐⭐⭐ **O mover de VISTA DE CIMA** (TOP-20 #13) — ver o cabeçalho dele.
+mod topdown;
 
 pub use area::{
     AreaBuoyancy, AreaDrag, AreaEffector, AreaFalloff, AreaForceWorldAxes, AreaFormDrag, AreaTorque,
@@ -262,10 +262,10 @@ pub use overrides::{
     LockPositionX, LockPositionY, LockRotation, MassOverride, MaterialCombine, OneWayPlatform,
 };
 pub use player::{PlatformLift, PlatformPlayer, PlayerMode};
-pub use topdown::TopDownPlayer;
 pub use rope::{
     PulleyWheel, RopeStops, WestonAxle, WrapSide, reseat_mounted_axle, reseat_wheel_geometry,
     rope_joint_of,
 };
 pub use signal::{PlayerSignals, SignalOnHit, SignalOnLeave, SignalTagFilter};
 pub use surface::{NoWallCling, WalkSurface};
+pub use topdown::TopDownPlayer;

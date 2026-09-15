@@ -46,7 +46,13 @@ pub enum InspectorMoveDirections {
 
 impl InspectorMoveDirections {
     /// Todas, na ordem do segmentado. ⛔ A posição é a tag do clique — não reordene.
-    pub const ALL: [Self; 5] = [Self::Free, Self::Eight, Self::Four, Self::AxisX, Self::AxisY];
+    pub const ALL: [Self; 5] = [
+        Self::Free,
+        Self::Eight,
+        Self::Four,
+        Self::AxisX,
+        Self::AxisY,
+    ];
 
     /// O rótulo que o artista lê (inglês, HR-15).
     #[must_use]
@@ -223,7 +229,11 @@ mod tests {
             assert_eq!(usize::from(m.tag()), i, "a direccao {m:?} mudou de posicao");
         }
         for (i, m) in InspectorViewpoint::ALL.into_iter().enumerate() {
-            assert_eq!(usize::from(m.tag()), i, "o viewpoint {m:?} mudou de posicao");
+            assert_eq!(
+                usize::from(m.tag()),
+                i,
+                "o viewpoint {m:?} mudou de posicao"
+            );
         }
         for (i, m) in InspectorFacing::ALL.into_iter().enumerate() {
             assert_eq!(usize::from(m.tag()), i, "o facing {m:?} mudou de posicao");

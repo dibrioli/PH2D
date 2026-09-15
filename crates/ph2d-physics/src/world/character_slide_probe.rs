@@ -90,7 +90,10 @@ fn anda(w: &mut PhysicsWorld, eu: RigidBodyHandle, pedido: [f32; 2]) -> [f32; 2]
 #[ignore = "sonda: imprime a tabela do plano 10, nao afirma lei nenhuma"]
 fn sonda_do_deslize_varredura_do_angulo() {
     println!("\n## NOSSO move_character — varredura do angulo (corpo JA encostado)");
-    println!("# raio={RAIO} m · V={V} m/s · dt={DT:.6} ⇒ orcamento {:.6} m/tique", V * DT);
+    println!(
+        "# raio={RAIO} m · V={V} m/s · dt={DT:.6} ⇒ orcamento {:.6} m/tique",
+        V * DT
+    );
     println!("# ang  dx  dy  |d|  tangencial_esperada  razao");
     for passo in 0..=18 {
         let ang_g = passo as f32 * 5.0;
@@ -102,7 +105,10 @@ fn sonda_do_deslize_varredura_do_angulo() {
         let n = (d[0] * d[0] + d[1] * d[1]).sqrt();
         let tang = a.sin() * V * DT;
         let razao = if tang.abs() > 1e-9 { n / tang } else { 0.0 };
-        println!("N {ang_g:.0} {:.6} {:.6} {n:.6} {tang:.6} {razao:.6}", d[0], d[1]);
+        println!(
+            "N {ang_g:.0} {:.6} {:.6} {n:.6} {tang:.6} {razao:.6}",
+            d[0], d[1]
+        );
     }
 }
 
@@ -112,7 +118,10 @@ fn sonda_do_deslize_aproximacao_livre() {
     println!("\n## NOSSO move_character — aproximacao LIVRE a 45 graus (o bloco A do oraculo)");
     println!("# tique  x  y  |d_do_tique|");
     let (mut w, eu) = cena_parede([-3.0, 0.0]);
-    let dir = [core::f32::consts::FRAC_1_SQRT_2, core::f32::consts::FRAC_1_SQRT_2];
+    let dir = [
+        core::f32::consts::FRAC_1_SQRT_2,
+        core::f32::consts::FRAC_1_SQRT_2,
+    ];
     let mut p = [-3.0f32, 0.0];
     for t in 0..60 {
         let d = anda(&mut w, eu, [dir[0] * V * DT, dir[1] * V * DT]);

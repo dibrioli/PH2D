@@ -97,12 +97,52 @@ mistura linear, e a **costura entre as duas leis** é a descontinuidade que prod
 ⇒ *não se pode julgar uma mistura melhor por cima de pesos degenerados* — e a degeneração é, ela
 própria, o achado: **metade da nossa arte não mistura nada.**
 
+## Passo 7 — ⭐⭐⭐ **AS SEIS LEIS, pelas DUAS réguas — e a que shipa GANHA** (`harmonicos.py`, `final.py`)
+
+O plano era trocar a lei dos pesos. Antes de escrever produto, construí e medi **todas** as saídas
+que a literatura nomeia, sobre a mesma malha, com o mesmo código, variando só a lei:
+
+| lei | dobra a `150°` | a arte segue |
+|---|---:|---:|
+| **o que SHIPA: bump `raio = osso` + mistura linear** | **`3,1 %`** | **`150,0°` de `150°`** |
+| bump com `raio 2,08 ×` a arte + mistura linear | `0,0 %` | `110,3°` |
+| pesos automáticos do Blender + mistura linear | `8,9 %` | `150,0°` |
+| pesos **harmónicos** + mistura linear | `11,3 %` | `123,5°` |
+| bump + **centros de rotação** | `8,8 %` | `150,0°` |
+| harmónicos + **centros de rotação** | `16,8 %` | `134,3°` |
+
+⇒ **nenhuma alternativa que consegui construir bate o que já shipa no PAR das réguas.** A única com
+dobra zero paga `27 %` da rotação.
+
+### Por que os harmónicos perdem (e é geometria, não bug)
+
+O princípio do máximo garante `0 ≤ w ≤ 1` e **nenhum extremo espúrio** — mas **não** garante gradiente
+suave. As duas condições de fronteira (`w = 1` sobre um osso, `w = 0` sobre o outro) **tocam-se na
+junta**, então o campo é obrigado a saltar exactamente onde a dobra acontece.
+
+### ⚠️ E o que eu NÃO posso afirmar
+
+Os centros de rotação medem pior aqui do que o que a publicação deles promete, e há uma razão de
+FIXTURA antes de haver uma razão de método: **com DOIS ossos o vector de pesos é um escalar**, e a
+semelhança que define o centro quase não tem padrão para distinguir regiões. ⇒ *esta corrida responde
+«não ajuda numa corrente de dois», não «o método não serve»*. Uma corrente longa é outra medição, e
+é barata.
+
+### ⛔⛔ E um bug meu quase virou uma conclusão
+
+A 1.ª versão do solver harmónico sobre-relaxava uma iteração de **Jacobi** — o que **diverge** para
+`ω > 1`. O resíduo ficou preso em `1,0`, o campo saiu binário (`99,6 %` a `0` ou `1`) e a tabela
+dizia `45 %` de dobra. *Eu ia reportar «os pesos harmónicos falham».* Com Gauss-Seidel
+vermelho-preto o resíduo vai a `1,2e-15` — e a conclusão muda de número, não de sentido. ⇒ **um
+protótipo que contradiz uma publicação é suspeito do protótipo primeiro.**
+
 ## ⛔ Recusas MEDIDAS
 
 | recusa | mecanismo |
 |---|---|
 | **Portar os pesos do Godot** | Não há nada para portar: ele não os calcula. |
 | **Correr o OpenToonz como oráculo** | Não tem porta de consola (medido). O fonte é BSD-3 e continua aberto — mas isso é *portar*, não *medir*. |
+| **Trocar a lei dos pesos** (harmónicos / automáticos da referência) | Medidas as duas pelas DUAS réguas: dobram **mais** (`8,9 %` e `11,3 %` contra `3,1 %`) e/ou seguem **menos** o osso. A lei que shipa ganha o par. ⚠️ A recusa é sobre ESTA fixtura (corrente de **dois** ossos). |
 | **Derivar o ALCANCE do osso da espessura da arte** (a rota que o dono aprovou, e que a medição derrubou) | Mata a dobra **cobrando `27 %` da rotação**: a `2,08 ×` a arte são `0 %` de dobra e `110,3°` de `150°` mandados. A régua da dobra sozinha é cega a isto. |
 | **Centros de rotação por cima dos pesos de hoje** | Não é avaliável: `48 %` dos vértices têm peso exactamente `0` ou `1` (o bump tem suporte finito), o centro é indefinido ali, e a costura com a mistura linear dobra mais (`8,29 %`). ⚠️ A recusa é da FIXTURA, não do método. |
 | **Adoptar os pesos automáticos da referência** | Na nossa fixtura eles dobram **`5`–`9 %`** da arte acima de `60°`, contra `0,65`–`2,3 %` dos nossos e `0 %` do alcance curado. A causa está no passo 4: no nosso meio eles degeneram numa partição dura. |

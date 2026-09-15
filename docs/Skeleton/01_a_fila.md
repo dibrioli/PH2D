@@ -2915,8 +2915,34 @@ de calor foi desenhada para uma superfície 3D que **envolve** o osso, e aqui a 
 com os ossos **dentro do plano dela** — cada osso «vê» só a metade mais perto e a partição sai dura.
 *O método não é mau; ele não é do nosso meio.*
 
-⇒ **Nenhuma das três portas leva a um sítio melhor que o que já medimos.** A corrida, os scripts e a
-saída com proveniência: [`docs/Skeleton/oraculo/`](oraculo/README.md).
+⇒ **Nenhuma das três portas leva a um sítio melhor que o que já medimos.**
+
+### E a obra seguinte foi MEDIDA ANTES de ser escrita — e o veredito é NÃO CONSTRUIR
+
+⛔⛔⛔ **A rota que o dono aprovou (derivar o alcance da arte) está REFUTADA**, e por uma régua que não
+existia: a da dobra é **cega a uma pele que deixou de deformar**. Alargar o alcance dá `0 %` de dobra
+e **cobra `27 %` da rotação** (`110,3°` de `150°` mandados).
+
+⭐⭐⭐ **E as SEIS leis medidas pelas DUAS réguas dizem que a que SHIPA ganha o par:**
+
+| lei | dobra `150°` | segue |
+|---|---:|---:|
+| **o que shipa (bump `raio = osso` + mistura linear)** | **`3,1 %`** | **`150,0°`** |
+| alcance `2,08 ×` a arte | `0,0 %` | `110,3°` |
+| pesos automáticos do Blender | `8,9 %` | `150,0°` |
+| pesos harmónicos | `11,3 %` | `123,5°` |
+| bump + centros de rotação | `8,8 %` | `150,0°` |
+| harmónicos + centros de rotação | `16,8 %` | `134,3°` |
+
+⚠️ **A recusa é sobre ESTA fixtura — uma corrente de DOIS ossos** —, e a fronteira está nomeada: com
+dois ossos o vector de pesos é um escalar, e a semelhança que define um centro de rotação quase não
+tem padrão para distinguir regiões. *Uma corrente longa é outra medição, e é barata.*
+
+⛔⛔ **E um bug meu quase virou conclusão:** a 1.ª versão do solver harmónico sobre-relaxava uma
+iteração de **Jacobi**, que diverge para `ω > 1` — resíduo preso em `1,0`, campo binário, e a tabela
+dizia `45 %` de dobra. *Um protótipo que contradiz uma publicação é suspeito do protótipo primeiro.*
+
+A corrida, os cinco scripts e a saída com proveniência: [`docs/Skeleton/oraculo/`](oraculo/README.md).
 
 ## ⛔ Recusas MEDIDAS deste módulo — não as reconstrua
 

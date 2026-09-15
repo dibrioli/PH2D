@@ -26,7 +26,7 @@ impl crate::App {
         let audio_report = audio_2d::update(sim, self.audio.as_mut());
         // ⚠️ **Ele fala UMA vez por mudança, e não por quadro** — um relatório impresso a
         // 60 Hz não é diagnóstico, é ruído que esconde o que interessa.
-        if self.signal_log_reader.is_some() && audio_report != self.last_audio_report {
+        if self.signal_readers.logging() && audio_report != self.last_audio_report {
             self.last_audio_report = audio_report;
             // ⭐⭐⭐ **O PICO DO MASTER vai na mesma linha**, e ele é o que separa duas avarias que
             // dão o mesmo sintoma: *«não ouço nada»* com pico `0,000` é o som a não chegar ao

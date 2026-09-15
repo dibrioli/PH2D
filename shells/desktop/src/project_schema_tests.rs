@@ -504,7 +504,12 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // campo no MEIO do fluxo de bytes, logo com tipo congelado e migração) e o `SignalAction`
         // ganhou o alvo por TAG. Os dois números ao lado NÃO se mexem: nada na forma do `FlipDoc`
         // nem da `VecScene` mudou — é a décima terceira vez que esta tripla é cega a um degrau.
-        (129, 13, 22),
+        // ⚠️ **`130` desde 2026-09-14** — a FÁBRICA e o CICLO DE VIDA (TOP-20 #11 e #12): três
+        // componentes registados novos (`Factory`, `Lifetime`, `DestroyOutside`). Os dois números
+        // ao lado NÃO se mexem, e é a décima quarta vez. ⛔ O `Spawned` — o quarto tipo da wave —
+        // **não é registado**, e é por isso que o degrau vale `+1`: ele marca o que uma corrida
+        // pôs na cena, e o `world_to_snapshot` poda essas subárvores.
+        (130, 13, 22),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

@@ -176,6 +176,8 @@ pub(crate) mod sprite_anim_tick;
 mod timer_tick;
 pub(crate) use sprite_anim_tick::start_autoplay_animations;
 pub(crate) use timer_tick::start_autostart_timers;
+/// Fase do quadro: o outbox de sinais (os produtores que faltavam e o dreno).
+mod fase_fabrica_e_morte;
 /// Fase do quadro: as cenas de smoke que pedem a `App` inteira (1.ª metade).
 mod fase_app_scene_smokes;
 /// Fase do quadro: as cenas de smoke que pedem a `App` inteira (2.ª metade).
@@ -346,7 +348,6 @@ mod fase_session_upkeep;
 mod fase_shape_fields;
 /// Fase do quadro: os verbos da folha de sprites.
 mod fase_sheet_verbs;
-/// Fase do quadro: o outbox de sinais (os produtores que faltavam e o dreno).
 mod fase_signal_outbox;
 /// Fase do quadro: o extract (propagação, emissão das sprites e a ordem total do quadro).
 mod fase_sim_extract;

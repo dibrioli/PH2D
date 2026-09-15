@@ -188,6 +188,17 @@ pub fn build_hierarchy_snapshot(
     }
 
     while let Some((entity, depth, parent)) = scratch.pop() {
+        // ⭐⭐ **A Hierarquia mostra o DOCUMENTO**, e uma cópia que uma fábrica pôs na cena não é
+        // documento ([`crate::is_transient`], a MESMA porta que o `world_to_snapshot` lê). Ela
+        // vê-se **no canvas**; a lista é do que o artista autorou.
+        //
+        // ⚠️ **É uma decisão, e a alternativa tem nome:** o Godot mostra os nós de runtime numa
+        // árvore REMOTA, separada da local. ⏳ Enquanto ela não existir, uma rajada de 1 024 cópias
+        // encheria esta lista a 60 Hz — e a ordem entre elas seria a do `to_bits`, que não é a de
+        // nascimento (ver `instantiate_master_many`).
+        if crate::is_transient(sim_w, entity) {
+            continue;
+        }
         let Ok((name, children, vis, lk, grp, vp, mr)) = state.chain.get(sim_w, entity) else {
             continue;
         };

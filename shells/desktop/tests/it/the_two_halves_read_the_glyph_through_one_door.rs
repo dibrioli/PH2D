@@ -108,7 +108,7 @@ fn the_authored_intent_queue_has_a_drain_and_it_runs_before_the_signal_drain() {
         .find("ph2d_panel_authored::drain_intents()")
         .expect("a fila de intents do painel autorado nao tem dreno — ela cresce sem teto");
     let signals = src
-        .find("self.signals.read(&mut self.signal_toast_reader)")
+        .find("self.signals.read(&mut self.signal_readers.toast)")
         .expect("o dreno de sinais mudou de forma — este gate mede a ordem contra ele");
     assert!(
         drain < signals,

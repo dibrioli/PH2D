@@ -203,6 +203,20 @@ pub fn world_to_snapshot(
         if world.get_entity(entity).is_err() {
             continue;
         }
+        // ⭐⭐⭐ **O QUE NASCEU NUMA CORRIDA NÃO É DOCUMENTO** (TOP-20 #11,
+        // `docs/Components/09_plano_spawner.md` §2.1) — o espelho, um nível acima, da lei do
+        // `ph2d-preview-drive`: ali *o que um motor escreve num componente* é pré-visualização;
+        // aqui *o que um motor PÕE no mundo* é.
+        //
+        // ⚠️ **O `continue` salta a entidade E a descendência dela**, porque é aqui que os filhos
+        // seriam empilhados. Uma cópia de fábrica é uma subárvore inteira.
+        //
+        // ⛔ Sem isto uma fábrica a 60 Hz punha uma entidade nova no **ficheiro** e um passo na
+        // pilha de `Ctrl+Z` **por tique** — e não há modo de jogo neste app, logo isso acontecia
+        // enquanto o artista edita.
+        if crate::is_transient(world, entity) {
+            continue;
+        }
         visit_order.push(entity);
         if let Ok(entity_ref) = world.get_entity(entity)
             && let Some(children) = entity_ref.get::<Children>()

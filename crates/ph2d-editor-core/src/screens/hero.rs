@@ -65,6 +65,7 @@ mod inspector_model_anchor;
 mod inspector_model_anim;
 mod inspector_model_audio;
 mod inspector_model_camera;
+mod inspector_model_factory;
 /// ⭐ **A seção COMPONENT** (ADR-0164 / F5) — o que esta cópia tem de diferente da receita.
 mod inspector_model_instance;
 /// §12 Physics Joint + §13 Pulley Wheel — irmão do `inspector_model_physics`,
@@ -120,6 +121,7 @@ pub use inspector_model_anchor::*;
 pub use inspector_model_anim::*;
 pub use inspector_model_audio::*;
 pub use inspector_model_camera::*;
+pub use inspector_model_factory::*;
 pub use inspector_model_instance::*;
 pub use inspector_model_joint::*;
 pub use inspector_model_ordering::*;

@@ -135,6 +135,29 @@ pub enum SignalOrigin {
         /// Quantos períodos fecharam neste tique (sempre ≥ 1 — zero não publica).
         fires: u32,
     },
+    /// ⭐⭐⭐ **Uma FÁBRICA pôs cópias na cena** (TOP-20 #11, 2026-09-14).
+    ///
+    /// ⚠️ **`count` pela MESMA razão que o `fires` do `Timer`**: uma rajada é um evento com o
+    /// número dentro, nunca `n` eventos. Um `burst = 64` que publicasse 64 sinais daria a um
+    /// consumidor de SOM sessenta e quatro disparos no mesmo quadro.
+    Spawned {
+        /// A fábrica que falou.
+        source: EntityBits,
+        /// Quantas cópias nasceram neste tique (sempre ≥ 1 — zero não publica).
+        count: u32,
+    },
+    /// ⭐⭐⭐ **Uma cópia MORREU** (TOP-20 #12) — de velha ou por sair do ecrã do jogo.
+    ///
+    /// ⚠️ **Não carrega a CAUSA, e é deliberado** — a lei do `Contact`: *morrer de velho* e *sair
+    /// do ecrã* distinguem-se por serem **nomes** diferentes, autorados em campos diferentes
+    /// (`Lifetime::on_death`; o fora-do-ecrã é calado hoje), nunca por um campo de fase.
+    ///
+    /// ⚠️ **`source` é quem MORREU, e ela já não existe quando o consumidor lê** — o dreno corre
+    /// a seguir. Os bits servem para o log e para rotear, ⛔ nunca para ir buscar a entidade.
+    Death {
+        /// A cópia que morreu.
+        source: EntityBits,
+    },
 }
 
 /// Um sinal publicado neste quadro.
@@ -222,6 +245,31 @@ impl Signal {
             origin: SignalOrigin::Timer {
                 source: EntityBits(source),
                 fires,
+            },
+        }
+    }
+
+    /// **Uma fábrica pôs `count` cópias na cena** ([`SignalOrigin::Spawned`]).
+    ///
+    /// ⚠️ **`count` é sempre ≥ 1** — a mesma lei do `from_timer`.
+    #[must_use]
+    pub fn from_spawn(name: &str, source: u64, count: u32) -> Self {
+        Self {
+            name: Arc::from(name),
+            origin: SignalOrigin::Spawned {
+                source: EntityBits(source),
+                count,
+            },
+        }
+    }
+
+    /// **Uma cópia morreu** ([`SignalOrigin::Death`]).
+    #[must_use]
+    pub fn from_death(name: &str, source: u64) -> Self {
+        Self {
+            name: Arc::from(name),
+            origin: SignalOrigin::Death {
+                source: EntityBits(source),
             },
         }
     }

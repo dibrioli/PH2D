@@ -44,6 +44,12 @@ impl Host {
                 SignalOrigin::Timer { source, fires } => {
                     format!("{} timer {} x{fires}", sig.name, source.0)
                 }
+                SignalOrigin::Spawned { source, count } => {
+                    format!("{} fabrica {} x{count}", sig.name, source.0)
+                }
+                SignalOrigin::Death { source } => {
+                    format!("{} morreu {}", sig.name, source.0)
+                }
             });
         }
     }

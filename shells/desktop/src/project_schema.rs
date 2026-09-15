@@ -533,4 +533,25 @@
 ///
 /// ⚠️ **A tripla NÃO vê este degrau** — é a **décima terceira** vez: o `FlipDoc` e a `VecScene` não
 /// se mexeram, e o que mudou foi o `ProjectFile` e os bytes de um blob.
-pub(crate) const PROJECT_SCHEMA: u32 = 129;
+/// # 129 -> 130 — a FÁBRICA e o CICLO DE VIDA (TOP-20 #11 e #12, `line/components`)
+///
+/// TRÊS componentes registados novos: `ph2d::ecs::Factory`, `ph2d::ecs::Lifetime` e
+/// `ph2d::ecs::DestroyOutside`. Mesmo mecanismo dos degraus `123`, `125`, `126` e `127`: um
+/// `ComponentBlob` de `type_id` desconhecido **recusa o load inteiro**, e o degrau é o que
+/// transforma isso em *«este ficheiro é de outra versão»* em vez de *«type id desconhecido»* no
+/// meio da travessia.
+///
+/// ⛔⛔ **E há um QUARTO componente que NÃO está no registo, de propósito: o `ph2d::ecs::Spawned`.**
+/// Ele marca o que uma fábrica pôs na cena, e a lei da wave é *o que nasce numa corrida não é
+/// documento* — o `world_to_snapshot` **poda** essas subárvores, então um `.ph2dproj` gravado a
+/// meio de uma corrida com mil cópias vivas é byte-a-byte igual ao mesmo projecto parado. ⚠️ É por
+/// isso que este degrau vale `+1` e não `+2`: o número mede o que o FICHEIRO passa a conter.
+///
+/// ⛔ **Sem degrau de migração**, pela decisão do Enio de 26/08 — e aqui com a razão extra de que
+/// os três são **aditivos**: um v129 não tem nenhum deles, logo lê-se inteiro por este binário. O
+/// degrau existe para o sentido contrário (um v130 com uma fábrica dentro, lido por um binário
+/// anterior), que é o que recusa em voz alta.
+///
+/// ⚠️ **A tripla NÃO vê este degrau** — é a **décima quarta** vez: os componentes viajam em
+/// `ComponentBlob`s, que para ela são opacos.
+pub(crate) const PROJECT_SCHEMA: u32 = 130;

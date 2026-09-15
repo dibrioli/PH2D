@@ -587,6 +587,18 @@ pub fn register_ecs_components(reg: &mut ComponentRegistry) {
     // consumidor que faltava aos sinais. ⚠️ Ela é CONFIG inteira: o que ela guarda é o que o
     // artista escreveu, e o efeito de uma acção vive no componente que ela toca.
     reg.register_default::<crate::SignalActions>("ph2d::ecs::SignalActions");
+    // ⭐⭐⭐ **A FÁBRICA e o CICLO DE VIDA** (TOP-20 #11 e #12, 2026-09-14) — os três são CONFIG
+    // inteira e gravam-se. Sem o registo, o artista escolhe a receita, afina a rajada, grava,
+    // reabre, e a cena volta ESTÉRIL: nada some da tela e nada dá erro.
+    //
+    // ⛔⛔ **O `Spawned` NÃO está aqui, e a ausência é a LEI da wave** (`09_plano_spawner.md` §2.1):
+    // *o que nasce numa corrida não é documento.* Registá-lo poria cada cópia no ficheiro e um
+    // passo na pilha de `Ctrl+Z` por tique. ⚠️ E a porta fecha-se pelo **TIPO**, não por este
+    // comentário: ele não deriva `Serialize`, logo a linha nem compila — o precedente do
+    // `TimerRuntime`, onde uma prova de mutação mostrou que a ausência era load-bearing.
+    reg.register_default::<crate::Factory>("ph2d::ecs::Factory");
+    reg.register_default::<crate::Lifetime>("ph2d::ecs::Lifetime");
+    reg.register_default::<crate::DestroyOutside>("ph2d::ecs::DestroyOutside");
     // ⭐⭐⭐ **O SOM DE UM OBJECTO** (TOP-20 #4, 2026-09-09) — a fonte e as orelhas. Sem o
     // registo, o artista escolhe um ficheiro, afina o alcance, grava, reabre, e o objecto volta
     // MUDO: nada some da tela e nada dá erro. ⚠️ O que ANDA — a voz viva, o que já tocou — fica

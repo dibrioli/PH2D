@@ -9,15 +9,18 @@ use super::*;
 
 impl crate::App {
     /// Ver o cabeçalho do módulo.
+    ///
+    /// ⭐ **Devolve o rectângulo VISÍVEL da câmera do jogo** (centro e meia-janela, em metros), que
+    /// é o que o `DestroyOutside` (TOP-20 #12) mede. ⛔ **Nunca a vista do editor:** uma corrida que
+    /// dependesse de onde o artista rolou o ecrã seria outra corrida em cada máquina. `None` = não
+    /// há câmera de jogo, e então o fora-do-ecrã não mede nada — o painel di-lo.
     pub(super) fn fase_game_camera(
         &mut self,
         player_input: ph2d_physics_ecs::PlayerInput,
         report: ph2d_core::FixedStepReport,
-    ) {
+    ) -> Option<([f32; 2], [f32; 2])> {
         // O `gfx` re-derivado; os guardas do quadro já correram na `fase_chrome_clock`.
-        let Some(gfx) = self.gfx.as_mut() else {
-            return;
-        };
+        let gfx = self.gfx.as_mut()?;
         let FrameGfx {
             surface,
             sim,
@@ -65,8 +68,19 @@ impl crate::App {
             camera.height_world = v.height_world;
             camera.cull_mask = v.cull_mask;
         }
+        // ⭐ O rectângulo que o fora-do-ecrã mede, derivado da MESMA vista que o extract desenha —
+        // ⛔ e não de uma segunda leitura da câmera, que divergiria no dia em que uma delas mudasse.
+        let rect = vista_da_cena.map(|v| {
+            (
+                v.center,
+                ph2d_ecs::camera_2d::half_extent(
+                    v.height_world,
+                    camera_2d::aspect_of(surface.size()),
+                ),
+            )
+        });
         // ⚠️ **Fala uma vez por MUDANÇA, nunca por quadro** — a mesma lei da linha do som.
-        if self.signal_log_reader.is_some() && camera_report != self.last_camera_report {
+        if self.signal_readers.logging() && camera_report != self.last_camera_report {
             self.last_camera_report = camera_report.clone();
             eprintln!(
                 "[camera-2d] {} camera(s) · segue={} · alvo `{}` {} · centro ({:.2}, {:.2}){}",
@@ -87,5 +101,6 @@ impl crate::App {
                 }
             );
         }
+        rect
     }
 }

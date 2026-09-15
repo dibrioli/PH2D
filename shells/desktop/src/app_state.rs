@@ -148,36 +148,14 @@ pub(crate) struct App {
     /// cada produtor: dois lugares que decidiam o que um sinal faz, e nenhum lugar onde um
     /// terceiro consumidor (som, Luau, UI) pudesse entrar sem virar a terceira cópia.
     pub(crate) signals: ph2d_runtime::SignalOutbox,
-    /// O cursor do consumidor de TOAST — a prova visível de que o canal fecha a volta.
-    pub(crate) signal_toast_reader: ph2d_runtime::SignalReader,
-    /// O cursor do consumidor de DIAGNÓSTICO (`PH2D_SIGNAL_LOG=1`), `None` sem a env var.
-    ///
-    /// ⚠️ Ele existe por dois motivos, e o segundo é o que importa: um sinal que ninguém vê é
-    /// indistinguível de um sinal que não aconteceu (a lição que esta casa pagou quatro vezes
-    /// com instrumento mudo), e **dois cursores lendo a MESMA saída é a propriedade que o
-    /// desenho promete** — com um consumidor só ela nunca seria exercida no produto.
-    pub(crate) signal_log_reader: Option<ph2d_runtime::SignalReader>,
+    /// ⭐⭐ **Os cursores dos consumidores**, num sítio só — ver [`app_state_signal_readers`].
+    pub(crate) signal_readers: app_state_signal_readers::SignalReaders,
     /// ⭐ O último relatório do som de cena — o que impede a linha de diagnóstico de sair
     /// **por quadro**. ⚠️ Um relatório impresso a 60 Hz não é diagnóstico, é ruído que
     /// esconde o que interessa; ele fala uma vez por MUDANÇA.
     pub(crate) last_audio_report: crate::render_loop::AudioSceneReport,
     /// O último relatório da CÂMERA DE JOGO — a linha só fala quando ele MUDA.
     pub(crate) last_camera_report: crate::render_loop::CameraSceneReport,
-    /// ⭐ **O cursor do consumidor que MOVE A CENA** — a tabela sinal → papel
-    /// (`ph2d_ui_state::SignalBinding`), o item 4 do estudo dos contêineres.
-    ///
-    /// ⚠️ **Ele é lido em TODO frame e só AGE dentro da preview**, e as duas metades são
-    /// separadas de propósito: um cursor que só andasse com a preview ligada acumularia
-    /// `missed`, e entrar na preview entregaria de uma vez os dois quadros que a janela do
-    /// outbox ainda guarda — a cena saltaria de pose por causa de um sinal que aconteceu antes
-    /// de o artista ligar o modo.
-    /// ⭐⭐⭐ **O cursor do consumidor que FAZ ALGUMA COISA** (TOP-20 #5) — a tabela nome → acção.
-    ///
-    /// ⚠️ **Cursor próprio, como todos**: o toast, o log de diagnóstico e a máquina de UI leem a
-    /// mesma saída sem se consumirem — é a lei do `ph2d-runtime` (o produtor não chama ninguém, e
-    /// cada consumidor tem o seu). Partilhar um cursor faria um deles comer o sinal do outro.
-    pub(crate) signal_action_reader: ph2d_runtime::SignalReader,
-    pub(crate) ui_signal_reader: ph2d_runtime::SignalReader,
     /// Set by the `K` key: on the next frame, insert a keyframe at the playhead
     /// on every track bound to the selected sprite (capturing its current pose).
     pub(crate) timeline_insert_key: bool,
@@ -1014,3 +992,7 @@ pub(crate) struct RubberBandState {
 #[path = "app_state_components_smokes.rs"]
 mod components_smokes;
 pub(crate) use components_smokes::ComponentsSmokeLatches;
+
+/// ⭐⭐ Os cursores do outbox de sinais — irmão pela catraca de campos da `App`.
+#[path = "app_state_signal_readers.rs"]
+pub(crate) mod app_state_signal_readers;

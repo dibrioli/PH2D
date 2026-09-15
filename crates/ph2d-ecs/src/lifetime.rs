@@ -160,6 +160,19 @@ pub struct Death {
     pub why: DeathCause,
 }
 
+/// ⭐⭐⭐ **Esta entidade nasceu numa corrida?** — a PORTA ÚNICA da lei do §2.1 do plano, e ela tem
+/// **dois leitores que não se conhecem**: o `world_to_snapshot` (o documento que se grava e se
+/// desfaz) e o `build_hierarchy_snapshot` (a lista que o artista lê).
+///
+/// ⚠️ **Uma porta e não um `get::<Spawned>()` em cada um**: *uma lei escrita em dois sítios ainda
+/// não é uma lei* — a lição que o `stroke_uniform` do vector pagou à terceira vez. No dia em que a
+/// transiência tiver uma segunda fonte (um objecto de rede, uma pré-visualização), os dois leitores
+/// mudam juntos ou nenhum muda.
+#[must_use]
+pub fn is_transient(world: &World, e: Entity) -> bool {
+    world.get::<Spawned>(e).is_some()
+}
+
 /// **Põe o relógio em quem nasceu com uma vida e ainda não o tem.**
 ///
 /// ⚠️ **Idempotente e no caminho do tique**, como o `reconcile` dos timers: o nascimento é o sítio

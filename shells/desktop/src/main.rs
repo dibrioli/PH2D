@@ -742,16 +742,9 @@ impl App {
             timeline_view: ph2d_timeline::TimelineViewSnapshot::default(),
             timeline_signals: Default::default(),
             signals: ph2d_runtime::SignalOutbox::new(),
-            signal_toast_reader: ph2d_runtime::SignalReader::new(),
-            // O 2o consumidor so' existe com a env var -- o idiom de diagnostico da casa
-            // (`PH2D_PAINT_PERF`, `PH2D_FLUID_PROFILE`): um leitor que ninguem pediu seria
-            // um cursor a envelhecer sozinho, acumulando `missed` que ninguem le.
-            signal_log_reader: std::env::var_os("PH2D_SIGNAL_LOG")
-                .map(|_| ph2d_runtime::SignalReader::new()),
-            signal_action_reader: ph2d_runtime::SignalReader::new(),
+            signal_readers: crate::app_state::app_state_signal_readers::SignalReaders::new(),
             last_audio_report: Default::default(),
             last_camera_report: Default::default(),
-            ui_signal_reader: ph2d_runtime::SignalReader::new(),
             timeline_insert_key: false,
             autokey: Default::default(),
             last_frame: Instant::now(),

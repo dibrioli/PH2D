@@ -20,6 +20,11 @@ pub(super) struct FrameClocks {
     pub(super) anim_signals: Vec<sprite_anim_tick::AnimSignal>,
     /// Os sinais dos timers, publicados no mesmo sítio.
     pub(super) timer_signals: Vec<timer_tick::TimerSignal>,
+    /// ⭐⭐⭐ **Quem morreu de velho neste quadro** (TOP-20 #12). As mortes são drenadas na
+    /// `fase_signal_outbox`, com as do fora-do-ecrã — ⛔ **nunca aqui**: o oráculo mediu que um
+    /// moribundo continua visível a toda consulta até ao fim do quadro, e é isso que torna a
+    /// travessia do quadro segura sem uma regra escrita em lado nenhum.
+    pub(super) deaths: Vec<ph2d_ecs::Death>,
 }
 
 impl crate::App {
@@ -135,11 +140,25 @@ impl crate::App {
         // ⚠️ **Sem o `preview_drive`, e é a separação que o paga:** o `TimerRuntime` não é um
         // componente registado, então o undo não o fotografa e não há passo espúrio a declarar.
         let timer_signals = timer_tick::tick_timers(sim, report.ticks, self.fixed_step.fixed_dt());
+        // ⭐⭐⭐ **AS VIDAS** (TOP-20 #12) — no MESMO sítio e pela mesma razão que os timers: o
+        // relógio corre no passo fixo, logo o replay reproduz o instante da morte.
+        //
+        // ⚠️ **Sem o `preview_drive`, e pela mesma separação:** o `LifetimeRuntime` não é um
+        // componente registado, e quem morre **nunca foi documento** (ele exige o `Spawned`).
+        //
+        // ⚠️ `tick_count()` é o tique DEPOIS de este quadro correr, e é o que a lei compara com o
+        // `born_tick` para não envelhecer um recém-nascido no tique em que ele nasceu.
+        let deaths = ph2d_ecs::tick_lifetimes(
+            sim.world_mut(),
+            (report.ticks as u64).saturating_mul((self.fixed_step.fixed_dt() * 1e6) as u64),
+            self.fixed_step.tick_count(),
+        );
         Some(FrameClocks {
             report,
             tool_preview_bits,
             anim_signals,
             timer_signals,
+            deaths,
         })
     }
 }

@@ -24,7 +24,7 @@ fn frame_src() -> String {
 fn the_frame_reads_the_outbox_and_asks_the_table_who_listens() {
     let s = frame_src();
     let read = s
-        .find("read(&mut self.ui_signal_reader)")
+        .find("read(&mut self.signal_readers.ui)")
         .expect("o frame lê a saída de sinais com o cursor da UI");
     let targets = s[read..]
         .find("ui_states.targets(")
@@ -50,7 +50,7 @@ fn the_frame_reads_the_outbox_and_asks_the_table_who_listens() {
 fn the_cursor_always_advances_and_only_the_action_is_gated_on_the_preview() {
     let s = frame_src();
     let read = s
-        .find("read(&mut self.ui_signal_reader)")
+        .find("read(&mut self.signal_readers.ui)")
         .expect("a leitura existe");
     // A janela é o bloco do consumidor — generosa, e o que importa é o que está DENTRO dela.
     let win = &s[read.saturating_sub(400)..(read + 400).min(s.len())];
@@ -63,7 +63,7 @@ fn the_cursor_always_advances_and_only_the_action_is_gated_on_the_preview() {
         .find("self.ui_preview.is_on()")
         .expect("a guarda existe");
     let at = win
-        .find("read(&mut self.ui_signal_reader)")
+        .find("read(&mut self.signal_readers.ui)")
         .expect("a leitura");
     assert!(
         gate < at,

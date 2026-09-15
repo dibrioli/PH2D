@@ -93,13 +93,13 @@ impl crate::App {
         // de undo e ele sabe porquê; uma pose que **chega sozinha** não pode cobrar nada.
         //
         // ⚠️ **Ler fora da preview é o que impede o salto de entrada** — ver o doc do
-        // `ui_signal_reader`. Sem o `let _`, o `read` devolve um iterador preguiçoso e **nada
+        // `signal_readers.ui`. Sem o `let _`, o `read` devolve um iterador preguiçoso e **nada
         // é consumido**: o cursor não andaria, e o gate que o prova é o da entrada limpa.
         {
             let acting = self.ui_preview.is_on();
             let moves: Vec<(ph2d_vec_scene::VecPathId, ph2d_ui_state::StateRole)> = self
                 .signals
-                .read(&mut self.ui_signal_reader)
+                .read(&mut self.signal_readers.ui)
                 .filter(|_| acting)
                 .flat_map(|sig| ui_states.targets(&sig.name).collect::<Vec<_>>())
                 .collect();

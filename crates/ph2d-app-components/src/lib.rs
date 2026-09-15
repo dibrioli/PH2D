@@ -78,6 +78,9 @@ pub mod component_attach;
 pub mod component_palette;
 pub mod component_seed;
 pub mod component_smoke;
+/// ⭐⭐⭐ **A PONTE da FÁBRICA e da MORTE** (TOP-20 #11 e #12) — os factos que a lei pura devolve
+/// viram objectos no mundo.
+pub mod factory_bridge;
 pub mod instance_added;
 pub mod instance_added_smoke;
 pub mod instance_apply_deep;

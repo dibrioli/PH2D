@@ -28,9 +28,14 @@ impl crate::App {
             tool_preview_bits,
             anim_signals,
             timer_signals,
+            deaths,
         } = self.fase_fixed_step_clocks(wall_dt)?;
         self.fase_scene_audio();
-        self.fase_game_camera(player_input, report);
+        // ⭐ **O rectângulo da câmera do JOGO atravessa a fronteira** (TOP-20 #12): quem o conhece é
+        // esta fase, e quem o lê é o dreno das mortes, lá em baixo. ⛔ Uma segunda leitura da câmera
+        // no dreno seria a segunda resposta a *«qual é a vista?»*, e as duas divergiriam no dia em
+        // que uma delas mudasse.
+        let camera_rect = self.fase_game_camera(player_input, report);
         let fase_extract_inputs::ExtractInputs {
             dt,
             preview_overrides,
@@ -47,7 +52,7 @@ impl crate::App {
         self.fase_timeline_containers(container, keys_mode);
         self.fase_timeline_drain(container, dragging_entity, keys_mode, selected_now);
         self.fase_physics_step(player_input);
-        self.fase_signal_outbox(anim_signals, timer_signals);
+        self.fase_signal_outbox(anim_signals, timer_signals, deaths, camera_rect);
         self.fase_open_recipe();
         self.fase_sim_extract(dt, preview_overrides, sheet_preview, ppm, default_filter);
         Some((report, tool_preview_bits))

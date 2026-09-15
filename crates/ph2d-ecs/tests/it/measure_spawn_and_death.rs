@@ -84,7 +84,6 @@ fn mundo(n: u32) -> (World, Entity) {
     mundo_com(n, 2)
 }
 
-
 fn mundo_com(n: u32, pecas: u32) -> (World, Entity) {
     let mut w = World::new();
     povoar(&mut w, n);

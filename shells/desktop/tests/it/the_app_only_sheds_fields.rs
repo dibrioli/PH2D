@@ -24,7 +24,7 @@
 /// das TAGS) e a falha deste gate diz, no próprio texto, o que fazer — *«um campo novo tem DONO»*.
 /// Os SEIS latches das cenas daquela família viraram uma `ComponentsSmokeLatches`, e a catraca
 /// desceu quatro degraus em vez de subir um.
-const TETO_CAMPOS: usize = 183;
+const TETO_CAMPOS: usize = 180;
 
 const APP_STATE: &str = include_str!("../../src/app_state.rs");
 

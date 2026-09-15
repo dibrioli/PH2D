@@ -59,6 +59,54 @@ pub fn unique_name_excluding(world: &mut SimWorld, base: &str, exclude: Entity) 
     }
 }
 
+/// ⭐⭐⭐ **`n` nomes livres de uma vez** — a porta que a FÁBRICA usa (TOP-20 #11).
+///
+/// # ⚠️ Porque ela existe, e porque não é um `for` à volta da [`unique_name`]
+///
+/// A [`unique_name`] varre **todos os nomes do mundo** por candidato tentado, e tenta ` (1)`,
+/// ` (2)`… até achar um livre. Chamá-la `n` vezes seguidas é `O(n² × nomes)`: uma rajada de 1 024
+/// cópias numa cena de 10 000 objectos faz **dez milhões** de comparações de string por tique — e
+/// o defeito é invisível numa cena de demonstração, onde `n` é 3.
+///
+/// Aqui os nomes usados entram num conjunto **uma vez**, e cada candidato é uma consulta a ele:
+/// `O(nomes + n)`. ⚠️ **Os nomes gerados entram no conjunto à medida que saem**, senão `n` cópias
+/// recebiam todas o mesmo nome — que é exactamente o defeito que esta crate existe para impedir.
+///
+/// ⚠️ **`BTreeSet` e não `HashSet`**, e o lint estrutural desta casa impõe-o: a ordem de um `Hash*`
+/// não é determinista, e o dia em que alguém ITERAR este conjunto — para listar os nomes, para
+/// escolher um — a resposta muda entre corridas. *A cerca não é sobre esta função; é sobre a
+/// próxima pessoa a lê-la.*
+///
+/// ⛔ **A lei é a mesma da [`unique_name`], e não uma segunda**: o mesmo `strip_numeric_suffix`, o
+/// mesmo formato ` (n)`, a mesma resposta para `n = 1`. Há gate a atar as duas.
+#[must_use]
+pub fn unique_names(world: &mut SimWorld, base: &str, n: usize) -> Vec<String> {
+    let mut usados: std::collections::BTreeSet<String> = {
+        let w = world.world_mut();
+        let mut q = w.query::<&Name>();
+        q.iter(w).map(|x: &Name| x.as_str().to_owned()).collect()
+    };
+    let stem = strip_numeric_suffix(base);
+    let mut out = Vec::with_capacity(n);
+    let mut proximo: u32 = 1;
+    for _ in 0..n {
+        let nome = if usados.contains(base) {
+            loop {
+                let c = format!("{stem} ({proximo})");
+                proximo = proximo.checked_add(1).expect("name suffix overflow (u32)");
+                if !usados.contains(&c) {
+                    break c;
+                }
+            }
+        } else {
+            base.to_owned()
+        };
+        usados.insert(nome.clone());
+        out.push(nome);
+    }
+    out
+}
+
 fn name_in_use(world: &mut SimWorld, candidate: &str) -> bool {
     let w = world.world_mut();
     let mut q = w.query::<&Name>();
@@ -100,6 +148,27 @@ mod tests {
             sim.world_mut().spawn(Name::new(*n));
         }
         sim
+    }
+
+    /// ⭐⭐ **A porta em lote responde o MESMO que a de um** — a lei é uma só.
+    ///
+    /// (Mutação: não inserir o nome gerado no conjunto ⇒ as três cópias saem com o mesmo nome.)
+    #[test]
+    fn the_batch_door_answers_the_same_as_the_single_one() {
+        let mut sim = world_with(&["Sprite", "Sprite (1)"]);
+        assert_eq!(unique_names(&mut sim, "Sprite", 1), vec!["Sprite (2)"]);
+        let mut sim = world_with(&["Sprite", "Sprite (1)"]);
+        assert_eq!(
+            unique_names(&mut sim, "Sprite", 3),
+            vec!["Sprite (2)", "Sprite (3)", "Sprite (4)"],
+            "cada nome gerado tem de ocupar o lugar dele"
+        );
+        // E com o nome livre, a primeira fica com o base — como a porta de um.
+        let mut sim = world_with(&[]);
+        assert_eq!(
+            unique_names(&mut sim, "Mob", 2),
+            vec!["Mob".to_string(), "Mob (1)".to_string()]
+        );
     }
 
     #[test]

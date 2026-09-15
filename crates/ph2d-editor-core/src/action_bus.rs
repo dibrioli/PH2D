@@ -356,6 +356,16 @@ pub enum EditorAction {
         edit: crate::screens::hero::CameraFieldEdit,
     },
 
+    /// Inspector → shell, as secções FACTORY e LIFECYCLE (TOP-20 #11 e #12, W3).
+    ///
+    /// ⚠️ **Uma variante para os TRÊS componentes** (`Factory` · `Lifetime` · `DestroyOutside`), como
+    /// a da câmera: o painel fala com a shell num canal só, e é a shell que sabe qual componente
+    /// cada edição toca. ⛔ Três variantes aqui seriam três drenos a fazer a mesma coisa.
+    InspectorFactoryEdit {
+        entity_bits: u64,
+        edit: crate::screens::hero::FactoryFieldEdit,
+    },
+
     /// Inspector → shell channel for a §10 Material & Blend field (Blend
     /// Mode). Optional-component edit like [`Self::InspectorSamplingEdit`]
     /// (§3.10); tag `0` (Mix) detaches the `BlendMode` component.

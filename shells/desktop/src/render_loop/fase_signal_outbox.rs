@@ -16,6 +16,8 @@ impl crate::App {
         &mut self,
         anim_signals: Vec<sprite_anim_tick::AnimSignal>,
         timer_signals: Vec<timer_tick::TimerSignal>,
+        deaths: Vec<ph2d_ecs::Death>,
+        camera_rect: Option<([f32; 2], [f32; 2])>,
     ) {
         // O `gfx` re-derivado; os guardas do quadro já correram na `fase_chrome_clock`.
         let Some(gfx) = self.gfx.as_mut() else {
@@ -107,7 +109,7 @@ impl crate::App {
         // `&mut` no PRÓPRIO estado enquanto lê — é isso que um barramento de handlers boxeados
         // não permite, e provavelmente por que o `ph2d-script::messaging` tem zero consumidores
         // desde que nasceu.
-        for sig in self.signals.read(&mut self.signal_toast_reader) {
+        for sig in self.signals.read(&mut self.signal_readers.toast) {
             toasts.push(Toast::info(tr_with(
                 "shell.fase_signal_outbox.signal",
                 &[("sig", &(sig.name))],
@@ -125,7 +127,7 @@ impl crate::App {
         {
             let disparados: Vec<String> = self
                 .signals
-                .read(&mut self.signal_action_reader)
+                .read(&mut self.signal_readers.action)
                 .map(|s| s.name.to_string())
                 .collect();
             if !disparados.is_empty() {
@@ -140,7 +142,7 @@ impl crate::App {
                         &mut self.preview_drive,
                         self.audio.as_mut(),
                     );
-                    if self.signal_log_reader.is_some() {
+                    if self.signal_readers.logging() {
                         eprintln!(
                             "[signal] {} accao(oes) aplicada(s), {} inerte(s)",
                             r.applied, r.inert
@@ -149,7 +151,14 @@ impl crate::App {
                 }
             }
         }
-        if let Some(reader) = self.signal_log_reader.as_mut() {
+        // ⭐⭐⭐ **A FÁBRICA** (TOP-20 #11) e **O DRENO DA MORTE** (#12) — ver
+        // [`super::fase_fabrica_e_morte`]. ⚠️ **Aqui, nesta ordem, e não noutro sítio:** a fábrica lê os
+        // MESMOS sinais que a tabela de acções (logo depois dela, para que um `SignalActions` que
+        // arranque um timer não tenha de esperar um quadro), e a morte drena **por último**, que é
+        // a lei que o oráculo mediu — um moribundo continua visível a toda consulta até ao fim do
+        // quadro.
+        self.fase_fabrica_e_morte(deaths, camera_rect);
+        if let Some(reader) = self.signal_readers.log.as_mut() {
             for sig in self.signals.read(reader) {
                 match sig.origin {
                     ph2d_runtime::SignalOrigin::Timeline { t } => {
@@ -181,6 +190,15 @@ impl crate::App {
                             "[signal] {} <- timer do objecto {}, {fires} periodo(s)",
                             sig.name, source.0
                         );
+                    }
+                    ph2d_runtime::SignalOrigin::Spawned { source, count } => {
+                        eprintln!(
+                            "[signal] {} <- fabrica {}, {count} copia(s) nasceram",
+                            sig.name, source.0
+                        );
+                    }
+                    ph2d_runtime::SignalOrigin::Death { source } => {
+                        eprintln!("[signal] {} <- morreu a copia {}", sig.name, source.0);
                     }
                 }
             }

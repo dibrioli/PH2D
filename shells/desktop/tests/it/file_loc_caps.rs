@@ -29,8 +29,8 @@ const MARKER_WINDOW_LINES: usize = 20;
 const FILE_OVERAGE_OK: &[(&str, usize, &str)] = &[
     (
         "app_state.rs",
-        1019,
-        "a struct `App` sozinha são ~940 linhas (187 campos); descer a 600 é reagrupar campos — o `AppGfx`, as ferramentas de imagem, os dispositivos e o `HeroLive` já saíram (`line/loc-caps`)",
+        998,
+        "a struct `App` sozinha são ~940 linhas (180 campos); descer a 600 é reagrupar campos — o `AppGfx`, as ferramentas de imagem, os dispositivos e o `HeroLive` já saíram (`line/loc-caps`). ⭐ 1019 → 998 em 2026-09-14: os CINCO cursores do outbox de sinais viraram UMA struct",
     ),
     (
         "main.rs",

@@ -25,6 +25,7 @@ mod the_frame_ritm_is_per_cell;
 mod the_hierarchy_is_the_one_blender_measures;
 mod the_morph_graph_survives_the_snapshot;
 mod the_present_world_has_no_resources;
+mod the_run_never_enters_the_document;
 mod transform_determinism;
 mod transform_hierarchy;
 mod transform_inverse;

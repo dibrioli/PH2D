@@ -72,8 +72,70 @@ const ACTION_FIELDS: &[FieldDesc] = &[
     f(4, "Timer", K::Text),
 ];
 
-/// Os descritores da família.
+/// **Os campos de uma cópia que MORRE SOZINHA** (TOP-20 #12).
+///
+/// ⚠️ **Só dois, e o painel tem uma terceira linha que NÃO é campo:** a metade honesta —
+/// *«isto só corre em cópias que uma fábrica pôs na cena»* — é derivada, não autorada.
+const LIFETIME_FIELDS: &[FieldDesc] = &[f(1, "Lifetime", K::Scalar), f(2, "On Death", K::Text)];
+
+/// O campo do fora-do-ecrã: a folga, em metros, antes de a morte valer.
+const OUTSIDE_FIELDS: &[FieldDesc] = &[f(1, "Margin", K::Scalar)];
+
+/// **Os campos da FÁBRICA** (TOP-20 #11) — *o quê · onde · quando · quanto*.
+///
+/// ⚠️ **Não há campo de RITMO**, e é a decisão medida do plano §2.4: a cadência vem do `Timers`,
+/// que o `requires` puxa quando o artista acrescenta a fábrica. Um `rate` aqui seria um **segundo
+/// relógio** para a mesma lei.
+const FACTORY_FIELDS: &[FieldDesc] = &[
+    f(1, "Recipe", K::Text),
+    f(2, "On Signal", K::Text),
+    f(3, "Where", K::Enum),
+    f(4, "Area", K::Vec2),
+    f(5, "Spawn Point Tag", K::Text),
+    f(6, "Pick", K::Enum),
+    f(7, "Burst", K::Int),
+    f(8, "Max Alive", K::Int),
+    f(9, "Max Total", K::Int),
+    f(10, "On Spawned", K::Text),
+    f(11, "On Exhausted", K::Text),
+    f(12, "Seed", K::Seed),
+];
+
+/// Os descritores da família. ⚠️ **ORDENADOS por `canonical_name`** — há gate.
 pub const DESCS: &[ComponentDesc] = &[
+    // ⭐⭐ **A HIGIENE do ciclo de vida** (TOP-20 #12) — sem ela a fábrica e o projéctil VAZAM.
+    //
+    // ⚠️ **Estas duas vivem na RECEITA e correm nas CÓPIAS**: um mestre está escondido por
+    // construção, então o sítio onde se autoram é exactamente o sítio onde fazem efeito. Num
+    // objecto solto elas são inertes, e é o painel que o diz.
+    D::authored(
+        "ph2d::ecs::DestroyOutside",
+        "Destroy Outside",
+        C::Logic,
+        O::ANY,
+        OUTSIDE_FIELDS,
+    ),
+    // ⭐⭐⭐ **A FÁBRICA** (TOP-20 #11) — a categoria que quase nenhuma engine grande tem como
+    // componente. `O::ANY` pela razão do relógio: quem fabrica é quase sempre um objecto VAZIO.
+    //
+    // ⭐⭐ **Ela REQUER o `Timers`**, e isso é o mecanismo do levantamento §1.4 (*required
+    // components*, o meta-matador de UX) a pagar-se: acrescentar a fábrica traz o relógio que lhe
+    // dá ritmo, já ligado. ⛔ É o que torna honesto **não** ter um `rate` próprio.
+    D::authored_requiring(
+        "ph2d::ecs::Factory",
+        "Factory",
+        C::Logic,
+        O::ANY,
+        FACTORY_FIELDS,
+        &["ph2d::ecs::Timers"],
+    ),
+    D::authored(
+        "ph2d::ecs::Lifetime",
+        "Lifetime",
+        C::Logic,
+        O::ANY,
+        LIFETIME_FIELDS,
+    ),
     // ⭐⭐⭐ **O consumidor que faltava aos sinais** — e `O::ANY` pela mesma razão do relógio: quem
     // reage a um sinal é tantas vezes um objecto VAZIO («o cérebro da cena») quanto uma sprite.
     D::authored(

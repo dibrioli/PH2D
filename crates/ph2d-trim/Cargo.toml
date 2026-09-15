@@ -1,0 +1,28 @@
+[package]
+name = "ph2d-trim"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+# A LEI DO CORTE — o desenho do artista no ecrã vira um VOLUME.
+#
+# Clean-room sob `docs/3D/cleanroom/SPEC_trim_gesture.md` (atestada pelo R-pré).
+# Esta crate não sabe o que é uma câmara, um painel, um gesto ou um evento de
+# ponteiro: ela recebe um anel de pontos de ECRÃ, um RAIO por ponto (que a casa
+# já sabe produzir — `ph2d_mesh_render::Camera::ray_through`), o plano da forma e
+# a peça, e devolve o prisma. É isso que a torna gateável sem GPU e sem janela.
+#
+# ⛔ Ela NÃO corta: quem corta é a `ph2d-mesh-bool`. Separar as duas é o que
+# permite gatear a FORMA do volume sem depender do motor de booleana.
+
+[lib]
+
+[dependencies]
+# A entrada (a peça) e a saída (o prisma) são `Mesh`, e o raio é o da casa.
+ph2d-mesh = { path = "../ph2d-mesh" }
+
+[lints]
+workspace = true

@@ -80,7 +80,7 @@ fn o_instantaneo_acusa_um_corpo_que_nao_serve() {
 }
 
 #[test]
-fn e_acusa_o_CONFLITO_de_dois_movers() {
+fn e_acusa_o_conflito_de_dois_movers() {
     let (sim, bits) = cena(BodyKind::Kinematic, true);
     let i = build_topdown_info(sim.world(), bits, 1, true).unwrap();
     assert!(

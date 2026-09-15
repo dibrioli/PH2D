@@ -4,7 +4,7 @@
 //! duas portas que têm de entregar o mesmo mundo, e a medição que justifica a segunda existir.
 
 use crate::instance_smoke::spawn_master;
-use ph2d_ecs::{Children, Entity, InstanceOf, MasterRoot, Name, SimWorld, StableId, Transform};
+use ph2d_ecs::{Children, Entity, InstanceOf, MasterRoot, Name, SimWorld, Transform};
 
 /// ⚠️ **Sem documentos vetoriais** — ver o irmão.
 fn instantiate(

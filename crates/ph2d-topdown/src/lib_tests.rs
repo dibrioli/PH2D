@@ -66,7 +66,7 @@ fn quatro_direccoes_encaixa_no_rumo_mais_perto() {
 }
 
 #[test]
-fn um_eixo_APAGA_a_outra_componente_e_nao_encaixa_no_rumo_mais_perto() {
+fn um_eixo_apaga_a_outra_componente_e_nao_encaixa_no_rumo_mais_perto() {
     // ⚠️ A distinção é medida: uma intenção a 80° daria `→` num ENCAIXE de 180°
     // e `↑` num APAGAMENTO de `x`. Os dois modos de eixo apagam.
     let d = direction::quantize([0.17, 0.98], DirectionMode::AxisX);
@@ -86,7 +86,7 @@ fn sem_intencao_nao_ha_direccao() {
 // O VIEWPOINT
 
 #[test]
-fn a_vista_de_cima_e_identidade_AO_BIT() {
+fn a_vista_de_cima_e_identidade_ao_bit() {
     // ⛔ Não é «perto»: é o MESMO `f32`. Uma identidade que passasse por uma
     // rotação de 0° e uma divisão por 1,0 deixaria de ser reproduzível, e toda
     // cena sem isometria paga isso para sempre.
@@ -151,7 +151,7 @@ fn so_o_modo_custom_le_o_angulo() {
 // A ORDEM (a lei que o cabeçalho da crate desenha)
 
 #[test]
-fn a_quantizacao_corre_no_espaco_da_INTENCAO_e_nao_no_do_ecra() {
+fn a_quantizacao_corre_no_espaco_da_intencao_e_nao_no_do_ecra() {
     // ⚠️⚠️ O gate que defende a ordem. Com «4 direcções» num tabuleiro 2:1, as
     // saídas TÊM de ser as quatro arestas do losango — se o encaixe corresse
     // depois da reprojecção, elas seriam os eixos do ECRÃ.
@@ -196,7 +196,7 @@ fn o_neutro_atravessa_a_porta_sem_tocar_no_vector() {
 // AS RAMPAS
 
 #[test]
-fn zero_de_rampa_e_INSTANTANEO_e_nao_parado() {
+fn zero_de_rampa_e_instantaneo_e_nao_parado() {
     // A convenção do `step_height` desta casa. Sem ela, os defaults entregam um
     // componente que não anda.
     let v = intent::advance([0.0, 0.0], [1.0, 0.0], 4.0, 0.0, 0.0, 1.0 / 60.0);
@@ -225,7 +225,7 @@ fn a_rampa_leva_o_tempo_que_o_numero_diz() {
 }
 
 #[test]
-fn a_rampa_governa_tambem_a_VIRAGEM() {
+fn a_rampa_governa_tambem_a_viragem() {
     // ⚠️ Uma lei que acelerasse só ao longo do eixo do movimento deixaria a
     // viragem instantânea — o carro que muda de rumo sem desacelerar.
     let v = intent::advance([4.0, 0.0], [-1.0, 0.0], 4.0, 8.0, 8.0, 1.0 / 60.0);
@@ -239,7 +239,7 @@ fn a_rampa_governa_tambem_a_VIRAGEM() {
 // A ROTAÇÃO
 
 #[test]
-fn a_rotacao_le_a_direccao_de_MUNDO() {
+fn a_rotacao_le_a_direccao_de_mundo() {
     // Num tabuleiro isométrico a seta `→` manda para nordeste, e é para nordeste
     // que ele olha — nunca para 0°.
     let law = TopDownLaw {
@@ -264,7 +264,7 @@ fn parado_ele_fica_onde_estava() {
 }
 
 #[test]
-fn ele_vira_pelo_lado_CURTO() {
+fn ele_vira_pelo_lado_curto() {
     // De 175° para −175° são 10°, não 350°.
     let de = 175.0_f32.to_radians();
     let alvo = [
@@ -280,7 +280,7 @@ fn ele_vira_pelo_lado_CURTO() {
 }
 
 #[test]
-fn o_encaixe_da_rotacao_e_do_ALVO_e_nao_do_caminho() {
+fn o_encaixe_da_rotacao_e_do_alvo_e_nao_do_caminho() {
     // ⚠️ `22,4°` está do lado de CÁ do meio de um encaixe de 45 (22,5) — a 1.ª
     // redacção deste gate esperava 45 e o arredondamento dá 0. São dois alvos.
     let vinte_e_dois = 22.4_f32.to_radians();
@@ -345,7 +345,7 @@ fn o_fio_de_cada_enum_e_uma_ida_e_volta_exacta() {
 }
 
 #[test]
-fn os_numeros_do_fio_sao_LITERAIS_e_nao_a_ordem_da_declaracao() {
+fn os_numeros_do_fio_sao_literais_e_nao_a_ordem_da_declaracao() {
     // ⛔ Este gate existe para reprovar no dia em que alguém reordenar as
     // variantes: o postcard é posicional, e uma reordenação trocaria o modo de
     // toda cena já gravada, em silêncio. Os números aqui são escritos à mão de

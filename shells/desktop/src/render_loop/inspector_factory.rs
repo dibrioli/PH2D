@@ -37,9 +37,7 @@ fn nome_do_mestre(world: &mut World, id: u64) -> Option<String> {
     let e = ph2d_ecs::entity_of_stable_id(world, StableId(id))?;
     // ⚠️ **Tem de ser um MESTRE** — um id que aponte a um objecto comum é o mesmo que não apontar
     // a nada: a porta de instanciar recusa-o, e o painel tem de o dizer ANTES da corrida.
-    if world.get::<MasterRoot>(e).is_none() {
-        return None;
-    }
+    world.get::<MasterRoot>(e)?;
     world.get::<ph2d_ecs::Name>(e).map(|n| n.0.clone())
 }
 

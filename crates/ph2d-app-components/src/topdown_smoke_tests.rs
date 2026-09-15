@@ -8,7 +8,7 @@ fn monta(nivel: u32) -> SimWorld {
     let devolveu = montar(sim.world_mut(), nivel);
     assert_eq!(
         devolveu,
-        nivel.min(CENAS).max(1),
+        nivel.clamp(1, CENAS),
         "o roteador devolveu outra cena"
     );
     sim
@@ -60,7 +60,7 @@ fn o_boneco_da_cena_um_anda_em_oito_direccoes_e_e_cinematico() {
 }
 
 #[test]
-fn a_cena_dois_tem_o_CONTROLO_ao_lado_do_isometrico() {
+fn a_cena_dois_tem_o_controlo_ao_lado_do_isometrico() {
     // ⭐ Sem o controlo o artista não distingue «o viewpoint funciona» de «ele anda assim de
     // qualquer maneira» — e o gate exige que os DOIS estejam lá, com viewpoints DIFERENTES.
     let sim = monta(2);
@@ -83,7 +83,7 @@ fn a_cena_dois_tem_o_CONTROLO_ao_lado_do_isometrico() {
 }
 
 #[test]
-fn e_a_mesma_seta_leva_os_dois_a_sitios_DIFERENTES() {
+fn e_a_mesma_seta_leva_os_dois_a_sitios_diferentes() {
     // ⚠️ **A prova é da LEI, não da cena**: o gate roda a mesma intenção pelos dois componentes e
     // exige que as direcções de mundo divirjam. Sem isto, a cena podia ter dois viewpoints
     // escritos e o movimento ser igual — que é exactamente o que o artista tem de poder descartar.

@@ -218,6 +218,17 @@ struct LateSections {
 
 /// As secções de componente opcional que vêm depois do player: animação, timers, acções, áudio, câmara, e a secção
 /// Visibility.
+///
+/// ⚠️ **Oito argumentos, e a cura seria PIOR do que o aviso.** Eles não são estado partilhado: são
+/// as oito coisas DIFERENTES que as secções tardias perguntam (a selecção, o mundo, a janela, a
+/// pré-visualização da câmera, a árvore de tags, o relógio). Empacotá-las numa struct faria o
+/// chamador construir um valor para o desmontar duas linhas abaixo, e a cada wave que traz uma
+/// secção nova o campo entraria na struct **e** na chamada — dois sítios em vez de um.
+///
+/// ⛔ O aviso chegou aos oito na wave das TAGS + FÁBRICA (`tags` e `clock_playing`) e passou
+/// despercebido ao portão de fecho dela. *Um `-D warnings` que só corre no `ship.sh` é um portão
+/// que a linha não vê.*
+#[allow(clippy::too_many_arguments)]
 fn late(
     hero: &HeroScreen,
     sim: &mut SimWorld,

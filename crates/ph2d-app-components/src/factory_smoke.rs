@@ -177,7 +177,6 @@ fn cena_dois(world: &mut World, tree: &mut TagTree) {
             Visibility::visible(),
             RigidBody {
                 kind: BodyKind::Dynamic,
-                ..RigidBody::default()
             },
             Collider {
                 // ⚠️ **Sem gravidade nem atrito**: a cena é sobre nascer e ser colhido, e um bicho

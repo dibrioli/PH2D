@@ -3,6 +3,10 @@
 
 use super::*;
 
+/// A diagonal unitária — ⚠️ a constante do `core`, e não `0,7071` escrito à mão: o `clippy` recusa
+/// o literal, e tem razão (um dígito a menos muda o ângulo que o gate julga medir).
+const DIAG: f32 = core::f32::consts::FRAC_1_SQRT_2;
+
 #[test]
 fn sem_velocidade_nao_ha_plano() {
     assert!(first_step([0.0, 0.0], 1.0 / 60.0, 4).is_none());
@@ -43,7 +47,7 @@ fn de_cabeca_contra_a_parede_ele_para() {
 fn a_tangente_conserva_o_resto_do_orcamento() {
     // ⭐ A cláusula 1, sozinha e sem mundo: o que sobra do orçamento viaja
     // INTEIRO para a direcção nova. É isto que a projecção não faz.
-    let v = [4.0 * 0.7071, 4.0 * 0.7071];
+    let v = [4.0 * DIAG, 4.0 * DIAG];
     let s = first_step(v, 1.0 / 60.0, 4).unwrap();
     let seguinte = next_step(s, 0.0, [-1.0, 0.0], 15.0).expect("45° desliza");
     assert!(
@@ -51,7 +55,7 @@ fn a_tangente_conserva_o_resto_do_orcamento() {
         "o resto tinha de ser {:.7} e e' {:.7} — a projeccao daria {:.7}",
         s.budget,
         seguinte.budget,
-        s.budget * 0.7071
+        s.budget * DIAG
     );
     assert!(
         seguinte.dir[0].abs() < 1.0e-6,
@@ -64,7 +68,7 @@ fn a_tangente_conserva_o_resto_do_orcamento() {
 }
 
 #[test]
-fn uma_normal_que_NAO_se_opoe_ao_movimento_nao_produz_deslize() {
+fn uma_normal_que_nao_se_opoe_ao_movimento_nao_produz_deslize() {
     // A ponte normaliza o sinal antes de chamar; se falhar, a lei recusa em vez
     // de deslizar para dentro da parede.
     let s = first_step([4.0, 0.0], 1.0 / 60.0, 4).unwrap();
@@ -74,14 +78,14 @@ fn uma_normal_que_NAO_se_opoe_ao_movimento_nao_produz_deslize() {
 
 #[test]
 fn o_tecto_desce_a_cada_deslize() {
-    let s = first_step([4.0 * 0.7071, 4.0 * 0.7071], 1.0 / 60.0, 2).unwrap();
+    let s = first_step([4.0 * DIAG, 4.0 * DIAG], 1.0 / 60.0, 2).unwrap();
     assert_eq!(s.slides_left, 2);
     let a = next_step(s, 0.0, [-1.0, 0.0], 15.0).unwrap();
     assert_eq!(a.slides_left, 1);
     // ⚠️ A normal tem de ser OBLIQUA: depois do 1.º deslize a direcção é `(0,1)`,
     // e uma normal `(0,−1)` seria FRONTAL — a cláusula do limiar cortava antes de
     // o tecto chegar a falar, que foi como a 1.ª redacção deste gate rebentou.
-    const OBLIQUA: [f32; 2] = [-0.707_106_8, -0.707_106_8];
+    const OBLIQUA: [f32; 2] = [-DIAG, -DIAG];
     let b = next_step(a, 0.0, OBLIQUA, 15.0).unwrap();
     assert_eq!(b.slides_left, 0);
     assert!(

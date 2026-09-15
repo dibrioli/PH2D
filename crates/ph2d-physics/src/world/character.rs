@@ -219,6 +219,11 @@ impl PhysicsWorld {
     ///
     /// [`ph2d-topdown`]: https://github.com/dibrioli/PH2D/blob/main/crates/ph2d-topdown/src/slide.rs
     #[must_use]
+    // ⚠️ **Oito argumentos, e o oitavo é a razão de esta porta existir**: ela é a irmã de
+    // `move_character` com o `offset` a mais. Reduzi-los agrupando-os numa struct faria os dois
+    // chamadores construir um valor para depois o desmontar, e a irmã (que tem sete) deixaria de
+    // se ler como a mesma pergunta.
+    #[allow(clippy::too_many_arguments)]
     pub fn move_character_from(
         &self,
         handle: RigidBodyHandle,

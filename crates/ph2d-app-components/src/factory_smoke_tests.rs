@@ -4,9 +4,7 @@
 //! doc-comment do irmão, medida sobre o mundo que a `montar` devolve.
 
 use super::{CENAS, montar};
-use ph2d_ecs::{
-    DestroyOutside, Factory, Lifetime, MasterRoot, Name, Pick, SimWorld, SpawnAt, Timers,
-};
+use ph2d_ecs::{DestroyOutside, Factory, Lifetime, MasterRoot, Pick, SimWorld, SpawnAt, Timers};
 use ph2d_tags::TagTree;
 
 fn monta(nivel: u32) -> (SimWorld, TagTree, u32) {

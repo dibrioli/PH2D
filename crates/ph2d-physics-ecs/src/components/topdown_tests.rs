@@ -27,7 +27,7 @@ fn a_ida_e_volta_lei_componente_e_exacta() {
 }
 
 #[test]
-fn o_default_do_componente_e_o_default_da_LEI() {
+fn o_default_do_componente_e_o_default_da_lei() {
     // ⛔ Uma segunda cópia dos defaults aqui divergiria da lei no dia em que um
     // deles mudasse — o defeito que o botão do remesh pagou noutro módulo.
     assert_eq!(TopDownPlayer::default().law(), TopDownLaw::default());

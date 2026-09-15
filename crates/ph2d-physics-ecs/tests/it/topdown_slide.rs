@@ -19,6 +19,9 @@ const VELOCIDADE: f32 = 4.0;
 const DT: f32 = 1.0 / 60.0;
 /// O orçamento de um tique: `|v| · dt`.
 const ORCAMENTO: f32 = VELOCIDADE * DT;
+/// A diagonal unitária — ⚠️ a constante do `core`, e não `0,707…` escrito à mão (o `clippy`
+/// recusa o literal, e tem razão: um dígito a menos muda o ângulo que o teste julga medir).
+const DIAG: f32 = core::f32::consts::FRAC_1_SQRT_2;
 
 fn parede(sim: &mut SimWorld, nome: &str, em: Vec2, meio: (f32, f32)) {
     sim.world_mut().spawn((
@@ -127,7 +130,7 @@ fn um_mover_de_vista_de_cima_desliza_a_velocidade_cheia() {
         ..TopDownPlayer::default()
     };
     // Nasce longe e chega à parede: `x = −3` com a face em `−1` e raio `0,2`.
-    let d = passo_final(cfg, Vec2::new(-3.0, 0.0), [0.707_106_8, 0.707_106_8], 90);
+    let d = passo_final(cfg, Vec2::new(-3.0, 0.0), [DIAG, DIAG], 90);
     let fraccao = comprimento(d) / ORCAMENTO;
     assert!(
         fraccao > 0.9,
@@ -155,7 +158,7 @@ fn e_o_controlo_e_o_mesmo_corpo_sem_parede_nenhuma() {
         ..TopDownPlayer::default()
     };
     // Longe, e a andar PARA LONGE da parede.
-    let d = passo_final(cfg, Vec2::new(-8.0, 0.0), [-0.707_106_8, 0.707_106_8], 10);
+    let d = passo_final(cfg, Vec2::new(-8.0, 0.0), [-DIAG, DIAG], 10);
     let fraccao = comprimento(d) / ORCAMENTO;
     assert!(
         (fraccao - 1.0).abs() < 0.05,

@@ -64,8 +64,8 @@ modo — e (ii) a lei do gesto, que é a metade (b).
 |---|---|---|---|
 | `manifold-csg` | **MIT OR Apache-2.0** | ligações seguras para a biblioteca C++ Apache-2.0 | ✅ elegível |
 | `manifold3d` | idem | fachada que re-exporta a anterior | ✅ elegível |
-| `meshbool` | **Apache-2.0** | ⭐ **porte puro-Rust da biblioteca Apache-2.0**, actualizado até `v3.5.1` dela; **sem dependência de C++**; ⚠️ conferido: **não menciona o alvo** em parte nenhuma | ✅ elegível, e o melhor encaixe (sem C++) |
-| `manifold-rust` | porte puro-Rust da mesma biblioteca | idem | ✅ elegível |
+| `meshbool` | **Apache-2.0** | porte puro-Rust da biblioteca Apache-2.0; **sem dependência de C++**; ⚠️ conferido: **não menciona o alvo** | ⛔⛔ **REFUTADO na emenda de 2026-09-15: NÃO existe em crates.io** (a API responde *«does not exist»*) ⇒ só entraria como dependência de `git`, sem versões nem *yank*. ⚠️ **Esta linha dizia «o melhor encaixe» — eu julguei o CÓDIGO e não olhei a PORTA DE DISTRIBUIÇÃO** |
+| `manifold-rust` | **Apache-2.0** | porte puro-Rust **declarado** da mesma biblioteca (com plano de porte e registo de divergências no pacote; o porte é discutido no rastreador da própria origem) | ⭐ **✅ a recomendação da emenda §1.5.9** — e o risco dela é a IDADE, medido |
 
 ⚠️ **A validação de proveniência era o passo que não se podia saltar** («um porte permissivo que
 descende do alvo é lavagem alheia»): os quatro descendem da **biblioteca Apache-2.0**, ⛔ nenhum do
@@ -269,3 +269,28 @@ que são **permanentes** e que nenhum gate deste repo varre.
 limpam reescrevendo história, o que nesta casa é operação de risco e ordem explícita. A alternativa
 barata e imediata é **parar a hemorragia**: um gate que varra a mensagem do commit **novo** contra
 as vassouras, no `ship.sh` ou num hook — o que impede o 76.º commit sem tocar nos 75.
+
+
+---
+
+## EMENDA pedida pela janela-I (2026-09-15) — os factos da DEPENDÊNCIA
+
+A janela-I não pode abrir este ledger (o `settings.local.json` da linha nega-lho por construção) e
+a §1.4 mandava-a cá para os nomes. ⇒ os factos foram **medidos e escritos na própria espec, §1.5**,
+que é o documento que ela lê. Nada disso é expressão do alvo: são bibliotecas de **terceiros**.
+
+**O que a emenda mediu** (o detalhe está na §1.5): construção a frio das duas rotas (`9,51 s` em
+Rust puro contra `1 min 39 s` **mais um `git clone` e uma build de CMake**); licenças lidas nos
+artefactos; maturidade em descargas, versões e datas; a superfície mínima de que precisamos (cinco
+chamadas); e a robustez corrida **nos três motores** sobre as fixturas desta obra.
+
+⚠️⚠️ **DUAS afirmações minhas foram REFUTADAS pela própria emenda:**
+1. o candidato que eu chamara *«o melhor encaixe»* **não está publicado em crates.io** — eu julguei
+   o código e não a porta de distribuição;
+2. a **primeira** medição de robustez da emenda mediu **um** dos dois motores, porque a chamada de
+   omissão usa o exacto. Refeita nos três, ela mostra o motor robusto a ganhar exactamente no caso
+   para que existe — e a custar `12×`.
+
+⭐ **E o achado que mais vale para quem implementa** está na §1.5.6: com malha **aberta** a operação
+devolve malha **vazia** e o estado do RESULTADO diz «sem erro». *Quem verificar só o resultado
+entrega uma escultura apagada.* A verificação é do estado da **ENTRADA**.

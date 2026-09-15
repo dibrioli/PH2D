@@ -9,6 +9,9 @@ Alvo: Blender 5.2.1 LTS (binário /usr/bin/blender, pacote 17:5.2.1-2) · fonte 
   dinamicamente (medido por `ldd`); há ligações e portes em Rust sob MIT/Apache-2.0 com
   proveniência verificada. ⇒ ⛔ **NÃO escreva um motor de booleana a partir desta espec** — ele
   porta-se, com atribuição. Esta espec é só a LEI DO GESTO.
+  ⭐ **Os factos que decidem a dependência (Rust puro contra ligação a C++, licenças lidas nos
+  artefactos, maturidade em número, robustez medida, proveniência) estão na §1.5** — emenda de
+  2026-09-15, pedida pela janela-I porque o ledger lhe é negado por construção.
 Ledger: aberto em docs/3D/cleanroom/LEDGER_blender-trim.md, 2026-09-15 (ANTES da 1ª leitura de
   conteúdo do fonte)
 Patente (§8.1): buscado em 2026-09-15 — 4 patentes examinadas, todas EXPIRADAS ou lapsadas, e a
@@ -147,6 +150,173 @@ acima em uma ordem de grandeza. O detalhe e a medição vivem no ledger.
 - Existe **porte e ligação em Rust sob licença permissiva**, com proveniência verificada
   (descende da biblioteca Apache-2.0, **não** do alvo). Nomes públicos e degrau: ledger §«Metade (a)».
 - ⇒ **Só a LEI DO GESTO (este documento) é T2.** O motor é **T0** e porta-se.
+
+---
+
+## §1.5 — EMENDA (2026-09-15): a DEPENDÊNCIA, medida
+
+⚠️ **Tudo nesta secção é facto público sobre bibliotecas de TERCEIROS** — nada aqui vem do alvo, e
+por isso pode ser lido e citado livremente. Cada número foi **medido nesta máquina**, não colhido
+de reputação. Os nomes são públicos e é para isso que servem.
+
+### §1.5.1 — ⭐⭐⭐ A pergunta que decide: Rust puro ou ligação a C++?
+
+**Medido, construindo as duas a frio:**
+
+| rota | o que a construção exige | árvore | relógio a frio |
+|---|---|---|---|
+| **`manifold-csg`** (+ a fachada `manifold3d`) | ⛔ **`cmake` + `cc` + toolchain C++**, e o `build.rs` **CLONA `github.com/elalish/manifold` por `git` e compila-o** (versão fixada `v3.5.3`) | 13 pacotes, incluindo `manifold-csg-sys` | **1 min 39 s** |
+| ⭐ **`manifold-rust`** | **nada** — Rust puro, sem `cc`, sem `cmake`, **sem rede** | 12 pacotes (`clipper2-rust`, `dashu-int`/`-ratio` para aritmética exacta, `num-traits`, `rustc-hash`) | ⭐ **9,51 s** |
+
+⇒ **`10×` no relógio, e a diferença que pesa não é essa: é a REDE e o TOOLCHAIN.** Este repo é Rust
+puro e a matriz de CI é **linux + macOS + windows**; a rota de ligação põe um `git clone` e uma
+build de CMake **dentro de cada `cargo build`**, nos três. ⚠️ Há uma porta de fuga documentada
+(`MANIFOLD_CSG_LIB_DIR` aponta uma instalação já construída, e esta máquina até a tem pelo gestor
+de pacotes) — mas então **cada runner de CI passa a precisar do pacote nativo instalado**, que é o
+problema movido, não resolvido.
+
+### §1.5.2 — Nomes, versões e a licença LIDA NO ARTEFACTO
+
+| crate / biblioteca | versão | licença **lida no ficheiro** | onde |
+|---|---|---|---|
+| biblioteca C++ **Manifold** | `3.4.1` instalada nesta máquina (o `build.rs` da ligação fixa `v3.5.3`) | **Apache-2.0** — cabeçalho `Copyright 2021 The Manifold Authors` no `.h` instalado | `/usr/include/manifold/manifold.h` |
+| **`manifold-csg`** | `0.4.1` (2026-09-09) | **`Apache-2.0 OR MIT`** | campo `license` de todas as 15 versões |
+| **`manifold3d`** | `0.4.1` | **`Apache-2.0 OR MIT`** — ⚠️ é só uma **fachada** que re-exporta a anterior | idem |
+| **`manifold-csg-sys`** | `3.5.105` | **`Apache-2.0 OR MIT`** (+ `LICENSE-APACHE` e `LICENSE-MIT` no pacote) | `Cargo.toml` do pacote |
+| ⭐ **`manifold-rust`** | `0.13.1` (2026-08-10) | **`Apache-2.0`** (ficheiro `LICENSE` completo no pacote) | `Cargo.toml` + `LICENSE` |
+| `csgrs` | `0.20.1` | `MIT` | crates.io |
+
+⛔ **`meshbool` NÃO existe em crates.io** (medido: a API devolve *«does not exist»*). Só vive num
+repositório. ⇒ ⛔ **não é candidato a dependência de produto** — entraria como dependência de `git`,
+sem versionamento nem yank, e a nota anterior que o nomeava como *«o melhor encaixe»* estava a
+julgar o código sem olhar a **porta de distribuição**.
+
+### §1.5.3 — Maturidade, em número
+
+| | `manifold-csg` | `manifold-rust` | `csgrs` |
+|---|---|---|---|
+| primeira publicação | 2026-04-12 (a fachada `manifold3d` desde **2024-10-03**) | 2026-07-05 | 2025-01-20 |
+| última publicação | **2026-09-09** (há 6 dias) | **2026-08-10** (há 5 semanas) | ⚠️ 2025-07-24 (**há mais de um ano**) |
+| versões publicadas | 15 (17 na fachada) | 8 | 35 |
+| descargas totais / recentes | **39 235 / 33 730** | 2 650 / 2 650 | 42 587 / ⚠️ **3 630** |
+| versões retiradas (*yanked*) | nenhuma nas 6 mais recentes | nenhuma | nenhuma |
+
+⚠️ **Leitura honesta:** a rota de **ligação** é a mais usada e a mais viva; a rota **pura** é **nova**
+(cinco semanas na versão actual, `2 650` descargas) — é o risco real desta decisão, e não se resolve
+com adjectivos. ⛔ O `csgrs` está **parado há mais de um ano** e as descargas recentes caíram para
+`8,5 %` do total; além disso é da família **BSP**, que é outra classe de robustez — ⛔ não é
+substituto.
+
+### §1.5.4 — A superfície que precisamos de facto
+
+⭐ **Precisamos de UMA operação, e ela é uma chamada:** `Manifold::boolean(&self, &other, OpType)`
+com `OpType::{Add, Subtract, Intersect}`, mais a importação (`from_mesh_gl64` / `..._robust`), a
+exportação (`get_mesh_gl64`) e a leitura de estado (`status()`).
+
+A biblioteca traz muito mais (secções 2D, casco convexo, Minkowski, malha de SDF, subdivisão
+suave). ⛔ **Não há feature-flag que corte isso**: as únicas bandeiras são `parallel` (ligada por
+omissão na ligação, desligada na pura) e `nalgebra`. ⇒ o custo do que não usamos é **tamanho de
+compilação, não superfície de API** — e a build de `9,51 s` da rota pura já é **com tudo dentro**.
+
+### §1.5.5 — ⭐⭐ ROBUSTEZ, MEDIDA sobre as NOSSAS fixturas
+
+⚠️ **A primeira medição desta emenda estava errada e foi refeita:** `boolean()` usa o motor
+**`Exact`** por omissão, então medir só ele mede **um** dos dois motores. A tabela é dos **três**
+modos, sobre as mesmas fixturas da §17, subtraindo o mesmo prisma:
+
+| peça | `Exact` | `Robust` | `Auto` |
+|---|---|---|---|
+| esfera 482 V (fechada) | `415 V` · **0,57 ms** | `415 V` · 7,97 ms | `415 V` · 2,61 ms |
+| toro, género 1 | `358 V` · **0,37 ms** | `358 V` · 9,38 ms | `358 V` · 5,23 ms |
+| cilindro (tampas planas) | `44 V` · 0,11 ms | ⚠️ `42 V` · 3,06 ms | `44 V` · 1,54 ms |
+| cubo | `8 V` · 0,03 ms | `8 V` · 0,49 ms | `8 V` · 0,11 ms |
+| ⭐ **esfera 98 306 V** | `58 705 V` · ⭐ **67,88 ms** | `58 705 V` · **816,40 ms** | `58 705 V` · 505,17 ms |
+| tubo **ABERTO** | ⛔ vazio | ⛔ vazio | ⛔ vazio |
+| disco **ABERTO** | ⛔ vazio | ⛔ vazio | ⛔ vazio |
+| 1 face (degenerada) | ⛔ vazio | ⛔ vazio | ⛔ vazio |
+| ⭐ **2 caixas fechadas a INTERPENETRAR-SE, numa malha só** | ⚠️ `16 V` — **não resolve** | ⭐ `12 V` — **resolve** | ⭐ `12 V` — **roteia certo** |
+
+⭐⭐⭐ **Três leituras que decidem:**
+1. **O preço contra a nossa rota por voxel está medido na MESMA peça:** a booleana exacta faz a
+   escultura de 98 306 vértices em **67,88 ms** preservando a densidade; a nossa rota por voxel (§1.1)
+   custou **171,7 ms** a `res=128` e destrói a densidade toda. ⇒ *a booleana é `2,5×` mais rápida **e**
+   mais fiel.*
+2. **O motor robusto custa `12×` o exacto** (`816` contra `68 ms`) e **ganha exactamente onde o exacto
+   falha**: a última linha é o caso dele — soup fechada, auto-intersectante — e o exacto devolve a
+   entrada intacta enquanto o robusto a resolve. ⭐ **`Auto` escolhe certo sozinho**, e é esse o modo
+   a usar.
+3. ⚠️ **O `Robust` dá triangulação ligeiramente diferente** (cilindro `42` contra `44 V`) — está
+   documentado pelos autores, e significa que **um gate de paridade não pode ser cego ao modo**.
+
+### §1.5.6 — ⛔⛔ O MODO DE FALHA É SILENCIOSO, e esta é a lei que o I tem de escrever
+
+**Medido, nos TRÊS motores:** com malha **aberta** (bordo real) a operação devolve uma malha
+**VAZIA** — e o `status()` do RESULTADO diz **«sem erro»**. O sinal verdadeiro está no `status()`
+da **ENTRADA**, que reporta a peça como **não fechada** (ou como não-manifold, pela porta de
+importação estrita).
+
+⚠️ *Os nomes exactos das variantes de estado ficam de fora deste documento de propósito: um deles
+é a palavra inglesa óbvia e colide com uma entrada da vassoura desta obra — o instrumento acusou-o
+e a prosa cedeu, não o instrumento.*
+
+⇒ ⛔ **Quem verificar só o estado do resultado lê «sucesso» e entrega uma escultura APAGADA.**
+A lei: **verificar o estado da ENTRADA, antes de operar**, e recusar em voz alta — que é, de resto,
+o que o alvo faz (§11.1), e a única coisa em que o desenho dele deve ser copiado aqui.
+
+⚠️ **E o motor robusto NÃO resgata malha aberta** — ele aceita *soup fechada* (não-manifold,
+desconexa, com vazios), não superfície com bordo. As três linhas de bordo desta tabela são
+idênticas nos três modos. *É a distinção entre «suja» e «aberta», e ela é o que separa a promessa
+do que se mede.*
+
+### §1.5.7 — PROVENIÊNCIA de cada rota (o R-pré valida isto)
+
+| rota | quem a escreveu | de quem DESCENDE | veredito |
+|---|---|---|---|
+| **Manifold** (C++) | Emmett Lalish | obra original; `Copyright 2021 The Manifold Authors`, **Apache-2.0** lido no cabeçalho instalado | ✅ permissiva na origem |
+| **`manifold-csg` / `-sys` / `manifold3d`** | autor do repositório `zmerlynn/manifold-csg` | **ligações FFI** para a biblioteca Apache-2.0 acima, que o `build.rs` clona do repositório oficial dela | ✅ descende de Apache-2.0 |
+| ⭐ **`manifold-rust`** | Lars Brubaker (MatterHackers) | **porte puro-Rust declarado** da mesma biblioteca (`v3.5.0`), com `PORTING_PLAN.md` e `docs/CPP_DIVERGENCES.md` no pacote; o porte é **discutido abertamente no rastreador da própria biblioteca de origem** | ✅ descende de Apache-2.0 |
+| `csgrs` | `timschmidt/csgrs` | implementação **independente** por árvores BSP, MIT | ✅ permissiva, ⛔ outra classe |
+
+⭐⭐ **Nenhuma das quatro toca no alvo.** A biblioteca é **anterior e independente** dele — é o alvo
+que passou a ligá-la. ⇒ **não há lavagem alheia aqui**, e o degrau da metade (a) fica **T0**.
+⚠️ E o porte puro **não se esconde**: ele declara-se porte, nomeia a origem, versiona as
+divergências e é conhecido de quem escreveu o original. *Um porte que declara a origem é
+exactamente o oposto do risco que a regra de proveniência existe para apanhar.*
+
+### §1.5.8 — A alternativa honesta: escrever nós a operação
+
+**Com número, medido no artefacto que faz o trabalho:**
+
+| grandeza | valor |
+|---|---|
+| a biblioteca inteira, em Rust | **45 270 linhas** em **108 ficheiros** |
+| só o motor **robusto** | **13 746 linhas** |
+| só o núcleo da booleana exacta | **1 814 linhas** |
+
+A literatura existe e está **citada dentro do próprio artefacto**, o que a torna um mapa de leitura
+pronto: **Barki, Guennebaud & Foufou 2015** e **Zhou, Grinspun, Zorin & Jacobson 2016** (arranjos de
+malha) — esta última é, aliás, a mesma família do solucionador *exacto* do alvo.
+
+⚠️⚠️ **Mas o caminho de papers tem um buraco nomeado:** o algoritmo da biblioteca de omissão **não
+tem paper**. Ele é *sem epsilon* e decide faces coincidentes por **perturbação simbólica**, e o que
+existe publicado sobre ele é a prosa do próprio autor, não um artigo com pseudo-código. ⇒
+reimplementá-lo *«a partir da literatura»* seria, na prática, reimplementá-lo a partir **do código**
+— que aqui é legal (Apache-2.0) e **torna o exercício inútil**: se o vamos ler, mais vale **usá-lo**.
+
+⇒ ⭐ **Escrever a operação nós mesmos só se justifica se a dependência for recusada por outro
+motivo** (política, tamanho de build, plataforma). ⛔ Não se justifica por licença, que está aberta,
+nem por risco de proveniência, que está verificado.
+
+### §1.5.9 — Recomendação (é **N**, e a decisão continua a ser do dono)
+
+1. ⭐ **`manifold-rust` (Apache-2.0, Rust puro), em modo `Auto`** — é o que preserva o repo puro-Rust,
+   não põe rede nem CMake no CI das três plataformas, e faz a peça de 98 k em `68 ms`.
+2. ⚠️ **O risco dela é a IDADE, e é o único** (`5` semanas, `2 650` descargas). A mitigação é barata e
+   já está desenhada: a nossa superfície de uso são **cinco chamadas** (§1.5.4), logo ela cabe atrás
+   de uma crate-folha nossa com essas cinco na fronteira — e trocá-la por `manifold-csg` depois é uma
+   reescrita de **um ficheiro**, não do módulo.
+3. ⛔ **Nenhuma das duas resolve malha aberta.** Ou o corte recusa em voz alta (§1.5.6), ou a peça é
+   fechada antes — e **fechar a peça é trabalho nosso**, não da dependência.
 
 ---
 

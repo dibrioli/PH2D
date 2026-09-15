@@ -122,7 +122,18 @@ else
         # entrada que dispara sobre uso licito treina quem corre o sweep a
         # ignorar achados — vale aqui, e a cura e' ler o acerto, nunca alargar
         # a tolerancia.
-        flat="$(tr '\n' ' ' < "$f" 2>/dev/null | tr -d '*_`>' | tr -s ' ')"
+        #
+        # ⛔⛔ **O `_` NAO entra nesta lista, e a ausencia dele e' MEDIDA.**
+        # Apaga-lo tornaria esta passagem CEGA a toda entrada de vassoura que o
+        # contenha — e um identificador interno e' quase sempre `assim_escrito`:
+        # medido nas vassouras vivas, `15` de `16` entradas de uma delas tem `_`
+        # e estes documentos usam `_` como enfase **zero** vezes. ⇒ apaga-lo
+        # trocava a fuga que ele existe para apanhar por uma forma de enfase que
+        # ninguem aqui escreve.
+        # ⚠️ E normalizar tambem o lado da AGULHA (apagar `_` das entradas) nao
+        # e' a saida: isso FABRICA colisao com nomes publicos legitimos. A
+        # normalizacao e' de UM lado so', de proposito.
+        flat="$(tr '\n' ' ' < "$f" 2>/dev/null | tr -d '*`>' | tr -s ' ')"
         out="$(printf '%s' "$flat" | grep -oF -f <(patfile) 2>/dev/null | sort -u)" || true
         if [ -n "$out" ]; then
           out="$(printf '%s' "$out" | sed "s|^|$f (sem quebras de linha): |")"

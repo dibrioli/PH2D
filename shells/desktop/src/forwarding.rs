@@ -68,7 +68,26 @@ pub fn forward_to_hero(
                 px as f32,
                 py as f32,
             )
-            .or_else(|| gfx.vello_pass.read_pixel(gfx.surface.gpu(), px, py));
+            // ⭐⭐⭐ **A COR QUE O ARTISTA VÊ** (2026-09-15) — até aqui esta linha lia SÓ a camada
+            // do Vello, que sobre o canvas é transparente por construção: o conta-gotas devolvia
+            // `#00000000` em quase todo o ecrã (report do dono: *«não funciona de maneira nenhuma
+            // e em nenhum lugar»*). O quadro tem DUAS metades em texturas diferentes — o mundo
+            // (sprites, imagens, a prévia do Painter) e o chrome (os painéis **e a arte vectorial
+            // do documento**) —, e a cor do ecrã é a composição delas. Ver
+            // [`ph2d_render::screen_pick`].
+            .or_else(|| {
+                ph2d_render::screen_color(
+                    gfx.surface.gpu(),
+                    ph2d_render::world_source(
+                        gfx.compositor_reads_world,
+                        &gfx.world_rt,
+                        &gfx.tonemap,
+                    ),
+                    gfx.vello_pass.intermediate_texture(),
+                    px,
+                    py,
+                )
+            });
             if let Some([r, g, b, a]) = picked {
                 hero.store
                     .set_blender_value(parent, ph2d_tokens::ColorValue::from_rgba8(r, g, b, a));
@@ -246,9 +265,12 @@ fn handle_palette_io(
 
 /// Sample the painted layer COMPOSITE under the screen pixel `(px, py)` for the colour-picker
 /// eyedropper, when the Painter is active and the click lands on the selected sprite (not a panel).
-/// Returns the displayed RGBA there, or `None` to fall back to the rendered-overlay readback — which
-/// only has the Vello UI layer (transparent over the canvas). This is what integrates the eyedropper
-/// with the layer system. Mirrors the footprint mapping in `painter_canvas_input` / the BgRemoval
+/// Devolve a cor **AUTORADA** ali (a composição de camadas do Painter), ou `None` para cair na
+/// leitura do ECRÃ ([`ph2d_render::screen_color`]). ⚠️ **As duas existem, e não é redundância:** o
+/// ecrã passa pelo tonemap e pelo dither da descida, logo escolher uma cor que se acabou de pintar
+/// e recebê-la de volta com `±1` por canal seria um round-trip que não fecha. Este caminho é o que
+/// integra o conta-gotas com o sistema de camadas; o outro é o que responde em **todo o resto do
+/// ecrã**, que é onde ele devolvia `#00000000`. Mirrors the footprint mapping in `painter_canvas_input` / the BgRemoval
 /// eyedropper; takes disjoint `AppGfx` fields by ref so it composes with the live `&mut hero_screen`.
 #[allow(clippy::too_many_arguments)]
 fn painter_eyedropper_sample(

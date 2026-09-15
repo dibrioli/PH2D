@@ -72,6 +72,9 @@ pub mod premul;
 pub mod preview_premul;
 pub mod registry;
 pub mod renderer;
+/// ⭐⭐⭐ **A COR QUE O ARTISTA VÊ** — o quadro tem DUAS metades em texturas diferentes, e um
+/// conta-gotas que leia só uma devolve transparente em quase todo o ecrã. Ver o `//!` do módulo.
+pub mod screen_pick;
 pub mod sink_style;
 pub mod sprite;
 mod sprite_collect;
@@ -141,6 +144,7 @@ pub use premul::{
 pub use preview_premul::PreviewPremul;
 pub use registry::register_render_components;
 pub use renderer::SpriteRenderer;
+pub use screen_pick::{compose_screen_bytes, read_texel, screen_color, world_source};
 pub use sprite::{GpuTexRun, QuadVertex, RenderInstance, Sprite, SpriteSource};
 pub use sprite_collect::sort_render_order;
 pub use sprite_mesh::{LiftedInstances, SpriteMesh};

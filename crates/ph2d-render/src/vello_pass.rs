@@ -204,88 +204,15 @@ impl VelloPass {
             .map_err(|e| format!("vello render_to_texture: {e}"))
     }
 
-    /// Synchronously read the sRGB-encoded RGBA byte at `(x, y)`
-    /// from the most-recently-rendered intermediate texture.
-    /// Returns `None` if the coords are out of bounds or the GPU
-    /// readback fails. Used by the eyedropper to sample the rendered
-    /// scene at the user's click position.
-    ///
-    /// Note on color space: although the intermediate texture is
-    /// declared `Rgba8Unorm` (linear), Vello writes sRGB-encoded
-    /// bytes directly into it (peniko's `Color::from_rgba8` is
-    /// sRGB). So the bytes we read back are already in the same
-    /// encoding `ColorValue::from_rgba8` expects — no conversion
-    /// needed. Doing an extra linear→sRGB pass here would lighten
-    /// midtones. See `docs/UI_Bugs/README.md` §4.3.
-    ///
-    /// Blocks the calling thread until the GPU finishes the copy and
-    /// the staging buffer maps — typically a few ms. Eyedropper picks
-    /// are rare (one per click in pick mode), so the latency hit is
-    /// fine; do NOT call this per-frame.
-    pub fn read_pixel(&self, gpu: &GpuContext, x: u32, y: u32) -> Option<[u8; 4]> {
-        if x >= self.last_size.0 || y >= self.last_size.1 {
-            return None;
-        }
-        // wgpu requires `bytes_per_row` to be a multiple of 256 for
-        // texture-to-buffer copies. We only need 4 bytes (one pixel)
-        // but allocate a full 256-byte row.
-        const BYTES_PER_ROW: u32 = 256;
-        let buffer = gpu.device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("ph2d-render eyedropper readback"),
-            size: BYTES_PER_ROW as u64,
-            usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
-        let mut encoder = gpu
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("ph2d-render eyedropper encoder"),
-            });
-        encoder.copy_texture_to_buffer(
-            wgpu::TexelCopyTextureInfo {
-                texture: &self.intermediate,
-                mip_level: 0,
-                origin: wgpu::Origin3d { x, y, z: 0 },
-                aspect: wgpu::TextureAspect::All,
-            },
-            wgpu::TexelCopyBufferInfo {
-                buffer: &buffer,
-                layout: wgpu::TexelCopyBufferLayout {
-                    offset: 0,
-                    bytes_per_row: Some(BYTES_PER_ROW),
-                    rows_per_image: Some(1),
-                },
-            },
-            wgpu::Extent3d {
-                width: 1,
-                height: 1,
-                depth_or_array_layers: 1,
-            },
-        );
-        gpu.queue.submit([encoder.finish()]);
-
-        let slice = buffer.slice(..);
-        let (tx, rx) = std::sync::mpsc::channel();
-        slice.map_async(wgpu::MapMode::Read, move |res| {
-            let _ = tx.send(res);
-        });
-        gpu.device.poll(wgpu::PollType::wait_indefinitely()).ok()?;
-        rx.recv().ok()?.ok()?;
-        let view = slice.get_mapped_range();
-        let pixel = [view[0], view[1], view[2], view[3]];
-        drop(view);
-        buffer.unmap();
-        Some(pixel)
-    }
-
     /// Render `scene` into the intermediate at `size` **on a transparent
     /// background** and read the whole region back to a straight-RGBA8 `Vec`
-    /// (`size.0 * size.1 * 4` bytes, sRGB-encoded like [`read_pixel`]).
+    /// (`size.0 * size.1 * 4` bytes, sRGB-encoded — ver a nota de espaço de cor na
+    /// [`crate::screen_pick`]).
     ///
     /// This is the FX producer's rasterizer (plano 24): the shell renders ONE
     /// isolated vector shape into a scratch [`VelloPass`] sized to the shape's
     /// screen bbox, reads it back, and blurs/tints it on the CPU. It is the
-    /// full-region sibling of [`read_pixel`] — same `copy_texture_to_buffer`
+    /// full-region sibling of [`crate::screen_pick::read_texel`] — same `copy_texture_to_buffer`
     /// dance, same synchronous map, but a whole texture instead of one texel.
     ///
     /// wgpu requires `bytes_per_row` to be a multiple of 256, so the staging

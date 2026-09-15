@@ -146,7 +146,13 @@ fn create(
         sample_count: 1,
         dimension: wgpu::TextureDimension::D2,
         format: WorldRt::FORMAT,
-        usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
+        // ⭐ **`COPY_SRC` porque o CONTA-GOTAS lê daqui** (2026-09-15): quando o quadro é
+        // intercalado (ou tem o vidro do *Edit Prefab*), o mundo que o compositor mostra é ESTE
+        // acumulador e não a saída do tonemap — e um conta-gotas que lesse sempre a segunda
+        // devolveria a última faixa em vez do que está no ecrã. Ver [`crate::screen_pick`].
+        usage: wgpu::TextureUsages::RENDER_ATTACHMENT
+            | wgpu::TextureUsages::TEXTURE_BINDING
+            | wgpu::TextureUsages::COPY_SRC,
         // ⚠️ **A vista sRGB só é construível se ela for DECLARADA aqui.** Sem esta linha o
         // `create_view` com outro formato é erro de validação em tempo de execução — e o modo de
         // falha seria um painel preto no primeiro quadro com uma forma.

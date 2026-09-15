@@ -240,3 +240,43 @@ fn the_protection_tint_rides_the_sprite_pass_with_the_art_mesh() {
          quem ele não conta."
     );
 }
+
+/// ⭐⭐⭐ **O CONTA-GOTAS LÊ O ECRÃ, e o ecrã tem DUAS metades.**
+///
+/// ⛔⛔⛔ **Report do dono, 2026-09-15: *«não funciona de maneira nenhuma e em nenhum lugar, com a
+/// arte dobrada ou não — sempre fica com #00000000»*.** A leitura de reserva pedia só a intermédia
+/// do Vello, que sobre o canvas é **transparente por construção** (os sprites vivem noutra
+/// textura). ⇒ transparente É `#00000000`, e o patch que existia cobria UM canto (o Painter activo
+/// sobre a sprite seleccionada). *A wave anterior curou ONDE ele amostra e não SE ele amostra — são
+/// dois defeitos, e eu só tinha medido o primeiro.*
+///
+/// ⚠️ **E a fonte do mundo tem DOIS modos:** num quadro intercalado (ou com o vidro do *Edit
+/// Prefab*) o mundo que o ecrã mostra é o ACUMULADOR, não a saída do tonemap. Ler sempre a segunda
+/// devolveria a última faixa — certo no documento simples, errado em metade dos outros.
+#[test]
+fn the_eyedropper_reads_the_screen_and_the_screen_has_two_halves() {
+    const F: &str = "shells/desktop/src/forwarding.rs";
+    let src = fonte(F);
+    // Controlo positivo: é ESTE o sítio que resolve a escolha do conta-gotas.
+    assert!(
+        src.contains("WidgetEvent::EyedropperPick { parent, px, py }"),
+        "{F} deixou de tratar a escolha do conta-gotas — este gate perdeu o sujeito"
+    );
+    assert!(
+        src.contains("ph2d_render::screen_color("),
+        "{F} voltou a ler UMA camada: sobre o canvas ela é transparente, e o artista recebe \
+         `#00000000` em quase todo o ecrã."
+    );
+    assert!(
+        src.contains("ph2d_render::world_source("),
+        "{F} fixa a fonte do mundo em vez de perguntar qual delas o COMPOSITOR está a ler: num \
+         quadro intercalado o conta-gotas devolve a última faixa em vez do que está no ecrã."
+    );
+    // ⚠️ E a metade AUTORADA fica: o ecrã passa pelo tonemap e pelo dither da descida, logo
+    // escolher uma cor acabada de pintar e recebê-la com `±1` por canal não fecha o round-trip.
+    assert!(
+        src.contains("painter.sample_composite_at_uv(su, sv)"),
+        "{F} perdeu a amostra AUTORADA do Painter: a leitura do ecrã responde em todo o lado, mas \
+         só esta devolve exactamente a cor que o artista pousou."
+    );
+}

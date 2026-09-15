@@ -246,23 +246,30 @@ fn make_bind_group(
     })
 }
 
+/// ⭐⭐⭐ **A FÓRMULA do passe, em CPU** — `over` de alfa DIRECTO, a mesma linha do
+/// `compositor.wgsl`: `out = vello·a + game·(1 − a)`.
+///
+/// ⛔⛔ **Ela vivia dentro de `#[cfg(test)]` até 2026-09-15**, e por isso o único consumidor que
+/// precisava dela em PRODUÇÃO — o conta-gotas, que tem de devolver *a cor que o artista vê* —
+/// não a podia chamar. *Uma lei que só existe para o teste é uma lei que o produto não tem.*
+///
+/// ⚠️ **Os dois lados têm de estar no MESMO espaço.** No shader isso é feito re-codificando o
+/// `game_rt` para sRGB antes de misturar, porque os bytes do Vello já são valores de DESIGNER
+/// (sRGB, alfa directo). Em CPU, os BYTES das duas texturas já são esse espaço nos dois lados ⇒
+/// esta função aplica-se a bytes tal como se aplica a lineares.
+#[must_use]
+pub fn composite_straight(game_rgb: [f32; 3], vello_rgb: [f32; 3], vello_a: f32) -> [f32; 3] {
+    let inv_a = 1.0 - vello_a;
+    [
+        vello_rgb[0] * vello_a + game_rgb[0] * inv_a,
+        vello_rgb[1] * vello_a + game_rgb[1] * inv_a,
+        vello_rgb[2] * vello_a + game_rgb[2] * inv_a,
+    ]
+}
+
 #[cfg(test)]
 mod tests {
-    /// Software model of the WGSL composite formula (straight-alpha
-    /// `over`, matching `bevy_vello` / vello 0.8 output convention).
-    /// Used by host integration tests to verify a known game + vello
-    /// pair produces the expected swap-chain pixel. `vello_rgb` here
-    /// is expected to already be linear-light (the WGSL applies an
-    /// sRGB→linear decode upstream; this helper takes the post-decode
-    /// values so the math stays focused on the composite itself).
-    pub fn composite_straight(game_rgb: [f32; 3], vello_rgb: [f32; 3], vello_a: f32) -> [f32; 3] {
-        let inv_a = 1.0 - vello_a;
-        [
-            vello_rgb[0] * vello_a + game_rgb[0] * inv_a,
-            vello_rgb[1] * vello_a + game_rgb[1] * inv_a,
-            vello_rgb[2] * vello_a + game_rgb[2] * inv_a,
-        ]
-    }
+    use super::composite_straight;
 
     #[test]
     fn vello_opaque_occludes_game() {

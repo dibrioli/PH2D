@@ -957,3 +957,82 @@ corrige uma POSIÇÃO, e a posição anterior ninguém lha dá.*
 do §8.2 nº 5 (os dois solvers a disputar a mesma peça, que é por que só o fundo zumbe), e é **uma
 wave com espec própria**: o `sim.step` passaria a precisar da lista de obstáculos, que hoje vive em
 nós a jusante dele.
+
+### §8.11 — ⛔⛔⛔ «Mudar o contacto de dono» foi ORDENADO, TESTADO SEM CIRURGIA, e REFUTADO
+
+> *«muda o contacto de dono»* (2026-09-15) — a hipótese do §8.10: o zumbido é um ciclo entre **dois
+> conjuntos de restrições** resolvidos uma vez cada, em sequência, e projecções alternadas convergem
+> *se a alternância for ITERADA*.
+
+⭐ **Ela testa-se no GRAFO, sem uma linha de motor:** `passo → taça → passo → taça`. O segundo
+`sim.step` lê `dt = 0` (o primeiro já escreveu o `sim_t` do tique), logo **não integra** — só volta a
+separar as peças depois de a taça as mexer. Medido em 5 realizações por célula:
+
+| voltas de alternância | balanço pior (°/tique) | giro líquido pior (°) |
+|---|---|---|
+| **1** (o que shipa) | `3,79 .. 5,69` | **`24,30 .. 28,36`** |
+| 2 | `1,14 .. 6,31` | `32,40 .. 50,62` |
+| 4 | `0,53 .. 7,05` | `27,49 .. 53,85` |
+
+⛔ **Não converge.** A faixa do balanço **ALARGA** — em algumas quedas melhora `7×`, noutras piora —
+e o giro sobe até `53,85°`. *Cada volta a mais injecta mais rotação, porque a correcção angular sai
+da PENETRAÇÃO e a penetração é recriada; ela não é uma projecção sobre um conjunto de restrições, é
+um ganho aplicado repetidamente.* ⇒ **a cirurgia de meio dia teria sido paga para nada, e o que a
+poupou foi exprimir a hipótese no grafo.**
+
+### §8.12 — ⛔⛔ As duas alavancas de PRODUTO são inertes — e UMA delas prova o teorema
+
+| atrito das peças | arrasto angular | balanço pior | giro líquido pior |
+|---|---|---|---|
+| `0,0` | `1,0` | `3,49 .. 7,58` | `16,31 .. 40,46` |
+| `0,6` | `1,0` | `3,83 .. 7,79` | `24,73 .. 38,15` |
+| `0,0` | **`0,9`** | `3,49 .. 7,58` | `16,31 .. 40,46` |
+| `0,0` | **`0,6`** | `3,49 .. 7,58` | `16,31 .. 40,46` |
+
+⭐⭐⭐ **As linhas 1, 3 e 4 são IDÊNTICAS AO BIT: o `angular_damping` não muda NADA.** E o motivo é o
+teorema desta secção inteira, agora medido em vez de lido: **ele amortece a coluna `spin`, e a
+rotação do contacto é escrita no `rot`.** ⇒ *o único knob do módulo feito para travar uma rotação
+não alcança esta rotação — não há, em todo o sistema, nada que a possa amortecer.*
+
+⚠️ E o atrito entre peças também não (`3,83 .. 7,79` contra `3,49 .. 7,58`, dentro do ruído).
+
+### §8.13 — ⛔ E a CÉLULA QUE NINGUÉM TINHA CORRIDO também cai
+
+O §8.4 mediu a moeda `spin` com o `angular_damping` **no default `1`**, que é *sem arrasto* — as duas
+metades foram medidas sozinhas e recusadas, e a combinação nunca foi corrida (a armadilha da célula
+`(1,1)` que a `line/quadextract` registou). Corrida agora:
+
+| lei | atrito | arrasto | balanço pior | giro líquido pior |
+|---|---|---|---|---|
+| `spin` (§8.4) | `0,6` | `1,0` | `0,77 .. 1,10` | `19,11 .. 56,05` |
+| `spin` | `0,0` | `0,6` | `1,33 .. 2,05` | `27,04 .. 71,54` |
+| `spin` | `0,6` | `0,6` | `0,85 .. 1,14` | `39,58 .. 45,75` |
+
+⛔ **O arrasto não alcança o giro porque os contactos o RE-INJECTAM mais depressa do que ele sangra.**
+Nenhuma combinação devolve o giro à banda de `24 .. 28` que a lei que shipa entrega.
+
+### §8.14 — ⭐⭐⭐ O teorema, e o que a obra seguinte tem de SER
+
+**Oito cadeias de cura foram construídas ou testadas e medidas, e as oito trocam uma grandeza pela
+outra:**
+
+| # | cura | veredito |
+|---|---|---|
+| 1 | mais varreduras peça × peça (`8 → 32`) | pior |
+| 2 | a moeda `spin`, impulso lido no centro | giro `24 → 47`, **reprovada pelo dono** |
+| 3 | a moeda `spin`, impulso lido no PONTO (auto-corrector) | giro `24 → 51` |
+| 4 | manifesto de DOIS PONTOS (ordem do dono) | `0 %` de contactos face-a-face: **sem sujeito** |
+| 5 | sub-relaxação `α` | monótona nas duas colunas: nenhum `α` compra as duas |
+| 6 | alternância ITERADA (ordem do dono) | não converge; giro `24 → 54` |
+| 7 | atrito entre peças · arrasto angular | **inertes** (o arrasto não alcança a coluna) |
+| 8 | a célula `(spin, arrasto)` | giro nunca volta à banda |
+
+⇒ ⭐⭐⭐ **O zumbido e o rodopio são a MESMA grandeza neste desenho**, e nenhuma alavanca deste
+solver os separa. A razão é de CLASSE: **uma correcção de posição recalculada do zero a cada tique
+não tem memória do impulso que aplicou no tique anterior.** O que separa as duas coisas nos motores
+que assentam pilhas é o que este não tem — **impulsos sequenciais com `λ` ACUMULADO por contacto
+persistente** (*warm starting*), mais um critério de **repouso**. Com `λ` acumulado a restrição
+sustenta a orientação sem re-excitar, que é exactamente a combinação que as oito tentativas
+procuraram e nenhuma alcançou.
+
+⛔ **Isso não é uma wave deste doc: é um solver de contacto novo**, e a decisão é do dono.

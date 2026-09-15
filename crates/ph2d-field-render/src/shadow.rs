@@ -318,7 +318,76 @@ pub const OCCLUSION_REACH: f32 = 1.0;
 /// ⇒ **`32`, porque é onde o erro médio cai abaixo de UM byte** — abaixo do que a saída consegue
 /// mostrar. ⛔ Não é um número escolhido: é o ponto em que continuar a refinar deixa de mudar a
 /// imagem.
-pub const OCCLUSION_PASSES: u32 = 32;
+pub const OCCLUSION_PASSES: u32 = 16;
+
+/// ⭐ **Quão parecidas duas normais têm de ser para a suavização as misturar** — o cosseno entre
+/// elas.
+///
+/// ⚠️ Ele é uma **guarda**, não um teto: borrar através de uma quina esborrata a quina. `0,9` é
+/// `~26°`, que separa faces de um vinco e mantém junta a variação suave de um cilindro.
+pub const OCCLUSION_BLUR_COS: f32 = 0.9;
+
+/// ⭐⭐⭐ **A SUAVIZAÇÃO GUIADA — e ela não é batota: a oclusão é de BAIXA FREQUÊNCIA.**
+///
+/// O que uma oclusão tem de respeitar é a fronteira entre superfícies **diferentes**; dentro de uma
+/// superfície ela varia devagar por construção. ⇒ uma média `3×3` **guardada pela normal** remove o
+/// ruído de amostragem sem tocar em nada que a resposta verdadeira tenha.
+///
+/// # ⭐ E ela compra METADE das passagens (medido, referência de `256` raios)
+///
+/// | passagens | erro no pixel | **com suavização** |
+/// |---:|---:|---:|
+/// | `4` | `7,22 bytes` | `2,19` |
+/// | `8` | `4,07` | `1,35` |
+/// | **`16`** | `2,34` | **`0,89`** |
+/// | `32` | `1,42` | `0,67` |
+///
+/// ⇒ `16` passagens **com** ela ficam abaixo de um byte, onde `32` **sem** ela ficavam em `1,42`.
+/// *Metade da espera e melhor imagem* — e é por isso que o [`OCCLUSION_PASSES`] desceu de `32`
+/// para `16` no mesmo dia em que ela entrou.
+#[must_use]
+pub fn blur_occlusion(g: &Gbuffer, oc: &[f32]) -> Vec<f32> {
+    let (w, h) = (g.width as usize, g.height as usize);
+    let mut out = oc.to_vec();
+    if w == 0 || h == 0 {
+        return out;
+    }
+    for y in 0..h {
+        for x in 0..w {
+            let i = y * w + x;
+            if !g.hit[i] {
+                continue;
+            }
+            let n0 = g.normal[i];
+            let (mut soma, mut n) = (0.0f32, 0u32);
+            for dy in -1i32..=1 {
+                for dx in -1i32..=1 {
+                    let (xx, yy) = (x as i32 + dx, y as i32 + dy);
+                    if xx < 0 || yy < 0 || xx >= w as i32 || yy >= h as i32 {
+                        continue;
+                    }
+                    #[allow(clippy::cast_sign_loss)]
+                    let j = yy as usize * w + xx as usize;
+                    if !g.hit[j] {
+                        continue;
+                    }
+                    let nj = g.normal[j];
+                    if n0[0] * nj[0] + n0[1] * nj[1] + n0[2] * nj[2] < OCCLUSION_BLUR_COS {
+                        continue;
+                    }
+                    soma += oc[j];
+                    n += 1;
+                }
+            }
+            if n > 0 {
+                #[allow(clippy::cast_precision_loss)]
+                let inv = 1.0 / n as f32;
+                out[i] = soma * inv;
+            }
+        }
+    }
+    out
+}
 
 /// ⭐⭐⭐ **A OCLUSÃO TRAÇADA CONTRA O CAMPO** — quanto do céu chega a cada pixel de peça.
 ///
@@ -446,14 +515,8 @@ pub fn occlusion_slice_with_reach(
         ];
         let (t1, t2) = base_do_hemisferio(n);
         let erguido = [p[0] + n[0] * lift, p[1] + n[1] * lift, p[2] + n[2] * lift];
-        // ⚠️ **O salto é do PIXEL, não do raio** — ver a nota da função.
-        let salto = ((i as u32).wrapping_mul(2_654_435_761) >> 8) as f32 / 16_777_216.0;
         for j in 0..quantos {
-            // ⚠️ A estratificação é do **TOTAL**, e o índice do raio é `primeiro + j` — ver a nota.
-            let u1 = ((f64::from(primeiro + j) + f64::from(salto)) / f64::from(total)).fract();
-            #[allow(clippy::cast_possible_truncation)]
-            let u1 = u1 as f32;
-            let u2 = ((i as u32).reverse_bits() >> 8) as f32 / 16_777_216.0;
+            let (u1, u2) = sample_uv(i, primeiro + j, total);
             let r = u1.sqrt();
             let phi = std::f32::consts::TAU * u2;
             let (sp, cp) = phi.sin_cos();
@@ -488,6 +551,55 @@ pub fn occlusion_slice_with_reach(
         vis[i] += v[j];
     }
     vis
+}
+
+/// ⭐⭐⭐ **As duas coordenadas do raio `k` do pixel `i`** — elevação e azimute.
+///
+/// # ⛔⛔⛔ O report do dono: *«artefatos de imagem»* (2026-09-14, foto)
+///
+/// Listras VERTICAIS finas, a alternar coluna a coluna. **Dois defeitos na mesma linha**, e nenhuma
+/// régua minha os via:
+///
+/// 1. **O azimute não dependia do RAIO.** Ele saía só do pixel, logo os `32` raios de um ponto
+///    partilhavam o **mesmo `φ`**: cada pixel amostrava um **LEQUE PLANO**, nunca o hemisfério. A
+///    estimativa ficava enviesada por pixel — e o enviesamento era *diferente em cada pixel*.
+/// 2. **O bit `0` de `i` virava o bit MAIS SIGNIFICATIVO de `u2`** (`i.reverse_bits() >> 8` devolve
+///    os bits `23..0` de `i` **ao contrário**). Medido: `i = 1000 → 0,093` e `i = 1001 → 0,593` —
+///    *colunas vizinhas a apontar para lados opostos.* Daí a listra ser de **uma** coluna.
+///
+/// ⚠️⚠️ **E a sonda da convergência era um ESPELHO:** a referência de `64` raios usava o MESMO
+/// leque, logo ela media o estimador contra ele próprio e via `1/√N` bonito sobre um resultado
+/// enviesado. *Uma régua que partilha a lei do produto não acusa* — a lei está escrita no
+/// `CLAUDE.md` e mordeu na mesma.
+///
+/// # ⭐ A lei que fica
+///
+/// - **elevação**: estratificada sobre o `total`, com rotação de Cranley–Patterson por pixel — cada
+///   passagem cai numa banda própria, e a banda desloca-se de pixel para pixel;
+/// - **azimute**: sequência aditiva da **razão áurea** a partir de um arranque por pixel — ela é de
+///   baixa discrepância em qualquer corte inicial, que é exactamente o que uma acumulação precisa
+///   (a fatia `0..k` tem de ser boa, não só a sequência inteira).
+///
+/// ⚠️ **O arranque usa uma MISTURA, não `reverse_bits`:** a multiplicação de Knuth leva os bits
+/// baixos de `i` aos altos do produto, logo pixels vizinhos arrancam longe um do outro **sem** o
+/// acoplamento de paridade que produziu a listra.
+pub(crate) fn sample_uv(i: usize, k: u32, total: u32) -> (f32, f32) {
+    #[allow(clippy::cast_possible_truncation)]
+    let px = i as u32;
+    let mistura = |v: u32| -> f32 {
+        let h = v
+            .wrapping_mul(2_654_435_761)
+            .rotate_left(15)
+            .wrapping_mul(2_246_822_519);
+        (h >> 8) as f32 / 16_777_216.0
+    };
+    let salto = mistura(px);
+    #[allow(clippy::cast_possible_truncation)]
+    let u1 = ((f64::from(k) + f64::from(salto)) / f64::from(total.max(1))).fract() as f32;
+    /// O conjugado da razão áurea — a sequência aditiva de menor discrepância que há.
+    const PHI: f32 = 0.618_034;
+    let u2 = (mistura(px ^ 0x9E37_79B9) + k as f32 * PHI).fract();
+    (u1, u2)
 }
 
 /// Dois eixos perpendiculares a `n`, sem trigonometria por amostra.
@@ -545,12 +657,14 @@ pub fn refine_occlusion(
         // abriria preta e iria clareando, que é o contrário do que uma acumulação deve parecer.
         #[allow(clippy::cast_precision_loss)]
         let inv = 1.0 / f32::from(u16::try_from(k + 1).unwrap_or(u16::MAX));
-        shadows.set_ambient(
-            soma.iter()
-                .zip(&g.hit)
-                .map(|(v, hit)| if *hit { v * inv } else { 1.0 })
-                .collect(),
-        );
+        let cru: Vec<f32> = soma
+            .iter()
+            .zip(&g.hit)
+            .map(|(v, hit)| if *hit { v * inv } else { 1.0 })
+            .collect();
+        // ⭐ **Suavizada no PUBLICAR, e não no acumulador** — a soma tem de continuar crua, senão
+        // cada passagem borraria o que a anterior já borrou e a oclusão espalhar-se-ia.
+        shadows.set_ambient(blur_occlusion(g, &cru));
         if !entrega(shadows, k + 1) {
             return k + 1;
         }

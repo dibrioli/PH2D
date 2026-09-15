@@ -2617,10 +2617,13 @@ Enquanto a mão mexe, nada muda: o quadro de movimento é **byte-idêntico** ao 
 pára, a imagem fica nítida (como já ficava) e depois vai **ganhando profundidade** — as fendas entre
 as partes escurecem, e a peça deixa de parecer recortada. Medido (`load 2,98`):
 
-| px | traçado | 1.ª passagem | 8 passagens | 16 | **assentar (32)** |
+| px | traçado | 1.ª passagem | 4 passagens | 8 | **assentar (16)** |
 |---|---:|---:|---:|---:|---:|
-| `640×360` | `5,30 ms` | `9,55 ms` | `78 ms` | `161 ms` | **`385 ms`** |
-| `1920×1080` | `28,13 ms` | `87 ms` | `686 ms` | `1 428 ms` | **`3 474 ms`** |
+| `640×360` | `5,80 ms` | `10,87 ms` | `43 ms` | `88 ms` | **`207 ms`** |
+| `1920×1080` | `29,18 ms` | `96 ms` | `390 ms` | `864 ms` | **`1 969 ms`** |
+
+⚠️ **Estes números são os da §31**, que corrigiu o amostrador e acrescentou a suavização — a 1.ª
+redacção desta tabela dizia `32` passagens e `3 474 ms`, sobre um estimador enviesado.
 
 ⚠️ **A imagem é utilizável desde a 1.ª passagem** e visivelmente assente por volta da 16.ª; o resto
 é o último byte. O trabalho corre **noutra thread** e é **largado** assim que a mão volta a mexer.
@@ -2714,3 +2717,106 @@ verificado numa worktree em `HEAD` limpo, os mesmos gates. *Dívida nomeada, nã
   à saída da superfície, logo uma peça com mais arestas paga mais.
 - **O prato giratório nunca refina** (§30.4). Numa cena de demonstração que ninguém toca, a oclusão
   não aparece — e isso é a lei, não um esquecimento.
+
+---
+
+## §31 — ⛔⛔⛔ «ARTEFATOS DE IMAGEM»: as listras, e a régua que era um ESPELHO (report do dono, 2026-09-14)
+
+Foto do dono: **listras verticais finas**, a alternar coluna a coluna, sobre a peça de cilindros
+cruzados. Eram **dois defeitos na mesma linha de código**, e a §30 shipou com os dois porque a régua
+que os devia apanhar media o estimador **contra ele próprio**.
+
+### §31.1 — Os dois defeitos, na mesma expressão
+
+```rust
+let u2 = ((i as u32).reverse_bits() >> 8) as f32 / 16_777_216.0;
+```
+
+**(a) O azimute não dependia do RAIO.** Ele saía só do pixel `i`, logo os `32` raios de um ponto
+partilhavam o **mesmo `φ`**: *cada pixel amostrava um LEQUE PLANO, nunca o hemisfério.* A estimativa
+ficava enviesada por pixel — e com um enviesamento **diferente em cada pixel**, que é o que produz
+estrutura em vez de ruído.
+
+**(b) O bit `0` de `i` virava o bit MAIS SIGNIFICATIVO do azimute.** `i.reverse_bits() >> 8` devolve
+os bits `23..0` de `i` **ao contrário**, logo o bit menos significativo do índice — *a paridade da
+coluna* — passa a mandar na metade do círculo. Medido: `i = 1000 → 0,093`, `i = 1001 → 0,593`.
+**Colunas vizinhas a apontar para lados opostos**: a listra é de uma coluna porque a causa é de um
+bit.
+
+### §31.2 — ⛔⛔⛔ E a sonda da convergência era um ESPELHO
+
+A `measure_how_many_passes_the_occlusion_needs` comparava `N` raios contra uma referência de `64` —
+**do mesmo leque plano**. Ela via um `1/√N` impecável sobre um resultado enviesado, e por isso o
+`OCCLUSION_PASSES` foi escolhido com base num erro que não era o erro.
+
+⚠️ *Uma régua que partilha a lei do produto não acusa.* A lei está escrita no `CLAUDE.md`, tem
+entrada própria na memória do repositório, e mordeu na mesma — porque o «espelho» aqui não era o
+código, era **a sequência de amostragem**.
+
+Com a referência honesta (`256` raios, oito vezes o maior `N` testado) os números são outros:
+
+| passagens | erro no pixel (espelho) | erro no pixel (**honesto**) |
+|---:|---:|---:|
+| `8` | `2,85 bytes` | `4,07` |
+| `16` | `1,33` | `2,34` |
+| `32` | `0,63` | **`1,42`** |
+
+### §31.3 — ⭐⭐⭐ A cura, e ela ficou MAIS RÁPIDA e MELHOR ao mesmo tempo
+
+**A lei do amostrador** (`sample_uv`): a elevação continua estratificada sobre o total com rotação
+por pixel; o **azimute** passa a ser uma sequência aditiva da **razão áurea** a partir de um arranque
+por pixel — de baixa discrepância em **qualquer corte inicial**, que é o que uma acumulação exige (a
+fatia `0..k` tem de ser boa, não só a sequência completa). E o arranque usa uma **mistura** de Knuth,
+não `reverse_bits`: ela leva os bits baixos aos altos, e o acoplamento de paridade desaparece.
+
+**E a suavização guiada** (`blur_occlusion`): a oclusão é de **baixa frequência dentro de uma
+superfície** — o que ela tem de respeitar é a fronteira entre superfícies diferentes, e por isso a
+média `3×3` é guardada pela **normal** (`cos ≥ 0,9`, `~26°`). ⛔ Não é batota, e há gate: um degrau
+perfeito entre duas normais opostas sai **intacto**.
+
+| passagens | erro no pixel | **com suavização** |
+|---:|---:|---:|
+| `4` | `7,22 bytes` | `2,19` |
+| `8` | `4,07` | `1,35` |
+| **`16`** | `2,34` | **`0,89`** |
+| `32` | `1,42` | `0,67` |
+
+⇒ **`OCCLUSION_PASSES` desce de `32` para `16`**: com a suavização, `16` ficam **abaixo de um byte**
+onde `32` sem ela ficavam em `1,42`. *Metade da espera e melhor imagem.*
+
+| | antes (§30) | **agora** |
+|---|---:|---:|
+| assentar a `640×360` | `385 ms` | **`207 ms`** |
+| assentar a `1920×1080` | `3 474 ms` | **`1 969 ms`** |
+| erro no pixel | `1,42 bytes` | **`0,89`** |
+
+### §31.4 — ⚠️ E as BARRAS dos gates estavam calibradas sobre o defeito
+
+Com o leque plano a fenda lia `mín 0,062` e `5,8 %` dos pixels abaixo de `0,8`. Com o hemisfério
+varrido: **`mín 0,750`** e `12,2 %` abaixo de `0,9`. *O extremo antigo era o enviesamento, não a
+geometria* — e o gate `a_oclusao_distingue_uma_esfera_de_uma_cruz` **exigia-o**, isto é, defendia o
+defeito. ⛔ Uma barra calibrada sobre um estimador enviesado torna-se a razão para o não corrigir.
+
+⚠️ E a fixtura do gate do céu procurava um pixel com `oc < 0,6`: depois da cura **não existia
+nenhum**, e o gate rebentava com *«nenhum pixel ocluído»*. *Uma fixtura calibrada sobre um defeito
+deixa de ter sujeito quando ele é curado* — e essa é a forma barata de descobrir que ela o media.
+
+### §31.5 — As réguas que passam a existir
+
+| gate | o que ele prende |
+|---|---|
+| `os_raios_de_um_pixel_varrem_o_azimute_inteiro` | ⭐ **a CAUSA, sem traçar nada** — nenhum oitavo do círculo vazio, e vizinhos não arrancam a meia volta |
+| `a_oclusao_nao_faz_listras_entre_colunas_vizinhas` | ⭐ **a CONSEQUÊNCIA** — a horizontal não pode destoar da vertical, e pares/ímpares leem o mesmo |
+| `a_suavizacao_nao_atravessa_uma_quina` | o degrau entre duas normais opostas sai intacto |
+| `a_suavizacao_apaga_o_ruido_dentro_de_uma_superficie` | e o controlo: ela não pode ser um no-op |
+
+⭐ **A listra passou a ser uma MEDIÇÃO**, e não uma foto: a assinatura é *a diferença média entre
+vizinhos horizontais a destoar da vertical*. Foi essa a régua que faltava — a que compara os dois
+eixos em vez de olhar para um número só.
+
+### §31.6 — ⏳ O que fica
+
+- **A suavização é `3×3` e uniforme.** Um raio maior apagaria mais ruído e começaria a esbater a
+  oclusão de contacto; o `3×3` foi o que a tabela mediu, e não foi varrido.
+- **A guarda é a NORMAL, e não a profundidade.** Duas superfícies paralelas a distâncias diferentes
+  (uma peça à frente de outra) misturam-se — declarado, e sem sujeito enquanto a cena é uma peça.

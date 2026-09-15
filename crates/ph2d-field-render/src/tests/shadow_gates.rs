@@ -317,27 +317,33 @@ fn a_oclusao_distingue_uma_esfera_de_uma_cruz() {
     // `~5 %` dos pixels visíveis: uma oclusão de `94 %` no fundo dela move a média de `1,000` para
     // `0,965`, e o gate lia isso como *«o passe devolve a mesma coisa para tudo»*. *Uma média sobre
     // a peça é o «extremo global» pelo lado de dentro.*
+    // ⚠️⚠️ **AS BARRAS FORAM RE-CALIBRADAS na §31, e a versão anterior delas media o DEFEITO.**
+    // Com o leque plano a fenda lia `mín 0,062` e `5,8 %` abaixo de `0,8` — números que vinham do
+    // enviesamento, não da peça. Com o hemisfério varrido e a suavização, os verdadeiros são
+    // `mín 0,750` e `12,2 %` abaixo de `0,9`. *Uma barra calibrada sobre um estimador enviesado
+    // defende o enviesamento.*
     let cauda = |doc: &ph2d_field::FieldDoc| -> (f32, f64) {
         let (reg, cam, g, _) = cena(doc, 160, 90);
-        let oc = crate::occlusion(doc, &reg, &cam, &g, 16);
+        let cru = crate::occlusion(doc, &reg, &cam, &g, crate::OCCLUSION_PASSES);
+        let oc = crate::blur_occlusion(&g, &cru);
         let peca: Vec<usize> = (0..g.hit.len()).filter(|i| g.hit[*i]).collect();
         assert!(peca.len() > 1_000, "fixtura vazia");
         let min = peca.iter().fold(1.0f32, |m, i| m.min(oc[*i]));
-        let escuros = peca.iter().filter(|i| oc[**i] < 0.8).count();
+        let escuros = peca.iter().filter(|i| oc[**i] < 0.9).count();
         (min, 100.0 * escuros as f64 / peca.len() as f64)
     };
     let (esf_min, esf_pct) = cauda(&esfera());
     let (cruz_min, cruz_pct) = cauda(&cruz());
 
     assert!(
-        cruz_min < 0.35,
-        "a fenda de tres cilindros cruzados tem de ficar FUNDA: o pixel mais ocluido le \
-         {cruz_min:.3} (medido `0,062`)"
+        cruz_min < 0.85,
+        "a fenda de tres cilindros cruzados tem de escurecer: o pixel mais ocluido le \
+         {cruz_min:.3} (medido `0,750`)"
     );
     assert!(
-        cruz_pct > 3.0,
-        "so {cruz_pct:.1} % da cruz esta abaixo de 0,8 — a fenda tem de ser uma POPULACAO, nao um \
-         pixel solto (medido `5,8 %`)"
+        cruz_pct > 6.0,
+        "so {cruz_pct:.1} % da cruz esta abaixo de 0,9 — a fenda tem de ser uma POPULACAO, nao um \
+         pixel solto (medido `12,2 %`)"
     );
     // ⭐ O controlo, e é ele que apanha um estimador que oclui por CURVATURA: uma esfera é convexa,
     // logo **nenhum** raio dela pode bater na própria esfera.
@@ -346,7 +352,7 @@ fn a_oclusao_distingue_uma_esfera_de_uma_cruz() {
         "uma esfera e convexa e o pixel mais ocluido dela le {esf_min:.3} — o passe esta a ler a \
          curvatura da propria superficie como oclusor (ver a nota do `hardness` em `shadow.rs`)"
     );
-    assert_eq!(esf_pct, 0.0, "e nenhum pixel dela pode estar abaixo de 0,8");
+    assert_eq!(esf_pct, 0.0, "e nenhum pixel dela pode estar abaixo de 0,9");
 }
 
 /// ⭐⭐⭐ **A OCLUSÃO ESCURECE O AMBIENTE E NÃO TOCA NA LÂMPADA.**
@@ -359,9 +365,13 @@ fn a_oclusao_escurece_o_ceu_e_deixa_a_lampada() {
 
     let doc = cruz();
     let (reg, cam, g, luz) = cena(&doc, 96, 54);
-    let oc = crate::occlusion(&doc, &reg, &cam, &g, 8);
+    let cru = crate::occlusion(&doc, &reg, &cam, &g, crate::OCCLUSION_PASSES);
+    let oc = crate::blur_occlusion(&g, &cru);
+    // ⚠️ **`0,85` e não `0,6`**: com o amostrador honesto (§31) a fenda mais funda desta peça lê
+    // `0,750`. A barra antiga saía do leque plano, e depois da cura ela não achava pixel nenhum —
+    // *uma fixtura calibrada sobre um defeito deixa de ter sujeito quando ele é curado.*
     let tapado = (0..g.hit.len())
-        .find(|i| g.hit[*i] && oc[*i] < 0.6)
+        .find(|i| g.hit[*i] && oc[*i] < 0.85)
         .expect("nenhum pixel ocluído na fixtura");
 
     let so = [ph2d_material::OpenPbr::default().prepare()];
@@ -396,7 +406,7 @@ fn a_oclusao_escurece_o_ceu_e_deixa_a_lampada() {
             + u32::from(rgba[tapado * 4 + 2])
     };
     let mut com = Shadows::default();
-    com.set_ambient(oc.clone());
+    com.set_ambient(oc);
 
     let claro = pinta(None);
     let escuro = pinta(Some(&com));
@@ -431,9 +441,11 @@ fn a_oclusao_escurece_o_ceu_e_deixa_a_lampada() {
     );
 }
 
-/// ⭐⭐⭐ **O REFINAMENTO: `32` passagens, uma por vez, e a última é a sequência inteira.**
+/// ⭐⭐⭐ **O REFINAMENTO: [`crate::OCCLUSION_PASSES`] passagens, uma por vez, e a última é a
+/// sequência inteira.** ⚠️ A contagem **deriva** da const — um número escrito aqui tornar-se-ia a
+/// segunda resposta à pergunta de quantas passagens existem.
 #[test]
-fn o_refinamento_entrega_32_passagens_e_acaba_na_sequencia_inteira() {
+fn o_refinamento_entrega_as_passagens_e_acaba_na_sequencia_inteira() {
     let doc = cruz();
     let (reg, cam, g, _) = cena(&doc, 96, 54);
 
@@ -455,7 +467,13 @@ fn o_refinamento_entrega_32_passagens_e_acaba_na_sequencia_inteira() {
 
     // ⭐ **E a última é EXACTAMENTE o que pagar tudo de uma vez daria** — é isto que torna o
     // refinamento uma forma de pagar, e não um resultado diferente.
-    let inteira = crate::occlusion(&doc, &reg, &cam, &g, crate::OCCLUSION_PASSES);
+    //
+    // ⚠️ **Com a SUAVIZAÇÃO por cima dos dois lados**: ela é aplicada no publicar, logo faz parte
+    // do que o refinamento entrega. Comparar com o cru acusaria a suavização de ser uma divergência.
+    let inteira = crate::blur_occlusion(
+        &g,
+        &crate::occlusion(&doc, &reg, &cam, &g, crate::OCCLUSION_PASSES),
+    );
     for i in 0..g.hit.len() {
         if g.hit[i] {
             assert_eq!(
@@ -522,4 +540,225 @@ fn o_refinamento_nunca_abre_a_peca_preta() {
          não mudar de nível",
         medias[0]
     );
+}
+
+/// ⭐⭐⭐ **A LISTRA VERTICAL do report do dono — medida, não vista** (`docs/Render3d/05` §31).
+///
+/// ⛔ O defeito era o azimute sair só do pixel, com o bit `0` dele no bit mais significativo: as
+/// colunas PARES apontavam para um lado e as ÍMPARES para o oposto. ⚠️ **Nenhuma régua desta linha
+/// o via** — a média da imagem é a mesma nas duas paridades quando se somam as duas, e a sonda da
+/// convergência media o estimador contra ele próprio.
+///
+/// A régua que o apanha é a **paridade da coluna**: numa peça lisa, colunas vizinhas têm de ler
+/// quase o mesmo. ⚠️ A barra é contra a diferença que a própria GEOMETRIA produz entre linhas
+/// vizinhas (o controlo), e não um número escolhido: *uma listra é a horizontal a destoar da
+/// vertical.*
+#[test]
+fn a_oclusao_nao_faz_listras_entre_colunas_vizinhas() {
+    let doc = cruz();
+    let (reg, cam, g, _) = cena(&doc, 192, 108);
+    let oc = crate::occlusion(&doc, &reg, &cam, &g, 8);
+    let (w, h) = (g.width as usize, g.height as usize);
+
+    // A diferença média entre vizinhos, em cada eixo, só onde os DOIS são peça.
+    let mut dx = (0.0f64, 0usize);
+    let mut dy = (0.0f64, 0usize);
+    for y in 0..h {
+        for x in 0..w {
+            let i = y * w + x;
+            if !g.hit[i] {
+                continue;
+            }
+            if x + 1 < w && g.hit[i + 1] {
+                dx.0 += f64::from((oc[i] - oc[i + 1]).abs());
+                dx.1 += 1;
+            }
+            if y + 1 < h && g.hit[i + w] {
+                dy.0 += f64::from((oc[i] - oc[i + w]).abs());
+                dy.1 += 1;
+            }
+        }
+    }
+    assert!(
+        dx.1 > 2_000 && dy.1 > 2_000,
+        "fixtura pequena demais: {dx:?} {dy:?}"
+    );
+    let (hx, hy) = (dx.0 / dx.1 as f64, dy.0 / dy.1 as f64);
+    assert!(
+        hx < hy * 1.6,
+        "as colunas destoam das linhas: vizinho horizontal {hx:.4} contra vertical {hy:.4} \
+         ({:.2}×) — é a assinatura de uma LISTRA vertical, e foi assim que ela chegou à foto do \
+         dono sem nenhum gate a acusar",
+        hx / hy
+    );
+
+    // ⭐ E a metade direta: as colunas PARES e as ÍMPARES têm de ler a mesma coisa.
+    let media = |p: usize| -> f64 {
+        let v: Vec<f64> = (0..h)
+            .flat_map(|y| (0..w).map(move |x| (x, y)))
+            .filter(|(x, y)| x % 2 == p && g.hit[y * w + x])
+            .map(|(x, y)| f64::from(oc[y * w + x]))
+            .collect();
+        v.iter().sum::<f64>() / v.len() as f64
+    };
+    let (par, impar) = (media(0), media(1));
+    assert!(
+        (par - impar).abs() < 0.01,
+        "as colunas pares leem {par:.4} de céu e as ímpares {impar:.4} — a paridade do pixel está \
+         a escolher o AZIMUTE, que é o defeito da §31"
+    );
+}
+
+/// ⭐⭐⭐ **OS RAIOS DE UM PIXEL COBREM O HEMISFÉRIO, e não um leque plano.**
+///
+/// ⛔ Este é o gate da causa, e o irmão de cima é o da consequência. Ele apanha o defeito **sem
+/// traçar nada**: se o azimute não depender do raio, os `32` de um pixel caem todos no mesmo plano.
+#[test]
+fn os_raios_de_um_pixel_varrem_o_azimute_inteiro() {
+    const TOTAL: u32 = 32;
+    for pixel in [0usize, 1, 2, 12_345, 60_770] {
+        let uvs: Vec<(f32, f32)> = (0..TOTAL)
+            .map(|k| crate::shadow::sample_uv(pixel, k, TOTAL))
+            .collect();
+
+        // ⭐ O azimute varre o círculo: com `32` amostras, nenhum oitavo pode ficar vazio.
+        let mut baldes = [0u32; 8];
+        for (_, u2) in &uvs {
+            baldes[((u2 * 8.0) as usize).min(7)] += 1;
+        }
+        assert!(
+            baldes.iter().all(|n| *n > 0),
+            "o pixel {pixel} deixa oitavos do azimute VAZIOS ({baldes:?}) — os raios dele estão \
+             num leque plano, que é o defeito da §31"
+        );
+
+        // ⭐ E a elevação é estratificada: uma amostra por banda, exactamente.
+        let mut bandas = [0u32; TOTAL as usize];
+        for (u1, _) in &uvs {
+            bandas[((u1 * TOTAL as f32) as usize).min(TOTAL as usize - 1)] += 1;
+        }
+        assert!(
+            bandas.iter().all(|n| *n == 1),
+            "o pixel {pixel} não estratifica a elevação ({bandas:?})"
+        );
+    }
+
+    // ⛔ **E pixels VIZINHOS não podem arrancar em lados opostos** — era o bit 0 do índice a virar
+    // o bit mais significativo do azimute (`1000 → 0,093`, `1001 → 0,593`: meia volta).
+    let arranque = |i: usize| crate::shadow::sample_uv(i, 0, TOTAL).1;
+    let saltos: Vec<f32> = (1000..1016)
+        .map(|i| {
+            let d = (arranque(i) - arranque(i + 1)).abs();
+            d.min(1.0 - d)
+        })
+        .collect();
+    let meia_volta = saltos.iter().filter(|d| **d > 0.4).count();
+    assert!(
+        meia_volta < 8,
+        "{meia_volta} de 16 pares de colunas vizinhas arrancam a meia volta uma da outra \
+         ({saltos:?}) — é a paridade a escolher o azimute"
+    );
+}
+
+/// ⭐⭐⭐ **A SUAVIZAÇÃO NÃO ATRAVESSA UMA QUINA.**
+///
+/// ⛔ É a única coisa que a torna legítima: a oclusão é de baixa frequência **dentro** de uma
+/// superfície, e borrar através da fronteira entre duas seria inventar resposta onde a verdadeira
+/// salta. O gate põe duas metades com normais opostas e um degrau perfeito entre elas.
+#[test]
+fn a_suavizacao_nao_atravessa_uma_quina() {
+    let (w, h) = (16u32, 8u32);
+    let n = (w * h) as usize;
+    let mut g = crate::Gbuffer {
+        width: w,
+        height: h,
+        hit: vec![true; n],
+        normal: vec![[0.0, 0.0, 1.0]; n],
+        point: vec![[0.0; 3]; n],
+        edges: Vec::new(),
+    };
+    let mut oc = vec![0.0f32; n];
+    for y in 0..h as usize {
+        for x in 0..w as usize {
+            let i = y * w as usize + x;
+            // Metade esquerda: normal para um lado e céu cheio. Direita: o oposto, e tapada.
+            if x < 8 {
+                g.normal[i] = [0.0, 0.0, 1.0];
+                oc[i] = 1.0;
+            } else {
+                g.normal[i] = [0.0, 0.0, -1.0];
+                oc[i] = 0.0;
+            }
+        }
+    }
+    let out = crate::blur_occlusion(&g, &oc);
+    for y in 0..h as usize {
+        for x in 0..w as usize {
+            let i = y * w as usize + x;
+            let esperado = if x < 8 { 1.0 } else { 0.0 };
+            assert_eq!(
+                out[i], esperado,
+                "o pixel ({x},{y}) sangrou através da quina: {} em vez de {esperado}",
+                out[i]
+            );
+        }
+    }
+}
+
+/// ⭐⭐ **E DENTRO de uma superfície ela suaviza mesmo** — senão o gate de cima passaria por ela
+/// não fazer nada.
+#[test]
+fn a_suavizacao_apaga_o_ruido_dentro_de_uma_superficie() {
+    let (w, h) = (16u32, 8u32);
+    let n = (w * h) as usize;
+    let g = crate::Gbuffer {
+        width: w,
+        height: h,
+        hit: vec![true; n],
+        normal: vec![[0.0, 0.0, 1.0]; n],
+        point: vec![[0.0; 3]; n],
+        edges: Vec::new(),
+    };
+    // Um tabuleiro de xadrez: a média verdadeira é `0,5` em todo o lado.
+    let oc: Vec<f32> = (0..n)
+        .map(|i| {
+            let (x, y) = (i % w as usize, i / w as usize);
+            f32::from(u8::from((x + y) % 2 == 0))
+        })
+        .collect();
+    let out = crate::blur_occlusion(&g, &oc);
+    let miolo: Vec<f32> = (1..h as usize - 1)
+        .flat_map(|y| (1..w as usize - 1).map(move |x| (x, y)))
+        .map(|(x, y)| out[y * w as usize + x])
+        .collect();
+    let pior = miolo.iter().fold(0.0f32, |m, v| m.max((v - 0.5).abs()));
+    assert!(
+        pior < 0.12,
+        "o ruído sobreviveu à suavização: o pior desvio de 0,5 é {pior:.3} (o cru é 0,5)"
+    );
+}
+
+/// Sonda: as barras dos gates, com o amostrador e a suavização finais.
+#[test]
+#[ignore = "sonda"]
+fn probe_as_barras_da_oclusao() {
+    for (nome, doc) in [("esfera", esfera()), ("cruz", cruz())] {
+        let (reg, cam, g, _) = cena(&doc, 160, 90);
+        let cru = crate::occlusion(&doc, &reg, &cam, &g, crate::OCCLUSION_PASSES);
+        let oc = crate::blur_occlusion(&g, &cru);
+        let peca: Vec<usize> = (0..g.hit.len()).filter(|i| g.hit[*i]).collect();
+        let mut v: Vec<f32> = peca.iter().map(|i| oc[*i]).collect();
+        v.sort_by(f32::total_cmp);
+        let q = |f: f64| v[((v.len() - 1) as f64 * f) as usize];
+        println!(
+            "{nome:7}: n={} · mín {:.3} · p01 {:.3} · p05 {:.3} · mediana {:.3} · <0,9: {:.1} % · <0,8: {:.1} %",
+            v.len(),
+            v[0],
+            q(0.01),
+            q(0.05),
+            q(0.50),
+            100.0 * v.iter().filter(|x| **x < 0.9).count() as f64 / v.len() as f64,
+            100.0 * v.iter().filter(|x| **x < 0.8).count() as f64 / v.len() as f64,
+        );
+    }
 }

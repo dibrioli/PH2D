@@ -6791,7 +6791,10 @@ fn measure_how_many_passes_the_occlusion_needs() {
     let (w, h) = (320_u32, 180_u32);
     let g = trace(&doc, &reg, &cam, w, h);
 
-    let referencia = crate::shadow::occlusion(&doc, &reg, &cam, &g, 64);
+    // ⚠️⚠️ **A REFERÊNCIA ERA UM ESPELHO** (§31): com `64` raios do mesmo leque plano, ela media o
+    // estimador contra ele próprio e via `1/√N` bonito sobre um resultado enviesado. Hoje o
+    // amostrador varre o hemisfério, e a referência é `256` — oito vezes o maior N testado.
+    let referencia = crate::shadow::occlusion(&doc, &reg, &cam, &g, 256);
     let peca: Vec<usize> = (0..g.hit.len()).filter(|i| g.hit[*i]).collect();
 
     // ⭐⭐⭐ **A RÉGUA É O BYTE DO PIXEL, e não o valor do canal.** A oclusão multiplica só o termo
@@ -6825,7 +6828,48 @@ fn measure_how_many_passes_the_occlusion_needs() {
         "carga: {}",
         std::fs::read_to_string("/proc/loadavg").unwrap().trim()
     );
-    println!("  passagens · canal RMS · PIXEL RMS (bytes) · pior pixel (bytes) · veredito");
+    // ⭐⭐⭐ **O BORRÃO GUIADO não é batota: a oclusão é de BAIXA FREQUÊNCIA por natureza.**
+    // O que não se pode borrar é a fronteira entre superfícies diferentes — daí a guarda pela
+    // normal. A pergunta desta sonda é se ele compra passagens.
+    let suaviza = |oc: &[f32]| -> Vec<f32> {
+        let (w, h) = (g.width as usize, g.height as usize);
+        let mut out = oc.to_vec();
+        for y in 0..h {
+            for x in 0..w {
+                let i = y * w + x;
+                if !g.hit[i] {
+                    continue;
+                }
+                let n0 = g.normal[i];
+                let (mut soma, mut n) = (0.0f32, 0u32);
+                for dy in -1i32..=1 {
+                    for dx in -1i32..=1 {
+                        let (xx, yy) = (x as i32 + dx, y as i32 + dy);
+                        if xx < 0 || yy < 0 || xx >= w as i32 || yy >= h as i32 {
+                            continue;
+                        }
+                        let j = yy as usize * w + xx as usize;
+                        if !g.hit[j] {
+                            continue;
+                        }
+                        let nj = g.normal[j];
+                        // ⚠️ A guarda é a NORMAL: borrar através de uma quina esborrata a quina.
+                        if n0[0] * nj[0] + n0[1] * nj[1] + n0[2] * nj[2] < 0.9 {
+                            continue;
+                        }
+                        soma += oc[j];
+                        n += 1;
+                    }
+                }
+                if n > 0 {
+                    out[i] = soma / n as f32;
+                }
+            }
+        }
+        out
+    };
+
+    println!("  passagens · PIXEL RMS (bytes) · pior · COM BORRÃO: RMS · pior");
     for n in [1_u32, 2, 4, 8, 16, 32] {
         let acc = crate::shadow::occlusion(&doc, &reg, &cam, &g, n);
         let mut canal = 0.0f64;
@@ -6835,26 +6879,22 @@ fn measure_how_many_passes_the_occlusion_needs() {
         }
         let canal = (canal / peca.len() as f64).sqrt();
 
-        let img = pinta(&acc);
-        let (mut soma, mut pior) = (0.0f64, 0u32);
-        for &i in &peca {
-            for c in 0..3 {
-                let d = i32::from(img[i * 4 + c]) - i32::from(alvo[i * 4 + c]);
-                soma += f64::from(d * d);
-                pior = pior.max(d.unsigned_abs());
+        let _ = canal;
+        let erro = |oc: &[f32]| -> (f64, u32) {
+            let img = pinta(oc);
+            let (mut soma, mut pior) = (0.0f64, 0u32);
+            for &i in &peca {
+                for c in 0..3 {
+                    let d = i32::from(img[i * 4 + c]) - i32::from(alvo[i * 4 + c]);
+                    soma += f64::from(d * d);
+                    pior = pior.max(d.unsigned_abs());
+                }
             }
-        }
-        let rms = (soma / (peca.len() * 3) as f64).sqrt();
-        println!(
-            "  {n:9} · {canal:9.5} · {rms:17.2} · {pior:18} · {}",
-            if rms <= 1.0 {
-                "⭐ dentro de UM byte"
-            } else if rms <= 2.0 {
-                "dois bytes"
-            } else {
-                "visível"
-            }
-        );
+            ((soma / (peca.len() * 3) as f64).sqrt(), pior)
+        };
+        let (rms, pior) = erro(&acc);
+        let (rms_b, pior_b) = erro(&suaviza(&acc));
+        println!("  {n:9} · {rms:17.2} · {pior:4} · {rms_b:17.2} · {pior_b:4}");
     }
 }
 
@@ -7016,7 +7056,10 @@ fn measure_the_settle_clock() {
         "carga: {}",
         std::fs::read_to_string("/proc/loadavg").unwrap().trim()
     );
-    println!("  px   ·  traçado · 1.ª passagem · média/passagem · ATÉ ASSENTAR (32)");
+    println!(
+        "  px   ·  traçado · 1.ª passagem · média/passagem · ATÉ ASSENTAR ({})",
+        crate::OCCLUSION_PASSES
+    );
 
     for (w, h) in [(640_u32, 360_u32), (1920, 1080)] {
         let t = Instant::now();

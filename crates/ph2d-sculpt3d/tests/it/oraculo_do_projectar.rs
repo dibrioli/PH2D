@@ -761,7 +761,6 @@ fn diag_o_perfil_do_desvio() {
             continue;
         }
         let f = Fix::ler(nome);
-        let entrada = grelha(false);
         let mut b = pincel(&f);
         if inv {
             b.invert = true;

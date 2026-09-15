@@ -344,19 +344,35 @@ pub fn sculpt_src() -> String {
         "{}/../../crates/ph2d-app-sculpt3d/src",
         env!("CARGO_MANIFEST_DIR")
     );
-    let mut names: Vec<String> = fs::read_dir(&dir)
+    let todos: Vec<String> = fs::read_dir(&dir)
         .expect("o `src/` da crate da família")
         .filter_map(|e| e.ok().map(|e| e.file_name().to_string_lossy().into_owned()))
-        // ⚠️ **Os `_tests.rs` do cluster ficam de FORA**, e não é higiene: um
-        // arch-gate que afirma AUSÊNCIA (*"esta fiação não chama X"*) passaria a
-        // ler o texto dos próprios testes, onde a palavra proibida aparece de
-        // propósito — um oráculo que casa com o teste de si mesmo não está
-        // olhando para o produto.
-        // ⚠️ **O `starts_with("sculpt3d")` MORREU com a pasta** — dentro dela nenhum ficheiro
-        // carrega o prefixo, e mantê-lo devolveria zero nomes. Quem delimita a família hoje é o
-        // DIRECTÓRIO, que é mais forte: um irmão novo não tem como ficar de fora por ser mal
-        // nomeado.
-        .filter(|n| n.ends_with(".rs") && !n.ends_with("_tests.rs"))
+        .filter(|n| n.ends_with(".rs"))
+        .collect();
+    // ⚠️ **Os `_tests.rs` do cluster ficam de FORA**, e não é higiene: um
+    // arch-gate que afirma AUSÊNCIA (*"esta fiação não chama X"*) passaria a
+    // ler o texto dos próprios testes, onde a palavra proibida aparece de
+    // propósito — um oráculo que casa com o teste de si mesmo não está
+    // olhando para o produto.
+    // ⚠️ **O `starts_with("sculpt3d")` MORREU com a pasta** — dentro dela nenhum ficheiro
+    // carrega o prefixo, e mantê-lo devolveria zero nomes. Quem delimita a família hoje é o
+    // DIRECTÓRIO, que é mais forte: um irmão novo não tem como ficar de fora por ser mal
+    // nomeado.
+    //
+    // ⛔⛔ **E o SUFIXO não basta — medido em 2026-09-15.** Um ARNÊS de teste pode ter
+    // nome de produto: o `censo_dos_knobs_arnes.rs` é compilado **só** sob `cfg(test)` (quem o
+    // declara é o `censo_dos_knobs_tests.rs`, que já está de fora) e mesmo assim entrava aqui
+    // como produto. Ele chama os mesmos motores que o produto chama, e isso reprovou DOIS gates
+    // sobre produto correcto — um deles a contar chamadas (`left: 2, right: 1`).
+    // ⭐ ⇒ quem classifica é a **DECLARAÇÃO**, não o nome: *o que um ficheiro de teste
+    // declara por `#[path]` é código de teste*, transitivamente. É a mesma lei que o
+    // `CLAUDE.md` §5.0 cobra dos censos que varrem por prefixo de nome, um nível acima — só que
+    // aqui a falha é BARULHENTA (um gate reprova) em vez de muda, que é a única sorte da história.
+    let so_de_teste = declarados_por_um_teste(&dir, &todos);
+    let mut names: Vec<String> = todos
+        .iter()
+        .filter(|n| !n.ends_with("_tests.rs") && !so_de_teste.contains(*n))
+        .cloned()
         .collect();
     names.sort();
     assert!(
@@ -369,6 +385,54 @@ pub fn sculpt_src() -> String {
         .collect::<Vec<_>>()
         .join("\n");
     elide_active_object(&joined)
+}
+
+/// **O QUE UM FICHEIRO DE TESTE DECLARA É CÓDIGO DE TESTE** — transitivamente.
+///
+/// Devolve os ficheiros do `src/` que existem só para os testes **apesar de não
+/// terem o sufixo**: os que um `*_tests.rs` monta por `#[path = "..."]`. Um
+/// arnês assim é compilado sob `cfg(test)` e nunca ship, logo lê-lo como produto
+/// põe no censo chamadas que o produto não faz.
+///
+/// ⚠️ **A guarda é contra a direcção PERIGOSA.** Excluir a mais é mudo: o gate
+/// deixaria de ver um ficheiro que ship e ficaria verde por vácuo. Por isso um
+/// nome que um ficheiro de PRODUTO também declare é recusado em voz alta — é o
+/// caso em que a mesma fonte é montada dos dois lados, e aí ela é produto.
+fn declarados_por_um_teste(dir: &str, todos: &[String]) -> std::collections::BTreeSet<String> {
+    let declara = |ficheiro: &str| -> Vec<String> {
+        let raw = fs::read_to_string(format!("{dir}/{ficheiro}"))
+            .unwrap_or_else(|e| panic!("não consegui ler src/{ficheiro}: {e}"));
+        raw.split("#[path = \"")
+            .skip(1)
+            .filter_map(|d| d.split('"').next().map(str::to_owned))
+            .filter(|alvo| todos.iter().any(|n| n == alvo))
+            .collect()
+    };
+    let mut fora = std::collections::BTreeSet::new();
+    let mut fila: Vec<String> = todos
+        .iter()
+        .filter(|n| n.ends_with("_tests.rs"))
+        .cloned()
+        .collect();
+    while let Some(f) = fila.pop() {
+        for alvo in declara(&f) {
+            if fora.insert(alvo.clone()) {
+                fila.push(alvo);
+            }
+        }
+    }
+    for alvo in &fora {
+        let tambem_no_produto = todos
+            .iter()
+            .filter(|n| !n.ends_with("_tests.rs") && !fora.contains(*n))
+            .any(|n| declara(n).iter().any(|d| d == alvo));
+        assert!(
+            !tambem_no_produto,
+            "`{alvo}` é declarado por um ficheiro de teste E por um de produto — \
+             então ele SHIP, e tirá-lo do censo deixaria os gates verdes por vácuo"
+        );
+    }
+    fora
 }
 
 /// A fonte com a **porta do objeto ativo ELIDIDA**.

@@ -299,7 +299,7 @@ fn a_catraca_dos_ids_soltos_nao_cresce_nem_envelhece() {
     assert!(
         novos.is_empty(),
         "ids SOLTOS novos, fora da catraca: {novos:?} — um id solto e' a forma \
-         que NENHUM censo deste repo ve' sozinho. ⇒ escreva o gate de costura \
+         que NENHUM censo deste repo ve' sozinho. => escreva o gate de costura \
          que CLICA nele e acrescente-o ao `SOLTOS_COM_GATE_PROPRIO` com a razao \
          e o nome desse gate. ⛔ Nunca acrescente a linha sem o gate: ai' esta \
          lista vira a lista a' mao que os censos acima existem para matar"

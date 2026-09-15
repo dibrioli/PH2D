@@ -47,9 +47,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.sculpt3d.falloff_inert.density" => {
             "Not used by Density — it changes topology, not vertex positions"
         }
-        "panel.sculpt3d.falloff_inert.pose" => {
-            "Only used by Twist, and only with Segments above 1"
-        }
+        "panel.sculpt3d.falloff_inert.pose" => "Only used by Twist, and only with Segments above 1",
         // ⚠️ Os rótulos do alvo, sem tradução: *Deformation* e *Simulation
         // Area* são o que o painel dele diz (espec §8.4), e um artista que vem
         // de lá procura essas duas palavras.

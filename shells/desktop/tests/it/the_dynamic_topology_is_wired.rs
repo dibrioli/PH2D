@@ -33,6 +33,19 @@ fn the_refinement_runs_before_the_dab_lands() {
 /// ⚠️ A guarda é a PRIMEIRA linha da porta, e não um `if` no chamador: o dia em
 /// que houver um segundo sítio de dab (um filtro, um script), quem esquecer a
 /// pergunta herda a resposta certa.
+///
+/// ⛔⛔ **A premissa da 1.ª redacção MORREU em 2026-09-15, e a morte está neste
+/// diff.** Ela lia `refine_in_sphere` DENTRO do corpo do `refine_for_dab` — e os
+/// dois motores saíram para a porta [`passe_nos_motores`], que o censo dos knobs
+/// chama sem cena e sem `wgpu::Device`. O `expect` reprovou em voz alta, que é o
+/// modo de falha BOM de mover código (`CLAUDE.md` §5.0: *a que fica verde é a que
+/// se leva para o main*).
+///
+/// ⭐ **E o gate fica MAIS FORTE do que era**, porque a extracção criou uma
+/// segunda metade que antes não tinha onde existir: os motores passam a ser
+/// alcançáveis **só** pela porta. É isso que mantém de pé a frase do parágrafo
+/// acima — um sítio de dab novo não pode chamar o motor pelas costas da guarda,
+/// porque não há por onde.
 #[test]
 fn the_refinement_is_off_by_default_and_the_guard_is_the_first_question() {
     let src = sculpt_src();
@@ -40,10 +53,28 @@ fn the_refinement_is_off_by_default_and_the_guard_is_the_first_question() {
     let armed = body
         .find("self.dyntopo.armed")
         .expect("ela pergunta pelo arm");
-    let engine = body
-        .find("refine_in_sphere")
-        .expect("e só então chama o motor");
-    assert!(armed < engine, "o arm é perguntado ANTES do motor");
+    let porta = body
+        .find("passe_nos_motores(")
+        .expect("e só então chama a porta dos motores");
+    assert!(armed < porta, "o arm é perguntado ANTES dos motores");
+
+    // ⭐⭐ **E os motores são alcançáveis SÓ pela porta.** Sem esta metade a
+    // guarda seria contornável: bastava um chamador novo do `refine_in_sphere`
+    // para o passe correr desarmado, e a asserção de ordem acima continuaria
+    // verde sobre um produto errado.
+    let porta_body = function_body(&src, "passe_nos_motores");
+    for motor in ["refine_in_sphere(", "collapse_in_sphere("] {
+        assert!(
+            porta_body.contains(motor),
+            "o `{motor}` mora na porta — ver o doc dela (a ORDEM viaja lá dentro)"
+        );
+        assert_eq!(
+            src.matches(motor).count(),
+            1,
+            "`{motor}` tem UMA chamada no cluster, e ela é a da porta: uma segunda \
+             seria um caminho de dab que não passa pela guarda do arm"
+        );
+    }
 
     // E o default é DESLIGADO — o aviso é dos autores do Blender, e está no
     // cabeçalho do módulo. ⚠️ A âncora é o `impl`, e não `fn default`: o

@@ -300,9 +300,11 @@ impl Sculpt3dScene {
             target,
             centre,
             radius,
-            &mut remap,
-            &mut births,
-            &mut region,
+            Rascunho {
+                remap: &mut remap,
+                births: &mut births,
+                region: &mut region,
+            },
         );
         self.dyn_region = region;
         if cut {
@@ -396,6 +398,18 @@ mod tests;
 /// limiar»*), e usá-lo para dizer *«o verbo não pediu»* poria duas coisas
 /// diferentes no mesmo byte.
 ///
+/// **O RASCUNHO do passe** — os três buffers que ele reusa, num só argumento.
+///
+/// ⚠️ **Eles são UM conceito e não três parâmetros**: os dois chamadores já os
+/// seguram juntos (a cena guarda-os em campos `dyn_*` para o caminho quente não
+/// alocar, o censo declara-os na mesma linha), e agrupá-los é o que mantém a
+/// porta dentro do tecto de argumentos — ⛔ nunca um `allow` por cima do aviso.
+pub(crate) struct Rascunho<'a> {
+    pub(crate) remap: &'a mut ph2d_mesh::Remap,
+    pub(crate) births: &'a mut Vec<ph2d_mesh::Birth>,
+    pub(crate) region: &'a mut ph2d_mesh::RegionScratch,
+}
+
 /// Devolve `(colapsou, refinou)`.
 pub(crate) fn passe_nos_motores(
     mesh: &mut ph2d_mesh::Mesh,
@@ -403,10 +417,13 @@ pub(crate) fn passe_nos_motores(
     alvo_de_aresta: f32,
     centre: [f32; 3],
     radius: f32,
-    remap: &mut ph2d_mesh::Remap,
-    births: &mut Vec<ph2d_mesh::Birth>,
-    region: &mut ph2d_mesh::RegionScratch,
+    rascunho: Rascunho<'_>,
 ) -> (bool, bool) {
+    let Rascunho {
+        remap,
+        births,
+        region,
+    } = rascunho;
     let cut = verbo.colapsa_no_dyntopo()
         && matches!(
             collapse_in_sphere(

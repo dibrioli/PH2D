@@ -12,7 +12,7 @@
 //! uma entrada nova no `FILE_OVERAGE_OK`* (`CLAUDE.md` §5.0).
 
 use ph2d_mesh::Mesh;
-use ph2d_panel_sculpt3d::rows::{Place, SECTIONS, rows};
+use ph2d_panel_sculpt3d::rows::rows;
 use ph2d_panel_sculpt3d::slots::VerbSlot;
 use ph2d_panel_sculpt3d::state::Sculpt3dUi;
 use ph2d_panel_sculpt3d::state_modes::UiLevel;
@@ -179,9 +179,11 @@ pub(super) fn corre(b: &Brush) -> Mesh {
                 alvo,
                 d.center,
                 b.radius,
-                &mut remap,
-                &mut births,
-                &mut region,
+                crate::dyntopo::Rascunho {
+                    remap: &mut remap,
+                    births: &mut births,
+                    region: &mut region,
+                },
             );
             s.begin(&mesh);
         }

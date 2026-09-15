@@ -44,12 +44,8 @@
 #[path = "censo_dos_knobs_arnes.rs"]
 mod arnes;
 
-use arnes::{
-    DABS_DO_TRACO, KNOBS, Knob, OLHO, PONTA, RAIO, acorda_neste_arnes, alvo, corre, desvio, gesto,
-    onde, painel_com, peca_de, pincel, pintado, quanto_move, referencia,
-};
+use arnes::{KNOBS, acorda_neste_arnes, corre, desvio, painel_com, pincel, pintado, quanto_move};
 use ph2d_panel_sculpt3d::rows::{Place, SECTIONS};
-use ph2d_panel_sculpt3d::state_modes::UiLevel;
 use ph2d_sculpt3d::{Brush, Falloff, Verb};
 
 /// **SONDA — a matriz inteira**, para a tabela poder ser lida de uma vez.

@@ -406,7 +406,7 @@ fn paint_a_curva(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32, y:
     // ⚠️ **A razão vem do MOTOR** ([`ph2d_sculpt3d::Brush::curva_inerte`]) e o
     // texto vem da i18n **aqui**: a lei não sabe o vocabulário da interface, e
     // uma chave dentro do motor mentiria no dia em que o painel a renomeasse.
-    let y = match snap.ui.brush.curva_inerte() {
+    match snap.ui.brush.curva_inerte() {
         None => y,
         Some(razao) => readout(
             ctx,
@@ -425,6 +425,5 @@ fn paint_a_curva(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32, y:
             w,
             y,
         ),
-    };
-    y
+    }
 }

@@ -1885,3 +1885,48 @@ lado* — apagá-lo em silêncio deixaria a propriedade nova sem quem a cobre.
 Ela põe **duas propriedades diferentes** lado a lado (a grade de dois deste painel) e continua a
 servir o Auto Layout (`Gap` | `Cross`) e a Sprite Sheet. A `fields_row` nova põe **uma** propriedade
 com N componentes. *São duas perguntas, e o Transform estava a usar a errada.*
+
+---
+
+## 29 — ⭐⭐ O painel da GRELHA — ele já lia a coluna da porta e re-derivava TUDO o resto
+
+**Ordem permanente do dono.** Dos cinco painéis que faltavam, medido: o da **Grelha** é o único com
+uma família de linhas de propriedade a sério (`paint_number_row` · `_from_state` · `_value` ·
+`paint_origin_rows` · `paint_aabb_rows`). ⛔ Os outros quatro são outra coisa — o `flip-frames` é uma
+**barra de ferramentas**, o `motion-graph` são **cartões no canvas**, o `motion-params` usa a caixa
+única (spec §2) e a `timeline` são **faixas**, cuja coluna o `CLAUDE.md` já declara *«uma pergunta
+diferente»*.
+
+### 29.1 — ⛔⛔ Ele lia a coluna da porta e re-derivava o resto à mão
+
+| o que ele fazia | o que isso custava |
+|---|---|
+| `property_label_col_w(x, w)` ✅ | a coluna estava certa |
+| `Rect::new(x + label_w, y, w - label_w, ROW_H)` | ⛔ o campo comia os `14 px` da **coluna de animação** |
+| — | ⛔ **nenhum ponto** nas linhas deste painel |
+| `property_label_col_w` sem `desired`/`control_need` | ⛔ sem a **cedência** da §6-ter |
+| `LABEL_FONT_SIZE = TypeToken::Base` | ⛔ **os nomes deste painel eram maiores que os de todo o app** (o resto usa `Sm`) |
+
+⭐ *Ler a porta para UM número e re-derivar os outros quatro é a forma mais silenciosa de divergir:
+o sítio que se lê está certo, e o resultado não.*
+
+### 29.2 — ⭐⭐ E ele não pinta a partir do store — daí uma entrada nova, com o MESMO miolo
+
+As linhas da Grelha trazem o valor do **ESTADO**: um `NodeId` é partilhado por vários tipos de
+grelha e o número mostrado espelha o campo do tipo **ACTIVO**. O passe de pintura de um painel
+recebe a loja por `&`, não por `&mut` — *não há onde espelhar*.
+
+⇒ `property_row::paint_field_row_value`, com o valor/buffer/caret/âncora/visual do chamador.
+
+⚠️⚠️ **E a geometria foi EXTRAÍDA para uma função só** (`row_and_layout`), usada pelas duas rotas.
+*Extrair isto é o oposto de duplicar:* sem ela, a segunda rota re-derivaria «onde é que a coluna do
+nome acaba» — e esta linha já pagou **duas vezes** o preço de duas derivações da mesma grandeza
+(§22.5 e o doc da `property_label_col_w`). **Um pintor a mais é barato; uma segunda conta da mesma
+coisa não.**
+
+### 29.3 — ⏳ ABERTO
+
+- `checkbox_row` · `colour_swatch_row` · `row2` do Vector — outras famílias de controlo.
+- As cinco colunas de *slider* do `painter-layers` (spec §2: o nome vive DENTRO da barra).
+- **Os quatro painéis que NÃO são formulários** ficam fora **com a razão**, não por cansaço:
+  barra de ferramentas · cartões de canvas · caixa única · faixas de timeline.

@@ -4,15 +4,13 @@
 //! `ph2d_editor_core::grid_snap::panel::paint_rows` during ADR-0029
 //! Phase C.4.
 
-use crate::layout::{LABEL_FONT_SIZE, ROW_H};
+use crate::layout::LABEL_FONT_SIZE;
 use crate::state::{meters_to_display, unit_suffix_paren};
 use ph2d_editor_core::NodeId;
 use ph2d_editor_core::grid_snap::GridSnapState;
 use ph2d_editor_core::interaction::{HitIndex, WidgetStore};
 use ph2d_editor_core::paint::{paint_text, resolve};
-use ph2d_editor_core::widget::{
-    NumberInput, TextInputState, Toggle, paint_number_input_with_buffer, paint_toggle,
-};
+use ph2d_editor_core::widget::{TextInputState, Toggle, paint_toggle};
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Spacing, Theme};
@@ -104,6 +102,17 @@ pub(crate) fn paint_number_row_from_state(
     )
 }
 
+/// ⭐⭐⭐ **A linha do painel da Grelha, PELA PORTA do app.**
+///
+/// ⛔⛔ Ela já lia a coluna do rótulo da porta (`property_label_col_w`) e **re-derivava tudo o
+/// resto à mão**: o rect do campo era `w − label_w`, que come os `14 px` da coluna de animação;
+/// não havia ponto nenhum; a coluna não **cedia** ao controlo (spec §6-ter); e o nome era pintado
+/// em [`TypeToken::Base`] enquanto o resto do app usa `Sm` — *este painel tinha os nomes maiores
+/// que todos os outros.*
+///
+/// ⚠️ **Ela não pinta a partir do store, e é por isso que usa a entrada com VALOR explícito:** um
+/// `NodeId` é partilhado por vários tipos de grelha e o número mostrado espelha o campo do tipo
+/// ACTIVO. O passe de pintura recebe a loja por `&`, logo não há onde espelhar.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn paint_number_row_value(
     label: &str,
@@ -124,32 +133,25 @@ pub(crate) fn paint_number_row_value(
     theme: Theme,
     hit_index: &mut HitIndex,
 ) -> f32 {
-    ph2d_editor_core::widget::paint_property_label(
-        text_system,
-        scene,
-        label,
-        x,
-        y + (ROW_H - LABEL_FONT_SIZE) * 0.5,
-        LABEL_FONT_SIZE,
-        ph2d_editor_core::widget::property_label_col_w(x, w) - Spacing::Sm.px(),
-        resolve(ColorToken::Text1, theme),
-    );
-    // ⭐ A coluna do rótulo vem da PORTA — ver `property_label_col_w`.
-    let label_w = ph2d_editor_core::widget::property_label_col_w(x, w);
-    let input_rect = Rect::new(x + label_w, y, w - label_w, ROW_H);
-    let input = NumberInput::new(id, "", value).visual(visual);
-    paint_number_input_with_buffer(
-        &input,
-        buffer,
-        caret,
-        anchor,
-        input_rect,
+    ph2d_editor_core::property_row::paint_field_row_value(
         scene,
         text_system,
         theme,
-    );
-    hit_index.register(id, input_rect);
-    y + ph2d_tokens::row_pitch_px()
+        hit_index,
+        x,
+        w,
+        y,
+        label,
+        id,
+        value,
+        buffer,
+        caret,
+        anchor,
+        visual,
+        None,
+        1,
+    )
+    .0
 }
 
 /// Paint Origin X + Origin Y rows reading current values from

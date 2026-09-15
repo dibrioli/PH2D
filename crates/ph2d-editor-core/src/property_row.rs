@@ -59,6 +59,53 @@ pub fn paint_label_row(
     row
 }
 
+/// ⭐⭐⭐ **A GEOMETRIA de uma linha, e o NOME já pintado — UMA derivação, N pintores.**
+///
+/// ⛔⛔ **Ela existe porque há rotas que não pintam a partir do store.** O painel da Grelha desenha
+/// linhas cujo valor vem do ESTADO e não do `WidgetStore` (um `NodeId` partilhado por vários tipos
+/// de grelha espelha o campo do tipo ACTIVO), e o passe de pintura de um painel não tem a loja
+/// mutável para lá escrever. ⇒ elas precisam da geometria e do nome, e pintam o campo por sua conta.
+///
+/// ⚠️⚠️ **Extrair isto é o oposto de duplicar:** sem ela, a segunda rota re-derivaria *«onde é que a
+/// coluna do nome acaba»* — e esta linha já pagou duas vezes o preço de duas derivações da mesma
+/// grandeza. *Um pintor a mais é barato; uma segunda conta da mesma coisa não.*
+#[allow(clippy::too_many_arguments)]
+fn row_and_layout(
+    text_system: &mut TextSystem,
+    scene: &mut VectorScene,
+    theme: Theme,
+    x: f32,
+    w: f32,
+    y: f32,
+    label: &str,
+    n_campos: usize,
+    campos_da_seccao: usize,
+) -> (PropertyRow, usize, usize, f32) {
+    let label_font = TypeToken::Sm.px();
+    let gap = ph2d_tokens::control_gap_px();
+    // ⭐⭐ **O que o rótulo PRECISA — medido, no peso em que pinta.** É ele o piso da cedência: a
+    //    coluna encolhe para o controlo caber, e pára aqui. *Trocar uma linha quebrada por um nome
+    //    cortado não é a cura que o dono pediu.*
+    let quer = text_system.prefix_width(label, label_font);
+    // ⭐⭐ **O que o CONTROLO precisa para não quebrar** — `n` caixas ao piso, com os vãos.
+    let n = campos_da_seccao.max(n_campos).max(1) as f32;
+    let precisa = n * crate::widget::NUMBER_INPUT_MIN_W_PX + (n - 1.0) * gap;
+    let row = crate::widget::property_row_columns_for(x, w, y, ROW_H_PX, Some(quer), Some(precisa));
+    crate::widget::paint_property_label(
+        text_system,
+        scene,
+        label,
+        row.label.x,
+        row.label.y + (row.label.h - label_font) * 0.5,
+        label_font,
+        row.label.w,
+        resolve(ColorToken::Text2, theme),
+    );
+    let (por_linha, linhas, cw) =
+        crate::widget::property_fields_layout(row.control.w, n_campos, gap, 0.0);
+    (row, por_linha, linhas, cw)
+}
+
 /// ⭐⭐⭐ **A LINHA DE VÁRIAS COMPONENTES — o nome à ESQUERDA, as caixas na coluna do controlo.**
 ///
 /// ⛔⛔ **Report do dono, 2026-09-14** (*«Label acima do campo numérico! Muito ruim!»*) e
@@ -93,28 +140,18 @@ fn paint_fields_row_inner(
     unit: Option<Unit>,
     campos_da_seccao: usize,
 ) -> (f32, Option<Rect>) {
-    let label_font = TypeToken::Sm.px();
-    let gap = ph2d_tokens::control_gap_px();
-    // ⭐⭐ **O que o rótulo PRECISA — medido, no peso em que pinta.** É ele o piso da cedência: a
-    //    coluna encolhe para o controlo caber, e pára aqui. *Trocar uma linha quebrada por um nome
-    //    cortado não é a cura que o dono pediu.*
-    let quer = text_system.prefix_width(label, label_font);
-    // ⭐⭐ **O que o CONTROLO precisa para não quebrar** — `n` caixas ao piso, com os vãos.
-    let n = campos_da_seccao.max(field_ids.len()).max(1) as f32;
-    let precisa = n * crate::widget::NUMBER_INPUT_MIN_W_PX + (n - 1.0) * gap;
-    let row = crate::widget::property_row_columns_for(x, w, y, ROW_H_PX, Some(quer), Some(precisa));
-    crate::widget::paint_property_label(
+    let (row, por_linha, linhas, cw) = row_and_layout(
         text_system,
         scene,
+        theme,
+        x,
+        w,
+        y,
         label,
-        row.label.x,
-        row.label.y + (row.label.h - label_font) * 0.5,
-        label_font,
-        row.label.w,
-        resolve(ColorToken::Text2, theme),
+        field_ids.len(),
+        campos_da_seccao,
     );
-    let (por_linha, linhas, cw) =
-        crate::widget::property_fields_layout(row.control.w, field_ids.len(), gap, 0.0);
+    let gap = ph2d_tokens::control_gap_px();
     let passo = ph2d_tokens::row_pitch_px();
     let mut primeiro = None;
     for (i, &id) in field_ids.iter().enumerate() {
@@ -252,4 +289,62 @@ pub fn property_row_fits(w: f32, label_w: f32) -> bool {
     let row =
         crate::widget::property_row_columns_for(0.0, w, 0.0, ROW_H_PX, Some(label_w), Some(piso));
     row.label.w >= label_w - 0.01 && row.control.w >= piso - 0.01
+}
+
+/// ⭐⭐⭐ **A linha de UM campo cujo VALOR o chamador traz** — devolve o `y` seguinte e o rect do campo.
+///
+/// ⛔⛔ **Ela existe para quem não pinta a partir do store.** O painel da Grelha desenha linhas cujo
+/// valor vem do ESTADO (um `NodeId` partilhado por vários tipos de grelha espelha o campo do tipo
+/// ACTIVO), e o passe de pintura de um painel recebe a loja por `&`, não por `&mut` — não há onde
+/// espelhar. ⇒ o chamador traz `valor`, `buffer`, `caret`, `âncora` e o par visual.
+///
+/// ⚠️ **A geometria e o nome saem da MESMA [`row_and_layout`] que a irmã usa** — não há aqui uma
+/// segunda conta de onde a coluna acaba.
+#[allow(clippy::too_many_arguments)]
+pub fn paint_field_row_value(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    x: f32,
+    w: f32,
+    y: f32,
+    label: &str,
+    id: NodeId,
+    value: f64,
+    buffer: Option<&str>,
+    caret: usize,
+    anchor: Option<usize>,
+    visual: (crate::widget::TextInputState, f32),
+    unit: Option<Unit>,
+    campos_da_seccao: usize,
+) -> (f32, Rect) {
+    let (row, _, linhas, cw) = row_and_layout(
+        text_system,
+        scene,
+        theme,
+        x,
+        w,
+        y,
+        label,
+        1,
+        campos_da_seccao,
+    );
+    let rect = Rect::new(row.control.x, row.control.y, cw, ROW_H_PX);
+    hit_index.register(id, rect);
+    let input = NumberInput::new(id, "", value)
+        .visual(visual)
+        .suffix(unit.map(Unit::suffix));
+    paint_number_input_with_buffer(
+        &input,
+        buffer,
+        caret,
+        anchor,
+        rect,
+        scene,
+        text_system,
+        theme,
+    );
+    crate::widget::paint_decorator_dot(scene, theme, row.dot);
+    (y + ph2d_tokens::row_pitch_px() * linhas as f32, rect)
 }

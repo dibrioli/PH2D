@@ -156,6 +156,7 @@ pub use falloff_curve::{
     eval_falloff_curve,
 };
 pub use footprint::{DAB_FLATTEN_MAX, FootprintCurve, FootprintDeform};
+pub use spec::MAX_BRUSH_RADIUS_PX;
 pub use height::{DepthSource, DrawTo};
 pub use jitter::shift_colors_like;
 pub use mask_ops::{MaskCanvasOp, apply_mask_op};

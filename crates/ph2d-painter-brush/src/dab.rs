@@ -370,10 +370,19 @@ fn stamp_dab_inner(
         .map(|l| crate::height_film::FilmLutPlan::new(l, footprint, radius, None));
 
     // Bounding box of the dab, clamped to the canvas (half-open on the max side).
-    let x0 = (cx - radius - aa_pad).floor().max(0.0) as i64;
-    let y0 = (cy - radius - aa_pad).floor().max(0.0) as i64;
-    let x1 = ((cx + radius + aa_pad).ceil() as i64 + 1).min(width as i64);
-    let y1 = ((cy + radius + aa_pad).ceil() as i64 + 1).min(height as i64);
+    //
+    // ⭐⭐⭐ **A caixa segue a PEGADA, não o círculo** ([`crate::FootprintDeform::extent`]): um dab
+    // achatado é uma lasca dentro do quadrado de lado `2·raio`, e com `flatten = 0,75` esse quadrado
+    // tem `4×` os texels que a elipse toca — todos os outros devolvendo cobertura ZERO. ⚠️ **O
+    // resultado pintado é o MESMO ao bit** (o que ficava de fora já tinha `falloff_t > 1`), e é isto
+    // que faz o custo de um dab deixar de crescer com o quadrado do raio: sobre arte comprimida o
+    // raio e o achatamento crescem JUNTOS, logo a área é `R²/|det W|` — os texels que a arte tem.
+    let [ext_x, ext_y] = footprint.extent();
+    let (reach_x, reach_y) = (radius * ext_x + aa_pad, radius * ext_y + aa_pad);
+    let x0 = (cx - reach_x).floor().max(0.0) as i64;
+    let y0 = (cy - reach_y).floor().max(0.0) as i64;
+    let x1 = ((cx + reach_x).ceil() as i64 + 1).min(width as i64);
+    let y1 = ((cy + reach_y).ceil() as i64 + 1).min(height as i64);
     if x0 >= x1 || y0 >= y1 {
         return None;
     }

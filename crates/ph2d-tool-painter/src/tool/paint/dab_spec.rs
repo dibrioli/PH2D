@@ -42,13 +42,27 @@ impl PainterTool {
             brush.dab_flatten,
             brush.dab_angle_deg,
         );
-        // ⚠️ **A cerca é a que o MOTOR já aceita do artista** (`BRUSH_SIZE_MAX_PX`), e o recurso é
-        // nomeado: o custo de um dab cresce com o raio ao QUADRADO, e uma compressão de `50×` num
-        // triângulo quase colapsado pediria um disco que a cache de carimbo nunca viu. ⛔ Não é um
-        // palpite de segurança — é o mesmo número que o slider do painel já entrega ao motor.
+        // ⛔⛔ **A CERCA ESTAVA NA FAIXA DO SLIDER, E O PRÓPRIO FICHEIRO DIZ QUE ELA NÃO É O TECTO
+        // DO MOTOR** (*«the interactive range, not the engine's hard cap»*). Report do dono, 6.ª
+        // foto: *«pinta com diâmetro menor onde é mais estreito»* — medido, o pedido contra o
+        // entregue com o tecto de `512`:
+        //
+        // | raio autorado | comprime a | pedido | entregue |
+        // |---|---|---|---|
+        // | `160` | `4×` | `640` | `512` ⛔ |
+        // | `64` | `16×` | `1 024` | `512` ⛔ |
+        //
+        // Um raio cortado encolhe a elipse nos DOIS eixos, logo a marca chega ao ecrã menor —
+        // exactamente onde a arte comprime, que é onde ela é estreita.
+        //
+        // ⭐ **O tecto é agora o do MOTOR** (`MAX_BRUSH_RADIUS_PX`), e isso só é afordável porque a
+        // caixa do dab passou a seguir a PEGADA em vez do círculo
+        // ([`ph2d_painter_brush::FootprintDeform::extent`]): sobre arte comprimida o raio e o
+        // achatamento crescem juntos, logo a área visitada é `R²/|det W|` — os texels que a arte
+        // tem naquele sítio — e não `R²`.
         brush.radius_px = (brush.radius_px * w.radius_scale).clamp(
             super::brush_ranges::BRUSH_SIZE_MIN_PX,
-            super::brush_ranges::BRUSH_SIZE_MAX_PX,
+            ph2d_painter_brush::MAX_BRUSH_RADIUS_PX,
         );
         brush.dab_flatten = w.flatten;
         brush.dab_angle_deg = w.angle_deg;
@@ -116,6 +130,7 @@ impl PainterTool {
 #[cfg(test)]
 mod tests {
     use super::super::super::PainterTool;
+    use crate::tool::paint::brush_ranges;
 
     /// ⭐⭐⭐ **A PEGADA DO CURSOR É A AUTORADA, NUNCA A QUE O MOTOR PINTA** — o gate do report com
     /// foto (2026-09-14: *«o gizmo do pincel se deforma ao passar por cima das faces dobradas»*).
@@ -240,7 +255,56 @@ mod tests {
         );
     }
 
-    /// Sonda: o TAMANHO que a porta entrega, varrendo a compressão da arte.
+    /// ⭐⭐⭐ **O DIÂMETRO PEDIDO É O DIÂMETRO EMITIDO** — o report da 6.ª foto do dono
+    /// (*«pinta com diâmetro menor onde é mais estreito»*, 2026-09-14).
+    ///
+    /// ⛔⛔ O tecto era a faixa do SLIDER (`BRUSH_SIZE_MAX_PX = 512`), cujo próprio doc diz *«the
+    /// interactive range, **not** the engine's hard cap»*. Um raio cortado encolhe a elipse nos DOIS
+    /// eixos, logo a marca chega ao ecrã menor — e corta exactamente onde a arte comprime, que é
+    /// onde ela é estreita. Medido antes: um pincel de `160` era cortado já a `4×` de compressão.
+    ///
+    /// ⚠️ **A cerca a `32×` fica, e é do MODELO, não do tecto:** ali o `dab_flatten` satura no
+    /// [`ph2d_painter_brush::DAB_FLATTEN_MAX`] (`0,95`) e a elipse deixa de poder ser mais fina —
+    /// uma lasca infinitamente fina não é pintável. É por isso que o corpus pára em `16×`.
+    #[test]
+    fn the_diameter_the_engine_emits_is_the_one_the_fold_asks_for() {
+        for raio in [8.0_f32, 64.0, 160.0] {
+            for k in [1.0_f32, 0.5, 0.25, 0.125, 0.0625] {
+                let mut t = PainterTool::default();
+                t.set_brush_size_px(raio);
+                let warp = ph2d_painter_brush::canvas_warp::CanvasWarp::linear([
+                    [k, 0.0],
+                    [0.0, 1.0],
+                ]);
+                t.set_canvas_warp(warp);
+                let pedido =
+                    raio * ph2d_painter_brush::canvas_warp::warped_dab(warp, 0.0, 0).radius_scale;
+                let emitido = t.stroke_spec().radius_px;
+                assert!(
+                    (emitido - pedido).abs() <= pedido * 1e-4,
+                    "com a arte comprimida {}× o motor emite raio {emitido} onde a deformação pede \
+                     {pedido} — a marca chega ao ecrã menor do que o artista pediu",
+                    1.0 / k
+                );
+            }
+        }
+        // ⛔ O CONTROLO: sem a composição não há nada a cortar, e este gate passaria sobre uma porta
+        // que ignorasse a deformação. A `8×` o raio TEM de ter crescido muito acima da faixa do
+        // slider — que é o tecto que estava aqui e que cortava.
+        let mut t = PainterTool::default();
+        t.set_brush_size_px(160.0);
+        t.set_canvas_warp(ph2d_painter_brush::canvas_warp::CanvasWarp::linear([
+            [0.125, 0.0],
+            [0.0, 1.0],
+        ]));
+        assert!(
+            t.stroke_spec().radius_px > brush_ranges::BRUSH_SIZE_MAX_PX * 2.0,
+            "o raio emitido não passou da faixa do slider — o corpus deixou de exercitar o tecto \
+             que era o defeito"
+        );
+    }
+
+    /// Sonda: o TAMANHO que a porta entrega, varrendo a compressão da arte.    /// Sonda: o TAMANHO que a porta entrega, varrendo a compressão da arte.
     #[test]
     #[ignore = "sonda: o diametro entregue contra a compressao"]
     fn probe_o_diametro_contra_a_compressao() {

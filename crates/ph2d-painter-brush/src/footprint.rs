@@ -286,6 +286,49 @@ impl FootprintDeform {
         super::canvas_warp_curve::compoe(self.curve.rows(), I, I, 1.0, [self.cos, -self.sin]).rows()
     }
 
+    /// ⭐⭐⭐ **A CAIXA da pegada**, em unidades de raio: as meias-extensões em `x` e `y` da curva de
+    /// nível que o amostrador usa. `[1, 1]` num dab redondo.
+    ///
+    /// ⛔⛔ **Ela existe porque o laço do dab percorria um QUADRADO de lado `2·raio`**, e um dab
+    /// achatado é uma lasca dentro dele: com `flatten = 0,75` o quadrado tem `4×` os texels que a
+    /// elipse toca, e todos os outros devolvem cobertura ZERO. Isso não era só desperdício — era o
+    /// que obrigava o tecto do raio a ser baixo, e o tecto baixo **encolhia o dab** sobre arte
+    /// comprimida (report do dono, 6.ª foto).
+    ///
+    /// ⭐ **E a conta fecha:** sobre arte comprimida o raio cresce por `s₁` e o achatamento cresce
+    /// junto, logo a área da elipse é `R² · s₁ · s₂ = R² / |det W|` — **exactamente os texels que a
+    /// arte tem naquele sítio**. Com a caixa certa o custo do dab deixa de crescer com o quadrado do
+    /// raio e passa a ser o da resolução da própria arte.
+    ///
+    /// ⚠️ **É um SUPERCONJUNTO declarado, nunca uma segunda resposta:** ela promete apenas CONTER a
+    /// curva de nível, e há gate a afirmá-lo por varredura. Com curvatura a fronteira não é uma
+    /// elipse e a caixa sai do próprio [`Self::outline_at`], com margem.
+    #[must_use]
+    pub fn extent(self) -> [f32; 2] {
+        if self.curve.is_flat() {
+            // `p = R(θ)·diag(1, m)·u` com `|u| = 1` ⇒ a meia-extensão de um eixo é a norma da linha
+            // correspondente. Exacto, sem amostragem.
+            let m = self.minor_fraction();
+            let (c, s) = (self.cos, self.sin);
+            return [
+                (c * c + s * s * m * m).sqrt(),
+                (s * s + c * c * m * m).sqrt(),
+            ];
+        }
+        const AMOSTRAS: usize = 64;
+        /// ⚠️ A margem cobre o extremo que cai ENTRE duas amostras — e ela é para cima, que é o lado
+        /// seguro: uma caixa grande a mais visita texels de cobertura zero, uma pequena a menos
+        /// corta tinta.
+        const MARGEM: f32 = 1.03;
+        let (mut ex, mut ey) = (0.0f32, 0.0f32);
+        for k in 0..AMOSTRAS {
+            let p = self.outline_at(k as f32 / AMOSTRAS as f32);
+            ex = ex.max(p[0].abs());
+            ey = ey.max(p[1].abs());
+        }
+        [(ex * MARGEM).max(1e-3), (ey * MARGEM).max(1e-3)]
+    }
+
     /// ⭐⭐⭐ **A pegada é AMOSTRÁVEL?** — a cerca que impede uma dobra violenta de sair PIOR do que
     /// não corrigir nada.
     ///
@@ -483,6 +526,61 @@ mod outline_tests {
         assert!(
             d > 0.5,
             "o contorno não roda com o ângulo do dab (desvio {d}): ele está a ignorar a orientação"
+        );
+    }
+}
+
+#[cfg(test)]
+mod extent_tests {
+    use super::*;
+
+    /// ⭐⭐⭐ **A CAIXA CONTÉM A CURVA DE NÍVEL** — a única promessa que ela faz, varrida.
+    ///
+    /// ⛔ **A metade ANTI-VÁCUO é a segunda:** devolver `[1, 1]` sempre satisfaz a contenção e não
+    /// serve para nada. Num dab achatado a caixa TEM de encolher, e é isso que paga o tecto do raio.
+    #[test]
+    fn the_extent_contains_the_level_set_and_is_tight() {
+        let curvas = [
+            FootprintCurve::flat(),
+            FootprintCurve::from_rows([
+                [0.10, -0.06, 0.04, 0.03, 0.0, -0.02, 0.0],
+                [-0.05, 0.11, 0.0, 0.0, 0.06, 0.0, -0.04],
+            ]),
+        ];
+        let mut casos = 0;
+        for flatten in [0.0_f32, 0.25, 0.6, 0.9] {
+            for angle in [0_u16, 23, 90, 197] {
+                for curve in curvas {
+                    let fp = FootprintDeform::new(flatten, angle).with_curve(curve);
+                    let [ex, ey] = fp.extent();
+                    // CONTENÇÃO: nenhum ponto com `falloff_t <= 1` pode cair fora da caixa.
+                    for i in 0..=120 {
+                        for j in 0..=120 {
+                            let p = [
+                                -2.0 + 4.0 * i as f32 / 120.0,
+                                -2.0 + 4.0 * j as f32 / 120.0,
+                            ];
+                            if fp.falloff_t(p[0], p[1]) <= 1.0 {
+                                assert!(
+                                    p[0].abs() <= ex + 1e-3 && p[1].abs() <= ey + 1e-3,
+                                    "o ponto {p:?} está DENTRO da pegada e FORA da caixa \
+                                     [{ex}, {ey}] (flatten {flatten}, ângulo {angle}°)"
+                                );
+                            }
+                        }
+                    }
+                    casos += 1;
+                }
+            }
+        }
+        assert_eq!(casos, 4 * 4 * 2, "o corpus mudou de tamanho");
+        // ⛔ TIGHTNESS: uma pena muito achatada tem de dar uma caixa MUITO menor num dos eixos.
+        let lasca = FootprintDeform::new(0.9, 0);
+        let [_, ey] = lasca.extent();
+        assert!(
+            ey < 0.15,
+            "a caixa de uma pena a `flatten = 0,9` mede {ey} no eixo menor — ela não encolheu, e \
+             o laço do dab continua a visitar texels de cobertura zero"
         );
     }
 }

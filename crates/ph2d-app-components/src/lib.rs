@@ -108,12 +108,13 @@ pub mod instance_verbs_walk;
 pub mod instantiate;
 pub mod master_editing;
 pub mod prefab_stage;
+/// ⭐⭐⭐ **O mover de VISTA DE CIMA** (TOP-20 #13) — as duas cenas do dono.
+pub mod projectile_smoke;
 pub mod scene_ctx;
 pub mod signal_action_smoke;
 pub mod tags_doc;
 pub mod tags_smoke;
 pub mod timer_smoke;
-/// ⭐⭐⭐ **O mover de VISTA DE CIMA** (TOP-20 #13) — as duas cenas do dono.
 pub mod topdown_smoke;
 
 /// ⚠️ **`#[cfg(any(test, feature = "test-support"))]` e não `#[cfg(test)]`** (HOWTO §2.5): daqui a
@@ -180,6 +181,7 @@ pub const FAMILY: ph2d_app_host::AppFamily = ph2d_app_host::AppFamily {
         // ⭐⭐⭐ O mover de VISTA DE CIMA (TOP-20 #13): `=1` o corredor · `=2` a isometria com o
         // controlo ao lado. ⚠️ O `max_level` é **contado** no `match` do `montar`.
         r("PH2D_TOPDOWN_SMOKE", topdown_smoke::CENAS),
+        r("PH2D_PROJECTILE_SMOKE", projectile_smoke::CENAS),
     ],
 };
 

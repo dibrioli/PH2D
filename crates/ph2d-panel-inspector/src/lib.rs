@@ -75,6 +75,9 @@ mod populate_timer;
 mod populate_topdown;
 mod sections;
 pub mod state;
+/// ⭐ Os instantâneos das secções da fila do TOP-20 — irmão do [`state`] por CAP de LOC.
+/// Ver o cabeçalho dele.
+mod state_components;
 mod state_popovers;
 /// ⚠️ As duas conversões de tinta — irmão do `state` por CAP de LOC. Ver o cabeçalho dele.
 mod state_tint;
@@ -149,18 +152,21 @@ pub fn player_row_labels() -> Vec<&'static str> {
 pub use sections::slice_grid::{CORNER_LETTERS, REGION_CELLS, is_corner_cell};
 pub use state::{
     InspectorState, last_inspector_content_h, last_inspector_visible_h, open_anchor_row,
-    set_current_display_unit, set_current_inspector_action, set_current_inspector_anchor,
-    set_current_inspector_anim, set_current_inspector_audio, set_current_inspector_blend,
-    set_current_inspector_camera, set_current_inspector_factory, set_current_inspector_instance,
-    set_current_inspector_joint, set_current_inspector_name, set_current_inspector_ordering,
-    set_current_inspector_physics, set_current_inspector_player, set_current_inspector_projectile,
-    set_current_inspector_properties, set_current_inspector_sampling, set_current_inspector_slice,
-    set_current_inspector_sprite, set_current_inspector_tags, set_current_inspector_timer,
-    set_current_inspector_topdown, set_current_inspector_transform,
-    set_current_inspector_visibility, set_current_inspector_visibility_section,
-    set_current_inspector_wheel, set_current_tag_tree,
+    set_current_display_unit, set_current_inspector_anchor, set_current_inspector_anim,
+    set_current_inspector_blend, set_current_inspector_instance, set_current_inspector_joint,
+    set_current_inspector_name, set_current_inspector_ordering, set_current_inspector_physics,
+    set_current_inspector_player, set_current_inspector_properties, set_current_inspector_sampling,
+    set_current_inspector_slice, set_current_inspector_sprite, set_current_inspector_tags,
+    set_current_inspector_transform, set_current_inspector_visibility,
+    set_current_inspector_visibility_section, set_current_inspector_wheel, set_current_tag_tree,
 };
 pub use state::{probe_current_instance, probe_current_properties, texture_slot_pick};
+/// ⭐ As portas dos instantâneos das secções da fila do TOP-20 — ver o cabeçalho do módulo irmão.
+pub use state_components::{
+    set_current_inspector_action, set_current_inspector_audio, set_current_inspector_camera,
+    set_current_inspector_factory, set_current_inspector_projectile, set_current_inspector_timer,
+    set_current_inspector_topdown,
+};
 
 /// ⭐ **As opções que a caixa de escolha da secção TAGS oferece**, para o gate as poder LER.
 ///

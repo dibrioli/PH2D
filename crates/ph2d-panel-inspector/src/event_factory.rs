@@ -18,11 +18,9 @@ use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_editor_core::screens::hero::{FactoryFieldEdit, InspectorSpawnWhere};
 
-use crate::state;
-
 /// Despacha um evento das secções FACTORY / LIFECYCLE. `true` = consumido.
 pub(crate) fn apply_factory_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
-    let Some(info) = state::current_inspector_factory() else {
+    let Some(info) = crate::state_components::current_inspector_factory() else {
         return false;
     };
     let bits = info.entity_bits;

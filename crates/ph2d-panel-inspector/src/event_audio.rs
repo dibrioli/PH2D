@@ -20,14 +20,12 @@ use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_editor_core::screens::hero::AudioFieldEdit;
 use ph2d_editor_core::widget::ButtonState;
 
-use crate::state;
-
 /// O maior valor que um `u8` guarda — a cerca da conversão, não um número de desenho.
 const U8_TOP: f64 = 255.0; // LITERAL-PX-OK: o teto de um `u8`, não um pixel
 
 /// Despacha um evento da secção AUDIO. `true` = consumido.
 pub(crate) fn apply_audio_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
-    let Some(info) = state::current_inspector_audio() else {
+    let Some(info) = crate::state_components::current_inspector_audio() else {
         return false;
     };
     let bits = info.entity_bits;

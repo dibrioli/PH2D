@@ -11,7 +11,7 @@ use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_editor_core::screens::hero::ActionFieldEdit;
 use ph2d_editor_core::widget::ButtonState;
 
-use crate::state::{self, InspectorState};
+use crate::state::InspectorState;
 
 /// Despacha um evento da secção. `true` = consumido.
 pub(crate) fn apply_action_event(
@@ -19,7 +19,7 @@ pub(crate) fn apply_action_event(
     host: &mut dyn PanelHostInternal,
     ev: WidgetEvent,
 ) -> bool {
-    let Some(info) = state::current_inspector_action() else {
+    let Some(info) = crate::state_components::current_inspector_action() else {
         return false;
     };
     let sel = panel.action_selected.min(info.rows.len().saturating_sub(1));

@@ -342,63 +342,6 @@ pub(crate) fn current_inspector_anim() -> Option<InspectorAnimInfo> {
     CURRENT_INSPECTOR_ANIM.with(|c| c.borrow().clone())
 }
 
-pub fn set_current_inspector_timer(info: Option<InspectorTimerInfo>) {
-    CURRENT_INSPECTOR_TIMER.with(|c| *c.borrow_mut() = info);
-}
-
-pub(crate) fn current_inspector_timer() -> Option<InspectorTimerInfo> {
-    CURRENT_INSPECTOR_TIMER.with(|c| c.borrow().clone())
-}
-
-pub fn set_current_inspector_action(info: Option<InspectorActionInfo>) {
-    CURRENT_INSPECTOR_ACTION.with(|c| *c.borrow_mut() = info);
-}
-
-pub(crate) fn current_inspector_action() -> Option<InspectorActionInfo> {
-    CURRENT_INSPECTOR_ACTION.with(|c| c.borrow().clone())
-}
-
-pub fn set_current_inspector_audio(info: Option<InspectorAudioInfo>) {
-    CURRENT_INSPECTOR_AUDIO.with(|c| *c.borrow_mut() = info);
-}
-
-pub fn set_current_inspector_factory(info: Option<InspectorFactoryInfo>) {
-    CURRENT_INSPECTOR_FACTORY.with(|c| *c.borrow_mut() = info);
-}
-
-pub(crate) fn current_inspector_factory() -> Option<InspectorFactoryInfo> {
-    CURRENT_INSPECTOR_FACTORY.with(|c| c.borrow().clone())
-}
-
-/// ⭐ O snapshot do MOVER DE VISTA DE CIMA (TOP-20 #13) — a shell escreve-o todo o quadro.
-pub fn set_current_inspector_topdown(info: Option<InspectorTopDownInfo>) {
-    CURRENT_INSPECTOR_TOPDOWN.with(|c| *c.borrow_mut() = info);
-}
-
-pub(crate) fn current_inspector_topdown() -> Option<InspectorTopDownInfo> {
-    CURRENT_INSPECTOR_TOPDOWN.with(|c| c.borrow().clone())
-}
-
-pub fn set_current_inspector_projectile(info: Option<InspectorProjectileInfo>) {
-    CURRENT_INSPECTOR_PROJECTILE.with(|c| *c.borrow_mut() = info);
-}
-
-pub(crate) fn current_inspector_projectile() -> Option<InspectorProjectileInfo> {
-    CURRENT_INSPECTOR_PROJECTILE.with(|c| c.borrow().clone())
-}
-
-pub fn set_current_inspector_camera(info: Option<InspectorCameraInfo>) {
-    CURRENT_INSPECTOR_CAMERA.with(|c| *c.borrow_mut() = info);
-}
-
-pub(crate) fn current_inspector_camera() -> Option<InspectorCameraInfo> {
-    CURRENT_INSPECTOR_CAMERA.with(|c| c.borrow().clone())
-}
-
-pub(crate) fn current_inspector_audio() -> Option<InspectorAudioInfo> {
-    CURRENT_INSPECTOR_AUDIO.with(|c| c.borrow().clone())
-}
-
 pub(crate) fn current_inspector_sampling() -> Option<InspectorSamplingInfo> {
     CURRENT_INSPECTOR_SAMPLING.with(|c| c.get())
 }

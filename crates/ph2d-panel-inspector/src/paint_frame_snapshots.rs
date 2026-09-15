@@ -88,13 +88,13 @@ impl LiveSnapshots {
         let instance_info = crate::state::current_inspector_instance();
         let properties_info = crate::state::current_inspector_properties();
         let name_present = crate::state::current_inspector_name_is_some();
-        let timer_info = crate::state::current_inspector_timer();
-        let action_info = crate::state::current_inspector_action();
-        let audio_info = crate::state::current_inspector_audio();
-        let camera_info = crate::state::current_inspector_camera();
-        let factory_info = crate::state::current_inspector_factory();
-        let topdown_info = crate::state::current_inspector_topdown();
-        let projectile_info = crate::state::current_inspector_projectile();
+        let timer_info = crate::state_components::current_inspector_timer();
+        let action_info = crate::state_components::current_inspector_action();
+        let audio_info = crate::state_components::current_inspector_audio();
+        let camera_info = crate::state_components::current_inspector_camera();
+        let factory_info = crate::state_components::current_inspector_factory();
+        let topdown_info = crate::state_components::current_inspector_topdown();
+        let projectile_info = crate::state_components::current_inspector_projectile();
         let tags_info = crate::state::current_inspector_tags();
         let any_section = any_live_section([
             transform_info.is_some(),

@@ -212,7 +212,7 @@ pub(crate) fn paint_deferred_popovers(
     // os rótulos são do snapshot, que é a fonte deles; a tag é a da linha ABERTA no editor, que
     // vive no `InspectorState` — e este passe não o alcança. *Guardar o que não se pode rederivar.*
     if let Some((sel, chip)) = state_popovers::take_pending_action_dd()
-        && let Some(info) = state::current_inspector_action()
+        && let Some(info) = crate::state_components::current_inspector_action()
     {
         let mut dd = Dropdown::new(
             crate::ids::INSP_ACTION_VERB_PICK,
@@ -235,7 +235,7 @@ pub(crate) fn paint_deferred_popovers(
 
     // AUDIO — o seletor do BARRAMENTO, mesmo passe diferido, slot próprio.
     if let Some((sel, chip)) = state_popovers::take_pending_audio_dd()
-        && let Some(info) = state::current_inspector_audio()
+        && let Some(info) = crate::state_components::current_inspector_audio()
     {
         let mut dd = Dropdown::new(
             crate::ids::INSP_AUDIO_BUS_PICK,

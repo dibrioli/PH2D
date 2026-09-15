@@ -154,7 +154,13 @@ fn uma_bala_barrada_nao_gasta_alcance() {
     let (mut sim, mut bridge, _) = cena(
         ProjectileLaw {
             initial_speed: 6.0,
-            range: 100.0,
+            // ⚠️⚠️ **O alcance é CURTO de propósito, e a 1.ª redacção deste gate estava errada.**
+            // Com `100 m` e 120 tiques, um produto que contasse o orçamento PEDIDO em vez do
+            // ANDADO acumularia `0,1 m` por tique ⇒ `12 m`, muito abaixo do alcance — e o gate
+            // passava sobre o defeito. *Uma fixtura que não consegue produzir o sujeito do próprio
+            // teste passa sempre.* Com `4 m`: o produto honesto anda `~1,4 m` até à parede e nunca
+            // lá chega; o defeito chega aos `4` em `40` tiques.
+            range: 4.0,
             // ⚠️ Sem saltos ela ACABA ao bater — o que se mede aqui é o alcance, então o voo tem
             // de sobreviver ao toque: um tecto alto e uma parede à frente.
             max_bounces: 200,
@@ -166,10 +172,19 @@ fn uma_bala_barrada_nao_gasta_alcance() {
         0.0,
     );
     parede(&mut sim, Vec2::new(1.5, 0.0), (1.0, 20.0));
-    corre(&mut sim, &mut bridge, 120);
+    // ⚠️⚠️ **O canal é do DISPATCH, não do quadro** — ele é limpo a cada tique, e uma leitura no
+    // FIM de 120 tiques mede o último instante, nunca a corrida. A 1.ª redacção deste gate lia-o
+    // no fim e uma mutação sobreviveu: o defeito matava a bala ao tique `40` e o canal já estava
+    // vazio ao `120`. *Um canal por-tique lê-se a cada tique.*
+    let mut morreu = false;
+    for t in 1..=120 {
+        bridge.dispatch(&mut sim, true, t);
+        morreu |= !bridge.projectile_done().is_empty();
+    }
     assert!(
-        bridge.projectile_done().is_empty(),
-        "ela morreu de alcance encostada a uma parede — o alcance esta' a contar o pedido, nao o andado"
+        !morreu,
+        "ela morreu de alcance encostada a uma parede — o alcance esta' a contar o PEDIDO, nao o \
+         ANDADO"
     );
 }
 
@@ -260,27 +275,52 @@ fn um_alvo_que_nao_existe_nao_parte_nada() {
     assert!(p.x.is_finite() && p.y.is_finite() && p.x > 2.0, "{p:?}");
 }
 
-/// ⭐⭐⭐ **A memória ATRAVESSA os tiques** — sem isso a bala re-nasce a cada quadro e nunca cai.
+/// ⭐⭐⭐ **A memória ATRAVESSA os tiques** — sem isso a bala re-nasce a cada quadro.
+///
+/// # ⚠️⚠️ A 1.ª redacção deste gate media a grandeza FRACA, e uma mutação sobreviveu
+///
+/// Ela pedia *«caiu mais de `1,5 m`»*, e a bala com a memória apagada cai **`1,93 m`** — passa. O
+/// mecanismo que a salva é subtil e vale a pena escrever: com `face_velocity` ligado, a ponte
+/// escreve o ÂNGULO do corpo a cada tique, e o re-nascimento do tique seguinte lê esse ângulo. ⇒
+/// **a rotação é uma SEGUNDA memória de direcção**, e ela mascara a perda da primeira.
+///
+/// ⭐ A régua que separa os dois é uma **LEI**, não um limiar: a gravidade só toca em `y`, logo o
+/// `x` de um voo com memória é **exactamente** `v·t`. Com a memória apagada o corpo roda para baixo
+/// e o `x` fica para trás (`2,20` contra `3,00`). E a queda tem o valor discreto EXACTO da soma
+/// `g·dt²·n(n+1)/2` — `2,5833`, e não o `½gt²` contínuo.
 #[test]
 fn a_memoria_do_voo_atravessa_os_tiques() {
+    const G: f32 = 20.0;
+    const V: f32 = 6.0;
+    const N: u64 = 30;
     let (mut sim, mut bridge, quem) = cena(
         ProjectileLaw {
-            initial_speed: 6.0,
-            gravity: 20.0,
+            initial_speed: V,
+            gravity: G,
             ..ProjectileLaw::default()
         },
         0,
         Vec2::new(0.0, 0.0),
         0.0,
     );
-    corre(&mut sim, &mut bridge, 30);
+    corre(&mut sim, &mut bridge, N);
     let p = pos(&sim, quem);
-    // Meio segundo a −20 m/s² ⇒ ~−2,5 m. Com a memória perdida a cada tique a queda seria
-    // `30 × ½·g·dt²` ≈ −0,08 m: duas ordens de grandeza abaixo.
+
+    // ⭐ **A gravidade não toca em `x`** — isto é lei, e o produto acerta-a ao milésimo.
+    let esperado_x = V * (N as f32) * DT;
     assert!(
-        p.y < -1.5,
-        "a queda foi {}, logo a velocidade nao esta' a acumular entre tiques",
+        (p.x - esperado_x).abs() < 1.0e-3,
+        "o `x` de um voo com memoria e' EXACTAMENTE v·t: {:.4} contra {esperado_x:.4}.\n\
+         ⚠️ Se ele ficou para tras, a memoria da velocidade nasce fresca e quem conduz a \
+         direccao passou a ser a ROTACAO.",
+        p.x
+    );
+    // ⭐ E a queda é a soma DISCRETA exacta, não `½gt²`: `g·dt²·(1+2+…+n)`.
+    #[allow(clippy::cast_precision_loss)]
+    let esperado_y = -G * DT * DT * (N * (N + 1) / 2) as f32;
+    assert!(
+        (p.y - esperado_y).abs() < 1.0e-3,
+        "a queda tem de ser a soma discreta exacta: {:.4} contra {esperado_y:.4}",
         p.y
     );
-    let _ = DT;
 }

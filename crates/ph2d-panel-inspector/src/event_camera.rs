@@ -24,12 +24,10 @@ use ph2d_editor_core::interaction::{InteractiveState, WidgetEvent};
 use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_editor_core::screens::hero::CameraFieldEdit;
 
-use crate::state;
-
 /// Despacha um evento da secção CAMERA. `true` = consumido.
 #[allow(clippy::too_many_lines)]
 pub(crate) fn apply_camera_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
-    let Some(info) = state::current_inspector_camera() else {
+    let Some(info) = crate::state_components::current_inspector_camera() else {
         return false;
     };
     let bits = info.entity_bits;

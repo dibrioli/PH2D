@@ -57,7 +57,7 @@ pub(crate) fn sync_new_sections(
         inspector_state.last_anim_row = Some(row);
         sync_anim_fields(host, &an, row, entity_changed || row_changed);
     }
-    if let Some(tm) = crate::state::current_inspector_timer() {
+    if let Some(tm) = crate::state_components::current_inspector_timer() {
         // ⚠️ **A mesma ARESTA das duas irmãs**, e pelo mesmo defeito medido.
         let row = if tm.rows.is_empty() {
             0
@@ -72,10 +72,10 @@ pub(crate) fn sync_new_sections(
     // valores de PARTIDA do `populate` — nunca os do objecto —, e trocar de objecto deixava os
     // números do anterior no ecrã. ⚠️ Elas não têm LINHA aberta (um objecto tem um som e uma
     // câmera), então a aresta é só a entidade.
-    if let Some(au) = crate::state::current_inspector_audio() {
+    if let Some(au) = crate::state_components::current_inspector_audio() {
         sync_audio_fields(host, &au, entity_changed);
     }
-    if let Some(cam) = crate::state::current_inspector_camera() {
+    if let Some(cam) = crate::state_components::current_inspector_camera() {
         sync_camera_fields(host, &cam, entity_changed);
     }
     // ⭐⭐⭐ **TAGS** (TOP-20 #9). ⚠️ **Ela não tem campo a semear do objecto** — os chips e a lista

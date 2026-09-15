@@ -4826,6 +4826,7 @@ dependencies = [
  "ph2d-panel-asset-browser",
  "ph2d-physics-ecs",
  "ph2d-preview-drive",
+ "ph2d-projectile",
  "ph2d-render",
  "ph2d-skeleton-ecs",
  "ph2d-tags",

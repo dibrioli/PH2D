@@ -15,11 +15,9 @@ use ph2d_editor_core::topdown_edits::{
     InspectorFacing, InspectorMoveDirections, InspectorViewpoint, TopDownFieldEdit,
 };
 
-use crate::state;
-
 /// Despacha um evento da secção TOP-DOWN PLAYER. `true` = consumido.
 pub(crate) fn apply_topdown_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
-    let Some(info) = state::current_inspector_topdown() else {
+    let Some(info) = crate::state_components::current_inspector_topdown() else {
         return false;
     };
     let bits = info.entity_bits;

@@ -215,6 +215,38 @@ impl crate::App {
         self.playhead.play();
     }
 
+    /// ⭐⭐⭐ **O PROJÉCTIL** (TOP-20 #14, W4). Prólogo do quadro, uma vez.
+    ///
+    /// ⚠️ **As duas cenas precisam do relógio A ANDAR**, e por duas razões que só juntas se lêem:
+    /// a ponte do projéctil corre no **passo fixo**, e o voo só COMEÇA quando o primeiro tique
+    /// corre. Sem isto o artista vê quatro rectângulos parados e lê *«as balas não saem»* — que é
+    /// o veredito errado sobre um componente que funciona.
+    ///
+    /// ⛔⛔ *Uma cena de smoke que ensina o CONTRÁRIO do que acontece é pior que uma cena ausente*
+    /// (`CLAUDE.md` §5.0).
+    pub(crate) fn projectile_smoke(&mut self) {
+        if self.components_smokes.projectile {
+            return;
+        }
+        let Some(v) = std::env::var_os("PH2D_PROJECTILE_SMOKE") else {
+            return;
+        };
+        let nivel = v.to_str().and_then(|s| s.parse().ok()).unwrap_or(1);
+        let Some(cx) = self.components_ctx() else {
+            return;
+        };
+        let _ = ph2d_app_components::projectile_smoke::montar(cx.sim.world_mut(), nivel);
+        self.components_smokes.projectile = true;
+        self.timeline.flags.simulate_physics = true;
+        // ⚠️ A régua abre junto — uma instrução que fala do transporte sobre um ecrã sem ele
+        // devolve *«que régua?»* (a lição da cena 67 da física).
+        if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
+            hero.panel_visibility.insert("timeline", true);
+        }
+        self.playhead.rewind();
+        self.playhead.play();
+    }
+
     /// Prólogo do quadro, uma vez. No-op sem a env.
     pub(crate) fn instance_smoke(&mut self) {
         if self.components_smokes.instance || std::env::var_os("PH2D_INSTANCE_SMOKE").is_none() {

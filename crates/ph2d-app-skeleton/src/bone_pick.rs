@@ -16,12 +16,35 @@ use ph2d_ecs::{Entity, SimWorld};
 /// usam, para o dedo do artista ter sempre a mesma tolerância.
 pub const BONE_HIT_PX: f64 = 12.0;
 
+/// ⭐⭐⭐ **O CORPO de um osso, em MUNDO** — a MESMA polilinha que o overlay pinta
+/// ([`ph2d_skeleton_live::skin_live::bone_polylines`]).
+///
+/// ⛔ **É a porta que impede o osso curvo de ser um controlo morto sob o dedo:** desde a F8 o corpo
+/// desenhado é uma polilinha, e um dedo que continuasse a medir a corda raiz→ponta agarraria uma
+/// linha que não está pintada em sítio nenhum. Num osso recto ela devolve dois nós e tudo aqui
+/// continua a ser o que era, ao bit.
+fn corpo(sim: &SimWorld, bits: u64) -> Option<Vec<[f64; 2]>> {
+    ph2d_skeleton_live::skin_live::bone_polylines(sim)
+        .into_iter()
+        .find(|(x, _)| *x == bits)
+        .map(|(_, pts)| pts)
+}
+
+/// **O comprimento ANDADO deste osso, em píxeis de TELA** — a régua de que a bolinha da junta sai.
+///
+/// ⚠️ **É o arco e não a corda**, pela mesma razão do desenho: num osso muito arqueado a corda
+/// encolhe, e uma bolinha dimensionada por ela ficaria mais pequena exactamente quando o osso é
+/// mais difícil de agarrar. Num osso recto os dois números são o mesmo `hypot`.
+fn comp_px(pts: &[[f64; 2]], px_to_world: f64) -> f64 {
+    ph2d_skeleton::bend::arc_length(pts) / px_to_world.max(f64::MIN_POSITIVE)
+}
+
 /// **O osso sob o ponteiro** (o mais próximo dentro do raio), ou `None`.
 pub fn hit(sim: &SimWorld, world: [f64; 2], px_to_world: f64) -> Option<u64> {
     let r = BONE_HIT_PX * px_to_world;
     let mut melhor: Option<(f64, u64)> = None;
-    for (bits, a, b) in ph2d_skeleton_live::skin_live::bone_segments(sim) {
-        let d2 = ph2d_skeleton::dist2_to_segment(world, a, b);
+    for (bits, pts) in ph2d_skeleton_live::skin_live::bone_polylines(sim) {
+        let d2 = ph2d_skeleton::dist2_to_polyline(world, &pts);
         if d2 <= r * r && melhor.is_none_or(|(m, _)| d2 < m) {
             melhor = Some((d2, bits));
         }
@@ -46,9 +69,9 @@ pub fn hit(sim: &SimWorld, world: [f64; 2], px_to_world: f64) -> Option<u64> {
 /// inexprimível — que é exactamente o defeito que esta wave veio curar, um nível acima.
 pub fn tip_at(sim: &SimWorld, world: [f64; 2], px_to_world: f64) -> Option<(u64, [f64; 2])> {
     let mut melhor: Option<(f64, u64, [f64; 2])> = None;
-    for (bits, a, b) in ph2d_skeleton_live::skin_live::bone_segments(sim) {
-        let comp_px = (b[0] - a[0]).hypot(b[1] - a[1]) / px_to_world.max(f64::MIN_POSITIVE);
-        let r = ph2d_skeleton_render::joint_radius_px(comp_px) * px_to_world;
+    for (bits, pts) in ph2d_skeleton_live::skin_live::bone_polylines(sim) {
+        let b = *pts.last().expect("a polilinha tem ao menos dois nos");
+        let r = ph2d_skeleton_render::joint_radius_px(comp_px(&pts, px_to_world)) * px_to_world;
         let d = (b[0] - world[0]).hypot(b[1] - world[1]);
         if d <= r && melhor.is_none_or(|(m, _, _)| d < m) {
             melhor = Some((d, bits, b));
@@ -72,12 +95,12 @@ pub fn tip_at(sim: &SimWorld, world: [f64; 2], px_to_world: f64) -> Option<(u64,
 /// ⚠️ Raio e desempate iguais aos do [`tip_at`]: a bolinha DESENHADA, e ganha a mais perto.
 pub fn free_root_at(sim: &SimWorld, world: [f64; 2], px_to_world: f64) -> Option<(u64, [f64; 2])> {
     let mut melhor: Option<(f64, u64, [f64; 2])> = None;
-    for (bits, a, b) in ph2d_skeleton_live::skin_live::bone_segments(sim) {
+    for (bits, pts) in ph2d_skeleton_live::skin_live::bone_polylines(sim) {
         if !is_a_free_chain_root(sim, bits) {
             continue;
         }
-        let comp_px = (b[0] - a[0]).hypot(b[1] - a[1]) / px_to_world.max(f64::MIN_POSITIVE);
-        let r = ph2d_skeleton_render::joint_radius_px(comp_px) * px_to_world;
+        let a = pts[0];
+        let r = ph2d_skeleton_render::joint_radius_px(comp_px(&pts, px_to_world)) * px_to_world;
         let d = (a[0] - world[0]).hypot(a[1] - world[1]);
         if d <= r && melhor.is_none_or(|(m, _, _)| d < m) {
             melhor = Some((d, bits, a));
@@ -116,21 +139,18 @@ pub fn grabbed_the_joint(
     let Some(sim) = sim else {
         return false;
     };
-    ph2d_skeleton_live::skin_live::bone_segments(sim)
-        .into_iter()
-        .find(|(b, _, _)| *b == bits)
-        .is_some_and(|(_, a, b)| {
-            // ⚠️ O raio é o da BOLINHA DESENHADA, pela porta única
-            // ([`ph2d_skeleton_render::joint_radius_px`]): são duas perguntas — *acertei o osso?* e
-            // *acertei a junta DELE?* — mas a bolinha que o dedo procura tem de ser exactamente a
-            // que o olho vê, senão o realce acende num sítio e o clique pega noutro.
-            //
-            // ⚠️ **O comprimento entra em píxeis de TELA**, que é onde a lei da bolinha vive: o
-            // `px_to_world` é a régua, e dividir por ele é o que leva o osso do mundo para lá.
-            let comp_px = (b[0] - a[0]).hypot(b[1] - a[1]) / px_to_world.max(f64::MIN_POSITIVE);
-            (a[0] - world[0]).hypot(a[1] - world[1])
-                <= ph2d_skeleton_render::joint_radius_px(comp_px) * px_to_world
-        })
+    corpo(sim, bits).is_some_and(|pts| {
+        let a = pts[0];
+        // ⚠️ O raio é o da BOLINHA DESENHADA, pela porta única
+        // ([`ph2d_skeleton_render::joint_radius_px`]): são duas perguntas — *acertei o osso?* e
+        // *acertei a junta DELE?* — mas a bolinha que o dedo procura tem de ser exactamente a
+        // que o olho vê, senão o realce acende num sítio e o clique pega noutro.
+        //
+        // ⚠️ **O comprimento entra em píxeis de TELA**, que é onde a lei da bolinha vive: o
+        // `px_to_world` é a régua, e dividir por ele é o que leva o osso do mundo para lá.
+        (a[0] - world[0]).hypot(a[1] - world[1])
+            <= ph2d_skeleton_render::joint_radius_px(comp_px(&pts, px_to_world)) * px_to_world
+    })
 }
 
 /// ⭐⭐ **O QUE ESTÁ SOB O PONTEIRO** — o osso e a METADE dele, para o realce dizer qual verbo o
@@ -212,12 +232,9 @@ pub fn hover(
         // perto de uma delas, então sem isto a cura de cima devolveria o defeito anterior ao
         // contrário: a parede roubaria o gesto de girar em toda a faixa. *Ganha o que está mais
         // perto do dedo* — a regra que não escolhe uma vítima, agora sobre todos os alvos do osso.
-        let d_osso = ph2d_skeleton_live::skin_live::bone_segments(sim)
-            .into_iter()
-            .find(|(x, _, _)| *x == f)
-            .map_or(f64::INFINITY, |(_, a, b)| {
-                ph2d_skeleton::dist2_to_segment(world, a, b).sqrt()
-            });
+        let d_osso = corpo(sim, f).map_or(f64::INFINITY, |pts| {
+            ph2d_skeleton::dist2_to_polyline(world, &pts).sqrt()
+        });
         let melhor = perto
             .into_iter()
             .filter(|&(d, _)| d <= BONE_HIT_PX * px_to_world && d < d_osso)
@@ -265,13 +282,11 @@ pub fn hover(
             .world()
             .get::<ph2d_skeleton_ecs::IkGoal>(Entity::from_bits(bone))
             .is_none()
-        && let Some((_, a, b)) = ph2d_skeleton_live::skin_live::bone_segments(sim)
-            .into_iter()
-            .find(|(x, _, _)| *x == bone)
+        && let Some(pts) = corpo(sim, bone)
     {
-        let comp_px = (b[0] - a[0]).hypot(b[1] - a[1]) / px_to_world.max(f64::MIN_POSITIVE);
+        let b = *pts.last().expect("a polilinha tem ao menos dois nos");
         if (b[0] - world[0]).hypot(b[1] - world[1])
-            <= ph2d_skeleton_render::joint_radius_px(comp_px) * px_to_world
+            <= ph2d_skeleton_render::joint_radius_px(comp_px(&pts, px_to_world)) * px_to_world
         {
             return Some(BoneHover {
                 bone,

@@ -19,6 +19,10 @@
 //! ⛔ **Um osso NÃO é um `VecPath`** — ele não tem tinta, não exporta para SVG e não entra na cena
 //! vectorial. O que se vê é isto, e só enquanto a ferramenta está na mão.
 
+/// ⭐⭐⭐ A SILHUETA DO CORPO — irmão do `goal` pelo tecto de LOC, cortado por RESPONSABILIDADE:
+/// *que forma tem o corpo de um osso* e *como o overlay se compõe* são duas perguntas, e a segunda
+/// é a que mora aqui (hover, selecção, pontas de corrente, temas).
+mod body;
 mod goal;
 
 /// ⭐ O ARCO DE LIMITE — irmão do `goal` pelo teto de LOC, cortado por assunto.
@@ -180,31 +184,27 @@ struct Look {
 /// no mouse down e crescer conforme o usuário arrasta»*): o osso que está a nascer tem de ser
 /// desenhado pelo MESMO código que desenha o que já existe, senão o artista vê uma coisa enquanto
 /// arrasta e recebe outra ao soltar. *Duas pinturas do mesmo objecto divergem no primeiro ajuste.*
+///
+/// ⭐⭐ **Ela recebe uma POLILINHA desde a F8** (o *bendy bone*), e um osso recto — dois nós — sai
+/// daqui **byte a byte** como saía antes: o mecanismo está escrito no cabeçalho do [`body`].
+/// ⛔ *Quem desenha e quem aponta leem a MESMA linha*, senão o osso curvo seria um controlo morto
+/// sob o dedo — desenhado por um mapa e agarrado por outro.
 fn glyph(
-    pa: Point,
-    pb: Point,
+    pts: &[Point],
     look: Look,
     (aceso, apagado): (VelloColor, VelloColor),
     target: &mut VectorScene,
 ) -> f64 {
-    let (dx, dy) = (pb.x - pa.x, pb.y - pa.y);
-    let comp = dx.hypot(dy);
+    let pa = pts[0];
+    // ⚠️ **O comprimento ANDADO**, não a corda raiz→ponta: num osso recto são o mesmo `hypot` ao
+    // bit, e num arqueado a corda encolheria a largura e a bolinha justamente quando ele dobra.
+    let comp = body::arc_px(pts);
     if comp > f64::EPSILON {
-        // A perpendicular unitária, em TELA — é ela que dá a largura constante em píxeis.
-        let (nx, ny) = (-dy / comp, dx / comp);
-        // O ombro do losango fica a um quarto do caminho: é o que faz a silhueta ler como uma seta
-        // e não como um triângulo, e é a proporção que as três referências usam.
-        let ombro = Point::new(pa.x + dx * 0.25, pa.y + dy * 0.25);
         // ⚠️ O `min(comp * 0.25)` continua por cima da lei, e não é redundante: num osso curtíssimo
         // ele impede o ombro de ficar mais largo que o próprio comprimento (a silhueta deixaria de
         // ser uma seta e viraria um losango gordo).
         let w = bone_half_width_px(comp).min(comp * 0.25);
-        let mut p = BezPath::new();
-        p.move_to(pa);
-        p.line_to(Point::new(ombro.x + nx * w, ombro.y + ny * w));
-        p.line_to(pb);
-        p.line_to(Point::new(ombro.x - nx * w, ombro.y - ny * w));
-        p.close_path();
+        let p = body::outline(pts, comp, w);
         if look.cheio {
             target.inner_mut().fill(
                 Fill::NonZero,
@@ -278,8 +278,10 @@ pub fn draw_bone_preview(
     let d = ColorToken::AccentSoft.resolve(theme);
     let apagado = VelloColor::from_rgba8(d.r, d.g, d.b, d.a);
     glyph(
-        transform * Point::new(origin[0], origin[1]),
-        transform * Point::new(tip[0], tip[1]),
+        &[
+            transform * Point::new(origin[0], origin[1]),
+            transform * Point::new(tip[0], tip[1]),
+        ],
         Look {
             corpo: armed,
             junta: armed,
@@ -306,7 +308,7 @@ pub fn draw_bone_preview(
 /// artista SABER, antes de carregar, se vai **girar** (corpo) ou **deslocar** (junta): as duas
 /// alças estão uma dentro da outra, e sem isto a única forma de descobrir o verbo é executá-lo.
 pub fn draw_bones(
-    bones: &[(u64, [f64; 2], [f64; 2])],
+    bones: &[(u64, Vec<[f64; 2]>)],
     selected: Option<u64>,
     hover: Option<BoneHover>,
     tips: &[u64],
@@ -319,14 +321,14 @@ pub fn draw_bones(
         VelloColor::from_rgba8(c.r, c.g, c.b, c.a)
     };
     let (aceso, apagado) = (vello(ColorToken::Accent), vello(ColorToken::AccentSoft));
-    for &(bits, a, b) in bones {
-        let (pa, pb) = (
-            transform * Point::new(a[0], a[1]),
-            transform * Point::new(b[0], b[1]),
-        );
-        let (dx, dy) = (pb.x - pa.x, pb.y - pa.y);
-        let comp = dx.hypot(dy);
-        if comp <= f64::EPSILON {
+    for (bits, corpo) in bones {
+        let (bits, corpo) = (*bits, corpo.as_slice());
+        let tela: Vec<Point> = corpo
+            .iter()
+            .map(|p| transform * Point::new(p[0], p[1]))
+            .collect();
+        let pb = *tela.last().expect("a polilinha tem ao menos dois nos");
+        if body::arc_px(&tela) <= f64::EPSILON {
             continue;
         }
         let sel = Some(bits) == selected;
@@ -335,8 +337,7 @@ pub fn draw_bones(
         let sob = hover.filter(|h| h.bone == bits);
         let parte = |q: BonePart| sob.is_some_and(|h| h.part == q);
         let raio_da_junta = glyph(
-            pa,
-            pb,
+            &tela,
             Look {
                 corpo: sel || parte(BonePart::Body),
                 junta: sel || parte(BonePart::Joint),
@@ -524,8 +525,7 @@ mod tests {
         // Varre desde um osso minúsculo até um osso de zoom fechado.
         for comp in [4.0, 24.0, 48.0, 107.52, 192.0, 340.0, 4000.0] {
             let devolvido = glyph(
-                Point::new(0.0, 0.0),
-                Point::new(comp, 0.0),
+                &[Point::new(0.0, 0.0), Point::new(comp, 0.0)],
                 Look {
                     corpo: false,
                     junta: false,

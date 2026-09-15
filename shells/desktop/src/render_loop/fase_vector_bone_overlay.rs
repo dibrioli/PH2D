@@ -31,7 +31,11 @@ impl crate::App {
         //
         // ⛔ Não é uma forma da cena: nada disto entra no documento, no SVG ou no z-order.
         if overlay.bones {
-            let ossos = crate::skeleton_live::bone_segments(sim);
+            // ⭐⭐ **O CORPO, não as duas pontas** — desde a F8 um osso pode DOBRAR, e o que se
+            // desenha é a polilinha dele. ⛔ Um osso recto devolve dois nós e sai byte a byte como
+            // saía; e quem o AGARRA (`bone_pick`) lê a mesma porta, senão ele seria um controlo
+            // morto sob o dedo.
+            let ossos = crate::skeleton_live::bone_polylines(sim);
             if !ossos.is_empty() {
                 // ⭐⭐⭐ **A REGIÃO DE INFLUÊNCIA do osso em foco** — o *Bone Strength* do Moho.
                 // Ela entra ANTES dos ossos: é um fundo, e o rig desenha-se por cima dela.
@@ -97,29 +101,12 @@ impl crate::App {
                     hero.theme,
                     vector_scene,
                 );
-                // ⭐⭐⭐ **EM *CRIAR*, TODA PONTA É UMA PORTA** (ordem do dono, 2026-09-09:
-                // *«para criar um osso como filho de outro o clique deve acontecer na ponta do
-                // osso pai»*).
-                //
-                // ⛔⛔ **Sem isto o alvo do parentesco seria INVISÍVEL no meio de uma corrente:**
-                // ali a ponta de um osso é a raiz do seguinte, e o que está desenhado no ponto é
-                // a bolinha da junta do FILHO — o artista veria o alvo de outro osso onde tem de
-                // carregar para ramificar deste. *Um alvo que não está onde a coisa parece estar
-                // é um alvo ausente* (a lei que as paredes do limite já pagaram).
-                //
-                // ⚠️ **O anel só muda de VERBO com o modo, nunca de sítio**: em *Transformar* ele
-                // é o *end effector* (cinemática inversa) e por isso só existe em quem fecha a
-                // corrente e não tem âncora; em *Criar* ele é *«daqui nasce um filho»*, que vale
-                // para todo osso. É a mesma alça a dizer o que o clique faz AGORA.
+                // ⚠️ **Que pontas recebem anel é um CORPO e mora na família**
+                // ([`ph2d_app_skeleton::goal::ring_targets`]): aqui decide-se a ORDEM dos passes,
+                // não o que cada um desenha.
                 let criar = self.vec.draw_config.mode == ph2d_tool_vector::DrawMode::Bone
                     && self.vec.draw_config.bone_action == ph2d_tool_vector::BoneAction::Create;
-                let pontas: Vec<u64> = if criar {
-                    ossos.iter().map(|&(b, _, _)| b).collect()
-                } else {
-                    // ⭐⭐ **As pontas SEM âncora** — num osso ancorado o anel é substituído pelo
-                    // losango do alvo, e desenhar os dois prometeria dois verbos onde há um.
-                    crate::skeleton_goal::unanchored_ends(sim)
-                };
+                let pontas = ph2d_app_skeleton::goal::ring_targets(sim, criar);
                 // ⭐⭐⭐ **A FAIXA DA CORRENTE GOVERNADA, por BAIXO dos ossos** (report do dono,
                 // 2026-09-14: *«não temos uma linha indicativa do IK Chain»*). O `Chain` é um
                 // número no painel e o que ele significa é **quais ossos obedecem** — sem isto,
@@ -149,14 +136,7 @@ impl crate::App {
                 ph2d_skeleton_render::draw_goals(
                     &crate::skeleton_goal::anchors(sim),
                     hero.gizmo.selection,
-                    // ⛔ **Em *Criar* o `Tip` quer dizer «daqui nasce um filho», não «arrasta a
-                    // âncora»** — e o losango do alvo pode estar LONGE da ponta. Passar o realce
-                    // acenderia, a metros do dedo, uma alça que aquele modo não executa.
-                    if criar {
-                        None
-                    } else {
-                        self.skeleton.bone_hover
-                    },
+                    ph2d_app_skeleton::goal::goal_hover(criar, self.skeleton.bone_hover),
                     cam_affine,
                     hero.theme,
                     vector_scene,

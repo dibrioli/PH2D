@@ -301,6 +301,19 @@ pub fn dist2_to_segment(p: [f64; 2], a: [f64; 2], b: [f64; 2]) -> f64 {
     project_to_segment(p, a, b).1
 }
 
+/// ⭐⭐ **A distância AO QUADRADO de `p` a uma POLILINHA** — o corpo de um osso que dobra.
+///
+/// ⚠️ **Ela existe para o DEDO ler a mesma linha que o desenho pinta.** Com dois nós devolve
+/// exactamente o [`dist2_to_segment`] daquele troço, ao bit — logo um osso recto continua a ser
+/// agarrado como sempre foi. ⛔ *Desenhar por um mapa e agarrar por outro é um controlo morto sob o
+/// dedo*, e num osso arqueado a diferença entre a corda e o corpo é o osso inteiro.
+#[must_use]
+pub fn dist2_to_polyline(p: [f64; 2], pts: &[[f64; 2]]) -> f64 {
+    pts.windows(2)
+        .map(|w| dist2_to_segment(p, w[0], w[1]))
+        .fold(f64::INFINITY, f64::min)
+}
+
 /// ⭐ **A PROJECÇÃO de `p` no segmento `a..b`** — `(fracção do eixo, distância ao quadrado)`.
 ///
 /// ⚠️ **Ela existe porque o osso que DOBRA precisa dos dois números**, e o [`dist2_to_segment`]

@@ -226,3 +226,40 @@ pub fn share(k: u8, n: u8, u: f64) -> f64 {
     let x = (u * n_f - 0.5).clamp(0.0, n_f - 1.0);
     (1.0 - (x - f64::from(k)).abs()).max(0.0)
 }
+
+/// ⭐⭐⭐ **A POLILINHA DO EIXO**, em espaço LOCAL do osso — os `N+1` nós que o osso percorre.
+///
+/// ⚠️⚠️ **Um osso RÍGIDO devolve DOIS pontos**, `(0,0)` e `(L,0)`, que é o eixo de sempre **ao bit**
+/// — o mesmo colapso, e pela mesma razão, do [`crate::SkinBone::bent`]. *Uma recta com nove nós
+/// desenha a mesma recta e paga nove vezes por ela.*
+///
+/// ⭐ **O primeiro nó é a RAIZ e o último é a PONTA, sempre** — a Bézier começa e acaba nas
+/// extremidades do osso, e em `t = 1` os dois termos de correcção são `0.0` ⇒ o último nó é
+/// `(L, 0)` exacto, o mesmo valor que quem lê só a ponta sempre leu. É isso que deixa a
+/// `bone_segments` deste app derivar-se daqui sem mudar um bit.
+///
+/// ⚠️ É o **CORPO** do osso, não o alcance: a pele continua a pesar pelo eixo de repouso recto (ver
+/// [`crate::SkinBone::sub`]), e quem desenha e quem aponta é que seguem esta linha.
+#[must_use]
+pub fn polyline(spec: BoneSpec) -> Vec<[f64; 2]> {
+    if spec.is_rigid() {
+        return vec![[0.0, 0.0], [spec.length, 0.0]];
+    }
+    let n = segments_of(spec.segments);
+    (0..=n)
+        .map(|k| point_at(spec.length, spec.curve, f64::from(k) / f64::from(n)))
+        .collect()
+}
+
+/// **O COMPRIMENTO PERCORRIDO** de uma polilinha — a soma das cordas.
+///
+/// ⚠️ **Ele existe porque o desenho e o dedo precisam dele e a CORDA não serve:** num osso muito
+/// arqueado a distância entre a raiz e a ponta encolhe, e uma bolinha de junta dimensionada pela
+/// corda encolheria com ela — *a alça ficaria mais pequena exactamente quando o osso fica mais
+/// difícil de agarrar*.
+#[must_use]
+pub fn arc_length(pts: &[[f64; 2]]) -> f64 {
+    pts.windows(2)
+        .map(|w| (w[1][0] - w[0][0]).hypot(w[1][1] - w[0][1]))
+        .sum()
+}

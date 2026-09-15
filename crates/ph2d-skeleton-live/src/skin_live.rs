@@ -46,25 +46,61 @@ fn world_of(sim: &SimWorld, e: Entity) -> Xform {
 /// ⚠️ Devolve **todos** os ossos da cena: quem quer um esqueleto só filtra por
 /// [`skeleton_of`]. Uma segunda varredura com outra regra divergiria desta na primeira ramificação.
 pub fn bone_segments(sim: &SimWorld) -> Vec<(u64, [f64; 2], [f64; 2])> {
+    // ⭐⭐ **DERIVADA da polilinha, e não uma segunda varredura.** O doc acima diz por escrito que
+    // *«uma segunda varredura com outra regra divergiria desta na primeira ramificação»* — quando o
+    // osso passou a poder dobrar, essa frase deixou de ser sobre um risco e passou a ser sobre um
+    // facto: a raiz e a ponta de um osso curvo são o PRIMEIRO e o ÚLTIMO nó dele.
+    //
+    // ⚠️ **E é byte-idêntica ao que ela sempre devolveu**, por duas construções que se encontram: um
+    // osso rígido tem polilinha de dois nós (`(0,0)` e `(L,0)`, as MESMAS expressões de antes), e num
+    // osso curvo o último nó é `(L,0)` exacto porque em `t = 1` os termos da correcção são `0.0`.
+    bone_polylines(sim)
+        .into_iter()
+        .map(|(bits, pts)| {
+            let ultimo = *pts.last().expect("a polilinha tem ao menos dois nos");
+            (bits, pts[0], ultimo)
+        })
+        .collect()
+}
+
+/// ⭐⭐⭐ **O CORPO de cada osso, em MUNDO** — `(bits, polilinha)`, com `N+1` nós.
+///
+/// ⚠️⚠️ **Ela e a [`bone_segments`] têm consumidores DIFERENTES e as duas estão certas.** Quem
+/// pergunta *«onde nasce e onde acaba este osso»* — a cinemática, o losango da IK, o gesto que
+/// arrasta a ponta — quer as duas extremidades, e um osso curvo continua a ter exactamente duas.
+/// Quem **DESENHA** o osso e quem o **AGARRA** querem o corpo, e o corpo de um *bendy bone* é esta
+/// linha. ⛔ *Desenhar por um mapa e agarrar por outro é um controlo morto sob o dedo* — os dois
+/// leem daqui, e há gate a atá-los.
+///
+/// ⚠️ Um osso **rígido** devolve DOIS nós, ao bit o que sempre devolveu (ver
+/// [`ph2d_skeleton::bend::polyline`]).
+#[must_use]
+pub fn bone_polylines(sim: &SimWorld) -> Vec<(u64, Vec<[f64; 2]>)> {
     let mut out = Vec::new();
-    for (e, length) in ossos_da_cena(sim) {
+    for (e, spec) in ossos_da_cena(sim) {
         let x = world_of(sim, e);
-        out.push((e.to_bits(), x.apply([0.0, 0.0]), x.apply([length, 0.0])));
+        out.push((
+            e.to_bits(),
+            ph2d_skeleton::bend::polyline(spec)
+                .into_iter()
+                .map(|p| x.apply(p))
+                .collect(),
+        ));
     }
-    out.sort_by_key(|(bits, _, _)| *bits);
+    out.sort_by_key(|(bits, _)| *bits);
     out
 }
 
-/// Todo osso da cena, com o comprimento dele.
+/// Todo osso da cena, com o que o artista autorou nele.
 ///
 /// ⚠️ **Varre entidades em vez de montar uma `QueryState`**, e a razão é a assinatura: uma query
 /// pede `&mut World` para nascer, e os dois consumidores disto — o overlay e o gesto — só têm o
 /// mundo emprestado. *Uma função que pede `&mut` só para ler obriga o chamador a arranjar um `&mut`
 /// que ele não precisa, e é assim que um `clone` do mundo aparece num caminho de quadro.*
-fn ossos_da_cena(sim: &SimWorld) -> Vec<(Entity, f64)> {
+fn ossos_da_cena(sim: &SimWorld) -> Vec<(Entity, ph2d_skeleton::bend::BoneSpec)> {
     sim.world()
         .iter_entities()
-        .filter_map(|er| er.get::<Bone>().map(|b| (er.id(), b.length)))
+        .filter_map(|er| er.get::<Bone>().map(|b| (er.id(), b.spec())))
         .collect()
 }
 

@@ -384,3 +384,48 @@ fn only_a_chain_that_starts_free_offers_its_base_for_a_splice() {
     assert!(is_a_free_chain_root(&sim, ossos[0]));
     assert!(!is_a_free_chain_root(&sim, ossos[1]));
 }
+
+/// ⭐⭐⭐ **O DEDO AGARRA O OSSO ONDE ELE ESTÁ DESENHADO, E NÃO ONDE A CORDA PASSA** — a lei do
+/// §5.0 do `CLAUDE.md` levada a sério: *um controlo desenhado por um mapa e agarrado por outro é um
+/// controlo morto sob o dedo, e as duas direcções viajam juntas ou nenhuma.*
+///
+/// A fixtura é um osso ARQUEADO. O ponto no alto do arco **está** sobre o corpo pintado e tem de
+/// ser apanhado; o ponto sobre a corda raiz→ponta, no meio, está **longe** do corpo e não pode ser.
+///
+/// ⚠️⚠️ **As duas metades são obrigatórias, e uma só não afirma nada:** só com o «não» é que se
+/// prova que o dedo deixou mesmo de medir a corda — sem ele, um `hit` que devolvesse o osso em todo
+/// o lado passaria a primeira metade.
+#[test]
+fn the_finger_grabs_the_bone_where_it_is_drawn_not_where_the_chord_runs() {
+    let mut sim = SimWorld::default();
+    let osso = create(&mut sim, None, [0.0, 0.0], [40.0, 0.0]).expect("osso");
+    {
+        let mut b = sim
+            .world_mut()
+            .get_mut::<ph2d_skeleton_ecs::Bone>(Entity::from_bits(osso))
+            .expect("o osso existe");
+        b.segments = 8;
+        b.curve = ph2d_skeleton::bend::Bend {
+            inn: [0.0, 40.0],
+            out: [0.0, 40.0],
+        };
+    }
+    let corpo = ph2d_skeleton_live::skin_live::bone_polylines(&sim)
+        .into_iter()
+        .find(|(x, _)| *x == osso)
+        .expect("o osso tem corpo")
+        .1;
+    let alto = corpo[corpo.len() / 2];
+    assert!(alto[1] > 20.0, "a fixtura nao arqueou: {alto:?}");
+    // 1 unidade de mundo por píxel ⇒ o raio do dedo é 12 unidades.
+    assert_eq!(
+        hit(&sim, alto, 1.0),
+        Some(osso),
+        "o topo do arco esta' pintado e o dedo nao o apanha"
+    );
+    assert_eq!(
+        hit(&sim, [20.0, 0.0], 1.0),
+        None,
+        "o meio da CORDA nao tem osso pintado nenhum, e o dedo apanhou-o"
+    );
+}

@@ -278,6 +278,52 @@ pub fn anchors(sim: &SimWorld) -> Vec<ph2d_skeleton_render::Goal> {
 /// ⭐ É esta subtracção que faz o losango **substituir** o anel em vez de se somar a ele: num osso
 /// ancorado a ponta deixa de ser agarrável (o que se arrasta é o alvo), e desenhar as duas coisas
 /// por cima uma da outra prometeria dois verbos onde há um.
+/// ⭐ **O REALCE QUE O LOSANGO DO ALVO RECEBE** — e em *Criar* ele não recebe nenhum.
+///
+/// ⛔ **Em *Criar* o `Tip` quer dizer «daqui nasce um filho», não «arrasta a âncora»** — e o losango
+/// do alvo pode estar LONGE da ponta. Passar o realce acenderia, a metros do dedo, uma alça que
+/// aquele modo não executa.
+///
+/// ⚠️ **Irmã da [`ring_targets`] e pela mesma razão:** as duas respondem *o que este modo promete*,
+/// que é conhecimento da família — a fase do quadro só decide a ORDEM em que as coisas se pintam.
+#[must_use]
+pub fn goal_hover(
+    criar: bool,
+    hover: Option<ph2d_skeleton_render::BoneHover>,
+) -> Option<ph2d_skeleton_render::BoneHover> {
+    if criar { None } else { hover }
+}
+
+/// ⭐⭐⭐ **QUE PONTAS RECEBEM ANEL, e o modo decide** (ordem do dono, 2026-09-09: *«para criar um
+/// osso como filho de outro o clique deve acontecer na ponta do osso pai»*).
+///
+/// ⛔⛔ **Sem o ramo do `criar` o alvo do parentesco seria INVISÍVEL no meio de uma corrente:** ali
+/// a ponta de um osso é a raiz do seguinte, e o que está desenhado no ponto é a bolinha da junta do
+/// FILHO — o artista veria o alvo de outro osso onde tem de carregar para ramificar deste. *Um alvo
+/// que não está onde a coisa parece estar é um alvo ausente* (a lei que as paredes do limite já
+/// pagaram).
+///
+/// ⚠️ **O anel só muda de VERBO com o modo, nunca de sítio**: em *Transformar* ele é o *end
+/// effector* (cinemática inversa) e por isso só existe em quem fecha a corrente e não tem âncora;
+/// em *Criar* ele é *«daqui nasce um filho»*, que vale para todo osso. É a mesma alça a dizer o que
+/// o clique faz AGORA.
+///
+/// ⚠️ **Ela é um CORPO e por isso mora aqui, e não na fase do quadro que a chama** — a shell decide
+/// a ORDEM dos passes; *o que* cada um desenha é da família (CLAUDE.md §2).
+#[must_use]
+pub fn ring_targets(sim: &SimWorld, criar: bool) -> Vec<u64> {
+    if criar {
+        ph2d_skeleton_live::skin_live::bone_polylines(sim)
+            .into_iter()
+            .map(|(bits, _)| bits)
+            .collect()
+    } else {
+        // ⭐⭐ **As pontas SEM âncora** — num osso ancorado o anel é substituído pelo losango do
+        // alvo, e desenhar os dois prometeria dois verbos onde há um.
+        unanchored_ends(sim)
+    }
+}
+
 pub fn unanchored_ends(sim: &SimWorld) -> Vec<u64> {
     ph2d_skeleton_live::skin_live::chain_ends(sim)
         .into_iter()

@@ -4,7 +4,9 @@
 //! ⚠️ **O que NÃO está aqui:** de onde vêm as alças (é lei da hierarquia, e a hierarquia não existe
 //! nesta crate) e como o osso curvo se DESENHA (é lei de uma mídia).
 
-use super::bend::{Bend, BoneSpec, MAX_SEGMENTS, frame, point_at, segments_of, share};
+use super::bend::{
+    Bend, BoneSpec, MAX_SEGMENTS, arc_length, frame, point_at, polyline, segments_of, share,
+};
 use super::{Skin, SkinBone, Xform};
 
 /// Um osso deitado no eixo X, da origem a `(len, 0)`, em repouso e sem pose.
@@ -494,4 +496,102 @@ fn bend_measure_the_ceiling() {
             ms / 16.7 * 100.0
         );
     }
+}
+
+/// ⭐⭐⭐ **A POLILINHA DE UM OSSO RECTO SÃO DOIS PONTOS, AO BIT** — o mesmo colapso da fábrica de
+/// sub-ossos, e a razão de todo consumidor que só lê a raiz e a ponta poder derivar-se daqui sem
+/// mudar um bit.
+#[test]
+fn a_rigid_bones_polyline_is_exactly_its_axis() {
+    for segments in [0u8, 1, 8, 32] {
+        for curve in [Bend::STRAIGHT, curva_para_cima(5.0)] {
+            let spec = BoneSpec {
+                length: 7.0,
+                strength: 1.0,
+                segments,
+                curve,
+            };
+            if !spec.is_rigid() {
+                continue;
+            }
+            assert_eq!(
+                polyline(spec),
+                vec![[0.0, 0.0], [7.0, 0.0]],
+                "segments = {segments}, curve = {curve:?}"
+            );
+        }
+    }
+}
+
+/// ⭐⭐⭐ **A POLILINHA COMEÇA NA RAIZ E ACABA NA PONTA, SEMPRE** — a lei que deixa a ponta de um
+/// osso curvo continuar a ser a ponta.
+///
+/// ⚠️ **Sem ela, o filho de um osso arqueado descolava do pai:** a hierarquia pendura o filho em
+/// `translation.x = length`, e se a curvatura movesse o último nó, o desenho diria uma coisa e a
+/// cinemática outra.
+#[test]
+fn the_polyline_always_starts_at_the_root_and_ends_at_the_tip() {
+    for segments in [2u8, 3, 8, 32] {
+        let spec = BoneSpec {
+            length: 7.0,
+            strength: 1.0,
+            segments,
+            curve: Bend {
+                inn: [2.0, 5.0],
+                out: [-3.0, 4.0],
+            },
+        };
+        let p = polyline(spec);
+        assert_eq!(p.len(), usize::from(segments) + 1, "n = {segments}");
+        assert_eq!(p[0], [0.0, 0.0], "n = {segments}");
+        assert_eq!(*p.last().expect("tem nós"), [7.0, 0.0], "n = {segments}");
+    }
+}
+
+/// ⭐⭐ **ARQUEAR ALONGA O CAMINHO** — o comprimento percorrido de um osso curvo é maior que o do
+/// eixo, e é por isso que o desenho e o dedo não podem dimensionar-se pela CORDA.
+#[test]
+fn bowing_a_bone_makes_the_walk_longer_than_the_chord() {
+    let recto = BoneSpec::straight(10.0, 1.0);
+    assert!((arc_length(&polyline(recto)) - 10.0).abs() < 1e-12);
+    let curvo = BoneSpec {
+        segments: 16,
+        curve: curva_para_cima(6.0),
+        ..recto
+    };
+    let andado = arc_length(&polyline(curvo));
+    assert!(andado > 11.0, "o arco mal cresceu: {andado}");
+}
+
+/// ⭐⭐⭐ **O DEDO MEDE O CORPO, NÃO A CORDA** — num osso arqueado a distância à polilinha e a
+/// distância ao eixo raiz→ponta são coisas diferentes, e a que o artista vê é a primeira.
+///
+/// ⚠️ **Com dois nós as duas são a MESMA função ao bit**, e é isso que faz um osso recto continuar
+/// a ser agarrado exactamente como sempre foi.
+#[test]
+fn the_finger_measures_the_body_not_the_chord() {
+    use super::{dist2_to_polyline, dist2_to_segment};
+    let recto = polyline(BoneSpec::straight(10.0, 1.0));
+    for p in [[5.0, 3.0], [-2.0, 0.0], [14.0, 1.0], [5.0, 0.0]] {
+        assert_eq!(
+            dist2_to_polyline(p, &recto),
+            dist2_to_segment(p, [0.0, 0.0], [10.0, 0.0]),
+            "p = {p:?}"
+        );
+    }
+    // Arqueado: um ponto sobre o miolo da curva está LONGE do eixo e EM CIMA do corpo.
+    let curvo = polyline(BoneSpec {
+        segments: 16,
+        curve: curva_para_cima(6.0),
+        ..BoneSpec::straight(10.0, 1.0)
+    });
+    let no_arco = curvo[8];
+    assert!(
+        dist2_to_polyline(no_arco, &curvo) < 1e-20,
+        "um no da propria polilinha tem de estar sobre ela"
+    );
+    assert!(
+        dist2_to_segment(no_arco, [0.0, 0.0], [10.0, 0.0]) > 4.0,
+        "a fixtura nao arqueia o suficiente para separar as duas reguas"
+    );
 }

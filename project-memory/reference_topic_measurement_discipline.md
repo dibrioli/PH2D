@@ -267,3 +267,52 @@ vizinho mede antes de reaproveitar a régua dele.
   tecto, a cena que passou a cair no outro caminho saiu da tabela por um `continue` e a razão passou
   de *«14 de 18»* para *«13 de 17»* — que se lê como se a peça tivesse melhorado. ⇒ uma linha
   recusada **imprime-se**, com o número que a recusou, e conta-se à parte.
+- ⛔⛔⛔ **A grandeza que um tecto mede pode ser uma propriedade da ORDEM DE EMISSÃO, e não do
+  objecto.** Medido 2026-09-15: o `vivos` de uma fita SSA (o pico de valores vivos, que decide a
+  ocupação numa GPU) crescia **linearmente** com as arestas de um contorno desenhado — `68` a 32
+  arestas, `492` a 256 —, e um tecto inteiro foi derivado dele. ⭐ A causa não estava no grafo: a
+  travessia que achata a árvore empilha os filhos e emite o de cima primeiro, e sobre a cadeia
+  `min(min(min(s₀,s₁),s₂),s₃)` isso calcula **todos** os `sᵢ` antes do primeiro `min`. Um
+  escalonamento de lista — **a mesma permutação de instruções**, zero aritmética mudada — leva o
+  pico a `28`–`48` em toda a faixa (`10,2×`) e o relógio do dispositivo a `1,4×`–**`9,2×`** mais
+  rápido. ⇒ *antes de escrever um tecto sobre uma grandeza derivada, pergunte de que ela é
+  propriedade* — aquele tecto media a ordem de iteração de uma dependência. ⚠️ E a cura prescrita
+  (trocar o contorno por uma estrutura de dados) trazia um preço de PRODUTO declarado — perder os
+  modificadores da peça — que **não era necessário**: *a nota descrevia uma procuração, e o preço
+  dela também.*
+- ⛔⛔ **Uma régua que conta o que o código emitido NÃO GUARDA mede outro programa.** A primeira
+  leitura do escalonador acima deu `93` vivos, e o diagnóstico por espécie dizia `Const 51` — mais
+  de metade do «scratch por thread» eram constantes, que no shader são uma **leitura de buffer** e
+  não um registo; era o emissor que lhes dava um `let`. Com a isenção escrita numa porta só (e o
+  emissor a escrevê-las **onde são usadas**) o pico honesto é `48`. ⇒ *uma régua de um recurso tem
+  de partilhar a definição de recurso com quem o gasta*, e a forma de o garantir é as duas metades
+  lerem a MESMA função.
+- ⛔⛔ **Três leituras que concordam podem concordar por partilharem a mesma CONTAMINAÇÃO.** Um doc
+  meu declarava a curva de relógio do dispositivo *«insensível à carga»* porque ela se repetira até
+  ao segundo decimal a `load 43`, `91` e `111`. Medido depois: o MESMO código lê `2,1×` a `3,4×`
+  mais devagar a `load 33` do que a `load 2,6`. ⇒ **nenhuma das três era uma máquina calma** — a
+  concordância provava que as três partilhavam o mesmo ruído, não que não havia ruído. *Uma
+  afirmação de independência precisa de uma amostra do lado INDEPENDENTE.*
+- ⛔ **Um monitor cuja condição nunca pode ser VERDADEIRA lê-se exactamente como «a condição nunca
+  aconteceu».** O laço que esperava a máquina acalmar comparava com `bc`, que não existe nesta
+  shell: ele imprimiu `command not found` 22 vezes e continuou a girar, e o que se via de fora era
+  *«ainda não acalmou»*. ⇒ *um vigia que nunca dispara tem de ser distinguível de um mundo em que
+  nada acontece* — teste a condição com um valor que a satisfaça, uma vez, antes de confiar nela.
+- ⛔⛔⛔ **UM A/B ENTRE DOIS MOTORES TEM DE PEDIR O MESMO TRABALHO AOS DOIS — e a assimetria esconde-se
+  na coluna que ninguém releu.** Medido 2026-09-15: a sonda que decide se o quadro do modelador vai
+  para a placa ou para a CPU media, do lado da placa, o **quadro pintado inteiro** (G-buffer +
+  sombra + sombreamento + bordas) e, do lado da CPU, **só o traçado**. ⇒ pedia-se ao dispositivo
+  três passos e ao caminho de referência um, e a travessia entre os dois saía **cedo demais** — com
+  um tecto de produto derivado dela. ⚠️ **A sonda tinha semanas e o defeito atravessou duas
+  correcções do número** (`743 → 358 → 3 463`), porque as três discussões foram sobre *quando* medir
+  (carga, calma) e nenhuma sobre **o que** estava em cada coluna. ⇒ *antes de discutir a validade de
+  um relógio, escreva o que cada lado FAZ entre o início e o fim da medição* — e confira contra o
+  caminho do produto, que aqui estava escrito noutro ficheiro (`trace` + `shadow_pass` +
+  `shade_render`).
+- ⛔⛔ **UM ARNÊS DE UMA FAMÍLIA SÓ PODE SER O PIOR CASO, e um tecto calibrado nele mente sobre o
+  produto.** O mesmo tecto saiu de um **polígono extrudado de N arestas** — a única família em que
+  se pode varrer uma variável só. Medidas as **cenas reais** com a mesma sonda, uma peça de `2 663`
+  valores guardados ganha `4×` onde o polígono de `2 602` ganhava `1,7×`: a razão depende da FORMA
+  (quantos passos de marcha por acerto, quanto a especialização por ladrilho da CPU corta), não só
+  da largura da fita. ⇒ *um tecto derivado de um arnês tem de ser conferido contra o corpus que ele
+  vai decidir* — e a sonda que o faz escreve-se no mesmo dia, não depois.

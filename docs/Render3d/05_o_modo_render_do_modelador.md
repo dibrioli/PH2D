@@ -3694,6 +3694,18 @@ desenhada do artista ficar mais lenta do que era, no topo da faixa que o slider 
 
 `ph2d_field_gpu::MAX_VIVOS = 358`: acima dele o quadro fica na CPU.
 
+> ⛔⛔⛔ **ESTE NÚMERO, ESTE EIXO E A CERCA INTEIRA MORRERAM EM 2026-09-15 — ver a §43.5 e a §43.8.**
+> Duas coisas de uma vez: o `vivos` era uma propriedade da **ordem de emissão** da fita (com o
+> escalonador ele lê `33` e `35` nos dois lados da suposta travessia), e a régua que mediu a
+> travessia **pedia trabalhos diferentes aos dois motores** — o quadro pintado à placa, só o traçado
+> à CPU, com o traçador a `opt-0`. Medido com a régua inteira, **não há travessia**: a placa ganha
+> `1,3×`–`7,8×` e as cenas do produto `2,6×`–`98×`. ⇒ a cerca saiu e no lugar dela ficou um gate
+> sobre a propriedade.
+>
+> ⚠️ **A §42 fica como está de propósito**: ela é o diagnóstico que separou as causas, e a
+> regressão que ela nomeia é REAL — a fita **crua** atravessa mesmo, a `96` arestas, e cai a
+> `0,29×`. *O que estava errado era o ponto e a magnitude, não a existência.*
+
 ⚠️⚠️ **A primeira redacção escreveu `743`**, tirado do joelho da curva **do próprio dispositivo**
 (onde o custo por aresta dobra) — porque a coluna da CPU não era medível na altura. Quando a máquina
 acalmou (`load 2,6`), ela ficou:
@@ -3742,12 +3754,212 @@ falso como lei: aqui chegou, e o que ela trouxe foi o número que decidia.*
 
 ### §42.5 — ⏳ O que fica
 
-- ⏳ **O `MAX_VIVOS` depende das DUAS máquinas** — do ficheiro de registos da placa **e** da
-  velocidade da CPU, porque ele é uma travessia e não um joelho. A sonda que o deriva é a
-  `mede_o_preco_de_uma_aresta_de_perfil`, e ela imprime a carga ao lado de cada linha;
-- ⏳ **A cura de fundo é a que a CPU já usa**: o contorno deixa de ser uma cadeia de `min` desenrolada
-  e passa a ser uma **consulta** (`profile_index`: BVH mais grelha de enrolamento). ⛔ Na placa ela
-  tem um preço que a CPU não paga — uma folha de dados não passa pela pilha de modificadores (o
-  mesmo limite da escultura), logo só uma peça **sem modificadores no contorno** a poderia usar;
+- ✅ **O `MAX_VIVOS` SAIU em 2026-09-15, e não foi substituído por outro número** — ver a §43.8. A
+  sonda que o derivava fica, com as duas metades da régua curadas;
+- ⛔⛔ ~~**A cura de fundo é a que a CPU já usa**: o contorno passa a ser uma consulta … só uma peça
+  **sem modificadores no contorno** a poderia usar~~ — **REFUTADO em 2026-09-15 (§43).** Nem a cura
+  nem o preço estavam certos: o que segurava a peça desenhada era a **ordem da fita**, e curá-la
+  custou **zero** ao produto. *A nota media uma procuração, e o preço dela também.*
 - ⏳ **O minorante da superfórmula** (`410` passos por acerto) é a outra alavanca, e ela **não se
   substitui** à primeira: encurtar a fita do perfil não tira um passo à superfórmula.
+
+---
+
+## §43 — ⭐⭐⭐ A CURA DA PEÇA DESENHADA NÃO ERA UMA ESTRUTURA DE DADOS: ERA A **ORDEM** DA FITA (2026-09-15)
+
+A §42.5 prescreveu a cura e escreveu o preço dela ao lado: *«o contorno passa a ser uma consulta …
+uma folha de dados não passa pela pilha de modificadores, logo só uma peça **sem modificadores no
+contorno** a poderia usar»*. ⛔ **Esse preço não era necessário, e a nota media uma PROCURAÇÃO.**
+
+### §43.1 — O mecanismo, contado e não cronometrado
+
+O `vivos` de uma fita é o pico de valores vivos **na ordem em que ela é emitida**, e essa ordem é a
+da travessia da `fidget`: uma DFS que empilha os filhos e emite o de cima primeiro. Sobre a cadeia
+esquerda `min(min(min(s₀, s₁), s₂), s₃)` que o `profile::sd_profile_inner` constrói, isso dá
+
+```text
+ordem da DFS :  s₃  s₂  s₁  s₀  min  min  min      ⇒ os N segmentos VIVOS ao mesmo tempo
+ordem óptima :  s₀  s₁  min  s₂  min  s₃  min      ⇒ um acumulador e um segmento: DOIS
+```
+
+⇒ o `vivos` **não era uma propriedade do grafo**; era uma propriedade da ordem de visita. E como
+`vivos` é o scratch por thread, era ele que decidia a ocupação — logo o degrau da §42.2 tinha uma
+causa que não estava no algoritmo nenhum.
+
+⭐ A cura é o [`ph2d_field_eval::tape_schedule`]: um **escalonamento de lista** com duas chaves —
+`delta` (quantos operandos MORREM ao emitir este nó, que é a variação exacta do número de vivos) e,
+no empate, o **caminho crítico** até à raiz. ⚠️ A segunda chave não é decoração: no primeiro passo
+os prontos são `x`, `y`, `z` e **todas** as constantes, e todos têm `delta = +1`; é o caminho crítico
+que sabe que `s₀` é o segmento que a cadeia quer primeiro. ⛔ **A ordem original da fita seria um
+desempate mudo e ERRADO** — ela põe `s_{N-1}` primeiro, exactamente ao contrário do que a cadeia
+consome. *Um desempate que depende da ordem de iteração de outra crate não é uma lei, é um acidente.*
+
+### §43.2 — E metade do pico não eram registos: eram CONSTANTES
+
+A primeira medição do escalonador leu `93` vivos a 256 arestas, e o diagnóstico por espécie dizia
+**`Const 51` · `Sub 32`**. ⇒ mais de metade do «scratch por thread» eram `k[i]`, que no shader é uma
+**leitura de buffer** e não um valor guardado — o emissor é que lhes dava um `let`.
+
+⭐ Duas metades de uma lei só ([`Instr::ocupa_registo`]): o `wgsl` escreve `p.x` e `k[7]` **onde são
+usados**, e o `TapeShape::vivos` e o escalonador **contam o mesmo**. *Uma régua que conta o que o
+código emitido não guarda mede outro programa.* ⚠️ A escultura fica **de fora** da isenção, e não por
+simetria: `escultura_k(p)` é uma consulta de oito amostras a uma grade, e reescrevê-la em cada uso
+duplicaria o trabalho. ⭐ De borla, a fita em WGSL encolheu `~15 %` (`1 040 → 882` linhas a 32
+arestas).
+
+### §43.3 — A tabela que decide, e ela é uma CONTAGEM (vale com a máquina cheia)
+
+| arestas | instruções | vivos CRU | vivos ESCALONADO | razão |
+|---:|---:|---:|---:|---:|
+| `32` | `1 040` | `68` | `28` | `2,4×` |
+| `64` | `2 060` | `130` | `29` | `4,5×` |
+| `128` | `4 080` | `251` | `33` | `7,6×` |
+| `256` | `8 121` | `492` | **`48`** | **`10,2×`** |
+
+⭐⭐ **A ordem crua é LINEAR nas arestas** (`68 → 492`, `7,2×` para `8×` o trabalho) e a escalonada é
+quase **plana** (`28 → 48`). ⇒ o `vivos` deixou de ser uma propriedade do *número de arestas* e
+voltou a ser uma propriedade da *peça*, que é o que a placa precisa.
+
+⚠️ **A barra do gate é no MAIOR contorno, e não «em todos»**: a `32` arestas a ordem crua já tem
+pouco para desperdiçar (`68` vivos), e exigir `8×` ali seria uma barra que a aritmética não pode dar.
+
+### §43.4 — E nas CENAS REAIS: a pior passou de `464` para `95` vivos
+
+O `measure_tape_shape_of_the_real_scenes` sobre as 17 cenas do smoke: pior `2 969` instruções,
+**`2 663`** guardados e **`95`** vivos (era `464`), com as duas peças desenhadas — a cantoneira
+(`2 896` ops, `2 663` guardados) e o torno (`2 969` / `2 504`) — a medir **`69`** e **`33`** vivos.
+
+⭐⭐ **E é o TORNO que troca de lado:** a `464` vivos ele estava **acima** do tecto antigo, logo o
+quadro dele caía na CPU; hoje mede `2 504` guardados contra um tecto de `3 463`. *A peça que a §42
+usou para nomear a regressão é a primeira que a cura devolve à placa.*
+
+⭐⭐⭐ **Isso DESMENTE uma recusa medida que estava escrita no emissor:** *«interpretar a fita no
+dispositivo não cabe — `464` vivos são `1 856 B` por thread e `116 KB` por workgroup de 64, acima da
+memória partilhada de qualquer GPU»*. Com `95` são `380 B` e **`23 KB`**, que **cabe**. ⇒ §0.0:
+*quem move o número que tornava algo inalcançável tem de reconferir a nota.* A recusa **fica**, e o
+motivo que sobra é outro (um interpretador paga descodificação por amostra e perde a fusão que o
+`naga` faz) — *o que mudou é que a rota deixou de ser impossível e passou a ser uma medição por
+fazer.*
+
+### §43.5 — ⛔⛔⛔ A RÉGUA QUE DECIDIU TUDO ISTO ESTAVA PARTIDA EM DUAS METADES
+
+Antes de qualquer relógio desta wave valer, dois defeitos **na sonda**. Nenhuma das três discussões
+que corrigiram o tecto (`743 → 358 → 3 463`) foi sobre eles — foram todas sobre **quando** medir
+(carga, calma), e nenhuma sobre **o que** estava em cada coluna.
+
+1. ⛔ Ela media, do lado da placa, o **quadro pintado inteiro** (G-buffer + sombra + sombreamento +
+   bordas) e, do lado da CPU, **só o traçado**. O quadro de CPU do produto são **três** passos
+   (`smoke_draw_thread`): `trace` + `shadow_pass` + `shade_render`. ⇒ *pedia-se três à placa e um à
+   referência.*
+2. ⛔ A `ph2d-field-render` e a `ph2d-material` **não estavam** na lista de `opt-level = 2` do
+   `Cargo.toml` da raiz: o traçador e a lei OpenPBR corriam a `opt-0` — a própria nota daquela lista
+   mede **`11,4×`–`25×`** para aritmética por-amostra — contra um WGSL optimizado pelo driver.
+
+⇒ o caminho de referência lia-se **lento na estrutura** da medição e **rápido no conteúdo** dela, e
+a «travessia» era o saldo dos dois erros.
+
+⚠️ **A junção ao `opt-level` estava RECUSADA desde 10/09** (*«parte um teste: `quadro MORNO … pagou
+4`»*) — e esse teste foi **curado em 13/09**: ele contava um memo atrás de estado **por thread**, e
+hoje corre numa pool de UMA thread. Medido agora: `24/24` verde. *§0.0 — quem move o número que
+tornava algo inalcançável tem de reconferir a nota.*
+
+### §43.6 — ⭐⭐⭐ E COM AS DUAS METADES CURADAS, O TECTO FICA SEM SUJEITO
+
+A `1920×1080`, CPU a `95`–`99 %` ociosa, duas rondas consistentes:
+
+| arestas | guardados | CRUA | **escalonada** | ganho | CPU (quadro inteiro) | placa vs CPU |
+|---:|---:|---:|---:|---:|---:|---:|
+| `32` | `879` | `28,9 ms` | **`23,7`** | `1,2×` | `181,4` | **`7,65×`** |
+| `64` | `1 741` | `189,8` | **`49,1`** | `3,9×` | `345,2` | **`7,03×`** |
+| `96` | `2 602` | `520,2` | **`87,1`** | `6,0×` | `463,6` | **`5,32×`** |
+| `128` | `3 462` | `379,1` | **`181,0`** | `2,1×` | `609,7` | **`3,37×`** |
+| `192` | `5 189` | `1 594,4` | **`919,2`** | `1,7×` | `884,1` | `0,96×` ⬅ o penhasco |
+| `256` | `6 903` | `4 145,0` | **`631,0`** | `6,6×` | `1 243,9` | **`1,97×`** |
+| `384` | `10 351` | `5 851,4` | **`1 306,4`** | `4,5×` | `1 703,1` | **`1,30×`** |
+
+⭐⭐⭐ **Não há travessia: o pior ponto é um EMPATE.** E nas 17 cenas do produto a placa ganha
+`2,58×` a `98×` — as duas desenhadas a `2,58×` (a cantoneira) e `4,98×` (o torno).
+
+⭐⭐ **E a regressão que a §42 nomeou era REAL — o que estava errado era o PONTO.** Contra o quadro
+inteiro e optimizado, a fita na ordem **CRUA** atravessa a `96` arestas e cai a **`0,29×`** a `384`:
+
+| arestas | `32` | `64` | **`96`** | `128` | `192` | `256` | `384` |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| crua vs CPU | `6,3×` | `1,8×` | **`0,89×`** | `1,6×` | `0,55×` | `0,30×` | `0,29×` |
+
+⇒ *é o escalonador que remove o sujeito da cerca, não a correcção da régua.*
+
+⚠️ **O penhasco de `192` é real e reproduz-se** (`919,2` e `888,1` em duas rondas, contra `181,0` a
+`128` — `5,1×` de relógio por `1,5×` de trabalho, e depois **recupera** para `631` a `256`). Ele
+**não é monótono** e move-se com o código emitido: no A/B do inlining ele apareceu a `144` sem o
+inlining e a `192` com ele. *A assinatura é o tamanho do shader, não a ocupação* — o `vivos` ali lê
+`35`, menos que a `176`.
+
+### §43.7 — ⛔⛔ E o ESCALONADOR tem um preço que corre A CADA QUADRO
+
+O `pedido` reconstrói a fita **por quadro** (é um JIT: o contador é o `POINT_TAPES`). A 1.ª redacção
+do escalonador varria a lista de prontos a cada passo, e o doc dela **defendia-se por escrito** —
+*«uma varredura linear e não um monte: a chave muda quando um vizinho é emitido, e um monte com
+chaves obsoletas é um defeito mudo»*. ⚠️ Verdade para uma chave qualquer, **falso para uma
+monótona**: o `delta` só **desce** (o `restam` de um operando nunca sobe), logo um balde com a chave
+de entrada e uma re-conferência à saída é **exacto**.
+
+O preço dessa prudência estava medido e ninguém o tinha contado:
+
+| arestas | montagem CRUA | varredura linear | **baldes** |
+|---:|---:|---:|---:|
+| `32` | `0,328 ms` | `0,556` (`+68 %`) | `0,386` (`+17,6 %`) |
+| `64` | `0,661` | `1,271` (`+92 %`) | `0,802` (`+21,3 %`) |
+| `128` | `1,368` | `3,464` (`+156 %`) | `1,716` (`+25,4 %`) |
+| `256` | `2,854` | `11,224` (**`+301 %`**) | `3,472` (**`+21,6 %`**) |
+
+⭐ O acréscimo passa a ser **plano na dimensão** — o escalonador entra na mesma classe de custo que
+a montagem que ele reordena. ⚠️ *Um custo que nenhuma sonda conta é um custo que nenhuma mutação
+mata*, e este só apareceu porque a sonda foi escrita **de propósito** para a pergunta *«o que isto
+custa a quem o paga?»*.
+
+⭐⭐ **E esta corrida deu a terceira confirmação da régua da calma:** ela correu a `loadavg 82` com a
+CPU a `88 %` ociosa, e as colunas CRUAS reproduzem a corrida de `loadavg 3,24` a menos de `2 %`.
+*A grandeza que decide se um relógio vale é a ociosidade, não a média de carga.*
+
+### §43.8 — ⛔⛔⛔ O TECTO SAIU, E NO LUGAR DELE FICA UMA PROPRIEDADE
+
+`MAX_VIVOS = 743` → `358` → `MAX_GUARDADOS = 3 463` → **nada**. Uma cerca que, medida com a régua
+inteira, nunca pode disparar **não é uma cerca** — é um palpite que sobreviveu a três correcções
+porque ninguém releu o que estava em cada coluna.
+
+⭐ O que fica é o gate `a_placa_ganha_em_toda_a_faixa_medivel`, que afirma a **propriedade** em vez
+de a codificar num número que só uma máquina mediu: *a placa não perde de forma significativa, e
+ganha com margem no contorno mais largo.* ⚠️ Ele é **deliberadamente frouxo no pior ponto** (o
+penhasco lê `0,96×`, um empate, e a barra é `0,85×`) e exigente no topo (`1,2×` contra `1,30×`
+medido) — *um gate que exigisse vitória em todo ponto reprovaria sobre produto correto*.
+
+⚠️ **E nasce uma segunda sonda, a `mede_as_cenas_reais_nos_dois_motores`**, porque *um tecto
+calibrado numa família e aplicado a outra é uma procuração*: uma peça de `2 663` valores guardados
+ganha `2,58×` onde o polígono de `2 602` ganha `5,32×`. A razão depende da FORMA — quantos passos de
+marcha por acerto, quanto a especialização por ladrilho da CPU corta —, não só da largura da fita.
+
+### §43.9 — ⏳ O que fica
+
+- ⛔⛔ **ESTE DOC TEM `236 KB` E O JOELHO DO `CLAUDE.md` §5.0 ESTÁ ENTRE `80` E `110`** — *«acima
+  disso o `Read` desaparece e o acesso vira raspagem por shell»*. E a jornada de hoje confirmou-o na
+  prática: **nenhuma** leitura dele nesta wave foi um `Read`; foram todas `sed -n` e `grep`. ⚠️ Eu
+  acrescentei-lhe duzentas linhas e piorei o problema. ⇒ o corte é devido
+  (`python3 scripts/doc-split.py`, que aborta se as duas metades não remontarem byte-a-byte), e
+  **não foi feito aqui de propósito**: um movimento verbatim de 200 KB no fim de uma wave de medição
+  tornaria o diff dela irrevisível, e escolher o que continua a ser LEI é uma decisão que merece a
+  sua própria passagem;
+- ⏳ **O PENHASCO de `192` arestas não tem mecanismo.** Ele reproduz-se, move-se com o código
+  emitido e não é a ocupação (`vivos 35`, menos que a `176`). A hipótese por medir é o **tamanho do
+  shader contra a cache de instruções** da placa — e ela nomeia um recurso, que é o mínimo para
+  valer uma wave;
+- ⏳⏳ **A consulta por ladrilho** (o que a CPU faz por `RegionCompiler`, e o estado da arte de
+  Keeter 2020) continua a ser a alavanca de fundo para o contorno grande. ⚠️ **O preço que a §42.5
+  lhe atribuía já não é o preço:** ele só se paga se a folha entrar como `Var` (que é o que apaga os
+  modificadores), e desde que a fita é **escalonável** ela também é extensível — as arestas podiam
+  viajar no vector `k[]` com índice por ladrilho, e `u`/`v` continuariam a ser expressões que a
+  pilha remapeia. ⛔ Isso pede uma instrução nova na fita (`k[índice dinâmico]`), que a álgebra da
+  `fidget` não exprime ⇒ é wave de substrato, e **ninguém mediu o que ela compra**;
+- ⏳ **A recusa do interpretador de fita** ficou sem a premissa (`95` vivos ⇒ `23 KB` por workgroup,
+  que cabe) e **fica de pé por outro motivo**, esse por medir: um interpretador paga descodificação
+  por amostra e perde a fusão de operações que o `naga` faz.

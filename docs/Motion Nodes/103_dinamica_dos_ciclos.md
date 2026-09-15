@@ -109,7 +109,7 @@ inventada. Contagens do registry em 2026-09-05.
 | **3** ✅ | TRANSFORMES & DEFORMADORES | `move` · `rotate` · `scale` · `transform` · `mirror` · `look_at` · `bend` · `twist` · `spherize` · `four_point_warp` · `bezier_warp` · `kaleidoscope` · `spline_wrap` | «Dobrar o mundo» |
 | **4** ✅ ([doc 107](107_ciclo_4_foco_os_campos.md)) | FOCO — quem é afectado (campos) | `motion.falloff` · `field.box` · `field.radial_sweep` · `field.index_range` · `field.remap` · `field.combine` · `field.shape` | «Nem todos ao mesmo tempo» |
 | **5** ✅ ([doc 108](108_ciclo_5_simulacao.md)) | SIMULAÇÃO | `sim.zone` · `sim.spawn` · `sim.step` · `sim.lifetime` · `sim.collide` · `motion.integrate` · as `force.*` | «Deixar a física decidir» |
-| 6 | VALOR & PULSO — o cérebro | a família `value.*` e `pulse.*` | «Um número que manda em tudo» |
+| **6** ✅ ([doc 110](110_ciclo_6_valor_e_pulso.md)) | VALOR & PULSO — o cérebro | a família `value.*` e `pulse.*` (**35**) | «Um número que manda em tudo» |
 | 7 | APARÊNCIA (Fx) | `tint` · `color_ramp` · `color_array` · `trail` · `strobe` · `glow` · `drop_shadow` · `rgb_split` · `sub_uv` · `slit_scan` | «A cor e o rasto» |
 | 8 | FONTES & DADOS | `source.shape` · `source.object` · `source.text` · `source.table` · `source.lsystem` · `motion.emitter` | «De onde vêm as coisas» |
 | 9 | RIG & CORPOS MOLES | `rig.*` · `soft_body` · `verlet_rope` · `wave` · `boids` | «Coisas que se seguram» |
@@ -117,6 +117,18 @@ inventada. Contagens do registry em 2026-09-05.
 | **11** | ⚡ **A AVALIAÇÃO GERAL DE PERFORMANCE** — o módulo inteiro, cena a cena | (varredura) | — |
 | **12** | ⚡ **OS TETOS CONFORTÁVEIS** — quantos objectos o sistema aguenta, com número | (decisão do Enio, com a tabela) | — |
 
+> ⚠️ **Estado em 2026-09-15.** O ciclo **6** FECHOU — o dono correu a cena `=117`, leu o
+> [tutorial 06](tutoriais/06_valor_e_pulso.pdf) e aprovou (*«tuto ok»* · *«smoke OK»*). ⇒ o ciclo aberto
+> passa a ser o **7 (APARÊNCIA / Fx)**. ⏳ **Abertos do 6**, todos com o mecanismo no doc 110: a
+> **W1(b)** (o pino ≠ 0 ligado continua a derrubar o nó para a CPU — é um `Compact` complementar, §6) ·
+> a **W3b** (três chaves que respondem a perguntas diferentes: `clamp`, `step`, `value` — §9.7) · o
+> **RELÓGIO** da W5 (a residência está medida em `32 de 35`; o tempo não, pela mesma falta de máquina
+> calma do ciclo 5 — §11.5) · e o `value.cursor`/`value.table` a emitirem **102 400 cópias do mesmo
+> número** (§11.4). ⭐ **E os nove `pulse.*` estão no dispositivo sem consumidor**: os três que os
+> gastariam são o `sim.spawn` (contagem de nascimento dependente de dados — wave de substrato), o
+> `motion.strobe` e o `motion.step`, e **os dois últimos são do ciclo 7** ⇒ *o ganho da W2 é cobrado
+> pelo grupo seguinte, não por este* (§8.6).
+>
 > ⚠️ **Estado em 2026-09-13.** O ciclo **5** fechou: o smoke foi aprovado em 10/09 e o relógio mediu-se
 > com a máquina calma ([doc 108](108_ciclo_5_simulacao.md) W5 — e a medição achou e curou um nó em
 > série, o `force.buoyancy`, `4,1×`). ⭐ **Antes do 6 entra uma ORDEM DO DONO sobre o 5:** o colisor

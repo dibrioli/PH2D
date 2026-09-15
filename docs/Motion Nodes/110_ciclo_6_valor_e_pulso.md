@@ -869,3 +869,34 @@ arrastar está no cartão, **na cena**, e o título está de facto no texto) · 
 ```text
 cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-motion-value && env PH2D_GPU_COOK_DEMO=117 cargo run -p ph2d-host-desktop --profile smoke
 ```
+
+---
+
+## §13 — ✅ O VEREDITO DO DONO (2026-09-15): o ciclo 6 FECHA
+
+Ele correu a cena `=117`, leu o [tutorial](tutoriais/06_valor_e_pulso.pdf) e aprovou os dois —
+*«tuto ok»* e *«smoke OK»*. Pelo [doc 103 §1](103_dinamica_dos_ciclos.md) passo 7, é isto que fecha
+um ciclo; a tabela da §5 daquele doc está marcada.
+
+⚠️ **O que FECHA é o ciclo, não a lista de abertos** — os quatro itens nomeados na nota de estado do
+doc 103 (W1b · W3b · o relógio da W5 · as 102 400 cópias) continuam vivos, cada um com o mecanismo
+escrito acima. *Um ciclo aprovado com abertos declarados e um ciclo sem abertos leem-se igual numa
+tabela de ✅, e só um deles é verdade.*
+
+⭐ **E uma pergunta do dono, respondida e registada por valer para quem desenhar o ciclo 7:** *«além
+de Strobe, o `Beat` pode ser usado para mais o quê?»* — os consumidores de um pulso são **oito**, e
+saem do catálogo (`PortSpec { ty: PULSE }` do lado da ENTRADA, ⛔ nunca de uma lista escrita à mão):
+
+| cartão | o que a batida faz lá |
+|---|---|
+| `motion.strobe` | o flash que decai (o que ele já conhecia) |
+| `motion.step` | um degrau **persistente** por batida — o `strobe` volta, este acumula |
+| `sim.spawn` | **nascimento** em rajada dentro de uma zona |
+| `pulse.counter` | a batida vira um **inteiro**, que por fio manda em qualquer param |
+| `pulse.level` | a batida vira `0`/`1` (a metade *nível* do vocabulário) |
+| `pulse.sample_hold` | a batida **amostra** um valor contínuo e segura-o até à próxima |
+| `pulse.adsr` | a batida vira uma **curva** (o envelope no domínio de VALOR) |
+| `pulse.signal` | a batida **grita um nome** para fora do grafo |
+
+⚠️ **O `sim.lifetime` NÃO está na lista, e é o engano fácil:** o `pulse` dele é uma **saída** (*«esta
+linha morreu»*), não uma entrada — os dois lêem-se iguais num `grep` por `"pulse"`.

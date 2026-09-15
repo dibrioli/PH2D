@@ -91,6 +91,25 @@ else
       if grep -qI . "$f" 2>/dev/null; then
         out="$(grep -HnF -f <(patfile) -- "$f" 2>/dev/null)" || true
         report "conteúdo" "$out"
+        # ⛔⛔ E O MESMO FICHEIRO OUTRA VEZ, COM AS QUEBRAS DE LINHA DESFEITAS.
+        # Medido 2026-09-15, com controlo dos dois lados: a MESMA frase da
+        # vassoura, no MESMO ficheiro, é ACUSADA quando cabe numa linha e passa
+        # LIMPA quando o parágrafo a parte em duas — `grep -F` casa dentro de
+        # UMA linha e nada mais. Como toda espec deste repo é markdown
+        # quebrado a ~100 colunas, **a maioria das frases de prosa da vassoura
+        # era inalcançável**: bastava a tradução cair no sítio errado do
+        # parágrafo. A cura normaliza o espaço em branco do ficheiro inteiro e
+        # varre outra vez — mais sensível, nunca menos.
+        #
+        # ⚠️ Aqui não há número de linha para dar (o ficheiro virou uma linha
+        # só), então o achado imprime o CONTEXTO à volta — que é o que permite
+        # localizá-lo — e nunca mais do que isso.
+        flat="$(tr '\n' ' ' < "$f" 2>/dev/null | tr -s ' ')"
+        out="$(printf '%s' "$flat" | grep -oF -f <(patfile) 2>/dev/null | sort -u)" || true
+        if [ -n "$out" ]; then
+          out="$(printf '%s' "$out" | sed "s|^|$f (sem quebras de linha): |")"
+        fi
+        report "conteúdo com as quebras de linha desfeitas" "$out"
       elif is_gzip "$f"; then
         # ⛔⛔ UM `.gz` É OPACO AO `strings`, e um sweep verde sobre ele NÃO
         # PROVA NADA SOBRE O CONTEÚDO (achado 2026-09-14, medido: o `strings` de

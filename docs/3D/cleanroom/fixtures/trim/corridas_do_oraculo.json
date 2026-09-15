@@ -1,0 +1,4703 @@
+{
+ "oraculo": "Blender 5.2.1 LTS",
+ "data": "2026-09-15",
+ "corridas": [
+  {
+   "caso": "J_open_tube3_MANIFOLD",
+   "forma_do_gesto": "box",
+   "malha_de_entrada": "open_tube3.obj",
+   "opcoes": {
+    "trim_mode": "DIFFERENCE",
+    "trim_orientation": "VIEW",
+    "trim_extrude_mode": "FIXED",
+    "trim_solver": "MANIFOLD",
+    "use_cursor_depth": false
+   },
+   "vista_ortografica": true,
+   "eixo_da_vista": "FRONT",
+   "pontos_do_gesto_em_mundo": [
+    [
+     0.2,
+     0,
+     -2.0
+    ],
+    [
+     2.0,
+     0,
+     2.0
+    ]
+   ],
+   "raio_do_cursor": null,
+   "simetria_x": false,
+   "mascara_toda": false,
+   "multirresolucao": false,
+   "topologia_dinamica": false,
+   "veredito": "RECUSADO",
+   "mensagem": "o solucionador exige peça SEM BORDO (manifold fechada)"
+  },
+  {
+   "caso": "J_open_disc_MANIFOLD",
+   "forma_do_gesto": "box",
+   "malha_de_entrada": "open_disc.obj",
+   "opcoes": {
+    "trim_mode": "DIFFERENCE",
+    "trim_orientation": "VIEW",
+    "trim_extrude_mode": "FIXED",
+    "trim_solver": "MANIFOLD",
+    "use_cursor_depth": false
+   },
+   "vista_ortografica": true,
+   "eixo_da_vista": "FRONT",
+   "pontos_do_gesto_em_mundo": [
+    [
+     0.2,
+     0,
+     -2.0
+    ],
+    [
+     2.0,
+     0,
+     2.0
+    ]
+   ],
+   "raio_do_cursor": null,
+   "simetria_x": false,
+   "mascara_toda": false,
+   "multirresolucao": false,
+   "topologia_dinamica": false,
+   "veredito": "RECUSADO",
+   "mensagem": "o solucionador exige peça SEM BORDO (manifold fechada)"
+  },
+  {
+   "caso": "J_pillow_MANIFOLD",
+   "forma_do_gesto": "box",
+   "malha_de_entrada": "pillow.obj",
+   "opcoes": {
+    "trim_mode": "DIFFERENCE",
+    "trim_orientation": "VIEW",
+    "trim_extrude_mode": "FIXED",
+    "trim_solver": "MANIFOLD",
+    "use_cursor_depth": false
+   },
+   "vista_ortografica": true,
+   "eixo_da_vista": "FRONT",
+   "pontos_do_gesto_em_mundo": [
+    [
+     0.2,
+     0,
+     -2.0
+    ],
+    [
+     2.0,
+     0,
+     2.0
+    ]
+   ],
+   "raio_do_cursor": null,
+   "simetria_x": false,
+   "mascara_toda": false,
+   "multirresolucao": false,
+   "topologia_dinamica": false,
+   "veredito": "RECUSADO",
+   "mensagem": "o solucionador exige peça SEM BORDO (manifold fechada)"
+  },
+  {
+   "caso": "J_open_tube3_EXACT",
+   "forma_do_gesto": "box",
+   "malha_de_entrada": "open_tube3.obj",
+   "opcoes": {
+    "trim_mode": "DIFFERENCE",
+    "trim_orientation": "VIEW",
+    "trim_extrude_mode": "FIXED",
+    "trim_solver": "EXACT",
+    "use_cursor_depth": false
+   },
+   "vista_ortografica": true,
+   "eixo_da_vista": "FRONT",
+   "pontos_do_gesto_em_mundo": [
+    [
+     0.2,
+     0,
+     -2.0
+    ],
+    [
+     2.0,
+     0,
+     2.0
+    ]
+   ],
+   "raio_do_cursor": null,
+   "simetria_x": false,
+   "mascara_toda": false,
+   "multirresolucao": false,
+   "topologia_dinamica": false,
+   "veredito": "FINISHED",
+   "antes": {
+    "vertices": 18,
+    "faces": 12,
+    "triangulos": 0,
+    "quadrilateros": 12,
+    "poligonos_maiores": 0,
+    "arestas": 30,
+    "arestas_de_bordo": 12,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 0.9999996423720674,
+    "aresta_p50": 1.0,
+    "aresta_p99": 1.000000238418579,
+    "volume_com_sinal": 3.4641016496554644,
+    "caixa_min": [
+     -1.0,
+     -1.0,
+     -0.866025447845459
+    ],
+    "caixa_max": [
+     1.0,
+     1.0,
+     0.866025447845459
+    ]
+   },
+   "depois": {
+    "vertices": 17,
+    "faces": 10,
+    "triangulos": 0,
+    "quadrilateros": 6,
+    "poligonos_maiores": 4,
+    "arestas": 27,
+    "arestas_de_bordo": 10,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 0.4430690436550625,
+    "aresta_p50": 1.0,
+    "aresta_p99": 1.9455694312356018,
+    "volume_com_sinal": 2.1838904468551896,
+    "caixa_min": [
+     -1.0,
+     -1.0,
+     -0.866025447845459
+    ],
+    "caixa_max": [
+     0.1956523209810257,
+     1.0,
+     0.866025447845459
+    ]
+   },
+   "vertices_de_entrada_preservados_ao_bit": 9,
+   "lado_oposto": {
+    "vertices_antes": 6,
+    "vertices_depois": 6,
+    "preservados_ao_bit": 6
+   }
+  },
+  {
+   "caso": "J_open_disc_EXACT",
+   "forma_do_gesto": "box",
+   "malha_de_entrada": "open_disc.obj",
+   "opcoes": {
+    "trim_mode": "DIFFERENCE",
+    "trim_orientation": "VIEW",
+    "trim_extrude_mode": "FIXED",
+    "trim_solver": "EXACT",
+    "use_cursor_depth": false
+   },
+   "vista_ortografica": true,
+   "eixo_da_vista": "FRONT",
+   "pontos_do_gesto_em_mundo": [
+    [
+     0.2,
+     0,
+     -2.0
+    ],
+    [
+     2.0,
+     0,
+     2.0
+    ]
+   ],
+   "raio_do_cursor": null,
+   "simetria_x": false,
+   "mascara_toda": false,
+   "multirresolucao": false,
+   "topologia_dinamica": false,
+   "veredito": "FINISHED",
+   "antes": {
+    "vertices": 19,
+    "faces": 24,
+    "triangulos": 24,
+    "quadrilateros": 0,
+    "poligonos_maiores": 0,
+    "arestas": 42,
+    "arestas_de_bordo": 12,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 0.3644708465568858,
+    "aresta_p50": 0.5121637258778333,
+    "aresta_p99": 0.9442628636929481,
+    "volume_com_sinal": 0.0,
+    "caixa_min": [
+     -0.9876883029937744,
+     -1.0,
+     0.0
+    ],
+    "caixa_max": [
+     0.9876883625984192,
+     1.0,
+     0.0
+    ]
+   },
+   "depois": {
+    "vertices": 21,
+    "faces": 18,
+    "triangulos": 13,
+    "quadrilateros": 5,
+    "poligonos_maiores": 0,
+    "arestas": 38,
+    "arestas_de_bordo": 17,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 0.021269649110332658,
+    "aresta_p50": 0.4785658965659697,
+    "aresta_p99": 0.9442627719674266,
+    "volume_com_sinal": 0.0,
+    "caixa_min": [
+     -0.9876883029937744,
+     -1.0,
+     0.0
+    ],
+    "caixa_max": [
+     0.1956523209810257,
+     1.0,
+     0.0
+    ]
+   },
+   "vertices_de_entrada_preservados_ao_bit": 11,
+   "lado_oposto": {
+    "vertices_antes": 4,
+    "vertices_depois": 4,
+    "preservados_ao_bit": 4
+   }
+  },
+  {
+   "caso": "J_pillow_EXACT",
+   "forma_do_gesto": "box",
+   "malha_de_entrada": "pillow.obj",
+   "opcoes": {
+    "trim_mode": "DIFFERENCE",
+    "trim_orientation": "VIEW",
+    "trim_extrude_mode": "FIXED",
+    "trim_solver": "EXACT",
+    "use_cursor_depth": false
+   },
+   "vista_ortografica": true,
+   "eixo_da_vista": "FRONT",
+   "pontos_do_gesto_em_mundo": [
+    [
+     0.2,
+     0,
+     -2.0
+    ],
+    [
+     2.0,
+     0,
+     2.0
+    ]
+   ],
+   "raio_do_cursor": null,
+   "simetria_x": false,
+   "mascara_toda": false,
+   "multirresolucao": false,
+   "topologia_dinamica": false,
+   "veredito": "FINISHED",
+   "antes": {
+    "vertices": 3,
+    "faces": 1,
+    "triangulos": 1,
+    "quadrilateros": 0,
+    "poligonos_maiores": 0,
+    "arestas": 3,
+    "arestas_de_bordo": 3,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 1.0,
+    "aresta_p50": 1.0,
+    "aresta_p99": 1.4142135623730951,
+    "volume_com_sinal": 0.0,
+    "caixa_min": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "caixa_max": [
+     1.0,
+     0.0,
+     1.0
+    ]
+   },
+   "depois": {
+    "vertices": 4,
+    "faces": 1,
+    "triangulos": 0,
+    "quadrilateros": 1,
+    "poligonos_maiores": 0,
+    "arestas": 4,
+    "arestas_de_bordo": 4,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 0.19565232278062622,
+    "aresta_p50": 0.8043476979824865,
+    "aresta_p99": 1.0,
+    "volume_com_sinal": 0.0,
+    "caixa_min": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "caixa_max": [
+     0.1956523209810257,
+     0.0,
+     1.0
+    ]
+   },
+   "vertices_de_entrada_preservados_ao_bit": 2,
+   "lado_oposto": {
+    "vertices_antes": 0,
+    "vertices_depois": 0,
+    "preservados_ao_bit": 0
+   }
+  },
+  {
+   "caso": "J_open_tube3_FLOAT",
+   "forma_do_gesto": "box",
+   "malha_de_entrada": "open_tube3.obj",
+   "opcoes": {
+    "trim_mode": "DIFFERENCE",
+    "trim_orientation": "VIEW",
+    "trim_extrude_mode": "FIXED",
+    "trim_solver": "FLOAT",
+    "use_cursor_depth": false
+   },
+   "vista_ortografica": true,
+   "eixo_da_vista": "FRONT",
+   "pontos_do_gesto_em_mundo": [
+    [
+     0.2,
+     0,
+     -2.0
+    ],
+    [
+     2.0,
+     0,
+     2.0
+    ]
+   ],
+   "raio_do_cursor": null,
+   "simetria_x": false,
+   "mascara_toda": false,
+   "multirresolucao": false,
+   "topologia_dinamica": false,
+   "veredito": "FINISHED",
+   "antes": {
+    "vertices": 18,
+    "faces": 12,
+    "triangulos": 0,
+    "quadrilateros": 12,
+    "poligonos_maiores": 0,
+    "arestas": 30,
+    "arestas_de_bordo": 12,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 0.9999996423720674,
+    "aresta_p50": 1.0,
+    "aresta_p99": 1.000000238418579,
+    "volume_com_sinal": 3.4641016496554644,
+    "caixa_min": [
+     -1.0,
+     -1.0,
+     -0.866025447845459
+    ],
+    "caixa_max": [
+     1.0,
+     1.0,
+     0.866025447845459
+    ]
+   },
+   "depois": {
+    "vertices": 17,
+    "faces": 8,
+    "triangulos": 0,
+    "quadrilateros": 6,
+    "poligonos_maiores": 2,
+    "arestas": 24,
+    "arestas_de_bordo": 14,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 0.44306907728675254,
+    "aresta_p50": 1.0,
+    "aresta_p99": 1.000000059604643,
+    "volume_com_sinal": 1.957970627026795,
+    "caixa_min": [
+     -1.0,
+     -1.0,
+     -0.866025447845459
+    ],
+    "caixa_max": [
+     0.1956523358821869,
+     1.0,
+     0.8660255074501038
+    ]
+   },
+   "vertices_de_entrada_preservados_ao_bit": 9,
+   "lado_oposto": {
+    "vertices_antes": 6,
+    "vertices_depois": 6,
+    "preservados_ao_bit": 6
+   }
+  },
+  {
+   "caso": "J_open_disc_FLOAT",
+   "forma_do_gesto": "box",
+   "malha_de_entrada": "open_disc.obj",
+   "opcoes": {
+    "trim_mode": "DIFFERENCE",
+    "trim_orientation": "VIEW",
+    "trim_extrude_mode": "FIXED",
+    "trim_solver": "FLOAT",
+    "use_cursor_depth": false
+   },
+   "vista_ortografica": true,
+   "eixo_da_vista": "FRONT",
+   "pontos_do_gesto_em_mundo": [
+    [
+     0.2,
+     0,
+     -2.0
+    ],
+    [
+     2.0,
+     0,
+     2.0
+    ]
+   ],
+   "raio_do_cursor": null,
+   "simetria_x": false,
+   "mascara_toda": false,
+   "multirresolucao": false,
+   "topologia_dinamica": false,
+   "veredito": "FINISHED",
+   "antes": {
+    "vertices": 19,
+    "faces": 24,
+    "triangulos": 24,
+    "quadrilateros": 0,
+    "poligonos_maiores": 0,
+    "arestas": 42,
+    "arestas_de_bordo": 12,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 0.3644708465568858,
+    "aresta_p50": 0.5121637258778333,
+    "aresta_p99": 0.9442628636929481,
+    "volume_com_sinal": 0.0,
+    "caixa_min": [
+     -0.9876883029937744,
+     -1.0,
+     0.0
+    ],
+    "caixa_max": [
+     0.9876883625984192,
+     1.0,
+     0.0
+    ]
+   },
+   "depois": {
+    "vertices": 21,
+    "faces": 18,
+    "triangulos": 13,
+    "quadrilateros": 5,
+    "poligonos_maiores": 0,
+    "arestas": 38,
+    "arestas_de_bordo": 17,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 0.021269649110332658,
+    "aresta_p50": 0.47856586542885404,
+    "aresta_p99": 0.9442627719674266,
+    "volume_com_sinal": 0.0,
+    "caixa_min": [
+     -0.9876883029937744,
+     -1.0,
+     0.0
+    ],
+    "caixa_max": [
+     0.19565235078334808,
+     1.0,
+     0.0
+    ]
+   },
+   "vertices_de_entrada_preservados_ao_bit": 11,
+   "lado_oposto": {
+    "vertices_antes": 4,
+    "vertices_depois": 4,
+    "preservados_ao_bit": 4
+   }
+  },
+  {
+   "caso": "J_pillow_FLOAT",
+   "forma_do_gesto": "box",
+   "malha_de_entrada": "pillow.obj",
+   "opcoes": {
+    "trim_mode": "DIFFERENCE",
+    "trim_orientation": "VIEW",
+    "trim_extrude_mode": "FIXED",
+    "trim_solver": "FLOAT",
+    "use_cursor_depth": false
+   },
+   "vista_ortografica": true,
+   "eixo_da_vista": "FRONT",
+   "pontos_do_gesto_em_mundo": [
+    [
+     0.2,
+     0,
+     -2.0
+    ],
+    [
+     2.0,
+     0,
+     2.0
+    ]
+   ],
+   "raio_do_cursor": null,
+   "simetria_x": false,
+   "mascara_toda": false,
+   "multirresolucao": false,
+   "topologia_dinamica": false,
+   "veredito": "FINISHED",
+   "antes": {
+    "vertices": 3,
+    "faces": 1,
+    "triangulos": 1,
+    "quadrilateros": 0,
+    "poligonos_maiores": 0,
+    "arestas": 3,
+    "arestas_de_bordo": 3,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 1.0,
+    "aresta_p50": 1.0,
+    "aresta_p99": 1.4142135623730951,
+    "volume_com_sinal": 0.0,
+    "caixa_min": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "caixa_max": [
+     1.0,
+     0.0,
+     1.0
+    ]
+   },
+   "depois": {
+    "vertices": 4,
+    "faces": 1,
+    "triangulos": 0,
+    "quadrilateros": 1,
+    "poligonos_maiores": 0,
+    "arestas": 4,
+    "arestas_de_bordo": 4,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 0.1956523227806741,
+    "aresta_p50": 0.80434751272476,
+    "aresta_p99": 1.0,
+    "volume_com_sinal": 0.0,
+    "caixa_min": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "caixa_max": [
+     0.19565236568450928,
+     6.728805601596832e-08,
+     1.0
+    ]
+   },
+   "vertices_de_entrada_preservados_ao_bit": 2,
+   "lado_oposto": {
+    "vertices_antes": 0,
+    "vertices_depois": 0,
+    "preservados_ao_bit": 0
+   }
+  },
+  {
+   "caso": "K1_cursor_depth_small",
+   "forma_do_gesto": "box",
+   "malha_de_entrada": "uv_sphere_16x32.obj",
+   "opcoes": {
+    "trim_mode": "DIFFERENCE",
+    "trim_orientation": "VIEW",
+    "trim_extrude_mode": "FIXED",
+    "trim_solver": "MANIFOLD",
+    "use_cursor_depth": true
+   },
+   "vista_ortografica": true,
+   "eixo_da_vista": "FRONT",
+   "pontos_do_gesto_em_mundo": [
+    [
+     0.2,
+     0,
+     -2.0
+    ],
+    [
+     2.0,
+     0,
+     2.0
+    ]
+   ],
+   "raio_do_cursor": null,
+   "simetria_x": false,
+   "mascara_toda": false,
+   "multirresolucao": false,
+   "topologia_dinamica": false,
+   "veredito": "RECUSADO",
+   "mensagem": "recusado (motivo não mapeado — ver ledger)"
+  },
+  {
+   "caso": "K2_cursor_depth_big",
+   "forma_do_gesto": "box",
+   "malha_de_entrada": "uv_sphere_16x32.obj",
+   "opcoes": {
+    "trim_mode": "DIFFERENCE",
+    "trim_orientation": "VIEW",
+    "trim_extrude_mode": "FIXED",
+    "trim_solver": "MANIFOLD",
+    "use_cursor_depth": true
+   },
+   "vista_ortografica": true,
+   "eixo_da_vista": "FRONT",
+   "pontos_do_gesto_em_mundo": [
+    [
+     0.2,
+     0,
+     -2.0
+    ],
+    [
+     2.0,
+     0,
+     2.0
+    ]
+   ],
+   "raio_do_cursor": null,
+   "simetria_x": false,
+   "mascara_toda": false,
+   "multirresolucao": false,
+   "topologia_dinamica": false,
+   "veredito": "RECUSADO",
+   "mensagem": "recusado (motivo não mapeado — ver ledger)"
+  },
+  {
+   "caso": "L_FIXED_persp_near",
+   "forma_do_gesto": "box",
+   "malha_de_entrada": "uv_sphere_16x32.obj",
+   "opcoes": {
+    "trim_mode": "DIFFERENCE",
+    "trim_orientation": "VIEW",
+    "trim_extrude_mode": "FIXED",
+    "trim_solver": "MANIFOLD",
+    "use_cursor_depth": false
+   },
+   "vista_ortografica": false,
+   "eixo_da_vista": "FRONT",
+   "pontos_do_gesto_em_mundo": [
+    [
+     0.2,
+     0,
+     -2.0
+    ],
+    [
+     2.0,
+     0,
+     2.0
+    ]
+   ],
+   "raio_do_cursor": null,
+   "simetria_x": false,
+   "mascara_toda": false,
+   "multirresolucao": false,
+   "topologia_dinamica": false,
+   "veredito": "FINISHED",
+   "antes": {
+    "vertices": 482,
+    "faces": 512,
+    "triangulos": 64,
+    "quadrilateros": 448,
+    "poligonos_maiores": 0,
+    "arestas": 992,
+    "arestas_de_bordo": 0,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 0.038244362489872466,
+    "aresta_p50": 0.19603412950008753,
+    "aresta_p99": 0.19603440385966556,
+    "volume_com_sinal": 4.121941651853226,
+    "caixa_min": [
+     -1.0,
+     -1.0,
+     -1.0
+    ],
+    "caixa_max": [
+     1.0,
+     1.0,
+     1.0
+    ]
+   },
+   "depois": {
+    "vertices": 371,
+    "faces": 374,
+    "triangulos": 68,
+    "quadrilateros": 294,
+    "poligonos_maiores": 12,
+    "arestas": 743,
+    "arestas_de_bordo": 0,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 0.007369746976282457,
+    "aresta_p50": 0.19226767149048826,
+    "aresta_p99": 0.19922423822659655,
+    "volume_com_sinal": 2.6701423427515367,
+    "caixa_min": [
+     -1.0,
+     -1.0,
+     -1.0
+    ],
+    "caixa_max": [
+     0.1983940303325653,
+     1.0,
+     1.0
+    ]
+   },
+   "vertices_de_entrada_preservados_ao_bit": 317,
+   "lado_oposto": {
+    "vertices_antes": 97,
+    "vertices_depois": 97,
+    "preservados_ao_bit": 97
+   }
+  },
+  {
+   "caso": "L_PROJECT_persp_near",
+   "forma_do_gesto": "box",
+   "malha_de_entrada": "uv_sphere_16x32.obj",
+   "opcoes": {
+    "trim_mode": "DIFFERENCE",
+    "trim_orientation": "VIEW",
+    "trim_extrude_mode": "PROJECT",
+    "trim_solver": "MANIFOLD",
+    "use_cursor_depth": false
+   },
+   "vista_ortografica": false,
+   "eixo_da_vista": "FRONT",
+   "pontos_do_gesto_em_mundo": [
+    [
+     0.2,
+     0,
+     -2.0
+    ],
+    [
+     2.0,
+     0,
+     2.0
+    ]
+   ],
+   "raio_do_cursor": null,
+   "simetria_x": false,
+   "mascara_toda": false,
+   "multirresolucao": false,
+   "topologia_dinamica": false,
+   "veredito": "FINISHED",
+   "antes": {
+    "vertices": 482,
+    "faces": 512,
+    "triangulos": 64,
+    "quadrilateros": 448,
+    "poligonos_maiores": 0,
+    "arestas": 992,
+    "arestas_de_bordo": 0,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 0.038244362489872466,
+    "aresta_p50": 0.19603412950008753,
+    "aresta_p99": 0.19603440385966556,
+    "volume_com_sinal": 4.121941651853226,
+    "caixa_min": [
+     -1.0,
+     -1.0,
+     -1.0
+    ],
+    "caixa_max": [
+     1.0,
+     1.0,
+     1.0
+    ]
+   },
+   "depois": {
+    "vertices": 364,
+    "faces": 364,
+    "triangulos": 72,
+    "quadrilateros": 276,
+    "poligonos_maiores": 16,
+    "arestas": 726,
+    "arestas_de_bordo": 0,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 0.01962255059491094,
+    "aresta_p50": 0.19226762267319913,
+    "aresta_p99": 0.19872762985714854,
+    "volume_com_sinal": 2.668321526970323,
+    "caixa_min": [
+     -1.0,
+     -1.0,
+     -1.0
+    ],
+    "caixa_max": [
+     0.27146539092063904,
+     1.0,
+     1.0
+    ]
+   },
+   "vertices_de_entrada_preservados_ao_bit": 304,
+   "lado_oposto": {
+    "vertices_antes": 97,
+    "vertices_depois": 97,
+    "preservados_ao_bit": 97
+   }
+  },
+  {
+   "caso": "M1_surface_top",
+   "forma_do_gesto": "box",
+   "malha_de_entrada": "uv_sphere_16x32.obj",
+   "opcoes": {
+    "trim_mode": "DIFFERENCE",
+    "trim_orientation": "SURFACE",
+    "trim_extrude_mode": "FIXED",
+    "trim_solver": "MANIFOLD",
+    "use_cursor_depth": false
+   },
+   "vista_ortografica": true,
+   "eixo_da_vista": "TOP",
+   "pontos_do_gesto_em_mundo": [
+    [
+     0.2,
+     -2.0,
+     0
+    ],
+    [
+     2.0,
+     2.0,
+     0
+    ]
+   ],
+   "raio_do_cursor": null,
+   "simetria_x": false,
+   "mascara_toda": false,
+   "multirresolucao": false,
+   "topologia_dinamica": false,
+   "veredito": "FINISHED",
+   "antes": {
+    "vertices": 482,
+    "faces": 512,
+    "triangulos": 64,
+    "quadrilateros": 448,
+    "poligonos_maiores": 0,
+    "arestas": 992,
+    "arestas_de_bordo": 0,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 0.038244362489872466,
+    "aresta_p50": 0.19603412950008753,
+    "aresta_p99": 0.19603440385966556,
+    "volume_com_sinal": 4.121941651853226,
+    "caixa_min": [
+     -1.0,
+     -1.0,
+     -1.0
+    ],
+    "caixa_max": [
+     1.0,
+     1.0,
+     1.0
+    ]
+   },
+   "depois": {
+    "vertices": 371,
+    "faces": 374,
+    "triangulos": 66,
+    "quadrilateros": 298,
+    "poligonos_maiores": 10,
+    "arestas": 743,
+    "arestas_de_bordo": 0,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 0.004504704142206606,
+    "aresta_p50": 0.19603411109066488,
+    "aresta_p99": 0.19922423822659655,
+    "volume_com_sinal": 2.6619361675497784,
+    "caixa_min": [
+     -1.0,
+     -1.0,
+     -1.0
+    ],
+    "caixa_max": [
+     0.19565235078334808,
+     1.0,
+     1.0
+    ]
+   },
+   "vertices_de_entrada_preservados_ao_bit": 317,
+   "lado_oposto": {
+    "vertices_antes": 97,
+    "vertices_depois": 97,
+    "preservados_ao_bit": 97
+   }
+  },
+  {
+   "caso": "M2_view_top",
+   "forma_do_gesto": "box",
+   "malha_de_entrada": "uv_sphere_16x32.obj",
+   "opcoes": {
+    "trim_mode": "DIFFERENCE",
+    "trim_orientation": "VIEW",
+    "trim_extrude_mode": "FIXED",
+    "trim_solver": "MANIFOLD",
+    "use_cursor_depth": false
+   },
+   "vista_ortografica": true,
+   "eixo_da_vista": "TOP",
+   "pontos_do_gesto_em_mundo": [
+    [
+     0.2,
+     -2.0,
+     0
+    ],
+    [
+     2.0,
+     2.0,
+     0
+    ]
+   ],
+   "raio_do_cursor": null,
+   "simetria_x": false,
+   "mascara_toda": false,
+   "multirresolucao": false,
+   "topologia_dinamica": false,
+   "veredito": "FINISHED",
+   "antes": {
+    "vertices": 482,
+    "faces": 512,
+    "triangulos": 64,
+    "quadrilateros": 448,
+    "poligonos_maiores": 0,
+    "arestas": 992,
+    "arestas_de_bordo": 0,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 0.038244362489872466,
+    "aresta_p50": 0.19603412950008753,
+    "aresta_p99": 0.19603440385966556,
+    "volume_com_sinal": 4.121941651853226,
+    "caixa_min": [
+     -1.0,
+     -1.0,
+     -1.0
+    ],
+    "caixa_max": [
+     1.0,
+     1.0,
+     1.0
+    ]
+   },
+   "depois": {
+    "vertices": 371,
+    "faces": 374,
+    "triangulos": 66,
+    "quadrilateros": 298,
+    "poligonos_maiores": 10,
+    "arestas": 743,
+    "arestas_de_bordo": 0,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 0.004504704142206606,
+    "aresta_p50": 0.19603411109066488,
+    "aresta_p99": 0.19922423822659655,
+    "volume_com_sinal": 2.6619361675497784,
+    "caixa_min": [
+     -1.0,
+     -1.0,
+     -1.0
+    ],
+    "caixa_max": [
+     0.19565235078334808,
+     1.0,
+     1.0
+    ]
+   },
+   "vertices_de_entrada_preservados_ao_bit": 317,
+   "lado_oposto": {
+    "vertices_antes": 97,
+    "vertices_depois": 97,
+    "preservados_ao_bit": 97
+   }
+  },
+  {
+   "caso": "N1_frontfaces_off",
+   "forma_do_gesto": "box",
+   "malha_de_entrada": "uv_sphere_16x32.obj",
+   "opcoes": {
+    "trim_mode": "DIFFERENCE",
+    "trim_orientation": "VIEW",
+    "trim_extrude_mode": "FIXED",
+    "trim_solver": "MANIFOLD",
+    "use_cursor_depth": false,
+    "use_front_faces_only": false
+   },
+   "vista_ortografica": true,
+   "eixo_da_vista": "FRONT",
+   "pontos_do_gesto_em_mundo": [
+    [
+     0.2,
+     0,
+     -2.0
+    ],
+    [
+     2.0,
+     0,
+     2.0
+    ]
+   ],
+   "raio_do_cursor": null,
+   "simetria_x": false,
+   "mascara_toda": false,
+   "multirresolucao": false,
+   "topologia_dinamica": false,
+   "veredito": "FINISHED",
+   "antes": {
+    "vertices": 482,
+    "faces": 512,
+    "triangulos": 64,
+    "quadrilateros": 448,
+    "poligonos_maiores": 0,
+    "arestas": 992,
+    "arestas_de_bordo": 0,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 0.038244362489872466,
+    "aresta_p50": 0.19603412950008753,
+    "aresta_p99": 0.19603440385966556,
+    "volume_com_sinal": 4.121941651853226,
+    "caixa_min": [
+     -1.0,
+     -1.0,
+     -1.0
+    ],
+    "caixa_max": [
+     1.0,
+     1.0,
+     1.0
+    ]
+   },
+   "depois": {
+    "vertices": 371,
+    "faces": 374,
+    "triangulos": 68,
+    "quadrilateros": 294,
+    "poligonos_maiores": 12,
+    "arestas": 743,
+    "arestas_de_bordo": 0,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 0.004504658374022711,
+    "aresta_p50": 0.19226767149048826,
+    "aresta_p99": 0.19922423822659655,
+    "volume_com_sinal": 2.6619360726479737,
+    "caixa_min": [
+     -1.0,
+     -1.0,
+     -1.0
+    ],
+    "caixa_max": [
+     0.1956523209810257,
+     1.0,
+     1.0
+    ]
+   },
+   "vertices_de_entrada_preservados_ao_bit": 317,
+   "lado_oposto": {
+    "vertices_antes": 97,
+    "vertices_depois": 97,
+    "preservados_ao_bit": 97
+   }
+  },
+  {
+   "caso": "N2_frontfaces_on",
+   "forma_do_gesto": "box",
+   "malha_de_entrada": "uv_sphere_16x32.obj",
+   "opcoes": {
+    "trim_mode": "DIFFERENCE",
+    "trim_orientation": "VIEW",
+    "trim_extrude_mode": "FIXED",
+    "trim_solver": "MANIFOLD",
+    "use_cursor_depth": false,
+    "use_front_faces_only": true
+   },
+   "vista_ortografica": true,
+   "eixo_da_vista": "FRONT",
+   "pontos_do_gesto_em_mundo": [
+    [
+     0.2,
+     0,
+     -2.0
+    ],
+    [
+     2.0,
+     0,
+     2.0
+    ]
+   ],
+   "raio_do_cursor": null,
+   "simetria_x": false,
+   "mascara_toda": false,
+   "multirresolucao": false,
+   "topologia_dinamica": false,
+   "veredito": "FINISHED",
+   "antes": {
+    "vertices": 482,
+    "faces": 512,
+    "triangulos": 64,
+    "quadrilateros": 448,
+    "poligonos_maiores": 0,
+    "arestas": 992,
+    "arestas_de_bordo": 0,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 0.038244362489872466,
+    "aresta_p50": 0.19603412950008753,
+    "aresta_p99": 0.19603440385966556,
+    "volume_com_sinal": 4.121941651853226,
+    "caixa_min": [
+     -1.0,
+     -1.0,
+     -1.0
+    ],
+    "caixa_max": [
+     1.0,
+     1.0,
+     1.0
+    ]
+   },
+   "depois": {
+    "vertices": 371,
+    "faces": 374,
+    "triangulos": 68,
+    "quadrilateros": 294,
+    "poligonos_maiores": 12,
+    "arestas": 743,
+    "arestas_de_bordo": 0,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 0.004504658374022711,
+    "aresta_p50": 0.19226767149048826,
+    "aresta_p99": 0.19922423822659655,
+    "volume_com_sinal": 2.6619360726479737,
+    "caixa_min": [
+     -1.0,
+     -1.0,
+     -1.0
+    ],
+    "caixa_max": [
+     0.1956523209810257,
+     1.0,
+     1.0
+    ]
+   },
+   "vertices_de_entrada_preservados_ao_bit": 317,
+   "lado_oposto": {
+    "vertices_antes": 97,
+    "vertices_depois": 97,
+    "preservados_ao_bit": 97
+   }
+  },
+  {
+   "caso": "O1_lasso_concavo_ccw",
+   "forma_do_gesto": "lasso",
+   "malha_de_entrada": "uv_sphere_16x32.obj",
+   "opcoes": {
+    "trim_mode": "DIFFERENCE",
+    "trim_orientation": "VIEW",
+    "trim_extrude_mode": "FIXED",
+    "trim_solver": "MANIFOLD",
+    "use_cursor_depth": false
+   },
+   "vista_ortografica": true,
+   "eixo_da_vista": "FRONT",
+   "pontos_do_gesto_em_mundo": [
+    [
+     0.9,
+     0,
+     -1.2
+    ],
+    [
+     0.9,
+     0,
+     1.2
+    ],
+    [
+     0.2,
+     0,
+     1.2
+    ],
+    [
+     0.2,
+     0,
+     0.7
+    ],
+    [
+     0.6,
+     0,
+     0.7
+    ],
+    [
+     0.6,
+     0,
+     -0.7
+    ],
+    [
+     0.2,
+     0,
+     -0.7
+    ],
+    [
+     0.2,
+     0,
+     -1.2
+    ]
+   ],
+   "raio_do_cursor": null,
+   "simetria_x": false,
+   "mascara_toda": false,
+   "multirresolucao": false,
+   "topologia_dinamica": false,
+   "veredito": "FINISHED",
+   "antes": {
+    "vertices": 482,
+    "faces": 512,
+    "triangulos": 64,
+    "quadrilateros": 448,
+    "poligonos_maiores": 0,
+    "arestas": 992,
+    "arestas_de_bordo": 0,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 0.038244362489872466,
+    "aresta_p50": 0.19603412950008753,
+    "aresta_p99": 0.19603440385966556,
+    "volume_com_sinal": 4.121941651853226,
+    "caixa_min": [
+     -1.0,
+     -1.0,
+     -1.0
+    ],
+    "caixa_max": [
+     1.0,
+     1.0,
+     1.0
+    ]
+   },
+   "depois": {
+    "vertices": 510,
+    "faces": 492,
+    "triangulos": 88,
+    "quadrilateros": 364,
+    "poligonos_maiores": 40,
+    "arestas": 998,
+    "arestas_de_bordo": 0,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 0.007350828217693335,
+    "aresta_p50": 0.19226754191650908,
+    "aresta_p99": 0.6094915281655392,
+    "volume_com_sinal": 3.5941997218139456,
+    "caixa_min": [
+     -1.0,
+     -1.0,
+     -1.0
+    ],
+    "caixa_max": [
+     1.0,
+     1.0,
+     1.0
+    ]
+   },
+   "vertices_de_entrada_preservados_ao_bit": 410,
+   "lado_oposto": {
+    "vertices_antes": 97,
+    "vertices_depois": 97,
+    "preservados_ao_bit": 97
+   }
+  },
+  {
+   "caso": "O2_lasso_concavo_cw",
+   "forma_do_gesto": "lasso",
+   "malha_de_entrada": "uv_sphere_16x32.obj",
+   "opcoes": {
+    "trim_mode": "DIFFERENCE",
+    "trim_orientation": "VIEW",
+    "trim_extrude_mode": "FIXED",
+    "trim_solver": "MANIFOLD",
+    "use_cursor_depth": false
+   },
+   "vista_ortografica": true,
+   "eixo_da_vista": "FRONT",
+   "pontos_do_gesto_em_mundo": [
+    [
+     0.2,
+     0,
+     -1.2
+    ],
+    [
+     0.2,
+     0,
+     -0.7
+    ],
+    [
+     0.6,
+     0,
+     -0.7
+    ],
+    [
+     0.6,
+     0,
+     0.7
+    ],
+    [
+     0.2,
+     0,
+     0.7
+    ],
+    [
+     0.2,
+     0,
+     1.2
+    ],
+    [
+     0.9,
+     0,
+     1.2
+    ],
+    [
+     0.9,
+     0,
+     -1.2
+    ]
+   ],
+   "raio_do_cursor": null,
+   "simetria_x": false,
+   "mascara_toda": false,
+   "multirresolucao": false,
+   "topologia_dinamica": false,
+   "veredito": "FINISHED",
+   "antes": {
+    "vertices": 482,
+    "faces": 512,
+    "triangulos": 64,
+    "quadrilateros": 448,
+    "poligonos_maiores": 0,
+    "arestas": 992,
+    "arestas_de_bordo": 0,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 0.038244362489872466,
+    "aresta_p50": 0.19603412950008753,
+    "aresta_p99": 0.19603440385966556,
+    "volume_com_sinal": 4.121941651853226,
+    "caixa_min": [
+     -1.0,
+     -1.0,
+     -1.0
+    ],
+    "caixa_max": [
+     1.0,
+     1.0,
+     1.0
+    ]
+   },
+   "depois": {
+    "vertices": 510,
+    "faces": 492,
+    "triangulos": 88,
+    "quadrilateros": 364,
+    "poligonos_maiores": 40,
+    "arestas": 998,
+    "arestas_de_bordo": 0,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 0.007350828217693335,
+    "aresta_p50": 0.19226754191650908,
+    "aresta_p99": 0.6094917405619539,
+    "volume_com_sinal": 3.5941996971236465,
+    "caixa_min": [
+     -1.0,
+     -1.0,
+     -1.0
+    ],
+    "caixa_max": [
+     1.0,
+     1.0,
+     1.0
+    ]
+   },
+   "vertices_de_entrada_preservados_ao_bit": 410,
+   "lado_oposto": {
+    "vertices_antes": 97,
+    "vertices_depois": 97,
+    "preservados_ao_bit": 97
+   }
+  },
+  {
+   "caso": "P_dense_MANIFOLD",
+   "forma_do_gesto": "box",
+   "malha_de_entrada": "sculpt_sphere.obj",
+   "opcoes": {
+    "trim_mode": "DIFFERENCE",
+    "trim_orientation": "VIEW",
+    "trim_extrude_mode": "FIXED",
+    "trim_solver": "MANIFOLD",
+    "use_cursor_depth": false
+   },
+   "vista_ortografica": true,
+   "eixo_da_vista": "FRONT",
+   "pontos_do_gesto_em_mundo": [
+    [
+     0.2,
+     0,
+     -2.0
+    ],
+    [
+     2.0,
+     0,
+     2.0
+    ]
+   ],
+   "raio_do_cursor": null,
+   "simetria_x": false,
+   "mascara_toda": false,
+   "multirresolucao": false,
+   "topologia_dinamica": false,
+   "veredito": "FINISHED",
+   "antes": {
+    "vertices": 98306,
+    "faces": 98304,
+    "triangulos": 0,
+    "quadrilateros": 98304,
+    "poligonos_maiores": 0,
+    "arestas": 196608,
+    "arestas_de_bordo": 0,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 0.007399118014912211,
+    "aresta_p50": 0.011752995720563519,
+    "aresta_p99": 0.012725714625200977,
+    "volume_com_sinal": 4.42862652483084,
+    "caixa_min": [
+     -0.9999999403953552,
+     -0.9999999403953552,
+     -0.9999999403953552
+    ],
+    "caixa_max": [
+     0.9999999403953552,
+     0.9999999403953552,
+     0.9999999403953552
+    ]
+   },
+   "depois": {
+    "vertices": 58019,
+    "faces": 57754,
+    "triangulos": 16,
+    "quadrilateros": 57718,
+    "poligonos_maiores": 20,
+    "arestas": 115771,
+    "arestas_de_bordo": 0,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 0.007220390711179658,
+    "aresta_p50": 0.011861404636724485,
+    "aresta_p99": 0.012733871767816185,
+    "volume_com_sinal": 2.8372872806183533,
+    "caixa_min": [
+     -0.9999999403953552,
+     -0.9999999403953552,
+     -0.9999999403953552
+    ],
+    "caixa_max": [
+     0.1956523209810257,
+     0.9999999403953552,
+     0.9999999403953552
+    ]
+   },
+   "vertices_de_entrada_preservados_ao_bit": 57489,
+   "lado_oposto": {
+    "vertices_antes": 26533,
+    "vertices_depois": 26533,
+    "preservados_ao_bit": 26533
+   }
+  },
+  {
+   "caso": "P_dense_FLOAT",
+   "forma_do_gesto": "box",
+   "malha_de_entrada": "sculpt_sphere.obj",
+   "opcoes": {
+    "trim_mode": "DIFFERENCE",
+    "trim_orientation": "VIEW",
+    "trim_extrude_mode": "FIXED",
+    "trim_solver": "FLOAT",
+    "use_cursor_depth": false
+   },
+   "vista_ortografica": true,
+   "eixo_da_vista": "FRONT",
+   "pontos_do_gesto_em_mundo": [
+    [
+     0.2,
+     0,
+     -2.0
+    ],
+    [
+     2.0,
+     0,
+     2.0
+    ]
+   ],
+   "raio_do_cursor": null,
+   "simetria_x": false,
+   "mascara_toda": false,
+   "multirresolucao": false,
+   "topologia_dinamica": false,
+   "veredito": "FINISHED",
+   "antes": {
+    "vertices": 98306,
+    "faces": 98304,
+    "triangulos": 0,
+    "quadrilateros": 98304,
+    "poligonos_maiores": 0,
+    "arestas": 196608,
+    "arestas_de_bordo": 0,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 0.007399118014912211,
+    "aresta_p50": 0.011752995720563519,
+    "aresta_p99": 0.012725714625200977,
+    "volume_com_sinal": 4.42862652483084,
+    "caixa_min": [
+     -0.9999999403953552,
+     -0.9999999403953552,
+     -0.9999999403953552
+    ],
+    "caixa_max": [
+     0.9999999403953552,
+     0.9999999403953552,
+     0.9999999403953552
+    ]
+   },
+   "depois": {
+    "vertices": 58019,
+    "faces": 57754,
+    "triangulos": 16,
+    "quadrilateros": 57718,
+    "poligonos_maiores": 20,
+    "arestas": 115771,
+    "arestas_de_bordo": 0,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 0.007220390711179658,
+    "aresta_p50": 0.011861404636724485,
+    "aresta_p99": 0.012733871767816185,
+    "volume_com_sinal": 2.8372871876135655,
+    "caixa_min": [
+     -0.9999999403953552,
+     -0.9999999403953552,
+     -0.9999999403953552
+    ],
+    "caixa_max": [
+     0.1956523358821869,
+     0.9999999403953552,
+     0.9999999403953552
+    ]
+   },
+   "vertices_de_entrada_preservados_ao_bit": 57489,
+   "lado_oposto": {
+    "vertices_antes": 26533,
+    "vertices_depois": 26533,
+    "preservados_ao_bit": 26533
+   }
+  },
+  {
+   "caso": "P_dense_EXACT",
+   "forma_do_gesto": "box",
+   "malha_de_entrada": "sculpt_sphere.obj",
+   "opcoes": {
+    "trim_mode": "DIFFERENCE",
+    "trim_orientation": "VIEW",
+    "trim_extrude_mode": "FIXED",
+    "trim_solver": "EXACT",
+    "use_cursor_depth": false
+   },
+   "vista_ortografica": true,
+   "eixo_da_vista": "FRONT",
+   "pontos_do_gesto_em_mundo": [
+    [
+     0.2,
+     0,
+     -2.0
+    ],
+    [
+     2.0,
+     0,
+     2.0
+    ]
+   ],
+   "raio_do_cursor": null,
+   "simetria_x": false,
+   "mascara_toda": false,
+   "multirresolucao": false,
+   "topologia_dinamica": false,
+   "veredito": "FINISHED",
+   "antes": {
+    "vertices": 98306,
+    "faces": 98304,
+    "triangulos": 0,
+    "quadrilateros": 98304,
+    "poligonos_maiores": 0,
+    "arestas": 196608,
+    "arestas_de_bordo": 0,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 0.007399118014912211,
+    "aresta_p50": 0.011752995720563519,
+    "aresta_p99": 0.012725714625200977,
+    "volume_com_sinal": 4.42862652483084,
+    "caixa_min": [
+     -0.9999999403953552,
+     -0.9999999403953552,
+     -0.9999999403953552
+    ],
+    "caixa_max": [
+     0.9999999403953552,
+     0.9999999403953552,
+     0.9999999403953552
+    ]
+   },
+   "depois": {
+    "vertices": 58019,
+    "faces": 57754,
+    "triangulos": 16,
+    "quadrilateros": 57718,
+    "poligonos_maiores": 20,
+    "arestas": 115771,
+    "arestas_de_bordo": 0,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 0.007220390711179658,
+    "aresta_p50": 0.011861404636724485,
+    "aresta_p99": 0.012733871767816185,
+    "volume_com_sinal": 2.837287222555481,
+    "caixa_min": [
+     -0.9999999403953552,
+     -0.9999999403953552,
+     -0.9999999403953552
+    ],
+    "caixa_max": [
+     0.1956523209810257,
+     0.9999999403953552,
+     0.9999999403953552
+    ]
+   },
+   "vertices_de_entrada_preservados_ao_bit": 57489,
+   "lado_oposto": {
+    "vertices_antes": 26533,
+    "vertices_depois": 26533,
+    "preservados_ao_bit": 26533
+   }
+  },
+  {
+   "caso": "Q_cursor_r0.15",
+   "forma_do_gesto": "box",
+   "malha_de_entrada": "uv_sphere_16x32.obj",
+   "opcoes": {
+    "trim_mode": "DIFFERENCE",
+    "trim_orientation": "VIEW",
+    "trim_extrude_mode": "FIXED",
+    "trim_solver": "MANIFOLD",
+    "use_cursor_depth": true
+   },
+   "vista_ortografica": true,
+   "eixo_da_vista": "FRONT",
+   "pontos_do_gesto_em_mundo": [
+    [
+     0.2,
+     0,
+     -2.0
+    ],
+    [
+     2.0,
+     0,
+     2.0
+    ]
+   ],
+   "raio_do_cursor": 0.15000000596046448,
+   "simetria_x": false,
+   "mascara_toda": false,
+   "multirresolucao": false,
+   "topologia_dinamica": false,
+   "veredito": "FINISHED",
+   "antes": {
+    "vertices": 482,
+    "faces": 512,
+    "triangulos": 64,
+    "quadrilateros": 448,
+    "poligonos_maiores": 0,
+    "arestas": 992,
+    "arestas_de_bordo": 0,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 0.038244362489872466,
+    "aresta_p50": 0.19603412950008753,
+    "aresta_p99": 0.19603440385966556,
+    "volume_com_sinal": 4.121941651853226,
+    "caixa_min": [
+     -1.0,
+     -1.0,
+     -1.0
+    ],
+    "caixa_max": [
+     1.0,
+     1.0,
+     1.0
+    ]
+   },
+   "depois": {
+    "vertices": 503,
+    "faces": 516,
+    "triangulos": 64,
+    "quadrilateros": 444,
+    "poligonos_maiores": 8,
+    "arestas": 1017,
+    "arestas_de_bordo": 0,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 0.038244358304390845,
+    "aresta_p50": 0.19458633613813747,
+    "aresta_p99": 0.19603440861047738,
+    "volume_com_sinal": 3.9474717014784404,
+    "caixa_min": [
+     -1.0,
+     -1.0,
+     -1.0
+    ],
+    "caixa_max": [
+     0.9926131367683411,
+     1.0,
+     1.0
+    ]
+   },
+   "vertices_de_entrada_preservados_ao_bit": 469,
+   "lado_oposto": {
+    "vertices_antes": 97,
+    "vertices_depois": 97,
+    "preservados_ao_bit": 97
+   }
+  },
+  {
+   "caso": "Q_cursor_r0.35",
+   "forma_do_gesto": "box",
+   "malha_de_entrada": "uv_sphere_16x32.obj",
+   "opcoes": {
+    "trim_mode": "DIFFERENCE",
+    "trim_orientation": "VIEW",
+    "trim_extrude_mode": "FIXED",
+    "trim_solver": "MANIFOLD",
+    "use_cursor_depth": true
+   },
+   "vista_ortografica": true,
+   "eixo_da_vista": "FRONT",
+   "pontos_do_gesto_em_mundo": [
+    [
+     0.2,
+     0,
+     -2.0
+    ],
+    [
+     2.0,
+     0,
+     2.0
+    ]
+   ],
+   "raio_do_cursor": 0.3499999940395355,
+   "simetria_x": false,
+   "mascara_toda": false,
+   "multirresolucao": false,
+   "topologia_dinamica": false,
+   "veredito": "FINISHED",
+   "antes": {
+    "vertices": 482,
+    "faces": 512,
+    "triangulos": 64,
+    "quadrilateros": 448,
+    "poligonos_maiores": 0,
+    "arestas": 992,
+    "arestas_de_bordo": 0,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 0.038244362489872466,
+    "aresta_p50": 0.19603412950008753,
+    "aresta_p99": 0.19603440385966556,
+    "volume_com_sinal": 4.121941651853226,
+    "caixa_min": [
+     -1.0,
+     -1.0,
+     -1.0
+    ],
+    "caixa_max": [
+     1.0,
+     1.0,
+     1.0
+    ]
+   },
+   "depois": {
+    "vertices": 503,
+    "faces": 516,
+    "triangulos": 64,
+    "quadrilateros": 444,
+    "poligonos_maiores": 8,
+    "arestas": 1017,
+    "arestas_de_bordo": 0,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 0.020187443143280814,
+    "aresta_p50": 0.19265555881305155,
+    "aresta_p99": 0.19603440861047738,
+    "volume_com_sinal": 3.719506262843475,
+    "caixa_min": [
+     -1.0,
+     -1.0,
+     -1.0
+    ],
+    "caixa_max": [
+     0.9827640056610107,
+     1.0,
+     1.0
+    ]
+   },
+   "vertices_de_entrada_preservados_ao_bit": 469,
+   "lado_oposto": {
+    "vertices_antes": 97,
+    "vertices_depois": 97,
+    "preservados_ao_bit": 97
+   }
+  },
+  {
+   "caso": "Q_cursor_r0.8",
+   "forma_do_gesto": "box",
+   "malha_de_entrada": "uv_sphere_16x32.obj",
+   "opcoes": {
+    "trim_mode": "DIFFERENCE",
+    "trim_orientation": "VIEW",
+    "trim_extrude_mode": "FIXED",
+    "trim_solver": "MANIFOLD",
+    "use_cursor_depth": true
+   },
+   "vista_ortografica": true,
+   "eixo_da_vista": "FRONT",
+   "pontos_do_gesto_em_mundo": [
+    [
+     0.2,
+     0,
+     -2.0
+    ],
+    [
+     2.0,
+     0,
+     2.0
+    ]
+   ],
+   "raio_do_cursor": 0.800000011920929,
+   "simetria_x": false,
+   "mascara_toda": false,
+   "multirresolucao": false,
+   "topologia_dinamica": false,
+   "veredito": "FINISHED",
+   "antes": {
+    "vertices": 482,
+    "faces": 512,
+    "triangulos": 64,
+    "quadrilateros": 448,
+    "poligonos_maiores": 0,
+    "arestas": 992,
+    "arestas_de_bordo": 0,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 0.038244362489872466,
+    "aresta_p50": 0.19603412950008753,
+    "aresta_p99": 0.19603440385966556,
+    "volume_com_sinal": 4.121941651853226,
+    "caixa_min": [
+     -1.0,
+     -1.0,
+     -1.0
+    ],
+    "caixa_max": [
+     1.0,
+     1.0,
+     1.0
+    ]
+   },
+   "depois": {
+    "vertices": 459,
+    "faces": 468,
+    "triangulos": 64,
+    "quadrilateros": 394,
+    "poligonos_maiores": 10,
+    "arestas": 925,
+    "arestas_de_bordo": 0,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 0.016105796871137803,
+    "aresta_p50": 0.19360371458264647,
+    "aresta_p99": 0.19603443355223754,
+    "volume_com_sinal": 3.2481598909321643,
+    "caixa_min": [
+     -1.0,
+     -1.0,
+     -1.0
+    ],
+    "caixa_max": [
+     0.9146236181259155,
+     1.0,
+     1.0
+    ]
+   },
+   "vertices_de_entrada_preservados_ao_bit": 417,
+   "lado_oposto": {
+    "vertices_antes": 97,
+    "vertices_depois": 97,
+    "preservados_ao_bit": 97
+   }
+  },
+  {
+   "caso": "Q_cursor_r3.0",
+   "forma_do_gesto": "box",
+   "malha_de_entrada": "uv_sphere_16x32.obj",
+   "opcoes": {
+    "trim_mode": "DIFFERENCE",
+    "trim_orientation": "VIEW",
+    "trim_extrude_mode": "FIXED",
+    "trim_solver": "MANIFOLD",
+    "use_cursor_depth": true
+   },
+   "vista_ortografica": true,
+   "eixo_da_vista": "FRONT",
+   "pontos_do_gesto_em_mundo": [
+    [
+     0.2,
+     0,
+     -2.0
+    ],
+    [
+     2.0,
+     0,
+     2.0
+    ]
+   ],
+   "raio_do_cursor": 3.0,
+   "simetria_x": false,
+   "mascara_toda": false,
+   "multirresolucao": false,
+   "topologia_dinamica": false,
+   "veredito": "FINISHED",
+   "antes": {
+    "vertices": 482,
+    "faces": 512,
+    "triangulos": 64,
+    "quadrilateros": 448,
+    "poligonos_maiores": 0,
+    "arestas": 992,
+    "arestas_de_bordo": 0,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 0.038244362489872466,
+    "aresta_p50": 0.19603412950008753,
+    "aresta_p99": 0.19603440385966556,
+    "volume_com_sinal": 4.121941651853226,
+    "caixa_min": [
+     -1.0,
+     -1.0,
+     -1.0
+    ],
+    "caixa_max": [
+     1.0,
+     1.0,
+     1.0
+    ]
+   },
+   "depois": {
+    "vertices": 371,
+    "faces": 374,
+    "triangulos": 68,
+    "quadrilateros": 294,
+    "poligonos_maiores": 12,
+    "arestas": 743,
+    "arestas_de_bordo": 0,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 0.004504658374022711,
+    "aresta_p50": 0.19226767149048826,
+    "aresta_p99": 0.19780213980490038,
+    "volume_com_sinal": 2.661936084737959,
+    "caixa_min": [
+     -1.0,
+     -1.0,
+     -1.0
+    ],
+    "caixa_max": [
+     0.1956523209810257,
+     1.0,
+     1.0
+    ]
+   },
+   "vertices_de_entrada_preservados_ao_bit": 317,
+   "lado_oposto": {
+    "vertices_antes": 97,
+    "vertices_depois": 97,
+    "preservados_ao_bit": 97
+   }
+  },
+  {
+   "caso": "K1_cursor_depth_small",
+   "forma_do_gesto": "box",
+   "malha_de_entrada": "uv_sphere_16x32.obj",
+   "opcoes": {
+    "trim_mode": "DIFFERENCE",
+    "trim_orientation": "VIEW",
+    "trim_extrude_mode": "FIXED",
+    "trim_solver": "MANIFOLD",
+    "use_cursor_depth": true
+   },
+   "vista_ortografica": true,
+   "eixo_da_vista": "FRONT",
+   "pontos_do_gesto_em_mundo": [
+    [
+     0.2,
+     0,
+     -2.0
+    ],
+    [
+     2.0,
+     0,
+     2.0
+    ]
+   ],
+   "raio_do_cursor": 0.15000000596046448,
+   "simetria_x": false,
+   "mascara_toda": false,
+   "multirresolucao": false,
+   "topologia_dinamica": false,
+   "veredito": "FINISHED",
+   "antes": {
+    "vertices": 482,
+    "faces": 512,
+    "triangulos": 64,
+    "quadrilateros": 448,
+    "poligonos_maiores": 0,
+    "arestas": 992,
+    "arestas_de_bordo": 0,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 0.038244362489872466,
+    "aresta_p50": 0.19603412950008753,
+    "aresta_p99": 0.19603440385966556,
+    "volume_com_sinal": 4.121941651853226,
+    "caixa_min": [
+     -1.0,
+     -1.0,
+     -1.0
+    ],
+    "caixa_max": [
+     1.0,
+     1.0,
+     1.0
+    ]
+   },
+   "depois": {
+    "vertices": 503,
+    "faces": 516,
+    "triangulos": 64,
+    "quadrilateros": 444,
+    "poligonos_maiores": 8,
+    "arestas": 1017,
+    "arestas_de_bordo": 0,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 0.038244358304390845,
+    "aresta_p50": 0.19458633613813747,
+    "aresta_p99": 0.19603440861047738,
+    "volume_com_sinal": 3.9474717014784404,
+    "caixa_min": [
+     -1.0,
+     -1.0,
+     -1.0
+    ],
+    "caixa_max": [
+     0.9926131367683411,
+     1.0,
+     1.0
+    ]
+   },
+   "vertices_de_entrada_preservados_ao_bit": 469,
+   "lado_oposto": {
+    "vertices_antes": 97,
+    "vertices_depois": 97,
+    "preservados_ao_bit": 97
+   }
+  },
+  {
+   "caso": "K2_cursor_depth_big",
+   "forma_do_gesto": "box",
+   "malha_de_entrada": "uv_sphere_16x32.obj",
+   "opcoes": {
+    "trim_mode": "DIFFERENCE",
+    "trim_orientation": "VIEW",
+    "trim_extrude_mode": "FIXED",
+    "trim_solver": "MANIFOLD",
+    "use_cursor_depth": true
+   },
+   "vista_ortografica": true,
+   "eixo_da_vista": "FRONT",
+   "pontos_do_gesto_em_mundo": [
+    [
+     0.2,
+     0,
+     -2.0
+    ],
+    [
+     2.0,
+     0,
+     2.0
+    ]
+   ],
+   "raio_do_cursor": 3.0,
+   "simetria_x": false,
+   "mascara_toda": false,
+   "multirresolucao": false,
+   "topologia_dinamica": false,
+   "veredito": "FINISHED",
+   "antes": {
+    "vertices": 482,
+    "faces": 512,
+    "triangulos": 64,
+    "quadrilateros": 448,
+    "poligonos_maiores": 0,
+    "arestas": 992,
+    "arestas_de_bordo": 0,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 0.038244362489872466,
+    "aresta_p50": 0.19603412950008753,
+    "aresta_p99": 0.19603440385966556,
+    "volume_com_sinal": 4.121941651853226,
+    "caixa_min": [
+     -1.0,
+     -1.0,
+     -1.0
+    ],
+    "caixa_max": [
+     1.0,
+     1.0,
+     1.0
+    ]
+   },
+   "depois": {
+    "vertices": 371,
+    "faces": 374,
+    "triangulos": 68,
+    "quadrilateros": 294,
+    "poligonos_maiores": 12,
+    "arestas": 743,
+    "arestas_de_bordo": 0,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 0.004504658374022711,
+    "aresta_p50": 0.19226767149048826,
+    "aresta_p99": 0.19780213980490038,
+    "volume_com_sinal": 2.661936084737959,
+    "caixa_min": [
+     -1.0,
+     -1.0,
+     -1.0
+    ],
+    "caixa_max": [
+     0.1956523209810257,
+     1.0,
+     1.0
+    ]
+   },
+   "vertices_de_entrada_preservados_ao_bit": 317,
+   "lado_oposto": {
+    "vertices_antes": 97,
+    "vertices_depois": 97,
+    "preservados_ao_bit": 97
+   }
+  },
+  {
+   "caso": "R_inicio_fora_VIEW",
+   "forma_do_gesto": "box",
+   "malha_de_entrada": "uv_sphere_16x32.obj",
+   "opcoes": {
+    "trim_mode": "DIFFERENCE",
+    "trim_orientation": "VIEW",
+    "trim_extrude_mode": "FIXED",
+    "trim_solver": "MANIFOLD",
+    "use_cursor_depth": false
+   },
+   "vista_ortografica": true,
+   "eixo_da_vista": "FRONT",
+   "pontos_do_gesto_em_mundo": [
+    [
+     2.0,
+     0,
+     2.0
+    ],
+    [
+     0.2,
+     0,
+     -2.0
+    ]
+   ],
+   "raio_do_cursor": null,
+   "simetria_x": false,
+   "mascara_toda": false,
+   "multirresolucao": false,
+   "topologia_dinamica": false,
+   "veredito": "FINISHED",
+   "antes": {
+    "vertices": 482,
+    "faces": 512,
+    "triangulos": 64,
+    "quadrilateros": 448,
+    "poligonos_maiores": 0,
+    "arestas": 992,
+    "arestas_de_bordo": 0,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 0.038244362489872466,
+    "aresta_p50": 0.19603412950008753,
+    "aresta_p99": 0.19603440385966556,
+    "volume_com_sinal": 4.121941651853226,
+    "caixa_min": [
+     -1.0,
+     -1.0,
+     -1.0
+    ],
+    "caixa_max": [
+     1.0,
+     1.0,
+     1.0
+    ]
+   },
+   "depois": {
+    "vertices": 371,
+    "faces": 374,
+    "triangulos": 68,
+    "quadrilateros": 294,
+    "poligonos_maiores": 12,
+    "arestas": 743,
+    "arestas_de_bordo": 0,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 0.004504658374022711,
+    "aresta_p50": 0.19226767149048826,
+    "aresta_p99": 0.19922423822659655,
+    "volume_com_sinal": 2.6619360726479737,
+    "caixa_min": [
+     -1.0,
+     -1.0,
+     -1.0
+    ],
+    "caixa_max": [
+     0.1956523209810257,
+     1.0,
+     1.0
+    ]
+   },
+   "vertices_de_entrada_preservados_ao_bit": 317,
+   "lado_oposto": {
+    "vertices_antes": 97,
+    "vertices_depois": 97,
+    "preservados_ao_bit": 97
+   }
+  },
+  {
+   "caso": "R_inicio_fora_SURFACE",
+   "forma_do_gesto": "box",
+   "malha_de_entrada": "uv_sphere_16x32.obj",
+   "opcoes": {
+    "trim_mode": "DIFFERENCE",
+    "trim_orientation": "SURFACE",
+    "trim_extrude_mode": "FIXED",
+    "trim_solver": "MANIFOLD",
+    "use_cursor_depth": false
+   },
+   "vista_ortografica": true,
+   "eixo_da_vista": "FRONT",
+   "pontos_do_gesto_em_mundo": [
+    [
+     2.0,
+     0,
+     2.0
+    ],
+    [
+     0.2,
+     0,
+     -2.0
+    ]
+   ],
+   "raio_do_cursor": null,
+   "simetria_x": false,
+   "mascara_toda": false,
+   "multirresolucao": false,
+   "topologia_dinamica": false,
+   "veredito": "FINISHED",
+   "antes": {
+    "vertices": 482,
+    "faces": 512,
+    "triangulos": 64,
+    "quadrilateros": 448,
+    "poligonos_maiores": 0,
+    "arestas": 992,
+    "arestas_de_bordo": 0,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 0.038244362489872466,
+    "aresta_p50": 0.19603412950008753,
+    "aresta_p99": 0.19603440385966556,
+    "volume_com_sinal": 4.121941651853226,
+    "caixa_min": [
+     -1.0,
+     -1.0,
+     -1.0
+    ],
+    "caixa_max": [
+     1.0,
+     1.0,
+     1.0
+    ]
+   },
+   "depois": {
+    "vertices": 371,
+    "faces": 374,
+    "triangulos": 68,
+    "quadrilateros": 294,
+    "poligonos_maiores": 12,
+    "arestas": 743,
+    "arestas_de_bordo": 0,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 0.004504658374022711,
+    "aresta_p50": 0.19226767149048826,
+    "aresta_p99": 0.19922423822659655,
+    "volume_com_sinal": 2.6619360726479737,
+    "caixa_min": [
+     -1.0,
+     -1.0,
+     -1.0
+    ],
+    "caixa_max": [
+     0.1956523209810257,
+     1.0,
+     1.0
+    ]
+   },
+   "vertices_de_entrada_preservados_ao_bit": 317,
+   "lado_oposto": {
+    "vertices_antes": 97,
+    "vertices_depois": 97,
+    "preservados_ao_bit": 97
+   }
+  },
+  {
+   "caso": "S_inicio_sobre_VIEW",
+   "forma_do_gesto": "box",
+   "malha_de_entrada": "uv_sphere_16x32.obj",
+   "opcoes": {
+    "trim_mode": "DIFFERENCE",
+    "trim_orientation": "VIEW",
+    "trim_extrude_mode": "FIXED",
+    "trim_solver": "MANIFOLD",
+    "use_cursor_depth": false
+   },
+   "vista_ortografica": true,
+   "eixo_da_vista": "FRONT",
+   "pontos_do_gesto_em_mundo": [
+    [
+     0.0,
+     0,
+     0.0
+    ],
+    [
+     2.0,
+     0,
+     2.0
+    ]
+   ],
+   "raio_do_cursor": null,
+   "simetria_x": false,
+   "mascara_toda": false,
+   "multirresolucao": false,
+   "topologia_dinamica": false,
+   "veredito": "FINISHED",
+   "antes": {
+    "vertices": 482,
+    "faces": 512,
+    "triangulos": 64,
+    "quadrilateros": 448,
+    "poligonos_maiores": 0,
+    "arestas": 992,
+    "arestas_de_bordo": 0,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 0.038244362489872466,
+    "aresta_p50": 0.19603412950008753,
+    "aresta_p99": 0.19603440385966556,
+    "volume_com_sinal": 4.121941651853226,
+    "caixa_min": [
+     -1.0,
+     -1.0,
+     -1.0
+    ],
+    "caixa_max": [
+     1.0,
+     1.0,
+     1.0
+    ]
+   },
+   "depois": {
+    "vertices": 420,
+    "faces": 419,
+    "triangulos": 49,
+    "quadrilateros": 361,
+    "poligonos_maiores": 9,
+    "arestas": 837,
+    "arestas_de_bordo": 0,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 2.6725647141553625e-08,
+    "aresta_p50": 0.1960341241554166,
+    "aresta_p99": 0.19603440861047738,
+    "volume_com_sinal": 3.0914563008029305,
+    "caixa_min": [
+     -1.0,
+     -1.0,
+     -1.0
+    ],
+    "caixa_max": [
+     1.0,
+     1.0,
+     1.0
+    ]
+   },
+   "vertices_de_entrada_preservados_ao_bit": 369,
+   "lado_oposto": {
+    "vertices_antes": 97,
+    "vertices_depois": 97,
+    "preservados_ao_bit": 97
+   }
+  },
+  {
+   "caso": "S_inicio_sobre_SURFACE",
+   "forma_do_gesto": "box",
+   "malha_de_entrada": "uv_sphere_16x32.obj",
+   "opcoes": {
+    "trim_mode": "DIFFERENCE",
+    "trim_orientation": "SURFACE",
+    "trim_extrude_mode": "FIXED",
+    "trim_solver": "MANIFOLD",
+    "use_cursor_depth": false
+   },
+   "vista_ortografica": true,
+   "eixo_da_vista": "FRONT",
+   "pontos_do_gesto_em_mundo": [
+    [
+     0.0,
+     0,
+     0.0
+    ],
+    [
+     2.0,
+     0,
+     2.0
+    ]
+   ],
+   "raio_do_cursor": null,
+   "simetria_x": false,
+   "mascara_toda": false,
+   "multirresolucao": false,
+   "topologia_dinamica": false,
+   "veredito": "FINISHED",
+   "antes": {
+    "vertices": 482,
+    "faces": 512,
+    "triangulos": 64,
+    "quadrilateros": 448,
+    "poligonos_maiores": 0,
+    "arestas": 992,
+    "arestas_de_bordo": 0,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 0.038244362489872466,
+    "aresta_p50": 0.19603412950008753,
+    "aresta_p99": 0.19603440385966556,
+    "volume_com_sinal": 4.121941651853226,
+    "caixa_min": [
+     -1.0,
+     -1.0,
+     -1.0
+    ],
+    "caixa_max": [
+     1.0,
+     1.0,
+     1.0
+    ]
+   },
+   "depois": {
+    "vertices": 453,
+    "faces": 436,
+    "triangulos": 36,
+    "quadrilateros": 388,
+    "poligonos_maiores": 12,
+    "arestas": 887,
+    "arestas_de_bordo": 0,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 4.694208430791408e-10,
+    "aresta_p50": 0.19603387533113148,
+    "aresta_p99": 0.19612253640881475,
+    "volume_com_sinal": 3.257160985600278,
+    "caixa_min": [
+     -1.0,
+     -1.0,
+     -1.0
+    ],
+    "caixa_max": [
+     1.0,
+     1.0,
+     1.0
+    ]
+   },
+   "vertices_de_entrada_preservados_ao_bit": 387,
+   "lado_oposto": {
+    "vertices_antes": 97,
+    "vertices_depois": 97,
+    "preservados_ao_bit": 97
+   }
+  },
+  {
+   "caso": "A1_difference",
+   "forma_do_gesto": "box",
+   "malha_de_entrada": "uv_sphere_16x32.obj",
+   "opcoes": {
+    "trim_mode": "DIFFERENCE",
+    "trim_orientation": "VIEW",
+    "trim_extrude_mode": "FIXED",
+    "trim_solver": "MANIFOLD",
+    "use_cursor_depth": false
+   },
+   "vista_ortografica": true,
+   "eixo_da_vista": "FRONT",
+   "pontos_do_gesto_em_mundo": [
+    [
+     0.2,
+     0,
+     -2.0
+    ],
+    [
+     2.0,
+     0,
+     2.0
+    ]
+   ],
+   "raio_do_cursor": null,
+   "simetria_x": false,
+   "mascara_toda": false,
+   "multirresolucao": false,
+   "topologia_dinamica": false,
+   "veredito": "FINISHED",
+   "antes": {
+    "vertices": 482,
+    "faces": 512,
+    "triangulos": 64,
+    "quadrilateros": 448,
+    "poligonos_maiores": 0,
+    "arestas": 992,
+    "arestas_de_bordo": 0,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 0.038244362489872466,
+    "aresta_p50": 0.19603412950008753,
+    "aresta_p99": 0.19603440385966556,
+    "volume_com_sinal": 4.121941651853226,
+    "caixa_min": [
+     -1.0,
+     -1.0,
+     -1.0
+    ],
+    "caixa_max": [
+     1.0,
+     1.0,
+     1.0
+    ]
+   },
+   "depois": {
+    "vertices": 371,
+    "faces": 374,
+    "triangulos": 68,
+    "quadrilateros": 294,
+    "poligonos_maiores": 12,
+    "arestas": 743,
+    "arestas_de_bordo": 0,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 0.004504658374022711,
+    "aresta_p50": 0.19226767149048826,
+    "aresta_p99": 0.19922423822659655,
+    "volume_com_sinal": 2.6619360726479737,
+    "caixa_min": [
+     -1.0,
+     -1.0,
+     -1.0
+    ],
+    "caixa_max": [
+     0.1956523209810257,
+     1.0,
+     1.0
+    ]
+   },
+   "vertices_de_entrada_preservados_ao_bit": 317,
+   "lado_oposto": {
+    "vertices_antes": 97,
+    "vertices_depois": 97,
+    "preservados_ao_bit": 97
+   }
+  },
+  {
+   "caso": "A2_union",
+   "forma_do_gesto": "box",
+   "malha_de_entrada": "uv_sphere_16x32.obj",
+   "opcoes": {
+    "trim_mode": "UNION",
+    "trim_orientation": "VIEW",
+    "trim_extrude_mode": "FIXED",
+    "trim_solver": "MANIFOLD",
+    "use_cursor_depth": false
+   },
+   "vista_ortografica": true,
+   "eixo_da_vista": "FRONT",
+   "pontos_do_gesto_em_mundo": [
+    [
+     0.2,
+     0,
+     -2.0
+    ],
+    [
+     2.0,
+     0,
+     2.0
+    ]
+   ],
+   "raio_do_cursor": null,
+   "simetria_x": false,
+   "mascara_toda": false,
+   "multirresolucao": false,
+   "topologia_dinamica": false,
+   "veredito": "FINISHED",
+   "antes": {
+    "vertices": 482,
+    "faces": 512,
+    "triangulos": 64,
+    "quadrilateros": 448,
+    "poligonos_maiores": 0,
+    "arestas": 992,
+    "arestas_de_bordo": 0,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 0.038244362489872466,
+    "aresta_p50": 0.19603412950008753,
+    "aresta_p99": 0.19603440385966556,
+    "volume_com_sinal": 4.121941651853226,
+    "caixa_min": [
+     -1.0,
+     -1.0,
+     -1.0
+    ],
+    "caixa_max": [
+     1.0,
+     1.0,
+     1.0
+    ]
+   },
+   "depois": {
+    "vertices": 379,
+    "faces": 384,
+    "triangulos": 78,
+    "quadrilateros": 294,
+    "poligonos_maiores": 12,
+    "arestas": 761,
+    "arestas_de_bordo": 0,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 0.004504658374022711,
+    "aresta_p50": 0.1960341194045979,
+    "aresta_p99": 2.7220880471031235,
+    "volume_com_sinal": 17.33237278760536,
+    "caixa_min": [
+     -1.0,
+     -1.0210002660751343,
+     -1.995652198791504
+    ],
+    "caixa_max": [
+     1.995652198791504,
+     1.0210002660751343,
+     1.9956520795822144
+    ]
+   },
+   "vertices_de_entrada_preservados_ao_bit": 317,
+   "lado_oposto": {
+    "vertices_antes": 97,
+    "vertices_depois": 97,
+    "preservados_ao_bit": 97
+   }
+  },
+  {
+   "caso": "A3_join",
+   "forma_do_gesto": "box",
+   "malha_de_entrada": "uv_sphere_16x32.obj",
+   "opcoes": {
+    "trim_mode": "JOIN",
+    "trim_orientation": "VIEW",
+    "trim_extrude_mode": "FIXED",
+    "trim_solver": "MANIFOLD",
+    "use_cursor_depth": false
+   },
+   "vista_ortografica": true,
+   "eixo_da_vista": "FRONT",
+   "pontos_do_gesto_em_mundo": [
+    [
+     0.2,
+     0,
+     -2.0
+    ],
+    [
+     2.0,
+     0,
+     2.0
+    ]
+   ],
+   "raio_do_cursor": null,
+   "simetria_x": false,
+   "mascara_toda": false,
+   "multirresolucao": false,
+   "topologia_dinamica": false,
+   "veredito": "FINISHED",
+   "antes": {
+    "vertices": 482,
+    "faces": 512,
+    "triangulos": 64,
+    "quadrilateros": 448,
+    "poligonos_maiores": 0,
+    "arestas": 992,
+    "arestas_de_bordo": 0,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 0.038244362489872466,
+    "aresta_p50": 0.19603412950008753,
+    "aresta_p99": 0.19603440385966556,
+    "volume_com_sinal": 4.121941651853226,
+    "caixa_min": [
+     -1.0,
+     -1.0,
+     -1.0
+    ],
+    "caixa_max": [
+     1.0,
+     1.0,
+     1.0
+    ]
+   },
+   "depois": {
+    "vertices": 490,
+    "faces": 524,
+    "triangulos": 76,
+    "quadrilateros": 448,
+    "poligonos_maiores": 0,
+    "arestas": 1010,
+    "arestas_de_bordo": 0,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 0.03824437105108344,
+    "aresta_p50": 0.19603414018942894,
+    "aresta_p99": 2.0420000102597187,
+    "volume_com_sinal": 18.792379019156996,
+    "caixa_min": [
+     -1.0,
+     -1.0210002660751343,
+     -1.995652198791504
+    ],
+    "caixa_max": [
+     1.995652198791504,
+     1.0210002660751343,
+     1.9956520795822144
+    ]
+   },
+   "vertices_de_entrada_preservados_ao_bit": 482,
+   "lado_oposto": {
+    "vertices_antes": 97,
+    "vertices_depois": 97,
+    "preservados_ao_bit": 97
+   }
+  },
+  {
+   "caso": "B1_solver_exact",
+   "forma_do_gesto": "box",
+   "malha_de_entrada": "uv_sphere_16x32.obj",
+   "opcoes": {
+    "trim_mode": "DIFFERENCE",
+    "trim_orientation": "VIEW",
+    "trim_extrude_mode": "FIXED",
+    "trim_solver": "EXACT",
+    "use_cursor_depth": false
+   },
+   "vista_ortografica": true,
+   "eixo_da_vista": "FRONT",
+   "pontos_do_gesto_em_mundo": [
+    [
+     0.2,
+     0,
+     -2.0
+    ],
+    [
+     2.0,
+     0,
+     2.0
+    ]
+   ],
+   "raio_do_cursor": null,
+   "simetria_x": false,
+   "mascara_toda": false,
+   "multirresolucao": false,
+   "topologia_dinamica": false,
+   "veredito": "FINISHED",
+   "antes": {
+    "vertices": 482,
+    "faces": 512,
+    "triangulos": 64,
+    "quadrilateros": 448,
+    "poligonos_maiores": 0,
+    "arestas": 992,
+    "arestas_de_bordo": 0,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 0.038244362489872466,
+    "aresta_p50": 0.19603412950008753,
+    "aresta_p99": 0.19603440385966556,
+    "volume_com_sinal": 4.121941651853226,
+    "caixa_min": [
+     -1.0,
+     -1.0,
+     -1.0
+    ],
+    "caixa_max": [
+     1.0,
+     1.0,
+     1.0
+    ]
+   },
+   "depois": {
+    "vertices": 371,
+    "faces": 374,
+    "triangulos": 68,
+    "quadrilateros": 294,
+    "poligonos_maiores": 12,
+    "arestas": 743,
+    "arestas_de_bordo": 0,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 0.004504658374022711,
+    "aresta_p50": 0.19226767149048826,
+    "aresta_p99": 0.19922423822659655,
+    "volume_com_sinal": 2.6619360490837596,
+    "caixa_min": [
+     -1.0,
+     -1.0,
+     -1.0
+    ],
+    "caixa_max": [
+     0.1956523209810257,
+     1.0,
+     1.0
+    ]
+   },
+   "vertices_de_entrada_preservados_ao_bit": 317,
+   "lado_oposto": {
+    "vertices_antes": 97,
+    "vertices_depois": 97,
+    "preservados_ao_bit": 97
+   }
+  },
+  {
+   "caso": "B2_solver_float",
+   "forma_do_gesto": "box",
+   "malha_de_entrada": "uv_sphere_16x32.obj",
+   "opcoes": {
+    "trim_mode": "DIFFERENCE",
+    "trim_orientation": "VIEW",
+    "trim_extrude_mode": "FIXED",
+    "trim_solver": "FLOAT",
+    "use_cursor_depth": false
+   },
+   "vista_ortografica": true,
+   "eixo_da_vista": "FRONT",
+   "pontos_do_gesto_em_mundo": [
+    [
+     0.2,
+     0,
+     -2.0
+    ],
+    [
+     2.0,
+     0,
+     2.0
+    ]
+   ],
+   "raio_do_cursor": null,
+   "simetria_x": false,
+   "mascara_toda": false,
+   "multirresolucao": false,
+   "topologia_dinamica": false,
+   "veredito": "FINISHED",
+   "antes": {
+    "vertices": 482,
+    "faces": 512,
+    "triangulos": 64,
+    "quadrilateros": 448,
+    "poligonos_maiores": 0,
+    "arestas": 992,
+    "arestas_de_bordo": 0,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 0.038244362489872466,
+    "aresta_p50": 0.19603412950008753,
+    "aresta_p99": 0.19603440385966556,
+    "volume_com_sinal": 4.121941651853226,
+    "caixa_min": [
+     -1.0,
+     -1.0,
+     -1.0
+    ],
+    "caixa_max": [
+     1.0,
+     1.0,
+     1.0
+    ]
+   },
+   "depois": {
+    "vertices": 371,
+    "faces": 374,
+    "triangulos": 68,
+    "quadrilateros": 294,
+    "poligonos_maiores": 12,
+    "arestas": 743,
+    "arestas_de_bordo": 0,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 0.004504658374022711,
+    "aresta_p50": 0.19226767149048826,
+    "aresta_p99": 0.19922423822659713,
+    "volume_com_sinal": 2.6619360521221593,
+    "caixa_min": [
+     -1.0,
+     -1.0,
+     -1.0
+    ],
+    "caixa_max": [
+     0.19565235078334808,
+     1.0,
+     1.0
+    ]
+   },
+   "vertices_de_entrada_preservados_ao_bit": 317,
+   "lado_oposto": {
+    "vertices_antes": 97,
+    "vertices_depois": 97,
+    "preservados_ao_bit": 97
+   }
+  },
+  {
+   "caso": "C1_surface_orient",
+   "forma_do_gesto": "box",
+   "malha_de_entrada": "uv_sphere_16x32.obj",
+   "opcoes": {
+    "trim_mode": "DIFFERENCE",
+    "trim_orientation": "SURFACE",
+    "trim_extrude_mode": "FIXED",
+    "trim_solver": "MANIFOLD",
+    "use_cursor_depth": false
+   },
+   "vista_ortografica": true,
+   "eixo_da_vista": "FRONT",
+   "pontos_do_gesto_em_mundo": [
+    [
+     0.2,
+     0,
+     -2.0
+    ],
+    [
+     2.0,
+     0,
+     2.0
+    ]
+   ],
+   "raio_do_cursor": null,
+   "simetria_x": false,
+   "mascara_toda": false,
+   "multirresolucao": false,
+   "topologia_dinamica": false,
+   "veredito": "FINISHED",
+   "antes": {
+    "vertices": 482,
+    "faces": 512,
+    "triangulos": 64,
+    "quadrilateros": 448,
+    "poligonos_maiores": 0,
+    "arestas": 992,
+    "arestas_de_bordo": 0,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 0.038244362489872466,
+    "aresta_p50": 0.19603412950008753,
+    "aresta_p99": 0.19603440385966556,
+    "volume_com_sinal": 4.121941651853226,
+    "caixa_min": [
+     -1.0,
+     -1.0,
+     -1.0
+    ],
+    "caixa_max": [
+     1.0,
+     1.0,
+     1.0
+    ]
+   },
+   "depois": {
+    "vertices": 371,
+    "faces": 374,
+    "triangulos": 68,
+    "quadrilateros": 294,
+    "poligonos_maiores": 12,
+    "arestas": 743,
+    "arestas_de_bordo": 0,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 0.004504658374022711,
+    "aresta_p50": 0.19226767149048826,
+    "aresta_p99": 0.19922423822659655,
+    "volume_com_sinal": 2.6619360726479737,
+    "caixa_min": [
+     -1.0,
+     -1.0,
+     -1.0
+    ],
+    "caixa_max": [
+     0.1956523209810257,
+     1.0,
+     1.0
+    ]
+   },
+   "vertices_de_entrada_preservados_ao_bit": 317,
+   "lado_oposto": {
+    "vertices_antes": 97,
+    "vertices_depois": 97,
+    "preservados_ao_bit": 97
+   }
+  },
+  {
+   "caso": "C2_project_ortho",
+   "forma_do_gesto": "box",
+   "malha_de_entrada": "uv_sphere_16x32.obj",
+   "opcoes": {
+    "trim_mode": "DIFFERENCE",
+    "trim_orientation": "VIEW",
+    "trim_extrude_mode": "PROJECT",
+    "trim_solver": "MANIFOLD",
+    "use_cursor_depth": false
+   },
+   "vista_ortografica": true,
+   "eixo_da_vista": "FRONT",
+   "pontos_do_gesto_em_mundo": [
+    [
+     0.2,
+     0,
+     -2.0
+    ],
+    [
+     2.0,
+     0,
+     2.0
+    ]
+   ],
+   "raio_do_cursor": null,
+   "simetria_x": false,
+   "mascara_toda": false,
+   "multirresolucao": false,
+   "topologia_dinamica": false,
+   "veredito": "FINISHED",
+   "antes": {
+    "vertices": 482,
+    "faces": 512,
+    "triangulos": 64,
+    "quadrilateros": 448,
+    "poligonos_maiores": 0,
+    "arestas": 992,
+    "arestas_de_bordo": 0,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 0.038244362489872466,
+    "aresta_p50": 0.19603412950008753,
+    "aresta_p99": 0.19603440385966556,
+    "volume_com_sinal": 4.121941651853226,
+    "caixa_min": [
+     -1.0,
+     -1.0,
+     -1.0
+    ],
+    "caixa_max": [
+     1.0,
+     1.0,
+     1.0
+    ]
+   },
+   "depois": {
+    "vertices": 371,
+    "faces": 374,
+    "triangulos": 68,
+    "quadrilateros": 294,
+    "poligonos_maiores": 12,
+    "arestas": 743,
+    "arestas_de_bordo": 0,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 0.004504658374022711,
+    "aresta_p50": 0.19226767149048826,
+    "aresta_p99": 0.19922423822659655,
+    "volume_com_sinal": 2.6619360726479737,
+    "caixa_min": [
+     -1.0,
+     -1.0,
+     -1.0
+    ],
+    "caixa_max": [
+     0.1956523209810257,
+     1.0,
+     1.0
+    ]
+   },
+   "vertices_de_entrada_preservados_ao_bit": 317,
+   "lado_oposto": {
+    "vertices_antes": 97,
+    "vertices_depois": 97,
+    "preservados_ao_bit": 97
+   }
+  },
+  {
+   "caso": "C3_fixed_persp",
+   "forma_do_gesto": "box",
+   "malha_de_entrada": "uv_sphere_16x32.obj",
+   "opcoes": {
+    "trim_mode": "DIFFERENCE",
+    "trim_orientation": "VIEW",
+    "trim_extrude_mode": "FIXED",
+    "trim_solver": "MANIFOLD",
+    "use_cursor_depth": false
+   },
+   "vista_ortografica": false,
+   "eixo_da_vista": "FRONT",
+   "pontos_do_gesto_em_mundo": [
+    [
+     0.2,
+     0,
+     -2.0
+    ],
+    [
+     2.0,
+     0,
+     2.0
+    ]
+   ],
+   "raio_do_cursor": null,
+   "simetria_x": false,
+   "mascara_toda": false,
+   "multirresolucao": false,
+   "topologia_dinamica": false,
+   "veredito": "FINISHED",
+   "antes": {
+    "vertices": 482,
+    "faces": 512,
+    "triangulos": 64,
+    "quadrilateros": 448,
+    "poligonos_maiores": 0,
+    "arestas": 992,
+    "arestas_de_bordo": 0,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 0.038244362489872466,
+    "aresta_p50": 0.19603412950008753,
+    "aresta_p99": 0.19603440385966556,
+    "volume_com_sinal": 4.121941651853226,
+    "caixa_min": [
+     -1.0,
+     -1.0,
+     -1.0
+    ],
+    "caixa_max": [
+     1.0,
+     1.0,
+     1.0
+    ]
+   },
+   "depois": {
+    "vertices": 371,
+    "faces": 374,
+    "triangulos": 68,
+    "quadrilateros": 294,
+    "poligonos_maiores": 12,
+    "arestas": 743,
+    "arestas_de_bordo": 0,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 0.004506222771467943,
+    "aresta_p50": 0.19226767149048826,
+    "aresta_p99": 0.19922423822659655,
+    "volume_com_sinal": 2.6619405645251746,
+    "caixa_min": [
+     -1.0,
+     -1.0,
+     -1.0
+    ],
+    "caixa_max": [
+     0.19565382599830627,
+     1.0,
+     1.0
+    ]
+   },
+   "vertices_de_entrada_preservados_ao_bit": 317,
+   "lado_oposto": {
+    "vertices_antes": 97,
+    "vertices_depois": 97,
+    "preservados_ao_bit": 97
+   }
+  },
+  {
+   "caso": "C4_project_persp",
+   "forma_do_gesto": "box",
+   "malha_de_entrada": "uv_sphere_16x32.obj",
+   "opcoes": {
+    "trim_mode": "DIFFERENCE",
+    "trim_orientation": "VIEW",
+    "trim_extrude_mode": "PROJECT",
+    "trim_solver": "MANIFOLD",
+    "use_cursor_depth": false
+   },
+   "vista_ortografica": false,
+   "eixo_da_vista": "FRONT",
+   "pontos_do_gesto_em_mundo": [
+    [
+     0.2,
+     0,
+     -2.0
+    ],
+    [
+     2.0,
+     0,
+     2.0
+    ]
+   ],
+   "raio_do_cursor": null,
+   "simetria_x": false,
+   "mascara_toda": false,
+   "multirresolucao": false,
+   "topologia_dinamica": false,
+   "veredito": "FINISHED",
+   "antes": {
+    "vertices": 482,
+    "faces": 512,
+    "triangulos": 64,
+    "quadrilateros": 448,
+    "poligonos_maiores": 0,
+    "arestas": 992,
+    "arestas_de_bordo": 0,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 0.038244362489872466,
+    "aresta_p50": 0.19603412950008753,
+    "aresta_p99": 0.19603440385966556,
+    "volume_com_sinal": 4.121941651853226,
+    "caixa_min": [
+     -1.0,
+     -1.0,
+     -1.0
+    ],
+    "caixa_max": [
+     1.0,
+     1.0,
+     1.0
+    ]
+   },
+   "depois": {
+    "vertices": 372,
+    "faces": 372,
+    "triangulos": 74,
+    "quadrilateros": 280,
+    "poligonos_maiores": 18,
+    "arestas": 742,
+    "arestas_de_bordo": 0,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 0.012228904811133395,
+    "aresta_p50": 0.19226761298542552,
+    "aresta_p99": 0.1981499520787532,
+    "volume_com_sinal": 2.661458691414073,
+    "caixa_min": [
+     -1.0,
+     -1.0,
+     -1.0
+    ],
+    "caixa_max": [
+     0.23357586562633514,
+     1.0,
+     1.0
+    ]
+   },
+   "vertices_de_entrada_preservados_ao_bit": 312,
+   "lado_oposto": {
+    "vertices_antes": 97,
+    "vertices_depois": 97,
+    "preservados_ao_bit": 97
+   }
+  },
+  {
+   "caso": "D1_cursor_depth",
+   "forma_do_gesto": "box",
+   "malha_de_entrada": "uv_sphere_16x32.obj",
+   "opcoes": {
+    "trim_mode": "DIFFERENCE",
+    "trim_orientation": "VIEW",
+    "trim_extrude_mode": "FIXED",
+    "trim_solver": "MANIFOLD",
+    "use_cursor_depth": true
+   },
+   "vista_ortografica": true,
+   "eixo_da_vista": "FRONT",
+   "pontos_do_gesto_em_mundo": [
+    [
+     0.2,
+     0,
+     -2.0
+    ],
+    [
+     2.0,
+     0,
+     2.0
+    ]
+   ],
+   "raio_do_cursor": null,
+   "simetria_x": false,
+   "mascara_toda": false,
+   "multirresolucao": false,
+   "topologia_dinamica": false,
+   "veredito": "FINISHED",
+   "antes": {
+    "vertices": 482,
+    "faces": 512,
+    "triangulos": 64,
+    "quadrilateros": 448,
+    "poligonos_maiores": 0,
+    "arestas": 992,
+    "arestas_de_bordo": 0,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 0.038244362489872466,
+    "aresta_p50": 0.19603412950008753,
+    "aresta_p99": 0.19603440385966556,
+    "volume_com_sinal": 4.121941651853226,
+    "caixa_min": [
+     -1.0,
+     -1.0,
+     -1.0
+    ],
+    "caixa_max": [
+     1.0,
+     1.0,
+     1.0
+    ]
+   },
+   "depois": {
+    "vertices": 459,
+    "faces": 468,
+    "triangulos": 64,
+    "quadrilateros": 394,
+    "poligonos_maiores": 10,
+    "arestas": 925,
+    "arestas_de_bordo": 0,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 0.01610597141902961,
+    "aresta_p50": 0.19226765211494554,
+    "aresta_p99": 0.19603443355223754,
+    "volume_com_sinal": 3.088782256626834,
+    "caixa_min": [
+     -1.0,
+     -1.0,
+     -1.0
+    ],
+    "caixa_max": [
+     0.8669824600219727,
+     1.0,
+     1.0
+    ]
+   },
+   "vertices_de_entrada_preservados_ao_bit": 417,
+   "lado_oposto": {
+    "vertices_antes": 97,
+    "vertices_depois": 97,
+    "preservados_ao_bit": 97
+   }
+  },
+  {
+   "caso": "E1_dense",
+   "forma_do_gesto": "box",
+   "malha_de_entrada": "sculpt_sphere.obj",
+   "opcoes": {
+    "trim_mode": "DIFFERENCE",
+    "trim_orientation": "VIEW",
+    "trim_extrude_mode": "FIXED",
+    "trim_solver": "MANIFOLD",
+    "use_cursor_depth": false
+   },
+   "vista_ortografica": true,
+   "eixo_da_vista": "FRONT",
+   "pontos_do_gesto_em_mundo": [
+    [
+     0.2,
+     0,
+     -2.0
+    ],
+    [
+     2.0,
+     0,
+     2.0
+    ]
+   ],
+   "raio_do_cursor": null,
+   "simetria_x": false,
+   "mascara_toda": false,
+   "multirresolucao": false,
+   "topologia_dinamica": false,
+   "veredito": "FINISHED",
+   "antes": {
+    "vertices": 98306,
+    "faces": 98304,
+    "triangulos": 0,
+    "quadrilateros": 98304,
+    "poligonos_maiores": 0,
+    "arestas": 196608,
+    "arestas_de_bordo": 0,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 0.007399118014912211,
+    "aresta_p50": 0.011752995720563519,
+    "aresta_p99": 0.012725714625200977,
+    "volume_com_sinal": 4.42862652483084,
+    "caixa_min": [
+     -0.9999999403953552,
+     -0.9999999403953552,
+     -0.9999999403953552
+    ],
+    "caixa_max": [
+     0.9999999403953552,
+     0.9999999403953552,
+     0.9999999403953552
+    ]
+   },
+   "depois": {
+    "vertices": 58019,
+    "faces": 57754,
+    "triangulos": 16,
+    "quadrilateros": 57718,
+    "poligonos_maiores": 20,
+    "arestas": 115771,
+    "arestas_de_bordo": 0,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 0.007220390711179658,
+    "aresta_p50": 0.011861404636724485,
+    "aresta_p99": 0.012733871767816185,
+    "volume_com_sinal": 2.8372872806183533,
+    "caixa_min": [
+     -0.9999999403953552,
+     -0.9999999403953552,
+     -0.9999999403953552
+    ],
+    "caixa_max": [
+     0.1956523209810257,
+     0.9999999403953552,
+     0.9999999403953552
+    ]
+   },
+   "vertices_de_entrada_preservados_ao_bit": 57489,
+   "lado_oposto": {
+    "vertices_antes": 26533,
+    "vertices_depois": 26533,
+    "preservados_ao_bit": 26533
+   }
+  },
+  {
+   "caso": "E2_dense_project_persp",
+   "forma_do_gesto": "box",
+   "malha_de_entrada": "sculpt_sphere.obj",
+   "opcoes": {
+    "trim_mode": "DIFFERENCE",
+    "trim_orientation": "VIEW",
+    "trim_extrude_mode": "PROJECT",
+    "trim_solver": "MANIFOLD",
+    "use_cursor_depth": false
+   },
+   "vista_ortografica": false,
+   "eixo_da_vista": "FRONT",
+   "pontos_do_gesto_em_mundo": [
+    [
+     0.2,
+     0,
+     -2.0
+    ],
+    [
+     2.0,
+     0,
+     2.0
+    ]
+   ],
+   "raio_do_cursor": null,
+   "simetria_x": false,
+   "mascara_toda": false,
+   "multirresolucao": false,
+   "topologia_dinamica": false,
+   "veredito": "FINISHED",
+   "antes": {
+    "vertices": 98306,
+    "faces": 98304,
+    "triangulos": 0,
+    "quadrilateros": 98304,
+    "poligonos_maiores": 0,
+    "arestas": 196608,
+    "arestas_de_bordo": 0,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 0.007399118014912211,
+    "aresta_p50": 0.011752995720563519,
+    "aresta_p99": 0.012725714625200977,
+    "volume_com_sinal": 4.42862652483084,
+    "caixa_min": [
+     -0.9999999403953552,
+     -0.9999999403953552,
+     -0.9999999403953552
+    ],
+    "caixa_max": [
+     0.9999999403953552,
+     0.9999999403953552,
+     0.9999999403953552
+    ]
+   },
+   "depois": {
+    "vertices": 57975,
+    "faces": 57710,
+    "triangulos": 16,
+    "quadrilateros": 57674,
+    "poligonos_maiores": 20,
+    "arestas": 115683,
+    "arestas_de_bordo": 0,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 0.00727634420307152,
+    "aresta_p50": 0.011860909983093419,
+    "aresta_p99": 0.012733871767816185,
+    "volume_com_sinal": 2.836867666943288,
+    "caixa_min": [
+     -0.9999999403953552,
+     -0.9999999403953552,
+     -0.9999999403953552
+    ],
+    "caixa_max": [
+     0.2338830679655075,
+     0.9999999403953552,
+     0.9999999403953552
+    ]
+   },
+   "vertices_de_entrada_preservados_ao_bit": 57445,
+   "lado_oposto": {
+    "vertices_antes": 26533,
+    "vertices_depois": 26533,
+    "preservados_ao_bit": 26533
+   }
+  },
+  {
+   "caso": "F1_lasso",
+   "forma_do_gesto": "lasso",
+   "malha_de_entrada": "uv_sphere_16x32.obj",
+   "opcoes": {
+    "trim_mode": "DIFFERENCE",
+    "trim_orientation": "VIEW",
+    "trim_extrude_mode": "FIXED",
+    "trim_solver": "MANIFOLD",
+    "use_cursor_depth": false
+   },
+   "vista_ortografica": true,
+   "eixo_da_vista": "FRONT",
+   "pontos_do_gesto_em_mundo": [
+    [
+     0.2,
+     0,
+     -2.0
+    ],
+    [
+     2.0,
+     0,
+     -2.0
+    ],
+    [
+     2.0,
+     0,
+     2.0
+    ],
+    [
+     0.2,
+     0,
+     2.0
+    ]
+   ],
+   "raio_do_cursor": null,
+   "simetria_x": false,
+   "mascara_toda": false,
+   "multirresolucao": false,
+   "topologia_dinamica": false,
+   "veredito": "FINISHED",
+   "antes": {
+    "vertices": 482,
+    "faces": 512,
+    "triangulos": 64,
+    "quadrilateros": 448,
+    "poligonos_maiores": 0,
+    "arestas": 992,
+    "arestas_de_bordo": 0,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 0.038244362489872466,
+    "aresta_p50": 0.19603412950008753,
+    "aresta_p99": 0.19603440385966556,
+    "volume_com_sinal": 4.121941651853226,
+    "caixa_min": [
+     -1.0,
+     -1.0,
+     -1.0
+    ],
+    "caixa_max": [
+     1.0,
+     1.0,
+     1.0
+    ]
+   },
+   "depois": {
+    "vertices": 371,
+    "faces": 374,
+    "triangulos": 68,
+    "quadrilateros": 294,
+    "poligonos_maiores": 12,
+    "arestas": 743,
+    "arestas_de_bordo": 0,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 0.004504658374022711,
+    "aresta_p50": 0.19226767149048826,
+    "aresta_p99": 0.19922423822659655,
+    "volume_com_sinal": 2.661936077258273,
+    "caixa_min": [
+     -1.0,
+     -1.0,
+     -1.0
+    ],
+    "caixa_max": [
+     0.1956523209810257,
+     1.0,
+     1.0
+    ]
+   },
+   "vertices_de_entrada_preservados_ao_bit": 317,
+   "lado_oposto": {
+    "vertices_antes": 97,
+    "vertices_depois": 97,
+    "preservados_ao_bit": 97
+   }
+  },
+  {
+   "caso": "F2_polyline",
+   "forma_do_gesto": "polyline",
+   "malha_de_entrada": "uv_sphere_16x32.obj",
+   "opcoes": {
+    "trim_mode": "DIFFERENCE",
+    "trim_orientation": "VIEW",
+    "trim_extrude_mode": "FIXED",
+    "trim_solver": "MANIFOLD",
+    "use_cursor_depth": false
+   },
+   "vista_ortografica": true,
+   "eixo_da_vista": "FRONT",
+   "pontos_do_gesto_em_mundo": [
+    [
+     0.2,
+     0,
+     -2.0
+    ],
+    [
+     2.0,
+     0,
+     -2.0
+    ],
+    [
+     2.0,
+     0,
+     2.0
+    ],
+    [
+     0.2,
+     0,
+     2.0
+    ]
+   ],
+   "raio_do_cursor": null,
+   "simetria_x": false,
+   "mascara_toda": false,
+   "multirresolucao": false,
+   "topologia_dinamica": false,
+   "veredito": "FINISHED",
+   "antes": {
+    "vertices": 482,
+    "faces": 512,
+    "triangulos": 64,
+    "quadrilateros": 448,
+    "poligonos_maiores": 0,
+    "arestas": 992,
+    "arestas_de_bordo": 0,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 0.038244362489872466,
+    "aresta_p50": 0.19603412950008753,
+    "aresta_p99": 0.19603440385966556,
+    "volume_com_sinal": 4.121941651853226,
+    "caixa_min": [
+     -1.0,
+     -1.0,
+     -1.0
+    ],
+    "caixa_max": [
+     1.0,
+     1.0,
+     1.0
+    ]
+   },
+   "depois": {
+    "vertices": 371,
+    "faces": 374,
+    "triangulos": 68,
+    "quadrilateros": 294,
+    "poligonos_maiores": 12,
+    "arestas": 743,
+    "arestas_de_bordo": 0,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 0.004504658374022711,
+    "aresta_p50": 0.19226767149048826,
+    "aresta_p99": 0.19922423822659655,
+    "volume_com_sinal": 2.661936077258273,
+    "caixa_min": [
+     -1.0,
+     -1.0,
+     -1.0
+    ],
+    "caixa_max": [
+     0.1956523209810257,
+     1.0,
+     1.0
+    ]
+   },
+   "vertices_de_entrada_preservados_ao_bit": 317,
+   "lado_oposto": {
+    "vertices_antes": 97,
+    "vertices_depois": 97,
+    "preservados_ao_bit": 97
+   }
+  },
+  {
+   "caso": "F3_line",
+   "forma_do_gesto": "line",
+   "malha_de_entrada": "uv_sphere_16x32.obj",
+   "opcoes": {
+    "trim_orientation": "VIEW",
+    "trim_extrude_mode": "FIXED",
+    "trim_solver": "MANIFOLD",
+    "use_cursor_depth": false
+   },
+   "vista_ortografica": true,
+   "eixo_da_vista": "FRONT",
+   "pontos_do_gesto_em_mundo": [
+    [
+     0.2,
+     0,
+     -2.0
+    ],
+    [
+     0.2,
+     0,
+     2.0
+    ]
+   ],
+   "raio_do_cursor": null,
+   "simetria_x": false,
+   "mascara_toda": false,
+   "multirresolucao": false,
+   "topologia_dinamica": false,
+   "veredito": "FINISHED",
+   "antes": {
+    "vertices": 482,
+    "faces": 512,
+    "triangulos": 64,
+    "quadrilateros": 448,
+    "poligonos_maiores": 0,
+    "arestas": 992,
+    "arestas_de_bordo": 0,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 0.038244362489872466,
+    "aresta_p50": 0.19603412950008753,
+    "aresta_p99": 0.19603440385966556,
+    "volume_com_sinal": 4.121941651853226,
+    "caixa_min": [
+     -1.0,
+     -1.0,
+     -1.0
+    ],
+    "caixa_max": [
+     1.0,
+     1.0,
+     1.0
+    ]
+   },
+   "depois": {
+    "vertices": 371,
+    "faces": 374,
+    "triangulos": 68,
+    "quadrilateros": 294,
+    "poligonos_maiores": 12,
+    "arestas": 743,
+    "arestas_de_bordo": 0,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 0.004504658374022711,
+    "aresta_p50": 0.19226767149048826,
+    "aresta_p99": 0.19922423822659655,
+    "volume_com_sinal": 2.6619360835641013,
+    "caixa_min": [
+     -1.0,
+     -1.0,
+     -1.0
+    ],
+    "caixa_max": [
+     0.1956523209810257,
+     1.0,
+     1.0
+    ]
+   },
+   "vertices_de_entrada_preservados_ao_bit": 317,
+   "lado_oposto": {
+    "vertices_antes": 97,
+    "vertices_depois": 97,
+    "preservados_ao_bit": 97
+   }
+  },
+  {
+   "caso": "F4_line_flip",
+   "forma_do_gesto": "line",
+   "malha_de_entrada": "uv_sphere_16x32.obj",
+   "opcoes": {
+    "trim_orientation": "VIEW",
+    "trim_extrude_mode": "FIXED",
+    "trim_solver": "MANIFOLD",
+    "use_cursor_depth": false
+   },
+   "vista_ortografica": true,
+   "eixo_da_vista": "FRONT",
+   "pontos_do_gesto_em_mundo": [
+    [
+     0.2,
+     0,
+     -2.0
+    ],
+    [
+     0.2,
+     0,
+     2.0
+    ]
+   ],
+   "raio_do_cursor": null,
+   "simetria_x": false,
+   "mascara_toda": false,
+   "multirresolucao": false,
+   "topologia_dinamica": false,
+   "veredito": "FINISHED",
+   "antes": {
+    "vertices": 482,
+    "faces": 512,
+    "triangulos": 64,
+    "quadrilateros": 448,
+    "poligonos_maiores": 0,
+    "arestas": 992,
+    "arestas_de_bordo": 0,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 0.038244362489872466,
+    "aresta_p50": 0.19603412950008753,
+    "aresta_p99": 0.19603440385966556,
+    "volume_com_sinal": 4.121941651853226,
+    "caixa_min": [
+     -1.0,
+     -1.0,
+     -1.0
+    ],
+    "caixa_max": [
+     1.0,
+     1.0,
+     1.0
+    ]
+   },
+   "depois": {
+    "vertices": 219,
+    "faces": 194,
+    "triangulos": 8,
+    "quadrilateros": 178,
+    "poligonos_maiores": 8,
+    "arestas": 411,
+    "arestas_de_bordo": 0,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 0.01922517293755162,
+    "aresta_p50": 0.19226746562524685,
+    "aresta_p99": 0.20075252490753887,
+    "volume_com_sinal": 1.4600056034320026,
+    "caixa_min": [
+     0.1956523209810257,
+     -0.9806148409843445,
+     -0.9806147813796997
+    ],
+    "caixa_max": [
+     1.0,
+     0.9806147813796997,
+     0.9806147813796997
+    ]
+   },
+   "vertices_de_entrada_preservados_ao_bit": 165,
+   "lado_oposto": {
+    "vertices_antes": 97,
+    "vertices_depois": 0,
+    "preservados_ao_bit": 0
+   }
+  },
+  {
+   "caso": "F5_line_limit_segment",
+   "forma_do_gesto": "line",
+   "malha_de_entrada": "uv_sphere_16x32.obj",
+   "opcoes": {
+    "trim_orientation": "VIEW",
+    "trim_extrude_mode": "FIXED",
+    "trim_solver": "MANIFOLD",
+    "use_cursor_depth": false,
+    "use_limit_to_segment": true
+   },
+   "vista_ortografica": true,
+   "eixo_da_vista": "FRONT",
+   "pontos_do_gesto_em_mundo": [
+    [
+     0.2,
+     0,
+     -0.3
+    ],
+    [
+     0.2,
+     0,
+     0.3
+    ]
+   ],
+   "raio_do_cursor": null,
+   "simetria_x": false,
+   "mascara_toda": false,
+   "multirresolucao": false,
+   "topologia_dinamica": false,
+   "veredito": "FINISHED",
+   "antes": {
+    "vertices": 482,
+    "faces": 512,
+    "triangulos": 64,
+    "quadrilateros": 448,
+    "poligonos_maiores": 0,
+    "arestas": 992,
+    "arestas_de_bordo": 0,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 0.038244362489872466,
+    "aresta_p50": 0.19603412950008753,
+    "aresta_p99": 0.19603440385966556,
+    "volume_com_sinal": 4.121941651853226,
+    "caixa_min": [
+     -1.0,
+     -1.0,
+     -1.0
+    ],
+    "caixa_max": [
+     1.0,
+     1.0,
+     1.0
+    ]
+   },
+   "depois": {
+    "vertices": 493,
+    "faces": 488,
+    "triangulos": 76,
+    "quadrilateros": 394,
+    "poligonos_maiores": 18,
+    "arestas": 979,
+    "arestas_de_bordo": 0,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 0.006120302242639194,
+    "aresta_p50": 0.19226762789551435,
+    "aresta_p99": 0.19780200090839917,
+    "volume_com_sinal": 3.4390396225441116,
+    "caixa_min": [
+     -1.0,
+     -1.0,
+     -1.0
+    ],
+    "caixa_max": [
+     0.9479721188545227,
+     1.0,
+     1.0
+    ]
+   },
+   "vertices_de_entrada_preservados_ao_bit": 423,
+   "lado_oposto": {
+    "vertices_antes": 97,
+    "vertices_depois": 97,
+    "preservados_ao_bit": 97
+   }
+  },
+  {
+   "caso": "G1_cube",
+   "forma_do_gesto": "box",
+   "malha_de_entrada": "cube.obj",
+   "opcoes": {
+    "trim_mode": "DIFFERENCE",
+    "trim_orientation": "VIEW",
+    "trim_extrude_mode": "FIXED",
+    "trim_solver": "MANIFOLD",
+    "use_cursor_depth": false
+   },
+   "vista_ortografica": true,
+   "eixo_da_vista": "FRONT",
+   "pontos_do_gesto_em_mundo": [
+    [
+     0.2,
+     0,
+     -2.0
+    ],
+    [
+     2.0,
+     0,
+     2.0
+    ]
+   ],
+   "raio_do_cursor": null,
+   "simetria_x": false,
+   "mascara_toda": false,
+   "multirresolucao": false,
+   "topologia_dinamica": false,
+   "veredito": "FINISHED",
+   "antes": {
+    "vertices": 8,
+    "faces": 6,
+    "triangulos": 0,
+    "quadrilateros": 6,
+    "poligonos_maiores": 0,
+    "arestas": 12,
+    "arestas_de_bordo": 0,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 1.0,
+    "aresta_p50": 1.0,
+    "aresta_p99": 1.0,
+    "volume_com_sinal": 1.0,
+    "caixa_min": [
+     -0.5,
+     -0.5,
+     -0.5
+    ],
+    "caixa_max": [
+     0.5,
+     0.5,
+     0.5
+    ]
+   },
+   "depois": {
+    "vertices": 10,
+    "faces": 7,
+    "triangulos": 0,
+    "quadrilateros": 5,
+    "poligonos_maiores": 2,
+    "arestas": 15,
+    "arestas_de_bordo": 0,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 0.37197169801764374,
+    "aresta_p50": 0.6956523107769562,
+    "aresta_p99": 1.0322620562583598,
+    "volume_com_sinal": 0.6956523154335832,
+    "caixa_min": [
+     -0.5,
+     -0.5,
+     -0.5
+    ],
+    "caixa_max": [
+     0.1956523209810257,
+     0.5,
+     0.5
+    ]
+   },
+   "vertices_de_entrada_preservados_ao_bit": 4,
+   "lado_oposto": {
+    "vertices_antes": 0,
+    "vertices_depois": 0,
+    "preservados_ao_bit": 0
+   }
+  },
+  {
+   "caso": "G2_cylinder",
+   "forma_do_gesto": "box",
+   "malha_de_entrada": "cylinder_32.obj",
+   "opcoes": {
+    "trim_mode": "DIFFERENCE",
+    "trim_orientation": "VIEW",
+    "trim_extrude_mode": "FIXED",
+    "trim_solver": "MANIFOLD",
+    "use_cursor_depth": false
+   },
+   "vista_ortografica": true,
+   "eixo_da_vista": "FRONT",
+   "pontos_do_gesto_em_mundo": [
+    [
+     0.2,
+     0,
+     -2.0
+    ],
+    [
+     2.0,
+     0,
+     2.0
+    ]
+   ],
+   "raio_do_cursor": null,
+   "simetria_x": false,
+   "mascara_toda": false,
+   "multirresolucao": false,
+   "topologia_dinamica": false,
+   "veredito": "FINISHED",
+   "antes": {
+    "vertices": 66,
+    "faces": 96,
+    "triangulos": 64,
+    "quadrilateros": 32,
+    "poligonos_maiores": 0,
+    "arestas": 160,
+    "arestas_de_bordo": 0,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 0.1372236839044635,
+    "aresta_p50": 0.6999999748808993,
+    "aresta_p99": 1.6000000566244115,
+    "volume_com_sinal": 2.447212940552585,
+    "caixa_min": [
+     -0.699999988079071,
+     -0.800000011920929,
+     -0.699999988079071
+    ],
+    "caixa_max": [
+     0.699999988079071,
+     0.800000011920929,
+     0.699999988079071
+    ]
+   },
+   "depois": {
+    "vertices": 72,
+    "faces": 86,
+    "triangulos": 60,
+    "quadrilateros": 22,
+    "poligonos_maiores": 4,
+    "arestas": 156,
+    "arestas_de_bordo": 0,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 0.03891764993957238,
+    "aresta_p50": 0.23530905486114112,
+    "aresta_p99": 1.6000000566244115,
+    "volume_com_sinal": 1.6546909158495284,
+    "caixa_min": [
+     -0.699999988079071,
+     -0.800000011920929,
+     -0.699999988079071
+    ],
+    "caixa_max": [
+     0.1956523209810257,
+     0.800000011920929,
+     0.699999988079071
+    ]
+   },
+   "vertices_de_entrada_preservados_ao_bit": 40,
+   "lado_oposto": {
+    "vertices_antes": 14,
+    "vertices_depois": 14,
+    "preservados_ao_bit": 14
+   }
+  },
+  {
+   "caso": "G3_torus",
+   "forma_do_gesto": "box",
+   "malha_de_entrada": "torus_32x16.obj",
+   "opcoes": {
+    "trim_mode": "DIFFERENCE",
+    "trim_orientation": "VIEW",
+    "trim_extrude_mode": "FIXED",
+    "trim_solver": "MANIFOLD",
+    "use_cursor_depth": false
+   },
+   "vista_ortografica": true,
+   "eixo_da_vista": "FRONT",
+   "pontos_do_gesto_em_mundo": [
+    [
+     0.2,
+     0,
+     -2.0
+    ],
+    [
+     2.0,
+     0,
+     2.0
+    ]
+   ],
+   "raio_do_cursor": null,
+   "simetria_x": false,
+   "mascara_toda": false,
+   "multirresolucao": false,
+   "topologia_dinamica": false,
+   "veredito": "FINISHED",
+   "antes": {
+    "vertices": 512,
+    "faces": 512,
+    "triangulos": 0,
+    "quadrilateros": 512,
+    "poligonos_maiores": 0,
+    "arestas": 1024,
+    "arestas_de_bordo": 0,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 0.12742227269328196,
+    "aresta_p50": 0.13656327058085865,
+    "aresta_p99": 0.2646463777226178,
+    "volume_com_sinal": 2.341269441246037,
+    "caixa_min": [
+     -1.350000023841858,
+     -0.3499999940395355,
+     -1.350000023841858
+    ],
+    "caixa_max": [
+     1.350000023841858,
+     0.3499999940395355,
+     1.350000023841858
+    ]
+   },
+   "depois": {
+    "vertices": 330,
+    "faces": 312,
+    "triangulos": 4,
+    "quadrilateros": 296,
+    "poligonos_maiores": 12,
+    "arestas": 640,
+    "arestas_de_bordo": 0,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 0.002937602702315008,
+    "aresta_p50": 0.13656326035128605,
+    "aresta_p99": 0.26464638937970525,
+    "volume_com_sinal": 1.317822820787955,
+    "caixa_min": [
+     -1.350000023841858,
+     -0.3499999940395355,
+     -1.350000023841858
+    ],
+    "caixa_max": [
+     0.1956523209810257,
+     0.3499999940395355,
+     1.350000023841858
+    ]
+   },
+   "vertices_de_entrada_preservados_ao_bit": 290,
+   "lado_oposto": {
+    "vertices_antes": 162,
+    "vertices_depois": 162,
+    "preservados_ao_bit": 162
+   }
+  },
+  {
+   "caso": "H1_mask_all",
+   "forma_do_gesto": "box",
+   "malha_de_entrada": "uv_sphere_16x32.obj",
+   "opcoes": {
+    "trim_mode": "DIFFERENCE",
+    "trim_orientation": "VIEW",
+    "trim_extrude_mode": "FIXED",
+    "trim_solver": "MANIFOLD",
+    "use_cursor_depth": false
+   },
+   "vista_ortografica": true,
+   "eixo_da_vista": "FRONT",
+   "pontos_do_gesto_em_mundo": [
+    [
+     0.2,
+     0,
+     -2.0
+    ],
+    [
+     2.0,
+     0,
+     2.0
+    ]
+   ],
+   "raio_do_cursor": null,
+   "simetria_x": false,
+   "mascara_toda": true,
+   "multirresolucao": false,
+   "topologia_dinamica": false,
+   "veredito": "FINISHED",
+   "antes": {
+    "vertices": 482,
+    "faces": 512,
+    "triangulos": 64,
+    "quadrilateros": 448,
+    "poligonos_maiores": 0,
+    "arestas": 992,
+    "arestas_de_bordo": 0,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 0.038244362489872466,
+    "aresta_p50": 0.19603412950008753,
+    "aresta_p99": 0.19603440385966556,
+    "volume_com_sinal": 4.121941651853226,
+    "caixa_min": [
+     -1.0,
+     -1.0,
+     -1.0
+    ],
+    "caixa_max": [
+     1.0,
+     1.0,
+     1.0
+    ]
+   },
+   "depois": {
+    "vertices": 371,
+    "faces": 374,
+    "triangulos": 68,
+    "quadrilateros": 294,
+    "poligonos_maiores": 12,
+    "arestas": 743,
+    "arestas_de_bordo": 0,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 0.004504658374022711,
+    "aresta_p50": 0.19226767149048826,
+    "aresta_p99": 0.19922423822659655,
+    "volume_com_sinal": 2.6619360726479737,
+    "caixa_min": [
+     -1.0,
+     -1.0,
+     -1.0
+    ],
+    "caixa_max": [
+     0.1956523209810257,
+     1.0,
+     1.0
+    ]
+   },
+   "vertices_de_entrada_preservados_ao_bit": 317,
+   "lado_oposto": {
+    "vertices_antes": 97,
+    "vertices_depois": 97,
+    "preservados_ao_bit": 97
+   }
+  },
+  {
+   "caso": "H2_symmetry_x",
+   "forma_do_gesto": "box",
+   "malha_de_entrada": "uv_sphere_16x32.obj",
+   "opcoes": {
+    "trim_mode": "DIFFERENCE",
+    "trim_orientation": "VIEW",
+    "trim_extrude_mode": "FIXED",
+    "trim_solver": "MANIFOLD",
+    "use_cursor_depth": false
+   },
+   "vista_ortografica": true,
+   "eixo_da_vista": "FRONT",
+   "pontos_do_gesto_em_mundo": [
+    [
+     0.2,
+     0,
+     -2.0
+    ],
+    [
+     2.0,
+     0,
+     2.0
+    ]
+   ],
+   "raio_do_cursor": null,
+   "simetria_x": true,
+   "mascara_toda": false,
+   "multirresolucao": false,
+   "topologia_dinamica": false,
+   "veredito": "FINISHED",
+   "antes": {
+    "vertices": 482,
+    "faces": 512,
+    "triangulos": 64,
+    "quadrilateros": 448,
+    "poligonos_maiores": 0,
+    "arestas": 992,
+    "arestas_de_bordo": 0,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 0.038244362489872466,
+    "aresta_p50": 0.19603412950008753,
+    "aresta_p99": 0.19603440385966556,
+    "volume_com_sinal": 4.121941651853226,
+    "caixa_min": [
+     -1.0,
+     -1.0,
+     -1.0
+    ],
+    "caixa_max": [
+     1.0,
+     1.0,
+     1.0
+    ]
+   },
+   "depois": {
+    "vertices": 260,
+    "faces": 236,
+    "triangulos": 72,
+    "quadrilateros": 140,
+    "poligonos_maiores": 24,
+    "arestas": 494,
+    "arestas_de_bordo": 0,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 0.0005872825051508422,
+    "aresta_p50": 0.13861723028021183,
+    "aresta_p99": 0.20075260841235587,
+    "volume_com_sinal": 1.2019304469394851,
+    "caixa_min": [
+     -0.1956523209810257,
+     -1.0,
+     -1.0
+    ],
+    "caixa_max": [
+     0.1956523209810257,
+     1.0,
+     1.0
+    ]
+   },
+   "vertices_de_entrada_preservados_ao_bit": 152,
+   "lado_oposto": {
+    "vertices_antes": 97,
+    "vertices_depois": 0,
+    "preservados_ao_bit": 0
+   }
+  },
+  {
+   "caso": "I1_multires",
+   "forma_do_gesto": "box",
+   "malha_de_entrada": "uv_sphere_16x32.obj",
+   "opcoes": {
+    "trim_mode": "DIFFERENCE",
+    "trim_orientation": "VIEW",
+    "trim_extrude_mode": "FIXED",
+    "trim_solver": "MANIFOLD",
+    "use_cursor_depth": false
+   },
+   "vista_ortografica": true,
+   "eixo_da_vista": "FRONT",
+   "pontos_do_gesto_em_mundo": [
+    [
+     0.2,
+     0,
+     -2.0
+    ],
+    [
+     2.0,
+     0,
+     2.0
+    ]
+   ],
+   "raio_do_cursor": null,
+   "simetria_x": false,
+   "mascara_toda": false,
+   "multirresolucao": true,
+   "topologia_dinamica": false,
+   "veredito": "RECUSADO",
+   "mensagem": "recusado: peça em MULTIRRESOLUÇÃO"
+  },
+  {
+   "caso": "I2_dyntopo",
+   "forma_do_gesto": "box",
+   "malha_de_entrada": "uv_sphere_16x32.obj",
+   "opcoes": {
+    "trim_mode": "DIFFERENCE",
+    "trim_orientation": "VIEW",
+    "trim_extrude_mode": "FIXED",
+    "trim_solver": "MANIFOLD",
+    "use_cursor_depth": false
+   },
+   "vista_ortografica": true,
+   "eixo_da_vista": "FRONT",
+   "pontos_do_gesto_em_mundo": [
+    [
+     0.2,
+     0,
+     -2.0
+    ],
+    [
+     2.0,
+     0,
+     2.0
+    ]
+   ],
+   "raio_do_cursor": null,
+   "simetria_x": false,
+   "mascara_toda": false,
+   "multirresolucao": false,
+   "topologia_dinamica": true,
+   "veredito": "RECUSADO",
+   "mensagem": "recusado: peça em TOPOLOGIA DINÂMICA"
+  },
+  {
+   "caso": "I3_gesture_off_mesh",
+   "forma_do_gesto": "box",
+   "malha_de_entrada": "uv_sphere_16x32.obj",
+   "opcoes": {
+    "trim_mode": "DIFFERENCE",
+    "trim_orientation": "VIEW",
+    "trim_extrude_mode": "FIXED",
+    "trim_solver": "MANIFOLD",
+    "use_cursor_depth": false
+   },
+   "vista_ortografica": true,
+   "eixo_da_vista": "FRONT",
+   "pontos_do_gesto_em_mundo": [
+    [
+     3.0,
+     0,
+     -2.0
+    ],
+    [
+     4.0,
+     0,
+     2.0
+    ]
+   ],
+   "raio_do_cursor": null,
+   "simetria_x": false,
+   "mascara_toda": false,
+   "multirresolucao": false,
+   "topologia_dinamica": false,
+   "veredito": "FINISHED",
+   "antes": {
+    "vertices": 482,
+    "faces": 512,
+    "triangulos": 64,
+    "quadrilateros": 448,
+    "poligonos_maiores": 0,
+    "arestas": 992,
+    "arestas_de_bordo": 0,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 0.038244362489872466,
+    "aresta_p50": 0.19603412950008753,
+    "aresta_p99": 0.19603440385966556,
+    "volume_com_sinal": 4.121941651853226,
+    "caixa_min": [
+     -1.0,
+     -1.0,
+     -1.0
+    ],
+    "caixa_max": [
+     1.0,
+     1.0,
+     1.0
+    ]
+   },
+   "depois": {
+    "vertices": 482,
+    "faces": 512,
+    "triangulos": 64,
+    "quadrilateros": 448,
+    "poligonos_maiores": 0,
+    "arestas": 992,
+    "arestas_de_bordo": 0,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 0.038244362489872466,
+    "aresta_p50": 0.19603412950008753,
+    "aresta_p99": 0.19603440385966556,
+    "volume_com_sinal": 4.1219417064147565,
+    "caixa_min": [
+     -1.0,
+     -1.0,
+     -1.0
+    ],
+    "caixa_max": [
+     1.0,
+     1.0,
+     1.0
+    ]
+   },
+   "vertices_de_entrada_preservados_ao_bit": 482,
+   "lado_oposto": {
+    "vertices_antes": 97,
+    "vertices_depois": 97,
+    "preservados_ao_bit": 97
+   }
+  },
+  {
+   "caso": "I4_degenerate_zero_area",
+   "forma_do_gesto": "box",
+   "malha_de_entrada": "uv_sphere_16x32.obj",
+   "opcoes": {
+    "trim_mode": "DIFFERENCE",
+    "trim_orientation": "VIEW",
+    "trim_extrude_mode": "FIXED",
+    "trim_solver": "MANIFOLD",
+    "use_cursor_depth": false
+   },
+   "vista_ortografica": true,
+   "eixo_da_vista": "FRONT",
+   "pontos_do_gesto_em_mundo": [
+    [
+     0.2,
+     0,
+     0.0
+    ],
+    [
+     0.2,
+     0,
+     0.0
+    ]
+   ],
+   "raio_do_cursor": null,
+   "simetria_x": false,
+   "mascara_toda": false,
+   "multirresolucao": false,
+   "topologia_dinamica": false,
+   "veredito": "FINISHED",
+   "antes": {
+    "vertices": 482,
+    "faces": 512,
+    "triangulos": 64,
+    "quadrilateros": 448,
+    "poligonos_maiores": 0,
+    "arestas": 992,
+    "arestas_de_bordo": 0,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 0.038244362489872466,
+    "aresta_p50": 0.19603412950008753,
+    "aresta_p99": 0.19603440385966556,
+    "volume_com_sinal": 4.121941651853226,
+    "caixa_min": [
+     -1.0,
+     -1.0,
+     -1.0
+    ],
+    "caixa_max": [
+     1.0,
+     1.0,
+     1.0
+    ]
+   },
+   "depois": {
+    "vertices": 482,
+    "faces": 512,
+    "triangulos": 64,
+    "quadrilateros": 448,
+    "poligonos_maiores": 0,
+    "arestas": 992,
+    "arestas_de_bordo": 0,
+    "arestas_nao_manifold": 0,
+    "aresta_p01": 0.038244362489872466,
+    "aresta_p50": 0.19603412950008753,
+    "aresta_p99": 0.19603440385966556,
+    "volume_com_sinal": 4.1219417064147565,
+    "caixa_min": [
+     -1.0,
+     -1.0,
+     -1.0
+    ],
+    "caixa_max": [
+     1.0,
+     1.0,
+     1.0
+    ]
+   },
+   "vertices_de_entrada_preservados_ao_bit": 482,
+   "lado_oposto": {
+    "vertices_antes": 97,
+    "vertices_depois": 97,
+    "preservados_ao_bit": 97
+   }
+  }
+ ]
+}

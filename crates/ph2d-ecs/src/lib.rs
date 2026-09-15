@@ -57,6 +57,9 @@ pub mod flip_object_ref;
 /// ⭐ **A CÓPIA PROFUNDA** (ADR-0164 / F4.2) — a peça de que *Duplicar* e *Instanciar* nascem,
 /// e o elo `InstanceOf`. ⛔ Ela copia bytes; quem remapeia referências é a porta da shell.
 pub mod instantiate;
+/// ⭐⭐⭐ **O CICLO DE VIDA** — os itens #12 do TOP-20 (`Lifetime`, `DestroyOutside`) e o marcador
+/// [`lifetime::Spawned`], que é a lei *«o que nasce numa corrida não é documento»*.
+pub mod lifetime;
 pub mod masking;
 /// ⭐ **O MESTRE de um componente de objeto** (ADR-0164 / F4) — e o que o torna INERTE para a
 /// ponte de física. A refutação 1 mediu o preço de não o excluir: *a receita não cai*.
@@ -125,7 +128,11 @@ pub use emissive::{EMISSIVE_MAX, EMISSIVE_OFF, SpriteEmissive};
 pub use flip_object_ref::FlipObjectRef;
 pub use instantiate::{
     DeepCopy, InstanceOf, LinkedArt, ObjectInstance, OrphanOverride, OverrideKey,
-    deep_copy_subtree, remap_instance_of,
+    deep_copy_subtree, deep_copy_subtree_many, remap_instance_of,
+};
+pub use lifetime::{
+    Death, DeathCause, DestroyOutside, Lifetime, LifetimeRuntime, Spawned, reap_outside,
+    reconcile_lifetimes, tick_lifetimes,
 };
 pub use masking::{ClipChildren, ClipMode, Mask2D, MaskInteraction, MaskMode};
 pub use master::{

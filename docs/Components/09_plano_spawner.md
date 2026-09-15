@@ -406,20 +406,43 @@ vtable do registo — mas a **forma** é comparável, e é a forma que está err
 
 ⇒ **nascer custa ~100× morrer**, e morrer não vê a cena. *A higiene é grátis; a fábrica é que não.*
 
-### §6.3 — ⛔ O TECTO POR TIQUE **não se escreve nesta wave**
+### §6.3 — ⭐⭐⭐ A PORTA EM LOTE, medida na W1 — e o tecto que ela permite escrever
 
 O §0.0 manda medir antes de limitar — e manda mais: **nunca deixar o fallback definir o produto**.
-Cravar hoje `SPAWN_MAX_PER_TICK` a partir da tabela §6.1 seria escrever o tecto do **caminho lento**:
-o número sairia da porta quadrática e ficaria escrito para sempre.
+Cravar `SPAWN_MAX_PER_TICK` a partir da tabela §6.1 teria escrito o tecto do **caminho lento**.
 
-⇒ **a W1 mede a porta em LOTE primeiro** (copiar `N` vezes e atribuir identidade **uma**), e o tecto
-entra com a tabela do caminho rápido ao lado. A hipótese tem endereço e o número que a motiva: a
-identidade sozinha é `49 %` do preço a 100 000, e a segunda varredura (a de quem não tem id) é o
-resto.
+⇒ a W1 construiu [`deep_copy_subtree_many`](../../crates/ph2d-ecs/src/instantiate.rs) — copiar `n`
+vezes pagando a identidade **uma** — e mediu-a ao lado da de série (`release`, mínimo de 9,
+`load 16,02`):
+
+| cena | cópias | em SÉRIE (ms) | µs/cópia | em LOTE (ms) | µs/cópia | ganho |
+|---:|---:|---:|---:|---:|---:|---:|
+| 100 | 256 | 1,1857 | 4,63 | 0,6860 | 2,68 | 1,7× |
+| 1 000 | 256 | 1,4987 | 5,85 | 0,6744 | 2,63 | 2,2× |
+| 10 000 | 256 | 4,6589 | 18,20 | 0,6865 | 2,68 | **6,8×** |
+| 10 000 | 1 024 | 20,3492 | 19,87 | 2,6383 | 2,58 | 7,7× |
+| 10 000 | 4 096 | 104,4247 | 25,49 | 10,6372 | 2,60 | 9,8× |
+| 100 000 | 256 | 37,0477 | 144,72 | 0,8297 | 3,24 | **44,7×** |
+| 100 000 | 1 024 | 150,5285 | 147,00 | 2,8334 | 2,77 | 53,1× |
+| 100 000 | 4 096 | 625,1080 | 152,61 | 10,8490 | 2,65 | **57,6×** |
+
+⭐⭐⭐ **O preço por cópia passou a ser PLANO na cena** — `2,58`–`3,25 µs` em toda a tabela, que é a
+**forma** do oráculo (Godot: `4,2 µs`, plano) e **mais barato** que ele. A quadratura desapareceu
+porque desapareceu a causa, não porque alguém a escondeu atrás de um tecto.
+
+⇒ **`BURST_MAX = 1024`**, e o recurso dele é **o QUADRO**: 1 024 cópias custam `2,64 ms` numa cena de
+10 000 e `2,83 ms` numa de 100 000 — **17 % de um quadro de 16,7 ms** —, e o degrau seguinte (4 096)
+custa `10,6 ms`, que é **64 %**. *O número é o do caminho rápido, e a escada está ao lado dele.*
 
 ⚠️ **E o tecto é uma CONTAGEM, nunca um orçamento de relógio** — um tecto em milissegundos faria o
 passo fixo produzir um número diferente de nascimentos em cada máquina, e o replay (`physics_ecs_c9`,
 a matriz de 3 OS) divergiria. *Uma lei de simulação não pode perguntar as horas.*
+
+⛔ **A varredura NÃO foi apagada** — ela é a rede contra dois objectos com o mesmo id, e esta wave não
+é sobre a identidade. O que mudou é **quantas vezes** ela corre. ⏳ **A cura de fundo fica nomeada:**
+o `StableIdCounter` já é um recurso, e a varredura do *máximo* existe só para nunca ficar atrás do
+mundo; torná-lo autoritativo tiraria `O(mundo)` de **todo** caminho de identidade — é outra wave, com
+o risco a viver na única coisa que não se pode enganar em silêncio.
 
 ### §6.4 — A varredura por tique é grátis
 

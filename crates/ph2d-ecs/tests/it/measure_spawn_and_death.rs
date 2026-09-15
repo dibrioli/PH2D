@@ -22,7 +22,7 @@
 use ph2d_ecs::scene::{ComponentRegistry, register_ecs_components};
 use ph2d_ecs::{
     ChildOf, Entity, Name, StableId, Transform, World, assign_missing_stable_ids,
-    deep_copy_subtree,
+    deep_copy_subtree, deep_copy_subtree_many,
 };
 use std::time::Instant;
 
@@ -67,10 +67,6 @@ fn receita_de(world: &mut World, pecas: u32) -> Entity {
     root
 }
 
-fn receita(world: &mut World) -> Entity {
-    receita_de(world, 2)
-}
-
 /// `n` objectos de fundo — a CENA em que a fábrica trabalha.
 fn povoar(world: &mut World, n: u32) {
     for i in 0..n {
@@ -87,6 +83,7 @@ fn povoar(world: &mut World, n: u32) {
 fn mundo(n: u32) -> (World, Entity) {
     mundo_com(n, 2)
 }
+
 
 fn mundo_com(n: u32, pecas: u32) -> (World, Entity) {
     let mut w = World::new();
@@ -108,7 +105,10 @@ fn the_probe_copies_three_entities_with_new_identity() {
     assert_eq!(w.iter_entities().count(), antes + 3, "raiz + dois filhos");
     let id_novo = w.get::<StableId>(c.root).expect("id").0;
     let id_velho = w.get::<StableId>(r).expect("id").0;
-    assert_ne!(id_novo, id_velho, "a copia nasceu com a identidade do mestre");
+    assert_ne!(
+        id_novo, id_velho,
+        "a copia nasceu com a identidade do mestre"
+    );
 }
 
 /// ⭐⭐ **O preço de NASCER, e de quem ele é.**
@@ -118,9 +118,9 @@ fn measure_spawn() {
     let reg = reg();
     println!("load {:.2}", load_average());
     println!(
-        "| cena (objectos) | copias no tique | so' a identidade (ms) | copiar, min (ms) | mediana (ms) | por copia, min (us) |"
+        "| cena (objectos) | copias no tique | so' a identidade (ms) | em SERIE (ms) | por copia (us) | em LOTE (ms) | por copia (us) | ganho |"
     );
-    println!("|---:|---:|---:|---:|---:|---:|");
+    println!("|---:|---:|---:|---:|---:|---:|---:|---:|");
     for &n in &[100u32, 1_000, 10_000, 100_000] {
         // O preço da porta da identidade sozinha, no mundo parado — a coluna que atribui a culpa.
         let mut so_id = Vec::with_capacity(ITERS);
@@ -133,7 +133,7 @@ fn measure_spawn() {
             }
         }
         let so_id = minimo(&so_id);
-        for &k in &[1u32, 10, 100, 256] {
+        for &k in &[1u32, 10, 100, 256, 1_024, 4_096] {
             let mut copiar = Vec::with_capacity(ITERS);
             for _ in 0..ITERS {
                 // ⚠️ Mundo NOVO a cada iteração: as cópias da iteração anterior ficariam na cena
@@ -146,10 +146,20 @@ fn measure_spawn() {
                 copiar.push(t.elapsed().as_secs_f64() * 1e3);
             }
             let ms = minimo(&copiar);
+            // ⭐ A MESMA medição pela porta em LOTE — a identidade paga-se uma vez.
+            let mut lote = Vec::with_capacity(ITERS);
+            for _ in 0..ITERS {
+                let (mut w, r) = mundo(n);
+                let t = Instant::now();
+                let _ = deep_copy_subtree_many(&mut w, &reg, r, None, k).expect("lote");
+                lote.push(t.elapsed().as_secs_f64() * 1e3);
+            }
+            let ml = minimo(&lote);
             println!(
-                "| {n} | {k} | {so_id:.4} | {ms:.4} | {:.4} | {:.2} |",
-                median(copiar),
-                ms * 1e3 / f64::from(k)
+                "| {n} | {k} | {so_id:.4} | {ms:.4} | {:.2} | {ml:.4} | {:.2} | {:.1}x |",
+                ms * 1e3 / f64::from(k),
+                ml * 1e3 / f64::from(k),
+                ms / ml
             );
         }
     }
@@ -184,7 +194,9 @@ fn measure_spawn() {
 fn measure_death() {
     let reg = reg();
     println!("load {:.2}", load_average());
-    println!("| cena (objectos) | mortes no tique | apagar, min (ms) | mediana (ms) | por morte, min (us) |");
+    println!(
+        "| cena (objectos) | mortes no tique | apagar, min (ms) | mediana (ms) | por morte, min (us) |"
+    );
     println!("|---:|---:|---:|---:|---:|");
     for &n in &[1_000u32, 10_000] {
         for &k in &[10u32, 100, 1_000] {
@@ -192,7 +204,11 @@ fn measure_death() {
             for _ in 0..ITERS {
                 let (mut w, r) = mundo(n);
                 let vivos: Vec<Entity> = (0..k)
-                    .map(|_| deep_copy_subtree(&mut w, &reg, r, None).expect("copia").root)
+                    .map(|_| {
+                        deep_copy_subtree(&mut w, &reg, r, None)
+                            .expect("copia")
+                            .root
+                    })
                     .collect();
                 let t = Instant::now();
                 for e in &vivos {

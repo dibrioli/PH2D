@@ -234,12 +234,81 @@ pub fn deep_copy_subtree(
     src_root: Entity,
     parent: Option<Entity>,
 ) -> Result<DeepCopy, RegistryError> {
+    let mut copias = deep_copy_subtree_many(world, registry, src_root, parent, 1)?;
+    Ok(copias.remove(0))
+}
+
+/// ⭐⭐⭐ **A MESMA cópia, `n` vezes, pagando a IDENTIDADE uma vez só** — a porta que a fábrica usa
+/// (TOP-20 #11, [`docs/Components/09_plano_spawner.md`] §6.3).
+///
+/// # ⚠️ Porque ela existe, com o número
+///
+/// [`assign_missing_stable_ids`] faz uma varredura do mundo INTEIRO para saber o maior id vivo, e
+/// a cópia chamava-a **duas vezes por cópia** (antes, para o original ter chaves; depois, para a
+/// cópia ter identidade). Medido (`release`, mínimo de 9, `load 13,27`, receita de 3 nós):
+///
+/// | cena | por cópia, em série | só a varredura da identidade |
+/// |---:|---:|---:|
+/// | 100 | `4,26 µs` | `1,3 µs` |
+/// | 10 000 | `18,09 µs` | `7,5 µs` |
+/// | 100 000 | `143,21 µs` | `69,8 µs` |
+///
+/// ⇒ a 100 000 objectos **o preço de uma cópia É as duas varreduras** (`2 × 69,8 = 139,6` de
+/// `143,2`), e uma fábrica em série fica **quadrática na cena** — invisível numa cena pequena, onde
+/// o mesmo código lê `4,26 µs` e parece plano. O oráculo (Godot) instancia em `4,2 µs`
+/// **independentemente da cena**, e é a FORMA dele que esta porta copia.
+///
+/// ⚠️ **Ela dá exactamente os mesmos ids que `n` chamadas em série**, e há gate: a atribuição
+/// ordena pela ordem de SPAWN, que é a mesma nos dois caminhos. *Uma porta rápida que devolvesse
+/// outra identidade seria um segundo motor com cara de optimização.*
+///
+/// ⛔ **A varredura NÃO foi apagada** — ela é a rede que impede dois objectos com o mesmo id, e
+/// esta wave não é sobre a identidade. O que mudou é **quantas vezes** ela corre.
+pub fn deep_copy_subtree_many(
+    world: &mut World,
+    registry: &ComponentRegistry,
+    src_root: Entity,
+    parent: Option<Entity>,
+    n: u32,
+) -> Result<Vec<DeepCopy>, RegistryError> {
     if world.get_entity(src_root).is_err() {
         return Err(RegistryError::EntityMissing(src_root));
     }
     // O original tem de ter identidade ANTES, senão o mapa nasce sem chaves.
     crate::assign_missing_stable_ids(world);
+    let mut saida: Vec<(Entity, BTreeMap<Entity, Entity>)> = Vec::with_capacity(n as usize);
+    for _ in 0..n {
+        saida.push(copia_sem_identidade(world, registry, src_root, parent)?);
+    }
+    // ⚠️ **UMA vez para todas as cópias** — é este `for` fora da varredura que é a porta.
+    crate::assign_missing_stable_ids(world);
+    Ok(saida
+        .into_iter()
+        .map(|(root, entities)| {
+            let mut stable_ids: BTreeMap<u64, u64> = BTreeMap::new();
+            for (&src, &dst) in &entities {
+                if let (Some(a), Some(b)) = (world.get::<StableId>(src), world.get::<StableId>(dst))
+                {
+                    stable_ids.insert(a.0, b.0);
+                }
+            }
+            DeepCopy {
+                root,
+                entities,
+                stable_ids,
+            }
+        })
+        .collect())
+}
 
+/// Os passos 1 a 4 da cópia — a subárvore, os blobs, as entidades e a hierarquia. ⛔ **Não toca na
+/// identidade**: quem a paga é o chamador, e é essa a fronteira que torna o lote barato.
+fn copia_sem_identidade(
+    world: &mut World,
+    registry: &ComponentRegistry,
+    src_root: Entity,
+    parent: Option<Entity>,
+) -> Result<(Entity, BTreeMap<Entity, Entity>), RegistryError> {
     // 1. A subárvore, em pré-ordem.
     let mut order: Vec<Entity> = Vec::new();
     let mut stack = vec![src_root];
@@ -319,20 +388,7 @@ pub fn deep_copy_subtree(
         world.entity_mut(root).insert(ChildOf(p));
     }
 
-    // 5. Identidade nova, e o mapa que o remap consome.
-    crate::assign_missing_stable_ids(world);
-    let mut stable_ids: BTreeMap<u64, u64> = BTreeMap::new();
-    for (&src, &dst) in &entities {
-        if let (Some(a), Some(b)) = (world.get::<StableId>(src), world.get::<StableId>(dst)) {
-            stable_ids.insert(a.0, b.0);
-        }
-    }
-
-    Ok(DeepCopy {
-        root,
-        entities,
-        stable_ids,
-    })
+    Ok((root, entities))
 }
 
 /// **Reescreve o elo [`InstanceOf`] das entidades dadas** através do mapa de identidade.

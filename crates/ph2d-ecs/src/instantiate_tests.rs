@@ -310,3 +310,54 @@ fn the_bridges_are_the_owned_documents() {
         owned.len()
     );
 }
+
+/// ⭐⭐⭐ **A PORTA EM LOTE devolve exactamente a mesma coisa que `n` chamadas em série** — as mesmas
+/// entidades, a mesma hierarquia e **os mesmos `StableId`**.
+///
+/// ⚠️ **O oráculo é a IDENTIDADE, e não a contagem.** Uma porta rápida que copiasse o mesmo número
+/// de entidades com ids noutra ordem seria um segundo motor com cara de optimização: as referências
+/// desta casa guardam identidade (`PhysicsJoint.body_a`, o remap do `InstanceOf`), então dois ids
+/// trocados entre duas cópias ligam a junta da primeira aos corpos da segunda — **e compila**.
+///
+/// (Mutação: pôr a varredura da identidade DENTRO do `for` do lote ⇒ os ids afastam-se e isto fica
+/// RED na primeira cópia.)
+#[test]
+fn copying_in_one_batch_gives_the_same_identity_as_copying_one_by_one() {
+    let r = reg();
+    // Em série.
+    let (mut a, root_a, ..) = scene();
+    let serie: Vec<Vec<u64>> = (0..3)
+        .map(|_| {
+            let c = deep_copy_subtree(a.world_mut(), &r, root_a, None).expect("copia");
+            let mut ids: Vec<u64> = c.stable_ids.values().copied().collect();
+            ids.sort_unstable();
+            ids
+        })
+        .collect();
+    // Em lote.
+    let (mut b, root_b, ..) = scene();
+    let lote: Vec<Vec<u64>> = ph2d_ecs_lote(&mut b, &r, root_b, 3);
+    assert_eq!(
+        serie, lote,
+        "o lote entregou outra identidade — as referencias desta casa guardam ID, nao bits"
+    );
+    // E o controlo: as tres copias sao MESMO tres, e nenhuma partilha id com outra.
+    let todos: Vec<u64> = lote.iter().flatten().copied().collect();
+    let mut unicos = todos.clone();
+    unicos.sort_unstable();
+    unicos.dedup();
+    assert_eq!(todos.len(), unicos.len(), "duas copias com o mesmo id");
+    assert_eq!(todos.len(), 9, "tres copias de tres nos");
+}
+
+fn ph2d_ecs_lote(sim: &mut SimWorld, r: &ComponentRegistry, root: Entity, n: u32) -> Vec<Vec<u64>> {
+    crate::deep_copy_subtree_many(sim.world_mut(), r, root, None, n)
+        .expect("lote")
+        .into_iter()
+        .map(|c| {
+            let mut ids: Vec<u64> = c.stable_ids.values().copied().collect();
+            ids.sort_unstable();
+            ids
+        })
+        .collect()
+}

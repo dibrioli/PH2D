@@ -45,7 +45,7 @@ use super::fixtures::{
 /// enumeração que aqui viveu apodreceu no dia previsível, e a cena `=14` abriu com o canvas em
 /// branco porque ninguém lhe acrescentou o `"14"`. *O censo mede os predicados; ele não pede a
 /// ninguém que se lembre de uma lista.*
-pub const CENAS: u32 = 44;
+pub const CENAS: u32 = 45;
 
 /// **A env do roteador, lida DENTRO da crate.**
 ///
@@ -235,6 +235,13 @@ pub(crate) fn scene_objects() -> Vec<(ph2d_mesh::Mesh, ph2d_mesh::Pose)> {
             (a, ph2d_mesh::Pose::new([-2.8, 0.6, 0.0], 1.0)),
             (b, ph2d_mesh::Pose::new([2.6, -0.4, 0.0], 0.8)),
         ];
+    }
+    // ⭐ **A PLACA da cena `=45`** — ver [`projectar`]. Ela entra pela MESMA
+    // porta das outras peças extra, e não por um braço próprio: *um segundo
+    // caminho para «uma peça entra na cena» seria a segunda resposta à mesma
+    // pergunta.*
+    if let Some(v) = projectar::scene_objects() {
+        return v;
     }
     // AS CENAS DOS CANAIS DE SOMBREAMENTO — ver o módulo irmão.
     if let Some(v) = shading::scene_objects() {
@@ -462,6 +469,11 @@ pub(crate) mod boundary;
 /// onde o artista aprende de que família este pincel é.
 #[path = "scenes_erase.rs"]
 pub(crate) mod erase;
+/// **PROJECTAR NA CENA** (`=45`) — ver [`projectar`]. ⚠️ Ela é a ÚNICA desta
+/// família que abre com **duas peças**, e não por gosto: sem a segunda este
+/// pincel é inerte **por lei** (espec §6.3.3).
+#[path = "scenes_projectar.rs"]
+pub(crate) mod projectar;
 /// **O ESFREGÃO DE DESLOCAMENTO** (`=44`) — ver [`smear`]. ⚠️ Irmã da [`erase`]
 /// e pela mesma razão: ela abre SEM pilha de propósito, e o 1.º passo do
 /// roteiro é a **recusa**.

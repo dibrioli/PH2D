@@ -54,6 +54,7 @@ mod measure_valley;
 mod measure_where_the_curve_knobs_reach;
 mod mede_o_esfregao;
 mod mede_o_filtro_de_tecido;
+mod mede_o_projectar;
 mod mede_o_tecido_que_atravessa_os_gestos;
 mod mede_o_tecido_que_estica;
 mod o_produto_corre_a_lei;

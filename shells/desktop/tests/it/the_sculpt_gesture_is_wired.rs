@@ -919,6 +919,24 @@ fn every_verb_is_reachable_from_the_keyboard() {
         //
         // ⇒ a fila dos pretendentes ao `L` continua em **oito**.
         "SmearMultires",
+        // ⚠️⚠️ **PROJECTAR NA CENA, e ele está fora da fila pela MESMA razão dos
+        // três de cima — a que a densidade PERDEU.**
+        //
+        // ⛔ Ele é **inerte na configuração de fábrica**, e de uma maneira que
+        // nenhum interruptor liga: ele precisa de **outra peça na cena**, e uma
+        // peça acabada de nascer está sozinha. Uma tecla nua para ele
+        // responderia com nada — pior que a linha de recusa dos irmãos, porque
+        // nem uma queixa há: a lei é *nenhum acerto, o vértice não se move*
+        // (espec §6.3.3).
+        //
+        // ⚠️ **E ele NÃO é da família da manutenção da malha** (a vizinhança do
+        // `K` e do `,`/`.`) — ele é de FORMA, como os oito da fila. O que o
+        // mantém fora é só a inércia de fábrica. *Se um dia a cena de fábrica
+        // tiver duas peças, é este o verbo a reconsiderar primeiro*, e fica
+        // registado para a decisão não ter de redescobrir isto.
+        //
+        // ⇒ a fila dos pretendentes ao `L` continua em **oito**.
+        "SceneProject",
     ];
     let keys = function_body(&sculpt_src(), "key");
     // ⚠️ **O gate COLETA em vez de abortar no primeiro, e isso não é estilo.**

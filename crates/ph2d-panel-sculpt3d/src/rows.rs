@@ -169,18 +169,11 @@ static BRUSH: &[Row] = &[
         level: UiLevel::Basic,
         place: Place::Knobs,
     },
-    // ⭐⭐ **A FOLGA DA PROJECÇÃO** — quanto barro fica ANTES de encostar no alvo
-    // (espec §6.3.4).
-    //
-    // ⛔⛔ **O rótulo diz «vão» e não «distância mínima», e a escolha é MEDIDA:**
-    // ela só é mínima no sentido de AVANÇO — uma folga maior que o vão faz a
-    // peça **AFASTAR-SE**, e num acerto para trás ela **cresce** a excursão
-    // (espec §6.4, as duas medidas). *Um rótulo que promete o que o número não
-    // faz é a primeira espécie de controlo que mente.*
-    //
-    // ⚠️ **A FAIXA é em unidades do OBJECTO**, como o raio — e o tecto `1,0` é o
-    // lado da peça de omissão, não um número escolhido: acima dele a folga
-    // ultrapassa qualquer vão desta cena e o pincel só sabe afastar.
+    // ⭐⭐ **A FOLGA DA PROJECÇÃO** (espec §6.3.4). ⛔ O rótulo diz «vão» e não
+    // «distância mínima», e a escolha é MEDIDA: ela só é mínima no sentido de
+    // AVANÇO — o porquê e as duas medições vivem no campo que ela escreve
+    // ([`ph2d_sculpt3d::Brush::project_min_distance`]). ⚠️ A faixa é em unidades
+    // do OBJECTO, e o tecto `1,0` é o lado da peça de omissão.
     Row {
         label: "panel.sculpt3d.project_min_dist",
         slider: crate::ids::SCULPT3D_PROJECT_MIN_DIST,

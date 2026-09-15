@@ -441,3 +441,104 @@ ficou medido, e que é o ponto de partida de quem a pegar:
 **Portão:** `nextest-impacted` (BASE `1d43da737`) **14 271/14 271**, exit 0, `load 83,5` ·
 `clippy --workspace --all-targets -D warnings` exit 0 · `fmt --all --check` exit 0 · binário de
 smoke reconstruído (exit 0).
+
+---
+
+## 12 — ⭐⭐⭐ A UNIDADE sai do rótulo: **32 rótulos cortados passam a 12**
+
+Commit `aa1df2465` · 11 ficheiros · +416/−59.
+
+### 12.1 — A medição, com o texto real
+
+⚠️ **A §11.6 estimou a coluna em `91,2 px` e ela é `84,2`** — eu tinha derivado a largura da linha
+da largura do PAINEL, e as rows da §14 vivem dentro de um **card**, que recua `Spacing::Sm` de cada
+lado. *Uma régua derivada da superfície errada erra no sentido optimista.* O gate calcula-a agora
+dos tokens:
+
+```
+inspector-w − 2 × panel-head-pad − 2 × Spacing::Sm   ⇒  linha de 256 px
+property_label_col_w(0, 256)                          ⇒  coluna de 84,2 px
+```
+
+| | rótulos elididos (de 52) |
+|---|---|
+| com a unidade no rótulo | **32** |
+| com a unidade no CAMPO | **12** |
+
+E os `12` que sobram **não são unidades: são nomes compridos** (§12.5).
+
+### 12.2 — O que mudou
+
+- **`Unit` ganha três**: `Seconds` · `MetersPerSecond` · `MetersPerSecondSquared`, as três
+  **contadas** do censo (8 · 11 · 1 ocorrências).
+- ⚠️⚠️ **A ordem do `parse_suffix` é load-bearing e o modo de falha é MUDO:** `"5m/s"` termina em
+  `"s"`, logo um `Seconds` testado primeiro devolve o **número certo e a unidade errada**, sem erro
+  nenhum. A lista passou a ser `Unit::ALL`, pública, e o gate **deriva** a ordem dela — ⛔ não de
+  uma cópia no teste, que provaria que a cópia está ordenada.
+- **A tabela carrega a unidade:** `PlayerRow` de `(rótulo, id, dica)` para
+  `(rótulo, id, dica, Option<Unit>)`. ⭐ Os **três** consumidores que o doc da tabela promete
+  (pintor · `populate` · varredura de seam) falharam a compilar — *uma tabela com a arity mudada é
+  o gate mais barato que existe*.
+- **`num_row_unit`** pinta o sufixo dentro do campo, e a `num_row` de sempre delega nela com
+  `None` ⇒ **zero churn** nos outros 25 sítios de `num_row`.
+- ⚠️ **A chave de i18n MANTÉM o sufixo** (`…float_height_m`): ela é um ENDEREÇO, não o texto.
+  *Um `rename` não distingue um endereço de uma memória* — e renomear 32 chaves mudaria 64 sítios
+  para dizer o mesmo.
+- ⚠️ **`m/s²` ship-a como `m/s2`**, ASCII: o widget usa a MESMA string para mostrar e para ler, e um
+  expoente que o artista não tem no teclado seria um campo que ele não consegue escrever. A dívida
+  de separar as duas strings já estava nomeada no `DisplayAngle::suffix`.
+
+### 12.3 — O tecto de LOC, curado por CORTE
+
+O `player.rs` chegou a `602/600` com o doc da tabela. O `PlayerRow` mudou-se para o ficheiro da
+**tabela** — *o pai responde «como a secção se desenha», o filho «o que ela oferece»*, e a forma de
+uma linha é do segundo. ⛔ Subir o número seria a cura errada (`CLAUDE.md` §2).
+
+### 12.4 — Gates
+
+| gate | mutação |
+|---|---|
+| `every_label_this_panel_paints_fits_its_column` + a metade de obsolescência | a unidade volta ao rótulo ⇒ ✗ |
+| `a_longer_suffix_is_never_shadowed_by_a_shorter_one` | o `s` passa à frente do `m/s` ⇒ ✗ |
+| `what_the_artist_types_comes_back_as_what_they_typed` | a mesma ⇒ ✗ |
+
+### 12.5 — ⏳ DECISÃO DO DONO, com o número ao lado
+
+A catraca `AINDA_CORTAM` tem **12** entradas, cada uma com a largura medida contra a coluna de
+`84,2`:
+
+`Corner Look-ahead` 109,8 · `Swim Line (weights)` 113,9 · `Weight on Ground` 105,2 ·
+`Push on Ground` 92,7 · `Foot Ray Spread` 92,7 · `Wall Ray Spread` 91,5 · `Air Jump Height` 90,9 ·
+`Air Acceleration` 90,3 · `Dash Cooldown` 89,4 · `Lift Momentum` 89,3 · `Push on Bodies` 87,9 ·
+`Takeoff Gravity` 86,2.
+
+**Duas saídas, e nenhuma é minha:**
+
+1. **Encurtar os nomes** (*«Corner Look-ahead»* → *«Corner Ahead»*) — barato, e é só texto.
+2. **Dar ao rótulo uma fatia maior da linha** — a fracção da porta é `0,348` (medida do literal que
+   a casa mais escrevia) e **`0,47` faria caber todos**; ⛔ mudaria **todos** os painéis do app, dias
+   depois de ele aprovar o desenho actual.
+
+⚠️ E a elisão em si **não é o defeito** — a coluna docada é arrastável e um rótulo tem sempre de
+poder cortar. O que o gate afirma é *à largura de OMISSÃO, o artista não devia ver nenhum*.
+
+### 12.6 — ⏳ A dívida que fica NOMEADA na porta
+
+Quando a unidade é um **COMPRIMENTO**, o app já tem uma definição de projecto (`DisplayUnit`,
+metros ⇄ pixels; e `DisplayAngle` para ângulos, com `widget_unit()` a mapear para este mesmo
+widget) — e a linha ainda mostra a unidade **fixa** que a tabela declara.
+
+⛔ **Ligar as duas exige converter também o VALOR.** Mostrar `px` sobre um número guardado em metros
+trocaria um rótulo comprido por um rótulo **mentiroso**, que é estritamente pior. Wave própria, e o
+molde já existe: o `event_transform.rs` da §Transform converte pelos dois settings.
+
+### 12.7 — ⚠️ Uma reprovação da varredura foi FLAKE DE CARGA
+
+`a_wet_move_costs_what_the_footprint_costs_not_what_the_canvas_costs` — **membro listado** no
+`CLAUDE.md` §5.0. As três assinaturas: **zero linhas** do diff naquela crate · `3 de 3` verde
+sozinha a `load 48` · verde na re-corrida cheia. A reprovação original foi a `load 43` no pico do
+fan-out.
+
+**Portão:** `nextest-impacted` (BASE `1d43da737`) **14 275/14 275**, exit 0, `load 51,5` ·
+`clippy --workspace --all-targets -D warnings` exit 0 · `fmt --all --check` exit 0 · binário de
+smoke reconstruído (exit 0).

@@ -16,6 +16,12 @@
 //! - **F** a parede inclinada, abordada de longe;
 //! - o **custo** por corpo.
 //!
+//! ⚠️ **Os transcendentais são do `libm`, e não do `std`** — mesmo aqui, que é uma sonda
+//! `#[cfg(test)]` e nunca alcança o `physics_ecs_c9`. O censo
+//! (`no_std_transcendental_on_the_hash_path`) é **textual** e varre a crate inteira, e isso é uma
+//! escolha: uma varredura que soubesse distinguir «isto é teste» seria uma que alguém podia
+//! enganar. *Custa nada obedecer, e a régua fica sem excepções.*
+//!
 //! ⚠️ A unidade aqui é o **METRO** (a casa não tem escala: o `Transform` já é
 //! metros), e a do oráculo é o pixel. As leis de deslize são invariantes à
 //! escala **menos as margens**, que é exactamente o que esta tabela deixa ver.
@@ -100,10 +106,10 @@ fn sonda_do_deslize_varredura_do_angulo() {
         let a = ang_g.to_radians();
         // encostado: a face esta' em x = −1, o raio e' 0,2 ⇒ o centro em −1,2
         let (mut w, eu) = cena_parede([-1.2, 0.0]);
-        let pedido = [a.cos() * V * DT, a.sin() * V * DT];
+        let pedido = [libm::cosf(a) * V * DT, libm::sinf(a) * V * DT];
         let d = anda(&mut w, eu, pedido);
         let n = (d[0] * d[0] + d[1] * d[1]).sqrt();
-        let tang = a.sin() * V * DT;
+        let tang = libm::sinf(a) * V * DT;
         let razao = if tang.abs() > 1e-9 { n / tang } else { 0.0 };
         println!(
             "N {ang_g:.0} {:.6} {:.6} {n:.6} {tang:.6} {razao:.6}",
@@ -150,7 +156,7 @@ fn sonda_do_deslize_custo() {
         w.step();
         let mut hits = Vec::new();
         let a = 45.0f32.to_radians();
-        let pedido = [a.cos() * V * DT, a.sin() * V * DT];
+        let pedido = [libm::cosf(a) * V * DT, libm::sinf(a) * V * DT];
         let t0 = std::time::Instant::now();
         for &c in &corpos {
             let _ = w.move_character(c, pedido, params_de_vista_de_cima(), None, 0, &mut hits);

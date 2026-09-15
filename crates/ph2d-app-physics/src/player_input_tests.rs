@@ -24,15 +24,29 @@ fn resolved(events: &[Event]) -> (InputMap, ActionState) {
     (map, st)
 }
 
-/// **O mapa de fábrica traz os SEIS verbos** — um projecto novo com mapa vazio seria o jogador a
+/// **O mapa de fábrica traz os OITO verbos** — um projecto novo com mapa vazio seria o jogador a
 /// deixar de andar, não um começo limpo.
+///
+/// ⚠️ **Eram SEIS até 2026-09-15**, e o delta é `+2`: o `move_up` e o `move_down` do TOP-20 #13. O
+/// mover de vista de cima precisa de uma intenção 2D, e ⛔ `jump` **não é «para cima»** — um
+/// componente cujo norte se chamasse *Jump* no painel de Input Map seria um controlo que mente
+/// sobre o que faz. O doc do `with_player_defaults` já autorizava: *«acrescentar é livre»*.
 #[test]
-fn a_fresh_project_ships_the_six_player_actions() {
+fn a_fresh_project_ships_the_eight_player_actions() {
     let m = InputMap::with_player_defaults();
-    for n in ["move_left", "move_right", "jump", "down", "dash", "grab"] {
+    for n in [
+        "move_left",
+        "move_right",
+        "jump",
+        "down",
+        "dash",
+        "grab",
+        "move_up",
+        "move_down",
+    ] {
         assert!(m.id(n).is_some(), "a accao `{n}` nao vem de fabrica");
     }
-    assert_eq!(m.len(), 6, "e nao vem mais nada junto");
+    assert_eq!(m.len(), 8, "e nao vem mais nada junto");
 }
 
 /// ⛔ **AS TECLAS DE FÁBRICA SÃO AS DE ONTEM, AO BIT.** Um default "melhor" aqui seria uma mudança

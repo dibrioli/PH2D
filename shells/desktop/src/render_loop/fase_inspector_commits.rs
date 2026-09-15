@@ -14,6 +14,8 @@ mod tag_tree_commits;
 /// razão: o tecto de LOC desta fase, e uma fronteira que o comentário do bloco já escrevia.
 #[path = "fase_factory_commits.rs"]
 mod factory_commits;
+#[path = "fase_topdown_commits.rs"]
+mod topdown_commits;
 
 /// As edições do Inspector que o dreno do barramento recolheu neste quadro.
 pub(super) struct InspectorIntents {
@@ -205,12 +207,8 @@ impl crate::App {
         }
         // ⭐⭐⭐ **As secções FACTORY e LIFECYCLE** (TOP-20 #11 e #12, W3) — na fase-filha.
         inspector_queue_dirty |= factory_commits::aplicar(sim, tags, &factory_edits);
-        // ⭐ O MOVER DE VISTA DE CIMA (TOP-20 #13). ⚠️ Ele NÃO pede a árvore de tags: todos os
-        // campos dele são números e modos, e nenhum guarda uma identidade.
-        for (bits, edit) in &topdown_edits {
-            inspector_queue_dirty |=
-                super::inspector_topdown::apply_topdown_edit(sim.world_mut(), *bits, edit);
-        }
+        // ⭐ O MOVER DE VISTA DE CIMA (TOP-20 #13) — fase-filha, como a fábrica.
+        inspector_queue_dirty |= topdown_commits::aplicar(sim, &topdown_edits);
         // ⭐⭐⭐ **A secção TAGS** (TOP-20 #9) — aqui pela razão MAIS forte das três: ela é a única
         // do Inspector que escreve em DOIS documentos, e o segundo (a árvore) nem sequer está no
         // mundo. O `inspector_commits` não o recebe — e não devia: ele é o dreno da CENA.

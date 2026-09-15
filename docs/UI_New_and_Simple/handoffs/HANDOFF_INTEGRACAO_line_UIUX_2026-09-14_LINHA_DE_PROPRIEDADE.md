@@ -334,3 +334,110 @@ um segundo tom.
 **Portão:** `nextest-impacted` (BASE `1d43da737`) **14 269/14 269**, exit 0, `load 36,9` ·
 `clippy --workspace --all-targets -D warnings` exit 0 · `fmt --all --check` exit 0 · binário de
 smoke reconstruído (exit 0).
+
+---
+
+## 11 — ⭐⭐⭐ *«Checkbox invisível»* — o §10 tinha curado DOIS de SEIS
+
+Commit `c5b646052` · 7 ficheiros · +232/−25.
+
+### 11.1 — A foto
+
+Secção **Sprite Sheet**: a caixa *Centered*, **marcada**, lê-se (é `Accent`); as de *Flip H* e
+*Flip V*, **desmarcadas**, não existem. ⇒ metade das caixas do painel eram invisíveis, e a metade
+que se via era a que estava ligada.
+
+Mesma causa do §10, um widget ao lado: enchia `ColorToken::Bg1` — o token do **cartão** em que ela
+assenta — e num tema moderno a moldura de repouso é ZERO.
+
+⚠️⚠️ **E o comentário ao lado do código já escrevia a lei CERTA:**
+
+> *«num tema moderno a caixa é plana (marcada = acento cheio, desmarcada = **um degrau abaixo do
+> painel**)»*
+
+…sobre um código que pintava o cartão. ***Um doc que descreve a lei que o código não implementa faz
+o defeito parecer auditado*** — e foi por isso que o §10 não o apanhou: eu li aquele comentário e
+acreditei nele.
+
+### 11.2 — O censo que o §10 devia ter corrido
+
+| pintor | tinta de repouso | curado em |
+|---|---|---|
+| `number_input` | `Bg1` | §10 |
+| `text_area` | `Bg1` | §10 |
+| `checkbox` (desmarcada) | `Bg1` | **§11** |
+| `combobox` | `Bg1` | **§11** |
+| `dropdown` | `Bg1` | **§11** |
+| `radio_group` (não seleccionado) | `Bg1` | **§11** |
+
+*Seis respostas à mesma pergunta divergem no dia em que uma superfície se mexe* — e uma mexeu-se
+em 2026-09-05, quando o painel desceu um degrau **para o cartão se ler**. A wave que curou uma
+leitura do dono abriu esta.
+
+⚠️ **A lição de processo:** o §10 curou os dois pintores que o report nomeava e escreveu um gate
+para a COR e outro para o CAMINHO — mas o do caminho media só `fill_token`, que é o vocabulário da
+família dos campos. *Um censo escrito à volta do sintoma mede a família do sintoma.*
+
+### 11.3 — A porta
+
+[`crate::paint::body_fill(theme, feel, classico)`](../../../crates/ph2d-editor-core/src/paint.rs) —
+a irmã do `stroke_frame` para o PREENCHIMENTO.
+
+- **Clássica:** o token de sempre, **byte-idêntico**.
+- **Moderna:** `Chrome::field_fill` em repouso · o corpo **quente** da tabela de estados
+  (`Widgets::of(theme).hovered.bg_fill`) em `Hovered`/`Active`.
+
+⚠️ **A segunda metade não é decoração:** afundar só o repouso deixaria as duas pontas do eixo do
+hover iguais, e o rato deixaria de dizer alguma coisa numa caixa desmarcada. *Curar a cor de
+repouso sem olhar para o eixo apaga a resposta ao rato.*
+
+⛔ **Fora da porta por desenho:** a caixa MARCADA e o rádio SELECCIONADO são acento cheio em
+qualquer aparência — não são um corpo afundado, são a resposta.
+
+Medido no tema por omissão: uma caixa desmarcada vai de **`0/255`** para **`22/255`** do cartão.
+
+### 11.4 — Gates
+
+| gate | o que defende | mutação |
+|---|---|---|
+| `no_widget_paints_a_control_body_with_the_card_token` | nenhum dos 60+ ficheiros de widget resolve `Bg1` para pintar um corpo | o `combobox` volta a resolvê-lo ⇒ ✗ |
+| `the_card_token_tolerance_still_describes_something` | a metade de obsolescência da catraca (§5.0) | — |
+
+⚠️ **A varredura PÁRA no primeiro `#[cfg(test)]`** — um gate que afirma a lei cita o token dos dois
+lados, e contá-lo acusaria o próprio gate (o defeito que o
+`a_census_gate_that_scans_its_own_tree_counts_itself` já registou). ⛔ A cerca presume o que o
+`rustfmt` desta casa faz — o `mod tests` no fim do ficheiro.
+
+### 11.5 — ⏳ NOMEADO na catraca, com o motivo
+
+O miolo do **menu radial** continua a encher `Bg1`, e ali **não é o mesmo caso**: ele flutua sobre
+o **CANVAS**, e o `Bg1` responde *também* a *«de que cor é o canvas»* (o doc do `derive::Roles::panel`
+escreve-o). A porta afunda um degrau abaixo da pilha *painel/cartão*, que não é a superfície
+debaixo dele. ⛔ Converter às cegas trocaria um defeito por outro.
+
+### 11.6 — ⏸️ A wave das UNIDADES ficou MEDIDA e por fazer
+
+Antes deste report eu tinha começado a wave seguinte (tirar a unidade de dentro do rótulo). O que
+ficou medido, e que é o ponto de partida de quem a pegar:
+
+- **73 strings de i18n** carregam uma unidade entre parênteses (`31` em `inspector_player`, `38` em
+  `inspector`, `3` no `lib`, `1` em `painter_layers`).
+- ⚠️ **Uma delas é FALSO POSITIVO e mostra a forma da armadilha:** `"Clear {n} unused override(s)"`
+  — o `(s)` é o plural, não uma unidade.
+- ⭐ **Medido com o sistema de texto real**, à largura de omissão do Inspector (coluna do rótulo
+  `91,2 px`, fonte `12`): **20 de 39** rótulos cortam hoje; **sem a unidade, 1**. O sobrevivente é
+  *«Non-Spatialized Radius»* (`131,8 px`), que é um nome genuinamente longo — outra pergunta.
+- ⭐ O widget existe (`NumericInputWithUnit`, com `px`/`m`/`deg`/`rad`/`%`) e tem **um** consumidor
+  de produto (`panel-motion-params`). Faltam `s` e `m/s` ao enum — ⚠️ e o `parse_suffix` casa por
+  **sufixo mais longo primeiro**, logo `m/s` tem de vir antes de `s` **e** de `m`, senão `5m/s` lê
+  como segundos.
+- ⭐⭐ **E há uma descoberta que muda a forma da wave:** o app já tem `DisplayUnit` (m ⇄ px) e
+  `DisplayAngle` (° ⇄ rad) nas definições do projecto, com `DisplayAngle::widget_unit()` a mapear
+  para o widget. ⇒ um `(m)` escrito no rótulo **não é só comprido: ele pode estar ERRADO** quando o
+  artista escolhe pixels. *A unidade tem de vir da definição, não da string.*
+- As rows do player são **table-driven** (`PlayerRow`, um pintor só), logo aquele bloco de 31 é
+  barato; os outros `25` sítios de `num_row` são individuais.
+
+**Portão:** `nextest-impacted` (BASE `1d43da737`) **14 271/14 271**, exit 0, `load 83,5` ·
+`clippy --workspace --all-targets -D warnings` exit 0 · `fmt --all --check` exit 0 · binário de
+smoke reconstruído (exit 0).

@@ -1739,3 +1739,241 @@ conseguia provar*.
   ele tem os dois números.
 * ⏳ **`Sharpen` e `Magnify`** — sem oráculo nenhum, nomeados por gate.
 * ⏳ **Separar as duas colunas** — hoje nenhuma referência o faz, e nós podemos querer.
+
+---
+
+## §27 — ⭐⭐⭐ O **VEREDITO DO DONO** sobre cinco células do dyntopo, e a **CADEIA** que a pegada congelada expôs
+
+> *«acho que layer, move/drag deve subdividir. Thumb se for possível, deveria
+> subdividir. Twist com dynamic topology fica com resultado muito ruim.»*
+> — o dono, 2026-09-14, depois de correr o smoke `=14`
+
+### §27.1 — A TERCEIRA fonte da tabela, e por que ela ganha das duas
+
+A tabela do §26 tinha duas fontes: a **livre** (MIT, lê-se e porta-se) e a
+**medida** (GPL, corrida sem interface por uma janela E). O dono é a terceira, e
+ela ganha das duas **pelo mesmo princípio que dá o lugar ao oráculo**: *uma
+referência responde o que outro programa FAZ; o dono responde o que este produto
+TEM DE fazer.*
+
+| célula | era | fica | de onde |
+|---|---|---|---|
+| **Layer** | ⛔ | ✅ | o dono — divergência da medida (`441 → 441`) |
+| **Move / Grab** | ⛔ | ✅ | o dono — divergência das **DUAS** |
+| **Thumb** | ⛔ | ✅ | o dono — custou a peça da §27.3 |
+| **Twist** | ✅ | ⛔ | o dono **desempata** as duas, a favor da medida |
+| **Local Scale** | ✅ | ⛔ | ⚠️ **ele NÃO a nomeou** — ver §27.2 |
+
+⭐ **O que o veredito do Twist derruba é um argumento MEU.** Eu tinha escrito ao
+lado do `true`: *«uma torção com queda cisalha a superfície, logo produz aresta
+longa»*. Ela cisalha, sim — e o que o refino faz com esse cisalhamento é
+**estragar a forma**, não acompanhá-la. ⇒ a referência **medida** (`441 → 441`
+nos dois extremos do slider) estava certa, e o voto geométrico estava errado.
+
+⭐ **E o argumento das duas referências contra o agarrar também cai, com o
+mecanismo:** elas dizem que ele *«move uma região como um corpo, e a densidade
+viaja com o material»*. Isso é verdadeiro no **MIOLO** do agarrar e **falso no
+ANEL**, onde o barro que anda encontra o barro que ficou — e é ali que a aresta
+estica.
+
+### §27.2 — A célula que ele NÃO nomeou, e ela fica NOMEADA em vez de silenciosa
+
+A `Local Scale` seguiu a `Twist`: mesmo `Grip::Turn`, mesma célula nas duas
+referências, mesma família na medida (*mover uma região como um corpo*).
+Deixá-la sozinha do outro lado seria **fabricar uma divergência que nenhuma das
+três fontes pede**.
+
+⚠️ *Uma herança silenciosa e uma decisão leem-se igual numa tabela* — é a mesma
+doença do `❌ recusado com motivo` contra o `❌ ninguém fez` que o §5.0 do
+`CLAUDE.md` já nomeia. ⇒ ela está escrita, com a razão, em
+`o_veredito_do_dono_sobre_cinco_celulas`. **Se ele a quiser de volta a adensar, é
+essa linha que muda.**
+
+### §27.3 — ⭐⭐ O VEREDITO É UM GATE, e não um braço de `match`
+
+**Três das cinco células coincidem com o valor de fábrica** (`_ => !self.anchors()`):
+o `Layer` é de carimbo e já respondia `true`; a `Twist` e a `Local Scale` têm
+âncora e já respondiam `false`.
+
+- ⛔ **Escrever-lhes um braço** seria uma linha que **a mutação não consegue
+  matar** — o defeito exacto que o `Density` pagou neste mesmo ficheiro, e que o
+  §26 registou (*«uma linha que a mutação não consegue matar não é lei, é
+  comentário com sintaxe de código»*).
+- ⛔ **Deixá-las sem nada** faria a decisão do dono depender de o `anchors()`
+  nunca mudar, e **nada liga as duas perguntas**: quem mexer num grip amanhã
+  inverte um veredito de produto sem que uma linha do diff o diga.
+
+⇒ **a decisão vai para onde ela pode ser AFIRMADA — um gate —, e não para onde
+ela por acaso já é verdade.**
+
+⚠️ **E `os_nove_ancorados_tem_resposta_e_quatro_deles_mexem` mudou de POPULAÇÃO
+sem mudar de CONTAGEM:** continuam a ser quatro, e são outros dois. *É
+exactamente como um piso segura o número enquanto a lista que ele descreve muda
+por baixo dele* (a armadilha que o `every_host_that_rewrites_verts` pagou na W2)
+— e é por isso que o corpo daquele gate compara a **LISTA**, nunca o tamanho.
+
+### §27.4 — A fiação: o TERCEIRO caminho, e ele faltava
+
+A wave da manhã (§26) ligou a porta da topologia aos dois gestos ancorados que
+**PERCORREM** (`hook_step`) e ao que **GIRA** (`turn_at`). Quem **SEGURA**
+(`Grip::Hold`) não percorre nem gira — ele **regista** (`pending_grab`) e quem
+carimba é o **quadro** —, logo continuava a ser o único gesto de escultura que
+não passava pela porta. *Um fio ligado em dois dos três ramos lê-se como ligado.*
+
+⛔ Quem decide continua a ser o **VERBO**: o `Pose` e o `Boundary` seguram também
+e a tabela responde-lhes `false`.
+
+### §27.5 — ⛔⛔ O ARNÊS media outro programa, e o contrafactual tem NÚMERO
+
+O `um_traco_ancorado` conduzia os **três** grips ancorados pelo `hook_step`.
+
+⚠️⚠️ **Medido, e é o que justifica a correcção:** com o arnês de antes **e** o
+`refine_for_dab` apagado do `grab_at`, o gate `o_smooth_deixou_de_subdividir…`
+fecha **VERDE**. Ou seja: o caminho que o agarrar e o polegar de facto tomam
+podia ter o fio da topologia desligado **sem uma linha vermelha em lado nenhum**.
+
+⛔ **Uma mutação só no arnês NÃO sangra** (medido: sobrevive), e é exactamente
+por isso que ela é precisa — *ela não corrige um defeito, torna um defeito
+OBSERVÁVEL*. Este ficheiro já tinha pago a frase duas vezes, pelo pen-down do
+desfazer e pelo da superfície de referência.
+
+⭐ **E o gate ganhou DOIS controlos negativos, um por caminho:**
+
+| controlo | caminho | o que ele impede |
+|---|---|---|
+| `Twist` | quem **gira** | o fio está **LIGADO** e quem recusa é a **TABELA** — *um controlo negativo sobre um caminho desligado não afirma nada* |
+| `Pose` | quem **segura** | o fio NOVO desta wave passar a responder pelo **grip** em vez do verbo |
+
+### §27.6 — ⭐⭐⭐ O «se for possível» do polegar: a pegada congelada atravessa a topologia
+
+O `Thumb` é o **único** verbo que congela a pegada no pen-down
+(`congela = matches!(brush.verb, Verb::Thumb)`), e um índice guardado não
+sobrevive sozinho a uma malha que muda de tamanho. ⚠️ O §26 declarava esta
+armadilha **dissolvida** (*«a pegada congelada não entra nisto e não precisa»*) —
+e a frase era verdadeira **enquanto o polegar não declarava nenhuma das duas
+colunas**. O dono mandou-o declarar.
+
+**As duas metades**, em `crates/ph2d-sculpt3d/src/stroke_pegada.rs`:
+
+- **CRESCE** — a pegada acolhe quem nasce entre **DOIS** membros. ⭐ A regra é
+  **EXACTA e não conservadora**: a pegada é o resultado de uma consulta por
+  **ESFERA**, uma esfera é **convexa**, e o vértice novo nasce no ponto médio dos
+  pais. ⛔ *«Um pai basta»* está errado por duas vias — admite pontos médios fora
+  da bola, e faz a pegada **CRESCER para fora** a cada refino, reabrindo o
+  defeito que congelá-la existe para não ter (*o conjunto amostrado voltaria a
+  depender de quantos eventos o traço teve*).
+- **ENCOLHE** — aplica a renumeração e larga os mortos.
+
+### §27.7 — ⛔⛔⛔ E a segunda metade estava ERRADA: **a tradução de um colapso é uma CADEIA**
+
+**O modo de falha foi o bom:** `index out of bounds` na máscara de alcance
+(`dab_alcance.rs`), no primeiro dab a seguir a um colapso — `len 2856, índice
+2859`. *A pegada guardava um índice maior que a malha.*
+
+⚠️⚠️ **O plano do colapso (`ph2d_mesh::Remap`) é uma SEQUÊNCIA de trocas, e ela
+aplica-se por ordem:**
+
+```text
+(11 → 10), (10 → 9), (9 → 8)
+```
+
+quer dizer que o vértice que começou em `11` acaba em **`8`**, passando por dois
+endereços que **não são dele**. ⇒ *um índice que é destino de uma troca pode ser
+origem da seguinte*, e **não existe** a tabela plana `origem → destino` que eu
+escrevi primeiro. Com ela, um índice do meio de uma cadeia ficava guardado como
+se fosse final.
+
+⛔ **Se a cadeia tivesse acabado DENTRO do novo tamanho, o carimbo teria pegado
+no barro errado, em silêncio** — o `panic` foi sorte, não desenho.
+
+⭐ **Duas propriedades do plano tornam a cura barata e provável:**
+
+1. **A cadeia é finita e não tem ciclos por construção** — as origens das trocas
+   descem estritamente (o plano varre os mortos do maior para o menor) e todo
+   destino é menor que a sua origem.
+2. **A morte consulta-se PRIMEIRO** — um índice que é sobrescrito **e** é origem
+   de uma troca é sempre sobrescrito **antes** de se mudar (o contrário obrigaria
+   uma origem a crescer ao longo do plano, e elas só descem).
+
+⚠️ **As duas tabelas são do tamanho do COLAPSO e nunca da malha:** um vetor de
+tradução por VÉRTICE seria `O(malha)` por dab — numa peça de um milhão de
+vértices, megabytes a limpar por carimbo para traduzir umas centenas.
+
+### §27.8 — Os gates, e o que cada piso pagou
+
+| gate | o que afirma |
+|---|---|
+| `a_traducao_de_um_colapso_segue_a_cadeia_e_nao_uma_tabela_plana` | o oráculo é a aplicação **SEQUENCIAL** das trocas, perguntada a **todos** os vértices de **quatro** planos |
+| `a_pegada_congelada_do_polegar_atravessa_a_topologia` | ponta a ponta, com a malha a mexer-se nos **dois** sentidos |
+| `o_veredito_do_dono_sobre_cinco_celulas` | as cinco células, com o que ele disse ao lado de cada uma |
+
+⛔⛔ **A segunda espécie de morte foi achada por uma MUTAÇÃO SOBREVIVENTE.** Com
+um plano só — três mortos seguidos —, apagar a cerca do novo tamanho **não era
+observável**: aquele plano resolve todos os seus mortos por sobreposição, e
+nenhum vértice chega a ser **truncado**. ⇒ o corpus passou a quatro planos e o
+gate **exige as três espécies** (sobrescrito · truncado · em cadeia), cada uma
+com o seu piso. *Uma régua que não vê o fenómeno acontecer não prova que ele não
+aconteceu.*
+
+⚠️ **E o piso do crescimento é um nascimento A CAVALO na fronteira:** sem ele,
+*«os dois pais»* e *«um pai basta»* dão a **MESMA** pegada, e aquela metade
+ficaria verde sobre as duas leis.
+
+⭐ **O crescimento tem ORÁCULO INDEPENDENTE** — a regra reconstruída à mão no
+gate, incluindo a parte que a torna sequencial (*um recém-nascido acolhido passa
+a ser membro para os que nascerem depois dele no mesmo passe*).
+
+**Mutação: 12 de 12.** (7 da pegada · 1 do polegar na tabela · 2 das outras
+células · 1 da fiação · e a 12.ª, a do arnês, **documentada como não-sangrante
+de propósito** — ver §27.5.)
+
+### §27.9 — O corte de LOC, e ele foi meu
+
+`stroke.rs` foi de **698 para 739** linhas por minha causa ⇒ curado por **CORTE
+e nunca por uma entrada no `FILE_OVERAGE_OK`**. O assunto *«a pegada congelada»*
+tinha a declaração num ficheiro, a razão de existir noutro e as duas metades da
+manutenção num terceiro; hoje vive em **`stroke_pegada.rs`** (227 L), irmão do
+`stroke_growth.rs` — ⭐ e o corte é de **ASSUNTO**: lá o `pre` de cada vértice a
+sobreviver à topologia, aqui o **CONJUNTO** de vértices do gesto a sobreviver a
+ela. São peças diferentes do estado de um traço, com leis diferentes: o `pre`
+**herda-se** de pais, a pegada **acolhe** e **larga**.
+
+Ficheiros depois do corte: `stroke.rs` **699** · `stroke_growth.rs` **271** ·
+`stroke_pegada.rs` **227** · `stroke_pegada_tests.rs` **318** ·
+`brush_verb_dyntopo.rs` **633**.
+
+### §27.10 — ⚠️ Uma FLAKE DE CARGA nova, com as três assinaturas
+
+`the_frame_is_hoisted_out_of_the_vertex_loop`
+(`ph2d-sculpt3d/tests/it/`) reprovou **uma vez** no pico de um fan-out de
+**15 189** testes, a `load 20,10`.
+
+| assinatura | medida |
+|---|---|
+| único ✗ da corrida | `15 188 / 15 189` |
+| zero linhas do diff naquele caminho | o alpha/padrão não é tocado por esta jornada |
+| verde sozinho | **3 de 3**, e a **`load 60,46`** |
+
+⭐⭐ **A terceira é a mais forte que esta linha já mediu:** ele passa a uma carga
+**três vezes maior** do que aquela em que reprovou ⇒ *o discriminador é o
+FAN-OUT, não o relógio* — a mesma assinatura que o `no_expression_allocates…`
+trouxe em 12/09.
+
+⛔ **E ele é o QUINTO gate deste repo cujo doc-comment se declara imune:** *«é
+uma RAZÃO e não um kill de relógio de propósito … os dois lados são o MESMO
+trabalho no MESMO perfil»*. É verdade sobre o **perfil de build** e falso sobre o
+**fan-out**: os dois lados são relógios de parede, e sob 15 mil testes em
+paralelo o escalonador não os trata por igual. ⇒ **promoção pedida** à lista do
+`CLAUDE.md` §5.0.
+
+### §27.11 — O que NÃO se mexeu
+
+- **Zero** contadores partilhados (`PROJECT_SCHEMA`, `FIELD_DOC_VERSION`,
+  `VEC_SCENE_SCHEMA`, `FLIP_SCHEMA`, os três registos de componentes).
+- **Zero** contratos congelados (§6), **zero** ADR, **zero** pacote externo.
+- **Zero** portas novas no `AppHost`, **zero** linhas de shell.
+- ⛔ **Nenhuma assinatura pública mudou** — `PegadaCongelada` e as duas metades
+  são `pub(super)`.
+- ⏳ **ABERTO e NOMEADO, pré-existente:** o `tip_roundness` da
+  `VASSOURA_blender-pull.txt` (7 ficheiros, **zero adições** neste diff) — é a
+  mesma isenção do §8, e continua a ser dívida da linha dona.

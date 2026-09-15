@@ -195,7 +195,26 @@ fn the_tolerated_list_still_describes_something() {
 fn a_property_row_never_starves_its_control() {
     use ph2d_editor_core::widget::{property_label_col_w, property_row_columns};
     let gap = ph2d_tokens::Spacing::Md.px();
-    let piso = ph2d_tokens::ICON_BTN_SIZE_PX + ph2d_tokens::Spacing::Lg.px();
+    // ⛔⛔ **O piso é o que o CAMPO declara, e é uma ORDEM DO DONO** (2026-05-24: *«não permita que
+    // a caixa seja redimensionada para menor que isso»*). ⚠️ A 1.ª redacção deste gate re-derivava
+    // `ICON_BTN_SIZE + Lg` — o mesmo número sem dono que o produto tinha —, logo ele **não podia**
+    // acusar a violação: *um gate que refaz a conta do produto mede a conta, não o produto.*
+    let piso = ph2d_editor_core::widget::NUMBER_INPUT_MIN_W_PX;
+    // ⭐⭐⭐ **Onde a lei do MEIO deixa de caber, e o número NÃO é escolhido.** O rótulo só pode ser
+    // a metade enquanto `metade <= tecto`, isto é `w ≥ 2·(piso + DECORATOR_W)`. Abaixo disso a
+    // coluna encolhe para defender o campo — e a asserção do meio mediria o degenerado.
+    let linha_minima = 2.0 * (piso + ph2d_editor_core::widget::DECORATOR_W);
+    // ⭐⭐ **E ela cobre TODO o curso que o artista alcança.** A linha de um cartão do Inspector no
+    // MÍNIMO do dock mede `PANEL_MIN_W − 2×PANEL_HEAD_PAD − 2×Sm`; se `linha_minima` ficasse acima
+    // dela, a lei do meio seria falsa numa largura arrastável — e ninguém saberia.
+    let linha_no_minimo_do_dock = ph2d_tokens::PANEL_MIN_W_PX
+        - 2.0 * ph2d_tokens::PANEL_HEAD_PAD_PX
+        - 2.0 * ph2d_tokens::Spacing::Sm.px();
+    assert!(
+        linha_minima <= linha_no_minimo_do_dock + 0.001,
+        "a lei do meio so' vale a partir de {linha_minima} e o dock chega a {linha_no_minimo_do_dock} \
+         — ha' larguras ARRASTAVEIS em que o controlo nao comeca no meio"
+    );
     let mut apertadas = 0;
     let mut largas = 0;
     for w in (0..=760).step_by(4).map(|n| n as f32) {
@@ -224,7 +243,7 @@ fn a_property_row_never_starves_its_control() {
             );
             apertadas += 1;
         }
-        if w >= 200.0 {
+        if w >= linha_minima {
             // ⭐⭐ **O CONTROLO COMEÇA NO MEIO DA LINHA** — ordem do dono, 2026-09-14: *«Melhor
             // alinhar no meio do painel»*.
             //

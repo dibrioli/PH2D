@@ -31,23 +31,30 @@ use ph2d_tokens::{Spacing, TypeToken};
 
 /// ⏳ **QUANTOS RÓTULOS ELIDEM, POR LARGURA DE PAINEL — e só ENCOLHE.**
 ///
-/// ⛔⛔⛔ **A 1.ª redacção deste gate media UMA largura: a de OMISSÃO — e o dono não a usa.**
-/// Ele reportou *«3 pontos (…) sendo usados antes de ficar estreito»* com o gate **verde**. A causa
-/// estava no `~/.ph2d/layout.txt`: `dock_w_right = 220,9`, contra os `304` do token. A `304` não
-/// elide nenhum; a `220,9` elidiam **16 de 52**.
+/// ⛔⛔⛔ **A 1.ª redacção media UMA largura: a de OMISSÃO — e o dono não a usa.** Ele reportou
+/// *«3 pontos (…) sendo usados antes de ficar estreito»* com o gate **verde**, porque a régua
+/// derivava a linha do token `inspector-w = 304` e o `~/.ph2d/layout.txt` dele dizia `220,9`.
 ///
-/// ⇒ ***um gate calibrado na largura de OMISSÃO é cego à largura que o artista de facto tem***, e
-/// a cura não é medir melhor um ponto: é medir a ESCADA.
+/// ⛔⛔⛔ **E a 2.ª redacção PREGOU a largura dele — que ele mudou no dia seguinte.** A escada dizia
+/// *«`220,9` … a largura REAL do dock do dono»*; medido em 2026-09-14, depois do smoke seguinte, o
+/// mesmo ficheiro dizia **`273,3`**. ⇒ ***a largura do artista é um ESTADO, não uma cerca: pregá-la
+/// é escolher um ponto que envelhece em horas.***
 ///
-/// ⚠️ **A largura `220,9` não é inventada — é lida do ficheiro de arrumação do dono.** As outras
-/// três cercam-na: uma abaixo (o pior caso plausível), uma acima, e a de omissão.
+/// ⇒ a escada passa a cobrir **o curso que o dock permite** (`PANEL_MIN_W`..`DOCK_W_MAX = 720`),
+/// que é a única faixa que não envelhece. A largura dele entra como **amostra datada**, não como
+/// âncora.
 const ELIDEM_POR_LARGURA: &[(f32, usize)] = &[
-    (200.0, 13),
-    // ⭐ A largura REAL do dock do dono quando ele reportou (workspace `drawing_2d`).
-    (220.9, 3),
-    (245.0, 0),
+    // ⭐ O MÍNIMO do dock: aqui a coluna e o tecto do rótulo colidem, e o campo fica no piso que o
+    //   dono declarou (`72`). *Nesta ponta o nome corta, e é a troca que ele escolheu em 2026-05-24.*
+    (220.0, 16),
+    (245.0, 3),
+    // ⭐ Amostra DATADA da largura do dono (`drawing_2d`, lida em 2026-09-14). ⛔ Não é uma cerca —
+    //   se ele a mudar outra vez, o número muda e a escada continua a valer.
+    (273.3, 0),
     // A largura de OMISSÃO (`inspector-w`), onde a coluna é exactamente a METADE que ele pediu.
     (304.0, 0),
+    // ⭐ O MÁXIMO do dock: a outra ponta do curso arrastável.
+    (720.0, 0),
 ];
 
 /// ⭐⭐⭐ **VAZIO — e foi a decisão de APARÊNCIA do dono que o esvaziou.**
@@ -208,12 +215,18 @@ fn the_painter_borrows_the_slack_the_control_does_not_need() {
             .expect("o campo Float Height nao foi pintado")
     };
 
-    // ⭐ NA LARGURA DO DONO (`dock_w_right = 220,9`): o controlo cede espaço ao rótulo.
-    let estreito = campo(220.9);
-    let meio_estreito = controlo_a_meio(220.9);
+    // ⭐ NUMA LARGURA INTERMÉDIA (a amostra datada do dono, `273,3`): o controlo cede ao rótulo.
+    //
+    // ⚠️ **Era `220,9` e teve de subir, e a razão é a LEI e não o gosto:** desde que o piso do
+    // controlo passou a ser o que o campo declara (`NUMBER_INPUT_MIN_W_PX`), a `220` o tecto da
+    // coluna e a metade da linha **coincidem** (`78` e `78`) ⇒ ali não há folga nenhuma para pedir
+    // emprestado, e afirmar o empréstimo mediria o degenerado. A `273,3` o empréstimo é **interior**
+    // (a coluna é o rótulo mais largo, `113,9`, sem tocar no piso nem no tecto).
+    let estreito = campo(273.3);
+    let meio_estreito = controlo_a_meio(273.3);
     assert!(
         estreito < meio_estreito - 1.0,
-        "a 220,9 o campo mede {estreito:.1} e a metade daria {meio_estreito:.1} — \
+        "a 273,3 o campo mede {estreito:.1} e a metade daria {meio_estreito:.1} — \
          o rotulo NAO pediu emprestado"
     );
     // ⭐ NA LARGURA DE OMISSÃO: a metade já chega a todos, e o desenho do dono fica intacto.

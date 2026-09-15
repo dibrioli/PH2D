@@ -203,8 +203,29 @@ pub fn property_label_col_w_for(x: f32, w: f32, desired: Option<f32>) -> f32 {
     // de animação, ou não desconta nada na aparência clássica — a guarda mora lá, uma vez).
     let (usable_w, _dot) = form_row_columns(x, w, 0.0, 0.0);
     let gap = Spacing::Md.px();
-    // ⛔ O piso do CONTROLO é o recurso — ver o doc de [`PropertyRow`].
-    let control_min = ph2d_tokens::ICON_BTN_SIZE_PX + Spacing::Lg.px();
+    // ⛔⛔ **O piso do CONTROLO é o que o CAMPO declara precisar — e isso é uma ORDEM DO DONO.**
+    //
+    // ⚠️⚠️ **A 1.ª redacção nomeava o recurso ERRADO, e o doc dela dizia-o em voz alta:** *«o piso
+    // do controlo é `ICON_BTN_SIZE_PX` — a largura de um botão de ícone, que é o que a coluna do
+    // stepper de um `NumberInput` ocupa — mais um dígito»*. Medido: a coluna do stepper é
+    // [`super::super::number_input::stepper_width`], que dá `clamp(0,6 × altura, 16, 22)` — **nunca
+    // 36**. Logo `36 + 12 = 48` não era «o stepper mais um dígito»: era um número sem dono.
+    //
+    // ⛔ E o campo **já tinha** o dele, com a ordem escrita ao lado (2026-05-24): *«não permita que
+    // a caixa seja redimensionada para menor que isso»* ⇒ [`super::super::NUMBER_INPUT_MIN_W_PX`]
+    // (`72` = ~3-4 dígitos em `Sm` + o recuo + a coluna do stepper). *Quando o recurso já tem dono,
+    // o piso é o dele* — a mesma lei que a [`property_label_origin`] paga um bloco acima.
+    //
+    // ⚠️ **Medido no produto, ANTES da cura** (campo registado, `Float Height` da §14):
+    //
+    // | painel | campo pintado | piso declarado |
+    // |---|---|---|
+    // | `220` (o mínimo do dock) | `48,00` | `72` ⛔ |
+    // | `245` | `59,38` | `72` ⛔ |
+    // | `280` | `94,38` | `72` ✅ |
+    //
+    // ⇒ *toda a metade estreita do curso do dock pintava o campo abaixo do que o dono mandou.*
+    let control_min = super::super::NUMBER_INPUT_MIN_W_PX;
     // ⭐ O rótulo acaba um VÃO antes do meio da linha, para o controlo começar EXACTAMENTE nele.
     let metade = w * LABEL_COL_FRAC - gap;
     let tecto = (usable_w - gap - control_min).max(0.0);

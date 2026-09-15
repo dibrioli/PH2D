@@ -250,6 +250,13 @@ impl FootprintDeform {
         [elipse[0] * s, elipse[1] * s]
     }
 
+    /// Esta pegada não carrega curvatura nenhuma — o irmão legível de `curve().is_flat()`, para
+    /// quem só quer a pergunta e não o tipo.
+    #[must_use]
+    pub fn is_flat_footprint(self) -> bool {
+        self.curve.is_flat()
+    }
+
     /// ⭐⭐⭐ **As duas LINHAS do mapa LINEAR da pegada** (rodar + achatar), SEM a curvatura.
     ///
     /// ⛔⛔ **Ela existe porque `apply` deixou de ser linear, e quem publica uma matriz não pode

@@ -202,4 +202,42 @@ mod tests {
             "um pincel que NÃO segue o traço rodou na mesma: a pegada está a ignorar a lei do rake"
         );
     }
+    /// ⭐⭐⭐ **A CURVATURA DA ARTE CHEGA AO QUE O MOTOR PINTA** — o elo que ninguém mede.
+    ///
+    /// ⛔⛔ **O §5.0 deste repo avisa exactamente por isto:** *nenhum instrumento pergunta se o
+    /// VALOR chega a um consumidor.* Os gates de registo provam que o clique chega à ferramenta; o
+    /// gate de arquitectura prova que a porta de canvas pergunta à malha; a identidade da
+    /// `canvas_warp` prova a LEI. Nenhum deles nota se o `set_canvas_warp` guarda a curvatura e a
+    /// deita fora no caminho para o `BrushSpec` — e o app ficaria exactamente como antes da wave,
+    /// com todos eles verdes.
+    ///
+    /// ⚠️ **A asserção que conta é a última**: não basta o campo viajar, a PEGADA que o kernel vai
+    /// consumir (a que o falloff, a silhueta do Shape e o Grão lêem) tem de a carregar.
+    #[test]
+    fn the_fold_of_the_art_reaches_the_dab_the_engine_paints() {
+        let mut t = PainterTool::default();
+        t.set_brush_dab_flatten(0.2);
+        t.set_brush_dab_angle(15.0);
+        assert!(
+            t.stroke_spec().dab_curve.is_flat(),
+            "em repouso o dab emitido não pode ter curvatura nenhuma"
+        );
+        t.set_canvas_warp(ph2d_painter_brush::canvas_warp::CanvasWarp {
+            linear: [[0.8, 0.1], [-0.05, 1.1]],
+            curve: [
+                [0.10, -0.06, 0.04, 0.03, 0.0, -0.02, 0.0],
+                [-0.05, 0.11, 0.0, 0.0, 0.06, 0.0, -0.04],
+            ],
+        });
+        let spec = t.stroke_spec();
+        assert!(
+            !spec.dab_curve.is_flat(),
+            "a dobra da arte não chegou ao `BrushSpec` — o campo viaja e alguém o deita fora"
+        );
+        assert!(
+            !spec.footprint_deform().is_flat_footprint(),
+            "a dobra chegou ao campo e NÃO à pegada que o kernel consome — o falloff, a silhueta              do Shape e o Grão continuariam a ler uma elipse"
+        );
+    }
+
 }

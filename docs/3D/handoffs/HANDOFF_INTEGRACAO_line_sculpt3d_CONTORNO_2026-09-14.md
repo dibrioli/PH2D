@@ -1966,6 +1966,25 @@ trabalho no MESMO perfil»*. É verdade sobre o **perfil de build** e falso sobr
 paralelo o escalonador não os trata por igual. ⇒ **promoção pedida** à lista do
 `CLAUDE.md` §5.0.
 
+⭐⭐⭐ **E a SEGUNDA corrida da MESMA árvore deu a assinatura mais forte da
+família, à vista:** ela reprovou **três** testes e **nenhum** deles é o da
+primeira.
+
+| corrida | reprovadas | verde sozinho |
+|---|---|---|
+| 1.ª (`load 20,10`) | `the_frame_is_hoisted_out_of_the_vertex_loop` | 3/3 a `load 60,46` |
+| 2.ª | `the_fit_rebuilds_the_neighbourhood_not_the_whole_stroke` · `an_abandoned_march_returns_nothing_and_returns_fast` · `measure_normals_parallel_speedup` | 3/3 cada, a `load 51,25` · `35,81` · `33,26` |
+
+⛔ **Intersecção VAZIA entre as duas corridas do mesmo commit** — *um defeito de
+lógica reprova o mesmo caso sempre; só um recurso partilhado troca de vítima
+entre corridas.* E as **três** da segunda já estavam nomeadas na lista do §5.0,
+o que deixa **uma** promoção a pedir e não quatro.
+
+⚠️ **E a 2.ª corrida foi POLUÍDA por mim:** eu pus a build do smoke a correr em
+cima dela. *Uma varredura de fecho corre sozinha, ou o número que ela devolve é
+sobre outra máquina* — fica registado porque explica por que a segunda teve três
+reprovadas e a primeira uma.
+
 ### §27.11 — O que NÃO se mexeu
 
 - **Zero** contadores partilhados (`PROJECT_SCHEMA`, `FIELD_DOC_VERSION`,

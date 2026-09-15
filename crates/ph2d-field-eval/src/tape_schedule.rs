@@ -131,6 +131,16 @@ pub(crate) fn schedule(code: &[Instr], root: u32) -> (Vec<Instr>, u32) {
     // 256 arestas custava `11,2 ms` contra `2,8` da fita crua (**`+301 %`**), e ela corre **a cada
     // quadro** (o `pedido` reconstrói a fita). *Uma cautela que não nomeia o mecanismo cobra caro.*
     //
+    // ⭐ Com os baldes (CPU a `88 %` ociosa), o acréscimo passa a ser **plano** na dimensão — o
+    // escalonador entra na mesma classe de custo que a montagem que ele reordena:
+    //
+    // | arestas | montagem CRUA | escalonada | acréscimo |
+    // |---:|---:|---:|---:|
+    // | `32` | `0,328 ms` | `0,386` | `+17,6 %` |
+    // | `64` | `0,661` | `0,802` | `+21,3 %` |
+    // | `128` | `1,368` | `1,716` | `+25,4 %` |
+    // | `256` | `2,854` | `3,472` | **`+21,6 %`** |
+    //
     // `delta ∈ [-2, +1]` ⇒ quatro baldes. Dentro de cada um, o maior caminho crítico primeiro; o
     // índice desempata, para a ordem ser **determinista**.
     const BALDES: usize = 4;

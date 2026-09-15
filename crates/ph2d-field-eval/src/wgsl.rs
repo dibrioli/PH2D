@@ -26,7 +26,7 @@
 //! GPU»*.
 //!
 //! ⚠️⚠️ **Esse `464` era uma propriedade da ORDEM da fita, não do grafo.** Com o
-//! [`crate::tape_schedule`] a pior cena real mede **`89`** — `356 B` por thread e **`22 KB`** por
+//! [`crate::tape_schedule`] a pior cena real mede **`95`** — `380 B` por thread e **`23 KB`** por
 //! workgroup de 64, que **cabe**. ⇒ §0.0: *quem move o número que tornava algo inalcançável tem de
 //! reconferir a nota.*
 //!

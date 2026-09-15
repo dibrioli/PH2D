@@ -2911,3 +2911,104 @@ lei certa e zero chamadores produz o MESMO app que uma lei ausente.*
 **`15 225` testes, `15 225` verdes** (`load 29,38`), clippy limpo, tectos de LOC
 verdes. **Mutação 3 de 3**, e a primeira sangra **pelos dois lados** — o censo
 derivado acusa a porta muda *e* o gate da razão acusa o silêncio.
+
+---
+
+## §34 — ⭐⭐⭐ O **PROJECTAR** mede da posição VIVA sempre: o placar do oráculo salta de `3` para `12`, e a causa era **uma coluna**
+
+> `5d3ef8e6f`
+
+### §34.1 — ⛔⛔ A partição limpa dizia ONDE procurar, e eu li O QUE procurar
+
+O §28 mediu que o corpus se partia em *«um dab bate ao sétimo decimal, seis dabs
+desviam»* e concluiu: *«o que falta não é a lei do raio — é a composição por
+dab»*. A partição estava certa. **A leitura não.**
+
+A causa é o [`GripLaw::from_live`] preso ao interruptor `Accumulate`. A espec
+§6.5 escreve-o com todas as letras:
+
+> ⛔ **Não há normalização por área, nem acumulador, nem memória entre dabs** —
+> cada dab re-mede a distância a partir de onde o vértice está **agora**.
+
+**Sem condição.** Mas o `from_live` é a única coluna que o `Accumulate` move num
+[`Grip::Stamp`], e com ele desligado — que é o valor de fábrica **e** o que as
+`16` fixturas declaram no cabeçalho (`acumula: False`) — a curva de queda passava
+a medir contra o `pre` do pen-down.
+
+⚠️ *Uma partição limpa diz ONDE procurar e não O QUE procurar.* «É a composição»
+era a primeira hipótese compatível com ela, e a errada.
+
+### §34.2 — A cura é a terceira sobrescrita do `grip_law`, e o oráculo mede-a
+
+| fixtura | antes | depois |
+|---|---|---|
+| `…_base` · `…_base_repete` · `…_acima_bidir` | `1,902e-1` | **`1,639e-7`** |
+| `…_forca05` | `6,557e-2` | **`7,078e-8`** |
+| `…_mindist01` | `1,182e-1` | **`1,341e-7`** |
+| `…_mindist06` | `2,766e-3` | **`8,941e-8`** |
+| `…_mindist01_acima_bidir` | `2,607e-1` | **`2,012e-7`** |
+| `…_dois_abaixo` · `…_dois_lados_bidir` | `5,871e-2` | **`1,043e-7`** |
+
+**Placar: `3 → 12`** de `16`. ⚠️ **E a catraca disparou na metade *«o placar
+SUBIU»***, que é exactamente para o que ela existe — *o ganho não passou
+despercebido, e a tabela do cabeçalho teve de ser reescrita com ele*.
+
+### §34.3 — ⭐ As `4` que ficam, e duas delas trazem o diagnóstico escrito
+
+| fixtura | desvio | o que ela isola |
+|---|---|---|
+| `…_dureza05` | `2,367e-2` | o remapeamento de dureza sobre um traço |
+| `…_normal_plano_area` | `1,281e-1` | a direcção do raio pela normal da **área** |
+| `…_invertido` · `…_subtrair` | `1,415e-1` | ⭐⭐ **o número que a espec §6.6 dá para `max |d + d′|`** |
+
+⭐⭐ **O par de `1,415e-1` é um diagnóstico, não uma coincidência.** A espec §6.6
+diz que *«sobre um traço a inversão não nega exactamente»*, e dá esse número
+medido no alvo. As nossas duas fixturas invertidas desviam do oráculo
+**exactamente nele** ⇒ *a nossa inversão parece ser a negação exacta sobre o
+traço, e a da referência não é* (ela re-mede, e a distância encolhe num sentido e
+cresce no outro). **É a pista da próxima wave.**
+
+### §34.4 — ⛔⛔ E a cura MATOU o interruptor
+
+Com a coluna pregada, o `Accumulate` deixa de mover **nada** neste verbo ⇒ ele
+sai do [`Verb::accumulates`], pela razão **OPOSTA** à do esfregão:
+
+| verbo | o interruptor… | ⇒ |
+|---|---|---|
+| esfregão | está **VIVO**, e a lei que ele instalaria **nenhuma referência declara** | esconder |
+| projectar | a lei **já escolheu** (§6.5, sempre) ⇒ ele não move nada | esconder |
+
+### §34.5 — ⛔⛔⛔ E isso expôs que a família dos TOGGLES não tinha régua
+
+Pôr a projecção de volta na lista **não partia teste nenhum** — o censo dos knobs
+varre `Row`s do painel e este é uma **caixa**. *Uma família de gates que cobre as
+fileiras e não as caixas deixa metade dos controlos sem régua.* ⇒
+`o_accumulate_nao_e_oferecido_a_quem_nao_o_sente`.
+
+⚠️⚠️ **E a 1.ª redacção DELE media a TABELA DE GRIPS em vez do barro, e acusou um
+verbo VIVO:** ela comparava `grip_law(false, …)` com `grip_law(true, …)` e deu o
+`Clay Strips` como inerte — ele **move `7,2e-2`**, porque ali o interruptor
+escolhe também a **fonte do PLANO**, que não vive naquela tabela. *A régua é o
+PRODUTO; uma tabela de leis é um resumo dela, e um resumo não tem de conter
+tudo.* ⭐ E o achado é do gate: ele encontrou um terceiro caso que eu não
+procurava, e o terceiro caso **refutou a régua dele**.
+
+⛔ **A implicação é de UM sentido só** (*não sente ⇒ não oferecer*): o contrário é
+falso e há **dois** verbos a prová-lo — o apagador e o esfregão **sentem-no** e
+mesmo assim não o oferecem, cada um por uma recusa medida. *Um gate
+bidireccional obrigaria a reabrir duas recusas de lei.*
+
+### §34.6 — O portão
+
+**`15 226` testes, `15 225` verdes.** A reprovada é o
+`measure_normals_parallel_speedup`, membro **confirmado** da família de flakes de
+recurso sob fan-out do §5.0, com zero linhas do diff desta jornada naquela crate.
+
+### §34.7 — ⏳ O que fica ABERTO
+
+| # | item | estado |
+|---|---|---|
+| 1 | as **4** fixturas que sobram | ⏳ com a pergunta de cada uma escrita, e a das duas invertidas **com o mecanismo** (§34.3) |
+| 2 | as **6** que precisam da geometria do alvo | ⏳ acto do **E**, inalterado |
+| 3 | a **folga simétrica** (§10.3) | ⏳ **decisão do dono**, ainda sem resposta |
+| 4 | *«o alvo ESCONDIDO não conta»* (§6.1) | ⏳ o `SceneObject` não tem visibilidade |

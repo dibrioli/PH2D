@@ -904,3 +904,99 @@ Varridos os 30+ chamadores de `paint_text_elided`/`paint_text_title_elided`. A f
   glifo `…`) continua sem cura — precisa de métricas de glifo, não de aritmética de coluna.
 - Os **três** nomes que ainda não cabem a `220,9` (`Corner Look-ahead`, `Weight on Ground`,
   `Swim Line (weights)`) continuam decisão do dono (encurtar ou alargar a coluna).
+
+---
+
+## 17 — ⛔⛔⛔ O piso do controlo nomeava o recurso ERRADO, e o certo era uma ordem do dono de MAIO
+
+Achado ao medir o que faltava converter, **não** por um report.
+
+### 17.1 — O piso dizia de que recurso era, e estava errado sobre ele
+
+A §14 escreveu: *«o piso do controlo é [`ICON_BTN_SIZE_PX`] — a largura de um botão de ícone, que é
+o que a coluna do stepper de um `NumberInput` ocupa — mais um dígito»* ⇒ `36 + 12 = 48`.
+
+⛔ **Medido:** a coluna do stepper é
+[`number_input::stepper_width`](../../../crates/ph2d-editor-core/src/widget/number_input/mod.rs),
+que devolve `clamp(0,6 × altura, 16, 22)` — **nunca `36`**. O `48` não era *«o stepper mais um
+dígito»*: era um número sem dono, com uma justificação que a medição desmente.
+*Um limite legítimo diz de que recurso ele é* (`CLAUDE.md` §0.0) — e este dizia, errado.
+
+### 17.2 — O recurso já tinha dono, e a ordem estava escrita no código desde 2026-05-24
+
+[`NUMBER_INPUT_MIN_W_PX`](../../../crates/ph2d-editor-core/src/widget/number_input/mod.rs) = `72`,
+com o doc a citar o dono: *«não permita que a caixa seja redimencionada para menor que isso»*.
+
+⚠️ **E a linha de propriedade violava-a em METADE do curso do dock.** Medido no produto (o rect
+REGISTADO do campo `Float Height`):
+
+| painel | campo, antes | campo, depois | piso |
+|---|---|---|---|
+| `220` (mínimo do dock) | `48,00` ⛔ | **`72,00`** | `72` |
+| `245` | `59,38` ⛔ | **`72,00`** | `72` |
+| `280` | `94,38` | `94,38` | `72` |
+| `304` (omissão) | `114,00` | `114,00` | `72` |
+
+⇒ o piso passa a ser o do campo. *Quando o recurso já tem dono, o piso é o dele* — a mesma lei que
+a §16 paga um nível abaixo.
+
+### 17.3 — O preço, medido, e por que ele é a troca CERTA
+
+A coluna do rótulo deixa de poder crescer tanto na ponta estreita:
+
+| painel | coluna | campo | rótulos elididos (de 52) |
+|---|---|---|---|
+| `220` | `78,00` | `72,00` | **16** |
+| `245` | `103,00` | `72,00` | **3** |
+| `273,3` | `113,88` | `89,42` | **0** |
+| `304` | `120,00` | `114,00` | **0** |
+| `720` (máximo) | `328,00` | `322,00` | **0** |
+
+⇒ *entre um campo que o dono mandou não encolher e um nome cortado, ganha o campo* — ele disse-o
+em 2026-05-24 nessas palavras, e um nome cortado continua a ser um nome; um campo de `48 px` com
+`1.500 m/s` dentro não é um campo.
+
+⭐⭐⭐ **E a lei do MEIO sobrevive exactamente até ao mínimo do dock, sem ninguém a escolher.** O
+rótulo só pode ser a metade enquanto `metade ≤ tecto`, o que dá `linha ≥ 2 × (piso + DECORATOR_W)`
+= **`172`**; a linha de um cartão do Inspector no mínimo do dock mede
+`PANEL_MIN_W(220) − 2×PANEL_HEAD_PAD(18) − 2×Sm(6)` = **`172`**. *Os dois números encontram-se ao
+píxel, e o gate afirma-o* — se um dia um deles se mexer, há larguras arrastáveis em que o controlo
+deixa de começar no meio e alguém fica a saber.
+
+### 17.4 — ⛔⛔⛔ E a escada do §15 PREGOU a largura do dono, que ele mudou no dia seguinte
+
+A §15 escreveu *«`220,9` … a largura REAL do dock do dono»*. Lido outra vez o
+`~/.ph2d/layout.txt` em 2026-09-14, depois do smoke seguinte: **`dock_w_right = 273,3`**.
+
+⇒ ***a largura do artista é um ESTADO, não uma cerca.*** Curar «o gate media a omissão» pregando o
+ponto dele troca um ponto que envelhece por outro que envelhece mais depressa. A escada passa a
+cobrir **o curso que o dock permite** (`220`..`720`), e a largura dele entra como **amostra
+datada**. ⛔ E o `200` saiu: o dock não desce abaixo de `220`, logo era *uma régua calibrada fora do
+curso, a medir um programa que não existe*.
+
+### 17.5 — Gates
+
+| gate | o que afirma | mutação |
+|---|---|---|
+| [`a_field_is_never_narrower_than_its_owner_declared`](../../../crates/ph2d-panel-inspector/tests/it/a_field_is_never_narrower_than_its_owner_declared.rs) | 9 larguras × 2 campos, lendo o rect **REGISTADO** | piso `48` ⇒ **MORTA** |
+| `the_ruler_can_see_the_field_follow_the_panel` | o controlo: o campo **segue** o painel e a `220` está **exactamente** no piso | — |
+| `a_property_row_never_starves_its_control` | o piso vem da porta do CAMPO, e a lei do meio cobre todo o curso do dock | piso `48` ⇒ **MORTA** |
+| `the_elision_ladder_only_shrinks` | a escada nova, com a metade de obsolescência | — |
+
+⚠️ **O gate da porta re-derivava `ICON_BTN_SIZE + Lg`** — o mesmo número sem dono que o produto
+tinha —, logo **não podia** acusar a violação: *um gate que refaz a conta do produto mede a conta,
+não o produto*. É a terceira vez que esta linha paga esta forma em dois dias.
+
+### 17.6 — Aberto
+
+- A **coluna de animação** custa `14 px` em toda linha e é permanente por ordem do dono. Na ponta
+  estreita ela é `18 %` do que sobra para o nome: escondê-la abaixo de uma largura levaria os `16`
+  cortados de `220` para `~9`. ⛔ **Não feito** — é decisão dele, e o §5 do `CLAUDE.md` avisa que um
+  indicador que aparece e desaparece ensina o artista a desconfiar dele.
+- **As DUAS formas de linha convivem em seis painéis** (inspector · flip · vector · model3d ·
+  grid-snap): a *caixa única* (rótulo DENTRO, à esquerda — 15 painéis, 53 chamadas) e a *linha de
+  propriedade* (rótulo FORA, à direita — 5 painéis, 22 chamadas). A partição é **principiada** (a
+  caixa única existe onde há uma FRACÇÃO para o preenchimento mostrar) e ⛔ **não é convertível na
+  largura dele**: a `220` o rótulo fora deixaria `72 px` para trilho **e** número juntos, que é
+  exactamente o cromo que a caixa única nasceu para matar em 2026-09-02. *Fica escrito, com o
+  número, para o manual.*

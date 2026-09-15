@@ -143,3 +143,13 @@ uma continua a ser um ficheiro próprio; o que mudou foi o endereço.
 - ⛔⛔ **Aproximar em PERSPECTIVA é trazer o OLHO** (16/09, gate do lábio do vaso): `half_extent 0,05` pôs o olho a `0,11` do eixo, DENTRO da peça (parede a `0,33`), e a imagem media a parede interna do outro lado — verde sobre o defeito, duas vezes. ⇒ zoom de gate = lente **paralela**; e confira a caixa dos pontos vistos antes de confiar na imagem.
 - ⚠️ **`acos` de duas normais IGUAIS em `f32` lê até `0,04°`** quando `|n| < 1` por um ulp — uma sonda de «imagens diferentes» leu `91 770` pixels entre duas corridas idênticas. *Uma diferença que é a MESMA entre todos os pares é a assinatura da régua.*
 - [[feedback_the_grep_in_this_agents_shell_is_ugrep_and_qv_always_says_no]] — ⛔⛔ o `grep` DESTE agente é um wrapper para **ugrep**, e `grep -qv` devolve «não encontrei» **SEMPRE**: um portão escrito assim anunciou «GATE VERDE» sobre dois testes reprovados. O `-v` sozinho funciona; é o par `-q`+`-v` que mente
+- ⛔⛔ **A largura/definição que o ARTISTA tem é um ESTADO, não uma cerca — pregá-la envelhece mais
+  depressa que o default.** Medido 2026-09-14 (`line/UIUX`): curei um gate que media a largura de
+  OMISSÃO do Inspector (`304`) pregando nele a largura REAL do dono, lida do `~/.ph2d/layout.txt`
+  (`220,9`) e escrita no gate como *«a largura REAL do dock do dono»*. **No dia seguinte o mesmo
+  ficheiro dizia `273,3`** — ele arrastou a borda depois do smoke. ⇒ *a cura de «o gate mede um
+  ponto que ninguém usa» não é medir OUTRO ponto*: é medir **o curso que o controlo permite** (aqui
+  `PANEL_MIN_W = 220` .. `DOCK_W_MAX = 720`), com o valor dele a entrar como **amostra datada** e
+  não como âncora. ⚠️ E ao fazê-lo apareceu o inverso do mesmo erro: a escada media `200`, um ponto
+  **abaixo do mínimo do dock**, ou seja *uma régua calibrada fora do curso, a medir um programa que
+  nenhum arrasto produz*.

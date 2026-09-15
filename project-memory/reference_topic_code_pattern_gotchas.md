@@ -30,3 +30,13 @@ metadata:
   pintor que foi enganado: *«`INFINITY`, not `max_width`: it fits, and passing the budget back would
   let a sub-pixel measurement disagreement re-introduce the wrap»* — *o comentário descrevia
   exactamente o que o chamador fazia.*
+- ⛔⛔ **Um piso que NOMEIA o recurso ainda pode estar errado sobre ele — e o recurso costuma já ter
+  dono.** Medido 2026-09-14 (`line/UIUX`): escrevi *«o piso do controlo é `ICON_BTN_SIZE_PX` (36) —
+  a largura da coluna do stepper de um `NumberInput` — mais um dígito»* ⇒ `48`. A coluna do stepper
+  é `clamp(0,6 × altura, 16, 22)`, **nunca 36**: a justificação era falsa e o número não tinha dono.
+  O campo **já declarava** o dele (`NUMBER_INPUT_MIN_W_PX = 72`) com uma ordem do dono ao lado desde
+  2026-05-24 (*«não permita que a caixa seja redimensionada para menor que isso»*), e metade do
+  curso do dock pintava o campo a `48`–`59`. ⇒ **antes de escrever um piso, procure quem já é dono
+  do recurso** — e ⚠️ o gate que o defendia **re-derivava a mesma expressão do produto**, logo não
+  podia acusar nada (*um gate que refaz a conta do produto mede a conta, não o produto* — 3.ª
+  ocorrência em dois dias).

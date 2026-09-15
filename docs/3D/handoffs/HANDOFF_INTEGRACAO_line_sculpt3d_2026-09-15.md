@@ -656,3 +656,95 @@ O roteiro da `=45` passou de **9 para 8 passos** — o passo do `Ctrl` saiu, os
 seguintes renumeraram e o `DEU ERRADO SE` perdeu a cláusula correspondente.
 *Uma cena que continuasse a mandar carregar em `Ctrl` ensinaria um gesto que não
 existe, que é a espécie que o §5.0 chama de pior que uma cena ausente.*
+
+---
+
+## §43 — ⏳ O **TRIM** começou: o que a preparação MEDIU antes de existir uma linha de código
+
+Ordem do dono (15/09): *«Creio que ainda não temos vários pincéis do blender: Vamos começar por
+TRIM. Vá estudar o blender para implementar aqui.»*
+
+⚠️ **Esta secção é toda do NOSSO lado.** A lei do alvo vive na
+[`SPEC_trim_gesture.md`](../cleanroom/SPEC_trim_gesture.md), escrita por um subagente-E sob a
+parede; o que está aqui foi medido nesta janela, que nunca viu o fonte do alvo.
+
+### §43.1 — O substrato: o que já existe e o que é obra nova
+
+| peça | estado |
+|---|---|
+| desfazer uma operação que muda a topologia | ⭐ **existe** — `StrokeUndo::Remeshed`, a troca simétrica, com **três** chamadores. Um corte seria o quarto |
+| volta `malha → campo → malha` | ⭐ existe e ship (é o botão de remesh) |
+| booleana de malha 3D | ⛔ **não existe** (a `ph2d-vec-boolean` é 2D; os outros `trim` do repo são `plane_trim` do raspador e `str::trim` em parsers) |
+| gesto de caixa/laço no canvas da escultura | ⛔ **não existe** — obra nova |
+| ⚠️ gesto de rectângulo sobre uma vista 3D | **existe no modelador** (`ph2d-app-field3d`), e ⛔ **não é o que o nome promete:** ele resolve *que objectos estão debaixo do rectângulo*, e o `subtracts` dele subtrai do **conjunto de selecção**, não de geometria. Serve de precedente de fiação, nunca de motor |
+
+### §43.2 — ⭐⭐⭐ A decisão de arquitectura, e ela é MEDIDA dos dois lados
+
+A sonda do §5 desta linha (`diag_o_preco_da_volta_por_campo`, commit anterior) e a §1 da espec
+medem a mesma coisa por caminhos independentes, **e concordam**:
+
+| | booleana | volta por campo (nossa) |
+|---|---|---|
+| relógio na escultura de `98 306` V | ⭐ **`67,88 ms`** | `171,7 ms` (res 128) |
+| vértices de entrada preservados **ao bit** | `57 489` (`58 %`) | ⛔ **`0`**, em 6 de 6 células |
+| vértices longe do corte | ⭐ `26 533` de `26 533` **intactos** | ⛔ `0` |
+| contagem de saída | segue a ENTRADA | ⛔ segue a **resolução da grelha** |
+
+⇒ **um corte por campo não é um corte: é um corte MAIS um remalhamento da peça inteira.** Uma
+escultura tem densidade **autorada** — fino onde o artista trabalhou, grosso onde não — e a volta
+por campo devolve-a uniforme. *A rota barata é `2,5×` mais lenta E destrói o que a outra preserva*,
+o que é raro: normalmente há uma troca, e aqui não há.
+
+### §43.3 — ⭐⭐ O motor NÃO se escreve: a porta está aberta, e eu verifiquei-a com os meus olhos
+
+A triagem parte em duas e só **metade** paga clean-room (espec §1.4): a **lei do gesto** é T2; o
+**solucionador de omissão** é uma biblioteca externa **permissiva**, logo T0.
+
+Medido nesta janela, fora do repo (`cargo add` + `cargo build` num crate de rascunho):
+
+| facto | medido |
+|---|---|
+| resolve de crates.io | ✅ `manifold-rust 0.13.1`, **12 pacotes** |
+| constrói | ✅ **`16,66 s`** a frio, **sem `cc`, sem `cmake`, sem rede** |
+| licença | ✅ **`Apache-2.0`** — lida no **ficheiro `LICENSE` do artefacto descarregado**, não numa página (é a distinção que o R-pré cobrou) |
+
+⛔⛔ **E há um portão NOSSO que isto reprovaria, e ninguém tinha perguntado:** das 12 dependências
+transitivas, **onze** são `MIT`/`Apache-2.0` e uma — `clipper2-rust 1.1.0` — é **`BSL-1.0`**. O
+nosso [`deny.toml`](../../../deny.toml) **não tem `BSL-1.0` na lista geral**: ela é concedida
+**por-crate** a `error-code` e `clipboard-win` (os dois puxados pelo `arboard`, do clipboard).
+⇒ sem uma excepção nova, o `./scripts/ship.sh` reprova — e ele é o **último** portão antes do push,
+que é o sítio mais caro para descobrir isto. A cura é precedida e barata (uma entrada
+`[[licenses.exceptions]]` que **nomeia quem a puxa**, como as duas que já lá estão).
+⏳ Por medir: se o `clipper2-rust` é evitável por feature (ele é clipping 2D, e o corte é 3D).
+
+### §43.4 — ⛔⛔ O modo de falha da dependência é SILENCIOSO, e é a lei que o produto tem de escrever
+
+Da espec §1.5.6, medido nos três motores: com malha **aberta** a operação devolve malha **VAZIA**
+e o estado do **resultado** diz *«sem erro»*. O sinal verdadeiro está no estado da **ENTRADA**.
+
+⇒ **quem verificar só o resultado entrega uma escultura APAGADA.** A lei: verificar a entrada
+**antes** de operar e recusar **em voz alta** — e isto entra na família de recusas que a §33 desta
+linha construiu (`recusa::Entradas`), que já é derivada dos predicados `precisa_d*` do motor.
+⚠️ E o motor «robusto» **não** resgata malha aberta: ele aceita *soup fechada* (suja), que é outra
+coisa. *É a distinção entre «suja» e «aberta», e ela separa a promessa do que se mede.*
+
+### §43.5 — O estado do protocolo, e porque ainda não há código
+
+| passo | estado |
+|---|---|
+| triagem de licença | ✅ T2 (lei do gesto) · **T0** (motor de omissão) |
+| patente | ✅ 4 examinadas, todas expiradas/lapsadas; nenhuma viva alcança o método |
+| espec + ledger + vassoura + fixturas | ✅ entregues |
+| **R-pré (atestado)** | ⏳ **em curso — 1.ª passagem reprovou com `9` achados, curados; a 2.ª corre agora** |
+| código de produto | ⛔ **zero linhas, de propósito** |
+
+⚠️ **A 1.ª auditoria vale por si e fica registada**, porque os dois bloqueantes dela são leis desta
+casa a repetirem-se: (1) **o instrumento que audita tinha um buraco e a espec estava a usá-lo** — a
+cura anterior apanhava frases partidas em linhas mas não frases com **ênfase markdown no meio**, e
+era exactamente aí que estava a única citação que restava (*é a terceira cegueira do mesmo tipo
+nesta obra, e a espécie é sempre **alcance**, nunca padrões*); (2) uma afirmação sobre **quatro**
+comportamentos de um cruzamento `2×2` cujos estados alcançáveis são **três** ⇒ implementá-la
+shiparia **um braço que gesto nenhum atinge**, que é o «dreno de um braço só» do `CLAUDE.md` §5.0.
+⭐ E o que a auditoria **ilibou** é o que dá confiança ao resto: os `292` identificadores internos do
+ficheiro do alvo foram extraídos mecanicamente e varridos contra a espec — **zero fugas** —, e a
+decomposição em fases dela **não** é a do alvo.

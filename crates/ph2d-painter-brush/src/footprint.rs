@@ -312,7 +312,9 @@ impl FootprintDeform {
             for j in 1..=PASSOS {
                 let s = ALCANCE * (j as f32) / (PASSOS as f32);
                 let d = self.falloff_t(cos * s, sen * s);
-                if !(d > anterior) {
+                // ⚠️ O `is_nan` é explícito de propósito: um `NaN` num coeficiente tem de LEVAR à
+                // elipse, e `NaN <= x` é `false` — a forma curta deixava-o passar.
+                if d.is_nan() || d <= anterior {
                     return false;
                 }
                 anterior = d;

@@ -109,11 +109,15 @@ fn resolve(ata: &[[f64; 9]; 9], atb: &[[f64; 9]; 2], nt: usize) -> Vec<[f64; 2]>
         for v in m[c].iter_mut().take(nt + 2) {
             *v /= pv;
         }
-        for r in 0..nt {
+        // ⚠️ A linha do pivô é COPIADA (um array de `f64` é `Copy`): sem isso o empréstimo de
+        // `m[r]` e `m[c]` ao mesmo tempo não passa, e o laço por índice que o contornava é o que o
+        // clippy acusa.
+        let pivo = m[c];
+        for (r, linha) in m.iter_mut().enumerate() {
             if r != c {
-                let f = m[r][c];
-                for k in 0..nt + 2 {
-                    m[r][k] -= f * m[c][k];
+                let f = linha[c];
+                for (dst, src) in linha.iter_mut().zip(pivo.iter()) {
+                    *dst -= f * src;
                 }
             }
         }

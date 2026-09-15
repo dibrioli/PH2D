@@ -208,6 +208,26 @@ contagem parar de subir.*
 
 ---
 
+## §8-bis — O portão de fecho (batched, 1× sobre o diff acumulado)
+
+`cargo fmt --all --check` limpo · `doc-index.sh --check` → *«19 índices em dia»* ·
+`scripts/nextest-impacted.sh` → **14 068 testes, 14 066 verdes**, com **dois** vermelhos:
+
+1. `hr12_widgets_a11y::every_widget_file_wires_a11y` — **real e curado**: a moldura nova é um
+   ficheiro de pintura pura, e entra no `PANEL_A11Y_DELEGATE_OK` com a justificação **medida**
+   (zero ocorrências de `NodeId`, `hit_index.` e `register(`). É a **quarta** vez que este ficheiro
+   regista a mesma forma, e a segunda no mesmo dia.
+2. `ph2d-app-flip … a_long_stroke_is_bounded_by_the_redundancy_floor_not_by_a_budget` — **flake de
+   carga conhecida**, da família que o `CLAUDE.md` §5.0 já nomeia (`flip_smooth::
+   resample_measurement::precisao::orcamento`). Assinatura confirmada: **3 de 3 verde sozinha** a
+   `load 45,65`, e o diff desta linha tem **zero linhas** naquela crate.
+
+⚠️ **E o portão correu `-p ph2d-editor-core` de propósito** — é a lição que a wave anterior pagou
+(as catracas que julgam um painel vivem na fundação). Ele apanhou **três**: o HR-15, o DAG e o tecto
+de ficheiro de painel, todos curados por **corte** ou pela **tabela**, nunca por isenção nova.
+
+---
+
 ## §9 — Onde ler
 
 - O plano, com as tabelas e as recusas: [`09_plano_spawner.md`](../09_plano_spawner.md).

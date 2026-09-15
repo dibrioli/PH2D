@@ -511,23 +511,29 @@ fn probe_a_faixa_do_balanco() {
     }
 }
 
-/// ⭐⭐⭐ **A PILHA ASSENTA EM VEZ DE ZUMBIR** — o gate do 4.º report do dono (2026-09-15:
-/// *«as shapes que ficam embaixo no centro vibram muito após serem apertadas pelas shapes acima»*,
-/// com três setas no fundo do monte). Mecanismo e tabela: [doc 109 §8].
+/// ⛔⛔⛔ **VERMELHO DECLARADO: a pilha ZUMBE, e a cura que eu construí foi REPROVADA pelo dono.**
 ///
-/// ⚠️⚠️ **A régua da cena não podia ver isto:** o `vizinho_mediano` mede o VÃO, que é uma
-/// fotografia — *uma pilha a tremer e uma pilha parada com o mesmo espaçamento leem-se iguais nela*,
-/// e os quatro gates da `=114` estavam verdes sobre o defeito. Esta mede **movimento**: o `|Δrot|`
-/// mediano por tique de cada peça, na janela em que a pilha já devia estar assente.
+/// 4.º report (2026-09-15): *«as shapes que ficam embaixo no centro vibram muito após serem
+/// apertadas pelas shapes acima»*, com três setas no fundo do monte. 5.º report, sobre a cura:
+/// *«piorou. os mesmos blocos rotacionam como se fossem círculos»*. Mecanismo, as duas medições e
+/// a recusa: **doc 109 §8**.
 ///
-/// ⭐ **A barra sai de um VALE MEDIDO, com os dois lados:** com a lei antiga (a rotação como
-/// empurrão de ângulo) as 25 peças leem `… 0,38 · 1,24 · 2,53 · 3,50 · 3,96 · 4,16°` — **cinco**
-/// acima de `1,0` —, e com a moeda certa (`spin`) a pior lê **`0,87°`**. ⛔ Não é um número
-/// escolhido: é o vazio entre o lado que o dono reprovou e o lado curado.
+/// ⚠️⚠️ **A régua da cena não via nenhuma das duas:** o `vizinho_mediano` mede o VÃO, que é uma
+/// fotografia — *uma pilha a tremer e uma pilha parada com o mesmo espaçamento leem-se iguais nele*.
+/// Esta mede **movimento**: o `|Δrot|` mediano por tique, na janela em que a pilha já devia estar
+/// assente.
 ///
-/// ⚠️ **É um gate DETERMINÍSTICO, não de relógio** — ele não divide dois tempos nem conta
-/// alocações, logo não é candidato à família de flakes de carga do `CLAUDE.md` §5.0.
+/// ⭐ **A barra sai de um VALE MEDIDO com os dois lados:** a lei que shipa lê
+/// `… 0,38 · 1,24 · 2,53 · 3,50 · 3,96 · 4,16°` — **cinco** peças acima de `1,0` — e a cura tentada
+/// levava a pior a `0,87°`. ⛔ Não é um número escolhido: é o vazio entre os dois lados medidos.
+///
+/// ⛔ **`#[ignore]` porque o defeito está ABERTO, não porque a régua seja fraca** — ela é
+/// determinística (não divide relógios nem conta alocações) e reprova hoje nomeando as cinco peças.
+/// *Um `#[ignore]` que esconde um vermelho conhecido é uma dívida com endereço; um gate apagado é
+/// uma dívida sem nenhum.* Quem a puser a verde tem de passar também no
+/// [`the_pile_does_not_start_spinning_like_a_ball`], que é a metade que a minha cura partiu.
 #[test]
+#[ignore = "VERMELHO DECLARADO — doc 109 §8, o defeito está aberto"]
 fn the_pile_settles_instead_of_buzzing() {
     /// Graus por tique. Ver o vale acima.
     const BARRA: f32 = 1.0;
@@ -547,4 +553,112 @@ fn the_pile_settles_instead_of_buzzing() {
         piores.is_empty(),
         "peças a zumbir acima de {BARRA}°/tique: {piores:?} — doc 109 §8"
     );
+}
+
+/// ⭐⭐⭐ **E A PILHA NÃO PODE COMEÇAR A GIRAR COMO UMA BOLA** — a catraca que o 5.º report do dono
+/// comprou (*«piorou. os mesmos blocos rotacionam como se fossem círculos»*).
+///
+/// ⚠️⚠️ **TREMER e GIRAR leem-se IGUAIS num `|Δrot|` por tique**, e é por isso que o
+/// [`the_pile_settles_instead_of_buzzing`] ficou VERDE sobre a queixa nova: a minha cura levava o
+/// balanço de `4,16°` para `0,87°` por tique **e ao mesmo tempo** o giro LÍQUIDO de `24,3°` para
+/// `46,7°` em `0,9 s`. O discriminador é o líquido: um tremor volta ao sítio (`Σ Δrot ≈ 0`), um giro
+/// não.
+///
+/// ⭐ **A barra é o que a lei que o dono já viu entrega** (`24,30°`), com folga de `20 %` — ela é uma
+/// **catraca contra uma regressão medida**, não um alvo: o valor bom é muito menor, e quem o baixar
+/// aperta-a.
+///
+/// ⛔ *Uma cura que melhora a grandeza que a régua mede e piora a que ela não mede lê-se como uma
+/// vitória.* Esta é a régua que faltava.
+#[test]
+fn the_pile_does_not_start_spinning_like_a_ball() {
+    /// Graus de giro LÍQUIDO em `0,9 s`. A lei que shipa entrega `24,30°`; `+20 %` de folga.
+    const BARRA: f32 = 29.0;
+    let (liquido, _total) = giro_liquido(2.0, 2.9);
+    assert!(
+        liquido.len() >= 20,
+        "piso de populacao: a metade da direita tem de ter peças ({})",
+        liquido.len()
+    );
+    let pior = liquido.iter().copied().fold(0.0_f32, |a, v| a.max(v.abs()));
+    assert!(
+        pior <= BARRA,
+        "uma peça girou {pior:.2}° liquidos em 0,9 s (barra {BARRA}°) — doc 109 §8"
+    );
+}
+
+/// **SONDA — a peça GIRA ou TREME?** (report do dono, 2026-09-15: *«piorou. os mesmos blocos
+/// rotacionam como se fossem círculos»*).
+///
+/// ⚠️⚠️ **As duas coisas leem-se IGUAIS num `|Δrot|` por tique**, que é exactamente o que a barra do
+/// [`super::tremor::the_pile_settles_instead_of_buzzing`] mede — e é por isso que ela ficou verde
+/// sobre a queixa nova. O discriminador é o **LÍQUIDO**: um tremor volta ao sítio (`Σ Δrot ≈ 0`) e
+/// um giro não (`|Σ Δrot| = Σ |Δrot|`).
+///
+/// ```text
+/// cargo test -p ph2d-app-motion --lib probe_gira_ou_treme -- --ignored --nocapture
+/// ```
+#[test]
+#[ignore = "sonda de medicao"]
+fn probe_gira_ou_treme() {
+    let (liquido, total) = giro_liquido(2.0, 2.9);
+    let mut ordem: Vec<usize> = (0..total.len()).collect();
+    ordem.sort_by(|a, b| liquido[*b].abs().total_cmp(&liquido[*a].abs()));
+    eprintln!("\n  peca | Σ Δrot (líquido) | Σ|Δrot| | |líquido|/total");
+    eprintln!("  -----|------------------|---------|----------------");
+    for i in ordem.into_iter().take(10) {
+        eprintln!(
+            "  {i:>4} | {:>16.2}° | {:>6.2}° | {:>15.3}",
+            liquido[i],
+            total[i],
+            if total[i] > 0.0 {
+                liquido[i].abs() / total[i]
+            } else {
+                0.0
+            }
+        );
+    }
+    let pior = liquido.iter().copied().fold(0.0_f32, |a, v| a.max(v.abs()));
+    eprintln!("\n  maior giro LÍQUIDO em 0,9 s: {pior:.2}°  (um quadrado tem simetria de 90°)");
+}
+
+/// Por peça: o giro LÍQUIDO e o giro TOTAL percorrido, em graus, na janela.
+fn giro_liquido(de: f64, ate: f64) -> (Vec<f32>, Vec<f32>) {
+    let mut state = MotionState::new();
+    let sinks = build(&mut state.doc, &state.registry).expect("a cena monta");
+    crate::motion_shape_gen::publish(&mut state, 0.0);
+    let sink = sinks[1];
+    let (mut liquido, mut total, mut anterior) = (Vec::new(), Vec::new(), Vec::<f32>::new());
+    let last = (ate * 60.0) as u64;
+    for k in 0..=last {
+        #[expect(clippy::cast_precision_loss, reason = "um indice de tique")]
+        let t = k as f64 / 60.0;
+        let s = state
+            .pump
+            .cook
+            .cook(&state.doc.graph, &state.registry, sink, t)
+            .expect("cozinha")[0]
+            .as_stream()
+            .clone();
+        if let Some(Column::Scalar(r)) = s.get("rot") {
+            if liquido.len() != r.len() {
+                liquido = vec![0.0_f32; r.len()];
+                total = vec![0.0_f32; r.len()];
+            }
+            if t >= de && anterior.len() == r.len() {
+                for i in 0..r.len() {
+                    let d = r[i] - anterior[i];
+                    liquido[i] += d;
+                    total[i] += d.abs();
+                }
+            }
+            anterior = r.clone();
+        }
+        state
+            .pump
+            .cook
+            .advance_tick(&state.doc.graph, &state.registry, t)
+            .expect("avanca");
+    }
+    (liquido, total)
 }

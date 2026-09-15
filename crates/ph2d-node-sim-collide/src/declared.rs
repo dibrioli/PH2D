@@ -21,24 +21,17 @@ use ph2d_contact::{Colisor, Contacto, Forma};
 pub(super) struct Toque {
     /// `(normal, empurrão)`, ou `None` quando ela não toca.
     pub empurrao: Option<([f32; 2], f32)>,
-    /// ⭐ **A alavanca da NORMAL no ponto** (`r × n`) — num disco centrado é zero, e numa caixa
-    /// pousada de chapa também. É por ela que o impulso normal faz a peça TOMBAR.
-    pub braco_n: f32,
+    /// Quanto ela roda pela metade NORMAL, em graus (doc 109 §6).
+    pub giro: f32,
     /// ⭐ **A alavanca da TANGENTE no ponto** (`r · n`, doc 109 §7) — num disco o raio inteiro,
     /// exactamente onde a da normal é zero. É por ela que o atrito faz a peça ROLAR.
     pub braco_t: f32,
 }
 
-/// ⭐⭐⭐ **A peça sai INTEIRA da parede, e o binário vai para o `spin`** (doc 109 §6 + §8).
-///
-/// ⚠️⚠️ **Esta função repartia a penetração entre empurrar e RODAR** (`k = 1 + invI·braço²`,
-/// `λ = pen/k`, e o resto virava um empurrão de ângulo somado ao `rot`). Medido no report do dono de
-/// 2026-09-15, isso produzia um **ciclo de 2 tiques**: o ângulo de uma peça pousada na taça
-/// alternava `+3,98° / −2,25°` a cada tique, 17 trocas de sinal em 18 passos. A causa é a MOEDA —
-/// um empurrão de ângulo não tem memória, logo nada o amortece, e o [`super::resposta`] declara no
-/// cabeçalho dele que a moeda deste nó é o **`spin`**. ⇒ a penetração é devolvida INTEIRA (a lei
-/// linear de sempre) e o binário sai pelo impulso normal, em `spin`, onde o `angular_damping` e o
-/// termo auto-corrector do atrito já lhe pegam. Tabela no doc 109 §8.
+/// A correcção reparte-se entre mover e rodar pela massa efectiva no PONTO (doc 109 §6):
+/// `k = 1 + invI · braço²`, `λ = penetração / k`. ⚠️ A massa é `1` porque este nó não lê `inv_mass`
+/// — quem o lê é o `sim.step`. Com `invI = 0` (rotação travada) `k` é `1` e `λ` é a penetração
+/// inteira: a lei de antes, termo a termo.
 #[allow(clippy::too_many_arguments)]
 pub(super) fn toque(
     shape: i32,
@@ -49,14 +42,18 @@ pub(super) fn toque(
     plane_n: [f32; 2],
     half: [f32; 2],
     col: &Colisor,
+    inv_inercia: f32,
 ) -> Toque {
     let Some(ct) = contact_declared(shape, p, height, c, radius, plane_n, half, col) else {
         return Toque::default();
     };
     let centro = col.centro(p);
+    let braco = ct.braco(centro);
+    let k = 1.0 + inv_inercia * braco * braco;
+    let lambda = ct.penetracao / k;
     Toque {
-        empurrao: Some((ct.normal, ct.penetracao)),
-        braco_n: ct.braco(centro),
+        empurrao: Some((ct.normal, lambda)),
+        giro: braco * lambda * inv_inercia * ph2d_contact::GRAUS,
         braco_t: ct.braco_tangente(centro),
     }
 }

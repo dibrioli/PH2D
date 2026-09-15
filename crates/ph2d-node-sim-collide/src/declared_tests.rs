@@ -124,29 +124,15 @@ fn a_declared_box_rests_on_a_disc_and_on_a_box_by_its_face() {
     assert!((na_caixa[1] - 0.75).abs() < 1e-5, "{na_caixa:?}");
 }
 
-/// ⭐⭐⭐ **Uma caixa que ATERRA de quina ganha GIRO; de chapa, travada, ou apenas POUSADA, não**
-/// (doc 109 §6 + §8). O ponto do contacto é o do SUPORTE: numa caixa deitada ele é o meio da face
-/// (alavanca zero) e numa inclinada é a quina, e é ela que converte o impulso normal em binário.
+/// ⭐⭐⭐ **Uma caixa INCLINADA roda no chão; de chapa, não** (doc 109 §6 — *«precisa destravar a
+/// rot»*). O ponto do contacto é o do SUPORTE: numa caixa deitada ele é o meio da face (binário
+/// zero) e numa inclinada é a quina (binário que a deita).
 ///
-/// ⚠️⚠️ **A QUARTA metade é a que nasceu do report do dono de 2026-09-15** (*«as shapes que ficam
-/// embaixo no centro vibram muito»*): uma caixa **parada** sobre o obstáculo não recebe binário
-/// nenhum. Antes recebia — a rotação saía da PENETRAÇÃO, que a gravidade recria a cada tique, e o
-/// resultado era um ciclo de 2 tiques (`+3,98° / −2,25°`, 17 trocas de sinal em 18 passos na cena
-/// `=114`). O `respond` tinha essa guarda escrita para a metade LINEAR — *«já sai da superfície:
-/// tocar não a muda … é o clássico jitter de colisor»* — e a metade angular, escrita depois, não a
-/// herdou. Hoje herda, porque passou a viajar na mesma moeda.
-///
-/// ⛔⛔ **E este gate DEFENDIA a lei antiga numa quinta metade, que foi RETIRADA de propósito:**
-/// *«a correcção reparte-se entre empurrar e rodar, logo livre sobe MENOS que travada»*. Com o
-/// binário em `spin` a penetração é devolvida INTEIRA nos dois casos, e as duas sobem o mesmo — a
-/// asserção invertia-se, então ela é agora a de baixo, com o sinal ao contrário. Tabela do que a
-/// troca comprou: doc 109 §8.
+/// ⚠️ **E o `Lock Rotation` (a coluna a zero) trava-a**: nem roda, nem a coluna `rot` nasce.
 #[test]
-fn a_landing_box_gains_spin_and_flat_locked_or_resting_do_not() {
-    // `queda` é a velocidade vertical: `0` é uma peça POUSADA, negativo é uma a aterrar.
-    let passo_de = |graus: f32, travada: bool, queda: f32| -> (f32, f32) {
-        let mut s = caixa([0.0, -2.1], [0.5, 0.25], graus, None)
-            .with("vel", Column::Vec2(vec![[0.0, queda]]));
+fn a_tilted_box_turns_on_the_floor_and_flat_or_locked_does_not() {
+    let passo_de = |graus: f32, travada: bool| -> (Option<f32>, f32) {
+        let mut s = caixa([0.0, -2.1], [0.5, 0.25], graus, None);
         if travada {
             s = s.with(INV_INERTIA_COLUMN, Column::Scalar(vec![0.0]));
         }
@@ -167,48 +153,35 @@ fn a_landing_box_gains_spin_and_flat_locked_or_resting_do_not() {
             Some(Column::Vec2(v)) => v[0][1],
             _ => panic!("sem P"),
         };
-        // ⚠️ O nó NÃO MEXE em `rot` — ele copia a coluna que veio, e quem integra o `spin` no
-        // ângulo é o `sim.step`. Comparar com a ENTRADA e não com a ausência: a coluna vem no
-        // stream (é o giro autorado da peça), então o que este gate mede é se ela MUDOU.
-        assert_eq!(
-            out.get("rot").and_then(|c| match c {
-                Column::Scalar(v) => v.first().copied(),
-                _ => None,
-            }),
-            Some(graus),
-            "este no' nao pode mexer no angulo"
-        );
-        let spin = match out.get("spin") {
-            Some(Column::Scalar(v)) => v[0],
-            _ => 0.0,
+        let rot = match out.get("rot") {
+            Some(Column::Scalar(v)) => Some(v[0]),
+            _ => None,
         };
-        (spin, y)
+        (rot, y)
     };
-    let giro = |graus: f32, travada: bool, queda: f32| passo_de(graus, travada, queda).0;
-
-    // 1. A quina a aterrar: há binário.
-    let inclinada = giro(20.0, false, -1.0);
+    let angulo = |graus: f32, travada: bool| passo_de(graus, travada).0;
+    let inclinada = angulo(20.0, false).expect("o angulo sai no stream");
     assert!(
-        inclinada.abs() > 1.0,
-        "a quina a aterrar da' binario, e leu {inclinada}"
+        (inclinada - 20.0).abs() > 0.05,
+        "a quina da' binario: {inclinada}"
     );
-    // 2. De chapa a alavanca da normal é EXACTAMENTE zero.
-    assert_eq!(giro(0.0, false, -1.0), 0.0, "de chapa o binario e' zero");
-    // 3. `Lock Rotation` trava-a.
-    assert_eq!(giro(20.0, true, -1.0), 0.0, "travada nao roda");
-    // 4. ⭐⭐⭐ **POUSADA não roda** — a metade que o report do dono comprou.
+    // ⚠️ O ângulo é comparado com o de ENTRADA, e não com a ausência da coluna: ela vem no stream
+    // (é o giro autorado da peça) e o nó copia-a — o que este gate mede é se ela MUDOU.
     assert_eq!(
-        giro(20.0, false, 0.0),
-        0.0,
-        "uma peca POUSADA nao pode receber binario: e' o ciclo de 2 tiques do report"
+        angulo(0.0, false),
+        Some(0.0),
+        "de chapa o binario e' zero: a peca nao roda"
     );
+    assert_eq!(angulo(20.0, true), Some(20.0), "travada nao roda");
 
-    // 5. ⭐⭐ **A peça sai INTEIRA da parede, rode ela ou não** — a inversão declarada acima.
-    let (livre, travada) = (passo_de(20.0, false, -1.0).1, passo_de(20.0, true, -1.0).1);
-    assert_eq!(
-        livre.to_bits(),
-        travada.to_bits(),
-        "a despenetracao deixou de ser repartida: livre {livre}, travada {travada}"
+    // ⭐⭐⭐ **A correcção REPARTE-SE entre empurrar e rodar** (doc 109 §6): com a rotação livre a
+    // caixa sobe MENOS do que travada, porque parte do empurrão virou giro. ⚠️ É este gate que
+    // apanha a massa efectiva apagada (`k = 1`): sem ela as duas subiriam exactamente o mesmo, e o
+    // resto do teste continuaria verde — medido, essa mutação SOBREVIVEU a tudo o resto.
+    let (livre, travada) = (passo_de(20.0, false).1, passo_de(20.0, true).1);
+    assert!(
+        travada > livre + 1e-4,
+        "travada sobe {travada}, livre sobe {livre} — o empurrao tem de repartir-se"
     );
 }
 

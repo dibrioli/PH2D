@@ -18,10 +18,6 @@ fn resposta(atrito: f32, rola: bool) -> Resposta {
         // mexeria no `spin` que eles medem. Quem mede o rolamento é [`rolando`].
         rolar: 0.0,
         rolamento: rola.then_some((BRACO_T, INV_I)),
-        // ⚠️ ZERO de propósito, e é a lei de um DISCO: a normal de um disco passa pelo centro, logo
-        // a alavanca dela é exactamente zero e o impulso normal não roda. Estes gates medem a
-        // metade TANGENCIAL; quem mede a normal é [`super::declared`].
-        braco_n: 0.0,
     }
 }
 
@@ -151,7 +147,6 @@ fn pico_da_queda(salto: f32, segundos: f32) -> f32 {
                 atrito: 0.0,
                 rolar: 0.0,
                 rolamento: None,
-                braco_n: 0.0,
             };
             let fundo = -p[1];
             respond(&mut p, &mut v, 0.0, CIMA, fundo, &r);
@@ -208,7 +203,6 @@ fn segundos_ate_parar(rolar: f32) -> Option<f32> {
                 atrito: 1.0,
                 rolar,
                 rolamento: Some((-R, inv_i)),
-                braco_n: 0.0,
             };
             spin += respond(&mut p, &mut v, spin, CIMA, fundo, &r);
         }

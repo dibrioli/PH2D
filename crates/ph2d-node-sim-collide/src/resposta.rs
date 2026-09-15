@@ -40,8 +40,6 @@ pub(super) struct Resposta {
     /// `(bt, invI)`: a alavanca da tangente no ponto e o quanto a peça roda por unidade de
     /// binário. `None` na peça sem forma declarada — ver o cabeçalho.
     pub rolamento: Option<(f32, f32)>,
-    /// ⭐ A alavanca da NORMAL no ponto — o binário que o impulso normal aplica.
-    pub braco_n: f32,
 }
 
 /// Responde ao contacto: empurra a peça para fora, reflecte a normal, trava (ou faz rolar) a
@@ -69,11 +67,6 @@ pub(super) fn respond(
     let out = [v[0] - bounce * n[0], v[1] - bounce * n[1]];
     let vn_out = out[0] * n[0] + out[1] * n[1];
     let tangent = [out[0] - vn_out * n[0], out[1] - vn_out * n[1]];
-    // ⭐⭐⭐ O BINÁRIO DA NORMAL: o mesmo impulso que reflecte a velocidade também RODA a peça,
-    // pela alavanca dele. Na MOEDA deste nó — `spin`, nunca um empurrão de ângulo (ver o cabeçalho).
-    let d_spin_n = r
-        .rolamento
-        .map_or(0.0, |(_, inv_i)| (0.0 - bounce) * r.braco_n * inv_i);
     let Some((bt, inv_i)) = r.rolamento else {
         let keep = 1.0 - r.atrito;
         *v = [
@@ -93,14 +86,14 @@ pub(super) fn respond(
     *v = [out[0] + t[0] * jt, out[1] + t[1] * jt];
     let d_spin = jt * inv_i * bt;
     if r.rolar <= 0.0 || inv_i <= 0.0 {
-        return (d_spin + d_spin_n) * GRAUS;
+        return d_spin * GRAUS;
     }
     // ⭐⭐⭐ **O ROLAMENTO** (doc 109 §7.10, a ponta que o §7.7 nomeava). ⚠️ Ele lê o `ω` **já
     // corrigido pelo tangencial** — os dois escrevem a mesma grandeza, e lidos do mesmo `ω` este
     // desfaria parte do giro que aquele acabou de dar.
     let omega = spin / GRAUS + d_spin;
     let jr = ph2d_contact::atrito::rolamento(omega / inv_i, r.rolar, jn, bt);
-    (d_spin + d_spin_n - jr * inv_i) * GRAUS
+    (d_spin - jr * inv_i) * GRAUS
 }
 
 #[cfg(test)]

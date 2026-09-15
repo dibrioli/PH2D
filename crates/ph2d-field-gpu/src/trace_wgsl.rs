@@ -15,18 +15,30 @@
 pub(crate) const COMUM: &str = r"
 struct Setup {
     w: u32, h: u32, budget: u32, ao_rays: u32,
+    n_lamps: u32, _p0: u32, _p1: u32, _p2: u32,
     half_extent: f32, half_px: f32, ortho_start: f32, eye_distance: f32,
     hit_eps: f32, normal_eps: f32, step: f32, t_max: f32,
-    ball_radius: f32, ao_reach: f32, edge_cos: f32, _p1: f32,
+    ball_radius: f32, ao_reach: f32, edge_cos: f32, _p3: f32,
     alvo: vec3<f32>, right: vec3<f32>, up: vec3<f32>, fwd: vec3<f32>,
-    lamp: vec3<f32>, ball_center: vec3<f32>,
+    ball_center: vec3<f32>,
+    // ⭐⭐⭐ **AS LÂMPADAS, e não uma** — `xyz` é a posição no MUNDO. Ver `MAX_LAMPS`.
+    lamps: array<vec4<f32>, {MAX_LAMPS}>,
 };
 @group(0) @binding(0) var<uniform> s: Setup;
 @group(0) @binding(1) var<storage, read> k: array<f32>;
 @group(0) @binding(2) var<storage, read_write> centro: array<vec4<f32>>;
-@group(0) @binding(3) var<storage, read_write> luz: array<vec2<f32>>;
+// ⭐⭐⭐ **A LUZ POR PIXEL, com passo `1 + n_lamps`**: o slot `0` é o CÉU e os seguintes são a
+// visibilidade de cada lâmpada.
+//
+// ⛔⛔ **Era um `vec2` — o céu e UMA sombra — e isso era o tecto de uma lâmpada.** Com duas, a
+// segunda ficava sem sombra **em silêncio**, e por isso o chamador caía na CPU inteira em vez de a
+// ignorar. *Um formato que não tem onde pôr a segunda resposta é um tecto escrito em bytes.*
+@group(0) @binding(3) var<storage, read_write> luz: array<f32>;
 @group(0) @binding(4) var<storage, read_write> conta: atomic<u32>;
 @group(0) @binding(5) var<storage, read_write> borda: array<vec4<f32>>;
+
+/// O passo de [`luz`] — o céu mais uma visibilidade por lâmpada.
+fn passo_da_luz() -> u32 { return 1u + s.n_lamps; }
 
 // ⚠️ **A MESMA lei de marcha da CPU**, e ela é uma função porque as quatro amostras do
 // anti-serrilhado a repetem: uma segunda cópia seria a segunda resposta à mesma pergunta.
@@ -124,22 +136,34 @@ fn centro_e_luz(@builtin(global_invocation_id) g: vec3<u32>) {
     let r = ray_at_plane(raio(f32(g.x) + 0.5, f32(g.y) + 0.5));
     let c = marcha(r);
     centro[i] = c;
-    if (c.x < 0.0) { luz[i] = vec2<f32>(1.0, 1.0); return; }
+    let base = i * passo_da_luz();
+    if (c.x < 0.0) {
+        // ⚠️ Um pixel que não acerta recebe **luz inteira** em todos os canais — é o que a CPU
+        // devolve (`vis` nasce a `1.0` e o laço salta quem não acerta).
+        for (var l: u32 = 0u; l < passo_da_luz(); l = l + 1u) { luz[base + l] = 1.0; }
+        return;
+    }
 
     let p = r.o + r.d * c.x;
     // A normal volta ao MUNDO — a base é ortonormal, logo a transposta é a inversa.
     let n = s.right * c.y + s.up * c.z + s.fwd * c.w;
     let erguido = p + n * (s.hit_eps * 4.0);
 
-    // A SOMBRA: só quem VÊ a luz recebe raio.
-    var sombra = 1.0;
-    let d = s.lamp - p;
-    let dist = length(d);
-    if (dist > 1e-6) {
-        let dir = d / dist;
-        if (dot(n, dir) > 0.0) {
-            sombra = visivel(erguido, dir, cerca_da_bola(erguido, dir, dist), 8.0);
+    // ⭐⭐⭐ **A SOMBRA, UMA POR LÂMPADA** — só quem VÊ a luz recebe raio.
+    //
+    // ⚠️ **O custo é LINEAR nas lâmpadas e é a parte cara do passe**: um raio de sombra custa
+    // `29,3` amostras contra `8,7` de um raio de câmera. O tecto de `MAX_LAMPS` sai daí.
+    for (var l: u32 = 0u; l < s.n_lamps; l = l + 1u) {
+        var sombra = 1.0;
+        let d = s.lamps[l].xyz - p;
+        let dist = length(d);
+        if (dist > 1e-6) {
+            let dir = d / dist;
+            if (dot(n, dir) > 0.0) {
+                sombra = visivel(erguido, dir, cerca_da_bola(erguido, dir, dist), 8.0);
+            }
         }
+        luz[base + 1u + l] = sombra;
     }
 
     // ⭐⭐⭐ **A OCLUSÃO POR CONES** — `ao_rays` direcções FIXAS de mundo, pesadas pelo cosseno.
@@ -161,7 +185,7 @@ fn centro_e_luz(@builtin(global_invocation_id) g: vec3<u32>) {
         }
         if (peso > 0.0) { ceu = soma / peso; }
     }
-    luz[i] = vec2<f32>(sombra, ceu);
+    luz[base] = ceu;
 }
 
 // ⭐⭐⭐ **A SEGUNDA PASSAGEM: a borda re-amostrada.** Ela precisa dos VIZINHOS, logo não pode
@@ -208,5 +232,14 @@ fn difere(a: u32, b: u32) -> bool {
 /// ⚠️ Ele é uma função e não uma constante porque o `concat!` só junta LITERAIS. O custo é uma
 /// alocação por quadro, ao lado do `replace` do `{FIELD}` que o cache de pipelines já faz.
 pub(crate) fn molde() -> String {
-    format!("{COMUM}{MARCHA}")
+    format!("{}{MARCHA}", comum())
+}
+
+/// ⭐ **O [`COMUM`] com o tecto de lâmpadas preenchido.**
+///
+/// ⚠️ **O `8` do `array<vec4, N>` é o [`crate::trace::MAX_LAMPS`]**, e não um literal ao lado dele:
+/// escrito duas vezes, um dos dois envelhece na wave que mexer no outro — e o sintoma seria o
+/// uniforme a ler lixo a partir da lâmpada `N+1`, sem erro nenhum.
+pub(crate) fn comum() -> String {
+    COMUM.replace("{MAX_LAMPS}", &crate::trace::MAX_LAMPS.to_string())
 }

@@ -81,7 +81,8 @@ pub fn march(
     h: u32,
     antialias: bool,
 ) -> Option<(ph2d_field_render::Gbuffer, ph2d_field_render::Shadows)> {
-    let (fita, setup) = pedido(doc, reg, cam, *lamps.first()?, w, h, antialias)?;
+    let cabem = lamps_that_fit(tracer, w, h);
+    let (fita, setup) = pedido(doc, reg, cam, lamps, cabem, w, h, antialias)?;
     let screen = ph2d_field_render::Screen::new(w, h, cam.half_extent);
     let dev = tracer.lock().ok()?.frame(&fita, setup, w, h);
     Some(dev.to_cpu(cam, screen))
@@ -92,8 +93,7 @@ pub fn march(
 ///
 /// ⚠️ **As luzes chegam como [`ph2d_field_render::PointLamp`]** e não como posições: o pintor
 /// precisa da radiância, e derivá-la noutro sítio seria a segunda resposta à mesma pergunta.
-/// ⛔ **UMA lâmpada por enquanto** — o shader tem um canal de sombra. Com duas, a segunda ficaria
-/// sem sombra **em silêncio**.
+/// ⛔ Acima de [`ph2d_field_gpu::trace::MAX_LAMPS`] devolve `None` e o chamador cai na CPU.
 #[must_use]
 // A peça, o registo, a vista, as luzes, os materiais, o olhar, o fundo, a tela e a bandeira.
 #[allow(clippy::too_many_arguments)]
@@ -110,8 +110,15 @@ pub fn paint(
     h: u32,
     antialias: bool,
 ) -> Option<ph2d_field_gpu::trace::Pintado> {
-    let lampada = points.first()?;
-    let (fita, setup) = pedido(doc, reg, cam, lampada.world, w, h, antialias)?;
+    let mundos: Vec<[f32; 3]> = points.iter().map(|l| l.world).collect();
+    let cabem = lamps_that_fit(tracer, w, h);
+    let (fita, setup) = pedido(doc, reg, cam, &mundos, cabem, w, h, antialias)?;
+    // ⚠️ **As duas listas nascem do MESMO `points`**, e é por isso que a ordem não pode divergir:
+    // a posição da lâmpada `l` viaja no `MarchSetup` e a radiância dela aqui.
+    let mut lamp_radiance = [[0.0f32; 3]; ph2d_field_gpu::trace::MAX_LAMPS];
+    for (dst, l) in lamp_radiance.iter_mut().zip(points) {
+        *dst = l.radiance_at_one;
+    }
     let materiais = packed(surfaces.all);
     let tabelas = crate::studio_wgsl::tables();
     let pintor = ph2d_field_gpu::paint::PaintSetup {
@@ -120,7 +127,7 @@ pub fn paint(
         env_source: crate::studio_wgsl::SOURCE,
         env_consts: &crate::studio_wgsl::constants(),
         env_tables: &tabelas,
-        lamp_radiance: lampada.radiance_at_one,
+        lamp_radiance,
         stops: look.exposure_stops,
         view: ph2d_view_transform::wgsl::view_code(look.view),
         background,
@@ -134,6 +141,18 @@ pub fn paint(
             .ok()?
             .painted_frame(&fita, setup, &pintor, w, h),
     )
+}
+
+/// ⭐⭐⭐ **Quantas lâmpadas este quadro comporta no dispositivo** — ver
+/// [`ph2d_field_gpu::trace::lamps_that_fit`].
+///
+/// ⚠️ **Ela pergunta à PLACA**, e é por isso que precisa do traçador: o limite de ligação é uma
+/// propriedade do adaptador, não uma constante deste ficheiro.
+#[must_use]
+pub fn lamps_that_fit(tracer: &SharedTracer, w: u32, h: u32) -> usize {
+    tracer.lock().map_or(0, |t| {
+        ph2d_field_gpu::trace::lamps_that_fit(t.binding_limit(), w, h)
+    })
 }
 
 /// ⭐ **Os materiais no formato que o dispositivo lê** — o [`ph2d_material::wgsl::pack`] com o
@@ -162,11 +181,15 @@ pub fn packed(all: &[ph2d_material::Surface]) -> Vec<f32> {
 ///
 /// ⚠️ **Ele é partilhado pelo [`march`] e pelo [`paint`] de propósito:** os dois têm de marchar
 /// exactamente a mesma coisa, senão o gate que compara as duas imagens mede também a geometria.
+// A peça, o registo, a vista, as lâmpadas, o tecto delas, a tela e a bandeira — sete coisas
+// independentes, e uma struct só as renomearia.
+#[allow(clippy::too_many_arguments)]
 fn pedido(
     doc: &ph2d_field::FieldDoc,
     reg: &ph2d_field_eval::hybrid::Registry,
     cam: &ph2d_field_render::Orbit,
-    lamp: [f32; 3],
+    mundos: &[[f32; 3]],
+    cabem: usize,
     w: u32,
     h: u32,
     antialias: bool,
@@ -174,6 +197,19 @@ fn pedido(
     ph2d_field_eval::wgsl::TapeWgsl,
     ph2d_field_gpu::trace::MarchSetup,
 )> {
+    // ⛔⛔ **ACIMA DO TECTO O DISPOSITIVO RECUSA, e não sombreia só as primeiras.** Deixar as
+    // restantes sem sombra seria o defeito que esta cerca existe para impedir — e a CPU sabe
+    // sombrear qualquer número.
+    //
+    // ⚠️ **O tecto é do QUADRO e não uma constante** — ver [`ph2d_field_gpu::trace::lamps_that_fit`]:
+    // ele sai do tamanho de ligação que a placa oferece dividido pelos pixels desta tela.
+    if mundos.is_empty() || mundos.len() > cabem {
+        return None;
+    }
+    let mut lamps = [[0.0f32; 3]; ph2d_field_gpu::trace::MAX_LAMPS];
+    for (dst, src) in lamps.iter_mut().zip(mundos) {
+        *dst = *src;
+    }
     let campo = ph2d_field_eval::Field::new(doc);
     let fita = campo.tape_wgsl()?;
     let bola = ph2d_field_eval::bounds::bounding_ball(doc, reg)?;
@@ -200,7 +236,9 @@ fn pedido(
             / passo.clamp(f32::EPSILON, 1.0))
         .ceil() as u32,
         t_max: ph2d_field_render::T_MAX,
-        lamp,
+        lamps,
+        #[allow(clippy::cast_possible_truncation)]
+        n_lamps: mundos.len() as u32,
         ball_center: bola.center,
         ball_radius: bola.radius,
         ao_rays: ph2d_field_render::OCCLUSION_PASSES,

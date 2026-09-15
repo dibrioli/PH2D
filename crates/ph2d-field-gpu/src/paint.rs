@@ -44,10 +44,11 @@ pub struct PaintSetup<'a> {
     pub env_consts: &'a [f32],
     /// O armazém que o [`Self::env_source`] lê.
     pub env_tables: &'a [f32],
-    /// A radiância que a lâmpada entrega a **uma** unidade de distância — o
-    /// [`ph2d_field_render::PointLamp::radiance_at_one`]. A posição dela é a
-    /// [`crate::trace::MarchSetup::lamp`].
-    pub lamp_radiance: [f32; 3],
+    /// A radiância que cada lâmpada entrega a **uma** unidade de distância — o
+    /// [`ph2d_field_render::PointLamp::radiance_at_one`]. As posições são as
+    /// [`crate::trace::MarchSetup::lamps`], e as duas listas **têm de ter o mesmo comprimento e a
+    /// mesma ordem**: quem monta uma monta a outra.
+    pub lamp_radiance: [[f32; 3]; crate::trace::MAX_LAMPS],
     /// A exposição, em paragens.
     pub stops: f32,
     /// A vista, no código do [`ph2d_view_transform::wgsl::view_code`].
@@ -84,10 +85,11 @@ fn dono_mix(p: vec3<f32>, width: f32) -> Dono { return Dono(0u, 0u, 0.0); }
 const PINTOR: &str = r"
 // ── o grupo 1: o que só o pintor lê ───────────────────────────────────────────────────────────
 struct Pintor {
-    lamp: vec4<f32>,   // a radiância a uma unidade (rgb)
     knobs: vec4<f32>,  // stops, pixel_world, _, _
     fundo: vec4<f32>,  // o fundo em LINEAR pré-multiplicado, para a média da borda
     modo: vec4<u32>,   // view, bordas, fundo empacotado, materiais
+    // ⭐ **Uma radiância por lâmpada**, na MESMA ordem das posições do `Setup`.
+    lamp: array<vec4<f32>, {MAX_LAMPS}>,
 };
 @group(1) @binding(0) var<uniform> ceu: Ceu;
 @group(1) @binding(1) var<uniform> pintor: Pintor;
@@ -140,43 +142,47 @@ fn ceu_em(x: u32, y: u32, i: u32, n0: vec3<f32>) -> f32 {
             let c = centro[j];
             if (c.x < 0.0) { continue; }
             if (dot(n0, c.yzw) < BLUR_COS) { continue; }
-            soma = soma + luz[j].y;
+            soma = soma + luz[j * passo_da_luz()];
             cont = cont + 1u;
         }
     }
     if (cont > 0u) { return soma / f32(cont); }
-    return luz[i].y;
+    return luz[i * passo_da_luz()];
 }
 
 // A luz que UM material devolve ao olho, já com o olhar — o `shade_render::radiance` da CPU.
-fn luz_do_material(m: Mat, n: vec3<f32>, v: vec3<f32>, p: vec3<f32>, sombra: f32, ceu_vis: f32) -> vec3<f32> {
+fn luz_do_material(m: Mat, n: vec3<f32>, v: vec3<f32>, p: vec3<f32>, i: u32, ceu_vis: f32) -> vec3<f32> {
     // ⭐⭐⭐ **A OCLUSÃO É A SOMBRA DO CÉU** — ela multiplica o que o AMBIENTE entrega, e mais nada.
-    // Não toca na lâmpada (que tem sombra a sério) nem na emissão.
+    // Não toca nas lâmpadas (que têm sombra a sério) nem na emissão.
     var rgb = mx_indirect(m, n, v) * ceu_vis;
-    // ⭐⭐⭐ A LUZ-OBJECTO: a direcção e a distância saem do PONTO deste pixel.
-    let d = s.lamp - p;
-    let cru = dot(d, d);
     let piso = PISO_LUZ * PISO_LUZ;
-    // ⚠️ **O piso protege DUAS grandezas.** Abaixo dele a direcção é a NORMAL: com a luz sobre o
-    // ponto, `d` é o vector ZERO, a direcção normalizada sai `(0,0,0)` e o pixel ficaria PRETO.
-    var to_light = n;
-    if (cru > piso) {
-        let inv = 1.0 / sqrt(cru);
-        to_light = mundo_para_vista(d * inv);
+    let base = i * passo_da_luz();
+    // ⭐⭐⭐ **AS LUZES-OBJECTO, uma a uma** — a direcção e a distância de cada saem do PONTO deste
+    // pixel, e a soma é sobre a RADIÂNCIA, como a CPU faz.
+    for (var l: u32 = 0u; l < s.n_lamps; l = l + 1u) {
+        let d = s.lamps[l].xyz - p;
+        let cru = dot(d, d);
+        // ⚠️ **O piso protege DUAS grandezas.** Abaixo dele a direcção é a NORMAL: com a luz sobre
+        // o ponto, `d` é o vector ZERO, a direcção normalizada sai `(0,0,0)` e o pixel ficaria PRETO.
+        var to_light = n;
+        if (cru > piso) {
+            let inv = 1.0 / sqrt(cru);
+            to_light = mundo_para_vista(d * inv);
+        }
+        // ⭐ **A sombra entra na radiância que CHEGA** — não no `N·L` e não no resultado.
+        let chega = pintor.lamp[l].rgb * luz[base + 1u + l] / max(cru, piso);
+        rgb = rgb + mx_direct(m, n, v, to_light, chega);
     }
-    // ⭐ **A sombra entra na radiância que CHEGA** — não no `N·L` e não no resultado.
-    let chega = pintor.lamp.rgb * sombra / max(cru, piso);
-    rgb = rgb + mx_direct(m, n, v, to_light, chega);
     return vt_to_display(rgb + mx_emission(m, n, v), pintor.knobs.x, pintor.modo.x);
 }
 
 // ⭐⭐ **Sombreia DUAS vezes e mistura o RESULTADO**, nunca os materiais: um metal e um dieléctrico
 // a meio caminho não são um meio-metal. E só paga o dobro onde há fronteira.
-fn radiancia(p: vec3<f32>, n: vec3<f32>, v: vec3<f32>, sombra: f32, ceu_vis: f32) -> vec3<f32> {
+fn radiancia(p: vec3<f32>, n: vec3<f32>, v: vec3<f32>, i: u32, ceu_vis: f32) -> vec3<f32> {
     let d = dono_mix(p, pintor.knobs.y);
-    let ca = luz_do_material(ler_mat(d.a), n, v, p, sombra, ceu_vis);
+    let ca = luz_do_material(ler_mat(d.a), n, v, p, i, ceu_vis);
     if (d.t <= 0.0) { return ca; }
-    let cb = luz_do_material(ler_mat(d.b), n, v, p, sombra, ceu_vis);
+    let cb = luz_do_material(ler_mat(d.b), n, v, p, i, ceu_vis);
     return ca + (cb - ca) * d.t;
 }
 
@@ -209,7 +215,7 @@ fn pinta(@builtin(global_invocation_id) g: vec3<u32>) {
     let r = ray_at_plane(raio(f32(g.x) + 0.5, f32(g.y) + 0.5));
     // ⭐ O PONTO reconstrói-se do `t` — a mesma álgebra do `Rays::point_at`.
     let p = r.o + r.d * c.x;
-    let rgb = radiancia(p, c.yzw, direccao_de_vista(r.d), luz[i].x, ceu_em(g.x, g.y, i, c.yzw));
+    let rgb = radiancia(p, c.yzw, direccao_de_vista(r.d), i, ceu_em(g.x, g.y, i, c.yzw));
     saida[i] = empacota(vec4<f32>(rgb, 1.0));
 }
 
@@ -229,13 +235,12 @@ fn pinta_bordas(@builtin(global_invocation_id) g: vec3<u32>) {
     let r = ray_at_plane(raio(f32(x) + 0.5, f32(y) + 0.5));
     let v = direccao_de_vista(r.d);
     let p = r.o + r.d * c.x;
-    let sombra = luz[i].x;
     let ceu_vis = ceu_em(x, y, i, c.yzw);
     var acc = vec4<f32>(0.0);
     for (var j = 0u; j < 4u; j = j + 1u) {
         let q = borda[slot * 5u + 1u + j];
         var cor = pintor.fundo;
-        if (q.x >= 0.0) { cor = vec4<f32>(radiancia(p, q.yzw, v, sombra, ceu_vis), 1.0); }
+        if (q.x >= 0.0) { cor = vec4<f32>(radiancia(p, q.yzw, v, i, ceu_vis), 1.0); }
         acc = acc + cor * 0.25;
     }
     saida[i] = empacota(acc);
@@ -259,10 +264,11 @@ pub(crate) fn fonte(pintor: &PaintSetup<'_>, lei_do_dono: Option<&OwnersWgsl>) -
             "{PISO_LUZ}",
             &formata(ph2d_field_render::POINT_LAMP_MIN_DISTANCE),
         )
-        .replace("{PACKED}", &ph2d_material::wgsl::PACKED.to_string());
+        .replace("{PACKED}", &ph2d_material::wgsl::PACKED.to_string())
+        .replace("{MAX_LAMPS}", &crate::trace::MAX_LAMPS.to_string());
     format!(
         "{}{material}\n{}\n{dono}\n{corpo}",
-        crate::trace_wgsl::COMUM,
+        crate::trace_wgsl::comum(),
         ph2d_view_transform::wgsl::SOURCE
     )
 }
@@ -351,12 +357,8 @@ pub(crate) fn pinta(
 
     let bg = pintor.background;
     let a = f32::from(bg[3]) / 255.0;
-    let mut u: Vec<u8> = Vec::with_capacity(64);
+    let mut u: Vec<u8> = Vec::with_capacity(64 + crate::trace::MAX_LAMPS * 16);
     for f in [
-        pintor.lamp_radiance[0],
-        pintor.lamp_radiance[1],
-        pintor.lamp_radiance[2],
-        0.0,
         pintor.stops,
         pintor.pixel_world,
         0.0,
@@ -380,6 +382,14 @@ pub(crate) fn pinta(
     let n_mats = (mats.len() / ph2d_material::wgsl::PACKED) as u32;
     for v in [pintor.view, n_bordas, empacotado, n_mats] {
         u.extend_from_slice(&v.to_le_bytes());
+    }
+    // ⚠️ **O array vai INTEIRO** — a mesma razão do `MarchSetup::lamps`: um `array<vec4, 8>` de
+    // uniforme tem tamanho fixo.
+    for r in pintor.lamp_radiance {
+        for f in r {
+            u.extend_from_slice(&f.to_le_bytes());
+        }
+        u.extend_from_slice(&0f32.to_le_bytes());
     }
     let ub_pintor = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("pintor"),

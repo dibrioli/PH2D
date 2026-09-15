@@ -57,7 +57,11 @@ impl DeviceGbuffer {
             edges,
         };
         let mut sh = ph2d_field_render::Shadows::default();
-        sh.set_lamp(0, self.shadow.clone());
+        // ⭐ **Uma chamada por lâmpada** — o `Shadows` guarda um canal por cada, e a fatia `l` do
+        // `shadow` é exactamente esse canal.
+        for l in 0..self.lamps {
+            sh.set_lamp(l, self.shadow[l * n..(l + 1) * n].to_vec());
+        }
         // ⚠️ **A suavização é aplicada AQUI**, como o refinamento da CPU a aplica no publicar — ela
         // faz parte do que a oclusão entrega, e não do que ela calcula.
         sh.set_ambient(ph2d_field_render::blur_occlusion(&g, &self.ambient));

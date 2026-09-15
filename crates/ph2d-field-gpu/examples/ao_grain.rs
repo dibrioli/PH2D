@@ -169,7 +169,13 @@ fn main() {
         eye_distance: cam.eye_distance().unwrap_or(0.0),
         hit_eps: nitidez.hit,
         normal_eps: nitidez.normal,
-        lamp: luz_do_rig(&cam),
+        lamps: {
+            // ⚠️ A cauda fica a zero: só as `n_lamps` primeiras são lidas.
+            let mut v = [[0.0f32; 3]; ph2d_field_gpu::trace::MAX_LAMPS];
+            v[0] = luz_do_rig(&cam);
+            v
+        },
+        n_lamps: 1,
         ball_center: bola.center,
         ball_radius: bola.radius,
         ao_rays: raios,

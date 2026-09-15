@@ -33,8 +33,14 @@ pub struct DeviceGbuffer {
     pub t: Vec<f32>,
     /// A normal em espaço de **VISTA** — a mesma convenção do G-buffer da CPU.
     pub normal: Vec<[f32; 3]>,
-    /// ⭐ Quanto da lâmpada chega a cada pixel — a [`ph2d_field_render::Shadows`] da CPU.
+    /// ⭐ Quanto de cada lâmpada chega a cada pixel — a [`ph2d_field_render::Shadows`] da CPU.
+    ///
+    /// ⚠️ **Uma LÂMPADA de cada vez, não um pixel de cada vez:** o bloco `l` ocupa
+    /// `l * pixels .. (l+1) * pixels`, que é exactamente a forma que o `Shadows::set_lamp` recebe.
+    /// *O formato que o consumidor pede é o formato que se escreve.*
     pub shadow: Vec<f32>,
+    /// Quantas lâmpadas há em [`Self::shadow`].
+    pub lamps: usize,
     /// ⭐ Quanto do céu chega a cada pixel — a oclusão.
     pub ambient: Vec<f32>,
     /// ⭐⭐⭐ **Os pixels de BORDA, re-amostrados no padrão 4-rook** — a `Gbuffer::edges` da CPU.
@@ -59,6 +65,55 @@ impl DeviceGbuffer {
     }
 }
 
+/// ⭐⭐⭐ **QUANTAS LÂMPADAS CABEM NO UNIFORME** — o tecto da FORMA, e não o do quadro.
+///
+/// # ⚠️ De que recurso ele é
+///
+/// Do **bloco de uniforme**: as posições e as radiâncias viajam em dois `array<vec4, N>`, que a
+/// `32` são `1 KiB` de um bloco com `64 KiB` de tecto. Ele é folgado de propósito — o tecto que
+/// **morde** é outro, e é o [`lamps_that_fit`].
+///
+/// ⛔⛔ **A primeira redacção escreveu `8` aqui e disse que o recurso era o RELÓGIO**, com a conta
+/// *«o passe cresce ~1 traçado por lâmpada»*. Medido a `1920×1080` (`load 4,8`, mínimo de 7):
+///
+/// | lâmpadas | 1 | 2 | 4 | 8 | 12 |
+/// |---|---:|---:|---:|---:|---:|
+/// | quadro | `4,20` | `4,28` | `4,47` | `6,94` | `7,48 ms` |
+///
+/// ⇒ `12` lâmpadas custam **`1,8×`** uma, não `12×`: a marcha de sombra só corre nos pixels que
+/// acertam **e** que vêem aquela luz, e as direcções partilham a mesma cache. *Um tecto derivado
+/// de uma estimativa em vez de uma medição erra para o lado de dentro — e foi o que este fez.*
+pub const MAX_LAMPS: usize = 32;
+
+/// ⭐⭐⭐ **QUANTAS LÂMPADAS CABEM NESTE QUADRO** — o tecto que de facto morde.
+///
+/// # ⛔⛔ O recurso é o TAMANHO DE LIGAÇÃO DE UM BUFFER, e foi a placa que o disse
+///
+/// O canal de luz guarda `1 + n_lamps` floats **por pixel** (o céu mais uma visibilidade por
+/// lâmpada). A `1920×1080` com `16` lâmpadas isso são `141 004 800 B`, e a `wgpu` recusou:
+///
+/// ```text
+/// Buffer binding 3 range 141004800 exceeds `max_*_buffer_binding_size` limit 134217728
+/// ```
+///
+/// ⇒ o tecto é `limite / (pixels · 4) − 1`, e ele **depende da resolução**: `15` lâmpadas a
+/// `1920×1080` e `144` a `640×360`. *Um tecto que muda com o tamanho da tela não é uma constante,
+/// e escrevê-lo como uma teria posto o número do quadro assente a governar o de movimento.*
+///
+/// ⚠️ **A placa é quem diz o limite** ([`Tracer::binding_limit`]) — a `wgpu` garante `128 MiB` como
+/// mínimo, e uma placa que ofereça mais fica com mais lâmpadas sem ninguém mexer num número.
+#[must_use]
+pub fn lamps_that_fit(binding_limit: u64, width: u32, height: u32) -> usize {
+    let pixels = u64::from(width) * u64::from(height);
+    if pixels == 0 {
+        return MAX_LAMPS;
+    }
+    // ⚠️ O `saturating_sub(1)` é o slot do CÉU, que ocupa o primeiro lugar de cada pixel.
+    #[allow(clippy::cast_possible_truncation)]
+    let cabem = (binding_limit / (pixels * 4)).saturating_sub(1) as usize;
+    cabem.min(MAX_LAMPS)
+}
+
 /// Tudo o que a marcha precisa de saber e que **não** sai da fita — os mesmos números que a
 /// [`ph2d_field_render::Scene`] carrega.
 #[derive(Clone, Copy, Debug)]
@@ -80,9 +135,11 @@ pub struct MarchSetup {
     pub step: f32,
     pub budget: u32,
     pub t_max: f32,
-    /// A lâmpada, no MUNDO. A sombra usa a mesma cerca da CPU: a distância à luz, cortada na saída
-    /// da bola que contém a peça.
-    pub lamp: [f32; 3],
+    /// ⭐⭐⭐ **AS LÂMPADAS, no MUNDO** — `n_lamps` entradas válidas. A sombra de cada uma usa a
+    /// mesma cerca da CPU: a distância à luz, cortada na saída da bola que contém a peça.
+    pub lamps: [[f32; 3]; MAX_LAMPS],
+    /// Quantas entradas de [`Self::lamps`] valem. ⛔ Acima de [`MAX_LAMPS`] o chamador cai na CPU.
+    pub n_lamps: u32,
     /// O raio da bola que contém a peça, e o centro dela.
     pub ball_center: [f32; 3],
     pub ball_radius: f32,
@@ -211,6 +268,16 @@ impl Tracer {
     #[must_use]
     pub fn parts(&self) -> (&wgpu::Device, &wgpu::Queue) {
         (&self.device, &self.queue)
+    }
+
+    /// ⭐ **O maior buffer que esta placa deixa LIGAR a um shader** — a entrada do
+    /// [`lamps_that_fit`].
+    ///
+    /// ⚠️ **Perguntado à placa e não escrito à mão:** a `wgpu` garante `128 MiB` como mínimo, e uma
+    /// placa que ofereça mais fica com mais lâmpadas sem ninguém mexer num número.
+    #[must_use]
+    pub fn binding_limit(&self) -> u64 {
+        self.device.limits().max_storage_buffer_binding_size
     }
 
     /// ⭐ **Quanto custa TRAZER `bytes` de volta** — a fase que o `submit` do quadro esconde.
@@ -367,8 +434,17 @@ fn marcha_com(
     });
 
     // O uniforme, campo a campo — a mesma ordem da `struct Setup`. ⚠️ Um `vec3` alinha a 16 B.
-    let mut u: Vec<u8> = Vec::with_capacity(160);
-    for v in [width, height, setup.budget, setup.ao_rays] {
+    let mut u: Vec<u8> = Vec::with_capacity(256);
+    for v in [
+        width,
+        height,
+        setup.budget,
+        setup.ao_rays,
+        setup.n_lamps,
+        0,
+        0,
+        0,
+    ] {
         u.extend_from_slice(&v.to_le_bytes());
     }
     for f in [
@@ -392,13 +468,20 @@ fn marcha_com(
         setup.right,
         setup.up,
         setup.fwd,
-        setup.lamp,
         setup.ball_center,
     ] {
         for f in v {
             u.extend_from_slice(&f.to_le_bytes());
         }
         u.extend_from_slice(&0f32.to_le_bytes()); // o padding do `vec3`
+    }
+    // ⚠️ **O array vai INTEIRO**, e não só as válidas: um `array<vec4, 8>` de uniforme tem tamanho
+    // fixo, e escrever menos deixaria a cauda com o lixo do que lá estivesse.
+    for v in setup.lamps {
+        for f in v {
+            u.extend_from_slice(&f.to_le_bytes());
+        }
+        u.extend_from_slice(&0f32.to_le_bytes());
     }
 
     use wgpu::util::DeviceExt;
@@ -441,7 +524,9 @@ fn marcha_com(
         })
     };
     let b_centro = cria("centro", n * 16);
-    let b_luz = cria("luz", n * 8);
+    // ⭐ O passo é `1 + n_lamps`: o céu mais uma visibilidade por lâmpada.
+    let passo_luz = u64::from(setup.n_lamps) + 1;
+    let b_luz = cria("luz", n * passo_luz * 4);
     // ⛔⛔ **O TECTO da lista de bordas era `6 %` e ESTOUROU** — o gate da paridade apanhou-o: na
     // ROSCA a GPU devolveu exactamente `1 296` bordas, que **é** o tecto, contra `1 745` da CPU, e
     // a sobreposição das listas caiu para `72,6 %`.
@@ -535,7 +620,7 @@ fn marcha_com(
     } else {
         (
             Some(ler(&mut enc, &b_centro, n * 16)),
-            Some(ler(&mut enc, &b_luz, n * 8)),
+            Some(ler(&mut enc, &b_luz, n * passo_luz * 4)),
         )
     };
     let r_conta = ler(&mut enc, &b_conta, 16);
@@ -624,11 +709,17 @@ fn marcha_com(
         t.push(f4(q, 0));
         normal.push([f4(q, 4), f4(q, 8), f4(q, 12)]);
     }
-    let mut shadow = Vec::with_capacity(t.len());
+    // ⭐ O passo do `luz` é `1 + n_lamps`: o céu à frente, as lâmpadas a seguir.
+    #[allow(clippy::cast_possible_truncation)]
+    let passo = passo_luz as usize;
+    let cruas = d_luz.as_chunks::<4>().0;
     let mut ambient = Vec::with_capacity(t.len());
-    for q in d_luz.as_chunks::<8>().0 {
-        shadow.push(f32::from_le_bytes([q[0], q[1], q[2], q[3]]));
-        ambient.push(f32::from_le_bytes([q[4], q[5], q[6], q[7]]));
+    let mut shadow = vec![1.0f32; t.len() * (passo - 1)];
+    for (i, bloco) in cruas.chunks_exact(passo).enumerate() {
+        ambient.push(f32::from_le_bytes(bloco[0]));
+        for l in 1..passo {
+            shadow[(l - 1) * t.len() + i] = f32::from_le_bytes(bloco[l]);
+        }
     }
     let vazio: [u8; 0] = [];
     let quads = d_borda.as_deref().unwrap_or(&vazio).as_chunks::<16>().0;
@@ -666,6 +757,8 @@ fn marcha_com(
         t,
         normal,
         shadow,
+        #[allow(clippy::cast_possible_truncation)]
+        lamps: (passo_luz - 1) as usize,
         ambient,
         edges,
     })

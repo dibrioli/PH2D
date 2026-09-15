@@ -70,6 +70,12 @@ pub fn unfolded_quad(spr: &Sprite, grid: ph2d_ecs::SpriteGrid) -> Option<[f32; 2
     Some([spr.size[0] * hf as f32, spr.size[1] * vf as f32])
 }
 
+/// ⭐⭐⭐ **A pergunta INVERSA desta folha** — *que texel da sprite está debaixo deste ponto do
+/// ecrã?* Ver o `//!` do módulo: ela responde pela MALHA posada onde a arte é desenhada como malha,
+/// e pelo afim do quad onde não é.
+pub mod uv_sob_o_ponteiro;
+pub use uv_sob_o_ponteiro::{UvSobOPonteiro, uv_sob_o_ponteiro};
+
 /// Build the affine that maps image-local pixel coords (0..image_w,
 /// 0..image_h, Y-down) to screen pixels (Y-down). Chains:
 ///   image-px → unit → sprite-local meters (Y-flip, size scale) →

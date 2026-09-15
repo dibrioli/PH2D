@@ -31,7 +31,7 @@ fn fonte(rel: &str) -> String {
 /// ⭐⭐⭐ **O CONTA-GOTAS do Painter lê o texel que a arte DESENHA ali.**
 #[test]
 fn the_eyedropper_samples_the_texel_the_art_draws_there() {
-    let rel = "shells/desktop/src/forwarding.rs";
+    let rel = "shells/desktop/src/forwarding_picker.rs";
     let src = fonte(rel);
     // Controlo positivo: é ESTE o sítio que amostra a composição do Painter.
     assert!(
@@ -65,12 +65,12 @@ fn the_eyedropper_samples_the_texel_the_art_draws_there() {
 /// *«não há mais nada»*, que é a armadilha muda do HOWTO §2.7.
 #[test]
 fn the_background_remover_resolves_its_pointer_through_one_door() {
-    const PORTA: &str = "shells/desktop/src/input_dispatch/uv_sob_o_ponteiro.rs";
+    const PORTA: &str = "crates/ph2d-sprite-screen/src/uv_sob_o_ponteiro.rs";
     let porta = fonte(PORTA);
     assert!(
         porta.contains("fn uv_sob_o_ponteiro(")
             && porta.contains("ph2d_render::mesh_uv(")
-            && porta.contains("ph2d_sprite_screen::sprite_image_to_screen_affine("),
+            && porta.contains("sprite_image_to_screen_affine("),
         "{PORTA} deixou de ser a porta única: ela tem de responder pelos DOIS desenhos — a malha \
          posada e o afim do quad (que é quem desdobra a grelha de uma folha)."
     );
@@ -90,7 +90,9 @@ fn the_background_remover_resolves_its_pointer_through_one_door() {
         "shells/desktop/src/input_dispatch/protect_brush.rs",
     ] {
         let src = fonte(rel);
-        chamadas += src.matches("uv_sob_o_ponteiro::uv_sob_o_ponteiro(").count();
+        chamadas += src
+            .matches("ph2d_sprite_screen::uv_sob_o_ponteiro(")
+            .count();
         // ⛔⛔ **A LEI ANTIGA, proibida pelo NOME.** A caixa era
         // `camera.world_to_screen([tx - sw * 0.5, ty + sh * 0.5], …)`, e ela lia a pose LOCAL — uma
         // sprite filha ou rodada já amostrava no sítio errado, antes de haver malha nenhuma.
@@ -255,9 +257,13 @@ fn the_protection_tint_rides_the_sprite_pass_with_the_art_mesh() {
 /// devolveria a última faixa — certo no documento simples, errado em metade dos outros.
 #[test]
 fn the_eyedropper_reads_the_screen_and_the_screen_has_two_halves() {
+    // ⚠️ **A escolha vive em DOIS ficheiros, e é de propósito** (corte por responsabilidade de
+    // 2026-09-15): o EVENTO é drenado no `forwarding.rs`, e o que ele pede à shell — a amostra
+    // autorada e o diálogo de paleta — mora no irmão. *Mover código parte gates, e este é o barato:
+    // o que falha ALTO.*
     const F: &str = "shells/desktop/src/forwarding.rs";
     let src = fonte(F);
-    // Controlo positivo: é ESTE o sítio que resolve a escolha do conta-gotas.
+    // Controlo positivo: é ESTE o sítio que drena a escolha do conta-gotas.
     assert!(
         src.contains("WidgetEvent::EyedropperPick { parent, px, py }"),
         "{F} deixou de tratar a escolha do conta-gotas — este gate perdeu o sujeito"
@@ -274,9 +280,10 @@ fn the_eyedropper_reads_the_screen_and_the_screen_has_two_halves() {
     );
     // ⚠️ E a metade AUTORADA fica: o ecrã passa pelo tonemap e pelo dither da descida, logo
     // escolher uma cor acabada de pintar e recebê-la com `±1` por canal não fecha o round-trip.
+    const AUTORADA: &str = "shells/desktop/src/forwarding_picker.rs";
     assert!(
-        src.contains("painter.sample_composite_at_uv(su, sv)"),
-        "{F} perdeu a amostra AUTORADA do Painter: a leitura do ecrã responde em todo o lado, mas \
+        fonte(AUTORADA).contains("painter.sample_composite_at_uv(su, sv)"),
+        "{AUTORADA} perdeu a amostra AUTORADA do Painter: a leitura do ecrã responde em todo o lado, mas \
          só esta devolve exactamente a cor que o artista pousou."
     );
 }

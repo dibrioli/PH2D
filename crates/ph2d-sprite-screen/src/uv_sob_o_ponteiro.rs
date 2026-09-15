@@ -1,6 +1,10 @@
 //! ⭐⭐⭐ **A UV DE ORIGEM debaixo do ponteiro, para as ferramentas que APONTAM** — hoje as três
 //! entradas de canvas da Remoção de fundo (o conta-gotas, o pincel de protecção e o *Add area*).
 //!
+//! ⚠️ **Ela vive na FOLHA e não na shell** (2026-09-15): é a pergunta INVERSA do
+//! [`crate::sprite_image_to_screen_affine`] — mesmo assunto, mesma casa —, é PURA (entram os dois
+//! mundos, a câmera e um ponto; sai uma UV) e a `shells/desktop` só encolhe.
+//!
 //! ⛔⛔ **As três faziam a MESMA conta errada, e por escrito:** cada uma montava uma CAIXA ALINHADA
 //! AOS EIXOS a partir de `translation ± size/2` e dividia o ecrã por ela. Isso ignora **três** coisas
 //! que o desenho honra — a **rotação** (uma sprite rodada amostrava na diagonal errada), a **pose do
@@ -21,7 +25,7 @@
 
 /// A resposta da porta — **três** estados porque o chamador tem três coisas diferentes a fazer, e
 /// nenhuma delas é «um `Option` com um `if` ao lado» (é a mesma razão da [`ph2d_render::MeshUv`]).
-pub(crate) enum UvSobOPonteiro {
+pub enum UvSobOPonteiro {
     /// A UV de origem, **não cortada** — quem quer saber se caiu dentro pergunta `(0.0..1.0)`,
     /// exactamente como as três entradas já faziam com a caixa.
     Uv(f32, f32),
@@ -35,7 +39,7 @@ pub(crate) enum UvSobOPonteiro {
 }
 
 /// Ver o cabeçalho do módulo e a [`UvSobOPonteiro`].
-pub(crate) fn uv_sob_o_ponteiro(
+pub fn uv_sob_o_ponteiro(
     sim: &ph2d_ecs::SimWorld,
     present: &mut ph2d_ecs::World,
     camera: &ph2d_render::Camera2d,
@@ -67,9 +71,8 @@ pub(crate) fn uv_sob_o_ponteiro(
         ph2d_render::MeshUv::Refuse => UvSobOPonteiro::ForaDaArte,
         ph2d_render::MeshUv::Quad => {
             // A UNIDADE: ver o cabeçalho — `img / 1` já É a fracção.
-            let affine = ph2d_sprite_screen::sprite_image_to_screen_affine(
-                1, 1, tr, sprite, grid, camera, window,
-            );
+            let affine =
+                crate::sprite_image_to_screen_affine(1, 1, tr, sprite, grid, camera, window);
             let img = affine.inverse() * ph2d_vector::Point::new(f64::from(px), f64::from(py));
             UvSobOPonteiro::Uv(img.x as f32, img.y as f32)
         }

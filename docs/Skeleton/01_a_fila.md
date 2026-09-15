@@ -2903,6 +2903,15 @@ translúcido (`55 978`, pior desvio `124`); acima disso os buffers do Vello são
 dobra (ela viaja no `PreviewOverride`, que só troca a textura da MESMA instância); o que estava plano
 era a **tinta** que a anota.
 
+⛔⛔⛔ **E o smoke do dono desmentiu METADE desta wave, no mesmo dia** (*«o color picker não
+funciona de maneira nenhuma e em nenhum lugar… sempre `#00000000`»*): **eu curei ONDE o conta-gotas
+amostra e nunca medi SE ele amostra.** A leitura de reserva dele pedia só a camada do Vello, que
+sobre o canvas é transparente **por construção** — e o censo desta wave não o via, porque a pergunta
+dele era *«quem resolve o ponteiro pelo quad de repouso?»* e um consumidor que lê a **camada
+errada** responde a essa pergunta correctamente. ⇒ `ph2d_render::screen_pick` compõe as **duas**
+metades do quadro, e a lei da composição — que vivia dentro de `#[cfg(test)]` — passou a existir
+para o produto.
+
 ⇒ **[HANDOFF_O_RESTO_DO_APP_ACHAVA_A_ARTE_PLANA_2026-09-15](handoffs/HANDOFF_O_RESTO_DO_APP_ACHAVA_A_ARTE_PLANA_2026-09-15.md)**
 — a tabela das três portas, as seis leituras que o diff inverte, as três premissas minhas que a
 medição derrubou e a recusa medida com os números.

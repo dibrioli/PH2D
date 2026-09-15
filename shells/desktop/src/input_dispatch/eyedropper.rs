@@ -50,10 +50,10 @@ impl App {
         let Some(bits) = hero.gizmo.selection else {
             return false;
         };
-        // ⭐⭐⭐ **A UV de origem vem da PORTA** ([`super::uv_sob_o_ponteiro`], 2026-09-15) — até aqui
+        // ⭐⭐⭐ **A UV de origem vem da PORTA** ([`ph2d_sprite_screen::uv_sob_o_ponteiro`], 2026-09-15) — até aqui
         // era uma caixa alinhada aos eixos tirada da pose LOCAL, cega à rotação, ao pai e à MALHA.
         let window_size = gfx.surface.size();
-        let uv = super::uv_sob_o_ponteiro::uv_sob_o_ponteiro(
+        let uv = ph2d_sprite_screen::uv_sob_o_ponteiro(
             &gfx.sim,
             gfx.present.world_mut(),
             &gfx.camera,
@@ -62,7 +62,7 @@ impl App {
             px,
             py,
         );
-        if matches!(uv, super::uv_sob_o_ponteiro::UvSobOPonteiro::SemSujeito) {
+        if matches!(uv, ph2d_sprite_screen::UvSobOPonteiro::SemSujeito) {
             return false; // a selecção não é uma sprite desenhada — o clique não é nosso
         }
         // Now check the tool is actually armed; if so the click is
@@ -80,7 +80,7 @@ impl App {
             return false;
         }
         // Inside the footprint? Sample.
-        if let super::uv_sob_o_ponteiro::UvSobOPonteiro::Uv(u, v) = uv
+        if let ph2d_sprite_screen::UvSobOPonteiro::Uv(u, v) = uv
             && (0.0..=1.0).contains(&u)
             && (0.0..=1.0).contains(&v)
             && let Some(rgb) = bg.sample_source_at_uv(u, v)

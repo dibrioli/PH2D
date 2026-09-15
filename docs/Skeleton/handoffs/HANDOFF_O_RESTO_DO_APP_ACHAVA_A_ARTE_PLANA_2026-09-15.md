@@ -195,6 +195,56 @@ não é uma propriedade do produto.*
 
 ---
 
+## §7-ter — ⛔⛔⛔ O REPORT QUE DESMENTIU METADE DESTA WAVE
+
+> *«O color picker não funciona de maneira nenhuma e em nenhum lugar, com a arte dobrada ou não.
+> Sempre fica com a cor resultante `#00000000`.»* — o dono, no smoke do mesmo dia.
+
+⭐⭐⭐ **Ele está certo, e o defeito NÃO é o que a §4.1 curou: eu curei *ONDE* o conta-gotas amostra
+e nunca medi *SE* ele amostra.** São dois defeitos, e o censo da §4 só mediu o primeiro — porque a
+pergunta que ele fazia era *«quem resolve o ponteiro pelo quad de repouso?»*, e um consumidor que
+lê a **camada errada** responde a essa pergunta **correctamente**.
+
+**O mecanismo.** O quadro deste app tem **duas** metades, em texturas diferentes:
+
+| metade | textura | o que está lá |
+|---|---|---|
+| o MUNDO | a saída do `Tonemap` — **ou o `WorldRt`** num quadro intercalado / com o vidro do *Edit Prefab* | sprites, imagens, a prévia do Painter |
+| o CHROME | a intermédia do `VelloPass` | os painéis **e a arte VECTORIAL do documento** |
+
+A leitura de reserva do conta-gotas pedia **só a segunda**. Sobre o canvas ela é transparente **por
+construção** — e transparente é literalmente `#00000000`. ⚠️ **O patch que existia cobria UM canto**
+(o Painter activo sobre a sprite seleccionada, a amostrar a composição de camadas dele); em todo o
+resto — outra ferramenta, outro painel de cor, o fundo do canvas — o artista recebia transparente.
+*Um patch num canto lê-se como «funciona», e o report que o desmente chega meses depois.*
+
+⇒ [`ph2d_render::screen_pick`]: lê UM texel de cada metade e **compõe as duas** com a lei do próprio
+`compositor.wgsl`.
+
+**Quatro coisas que só a construção revelou:**
+
+1. ⭐⭐ **A lei da composição vivia DENTRO de `#[cfg(test)]`** (`composite_straight`), e por isso o
+   único consumidor que precisava dela em produção não a podia chamar. *Uma lei que só existe para o
+   teste é uma lei que o produto não tem.*
+2. ⚠️ **A composição pode ser feita em BYTES** — o shader re-codifica o mundo para sRGB antes de
+   misturar porque os bytes do Vello já são valores de designer (sRGB, alfa **directo**), e a saída
+   do tonemap é `*Srgb`. ⇒ os dois lados já estão no mesmo espaço.
+3. ⚠️ **A fase que faltava é desfazer `B G R A`** — metade desta porta, e a metade que uma leitura
+   distraída do `read_pixel` vizinho (que é `RGBA`) não faz.
+4. ⚠️⚠️ **A fonte do MUNDO tem DOIS modos.** Num quadro intercalado (ou com o vidro) o mundo que o
+   ecrã mostra é o **acumulador**, não o tonemap — ler sempre o segundo devolveria a **última
+   faixa**: certo no documento simples, errado em metade dos outros. ⇒ a escolha é UMA porta
+   (`world_source`), a mesma pergunta que o compositor faz, e o `WorldRt` ganha `COPY_SRC` por isso.
+
+⚠️ **A metade AUTORADA do Painter FICA, e não é redundância:** o ecrã passa pelo tonemap e pelo
+dither da descida, logo escolher uma cor acabada de pintar e recebê-la com `±1` por canal não
+fecharia o round-trip.
+
+⭐ E o `VelloPass::read_pixel` ficou com **zero** chamadores e foi **apagado** — a nota de espaço de
+cor dele viajou para a porta nova.
+
+---
+
 ## §8 — O que fica ABERTO
 
 - ⏳ **As guias que são CAMINHO** — a grelha, os contornos de selecção, os selos de operação, o véu

@@ -82,7 +82,14 @@ impl MeshRenderer {
         size: (u32, u32),
         area: crate::ScreenRect,
     ) {
-        if !self.has_mesh() || size.0 == 0 || size.1 == 0 || area.w == 0 || area.h == 0 {
+        // ⛔ **A área é RECORTADA ao alvo à entrada** — ver
+        // [`crate::ScreenRect::clip_to`]: em todo redimensionamento existe um
+        // quadro em que o painel ainda publica o rectângulo da janela antiga, e
+        // a discordância era um `panic` do `wgpu` (report do dono, 2026-09-14).
+        let Some(area) = area.clip_to(size) else {
+            return;
+        };
+        if !self.has_mesh() || size.0 == 0 || size.1 == 0 {
             return;
         }
         self.ensure_depth(device, size);
@@ -155,7 +162,7 @@ impl MeshRenderer {
             occlusion_query_set: None,
             multiview_mask: None,
         });
-        set_area(&mut pass, area);
+        set_area(&mut pass, area, size);
         pass.set_pipeline(&self.gbuffer_pipeline);
         pass.set_bind_group(0, &self.bind, &[]);
         // ⚠️ **O G-buffer LÊ a oclusão de tela, e essa linha é a wave inteira.**

@@ -50,7 +50,19 @@ pub(crate) struct CameraRaw {
 /// ⚠️ **Os DOIS, e não só o viewport:** o viewport mapeia o NDC ao rectângulo e
 /// **não corta** — geometria que caia fora dele continuaria a escrever nos
 /// vizinhos. Quem corta é o scissor.
-pub(crate) fn set_area(pass: &mut wgpu::RenderPass<'_>, area: crate::ScreenRect) {
+pub(crate) fn set_area(pass: &mut wgpu::RenderPass<'_>, area: crate::ScreenRect, size: (u32, u32)) {
+    // ⛔⛔ **O ALVO É ARGUMENTO, e é o que torna esta porta impossível de
+    // chamar errado** — ver [`crate::ScreenRect::clip_to`], que nasceu de um
+    // `panic` do dono ao desacoplar a janela maximizada. Os três passes desta
+    // crate passam por aqui, e nenhum deles pode voltar a publicar um
+    // rectângulo maior que a superfície.
+    //
+    // ⚠️ **O `set_viewport` é recortado TAMBÉM, e não só o scissor:** o `wgpu`
+    // valida os dois contra o alvo. O preço é um quadro de transição com a peça
+    // ligeiramente achatada — invisível ao lado de um `panic`.
+    let Some(area) = area.clip_to(size) else {
+        return;
+    };
     pass.set_viewport(
         area.x as f32,
         area.y as f32,
@@ -562,7 +574,15 @@ impl MeshRenderer {
         size: (u32, u32),
         area: crate::ScreenRect,
     ) {
-        if !self.has_mesh() || size.0 == 0 || size.1 == 0 || area.w == 0 || area.h == 0 {
+        // ⛔ **A área é RECORTADA ao alvo à entrada** — ver
+        // [`crate::ScreenRect::clip_to`]. Sem vista não se desenha: um quadro
+        // de redimensionamento em que o painel ainda publica o rectângulo da
+        // janela maximizada punha o `wgpu` a entrar em pânico (report do dono,
+        // 2026-09-14).
+        let Some(area) = area.clip_to(size) else {
+            return;
+        };
+        if !self.has_mesh() || size.0 == 0 || size.1 == 0 {
             return;
         }
         self.ensure_depth(device, size);
@@ -618,7 +638,7 @@ impl MeshRenderer {
             occlusion_query_set: None,
             multiview_mask: None,
         });
-        set_area(&mut pass, area);
+        set_area(&mut pass, area, size);
         pass.set_pipeline(&self.pipeline);
         pass.set_bind_group(0, &self.bind, &[]);
         pass.set_bind_group(2, self.ao_bind_for(fresh), &[]);

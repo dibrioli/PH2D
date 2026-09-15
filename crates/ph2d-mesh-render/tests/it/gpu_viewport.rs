@@ -483,3 +483,183 @@ fn duas_vistas_no_mesmo_quadro_mostram_duas_cameras() {
          entao as duas passagens leem a camera da ULTIMA"
     );
 }
+
+/// ⛔⛔⛔ **UMA ÁREA MAIOR QUE O ALVO NÃO PODE ENTRAR EM PÂNICO** — o report do
+/// dono (2026-09-14), ao **desacoplar a janela maximizada**:
+///
+/// ```text
+/// In a CommandEncoder, label = 'ph2d-mesh view'
+///   In a set_scissor_rect command
+///     Scissor Rect { x: 244, y: 96, w: 1399, h: 926 }
+///     is not contained in the render target (1024, 768, 1)
+/// ```
+///
+/// ⚠️⚠️ **Não é um acidente de um quadro: é ESTRUTURAL.** O `size` chega do
+/// quadro de AGORA (a superfície acabou de ser reconfigurada) e a `ScreenRect` é
+/// a área que o painel **publicou no quadro ANTERIOR** — assim de propósito,
+/// para que o desenho e o *pick* derivem do mesmo rectângulo. ⇒ **todo
+/// redimensionamento tem um quadro em que as duas discordam.**
+///
+/// ⚠️ **Os NÚMEROS são os do report**, reduzidos à escala deste alvo pela mesma
+/// razão: uma fixtura que não contém o fenómeno mede vácuo.
+///
+/// ⭐ **As duas metades:** ele não estoura **e** continua a desenhar (recortado).
+/// *Sem a segunda, devolver cedo em toda a chamada passaria.*
+#[test]
+#[ignore = "precisa de GPU"]
+fn uma_area_maior_que_o_alvo_recorta_em_vez_de_estourar() {
+    let Some((device, queue)) = device() else {
+        eprintln!("no GPU adapter on this machine — nothing to assert");
+        return;
+    };
+    let mesh = esfera();
+    let mut r = MeshRenderer::new(&device, FORMAT);
+    r.upload_at(&device, &queue, 0, &mesh, &[]);
+    let tex = target(&device);
+    let view = tex.create_view(&wgpu::TextureViewDescriptor::default());
+    // A forma do report: uma área da janela ANTIGA, sobre o alvo de AGORA.
+    let velha = ScreenRect {
+        x: W / 4,
+        y: H / 8,
+        w: W + W / 3,
+        h: H + H / 5,
+    };
+    assert!(
+        velha.x + velha.w > W && velha.y + velha.h > H,
+        "a fixtura não transborda o alvo — ela não contém o fenómeno"
+    );
+    let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
+    let cam = camera(&mesh, velha.aspect());
+    r.render_in(
+        &device,
+        &queue,
+        &mut enc,
+        &view,
+        &cam,
+        None,
+        Shade {
+            ssao: 0.0,
+            ..Shade::default()
+        },
+        (W, H),
+        velha,
+    );
+    // ⭐ O `readback` submete e espera: se o `wgpu` recusasse o comando, é aqui
+    // que este teste morreria — que é exactamente o que o dono viu.
+    let px = readback(&device, &queue, enc, &tex);
+    let (_, _, _, _, n) = bbox(&px);
+    assert!(
+        n > 0,
+        "a área transbordante foi recortada até não sobrar nada — o recorte tem \
+         de devolver a INTERSECÇÃO, não desistir"
+    );
+}
+
+/// **A INTERSECÇÃO, sem GPU** — a aritmética de [`ScreenRect::clip_to`].
+///
+/// ⚠️ **A linha que mais importa é a do REGIME NORMAL:** uma área que já cabe
+/// tem de voltar **ela mesma**, senão esta cura mudava toda a imagem que já
+/// shipava.
+#[test]
+fn o_recorte_devolve_a_interseccao_e_nao_toca_em_quem_ja_cabe() {
+    let alvo = (1024u32, 768u32);
+    // O caso do report.
+    assert_eq!(
+        ScreenRect {
+            x: 244,
+            y: 96,
+            w: 1399,
+            h: 926
+        }
+        .clip_to(alvo),
+        Some(ScreenRect {
+            x: 244,
+            y: 96,
+            w: 780,
+            h: 672
+        })
+    );
+    // ⭐ O REGIME NORMAL: quem cabe volta ao bit.
+    let dentro = ScreenRect {
+        x: 10,
+        y: 20,
+        w: 300,
+        h: 400,
+    };
+    assert_eq!(dentro.clip_to(alvo), Some(dentro));
+    assert_eq!(
+        ScreenRect::full(alvo).clip_to(alvo),
+        Some(ScreenRect::full(alvo))
+    );
+    // Fora por inteiro ⇒ não há vista.
+    assert_eq!(
+        ScreenRect {
+            x: 2000,
+            y: 20,
+            w: 100,
+            h: 100
+        }
+        .clip_to(alvo),
+        None
+    );
+}
+
+/// ⛔⛔⛔ **UMA VISTA INTEIRAMENTE FORA DO ALVO NÃO DESENHA NADA — e o que ela
+/// NÃO pode fazer é pintar a JANELA TODA.**
+///
+/// ⚠️⚠️ **Este gate existe por uma mutação que SOBREVIVEU**, e o que ela expôs é
+/// que os dois recortes desta crate não são redundantes: o
+/// [`MeshRenderer::render_in`] recorta **à entrada** e o `set_area` recorta
+/// **dentro do passe**, e matar só o primeiro não estoura — mas abre um defeito
+/// **pior que o `panic`**.
+///
+/// ⭐ **O mecanismo:** com a área inteiramente fora, o `set_area` devolve cedo e
+/// **não chega a chamar `set_scissor_rect`** ⇒ o passe fica com o scissor por
+/// omissão, que é **o alvo inteiro**, e a malha é pintada por cima da janela
+/// toda. *Um recorte que desiste em silêncio não recorta nada.*
+///
+/// ⇒ quem decide é a ENTRADA: sem vista, o passe não se abre.
+#[test]
+#[ignore = "precisa de GPU"]
+fn uma_vista_inteiramente_fora_do_alvo_nao_pinta_a_janela_toda() {
+    let Some((device, queue)) = device() else {
+        eprintln!("no GPU adapter on this machine — nothing to assert");
+        return;
+    };
+    let mesh = esfera();
+    let mut r = MeshRenderer::new(&device, FORMAT);
+    r.upload_at(&device, &queue, 0, &mesh, &[]);
+    let tex = target(&device);
+    let view = tex.create_view(&wgpu::TextureViewDescriptor::default());
+    let fora = ScreenRect {
+        x: W * 2,
+        y: 0,
+        w: W,
+        h: H,
+    };
+    assert!(fora.x >= W, "a fixtura não está fora do alvo");
+    let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
+    let cam = camera(&mesh, fora.aspect());
+    r.render_in(
+        &device,
+        &queue,
+        &mut enc,
+        &view,
+        &cam,
+        None,
+        Shade {
+            ssao: 0.0,
+            ..Shade::default()
+        },
+        (W, H),
+        fora,
+    );
+    let px = readback(&device, &queue, enc, &tex);
+    let (_, _, _, _, n) = bbox(&px);
+    assert_eq!(
+        n, 0,
+        "uma vista fora do alvo deixou {n} pixels de tinta — sem scissor o \
+         passe pinta o alvo INTEIRO, que é pior que o `panic` que esta wave \
+         curou"
+    );
+}

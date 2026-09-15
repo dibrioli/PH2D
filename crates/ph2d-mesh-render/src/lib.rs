@@ -88,6 +88,44 @@ impl ScreenRect {
         }
     }
 
+    /// ⭐⭐⭐ **A INTERSECÇÃO COM O ALVO** — `None` quando ela é vazia.
+    ///
+    /// ⛔⛔ **Ela existe por um PANIC do dono (2026-09-14), ao desacoplar a
+    /// janela maximizada:**
+    ///
+    /// ```text
+    /// In a set_scissor_rect command
+    ///   Scissor Rect { x: 244, y: 96, w: 1399, h: 926 }
+    ///   is not contained in the render target (1024, 768, 1)
+    /// ```
+    ///
+    /// ⚠️⚠️ **E não é um acidente de um quadro: é ESTRUTURAL.** O `size` chega
+    /// do quadro de AGORA (a superfície acabou de ser reconfigurada) e a
+    /// `ScreenRect` é a área que o painel **PUBLICOU no quadro anterior** — é
+    /// assim de propósito, para que o desenho e o *pick* derivem do MESMO
+    /// rectângulo (ver [`ph2d_app_sculpt3d`]: *«desenhar num de recurso enquanto
+    /// o pick usa outro é a família inteira de “o lugar onde o rato toca não
+    /// corresponde ao sítio na malha”»*). ⇒ **em todo redimensionamento existe
+    /// um quadro em que as duas discordam**, e a discordância era um `panic`.
+    ///
+    /// ⭐ **A cura é recortar e não reordenar:** o `wgpu` exige que o rectângulo
+    /// esteja CONTIDO no alvo, e a intersecção é a única resposta que está certa
+    /// nos dois regimes — no quadro de transição (recorta) e no regime normal
+    /// (devolve-se a si mesma, **ao bit**).
+    ///
+    /// ⚠️ **Vazia devolve `None` e quem chama NÃO DESENHA.** Um rectângulo de
+    /// lado zero é aceite pelo `wgpu` e desenharia nada — mas deixaria o
+    /// viewport a dividir por zero no uniform, e é mais honesto o chamador
+    /// saber que não há vista.
+    #[must_use]
+    pub fn clip_to(self, size: (u32, u32)) -> Option<Self> {
+        let x = self.x.min(size.0);
+        let y = self.y.min(size.1);
+        let w = self.w.min(size.0.saturating_sub(x));
+        let h = self.h.min(size.1.saturating_sub(y));
+        (w > 0 && h > 0).then_some(Self { x, y, w, h })
+    }
+
     /// `(largura, altura)`, nunca zero — a razão de aspecto e o uniform de
     /// viewport dividem por eles.
     #[must_use]

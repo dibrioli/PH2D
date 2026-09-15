@@ -56,6 +56,41 @@ pub fn supports(doc: &FieldDoc, reg: &ph2d_field_eval::hybrid::Registry) -> bool
     })
 }
 
+/// ⭐⭐⭐ **QUANTOS VALORES VIVOS UMA FITA PODE TER ANTES DE A PLACA DEIXAR DE COMPENSAR.**
+///
+/// # ⛔⛔ O recurso é o FICHEIRO DE REGISTOS, e foi a curva que o nomeou
+///
+/// O `vivos` do [`ph2d_field_eval::point_tape::TapeShape`] é o scratch **por thread**. Numa placa
+/// ele decide a **ocupação**: quantos fios cabem num multiprocessador ao mesmo tempo. Medido a
+/// `1920×1080` com um perfil extrudado de `N` arestas (a família que o `+ Extrude` do artista
+/// produz), o custo **por aresta** — que é plano enquanto a fita cabe nos registos:
+///
+/// | arestas | instruções | vivos | quadro | ms/aresta |
+/// |---:|---:|---:|---:|---:|
+/// | `32` | `1 043` | `163` | `20,7 ms` | `0,647` |
+/// | `64` | `2 063` | `320` | `43,9 ms` | `0,686` |
+/// | `128` | `4 083` | `623` | `129,5 ms` | `1,012` |
+/// | `144` | `4 589` | `700` | `160,4 ms` | `1,114` |
+/// | **`152`** | `4 846` | **`743`** | `191,0 ms` | **`1,257`** ⬅ o último deste lado |
+/// | `160` | `5 100` | `779` | `273,5 ms` | **`1,709`** ⬅ `+36 %` por `+5 %` de arestas |
+/// | `256` | `8 124` | `1 230` | `1 255,7 ms` | `4,905` |
+///
+/// ⭐ **O salto é DISCRETO e não gradual** — `+36 %` de custo por `+5 %` de trabalho —, que é a
+/// assinatura de a ocupação cair um degrau, e não de mais aritmética.
+///
+/// ⛔⛔ **E acima dele o dispositivo é MAIS LENTO que a CPU que ele substituiu:** a `256` arestas
+/// mediu-se `0,20×` — cinco vezes pior. *Esta linha pôs o quadro na placa e teria feito a peça
+/// desenhada do artista ficar mais lenta do que era, no topo da faixa que o slider dele alcança.*
+///
+/// ⚠️ **Este número é do EIXO CERTO e não de qualquer um**: a cena da superfórmula tem `766`
+/// instruções e apenas `34` vivos, e é lenta por outra razão (o minorante do campo). *Um tecto sobre
+/// as instruções mandaria essa peça para a CPU sem curar nada.*
+///
+/// ⏳ **Ele tem de ser re-medido numa máquina calma e noutra placa** — a coluna do relógio foi
+/// tirada a `load 80–110` (outra linha a correr a suíte dela), e o ficheiro de registos é da placa.
+/// O que NÃO depende de nenhuma das duas é a forma da curva, e é ela que escolheu o eixo.
+pub const MAX_VIVOS: usize = 743;
+
 pub mod material_parity;
 pub mod owners_parity;
 pub mod paint;

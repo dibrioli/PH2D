@@ -87,7 +87,7 @@ pub fn march(
     antialias: bool,
 ) -> Option<(ph2d_field_render::Gbuffer, ph2d_field_render::Shadows)> {
     let cabem = lamps_that_fit(tracer, w, h);
-    let (campo, fita, setup) = pedido(doc, reg, cam, lamps, cabem, w, h, antialias)?;
+    let (campo, fita, setup) = pedido(doc, reg, cam, lamps, cabem, true, w, h, antialias)?;
     let screen = ph2d_field_render::Screen::new(w, h, cam.half_extent);
     let dev = tracer
         .lock()
@@ -118,6 +118,33 @@ pub fn paint(
     h: u32,
     antialias: bool,
 ) -> Option<ph2d_field_gpu::trace::Pintado> {
+    paint_com_tecto(
+        tracer, doc, reg, cam, points, surfaces, look, background, w, h, antialias, true,
+    )
+}
+
+/// ⭐ **O mesmo, com o tecto da ocupação por ARGUMENTO** — a porta que a sonda de calibração usa.
+///
+/// ⚠️⚠️ **`tecto = false` NÃO é um caminho de produto.** Ele existe para a medição de que o
+/// [`ph2d_field_gpu::MAX_VIVOS`] sai poder **atravessar o degrau** que ela mede — uma cerca que
+/// barrasse a própria sonda tornaria o tecto impossível de re-derivar, e *um número que ninguém
+/// consegue voltar a medir é um palpite com data*.
+#[must_use]
+#[allow(clippy::too_many_arguments)]
+pub fn paint_com_tecto(
+    tracer: &SharedTracer,
+    doc: &ph2d_field::FieldDoc,
+    reg: &ph2d_field_eval::hybrid::Registry,
+    cam: &ph2d_field_render::Orbit,
+    points: &[ph2d_field_render::PointLamp],
+    surfaces: &ph2d_field_render::Surfaces<'_>,
+    look: ph2d_view_transform::Look,
+    background: [u8; 4],
+    w: u32,
+    h: u32,
+    antialias: bool,
+    tecto: bool,
+) -> Option<ph2d_field_gpu::trace::Pintado> {
     let mundos: Vec<[f32; 3]> = points.iter().map(|l| l.world).collect();
     // ⛔ **A placa tem de ter armazéns para o passe que pinta** — ver
     // [`ph2d_field_gpu::paint::ARMAZENS`]. Sem eles o quadro cai na CPU, em vez de a `wgpu` recusar
@@ -129,7 +156,7 @@ pub fn paint(
         return None;
     }
     let cabem = lamps_that_fit(tracer, w, h);
-    let (campo, fita, setup) = pedido(doc, reg, cam, &mundos, cabem, w, h, antialias)?;
+    let (campo, fita, setup) = pedido(doc, reg, cam, &mundos, cabem, tecto, w, h, antialias)?;
     // ⚠️ **As duas listas nascem do MESMO `points`**, e é por isso que a ordem não pode divergir:
     // a posição da lâmpada `l` viaja no `MarchSetup` e a radiância dela aqui.
     let mut lamp_radiance = [[0.0f32; 3]; ph2d_field_gpu::trace::MAX_LAMPS];
@@ -231,6 +258,7 @@ fn pedido(
     cam: &ph2d_field_render::Orbit,
     mundos: &[[f32; 3]],
     cabem: usize,
+    tecto: bool,
     w: u32,
     h: u32,
     antialias: bool,
@@ -255,6 +283,19 @@ fn pedido(
     // ⭐⭐⭐ **A PEÇA COM A ESCULTURA DENTRO** — ver [`ph2d_field_eval::device`]. `None` quando
     // alguma escultura não souber entregar a grade, e aí o chamador fica na CPU.
     let campo = ph2d_field_eval::device::DeviceField::new(doc, reg)?;
+    // ⛔⛔ **UMA FITA LARGA DEMAIS FICA NA CPU** — ver [`ph2d_field_gpu::MAX_VIVOS`]. Acima do
+    // degrau da ocupação o dispositivo é **mais lento** que o caminho que ele substituiu, e
+    // desenhar lá seria esta linha a piorar a peça desenhada do artista.
+    //
+    // ⚠️ **O `tecto` é um parâmetro porque a SONDA que o calibra tem de o poder ultrapassar** — ver
+    // [`paint_com_tecto`].
+    if tecto
+        && campo
+            .tape_shape()
+            .is_some_and(|s| s.vivos > ph2d_field_gpu::MAX_VIVOS)
+    {
+        return None;
+    }
     let fita = campo.tape_wgsl()?;
     let bola = ph2d_field_eval::bounds::bounding_ball(doc, reg)?;
     let (right, up, fwd) = cam.basis();

@@ -3642,3 +3642,82 @@ morrem (as duas acima, mais a parede, a trilinear, a ordem da grade e a rotaçã
 - ⏳ **Uma placa com menos de `9` armazéns por shader** não pinta no dispositivo (recusa em voz alta);
 - ⏳ o `Combine` misto continua a ignorar a pose própria, **nos dois motores** — item do `hybrid`, não
   desta wave.
+
+---
+
+## §42 — ⛔⛔⛔ UMA REGRESSÃO QUE ESTA LINHA IA DEIXAR PASSAR: a peça DESENHADA na placa (2026-09-15)
+
+Com o quadro inteiro no dispositivo, a lista de abertos do módulo passou a descrever outro programa
+— ela foi escrita quando a marcha era `80 %` de um quadro de CPU. Antes de escolher o passo seguinte,
+medi onde o tecto está agora. O que apareceu não foi um item de melhoria: foi **uma regressão**.
+
+### §42.1 — As cenas lentas têm causas DIFERENTES, e três colunas separam-nas
+
+| cena | fita | vivos | passos/acerto | o que a torna lenta |
+|---|---:|---:|---:|---|
+| `2` · cubo | `31` | `8` | `16` | — (a mais barata) |
+| `4` · perfil DESENHADO extrudado | **`2 899`** | `296` | `79` | a **fita** |
+| `5` · o mesmo perfil TORNEADO | **`2 972`** | **`464`** | `42` | a fita **e** a ocupação |
+| `27` | `854` | `110` | `55` | — (cabe) |
+| `28` · superfórmula | `766` | `34` | **`410`** | o **minorante**: o campo não é uma distância honesta |
+
+⚠️⚠️ **Três hipóteses minhas caíram antes desta tabela existir**, e cada uma media uma **procuração**:
+*«é o tamanho da fita»* (a `28` tem `766` e custa como a `4`, que tem `2 899`), *«são as
+transcendentais»* (a `25` tem `40` e custa `13 ms`), *«é o passo da marcha»* (a `5` e a `27` têm o
+mesmo passo e a mesma cerca, e custam `130` contra `17 ms`). ⇒ *a grandeza que decide é a que se
+conta DIRECTO*, e ela só apareceu quando parei de a inferir.
+
+### §42.2 — ⛔⛔ E a curva do perfil não é linear: ela cai de um DEGRAU
+
+Um polígono extrudado de `N` arestas — a família que o `+ Extrude` do artista produz —, a
+`1920×1080`. A coluna que interessa é o custo **por aresta**:
+
+| arestas | instruções | vivos | quadro | ms/aresta |
+|---:|---:|---:|---:|---:|
+| `32` | `1 043` | `163` | `20,6 ms` | `0,642` |
+| `64` | `2 063` | `320` | `42,1 ms` | `0,657` |
+| `128` | `4 083` | `623` | `130,2 ms` | `1,017` |
+| `144` | `4 589` | `700` | `158,0 ms` | `1,097` |
+| **`152`** | `4 846` | **`743`** | `186,6 ms` | **`1,227`** ⬅ o último deste lado |
+| `160` | `5 100` | `779` | `270,4 ms` | **`1,690`** ⬅ `+36 %` por `+5 %` de arestas |
+| `256` | `8 124` | `1 230` | `1 224,5 ms` | `4,783` |
+
+⭐ **O salto é DISCRETO e não gradual** — `+36 %` de custo por `+5 %` de trabalho —, que é a
+assinatura de a **ocupação** cair um degrau, e não de mais aritmética. O recurso é o **ficheiro de
+registos**: o `vivos` é o scratch por thread, e ele decide quantos fios cabem num multiprocessador.
+
+⛔⛔ **E acima do degrau o dispositivo é MAIS LENTO que a CPU que ele substituiu:** a `256` arestas
+mediu-se **`0,20×`** — cinco vezes pior. *Esta linha pôs o quadro na placa e ia deixar a peça
+desenhada do artista ficar mais lenta do que era, no topo da faixa que o slider dele alcança.*
+
+### §42.3 — A cerca, e porque ela é sobre o EIXO CERTO
+
+`ph2d_field_gpu::MAX_VIVOS = 743`: acima dele o quadro fica na CPU, que é linear em toda a faixa.
+
+⚠️ **Sobre `vivos` e não sobre instruções**: a cena da superfórmula tem `766` instruções e apenas
+`34` vivos, e é lenta por outra razão. *Um tecto sobre as instruções mandaria essa peça para a CPU
+sem curar nada* — e deixaria as `128` arestas, que a placa ainda ganha por `1,6×`, também lá.
+
+⚠️ **E o `tecto` é um PARÂMETRO da porta** (`gpu_frame::paint_com_tecto`), porque a sonda que o
+calibra tem de o poder atravessar: *um número que ninguém consegue voltar a medir é um palpite com
+data.*
+
+### §42.4 — O que a régua do relógio conseguiu e o que não conseguiu
+
+⭐ **A curva do dispositivo repetiu-se a `load 43`, `91` e `111`** — as três corridas dão os mesmos
+números até ao segundo decimal. ⇒ ela é uma propriedade do shader, e a cerca que sai dela é medida.
+
+⛔ **A travessia com a CPU não é** — ali o mesmo traçado leu `71` e `482 ms` na mesma corrida (outra
+linha a correr a suíte dela). *Uma régua que varia `7×` entre corridas do mesmo código não mede
+código*, e é por isso que a coluna da CPU saiu da tabela e o eixo escolhido foi o do próprio
+dispositivo.
+
+### §42.5 — ⏳ O que fica
+
+- ⏳ **O `MAX_VIVOS` é desta placa** (o ficheiro de registos é dela) e tem de ser re-derivado noutra;
+- ⏳ **A cura de fundo é a que a CPU já usa**: o contorno deixa de ser uma cadeia de `min` desenrolada
+  e passa a ser uma **consulta** (`profile_index`: BVH mais grelha de enrolamento). ⛔ Na placa ela
+  tem um preço que a CPU não paga — uma folha de dados não passa pela pilha de modificadores (o
+  mesmo limite da escultura), logo só uma peça **sem modificadores no contorno** a poderia usar;
+- ⏳ **O minorante da superfórmula** (`410` passos por acerto) é a outra alavanca, e ela **não se
+  substitui** à primeira: encurtar a fita do perfil não tira um passo à superfórmula.

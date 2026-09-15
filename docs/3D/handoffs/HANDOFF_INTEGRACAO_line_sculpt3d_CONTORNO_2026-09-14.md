@@ -2689,3 +2689,38 @@ nomeado à mão · o grupo de chips fora do registo · o nível prometido do rot
 | 1 | os do §30.9 | ⏳ inalterados, menos o `Pose × falloff`, que agora tem botão próprio (`Twist`) e continua **inerte no `Rotate`** — a entrada da catraca fica, com a razão actualizada |
 | 2 | o censo cobre os grupos de **array** e a tabela de **toggles**; um id **solto** pintado à mão fora das duas continua invisível a ele | ⏳ nomeado — hoje sobram `5` nessa condição (`REF_MODE_ALL`, os três eixos do espelho, o `CLOSE`), e os cinco têm gate de costura próprio |
 | 3 | o `Scale`/`Translate`/`Squash` lêem **só** a componente axial do arrasto | ⛔ é a lei da espec §5.4/§5.5, agora escrita no roteiro; se o dono quiser a componente transversal a fazer alguma coisa, é **decisão de produto** e muda a lei |
+
+### §31.9 — ⭐⭐ *«Em `Scale` o osso escalona e rotaciona ao mesmo tempo. Isso é o esperado?»*
+
+**É.** Espec §5.4 passo 1: *«com a trava desligada o gesto roda e escala; com ela
+ligada, escala sem rodar»* — e a trava nasce **desligada** (o valor em `68` das
+`69` fixturas). A caixa que a desliga é o `Scale without rotating`, e ela aparece
+**só** com `Scale` escolhido (é a única deformação em que ela tem o que travar:
+no girar/torcer não há escala, e no espremer/esticar a espec diz por escrito que
+ela *«não tem papel nenhum»*).
+
+⛔⛔ **Mas não havia gate nenhum sobre isso, e a caixa estava MORTA SOB O DEDO até
+esta jornada** — logo a resposta à pergunta dele era **inalcançável**. Ela é o
+terceiro caso do §31.2, e só apareceu porque ele perguntou.
+
+⚠️⚠️ **E a primeira régua que escrevi era CEGA, do mesmo modo que a do §31.1:**
+media o deslocamento lateral contra o de profundidade e leu `4,36e-1` contra
+`4,42e-1` — *quase nada* — porque **uma escala em torno de um pivô também move os
+vértices de lado**. O discriminador é a **DIRECÇÃO DO OSSO**:
+
+| trava | direcção do osso | comprimento |
+|---|---|---|
+| desligada | `(−0,566, 0, −0,824)` — rodado `~34°` | `0,0687` |
+| ligada | `(0, 0, −1)` — no eixo em que nasceu | `0,0687` |
+
+⭐ **A terceira metade do gate impede a leitura errada da segunda:** o
+**comprimento** é o mesmo nos dois lados, porque o quociente vive no mapa do
+segmento e não no comprimento — *o indicador mostra onde o membro APONTA, não
+quanto ele engordou*. Sem ela, alguém leria a metade (2) como *«a trava desligou
+a escala»*.
+
+⛔ **E o gate de costura da pose era cego na MESMA forma que deixou passar os
+treze chips:** ele corria com a deformação de fábrica (`Rotate`), onde aquela
+caixa nem é desenhada. Segunda metade acrescentada, com clique REAL.
+
+Mutação **2 de 2**. Portão: **`15 219` testes, `15 219` verdes** (`load 25,87`).

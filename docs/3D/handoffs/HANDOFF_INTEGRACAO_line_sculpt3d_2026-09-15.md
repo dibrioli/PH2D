@@ -445,3 +445,97 @@ secção entrega é a medição para ele: *ou a vassoura é mais larga que a reg
 implementa, ou a regra mudou e a autorização do cabeçalho precisa de ser
 revista.* Renomear seria uma mudança de **produto** (um `NodeId` **hasheado** e
 uma chave de i18n), e fazê-la sem esse veredito é caro e reversível ao contrário.
+
+---
+
+## §41 — ⛔⛔ O portão de fecho apanhou **QUATRO** vermelhos, e o mais instrutivo é uma **classificação por NOME**
+
+Corrida: `bash scripts/nextest-impacted.sh` — **`15 240` testes, `15 236` verdes,
+`4` vermelhos**, a `load 123` no pico do fan-out.
+
+| vermelho | espécie | veredito |
+|---|---|---|
+| `measure_normals_parallel_speedup` (`ph2d-mesh`) | **flake de recurso sob fan-out**, já listada no `CLAUDE.md` §5.0 | confirmada |
+| `no_tofu_glyphs_in_ui_strings` (`ph2d-editor-core`) | meu, trivial | curado |
+| `the_edge_target_comes_from_the_piece_never_from_the_brush` (shell) | meu, **estrutural** | curado na RAIZ |
+| `the_refinement_is_off_by_default_and_the_guard_is_the_first_question` (shell) | meu, **estrutural** | curado, e o gate ficou **mais forte** |
+
+### §41.1 — A flake, com a régua ao lado
+
+Ela leu `ganho 1,36×` contra a barra, **a `load 123`** (o fan-out de 15 mil a
+esvaziar). Sozinha, com a carga impressa ao lado de cada corrida (§5.0: *a régua
+que desmente a flake não pode ser a própria flake*):
+
+| corrida | `load` | serial | paralelo | ganho |
+|---|---|---|---|---|
+| no portão | **123,56** | `13,166 ms` | `9,707 ms` | **`1,36×`** ✗ |
+| 1 | 12,98 | `7,399 ms` | `1,108 ms` | `6,68×` ✓ |
+| 2 | 13,07 | `7,923 ms` | `0,943 ms` | `8,41×` ✓ |
+| 3 | 13,07 | `7,509 ms` | `0,995 ms` | `7,55×` ✓ |
+
+**3 de 3 verde**, e o discriminador aparece nos dois lados: sob fan-out o
+*serial* inflou `1,7×` e o *paralelo* **`9×`** — é o escalonador a não ter
+núcleos para dar, não uma lei que mudou.
+
+### §41.2 — ⛔⛔⛔ O ARNÊS DE TESTE tinha nome de PRODUTO, e a varredura da família leu-o como produto
+
+**Os dois vermelhos do shell têm UMA causa.** O `sculpt_src()` — que alimenta
+todos os arch-gates da família — junta os `.rs` da crate e **exclui os
+`*_tests.rs`**, com a razão escrita lá desde sempre (*um gate que afirma AUSÊNCIA
+passaria a ler o texto dos próprios testes*). O `censo_dos_knobs_arnes.rs`, que a
+§39 cortou do censo por tecto de LOC, é compilado **só** sob `cfg(test)` (quem o
+declara por `#[path]` é o `censo_dos_knobs_tests.rs`, que já está de fora) — e
+**não acaba em `_tests.rs`**, logo entrou na varredura como produto.
+
+As duas leituras que isso produziu são diferentes, e é isso que as torna úteis:
+
+1. **`edge_target_for_mesh` lido `2` onde a lei diz `1`.** O arnês chama-o de
+   propósito (ele reproduz a ordem do produto), e o gate conta chamadas no
+   cluster para proibir *a segunda resposta à mesma pergunta*. `left: 2, right: 1`
+   — **um gate certo sobre uma população errada**.
+2. **O motor saiu do corpo do `refine_for_dab`.** O `expect("e só então chama o
+   motor")` reprovou porque os dois motores vivem agora na porta
+   `passe_nos_motores`. ⭐ *É o modo de falha BOM de mover código* (§5.0: **a que
+   fica verde é a que se leva para o `main`**).
+
+⭐⭐ **A cura é a CLASSIFICAÇÃO, e ela passa a ser DERIVADA:** *o que um ficheiro
+de teste declara por `#[path]` é código de teste*, transitivamente
+(`declarados_por_um_teste`). Não é o sufixo do nome — é a **declaração**, que é a
+mesma coisa que o compilador usa. É a lei que o §5.0 já cobra dos censos que
+varrem por **prefixo de nome**, um nível acima; a única sorte aqui foi a falha
+ser **barulhenta** em vez de muda.
+
+⚠️ **E ela tem guarda para a direcção PERIGOSA.** Excluir a mais é **mudo**: o
+gate deixaria de ver um ficheiro que ship e ficaria verde por vácuo. Por isso um
+nome que um ficheiro de **produto** também declare é recusado em voz alta.
+
+⭐⭐ **Prova de mutação** (a fila da varredura nasce vazia ⇒ a exclusão não faz
+trabalho): `the_edge_target_comes_from_the_piece_never_from_the_brush` **sangra**.
+
+### §41.3 — ⭐⭐ E o gate da guarda ficou **mais forte** do que era
+
+A premissa da 1.ª redacção morreu (o motor mudou de casa) e a reescrita está no
+diff, com a **metade que a extracção CRIOU** e que antes não tinha onde existir:
+
+- em `refine_for_dab`, o `self.dyntopo.armed` precede a chamada à porta;
+- **e os motores são alcançáveis SÓ pela porta** (`refine_in_sphere(` e
+  `collapse_in_sphere(` têm **uma** ocorrência cada no cluster, dentro dela).
+
+Sem a segunda metade a guarda seria contornável: bastava um chamador novo do
+motor para o passe correr desarmado, com a asserção de ordem **verde** por cima
+de um produto errado. ⇒ *a frase que o gate sempre prometeu — «quem esquecer a
+pergunta herda a resposta certa» — só agora é uma propriedade e não uma
+intenção.*
+
+### §41.4 — O `clippy --all-targets` e o argumento que sobrava
+
+Cinco avisos, todos desta jornada: um `⇒` fora da fonte ASCII num literal, um
+`let` devolvido a seguir, três blocos de `use` que o corte da §39 deixou mortos —
+e **um que era desenho**:
+
+⛔ **`passe_nos_motores` tinha `8` argumentos contra o tecto de `7`.** A cura é
+agrupar, **nunca um `allow` por cima do aviso**: os três buffers (`remap`,
+`births`, `region`) são **um** conceito — o rascunho do passe —, e os **dois**
+chamadores já os seguravam juntos (a cena em campos `dyn_*` para o caminho quente
+não alocar; o censo na mesma linha). Hoje são o `Rascunho<'_>`, e a porta fica em
+`6`.

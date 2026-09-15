@@ -59,12 +59,8 @@ impl crate::App {
             camera,
             window_size,
             vector_scene,
-            &mut self.last_bgremoval_pushed_entity,
-            &mut self.bgremoval_preview,
-            &mut self.bgremoval_preview_gpu,
+            &mut self.bgremoval,
             present.world(),
-            &mut self.bgremoval_tint_gpu,
-            &mut self.bgremoval_tint_extra,
             toasts,
         );
         // Color Equalization panel ⟷ tool bridge: drives panel

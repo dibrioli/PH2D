@@ -68,6 +68,8 @@ mod asset_drop_apply;
 /// auditoria da etapa B nomeou: nenhum gate do painel aperta o botão de verdade.
 mod asset_menu_smoke;
 mod atlas_loader;
+/// ⭐ O estado de SHELL da Remoção de fundo, numa casa só — ver o `//!` do módulo.
+mod bgremoval_shell;
 // ⛔ **O BACKEND DE ÁUDIO mudou-se para a `ph2d-audio-desktop`** (`line/shell-folhas`, 12/09 — hoje a FAMÍLIA `ph2d-app-audio`, auditoria A1):
 // 8 544 linhas e o `cpal` inteiro saíram desta unidade de compilação. A shell continua a ler as
 // sete `PH2D_AUDIO_*` — o ROTEADOR é composição e fica aqui; o que saiu foi o motor.
@@ -833,15 +835,11 @@ impl App {
             cycle_pick_idx: 0,
             cycle_pick_count: 0,
             cycle_pick_selection: None,
-            last_bgremoval_pushed_entity: None,
+            bgremoval: Default::default(),
             last_color_equalization_pushed_entity: None,
             color_equalization_previews: std::collections::BTreeMap::new(),
             last_upscale_pushed_entity: None,
             upscale_preview: None,
-            bgremoval_preview: None,
-            bgremoval_preview_gpu: None,
-            bgremoval_tint_gpu: None,
-            bgremoval_tint_extra: Default::default(),
             last_painter_pushed_entity: None,
             pending_painter_move: None,
             input_events_this_frame: 0,

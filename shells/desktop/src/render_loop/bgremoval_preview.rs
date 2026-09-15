@@ -29,7 +29,6 @@
 //! What stays here is BgR-specific (protect mask, brush ring, panel
 //! snapshot — all documented `as_any_mut` exceptions per ADR-0040 §3).
 
-use crate::app_state::{BgremovalPreview, BgremovalPreviewGpu};
 use ph2d_asset::{AssetDb, AssetId};
 use ph2d_ecs::SimWorld;
 use ph2d_editor_core::HeroScreen;
@@ -45,7 +44,7 @@ use std::sync::Arc;
 /// A prévia de GPU e os overlays — filho por ASSUNTO, num ficheiro próprio para este caber no tecto.
 #[path = "bgremoval_preview_gpu.rs"]
 mod preview_gpu;
-use preview_gpu::{draw_overlays, tint_instances, upload_preview, upload_tint};
+use preview_gpu::{paint_canvas, upload_preview};
 
 /// Returns `true` iff an Apply committed this frame (the caller then
 /// tears the tool down — deactivate + restore Inspector — so the
@@ -72,15 +71,12 @@ pub(super) fn dispatch(
     camera: &Camera2d,
     window_size: WindowSize,
     vector_scene: &mut VectorScene,
-    last_bgremoval_pushed_entity: &mut Option<u64>,
-    bgremoval_preview: &mut Option<BgremovalPreview>,
-    bgremoval_preview_gpu: &mut Option<BgremovalPreviewGpu>,
-    // ⭐ O mundo de APRESENTAÇÃO (read-only) + a ranhura e as instâncias da TINTA da máscara: ela
-    // deixou de ser um desenho do Vello e passou a ser uma instância do passe de sprites, com a
-    // malha da arte por baixo.
+    // ⭐ **O estado de SHELL da família, numa casa só** ([`crate::bgremoval_shell`]) — eram CINCO
+    // parâmetros soltos com o mesmo prefixo. O `present` (read-only) é o mundo de APRESENTAÇÃO: a
+    // tinta da máscara deixou de ser um desenho do Vello e é hoje uma instância do passe de
+    // sprites, com a malha da arte por baixo.
+    bgr: &mut crate::bgremoval_shell::BgremovalShell,
     present: &ph2d_ecs::World,
-    bgremoval_tint_gpu: &mut Option<BgremovalPreviewGpu>,
-    bgremoval_tint_extra: &mut ph2d_render::LiftedInstances,
     toasts: &mut ToastQueue,
 ) -> bool {
     let bgremoval_is_active = tools
@@ -100,7 +96,7 @@ pub(super) fn dispatch(
         let _pushed = ph2d_tool_runtime::drive_source_push(
             raster,
             hero.gizmo.selection,
-            last_bgremoval_pushed_entity,
+            &mut bgr.last_pushed_entity,
             |entity| {
                 // PRECISION-READONLY: alimenta a PRÉVIA da ferramenta e mais nada. Quem escreve
                 // os pixels de volta é o `hero_intents::image_edit::bgremoval`, que relê a fonte e
@@ -174,7 +170,7 @@ pub(super) fn dispatch(
         // ADR-0041: current_preview drains the tool's dirty flag, so the
         // helper just needs to call it. Selection drift is handled by the
         // helper's own invalidation pass.
-        ph2d_tool_runtime::drive_preview_cache(bg, hero.gizmo.selection, bgremoval_preview);
+        ph2d_tool_runtime::drive_preview_cache(bg, hero.gizmo.selection, &mut bgr.preview);
 
         // (Generic) Capture the multi-sprite Apply selection.
         apply_selection = ph2d_tool_runtime::drive_pending_commit(bg, hero.gizmo.iter_selected());
@@ -233,8 +229,8 @@ pub(super) fn dispatch(
     // (Etapa 1.B audit fix A2). The bridge only needs to clear its own
     // shell-side cache here.
     if !bgremoval_is_active {
-        *bgremoval_preview = None;
-        *last_bgremoval_pushed_entity = None;
+        bgr.preview = None;
+        bgr.last_pushed_entity = None;
     }
     // Reset just fired — re-populate the panel's `WidgetStore` so
     // every slider knob / chip text snaps back to defaults. Without
@@ -248,7 +244,7 @@ pub(super) fn dispatch(
             }
         });
     }
-    upload_preview(bgremoval_preview, bgremoval_preview_gpu, renderer, toasts);
+    upload_preview(&bgr.preview, &mut bgr.preview_gpu, renderer, toasts);
 
     // ── Apply commit dispatch ─────────────────────────────────────────────
     if !apply_selection.is_empty() {
@@ -262,29 +258,18 @@ pub(super) fn dispatch(
         // Committed result becomes the new sprite texture; drop the
         // preview cache so the next frame's lifecycle releases the
         // transient GPU slot and the override returns to `None`.
-        *bgremoval_preview = None;
+        bgr.preview = None;
     }
 
-    // ⭐⭐⭐ **A TINTA DA MÁSCARA vai pelo passe de SPRITES**, com a malha da arte (2026-09-15) —
-    // ver a recusa medida do caminho do Vello no doc da [`preview_gpu::upload_tint`].
-    // ⚠️ Ela só existe com PRÉVIA, como antes: é a prévia que ela anota.
-    let tint_owner = bgremoval_preview.as_ref().map(|p| p.entity_bits);
-    upload_tint(
-        tint_owner.and(protect_tint.as_ref()),
-        tint_owner.unwrap_or_default(),
-        bgremoval_tint_gpu,
+    // ⭐ **O que este quadro desenha NO CANVAS**, numa porta só — a tinta da máscara (passe de
+    // sprites) e o anel do pincel (Vello). Ver o `//!` do [`preview_gpu`].
+    paint_canvas(
+        (protect_tint.as_ref(), brush_ring),
+        bgr,
+        (present, sim),
+        (camera, window_size, vector_scene, theme),
         renderer,
         toasts,
-    );
-    tint_instances(present, *bgremoval_tint_gpu, bgremoval_tint_extra);
-    draw_overlays(
-        bgremoval_preview,
-        brush_ring,
-        sim,
-        camera,
-        window_size,
-        vector_scene,
-        theme,
     );
     !apply_selection.is_empty()
 }

@@ -94,7 +94,7 @@ impl crate::App {
             tools,
             camera,
             next_import_cell,
-            &mut self.last_bgremoval_pushed_entity,
+            &mut self.bgremoval.last_pushed_entity,
             &mut self.last_painter_pushed_entity,
             vec_scene,
             &mut self.vec.entities,
@@ -118,8 +118,8 @@ impl crate::App {
             && let Some(default_id) = tools.default_tool_id()
             && tools.set_active(&default_id)
         {
-            self.last_bgremoval_pushed_entity = None;
-            self.bgremoval_preview = None;
+            self.bgremoval.last_pushed_entity = None;
+            self.bgremoval.preview = None;
             self.title_dirty = true;
         }
         // Padding Apply teardown — deactivate the tool so the panel

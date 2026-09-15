@@ -39,7 +39,7 @@ impl crate::App {
         let onion_ghosts = std::mem::take(&mut self.onion_ghosts);
         // ⭐⭐⭐ **A TINTA da máscara de protecção da Remoção de fundo** (2026-09-15) — uma instância
         // com a MALHA da arte, retirada aqui pela mesma razão dos fantasmas. Vazia sem prévia.
-        let bgremoval_tint = std::mem::take(&mut self.bgremoval_tint_extra);
+        let bgremoval_tint = std::mem::take(&mut self.bgremoval.tint_extra);
         let Some(gfx) = self.gfx.as_mut() else {
             return;
         };

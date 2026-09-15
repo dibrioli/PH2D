@@ -18,7 +18,7 @@ impl App {
     /// canvas pick / gizmo / selection logic — we must not move or
     /// deselect the sprite while sampling).
     ///
-    /// On a successful sample we drop `self.bgremoval_preview` so the
+    /// On a successful sample we drop `self.bgremoval.preview` so the
     /// per-frame dispatch recomputes the on-canvas overlay next frame.
     /// `add_extra_color` flips the tool's `params_dirty` flag so the
     /// canvas-preview cache rebuilds on the same frame the swatch
@@ -89,7 +89,7 @@ impl App {
             // `add_extra_color` already flips `params_dirty=true`,
             // so the bridge's `drive_preview_cache` re-runs the
             // pipeline next frame. We deliberately do NOT drop
-            // `self.bgremoval_preview` here (was: `= None`) — the
+            // `self.bgremoval.preview` here (was: `= None`) — the
             // segmentation is slow when the user has several picks
             // (Enio 2026-05-26: was "imagem desaparece" because
             // ~18 frames rendered with no overlay while the
@@ -136,7 +136,7 @@ impl App {
             .downcast_mut::<ph2d_tool_bgremoval::BgRemovalTool>()
         {
             bg.remove_extra_color(idx);
-            self.bgremoval_preview = None;
+            self.bgremoval.preview = None;
             return true;
         }
         false

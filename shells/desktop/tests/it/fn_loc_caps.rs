@@ -33,7 +33,7 @@ const FN_OVERAGE_OK: &[(&str, &str, usize, &str)] = &[(
     "main.rs",
     "new",
     226,
-    "o literal `Self { … }` é um inicializador por campo da `App`: descer a 200 é reagrupar campos (a abertura do comando e do áudio já saiu, `line/loc-caps`). ⭐ 237 → 233 em 2026-09-14: os SEIS latches das cenas da família `components` viraram UMA struct. ⭐ 233 → 226 no mesmo dia: os CINCO cursores do outbox seguiram o mesmo caminho",
+    "o literal `Self { … }` é um inicializador por campo da `App`: descer a 200 é reagrupar campos (a abertura do comando e do áudio já saiu, `line/loc-caps`). ⭐ 237 → 233 → 226 em 2026-09-14 (os seis latches das cenas e os cinco cursores do outbox, `line/components`), e os cinco da Remoção de fundo em 15/09 (`line/Vector`) — o número combinado mediu-se na integração",
 )];
 
 fn src_root() -> PathBuf {

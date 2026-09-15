@@ -61,7 +61,7 @@ impl crate::App {
         // pixels. Same `Rgba8UnormSrgb` + sprite shader + premul
         // blend as Apply → byte-for-byte parity. The GPU slot is
         // populated by `bgremoval_preview::dispatch` LATER in the
-        // frame, so reading `self.bgremoval_preview_gpu` here picks
+        // frame, so reading `self.bgremoval.preview_gpu` here picks
         // up last frame's upload (1-frame lag is invisible — the
         // preview is a continuous animation).
         // **A FOLHA ABERTA** (Enio, 2026-08-23: *«você digita 8 quadros e não vê onde eles começam
@@ -75,7 +75,8 @@ impl crate::App {
         let sheet_preview: Option<ph2d_ecs::Entity> =
             hero_screen.as_ref().and_then(sim_extract_sheet::previewed);
         let bgremoval_preview_override: Option<sim_extract::PreviewOverride> = self
-            .bgremoval_preview_gpu
+            .bgremoval
+            .preview_gpu
             .map(|gpu| sim_extract::PreviewOverride {
                 entity_bits: gpu.entity_bits,
                 texture_id: gpu.texture_id,

@@ -119,7 +119,7 @@ impl crate::App {
                 }
                 self.title_dirty = true;
                 if tool_id == "bgremoval" {
-                    self.last_bgremoval_pushed_entity = None;
+                    self.bgremoval.last_pushed_entity = None;
                 }
                 if let Some(active) = tools.active() {
                     toasts.push(Toast::info(tr_with(

@@ -39,8 +39,8 @@ impl crate::App {
                 && let Some(default_id) = tools.default_tool_id()
                 && tools.set_active(&default_id)
             {
-                self.bgremoval_preview = None;
-                self.last_bgremoval_pushed_entity = None;
+                self.bgremoval.preview = None;
+                self.bgremoval.last_pushed_entity = None;
                 self.title_dirty = true;
             }
         }

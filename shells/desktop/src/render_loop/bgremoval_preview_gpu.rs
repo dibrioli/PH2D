@@ -110,7 +110,75 @@ pub(super) fn upload_preview(
     }
 }
 
-/// ⭐⭐⭐ **A TINTA DA MÁSCARA DE PROTECÇÃO, pelo passe de SPRITES** — o ciclo de vida da textura
+/// As duas dicas que a ferramenta publicou para o canvas: `(a tinta da máscara, o anel do pincel)`.
+type DicasDoCanvas<'a> = (Option<&'a (Arc<Vec<u8>>, u32, u32)>, Option<(f32, u32)>);
+
+/// ⭐⭐⭐ **O QUE ESTE QUADRO DESENHA NO CANVAS** — a tinta da máscara (que vai pelo passe de
+/// SPRITES, com a malha da arte) e o anel do pincel (que é uma dica de UI e fica no Vello).
+///
+/// ⚠️ **As duas numa porta porque são a mesma FASE**, e não porque partilhem código: o
+/// `dispatch` do bridge é o painel + a cache + o Apply, e isto é o canvas. *Uma fase, um assunto.*
+#[allow(clippy::too_many_arguments)]
+pub(super) fn paint_canvas(
+    dicas: DicasDoCanvas<'_>,
+    bgr: &mut crate::bgremoval_shell::BgremovalShell,
+    // `(apresentação, simulação)` — a malha posada vive no primeiro, a pose e a sprite no segundo.
+    mundos: (&ph2d_ecs::World, &SimWorld),
+    // O enquadramento do ecrã e a cena onde o anel é desenhado.
+    ecra: (&Camera2d, WindowSize, &mut VectorScene, Theme),
+    renderer: &mut SpriteRenderer,
+    toasts: &mut ToastQueue,
+) {
+    let (protect_tint, brush_ring) = dicas;
+    let (present, sim) = mundos;
+    let (camera, window_size, vector_scene, theme) = ecra;
+    drive_tint(
+        protect_tint,
+        bgr.preview.as_ref().map(|p| p.entity_bits),
+        present,
+        (&mut bgr.tint_gpu, &mut bgr.tint_extra),
+        renderer,
+        toasts,
+    );
+    draw_overlays(
+        &bgr.preview,
+        brush_ring,
+        sim,
+        camera,
+        window_size,
+        vector_scene,
+        theme,
+    );
+}
+
+/// **A TINTA DA MÁSCARA, das duas metades numa chamada só** — a ranhura sobe e a instância
+/// nasce. ⚠️ Ela só existe com PRÉVIA, como antes do passe de sprites: *é a prévia que ela anota*,
+/// e sem dono a ranhura é libertada.
+fn drive_tint(
+    protect_tint: Option<&(Arc<Vec<u8>>, u32, u32)>,
+    dono: Option<u64>,
+    present: &ph2d_ecs::World,
+    // ⚠️ As duas metades viajam como PAR: a instância indexa a ranhura, e uma sem a outra desenha
+    // uma textura libertada ou nada.
+    tinta: (
+        &mut Option<BgremovalPreviewGpu>,
+        &mut ph2d_render::LiftedInstances,
+    ),
+    renderer: &mut SpriteRenderer,
+    toasts: &mut ToastQueue,
+) {
+    let (gpu, extra) = tinta;
+    upload_tint(
+        dono.and(protect_tint),
+        dono.unwrap_or_default(),
+        gpu,
+        renderer,
+        toasts,
+    );
+    tint_instances(present, *gpu, extra);
+}
+
+/// **A ranhura de GPU da tinta** — gémea do [`upload_preview`] — o ciclo de vida da textura
 /// dela, gémeo do [`upload_preview`].
 ///
 /// ⛔⛔ **A alternativa está MEDIDA e REFUTADA** (sonda `skin_pieces_gpu_cost`, corrida 2026-09-15):
@@ -123,7 +191,7 @@ pub(super) fn upload_preview(
 ///
 /// ⭐ No passe de sprites não há costura **por construção**: dois triângulos que partilham uma
 /// aresta são rasterizados pela regra de canto, e cada centro de pixel pertence a UM deles.
-pub(super) fn upload_tint(
+fn upload_tint(
     protect_tint: Option<&(Arc<Vec<u8>>, u32, u32)>,
     entity_bits: u64,
     tint_gpu: &mut Option<BgremovalPreviewGpu>,
@@ -189,7 +257,7 @@ pub(super) fn upload_tint(
 /// ⚠️ Todos os outros campos são COPIADOS da instância da arte (pose, base, âncora, recorte,
 /// opacidade, tinta de objecto): a tinta é uma dica **daquela** sprite, e um objecto escondido não
 /// mostra a máscara dele.
-pub(super) fn tint_instances(
+fn tint_instances(
     present: &ph2d_ecs::World,
     tint_gpu: Option<BgremovalPreviewGpu>,
     out: &mut ph2d_render::LiftedInstances,
@@ -211,7 +279,7 @@ pub(super) fn tint_instances(
 
 /// O anel do pincel por cima da prévia (Vello, dica de UI).
 #[allow(clippy::too_many_arguments)]
-pub(super) fn draw_overlays(
+fn draw_overlays(
     bgremoval_preview: &Option<BgremovalPreview>,
     brush_ring: Option<(f32, u32)>,
     sim: &SimWorld,

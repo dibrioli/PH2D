@@ -84,7 +84,7 @@ impl App {
         }
         // Re-segment the matte once, now that the stroke is complete.
         if was_painting {
-            self.bgremoval_preview = None;
+            self.bgremoval.preview = None;
         }
     }
 
@@ -191,7 +191,7 @@ impl App {
             } else {
                 bg.paint_protect_at_uv(u, v, radius_px);
             }
-            // NOTE: no `self.bgremoval_preview = None` here — the tint
+            // NOTE: no `self.bgremoval.preview = None` here — the tint
             // overlay reads the mask live, and re-segmenting per dab is
             // what froze the GrabCut path. The matte re-runs once on
             // pointer-up (`end_protect_paint`).
@@ -294,14 +294,14 @@ impl App {
             // dispatch's GPU lifecycle always sees `Some(preview)` and
             // uploads the up-to-date texture.
             if let Some((pixels, w, h)) = bg.current_preview() {
-                self.bgremoval_preview = Some(ph2d_tool_runtime::PreviewCache {
+                self.bgremoval.preview = Some(ph2d_tool_runtime::PreviewCache {
                     entity_bits: bits,
                     rgba: std::sync::Arc::new(pixels.to_vec()),
                     width: w,
                     height: h,
                 });
             } else {
-                self.bgremoval_preview = None;
+                self.bgremoval.preview = None;
             }
         }
         // Consumed regardless of in/out so the click doesn't move or

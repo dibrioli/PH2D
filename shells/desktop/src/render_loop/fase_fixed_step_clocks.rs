@@ -106,7 +106,7 @@ impl crate::App {
         // só em dois — dando linhas sobre um quad que não desdobrou, ou uma folha parada a pintar.
         let tool_preview_bits: [Option<u64>; 3] = [
             self.painter_preview_gpu.map(|g| g.entity_bits),
-            self.bgremoval_preview_gpu.map(|g| g.entity_bits),
+            self.bgremoval.preview_gpu.map(|g| g.entity_bits),
             self.painter_shape_source_preview_gpu.map(|g| g.entity_bits),
         ];
 

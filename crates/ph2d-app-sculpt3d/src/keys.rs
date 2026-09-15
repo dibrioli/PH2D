@@ -392,6 +392,63 @@ pub fn key(
         }
         return true;
     }
+    // ⭐⭐ **O CORTE** — `L` cicla desarmado → caixa → laço → desarmado.
+    //
+    // ⚠️ **Uma tecla e não um chip, por agora**, e a dívida está nomeada: um
+    // controlo que só existe no teclado é alcançável mas não **descobrível**.
+    // O chip no painel é a wave seguinte, e a lei que ele vai ler já vive no
+    // `scene.trim`.
+    //
+    // ⚠️ O log diz as DUAS coisas que mudam: o que o arrasto passa a fazer, e
+    // que o barro **não** se move até largar — um corte é uma booleana sobre a
+    // peça inteira, e corrê-la por evento poria dezenas dentro de um gesto.
+    // ⭐ **`Shift+L` escolhe o EIXO do varrimento** (espec §5): a direcção da
+    // vista, ou a normal da superfície onde o gesto começar.
+    //
+    // ⚠️ **Ela existe porque o knob é VIVO e tinha de ser alcançável** — o
+    // `clippy` apanhou-a como variante nunca construída, que nesta casa é o
+    // sinal de um controlo sem porta. ⛔ *Uma lei gateada que o artista não
+    // consegue accionar é trabalho pago e inalcançável* — e o §5.0 conta as duas
+    // espécies (o morto liga-se, o órfão apaga-se). Esta é da primeira.
+    //
+    // ⚠️ E o log diz o que a espec §3 manda dizer: sem superfície sob o cursor a
+    // escolha é **anulada** — o alvo fá-lo em silêncio e nós dizemo-lo.
+    if shift && !ctrl && code == K::KeyL {
+        use crate::trim_gesto::Orientacao;
+        scene.trim.orientacao = match scene.trim.orientacao {
+            Orientacao::Vista => Orientacao::Superficie,
+            Orientacao::Superficie => Orientacao::Vista,
+        };
+        eprintln!(
+            "[sculpt3d] eixo do corte: {} -- se o gesto comecar FORA da peca nao ha' \
+             normal, e ele volta a ser o da vista (o app avisa quando isso acontecer)",
+            match scene.trim.orientacao {
+                Orientacao::Vista => "a VISTA (o corte entra pelo ecra)",
+                Orientacao::Superficie => "a SUPERFICIE (o corte entra pela forma)",
+            }
+        );
+        return true;
+    }
+    if !shift && !ctrl && code == K::KeyL {
+        use crate::trim_gesto::Forma;
+        scene.trim.armado = match scene.trim.armado {
+            None => Some(Forma::Caixa),
+            Some(Forma::Caixa) => Some(Forma::Laco),
+            Some(Forma::Laco) => None,
+        };
+        match scene.trim.armado {
+            None => eprintln!("[sculpt3d] corte DESARMADO -- o arrasto volta a esculpir"),
+            Some(f) => eprintln!(
+                "[sculpt3d] corte ARMADO ({}) -- arraste para desenhar a forma; o \
+                 barro so' muda quando LARGAR, e o Ctrl+Z devolve a peca inteira",
+                match f {
+                    Forma::Caixa => "caixa",
+                    Forma::Laco => "laco",
+                }
+            ),
+        }
+        return true;
+    }
     // O DETALHE — três degraus com nome. Ver `DETAIL_STEPS`.
     if code == K::KeyU {
         let d = scene.cycle_detail();

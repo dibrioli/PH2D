@@ -344,3 +344,15 @@ pub use shell_state::Sculpt3dShellState;
 /// por isso que os testes dele mudaram de `sculpt3d_keys_view::…` para
 /// `sculpt3d::keys_view::…`: o nome da função não mudou, a casa dela sim.
 pub mod keys_view;
+
+/// **O GESTO do corte** — o que a mão desenha, antes de a [`ph2d_trim`] o
+/// transformar em volume. Ver [`trim_gesto`].
+///
+/// ⚠️ Puro: sem cena e sem `wgpu::Device`, para o CI o poder correr.
+#[path = "trim_gesto.rs"]
+pub(crate) mod trim_gesto;
+
+/// **O CORTE aplicado à peça** — a costura entre o gesto, a lei e o motor.
+/// Ver [`trim_aplica`].
+#[path = "trim_aplica.rs"]
+pub(crate) mod trim_aplica;

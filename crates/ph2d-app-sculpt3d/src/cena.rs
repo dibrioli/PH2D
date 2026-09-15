@@ -125,6 +125,8 @@ pub struct Sculpt3dScene {
     pub(crate) camera: Camera3d,
     pub(crate) renderer: MeshRenderer,
     pub(crate) drag: Option<Drag>,
+    /// ⭐ **O ESTADO DO CORTE** (`Trim`) — ver [`super::trim_gesto::Trim`].
+    pub(crate) trim: super::trim_gesto::Trim,
     pub(crate) last: (f32, f32),
     /// ⭐⭐⭐ **O ESTADO DA JANELA 3D** — a divisão, as câmeras dos quadrantes, e
     /// os dois gizmos que vivem por cima dela.

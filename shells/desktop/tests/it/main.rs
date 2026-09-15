@@ -70,6 +70,7 @@ mod no_two_sculpt3d_scenes_claim_the_same_level;
 mod no_two_smoke_scenes_claim_the_same_level;
 mod o_cerebro_fala_antes_de_a_tabela_ouvir;
 mod o_painel_pinta_todo_o_modelo_aceita;
+mod o_corte_esta_fiado;
 mod o_quadro_publica_o_que_o_pintor_mediu;
 mod o_rebobinar_repoe_o_estado_vivo;
 mod one_door_authors_an_expression;

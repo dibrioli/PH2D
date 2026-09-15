@@ -45,6 +45,7 @@ impl Sculpt3dScene {
             camera,
             renderer: MeshRenderer::new(device, ph2d_render::GameRt::FORMAT),
             drag: None,
+            trim: crate::trim_gesto::Trim::default(),
             last: (0.0, 0.0),
             // ⚠️ **A janela nasce com UMA vista e a câmera do artista** — a
             // `Default` dela dá a lista vazia, e a lista segue a divisão no

@@ -155,6 +155,41 @@ pub fn pointer_down(
             // armados juntos (as portas de armar se excluem). A ordem aqui
             // não escolhe um vencedor: ela é a rede que torna a exclusão
             // observável se algum dia falhar.
+            // ⭐⭐ **COM O CORTE ARMADO o esquerdo DESENHA A LÂMINA**, pelo
+            // mesmo argumento do filtro e do transform logo abaixo. Ele vem
+            // ANTES dos dois porque é o único que não toca na peça enquanto o
+            // dedo está em baixo: o barro só muda no pen-up, quando a forma
+            // fecha.
+            //
+            // ⚠️ **O acerto é FOTOGRAFADO aqui e nunca relido** — é a mesma lei
+            // que o polegar e o projectar desta linha pagaram: uma grandeza
+            // relida do vivo deriva enquanto o gesto acontece. E é dele que sai
+            // a orientação: sem superfície não há normal (espec §3).
+            if let Some(forma) = scene.trim.armado {
+                // Mirar antes de começar, pelo motivo dos vizinhos: o corte é
+                // da peça que o artista apontou.
+                scene.aim(pos.0, pos.1);
+                // ⚠️ **O `Hit` vem no espaço LOCAL da peça** (o raio é levado lá
+                // pelo `ray_to_local`), e a espec pede o plano em MUNDO ⇒ a pose
+                // converte os dois.
+                // ⭐ **E a divergência que a espec §5 declara é INEXPRIMÍVEL
+                // aqui:** ela vale para escala **não-uniforme**, e a nossa
+                // [`ph2d_mesh::Pose`] só tem escala uniforme (`scale() -> f32`),
+                // sob a qual uma normal se transforma como um vector. *Não
+                // herdamos o desvio por não termos onde o produzir.*
+                let acerto = scene.pick_active(pos.0, pos.1).map(|h| {
+                    let pose = &scene.objects[scene.active].pose;
+                    (pose.point_to_world(h.point), pose.vector_to_world(h.normal))
+                });
+                scene.trim.gesto = Some(crate::trim_gesto::Gesto::comeca(
+                    forma,
+                    [pos.0, pos.1],
+                    acerto,
+                ));
+                scene.drag = Some(Drag::Trim);
+                scene.last = pos;
+                return true;
+            }
             if scene.filter_arm() {
                 // Mirar antes de começar, pelo motivo dos dois vizinhos: o
                 // `begin_filter` congela a foto da malha ATIVA.

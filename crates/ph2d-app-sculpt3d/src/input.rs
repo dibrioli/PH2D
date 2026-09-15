@@ -192,6 +192,24 @@ pub fn pointer_up(scene: &mut Sculpt3dScene) -> bool {
         return true;
     }
     let was = scene.drag.take();
+    // ⭐⭐ **É AQUI que o corte acontece** — e não durante o arrasto. Um corte é
+    // uma booleana sobre a peça inteira (`~68 ms` medidos numa escultura de
+    // `98 k` vértices, ADR-0170): corrê-la por evento de movimento poria dezenas
+    // delas dentro de um gesto, cada uma a refazer a malha e os buffers do
+    // device. *O artista desenha a lâmina; o corte é o largar.*
+    if was == Some(Drag::Trim) {
+        if let Some(g) = scene.trim.gesto.take() {
+            let orientacao = scene.trim.orientacao;
+            if let Err(r) = scene.trim_aplica(&g, orientacao) {
+                // ⚠️ **Em voz alta, sempre, e dizendo a CURA** — é a lei que a
+                // família de recusas desta linha aplica: um gesto que não faz
+                // nada e não diz porquê é indistinguível de uma ferramenta
+                // partida.
+                eprintln!("[sculpt3d] o corte nao aconteceu: {}", r.porque());
+            }
+        }
+        return true;
+    }
     if was == Some(Drag::Sculpt) {
         // ⚠️ **ANTES do fecho, e sem isto o gesto perde a ponta.** O último
         // movimento do dedo chega como evento e fica pendente; se o traço
@@ -259,6 +277,14 @@ pub fn pointer_move(scene: &mut Sculpt3dScene, x: f32, y: f32) -> bool {
             .camera
             .orbit(-dx * ORBIT_RAD_PER_PX, dy * ORBIT_RAD_PER_PX),
         Drag::Pan => scene.camera.pan(dx / height, dy / height),
+        // ⚠️ **O corte acumula o CAMINHO e não toca na peça** — o barro só se
+        // move no pen-up, quando a forma fecha. É a diferença entre desenhar
+        // uma lâmina e passar uma lâmina.
+        Drag::Trim => {
+            if let Some(g) = scene.trim.gesto.as_mut() {
+                g.move_para([x, y]);
+            }
+        }
         // ⚠️ **Ele NÃO percorre o caminho, e não é o motivo do Grab:** o
         // gesto do transform não é uma trilha nem um ângulo, é o vetor
         // INTEIRO do pen-down até aqui — o `x`/`y` cru, e nunca o `dx`/`dy`

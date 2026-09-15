@@ -38,6 +38,11 @@ ph2d-gridmap = { path = "../ph2d-gridmap" }
 ph2d-i18n = { path = "../ph2d-i18n" }
 ph2d-light = { path = "../ph2d-light" }
 ph2d-mesh = { path = "../ph2d-mesh" }
+
+# A lei do corte (o desenho vira volume) e a fronteira que corta. Ver o
+# ADR-0170 e a `SPEC_trim_gesture.md`.
+ph2d-trim = { path = "../ph2d-trim" }
+ph2d-mesh-bool = { path = "../ph2d-mesh-bool" }
 ph2d-mesh-render = { path = "../ph2d-mesh-render" }
 ph2d-painter-brush = { path = "../ph2d-painter-brush" }
 ph2d-panel-sculpt3d = { path = "../ph2d-panel-sculpt3d" }

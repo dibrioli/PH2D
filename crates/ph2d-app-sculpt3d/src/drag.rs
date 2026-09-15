@@ -21,6 +21,9 @@ pub(super) enum Drag {
     /// **O FILTRO ARMADO** — o arrasto horizontal dá a força com que o verbo
     /// corrente roda na malha INTEIRA. Ver `sculpt3d_filter`.
     Filter,
+    /// **O CORTE ARMADO** — o arrasto desenha a forma que vai virar volume, em
+    /// vez de esculpir. Ver `trim_gesto` e `trim_aplica`.
+    Trim,
 }
 
 /// **O ângulo VARRIDO desde o pen-down**, acumulado evento a evento.

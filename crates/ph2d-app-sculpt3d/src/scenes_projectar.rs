@@ -38,7 +38,10 @@ pub(crate) fn projectar_scene() -> bool {
 /// `−1,6` e a bola de raio `1`, o barro tem de viajar `0,6` até encostar — um
 /// deslocamento que se vê de longe, e que a folga de `1,0` do slider consegue
 /// ultrapassar (é isso que torna a armadilha da §6.4 demonstrável no passo (6)).
-const ALTURA_DA_PLACA: f32 = -1.6;
+pub(crate) const ALTURA_DA_PLACA: f32 = -1.25;
+
+/// Meia-largura da placa — ver a varredura no gate.
+pub(crate) const LADO_DA_PLACA: f32 = 1.2;
 
 /// **A PLACA** — um quadrado grande e plano, virado para cima.
 ///
@@ -46,7 +49,7 @@ const ALTURA_DA_PLACA: f32 = -1.6;
 /// face, e o que decide o resultado é onde o PLANO está, não quantas faces ele
 /// tem. Uma placa subdividida seria mais cara sem mudar um vértice da resposta.
 pub(crate) fn placa() -> Mesh {
-    let l = 3.0;
+    let l = LADO_DA_PLACA;
     Mesh::from_parts(
         vec![[-l, -l, 0.0], [l, -l, 0.0], [l, l, 0.0], [-l, l, 0.0]],
         vec![Face::tri(0, 1, 2), Face::tri(0, 2, 3)],
@@ -148,3 +151,8 @@ mod tests {
         );
     }
 }
+
+/// **O pincel no GESTO e na CENA** — ver [`tests`].
+#[cfg(test)]
+#[path = "projectar_tests.rs"]
+mod gesto_tests;

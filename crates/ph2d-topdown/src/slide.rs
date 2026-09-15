@@ -28,46 +28,14 @@
 //! poria o rapier dentro de uma folha; duas funções (uma «simples» e uma «com
 //! deslize») seriam a porta por onde as duas leis divergiam.
 
-use crate::{Vec2, dot, len, normalize};
+use crate::{Vec2, dot, normalize};
 
-/// A cerca abaixo da qual o que resta do orçamento não vale um passo.
+/// ⭐⭐ **O passo e o orçamento vêm da folha partilhada** ([`ph2d_sweep`]), desde 2026-09-15.
 ///
-/// ⚠️ **Em metros, e derivada do produto:** `1e-5 m` é um centésimo de milímetro,
-/// três ordens de grandeza abaixo da margem do controlador (`~1 mm`). Um piso
-/// mais fino faria o plano gastar um deslize a mover nada.
-pub const RESTO_MINIMO: f32 = 1.0e-5;
-
-/// **Um passo do plano** — *«anda `budget` nesta `dir`»*.
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct SlideStep {
-    /// A direcção deste passo, **normalizada**.
-    pub dir: Vec2,
-    /// Quanto ainda há para andar, em metros.
-    pub budget: f32,
-    /// Quantas mudanças de direcção ainda restam.
-    pub slides_left: u8,
-}
-
-/// **O primeiro passo**: a velocidade pedida vira direcção e orçamento.
-///
-/// Devolve `None` quando não há velocidade — *direcção ausente não é direcção
-/// zero*, e quem não tem para onde ir não pede nada ao mundo.
-#[must_use]
-pub fn first_step(v: Vec2, dt: f32, max_slides: u8) -> Option<SlideStep> {
-    if !dt.is_finite() || dt <= 0.0 {
-        return None;
-    }
-    let dir = normalize(v)?;
-    let budget = len(v) * dt;
-    if budget < RESTO_MINIMO {
-        return None;
-    }
-    Some(SlideStep {
-        dir,
-        budget,
-        slides_left: max_slides,
-    })
-}
+/// ⚠️ **O que ficou aqui é a RE-EMISSÃO** — a tangente —, que é a única coisa que separa um deslize
+/// de um ricochete. O `SweepStep`, o `first_step` e o `RESTO_MINIMO` são os MESMOS itens que o
+/// [`ph2d-projectile`] lê: *uma lei escrita em dois sítios ainda não é uma lei — só uma PORTA é*.
+pub use ph2d_sweep::{RESTO_MINIMO, SweepStep, first_step};
 
 /// **O passo seguinte**, dado o que o mundo deixou andar e em que bateu.
 ///
@@ -83,15 +51,13 @@ pub fn first_step(v: Vec2, dt: f32, max_slides: u8) -> Option<SlideStep> {
 /// degenera.
 #[must_use]
 pub fn next_step(
-    step: SlideStep,
+    step: SweepStep,
     moved: f32,
     normal: Vec2,
     min_slide_angle_deg: f32,
-) -> Option<SlideStep> {
-    let resto = step.budget - moved.max(0.0);
-    if resto < RESTO_MINIMO || step.slides_left == 0 {
-        return None;
-    }
+) -> Option<SweepStep> {
+    // ⭐ O RESTO e o TECTO são a metade partilhada: a folha responde-a para as duas leis.
+    let resto = ph2d_sweep::remaining(step, moved)?;
     let n = normalize(normal)?;
 
     // ⚠️ **A incidência mede-se da normal INTERIOR**: `0` é de cabeça contra a
@@ -116,10 +82,10 @@ pub fn next_step(
         step.dir[1] - n[1] * dot(step.dir, n),
     ];
     let dir = normalize(t)?;
-    Some(SlideStep {
+    Some(SweepStep {
         dir,
         budget: resto,
-        slides_left: step.slides_left - 1,
+        steps_left: step.steps_left - 1,
     })
 }
 

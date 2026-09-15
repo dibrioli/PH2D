@@ -55,43 +55,13 @@ pub mod rotation;
 pub mod slide;
 pub mod viewpoint;
 
-/// **Um vector 2D** — um par cru, como na irmã `ph2d-platformer`.
+/// ⭐⭐ **O vocabulário de vector vem da folha do ORÇAMENTO** ([`ph2d_sweep`]), desde 2026-09-15.
 ///
-/// ⚠️ Deliberadamente **não** é um tipo de uma biblioteca de matemática: esta
-/// crate é uma folha, e uma folha que empurra `glam` para os consumidores deixa
-/// de ser barata. `+ - * /` e `sqrt` são exactos no IEEE-754.
-pub type Vec2 = [f32; 2];
-
-/// O comprimento de um vector.
-#[must_use]
-#[inline]
-pub fn len(v: Vec2) -> f32 {
-    (v[0] * v[0] + v[1] * v[1]).sqrt()
-}
-
-/// O produto escalar.
-#[must_use]
-#[inline]
-pub fn dot(a: Vec2, b: Vec2) -> f32 {
-    a[0] * b[0] + a[1] * b[1]
-}
-
-/// **Normaliza, ou devolve `None`** se o vector for curto demais para ter direcção.
-///
-/// ⚠️ O piso é `1e-6`, e a decisão de devolver `Option` em vez de um zero é a lei
-/// que a `ph2d-arclen` desta casa pagou por escrito: *velocidade zero não é
-/// direcção ausente lida como zero — é direcção ausente, e quem a recebe tem de
-/// decidir o que fazer*. Aqui quem decide é a rotação (fica onde estava) e o
-/// deslize (não há passo nenhum).
-#[must_use]
-pub fn normalize(v: Vec2) -> Option<Vec2> {
-    let n = len(v);
-    if n > 1.0e-6 {
-        Some([v[0] / n, v[1] / n])
-    } else {
-        None
-    }
-}
+/// ⚠️ **É uma RE-EXPORTAÇÃO e não uma segunda cópia:** `Vec2` é um *alias* (`[f32; 2]`), e `len`,
+/// `dot` e `normalize` são os MESMOS itens — não há duas implementações que possam divergir. O que
+/// mudou de casa foi o dono, para que o ricochete do [`ph2d-projectile`] leia a mesma lei do
+/// orçamento sem a copiar.
+pub use ph2d_sweep::{Vec2, dot, len, normalize};
 
 /// **A configuração inteira de um player de vista de cima** — o que o componente
 /// registado guarda, sem nada de ECS.

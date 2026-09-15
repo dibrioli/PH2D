@@ -1,0 +1,36 @@
+# CORPUS DO ORÁCULO — o PROJÉCTIL (TOP-20 #14)
+#
+# Fonte:   Godot Engine 4.7.2.stable.arch_linux (MIT), corrido SEM INTERFACE.
+# Sonda:   docs/Components/ferramentas/godot_projectile_probe.gd  (versionada, no repo)
+# Comando: godot --headless --script docs/Components/ferramentas/godot_projectile_probe.gd
+# Data:    2026-09-15
+# Alvo:    CharacterBody2D + move_and_collide() + KinematicCollision2D.get_remainder()
+#          + Vector2.bounce(normal) — a receita canónica de um projéctil cinemático.
+# Unidades: PIXELS e SEGUNDOS do Godot. dt = 1/60. raio = 16 px. V = 600 px/s (10 px/tique).
+#
+# ⚠️ ISTO É A SAÍDA DO ALVO, NÃO O NOSSO PRODUTO. Cada linha vira um gate em
+#    crates/ph2d-projectile/tests/it/o_corpus_do_oraculo.rs.
+#
+# COLUNAS
+#   RESTO  andou= resto= soma= normal=     ⇒ o orçamento parte-se e SOMA exactamente
+#   BOUNCE graus | ent | sai | espelho | erro | resto | |saida|
+#          ⚠️ compara-se o ÂNGULO: `sai` é um DESLOCAMENTO e `espelho` uma VELOCIDADE
+#   QUINA  saltos_num_tique= resto_final= (orcamento inicial )
+#   NORMAL (x,y) |n| angulo                ⇒ unitária, em MUNDO, contra o movimento
+#
+# O QUE ELE RESPONDEU (a leitura está no plano §2 e no handoff)
+#   1. O RESTO CONSERVA-SE AO BIT: 3,984375 + 6,015625 = 10,000000.
+#   2. O ESPELHO ACERTA A 0,00000° nos seis ângulos, e |saída| = |resto| — reflectir
+#      não muda o comprimento, logo o orçamento atravessa o ricochete INTEIRO.
+#   3. DOIS ricochetes cabem num tique quando o orçamento chega para isso ⇒ o laço
+#      precisa de TECTO, como o do deslize.
+#   4. A normal é UNITÁRIA, em MUNDO, e aponta contra o movimento.
+RESTO andou=3.984375 resto=6.015625 soma=10.000000 normal=(-1.0000,0.0000)
+BOUNCE  90.0 | ent    0.00° | sai  180.00° | espelho  180.00° | erro 0.00000° | resto=6.0156 |saida|=6.0156
+BOUNCE  75.0 | ent   15.00° | sai  -15.00° | espelho  -15.00° | erro 0.00000° | resto=10.0000 |saida|=10.0000
+BOUNCE  60.0 | ent   30.00° | sai  -30.00° | espelho  -30.00° | erro 0.00000° | resto=10.0000 |saida|=10.0000
+BOUNCE  45.0 | ent   45.00° | sai  -44.96° | espelho  -44.96° | erro 0.00000° | resto=9.9939 |saida|=9.9939
+BOUNCE  30.0 | ent   60.00° | sai  -59.88° | espelho  -59.88° | erro 0.00000° | resto=9.9316 |saida|=9.9316
+BOUNCE  15.0 | ent   75.00° | sai  -74.92° | espelho  -74.92° | erro 0.00000° | resto=9.9316 |saida|=9.9316
+QUINA saltos_num_tique=2 resto_final=339.760773 (orcamento inicial 600.0000)
+NORMAL (-0.70711,-0.70711) |n|=1.00000 angulo=-135.00°

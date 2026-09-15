@@ -8100,6 +8100,14 @@ name = "ph2d-preview-slot"
 version = "0.0.0"
 
 [[package]]
+name = "ph2d-projectile"
+version = "0.0.0"
+dependencies = [
+ "libm",
+ "ph2d-sweep",
+]
+
+[[package]]
 name = "ph2d-quadchain"
 version = "0.0.0"
 dependencies = [
@@ -8328,6 +8336,10 @@ version = "0.0.0"
 dependencies = [
  "serde",
 ]
+
+[[package]]
+name = "ph2d-sweep"
+version = "0.0.0"
 
 [[package]]
 name = "ph2d-symmetry"
@@ -8671,6 +8683,7 @@ name = "ph2d-topdown"
 version = "0.0.0"
 dependencies = [
  "libm",
+ "ph2d-sweep",
 ]
 
 [[package]]

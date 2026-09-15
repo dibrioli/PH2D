@@ -136,7 +136,7 @@ impl PhysicsBridge {
                         got.translation[0],
                         got.translation[1],
                         hits.len(),
-                        s.slides_left
+                        s.steps_left
                     );
                 }
                 // ⚠️ **A normal é a do PRIMEIRO contacto, com o sinal normalizado

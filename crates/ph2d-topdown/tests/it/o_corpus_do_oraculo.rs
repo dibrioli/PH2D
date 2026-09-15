@@ -28,7 +28,7 @@
 //!   nosso plano devolve exactamente zero, e a barra existe para dizer *«o alvo
 //!   também não anda»* sem fingir que os dois números são o mesmo.
 
-use ph2d_topdown::slide::{SlideStep, first_step, next_step};
+use ph2d_topdown::slide::{SweepStep, first_step, next_step};
 
 /// O orçamento do corpus, em unidades dele (píxeis por tique).
 const ORCAMENTO: f32 = 4.0;
@@ -48,7 +48,7 @@ fn quanto_anda(ang_deg: f32) -> f32 {
     // A direcção pedida: `0` é de cabeça contra a parede (`+x`), `90` é rasante.
     let v = [a.cos() * ORCAMENTO * 60.0, a.sin() * ORCAMENTO * 60.0];
     let mut total = 0.0;
-    let mut passo: Option<SlideStep> = first_step(v, 1.0 / 60.0, MAX_SLIDES);
+    let mut passo: Option<SweepStep> = first_step(v, 1.0 / 60.0, MAX_SLIDES);
     while let Some(s) = passo {
         // Quanto cabe nesta direcção, contra uma parede plana já encostada:
         // qualquer componente para dentro da parede é recusada por inteiro.

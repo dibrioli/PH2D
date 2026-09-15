@@ -1,0 +1,30 @@
+[package]
+name = "ph2d-projectile"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+[dependencies]
+# ⭐ **O ORÇAMENTO DE MOVIMENTO, partilhado com a `ph2d-topdown`** — a lei que a wave do #13
+# trouxe, medida no oráculo, e que um ricochete gasta exactamente como um deslize. ⛔ Escrevê-la
+# aqui outra vez seria duplicar a lei que aquela wave existiu para trazer.
+ph2d-sweep = { path = "../ph2d-sweep" }
+
+# ⚠️ Pelo MESMO pin cross-OS das irmãs (`ph2d-platformer`, `ph2d-topdown`): o `atan2` do «a flecha
+# aponta para onde voa» e o `sqrt`/`cos` do arco entram numa pose que o `physics_ecs_c9` compara
+# entre TRÊS sistemas operacionais, e ali 1 ulp é um bug.
+libm = { version = "=0.2.16", default-features = false }
+
+[dev-dependencies]
+# ⚠️ O gate do corpus fala directamente com a folha do orçamento (o `remaining`), para comparar a
+# partição do orçamento do oráculo com a NOSSA — sem passar pela lei do ricochete, que é o que ele
+# está justamente a medir.
+ph2d-sweep = { path = "../ph2d-sweep" }
+
+[lints]
+workspace = true

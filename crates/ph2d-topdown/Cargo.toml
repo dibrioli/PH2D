@@ -25,5 +25,11 @@ authors.workspace = true
 # `ph2d-physics` e `ph2d-platformer`.
 libm = { version = "=0.2.16", default-features = false }
 
+# ⭐⭐ **O ORÇAMENTO DE MOVIMENTO saiu para uma folha partilhada** (2026-09-15, TOP-20 #14): o laço
+# «anda `budget` nesta `dir`; o mundo deixou andar `moved`; e agora?» é letra por letra o mesmo num
+# deslize e num ricochete — só a RE-EMISSÃO muda (tangente contra espelho). ⛔ Escrevê-lo duas vezes
+# seria duplicar a lei que a wave do #13 existiu para trazer.
+ph2d-sweep = { path = "../ph2d-sweep" }
+
 [lints]
 workspace = true

@@ -79,15 +79,15 @@ fn uma_normal_que_nao_se_opoe_ao_movimento_nao_produz_deslize() {
 #[test]
 fn o_tecto_desce_a_cada_deslize() {
     let s = first_step([4.0 * DIAG, 4.0 * DIAG], 1.0 / 60.0, 2).unwrap();
-    assert_eq!(s.slides_left, 2);
+    assert_eq!(s.steps_left, 2);
     let a = next_step(s, 0.0, [-1.0, 0.0], 15.0).unwrap();
-    assert_eq!(a.slides_left, 1);
+    assert_eq!(a.steps_left, 1);
     // ⚠️ A normal tem de ser OBLIQUA: depois do 1.º deslize a direcção é `(0,1)`,
     // e uma normal `(0,−1)` seria FRONTAL — a cláusula do limiar cortava antes de
     // o tecto chegar a falar, que foi como a 1.ª redacção deste gate rebentou.
     const OBLIQUA: [f32; 2] = [-DIAG, -DIAG];
     let b = next_step(a, 0.0, OBLIQUA, 15.0).unwrap();
-    assert_eq!(b.slides_left, 0);
+    assert_eq!(b.steps_left, 0);
     assert!(
         next_step(b, 0.0, [-1.0, 0.0], 15.0).is_none(),
         "o tecto fecha"

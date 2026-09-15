@@ -1,0 +1,20 @@
+[package]
+name = "ph2d-sweep"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# ⛔ **ZERO dependências, e isso é o desenho.**
+#
+# Esta folha é o ORÇAMENTO DE MOVIMENTO e mais nada: um par cru, quatro funções de
+# vector e um passo de plano. Não há um transcendental aqui — os `cos`/`sin`/`atan2`
+# vivem nas leis que a consomem (`ph2d-topdown`, `ph2d-projectile`), que declaram o
+# `libm` pelo pin cross-OS. *Uma folha que não precisa de `libm` não o declara.*
+
+[lints]
+workspace = true

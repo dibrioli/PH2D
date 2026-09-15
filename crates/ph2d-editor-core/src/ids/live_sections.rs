@@ -30,7 +30,7 @@ use super::*;
 /// ⚠️ `finish_section` lê `store.section_outline_color(<id da seção>)` para TODA seção viva, por
 /// isso uma seção ausente daqui tem um contorno que o passe de pintura está pronto a desenhar e
 /// gesto nenhum que o possa definir.
-pub const LIVE_SECTIONS: [(NodeId, NodeId); 21] = [
+pub const LIVE_SECTIONS: [(NodeId, NodeId); 24] = [
     (INSP_LIVE_NAME_SECTION, INSP_LIVE_NAME_COLOR),
     (INSP_LIVE_VISIBILITY_SECTION, INSP_LIVE_VISIBILITY_COLOR),
     (INSP_LIVE_TRANSFORM_SECTION, INSP_LIVE_TRANSFORM_COLOR),
@@ -62,6 +62,16 @@ pub const LIVE_SECTIONS: [(NodeId, NodeId); 21] = [
     // grupo das opcionais, como as quatro acima — e acrescentar a meio renumeraria a lista posicional
     // das notas, que é a armadilha que a §5 9-Slice já pagou.
     (INSP_LIVE_TAGS_SECTION, INSP_LIVE_TAGS_COLOR),
+    // ⛔⛔ **As três seguintes entraram TARDE, e o atraso é o achado** (ver
+    // [`super::INSP_LIVE_FACTORY_COLOR`]): as duas da fábrica shiparam **fora** desta tabela em
+    // 2026-09-14, logo com o chevron a prometer uma dobra que não podia acontecer. Quem o viu foi
+    // a wave seguinte, ao ir escrever a mesma linha.
+    //
+    // ⭐ A 22.ª e a 23.ª — FACTORY e LIFECYCLE (TOP-20 #11 e #12).
+    (INSP_LIVE_FACTORY_SECTION, INSP_LIVE_FACTORY_COLOR),
+    (INSP_LIVE_LIFECYCLE_SECTION, INSP_LIVE_LIFECYCLE_COLOR),
+    // ⭐ A 24.ª — TOP-DOWN PLAYER (TOP-20 #13), a primeira da família MOVIMENTO que é opcional.
+    (INSP_LIVE_TOPDOWN_SECTION, INSP_LIVE_TOPDOWN_COLOR),
 ];
 
 /// Só os cabeçalhos — **projeção** de [`LIVE_SECTIONS`], nunca uma segunda lista.

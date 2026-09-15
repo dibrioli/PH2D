@@ -32,6 +32,8 @@ pub(super) struct InspectorIntents {
     pub(super) camera_edits: Vec<(u64, ph2d_editor_core::CameraFieldEdit)>,
     /// ⭐ As edições das secções FACTORY e LIFECYCLE (TOP-20 #11 e #12).
     pub(super) factory_edits: Vec<(u64, ph2d_editor_core::FactoryFieldEdit)>,
+    /// ⭐ As edições do MOVER DE VISTA DE CIMA (TOP-20 #13).
+    pub(super) topdown_edits: Vec<(u64, ph2d_editor_core::topdown_edits::TopDownFieldEdit)>,
     pub(super) tags_edits: Vec<(u64, ph2d_editor_core::TagsFieldEdit)>,
     pub(super) tag_tree_edits: Vec<ph2d_editor_core::TagTreeEdit>,
     pub(super) inspector_queue_dirty: bool,
@@ -84,6 +86,7 @@ impl crate::App {
             audio_edits,
             camera_edits,
             factory_edits,
+            topdown_edits,
             tags_edits,
             tag_tree_edits,
             mut inspector_queue_dirty,
@@ -202,6 +205,12 @@ impl crate::App {
         }
         // ⭐⭐⭐ **As secções FACTORY e LIFECYCLE** (TOP-20 #11 e #12, W3) — na fase-filha.
         inspector_queue_dirty |= factory_commits::aplicar(sim, tags, &factory_edits);
+        // ⭐ O MOVER DE VISTA DE CIMA (TOP-20 #13). ⚠️ Ele NÃO pede a árvore de tags: todos os
+        // campos dele são números e modos, e nenhum guarda uma identidade.
+        for (bits, edit) in &topdown_edits {
+            inspector_queue_dirty |=
+                super::inspector_topdown::apply_topdown_edit(sim.world_mut(), *bits, edit);
+        }
         // ⭐⭐⭐ **A secção TAGS** (TOP-20 #9) — aqui pela razão MAIS forte das três: ela é a única
         // do Inspector que escreve em DOIS documentos, e o segundo (a árvore) nem sequer está no
         // mundo. O `inspector_commits` não o recebe — e não devia: ele é o dreno da CENA.

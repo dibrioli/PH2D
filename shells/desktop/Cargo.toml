@@ -43,6 +43,9 @@ ph2d-ecs = { path = "../../crates/ph2d-ecs" }
 # no doc do produtor da fisica (`bridge/signals.rs`), nao e' escolha desta linha.
 ph2d-runtime = { path = "../../crates/ph2d-runtime" }
 ph2d-physics-ecs = { path = "../../crates/ph2d-physics-ecs" }
+# ⭐ A lei do mover de VISTA DE CIMA (TOP-20 #13) — a shell traduz os enums dela para as tags do
+# painel, e a tradução tem gate de ida-e-volta nos dois sentidos.
+ph2d-topdown = { path = "../../crates/ph2d-topdown" }
 # A metade da família `physics` que não precisa da shell (W2/L2) — as cenas de
 # smoke e as leis que só povoam um `World`. A seta aponta só nesta direcção.
 ph2d-app-physics = { path = "../../crates/ph2d-app-physics" }

@@ -60,6 +60,9 @@ pub(crate) fn apply_event(
         return EventOutcome::Consumed;
     }
 
+    if crate::event_topdown::apply_topdown_event(host, ev) {
+        return EventOutcome::Consumed;
+    }
     if crate::event_factory::apply_factory_event(host, ev) {
         return EventOutcome::Consumed;
     }
@@ -361,7 +364,7 @@ fn color_tint_click(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
         } else {
             info.self_tint
         };
-        let seed = state::tint_f32_to_u8(chan);
+        let seed = crate::state_tint::tint_f32_to_u8(chan);
         host.store_mut().set_widget_color(id, seed);
         host.store_mut().set_picker_target(Some(id));
         host.store_mut().set_blender_value(
@@ -388,7 +391,7 @@ fn color_tint_click(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
         }
         && let Some(info) = state::current_inspector_sprite()
     {
-        let seed = state::tint_f32_to_u8(info.per_corner_tint[corner]);
+        let seed = crate::state_tint::tint_f32_to_u8(info.per_corner_tint[corner]);
         host.store_mut().set_widget_color(id, seed);
         host.store_mut().set_picker_target(Some(id));
         host.store_mut().set_blender_value(

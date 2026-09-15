@@ -126,6 +126,7 @@ mod inspector_audio;
 mod inspector_camera;
 mod inspector_commits_sprite;
 mod inspector_factory;
+mod inspector_topdown;
 /// ⭐ **A seção COMPONENT do Inspector** (ADR-0164 / F5) — o que esta cópia tem de diferente
 /// da receita, e o gesto que limpa as excepções sem alvo.
 pub(crate) mod inspector_instance;

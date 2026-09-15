@@ -182,7 +182,7 @@ pub(crate) fn paint_color_tint_section(
     // Tint — inherited modulate (cascades to children).
     let tint_seed = sp
         .as_ref()
-        .map(|s| crate::state::tint_f32_to_u8(s.tint))
+        .map(|s| crate::state_tint::tint_f32_to_u8(s.tint))
         .unwrap_or([0xff, 0xff, 0xff, 0xff]); // LITERAL-COLOR-OK: WHITE = tint default
     paint_tint_swatch_cell(
         Rect::new(x, cur_y, w, field_h),
@@ -201,7 +201,7 @@ pub(crate) fn paint_color_tint_section(
     // Self Tint — local modulate (does NOT cascade).
     let self_seed = sp
         .as_ref()
-        .map(|s| crate::state::tint_f32_to_u8(s.self_tint))
+        .map(|s| crate::state_tint::tint_f32_to_u8(s.self_tint))
         .unwrap_or([0xff, 0xff, 0xff, 0xff]); // LITERAL-COLOR-OK: WHITE = self_tint default
     paint_tint_swatch_cell(
         Rect::new(x, cur_y, w, field_h),
@@ -352,9 +352,9 @@ fn paint_per_corner_tab(
     let per_corner_mixed = sp.is_some_and(|s| s.mixed.per_corner);
     let mut live = [[1.0_f32; 4]; 4];
     for i in 0..4 {
-        let fallback = crate::state::tint_f32_to_u8(committed[i]);
+        let fallback = crate::state_tint::tint_f32_to_u8(committed[i]);
         let rgba = store.widget_color(corner_ids[i]).unwrap_or(fallback);
-        live[i] = crate::state::tint_u8_to_f32(rgba);
+        live[i] = crate::state_tint::tint_u8_to_f32(rgba);
         let sr = Rect::new(positions[i].0, positions[i].1, swatch_px, swatch_px);
         if per_corner_mixed {
             paint_mixed_swatch_rect(sr, scene, theme);
@@ -422,7 +422,7 @@ fn paint_corner_gradient_preview(
             let u = (i as f32 + 0.5) / CELLS as f32;
             let v = (j as f32 + 0.5) / CELLS as f32;
             let c = corner_bilerp(corners, u, v);
-            let b = crate::state::tint_f32_to_u8(c);
+            let b = crate::state_tint::tint_f32_to_u8(c);
             let x0 = rect.x + rect.w * (i as f32 / CELLS as f32);
             let x1 = rect.x + rect.w * ((i as f32 + 1.0) / CELLS as f32);
             let y0 = rect.y + rect.h * (j as f32 / CELLS as f32);

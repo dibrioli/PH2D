@@ -304,6 +304,7 @@ fn paint_inspector(
         snaps.audio_info.as_ref(),
         snaps.camera_info.as_ref(),
         snaps.factory_info.as_ref(),
+        snaps.topdown_info.as_ref(),
         snaps.tags_info.as_ref(),
         &notes_per_section,
     );

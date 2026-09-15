@@ -33,6 +33,7 @@ mod arch_no_absolute_drag_pattern;
 mod arch_no_char_count_widths;
 mod arch_safe_clamp_only;
 mod arch_shape_slot_uses_the_shape_door;
+mod architecture_every_live_section_is_in_the_table;
 mod architecture_adr_numbers_are_unique;
 mod architecture_chrome_dispatch_in_sync;
 mod architecture_curve_drag_asks_whose_gesture;

@@ -366,6 +366,15 @@ pub enum EditorAction {
         edit: crate::factory_edits::FactoryFieldEdit,
     },
 
+    /// Inspector → shell, a secção TOP-DOWN PLAYER (TOP-20 #13, W3).
+    ///
+    /// ⚠️ **Uma variante para o componente inteiro**, como as irmãs: o painel fala com a shell num
+    /// canal só, e é a shell que sabe traduzir cada campo.
+    InspectorTopDownEdit {
+        entity_bits: u64,
+        edit: crate::topdown_edits::TopDownFieldEdit,
+    },
+
     /// Inspector → shell channel for a §10 Material & Blend field (Blend
     /// Mode). Optional-component edit like [`Self::InspectorSamplingEdit`]
     /// (§3.10); tag `0` (Mix) detaches the `BlendMode` component.

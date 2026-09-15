@@ -416,12 +416,12 @@ fn sync_sprite_fields(
         (crate::ids::INSP_SPRITE_TINT_SWATCH, sp.tint),
         (crate::ids::INSP_SPRITE_SELF_TINT_SWATCH, sp.self_tint),
     ] {
-        let committed = state::tint_f32_to_u8(chan);
+        let committed = crate::state_tint::tint_f32_to_u8(chan);
         if picker_target == Some(swatch_id) {
             if let Some(picked) = host.store().widget_color(swatch_id)
                 && picked != committed
             {
-                let new_chan = state::tint_u8_to_f32(picked);
+                let new_chan = crate::state_tint::tint_u8_to_f32(picked);
                 let edit = if swatch_id == crate::ids::INSP_SPRITE_TINT_SWATCH {
                     SpriteFieldEdit::Tint(new_chan)
                 } else {
@@ -450,7 +450,7 @@ fn sync_sprite_fields(
         crate::ids::INSP_SPRITE_CORNER_BR,
     ];
     for (i, &corner_id) in corner_ids.iter().enumerate() {
-        let committed = state::tint_f32_to_u8(sp.per_corner_tint[i]);
+        let committed = crate::state_tint::tint_f32_to_u8(sp.per_corner_tint[i]);
         if picker_target == Some(corner_id) {
             if let Some(picked) = host.store().widget_color(corner_id)
                 && picked != committed
@@ -459,7 +459,7 @@ fn sync_sprite_fields(
                     entity_bits: sp.entity_bits,
                     edit: SpriteFieldEdit::PerCornerTintAt(
                         u8::try_from(i).unwrap_or(0),
-                        state::tint_u8_to_f32(picked),
+                        crate::state_tint::tint_u8_to_f32(picked),
                     ),
                 });
             }

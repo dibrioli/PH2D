@@ -121,6 +121,7 @@ pub(super) fn publish(
         inspector_audio,
         inspector_camera,
         inspector_factory,
+        inspector_topdown,
         inspector_visibility_section,
     } = late(
         hero,
@@ -165,6 +166,7 @@ pub(super) fn publish(
         ph2d_panel_inspector::set_current_inspector_audio(inspector_audio);
         ph2d_panel_inspector::set_current_inspector_camera(inspector_camera);
         ph2d_panel_inspector::set_current_inspector_factory(inspector_factory);
+        ph2d_panel_inspector::set_current_inspector_topdown(inspector_topdown);
         ph2d_panel_inspector::set_current_inspector_tags(inspector_tags);
         // ⭐ **A ÁRVORE DO PROJECTO** — publicada em TODO quadro, com ou sem selecção: ela não é
         // dado de um objecto, e o segundo consumidor (o alvo de uma *Signal Action*) vive num
@@ -209,6 +211,8 @@ struct LateSections {
     inspector_camera: Option<ph2d_editor_core::InspectorCameraInfo>,
     /// ⭐ As secções FACTORY e LIFECYCLE (TOP-20 #11 e #12).
     inspector_factory: Option<ph2d_editor_core::InspectorFactoryInfo>,
+    /// ⭐ A secção TOP-DOWN PLAYER (TOP-20 #13).
+    inspector_topdown: Option<ph2d_editor_core::topdown_edits::InspectorTopDownInfo>,
     inspector_visibility_section: Option<ph2d_editor_core::InspectorVisibilitySectionInfo>,
 }
 
@@ -278,6 +282,18 @@ fn late(
             clock_playing,
         )
     });
+    // ⭐ A secção TOP-DOWN PLAYER — `None` para quem não tem o componente (ADR-0166).
+    //
+    // ⚠️ Ela pede o RELÓGIO pela mesma razão da irmã: *«a corrida é o relógio a andar»* é a frase
+    // que separa «avariado» de «à espera».
+    let inspector_topdown = hero.gizmo.selection.and_then(|b| {
+        crate::render_loop::inspector_topdown::build_topdown_info(
+            sim.world(),
+            b,
+            selected_count,
+            clock_playing,
+        )
+    });
     let inspector_visibility_section = hero.gizmo.selection.and_then(|b| {
         crate::render_loop::inspector_visibility::build_visibility_section_info(
             sim.world(),
@@ -293,6 +309,7 @@ fn late(
         inspector_audio,
         inspector_camera,
         inspector_factory,
+        inspector_topdown,
         inspector_visibility_section,
     }
 }

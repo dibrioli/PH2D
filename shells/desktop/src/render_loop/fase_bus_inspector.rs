@@ -211,6 +211,11 @@ impl crate::App {
             EditorAction::InspectorFactoryEdit { entity_bits, edit } => {
                 pd.factory_edits.push((entity_bits, edit));
             }
+            // ⭐ **A secção TOP-DOWN PLAYER** (TOP-20 #13). ⚠️ **NÃO espalha sobre a BulkSelect**,
+            // pela razão das irmãs: o painel mostra a PRIMÁRIA e di-lo por escrito.
+            EditorAction::InspectorTopDownEdit { entity_bits, edit } => {
+                pd.topdown_edits.push((entity_bits, edit));
+            }
             EditorAction::InspectorTagsEdit { entity_bits, edit } => {
                 pd.tags_edits.push((entity_bits, edit));
             }

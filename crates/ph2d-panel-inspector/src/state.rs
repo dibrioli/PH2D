@@ -19,6 +19,9 @@ use ph2d_editor_core::screens::hero::{
     InspectorTransformInfo, InspectorVisibilityInfo, InspectorVisibilitySectionInfo,
     InspectorWheelInfo,
 };
+// ⚠️ **O snapshot do mover de vista de cima vive no módulo de VOCABULÁRIO** (abaixo do
+// `action_bus`), e não no `screens::hero` — ver o cabeçalho do `topdown_edits`.
+use ph2d_editor_core::topdown_edits::InspectorTopDownInfo;
 
 /// Inspector panel retained state. Held inside `ErasedPanel<InspectorPanel>`
 /// after Phase C.1; mutated by the panel's `paint` / `apply_event` and
@@ -169,6 +172,10 @@ thread_local! {
     /// ⭐⭐⭐ **O snapshot das secções FACTORY e LIFECYCLE** (TOP-20 #11 e #12).
     pub(crate) static CURRENT_INSPECTOR_FACTORY:
         std::cell::RefCell<Option<InspectorFactoryInfo>> = const { std::cell::RefCell::new(None) };
+
+    /// ⭐⭐⭐ **O snapshot da secção TOP-DOWN PLAYER** (TOP-20 #13).
+    pub(crate) static CURRENT_INSPECTOR_TOPDOWN:
+        std::cell::RefCell<Option<InspectorTopDownInfo>> = const { std::cell::RefCell::new(None) };
 
     /// **§12 — a linha ABERTA da lista, no sentido PAINEL → SHELL.**
     ///
@@ -357,6 +364,15 @@ pub(crate) fn current_inspector_factory() -> Option<InspectorFactoryInfo> {
     CURRENT_INSPECTOR_FACTORY.with(|c| c.borrow().clone())
 }
 
+/// ⭐ O snapshot do MOVER DE VISTA DE CIMA (TOP-20 #13) — a shell escreve-o todo o quadro.
+pub fn set_current_inspector_topdown(info: Option<InspectorTopDownInfo>) {
+    CURRENT_INSPECTOR_TOPDOWN.with(|c| *c.borrow_mut() = info);
+}
+
+pub(crate) fn current_inspector_topdown() -> Option<InspectorTopDownInfo> {
+    CURRENT_INSPECTOR_TOPDOWN.with(|c| c.borrow().clone())
+}
+
 pub fn set_current_inspector_camera(info: Option<InspectorCameraInfo>) {
     CURRENT_INSPECTOR_CAMERA.with(|c| *c.borrow_mut() = info);
 }
@@ -477,27 +493,6 @@ pub(crate) fn current_display_angle() -> ph2d_editor_core::project::DisplayAngle
     CURRENT_DISPLAY_ANGLE.with(|c| c.get())
 }
 
-/// Pack a linear/sRGB f32 RGBA in `[0, 1]` into `[u8; 4]` for the
-/// color-swatch fill + `INSP_BLENDER_PICKER` seed. Round-to-nearest
-/// (the `+ 0.5` before truncation) so a committed channel and its
-/// re-decoded byte agree, and the picker doesn't reopen one step off.
-pub(crate) fn tint_f32_to_u8(c: [f32; 4]) -> [u8; 4] {
-    let q = |v: f32| (v.clamp(0.0, 1.0) * 255.0 + 0.5) as u8; // LITERAL-PX-OK: sRGB 8-bit denormalize, not a design token
-    [q(c[0]), q(c[1]), q(c[2]), q(c[3])]
-}
-
-/// Inverse of [`tint_f32_to_u8`]: the picker round-trips the chosen
-/// color through `widget_color(target)` as `[u8; 4]`; this unpacks it
-/// back to the `[f32; 4]` the `Sprite` tint channels store.
-pub(crate) fn tint_u8_to_f32(c: [u8; 4]) -> [f32; 4] {
-    // LITERAL-PX-OK (×4): sRGB 8-bit normalize, not a design token.
-    [
-        c[0] as f32 / 255.0, // LITERAL-PX-OK: sRGB byte normalize
-        c[1] as f32 / 255.0, // LITERAL-PX-OK: sRGB byte normalize
-        c[2] as f32 / 255.0, // LITERAL-PX-OK: sRGB byte normalize
-        c[3] as f32 / 255.0, // LITERAL-PX-OK: sRGB byte normalize
-    ]
-}
 
 /// Last-known total content height of the inspector body. Used by
 /// `dispatch_wheel` to clamp the scroll offset.
@@ -542,7 +537,9 @@ pub fn texture_slot_pick(id: ph2d_a11y::NodeId) -> Option<u64> {
 
 #[cfg(test)]
 mod tint_color_tests {
-    use super::{tint_f32_to_u8, tint_u8_to_f32};
+    // ⚠️ As duas saíram para o irmão `state_tint` por CAP de LOC — o gate delas veio junto?
+    // Não: ele fica aqui, porque é sobre a IDA E VOLTA e não sobre onde a função mora.
+    use crate::state_tint::{tint_f32_to_u8, tint_u8_to_f32};
 
     /// The convergence invariant `sync.rs` relies on: once a picked
     /// byte color is committed (→ `f32` channel) and the snapshot comes

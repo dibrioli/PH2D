@@ -27,7 +27,26 @@ pub const INSP_LIVE_CAMERA_COLOR: NodeId = hash_node_id("insp_live_camera_color"
 /// ⚠️ **Aqui e não na crate do painel, como as irmãs `INSP_LIVE_*`**: o cabeçalho de secção é lido
 /// pelo `LIVE_SECTIONS` da fundação (a ordem das secções vivas), e não só por quem pinta.
 pub const INSP_LIVE_FACTORY_SECTION: NodeId = hash_node_id("insp_live_factory_section");
+/// O cabeçalho dobrável da secção TOP-DOWN PLAYER (TOP-20 #13).
+pub const INSP_LIVE_TOPDOWN_SECTION: NodeId = hash_node_id("insp_live_topdown_section");
 /// A secção LIFECYCLE — o cabeçalho colapsável (TOP-20 #12, W3).
 pub const INSP_LIVE_LIFECYCLE_SECTION: NodeId = hash_node_id("insp_live_lifecycle_section");
+/// ⛔⛔ **Os PONTOS DE COR das três secções novas, e eles nasceram de um DEFEITO MEDIDO.**
+///
+/// As secções FACTORY e LIFECYCLE shiparam em 2026-09-14 **fora** da [`super::LIVE_SECTIONS`], e o
+/// doc daquela tabela já dizia o preço por escrito: quem falta ali **não é
+/// `mark_collapsible_section`ado** e **não é `is_section_header_id`** — *o cabeçalho pinta o chevron
+/// e a dobra não pode acontecer*. Foi a wave seguinte (TOP-20 #13), ao ir escrever a mesma linha,
+/// que o viu.
+///
+/// ⚠️ *É exactamente a recaída que aquela tabela existe para impedir, e ela aconteceu à mesma* —
+/// porque entrar na tabela continua a ser um passo que se pode **esquecer**. A cura de fundo seria
+/// um censo que exigisse que todo `INSP_LIVE_*_SECTION` estivesse na tabela; ele está escrito no
+/// gate irmão desta wave.
+pub const INSP_LIVE_FACTORY_COLOR: NodeId = hash_node_id("insp_live_factory_color");
+/// Ver [`INSP_LIVE_FACTORY_COLOR`].
+pub const INSP_LIVE_LIFECYCLE_COLOR: NodeId = hash_node_id("insp_live_lifecycle_color");
+/// Ver [`INSP_LIVE_FACTORY_COLOR`].
+pub const INSP_LIVE_TOPDOWN_COLOR: NodeId = hash_node_id("insp_live_topdown_color");
 /// Quantas opções o segmentado do ONDE tem — a porta que o painel lê para repartir a largura.
 pub const INSP_FACTORY_WHERE_LEN: usize = 3;

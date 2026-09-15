@@ -229,6 +229,14 @@ pub fn dist2_to_segment(p: [f64; 2], a: [f64; 2], b: [f64; 2]) -> f64 {
     dx * dx + dy * dy
 }
 
+/// ⭐ **A régua da DOBRA** — quanto da arte a pele vira do avesso. Crate-irmã do [`Skin`] por
+/// responsabilidade: *onde um ponto vai parar* e *o mapa continua a ser injectivo* são duas
+/// perguntas, e a segunda nunca tinha instrumento.
+pub mod fold;
+/// ⭐ Os gates e a sonda da régua da dobra.
+#[cfg(test)]
+#[path = "fold_tests.rs"]
+mod fold_tests;
 mod reach;
 /// ⭐ Os gates do **osso inteligente** — o mesmo corte: *que instante de uma acção este ângulo
 /// pede* é a lei do Smart Bone, não a do alcance.

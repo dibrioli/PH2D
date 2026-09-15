@@ -53,6 +53,9 @@ pub mod blend;
 pub mod camera_2d;
 /// A sprite como FONTE DE LUZ (plano `docs/Sprite_projeto/18` W8) — módulo irmão, append-only.
 pub mod emissive;
+/// ⭐⭐⭐ **A FÁBRICA** — o item #11 do TOP-20: a categoria que quase nenhuma engine grande tem
+/// como componente (o idioma delas é `instantiate()` em código).
+pub mod factory;
 pub mod flip_object_ref;
 /// ⭐ **A CÓPIA PROFUNDA** (ADR-0164 / F4.2) — a peça de que *Duplicar* e *Instanciar* nascem,
 /// e o elo `InstanceOf`. ⛔ Ela copia bytes; quem remapeia referências é a porta da shell.
@@ -125,6 +128,10 @@ pub use anchor_mount::{
 pub use baked_form::BakedForm;
 pub use blend::BlendMode;
 pub use emissive::{EMISSIVE_MAX, EMISSIVE_OFF, SpriteEmissive};
+pub use factory::{
+    BURST_MAX, Birth, Factory, FactoryRuntime, FactoryTick, Pick, SpawnAt, alive_by_factory,
+    reconcile_factories, tick_factories,
+};
 pub use flip_object_ref::FlipObjectRef;
 pub use instantiate::{
     DeepCopy, InstanceOf, LinkedArt, ObjectInstance, OrphanOverride, OverrideKey,

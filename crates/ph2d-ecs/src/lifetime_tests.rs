@@ -37,10 +37,14 @@ fn nascida(world: &mut BevyWorld, nome: &str, id: u64, x: f32, born: u64) -> Ent
 /// (Mutação: trocar `>=` por `>` ⇒ a morte escorrega um tique. Tirar o `antes <` ⇒ ela repete-se.)
 #[test]
 fn a_life_ends_on_the_tick_its_time_is_up() {
+    // ⚠️⚠️ **A duração é um MÚLTIPLO EXACTO do tique, e isso é a fixtura** — medido em 2026-09-14
+    // por uma mutação que SOBREVIVEU: com `100 000 µs` (6,000 tiques e um resto) o relógio chega a
+    // `100 002` e tanto `>=` como `>` matam no mesmo tique, logo a fronteira não é observável. *Uma
+    // fixtura que não contém o fenómeno deixa a lei sem gate, com a suíte verde.*
     let mut w = BevyWorld::new();
     let e = nascida(&mut w, "bala", 1, 0.0, 0);
     w.entity_mut(e).insert(Lifetime {
-        duration_us: 100_000,
+        duration_us: 6 * DT,
         on_death: "sumiu".into(),
     });
     let mut vistos = Vec::new();
@@ -53,7 +57,7 @@ fn a_life_ends_on_the_tick_its_time_is_up() {
     assert_eq!(
         vistos,
         vec![(6, "sumiu".to_string(), DeathCause::Aged)],
-        "6 tiques de 16 667 dao 100 002 us, que e' o primeiro a passar os 100 000"
+        "o 6.º tique e' o que COMPLETA a vida — nem o 5.º nem o 7.º"
     );
 }
 

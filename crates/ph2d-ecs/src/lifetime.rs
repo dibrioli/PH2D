@@ -17,6 +17,16 @@
 //! escondido por construção (*Make Component*), então o sítio onde se autoram é exactamente o sítio
 //! onde fazem efeito.
 //!
+//! ⚠️⚠️ **E a lei tem DOIS guardas, nenhum observável sozinho** (medido por mutação, 2026-09-14): o
+//! `With<Spawned>` da [`reconcile_lifetimes`] — que não dá relógio a quem nunca vai correr — e o
+//! `&Spawned` da query de [`tick_lifetimes`]. Apagar **um** deles deixa a suíte verde, porque o
+//! outro tapa o buraco; só a redacção que apaga os dois sangra. Os dois ficam de propósito: o
+//! primeiro é *quem recebe relógio*, o segundo é *quem envelhece*, e são perguntas diferentes que
+//! hoje têm a mesma resposta. ⛔ Quem apagar um destes tem de pôr o outro à prova sozinho.
+//!
+//! *É a segunda vez que esta linha paga esta forma — a primeira foi o «um id órfão conta para
+//! ninguém» da W4 das Tags.*
+//!
 //! # ⚠️ A morte é ADIADA, e isso veio do oráculo
 //!
 //! Medido no Godot 4.7.2 sem interface

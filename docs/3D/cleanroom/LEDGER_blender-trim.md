@@ -64,7 +64,7 @@ modo — e (ii) a lei do gesto, que é a metade (b).
 |---|---|---|---|
 | `manifold-csg` | **MIT OR Apache-2.0** | ligações seguras para a biblioteca C++ Apache-2.0 | ✅ elegível |
 | `manifold3d` | idem | fachada que re-exporta a anterior | ✅ elegível |
-| `meshbool` | **Apache-2.0** | porte puro-Rust da biblioteca Apache-2.0; **sem dependência de C++**; ⚠️ conferido: **não menciona o alvo** | ⛔⛔ **REFUTADO na emenda de 2026-09-15: NÃO existe em crates.io** (a API responde *«does not exist»*) ⇒ só entraria como dependência de `git`, sem versões nem *yank*. ⚠️ **Esta linha dizia «o melhor encaixe» — eu julguei o CÓDIGO e não olhei a PORTA DE DISTRIBUIÇÃO** |
+| ⛔ *(uma 4.ª rota, só-git)* | declarava Apache-2.0 **na página do repositório** | porte puro-Rust da biblioteca Apache-2.0 | ⛔⛔ **RETIRADA. Não existe no registo de pacotes** (busca por nome devolve zero) e **eu nunca inspeccionei o artefacto** — a licença que eu citei foi lida na *página*, não num ficheiro que eu tenha aberto. ⚠️ A linha original chamava-lhe *«o melhor encaixe»*: julguei o código pela descrição e não olhei a **porta de distribuição**. ⇒ ela **não é candidata** e o nome sai deste ledger, porque nomear algo que o próximo auditor não consegue buscar é pior que não a listar |
 | `manifold-rust` | **Apache-2.0** | porte puro-Rust **declarado** da mesma biblioteca (com plano de porte e registo de divergências no pacote; o porte é discutido no rastreador da própria origem) | ⭐ **✅ a recomendação da emenda §1.5.9** — e o risco dela é a IDADE, medido |
 
 ⚠️ **A validação de proveniência era o passo que não se podia saltar** («um porte permissivo que
@@ -146,7 +146,7 @@ da janela-mãe, e nada dela está no repo. Fica registado porque a regra é regi
 | arnês | `~/Referencias/blender-trim/oracle/trim_oracle.py` — **NOSSO**, dirige só a API pública |
 | driver | `run_each.sh` — **um processo por caso, com tecto de tempo** |
 | malhas de ENTRADA | ⭐ **NOSSAS** — `ph2d_mesh::shapes` e `::shapes_open`, exportadas em OBJ pelo gerador do repo. ⛔ **nenhum asset do alvo**, nem como entrada |
-| corridas | 26 casos (matriz principal) + 15 (malha aberta, profundidade, perspectiva) + 11 (knob morto, laço côncavo, custo, raio do cursor) |
+| corridas | **56**, com nome único e verificadas por `fixtures/trim/verifica_corridas.py`: 26 (matriz principal) + 15 (malha aberta, profundidade, perspectiva) + 11 (knob morto, laço côncavo, custo, raio do cursor) + 4 (a orientação coagida, §3) — ⚠️ **menos 2 corridas fantasma apagadas** (ver abaixo) |
 
 ⚠️⚠️ **Uma armadilha do arnês que custou 13 minutos e quase virou «achado»:** uma edição minha
 partiu a indentação do script; o binário abriu a janela, o script morreu no arranque e o processo
@@ -294,3 +294,40 @@ chamadas); e a robustez corrida **nos três motores** sobre as fixturas desta ob
 ⭐ **E o achado que mais vale para quem implementa** está na §1.5.6: com malha **aberta** a operação
 devolve malha **vazia** e o estado do RESULTADO diz «sem erro». *Quem verificar só o resultado
 entrega uma escultura apagada.* A verificação é do estado da **ENTRADA**.
+
+---
+
+## R-PRÉ, 1.ª passagem (2026-09-15) — NÃO ATESTADA: 9 achados, 2 bloqueantes, todos curados
+
+Veredito do auditor independente: *a parte medida é forte, as fixturas cobrem o que a espec afirma,
+e não há fuga de nome interno nem de organização.* O que a impediu de ser atestada:
+
+| # | achado | cura |
+|---|---|---|
+| **1** ⛔ | a cura do sweep estava **incompleta**: apanha a quebra de linha, **não** a frase com **ênfase markdown no meio** — e esta espec usava o buraco, na **§6.1** | a passagem plana passa a remover **ênfase e marcas de citação**; a oração citada **saiu** e o regime é agora **derivação nossa** (§6.1) |
+| **1b** | a largura nova junta **através de parágrafo e de título** ⇒ pode acusar uso lícito | o cabeçalho do script declara que **um acerto da passagem plana exige leitura humana** antes de contar |
+| **2** ⛔ | o fecho da §6.2 dizia **quatro** leis de ponto médio; a coacção da §3 corre **antes** da profundidade ⇒ uma célula é **inalcançável** | reescrito com os **três** estados alcançáveis, e a dizer que um despacho `2×2` shipa **um braço morto** |
+| **3a** | a frase do propósito do factor de alcance era tradução próxima da comentaria | virou **requisito sobre a SAÍDA** (os pontos caem fora da silhueta projectada) |
+| **3b** | idem para a validade do raio, e nomeava o valor **pela estrutura que o guarda** | virou **condição de fronteira**; a atribuição de histórico de defeito **saiu** (o rastreador nunca foi percorrido ⇒ não há origem citável) |
+| **3c** | a divergência da §5 acompanhava a estrutura da origem | **re-derivada do observável** (uma normal não se transforma como um ponto ⇒ o eixo do varrimento desvia) |
+| **4** | três afirmações **sem selo** (§5, §9, §15) | **seladas `L`**; na §9 ficou a minha frase de mecanismo, que é expansão minha |
+| **5** | o cabeçalho mandava o auditor à secção errada | ponteiro corrigido e **ampliado para os sete** itens `L` |
+| **6** | dois **nomes de caso repetidos** no corpus, com registos contraditórios, e um mandava ler **o ledger** — que o I está barrado de abrir | as **2 corridas fantasma apagadas** (vieram de um defeito do arnês, não do oráculo) + **`verifica_corridas.py`** com unicidade, piso de população e proibição de motivo que aponte para fora do corpus |
+| **7** | a §11.1 dizia **1** face na fixtura degenerada (são **2**); e a célula do README contradizia o parágrafo abaixo dela | ambos corrigidos |
+| **8** | o ledger elegia uma rota que **não existe no registo** e cuja licença eu lera **na página**, não num artefacto | a rota **saiu** dos dois documentos, com a razão escrita |
+| **9** | o T0 é **por solucionador**, e as tabelas abrangem três | tabela nova na §10.1: só o de **omissão** é a biblioteca externa; **escolher solucionador é escolher degrau** |
+
+⭐⭐ **A lição do #1 é a terceira da mesma espécie nesta obra, e a espécie é sempre ALCANCE, nunca
+padrões:** `.gz` opaco ao `strings` (2026-09-14) → frase partida por quebra de linha → frase partida
+por **ênfase**. ⇒ *cada vez que o sweep fica verde, a pergunta certa é «o instrumento CHEGA lá?», e
+a resposta só vale com controlo positivo do lado que devia acusar.*
+
+⭐ **E o #2 é a lição do «dreno de um braço só» aplicada a uma ESPEC, não a código:** eu enumerei o
+produto cartesiano de dois knobs sem verificar a **ORDEM** em que eles são lidos. Uma espec que
+descreve estados inalcançáveis manda construir braços que gesto nenhum atinge — e um braço que o
+produto nunca alcança não tem como ser testado.
+
+⚠️ **O #6 tem a forma que esta casa já paga por escrito:** o corpus estava **contraditório consigo
+mesmo** e nenhum instrumento o media — a prova disso é que o `verifica_corridas.py` **não existia**,
+e ao nascer acusou o defeito na primeira corrida. As três mutações (nome repetido · motivo a apontar
+para fora · corpus esvaziado) **matam-no** as três.

@@ -104,7 +104,25 @@ else
         # ⚠️ Aqui não há número de linha para dar (o ficheiro virou uma linha
         # só), então o achado imprime o CONTEXTO à volta — que é o que permite
         # localizá-lo — e nunca mais do que isso.
-        flat="$(tr '\n' ' ' < "$f" 2>/dev/null | tr -s ' ')"
+        # ⛔⛔ E A ENFASE TAMBEM SAI. Medido 2026-09-15 (2.ª cegueira do mesmo
+        # tipo, apanhada pelo R-pre): desfazer quebras de linha NAO chega —
+        # `**negrito**`, `*italico*`, `` `codigo` `` e o `>` de citacao partem a
+        # frase por DENTRO, e uma traducao com uma oracao em italico a meio
+        # passava limpa. A cura remove os marcadores antes de casar.
+        #
+        # ⚠️ Isto e' estritamente MAIS SENSIVEL (so' transforma verde em
+        # vermelho), mas alarga o alcance de duas maneiras que o leitor tem de
+        # conhecer:
+        #   (1) junta ATRAVES de paragrafo e de titulo, logo uma entrada cuja
+        #       1.ª metade fecha um paragrafo e a 2.ª abre o seguinte passa a
+        #       ser acusada;
+        #   (2) apaga marcadores, logo colide mais facilmente com prosa nossa.
+        # ⛔ POR ISSO: **um acerto desta passagem exige LEITURA HUMANA antes de
+        # contar como fuga.** A regra que o ledger desta casa ja' escreve — uma
+        # entrada que dispara sobre uso licito treina quem corre o sweep a
+        # ignorar achados — vale aqui, e a cura e' ler o acerto, nunca alargar
+        # a tolerancia.
+        flat="$(tr '\n' ' ' < "$f" 2>/dev/null | tr -d '*_`>' | tr -s ' ')"
         out="$(printf '%s' "$flat" | grep -oF -f <(patfile) 2>/dev/null | sort -u)" || true
         if [ -n "$out" ]; then
           out="$(printf '%s' "$out" | sed "s|^|$f (sem quebras de linha): |")"

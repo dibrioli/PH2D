@@ -22,18 +22,30 @@ Filtragem §4.3: executada em 2026-09-15 · Sweep: ✅ VERDE — vassoura de **5
   ⚠️ A vassoura cobre INGLÊS e PORTUGUÊS e as formas SEM ACENTOS — esta espec escreve-se em
   português, e traduzir prosa do alvo é a forma de fuga que já passou três vezes nesta casa.
   ⚠️⚠️ **O sweep VERDE inicial era do INSTRUMENTO, não do texto** — e foi preciso curá-lo DUAS
-  vezes para ele dizer a verdade: (a) a vassoura não cobria as descrições do manual traduzidas,
-  e ao cobri-las acusou **5 linhas desta espec**, que foram reescritas a partir da MEDIÇÃO em vez
-  da prosa do alvo; (b) o `cleanroom-sweep.sh` era **cego a toda frase que o parágrafo quebra**
-  (`grep -F` casa dentro de UMA linha), e ao curá-lo ele apanhou uma citação traduzida que
-  sobrevivia partida entre duas linhas. Ensaio com controlo e a cura: ledger §«Achado de
-  instrumento». ⭐ As 5 especs que já estavam no repo continuam verdes sob o instrumento curado.
-Auditoria §4.2 (R-pré): ⛔⛔ **PENDENTE — a janela NÃO implementa a partir desta versão.**
-  Quem a escreveu foi o subagente-E, e autofiltragem não é auditoria (SKILL §3.R). É preciso um
-  subagente R-PRÉ NOVO (≠ este E) que leia os dois lados e ateste aqui. ⚠️ Peça-lhe atenção
+  vezes para ele dizer a verdade — e o R-pré achou a **TERCEIRA**: (a) a vassoura não cobria as
+  descrições do manual traduzidas, e ao cobri-las acusou **5 linhas desta espec**, reescritas a
+  partir da MEDIÇÃO em vez da prosa do alvo; (b) o `cleanroom-sweep.sh` era **cego a toda frase que
+  o parágrafo quebra** (`grep -F` casa dentro de UMA linha); (c) ⛔ **e continuava cego à frase com
+  ÊNFASE MARKDOWN no meio**, porque a cura (b) normalizava espaço em branco e **não** marcadores —
+  a passagem plana passa agora a remover ênfase e marcas de citação, e ao fazê-lo acusou **uma**
+  linha da §6.1 desta espec, que saiu. Ensaio com controlo dos dois lados e as três curas: ledger
+  §«Achado de instrumento». ⭐ As 5 especs que já estavam no repo continuam verdes sob o
+  instrumento curado, nas três passagens.
+  ⚠️ **Preço declarado da 3.ª cura:** a passagem plana junta agora **através de parágrafo e de
+  título**, logo um acerto dela **exige leitura humana** antes de contar como fuga (está escrito
+  no cabeçalho do script).
+Auditoria §4.2 (R-pré): ⛔ **1.ª passagem em 2026-09-15: NÃO ATESTADA — 9 achados, 2 bloqueantes.**
+  Veredito do auditor: a parte medida é forte, as fixturas cobrem o que a espec afirma, e não há
+  fuga de nome interno nem de organização. Os **9 foram corrigidos** nesta versão (o mapa
+  achado→cura está no ledger §«R-pré, 1.ª passagem»).
+  ⛔⛔ **AINDA PENDENTE: o atestado é do R, e o E não se ateste a si mesmo.** A re-auditoria é
+  curta — re-correr o sweep com a passagem plana a remover também a ênfase. A janela **não
+  implementa** antes do atestado. ⚠️ Peça-lhe atenção
   especial aos itens com selo **L** (§0): são os que descrevem comportamento lido no fonte e
-  ainda NÃO confirmado na saída do oráculo — §4.2 (o enchimento da profundidade), §6.2 (as quatro
-  combinações do ponto médio) e §10 (as três suposições).
+  ainda NÃO confirmado na saída do oráculo — **§4.2** (o factor de alcance), **§6.1** (o enchimento
+  da profundidade), **§6.2** (os três estados alcançáveis do ponto médio), **§5** (a divergência de
+  escala não-uniforme), **§9** (a razão do modo ausente), **§10** (as três suposições) e **§15**
+  (o identificador das faces novas).
 Mapa de leitura da literatura: ⭐ **nenhum paper é necessário para a LEI DO GESTO** — ela é
   geometria elementar (desprojecção, prisma, triangulação de polígono 2D). Para o MOTOR, que é
   T0 e se porta, a literatura pública relevante é a do algoritmo de booleana robusta sobre malhas
@@ -186,10 +198,13 @@ problema movido, não resolvido.
 | ⭐ **`manifold-rust`** | `0.13.1` (2026-08-10) | **`Apache-2.0`** (ficheiro `LICENSE` completo no pacote) | `Cargo.toml` + `LICENSE` |
 | `csgrs` | `0.20.1` | `MIT` | crates.io |
 
-⛔ **`meshbool` NÃO existe em crates.io** (medido: a API devolve *«does not exist»*). Só vive num
-repositório. ⇒ ⛔ **não é candidato a dependência de produto** — entraria como dependência de `git`,
-sem versionamento nem yank, e a nota anterior que o nomeava como *«o melhor encaixe»* estava a
-julgar o código sem olhar a **porta de distribuição**.
+⛔⛔ **Houve uma QUARTA rota candidata e ela foi RETIRADA — não existe no registo de pacotes**
+(busca por nome devolve zero) e o artefacto dela **nunca foi inspeccionado**: a licença que eu lhe
+atribuíra vinha da página do repositório, não de um ficheiro aberto. Ela só vive num repositório
+`git`, logo entraria sem versionamento nem *yank*. ⇒ ⛔ **não é candidata a dependência de
+produto**, e o nome sai deste documento — *nomear uma rota que o próximo auditor não consegue
+buscar é pior do que não a listar*. ⚠️ A nota anterior chamava-lhe *«o melhor encaixe»*: julguei o
+código pela descrição e não olhei a **porta de distribuição**.
 
 ### §1.5.3 — Maturidade, em número
 
@@ -383,11 +398,13 @@ duas coisas são resolvidas mais à frente (§7.3 e §8).
 
 Dois pontos de ecrã `p0`, `p1` não delimitam área nenhuma. A lei que os transforma num anel:
 
-1. **Um factor de alcance** (**L**), derivado da peça, não escolhido: projecta-se a caixa envolvente do
-   objecto no ecrã, e o factor é o **comprimento da diagonal** desse rectângulo **× 2**.
-   ⚠️ O papel dele é **um só**: pôr os pontos criados longe o bastante para envolverem a peça
-   inteira. ⛔ Não é constante de afinação — **qualquer** valor que envolva a peça dá a mesma saída,
-   e é por isso que o `× 2` não precisa de ser reproduzido.
+1. **Um factor de alcance** (**L**), derivado da peça e não escolhido: projecta-se a caixa
+   envolvente do objecto no ecrã, e o factor é o **comprimento da diagonal** desse rectângulo
+   **× 2**.
+   ⭐ **O REQUISITO é sobre a SAÍDA, e é assim que o I o deve implementar e gatear:** os dois
+   pontos fabricados têm de cair **fora da silhueta projectada da peça**. ⛔ Não é constante de
+   afinação — **qualquer** factor que satisfaça esse requisito produz **o mesmo anel**, e por isso
+   o `× 2` não precisa de ser reproduzido.
 2. **Prolongamento**: se *não* se está a limitar ao segmento, `p1` avança e `p0` recua ao longo da
    direcção da linha por esse factor. ⇒ a linha passa a atravessar a peça de lado a lado.
 3. **Lado**: toma-se a perpendicular da direcção — a rotação de `−90°`, isto é `(dy, −dx)` — e
@@ -420,11 +437,13 @@ Duas orientações, e elas diferem **só na normal**:
 Dessas duas grandezas forma-se um **plano** (ponto + normal), e esse plano é o referencial de
 **todas** as profundidades da §6.
 
-⚠️ **Divergência declarada do alvo, e ela é um FACTO de comportamento**: a normal é levada a mundo
-por uma transformação que **não** compensa escala não-uniforme. Consequência observável: numa peça
-com escala não-uniforme, a orientação `SURFACE` aponta para um sítio ligeiramente errado — o alvo
-trata essa configuração como fora do uso previsto do modo de escultura. **N:** se o nosso módulo permitir
-escala não-uniforme, esta é uma escolha **nossa** a fazer conscientemente, e não um detalhe a herdar.
+⚠️ **Divergência com endereço (**L**), re-derivada do observável:** sob escala **não-uniforme**, a
+normal de superfície é levada a mundo por uma transformação que **não a corrige** — uma normal não
+se transforma como um ponto —, logo o **eixo do varrimento fica desviado** e o prisma sai inclinado
+em relação à superfície que o artista apontou. Em escala uniforme o desvio é zero, e é por isso que
+não aparece no uso comum.
+**N:** se o nosso módulo permitir escala não-uniforme, corrigi-la é decisão **nossa** — e é barata,
+porque a correcção é conhecida. ⛔ Herdar o desvio por imitação seria copiar um defeito.
 
 ---
 
@@ -434,8 +453,10 @@ escala não-uniforme, esta é uma escolha **nossa** a fazer conscientemente, e n
 
 ### §6.1 — Regime de omissão: a profundidade TOTAL da peça
 
-**D** (o manual diz que sem a opção do cursor a ferramenta usa *a profundidade total do objecto*)
-e **F**:
+⭐ **F — derivação nossa, e ela não precisa de citação nenhuma:** o passo 1 abaixo constrói a
+profundidade a partir da **extensão da própria peça** ao longo do eixo, logo o regime *é* a
+profundidade total por construção. A §6.2 confirma-o por **convergência medida**: com raio de
+cursor maior que a peça, os dois regimes dão saída idêntica ao bit.
 
 1. Percorre-se **todo** vértice da peça (em mundo) e mede-se a **distância com sinal ao plano** da
    §5. `frente = mínimo`, `trás = máximo`.
@@ -453,16 +474,18 @@ peça. *Não existe aqui o caso «não atravessou».*
 
 Com a opção ligada, a profundidade deixa de vir da peça e passa a vir do **cursor**:
 
-1. **Um ponto médio** (**L** nas quatro combinações; ⭐ **M** no efeito agregado, tabela abaixo):
-   - orientação `VIEW`: se o gesto começou **sobre** a peça, a distância com sinal desse ponto ao
-     plano; se não, o **meio** de `(frente, trás)` da §6.1.
-   - orientação `SURFACE`: se o gesto começou sobre a peça, **exactamente zero** — ⚠️ e a
-     consequência é declarada: a forma fica **metade dentro** da superfície. Se não, o meio de
-     `(frente, trás)`.
-2. **Um raio**: o raio do cursor em unidades de cena. ⚠️ **Com uma fronteira nomeada:** o raio da
-   sessão só é válido se o gesto começou **sobre** a peça; começando fora, ele é **recalculado** a
-   partir dos ajustes do pincel na posição inicial. *Sem essa segunda rota o raio lê-se `0` e o
-   volume tem espessura nula* — o alvo registou isto como defeito e corrigiu-o.
+1. **Um ponto médio** (**L**; ⭐ **M** no efeito agregado, tabela da varredura abaixo). ⚠️ **São
+   TRÊS estados alcançáveis, e a tabela deles está no fecho desta secção** — a enumeração por
+   orientação lê-se assim:
+   - começou **sobre** a peça, orientação `VIEW`: a distância com sinal do ponto de partida ao plano;
+   - começou **sobre** a peça, orientação `SURFACE`: **exactamente zero** ⇒ a forma fica **metade
+     dentro** da superfície;
+   - começou **fora** da peça: o **meio** de `(frente, trás)` da §6.1 — ⭐ e aqui a orientação **já
+     não é a autorada** (§3 coagiu-a antes deste cálculo), logo é **um** caso e não dois.
+2. **Um raio**, em unidades de cena. ⚠️ **CONDIÇÃO DE FRONTEIRA que o I tem de honrar:** o raio do
+   cursor só está **definido** quando o gesto começa **sobre a superfície**. Começando fora, ele
+   tem de ser **derivado dos ajustes do pincel na posição inicial** — ⛔ sem essa segunda rota
+   lê-se `0`, e um raio nulo dá um volume **sem espessura**, isto é, um corte que não corta nada.
 3. `frente = médio − raio`, `trás = médio + raio`.
 4. ⛔ **Não há enchimento neste regime** — a razão declarada é que o enchimento alteraria a
    profundidade que o cursor acabou de definir.
@@ -491,8 +514,20 @@ passante. Não há recusa, não há aviso, não há caso especial.
 
 ⚠️ **E o bolso FECHA**: `0` arestas de bordo em todas as linhas. A peça continua a encerrar volume.
 
-⚠️ **E este é o único knob da família cujo efeito depende de onde o gesto COMEÇOU** — as quatro
-combinações (`VIEW`/`SURFACE` × acertou/não acertou) dão quatro leis diferentes de ponto médio.
+⚠️⚠️ **E este é o único knob da família cujo efeito depende de onde o gesto COMEÇOU — mas os
+estados ALCANÇÁVEIS são TRÊS, não quatro** (**L**, com a ordem conferida: a coacção da §3 corre na
+**inicialização do gesto**, portanto **antes** de a profundidade ser calculada):
+
+| # | estado alcançável | ponto médio |
+|---|---|---|
+| 1 | começou **sobre** a peça, orientação `VIEW` | a distância com sinal do ponto de partida ao plano |
+| 2 | começou **sobre** a peça, orientação `SURFACE` | **zero** (a forma fica metade dentro) |
+| 3 | começou **fora** da peça — ⭐ **o knob já foi sobreposto para `VIEW` pela §3** | o **meio** de `(frente, trás)` |
+
+⛔⛔ **Um despacho `2 × 2` shipa um braço que gesto nenhum alcança.** As duas células de «começou
+fora» são **a mesma expressão**, porque a orientação já não é a autorada quando a profundidade é
+calculada. *É a forma do «dreno de um braço só» que esta casa já paga: o `match` cobre a variante,
+o produto nunca lá chega, e o braço morto não tem como ser testado.*
 
 ---
 
@@ -597,8 +632,8 @@ deixa `0/97` — os dois lados são cortados; a peça vai de `482` para `260` v�
 ⚠️ **A cópia guardada é load-bearing:** é ela que impede a passagem `k+1` de espelhar o prisma que a
 passagem `k` já espelhou. *Sem ela as passagens compõem-se e o espelho vai ao sítio errado.*
 
-⭐⭐ **E é a simetria que explica um modo AUSENTE.** A operação de **interseção** existe no motor e
-**não é oferecida na interface** — a razão declarada é que ela **não funciona com simetria**: a
+⭐⭐ **E é a simetria que explica um modo AUSENTE** (**L**). A operação de **interseção** existe no
+motor e **não é oferecida na interface**, e a razão é que ela **não sobrevive às passagens**: a
 primeira passagem apaga tudo o que está fora do primeiro prisma, e isso inclui a metade que a
 segunda passagem ia tratar. ⇒ *num desenho encadeado por passagens, a interseção não é uma
 operação repetível.* **N:** se o nosso corte não encadear passagens desta maneira, a interseção
@@ -644,6 +679,18 @@ ferramenta corre), e ela está **medida** na §11.1, não citada:
 ⚠️ **O alvo declara uma excepção à exigência** do terceiro — o caso de uma diferença contra um
 plano —, que ⏳ **não** foi exercitada por este oráculo. Fica como dívida nomeada.
 
+⛔⛔ **E ESTA TABELA É DESCRIÇÃO DO ORÁCULO, NÃO UM MENU DO QUE SE PODE PORTAR.** O degrau da §1.4
+é **por solucionador**:
+
+| solucionador | o que ele é | degrau |
+|---|---|---|
+| `MANIFOLD` (**o de omissão**) | ⭐ a **biblioteca externa permissiva** da §1.4/§1.5 | **T0 — porta-se** |
+| `EXACT` | código do **próprio alvo**, sob copyleft. ⚠️ Implementa método **publicado**, logo a rota de **literatura** está aberta — mas é reimplementação, não porte | ⛔ **não portável** |
+| `FLOAT` | o solucionador flutuante antigo do próprio alvo, sob copyleft | ⛔ **não portável** |
+
+⇒ ⚠️ **escolher solucionador é também escolher DEGRAU.** A §1.4 reivindica a porta aberta para **um**
+dos três, e reivindicá-la para os outros dois seria falso.
+
 **M:** nas fixturas **fechadas** os três dão saída **idêntica**, e não só na peça pequena — na
 esfera de **98 306** vértices os três dão `98 306 → 58 019`, `98 304 → 57 754` faces, `57 489`
 sobreviventes e o mesmo volume com sinal (`2,8373`).
@@ -684,13 +731,15 @@ errado. ⚠️ Mas note-se que ele é **indistinguível, de fora, de um corte qu
 ### §11.1 — ⭐⭐ A malha ABERTA é onde os três solucionadores DIVERGEM
 
 **M**, sobre três fixturas **nossas** com bordo (um tubo aberto, um disco, e uma peça degenerada
-de uma face):
+de **duas** faces — os mesmos três vértices com enrolamento oposto):
 
 | solucionador | tubo aberto (18 V, bordo 12) | disco (19 V, bordo 12) | peça de 1 face (bordo 3) |
 |---|---|---|---|
 | `MANIFOLD` | ⛔ **RECUSA** | ⛔ **RECUSA** | ⛔ **RECUSA** |
 | `EXACT` | `→ 17 V`, bordo **`10`** | `→ 21 V`, bordo **`17`** | `→ 4 V`, bordo `4` |
 | `FLOAT` | `→ 17 V`, bordo **`14`** | `→ 21 V`, bordo **`17`** | `→ 4 V`, bordo `4` |
+
+*(a coluna da peça degenerada é `2` faces na entrada — ver o README das fixturas)*
 
 ⭐ **Três factos que só esta tabela dá:**
 1. o solucionador de omissão **recusa** malha aberta, em voz alta e sem tocar na peça — ⇒ numa
@@ -786,7 +835,7 @@ fora, dito para que ninguém o reconstrua por engano:
 
 - antes do corte, o alvo garante que a peça tem a camada de conjuntos de faces criada;
 - depois do corte, ele procura o **próximo identificador livre** e atribui-o às faces que a
-  booleana criou e que não pertencem a conjunto nenhum. O manual descreve o efeito: a geometria
+  booleana criou e que não pertencem a conjunto nenhum (**L**). O manual descreve o efeito: a geometria
   nova recebe um conjunto novo, e ao remover geometria é a **geometria interior** ao longo da
   selecção que o recebe (**D**).
 

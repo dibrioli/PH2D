@@ -48,8 +48,17 @@ std::fs::write(caminho, write_obj(&[piece])).unwrap();
 
 ## O formato de `corridas_do_oraculo.json`
 
-**58 corridas.** Cada uma tem as opções que a produziram e, quando não foi recusada, o estado da
-malha `antes` e `depois` nas mesmas colunas:
+**56 corridas, com NOME ÚNICO** — e a unicidade é **verificada**, não prometida:
+`python3 verifica_corridas.py` (piso de população, nome único, e toda recusa com motivo de
+domínio). ⛔ **Corra-o antes de citar qualquer número daqui.**
+
+⚠️⚠️ **Porque ele existe:** este corpus já teve **dois nomes repetidos**, com registos
+**contraditórios** sob o mesmo nome — um par sem medição nenhuma (defeito do arnês, não do
+oráculo) e o par bom. *Um arnês indexado por nome apanha o que calhar, e a discordância é muda.*
+As duas corridas fantasma foram **apagadas**: uma corrida que nunca produziu medição não é fixtura.
+
+Cada corrida tem as opções que a produziram e, quando não foi recusada, o estado da malha `antes`
+e `depois` nas mesmas colunas:
 
 | chave | o que é |
 |---|---|
@@ -59,7 +68,7 @@ malha `antes` e `depois` nas mesmas colunas:
 | `volume_com_sinal` | ⭐ positivo = nada ficou com a normal virada; e é a **única** coluna que distingue dois bolsos de profundidades diferentes com a mesma contagem |
 | `vertices_de_entrada_preservados_ao_bit` | ⭐⭐ **a régua que separa a booleana da rota por voxel** (espec §1) |
 | `lado_oposto` | a mesma pergunta restrita aos vértices longe do corte |
-| `veredito` · `mensagem` | `FINISHED` / `CANCELLED` / `RECUSADO`, com o texto da recusa |
+| `veredito` · `mensagem` | `FINISHED` / `CANCELLED` / `RECUSADO`. ⛔ A `mensagem` é o motivo **em vocabulário de domínio** — ⚠️ **nunca** o texto que o alvo imprime (ver o parágrafo abaixo) |
 
 ⚠️ **As chaves estão em vocabulário do DOMÍNIO, não no do alvo** (SKILL §5): nenhum nome interno
 dele aparece neste ficheiro, nem nos nomes dos ficheiros desta pasta.

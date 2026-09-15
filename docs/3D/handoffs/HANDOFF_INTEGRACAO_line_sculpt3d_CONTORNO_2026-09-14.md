@@ -1996,3 +1996,171 @@ reprovadas e a primeira uma.
 - ⏳ **ABERTO e NOMEADO, pré-existente:** o `tip_roundness` da
   `VASSOURA_blender-pull.txt` (7 ficheiros, **zero adições** neste diff) — é a
   mesma isenção do §8, e continua a ser dívida da linha dona.
+
+---
+
+## §28 — ⭐⭐⭐ O **QUARTO e último** pincel desbloqueado: **PROJECTAR NA CENA** (`SPEC_unblocked_brushes.md` §6)
+
+O barro é empurrado até **encostar noutra peça da cena** — a ferramenta de
+sentar uma peça numa mesa, de apertar um rosto contra uma parede. Cena **`=45`**.
+Com ele, `SPEC_unblocked_brushes.md` fecha: `Density` · `Erase` · `Smear` ·
+`Scene Project`.
+
+### §28.1 — ⭐⭐⭐ A bancada EXISTE, e a do esfregão não — a diferença está MEDIDA
+
+As `24` fixturas **não trazem o objecto-alvo**: nem o cabeçalho nem o `README`
+dizem onde ele está. Era a **mesma forma de bloqueio** que parou a bancada do
+esfregão (§23: lá faltava a conectividade), e a resposta honesta era **medir
+antes de declarar**.
+
+| o que | como se recupera | resíduo |
+|---|---|---|
+| a malha de entrada | grelha `41×41` sobre `[−1,1]²` em `z = 0`, **row-major** | **`0,000000`** contra a nominal, nas `24` |
+| a direcção da vista | o deslocamento é inteiramente em `z` | — |
+| o plano-alvo | a fixtura de curva **Constant** e força `1` move o miolo o vão INTEIRO, e os `146` vértices pousam **todos** em `z = −0,500000` | `0` de dispersão |
+
+⭐⭐ **E a recuperação é CONFIRMADA por uma segunda fixtura que não a produziu:**
+`projectar_forca05_constante_1passo` pousa em `−0,125000`, que é `0,5 × 0,5²` —
+*a lei da força ao quadrado (§1.1) e a posição do alvo a confirmarem-se uma à
+outra, ao último dígito impresso.*
+
+⚠️⚠️ **E as `24` partilham a MESMA malha de entrada** (o mesmo `sha256` no bloco
+`r`), logo a calibração **transfere por construção** e não por suposição. ⛔ Sem
+esse facto isto seria *«adivinhar a permutação»*, que é exactamente o que a
+bancada do esfregão recusou fazer — e ali com razão.
+
+### §28.2 — O placar: o que está PROVADO, e é mais que um número de paridade
+
+**As `16` reconstrutíveis movem EXACTAMENTE o mesmo conjunto de vértices que o
+oráculo** (`301` contra `301`, zero discordâncias fora da banda de empate).
+⭐ Isso não é um detalhe: é a pegada, a direcção do raio, a regra dos dois
+sentidos, a escolha entre dois alvos, a inversão e as **três recusas** da §6.3 —
+todas estruturalmente certas. *Um conjunto igual com magnitudes diferentes é um
+diagnóstico muito mais preciso que um número agregado.*
+
+Dentro da barra apertada (`2e-6`): **`3`** — as duas de **UM** dab (`7,078e-8`) e
+a que não move nada. As outras `13` correm **seis** dabs e desviam `2,8e-3` a
+`2,6e-1`.
+
+⭐ **A partição é LIMPA e diz onde procurar:** tudo o que corre em **um** dab bate
+ao sétimo decimal; tudo o que corre em **seis** desvia. ⇒ o que falta **não é a
+lei do raio** — é a **composição por dab**, que a espec §8.4 nomeia como a coisa
+que um traço inteiro mistura.
+
+⛔⛔ **A barra NÃO foi afrouxada para os engolir.** Uma barra de `3e-1` faria o
+gate ficar verde sobre qualquer coisa — *uma barra que aceita o desvio que se tem
+mede o desvio que se tem*. A tabela inteira vive no cabeçalho da bancada, com
+catraca nos **dois** sentidos (ela reprova se o placar descer **e** se ele subir
+sem a tabela ser actualizada).
+
+⛔ **As SEIS que ficam de fora, e o que falta a cada uma:** as três do alvo-esfera
+(a **tesselação** do alvo *é* a medição), a do alvo inclinado e escalado (a nossa
+`Pose` **não tem rotação** para a exprimir), a `normal_plano_x` (a orientação que
+faz a normal da área apontar `+X`) e a `simetria_x` (a altura do alvo não é
+separável do efeito da simetria). ⏳ **Dívida nomeada, acto do E:** uma emenda que
+emita a geometria e a pose de cada alvo.
+
+### §28.3 — ⛔⛔ TRÊS leis que o corpus deu e a espec não dizia assim
+
+1. **INVERTER VIRA O RAIO, não o sinal do deslocamento.** Escrito como negação no
+   fim, `projectar_invertido` movia **`0` vértices contra `301`**: o alvo dela
+   está ACIMA e os dois sentidos estão DESLIGADOS ⇒ *não há o que negar quando o
+   raio não acertou em nada*. ⭐ Do lado do artista: `Ctrl` aqui não quer dizer
+   *«afasta»*, quer dizer **«procura do outro lado»**.
+2. **O `w × strength` do APAGADOR não transfere, e a linha que os separa é
+   invisível a olho:** quem **declara** um perfil de referência já recebe a força
+   ao quadrado no `w`. Medido a `0,5` de slider — `Scene Project` em `B` dá
+   **`0,25`**, o apagador dá `0,5`. Escrito à maneira dele, este media `0,0625`
+   onde o oráculo mede `0,125`: a força ao **CUBO**.
+3. **Com a curva CONSTANTE um empate de último bit vale o VÃO INTEIRO.** Três
+   vértices da grelha caem a `6e-9` do raio, e uma barra de posição lia `5,0e-1`
+   sobre uma lei certa ao sétimo decimal ⇒ a régua tem **duas metades**: a LEI no
+   miolo comum, e a BORDA contra uma banda de empate **derivada da geometria**.
+
+⚠️ **E o ARNÊS mentiu antes de dizer a verdade:** ele comparava a nossa saída
+contra o repouso **DELES**, e a reconstrução bate a do corpus a `<1e-6` — exacto
+para a geometria e **enorme** para um teste de igualdade. `1 069` dos `1 681`
+liam-se como movidos por nós sem se terem mexido. *Cada lado mede-se contra o
+próprio repouso.*
+
+### §28.4 — O substrato: uma PORTA que já existia com o nome errado
+
+O instantâneo das outras peças da cena existia como `cloth_colliders`. Ele passa
+a ser **`pecas_da_cena`**, com um predicado por verbo
+(`Brush::precisa_das_pecas_da_cena`): o tecido só quer as peças com a colisão
+ligada (ela é cara), a projecção quer-as sempre — *sem elas ela não tem lei
+nenhuma*. ⛔ Escrito como um `if` de duas pernas no sítio da fotografia, o
+terceiro consumidor herdaria a perna errada em silêncio.
+
+⭐ Mais **`pose_activa`**, e ela não é conforto: o `t` de um acerto vem em
+unidades da peça **consultada** (o `Ray` normaliza a direcção), logo dois
+candidatos em peças com escalas diferentes **não são comparáveis** pelo `t` cru —
+e o `min |d|` da espec escolheria pelo número errado, em silêncio, porque os dois
+são `f32` plausíveis.
+
+### §28.5 — ⛔⛔⛔ O TECTO DE CUSTO, e ele achou um defeito de OUTRA CRATE
+
+| vértices | `Draw` | 1 alvo | 2 alvos | 4 alvos | 1+bidir | alvo 160k | 160k+bidir |
+|---|---|---|---|---|---|---|---|
+| `9 902` | `0,028` | `0,021` | `0,019` | `0,025` | `0,019` | `0,051` | `0,046` |
+| `39 802` | `0,100` | `0,075` | `0,075` | `0,081` | `0,071` | `0,218` | `0,190` |
+| `159 602` | `0,401` | `0,313` | `0,326` | `0,335` | `0,299` | `0,744` | **`0,697`** |
+
+⇒ o pior caso é **`0,697 ms`** contra um orçamento de `8` — `1,7×` um dab de
+`Draw`. ⛔ **A advertência da espec (os `2,6×`–`6,1×` da colisão do tecido) NÃO
+transferiu**, e é por isso que ela mandava medir.
+
+⭐⭐⭐ **Mas a PRIMEIRA medição devolveu `15,423 ms`**, e a sonda isolou-o em dois
+números: na mesma malha, um raio que **acerta** custava `0,436 µs` e um que
+**erra** custava **`1 021,9 µs`** — `2 343×`. **Eram duas promessas não
+cumpridas, uma escondida pela outra:**
+
+1. o `Aabb::ray_slab` **documentava** que um eixo com `NaN` não restringe o
+   intervalo, e o código fazia o contrário (`NaN.min(+∞) = +∞` ⇒ `t0 = ∞`, que é
+   uma **rejeição**);
+2. o `Octree::ray_visit_leaves` empilhava a **RAIZ** sem a testar, e a poda dos
+   filhos (`t0 <= best`) é inerte enquanto nada foi acertado (`∞ <= ∞` é
+   **verdade**) ⇒ *num raio que erra, cada folha era visitada*.
+
+⛔⛔ **O (2) era a REDE que escondia o (1)**, e a prova é que assim que a raiz
+passou a acreditar no slab, o gate
+`an_axis_aligned_ray_grazing_a_box_plane_is_not_lost_to_nan` — que existe há
+muito a defender exactamente aquele caso — **reprovou**. *Uma promessa de doc que
+o código não cumpre pode viver anos debaixo de uma rede noutro ficheiro.*
+
+⚠️⚠️ **Quem o expôs foi este pincel** (um raio por vértice, e metade deles erra de
+propósito), **mas quem já pagava era o PICK**: o cursor fora da peça é um raio
+que erra. *Um defeito de custo que só aparece quando alguém erra de propósito
+pode viver anos numa crate que toda a gente usa.*
+
+### §28.6 — Os censos, e o que cada um custou
+
+- **DOIS censos passaram a MEDIR o verbo em vez de o excluir** (`o dab não fez
+  nada em canal nenhum`): a cura é a irmã da `referencia_sintetica` — um alvo
+  sintético que **ENVOLVE** a peça, para que qualquer raio acerte. *Um censo que
+  exclui um verbo deixa de o testar*, e aqui custaria duas propriedades reais.
+- **O gate de costura apanhou a caixa PINTADA E MORTA SOB O DEDO na primeira
+  corrida** — a forma exacta que o esfregão pagou (§23).
+- **O teclado:** o verbo entra na lista dos que shipam **só com chip**, pela razão
+  dos três irmãos — ele é **inerte na configuração de fábrica**. ⚠️ Mas ele **não**
+  é da família da manutenção da malha: é de FORMA, e *se um dia a cena de fábrica
+  tiver duas peças é este o verbo a reconsiderar primeiro*.
+- **Três tectos de LOC curados por CORTE**, nunca por isenção: `stroke.rs`
+  (`698 → 700`, com a prosa a encolher e o assunto a apontar para o módulo),
+  `stroke_target.rs` (`692 → 761 → 700`, com o alvo a migrar para o irmão) e
+  `panel-sculpt3d/rows.rs` (`601 → 594`).
+
+### §28.7 — ⏳ O que fica ABERTO
+
+| # | item | estado |
+|---|---|---|
+| 1 | a **composição por dab** sobre um traço (`13` fixturas, `2,8e-3` a `2,6e-1`) | ⏳ medido, com a tabela e a catraca |
+| 2 | as **6** fixturas que precisam da geometria do alvo | ⏳ **acto do E** — uma emenda ao emissor |
+| 3 | a **folga simétrica** (espec §10.3) | ⏳ **decisão do dono** — a lei alternativa está escrita, medida e `#[cfg(test)]` |
+| 4 | a regra *«o alvo ESCONDIDO não conta»* (§6.1) | ⏳ o `SceneObject` não tem visibilidade; ela vive no mundo ECS e o pen-down não lhe chega |
+| 5 | o `tip_roundness` da vassoura | ⏳ **pré-existente**, zero adições neste diff — dívida da linha dona |
+
+⚠️ **`stroke.rs` está EXACTAMENTE no tecto (`700` de `700`)**, com zero folga: o
+próximo campo obriga um corte por assunto, e o candidato natural é o grupo *o que
+o pen-down fotografa* (`persistent_base` · `pecas_da_cena` · `pose_activa` ·
+`reference`), que pede uma sub-struct e toca ~20 sítios.

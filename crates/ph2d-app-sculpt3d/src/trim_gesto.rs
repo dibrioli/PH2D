@@ -176,3 +176,30 @@ impl Gesto {
 #[cfg(test)]
 #[path = "trim_gesto_tests.rs"]
 mod tests;
+
+/// ⭐⭐ **A PRÉ-VISUALIZAÇÃO do gesto** — o que a mão já desenhou, em pixels.
+///
+/// ⚠️ **Sem ela o artista arrasta e não vê nada até largar**, e um gesto invisível
+/// lê-se como uma ferramenta que não responde. É a mesma razão pela qual o
+/// contorno e a pose desta linha ganharam indicador: *o anel do cursor descreve
+/// mal um verbo cuja região não sai do cursor.*
+///
+/// Devolve o anel fechado em coordenadas de ECRÃ, ou `None` quando ainda não há
+/// forma nenhuma.
+impl Gesto {
+    pub(crate) fn previa(&self) -> Option<Vec<[f32; 2]>> {
+        let anel = self.anel();
+        (anel.len() >= 3).then_some(anel)
+    }
+}
+
+impl super::Sculpt3dScene {
+    /// O anel do corte em curso, para a moldura pintar.
+    ///
+    /// ⚠️ **Sai do campo do GESTO e nunca de um pedido** — pintar a partir do
+    /// que o produto *vai* fazer, e não do que ele *já* guardou, é como um
+    /// indicador passa a mostrar outra coisa que não a ferramenta.
+    pub fn trim_previa(&self) -> Option<Vec<[f32; 2]>> {
+        self.trim.gesto.as_ref()?.previa()
+    }
+}

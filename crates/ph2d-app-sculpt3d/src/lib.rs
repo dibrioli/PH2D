@@ -352,6 +352,9 @@ pub mod keys_view;
 #[path = "trim_gesto.rs"]
 pub(crate) mod trim_gesto;
 
+/// A cor do anel do corte em curso.
+pub const TRIM_RING_RGBA: [f32; 4] = [0.98, 0.78, 0.25, 0.95];
+
 /// **O CORTE aplicado à peça** — a costura entre o gesto, a lei e o motor.
 /// Ver [`trim_aplica`].
 #[path = "trim_aplica.rs"]

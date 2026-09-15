@@ -100,6 +100,22 @@ impl crate::App {
                     traco(pivo, rgba);
                 }
             }
+            // ⭐⭐ **O CORTE EM CURSO** — a forma que a mão já desenhou.
+            //
+            // ⚠️ **Ela é pintada mesmo SOBRE o painel**, ao contrário dos
+            // vizinhos: os outros indicadores seguem o cursor e sobre a moldura
+            // não teriam sujeito, mas este é um gesto **em captura** — o dedo
+            // continua em baixo, e um arrasto que passeia por cima de um painel
+            // não deixa de existir. *Apagá-lo ali faria a lâmina piscar.*
+            if let Some(anel) = scene.trim_previa() {
+                let mut caminho = ph2d_vector::BezPath::new();
+                caminho.move_to((f64::from(anel[0][0]), f64::from(anel[0][1])));
+                for p in &anel[1..] {
+                    caminho.line_to((f64::from(p[0]), f64::from(p[1])));
+                }
+                caminho.close_path();
+                traco(&caminho, ph2d_app_sculpt3d::TRIM_RING_RGBA);
+            }
             if !over_panel && let Some(mark) = scene.cursor_mark(px, py) {
                 let rgba = if mark.on_surface {
                     ph2d_app_sculpt3d::ON_SURFACE_RGBA

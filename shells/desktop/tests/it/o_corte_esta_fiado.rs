@@ -111,3 +111,33 @@ fn a_orientacao_tem_tecla_e_a_coaccao_e_dita() {
          que muda de valor sem avisar é a espécie de controlo que mente"
     );
 }
+
+/// ⭐⭐ **O GESTO EM CURSO É PINTADO.**
+///
+/// ⚠️ **Sem isto o artista arrasta e não vê nada até largar**, e um gesto
+/// invisível lê-se como uma ferramenta que não responde — o mesmo argumento que
+/// deu indicador ao contorno e à pose desta linha.
+///
+/// ⚠️ **E ele é pintado mesmo SOBRE o painel**, ao contrário dos vizinhos: os
+/// outros seguem o cursor e sobre a moldura não teriam sujeito; este é um gesto
+/// **em captura**, e um arrasto que passeia por cima de um painel não deixa de
+/// existir. *Apagá-lo ali faria a lâmina piscar.*
+#[test]
+fn o_gesto_em_curso_e_pintado() {
+    let overlay = sculpt_source::source("render_loop/fase_canvas_overlays.rs");
+    let at = overlay
+        .find("scene.trim_previa()")
+        .expect("a moldura pergunta pelo gesto em curso");
+    assert!(
+        overlay[at..].contains("TRIM_RING_RGBA"),
+        "e pinta-o com a cor do corte"
+    );
+    // ⛔ A guarda `over_panel` NÃO pode estar na mesma linha da pergunta: este
+    // gesto é de captura. A régua é a linha, que é onde a guarda dos vizinhos
+    // vive (`if !over_panel && let Some(..)`).
+    let linha = overlay[..at].rsplit('\n').next().unwrap_or_default();
+    assert!(
+        !linha.contains("over_panel"),
+        "o corte em curso não pode ser apagado sobre o painel — ele está em captura"
+    );
+}

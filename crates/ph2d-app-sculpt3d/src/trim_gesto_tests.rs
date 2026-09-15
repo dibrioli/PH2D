@@ -136,3 +136,19 @@ fn o_plano_usa_a_normal_da_superficie_ou_a_vista_invertida() {
     );
     assert_eq!(a.origem, FORA, "sem acerto a origem é a que o chamador dá");
 }
+
+/// ⭐ **A PRÉ-VISUALIZAÇÃO só existe quando há forma.**
+///
+/// ⚠️ **As duas metades:** antes de haver área ela é `None` (senão a moldura
+/// pintaria um risco degenerado a cada clique), e depois ela é exactamente o
+/// anel que a lei vai receber — *um indicador que mostra outra coisa que não a
+/// ferramenta é pior que nenhum.*
+#[test]
+fn a_previa_so_existe_quando_ha_forma_e_e_o_mesmo_anel() {
+    let mut g = Gesto::comeca(Forma::Caixa, [10.0, 10.0], None);
+    assert!(g.previa().is_none(), "um clique parado não desenha nada");
+    g.move_para([60.0, 40.0]);
+    let previa = g.previa().expect("agora há caixa");
+    assert_eq!(previa, g.anel(), "a prévia É o anel que a lei recebe");
+    assert_eq!(previa.len(), 4);
+}

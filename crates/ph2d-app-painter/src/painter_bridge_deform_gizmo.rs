@@ -11,10 +11,12 @@ use ph2d_render::{Camera2d, Sprite};
 use ph2d_tool_painter::PainterTool;
 use ph2d_vector::{Point, VectorScene};
 
+#[allow(clippy::too_many_arguments)]
 pub(super) fn draw_deform_gizmo(
     painter: &PainterTool,
     hero: &HeroScreen,
     sim: &SimWorld,
+    present: &ph2d_ecs::World,
     camera: &Camera2d,
     window_size: WindowSize,
     vector_scene: &mut VectorScene,
@@ -48,7 +50,11 @@ pub(super) fn draw_deform_gizmo(
         camera,
         window_size,
     );
-    let map = |p: [f32; 2]| affine * Point::new(f64::from(p[0]), f64::from(p[1]));
+    // ⭐⭐⭐ O gizmo é pintado onde a arte DESENHA (item 4 do dono) — ver a nota gémea no
+    // [`crate::painter_bridge_selection_gizmos`].
+    let mapa =
+        crate::canvas_map::CanvasMap::new(present, bits, iw, ih, affine, camera, window_size);
+    let map = |p: [f32; 2]| mapa.point(p);
     // Image-px → screen per-pixel scale (for the rotate-ring hover distances).
     let scale = {
         let c = affine.as_coeffs();
@@ -63,7 +69,9 @@ pub(super) fn draw_deform_gizmo(
     // control point (only those are grabbable).
     if let Some(lines) = &g.mesh_lines {
         for line in lines {
-            let pts: Vec<Point> = line.iter().map(|&p| map(p)).collect();
+            // ⚠️ ABERTA: as linhas da malha de warp já são curvas autoradas, e partir cada troço é
+            // o que as faz seguir a dobra em vez de a cortar.
+            let pts = mapa.polyline(line, false);
             crate::painter_bridge_gizmo::stroke_open(scene, &pts, &pal);
         }
         if let Some(handles) = &g.mesh_handles {
@@ -74,7 +82,9 @@ pub(super) fn draw_deform_gizmo(
         return;
     }
     // Oriented transform box / distort quad (closed).
-    let box_pts: Vec<Point> = g.box_corners.iter().map(|&p| map(p)).collect();
+    // ⛔ FECHADA: sem o troço de fecho o quarto lado sairia recto enquanto os outros três seguem a
+    // arte — *meia lei aplicada é pior que nenhuma, porque os três primeiros convencem o olho*.
+    let box_pts = mapa.polyline(&g.box_corners, true);
     crate::painter_bridge_gizmo::stroke_box(scene, &box_pts, &pal);
     if g.corner_only {
         // Distort: only the 4 corners are draggable (perspective) — no edges / rotate / centre.

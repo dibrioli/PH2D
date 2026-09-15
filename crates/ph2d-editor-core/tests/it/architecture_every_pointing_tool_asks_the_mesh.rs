@@ -351,3 +351,159 @@ fn the_eyedropper_reads_the_screen_and_the_screen_has_two_halves() {
          só esta devolve exactamente a cor que o artista pousou."
     );
 }
+
+/// ⭐⭐⭐⭐ **O CENSO É DERIVADO — e foi a falta disto que reprovou o smoke do dono.**
+///
+/// ⛔⛔⛔ **O gate irmão acima declara-se, por escrito, *«uma FAMÍLIA, não um sítio»* — e era uma
+/// LISTA ESCRITA À MÃO.** Ele nomeava seis ficheiros (curva · linha · grelha · selos · gizmo de
+/// selecção · gizmo), e **nenhuma sonda perguntava *«quem MAIS pinta um ponto autorado?»***. Medido
+/// em 2026-09-15, quando o dono correu a cena do osso e fotografou o contorno da ELIPSE recto por
+/// cima de arte dobrada: eram mais **quatro** desenhadores (elipse · polígono · stencil · simetria)
+/// mais o gizmo de **Deform**, todos invisíveis ao censo — *e a elipse é exactamente a forma que o
+/// roteiro do smoke manda arrastar*.
+///
+/// ⚠️⚠️ **É a MESMA armadilha que o gate irmão diz ter curado, um nível acima:** lá o piso de
+/// população impede que um censo que varre MENOS se leia como *«não há mais nada»*; aqui o censo
+/// não varria nada — ele recitava. *Uma lista escrita à mão não tem população para ter piso.*
+///
+/// ⇒ este varre **todos** os `painter_bridge*.rs`, proíbe a lei antiga pelo nome, e tem os DOIS
+/// pisos (quantos ficheiros existem, e quantos de facto consultam a porta).
+#[test]
+fn the_canvas_chrome_census_is_derived_and_nobody_maps_an_authored_point_by_the_rest_quad() {
+    /// ⛔ **Os isentos, cada um com a razão — e nenhum é «por agora».**
+    const ISENTOS: &[(&str, &str)] = &[(
+        "painter_bridge_brush_ring.rs",
+        "O anel do pincel é ANCORADO NO CURSOR e usa só a parte LINEAR do afim; a forma dele já \
+         carrega a curvatura da arte pela pegada do motor (`FootprintCurve`), que é uma cura \
+         melhor que este mapa. ⛔ E a célula do Grid Stamp (`draw_grid_cell`) fica no quad de \
+         propósito: a metade do DEDO (`grid_cell_under`) inverte o afim, e a porta que inverte \
+         PELA MALHA (`ph2d_render::mesh_uv`) exige `&mut World` enquanto todo este caminho de \
+         chrome tem `&World`. Curar só o desenho poria um rectângulo bem dobrado à volta da \
+         célula ERRADA — *meia lei aplicada é pior que nenhuma*. Item ABERTO, com o bloqueador \
+         nomeado: falta um inverso read-only na `DrawnMesh` (hoje ela só tem `world_at_uv`).",
+    )];
+
+    let dir = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .and_then(Path::parent)
+        .expect("crates/<x>/ tem dois pais")
+        .join("crates/ph2d-app-painter/src");
+    let mut varridos = Vec::new();
+    let mut consultam = Vec::new();
+    let mut acusados = Vec::new();
+    for entry in std::fs::read_dir(&dir).expect("a pasta da família do Painter") {
+        let path = entry.expect("entrada legível").path();
+        let nome = path
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or_default()
+            .to_string();
+        if !nome.starts_with("painter_bridge") || !nome.ends_with(".rs") {
+            continue;
+        }
+        varridos.push(nome.clone());
+        let src = std::fs::read_to_string(&path)
+            .expect("ficheiro legível")
+            .lines()
+            .map(|l| l.split_once("//").map_or(l, |(antes, _)| antes))
+            .collect::<Vec<_>>()
+            .join("\n");
+        // ⚠️ **CONSULTAR, não CONSTRUIR.** A 1.ª redacção contava `CanvasMap::new(` e leu `7` onde
+        // havia `8`: o `painter_bridge_gizmo.rs` **recebe** o mapa por parâmetro em vez de o montar.
+        // *Uma agulha que nomeia o construtor mede quem MONTA, e a lei é sobre quem CONSULTA.*
+        if src.contains("CanvasMap") {
+            consultam.push(nome.clone());
+        }
+        // ⛔ **A LEI ANTIGA, proibida pelo NOME** — mapear um ponto autorado (px de IMAGEM) pelo
+        // afim do quad de repouso. É ela que volta sozinha no primeiro desenhador novo.
+        if src.contains("affine * Point::new") || src.contains("affine * ph2d_vector::Point::new") {
+            if !ISENTOS.iter().any(|(f, _)| *f == nome) {
+                acusados.push(nome.clone());
+            }
+        }
+    }
+
+    // ⚠️⚠️ **PISO 1 — a população varrida.** Um censo por prefixo que passe a varrer zero fica
+    // trivialmente verde (HOWTO §2.7, o modo de falha MUDO). Este número é CONTADO hoje: 18.
+    assert!(
+        varridos.len() >= 16,
+        "o censo varreu só {} ficheiros `painter_bridge*.rs`: ele deixou de ter sujeito, e um \
+         `acusados.is_empty()` sobre uma lista vazia é trivialmente verdadeiro",
+        varridos.len()
+    );
+    // ⚠️⚠️ **PISO 2 — quantos de facto CONSULTAM a porta.** Sem ele, apagar o `CanvasMap` de todos
+    // os desenhadores deixaria este gate verde: a lei antiga também teria desaparecido.
+    assert!(
+        consultam.len() >= 8,
+        "só {} desenhadores consultam o `CanvasMap` (eram 8 em 2026-09-15: curva · linha · grelha \
+         · selos · gizmo de selecção · gizmo · overlays · gizmo de Deform). Um deles voltou a \
+         pintar pelo quad de repouso: {consultam:?}",
+        consultam.len()
+    );
+    assert!(
+        acusados.is_empty(),
+        "estes desenhadores de chrome do canvas mapeiam um ponto AUTORADO pelo afim do quad de \
+         repouso, e sobre arte dobrada eles pintam longe da tinta (e longe de onde o dedo os \
+         agarra, que já pergunta à malha): {acusados:?}\n\
+         A porta é o `ph2d_app_painter::canvas_map::CanvasMap` — `point` para uma alça, `polyline` \
+         para um contorno (com `fechada = true` numa caixa), `segment` para uma guia."
+    );
+    // ⚠️ **A metade de OBSOLESCÊNCIA da isenção** (CLAUDE.md §5.0: *uma catraca sem censo de
+    // obsolescência vira LICENÇA*): um isento que já não estoura tem de sair da lista.
+    for (f, _) in ISENTOS {
+        assert!(
+            varridos.iter().any(|v| v == f),
+            "o isento `{f}` já não existe — a lista descreve um ficheiro que morreu"
+        );
+        let src = std::fs::read_to_string(dir.join(f)).expect("isento legível");
+        assert!(
+            src.contains("affine * Point::new"),
+            "o isento `{f}` já NÃO mapeia nada pelo quad de repouso: a isenção deixou de descrever \
+             alguma coisa e tem de ser apagada"
+        );
+    }
+}
+
+/// ⭐⭐⭐ **AS QUATRO FORMAS QUE O SMOKE DO DONO MANDA ARRASTAR pintam-se onde a arte desenha.**
+///
+/// ⚠️ O censo derivado acima responde *«há mais alguém?»*; este responde *«e o que cada um pede à
+/// porta está certo?»* — porque consultar o mapa e continuar a ligar os cantos a direito passaria
+/// o primeiro e desenharia exactamente as rectas que esta wave veio tirar.
+#[test]
+fn the_shape_overlays_ask_the_door_for_the_whole_outline() {
+    // ⚠️ **As três formas mudaram de ficheiro no mesmo dia** (o teto de LOC por ficheiro pôs o
+    // `painter_bridge_overlays.rs` a `709` de `700`, e a cura é MOVER): este gate falhou ALTO no
+    // `include`, que é a espécie barata das três do HOWTO §2.7.
+    const FORMAS: &str = "crates/ph2d-app-painter/src/painter_bridge_shape_overlays.rs";
+    const OVERLAYS: &str = "crates/ph2d-app-painter/src/painter_bridge_overlays.rs";
+    let src = fonte(FORMAS);
+    // ⛔ **FECHADAS**: o `stroke_box` fecha o caminho, e sem o troço de fecho a última aresta sai
+    // recta enquanto as outras seguem a arte — *as primeiras convencem o olho*.
+    assert_eq!(
+        src.matches("mapa.polyline(&overlay.perimeter, true)")
+            .count(),
+        2,
+        "{FORMAS}: a elipse e o polígono têm de pedir a POLILINHA FECHADA à porta (eram 2 em \
+         2026-09-15). Mapear ponto a ponto devolve o contorno recto que o dono fotografou."
+    );
+    assert!(
+        src.contains("mapa.polyline(&overlay.corners, true)"),
+        "{FORMAS}: a caixa do stencil deixou de fechar pela arte."
+    );
+    // ⛔⛔ **UMA GUIA É UM SEGMENTO, NÃO DUAS PONTAS.** A simetria atravessa o canvas inteiro: com
+    // `move_to`/`line_to` sobre dois pontos mapeados ela sai recta por cima da dobra — e ela diz
+    // ONDE o motor replica os traços, logo uma guia recta aponta para onde nada é espelhado.
+    let pai = fonte(OVERLAYS);
+    assert!(
+        pai.contains("let pts = mapa.polyline(") && !pai.contains("path.line_to(map(cx"),
+        "{OVERLAYS}: a guia de simetria voltou a ligar duas pontas a direito."
+    );
+    // O gizmo de Deform é o mesmo controlo, e entrou no censo na mesma wave.
+    const DEFORM: &str = "crates/ph2d-app-painter/src/painter_bridge_deform_gizmo.rs";
+    let deform = fonte(DEFORM);
+    assert!(
+        deform.contains("CanvasMap::new(")
+            && deform.contains("mapa.polyline(&g.box_corners, true)"),
+        "{DEFORM}: a caixa do gizmo de Deform deixou de fechar pela arte."
+    );
+}

@@ -19,6 +19,12 @@
 //! texto:** o `StrokeOpBadge` perdeu o campo `bbox` e ganhou `outline`, então voltar a desenhar a
 //! moldura AABB **não compila**. Estrutural vence disciplinar.
 
+// ⚠️ **As duas figuras MUDARAM de ficheiro em 2026-09-15** — o teto de LOC por ficheiro pôs o
+// `painter_bridge_overlays.rs` a `709` de `700` e a cura é MOVER, nunca subir o número. Este gate
+// falhou ALTO no `include_str!`, que é a espécie barata das três do HOWTO §2.7 (a que fica MUDA é
+// um censo por prefixo a varrer zero).
+const FORMAS: &str = include_str!("../src/painter_bridge_shape_overlays.rs");
+/// O módulo pai, que ficou com o DESPACHO — é ele que chama os dois desenhadores.
 const OVERLAYS: &str = include_str!("../src/painter_bridge_overlays.rs");
 
 /// Os dois desenhadores de figura fecham a guarda de fase ANTES do laço de alças.
@@ -32,10 +38,10 @@ fn both_shape_drawers_gate_their_handles_on_the_editing_phase() {
         ("ellipse", "fn draw_ellipse_overlay("),
         ("polygon", "fn draw_polygon_overlay("),
     ] {
-        let body = OVERLAYS
+        let body = FORMAS
             .split(fun)
             .nth(1)
-            .unwrap_or_else(|| panic!("`{fun}` sumiu de painter_bridge_overlays.rs"));
+            .unwrap_or_else(|| panic!("`{fun}` sumiu de painter_bridge_shape_overlays.rs"));
         let outline = body
             .find("stroke_box(scene")
             .unwrap_or_else(|| panic!("{name}: o contorno deixou de ser tracado"));
@@ -59,8 +65,16 @@ fn both_shape_drawers_gate_their_handles_on_the_editing_phase() {
 /// buscas acima passarem por vácuo.
 #[test]
 fn the_scanned_file_is_the_painter_overlay_drawer() {
-    assert!(OVERLAYS.len() > 4_000, "o fonte lido veio curto demais");
+    assert!(FORMAS.len() > 4_000, "o fonte lido veio curto demais");
+    assert!(FORMAS.contains("painter.ellipse_overlay()"));
+    assert!(FORMAS.contains("painter.polygon_overlay()"));
+    // ⚠️ E a metade que o corte podia partir em SILÊNCIO: as duas figuras continuam a ser CHAMADAS
+    // pelo despacho. Um módulo novo que ninguém invoca desenha zero, e as buscas acima passariam.
     assert!(OVERLAYS.contains("fn draw_overlays("));
-    assert!(OVERLAYS.contains("painter.ellipse_overlay()"));
-    assert!(OVERLAYS.contains("painter.polygon_overlay()"));
+    for fun in ["draw_ellipse_overlay", "draw_polygon_overlay"] {
+        assert!(
+            OVERLAYS.contains(&format!("crate::painter_bridge_shape_overlays::{fun}(")),
+            "o despacho deixou de chamar `{fun}`: o desenhador existe e nada o invoca"
+        );
+    }
 }

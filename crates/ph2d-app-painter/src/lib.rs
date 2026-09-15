@@ -82,6 +82,9 @@ pub mod painter_bridge_selection_gizmos;
 /// The Selection overlay (marching ants + deselected-area hatching), split from `painter_bridge_overlays`
 /// for the HR-18 file-LOC cap.
 pub mod painter_bridge_selection_overlay;
+/// Os gizmos das FORMAS de traço (elipse · polígono · stencil), partidos do
+/// `painter_bridge_overlays` pelo teto de LOC por ficheiro.
+pub mod painter_bridge_shape_overlays;
 /// Live GPU preview of a brush Shape-source sprite (when not selected), split from `painter_bridge` for
 /// the HR-18 file-LOC cap.
 pub mod painter_bridge_shape_preview;

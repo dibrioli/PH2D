@@ -47,6 +47,13 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.vector.token.none" => "None (use literal)",
         "panel.vector.frame.clip" => "Clip content",
         "panel.vector.transform.resize_box" => "Resize Box",
+        // ⭐⭐⭐ **O padrão do Inspector** (ordem do dono, 2026-09-15: *«Coloque no padrão:
+        //    Position X/Y Quadro Quadro. Rotation com nome completo. Veja no inspector»*): UM nome
+        //    para o par, por extenso, e a unidade **dentro da caixa**.
+        // ⛔ As letras `X`/`Y`/`W`/`H` deixam de ser rótulos de linha e viajam no nome, como lá.
+        "panel.vector.transform.position" => "Position X / Y",
+        "panel.vector.transform.size" => "Size W / H",
+        "panel.vector.transform.rotation" => "Rotation",
         "panel.vector.stroke.present" => "Stroke",
         "panel.vector.texpat.lock" => "Lock Aspect",
         "panel.vector.texpat.gap_link" => "Link Gaps",

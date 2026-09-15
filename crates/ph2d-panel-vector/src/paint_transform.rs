@@ -7,18 +7,26 @@ use crate::paint_sections::BodyCtx;
 use crate::state;
 use ph2d_i18n::tr;
 
-/// O rótulo da seção **com a unidade entre parênteses** — o precedente do Inspector
-/// (`Position (px)`).
+/// ⭐⭐⭐ **A UNIDADE que o artista lê, como [`Unit`] — para ela ir DENTRO da caixa.**
 ///
-/// ⚠️ **Os quatro números chegam já na face do artista** (a shell converte na fronteira), então
-/// sem esta palavra ele não tem como saber se `150` é pixel ou metro. Um sufixo por ROW seriam
-/// quatro cópias da mesma palavra, e o `R` ficaria a mentir junto — ele é em GRAUS, não é
-/// comprimento, e por isso mora na mesma seção sem herdar o sufixo dela.
+/// ⛔⛔ **Ordem do dono, 2026-09-15:** *«Coloque no padrão: Position X/Y Quadro Quadro. Rotation com
+/// nome completo. Veja no inspector»*. E a §14 do Inspector já o fazia desde o dia anterior: ali o
+/// nome diz `Position X / Y` e a CAIXA diz `12,5 px`.
 ///
-/// Função pura porque o harness de painel deste repo lê retângulos, nunca texto: é aqui que a
-/// afirmação *"o cabeçalho diz a unidade"* pode ser feita de todo.
-fn transform_header(suffix: &str) -> String {
-    format!("{} ({suffix})", tr("panel.vector.section.transform"))
+/// ⚠️⚠️ **Isto apaga uma excepção inteira desta secção.** O cabeçalho dizia `Transform (px)` — a
+/// unidade reivindicada para a secção toda —, e por isso a rotação tinha de se auto-rotular `R°`
+/// para não mentir (*«um campo que se auto-rotula é mais barato que uma excepção escrita num
+/// doc-comment que o artista não lê»*). Com a unidade na CAIXA, cada linha diz a sua: os quatro
+/// números dizem `px`/`m` e a rotação diz `deg`. ⇒ **o `R°` deixa de ter razão de existir**, e o
+/// nome dele passa a ser `Rotation`, por extenso, como o dono pediu.
+///
+/// ⚠️ O sufixo publicado pela shell é a FONTE (`state::length_suffix`); aqui ele só é traduzido
+/// para o vocabulário do campo. ⛔ Guardar a escala aqui seria a segunda cópia da regra.
+fn length_unit() -> ph2d_editor_core::widget::Unit {
+    match state::length_suffix() {
+        "px" => ph2d_editor_core::widget::Unit::Px,
+        _ => ph2d_editor_core::widget::Unit::Meters,
+    }
 }
 
 impl BodyCtx<'_> {
@@ -28,40 +36,43 @@ impl BodyCtx<'_> {
         if state::current_transform().is_none() {
             return y;
         }
-        let head = transform_header(state::length_suffix());
-        let (mut y, collapsed) =
-            self.section_header(ph2d_tool_vector::ids::VECTOR_SECTION_TRANSFORM, &head, y);
+        // ⭐ **O cabeçalho deixou de reivindicar a unidade** — ela vive agora em cada caixa.
+        let (mut y, collapsed) = self.section_header(
+            ph2d_tool_vector::ids::VECTOR_SECTION_TRANSFORM,
+            tr("panel.vector.section.transform"),
+            y,
+        );
         if collapsed {
             return y;
         }
-        y = self.number_row(
-            "X",
-            ph2d_tool_vector::ids::VECTOR_TRANSFORM_X,
-            "Y",
-            ph2d_tool_vector::ids::VECTOR_TRANSFORM_Y,
+        let comprimento = length_unit();
+        // ⭐⭐⭐ **O PADRÃO DO INSPECTOR** — um nome para o PAR, duas caixas na mesma linha.
+        y = self.fields_row(
+            tr("panel.vector.transform.position"),
+            &[
+                ph2d_tool_vector::ids::VECTOR_TRANSFORM_X,
+                ph2d_tool_vector::ids::VECTOR_TRANSFORM_Y,
+            ],
+            Some(comprimento),
             y,
         );
-        y = self.number_row(
-            "W",
-            ph2d_tool_vector::ids::VECTOR_TRANSFORM_W,
-            "H",
-            ph2d_tool_vector::ids::VECTOR_TRANSFORM_H,
+        y = self.fields_row(
+            tr("panel.vector.transform.size"),
+            &[
+                ph2d_tool_vector::ids::VECTOR_TRANSFORM_W,
+                ph2d_tool_vector::ids::VECTOR_TRANSFORM_H,
+            ],
+            Some(comprimento),
             y,
         );
-        // Rotation — a full-width relative scrub (° per gesture about the bbox
-        // center). Standalone row (no paired field).
-        // ⚠️ **O `R` carrega o próprio símbolo**, e é ele que torna o `(px)` do cabeçalho
-        // honesto: sem isto o sufixo da seção reivindicaria também a rotação, que é em GRAUS.
-        // Um campo que se auto-rotula é mais barato que uma exceção escrita num doc-comment que
-        // o artista não lê.
-        self.number_cell(
-            "R°",
-            crate::ids::VECTOR_TRANSFORM_R,
-            self.inner_x,
-            self.inner_w,
+        // A rotação é um arrasto RELATIVO (graus por gesto, em torno do centro da caixa) — uma
+        // caixa só, e hoje com o nome por extenso e a unidade dentro dela.
+        y = self.fields_row(
+            tr("panel.vector.transform.rotation"),
+            &[crate::ids::VECTOR_TRANSFORM_R],
+            Some(ph2d_editor_core::widget::Unit::Degrees),
             y,
         );
-        y += self.row_h + self.row_gap;
         // **Resize Box** (plano UI/UX W3b) — o que a ALÇA do gizmo faz a este objeto: reescrever
         // a caixa, ou escalar a pose (que é herdada pelos filhos — o certo para objeto de game).
         //
@@ -92,22 +103,43 @@ impl BodyCtx<'_> {
 
 #[cfg(test)]
 mod tests {
-    use super::transform_header;
+    use super::length_unit;
+    use crate::state;
 
-    /// **O cabeçalho carrega a unidade que a shell publicou** — e o gate mede as DUAS, porque um
-    /// rótulo que dissesse sempre a mesma palavra seria pior que rótulo nenhum: ele afirmaria uma
-    /// unidade enquanto os números falam a outra.
+    /// ⭐⭐⭐ **A UNIDADE que a shell publicou chega à CAIXA** — e este gate substitui o que
+    /// defendia a lei contrária.
     ///
-    /// Mutação que tem de sangrar: o `format!` voltar a devolver só o `tr(...)`.
+    /// ⛔⛔ **O que estava aqui afirmava que *«o cabeçalho carrega a unidade que a shell
+    /// publicou»***, e era a lei certa enquanto o sufixo vivia no título da secção. A ordem do dono
+    /// de 2026-09-15 (*«Coloque no padrão … Veja no inspector»*) inverteu-a: a unidade vive na
+    /// CAIXA, e o cabeçalho voltou a ser só `Transform`.
+    ///
+    /// ⚠️ *Um gate que defende o comportamento anterior tem de ser invertido em voz alta, com a
+    /// razão ao lado* — apagá-lo em silêncio deixaria a propriedade nova sem quem a cobre.
+    ///
+    /// **Mutação que tem de sangrar:** o `length_unit` devolver sempre a mesma unidade — aí a caixa
+    /// diria `m` sobre números que estão em pixels, que é pior do que não dizer nada.
     #[test]
-    fn the_transform_header_says_which_unit_the_numbers_are_in() {
-        let px = transform_header("px");
-        let m = transform_header("m");
-        assert!(px.ends_with("(px)"), "o cabeçalho em pixels: {px}");
-        assert!(m.ends_with("(m)"), "o cabeçalho em metros: {m}");
-        assert_ne!(px, m, "duas unidades, dois rótulos");
-        // E o nome da seção sobrevive — o sufixo ACRESCENTA, não substitui.
-        let base = ph2d_i18n::tr("panel.vector.section.transform");
-        assert!(px.starts_with(base), "{px} tem de começar por {base}");
+    fn the_field_shows_the_unit_the_shell_published() {
+        state::set_length_suffix("px");
+        assert_eq!(length_unit().suffix(), "px", "a shell publicou pixels");
+        state::set_length_suffix("m");
+        assert_eq!(length_unit().suffix(), "m", "a shell publicou metros");
+        // E as duas são DIFERENTES — uma unidade constante seria pior que unidade nenhuma.
+        state::set_length_suffix("px");
+        let px = length_unit();
+        state::set_length_suffix("m");
+        assert_ne!(px, length_unit(), "duas unidades, duas caixas");
+    }
+
+    /// ⚠️ **E o cabeçalho deixou de a reivindicar** — sem isto, a secção podia voltar a dizer
+    /// `Transform (px)` com as caixas a dizerem `m`, e o artista teria duas respostas.
+    #[test]
+    fn the_section_header_no_longer_claims_a_unit() {
+        let head = ph2d_i18n::tr("panel.vector.section.transform");
+        assert!(
+            !head.contains('('),
+            "o cabecalho da seccao nao carrega unidade nenhuma: {head}"
+        );
     }
 }

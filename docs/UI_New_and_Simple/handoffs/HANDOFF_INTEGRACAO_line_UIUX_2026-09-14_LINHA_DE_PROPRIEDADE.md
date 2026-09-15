@@ -1829,3 +1829,59 @@ demais, e *uma metade onde o nome não cabe já não é um campo pequeno — é 
 - `checkbox_row` · `colour_swatch_row` · `row2` do Vector — outras famílias de controlo.
 - Cinco painéis: **Flip** · **Grelha** · **Motion graph** · **Motion params** · **Timeline**.
 - As cinco colunas de *slider* do `painter-layers` (spec §2: o nome vive DENTRO da barra).
+
+---
+
+## 28 — ⭐⭐⭐ *«Coloque no padrão: Position X/Y Quadro Quadro. Rotation com nome completo»*
+
+**Report do dono, 2026-09-15**, no smoke da §27: *«funciona mas não segue o mesmo padrão inspector
+para o layout. Coloque no padrão: Position X/Y Quadro Quadro. Rotation com nome completo. Veja no
+inspector»*.
+
+### 28.1 — Ele tinha razão, e a §27 curou a coluna sem curar a FORMA
+
+A §27 pôs as 20 linhas numéricas do Vector na coluna do app — e deixou-lhes a **forma** antiga:
+quatro linhas de **duas propriedades** com nomes de uma letra (`X` `Y`, `W` `H`) e uma quinta a
+chamar-se **`R°`**. O Inspector faz o contrário: **uma propriedade com duas componentes**, com o
+`X / Y` no NOME.
+
+| antes | depois |
+|---|---|
+| `X [ ]` `Y [ ]` (duas propriedades) | `Position X / Y` `[ ] [ ]` |
+| `W [ ]` `H [ ]` | `Size W / H` `[ ] [ ]` |
+| `R° [ ]` | `Rotation [ ]` |
+
+### 28.2 — ⭐⭐ E isso apagou uma EXCEPÇÃO inteira desta secção
+
+O cabeçalho dizia **`Transform (px)`** — a unidade reivindicada para a secção toda —, e era por isso
+que a rotação tinha de se auto-rotular `R°`: o doc dela dizia-o, *«sem isto o sufixo da secção
+reivindicaria também a rotação, que é em GRAUS … um campo que se auto-rotula é mais barato que uma
+excepção escrita num doc-comment que o artista não lê»*.
+
+⇒ com a unidade **dentro da caixa** (a lei que o Inspector já segue desde 14/09), **cada linha diz a
+sua**: as quatro primeiras dizem `px`/`m`, a rotação diz `deg`. O cabeçalho volta a ser `Transform`,
+e **o `R°` deixa de ter razão de existir**.
+
+⭐ *Uma excepção que existia por causa de uma lei antiga morre com ela — e é preciso ir vê-la, porque
+ela estava escrita como uma decisão de desenho, não como uma dívida.*
+
+### 28.3 — ⛔⛔ Um gate defendia a lei CONTRÁRIA, e foi INVERTIDO em voz alta
+
+`the_transform_header_says_which_unit_the_numbers_are_in` afirmava que *«o cabeçalho carrega a
+unidade que a shell publicou»* — certo enquanto o sufixo vivia no título. ⇒ substituído por **dois**:
+
+| gate novo | o que afirma |
+|---|---|
+| `the_field_shows_the_unit_the_shell_published` | a unidade publicada chega à **CAIXA**, e as duas unidades dão caixas diferentes |
+| `the_section_header_no_longer_claims_a_unit` | o cabeçalho **não** volta a reivindicá-la (senão haveria duas respostas) |
+
+**Mutação:** `length_unit` devolver sempre `Meters` ⇒ *«assertion failed: a shell publicou pixels»* ✅
+
+⚠️ *Um gate que defende o comportamento anterior tem de ser invertido em voz alta, com a razão ao
+lado* — apagá-lo em silêncio deixaria a propriedade nova sem quem a cobre.
+
+### 28.4 — ⚠️ A `number_row` FICA, e não é dívida
+
+Ela põe **duas propriedades diferentes** lado a lado (a grade de dois deste painel) e continua a
+servir o Auto Layout (`Gap` | `Cross`) e a Sprite Sheet. A `fields_row` nova põe **uma** propriedade
+com N componentes. *São duas perguntas, e o Transform estava a usar a errada.*

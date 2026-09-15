@@ -275,6 +275,39 @@ impl BodyCtx<'_> {
         y + self.row_h + self.row_gap
     }
 
+    /// ⭐⭐⭐ **A LINHA DE PROPRIEDADE do app — um nome, N caixas.**
+    ///
+    /// ⛔⛔ **Ordem do dono, 2026-09-15:** *«funciona mas não segue o mesmo padrão inspector para o
+    /// layout. Coloque no padrão: Position X/Y Quadro Quadro. Rotation com nome completo. Veja no
+    /// inspector»*.
+    ///
+    /// ⚠️ A [`Self::number_row`] ao lado é OUTRA coisa e fica: ela põe **duas propriedades
+    /// diferentes** lado a lado, cada uma com o seu nome (a grade de dois deste painel). Esta põe
+    /// **uma** propriedade com N componentes, que é o padrão do Inspector.
+    pub(crate) fn fields_row(
+        &mut self,
+        label: &str,
+        ids: &[ph2d_a11y::NodeId],
+        unit: Option<ph2d_editor_core::widget::Unit>,
+        y: f32,
+    ) -> f32 {
+        ph2d_editor_core::property_row::paint_fields_row(
+            self.scene,
+            self.text_system,
+            self.theme,
+            self.hit_index,
+            self.store,
+            self.inner_x,
+            self.inner_w,
+            y,
+            label,
+            ids,
+            1.0, // LITERAL-PX-OK: passo de scrub de um campo do vector
+            unit,
+            2,
+        )
+    }
+
     /// **A largura de UMA célula da grade de dois** — a mesma expressão para quem preenche as
     /// duas e para quem preenche só a da esquerda. Duas cópias divergem no dia em que o vão
     /// mudar, e o resultado é uma fileira desalinhada da de cima.

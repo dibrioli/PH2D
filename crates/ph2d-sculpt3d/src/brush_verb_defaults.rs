@@ -128,6 +128,27 @@ impl Verb {
             law.unit_accum = false;
             law.from_live = false;
         }
+        // ⛔⛔⛔ **A PROJECÇÃO mede da posição VIVA, SEMPRE** — espec §6.5 com
+        // todas as letras: *«não há normalização por área, nem acumulador, nem
+        // memória entre dabs — cada dab re-mede a distância a partir de onde o
+        // vértice está AGORA»*.
+        //
+        // ⚠️⚠️ **Sem esta linha o `from_live` ficava preso ao interruptor
+        // `Accumulate`** (é a única coluna que ele move num [`crate::Grip::Stamp`]),
+        // e com ele desligado — que é o valor de fábrica **e** o das `16`
+        // fixturas do oráculo — a queda passava a medir contra o `pre` do
+        // pen-down. ⭐ **MEDIDO:** oito fixturas de SEIS dabs saltam de
+        // `5,9e-2`–`2,6e-1` para **`8,9e-8`–`2,0e-7`**, ou seja de fora da barra
+        // para dentro dela. *A partição um-dab/seis-dabs que este corpus
+        // mostrava não era a composição do traço: era esta coluna.*
+        //
+        // ⚠️ **E ela NÃO colide com a fotografia do pen-down** que o report do
+        // dono pagou: aquela congela **onde o dab aterra** (o PICK, um degrau
+        // acima), esta diz **de onde a queda mede** dentro do dab. *Duas
+        // perguntas com a mesma palavra.*
+        if self == Self::SceneProject {
+            law.from_live = true;
+        }
         law
     }
 

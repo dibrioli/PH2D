@@ -65,6 +65,22 @@ impl Verb {
             // trás. *Esconder um knob vivo e esconder um knob morto leem-se
             // igual numa tabela — o que os separa é a medição escrita ao lado.*
             && self != Self::SmearMultires
+            // ⛔⛔ **E A PROJECÇÃO, por a lei dela já ter ESCOLHIDO** — e é a
+            // razão OPOSTA à do esfregão, que é o que as torna as duas
+            // instrutivas. A espec §6.5 diz que este verbo mede *«a partir de
+            // onde o vértice está AGORA»* **sempre**, logo o
+            // [`crate::Verb::grip_law`] prega o `from_live` a `true` — e o
+            // `Accumulate` desta casa é **exactamente** essa coluna. ⇒ ele
+            // deixou de mover **nada** neste verbo, e um interruptor que não
+            // move nada é o controlo morto que o censo dos knobs caça.
+            //
+            // ⚠️ **MEDIDO pelo oráculo, e não deduzido:** com a coluna presa ao
+            // interruptor, as `16` fixturas partiam-se em *um dab bate, seis
+            // dabs desviam*; com ela pregada, **oito** delas saltam de
+            // `5,9e-2`–`2,6e-1` para `8,9e-8`–`2,0e-7`. *O corpus escolheu a
+            // posição do interruptor, e depois de escolhida não sobra
+            // interruptor.*
+            && self != Self::SceneProject
     }
 
     /// Este verbo escreve na MÁSCARA em vez da posição?

@@ -488,3 +488,87 @@ fn the_accumulate_default_is_the_references_tool_by_tool() {
         "o Brush default e o verbo default discordam sobre o interruptor"
     );
 }
+
+/// ⛔⛔⛔ **O `Accumulate` NÃO É OFERECIDO A QUEM NÃO O SENTE — medido no BARRO.**
+///
+/// Este interruptor move o `from_live` do [`crate::Grip::Stamp`] — *de onde a
+/// curva de queda mede a distância* —, e há verbos cujo [`Verb::grip_law`] o
+/// **prega**: a demão (o *Layer* mede sempre contra o pen-down) e a projecção
+/// (espec §6.5: *«cada dab re-mede a distância a partir de onde o vértice está
+/// AGORA»*, **sempre**).
+///
+/// ⇒ para eles o interruptor não move **nada**, e um interruptor que não move
+/// nada é o **controlo morto** do `CLAUDE.md` §5.0 — *o artista liga, o barro
+/// não sente, e ele conclui que a ferramenta está partida*.
+///
+/// ⚠️⚠️ **Este gate nasceu de uma mutação SOBREVIVENTE** (2026-09-15): pôr a
+/// projecção de volta na lista do [`Verb::accumulates`] não partia **teste
+/// nenhum**, porque o censo dos knobs varre `Row`s do painel e este é um
+/// **toggle**. *Uma família de gates que cobre as fileiras e não as caixas deixa
+/// metade dos controlos sem régua.*
+///
+/// ⛔⛔ **E a 1.ª redacção dele media a TABELA DE GRIPS em vez do barro, e
+/// acusou um verbo VIVO:** ela comparava `grip_law(false, …)` com
+/// `grip_law(true, …)` e deu o `Clay Strips` como inerte — ele **move
+/// `7,2e-2`**, porque ali o interruptor escolhe também a **fonte do PLANO**, que
+/// não vive naquela tabela. *A régua é o PRODUTO; uma tabela de leis é um
+/// resumo dela, e um resumo não tem de conter tudo.*
+///
+/// ⛔ **A implicação é de UM sentido só, e isso é lei e não folga:** *não sente
+/// ⇒ não oferecer*. O contrário é **falso** e há dois verbos a prová-lo — o
+/// apagador e o esfregão **sentem-no** e mesmo assim não o oferecem, cada um por
+/// uma recusa **medida e escrita** no [`Verb::accumulates`]. *Um gate
+/// bidireccional obrigaria a reabrir duas recusas de lei.*
+#[test]
+fn o_accumulate_nao_e_oferecido_a_quem_nao_o_sente() {
+    /// Um traço de seis dabs que ANDA — um carimbo isolado não distingue as
+    /// duas posições, porque a distância só diverge depois de o barro se mover.
+    fn barro(verb: Verb, accumulate: bool) -> Vec<[f32; 3]> {
+        let mut m = ph2d_mesh::shapes::uv_sphere(24, 32, 1.0);
+        let mut s = crate::SculptStroke::default();
+        s.begin(&m);
+        let b = Brush {
+            verb,
+            accumulate,
+            radius: 0.4,
+            strength: 1.0,
+            ..Brush::default()
+        };
+        for k in 0..6 {
+            let x = 0.08 * f32::from(u8::try_from(k).unwrap_or(0));
+            let c = [x, 0.0, (1.0f32 - x * x).max(0.0).sqrt()];
+            s.dab(
+                &mut m,
+                &b,
+                &crate::Dab::at(c, b.radius, [0.0, 0.0, -1.0]),
+                crate::Symmetry::default(),
+            );
+        }
+        m.positions().to_vec()
+    }
+
+    let (mut inertes, mut vivos) = (Vec::new(), 0usize);
+    for verb in Verb::ALL {
+        if !verb.accumulates() {
+            continue;
+        }
+        if barro(verb, false) == barro(verb, true) {
+            inertes.push(verb.label());
+        } else {
+            vivos += 1;
+        }
+    }
+    assert!(
+        inertes.is_empty(),
+        "estes verbos oferecem o `Accumulate` e o barro nao sente a diferenca: \
+         {inertes:?} — o artista liga o interruptor e nada acontece"
+    );
+    // ⭐ **O piso de população:** se o `accumulates()` esvaziasse, ou se este
+    // arnês deixasse de acordar os verbos, o laço acima percorreria pouco e o
+    // gate ficava verde sobre o vácuo — a forma que o §5.0 nomeia.
+    assert!(
+        vivos >= 8,
+        "so' {vivos} verbos OFERECEM o interruptor e o sentem — a familia dos \
+         carimbos e' maior que isso, logo este gate passou a medir quase nada"
+    );
+}

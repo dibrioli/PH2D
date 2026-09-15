@@ -519,10 +519,28 @@ const BARRA: f32 = 2e-6;
 
 /// Quantas fixturas do corpus reconstrutível caem dentro da [`BARRA`] hoje.
 ///
-/// ⛔⛔ **CATRACA: este número só SOBE.** Ele é `3` porque a lei está provada
-/// onde ela corre sozinha — as duas de um passo e a que não move nada — e as
-/// outras `13` medem a **composição de seis dabs**, que é outra pergunta.
-const VERDE_N: usize = 3;
+/// ⛔⛔ **CATRACA: este número só SOBE**, e ele subiu de `3` para **`12`** em
+/// 2026-09-15.
+///
+/// ⭐⭐⭐ **E a subida não foi afinação: era UMA COLUNA da tabela de grips.** A
+/// redacção anterior lia a partição *«um dab bate ao sétimo decimal, seis dabs
+/// desviam»* como sendo a **composição do traço** — e era o `GripLaw::from_live`
+/// preso ao interruptor `Accumulate`. A espec §6.5 diz que este verbo mede *«a
+/// partir de onde o vértice está AGORA»* **sempre**, e com a coluna pregada
+/// **nove** fixturas de seis dabs saltaram de `5,9e-2`–`2,6e-1` para
+/// `8,9e-8`–`2,0e-7`.
+///
+/// ⚠️ *Uma partição limpa diz ONDE procurar e não O QUE procurar* — a leitura
+/// «é a composição» era a primeira hipótese compatível com ela, e a errada.
+///
+/// **As `4` que ficam**, cada uma com a sua pergunta:
+///
+/// | fixtura | desvio | o que ela isola |
+/// |---|---|---|
+/// | `…_dureza05` | `2,367e-2` | o remapeamento de dureza sobre um traço |
+/// | `…_normal_plano_area` | `1,281e-1` | a direcção do raio pela normal da ÁREA |
+/// | `…_invertido` · `…_subtrair` | `1,415e-1` | ⭐ **o número que a espec §6.6 dá para `max abs(d + d′)` entre a base e a invertida** — a nossa inversão parece ser a negação EXACTA sobre o traço, e a da referência não é (ela re-mede). *Duas fixturas a ler o mesmo número que a espec prevê é um diagnóstico, não uma coincidência.* |
+const VERDE_N: usize = 12;
 
 /// ⭐⭐⭐ **O CORPUS INTEIRO DO QUE É RECONSTRUTÍVEL** — `16` das `24`, cada uma
 /// com a cena medida da própria saída.

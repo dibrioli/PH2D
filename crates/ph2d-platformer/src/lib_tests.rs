@@ -536,3 +536,55 @@ mod swim_gates;
 /// que se perdia era *quem escreve o eixo vertical neste tique*).
 #[path = "lib_glide_tests.rs"]
 mod glide_gates;
+
+/// ⭐⭐⭐ **A INÉRCIA do eixo vertical: esta lei NÃO o lê** (TOP-20 #13).
+///
+/// O [`PlayerInput`] ganhou `drive_y` porque o mover de vista de cima precisa de uma intenção 2D e
+/// ela tem de viajar na struct que a **fita determinística** grava — um segundo canal ficaria de
+/// fora do replay.
+///
+/// ⚠️ **Este gate é o preço disso:** a lei de plataforma tem de ser **byte-idêntica** com o campo
+/// em qualquer valor, e é isso que garante que nenhuma cena existente muda e que o
+/// `physics_ecs_c9` lê o mesmo hash nos três sistemas operacionais.
+#[test]
+fn o_eixo_vertical_nao_toca_na_lei_de_plataforma() {
+    let cfg = PlayerConfig::STARTING_POINT;
+    let ground = at(cfg.ride.float_height, UP);
+    let corre = |drive_y: f32| {
+        player_motor(
+            &cfg,
+            Some(&ground),
+            None,
+            None,
+            None,
+            None,
+            PlayerInput {
+                drive: 0.6,
+                jump: true,
+                drive_y,
+                ..PlayerInput::default()
+            },
+            PlayerState::default(),
+            [0.3, -0.2],
+            G,
+            UP,
+            DT,
+            DRY,
+            SPRING,
+        )
+    };
+    let base = corre(0.0);
+    for y in [-1.0_f32, -0.5, 0.5, 1.0, 12.5, f32::NAN] {
+        let outro = corre(y);
+        // ⛔ Bit-a-bit, e não «perto»: uma diferença de 1 ulp já move o hash de determinismo.
+        assert_eq!(
+            outro.motor.accel, base.motor.accel,
+            "`drive_y = {y}` mexeu na aceleracao da lei de PLATAFORMA"
+        );
+        assert_eq!(outro.motor.boost, base.motor.boost, "idem no boost, com {y}");
+        assert_eq!(
+            outro.gravity_hold, base.gravity_hold,
+            "idem no canal da gravidade, com {y}"
+        );
+    }
+}

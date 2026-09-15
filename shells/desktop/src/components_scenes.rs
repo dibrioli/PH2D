@@ -183,6 +183,38 @@ impl crate::App {
         self.playhead.play();
     }
 
+    /// ⭐⭐⭐ **O MOVER DE VISTA DE CIMA** (TOP-20 #13, W2). Prólogo do quadro, uma vez.
+    ///
+    /// ⚠️ **As duas cenas precisam do relógio A ANDAR**, e pela razão do irmão acima: a ponte do
+    /// mover corre no **passo fixo**, logo com o transporte parado o boneco não anda e o artista lê
+    /// *«as setas não fazem nada»* — que é o veredito errado sobre um componente que funciona.
+    ///
+    /// ⚠️ **E o TECLADO tem de chegar lá:** o mover lê as acções nomeadas do Input Map
+    /// (`move_left`/`move_right`/`move_up`/`move_down`), que o `resolve_player_input` resolve todo
+    /// o quadro — as duas primeiras já existiam, as duas últimas nasceram nesta wave.
+    pub(crate) fn topdown_smoke(&mut self) {
+        if self.components_smokes.topdown {
+            return;
+        }
+        let Some(v) = std::env::var_os("PH2D_TOPDOWN_SMOKE") else {
+            return;
+        };
+        let nivel = v.to_str().and_then(|s| s.parse().ok()).unwrap_or(1);
+        let Some(cx) = self.components_ctx() else {
+            return;
+        };
+        let _ = ph2d_app_components::topdown_smoke::montar(cx.sim.world_mut(), nivel);
+        self.components_smokes.topdown = true;
+        self.timeline.flags.simulate_physics = true;
+        // ⚠️ A régua abre junto — uma instrução que fala do transporte sobre um ecrã sem ele
+        // devolve *«que régua?»* (a lição da cena 67 da física).
+        if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
+            hero.panel_visibility.insert("timeline", true);
+        }
+        self.playhead.rewind();
+        self.playhead.play();
+    }
+
     /// Prólogo do quadro, uma vez. No-op sem a env.
     pub(crate) fn instance_smoke(&mut self) {
         if self.components_smokes.instance || std::env::var_os("PH2D_INSTANCE_SMOKE").is_none() {

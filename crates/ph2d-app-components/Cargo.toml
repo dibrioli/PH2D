@@ -44,6 +44,9 @@ ph2d-render = { path = "../ph2d-render" }
 ph2d-text = { path = "../ph2d-text" }
 ph2d-tokens = { path = "../ph2d-tokens" }
 ph2d-tool-registry = { path = "../ph2d-tool-registry" }
+# ⭐ A lei do mover de VISTA DE CIMA (TOP-20 #13) — a cena de smoke autora-a pelos
+# nomes dos modos, e não por bytes de fio escritos à mão.
+ph2d-topdown = { path = "../ph2d-topdown" }
 ph2d-unique-name = { path = "../ph2d-unique-name" }
 ph2d-vec-entities = { path = "../ph2d-vec-entities" }
 ph2d-vec-scene = { path = "../ph2d-vec-scene" }

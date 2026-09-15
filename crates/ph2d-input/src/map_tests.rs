@@ -109,3 +109,52 @@ fn the_panel_order_is_the_authoring_order() {
     let names: Vec<&str> = m.actions().iter().map(|a| a.name.as_str()).collect();
     assert_eq!(names, ["move_left", "move_right", "jump"]);
 }
+
+/// ⭐⭐⭐ **O mapa de fábrica tem por onde ANDAR PARA CIMA** (TOP-20 #13).
+///
+/// ⚠️ Um mover de vista de cima precisa de uma intenção 2D, e até esta wave o mapa só declarava um
+/// eixo. ⛔ O sintoma da ausência é mudo: `Input::axis` sobre uma acção que não existe devolve
+/// `0,0` **para sempre**, sem erro — o boneco anda na horizontal e não na vertical, e nada o diz.
+#[test]
+fn o_mapa_de_fabrica_declara_os_quatro_rumos() {
+    let m = InputMap::with_player_defaults();
+    for nome in [
+        PLAYER_MOVE_LEFT,
+        PLAYER_MOVE_RIGHT,
+        PLAYER_MOVE_UP,
+        PLAYER_MOVE_DOWN,
+    ] {
+        let id = m.id(nome).unwrap_or_else(|| panic!("falta a accao `{nome}`"));
+        let a = m.get(id).expect("a accao acabou de ser achada");
+        assert!(
+            !a.bindings.is_empty(),
+            "a accao `{nome}` existe e nao tem tecla nenhuma — um controlo que nao se alcanca"
+        );
+    }
+}
+
+/// **E as SETAS são as teclas dos dois eixos** — ⛔ não o WASD, porque o `W` desta shell abre o
+/// painel de mundo (a decisão está escrita ao lado dos defaults).
+#[test]
+fn as_setas_alcancam_os_dois_eixos() {
+    const CIMA: u32 = 0xF700;
+    const BAIXO: u32 = 0xF701;
+    const ESQ: u32 = 0xF702;
+    const DIR: u32 = 0xF703;
+    let m = InputMap::with_player_defaults();
+    for (nome, tecla) in [
+        (PLAYER_MOVE_LEFT, ESQ),
+        (PLAYER_MOVE_RIGHT, DIR),
+        (PLAYER_MOVE_UP, CIMA),
+        (PLAYER_MOVE_DOWN, BAIXO),
+    ] {
+        let id = m.id(nome).expect("a accao existe");
+        let a = m.get(id).expect("idem");
+        assert!(
+            a.bindings
+                .iter()
+                .any(|b| matches!(b, crate::action::Binding::Key(k) if k.0 == tecla)),
+            "a accao `{nome}` nao esta' atada a' seta {tecla:#x}"
+        );
+    }
+}

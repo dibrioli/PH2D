@@ -356,7 +356,7 @@ fn probe_as_alavancas_de_produto() {
 }
 
 /// Uma realização com o atrito das peças e o arrasto angular do passo escritos no cartão.
-pub(super) fn realizacao_de_produto(eps: f32, mu: f32, arrasto: f32) -> (f32, f32) {
+fn realizacao_de_produto(eps: f32, mu: f32, arrasto: f32) -> (f32, f32) {
     let mut state = MotionState::new();
     let sinks = build(&mut state.doc, &state.registry).expect("a cena monta");
     let tipo = |state: &MotionState, t: &str| -> Vec<NodeId> {

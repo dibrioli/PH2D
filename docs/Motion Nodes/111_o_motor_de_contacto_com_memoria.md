@@ -304,3 +304,70 @@ O que fica é esta tabela — e a **décima quinta** recusa medida.
 **O que isto ensina à obra que falta:** o filtro ataca o SINTOMA (a alternância) e não a causa (a
 correcção ser recalculada do zero). ⇒ a lei tem de usar a memória para **o `λ` não ser recalculado**,
 e não para suavizar o que foi recalculado. É a diferença entre filtrar um ruído e não o produzir.
+
+### §5.6 — ⛔⛔⛔ A LEI CERTA foi construída — e a QUARTA régua refuta-a
+
+Ordem do dono: *«siga direto para a lei certa»*. Ela é o **XPBD com complacência e `λ`
+persistente**, e tem a propriedade que todas as oito anteriores não tinham:
+
+```text
+  Δλ = (penetração − α̃·λ) / (Σw + α̃)      λ += Δλ      aplica-se Δλ, nunca λ
+```
+
+⭐ **Em repouso o equilíbrio é `penetração = α̃·λ` ⇒ `Δλ → 0` e NADA é aplicado, com a restrição a
+segurar na mesma.** É a diferença exacta entre esta lei e as que o §8.14 refutou: elas recalculavam
+a correcção do zero e re-excitavam a peça a cada tique. ⭐⭐ E **`α̃ = 0` devolve
+`Δλ = penetração / Σw`, a lei de hoje termo a termo** — *o interruptor é a própria constante
+física*.
+
+Construída nas DUAS metades (peça×peça e o contacto com o mundo), 5 realizações por célula:
+
+| `α̃` | balanço pior | giro pior | `y` final | **VÃO típico** |
+|---|---|---|---|---|
+| `0` (o que shipa) | `3,79 .. 5,69` | `24,3 .. 28,4` | `−2,56` | **`0,3094`** |
+| `1e-1` | `1,76 .. 2,89` | `22,6 .. 28,7` | `−2,71` | `0,1828` |
+| `1e0` | `1,63 .. 11,94` | `30,1 .. 39,6` | `−2,88` | `0,0546` |
+| **`3e0`** | **`0,56 .. 0,66`** | **`5,9 .. 12,3`** | `−2,90` | ⛔ **`0,0222`** |
+| `1e1` | `5,68 .. 7,70` | `249 .. 414` | `−2,90` | `0,0026` |
+
+⛔⛔ **A célula `3e0` bate a barra nas duas colunas que o dono viu — e o monte é uma POÇA.** O vão
+típico cai de `0,31` para `0,02`: as peças estão **umas dentro das outras**, e o *«silêncio»* é o de
+uma pilha que deixou de ser uma pilha. ⇒ *a complacência compra sossego com MOLEZA, e as duas
+réguas do tremor não vêem moleza.*
+
+⭐ **É a QUARTA régua que esta caça teve de inventar, e sempre pelo mesmo motivo:**
+
+| régua | o que ela viu que as outras não viam |
+|---|---|
+| o balanço por tique | o tremor, que o VÃO da cena não via |
+| o giro LÍQUIDO | o rodopio, que o balanço não via (§8.4) |
+| o `y` final | a pilha CONGELADA NO AR, que ambos liam como perfeita (§5.1) |
+| **o VÃO típico** | a pilha COLAPSADA, que os três liam como perfeita |
+
+⇒ *cada cura desta obra melhorou a grandeza medida e estragou uma que ninguém media.* **A quarta
+entra nas condições de aceitação.**
+
+⛔ **A lei foi REVERTIDA** (o `git diff` do motor contra o início é `+pub mod warm;` e mais nada), e
+fica a **décima sexta** recusa medida.
+
+| # | ideia | veredito |
+|---|---|---|
+| 16 | **XPBD com complacência e `λ` persistente** (a «lei certa») | ⛔ todo ponto que compra silêncio **colapsa a pilha**: a `3e0` o balanço é `0,56` e o vão cai de `0,31` para `0,0222` |
+
+### §5.7 — ⇒ O que sobra, e agora está cercado por medição
+
+O silêncio **a rigidez plena** é o que falta, e as três saídas conhecidas estão agora todas
+medidas ou cercadas:
+
+1. ⛔ **baixar o ganho** — refutada (§8.9): corta o DC junto com o Nyquist;
+2. ⚠️ **filtrar** — parcial (§5.5): `5,8×`, e `4,3×` curta;
+3. ⛔ **amolecer** (complacência) — refutada aqui: colapsa;
+4. ⏳ **SUB-PASSOS** — a que o oráculo usa e que esta obra nunca tocou: em vez de resolver o tique
+   inteiro de uma vez, parti-lo em `N` passos pequenos, cada um com a sua integração **e** o seu
+   contacto. É por isso que um solver de impulsos assenta a rigidez plena, **e** é o que o
+   `substeps` da `sim.zone` já exprime (`CLAUDE.md` §5.1: *«o RELÓGIO do grafo, e a palavra tem
+   dono»*, tecto `64`).
+
+⭐⭐⭐ **A 4 é a próxima medição, e é BARATA: o knob já existe no cartão.** ⚠️ E ela vem com um preço
+óbvio a medir junto — `N` sub-passos custam `N` vezes o solver, o que é exactamente o tipo de troca
+que o `CLAUDE.md` §0.0 manda medir antes de escrever qualquer tecto.

@@ -172,9 +172,16 @@ querer para todo o Transform»*. As linhas do Transform trazem uma **letra de ei
 o da CAIXA**; a célula precisa de `lead + piso` e a caixa mede `célula − lead`. ⛔ Somar o `lead` ao
 piso pareceria igual e mentiria sobre o recurso — quem tem dono é a caixa (§0.0).
 
-Medido no Transform (`lead = 14` = a coluna da letra `12` + o vão `2`): duas componentes só ficam
-lado a lado acima de um painel de **`~400`**; sem decoração seriam **`~352`**. *A letra custa
-`~56 px` de largura de painel, e isso é o preço de ela existir.*
+⛔⛔ **E o Transform DEIXOU de o usar no dia seguinte, por report do dono** (*«A disposição ficou
+diferente. VC tinha colocado x e y na mesma linha. Position X/Y Caixa Caixa»*): com `lead = 14` as
+duas componentes só ficavam lado a lado acima de um painel de **`~400`**, e sem decoração ficam
+acima de **`~348`**. O dock dele está em **`369,74`** — *a letra de eixo custava-lhe exactamente a
+disposição que ele tinha aprovado nas Âncoras.* ⇒ o `X`/`Y` viaja no NOME (`"Position X / Y"`), e
+hoje **nenhuma linha do app usa `lead ≠ 0`**.
+
+⚠️ **O parâmetro FICA, e o gate varre os dois regimes** (`lead ∈ {0, 14}`): a decoração por
+componente é uma pergunta que volta, e a lei dela está medida. ⛔ Mas *ela não é grátis, e o número é
+`~52 px` de largura de painel* — quem a reintroduzir paga isso.
 
 ⭐⭐⭐ **E o alinhamento que o dono pediu em 2026-05-24 — *«a caixa única de Rotation deve se alinhar
 à caixa de X à esquerda e à direita»* — passa a sair de GRAÇA.** Era uma fórmula escrita à mão
@@ -250,6 +257,7 @@ propriedade — e há gate com a lista, com a metade da obsolescência.
 | §6-bis | as componentes que não cabem ao piso descem, dentro da coluna do controlo | `property_fields_layout` | `a_row_of_many_fields_never_starves_them` |
 | §6-bis | alargar o painel nunca faz caber menos campos por linha | `property_fields_layout` | `a_wider_panel_never_fits_fewer_fields` |
 | §6-bis | a caixa sozinha cobre exactamente o que o par cobre | `property_row_columns` | `the_lone_field_of_a_row_spans_what_the_pair_spans` |
+| §6-bis | dispor N campos numa linha tem UM chamador em todo o painel | `property_fields_layout` | `only_one_door_lays_out_a_row_of_fields` |
 | §6-bis | nenhuma linha do Inspector põe o nome por cima do controlo | `fields_row` | `no_row_paints_its_name_above_its_control` |
 | §7 | toda linha reserva a coluna de animação | `form_row_columns` | `every_form_row_reserves_the_animation_column` |
 | §7 | as portas que reservam a coluna DERIVAM-SE, nunca se enumeram | `property_label_row` | `the_door_census_derives_the_second_order_doors` |

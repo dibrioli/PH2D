@@ -182,3 +182,45 @@ fn the_detector_can_see_a_stacked_label() {
         );
     }
 }
+
+/// ⭐⭐⭐ **UMA linha de N campos tem UMA porta — e é isto que faz «a mesma formatação» ser verdade.**
+///
+/// ⛔⛔ **Report do dono, 2026-09-15, com o desenho:** *«A disposição ficou diferente. VC tinha
+/// colocado x e y na mesma linha. Position X/Y Caixa Caixa»*. A conversão do Transform do dia
+/// anterior tinha-o posto na linha de propriedade **com um pintor próprio**, e as duas portas
+/// concordavam na forma e **divergiam nos números**: o vão entre caixas (`8` contra `3`) e uma
+/// coluna própria para a letra de eixo (`14`). No dock dele (`369,74`) a coluna do controlo mede
+/// `160,9`: as Âncoras pedem `2 × 72 + 3 = 147` e cabem; o Transform pedia `180` e **não cabia**.
+///
+/// ⇒ *«a mesma formatação» não se obtém com duas portas que concordam — obtém-se com UMA.*
+///
+/// ⚠️ **A régua conta os chamadores da LEI** ([`ph2d_editor_core::widget::property_fields_layout`]),
+/// não os pintores: um pintor novo que a chame por sua conta volta a ter os números dele.
+#[test]
+fn only_one_door_lays_out_a_row_of_fields() {
+    let mut chamadores = Vec::new();
+    for entry in fs::read_dir(sections_dir()).expect("sections/ existe") {
+        let path = entry.expect("entrada legível").path();
+        if path.extension().and_then(|e| e.to_str()) != Some("rs") {
+            continue;
+        }
+        let src = fs::read_to_string(&path).expect("ficheiro legível");
+        // ⛔ A declaração de `use` e a prosa não chamam nada — aqui basta exigir o parêntese.
+        if src.contains("property_fields_layout(") {
+            chamadores.push(
+                path.file_name()
+                    .and_then(|n| n.to_str())
+                    .expect("nome utf-8")
+                    .to_string(),
+            );
+        }
+    }
+    chamadores.sort();
+    assert_eq!(
+        chamadores,
+        vec!["rows.rs".to_string()],
+        "a lei de dispor N campos numa linha tem de ter UM chamador (a porta `rows::fields_row`). \
+         Quem a chama por sua conta volta a ter os numeros dele, e duas seccoes a' mesma largura \
+         desenham coisas diferentes — foi o report do dono de 2026-09-15."
+    );
+}

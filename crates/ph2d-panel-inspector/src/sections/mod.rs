@@ -94,7 +94,6 @@ mod sprite_sheet;
 pub(crate) mod timers;
 mod transform;
 // ⚠️ O DESENHO de uma linha do Transform — separado da orquestração delas pelo tecto de LOC.
-mod transform_row;
 mod visibility;
 mod wheel;
 

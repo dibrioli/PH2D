@@ -1443,3 +1443,95 @@ e o dono pediu *a mesma formatação*. ⇒ devolve-se `field_h + (linhas − 1) 
 |---|---|
 | `a_row_of_many_fields_never_starves_them` (agora varre `lead ∈ {0, 14}`) | ignorar o `lead` no piso da célula ⇒ caixa a `67,75` contra o piso `72` ✅ |
 | `the_lone_field_of_a_row_spans_what_the_pair_spans` | um vão a mais na largura da célula ⇒ `183,00` contra `186,00` ✅ |
+
+
+---
+
+## 23 — ⛔⛔⛔ *«A disposição ficou diferente»* — DUAS portas que concordavam na forma e divergiam nos NÚMEROS
+
+**Report do dono, 2026-09-15**, no smoke da §22, com o desenho: *«A disposição ficou diferente. VC
+tinha colocado x e y na mesma linha. Veja lá. Position X/Y Caixa Caixa»*.
+
+### 23.1 — A medição que explica tudo, e ela sai do ficheiro dele
+
+`~/.ph2d/layout.txt` ⇒ **`dock_w_right = 369,74`**. A coluna do controlo mede `160,87`.
+
+| secção | o que a linha pedia | cabe? |
+|---|---|---|
+| Âncoras (`rows::fields_row`) | `2 × 72 + 3` = **`147`** | ✅ lado a lado |
+| Transform (`transform_row::paint_row`) | `2 × (14 + 72) + 8` = **`180`** | ⛔ **empilhava** |
+
+Os `33 px` de diferença são **duas** divergências que a §22 deixou passar:
+
+1. o **vão entre caixas** — `Spacing::Md` (`8`) no Transform contra a porta `control_gap_px` (`3`);
+2. a **coluna própria da letra de eixo** (`lead = 14`), que a §22 acrescentou de propósito.
+
+⇒ *à MESMA largura de painel, as duas secções desenhavam a mesma linha de duas maneiras.*
+
+### 23.2 — ⭐⭐⭐ A lei: «a mesma formatação» não se obtém com duas portas que concordam
+
+A §22 pôs o Transform **na linha de propriedade** e deixou-lhe **o pintor dele**. As duas portas
+partilhavam a lei (`property_fields_layout`) e **não** os números que lhe passavam — e é aí que a
+igualdade se perde, em silêncio, até alguém arrastar a borda do painel para a faixa em que elas
+discordam (`348`..`400`).
+
+⇒ o `transform_row.rs` **foi apagado**. As quatro linhas do Transform são quatro chamadas da
+`rows::fields_row`, e o `X`/`Y` viaja no **NOME** (`"Position X / Y"`), como nas Âncoras — que é
+literalmente o que o dono desenhou.
+
+### 23.3 — O que morreu com ele
+
+| coisa | antes | depois |
+|---|---|---|
+| `transform_row.rs` | 177 linhas, `RowStyle` de 10 campos | **apagado** |
+| `trait RowPainter` + `impl<F>` | 55 linhas (nasceu para calar o `type_complexity` de um fecho de 11 args) | **apagado** |
+| números de geometria só desta secção | 8 | **0** |
+| `transform.rs` | 586 linhas | **382** |
+| chamadores de `property_fields_layout` | 2 | **1** |
+
+⭐ E o `paint_scale_and_skew` deixou de receber um `&dyn RowPainter`: ele recebe os mutáveis do
+quadro, como todos os outros ajudantes deste painel.
+
+### 23.4 — O gate que impede a terceira vez
+
+`only_one_door_lays_out_a_row_of_fields`: **a lei de dispor N campos numa linha tem exactamente UM
+chamador** em `sections/`. ⛔ Ela conta os chamadores da LEI, não os pintores — *um pintor novo que
+a chame por sua conta volta a ter os números dele*.
+
+**Mutação:** pôr uma chamada de `property_fields_layout` no `transform.rs` ⇒
+`left: ["rows.rs", "transform.rs"]` contra `right: ["rows.rs"]` ✅
+
+### 23.5 — ⏳ O que se perdeu, nomeado
+
+As letras **`X` e `Y` coloridas** (vermelho/verde, a convenção do Blender e do Unity) saíram. O nome
+passa a dizer `Position X / Y` e a ordem esquerda→direita é quem mapeia — exactamente como nas
+Âncoras, que é a forma que o dono aprovou.
+
+⚠️ **O custo real está medido e é a faixa `348`..`400` de largura de painel**: dentro dela a letra
+fazia a diferença entre uma linha e duas. Se as letras voltarem, voltam com esse preço escrito.
+⛔ E **quando a linha empilha** (painel abaixo de `348`) o nome `Position X / Y` sobre duas caixas
+empilhadas não diz qual é qual — é a mesma ambiguidade que fez as três rows da §Animation partir-se
+em seis, e aqui ela fica **aceite**, porque foi a forma que o dono escolheu e desenhou.
+
+### 23.6 — ⚠️ A régua que eu não tinha corrido
+
+Eu tinha afirmado, na §22, que o dock do dono estava em `273,3`. **Estava em `369,74`** — ele
+alargou-o. *A afirmação vinha da última medição que eu fizera, não do ficheiro no dia.* ⇒ o
+`~/.ph2d/layout.txt` lê-se **na hora**, e o número entra na frase: as conclusões da §22 sobre o
+limiar de `380` continuam certas como propriedade do código, e **erradas sobre onde ele estava**.
+
+### 23.7 — ⚠️ PEDIDO AO INTEGRADOR: um membro novo da família de flakes de carga
+
+`the_cost_of_a_gated_stroke_follows_the_footprint_not_the_canvas`
+([`ph2d-tool-painter`](../../../crates/ph2d-tool-painter/), `tool::paint::mask::mask_gate_tests`)
+reprovou no fecho desta wave, com as **três** assinaturas da família (`CLAUDE.md` §5.0):
+
+- gate de **razão entre dois relógios**;
+- **zero linhas** do diff desta linha naquela crate;
+- **3 de 3 verde sozinho**, e a `load 101,42` · `103,45` · `103,45` — *ele passa com a máquina
+  muito mais carregada do que estava quando reprovou* ⇒ o discriminador é o **FAN-OUT**, não o
+  relógio, que é o mesmo achado que o `no_expression_allocates_no_link_frame` já registava.
+
+⚠️⚠️ **E ele é IRMÃO DE FICHEIRO do `the_mask_stroke_cost_does_not_follow_the_canvas`, que JÁ está
+na lista.** *Duas razões de relógio na mesma crate, uma na lista e outra não, é exactamente como a
+lista envelhece* — a memória deste repo diz isto por escrito desde 2026-09-12, sobre outro par.

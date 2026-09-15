@@ -16,14 +16,6 @@ pub(crate) fn paint_transform_section(
     w: f32,
     y: f32,
 ) -> f32 {
-    let label_font = TypeToken::Sm.px();
-    let field_h = ROW_H_PX;
-    // ⚠️ **O vão entre dois controlos é a porta `control_gap_px` (3 px)**, e não o
-    //    `Spacing::Xs` (4) escrito à mão — ordem do dono, 2026-09-07. Esta secção é
-    //    anterior à porta. Ver `every_stack_of_rows_asks_the_rhythm`.
-    let row_gap = ph2d_tokens::control_gap_px();
-    let label_color = resolve(ColorToken::Text2, theme);
-
     // O cabeçalho da secção + a dobra do corpo. Ver [`paint_header_and_begin_fold`].
     let (header_h, fold) =
         match paint_header_and_begin_fold(scene, text_system, theme, hit_index, store, x, w, y) {
@@ -36,77 +28,21 @@ pub(crate) fn paint_transform_section(
     // the "separators go BETWEEN sections" canon (DIRETRIZ §5.2).
     let mut cur_y = y + header_h;
 
-    let col_gap = Spacing::Md.px();
-    let tag_box_gap = Spacing::Xxs.px();
-    // ⭐⭐⭐ **A COLUNA sai INTEIRAMENTE da porta desde 2026-09-15** — ordem do dono: *«a mesma
-    // formatação do Position X/Y que fez para Anchor vou querer para todo o Transform»*.
+    // ⭐⭐⭐ **A GEOMETRIA DESTA SECÇÃO DEIXOU DE EXISTIR** — report do dono, 2026-09-15, com o
+    // desenho: *«A disposição ficou diferente. VC tinha colocado x e y na mesma linha.
+    // Position X/Y Caixa Caixa»*.
     //
-    // ⛔ O que estava aqui era a coluna do rótulo lida da porta **mais** a lei adaptativa própria
-    // desta secção, que decidia entre *nome ao lado* e *nome por cima*. A nota ao lado dizia que
-    // essa lei *«fica intacta»* — e ela era precisamente o defeito: medido em 15/09, o limiar dela
-    // é `interior ≥ 360` ⇒ **painel ≥ 380**, contra o dock do dono em `273,3`. *A secção estava no
-    // modo «nome por cima» em toda largura que ele usa.*
+    // ⛔⛔ Viviam aqui **oito** números só desta secção — a coluna do rótulo, o vão entre colunas
+    // (`Spacing::Md`, `8`, contra os `3` da porta), a coluna da letra de eixo, o vão dela, o vão do
+    // nome-por-cima, o piso do chip, a largura utilizável e a largura de um chip. Eles eram a
+    // SEGUNDA resposta do app a *«como se dispõe uma linha de N campos»*, e à mesma largura de
+    // painel as duas respostas desenhavam coisas diferentes: no dock dele (`369,74`) a coluna do
+    // controlo mede `160,9`, as Âncoras pedem `2 × 72 + 3 = 147` e cabem, esta pedia
+    // `2 × (14 + 72) + 8 = 180` e **não cabia**.
     //
-    // ⇒ hoje quem decide é a `widget::property_row_columns`, e o que não cabe **reflui** dentro da
-    // coluna do controlo (`property_fields_layout`), como nas Âncoras.
-    let axis_col_w = Spacing::Lg.px();
-    let axis_label_font = TypeToken::Base.px();
-    // ⭐⭐⭐ **A COLUNA DE ANIMAÇÃO também nesta família de linhas** (report do Enio, 2026-09-03,
-    // com foto: *«várias não receberam pontos»*).
-    //
-    // ⚠️ **Estas linhas NÃO são a caixa única** — são rótulo à esquerda + campos numéricos soltos,
-    // uma terceira família que o censo da pesquisa `07` §15.1 não contou, porque ele mediu
-    // `paint_slider_with_chip` e `paint_checkbox` e esta não passa por nenhum dos dois.
-    //
-    // ⭐ Toda a geometria da linha deriva de **uma** largura, então encolhê-la aqui serve as
-    // quatro linhas da secção de uma vez. ⛔ O cabeçalho fica com a largura inteira: ele não é uma
-    // propriedade, e a coluna é dos valores.
-    //
-    // ⚠️ Pela **porta**, não por uma subtracção local: há ~20 construtores de linha à mão neste
-    // painel, e vinte subtracções são vinte oportunidades de a coluna ficar com um `x` diferente.
-    // O rect do ponto sai da mesma chamada, por linha.
-
-    // ⭐ A geometria da secção, calculada uma vez — ver [`transform_row::RowStyle`].
-    let st = transform_row::RowStyle {
-        x,
-        w,
-        field_h,
-        label_font,
-        label_color,
-        theme,
-        store,
-        col_gap,
-        axis_col_w,
-        tag_box_gap,
-        axis_label_font,
-    };
-    let paint_row = |scene: &mut VectorScene,
-                     text_system: &mut TextSystem,
-                     hit_index: &mut HitIndex,
-                     row_y: f32,
-                     row_label: &str,
-                     left_id: NodeId,
-                     left_tag: &str,
-                     left_color: ColorToken,
-                     left_step: f64,
-                     right: Option<(NodeId, &str, ColorToken, f64)>,
-                     unidade: Option<ph2d_editor_core::widget::Unit>|
-     -> f32 {
-        transform_row::paint_row(
-            &st,
-            scene,
-            text_system,
-            hit_index,
-            row_y,
-            row_label,
-            left_id,
-            left_tag,
-            left_color,
-            left_step,
-            right,
-            unidade,
-        )
-    };
+    // ⇒ *«a mesma formatação» não se obtém com duas portas que concordam — obtém-se com UMA.* O
+    // `X`/`Y` viaja no NOME, como nas Âncoras, e as quatro linhas são quatro chamadas da
+    // `rows::fields_row`.
 
     // A unidade de ângulo: rótulo e passo. Mecanismo em [`labels_for`] e [`step_for`].
     let angle = current_display_angle();
@@ -126,49 +62,48 @@ pub(crate) fn paint_transform_section(
         ),
     };
     let ang_unit = angle_unit(angle);
-    let h_pos = paint_row(
+    cur_y = super::rows::fields_row(
         scene,
         text_system,
+        theme,
         hit_index,
+        store,
+        x,
+        w,
         cur_y,
         pos_label,
-        ids::INSP_TRANSFORM_POS_X,
-        "X",
-        ColorToken::Danger,
+        &[ids::INSP_TRANSFORM_POS_X, ids::INSP_TRANSFORM_POS_Y],
         pos_step,
-        Some((
-            ids::INSP_TRANSFORM_POS_Y,
-            "Y",
-            ColorToken::Success,
-            pos_step,
-        )),
         Some(pos_unit),
+        None,
     );
-    cur_y += h_pos + row_gap;
-    let h_rot = paint_row(
+    cur_y = super::rows::fields_row(
         scene,
         text_system,
+        theme,
         hit_index,
+        store,
+        x,
+        w,
         cur_y,
         rot_label,
-        ids::INSP_TRANSFORM_ROT,
-        "",
-        ColorToken::Text3,
+        &[ids::INSP_TRANSFORM_ROT],
         angle_step,
-        None,
         Some(ang_unit),
+        None,
     );
-    cur_y += h_rot + row_gap;
     // ⭐ **A ESCALA e o CISALHAMENTO saíram para uma porta própria** (tecto de fn do painel,
     //    2026-09-15): as duas são o par `X`/`Y` de um FACTOR e de um ÂNGULO, e nenhuma delas lê a
     //    régua da POSIÇÃO. *O corte é por responsabilidade, nunca uma entrada na lista de folgas.*
     cur_y = paint_scale_and_skew(
-        &paint_row,
         scene,
         text_system,
+        theme,
         hit_index,
+        store,
+        x,
+        w,
         cur_y,
-        row_gap,
         skew_label,
         angle_step,
         ang_unit,
@@ -176,76 +111,6 @@ pub(crate) fn paint_transform_section(
     cur_y += SECTION_BOTTOM_PAD_PX;
 
     fold.finish(store, scene, hit_index, cur_y)
-}
-
-/// ⭐ **O pintor de uma linha do Transform, com nome.**
-///
-/// ⚠️ Ele existe porque o fecho que o corpo da secção constrói tem **onze** argumentos, e um
-/// `&dyn Fn(...)` escrito à mão na assinatura de quem o recebe é o que o `clippy::type_complexity`
-/// acusa — com razão: *um tipo que ninguém consegue ler não diz o que a coisa faz*.
-trait RowPainter {
-    #[allow(clippy::too_many_arguments)]
-    fn paint(
-        &self,
-        scene: &mut VectorScene,
-        text_system: &mut TextSystem,
-        hit_index: &mut HitIndex,
-        row_y: f32,
-        row_label: &str,
-        left_id: NodeId,
-        left_tag: &str,
-        left_color: ColorToken,
-        left_step: f64,
-        right: Option<(NodeId, &str, ColorToken, f64)>,
-        unit: Option<ph2d_editor_core::widget::Unit>,
-    ) -> f32;
-}
-
-impl<F> RowPainter for F
-where
-    F: Fn(
-        &mut VectorScene,
-        &mut TextSystem,
-        &mut HitIndex,
-        f32,
-        &str,
-        NodeId,
-        &str,
-        ColorToken,
-        f64,
-        Option<(NodeId, &str, ColorToken, f64)>,
-        Option<ph2d_editor_core::widget::Unit>,
-    ) -> f32,
-{
-    #[allow(clippy::too_many_arguments)]
-    fn paint(
-        &self,
-        scene: &mut VectorScene,
-        text_system: &mut TextSystem,
-        hit_index: &mut HitIndex,
-        row_y: f32,
-        row_label: &str,
-        left_id: NodeId,
-        left_tag: &str,
-        left_color: ColorToken,
-        left_step: f64,
-        right: Option<(NodeId, &str, ColorToken, f64)>,
-        unit: Option<ph2d_editor_core::widget::Unit>,
-    ) -> f32 {
-        self(
-            scene,
-            text_system,
-            hit_index,
-            row_y,
-            row_label,
-            left_id,
-            left_tag,
-            left_color,
-            left_step,
-            right,
-            unit,
-        )
-    }
 }
 
 /// ⭐ **As duas últimas linhas do Transform — a ESCALA e o CISALHAMENTO.**
@@ -258,52 +123,51 @@ where
 /// Devolve o `y` seguinte.
 #[allow(clippy::too_many_arguments)]
 fn paint_scale_and_skew(
-    paint_row: &dyn RowPainter,
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
+    theme: Theme,
     hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    x: f32,
+    w: f32,
     y: f32,
-    row_gap: f32,
     skew_label: &str,
     angle_step: f64,
     ang_unit: ph2d_editor_core::widget::Unit,
 ) -> f32 {
-    let mut cur_y = y;
-    let h_scale = paint_row.paint(
+    const SCALE_STEP: f64 = 0.1; // LITERAL-PX-OK: passo de scrub de um FACTOR, não de pixels
+    let cur_y = super::rows::fields_row(
         scene,
         text_system,
+        theme,
         hit_index,
-        cur_y,
+        store,
+        x,
+        w,
+        y,
         tr("panel.inspector.transform.scale"),
-        ids::INSP_TRANSFORM_SCALE_X,
-        "X",
-        ColorToken::Danger,
-        0.1, // LITERAL-PX-OK: scale NumberInput step
-        Some((ids::INSP_TRANSFORM_SCALE_Y, "Y", ColorToken::Success, 0.1)), // LITERAL-PX-OK: scale NumberInput step
+        &[ids::INSP_TRANSFORM_SCALE_X, ids::INSP_TRANSFORM_SCALE_Y],
+        SCALE_STEP,
+        None,
         None,
     );
-    cur_y += h_scale + row_gap;
     // Skew X/Y in degrees (ADR-0025-amendment-1). Authoring range is clamped to ±~89.4° at the
     // ECS-commit boundary; the slider itself is unbounded so over-typing snaps back on re-sync.
-    let h_skew = paint_row.paint(
+    super::rows::fields_row(
         scene,
         text_system,
+        theme,
         hit_index,
+        store,
+        x,
+        w,
         cur_y,
         skew_label,
-        ids::INSP_TRANSFORM_SKEW_X,
-        "X",
-        ColorToken::Danger,
+        &[ids::INSP_TRANSFORM_SKEW_X, ids::INSP_TRANSFORM_SKEW_Y],
         angle_step,
-        Some((
-            ids::INSP_TRANSFORM_SKEW_Y,
-            "Y",
-            ColorToken::Success,
-            angle_step,
-        )),
         Some(ang_unit),
-    );
-    cur_y + h_skew
+        None,
+    )
 }
 
 /// **O cabeçalho da secção Transform, e a dobra do corpo.**

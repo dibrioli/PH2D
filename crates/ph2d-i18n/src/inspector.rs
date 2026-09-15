@@ -489,12 +489,12 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "Multiple selected \u{b7} timer edits apply to the active object only."
         }
         "panel.inspector.timers.no_timers_yet" => "No timers yet.",
-        "panel.inspector.transform.position_m" => "Position",
-        "panel.inspector.transform.position_px" => "Position",
-        "panel.inspector.transform.scale" => "Scale",
+        "panel.inspector.transform.position_m" => "Position X / Y",
+        "panel.inspector.transform.position_px" => "Position X / Y",
+        "panel.inspector.transform.scale" => "Scale X / Y",
         "panel.inspector.transform.transform" => "Transform",
         "panel.inspector.transform.rotation" => "Rotation",
-        "panel.inspector.transform.skew" => "Skew",
+        "panel.inspector.transform.skew" => "Skew X / Y",
         "panel.inspector.visibility.visibility_layer" => "Visibility Layer",
         "panel.inspector.visibility.clip_children" => "Clip Children",
         "panel.inspector.visibility.disabled" => "Disabled",

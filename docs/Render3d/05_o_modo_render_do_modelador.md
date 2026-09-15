@@ -2890,3 +2890,87 @@ ruído que obriga a um *denoiser*. ⭐ O que faltava não era a ideia — era es
 PIOR do que não existir*. **Catorze gates verdes** defendiam um desenho que o dono reprovou em dois
 segundos — porque nenhum deles perguntava *«isto é bom?»*, só *«isto está correcto?»*. A linha de
 controlo que faltava era a mais simples de todas: **não fazer nada**.
+
+---
+
+## §33 — ⭐⭐⭐ O CAMPO VAI PARA O DISPOSITIVO: a fita vira WGSL (2026-09-14)
+
+O §32 mediu o tecto (`399,5×`) e o dono disse *«siga»*. Esta secção é a primeira metade: **o campo
+do documento avalia-se na GPU, e responde o mesmo que o da CPU nas dezoito cenas vivas.**
+
+### §33.1 — ⛔ A rota que a medição REJEITOU: interpretar a fita
+
+Interpretar a fita no dispositivo daria o catálogo de graça **e** zero compilação. Não cabe, e o
+número é o **pico de valores vivos** (`Field::tape_shape`, medido nas cenas reais):
+
+| cena | ops | **vivos** |
+|---|---:|---:|
+| a ponte | `49` | `11` |
+| um verbo por forma | `126` | `15` |
+| o lote da W103 | `451` | `34` |
+| o polígono de `N` | `851` | `110` |
+| **a pior** | **`2 969`** | **`464`** |
+
+`464` valores vivos são `1 856 B` por thread e **`116 KB` por workgroup de 64** — acima da memória
+partilhada de qualquer GPU. ⚠️ *A maioria das cenas caberia com folga; é a cauda que decide, e uma
+arquitectura que só serve o caso médio não serve.*
+
+### §33.2 — ⭐ A rota que fica: gerar WGSL — e ela custa `6`–`49 ms`, por ESTRUTURA
+
+| ops | `naga` | pipeline | **total** | (a cena real com este tamanho) |
+|---:|---:|---:|---:|---|
+| `50` | `0,2 ms` | `6,2 ms` | `6,4 ms` | a ponte |
+| `450` | `1,2 ms` | `7,3 ms` | `8,5 ms` | o lote da W103 |
+| `900` | `5,1 ms` | `13,2 ms` | `18,3 ms` | o polígono de `N` |
+| `3 000` | `22,2 ms` | `27,1 ms` | **`49,3 ms`** | a pior medida |
+
+⭐⭐⭐ **E paga-se por ESTRUTURA, não por edição.** Arrastar um slider muda um **número**; a árvore
+fica igual. ⇒ as constantes saem num **buffer** (`k[i]`) e a chave do cache é o **texto**, que não
+muda: *um arrasto de slider reescreve um buffer e não recompila nada.* O que custa é acrescentar
+uma forma — uma vez, e o módulo já sabe segurar o quadro anterior enquanto o novo não chega.
+
+### §33.3 — ⭐⭐⭐ O achado: o catálogo inteiro por VINTE E OITO opcodes
+
+O modelador tem **`62` primitivas** e uma pilha de modificadores. Escrever WGSL para cada uma seria
+meses — e um **segundo sítio onde a forma vive**, que é o defeito que este repositório mede em toda
+a parte.
+
+⭐ Mas o documento **já** é compilado numa **fita**: uma lista SSA de operações **aritméticas**, onde
+uma rosca, uma superfórmula e um filete já são `min`, `max`, `sqrt` e multiplicações. O gerador
+([`ph2d_field_eval::wgsl`]) percorre a fita e emite **uma linha por instrução** — `17` unárias e
+`11` binárias. *O catálogo inteiro, incluindo o que ainda não foi escrito, sai de graça.*
+
+⚠️ **Quatro opcodes exigem cuidado e cada um tem a nota ao lado:**
+
+- **`atan2(a, b)`** — a ordem é a da `fidget` (`a.atan2(b)`); trocá-la **espelha a peça** na diagonal;
+- **`Mod` é `rem_euclid`**, não o `%` da WGSL (que leva o sinal do dividendo) — *uma repetição com o
+  sinal trocado espelha metade da peça*;
+- **`Compare`** devolve `-1/0/1` **e `NaN`** quando não são comparáveis;
+- **`And`/`Or`** são a semântica da `fidget` (`a == 0` escolhe), não booleanos.
+
+### §33.4 — ⭐⭐ A prova: dois motores, uma lei
+
+`ph2d-field-gpu` tem o arnês ([`parity::compare`]) e o gate percorre **todas as cenas vivas**,
+avaliando `1 331` pontos numa grelha que cai dentro, fora e sobre a superfície:
+
+| pior desvio, sobre as 18 cenas | **`5,6e-7`** |
+|---|---|
+| a barra | `1e-3` |
+
+É **erro de representação puro** (a fita da CPU é `f64`, o dispositivo é `f32`) e está `1 800×`
+abaixo da barra. ⚠️ **A barra não é um número escolhido:** uma lei diferente — a ordem do `atan2`
+trocada, o sinal do `Mod` — dá desvios de **unidades de mundo**, três ordens de grandeza acima.
+⭐ E o gate exige também que **`NaN` de um lado seja `NaN` do outro**: um motor que responde `NaN`
+onde o outro responde um número é uma lei diferente, e a subtração esconde-o.
+
+### §33.5 — ⏳ O que falta para isto ser o traçador
+
+- **A marcha, a normal, a oclusão e o sombreamento** ainda são da CPU; o que existe é o **campo**.
+  A sonda `field_march_ceiling` já mostrou o que eles custam quando lá estiverem (`5,00 ms`).
+- ⛔ **A ESCULTURA não atravessa** (`NodeKind::Sculpt`): ela não é uma expressão, é uma **grade** que
+  o registo do avaliador resolve por nome. Na GPU ela seria uma textura 3D. *A paridade da cena 6
+  lê `0,000` porque os dois motores concordam que ali não há expressão nenhuma — não porque a
+  escultura funcione.*
+- **A `f32` é a divergência declarada**, e ela é maior do que parece num sítio: a marcha acumula
+  erro ao longo de centenas de passos. O gate mede o **campo**, não a marcha.
+- **Nenhum pipeline é ainda partilhado com o produto** — o cache existe e ninguém o liga.

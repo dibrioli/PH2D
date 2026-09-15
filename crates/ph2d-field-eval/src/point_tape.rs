@@ -55,7 +55,7 @@ use std::collections::BTreeMap;
 /// Um passo da fita. Os índices são **densos e para trás** — o slot de um filho é sempre menor que o
 /// do pai, que é o que permite o passe único para a frente.
 #[derive(Clone, Copy)]
-enum Instr {
+pub(crate) enum Instr {
     X,
     Y,
     Z,
@@ -359,3 +359,64 @@ const _: () = {
     const fn is_send_sync<T: Send + Sync>() {}
     is_send_sync::<PointTape>();
 };
+
+/// ⭐⭐⭐ **O RETRATO DE UMA FITA** — o que decide se ela cabe num interpretador de GPU.
+///
+/// Duas grandezas, e a segunda é a que manda:
+///
+/// - **`ops`**: quantas instruções a fita tem. É o custo de a percorrer, por amostra.
+/// - **`vivos`**: quantos valores estão vivos ao mesmo tempo, no pior instante. ⭐ **É este o
+///   scratch por THREAD** de um interpretador: a fita é SSA com índices para trás, logo um slot
+///   morre assim que o último leitor dele passa, e os slots reaproveitam-se. *Guardar a fita
+///   inteira por invocação seria `8 KB` por thread e nenhuma GPU o aceita; guardar os VIVOS pode
+///   ser meia dúzia de registos.*
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct TapeShape {
+    pub ops: usize,
+    pub vivos: usize,
+}
+
+impl PointTape {
+    /// A fita, para quem a sabe traduzir — ver [`crate::wgsl`].
+    pub(crate) fn code(&self) -> Option<&[Instr]> {
+        self.code.as_deref()
+    }
+
+    /// O slot da raiz.
+    pub(crate) fn root(&self) -> u32 {
+        self.raiz
+    }
+
+    /// Ver [`TapeShape`]. `None` quando o documento não tem fita.
+    pub fn shape(&self) -> Option<TapeShape> {
+        let code = self.code.as_ref()?;
+        // O último leitor de cada slot — depois dele o valor pode ser reciclado.
+        let mut ultimo = vec![0usize; code.len()];
+        for (i, instr) in code.iter().enumerate() {
+            match instr {
+                Instr::Unary(_, a) => ultimo[*a as usize] = i,
+                Instr::Binary(_, a, b) => {
+                    ultimo[*a as usize] = i;
+                    ultimo[*b as usize] = i;
+                }
+                _ => {}
+            }
+        }
+        ultimo[self.raiz as usize] = code.len();
+        // Uma varredura para a frente: nasce um, morrem os que já ninguém lê.
+        let (mut vivos, mut pico) = (0usize, 0usize);
+        for (i, _) in code.iter().enumerate() {
+            vivos += 1;
+            pico = pico.max(vivos);
+            for (j, u) in ultimo.iter().enumerate().take(i + 1) {
+                if *u == i && j != self.raiz as usize {
+                    vivos -= 1;
+                }
+            }
+        }
+        Some(TapeShape {
+            ops: code.len(),
+            vivos: pico,
+        })
+    }
+}

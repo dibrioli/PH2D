@@ -1,0 +1,22 @@
+[package]
+name = "ph2d-field-gpu"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# ⭐⭐⭐ O campo implícito NO DISPOSITIVO — a fita do documento gerada em WGSL e compilada uma vez
+# por ESTRUTURA. Ver `docs/Render3d/05` §33 para os números que escolheram esta rota (a mesma peça:
+# `1 998 ms` na CPU contra `5,00 ms` aqui).
+#
+# ⛔ Ela é a IRMÃ do `ph2d-field-render`, nunca um substituto: aquele é a referência de CPU contra
+# a qual esta se mede (*dois motores, uma lei* — o molde do Flip e do pincel de tecido).
+[dependencies]
+ph2d-field      = { path = "../ph2d-field" }
+ph2d-field-eval = { path = "../ph2d-field-eval" }
+wgpu = { version = "29.0.4", features = ["wgsl"] }
+pollster = "0.4.0"

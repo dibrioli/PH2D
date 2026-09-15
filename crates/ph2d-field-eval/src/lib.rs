@@ -310,6 +310,19 @@ impl Field {
         }
     }
 
+    /// ⭐⭐⭐ **A fita deste documento escrita em WGSL** — ver [`wgsl::TapeWgsl`].
+    #[must_use]
+    pub fn tape_wgsl(&self) -> Option<wgsl::TapeWgsl> {
+        self.tape.to_wgsl()
+    }
+
+    /// ⭐⭐⭐ **O retrato da fita deste documento** — ver [`point_tape::TapeShape`]. É ele que diz se
+    /// um interpretador de GPU cabe: o `vivos` é o scratch **por thread**.
+    #[must_use]
+    pub fn tape_shape(&self) -> Option<point_tape::TapeShape> {
+        self.tape.shape()
+    }
+
     /// `f(x, y, z)`. `NaN` se a árvore não puder ser avaliada ali.
     #[must_use]
     pub fn at(&self, x: f64, y: f64, z: f64) -> f64 {
@@ -361,7 +374,8 @@ pub fn leaf(p: Primitive, xform: Xform) -> Node {
 }
 
 mod affine;
-mod point_tape;
+pub mod point_tape;
+pub mod wgsl;
 use affine::Affine;
 /// ⭐⭐ **O contador de fitas de PONTO** — ver [`point_tape::POINT_TAPES`]. Público porque o
 /// instrumento de um custo só serve a quem o paga, e quem o paga é o consumidor (a `Owners`, a

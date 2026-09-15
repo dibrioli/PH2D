@@ -27,6 +27,7 @@ ph2d-editor-core   = { path = "../ph2d-editor-core" }
 ph2d-field         = { path = "../ph2d-field" }
 ph2d-field-ecs     = { path = "../ph2d-field-ecs" }
 ph2d-field-eval    = { path = "../ph2d-field-eval" }
+ph2d-field-gpu     = { path = "../ph2d-field-gpu" }
 ph2d-field-mesh    = { path = "../ph2d-field-mesh" }
 ph2d-field-profile = { path = "../ph2d-field-profile" }
 ph2d-field-render  = { path = "../ph2d-field-render" }

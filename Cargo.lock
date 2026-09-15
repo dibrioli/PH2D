@@ -4923,6 +4923,7 @@ dependencies = [
  "ph2d-field",
  "ph2d-field-ecs",
  "ph2d-field-eval",
+ "ph2d-field-gpu",
  "ph2d-field-mesh",
  "ph2d-field-profile",
  "ph2d-field-render",
@@ -5634,6 +5635,16 @@ dependencies = [
  "ph2d-quantize",
  "ph2d-remesh-iso",
  "ph2d-trace",
+]
+
+[[package]]
+name = "ph2d-field-gpu"
+version = "0.0.0"
+dependencies = [
+ "ph2d-field",
+ "ph2d-field-eval",
+ "pollster",
+ "wgpu",
 ]
 
 [[package]]

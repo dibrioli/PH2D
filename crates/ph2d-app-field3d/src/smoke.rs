@@ -561,3 +561,123 @@ mod trace_tests {
         }
     }
 }
+
+#[cfg(test)]
+mod tape_shape_probe {
+    /// ⭐⭐⭐ **CABE UM INTERPRETADOR DE FITA NA GPU?** — a medição que decide a arquitectura do
+    /// traçador de dispositivo (`docs/Render3d/05` §33).
+    ///
+    /// Duas rotas para levar um campo implícito ao dispositivo:
+    ///
+    /// - **gerar WGSL** por documento — máxima velocidade, mas **recompila a cada edição**, e o
+    ///   artista edita a arrastar um slider;
+    /// - **interpretar a FITA** — um shader só, o catálogo **inteiro** de graça (as `62` primitivas
+    ///   e todos os modificadores já estão lowered em aritmética), e **zero compilação**.
+    ///
+    /// ⚠️ O que mata a segunda é o **scratch por thread**: guardar a fita inteira por invocação
+    /// seriam quilobytes. Mas a fita é SSA com índices para trás, logo um slot morre assim que o
+    /// último leitor passa — o que conta é o **pico de valores vivos**.
+    #[test]
+    #[ignore = "sonda"]
+    fn measure_tape_shape_of_the_real_scenes() {
+        println!("  cena · nós ·    ops · VIVOS (o scratch por thread)");
+        let mut pior_ops = 0;
+        let mut pior_vivos = 0;
+        for n in 0..crate::smoke::scenes::CENAS {
+            if crate::smoke::scenes::PODADAS.contains(&n) {
+                continue;
+            }
+            let doc = crate::smoke::scene(n);
+            let campo = ph2d_field_eval::Field::new(&doc);
+            let Some(f) = campo.tape_shape() else {
+                println!("  {n:4} · (sem fita)");
+                continue;
+            };
+            pior_ops = pior_ops.max(f.ops);
+            pior_vivos = pior_vivos.max(f.vivos);
+            println!(
+                "  {n:4} · {:3} · {:6} · {:5}",
+                doc.nodes().len(),
+                f.ops,
+                f.vivos
+            );
+        }
+        println!("\n  PIOR: {pior_ops} ops · {pior_vivos} vivos");
+        println!(
+            "  ⇒ scratch de {} bytes por thread (f32) — um workgroup de 64 gasta {} KB",
+            pior_vivos * 4,
+            pior_vivos * 4 * 64 / 1024
+        );
+    }
+}
+
+#[cfg(test)]
+mod gpu_parity {
+    /// ⭐⭐⭐ **DOIS MOTORES, UMA LEI: o campo do DISPOSITIVO responde o mesmo que o da CPU.**
+    ///
+    /// Percorre **todas** as cenas vivas do smoke, gera o WGSL da fita de cada uma, corre-a na GPU
+    /// sobre uma grelha de pontos e compara com o [`ph2d_field_eval::Field::at`].
+    ///
+    /// ⚠️ **A barra não é zero, e a razão é declarada:** a fita da CPU é `f64` e o dispositivo é
+    /// `f32`. O que se exige é que o erro seja o da **representação**, e não o de uma lei diferente
+    /// — um opcode traduzido ao contrário (a ordem do `atan2`, o sinal do `Mod`) dá erros de
+    /// unidades de mundo, não de `1e-6`.
+    ///
+    /// ⚠️ `#[ignore]`: precisa de adaptador, como todo gate de GPU desta casa.
+    #[test]
+    #[ignore = "precisa de GPU"]
+    fn o_campo_do_dispositivo_responde_como_o_da_cpu() {
+        // Uma grelha dentro do enquadramento da peça, mais os eixos — pontos que caem DENTRO,
+        // FORA e sobre a superfície.
+        let mut pontos = Vec::new();
+        for i in 0..11 {
+            for j in 0..11 {
+                for k in 0..11 {
+                    let f = |n: i32| (n as f32 / 10.0) * 2.4 - 1.2;
+                    pontos.push([f(i), f(j), f(k)]);
+                }
+            }
+        }
+
+        let mut piores: Vec<(u32, f64, f64)> = Vec::new();
+        for n in 0..crate::smoke::scenes::CENAS {
+            if crate::smoke::scenes::PODADAS.contains(&n) {
+                continue;
+            }
+            let doc = crate::smoke::scene(n);
+            let Some(p) = ph2d_field_gpu::parity::compare(&doc, &pontos) else {
+                println!("cena {n}: sem GPU ou sem fita — saltada");
+                continue;
+            };
+            // ⚠️ **NaN de um lado tem de ser NaN do outro** — um campo que responde `NaN` onde o
+            // outro responde um número é uma lei diferente, e a subtração esconde-o.
+            let discordam_nan = p
+                .gpu
+                .iter()
+                .zip(&p.cpu)
+                .filter(|(g, c)| g.is_nan() != c.is_nan())
+                .count();
+            assert_eq!(
+                discordam_nan, 0,
+                "cena {n}: {discordam_nan} pontos em que um motor diz NaN e o outro não"
+            );
+            piores.push((n, p.worst(), p.rms()));
+        }
+        assert!(!piores.is_empty(), "nenhuma cena foi comparada");
+
+        println!("  cena ·   pior desvio ·    RMS");
+        for (n, w, r) in &piores {
+            println!("  {n:4} · {w:13.3e} · {r:9.3e}");
+        }
+        let pior = piores.iter().fold(0.0f64, |m, (_, w, _)| m.max(*w));
+        // ⚠️ **A barra é a da REPRESENTAÇÃO.** As peças vivem em `±1,2` de mundo, e um `f32` tem
+        // `~7` dígitos: um erro acumulado ao longo de uma fita de centenas de operações fica na
+        // casa de `1e-4`. ⛔ Uma lei diferente (uma ordem de `atan2` trocada, um sinal de `Mod`)
+        // dá desvios de unidades de MUNDO — três ordens de grandeza acima disto.
+        assert!(
+            pior < 1e-3,
+            "o pior desvio entre os dois motores é {pior:.3e} — acima do erro de representação de \
+             um `f32` sobre uma peça de `±1,2`. Não é precisão: é uma LEI diferente."
+        );
+    }
+}

@@ -198,3 +198,8 @@ mod tremor;
 #[cfg(test)]
 #[path = "motion_state_pilha_demo_curas.rs"]
 mod curas;
+
+/// ⭐ E o que mede os factos que DESENHAM a obra encomendada (doc 111) — ver o cabeçalho dele.
+#[cfg(test)]
+#[path = "motion_state_pilha_demo_obra.rs"]
+mod obra;

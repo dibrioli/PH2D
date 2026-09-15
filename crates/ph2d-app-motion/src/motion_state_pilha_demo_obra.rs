@@ -242,3 +242,183 @@ fn probe_a_pilha_tem_identidade() {
         s.columns().map(|(k, _)| k.as_str()).collect::<Vec<_>>()
     );
 }
+
+/// **SONDA — os SUB-PASSOS: a última saída de pé** (doc 111 §5.7, ordem do dono 2026-09-15).
+///
+/// ⭐⭐⭐ As três formas de comprar silêncio caíram — baixar o ganho (§8.9), filtrar (§5.5) e
+/// amolecer (§5.6). Sobra a que o oráculo usa e que esta obra nunca tocou: **partir o tique em `N`
+/// passos**, cada um com a sua integração **e** o seu contacto. É por isso que um solver de impulsos
+/// assenta a **rigidez plena**, sem amolecer nada — e ⭐ **o knob já existe no cartão da zona**.
+///
+/// ⚠️⚠️ **AS QUATRO RÉGUAS, porque três não chegaram nenhuma vez:** o balanço vê o tremor, o giro vê
+/// o rodopio, o `y` vê a pilha congelada no ar, e o **VÃO** vê a pilha colapsada. Cada cura desta
+/// caça melhorou a grandeza medida e estragou uma que ninguém media.
+///
+/// ⚠️ **E o PREÇO vai na mesma tabela**, que é o que o `CLAUDE.md` §0.0 exige de qualquer tecto:
+/// `N` sub-passos custam `N` vezes o solver.
+///
+/// ```text
+/// cargo test -p ph2d-app-motion --lib probe_os_sub_passos -- --ignored --nocapture
+/// ```
+#[test]
+#[ignore = "sonda de medicao"]
+fn probe_os_sub_passos() {
+    eprintln!("\n  substeps | balanço pior | giro pior  |  y final | VÃO típico | cook");
+    eprintln!("  ---------|--------------|------------|----------|------------|--------");
+    for n in [1_u32, 2, 4, 8, 16] {
+        let (mut bs, mut gs) = (Vec::new(), Vec::new());
+        for k in 0..5 {
+            #[expect(clippy::cast_precision_loss, reason = "um indice pequeno")]
+            let eps = (k as f32 - 2.0) * 1e-3;
+            let (b, g) = realizacao_com_substeps(eps, n);
+            bs.push(b);
+            gs.push(g);
+        }
+        bs.sort_by(f32::total_cmp);
+        gs.sort_by(f32::total_cmp);
+        let (y, vao, ms) = altura_vao_e_relogio(n);
+        eprintln!(
+            "  {n:>8} | {:>5.3}..{:>5.3} | {:>4.1}..{:>4.1} | {y:>8.2} | {vao:>10.4} | {ms:>5.2} ms",
+            bs[0],
+            bs[bs.len() - 1],
+            gs[0],
+            gs[gs.len() - 1],
+        );
+    }
+    eprintln!("\n  ⚠️ barra: balanço ≤ 0,15 · giro ≤ 28 · y ≪ −2 · VÃO ≈ 0,31 (o de hoje).");
+    eprintln!("  ⚠️ hoje (substeps 1): 3,79..5,69 · 24,3..28,4 · −2,56 · 0,3094.");
+}
+
+/// A cena com `substeps` escrito na zona da DIREITA e o berço deslocado `eps`.
+fn com_substeps(eps: f32, substeps: u32) -> (MotionState, NodeId) {
+    let mut state = MotionState::new();
+    let sinks = build(&mut state.doc, &state.registry).expect("a cena monta");
+    let tipo = |state: &MotionState, t: &str| -> Vec<NodeId> {
+        state
+            .doc
+            .graph
+            .nodes()
+            .iter()
+            .filter(|n| n.type_name == t)
+            .map(|n| n.id)
+            .collect()
+    };
+    if let Some(zona) = tipo(&state, "sim.zone").last().copied() {
+        #[expect(clippy::cast_precision_loss, reason = "uma contagem pequena")]
+        let v = substeps as f32;
+        state.doc.graph.set_param(zona, "substeps", v);
+    }
+    if let Some(alto) = tipo(&state, "motion.transform").last().copied() {
+        let x = state
+            .doc
+            .graph
+            .node_param_overrides(alto)
+            .and_then(|o| o.get("offset_x").copied())
+            .unwrap_or(0.0);
+        state.doc.graph.set_param(alto, "offset_x", x + eps);
+    }
+    crate::motion_shape_gen::publish(&mut state, 0.0);
+    (state, sinks[1])
+}
+
+/// `(balanço pior, giro líquido pior)` com `substeps`, **pela porta do PUMP**.
+///
+/// ⛔⛔ **A 1.ª versão desta sonda chamava o `cook` directamente e leu as cinco células IDÊNTICAS,
+/// com o relógio a não subir.** O motor do substep é a MARCHA do pump (`advance_or_scrub_*`), não
+/// o `Cook::cook` — *uma sonda que salta o pump mede um programa que não tem substeps*. É a mesma
+/// forma de erro que o `CLAUDE.md` já regista sobre sondas que armam um módulo por outra porta.
+fn realizacao_com_substeps(eps: f32, substeps: u32) -> (f32, f32) {
+    use ph2d_nodegraph::attr::Column as C;
+    let (mut state, sink) = com_substeps(eps, substeps);
+    let escopos = ph2d_nodegraph::cook::TimeScopes::new();
+    let (mut passos, mut anterior) = (Vec::<Vec<f32>>::new(), Vec::<f32>::new());
+    let (mut liquido, mut n) = (Vec::<f32>::new(), 0_usize);
+    for k in 0..=174_u64 {
+        state.pump.mark_dirty();
+        state.pump.advance_or_scrub_to_nodes_scoped(
+            &state.doc.graph,
+            &state.registry,
+            &[sink],
+            k,
+            |t| {
+                #[expect(clippy::cast_precision_loss, reason = "um indice de tique")]
+                let s = t as f64 / 60.0;
+                s
+            },
+            &escopos,
+        );
+        let Some((_, saida)) = state
+            .pump
+            .boundary_streams()
+            .iter()
+            .find(|(no, _)| *no == sink)
+        else {
+            continue;
+        };
+        if let Some(C::Scalar(r)) = saida.get("rot") {
+            if liquido.len() != r.len() {
+                liquido = vec![0.0; r.len()];
+                n = r.len();
+            }
+            if k >= 120 && anterior.len() == r.len() {
+                passos.push(
+                    r.iter()
+                        .zip(&anterior)
+                        .map(|(a, b)| (a - b).abs())
+                        .collect(),
+                );
+                for i in 0..r.len() {
+                    liquido[i] += r[i] - anterior[i];
+                }
+            }
+            anterior = r.clone();
+        }
+    }
+    let balanco = (0..n)
+        .map(|i| super::tremor::mediana(&passos.iter().map(|l| l[i]).collect::<Vec<_>>()))
+        .fold(0.0_f32, f32::max);
+    (balanco, liquido.iter().fold(0.0_f32, |a, v| a.max(v.abs())))
+}
+
+/// `(y mediano, vão típico, ms por tique)` no fim — **pela porta do PUMP**.
+///
+/// ⛔⛔ **A 1.ª versão desta função marchava pelo `cook` directo**, e as colunas `y` e `VÃO` saíam
+/// CONSTANTES em toda a varredura — porque estavam a medir a cena **sem substeps**, sempre. *Três
+/// colunas de uma tabela podem vir da porta certa e duas da errada, e a tabela lê-se inteira.*
+fn altura_vao_e_relogio(substeps: u32) -> (f32, f32, f64) {
+    use ph2d_nodegraph::attr::Column as C;
+    let (mut state, sink) = com_substeps(0.0, substeps);
+    let escopos = ph2d_nodegraph::cook::TimeScopes::new();
+    let (mut ys, mut vao, mut relogio) = (Vec::new(), 0.0_f32, 0.0_f64);
+    for k in 0..=174_u64 {
+        let agora = std::time::Instant::now();
+        state.pump.mark_dirty();
+        state.pump.advance_or_scrub_to_nodes_scoped(
+            &state.doc.graph,
+            &state.registry,
+            &[sink],
+            k,
+            |t| {
+                #[expect(clippy::cast_precision_loss, reason = "um indice de tique")]
+                let s = t as f64 / 60.0;
+                s
+            },
+            &escopos,
+        );
+        if k >= 120 {
+            relogio += agora.elapsed().as_secs_f64() * 1e3;
+        }
+        if k == 174
+            && let Some((_, saida)) = state
+                .pump
+                .boundary_streams()
+                .iter()
+                .find(|(no, _)| *no == sink)
+            && let Some(C::Vec2(p)) = saida.get("P")
+        {
+            ys = p.iter().map(|q| q[1]).collect();
+            vao = super::tests::vizinho_mediano(p);
+        }
+    }
+    (super::tremor::mediana(&ys), vao, relogio / 55.0)
+}

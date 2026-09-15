@@ -60,6 +60,9 @@ const VAO: f32 = 2.0;
 /// A gravidade (`force.wind` apontado para baixo, sem rajada — o doc dele diz que assim ele
 /// **é** gravidade).
 const GRAVIDADE: f32 = 4.0;
+/// ⭐⭐⭐ **Os SUB-PASSOS da zona** — a cura medida do zumbido da pilha. A tabela e o porquê do `8`
+/// estão no sítio onde ele é escrito; o mecanismo inteiro no doc 111 §5.8.
+const SUBSTEPS: f32 = 8.0;
 const RAJADA: f32 = 0.0;
 
 /// Quanto tempo dura cada queda, e a pausa antes da seguinte.
@@ -111,6 +114,33 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
         let zone = g.add_node("sim.zone");
         // `Loop` para a queda recomeçar sozinha — sem isso o monte assenta uma vez e a cena
         // deixa de ter o que mostrar depois do primeiro olhar.
+        // ⭐⭐⭐ **OS SUB-PASSOS — a cura do 4.º report do dono** (*«as shapes que ficam embaixo no
+        // centro vibram muito»*, 2026-09-15). Doc 111 §5.8.
+        //
+        // ⚠️⚠️ **O defeito não estava no motor: estava neste número.** Oito cadeias de cura foram
+        // construídas e refutadas (doc 109 §8.14) e mais três na obra encomendada (doc 111) antes de
+        // alguém medir o knob que já existia. Partir o tique em `N` passos, cada um com a sua
+        // integração E o seu contacto, é o que faz um solver assentar uma pilha **à rigidez plena**
+        // — sem baixar o ganho, sem filtrar e sem amolecer, que são as três que caíram.
+        //
+        // ⭐ **O `8` é o JOELHO da curva medida** (5 realizações por célula, as quatro réguas):
+        //
+        // ```text
+        //   substeps | tremor (°/tique) |   rodopio   | altura |   vão  | cozimento
+        //          1 |    3,79 .. 5,69  | 24,3 .. 28,4 | −2,56 | 0,2583 |  0,67 ms
+        //          4 |    0,17 .. 0,61  | 19,9 .. 33,1 | −2,43 | 0,2493 |  2,63 ms
+        //          8 |    0,18 .. 0,22  |  9,5 .. 31,7 | −2,53 | 0,2390 |  4,67 ms
+        //         16 |   0,087 .. 0,171 |  8,4 .. 16,5 | −2,43 | 0,2358 |  9,94 ms
+        // ```
+        //
+        // ⚠️ **O recurso é o QUADRO**, e é ele que escolhe o `8`: `4,67 ms` são `28 %` de um quadro
+        // de `16,7`, e o `16` custa `9,94` (`60 %`) para comprar `2×` num tremor que a `8` já é
+        // `20×` menor que o de hoje. ⛔ Acima daqui o preço cresce linear e o ganho não.
+        //
+        // ⚠️ **E as duas réguas de FORMA ficam intactas** — a pilha não congela (`y` na mesma) nem
+        // colapsa (vão `0,2390` contra `0,2583`, `−9 %`). As duas curas anteriores falharam
+        // exactamente aí, e nenhuma das réguas do tremor as via.
+        g.set_param(zone, "substeps", SUBSTEPS);
         g.set_param(zone, "mode", em_laco);
         g.set_param(zone, "duration", DURACAO);
         g.set_param(zone, "loop_delay", PAUSA);

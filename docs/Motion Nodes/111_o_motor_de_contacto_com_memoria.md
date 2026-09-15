@@ -371,3 +371,58 @@ medidas ou cercadas:
 ⭐⭐⭐ **A 4 é a próxima medição, e é BARATA: o knob já existe no cartão.** ⚠️ E ela vem com um preço
 óbvio a medir junto — `N` sub-passos custam `N` vezes o solver, o que é exactamente o tipo de troca
 que o `CLAUDE.md` §0.0 manda medir antes de escrever qualquer tecto.
+
+---
+
+## §5.8 — ✅⭐⭐⭐ A CURA: os SUB-PASSOS, e ela já estava num botão do cartão
+
+Ordem do dono: *«pode medir»*. Medido — e é a última saída de pé do §5.7 que resolve, sem uma linha
+de motor.
+
+### §5.8.1 — ⛔⛔ Mas a primeira medição leu CINCO CÉLULAS IDÊNTICAS, e o relógio não subia
+
+| substeps | balanço | giro | `y` | vão | cozimento |
+|---|---|---|---|---|---|
+| 1 · 2 · 4 · 8 · 16 | `3,79 .. 5,69` **(todas)** | `24,3 .. 28,4` | `−2,56` | `0,2583` | `0,65 ms` |
+
+⇒ *se `16` sub-passos custassem `16` vezes e o relógio não sobe, o param não está a chegar.* **Não
+estava:** o motor do substep é a **marcha do PUMP** (`advance_or_scrub_*`), e a sonda chamava o
+`Cook::cook` à mão — um `cook` por tique, sem substepping nenhum. ⇒ ⛔ **a sonda media um programa
+que não tem sub-passos**, que é a mesma forma de erro que o `CLAUDE.md` já regista sobre sondas que
+armam um módulo por outra porta.
+
+⚠️⚠️ **E não era só a sonda: TODO gate desta cena marchava assim.** É por isso que a cura passou
+despercebida a uma tabela inteira de tentativas — *as réguas mediam uma variante da `=114` que o
+artista nunca vê*. As duas do tremor passaram a marchar pelo pump.
+
+### §5.8.2 — A tabela, pela porta certa (5 realizações por célula, as QUATRO réguas)
+
+| substeps | balanço pior | giro pior | `y` final | **vão típico** | cozimento |
+|---|---|---|---|---|---|
+| **1** (o que shipava) | `3,79 .. 5,69` | `24,3 .. 28,4` | `−2,56` | `0,2583` | `0,67 ms` |
+| 2 | `0,67 .. 1,40` | `17,9 .. 35,0` | `−2,48` | `0,2630` | `1,44 ms` |
+| 4 | `0,17 .. 0,61` | `19,9 .. 33,1` | `−2,43` | `0,2493` | `2,63 ms` |
+| **8** | **`0,18 .. 0,22`** | `9,5 .. 31,7` | `−2,53` | `0,2390` | **`4,67 ms`** |
+| 16 | `0,087 .. 0,171` | `8,4 .. 16,5` | `−2,43` | `0,2358` | `9,94 ms` |
+
+⭐⭐⭐ **As QUATRO réguas passam juntas, pela primeira vez em dezasseis tentativas:** o tremor cai
+`20×`, o rodopio pela metade, e as duas de FORMA ficam intactas — a pilha **não congela** (`y` na
+mesma) e **não colapsa** (vão `−9 %`, contra os `−93 %` da complacência do §5.6).
+
+**A cena shipa `8`**, e o recurso que escolhe o número é o **QUADRO**: `4,67 ms` são `28 %` de
+`16,7`, e o `16` custa `9,94` (`60 %`) para comprar `2×` num tremor que a `8` já é `20×` menor que
+o de ontem. ⛔ Acima daqui o preço cresce linear (`0,67 → 1,44 → 2,63 → 4,67 → 9,94`) e o ganho não.
+
+### §5.8.3 — ⭐⭐ O que esta obra inteira ensinou
+
+**O defeito nunca esteve no motor: esteve num número da CENA** — e foram precisas **dezasseis**
+recusas medidas para lá chegar, porque *o knob que já existia nunca foi medido*. A lei do repo
+(`CLAUDE.md` §5.0) diz exactamente isto: **antes de construir um item de lista aberta, MEÇA se a
+composição já o exprime.**
+
+⚠️ E o que tornava a medição impossível era o furo do §5.8.1: **a régua e o produto entravam por
+portas diferentes.** Enquanto isso durou, nenhuma varredura de `substeps` podia dizer nada.
+
+O gate `the_pile_settles_instead_of_buzzing` deixa de ser um vermelho declarado e passa a **VERDE**,
+com prova red-first: com `SUBSTEPS = 1` ele reprova nomeando as **cinco** peças do fundo que o dono
+fotografou.

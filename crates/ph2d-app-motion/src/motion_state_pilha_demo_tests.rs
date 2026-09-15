@@ -126,7 +126,7 @@ fn vizinhos(p: &[[f32; 2]]) -> Vec<f32> {
 
 /// A MEDIANA dessas distâncias — o vão TÍPICO da pilha (a régua que a 1.ª versão desta cena pagou:
 /// o par mais próximo é um extremo, o vão típico é uma propriedade).
-fn vizinho_mediano(p: &[[f32; 2]]) -> f32 {
+pub(super) fn vizinho_mediano(p: &[[f32; 2]]) -> f32 {
     let mut v = vizinhos(p);
     v.sort_by(f32::total_cmp);
     v.get(v.len() / 2).copied().unwrap_or(0.0)

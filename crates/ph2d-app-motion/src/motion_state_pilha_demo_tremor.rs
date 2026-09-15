@@ -455,44 +455,70 @@ fn probe_o_atrito_entre_pecas() {
     }
 }
 
-/// O `|Δrot|` mediano por tique de CADA peça da direita, na janela assente.
+/// O `|Δrot|` mediano por tique de CADA peça da direita, na janela assente — **pelo PUMP**.
 fn balanco_angular(de: f64, ate: f64) -> Vec<f32> {
     let mut state = MotionState::new();
     let sinks = build(&mut state.doc, &state.registry).expect("a cena monta");
     crate::motion_shape_gen::publish(&mut state, 0.0);
-    let sink = sinks[1];
-    let (mut passos, mut anterior) = (Vec::<Vec<f32>>::new(), Vec::<f32>::new());
-    let last = (ate * 60.0) as u64;
-    for k in 0..=last {
-        #[expect(clippy::cast_precision_loss, reason = "um indice de tique")]
-        let t = k as f64 / 60.0;
-        let s = state
-            .pump
-            .cook
-            .cook(&state.doc.graph, &state.registry, sink, t)
-            .expect("cozinha")[0]
-            .as_stream()
-            .clone();
-        if let Some(Column::Scalar(r)) = s.get("rot") {
-            if t >= de && anterior.len() == r.len() {
-                passos.push(
-                    r.iter()
-                        .zip(&anterior)
-                        .map(|(a, b)| (a - b).abs())
-                        .collect(),
-                );
-            }
-            anterior = r.clone();
-        }
-        state
-            .pump
-            .cook
-            .advance_tick(&state.doc.graph, &state.registry, t)
-            .expect("avanca");
-    }
-    (0..anterior.len())
-        .map(|i| mediana(&passos.iter().map(|linha| linha[i]).collect::<Vec<_>>()))
+    #[expect(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "segundos → tiques"
+    )]
+    let serie = marcha_rot(
+        &mut state,
+        sinks[1],
+        (de * 60.0) as u64,
+        (ate * 60.0) as u64,
+    );
+    let n = serie.first().map_or(0, Vec::len);
+    (0..n)
+        .map(|i| {
+            mediana(
+                &serie
+                    .windows(2)
+                    .map(|w| (w[1][i] - w[0][i]).abs())
+                    .collect::<Vec<_>>(),
+            )
+        })
         .collect()
+}
+
+/// ⭐⭐⭐ **A MARCHA da cena pela porta do PUMP**, e a coluna `rot` em cada tique da janela.
+///
+/// ⛔⛔ **Todo gate desta cena marchava pelo `Cook::cook` directo, e por isso NENHUM via os
+/// sub-passos:** o motor do substep é a marcha do pump (`advance_or_scrub_*`), e um `cook` chamado
+/// à mão coze o grafo UMA vez por tique. ⇒ *as réguas mediam uma variante da cena que o artista
+/// nunca vê*, e foi assim que a cura do doc 111 §5.8 passou despercebida a uma tabela inteira.
+fn marcha_rot(state: &mut MotionState, sink: NodeId, de: u64, ate: u64) -> Vec<Vec<f32>> {
+    let escopos = ph2d_nodegraph::cook::TimeScopes::new();
+    let mut fora = Vec::new();
+    for k in 0..=ate {
+        state.pump.mark_dirty();
+        state.pump.advance_or_scrub_to_nodes_scoped(
+            &state.doc.graph,
+            &state.registry,
+            &[sink],
+            k,
+            |t| {
+                #[expect(clippy::cast_precision_loss, reason = "um indice de tique")]
+                let s = t as f64 / 60.0;
+                s
+            },
+            &escopos,
+        );
+        if k >= de
+            && let Some((_, saida)) = state
+                .pump
+                .boundary_streams()
+                .iter()
+                .find(|(no, _)| *no == sink)
+            && let Some(Column::Scalar(r)) = saida.get("rot")
+        {
+            fora.push(r.clone());
+        }
+    }
+    fora
 }
 
 /// **SONDA — a faixa do balanço angular, para a barra do gate sair de um VALE medido.**
@@ -533,7 +559,6 @@ fn probe_a_faixa_do_balanco() {
 /// uma dívida sem nenhum.* Quem a puser a verde tem de passar também no
 /// [`the_pile_does_not_start_spinning_like_a_ball`], que é a metade que a minha cura partiu.
 #[test]
-#[ignore = "VERMELHO DECLARADO — doc 109 §8, o defeito está aberto"]
 fn the_pile_settles_instead_of_buzzing() {
     /// Graus por tique. Ver o vale acima.
     const BARRA: f32 = 1.0;
@@ -622,43 +647,30 @@ fn probe_gira_ou_treme() {
     eprintln!("\n  maior giro LÍQUIDO em 0,9 s: {pior:.2}°  (um quadrado tem simetria de 90°)");
 }
 
-/// Por peça: o giro LÍQUIDO e o giro TOTAL percorrido, em graus, na janela.
+/// Por peça: o giro LÍQUIDO e o giro TOTAL percorrido, em graus, na janela — **pelo PUMP**.
 fn giro_liquido(de: f64, ate: f64) -> (Vec<f32>, Vec<f32>) {
     let mut state = MotionState::new();
     let sinks = build(&mut state.doc, &state.registry).expect("a cena monta");
     crate::motion_shape_gen::publish(&mut state, 0.0);
-    let sink = sinks[1];
-    let (mut liquido, mut total, mut anterior) = (Vec::new(), Vec::new(), Vec::<f32>::new());
-    let last = (ate * 60.0) as u64;
-    for k in 0..=last {
-        #[expect(clippy::cast_precision_loss, reason = "um indice de tique")]
-        let t = k as f64 / 60.0;
-        let s = state
-            .pump
-            .cook
-            .cook(&state.doc.graph, &state.registry, sink, t)
-            .expect("cozinha")[0]
-            .as_stream()
-            .clone();
-        if let Some(Column::Scalar(r)) = s.get("rot") {
-            if liquido.len() != r.len() {
-                liquido = vec![0.0_f32; r.len()];
-                total = vec![0.0_f32; r.len()];
-            }
-            if t >= de && anterior.len() == r.len() {
-                for i in 0..r.len() {
-                    let d = r[i] - anterior[i];
-                    liquido[i] += d;
-                    total[i] += d.abs();
-                }
-            }
-            anterior = r.clone();
+    #[expect(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "segundos → tiques"
+    )]
+    let serie = marcha_rot(
+        &mut state,
+        sinks[1],
+        (de * 60.0) as u64,
+        (ate * 60.0) as u64,
+    );
+    let n = serie.first().map_or(0, Vec::len);
+    let (mut liquido, mut total) = (vec![0.0_f32; n], vec![0.0_f32; n]);
+    for w in serie.windows(2) {
+        for i in 0..n {
+            let d = w[1][i] - w[0][i];
+            liquido[i] += d;
+            total[i] += d.abs();
         }
-        state
-            .pump
-            .cook
-            .advance_tick(&state.doc.graph, &state.registry, t)
-            .expect("avanca");
     }
     (liquido, total)
 }

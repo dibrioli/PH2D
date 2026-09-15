@@ -182,3 +182,5 @@ glifo, e as duas cenas ficam iguais por não conterem o sujeito.
 ⭐ A lição de cima: *copiar o arnês do gate ao lado copia também as PREMISSAS dele*. Pergunte o que o
 vizinho mede antes de reaproveitar a régua dele.
 
+- ⛔⛔ **O TECTO mede-se na porta do PRODUTO, e a diferença foi de 2×** (2026-09-14, `line/components`): o `BURST_MAX` foi medido na porta de CÓPIA (`2,6 µs`, «17 % de um quadro») e o caminho do artista paga também o clone dos documentos possuídos, o remap e o elo por peça ⇒ **`5,35 ms`, 32 %**. *Uma sonda que mede um sucedâneo para sempre mede outro programa* — e a armadilha apareceu no dia em que o doc da sonda irmã a nomeia por escrito.
+- ⭐⭐ **O preço de um GESTO pode ser função da CENA sem ninguém ver**: `deep_copy_subtree` varria o mundo **duas vezes por cópia** (`2 × 69,8 = 139,6 µs` de `143,2` a 100 000 objectos) e lia-se **plano** a 100 (`4,26`). ⇒ meça sempre por **tamanho de mundo**, nunca num mundo só — e a cura (pagar a varredura uma vez por LOTE) deu `74×` a 256 cópias e `121×` a 1 024.

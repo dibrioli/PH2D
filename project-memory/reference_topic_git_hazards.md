@@ -21,3 +21,4 @@ metadata:
 - [[feedback_a_token_rewrite_scopes_to_changed_files_not_the_whole_tree]] — rewrite de token = só arquivos MUDADOS; `git grep` corrompeu um .ttf
 - [[feedback_moving_a_doc_means_resolving_links_not_matching_strings]] — mover doc = RESOLVER link, não casar string; `ls-files` pós-`mv` mente
 - [[feedback_mutation_undo_with_cp_never_git_checkout]] — desfaça mutação com `cp` do backup, nunca `git checkout`
+- ⛔ **Crase numa mensagem de `git commit -m "…"` é SUBSTITUIÇÃO DE COMANDO** (zsh/bash, 2026-09-14): `` `fase_*` `` executou e a mensagem foi gravada com duas palavras **em falta**, sem erro nenhum. ⇒ mensagem densa vai por **`-F ficheiro`** (ou `<<'MSG'` com o delimitador entre plicas), nunca por `-m` com crases.

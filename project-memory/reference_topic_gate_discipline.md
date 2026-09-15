@@ -257,3 +257,5 @@ os censos da crate antes de dar o corte por fechado.
   chave (a régua isenta braços de `match`) — e gateie a tabela nos dois sentidos (todo rótulo tem chave)
   MAIS o pintor (diferencial de glifos contra uma pilha vazia; a tabela certa com o pintor a ignorá-la
   deixa o primeiro gate verde). Ver [[feedback_a_panel_can_hold_one_name_column_per_family_of_row]].
+- ⚠️ **Uma fase-filha do quadro que não se chama `fase_*` DESAPARECE do oráculo das leis de ordem** (`frame_text::render_frame` colhe só essas) — e nenhum teste fica vermelho. A lei que a atravessa deixa de ser medida em silêncio (medido 2026-09-14, `line/components`).
+- ⚠️ **Uma fixtura que não contém o fenómeno deixa a lei sem gate:** uma duração de `100 000 µs` não distingue `>=` de `>` num tique de `16 667` (o relógio chega a `100 002` e os dois matam no mesmo tique). ⇒ a fixtura de uma FRONTEIRA cai **exactamente** nela (um múltiplo do tique).
